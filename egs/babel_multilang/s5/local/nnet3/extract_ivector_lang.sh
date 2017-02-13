@@ -17,7 +17,7 @@ ivector_suffix=_gb
 . ./utils/parse_options.sh
 
 lang=$1
-global_extractor_dir=$2
+global_extractor=$2
 
 if [ $stage -le 8 ]; then
   # We extract iVectors on all the train_nodup data, which will be what we
@@ -27,7 +27,7 @@ if [ $stage -le 8 ]; then
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/$lang/${train_set}_hires data/$lang/${train_set}_max2_hires
   if [ ! -f exp/$lang/nnet3/ivectors_${train_set}${ivector_suffix}/ivector_online.scp ]; then
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 200 \
-      data/$lang/${train_set}_max2_hires $global_extractor_dir exp/$lang/nnet3/ivectors_${train_set}${ivector_suffix} || exit 1;
+      data/$lang/${train_set}_max2_hires $global_extractor exp/$lang/nnet3/ivectors_${train_set}${ivector_suffix} || exit 1;
   fi
 fi
 exit 0;

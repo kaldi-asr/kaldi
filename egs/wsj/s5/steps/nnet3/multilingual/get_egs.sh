@@ -51,14 +51,13 @@ combine_scp_list=
 # read paramter from different $egs_dir[lang]/info
 # to write in multilingual egs_dir
 
-check_params="feat_dim ivector_dim left_context right_context frames_per_eg"
+check_params="info/feat_dim info/ivector_dim info/left_context info/right_context info/frames_per_eg cmvn_opts"
 for param in $check_params; do
-  cat ${args[0]}/info/$param > $megs_dir/info/$param || exit 1;
+  cat ${args[0]}/$param > $megs_dir/$param || exit 1;
 done
-
+cat ${args[0]}/cmvn_opts > $megs_dir/cmvn_opts || exit 1;
 for lang in $(seq 0 $[$num_langs-1]);do
   multi_egs_dir[$lang]=${args[$lang]}
-  echo "arg[$lang] = ${args[$lang]}"
   for f in $required; do
     if [ ! -f ${multi_egs_dir[$lang]}/$f ]; then
       echo "$0: no such a file ${multi_egs_dir[$lang]}/$f." && exit 1;
@@ -71,10 +70,10 @@ for lang in $(seq 0 $[$num_langs-1]);do
 
   # check parameter dimension to be the same in all egs dirs
   for f in $check_params; do
-    f1=`cat $megs_dir/info/$param`;
-    f2=`cat ${multi_egs_dir[$lang]}/info/$f`;
-    if [ $f1 != $f1 ]; then
-      echo "$0: mismatch in dimension for $f parameter in ${multi_egs_dir[$lang]}."
+    f1=`cat $megs_dir/$f`;
+    f2=`cat ${multi_egs_dir[$lang]}/$f`;
+    if [ "$f1" != "$f2" ]  ; then
+      echo "$0: mismatch for $f for $megs_dir vs. ${multi_egs_dir[$lang]}($f1 vs. $f2)."
       exit 1;
     fi
   done
@@ -122,4 +121,7 @@ if [ $stage -le 1 ]; then
       $num_langs "$valid_diagnostic_scp_list" $megs_dir || exit 1;
 
 fi
-
+echo $cmvn_opts > $megs_dir/cmvn_opts || exit 1; # caution: the top-level nnet training
+                                                 # script should copy this to its
+                                                 # own dir.
+echo "$0: Finished preparing multilingual training example."

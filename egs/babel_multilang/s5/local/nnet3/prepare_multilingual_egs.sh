@@ -27,6 +27,7 @@ samples_per_iter=400000 # this is the target number of egs in each archive of eg
 minibatch_size=512
 num_archives=100
 num_jobs=10
+cmvn_opts=
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi

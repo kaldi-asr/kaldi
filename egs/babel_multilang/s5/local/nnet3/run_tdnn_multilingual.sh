@@ -34,7 +34,6 @@ num_jobs_final=8
 speed_perturb=true
 use_pitch=true
 use_ivector=true
-global_extractor=exp/multi/nnet3/extractor
 megs_dir=
 alidir=tri5_ali
 suffix=
@@ -52,7 +51,7 @@ lang_list=(101-cantonese 102-assamese 103-bengali)
 
 # The language in this list decodes using Hybrid multilingual system.
 # e.g. decode_lang_list=(101-cantonese)
-decode_lang_list=(101-cantonese 102-assamese 103-bengali)
+decode_lang_list=(102-assamese 103-bengali)
 
 ivector_suffix=_gb # if ivector_suffix = _gb, the iVector extracted using global iVector extractor
                    # trained on pooled data from all languages.
@@ -101,9 +100,8 @@ done
 if $use_ivector; then
   mkdir -p data/multi
   mkdir -p exp/multi/nnet3
-  global_extractor=exp/multi/nnet3/extractor
+  global_extractor=exp/multi/nnet3
   multi_dir_data=data/multi/train${suffix}_hires
-
   echo "$0: combine training data using all langs for training global i-vector extractor."
   if [ ! -f $multi_dir_data/.done ]; then
     echo ---------------------------------------------------------------------
@@ -119,14 +117,15 @@ if $use_ivector; then
     touch data/multi/train${suffix}_hires/.done
   fi
 
-  if [ ! -f $global_extractor/.done ]; then
+  if [ ! -f $global_extractor/extractor/.done ]; then
     echo "$0: Generate global i-vector extractor on pooled data from all "
     echo "languages in $multi_data_dir, using an LDA+MLLT transform trained "
     echo "on ${lang_list[0]}."
-    local/nnet3/run_shared_ivector_extractor.sh --global-extractor $global_extractor \
+    local/nnet3/run_shared_ivector_extractor.sh  \
       --suffix $suffix --use-flp $use_flp \
-      --stage $stage ${lang_list[0]} || exit 1;
-    touch $global_extractor/.done
+      --stage $stage ${lang_list[0]} \
+      $multi_data_dir $global_extractor || exit 1;
+    touch $global_extractor/extractor/.done
   fi
   echo "$0: Extracts ivector for all languages using $global_extractor/extractor."
   for lang_index in `seq 0 $[$num_langs-1]`; do
@@ -134,7 +133,7 @@ if $use_ivector; then
       --train-set train$suffix ${lang_list[$lang_index]} \
       --ivector-suffix $ivector_suffix \
       data/multi/train${suffix}_hires \
-      $global_extractor || exit;
+      $global_extractor/extractor || exit;
   done
 fi
 
@@ -167,6 +166,7 @@ if [ $stage -le 9 ]; then
   fi
   local/nnet3/prepare_multilingual_egs.sh --cmd "$decode_cmd" \
     "${ivector_opts[@]}" \
+    --cmvn-opts "--norm-means=false --norm-vars=false" \
     --left-context $model_left_context --right-context $model_right_context \
     $num_langs ${multi_data_dirs[@]} ${multi_ali_dirs[@]} ${multi_egs_dirs[@]} || exit 1;
 
@@ -265,7 +265,7 @@ if [ $stage -le 13 ]; then
       $dir/final.raw - | \
       nnet3-am-init ${multi_ali_dirs[$lang_index]}/final.mdl - \
       $lang_dir/final.mdl || exit 1;
-
+    cp $dir/cmvn_opts ${multi_ali_dirs[$lang_index]}/cmvn_opts || exit 1;
     echo "$0: compute average posterior and readjust priors for language ${lang_list[$lang_index]}."
     steps/nnet3/adjust_priors.sh --cmd "$decode_cmd" \
       --use-gpu true \
@@ -277,7 +277,6 @@ fi
 # decoding different languages
 if [ $stage -le 14 ]; then
   num_decode_lang=${#decode_lang_list[@]}
-  (
   for lang_index in `seq 0 $[$num_decode_lang-1]`; do
     if [ ! -f $dir/${decode_lang_list[$lang_index]}/decode_dev10h.pem/.done ]; then
       echo "Decoding lang ${decode_lang_list[$lang_index]} using multilingual hybrid model $dir"
@@ -287,6 +286,4 @@ if [ $stage -le 14 ]; then
       touch $dir/${decode_lang_list[$lang_index]}/decode_dev10h.pem/.done
     fi
   done
-  wait
-  )
 fi

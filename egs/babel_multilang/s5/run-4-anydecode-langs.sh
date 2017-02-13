@@ -53,13 +53,11 @@ langconf=langconf/$lang/lang.conf
 [ ! -f $langconf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
 . $langconf || exit 1;
 [ -f local.conf ] && . local.conf;
-echo using "Language = $lang, config = $langconf"
 
 mfcc=mfcc/$lang
 plp=plp/$lang
 data=data/$lang
 vector_suffix=_gb
-echo hi
 #This seems to be the only functioning way how to ensure the comple
 #set of scripts will exit when sourcing several of them together
 #Otherwise, the CTRL-C just terminates the deepest sourced script ?
@@ -305,7 +303,6 @@ fi
 
 if [[ "$use_pitch" == "true" ]]; then
   dataset=$(basename $dataset_dir)
-  echo use_pitch = $use_pitch
   pitchdir=pitch/$lang
   if $use_pitch; then
     if [ ! -f ${dataset_dir}_pitch/.done ]; then
@@ -417,7 +414,6 @@ fi
 ####################################################################
 
 if [ -f $nnet3_dir/$lang/final.mdl ]; then
-  echo "nnet3 decoding"
   decode=$nnet3_dir/$lang/decode_${dataset_id}
   rnn_opts=
   aux_suffix=
@@ -443,7 +439,7 @@ if [ -f $nnet3_dir/$lang/final.mdl ]; then
     mkdir -p $decode
     score_opts="--skip-scoring false"
     [ ! -z $iter ] && iter_opt="--iter $iter"
-    steps/nnet3/decode.sh --nj $my_nj --cmd "$decode_cmd" $iter_opts $rnn_opts \
+    steps/nnet3/decode.sh --nj $my_nj --cmd "$decode_cmd" $iter_opt $rnn_opts \
           --stage $decode_stage \
           --beam $dnn_beam --lattice-beam $dnn_lat_beam \
           $score_opts $ivector_opts \
