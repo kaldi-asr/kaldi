@@ -604,7 +604,7 @@ class XconfigOutputLayer(XconfigLayerBase):
 # which specify addition of an affine component and a sequence of non-linearities.
 # Here, the name of the layer itself dictates the sequence of nonlinearities
 # that are applied after the affine component; the name should contain some
-# combination of 'relu', 'renorm', 'sigmoid' and 'tanh',
+# combination of 'relu', 'elu', 'renorm', 'sigmoid' and 'tanh',
 # and these nonlinearities will be added along with the affine component.
 #
 # The dimension specified is the output dim; the input dim is worked out from the input descriptor.
@@ -616,14 +616,14 @@ class XconfigOutputLayer(XconfigLayerBase):
 # Parameters of the class, and their defaults:
 #   input='[-1]'             [Descriptor giving the input of the layer.]
 #   dim=None                   [Output dimension of layer, e.g. 1024]
-#   self-repair-scale=1.0e-05  [Affects relu, sigmoid and tanh layers.]
+#   self-repair-scale=1.0e-05  [Affects relu, elu, sigmoid and tanh layers.]
 #
 class XconfigBasicLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         # Here we just list some likely combinations.. you can just add any
         # combinations you want to use, to this list.
         assert first_token in [ 'relu-layer', 'relu-renorm-layer', 'sigmoid-layer',
-                                'tanh-layer' ]
+                                'tanh-layer', 'elu-layer', 'elu-renorm-layer' ]
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
