@@ -326,6 +326,43 @@ class RectifiedLinearComponent: public NonlinearComponent {
   RectifiedLinearComponent &operator = (const RectifiedLinearComponent &other); // Disallow.
 };
 
+// Class EluComponent implements Exponential Linear Units,
+// which is the function:
+// y = (x >= 0 ? x : exp(x) - 1).
+// [see https://arxiv.org/pdf/1511.07289.pdf].
+class EluComponent: public NonlinearComponent {
+ public:
+  explicit EluComponent(const EluComponent &other):
+      NonlinearComponent(other) { }
+  EluComponent() { }
+  virtual std::string Type() const { return "EluComponent"; }
+  virtual Component* Copy() const { return new EluComponent(*this); }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace|
+        kStoresStats;
+  }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, //in_value
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);
+
+ private:
+  // this function is called from Backprop code and only does something if the
+  // self-repair-scale config value is set.
+  void RepairGradients(CuMatrixBase<BaseFloat> *in_deriv,
+                       EluComponent *to_update) const;
+
+  EluComponent &operator = (const EluComponent &other); // Disallow.
+};
+
+
 /**
    This component is a fixed (non-trainable) nonlinearity that sums its inputs
    to produce outputs.  Currently the only supported configuration is that its

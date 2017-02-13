@@ -726,6 +726,13 @@ class XconfigBasicLayer(XconfigLayerBase):
                         ''.format(self.name, nonlinearity, output_dim,
                             self_repair_scale))
 
+            elif nonlinearity == 'elu':
+                line = ('component name={0}.{1}'
+                        ' type=EluComponent dim={2}'
+                        ' self-repair-scale={3}'
+                        ''.format(self.name, nonlinearity, output_dim,
+                            self_repair_scale))
+
             elif nonlinearity == 'sigmoid':
                 line = ('component name={0}.{1}'
                         ' type=SigmoidComponent dim={2}'

@@ -1171,6 +1171,118 @@ void RectifiedLinearComponent::StoreStats(
   StoreStatsInternal(out_value, &temp_deriv);
 }
 
+void EluComponent::Propagate(
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  // Apply exponential linear function (x >= 0 ? x : exp(x) - 1)
+  out->CopyFromMat(in);
+  CuMatrix<BaseFloat> exp_negated_relu(in);
+  out->ApplyFloor(0.0);
+  exp_negated_relu.ApplyCeiling(0.0);
+  exp_negated_relu.ApplyExp();
+  out->AddMat(1.0, exp_negated_relu, kNoTrans);
+  out->Add(-1.0);
+}
+
+void EluComponent::Backprop(
+    const std::string &debug_info,
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &, //in_value
+    const CuMatrixBase<BaseFloat> &out_value,
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    Component *to_update_in,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (in_deriv != NULL) {
+    in_deriv->CopyFromMat(out_value);
+    in_deriv->ApplyCeiling(0.0);
+    in_deriv->Add(1.0);
+    in_deriv->MulElements(out_deriv);
+    EluComponent *to_update =
+        dynamic_cast<EluComponent*>(to_update_in);
+    if (to_update != NULL)
+      RepairGradients(in_deriv, to_update);
+  }
+}
+
+
+void EluComponent::RepairGradients(
+    CuMatrixBase<BaseFloat> *in_deriv,
+    EluComponent *to_update) const {
+  KALDI_ASSERT(to_update != NULL);
+  BaseFloat default_lower_threshold = 0.05,
+      default_upper_threshold = 0.95;
+  // we use this 'repair_probability' (hardcoded for now) to limit
+  // this code to running on about half of the minibatches.
+  BaseFloat repair_probability = 0.5;
+
+  to_update->num_dims_processed_ += dim_;
+
+  if (self_repair_scale_ == 0.0 || count_ == 0.0 || deriv_sum_.Dim() != dim_ ||
+      RandUniform() > repair_probability)
+    return;
+
+  // check that the self-repair scale is in a reasonable range.
+  KALDI_ASSERT(self_repair_scale_ > 0.0 && self_repair_scale_ < 0.1);
+  BaseFloat unset = kUnsetThreshold; // -1000.0
+  BaseFloat lower_threshold = (self_repair_lower_threshold_ == unset ?
+                               default_lower_threshold :
+                               self_repair_lower_threshold_) *
+      count_,
+      upper_threshold = (self_repair_upper_threshold_ == unset ?
+                         default_upper_threshold :
+                         self_repair_upper_threshold_) *
+      count_;
+
+  CuMatrix<BaseFloat> storage(2, dim_ + 2, kUndefined);
+  CuSubVector<BaseFloat> thresholds_vec(storage.RowData(0) + dim_, 2);
+  CuSubMatrix<BaseFloat> stats_mat(storage, 0, 2, 0, dim_);
+  thresholds_vec(0) = -lower_threshold;
+  thresholds_vec(1) = -upper_threshold;
+  CuSubVector<BaseFloat> row0(stats_mat, 0);
+  CuSubVector<BaseFloat> row1(stats_mat, 1);
+
+  row0.CopyFromVec(deriv_sum_);
+  row1.CopyFromVec(row0);
+  stats_mat.AddVecToCols(1.0, thresholds_vec, 1.0);
+  // now row0 equals stats - lower_threshold, and
+  //     row1 equals stats - upper_threshold.
+  stats_mat.ApplyHeaviside();
+  // now row0 equals (stats > lower_threshold ? 1 : 0), and
+  //     row1 equals (stats > upper_threshold ? 1 : 0).
+  // what we want is:
+  // self_repair_scale * ((stats <= lower_threshold ? 1 : 0) +
+  //                         (stats > upper_threshold ? -1 : 0)).
+  //
+  // we can get these in stats_mat.Row(0) by computing:
+  // -self_repair_scale * (stats_mat.Row(1)  + stats_mat.Row(0) - 1).
+  row0.AddVec(1.0, row1, 1.0);
+  row0.Add(-1.0);
+  CuVector<BaseFloat> temp(row0);
+  temp.ApplyPow(2.0);
+  to_update->num_dims_self_repaired_ += temp.Sum();
+  // [actually we need to divide by repair_probability also, to
+  //  correct for the fact that we only do this on some frames.]
+  row0.Scale(-self_repair_scale_ / repair_probability);
+  in_deriv->AddVecToRows(1.0, row0, 1.0);
+}
+
+
+void EluComponent::StoreStats(
+    const CuMatrixBase<BaseFloat> &out_value) {
+  // only store stats about every other minibatch.
+  if (RandInt(0, 1) == 0)
+    return;
+  CuMatrix<BaseFloat> temp_deriv(out_value.NumRows(),
+                                 out_value.NumCols(),
+                                 kUndefined);
+  temp_deriv.CopyFromMat(out_value);
+  temp_deriv.ApplyCeiling(0.0);
+  temp_deriv.Add(1.0);
+  StoreStatsInternal(out_value, &temp_deriv);
+}
+
+
 void AffineComponent::Scale(BaseFloat scale) {
   if (scale == 0.0) {
     // If scale == 0.0 we call SetZero() which will get rid of NaN's and inf's.

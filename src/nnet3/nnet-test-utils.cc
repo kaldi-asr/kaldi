@@ -1130,7 +1130,7 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
-  int32 n = RandInt(0, 30);
+  int32 n = RandInt(0, 31);
   BaseFloat learning_rate = 0.001 * RandInt(1, 100);
 
   std::ostringstream os;
@@ -1434,6 +1434,11 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       // set self-repair scale to zero so the derivative tests will pass.
       os << "cell-dim=" << RandInt(1, 200)
          << " self-repair-scale=0.0";
+      break;
+    }
+    case 31: {
+      *component_type = "EluComponent";
+      os << "dim=" << RandInt(1, 50);
       break;
     }
     default:
