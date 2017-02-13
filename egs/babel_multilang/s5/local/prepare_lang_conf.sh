@@ -6,7 +6,7 @@ fullLP=true
 
 if [ $# -ne 1 ]; then
   echo "Usage: $(basename $0)  <lang>"
-  echo " e.g.: $(basename $0)  ASM"
+  echo " e.g.: $(basename $0)  101-cantonese"
   exit 1
 fi
 

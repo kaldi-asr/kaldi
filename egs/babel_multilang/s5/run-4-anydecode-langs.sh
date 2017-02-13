@@ -14,6 +14,7 @@ tri5_only=false
 use_plp_pitch=true
 use_pitch=true
 use_ivector=false
+use_bnf=false
 pitch_conf=conf/pitch.conf
 wip=0.5
 decode_stage=-1
@@ -24,8 +25,10 @@ extra_right_context=0
 frames_per_chunk=0
 aux_suffix=
 ivector_suffix=
+iter=final
+use_flp=false
+
 # params for extracting bn features
-use_bnf=false
 multidir=exp/nnet3/multi_bnf_sp
 dump_bnf_dir=bnf
 bnf_layer=5
@@ -35,7 +38,6 @@ bnf_layer=5
 
 . utils/parse_options.sh
 
-
 if [ $# -ne 1 ]; then
   echo "Usage: $(basename $0) --dir <dir-type> <lang>"
   echo " e.g.: $(basename $0) --dir dev2h.pem ASM"
@@ -44,7 +46,7 @@ fi
 
 lang=$1
 
-. local/prepare_flp_langconf.sh --use-flp $use_flp $lang || exit 1;
+. local/prepare_lang_conf.sh --fullLP $use_flp $lang || exit 1;
 
 langconf=langconf/$lang/lang.conf
 
@@ -57,7 +59,7 @@ mfcc=mfcc/$lang
 plp=plp/$lang
 data=data/$lang
 vector_suffix=_gb
-
+echo hi
 #This seems to be the only functioning way how to ensure the comple
 #set of scripts will exit when sourcing several of them together
 #Otherwise, the CTRL-C just terminates the deepest sourced script ?
@@ -290,6 +292,7 @@ if [ ! -f  $dataset_dir/.done ] ; then
   fi
   touch $dataset_dir/.done
 fi
+
 # extract ivector
 dataset=$(basename $dataset_dir)
 ivector_dir=exp/$lang/nnet3/ivectors_${dataset}${ivector_suffix}
@@ -330,12 +333,11 @@ if $use_bnf; then
   # put the archives in ${dump_bnf_dir}/.
   dataset=$(basename $dataset_dir)
   multi_ivector_dir=exp/$lang/nnet3/ivectors_${dataset}_gb
-  echo ivector_dir = $ivector_dir
   bnf_data_dir=${dataset_dir}_bnf
   if [ ! -f $bnf_data_dir/.done ]; then
   steps/nnet3/dump_bottleneck_features.sh --use-gpu true --nj 100 --cmd "$train_cmd" \
     --ivector-dir $multi_ivector_dir \
-    --bnf-name renorm${bnf_layer} --feat-type raw \
+    --feat-type raw \
     ${dataset_dir}_hires_mfcc${aux_suffix} $bnf_data_dir \
     $multidir $dump_bnf_dir/$lang exp/$lang/make_${dataset}_bnf || exit 1;
   touch $bnf_data_dir/.done
@@ -362,7 +364,7 @@ fi
 echo ---------------------------------------------------------------------
 echo "Preparing kws data files in ${dataset_dir} on" `date`
 echo ---------------------------------------------------------------------
-lang=$data/lang
+
 if ! $skip_kws ; then
   if  $extra_kws ; then
     L1_lex=data/local/lexiconp.txt
@@ -440,7 +442,9 @@ if [ -f $nnet3_dir/$lang/final.mdl ]; then
   if [ ! -f $decode/.done ]; then
     mkdir -p $decode
     score_opts="--skip-scoring false"
-    steps/nnet3/decode.sh --nj $my_nj --cmd "$decode_cmd" $rnn_opts --stage $decode_stage \
+    [ ! -z $iter ] && iter_opt="--iter $iter"
+    steps/nnet3/decode.sh --nj $my_nj --cmd "$decode_cmd" $iter_opts $rnn_opts \
+          --stage $decode_stage \
           --beam $dnn_beam --lattice-beam $dnn_lat_beam \
           $score_opts $ivector_opts \
           exp/$lang/tri5/graph ${dataset_dir}_hires${aux_suffix} $decode | tee $decode/decode.log

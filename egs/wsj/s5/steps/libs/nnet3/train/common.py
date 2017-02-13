@@ -69,10 +69,10 @@ def get_multitask_egs_opts(egs_dir, egs_prefix="",
     multitask_egs_opts = ""
     if use_multitask_egs:
         output_rename_opt = ""
-        output_file_name = "{egs_dir}/{egs_prefix}output.{archive_index}.ark"
-                           "".format(egs_dir=egs_dir,
+        output_file_name = ("{egs_dir}/{egs_prefix}output.{archive_index}.ark"
+                            "".format(egs_dir=egs_dir,
                                      egs_prefix=egs_prefix,
-                                     archive_index=archive_index)
+                                     archive_index=archive_index))
 
         output_rename_opt = ("--outputs=ark:{output_file_name}".format(
             output_file_name=output_file_name))
