@@ -41,7 +41,8 @@ class RunOpts(object):
         self.parallel_train_opts = None
 
 def get_outputs_list(model_file, get_raw_nnet_from_am=True):
-    """ Generates list of output-node-name used in nnet3 model configuration.
+    """ Generates list of output-node-names used in nnet3 model configuration.
+        It will normally just return 'output'.
     """
     outputs_list=""
     if get_raw_nnet_from_am:
@@ -60,30 +61,34 @@ def get_multitask_egs_opts(egs_dir, egs_prefix="",
                            archive_index=1,
                            use_multitask_egs=False):
     """ Generates egs option for multitask(or multilingual) training setup,
-        if ouput.scp or weight.scp files exists in egs_dir.
+        if output.scp or weight.scp files exists in egs_dir.
         Each eg in egs.scp has corresponding task or language in output.scp and
         weights in weight.scp for scaling supervision for this egs.
+        e.g. Returns the empty string ('') if use_multitask_egs == False,
+        otherwise something like:
+        '--output=ark:foo/egs/output.3.ark --weigth=ark:foo/egs/weights.3.ark'
         i.e. egs_prefix is "" for train and
         "valid_diagnostic." for validation.
     """
     multitask_egs_opts = ""
     if use_multitask_egs:
-        output_rename_opt = ""
         output_file_name = ("{egs_dir}/{egs_prefix}output.{archive_index}.ark"
                             "".format(egs_dir=egs_dir,
                                      egs_prefix=egs_prefix,
                                      archive_index=archive_index))
-
-        output_rename_opt = ("--outputs=ark:{output_file_name}".format(
-            output_file_name=output_file_name))
+        output_rename_opt = ""
+        if os.path.isfile(output_file_name):
+            output_rename_opt = ("--outputs=ark:{output_file_name}".format(
+                output_file_name=output_file_name))
 
         weight_file_name = ("{egs_dir}/{egs_prefix}weight.{archive_index}.ark"
                             "".format(egs_dir=egs_dir,
                                       egs_prefix=egs_prefix,
                                       archive_index=archive_index))
         weight_opt = ""
-        weight_opt = ("--weights=ark:{weight_file_name}"
-                      "".format(weight_file_name=weight_file_name))
+        if os.path.isfile(weight_file_name):
+            weight_opt = ("--weights=ark:{weight_file_name}"
+                          "".format(weight_file_name=weight_file_name))
 
         multitask_egs_opts = (
             "{output_rename_opt} {weight_opt}".format(

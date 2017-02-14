@@ -31,7 +31,6 @@ num_langs=$1
 
 shift 1
 args=("$@")
-echo num_args = ${#args[@]}
 megs_dir=${args[-1]} # multilingual directory
 mkdir -p $megs_dir
 mkdir -p $megs_dir/info
@@ -48,14 +47,15 @@ train_diagnostic_scp_list=
 valid_diagnostic_scp_list=
 combine_scp_list=
 
-# read paramter from different $egs_dir[lang]/info
-# to write in multilingual egs_dir
-
+# read paramter from $egs_dir[0]/info and cmvn_opts
+# to write in multilingual egs_dir.
 check_params="info/feat_dim info/ivector_dim info/left_context info/right_context info/frames_per_eg cmvn_opts"
 for param in $check_params; do
   cat ${args[0]}/$param > $megs_dir/$param || exit 1;
 done
-cat ${args[0]}/cmvn_opts > $megs_dir/cmvn_opts || exit 1;
+cat ${args[0]}/cmvn_opts > $megs_dir/cmvn_opts || exit 1; # caution: the top-level nnet training
+                                                          # script should copy this to its
+                                                          # own dir.
 for lang in $(seq 0 $[$num_langs-1]);do
   multi_egs_dir[$lang]=${args[$lang]}
   for f in $required; do
@@ -70,10 +70,10 @@ for lang in $(seq 0 $[$num_langs-1]);do
 
   # check parameter dimension to be the same in all egs dirs
   for f in $check_params; do
-    f1=`cat $megs_dir/$f`;
-    f2=`cat ${multi_egs_dir[$lang]}/$f`;
+    f1=$(cat $megs_dir/$f)
+    f2=$(cat ${multi_egs_dir[$lang]}/$f)
     if [ "$f1" != "$f2" ]  ; then
-      echo "$0: mismatch for $f for $megs_dir vs. ${multi_egs_dir[$lang]}($f1 vs. $f2)."
+      echo "$0: mismatch for $f in $megs_dir vs. ${multi_egs_dir[$lang]}($f1 vs. $f2)."
       exit 1;
     fi
   done
@@ -83,7 +83,7 @@ if [ $stage -le 0 ]; then
   echo "$0: allocating multilingual examples for training."
   # Generate egs.*.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_train.log \
-  python steps/nnet3/multilingual/allocate_multilingual_examples.py \
+  steps/nnet3/multilingual/allocate_multilingual_examples.py \
       --minibatch-size $minibatch_size \
       --samples-per-iter $samples_per_iter \
       $num_langs "$train_scp_list" $megs_dir || exit 1;
@@ -93,7 +93,7 @@ if [ $stage -le 1 ]; then
   echo "$0: combine combine.egs.scp examples from all langs in $megs_dir/combine.egs.scp."
   # Generate combine.egs.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_combine.log \
-  python steps/nnet3/multilingual/allocate_multilingual_examples.py \
+  steps/nnet3/multilingual/allocate_multilingual_examples.py \
       --random-lang false \
       --max-archives 1 --num-jobs 1 \
       --minibatch-size $minibatch_size \
@@ -103,7 +103,7 @@ if [ $stage -le 1 ]; then
   echo "$0: combine train_diagnostic.egs.scp examples from all langs in $megs_dir/train_diagnostic.egs.scp."
   # Generate train_diagnostic.egs.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_train_diagnostic.log \
-  python steps/nnet3/multilingual/allocate_multilingual_examples.py \
+  steps/nnet3/multilingual/allocate_multilingual_examples.py \
       --random-lang false \
       --max-archives 1 --num-jobs 1 \
       --minibatch-size $minibatch_size \
@@ -114,14 +114,11 @@ if [ $stage -le 1 ]; then
   echo "$0: combine valid_diagnostic.egs.scp examples from all langs in $megs_dir/valid_diagnostic.egs.scp."
   # Generate valid_diagnostic.egs.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_valid_diagnostic.log \
-  python steps/nnet3/multilingual/allocate_multilingual_examples.py \
+  steps/nnet3/multilingual/allocate_multilingual_examples.py \
       --random-lang false --max-archives 1 --num-jobs 1\
       --minibatch-size $minibatch_size \
       --prefix "valid_diagnostic." \
       $num_langs "$valid_diagnostic_scp_list" $megs_dir || exit 1;
 
 fi
-echo $cmvn_opts > $megs_dir/cmvn_opts || exit 1; # caution: the top-level nnet training
-                                                 # script should copy this to its
-                                                 # own dir.
 echo "$0: Finished preparing multilingual training example."

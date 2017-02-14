@@ -34,9 +34,10 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# -lt 4 ]; then
-  echo "Usage: $0 [opts] num-input-langs <data-dir-per-lang> <ali-dir-per-lang> <egs-dir-per-lang> <multilingual-egs-dir>"
-  echo " e.g.: $0 2 data/lang1/train data/lang2/train "
-       " exp/lang1/tri5_ali exp/lang2/tri5_ali exp/lang1/nnet3/egs exp/lang2/nnet3/egs exp/multi/egs"
+  echo "Usage: $0 [opts] N <data-dir1> .. <data-dirN> <ali-dir1> .. <ali-dirN>"
+  echo " <egs-out1> .. <egs-outN>"
+  echo " e.g.: $0 2 data/lang1/train data/lang2/train exp/lang1/tri5_ali"
+  echo " exp/lang2/tri5_ali exp/lang1/nnet3/egs exp/lang2/nnet3/egs"
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options"

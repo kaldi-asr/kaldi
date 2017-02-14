@@ -82,19 +82,3 @@ def prepare_initial_acoustic_model(dir, alidir, run_opts,
                 "ark:gunzip -c {alidir}/ali.*.gz|" {dir}/0.mdl
         """.format(command=run_opts.command,
                    dir=dir, alidir=alidir))
-
-def prepare_acoustic_model(dir, alidir, run_opts, model="final"):
-    """ It takes a raw nnet model.raw and adds a transition model and
-        writes an output acoustic model as model.mdl.
-    """
-
-    # Convert to .mdl, train the transitions, set the priors.
-    common_lib.run_job(
-        """{command} {dir}/log/init_mdl.log \
-                nnet3-am-init {alidir}/final.mdl {dir}/{model}.raw - \| \
-                nnet3-am-train-transitions - \
-                "ark:gunzip -c {alidir}/ali.*.gz|" {dir}/{model}.mdl
-        """.format(command=run_opts.command,
-                   dir=dir, alidir=alidir,
-                   model=model))
-

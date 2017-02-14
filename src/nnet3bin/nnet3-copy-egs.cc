@@ -345,16 +345,14 @@ int main(int argc, char *argv[]) {
     po.Register("right-context", &right_context, "Can be used to truncate the "
                 "feature right-context that we output.");
     po.Register("weights", &eg_weight_rspecifier,
-                "Rspecifier indexed by the example-id and value of scalar "
-                "weights. If provided, the supervision in eg is scaled "
-                "using weight. This can be created using "
-                "steps/nnet3/multilingual/allocate_multilingual_egs.py"
-                "If not provided, the default weight is taken to be one.");
+                "Rspecifier indexed by the key of egs, providing a weight by "
+                "which we will scale the supervision matrix for that eg. "
+                "Used in multilingual training.");
     po.Register("outputs", &eg_output_rspecifier,
-                "Rspecifiers indexed by the example-id and value of output-name."
-                "If provided, the NnetIo with name 'output' in eg"
-                "is renamed to new output-name. This can be created using "
-                "steps/nnet3/multilingual/allocate_multilingual_egs.py");
+                "Rspecifier indexed by the key of egs, providing a string-valued "
+                "output name, e.g. 'output-0'.  If provided, the NnetIo with "
+                "name 'output' will be renamed to the provided name. Used in "
+                "multilingual training.");
 
     po.Read(argc, argv);
 
@@ -379,18 +377,20 @@ int main(int argc, char *argv[]) {
 
     int64 num_read = 0, num_written = 0, num_err = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
+      bool modify_eg_output = !(eg_output_rspecifier.empty() &&
+                                eg_weight_rspecifier.empty());
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
-      bool modify_eg_output = !(eg_output_rspecifier.empty() &&
-                                eg_weight_rspecifier.empty());
       NnetExample eg_modified_output;
       const NnetExample &eg_orig = example_reader.Value(),
         &eg = (modify_eg_output ? eg_modified_output : eg_orig);
-      // rename io name 'output' to output-name and scale supervision using weight.
+      //Note: in the normal case we just use 'eg'; eg_modified_output is
+      //for the case when the --outputs or --weights option is specified
+      //(only for multilingual training).
       BaseFloat weight = 1.0;
       std::string new_output_name;
-      if (modify_eg_output) {
+      if (modify_eg_output) { // This branch is only taken for multilingual training.
         eg_modified_output = eg_orig;
         if (!eg_weight_rspecifier.empty()) {
           if (!egs_weight_reader.HasKey(key)) {
@@ -413,7 +413,7 @@ int main(int argc, char *argv[]) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
         if (frame_str == "" && left_context == -1 && right_context == -1 &&
             frame_shift == 0) {
-          if (modify_eg_output)
+          if (modify_eg_output) // Only for multilingual training
             ScaleAndRenameOutput(weight, new_output_name, &eg_modified_output);
           example_writers[index]->Write(key, eg);
           num_written++;

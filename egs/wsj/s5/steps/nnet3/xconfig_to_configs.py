@@ -27,8 +27,13 @@ def get_args():
                         help='Directory to write config files and variables')
     parser.add_argument('--nnet-edits', type=str, default=None,
                         action=common_lib.NullstrToNoneAction,
-                        help="Edit network before getting nnet3-info "
-                             "for adding backcompatibility info.")
+                        help="This option is useful in case the network you are "
+                        "creating does not have an output node called 'output' "
+                        "(e.g. for multilingual setups).  You can set this to "
+                        "an edit-string like: "
+                        "'rename-node old-name=xxx new-name=output' "
+                        "if node xxx plays the role of the output node in this "
+                        "network.")
 
     print(' '.join(sys.argv))
 
@@ -191,9 +196,11 @@ def write_config_files(config_dir, all_layers):
             raise
 
 
-def add_back_compatibility_info(config_dir, nnet_edits=None):
-    """This will be removed when python script refactoring is done."""
-
+def create_vars_file(config_dir, nnet_edits=None):
+    """Create a file config_dir/vars in which model_left_context,
+        model_right_context and num_hidden_layers are set.
+        Note: num_hidden_layers is not used any more and is always set to 1.
+    """
     common_lib.run_kaldi_command("nnet3-init {0}/ref.config "
                                  "{0}/ref.raw".format(config_dir))
 
@@ -235,7 +242,7 @@ def main():
     all_layers = xparser.read_xconfig_file(args.xconfig_file)
     write_expanded_xconfig_files(args.config_dir, all_layers)
     write_config_files(args.config_dir, all_layers)
-    add_back_compatibility_info(args.config_dir, args.nnet_edits)
+    create_vars_file(args.config_dir, args.nnet_edits)
 
 
 if __name__ == '__main__':
