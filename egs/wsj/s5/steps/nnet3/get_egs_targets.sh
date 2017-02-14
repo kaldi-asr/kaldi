@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Copyright 2012-2015 Johns Hopkins University (Author: Daniel Povey).  
+# Copyright 2012-2015 Johns Hopkins University (Author: Daniel Povey).
 #           2015-2016 Vimal Manohar
 # Apache 2.0.
 
 # This script is similar to steps/nnet3/get_egs.sh but used
-# when getting general targets (not from alignment directory) for raw nnet 
+# when getting general targets (not from alignment directory) for raw nnet
 #
 # This script, which will generally be called from other neural-net training
 # scripts, extracts the training examples used to train the neural net (and also
@@ -21,7 +21,7 @@
 # Begin configuration section.
 cmd=run.pl
 feat_type=raw       # set it to 'lda' to use LDA features.
-target_type=sparse  # dense to have dense targets, 
+target_type=sparse  # dense to have dense targets,
                     # sparse to have posteriors targets
 num_targets=        # required for target-type=sparse with raw nnet
 frames_per_eg=8   # number of frames of labels per example.  more->less disk space and
@@ -30,10 +30,6 @@ frames_per_eg=8   # number of frames of labels per example.  more->less disk spa
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
 right_context=4   # amount of right-context per eg.
-valid_left_context=   # amount of left_context for validation egs, typically used in
-                      # recurrent architectures to ensure matched condition with
-                      # training egs
-valid_right_context=  # amount of right_context for validation egs
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
 
@@ -45,15 +41,15 @@ reduce_frames_per_eg=true  # If true, this script may reduce the frames_per_eg
 num_utts_subset=300     # number of utterances in validation and training
                         # subsets used for shrinkage and diagnostics.
 num_valid_frames_combine=0 # #valid frames for combination weights at the very end.
-num_train_frames_combine=10000 # # train frames for the above.
-num_frames_diagnostic=4000 # number of frames for "compute_prob" jobs
+num_train_frames_combine=60000 # # train frames for the above.
+num_frames_diagnostic=10000 # number of frames for "compute_prob" jobs
 samples_per_iter=400000 # this is the target number of egs in each archive of egs
                         # (prior to merging egs).  We probably should have called
                         # it egs_per_iter. This is just a guideline; it will pick
                         # a number that divides the number of samples in the
                         # entire data.
 
-transform_dir=     
+transform_dir=
 
 stage=0
 nj=6         # This should be set to the maximum number of jobs you are
@@ -254,11 +250,7 @@ if [ -e $dir/storage ]; then
   done
 fi
 
-egs_opts="--left-context=$left_context --right-context=$right_context --compress=$compress"
-
-[ -z $valid_left_context ] &&  valid_left_context=$left_context;
-[ -z $valid_right_context ] &&  valid_right_context=$right_context;
-valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --compress=$compress"
+egs_opts="--left-context=$left_context --right-context=$right_context --compress=$compress --num-frames=$frames_per_eg"
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
@@ -274,12 +266,12 @@ if [ $target_type == "dense" ]; then
 fi
 
 if [ -z "$num_targets" ]; then
-  echo "$0: num-targets is not set" 
+  echo "$0: num-targets is not set"
   exit 1
 fi
 
 case $target_type in
-  "dense") 
+  "dense")
     get_egs_program="nnet3-get-egs-dense-targets --num-targets=$num_targets"
 
     targets="ark:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | copy-feats scp:- ark:- |"
@@ -289,7 +281,7 @@ case $target_type in
   "sparse")
     get_egs_program="nnet3-get-egs --num-pdfs=$num_targets"
     targets="ark:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | ali-to-post scp:- ark:- |"
-    valid_targets="ark:utils/filter_scp.pl $dir/valid_uttlist $targets_scp | ali-to-post scp:- ark:- |" 
+    valid_targets="ark:utils/filter_scp.pl $dir/valid_uttlist $targets_scp | ali-to-post scp:- ark:- |"
     train_subset_targets="ark:utils/filter_scp.pl $dir/train_subset_uttlist $targets_scp | ali-to-post scp:- ark:- |"
     ;;
   default)
@@ -302,29 +294,29 @@ if [ $stage -le 3 ]; then
   rm -f $dir/.error 2>/dev/null
   $cmd $dir/log/create_valid_subset.log \
     $get_egs_program \
-    $valid_ivector_opt $valid_egs_opts "$valid_feats" \
+    $valid_ivector_opt $egs_opts "$valid_feats" \
     "$valid_targets" \
     "ark:$dir/valid_all.egs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
     $get_egs_program \
-    $train_subset_ivector_opt $valid_egs_opts "$train_subset_feats" \
+    $train_subset_ivector_opt $egs_opts "$train_subset_feats" \
     "$train_subset_targets" \
     "ark:$dir/train_subset_all.egs" || touch $dir/.error &
   wait;
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."
   $cmd $dir/log/create_valid_subset_combine.log \
-    nnet3-subset-egs --n=$num_valid_frames_combine ark:$dir/valid_all.egs \
+    nnet3-subset-egs --n=$[$num_valid_frames_combine/$frames_per_eg] ark:$dir/valid_all.egs \
     ark:$dir/valid_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_valid_subset_diagnostic.log \
-    nnet3-subset-egs --n=$num_frames_diagnostic ark:$dir/valid_all.egs \
+    nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg] ark:$dir/valid_all.egs \
     ark:$dir/valid_diagnostic.egs || touch $dir/.error &
 
   $cmd $dir/log/create_train_subset_combine.log \
-    nnet3-subset-egs --n=$num_train_frames_combine ark:$dir/train_subset_all.egs \
+    nnet3-subset-egs --n=$[$num_train_frames_combine/$frames_per_eg] ark:$dir/train_subset_all.egs \
     ark:$dir/train_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_train_subset_diagnostic.log \
-    nnet3-subset-egs --n=$num_frames_diagnostic ark:$dir/train_subset_all.egs \
+    nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg] ark:$dir/train_subset_all.egs \
     ark:$dir/train_diagnostic.egs || touch $dir/.error &
   wait
   sleep 5  # wait for file system to sync.
@@ -348,7 +340,7 @@ if [ $stage -le 4 ]; then
   # The examples will go round-robin to egs_list.
   $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
     $get_egs_program \
-    $ivector_opt $egs_opts --num-frames=$frames_per_eg "$feats" "$targets" \
+    $ivector_opt $egs_opts "$feats" "$targets" \
     ark:- \| \
     nnet3-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi
