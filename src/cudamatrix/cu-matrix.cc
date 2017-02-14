@@ -722,6 +722,31 @@ void CuMatrixBase<Real>::Max(const CuMatrixBase<Real>& A) {
 
 
 template<typename Real>
+void CuMatrixBase<Real>::Min(const CuMatrixBase<Real>& A) {
+  #if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    KALDI_ASSERT(num_cols_ == A.NumCols());
+    KALDI_ASSERT(num_rows_ == A.NumRows());
+
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                          &dimGrid, &dimBlock);
+
+    cuda_min(dimGrid, dimBlock, data_, A.data_, Dim(), A.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    Mat().Min(A.Mat());
+  }
+}
+
+
+template<typename Real>
 void CuMatrixBase<Real>::MulColsVec(const CuVectorBase<Real> &scale) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
