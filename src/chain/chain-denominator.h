@@ -208,7 +208,8 @@ class DenominatorComputation {
   DenominatorComputation(const ChainTrainingOptions &opts,
                          const DenominatorGraph &den_graph,
                          int32 num_sequences,
-                         const CuMatrixBase<BaseFloat> &nnet_output);
+                         const CuMatrixBase<BaseFloat> &nnet_output,
+                         const CuMatrixBase<BaseFloat> *boosting_mask = NULL);
 
   // Does the forward computation, and returns the total negated log-like summed
   // over all sequences.  You will have to scale this by any supervision

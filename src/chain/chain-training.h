@@ -61,8 +61,18 @@ struct ChainTrainingOptions {
   // should have a softmax as its final nonlinearity.
   BaseFloat xent_regularize;
 
+  // The boosting coefficient (i.e. b in bMMI)
+  BaseFloat boost;
+  
+  // This controls the boosting approach. If true, hard boosting
+  // will be used: the boosting mask consists of 1's and 0's and is 
+  // independent of numerator computation (i.e. is a function of numerator
+  // graph only).
+  bool hard_boost;
+
   ChainTrainingOptions(): l2_regularize(0.0), leaky_hmm_coefficient(1.0e-05),
-                          xent_regularize(0.0) { }
+                          xent_regularize(0.0), boost(0.0),
+                          hard_boost(false) { }
   
   void Register(OptionsItf *opts) {
     opts->Register("l2-regularize", &l2_regularize, "l2 regularization "
@@ -78,6 +88,10 @@ struct ChainTrainingOptions {
                    "nonzero, the network is expected to have an output "
                    "named 'output-xent', which should have a softmax as "
                    "its final nonlinearity.");
+    opts->Register("boost", &boost, "The boosting coefficient "
+                   "(i.e. b in bMMI)");
+    opts->Register("hard-boost", &hard_boost, "If true, hard boosting will "
+                   "be used.");
   }
 };
 
