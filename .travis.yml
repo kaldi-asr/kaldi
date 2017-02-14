@@ -15,6 +15,7 @@ addons:
       - llvm-toolchain-trusty-3.9
     packages:
       - gdb
+      - gfortran
       - liblapack-dev
       - clang-3.9
 
