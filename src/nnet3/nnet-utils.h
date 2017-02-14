@@ -80,7 +80,7 @@ std::string PrintVectorPerUpdatableComponent(const Nnet &nnet,
                                              const VectorBase<BaseFloat> &vec);
 
 /// This function returns true if the nnet has the following properties:
-///  It has an called "output" (other outputs are allowed but may be
+///  It has an output called "output" (other outputs are allowed but may be
 ///          ignored).
 ///  It has an input called "input", and possibly an extra input called
 ///    "ivector", but no other inputs.
