@@ -9,7 +9,7 @@
 #   LDFLAGS="-llapack"
 
 # Maximum make parallelism. Simply -j runs out of memory on Travis VM.
-MAXPAR=8
+MAXPAR=6
 
 # Directories with code that can be tested with Travis (space-separated)
 TESTABLE_DIRS="src/"
