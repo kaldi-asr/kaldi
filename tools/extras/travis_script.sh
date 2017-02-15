@@ -51,7 +51,7 @@ LDF="\"$LDFLAGS $(addsw -L $LIBDIRS)\""
 CCC="$(mtoken CXX "$CXX")"
 
 # Randomly choose between single and double precision
-if [[ $(( RANDOM % 2 )) == 1 ]] ; then
+if [[ $(( RANDOM % 1 )) == 1 ]] ; then
   DPF="--double-precision=yes"
 else
   DPF="--double-precision=no"
