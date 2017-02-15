@@ -2,7 +2,7 @@ notifications:
   email: false
 
 language: cpp
-sudo: required
+sudo: false
 dist: trusty
 
 os:
