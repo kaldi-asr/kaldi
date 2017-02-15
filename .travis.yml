@@ -29,7 +29,7 @@ before_install:
   - tools/extras/travis_install_bindeps.sh $XROOT
 
 script:
-  - CXX=clang++-4.9
+  - CXX=clang++-3.9
     CFLAGS="-march=native"
     LDFLAGS="-llapack"
     INCDIRS="$XROOT/usr/include"
