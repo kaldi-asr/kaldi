@@ -4,12 +4,12 @@
 # Typical usage shown below; any one can be safely left unset.
 #   INCDIRS="~/xroot/usr/include"
 #   LIBDIRS="~/xroot/usr/lib /usr/lib/openblas-base"
-#   CXX=gcc++-4.9
+#   CXX=clang++-3.9
 #   CFLAGS="-march=native -O2"
 #   LDFLAGS="-llapack"
 
 # Maximum make parallelism. Simply -j runs out of memory on Travis VM.
-MAXPAR=4
+MAXPAR=6
 
 # Directories with code that can be tested with Travis (space-separated)
 TESTABLE_DIRS="src/"
