@@ -124,6 +124,9 @@ struct ObjectiveFunctionInfo {
                    BaseFloat this_minibatch_tot_aux_objf = 0.0);
 
   // Prints stats for the current phase.
+  // Note: 'phase' will normally be this->current_phase + 1, but may under
+  // unusual circumstances (e.g. multilingual training, where not all outputs
+  // are seen on all minibatches) be larger than that.
   void PrintStatsForThisPhase(const std::string &output_name,
                               int32 minibatches_per_phase,
                               int32 phase) const;

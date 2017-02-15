@@ -235,20 +235,5 @@ const SimpleObjectiveInfo* NnetComputeProb::GetObjective(
     return NULL;
 }
 
-std::string NnetComputeProb::GetAllObjectiveInfo(double* tot_weight) const {
-  std::ostringstream ostr;
-  unordered_map<std::string, SimpleObjectiveInfo,
-    StringHasher>::const_iterator objf_it = objf_info_.begin(),
-    objf_end = objf_info_.end();
-  for(; objf_it != objf_end; ++objf_it) {
-    double objf_per_frame = objf_it->second.tot_objective / objf_it->second.tot_weight;
-    ostr << " Objf per frame for '" << objf_it->first
-         << "' is " << objf_per_frame;
-    (*tot_weight) += objf_it->second.tot_weight;
-  }
-  ostr << " sum of weights for all objective is " << tot_weight;
-  return ostr.str();
-}
-
 } // namespace nnet3
 } // namespace kaldi
