@@ -1,33 +1,42 @@
 #!/bin/bash
 
-# this is a TDNN+LSTM system; the configuration is similar to
-# local/chain/tuning/run_tdnn_lstm_1e.sh, but a non-chain nnet3 system, and
-# with 1.5 times larger hidden dimensions.
+
+# run_tdnn_lstm_lfr_1a.sh is like run_tdnn_lstm_1a.sh, but
+# it's a low-frame-rate system. (however, using num-jobs-final=10,
+# not 15, which was very high).
 
 
-# local/nnet3/compare_wer.sh --looped exp/nnet3_cleaned/tdnn_lstm1a_sp exp/nnet3_cleaned/tdnn_lstm1b_sp
-# System                tdnn_lstm1a_sp tdnn_lstm1b_sp
-# WER on dev(orig)           11.0      11.0
-#         [looped:]          11.0      11.1
+# Generally the WER is the same or slightly better than before.
+
+# local/nnet3/compare_wer.sh --looped --online exp/nnet3_cleaned/tdnn_lstm1c_sp exp/nnet3_cleaned/tdnn_lstm_lfr1a_sp  2>/dev/null
+# local/nnet3/compare_wer.sh --looped --online exp/nnet3_cleaned/tdnn_lstm1c_sp exp/nnet3_cleaned/tdnn_lstm_lfr1a_sp
+# System                tdnn_lstm1c_sp tdnn_lstm_lfr1a_sp
+# WER on dev(orig)           11.0      10.9
+#         [looped:]          10.9      10.9
+#         [online:]                    10.8
 # WER on dev(rescored)       10.4      10.3
-#         [looped:]          10.3      10.5
-# WER on test(orig)          10.7      10.6
+#         [looped:]          10.3      10.3
+#         [online:]                    10.3
+# WER on test(orig)          10.8      10.7
 #         [looped:]          10.7      10.7
-# WER on test(rescored)      10.1       9.9
-#         [looped:]          10.0      10.0
-# Final train prob        -0.6881   -0.6897
-# Final valid prob        -0.7796   -0.7989
-# Final train acc          0.7954    0.7946
-# Final valid acc          0.7611    0.7582
+#         [online:]                    10.7
+# WER on test(rescored)      10.1      10.2
+#         [looped:]          10.1      10.1
+#         [online:]                    10.2
+# Final train prob        -0.5998   -0.5437
+# Final valid prob        -0.8542   -0.7286
+# Final train acc          0.7988    0.8343
+# Final valid acc          0.7521    0.7888
+
 
 # by default, with cleanup:
-# local/nnet3/run_tdnn_lstm.sh
+# local/nnet3/run_tdnn_lstm_lfr.sh
 
 # without cleanup:
-# local/nnet3/run_tdnn_lstm.sh  --train-set train --gmm tri3 --nnet3-affix "" &
+# local/nnet3/run_tdnn_lstm_lfr.sh  --train-set train --gmm tri3 --nnet3-affix "" &
 
 
-set -e -o pipefail -u
+set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
@@ -54,10 +63,16 @@ label_delay=5
 chunk_width=40,30,20
 chunk_left_context=40
 chunk_right_context=0
+# decode chunk-size options (for non-looped decoding)
+extra_left_context=50
+extra_right_context=0
 
 # training options
 srand=0
 remove_egs=true
+
+#decode options
+test_online_decoding=false  # if true, it will run the last decoding stage.
 
 . ./cmd.sh
 . ./path.sh
@@ -82,24 +97,55 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 
 
 gmm_dir=exp/${gmm}
-graph_dir=$gmm_dir/graph
 ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
-dir=exp/nnet3${nnet3_affix}/tdnn_lstm${affix}_sp
+dir=exp/nnet3${nnet3_affix}/tdnn_lstm_lfr${affix}_sp
 train_data_dir=data/${train_set}_sp_hires_comb
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
-
+# note: you don't necessarily have to change the treedir name
+# each time you do a new experiment-- only if you change the
+# configuration in a way that affects the tree.
+treedir=exp/nnet3${nnet3_affix}/tree_lfr_a_sp
+# the 'lang' directory is created by this script; it's one
+# suitable for a low-frame-rate system such as this one.
+lang=data/lang_lfr_a
 
 for f in $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
-     $graph_dir/HCLG.fst $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
+    $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
 
 if [ $stage -le 12 ]; then
+  echo "$0: creating lang directory $lang with chain-type topology"
+  rm -rf $lang
+  cp -r data/lang $lang
+  silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
+  nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
+  steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
+fi
+
+if [ $stage -le 13 ]; then
+  # Build a tree using our new topology and a reduced sampling rate.
+  # We use 4000 leaves, which is a little less than the number used
+  # in the baseline GMM system (5k) in this setup, since generally
+  # LFR systems do best with somewhat fewer leaves.
+  #
+  # To get the stats to build the tree this script only uses every third frame,
+  # but it dumps converted alignments that essentially have 3 different
+  # frame-shifted versions of the alignment interpolated together; these can be
+  # used without modification in getting labels for training.
+  steps/nnet3/chain/build_tree.sh \
+    --repeat-frames true --frame-subsampling-factor 3 \
+    --cmd "$train_cmd" 4000 data/${train_set}_sp_comb \
+    $lang $ali_dir $treedir
+fi
+
+
+if [ $stage -le 14 ]; then
   mkdir -p $dir
   echo "$0: creating neural net configs using the xconfig parser";
 
-  num_targets=$(tree-info $gmm_dir/tree |grep num-pdfs|awk '{print $2}')
+  num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -129,7 +175,7 @@ EOF
 fi
 
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 15 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/tedlium-$(date +'%m_%d_%H_%M')/s5_r2/$dir/egs/storage $dir/egs/storage
@@ -143,9 +189,9 @@ if [ $stage -le 13 ]; then
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=6 \
     --trainer.deriv-truncate-margin=10 \
-    --trainer.samples-per-iter=10000 \
+    --trainer.samples-per-iter=20000 \
     --trainer.optimization.num-jobs-initial=3 \
-    --trainer.optimization.num-jobs-final=15 \
+    --trainer.optimization.num-jobs-final=10 \
     --trainer.optimization.initial-effective-lrate=0.0003 \
     --trainer.optimization.final-effective-lrate=0.00003 \
     --trainer.optimization.shrink-value 0.99 \
@@ -160,24 +206,39 @@ if [ $stage -le 13 ]; then
     --cleanup.remove-egs=$remove_egs \
     --use-gpu=true \
     --feat-dir=$train_data_dir \
-    --ali-dir=$ali_dir \
-    --lang=data/lang \
+    --ali-dir=$treedir \
+    --lang=$lang \
     --reporting.email="$reporting_email" \
     --dir=$dir  || exit 1;
+  echo 3 >$dir/frame_subsampling_factor
 fi
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 16 ]; then
+  # The reason we are using data/lang here, instead of $lang, is just to
+  # emphasize that it's not actually important to give mkgraph.sh the
+  # lang directory with the matched topology (since it gets the
+  # topology file from the model).  So you could give it a different
+  # lang directory, one that contained a wordlist and LM of your choice,
+  # as long as phones.txt was compatible.
+
+  utils/lang/check_phones_compatible.sh data/lang/phones.txt $lang/phones.txt
+  utils/mkgraph.sh --self-loop-scale 0.333 data/lang $dir $dir/graph
+fi
+
+if [ $stage -le 17 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   rm $dir/.error 2>/dev/null || true
   for dset in dev test; do
    (
-    steps/nnet3/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
-        --extra-left-context $chunk_left_context \
-        --extra-right-context $chunk_right_context \
-        --frames-per-chunk $frames_per_chunk \
-        --extra-left-context-initial 0 --extra-right-context-final 0 \
-        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
-      ${graph_dir} data/${dset}_hires ${dir}/decode_${dset} || exit 1
+     steps/nnet3/decode.sh \
+       --acwt 0.333 --post-decode-acwt 3.0 --nj $decode_nj \
+       --cmd "$decode_cmd"  --num-threads 4 \
+       --extra-left-context $chunk_left_context \
+       --extra-right-context $chunk_right_context \
+       --frames-per-chunk $frames_per_chunk \
+       --extra-left-context-initial 0 --extra-right-context-final 0 \
+       --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
+      $dir/graph data/${dset}_hires ${dir}/decode_${dset} || exit 1
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
        data/${dset}_hires ${dir}/decode_${dset} ${dir}/decode_${dset}_rescore || exit 1
     ) || touch $dir/.error &
@@ -187,10 +248,10 @@ if [ $stage -le 14 ]; then
 fi
 
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 18 ]; then
   # 'looped' decoding.
   # note: you should NOT do this decoding step for setups that have bidirectional
-  # recurrence, like BLSTMs-- it doesn't make sense and will give bd results.
+  # recurrence, like BLSTMs-- it doesn't make sense and will give bad results.
   # we didn't write a -parallel version of this program yet,
   # so it will take a bit longer as the --num-threads option is not supported.
   # we just hardcode the --frames-per-chunk option as it doesn't have to
@@ -199,12 +260,42 @@ if [ $stage -le 15 ]; then
   rm $dir/.error 2>/dev/null || true
   for dset in dev test; do
       (
-      steps/nnet3/decode_looped.sh --nj $decode_nj --cmd "$decode_cmd" \
+        steps/nnet3/decode_looped.sh \
+          --acwt 0.333 --post-decode-acwt 3.0 \
+          --nj $decode_nj --cmd "$decode_cmd" \
           --frames-per-chunk 30 \
           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
-         $graph_dir data/${dset}_hires $dir/decode_looped_${dset} || exit 1;
+         $dir/graph data/${dset}_hires $dir/decode_looped_${dset} || exit 1;
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
         data/${dset}_hires ${dir}/decode_looped_${dset} ${dir}/decode_looped_${dset}_rescore || exit 1
+    ) || touch $dir/.error &
+  done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in decoding"
+    exit 1
+  fi
+fi
+
+if $test_online_decoding && [ $stage -le 19 ]; then
+  # note: if the features change (e.g. you add pitch features), you will have to
+  # change the options of the following command line.
+  steps/online/nnet3/prepare_online_decoding.sh \
+    --mfcc-config conf/mfcc_hires.conf \
+    $lang exp/nnet3${nnet3_affix}/extractor ${dir} ${dir}_online
+
+  rm $dir/.error 2>/dev/null || true
+  for dset in dev test; do
+    (
+      # note: we just give it "$dset" as it only uses the wav.scp, the
+      # feature type does not matter.
+
+      steps/online/nnet3/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
+          --acwt 0.333 --post-decode-acwt 3.0 \
+          --scoring-opts "--min-lmwt 5 " \
+         $dir/graph data/${dset} ${dir}_online/decode_${dset} || exit 1;
+      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
+        data/${dset}_hires ${dir}_online/decode_${dset} ${dir}_online/decode_${dset}_rescore || exit 1
     ) || touch $dir/.error &
   done
   wait

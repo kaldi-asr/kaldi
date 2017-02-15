@@ -1,36 +1,19 @@
 #!/bin/bash
 
 
-# 1b is as 1a but uses xconfigs.
-
-#    This is the standard "tdnn" system, built in nnet3; this script
-# is the version that's meant to run with data-cleanup, that doesn't
-# support parallel alignments.
-
-
-# steps/info/nnet3_dir_info.pl exp/nnet3_cleaned/tdnn1b_sp
-# exp/nnet3_cleaned/tdnn1b_sp: num-iters=240 nj=2..12 num-params=10.3M dim=40+100->4187 combine=-0.95->-0.95 loglike:train/valid[159,239,combined]=(-1.01,-0.95,-0.94/-1.18,-1.16,-1.15) accuracy:train/valid[159,239,combined]=(0.71,0.72,0.72/0.67,0.68,0.68)
-
-# local/nnet3/compare_wer.sh exp/nnet3_cleaned/tdnn1a_sp exp/nnet3_cleaned/tdnn1b_sp
-# System                tdnn1a_sp tdnn1b_sp
-# WER on dev(orig)           11.9      11.7
-# WER on dev(rescored)       11.2      10.9
-# WER on test(orig)          11.6      11.7
-# WER on test(rescored)      11.0      11.0
-# Final train prob        -0.9255   -0.9416
-# Final valid prob        -1.1842   -1.1496
-# Final train acc          0.7245    0.7241
-# Final valid acc          0.6771    0.6788
+# run_tdnn_lfr_1a.sh is similar in configuration to run_tdnn_1c.sh, but it's a
+# low-frame-rate system (see egs/swbd/s5c/local/nnet3/tuning/run_tdnn_lfr1c.sh
+# for an example of such a system).
 
 
 # by default, with cleanup:
-# local/nnet3/run_tdnn.sh
+# local/nnet3/run_tdnn_lfr.sh
 
 # without cleanup:
-# local/nnet3/run_tdnn.sh  --train-set train --gmm tri3 --nnet3-affix "" &
+# local/nnet3/run_tdnn_lfr.sh  --train-set train --gmm tri3 --nnet3-affix "" &
 
 
-set -e -o pipefail -u
+set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
@@ -43,12 +26,11 @@ gmm=tri3_cleaned  # this is the source gmm-dir for the data-type of interest; it
                   # should have alignments for the specified training data.
 num_threads_ubm=32
 nnet3_affix=_cleaned  # cleanup affix for exp dirs, e.g. _cleaned
-tdnn_affix=1b  #affix for TDNN directory e.g. "a" or "b", in case we change the configuration.
+tdnn_affix=1a  #affix for TDNN directory e.g. "a" or "b", in case we change the configuration.
 
 # Options which are not passed through to run_ivector_common.sh
 train_stage=-10
 remove_egs=true
-relu_dim=850
 srand=0
 reporting_email=dpovey@gmail.com
 # set common_egs_dir to use previously dumped egs.
@@ -77,24 +59,56 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 
 
 gmm_dir=exp/${gmm}
-graph_dir=$gmm_dir/graph
 ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
-dir=exp/nnet3${nnet3_affix}/tdnn${tdnn_affix}_sp
+dir=exp/nnet3${nnet3_affix}/tdnn_lfr${tdnn_affix}_sp
+# note: you don't necessarily have to change the treedir name
+# each time you do a new experiment-- only if you change the
+# configuration in a way that affects the tree.
+treedir=exp/nnet3${nnet3_affix}/tree_lfr_a_sp
+# the 'lang' directory is created by this script; it's one
+# suitable for a low-frame-rate system such as this one.
+lang=data/lang_lfr_a
+
 train_data_dir=data/${train_set}_sp_hires_comb
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
 
 
 for f in $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
-     $graph_dir/HCLG.fst $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
+    $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
 
 if [ $stage -le 12 ]; then
+  echo "$0: creating lang directory $lang with chain-type topology"
+  rm -rf $lang
+  cp -r data/lang $lang
+  silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
+  nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
+  steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
+fi
+
+if [ $stage -le 13 ]; then
+  # Build a tree using our new topology and a reduced sampling rate.
+  # We use 4000 leaves, which is a little less than the number used
+  # in the baseline GMM system (5k) in this setup, since generally
+  # LFR systems do best with somewhat fewer leaves.
+  #
+  # To get the stats to build the tree this script only uses every third frame,
+  # but it dumps converted alignments that essentially have 3 different
+  # frame-shifted versions of the alignment interpolated together; these can be
+  # used without modification in getting labels for training.
+  steps/nnet3/chain/build_tree.sh \
+    --repeat-frames true --frame-subsampling-factor 3 \
+    --cmd "$train_cmd" 4000 data/${train_set}_sp_comb \
+    $lang $ali_dir $treedir
+fi
+
+if [ $stage -le 14 ]; then
   mkdir -p $dir
   echo "$0: creating neural net configs using the xconfig parser";
 
-  num_targets=$(tree-info $gmm_dir/tree |grep num-pdfs|awk '{print $2}')
+  num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -107,12 +121,11 @@ if [ $stage -le 12 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=850
-  relu-renorm-layer name=tdnn2 dim=850 input=Append(-1,2)
-  relu-renorm-layer name=tdnn3 dim=850 input=Append(-3,3)
-  relu-renorm-layer name=tdnn4 dim=850 input=Append(-7,2)
-  relu-renorm-layer name=tdnn5 dim=850 input=Append(-3,3)
-  relu-renorm-layer name=tdnn6 dim=850
+  relu-renorm-layer name=tdnn1 dim=750
+  relu-renorm-layer name=tdnn2 dim=750 input=Append(-1,0,1)
+  relu-renorm-layer name=tdnn3 dim=750 input=Append(-1,0,1)
+  relu-renorm-layer name=tdnn4 dim=750 input=Append(-3,0,3)
+  relu-renorm-layer name=tdnn5 dim=750 input=Append(-6,-3,0)
   output-layer name=output dim=$num_targets max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -120,7 +133,7 @@ fi
 
 
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 15 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/tedlium-$(date +'%m_%d_%H_%M')/s5_r2/$dir/egs/storage $dir/egs/storage
@@ -143,13 +156,27 @@ if [ $stage -le 13 ]; then
     --cleanup.remove-egs=$remove_egs \
     --use-gpu=true \
     --feat-dir=$train_data_dir \
-    --ali-dir=$ali_dir \
-    --lang=data/lang \
+    --ali-dir=$treedir \
+    --lang=$lang \
     --reporting.email="$reporting_email" \
     --dir=$dir  || exit 1;
+  echo 3 >$dir/frame_subsampling_factor
 fi
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 16 ]; then
+  # The reason we are using data/lang here, instead of $lang, is just to
+  # emphasize that it's not actually important to give mkgraph.sh the
+  # lang directory with the matched topology (since it gets the
+  # topology file from the model).  So you could give it a different
+  # lang directory, one that contained a wordlist and LM of your choice,
+  # as long as phones.txt was compatible.
+
+  utils/lang/check_phones_compatible.sh data/lang/phones.txt $lang/phones.txt
+  utils/mkgraph.sh --self-loop-scale 0.333 data/lang $dir $dir/graph
+fi
+
+
+if [ $stage -le 17 ]; then
   # note: for TDNNs, looped decoding gives exactly the same results
   # as regular decoding, so there is no point in testing it separately.
   # We use regular decoding because it supports multi-threaded (we just
@@ -157,9 +184,10 @@ if [ $stage -le 14 ]; then
   rm $dir/.error || true 2>/dev/null
   for dset in dev test; do
    (
-    steps/nnet3/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
+     steps/nnet3/decode.sh --acwt 0.333 --post-decode-acwt 3.0 --nj $decode_nj \
+        --cmd "$decode_cmd"  --num-threads 4 \
         --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
-      ${graph_dir} data/${dset}_hires ${dir}/decode_${dset} || exit 1
+      $dir/graph data/${dset}_hires ${dir}/decode_${dset} || exit 1
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
        data/${dset}_hires ${dir}/decode_${dset} ${dir}/decode_${dset}_rescore || exit 1
     ) || touch $dir/.error &
