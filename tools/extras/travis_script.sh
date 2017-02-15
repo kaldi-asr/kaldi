@@ -9,7 +9,7 @@
 #   LDFLAGS="-llapack"
 
 # Maximum make parallelism. Simply -j runs out of memory on Travis VM.
-MAXPAR=6
+MAXPAR=8
 
 # Directories with code that can be tested with Travis (space-separated)
 TESTABLE_DIRS="src/"
@@ -42,7 +42,7 @@ if git rev-parse "${TRAVIS_COMMIT_RANGE}" >/dev/null 2>&1 && \
 then
   echo; echo "No changes outside ${TESTABLE_DIRS} in the commit" \
              "range ${TRAVIS_COMMIT_RANGE}; reporting success."
-  exit 0;
+  # exit 0;
 fi
 
 # Prepare environment variables
