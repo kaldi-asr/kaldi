@@ -21,11 +21,11 @@ set -u           #Fail on an undefined variable
 bnf_train_stage=-10 # the stage variable used in multilingual bottleneck training.
 stage=1
 speed_perturb=true
-multidir=exp/nnet3/multi_bnf_10_close_lang_plus_grg
+multilingual_dir=exp/nnet3/multi_bnf
 global_extractor=exp/multi/nnet3/extractor
 lang_list=(404-georgian 403-dholuo 402-javanese 401-mongolian 307-amharic)
 use_flp=true
-
+bnf_dim=128
 . ./utils/parse_options.sh
 
 
@@ -53,29 +53,29 @@ ivector_dir=$exp_dir/nnet3/ivectors_train${suffix}_gb
 # Training multilingual model with bottleneck layer
 #
 ###############################################################################
-mkdir -p $multidir${suffix}
+mkdir -p $multilingual_dir${suffix}
 
-if [ ! -f $multidir${suffix}/.done ]; then
+if [ ! -f $multilingual_dir${suffix}/.done ]; then
   echo "$0: Train multilingual DNN using Bottleneck layer with lang list = ${lang_list[@]}"
-  . local/nnet3/run_tdnn_multilingual.sh --dir $multidir \
-     --bnf-dim 128 \
+  . local/nnet3/run_tdnn_multilingual.sh --dir $multilingual_dir \
+     --bnf-dim $bnf_dim \
      --global-extractor $global_extractor \
      --train-stage $bnf_train_stage --stage $stage  || exit 1;
 
-  touch $multidir${suffix}/.done
+  touch $multilingual_dir${suffix}/.done
 else
-  echo "$0 Skip multilingual DNN training; you can force to run this step by deleting $multidir${suffix}/.done"
+  echo "$0 Skip multilingual DNN training; you can force to run this step by deleting $multilingual_dir${suffix}/.done"
 fi
 
 [ ! -d $dump_bnf_dir ] && mkdir -p $dump_bnf_dir
 if [ ! -f $data_bnf_dir/.done ]; then
-  multidir=$multidir${suffix}
+  multilingual_dir=$multilingual_dir${suffix}
   mkdir -p $dump_bnf_dir
   # put the archives in ${dump_bnf_dir}/.
   steps/nnet3/make_bottleneck_features.sh --use-gpu true --nj 70 --cmd "$train_cmd" \
     --ivector-dir $ivector_dir \
     $datadir $data_bnf_dir \
-    $multidir $dump_bnf_dir $exp_dir/make_train_bnf || exit 1;
+    $multilingual_dir $dump_bnf_dir $exp_dir/make_train_bnf || exit 1;
   touch $data_bnf_dir/.done
 else
   echo "$0 Skip Bottleneck feature extraction; You can force to run this step deleting $data_bnf_dir/.done."
