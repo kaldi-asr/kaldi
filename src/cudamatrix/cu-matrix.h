@@ -405,6 +405,8 @@ class CuMatrixBase {
   void DivElements(const CuMatrixBase<Real> &A);
   /// Do, elementwise, *this = max(*this, A).
   void Max(const CuMatrixBase<Real> &A);
+  /// Do, elementwise, *this = min(*this, A).
+  void Min(const CuMatrixBase<Real> &A);
   /// scale i'th column by scale[i]
   void MulColsVec(const CuVectorBase<Real> &scale);
   /// scale i'th row by scale[i]
