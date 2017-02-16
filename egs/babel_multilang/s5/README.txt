@@ -58,7 +58,7 @@ a) You can run the following script to train multilingual TDNN model using
 
     ac) Generates decoding results for languages in decode_lang_list.
 
-b) You can run the following scripts to train multilingual model with
+b) You can run the following script to train multilingual model with
     bottleneck layer with dim 'bnf_dim' and generate bottleneck features for
     'lang-name' in data/lang-name/train{_sp}_bnf and train SAT model on top
     of MFCC+BNF features (exp/lang-name/tri6).
