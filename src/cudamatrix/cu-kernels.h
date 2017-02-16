@@ -297,6 +297,10 @@ inline void cuda_max(dim3 Gr, dim3 Bl, float *mat, const float *A,
                      MatrixDim dst_d, int src_stride) {
   cudaF_max(Gr, Bl, mat, A, dst_d, src_stride);
 }
+inline void cuda_min(dim3 Gr, dim3 Bl, float *mat, const float *other,
+                     MatrixDim mat_d, int other_stride) {
+  cudaF_min(Gr, Bl, mat, other, mat_d, other_stride);
+}
 inline void cuda_mul_cols_vec(dim3 Gr, dim3 Bl, float *mat, const float *scale,
                               MatrixDim d) {
   cudaF_mul_cols_vec(Gr, Bl, mat, scale, d);
@@ -548,15 +552,15 @@ inline void cuda_diff_tanh(dim3 Gr, dim3 Bl, float *eout, const float *e,
   cudaF_diff_tanh(Gr, Bl, eout, e, y, d, e_stride, y_stride);
 }
 inline void cuda_parametric_relu(dim3 Gr, dim3 Bl, float *y, const float *x,
-                                 MatrixDim d, int src_stride,
-                                 const float *a, const float *b) {
-  cudaF_parametric_relu(Gr,Bl,y,x,d,src_stride,a,b);
+                                 MatrixDim d, int src_stride, const float *a,
+                                 const float *b) {
+  cudaF_parametric_relu(Gr, Bl, y, x, d, src_stride, a, b);
 }
 inline void cuda_diff_parametric_relu(dim3 Gr, dim3 Bl, float *eout,
                                       const float *e, const float *y,
                                       MatrixDim d, int e_stride, int y_stride,
                                       const float *a, const float *b) {
-  cudaF_diff_parametric_relu(Gr,Bl,eout,e,y,d,e_stride,y_stride,a,b);
+  cudaF_diff_parametric_relu(Gr, Bl, eout, e, y, d, e_stride, y_stride, a, b);
 }
 inline void cuda_heaviside(dim3 Gr, dim3 Bl, float *y, const float *x,
                            MatrixDim d, int src_stride) {
@@ -837,6 +841,10 @@ inline void cuda_max(dim3 Gr, dim3 Bl, double *mat, const double *A,
                      MatrixDim dst_d, int src_stride) {
   cudaD_max(Gr, Bl, mat, A, dst_d, src_stride);
 }
+inline void cuda_min(dim3 Gr, dim3 Bl, double *mat, const double *other,
+                     MatrixDim mat_d, int other_stride) {
+  cudaD_min(Gr, Bl, mat, other, mat_d, other_stride);
+}
 inline void cuda_mul_cols_vec(dim3 Gr, dim3 Bl, double *mat,
                               const double *scale, MatrixDim d) {
   cudaD_mul_cols_vec(Gr, Bl, mat, scale, d);
@@ -1093,15 +1101,15 @@ inline void cuda_diff_tanh(dim3 Gr, dim3 Bl, double *eout, const double *e,
   cudaD_diff_tanh(Gr, Bl, eout, e, y, d, e_stride, y_stride);
 }
 inline void cuda_parametric_relu(dim3 Gr, dim3 Bl, double *y, const double *x,
-                                 MatrixDim d, int src_stride,
-                                 const double *a, const double *b) {
-  cudaD_parametric_relu(Gr,Bl,y,x,d,src_stride,a,b);
+                                 MatrixDim d, int src_stride, const double *a,
+                                 const double *b) {
+  cudaD_parametric_relu(Gr, Bl, y, x, d, src_stride, a, b);
 }
 inline void cuda_diff_parametric_relu(dim3 Gr, dim3 Bl, double *eout,
                                       const double *e, const double *y,
                                       MatrixDim d, int e_stride, int y_stride,
                                       const double *a, const double *b) {
-  cudaD_diff_parametric_relu(Gr,Bl,eout,e,y,d,e_stride,y_stride,a,b);
+  cudaD_diff_parametric_relu(Gr, Bl, eout, e, y, d, e_stride, y_stride, a, b);
 }
 inline void cuda_heaviside(dim3 Gr, dim3 Bl, double *y, const double *x,
                            MatrixDim d, int src_stride) {
