@@ -29,11 +29,18 @@ CXXFLAGS = -std=c++11 -I.. -I$(OPENFSTINC) $(EXTRA_CXXFLAGS) \
            -Wno-deprecated-declarations -Winit-self \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
            -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_MKL -I$(MKLROOT)/include \
-           -m64 -msse -msse2 -pthread -rdynamic \
+           -m64 -msse -msse2 -pthread \
            -g # -O0 -DKALDI_PARANOID
 
 ifeq ($(KALDI_FLAVOR), dynamic)
 CXXFLAGS += -fPIC
+endif
+
+# Compiler specific flags
+COMPILER = $(shell $(CXX) -v 2>&1)
+ifeq ($(findstring clang,$(COMPILER)),clang)
+# Suppress annoying clang warnings that are perfectly valid per spec.
+CXXFLAGS += -Wno-mismatched-tags
 endif
 
 ## Use the following for STATIC LINKING of the SEQUENTIAL version of MKL
