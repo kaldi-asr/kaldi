@@ -183,12 +183,28 @@ if [ -f $dir/trans.scp ]; then
   train_subset_feats="$train_subset_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp ark:- ark:- |"
 fi
 
+num_cmn_offsets=-1
+num_ivectors_with_offsets=-1
+ivector_offset_suffix=""
+if [ -f $data/offsets.scp ]; then
+  num_cmn_offsets=`feat-to-len --print-args=false scp:"head -n 1 $data/offsets.scp |"`
+  num_ivectors_with_offsets=$(cat $online_ivector_dir/num_cmn_offsets) || exit 1;
+  if [ $num_cmn_offsets -ne $num_ivectors_with_offsets ]; then
+    echo "$0: mismatch between number of offsets defined in features $num_cmn_offsets "
+    echo "and num of ivectors generated for different offsets $num_ivectors_with_offsets" && exit 1;
+  fi
+  if [ $num_ivectors_with_offsets -gt -1 ]; then
+    ivector_offset_suffix="_offset"
+  fi
+  echo $num_ivectors_with_offsets > $dir/info/num_cmn_offsets
+fi
+
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
   echo $ivector_dim > $dir/info/ivector_dim
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
 
-  ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
+  ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online${ivector_offset_suffix}.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
   valid_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
   train_subset_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
 else
@@ -325,10 +341,15 @@ if [ $stage -le 4 ]; then
   for n in $(seq $num_archives_intermediate); do
     egs_list="$egs_list ark:$dir/egs_orig.JOB.$n.ark"
   done
+  # if $data/offsets.scp is defined, it will be used in generating egs.
+  offsets=
+  if [ $num_cmn_offsets -gt -1 ]; then
+    offsets="--utt2cmn-offsets=scp:$sdata/JOB/offsets.scp"
+  fi
   echo "$0: Generating training examples on disk"
   # The examples will go round-robin to egs_list.
   $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
-    nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opt $egs_opts --num-frames=$frames_per_eg "$feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opt $egs_opts --num-frames=$frames_per_eg $offsets "$feats" \
     "ark,s,cs:filter_scp.pl $sdata/JOB/utt2spk $dir/ali.scp | ali-to-pdf $alidir/final.mdl scp:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
     nnet3-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi

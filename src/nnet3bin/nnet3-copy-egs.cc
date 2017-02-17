@@ -269,6 +269,7 @@ int main(int argc, char *argv[]) {
     bool random = false;
     int32 srand_seed = 0;
     int32 frame_shift = 0;
+    int32 select_feature_offset = -1;
     BaseFloat keep_proportion = 1.0;
 
     // The following config variables, if set, can be used to extract a single
@@ -301,8 +302,9 @@ int main(int argc, char *argv[]) {
                 "feature left-context that we output.");
     po.Register("right-context", &right_context, "Can be used to truncate the "
                 "feature right-context that we output.");
-
-
+    po.Register("select-feature-offset", &select_feature_offset, "If > -1, it "
+                " adds the chosen offset to features, and it also selects "
+                " the iVector that is generated for the feature offset by this value.");
     po.Read(argc, argv);
 
     srand(srand_seed);
@@ -327,7 +329,13 @@ int main(int argc, char *argv[]) {
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
-      const NnetExample &eg = example_reader.Value();
+      NnetExample eg_with_offset;
+      const NnetExample &eg_orig = example_reader.Value(),
+        &eg = (select_feature_offset != -1 ? eg_with_offset : eg_orig);
+      if (select_feature_offset != -1) {
+        eg_with_offset = eg_orig;
+        SelectFeatureOffset(select_feature_offset, &eg_with_offset);
+      }
       for (int32 c = 0; c < count; c++) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
         if (frame_str == "" && left_context == -1 && right_context == -1 &&

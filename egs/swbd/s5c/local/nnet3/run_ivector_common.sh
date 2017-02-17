@@ -6,6 +6,9 @@ stage=1
 train_stage=-10
 generate_alignments=true # false if doing ctc training
 speed_perturb=true
+use_random_offsets=false
+cmn_offset_scale=0.5 # offset scale used to scale the covariance matrix
+num_cmn_offsets=4    # for chain model:4 , for xent model:3
 
 . ./path.sh
 . ./utils/parse_options.sh
@@ -97,7 +100,7 @@ for line in sys.stdin.readlines():
 fi
 
 # ivector extractor training
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   # We need to build a small system just because we need the LDA+MLLT transform
   # to train the diag-UBM on top of.  We use --num-iters 13 because after we get
   # the transform (12th iter is the last), any further training is pointless.
@@ -108,18 +111,30 @@ if [ $stage -le 5 ]; then
     data/lang_nosp exp/tri2_ali_100k_nodup exp/nnet3/tri3b
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 5 ]; then
   # To train a diagonal UBM we don't need very much data, so use the smallest subset.
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 200000 \
     data/${train_set}_30k_nodup_hires 512 exp/nnet3/tri3b exp/nnet3/diag_ubm
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 6 ]; then
   # iVector extractors can be sensitive to the amount of data, but this one has a
   # fairly small dim (defaults to 100) so we don't use all of it, we use just the
   # 100k subset (just under half the data).
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
     data/train_100k_nodup_hires exp/nnet3/diag_ubm exp/nnet3/extractor || exit 1;
+fi
+
+if [ $stage -le 7 ]; then
+  # Generates random offsets for training data
+  mfccdir=mfcc_hires
+  for dataset in $train_set; do
+    if $use_random_offsets; then
+      steps/compute_offsets.sh --cmd "$train_cmd" \
+      --cmn-offset-scale $cmn_offset_scale --num-cmn-offsets $num_cmn_offsets \
+        data/${dataset}_hires exp/make_offsets/${dataset} $mfccdir || exit 1;
+    fi
+  done
 fi
 
 if [ $stage -le 8 ]; then
@@ -130,12 +145,12 @@ if [ $stage -le 8 ]; then
   # handle per-utterance decoding well (iVector starts at zero).
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${train_set}_hires data/${train_set}_max2_hires
 
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-    data/${train_set}_max2_hires exp/nnet3/extractor exp/nnet3/ivectors_$train_set || exit 1;
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 120 \
+    data/${train_set}_max2_hires exp/nnet3/extractor exp/nnet3/ivectors_${train_set} || exit 1;
 
   for data_set in eval2000 train_dev rt03; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-      data/${data_set}_hires exp/nnet3/extractor exp/nnet3/ivectors_$data_set || exit 1;
+      data/${data_set}_hires exp/nnet3/extractor exp/nnet3/ivectors_${data_set} || exit 1;
   done
 fi
 

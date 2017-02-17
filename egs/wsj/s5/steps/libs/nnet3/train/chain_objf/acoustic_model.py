@@ -122,7 +122,8 @@ def train_new_models(dir, iter, srand, num_jobs,
                      momentum, max_param_change,
                      shuffle_buffer_size, num_chunk_per_minibatch,
                      frame_subsampling_factor, truncate_deriv_weights,
-                     cache_io_opts, run_opts):
+                     cache_io_opts, run_opts,
+                     num_cmn_offsets=-1):
     """
     Called from train_one_iteration(), this method trains new models
     with 'num_jobs' jobs, and
@@ -152,6 +153,11 @@ def train_new_models(dir, iter, srand, num_jobs,
         # previous : frame_shift = (k/num_archives) % frame_subsampling_factor
         frame_shift = ((archive_index + k/num_archives)
                        % frame_subsampling_factor)
+
+        offset_num = -1
+        if num_cmn_offsets > 0:
+            offset_num = ((k / num_archives) + (k % num_archives)) % num_cmn_offsets
+
         if job == 1:
             cur_cache_io_opts = "{0} --write-cache={1}/cache.{2}".format(
                 cache_io_opts, dir, iter + 1)
@@ -172,6 +178,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         --left-context={lc} --right-context={rc} \
                         --truncate-deriv-weights={trunc_deriv} \
                         --frame-shift={fr_shft} \
+                        {select_feat_offset_opts} \
                         ark:{egs_dir}/cegs.{archive_index}.ark ark:- | \
                         nnet3-chain-shuffle-egs --buffer-size={buf_size} \
                         --srand={srand} ark:- ark:- | nnet3-chain-merge-egs \
@@ -193,7 +200,9 @@ def train_new_models(dir, iter, srand, num_jobs,
                         egs_dir=egs_dir, archive_index=archive_index,
                         buf_size=shuffle_buffer_size,
                         cache_io_opts=cur_cache_io_opts,
-                        num_chunk_per_mb=num_chunk_per_minibatch),
+                        num_chunk_per_mb=num_chunk_per_minibatch,
+                        select_feat_offset_opts=("" if num_cmn_offsets < 1
+                                     else "--select-feature-offset={0}".format(offset_num))),
             wait=False)
 
         processes.append(process_handle)
@@ -225,7 +234,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         frame_subsampling_factor, truncate_deriv_weights,
                         run_opts,
                         dropout_edit_string="",
-                        background_process_handler=None):
+                        background_process_handler=None,
+                        num_cmn_offsets=-1):
     """ Called from steps/nnet3/chain/train.py for one iteration for
     neural network training with LF-MMI objective
 
@@ -334,7 +344,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      num_chunk_per_minibatch=cur_num_chunk_per_minibatch,
                      frame_subsampling_factor=frame_subsampling_factor,
                      truncate_deriv_weights=truncate_deriv_weights,
-                     cache_io_opts=cache_io_opts, run_opts=run_opts)
+                     cache_io_opts=cache_io_opts, run_opts=run_opts,
+                     num_cmn_offsets=num_cmn_offsets)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
          num_jobs, '{0}/log/train.{1}.%.log'.format(dir, iter))
@@ -388,7 +399,8 @@ def check_for_required_files(feat_dir, tree_dir, lat_dir):
 
 def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
                                    max_lda_jobs=None, rand_prune=4.0,
-                                   lda_opts=None):
+                                   lda_opts=None,
+                                   select_feature_offset=-1):
     """ Function to estimate and write LDA matrix from cegs
 
     This function is exactly similar to the version in module
@@ -398,17 +410,24 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     if max_lda_jobs is not None:
         if num_lda_jobs > max_lda_jobs:
             num_lda_jobs = max_lda_jobs
+    egs_string = ""
+    if select_feature_offset > -1:
+        egs_string = ("ark:nnet3-chain-copy-egs --select-feature-offset={0} "
+                      "ark:{1}/cegs.JOB.ark ark:- |".format(
+            select_feature_offset, egs_dir))
+    else:
+        egs_string = ('ark:{0}/cegs.JOB.ark'.format(egs_dir))
 
     # Write stats with the same format as stats for LDA.
     common_lib.run_job(
         """{command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
                 nnet3-chain-acc-lda-stats --rand-prune={rand_prune} \
-                {dir}/init.raw "ark:{egs_dir}/cegs.JOB.ark" \
+                {dir}/init.raw "{egs_string}" \
                 {dir}/JOB.lda_stats""".format(
                     command=run_opts.command,
                     num_lda_jobs=num_lda_jobs,
                     dir=dir,
-                    egs_dir=egs_dir,
+                    egs_string=egs_string,
                     rand_prune=rand_prune))
 
     # the above command would have generated dir/{1..num_lda_jobs}.lda_stats

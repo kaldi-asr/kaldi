@@ -32,6 +32,7 @@ namespace nnet3 {
 
 static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
+                        const MatrixBase<BaseFloat> *cmn_offsets,
                         const Posterior &pdf_post,
                         const std::string &utt_id,
                         bool compress,
@@ -43,7 +44,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         int64 *num_egs_written,
                         NnetExampleWriter *example_writer) {
   KALDI_ASSERT(feats.NumRows() == static_cast<int32>(pdf_post.size()));
-  
+
   for (int32 t = 0; t < feats.NumRows(); t += frames_per_eg) {
 
     // actual_frames_per_eg is the number of frames with nonzero
@@ -57,7 +58,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     int32 tot_frames = left_context + frames_per_eg + right_context;
 
     Matrix<BaseFloat> input_frames(tot_frames, feats.NumCols(), kUndefined);
-    
+
     // Set up "input_frames".
     for (int32 j = -left_context; j < frames_per_eg + right_context; j++) {
       int32 t2 = j + t;
@@ -69,10 +70,19 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     }
 
     NnetExample eg;
-    
+
     // call the regular input "input".
     eg.io.push_back(NnetIo("input", - left_context,
                            input_frames));
+
+    // It contains offsets to perturb input features.
+    // num_rows is num of cmn offsets and num_cols is feature dim. e.g. 40.
+    int32 num_cmn_offsets = 1;
+    if (cmn_offsets) {
+      num_cmn_offsets = cmn_offsets->NumRows();
+      eg.io.push_back(NnetIo("offset", 0, *cmn_offsets));
+      eg.io[1].indexes.clear();
+    }
 
     // if applicable, add the iVector feature.
     if (ivector_feats != NULL) {
@@ -82,6 +92,10 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
       KALDI_ASSERT(ivector_feats->NumRows() > 0);
       if (closest_frame >= ivector_feats->NumRows())
         closest_frame = ivector_feats->NumRows() - 1;
+      int32 ivec_dim = ivector_feats->NumCols();
+      // ivectors correspond to feature offsets in "offset" appended
+      // in ivector in order.
+      KALDI_ASSERT(ivec_dim % num_cmn_offsets == 0);
       Matrix<BaseFloat> ivector(1, ivector_feats->NumCols());
       ivector.Row(0).CopyFromVec(ivector_feats->Row(closest_frame));
       eg.io.push_back(NnetIo("ivector", 0, ivector));
@@ -93,10 +107,10 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
       labels[i] = pdf_post[t + i];
     // remaining posteriors for frames are empty.
     eg.io.push_back(NnetIo("output", num_pdfs, 0, labels));
-    
+
     if (compress)
       eg.Compress();
-      
+
     std::ostringstream os;
     os << utt_id << "-" << t;
 
@@ -137,14 +151,14 @@ int main(int argc, char *argv[]) {
         "nnet3-get-egs --num-pdfs=2658 --left-context=12 --right-context=9 --num-frames=8 \"$feats\"\\\n"
         "\"ark:gunzip -c exp/nnet/ali.1.gz | ali-to-pdf exp/nnet/1.nnet ark:- ark:- | ali-to-post ark:- ark:- |\" \\\n"
         "   ark:- \n";
-        
+
 
     bool compress = true;
     int32 num_pdfs = -1, left_context = 0, right_context = 0,
         num_frames = 1, length_tolerance = 100;
-        
-    std::string ivector_rspecifier;
-    
+
+    std::string ivector_rspecifier, utt2cmn_offsets_rspecifier;
+
     ParseOptions po(usage);
     po.Register("compress", &compress, "If true, write egs in "
                 "compressed format.");
@@ -160,7 +174,12 @@ int main(int argc, char *argv[]) {
                 "features, as a matrix.");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
-    
+    po.Register("utt2cmn-offsets", &utt2cmn_offsets_rspecifier,
+                "Map from utterance-id to matrix of random feature offsets, "
+                "as a matrix with dimension of num-cmn-offsets by [feature-dim]. "
+                "E.g. --utt2cmn-offsets=data/train/offsets.scp"
+                "If specified, CMN offset correspond to example's utterance is added "
+                "to example.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -170,7 +189,7 @@ int main(int argc, char *argv[]) {
 
     if (num_pdfs <= 0)
       KALDI_ERR << "--num-pdfs options is required.";
-    
+
 
     std::string feature_rspecifier = po.GetArg(1),
         pdf_post_rspecifier = po.GetArg(2),
@@ -181,10 +200,10 @@ int main(int argc, char *argv[]) {
     RandomAccessPosteriorReader pdf_post_reader(pdf_post_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
     RandomAccessBaseFloatMatrixReader ivector_reader(ivector_rspecifier);
-    
+    RandomAccessBaseFloatMatrixReader offset_reader(utt2cmn_offsets_rspecifier);
     int32 num_done = 0, num_err = 0;
     int64 num_frames_written = 0, num_egs_written = 0;
-    
+
     for (; !feat_reader.Done(); feat_reader.Next()) {
       std::string key = feat_reader.Key();
       const Matrix<BaseFloat> &feats = feat_reader.Value();
@@ -198,6 +217,16 @@ int main(int argc, char *argv[]) {
                      << " versus " << feats.NumRows();
           num_err++;
           continue;
+        }
+        const Matrix<BaseFloat> *cmn_offsets = NULL;
+        if (!utt2cmn_offsets_rspecifier.empty()) {
+          if (!offset_reader.HasKey(key)) {
+            KALDI_WARN << "No cmn offset for utterance " << key;
+            num_err++;
+            continue;
+          } else {
+            cmn_offsets = &(offset_reader.Value(key));
+          }
         }
         const Matrix<BaseFloat> *ivector_feats = NULL;
         if (!ivector_rspecifier.empty()) {
@@ -221,8 +250,8 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
-          
-        ProcessFile(feats, ivector_feats, pdf_post, key, compress,
+
+        ProcessFile(feats, ivector_feats, cmn_offsets, pdf_post, key, compress,
                     num_pdfs, left_context, right_context, num_frames,
                     &num_frames_written, &num_egs_written,
                     &example_writer);

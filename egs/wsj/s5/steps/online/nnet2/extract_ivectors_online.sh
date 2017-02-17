@@ -42,7 +42,6 @@ max_count=0         # The use of this option (e.g. --max-count 100) can make
                     # posterior-scaling, so assuming the posterior-scale is 0.1,
                     # --max-count 100 starts having effect after 1000 frames, or
                     # 10 seconds of data.
-
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -76,6 +75,18 @@ done
 
 # Set various variables.
 mkdir -p $dir/log $dir/conf
+num_cmn_offsets=-1  # If > 0, it uses offsets.scp and generates iVector for
+                    # all random offsets version of inputs.
+if [ -f $data/offsets.scp ]; then
+  num_cmn_offsets=`feat-to-len --print-args=false scp:"head -n 1 $data/offsets.scp |"`
+fi
+
+echo $num_cmn_offsets > $dir/num_cmn_offsets || exit 1;
+
+ivector_prefix=""
+if [ $num_cmn_offsets -gt -1 ];then
+  ivector_prefix="_offset"
+fi
 
 sdata=$data/split$nj;
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
@@ -117,13 +128,29 @@ done
 
 if [ $stage -le 0 ]; then
   echo "$0: extracting iVectors"
+  offset_opts=
+  if [ -f $data/offsets.scp ]; then
+    for i in $(seq $nj); do
+      split_feats=$sdata/$i
+      awk '{print $1,$2}' < $split_feats/spk2utt | utils/apply_map.pl -f 2 $split_feats/offsets.scp > $split_feats/spk_offsets.scp
+    done
+    offset_opts="--spk2cmn-offset=scp:$sdata/JOB/spk_offsets.scp"
+  fi
   $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
-     ivector-extract-online2 --config=$ieconf ark:$sdata/JOB/spk2utt scp:$sdata/JOB/feats.scp ark:- \| \
+     ivector-extract-online2 --config=$ieconf $offset_opts ark:$sdata/JOB/spk2utt scp:$sdata/JOB/feats.scp ark:- \| \
      copy-feats --compress=$compress ark:- \
-      ark,scp:$absdir/ivector_online.JOB.ark,$absdir/ivector_online.JOB.scp || exit 1;
+      ark,scp:$absdir/ivector_online${ivector_perfix}.JOB.ark,$absdir/ivector_online${ivector_prefix}.JOB.scp || exit 1;
 fi
 
 if [ $stage -le 1 ]; then
   echo "$0: combining iVectors across jobs"
-  for j in $(seq $nj); do cat $dir/ivector_online.$j.scp; done >$dir/ivector_online.scp || exit 1;
+  for j in $(seq $nj); do cat $dir/ivector_online${ivector_prefix}.$j.scp; done >$dir/ivector_online${ivector_prefix}.scp || exit 1;
+fi
+
+if [ $num_cmn_offsets -gt 0 ]; then
+  echo "$0: generate two separate ivector scp files for ivector with no offsets "
+  echo "$dir/ivector_online.scp and ivectors with offset $dir/ivector_online.scp."
+  ivec_dim=`feat-to-dim --print-args=false scp:$dir/ivector_online_offset.scp  - || exit 1`
+  orig_ivec_dim=$[$ivec_dim/$num_cmn_offsets]
+  awk -v ivec_orig_end_col=$[$orig_ivec_dim-1] '{print $0"[:,0:"ivec_orig_end_col"]"}' $dir/ivector_online_offset.scp > $dir/ivector_online.scp
 fi

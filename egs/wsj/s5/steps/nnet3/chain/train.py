@@ -261,7 +261,11 @@ def train(args, run_opts, background_process_handler):
     num_jobs = common_lib.get_number_of_jobs(args.tree_dir)
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
-
+    num_cmn_offsets = common_lib.get_num_cmn_offsets(args.feat_dir)
+    if (os.path.exists('{0}/num_cmn_offsets'.format(args.online_ivector_dir))):
+      ivector_num_cmn_offsets = int(open('{0}/num_cmn_offsets'.format(
+        args.online_ivector_dir)).readline().strip())
+      assert(ivector_num_cmn_offsets == num_cmn_offsets)
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
     common_lib.split_data(args.feat_dir, num_jobs)
@@ -358,11 +362,12 @@ def train(args, run_opts, background_process_handler):
 
     if (args.stage <= -2):
         logger.info('Computing the preconditioning matrix for input features')
-
+        num_cmn_offsets = common_lib.get_num_cmn_offsets(args.feat_dir)
         chain_lib.compute_preconditioning_matrix(
             args.dir, egs_dir, num_archives, run_opts,
             max_lda_jobs=args.max_lda_jobs,
-            rand_prune=args.rand_prune)
+            rand_prune=args.rand_prune,
+            select_feature_offset=(0 if num_cmn_offsets > 0 else -1))
 
     if (args.stage <= -1):
         logger.info("Preparing the initial acoustic model.")
@@ -455,7 +460,8 @@ def train(args, run_opts, background_process_handler):
                 frame_subsampling_factor=args.frame_subsampling_factor,
                 truncate_deriv_weights=args.truncate_deriv_weights,
                 run_opts=run_opts,
-                background_process_handler=background_process_handler)
+                background_process_handler=background_process_handler,
+                num_cmn_offsets=num_cmn_offsets)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain

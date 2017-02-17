@@ -200,6 +200,18 @@ typedef TableWriter<KaldiObjectHolder<NnetChainExample > > NnetChainExampleWrite
 typedef SequentialTableReader<KaldiObjectHolder<NnetChainExample > > SequentialNnetChainExampleReader;
 typedef RandomAccessTableReader<KaldiObjectHolder<NnetChainExample > > RandomAccessNnetChainExampleReader;
 
+/*
+   This function operates on single example (eg with a single 'n' index).
+   It will select row 'feature_offset' from feature matrix in NnetIo with
+   name "offset" and adds this row to all rows of feature matrix in NnetIo with name
+   'input' and removes NnetIo with name 'offset'.
+   The NnetIo with name 'ivector' contains concatenated ivectors generated using
+   all offsets in offset matrix and its num of rows is real_ivector_dim * num_cmn_offset.
+   This function modifies NnetIo ivector by selecting subset of ivector
+   correpsond to feature_offset.
+*/
+void SelectFeatureOffset(int32 feature_offset, NnetChainExample *eg);
+
 } // namespace nnet3
 } // namespace kaldi
 

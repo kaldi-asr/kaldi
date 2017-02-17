@@ -30,7 +30,8 @@ def train_new_models(dir, iter, srand, num_jobs,
                      shuffle_buffer_size, minibatch_size,
                      cache_read_opt, run_opts,
                      frames_per_eg=-1,
-                     min_deriv_time=None, max_deriv_time=None):
+                     min_deriv_time=None, max_deriv_time=None,
+                     num_cmn_offsets=0):
     """ Called from train_one_iteration(), this model does one iteration of
     training with 'num_jobs' jobs, and writes files like
     exp/tdnn_a/24.{1,2,3,..<num_jobs>}.raw
@@ -77,6 +78,10 @@ def train_new_models(dir, iter, srand, num_jobs,
         if not chunk_level_training:
             frame = (k / num_archives) % frames_per_eg
 
+        offset_num = -1
+        if num_cmn_offsets > 0:
+          offset_num = ((k / num_archives) + (k % num_archives)) % num_cmn_offsets
+
         cache_write_opt = ""
         if job == 1:
             # an option for writing cache (storing pairs of nnet-computations
@@ -91,7 +96,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                     --momentum={momentum} \
                     --max-param-change={max_param_change} \
                     {deriv_time_opts} "{raw_model}" \
-                    "ark,bg:nnet3-copy-egs {frame_opts} {context_opts} """
+                    "ark,bg:nnet3-copy-egs {offset_opts} {frame_opts} {context_opts} """
             """ark:{egs_dir}/egs.{archive_index}.ark ark:- |"""
             """nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} """
             """--srand={srand} ark:- ark:- | """
@@ -110,6 +115,8 @@ def train_new_models(dir, iter, srand, num_jobs,
                         frame_opts=(""
                                     if chunk_level_training
                                     else "--frame={0}".format(frame)),
+                        offset_opts=("" if num_cmn_offsets < 1
+                                     else "--select-feature-offset={0}".format(offset_num)),
                         momentum=momentum, max_param_change=max_param_change,
                         deriv_time_opts=" ".join(deriv_time_opts),
                         raw_model=raw_model_string, context_opts=context_opts,
@@ -143,7 +150,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         min_deriv_time=None, max_deriv_time=None,
                         shrinkage_value=1.0, dropout_edit_string="",
                         get_raw_nnet_from_am=True,
-                        background_process_handler=None):
+                        background_process_handler=None,
+                        num_cmn_offsets=-1):
     """ Called from steps/nnet3/train_*.py scripts for one iteration of neural
     network training
 
@@ -288,7 +296,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      cache_read_opt=cache_read_opt, run_opts=run_opts,
                      frames_per_eg=frames_per_eg,
                      min_deriv_time=min_deriv_time,
-                     max_deriv_time=max_deriv_time)
+                     max_deriv_time=max_deriv_time,
+                     num_cmn_offsets=num_cmn_offsets)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
          num_jobs, '{0}/log/train.{1}.%.log'.format(dir, iter))
@@ -338,21 +347,30 @@ def train_one_iteration(dir, iter, srand, egs_dir,
 
 def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
                                    max_lda_jobs=None, rand_prune=4.0,
-                                   lda_opts=None):
+                                   lda_opts=None,
+                                   select_feature_offset=-1):
     if max_lda_jobs is not None:
         if num_lda_jobs > max_lda_jobs:
             num_lda_jobs = max_lda_jobs
+
+    egs_string = ""
+    if select_feature_offset > -1:
+      egs_string = ("ark:nnet3-copy-egs --select-feature-offset={0}"
+                    "ark:{1}/egs.JOB.ark ark:- |".format(select_feature_offset,
+                                                         egs_dir))
+    else:
+      egs_string = ("ark:{0}/egs.JOB.ark".format(egs_dir))
 
     # Write stats with the same format as stats for LDA.
     common_lib.run_job(
         """{command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
                 nnet3-acc-lda-stats --rand-prune={rand_prune} \
-                {dir}/init.raw "ark:{egs_dir}/egs.JOB.ark" \
+                {dir}/init.raw "{egs_string}" \
                 {dir}/JOB.lda_stats""".format(
                     command=run_opts.command,
                     num_lda_jobs=num_lda_jobs,
                     dir=dir,
-                    egs_dir=egs_dir,
+                    egs_string=egs_string,
                     rand_prune=rand_prune))
 
     # the above command would have generated dir/{1..num_lda_jobs}.lda_stats
@@ -619,7 +637,8 @@ def realign(dir, iter, feat_dir, lang, prev_egs_dir, cur_egs_dir,
             dir=dir, iter=iter, egs_dir=prev_egs_dir,
             num_archives=num_archives, prior_subset_size=prior_subset_size,
             left_context=left_context, right_context=right_context,
-            run_opts=run_opts)
+            run_opts=run_opts,
+            select_feature_offset=-1)
 
     avg_post_vec_file = "{dir}/post.{iter}.vec".format(dir=dir, iter=iter)
     logger.info("Re-adjusting priors based on computed posteriors")
@@ -653,7 +672,8 @@ def adjust_am_priors(dir, input_model, avg_posterior_vector, output_model,
 
 def compute_average_posterior(dir, iter, egs_dir, num_archives,
                               prior_subset_size, left_context, right_context,
-                              run_opts, get_raw_nnet_from_am=True):
+                              run_opts, get_raw_nnet_from_am=True,
+                              select_feature_offset=-1):
     """ Computes the average posterior of the network
     Note: this just uses CPUs, using a smallish subset of data.
     """
@@ -664,7 +684,6 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
         egs_part = 1
     else:
         egs_part = 'JOB'
-
     if get_raw_nnet_from_am:
         model = "nnet3-am-copy --raw=true {0}/combined.mdl -|".format(dir)
     else:
@@ -676,7 +695,7 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
     common_lib.run_job(
         """{command} JOB=1:{num_jobs_compute_prior} {prior_queue_opt} \
                 {dir}/log/get_post.{iter}.JOB.log \
-                nnet3-copy-egs {context_opts} \
+                nnet3-copy-egs {context_opts} {select_feat_offset_opts} \
                 ark:{egs_dir}/egs.{egs_part}.ark ark:- \| \
                 nnet3-subset-egs --srand=JOB --n={prior_subset_size} \
                 ark:- ark:- \| \
@@ -692,6 +711,9 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
                     prior_queue_opt=run_opts.prior_queue_opt,
                     iter=iter, prior_subset_size=prior_subset_size,
                     egs_dir=egs_dir, egs_part=egs_part,
+                    select_feat_offset_opts=("" if num_cmn_offsets < 1
+                                             else "--select-feature-offset={0}".
+                                             format(select_feature_offset)),
                     context_opts=context_opts,
                     prior_gpu_opt=run_opts.prior_gpu_opt))
 

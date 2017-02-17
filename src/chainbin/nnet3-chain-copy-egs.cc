@@ -255,7 +255,8 @@ int main(int argc, char *argv[]) {
     int32 truncate_deriv_weights = 0;
     int32 frame_subsampling_factor = -1;
     BaseFloat keep_proportion = 1.0;
-    int32 left_context = -1, right_context = -1;
+    int32 left_context = -1, right_context = -1,
+      select_feature_offset = -1;
     ParseOptions po(usage);
     po.Register("random", &random, "If true, will write frames to output "
                 "archives randomly, not round-robin.");
@@ -276,6 +277,9 @@ int main(int argc, char *argv[]) {
                 "feature left-context that we output.");
     po.Register("right-context", &right_context, "Can be used to truncate the "
                 "feature right-context that we output.");
+    po.Register("select-feature-offset", &select_feature_offset, "If > -1, it "
+                " adds the chosen offset to features, and it also selects "
+                " the iVector that is generated for the feature offset by this value.");
     po.Read(argc, argv);
 
     srand(srand_seed);
@@ -308,7 +312,8 @@ int main(int argc, char *argv[]) {
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
       if (frame_shift == 0 && truncate_deriv_weights == 0 &&
-          left_context == -1 && right_context == -1) {
+          left_context == -1 && right_context == -1 &&
+          select_feature_offset == -1) {
         const NnetChainExample &eg = example_reader.Value();
         for (int32 c = 0; c < count; c++) {
           int32 index = (random ? Rand() : num_written) % num_outputs;
@@ -317,6 +322,8 @@ int main(int argc, char *argv[]) {
         }
       } else if (count > 0) {
         NnetChainExample eg = example_reader.Value();
+        if (select_feature_offset != -1)
+          SelectFeatureOffset(select_feature_offset, &eg);
         if (frame_shift != 0)
           ShiftChainExampleTimes(frame_shift, exclude_names, &eg);
         NnetChainExample eg_out;
