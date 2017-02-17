@@ -425,11 +425,10 @@ void UnitTestNnetInputDerivatives() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
+  kaldi::int32 loop = 0;
   //SetVerboseLevel(2);
-
-
-  for (kaldi::int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
+  for (loop = 0; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
@@ -438,10 +437,11 @@ int main() {
 #endif
     UnitTestNnetModelDerivatives();
     UnitTestNnetInputDerivatives();
-  }
-
-  KALDI_LOG << "Nnet tests succeeded.";
+#if HAVE_CUDA == 1
+  } // No for loop if 'HAVE_CUDA != 1',
+  CuDevice::Instantiate().PrintProfile();
+#endif
+  KALDI_LOG << "Nnet derivative tests succeeded.";
 
   return 0;
 }
-
