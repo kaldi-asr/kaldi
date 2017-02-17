@@ -191,6 +191,7 @@ bool SelectFromExample(const NnetExample &eg,
                        int32 right_context,
                        int32 frame_shift,
                        NnetExample *eg_out) {
+  static bool warned_left = false, warned_right = false;
   int32 min_input_t, max_input_t,
       min_output_t, max_output_t;
   if (!ContainsSingleExample(eg, &min_input_t, &max_input_t,
@@ -214,21 +215,26 @@ bool SelectFromExample(const NnetExample &eg,
       min_output_t = max_output_t = frame;
     }
   }
-  // There may come a time when we want to remove or make it possible to disable
-  // the error messages below.  The std::max and std::min expressions may seem
-  // unnecessary but are intended to make life easier if and when we do that.
   if (left_context != -1) {
-    if (min_input_t > min_output_t - left_context)
-      KALDI_ERR << "You requested --left-context=" << left_context
-                << ", but example only has left-context of "
-                <<  (min_output_t - min_input_t);
+    if (!warned_left && min_input_t > min_output_t - left_context) {
+      warned_left = true;
+      KALDI_WARN << "You requested --left-context=" << left_context
+                 << ", but example only has left-context of "
+                 <<  (min_output_t - min_input_t)
+                 << " (will warn only once; this may be harmless if "
+          "using any --*left-context-initial options)";
+    }
     min_input_t = std::max(min_input_t, min_output_t - left_context);
   }
   if (right_context != -1) {
-    if (max_input_t < max_output_t + right_context)
-      KALDI_ERR << "You requested --right-context=" << right_context
+    if (!warned_right && max_input_t < max_output_t + right_context) {
+      warned_right = true;
+      KALDI_WARN << "You requested --right-context=" << right_context
                 << ", but example only has right-context of "
-                <<  (max_input_t - max_output_t);
+                <<  (max_input_t - max_output_t)
+                 << " (will warn only once; this may be harmless if "
+            "using any --*right-context-final options.";
+    }
     max_input_t = std::min(max_input_t, max_output_t + right_context);
   }
   FilterExample(eg,
@@ -357,5 +363,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

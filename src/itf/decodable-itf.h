@@ -112,7 +112,7 @@ class DecodableInterface {
 
   /// Returns the number of states in the acoustic model
   /// (they will be indexed one-based, i.e. from 1 to NumIndices();
-  /// this is for compatibility with OpenFst.
+  /// this is for compatibility with OpenFst).
   virtual int32 NumIndices() const = 0;
 
   virtual ~DecodableInterface() {}

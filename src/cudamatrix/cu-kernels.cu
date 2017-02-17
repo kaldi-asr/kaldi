@@ -387,6 +387,20 @@ static void _max(Real* mat, const Real* A, MatrixDim dst_d, int src_stride) {
 
 template<typename Real>
 __global__
+static void _min(Real* mat, const Real* other, MatrixDim mat_d,
+                 int other_stride) {
+  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda mat_index = i * mat_d.stride + j;
+  int32_cuda other_index = i * other_stride + j;
+  if (j < mat_d.cols && i < mat_d.rows) {
+    Real a = mat[mat_index], b = other[other_index];
+    mat[mat_index] = fmin(a, b);
+  }
+}
+
+template<typename Real>
+__global__
 static void _vec_mul_elements(Real* v, const Real* a, int dim) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < dim)
@@ -3350,6 +3364,11 @@ void cudaF_max(dim3 Gr, dim3 Bl, float* mat, const float* A, MatrixDim dst_d,
   _max<<<Gr,Bl>>>(mat,A,dst_d,src_stride);
 }
 
+void cudaF_min(dim3 Gr, dim3 Bl, float* mat, const float* other,
+               MatrixDim mat_d, int other_stride) {
+  _min<<<Gr,Bl>>>(mat,other,mat_d,other_stride);
+}
+
 void cudaF_mul_cols_vec(dim3 Gr, dim3 Bl, float* mat, const float* scale,
                         MatrixDim d) {
   _mul_cols_vec<<<Gr,Bl>>>(mat,scale,d);
@@ -3997,6 +4016,11 @@ void cudaD_div_elements(dim3 Gr, dim3 Bl, double* mat, const double* A,
 void cudaD_max(dim3 Gr, dim3 Bl, double* mat, const double* A, MatrixDim dst_d,
                int src_stride) {
   _max<<<Gr,Bl>>>(mat,A,dst_d,src_stride);
+}
+
+void cudaD_min(dim3 Gr, dim3 Bl, double* mat, const double* other, MatrixDim mat_d,
+               int other_stride) {
+  _min<<<Gr,Bl>>>(mat,other,mat_d,other_stride);
 }
 
 void cudaD_mul_cols_vec(dim3 Gr, dim3 Bl, double* mat, const double* scale,

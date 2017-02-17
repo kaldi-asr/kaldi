@@ -48,16 +48,8 @@
    efficient to compose with.
 */
 
-#ifdef _MSC_VER
 #include <unordered_map>
 using std::unordered_map;
-#elif __cplusplus > 199711L || defined(__GXX_EXPERIMENTAL_CXX0X__)
-#include <unordered_map>
-using std::unordered_map;
-#else
-#include <tr1/unordered_map>
-using std::tr1::unordered_map;
-#endif
 
 #include <algorithm>
 #include <string>
@@ -72,14 +64,15 @@ namespace fst {
 /// \addtogroup context_fst_group "Classes and functions related to context expansion"
 /// @{
 
+namespace internal {
+
 /*
    ContextFstImpl inherits from CacheImpl, which handles caching of states.
 */
 
-
-template < class Arc,
-         class LabelT = int32> // make the vector<Label> things actually vector<int32> for
-                             // easier compatibility with Kaldi code.
+template <class Arc,
+          class LabelT = int32> // make the vector<Label> things actually vector<int32> for
+                                // easier compatibility with Kaldi code.
 class ContextFstImpl : public CacheImpl<Arc> {
  public:
 
@@ -94,10 +87,8 @@ class ContextFstImpl : public CacheImpl<Arc> {
   typedef typename Arc::Weight Weight;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Label Label;
-#ifdef HAVE_OPENFST_GE_10400
   typedef DefaultCacheStore<Arc> Store;
   typedef typename Store::State State;
-#endif
   typedef unordered_map<vector<LabelT>,
                         StateId, kaldi::VectorHasher<LabelT> > VectorToStateType;
   typedef unordered_map<vector<LabelT>,
@@ -119,7 +110,7 @@ class ContextFstImpl : public CacheImpl<Arc> {
   // See \ref tree_ilabel
   // "http://kaldi-asr.org/doc/tree_externals.html#tree_ilabel" for more
   // information about the ilabel_info.
-  const vector<vector<LabelT> > &ILabelInfo() { return ilabel_info_; }
+  const vector<vector<LabelT> > &ILabelInfo() const { return ilabel_info_; }
 
   StateId Start();
 
@@ -192,6 +183,7 @@ class ContextFstImpl : public CacheImpl<Arc> {
   std::string separator_;
 };
 
+}  // namespace internal
 
 /*
    Actual FST for ContextFst.  Most of the work gets done in ContextFstImpl.
@@ -211,114 +203,66 @@ class ContextFstImpl : public CacheImpl<Arc> {
 
 template <class Arc,
           class LabelT = int32> // make the vector<LabelT> things actually vector<int32> for
-                              // easier compatibility with Kaldi code.
-class ContextFst : public Fst<Arc> {
+                                // easier compatibility with Kaldi code.
+class ContextFst : public ImplToFst<internal::ContextFstImpl<Arc, LabelT>> {
  public:
-  friend class ArcIterator< ContextFst<Arc> >;
-  friend class StateIterator< ContextFst<Arc> >;
-#ifndef HAVE_OPENFST_GE_10400
-  // We have to supply the default template argument below to work around a
-  // Visual Studio bug.
-  friend class CacheArcIterator< ContextFst<Arc>,
-                                 DefaultCacheStateAllocator<CacheState<Arc> > >;
-#endif
+  friend class ArcIterator<ContextFst<Arc>>;
+  friend class StateIterator<ContextFst<Arc>>;
 
   typedef typename Arc::Weight Weight;
   typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
-#ifdef HAVE_OPENFST_GE_10400
   typedef DefaultCacheStore<Arc> Store;
   typedef typename Store::State State;
-#else
-  typedef CacheState<Arc> State;
-#endif
+  typedef internal::ContextFstImpl<Arc, LabelT> Impl;
 
   /// See \ref graph_context for more details.
   ContextFst(Label subsequential_symbol,  // epsilon not allowed.
              const vector<LabelT>& phones,  // symbols on output side of fst.
              const vector<LabelT>& disambig_syms,  // symbols on output side of fst.
              int32 N,  // Size of context window
-             int32 P):  // Pos of "central" phone in ctx window, from 0..N-1.
-      impl_ (new ContextFstImpl<Arc, LabelT>(subsequential_symbol, phones, disambig_syms, N, P))
-  { assert(std::numeric_limits<LabelT>::is_signed); }
+             int32 P)  // Pos of "central" phone in ctx window, from 0..N-1.
+      : ImplToFst<Impl>(std::make_shared<Impl>(
+            subsequential_symbol, phones, disambig_syms, N, P)) {
+    assert(std::numeric_limits<LabelT>::is_signed);
+  }
 
-  ContextFst(const ContextFst<Arc, LabelT> &fst, bool reset = false);
+  ContextFst(const ContextFst<Arc, LabelT> &fst, bool safe = false)
+      : ImplToFst<Impl>(fst, safe) {}
 
-  virtual ~ContextFst() { if (!impl_->DecrRefCount()) delete impl_;  }
+  ContextFst<Arc, LabelT> *Copy(bool safe = false) const override {
+    return new ContextFst<Arc, LabelT>(*this, safe);
+  }
 
-  virtual StateId Start() const { return impl_->Start(); }
+  inline void InitStateIterator(StateIteratorData<Arc> *data) const override;
 
-  virtual Weight Final(StateId s) const { return impl_->Final(s); }
-
-  StateId NumStates() const { return impl_->NumStates(); }
+  void InitArcIterator(StateId s, ArcIteratorData<Arc> *data) const override {
+    GetMutableImpl()->InitArcIterator(s, data);
+  }
 
   // This function is used in ContextMatcher.
   // Semantically this is not really const, as it causes states to be
   // added to the state table in impl_, and the input vocabulary to be
   // expanded, but C++ lets us make this const, and compose.h
-  // requires it (because it provides const fst's to the Matcher
-  // object.
+  // requires it (because it provides const fst's to the Matcher object.
   bool CreateArc(StateId s, Label olabel, Arc *oarc) const {
-    return impl_->CreateArc(s, olabel, oarc);
-  }
-
-  size_t NumArcs(StateId s) const { return impl_->NumArcs(s); }
-
-  size_t NumInputEpsilons(StateId s) const {
-    return impl_->NumInputEpsilons(s);
-  }
-
-  size_t NumOutputEpsilons(StateId s) const {
-    return impl_->NumOutputEpsilons(s);
-  }
-
-  virtual uint64 Properties(uint64 mask, bool test) const {
-    if (test) {
-      uint64 knownprops, testprops = TestProperties(*this, mask, &knownprops);
-      impl_->SetProperties(knownprops, testprops);
-      return testprops & mask;
-    } else {
-      return impl_->Properties(mask);
-    }
+    return GetMutableImpl()->CreateArc(s, olabel, oarc);
   }
 
   // Careful: the output of ILabelInfo depends on what has been visited.
-  const vector<vector<LabelT> > &ILabelInfo() { return impl_->ILabelInfo(); }
-
-  virtual const string& Type() const { return impl_->Type(); }
-
-  virtual ContextFst<Arc>  *Copy(bool reset = false) const {
-    return new ContextFst<Arc>(*this, reset);
+  const vector<vector<LabelT> > &ILabelInfo() const {
+    return GetImpl()->ILabelInfo();
   }
 
-  virtual const SymbolTable* InputSymbols() const {
-    return impl_->InputSymbols();
-  }
-
-  virtual const SymbolTable* OutputSymbols() const {
-    return impl_->OutputSymbols();
-  }
-
-  virtual inline void InitStateIterator(StateIteratorData<Arc> *data) const;
-
-  virtual void InitArcIterator(StateId s, ArcIteratorData<Arc> *data) const {
-    impl_->InitArcIterator(s, data);
-  }
-
-  friend class CacheStateIterator<ContextFst<Arc> >;  // so it can see impl_.
  private:
-  ContextFstImpl<Arc, LabelT> *impl_;  // protected so CacheStateIterator
-  // Makes visible to friends.
-  ContextFstImpl<Arc, LabelT> *GetImpl() const { return impl_; }
- // would be: ImplToFst<ContextFstImpl<Arc, LabelT> >::GetImpl();
- // but need to convert to using the ImplToFst stuff.
+  using ImplToFst<Impl>::GetImpl;
+  using ImplToFst<Impl>::GetMutableImpl;
 
-  void operator = (const ContextFstImpl<Arc> &fst);  // disallow
+  ContextFst &operator=(const ContextFst &fst) = delete;
 };
 
 /// Useful utility function for writing these vectors to disk.
-/// writes as int32 for binary compatibility since I will typically
-/// be "int".
+/// writes as int32 for binary compatibility since it will typically be "int".
 template<class I>
 void WriteILabelInfo(std::ostream &os, bool binary,
                      const vector<vector<I> > &info);
@@ -346,7 +290,7 @@ class StateIterator< ContextFst<A> >
     : public CacheStateIterator< ContextFst<A> > {
  public:
   explicit StateIterator(const ContextFst<A> &fst)
-    : CacheStateIterator< ContextFst<A> >(fst, fst.GetImpl()) {}
+    : CacheStateIterator< ContextFst<A> >(fst, fst.GetMutableImpl()) {}
 };
 
 
@@ -359,13 +303,10 @@ class ArcIterator< ContextFst<A> >
   typedef typename A::StateId StateId;
 
   ArcIterator(const ContextFst<A> &fst, StateId s)
-    : CacheArcIterator< ContextFst<A> >(fst.GetImpl(), s) {
+    : CacheArcIterator< ContextFst<A> >(fst.GetMutableImpl(), s) {
     if (!fst.GetImpl()->HasArcs(s)) // arcs not already computed.
-      fst.GetImpl()->Expand(s);
+      fst.GetMutableImpl()->Expand(s);
   }
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(ArcIterator);
 };
 
 template <class A, class I> inline

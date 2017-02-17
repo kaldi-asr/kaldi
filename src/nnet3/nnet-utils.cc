@@ -68,8 +68,8 @@ void EvaluateComputationRequest(
     const ComputationRequest &request,
     std::vector<std::vector<bool> > *is_computable) {
   ComputationGraph graph;
-  ComputationGraphBuilder builder(nnet, request, &graph);
-  builder.Compute();
+  ComputationGraphBuilder builder(nnet, &graph);
+  builder.Compute(request);
   builder.GetComputableInfo(is_computable);
   if (GetVerboseLevel() >= 4) {
     std::ostringstream graph_pretty;
@@ -103,9 +103,16 @@ static void ComputeSimpleNnetContextForShift(
     input.indexes.push_back(Index(n, t));
     output.indexes.push_back(Index(n, t));
   }
-  // the assumption here is that the network just requires the ivector at time
-  // t=0.
-  ivector.indexes.push_back(Index(n, 0));
+
+  // most networks will just require the ivector at time t = 0,
+  // but this might not always be the case, and some might use rounding
+  // descriptors with the iVector which might require it at an earlier
+  // frame than the regular input, so we provide the iVector in as wide a range
+  // as it might possibly be needed.
+  for (int32 t = input_start - nnet.Modulus(); t < input_end; t++) {
+    ivector.indexes.push_back(Index(n, t));
+  }
+
 
   ComputationRequest request;
   request.inputs.push_back(input);
@@ -159,18 +166,6 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
       *std::max_element(left_contexts.begin(), left_contexts.end());
   *right_context =
       *std::max_element(right_contexts.begin(), right_contexts.end());
-}
-
-void SetZero(bool is_gradient,
-             Nnet *nnet) {
-  for (int32 c = 0; c < nnet->NumComponents(); c++) {
-    Component *comp = nnet->GetComponent(c);
-    if (comp->Properties() & kUpdatableComponent) {
-      UpdatableComponent *u_comp = dynamic_cast<UpdatableComponent*>(comp);
-      KALDI_ASSERT(u_comp != NULL);
-      u_comp->SetZero(is_gradient);
-    }
-  }
 }
 
 void PerturbParams(BaseFloat stddev,
@@ -266,11 +261,20 @@ void SetLearningRate(BaseFloat learning_rate,
   }
 }
 
+void SetNnetAsGradient(Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      UpdatableComponent *u_comp = dynamic_cast<UpdatableComponent*>(comp);
+      KALDI_ASSERT(u_comp != NULL);
+      u_comp->SetAsGradient();
+    }
+  }
+}
+
 void ScaleNnet(BaseFloat scale, Nnet *nnet) {
   if (scale == 1.0) return;
-  else if (scale == 0.0) {
-    SetZero(false, nnet);
-  } else {
+  else {
     for (int32 c = 0; c < nnet->NumComponents(); c++) {
       Component *comp = nnet->GetComponent(c);
       comp->Scale(scale);
@@ -649,6 +653,14 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
                 << "' in edit config line " << config_line.WholeLine();
     }
   }
+}
+
+
+/// Returns true if 'nnet' has some kind of recurrency.
+bool NnetIsRecurrent(const Nnet &nnet) {
+  std::vector<std::vector<int32> > graph;
+  NnetToDirectedGraph(nnet, &graph);
+  return GraphHasCycles(graph);
 }
 
 

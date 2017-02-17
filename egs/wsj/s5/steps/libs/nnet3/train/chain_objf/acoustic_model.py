@@ -26,15 +26,26 @@ def create_phone_lm(dir, tree_dir, run_opts, lm_opts=None):
     This method trains a phone LM for chain training using the alignments
     in "tree_dir"
     """
+    try:
+        f = open(tree_dir + "/num_jobs", 'r')
+        num_ali_jobs = int(f.readline())
+        assert num_ali_jobs > 0
+    except:
+        raise Exception("""There was an error getting the number of alignment
+                        jobs from {0}/num_jobs""".format(tree_dir))
+
+    alignments=' '.join(['{0}/ali.{1}.gz'.format(tree_dir, job)
+                         for job in range(1, num_ali_jobs + 1)])
+
     common_lib.run_job(
         """{command} {dir}/log/make_phone_lm.log \
-                chain-est-phone-lm {lm_opts} \
-                "ark:gunzip -c {tree_dir}/ali.*.gz | \
-                    ali-to-phones {tree_dir}/final.mdl ark:- ark:- |" \
-                {dir}/phone_lm.fst""".format(
-                    command=run_opts.command, dir=dir,
-                    lm_opts=lm_opts if lm_opts is not None else '',
-                    tree_dir=tree_dir))
+    gunzip -c {alignments} \| \
+    ali-to-phones {tree_dir}/final.mdl ark:- ark:- \| \
+    chain-est-phone-lm {lm_opts} ark:- {dir}/phone_lm.fst""".format(
+        command=run_opts.command, dir=dir,
+        alignments=alignments,
+        lm_opts=lm_opts if lm_opts is not None else '',
+        tree_dir=tree_dir))
 
 
 def create_denominator_fst(dir, tree_dir, run_opts):
@@ -52,12 +63,12 @@ def create_denominator_fst(dir, tree_dir, run_opts):
 def generate_chain_egs(dir, data, lat_dir, egs_dir,
                        left_context, right_context,
                        run_opts, stage=0,
-                       valid_left_context=None, valid_right_context=None,
                        left_tolerance=None, right_tolerance=None,
+                       left_context_initial=-1, right_context_final=-1,
                        frame_subsampling_factor=3,
                        alignment_subsampling_factor=3,
                        feat_type='raw', online_ivector_dir=None,
-                       frames_per_iter=20000, frames_per_eg=20, srand=0,
+                       frames_per_iter=20000, frames_per_eg_str="20", srand=0,
                        egs_opts=None, cmvn_opts=None, transform_dir=None):
     """Wrapper for steps/nnet3/chain/get_egs.sh
 
@@ -71,16 +82,17 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                 --feat-type {feat_type} \
                 --transform-dir "{transform_dir}" \
                 --online-ivector-dir "{ivector_dir}" \
-                --left-context {left_context} --right-context {right_context} \
-                --valid-left-context '{valid_left_context}' \
-                --valid-right-context '{valid_right_context}' \
+                --left-context {left_context} \
+                --right-context {right_context} \
+                --left-context-initial {left_context_initial} \
+                --right-context-final {right_context_final} \
                 --left-tolerance '{left_tolerance}' \
                 --right-tolerance '{right_tolerance}' \
                 --frame-subsampling-factor {frame_subsampling_factor} \
                 --alignment-subsampling-factor {alignment_subsampling_factor} \
                 --stage {stage} \
                 --frames-per-iter {frames_per_iter} \
-                --frames-per-eg {frames_per_eg} \
+                --frames-per-eg {frames_per_eg_str} \
                 --srand {srand} \
                 {data} {dir} {lat_dir} {egs_dir}""".format(
                     command=run_opts.command,
@@ -92,13 +104,10 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                     ivector_dir=(online_ivector_dir
                                  if online_ivector_dir is not None
                                  else ''),
-                    left_context=left_context, right_context=right_context,
-                    valid_left_context=(valid_left_context
-                                        if valid_left_context is not None
-                                        else ''),
-                    valid_right_context=(valid_right_context
-                                         if valid_right_context is not None
-                                         else ''),
+                    left_context=left_context,
+                    right_context=right_context,
+                    left_context_initial=left_context_initial,
+                    right_context_final=right_context_final,
                     left_tolerance=(left_tolerance
                                     if left_tolerance is not None
                                     else ''),
@@ -108,7 +117,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                     frame_subsampling_factor=frame_subsampling_factor,
                     alignment_subsampling_factor=alignment_subsampling_factor,
                     stage=stage, frames_per_iter=frames_per_iter,
-                    frames_per_eg=frames_per_eg, srand=srand,
+                    frames_per_eg_str=frames_per_eg_str, srand=srand,
                     data=data, lat_dir=lat_dir, dir=dir, egs_dir=egs_dir,
                     egs_opts=egs_opts if egs_opts is not None else ''))
 
@@ -117,11 +126,11 @@ def train_new_models(dir, iter, srand, num_jobs,
                      num_archives_processed, num_archives,
                      raw_model_string, egs_dir, left_context, right_context,
                      apply_deriv_weights,
-                     min_deriv_time, max_deriv_time,
+                     min_deriv_time, max_deriv_time_relative,
                      l2_regularize, xent_regularize, leaky_hmm_coefficient,
                      momentum, max_param_change,
-                     shuffle_buffer_size, num_chunk_per_minibatch,
-                     frame_subsampling_factor, truncate_deriv_weights,
+                     shuffle_buffer_size, num_chunk_per_minibatch_str,
+                     frame_subsampling_factor,
                      cache_io_opts, run_opts):
     """
     Called from train_one_iteration(), this method trains new models
@@ -139,9 +148,9 @@ def train_new_models(dir, iter, srand, num_jobs,
     if min_deriv_time is not None:
         deriv_time_opts.append("--optimization.min-deriv-time={0}".format(
                                     min_deriv_time))
-    if max_deriv_time is not None:
-        deriv_time_opts.append("--optimization.max-deriv-time={0}".format(
-                                    int(max_deriv_time)))
+    if max_deriv_time_relative is not None:
+        deriv_time_opts.append("--optimization.max-deriv-time-relative={0}".format(
+                                    int(max_deriv_time_relative)))
 
     processes = []
     for job in range(1, num_jobs+1):
@@ -170,7 +179,6 @@ def train_new_models(dir, iter, srand, num_jobs,
                     "{raw_model}" {dir}/den.fst \
                     "ark,bg:nnet3-chain-copy-egs \
                         --left-context={lc} --right-context={rc} \
-                        --truncate-deriv-weights={trunc_deriv} \
                         --frame-shift={fr_shft} \
                         ark:{egs_dir}/cegs.{archive_index}.ark ark:- | \
                         nnet3-chain-shuffle-egs --buffer-size={buf_size} \
@@ -183,7 +191,6 @@ def train_new_models(dir, iter, srand, num_jobs,
                         next_iter=iter + 1, job=job,
                         deriv_time_opts=" ".join(deriv_time_opts),
                         lc=left_context, rc=right_context,
-                        trunc_deriv=truncate_deriv_weights,
                         app_deriv_wts=apply_deriv_weights,
                         fr_shft=frame_shift, l2=l2_regularize,
                         xent_reg=xent_regularize, leaky=leaky_hmm_coefficient,
@@ -193,7 +200,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         egs_dir=egs_dir, archive_index=archive_index,
                         buf_size=shuffle_buffer_size,
                         cache_io_opts=cur_cache_io_opts,
-                        num_chunk_per_mb=num_chunk_per_minibatch),
+                        num_chunk_per_mb=num_chunk_per_minibatch_str),
             wait=False)
 
         processes.append(process_handle)
@@ -214,17 +221,16 @@ def train_new_models(dir, iter, srand, num_jobs,
 def train_one_iteration(dir, iter, srand, egs_dir,
                         num_jobs, num_archives_processed, num_archives,
                         learning_rate, shrinkage_value,
-                        num_chunk_per_minibatch,
+                        num_chunk_per_minibatch_str,
                         num_hidden_layers, add_layers_period,
                         left_context, right_context,
                         apply_deriv_weights, min_deriv_time,
-                        max_deriv_time,
+                        max_deriv_time_relative,
                         l2_regularize, xent_regularize,
                         leaky_hmm_coefficient,
                         momentum, max_param_change, shuffle_buffer_size,
-                        frame_subsampling_factor, truncate_deriv_weights,
-                        run_opts,
-                        dropout_edit_string="",
+                        frame_subsampling_factor,
+                        run_opts, dropout_edit_string="",
                         background_process_handler=None):
     """ Called from steps/nnet3/chain/train.py for one iteration for
     neural network training with LF-MMI objective
@@ -294,7 +300,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                                                                  iter=iter)
 
     if do_average:
-        cur_num_chunk_per_minibatch = num_chunk_per_minibatch
+        cur_num_chunk_per_minibatch_str = num_chunk_per_minibatch_str
         cur_max_param_change = max_param_change
     else:
         # on iteration zero or when we just added a layer, use a smaller
@@ -302,7 +308,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         # the jobs): the model-averaging isn't always helpful when the model is
         # changing too fast (i.e. it can worsen the objective function), and
         # the smaller minibatch size will help to keep the update stable.
-        cur_num_chunk_per_minibatch = num_chunk_per_minibatch / 2
+        cur_num_chunk_per_minibatch_str = common_train_lib.halve_minibatch_size_str(
+            num_chunk_per_minibatch_str)
         cur_max_param_change = float(max_param_change) / math.sqrt(2)
 
     raw_model_string = raw_model_string + dropout_edit_string
@@ -324,16 +331,15 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      left_context=left_context, right_context=right_context,
                      apply_deriv_weights=apply_deriv_weights,
                      min_deriv_time=min_deriv_time,
-                     max_deriv_time=max_deriv_time,
+                     max_deriv_time_relative=max_deriv_time_relative,
                      l2_regularize=l2_regularize,
                      xent_regularize=xent_regularize,
                      leaky_hmm_coefficient=leaky_hmm_coefficient,
                      momentum=momentum,
                      max_param_change=cur_max_param_change,
                      shuffle_buffer_size=shuffle_buffer_size,
-                     num_chunk_per_minibatch=cur_num_chunk_per_minibatch,
+                     num_chunk_per_minibatch_str=cur_num_chunk_per_minibatch_str,
                      frame_subsampling_factor=frame_subsampling_factor,
-                     truncate_deriv_weights=truncate_deriv_weights,
                      cache_io_opts=cache_io_opts, run_opts=run_opts)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
@@ -475,7 +481,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                 "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
                 "ark,bg:nnet3-chain-copy-egs --left-context={lc} \
                     --right-context={rc} ark:{egs_dir}/valid_diagnostic.cegs \
-                    ark:- | nnet3-chain-merge-egs ark:- ark:- |" \
+                    ark:- | nnet3-chain-merge-egs --minibatch-size=1:64 ark:- ark:- |" \
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
                    lc=left_context, rc=right_context,
                    l2=l2_regularize, leaky=leaky_hmm_coefficient,
@@ -490,7 +496,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                 "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
                 "ark,bg:nnet3-chain-copy-egs --left-context={lc} \
                     --right-context={rc} ark:{egs_dir}/train_diagnostic.cegs \
-                    ark:- | nnet3-chain-merge-egs ark:- ark:- |" \
+                    ark:- | nnet3-chain-merge-egs --minibatch-size=1:64 ark:- ark:- |" \
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
                    lc=left_context, rc=right_context,
                    l2=l2_regularize, leaky=leaky_hmm_coefficient,
@@ -519,10 +525,12 @@ def compute_progress(dir, iter, run_opts, wait=False,
         background_process_handler=background_process_handler)
 
 
-def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch,
+def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_str,
                    egs_dir, left_context, right_context,
                    leaky_hmm_coefficient, l2_regularize,
-                   xent_regularize, run_opts, background_process_handler=None):
+                   xent_regularize, run_opts,
+                   background_process_handler=None,
+                   sum_to_one_penalty=0.0):
     """ Function to do model combination
 
     In the nnet3 setup, the logic
@@ -535,20 +543,27 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch,
 
     models_to_combine.add(num_iters)
 
+    # TODO: if it turns out the sum-to-one-penalty code is not useful,
+    # remove support for it.
+
     for iter in sorted(models_to_combine):
         model_file = '{0}/{1}.mdl'.format(dir, iter)
         if os.path.exists(model_file):
-            raw_model_strings.append(
-                '"nnet3-am-copy --raw=true {0} -|"'.format(model_file))
+            # we used to copy them with nnet3-am-copy --raw=true, but now
+            # the raw-model-reading code discards the other stuff itself.
+            raw_model_strings.append(model_file)
         else:
             print("{0}: warning: model file {1} does not exist "
                   "(final combination)".format(sys.argv[0], model_file))
 
     common_lib.run_job(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
-                nnet3-chain-combine --num-iters=40 \
+                nnet3-chain-combine --num-iters={opt_iters} \
                 --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
-                --enforce-sum-to-one=true --enforce-positive-weights=true \
+                --separate-weights-per-component={separate_weights} \
+                --enforce-sum-to-one={hard_enforce} \
+                --sum-to-one-penalty={penalty} \
+                --enforce-positive-weights=true \
                 --verbose=3 {dir}/den.fst {raw_models} \
                 "ark,bg:nnet3-chain-copy-egs --left-context={lc} \
                     --right-context={rc} ark:{egs_dir}/combine.cegs ark:- | \
@@ -558,10 +573,14 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch,
                 {dir}/final.mdl""".format(
                     command=run_opts.command,
                     combine_queue_opt=run_opts.combine_queue_opt,
+                    opt_iters=(20 if sum_to_one_penalty <= 0 else 80),
+                    separate_weights=(sum_to_one_penalty > 0),
                     lc=left_context, rc=right_context,
                     l2=l2_regularize, leaky=leaky_hmm_coefficient,
                     dir=dir, raw_models=" ".join(raw_model_strings),
-                    num_chunk_per_mb=num_chunk_per_minibatch,
+                    hard_enforce=(sum_to_one_penalty <= 0),
+                    penalty=sum_to_one_penalty,
+                    num_chunk_per_mb=num_chunk_per_minibatch_str,
                     num_iters=num_iters,
                     egs_dir=egs_dir))
 

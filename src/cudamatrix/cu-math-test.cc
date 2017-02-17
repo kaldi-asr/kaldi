@@ -539,7 +539,7 @@ template<typename Real> void CudaMathUnitTest() {
 int main() {
   int32 loop = 0;
 #if HAVE_CUDA == 1
-  for (loop = 0; loop < 2; loop++) {
+  for (; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no"); // -1 means no GPU
