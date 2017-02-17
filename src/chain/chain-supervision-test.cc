@@ -606,9 +606,9 @@ void TestRanges() {
 
 int main() {
   using namespace kaldi;
-
-  for (int32 loop = 0; loop < 2; loop++) {
+  int32 loop = 0;
 #if HAVE_CUDA == 1
+  for (loop = 0; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
@@ -621,7 +621,7 @@ int main() {
     }
     kaldi::chain::TestRanges();
 #if HAVE_CUDA == 1
-    CuDevice::Instantiate().PrintProfile();
-#endif
   }
+  CuDevice::Instantiate().PrintProfile();
+#endif
 }
