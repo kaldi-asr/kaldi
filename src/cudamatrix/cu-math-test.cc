@@ -564,7 +564,7 @@ int main() {
     else
       KALDI_LOG << "Tests with GPU use (if available) succeeded.";
 #if HAVE_CUDA == 1
-  }
+  } // No for loop if 'HAVE_CUDA != 1',
   CuDevice::Instantiate().PrintProfile();
 #endif
   return 0;

@@ -856,9 +856,9 @@ int main() {
   using namespace kaldi;
   using namespace kaldi::nnet2;
 
-
-  for (int32 loop = 0; loop < 2; loop++) {
+  int32 loop = 0;
 #if HAVE_CUDA == 1
+  for (loop = 0; loop < 2; loop++) {
     //// Uncomment the following line to expose the bug in UnitTestDropoutComponent
     //CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
@@ -868,7 +868,9 @@ int main() {
 #endif
 
     BasicDebugTestForSpliceMax(true);
-    for (int32 i = 0; i < 3; i++) {
+    // We used to test this 3 times, but now that nnet2 is rarely changed,
+    // reducing it to once.
+    for (int32 i = 0; i < 1; i++) {
       UnitTestGenericComponent<SigmoidComponent>();
       UnitTestGenericComponent<TanhComponent>();
       UnitTestGenericComponent<PowerComponent>("power=1.5");
@@ -905,8 +907,8 @@ int main() {
       else
         KALDI_LOG << "Tests with GPU use (if available) succeeded.";
     }
-  }
 #if HAVE_CUDA == 1
+  } // No for loop if 'HAVE_CUDA != 1',
   CuDevice::Instantiate().PrintProfile();
 #endif
   return 0;
