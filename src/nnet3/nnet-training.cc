@@ -63,7 +63,7 @@ void NnetTrainer::Train(const NnetExample &eg) {
   const NnetComputation *computation = compiler_.Compile(request);
 
   if (config_.adversarial_training_scale > 0.0 &&
-      RandUniform() < config_.adversarial_training_prob) {
+      RandUniform() <= config_.adversarial_training_prob) {
     // adversarial training is incompatible with momentum > 0
     KALDI_ASSERT(config_.momentum == 0.0);
     FreezeNaturalGradient(true, delta_nnet_);
