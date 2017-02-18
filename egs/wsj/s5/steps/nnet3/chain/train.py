@@ -470,6 +470,7 @@ def train(args, run_opts, background_process_handler):
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
                 momentum=args.momentum,
                 adversarial_training_scale=args.adversarial_training_scale,
+                adversarial_training_prob=args.adversarial_training_prob,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 frame_subsampling_factor=args.frame_subsampling_factor,

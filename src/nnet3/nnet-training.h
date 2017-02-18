@@ -37,6 +37,7 @@ struct NnetTrainerOptions {
   bool debug_computation;
   BaseFloat momentum;
   BaseFloat adversarial_training_scale;
+  BaseFloat adversarial_training_prob;
   std::string read_cache;
   std::string write_cache;
   bool binary_write_cache;
@@ -51,6 +52,7 @@ struct NnetTrainerOptions {
       debug_computation(false),
       momentum(0.0),
       adversarial_training_scale(0.0),
+      adversarial_training_prob(1.0),
       binary_write_cache(true),
       max_param_change(2.0) { }
   void Register(OptionsItf *opts) {
@@ -75,6 +77,9 @@ struct NnetTrainerOptions {
     opts->Register("adversarial-training-scale", &adversarial_training_scale,
                    "adversarial traning factor. "
                    "if 0 then in the normal training mode.");
+    opts->Register("adversarial-training-prob", &adversarial_training_prob,
+                   "do adversarial training with the specified probability "
+                   "on each minibatch.");
     opts->Register("read-cache", &read_cache, "the location where we can read "
                    "the cached computation from");
     opts->Register("write-cache", &write_cache, "the location where we want to "
