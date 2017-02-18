@@ -800,8 +800,12 @@ class CommonParser:
                                  sequentially.""")
         self.parser.add_argument("--trainer.optimization.adversarial-training-scale",
                                  type=float, dest='adversarial_training_scale',
-                                 default=0.0, help="""scale of parameters changes
+                                 default=0.0, help="""scale of parameters changes 
                                  used in adversarial training step.""")
+        self.parser.add_argument("--trainer.optimization.adversarial-training-interval",
+                                 type=int, dest='adversarial_training_interval',
+                                 default=1, help="""the interval of minibatches
+                                 that adversarial training is applied on.""")
 
         # General options
         self.parser.add_argument("--stage", type=int, default=-4,

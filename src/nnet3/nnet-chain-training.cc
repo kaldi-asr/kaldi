@@ -68,19 +68,19 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
                              &request);
   const NnetComputation *computation = compiler_.Compile(request);
 
-  if (nnet_config.adversarial_training_scale > 0.0) {
+  if (nnet_config.adversarial_training_scale > 0.0 && num_minibatches_processed_
+      % nnet_config.adversarial_training_interval == 0) {
     // adversarial training is incompatible with momentum > 0
     KALDI_ASSERT(nnet_config.momentum == 0.0);
-    bool freeze = true;
-    FreezeNaturalGradient(freeze, delta_nnet_);
+    FreezeNaturalGradient(true, delta_nnet_);
     bool is_adversarial_step = true;
     TrainInternal(chain_eg, *computation, is_adversarial_step);
-    freeze = false;
-    FreezeNaturalGradient(freeze, delta_nnet_);
+    FreezeNaturalGradient(false, delta_nnet_); // un-freeze natural gradient
   }
 
   bool is_adversarial_step = false;
   TrainInternal(chain_eg, *computation, is_adversarial_step);
+  num_minibatches_processed_++;
 }
 
 void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
@@ -160,8 +160,6 @@ void NnetChainTrainer::ProcessOutputs(bool is_adversarial_step,
                                      opts_.nnet_config.print_interval,
                                      num_minibatches_processed_,
                                      tot_weight, tot_objf, tot_l2_term);
-    if (!is_adversarial_step)
-      num_minibatches_processed_++;
 
     if (use_xent) {
       xent_deriv.Scale(opts_.chain_config.xent_regularize);

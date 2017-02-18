@@ -62,19 +62,19 @@ void NnetTrainer::Train(const NnetExample &eg) {
                         &request);
   const NnetComputation *computation = compiler_.Compile(request);
 
-  if (config_.adversarial_training_scale > 0.0) {
+  if (config_.adversarial_training_scale > 0.0 &&
+      num_minibatches_processed_ % config_.adversarial_training_interval == 0) {
     // adversarial training is incompatible with momentum > 0
     KALDI_ASSERT(config_.momentum == 0.0);
-    bool freeze = true;
-    FreezeNaturalGradient(freeze, delta_nnet_);
+    FreezeNaturalGradient(true, delta_nnet_);
     bool is_adversarial_step = true;
     TrainInternal(eg, *computation, is_adversarial_step);
-    freeze = false;
-    FreezeNaturalGradient(freeze, delta_nnet_);
+    FreezeNaturalGradient(false, delta_nnet_); // un-freeze natural gradient
   }
 
   bool is_adversarial_step = false;
   TrainInternal(eg, *computation, is_adversarial_step);
+  num_minibatches_processed_++;
 }
 
 void NnetTrainer::TrainInternal(const NnetExample &eg,
@@ -113,8 +113,6 @@ void NnetTrainer::ProcessOutputs(bool is_adversarial_step,
                                       config_.print_interval,
                                       num_minibatches_processed_,
                                       tot_weight, tot_objf);
-      if (!is_adversarial_step)
-        num_minibatches_processed_++;
     }
   }
 }
@@ -260,7 +258,7 @@ void ObjectiveFunctionInfo::UpdateStats(
     BaseFloat this_minibatch_tot_aux_objf) {
   int32 phase = minibatch_counter / minibatches_per_phase;
   if (phase != current_phase) {
-    KALDI_ASSERT(phase == current_phase + 1); // or doesn't really make sense.
+    KALDI_ASSERT(phase > current_phase); // or doesn't really make sense.
     PrintStatsForThisPhase(output_name, minibatches_per_phase);
     current_phase = phase;
     tot_weight_this_phase = 0.0;
