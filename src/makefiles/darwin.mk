@@ -22,9 +22,6 @@ ifeq ($(KALDI_FLAVOR), dynamic)
 CXXFLAGS += -fPIC
 endif
 
-LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -g
-LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) -framework Accelerate -lm -lpthread -ldl
-
 # Compiler specific flags
 COMPILER = $(shell $(CXX) -v 2>&1)
 ifeq ($(findstring clang,$(COMPILER)),clang)
@@ -34,3 +31,6 @@ else ifeq ($(findstring GCC,$(COMPILER)),GCC)
 # Allow implicit conversions between vectors.
 CXXFLAGS += -flax-vector-conversions
 endif
+
+LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -g
+LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) -framework Accelerate -lm -lpthread -ldl

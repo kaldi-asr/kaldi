@@ -524,8 +524,9 @@ int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
   TestStringsApproxEqual();
-  for (kaldi::int32 loop = 0; loop < 2; loop++) {
+  kaldi::int32 loop = 0;
 #if HAVE_CUDA == 1
+  for (loop = 0; loop < 2; loop++) {
     //CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
@@ -533,9 +534,11 @@ int main() {
       CuDevice::Instantiate().SelectGpuId("yes");
 #endif
     UnitTestNnetComponent();
-  }
-
-  KALDI_LOG << "Nnet component ntests succeeded.";
+#if HAVE_CUDA == 1
+  } // No for loop if 'HAVE_CUDA != 1',
+  CuDevice::Instantiate().PrintProfile();
+#endif
+  KALDI_LOG << "Nnet component tests succeeded.";
 
   return 0;
 }

@@ -2731,7 +2731,7 @@ template<typename Real> void CudaMatrixUnitTest() {
 int main() {
   int32 loop = 0;
 #if HAVE_CUDA == 1
-  for (; loop < 2; loop++) {
+  for (loop = 0; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
@@ -2755,10 +2755,9 @@ int main() {
       KALDI_LOG << "Tests without GPU use succeeded.";
     else
       KALDI_LOG << "Tests with GPU use (if available) succeeded.";
-    
-    SetVerboseLevel(4);
 #if HAVE_CUDA == 1
-  }
+  } // No for loop if 'HAVE_CUDA != 1',
+  SetVerboseLevel(4);
   CuDevice::Instantiate().PrintProfile();
 #endif
   return 0;
