@@ -258,7 +258,7 @@ void ObjectiveFunctionInfo::UpdateStats(
     BaseFloat this_minibatch_tot_aux_objf) {
   int32 phase = minibatch_counter / minibatches_per_phase;
   if (phase != current_phase) {
-    //KALDI_ASSERT(phase == current_phase + 1); // or doesn't really make sense.
+    KALDI_ASSERT(phase > current_phase); // or doesn't really make sense.
     PrintStatsForThisPhase(output_name, minibatches_per_phase);
     current_phase = phase;
     tot_weight_this_phase = 0.0;
