@@ -760,7 +760,7 @@ if (-s "$lang/phones/word_boundary.int") {
       if (! defined $is_disambig{$phone}) {
         if ($phone eq "<<eos>>") {
           $state = "eos";
-        } else if ($phone == 0) {
+        } elsif ($phone == 0) {
           $exit = 1; print "--> ERROR: unexpected phone sequence=$phoneseq, wordseq=$wordseq\n"; last;
         } else {
           $state = $wbtype{$phone};
