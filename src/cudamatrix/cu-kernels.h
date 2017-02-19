@@ -1266,17 +1266,19 @@ inline void cuda_lstm_nonlinearity(dim3 Gr, dim3 Bl, const double* in,
                                    const int in_stride, const double* params,
                                    const int params_stride,
                                    const int out_stride, const int cell_dim,
-                                   const int num_rows, double* out) {
+                                   const int num_rows, const bool use_dropout,
+                                   double* out) {
   cudaD_lstm_nonlinearity(Gr, Bl, in, in_stride, params, params_stride,
-                          out_stride, cell_dim, num_rows, out);
+                          out_stride, cell_dim, num_rows, use_dropout, out);
 }
 inline void cuda_lstm_nonlinearity(dim3 Gr, dim3 Bl, const float* in,
                                    const int in_stride, const float* params,
                                    const int params_stride,
                                    const int out_stride, const int cell_dim,
-                                   const int num_rows, float* out) {
+                                   const int num_rows, const bool use_dropout,
+                                   float* out) {
   cudaF_lstm_nonlinearity(Gr, Bl, in, in_stride, params, params_stride,
-                          out_stride, cell_dim, num_rows, out);
+                          out_stride, cell_dim, num_rows, use_dropout, out);
 }
 inline void cuda_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
                                         const int num_rows, const double* input,
