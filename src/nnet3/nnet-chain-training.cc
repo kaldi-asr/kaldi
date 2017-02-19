@@ -68,8 +68,8 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
                              &request);
   const NnetComputation *computation = compiler_.Compile(request);
 
-  if (nnet_config.adversarial_training_scale > 0.0 &&
-      RandUniform() <= nnet_config.adversarial_training_prob) {
+  if (nnet_config.adversarial_training_scale > 0.0 && num_minibatches_processed_
+      % nnet_config.adversarial_training_interval == 0) {
     // adversarial training is incompatible with momentum > 0
     KALDI_ASSERT(nnet_config.momentum == 0.0);
     FreezeNaturalGradient(true, delta_nnet_);
