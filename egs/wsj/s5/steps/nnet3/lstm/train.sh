@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# THIS SCRIPT IS DEPRECATED, see ../train_rnn.py
+
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
 #           2013  Xiaohui Zhang
 #           2013  Guoguo Chen
@@ -116,6 +118,7 @@ rand_prune=4.0 # speeds up LDA.
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
+echo "$0: THIS SCRIPT IS DEPRECATED"
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -298,8 +301,6 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts+=(--transform-dir $transform_dir)
   extra_opts+=(--left-context $left_context)
   extra_opts+=(--right-context $right_context)
-  extra_opts+=(--valid-left-context $((chunk_width + left_context)))
-  extra_opts+=(--valid-right-context $((chunk_width + right_context)))
 
   # Note: in RNNs we process sequences of labels rather than single label per sample
   echo "$0: calling get_egs.sh"

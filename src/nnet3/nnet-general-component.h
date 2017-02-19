@@ -448,21 +448,22 @@ class StatisticsPoolingComponentPrecomputedIndexes:
 class BackpropTruncationComponent: public Component {
  public:
   BackpropTruncationComponent(int32 dim,
+                              BaseFloat scale,
                               BaseFloat clipping_threshold,
                               BaseFloat zeroing_threshold,
                               int32 zeroing_interval,
                               int32 recurrence_interval) {
-    Init(dim, clipping_threshold, zeroing_threshold,
+    Init(dim, scale, clipping_threshold, zeroing_threshold,
         zeroing_interval, recurrence_interval);}
 
-  BackpropTruncationComponent(): dim_(0), clipping_threshold_(-1),
+  BackpropTruncationComponent(): dim_(0), scale_(1.0), clipping_threshold_(-1),
     zeroing_threshold_(-1), zeroing_interval_(0), recurrence_interval_(0),
     num_clipped_(0), num_zeroed_(0), count_(0), count_zeroing_boundaries_(0) { }
 
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
   virtual void InitFromConfig(ConfigLine *cfl);
-  void Init(int32 dim, BaseFloat clipping_threshold,
+  void Init(int32 dim, BaseFloat scale, BaseFloat clipping_threshold,
             BaseFloat zeroing_threshold, int32 zeroing_interval,
             int32 recurrence_interval);
 
@@ -505,6 +506,12 @@ class BackpropTruncationComponent: public Component {
  private:
   // input/output dimension
   int32 dim_;
+
+  // Scale that is applied in the forward propagation (and of course in the
+  // backprop to match.  Expected to normally be 1, but setting this to other
+  // values (e.g.  slightly less than 1) can be used to produce variants of
+  // LSTMs where the activations are bounded.
+  BaseFloat scale_;
 
   // threshold (e.g., 30) to be used for clipping corresponds to max-row-norm
   BaseFloat clipping_threshold_;
@@ -572,6 +579,97 @@ class BackpropTruncationComponentPrecomputedIndexes:
     return "BackpropTruncationComponentPrecomputedIndexes";
   }
 };
+
+
+// ConstantComponent returns a constant value for all requested
+// indexes, and it has no dependencies on any input.
+// It's like a ConstantFunctionComponent, but done the "right"
+// way without requiring an unnecessary input.
+// It is optionally trainable, and optionally you can use natural
+// gradient.
+class ConstantComponent: public UpdatableComponent {
+ public:
+  // actually this component requires no inputs; this value
+  // is really a don't-care.
+  virtual int32 InputDim() const { return output_.Dim(); }
+
+  virtual int32 OutputDim() const { return output_.Dim(); }
+
+  virtual std::string Info() const;
+
+  // possible parameter values with their defaults:
+  // is-updatable=true use-natural-gradient=true output-dim=-1
+  // output-mean=0 output-stddev=0
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  ConstantComponent();
+
+  ConstantComponent(const ConstantComponent &other);
+
+  virtual std::string Type() const { return "ConstantComponent"; }
+  virtual int32 Properties() const {
+    return
+        (is_updatable_ ? kUpdatableComponent|kLinearInParameters : 0);
+  }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  // Some functions that are only to be reimplemented for GeneralComponents.
+  virtual void GetInputIndexes(const MiscComputationInfo &misc_info,
+                               const Index &output_index,
+                               std::vector<Index> *desired_indexes) const {
+    desired_indexes->clear();  // requires no inputs.
+  }
+
+  // This function returns true if at least one of the input indexes used to
+  // compute this output index is computable.
+  // it's simple because this component requires no inputs.
+  virtual bool IsComputable(const MiscComputationInfo &misc_info,
+                            const Index &output_index,
+                            const IndexSet &input_index_set,
+                            std::vector<Index> *used_inputs) const {
+    if (used_inputs) used_inputs->clear();
+    return true;
+  }
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+ private:
+
+  // the output value-- a vector.
+  CuVector<BaseFloat> output_;
+
+  bool is_updatable_;
+  // if true, and if updatable, do natural-gradient update.
+  bool use_natural_gradient_;
+  OnlineNaturalGradient preconditioner_;
+
+  const ConstantComponent &operator
+  = (const ConstantComponent &other); // Disallow.
+};
+
+
+
+
 
 } // namespace nnet3
 } // namespace kaldi

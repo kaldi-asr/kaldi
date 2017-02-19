@@ -59,24 +59,10 @@ int main(int argc, char *argv[]) {
         "nnet3-merge-egs --minibatch-size=512 ark:1.egs ark:- | nnet3-train-simple ... \n"
         "See also nnet3-copy-egs\n";
 
-    bool compress = false;
-    int32 minibatch_size = 512;
-    bool measure_output_frames = true;
-    bool discard_partial_minibatches = false;
-
     ParseOptions po(usage);
-    po.Register("minibatch-size", &minibatch_size, "Target size of minibatches "
-                "when merging (see also --measure-output-frames)");
-    po.Register("measure-output-frames", &measure_output_frames, "If true, "
-                "--minibatch-size is a target number of total output frames; if "
-                "false, --minibatch-size is the number of input examples to "
-                "merge.");
-    po.Register("compress", &compress, "If true, compress the output examples "
-                "(not recommended unless you are writing to disk)");
-    po.Register("discard-partial-minibatches", &discard_partial_minibatches,
-                "discard any partial minibatches of 'uneven' size that may be "
-                "encountered at the end; 'true' is recommended, to avoid "
-                "incurring compilation costs.");
+
+    ExampleMergingConfig merging_config;
+    merging_config.Register(&po);
 
     po.Read(argc, argv);
 
@@ -88,44 +74,20 @@ int main(int argc, char *argv[]) {
     std::string examples_rspecifier = po.GetArg(1),
         examples_wspecifier = po.GetArg(2);
 
+    merging_config.ComputeDerived();
+
     SequentialNnetExampleReader example_reader(examples_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
 
-    std::vector<NnetExample> examples;
-    examples.reserve(minibatch_size);
+    ExampleMerger merger(merging_config, &example_writer);
 
-    int32 cur_num_output_frames = 0;
-
-    int64 num_read = 0, num_written = 0;
-    while (!example_reader.Done()) {
+    for (; !example_reader.Done(); example_reader.Next()) {
       const NnetExample &cur_eg = example_reader.Value();
-      examples.resize(examples.size() + 1);
-      examples.back() = cur_eg;
-      cur_num_output_frames += NumOutputIndexes(cur_eg);
-      bool minibatch_ready =
-          (measure_output_frames ?
-           cur_num_output_frames >= minibatch_size :
-           static_cast<int32>(examples.size()) >= minibatch_size);
-
-      // Do Next() now, so we can test example_reader.Done() below .
-      example_reader.Next();
-      num_read++;
-
-      if (minibatch_ready || (!discard_partial_minibatches &&
-                              (example_reader.Done() && !examples.empty()))) {
-        NnetExample merged_eg;
-        MergeExamples(examples, compress, &merged_eg);
-        std::ostringstream ostr;
-        ostr << "merged-" << num_written;
-        num_written++;
-        std::string output_key = ostr.str();
-        example_writer.Write(output_key, merged_eg);
-        examples.clear();
-        cur_num_output_frames = 0;
-      }
+      merger.AcceptExample(new NnetExample(cur_eg));
     }
-    KALDI_LOG << "Merged " << num_read << " egs to " << num_written << '.';
-    return (num_written != 0 ? 0 : 1);
+    // the merger itself prints the necessary diagnostics.
+    merger.Finish();
+    return merger.ExitStatus();
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;

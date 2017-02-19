@@ -126,12 +126,12 @@ if [ $stage -le 12 ]; then
 
   # the first splicing is moved before the lda layer, so no splicing here
   relu-renorm-layer name=tdnn1 dim=768
-  tdnn-relu-renorm-layer name=tdnn2 splice-indexes=-1,0,1 dim=768 subset-dim=384
-  tdnn-relu-renorm-layer name=tdnn3 splice-indexes=-1,0,1 dim=768 subset-dim=384
-  tdnn-relu-renorm-layer name=tdnn4 splice-indexes=-3,0,3 dim=768 subset-dim=384
-  tdnn-relu-renorm-layer name=tdnn5 splice-indexes=-3,0,3 dim=768 subset-dim=384
-  tdnn-relu-renorm-layer name=tdnn6 splice-indexes=-3,0,3 dim=768 subset-dim=384
-  tdnn-relu-renorm-layer name=tdnn7 splice-indexes=-3,0,3 dim=768 subset-dim=384
+  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=768 subset-dim=384
+  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=768 subset-dim=384
+  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=768 subset-dim=384
+  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=768 subset-dim=384
+  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=768 subset-dim=384
+  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=768 subset-dim=384
 
   ## adding the layers for chain branch
   relu-renorm-layer name=prefinal-chain input=tdnn7 dim=768 target-rms=0.5

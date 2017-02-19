@@ -1,0 +1,1 @@
+tuning/run_tdnn_lstm_1e_disc.sh

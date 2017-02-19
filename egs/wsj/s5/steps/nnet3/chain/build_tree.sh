@@ -22,7 +22,9 @@ cmd=run.pl
 context_opts=  # e.g. set this to "--context-width 5 --central-position 2" for quinphone.
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
 frame_subsampling_factor=1
-leftmost_questions_truncate=10
+leftmost_questions_truncate=-1  # note: this used to default to 10, but we never
+                                # use this option now with value != -1, and
+                                # we're changing the default
 tree_stats_opts=
 cluster_phones_opts=
 # End configuration section.
@@ -179,4 +181,3 @@ fi
 cp $dir/1.mdl $dir/final.mdl
 
 echo $0: Done building tree
-

@@ -20,22 +20,10 @@
 #ifndef KALDI_UTIL_STL_UTILS_H_
 #define KALDI_UTIL_STL_UTILS_H_
 
-#ifdef _MSC_VER
 #include <unordered_map>
 #include <unordered_set>
 using std::unordered_map;
 using std::unordered_set;
-#elif __cplusplus > 199711L || defined(__GXX_EXPERIMENTAL_CXX0X__)
-#include <unordered_map>
-#include <unordered_set>
-using std::unordered_map;
-using std::unordered_set;
-#else
-#include <tr1/unordered_map>
-#include <tr1/unordered_set>
-using std::tr1::unordered_map;
-using std::tr1::unordered_set;
-#endif
 
 #include <algorithm>
 #include <map>
@@ -245,16 +233,16 @@ struct VectorHasher {  // hashing function for vector<Int>.
 };
 
 /// A hashing function-object for pairs of ints
-template<typename Int>
+template<typename Int1, typename Int2 = Int1>
 struct PairHasher {  // hashing function for pair<int>
-  size_t operator()(const std::pair<Int, Int> &x) const {
-    return x.first + x.second * kPrime;
+  size_t operator()(const std::pair<Int1, Int2> &x) const {
+    // 7853 was chosen at random from a list of primes.
+    return x.first + x.second * 7853;
   }
   PairHasher() {  // Check we're instantiated with an integer type.
-    KALDI_ASSERT_IS_INTEGER_TYPE(Int);
+    KALDI_ASSERT_IS_INTEGER_TYPE(Int1);
+    KALDI_ASSERT_IS_INTEGER_TYPE(Int2);
   }
- private:
-  static const int kPrime = 7853;
 };
 
 
@@ -329,4 +317,3 @@ inline void MergePairVectorSumming(std::vector<std::pair<I, F> > *vec) {
 }  // namespace kaldi
 
 #endif  // KALDI_UTIL_STL_UTILS_H_
-
