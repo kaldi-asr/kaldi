@@ -18,8 +18,7 @@ if [ ! -x ./irstlm ] ; then
     exit 1
   fi
   (
-    svn -r 618 co --non-interactive --trust-server-cert \
-      https://svn.code.sf.net/p/irstlm/code/trunk irstlm
+    git clone git@github.com:irstlm-team/irstlm.git irstlm
   ) || {
     errcho "****() Error getting the IRSTLM sources. The server hosting it"
     errcho "****() might be down."
