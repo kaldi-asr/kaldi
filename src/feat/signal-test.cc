@@ -25,8 +25,8 @@ namespace kaldi {
 
 void UnitTestBlockConvolution() {
   for (int32 i = 0; i < 5; i++) {
-    int32 signal_length = 4000000 + Rand() % 400000;
-    int32 filter_length = 10000 + Rand() % 1000;
+    int32 signal_length = 400000 + Rand() % 40000;
+    int32 filter_length = 1000 + Rand() % 100;
     Vector<BaseFloat> signal(signal_length);
     Vector<BaseFloat> filter(filter_length);
     signal.SetRandn();
@@ -40,8 +40,8 @@ void UnitTestBlockConvolution() {
 
 void UnitTestConvolution() {
   for (int32 i = 0; i < 5; i++) {
-    int32 signal_length = 40000 + Rand() % 4000;
-    int32 filter_length = 100 + Rand() % 100;
+    int32 signal_length = 4000 + Rand() % 400;
+    int32 filter_length = 10 + Rand() % 10;
     Vector<BaseFloat> signal(signal_length);
     Vector<BaseFloat> filter(filter_length);
     signal.SetRandn();

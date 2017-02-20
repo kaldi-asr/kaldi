@@ -19,6 +19,9 @@ skip_optimization=false     # If you only search for few thousands of keywords, 
                             # can skip the optimization; but if you're going to search for
                             # millions of keywords, you'd better do set this optimization to
                             # false and do the optimization on the final index.
+frame_subsampling_factor=   # We will try to autodetect this. You should specify
+                            # the right value if your directory structure is
+                            # non-standard
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -52,23 +55,37 @@ srcdir=`dirname $decodedir`; # The model directory is one level up from decoding
 mkdir -p $kwsdir/log;
 nj=`cat $decodedir/num_jobs` || exit 1;
 echo $nj > $kwsdir/num_jobs;
+
 utter_id=$kwsdatadir/utter_id
+if [ ! -f $utter_id ] ; then
+  utter_id=$kwsdatadir/utt.map
+fi
+
 
 if [ -z "$model" ]; then # if --model <mdl> was not specified on the command line...
   model=$srcdir/final.mdl;
 fi
 
 for f in $model $decodedir/lat.1.gz $utter_id; do
-  [ ! -f $f ] && echo "make_index.sh: no such file $f" && exit 1;
+  [ ! -f $f ] && echo "$0: Error: no such file $f" && exit 1;
 done
 
-echo "Using model: $model"
+echo "$0: Using model: $model"
 
 if [ ! -z $silence_word ]; then
   silence_int=`grep -w $silence_word $langdir/words.txt | awk '{print $2}'`
   [ -z $silence_int ] && \
-    echo "Error: could not find integer representation of silence word $silence_word" && exit 1;
+    echo "$0: Error: could not find integer representation of silence word $silence_word" && exit 1;
   silence_opt="--silence-label=$silence_int"
+fi
+
+if [ -z "$frame_subsampling_factor" ]; then
+  if [ -f $decodedir/../frame_subsampling_factor ] ; then
+    frame_subsampling_factor=$(cat $decodedir/../frame_subsampling_factor)
+  else 
+    frame_subsampling_factor=1
+  fi
+  echo "$0: Frame subsampling factor autodetected: $frame_subsampling_factor"
 fi
 
 word_boundary=$langdir/phones/word_boundary.int
@@ -79,6 +96,7 @@ if [ -f $word_boundary ] ; then
       lattice-align-words $silence_opt --max-expand=$max_expand $word_boundary $model  ark:- ark:- \| \
       lattice-scale --acoustic-scale=$acwt --lm-scale=$lmwt ark:- ark:- \| \
       lattice-to-kws-index --max-states-scale=$max_states_scale --allow-partial=true \
+      --frame-subsampling-factor=$frame_subsampling_factor \
       --max-silence-frames=$max_silence_frames --strict=$strict ark:$utter_id ark:- ark:- \| \
       kws-index-union --skip-optimization=$skip_optimization --strict=$strict --max-states=$max_states \
       ark:- "ark:|gzip -c > $kwsdir/index.JOB.gz" || exit 1
@@ -88,11 +106,12 @@ elif [ -f $align_lexicon ]; then
       lattice-align-words-lexicon $silence_opt --max-expand=$max_expand $align_lexicon $model  ark:- ark:- \| \
       lattice-scale --acoustic-scale=$acwt --lm-scale=$lmwt ark:- ark:- \| \
       lattice-to-kws-index --max-states-scale=$max_states_scale --allow-partial=true \
+      --frame-subsampling-factor=$frame_subsampling_factor \
       --max-silence-frames=$max_silence_frames --strict=$strict ark:$utter_id ark:- ark:- \| \
       kws-index-union --skip-optimization=$skip_optimization --strict=$strict --max-states=$max_states \
       ark:- "ark:|gzip -c > $kwsdir/index.JOB.gz" || exit 1
 else
-  echo "$0: cannot find either word-boundary file $word_boundary or alignment lexicon $align_lexicon"
+  echo "$0: Error: cannot find either word-boundary file $word_boundary or alignment lexicon $align_lexicon"
   exit 1
 fi
 

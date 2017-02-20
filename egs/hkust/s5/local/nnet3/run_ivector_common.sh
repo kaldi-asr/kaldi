@@ -71,14 +71,14 @@ fi
 if [ $stage -le 3 ] && [ -z $ivector_extractor ]; then
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 \
     --num-frames 700000 \
-    data/train_hires 512 exp/nnet3/tri5 exp/nnet3/diag_ubm
+    data/train_hires_nopitch 512 exp/nnet3/tri5 exp/nnet3/diag_ubm
 fi
 
 if [ $stage -le 4 ] && [ -z $ivector_extractor ]; then
   # iVector extractors can in general be sensitive to the amount of data, but
   # this one has a fairly small dim (defaults to 100)
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
-    data/train_hires exp/nnet3/diag_ubm exp/nnet3/extractor || exit 1;
+    data/train_hires_nopitch exp/nnet3/diag_ubm exp/nnet3/extractor || exit 1;
   ivector_extractor=exp/nnet3/extractor
 fi
 

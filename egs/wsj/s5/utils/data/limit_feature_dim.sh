@@ -1,5 +1,5 @@
 #!/bin/bash
-77;20003;0c
+
 # Copyright 2016  Alibaba Robotics Corp. (author: Xingyu Na)
 # Apache 2.0
 

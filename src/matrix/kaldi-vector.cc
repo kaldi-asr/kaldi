@@ -307,6 +307,14 @@ void VectorBase<Real>::SetRandn() {
 }
 
 template<typename Real>
+void VectorBase<Real>::SetRandUniform() {
+  kaldi::RandomState rstate;
+  for (MatrixIndexT i = 0; i < Dim(); i++) {
+    *(data_+i) = RandUniform(&rstate);
+  }
+}
+
+template<typename Real>
 MatrixIndexT VectorBase<Real>::RandCategorical() const {
   kaldi::RandomState rstate;
   Real sum = this->Sum();
@@ -1021,8 +1029,8 @@ template<typename OtherReal>
 void VectorBase<Real>::AddVec(const Real alpha, const VectorBase<OtherReal> &v) {
   KALDI_ASSERT(dim_ == v.dim_);
   // remove __restrict__ if it causes compilation problems.
-  register Real *__restrict__ data = data_;
-  register OtherReal *__restrict__ other_data = v.data_;
+  Real *__restrict__ data = data_;
+  OtherReal *__restrict__ other_data = v.data_;
   MatrixIndexT dim = dim_;
   if (alpha != 1.0)
     for (MatrixIndexT i = 0; i < dim; i++)
@@ -1042,8 +1050,8 @@ template<typename OtherReal>
 void VectorBase<Real>::AddVec2(const Real alpha, const VectorBase<OtherReal> &v) {
   KALDI_ASSERT(dim_ == v.dim_);
   // remove __restrict__ if it causes compilation problems.
-  register Real *__restrict__ data = data_;
-  register OtherReal *__restrict__ other_data = v.data_;
+  Real *__restrict__ data = data_;
+  OtherReal *__restrict__ other_data = v.data_;
   MatrixIndexT dim = dim_;
   if (alpha != 1.0)
     for (MatrixIndexT i = 0; i < dim; i++)

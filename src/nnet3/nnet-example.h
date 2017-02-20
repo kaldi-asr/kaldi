@@ -75,6 +75,22 @@ struct NnetIo {
 };
 
 
+/// This hashing object hashes just the structural aspects of the NnetIo object
+/// (name, indexes, feature dimension) without looking at the value of features.
+/// It will be used in combining egs into batches of all similar structure.
+struct NnetIoStructureHasher {
+  size_t operator () (const NnetIo &a) const;
+};
+/// This comparison object compares just the structural aspects of the NnetIo
+/// object (name, indexes, feature dimension) without looking at the value of
+/// features.  It will be used in combining egs into batches of all similar
+/// structure.
+struct NnetIoStructureCompare {
+  bool operator () (const NnetIo &a,
+                    const NnetIo &b) const;
+};
+
+
 
 /// NnetExample is the input data and corresponding label (or labels) for one or
 /// more frames of input, used for standard cross-entropy training of neural
@@ -102,6 +118,38 @@ struct NnetExample {
   /// testing code.
   bool operator == (const NnetExample &other) const { return io == other.io; }
 };
+
+
+/// This hashing object hashes just the structural aspects of the NnetExample
+/// without looking at the value of the features.  It will be used in combining
+/// egs into batches of all similar structure.  Note: the hash value is
+/// sensitive to the order in which the NnetIo elements (input and outputs)
+/// appear, even though the merging is capable of dealing with
+/// differently-ordered inputs and outputs (e.g.  "input" appearing before
+/// vs. after "ivector" or "output").  We don't think anyone would ever have to
+/// deal with differently-ordered, but otherwise identical, egs in practice so
+/// we don't bother making the hashing function independent of this order.
+struct NnetExampleStructureHasher {
+  size_t operator () (const NnetExample &eg) const;
+  // We also provide a version of this that works from pointers.
+  size_t operator () (const NnetExample *eg) const { return (*this)(*eg); }
+};
+
+
+/// This comparator object compares just the structural aspects of the
+/// NnetExample without looking at the value of the features.  Like
+/// NnetExampleStructureHasher, it is sensitive to the order in which the
+/// differently-named NnetIo elements appear.  This hashing object will be used
+/// in combining egs into batches of all similar structure.
+struct NnetExampleStructureCompare {
+  bool operator () (const NnetExample &a,
+                    const NnetExample &b) const;
+  // We also provide a version of this that works from pointers.
+  bool operator () (const NnetExample *a,
+                    const NnetExample *b) const { return (*this)(*a, *b); }
+
+};
+
 
 
 typedef TableWriter<KaldiObjectHolder<NnetExample > > NnetExampleWriter;

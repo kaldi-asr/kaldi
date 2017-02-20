@@ -30,16 +30,15 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
     opts_(opts),
     den_graph_(den_fst, nnet->OutputDim("output")),
     nnet_(nnet),
-    compiler_(*nnet, opts_.nnet_config.optimize_config),
+    compiler_(*nnet, opts_.nnet_config.optimize_config,
+              opts_.nnet_config.compiler_config),
     num_minibatches_processed_(0) {
   if (opts.nnet_config.zero_component_stats)
     ZeroComponentStats(nnet);
   KALDI_ASSERT(opts.nnet_config.momentum >= 0.0 &&
                opts.nnet_config.max_param_change >= 0.0);
   delta_nnet_ = nnet_->Copy();
-  bool is_gradient = false;  // setting this to true would disable the
-                             // natural-gradient updates.
-  SetZero(is_gradient, delta_nnet_);
+  ScaleNnet(0.0, delta_nnet_);
   const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
   num_max_change_per_component_applied_.resize(num_updatable, 0);
   num_max_change_global_applied_ = 0;
@@ -73,10 +72,10 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
                         *nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, chain_eg.inputs);
-  computer.Forward();
+  computer.Run();
 
   this->ProcessOutputs(chain_eg, &computer);
-  computer.Backward();
+  computer.Run();
 
   UpdateParamsWithMaxChange();
 }
@@ -134,7 +133,7 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
         xent_deriv.MulRowsVec(cu_deriv_weights);
     }
 
-    computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
+    computer->AcceptInput(sup.name, &nnet_output_deriv);
 
     objf_info_[sup.name].UpdateStats(sup.name, opts_.nnet_config.print_interval,
                                      num_minibatches_processed_++,
@@ -142,7 +141,7 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
 
     if (use_xent) {
       xent_deriv.Scale(opts_.chain_config.xent_regularize);
-      computer->AcceptOutputDeriv(xent_name, &xent_deriv);
+      computer->AcceptInput(xent_name, &xent_deriv);
     }
   }
 }
@@ -200,7 +199,7 @@ void NnetChainTrainer::UpdateParamsWithMaxChange() {
     if (param_delta > nnet_config.max_param_change) {
       if (param_delta - param_delta != 0.0) {
         KALDI_WARN << "Infinite parameter change, will not apply.";
-        SetZero(false, delta_nnet_);
+        ScaleNnet(0.0, delta_nnet_);
       } else {
         scale *= nnet_config.max_param_change / param_delta;
         num_max_change_global_applied_++;
@@ -241,6 +240,7 @@ bool NnetChainTrainer::PrintTotalStats() const {
     const ObjectiveFunctionInfo &info = iter->second;
     ans = info.PrintTotalStats(name) || ans;
   }
+  PrintMaxChangeStats();
   return ans;
 }
 

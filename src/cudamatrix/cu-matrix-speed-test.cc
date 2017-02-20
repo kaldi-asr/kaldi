@@ -998,7 +998,7 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixAddMatBlocks<Real>(sizes[s], 3, 3);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixMatMat<Real>(sizes[s]);
-  for (int32 s = 0; s < ns; s++)
+  for (int32 s = 0; s + 1 < ns; s++)
     TestCuMatrixMatMatBatched<Real>(sizes[s], 10);
   for (int32 s = 0; s < ns; s++) {
     TestCuMatrixAddDiagVecMat<Real>(sizes[s], kNoTrans);
@@ -1050,7 +1050,7 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixCopyUpperToLower<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSetZeroAboveDiag<Real>(sizes[s]);
-  for (int32 s = 0; s < ns; s++)
+  for (int32 s = 0; s + 2 < ns; s++)
     TestCuMatrixLookup<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixCopyRows1<Real>(sizes[s]);
@@ -1085,8 +1085,9 @@ template<typename Real> void CudaMatrixSpeedTest() {
 
 
 int main() {
-  for (int32 loop = 0; loop < 2; loop++) {
+  int32 loop = 0;
 #if HAVE_CUDA == 1
+  for (loop = 0; loop < 2; loop++) {
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
     else
@@ -1103,9 +1104,9 @@ int main() {
 #else
     kaldi::CudaMatrixSpeedTest<double>();
 #endif
-  }
 #if HAVE_CUDA == 1
+  } // No for loop if 'HAVE_CUDA != 1',
   CuDevice::Instantiate().PrintProfile();
 #endif
-  std::cout << "Tests succeeded.\n";
+  KALDI_LOG << "Tests succeeded.";
 }

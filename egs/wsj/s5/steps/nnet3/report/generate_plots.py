@@ -48,34 +48,40 @@ def get_args():
     parser = argparse.ArgumentParser(
         description="""Parses the training logs and generates a variety of
         plots.
-        e.g.: steps/nnet3/report/generate_plots.py \\
+        e.g. (deprecated): steps/nnet3/report/generate_plots.py \\
         --comparison-dir exp/nnet3/tdnn1 --comparison-dir exp/nnet3/tdnn2 \\
-        exp/nnet3/tdnn exp/nnet3/tdnn/report""")
+        exp/nnet3/tdnn exp/nnet3/tdnn/report
+        e.g. (current): steps/nnet3/report/generate_plots.py \\
+        exp/nnet3/tdnn exp/nnet3/tdnn1 exp/nnet3/tdnn2 exp/nnet3/tdnn/report""")
 
     parser.add_argument("--comparison-dir", type=str, action='append',
                         help="other experiment directories for comparison. "
-                        "These will only be used for plots, not tables")
+                        "These will only be used for plots, not tables"
+                        "Note: this option is deprecated.")
     parser.add_argument("--start-iter", type=int,
                         help="Iteration from which plotting will start",
                         default=1)
     parser.add_argument("--is-chain", type=str, default=False,
                         action=common_lib.StrToBoolAction,
-                        help="Iteration from which plotting will start")
+                        help="True if directory contains chain models")
     parser.add_argument("--output-nodes", type=str, default=None,
                         action=common_lib.NullstrToNoneAction,
                         help="""List of space separated
                         <output-node>:<objective-type> entities,
                         one for each output node""")
-    parser.add_argument("exp_dir",
-                        help="experiment directory, e.g. exp/nnet3/tdnn")
+    parser.add_argument("exp_dir", nargs='+',
+                        help="the first dir is the experiment directory, "
+                        "e.g. exp/nnet3/tdnn, the rest dirs (if exist) "
+                        "are other experiment directories for comparison.")
     parser.add_argument("output_dir",
                         help="experiment directory, "
                         "e.g. exp/nnet3/tdnn/report")
 
     args = parser.parse_args()
-    if args.comparison_dir is not None and len(args.comparison_dir) > 6:
+    if (args.comparison_dir is not None and len(args.comparison_dir) > 6) or \
+    (args.exp_dir is not None and len(args.exp_dir) > 7):
         raise Exception(
-            """max 6 --comparison-dir options can be specified.
+            """max 6 comparison directories can be specified.
             If you want to compare with more comparison_dir, you would have to
             carefully tune the plot_colors variable which specified colors used
             for plotting.""")
@@ -150,10 +156,10 @@ def latex_compliant_name(name_string):
     return node_name_string
 
 
-def generate_accuracy_plots(exp_dir, output_dir, plot, key='accuracy',
-                            file_basename='accuracy', comparison_dir=None,
-                            start_iter=1,
-                            latex_report=None, output_name='output'):
+def generate_acc_logprob_plots(exp_dir, output_dir, plot, key='accuracy',
+        file_basename='accuracy', comparison_dir=None,
+        start_iter=1, latex_report=None, output_name='output'):
+
     assert start_iter >= 1
 
     if plot:
@@ -164,20 +170,21 @@ def generate_accuracy_plots(exp_dir, output_dir, plot, key='accuracy',
     dirs = [exp_dir] + comparison_dir
     index = 0
     for dir in dirs:
-        [accuracy_report, accuracy_times,
-         accuracy_data] = log_parse.generate_accuracy_report(dir, key,
-                                                             output_name)
+        [report, times, data] = log_parse.generate_acc_logprob_report(dir, key,
+                output_name)
         if index == 0:
             # this is the main experiment directory
             with open("{0}/{1}.log".format(output_dir,
                                            file_basename), "w") as f:
-                f.write(accuracy_report)
+                f.write(report)
 
         if plot:
             color_val = g_plot_colors[index]
-            data = np.array(accuracy_data)
+            data = np.array(data)
             if data.shape[0] == 0:
-                raise Exception("Couldn't find any rows for the accuracy plot")
+                logger.warning("Couldn't find any rows for the"
+                               "accuracy/log-probability plot, not generating it")
+                return
             data = data[data[:, 0] >= start_iter, :]
             plot_handle, = plt.plot(data[:, 0], data[:, 1], color=color_val,
                                     linestyle="--",
@@ -218,6 +225,10 @@ def generate_nonlin_stats_plots(exp_dir, output_dir, plot, comparison_dir=None,
     for dir in dirs:
         stats_per_component_per_iter = (
             log_parse.parse_progress_logs_for_nonlinearity_stats(dir))
+        for key in stats_per_component_per_iter:
+            if len(stats_per_component_per_iter[key]['stats']) == 0:
+                logger.warning("Couldn't find any rows for the"
+                               "nonlin stats plot, not generating it")
         stats_per_dir[dir] = stats_per_component_per_iter
 
     # convert the nonlin stats into tables
@@ -348,6 +359,9 @@ def generate_clipped_proportion_plots(exp_dir, output_dir, plot,
                           " this might be because there are no "
                           "ClipGradientComponents.".format(dir))
             continue
+        if len(stats_per_dir[dir]) == 0: 
+            logger.warning("Couldn't find any rows for the"
+                           "clipped proportion plot, not generating it")
     try:
         main_cp_stats = stats_per_dir[exp_dir]['table']
     except KeyError:
@@ -588,28 +602,28 @@ def generate_plots(exp_dir, output_dir, output_names, comparison_dir=None,
     for (output_name, objective_type) in output_names:
         if objective_type == "linear":
             logger.info("Generating accuracy plots")
-            generate_accuracy_plots(
+            generate_acc_logprob_plots(
                 exp_dir, output_dir, g_plot, key='accuracy',
                 file_basename='accuracy', comparison_dir=comparison_dir,
                 start_iter=start_iter,
                 latex_report=latex_report, output_name=output_name)
 
             logger.info("Generating log-likelihood plots")
-            generate_accuracy_plots(
+            generate_acc_logprob_plots(
                 exp_dir, output_dir, g_plot, key='log-likelihood',
                 file_basename='loglikelihood', comparison_dir=comparison_dir,
                 start_iter=start_iter,
                 latex_report=latex_report, output_name=output_name)
         elif objective_type == "chain":
             logger.info("Generating log-probability plots")
-            generate_accuracy_plots(
+            generate_acc_logprob_plots(
                 exp_dir, output_dir, g_plot,
                 key='log-probability', file_basename='log_probability',
                 comparison_dir=comparison_dir, start_iter=start_iter,
                 latex_report=latex_report, output_name=output_name)
         else:
             logger.info("Generating " + objective_type + " objective plots")
-            generate_accuracy_plots(
+            generate_acc_logprob_plots(
                 exp_dir, output_dir, g_plot, key='objective',
                 file_basename='objective', comparison_dir=comparison_dir,
                 start_iter=start_iter,
@@ -654,9 +668,18 @@ def main():
     else:
         output_nodes.append(('output', 'linear'))
 
-    generate_plots(args.exp_dir, args.output_dir, output_nodes,
-                   comparison_dir=args.comparison_dir,
-                   start_iter=args.start_iter)
+    if args.comparison_dir is not None:
+      generate_plots(args.exp_dir[0], args.output_dir, output_nodes,
+                     comparison_dir=args.comparison_dir,
+                     start_iter=args.start_iter)
+    else:
+      if len(args.exp_dir) == 1:
+        generate_plots(args.exp_dir[0], args.output_dir, output_nodes,
+                       start_iter=args.start_iter)
+      if len(args.exp_dir) > 1:
+        generate_plots(args.exp_dir[0], args.output_dir, output_nodes,
+                       comparison_dir=args.exp_dir[1:],
+                       start_iter=args.start_iter)
 
 
 if __name__ == "__main__":

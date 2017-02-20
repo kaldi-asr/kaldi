@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Formatting the Mississippi State dictionary for use in Edinburgh. Differs 
+# Formatting the Mississippi State dictionary for use in Edinburgh. Differs
 # from the one in Kaldi s5 recipe in that it uses lower-case --Arnab (Jan 2013)
 
 # To be run from one directory above this script.
@@ -16,7 +16,7 @@ mkdir -p $dir
 srcdict=$srcdir/swb_ms98_transcriptions/sw-ms98-dict.text
 
 # assume swbd_p1_data_prep.sh was done already.
-[ ! -f "$srcdict" ] && echo "No such file $srcdict" && exit 1;
+[ ! -f "$srcdict" ] && echo "$0: No such file $srcdict" && exit 1;
 
 cp $srcdict $dir/lexicon0.txt || exit 1;
 patch <local/dict.patch $dir/lexicon0.txt || exit 1;
@@ -60,7 +60,7 @@ cp local/MSU_single_letter.txt $dir/
 # becomes
 # -B-
 # Also, curly braces, which appear to be used for "nonstandard"
-# words or non-words, are removed, e.g. 
+# words or non-words, are removed, e.g.
 # {WOLMANIZED} W OW L M AX N AY Z D
 # -> WOLMANIZED
 # Also, mispronounced words, e.g.
@@ -90,4 +90,3 @@ ln -sf lexicon5.txt lexicon.txt # This is the final lexicon.
 popd >&/dev/null
 rm $dir/lexiconp.txt 2>/dev/null
 echo Prepared input dictionary and phone-sets for Switchboard phase 1.
-

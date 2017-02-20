@@ -377,6 +377,31 @@ static void UnitTestCuMatrixCopyRowsFromVec() {
 
 
 template<typename Real>
+static void UnitTestCuMatrixCopyColsFromVec() {
+  for (int32 p = 0; p < 2; p++) {
+    int32 num_rows = 100 + Rand() % 255;
+    int32 num_cols = 100 + Rand() % 200;
+
+    int32 vec_dim;
+    if (p % 2 == 0) vec_dim = num_rows;
+    else vec_dim = num_cols * num_rows;
+
+    CuVector<Real> cu_vec(vec_dim);
+    cu_vec.SetRandn();
+    Vector<Real> vec(cu_vec);
+
+    CuMatrix<Real> cu_mat(num_rows, num_cols);
+    cu_mat.CopyColsFromVec(cu_vec);
+    Matrix<Real> mat(num_rows, num_cols);
+    mat.CopyColsFromVec(vec);
+
+    Matrix<Real> mat2(cu_mat);
+    AssertEqual(mat, mat2);
+  }
+}
+
+
+template<typename Real>
 static void UnitTestCuMatrixCopyRows() {
   for (int32 p = 0; p < 2; p++) {
     MatrixIndexT num_rows1 = 10 + Rand() % 10,
@@ -843,6 +868,27 @@ static void UnitTestCuMatrixMax() {
   Da.CopyToMat(&Ha2);
 
   AssertEqual(Ha,Ha2);
+}
+
+template<typename Real>
+static void UnitTestCuMatrixMin() {
+  Matrix<Real> Ha(100,100);
+  Matrix<Real> Hb(100,100);
+  Ha.SetRandn();
+  Hb.SetRandn();
+
+  CuMatrix<Real> Da(100,100);
+  CuMatrix<Real> Db(100,100);
+  Da.CopyFromMat(Ha);
+  Db.CopyFromMat(Hb);
+
+  Da.Min(Db);
+  Ha.Min(Hb);
+
+  Matrix<Real> Ha2(100,100);
+  Da.CopyToMat(&Ha2);
+
+  AssertEqual(Ha, Ha2);
 }
 
 
@@ -1574,7 +1620,7 @@ static void UnitTestCuMatrixAddMatTp() {
 
 template<typename Real>
 static void UnitTestCuMatrixTranspose() {
-  for (int32 i = 1; i < 10; i++) {
+  for (int32 i = 1; i < 2; i++) {
     MatrixIndexT dimM = 5 * i + Rand() % 10,
         dimN = dimM;
     if (i % 2 == 0) dimN += 5;
@@ -1582,8 +1628,11 @@ static void UnitTestCuMatrixTranspose() {
     CuMatrix<Real> A(dimM, dimN);
     A.SetRandn();
     CuMatrix<Real> B(A, kTrans);
-    A.Transpose();
-    AssertEqual(A, B);
+
+    Matrix<Real> hA(A);
+    Matrix<Real> hB(B);
+    hB.Transpose();
+    AssertEqual(hA, hB);
   }
 }
 
@@ -2592,6 +2641,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixMulElements<Real>();
   UnitTestCuMatrixDivElements<Real>();
   UnitTestCuMatrixMax<Real>();
+  UnitTestCuMatrixMin<Real>();
   UnitTestCuMatrixMulColsVec<Real>();
   UnitTestCuMatrixMulRowsVec<Real>();
   UnitTestCuMatrixDivRowsVec<Real>();
@@ -2615,6 +2665,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixSumColumnRanges<Real>();
   UnitTestCuMatrixCopyRows<Real>();
   UnitTestCuMatrixCopyRowsFromVec<Real>();
+  UnitTestCuMatrixCopyColsFromVec<Real>();
   UnitTestCuMatrixCopyToRows<Real>();
   UnitTestCuMatrixAddRows<Real>();
   UnitTestCuMatrixAddToRows<Real>();
@@ -2678,8 +2729,9 @@ template<typename Real> void CudaMatrixUnitTest() {
 
 
 int main() {
-  for (int32 loop = 0; loop < 2; loop++) {
+  int32 loop = 0;
 #if HAVE_CUDA == 1
+  for (loop = 0; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
@@ -2688,7 +2740,6 @@ int main() {
 #endif
 
     kaldi::CudaMatrixUnitTest<float>();
-
 
 #if HAVE_CUDA == 1
     if (CuDevice::Instantiate().DoublePrecisionSupported()) {
@@ -2704,9 +2755,9 @@ int main() {
       KALDI_LOG << "Tests without GPU use succeeded.";
     else
       KALDI_LOG << "Tests with GPU use (if available) succeeded.";
-  }
-  SetVerboseLevel(4);
 #if HAVE_CUDA == 1
+  } // No for loop if 'HAVE_CUDA != 1',
+  SetVerboseLevel(4);
   CuDevice::Instantiate().PrintProfile();
 #endif
   return 0;

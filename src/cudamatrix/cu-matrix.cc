@@ -722,6 +722,31 @@ void CuMatrixBase<Real>::Max(const CuMatrixBase<Real>& A) {
 
 
 template<typename Real>
+void CuMatrixBase<Real>::Min(const CuMatrixBase<Real>& A) {
+  #if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    KALDI_ASSERT(num_cols_ == A.NumCols());
+    KALDI_ASSERT(num_rows_ == A.NumRows());
+
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                          &dimGrid, &dimBlock);
+
+    cuda_min(dimGrid, dimBlock, data_, A.data_, Dim(), A.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    Mat().Min(A.Mat());
+  }
+}
+
+
+template<typename Real>
 void CuMatrixBase<Real>::MulColsVec(const CuVectorBase<Real> &scale) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -2135,6 +2160,43 @@ void CuMatrixBase<Real>::CopyRowsFromVec(const VectorBase<Real> &v) {
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::CopyColsFromVec(const CuVectorBase<Real> &rv) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    if (rv.Dim() == num_rows_ * num_cols_) {
+      // treat rv as a matrix of the size (num_cols x num_rows_)
+      // and use transposed copy to fill *this
+      // see CuMatrixBase<Real>::CopyFromMat() for more detail of the impl
+      MatrixDim rv_dim = { num_cols_, num_rows_, num_rows_ };
+      const int32 warpSize = 32;
+      dim3 dimBlock(warpSize, CU1DBLOCK / warpSize);
+      dim3 dimGrid(n_blocks(rv_dim.cols, warpSize),
+                   n_blocks(rv_dim.rows, warpSize));
+      cuda_copy_from_mat_trans(dimGrid, dimBlock, data_, rv.Data(), Dim(),
+                               rv_dim);
+      CU_SAFE_CALL(cudaGetLastError());
+    } else if (rv.Dim() == num_rows_) {
+      // use 2D block (8x32) and large enough grid to cover matrix *this
+      // dimBlock.x need to be at least warpSize for coalesced memory access.
+      const int32 warpSize = 32;
+      dim3 dimBlock(warpSize, CU1DBLOCK / warpSize);
+      dim3 dimGrid(n_blocks(num_cols_, dimBlock.x),
+                   n_blocks(num_rows_, dimBlock.y));
+      cuda_copy_cols_from_vec(dimGrid, dimBlock, Data(), Dim(), rv.Data());
+      CU_SAFE_CALL(cudaGetLastError());
+    } else {
+      KALDI_ERR<< "Wrong sized arguments";
+    }
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().CopyColsFromVec(rv.Vec());
+  }
+}
+
 
 template<typename Real>
 void CuMatrixBase<Real>::CopyColFromVec(const CuVectorBase<Real> &v,
@@ -2801,7 +2863,7 @@ void CuMatrix<Real>::Transpose() {
     return;
   // Copy and swap for all cases.
   // No need for a separate kernel of squared matrix in-place transpose.
-  // It has the same posible peak performance as copy transpose,
+  // It has the same possible peak performance as copy_transpose,
   // if allocate/deallocate overhead can be ignored.
   CuMatrix<Real> tmp(*this, kTrans);
   this->Swap(&tmp);
