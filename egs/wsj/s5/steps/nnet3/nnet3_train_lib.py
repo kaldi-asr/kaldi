@@ -83,6 +83,31 @@ def RunKaldiCommand(command, wait = True):
     else:
         return p
 
+def ComputeRegularizeParams(log_file_pattern, iter, max_reg=1.0, reg_pow=0.01, reg_multiplier=1.0):
+  """ compute the regularization coefficients for different regularization term
+      using the output on validation set.
+      The new regularization term computed as 
+      max(max_reg, reg_multiplier * (objective value for regularizer on validation)^reg_pow)
+  """
+  parse_regex = re.compile("LOG .* Overall log-probability for '(regularize-.*)' is "
+  "([0-9e.\-+]+) per frame, over ([0-9e.\-+]+) frames.")
+  objf = []
+  output_names = []
+  logfile = re.sub('%', str(iter), log_file_pattern)
+  lines = open(logfile, 'r').readlines()
+  this_objf = -100.0
+  for line_num in range(1, len(lines)):
+    mat_obj = parse_regex.search(lines[line_num])
+    if mat_obj is not None:
+      output_names.append(mat_obj.group(1))
+      this_objf = float(mat_obj.group(2))
+      objf.append(this_objf);
+  reg_terms = [] 
+  for obj_val in objf:
+    reg_term = min(max_reg, reg_multiplier*float(math.pow(obj_val, reg_pow)))
+    reg_terms.append(reg_term);
+  return [output_names, reg_terms]
+
 def GetSuccessfulModels(num_models, log_file_pattern, difference_threshold=1.0):
     assert(num_models > 0)
 
@@ -766,5 +791,29 @@ def ComputeTwinDropout(iter_per_stages, min_dropout = 0.0,
     dp_prop.append(max_dropout)
 
   return dp_prop
+# This function changes the input of each layer for primary part of network 
+# to be just function of X as X+HX.
+# Also it removes output node and regularizer terms for twin part of network
+def RemoveTwinNetwork(dir, iter, run_opts, remove_extra_outputs = False):
+  model = '{0}/{1}.mdl'.format(dir, iter)
+  edit_opts=''
+  if remove_extra_outputs:
+    remove_output_str = '{0}/configs/remove_output.config'.format(dir)
+    remove_output_file = open(remove_output_str, 'w')
+    # remove output node for twin part of network
+    #print('remove-output-node name=*twin*', file=remove_output_file)
+    # remove output node for regularizer terms
+    #print('remove-output-node name=*regularize*'.format(), file=remove_output_file)
+    remove_output_file.close()
+  edit_opts='--edits-config={0} --edits=remove-orphans'.format(remove_output_str)
 
+  # config to change input for primary part of network to be just function of X as X+HX
+  edit_opts='{0} --nnet-config={1}/configs/edit.config'.format(edit_opts, dir)
 
+  RunKaldiCommand("""
+  {command} {dir}/log/edit_model.{iter}.log \
+    nnet3-am-copy {edit_opts} {model} {dir}/{iter}.mdl
+    """.format(command = run_opts.command, 
+               dir = dir, iter = iter,
+               model = model,
+               edit_opts = edit_opts))

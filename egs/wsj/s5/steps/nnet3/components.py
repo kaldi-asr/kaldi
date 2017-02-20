@@ -130,7 +130,7 @@ def AddAffineLayer(config_lines, name, input, output_dim, ng_affine_options = ""
     return {'descriptor':  '{0}_affine'.format(name),
             'dimension': output_dim}
 
-def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0, self_repair_scale = None):
+def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0, self_repair_scale = None, add_norm_layer = True):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
@@ -138,13 +138,15 @@ def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options 
     self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
     components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], output_dim, ng_affine_options))
     components.append("component name={0}_relu type=RectifiedLinearComponent dim={1} {2}".format(name, output_dim, self_repair_string))
-    components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, output_dim, norm_target_rms))
+    if add_norm_layer:
+      components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, output_dim, norm_target_rms))
 
     component_nodes.append("component-node name={0}_affine component={0}_affine input={1}".format(name, input['descriptor']))
     component_nodes.append("component-node name={0}_relu component={0}_relu input={0}_affine".format(name))
-    component_nodes.append("component-node name={0}_renorm component={0}_renorm input={0}_relu".format(name))
+    if add_norm_layer:
+      component_nodes.append("component-node name={0}_renorm component={0}_renorm input={0}_relu".format(name))
 
-    return {'descriptor':  '{0}_renorm'.format(name),
+    return {'descriptor':  ('{0}_renorm'.format(name) if add_norm_layer is True else '{0}_relu'.format(name)),
             'dimension': output_dim}
 
 def AddAffRelNormWithEphemeralLayer(config_lines, name, input, ephemeral_name, ephemeral_input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0, self_repair_scale = None):
@@ -743,12 +745,350 @@ def AddSigmoidGate(config_lines, name, input, dp_prop = 0.0, self_repair_scale_n
     component_nodes.append("component-node name={0}_gate_sigmoid component={0}_gate_sigmoid input={0}_gate_affine".format(name))
     component_nodes.append("component-node name={0}_gate component={0}_gate input=Append({0}_gate_affine, {1})".format(name, input['descriptor']))
     component_nodes.append("component-node name={0}_gate_dropout component={0}_gate_dropout input={0}_gate".format(name))
-
     return { 
             'descriptor' : '{0}_gate_dropout'.format(name),
             'dimension' : input['dimension']
            }   
-  
+def AddTwinBLstmLayerRegularizer(config_lines,
+                  name, forward_input, backward_input, cell_dim,
+                  recurrent_projection_dim = 0,
+                  non_recurrent_projection_dim = 0,
+                  clipping_threshold = 1.0,
+                  norm_based_clipping = "false",
+                  ng_per_element_scale_options = "",
+                  ng_affine_options = "",
+                  lstm_delay = [-1,1],
+                  self_repair_scale_nonlinearity = None,
+                  self_repair_scale_clipgradient = None,
+                  add_reg = False,
+                  append_twins = False):
+    assert(len(lstm_delay) == 2 and lstm_delay[0] < 0 and lstm_delay[1] > 0)
+    output_forward = AddLstmLayer(config_lines, "{0}_forward".format(name), forward_input, cell_dim,
+                                  recurrent_projection_dim, non_recurrent_projection_dim,
+                                  clipping_threshold, norm_based_clipping,
+                                  ng_per_element_scale_options, ng_affine_options,
+                                  lstm_delay = lstm_delay[0],
+                                  self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
+                                  self_repair_scale_clipgradient = self_repair_scale_clipgradient)
+    output_backward = AddLstmLayer(config_lines, "{0}_backward".format(name), backward_input, cell_dim,
+                                   recurrent_projection_dim, non_recurrent_projection_dim,
+                                   clipping_threshold, norm_based_clipping,
+                                   ng_per_element_scale_options, ng_affine_options,
+                                   lstm_delay = lstm_delay[1],
+                                   self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
+                                   self_repair_scale_clipgradient = self_repair_scale_clipgradient)
+
+
+    if add_reg:
+      # add affine layer for regularizer term NormRel(HX)
+      regularize_name = "{0}_regularize".format(name);
+      regularize_output = AddAffineLayer(config_lines, regularize_name, output_forward, output_backward['dimension'], ng_affine_options = ng_affine_options)
+
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+    
+    
+    if add_reg:
+      # component to compute regularizer term l2_norm(HX - X_twin)
+      components.append("component name={0}_negate_twin type=FixedScaleComponent dim={1} scale={2}".format(name, output_backward['dimension'], -1.0))
+      component_nodes.append("component-node name={0}_negate_twin component={0}_negate_twin input={1}".format(name, output_backward['descriptor']))
+     
+      components.append("component name={0}_regularizer type=NoOpComponent dim={1}".format(name, output_backward['dimension']))
+      component_nodes.append("component-node name={0}_regularizer component={0}_regularizer input=Sum({1}, {0}_negate_twin)".format(name, regularize_output['descriptor']))
+
+      components.append("component name={0}_scaled_regularizer type=FixedScaleComponent dim={1} scale={2}".format(name, output_backward['dimension'], 1.0/output_backward['dimension']))
+      component_nodes.append("component-node name={0}_scaled_regularizer component={0}_scaled_regularizer input={0}_regularizer".format(name))
+
+
+      # Dropout component for DP(Append(X_twin, HX), dp), which applies dp on X_twin and 1-dp and its complement on HX.
+      components.append("component name={0}_dropout_twin_regularize type=DropoutComponent dim={1} dropout-proportion=0.0 complement=true".format(name, 2*output_backward['dimension']))
+      component_nodes.append("component-node name={0}_dropout_twin_regularize component={0}_dropout_twin_regularize input=Append({1}, {2})".format(name, output_backward['descriptor'], regularize_output['descriptor']))
+       
+      # component node to sum x + DP(Hx, 1-dp) + DP(x_twin, dp)
+      # dim-range nodes for two subset as regularization term Hx and twin part Y
+      component_nodes.append("dim-range-node name={0}_dropout_twin input-node={0}_dropout_twin_regularize dim-offset=0 dim={1}".format(name, output_backward['dimension']))
+      component_nodes.append("dim-range-node name={0}_dropout_regularize input-node={0}_dropout_twin_regularize dim-offset={1} dim={1}".format(name, output_backward['dimension']))
+
+      # component to connect twins using ephemeral connection
+      if append_twins:
+        final_output_dim = output_forward['dimension']+output_backward['dimension']
+        components.append("component name={0}_sum_twins type=NoOpComponent dim={1}".format(name, final_output_dim))
+        component_nodes.append("component-node name={0}_renorm_sum component={0}_sum_twins input=Append({1}, Sum({0}_dropout_twin, {0}_dropout_regularize))".format(name, output_forward['descriptor']))
+      else:
+        assert(output_forward['dimension'] == output_backward['dimension'])
+        final_output_dim = output_forward['dimension']
+        components.append("component name={0}_sum_twins type=NoOpComponent dim={1}".format(name, final_output_dim))
+        component_nodes.append("component-node name={0}_renorm_sum component={0}_sum_twins input=Sum({1}, Sum({0}_dropout_twin, {0}_dropout_regularize))".format(name, output_forward['descriptor']))
+    else:
+      # Dropout for X_twin
+      components.append("component name={0}_dropout type=DropoutComponent dim={1} dropout-proportion=0.0".format(name, output_backward['dimension']))
+      component_nodes.append("component-node name={0}_dropout component={0}_dropout input={1}".format(name, output_backward['descriptor']))
+      if append_twins:
+        final_output_dim = output_forward['dimension']+output_backward['dimension']
+        components.append("component name={0}_sum_twins type=NoOpComponent dim={1}".format(name, final_output_dim))
+        component_nodes.append("component-node name={0}_renorm_sum component={0}_sum_twins input=Append({1}, {0}_dropout)".format(name, output_forward['descriptor']))
+      else:
+        assert(output_forward['dimension'] == output_backward['dimension'])
+        final_output_dim = output_forward['dimension']
+        components.append("component name={0}_sum_twins type=NoOpComponent dim={1}".format(name, final_output_dim))
+        component_nodes.append("component-node name={0}_renorm_sum component={0}_sum_twins input=Sum({1}, {0}_dropout)".format(name, output_forward['descriptor']))
+
+    output_descriptor = 'Append({0}, {1})'.format(output_forward['descriptor'], output_backward['descriptor'])
+    output_dim = output_forward['dimension'] + output_backward['dimension']
+
+
+
+    return [{
+            'descriptor': '{0}_renorm_sum'.format(name),
+            'dimension': final_output_dim,
+            'regularizer':('{0}_scaled_regularizer'.format(name) if add_reg is True else ''),
+            },
+            { 
+            'descriptor': output_descriptor,
+            'dimension': output_dim
+            }
+            ]
+
+def AddTwinBLstmLayerRegularizer2(config_lines,
+                  name, forward_input, backward_input, cell_dim,
+                  recurrent_projection_dim = 0,
+                  non_recurrent_projection_dim = 0,
+                  clipping_threshold = 1.0,
+                  norm_based_clipping = "false",
+                  ng_per_element_scale_options = "",
+                  ng_affine_options = "",
+                  lstm_delay = [-1,1],
+                  self_repair_scale_nonlinearity = None,
+                  self_repair_scale_clipgradient = None,
+                  add_reg = False,
+                  append_twins = False,
+                  reg_term=1.0):
+    assert(len(lstm_delay) == 2 and lstm_delay[0] < 0 and lstm_delay[1] > 0)
+    output_forward = AddLstmLayer(config_lines, "{0}_forward".format(name), forward_input, cell_dim,
+                                  recurrent_projection_dim, non_recurrent_projection_dim,
+                                  clipping_threshold, norm_based_clipping,
+                                  ng_per_element_scale_options, ng_affine_options,
+                                  lstm_delay = lstm_delay[0],
+                                  self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
+                                  self_repair_scale_clipgradient = self_repair_scale_clipgradient)
+    output_backward = AddLstmLayer(config_lines, "{0}_backward".format(name), backward_input, cell_dim,
+                                   recurrent_projection_dim, non_recurrent_projection_dim,
+                                   clipping_threshold, norm_based_clipping,
+                                   ng_per_element_scale_options, ng_affine_options,
+                                   lstm_delay = lstm_delay[1],
+                                   self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
+                                   self_repair_scale_clipgradient = self_repair_scale_clipgradient)
+
+
+    if add_reg:
+      # add affine layer for regularizer term ReLU(HX)
+      regularize_name = "{0}_regularize".format(name);
+      regularize_output = AddAffineLayer(config_lines, regularize_name, output_forward, output_backward['dimension'], ng_affine_options = ng_affine_options)
+      
+      # add affine layer for twin as ReLU(H2*X_twin)
+      twin_regularize_name = "{0}_regularize_twin".format(name);
+      twin_regularize_output = AddAffineLayer(config_lines, twin_regularize_name, output_backward, output_backward['dimension'], ng_affine_options = ng_affine_options)
+
+
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+    
+    
+    if add_reg:
+      # component to compute regularizer term l2_norm(HX - H2*X_twin)
+      components.append("component name={0}_negate_regularize_twin type=FixedScaleComponent dim={1} scale={2}".format(name, output_backward['dimension'], -1.0))
+      component_nodes.append("component-node name={0}_negate_regularize_twin component={0}_negate_regularize_twin input={1}".format(name, twin_regularize_output['descriptor']))
+     
+      components.append("component name={0}_regularizer type=NoOpComponent dim={1}".format(name, output_backward['dimension']))
+      component_nodes.append("component-node name={0}_regularizer component={0}_regularizer input=Sum({1}, {0}_negate_regularize_twin)".format(name, regularize_output['descriptor']))
+
+      components.append("component name={0}_scaled_regularizer type=FixedScaleComponent dim={1} scale={2}".format(name, output_backward['dimension'], reg_term/output_backward['dimension']))
+      component_nodes.append("component-node name={0}_scaled_regularizer component={0}_scaled_regularizer input={0}_regularizer".format(name))
+
+
+      # Dropout component for DP(Append(H2X_twin, HX), dp), which applies dp on X_twin and 1-dp and its complement on HX.
+      components.append("component name={0}_dropout_twin_regularize type=DropoutComponent dim={1} dropout-proportion=0.0 complement=true".format(name, 2*output_backward['dimension']))
+      component_nodes.append("component-node name={0}_dropout_twin_regularize component={0}_dropout_twin_regularize input=Append({1}, {2})".format(name, twin_regularize_output['descriptor'], regularize_output['descriptor']))
+       
+      # component node to sum x + DP(Hx, 1-dp) + DP(x_twin, dp)
+      # dim-range nodes for two subset as regularization term Hx and twin part Y
+      component_nodes.append("dim-range-node name={0}_dropout_twin input-node={0}_dropout_twin_regularize dim-offset=0 dim={1}".format(name, output_backward['dimension']))
+      component_nodes.append("dim-range-node name={0}_dropout_regularize input-node={0}_dropout_twin_regularize dim-offset={1} dim={1}".format(name, output_backward['dimension']))
+
+      # component to connect twins using ephemeral connection
+      if append_twins:
+        final_output_dim = output_forward['dimension']+output_backward['dimension']
+        components.append("component name={0}_sum_twins type=NoOpComponent dim={1}".format(name, final_output_dim))
+        component_nodes.append("component-node name={0}_renorm_sum component={0}_sum_twins input=Append({1}, Sum({0}_dropout_twin, {0}_dropout_regularize))".format(name, output_forward['descriptor']))
+      else:
+        assert(output_forward['dimension'] == output_backward['dimension'])
+        final_output_dim = output_forward['dimension']
+        components.append("component name={0}_sum_twins type=NoOpComponent dim={1}".format(name, final_output_dim))
+        component_nodes.append("component-node name={0}_renorm_sum component={0}_sum_twins input=Sum({1}, Sum({0}_dropout_twin, {0}_dropout_regularize))".format(name, output_forward['descriptor']))
+    else:
+      # Dropout for X_twin
+      components.append("component name={0}_dropout type=DropoutComponent dim={1} dropout-proportion=0.0".format(name, output_backward['dimension']))
+      component_nodes.append("component-node name={0}_dropout component={0}_dropout input={1}".format(name, output_backward['descriptor']))
+      if append_twins:
+        final_output_dim = output_forward['dimension']+output_backward['dimension']
+        components.append("component name={0}_sum_twins type=NoOpComponent dim={1}".format(name, final_output_dim))
+        component_nodes.append("component-node name={0}_renorm_sum component={0}_sum_twins input=Append({1}, {0}_dropout)".format(name, output_forward['descriptor']))
+      else:
+        assert(output_forward['dimension'] == output_backward['dimension'])
+        final_output_dim = output_forward['dimension']
+        components.append("component name={0}_sum_twins type=NoOpComponent dim={1}".format(name, final_output_dim))
+        component_nodes.append("component-node name={0}_renorm_sum component={0}_sum_twins input=Sum({1}, {0}_dropout)".format(name, output_forward['descriptor']))
+ 
+    output_descriptor = 'Append({0}, {1})'.format(output_forward['descriptor'], output_backward['descriptor'])
+    output_dim = output_forward['dimension'] + output_backward['dimension']
+
+    return [{
+            'descriptor': '{0}_renorm_sum'.format(name),
+            'dimension': final_output_dim,
+            'regularizer':('{0}_scaled_regularizer'.format(name) if add_reg is True else ''),
+            },
+            { 
+            'descriptor': output_descriptor,
+            'dimension': output_dim
+            }
+            ]
+
+# If add_reg is true, it returns the regularizer term RelNorm(HX).X_twin and added term RelNorm(HX) to output. 
+# If append_twins is true, HX + X_twin appended to output, otherwise HX + X_twin is added to output.
+# In this function, regularizer defined as (HX)^T X_twin - (L1HX)^T (L1HX) - (L2X_twin)^T L2X_twin
+# where L1 and L2 are like regularizers. 
+def AddTwinBLstmLayerRegularizer3(config_lines,
+                  name, forward_input, backward_input, cell_dim,
+                  recurrent_projection_dim = 0,
+                  non_recurrent_projection_dim = 0,
+                  clipping_threshold = 1.0,
+                  norm_based_clipping = "false",
+                  ng_per_element_scale_options = "",
+                  ng_affine_options = "",
+                  lstm_delay = [-1,1],
+                  self_repair_scale_nonlinearity = None,
+                  self_repair_scale_clipgradient = None,
+                  add_reg = False,
+                  append_twins = False):
+    assert(len(lstm_delay) == 2 and lstm_delay[0] < 0 and lstm_delay[1] > 0)
+    output_forward = AddLstmLayer(config_lines, "{0}_forward".format(name), forward_input, cell_dim,
+                                  recurrent_projection_dim, non_recurrent_projection_dim,
+                                  clipping_threshold, norm_based_clipping,
+                                  ng_per_element_scale_options, ng_affine_options,
+                                  lstm_delay = lstm_delay[0],
+                                  self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
+                                  self_repair_scale_clipgradient = self_repair_scale_clipgradient)
+    output_backward = AddLstmLayer(config_lines, "{0}_backward".format(name), backward_input, cell_dim,
+                                   recurrent_projection_dim, non_recurrent_projection_dim,
+                                   clipping_threshold, norm_based_clipping,
+                                   ng_per_element_scale_options, ng_affine_options,
+                                   lstm_delay = lstm_delay[1],
+                                   self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
+                                   self_repair_scale_clipgradient = self_repair_scale_clipgradient)
+
+
+    if add_reg:
+      # add affine layer for regularizer term ReLU(HX)
+      regularize_name = "{0}_regularize".format(name)
+      regularize_output = AddAffineLayer(config_lines, regularize_name, output_forward, output_backward['dimension'], ng_affine_options = ng_affine_options)
+      # add L1, which is extra constraint to normalize H1X in regularizer.
+      norm_regularize_name =  "{0}_regularize_norm".format(name)
+      norm_regularize_output = AddAffineLayer(config_lines, norm_regularize_name, regularize_output, output_backward['dimension'], ng_affine_options = ng_affine_options)
+      
+      # add affine layer for twin as ReLU(H2*X_twin)
+      twin_regularize_name = "{0}_regularize_twin".format(name);
+      twin_regularize_output = AddAffineLayer(config_lines, twin_regularize_name, output_backward, output_backward['dimension'], ng_affine_options = ng_affine_options)
+      # add affine transform L2 to normalize H2X_twin in regularizer.
+      norm_twin_regularize_name = "{0}_regularize_twin_norm".format(name)
+      norm_twin_regularize_output = AddAffineLayer(config_lines, twin_regularize_name, output_backward, output_backward['dimension'], ng_affine_options = ng_affine_options)
+
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+    
+    
+    if add_reg:
+      # component to compute regularizer term as (H1X.H2X_twin - (L1H1X).(L1H1X) - (L2H2X_twin).(L2H2X_twin))
+      ####
+      # component to compute regularizer term (HX. X_twin)
+      # scale HX.X_twin to minimize cos(HX, X_twin)
+      # compute term H1X.H2X_twin
+      components.append("component name={0}_regularizer_p1 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2*output_dim, output_dim))
+      component_nodes.append("component-node name={0}_regularizer_p1 component={0}_regularizer_p1 input=Append({1}, {2})".format(name, regularize_output['descriptor'], twin_regularize_output['descriptor']))
+      # compute term L1H1X.(L1H1X)^T
+      components.append("component name={0}_regularizer_p2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2*output_dim, output_dim))
+      component_nodes.append("component-node name={0}_regularizer_p2 component={0}_regularizer input=Append({1}, {2})".format(name, norm_regularize_output['descriptor'], norm_regularize_output['descriptor']))
+      components.append("component name={0}_regularizer_p2_negate type=FixedScaleComponent dim={1} scale=-1.0".format(name, output_dim))
+      component_nodes.append("component-node name={0}_regularizer_p2_negate component={0}_regularizer_p2_negate input={0}_regularizer_p2_negate".format(name))
+
+      # compute term L2H2X_twin (L2H2X_twin)^T
+      components.append("component name={0}_regularizer_p3 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2*output_dim, output_dim))
+      component_nodes.append("component-node name={0}_regularizer_p3 component={0}_regularizer input=Append({1}, {2})".format(name, norm_twin_regularize_output['descriptor'], norm_twin_regularize_output['descriptor']))
+      components.append("component name={0}_regularizer_p3_negate type=FixedScaleComponent dim={1} scale=-1.0".format(name, output_dim))
+      component_nodes.append("component-node name={0}_regularizer_p3_negate component={0}_regularizer_p3_negate input={0}_regularizer_p3_negate".format(name))
+
+
+      # sum different parts of regularizer
+      components.append("component name={0}_regularizer type=NoOpComponent input-dim={1} output-dim={1}".format(name, output_dim))
+      component_nodes.append("component-node name={0}_regularizer component={0}_regularizer input=Sum({0}_regularizer_p1, Sum({0}_regularizer_p2_negate, {0}_regularizer_p3_negate))".format(name))
+
+      components.append("component name={0}_negate_regularize_twin type=FixedScaleComponent dim={1} scale={2}".format(name, output_backward['dimension'], -1.0))
+      component_nodes.append("component-node name={0}_negate_regularize_twin component={0}_negate_regularize_twin input={1}".format(name, twin_regularize_output['descriptor']))
+     
+      components.append("component name={0}_regularizer type=NoOpComponent dim={1}".format(name, output_backward['dimension']))
+      component_nodes.append("component-node name={0}_regularizer component={0}_regularizer input=Sum({1}, {0}_negate_regularize_twin)".format(name, regularize_output['descriptor']))
+
+      # scale the regularizer with 1/output-dim to compute mean. 
+      components.append("component name={0}_scaled_regularizer type=FixedScaleComponent dim={1} scale={2}".format(name, output_dim, 1.0/output_dim))
+      component_nodes.append("component-node name={0}_scaled_regularizer component={0}_scaled_regularizer input={0}_regularizer".format(name)) 
+
+
+      # Dropout component for DP(Append(H2X_twin, HX), dp), which applies dp on X_twin and 1-dp and its complement on HX.
+      components.append("component name={0}_dropout_twin_regularize type=DropoutComponent dim={1} dropout-proportion=0.0 complement=true".format(name, 2*output_backward['dimension']))
+      component_nodes.append("component-node name={0}_dropout_twin_regularize component={0}_dropout_twin_regularize input=Append({1}, {2})".format(name, twin_regularize_output['descriptor'], regularize_output['descriptor']))
+       
+      # component node to sum x + DP(Hx, 1-dp) + DP(x_twin, dp)
+      # dim-range nodes for two subset as regularization term Hx and twin part Y
+      component_nodes.append("dim-range-node name={0}_dropout_twin input-node={0}_dropout_twin_regularize dim-offset=0 dim={1}".format(name, output_backward['dimension']))
+      component_nodes.append("dim-range-node name={0}_dropout_regularize input-node={0}_dropout_twin_regularize dim-offset={1} dim={1}".format(name, output_backward['dimension']))
+
+      # component to connect twins using ephemeral connection
+      if append_twins:
+        final_output_dim = output_forward['dimension']+output_backward['dimension']
+        components.append("component name={0}_sum_twins type=NoOpComponent dim={1}".format(name, final_output_dim))
+        component_nodes.append("component-node name={0}_sum component={0}_sum_twins input=Append({1}, Sum({0}_dropout_twin, {0}_dropout_regularize))".format(name, output_forward['descriptor']))
+      else:
+        assert(output_forward['dimension'] == output_backward['dimension'])
+        final_output_dim = output_forward['dimension']
+        components.append("component name={0}_sum_twins type=NoOpComponent dim={1}".format(name, final_output_dim))
+        component_nodes.append("component-node name={0}_sum component={0}_sum_twins input=Sum({1}, Sum({0}_dropout_twin, {0}_dropout_regularize))".format(name, output_forward['descriptor']))
+    else:
+      # Dropout for X_twin
+      components.append("component name={0}_dropout type=DropoutComponent dim={1} dropout-proportion=0.0".format(name, output_backward['dimension']))
+      component_nodes.append("component-node name={0}_dropout component={0}_dropout input={1}".format(name, output_backward['descriptor']))
+      if append_twins:
+        final_output_dim = output_forward['dimension']+output_backward['dimension']
+        components.append("component name={0}_sum_twins type=NoOpComponent dim={1}".format(name, final_output_dim))
+        component_nodes.append("component-node name={0}_sum component={0}_sum_twins input=Append({1}, {0}_dropout)".format(name, output_forward['descriptor']))
+      else:
+        assert(output_forward['dimension'] == output_backward['dimension'])
+        final_output_dim = output_forward['dimension']
+        components.append("component name={0}_sum_twins type=NoOpComponent dim={1}".format(name, final_output_dim))
+        component_nodes.append("component-node name={0}_sum component={0}_sum_twins input=Sum({1}, {0}_dropout)".format(name, output_forward['descriptor']))
+ 
+    output_descriptor = 'Append({0}, {1})'.format(output_forward['descriptor'], output_backward['descriptor'])
+    output_dim = output_forward['dimension'] + output_backward['dimension']
+
+    return [{
+            'descriptor': '{0}_sum'.format(name),
+            'dimension': final_output_dim,
+            'regularizer':('{0}_scaled_regularizer'.format(name) if add_reg is True else ''),
+            },
+            { 
+            'descriptor': output_descriptor,
+            'dimension': output_dim
+            }
+            ]
+
 def AddTwinBLstmLayer(config_lines,
                   name, forward_input, backward_input, cell_dim,
                   recurrent_projection_dim = 0,
@@ -776,7 +1116,7 @@ def AddTwinBLstmLayer(config_lines,
                                    self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
                                    self_repair_scale_clipgradient = self_repair_scale_clipgradient)
     # connect forward and backward using gate as Lstm_forward_rt + Dropout(g(Lstm_backward_rt) . Lstm_backward_rt)
-    # and Lstm_backward_rt + Dropout(g(Lstm_forward_rt) . Lstm_forward_rt)
+    # and Lstm_backward_rt + DP(sum(H * Lstm_backward_rt + Lstm_forward_rt))
 
     assert(output_forward['dimension'] == output_backward['dimension'])
 
@@ -802,4 +1142,19 @@ def AddTwinBLstmLayer(config_lines,
              'dimension': output_backward['dimension']
             }
             ]
- 
+
+def AddRegularizer(config_lines, input, suffix=None, supervision_type= 'unsupervised', objective_type = 'quadratic'):
+  components = config_lines['components']
+  component_nodes = config_lines['component-nodes']
+  name = 'regularize-output'
+  if suffix is not None:
+    name = '{0}-{1}'.format(name, suffix)
+  component_nodes.append('output-node name={0} input={1} objective={2} supervision={3}'.format(name, input['regularizer'], objective_type, supervision_type))
+
+# The input for main network needs to modified to be independent of twin part 
+# at end of training and orphan nodes and components removed using --edit option from network
+def RemoveRegularizer(config_lines, name, input):
+   component_nodes = config_lines['component-nodes']
+   component_nodes.append("component-node name={1} component={0}_sum_twins input=Sum({0}_renorm, {0}_regularize_renorm)".format(name, input['descriptor']))
+
+

@@ -145,6 +145,12 @@ void ScaleNnetComponents(const Vector<BaseFloat> &scales,
 /// stored stats).
 void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest);
 
+/// Does *dest += alpha * src for updatable components (affect nnet parameters),
+/// and *dest += scale * src for other components (affect stored stats).
+/// Here, alphas is a vector of size equal to the number of updatable components
+void AddNnetComponents(const Nnet &src, const Vector<BaseFloat> &alphas,
+                       BaseFloat scale, Nnet *dest);
+
 /// Returns the total of the number of parameters in the updatable components of
 /// the nnet.
 int32 NumParameters(const Nnet &src);
@@ -178,12 +184,6 @@ std::string NnetInfo(const Nnet &nnet);
 /// dropout_proportion value.
 void SetDropoutProportion(BaseFloat dropout_proportion, Nnet *nnet);
 
-/// This function sets the dropout proprotion for component node with 
-/// dropout_names[i] name to specific dropout-proportion values 
-/// dropout_proportions[i].
-void SetDropoutProportions(const std::vector<std::string> &dropout_names, 
-                           const std::vector<BaseFloat> &dropout_proportions,
-                           Nnet *nnet);
 /// This function finds a list of components that are never used, and outputs
 /// the integer comopnent indexes (you can use these to index
 /// nnet.GetComponentNames() to get their names).
@@ -222,6 +222,9 @@ void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes);
     set-learning-rate [name=<name-pattern>] learning-rate=<learning-rate>
        Sets the learning rate for any updatable nodes matching the name pattern.
 
+    set-learning-rate-factor [name=<name-pattern>] learning-rate-factor=<learning-rate-factor>
+       Sets the learning rate factor for any updatable nodes matching the name pattern.
+
     rename-node old-name=<old-name> new-name=<new-name>
        Renames a node; this is a surface renaming that does not affect the structure
        (for structural changes, use the regular config file format, not the
@@ -233,6 +236,12 @@ void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes);
        remove internal nodes directly; instead you should use the command
        'remove-orphans'.
 
+    set-dropout-proportion [name=<name-pattern>] proportion=<dropout-proportion>
+       Sets the dropout rates for any components of type DropoutComponent whose
+       names match the given <name-pattern> (e.g. lstm*).  <name-pattern> defaults to "*".
+    set-fixed-scale-components [name=<name-pattern>] scale=<scale-value>
+      scales the scale values for component of type FixedScaleComponent whose
+      names match the given <name-pattern> (e.g. scaled_lstm). <name-pattern defaults to "*".
    \endverbatim
 */
 void ReadEditConfig(std::istream &config_file, Nnet *nnet);

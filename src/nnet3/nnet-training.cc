@@ -52,7 +52,7 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
       KALDI_WARN << "Could not open cached computation. "
                     "Probably this is the first training iteration.";
     }
-  } 
+  }
 }
 
 
@@ -105,8 +105,8 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
     int32 node_index = nnet_->GetNodeIndex(io.name);
     KALDI_ASSERT(node_index >= 0);
     if (nnet_->IsOutputNode(node_index)) {
-      ObjectiveType obj_type = nnet_->GetNode(node_index).u.objective_type;
-      SupervisionType sup_type = nnet_->GetNode(node_index).u.supervision_type;
+      ObjectiveType obj_type = nnet_->GetNode(node_index).u.objective_types.objective_type;
+      SupervisionType sup_type = nnet_->GetNode(node_index).u.objective_types.supervision_type;
       KALDI_ASSERT(sup_type == kSupervised);
       BaseFloat tot_weight, tot_objf;
       bool supply_deriv = true;
@@ -125,20 +125,20 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
     std::string node_name = node_names[ind];
     KALDI_ASSERT(node_index >= 0);
     if (nnet_->IsOutputNode(node_index)) {
-      ObjectiveType obj_type = nnet_->GetNode(node_index).u.objective_type;
-      SupervisionType sup_type = nnet_->GetNode(node_index).u.supervision_type;
-      KALDI_ASSERT(sup_type == kUnsupervised);
-      BaseFloat tot_weight, tot_objf;
-      bool supply_deriv = true;
-      ComputeObjectiveFunction(obj_type, node_name, 
-                               supply_deriv, computer,
-                               &tot_weight, &tot_objf);
-      objf_info_[node_name].UpdateStats(node_name, config_.print_interval,
-                                      num_minibatches_processed_++,
-                                      tot_weight, tot_objf);
+      ObjectiveType obj_type = nnet_->GetNode(node_index).u.objective_types.objective_type;
+      SupervisionType sup_type = nnet_->GetNode(node_index).u.objective_types.supervision_type;
+      if (sup_type == kUnsupervised) {
+        BaseFloat tot_weight, tot_objf;
+        bool supply_deriv = true;
+        ComputeObjectiveFunction(obj_type, node_name,
+                                 supply_deriv, computer,
+                                 &tot_weight, &tot_objf);
+        objf_info_[node_name].UpdateStats(node_name, config_.print_interval,
+                                        num_minibatches_processed_++,
+                                        tot_weight, tot_objf);
+      }
     }
   }
-
 }
 
 bool NnetTrainer::PrintTotalStats() const {
@@ -149,7 +149,7 @@ bool NnetTrainer::PrintTotalStats() const {
   for (; iter != end; ++iter) {
     const std::string &name = iter->first;
     const ObjectiveFunctionInfo &info = iter->second;
-    if (!info.PrintTotalStats(name)) 
+    if (!info.PrintTotalStats(name))
       ans = false;
   }
   return ans;
@@ -212,7 +212,7 @@ bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
               << (tot_objf / tot_weight) << " over " << tot_weight << " frames.";
   } else {
     KALDI_LOG << "Overall average objective function for '" << name << "' is "
-              << objf << " + " << aux_objf << " = " << sum_objf        
+              << objf << " + " << aux_objf << " = " << sum_objf
               << " over " << tot_weight << " frames.";
   }
   KALDI_LOG << "[this line is to be parsed by a script:] "
@@ -226,7 +226,7 @@ NnetTrainer::~NnetTrainer() {
     Output ko(config_.write_cache, config_.binary_write_cache);
     compiler_.WriteCache(ko.Stream(), config_.binary_write_cache);
     KALDI_LOG << "Wrote computation cache to " << config_.write_cache;
-  } 
+  }
   delete delta_nnet_;
 }
 void ComputeObjectiveFunction(ObjectiveType objective_type,
@@ -236,11 +236,11 @@ void ComputeObjectiveFunction(ObjectiveType objective_type,
                               BaseFloat *tot_weight,
                               BaseFloat *tot_objf) {
   const CuMatrixBase<BaseFloat> &output = computer->GetOutput(output_name);
-  
+
   CuMatrix<BaseFloat> output_deriv(output.NumRows(),
                                    output.NumCols(),
                                    kUndefined);
-  
+
   switch (objective_type) {
     case kLinear: {
       // objective is x
@@ -266,7 +266,10 @@ void ComputeObjectiveFunction(ObjectiveType objective_type,
       KALDI_ERR << "Objective function type " << objective_type
                 << " not handled.";
   }
+  if (supply_deriv)
+    computer->AcceptOutputDeriv(output_name, &output_deriv);
 }
+
 void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               ObjectiveType objective_type,
                               const std::string &output_name,

@@ -1221,9 +1221,12 @@ static void GenerateRandomComponentConfig(std::string *component_type,
     }
     case 29: {
       *component_type = "DropoutComponent";
-      os << "dim=" << RandInt(1, 200)
+      int32 dim = RandInt(1, 200);
+      os << "dim=" << dim
          << " max-scale=" << 1.0 + 10.0 * RandUniform()
          << " dropout-proportion=" << RandUniform();
+      if (dim % 2 == 0)
+        os << " complement=" << (RandInt(0,1) == 0 ? "false" : "true");
       break;
     } 
     case 30: {

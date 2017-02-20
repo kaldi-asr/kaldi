@@ -400,6 +400,10 @@ class UpdatableComponent: public Component {
     learning_rate_ = lrate * learning_rate_factor_;
   }
 
+  // Sets the learning rate factors to set to this value.
+  virtual void SetLearningRateFactor(BaseFloat lrate_factor) {
+    learning_rate_factor_ = lrate_factor;
+  }
   /// Sets the learning rate directly, bypassing learning_rate_factor_.
   virtual void SetActualLearningRate(BaseFloat lrate) { learning_rate_ = lrate; }
 

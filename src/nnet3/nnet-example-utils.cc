@@ -192,7 +192,7 @@ void GetComputationRequest(const Nnet &nnet,
   request->inputs.clear();
   request->inputs.reserve(eg.io.size());
   request->outputs.clear();
-  request->outputs.reserve(eg.io.size());
+  request->outputs.reserve(eg.io.size() * 2);
   request->need_model_derivative = need_model_derivative;
   request->store_component_stats = store_component_stats;
   for (size_t i = 0; i < eg.io.size(); i++) {
@@ -211,6 +211,24 @@ void GetComputationRequest(const Nnet &nnet,
     io_spec.name = name;
     io_spec.indexes = io.indexes;
     io_spec.has_deriv = nnet.IsOutputNode(node_index) && need_model_derivative;
+  }
+  // Get computation request for unsupervised output nodes
+  std::vector<std::string> node_names = nnet.GetNodeNames();
+  for (int32 ind = 0; ind < node_names.size(); ind++) {
+    int32 node_index = nnet.GetNodeIndex(node_names[ind]);
+    std::string node_name = node_names[ind];
+    KALDI_ASSERT(node_index >= 0);
+    if (nnet.IsOutputNode(node_index)) {
+      SupervisionType sup_type = nnet.GetNode(node_index).u.
+        objective_types.supervision_type;
+      if (sup_type == kUnsupervised) {
+        request->outputs.resize(request->outputs.size() + 1);
+        IoSpecification &io_spec = request->outputs.back();
+        io_spec.name = node_name;
+        io_spec.indexes = eg.io[eg.io.size()-1].indexes;
+        io_spec.has_deriv = need_model_derivative;
+      }
+    }
   }
   // check to see if something went wrong.
   if (request->inputs.empty())

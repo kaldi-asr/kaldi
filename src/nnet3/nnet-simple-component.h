@@ -88,11 +88,11 @@ class PnormComponent: public Component {
 // "Dropout: A Simple Way to Prevent Neural Networks from Overfitting".
 class DropoutComponent : public RandomComponent {
  public:
-  void Init(int32 dim, BaseFloat dropout_proportion = 0.0, BaseFloat max_scale = 1.0);
+  void Init(int32 dim, BaseFloat dropout_proportion = 0.0, BaseFloat max_scale = 1.0, bool complement = false);
 
-  DropoutComponent(int32 dim, BaseFloat dropout = 0.0, BaseFloat max_scale = 1.0) { Init(dim, dropout, max_scale); }
+  DropoutComponent(int32 dim, BaseFloat dropout = 0.0, BaseFloat max_scale = 1.0, bool complement = false) { Init(dim, dropout, max_scale, complement); }
 
-  DropoutComponent(): dim_(0), dropout_proportion_(0.0), max_scale_(1.0) { }
+  DropoutComponent(): dim_(0), dropout_proportion_(0.0), max_scale_(1.0), complement_(false) { }
 
   virtual int32 Properties() const {
     return kLinearInInput|kBackpropInPlace|kSimpleComponent|kBackpropNeedsInput|kBackpropNeedsOutput;
@@ -121,7 +121,7 @@ class DropoutComponent : public RandomComponent {
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const { return new DropoutComponent(dim_,
-                                                                dropout_proportion_, max_scale_); }
+                                                                dropout_proportion_, max_scale_, complement_); }
   virtual std::string Info() const;
   void SetDropoutProportion(BaseFloat dropout_proportion) { dropout_proportion_ = dropout_proportion; }
 
@@ -134,6 +134,10 @@ class DropoutComponent : public RandomComponent {
   /// 0<= dp <= 1 => 1 / (1-dp) >= 1, => the output does not scale
   /// using max_scale_ = 1.0
   BaseFloat max_scale_;
+  
+  /// If true, the random dropout for 1st half complements the 2nd half.
+  /// e.g. [0 1 0 1 0 1], 1st half [0 1 0] is the complement of [1 0 1].
+  bool complement_;
 };
 
 class ElementwiseProductComponent: public Component {
@@ -918,7 +922,7 @@ class FixedScaleComponent: public Component {
   virtual Component* Copy() const;
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
-
+  void SetScale(BaseFloat scale) { scales_.Set(scale); }
  protected:
   friend class AffineComponent;  // necessary for collapse
   CuVector<BaseFloat> scales_;

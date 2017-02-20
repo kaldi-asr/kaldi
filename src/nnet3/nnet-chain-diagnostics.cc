@@ -150,6 +150,27 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
     }
     num_minibatches_processed_++;
   }
+  // compute objf for unsupervised output nodes.
+  std::vector<std::string> node_names = nnet_.GetNodeNames();
+  for (int32 ind = 0; ind < node_names.size(); ind++) { 
+    int32 node_index = nnet_.GetNodeIndex(node_names[ind]);
+    std::string node_name = node_names[ind]; 
+    KALDI_ASSERT(node_index >= 0);
+    if (nnet_.IsOutputNode(node_index)) {
+      SupervisionType sup_type = nnet_.GetNode(node_index).u.objective_types.supervision_type;
+      ObjectiveType obj_type = nnet_.GetNode(node_index).u.objective_types.objective_type; 
+      if (sup_type == kUnsupervised) { 
+        BaseFloat tot_weight, tot_objf;
+        bool supply_deriv = nnet_config_.compute_deriv;
+        ChainObjectiveInfo &totals = objf_info_[node_name];
+        ComputeObjectiveFunction(obj_type, node_name, 
+                                 supply_deriv, computer,
+                                 &tot_weight, &tot_objf);
+        totals.tot_weight += tot_weight;
+        totals.tot_like += tot_objf;
+      }
+    }
+  }
 }
 
 bool NnetChainComputeProb::PrintTotalStats() const {

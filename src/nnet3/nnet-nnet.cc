@@ -84,8 +84,10 @@ std::string Nnet::GetAsConfigLine(int32 node_index, bool include_dim) const {
       node.descriptor.WriteConfig(ans, node_names_);
       if (include_dim)
         ans << " dim=" << node.Dim(*this);
-      ans << " objective=" << (node.u.objective_type == kLinear ? "linear" :
-                               "quadratic");
+      ans << " objective=" << (node.u.objective_types.objective_type == kLinear ? "linear" :
+                               "quadratic")
+          << " supervision=" << (node.u.objective_types.supervision_type == kSupervised ? "supervised" :
+                              "unsupervised");
       break;
     case kComponent:
       ans << "component-node name=" << name << " component="
@@ -387,9 +389,9 @@ void Nnet::ProcessOutputNodeConfigLine(
     std::string objective_type;
     if (config->GetValue("objective", &objective_type)) {
       if (objective_type == "linear") {
-        nodes_[node_index].u.objective_type = kLinear;
+        nodes_[node_index].u.objective_types.objective_type = kLinear;
       } else if (objective_type == "quadratic") {
-        nodes_[node_index].u.objective_type = kQuadratic;
+        nodes_[node_index].u.objective_types.objective_type = kQuadratic;
       } else {
         KALDI_ERR << "Invalid objective type: " << objective_type;
       }
@@ -397,19 +399,19 @@ void Nnet::ProcessOutputNodeConfigLine(
       // the default objective type is linear.  This is what we use
       // for softmax objectives; the LogSoftmaxLayer is included as the
       // last layer, in this case.
-      nodes_[node_index].u.objective_type = kLinear;
+      nodes_[node_index].u.objective_types.objective_type = kLinear;
     }
     std::string supervision_type;
     if (config->GetValue("supervision", &supervision_type)) {
       if (supervision_type == "supervised") {
-        nodes_[node_index].u.supervision_type = kSupervised;
+        nodes_[node_index].u.objective_types.supervision_type = kSupervised;
       } else if (supervision_type == "unsupervised") {
-        nodes_[node_index].u.supervision_type = kUnsupervised;
+        nodes_[node_index].u.objective_types.supervision_type = kUnsupervised;
       } else {
         KALDI_ERR << "Invalid supervision type: " << supervision_type;
       }
     } else {
-      nodes_[node_index].u.supervision_type = kSupervised;
+      nodes_[node_index].u.objective_types.supervision_type = kSupervised;
     }
     if (config->HasUnusedValues())
       KALDI_ERR << "Unused values '" << config->UnusedValues()
@@ -548,7 +550,7 @@ NetworkNode::NetworkNode(const NetworkNode &other):
     descriptor(other.descriptor),
     dim(other.dim),
     dim_offset(other.dim_offset) {
-  u.component_index = other.u.component_index;
+  u.objective_types = other.u.objective_types;
 }
 
 
@@ -744,7 +746,7 @@ void Nnet::Check(bool warn_for_orphans) const {
                  "Duplicate component names?");
   }
   KALDI_ASSERT(num_input_nodes > 0);
-  KALDI_ASSERT(num_output_nodes > 0);
+  //KALDI_ASSERT(num_output_nodes > 0);
 
 
   if (warn_for_orphans) {

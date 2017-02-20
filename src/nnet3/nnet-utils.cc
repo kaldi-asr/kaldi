@@ -351,6 +351,33 @@ void ScaleNnet(BaseFloat scale, Nnet *nnet) {
   }
 }
 
+void AddNnetComponents(const Nnet &src, const Vector<BaseFloat> &alphas,
+                       BaseFloat scale, Nnet *dest) {
+  if (src.NumComponents() != dest->NumComponents())
+    KALDI_ERR << "Trying to add incompatible nnets.";
+  int32 i = 0;
+  for (int32 c = 0; c < src.NumComponents(); c++) {
+    const Component *src_comp = src.GetComponent(c);
+    Component *dest_comp = dest->GetComponent(c);
+    if (src_comp->Properties() & kUpdatableComponent) {
+      // For now all updatable components inherit from class UpdatableComponent.
+      // If that changes in future, we will change this code.
+      const UpdatableComponent *src_uc =
+          dynamic_cast<const UpdatableComponent*>(src_comp);
+      UpdatableComponent *dest_uc =
+          dynamic_cast<UpdatableComponent*>(dest_comp);
+      if (src_uc == NULL || dest_uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+            "UpdatableComponent; change this code.";
+      KALDI_ASSERT(i < alphas.Dim());
+      dest_uc->Add(alphas(i++), *src_uc);
+    } else { // add stored stats
+      dest_comp->Add(scale, *src_comp);
+    }
+  }
+  KALDI_ASSERT(i == alphas.Dim());
+}
+
 void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest) {
   if (src.NumComponents() != dest->NumComponents())
     KALDI_ERR << "Trying to add incompatible nnets.";
@@ -506,22 +533,6 @@ void SetDropoutProportion(BaseFloat dropout_proportion,
   }
 }
 
-void SetDropoutProportions(const std::vector<std::string> &dropout_names, 
-                           const std::vector<BaseFloat> &dropout_proportions,
-                           Nnet *nnet) {
-  KALDI_ASSERT(dropout_names.size() == dropout_proportions.size());
-  for (int32 ind = 0; ind < dropout_names.size(); ind++) {
-    int32 dp_node_index = nnet->GetComponentIndex(dropout_names[ind]);
-    if (dp_node_index == -1)
-      KALDI_ERR << "No component associated with name " << dropout_names[ind];
-    Component *comp = nnet->GetComponent(dp_node_index);
-    DropoutComponent *dc = dynamic_cast<DropoutComponent*>(comp);
-    if (dc != NULL)
-      dc->SetDropoutProportion(dropout_proportions[ind]);
-    else
-      KALDI_ERR << "Component " << dropout_names[ind] << " is not DropoutComponent.";
-  }
-}
 void FindOrphanComponents(const Nnet &nnet, std::vector<int32> *components) {
   int32 num_components = nnet.NumComponents(), num_nodes = nnet.NumNodes();
   std::vector<bool> is_used(num_components, false);
@@ -630,8 +641,8 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
       for (int32 c = 0; c < nnet->NumComponents(); c++) {
         if (NameMatchesPattern(nnet->GetComponentName(c).c_str(),
                                name_pattern.c_str()) &&
-            (component =
-             dynamic_cast<UpdatableComponent*>(nnet->GetComponent(c)))) {
+           (component =
+            dynamic_cast<UpdatableComponent*>(nnet->GetComponent(c)))) {
           component->SetUnderlyingLearningRate(learning_rate);
           num_learning_rates_set++;
         }
@@ -675,8 +686,79 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
       }
       KALDI_LOG << "Removing " << nodes_to_remove.size() << " output nodes.";
       if (outputs_remaining == 0)
-        KALDI_ERR << "All outputs were removed.";
+        KALDI_LOG << "All outputs were removed.";
       nnet->RemoveSomeNodes(nodes_to_remove);
+    } else if (directive == "set-dropout-proportion") {
+      std::string name_pattern = "*";
+      // name_pattern defaults to '*' if none is given.  This pattern
+      // matches names of components, not nodes.
+      config_line.GetValue("name", &name_pattern);
+      BaseFloat proportion = -1;
+      if (!config_line.GetValue("proportion", &proportion)) {
+        KALDI_ERR << "In edits-config, expected proportion to be set in line: "
+                  << config_line.WholeLine();
+      }
+      DropoutComponent *component = NULL;
+      int32 num_dropout_proportions_set = 0;
+      for (int32 c = 0; c < nnet->NumComponents(); c++) {
+        if (NameMatchesPattern(nnet->GetComponentName(c).c_str(),
+                               name_pattern.c_str()) &&
+            (component =
+             dynamic_cast<DropoutComponent*>(nnet->GetComponent(c)))) {
+          component->SetDropoutProportion(proportion);
+          num_dropout_proportions_set++;
+        }
+      }
+      KALDI_LOG << "Set dropout proportions for "
+                << num_dropout_proportions_set << " nodes.";
+    } else if (directive == "set-fixed-scale-components") {
+      std::string name_pattern = "*";
+      // name_pattern defaults to '*' if none is given.  This pattern
+      // matches names of components, not nodes.
+      config_line.GetValue("name", &name_pattern);
+      BaseFloat scale = 1.0;
+      if (!config_line.GetValue("scale", &scale)) {
+        KALDI_ERR << "In edits-config, expected scale to be set in lines: "
+                  << config_line.WholeLine();
+      }
+      FixedScaleComponent *component = NULL;
+      int32 num_fixed_scale_set = 0;
+      for (int32 c = 0; c < nnet->NumComponents(); c++) {
+        if (NameMatchesPattern(nnet->GetComponentName(c).c_str(),
+                              name_pattern.c_str()) &&
+           (component =
+            dynamic_cast<FixedScaleComponent*>(nnet->GetComponent(c)))) {
+          component->SetScale(scale);
+          num_fixed_scale_set++;
+        }
+      }
+       KALDI_LOG << "Set scale for "
+                 << num_fixed_scale_set << " nodes.";
+    } else if (directive == "set-learning-rate-factor") {
+      std::string name_pattern = "*";
+      // name_pattern defaults to '*' if non is given.
+      config_line.GetValue("name", &name_pattern);
+      BaseFloat learning_rate_factor = -1;
+      if (!config_line.GetValue("learning-rate-factor", &learning_rate_factor)) {
+        KALDI_ERR << "In edits-config, expected learning-rate-factor to be set in line: "
+                  << config_line.WholeLine();
+      }
+      // Note: the learning_rate_factor_  defined in the component
+      // sets to the value you provided, so if you call SetUnderlyingLearningRate(),
+      // the actual learning rate (learning_rate_) is set to the value you provided
+      // times learning_rate.
+      UpdatableComponent *component = NULL;
+      int32 num_learning_rate_factors_set = 0;
+      for (int32 c = 0; c < nnet->NumComponents(); c++) {
+        if (NameMatchesPattern(nnet->GetComponentName(c).c_str(),
+           name_pattern.c_str()) &&
+           (component =
+            dynamic_cast<UpdatableComponent*>(nnet->GetComponent(c)))) {
+          component->SetLearningRateFactor(learning_rate_factor);
+          num_learning_rate_factors_set++;
+        }
+      }
+      KALDI_LOG << "Set learning rate factors for " << num_learning_rate_factors_set << " nodes.";
     } else {
       KALDI_ERR << "Directive '" << directive << "' is not currently "
           "supported (reading edit-config).";

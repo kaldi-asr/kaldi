@@ -58,6 +58,11 @@ enum ObjectiveType { kLinear, kQuadratic };
 /// output.
 enum SupervisionType { kSupervised, kUnsupervised };
 
+struct ObjectiveTypes {
+  ObjectiveType objective_type;
+  SupervisionType supervision_type;
+};
+
 enum NodeType { kInput, kDescriptor, kComponent, kDimRange, kNone };
 
 
@@ -100,12 +105,11 @@ struct NetworkNode {
     // output.  The core parts of the nnet code just ignore; it is required only
     // for the information of the calling code, which is perfectly free to
     // ignore it.  View it as a kind of annotation.
-    ObjectiveType objective_type;
-    
+    //
     // for nodes of type kDescriptor that are output nodes, SupervisionType shows
     // if the objective needs supervision for computation or it is unsupervised
     // objective. The supervision for supervised output node defined in eg.io.
-    SupervisionType supervision_type;
+    ObjectiveTypes objective_types;
 
   } u;
   // for kInput, the dimension of the input feature.  For kDimRange, the dimension
@@ -117,8 +121,8 @@ struct NetworkNode {
   int32 Dim(const Nnet &nnet) const;  // Dimension that this node outputs.
 
   NetworkNode(NodeType nt = kNone):
-      node_type(nt), dim(-1), dim_offset(-1) { u.component_index = -1; 
-                                               u.supervision_type = kSupervised; }
+      node_type(nt), dim(-1), dim_offset(-1) { u.objective_types.objective_type = kLinear;
+                                               u.objective_types.supervision_type = kSupervised; } 
   NetworkNode(const NetworkNode &other);  // copy constructor.
   // use default assignment operator
 };

@@ -84,8 +84,10 @@ void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
     int32 node_index = nnet_.GetNodeIndex(io.name);
     if (node_index < 0)
       KALDI_ERR << "Network has no output named " << io.name;
-    ObjectiveType obj_type = nnet_.GetNode(node_index).u.objective_type;
+    ObjectiveType obj_type = nnet_.GetNode(node_index).u.objective_types.objective_type;
+    SupervisionType sup_type = nnet_.GetNode(node_index).u.objective_types.supervision_type;
     if (nnet_.IsOutputNode(node_index)) {
+      KALDI_ASSERT(sup_type == kSupervised);
       const CuMatrixBase<BaseFloat> &output = computer->GetOutput(io.name);
       if (output.NumCols() != io.features.NumCols()) {
         KALDI_ERR << "Nnet versus example output dimension (num-classes) "
@@ -113,6 +115,27 @@ void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
       num_minibatches_processed_++;
     }
   }
+  // compute objf for unsupervised output nodes.
+  std::vector<std::string> node_names = nnet_.GetNodeNames();
+  for (int32 ind = 0; ind < node_names.size(); ind++) {
+    int32 node_index = nnet_.GetNodeIndex(node_names[ind]);
+    std::string node_name = node_names[ind];
+    KALDI_ASSERT(node_index >= 0);
+    if (nnet_.IsOutputNode(node_index)) {
+      SupervisionType sup_type = nnet_.GetNode(node_index).u.objective_types.supervision_type;
+      ObjectiveType obj_type = nnet_.GetNode(node_index).u.objective_types.objective_type;
+      if (sup_type == kUnsupervised) {
+        BaseFloat tot_weight, tot_objf;
+        bool supply_deriv = config_.compute_deriv;
+        SimpleObjectiveInfo &totals = objf_info_[node_name];
+        ComputeObjectiveFunction(obj_type, node_name,
+                                 supply_deriv, computer,
+                                 &tot_weight, &tot_objf);
+        totals.tot_weight += tot_weight;
+        totals.tot_objective += tot_objf;
+      }
+    }
+  }
 }
 
 bool NnetComputeProb::PrintTotalStats() const {
@@ -126,7 +149,7 @@ bool NnetComputeProb::PrintTotalStats() const {
       const std::string &name = iter->first;
       int32 node_index = nnet_.GetNodeIndex(name);
       KALDI_ASSERT(node_index >= 0);
-      ObjectiveType obj_type = nnet_.GetNode(node_index).u.objective_type;
+      ObjectiveType obj_type = nnet_.GetNode(node_index).u.objective_types.objective_type;
       const SimpleObjectiveInfo &info = iter->second;
       KALDI_LOG << "Overall "
                 << (obj_type == kLinear ? "log-likelihood" : "objective")

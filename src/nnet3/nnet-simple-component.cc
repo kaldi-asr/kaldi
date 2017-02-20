@@ -86,31 +86,36 @@ void PnormComponent::Write(std::ostream &os, bool binary) const {
 }
 
 
-void DropoutComponent::Init(int32 dim, BaseFloat dropout_proportion, BaseFloat max_scale) {
+void DropoutComponent::Init(int32 dim, BaseFloat dropout_proportion, 
+                            BaseFloat max_scale, bool complement) {
   dropout_proportion_ = dropout_proportion;
   dim_ = dim;
   max_scale_ = max_scale;
+  complement_ = complement;
 }
 
 void DropoutComponent::InitFromConfig(ConfigLine *cfl) {
   int32 dim = 0;
   BaseFloat dropout_proportion = 0.0,
     max_scale = 1.0;
+  bool complement = false;
   bool ok = cfl->GetValue("dim", &dim) &&
     cfl->GetValue("dropout-proportion", &dropout_proportion);
     cfl->GetValue("max-scale", &max_scale);
+    cfl->GetValue("complement", &complement);
   if (!ok || cfl->HasUnusedValues() || dim <= 0 || 
       dropout_proportion < 0.0 || dropout_proportion > 1.0)
     KALDI_ERR << "Invalid initializer for layer of type " 
               << Type() << ": \"" << cfl->WholeLine() << "\"";   
-  Init(dim, dropout_proportion, max_scale);
+  Init(dim, dropout_proportion, max_scale, complement);
 }
 
 std::string DropoutComponent::Info() const {
   std::ostringstream stream;
   stream << Type() << ", dim = " << dim_ 
          << ", dropout-proportion = " << dropout_proportion_
-         << ", max-scale = " << max_scale_;
+         << ", max-scale = " << max_scale_
+         << ", complement = " << complement_;
   return stream.str();
 }
 
@@ -123,15 +128,22 @@ void DropoutComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   BaseFloat dropout = dropout_proportion_;
   KALDI_ASSERT(dropout >= 0.0 && dropout <= 1.0);
   KALDI_ASSERT(max_scale_ > 0.0);
+
   BaseFloat scale = std::min(max_scale_, 1/(1 - dropout));
   // This const_cast is only safe assuming you don't attempt  
   // to use multi-threaded code with the GPU.
-  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out); 
+  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
 
   out->Add(-dropout); // now, a proportion "dropout" will be <0.0 
   out->ApplyHeaviside(); // apply the function (x>0?1:0).  Now, a proportion "dropout" will 
                          // be zero and (1 - dropout) will be 1.0.
-
+  if (complement_) {
+    int32 half_size = out->NumCols() / 2;
+    CuMatrix<BaseFloat> complement(out->NumRows(), half_size);
+    complement.Set(1.0);
+    complement.AddMat(-1.0, out->ColRange(0, half_size));
+    out->ColRange(half_size, half_size).CopyFromMat(complement);
+  }
   out->MulElements(in);
   out->Scale(scale);
 }
@@ -164,12 +176,14 @@ void DropoutComponent::Read(std::istream &is, bool binary) {
   std::string token;
   ReadToken(is, binary, &token);
   if (token == "<MaxScale>") {
-    ReadBasicType(is, binary, &max_scale_); 
-    ExpectToken(is, binary, "</DropoutComponent>");
-  } else {
-    KALDI_ASSERT(token == "</DropoutComponent>");
-  }
-
+    ReadBasicType(is, binary, &max_scale_);
+    ReadToken(is, binary, &token);
+  }   
+  if (token == "<Complement>") {
+    ReadBasicType(is, binary, &complement_);
+    ReadToken(is, binary, &token); 
+  } 
+  KALDI_ASSERT(token == "</DropoutComponent>");
 }
 
 void DropoutComponent::Write(std::ostream &os, bool binary) const {
@@ -180,6 +194,8 @@ void DropoutComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, dropout_proportion_);
   WriteToken(os, binary, "<MaxScale>");
   WriteBasicType(os, binary, max_scale_);
+  WriteToken(os, binary, "<Complement>");
+  WriteBasicType(os, binary, complement_); 
   WriteToken(os, binary, "</DropoutComponent>");
 }
 

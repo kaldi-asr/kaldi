@@ -55,7 +55,7 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
       KALDI_WARN << "Could not open cached computation. "
                     "Probably this is the first training iteration.";
     }
-  } 
+  }
 }
 
 
@@ -167,6 +167,27 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
       computer->AcceptOutputDeriv(xent_name, &xent_deriv);
     }
   }
+  // compute objf for unsupervised output nodes.
+  std::vector<std::string> node_names = nnet_->GetNodeNames();
+  for (int32 ind = 0; ind < node_names.size(); ind++) {
+    int32 node_index = nnet_->GetNodeIndex(node_names[ind]);
+    std::string node_name = node_names[ind];
+    KALDI_ASSERT(node_index >= 0);
+    if (nnet_->IsOutputNode(node_index)) {
+      SupervisionType sup_type = nnet_->GetNode(node_index).u.objective_types.supervision_type;
+      ObjectiveType obj_type = nnet_->GetNode(node_index).u.objective_types.objective_type;
+      if (sup_type == kUnsupervised) {
+        BaseFloat tot_weight, tot_objf;
+        bool supply_deriv = true;
+        ComputeObjectiveFunction(obj_type, node_name,
+                                 supply_deriv, computer,
+                                 &tot_weight, &tot_objf);
+        objf_info_[node_name].UpdateStats(node_name, opts_.nnet_config.print_interval,
+                                          num_minibatches_processed_++,
+                                          tot_weight, tot_objf);
+      }
+    }
+  }
 }
 
 
@@ -189,7 +210,7 @@ NnetChainTrainer::~NnetChainTrainer() {
     Output ko(opts_.nnet_config.write_cache, opts_.nnet_config.binary_write_cache);
     compiler_.WriteCache(ko.Stream(), opts_.nnet_config.binary_write_cache);
     KALDI_LOG << "Wrote computation cache to " << opts_.nnet_config.write_cache;
-  } 
+  }
   delete delta_nnet_;
 }
 
