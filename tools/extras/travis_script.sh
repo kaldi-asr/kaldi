@@ -42,7 +42,7 @@ if git rev-parse "${TRAVIS_COMMIT_RANGE}" >/dev/null 2>&1 && \
 then
   echo; echo "No changes outside ${TESTABLE_DIRS} in the commit" \
              "range ${TRAVIS_COMMIT_RANGE}; reporting success."
-  exit 0;
+  # exit 0;
 fi
 
 # Prepare environment variables
