@@ -120,7 +120,7 @@ if [ $stage -le 8 ]; then
     --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
     --trainer.optimization.final-effective-lrate $final_effective_lrate \
     --trainer.max-param-change $max_param_change \
-    --cleanup.remove-egs true \
+    --cleanup.remove-egs $remove_egs \
     --feat-dir data/train \
     --tree-dir $treedir \
     --lat-dir exp/tri3b_lats \

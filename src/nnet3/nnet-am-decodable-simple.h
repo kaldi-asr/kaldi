@@ -328,7 +328,7 @@ class DecodableAmNnetSimpleParallel: public DecodableInterface {
             CachingOptimizingCompiler-- because making that thread safe
             would be quite complicated, and in any case multi-threaded
             decoding probably makes the most sense when using CPU, and
-            in that case won't expect the compilation phase to dominate.
+            in that case we don't expect the compilation phase to dominate.
 
      This constructor takes features as input, and you can either supply a
      single iVector input, estimated in batch-mode ('ivector'), or 'online'

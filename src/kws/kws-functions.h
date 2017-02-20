@@ -21,6 +21,8 @@
 #ifndef KALDI_KWS_KWS_FUNCTIONS_H_
 #define KALDI_KWS_KWS_FUNCTIONS_H_
 
+#include <vector>
+
 #include "lat/kaldi-lattice.h"
 #include "kws/kaldi-kws.h"
 

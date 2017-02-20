@@ -2,6 +2,7 @@
 
 # 1d is as 1b, but adding decay-time=40 to the fast-lstmp-layers.  note: it
 # uses egs from 1b, remember to remove that before I commit.
+# See 1e for summary of results.
 
 # steps/info/chain_dir_info.pl exp/chain_cleaned/tdnn_lstm1a_sp_bi
 # exp/chain_cleaned/tdnn_lstm1a_sp_bi: num-iters=253 nj=2..12 num-params=9.5M dim=40+100->3607 combine=-0.07->-0.07 xent:train/valid[167,252,final]=(-0.960,-0.859,-0.852/-1.05,-0.999,-0.997) logprob:train/valid[167,252,final]=(-0.076,-0.064,-0.062/-0.099,-0.092,-0.091)

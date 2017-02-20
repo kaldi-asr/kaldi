@@ -17,9 +17,9 @@
 
 
 # Script for system combination using minimum Bayes risk decoding.
-# This calls lattice-combine to create a union of lattices that have been 
+# This calls lattice-combine to create a union of lattices that have been
 # normalized by removing the total forward cost from them. The resulting lattice
-# is used as input to lattice-mbr-decode. This should not be put in steps/ or 
+# is used as input to lattice-mbr-decode. This should not be put in steps/ or
 # utils/ since the scores on the combined lattice must not be scaled.
 
 # begin configuration section.
@@ -71,7 +71,7 @@ for i in `seq 0 $[num_sys-1]`; do
   offset=`echo $decode_dir | cut -d: -s -f2` # add this to the lm-weight.
   decode_dir=`echo $decode_dir | cut -d: -f1`
   [ -z "$offset" ] && offset=1
-  
+
   weight=$(perl -e "print ($offset/$total_sum);")
   if [ -f $decode_dir ] ; then
     systems+="$weight $decode_dir "

@@ -2,6 +2,8 @@
 
 #######################
 # 1g is as 1e, but reducing decay-time further from 20 to 10.
+# see 1e for summary of results.
+
 # 1e is as 1b, but reducing decay-time from 40 to 20.
 
 # 1d is as 1b, but adding decay-time=40 to the fast-lstmp-layers.  note: it
