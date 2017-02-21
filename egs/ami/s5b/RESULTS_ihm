@@ -64,8 +64,8 @@
 # cleanup + chain TDNN model
 # local/chain/run_tdnn.sh --mic ihm --stage 12 &
 # for d in exp/ihm/chain_cleaned/tdnn_sp_bi/decode_*; do grep sum $d/*sc*/*ys | utils/best_wer.sh; done
-%wer 22.5 | 13098 94490 | 80.6 10.8 8.6 3.1 22.5 55.0 | 0.072 | exp/ihm/chain_cleaned/tdnn_sp_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
-%wer 22.5 | 12643 89978 | 80.3 12.5 7.2 2.7 22.5 53.1 | 0.149 | exp/ihm/chain_cleaned/tdnn_sp_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
+%WER 22.5 | 13098 94490 | 80.6 10.8 8.6 3.1 22.5 55.0 | 0.072 | exp/ihm/chain_cleaned/tdnn_sp_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+%WER 22.5 | 12643 89978 | 80.3 12.5 7.2 2.7 22.5 53.1 | 0.149 | exp/ihm/chain_cleaned/tdnn_sp_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
 
 # cleanup + chain TDNN model. Uses PCA instead of LDA for ivector features.
 # local/chain/tuning/run_tdnn_1d.sh --mic ihm --stage 12 &
