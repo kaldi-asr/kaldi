@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# e is as c, but uses splicing similar to chain's without changing number of 
+# e is as c, but uses splicing similar to chain's without changing number of
 # layers.
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.

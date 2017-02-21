@@ -779,7 +779,7 @@ static inline void ConvertAlignmentForPhone(
    'mapped_phones' and 'old_lengths' must be the same size-- the length of the
    phone sequence.  The 'topology' object and 'mapped_phones' are needed to
    work out the minimum length of each phone in the sequence.
-   Returns true only if it could not assign lengths (because the topology was
+   Returns false only if it could not assign lengths (because the topology was
    too long relative to the number of frames).
 
    @param topology [in]         The new phone lengths are computed with

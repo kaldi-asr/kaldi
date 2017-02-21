@@ -109,7 +109,7 @@ fi
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/train_dnn.py --stage=$train_stage \
