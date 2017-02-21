@@ -1,20 +1,19 @@
 #!/bin/bash
 
-# run_tdnn_1b.sh is like run_tdnn_1a.sh but upgrading to xconfig-based
-# config generation.
+# run_tdnn_1c.sh is like run_tdnn_1b.sh but uses PCA instead of LDA+MLLT
+# features for the ivectors to remove the need for alignments.
 
-# Results (11/29/2016, note, this build is is before the upgrade of the LM
-#   done in Nov 2016):
-# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn_sp_bi exp/chain_cleaned/tdnn1b_sp_bi
-# System                tdnn_sp_bi tdnn1b_sp_bi
-# WER on dev(orig)          10.3      10.2
-# WER on dev(rescored)       9.8       9.6
-# WER on test(orig)           9.8       9.7
-# WER on test(rescored)       9.3       9.2
-# Final train prob        -0.0918   -0.0928
-# Final valid prob        -0.1190   -0.1178
-# Final train prob (xent)   -1.3572   -1.4666
-# Final valid prob (xent)   -1.4415   -1.5473
+# Results run on 02/21/2017:
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1b_sp_bi exp/chain_cleaned/tdnn1c_sp_bi/
+# System                tdnn1b_sp_bi tdnn1c_sp_bi
+# WER on dev(orig)          10.3      10.5
+# WER on dev(rescored)       9.7      10.0
+# WER on test(orig)           9.5      10.0
+# WER on test(rescored)       8.9       9.4
+# Final train prob        -0.0861   -0.0861
+# Final valid prob        -0.1098   -0.1090
+# Final train prob (xent)   -1.4064   -1.4128
+# Final valid prob (xent)   -1.4701   -1.4777
 
 
 ## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
@@ -28,9 +27,6 @@
 # note, if you have already run the corresponding non-chain nnet3 system
 # (local/nnet3/run_tdnn.sh), you may want to run with --stage 14.
 
-# This script is like run_tdnn_1a.sh except it uses an xconfig-based mechanism
-# to get the configuration.
-
 set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
@@ -43,13 +39,14 @@ xent_regularize=0.1
 train_set=train_cleaned
 gmm=tri3_cleaned  # the gmm for the target data
 num_threads_ubm=32
+ivector_feat_type=pca
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=1b  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+tdnn_affix=1c  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 
 # End configuration section.
@@ -74,6 +71,7 @@ local/nnet3/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
                                   --gmm $gmm \
                                   --num-threads-ubm $num_threads_ubm \
+                                  --feat-type "$ivector_feat_type" \
                                   --nnet3-affix "$nnet3_affix"
 
 
