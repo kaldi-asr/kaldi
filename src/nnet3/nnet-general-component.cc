@@ -19,6 +19,7 @@
 
 #include <iterator>
 #include <sstream>
+#include <iomanip>
 #include "nnet3/nnet-general-component.h"
 #include "nnet3/nnet-computation-graph.h"
 #include "nnet3/nnet-parse.h"
@@ -556,7 +557,7 @@ void StatisticsPoolingComponent::InitFromConfig(ConfigLine *cfl) {
 
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-	      << cfl->UnusedValues();
+              << cfl->UnusedValues();
   // do some basic checks here but Check() will check more completely.
   if (!ok || input_dim_ <= 0 || left_context_ + right_context_ <= 0 ||
       num_log_count_features_ < 0)
@@ -968,10 +969,13 @@ std::string BackpropTruncationComponent::Info() const {
   std::ostringstream stream;
   stream << Type() << ", dim=" << dim_
          << ", scale=" << scale_
+         << ", count=" << std::setprecision(3) << count_ << std::setprecision(6)
+         << ", recurrence-interval=" << recurrence_interval_
          << ", clipping-threshold=" << clipping_threshold_
          << ", clipped-proportion="
          << (count_ > 0.0 ? num_clipped_ / count_ : 0)
          << ", zeroing-threshold=" << zeroing_threshold_
+         << ", zeroing-interval=" << zeroing_interval_
          << ", zeroed-proportion="
          << (count_zeroing_boundaries_ > 0.0 ?
              num_zeroed_ / count_zeroing_boundaries_ : 0)
