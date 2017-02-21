@@ -16,11 +16,11 @@ help_message="$0: score the kwslist using the F4DE scorer from NIST
   Example:
     $0 [additional-parameters] <kaldi-data-dir> <kws-results-dir>
     where the most important additional parameters can be:
-    --extraid  <extra-id> #for using, when a non-default kws tasks are setup 
+    --extraid  <extra-id> #for using, when a non-default kws tasks are setup
               (using the kws_setup.sh --extraid) for a kaldi-single data-dir
     --kwlist <kwlist> #allows for an alternative kwlist -- if not set, the default
               kwlist is taken from <kaldi-data-dir>
-    --f4de-prefix <prefix-id> #allows for scoring the same results using 
+    --f4de-prefix <prefix-id> #allows for scoring the same results using
               different kwlists and storing them in the same dir "
 
 echo $0 $@
@@ -72,8 +72,9 @@ done
 echo KWSEval -e $ecf -r $rttm -t $kwlist \
     -s $kwsoutputdir/kwslist.xml -c -o -b -d -f $kwsoutputdir
 
-KWSEval -e $ecf -r $rttm -t $kwlist \
-    -s $kwsoutputdir/kwslist.xml -c -o -b -d -f ${kwsoutputdir}${f4de_prefix} || exit 1;
+KWSEval -e $ecf -r $rttm -t $kwlist -a  --zGlobalMeasures MAP \
+    --zGlobalMeasures MAPpct --zGlobalMeasures Optimum --zGlobalMeasures Supremum \
+    -s $kwsoutputdir/kwslist.xml -c -o -b -d -f  ${kwsoutputdir}${f4de_prefix} || exit 1;
 
 duration=`cat ${kwsoutputdir}${f4de_prefix}/sum.txt | grep TotDur | cut -f 3 -d '|' | sed "s/\s*//g"`
 

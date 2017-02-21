@@ -19,9 +19,13 @@ done
 dir=data/local/lm
 mkdir -p $dir
 
+export LC_ALL=C # You'll get errors about things being not sorted, if you
+                # have a different locale.
 kaldi_lm=`which train_lm.sh`
 if [ ! -x $kaldi_lm ]; then
-  echo "train_lm.sh is not found. Checkout tools/extra/install_kaldi_lm.sh"
+  echo "$0: train_lm.sh is not found. That might mean it's not installed"
+  echo "$0: or it is not added to PATH"
+  echo "$0: Use the script tools/extra/install_kaldi_lm.sh to install it"
   exit 1
 fi
 

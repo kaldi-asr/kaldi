@@ -1,19 +1,37 @@
 #!/bin/bash
 
-# run_tdnn_1c.sh is like run_tdnn_1b.sh but uses PCA instead of LDA+MLLT
-# features for the ivectors to remove the need for alignments.
+# run_tdnn_1c.sh is like run_tdnn_1b.sh but changing chunk-width from 150 to
+# '140,110,160', and
+# and --trainer.num-chunk-per-minibatch from 128 to 128,64.
+# Not better; if anything a little worse.  But could possibly be noise.
 
-# Results run on 02/21/2017:
-# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1b_sp_bi exp/chain_cleaned/tdnn1c_sp_bi/
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1b_sp_bi exp/chain_cleaned/tdnn1c_sp_bi
 # System                tdnn1b_sp_bi tdnn1c_sp_bi
-# WER on dev(orig)          10.3      10.5
-# WER on dev(rescored)       9.7      10.0
-# WER on test(orig)           9.5      10.0
-# WER on test(rescored)       8.9       9.4
-# Final train prob        -0.0861   -0.0861
-# Final valid prob        -0.1098   -0.1090
-# Final train prob (xent)   -1.4064   -1.4128
-# Final valid prob (xent)   -1.4701   -1.4777
+# WER on dev(orig)            9.4       9.8
+# WER on dev(rescored)        8.8       9.0
+# WER on test(orig)           9.6       9.7
+# WER on test(rescored)       9.0       9.2
+# Final train prob        -0.0870   -0.0942
+# Final valid prob        -0.1147   -0.1108
+# Final train prob (xent)   -1.4014   -1.4227
+# Final valid prob (xent)   -1.5634   -1.4884
+
+
+# run_tdnn_1b.sh is like run_tdnn_1a.sh but upgrading to xconfig-based
+# config generation.
+
+# Results (11/29/2016, note, this build is is before the upgrade of the LM
+#   done in Nov 2016):
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn_sp_bi exp/chain_cleaned/tdnn1b_sp_bi
+# System                tdnn_sp_bi tdnn1b_sp_bi
+# WER on dev(orig)          10.3      10.2
+# WER on dev(rescored)       9.8       9.6
+# WER on test(orig)           9.8       9.7
+# WER on test(rescored)       9.3       9.2
+# Final train prob        -0.0918   -0.0928
+# Final valid prob        -0.1190   -0.1178
+# Final train prob (xent)   -1.3572   -1.4666
+# Final valid prob (xent)   -1.4415   -1.5473
 
 
 ## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
@@ -27,11 +45,14 @@
 # note, if you have already run the corresponding non-chain nnet3 system
 # (local/nnet3/run_tdnn.sh), you may want to run with --stage 14.
 
+# This script is like run_tdnn_1a.sh except it uses an xconfig-based mechanism
+# to get the configuration.
+
 set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
-stage=12
+stage=0
 nj=30
 decode_nj=30
 min_seg_len=1.55
@@ -39,7 +60,6 @@ xent_regularize=0.1
 train_set=train_cleaned
 gmm=tri3_cleaned  # the gmm for the target data
 num_threads_ubm=32
-ivector_feat_type=pca
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 
 # The rest are configs specific to this script.  Most of the parameters
@@ -71,7 +91,6 @@ local/nnet3/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
                                   --gmm $gmm \
                                   --num-threads-ubm $num_threads_ubm \
-                                  --feat-type "$ivector_feat_type" \
                                   --nnet3-affix "$nnet3_affix"
 
 
@@ -86,7 +105,7 @@ train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
 
 
 for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
-    $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz ; do
+    $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
@@ -199,8 +218,8 @@ if [ $stage -le 18 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.dir "$common_egs_dir" \
     --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width 150 \
-    --trainer.num-chunk-per-minibatch 128 \
+    --egs.chunk-width '140,110,160' \
+    --trainer.num-chunk-per-minibatch '128,64' \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs 4 \
     --trainer.optimization.num-jobs-initial 2 \
@@ -243,4 +262,34 @@ if [ $stage -le 20 ]; then
     exit 1
   fi
 fi
+
+
+
+if [ $stage -le 21 ]; then
+  # 'looped' decoding.  we didn't write a -parallel version of this program yet,
+  # so it will take a bit longer as the --num-threads option is not supported.
+  # we just hardcode the --frames-per-chunk option as it doesn't have to
+  # match any value used in training, and it won't affect the results (unlike
+  # regular decoding).
+  rm $dir/.error 2>/dev/null || true
+  for dset in dev test; do
+      (
+      steps/nnet3/decode_looped.sh --nj $decode_nj --cmd "$decode_cmd" \
+          --acwt 1.0 --post-decode-acwt 10.0 \
+          --frames-per-chunk 30 \
+          --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
+          --scoring-opts "--min-lmwt 5 " \
+         $dir/graph data/${dset}_hires $dir/decode_looped_${dset} || exit 1;
+      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
+        data/${dset}_hires ${dir}/decode_looped_${dset} ${dir}/decode_looped_${dset}_rescore || exit 1
+    ) || touch $dir/.error &
+  done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in decoding"
+    exit 1
+  fi
+fi
+
+
 exit 0

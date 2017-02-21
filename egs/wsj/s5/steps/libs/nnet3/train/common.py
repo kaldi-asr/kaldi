@@ -57,7 +57,7 @@ def get_successful_models(num_models, log_file_pattern,
         for line_num in range(1, len(lines) + 1):
             # we search from the end as this would result in
             # lesser number of regex searches. Python regex is slow !
-            mat_obj = parse_regex.search(lines[-1*line_num])
+            mat_obj = parse_regex.search(lines[-1 * line_num])
             if mat_obj is not None:
                 this_objf = float(mat_obj.groups()[0])
                 break
@@ -66,7 +66,7 @@ def get_successful_models(num_models, log_file_pattern,
     accepted_models = []
     for i in range(num_models):
         if (objf[max_index] - objf[i]) <= difference_threshold:
-            accepted_models.append(i+1)
+            accepted_models.append(i + 1)
 
     if len(accepted_models) != num_models:
         logger.warn("Only {0}/{1} of the models have been accepted "
@@ -74,7 +74,7 @@ def get_successful_models(num_models, log_file_pattern,
                         len(accepted_models),
                         num_models, log_file_pattern))
 
-    return [accepted_models, max_index+1]
+    return [accepted_models, max_index + 1]
 
 
 def get_average_nnet_model(dir, iter, nnets_list, run_opts,
@@ -137,9 +137,140 @@ def get_best_nnet_model(dir, iter, best_model_index, run_opts,
                                       out_model=out_model, scale=scale))
 
 
+def validate_chunk_width(chunk_width):
+    """Validate a chunk-width string , returns boolean.
+    Expected to be a string representing either an integer, like '20',
+    or a comma-separated list of integers like '20,30,16'"""
+    if not isinstance(chunk_width, str):
+        return False
+    a = chunk_width.split(",")
+    assert len(a) != 0  # would be code error
+    for elem in a:
+        try:
+            i = int(elem)
+            if i < 1:
+                return False
+        except:
+            return False
+    return True
+
+
+def principal_chunk_width(chunk_width):
+    """Given a chunk-width string like "20" or "50,70,40", returns the principal
+    chunk-width which is the first element, as an int.  E.g. 20, or 40."""
+    if not validate_chunk_width(chunk_width):
+        raise Exception("Invalid chunk-width {0}".format(chunk_width))
+    return int(chunk_width.split(",")[0])
+
+
+def validate_range_str(range_str):
+    """Helper function used inside validate_minibatch_size_str().
+    Returns true if range_str is a a comma-separated list of
+    positive integers and ranges of integers, like '128',
+    '128,256', or '64-128,256'."""
+    if not isinstance(range_str, str):
+        return False
+    ranges = range_str.split(",")
+    assert len(ranges) > 0
+    for r in ranges:
+        # a range may be either e.g. '64', or '128-256'
+        try:
+            c = [int(x) for x in r.split(":")]
+        except:
+            return False
+        # c should be either e.g. [ 128 ], or  [64,128].
+        if len(c) == 1:
+            if c[0] <= 0:
+                return False
+        elif len(c) == 2:
+            if c[0] <= 0 or c[1] < c[0]:
+                return False
+        else:
+            return False
+    return True
+
+
+def validate_minibatch_size_str(minibatch_size_str):
+    """Validate a minibatch-size string (returns bool).
+    A minibatch-size string might either be an integer, like '256',
+    a comma-separated set of integers or ranges like '128,256' or
+    '64:128,256',  or a rule like '128=64:128/256=32,64', whose format
+    is: eg-length1=size-range1/eg-length2=size-range2/....
+    where a size-range is a comma-separated list of either integers like '16'
+    or ranges like '16:32'.  An arbitrary eg will be mapped to the size-range
+    for the closest of the listed eg-lengths (the eg-length is defined
+    as the number of input frames, including context frames)."""
+    if not isinstance(minibatch_size_str, str):
+        return False
+    a = minibatch_size_str.split("/")
+    assert len(a) != 0  # would be code error
+
+    for elem in a:
+        b = elem.split('=')
+        # We expect b to have length 2 in the normal case.
+        if len(b) != 2:
+            # one-element 'b' is OK if len(a) is 1 (so there is only
+            # one choice)... this would mean somebody just gave "25"
+            # or something like that for the minibatch size.
+            if len(a) == 1 and len(b) == 1:
+                return validate_range_str(elem)
+            else:
+                return False
+        # check that the thing before the '=' sign is a positive integer
+        try:
+            i = b[0]
+            if i <= 0:
+                return False
+        except:
+            return False  # not an integer at all.
+
+        if not validate_range_str(b[1]):
+            return False
+    return True
+
+
+def halve_range_str(range_str):
+    """Helper function used inside halve_minibatch_size_str().
+    returns half of a range [but converting resulting zeros to
+    ones], e.g. '16'->'8', '16,32'->'8,16', '64:128'->'32:64'.
+    Returns true if range_str is a a comma-separated list of
+    positive integers and ranges of integers, like '128',
+    '128,256', or '64-128,256'."""
+
+    ranges = range_str.split(",")
+    halved_ranges = []
+    for r in ranges:
+        # a range may be either e.g. '64', or '128:256'
+        c = [str(max(1, int(x)/2)) for x in r.split(":")]
+        halved_ranges.append(":".join(c))
+    return ','.join(halved_ranges)
+
+
+def halve_minibatch_size_str(minibatch_size_str):
+    """Halve a minibatch-size string, as would be validated by
+    validate_minibatch_size_str (see docs for that).  This halves
+    all the integer elements of minibatch_size_str that represent minibatch
+    sizes (as opposed to chunk-lengths) and that are >1."""
+
+    if not validate_minibatch_size_str(minibatch_size_str):
+        raise Exception("Invalid minibatch-size string '{0}'".format(minibatch_size_str))
+
+    a = minibatch_size_str.split("/")
+    ans = []
+    for elem in a:
+        b = elem.split('=')
+        # We expect b to have length 2 in the normal case.
+        if len(b) == 1:
+            return halve_range_str(elem)
+        else:
+            assert len(b) == 2
+            ans.append('{0}={1}'.format(b[0], halve_range_str(b[1])))
+    return '/'.join(ans)
+
+
 def copy_egs_properties_to_exp_dir(egs_dir, dir):
     try:
-        for file in ['cmvn_opts', 'splice_opts', 'final.mat']:
+        for file in ['cmvn_opts', 'splice_opts', 'info/final.ie.id', 'final.mat']:
             file_name = '{dir}/{file}'.format(dir=egs_dir, file=file)
             if os.path.isfile(file_name):
                 shutil.copy2(file_name, dir)
@@ -173,33 +304,92 @@ def parse_generic_config_vars_file(var_file):
     raise Exception('Error while parsing the file {0}'.format(var_file))
 
 
-def verify_egs_dir(egs_dir, feat_dim, ivector_dim,
-                   left_context, right_context):
+def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
+                   left_context, right_context,
+                   left_context_initial=-1, right_context_final=-1):
     try:
         egs_feat_dim = int(open('{0}/info/feat_dim'.format(
                                     egs_dir)).readline())
+
+        egs_ivector_id = None
+        try:
+            egs_ivector_id = open('{0}/info/final.ie.id'.format(
+                                        egs_dir)).readline().strip()
+        except:
+            # it could actually happen that the file is not there
+            # for example in cases where the egs were dumped by
+            # an older version of the script
+            pass
+
         egs_ivector_dim = int(open('{0}/info/ivector_dim'.format(
                                     egs_dir)).readline())
         egs_left_context = int(open('{0}/info/left_context'.format(
                                     egs_dir)).readline())
         egs_right_context = int(open('{0}/info/right_context'.format(
                                     egs_dir)).readline())
+        try:
+            egs_left_context_initial = int(open('{0}/info/left_context_initial'.format(
+                        egs_dir)).readline())
+        except:  # older scripts didn't write this, treat it as -1 in that case.
+            egs_left_context_initial = -1
+        try:
+            egs_right_context_final = int(open('{0}/info/right_context_final'.format(
+                        egs_dir)).readline())
+        except:  # older scripts didn't write this, treat it as -1 in that case.
+            egs_right_context_final = -1
+
         if (feat_dim != egs_feat_dim) or (ivector_dim != egs_ivector_dim):
             raise Exception("There is mismatch between featdim/ivector_dim of "
                             "the current experiment and the provided "
                             "egs directory")
 
+        if (((egs_ivector_id is None) and (ivector_extractor_id is not None)) or
+            ((egs_ivector_id is not None) and (ivector_extractor_id is None))):
+            logger.warning("The ivector ids are inconsistently used. It's your "
+                          "responsibility to make sure the ivector extractor "
+                          "has been used consistently")
+        elif (((egs_ivector_id is None) and (ivector_extractor_id is None))):
+            logger.warning("The ivector ids are not used. It's your "
+                          "responsibility to make sure the ivector extractor "
+                          "has been used consistently")
+        elif (ivector_extractor_id != egs_ivector_id):
+            raise Exception("The egs were generated using a different ivector "
+                            "extractor. id1 = {0}, id2={1}".format(
+                                ivector_extractor_id, egs_ivector_id));
+
         if (egs_left_context < left_context or
                 egs_right_context < right_context):
-            raise Exception('The egs have insufficient context')
+            raise Exception('The egs have insufficient (l,r) context ({0},{1}) '
+                            'versus expected ({2},{3})'.format(
+                            egs_left_context, egs_right_context,
+                            left_context, right_context))
 
-        frames_per_eg = int(open('{0}/info/frames_per_eg'.format(
-                                    egs_dir)).readline())
+        # the condition on the initial/final context is an equality condition,
+        # not an inequality condition, as there is no mechanism to 'correct' the
+        # context (by subtracting context) while copying the egs, like there is
+        # for the regular left-right context.  If the user is determined to use
+        # previously dumped egs, they may be able to slightly adjust the
+        # --egs.chunk-left-context-initial and --egs.chunk-right-context-final
+        # options to make things matched up.  [note: the model l/r context gets
+        # added in, so you have to correct for changes in that.]
+        if (egs_left_context_initial != left_context_initial or
+            egs_right_context_final != right_context_final):
+            raise Exception('The egs have incorrect initial/final (l,r) context '
+                            '({0},{1}) versus expected ({2},{3}).  See code from '
+                            'where this exception was raised for more info'.format(
+                    egs_left_context_initial, egs_right_context_final,
+                    left_context_initial, right_context_final))
+
+        frames_per_eg_str = open('{0}/info/frames_per_eg'.format(
+                             egs_dir)).readline().rstrip()
+        if not validate_chunk_width(frames_per_eg_str):
+            raise Exception("Invalid frames_per_eg in directory {0}/info".format(
+                    egs_dir))
         num_archives = int(open('{0}/info/num_archives'.format(
                                     egs_dir)).readline())
 
         return [egs_left_context, egs_right_context,
-                frames_per_eg, num_archives]
+                frames_per_eg_str, num_archives]
     except (IOError, ValueError):
         logger.error("The egs dir {0} has missing or "
                      "malformed files.".format(egs_dir))
@@ -276,16 +466,24 @@ def verify_iterations(num_iters, num_epochs, num_hidden_layers,
                         "layer-wise discriminatory training.")
 
     approx_iters_per_epoch_final = num_archives/num_jobs_final
+    # Note: it used to be that we would combine over an entire epoch,
+    # but in practice we very rarely would use any weights from towards
+    # the end of that range, so we are changing it to use not
+    # approx_iters_per_epoch_final, but instead:
+    # approx_iters_per_epoch_final/2 + 1,
+    # dividing by 2 to use half an epoch, and adding 1 just to make sure
+    # it's not zero.
+
     # First work out how many iterations we want to combine over in the final
     # nnet3-combine-fast invocation.
     # The number we use is:
-    # min(max(max_models_combine, approx_iters_per_epoch_final),
+    # min(max(max_models_combine, approx_iters_per_epoch_final/2+1),
     #     1/2 * iters_after_last_layer_added)
     # But if this value is > max_models_combine, then the models
     # are subsampled to get these many models to combine.
     half_iters_after_add_layers = (num_iters - finish_add_layers_iter)/2
 
-    num_iters_combine_initial = min(approx_iters_per_epoch_final,
+    num_iters_combine_initial = min(approx_iters_per_epoch_final/2 + 1,
                                     half_iters_after_add_layers)
 
     if num_iters_combine_initial > max_models_combine:
@@ -387,6 +585,15 @@ def remove_model(nnet_dir, iter, num_iters, models_to_combine=None,
         os.remove(file_name)
 
 
+def self_test():
+    assert halve_minibatch_size_str('64') == '32'
+    assert halve_minibatch_size_str('64,16:32') == '32,8:16'
+    assert halve_minibatch_size_str('1') == '1'
+    assert halve_minibatch_size_str('128=64/256=40,80:100') == '128=32/256=20,40:50'
+    assert validate_chunk_width('64')
+    assert validate_chunk_width('64,25,128')
+
+
 class CommonParser:
     """Parser for parsing common options related to nnet3 training.
 
@@ -398,7 +605,9 @@ class CommonParser:
 
     parser = argparse.ArgumentParser(add_help=False)
 
-    def __init__(self):
+    def __init__(self,
+                 include_chunk_context = True,
+                 default_chunk_left_context=0):
         # feat options
         self.parser.add_argument("--feat.online-ivector-dir", type=str,
                                  dest='online_ivector_dir', default=None,
@@ -411,22 +620,39 @@ class CommonParser:
                                  help="A string specifying '--norm-means' "
                                  "and '--norm-vars' values")
 
-        # egs extraction options
-        self.parser.add_argument("--egs.chunk-left-context", type=int,
-                                 dest='chunk_left_context', default=0,
-                                 help="""Number of additional frames of input
+        # egs extraction options.  there is no point adding the chunk context
+        # option for non-RNNs (by which we mean basic TDNN-type topologies), as
+        # it wouldn't affect anything, so we disable them if we know in advance
+        # that we're not supporting RNN-type topologies (as in train_dnn.py).
+        if include_chunk_context:
+            self.parser.add_argument("--egs.chunk-left-context", type=int,
+                                     dest='chunk_left_context',
+                                     default=default_chunk_left_context,
+                                     help="""Number of additional frames of input
                                  to the left of the input chunk. This extra
                                  context will be used in the estimation of RNN
                                  state before prediction of the first label. In
                                  the case of FF-DNN this extra context will be
                                  used to allow for frame-shifts""")
-        self.parser.add_argument("--egs.chunk-right-context", type=int,
+            self.parser.add_argument("--egs.chunk-right-context", type=int,
                                  dest='chunk_right_context', default=0,
                                  help="""Number of additional frames of input
                                  to the right of the input chunk. This extra
                                  context will be used in the estimation of
                                  bidirectional RNN state before prediction of
                                  the first label.""")
+            self.parser.add_argument("--egs.chunk-left-context-initial", type=int,
+                                     dest='chunk_left_context_initial', default=-1,
+                                     help="""Number of additional frames of input
+                                 to the left of the *first* input chunk extracted
+                                 from an utterance.  If negative, defaults to
+                                 the same as --egs.chunk-left-context""")
+            self.parser.add_argument("--egs.chunk-right-context-final", type=int,
+                                     dest='chunk_right_context_final', default=-1,
+                                     help="""Number of additional frames of input
+                                 to the right of the *last* input chunk extracted
+                                 from an utterance.  If negative, defaults to the
+                                 same as --egs.chunk-right-context""")
         self.parser.add_argument("--egs.transform_dir", type=str,
                                  dest='transform_dir', default=None,
                                  action=common_lib.NullstrToNoneAction,
@@ -458,8 +684,8 @@ class CommonParser:
                                  other random seeds used in other stages of the
                                  experiment like data preparation (e.g. volume
                                  perturbation).""")
-        self.parser.add_argument("--trainer.num-epochs", type=int,
-                                 dest='num_epochs', default=8,
+        self.parser.add_argument("--trainer.num-epochs", type=float,
+                                 dest='num_epochs', default=8.0,
                                  help="Number of epochs to train the model")
         self.parser.add_argument("--trainer.shuffle-buffer-size", type=int,
                                  dest='shuffle_buffer_size', default=5000,
@@ -528,6 +754,11 @@ class CommonParser:
                                  the final model combination stage.  These
                                  models will themselves be averages of
                                  iteration-number ranges""")
+        self.parser.add_argument("--trainer.optimization.combine-sum-to-one-penalty",
+                                 type=float, dest='combine_sum_to_one_penalty', default=0.0,
+                                 help="""If > 0, activates 'soft' enforcement of the
+                                 sum-to-one penalty in combination (may be helpful
+                                 if using dropout).  E.g. 1.0e-03.""")
         self.parser.add_argument("--trainer.optimization.momentum", type=float,
                                  dest='momentum', default=0.0,
                                  help="""Momentum used in update computation.
@@ -622,3 +853,7 @@ class CommonParser:
                                  help="""Polling frequency in seconds at which
                                  the background process handler checks for
                                  errors in the processes.""")
+
+
+if __name__ == '__main__':
+    self_test()

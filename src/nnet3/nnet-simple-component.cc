@@ -1172,8 +1172,14 @@ void RectifiedLinearComponent::StoreStats(
 }
 
 void AffineComponent::Scale(BaseFloat scale) {
-  linear_params_.Scale(scale);
-  bias_params_.Scale(scale);
+  if (scale == 0.0) {
+    // If scale == 0.0 we call SetZero() which will get rid of NaN's and inf's.
+    linear_params_.SetZero();
+    bias_params_.SetZero();
+  } else {
+    linear_params_.Scale(scale);
+    bias_params_.Scale(scale);
+  }
 }
 
 void AffineComponent::Resize(int32 input_dim, int32 output_dim) {
@@ -1203,17 +1209,6 @@ AffineComponent::AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
   SetUnderlyingLearningRate(learning_rate);
   KALDI_ASSERT(linear_params.NumRows() == bias_params.Dim()&&
                bias_params.Dim() != 0);
-}
-
-
-
-void AffineComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  linear_params_.SetZero();
-  bias_params_.SetZero();
 }
 
 void AffineComponent::SetParams(const VectorBase<BaseFloat> &bias,
@@ -1461,8 +1456,13 @@ RepeatedAffineComponent::RepeatedAffineComponent(const RepeatedAffineComponent &
 
 
 void RepeatedAffineComponent::Scale(BaseFloat scale) {
-  linear_params_.Scale(scale);
-  bias_params_.Scale(scale);
+  if (scale == 0.0) {
+    linear_params_.SetZero();
+    bias_params_.SetZero();
+  } else {
+    linear_params_.Scale(scale);
+    bias_params_.Scale(scale);
+  }
 }
 
 void RepeatedAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
@@ -1471,15 +1471,6 @@ void RepeatedAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
   KALDI_ASSERT(other != NULL);
   linear_params_.AddMat(alpha, other->linear_params_);
   bias_params_.AddVec(alpha, other->bias_params_);
-}
-
-void RepeatedAffineComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  linear_params_.SetZero();
-  bias_params_.SetZero();
 }
 
 void RepeatedAffineComponent::PerturbParams(BaseFloat stddev){
@@ -1968,8 +1959,13 @@ void BlockAffineComponent::Backprop(const std::string &debug_info,
 }
 
 void BlockAffineComponent::Scale(BaseFloat scale) {
-  linear_params_.Scale(scale);
-  bias_params_.Scale(scale);
+  if (scale == 0.0) {
+    linear_params_.SetZero();
+    bias_params_.SetZero();
+  } else {
+    linear_params_.Scale(scale);
+    bias_params_.Scale(scale);
+  }
 }
 
 void BlockAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
@@ -1978,15 +1974,6 @@ void BlockAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
   KALDI_ASSERT(other != NULL);
   linear_params_.AddMat(alpha, other->linear_params_);
   bias_params_.AddVec(alpha, other->bias_params_);
-}
-
-void BlockAffineComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  linear_params_.SetZero();
-  bias_params_.SetZero();
 }
 
 void BlockAffineComponent::PerturbParams(BaseFloat stddev) {
@@ -2053,7 +2040,11 @@ void BlockAffineComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
 }
 
 void PerElementScaleComponent::Scale(BaseFloat scale) {
-  scales_.Scale(scale);
+  if (scale == 0.0) {
+    scales_.SetZero();
+  } else {
+    scales_.Scale(scale);
+  }
 }
 
 void PerElementScaleComponent::Add(BaseFloat alpha,
@@ -2068,14 +2059,6 @@ PerElementScaleComponent::PerElementScaleComponent(
     const PerElementScaleComponent &component):
     UpdatableComponent(component),
     scales_(component.scales_) { }
-
-void PerElementScaleComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  scales_.SetZero();
-}
 
 void PerElementScaleComponent::PerturbParams(BaseFloat stddev) {
   CuVector<BaseFloat> temp_scales(scales_.Dim(), kUndefined);
@@ -2216,7 +2199,11 @@ void PerElementScaleComponent::UnVectorize(
 }
 
 void PerElementOffsetComponent::Scale(BaseFloat scale) {
-  offsets_.Scale(scale);
+  if (scale == 0.0) {
+    offsets_.SetZero();
+  } else {
+    offsets_.Scale(scale);
+  }
 }
 
 
@@ -2232,14 +2219,6 @@ PerElementOffsetComponent::PerElementOffsetComponent(
     const PerElementOffsetComponent &component):
     UpdatableComponent(component),
     offsets_(component.offsets_) { }
-
-void PerElementOffsetComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  offsets_.SetZero();
-}
 
 void PerElementOffsetComponent::PerturbParams(BaseFloat stddev) {
   CuVector<BaseFloat> temp_offsets(offsets_.Dim(), kUndefined);
@@ -2484,8 +2463,13 @@ Component* ConstantFunctionComponent::Copy() const {
 }
 
 void ConstantFunctionComponent::Scale(BaseFloat scale) {
-  if (is_updatable_)
-    output_.Scale(scale);
+  if (is_updatable_) {
+    if (scale == 0.0) {
+      output_.SetZero();
+    } else {
+      output_.Scale(scale);
+    }
+  }
 }
 
 void ConstantFunctionComponent::Add(BaseFloat alpha, const Component &other_in) {
@@ -2495,14 +2479,6 @@ void ConstantFunctionComponent::Add(BaseFloat alpha, const Component &other_in) 
     KALDI_ASSERT(other != NULL);
     output_.AddVec(alpha, other->output_);
   }
-}
-
-void ConstantFunctionComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  output_.SetZero();
 }
 
 void ConstantFunctionComponent::PerturbParams(BaseFloat stddev) {
@@ -3770,8 +3746,13 @@ void ConvolutionComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
 
 // scale the parameters
 void ConvolutionComponent::Scale(BaseFloat scale) {
-  filter_params_.Scale(scale);
-  bias_params_.Scale(scale);
+  if (scale == 0.0) {
+    filter_params_.SetZero();
+    bias_params_.SetZero();
+  } else {
+    filter_params_.Scale(scale);
+    bias_params_.Scale(scale);
+  }
 }
 
 // add another convolution component
@@ -4008,15 +3989,6 @@ void ConvolutionComponent::Update(const std::string &debug_info,
   //
   filter_params_.AddMat(learning_rate_, filters_grad);
   bias_params_.AddVec(learning_rate_, bias_grad);
-}
-
-void ConvolutionComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  filter_params_.SetZero();
-  bias_params_.SetZero();
 }
 
 void ConvolutionComponent::Read(std::istream &is, bool binary) {
@@ -4831,18 +4803,6 @@ void CompositeComponent::Add(BaseFloat alpha, const Component &other_in) {
 }
 
 // virtual
-void CompositeComponent::SetZero(bool treat_as_gradient) {
-  KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
-  for (size_t i = 0; i < components_.size(); i++) {
-    if (components_[i]->Properties() & kUpdatableComponent) {
-      UpdatableComponent *uc =
-          dynamic_cast<UpdatableComponent*>(components_[i]);
-      uc->SetZero(treat_as_gradient);
-    }
-  }
-}
-
-// virtual
 void CompositeComponent::PerturbParams(BaseFloat stddev) {
   KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
   for (size_t i = 0; i < components_.size(); i++) {
@@ -4878,6 +4838,19 @@ void CompositeComponent::SetActualLearningRate(BaseFloat lrate) {
       UpdatableComponent *uc =
           dynamic_cast<UpdatableComponent*>(components_[i]);
       uc->SetActualLearningRate(lrate);
+    }
+  }
+}
+
+// virtual
+void CompositeComponent::SetAsGradient() {
+  KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
+  UpdatableComponent::SetAsGradient();
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (components_[i]->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc =
+          dynamic_cast<UpdatableComponent*>(components_[i]);
+      uc->SetAsGradient();
     }
   }
 }
@@ -5152,11 +5125,19 @@ void LstmNonlinearityComponent::ZeroStats() {
 }
 
 void LstmNonlinearityComponent::Scale(BaseFloat scale) {
-  params_.Scale(scale);
-  value_sum_.Scale(scale);
-  deriv_sum_.Scale(scale);
-  self_repair_total_.Scale(scale);
-  count_ *= scale;
+  if (scale == 0.0) {
+    params_.SetZero();
+    value_sum_.SetZero();
+    deriv_sum_.SetZero();
+    self_repair_total_.SetZero();
+    count_ = 0.0;
+  } else {
+    params_.Scale(scale);
+    value_sum_.Scale(scale);
+    deriv_sum_.Scale(scale);
+    self_repair_total_.Scale(scale);
+    count_ *= scale;
+  }
 }
 
 void LstmNonlinearityComponent::Add(BaseFloat alpha,
@@ -5169,18 +5150,6 @@ void LstmNonlinearityComponent::Add(BaseFloat alpha,
   deriv_sum_.AddMat(alpha, other->deriv_sum_);
   self_repair_total_.AddVec(alpha, other->self_repair_total_);
   count_ += alpha * other->count_;
-}
-
-void LstmNonlinearityComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  params_.SetZero();
-  value_sum_.SetZero();
-  deriv_sum_.SetZero();
-  self_repair_total_.SetZero();
-  count_ = 0.0;
 }
 
 void LstmNonlinearityComponent::PerturbParams(BaseFloat stddev) {
@@ -5353,11 +5322,13 @@ void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
               << cfl->UnusedValues();
-  if (!ok)
+  if (ok) {
+    Init(cell_dim, param_stddev, tanh_self_repair_threshold,
+         sigmoid_self_repair_threshold, self_repair_scale);
+  } else {
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(cell_dim, param_stddev, tanh_self_repair_threshold,
-       sigmoid_self_repair_threshold, self_repair_scale);
+  }
 }
 
 

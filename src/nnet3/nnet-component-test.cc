@@ -25,9 +25,9 @@ namespace kaldi {
 namespace nnet3 {
 // Reset seeds for test time for RandomComponent
 static void ResetSeed(int32 rand_seed, const Component &c) {
-  RandomComponent *rand_component = 
+  RandomComponent *rand_component =
     const_cast<RandomComponent*>(dynamic_cast<const RandomComponent*>(&c));
-  
+
   if (rand_component != NULL) {
     srand(rand_seed);
     rand_component->ResetGenerator();
@@ -48,8 +48,10 @@ static bool StringsApproxEqual(const std::string &a,
       // if it's not the last digit in the string, goto fail
       if (pos + 1 != size && isdigit(a[pos+1]))
         goto fail;
+      if (pos == 0)
+        goto fail;
       size_t pos2;
-      for (pos2 = pos - 1; pos2 > 0; pos2--) {
+      for (pos2 = static_cast<ssize_t>(pos) - 1; pos2 > 0; pos2--) {
         if (a[pos2] == '.') break;  // we accept this difference: we went backwards and found a '.'
         if (!isdigit(a[pos2]))  // we reject this difference: we went back and
                                 // found non-digit before '.' -> not floating
@@ -106,7 +108,7 @@ void TestNnetComponentVectorizeUnVectorize(Component *c) {
   UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(c);
   KALDI_ASSERT(uc != NULL);
   UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
-  uc2->SetZero(false);
+  uc2->Scale(0.0);
   Vector<BaseFloat> params(uc2->NumParameters());
   uc2->Vectorize(&params);
   KALDI_ASSERT(params.Min()==0.0 && params.Sum()==0.0);
@@ -144,14 +146,14 @@ void TestNnetComponentUpdatable(Component *c) {
   }
   if(!(uc->Properties() & kUpdatableComponent)){
     // testing that if it declares itself as non-updatable,
-    // Scale() and Add() and SetZero() have no effect.
+    // Scale() and Add() have no effect.
     KALDI_ASSERT(uc->NumParameters() == 0);
     KALDI_ASSERT(uc->DotProduct(*uc) == 0);
     UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
     uc2->Scale(7.0);
     uc2->Add(3.0, *uc);
     KALDI_ASSERT(StringsApproxEqual(uc2->Info(), uc->Info()));
-    uc->SetZero(false);
+    uc->Scale(0.0);
     KALDI_ASSERT(StringsApproxEqual(uc2->Info(), uc->Info()));
     delete uc2;
   } else {
@@ -177,13 +179,13 @@ void TestNnetComponentUpdatable(Component *c) {
     uc3->Scale(0.5);
     KALDI_ASSERT(uc2->Info() == uc3->Info());
 
-    // testing that SetZero() works the same whether done on the vectorized
+    // testing that Scale(0.0) works the same whether done on the vectorized
     // paramters or via SetZero(), and that unvectorizing something that's been
     // zeroed gives us zero parameters.
     uc2->Vectorize(&vec2);
     vec2.SetZero();
     uc2->UnVectorize(vec2);
-    uc3->SetZero(false);
+    uc3->Scale(0.0);
     uc3->Vectorize(&vec2);
     KALDI_ASSERT(uc2->Info() == uc3->Info() && VecVec(vec2, vec2) == 0.0);
 
@@ -198,7 +200,7 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
   int32 properties = c.Properties();
   Component *c_copy = NULL, *c_copy_scaled = NULL;
   int32 rand_seed = Rand();
- 
+
   if (RandInt(0, 1) == 0)
     c_copy = c.Copy();  // This will test backprop with an updatable component.
   if (RandInt(0, 1) == 0 &&
@@ -234,7 +236,7 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
   if ((properties & kPropagateAdds) && (properties & kPropagateInPlace)) {
     KALDI_ERR << "kPropagateAdds and kPropagateInPlace flags are incompatible.";
   }
-  
+
   ResetSeed(rand_seed, c);
   c.Propagate(NULL, input_data, &output_data1);
 
@@ -327,7 +329,7 @@ bool TestSimpleComponentDataDerivative(const Component &c,
       output_deriv(num_rows, output_dim, kSetZero, output_stride_type);
   input_data.SetRandn();
   output_deriv.SetRandn();
- 
+
   ResetSeed(rand_seed, c);
   c.Propagate(NULL, input_data, &output_data);
 
@@ -420,8 +422,8 @@ bool TestSimpleComponentModelDerivative(const Component &c,
   UpdatableComponent *uc_copy = dynamic_cast<UpdatableComponent*>(c_copy);
   KALDI_ASSERT(uc != NULL && uc_copy != NULL);
   if (test_derivative) {
-    bool is_gradient = true;
-    uc_copy->SetZero(is_gradient);
+    uc_copy->Scale(0.0);
+    uc_copy->SetAsGradient();
   }
 
   CuMatrix<BaseFloat> input_deriv(num_rows, input_dim,
@@ -522,8 +524,9 @@ int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
   TestStringsApproxEqual();
-  for (kaldi::int32 loop = 0; loop < 2; loop++) {
+  kaldi::int32 loop = 0;
 #if HAVE_CUDA == 1
+  for (loop = 0; loop < 2; loop++) {
     //CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
@@ -531,9 +534,11 @@ int main() {
       CuDevice::Instantiate().SelectGpuId("yes");
 #endif
     UnitTestNnetComponent();
-  }
-
-  KALDI_LOG << "Nnet component ntests succeeded.";
+#if HAVE_CUDA == 1
+  } // No for loop if 'HAVE_CUDA != 1',
+  CuDevice::Instantiate().PrintProfile();
+#endif
+  KALDI_LOG << "Nnet component tests succeeded.";
 
   return 0;
 }
