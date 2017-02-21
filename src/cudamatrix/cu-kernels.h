@@ -1348,6 +1348,23 @@ inline void cuda_copy_cols_from_vec(dim3 Gr, dim3 Bl, float *mat_out,
   cudaF_copy_cols_from_vec(Gr, Bl, mat_out, d_out, v_in);
 }
 
+inline void cuda_diff_normalize_per_row(size_t Gr, size_t Bl, double *id,
+                                        int id_stride, const double *iv,
+                                        MatrixDim iv_dim, const double* od,
+                                        int od_stride, double target_rms,
+                                        bool add_log_stddev) {
+  cudaD_diff_normalize_per_row(Gr, Bl, id, id_stride, iv, iv_dim, od, od_stride,
+                               target_rms, add_log_stddev);
+}
+inline void cuda_diff_normalize_per_row(size_t Gr, size_t Bl, float *id,
+                                        int id_stride, const float *iv,
+                                        MatrixDim iv_dim, const float* od,
+                                        int od_stride, float target_rms,
+                                        bool add_log_stddev) {
+  cudaF_diff_normalize_per_row(Gr, Bl, id, id_stride, iv, iv_dim, od, od_stride,
+                               target_rms, add_log_stddev);
+}
+
 } // namespace kaldi
 
 #endif // HAVE_CUDA

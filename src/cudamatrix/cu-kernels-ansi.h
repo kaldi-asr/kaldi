@@ -705,6 +705,17 @@ void cudaD_copy_cols_from_vec(dim3 Gr, dim3 Bl, double *mat_out,
 void cudaF_copy_cols_from_vec(dim3 Gr, dim3 Bl, float *mat_out, MatrixDim d_out,
                               const float *v_in);
 
+void cudaF_diff_normalize_per_row(size_t Gr, size_t Bl, float *id,
+                                  int id_stride, const float *iv,
+                                  MatrixDim iv_dim, const float* od,
+                                  int od_stride, float target_rms,
+                                  bool add_log_stddev);
+void cudaD_diff_normalize_per_row(size_t Gr, size_t Bl, double *id,
+                                  int id_stride, const double *iv,
+                                  MatrixDim iv_dim, const double* od,
+                                  int od_stride, double target_rms,
+                                  bool add_log_stddev);
+
 } // extern "C"
 
 #endif // HAVE_CUDA
