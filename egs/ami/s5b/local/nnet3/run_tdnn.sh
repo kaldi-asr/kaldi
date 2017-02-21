@@ -39,6 +39,7 @@ gmm=tri3_cleaned  # this is the source gmm-dir for the data-type of interest; it
 ihm_gmm=tri3      # Only relevant if $use_ihm_ali is true, the name of the gmm-dir in
                   # the ihm directory that is to be used for getting alignments.
 num_threads_ubm=32
+ivector_feat_type=lda
 nnet3_affix=_cleaned  # cleanup affix for exp dirs, e.g. _cleaned
 tdnn_affix=  #affix for TDNN directory e.g. "a" or "b", in case we change the configuration.
 
@@ -68,6 +69,7 @@ local/nnet3/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
                                   --gmm $gmm \
                                   --num-threads-ubm $num_threads_ubm \
+                                  --feat-type "$ivector_feat_type" \
                                   --nnet3-affix "$nnet3_affix"
 
 # Note: the first stage of the following script is stage 8.
