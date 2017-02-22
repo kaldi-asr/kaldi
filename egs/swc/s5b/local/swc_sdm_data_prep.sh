@@ -15,15 +15,16 @@ CH='TBL1-01'		# default channel for SDM
 
 
 #check existing directories
-if [ $# != 2 ]; then
-  echo "Usage: swc_sdm_data_prep.sh  <path to SWC data folder>  <mode>"
+if [ $# < 3 ]; then
+  echo "Usage: swc_sdm_data_prep.sh  <path to SWC data folder>  <mode>  <index of mic>"
   exit 1;
 fi
 
 SWC_DIR=$1      # SWC1, SWC2, SWC3 should be in subfolders under this directory
 MODE=$2
+nmic=$3
 
-dir=data/sdm/$MODE/     # Output dir
+dir=data/sdm${nmic}/$MODE/     # Output dir
 mkdir -p $dir
 
 

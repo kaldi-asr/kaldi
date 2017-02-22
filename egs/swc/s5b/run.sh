@@ -15,7 +15,7 @@
 . ./cmd.sh
 . ./path.sh
 
-echo "[DEBUG] starting time:"
+echo "Starting time:"
 date
 
 # You may set 'mic' to:
@@ -32,7 +32,7 @@ MODE='SA1'      # Other options: 'SA2', 'AD1', 'AD2'
 fastrun=1	# 1: skip unnecessary decoding 
 spkadapt=1	# 1: include speaker adaptation
 nj=20 		# defalut number of parallel jobs,
-stage=1
+stage=0
 
 . utils/parse_options.sh
 
@@ -53,12 +53,12 @@ if [ "$base_mic" == "ihm" ] ; then		# Individual headset microphone
   mic_ch=ihm
   PROCESSED_DIR=$SWCDIR
 elif [ "$base_mic" == "sdm" ] ; then		# Single distant microphone (default: "TBL1-01")
-  mic_ch=TBL1-01
+  mic_ch=TBL1-0${nmics}
   PROCESSED_DIR=$SWCDIR
 elif [ "$base_mic" == "mdm" ] ; then		# Multiple distant microphone (default: 8 channels from "TBL1" array)
   mic_ch=TBL1
   # check whether beamforming has been executed already
-  BEAMFORM_DIR=$SWCDIR/bmit_${mic_ch}
+  BEAMFORM_DIR=$SWCDIR/${nmics}bmit_${mic_ch}
   if [ ! -d $BEAMFORM_DIR ] ; then
     ! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; make beamformit;'" && exit 1
     local/swc_beamform.sh --cmd "$train_cmd" --nj 20 $nmics ${mic_ch} $SWCDIR ${BEAMFORM_DIR}
@@ -71,7 +71,9 @@ fi
 # The files needed for scoring is also prepared here.
 if [ $stage -le 2 ]; then
   if [ "$base_mic" == "sdm" ] ; then
-    local/swc_${base_mic}_data_prep.sh --CH ${mic_ch}  $PROCESSED_DIR  $MODE
+    local/swc_${base_mic}_data_prep.sh $PROCESSED_DIR  $MODE  $nmics  --CH ${mic_ch}
+  elif [ "$base_mic" == "mdm" ] ; then
+    local/swc_${base_mic}_data_prep.sh $SWCDIR  $BEAMFORM_DIR  $MODE  $nmics
   else	  
     local/swc_${base_mic}_data_prep.sh $PROCESSED_DIR  $MODE
   fi
@@ -165,43 +167,118 @@ if [ $stage -le 7 ]; then
   fi
 fi
 
-if [ $spkadapt -eq 1 ]; then
-  if [ $stage -le 8 ]; then
-    # LDA+MLLT+SAT
-    steps/train_sat.sh --cmd "$train_cmd" \
-      5000 80000  $fd/train data/lang exp/$mic/$MODE/tri2_ali exp/$mic/$MODE/tri3
-    steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-      $fd/train data/lang exp/$mic/$MODE/tri3 exp/$mic/$MODE/tri3_ali
-  fi
 
 
-  if [ $stage -le 9 ]; then
-    # Decode the fMLLR system.
-    graph_dir=exp/$mic/tri3/graph_${LM}
-    $highmeme_cmd $graph_dir/mkgraph.log \
-      utils/mkgraph.sh data/lang_${LM} exp/$mic/$MODE/tri3 $graph_dir
-    steps/decode_fmllr.sh --nj ${nj_dev} --cmd "$decode_cmd" --config conf/decode.conf \
-      $graph_dir $fd/dev exp/$mic/$MODE/tri3/decode_dev_${LM}
-    steps/decode_fmllr.sh --nj ${nj_eval} --cmd "$decode_cmd" --config conf/decode.conf \
-      $graph_dir $fd/eval exp/$mic/$MODE/tri3/decode_eval_${LM}
-  fi
+if [ $stage -le 8 ]; then
+  # Train tri3, which is LDA+MLLT,
+  echo "LDA+MLLT training - folder \"tri3\". "
+  fd=data/$mic/$MODE
+
+  steps/train_lda_mllt.sh --cmd "$train_cmd" \
+    --splice-opts "--left-context=3 --right-context=3" \
+    5000 80000  $fd/train  data/lang  exp/$mic/$MODE/tri2_ali  exp/$mic/$MODE/tri3
+  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
+    $fd/train  data/lang  exp/$mic/$MODE/tri3  exp/$mic/$MODE/tri3_ali
+  
+
+  # Decode,
+  echo "Decoding."
+  graph_dir=exp/$mic/$MODE/tri3/graph_${LM}
+  $highmem_cmd $graph_dir/mkgraph.log \
+    utils/mkgraph.sh  data/lang_${LM}  exp/$mic/$MODE/tri3  $graph_dir
+  steps/decode.sh --nj $nj_dev --cmd "$decode_cmd" --config conf/decode.conf \
+    --skip_scoring true	\
+    $graph_dir  $fd/dev  exp/$mic/$MODE/tri3/decode_dev_${LM}
+  steps/decode.sh --nj $nj_eval --cmd "$decode_cmd" --config conf/decode.conf \
+    --skip_scoring true \
+    $graph_dir  $fd/eval  exp/$mic/$MODE/tri3/decode_eval_${LM}
 fi
 
 
-# DNN training. This script is based on egs/swbd/s5b/local/run_dnn.sh
+nj_mmi=22	# 22 speakers; default: 80
+if [ $stage -le 9 ]; then
+  if [ $spkadapt -eq 1 ]; then            # With speaker adaptation 
+    # LDA+MLLT+SAT
+    echo "SAT training - folder \"tri4a\". "
+    fd=data/$mic/$MODE
+
+
+    steps/train_sat.sh  --cmd "$train_cmd" \
+      5000 80000  $fd/train  data/lang  exp/$mic/$MODE/tri3_ali  exp/$mic/$MODE/tri4a
+
+    # Decode,  
+    echo "Decoding SAT system."
+    graph_dir=exp/$mic/$MODE/tri4a/graph_${LM}
+    $highmem_cmd $graph_dir/mkgraph.log \
+      utils/mkgraph.sh  data/lang_${LM}  exp/$mic/$MODE/tri4a  $graph_dir
+    steps/decode_fmllr.sh --nj $nj_dev --cmd "$decode_cmd"  --config conf/decode.conf \
+      --skip_scoring true \
+      $graph_dir  $fd/dev  exp/$mic/$MODE/tri4a/decode_dev_${LM}
+    steps/decode_fmllr.sh --nj $nj_eval --cmd "$decode_cmd" --config conf/decode.conf \
+      --skip_scoring true \
+      $graph_dir  $fd/eval  exp/$mic/$MODE/tri4a/decode_eval_${LM}
+
+    steps/align_fmllr.sh --nj $nj_mmi --cmd "$train_cmd" \
+      $fd/train  data/lang  exp/$mic/$MODE/tri4a  exp/$mic/$MODE/tri4a_ali
+  fi
+fi 
+
+
+
+# DNN training. This script is based on egs/ami/s5/local/run_dnn.sh
 # Some of them would be out of date.
 if [ $stage -le 10 ]; then
   if [ $spkadapt -eq 1 ]; then		# With SAT
-    local/nnet/run_dnn.sh $mic
+    echo "Train feed-forward DNN with speaker adaptation based on HMM-GMM system in folder \"tri4a\". "
+    local/nnet/run_dnn.sh $mic  $MODE  
   else					# Without SAT
-    local/nnet/run_dnn_lda_mllt.sh $mic
+    echo "Train feed-forward DNN without speaker adaptation based on HMM-GMM system in folder \"tri3\". "
+    local/nnet/run_dnn_lda_mllt.sh $mic  $MODE
   fi
 fi
 
 
-echo "Done."
+echo "Baseline system construction finished."
 exit;
 
+
+
+# TDNN training. As an advanced system by default it is not constructed.
+if [ $stage -le 11 ]; then
+  echo "Advanced system: TDNN - prepare data."
+
+  if [ $mic == "ihm" ]; then
+    echo "[ERROR] The scripts for TDNN currently do not support IHM data."
+    exit 1;
+  else
+    # The following script cleans the data and produces cleaned data
+    # in data/$mic/$MODE/train_cleaned, and a corresponding system
+    # in exp/$mic/$MODE/tri3_cleaned.  It also decodes.
+    #
+    # Note: local/run_cleanup_segmentation.sh defaults to using 50 jobs,
+    # you can reduce it using the --nj option if you want.
+    local/run_cleanup_segmentation.sh --mic $mic  --mode $MODE
+  fi
+fi
+
+if [ $stage -le 12 ]; then
+  echo "Advanced system: TDNN - training."
+
+  ali_opt=
+  [ "$mic" != "ihm" ] && ali_opt="--use-ihm-ali true"
+  local/chain/run_tdnn.sh $ali_opt --mic $mic  --mode $MODE
+
+  echo "TDNN done."
+fi
+
+
+
+
+# LSTM. As an advanced system by default it is not constructed.
+if [ $stage -le 12 ]; then
+  echo "Advanced system: LSTM."
+
+fi 
 
 
 

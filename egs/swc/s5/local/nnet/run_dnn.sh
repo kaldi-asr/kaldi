@@ -103,13 +103,14 @@ fi
 
 # Re-train the DNN by 4 epochs of sMBR,
 if [ $stage -le 4 ]; then
-  steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 4 --acwt $acwt --do-smbr true \
-    $data_fmllr/$mic/train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir
+#  steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 4 --acwt $acwt --do-smbr true \
+#    $data_fmllr/$mic/train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir
   # Decode (reuse HCLG graph)
-  for ITER in 4 1; do
-    steps/nnet/decode.sh --nj $nj_dev --cmd "$decode_large_cmd" --config conf/decode_dnn.conf \
-      --nnet $dir/${ITER}.nnet --acwt $acwt \
-      $graph_dir $data_fmllr/$mic/dev $dir/decode_dev_${LM}_it${ITER}
+#  for ITER in 4 1; do
+  for ITER in 1; do
+#    steps/nnet/decode.sh --nj $nj_dev --cmd "$decode_large_cmd" --config conf/decode_dnn.conf \
+#      --nnet $dir/${ITER}.nnet --acwt $acwt \
+#      $graph_dir $data_fmllr/$mic/dev $dir/decode_dev_${LM}_it${ITER}
     steps/nnet/decode.sh --nj $nj_eval --cmd "$decode_large_cmd" --config conf/decode_dnn.conf \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $graph_dir $data_fmllr/$mic/eval $dir/decode_eval_${LM}_it${ITER}

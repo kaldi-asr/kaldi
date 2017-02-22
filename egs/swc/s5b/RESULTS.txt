@@ -1,0 +1,82 @@
+The results below are acquired with the improved recipe in the "s5b" folder,
+and they differ very slightly with the published results based on the recipe
+in the "s5" folder.		(Yulan Liu, 22 Feb 2017)
+
+
+======================
+IHM:
+
+1. Without speaker adaptation
+
+  - DNN (exp/ihm/SA1/dnn4noSAT_pretrain-dbn_dnn/decode_{dev,eval}_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_9/*sys)
+    dev		|   Sum/Avg   |   8523        61310    |   60.3        29.8         9.9         3.9        43.5        73.3    |
+    eval	|   Sum/Avg   |   8400        59123    |   60.2         30.2         9.5         4.2        44.0        73.4    |
+
+  - DNN+SMBR (exp/ihm/SA1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_{dev,eval}_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_9/*sys)
+    dev		|    Sum/Avg   |    8523         61310    |    63.2         29.0          7.8          4.7         41.5         71.6    |
+    eval	|    Sum/Avg   |    8400         59123    |    63.1         29.4           7.4          4.9         41.8         71.5    |
+
+
+2. With speaker adaptation
+
+  - DNN (exp/ihm/SA1/dnn4_pretrain-dbn_dnn/decode_{dev,eval}_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/*sys)
+    dev		|   Sum/Avg  |   8523        61310   |   61.1        29.5        9.3         4.3       43.1        73.7   |
+    eval	|   Sum/Avg   |   8400       59123    |   61.4       29.8         8.8        4.7        43.3       73.4    |
+
+  - DNN+SMBR (exp/ihm/SA1/dnn4_pretrain-dbn_dnn_smbr/decode_{dev,eval}_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_9/*sys)
+    dev		|   Sum/Avg   |    8523        61310    |    63.6        28.7          7.8         4.7         41.1        72.1    |
+    eval	|    Sum/Avg   |   8400         59123    |   63.5         29.0         7.5          5.0        41.5         71.8    |
+
+
+======================
+SDM: (TBL1-01)
+
+1. Without speaker adaptation
+
+  - DNN (exp/sdm1/SA1/dnn4noSAT_pretrain-dbn_dnn/decode_{dev,eval}_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/*sys)
+    dev 	| Sum/Avg           |   9758   58361 |    25.0     53.3     21.7     4.0     79.0    75.7 |  -24.432  |
+    eval	| Sum/Avg           |   9829   56091 |    24.2     55.5     20.2     5.0     80.8    75.5 |  -25.157  |
+
+  - DNN+SMBR (exp/sdm1/SA1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_{dev,eval}_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_9/*sys)
+    dev		| Sum/Avg           |   10494   58361 |    27.7     51.5     20.7     4.3     76.6    69.9 |  -23.605  |
+    eval	| Sum/Avg           |   10105   56091 |    26.8     53.1     20.1     5.0     78.2    72.7 |  -24.119  |
+
+
+2. With speaker adaptation
+
+  - DNN (exp/sdm1/SA1/dnn4_pretrain-dbn_dnn/decode_{dev,eval}_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/*sys)
+    dev 	| Sum/Avg           |   9505   58361 |    24.9     53.8     21.3     4.5     79.6    78.7 |  -24.610  |
+    eval 	| Sum/Avg           |   9215   56091 |    24.3     56.1     19.7     5.5     81.2    81.3 |  -25.310  |
+
+  - DNN+SMBR (exp/sdm1/SA1/dnn4_pretrain-dbn_dnn_smbr/decode_{dev,eval}_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_9/*sys)
+    dev		| Sum/Avg           |   9186   58361 |    27.2     52.6     20.2     5.0     77.8    81.1 |  -23.951  |
+    eval	| Sum/Avg           |   10734   56091 |    26.3     54.4     19.2     6.0     79.6    69.3 |  -24.561  |
+
+
+
+======================
+MDM: (TBL1, 8 channel, BeamformIt)
+
+1. Without speaker adaptation
+
+  - DNN (exp/mdm8/SA1/dnn4noSAT_pretrain-dbn_dnn/decode_{dev,eval}_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/*sys)
+    dev		| Sum/Avg           |   9487   58153 |    29.3     51.9     18.8     5.0     75.7    77.5 |  -23.475  |
+    eval	| Sum/Avg           |   9632   56091 |    28.5     54.2    17.3     5.9     77.4    76.5 |  -24.001  |
+
+  - DNN+SMBR (exp/mdm8/SA1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_{dev,eval}_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_9/*sys)
+    dev		| Sum/Avg           |   9878   58153 |    32.2     50.0     17.8     5.3     73.1    74.1 |  -22.879  |
+    eval	| Sum/Avg           |   9917   56091 |    31.1     52.0    16.9     6.4     75.3    73.6 |  -23.339  |
+
+
+2. With speaker adaptation
+
+  - DNN (exp/mdm8/SA1/dnn4_pretrain-dbn_dnn/decode_{dev,eval}_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/*sys)
+    dev		| Sum/Avg           |   9595   58361 |    29.2     51.8     19.0     5.2     75.9    77.7 |  -23.491  |
+    eval	| Sum/Avg           |   9061   56091 |    28.3     53.9    17.8     6.3     78.0    82.3 |  -24.062  |
+
+  - DNN+SMBR (exp/mdm8/SA1/dnn4_pretrain-dbn_dnn_smbr/decode_{dev,eval}_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_9/*sys)
+    dev		| Sum/Avg           |   9774   58361 |    31.4     49.4     19.2     5.1     73.7    75.6 |  -22.883  |
+    eval	| Sum/Avg           |   9890   56091 |    30.2     51.4     18.4     6.1     75.9    74.4 |  -23.372  |
+
+
+====================== 

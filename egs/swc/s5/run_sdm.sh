@@ -3,14 +3,12 @@
 . ./cmd.sh
 . ./path.sh
 
-echo "[DEBUG] starting time:"
+echo "Starting time:"
 date
 
 # SDM - Single Distant Microphone,
 # Please do not change 'mic'! (Identifies both the datasets and experiments: ihm, sdm, mdm)
 mic=sdm
-MODE='SA1'      # Other options: 'SA2', 'AD1', 'AD2'
-nj=20           # Default number of parallel jobs,
 
 stage=0
 . utils/parse_options.sh
@@ -26,14 +24,14 @@ case $(hostname -d) in
 esac
 
 # Prepare ihm data directories, by default we choose the easiest dataset
-# The files needed for scoring is also prepared here.
+MODE='SA1'	# Other options: 'SA2', 'AD1', 'AD2'
 if [ $stage -le 1 ]; then
   local/swc_sdm_data_prep.sh  $SWCDIR  $MODE
 fi
 
 
 
-# LM checking
+# LM downloading
 [ ! -r data/local/lm/final_lm ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
 final_lm=`cat data/local/lm/final_lm`
 # LM=$final_lm
@@ -47,13 +45,11 @@ LM=${final_lm}.pr1-7		# Use pruned LM to save memory
 # Feature extraction,
 if [ $stage -le 2 ]; then
   for dset in train dev eval; do
-    if [ -d data/$mic/$MODE/$dset ]; then	  
-      fd=data/$mic/$MODE/$dset
-      steps/make_mfcc.sh --nj 15 --cmd "$train_cmd"  $fd  $fd/log  $fd/data
-      steps/compute_cmvn_stats.sh  $fd  $fd/log  $fd/data
-      utils/fix_data_dir.sh $fd
-    fi  
+    fd=data/$mic/$MODE/$dset
+    steps/make_mfcc.sh --nj 15 --cmd "$train_cmd"  $fd  $fd/log  $fd/data
+    steps/compute_cmvn_stats.sh  $fd  $fd/log  $fd/data
   done
+  for dset in train eval dev; do utils/fix_data_dir.sh $fd; done
 fi
 
 if [ $stage -le 3 ]; then
@@ -63,15 +59,14 @@ if [ $stage -le 3 ]; then
 fi
 
 
-# Train systems
-# first adjust the number of parallel jobs to number of speaker
+# Train systems,
+nj=20 # number of parallel jobs,
 nj_dev=$(cat data/$mic/$MODE/dev/spk2utt | wc -l)
 nj_eval=$(cat data/$mic/$MODE/eval/spk2utt | wc -l)
-fd=data/$mic/$MODE/$dset
-
 
 if [ $stage -le 4 ]; then
   # Mono,
+  fd=data/$mic/$MODE
   steps/train_mono.sh --nj $nj --cmd "$train_cmd" --cmvn-opts "--norm-means=true --norm-vars=false" \
     $fd/train  data/lang  exp/$mic/$MODE/mono
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
@@ -86,6 +81,7 @@ fi
 
 if [ $stage -le 5 ]; then
   # Deltas again, (full train-set),
+  fd=data/$mic/$MODE
   steps/train_deltas.sh --cmd "$train_cmd" --cmvn-opts "--norm-means=true --norm-vars=false" \
     5000 80000  $fd/train  data/lang  exp/$mic/$MODE/tri1_ali  exp/$mic/$MODE/tri2a
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
@@ -109,6 +105,8 @@ fi
 
 if [ $stage -le 6 ]; then
   # Train tri3a, which is LDA+MLLT,
+  fd=data/$mic/$MODE
+
   steps/train_lda_mllt.sh --cmd "$train_cmd" \
     --splice-opts "--left-context=3 --right-context=3" \
     5000 80000  $fd/train  data/lang  exp/$mic/$MODE/tri2_ali  exp/$mic/$MODE/tri3a
@@ -130,6 +128,8 @@ fi
 
 if [ $stage -le 7 ]; then
   # Train tri4a, which is LDA+MLLT+SAT,
+  fd=data/$mic/$MODE
+
   steps/train_sat.sh  --cmd "$train_cmd" \
     5000 80000  $fd/train  data/lang  exp/$mic/$MODE/tri3a_ali  exp/$mic/$MODE/tri4a
   # Decode,  
@@ -148,6 +148,7 @@ fi
 nj_mmi=22
 if [ $stage -le 8 ]; then
   # Align,
+  fd=data/$mic/$MODE
   steps/align_fmllr.sh --nj $nj_mmi --cmd "$train_cmd" \
     $fd/train  data/lang  exp/$mic/$MODE/tri4a  exp/$mic/$MODE/tri4a_ali
 fi
@@ -184,6 +185,7 @@ done
 
 if [ $stage -le 9 ]; then
   # MMI training starting from the LDA+MLLT+SAT systems,
+  fd=data/$mic/$MODE/
   steps/make_denlats.sh --nj $nj_mmi --cmd "$decode_large_cmd" --config conf/decode.conf \
     --transform-dir exp/$mic/tri4a_ali \
     $fd/train  data/lang  exp/$mic/$MODE/tri4a  exp/$mic/$MODE/tri4a_denlats
@@ -195,12 +197,14 @@ fi
 # default.
 if [ $stage -le 10 ]; then
   num_mmi_iters=4
+  fd=data/$mic/$MODE/
   steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 --num-iters $num_mmi_iters \
     $fd/train  data/lang  exp/$mic/$MODE/tri4a_ali  exp/$mic/$MODE/tri4a_denlats \
     exp/$mic/$MODE/tri4a_mmi_b0.1
 fi
 if [ $stage -le 11 ]; then
   # Decode,
+  fd=data/$mic/$MODE/
   graph_dir=exp/$mic/$MODE/tri4a/graph_${LM}
   for i in 4 3 2 1; do
     decode_dir=exp/$mic/$MODE/tri4a_mmi_b0.1/decode_dev_${i}.mdl_${LM}

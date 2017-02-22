@@ -41,7 +41,7 @@ set -u
 mkdir -p $odir
 mkdir -p $wdir/log
 
-[ -e $odir/.done_beamforming_$numch_$ch ] && echo "Beamforming already done, skipping..." && exit 0
+[ -e $odir/.done_beamforming_${numch}_${ch} ] && echo "Beamforming already done, skipping..." && exit 0
 
 meetings=$wdir/meetings.list
 inwav1=$wdir/inwav1.list

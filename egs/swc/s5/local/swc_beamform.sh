@@ -15,9 +15,9 @@ echo "$0 $@"  # Print the command line for logging
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
-if [ $# != 4 ]; then
+if [ $# != 3 ]; then
    echo "Wrong #arguments ($#, expected 4)"
-   echo "Usage: steps/swc_beamform.sh [options] <num-mics> <mic-group> <swc-dir> <wav-out-dir>"
+   echo "Usage: steps/ami_beamform.sh [options] <num-mics> <ami-dir> <wav-out-dir>"
    echo "main options (for others, see top of script file)"
    echo "  --nj <nj>                                # number of parallel jobs"
    echo "  --cmd <cmd>                              # Command to run in parallel with"

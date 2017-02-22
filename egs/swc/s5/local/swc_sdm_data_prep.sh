@@ -11,12 +11,9 @@
 
 export LC_ALL=C
 
-CH='TBL1-01'		# default channel for SDM
-
-
 #check existing directories
 if [ $# != 2 ]; then
-  echo "Usage: swc_sdm_data_prep.sh  <path to SWC data folder>  <mode>"
+  echo "Usage: swc_ihm_data_prep.sh  <path to SWC data folder>  <mode>"
   exit 1;
 fi
 
@@ -82,10 +79,11 @@ do
 done
 
 
-# find the particular SDM channel wav audio files only, here we again get all
+# find headset wav audio files only, here we again get all
 # the files in the corpora and filter only specific sessions
 # while building segments
-echo "...Select channel for SDM: $CH"
+CH='TBL1-01'		
+echo "...Default channel for SDM: $CH"
 ls ${SWC_DIR}/swc?/audio/table/*${CH}.wav | sort -u > $dir/wav.flist
 n=`cat $dir/wav.flist | wc -l`
 echo "In total, $n headset files were found."

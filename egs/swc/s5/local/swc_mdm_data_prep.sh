@@ -13,12 +13,12 @@ export LC_ALL=C
 
 #check existing directories
 if [ $# != 4 ]; then
-  echo "Usage: swc_mdm_data_prep.sh  <path to SWC data folder>  <path to folder containing beamforming output>  <mode>  <number of mics>"
+  echo "Usage: swc_sdm_data_prep.sh  <path to SWC data folder>  <path to folder containing beamforming output>  <mode>  <number of mics>"
   exit 1;
 fi
 
 SWC_DIR=$1	# SWC1, SWC2, SWC3 should be in subfolders under this directory
-BM_DIR=$2	# Beamforming output audio files should all be in this folder directly
+BM_DIR=$2
 MODE=$3		
 nmics=$4
 mic=mdm$nmics
@@ -79,7 +79,7 @@ do
 done
 
 
-# find beamformed wav audio files, here we again get all
+# find headset wav audio files only, here we again get all
 # the files in the corpora and filter only specific sessions
 # while building segments
 ls ${BM_DIR}/*.wav | sort -u > $dir/wav.flist

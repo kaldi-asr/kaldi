@@ -35,7 +35,7 @@ utils/prepare_lang.sh data/local/dict "<unk>"  data/local/lang  $LMDIR
 # website "http://mini-vm20.dcs.shef.ac.uk/swc/LM.html",
 SRCLM=/share/spandh.ami1/asr/dev/mtg/swc/lib/nets/swc.v2.30k/30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.gz               
 mkdir -p data/local/lm/
-cp $SRCLM  data/local/lm/               
+cp $SRCLM  data/local/lm/             
 LMNAME=`echo $SRCLM | gawk 'BEGIN{FS="/"}{print $NF}' | sed 's/\.gz//g'`
 echo $LMNAME > data/local/lm/final_lm
 

@@ -21,7 +21,7 @@ fi
 mic=$1
 MODE=$2
 
-gmmdir=exp/$mic/$MODE/tri3a
+gmmdir=exp/$mic/$MODE/tri3
 
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
@@ -90,6 +90,7 @@ if [ $stage -le 2 ]; then
 
 fi
 
+#### exit
 
 # Sequence training using sMBR criterion, we do Stochastic-GD with 
 # per-utterance updates. We use usually good acwt 0.1.

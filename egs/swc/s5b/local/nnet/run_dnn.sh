@@ -85,6 +85,7 @@ if [ $stage -le 2 ]; then
     $graph_dir $data_fmllr/$mic/$MODE/eval $dir/decode_eval_${LM}
 fi
 
+### exit
 
 # Sequence training using sMBR criterion, we do Stochastic-GD with 
 # per-utterance updates. We use usually good acwt 0.1.
