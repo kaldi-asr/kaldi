@@ -46,6 +46,7 @@ then
   exit 0;
 fi
 
+
 # Prepare environment variables
 CF="\"$CFLAGS -g $(addsw -I $INCDIRS)\""
 LDF="\"$LDFLAGS $(addsw -L $LIBDIRS)\""
