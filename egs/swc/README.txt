@@ -8,41 +8,6 @@
 
 			About The Recipes
 
-				s5)
-
-The scripts under directory "s5" build systems using SWC data only, this
-includes training, development and evaluation sets in different setups.
-The scripts also prepare a shared infrastructure for user-defined dataset.
-
-Note that the recipe WILL NOT download any of SWC data for you, because
-it requires a signed ethical agreement before the SWC data could be 
-downloaded.
-
-One language model (LM) built from web data and Warhammer 40k blog data is 
-provided especially for SWC task. You could download the LM and corresponding
-dict from the following website:
-
-	http://mini-vm20.dcs.shef.ac.uk/swc/LM.html
-
-This recipe follows the framework in the AMI recipe "s5" and builds systems 
-using
-
-	* IHM (Individual Headset Microphone)
-	* SDM (Single Distant Microphone)
-	* MDM (Multiple Distant Microphone)
-
-The first channel of the 8 channel circular array on the table (*TBL1-01*)
-is used in this recipe as SDM baseline.
-
-The same array (*TBL1-*) is suggested to run with BeamformIt to build a 
-comparable MDM baseline. 
-
-To reproduce the results in this recipe, the following (non-standard) 
-software is expected to be installed for beamforming:
-
-	* BeamformIt (for MDM scenario, installed with Kaldi tools)
-
-
 
                                 s5b)
 
@@ -50,13 +15,7 @@ The scripts under directory "s5b" build systems using SWC data only, this
 includes training, development and evaluation sets in different setups.
 The scripts also prepare a shared infrastructure for user-defined dataset.
 
-There only difference between the recipe scripts in this "s5b" folder and
-the recipe scripts in the "s5" folder is that some clean-up is performed.
-You could imagine the difference to be the same with the difference 
-between the "s5" recipe and the "s5b" recipe in another example folder 
-"ami" for the AMI corpus.
-
-Again, the recipe WILL NOT download any of the SWC data for you, because
+Note that the recipe WILL NOT download any of the SWC data for you, because
 it requires a signed ethical agreement before the SWC data could be
 downloaded.
 
@@ -90,14 +49,23 @@ software is expected to be installed for beamforming:
 
 			      Results
 
-The scoring results for baseline systems reported in [2] have been copied
-to file "s5/RESULTS.txt". There are more results and analysis published
-on the SWC website, and they are all based on the "s5" recipe:
+The scoring results for baseline systems reported in [2] are based on an
+earlier version of the recipe ("s5") which could be downloaded either from
+the SWC website:
 
-	http://mini-vm20.dcs.shef.ac.uk/swc/SWC-home.html
+        http://mini-vm20.dcs.shef.ac.uk/swc/Kaldi_recipe.html
 
-The scoring results for the cleaned-up recipe "s5b" have been copied to
-file "s5b/RESULTS.txt".
+or from Yulan's git repository (the master branch):
+
+        https://github.com/wings619/kaldi.git
+
+It is worth mentioning that all the results and analysis on the SWC website 
+were acquired with the "s5" version. 
+
+The scoring results with a fixed grammar scale for the baseline systems 
+based on the current "s5b" version recipe are detailed in the file 
+"s5b/RESULTS.txt". The best scoring results for the baseline systems are
+detailed in the file "s5b/RESULTS_BEST.txt".
 
 
 
