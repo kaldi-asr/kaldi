@@ -970,10 +970,12 @@ std::string BackpropTruncationComponent::Info() const {
   stream << Type() << ", dim=" << dim_
          << ", scale=" << scale_
          << ", count=" << std::setprecision(3) << count_ << std::setprecision(6)
+         << ", recurrence-interval=" << recurrence_interval_
          << ", clipping-threshold=" << clipping_threshold_
          << ", clipped-proportion="
          << (count_ > 0.0 ? num_clipped_ / count_ : 0)
          << ", zeroing-threshold=" << zeroing_threshold_
+         << ", zeroing-interval=" << zeroing_interval_
          << ", zeroed-proportion="
          << (count_zeroing_boundaries_ > 0.0 ?
              num_zeroed_ / count_zeroing_boundaries_ : 0)
