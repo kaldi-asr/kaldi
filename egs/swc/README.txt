@@ -62,10 +62,8 @@ or from Yulan's git repository (the master branch):
 It is worth mentioning that all the results and analysis on the SWC website 
 were acquired with the "s5" version. 
 
-The scoring results with a fixed grammar scale for the baseline systems 
-based on the current "s5b" version recipe are detailed in the file 
-"s5b/RESULTS.txt". The best scoring results for the baseline systems are
-detailed in the file "s5b/RESULTS_BEST.txt".
+The scoring results with for the baseline systems based on the current "s5b" 
+version recipe are detailed in the file "s5b/RESULTS.txt". 
 
 
 
