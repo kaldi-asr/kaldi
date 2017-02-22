@@ -156,11 +156,26 @@ def write_config_files(config_dir, all_layers):
 
     config_basename_to_header = get_config_headers()
 
+    input_pairs = []
+
     for layer in all_layers:
         try:
             pairs = layer.get_full_config()
+            # we judge whether the layer is preconditioning lda by retained name 'lda'.
+            # for 'lda' layer, add ('init' 'input-node'/'output-node') into pairs, which will generate
+            # init.config for LDA computing
+            if layer.name == 'lda':
+                assert(layer.descriptors.has_key('input') and
+                       'input' in layer.descriptors['input']['final-string'])
+                assert(input_pairs is not None)
+                pairs += input_pairs;
+                pairs.append(('init', 'output-node name=output input={0}'.format(
+                    layer.descriptors['input']['final-string'])))
             for config_basename, line in pairs:
                 config_basename_to_lines[config_basename].append(line)
+                # keep input layers
+                if isinstance(layer, xparser.xlayers.XconfigInputLayer) and config_basename == 'final':
+                    input_pairs.append(('init', line))
         except Exception as e:
             print("{0}: error producing config lines from xconfig "
                   "line '{1}': error was: {2}".format(sys.argv[0],
@@ -169,6 +184,12 @@ def write_config_files(config_dir, all_layers):
             # we use raise rather than raise(e) as using a blank raise
             # preserves the backtrace
             raise
+
+    # remove previous init.config
+    try:
+        os.remove(config_dir + '/init.config')
+    except OSError:
+        pass
 
     for basename, lines in config_basename_to_lines.items():
         header = config_basename_to_header[basename]
