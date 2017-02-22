@@ -186,7 +186,7 @@ void MinimizeAcceptorNoPush(fst::StdVectorFst *fst) {
   fst::EncodeMapper<fst::StdArc> encoder(fst::kEncodeLabels | fst::kEncodeWeights,
                                          fst::ENCODE);
   fst::Encode(fst, &encoder);
-  fst::AcceptorMinimize(fst);
+  fst::internal::AcceptorMinimize(fst);
   fst::Decode(fst, encoder);
 }
 

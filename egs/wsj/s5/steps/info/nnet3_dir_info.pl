@@ -17,8 +17,8 @@ if (@ARGV == 0) {
                "This script extracts some important information from the logs\n" .
                "and displays it on a single (rather long) line.\n" .
                "The --debug option is just to debug the script itself.\n" .
-               "This program exits with status 0 if it seems like the argument\n" .
-               "really was a GMM dir, and 1 otherwise.\n";
+               "This program exits with status 0 if it seems like the arguments\n" .
+               "really were of the expected directory type, and 1 otherwise.\n";
   exit(1);
 }
 

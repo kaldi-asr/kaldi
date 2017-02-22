@@ -107,9 +107,9 @@ void OffsetForwardingDescriptor::GetNodeDependencies(
 }
 
 Cindex OffsetForwardingDescriptor::MapToInput(const Index &ind) const {
-  Cindex answer = src_->MapToInput(ind);
-  answer.second = answer.second + offset_;
-  return answer;
+  Index ind_mod(ind);
+  ind_mod += offset_;
+  return src_->MapToInput(ind_mod);
 }
 
 
@@ -173,12 +173,13 @@ void RoundingForwardingDescriptor::GetNodeDependencies(
 
 Cindex RoundingForwardingDescriptor::MapToInput(const Index &ind) const {
   KALDI_ASSERT(t_modulus_ >= 1);
-  Cindex ans = src_->MapToInput(ind);
-  int32 mod = ans.second.t % t_modulus_;
+  Index ind_mod(ind);
+  // unfortunately doing "mathematical" modulus is a bit painful in C.
+  int32 mod = ind_mod.t % t_modulus_;
   if (mod < 0)
     mod += t_modulus_;
-  ans.second.t -= mod;
-  return ans;
+  ind_mod.t -= mod;
+  return src_->MapToInput(ind_mod);
 }
 
 ForwardingDescriptor *RoundingForwardingDescriptor::Copy() const {
@@ -199,15 +200,15 @@ void ReplaceIndexForwardingDescriptor::GetNodeDependencies(
 }
 
 Cindex ReplaceIndexForwardingDescriptor::MapToInput(const Index &ind) const {
-  Cindex ans = src_->MapToInput(ind);
+  Index ind_mod(ind);
   switch (variable_name_) {
-    case kT: ans.second.t = value_; break;
-    case kX: ans.second.x = value_; break;
+    case kT: ind_mod.t = value_; break;
+    case kX: ind_mod.x = value_; break;
     default:  // kN or any other value is not allowed (doesn't make sense
       // to change the minibatch index in this way).
       KALDI_ERR << "Invalid variable name";
   }
-  return ans;
+  return src_->MapToInput(ind_mod);
 }
 
 ForwardingDescriptor *ReplaceIndexForwardingDescriptor::Copy() const {

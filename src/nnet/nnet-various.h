@@ -389,7 +389,7 @@ class AddShift : public UpdatableComponent {
     shift_data_.AddVec(-lr * learn_rate_coef_, shift_data_grad_);
   }
 
-  void SetLearnRateCoef(float c) { learn_rate_coef_ = c; }
+  void SetLearnRateCoef(BaseFloat c) { learn_rate_coef_ = c; }
 
  protected:
   CuVector<BaseFloat> shift_data_;
@@ -505,7 +505,7 @@ class Rescale : public UpdatableComponent {
     scale_data_.AddVec(-lr * learn_rate_coef_, scale_data_grad_);
   }
 
-  void SetLearnRateCoef(float c) { learn_rate_coef_ = c; }
+  void SetLearnRateCoef(BaseFloat c) { learn_rate_coef_ = c; }
 
  protected:
   CuVector<BaseFloat> scale_data_;

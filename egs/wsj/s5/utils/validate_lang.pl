@@ -758,8 +758,10 @@ if (-s "$lang/phones/word_boundary.int") {
       # prepare_lang.sh), the regular L.fst may contain some disambiguation
       # symbols.
       if (! defined $is_disambig{$phone}) {
-        if ($phone == "<<eos>>") {
+        if ($phone eq "<<eos>>") {
           $state = "eos";
+        } elsif ($phone == 0) {
+          $exit = 1; print "--> ERROR: unexpected phone sequence=$phoneseq, wordseq=$wordseq\n"; last;
         } else {
           $state = $wbtype{$phone};
         }
