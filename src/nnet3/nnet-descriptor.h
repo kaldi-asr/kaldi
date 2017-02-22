@@ -70,7 +70,7 @@ namespace nnet3 {
 ;; arguments
 <descriptor>  ::=   Switch(<descriptor>, <descriptor> [, <descriptor> ...])
 ;; For use in clockwork RNNs or similar, Round() rounds the time-index t of the
-;; requested Index to the next-lowest multiple of the integer <t-modulus>
+;; requested Index to the next-lowest multiple of the integer <t-modulus>,
 ;; and evaluates the input argument for the resulting Index.
 <descriptor>  ::=   Round(<descriptor>, <t-modulus>)  ;; <t-modulus> is an integer
 ;; ReplaceIndex replaces some <variable-name> (t or x) in the requested Index
@@ -434,7 +434,7 @@ class Descriptor {
   // Internally this uses class GeneralDescriptor to read and normalize the
   // input.  Assumes the input has already been tokenized into an array of
   // strings by DescriptorTokenize(); it moves the begin-pointer "next_token" to
-  // account for token that it consumes.  Prints warning and returns false on
+  // account for each token that it consumes.  Prints warning and returns false on
   // error (including if there was junk after the last token).  The input tokens
   // should be terminated with a token that says "end of input".
   bool Parse(const std::vector<std::string> &node_names,

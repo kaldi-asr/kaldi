@@ -55,7 +55,7 @@ add_layers_period=2 # by default, add new layers every 2 iterations.
 num_hidden_layers=3
 stage=-5
 
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
+io_opts="--max-jobs-run 15" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 randprune=4.0 # speeds up LDA.
 alpha=4.0 # relates to preconditioning.
@@ -169,6 +169,9 @@ utils/split_data.sh $data $nj
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 cp $alidir/tree $dir
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 extra_opts=()
 [ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")

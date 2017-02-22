@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# THIS SCRIPT IS DEPRECATED, see ../train_dnn.py
+
 # note, TDNN is the same as what we used to call multisplice.
 
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
@@ -83,6 +85,7 @@ subset_dim=0
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
+echo "$0: THIS SCRIPT IS DEPRECATED"
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -162,7 +165,8 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 cp $alidir/tree $dir
 
-
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 # First work out the feature and iVector dimension, needed for tdnn config creation.
 case $feat_type in
   raw) feat_dim=$(feat-to-dim --print-args=false scp:$data/feats.scp -) || \

@@ -232,6 +232,8 @@ class MatrixBase {
 
   /// Set, element-by-element, *this = max(*this, A)
   void Max(const MatrixBase<Real> &A);
+  /// Set, element-by-element, *this = min(*this, A)
+  void Min(const MatrixBase<Real> &A);
 
   /// Equivalent to (*this) = (*this) * diag(scale).  Scaling
   /// each column by a scalar taken from that dimension of the vector.
@@ -579,8 +581,8 @@ class MatrixBase {
                  const Real beta);
 
   /// *this = a * b / c (by element; when c = 0, *this = a)
-  void AddMatMatDivMat(const MatrixBase<Real>& A,
-                        const MatrixBase<Real>& B,
+  void SetMatMatDivMat(const MatrixBase<Real>& A,
+                       const MatrixBase<Real>& B,
                        const MatrixBase<Real>& C);
 
   /// A version of AddMatMat specialized for when the second argument

@@ -11,7 +11,7 @@ OBJFILES = training-graph-compiler.o lattice-simple-decoder.o lattice-faster-dec
 
 LIBNAME = kaldi-decoder
 
-ADDLIBS = ../lat/kaldi-lat.a ../sgmm/kaldi-sgmm.a ../hmm/kaldi-hmm.a \
+ADDLIBS = ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a ../thread/kaldi-thread.a \
           ../matrix/kaldi-matrix.a ../base/kaldi-base.a

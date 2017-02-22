@@ -42,6 +42,7 @@ struct NnetTrainerOptions {
   BaseFloat max_param_change;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
+  CachingOptimizingCompilerOptions compiler_config;
   NnetTrainerOptions():
       zero_component_stats(true),
       store_component_stats(true),
@@ -79,8 +80,8 @@ struct NnetTrainerOptions {
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
     optimize_config.Register(&optimization_opts);
-
-
+    ParseOptions compiler_opts("compiler", opts);
+    compiler_config.Register(&compiler_opts);
     // register the compute options with the prefix "computation".
     ParseOptions compute_opts("computation", opts);
     compute_config.Register(&compute_opts);
@@ -151,10 +152,19 @@ class NnetTrainer {
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
 
+  // Prints out the max-change stats (if nonzero): the percentage of time that
+  // per-component max-change and global max-change were enforced.
+  void PrintMaxChangeStats() const;
+
   ~NnetTrainer();
  private:
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
+
+  // Applies per-component max-change and global max-change to all updatable
+  // components in *delta_nnet_, and use *delta_nnet_ to update parameters
+  // in *nnet_.
+  void UpdateParamsWithMaxChange();
 
   const NnetTrainerOptions config_;
   Nnet *nnet_;
@@ -169,6 +179,10 @@ class NnetTrainer {
   // normal case there will be just one output layer named "output".
   // So we store the objective functions per output layer.
   int32 num_minibatches_processed_;
+
+  // stats for max-change.
+  std::vector<int32> num_max_change_per_component_applied_;
+  int32 num_max_change_global_applied_;
 
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
 };

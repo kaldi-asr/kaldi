@@ -104,6 +104,7 @@ int main(int argc, char *argv[]) {
     } else {
       KALDI_LOG << "Copying the single input model directly to the output, "
                 << "without any combination.";
+      SetDropoutProportion(0, &nnet);
       WriteKaldiObject(nnet, nnet_wxfilename, binary_write);
     } 
     KALDI_LOG << "Finished combining neural nets, wrote model to "

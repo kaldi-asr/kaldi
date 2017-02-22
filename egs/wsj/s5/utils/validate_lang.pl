@@ -754,9 +754,14 @@ if (-s "$lang/phones/word_boundary.int") {
     $cur_state = "bos";
     $num_words = 0;
     foreach $phone (split (" ", "$phoneseq <<eos>>")) {
-      if (!($fst == "L_disambig.fst" && defined $is_disambig{$phone})) {
-        if ($phone == "<<eos>>") {
+      # Note: now that we support unk-LMs (see the --unk-fst option to
+      # prepare_lang.sh), the regular L.fst may contain some disambiguation
+      # symbols.
+      if (! defined $is_disambig{$phone}) {
+        if ($phone eq "<<eos>>") {
           $state = "eos";
+        } elsif ($phone == 0) {
+          $exit = 1; print "--> ERROR: unexpected phone sequence=$phoneseq, wordseq=$wordseq\n"; last;
         } else {
           $state = $wbtype{$phone};
         }

@@ -37,9 +37,10 @@ EOF
 fi
 
 dir=$dir${affix:+_$affix}
+build_tree_train_set=train_nodup
 train_set=train_nodup_sp
-ali_dir=exp/tri5a_ali_nodup
-treedir=exp/chain/tri6_tree_11000
+build_tree_ali_dir=exp/tri5a_ali
+treedir=exp/chain/tri6_tree
 lang=data/lang_chain
 
 # The iVector-extraction and feature-dumping parts are the same as the standard
@@ -52,9 +53,9 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
-  nj=$(cat $ali_dir/num_jobs) || exit 1;
+  nj=$(cat $build_tree_ali_dir/num_jobs) || exit 1;
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/$train_set \
-    data/lang exp/tri5a exp/tri5a_lats_nodup_sp
+    data/lang exp/tri5a exp/tri5a_lats_nodup_sp || exit 1;
   rm exp/tri5a_lats_nodup_sp/fsts.*.gz # save space
 fi
 
@@ -75,7 +76,7 @@ if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate -1 \
-      --cmd "$train_cmd" 11000 data/$train_set $lang $ali_dir $treedir
+      --cmd "$train_cmd" 11000 data/$build_tree_train_set $lang $build_tree_ali_dir $treedir || exit 1;
 fi
 
 if [ $stage -le 12 ]; then
@@ -106,8 +107,6 @@ if [ $stage -le 13 ]; then
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/fisher_swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
-  touch $dir/egs/.nodelete # keep egs around when that run dies.
-
   steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
@@ -117,7 +116,6 @@ if [ $stage -le 13 ]; then
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
-    --chain.left-deriv-truncate 0 \
     --trainer.num-chunk-per-minibatch 64 \
     --trainer.frames-per-iter 1200000 \
     --trainer.max-param-change 1.414 \
@@ -128,6 +126,7 @@ if [ $stage -le 13 ]; then
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.momentum 0.0 \
+    --trainer.deriv-truncate-margin 8 \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $chunk_width \

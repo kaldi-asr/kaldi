@@ -18,7 +18,7 @@
 // limitations under the License.
 
 /**
- * @file lm-lib-test.cc
+ * @file arpa-file-parser-test.cc
  * @brief Unit tests for language model code.
  */
 
@@ -149,7 +149,7 @@ void TestableArpaFileParser::Validate(
   //                           expect_ngrams.array, CompareNgrams);
   // if (mpos.first != ngrams_.end())
   //   KALDI_ERR << "Maismatch at index " << mpos.first - ngrams_.begin();
-  //TODO:auto above requres C++11, and I cannot spell out the type!!!
+  // TODO: auto above requres C++11, and I cannot spell out the type!!!
   KALDI_ASSERT(std::equal(ngrams_.begin(), ngrams_.end(),
                           expect_ngrams.array, CompareNgrams));
 }
@@ -165,18 +165,18 @@ ngram 2=2\n\
 ngram 3=2\n\
 \n\
 \\1-grams:\n\
--5.2      4 -3.3\n\
--3.4      5\n\
-0         1 -2.5\n\
--4.3      2\n\
+-5.2\t4\t-3.3\n\
+-3.4\t5\n\
+0\t1\t-2.5\n\
+-4.3\t2\n\
 \n\
 \\2-grams:\n\
--1.4       4 5 -3.2\n\
--1.3       1 4 -4.2\n\
+-1.4\t4 5\t-3.2\n\
+-1.3\t1 4\t-4.2\n\
 \n\
 \\3-grams:\n\
--0.3       1 4 5\n\
--0.2       4 5 2\n\
+-0.3\t1 4 5\n\
+-0.2\t4 5 2\n\
 \n\
 \\end\\";
 
@@ -219,19 +219,19 @@ ngram 1=4\n\
 ngram 2=2\n\
 ngram 3=2\n\
 \n\
-\\1-grams:\n\
--5.2	a -3.3\n\
--3.4	\xCE\xB2\n\
-0.0	<s> -2.5\n\
--4.3	</s>\n\
+\\1-grams: \n\
+-5.2\ta\t-3.3\n\
+-3.4\t\xCE\xB2\n\
+0.0\t<s>\t-2.5\n\
+-4.3\t</s>\n\
 \n\
-\\2-grams:\n\
--1.5	a \xCE\xB2 -3.2\n\
--1.3	<s> a -4.2\n\
+\\2-grams:\t\n\
+-1.5\ta \xCE\xB2\t-3.2\n\
+-1.3\t<s> a\t-4.2\n\
 \n\
 \\3-grams:\n\
--0.3	<s> a \xCE\xB2\n\
--0.2	<s> a </s>\n\
+-0.3\t<s> a \xCE\xB2\n\
+-0.2\t<s> a </s>\n\
 \\end\\";
 
 // Symbol table that is created with predefined test symbols, "a" but no "b".

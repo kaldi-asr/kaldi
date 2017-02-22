@@ -44,9 +44,9 @@ class NnetLdaStatsAccumulator {
     if (GetVerboseLevel() >= 3)
       options.debug = true;
     NnetComputer computer(options, computation, nnet_, NULL);
-    
+
     computer.AcceptInputs(nnet_, eg.io);
-    computer.Forward();
+    computer.Run();
     const CuMatrixBase<BaseFloat> &nnet_output = computer.GetOutput("output");
     AccStatsFromOutput(eg, nnet_output);
   }
@@ -75,28 +75,49 @@ class NnetLdaStatsAccumulator {
     KALDI_ASSERT(num_rows == nnet_output.NumRows());
     if (lda_stats_.Dim() == 0)
       lda_stats_.Init(num_pdfs, nnet_output.NumCols());
-    if (output_supervision->features.Type() != kSparseMatrix)
-      KALDI_ERR << "Expected supervision in eg to contain sparse matrices.";
-    const SparseMatrix<BaseFloat> &smat =
-        output_supervision->features.GetSparseMatrix();
-    for (int32 r = 0; r < num_rows; r++) {
-      // the following, transferring row by row to CPU, would be wasteful
-      // if we actually were using a GPU, but we don't anticipate doing this
-      // in this program.
-      CuSubVector<BaseFloat> cu_row(nnet_output, r);
-      // "row" is actually just a redudant copy, since we're likely on CPU,
-      // but we're about to do an outer product, so this doesn't dominate.
-      Vector<BaseFloat> row(cu_row);
+    if (output_supervision->features.Type() == kSparseMatrix) {
+      const SparseMatrix<BaseFloat> &smat =
+          output_supervision->features.GetSparseMatrix();
+      for (int32 r = 0; r < num_rows; r++) {
+        // the following, transferring row by row to CPU, would be wasteful
+        // if we actually were using a GPU, but we don't anticipate doing this
+        // in this program.
+        CuSubVector<BaseFloat> cu_row(nnet_output, r);
+        // "row" is actually just a redudant copy, since we're likely on CPU,
+        // but we're about to do an outer product, so this doesn't dominate.
+        Vector<BaseFloat> row(cu_row);
 
-      const SparseVector<BaseFloat> &post(smat.Row(r));
-      const std::pair<MatrixIndexT, BaseFloat> *post_data = post.Data(),
-          *post_end = post_data + post.NumElements();
-      for (; post_data != post_end; ++post_data) {
-        MatrixIndexT pdf = post_data->first;
-        BaseFloat weight = post_data->second;
-        BaseFloat pruned_weight = RandPrune(weight, rand_prune);
-        if (pruned_weight != 0.0)
-          lda_stats_.Accumulate(row, pdf, pruned_weight);
+        const SparseVector<BaseFloat> &post(smat.Row(r));
+        const std::pair<MatrixIndexT, BaseFloat> *post_data = post.Data(),
+            *post_end = post_data + post.NumElements();
+        for (; post_data != post_end; ++post_data) {
+          MatrixIndexT pdf = post_data->first;
+          BaseFloat weight = post_data->second;
+          BaseFloat pruned_weight = RandPrune(weight, rand_prune);
+          if (pruned_weight != 0.0)
+            lda_stats_.Accumulate(row, pdf, pruned_weight);
+        }
+      }
+    } else {
+      Matrix<BaseFloat> output_mat;
+      output_supervision->features.GetMatrix(&output_mat);
+      for (int32 r = 0; r < num_rows; r++) {
+        // the following, transferring row by row to CPU, would be wasteful
+        // if we actually were using a GPU, but we don't anticipate doing this
+        // in this program.
+        CuSubVector<BaseFloat> cu_row(nnet_output, r);
+        // "row" is actually just a redudant copy, since we're likely on CPU,
+        // but we're about to do an outer product, so this doesn't dominate.
+        Vector<BaseFloat> row(cu_row);
+
+        SubVector<BaseFloat> post(output_mat, r);
+        int32 num_pdfs = post.Dim();
+        for (int32 pdf = 0; pdf < num_pdfs; pdf++) {
+          BaseFloat weight = post(pdf);
+          BaseFloat pruned_weight = RandPrune(weight, rand_prune);
+          if (pruned_weight != 0.0)
+            lda_stats_.Accumulate(row, pdf, pruned_weight);
+        }
       }
     }
   }
@@ -105,7 +126,7 @@ class NnetLdaStatsAccumulator {
   const Nnet &nnet_;
   CachingOptimizingCompiler compiler_;
   LdaEstimate lda_stats_;
-  
+
 };
 
 }
@@ -130,22 +151,22 @@ int main(int argc, char *argv[]) {
         "e.g.:\n"
         "nnet3-acc-lda-stats 0.raw ark:1.egs 1.acc\n"
         "See also: nnet-get-feature-transform\n";
-    
+
     bool binary_write = true;
     BaseFloat rand_prune = 0.0;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("rand-prune", &rand_prune,
-                "Randomized pruning threshold for posteriors");    
-    
+                "Randomized pruning threshold for posteriors");
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
-    
+
     std::string nnet_rxfilename = po.GetArg(1),
         examples_rspecifier = po.GetArg(2),
         lda_accs_wxfilename = po.GetArg(3);
@@ -156,8 +177,8 @@ int main(int argc, char *argv[]) {
     NnetLdaStatsAccumulator accumulator(rand_prune, nnet);
 
     int64 num_egs = 0;
-    
-    SequentialNnetExampleReader example_reader(examples_rspecifier);    
+
+    SequentialNnetExampleReader example_reader(examples_rspecifier);
     for (; !example_reader.Done(); example_reader.Next(), num_egs++)
       accumulator.AccStats(example_reader.Value());
 
@@ -171,5 +192,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

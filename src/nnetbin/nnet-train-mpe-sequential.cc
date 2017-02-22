@@ -276,7 +276,7 @@ int main(int argc, char *argv[]) {
         }
       }
       // get the lattice length and times of states
-      vector<int32> state_times;
+      std::vector<int32> state_times;
       int32 max_time = kaldi::LatticeStateTimes(den_lat, &state_times);
       // check for temporal length of denominator lattices
       if (max_time != mat.NumRows()) {

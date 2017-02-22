@@ -66,6 +66,8 @@ oov=`cat $lang/oov.int` || exit 1;
 
 mkdir -p $dir
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+
 cp -RH $lang $dir/
 
 # Compute grammar FST which corresponds to unigram decoding graph.

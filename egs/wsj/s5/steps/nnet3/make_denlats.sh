@@ -3,9 +3,12 @@
 #           2014-2015   Vimal Manohar
 # Apache 2.0.
 
-# Create denominator lattices for MMI/MPE training.
+# Create denominator lattices for MMI/MPE training [deprecated].
 # This version uses the neural-net models (version 3, i.e. the nnet3 code).
 # Creates its output in $dir/lat.*.gz
+# Note: the more recent discriminative training scripts will not use this
+# script at all, they'll use get_degs.sh which combines the decoding
+# and egs-dumping into one script (to save disk space and disk I/O).
 
 # Begin configuration section.
 nj=4
@@ -22,7 +25,7 @@ transform_dir=
 max_mem=20000000 # This will stop the processes getting too large.
 # This is in bytes, but not "real" bytes-- you have to multiply
 # by something like 5 or 10 to get real bytes (not sure why so large)
-num_threads=1 # Fixed to 1 for now
+num_threads=1 # number of threads of decoder [only applicable if not looped, for now]
 online_ivector_dir=
 determinize=true
 minimize=false
@@ -82,6 +85,8 @@ thread_string=
 mkdir -p $dir/log
 split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
 
 oov=`cat $lang/oov.int` || exit 1;
 
@@ -172,7 +177,7 @@ fi
 
 lattice_determinize_cmd=
 if $determinize; then
-  lattice_determinize_cmd="lattice-determinize-non-compact --acoustic-scale=$acwt --max-mem=$max_mem --minimize=$minimize --prune --beam=$beam ark:- ark:- |"
+  lattice_determinize_cmd="lattice-determinize-non-compact --acoustic-scale=$acwt --max-mem=$max_mem --minimize=$minimize --prune=true --beam=$lattice_beam ark:- ark:- |"
 fi
 
 if [ $sub_split -eq 1 ]; then
@@ -246,4 +251,3 @@ fi
 
 
 echo "$0: done generating denominator lattices."
-

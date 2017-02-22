@@ -48,6 +48,8 @@ oov=`cat $lang/oov.int` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 # Set up the features
 
 sdata1=$data1/split$nj
@@ -122,7 +124,7 @@ else
   # We could just use gmm-align in the next line, but it's less efficient as it compiles the
   # training graphs one by one.
   $cmd JOB=1:$nj $dir/log/align.JOB.log \
-    compile-train-graphs $dir/tree $dir/final.mdl  $lang/L.fst "$tra" ark:- \| \
+    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/final.mdl  $lang/L.fst "$tra" ark:- \| \
     gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam "$mdl" ark:- \
       "$feats" "ark,t:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi

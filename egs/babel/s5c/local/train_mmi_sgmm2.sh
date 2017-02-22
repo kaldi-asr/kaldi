@@ -30,7 +30,7 @@ if [ $# -ne 5 ]; then
   echo "  --cancel (true|false)                            # cancel stats (true by default)"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --config <config-file>                           # config containing options"
-  echo "  --stage <stage>                                  # stage to do partial re-run from."  
+  echo "  --stage <stage>                                  # stage to do partial re-run from."
   echo "  --transform-dir <transform-dir>                  # directory to find fMLLR transforms."
   exit 1;
 fi
@@ -68,7 +68,7 @@ echo "$0: feature type is $feat_type"
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
   lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-    cp $alidir/final.mat $dir    
+    cp $alidir/final.mat $dir
     ;;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
@@ -152,7 +152,7 @@ while [ $x -lt $num_iters ]; do
 	  $cmd $dir/log/num_acc_sum.$x.log \
 	      sgmm2-sum-accs $dir/num_acc.$x.acc $dir/num_acc.$x.*.acc || exit 1;
 	  rm $dir/num_acc.$x.*.acc
-	  
+
 	  $cmd $dir/log/update.$x.log \
 	      sgmm2-est-ebw $update_opts $cur_mdl $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl || exit 1;
       fi

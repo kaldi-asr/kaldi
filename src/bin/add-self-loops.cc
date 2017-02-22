@@ -46,9 +46,9 @@ int main(int argc, char *argv[]) {
         "is recommended as the decoding will in that case be faster.\n"
         "Usage:   add-self-loops [options] transition-gmm/acoustic-model [fst-in] [fst-out]\n"
         "e.g.: \n"
-        " add-self-loops --self-loop-scale=0.1 1.mdl HCLGa.fst HCLG.fst\n" 
+        " add-self-loops --self-loop-scale=0.1 1.mdl HCLGa.fst HCLG.fst\n"
         "or:  add-self-loops --self-loop-scale=0.1 1.mdl <HCLGa.fst >HCLG.fst\n";
-    
+
     BaseFloat self_loop_scale = 1.0;
     bool reorder = true;
     std::string disambig_in_filename;

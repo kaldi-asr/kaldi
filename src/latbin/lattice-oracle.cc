@@ -67,7 +67,7 @@ void MapWildCards(const LabelSet &wildcards, fst::StdVectorFst *ofst) {
       LabelSet::const_iterator it = wildcards.find(arc.ilabel);
       if (it != wildcards.end()) {
         KALDI_VLOG(4) << "MapWildCards: mapping symbol " << arc.ilabel
-                      << " to epsilon" << endl;
+                      << " to epsilon" << std::endl;
         arc.ilabel = 0;
       }
       it = wildcards.find(arc.olabel);
@@ -173,7 +173,7 @@ void CountErrors(const fst::StdVectorFst &fst,
 bool CheckFst(const fst::StdVectorFst &fst, string name, string key) {
 #ifdef DEBUG
   StateId numstates = fst.NumStates();
-  cerr << " " << name << " has " <<numstates << " states" <<endl;
+  std::cerr << " " << name << " has " << numstates << " states" << std::endl;
   std::stringstream ss;
   ss << name << key << ".fst";
   fst.Write(ss.str());
@@ -285,7 +285,7 @@ int main(int argc, char *argv[]) {
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
       const Lattice &lat = lattice_reader.Value();
-      cerr << "Lattice " << key << " read." << endl;
+      std::cerr << "Lattice " << key << " read." << std::endl;
 
       // remove all weights while creating a standard FST
       VectorFst<StdArc> lattice_fst;

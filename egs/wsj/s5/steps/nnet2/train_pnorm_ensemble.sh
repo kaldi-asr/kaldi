@@ -54,7 +54,7 @@ add_layers_period=2 # by default, add new layers every 2 iterations.
 num_hidden_layers=3
 stage=-5
 
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 randprune=4.0 # speeds up LDA.
 alpha=4.0
@@ -156,6 +156,9 @@ echo $nj > $dir/num_jobs
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
 cp $alidir/splice_opts $dir 2>/dev/null
 cp $alidir/tree $dir
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 if [ $stage -le -4 ]; then
   echo "$0: calling get_lda.sh"
