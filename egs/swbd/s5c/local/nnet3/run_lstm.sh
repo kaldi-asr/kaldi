@@ -153,16 +153,16 @@ if [ $stage -le 11 ]; then
   for decode_set in train_dev eval2000; do
       (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
+      steps/nnet3/decode.sh --nj 250 --cmd "$decode_cmd" \
           --extra-left-context $extra_left_context  \
           --extra-right-context $extra_right_context  \
           --frames-per-chunk "$frames_per_chunk" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_hires_sw1_tg || exit 1;
+         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_sw1_tg || exit 1;
       if $has_fisher; then
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
             data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-            $dir/decode_${decode_set}_hires_sw1_{tg,fsh_fg} || exit 1;
+            $dir/decode_${decode_set}_sw1_{tg,fsh_fg} || exit 1;
       fi
       ) &
   done
