@@ -1,4 +1,4 @@
-The recipe scripts in this folder has been removed under based on the request
+The recipe scripts in this folder has been removed according to the request
 from Dan as this recipe is at an older version compared to "s5b". If you are 
 interested in running experiments based on this "s5" recipe, you could download
 all the scripts from the SWC website (version "v1" under the recipe page):
