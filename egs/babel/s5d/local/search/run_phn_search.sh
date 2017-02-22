@@ -29,7 +29,11 @@ dataset=${dir%%.*}
 datatype=${dir#*.}
 
 lang=data/lang.phn
-data=data/${dataset}.phn.${datatype}
+if [ "$dir" == "$dataset" ]; then
+  data=data/${dataset}.phn.${datatype}
+else
+  data=data/${dataset}.phn
+fi
 
 set +o nounset
 eval kwsets=${!dataset_kwlists[@]}
