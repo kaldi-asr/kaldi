@@ -614,8 +614,8 @@ class XconfigBasicLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         # Here we just list some likely combinations.. you can just add any
         # combinations you want to use, to this list.
-        assert first_token in [ 'relu-layer', 'sigmoid-layer', 'tanh-layer',
-                                'relu-renorm-layer', 'sigmoid-renorm-layer', 'tanh-renorm-layer' ]
+        assert first_token in [ 'relu-layer', 'relu-renorm-layer', 'sigmoid-layer',
+                                'tanh-layer' ]
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -808,6 +808,13 @@ class XconfigFixedAffineLayer(XconfigLayerBase):
         input_dim = self.descriptors['input']['dim']
         output_dim = self.output_dim()
         transform_file = self.config['affine-transform-file']
+
+
+        # to init.config we write an output-node with the name 'output' and
+        # with a Descriptor equal to the descriptor that's the input to this
+        # layer.  This will be used to accumulate stats to learn the LDA transform.
+        line = 'output-node name=output input={0}'.format(descriptor_final_string)
+        ans.append(('init', line))
 
         # write the 'real' component to final.config
         line = 'component name={0} type=FixedAffineComponent matrix={1}'.format(
