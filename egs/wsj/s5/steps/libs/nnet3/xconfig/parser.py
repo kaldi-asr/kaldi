@@ -15,29 +15,28 @@ import libs.nnet3.xconfig.utils as xutils
 
 # We have to modify this dictionary when adding new layers
 config_to_layer = {
-    'input' : xlayers.XconfigInputLayer,
-    'output' : xlayers.XconfigTrivialOutputLayer,
-    'output-layer' : xlayers.XconfigOutputLayer,
-    'relu-layer' : xlayers.XconfigBasicLayer,
-    'sigmoid-layer' : xlayers.XconfigBasicLayer,
-    'tanh-layer' : xlayers.XconfigBasicLayer,
-    'relu-renorm-layer' : xlayers.XconfigBasicLayer,
-    'sigmoid-renorm-layer' : xlayers.XconfigBasicLayer,
-    'tanh-renorm-layer' : xlayers.XconfigBasicLayer,
-    'sigmoid-layer' : xlayers.XconfigBasicLayer,
-    'tanh-layer' : xlayers.XconfigBasicLayer,
-    'tdnn-relu-layer' : xlayers.XconfigTdnnLayer,
-    'tdnn-relu-renorm-layer' : xlayers.XconfigTdnnLayer,
-    'tdnn-sigmoid-layer' : xlayers.XconfigTdnnLayer,
-    'tdnn-tanh-layer' : xlayers.XconfigTdnnLayer,
-    'fixed-affine-layer' : xlayers.XconfigFixedAffineLayer,
-    'affine-layer' : xlayers.XconfigAffineLayer,
-    'lstm-layer' : xlayers.XconfigLstmLayer,
-    'lstmp-layer' : xlayers.XconfigLstmpLayer,
-    'lstmpc-layer' : xlayers.XconfigLstmpcLayer,
-    'fast-lstm-layer' : xlayers.XconfigFastLstmLayer,
-    'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer
-}
+        'input' : xlayers.XconfigInputLayer,
+        'output' : xlayers.XconfigTrivialOutputLayer,
+        'output-layer' : xlayers.XconfigOutputLayer,
+        'relu-layer' : xlayers.XconfigBasicLayer,
+        'sigmoid-layer' : xlayers.XconfigBasicLayer,
+        'tanh-layer' : xlayers.XconfigBasicLayer,
+        'relu-renorm-layer' : xlayers.XconfigBasicLayer,
+        'sigmoid-renorm-layer' : xlayers.XconfigBasicLayer,
+        'tanh-renorm-layer' : xlayers.XconfigBasicLayer,
+        'sigmoid-layer' : xlayers.XconfigBasicLayer,
+        'tanh-layer' : xlayers.XconfigBasicLayer,
+        'tdnn-relu-layer' : xlayers.XconfigTdnnLayer,
+        'tdnn-relu-renorm-layer' : xlayers.XconfigTdnnLayer,
+        'tdnn-sigmoid-layer' : xlayers.XconfigTdnnLayer,
+        'tdnn-tanh-layer' : xlayers.XconfigTdnnLayer,
+        'fixed-affine-layer' : xlayers.XconfigFixedAffineLayer,
+        'affine-layer' : xlayers.XconfigAffineLayer,
+        'lstm-layer' : xlayers.XconfigLstmLayer,
+        'lstmp-layer' : xlayers.XconfigLstmpLayer,
+        'fast-lstm-layer' : xlayers.XconfigFastLstmLayer,
+        'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer
+        }
 
 # Turn a config line and a list of previous layers into
 # either an object representing that line of the config file; or None

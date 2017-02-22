@@ -51,11 +51,13 @@ def get_args():
         parents=[common_train_lib.CommonParser().parser])
 
     # egs extraction options
-    parser.add_argument("--egs.chunk-width", type=int, dest='chunk_width',
-                        default=150,
-                        help="""Number of output labels in each example.
-                        Caution: if you double this you should halve
-                        --trainer.samples-per-iter.""")
+    parser.add_argument("--egs.chunk-width", type=str, dest='chunk_width',
+                        default="20",
+                        help="""Number of frames per chunk in the examples
+                        used to train the RNN.   Caution: if you double this you
+                        should halve --trainer.samples-per-iter.  May be
+                        a comma-separated list of alternatives: first width
+                        is the 'principal' chunk-width, used preferentially""")
 
     # chain options
     parser.add_argument("--chain.lm-opts", type=str, dest='lm_opts',
@@ -84,11 +86,6 @@ def get_args():
                         action=common_lib.StrToBoolAction,
                         choices=["true", "false"],
                         help="")
-    parser.add_argument("--chain.truncate-deriv-weights", type=float,
-                        dest='truncate_deriv_weights', default=0,
-                        help="""Can be used to set to zero the weights of
-                        derivs from frames near the edges.  (counts subsampled
-                        frames)""")
     parser.add_argument("--chain.frame-subsampling-factor", type=int,
                         dest='frame_subsampling_factor', default=3,
                         help="ratio of frames-per-second of features we "
@@ -104,8 +101,8 @@ def get_args():
                         help="Deprecated. Kept for back compatibility")
 
     # trainer options
-    parser.add_argument("--trainer.num-epochs", type=int, dest='num_epochs',
-                        default=10,
+    parser.add_argument("--trainer.num-epochs", type=float, dest='num_epochs',
+                        default=10.0,
                         help="Number of epochs to train the model")
     parser.add_argument("--trainer.frames-per-iter", type=int,
                         dest='frames_per_iter', default=800000,
@@ -113,10 +110,14 @@ def get_args():
                         [input] frames per job.  This option is passed to
                         get_egs.sh.  Aim for about a minute of training
                         time""")
-    parser.add_argument("--trainer.num-chunk-per-minibatch", type=int,
-                        dest='num_chunk_per_minibatch', default=512,
-                        help="Number of sequences to be processed in parallel "
-                        "every minibatch")
+
+    parser.add_argument("--trainer.num-chunk-per-minibatch", type=str,
+                        dest='num_chunk_per_minibatch', default='128',
+                        help="""Number of sequences to be processed in
+                        parallel every minibatch.  May be a more general
+                        rule as accepted by the --minibatch-size option of
+                        nnet3-merge-egs; run that program without args to see
+                        the format.""")
 
     # Parameters for the optimization
     parser.add_argument("--trainer.optimization.initial-effective-lrate",
@@ -185,8 +186,11 @@ def process_args(args):
     """ Process the options got from get_args()
     """
 
-    if args.chunk_width < 1:
-        raise Exception("--egs.chunk-width should have a minimum value of 1")
+    if not common_train_lib.validate_chunk_width(args.chunk_width):
+        raise Exception("--egs.chunk-width has an invalid value");
+
+    if not common_train_lib.validate_minibatch_size_str(args.num_chunk_per_minibatch):
+        raise Exception("--trainer.num-chunk-per-minibatch has an invalid value");
 
     if args.chunk_left_context < 0:
         raise Exception("--egs.chunk-left-context should be non-negative")
@@ -261,6 +265,7 @@ def train(args, run_opts, background_process_handler):
     num_jobs = common_lib.get_number_of_jobs(args.tree_dir)
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
+    ivector_id = common_lib.get_ivector_extractor_id(args.online_ivector_dir)
 
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
@@ -287,6 +292,10 @@ def train(args, run_opts, background_process_handler):
 
     left_context = args.chunk_left_context + model_left_context
     right_context = args.chunk_right_context + model_right_context
+    left_context_initial = (args.chunk_left_context_initial + model_left_context if
+                            args.chunk_left_context_initial >= 0 else -1)
+    right_context_final = (args.chunk_right_context_final + model_right_context if
+                           args.chunk_right_context_final >= 0 else -1)
 
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;
@@ -310,8 +319,12 @@ def train(args, run_opts, background_process_handler):
                     {dir}/init.raw""".format(command=run_opts.command,
                                              dir=args.dir))
 
-    egs_left_context = left_context + args.frame_subsampling_factor/2
-    egs_right_context = right_context + args.frame_subsampling_factor/2
+    egs_left_context = left_context + args.frame_subsampling_factor / 2
+    egs_right_context = right_context + args.frame_subsampling_factor / 2
+    egs_left_context_initial = (left_context_initial + args.frame_subsampling_factor / 2 if
+                                left_context_initial >= 0 else -1)
+    egs_right_context_final = (right_context_final + args.frame_subsampling_factor / 2 if
+                               right_context_final >= 0 else -1)
 
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -3) and args.egs_dir is None:
@@ -322,12 +335,14 @@ def train(args, run_opts, background_process_handler):
             lat_dir=args.lat_dir, egs_dir=default_egs_dir,
             left_context=egs_left_context,
             right_context=egs_right_context,
+            left_context_initial=egs_left_context_initial,
+            right_context_final=egs_right_context_final,
             run_opts=run_opts,
             left_tolerance=args.left_tolerance,
             right_tolerance=args.right_tolerance,
             frame_subsampling_factor=args.frame_subsampling_factor,
             alignment_subsampling_factor=args.alignment_subsampling_factor,
-            frames_per_eg=args.chunk_width,
+            frames_per_eg_str=args.chunk_width,
             srand=args.srand,
             egs_opts=args.egs_opts,
             cmvn_opts=args.cmvn_opts,
@@ -342,10 +357,13 @@ def train(args, run_opts, background_process_handler):
         egs_dir = args.egs_dir
 
     [egs_left_context, egs_right_context,
-     frames_per_eg, num_archives] = (
-        common_train_lib.verify_egs_dir(egs_dir, feat_dim, ivector_dim,
-                                        egs_left_context, egs_right_context))
-    assert(args.chunk_width == frames_per_eg)
+     frames_per_eg_str, num_archives] = (
+        common_train_lib.verify_egs_dir(egs_dir, feat_dim, 
+                                        ivector_dim, ivector_id,
+                                        egs_left_context, egs_right_context,
+                                        egs_left_context_initial,
+                                        egs_right_context_final))
+    assert(args.chunk_width == frames_per_eg_str)
     num_archives_expanded = num_archives * args.frame_subsampling_factor
 
     if (args.num_jobs_final > num_archives_expanded):
@@ -354,6 +372,7 @@ def train(args, run_opts, background_process_handler):
 
     # copy the properties of the egs to dir for
     # use during decoding
+    logger.info("Copying the properties from {0} to {1}".format(egs_dir, args.dir))
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
     if (args.stage <= -2):
@@ -375,7 +394,7 @@ def train(args, run_opts, background_process_handler):
     # $num_epochs times, i.e. $num_iters*$avg_num_jobs) ==
     # $num_epochs*$num_archives, where
     # avg_num_jobs=(num_jobs_initial+num_jobs_final)/2.
-    num_archives_to_process = args.num_epochs * num_archives_expanded
+    num_archives_to_process = int(args.num_epochs * num_archives_expanded)
     num_archives_processed = 0
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
@@ -395,11 +414,11 @@ def train(args, run_opts, background_process_handler):
                                                   args.final_effective_lrate)
 
     min_deriv_time = None
-    max_deriv_time = None
+    max_deriv_time_relative = None
     if args.deriv_truncate_margin is not None:
         min_deriv_time = -args.deriv_truncate_margin - model_left_context
-        max_deriv_time = (args.chunk_width - 1 + args.deriv_truncate_margin
-                          + model_right_context)
+        max_deriv_time_relative = \
+           args.deriv_truncate_margin + model_right_context
 
     logger.info("Training will run for {0} epochs = "
                 "{1} iterations".format(args.num_epochs, num_iters))
@@ -438,14 +457,14 @@ def train(args, run_opts, background_process_handler):
                     float(num_archives_processed) / num_archives_to_process,
                     iter),
                 shrinkage_value=shrinkage_value,
-                num_chunk_per_minibatch=args.num_chunk_per_minibatch,
+                num_chunk_per_minibatch_str=args.num_chunk_per_minibatch,
                 num_hidden_layers=num_hidden_layers,
                 add_layers_period=args.add_layers_period,
                 left_context=left_context,
                 right_context=right_context,
                 apply_deriv_weights=args.apply_deriv_weights,
                 min_deriv_time=min_deriv_time,
-                max_deriv_time=max_deriv_time,
+                max_deriv_time_relative=max_deriv_time_relative,
                 l2_regularize=args.l2_regularize,
                 xent_regularize=args.xent_regularize,
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
@@ -453,7 +472,6 @@ def train(args, run_opts, background_process_handler):
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 frame_subsampling_factor=args.frame_subsampling_factor,
-                truncate_deriv_weights=args.truncate_deriv_weights,
                 run_opts=run_opts,
                 background_process_handler=background_process_handler)
 
@@ -483,14 +501,16 @@ def train(args, run_opts, background_process_handler):
         chain_lib.combine_models(
             dir=args.dir, num_iters=num_iters,
             models_to_combine=models_to_combine,
-            num_chunk_per_minibatch=args.num_chunk_per_minibatch,
+            num_chunk_per_minibatch_str=args.num_chunk_per_minibatch,
             egs_dir=egs_dir,
             left_context=left_context, right_context=right_context,
             leaky_hmm_coefficient=args.leaky_hmm_coefficient,
             l2_regularize=args.l2_regularize,
             xent_regularize=args.xent_regularize,
             run_opts=run_opts,
-            background_process_handler=background_process_handler)
+            background_process_handler=background_process_handler,
+            sum_to_one_penalty=args.combine_sum_to_one_penalty)
+
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory "

@@ -179,7 +179,7 @@ class NBestDecoder {
         continue; // skip that token
       }
       LatticeWeight path_w(lmscore, amscore);
-      CompactLatticeWeight path_weight(path_w, vector<int32>());
+      CompactLatticeWeight path_weight(path_w, std::vector<int32>());
 
       std::vector<CompactLatticeArc*> arcs_reverse; // reverse order output arcs
       // outer loop for word tokens
@@ -230,8 +230,8 @@ class NBestDecoder {
   //    ShortestPath(fst, &fst_one);
   //    ConvertLattice(fst_one, fst_out, true);
   //    return true;
-  //  } 
-  
+  //  }
+
  private:
 
   // TokenStore is a store of linked tokens with its own allocator
@@ -388,7 +388,7 @@ class NBestDecoder {
         return tok2;
       }
     }
-    
+
     inline bool CombineN(Elem *head, Token *new_tok) { // n-best version
       if (!new_tok) return false;
       Elem *e = head;
@@ -435,7 +435,7 @@ class NBestDecoder {
     }
     inline Token* Advance(Token *source, Arc &arc, int32 frame,
                           BaseFloat cutoff) {
-      // compute new weight    
+      // compute new weight
       Weight w = Times(source->c, arc.weight);
       Weight amscore = Weight::One();
       if (arc.ilabel > 0) { // emitting arc
@@ -446,7 +446,7 @@ class NBestDecoder {
       if (w.Value() > cutoff) {  // prune
         return NULL;
       }
-      // create new token  
+      // create new token
       Token *tok;
       if (arc.olabel > 0) { // create new token
         // find or create corresponding Token
@@ -593,10 +593,10 @@ class NBestDecoder {
         // KALDI_ASSERT(state == tok->arc_.nextstate);
         for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
              !aiter.Done(); aiter.Next()) {
-          // for all a in A(state)    
+          // for all a in A(state)
           Arc arc = aiter.Value();
           if (arc.ilabel != 0) {  // propagate only emitting
-            Token *new_tok = 
+            Token *new_tok =
                 token_store_.Advance(tok, arc, frame, next_weight_cutoff);
             if (new_tok) {
               Elem *e_found = toks_.Find(arc.nextstate);
@@ -637,7 +637,7 @@ class NBestDecoder {
       queue_.erase(queue_.begin());
       Elem *elem = toks_.Find(state);  // would segfault if state not
       // in toks_ but this can't happen.
-      
+
       // we have to pop all tokens with the same state
       // this may create some unneccessary repetitions, since only the new token
       // needs to be forwarded, but I don't know yet how to solve this

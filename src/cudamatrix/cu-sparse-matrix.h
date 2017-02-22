@@ -121,10 +121,6 @@ class CuSparseMatrix {
 
   ~CuSparseMatrix() { }
 
-  // Use the CuMatrix::CopyFromSmat() function to copy from this to
-  // CuMatrix.
-  // Also see CuMatrix::AddSmat().
-
  protected:
   // The following two functions should only be called if we did not compile
   // with CUDA or could not get a CUDA card; in that case the contents are

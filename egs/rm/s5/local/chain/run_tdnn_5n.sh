@@ -25,7 +25,8 @@ num_jobs_final=4
 minibatch_size=128
 frames_per_eg=150
 remove_egs=false
-
+#common_egs_dir=exp/chain/tdnn_5g/egs/
+common_egs_dir=
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -121,7 +122,7 @@ if [ $stage -le 8 ]; then
     --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
     --trainer.optimization.final-effective-lrate $final_effective_lrate \
     --trainer.max-param-change $max_param_change \
-    --cleanup.remove-egs true \
+    --cleanup.remove-egs $remove_egs \
     --feat-dir data/train \
     --tree-dir $treedir \
     --lat-dir exp/tri3b_lats \
