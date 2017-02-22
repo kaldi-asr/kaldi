@@ -2,8 +2,6 @@ notifications:
   email: false
 
 language: cpp
-sudo: false
-dist: trusty
 
 os:
   - linux
@@ -11,12 +9,15 @@ os:
 addons:
   apt:
     sources:
-      - llvm-toolchain-trusty-3.9
+      - ubuntu-toolchain-r-test
+      - llvm-toolchain-precise-3.8
     packages:
       - gdb
-      - gfortran
+      - gcc-4.9
+      - g++-4.9
+      - gfortran-4.9
       - liblapack-dev
-      - clang-3.9
+      - clang-3.8
 
 branches:
   only:
@@ -29,7 +30,7 @@ before_install:
   - tools/extras/travis_install_bindeps.sh $XROOT
 
 script:
-  - CXX=clang++-3.9
+  - CXX=clang++-3.8
     CFLAGS="-march=native"
     LDFLAGS="-llapack"
     INCDIRS="$XROOT/usr/include"

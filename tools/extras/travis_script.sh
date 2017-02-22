@@ -4,7 +4,7 @@
 # Typical usage shown below; any one can be safely left unset.
 #   INCDIRS="~/xroot/usr/include"
 #   LIBDIRS="~/xroot/usr/lib /usr/lib/openblas-base"
-#   CXX=clang++-3.9
+#   CXX=clang++-3.8
 #   CFLAGS="-march=native -O2"
 #   LDFLAGS="-llapack"
 
@@ -38,7 +38,8 @@ runvx env
 # However, do run tests if TRAVIS_COMMIT_RANGE does not parse. This
 # most likely means the branch was reset by --force; re-run tests then.
 if git rev-parse "${TRAVIS_COMMIT_RANGE}" >/dev/null 2>&1 && \
-   ! git diff --name-only "${TRAVIS_COMMIT_RANGE}" -- ${TESTABLE_DIRS} | read REPLY
+   ! git diff --name-only "${TRAVIS_COMMIT_RANGE}" -- ${TESTABLE_DIRS} \
+   .travis.yml tools/extras/travis_*.sh | read REPLY
 then
   echo; echo "No changes outside ${TESTABLE_DIRS} in the commit" \
              "range ${TRAVIS_COMMIT_RANGE}; reporting success."
