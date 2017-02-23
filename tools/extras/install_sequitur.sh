@@ -76,13 +76,13 @@ cd ../
 
 (
   set +u
-  [ ! -z ${SEQUITUR} ] && \
+  [ ! -z "${SEQUITUR}" ] && \
     echo >&2 "SEQUITUR variable is aleady defined. Undefining..." && \
     unset SEQUITUR
 
   [ -f ./env.sh ] && . ./env.sh
 
-  [ ! -z ${SEQUITUR} ] && \
+  [ ! -z "${SEQUITUR}" ] && \
     echo >&2 "SEQUITUR config is already in env.sh" && exit
 
   wd=`pwd`
@@ -91,7 +91,7 @@ cd ../
   echo "export SEQUITUR=$wd/sequitur-g2p"
   echo "export PATH=\$PATH:\${SEQUITUR}/bin"
   echo "_site_packages=\`find \${SEQUITUR}/lib -type d -regex '.*python.*/site-packages'\`"
-  echo "export PYTHONPATH=\$PYTHONPATH:\$_site_packages"
+  echo "export PYTHONPATH=\${PYTHONPATH:-}:\$_site_packages"
 ) >> env.sh
 
 echo >&2 "Installation of SEQUITUR finished successfully"
