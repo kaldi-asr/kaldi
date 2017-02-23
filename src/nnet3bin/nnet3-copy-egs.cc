@@ -26,32 +26,25 @@
 
 namespace kaldi {
 namespace nnet3 {
-// rename io-name of eg w.r.t io_names list e.g. input/input-1,output/output-1
-// 'input' is renamed to input-1 and 'output' renamed to output-1.
-void RenameIoNames(const std::string &io_names,
+// rename name of NnetIo with old_name to new_name.
+void RenameIoNames(const std::string &old_name,
+                   const std::string &new_name,
                    NnetExample *eg_modified) {
-  std::vector<std::string> separated_io_names;
-  SplitStringToVector(io_names, ",", true, &separated_io_names);
-  int32 num_modified_io = separated_io_names.size(),
-   io_size = eg_modified->io.size();
+  // list of io-names in eg_modified.
   std::vector<std::string> orig_io_list;
+  int32 io_size = eg_modified->io.size();
   for (int32 io_ind = 0; io_ind < io_size; io_ind++)
     orig_io_list.push_back(eg_modified->io[io_ind].name);
 
-  for (int32 ind = 0; ind < num_modified_io; ind++) {
-    std::vector<std::string> rename_io_name;
-    SplitStringToVector(separated_io_names[ind], "/", true, &rename_io_name);
-    // find the io in eg with specific name and rename it to new name.
+  // find the io in eg with name 'old_name'.
+  int32 rename_io_ind =
+     std::find(orig_io_list.begin(), orig_io_list.end(), old_name) -
+      orig_io_list.begin();
 
-    int32 rename_io_ind =
-       std::find(orig_io_list.begin(), orig_io_list.end(), rename_io_name[0]) -
-        orig_io_list.begin();
-
-    if (rename_io_ind >= io_size)
-      KALDI_ERR << "No io-node with name " << rename_io_name[0]
-                << "exists in eg.";
-    eg_modified->io[rename_io_ind].name = rename_io_name[1];
-  }
+  if (rename_io_ind >= io_size)
+    KALDI_ERR << "No io-node with name " << old_name
+              << "exists in eg.";
+  eg_modified->io[rename_io_ind].name = new_name;
 }
 
 // ranames NnetIo name with name 'output' to new_output_name
@@ -65,8 +58,7 @@ void ScaleAndRenameOutput(BaseFloat weight,
       if (weight != 0.0 && weight != 1.0)
         eg->io[i].features.Scale(weight);
   // rename output io name to 'new_output_name'.
-  std::string rename_io_names = "output/" + new_output_name;
-  RenameIoNames(rename_io_names, eg);
+  RenameIoNames("output", new_output_name, eg);
 }
 
 // returns an integer randomly drawn with expected value "expected_count"
@@ -391,9 +383,9 @@ int main(int argc, char *argv[]) {
       NnetExample eg_modified_output;
       const NnetExample &eg_orig = example_reader.Value(),
         &eg = (modify_eg_output ? eg_modified_output : eg_orig);
-      //Note: in the normal case we just use 'eg'; eg_modified_output is
-      //for the case when the --outputs or --weights option is specified
-      //(only for multilingual training).
+      // Note: in the normal case we just use 'eg'; eg_modified_output is
+      // for the case when the --outputs or --weights option is specified
+      // (only for multilingual training).
       BaseFloat weight = 1.0;
       std::string new_output_name;
       if (modify_eg_output) { // This branch is only taken for multilingual training.

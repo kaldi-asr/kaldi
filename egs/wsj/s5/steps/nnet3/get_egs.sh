@@ -311,10 +311,10 @@ if [ $stage -le 3 ]; then
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."
   if $generate_egs_scp; then
-    valid_combine_output="ark,scp:$dir/valid_combine.egs,$dir/valid_combine.egs.scp"
-    valid_diagnostic_output="ark,scp:$dir/valid_diagnostic.egs,$dir/valid_diagnostic.egs.scp"
-    train_combine_output="ark,scp:$dir/train_combine.egs,$dir/train_combine.egs.scp"
-    train_diagnostic_output="ark,scp:$dir/train_diagnostic.egs,$dir/train_diagnostic.egs.scp"
+    valid_combine_output="ark,scp:$dir/valid_combine.egs,$dir/valid_combine.scp"
+    valid_diagnostic_output="ark,scp:$dir/valid_diagnostic.egs,$dir/valid_diagnostic.scp"
+    train_combine_output="ark,scp:$dir/train_combine.egs,$dir/train_combine.scp"
+    train_diagnostic_output="ark,scp:$dir/train_diagnostic.egs,$dir/train_diagnostic.scp"
   else
     valid_combine_output="ark:$dir/valid_combine.egs"
     valid_diagnostic_output="ark:$dir/valid_diagnostic.egs"
@@ -338,8 +338,8 @@ if [ $stage -le 3 ]; then
   sleep 5  # wait for file system to sync.
   cat $dir/valid_combine.egs $dir/train_combine.egs > $dir/combine.egs
   if $generate_egs_scp; then
-    cat $dir/valid_combine.egs.scp $dir/train_combine.egs.scp > $dir/combine.egs.scp
-    rm $dir/{train,valid}_combine.egs.scp
+    cat $dir/valid_combine.scp $dir/train_combine.scp > $dir/combine.scp
+    rm $dir/{train,valid}_combine.scp
   fi
   for f in $dir/{combine,train_diagnostic,valid_diagnostic}.egs; do
     [ ! -s $f ] && echo "No examples in file $f" && exit 1;
@@ -382,13 +382,14 @@ if [ $stage -le 5 ]; then
     fi
     $cmd --max-jobs-run $nj JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
       nnet3-shuffle-egs --srand=\$[JOB+$srand] "ark:cat $egs_list|" $output_archive  || exit 1;
-    
+
     if $generate_egs_scp; then
       #concatenate egs.JOB.scp in single egs.scp
       rm -rf $dir/egs.scp
       for j in $(seq $num_archives_intermediate); do
-        cat $dir/egs.$j.scp || exit 1; 
+        cat $dir/egs.$j.scp || exit 1;
       done > $dir/egs.scp || exit 1;
+      for f in $dir/egs.*.scp; do rm $f; done
     fi
   else
     # we need to shuffle the 'intermediate archives' and then split into the
@@ -417,9 +418,10 @@ if [ $stage -le 5 ]; then
       rm -rf $dir/egs.scp
       for j in $(seq $num_archives_intermediate); do
         for y in $(seq $num_archives_intermediate); do
-          cat $dir/egs.$j.$y.scp || exit 1; 
+          cat $dir/egs.$j.$y.scp || exit 1;
         done
       done > $dir/egs.scp || exit 1;
+      for f in $dir/egs.*.*.scp; do rm $f; done
     fi
   fi
 fi

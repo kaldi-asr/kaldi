@@ -100,6 +100,11 @@ class NnetComputeProb {
   // or NULL if there is no such info.
   const SimpleObjectiveInfo *GetObjective(const std::string &output_name) const;
 
+  // returns sum of objf and weights over all the SimpleObjectiveInfo objects,
+  // of what they computed.
+  // NnetCombiner::ComputeObjfAndDerivFromNnet() would use this function instead.
+  double GetTotalObjective(double *tot_weights) const;
+
   // if config.compute_deriv == true, returns a reference to the
   // computed derivative.  Otherwise crashes.
   const Nnet &GetDeriv() const;

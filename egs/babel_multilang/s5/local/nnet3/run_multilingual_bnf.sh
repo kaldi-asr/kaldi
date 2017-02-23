@@ -1,17 +1,13 @@
 #!/bin/bash
 
 # This script trains a multilingual model using 6 layer TDNN + Xent
-# with 42 dim bottleneck layer in fifth layer for Georgian.
-# The lang_list contains 10 closest fullLP langs to Georgian + fullLP Georgian.
+# with 42 dim bottleneck layer in th fifth layer.
 # Then it extracts bottleneck features for input language "lang" and
 # train SAT model using these feautures.
 
 # Copyright 2016  Pegah Ghahremani
 # Apache 2.0
 
-#This yields approx 70 hours of data
-# this script generates bottleneck features from multilingual model
-# trained on list of languages and dump the bnf for specific language L.
 set -e           #Exit on non-zero return code from any command
 set -o pipefail  #Exit if any of the commands in the pipeline will
                  #return non-zero return code
@@ -74,7 +70,7 @@ if [ ! -f $data_bnf_dir/.done ]; then
   # put the archives in ${dump_bnf_dir}/.
   steps/nnet3/make_bottleneck_features.sh --use-gpu true --nj 70 --cmd "$train_cmd" \
     --ivector-dir $ivector_dir \
-    $datadir $data_bnf_dir \
+    tdnn_bn.renorm $datadir $data_bnf_dir \
     $multilingual_dir $dump_bnf_dir $exp_dir/make_train_bnf || exit 1;
   touch $data_bnf_dir/.done
 else

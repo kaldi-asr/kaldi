@@ -25,6 +25,7 @@ set -e
 
 remove_egs=false
 cmd=queue.pl
+srand=0
 stage=0
 train_stage=-10
 get_egs_stage=-10
@@ -130,9 +131,9 @@ if $use_ivector; then
   echo "$0: Extracts ivector for all languages using $global_extractor/extractor."
   for lang_index in `seq 0 $[$num_langs-1]`; do
     local/nnet3/extract_ivector_lang.sh --stage $stage \
-      --train-set train$suffix ${lang_list[$lang_index]} \
+      --train-set train$suffix \
       --ivector-suffix $ivector_suffix \
-      data/multi/train${suffix}_hires \
+      ${lang_list[$lang_index]} \
       $global_extractor/extractor || exit;
   done
 fi
@@ -152,41 +153,7 @@ else
 fi
 feat_dim=`feat-to-dim scp:${multi_data_dirs[0]}/feats.scp -`
 
-
 if [ $stage -le 9 ]; then
-  echo "$0: Generates separate egs dir per language for multilingual training."
-  # sourcing the "vars" below sets
-  #model_left_context=(something)
-  #model_right_context=(something)
-  #num_hidden_layers=(something)
-  . $dir/configs/vars || exit 1;
-  ivec="${multi_ivector_dirs[@]}"
-  if $use_ivector; then
-    ivector_opts=(--online-multi-ivector-dirs "$ivec")
-  fi
-  local/nnet3/prepare_multilingual_egs.sh --cmd "$decode_cmd" \
-    "${ivector_opts[@]}" \
-    --cmvn-opts "--norm-means=false --norm-vars=false" \
-    --left-context $model_left_context --right-context $model_right_context \
-    $num_langs ${multi_data_dirs[@]} ${multi_ali_dirs[@]} ${multi_egs_dirs[@]} || exit 1;
-
-fi
-
-if [ -z $megs_dir ];then
-  megs_dir=$dir/egs
-fi
-
-if [ $stage -le 10 ] && [ ! -z $megs_dir ]; then
-  echo "$0: Generate multilingual egs dir using "
-  echo "separate egs dirs for multilingual training."
-  common_egs_dir="${multi_egs_dirs[@]} $megs_dir"
-  steps/nnet3/multilingual/get_egs.sh $egs_opts \
-    --cmd "$decode_cmd" \
-    --samples-per-iter 400000 \
-    $num_langs ${common_egs_dir[@]} || exit 1;
-fi
-
-if [ $stage -le 11 ]; then
   echo "$0: creating multilingual neural net configs using the xconfig parser";
   if [ -z $bnf_dim ]; then
     bnf_dim=1024
@@ -233,16 +200,53 @@ EOF
   nnet3-copy --edits="remove-output-nodes name=output-tmp" $dir/configs/ref.raw $dir/configs/ref.raw || exit 1;
 fi
 
+if [ $stage -le 10 ]; then
+  echo "$0: Generates separate egs dir per language for multilingual training."
+  # sourcing the "vars" below sets
+  #model_left_context=(something)
+  #model_right_context=(something)
+  #num_hidden_layers=(something)
+  . $dir/configs/vars || exit 1;
+  ivec="${multi_ivector_dirs[@]}"
+  if $use_ivector; then
+    ivector_opts=(--online-multi-ivector-dirs "$ivec")
+  fi
+  local/nnet3/prepare_multilingual_egs.sh --cmd "$decode_cmd" \
+    "${ivector_opts[@]}" \
+    --cmvn-opts "--norm-means=false --norm-vars=false" \
+    --left-context $model_left_context --right-context $model_right_context \
+    $num_langs ${multi_data_dirs[@]} ${multi_ali_dirs[@]} ${multi_egs_dirs[@]} || exit 1;
+
+fi
+
+if [ -z $megs_dir ];then
+  megs_dir=$dir/egs
+fi
+
+if [ $stage -le 11 ] && [ ! -z $megs_dir ]; then
+  echo "$0: Generate multilingual egs dir using "
+  echo "separate egs dirs for multilingual training."
+  common_egs_dir="${multi_egs_dirs[@]} $megs_dir"
+  steps/nnet3/multilingual/combine_egs.sh $egs_opts \
+    --cmd "$decode_cmd" \
+    --samples-per-iter 400000 \
+    $num_langs ${common_egs_dir[@]} || exit 1;
+fi
+
 
 if [ $stage -le 12 ]; then
   steps/nnet3/train_raw_dnn.py --stage=$train_stage \
     --cmd="$decode_cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --trainer.num-epochs 2 \
-    --trainer.optimization.num-jobs-initial 3 \
-    --trainer.optimization.num-jobs-final 16 \
-    --trainer.optimization.initial-effective-lrate 0.0017 \
-    --trainer.optimization.final-effective-lrate 0.00017 \
+    --trainer.optimization.num-jobs-initial=2 \
+    --trainer.optimization.num-jobs-final=12 \
+    --trainer.optimization.initial-effective-lrate=0.0015 \
+    --trainer.optimization.final-effective-lrate=0.00015 \
+    --trainer.optimization.minibatch-size=256,128 \
+    --trainer.samples-per-iter=400000 \
+    --trainer.max-param-change=2.0 \
+    --trainer.srand=$srand \
     --feat-dir ${multi_data_dirs[0]} \
     --feat.online-ivector-dir ${multi_ivector_dirs[0]} \
     --egs.dir $megs_dir \

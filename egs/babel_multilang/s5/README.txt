@@ -8,12 +8,12 @@ a) Preparation: you need to make sure the BABEL data and the F4DE scoring softwa
 
 
 b) Prepare the data and alignments for languages in multilingual setup.
-    ba) create empty directory exp/language-name and data/language-name
+    i)  create empty directory exp/language-name and data/language-name
         e.g. mkdir exp/101-cantonese;  mkdir data/101-cantonese
         language-name should be the name used in config file in conf/lang.
-    bb) prepare the data and alignment tri5 (Read egs/babel/s5d/README.txt
+    ii) prepare the data and alignment tri5 (Read egs/babel/s5d/README.txt
         for more details.)
-    bc) make soft-link  in data/lang-name and exp/lang-name to corresponding
+    iii) make soft-link  in data/lang-name and exp/lang-name to corresponding
         data and exp dir for all languages.
         e.g.
         (
@@ -24,20 +24,19 @@ b) Prepare the data and alignments for languages in multilingual setup.
         cd exp/101-cantonese
         ln -s /path-to-101-cantonese-exp-dir/tri5 .
         )
-    bd) you can create local.conf and define training config for multilingual training
+    iv) you can create local.conf and define training config for multilingual training
         e.g. s5/local.conf
 
-        echo -e "
-        use_pitch=true
-        \nuse_ivector=true
-        \n#lda-mllt transform for used to train global-ivector
-        \nlda_mllt_lang=101-cantonese
-        \n#lang_list=(space-separated-list-of-multilingual-langs)
-        \nlang_list=(101-cantonese 102-assamese 103-bengali)
-        \ndecode_lang_list=(101-cantonese)
-        \nuse_flp=true # fullLP train-data and alignment used in training.
-        " > local.conf
-
+        cat <<OEF > local.conf
+          use_pitch=true
+          use_ivector=true
+          #lda-mllt transform for used to train global-ivector
+          lda_mllt_lang=101-cantonese
+          #lang_list=(space-separated-list-of-multilingual-langs)
+          lang_list=(101-cantonese 102-assamese 103-bengali)
+          decode_lang_list=(101-cantonese)
+          use_flp=true # fullLP train-data and alignment used in training.
+        EOF
 Running the multilingual training script
 =========================================
 a) You can run the following script to train multilingual TDNN model using
@@ -48,15 +47,15 @@ a) You can run the following script to train multilingual TDNN model using
     aa) Generates 3 speed-perturbed version of training data and
         its high resolution 40-dim MFCC (+pitch) features and tri5_ali{_sp}
 
-    ab) Creates pooled training data using all training languages and generates
+    i) Creates pooled training data using all training languages and generates
         global i-vector extractor over pooled data.
 
-    ac) Generates separate egs-dir in exp/lang-name/nnet3/egs for all languages
+    ii) Generates separate egs-dir in exp/lang-name/nnet3/egs for all languages
         in lagn_list
 
-    ad) Creates multilingual-egs-dir and train the multilingual model.
+    iii) Creates multilingual-egs-dir and train the multilingual model.
 
-    ac) Generates decoding results for languages in decode_lang_list.
+    iv) Generates decoding results for languages in decode_lang_list.
 
 b) You can run the following script to train multilingual model with
     bottleneck layer with dim 'bnf_dim' and generate bottleneck features for

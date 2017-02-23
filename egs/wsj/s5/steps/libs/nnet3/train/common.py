@@ -58,7 +58,7 @@ def get_outputs_list(model_file, get_raw_nnet_from_am=True):
 
 
 def get_multitask_egs_opts(egs_dir, egs_prefix="",
-                           archive_index=1,
+                           archive_index=-1,
                            use_multitask_egs=False):
     """ Generates egs option for multitask(or multilingual) training setup,
         if output.scp or weight.scp files exists in egs_dir.
@@ -66,25 +66,29 @@ def get_multitask_egs_opts(egs_dir, egs_prefix="",
         weights in weight.scp for scaling supervision for this egs.
         e.g. Returns the empty string ('') if use_multitask_egs == False,
         otherwise something like:
-        '--output=ark:foo/egs/output.3.ark --weigth=ark:foo/egs/weights.3.ark'
+        '--output=ark:foo/egs/output.3.ark --weight=ark:foo/egs/weights.3.ark'
         i.e. egs_prefix is "" for train and
         "valid_diagnostic." for validation.
     """
     multitask_egs_opts = ""
+    egs_suffix = ""
+    if archive_index > -1:
+        egs_suffix = ".{0}".format(archive_index)
+
     if use_multitask_egs:
-        output_file_name = ("{egs_dir}/{egs_prefix}output.{archive_index}.ark"
+        output_file_name = ("{egs_dir}/{egs_prefix}output{egs_suffix}.ark"
                             "".format(egs_dir=egs_dir,
                                      egs_prefix=egs_prefix,
-                                     archive_index=archive_index))
+                                     egs_suffix=egs_suffix))
         output_rename_opt = ""
         if os.path.isfile(output_file_name):
             output_rename_opt = ("--outputs=ark:{output_file_name}".format(
                 output_file_name=output_file_name))
 
-        weight_file_name = ("{egs_dir}/{egs_prefix}weight.{archive_index}.ark"
+        weight_file_name = ("{egs_dir}/{egs_prefix}weight{egs_suffix}.ark"
                             "".format(egs_dir=egs_dir,
                                       egs_prefix=egs_prefix,
-                                      archive_index=archive_index))
+                                      egs_suffix=egs_suffix))
         weight_opt = ""
         if os.path.isfile(weight_file_name):
             weight_opt = ("--weights=ark:{weight_file_name}"

@@ -9,8 +9,6 @@ stage=1
 nj=4
 cmd=queue.pl
 use_gpu=false
-bnf_name=tdnn_bn.renorm # the component-node name in nnet3 model used for
-                        # bottleneck feature extraction
 ivector_dir=
 # End configuration options.
 
@@ -20,8 +18,8 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# -lt 3 ]; then
-   echo "usage: steps/nnet3/dump_bottleneck_features.sh <input-data-dir> <bnf-data-dir> <nnet-dir> [<log-dir> [<bnfdir>] ]"
-   echo "e.g.:  steps/nnet3/dump_bottleneck_features.sh data/train data/train_bnf exp/nnet3/tdnn_bnf exp_bnf/dump_bnf bnf"
+   echo "usage: steps/nnet3/dump_bottleneck_features.sh <bnf-node-name> <input-data-dir> <bnf-data-dir> <nnet-dir> [<log-dir> [<bnfdir>] ]"
+   echo "e.g.:  steps/nnet3/dump_bottleneck_features.sh tdnn_bn.renorm data/train data/train_bnf exp/nnet3/tdnn_bnf exp_bnf/dump_bnf bnf"
    echo "Note: <log-dir> dafaults to <bnf-data-dir>/log and <bnfdir> defaults to"
    echo " <bnf-data-dir>/data"
    echo "main options (for others, see top of script file)"
@@ -31,10 +29,10 @@ if [ $# -lt 3 ]; then
    echo "  --ivector-dir                                    # directory for ivectors"
    exit 1;
 fi
-
-data=$1
-bnf_data=$2
-nnetdir=$3
+bnf_name=$1 # the component-node name in nnet3 model used for bottleneck feature extraction
+data=$2
+bnf_data=$3
+nnetdir=$4
 if [ $# -ge 4 ]; then
   logdir=$4
 else

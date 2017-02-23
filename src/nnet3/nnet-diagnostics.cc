@@ -235,5 +235,16 @@ const SimpleObjectiveInfo* NnetComputeProb::GetObjective(
     return NULL;
 }
 
+double NnetComputeProb::GetTotalObjective(double *tot_weights) const {
+  double tot_objectives = 0.0;
+  unordered_map<std::string, SimpleObjectiveInfo, StringHasher>::const_iterator
+    iter = objf_info_.begin(), end = objf_info_.end();
+  for (; iter != end; ++iter) {
+    tot_objectives += iter->second.tot_objective;
+    (*tot_weights) += iter->second.tot_weight;
+  }
+  return tot_objectives;
+}
+
 } // namespace nnet3
 } // namespace kaldi

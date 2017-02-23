@@ -33,7 +33,8 @@ def get_args():
                         "an edit-string like: "
                         "'rename-node old-name=xxx new-name=output' "
                         "if node xxx plays the role of the output node in this "
-                        "network.")
+                        "network."
+                        "This is only used for computing the left/right context.")
 
     print(' '.join(sys.argv))
 

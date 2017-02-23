@@ -41,7 +41,7 @@ if [ ${#args[@]} != $[$num_langs+1] ]; then
   exit 1;
 fi
 
-required="egs.scp combine.egs.scp train_diagnostic.egs.scp valid_diagnostic.egs.scp"
+required="egs.scp combine.scp train_diagnostic.scp valid_diagnostic.scp"
 train_scp_list=
 train_diagnostic_scp_list=
 valid_diagnostic_scp_list=
@@ -60,13 +60,13 @@ for lang in $(seq 0 $[$num_langs-1]);do
   multi_egs_dir[$lang]=${args[$lang]}
   for f in $required; do
     if [ ! -f ${multi_egs_dir[$lang]}/$f ]; then
-      echo "$0: no such a file ${multi_egs_dir[$lang]}/$f." && exit 1;
+      echo "$0: no such file ${multi_egs_dir[$lang]}/$f." && exit 1;
     fi
   done
   train_scp_list="$train_scp_list ${args[$lang]}/egs.scp"
-  train_diagnostic_scp_list="$train_diagnostic_scp_list ${args[$lang]}/train_diagnostic.egs.scp"
-  valid_diagnostic_scp_list="$valid_diagnostic_scp_list ${args[$lang]}/valid_diagnostic.egs.scp"
-  combine_scp_list="$combine_scp_list ${args[$lang]}/combine.egs.scp"
+  train_diagnostic_scp_list="$train_diagnostic_scp_list ${args[$lang]}/train_diagnostic.scp"
+  valid_diagnostic_scp_list="$valid_diagnostic_scp_list ${args[$lang]}/valid_diagnostic.scp"
+  combine_scp_list="$combine_scp_list ${args[$lang]}/combine.scp"
 
   # check parameter dimension to be the same in all egs dirs
   for f in $check_params; do
@@ -86,39 +86,46 @@ if [ $stage -le 0 ]; then
   steps/nnet3/multilingual/allocate_multilingual_examples.py \
       --minibatch-size $minibatch_size \
       --samples-per-iter $samples_per_iter \
-      $num_langs "$train_scp_list" $megs_dir || exit 1;
+      $train_scp_list $megs_dir || exit 1;
 fi
 
 if [ $stage -le 1 ]; then
-  echo "$0: combine combine.egs.scp examples from all langs in $megs_dir/combine.egs.scp."
-  # Generate combine.egs.scp for multilingual setup.
+  echo "$0: combine combine.scp examples from all langs in $megs_dir/combine.scp."
+  # Generate combine.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_combine.log \
   steps/nnet3/multilingual/allocate_multilingual_examples.py \
       --random-lang false \
       --max-archives 1 --num-jobs 1 \
       --minibatch-size $minibatch_size \
       --prefix "combine." \
-      $num_langs "$combine_scp_list" $megs_dir || exit 1;
+      $combine_scp_list $megs_dir || exit 1;
 
-  echo "$0: combine train_diagnostic.egs.scp examples from all langs in $megs_dir/train_diagnostic.egs.scp."
-  # Generate train_diagnostic.egs.scp for multilingual setup.
+  echo "$0: combine train_diagnostic.scp examples from all langs in $megs_dir/train_diagnostic.scp."
+  # Generate train_diagnostic.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_train_diagnostic.log \
   steps/nnet3/multilingual/allocate_multilingual_examples.py \
       --random-lang false \
       --max-archives 1 --num-jobs 1 \
       --minibatch-size $minibatch_size \
       --prefix "train_diagnostic." \
-      $num_langs "$train_diagnostic_scp_list" $megs_dir || exit 1;
+      $train_diagnostic_scp_list $megs_dir || exit 1;
 
 
-  echo "$0: combine valid_diagnostic.egs.scp examples from all langs in $megs_dir/valid_diagnostic.egs.scp."
-  # Generate valid_diagnostic.egs.scp for multilingual setup.
+  echo "$0: combine valid_diagnostic.scp examples from all langs in $megs_dir/valid_diagnostic.scp."
+  # Generate valid_diagnostic.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_valid_diagnostic.log \
   steps/nnet3/multilingual/allocate_multilingual_examples.py \
       --random-lang false --max-archives 1 --num-jobs 1\
       --minibatch-size $minibatch_size \
       --prefix "valid_diagnostic." \
-      $num_langs "$valid_diagnostic_scp_list" $megs_dir || exit 1;
+      $valid_diagnostic_scp_list $megs_dir || exit 1;
 
 fi
+for egs_type in combine train_diagnostic valid_diagnostic; do
+  mv $megs_dir/${egs_type}.output.1.ark $megs_dir/${egs_type}.output.ark || exit 1;
+  mv $megs_dir/${egs_type}.weight.1.ark $megs_dir/${egs_type}.weight.ark || exit 1;
+  mv $megs_dir/${egs_type}.1.scp $megs_dir/${egs_type}.scp || exit 1;
+done
+mv $megs_dir/info/egs.num_archives $megs_dir/info/num_archives || exit 1;
+mv $megs_dir/info/egs.num_tasks $megs_dir/info/num_tasks || exit 1;
 echo "$0: Finished preparing multilingual training example."

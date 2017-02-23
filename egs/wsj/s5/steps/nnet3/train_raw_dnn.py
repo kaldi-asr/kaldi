@@ -287,16 +287,20 @@ def train(args, run_opts, background_process_handler):
         num_hidden_layers, num_archives_expanded,
         args.max_models_combine, args.add_layers_period,
         args.num_jobs_final)
-
-    num_tasks_to_process = 1
-    # If True, it is assumed different examples used to train multiple
-    # tasks in the output layer.
     use_multitask_egs = False
-    if (os.path.exists('{0}/info/num_tasks'.format(egs_dir))):
-        num_tasks_to_process = int(open('{0}/info/num_tasks'.format(
-                                        egs_dir)).readline())
-    if num_tasks_to_process > 1:
+    if (os.path.exists('{0}/valid_diagnostic.scp'.format(args.egs_dir))):
+        if (os.path.exists('{0}/valid_diagnostic.egs'.format(args.egs_dir))):
+            raise Exception('both {0}/valid_diagnostic.egs and '
+                            '{0}/valid_diagnostic.scp exist.'
+                            'This script expects one of them to exist.'
+                            ''.format(args.egs_dir))
         use_multitask_egs = True
+    else:
+        if (not os.path.exists('{0}/valid_diagnostic.egs'.format(args.egs_dir))):
+            raise Exception('neither {0}/valid_diagnostic.egs nor '
+                            '{0}/valid_diagnostic.scp exist.'
+                            'This script expects one of them.'.format(args.egs_dir))
+        use_multitask_egs = False
 
     def learning_rate(iter, current_num_jobs, num_archives_processed):
         return common_train_lib.get_learning_rate(iter, current_num_jobs,
@@ -343,8 +347,8 @@ def train(args, run_opts, background_process_handler):
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
                 get_raw_nnet_from_am=False,
-                use_multitask_egs=use_multitask_egs,
-                background_process_handler=background_process_handler)
+                background_process_handler=background_process_handler,
+                use_multitask_egs=use_multitask_egs)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
@@ -376,19 +380,17 @@ def train(args, run_opts, background_process_handler):
             minibatch_size_str=args.minibatch_size, run_opts=run_opts,
             background_process_handler=background_process_handler,
             get_raw_nnet_from_am=False,
-            use_multitask_egs=use_multitask_egs,
-            sum_to_one_penalty=args.combine_sum_to_one_penalty)
+            sum_to_one_penalty=args.combine_sum_to_one_penalty,
+            use_multitask_egs=use_multitask_egs)
 
     if include_log_softmax and args.stage <= num_iters + 1:
-        logger.info("Getting average posterior for output for purposes of "
-                    "adjusting the priors.")
+        logger.info("Getting average posterior for output-node 'output'.")
         train_lib.common.compute_average_posterior(
             dir=args.dir, iter='final', egs_dir=egs_dir,
             num_archives=num_archives,
             left_context=left_context, right_context=right_context,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts,
-            get_raw_nnet_from_am=False,
-            use_multitask_egs=use_multitask_egs)
+            get_raw_nnet_from_am=False)
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory "
