@@ -21,7 +21,7 @@ set -euo pipefail
 $librispeech_dir/local/download_lm.sh $lm_url data/local/lm
 
 # format the data as Kaldi data directories
-for part in dev-clean train-clean-5; do
+for part in dev-clean-2 train-clean-5; do
   # use underscore-separated names in data directories.
   $librispeech_dir/local/data_prep.sh $data/LibriSpeech/$part data/$(echo $part | sed s/-/_/g)
 done
