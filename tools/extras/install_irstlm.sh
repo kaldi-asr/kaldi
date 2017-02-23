@@ -47,12 +47,12 @@ fi
 }
 
 (
-  [ ! -z ${IRSTLM} ] && \
+  [ ! -z "${IRSTLM}" ] && \
     echo >&2 "IRSTLM variable is aleady defined. Undefining..." && \
     unset IRSTLM
 
   [ -f ./env.sh ] && . ./env.sh
-  [ ! -z ${IRSTLM} ] && \
+  [ ! -z "${IRSTLM}" ] && \
     echo >&2 "IRSTLM config is already in env.sh" && exit
 
   wd=`pwd -P`

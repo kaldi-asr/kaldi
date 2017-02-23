@@ -120,6 +120,7 @@ GSYMS
 /tools/pthreads
 /tools/pthreads*.zip
 /tools/sequitur
+/tools/sequitur-g2p
 /tools/srilm.tgz
 /tools/liblbfgs-1.10.tar.gz
 /tools/liblbfgs-1.10/
