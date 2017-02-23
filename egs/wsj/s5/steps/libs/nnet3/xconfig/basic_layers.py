@@ -343,7 +343,7 @@ class XconfigInputLayer(XconfigLayerBase):
         # unlike other layers the input layers need to be printed in
         # 'init.config' (which initializes the neural network prior to the LDA)
         ans = []
-        for config_name in [ 'ref', 'final' ]:
+        for config_name in [ 'init', 'ref', 'final' ]:
             ans.append( (config_name,
                          'input-node name={0} dim={1}'.format(self.name,
                                                               self.config['dim'])))
@@ -786,7 +786,8 @@ class XconfigFixedAffineLayer(XconfigLayerBase):
         # the most recent layer.
         self.config = { 'input':'[-1]',
                         'dim':-1,
-                        'affine-transform-file':''}
+                        'affine-transform-file':'',
+                        'write-init-config':True}
 
     def check_configs(self):
         if self.config['affine-transform-file'] is None:
@@ -816,6 +817,13 @@ class XconfigFixedAffineLayer(XconfigLayerBase):
         input_dim = self.descriptors['input']['dim']
         output_dim = self.output_dim()
         transform_file = self.config['affine-transform-file']
+
+        if self.config['write-init-config']:
+            # to init.config we write an output-node with the name 'output' and
+            # with a Descriptor equal to the descriptor that's the input to this
+            # layer.  This will be used to accumulate stats to learn the LDA transform.
+            line = 'output-node name=output input={0}'.format(descriptor_final_string)
+            ans.append(('init', line))
 
         # write the 'real' component to final.config
         line = 'component name={0} type=FixedAffineComponent matrix={1}'.format(
