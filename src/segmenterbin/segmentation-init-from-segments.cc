@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
-    po.Register("segment-label", &segment_label,
+    po.Register("label", &segment_label,
                 "Label for all the segments in the segmentations");
     po.Register("utt2label-rspecifier", &utt2label_rspecifier,
                 "Mapping for each utterance to an integer label. "

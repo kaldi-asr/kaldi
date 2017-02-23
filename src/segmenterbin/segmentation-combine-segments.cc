@@ -103,7 +103,8 @@ int main(int argc, char *argv[]) {
 
         if (!utt_segmentation_reader.HasKey(*it)) {
           KALDI_WARN << "Could not find utterance " << *it << " in "
-                     << "segmentation " << utt_segmentation_rspecifier;
+                     << "segmentation " << utt_segmentation_rspecifier
+                     << (include_missing ? "; using default segmentation": "");
           if (!include_missing) {
             num_err++;
           } else {
