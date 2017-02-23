@@ -32,8 +32,9 @@ extra_right_context=0
 
 frame_subsampling_factor=1  # Subsampling at the output
 
-transition_scale=10.0
-loopscale=1.0
+transition_scale=1.0
+loopscale=0.1
+acwt=1.0
 
 # Set to true if the test data has > 8kHz sampling frequency.
 do_downsampling=false
@@ -95,6 +96,7 @@ else
 fi
   
 if [ $stage -le 1 ]; then
+  utils/fix_data_dir.sh $test_data_dir
   steps/make_mfcc.sh --mfcc-config $mfcc_config --nj $nj --cmd "$train_cmd" \
     ${test_data_dir} exp/make_hires/${data_id}${feat_affix} $mfcc_dir
   steps/compute_cmvn_stats.sh ${test_data_dir} exp/make_hires/${data_id}${feat_affix} $mfcc_dir
@@ -163,9 +165,9 @@ if [ $stage -le 5 ]; then
 fi
 
 if [ $stage -le 6 ]; then
-  # 'final' here refers to $lang/final.mdl
   steps/segmentation/decode_sad.sh --acwt 1.0 --cmd "$decode_cmd" \
-    --iter final --get-pdfs true $graph_dir $sad_dir $seg_dir
+    --iter ${iter} \
+    --get-pdfs true $graph_dir $sad_dir $seg_dir
 fi
 
 if [ $stage -le 7 ]; then
