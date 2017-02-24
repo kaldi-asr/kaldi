@@ -177,19 +177,12 @@ def write_config_files(config_dir, all_layers):
         pass
 
     for basename, lines in config_basename_to_lines.items():
-        # check the lines num before 'output-node':
-        # if <=0 and basename == 'init': do not write the init.confg file
-        # if <=0 and basename != 'init': raise a error
-        # if > 0: write the init.confg file for LDA
-        line_prev_output = -1;
-        for line in reversed(lines):
-            if line_prev_output >= 0:
-                line_prev_output += 1
-            if line.startswith('output-node '):
-                line_prev_output = 0
-        if line_prev_output <= 0:
+        # check the lines num start with 'output-node':
+        num_output_node_lines = sum( [ 1 if line.startswith('output-node' ) else 0
+                                       for line in lines ] )
+        if num_output_node_lines == 0:
             if basename == 'init':
-                continue # the line before 'output-node' do not write the 'init'
+                continue # do not write the init.config
             else:
                 print('{0}: error in xconfig file {1}: may be lack of a output layer'.format(
                     sys.argv[0], sys.argv[2]), file=sys.stderr)
