@@ -548,8 +548,8 @@ def train(args, run_opts, background_process_handler):
             leakynum_args="--leakynum-leak-prob={0} \
                     --leakynum-unleak-prob={1} \
                     --leakynum-regular-xent={2} \
-                    --leakynum-use-priors={3} \                                                                                                                                                            
-                    --leakynum-scale-first-transitions={4} \                                                                                                                                               
+                    --leakynum-use-priors={3} \
+                    --leakynum-scale-first-transitions={4} \
                     --leakynum-extra-den-scale={5}".format(
                         get_leakynum_leak_prob(num_archives_to_process),
                         args.leakynum_unleak_prob,

@@ -15,11 +15,24 @@
 # local/chain/run_tdnn.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned&
 
 
+# local/chain/run_tdnn.sh --use-ihm-ali true --mic mdm8 --train-set train --gmm tri3 --nnet3-affix ""
+# Note: egs are the pushed ones! Not the standard supervision code!
+# %WER 37.0 | 13785 94521 | 67.2 18.6 14.2 4.2 37.0 69.2 | 0.637 | exp/mdm8/chain/tdnn1b_sp_bi_ihmali/decode_dev/ascore_8/dev_hires_o4.ctm.filt.sys
+
+
+# local/chain/run_tdnn_leak1a.sh --use-ihm-ali false --mic sdm1 --train-set train --gmm tri3 --nnet3-affix ""
+# %WER 41.5 | 14905 94516 | 62.4 19.5 18.1 3.9 41.5 66.6 | 0.610 | exp/sdm1/chain/tdnn1b_sp_bi/decode_dev/ascore_8/dev_hires_o4.ctm.filt.sys
+# %WER 45.4 | 13446 89971 | 58.3 21.4 20.3 3.7 45.4 70.5 | 0.583 | exp/sdm1/chain/tdnn1b_sp_bi/decode_eval/ascore_8/eval_hires_o4.ctm.filt.sys
+
+#hhadian@b10:~/numleak/src$ cp ~/boostedchain/src/chainbin/nnet3-chain-get-egs ./chainbin/
+#hhadian@b10:~/numleak/src$ cp ~/boostedchain/src/chainbin/nnet3-chain-normalize-egs ./chainbin/
+#hhadian@b10:~/numleak/src$ cp ~/boostedchain/src/chainbin/chain-get-supervision ./chainbin/
+
 set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
-stage=0
+stage=15
 mic=ihm
 nj=30
 min_seg_len=1.55

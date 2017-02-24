@@ -94,6 +94,7 @@ CuLeakyNumeratorComputation::CuLeakyNumeratorComputation(
 
   num_graph_.ScaleTransitions(num_transitions_scale_);
   den_graph_.ScaleTransitions(den_transitions_scale_ * opts_.leakynum_extra_den_scale);
+  // TODO: if scale first transitions is enabled we should scale the offset
 }
 
 

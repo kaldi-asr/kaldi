@@ -26,6 +26,7 @@ void Compute(const NnetComputeProbOptions &nnet_config,
                        const Nnet &nnet,
                        const NnetChainExample &chain_eg,
                        CuMatrix<BaseFloat>* nnet_output) {
+  Profiler pf;
   CachingOptimizingCompiler compiler(nnet, nnet_config.optimize_config);
   Nnet *deriv_nnet;
   if (nnet_config.compute_deriv) {
@@ -39,19 +40,28 @@ void Compute(const NnetComputeProbOptions &nnet_config,
   ComputationRequest request;
   bool use_xent_regularization = (chain_config.xent_regularize != 0.0),
        use_xent_derivative = false;
+  pf.tic("Get request");
   GetChainComputationRequest(nnet, chain_eg, need_model_derivative,
                              store_component_stats, use_xent_regularization,
                              use_xent_derivative, &request);
+  pf.tic("compile");
   const NnetComputation *computation = compiler.Compile(request);
+  pf.tic("computer");
   NnetComputer computer(nnet_config.compute_config, *computation,
                         nnet, deriv_nnet);
+  pf.tic("accept inputs");
   // give the inputs to the computer object.
   computer.AcceptInputs(nnet, chain_eg.inputs);
+  pf.tic("forward");
   computer.Forward();
 
+  pf.tic("rest");
   CuMatrix<BaseFloat> tmp(computer.GetOutput("output"));
   nnet_output->Resize(tmp.NumRows(), tmp.NumCols());
   nnet_output->CopyFromMat(tmp);
+  pf.tac();
+  std::cout << "Compute Profiling results:\n" << pf.toString() << "\n";
+  
 //  if (nnet_config.compute_deriv)
 //    computer.Backward();
 //  return nnet_output;
@@ -423,6 +433,17 @@ This has been calculated and verified by
       /*random_nnet_output.SetRandUniform();
       random_nnet_output.ApplyLogSoftMaxPerRow(random_nnet_output);*/
       NnetComputeProbOptions nnet_config;
+      nnet_config.optimize_config.optimize = false;  // setting this false disallow all optimization.
+      nnet_config.optimize_config.consolidate_model_update = false;
+      nnet_config.optimize_config.propagate_in_place = false;
+      nnet_config.optimize_config.backprop_in_place = false;
+      nnet_config.optimize_config.convert_addition = false;
+      nnet_config.optimize_config.remove_assignments = false;
+      nnet_config.optimize_config.allow_left_merge = false;
+      nnet_config.optimize_config.allow_right_merge = false;
+      nnet_config.optimize_config.initialize_undefined = false;
+      nnet_config.optimize_config.move_sizing_commands = false;
+      nnet_config.optimize_config.allocate_from_other = false;
       nnet_config.compute_deriv = false;
       CuMatrix<BaseFloat> random_nnet_output;// = 
       Compute(nnet_config, opts, den_fst, nnet, eg, &random_nnet_output);
