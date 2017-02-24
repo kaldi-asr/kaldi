@@ -26,7 +26,7 @@ lmdir=data/local/nist_lm
 tmpdir=data/local/lm_tmp
 lexicon=data/local/lang${lang_suffix}_tmp/lexiconp.txt
 mkdir -p $tmpdir
-
+if false; then
 for x in train_si284 test_eval92 test_eval93 test_dev93 test_eval92_5k test_eval93_5k test_dev93_5k dev_dt_05 dev_dt_20; do
   mkdir -p data/$x
   cp $srcdir/${x}_wav.scp data/$x/wav.scp || exit 1;
@@ -36,7 +36,7 @@ for x in train_si284 test_eval92 test_eval93 test_dev93 test_eval92_5k test_eval
   utils/filter_scp.pl data/$x/spk2utt $srcdir/spk2gender > data/$x/spk2gender || exit 1;
 done
 
-
+fi
 # Next, for each type of language model, create the corresponding FST
 # and the corresponding lang_test_* directory.
 

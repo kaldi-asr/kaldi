@@ -158,6 +158,11 @@ def get_args():
                         {left,right}-context.""")
 
     # General options
+    parser.add_argument("--init-raw-model", type=str, dest='init_raw_model',
+                        default=None, action=common_lib.NullstrToNoneAction,
+                        help="If specified, this model used as init.raw "
+                        "instead of generating init.raw using init.config.")
+
     parser.add_argument("--feat-dir", type=str, required=True,
                         help="Directory with features used for training "
                         "the neural network.")
@@ -311,13 +316,23 @@ def train(args, run_opts, background_process_handler):
         chain_lib.create_denominator_fst(args.dir, args.tree_dir, run_opts)
 
     if (args.stage <= -4):
-        logger.info("Initializing a basic network for estimating "
-                    "preconditioning matrix")
-        common_lib.run_kaldi_command(
-            """{command} {dir}/log/nnet_init.log \
-                    nnet3-init --srand=-2 {dir}/configs/init.config \
-                    {dir}/init.raw""".format(command=run_opts.command,
-                                             dir=args.dir))
+        if args.init_raw_model is None:
+            logger.info("Initializing a basic network for estimating "
+                      "epreconditioning matrix")
+            common_lib.run_kaldi_command(
+              """{command} {dir}/log/nnet_init.log \
+                      nnet3-init --srand=-2 {dir}/configs/init.config \
+                      {dir}/init.raw""".format(command=run_opts.command,
+                                               dir=args.dir))
+        else:
+            logger.info("Initialize the init.raw to be equal to {0}".format(
+                        args.init_raw_model))
+            common_lib.run_kaldi_command(
+                """{command} {dir}/log/nnet_init.log \
+                   nnet3-copy {raw_init} \
+                   {dir}/init.raw""".format(command=run_opts.command,
+                                            raw_init=args.init_raw_model,
+                                            dir=args.dir))
 
     egs_left_context = left_context + args.frame_subsampling_factor / 2
     egs_right_context = right_context + args.frame_subsampling_factor / 2
@@ -376,12 +391,13 @@ def train(args, run_opts, background_process_handler):
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
     if (args.stage <= -2):
-        logger.info('Computing the preconditioning matrix for input features')
+        if args.init_raw_model is None:
+            logger.info('Computing the preconditioning matrix for input features')
 
-        chain_lib.compute_preconditioning_matrix(
-            args.dir, egs_dir, num_archives, run_opts,
-            max_lda_jobs=args.max_lda_jobs,
-            rand_prune=args.rand_prune)
+            chain_lib.compute_preconditioning_matrix(
+                args.dir, egs_dir, num_archives, run_opts,
+                max_lda_jobs=args.max_lda_jobs,
+                rand_prune=args.rand_prune)
 
     if (args.stage <= -1):
         logger.info("Preparing the initial acoustic model.")

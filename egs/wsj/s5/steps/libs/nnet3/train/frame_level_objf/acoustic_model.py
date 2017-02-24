@@ -12,7 +12,7 @@ import logging
 
 import libs.common as common_lib
 import libs.nnet3.train.common as common_train_lib
-
+import os
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -75,6 +75,18 @@ def prepare_initial_acoustic_model(dir, alidir, run_opts,
 
     common_train_lib.prepare_initial_network(dir, run_opts,
                                              srand=srand)
+
+    # edits 0.raw using edits.config before adding transition model.
+    logger.info("edits 0.raw using {0}/configs/edits.config.".format(dir))
+    edits_config_file = "{0}/configs/edits.config".format(dir)
+    if os.path.isfile(edits_config_file):
+        common_lib.run_job(
+            """{command} {dir}/log/edit.log \
+                nnet3-copy --edits-config={edits_config} {dir}/0.raw \
+                {dir}/0.raw
+            """.format(command=run_opts.command,
+                       dir=dir,
+                       edits_config=edits_config_file))
 
     # Convert to .mdl, train the transitions, set the priors.
     common_lib.run_job(

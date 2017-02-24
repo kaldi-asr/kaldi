@@ -7,7 +7,7 @@
 # alignments of alternative pronunciations in them.  Mainly intended
 # as a precursor to CTC training for now.
 
-# Begin configuration section.  
+# Begin configuration section.
 stage=0
 nj=4
 cmd=run.pl
@@ -61,6 +61,7 @@ cp $srcdir/{tree,final.mdl} $dir || exit 1;
 cp $srcdir/final.alimdl $dir 2>/dev/null
 cp $srcdir/final.occs $dir;
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
+echo splice_opts = $splice_opts
 cp $srcdir/splice_opts $dir 2>/dev/null # frame-splicing options.
 cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 cp $srcdir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
@@ -96,7 +97,7 @@ mdl_cmd="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/optional_sil
 ## because the other scripts write them without transition probs.
 if [ $stage -le 0 ]; then
   echo "$0: compiling training graphs"
-  tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";   
+  tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log  \
     compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $scale_opts $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
     "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
@@ -140,7 +141,7 @@ if [ $stage -le 3 ]; then
   # Warning: gmm-latgen-faster doesn't support a retry-beam so you may get more
   # alignment errors (however, it does have a default min-active=200 so this
   # will tend to reduce alignment errors).
-  # --allow_partial=false makes sure we reach the end of the decoding graph.  
+  # --allow_partial=false makes sure we reach the end of the decoding graph.
   # --word-determinize=false makes sure we retain the alternative pronunciations of
   #   words (including alternatives regarding optional silences).
   #  --lattice-beam=$beam keeps all the alternatives that were within the beam,

@@ -63,6 +63,11 @@ def get_args():
                         help="The prior computation jobs are single "
                         "threaded and run on the CPU")
 
+    parser.add_argument("--init-raw-model", type=str, dest='init_raw_model',
+                        default=None, action=common_lib.NullstrToNoneAction,
+                        help="If specified, this model used as init.raw "
+                        "instead of generating init.raw using init.config.")
+
     # Parameters for the optimization
     parser.add_argument("--trainer.optimization.minibatch-size",
                         type=str, dest='minibatch_size', default='512',
@@ -200,13 +205,23 @@ def train(args, run_opts, background_process_handler):
     # transform.
 
     if (args.stage <= -5):
-        logger.info("Initializing a basic network for estimating "
-                    "preconditioning matrix")
-        common_lib.run_job(
-            """{command} {dir}/log/nnet_init.log \
-                    nnet3-init --srand=-2 {dir}/configs/init.config \
-                    {dir}/init.raw""".format(command=run_opts.command,
-                                             dir=args.dir))
+        if args.init_raw_model is None:
+            logger.info("Initializing a basic network for estimating "
+                        "preconditioning matrix")
+            common_lib.run_job(
+                """{command} {dir}/log/nnet_init.log \
+                        nnet3-init --srand=-2 {dir}/configs/init.config \
+                        {dir}/init.raw""".format(command=run_opts.command,
+                                                 dir=args.dir))
+        else:
+            logger.info("Initialize the init.raw to be equal to {0}".format(
+                        args.init_raw_model))
+            common_lib.run_kaldi_command(
+                """{command} {dir}/log/nnet_init.log \
+                   nnet3-copy {raw_init} \
+                   {dir}/init.raw""".format(command=run_opts.command,
+                                            raw_init=args.init_raw_model,
+                                            dir=args.dir))
 
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -4) and args.egs_dir is None:
@@ -246,12 +261,13 @@ def train(args, run_opts, background_process_handler):
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
     if (args.stage <= -3):
-        logger.info('Computing the preconditioning matrix for input features')
+        if args.init_raw_model is None:
+            logger.info('Computing the preconditioning matrix for input features')
 
-        train_lib.common.compute_preconditioning_matrix(
-            args.dir, egs_dir, num_archives, run_opts,
-            max_lda_jobs=args.max_lda_jobs,
-            rand_prune=args.rand_prune)
+            train_lib.common.compute_preconditioning_matrix(
+                args.dir, egs_dir, num_archives, run_opts,
+                max_lda_jobs=args.max_lda_jobs,
+                rand_prune=args.rand_prune)
 
     if (args.stage <= -2):
         logger.info("Computing initial vector for FixedScaleComponent before"
@@ -267,6 +283,7 @@ def train(args, run_opts, background_process_handler):
         logger.info("Preparing the initial acoustic model.")
         train_lib.acoustic_model.prepare_initial_acoustic_model(
             args.dir, args.ali_dir, run_opts)
+
 
     # set num_iters so that as close as possible, we process the data
     # $num_epochs times, i.e. $num_iters*$avg_num_jobs) ==
