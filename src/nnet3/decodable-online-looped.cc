@@ -129,7 +129,7 @@ void DecodableNnetLoopedOnlineBase::AdvanceChunk() {
   int32 num_feature_frames_ready = input_features_->NumFramesReady();
   bool is_finished = input_features_->IsLastFrame(num_feature_frames_ready - 1);
 
-  if (end_input_frame >= num_feature_frames_ready && !is_finished) {
+  if (end_input_frame > num_feature_frames_ready && !is_finished) {
     // we shouldn't be attempting to read past the end of the available features
     // until we have reached the end of the input (i.e. the end-user called
     // InputFinished(), announcing that there is no more waveform; at this point
