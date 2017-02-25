@@ -62,7 +62,7 @@ if [ $stage -le 3 ]; then
   for dataset in $train_set train_100k_nodup; do
     utils/copy_data_dir.sh data/$dataset data/${dataset}_hires
 
-    utils/data/perturb_data_dir_volume.sh adata/${dataset}_hires
+    utils/data/perturb_data_dir_volume.sh data/${dataset}_hires
 
     steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
         --cmd "$train_cmd" data/${dataset}_hires exp/make_hires/$dataset $mfccdir;
