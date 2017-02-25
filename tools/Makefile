@@ -10,9 +10,9 @@ CC = gcc         # used for sph2pipe
 OPENFST_VERSION = 1.6.1
 
 OPENFST_VER_NUM := $(shell echo $(OPENFST_VERSION) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
-ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10503)","1")
+ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10600)","1")
     $(error OpenFst-$(OPENFST_VERSION) is not supported. \
-            Supported versions: >= 1.5.3)
+            Supported versions: >= 1.6.0)
 endif
 
 all: check_required_programs sph2pipe atlas sclite openfst
