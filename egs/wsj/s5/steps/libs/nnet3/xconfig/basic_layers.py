@@ -786,7 +786,8 @@ class XconfigFixedAffineLayer(XconfigLayerBase):
         # the most recent layer.
         self.config = { 'input':'[-1]',
                         'dim':-1,
-                        'affine-transform-file':''}
+                        'affine-transform-file':'',
+                        'write-init-config':True}
 
     def check_configs(self):
         if self.config['affine-transform-file'] is None:
@@ -817,12 +818,12 @@ class XconfigFixedAffineLayer(XconfigLayerBase):
         output_dim = self.output_dim()
         transform_file = self.config['affine-transform-file']
 
-
-        # to init.config we write an output-node with the name 'output' and
-        # with a Descriptor equal to the descriptor that's the input to this
-        # layer.  This will be used to accumulate stats to learn the LDA transform.
-        line = 'output-node name=output input={0}'.format(descriptor_final_string)
-        ans.append(('init', line))
+        if self.config['write-init-config']:
+            # to init.config we write an output-node with the name 'output' and
+            # with a Descriptor equal to the descriptor that's the input to this
+            # layer.  This will be used to accumulate stats to learn the LDA transform.
+            line = 'output-node name=output input={0}'.format(descriptor_final_string)
+            ans.append(('init', line))
 
         # write the 'real' component to final.config
         line = 'component name={0} type=FixedAffineComponent matrix={1}'.format(
