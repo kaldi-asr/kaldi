@@ -1,5 +1,5 @@
-#!/usr/bin/perl
-# Copyright 2016 LeSpeech (Author: Xingyu Na)
+#!/usr/bin/env perl
+# Copyright 2016 Alibaba Robotics Corp. (Author: Xingyu Na)
 #
 # A script for char-based Chinese OOV lexicon generation.
 #

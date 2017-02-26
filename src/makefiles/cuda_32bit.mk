@@ -1,7 +1,9 @@
 ifndef DOUBLE_PRECISION
 $(error DOUBLE_PRECISION not defined.)
 endif
-
+ifndef CUDATKDIR
+$(error CUDATKDIR not defined.)
+endif
 
 CUDA_INCLUDE= -I$(CUDATKDIR)/include
 CUDA_FLAGS = -g -Xcompiler -fPIC --verbose --machine 32 -DHAVE_CUDA \

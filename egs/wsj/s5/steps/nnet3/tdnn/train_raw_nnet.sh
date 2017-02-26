@@ -1,6 +1,9 @@
 #!/bin/bash
 
+# THIS SCRIPT IS DEPRECATED, see ../train_raw_dnn.py
+
 # note, TDNN is the same as what we used to call multisplice.
+# THIS SCRIPT IS DEPRECATED, see ../train_raw_dnn.py
 
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
 #           2013  Xiaohui Zhang
@@ -69,12 +72,14 @@ dense_targets=true        # Use dense targets instead of sparse targets
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
+echo "$0: THIS SCRIPT IS DEPRECATED"
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
+  echo "$0: THIS SCRIPT IS DEPRECATED, see ../train_raw_dnn.py"
   echo "Usage: $0 [opts] <data> <targets-scp> <exp-dir>"
   echo " e.g.: $0 data/train scp:snr_targets/targets.scp exp/nnet3_snr_predictor"
   echo ""
@@ -136,6 +141,7 @@ if [ -z "$online_ivector_dir" ]; then
   ivector_dim=0
 else
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
+  steps/nnet2/get_ivector_id.sh $online_ivector_dir > $dir/final.ie.id || exit 1
 fi
 
 if [ ! -z "$configs_dir" ]; then
@@ -207,6 +213,11 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
 fi
 
 [ -z $egs_dir ] && egs_dir=$dir/egs
+
+if [ ! -z "$online_ivector_dir" ] ; then
+  steps/nnet2/check_ivectors_compatible.sh $online_ivector_dir $egs_dir/info || exit 1
+fi
+
 
 if [ "$feat_dim" != "$(cat $egs_dir/info/feat_dim)" ]; then
   echo "$0: feature dimension mismatch with egs, $feat_dim vs $(cat $egs_dir/info/feat_dim)";
@@ -544,4 +555,3 @@ if $cleanup; then
     fi
   done
 fi
-

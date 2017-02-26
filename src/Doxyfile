@@ -453,9 +453,9 @@ WARN_LOGFILE           =
 
 # the lines after "doc itf" are copied from SUBDIRS in the Makefile.
 INPUT    = doc itf \
-          base matrix util feat tree thread gmm transform sgmm \
+          base matrix util feat tree thread gmm transform \
           fstext hmm lm decoder lat cudamatrix nnet \
-          bin fstbin gmmbin fgmmbin sgmmbin featbin \
+          bin fstbin gmmbin fgmmbin featbin \
           nnetbin latbin sgmm2 sgmm2bin nnet2 nnet2bin nnet3 nnet3bin \
           kwsbin ivector ivectorbin
 
@@ -503,7 +503,7 @@ EXCLUDE_PATTERNS       =
 # directories that contain example code fragments that are included (see
 # the \include command).
 
-EXAMPLE_PATH           =
+EXAMPLE_PATH           = doc
 
 # If the value of the EXAMPLE_PATH tag contains directories, you can use the
 # EXAMPLE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp

@@ -319,7 +319,7 @@ struct NnetOptimizeConfig {
 };
 \endverbatim
 The top-level call to the optimization code is just a function call.
-We show the code for this function below:
+We show some partial code for this function below:
 \verbatim
 void Optimize(const NnetOptimizeConfig &config,
               const Nnet &nnet,

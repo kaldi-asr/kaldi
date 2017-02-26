@@ -26,7 +26,7 @@ logger = logging.getLogger('libs')
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)s - "
+formatter = logging.Formatter("%(asctime)s [%(pathname)s:%(lineno)s - "
                               "%(funcName)s - %(levelname)s ] %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
@@ -36,19 +36,18 @@ logger.info('Starting DNN trainer (train_dnn.py)')
 def get_args():
     """ Get args from stdin.
 
-    We add compulsary arguments as named arguments for readability
+    We add compulsory arguments as named arguments for readability
 
     The common options are defined in the object
     libs.nnet3.train.common.CommonParser.parser.
     See steps/libs/nnet3/train/common.py
     """
-
     parser = argparse.ArgumentParser(
         description="""Trains a feed forward DNN acoustic model using the
         cross-entropy objective.  DNNs include simple DNNs, TDNNs and CNNs.""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         conflict_handler='resolve',
-        parents=[common_train_lib.CommonParser().parser])
+        parents=[common_train_lib.CommonParser(include_chunk_context = False).parser])
 
     # egs extraction options
     parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
@@ -66,9 +65,12 @@ def get_args():
 
     # Parameters for the optimization
     parser.add_argument("--trainer.optimization.minibatch-size",
-                        type=float, dest='minibatch_size', default=512,
-                        help="Size of the minibatch used to compute the "
-                        "gradient")
+                        type=str, dest='minibatch_size', default='512',
+                        help="""Size of the minibatch used in SGD training
+                        (argument to nnet3-merge-egs); may be a more general
+                        rule as accepted by the --minibatch-size option of
+                        nnet3-merge-egs; run that program without args to see
+                        the format.""")
 
     # General options
     parser.add_argument("--feat-dir", type=str, required=True,
@@ -99,6 +101,9 @@ def process_args(args):
 
     if args.frames_per_eg < 1:
         raise Exception("--egs.frames-per-eg should have a minimum value of 1")
+
+    if not common_train_lib.validate_minibatch_size_str(args.minibatch_size):
+        raise Exception("--trainer.rnn.num-chunk-per-minibatch has an invalid value");
 
     if (not os.path.exists(args.dir)
             or not os.path.exists(args.dir+"/configs")):
@@ -160,6 +165,7 @@ def train(args, run_opts, background_process_handler):
     num_jobs = common_lib.get_number_of_jobs(args.ali_dir)
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
+    ivector_id = common_lib.get_ivector_extractor_id(args.online_ivector_dir)
 
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
@@ -185,15 +191,15 @@ def train(args, run_opts, background_process_handler):
         raise Exception("KeyError {0}: Variables need to be defined in "
                         "{1}".format(str(e), '{0}/configs'.format(args.dir)))
 
-    left_context = args.chunk_left_context + model_left_context
-    right_context = args.chunk_right_context + model_right_context
+    left_context = model_left_context
+    right_context = model_right_context
 
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
 
-    if (args.stage <= -5):
+    if (args.stage <= -5) and os.path.exists(args.dir+"/configs/init.config"):
         logger.info("Initializing a basic network for estimating "
                     "preconditioning matrix")
         common_lib.run_job(
@@ -209,9 +215,8 @@ def train(args, run_opts, background_process_handler):
         train_lib.acoustic_model.generate_egs(
             data=args.feat_dir, alidir=args.ali_dir, egs_dir=default_egs_dir,
             left_context=left_context, right_context=right_context,
-            valid_left_context=left_context, valid_right_context=right_context,
             run_opts=run_opts,
-            frames_per_eg=args.frames_per_eg,
+            frames_per_eg_str=str(args.frames_per_eg),
             srand=args.srand,
             egs_opts=args.egs_opts,
             cmvn_opts=args.cmvn_opts,
@@ -226,10 +231,11 @@ def train(args, run_opts, background_process_handler):
         egs_dir = args.egs_dir
 
     [egs_left_context, egs_right_context,
-     frames_per_eg, num_archives] = (
-        common_train_lib.verify_egs_dir(egs_dir, feat_dim, ivector_dim,
+     frames_per_eg_str, num_archives] = (
+        common_train_lib.verify_egs_dir(egs_dir, feat_dim, 
+                                        ivector_dim, ivector_id,
                                         left_context, right_context))
-    assert(args.frames_per_eg == frames_per_eg)
+    assert(str(args.frames_per_eg) == frames_per_eg_str)
 
     if (args.num_jobs_final > num_archives):
         raise Exception('num_jobs_final cannot exceed the number of archives '
@@ -239,7 +245,7 @@ def train(args, run_opts, background_process_handler):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (args.stage <= -3):
+    if (args.stage <= -3) and os.path.exists(args.dir+"/configs/init.config"):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
@@ -267,7 +273,7 @@ def train(args, run_opts, background_process_handler):
     # $num_epochs*$num_archives, where
     # avg_num_jobs=(num_jobs_initial+num_jobs_final)/2.
     num_archives_expanded = num_archives * args.frames_per_eg
-    num_archives_to_process = args.num_epochs * num_archives_expanded
+    num_archives_to_process = int(args.num_epochs * num_archives_expanded)
     num_archives_processed = 0
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
@@ -298,10 +304,6 @@ def train(args, run_opts, background_process_handler):
                                * float(iter) / num_iters)
 
         if args.stage <= iter:
-            logger.info("On iteration {0}, learning rate is {1}.".format(
-                iter, learning_rate(iter, current_num_jobs,
-                                    num_archives_processed)))
-
             train_lib.common.train_one_iteration(
                 dir=args.dir,
                 iter=iter,
@@ -312,7 +314,11 @@ def train(args, run_opts, background_process_handler):
                 num_archives=num_archives,
                 learning_rate=learning_rate(iter, current_num_jobs,
                                             num_archives_processed),
-                minibatch_size=args.minibatch_size,
+                dropout_edit_string=common_train_lib.get_dropout_edit_string(
+                    args.dropout_schedule,
+                    float(num_archives_processed) / num_archives_to_process,
+                    iter),
+                minibatch_size_str=args.minibatch_size,
                 frames_per_eg=args.frames_per_eg,
                 num_hidden_layers=num_hidden_layers,
                 add_layers_period=args.add_layers_period,
@@ -336,7 +342,7 @@ def train(args, run_opts, background_process_handler):
                 if iter % reporting_iter_interval == 0:
                     # lets do some reporting
                     [report, times, data] = (
-                        nnet3_log_parse.generate_accuracy_report(args.dir))
+                        nnet3_log_parse.generate_acc_logprob_report(args.dir))
                     message = report
                     subject = ("Update : Expt {dir} : "
                                "Iter {iter}".format(dir=args.dir, iter=iter))
@@ -351,8 +357,9 @@ def train(args, run_opts, background_process_handler):
             models_to_combine=models_to_combine,
             egs_dir=egs_dir,
             left_context=left_context, right_context=right_context,
-            run_opts=run_opts,
-            background_process_handler=background_process_handler)
+            minibatch_size_str=args.minibatch_size, run_opts=run_opts,
+            background_process_handler=background_process_handler,
+            sum_to_one_penalty=args.combine_sum_to_one_penalty)
 
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
@@ -385,7 +392,7 @@ def train(args, run_opts, background_process_handler):
             remove_egs=remove_egs)
 
     # do some reporting
-    [report, times, data] = nnet3_log_parse.generate_accuracy_report(args.dir)
+    [report, times, data] = nnet3_log_parse.generate_acc_logprob_report(args.dir)
     if args.email is not None:
         common_lib.send_mail(report, "Update : Expt {0} : "
                                      "complete".format(args.dir), args.email)

@@ -44,7 +44,7 @@ local/csj_train_rnnlms.sh --dict-suffix "_nosp" \
 echo h500 Begin
 local/csj_train_rnnlms.sh --dict-suffix "_nosp" \
     --hidden 500 --nwords 10000 --class 200 \
-    --direct 0 data/local/rnnlm.h400
+    --direct 0 data/local/rnnlm.h500
 
 #SKIP
 

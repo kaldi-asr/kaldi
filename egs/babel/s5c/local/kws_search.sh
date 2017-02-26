@@ -10,7 +10,7 @@ help_message="$(basename $0): do keyword indexing and search.  data-dir is assum
              Usage:
                  $(basename $0) <lang-dir> <data-dir> <decode-dir>"
 
-# Begin configuration section.  
+# Begin configuration section.
 #acwt=0.0909091
 min_lmwt=7
 max_lmwt=17
@@ -101,7 +101,7 @@ if [ ! -z "$model" ]; then
 else
     model_flags=
 fi
-  
+
 
 if [ $stage -le 0 ] ; then
   if [ ! -f $indices_dir/.done.index ] ; then
@@ -109,8 +109,8 @@ if [ $stage -le 0 ] ; then
     for lmwt in `seq $min_lmwt $max_lmwt` ; do
         indices=${indices_dir}_$lmwt
         mkdir -p $indices
-  
-        acwt=`perl -e "print (1.0/$lmwt);"` 
+
+        acwt=`perl -e "print (1.0/$lmwt);"`
         [ ! -z $silence_word ] && silence_opt="--silence-word $silence_word"
         steps/make_index.sh $silence_opt --cmd "$cmd" --acwt $acwt $model_flags\
           --skip-optimization $skip_optimization --max-states $max_states \

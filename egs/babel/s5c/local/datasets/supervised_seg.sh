@@ -1,4 +1,4 @@
-#This script is not really supposed to be run directly 
+#This script is not really supposed to be run directly
 #Instead, it should be sourced from the decoding script
 #It makes many assumption on existence of certain environmental
 #variables as well as certain directory structure.
@@ -57,7 +57,7 @@ echo "Creating the $unseg_dir/reco2file_and_channel file"
 cat $unseg_dir/wav.scp | awk '{print $1, $1, "A";}' > $unseg_dir/reco2file_and_channel
 cat $unseg_dir/wav.scp | awk '{print $1, $1;}' > $unseg_dir/utt2spk
 utils/utt2spk_to_spk2utt.pl $unseg_dir/utt2spk > $unseg_dir/spk2utt
-  
+
 make_plp $unseg_dir $workdir/make_plp  $workdir/plp || exit 1
 
 local/resegment/generate_segments.sh --nj $my_nj --cmd "$decode_cmd" \

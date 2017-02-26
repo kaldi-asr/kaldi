@@ -3,7 +3,7 @@
 . cmd.sh
 
 
-stage=6
+stage=0
 train_stage=451
 use_gpu=true
 rescore=true

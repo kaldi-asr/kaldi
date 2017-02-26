@@ -87,27 +87,34 @@ void PnormComponent::Write(std::ostream &os, bool binary) const {
 }
 
 
-void DropoutComponent::Init(int32 dim, BaseFloat dropout_proportion) {
+void DropoutComponent::Init(int32 dim, BaseFloat dropout_proportion,
+                            bool dropout_per_frame) {
   dropout_proportion_ = dropout_proportion;
+  dropout_per_frame_ = dropout_per_frame;
   dim_ = dim;
 }
 
 void DropoutComponent::InitFromConfig(ConfigLine *cfl) {
   int32 dim = 0;
   BaseFloat dropout_proportion = 0.0;
+  bool dropout_per_frame = false;
   bool ok = cfl->GetValue("dim", &dim) &&
     cfl->GetValue("dropout-proportion", &dropout_proportion);
+  cfl->GetValue("dropout-per-frame", &dropout_per_frame);
+    // for this stage, dropout is hard coded in
+    // normal mode if not declared in config
   if (!ok || cfl->HasUnusedValues() || dim <= 0 ||
       dropout_proportion < 0.0 || dropout_proportion > 1.0)
-    KALDI_ERR << "Invalid initializer for layer of type "
-              << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(dim, dropout_proportion);
+       KALDI_ERR << "Invalid initializer for layer of type "
+                 << Type() << ": \"" << cfl->WholeLine() << "\"";
+  Init(dim, dropout_proportion, dropout_per_frame);
 }
 
 std::string DropoutComponent::Info() const {
   std::ostringstream stream;
   stream << Type() << ", dim=" << dim_
-         << ", dropout-proportion=" << dropout_proportion_;
+         << ", dropout-proportion=" << dropout_proportion_
+         << ", dropout-per-frame=" << (dropout_per_frame_ ? "true" : "false");
   return stream.str();
 }
 
@@ -119,16 +126,29 @@ void DropoutComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
 
   BaseFloat dropout = dropout_proportion_;
   KALDI_ASSERT(dropout >= 0.0 && dropout <= 1.0);
+  if (!dropout_per_frame_) {
+    // This const_cast is only safe assuming you don't attempt
+    // to use multi-threaded code with the GPU.
+    const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
 
-  // This const_cast is only safe assuming you don't attempt
-  // to use multi-threaded code with the GPU.
-  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
+    out->Add(-dropout);  // now, a proportion "dropout" will be <0.0
+    // apply the function (x>0?1:0).  Now, a proportion
+    // "dropout" will be zero and (1 - dropout) will be 1.0.
+    out->ApplyHeaviside();
 
-  out->Add(-dropout); // now, a proportion "dropout" will be <0.0
-  out->ApplyHeaviside(); // apply the function (x>0?1:0).  Now, a proportion "dropout" will
-                         // be zero and (1 - dropout) will be 1.0.
-
-  out->MulElements(in);
+    out->MulElements(in);
+  } else {
+    // randomize the dropout matrix by row,
+    // i.e. [[1,1,1,1],[0,0,0,0],[0,0,0,0],[1,1,1,1],[0,0,0,0]]
+    CuMatrix<BaseFloat> tmp(1, out->NumRows(), kUndefined);
+    // This const_cast is only safe assuming you don't attempt
+    // to use multi-threaded code with the GPU.
+    const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(&tmp);
+    tmp.Add(-dropout);
+    tmp.ApplyHeaviside();
+    out->CopyColsFromVec(tmp.Row(0));
+    out->MulElements(in);
+  }
 }
 
 
@@ -150,11 +170,25 @@ void DropoutComponent::Backprop(const std::string &debug_info,
 
 
 void DropoutComponent::Read(std::istream &is, bool binary) {
-  ExpectOneOrTwoTokens(is, binary, "<DropoutComponent>", "<Dim>");
-  ReadBasicType(is, binary, &dim_);
-  ExpectToken(is, binary, "<DropoutProportion>");
-  ReadBasicType(is, binary, &dropout_proportion_);
-  ExpectToken(is, binary, "</DropoutComponent>");
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<DropoutComponent>") {
+    ReadToken(is, binary, &token);
+  }
+  KALDI_ASSERT(token == "<Dim>");
+  ReadBasicType(is, binary, &dim_);  // read dimension.
+  ReadToken(is, binary, &token);
+  KALDI_ASSERT(token == "<DropoutProportion>");
+  ReadBasicType(is, binary, &dropout_proportion_);  // read dropout rate
+  ReadToken(is, binary, &token);
+  if (token == "<DropoutPerFrame>") {
+    ReadBasicType(is, binary, &dropout_per_frame_);  // read dropout mode
+    ReadToken(is, binary, &token);
+    KALDI_ASSERT(token == "</DropoutComponent>");
+  } else {
+    dropout_per_frame_ = false;
+    KALDI_ASSERT(token == "</DropoutComponent>");
+  }
 }
 
 void DropoutComponent::Write(std::ostream &os, bool binary) const {
@@ -163,6 +197,8 @@ void DropoutComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, dim_);
   WriteToken(os, binary, "<DropoutProportion>");
   WriteBasicType(os, binary, dropout_proportion_);
+  WriteToken(os, binary, "<DropoutPerFrame>");
+  WriteBasicType(os, binary, dropout_per_frame_);
   WriteToken(os, binary, "</DropoutComponent>");
 }
 
@@ -1136,8 +1172,14 @@ void RectifiedLinearComponent::StoreStats(
 }
 
 void AffineComponent::Scale(BaseFloat scale) {
-  linear_params_.Scale(scale);
-  bias_params_.Scale(scale);
+  if (scale == 0.0) {
+    // If scale == 0.0 we call SetZero() which will get rid of NaN's and inf's.
+    linear_params_.SetZero();
+    bias_params_.SetZero();
+  } else {
+    linear_params_.Scale(scale);
+    bias_params_.Scale(scale);
+  }
 }
 
 void AffineComponent::Resize(int32 input_dim, int32 output_dim) {
@@ -1167,17 +1209,6 @@ AffineComponent::AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
   SetUnderlyingLearningRate(learning_rate);
   KALDI_ASSERT(linear_params.NumRows() == bias_params.Dim()&&
                bias_params.Dim() != 0);
-}
-
-
-
-void AffineComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  linear_params_.SetZero();
-  bias_params_.SetZero();
 }
 
 void AffineComponent::SetParams(const VectorBase<BaseFloat> &bias,
@@ -1425,8 +1456,13 @@ RepeatedAffineComponent::RepeatedAffineComponent(const RepeatedAffineComponent &
 
 
 void RepeatedAffineComponent::Scale(BaseFloat scale) {
-  linear_params_.Scale(scale);
-  bias_params_.Scale(scale);
+  if (scale == 0.0) {
+    linear_params_.SetZero();
+    bias_params_.SetZero();
+  } else {
+    linear_params_.Scale(scale);
+    bias_params_.Scale(scale);
+  }
 }
 
 void RepeatedAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
@@ -1435,15 +1471,6 @@ void RepeatedAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
   KALDI_ASSERT(other != NULL);
   linear_params_.AddMat(alpha, other->linear_params_);
   bias_params_.AddVec(alpha, other->bias_params_);
-}
-
-void RepeatedAffineComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  linear_params_.SetZero();
-  bias_params_.SetZero();
 }
 
 void RepeatedAffineComponent::PerturbParams(BaseFloat stddev){
@@ -1514,7 +1541,7 @@ void RepeatedAffineComponent::InitFromConfig(ConfigLine *cfl) {
        num_repeats, param_stddev, bias_mean, bias_stddev);
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-	          << cfl->UnusedValues();
+              << cfl->UnusedValues();
   if (!ok)
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
@@ -1932,8 +1959,13 @@ void BlockAffineComponent::Backprop(const std::string &debug_info,
 }
 
 void BlockAffineComponent::Scale(BaseFloat scale) {
-  linear_params_.Scale(scale);
-  bias_params_.Scale(scale);
+  if (scale == 0.0) {
+    linear_params_.SetZero();
+    bias_params_.SetZero();
+  } else {
+    linear_params_.Scale(scale);
+    bias_params_.Scale(scale);
+  }
 }
 
 void BlockAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
@@ -1942,15 +1974,6 @@ void BlockAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
   KALDI_ASSERT(other != NULL);
   linear_params_.AddMat(alpha, other->linear_params_);
   bias_params_.AddVec(alpha, other->bias_params_);
-}
-
-void BlockAffineComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  linear_params_.SetZero();
-  bias_params_.SetZero();
 }
 
 void BlockAffineComponent::PerturbParams(BaseFloat stddev) {
@@ -2017,7 +2040,11 @@ void BlockAffineComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
 }
 
 void PerElementScaleComponent::Scale(BaseFloat scale) {
-  scales_.Scale(scale);
+  if (scale == 0.0) {
+    scales_.SetZero();
+  } else {
+    scales_.Scale(scale);
+  }
 }
 
 void PerElementScaleComponent::Add(BaseFloat alpha,
@@ -2032,14 +2059,6 @@ PerElementScaleComponent::PerElementScaleComponent(
     const PerElementScaleComponent &component):
     UpdatableComponent(component),
     scales_(component.scales_) { }
-
-void PerElementScaleComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  scales_.SetZero();
-}
 
 void PerElementScaleComponent::PerturbParams(BaseFloat stddev) {
   CuVector<BaseFloat> temp_scales(scales_.Dim(), kUndefined);
@@ -2180,7 +2199,11 @@ void PerElementScaleComponent::UnVectorize(
 }
 
 void PerElementOffsetComponent::Scale(BaseFloat scale) {
-  offsets_.Scale(scale);
+  if (scale == 0.0) {
+    offsets_.SetZero();
+  } else {
+    offsets_.Scale(scale);
+  }
 }
 
 
@@ -2196,14 +2219,6 @@ PerElementOffsetComponent::PerElementOffsetComponent(
     const PerElementOffsetComponent &component):
     UpdatableComponent(component),
     offsets_(component.offsets_) { }
-
-void PerElementOffsetComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  offsets_.SetZero();
-}
 
 void PerElementOffsetComponent::PerturbParams(BaseFloat stddev) {
   CuVector<BaseFloat> temp_offsets(offsets_.Dim(), kUndefined);
@@ -2342,12 +2357,13 @@ std::string ConstantFunctionComponent::Info() const {
 }
 
 ConstantFunctionComponent::ConstantFunctionComponent():
-    input_dim_(-1), is_updatable_(true), use_natural_gradient_(true) { }
+    UpdatableComponent(), input_dim_(-1), is_updatable_(true),
+    use_natural_gradient_(true) { }
 
 ConstantFunctionComponent::ConstantFunctionComponent(
     const ConstantFunctionComponent &other):
-    input_dim_(other.input_dim_), output_(other.output_),
-    is_updatable_(other.is_updatable_),
+    UpdatableComponent(other), input_dim_(other.input_dim_),
+    output_(other.output_), is_updatable_(other.is_updatable_),
     use_natural_gradient_(other.use_natural_gradient_),
     preconditioner_(other.preconditioner_) { }
 
@@ -2447,8 +2463,13 @@ Component* ConstantFunctionComponent::Copy() const {
 }
 
 void ConstantFunctionComponent::Scale(BaseFloat scale) {
-  if (is_updatable_)
-    output_.Scale(scale);
+  if (is_updatable_) {
+    if (scale == 0.0) {
+      output_.SetZero();
+    } else {
+      output_.Scale(scale);
+    }
+  }
 }
 
 void ConstantFunctionComponent::Add(BaseFloat alpha, const Component &other_in) {
@@ -2458,14 +2479,6 @@ void ConstantFunctionComponent::Add(BaseFloat alpha, const Component &other_in) 
     KALDI_ASSERT(other != NULL);
     output_.AddVec(alpha, other->output_);
   }
-}
-
-void ConstantFunctionComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  output_.SetZero();
 }
 
 void ConstantFunctionComponent::PerturbParams(BaseFloat stddev) {
@@ -3615,7 +3628,7 @@ void ConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
   }
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-	      << cfl->UnusedValues();
+              << cfl->UnusedValues();
   if (!ok)
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
@@ -3704,8 +3717,7 @@ void ConvolutionComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                               kUndefined);
   InputToInputPatches(in, &patches);
   CuSubMatrix<BaseFloat>* filter_params_elem = new CuSubMatrix<BaseFloat>(
-		  filter_params_, 0, filter_params_.NumRows(), 0,
-		  filter_params_.NumCols());
+      filter_params_, 0, filter_params_.NumRows(), 0, filter_params_.NumCols());
   std::vector<CuSubMatrix<BaseFloat>* > tgt_batch, patch_batch,
       filter_params_batch;
 
@@ -3734,8 +3746,13 @@ void ConvolutionComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
 
 // scale the parameters
 void ConvolutionComponent::Scale(BaseFloat scale) {
-  filter_params_.Scale(scale);
-  bias_params_.Scale(scale);
+  if (scale == 0.0) {
+    filter_params_.SetZero();
+    bias_params_.SetZero();
+  } else {
+    filter_params_.Scale(scale);
+    bias_params_.Scale(scale);
+  }
 }
 
 // add another convolution component
@@ -3859,10 +3876,9 @@ void ConvolutionComponent::Backprop(const std::string &debug_info,
                                        kSetZero);
 
   std::vector<CuSubMatrix<BaseFloat>* > patch_deriv_batch, out_deriv_batch,
-	  filter_params_batch;
+      filter_params_batch;
   CuSubMatrix<BaseFloat>* filter_params_elem = new CuSubMatrix<BaseFloat>(
-		  filter_params_, 0, filter_params_.NumRows(), 0,
-		  filter_params_.NumCols());
+      filter_params_, 0, filter_params_.NumRows(), 0, filter_params_.NumCols());
 
   for (int32 x_step = 0; x_step < num_x_steps; x_step++)  {
     for (int32 y_step = 0; y_step < num_y_steps; y_step++)  {
@@ -3939,9 +3955,8 @@ void ConvolutionComponent::Update(const std::string &debug_info,
     for (int32 y_step = 0; y_step < num_y_steps; y_step++)  {
       int32 patch_number = x_step * num_y_steps + y_step;
       filters_grad_batch.push_back(new CuSubMatrix<BaseFloat>(
-              filters_grad_blocks_batch.RowRange(
-				      patch_number * filters_grad.NumRows(),
-				    filters_grad.NumRows())));
+          filters_grad_blocks_batch.RowRange(
+              patch_number * filters_grad.NumRows(), filters_grad.NumRows())));
 
       input_patch_batch.push_back(new CuSubMatrix<BaseFloat>(
               input_patches.ColRange(patch_number * filter_dim, filter_dim)));
@@ -3974,15 +3989,6 @@ void ConvolutionComponent::Update(const std::string &debug_info,
   //
   filter_params_.AddMat(learning_rate_, filters_grad);
   bias_params_.AddVec(learning_rate_, bias_grad);
-}
-
-void ConvolutionComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  filter_params_.SetZero();
-  bias_params_.SetZero();
 }
 
 void ConvolutionComponent::Read(std::istream &is, bool binary) {
@@ -4413,7 +4419,7 @@ void PermuteComponent::InitFromConfig(ConfigLine *cfl) {
               << column_map_str;
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-	      << cfl->UnusedValues();
+              << cfl->UnusedValues();
   if (!ok)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
@@ -4797,18 +4803,6 @@ void CompositeComponent::Add(BaseFloat alpha, const Component &other_in) {
 }
 
 // virtual
-void CompositeComponent::SetZero(bool treat_as_gradient) {
-  KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
-  for (size_t i = 0; i < components_.size(); i++) {
-    if (components_[i]->Properties() & kUpdatableComponent) {
-      UpdatableComponent *uc =
-          dynamic_cast<UpdatableComponent*>(components_[i]);
-      uc->SetZero(treat_as_gradient);
-    }
-  }
-}
-
-// virtual
 void CompositeComponent::PerturbParams(BaseFloat stddev) {
   KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
   for (size_t i = 0; i < components_.size(); i++) {
@@ -4844,6 +4838,19 @@ void CompositeComponent::SetActualLearningRate(BaseFloat lrate) {
       UpdatableComponent *uc =
           dynamic_cast<UpdatableComponent*>(components_[i]);
       uc->SetActualLearningRate(lrate);
+    }
+  }
+}
+
+// virtual
+void CompositeComponent::SetAsGradient() {
+  KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
+  UpdatableComponent::SetAsGradient();
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (components_[i]->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc =
+          dynamic_cast<UpdatableComponent*>(components_[i]);
+      uc->SetAsGradient();
     }
   }
 }
@@ -5110,12 +5117,27 @@ Component* LstmNonlinearityComponent::Copy() const {
   return new LstmNonlinearityComponent(*this);
 }
 
+void LstmNonlinearityComponent::ZeroStats() {
+  value_sum_.SetZero();
+  deriv_sum_.SetZero();
+  self_repair_total_.SetZero();
+  count_ = 0.0;
+}
+
 void LstmNonlinearityComponent::Scale(BaseFloat scale) {
-  params_.Scale(scale);
-  value_sum_.Scale(scale);
-  deriv_sum_.Scale(scale);
-  self_repair_total_.Scale(scale);
-  count_ *= scale;
+  if (scale == 0.0) {
+    params_.SetZero();
+    value_sum_.SetZero();
+    deriv_sum_.SetZero();
+    self_repair_total_.SetZero();
+    count_ = 0.0;
+  } else {
+    params_.Scale(scale);
+    value_sum_.Scale(scale);
+    deriv_sum_.Scale(scale);
+    self_repair_total_.Scale(scale);
+    count_ *= scale;
+  }
 }
 
 void LstmNonlinearityComponent::Add(BaseFloat alpha,
@@ -5128,18 +5150,6 @@ void LstmNonlinearityComponent::Add(BaseFloat alpha,
   deriv_sum_.AddMat(alpha, other->deriv_sum_);
   self_repair_total_.AddVec(alpha, other->self_repair_total_);
   count_ += alpha * other->count_;
-}
-
-void LstmNonlinearityComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  params_.SetZero();
-  value_sum_.SetZero();
-  deriv_sum_.SetZero();
-  self_repair_total_.SetZero();
-  count_ = 0.0;
 }
 
 void LstmNonlinearityComponent::PerturbParams(BaseFloat stddev) {
@@ -5311,12 +5321,14 @@ void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
 
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-	      << cfl->UnusedValues();
-  if (!ok)
+              << cfl->UnusedValues();
+  if (ok) {
+    Init(cell_dim, param_stddev, tanh_self_repair_threshold,
+         sigmoid_self_repair_threshold, self_repair_scale);
+  } else {
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(cell_dim, param_stddev, tanh_self_repair_threshold,
-       sigmoid_self_repair_threshold, self_repair_scale);
+  }
 }
 
 

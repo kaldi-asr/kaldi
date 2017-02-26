@@ -56,3 +56,5 @@ fsttablecompose data/lang/L_disambig.fst data/lang_test/G.fst | \
 
 
 echo gale_format_data  succeeded.
+
+exit 0

@@ -1,0 +1,96 @@
+// doc/versions.dox
+
+// Copyright     2017 Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+// note: you have to run the file get_version_info.sh in order
+// to generate the HTML files that we include via \htmlinclude.
+// Any time you add a new version you need to edit get_version_info.sh
+
+
+/**
+
+  \page versions Versions of Kaldi
+
+   \section versions_scheme Versioning scheme
+
+     During its lifetime, Kaldi has has three different versioning methods.
+     Originally Kaldi was a subversion (svn)-based project, and was hosted
+     on Sourceforge.  Then Kaldi was moved to github, and for some time the
+     only version-number available was the git hash of the commit.
+
+     In January 2017 we introduced a version number scheme.  The first version
+     of Kaldi was 5.0.0, in recognition of the fact that the project had
+     already existed for quite a long time.  The basic scheme is major/minor/patch,
+     but the "patch" version number may also encompass features (usually
+     back-compatible ones).  The "patch number" automatically increases whenever
+     a commit to Kaldi is merged on github.
+
+    We only intend to change the major or minor
+    version number when making relatively larger changes, or non-back compatible
+    changes.  Version 5.1 of Kaldi is currently being prepared.  When that is
+    finished (probably in early Feburary 2017), the latest version of 5.0.x will
+    be backed up to a branch named '5.0', and 'master' will point to version 5.1.0.
+    We may continue to update the 5.0 branch with fixes and the like, depending on
+    demand.
+
+   We always plan to recommend that Kaldi users check out the latest version of
+   'master', since actively supporting multiple versions would increase our workload.
+
+   \section versions_versions Versions (and changes)
+
+   This section lists the version numbers of Kaldi with the commit messages
+   for each patch commit (by "patch commit" we mean a commit that does not
+   increase the major or minor version number).
+   Each time we add a new major/minor version number we will include a longer
+   section explaining the changes involved.
+
+   \subsection versions_versions_50 Version 5.0
+
+  This is the first major/minor version number after introducing the versioning scheme.
+  The latest revision of version 5.0 is saved as branch "5.0" on github.
+
+  Specific patches:
+
+  \htmlinclude 5.0.html
+
+
+   \subsection versions_versions_51 Version 5.1
+
+  Version 5.1 is the current master branch of Kaldi.
+  Some of the major changes introduced in version 5.1 are:
+     - Kaldi now requires C++11 to compile, and we support only the latest
+       version of OpenFst (1.6.0).  (This simplifies Kaldi's code, and will later
+       enable the threading code to be
+       <a href="https://github.com/kaldi-asr/kaldi/pull/1350" target="_blank">rewritten</a>
+       to use C++11's better and more portable mechanisms).
+     - The way chunk size and feature context is handled in nnet3 is changed
+       to allow variable chunk size and shorter context at utterance boundaries.
+       See \ref dnn3_scripts_context for more information.
+     - A new decoding mechanism, \ref dnn3_scripts_context_looped, is introduced
+       in nnet3; this allows faster and more-easily-online decoding for
+       recurrent setups (but only unidirectionally-recurrent ones, like LSTMs
+       but not BLSTMs).
+     - \ref online_decoding_nnet3 is now rewritten; it's faster and it supports
+       models like LSTMs.
+     - The sequence-training scripts in nnet3 are refactored and are now simpler
+       and use less disk space.
+
+  \htmlinclude 5.1.html
+
+
+*/

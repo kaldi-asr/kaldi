@@ -58,14 +58,14 @@ utils/validate_dict_dir.pl $srcdir;
 if [ -f $srcdir/lexicon.txt ]; then
   src_lex=$srcdir/lexicon.txt
   perl -ane 'print join(" ", split(" ", $_)) . "\n";' < $src_lex |\
-    sort > $dir/lexicon.txt
+    sort -u > $dir/lexicon.txt
 elif [ -f $srcdir/lexiconp.txt ]; then
   echo "$0: removing the pron-probs from $srcdir/lexiconp.txt to create $dir/lexicon.txt"
   # the Perl command below normalizes the spaces (avoid double space).
   src_lex=$srcdir/lexiconp.txt
   awk '{$2 = ""; print $0;}' <$srcdir/lexiconp.txt |\
     perl -ane 'print join(" ", split(" " ,$_)) . "\n";' |\
-    sort > $dir/lexicon.txt || exit 1;
+    sort -u > $dir/lexicon.txt || exit 1;
 fi
 
 
