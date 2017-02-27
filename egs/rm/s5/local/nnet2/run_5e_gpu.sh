@@ -7,21 +7,21 @@
 # at the end of the directory name.
 
 
-gpu_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network,
+gpu_opts="--gpu 1"  # This is suitable for the CLSP network,
                                       # you'll likely have to change it.  we'll
                                       # use it later on, in the training (it's
                                       # not used in denlat creation)
 . ./cmd.sh
 . ./path.sh
-! cuda-compiled && cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+! cuda-compiled && cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
 
 # The denominator lattice creation currently doesn't use GPUs.
 
-# Note: we specify 1G each for the mem_free and ram_free which, is per
+# Note: we specify 1G for --mem, which is per
 # thread... it will likely be less than the default.  Increase the beam relative
 # to the defaults; this is just for this RM setup, where the default beams will
 # likely generate very thin lattices.  Note: the transform-dir is important to
@@ -29,8 +29,8 @@ EOF
 
 nj=$(cat exp/tri3b_ali/num_jobs)
 dir=nnet4e_gpu
-steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
-      --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "-pe smp 6" \
+steps/nnet2/make_denlats.sh --cmd "$decode_cmd --mem 1G" \
+      --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "--num-threads 6" \
       --beam 20.0 --lattice-beam 10.0 \
       --transform-dir exp/tri3b_ali \
      data/train data/lang exp/$dir exp/$dir_denlats

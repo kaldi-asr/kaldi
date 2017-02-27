@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey). 
+# Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey).
 #                2013  Xiaohui Zhang
 #                2013  Guoguo Chen
 #                2014  Vimal Manohar
@@ -36,10 +36,10 @@ num_epochs=15      # Number of epochs of training;
 initial_effective_lrate=0.01
 final_effective_lrate=0.001
 bias_stddev=0.5
-hidden_dim=3000 
+hidden_dim=3000
 minibatch_size=128 # by default use a smallish minibatch size for neural net
                    # training; this controls instability which would otherwise
-                   # be a problem with multi-threaded update. 
+                   # be a problem with multi-threaded update.
 
 samples_per_iter=400000 # each iteration of training, see this many samples
                         # per job.  This option is passed to get_egs.sh
@@ -91,26 +91,26 @@ patch_step2=1         # patch step of the second convolutional layer
 mix_up=0 # Number of components to mix up to (should be > #tree leaves, if
         # specified.)
 num_threads=16
-parallel_opts="-pe smp 16 -l ram_free=1G,mem_free=1G" 
+parallel_opts="--num-threads 16 --mem 1G"
   # by default we use 16 threads; this lets the queue know.
   # note: parallel_opts doesn't automatically get adjusted if you adjust num-threads.
 combine_num_threads=8
-combine_parallel_opts="-pe smp 8"  # queue options for the "combine" stage.
+combine_parallel_opts="--num-threads 8"  # queue options for the "combine" stage.
 cleanup=true
 egs_dir=
 lda_opts=
 lda_dim=
 egs_opts=
 delta_order=
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time.
 transform_dir=     # If supplied, overrides alidir
 postdir=
-cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.  
+cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
             # only relevant for "raw" features, not lda.
 feat_type=  # Can be used to force "raw" features.
 align_cmd=              # The cmd that is passed to steps/nnet2/align.sh
 align_use_gpu=          # Passed to use_gpu in steps/nnet2/align.sh [yes/no]
-realign_times=          # List of times on which we realign.  Each time is 
+realign_times=          # List of times on which we realign.  Each time is
                         # floating point number strictly between 0 and 1, which
                         # will be multiplied by the num-iters to get an iteration
                         # number.
@@ -143,10 +143,10 @@ if [ $# != 4 ]; then
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job (will affect results"
   echo "                                                   # as well as speed; may interact with batch size; if you increase"
   echo "                                                   # this, you may want to decrease the batch size."
-  echo "  --parallel-opts <opts|\"-pe smp 16 -l ram_free=1G,mem_free=1G\">      # extra options to pass to e.g. queue.pl for processes that"
-  echo "                                                   # use multiple threads... note, you might have to reduce mem_free,ram_free"
-  echo "                                                   # versus your defaults, because it gets multiplied by the -pe smp argument."
-  echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
+  echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
+  echo "                                                   # use multiple threads... note, you might have to reduce --mem"
+  echo "                                                   # versus your defaults, because it gets multiplied by the --num-threads argument."
+  echo "  --io-opts <opts|\"--max-jobs-run 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
@@ -170,7 +170,7 @@ if [ $# != 4 ]; then
   echo "  --num-filters2 <num-filters2|256>                # number of filters in the second convolutional layer."
   echo "  --patch-dim2 <patch-dim2|4>                      # dim of convolutional kernel in the second layer."
 
-  
+
   exit 1;
 fi
 
@@ -225,7 +225,7 @@ feat-to-dim scp:$sdata/1/feats.scp - > $dir/feat_dim
 feat_dim=$(cat $dir/feat_dim) || exit 1;
 
 if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
-  echo "$0: calling get_egs2.sh"            
+  echo "$0: calling get_egs2.sh"
   steps/nnet2/get_egs2.sh $egs_opts "${extra_opts[@]}"  --io-opts "$io_opts" \
     --postdir "$postdir" --samples-per-iter $samples_per_iter --stage $get_egs_stage \
     --cmd "$cmd" --feat-type "raw" $data $alidir $dir/egs || exit 1;
@@ -273,7 +273,7 @@ if [ $stage -le -2 ]; then
   conv_out_dim1=$[$num_filters1*$num_patch1] # 128 x (36 - 7 + 1)
   pool_out_dim=$[$num_filters1*$num_pool]
   conv_out_dim2=$[$num_filters2*$num_patch2]
-  
+
   online_preconditioning_opts="alpha=$alpha num-samples-history=$num_samples_history update-period=$update_period rank-in=$precondition_rank_in rank-out=$precondition_rank_out max-change-per-sample=$max_change_per_sample"
 
   initial_lrate=$(perl -e "print ($initial_effective_lrate*$num_jobs_initial);")
@@ -286,7 +286,7 @@ NormalizeComponent dim=$pool_out_dim
 AffineComponentPreconditionedOnline input-dim=$pool_out_dim output-dim=$num_leaves $online_preconditioning_opts learning-rate=$initial_lrate param-stddev=0 bias-stddev=0
 SoftmaxComponent dim=$num_leaves
 EOF
-  
+
   cat >$dir/replace.1.config <<EOF
 Convolutional1dComponent input-dim=$pool_out_dim output-dim=$conv_out_dim2 learning-rate=$initial_lrate param-stddev=$stddev bias-stddev=$bias_stddev patch-dim=$patch_dim2 patch-step=$patch_step2 patch-stride=$patch_stride2 appended-conv=true
 NormalizeComponent dim=$conv_out_dim2
@@ -303,7 +303,7 @@ SoftmaxComponent dim=$num_leaves
 EOF
 
   # to hidden.config it will write the part of the config corresponding to a
-  # single hidden layer; we need this to add new layers. 
+  # single hidden layer; we need this to add new layers.
   cat >$dir/replace.3.config <<EOF
 AffineComponentPreconditionedOnline input-dim=$hidden_dim output-dim=$hidden_dim $online_preconditioning_opts learning-rate=$initial_lrate param-stddev=$stddev bias-stddev=$bias_stddev
 RectifiedLinearComponent dim=$hidden_dim
@@ -409,7 +409,7 @@ while [ $x -lt $num_iters ]; do
 
   # TODO: remove this line.
   echo "On iteration $x, learning rate is $this_learning_rate."
-    
+
   if [ ! -z "${realign_this_iter[$x]}" ]; then
     prev_egs_dir=$cur_egs_dir
     cur_egs_dir=$dir/egs_${realign_this_iter[$x]}
@@ -419,7 +419,7 @@ while [ $x -lt $num_iters ]; do
     if [ ! -z "${realign_this_iter[$x]}" ]; then
       time=${realign_this_iter[$x]}
 
-             
+
 
       echo "Getting average posterior for purposes of adjusting the priors."
       # Note: this just uses CPUs, using a smallish subset of data.
@@ -455,7 +455,7 @@ while [ $x -lt $num_iters ]; do
         steps/nnet2/remove_egs.sh $prev_egs_dir
       fi
     fi
-    
+
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
@@ -463,7 +463,7 @@ while [ $x -lt $num_iters ]; do
     $cmd $dir/log/compute_prob_train.$x.log \
       nnet-compute-prob $dir/$x.mdl ark:$cur_egs_dir/train_diagnostic.egs &
     if [ $x -gt 0 ] && [ ! -f $dir/log/mix_up.$[$x-1].log ]; then
-      [ ! -f $x.mdl ] && sleep 10; 
+      [ ! -f $x.mdl ] && sleep 10;
       $cmd $dir/log/progress.$x.log \
         nnet-show-progress --use-gpu=no $dir/$[$x-1].mdl $dir/$x.mdl \
         ark:$cur_egs_dir/train_diagnostic.egs '&&' \
@@ -499,7 +499,7 @@ while [ $x -lt $num_iters ]; do
     ( # this sub-shell is so that when we "wait" below,
       # we only wait for the training jobs that we just spawned,
       # not the diagnostic jobs that we spawned above.
-      
+
       # We can't easily use a single parallel SGE job to do the main training,
       # because the computation of which archive and which --frame option
       # to use for each job is a little complex, so we spawn each one separately.
@@ -538,7 +538,7 @@ while [ $x -lt $num_iters ]; do
       n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
           $fn = sprintf($pat,$n); open(F, "<$fn") || die "Error opening log file $fn";
           undef $logprob; while (<F>) { if (m/log-prob-per-frame=(\S+)/) { $logprob=$1; } }
-          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob; 
+          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob;
           $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
       cp $dir/$[$x+1].$n.mdl $dir/$[$x+1].mdl || exit 1;
@@ -575,7 +575,7 @@ if [ $stage -le $num_iters ]; then
     cur_offset=0 # current offset from first_model_combine.
     for n in $(seq $max_models_combine); do
       next_offset=$[($n*$num_models_combine)/$max_models_combine]
-      sub_list="" 
+      sub_list=""
       for o in $(seq $cur_offset $[$next_offset-1]); do
         iter=$[$first_model_combine+$o]
         mdl=$dir/$iter.mdl

@@ -2,15 +2,15 @@
 
 
 # This script demonstrates discriminative training of p-norm neural nets.  It's on top
-# of run_5d_gpu.sh, which uses adapted 40-dimensional features. 
+# of run_5d_gpu.sh, which uses adapted 40-dimensional features.
 
 
 set -e # exit on error.
 
 nj=$(cat exp/tri4b_ali_si284/num_jobs)
 
-steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
-      --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "-pe smp 6" \
+steps/nnet2/make_denlats.sh --cmd "$decode_cmd --mem 1G" \
+      --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "--num-threads 6" \
       --transform-dir exp/tri4b_ali_si284 \
      data/train_si284 data/lang exp/nnet5d exp/nnet5d_denlats
 
