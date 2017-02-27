@@ -87,11 +87,16 @@ class PnormComponent: public Component {
 // "Dropout: A Simple Way to Prevent Neural Networks from Overfitting".
 class DropoutComponent : public RandomComponent {
  public:
-  void Init(int32 dim, BaseFloat dropout_proportion = 0.0);
+  void Init(int32 dim, BaseFloat dropout_proportion = 0.0,
+            bool dropout_per_frame = false);
 
-  DropoutComponent(int32 dim, BaseFloat dropout = 0.0) { Init(dim, dropout); }
+  DropoutComponent(int32 dim, BaseFloat dropout = 0.0,
+                   bool dropout_per_frame = false) {
+    Init(dim, dropout, dropout_per_frame);
+  }
 
-  DropoutComponent(): dim_(0), dropout_proportion_(0.0) { }
+  DropoutComponent(): dim_(0), dropout_proportion_(0.0),
+                      dropout_per_frame_(false) { }
 
   virtual int32 Properties() const {
     return kLinearInInput|kBackpropInPlace|kSimpleComponent|kBackpropNeedsInput|kBackpropNeedsOutput;
@@ -120,17 +125,20 @@ class DropoutComponent : public RandomComponent {
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const { return new DropoutComponent(dim_,
-                                                                dropout_proportion_); }
+                                               dropout_proportion_,
+                                               dropout_per_frame_); }
   virtual std::string Info() const;
 
-  void SetDropoutProportion(BaseFloat dropout_proportion) { dropout_proportion_ = dropout_proportion; }
+  void SetDropoutProportion(BaseFloat dropout_proportion) {
+    dropout_proportion_ = dropout_proportion;
+  }
 
  private:
   int32 dim_;
   /// dropout-proportion is the proportion that is dropped out,
   /// e.g. if 0.1, we set 10% to zero value.
   BaseFloat dropout_proportion_;
-
+  bool dropout_per_frame_;
 };
 
 class ElementwiseProductComponent: public Component {
@@ -180,6 +188,8 @@ class NormalizeComponent: public Component {
     Init(input_dim, target_rms, add_log_stddev);
   }
   explicit NormalizeComponent(const NormalizeComponent &other);
+  // note: there is some special code in NonlinerComponent::Info() that
+  // specifically caters to this class.
   virtual int32 Properties() const {
     return (add_log_stddev_ ?
             kSimpleComponent|kBackpropNeedsInput|kBackpropAdds :
@@ -411,7 +421,6 @@ class AffineComponent: public UpdatableComponent {
   // Some functions from base-class UpdatableComponent.
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void SetZero(bool treat_as_gradient);
   virtual void PerturbParams(BaseFloat stddev);
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual int32 NumParameters() const;
@@ -512,7 +521,6 @@ class BlockAffineComponent : public UpdatableComponent {
   // Functions from base-class UpdatableComponent.
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void SetZero(bool treat_as_gradient);
   virtual void PerturbParams(BaseFloat stddev);
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual int32 NumParameters() const;
@@ -575,7 +583,6 @@ class RepeatedAffineComponent: public UpdatableComponent {
   // Some functions from base-class UpdatableComponent.
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void SetZero(bool treat_as_gradient);
   virtual void PerturbParams(BaseFloat stddev);
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual int32 NumParameters() const;
@@ -1225,7 +1232,6 @@ class PerElementScaleComponent: public UpdatableComponent {
   // Some functions from base-class UpdatableComponent.
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void SetZero(bool treat_as_gradient);
   virtual void PerturbParams(BaseFloat stddev);
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual int32 NumParameters() const;
@@ -1297,7 +1303,6 @@ class PerElementOffsetComponent: public UpdatableComponent {
   // Some functions from base-class UpdatableComponent.
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void SetZero(bool treat_as_gradient);
   virtual void PerturbParams(BaseFloat stddev);
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual int32 NumParameters() const;
@@ -1322,8 +1327,9 @@ class PerElementOffsetComponent: public UpdatableComponent {
 // i.e. its output does not depend on its input.  It is the same as
 // an affine component with the linear term fixed at zero.
 // It is optionally trainable, and optionally you can use natural
-// gradient.  The input is required only because the framework
-// requires components to have an input.
+// gradient.  The input is required only because it's more convenient
+// to make SimpleComponents [but see ConstantComponent, which requires
+// no inputs].
 class ConstantFunctionComponent: public UpdatableComponent {
  public:
   virtual int32 InputDim() const { return input_dim_; }
@@ -1365,7 +1371,6 @@ class ConstantFunctionComponent: public UpdatableComponent {
   // Some functions from base-class UpdatableComponent.
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void SetZero(bool treat_as_gradient);
   virtual void PerturbParams(BaseFloat stddev);
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual int32 NumParameters() const;
@@ -1541,7 +1546,7 @@ class ConvolutionComponent: public UpdatableComponent {
   virtual std::string Type() const { return "ConvolutionComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput|
-	    kBackpropAdds|kPropagateAdds;
+           kBackpropAdds|kPropagateAdds;
   }
 
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -1560,7 +1565,6 @@ class ConvolutionComponent: public UpdatableComponent {
               const std::vector<CuSubMatrix<BaseFloat> *>& out_deriv_batch);
 
 
-
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
@@ -1569,7 +1573,6 @@ class ConvolutionComponent: public UpdatableComponent {
   // Some functions from base-class UpdatableComponent.
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void SetZero(bool treat_as_gradient);
   virtual void PerturbParams(BaseFloat stddev);
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual int32 NumParameters() const;
@@ -1599,7 +1602,7 @@ class ConvolutionComponent: public UpdatableComponent {
   void Resize(int32 input_dim, int32 output_dim);
 
   void Update(const std::string &debug_info,
-	      const CuMatrixBase<BaseFloat> &in_value,
+              const CuMatrixBase<BaseFloat> &in_value,
               const CuMatrixBase<BaseFloat> &out_deriv);
 
 
@@ -1653,6 +1656,165 @@ class ConvolutionComponent: public UpdatableComponent {
                                CuMatrixBase<BaseFloat> *in_deriv) const;
   const ConvolutionComponent &operator = (const ConvolutionComponent &other); // Disallow.
 };
+
+
+// LstmNonlinearityComponent is a component that implements part of an LSTM, by
+// combining together the sigmoids and tanh's, plus some diagonal terms, into
+// a single block.
+// We will refer to the LSTM formulation used in
+//
+// Long Short-Term Memory Recurrent Neural Network Architectures for Large Scale Acoustic Modeling"
+// by H. Sak et al,
+// http://static.googleusercontent.com/media/research.google.com/en//pubs/archive/43905.pdf.
+//
+// Suppose the cell dimension is C.  Then outside this component, we compute
+// the 4 * C-dimensional quantity consisting of 4 blocks as follows, by a single
+// matrix multiplication:
+//
+// i_part = W_{ix} x_t + W_{im} m_{t-1} + b_i
+// f_part = W_{fx} x_t + W_{fm} m_{t-1} + b_f
+// c_part = W_{cx} x_t + W_{cm} m_{t-1} + b_c
+// o_part = W_{cx} x_t + W_{om} m_{t-1} + b_o
+//
+// The part of the computation that takes place in this component is as follows.
+// Its input is of dimension 5C, consisting of 5 blocks: (i_part, f_part, c_part, o_part, and
+// c_{t-1}).  Its output is of dimension 2C, consisting of 2 blocks: c_t and m_t.
+//
+// To recap: the input is (i_part, f_part, c_part, o_part, c_{t-1}); the output is (c_t, m_t).
+//
+//
+// This component has parameters, 3C of them in total: the diagonal matrices w_i, w_f
+// and w_o.
+//
+//
+// In the forward pass (Propagate), this component computes the following:
+//
+//    i_t = Sigmoid(i_part + w_{ic}*c_{t-1})   (1)
+//    f_t = Sigmoid(f_part + w_{fc}*c_{t-1})   (2)
+//    c_t = f_t*c_{t-1} + i_t * Tanh(c_part)   (3)
+//    o_t = Sigmoid(o_part + w_{oc}*c_t)       (4)
+//    m_t = o_t * Tanh(c_t)                    (5)
+//   # note: the outputs are just c_t and m_t.
+//
+// The backprop is as you would think, but for the "self-repair" we need to pass
+// in additional vectors (of the same dim as the parameters of the layer) that
+// dictate whether or not we add an additional term to the backpropagated
+// derivatives.  (This term helps force the input to the nonlinearities into the
+// range where the derivatives are not too small).
+//
+// This component stores stats of the same form as are normally stored by the
+// StoreStats() functions for the sigmoid and tanh units, i.e. averages of the
+// activations and derivatives, but this is done inside the Backprop() functions.
+// [the StoreStats() functions don't take the input data as an argument, so
+// storing this data that way is impossible, and anyway it's more efficient to
+// do it as part of backprop.]
+class LstmNonlinearityComponent: public UpdatableComponent {
+ public:
+
+  virtual int32 InputDim() const;
+  virtual int32 OutputDim() const;
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+  LstmNonlinearityComponent() { } // use Init to really initialize.
+  virtual std::string Type() const { return "LstmNonlinearityComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput;
+  }
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update_in,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+  virtual void ZeroStats();
+
+  // Some functions that are specific to this class:
+  explicit LstmNonlinearityComponent(
+      const LstmNonlinearityComponent &other);
+
+  void Init(int32 cell_dim, BaseFloat param_stddev,
+            BaseFloat tanh_self_repair_threshold,
+            BaseFloat sigmoid_self_repair_threshold,
+            BaseFloat self_repair_scale);
+
+  void Init(std::string vector_filename,
+            int32 rank, int32 update_period, BaseFloat num_samples_history,
+            BaseFloat alpha, BaseFloat max_change_per_minibatch);
+
+ private:
+
+  // Initializes the natural-gradient object with the configuration we
+  // use for this object, which for now is hardcoded at the C++ level.
+  void InitNaturalGradient();
+
+
+  // Notation: C is the cell dimension; it equals params_.NumCols().
+
+  // The dimension of the parameter matrix is (3 x C);
+  // it contains the 3 diagonal parameter matrices w_i, w_f and w_o.
+  CuMatrix<BaseFloat> params_;
+
+  // Of dimension 5 * C, with a row for each of the Sigmoid/Tanh functions in
+  // equations (1) through (5), this is the sum of the values of the nonliearities
+  // (used for diagnostics only).  It is comparable to value_sum_ vector
+  // in base-class NonlinearComponent.
+  CuMatrix<double> value_sum_;
+
+  // Of dimension 5 * C, with a row for each of the Sigmoid/Tanh functions in
+  // equations (1) through (5), this is the sum of the derivatives of the
+  // nonliearities (used for diagnostics and to control self-repair).  It is
+  // comparable to the deriv_sum_ vector in base-class
+  // NonlinearComponent.
+  CuMatrix<double> deriv_sum_;
+
+  // This matrix has dimension 10.  The contents are a block of 5 self-repair
+  // thresholds (typically "0.05 0.05 0.2 0.05 0.2"), then a block of 5
+  // self-repair scales (typically all 0.00001).  These are for each of the 5
+  // nonlinearities in the LSTM component in turn (see comments in cu-math.h for
+  // more info).
+  CuVector<BaseFloat> self_repair_config_;
+
+  // This matrix has dimension 5.  For each of the 5 nonlinearities in the LSTM
+  // component (see comments in cu-math.h for more info), it contains the total,
+  // over all frames represented in count_, of the number of dimensions that
+  // were subject to self_repair.  To get the self-repair proportion you should
+  // divide by (count_ times cell_dim_).
+  CuVector<double> self_repair_total_;
+
+  // The total count (number of frames) corresponding to the stats in value_sum_
+  // and deriv_sum_.
+  double count_;
+
+  // Preconditioner for the parameters of this component [operates in the space
+  // of dimension C].
+  // The preconditioner stores its own configuration values; we write and read
+  // these, but not the preconditioner object itself.
+  OnlineNaturalGradient preconditioner_;
+
+  const LstmNonlinearityComponent &operator
+      = (const LstmNonlinearityComponent &other); // Disallow.
+};
+
+
 
 
 /*
@@ -1712,7 +1874,7 @@ class MaxpoolingComponent: public Component {
   virtual std::string Type() const { return "MaxpoolingComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kBackpropNeedsInput|kBackpropNeedsOutput|
-	    kBackpropAdds;
+           kBackpropAdds;
   }
 
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -1833,9 +1995,9 @@ class CompositeComponent: public UpdatableComponent {
   // Some functions from base-class UpdatableComponent.
   virtual void SetUnderlyingLearningRate(BaseFloat lrate);
   virtual void SetActualLearningRate(BaseFloat lrate);
+  virtual void SetAsGradient();
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void SetZero(bool treat_as_gradient);
   virtual void PerturbParams(BaseFloat stddev);
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual int32 NumParameters() const;

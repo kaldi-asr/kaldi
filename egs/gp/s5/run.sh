@@ -93,7 +93,7 @@ for L in $GP_LANGUAGES; do
     (
       graph_dir=exp/$L/mono/graph_${lm_suffix}
       mkdir -p $graph_dir
-      utils/mkgraph.sh --mono data/$L/lang_test_${lm_suffix} exp/$L/mono \
+      utils/mkgraph.sh data/$L/lang_test_${lm_suffix} exp/$L/mono \
 	 $graph_dir
 
       steps/decode.sh --nj 5 --cmd "$decode_cmd" $graph_dir data/$L/dev \
@@ -347,12 +347,12 @@ for L in $GP_LANGUAGES; do
     num_states=$(grep "^$L" conf/sgmm.conf | cut -f2)
     num_substates=$(grep "^$L" conf/sgmm.conf | cut -f3)
     mkdir -p exp/$L/sgmm2a
-    steps/train_sgmm.sh --cmd "$train_cmd" --cluster-thresh 100 --spk-dim 0 \
+    steps/train_sgmm2.sh --cmd "$train_cmd" --cluster-thresh 100 --spk-dim 0 \
       $num_states $num_substates data/$L/train data/$L/lang exp/$L/tri1_ali \
       exp/$L/ubm2a/final.ubm exp/$L/sgmm2a >& exp/$L/sgmm2a/train.log
 
     mkdir -p exp/$L/sgmm2b
-    steps/train_sgmm.sh --cmd "$train_cmd" --cluster-thresh 100 \
+    steps/train_sgmm2.sh --cmd "$train_cmd" --cluster-thresh 100 \
       $num_states $num_gauss data/$L/train data/$L/lang exp/$L/tri1_ali \
       exp/$L/ubm2a/final.ubm exp/$L/sgmm2b >& exp/$L/sgmm2b/train.log
   ) &
@@ -370,7 +370,7 @@ for L in $GP_LANGUAGES; do
 	$highmem_cmd $graph_dir/mkgraph.log \
 	  utils/mkgraph.sh data/$L/lang_test_${lm_suffix} exp/$L/$sgmm $graph_dir
 
-	steps/decode_sgmm.sh --nj 5 --cmd "$decode_cmd" $graph_dir data/$L/dev \
+	steps/decode_sgmm2.sh --nj 5 --cmd "$decode_cmd" $graph_dir data/$L/dev \
 	  exp/$L/$sgmm/decode_dev_${lm_suffix} 
       ) &
     done  # loop over LMs

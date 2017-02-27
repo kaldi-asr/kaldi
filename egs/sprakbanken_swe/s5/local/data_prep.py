@@ -123,7 +123,7 @@ def create_parallel_kaldi(filelist, sphpipe, snd=False):
 
 
 if __name__ == '__main__':
-    flist = codecs.open(sys.argv[1], "r", "utf8").readlines()
+    flist = codecs.open(sys.argv[1], "r").readlines()
     outpath = sys.argv[2]
     if len(sys.argv) == 5:
         sndlist = codecs.open(sys.argv[3], "r").readlines()
@@ -133,8 +133,8 @@ if __name__ == '__main__':
         traindata = create_parallel_kaldi(flist, "")
 
     textout = codecs.open(os.path.join(outpath, "text.unnormalised"), "w", "utf8")
-    wavout = codecs.open(os.path.join(outpath, "wav.scp"), "w","utf8")
-    utt2spkout = codecs.open(os.path.join(outpath, "utt2spk"), "w","utf8")
+    wavout = codecs.open(os.path.join(outpath, "wav.scp"), "w")
+    utt2spkout = codecs.open(os.path.join(outpath, "utt2spk"), "w")
     textout.writelines(traindata[0])
     wavout.writelines(traindata[1])
     utt2spkout.writelines(traindata[2])

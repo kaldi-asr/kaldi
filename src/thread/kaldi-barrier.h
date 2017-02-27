@@ -55,3 +55,12 @@ class Barrier {
 
 #endif // KALDI_THREAD_KALDI_BARRIER_H_
 
+/*
+ * Android does not support cancelling pthreads so the following symbols are not defined.
+ * Define them here, they can be a noop because we cannot cancel a pthread on Android.
+ */
+#ifdef ANDROID_BUILD
+#define PTHREAD_CANCEL_STATE 0
+#define pthread_setcancelstate(a, b) do { } while(0)
+#endif
+

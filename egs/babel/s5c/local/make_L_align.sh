@@ -20,7 +20,7 @@ set -e
 
 if [ $# -ne 3 ]; then
   echo "This is a simple script that will generate the L_align.fst"
-  echo "The FST L_align.fst is used for getting the force-aligned " 
+  echo "The FST L_align.fst is used for getting the force-aligned "
   echo "utterances"
   echo "The script automaticky recognizes the probabilistic lexicon"
   echo "is used and will use the correct file"
@@ -39,7 +39,7 @@ silphone=`cat $dir/phones/optional_silence.txt` || exit 1;
 # Create lexicon with alignment info
 if  [ -f $tmpdir/lexicon.txt ] ; then
   cat $tmpdir/lexicon.txt | \
-    awk '{printf("%s #1 ", $1); for (n=2; n <= NF; n++) { printf("%s ", $n); } print "#2"; }' 
+    awk '{printf("%s #1 ", $1); for (n=2; n <= NF; n++) { printf("%s ", $n); } print "#2"; }'
 elif [ -f $tmpdir/lexiconp.txt ] ;  then
   cat $tmpdir/lexiconp.txt | \
     awk '{printf("%s #1 ", $1); for (n=3; n <= NF; n++) { printf("%s ", $n); } print "#2"; }'

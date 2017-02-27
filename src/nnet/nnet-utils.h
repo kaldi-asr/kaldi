@@ -243,7 +243,7 @@ inline void BuildIntegerVector(const std::vector<std::vector<int32> >& in,
   // loop over records,
   for (int32 i = 0; i < in.size(); i++) {
     // process i'th record,
-    int32 beg, end, step;
+    int32 beg = 0, end = 0, step = 1;
     switch (in[i].size()) {
       case 1:
         beg  = in[i][0];

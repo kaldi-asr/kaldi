@@ -3,7 +3,7 @@
 # Copyright 2014  Guoguo Chen
 # Apache 2.0.
 
-# Begin configuration section.  
+# Begin configuration section.
 nj=8
 cmd=run.pl
 beam=-1             # Beam for proxy FST, -1 means no prune
@@ -15,6 +15,10 @@ phone_nbest=50      # Use top n best phone sequences in KxL2xE, -1 means all
 phone_cutoff=5      # We don't generate proxy keywords for OOV keywords that
                     # have less phones than the specified cutoff as they may
                     # introduce a lot false alarms
+max_phone_cutoff=9990   # We don't generate proxy keywords for OOV keywords that
+                    # have more than this phonemes. This can be used when
+                    # we need to use different parameters for keywords of
+                    # different lengths.
 confusion_matrix=   # If supplied, using corresponding E transducer
 count_cutoff=1      # Minimal count to be considered in the confusion matrix;
                     # will ignore phone pairs that have count less than this.
@@ -38,13 +42,13 @@ if [ $# -ne 5 ]; then
   echo "      data/local/tmp.lang/lexiconp.txt oov_lexicon.txt data/dev10h/kws/"
   echo "allowed options:"
   echo "  --case-sensitive <true|false>  # Being case-sensitive or not"
-  echo "  --icu-transform  <string>      # Transliteration for upper/lower case" 
+  echo "  --icu-transform  <string>      # Transliteration for upper/lower case"
   echo "                                 # mapping"
   echo "  --proxy-set      <IV/OOV>      # Keyword set for generating proxies"
   exit 1
 fi
 
-set -e 
+set -e
 set -o pipefail
 
 langdir=$1
@@ -62,8 +66,8 @@ keywords=$kwsdatadir/kwlist.xml
 mkdir -p $kwsdatadir/tmp/
 
 cat $keywords | perl -e '
-  #binmode STDIN, ":utf8"; 
-  binmode STDOUT, ":utf8"; 
+  #binmode STDIN, ":utf8";
+  binmode STDOUT, ":utf8";
 
   use XML::Simple;
   use Data::Dumper;
@@ -103,7 +107,7 @@ if $case_insensitive; then
 else
   cat $l2_lexicon | sed 's/\s/ /g' > $kwsdatadir/tmp/L2.tmp.lex
   cp $kwsdatadir/raw_keywords_all.txt $kwsdatadir/keywords_all.txt
-  
+
   cat $kwsdatadir/keywords_all.txt | \
     sym2int.pl --map-oov 0 -f 2- $kwsdatadir/words.txt \
     > $kwsdatadir/keywords_all.int
@@ -139,11 +143,11 @@ cat $kwsdatadir/keywords_proxy.txt |\
 # L1 since it is the lexicon used for the LVCSR training.
 cat $kwsdatadir/tmp/L1.tmp.lex | cut -d ' ' -f 1 |\
   paste -d ' ' - <(cat $kwsdatadir/tmp/L1.tmp.lex | cut -d ' ' -f 2-|\
-  sed 's/_[B|E|I|S]//g' | sed 's/_[%|"]//g' | sed 's/_[0-9]\+//g') |\
+  sed 's/_[BEIS]//g' | sed 's/_[%|"]//g' | sed 's/_[0-9]\+//g') |\
   awk '{if(NF>=2) {print $0}}' > $kwsdatadir/tmp/L1.lex
 cat $kwsdatadir/tmp/L2.tmp.lex | cut -d ' ' -f 1 |\
   paste -d ' ' - <(cat $kwsdatadir/tmp/L2.tmp.lex | cut -d ' ' -f 2-|\
-  sed 's/_[B|E|I|S]//g' | sed 's/_[%|"]//g' | sed 's/_[0-9]\+//g') |\
+  sed 's/_[BEIS]//g' | sed 's/_[%|"]//g' | sed 's/_[0-9]\+//g') |\
   awk '{if(NF>=2) {print $0}}' | perl -e '
   ($lex1, $words) = @ARGV;
   open(L, "<$lex1") || die "Fail to open $lex1.\n";
@@ -230,8 +234,10 @@ cat $kwsdatadir/keywords_proxy.txt | perl -e '
         print STEDRR "'$0': No pronunciation found for word: $col[$i]\n";
       }
     }
-    if ($len >= '$phone_cutoff') {
+    if (($len >= '$phone_cutoff') && ($len <= '$max_phone_cutoff')){
       print "$line\n";
+    } elsif ($len > '$max_phone_cutoff'){
+      print STDERR "'$0': Keyword $col[0] is too long, not generating proxy\n";
     } else {
       print STDERR "'$0': Keyword $col[0] is too short, not generating proxy\n";
     }
@@ -256,7 +262,7 @@ cat $datadir/segments | \
     $idx++;
   }' > $kwsdatadir/utter_id
 
-# Map utterance to the names that will appear in the rttm file. You have 
+# Map utterance to the names that will appear in the rttm file. You have
 # to modify the commands below accoring to your rttm file
 cat $datadir/segments | awk '{print $1" "$2}' |\
   sort | uniq > $kwsdatadir/utter_map;

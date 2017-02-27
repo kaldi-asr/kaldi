@@ -1695,8 +1695,8 @@ class RandomAccessTableReaderScriptImpl:
   virtual const T&  Value(const std::string &key) {
     if (!HasKeyInternal(key, true)) // true == preload.
       KALDI_ERR << "Could not get item for key " << key
-                << ", rspecifier is " << rspecifier_ << "[to ignore this, "
-                << "add the p, (permissive) option to the rspecifier.";
+                << ", rspecifier is " << rspecifier_ << " [to ignore this, "
+                 << "add the p, (permissive) option to the rspecifier.";
     KALDI_ASSERT(key_ == key);
     if (state_ == kHaveObject) {
       return holder_.Value();
@@ -2093,15 +2093,13 @@ class RandomAccessTableReaderDSortedArchiveImpl:
     return FindKeyInternal(key);
   }
   virtual const T & Value(const std::string &key) {
-    if (FindKeyInternal(key)) {
-      KALDI_ASSERT(this->state_ == kHaveObject && key == this->cur_key_
-                   && holder_ != NULL);
-      return this->holder_->Value();
-    } else {
+    if (!FindKeyInternal(key)) {
       KALDI_ERR << "Value() called but no such key " << key
                 << " in archive " << PrintableRxfilename(archive_rxfilename_);
-      return *(const T*)NULL;  // keep compiler happy.
     }
+    KALDI_ASSERT(this->state_ == kHaveObject && key == this->cur_key_
+                 && holder_ != NULL);
+    return this->holder_->Value();
   }
 
   virtual ~RandomAccessTableReaderDSortedArchiveImpl() {
@@ -2230,20 +2228,18 @@ class RandomAccessTableReaderSortedArchiveImpl:
   virtual const T & Value(const std::string &key) {
     HandlePendingDelete();
     size_t index;
-    if (FindKeyInternal(key, &index)) {
-      if (seen_pairs_[index].second == NULL) {  // can happen if opts.once_
-        KALDI_ERR << "Error: Value() called more than once for key "
-                  << key << " and once (o) option specified: rspecifier is "
-                  << rspecifier_;
-      }
-      if (opts_.once)
-        pending_delete_ = index;  // mark this index to be deleted on next call.
-      return seen_pairs_[index].second->Value();
-    } else {
+    if (!FindKeyInternal(key, &index)) {
       KALDI_ERR << "Value() called but no such key " << key
                 << " in archive " << PrintableRxfilename(archive_rxfilename_);
-      return *(const T*)NULL;  // keep compiler happy.
     }
+    if (seen_pairs_[index].second == NULL) {  // can happen if opts.once_
+      KALDI_ERR << "Error: Value() called more than once for key "
+                << key << " and once (o) option specified: rspecifier is "
+                << rspecifier_;
+    }
+    if (opts_.once)
+      pending_delete_ = index;  // mark this index to be deleted on next call.
+    return seen_pairs_[index].second->Value();
   }
   virtual ~RandomAccessTableReaderSortedArchiveImpl() {
     if (this->IsOpen())
@@ -2418,12 +2414,10 @@ class RandomAccessTableReaderUnsortedArchiveImpl:
   virtual const T & Value(const std::string &key) {
     HandlePendingDelete();
     const T *ans_ptr = NULL;
-    if (FindKeyInternal(key, &ans_ptr))
-      return *ans_ptr;
-    else
+    if (!FindKeyInternal(key, &ans_ptr))
       KALDI_ERR << "Value() called but no such key " << key
                 << " in archive " << PrintableRxfilename(archive_rxfilename_);
-    return *(const T*)NULL;  // keep compiler happy.
+    return *ans_ptr;
   }
   virtual ~RandomAccessTableReaderUnsortedArchiveImpl() {
     if (this->IsOpen())

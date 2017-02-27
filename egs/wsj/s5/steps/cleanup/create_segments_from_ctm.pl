@@ -228,7 +228,7 @@ sub SplitLongSegment {
                            $aligned_ctm->[$seg_end_index]->[2] -
                            $aligned_ctm->[$seg_start_index]->[1];
   my $current_seg_index = $seg_start_index;
-  my $aligned_ctm_size = scalar(@{$aligned_ctm});    
+  my $aligned_ctm_size = scalar(@{$aligned_ctm});
   while ($current_seg_length > 1.5 * $max_seg_length && $current_seg_index < $aligned_ctm_size-1) {
     my $split_point = GetSplitPoint($aligned_ctm, $current_seg_index,
                                     $seg_end_index, $max_seg_length);
@@ -318,7 +318,7 @@ sub ProcessWav {
             $aligned_ctm[-1]->[3] += 1;
           } else {
             push(@aligned_ctm, ["<eps>", $start, $dur, 1]);
-          } 
+          }
         } else {
           # Case 2.3: substitution.
           push(@aligned_ctm, [$ref_word, $start, $dur, 1]);
@@ -417,11 +417,21 @@ while (<AI>) {
   my @col = split;
   @col >= 2 || die "Error: bad line $_\n";
   my $wav = shift @col;
-  my @pairs = split(" $separator ", join(" ", @col));
-  for (my $x = 0; $x < @pairs; $x += 1) {
-    my @col1 = split(" ", $pairs[$x]);
-    @col1 == 2 || die "Error: bad pair $pairs[$x]\n";
-    $pairs[$x] = \@col1;
+  if ( (@col + 0) % 3 != 2) {
+    die "Bad line in align-text output (unexpected number of fields): $_";
+  }
+  my @pairs = ();
+
+  for (my $x = 0; $x * 3 + 2 < @col; $x++) {
+    my $first_word = $col[$x * 3];
+    my $second_word = $col[$x * 3 + 1];
+    if ($x * 3 + 2 < @col) {
+      if ($col[$x * 3 + 2] ne $separator) {
+        die "Bad line in align-text output (expected separator '$separator'): $_";
+      }
+    }
+    # the [ ] expression returns a reference to a new anonymous array.
+    push(@pairs, [ $first_word, $second_word ]);
   }
   ! defined($aligned{$wav}) || die "Error: $wav has already been processed\n";
   $aligned{$wav} = \@pairs;

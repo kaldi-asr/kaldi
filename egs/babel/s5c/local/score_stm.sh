@@ -48,7 +48,7 @@ data=$1
 lang=$2 # This parameter is not used -- kept only for backwards compatibility
 dir=$3
 
-set -e 
+set -e
 set -o pipefail
 set -u
 
@@ -82,8 +82,9 @@ if [ $stage -le 0 ] ; then
         \> $dir/score_LMWT/stm '&&' \
     paste -d ' ' \<\(cut -f 1-4 -d ' ' $dir/score_LMWT/${name}.ctm.sorted \) \
                  \<\(cut -f 5-  -d ' ' $dir/score_LMWT/${name}.ctm.sorted \| uconv -f utf8 -t utf8 -x "$icu_transform" \) \
-        \> $dir/score_LMWT/${name}.ctm '&&' \
-    utils/fix_ctm.sh $dir/score_LMWT/stm $dir/score_LMWT/${name}.ctm '&&' \
+        \> $dir/score_LMWT/${name}.ctm.sorted2 '&&' \
+    utils/fix_ctm.sh $dir/score_LMWT/stm $dir/score_LMWT/${name}.ctm.sorted2 '&&' \
+    $SortingProgram sortCTM \<$dir/score_LMWT/${name}.ctm.sorted2  \>$dir/score_LMWT/${name}.ctm '&&' \
     $ScoringProgram -s -r $dir/score_LMWT/stm  stm -h $dir/score_LMWT/${name}.ctm ctm \
       -n "$name.ctm" -f 0 -D -F  -o  sum rsum prf dtl sgml -e utf-8 || exit 1
 fi

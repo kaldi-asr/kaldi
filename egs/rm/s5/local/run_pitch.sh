@@ -49,7 +49,7 @@ steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train.1k data/lang exp/mono
 #show-transitions data/lang/phones.txt exp/tri2a/final.mdl  exp/tri2a/final.occs | perl -e 'while(<>) { if (m/ sil /) { $l = <>; $l =~ m/pdf = (\d+)/|| die "bad line $l";  $tot += $1; }} print "Total silence count $tot\n";'
 
 
-utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
+utils/mkgraph.sh data/lang exp/mono exp/mono/graph
 
 
 
@@ -208,7 +208,6 @@ done
 # local/run_raw_fmllr.sh
 
 # You don't have to run all 3 of the below, e.g. you can just run the run_sgmm2.sh
-#local/run_sgmm.sh
 local/run_sgmm2.sh
 #local/run_sgmm2x.sh
 

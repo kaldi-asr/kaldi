@@ -90,23 +90,13 @@ void TestPushCompactLatticeWeights() {
     }
     if (!ApproxEqual(sum, LatticeWeight::One())) {
       {
-#ifdef HAVE_OPENFST_GE_10400
         fst::FstPrinter<CompactLatticeArc> printer(clat2, NULL, NULL,
                                                    NULL, true, true, "\t");
-#else
-        fst::FstPrinter<CompactLatticeArc> printer(clat2, NULL, NULL,
-                                                   NULL, true, true);
-#endif
         printer.Print(&std::cerr, "<unknown>");
       }
       {
-#ifdef HAVE_OPENFST_GE_10400
         fst::FstPrinter<CompactLatticeArc> printer(*clat, NULL, NULL,
                                                    NULL, true, true, "\t");
-#else
-        fst::FstPrinter<CompactLatticeArc> printer(*clat, NULL, NULL,
-                                                   NULL, true, true);
-#endif
         printer.Print(&std::cerr, "<unknown>");
       }
       KALDI_ERR << "Bad lattice being pushed.";

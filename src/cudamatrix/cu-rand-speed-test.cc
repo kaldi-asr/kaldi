@@ -56,64 +56,166 @@ std::string MeanVariance(const CuMatrixBase<Real>& m) {
   return std::string("mean ") + ToString(mean) + ", std-dev " + ToString(std::sqrt(var));
 }
 
+template<typename Real>
+std::string MeanVariance(const CuVectorBase<Real>& v) {
+  std::ostringstream os;
+  Real mean = v.Sum() / v.Dim();
+  CuVector<Real> tmp(v);
+  tmp.Add(-mean);
+  tmp.ApplyPow(2.0);
+  Real var = tmp.Sum() / tmp.Dim();
+  return std::string("mean ") + ToString(mean) + ", std-dev " + ToString(std::sqrt(var));
+}
+
+
 template <typename Real>
-void CuRandUniformMatrixSpeedTest() {
+void CuRandUniformMatrixSpeedTest(const int32 iter) {
   Timer t;
   CuRand<Real> rand;
-  CuMatrix<Real> m(249,2011);
-  for (int32 i = 0; i < 200; i++) {
+  CuMatrix<Real> m(249,1001, kUndefined);
+  for (int32 i = 0; i < iter; i++) {
     rand.RandUniform(&m);
   }
-  KALDI_LOG << __func__ << NameOf<Real>() << " t = " << t.Elapsed() << "s, " << MeanVariance(m);
+  CuMatrix<Real> m2(256,1024, kUndefined);
+  for (int32 i = 0; i < iter; i++) {
+    rand.RandUniform(&m2);
+  }
+  // flops = number of generated random numbers per second,
+  Real flops = iter * (m.NumRows() * m.NumCols() + m2.NumRows() * m2.NumCols()) / t.Elapsed();
+  KALDI_LOG << __func__ << NameOf<Real>()
+            << " Speed was " << flops << " rand_elems/s. "
+            << "(debug " << MeanVariance(m) << ")";
 }
 
 template <typename Real>
-void CuRandGaussianMatrixSpeedTest() {
+void CuRandUniformMatrixBaseSpeedTest(const int32 iter) {
   Timer t;
   CuRand<Real> rand;
-  CuMatrix<Real> m(249,2011);
-  for (int32 i = 0; i < 200; i++) {
+  CuMatrix<Real> m(249,1001, kUndefined);
+  for (int32 i = 0; i < iter; i++) {
+    rand.RandUniform(dynamic_cast<CuMatrixBase<Real>*>(&m));
+  }
+  CuMatrix<Real> m2(256,1024, kUndefined);
+  for (int32 i = 0; i < iter; i++) {
+    rand.RandUniform(dynamic_cast<CuMatrixBase<Real>*>(&m2));
+  }
+  // flops = number of generated random numbers per second,
+  Real flops = iter * (m.NumRows() * m.NumCols() + m2.NumRows() * m2.NumCols()) / t.Elapsed();
+  KALDI_LOG << __func__ << NameOf<Real>()
+            << " Speed was " << flops << " rand_elems/s. "
+            << "(debug " << MeanVariance(m) << ")";
+}
+
+template <typename Real>
+void CuRandGaussianMatrixSpeedTest(const int32 iter) {
+  Timer t;
+  CuRand<Real> rand;
+  CuMatrix<Real> m(249,1001, kUndefined);
+  for (int32 i = 0; i < iter; i++) {
     rand.RandGaussian(&m);
   }
-  KALDI_LOG << __func__ << NameOf<Real>() << " t = " << t.Elapsed() << "s, " << MeanVariance(m);
+  CuMatrix<Real> m2(256,1024, kUndefined);
+  for (int32 i = 0; i < iter; i++) {
+    rand.RandGaussian(&m2);
+  }
+  // flops = number of generated random numbers per second,
+  Real flops = iter * (m.NumRows() * m.NumCols() + m2.NumRows() * m2.NumCols()) / t.Elapsed();
+  KALDI_LOG << __func__ << NameOf<Real>()
+            << " Speed was " << flops << " rand_elems/s. "
+            << "(debug " << MeanVariance(m) << ")";
 }
 
 template <typename Real>
-void CuRandGaussianVectorSpeedTest() {
+void CuRandGaussianMatrixBaseSpeedTest(const int32 iter) {
   Timer t;
   CuRand<Real> rand;
-  CuVector<Real> v(2011);
-  for (int32 i = 0; i < 200; i++) {
+  CuMatrix<Real> m(249,1001, kUndefined);
+  for (int32 i = 0; i < iter; i++) {
+    rand.RandGaussian(dynamic_cast<CuMatrixBase<Real>*>(&m));
+  }
+  CuMatrix<Real> m2(256,1024, kUndefined);
+  for (int32 i = 0; i < iter; i++) {
+    rand.RandGaussian(dynamic_cast<CuMatrixBase<Real>*>(&m2));
+  }
+  // flops = number of generated random numbers per second,
+  Real flops = iter * (m.NumRows() * m.NumCols() + m2.NumRows() * m2.NumCols()) / t.Elapsed();
+  KALDI_LOG << __func__ << NameOf<Real>()
+            << " Speed was " << flops << " rand_elems/s. "
+            << "(debug " << MeanVariance(m) << ")";
+}
+
+template <typename Real>
+void CuRandUniformVectorSpeedTest(const int32 iter) {
+  Timer t;
+  CuRand<Real> rand;
+  CuVector<Real> v(2011, kUndefined);
+  for (int32 i = 0; i < iter; i++) {
+    rand.RandUniform(&v);
+  }
+  CuVector<Real> v2(2048, kUndefined);
+  for (int32 i = 0; i < iter; i++) {
+    rand.RandUniform(&v2);
+  }
+  // flops = number of generated random numbers per second,
+  Real flops = iter * (v.Dim() + v2.Dim()) / t.Elapsed();
+  KALDI_LOG << __func__ << NameOf<Real>()
+            << " Speed was " << flops << " rand_elems/s. "
+            << "(debug " << MeanVariance(v) << ")";
+}
+
+template <typename Real>
+void CuRandGaussianVectorSpeedTest(const int32 iter) {
+  Timer t;
+  CuRand<Real> rand;
+  CuVector<Real> v(2011, kUndefined);
+  for (int32 i = 0; i < iter; i++) {
     rand.RandGaussian(&v);
   }
-  KALDI_LOG << __func__ << NameOf<Real>() << " t = " << t.Elapsed() << "s";
+  CuVector<Real> v2(2048, kUndefined);
+  for (int32 i = 0; i < iter; i++) {
+    rand.RandGaussian(&v2);
+  }
+  // flops = number of generated random numbers per second,
+  Real flops = iter * (v.Dim() + v2.Dim()) / t.Elapsed();
+  KALDI_LOG << __func__ << NameOf<Real>()
+            << " Speed was " << flops << " rand_elems/s. "
+            << "(debug " << MeanVariance(v) << ")";
 }
 
 } // namespace kaldi
 
 
 int main() {
-  for (int32 loop = 0; loop < 2; loop++) {
+  int32 iter = 10; // Be quick on CPU,
 #if HAVE_CUDA == 1
+  for (int32 loop = 0; loop < 2; loop++) { // NO for loop if 'HAVE_CUDA != 1',
     CuDevice::Instantiate().SetDebugStrideMode(true);
-    if (loop == 0)
+    if ( loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
-    else
+    else {
       CuDevice::Instantiate().SelectGpuId("yes");
+      iter = 400; // GPUs are faster,
+    }
 #endif
-    kaldi::CuRandUniformMatrixSpeedTest<float>();
-    kaldi::CuRandGaussianMatrixSpeedTest<float>();
-    kaldi::CuRandGaussianVectorSpeedTest<float>();
+    Timer t;
+    kaldi::CuRandUniformMatrixSpeedTest<float>(iter);
+    kaldi::CuRandUniformMatrixBaseSpeedTest<float>(iter);
+    kaldi::CuRandUniformVectorSpeedTest<float>(iter);
+    kaldi::CuRandGaussianMatrixSpeedTest<float>(iter);
+    kaldi::CuRandGaussianMatrixBaseSpeedTest<float>(iter);
+    kaldi::CuRandGaussianVectorSpeedTest<float>(iter);
     fprintf(stderr, "---\n");
 
-    kaldi::CuRandUniformMatrixSpeedTest<double>();
-    kaldi::CuRandGaussianMatrixSpeedTest<double>();
-    kaldi::CuRandGaussianVectorSpeedTest<double>();
-    fprintf(stderr, "\n");
-  }
-
+    kaldi::CuRandUniformMatrixSpeedTest<double>(iter);
+    kaldi::CuRandUniformMatrixBaseSpeedTest<double>(iter);
+    kaldi::CuRandUniformVectorSpeedTest<double>(iter);
+    kaldi::CuRandGaussianMatrixSpeedTest<double>(iter);
+    kaldi::CuRandGaussianMatrixBaseSpeedTest<double>(iter);
+    kaldi::CuRandGaussianVectorSpeedTest<double>(iter);
+    fprintf(stderr, "--- ELAPSED %fs.\n\n", t.Elapsed());
 #if HAVE_CUDA == 1
+  } // No for loop if 'HAVE_CUDA != 1',
   CuDevice::Instantiate().PrintProfile();
 #endif
-  std::cout << "Tests succeeded.\n";
+  KALDI_LOG << "Tests succeeded.";
 }

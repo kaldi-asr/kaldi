@@ -13,7 +13,7 @@ help_message="$0: create subset of the input directory (specified as the first d
              Example:
                  $0 <lang-data-dir> <decode-dir> <data-dir1> [data-dir2 [data-dir3 [ ...] ]"
 
-# Begin configuration section.  
+# Begin configuration section.
 #acwt=0.0909091
 min_lmwt=7
 max_lmwt=17
@@ -101,8 +101,8 @@ if [ $stage -le 0 ] ; then
     for lmwt in `seq $min_lmwt $max_lmwt` ; do
         kwsoutdir=$decodedir/kws_$lmwt
         mkdir -p $kwsoutdir
-  
-        acwt=`perl -e "print (1.0/$lmwt);"` 
+
+        acwt=`perl -e "print (1.0/$lmwt);"`
         steps/make_index.sh --strict $strict --cmd "$cmd" --max-states $max_states\
           --acwt $acwt $model_flags --skip-optimization $skip_optimization \
           --word_ins_penalty $word_ins_penalty \
@@ -128,14 +128,14 @@ if [ $stage -le 1 ] ; then
       dirB=$decodedir/`basename $datasetB`/kws_$lmwt
       mkdir -p $dirA
       mkdir -p $dirB
-      
+
       steps/search_index.sh --cmd "$cmd" $kwsdatadir $kwsoutdir  || exit 1
 
       [ ! -f $datasetA/kws/utter_id ] && echo "File $datasetA/kws/utter_id must exist!" && exit 1;
       cat $kwsoutdir/result.* | \
         grep -F -f <(cut -f 1 -d ' ' $datasetA/kws/utter_id ) |\
         grep "^KW[-a-zA-Z0-9]*-A " | \
-        sed 's/^\(KW.*\)-A /\1 /g' > $dirA/results 
+        sed 's/^\(KW.*\)-A /\1 /g' > $dirA/results
 
       [ ! -f $datasetB/kws/utter_id ] && echo "File $datasetB/kws/utter_id must exist!" && exit 1;
       cat $kwsoutdir/result.* | \
@@ -152,7 +152,7 @@ if [ $stage -le 1 ] ; then
       cat $kwsoutdir/result.* | \
         grep -F -f <(cut -f 1 -d ' ' $datasetA/kws/utter_id ) |\
         grep "^KW[-a-zA-Z0-9]*-B " | \
-        sed 's/^\(KW.*\)-B /\1 /g' > $dirA/results 
+        sed 's/^\(KW.*\)-B /\1 /g' > $dirA/results
 
       [ ! -f $datasetB/kws/utter_id ] && echo "File $datasetB/kws/utter_id must exist!" && exit 1;
       cat $kwsoutdir/result.* | \
@@ -192,7 +192,7 @@ if [ $stage -le 3 ] ; then
     utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$durationA \
       --segments=$datadir/segments --normalize=false --remove-dup=true\
       --map-utter=$kwsdatadir/utter_map - $rootdirA/kws_LMWT/kwslist.unnormalized.xml || exit 1
-  
+
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirAB/kws/kws_write_unnormalized.LMWT.log \
     set -e';' set -o pipefail';' \
     cat $rootdirAB/kws_LMWT/results \| \
@@ -204,15 +204,15 @@ fi
 echo "Scoring $datasetA"
 if [ $stage -le 4 ] ; then
   if [[ (! -x local/kws_score.sh ) ||  ($skip_scoring == true) ]] ; then
-      echo "Not scoring, because the file local/kws_score.sh is not present" 
+      echo "Not scoring, because the file local/kws_score.sh is not present"
       exit 1
   elif [ ! -f $datasetA/kws/rttm ] ; then
       echo "Not scoring, because the file $datasetA/kws/rttm is not present"
   else
     $cmd LMWT=$min_lmwt:$max_lmwt $rootdirA/kws/kws_scoring.LMWT.log \
-      local/kws_score.sh $datasetA $rootdirA/kws_LMWT 
+      local/kws_score.sh $datasetA $rootdirA/kws_LMWT
     $cmd LMWT=$min_lmwt:$max_lmwt $rootdirAB/kws/kws_scoring.LMWT.log \
-      local/kws_score.sh --kwlist $datasetB/kws/kwlist.xml $datasetA $rootdirAB/kws_LMWT 
+      local/kws_score.sh --kwlist $datasetB/kws/kwlist.xml $datasetA $rootdirAB/kws_LMWT
   fi
 fi
 

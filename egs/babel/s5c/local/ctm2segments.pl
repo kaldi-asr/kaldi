@@ -45,21 +45,21 @@ while (my $line=<FILEIN> ) {
   chop $line;
   my @entries = split(/ /, $line);
   die "Cannot parse line \"$line\""  if scalar @entries != 6;
-  
+
   ($filename, my $chann_id, my $beg, my $end, my $word, my $conf) = @entries;
-  
-  $total_seconds += $end * 1.0;  
-  
+
+  $total_seconds += $end * 1.0;
+
   if ($conf >= $cf_needed ) {
     if ( $words ne "" ) {
       #print "Extend segment\n";
       $words .= " $word";
-      $seg_end = $beg * 1.0 + $end*1.0; 
+      $seg_end = $beg * 1.0 + $end*1.0;
     } else {
       #start a new segment
       #print "Start segment\n";
       $seg_start = $beg;
-      $seg_end = $beg * 1.0 + $end*1.0; 
+      $seg_end = $beg * 1.0 + $end*1.0;
       $words = $word;
     }
   } else {
@@ -75,14 +75,14 @@ while (my $line=<FILEIN> ) {
 
       $extracted_seconds+= ($seg_end - $seg_start);
       $seg_start -= $extend_segments;
-      $seg_end += $extend_segments; 
+      $seg_end += $extend_segments;
 
       my $spk_id=$filename_parts[3] . "_" . $channel;
       my $utt_id = $spk_id . "_" . join("_", @filename_parts[4..5]);
       my $last_part = sprintf("%06d", $seg_start * 100);
       $utt_id .= "_" . $last_part;
       #print $utt_id . "  $beg \n";
-      
+
       #14350_A_20121123_042710_001337
 
       #10901_A_20121128_230024_000227 BABEL_OP1_206_10901_20121128_230024_inLine 2.275 3.265
@@ -111,14 +111,14 @@ if ( $words ) {
 
   $extracted_seconds+= ($seg_end - $seg_start);
   $seg_start -= $extend_segments;
-  $seg_end += $extend_segments; 
+  $seg_end += $extend_segments;
 
   my $spk_id=$filename_parts[3] . "_" . $channel;
   my $utt_id = $spk_id . "_" . join("_", @filename_parts[4..5]);
   my $last_part = sprintf("%06d", $seg_start * 100);
   $utt_id .= "_" . $last_part;
   #print $utt_id . "  $beg \n";
-  
+
   #14350_A_20121123_042710_001337
 
   #10901_A_20121128_230024_000227 BABEL_OP1_206_10901_20121128_230024_inLine 2.275 3.265

@@ -34,7 +34,7 @@ done
 # Training
 steps/train_mono.sh --nj 20 --cmd "$train_cmd" data/train data/lang exp/system1/mono
 # Graph compilation
-utils/mkgraph.sh --mono data/lang exp/system1/mono exp/system1/mono/graph
+utils/mkgraph.sh data/lang exp/system1/mono exp/system1/mono/graph
 
 # Decoding
 steps/decode.sh --nj 4 --cmd "$train_cmd" exp/system1/mono/graph  data/test exp/system1/mono/decode_test
