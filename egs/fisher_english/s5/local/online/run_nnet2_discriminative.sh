@@ -21,8 +21,8 @@ If you want to use GPUs (and have them), go to src/, and configure and make on a
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  gpu_opts="-l gpu=1"
-  train_parallel_opts="-l gpu=1"
+  gpu_opts="--gpu 1"
+  train_parallel_opts="--gpu 1"
   num_threads=1
   # the _a is in case I want to change the parameters.
   srcdir=exp/nnet2_online/nnet_a_gpu

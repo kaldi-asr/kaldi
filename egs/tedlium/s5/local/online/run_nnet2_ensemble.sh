@@ -27,7 +27,7 @@ If you want to use GPUs (and have them), go to src/, and configure and make on a
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="-l gpu=1 --config conf/no_k20.conf --allow-k20 false"
+  parallel_opts="--gpu 1 --config conf/no_k20.conf --allow-k20 false"
 #that config is like the default config in the text of queue.pl, but adding the following lines.
 #default allow_k20=true
 #option allow_k20=true

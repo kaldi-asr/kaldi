@@ -103,7 +103,7 @@ fi
 
 if [ $stage -le 7 ]; then
 
-  steps/nnet2/train_discriminative_multilang2.sh --cmd "$decode_cmd -l gpu=1" --stage $train_stage \
+  steps/nnet2/train_discriminative_multilang2.sh --cmd "$decode_cmd --gpu 1" --stage $train_stage \
     --learning-rate $learning_rate --num-jobs-nnet "4 1" \
     --criterion $criterion --drop-frames $drop_frames \
     --num-epochs $num_epochs --num-threads 1 \

@@ -276,7 +276,7 @@ done
 dnn_cpu_parallel_opts=(--minibatch-size 128 --max-change 10 --num-jobs-nnet 8 --num-threads 16 \
                        --parallel-opts "--num-threads 16" --cmd "queue.pl  --mem 2G")
 dnn_gpu_parallel_opts=(--minibatch-size 512 --max-change 40 --num-jobs-nnet 4 --num-threads 1 \
-                       --parallel-opts "-l gpu=1" --cmd "queue.pl  --mem 2G")
+                       --parallel-opts "--gpu 1" --cmd "queue.pl  --mem 2G")
 
 steps/nnet2/train_pnorm_ensemble.sh \
   --mix-up 5000  --initial-learning-rate 0.008 --final-learning-rate 0.0008\

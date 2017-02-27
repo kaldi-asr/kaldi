@@ -48,7 +48,7 @@ If you want to use GPUs (and have them), go to src/, and configure and make on a
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="-l gpu=1 -q g.q"
+  parallel_opts="--gpu 1"
   #parallel_opts="$parallel_opts --config conf/queue_no_k20.conf --allow-k20 false"
   num_threads=1
 else

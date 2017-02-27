@@ -32,9 +32,9 @@ This script is intended to be used with GPUs but you have not compiled Kaldi wit
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
-  align_gpu_opts="-l gpu=1"
+  align_gpu_opts="--gpu 1"
   use_gpu_flag="--use-gpu yes"
-  train_parallel_opts="-l gpu=1"
+  train_parallel_opts="--gpu 1"
   train_num_threads=1
   srcdir=exp/nnet4d_gpu
   dir=exp/nnet5d_mpe_gpu
