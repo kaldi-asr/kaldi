@@ -1,17 +1,17 @@
 #!/bin/bash
 
 # this script is used for comparing decoding results between systems.
-# e.g. local/nnet3/compare_wer.sh exp/nnet3_cleaned/tdnn_{c,d}_sp
+# e.g. local/chain/compare_wer.sh exp/chain/tdnn_{c,d}_sp
 # For use with discriminatively trained systems you specify the epochs after a colon:
 # for instance,
-# local/nnet3/compare_wer.sh exp/nnet3_cleaned/tdnn_c_sp exp/nnet3_cleaned/tdnn_c_sp_smbr:{1,2,3}
+# local/chain/compare_wer.sh exp/chain/tdnn_c_sp exp/chain/tdnn_c_sp_smbr:{1,2,3}
 
 
 if [ $# == 0 ]; then
   echo "Usage: $0: [--looped] [--online] <dir1> [<dir2> ... ]"
-  echo "e.g.: $0 exp/nnet3_cleaned/tdnn_{b,c}_sp"
+  echo "e.g.: $0 exp/chain/tdnn_{b,c}_sp"
   echo "or (with epoch numbers for discriminative training):"
-  echo "$0 exp/nnet3_cleaned/tdnn_b_sp_disc:{1,2,3}"
+  echo "$0 exp/chain/tdnn_b_sp_disc:{1,2,3}"
   exit 1
 fi
 
@@ -29,17 +29,16 @@ if [ "$1" == "--online" ]; then
 fi
 
 
-
 used_epochs=false
 
 # this function set_names is used to separate the epoch-related parts of the name
 # [for discriminative training] and the regular parts of the name.
 # If called with a colon-free directory name, like:
-#  set_names exp/chain_cleaned/tdnn_lstm1e_sp_bi_smbr
-# it will set dir=exp/chain_cleaned/tdnn_lstm1e_sp_bi_smbr and epoch_infix=""
+#  set_names exp/chain/tdnn_lstm1e_sp_bi_smbr
+# it will set dir=exp/chain/tdnn_lstm1e_sp_bi_smbr and epoch_infix=""
 # If called with something like:
-#  set_names exp/chain_cleaned/tdnn_d_sp_smbr:3
-# it will set dir=exp/chain_cleaned/tdnn_d_sp_smbr and epoch_infix="_epoch3"
+#  set_names exp/chain/tdnn_d_sp_smbr:3
+# it will set dir=exp/chain/tdnn_d_sp_smbr and epoch_infix="_epoch3"
 
 
 set_names() {
@@ -63,33 +62,40 @@ echo -n "# System               "
 for x in $*; do   printf "% 10s" " $(basename $x)";   done
 echo
 
-strings=("# WER on dev(orig)     " "# WER on dev(rescored) " "# WER on test(orig)    " "# WER on test(rescored)")
+strings=(
+  "#WER dev93 (tgpr)          "
+  "#WER dev93 (tg)            "
+  "#WER dev93 (big-dict,tgpr) "
+  "#WER dev93 (big-dict,fg)   "
+  "#WER eval92 (tgpr)         "
+  "#WER eval92 (tg)           "
+  "#WER eval92 (big-dict,tgpr)"
+  "#WER eval92 (big-dict,fg)  ")
 
-for n in 0 1 2 3; do
+for n in 0 1 2 3 4 5 6 7; do
    echo -n "${strings[$n]}"
    for x in $*; do
      set_names $x  # sets $dirname and $epoch_infix
-     decode_names=(dev${epoch_infix} dev${epoch_infix}_rescore test${epoch_infix} test${epoch_infix}_rescore)
-     wer=$(grep Sum $dirname/decode_${decode_names[$n]}/score*/*ys | utils/best_wer.sh | awk '{print $2}')
+     decode_names=(tgpr_dev93 tg_dev93 bd_tgpr_dev93 bd_tgpr_dev93_fg tgpr_eval92 tg_eval92 bd_tgpr_eval92 bd_tgpr_eval92_fg)
+
+     wer=$(cat $dirname/decode_${decode_names[$n]}/scoring_kaldi/best_wer | utils/best_wer.sh | awk '{print $2}')
      printf "% 10s" $wer
    done
    echo
    if $include_looped; then
-     echo -n "#         [looped:]    "
+     echo -n "#             [looped:]    "
      for x in $*; do
        set_names $x  # sets $dirname and $epoch_infix
-       decode_names=(dev${epoch_infix} dev${epoch_infix}_rescore test${epoch_infix} test${epoch_infix}_rescore)
-       wer=$(grep Sum $dirname/decode_looped_${decode_names[$n]}/score*/*ys | utils/best_wer.sh | awk '{print $2}')
+       wer=$(cat $dirname/decode_looped_${decode_names[$n]}/scoring_kaldi/best_wer | utils/best_wer.sh | awk '{print $2}')
        printf "% 10s" $wer
      done
      echo
    fi
    if $include_online; then
-     echo -n "#         [online:]    "
+     echo -n "#             [online:]    "
      for x in $*; do
        set_names $x  # sets $dirname and $epoch_infix
-       decode_names=(dev${epoch_infix} dev${epoch_infix}_rescore test${epoch_infix} test${epoch_infix}_rescore)
-       wer=$(grep Sum ${dirname}_online/decode_${decode_names[$n]}/score*/*ys | utils/best_wer.sh | awk '{print $2}')
+       wer=$(cat ${dirname}_online/decode_${decode_names[$n]}/scoring_kaldi/best_wer | utils/best_wer.sh | awk '{print $2}')
        printf "% 10s" $wer
      done
      echo
@@ -104,30 +110,28 @@ fi
 
 echo -n "# Final train prob     "
 for x in $*; do
-  prob=$(grep Overall $x/log/compute_prob_train.{final,combined}.log 2>/dev/null | grep log-like | awk '{printf("%.4f", $8)}')
+  prob=$(grep Overall $x/log/compute_prob_train.final.log | grep -v xent | awk '{printf("%.4f", $8)}')
   printf "% 10s" $prob
 done
 echo
 
 echo -n "# Final valid prob     "
 for x in $*; do
-  prob=$(grep Overall $x/log/compute_prob_valid.{final,combined}.log 2>/dev/null | grep log-like | awk '{printf("%.4f", $8)}')
+  prob=$(grep Overall $x/log/compute_prob_valid.final.log | grep -v xent | awk '{printf("%.4f", $8)}')
   printf "% 10s" $prob
 done
 echo
 
-echo -n "# Final train acc      "
+echo -n "# Final train prob (xent)"
 for x in $*; do
-  prob=$(grep Overall $x/log/compute_prob_train.{final,combined}.log 2>/dev/null | grep accuracy | awk '{printf("%.4f", $8)}')
+  prob=$(grep Overall $x/log/compute_prob_train.final.log | grep -w xent | awk '{printf("%.4f", $8)}')
   printf "% 10s" $prob
 done
 echo
 
-echo -n "# Final valid acc      "
+echo -n "# Final valid prob (xent)"
 for x in $*; do
-  prob=$(grep Overall $x/log/compute_prob_valid.{final,combined}.log 2>/dev/null | grep accuracy | awk '{printf("%.4f", $8)}')
+  prob=$(grep Overall $x/log/compute_prob_valid.final.log | grep -w xent | awk '{printf("%.4f", $8)}')
   printf "% 10s" $prob
 done
-echo
-
 echo
