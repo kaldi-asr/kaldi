@@ -1,14 +1,15 @@
 #!/bin/bash -v
 
+# Apache 2.0,
+# Copyright: 2017 University of Sheffield (author: Yulan Liu) 
+#            2017 Brno University of Technology (author: Karel Vesely)
+
 . ./cmd.sh
 . ./path.sh
 
 # DNN training. This script is based on egs/swbd/s5b/local/run_dnn.sh
-# Shinji Watanabe, Karel Vesely,
 
 # Config:
-nj=80
-nj_decode=30
 stage=0 # resume training with --stage=N
 . utils/parse_options.sh || exit 1;
 #
@@ -28,11 +29,8 @@ LM=$final_lm.pr1-7
 graph_dir=$gmmdir/graph_${LM}
 
 # Set bash to 'debug' mode, it will exit on : 
-# -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
-set -e
-set -u
-set -o pipefail
-set -x
+# -e 'error', -u 'undefined variable', -x 'print commands', -o ... 'error in pipeline',
+set -euxo pipefail
 
 nj_train=$(cat data/$mic/$MODE/train/spk2utt | wc -l)
 nj_dev=$(cat data/$mic/$MODE/dev/spk2utt | wc -l)
@@ -85,7 +83,7 @@ if [ $stage -le 2 ]; then
     $graph_dir $data_fmllr/$mic/$MODE/eval $dir/decode_eval_${LM}
 fi
 
-### exit
+### exit 0 # We can end here,
 
 # Sequence training using sMBR criterion, we do Stochastic-GD with 
 # per-utterance updates. We use usually good acwt 0.1.
@@ -108,8 +106,7 @@ if [ $stage -le 4 ]; then
   steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 4 --acwt $acwt --do-smbr true \
     $data_fmllr/$mic/$MODE/train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir
   # Decode (reuse HCLG graph)
-#  for ITER in 4 1; do
-  for ITER in 4; do
+  for ITER in 4 1; do
     steps/nnet/decode.sh --nj $nj_dev --cmd "$decode_large_cmd" --config conf/decode_dnn.conf \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $graph_dir $data_fmllr/$mic/$MODE/dev $dir/decode_dev_${LM}_it${ITER}
@@ -121,4 +118,3 @@ fi
 
 # Getting results [see RESULTS file]
 # for x in exp/$mic/$MODE/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
-
