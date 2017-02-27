@@ -256,7 +256,7 @@ steps/train_mmi_sgmm2.sh \
 
 (
 utils/mkgraph.sh data/lang_test exp/tri5a exp/tri5a/graph
-steps/decode_fmllr_extra.sh --nj 13 --cmd "$decode_cmd" --num-threads 4 --parallel-opts " -pe smp 4" \
+steps/decode_fmllr_extra.sh --nj 13 --cmd "$decode_cmd" --num-threads 4 --parallel-opts " --num-threads 4" \
   --config conf/decode.config  --scoring-opts "--min-lmwt 8 --max-lmwt 12"\
  exp/tri5a/graph data/dev exp/tri5a/decode_dev
 utils/mkgraph.sh data/lang_test exp/sgmm5 exp/sgmm5/graph
@@ -274,9 +274,9 @@ done
 
 
 dnn_cpu_parallel_opts=(--minibatch-size 128 --max-change 10 --num-jobs-nnet 8 --num-threads 16 \
-                       --parallel-opts "-pe smp 16" --cmd "queue.pl -l arch=*64 --mem 2G")
+                       --parallel-opts "--num-threads 16" --cmd "queue.pl  --mem 2G")
 dnn_gpu_parallel_opts=(--minibatch-size 512 --max-change 40 --num-jobs-nnet 4 --num-threads 1 \
-                       --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 --mem 2G")
+                       --parallel-opts "--gpu 1" --cmd "queue.pl  --mem 2G")
 
 steps/nnet2/train_pnorm_ensemble.sh \
   --mix-up 5000  --initial-learning-rate 0.008 --final-learning-rate 0.0008\
@@ -287,7 +287,7 @@ steps/nnet2/train_pnorm_ensemble.sh \
   data/train data/lang exp/tri5a_ali exp/tri6a_dnn
 
 (
-  steps/nnet2/decode.sh --nj 13 --cmd "$decode_cmd" --num-threads 4 --parallel-opts " -pe smp 4"   \
+  steps/nnet2/decode.sh --nj 13 --cmd "$decode_cmd" --num-threads 4 --parallel-opts " --num-threads 4"   \
     --scoring-opts "--min-lmwt 8 --max-lmwt 16" --transform-dir exp/tri5a/decode_dev exp/tri5a/graph data/dev exp/tri6a_dnn/decode_dev
 ) &
 wait

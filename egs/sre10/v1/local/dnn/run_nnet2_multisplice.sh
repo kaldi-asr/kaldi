@@ -22,7 +22,7 @@ If you want to use GPUs (and have them), go to src/, and configure and make on a
 where "nvcc" is installed.
 EOF
 fi
-parallel_opts="-l gpu=1"
+parallel_opts="--gpu 1"
 num_threads=1
 minibatch_size=512
 dir=exp/nnet2_online/nnet_ms_a
@@ -39,7 +39,7 @@ if [ $stage -le 6 ]; then
 
   # Because we have a lot of data here and we don't want the training to take
   # too long, we reduce the number of epochs from the defaults (15 + 5) to (3 +
-  # 1).  The option "--io-opts '-tc 12'" is to have more than the default number
+  # 1).  The option "--io-opts '--max-jobs-run 12'" is to have more than the default number
   # (5) of jobs dumping the egs to disk; this is OK since we're splitting our
   # data across four filesystems for speed.
 

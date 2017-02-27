@@ -146,7 +146,7 @@ while [ $x -lt $num_iters ]; do
     nt=$[$num_threads*$num_processes] # use the same number of threads that
                                       # each accumulation process uses, since we
                                       # can be sure the queue will support this many.
-    $cmd -pe smp $nt $dir/log/update.$x.log \
+    $cmd --num-threads $nt $dir/log/update.$x.log \
       ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
     rm $dir/acc.$x.*
     $cleanup && rm $dir/acc.$x $dir/$x.ie
