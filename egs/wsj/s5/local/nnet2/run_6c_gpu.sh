@@ -13,8 +13,8 @@ gpu_opts="-l gpu=1"                   # This is suitable for the CLSP network,
                                       # not used in denlat creation)
 . ./cmd.sh
 . ./path.sh
-! cuda-compiled && cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+! cuda-compiled && cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
@@ -32,7 +32,7 @@ set -e # exit on error.
 nj=$(cat exp/tri4b_ali_si284/num_jobs)
 
 steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
-      --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "-pe smp 6" \
+      --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "--num-threads 6" \
       --transform-dir exp/tri4b_ali_si284 \
      data/train_si284 data/lang exp/nnet5c_gpu exp/nnet5c_gpu_denlats
 

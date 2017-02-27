@@ -27,8 +27,8 @@ nj_orig=$(cat $transform_dir/num_jobs)
 if $use_gpu; then
   . ./cmd.sh
   . ./path.sh
-  ! cuda-compiled && cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+  ! cuda-compiled && cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
@@ -42,7 +42,7 @@ EOF
 else
   align_gpu_opts=
   use_gpu_flag="--use-gpu no"
-  train_parallel_opts="-pe smp 6"
+  train_parallel_opts="--num-threads 6"
   train_num_threads=6
   srcdir=exp/nnet4d
   dir=exp/nnet5d_mpe
@@ -75,7 +75,7 @@ fi
 
 if [ $stage -le 0 ]; then
   steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
-    --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "-pe smp 6" \
+    --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "--num-threads 6" \
     --beam 20.0 --lattice-beam 10.0 \
     --transform-dir $transform_dir \
     data/train data/lang $srcdir ${srcdir}_denlats

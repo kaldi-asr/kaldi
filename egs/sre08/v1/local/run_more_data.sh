@@ -49,7 +49,7 @@ sid/compute_vad_decision.sh --nj 4 --cmd "$train_cmd" data/sre08_test_short3_mal
 
 
 # Note: to see the proportion of voiced frames you can do,
-# grep Prop exp/make_vad/vad_*.1.log 
+# grep Prop exp/make_vad/vad_*.1.log
 
 # Get male and female subsets of training data.
 grep -w m data/train/spk2gender | awk '{print $1}' > foo;
@@ -81,7 +81,7 @@ wait
 # note, the mem_free,ram_free is counted per thread... in this setup each
 # job has 4 processes running each with 4 threads; each job takes about 5G
 # of memory so we need about 20G, plus add memory for sum-accs to make it 25G.
-# but we'll submit using -pe smp 16, and this multiplies the memory requirement
+# but we'll submit using --num-threads 16, and this multiplies the memory requirement
 # by 16, so submitting with 2G as the requirement, to make the total requirement
 # 32, is reasonable.
 
@@ -131,7 +131,7 @@ cat $trials | awk '{print $1, $2}' | \
  ivector-compute-dot-products - \
   scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp \
   scp:exp/ivectors_sre08_test_short3_female/spk_ivector.scp \
-   foo 
+   foo
 
 local/score_sre08.sh $trials foo
 

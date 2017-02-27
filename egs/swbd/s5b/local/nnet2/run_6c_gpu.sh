@@ -18,8 +18,8 @@ set -e # exit on error.
 
 . ./cmd.sh
 . ./path.sh
-! cuda-compiled && cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+! cuda-compiled && cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
@@ -36,7 +36,7 @@ EOF
 
 if [ $stage -le 0 ]; then
   steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
-    --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "-pe smp 6" \
+    --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "--num-threads 6" \
     --transform-dir exp/tri4b \
     data/train_nodup data/lang exp/nnet5c_gpu exp/nnet5c_gpu_denlats
 fi
@@ -59,7 +59,7 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  for epoch in 1 2 3 4; do 
+  for epoch in 1 2 3 4; do
     for lm_suffix in tg fsh_tgpr; do
       steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 30 --iter epoch$epoch \
         --config conf/decode.config --transform-dir exp/tri4b/decode_eval2000_sw1_${lm_suffix} \

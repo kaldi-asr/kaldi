@@ -47,7 +47,7 @@ else
   # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
-  parallel_opts="-pe smp $num_threads"
+  parallel_opts="--num-threads $num_threads"
 fi
 
 # do the common parts of the script.
