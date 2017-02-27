@@ -64,7 +64,7 @@ fi
 # wasteful since the lattice determinization and graph search use up a fair
 # amount of CPU, and we'd be idling the GPU much of the time.
 
-# We specify 1G each for the mem_free and ram_free which, is per thread... it
+# We specify 1G each for --mem, which is per thread... it
 # will likely be less than the default.  Increase the beam relative to the
 # defaults; this is just for this RM setup, where the default beams will likely
 # generate very thin lattices.

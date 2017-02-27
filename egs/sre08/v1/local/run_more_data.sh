@@ -78,7 +78,7 @@ sid/train_full_ubm.sh --nj 30 --remove-low-count-gaussians false --num-iters 1 -
    data/train_female_4k exp/full_ubm_2048 exp/full_ubm_2048_female &
 wait
 
-# note, the mem_free,ram_free is counted per thread... in this setup each
+# note, the --mem is counted per thread... in this setup each
 # job has 4 processes running each with 4 threads; each job takes about 5G
 # of memory so we need about 20G, plus add memory for sum-accs to make it 25G.
 # but we'll submit using --num-threads 16, and this multiplies the memory requirement

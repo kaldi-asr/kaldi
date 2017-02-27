@@ -15,7 +15,7 @@ gpu_opts="--gpu 1"  # This is suitable for the CLSP network,
 
 # The denominator lattice creation currently doesn't use GPUs.
 
-# Note: we specify 1G each for the mem_free and ram_free which, is per
+# Note: we specify 1G for --mem, which is per
 # thread... it will likely be less than the default.  Increase the beam relative
 # to the defaults; this is just for this RM setup, where the default beams will
 # likely generate very thin lattices.  Note: the transform-dir is important to
