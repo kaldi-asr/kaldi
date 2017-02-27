@@ -46,7 +46,7 @@ if [ $stage -le 1 ]; then
   # otherwise on RM we'd get very thin lattices.
   nj=30
   num_threads_denlats=6
-  steps/online/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G --num-threads $num_threads_denlats" \
+  steps/online/nnet2/make_denlats.sh --cmd "$decode_cmd --mem 1G --num-threads $num_threads_denlats" \
       --nj $nj --sub-split 40 --num-threads "$num_threads_denlats" --config conf/decode.config \
      data/train data/lang $srcdir ${srcdir}_denlats || exit 1;
 fi

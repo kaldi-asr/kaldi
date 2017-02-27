@@ -7,7 +7,7 @@
 # directory name.
 
 
-gpu_opts="-l gpu=1"                   # This is suitable for the CLSP network,
+gpu_opts="--gpu 1"                   # This is suitable for the CLSP network,
                                       # you'll likely have to change it.  we'll
                                       # use it later on, in the training (it's
                                       # not used in denlat creation)
@@ -31,7 +31,7 @@ set -e # exit on error.
 
 nj=$(cat exp/tri4b_ali_si284/num_jobs)
 
-steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
+steps/nnet2/make_denlats.sh --cmd "$decode_cmd --mem 1G" \
       --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "--num-threads 6" \
       --transform-dir exp/tri4b_ali_si284 \
      data/train_si284 data/lang exp/nnet5c_gpu exp/nnet5c_gpu_denlats

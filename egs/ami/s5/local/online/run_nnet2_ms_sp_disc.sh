@@ -76,7 +76,7 @@ if [ $stage -le 1 ]; then
   num_threads_denlats=6
   subsplit=40 # number of jobs that run per job (but 2 run at a time, so total jobs is 80, giving
               # max total slots = 80 * 6 = 480.
-  steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G --num-threads $num_threads_denlats" \
+  steps/nnet2/make_denlats.sh --cmd "$decode_cmd --mem 1G --num-threads $num_threads_denlats" \
       --online-ivector-dir exp/$mic/nnet2_online/ivectors_train_hires_sp2 \
       --nj $nj --sub-split $subsplit --num-threads "$num_threads_denlats" --config conf/decode.conf \
      data/$mic/train_hires_sp data/lang $srcdir ${srcdir}_denlats || exit 1;

@@ -71,30 +71,30 @@ utils/subset_data_dir.sh data/train 16000 data/train_16k
 utils/subset_data_dir.sh data/train 32000 data/train_32k
 
 # Train UBM and i-vector extractor.
-sid/train_diag_ubm.sh --cmd "$train_cmd -l mem_free=20G,ram_free=20G" \
+sid/train_diag_ubm.sh --cmd "$train_cmd --mem 20G" \
   --nj 20 --num-threads 8 \
   data/train_16k $num_components \
   exp/diag_ubm_$num_components
 
 sid/train_full_ubm.sh --nj 40 --remove-low-count-gaussians false \
-  --cmd "$train_cmd -l mem_free=25G,ram_free=25G" data/train_32k \
+  --cmd "$train_cmd --mem 25G" data/train_32k \
   exp/diag_ubm_$num_components exp/full_ubm_$num_components
 
-sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=35G,ram_free=35G" \
+sid/train_ivector_extractor.sh --cmd "$train_cmd --mem 35G" \
   --ivector-dim 600 \
   --num-iters 5 exp/full_ubm_$num_components/final.ubm data/train \
   exp/extractor
 
 # Extract i-vectors.
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 50 \
   exp/extractor data/sre10_train \
   exp/ivectors_sre10_train
 
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 50 \
   exp/extractor data/sre10_test \
   exp/ivectors_sre10_test
 
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 50 \
   exp/extractor data/sre \
   exp/ivectors_sre
 

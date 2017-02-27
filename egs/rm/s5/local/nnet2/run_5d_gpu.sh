@@ -29,7 +29,7 @@ EOF
 
 nj=$(cat exp/tri3b_ali/num_jobs)
 dir=nnet4d_gpu
-steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
+steps/nnet2/make_denlats.sh --cmd "$decode_cmd --mem 1G" \
       --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "--num-threads 6" \
       --beam 20.0 --lattice-beam 10.0 \
       --transform-dir exp/tri3b_ali \

@@ -38,7 +38,7 @@ if [ $stage -le 1 ]; then
   sub_split=100
   num_threads=6
 
-  steps/online/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G --num-threads $num_threads" \
+  steps/online/nnet2/make_denlats.sh --cmd "$decode_cmd --mem 1G --num-threads $num_threads" \
       --nj $nj --sub-split $sub_split --num-threads "$num_threads" \
      $data_wsj $lang_wsj ${dir}_wsj_online ${dir}_wsj_denlats
 fi
@@ -73,7 +73,7 @@ if [ $stage -le 4 ]; then
   num_threads=6
 
   steps/online/nnet2/make_denlats.sh \
-      --cmd "$decode_cmd -l mem_free=1G,ram_free=1G --num-threads $num_threads" \
+      --cmd "$decode_cmd --mem 1G --num-threads $num_threads" \
       --nj $nj --sub-split $sub_split --num-threads "$num_threads" \
      $data_rm $lang_rm  ${dir}_rm_online ${dir}_rm_denlats
 fi

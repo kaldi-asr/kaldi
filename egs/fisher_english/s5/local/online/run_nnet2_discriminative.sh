@@ -45,7 +45,7 @@ if [ $stage -le 1 ]; then
   # the graph search and lattice determinization takes quite a bit of CPU.
   # note: it's the sub-split option that determinies how many jobs actually
   # run at one time.
-  steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
+  steps/nnet2/make_denlats.sh --cmd "$decode_cmd --mem 1G" \
       --nj $nj --sub-split 40 --num-threads 6 --parallel-opts "--num-threads 6" \
       --online-ivector-dir exp/nnet2_online/ivectors_train \
       data/train_hires data/lang $srcdir ${srcdir}_denlats

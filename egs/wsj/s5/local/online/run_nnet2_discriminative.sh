@@ -23,8 +23,8 @@ If you want to use GPUs (and have them), go to src/, and configure and make on a
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  gpu_opts="-l gpu=1"
-  train_parallel_opts="-l gpu=1"
+  gpu_opts="--gpu 1"
+  train_parallel_opts="--gpu 1"
   num_threads=1
   # the _a is in case I want to change the parameters.
 else
@@ -43,7 +43,7 @@ if [ $stage -le 1 ]; then
   # the graph search and lattice determinization takes quite a bit of CPU.
   # note: it's the sub-split option that determinies how many jobs actually
   # run at one time.
-  steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
+  steps/nnet2/make_denlats.sh --cmd "$decode_cmd --mem 1G" \
       --nj $nj --sub-split 40 --num-threads 6 --parallel-opts "--num-threads 6" \
       --online-ivector-dir exp/nnet2_online/ivectors_train_si284 \
       data/train_si284_hires data/lang $srcdir ${srcdir}_denlats

@@ -86,12 +86,12 @@ wait
 # 32, is reasonable.
 
 # Train the iVector extractor for male speakers.
-sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=2G,ram_free=2G" \
+sid/train_ivector_extractor.sh --cmd "$train_cmd --mem 2G" \
   --num-iters 5 exp/full_ubm_2048_male/final.ubm data/train_male \
   exp/extractor_2048_male
 
 # The same for female speakers.
-sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=2G,ram_free=2G" \
+sid/train_ivector_extractor.sh --cmd "$train_cmd --mem 2G" \
   --num-iters 5 exp/full_ubm_2048_female/final.ubm data/train_female \
   exp/extractor_2048_female
 
@@ -105,22 +105,22 @@ sid/gender_id.sh --cmd "$train_cmd" --nj 150 exp/full_ubm_2048{,_male,_female} \
 # Gender-id error rate is 2.58%
 
 # Extract the iVectors for the Fisher data.
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 3G" --nj 50 \
    exp/extractor_2048_male data/train_male exp/ivectors_train_male
 
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 3G" --nj 50 \
    exp/extractor_2048_female data/train_female exp/ivectors_train_female
 
 # .. and for the SRE08 training and test data. (We focus on the main
 # evaluation condition, the only required one in that eval, which is
 # the short2-short3 eval.)
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 3G" --nj 50 \
    exp/extractor_2048_female data/sre08_train_short2_female exp/ivectors_sre08_train_short2_female
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 3G" --nj 50 \
    exp/extractor_2048_male data/sre08_train_short2_male exp/ivectors_sre08_train_short2_male
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 3G" --nj 50 \
    exp/extractor_2048_female data/sre08_test_short3_female exp/ivectors_sre08_test_short3_female
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 3G" --nj 50 \
    exp/extractor_2048_male data/sre08_test_short3_male exp/ivectors_sre08_test_short3_male
 
 
