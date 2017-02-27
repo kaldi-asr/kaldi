@@ -1,33 +1,26 @@
 #!/bin/bash
 
+# 1b is like 1a, but using a different splicing setup; the difference
+# is like the difference from
+# egs/tedlium/s5_r2/local/nnet3/tuning/run_tdnn{c->b}.sh
+# There seems to be no consistent difference.
 
-# 1b is as 1a but uses xconfigs.
+#  run_tdnn_1a.sh is the standard "tdnn" system, built in nnet3 with xconfigs.
 
-#    This is the standard "tdnn" system, built in nnet3; this script
-# is the version that's meant to run with data-cleanup, that doesn't
-# support parallel alignments.
-
-
-# steps/info/nnet3_dir_info.pl exp/nnet3_cleaned/tdnn1b_sp
-# exp/nnet3_cleaned/tdnn1b_sp: num-iters=240 nj=2..12 num-params=10.3M dim=40+100->4187 combine=-0.95->-0.95 loglike:train/valid[159,239,combined]=(-1.01,-0.95,-0.94/-1.18,-1.16,-1.15) accuracy:train/valid[159,239,combined]=(0.71,0.72,0.72/0.67,0.68,0.68)
-
-# local/nnet3/compare_wer.sh exp/nnet3_cleaned/tdnn1a_sp exp/nnet3_cleaned/tdnn1b_sp
+# local/nnet3/compare_wer.sh exp/nnet3/tdnn1a_sp exp/nnet3/tdnn1b_sp
 # System                tdnn1a_sp tdnn1b_sp
-# WER on dev(orig)           11.9      11.7
-# WER on dev(rescored)       11.2      10.9
-# WER on test(orig)          11.6      11.7
-# WER on test(rescored)      11.0      11.0
-# Final train prob        -0.9255   -0.9416
-# Final valid prob        -1.1842   -1.1496
-# Final train acc          0.7245    0.7241
-# Final valid acc          0.6771    0.6788
-
-
-# by default, with cleanup:
-# local/nnet3/run_tdnn.sh
-
-# without cleanup:
-# local/nnet3/run_tdnn.sh  --train-set train --gmm tri3 --nnet3-affix "" &
+#WER dev93 (tgpr)                9.18      9.12
+#WER dev93 (tg)                  8.59      8.51
+#WER dev93 (big-dict,tgpr)       6.45      6.19
+#WER dev93 (big-dict,fg)         5.83      5.78
+#WER eval92 (tgpr)               6.15      6.33
+#WER eval92 (tg)                 5.55      5.74
+#WER eval92 (big-dict,tgpr)      3.58      3.62
+#WER eval92 (big-dict,fg)        2.98      3.10
+# Final train prob        -0.7200   -0.6035
+# Final valid prob        -0.8834   -0.7578
+# Final train acc          0.7762    0.8015
+# Final valid acc          0.7301    0.7607
 
 
 set -e -o pipefail -u
@@ -36,21 +29,20 @@ set -e -o pipefail -u
 # (some of which are also used in this script directly).
 stage=0
 nj=30
-decode_nj=30
-min_seg_len=1.55
-train_set=train_cleaned
-gmm=tri3_cleaned  # this is the source gmm-dir for the data-type of interest; it
-                  # should have alignments for the specified training data.
+
+train_set=train_si284
+test_sets="test_dev93 test_eval92"
+gmm=tri4b        # this is the source gmm-dir that we'll use for alignments; it
+                 # should have alignments for the specified training data.
 num_threads_ubm=32
-nnet3_affix=_cleaned  # cleanup affix for exp dirs, e.g. _cleaned
-tdnn_affix=1b  #affix for TDNN directory e.g. "a" or "b", in case we change the configuration.
+nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
+tdnn_affix=1b  #affix for TDNN directory e.g. "1a" or "1b", in case we change the configuration.
 
 # Options which are not passed through to run_ivector_common.sh
 train_stage=-10
 remove_egs=true
-relu_dim=850
 srand=0
-reporting_email=dpovey@gmail.com
+reporting_email=
 # set common_egs_dir to use previously dumped egs.
 common_egs_dir=
 
@@ -66,26 +58,22 @@ where "nvcc" is installed.
 EOF
 fi
 
-local/nnet3/run_ivector_common.sh --stage $stage \
-                                  --nj $nj \
-                                  --min-seg-len $min_seg_len \
-                                  --train-set $train_set \
-                                  --gmm $gmm \
+local/nnet3/run_ivector_common.sh --stage $stage --nj $nj \
+                                  --train-set $train_set --gmm $gmm \
                                   --num-threads-ubm $num_threads_ubm \
                                   --nnet3-affix "$nnet3_affix"
 
 
 
 gmm_dir=exp/${gmm}
-graph_dir=$gmm_dir/graph
-ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
+ali_dir=exp/${gmm}_ali_${train_set}_sp
 dir=exp/nnet3${nnet3_affix}/tdnn${tdnn_affix}_sp
-train_data_dir=data/${train_set}_sp_hires_comb
-train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
-
+train_data_dir=data/${train_set}_sp_hires
+train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 
 for f in $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
-     $graph_dir/HCLG.fst $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
+    $gmm_dir/{graph_tgpr,graph_bd_tgpr}/HCLG.fst \
+    $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
@@ -107,12 +95,12 @@ if [ $stage -le 12 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=850
-  relu-renorm-layer name=tdnn2 dim=850 input=Append(-1,2)
-  relu-renorm-layer name=tdnn3 dim=850 input=Append(-3,3)
-  relu-renorm-layer name=tdnn4 dim=850 input=Append(-7,2)
-  relu-renorm-layer name=tdnn5 dim=850 input=Append(-3,3)
-  relu-renorm-layer name=tdnn6 dim=850
+  relu-renorm-layer name=tdnn1 dim=750
+  relu-renorm-layer name=tdnn2 dim=750 input=Append(-1,2)
+  relu-renorm-layer name=tdnn3 dim=750 input=Append(-3,3)
+  relu-renorm-layer name=tdnn4 dim=750 input=Append(-7,2)
+  relu-renorm-layer name=tdnn5 dim=750 input=Append(-3,3)
+  relu-renorm-layer name=tdnn6 dim=750
   output-layer name=output dim=$num_targets max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -135,7 +123,7 @@ if [ $stage -le 13 ]; then
     --trainer.num-epochs=3 \
     --trainer.samples-per-iter=400000 \
     --trainer.optimization.num-jobs-initial=2 \
-    --trainer.optimization.num-jobs-final=12 \
+    --trainer.optimization.num-jobs-final=10 \
     --trainer.optimization.initial-effective-lrate=0.0015 \
     --trainer.optimization.final-effective-lrate=0.00015 \
     --trainer.optimization.minibatch-size=256,128 \
@@ -155,13 +143,21 @@ if [ $stage -le 14 ]; then
   # We use regular decoding because it supports multi-threaded (we just
   # didn't create the binary for that, for looped decoding, so far).
   rm $dir/.error || true 2>/dev/null
-  for dset in dev test; do
-   (
-    steps/nnet3/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
-        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
-      ${graph_dir} data/${dset}_hires ${dir}/decode_${dset} || exit 1
-    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
-       data/${dset}_hires ${dir}/decode_${dset} ${dir}/decode_${dset}_rescore || exit 1
+  for data in $test_sets; do
+    (
+      data_affix=$(echo $data | sed s/test_//)
+      nj=$(wc -l <data/${data}_hires/spk2utt)
+      for lmtype in tgpr bd_tgpr; do
+        graph_dir=$gmm_dir/graph_${lmtype}
+        steps/nnet3/decode.sh --nj $nj --cmd "$decode_cmd"  --num-threads 4 \
+           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
+          ${graph_dir} data/${data}_hires ${dir}/decode_${lmtype}_${data_affix} || exit 1
+      done
+      steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
+        data/${data}_hires ${dir}/decode_{tgpr,tg}_${data_affix} || exit 1
+      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+        data/lang_test_bd_{tgpr,fgconst} \
+       data/${data}_hires ${dir}/decode_${lmtype}_${data_affix}{,_fg} || exit 1
     ) || touch $dir/.error &
   done
   wait

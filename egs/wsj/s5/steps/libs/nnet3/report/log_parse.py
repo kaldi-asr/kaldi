@@ -5,6 +5,7 @@
 # Apache 2.0.
 
 from __future__ import division
+import traceback
 import datetime
 import logging
 import re
@@ -332,20 +333,21 @@ def parse_prob_logs(exp_dir, key='accuracy', output="output"):
 
 def generate_acc_logprob_report(exp_dir, key="accuracy", output="output"):
     times = parse_train_logs(exp_dir)
-    data = parse_prob_logs(exp_dir, key, output)
+
     report = []
     report.append("%Iter\tduration\ttrain_loss\tvalid_loss\tdifference")
+    try:
+        data = parse_prob_logs(exp_dir, key, output)
+    except:
+        tb = traceback.format_exc()
+        logger.warning("Error getting info from logs, exception was: " + tb)
+        data = []
     for x in data:
         try:
             report.append("%d\t%s\t%g\t%g\t%g" % (x[0], str(times[x[0]]),
                                                   x[1], x[2], x[2]-x[1]))
         except KeyError:
             continue
-    if len(report) - 1 == 0:
-        raise KaldiLogParseException("Could not find any lines with {k} in "
-                " {e}/log/compute_prob_train.*.log or "
-                " {e}/log/compute_prob_valid.*.log or both".format(
-                    k=key, e=exp_dir))
 
     total_time = 0
     for iter in times.keys():

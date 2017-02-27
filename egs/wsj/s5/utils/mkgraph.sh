@@ -75,7 +75,7 @@ fi
 N=$(tree-info $tree | grep "context-width" | cut -d' ' -f2) || { echo "Error when getting context-width"; exit 1; }
 P=$(tree-info $tree | grep "central-position" | cut -d' ' -f2) || { echo "Error when getting central-position"; exit 1; }
 
-[[ -f $2/frame_subsampling_factor && $loopscale != 1.0 ]] && \
+[[ -f $2/frame_subsampling_factor && "$loopscale" == "0.1" ]] && \
   echo "$0: WARNING: chain models need '--self-loop-scale 1.0'";
 
 mkdir -p $lang/tmp

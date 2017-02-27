@@ -1,7 +1,23 @@
 #!/bin/bash
 
+# 1c is as 1b but using more 'chain-like' splicing and slightly
+# smaller dim.  Not better; maybe slightly worse.
 
-# 1b is as 1a but uses xconfigs.
+# note: the num-params is almost the same.
+# steps/info/nnet3_dir_info.pl exp/nnet3_cleaned/tdnn1{b,c}_sp
+# exp/nnet3_cleaned/tdnn1b_sp: num-iters=240 nj=2..12 num-params=10.3M dim=40+100->4187 combine=-0.95->-0.95 loglike:train/valid[159,239,combined]=(-1.01,-0.95,-0.94/-1.18,-1.16,-1.15) accuracy:train/valid[159,239,combined]=(0.71,0.72,0.72/0.67,0.68,0.68)
+# exp/nnet3_cleaned/tdnn1c_sp: num-iters=240 nj=2..12 num-params=10.1M dim=40+100->4187 combine=-1.16->-1.15 loglike:train/valid[159,239,combined]=(-1.22,-1.16,-1.15/-1.41,-1.38,-1.38) accuracy:train/valid[159,239,combined]=(0.66,0.67,0.68/0.62,0.63,0.63)
+
+# local/nnet3/compare_wer.sh exp/nnet3_cleaned/tdnn1{b,c}_sp
+# System                tdnn1b_sp tdnn1c_sp
+# WER on dev(orig)           11.7      11.9
+# WER on dev(rescored)       10.9      11.1
+# WER on test(orig)          11.7      11.8
+# WER on test(rescored)      11.0      11.2
+# Final train prob        -0.9416   -1.1505
+# Final valid prob        -1.1496   -1.3805
+# Final train acc          0.7241    0.6756
+# Final valid acc          0.6788    0.6255
 
 #    This is the standard "tdnn" system, built in nnet3; this script
 # is the version that's meant to run with data-cleanup, that doesn't
@@ -43,12 +59,11 @@ gmm=tri3_cleaned  # this is the source gmm-dir for the data-type of interest; it
                   # should have alignments for the specified training data.
 num_threads_ubm=32
 nnet3_affix=_cleaned  # cleanup affix for exp dirs, e.g. _cleaned
-tdnn_affix=1b  #affix for TDNN directory e.g. "a" or "b", in case we change the configuration.
+tdnn_affix=1c  #affix for TDNN directory e.g. "a" or "b", in case we change the configuration.
 
 # Options which are not passed through to run_ivector_common.sh
 train_stage=-10
 remove_egs=true
-relu_dim=850
 srand=0
 reporting_email=dpovey@gmail.com
 # set common_egs_dir to use previously dumped egs.
@@ -107,12 +122,11 @@ if [ $stage -le 12 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=850
-  relu-renorm-layer name=tdnn2 dim=850 input=Append(-1,2)
-  relu-renorm-layer name=tdnn3 dim=850 input=Append(-3,3)
-  relu-renorm-layer name=tdnn4 dim=850 input=Append(-7,2)
-  relu-renorm-layer name=tdnn5 dim=850 input=Append(-3,3)
-  relu-renorm-layer name=tdnn6 dim=850
+  relu-renorm-layer name=tdnn1 dim=750
+  relu-renorm-layer name=tdnn2 dim=750 input=Append(-1,0,1)
+  relu-renorm-layer name=tdnn3 dim=750 input=Append(-1,0,1)
+  relu-renorm-layer name=tdnn4 dim=750 input=Append(-3,0,3)
+  relu-renorm-layer name=tdnn5 dim=750 input=Append(-6,-3,0)
   output-layer name=output dim=$num_targets max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
