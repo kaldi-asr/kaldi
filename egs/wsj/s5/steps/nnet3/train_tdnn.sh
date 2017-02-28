@@ -657,6 +657,6 @@ if $cleanup; then
   done
 fi
 
-steps/info/nnet3_dir_info.sh $dir
+steps/info/nnet3_dir_info.pl $dir
 
 exit 0
