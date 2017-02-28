@@ -105,20 +105,20 @@ utils/fix_data_dir.sh data/train_32k
 # Initialize a full GMM from the DNN posteriors and speaker recognition
 # features. This can be used both alone, as a UBM, or to initialize the
 # i-vector extractor in a DNN-based system.
-sid/init_full_ubm_from_dnn.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" \
+sid/init_full_ubm_from_dnn.sh --cmd "$train_cmd --mem 6G" \
   data/train_32k \
   data/train_dnn_32k $nnet exp/full_ubm
 
 # Train an i-vector extractor based on just the supervised-GMM.
 sid/train_ivector_extractor.sh \
-  --cmd "$train_cmd -l mem_free=70G,ram_free=70G" \
+  --cmd "$train_cmd --mem 70G" \
   --ivector-dim 600 \
   --num-iters 5 exp/full_ubm/final.ubm data/train \
   exp/extractor_sup_gmm
 
 # Train an i-vector extractor based on the DNN-UBM.
 sid/train_ivector_extractor_dnn.sh \
-  --cmd "$train_cmd -l mem_free=80G,ram_free=80G" \
+  --cmd "$train_cmd --mem 80G" \
   --min-post 0.015 \
   --ivector-dim 600 \
   --num-iters 5 exp/full_ubm/final.ubm $nnet \
@@ -128,23 +128,23 @@ sid/train_ivector_extractor_dnn.sh \
 
 # Extract i-vectors from the extractor with the sup-GMM UBM.
 sid/extract_ivectors.sh \
-  --cmd "$train_cmd -l mem_free=8G,ram_free=8G" --nj 40 \
+  --cmd "$train_cmd --mem 8G" --nj 40 \
   exp/extractor_sup_gmm data/sre10_train \
   exp/ivectors_sre10_train_sup_gmm
 
 sid/extract_ivectors.sh \
-  --cmd "$train_cmd -l mem_free=8G,ram_free=8G" --nj 40 \
+  --cmd "$train_cmd --mem 8G" --nj 40 \
   exp/extractor_sup_gmm data/sre10_test \
   exp/ivectors_sre10_test_sup_gmm
 
 sid/extract_ivectors.sh \
-  --cmd "$train_cmd -l mem_free=8G,ram_free=8G" --nj 40 \
+  --cmd "$train_cmd --mem 8G" --nj 40 \
   exp/extractor_sup_gmm data/sre \
   exp/ivectors_sre_sup_gmm
 
 # Extract i-vectors using the extractor with the DNN-UBM.
 sid/extract_ivectors_dnn.sh \
-  --cmd "$train_cmd -l mem_free=10G,ram_free=10G" --nj 40 \
+  --cmd "$train_cmd --mem 10G" --nj 40 \
   exp/extractor_dnn \
   $nnet \
   data/sre10_test \
@@ -152,7 +152,7 @@ sid/extract_ivectors_dnn.sh \
   exp/ivectors10_test_dnn
 
 sid/extract_ivectors_dnn.sh
-  --cmd "$train_cmd -l mem_free=10G,ram_free=10G" --nj 40 \
+  --cmd "$train_cmd --mem 10G" --nj 40 \
   exp/extractor_dnn \
   $nnet \
   data/sre10_train \
@@ -160,7 +160,7 @@ sid/extract_ivectors_dnn.sh
   exp/ivectors10_train_dnn
 
 sid/extract_ivectors_dnn.sh
-  --cmd "$train_cmd -l mem_free=10G,ram_free=10G" --nj 40 \
+  --cmd "$train_cmd --mem 10G" --nj 40 \
   exp/extractor_dnn \
   $nnet \
   data/sre \

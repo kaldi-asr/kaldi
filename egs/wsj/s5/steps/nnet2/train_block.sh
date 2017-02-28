@@ -16,7 +16,7 @@ num_iters_final=20 # Maximum number of final iterations to give to the
 initial_learning_rate=0.04
 final_learning_rate=0.004
 bias_stddev=0.0
-shrink_interval=5 # shrink every $shrink_interval iters except while we are 
+shrink_interval=5 # shrink every $shrink_interval iters except while we are
                   # still adding layers, when we do it every iter.
 shrink=true
 num_frames_shrink=2000 # note: must be <= --num-frames-diagnostic option to get_egs.sh, if
@@ -53,7 +53,7 @@ block_shift=5
 
 stage=-5
 
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time. 
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time.
 splice_width=7 # meaning +- 7 frames on each side for second LDA
 randprune=4.0 # speeds up LDA.
 alpha=4.0
@@ -106,7 +106,7 @@ if [ $# != 4 ]; then
   echo "                                                   # this, you may want to decrease the batch size."
   echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads... "
-  echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
+  echo "  --io-opts <opts|\"--max-jobs-run 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
@@ -123,7 +123,7 @@ if [ $# != 4 ]; then
   echo "                                                   # very end."
   echo "  --stage <stage|-9>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
-  
+
   exit 1;
 fi
 
@@ -153,7 +153,7 @@ cp $alidir/tree $dir
 utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
 cp $lang/phones.txt $dir || exit 1;
 
-# Get list of validation utterances. 
+# Get list of validation utterances.
 awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
     > $dir/valid_uttlist || exit 1;
 awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
@@ -200,7 +200,7 @@ if [ $stage -le -2 ]; then
   first_hidden_layer_stddev=`perl -e "print 1.0/sqrt($hidden_block_dim);"`
   stddev=`perl -e "print 1.0/sqrt($hidden_layer_dim);"`
 
-  
+
   cat >$dir/nnet.config <<EOF
 SpliceComponent input-dim=$feat_dim left-context=$splice_width right-context=$splice_width
 FixedAffineComponent matrix=$dir/lda.mat
@@ -272,10 +272,10 @@ while [ $x -lt $num_iters ]; do
       $cmd $dir/log/progress.$x.log \
         nnet-show-progress --use-gpu=no $dir/$[$x-1].mdl $dir/$x.mdl ark:$egs_dir/train_diagnostic.egs &
     fi
-    
+
     echo "Training neural net (pass $x)"
     mdl=$dir/$x.mdl
-    
+
     $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
       nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x \
       ark:$egs_dir/egs.JOB.$[$x%$iters_per_epoch].ark ark:- \| \
@@ -293,16 +293,16 @@ while [ $x -lt $num_iters ]; do
     softmax_learning_rate=`perl -e "print $learning_rate * $softmax_learning_rate_factor;"`;
     nnet-am-info $dir/$[$x+1].1.mdl > $dir/foo  2>/dev/null || exit 1
     nu=`cat $dir/foo | grep num-updatable-components | awk '{print $2}'`
-    na=`cat $dir/foo | grep -v Fixed | grep AffineComponent | wc -l` 
+    na=`cat $dir/foo | grep -v Fixed | grep AffineComponent | wc -l`
     # na is number of last updatable AffineComponent layer [one-based, counting only
     # updatable components.]
     lr_string="$learning_rate"
-    for n in `seq 2 $nu`; do 
+    for n in `seq 2 $nu`; do
       if [ $n -eq $na ] || [ $n -eq $[$na-1] ]; then lr=$softmax_learning_rate;
       else lr=$learning_rate; fi
       lr_string="$lr_string:$lr"
     done
-    
+
     $cmd $dir/log/average.$x.log \
       nnet-am-average $nnets_list - \| \
       nnet-am-copy --learning-rates=$lr_string - $dir/$[$x+1].mdl || exit 1;
@@ -317,7 +317,7 @@ while [ $x -lt $num_iters ]; do
     else
       # On other iters, do nnet-am-fix which is much faster and has roughly
       # the same effect.
-      nnet-am-fix $dir/$[$x+1].mdl $dir/$[$x+1].mdl 2>$dir/log/fix.$x.log 
+      nnet-am-fix $dir/$[$x+1].mdl $dir/$[$x+1].mdl 2>$dir/log/fix.$x.log
     fi
 
     if [ "$mix_up" -gt 0 ] && [ $x -eq $mix_up_iter ]; then
@@ -380,7 +380,7 @@ if $cleanup; then
   fi
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do
-    if [ $[$x%10] -ne 0 ] && [ $x -lt $[$num_iters-$num_iters_final+1] ]; then 
+    if [ $[$x%10] -ne 0 ] && [ $x -lt $[$num_iters-$num_iters_final+1] ]; then
        # delete all but every 10th model; don't delete the ones which combine to form the final model.
       rm $dir/$x.mdl
     fi

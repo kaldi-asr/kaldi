@@ -1,17 +1,30 @@
 #!/bin/bash
 
 # this script is used for comparing decoding results between systems.
-# e.g. local/nnet3/compare_wer_general.sh exp/nnet3_cleaned/tdnn_{c,d}_sp
+# e.g. local/nnet3/compare_wer.sh exp/nnet3_cleaned/tdnn_{c,d}_sp
 # For use with discriminatively trained systems you specify the epochs after a colon:
 # for instance,
 # local/nnet3/compare_wer.sh exp/nnet3_cleaned/tdnn_c_sp exp/nnet3_cleaned/tdnn_c_sp_smbr:{1,2,3}
 
+
+if [ $# == 0 ]; then
+  echo "Usage: $0: [--looped] [--online] <dir1> [<dir2> ... ]"
+  echo "e.g.: $0 exp/nnet3_cleaned/tdnn_{b,c}_sp"
+  echo "or (with epoch numbers for discriminative training):"
+  echo "$0 exp/nnet3_cleaned/tdnn_b_sp_disc:{1,2,3}"
+  exit 1
+fi
 
 echo "# $0 $*"
 
 include_looped=false
 if [ "$1" == "--looped" ]; then
   include_looped=true
+  shift
+fi
+include_online=false
+if [ "$1" == "--online" ]; then
+  include_online=true
   shift
 fi
 
@@ -67,6 +80,16 @@ for n in 0 1 2 3; do
        set_names $x  # sets $dirname and $epoch_infix
        decode_names=(dev${epoch_infix} dev${epoch_infix}_rescore test${epoch_infix} test${epoch_infix}_rescore)
        wer=$(grep Sum $dirname/decode_looped_${decode_names[$n]}/score*/*ys | utils/best_wer.sh | awk '{print $2}')
+       printf "% 10s" $wer
+     done
+     echo
+   fi
+   if $include_online; then
+     echo -n "#         [online:]    "
+     for x in $*; do
+       set_names $x  # sets $dirname and $epoch_infix
+       decode_names=(dev${epoch_infix} dev${epoch_infix}_rescore test${epoch_infix} test${epoch_infix}_rescore)
+       wer=$(grep Sum ${dirname}_online/decode_${decode_names[$n]}/score*/*ys | utils/best_wer.sh | awk '{print $2}')
        printf "% 10s" $wer
      done
      echo
