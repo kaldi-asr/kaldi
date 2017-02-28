@@ -178,8 +178,9 @@ def  process_multilingual_egs(args):
     num_archives = max(1, min(args.max_archives, tot_num_egs / args.samples_per_iter))
 
     num_arch_file = open("{0}/info/{1}num_archives".format(
-        args.egs_dir,
-        args.prefix), "w")
+                            args.egs_dir,
+                            args.prefix),
+                         "w")
     print("{0}".format(num_archives), file=num_arch_file)
     num_arch_file.close()
     this_num_egs_per_archive = tot_num_egs / (num_archives * args.num_jobs)

@@ -21,7 +21,7 @@ multilingual_dir=exp/nnet3/multi_bnf
 global_extractor=exp/multi/nnet3/extractor
 lang_list=(404-georgian 403-dholuo 402-javanese 401-mongolian 307-amharic)
 use_flp=true
-bnf_dim=128
+bnf_dim=42
 . ./utils/parse_options.sh
 
 
