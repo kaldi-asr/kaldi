@@ -12,7 +12,9 @@
 #
 # Begin configuration section.
 cmd=run.pl
-minibatch_size=512      # multiple of actual minibatch size used during training.
+minibatch_size=512      # it is the number of consecutive egs that we take from 
+                        # each source, and it only affects the locality of disk 
+                        # access. This does not have to be the actual minibatch size;
 num_jobs=10             # helps for better randomness across languages
                         # per archive.
 samples_per_iter=400000 # this is the target number of egs in each archive of egs

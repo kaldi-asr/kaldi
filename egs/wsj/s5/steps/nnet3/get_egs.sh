@@ -311,26 +311,22 @@ if [ $stage -le 3 ]; then
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."
   if $generate_egs_scp; then
-    valid_combine_output="ark,scp:$dir/valid_combine.egs,$dir/valid_combine.scp"
     valid_diagnostic_output="ark,scp:$dir/valid_diagnostic.egs,$dir/valid_diagnostic.scp"
-    train_combine_output="ark,scp:$dir/train_combine.egs,$dir/train_combine.scp"
     train_diagnostic_output="ark,scp:$dir/train_diagnostic.egs,$dir/train_diagnostic.scp"
   else
-    valid_combine_output="ark:$dir/valid_combine.egs"
     valid_diagnostic_output="ark:$dir/valid_diagnostic.egs"
-    train_combine_output="ark:$dir/train_combine.egs"
     train_diagnostic_output="ark:$dir/train_diagnostic.egs"
   fi
   $cmd $dir/log/create_valid_subset_combine.log \
     nnet3-subset-egs --n=$[$num_valid_frames_combine/$frames_per_eg_principal] ark:$dir/valid_all.egs \
-    $valid_combine_output || touch $dir/.error &
+      ark:$dir/valid_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_valid_subset_diagnostic.log \
     nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg_principal] ark:$dir/valid_all.egs \
     $valid_diagnostic_output || touch $dir/.error &
 
   $cmd $dir/log/create_train_subset_combine.log \
     nnet3-subset-egs --n=$[$num_train_frames_combine/$frames_per_eg_principal] ark:$dir/train_subset_all.egs \
-    $train_combine_output || touch $dir/.error &
+      ark:$dir/train_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_train_subset_diagnostic.log \
     nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg_principal] ark:$dir/train_subset_all.egs \
     $train_diagnostic_output || touch $dir/.error &
@@ -338,8 +334,11 @@ if [ $stage -le 3 ]; then
   sleep 5  # wait for file system to sync.
   cat $dir/valid_combine.egs $dir/train_combine.egs > $dir/combine.egs
   if $generate_egs_scp; then
-    cat $dir/valid_combine.scp $dir/train_combine.scp > $dir/combine.scp
-    rm $dir/{train,valid}_combine.scp
+    cat $dir/valid_combine.egs $dir/train_combine.egs > $dir/combine.tmp.egs
+    nnet3-copy-egs ark:$dir/combine.tmp.egs ark,scp:$dir/combine.egs,$dir/combine.scp
+    rm $dir/{train,valid}_combine.scp combine.tmp.egs
+  else
+    cat $dir/valid_combine.egs $dir/train_combine.egs > $dir/combine.egs
   fi
   for f in $dir/{combine,train_diagnostic,valid_diagnostic}.egs; do
     [ ! -s $f ] && echo "No examples in file $f" && exit 1;

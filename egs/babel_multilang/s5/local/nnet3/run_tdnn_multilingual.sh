@@ -183,7 +183,7 @@ EOF
     num_targets=`tree-info ${multi_ali_dirs[$lang_index]}/tree 2>/dev/null | grep num-pdfs | awk '{print $2}'` || exit 1;
 
     echo " relu-renorm-layer name=prefinal-affine-lang-${lang_index} input=tdnn_bn dim=1024"
-    echo " output-layer name=output-${lang_index} dim=$num_targets"
+    echo " output-layer name=output-${lang_index} dim=$num_targets max-change=1.5"
   done >> $dir/configs/network.xconfig
 
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig \
@@ -192,7 +192,7 @@ EOF
 
   cat <<EOF >> $dir/configs/vars
 add_lda=false
-include_log_softmax=true
+include_log_softmax=false
 EOF
 
   # removing the extra output node "output-tmp" added for back-compatiblity with
@@ -233,7 +233,6 @@ if [ $stage -le 11 ] && [ ! -z $megs_dir ]; then
     $num_langs ${common_egs_dir[@]} || exit 1;
 fi
 
-
 if [ $stage -le 12 ]; then
   steps/nnet3/train_raw_dnn.py --stage=$train_stage \
     --cmd="$decode_cmd" \
@@ -253,15 +252,14 @@ if [ $stage -le 12 ]; then
     --use-dense-targets false \
     --targets-scp ${multi_ali_dirs[0]} \
     --cleanup.remove-egs $remove_egs \
-    --cleanup.preserve-model-interval 20 \
+    --cleanup.preserve-model-interval 50 \
     --use-gpu true \
-    --reporting.email="$reporting_email" \
     --dir=$dir  || exit 1;
 fi
 
 if [ $stage -le 13 ]; then
   for lang_index in `seq 0 $[$num_langs-1]`;do
-    lang_dir=$dir/${lang_list[$lang_id]}
+    lang_dir=$dir/${lang_list[$lang_index]}
     mkdir -p  $lang_dir
     echo "$0: rename output name for each lang to 'output' and "
     echo "add transition model."
@@ -285,7 +283,7 @@ if [ $stage -le 14 ]; then
     if [ ! -f $dir/${decode_lang_list[$lang_index]}/decode_dev10h.pem/.done ]; then
       echo "Decoding lang ${decode_lang_list[$lang_index]} using multilingual hybrid model $dir"
       run-4-anydecode-langs.sh --use-ivector $use_ivector \
-        --nnet3-dir $dir --iter final.adj --use-flp $use_flp \
+        --nnet3-dir $dir --iter final_adj --use-flp $use_flp \
         ${decode_lang_list[$lang_index]} || exit 1;
       touch $dir/${decode_lang_list[$lang_index]}/decode_dev10h.pem/.done
     fi

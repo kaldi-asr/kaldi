@@ -10,6 +10,7 @@ nj=4
 cmd=queue.pl
 use_gpu=false
 ivector_dir=
+compress=true
 # End configuration options.
 
 echo "$0 $@"  # Print the command line for logging
@@ -48,7 +49,7 @@ fi
 cmvn_opts=`cat $nnetdir/cmvn_opts`;
 bnf_nnet=$nnetdir/final.raw
 if [ ! -f $bnf_nnet ] ; then
-  echo "No such file $bnf_nnet";
+  echo "$0: No such file $bnf_nnet";
   exit 1;
 fi
 
@@ -86,8 +87,8 @@ ivector_feats="scp:utils/filter_scp.pl $sdata/JOB/utt2spk $ivector_dir/ivector_o
 
 if [ $stage -le 1 ]; then
   echo "$0: Generating bottleneck features using $bnf_nnet model as output of "
-  echo "component-node with name $bnf_name."
-  echo output-node name=output input=$bnf_name > output.config
+  echo "    component-node with name $bnf_name."
+  echo "output-node name=output input=$bnf_name" > output.config
   modified_bnf_nnet="nnet3-copy --edits='remove-output-nodes name=output' $bnf_nnet - | nnet3-copy --nnet-config=output.config - - |"
   ivector_opts=
   if $use_ivector; then
@@ -96,14 +97,14 @@ if [ $stage -le 1 ]; then
   fi
   $cmd $compute_queue_opt JOB=1:$nj $logdir/make_bnf_$name.JOB.log \
     nnet3-compute $compute_gpu_opt $ivector_opts "$modified_bnf_nnet" "$feats" ark:- \| \
-    copy-feats ark:- ark,scp:$bnfdir/raw_bnfeat_$name.JOB.ark,$bnfdir/raw_bnfeat_$name.JOB.scp || exit 1;
+    copy-feats --compress=$compress ark:- ark,scp:$bnfdir/raw_bnfeat_$name.JOB.ark,$bnfdir/raw_bnfeat_$name.JOB.scp || exit 1;
 fi
 
 
 N0=$(cat $data/feats.scp | wc -l)
 N1=$(cat $bnfdir/raw_bnfeat_$name.*.scp | wc -l)
 if [[ "$N0" != "$N1" ]]; then
-  echo "Error happens when generating BNF for $name (Original:$N0  BNF:$N1)"
+  echo "$0: Error happens when generating BNF for $name (Original:$N0  BNF:$N1)"
   exit 1;
 fi
 

@@ -90,9 +90,7 @@ def train_new_models(dir, iter, srand, num_jobs,
             archive_index=archive_index,
             use_multitask_egs=use_multitask_egs)
 
-        scp_or_ark = "ark"
-        if use_multitask_egs:
-            scp_or_ark = "scp"
+        scp_or_ark = "scp" if use_multitask_egs else "ark"
 
         egs_rspecifier = (
             """ark,bg:nnet3-copy-egs {frame_opts} {context_opts} {multitask_egs_opts} \
@@ -413,13 +411,10 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
 
     context_opts = "--left-context={lc} --right-context={rc}".format(
         lc=left_context, rc=right_context)
-    scp_or_ark = "ark"
-    egs_suffix = ".egs"
-    if use_multitask_egs:
-        scp_or_ark = "scp"
-        egs_suffix = ".scp"
+    scp_or_ark = "scp" if use_multitask_egs else "ark"
+    egs_suffix = ".scp" if use_multitask_egs else ".egs"
 
-    valid_diagnostic_egs = ("{1}:{0}/valid_diagnostic{2}".format(
+    egs_rspecifier = ("{1}:{0}/valid_diagnostic{2}".format(
         egs_dir, scp_or_ark, egs_suffix))
 
     multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
@@ -435,18 +430,14 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                     ark:- |" """.format(command=run_opts.command,
                                         dir=dir,
                                         iter=iter,
-                                        egs_rspecifier=valid_diagnostic_egs,
+                                        egs_rspecifier=egs_rspecifier,
                                         context_opts=context_opts,
                                         model=model,
                                         egs_dir=egs_dir,
                                         multitask_egs_opts=multitask_egs_opts),
         wait=wait, background_process_handler=background_process_handler)
-    scp_or_ark = "ark"
-    egs_suffix = ".egs"
-    if use_multitask_egs:
-        scp_or_ark = "scp"
-        egs_suffix = ".scp"
-    train_diagnostic_egs = ("{1}:{0}/train_diagnostic{2}".format(
+
+    egs_rspecifier = ("{1}:{0}/train_diagnostic{2}".format(
         egs_dir, scp_or_ark, egs_suffix))
 
     multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
@@ -462,7 +453,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                     ark:- |" """.format(command=run_opts.command,
                                         dir=dir,
                                         iter=iter,
-                                        egs_rspecifier=train_diagnostic_egs,
+                                        egs_rspecifier=egs_rspecifier,
                                         context_opts=context_opts,
                                         model=model,
                                         egs_dir=egs_dir,
@@ -484,12 +475,11 @@ def compute_progress(dir, iter, egs_dir, left_context, right_context,
 
     context_opts = "--left-context={lc} --right-context={rc}".format(
         lc=left_context, rc=right_context)
-    scp_or_ark = "ark"
-    egs_suffix = ".egs"
-    if use_multitask_egs:
-        scp_or_ark = "scp"
-        egs_suffix = ".scp"
-    train_diagnostic_egs = "{1}:{0}/train_diagnostic{2}".format(
+
+    scp_or_ark = "scp" if use_multitask_egs else "ark"
+    egs_suffix = ".scp" if use_multitask_egs else ".egs"
+
+    egs_rspecifier = "{1}:{0}/train_diagnostic{2}".format(
         egs_dir, scp_or_ark, egs_suffix)
 
     multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
@@ -506,7 +496,7 @@ def compute_progress(dir, iter, egs_dir, left_context, right_context,
                         ark:- |" """.format(command=run_opts.command,
                                             dir=dir,
                                             iter=iter,
-                                            egs_rspecifier=train_diagnostic_egs,
+                                            egs_rspecifier=egs_rspecifier,
                                             model=model,
                                             context_opts=context_opts,
                                             prev_model=prev_model,
@@ -556,14 +546,11 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
     context_opts = "--left-context={lc} --right-context={rc}".format(
         lc=left_context, rc=right_context)
 
-    scp_or_ark = "ark"
-    egs_suffix = ".egs"
-    if use_multitask_egs:
-        scp_or_ark = "scp"
-        egs_suffix = ".scp"
+    scp_or_ark = "scp" if use_multitask_egs else "ark"
+    egs_suffix = ".scp" if use_multitask_egs else ".egs"
 
-    combine_egs = "{1}:{0}/combine{2}".format(egs_dir,
-                                                  scp_or_ark, egs_suffix)
+    egs_rspecifier = "{1}:{0}/combine{2}".format(egs_dir,
+                                                 scp_or_ark, egs_suffix)
 
     multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
                              egs_dir,
@@ -583,7 +570,7 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
         """.format(command=run_opts.command,
                    combine_queue_opt=run_opts.combine_queue_opt,
                    dir=dir, raw_models=" ".join(raw_model_strings),
-                   egs_rspecifier=combine_egs,
+                   egs_rspecifier=egs_rspecifier,
                    hard_enforce=(sum_to_one_penalty <= 0),
                    penalty=sum_to_one_penalty,
                    context_opts=context_opts,

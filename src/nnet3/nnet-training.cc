@@ -78,7 +78,6 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
                                  NnetComputer *computer) {
   std::vector<NnetIo>::const_iterator iter = eg.io.begin(),
       end = eg.io.end();
-  num_minibatches_processed_++;
   for (; iter != end; ++iter) {
     const NnetIo &io = *iter;
     int32 node_index = nnet_->GetNodeIndex(io.name);
@@ -95,6 +94,7 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
                                       tot_weight, tot_objf);
     }
   }
+  num_minibatches_processed_++;
 }
 
 void NnetTrainer::UpdateParamsWithMaxChange() {

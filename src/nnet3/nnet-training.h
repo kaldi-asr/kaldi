@@ -93,11 +93,9 @@ struct NnetTrainerOptions {
 // Also see struct AccuracyInfo, in nnet-diagnostics.h.
 struct ObjectiveFunctionInfo {
   int32 current_phase;
-  int32 minibatches_this_phase; // number of minibatches processed in this phase
-                                // to compute this objective function.
-                                // This is used to print stats using
-                                // PrintStatsForThisPhase for this output.
-
+  int32 minibatches_this_phase; // The number of minibatches' worth of stats that
+                                // we accumulated in the phase numbered
+                                // 'current_phase'.
   double tot_weight;
   double tot_objf;
   double tot_aux_objf;  // An 'auxiliary' objective function that is optional-

@@ -95,15 +95,14 @@ class NnetComputeProb {
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
 
-
   // returns the objective-function info for this output name (e.g. "output"),
   // or NULL if there is no such info.
   const SimpleObjectiveInfo *GetObjective(const std::string &output_name) const;
 
-  // returns sum of objf and weights over all the SimpleObjectiveInfo objects,
-  // of what they computed.
+  // It returns the objf sum, and it outputs the corresponding total weight
+  // to '*tot_weight'.
   // NnetCombiner::ComputeObjfAndDerivFromNnet() would use this function instead.
-  double GetTotalObjective(double *tot_weights) const;
+  double GetTotalObjective(double *tot_weight) const;
 
   // if config.compute_deriv == true, returns a reference to the
   // computed derivative.  Otherwise crashes.

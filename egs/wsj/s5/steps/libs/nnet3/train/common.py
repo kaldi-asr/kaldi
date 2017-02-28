@@ -54,7 +54,7 @@ def get_outputs_list(model_file, get_raw_nnet_from_am=True):
           "nnet3-info --print-args=false {0} | "
           "grep -e 'output-node' | cut -f2 -d' ' | cut -f2 -d'=' ".format(model_file))
 
-    return outputs_list
+    return outputs_list.split()
 
 
 def get_multitask_egs_opts(egs_dir, egs_prefix="",

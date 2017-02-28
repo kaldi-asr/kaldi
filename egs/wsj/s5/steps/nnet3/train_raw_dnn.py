@@ -408,13 +408,17 @@ def train(args, run_opts, background_process_handler):
             get_raw_nnet_from_am=False)
 
     # do some reporting
-    [report, times, data] = nnet3_log_parse.generate_acc_logprob_report(args.dir)
-    if args.email is not None:
-        common_lib.send_mail(report, "Update : Expt {0} : "
-                                     "complete".format(args.dir), args.email)
+    outputs_list = common_train_lib.get_outputs_list("{0}/final.raw".format(
+        args.dir), get_raw_nnet_from_am=False)
+    if 'output' in outputs_list:
+        [report, times, data] = nnet3_log_parse.generate_acc_logprob_report(args.dir)
+        if args.email is not None:
+            common_lib.send_mail(report, "Update : Expt {0} : "
+                                         "complete".format(args.dir), args.email)
 
-    with open("{dir}/accuracy.report".format(dir=args.dir), "w") as f:
-        f.write(report)
+        with open("{dir}/accuracy.{output_name}.report".format(dir=args.dir),
+                  "w") as f:
+            f.write(report)
 
     common_lib.run_job("steps/info/nnet3_dir_info.pl "
                        "{0}".format(args.dir))

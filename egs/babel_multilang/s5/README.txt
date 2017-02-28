@@ -44,18 +44,18 @@ a) You can run the following script to train multilingual TDNN model using
     local/nnet3/run_tdnn_multilingual.sh
 
     This script does the following steps.
-    aa) Generates 3 speed-perturbed version of training data and
+    i) Generates 3 speed-perturbed version of training data and
         its high resolution 40-dim MFCC (+pitch) features and tri5_ali{_sp}
 
-    i) Creates pooled training data using all training languages and generates
+    ii) Creates pooled training data using all training languages and generates
         global i-vector extractor over pooled data.
 
-    ii) Generates separate egs-dir in exp/lang-name/nnet3/egs for all languages
+    iii) Generates separate egs-dir in exp/lang-name/nnet3/egs for all languages
         in lagn_list
 
-    iii) Creates multilingual-egs-dir and train the multilingual model.
+    iv) Creates multilingual-egs-dir and train the multilingual model.
 
-    iv) Generates decoding results for languages in decode_lang_list.
+     v) Generates decoding results for languages in decode_lang_list.
 
 b) You can run the following script to train multilingual model with
     bottleneck layer with dim 'bnf_dim' and generate bottleneck features for

@@ -41,11 +41,11 @@
     num-examples should be multiple of actual minibatch-size.
 
     egs.1.scp is generated using ranges.1.scp as following:
-    "num_examples" consecutive examples starting from line "local-scp-line" from
+    "minibatch-size" consecutive examples starting from line "local-scp-line" from
     egs.scp file for language "source-lang" is copied to egs.1.scp.
 
     To avoid loading whole scp files from all langs in memory,
-    egs.scp for is processed line by line using readline() for input langs
+    egs.scp is processed line by line using readline() for input langs
     and to have more randomization across different archives,
     num_jobs * num_archives temporary scp.job.archive_index files created in
     egs/temp dir and all num_jobs scp.*.archive_index combined
@@ -68,7 +68,8 @@ formatter = logging.Formatter("%(asctime)s [%(pathname)s:%(lineno)s - "
                               "%(funcName)s - %(levelname)s ] %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
-logger.info('Starts generating multilinual examples (allocate_multilingual_examples.py)')
+logger.info('Start generating multilingual examples (allocate_multilingual_examples.py)')
+
 
 def get_args():
 
@@ -92,30 +93,25 @@ def get_args():
                         help="max number of archives used to generate egs.*.scp")
     parser.add_argument("--seed", type=int, default=1,
                         help="Seed for random number generator")
-
     parser.add_argument("--minibatch-size", type=int, default=512,
-                        help="The minibatch size used to generate scp files per job.")
-
+                        help="It is the number of consecutive egs that is taken "
+                        "from each source, and it only affects locality of disk access."
+                        " This does not have to be actual minibatch size.")
     parser.add_argument("--prefix", type=str, default="egs.",
                         help="Adds a prefix to the range files. This is used to "
                         "distinguish between the train and diagnostic files."
                         "e.g. 'combine.' for combine.1.scp.")
-
     parser.add_argument("--lang2weight", type=str,
-                        help="lang2weight file contains the weight per language to "
-                           "scale output posterior for that language.(format is: "
-                           "<lang-id> <weight>)")
+                        help="comma-separated list of weights, one per language.")
 # now the positional arguments
     parser.add_argument("egs_scp_lists", nargs='+',
                         help="list of egs.scp files per input language."
                            "e.g. exp/lang1/egs/egs.scp exp/lang2/egs/egs.scp")
-
     parser.add_argument("egs_dir",
                         help="Name of egs directory e.g. exp/multilingual_a/egs")
 
 
     print(sys.argv, file=sys.stderr)
-
     args = parser.parse_args()
 
     return args
@@ -134,34 +130,15 @@ def select_random_lang(lang_len, tot_egs, random_selection):
     count = 0
     for l in range(len(lang_len)):
         if random_selection:
-            if rand_int > count and rand_int <= (count + lang_len[l]):
-                rand_lang = l
-                break
+            if  rand_int <= (count + lang_len[l]):
+                return l
             else:
                 count += lang_len[l]
         else:
             if (lang_len[l] > 0):
-                rand_lang = l
-                break
-    assert(rand_lang >= 0 and rand_lang < len(lang_len))
-    return rand_lang
+                return l
+    return -1
 
-def read_lang2weight(lang2w_file):
-    """ Read lang2weight file where each line is a 2-tuple of
-        (lang-num lang-weight) and return array of lang-weight
-        as lang2w where lang2w[i] is the weight for language i.
-    """
-    f = open(lang2w_file, "r")
-    if f is None:
-        raise Exception("Error opening file {0}".format(lang2w_file))
-    lang2w = []
-    for line in f:
-        a = line.split()
-        if len(a) != 2:
-            raise Exception("bad line {0} in file.".format(line))
-        lang2w.append(a[1])
-    f.close()
-    return lang2w
 
 def  process_multilingual_egs(args):
     args = get_args()
@@ -184,7 +161,7 @@ def  process_multilingual_egs(args):
     if args.lang2weight is None:
         lang2weight = [ 1.0 ] * num_langs
     else:
-        lang2weight = read_lang2weight(args.lang2weight)
+        lang2weight = args.lang2weight.split()
         assert(len(lang2weight) == num_langs)
 
     if not os.path.exists("{0}/temp".format(args.egs_dir)):
@@ -219,14 +196,16 @@ def  process_multilingual_egs(args):
 
             num_egs = 0
             while num_egs <= this_num_egs_per_archive:
-                num_left_egs = sum(lang_len[i] for i in range(len(lang_len)))
+                num_left_egs = sum(num_left_egs_per_lang for
+                                   num_left_egs_per_lang in lang_len)
                 if num_left_egs > 0:
                     lang_id = select_random_lang(lang_len, num_left_egs, rand_select)
                     start_egs = lang2len[lang_id] - lang_len[lang_id]
                     this_egs.append((lang_id, start_egs, args.minibatch_size))
                     for scpline in range(args.minibatch_size):
-                        print("{0} {1}".format(scp_files[lang_id].readline().
-                            splitlines()[0], lang_id), file=archfile)
+                        scp_key = scp_files[lang_id].readline().splitlines()[0]
+                        print("{0} {1}".format(scp_key, lang_id),
+                              file=archfile)
 
                     lang_len[lang_id] = lang_len[lang_id] - args.minibatch_size
                     num_egs = num_egs + args.minibatch_size
@@ -242,20 +221,24 @@ def  process_multilingual_egs(args):
             all_egs.append(this_egs)
             archfile.close()
 
-    logger.info("combine examples across all jobs correspond for each archive.")
+    logger.info("combining examples across all jobs correspond for each archive.")
     for archive in range(num_archives):
         logger.info("Combine {1}job.{0}.scp across all jobs into "
                     "{1}{0}.scp.".format(archive, args.prefix))
         this_ranges = []
         f = open("{0}/temp/{1}ranges.{2}".format(
-                 args.egs_dir, args.prefix, archive + 1), 'w')
+                    args.egs_dir, args.prefix, archive + 1),
+                 'w')
         o = open("{0}/{1}output.{2}.ark".format(
-                args.egs_dir, args.prefix, archive + 1), 'w')
+                    args.egs_dir, args.prefix, archive + 1),
+                 'w')
         w = open("{0}/{1}weight.{2}.ark".format(
-                args.egs_dir, args.prefix, archive + 1), 'w')
+                    args.egs_dir, args.prefix, archive + 1),
+                 'w')
         scp_per_archive_file = open("{0}/{1}{2}.scp"
                                     "".format(args.egs_dir,
-                                              args.prefix, archive + 1), 'w')
+                                              args.prefix, archive + 1),
+                                    'w')
 
         # check files before writing.
         if f is None:
@@ -270,16 +253,17 @@ def  process_multilingual_egs(args):
         for job in range(args.num_jobs):
             scp = ("{0}/temp/{1}scp.{2}.{3}".format(args.egs_dir, args.prefix,
                                                     job + 1, archive + 1))
-            with open(scp,"r") as scpfile:
+            with open(scp, "r") as scpfile:
                 for line in scpfile:
                     scp_line = line.splitlines()[0].split()
                     print("{0} {1}".format(scp_line[0], scp_line[1]),
-                                           file=scp_per_archive_file)
+                          file=scp_per_archive_file)
                     print("{0} output-{1}".format(scp_line[0], scp_line[2]),
-                                                  file=o)
+                          file=o)
                     print("{0} {1}".format(
-                        scp_line[0],
-                        lang2weight[int(scp_line[2])]), file=w)
+                            scp_line[0],
+                            lang2weight[int(scp_line[2])]),
+                          file=w)
             os.remove(scp)
 
         for (lang_id, start_eg_line, num_egs) in all_egs[num_archives * job + archive]:
@@ -296,6 +280,8 @@ def  process_multilingual_egs(args):
     logger.info("allocate_multilingual_examples.py finished generating "
                 "{0}*.scp, {0}ranges.*, {0}output.*.ark "
                 "and {0}weights.*.ark files".format(args.prefix))
+
+
 def main():
     try:
         args = get_args()
