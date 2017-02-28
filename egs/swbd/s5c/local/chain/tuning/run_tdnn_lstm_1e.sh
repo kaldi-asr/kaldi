@@ -21,7 +21,12 @@
 # Final train prob (xent)        -0.836    -0.931
 # Final valid prob (xent)       -0.9631   -1.0279
 
-
+# Online decoding
+# System                tdnn_lstm_1e_sp_online tdnn_lstm_1e_sp
+# WER on train_dev(tg)      12.93     12.74
+# WER on train_dev(fg)      12.05     11.87
+# WER on eval2000(tg)        15.5      15.4
+# WER on eval2000(fg)        14.0      13.8
 
 set -e
 
@@ -283,7 +288,7 @@ if [ $stage -le 16 ]; then
   done
   wait
   if [ -f $dir/.error ]; then
-    echo "$0: something went wrong in decoding"
+    echo "$0: something went wrong in looped decoding"
     exit 1
   fi
 fi
@@ -314,7 +319,7 @@ if $test_online_decoding && [ $stage -le 17 ]; then
   done
   wait
   if [ -f $dir/.error ]; then
-    echo "$0: something went wrong in decoding"
+    echo "$0: something went wrong in online decoding"
     exit 1
   fi
 fi
