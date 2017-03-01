@@ -23,6 +23,7 @@ speech_prior=0.3
 min_silence_duration=30
 min_speech_duration=10
 frame_subsampling_factor=3
+ali_dir=/export/a09/vmanoha1/workspace_asr_diarization/egs/ami/s5b/exp/ihm/nnet3_cleaned/tdnn_sp_ali_dev_ihmdata_oraclespk
 
 . utils/parse_options.sh
 
@@ -56,65 +57,110 @@ fi
 if [ $stage -le 2 ]; then
   (
   cd $src_dir
-  utils/data/get_reco2utt.sh $src_dir/data/sdm1/dev
-  )
 
-  phone_map=$dir/phone_map
+  utils/copy_data_dir.sh $src_dir/data/sdm1/dev_ihmdata \
+    $src_dir/data/sdm1/dev_ihmdata_oraclespk
+ 
+  cut -d ' ' -f 1,2 $src_dir/data/ihm/dev/segments | \
+    utils/apply_map.pl -f 1 $src_dir/data/sdm1/dev_ihmdata/ihmutt2utt > \
+    $src_dir/data/sdm1/dev_ihmdata_oraclespk/utt2spk.temp
+    
+  cat $src_dir/data/sdm1/dev_ihmdata_oraclespk/utt2spk.temp | \
+    awk '{print $1" "$2"-"$1}' > \
+    $src_dir/data/sdm1/dev_ihmdata_oraclespk/utt2newutt
+  
+  utils/apply_map.pl -f 1 $src_dir/data/sdm1/dev_ihmdata_oraclespk/utt2newutt \
+    < $src_dir/data/sdm1/dev_ihmdata_oraclespk/utt2spk.temp > \
+    $src_dir/data/sdm1/dev_ihmdata_oraclespk/utt2spk
+  
+  for f in feats.scp segments text; do
+    utils/apply_map.pl -f 1 $src_dir/data/sdm1/dev_ihmdata_oraclespk/utt2newutt \
+      < $src_dir/data/sdm1/dev_ihmdata/$f > \
+      $src_dir/data/sdm1/dev_ihmdata_oraclespk/$f
+  done
+      
+  rm $src_dir/data/sdm1/dev_ihmdata_oraclespk/{spk2utt,cmvn.scp}
+  utils/fix_data_dir.sh \
+    $src_dir/data/sdm1/dev_ihmdata_oraclespk
+    
+  utils/data/get_reco2utt.sh $src_dir/data/sdm1/dev_ihmdata_oraclespk
+  )
+fi
+
+phone_map=$dir/phone_map
+if [ $stage -le 2 ]; then
   steps/segmentation/get_sad_map.py \
     $src_dir/data/lang | utils/sym2int.pl -f 1 $src_dir/data/lang/phones.txt > \
     $phone_map
 fi
 
-if [ $stage -le 3 ]; then
-  # Expecting user to have run local/run_cleanup_segmentation.sh in $src_dir
-  (
-  cd $src_dir
-  steps/align_fmllr.sh --nj 18 --cmd "$train_cmd" \
-    data/sdm1/dev_ihmdata data/lang \
-    exp/ihm/tri3_cleaned \
-    exp/sdm1/tri3_cleaned_dev_ihmdata
-  )
+if [ -z $ali_dir ]; then
+  if [ $stage -le 3 ]; then
+    # Expecting user to have run local/run_cleanup_segmentation.sh in $src_dir
+    (
+    cd $src_dir
+    steps/align_fmllr.sh --nj 18 --cmd "$train_cmd" \
+      data/sdm1/dev_ihmdata_oraclespk data/lang \
+      exp/ihm/tri3_cleaned \
+      exp/sdm1/tri3_cleaned_dev_ihmdata_oraclespk
+    )
+  fi
+  ali_dir=exp/sdm1/tri3_cleaned_ali_dev_ihmdata_oraclespk
 fi
 
 if [ $stage -le 4 ]; then
   steps/segmentation/internal/convert_ali_to_vad.sh --cmd "$train_cmd" \
-    $src_dir/exp/sdm1/tri3_cleaned_dev_ihmdata $phone_map $dir
+    $ali_dir $phone_map $dir
 fi
 
 echo "A 1" > $dir/channel_map
 cat $src_dir/data/sdm1/dev/reco2file_and_channel | \
   utils/apply_map.pl -f 3 $dir/channel_map > $dir/reco2file_and_channel
 
-cat $src_dir/data/sdm1/dev_ihmdata/reco2utt | \
-  awk 'BEGIN{i=1} {print $1" "i; i++;}' > \
-  $src_dir/data/sdm1/dev_ihmdata/reco.txt
+# Map each IHM recording to a unique integer id. 
+# This will be the "speaker label" as each recording is assumed to have a
+# single speaker.
+cat $src_dir/data/sdm1/dev_ihmdata_oraclespk/reco2utt | \
+  awk 'BEGIN{i=1} {print $1" "1":"i" 100000:100000"; i++;}' > \
+  $src_dir/data/sdm1/dev_ihmdata_oraclespk/reco.txt
 
 if [ $stage -le 5 ]; then
   utils/data/get_reco2num_frames.sh --frame-shift 0.01 --frame-overlap 0.015 \
-    --cmd queue.pl --nj 18 \
+    --cmd "$train_cmd" --nj 18 \
     $src_dir/data/sdm1/dev
 
-  # Get a filter that selects only regions within the manual segments.
-  $train_cmd $dir/log/get_manual_segments_regions.log \
-    segmentation-init-from-segments --shift-to-zero=false $src_dir/data/sdm1/dev/segments ark:- \| \
+  # Get a filter that changes the first and the last segment region outside 
+  # the manual segmentation (usually some preparation lines) that are not 
+  # transcribed.
+  $train_cmd $dir/log/interior_regions.log \
+    segmentation-init-from-segments --shift-to-zero=false --frame-overlap=0.0 $src_dir/data/sdm1/dev/segments ark:- \| \
     segmentation-combine-segments-to-recordings ark:- ark,t:$src_dir/data/sdm1/dev/reco2utt ark:- \| \
     segmentation-create-subsegments --filter-label=1 --subsegment-label=1 \
     "ark:segmentation-init-from-lengths --label=0 ark,t:$src_dir/data/sdm1/dev/reco2num_frames ark:- |" ark:- ark,t:- \| \
-    perl -ane '$F[3] = 10000; $F[$#F-1] = 10000; print join(" ", @F) . "\n";' \| \
+    perl -ane '$F[3] = 100000; $F[$#F-1] = 100000; print join(" ", @F) . "\n";' \| \
     segmentation-post-process --merge-labels=0:1 --merge-dst-label=1 ark:- ark:- \| \
-    segmentation-post-process --merge-labels=10000 --merge-dst-label=0 --merge-adjacent-segments \
-    --max-intersegment-length=10000 ark,t:- \
+    segmentation-post-process --merge-labels=100000 --merge-dst-label=0 --merge-adjacent-segments \
+    --max-intersegment-length=1000000 ark,t:- \
+    "ark:| gzip -c > $dir/interior_regions.seg.gz"
+
+  $train_cmd $dir/log/get_manual_segments_regions.log \
+    segmentation-init-from-segments --shift-to-zero=false --frame-overlap=0.0 $src_dir/data/sdm1/dev/segments ark:- \| \
+    segmentation-combine-segments-to-recordings ark:- ark,t:$src_dir/data/sdm1/dev/reco2utt ark:- \| \
+    segmentation-create-subsegments --filter-label=1 --subsegment-label=1 \
+    "ark:segmentation-init-from-lengths --label=100000 ark,t:$src_dir/data/sdm1/dev/reco2num_frames ark:- |" ark:- ark:- \| \
+    segmentation-post-process --merge-labels=100000 --merge-dst-label=0 --merge-adjacent-segments \
+    --max-intersegment-length=1000000 ark,t:- \
     "ark:| gzip -c > $dir/manual_segments_regions.seg.gz" 
 fi
 
 if [ $stage -le 6 ]; then
   # Reference RTTM where SPEECH frames are obtainted by combining IHM VAD alignments
   $train_cmd $dir/log/get_ref_spk_seg.log \
-    segmentation-combine-segments scp:$dir/sad_seg.scp \
-    "ark:segmentation-init-from-segments --shift-to-zero=false $src_dir/data/sdm1/dev_ihmdata/segments ark:- |" \
-    ark,t:$src_dir/data/sdm1/dev_ihmdata/reco2utt ark:- \| \
-    segmentation-copy --keep-label=1 ark:- ark:- \| \
-    segmentation-copy --utt2label-rspecifier=ark,t:$src_dir/data/sdm1/dev_ihmdata/reco.txt \
+    segmentation-combine-segments --include-missing-utt-level-segmentations scp:$dir/sad_seg.scp \
+    "ark:segmentation-init-from-segments --shift-to-zero=false --frame-overlap=0.0 --label=100000 $src_dir/data/sdm1/dev_ihmdata_oraclespk/segments ark:- |" \
+    ark,t:$src_dir/data/sdm1/dev_ihmdata_oraclespk/reco2utt ark:- \| \
+    segmentation-post-process --remove-labels=0 ark:- ark:- \| \
+    segmentation-copy --utt2label-map-rspecifier=ark,t:$src_dir/data/sdm1/dev_ihmdata_oraclespk/reco.txt \
     ark:- ark:- \| \
     segmentation-merge-recordings \
     "ark,t:utils/utt2spk_to_spk2utt.pl $src_dir/data/sdm1/dev_ihmdata/ihm2sdm_reco |" \
@@ -123,41 +169,95 @@ fi
 
 if [ $stage -le 7 ]; then
   # To get the actual RTTM, we need to add no-score
-  $train_cmd $dir/log/get_ref_rttm.log \
+  $train_cmd $dir/log/get_ref_spk_rttm_manual_seg.log \
+    export PATH=$KALDI_ROOT/tools/sctk/bin:$PATH '&&' \
+    segmentation-copy --keep-label=0 "ark:gunzip -c $dir/manual_segments_regions.seg.gz |" ark:- \| \
+    segmentation-post-process --merge-labels=0 --merge-dst-label=100000 ark:- ark:- \| \
+    segmentation-merge "ark:gunzip -c $dir/ref_spk_seg.gz |" ark:- ark:- \| \
+    segmentation-to-rttm --reco2file-and-channel=$dir/reco2file_and_channel \
+    --map-to-speech-and-sil=false --no-score-label=100000 ark:- - \| \
+    rttmSmooth.pl -s 0 \| rttmSort.pl '>' $dir/ref_spk_manual_seg.rttm
+  
+  $train_cmd $dir/log/get_ref_spk_rttm_interior.log \
+    export PATH=$KALDI_ROOT/tools/sctk/bin:$PATH '&&' \
+    segmentation-copy --keep-label=0 "ark:gunzip -c $dir/interior_regions.seg.gz |" ark:- \| \
+    segmentation-post-process --merge-labels=0 --merge-dst-label=100000 ark:- ark:- \| \
+    segmentation-merge "ark:gunzip -c $dir/ref_spk_seg.gz |" ark:- ark:- \| \
+    segmentation-to-rttm --reco2file-and-channel=$dir/reco2file_and_channel \
+    --map-to-speech-and-sil=false --no-score-label=100000 ark:- - \| \
+    rttmSmooth.pl -s 0 \| rttmSort.pl '>' $dir/ref_spk_interior.rttm
+
+  $train_cmd $dir/log/get_ref_rttm_manual_seg.log \
+    export PATH=$KALDI_ROOT/tools/sctk/bin:$PATH '&&' \
     segmentation-get-stats --lengths-rspecifier=ark,t:$src_dir/data/sdm1/dev/reco2num_frames \
     "ark:gunzip -c $dir/ref_spk_seg.gz | segmentation-post-process --remove-labels=0 ark:- ark:- |" \
-    ark:/dev/null ark:- \| \
+    ark:/dev/null ark:- ark:/dev/null \| \
     segmentation-init-from-ali ark:- ark:- \| \
     segmentation-post-process --merge-labels=1:2:3:4:5:6:7:8:9:10 --merge-dst-label=1 \
     --merge-adjacent-segments --max-intersegment-length=10000 ark:- ark:- \| \
-    segmentation-create-subsegments --filter-label=0 --subsegment-label=10000 \
+    segmentation-create-subsegments --filter-label=0 --subsegment-label=100000 \
     ark:- "ark:gunzip -c $dir/manual_segments_regions.seg.gz |" ark:- \| \
     segmentation-post-process --merge-adjacent-segments --max-intersegment-length=10000 ark:- ark:- \| \
     segmentation-to-rttm --reco2file-and-channel=$dir/reco2file_and_channel \
-    --no-score-label=10000 ark:- $dir/ref.rttm
+    --no-score-label=100000 ark:- - \| \
+     rttmSmooth.pl -s 0 \| rttmSort.pl '>' $dir/ref_manual_seg.rttm
+
+  $train_cmd $dir/log/get_ref_rttm_interior.log \
+    export PATH=$KALDI_ROOT/tools/sctk/bin:$PATH '&&' \
+    segmentation-get-stats --lengths-rspecifier=ark,t:$src_dir/data/sdm1/dev/reco2num_frames \
+    "ark:gunzip -c $dir/ref_spk_seg.gz | segmentation-post-process --remove-labels=0 ark:- ark:- |" \
+    ark:/dev/null ark:- ark:/dev/null \| \
+    segmentation-init-from-ali ark:- ark:- \| \
+    segmentation-post-process --merge-labels=1:2:3:4:5:6:7:8:9:10 --merge-dst-label=1 \
+    --merge-adjacent-segments --max-intersegment-length=10000 ark:- ark:- \| \
+    segmentation-create-subsegments --filter-label=0 --subsegment-label=100000 \
+    ark:- "ark:gunzip -c $dir/interior_regions.seg.gz |" ark:- \| \
+    segmentation-post-process --merge-adjacent-segments --max-intersegment-length=10000 ark:- ark:- \| \
+    segmentation-to-rttm --reco2file-and-channel=$dir/reco2file_and_channel \
+    --no-score-label=100000 ark:- - \| \
+    rttmSmooth.pl -s 0 \| rttmSort.pl '>' $dir/ref_interior.rttm
 
   # Get RTTM for overlapped speech detection with 3 classes
   # 0 -> SILENCE, 1 -> SINGLE_SPEAKER, 2 -> OVERLAP
-  $train_cmd $dir/log/get_overlapping_rttm.log \
+  $train_cmd $dir/log/get_overlapping_rttm_manual_seg.log \
+    export PATH=$KALDI_ROOT/tools/sctk/bin:$PATH '&&' \
     segmentation-get-stats --lengths-rspecifier=ark,t:$src_dir/data/sdm1/dev/reco2num_frames \
     "ark:gunzip -c $dir/ref_spk_seg.gz | segmentation-post-process --remove-labels=0 ark:- ark:- |" \
-    ark:/dev/null ark:- \| \
+    ark:/dev/null ark:- ark:/dev/null \| \
     segmentation-init-from-ali ark:- ark:- \| \
     segmentation-post-process --merge-labels=2:3:4:5:6:7:8:9:10 --merge-dst-label=2 \
     --merge-adjacent-segments --max-intersegment-length=10000 ark:- ark:- \| \
-    segmentation-create-subsegments --filter-label=0 --subsegment-label=10000 \
+    segmentation-create-subsegments --filter-label=0 --subsegment-label=100000 \
     ark:- "ark:gunzip -c $dir/manual_segments_regions.seg.gz |" ark:- \| \
     segmentation-post-process --merge-adjacent-segments --max-intersegment-length=10000 ark:- ark:- \| \
     segmentation-to-rttm --map-to-speech-and-sil=false --reco2file-and-channel=$dir/reco2file_and_channel \
-    --no-score-label=10000 ark:- $dir/overlapping_speech_ref.rttm
+    --no-score-label=100000 ark:- - \| \
+     rttmSmooth.pl -s 0 \| rttmSort.pl '>' $dir/overlapping_speech_ref_manual_seg.rttm
+  
+  $train_cmd $dir/log/get_overlapping_rttm_manual_seg.log \
+    export PATH=$KALDI_ROOT/tools/sctk/bin:$PATH '&&' \
+    segmentation-get-stats --lengths-rspecifier=ark,t:$src_dir/data/sdm1/dev/reco2num_frames \
+    "ark:gunzip -c $dir/ref_spk_seg.gz | segmentation-post-process --remove-labels=0 ark:- ark:- |" \
+    ark:/dev/null ark:- ark:/dev/null \| \
+    segmentation-init-from-ali ark:- ark:- \| \
+    segmentation-post-process --merge-labels=2:3:4:5:6:7:8:9:10 --merge-dst-label=2 \
+    --merge-adjacent-segments --max-intersegment-length=10000 ark:- ark:- \| \
+    segmentation-create-subsegments --filter-label=0 --subsegment-label=100000 \
+    ark:- "ark:gunzip -c $dir/interior_regions.seg.gz |" ark:- \| \
+    segmentation-post-process --merge-adjacent-segments --max-intersegment-length=10000 ark:- ark:- \| \
+    segmentation-to-rttm --map-to-speech-and-sil=false --reco2file-and-channel=$dir/reco2file_and_channel \
+    --no-score-label=100000 ark:- - \| \
+     rttmSmooth.pl -s 0 \| rttmSort.pl'>' $dir/overlapping_speech_ref_interior.rttm
 fi
+
+exit 0
 
 if [ $stage -le 8 ]; then
   # Get a filter that selects only regions of speech 
   $train_cmd $dir/log/get_speech_filter.log \
     segmentation-get-stats --lengths-rspecifier=ark,t:$src_dir/data/sdm1/dev/reco2num_frames \
     "ark:gunzip -c $dir/ref_spk_seg.gz | segmentation-post-process --remove-labels=0 ark:- ark:- |" \
-    ark:/dev/null ark:- \| \
+    ark:/dev/null ark:- ark:/dev/null \| \
     segmentation-init-from-ali ark:- ark:- \| \
     segmentation-post-process --merge-labels=1:2:3:4:5:6:7:8:9:10 --merge-dst-label=1 ark:- ark:- \| \
     segmentation-create-subsegments --filter-label=0 --subsegment-label=0 \
@@ -181,10 +281,10 @@ sad_dir=${nnet_dir}/sad_ami_sdm1_dev_whole_bp/
 hyp_dir=${hyp_dir}_seg
 
 if [ $stage -le 10 ]; then
-  utils/data/get_reco2utt.sh $src_dir/data/sdm1/dev_ihmdata
+  utils/data/get_reco2utt.sh $src_dir/data/sdm1/dev_ihmdata_oraclespk
   utils/data/get_reco2utt.sh $hyp_dir
 
-  segmentation-init-from-segments --shift-to-zero=false $hyp_dir/segments ark:- | \
+  segmentation-init-from-segments --shift-to-zero=false --frame-overlap=0.0 $hyp_dir/segments ark:- | \
     segmentation-combine-segments-to-recordings ark:- ark,t:$hyp_dir/reco2utt ark:- | \
     segmentation-to-ali --length-tolerance=48 --lengths-rspecifier=ark,t:$src_dir/data/sdm1/dev/reco2num_frames \
     ark:- ark:- | \
@@ -301,7 +401,7 @@ fi
 
   if [ $stage -le 17 ]; then
     steps/segmentation/decode_sad.sh \
-      --acwt 1 --beam 10 --max-active 7000 \
+      --acwt 1 --beam 10 --max-active 7000 --iter trans \
       $seg_dir/graph_test $likes_dir $seg_dir
   fi
 
@@ -323,7 +423,7 @@ EOF
   $train_cmd $dir/log/get_overlapping_rttm.log \
     segmentation-get-stats --lengths-rspecifier=ark,t:$src_dir/data/sdm1/dev/reco2num_frames \
     "ark:gunzip -c $dir/ref_spk_seg.gz | segmentation-post-process --remove-labels=0 ark:- ark:- |" \
-    ark:/dev/null ark:- \| \
+    ark:/dev/null ark:- ark:/dev/null \| \
     segmentation-init-from-ali ark:- ark:- \| \
     segmentation-post-process --merge-labels=2:3:4:5:6:7:8:9:10 --merge-dst-label=2 ark:- ark:- \| \
     segmentation-create-subsegments --filter-label=0 --subsegment-label=10000 \
