@@ -196,24 +196,6 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input,
                      processed outside this function into self-repair stats for
                      diagnostics.
 */
-/// Normalize nonlinearity modifies the vector of activations
-/// by scaling it so that the root-mean-square equals 1.0.
-///
-/// The output y_i = scale * x_i,
-/// and we want to RMS value of the y_i to equal target_rms,
-/// so y^t y = D * target_rms^2 (if y is one row of the input).
-/// we need to have scale = 1.0 / sqrt(x^t x / (D * target_rms^2)).
-/// there is also flooring involved, to avoid division-by-zero
-/// problems.  It's important for the backprop, that the floor's
-/// square root is exactly representable as float.
-/// If add_log_stddev_ is true, log(max(epsi, sqrt(x^t x / D)))
-/// is an extra dimension of the output.
-template<typename Real>
-void NormalizePerRow(const CuMatrixBase<Real>& in, const Real target_rms,
-                     const bool add_log_stddev, CuMatrixBase<Real>* out);
-
-
-
 template<typename Real>
 void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
                               const CuMatrixBase<Real> &params,
@@ -240,6 +222,49 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
                                  MatrixBase<double> *value_sum_out,
                                  MatrixBase<double> *deriv_sum_out,
                                  MatrixBase<Real> *self_repair_sum_out);
+
+/// Normalize nonlinearity modifies the vector of activations
+/// by scaling it so that the root-mean-square equals 1.0.
+///
+/// The output y_i = scale * x_i,
+/// and we want to RMS value of the y_i to equal target_rms,
+/// so y^t y = D * target_rms^2 (if y is one row of the input).
+/// we need to have scale = 1.0 / sqrt(x^t x / (D * target_rms^2)).
+/// there is also flooring involved, to avoid division-by-zero
+/// problems.  It's important for the backprop, that the floor's
+/// square root is exactly representable as float.
+/// If add_log_stddev_ is true, log(max(epsi, sqrt(x^t x / D)))
+/// is an extra dimension of the output.
+template<typename Real>
+void NormalizePerRow(const CuMatrixBase<Real>& in, const Real target_rms,
+                     const bool add_log_stddev, CuMatrixBase<Real>* out);
+
+// A note on the derivative of NormalizeComponent...
+// let both row_in and row_out be vectors of dimension D.
+// Let p = row_in^T row_in / (D * target_rms^2), and let
+// f = 1.0 / sqrt(max(kSquaredNormFloor, p)), and we compute row_out as:
+// row_out = f row_in.
+// Suppose we have a quantity deriv_out which is the derivative
+// of the objective function w.r.t. row_out.  We want to compute
+// deriv_in which is the derivative of the objective function w.r.t.
+// row_in.  Let the objective function be F.  One term is obvious: we have
+// deriv_in = f deriv_out + ....
+// next we have to take into account the derivative that gets back-propagated
+// through f.  Obviously, dF/df = deriv_out^T row_in.
+// And df/dp = (p <= kSquaredNormFloor ? 0.0 : -0.5 p^{-1.5}) = (f == 1.0 / sqrt(kSquaredNormFloor) ? 0.0 : -0.5 f^3),
+// and dp/d(row_in) = 2/(D * target_rms^2) row_in. [it's vector_valued].
+// So this term in dF/d(row_in) equals:
+// dF/df df/dp dp/d(row_in)   =    2/(D * target_rms^2) (f == 1.0 / sqrt(kSquaredNormFloor)  ? 0.0 : -0.5 f^3) (deriv_out^T row_in) row_in
+// So
+// deriv_in = f deriv_out + (f == 1.0 ? 0.0 : -f^3  / (D * target_rms^2) ) (deriv_out^T row_in) row_in
+//  if add_log_stddev_ true, the deriv_in has another term as
+// dF/dx_i = dF/df . df/dx_i => df/dx_i = x_i/(x^T x)
+template<typename Real>
+void DiffNormalizePerRow(const CuMatrixBase<Real> &in_value,
+                         const CuMatrixBase<Real> &out_deriv,
+                         const Real target_rms, const bool add_log_stddev,
+                         CuMatrixBase<Real>* in_deriv);
+
 
 } // namespace cu
 } // namespace kaldi
