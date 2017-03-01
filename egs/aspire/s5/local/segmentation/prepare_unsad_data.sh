@@ -38,6 +38,8 @@ sat_model_dir=  # Model directory used for getting alignments
 lang_test=  # Language directory used to build graph. 
             # If its not provided, $lang will be used instead.
 
+speeds="0.9 1.0 1.1"
+
 . utils/parse_options.sh
 
 if [ $# -ne 4 ]; then
@@ -188,14 +190,15 @@ if [ $stage -le -2 ]; then
   utils/data/get_utt2dur.sh ${whole_data_dir}
 fi 
 
+num_speeds=`echo $speeds | awk '{print NF}'`
 if $speed_perturb; then
-  plpdir=${plpdir}_sp
-  mfccdir=${mfccdir}_sp
+  plpdir=${plpdir}_sp$num_speeds
+  mfccdir=${mfccdir}_sp$num_speeds
 
  
   if [ $stage -le -1 ]; then
-    utils/data/perturb_data_dir_speed_3way.sh ${whole_data_dir} ${whole_data_dir}_sp
-    utils/data/perturb_data_dir_speed_3way.sh ${data_dir} ${data_dir}_sp
+    utils/data/perturb_data_dir_speed_${num_speeds}way.sh ${whole_data_dir} ${whole_data_dir}_sp${num_speeds}
+    utils/data/perturb_data_dir_speed_${num_speeds}way.sh ${data_dir} ${data_dir}_sp${num_speeds}
 
     if [ $feat_type == "mfcc" ]; then
       if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
@@ -205,9 +208,9 @@ if $speed_perturb; then
       make_mfcc --cmd "$cmd --max-jobs-run 40" --nj $nj \
         --mfcc-config $feat_config \
         --add-pitch $add_pitch --pitch-config $pitch_config \
-        ${whole_data_dir}_sp exp/make_mfcc $mfccdir || exit 1
+        ${whole_data_dir}_sp${num_speeds} exp/make_mfcc $mfccdir || exit 1
       steps/compute_cmvn_stats.sh \
-        ${whole_data_dir}_sp exp/make_mfcc $mfccdir || exit 1
+        ${whole_data_dir}_sp${num_speeds} exp/make_mfcc $mfccdir || exit 1
     elif [ $feat_type == "plp" ]; then
       if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $plpdir/storage ]; then
         utils/create_split_dir.pl \
@@ -217,20 +220,20 @@ if $speed_perturb; then
       make_plp --cmd "$cmd --max-jobs-run 40" --nj $nj \
         --plp-config $feat_config \
         --add-pitch $add_pitch --pitch-config $pitch_config \
-        ${whole_data_dir}_sp exp/make_plp $plpdir || exit 1
+        ${whole_data_dir}_sp${num_speeds} exp/make_plp $plpdir || exit 1
       steps/compute_cmvn_stats.sh \
-        ${whole_data_dir}_sp exp/make_plp $plpdir || exit 1
+        ${whole_data_dir}_sp${num_speeds} exp/make_plp $plpdir || exit 1
     else
       echo "$0: Unknown feat-type $feat_type. Must be mfcc or plp."
       exit 1
     fi
         
-    utils/fix_data_dir.sh ${whole_data_dir}_sp
+    utils/fix_data_dir.sh ${whole_data_dir}_sp${num_speeds}
   fi
 
-  data_dir=${data_dir}_sp
-  whole_data_dir=${whole_data_dir}_sp
-  data_id=${data_id}_sp
+  data_dir=${data_dir}_sp${num_speeds}
+  whole_data_dir=${whole_data_dir}_sp${num_speeds}
+  data_id=${data_id}_sp${num_speeds}
 fi
 
 
@@ -440,7 +443,7 @@ vad_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } pr
 
 if [ $stage -le 10 ]; then
   segmentation-init-from-segments --frame-shift=$frame_shift \
-    --frame-overlap=$frame_overlap --segment-label=0 \
+    --frame-overlap=$frame_overlap --label=0 \
     $outside_data_dir/segments \
     ark,scp:$vad_dir/outside_sad_seg.ark,$vad_dir/outside_sad_seg.scp
 fi
