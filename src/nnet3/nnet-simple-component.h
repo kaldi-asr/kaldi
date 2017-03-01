@@ -99,7 +99,8 @@ class DropoutComponent : public RandomComponent {
                       dropout_per_frame_(false) { }
 
   virtual int32 Properties() const {
-    return kLinearInInput|kBackpropInPlace|kSimpleComponent|kBackpropNeedsInput|kBackpropNeedsOutput;
+    return kLinearInInput|kBackpropInPlace|kSimpleComponent|kBackpropNeedsInput|
+        kBackpropNeedsOutput|kRandomComponent;
   }
   virtual std::string Type() const { return "DropoutComponent"; }
 
@@ -1677,8 +1678,9 @@ class ConvolutionComponent: public UpdatableComponent {
 // o_part = W_{cx} x_t + W_{om} m_{t-1} + b_o
 //
 // The part of the computation that takes place in this component is as follows.
-// Its input is of dimension 5C, consisting of 5 blocks: (i_part, f_part, c_part, o_part, and
-// c_{t-1}).  Its output is of dimension 2C, consisting of 2 blocks: c_t and m_t.
+// Its input is of dimension 5C [however, search for 'dropout' below],
+// consisting of 5 blocks: (i_part, f_part, c_part, o_part, and c_{t-1}).  Its
+// output is of dimension 2C, consisting of 2 blocks: c_t and m_t.
 //
 // To recap: the input is (i_part, f_part, c_part, o_part, c_{t-1}); the output is (c_t, m_t).
 //
@@ -1695,6 +1697,12 @@ class ConvolutionComponent: public UpdatableComponent {
 //    o_t = Sigmoid(o_part + w_{oc}*c_t)       (4)
 //    m_t = o_t * Tanh(c_t)                    (5)
 //   # note: the outputs are just c_t and m_t.
+//
+// [Note regarding dropout: optionally the input-dimension may be 5C + 3 instead
+// of 5C in this case, the last two input dimensions will be interpreted as
+// per-frame dropout masks on i_t, f_t and o_t respectively, so that in (3), i_t is
+// replaced by i_t * i_t_scale, and likewise for f_t and o_t.
+//
 //
 // The backprop is as you would think, but for the "self-repair" we need to pass
 // in additional vectors (of the same dim as the parameters of the layer) that
@@ -1715,7 +1723,7 @@ class LstmNonlinearityComponent: public UpdatableComponent {
   virtual int32 OutputDim() const;
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl);
-  LstmNonlinearityComponent() { } // use Init to really initialize.
+  LstmNonlinearityComponent(): use_dropout_(false) { }
   virtual std::string Type() const { return "LstmNonlinearityComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput;
@@ -1751,14 +1759,11 @@ class LstmNonlinearityComponent: public UpdatableComponent {
   explicit LstmNonlinearityComponent(
       const LstmNonlinearityComponent &other);
 
-  void Init(int32 cell_dim, BaseFloat param_stddev,
+  void Init(int32 cell_dim, bool use_dropout,
+            BaseFloat param_stddev,
             BaseFloat tanh_self_repair_threshold,
             BaseFloat sigmoid_self_repair_threshold,
             BaseFloat self_repair_scale);
-
-  void Init(std::string vector_filename,
-            int32 rank, int32 update_period, BaseFloat num_samples_history,
-            BaseFloat alpha, BaseFloat max_change_per_minibatch);
 
  private:
 
@@ -1772,6 +1777,10 @@ class LstmNonlinearityComponent: public UpdatableComponent {
   // The dimension of the parameter matrix is (3 x C);
   // it contains the 3 diagonal parameter matrices w_i, w_f and w_o.
   CuMatrix<BaseFloat> params_;
+
+  // If true, we expect an extra 2 dimensions on the input, for dropout masks
+  // for i_t and f_t.
+  bool use_dropout_;
 
   // Of dimension 5 * C, with a row for each of the Sigmoid/Tanh functions in
   // equations (1) through (5), this is the sum of the values of the nonliearities
