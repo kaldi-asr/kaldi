@@ -4,6 +4,8 @@
 
 # Apache 2.0
 
+speeds="0.9 1.0 1.1"
+
 . utils/parse_options.sh
 
 if [ $# != 2 ]; then
@@ -33,15 +35,25 @@ echo "... obtaining it after speed-perturbing would be very slow, and"
 echo "... you might need it."
 utils/data/get_utt2dur.sh ${srcdir}
 
-utils/split_data.sh --per-reco $srcdir 3
+num_speeds=`echo $speeds | awk '{print NF}'`
+utils/split_data.sh --per-reco $srcdir $num_speeds
 
-utils/data/perturb_data_dir_speed.sh 0.9 ${srcdir}/split3reco/1 ${destdir}_speed0.9 || exit 1
-utils/data/perturb_data_dir_speed.sh 1.1 ${srcdir}/split3reco/3 ${destdir}_speed1.1 || exit 1
-utils/data/combine_data.sh $destdir ${srcdir}/split3reco/2 ${destdir}_speed0.9 ${destdir}_speed1.1 || exit 1
+speed_dirs=
+i=1
+for speed in $speeds; do 
+  if [ $speed != 1.0 ]; then
+    utils/data/perturb_data_dir_speed.sh $speed ${srcdir}/split${num_speeds}reco/$i ${destdir}_speed$speed || exit 1
+    speed_dirs="${speed_dirs} ${destdir}_speed$speed"
+  else 
+    speed_dirs="$speed_dirs ${srcdir}/split${num_speeds}reco/$i"
+  fi
+done
 
-rm -r ${destdir}_speed0.9 ${destdir}_speed1.1
+utils/data/combine_data.sh $destdir ${speed_dirs} || exit 1
 
-echo "$0: generated 3-way speed-perturbed version of random subsets of data in $srcdir, in $destdir"
+rm -r $speed_dirs ${srcdir}/split${num_speeds}reco
+
+echo "$0: generated $num_speeds-way speed-perturbed version of random subsets of data in $srcdir, in $destdir"
 if [ -f $srcdir/text ]; then
   utils/validate_data_dir.sh --no-feats $destdir
 else
