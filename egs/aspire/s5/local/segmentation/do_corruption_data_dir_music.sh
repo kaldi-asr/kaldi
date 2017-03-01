@@ -24,6 +24,7 @@ mfcc_irm_config=conf/mfcc_hires_bp.conf
 dry_run=false
 corrupt_only=false
 speed_perturb=true
+speeds="0.9 1.0 1.1"
 
 reco_vad_dir=
 
@@ -79,7 +80,7 @@ if $speed_perturb; then
     ## Assuming whole data directories
     for x in $corrupted_data_dir; do
       cp $x/reco2dur $x/utt2dur
-      utils/data/perturb_data_dir_speed_random.sh $x ${x}_spr
+      utils/data/perturb_data_dir_speed_random.sh --speeds "$speeds" $x ${x}_spr
     done
   fi
 
@@ -169,7 +170,7 @@ if [ $stage -le 10 ]; then
   utils/fix_data_dir.sh $music_data_dir
 
   if $speed_perturb; then
-    utils/data/perturb_data_dir_speed_3way.sh $music_data_dir ${music_data_dir}_spr
+    utils/data/perturb_data_dir_speed_4way.sh $music_data_dir ${music_data_dir}_spr
     mv ${music_data_dir}_spr/segments{,.temp}
     cat ${music_data_dir}_spr/segments.temp | \
       utils/filter_scp.pl -f 2 ${corrupted_data_dir}/reco2utt > ${music_data_dir}_spr/segments
@@ -222,7 +223,7 @@ if [ $stage -le 12 ]; then
 EOF
 
   $train_cmd JOB=1:$reco_nj $music_dir/log/get_speech_music_labels.JOB.log \
-    intersect-int-vectors --mapping-in=$music_dir/speech_music_map \
+    intersect-int-vectors --mapping-in=$music_dir/speech_music_map --length-tolerance=2 \
     "scp:utils/filter_scp.pl ${corrupted_data_dir}/split${reco_nj}reco/JOB/reco2utt ${corrupted_data_dir}/speech_labels.scp |" \
     "scp:utils/filter_scp.pl ${corrupted_data_dir}/split${reco_nj}reco/JOB/reco2utt ${corrupted_data_dir}/music_labels.scp |" \
     ark,scp:$label_dir/speech_music_labels_${corrupted_data_id}.JOB.ark,$label_dir/speech_music_labels_${corrupted_data_id}.JOB.scp

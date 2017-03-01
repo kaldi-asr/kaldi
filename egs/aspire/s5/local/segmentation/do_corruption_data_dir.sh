@@ -19,8 +19,9 @@ speed_perturb=true
 num_data_reps=5   # Number of corrupted versions
 snrs="20:10:15:5:0:-5"
 foreground_snrs="20:10:15:5:0:-5"
-background_snrs="20:10:15:5:0:-5"
+background_snrs="20:10:15:5:2:0:-2:-5"
 base_rirs=simulated
+speeds="0.9 1.0 1.1"
 
 # Parallel options
 reco_nj=40  
@@ -48,7 +49,8 @@ if [ "$base_rirs" == "simulated" ]; then
   # This is the config for the system using simulated RIRs and point-source noises
   rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/smallroom/rir_list")
   rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/mediumroom/rir_list")
-  rvb_opts+=(--noise-set-parameters RIRS_NOISES/pointsource_noises/noise_list)
+  rvb_opts+=(--noise-set-parameters "0.1, RIRS_NOISES/pointsource_noises/background_noise_list")
+  rvb_opts+=(--noise-set-parameters "0.9, RIRS_NOISES/pointsource_noises/foreground_noise_list")
 else
   # This is the config for the JHU ASpIRE submission system
   rvb_opts+=(--rir-set-parameters "1.0, RIRS_NOISES/real_rirs_isotropic_noises/rir_list")
@@ -67,7 +69,7 @@ if [ $stage -le 1 ]; then
     --pointsource-noise-addition-probability=1 \
     --isotropic-noise-addition-probability=1 \
     --num-replications=$num_data_reps \
-    --max-noises-per-minute=1 \
+    --max-noises-per-minute=2 \
     data/${data_id} data/${corrupted_data_id}
 fi
 
@@ -78,7 +80,7 @@ if $speed_perturb; then
     ## Assuming whole data directories
     for x in $corrupted_data_dir; do
       cp $x/reco2dur $x/utt2dur
-      utils/data/perturb_data_dir_speed_random.sh $x ${x}_spr
+      utils/data/perturb_data_dir_speed_random.sh --speeds "$speeds" $x ${x}_spr
     done
   fi
 
