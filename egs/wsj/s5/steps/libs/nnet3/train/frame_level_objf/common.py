@@ -28,11 +28,10 @@ def train_new_models(dir, iter, srand, num_jobs,
                      raw_model_string, egs_dir,
                      left_context, right_context,
                      momentum, max_param_change,
-                     shuffle_buffer_size, minibatch_size,
+                     shuffle_buffer_size, minibatch_size_str,
                      cache_read_opt, run_opts,
                      frames_per_eg=-1,
-                     min_deriv_time=None, max_deriv_time=None,
-                     min_left_context=None, min_right_context=None,
+                     min_deriv_time=None, max_deriv_time_relative=None,
                      extra_egs_copy_cmd="", use_multitask_egs=False,
                      rename_multitask_outputs=False):
     """ Called from train_one_iteration(), this model does one iteration of
@@ -45,16 +44,12 @@ def train_new_models(dir, iter, srand, num_jobs,
     this is no longer true for RNNs as we use do not use the --frame option
     but we use the same script for consistency with FF-DNN code
 
-    Args:
+    Selected args:
         frames_per_eg: The default value -1 implies chunk_level_training, which
             is particularly applicable to RNN training. If it is > 0, then it
             implies frame-level training, which is applicable for DNN training.
             If it is > 0, then each parallel SGE job created, a different frame
             numbered 0..frames_per_eg-1 is used.
-        min_deriv_time: Applicable for RNN training. A default value of None
-            implies a min_deriv_time of 0 is used. During RNN training, its
-            value is set to chunk_width - num_bptt_steps in the training
-            script.
     """
 
     chunk_level_training = False if frames_per_eg > 0 else True
@@ -63,20 +58,9 @@ def train_new_models(dir, iter, srand, num_jobs,
     if min_deriv_time is not None:
         deriv_time_opts.append("--optimization.min-deriv-time={0}".format(
                            min_deriv_time))
-    if max_deriv_time is not None:
-        deriv_time_opts.append("--optimization.max-deriv-time={0}".format(
-                           max_deriv_time))
-
-    this_random = random.Random(srand + iter)
-
-    if min_left_context is not None:
-        left_context = this_random.randint(min_left_context, left_context)
-
-    if min_right_context is not None:
-        right_context = this_random.randint(min_right_context, right_context)
-
-    logger.info("On iteration %d, left-context=%d and right-context=%s",
-                iter, left_context, right_context)
+    if max_deriv_time_relative is not None:
+        deriv_time_opts.append("--optimization.max-deriv-time-relative={0}".format(
+                           max_deriv_time_relative))
 
     context_opts = "--left-context={0} --right-context={1}".format(
         left_context, right_context)
@@ -90,7 +74,7 @@ def train_new_models(dir, iter, srand, num_jobs,
         archive_index = (k % num_archives) + 1
 
         if not chunk_level_training:
-            frame = (k / num_archives) % frames_per_eg
+            frame = (k / num_archives + archive_index) % frames_per_eg
 
         cache_write_opt = ""
         if job == 1:
@@ -112,7 +96,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                 "--weights=ark:{egs_dir}/weight.{archive_index} "
                 "scp:{egs_dir}/egs.{archive_index} ark:- | "
                 "{extra_egs_copy_cmd}"
-                "nnet3-merge-egs --minibatch-size={minibatch_size} "
+                "nnet3-merge-egs --minibatch-size={minibatch_size_str} "
                 "--measure-output-frames=false "
                 "--discard-partial-minibatches=true ark:- ark:- | "
                 "nnet3-shuffle-egs "
@@ -125,7 +109,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                     archive_index=archive_index, srand=iter + srand,
                     shuffle_buffer_size=shuffle_buffer_size,
                     extra_egs_copy_cmd=extra_egs_copy_cmd,
-                    minibatch_size=minibatch_size))
+                    minibatch_size_str=minibatch_size_str))
         else:
             egs_rspecifier = (
                 "ark,bg:nnet3-copy-egs {frame_opts} {context_opts} "
@@ -133,7 +117,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                 "{extra_egs_copy_cmd}"
                 "nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} "
                 "--srand={srand} ark:- ark:- | "
-                "nnet3-merge-egs --minibatch-size={minibatch_size} "
+                "nnet3-merge-egs --minibatch-size={minibatch_size_str} "
                 "--measure-output-frames=false "
                 "--discard-partial-minibatches=true ark:- ark:- |".format(
                     frame_opts=("" if chunk_level_training
@@ -142,7 +126,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                     archive_index=archive_index, srand=iter + srand,
                     shuffle_buffer_size=shuffle_buffer_size,
                     extra_egs_copy_cmd=extra_egs_copy_cmd,
-                    minibatch_size=minibatch_size))
+                    minibatch_size_str=minibatch_size_str))
 
         process_handle = common_lib.run_job(
             """{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
@@ -181,15 +165,13 @@ def train_new_models(dir, iter, srand, num_jobs,
 
 def train_one_iteration(dir, iter, srand, egs_dir,
                         num_jobs, num_archives_processed, num_archives,
-                        learning_rate, minibatch_size,
+                        learning_rate, minibatch_size_str,
                         num_hidden_layers, add_layers_period,
                         left_context, right_context,
                         momentum, max_param_change, shuffle_buffer_size,
-                        run_opts,
-                        cv_minibatch_size=256, frames_per_eg=-1,
-                        min_deriv_time=None, max_deriv_time=None,
-                        min_left_context=None, min_right_context=None,
-                        shrinkage_value=1.0, dropout_proportions=None,
+                        run_opts, frames_per_eg=-1,
+                        min_deriv_time=None, max_deriv_time_relative=None,
+                        shrinkage_value=1.0, dropout_edit_string="",
                         get_raw_nnet_from_am=True,
                         background_process_handler=None,
                         extra_egs_copy_cmd="", use_multitask_egs=False,
@@ -198,16 +180,12 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     """ Called from steps/nnet3/train_*.py scripts for one iteration of neural
     network training
 
-    Args:
+    Selected args:
         frames_per_eg: The default value -1 implies chunk_level_training, which
             is particularly applicable to RNN training. If it is > 0, then it
             implies frame-level training, which is applicable for DNN training.
             If it is > 0, then each parallel SGE job created, a different frame
             numbered 0..frames_per_eg-1 is used.
-        min_deriv_time: Applicable for RNN training. A default value of None
-            implies a min_deriv_time of 0 is used. During RNN training, its
-            value is set to chunk_width - num_bptt_steps in the training
-            script.
         shrinkage_value: If value is 1.0, no shrinkage is done; otherwise
             parameter values are scaled by this value.
         get_raw_nnet_from_am: If True, then the network is read and stored as
@@ -225,7 +203,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
             saved_srand = int(open('{0}/srand'.format(dir)).readline().strip())
         except (IOError, ValueError):
             logger.error("Exception while reading the random seed "
-                         "for training.")
+                         "for training")
             raise
         if srand != saved_srand:
             logger.warning("The random seed provided to this iteration "
@@ -242,7 +220,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         dir=dir, iter=iter, egs_dir=egs_dir,
         left_context=left_context, right_context=right_context,
         run_opts=run_opts,
-        mb_size=cv_minibatch_size,
         get_raw_nnet_from_am=get_raw_nnet_from_am, wait=False,
         background_process_handler=background_process_handler,
         extra_egs_copy_cmd=extra_egs_copy_cmd,
@@ -254,7 +231,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                          left_context=left_context,
                          right_context=right_context,
                          run_opts=run_opts,
-                         mb_size=cv_minibatch_size, wait=False,
+                         wait=False,
                          get_raw_nnet_from_am=get_raw_nnet_from_am,
                          background_process_handler=background_process_handler,
                          extra_egs_copy_cmd=extra_egs_copy_cmd)
@@ -303,8 +280,10 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                                 "{dir}/{iter}.raw - |".format(
                                     lr=learning_rate, dir=dir, iter=iter))
 
+    raw_model_string = raw_model_string + dropout_edit_string
+
     if do_average:
-        cur_minibatch_size = minibatch_size
+        cur_minibatch_size_str = minibatch_size_str
         cur_max_param_change = max_param_change
     else:
         # on iteration zero or when we just added a layer, use a smaller
@@ -312,7 +291,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         # the jobs): the model-averaging isn't always helpful when the model is
         # changing too fast (i.e. it can worsen the objective function), and
         # the smaller minibatch size will help to keep the update stable.
-        cur_minibatch_size = minibatch_size / 2
+        cur_minibatch_size_str = common_train_lib.halve_minibatch_size_str(minibatch_size_str)
         cur_max_param_change = float(max_param_change) / math.sqrt(2)
 
     try:
@@ -320,25 +299,26 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     except OSError:
         pass
 
-    if dropout_proportions is not None:
-        raw_model_string = common_train_lib.apply_dropout(
-            dropout_proportions, raw_model_string)
+    shrink_info_str = ''
+    if shrinkage_value != 1.0:
+        shrink_info_str = ' and shrink value is {0}'.format(shrinkage_value)
+
+    logger.info("On iteration {0}, learning rate is {1}"
+                "{shrink_info}.".format(
+                    iter, learning_rate,
+                    shrink_info=shrink_info_str))
 
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,
                      num_archives_processed=num_archives_processed,
                      num_archives=num_archives,
                      raw_model_string=raw_model_string, egs_dir=egs_dir,
-                     left_context=left_context,
-                     right_context=right_context,
                      momentum=momentum, max_param_change=cur_max_param_change,
                      shuffle_buffer_size=shuffle_buffer_size,
-                     minibatch_size=cur_minibatch_size,
+                     minibatch_size_str=cur_minibatch_size_str,
                      cache_read_opt=cache_read_opt, run_opts=run_opts,
                      frames_per_eg=frames_per_eg,
                      min_deriv_time=min_deriv_time,
-                     max_deriv_time=max_deriv_time,
-                     min_left_context=min_left_context,
-                     min_right_context=min_right_context,
+                     max_deriv_time_relative=max_deriv_time_relative,
                      extra_egs_copy_cmd=extra_egs_copy_cmd,
                      use_multitask_egs=use_multitask_egs,
                      rename_multitask_outputs=rename_multitask_outputs)
@@ -371,7 +351,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         for i in range(1, num_jobs + 1):
             os.remove("{0}/{1}.{2}.raw".format(dir, iter + 1, i))
     except OSError:
-        raise Exception("Error while trying to delete the raw models")
+        logger.error("Error while trying to delete the raw models")
+        raise
 
     if get_raw_nnet_from_am:
         new_model = "{0}/{1}.mdl".format(dir, iter + 1)
@@ -421,8 +402,9 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
         try:
             os.remove(file)
         except OSError:
-            raise Exception("There was error while trying to remove "
-                            "lda stat files.")
+            logger.error("There was error while trying to remove "
+                         "lda stat files.")
+            raise
     # this computes a fixed affine transform computed in the way we described
     # in Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's a scaled
     # variant of an LDA transform but without dimensionality reduction.
@@ -438,7 +420,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
 
 
 def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
-                                   right_context, run_opts, mb_size=256,
+                                   right_context, run_opts,
                                    wait=False, background_process_handler=None,
                                    get_raw_nnet_from_am=True,
                                    extra_egs_copy_cmd="",
@@ -463,21 +445,19 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
         opts.append("--compute-per-dim-accuracy")
 
     common_lib.run_job(
-        """{command} {dir}/log/compute_prob_valid.{iter}.log"""
-        """ nnet3-compute-prob {opts} "{model}" """
-        """ "ark,bg:nnet3-copy-egs {context_opts}"""
-        """ {egs_rspecifier} ark:- |{extra_egs_copy_cmd}"""
-        """ nnet3-merge-egs --minibatch-size={mb_size} ark:-"""
-        """ ark:- |" """.format(command=run_opts.command,
-                                opts=' '.join(opts),
-                                dir=dir,
-                                iter=iter,
-                                egs_rspecifier=valid_diagnostic_egs,
-                                context_opts=context_opts,
-                                mb_size=mb_size,
-                                model=model,
-                                egs_dir=egs_dir,
-                                extra_egs_copy_cmd=extra_egs_copy_cmd),
+        """ {command} {dir}/log/compute_prob_valid.{iter}.log \
+                nnet3-compute-prob "{model}" \
+                "ark,bg:nnet3-copy-egs {opts} {context_opts} \
+                    ark:{egs_dir}/valid_diagnostic.egs ark:- |{extra_egs_copy_cmd} \
+                    nnet3-merge-egs --minibatch-size=1:64 ark:- \
+                    ark:- |" """.format(command=run_opts.command,
+                                        dir=dir,
+                                        iter=iter,
+                                        opts=' '.join(opts),
+                                        context_opts=context_opts,
+                                        model=model,
+                                        egs_dir=egs_dir,
+                                        extra_egs_copy_cmd=extra_egs_copy_cmd),
         wait=wait, background_process_handler=background_process_handler)
 
     if os.path.isfile("{0}/train_diagnostic.egs".format(egs_dir)):
@@ -491,14 +471,13 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
         """ nnet3-compute-prob {opts} "{model}" """
         """ "ark,bg:nnet3-copy-egs {context_opts}"""
         """ {egs_rspecifier} ark:- | {extra_egs_copy_cmd}"""
-        """ nnet3-merge-egs --minibatch-size={mb_size} ark:-"""
+        """ nnet3-merge-egs --minibatch-size=1:64 ark:-"""
         """ ark:- |" """.format(command=run_opts.command,
                                 opts=' '.join(opts),
                                 dir=dir,
                                 iter=iter,
                                 egs_rspecifier=train_diagnostic_egs,
                                 context_opts=context_opts,
-                                mb_size=mb_size,
                                 model=model,
                                 egs_dir=egs_dir,
                                 extra_egs_copy_cmd=extra_egs_copy_cmd),
@@ -506,7 +485,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
 
 
 def compute_progress(dir, iter, egs_dir, left_context, right_context,
-                     run_opts, mb_size=256,
+                     run_opts,
                      background_process_handler=None, wait=False,
                      get_raw_nnet_from_am=True,
                      extra_egs_copy_cmd=""):
@@ -532,14 +511,13 @@ def compute_progress(dir, iter, egs_dir, left_context, right_context,
         """ '&&' nnet3-show-progress --use-gpu=no "{prev_model}" "{model}" """
         """ "ark,bg:nnet3-copy-egs {context_opts}"""
         """ {egs_rspecifier} ark:- |{extra_egs_copy_cmd}"""
-        """ nnet3-merge-egs --minibatch-size={mb_size} ark:-"""
+        """ nnet3-merge-egs --minibatch-size=1:64 ark:-"""
         """ ark:- |" """.format(command=run_opts.command,
                                 dir=dir,
                                 iter=iter,
                                 egs_rspecifier=train_diagnostic_egs,
                                 model=model,
                                 context_opts=context_opts,
-                                mb_size=mb_size,
                                 prev_model=prev_model,
                                 egs_dir=egs_dir,
                                 extra_egs_copy_cmd=extra_egs_copy_cmd),
@@ -548,8 +526,10 @@ def compute_progress(dir, iter, egs_dir, left_context, right_context,
 
 def combine_models(dir, num_iters, models_to_combine, egs_dir,
                    left_context, right_context,
+                   minibatch_size_str,
                    run_opts, background_process_handler=None,
                    chunk_width=None, get_raw_nnet_from_am=True,
+                   sum_to_one_penalty=0.0,
                    extra_egs_copy_cmd="", compute_per_dim_accuracy=False):
     """ Function to do model combination
 
@@ -563,7 +543,7 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
 
     models_to_combine.add(num_iters)
 
-    for iter in models_to_combine:
+    for iter in sorted(models_to_combine):
         if get_raw_nnet_from_am:
             model_file = '{0}/{1}.mdl'.format(dir, iter)
             if not os.path.exists(model_file):
@@ -575,12 +555,6 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
             if not os.path.exists(model_file):
                 raise Exception('Model file {0} missing'.format(model_file))
             raw_model_strings.append(model_file)
-
-    if chunk_width is not None:
-        # this is an RNN model
-        mbsize = int(1024.0/(chunk_width))
-    else:
-        mbsize = 1024
 
     if get_raw_nnet_from_am:
         out_model = ("| nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl "
@@ -598,8 +572,10 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
 
     common_lib.run_job(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
-                nnet3-combine --num-iters=40 \
-                --enforce-sum-to-one=true --enforce-positive-weights=true \
+                nnet3-combine --num-iters=80 \
+                --enforce-sum-to-one={hard_enforce} \
+                --sum-to-one-penalty={penalty} \
+                --enforce-positive-weights=true \
                 --verbose=3 {raw_models} \
                 "ark,bg:nnet3-copy-egs {context_opts} \
                 {egs_rspecifier} ark:- |{extra_egs_copy_cmd} \
@@ -610,8 +586,10 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
                    combine_queue_opt=run_opts.combine_queue_opt,
                    dir=dir, raw_models=" ".join(raw_model_strings),
                    egs_rspecifier=combine_egs,
+                   hard_enforce=(sum_to_one_penalty <= 0),
+                   penalty=sum_to_one_penalty,
                    context_opts=context_opts,
-                   mbsize=mbsize,
+                   mbsize=minibatch_size_str,
                    out_model=out_model,
                    egs_dir=egs_dir,
                    extra_egs_copy_cmd=extra_egs_copy_cmd))

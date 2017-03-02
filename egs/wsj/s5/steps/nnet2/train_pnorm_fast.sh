@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey). 
+# Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey).
 #           2013  Xiaohui Zhang
 #           2013  Guoguo Chen
 # Apache 2.0.
@@ -26,14 +26,14 @@ num_iters_final=20 # Maximum number of final iterations to give to the
 initial_learning_rate=0.04
 final_learning_rate=0.004
 bias_stddev=0.5
-pnorm_input_dim=3000 
+pnorm_input_dim=3000
 pnorm_output_dim=300
 p=2
 presoftmax_prior_scale_power=-0.25 # use the specified power value on the priors (inverse priors)
-                                   # to scale the pre-softmax outputs  
+                                   # to scale the pre-softmax outputs
 minibatch_size=128 # by default use a smallish minibatch size for neural net
                    # training; this controls instability which would otherwise
-                   # be a problem with multi-threaded update. 
+                   # be a problem with multi-threaded update.
 
 samples_per_iter=200000 # each iteration of training, see this many samples
                         # per job.  This option is passed to get_egs.sh
@@ -55,7 +55,7 @@ add_layers_period=2 # by default, add new layers every 2 iterations.
 num_hidden_layers=3
 stage=-5
 
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
+io_opts="--max-jobs-run 15" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 randprune=4.0 # speeds up LDA.
 alpha=4.0 # relates to preconditioning.
@@ -82,7 +82,7 @@ lda_opts=
 lda_dim=
 egs_opts=
 transform_dir=     # If supplied, overrides alidir
-cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.  
+cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
             # only relevant for "raw" features, not lda.
 feat_type=  # Can be used to force "raw" features.
 prior_subset_size=10000 # 10k samples per job, for computing priors.  Should be
@@ -126,7 +126,7 @@ if [ $# != 4 ]; then
   echo "                                                   # this, you may want to decrease the batch size."
   echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads... "
-  echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
+  echo "  --io-opts <opts|\"--max-jobs-run 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
@@ -141,7 +141,7 @@ if [ $# != 4 ]; then
   echo "  --stage <stage|-9>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
 
-  
+
   exit 1;
 fi
 
@@ -234,7 +234,7 @@ SoftmaxComponent dim=$num_leaves
 EOF
 
   # to hidden.config it will write the part of the config corresponding to a
-  # single hidden layer; we need this to add new layers. 
+  # single hidden layer; we need this to add new layers.
   cat >$dir/hidden.config <<EOF
 AffineComponentPreconditionedOnline input-dim=$pnorm_output_dim output-dim=$pnorm_input_dim $online_preconditioning_opts learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
 PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim p=$p
@@ -255,16 +255,16 @@ if [ $stage -le -1 ]; then
     echo "prepare vector assignment for FixedScaleComponent before softmax"
     echo "(use priors^$presoftmax_prior_scale_power and rescale to average 1)"
 
-    # obtains raw pdf count    
+    # obtains raw pdf count
     $cmd JOB=1:$nj $dir/log/acc_pdf.JOB.log \
       ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
       post-to-tacc --per-pdf=true --binary=false $alidir/final.mdl ark:- $dir/JOB.pacc || exit 1;
     cat $dir/*.pacc > $dir/pacc
     rm $dir/*.pacc
     awk -v power=$presoftmax_prior_scale_power \
-      '{ for(i=2; i<=NF-1; i++) {sum[i]+=$i} } 
+      '{ for(i=2; i<=NF-1; i++) {sum[i]+=$i} }
       END {
-        for (i=2; i<=NF-1; i++) {total+=sum[i]} 
+        for (i=2; i<=NF-1; i++) {total+=sum[i]}
         ave_pdf=int(total/(NF-2)); total+=0.01*ave_pdf*(NF-2)
         for (i=2; i<=NF-1; i++) {rescale+=((sum[i]+0.01*ave_pdf)/total)^power}
         rescale/=(NF-2)
@@ -345,13 +345,13 @@ while [ $x -lt $num_iters ]; do
           ark:$egs_dir/train_diagnostic.egs '&&' \
         nnet-am-info $dir/$x.mdl &
     fi
-    
+
     echo "Training neural net (pass $x)"
 
     if [ $x -gt 0 ] && \
       [ $x -le $[($num_hidden_layers-1)*$add_layers_period] ] && \
       [ $[($x-1) % $add_layers_period] -eq 0 ]; then
-      
+
       inp=`nnet-am-info $dir/$x.mdl | grep 'Softmax' | awk '{print $2}'`
       if [ "$presoftmax_prior_scale_power" != "0.0" ]; then
         inp=$[$inp-2]
@@ -383,7 +383,7 @@ while [ $x -lt $num_iters ]; do
       perturb_suffix="-perturbed"
       perturb_opts="--target-objf-change=$target_objf_change --within-covar=$dir/within_covar.spmat"
     fi
-    
+
     $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
       nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x \
       ark:$egs_dir/egs.JOB.$[$x%$iters_per_epoch].ark ark:- \| \
@@ -407,7 +407,7 @@ while [ $x -lt $num_iters ]; do
       n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
           $fn = sprintf($pat,$n); open(F, "<$fn") || die "Error opening log file $fn";
           undef $logprob; while (<F>) { if (m/log-prob-per-frame=(\S+)/) { $logprob=$1; } }
-          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob; 
+          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob;
           $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
       $cmd $dir/log/select.$x.log \
@@ -416,7 +416,7 @@ while [ $x -lt $num_iters ]; do
 
     if [ "$mix_up" -gt 0 ] && [ $x -eq $mix_up_iter ]; then
       echo "Warning: the mix up opertion is disabled!"
-      echo "    Ignore mix up leaves number specified" 
+      echo "    Ignore mix up leaves number specified"
     fi
     rm $nnets_list
     [ ! -f $dir/$[$x+1].mdl ] && exit 1;

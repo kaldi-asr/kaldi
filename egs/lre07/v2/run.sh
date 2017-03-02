@@ -6,7 +6,7 @@
 # This script runs the NIST 2007 General Language Recognition Closed-Set
 # evaluation.
 # This example script shows how to replace the GMM-UBM
-# with a DNN trained for ASR. 
+# with a DNN trained for ASR.
 
 . cmd.sh
 . path.sh
@@ -157,12 +157,12 @@ utils/fix_data_dir.sh data/train_dnn_32k
 # Initialize a full GMM from the DNN posteriors and language recognition
 # features. This can be used both alone, as a UBM, or to initialize the
 # i-vector extractor in a DNN-based system.
-lid/init_full_ubm_from_dnn.sh --nj 40 --cmd "$train_cmd -l mem_free=6G,ram_free=6G" \
+lid/init_full_ubm_from_dnn.sh --nj 40 --cmd "$train_cmd --mem 6G" \
   data/train_32k \
   data/train_dnn_32k $nnet exp/full_ubm
 
 # Train an i-vector extractor based on the DNN-UBM.
-lid/train_ivector_extractor_dnn.sh --cmd "$train_cmd -l mem_free=80G,ram_free=80G" \
+lid/train_ivector_extractor_dnn.sh --cmd "$train_cmd --mem 80G" \
   --min-post 0.015 \
   --ivector-dim 600 \
   --num-iters 5 \
@@ -189,14 +189,14 @@ echo "**Language count for logistic regression training (after splitting long ut
 awk '{print $2}' data/train_lr_dnn/utt2lang | sort | uniq -c | sort -nr
 
 # Extract i-vectors using the extractor with the DNN-UBM
-lid/extract_ivectors_dnn.sh --cmd "$train_cmd -l mem_free=30G,ram_free=30G" \ 
+lid/extract_ivectors_dnn.sh --cmd "$train_cmd --mem 30G" \
   --nj 40 exp/extractor_dnn \
   $nnet \
   data/train_lr \
   data/train_lr_dnn \
   exp/ivectors_train
 
-lid/extract_ivectors_dnn.sh --cmd "$train_cmd -l mem_free=30G,ram_free=30G" \
+lid/extract_ivectors_dnn.sh --cmd "$train_cmd --mem 30G" \
   --nj 40 exp/extractor_dnn \
   $nnet \
   data/lre07 \
@@ -205,7 +205,7 @@ lid/extract_ivectors_dnn.sh --cmd "$train_cmd -l mem_free=30G,ram_free=30G" \
 
 # Train a logistic regression model on top of i-Vectors
 lid/run_logistic_regression.sh --prior-scale 0.70 \
-  --conf conf/logistic-regression.conf 
+  --conf conf/logistic-regression.conf
 
 # General LR 2007 closed-set eval
 local/lre07_eval/lre07_eval.sh exp/ivectors_lre07 \

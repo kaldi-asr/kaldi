@@ -28,27 +28,25 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
                          Nnet *nnet):
     config_(config),
     nnet_(nnet),
-    compiler_(*nnet, config_.optimize_config),
+    compiler_(*nnet, config_.optimize_config, config_.compiler_config),
     num_minibatches_processed_(0) {
   if (config.zero_component_stats)
     ZeroComponentStats(nnet);
   KALDI_ASSERT(config.momentum >= 0.0 &&
                config.max_param_change >= 0.0);
   delta_nnet_ = nnet_->Copy();
-  bool is_gradient = false;  // setting this to true would disable the
-                             // natural-gradient updates.
-  SetZero(is_gradient, delta_nnet_);
+  ScaleNnet(0.0, delta_nnet_);
   const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
   num_max_change_per_component_applied_.resize(num_updatable, 0);
   num_max_change_global_applied_ = 0;
 
   if (config_.read_cache != "") {
     bool binary;
-    try {
-      Input ki(config_.read_cache, &binary);
+    Input ki;
+    if (ki.Open(config_.read_cache, &binary)) {
       compiler_.ReadCache(ki.Stream(), binary);
       KALDI_LOG << "Read computation cache from " << config_.read_cache;
-    } catch (...) {
+    } else {
       KALDI_WARN << "Could not open cached computation. "
                     "Probably this is the first training iteration.";
     }
@@ -68,10 +66,10 @@ void NnetTrainer::Train(const NnetExample &eg) {
                         *nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
-  computer.Forward();
+  computer.Run();
 
   this->ProcessOutputs(eg, &computer);
-  computer.Backward();
+  computer.Run();
 
   UpdateParamsWithMaxChange();
 }
@@ -153,7 +151,7 @@ void NnetTrainer::UpdateParamsWithMaxChange() {
     if (param_delta > config_.max_param_change) {
       if (param_delta - param_delta != 0.0) {
         KALDI_WARN << "Infinite parameter change, will not apply.";
-        SetZero(false, delta_nnet_);
+        ScaleNnet(0.0, delta_nnet_);
       } else {
         scale *= config_.max_param_change / param_delta;
         num_max_change_global_applied_++;
@@ -167,14 +165,14 @@ void NnetTrainer::UpdateParamsWithMaxChange() {
     if (min_scale < 1.0)
       ostr << "Per-component max-change active on "
            << num_max_change_per_component_applied_per_minibatch
-           << " / " << num_updatable << " Updatable Components."
-           << "(smallest factor=" << min_scale << " on "
+           << " / " << num_updatable << " updatable Components; "
+           << "smallest factor=" << min_scale << " on "
            << component_name_with_min_scale
-           << " with max-change=" << max_change_with_min_scale <<"). ";
+           << " with max-change=" << max_change_with_min_scale << '.';
     if (param_delta > config_.max_param_change)
       ostr << "Global max-change factor was "
            << config_.max_param_change / param_delta
-           << " with max-change=" << config_.max_param_change << ".";
+           << " with max-change=" << config_.max_param_change << '.';
     KALDI_LOG << ostr.str();
   }
   // applies both of the max-change scalings all at once, component by component
@@ -353,7 +351,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
         cu_post.DivElements(log_prob);          // x / y
 
         cu_post.AddMat(-1.0, n_cu_post);        // x / y - (1-x) / (1-y)
-        computer->AcceptOutputDeriv(output_name, &cu_post);
+        computer->AcceptInput(output_name, &cu_post);
       }
 
       break;
@@ -376,7 +374,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
             *tot_weight = cu_deriv_weights.Sum();
             *tot_objf = TraceMatMat(output, output_deriv, kTrans);
             if (supply_deriv) {
-              computer->AcceptOutputDeriv(output_name, &output_deriv);
+              computer->AcceptInput(output_name, &output_deriv);
             }
           } else {
             *tot_weight = cu_post.Sum();
@@ -385,7 +383,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
               CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols(),
                                                kUndefined);
               cu_post.CopyToMat(&output_deriv);
-              computer->AcceptOutputDeriv(output_name, &output_deriv);
+              computer->AcceptInput(output_name, &output_deriv);
             }
           }
 
@@ -402,7 +400,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
           *tot_weight = cu_post.Sum();
           *tot_objf = TraceMatMat(output, cu_post, kTrans);
           if (supply_deriv)
-            computer->AcceptOutputDeriv(output_name, &cu_post);
+            computer->AcceptInput(output_name, &cu_post);
           break;
         }
         case kCompressedMatrix: {
@@ -417,7 +415,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
           *tot_weight = cu_post.Sum();
           *tot_objf = TraceMatMat(output, cu_post, kTrans);
           if (supply_deriv)
-            computer->AcceptOutputDeriv(output_name, &cu_post);
+            computer->AcceptInput(output_name, &cu_post);
           break;
         }
       }
@@ -438,7 +436,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
       }
       *tot_objf = -0.5 * TraceMatMat(diff, diff, kTrans);
       if (supply_deriv)
-        computer->AcceptOutputDeriv(output_name, &diff);
+        computer->AcceptInput(output_name, &diff);
       break;
     }
     default:

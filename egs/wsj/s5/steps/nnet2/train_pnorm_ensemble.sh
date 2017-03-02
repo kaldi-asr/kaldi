@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# Copyright 2012  Johns Hopkins University (Author: Daniel Povey). 
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey).
 #           2013  Guoguo Chen
 #           2014  Xiaohui Zhang
 # Apache 2.0.
 
 
-# This script trains an ensemble of neural networks with pnorm nonlinearities. 
-# An ensemble of nets are first differently initialized, and then trained using the 
-# same data during each iteration. In each training iteration, one term is added to 
-# the objf, which is beta times the cross-entropy between the current net's posterior 
-# output and the geometrically averaged posterior outputs of the ensemble of nets. 
+# This script trains an ensemble of neural networks with pnorm nonlinearities.
+# An ensemble of nets are first differently initialized, and then trained using the
+# same data during each iteration. In each training iteration, one term is added to
+# the objf, which is beta times the cross-entropy between the current net's posterior
+# output and the geometrically averaged posterior outputs of the ensemble of nets.
 # The beta values obey an exponentially increasing schedule (determined by initial_beta
-# and final_beta). 
+# and final_beta).
 
 # Begin configuration section.
 cmd=run.pl
@@ -28,7 +28,7 @@ bias_stddev=0.5
 softmax_learning_rate_factor=1.0 # In the default setting keep the same learning rate.
 
 combine_regularizer=1.0e-14 # Small regularizer so that parameters won't go crazy.
-pnorm_input_dim=3000 
+pnorm_input_dim=3000
 pnorm_output_dim=300
 p=2
 minibatch_size=128 # by default use a smallish minibatch size for neural net
@@ -54,7 +54,7 @@ add_layers_period=2 # by default, add new layers every 2 iterations.
 num_hidden_layers=3
 stage=-5
 
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 randprune=4.0 # speeds up LDA.
 alpha=4.0
@@ -109,7 +109,7 @@ if [ $# != 4 ]; then
   echo "                                                   # this, you may want to decrease the batch size."
   echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads... "
-  echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
+  echo "  --io-opts <opts|\"--max-jobs-run 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
@@ -126,7 +126,7 @@ if [ $# != 4 ]; then
   echo "                                                   # very end."
   echo "  --stage <stage|-9>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
-  
+
   exit 1;
 fi
 
@@ -210,7 +210,7 @@ SoftmaxComponent dim=$num_leaves
 EOF
 
   # to hidden.config it will write the part of the config corresponding to a
-  # single hidden layer; we need this to add new layers. 
+  # single hidden layer; we need this to add new layers.
   cat >$dir/hidden.config <<EOF
 AffineComponentPreconditioned input-dim=$pnorm_output_dim output-dim=$pnorm_input_dim alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
 PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim p=$p
@@ -265,7 +265,7 @@ while [ $x -lt $num_iters ]; do
       $cmd $dir/log/progress.$x.log \
         nnet-show-progress --use-gpu=no $dir/$[$x-1].1.mdl $dir/$x.1.mdl ark:$egs_dir/train_diagnostic.egs &
     fi
-    
+
     declare -A mdl
     echo "Training neural net (pass $x)"
     if [ $x -gt 0 ] && \
@@ -287,7 +287,7 @@ while [ $x -lt $num_iters ]; do
       nnets_ensemble_out="${nnets_ensemble_out} $dir/$[$x+1].JOB.$i.mdl "
     done
 
-    beta=`perl -e '($x,$n,$i,$f)=@ARGV; print ($i+$x*($f-$i)/$n);' $[$x+1] $num_iters $initial_beta $final_beta`; 
+    beta=`perl -e '($x,$n,$i,$f)=@ARGV; print ($i+$x*($f-$i)/$n);' $[$x+1] $num_iters $initial_beta $final_beta`;
 
     $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
       nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x \
@@ -301,17 +301,17 @@ while [ $x -lt $num_iters ]; do
     softmax_learning_rate=`perl -e "print $learning_rate * $softmax_learning_rate_factor;"`;
     nnet-am-info $dir/$[$x+1].1.1.mdl > $dir/foo  2>/dev/null || exit 1
     nu=`cat $dir/foo | grep num-updatable-components | awk '{print $2}'`
-    na=`cat $dir/foo | grep -v Fixed | grep AffineComponent | wc -l` 
+    na=`cat $dir/foo | grep -v Fixed | grep AffineComponent | wc -l`
     # na is number of last updatable AffineComponent layer [one-based, counting only
     # updatable components.]
     lr_string="$learning_rate"
-    for n in `seq 2 $nu`; do 
+    for n in `seq 2 $nu`; do
       if [ $n -eq $na ] || [ $n -eq $[$na-1] ]; then lr=$softmax_learning_rate;
       else lr=$learning_rate; fi
       lr_string="$lr_string:$lr"
     done
-    
-    for i in `seq 1 $ensemble_size`; do 
+
+    for i in `seq 1 $ensemble_size`; do
       nnets_list=
       for n in `seq 1 $num_jobs_nnet`; do
         nnets_list="$nnets_list $dir/$[$x+1].$n.$i.mdl"
@@ -335,7 +335,7 @@ done
 # Now do combination.
 # At the end, final.mdl will be a combination of the last e.g. 10 models.
 
-for i in `seq 1 $ensemble_size`; do 
+for i in `seq 1 $ensemble_size`; do
   nnets_list=()
   if [ $num_iters_final -gt $num_iters_extra ]; then
     echo "Setting num_iters_final=$num_iters_extra"
@@ -347,7 +347,7 @@ for i in `seq 1 $ensemble_size`; do
       nnets_list[$idx]=$dir/$x.$i.mdl # "nnet-am-copy --remove-dropout=true $dir/$x.mdl - |"
     fi
   done
-  
+
   if [ $stage -le $num_iters ]; then
     # Below, use --use-gpu=no to disable nnet-combine-fast from using a GPU, as
     # if there are many models it can give out-of-memory error; set num-threads to 8
@@ -370,7 +370,7 @@ for i in `seq 1 $ensemble_size`; do
         --initial-model=100000 --num-lbfgs-iters=40 \
         --verbose=3 --minibatch-size=$mb "${nnets_list[@]}" ark:$egs_dir/combine.egs \
         $dir/final.$i.mdl || exit 1;
-  
+
     # Normalize stddev for affine or block affine layers that are followed by a
     # pnorm layer and then a normalize layer.
     $cmd $parallel_opts $dir/log/normalize.$i.log \
@@ -397,9 +397,9 @@ if $cleanup; then
   fi
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do
-    if [ $[$x%10] -ne 0 ] && [ $x -lt $[$num_iters-$num_iters_final+1] ]; then 
+    if [ $[$x%10] -ne 0 ] && [ $x -lt $[$num_iters-$num_iters_final+1] ]; then
        # delete all but every 10th model; don't delete the ones which combine to form the final model.
-      for i in `seq 1 $ensemble_size`; do 
+      for i in `seq 1 $ensemble_size`; do
         rm $dir/$x.$i.mdl
       done
     fi

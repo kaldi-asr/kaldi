@@ -49,6 +49,14 @@ if ! [ "$numsplit" -gt 0 ]; then
   exit 1;
 fi
 
+if $split_per_spk; then
+  warning_opt=
+else
+  # suppress warnings from filter_scps.pl about 'some input lines were output
+  # to multiple files'.
+  warning_opt="--no-warn"
+fi
+
 n=0;
 feats=""
 wavs=""
@@ -146,9 +154,6 @@ done
 # split some things that are indexed by speaker
 for f in spk2gender spk2warp cmvn.scp; do
   if [ -f $data/$f ]; then
-    ! $split_per_spk && warning_opt="--no-warn"
-    # suppress warnings from filter_scps.pl about 'some input lines were output
-    # to multiple files', which is expected in this case.
     utils/filter_scps.pl $warning_opt JOB=1:$numsplit \
       $data/split${numsplit}${utt}/JOB/spk2utt $data/$f $data/split${numsplit}${utt}/JOB/$f || exit 1;
   fi
@@ -162,12 +167,12 @@ if [ -f $data/segments ]; then
     awk '{print $2;}' $dsn/segments | sort | uniq > $dsn/tmp.reco # recording-ids.
   done
   if [ -f $data/reco2file_and_channel ]; then
-    utils/filter_scps.pl JOB=1:$numsplit \
+    utils/filter_scps.pl $warning_opt JOB=1:$numsplit \
       $data/split${numsplit}${utt}/JOB/tmp.reco $data/reco2file_and_channel \
       $data/split${numsplit}${utt}/JOB/reco2file_and_channel || exit 1
   fi
   if [ -f $data/wav.scp ]; then
-    utils/filter_scps.pl JOB=1:$numsplit \
+    utils/filter_scps.pl $warning_opt JOB=1:$numsplit \
       $data/split${numsplit}${utt}/JOB/tmp.reco $data/wav.scp \
       $data/split${numsplit}${utt}/JOB/wav.scp || exit 1
   fi

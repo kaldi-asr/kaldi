@@ -34,9 +34,10 @@
     and you can reserve these on the queue by adding some extra option to qsub.
     See \ref queue for more information.
 
-    We have started a separate project called <a
+    Some time ago we started a separate project called <a
     href=https://sourceforge.net/projects/kluster/> Kluster </a> that shows you
-    how to create such a cluster on Amazon's EC2; MIT's <a
+    how to create such a cluster on Amazon's EC2; however, this is not
+    very well maintained; MIT's <a
     href="http://star.mit.edu/cluster/">StarCluster </a> is a larger and
     better-supported project that provides the same functionality.  Most of the
     scripts should be suitable for a locally hosted cluster based on Debian or
@@ -51,9 +52,8 @@
   course it will be slower, and you may have to reduce the number of jobs used
   in some of the example scripts to avoid exhausting your machine's memory.
 
-  Kaldi is best tested on Debian and Red Hat Linux, but will run on any
-  Linux distribution, or on Cygwin or Mac OsX.  We are working on FreeBSD
-  installation scripts.
+   Kaldi is best tested on Debian and Red Hat Linux, but will run on any
+   Linux distribution, or on Cygwin or Mac OsX.
 
    Kaldi's scripts have been written in such a way that if you replace SGE with
    a similar mechanism with different syntax (such as Tork), it should be
@@ -67,7 +67,6 @@
    we are told about them though).
 
    \section dependencies_packages Software packages required
-
 
    The following is a non-exhaustive list of some of the packages you need in
    order to install Kaldi.  The full list is not important since the installation
@@ -98,6 +97,11 @@
         (the corresponding packages are automake and libtool).
       - Note: some of the example scripts now use SRILM; we make it easy to install
         that, although you still have to register online to download it.
+    - SRILM: some of the example scripts use this.  It's generally a better
+      and more complete language modeling toolkit than IRSTLM; the only drawback
+      is the license, which is not free for commercial use.  You have to
+      enter your name on the download page to download it, so the installation
+      script requires some human interaction.
     - sph2pipe: this is for converting sph format files into other formats such
       as wav.  It's needed for the example scripts that use LDC data.
     - sclite: this is for scoring and is not necessary as we have our own, simple
@@ -109,5 +113,9 @@
     - CLAPACK, the linear algebra library (we download the headers).
       This is useful only on systems where you don't have ATLAS and are
       instead compiling with CLAPACK.
+    - OpenBLAS: this is an alernative to ATLAS or CLAPACK.  The scripts don't
+      use it by default but we provide installation scripts so you can install
+      it if you want to compare it against ATLAS (it's more actively
+      maintained than ATLAS).
 
 */

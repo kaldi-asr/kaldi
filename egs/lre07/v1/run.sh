@@ -127,12 +127,12 @@ utils/subset_data_dir.sh data/train 5000 data/train_5k
 utils/subset_data_dir.sh data/train 10000 data/train_10k
 
 
-lid/train_diag_ubm.sh --nj 30 --cmd "$train_cmd -l mem_free=20G,ram_free=20G" \
+lid/train_diag_ubm.sh --nj 30 --cmd "$train_cmd --mem 20G" \
   data/train_5k 2048 exp/diag_ubm_2048
-lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd -l mem_free=20G,ram_free=20G" \
+lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd --mem 20G" \
   data/train_10k exp/diag_ubm_2048 exp/full_ubm_2048_10k
 
-lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd -l mem_free=35G,ram_free=35G" \
+lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd --mem 35G" \
   data/train exp/full_ubm_2048_10k exp/full_ubm_2048
 
 # Alternatively, a diagonal UBM can replace the full UBM used above.
@@ -148,7 +148,7 @@ lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd -l mem_free=35G,ram_free=35G" \
 #gmm-global-to-fgmm exp/diag_ubm_2048/final.dubm \
 #  exp/full_ubm_2048/final.ubm
 
-lid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=35G,ram_free=35G" \
+lid/train_ivector_extractor.sh --cmd "$train_cmd --mem 35G" \
   --use-weights true \
   --num-iters 5 exp/full_ubm_2048/final.ubm data/train \
   exp/extractor_2048
@@ -162,10 +162,10 @@ utils/fix_data_dir.sh data/train_lr
 echo "**Language count for logistic regression training (after splitting long utterances):**"
 awk '{print $2}' data/train_lr/utt2lang | sort | uniq -c | sort -nr
 
-lid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+lid/extract_ivectors.sh --cmd "$train_cmd --mem 3G" --nj 50 \
    exp/extractor_2048 data/train_lr exp/ivectors_train
 
-lid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+lid/extract_ivectors.sh --cmd "$train_cmd --mem 3G" --nj 50 \
    exp/extractor_2048 data/lre07 exp/ivectors_lre07
 
 lid/run_logistic_regression.sh --prior-scale 0.70 \

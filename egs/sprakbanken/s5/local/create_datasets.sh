@@ -24,7 +24,7 @@ fi
 src=$1
 dest=$2
 mkdir $dest
-python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl $src/text.unnormalised $src/onlyids $src/transcripts.am 
+python local/normalize_transcript_prefixed.py local/norm_dk/numbersLow.tbl $src/text.unnormalised $src/onlyids $src/transcripts.am 
 local/norm_dk/format_text.sh am $src/transcripts.am > $src/onlytext
 paste -d ' ' $src/onlyids $src/onlytext > $dest/text
 for f in wav.scp utt2spk; do

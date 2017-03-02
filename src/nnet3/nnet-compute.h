@@ -53,8 +53,8 @@ struct NnetComputeOptions {
   "computation" object.
 
   You call in sequence, the constructor, then AcceptInput() [or AcceptInputs()],
-  then Forward(), then GetOutput(), then if applicable (Backward(), then if
-  applicable GetInputDeriv()).
+  then Run(), then GetOutput() [and if applicable, AcceptOutputDeriv], then if
+  there is a backward computation, Run() [then, if applicable, GetInputDeriv()].
  */
 class NnetComputer {
  public:
@@ -67,53 +67,55 @@ class NnetComputer {
                const Nnet &nnet,
                Nnet *nnet_to_update);
 
-  /// e.g. AcceptInput ("input", input_mat).  Will crash if there is no
-  /// input node with the given name.  This function is destructive of "input"
-  /// as it takes it using the Swap function of CuMatrix.
-  /// Must have the same number of rows as the corresponding input described
-  /// in the ComputationRequest e.g. the indexes.size() in the corresponding
+  /// e.g. AcceptInput ("input", &input_mat), or for derivatives w.r.t. the
+  /// output, AcceptInput("output", output_deriv_mat).  Will crash if there is
+  /// no input or output node with the given name.  This function is destructive
+  /// of "input" as it takes it using the Swap function of CuMatrix.  Must have
+  /// the same number of rows as the corresponding input described in the
+  /// ComputationRequest e.g. the indexes.size() in the corresponding
   /// IoSpecification.
-  void AcceptInput(const std::string &input_name,
+  void AcceptInput(const std::string &node_name,
                    CuMatrix<BaseFloat> *input);
 
-  /// This function calls AcceptInput() in turn on all the inputs in the
-  /// training example (provide example.io; this interface makes it easy to work
-  /// with CCTC examples too).  It needs "nnet" only in order to distinguish
-  /// inputs from outputs.
+  /// This convenience function calls AcceptInput() in turn on all the inputs in
+  /// the training example.  It needs "nnet" only in order to distinguish inputs
+  /// from outputs.
   void AcceptInputs(const Nnet &nnet,
                     const std::vector<NnetIo> &io);
 
 
-  // Does the forward computation.
-  void Forward();
+  /// This does either the forward or backward computation, depending
+  /// when it is called (in a typical computation, the first time you call
+  /// this it will do the forward computation; then you'll take the outputs
+  /// and provide derivatives; and the second time you call it, it will do
+  /// the backward computation.  There used to be two separate functions
+  /// Forward() and Backward().
+  void Run();
 
-  // e.g. GetOutput ("output").  Will crash if no such output.
-  const CuMatrixBase<BaseFloat> &GetOutput(const std::string &output_name) const;
+  // e.g. GetOutput("output").  This function can also be used to get
+  // derivatives w.r.t. inputs.  It's non-const because it may only
+  // be called once and it keeps track of that.
+  const CuMatrixBase<BaseFloat> &GetOutput(const std::string &node_name);
 
   // Version of GetOutput that calls Swap(), destroying the output stored inside
   // this object.  You should probably not use this if you plan to call
-  // Backward() on the same NnetComputer object, it may lead to a crash.
+  // Backward() on the same NnetComputer object, or it's a recurret
+  // computation-- it may lead to a crash.
   void GetOutputDestructive(const std::string &output_name,
                             CuMatrix<BaseFloat> *output);
 
-  /// e.g. AcceptOutputDeriv("output", &output_deriv_mat).
-  void AcceptOutputDeriv(const std::string &output_name,
-                         CuMatrix<BaseFloat> *output_deriv);
-
-
-  // Does the backward computation.
-  void Backward();
-
-  // e.g. GetInputDeriv ("input").  Will crash if no such input derivative.
-  // You may only call this if you requested this input derivative in the
-  // ComputationRequest.
-  const CuMatrixBase<BaseFloat> &GetInputDeriv(
-      const std::string &input_name) const;
 
  private:
   const NnetComputeOptions &options_;
   const NnetComputation &computation_;
   const Nnet &nnet_;
+  int32 program_counter_;  // command index to execute next.
+  // To deal with inputs and outputs that are not provided/taken by the user in
+  // the same order as listed in the computation, pending_commands_ contains a
+  // list of program commands that were skipped over but are in the queue to be
+  // executed.
+  std::vector<int32> pending_commands_;
+
   Nnet *nnet_to_update_;
   bool debug_;
   // command_attributes_ is only used if debug_=true.
@@ -126,15 +128,26 @@ class NnetComputer {
   // The matrices used in the computation.
   std::vector<CuMatrix<BaseFloat> > matrices_;
 
-  // executes the command in computation_.commands[command].
-  void ExecuteCommand(int32 command);
 
-  // Returns the matrix index where the input or output matrix index for
-  // "node_name" is stored (or its corresponding derivative, if is_deriv==true).
-  // "is_output" tells the code that this is an output node, as opposed to an
-  // input node; it's used only for checking.
-  int32 GetMatrixIndex(const std::string &node_name,
-                       bool is_output, bool is_deriv) const;
+  // executes the command in computation_.commands[program_counter_].
+  void ExecuteCommand();
+
+  // Returns the matrix index where the input (if is_output==false) or output
+  // matrix index for "node_name" is stored.  This looks at the next command (at
+  // program_counter_) and in pending_commands_, and sees whether we were
+  // expecting any input or output for this node, and if there is a match,
+  // returns it and "consumes" the command by either advancing program_counter_
+  // or consuming something from pending_commands_.
+  // If there is not a match (i.e. we were not expecting this type of I/O
+  // at this point in the computation), it prints an error and dies.
+  int32 GetIoMatrixIndex(const std::string &node_name, bool is_output);
+
+
+  // This function, called from Run(), checks that there is no pending I/O
+  // that we were waiting for, that would block the running of the
+  // computation; it crashes if there was pending input, and ignores and
+  // skips over any pending output.
+  void CheckNoPendingIo();
 
   CuSubMatrix<BaseFloat> GetSubMatrix(int32 submatrix_index);
 
@@ -144,11 +157,6 @@ class NnetComputer {
   void GetPointers(int32 indexes_multi_index,
                    int32 num_cols,
                    CuArray<const BaseFloat*> *pointers);
-
-  // with check_output_deriv = false, checks we have all inputs.
-  // with check_output_deriv = true, checks we have all required output-derivs.
-  void CheckInputs(bool check_output_deriv) const;
-
 
   struct CommandDebugInfo {
     // Uncentered standard deviations of elements of all matrices that this

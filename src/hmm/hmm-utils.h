@@ -245,6 +245,15 @@ bool SplitToPhones(const TransitionModel &trans_model,
    @param subsample_factor [in] The frame subsampling factor... normally 1, but
                                 might be > 1 if we're converting to a reduced-frame-rate
                                 system.
+   @param repeat_frames [in]    Only relevant when subsample_factor != 1
+                                If true, repeat frames of alignment by
+                                'subsample_factor' after alignment
+                                conversion, to keep the alignment the same
+                                length as the input alignment.
+                                [note: we actually do this by interpolating
+                                'subsample_factor' separately generated
+                                alignments, to keep the phone boundaries
+                                the same as the input where possible.]
    @param reorder [in]          True if you want the pdf-ids on the new alignment to
                                 be 'reordered'. (vs. the way they appear in
                                 the HmmTopology object)
@@ -257,6 +266,7 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
                       const ContextDependencyInterface &new_ctx_dep,
                       const std::vector<int32> &old_alignment,
                       int32 subsample_factor,  // 1 in the normal case -> no subsampling.
+                      bool repeat_frames,
                       bool reorder,
                       const std::vector<int32> *phone_map,  // may be NULL
                       std::vector<int32> *new_alignment);

@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # This is a chain-training script with TDNN neural networks.
-# This script is based on local/chain/run_tdnn.sh, but adding
+# This script is based on local/chain/tuning/run_tdnn_1a.sh, but adding
 # the reverberated IHM data into the train set.
-# This script obtains better results on both IHM and SDM tasks.
+# This script obtains better results on IHM, SDM and MDM tasks.
 
 # Please see RESULTS_* for examples of command lines invoking this script.
 
@@ -20,7 +20,7 @@ stage=1
 mic=ihm
 nj=30
 min_seg_len=1.55
-use_ihm_ali=true
+use_ihm_ali=false
 train_set=train_cleaned
 gmm=tri3_cleaned  # the gmm for the target data
 ihm_gmm=tri3_cleaned  # the gmm for the IHM system (if --use-ihm-ali true).
@@ -260,7 +260,7 @@ if [ $stage -le 17 ]; then
   # Note: it might appear that this data/lang_chain directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --left-biphone --self-loop-scale 1.0 data/lang_${LM} $dir $graph_dir
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_${LM} $dir $graph_dir
 fi
 
 if [ $stage -le 18 ]; then

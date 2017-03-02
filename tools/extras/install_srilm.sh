@@ -61,13 +61,13 @@ make || exit 1
 
 cd ..
 (
-  [ ! -z ${SRILM} ] && \
+  [ ! -z "${SRILM}" ] && \
     echo >&2 "SRILM variable is aleady defined. Undefining..." && \
     unset SRILM
 
   [ -f ./env.sh ] && . ./env.sh
 
-  [ ! -z ${SRILM} ] && \
+  [ ! -z "${SRILM}" ] && \
     echo >&2 "SRILM config is already in env.sh" && exit
 
   wd=`pwd`

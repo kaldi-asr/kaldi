@@ -162,16 +162,21 @@ static void WriteCindexVectorElementBinary(
   if (i == 0 || node_index != vec[i-1].first) {
     // '|' into ranges that each have all the same node name, like:
     // [node_1: index_1 index_2] [node_2: index_3 index_4]
+    // Caution: '|' is character 124 so we have to avoid that
+    // character in places where it might be confused with
+    // this separator.
     os.put('|');
     WriteBasicType(os, binary, node_index);
-  }  
+  }
   if (i == 0) {
+    // we don't need to be concerned about reserving space for character 124
+    // ('|') here, since (wastefully) '|' is always printed for i == 0.
     if (index.n == 0 && index.x == 0 &&
         std::abs(index.t) < 125) {
       // handle this common case in one character.
       os.put(static_cast<signed char>(index.t));
     } else if (index.t == 0 && index.x == 0 &&
-        std::abs(index.n) < 2) {
+               (index.n == 0 || index.n == 1)) {
       // handle this common case in one character.
       os.put(static_cast<signed char>(index.n + 125));
     } else {  // handle the general case less efficiently.
@@ -186,10 +191,10 @@ static void WriteCindexVectorElementBinary(
         std::abs(index.t - last_index.t) < 124) {
       signed char c = index.t - last_index.t;
       os.put(c);
+      // note: we have to reserve character 124 ('|') for when 'n' changes.
     } else if (index.t == last_index.t && index.x == last_index.x &&
-        std::abs(index.n - last_index.n) < 2) {
-      signed char c = index.n - last_index.n;
-      os.put(c + 125);
+              (index.n == last_index.n || index.n == last_index.n + 1)) {
+      os.put(125 + index.n - last_index.n);
     } else {  // handle the general case less efficiently.
       os.put(127);
       WriteBasicType(os, binary, index.n);
@@ -213,15 +218,16 @@ static void ReadCindexVectorElementBinary(
     is.get();
     ReadBasicType(is, binary, &((*vec)[i].first));
   } else {
+    KALDI_ASSERT(i != 0);
     (*vec)[i].first = (*vec)[i-1].first;
   }
   signed char c = is.get();
   if (i == 0) {
-    if (std::abs(int(c)) < 124) {
+    if (std::abs(int(c)) < 125) {
       index.n = 0;
       index.t = c;
       index.x = 0;
-    } else if (std::abs(int(c)) < 127) {
+    } else if (c == 125 || c == 126) {
       index.n = c - 125;
       index.t = 0;
       index.x = 0;
@@ -239,7 +245,7 @@ static void ReadCindexVectorElementBinary(
       index.n = last_index.n;
       index.t = last_index.t + c;
       index.x = last_index.x;
-    } else if (std::abs(int(c)) < 127) {
+    } else if (c == 125 || c == 126) {
       index.n = last_index.n + c - 125;
       index.t = last_index.t;
       index.x = last_index.x;
@@ -274,11 +280,11 @@ void WriteCindexVector(std::ostream &os, bool binary,
         os.put('[');
         WriteBasicType(os, binary, node_index);
         os.put(':');
-      } 
+      }
       vec[i].second.Write(os, binary);
       if (i == size - 1)
         os.put(']');
-    } 
+    }
   } else {
     for (int32 i = 0; i < size; i++)
       WriteCindexVectorElementBinary(os, vec, i);
@@ -320,7 +326,7 @@ void ReadCindexVector(std::istream &is, bool binary,
         (*vec)[i].first = (*vec)[i-1].first;
       }
       (*vec)[i].second.Read(is, binary);
-      if (i == size - 1) { 
+      if (i == size - 1) {
         is >> std::ws;
         if (is.peek() == static_cast<int>(']')) {
           is.get();
@@ -350,6 +356,49 @@ size_t CindexHasher::operator () (const Cindex &cindex) const {
       15649 * cindex.second.t +
       89809 * cindex.second.x;
 
+}
+
+size_t CindexVectorHasher::operator () (
+    const std::vector<Cindex> &cindex_vector) const {
+  // this is an arbitrarily chosen prime.
+  size_t kPrime = 23539, ans = 0;
+  std::vector<Cindex>::const_iterator iter = cindex_vector.begin(),
+      end = cindex_vector.end();
+  CindexHasher cindex_hasher;
+  for (; iter != end; ++iter)
+    ans = cindex_hasher(*iter) + kPrime * ans;
+  return ans;
+}
+
+size_t IndexVectorHasher::operator () (
+    const std::vector<Index> &index_vector) const {
+  size_t n1 = 15, n2 = 10;  // n1 and n2 are used to extract only a subset of
+                            // elements to hash; this makes the hasher faster by
+                            // skipping over more elements.  Setting n1 large or
+                            // n2 to 1 would make the hasher consider all
+                            // elements.
+  // all long-ish numbers appearing below are randomly chosen primes.
+  size_t ans = 1433 + 34949  * index_vector.size();
+  std::vector<Index>::const_iterator iter = index_vector.begin(),
+      end = index_vector.end(), med = end;
+  if (med > iter + n1)
+    med = iter + n1;
+
+  for (; iter != med; ++iter) {
+    ans += iter->n * 1619;
+    ans += iter->t * 15649;
+    ans += iter->x * 89809;
+  }
+  // after the first n1 values, look only at every n2'th value.  this makes the
+  // hashing much faster, and in the kinds of structures that we actually deal
+  // with, we shouldn't get unnecessary hash collisions as a result of this
+  // optimization.
+  for (; iter < end; iter += n2) {
+    ans += iter->n * 1619;
+    ans += iter->t * 15649;
+    ans += iter->x * 89809;
+  }
+  return ans;
 }
 
 std::ostream &operator << (std::ostream &ostream, const Index &index) {

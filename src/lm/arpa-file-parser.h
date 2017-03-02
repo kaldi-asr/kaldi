@@ -21,10 +21,10 @@
 #ifndef KALDI_LM_ARPA_FILE_PARSER_H_
 #define KALDI_LM_ARPA_FILE_PARSER_H_
 
+#include <fst/fst-decl.h>
+
 #include <string>
 #include <vector>
-
-#include <fst/fst-decl.h>
 
 #include "base/kaldi-types.h"
 #include "itf/options-itf.h"
@@ -38,7 +38,7 @@ struct ArpaParseOptions {
   enum OovHandling {
     kRaiseError,     ///< Abort on OOV words
     kAddToSymbols,   ///< Add novel words to the symbol table.
-    kReplaceWithUnk, ///< Replace OOV words with <unk>.
+    kReplaceWithUnk,  ///< Replace OOV words with <unk>.
     kSkipNGram       ///< Skip n-gram with OOV word and continue.
   };
 
@@ -59,7 +59,7 @@ struct ArpaParseOptions {
   int32 eos_symbol;  ///< Symbol for </s>, Required non-epsilon.
   int32 unk_symbol;  ///< Symbol for <unk>, Required for kReplaceWithUnk.
   OovHandling oov_handling;  ///< How to handle OOV words in the file.
-  int32 max_warnings; ///< Maximum warnings to report, <0 unlimited.
+  int32 max_warnings;  ///< Maximum warnings to report, <0 unlimited.
 };
 
 /**

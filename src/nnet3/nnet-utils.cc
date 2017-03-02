@@ -68,13 +68,13 @@ void EvaluateComputationRequest(
     const ComputationRequest &request,
     std::vector<std::vector<bool> > *is_computable) {
   ComputationGraph graph;
-  ComputationGraphBuilder builder(nnet, request, &graph);
-  builder.Compute();
+  ComputationGraphBuilder builder(nnet, &graph);
+  builder.Compute(request);
   builder.GetComputableInfo(is_computable);
-  if (GetVerboseLevel() >= 2) {
+  if (GetVerboseLevel() >= 4) {
     std::ostringstream graph_pretty;
     graph.Print(graph_pretty, nnet.GetNodeNames());
-    KALDI_VLOG(2) << "Graph is " << graph_pretty.str();
+    KALDI_VLOG(4) << "Graph is " << graph_pretty.str();
   }
 }
 
@@ -103,9 +103,16 @@ static void ComputeSimpleNnetContextForShift(
     input.indexes.push_back(Index(n, t));
     output.indexes.push_back(Index(n, t));
   }
-  // the assumption here is that the network just requires the ivector at time
-  // t=0.
-  ivector.indexes.push_back(Index(n, 0));
+
+  // most networks will just require the ivector at time t = 0,
+  // but this might not always be the case, and some might use rounding
+  // descriptors with the iVector which might require it at an earlier
+  // frame than the regular input, so we provide the iVector in as wide a range
+  // as it might possibly be needed.
+  for (int32 t = input_start - nnet.Modulus(); t < input_end; t++) {
+    ivector.indexes.push_back(Index(n, t));
+  }
+
 
   ComputationRequest request;
   request.inputs.push_back(input);
@@ -159,18 +166,6 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
       *std::max_element(left_contexts.begin(), left_contexts.end());
   *right_context =
       *std::max_element(right_contexts.begin(), right_contexts.end());
-}
-
-void SetZero(bool is_gradient,
-             Nnet *nnet) {
-  for (int32 c = 0; c < nnet->NumComponents(); c++) {
-    Component *comp = nnet->GetComponent(c);
-    if (comp->Properties() & kUpdatableComponent) {
-      UpdatableComponent *u_comp = dynamic_cast<UpdatableComponent*>(comp);
-      KALDI_ASSERT(u_comp != NULL);
-      u_comp->SetZero(is_gradient);
-    }
-  }
 }
 
 void PerturbParams(BaseFloat stddev,
@@ -250,22 +245,6 @@ void ZeroComponentStats(Nnet *nnet) {
   }
 }
 
-void ScaleLearningRate(BaseFloat learning_rate_scale,
-                     Nnet *nnet) {
-  for (int32 c = 0; c < nnet->NumComponents(); c++) {
-    Component *comp = nnet->GetComponent(c);
-    if (comp->Properties() & kUpdatableComponent) {
-      // For now all updatable components inherit from class UpdatableComponent.
-      // If that changes in future, we will change this code.
-      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
-      if (uc == NULL)
-        KALDI_ERR << "Updatable component does not inherit from class "
-            "UpdatableComponent; change this code.";
-      uc->SetActualLearningRate(uc->LearningRate() * learning_rate_scale);
-    }
-  }
-}
-
 void SetLearningRate(BaseFloat learning_rate,
                      Nnet *nnet) {
   for (int32 c = 0; c < nnet->NumComponents(); c++) {
@@ -282,128 +261,23 @@ void SetLearningRate(BaseFloat learning_rate,
   }
 }
 
-void SetLearningRates(const Vector<BaseFloat> &learning_rates,
-                     Nnet *nnet) {
-  int32 i = 0;
+void SetNnetAsGradient(Nnet *nnet) {
   for (int32 c = 0; c < nnet->NumComponents(); c++) {
     Component *comp = nnet->GetComponent(c);
     if (comp->Properties() & kUpdatableComponent) {
-      // For now all updatable components inherit from class UpdatableComponent.
-      // If that changes in future, we will change this code.
-      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
-      if (uc == NULL)
-        KALDI_ERR << "Updatable component does not inherit from class "
-            "UpdatableComponent; change this code.";
-      KALDI_ASSERT(i < learning_rates.Dim());
-      uc->SetActualLearningRate(learning_rates(i++));
+      UpdatableComponent *u_comp = dynamic_cast<UpdatableComponent*>(comp);
+      KALDI_ASSERT(u_comp != NULL);
+      u_comp->SetAsGradient();
     }
   }
-  KALDI_ASSERT(i == learning_rates.Dim());
-}
-
-void SetLearningRateFactors(const Vector<BaseFloat> &learning_rate_factors,
-                            Nnet *nnet) {
-  int32 i = 0;
-  for (int32 c = 0; c < nnet->NumComponents(); c++) {
-    Component *comp = nnet->GetComponent(c);
-    if (comp->Properties() & kUpdatableComponent) {
-      // For now all updatable components inherit from class UpdatableComponent.
-      // If that changes in future, we will change this code.
-      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
-      if (uc == NULL)
-        KALDI_ERR << "Updatable component does not inherit from class "
-            "UpdatableComponent; change this code.";
-      KALDI_ASSERT(i < learning_rate_factors.Dim());
-      uc->SetLearningRateFactor(learning_rate_factors(i++));
-    }
-  }
-  KALDI_ASSERT(i == learning_rate_factors.Dim());
-}
-
-void GetLearningRates(const Nnet &nnet,
-                      Vector<BaseFloat> *learning_rates) {
-  learning_rates->Resize(NumUpdatableComponents(nnet));
-  int32 i = 0;
-  for (int32 c = 0; c < nnet.NumComponents(); c++) {
-    const Component *comp = nnet.GetComponent(c);
-    if (comp->Properties() & kUpdatableComponent) {
-      // For now all updatable components inherit from class UpdatableComponent.
-      // If that changes in future, we will change this code.
-      const UpdatableComponent *uc = dynamic_cast<const UpdatableComponent*>(comp);
-      if (uc == NULL)
-        KALDI_ERR << "Updatable component does not inherit from class "
-            "UpdatableComponent; change this code.";
-      (*learning_rates)(i++) = uc->LearningRate();
-    }
-  }
-  KALDI_ASSERT(i == learning_rates->Dim());
-}
-
-void GetLearningRateFactors(const Nnet &nnet, 
-                            Vector<BaseFloat> *learning_rate_factors) {
-  learning_rate_factors->Resize(NumUpdatableComponents(nnet));
-  int32 i = 0;
-  for (int32 c = 0; c < nnet.NumComponents(); c++) {
-    const Component *comp = nnet.GetComponent(c);
-    if (comp->Properties() & kUpdatableComponent) {
-      // For now all updatable components inherit from class UpdatableComponent.
-      // If that changes in future, we will change this code.
-      const UpdatableComponent *uc = dynamic_cast<const UpdatableComponent*>(comp);
-      if (uc == NULL)
-        KALDI_ERR << "Updatable component does not inherit from class "
-            "UpdatableComponent; change this code.";
-      (*learning_rate_factors)(i++) = uc->LearningRateFactor();
-    }
-  }
-  KALDI_ASSERT(i == learning_rate_factors->Dim());
-}
-
-void ScaleNnetComponents(const Vector<BaseFloat> &scale_factors,
-                         Nnet *nnet) {
-  int32 i = 0;
-  for (int32 c = 0; c < nnet->NumComponents(); c++) {
-    Component *comp = nnet->GetComponent(c);
-    if (comp->Properties() & kUpdatableComponent) {
-      // For now all updatable components inherit from class UpdatableComponent.
-      // If that changes in future, we will change this code.
-      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
-      if (uc == NULL)
-        KALDI_ERR << "Updatable component does not inherit from class "
-            "UpdatableComponent; change this code.";
-      KALDI_ASSERT(i < scale_factors.Dim());
-      uc->Scale(scale_factors(i++));
-    }
-  }
-  KALDI_ASSERT(i == scale_factors.Dim());
 }
 
 void ScaleNnet(BaseFloat scale, Nnet *nnet) {
   if (scale == 1.0) return;
-  else if (scale == 0.0) {
-    SetZero(false, nnet);
-  } else {
+  else {
     for (int32 c = 0; c < nnet->NumComponents(); c++) {
       Component *comp = nnet->GetComponent(c);
       comp->Scale(scale);
-    }
-  }
-}
-
-void ScaleSingleComponent(BaseFloat scale, Nnet *nnet, std::string component_name) {
-  if (scale == 1.0) return;
-  else if (scale == 0.0) {
-    SetZero(false, nnet);
-  } else {
-    for (int32 c = 0; c < nnet->NumComponents(); c++) {
-      Component *comp = nnet->GetComponent(c);
-      std::string this_component_type = nnet->GetComponent(c)->Type();
-      if (this_component_type == component_name) { 
-        if (comp->Properties() & kUpdatableComponent) 
-          comp->Scale(scale);
-        else
-          KALDI_ERR << "component " << component_name 
-                    << "is not an updatable component.";
-      }
     }
   }
 }
@@ -580,6 +454,16 @@ std::string NnetInfo(const Nnet &nnet) {
   return ostr.str();
 }
 
+void SetDropoutProportion(BaseFloat dropout_proportion,
+                          Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    DropoutComponent *dc = dynamic_cast<DropoutComponent*>(comp);
+    if (dc != NULL)
+      dc->SetDropoutProportion(dropout_proportion);
+  }
+}
+
 void FindOrphanComponents(const Nnet &nnet, std::vector<int32> *components) {
   int32 num_components = nnet.NumComponents(), num_nodes = nnet.NumNodes();
   std::vector<bool> is_used(num_components, false);
@@ -745,19 +629,21 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
         KALDI_ERR << "In edits-config, expected proportion to be set in line: "
                   << config_line.WholeLine();
       }
-      DropoutComponent *component = NULL;
+      DropoutComponent *dropout_component = NULL;
       int32 num_dropout_proportions_set = 0;
       for (int32 c = 0; c < nnet->NumComponents(); c++) {
         if (NameMatchesPattern(nnet->GetComponentName(c).c_str(),
                                name_pattern.c_str()) &&
-            (component =
+            (dropout_component =
              dynamic_cast<DropoutComponent*>(nnet->GetComponent(c)))) {
-          component->SetDropoutProportion(proportion);
-          num_dropout_proportions_set++;
+          if (dropout_component != NULL) {
+            dropout_component->SetDropoutProportion(proportion);
+            num_dropout_proportions_set++;
+          }
         }
       }
       KALDI_LOG << "Set dropout proportions for "
-                << num_dropout_proportions_set << " nodes.";
+                << num_dropout_proportions_set << " components.";
     } else {
       KALDI_ERR << "Directive '" << directive << "' is not currently "
           "supported (reading edit-config).";
@@ -767,6 +653,14 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
                 << "' in edit config line " << config_line.WholeLine();
     }
   }
+}
+
+
+/// Returns true if 'nnet' has some kind of recurrency.
+bool NnetIsRecurrent(const Nnet &nnet) {
+  std::vector<std::vector<int32> > graph;
+  NnetToDirectedGraph(nnet, &graph);
+  return GraphHasCycles(graph);
 }
 
 

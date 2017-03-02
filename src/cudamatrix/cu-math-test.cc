@@ -161,7 +161,7 @@ static void UnitTestCuMathComputeLstmNonlinearity() {
     AssertEqual(Houtput, HDoutput);
   }
 
-  for (int i = 16; i <= 2048; i *= 2) {
+  for (int i = 16; i <= 1024; i *= 2) {
     BaseFloat time_in_secs = 0.025;
     int32 num_rows = i;
     int32 cell_dim = i;
@@ -180,6 +180,8 @@ static void UnitTestCuMathComputeLstmNonlinearity() {
     KALDI_LOG << "For ComputeLstmNonlinearity"
               << (sizeof(Real)==8 ? "<double>" : "<float>") << ", for dim = "
               << i << ", speed was " << gflops << " gigaflops";
+    if (tim.Elapsed() > 0.05)
+      break;
   }
 }
 
@@ -441,6 +443,8 @@ static void UnitTestBackpropLstmNonlinearity() {
     KALDI_LOG << "For BackpropLstmNonlinearity"
               << (sizeof(Real) == 8 ? "<double>" : "<float>") << ", for dim = "
               << i << ", speed was " << gflops << " gigaflops";
+    if (tim.Elapsed() > 0.05)
+      break;
   }
 }
 
@@ -509,6 +513,8 @@ static void UnitTestCuMathNormalizePerRow() {
     KALDI_LOG << "For CuMatrix::NormalizePerRow"
               << (sizeof(Real)==8?"<double>":"<float>") << ", for dim = "
               << dim << ", speed was " << gflops << " gigaflops.";
+    if (tim.Elapsed() > 0.05)
+      break;
   }
 }
 
@@ -531,8 +537,9 @@ template<typename Real> void CudaMathUnitTest() {
 
 
 int main() {
-  for (int32 loop = 0; loop < 2; loop++) {
+  int32 loop = 0;
 #if HAVE_CUDA == 1
+  for (; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no"); // -1 means no GPU
@@ -556,8 +563,8 @@ int main() {
       KALDI_LOG << "Tests without GPU use succeeded.";
     else
       KALDI_LOG << "Tests with GPU use (if available) succeeded.";
-  }
 #if HAVE_CUDA == 1
+  } // No for loop if 'HAVE_CUDA != 1',
   CuDevice::Instantiate().PrintProfile();
 #endif
   return 0;

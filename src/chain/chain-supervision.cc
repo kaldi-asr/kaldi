@@ -804,26 +804,5 @@ void GetWeightsForRanges(int32 range_length,
 }
 
 
-void GetWeightsForRangesNew(int32 range_length,
-                            int32 num_frames_zeroed,
-                            const std::vector<int32> &range_starts,
-                            std::vector<Vector<BaseFloat> > *weights) {
-  KALDI_ASSERT(range_length > 0 && num_frames_zeroed * 2 < range_length);
-  int32 num_ranges = range_starts.size();
-  weights->resize(num_ranges);
-  for (int32 i = 0; i < num_ranges; i++) {
-    (*weights)[i].Resize(range_length);
-    (*weights)[i].Set(1.0);
-  }
-  if (num_frames_zeroed == 0)
-    return;
-  for (int32 i = 1; i < num_ranges; i++)
-    (*weights)[i].Range(0, num_frames_zeroed).Set(0.0);
-  for (int32 i = 0; i + 1 < num_ranges; i++)
-    (*weights)[i].Range(range_length - num_frames_zeroed,
-                        num_frames_zeroed).Set(0.0);
-}
-
-
 }  // namespace chain
 }  // namespace kaldi
