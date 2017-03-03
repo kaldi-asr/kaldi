@@ -221,6 +221,7 @@ float RNNLM::computeConditionalLogprob(int current_word,
   }
 
   fetchHiddenLayer(context_out);
+  if (ans<=0) ans=1e-10;
   return log(ans);
 }
 
