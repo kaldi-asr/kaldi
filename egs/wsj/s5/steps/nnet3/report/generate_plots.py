@@ -21,7 +21,7 @@ try:
     mpl.use('Agg')
     import matplotlib.pyplot as plt
     import numpy as np
-
+    from matplotlib.patches import Rectangle
     g_plot = True
 except ImportError:
     warnings.warn(
@@ -90,7 +90,6 @@ def get_args():
 
 
 g_plot_colors = ['red', 'blue', 'green', 'black', 'magenta', 'yellow', 'cyan']
-
 
 class LatexReport:
     """Class for writing a Latex report"""
@@ -213,6 +212,88 @@ def generate_acc_logprob_plots(exp_dir, output_dir, plot, key='accuracy',
                 "Plot of {0} vs iterations for {1}".format(key, output_name))
 
 
+# The name of five gates of lstmp
+g_lstm_gate = ['i_t_sigmoid', 'f_t_sigmoid', 'c_t_tanh', 'o_t_sigmoid', 'm_t_tanh']
+
+# The "extra" item looks like a placeholder. As each unit in python plot is
+# composed by a legend_handle(linestyle) and a legend_label(description).
+# For the unit which doesn't have linestyle, we use the "extra" placeholder.
+extra = Rectangle((0, 0), 1, 1, facecolor="w", fill=False, edgecolor='none', linewidth=0)
+
+# This function is used to insert a column to the legend, the column_index is 1-based
+def insert_a_column_legend(legend_handle, legend_label, lp, mp, hp,
+        dir, prefix_length, column_index):
+    handle = [extra, lp, mp, hp]
+    label = ["[1]{0}".format(dir[prefix_length:]), "", "", ""]
+    for row in range(1,5):
+        legend_handle.insert(column_index*row-1, handle[row-1])
+        legend_label.insert(column_index*row-1, label[row-1])
+
+
+# This function is used to plot a normal nonlinearity component or a gate of lstmp
+def plot_a_nonlin_component(fig, dirs, stat_tables_per_component_per_dir,
+        component_name, common_prefix, prefix_length, component_type,
+        start_iter, gate_index=0):
+    fig.clf()
+    index = 0
+    legend_handle = [extra, extra, extra, extra]
+    legend_label = ["", '5th percentile', '50th percentile', '95th percentile']
+            
+    for dir in dirs:
+        color_val = g_plot_colors[index]
+        index += 1
+        try:
+            iter_stats = (stat_tables_per_component_per_dir[dir][component_name])
+        except KeyError:
+            # this component is not available in this network so lets
+            # not just plot it
+            insert_a_column_legend(legend_handle, legend_label, lp, mp, hp,
+                    dir, prefix_length, index+1)
+            continue
+
+        data = np.array(iter_stats)
+        data = data[data[:, 0] >= start_iter, :]
+        ax = plt.subplot(211)
+        lp, = ax.plot(data[:, 0], data[:, gate_index*10+5], color=color_val,
+                linestyle='--')
+        mp, = ax.plot(data[:, 0], data[:, gate_index*10+6], color=color_val,
+                linestyle='-')
+        hp, = ax.plot(data[:, 0], data[:, gate_index*10+7], color=color_val,
+                linestyle='--')
+        insert_a_column_legend(legend_handle, legend_label, lp, mp, hp,
+                dir, prefix_length, index+1)
+                  
+        ax.set_ylabel('Value-{0}'.format(component_type))
+        ax.grid(True)
+
+        ax = plt.subplot(212)
+        lp, = ax.plot(data[:, 0], data[:, gate_index*10+8], color=color_val,
+                linestyle='--')
+        mp, = ax.plot(data[:, 0], data[:, gate_index*10+9], color=color_val,
+                linestyle='-')
+        hp, = ax.plot(data[:, 0], data[:, gate_index*10+10], color=color_val,
+                linestyle='--')
+        ax.set_xlabel('Iteration')
+        ax.set_ylabel('Derivative-{0}'.format(component_type))
+        ax.grid(True)
+
+    lgd = plt.legend(legend_handle, legend_label, loc='lower center',
+            bbox_to_anchor=(0.5 , -0.5 + len(dirs) * -0.2),
+            ncol=4, handletextpad = -2, title="[1]:{0}".format(common_prefix),
+            borderaxespad=0.)
+    plt.grid(True)
+    return lgd
+
+
+# This function is used to generate the statistic plots of nonlinearity component
+# Mainly divided into the following steps:
+# 1) With log_parse function, we get the statistics from each directory.
+# 2) Convert the collected nonlinearity statistics into the tables. Each table
+#    contains all the statistics in each component of each directory.
+# 3) The statistics of each component are stored into corresponding log files.
+#    Each line of the log file contains the statistics of one iteration.
+# 4) Plot the "Per-dimension average-(value, derivative) percentiles" figure 
+#    for each nonlinearity component.
 def generate_nonlin_stats_plots(exp_dir, output_dir, plot, comparison_dir=None,
                                 start_iter=1, latex_report=None):
     assert start_iter >= 1
@@ -230,7 +311,6 @@ def generate_nonlin_stats_plots(exp_dir, output_dir, plot, comparison_dir=None,
                 logger.warning("Couldn't find any rows for the"
                                "nonlin stats plot, not generating it")
         stats_per_dir[dir] = stats_per_component_per_iter
-
     # convert the nonlin stats into tables
     stat_tables_per_component_per_dir = {}
     for dir in dirs:
@@ -254,15 +334,15 @@ def generate_nonlin_stats_plots(exp_dir, output_dir, plot, comparison_dir=None,
         # this is the main experiment directory
         with open("{dir}/nonlinstats_{comp_name}.log".format(
                     dir=output_dir, comp_name=component_name), "w") as f:
-            f.write(
-                "Iteration\tValueMean\tValueStddev\tDerivMean\tDerivStddev\n")
+            f.write("Iteration\tValueMean\tValueStddev\tDerivMean\tDerivStddev\t"
+                               "Value_5th\tValue_50th\tValue_95th\t"
+                               "Deriv_5th\tDeriv_50th\tDeriv_95th\n")
             iter_stat_report = []
             iter_stats = main_stat_tables[component_name]
             for row in iter_stats:
                 iter_stat_report.append("\t".join([str(x) for x in row]))
             f.write("\n".join(iter_stat_report))
             f.close()
-
     if plot:
         main_component_names = main_stat_tables.keys()
         main_component_names.sort()
@@ -279,64 +359,50 @@ def generate_nonlin_stats_plots(exp_dir, output_dir, plot, comparison_dir=None,
             given experiment dirs are not the same, so comparison plots are
             provided only for common component names. Make sure that these are
             comparable experiments before analyzing these plots.""")
-
+        
         fig = plt.figure()
+        
+        common_prefix = os.path.commonprefix(dirs)
+        prefix_length = common_prefix.rfind('/')
+        common_prefix = common_prefix[0:prefix_length]
+        
         for component_name in main_component_names:
-            fig.clf()
-            index = 0
-            plots = []
-            for dir in dirs:
-                color_val = g_plot_colors[index]
-                index += 1
-                try:
-                    iter_stats = (
-                        stat_tables_per_component_per_dir[dir][component_name])
-                except KeyError:
-                    # this component is not available in this network so lets
-                    # not just plot it
-                    continue
-
-                data = np.array(iter_stats)
-                data = data[data[:, 0] >= start_iter, :]
-                ax = plt.subplot(211)
-                mp, = ax.plot(data[:, 0], data[:, 1], color=color_val,
-                              label="Mean {0}".format(dir))
-                msph, = ax.plot(data[:, 0], data[:, 1] + data[:, 2],
-                                color=color_val, linestyle='--',
-                                label="Mean+-Stddev {0}".format(dir))
-                mspl, = ax.plot(data[:, 0], data[:, 1] - data[:, 2],
-                                color=color_val, linestyle='--')
-                plots.append(mp)
-                plots.append(msph)
-                ax.set_ylabel('Value-{0}'.format(comp_type))
-                ax.grid(True)
-
-                ax = plt.subplot(212)
-                mp, = ax.plot(data[:, 0], data[:, 3], color=color_val)
-                msph, = ax.plot(data[:, 0], data[:, 3] + data[:, 4],
-                                color=color_val, linestyle='--')
-                mspl, = ax.plot(data[:, 0], data[:, 3] - data[:, 4],
-                                color=color_val, linestyle='--')
-                ax.set_xlabel('Iteration')
-                ax.set_ylabel('Derivative-{0}'.format(comp_type))
-                ax.grid(True)
-
-            lgd = plt.legend(handles=plots, loc='lower center',
-                             bbox_to_anchor=(0.5, -0.5 + len(dirs) * -0.2),
-                             ncol=1, borderaxespad=0.)
-            plt.grid(True)
-            fig.suptitle("Mean and stddev of the value and derivative at "
-                         "{comp_name}".format(comp_name=component_name))
-            comp_name = latex_compliant_name(component_name)
-            figfile_name = '{dir}/nonlinstats_{comp_name}.pdf'.format(
-                dir=output_dir, comp_name=comp_name)
-            fig.savefig(figfile_name, bbox_extra_artists=(lgd,),
+            if stats_per_dir[exp_dir][component_name]['type'] == 'LstmNonlinearity':
+                for i in range(0,5):
+                    component_type = 'Lstm-' + g_lstm_gate[i]
+                    lgd = plot_a_nonlin_component(fig, dirs,
+                            stat_tables_per_component_per_dir, component_name,
+                            common_prefix, prefix_length, component_type, start_iter, i)
+                    fig.suptitle("Per-dimension average-(value, derivative) percentiles for "
+                         "{component_name}-{gate}".format(component_name=component_name, gate=g_lstm_gate[i]))
+                    comp_name = latex_compliant_name(component_name)
+                    figfile_name = '{dir}/nonlinstats_{comp_name}_{gate}.pdf'.format(
+                        dir=output_dir, comp_name=comp_name, gate=g_lstm_gate[i])
+                    fig.savefig(figfile_name, bbox_extra_artists=(lgd,),
                         bbox_inches='tight')
-            if latex_report is not None:
-                latex_report.add_figure(
+                    if latex_report is not None:
+                        latex_report.add_figure(
+                        figfile_name,
+                        "Per-dimension average-(value, derivative) percentiles for "
+                        "{0}-{1}".format(component_name, g_lstm_gate[i]))
+            else:
+                component_type = stats_per_dir[exp_dir][component_name]['type']
+                lgd = plot_a_nonlin_component(fig, dirs,
+                        stat_tables_per_component_per_dir,component_name,
+                        common_prefix, prefix_length, component_type, start_iter, 0)
+                fig.suptitle("Per-dimension average-(value, derivative) percentiles for "
+                         "{component_name}".format(component_name=component_name))
+                comp_name = latex_compliant_name(component_name)
+                figfile_name = '{dir}/nonlinstats_{comp_name}.pdf'.format(
+                    dir=output_dir, comp_name=comp_name)
+                fig.savefig(figfile_name, bbox_extra_artists=(lgd,),
+                        bbox_inches='tight')
+                if latex_report is not None:
+                    latex_report.add_figure(
                     figfile_name,
-                    "Mean and stddev of the value and derivative "
-                    "at {0}".format(component_name))
+                    "Per-dimension average-(value, derivative) percentiles for "
+                    "{0}".format(component_name))
+
 
 
 def generate_clipped_proportion_plots(exp_dir, output_dir, plot,
