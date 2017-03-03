@@ -5,7 +5,7 @@ include ../kaldi.mk
 
 TESTFILES = simple-hmm-test
 
-OBJFILES = simple-hmm.o simple-hmm-utils.o
+OBJFILES = simple-hmm.o simple-hmm-utils.o simple-hmm-graph-compiler.o
 
 LIBNAME = kaldi-simplehmm
 ADDLIBS = ../hmm/kaldi-hmm.a ../decoder/kaldi-decoder.a \

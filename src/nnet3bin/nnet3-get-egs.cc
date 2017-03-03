@@ -140,7 +140,7 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
       Vector<BaseFloat> this_deriv_weights(num_frames_subsampled);
       for (int32 i = 0; i < num_frames_subsampled; i++) {
         int32 t = i + start_frame_subsampled;
-        this_deriv_weights(i) = deriv_weights(t);
+        this_deriv_weights(i) = (*deriv_weights)(t);
       }
       // Ignore frames that have frame weights 0
       if (this_deriv_weights.Sum() == 0) continue;  
@@ -316,7 +316,8 @@ int main(int argc, char *argv[]) {
         }
 
         if (!ProcessFile(feats, online_ivector_feats, online_ivector_period,
-                         deriv_weights, pdf_post, key, compress, num_pdfs,
+                         deriv_weights, pdf_post, key, compress, 
+                         input_compress_format, feats_compress_format, num_pdfs,
                          &utt_splitter, &example_writer))
             num_err++;
       }

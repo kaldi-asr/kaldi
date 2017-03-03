@@ -31,7 +31,7 @@ namespace kaldi {
 namespace nnet3 {
 
 
-static void ProcessFile(const MatrixBase<BaseFloat> &feats,
+static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
                         int32 ivector_period,
                         const VectorBase<BaseFloat> *deriv_weights,
@@ -47,7 +47,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
   if (!utt_splitter->LengthsMatch(utt_id, num_input_frames,
                                   targets.NumRows())) {
     if (targets.NumRows() == 0)
-      return;
+      return false;
     // normally we wouldn't process such an utterance but there may be
     // situations when a small disagreement is acceptable.
     KALDI_WARN << " .. processing this utterance anyway.";
@@ -62,7 +62,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     KALDI_WARN << "Not producing egs for utterance " << utt_id
                << " because it is too short: "
                << num_input_frames << " frames.";
-    return;
+    return false;
   }
 
   // 'frame_subsampling_factor' is not used in any recipes at the time of
@@ -146,7 +146,8 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
         int32 t = i + start_frame_subsampled;
         if (t >= targets.NumRows())
           t = targets.NumRows() - 1;
-        this_deriv_weights(i) = deriv_weights(t);
+        this_deriv_weights(i) = (*deriv_weights)(t);
+      }
       eg.io.push_back(NnetIo("output", this_deriv_weights, 0, targets_part));
     }
 
@@ -163,9 +164,9 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
 
     example_writer->Write(key, eg);
   }
+
+  return true;
 }
-
-
 
 } // namespace nnet2
 } // namespace kaldi
@@ -311,7 +312,8 @@ int main(int argc, char *argv[]) {
         }
 
         if (!ProcessFile(feats, online_ivector_feats, online_ivector_period,
-                    deriv_weights, target_matrix, key, compress, num_targets,
+                    deriv_weights, target_matrix, key, compress, 
+                    input_compress_format, feats_compress_format, num_targets,
                     &utt_splitter, &example_writer))
           num_err++;
       }

@@ -87,7 +87,7 @@ class SimpleHmm: public TransitionModel {
     int32 num_pdfs_;
   } ctx_dep_;
 
-  DISALLOW_COPY_AND_ASSIGN(SimpleHmm);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(SimpleHmm);
 };
 
 } // end namespace kaldi

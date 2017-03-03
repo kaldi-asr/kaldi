@@ -24,7 +24,7 @@
 #include "tree/context-dep.h"
 #include "simplehmm/simple-hmm.h"
 #include "fstext/fstext-lib.h"
-#include "decoder/simple-hmm-graph-compiler.h"
+#include "simplehmm/simple-hmm-graph-compiler.h"
 
 
 int main(int argc, char *argv[]) {

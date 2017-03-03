@@ -6,13 +6,13 @@ SHELL := /bin/bash
 
 
 SUBDIRS = base matrix util feat tree thread gmm transform \
-          fstext hmm lm decoder lat kws cudamatrix nnet segmenter simplehmm \
+          fstext hmm simplehmm lm decoder lat kws cudamatrix nnet segmenter \
           bin fstbin gmmbin fgmmbin featbin \
           nnetbin latbin sgmm2 sgmm2bin nnet2 nnet3 chain nnet3bin nnet2bin kwsbin \
           ivector ivectorbin online2 online2bin lmbin chainbin segmenterbin simplehmmbin
 
 MEMTESTDIRS = base matrix util feat tree thread gmm transform \
-          fstext hmm lm decoder lat nnet kws chain segmenter simplehmm \
+          fstext hmm simplehmm lm decoder lat nnet kws chain segmenter \
           bin fstbin gmmbin fgmmbin featbin \
           nnetbin latbin sgmm2 nnet2 nnet3 nnet2bin nnet3bin sgmm2bin kwsbin \
           ivector ivectorbin online2 online2bin lmbin segmenterbin simplehmmbin
@@ -151,8 +151,8 @@ $(EXT_SUBDIRS) : mklibdir ext_depend
 #1)The tools depend on all the libraries
 
 bin fstbin gmmbin fgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin segmenterbin simplehmmbin: \
- base matrix util feat tree thread gmm transform sgmm2 fstext hmm \
- lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain kws online2 segmenter simplehmm
+ base matrix util feat tree thread gmm transform sgmm2 fstext hmm simplehmm \
+ lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain kws online2 segmenter
 
 #2)The libraries have inter-dependencies
 base: base/.depend.mk
@@ -167,7 +167,7 @@ sgmm2: base util matrix gmm tree transform thread hmm
 fstext: base util thread matrix tree
 hmm: base tree matrix util thread
 lm: base util thread matrix fstext
-decoder: base util thread matrix gmm hmm simplehmm tree transform lat
+decoder: base util thread matrix gmm hmm tree transform lat
 lat: base util thread hmm tree matrix
 cudamatrix: base util thread matrix
 nnet: base util hmm tree thread matrix cudamatrix

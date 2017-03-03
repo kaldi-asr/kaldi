@@ -60,7 +60,7 @@ void MinimumBayesRisk::MbrDecode() {
             KALDI_ASSERT(confidence > 0);
             KALDI_ASSERT(begin_times_[q].count(R_[q]) > 0);
             KALDI_ASSERT(end_times_[q].count(R_[q]) > 0);
-            one_best_times_.push_back(make_pair(
+            one_best_times_.push_back(std::make_pair(
                                         begin_times_[q][R_[q]] / confidence,
                                         end_times_[q][R_[q]] / confidence));
           }
@@ -278,13 +278,13 @@ void MinimumBayesRisk::AccStats() {
     for (map<int32, double>::iterator iter = tau_b[q].begin();
           iter != tau_b[q].end(); ++iter) {
       times_[q-1].first += iter->second;
-      begin_times_[q-1].insert(make_pair(iter->first, iter->second));
+      begin_times_[q-1].insert(std::make_pair(iter->first, iter->second));
     }
     
     for (map<int32, double>::iterator iter = tau_e[q].begin();
           iter != tau_e[q].end(); ++iter) {
       times_[q-1].second += iter->second;
-      end_times_[q-1].insert(make_pair(iter->first, iter->second));
+      end_times_[q-1].insert(std::make_pair(iter->first, iter->second));
     }
     
     if (times_[q-1].first > times_[q-1].second) // this is quite bad.

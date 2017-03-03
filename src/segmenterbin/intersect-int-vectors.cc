@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
       Input ki(mapping_rxfilename);
       std::string line;
       while (std::getline(ki.Stream(), line)) {
-        std::vector<string> parts;
+        std::vector<std::string> parts;
         SplitStringToVector(line, " ", true, &parts);
         KALDI_ASSERT(parts.size() == 3);
 
@@ -113,9 +113,11 @@ int main(int argc, char *argv[]) {
         num_err++;
       }
      
-      std::vector<int32> alignment_out(alignment1.size());
+      int32 min_length = std::min(static_cast<int32>(alignment1.size()),
+                                  static_cast<int32>(alignment2.size()));
+      std::vector<int32> alignment_out(min_length);
 
-      for (size_t i = 0; i < alignment1.size(); i++) {
+      for (size_t i = 0; i < min_length; i++) {
         std::pair<int32, int32> id_pair = std::make_pair(
             alignment1[i], alignment2[i]);
 
