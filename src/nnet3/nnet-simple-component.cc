@@ -449,48 +449,10 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
                                   const CuMatrixBase<BaseFloat> &out_deriv,
                                   Component *to_update,
                                   CuMatrixBase<BaseFloat> *in_deriv) const {
-  if (!in_deriv)  return;
-  const CuSubMatrix<BaseFloat> out_deriv_no_log(out_deriv,
-                                                0, out_deriv.NumRows(),
-                                                0, input_dim_);
-  CuVector<BaseFloat> dot_products(out_deriv.NumRows());
-  dot_products.AddDiagMatMat(1.0, out_deriv_no_log, kNoTrans,
-                             in_value, kTrans, 0.0);
-  CuVector<BaseFloat> in_norm(in_value.NumRows());
-  BaseFloat d_scaled = (in_value.NumCols() * target_rms_ * target_rms_);
-  in_norm.AddDiagMat2(1.0, in_value, kNoTrans, 0.0);
-
-  if (add_log_stddev_) {
-    CuVector<BaseFloat> log_stddev_deriv(in_norm), // log_stddev deriv as dF/dy .* (x^T x)^-1
-        out_deriv_for_stddev(out_deriv.NumRows(), kUndefined);
-    // f = log(sqrt(max(epsi, x^T x / D)))
-    // df/dx = epsi^2 * D < x^T x ? (1/(x^T x)) * x  : 0.
-    // we don't compute this exactly below for the case wehn x^2 x is very
-    // small, but we do make sure that the deriv isn't infinity when the input
-    // is zero.
-    log_stddev_deriv.ApplyFloor(input_dim_ * kSquaredNormFloor);
-    log_stddev_deriv.ApplyPow(-1.0);
-    out_deriv_for_stddev.CopyColFromMat(out_deriv, (out_deriv.NumCols() - 1));
-    log_stddev_deriv.MulElements(out_deriv_for_stddev);
-    if (in_deriv)
-      in_deriv->AddDiagVecMat(1.0, log_stddev_deriv, in_value, kNoTrans, 1.0);
-  }
-  in_norm.Scale(1.0 / d_scaled);
-  in_norm.ApplyFloor(kSquaredNormFloor);
-  in_norm.ApplyPow(-0.5);
-  if (in_deriv) {
-    if (in_deriv->Data() != out_deriv_no_log.Data())
-      in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv_no_log, kNoTrans, 1.0);
-    else
-      in_deriv->MulRowsVec(in_norm);
-    in_norm.ReplaceValue(1.0 / sqrt(kSquaredNormFloor), 0.0);
-    in_norm.ApplyPow(3.0);
-    dot_products.MulElements(in_norm);
-
-    in_deriv->AddDiagVecMat(-1.0 / d_scaled,
-                            dot_products, in_value,
-                            kNoTrans, 1.0);
-  }
+  if (!in_deriv)
+    return;
+  cu::DiffNormalizePerRow(in_value, out_deriv, target_rms_, add_log_stddev_,
+                          in_deriv);
 }
 
 void SigmoidComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
