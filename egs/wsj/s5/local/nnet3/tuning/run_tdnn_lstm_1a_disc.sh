@@ -17,19 +17,10 @@ use_gpu=true  # for training
 cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large things like
                # alignments and degs).
 degs_dir=  # set this to use preexisting degs.
-nj=400 # have a high number of jobs because this could take a while, and we might
+nj=60 # have a high number of jobs because this could take a while, and we might
        # have some stragglers.
 train_set=train_si284
 test_sets="test_dev93 test_eval92"
-
-. ./cmd.sh
-. ./path.sh
-. ./utils/parse_options.sh
-
-gmm_dir=exp/tri4b
-srcdir=exp/nnet3/tdnn_lstm_1a_sp
-train_data_dir=data/${train_set}_sp_hires
-online_ivector_dir=exp/nnet3/ivectors_${train_set}_sp_hires
 
 ## Objective options
 criterion=smbr
@@ -40,8 +31,6 @@ one_silence_class=true
 
 # you can set --disc-affix if you run different configurations.
 disc_affix=
-
-dir=${srcdir}_${criterion}${disc_affix}
 
 ## Egs options.  Give quite a few choices of chunk length,
 ## so it can split utterances without much gap or overlap.
@@ -78,6 +67,17 @@ minibatch_size="300=32,16/150=64,32"  # rule says: if chunk size is closer to 30
 ## Decode options
 decode_start_epoch=1 # can be used to avoid decoding all epochs, e.g. if we decided to run more.
 
+
+. ./cmd.sh
+. ./path.sh
+. ./utils/parse_options.sh
+
+gmm_dir=exp/tri4b
+srcdir=exp/nnet3/tdnn_lstm1a_sp
+train_data_dir=data/${train_set}_sp_hires
+online_ivector_dir=exp/nnet3/ivectors_${train_set}_sp_hires
+dir=${srcdir}_${criterion}${disc_affix}
+
 if $use_gpu; then
   if ! cuda-compiled; then
     cat <<EOF && exit 1
@@ -93,8 +93,8 @@ else
   num_threads=16
 fi
 
-if [ ! -f ${srcdir}/final.mdl ]; then
-  echo "$0: expected ${srcdir}/final.mdl to exist"
+if [[ $stage -le 2  && ! -f ${srcdir}/final.mdl ]]; then
+  echo "$0: expected ${srcdir}/final.mdl to exist for any stage <= 2"
   exit 1;
 fi
 
@@ -147,6 +147,7 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
+  rm $dir/.error 2>/dev/null || true
   for x in `seq $decode_start_epoch $num_epochs`; do
     for data in $test_sets; do
       (
@@ -160,16 +161,16 @@ if [ $stage -le 4 ]; then
               --extra-right-context $extra_right_context \
               --extra-left-context-initial 0 \
               --extra-right-context-final 0 \
-              --frames-per-chunk $frames_per_chunk \
-              --nj $nj --cmd "$decode_cmd" --num-threads 4 \
-              --online-ivector-dir $online_ivector_dir \
-              $graph_dir data/${data}_hires ${dir}/decode_${lmtype}_${data_affix} || exit 1
+              --frames-per-chunk $frames_per_chunk_decoding \
+              --nj $nj --cmd "$decode_cmd" --num-threads 4 --iter $iter \
+              --online-ivector-dir exp/nnet3/ivectors_${data}_hires \
+              $graph_dir data/${data}_hires ${dir}/decode_${lmtype}_${data_affix}_${iter} || exit 1
           done
           steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
-            data/${data}_hires ${dir}/decode_{tgpr,tg}_${data_affix} || exit 1
+            data/${data}_hires ${dir}/decode_{tgpr,tg}_${data_affix}_${iter} || exit 1
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
             data/lang_test_bd_{tgpr,fgconst} \
-           data/${data}_hires ${dir}/decode_${lmtype}_${data_affix}{,_fg} || exit 1
+           data/${data}_hires ${dir}/decode_bd_tgpr_${data_affix}{,_fg}_${iter} || exit 1
         done
       ) || touch $dir/.error &
     done
@@ -182,6 +183,7 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
+  rm $dir/.error 2>/dev/null || true
   for x in `seq $decode_start_epoch $num_epochs`; do
     for data in $test_sets; do
       (
@@ -192,15 +194,15 @@ if [ $stage -le 5 ]; then
             graph_dir=$gmm_dir/graph_${lmtype}
             steps/nnet3/decode_looped.sh \
               --frames-per-chunk 30 \
-              --nj $nj --cmd "$decode_cmd" --num-threads 4 \
-              --online-ivector-dir $online_ivector_dir \
-              $graph_dir data/${data}_hires ${dir}/decode_looped_${lmtype}_${data_affix} || exit 1
+              --nj $nj --cmd "$decode_cmd" --iter $iter \
+              --online-ivector-dir exp/nnet3/ivectors_${data}_hires \
+              $graph_dir data/${data}_hires ${dir}/decode_looped_${lmtype}_${data_affix}_${iter} || exit 1
           done
           steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
-            data/${data}_hires ${dir}/decode_looped_{tgpr,tg}_${data_affix} || exit 1
+            data/${data}_hires ${dir}/decode_looped_{tgpr,tg}_${data_affix}_${iter} || exit 1
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
             data/lang_test_bd_{tgpr,fgconst} \
-           data/${data}_hires ${dir}/decode_looped_${lmtype}_${data_affix}{,_fg} || exit 1
+           data/${data}_hires ${dir}/decode_looped_bd_tgpr_${data_affix}{,_fg}_${iter} || exit 1
         done
       ) || touch $dir/.error &
     done
