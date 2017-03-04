@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
                    << " (should affect speed of search but not results)";
         global_index = ifst;
       }
-      Minimize(&global_index);
+      Minimize(&global_index, static_cast<KwsLexicographicFst*>(NULL), kDelta, true);
       Decode(&global_index, encoder);
     } else {
       KALDI_LOG << "Skipping index optimization...";
