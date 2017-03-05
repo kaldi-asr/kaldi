@@ -1,0 +1,17 @@
+--- dstruct/src/Trie.orig	2016-11-08 19:53:40.524000000 +0000
++++ dstruct/src/Trie.cc	2016-11-08 19:53:59.088000000 +0000
+@@ -200,11 +200,14 @@
+ 	if (removedData == 0) {
+ 	    Trie<KeyT,DataT> node;
+ 	    if (sub.remove(keys[0], &node)) {
++#if !defined(__GNUC__) || !(__GNUC__ >= 4 && __GNUC_MINOR__ >= 9 || __GNUC__ > 4) 
+ 		/*
+ 		 * XXX: Call subtrie destructor explicitly since we're not
+ 		 * passing the removed node to the caller.
++		 * !!! Triggers bug with gcc >= 4.9 optimization !!!
+ 		 */
+ 	        node.~Trie();
++#endif
+ 		return true;
+ 	    } else {
+ 		return false;

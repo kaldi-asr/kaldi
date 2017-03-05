@@ -3,7 +3,8 @@
 # Copyright 2015  Guoguo Chen
 # Apache 2.0
 
-# This script rescores lattices with RNNLM.
+# This script rescores lattices with RNNLM.  See also rnnlmrescore.sh which is
+# an older script using n-best lists.
 
 # Begin configuration section.
 cmd=run.pl
@@ -78,7 +79,7 @@ if [ "$oldlm" == "$oldlang/G.fst" ]; then
 else
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore-const-arpa --lm-scale=$oldlm_weight \
-    "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm_command" ark:-  \| \
+    "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm" ark:-  \| \
     lattice-lmrescore-rnnlm --lm-scale=$weight \
     --max-ngram-order=$max_ngram_order ark:$rnnlm_dir/unk.probs \
     $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \

@@ -4,11 +4,12 @@
 
 # this script gets some stats that will help you debug the lexicon.
 
-# Begin configuration section.  
+# Begin configuration section.
 stage=1
 remove_stress=false
 nj=10  # number of jobs for various decoding-type things that we run.
 cmd=run.pl
+alidir=
 # End configuration section
 
 echo "$0 $@"  # Print the command line for logging
@@ -26,6 +27,8 @@ if [ $# != 5 ]; then
    echo "  --remove-stress <true|false>                     # if true, remove stress before printing analysis"
    echo "                                                   # note: if you change this, you only have to rerun"
    echo "                                                   # from stage 10."
+   echo "  --alidir <alignment-dir>                         # if supplied, training-data alignments and transforms"
+   echo "                                                   # are obtained from here instead of being generated."
    exit 1;
 fi
 
@@ -41,38 +44,50 @@ for f in $data/feats.scp $lang/phones.txt $src/final.mdl $srcdict; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1;
 done
 
-if [ $stage -le 1 ]; then
-  steps/align_fmllr.sh --cmd "$cmd" --nj $nj $data $lang $src ${src}_ali_$(basename $data)
+mkdir -p $dir
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
+cp $lang/phones.txt $dir
+
+if [ -z $alidir ]; then
+  alidir=${src}_ali_$(basename $data)
+  if [ $stage -le 1 ]; then
+    steps/align_fmllr.sh --cmd "$cmd" --nj $nj $data $lang $src $alidir
+  fi
 fi
 
+phone_lang=data/$(basename $lang)_phone_bg
+
 if [ $stage -le 2 ]; then
-  utils/make_phone_bigram_lang.sh $lang ${src}_ali_$(basename $data) data/$(basename $lang)_phone_bg
+  utils/lang/make_phone_bigram_lang.sh $lang $alidir $phone_lang
 fi
 
 if [ $stage -le 3 ]; then
-  utils/mkgraph.sh data/$(basename $lang)_phone_bg $src $src/graph_phone_bg
+  utils/mkgraph.sh $phone_lang $src $src/graph_phone_bg
 fi
 
 if [ $stage -le 4 ]; then
-  steps/decode_si.sh --cmd "$cmd" --nj $nj --transform-dir ${src}_ali_$(basename $data) \
-    --acwt 0.25 --beam 25.0 --lattice-beam 5.0 --max-active 2500 \
+  steps/decode_si.sh --skip-scoring true \
+    --cmd "$cmd" --nj $nj --transform-dir $alidir \
+    --acwt 0.25 --beam 10.0 --lattice-beam 5.0 --max-active 2500 \
     $src/graph_phone_bg $data $src/decode_$(basename $data)_phone_bg
 fi
 
 if [ $stage -le 5 ]; then
-  steps/get_train_ctm.sh $data $lang ${src}_ali_$(basename $data)
+  steps/get_train_ctm.sh --print-silence true --use-segments false \
+     --cmd "$cmd" $data $lang $alidir
 fi
 
 if [ $stage -le 6 ]; then
-  steps/get_ctm.sh --min-lmwt 3 --max-lmwt 8 \
-     $data data/$(basename $lang)_phone_bg $src/decode_$(basename $data)_phone_bg
+  steps/get_ctm.sh --use-segments false --cmd "$cmd" --min-lmwt 3 --max-lmwt 8 \
+     $data $phone_lang $src/decode_$(basename $data)_phone_bg
 fi
 
 if [ $stage -le 7 ]; then
   mkdir -p $dir
   # lmwt=4 corresponds to the scale we decoded at.
   cp $src/decode_$(basename $data)_phone_bg/score_4/$(basename $data).ctm $dir/phone.ctm
-  cp ${src}_ali_$(basename $data)/ctm $dir/word.ctm
+
+  cp $alidir/ctm $dir/word.ctm
 fi
 
 if [ $stage -le 8 ]; then
@@ -82,7 +97,7 @@ if [ $stage -le 8 ]; then
 # we'll convert it into two entries like this, with the start and end separately:
 # sw02054-A 0021332 START and
 # sw02054-A 0021356 END and
-# 
+#
 # and suppose phone.ctm has lines like
 # sw02054 A 213.09 0.24 sil
 # sw02054 A 213.33 0.13 ae_B
@@ -95,31 +110,41 @@ if [ $stage -le 8 ]; then
 # then after sorting and merge-sorting the two ctm files we can easily
 # work out for each word, what the phones were during that time.
 
-  grep -v '<eps>' data/$(basename $lang)_phone_bg/phones.txt | awk '{print $1, $1}' | \
+  grep -v '<eps>' $phone_lang/phones.txt | awk '{print $1, $1}' | \
     sed 's/_B$//' | sed 's/_I$//' | sed 's/_E$//' | sed 's/_S$//' >$dir/phone_map.txt
 
-  silphone=$(cat data/$(basename $lang)_phone_bg/phones/optional_silence.txt)
-  cat $dir/phone.ctm | utils/apply_map.pl -f 5 $dir/phone_map.txt | grep -v "$silphone\$" > $dir/phone_cleaned.ctm
+  cat $dir/phone.ctm | utils/apply_map.pl -f 5 $dir/phone_map.txt > $dir/phone_text.ctm > $dir/phone_mapped.ctm
 
   export LC_ALL=C
-  
-  cat $dir/word.ctm | awk '{printf("%s-%s %09d START %s\n", $1, $2, 100*$3, $5); printf("%s-%s %09d END %s\n", $1, $2, 100*($3+$4), $5);}' | \
-     sort >$dir/word_processed.ctm
 
-  cat $dir/phone_cleaned.ctm | awk '{printf("%s-%s %09d PHONE %s\n", $1, $2, 100*($3+(0.5*$4)), $5);}' | \
-     sort >$dir/phone_processed.ctm
+  cat $dir/word.ctm  | awk '{printf("%s-%s %010.0f START %s\n", $1, $2, 1000*$3, $5); printf("%s-%s %010.0f END %s\n", $1, $2, 1000*($3+$4), $5);}' | \
+    sort > $dir/word_processed.ctm
+
+  # filter out those utteraces which only appea in phone_processed.ctm but not in word_processed.ctm
+  cat $dir/phone_mapped.ctm | awk '{printf("%s-%s %010.0f PHONE %s\n", $1, $2, 1000*($3+(0.5*$4)), $5);}' | \
+    awk 'NR==FNR{a[$1] = 1; next} {if($1 in a) print $0}' $dir/word_processed.ctm - \
+    > $dir/phone_processed.ctm
 
   # merge-sort both ctm's
   sort -m $dir/word_processed.ctm $dir/phone_processed.ctm > $dir/combined.ctm
-
 fi
 
+  # after merge-sort of the two ctm's, we add <eps> to cover "deserted" phones due to precision limits, and then merge all consecutive <eps>'s. 
 if [ $stage -le 9 ]; then
-  awk '{print $3, $4}' $dir/combined.ctm | \
-     perl -e ' while (<>) { chop; @A = split(" ", $_); ($a,$b) = @A;
+  awk '{print $1, $3, $4}' $dir/combined.ctm | \
+     perl -e ' while (<>) { chop; @A = split(" ", $_); ($utt, $a,$b) = @A;
      if ($a eq "START") { $cur_word = $b; @phones = (); }
-     if ($a eq "END") { print $cur_word, " ", join(" ", @phones), "\n"; }
-     if ($a eq "PHONE") { push @phones, $b; }} ' | sort | uniq -c | sort -nr > $dir/prons.txt
+     if ($a eq "END") { print $utt, " ", $cur_word, " ", join(" ", @phones), "\n"; }
+     if ($a eq "PHONE") { if ($prev eq "END") {print $utt, " ", "<eps>", " ", $b, "\n";} else {push @phones, $b;}} $prev = $a;} ' |\
+     awk 'BEGIN{merge_prev=0;} {utt=$1;word=$2;pron=$3;for (i=4;i<=NF;i++) pron=pron" "$i;
+     if (word_prev == "<eps>" && word == "<eps>" && utt_prev == utt) {merge=0;pron_prev=pron_prev" "pron;} else {merge=1;} 
+     if(merge_prev==1) {print utt_prev, word_prev, pron_prev;};
+     merge_prev=merge; utt_prev=utt; word_prev=word; pron_prev=pron;}
+     END{if(merge_prev==1) {print utt_prev, word_prev, pron_prev;}}' > $dir/ctm_prons.txt
+  
+  steps/cleanup/internal/get_non_scored_words.py $lang > $dir/non_scored_words
+  steps/cleanup/internal/get_pron_stats.py $dir/ctm_prons.txt $phone_lang/phones/silence.txt $phone_lang/phones/optional_silence.txt $dir/non_scored_words - | \
+    sort -nr > $dir/prons.txt  
 fi
 
 if [ $stage -le 10 ]; then
@@ -129,12 +154,16 @@ if [ $stage -le 10 ]; then
   else
     cp $srcdict $dir/lexicon.txt
   fi
+  silphone=$(cat $phone_lang/phones/optional_silence.txt)
+  echo "<eps> $silphone" >> $dir/lexicon.txt
 
   awk '{count[$2] += $1;} END {for (w in count){print w, count[w];}}' \
       <$dir/prons.txt >$dir/counts.txt
 
+
+
   cat $dir/prons.txt | \
-    if $remove_stress; then 
+    if $remove_stress; then
       perl -e 'while(<>) { @A=split(" ", $_); for ($n=1;$n<@A;$n++) { $A[$n] =~ s/[0-9]$//; } print join(" ", @A) . "\n"; } '
     else
       cat
@@ -143,9 +172,9 @@ if [ $stage -le 10 ]; then
      open(D, "<$ARGV[0]") || die "opening dict file $ARGV[0]";
      # create a hash of all reference pronuncations, and for each word, record
      # a list of the prons, separated by " | ".
-     while (<D>) { 
-        @A = split(" ", $_); $is_pron{join(" ",@A)} = 1; 
-        $w = shift @A; 
+     while (<D>) {
+        @A = split(" ", $_); $is_pron{join(" ",@A)} = 1;
+        $w = shift @A;
         if (!defined $prons{$w}) { $prons{$w} = join(" ", @A); }
         else { $prons{$w} = $prons{$w} . " | " . join(" ", @A); }
      }
@@ -183,4 +212,3 @@ if [ $stage -le 11 ]; then
 
 
 fi
-

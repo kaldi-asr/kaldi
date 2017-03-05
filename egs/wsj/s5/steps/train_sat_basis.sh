@@ -70,6 +70,9 @@ cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
 cp $alidir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
 cp $alidir/delta_opts $dir 2>/dev/null
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 echo $nj >$dir/num_jobs
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
@@ -90,7 +93,7 @@ esac
 ## Get initial fMLLR transforms (possibly from alignment dir)
 if [ -f $alidir/trans.1 ]; then
   echo "$0: Using transforms from $alidir"
-  feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
+  feats="$sifeats transform-feats ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
   cur_trans_dir=$alidir
 else 
   if [ $stage -le -5 ]; then
@@ -100,9 +103,9 @@ else
     $cmd JOB=1:$nj $dir/log/fmllr.0.JOB.log \
       ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:-  \| \
       weight-silence-post $silence_weight $silphonelist $alidir/final.mdl ark:- ark:- \| \
-	  gmm-post-to-gpost $alidir/final.mdl "$sifeats" ark:- ark:- \| \
-	  gmm-basis-fmllr-accs-gpost $spk2utt_opt \
-	  $alidir/final.mdl "$sifeats" ark,s,cs:- $dir/basis.acc.JOB || exit 1; 
+      gmm-post-to-gpost $alidir/final.mdl "$sifeats" ark:- ark:- \| \
+      gmm-basis-fmllr-accs-gpost \
+      $alidir/final.mdl "$sifeats" ark,s,cs:- $dir/basis.acc.JOB || exit 1;
 
     # Compute the basis matrices.
     $cmd $dir/log/basis_training.log \
@@ -111,13 +114,13 @@ else
       ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:-  \| \
       weight-silence-post $silence_weight $silphonelist $alidir/final.mdl ark:- ark:- \| \
       gmm-post-to-gpost $alidir/final.mdl "$sifeats" ark:- ark:- \| \
-	  gmm-est-basis-fmllr-gpost --fmllr-min-count=22  --num-iters=10 \
+      gmm-est-basis-fmllr-gpost --fmllr-min-count=22  --num-iters=10 \
       --size-scale=0.2 --step-size-iters=3 \
       --write-weights=ark:$dir/pre_wgt.JOB \
       $alidir/final.mdl $alidir/fmllr.basis "$sifeats"  ark,s,cs:- \
       ark:$alidir/trans.JOB || exit 1;
 
-    feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
+    feats="$sifeats transform-feats ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
     cur_trans_dir=$alidir
   fi
 fi
@@ -174,7 +177,7 @@ fi
 if [ $stage -le 0 ] && [ "$realign_iters" != "" ]; then
   echo "$0: Compiling graphs of transcripts"
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
-    compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst  \
+    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/1.mdl  $lang/L.fst  \
      "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
       "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 fi
@@ -200,7 +203,7 @@ while [ $x -lt $num_iters ]; do
           ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:-  \| \
           weight-silence-post $silence_weight $silphonelist $dir/$x.mdl ark:- ark:- \| \
 	  gmm-post-to-gpost $dir/$x.mdl "$feats" ark:- ark:- \| \
-	  gmm-basis-fmllr-accs-gpost $spk2utt_opt \
+	  gmm-basis-fmllr-accs-gpost \
 	  $dir/$x.mdl "$sifeats" ark,s,cs:- $dir/basis.acc.JOB || exit 1; 
 
       # Compute the basis matrices.
@@ -218,7 +221,7 @@ while [ $x -lt $num_iters ]; do
           ark:$dir/trans.JOB || exit 1;
 
     fi
-    feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans.JOB ark:- ark:- |"
+    feats="$sifeats transform-feats ark:$dir/trans.JOB ark:- ark:- |"
     cur_trans_dir=$dir
   fi
   

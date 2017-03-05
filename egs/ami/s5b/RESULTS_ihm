@@ -1,0 +1,89 @@
+
+# ./run_prepare_shared.sh  # if not already done.
+# ./run.sh --mic ihm
+#
+
+# steps/info/gmm_dir_info.pl exp/ihm/{mono,tri1,tri2,tri3,tri3_cleaned}
+#exp/ihm/mono: nj=30 align prob=-97.44 over 10.62h [retry=2.6%, fail=0.2%] states=137 gauss=981
+#exp/ihm/tri1: nj=30 align prob=-94.37 over 77.06h [retry=1.8%, fail=0.2%] states=3781 gauss=80201 tree-impr=3.62
+#exp/ihm/tri2: nj=30 align prob=-49.07 over 77.04h [retry=1.9%, fail=0.3%] states=3967 gauss=80132 tree-impr=3.75 lda-sum=15.44 mllt:impr,logdet=1.13,1.88
+#exp/ihm/tri3: nj=30 align prob=-50.15 over 77.04h [retry=1.4%, fail=0.3%] states=3980 gauss=80068 fmllr-impr=1.73 over 55.98h tree-impr=5.92
+#exp/ihm/tri3_cleaned: nj=50 align prob=-50.28 over 70.50h [retry=0.4%, fail=0.0%] states=3992 gauss=80062 fmllr-impr=1.03 over 54.90h tree-impr=6.70
+
+
+# steps/info/nnet3_dir_info.pl exp/ihm/nnet3/tdnn_sp exp/ihm/nnet3_cleaned/tdnn_sp
+# exp/ihm/nnet3/tdnn_sp: num-iters=92 nj=2..12 num-params=10.9M dim=40+100->3980 combine=-1.22->-1.19 loglike:train/valid[60,91,final]=(-1.38,-1.21,-1.20/-1.48,-1.48,-1.48) accuracy:train/valid[60,91,final]=(0.62,0.65,0.65/0.61,0.62,0.61)
+# exp/ihm/nnet3_cleaned/tdnn_sp: num-iters=85 nj=2..12 num-params=10.9M dim=40+100->3992 combine=-1.18->-1.15 loglike:train/valid[55,84,final]=(-1.36,-1.20,-1.19/-1.43,-1.43,-1.42) accuracy:train/valid[55,84,final]=(0.64,0.67,0.67/0.62,0.62,0.62)
+
+# steps/info/chain_dir_info.pl exp/ihm/chain/tdnn_sp exp/ihm/chain_cleaned/tdnn_sp
+# exp/ihm/chain/tdnn_sp: num-iters=97 nj=2..12 num-params=6.9M dim=40+100->3466 combine=-0.12->-0.11 xent:train/valid[63,96,final]=(-1.55,-1.43,-1.44/-1.68,-1.62,-1.62) logprob:train/valid[63,96,final]=(-0.12,-0.10,-0.10/-0.15,-0.15,-0.15)
+# exp/ihm/chain_cleaned/tdnn_sp: num-iters=89 nj=2..12 num-params=6.9M dim=40+100->3462 combine=-0.11->-0.11 xent:train/valid[58,88,final]=(-1.60,-1.47,-1.48/-1.66,-1.59,-1.59) logprob:train/valid[58,88,final]=(-0.11,-0.09,-0.09/-0.13,-0.12,-0.12)
+
+# for d in exp/ihm/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
+
+
+%WER 35.0 | 13098 94475 | 69.9 18.7 11.4 4.9 35.0 65.8 | -0.042 | exp/ihm/tri2/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev.ctm.filt.sys
+%WER 40.1 | 12643 90000 | 64.2 22.8 12.9 4.3 40.1 64.4 | -0.092 | exp/ihm/tri2/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_14/eval.ctm.filt.sys
+
+%WER 32.3 | 13098 94485 | 72.4 17.1 10.5 4.7 32.3 63.8 | -0.463 | exp/ihm/tri3/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_15/dev.ctm.filt.sys
+%WER 35.4 | 12643 89988 | 68.8 20.1 11.1 4.2 35.4 62.3 | -0.501 | exp/ihm/tri3/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_15/eval.ctm.filt.sys
+
+%WER 32.3 | 13098 94492 | 72.5 17.1 10.4 4.8 32.3 64.2 | -0.463 | exp/ihm/tri3_cleaned/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_15/dev.ctm.filt.sys
+%WER 35.5 | 12643 89987 | 68.8 20.2 11.0 4.4 35.5 62.8 | -0.517 | exp/ihm/tri3_cleaned/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_15/eval.ctm.filt.sys
+
+
+---
+
+# local/nnet3/run_tdnn.sh --mic ihm &
+# for d in exp/ihm/nnet3_cleaned/tdnn_sp/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+# nnet3 xent TDNN with data cleaning:
+%WER 24.0 | 13098 94470 | 79.4 12.1 8.5 3.4 24.0 57.1 | -0.153 | exp/ihm/nnet3_cleaned/tdnn_sp/decode_dev/ascore_12/dev_hires.ctm.filt.sys
+%WER 25.5 | 12643 89984 | 77.7 14.2 8.2 3.2 25.5 56.4 | -0.139 | exp/ihm/nnet3_cleaned/tdnn_sp/decode_eval/ascore_11/eval_hires.ctm.filt.sys
+
+
+# local/nnet3/run_tdnn.sh --mic ihm --train-set train --gmm tri3 --nnet3-affix ""
+# nnet3 xent TDNN without data cleaning [cleaning makes very small and
+#  inconsistent difference on this dat]
+# for d in exp/ihm/nnet3/tdnn_sp/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 24.2 | 13098 94477 | 79.3 12.2 8.6 3.5 24.2 57.1 | -0.178 | exp/ihm/nnet3/tdnn_sp/decode_dev/ascore_11/dev_hires.ctm.filt.sys
+%WER 25.4 | 12643 89970 | 77.6 13.7 8.7 3.0 25.4 56.3 | -0.067 | exp/ihm/nnet3/tdnn_sp/decode_eval/ascore_12/eval_hires.ctm.filt.sys
+
+# local/nnet3/run_blstm.sh --mic ihm
+# nnet3 xent BLSTM with data cleaning
+# for d in exp/ihm/nnet3_cleaned/lstm_bidirectional_sp/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 22.4 | 13098 94483 | 80.8 11.6 7.6 3.2 22.4 55.4 | -0.620 | exp/ihm/nnet3_cleaned/lstm_bidirectional_sp/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+%WER 22.4 | 12643 89977 | 80.3 12.5 7.2 2.7 22.4 53.6 | -0.503 | exp/ihm/nnet3_cleaned/lstm_bidirectional_sp/decode_eval/ascore_10/eval_hires.ctm.filt.sys
+
+############################################
+
+# local/chain/run_tdnn.sh --mic ihm --stage 12 &
+# cleanup + chain TDNN model
+# for d in exp/ihm/chain_cleaned/tdnn_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 22.5 | 13098 94490 | 80.6 10.8 8.6 3.1 22.5 55.0 | 0.072 | exp/ihm/chain_cleaned/tdnn_sp_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+%WER 22.5 | 12643 89978 | 80.3 12.5 7.2 2.7 22.5 53.1 | 0.149 | exp/ihm/chain_cleaned/tdnn_sp_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
+
+
+# local/chain/run_tdnn.sh --mic ihm --train-set train --gmm tri3 --nnet3-affix "" --stage 12
+# chain TDNN model without cleanup [note: cleanup helps very little on this IHM data.]
+for d in exp/ihm/chain/tdnn_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 22.4 | 13098 94476 | 80.4 10.4 9.2 2.8 22.4 54.6 | 0.069 | exp/ihm/chain/tdnn_sp_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+%WER 22.5 | 12643 89974 | 80.0 12.1 7.9 2.6 22.5 52.8 | 0.157 | exp/ihm/chain/tdnn_sp_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
+
+# local/chain/multi_condition/run_tdnn.sh --mic ihm
+# cleanup + chain TDNN model + IHM reverberated data
+# for d in exp/ihm/chain_cleaned_rvb/tdnn_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 21.5 | 13098 94486 | 81.8 11.0 7.2 3.3 21.5 54.6 | 0.090 | exp/ihm/chain_cleaned_rvb/tdnn_sp_rvb_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+%WER 21.9 | 12643 89985 | 80.8 12.3 6.9 2.7 21.9 52.5 | 0.183 | exp/ihm/chain_cleaned_rvb/tdnn_sp_rvb_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
+
+
+# local/chain/tuning/run_tdnn_lstm_1i.sh --mic ihm  --train-set train_cleaned  --gmm tri3_cleaned
+# cleanup + chain TDNN+LSTM model
+%WER 20.8 | 13098 94489 | 82.0 10.0 8.0 2.8 20.8 53.2 | -0.096 | exp/ihm/chain_cleaned/tdnn_lstm1i_sp_bi_ld5/decode_dev/ascore_11/dev_hires.ctm.filt.sys
+%WER 20.7 | 12643 89980 | 81.7 11.5 6.8 2.5 20.7 51.8 | 0.015 | exp/ihm/chain_cleaned/tdnn_lstm1i_sp_bi_ld5/decode_eval/ascore_11/eval_hires.ctm.filt.sys
+
+
+# local/chain/multi_condition/tuning/run_tdnn_lstm_1a.sh --mic ihm
+# cleanup + chain TDNN+LSTM model + IHM reverberated data
+%WER 19.4 | 13098 94479 | 83.8 10.0 6.1 3.2 19.4 51.8 | -0.168 | exp/ihm/chain_cleaned_rvb/tdnn_lstm1i_sp_rvb_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+%WER 19.3 | 12643 89977 | 83.3 11.0 5.7 2.6 19.3 49.6 | -0.046 | exp/ihm/chain_cleaned_rvb/tdnn_lstm1i_sp_rvb_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
+

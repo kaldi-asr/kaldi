@@ -49,11 +49,11 @@ void ConvertLattice(
     Invert(&invfst);
     Factor(invfst, &ffst,  &labels);
   }
-    
+
   TopSort(&ffst); // Put the states in ffst in topological order, which is
   // easier on the eye when reading the text-form lattices and corresponds to
   // what we get when we generate the lattices in the decoder.
-  
+
   ofst->DeleteStates();
 
   // The states will be numbered exactly the same as the original FST.
@@ -145,10 +145,10 @@ void ConvertLattice(
           olabel = (string_length > 0 ? arc.weight.String()[string_length-1] : 0);
       Weight weight = (string_length <= 1 ? arc.weight.Weight() : Weight::One());
       Arc new_arc(ilabel, olabel, weight, arc.nextstate);
-      if (invert) std::swap(new_arc.ilabel, new_arc.olabel);      
+      if (invert) std::swap(new_arc.ilabel, new_arc.olabel);
       ofst->AddArc(cur_state, new_arc);
     }
-  }    
+  }
 }
 
 // This function converts lattices between float and double;
@@ -209,12 +209,12 @@ void ScaleLattice(
          !aiter.Done();
          aiter.Next()) {
       Arc arc = aiter.Value();
-      arc.weight = ScaleTupleWeight(arc.weight, scale);
+      arc.weight = Weight(ScaleTupleWeight(arc.weight, scale));
       aiter.SetValue(arc);
     }
     Weight final_weight = fst->Final(s);
     if (final_weight != Weight::Zero())
-      fst->SetFinal(s, ScaleTupleWeight(final_weight, scale));
+      fst->SetFinal(s, Weight(ScaleTupleWeight(final_weight, scale)));
   }
 }
 
@@ -267,10 +267,11 @@ void ConvertFstToLattice(
     const ExpandedFst<ArcTpl<TropicalWeight> > &ifst,
     MutableFst<ArcTpl<LatticeWeightTpl<Real> > > *ofst) {
   int32 num_states_cache = 50000;
-  CacheOptions cache_opts(true, num_states_cache);
+  fst::CacheOptions cache_opts(true, num_states_cache);
+  fst::MapFstOptions mapfst_opts(cache_opts);
   StdToLatticeMapper<Real> mapper;
   MapFst<StdArc, ArcTpl<LatticeWeightTpl<Real> >,
-         StdToLatticeMapper<Real> > map_fst(ifst, mapper, cache_opts);
+         StdToLatticeMapper<Real> > map_fst(ifst, mapper, mapfst_opts);
   *ofst = map_fst;
 }
 

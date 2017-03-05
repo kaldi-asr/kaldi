@@ -37,9 +37,11 @@ struct PdfPriorOptions {
   BaseFloat prior_scale;
   BaseFloat prior_floor;
 
-  PdfPriorOptions() : class_frame_counts(""),
-                      prior_scale(1.0),
-                      prior_floor(1e-10) {}
+  PdfPriorOptions():
+    class_frame_counts(""),
+    prior_scale(1.0),
+    prior_floor(1e-10)
+  { }
 
   void Register(OptionsItf *opts) {
     opts->Register("class-frame-counts", &class_frame_counts,
@@ -49,7 +51,8 @@ struct PdfPriorOptions {
     opts->Register("prior-scale", &prior_scale,
                    "Scaling factor to be applied on pdf-log-priors");
     opts->Register("prior-floor", &prior_floor,
-                   "Flooring constatnt for prior probability (i.e. label rel. frequency)");
+                   "Flooring constatnt for prior probability "
+                   "(i.e. label rel. frequency)");
   }
 };
 

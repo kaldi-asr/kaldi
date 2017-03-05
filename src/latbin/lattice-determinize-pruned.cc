@@ -28,16 +28,16 @@ int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     typedef kaldi::int32 int32;
-    
+
     const char *usage =
         "Determinize lattices, keeping only the best path (sequence of acoustic states)\n"
         "for each input-symbol sequence.  This version does pruning as part of the\n"
         "determinization algorithm, which is more efficient and prevents blowup.\n"
-        "See http://kaldi.sourceforge.net/lattices.html for more information on lattices.\n"
+        "See http://kaldi-asr.org/doc/lattices.html for more information on lattices.\n"
         "\n"
         "Usage: lattice-determinize-pruned [options] lattice-rspecifier lattice-wspecifier\n"
         " e.g.: lattice-determinize-pruned --acoustic-scale=0.1 --beam=6.0 ark:in.lats ark:det.lats\n";
-    
+
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
     BaseFloat beam = 10.0;
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     // being more part of "fst world", so we register its elements independently.
     opts.max_mem = 50000000;
     opts.max_loop = 0; // was 500000;
-    
+
     po.Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods");
     po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling].");
@@ -68,11 +68,15 @@ int main(int argc, char *argv[]) {
     // Read as regular lattice-- this is the form the determinization code
     // accepts.
     SequentialLatticeReader lat_reader(lats_rspecifier);
-    
+
     // Write as compact lattice.
-    CompactLatticeWriter compact_lat_writer(lats_wspecifier); 
+    CompactLatticeWriter compact_lat_writer(lats_wspecifier);
 
     int32 n_done = 0, n_warn = 0;
+
+    // depth stats (for diagnostics).
+    double sum_depth_in = 0.0,
+          sum_depth_out = 0.0, sum_t = 0.0;
 
     if (acoustic_scale == 0.0)
       KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
@@ -98,19 +102,39 @@ int main(int argc, char *argv[]) {
             "(partial output will be pruned tighter than the specified beam.)";
         n_warn++;
       }
+      fst::Connect(&det_clat);
+      if (det_clat.NumStates() == 0) {
+        KALDI_WARN << "For key " << key << ", determinized and trimmed lattice "
+            "was empty.";
+        n_warn++;
+      }
       if (minimize) {
         PushCompactLatticeStrings(&det_clat);
         PushCompactLatticeWeights(&det_clat);
         MinimizeCompactLattice(&det_clat);
       }
+
+      int32 t;
+      TopSortCompactLatticeIfNeeded(&det_clat);
+      double depth = CompactLatticeDepth(det_clat, &t);
+      sum_depth_in += lat.NumStates();
+      sum_depth_out += depth * t;
+      sum_t += t;
+
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &det_clat);
       compact_lat_writer.Write(key, det_clat);
       n_done++;
     }
 
+    if (sum_t != 0.0) {
+      KALDI_LOG << "Average input-lattice depth (measured at at state level) is "
+                << (sum_depth_in / sum_t) << ", output depth is "
+                << (sum_depth_out / sum_t) << ", over " << sum_t << " frames "
+                << " (average num-frames = " << (sum_t / n_done) << ").";
+    }
     KALDI_LOG << "Done " << n_done << " lattices, determinization finished "
-              << "earlier than specified by the beam on " << n_warn
-              << " of these.";
+              << "earlier than specified by the beam (or output was empty) on "
+              << n_warn << " of these.";
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

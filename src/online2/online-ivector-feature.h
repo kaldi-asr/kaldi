@@ -266,6 +266,7 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
   virtual int32 Dim() const;
   virtual bool IsLastFrame(int32 frame) const;
   virtual int32 NumFramesReady() const;
+  virtual BaseFloat FrameShiftInSeconds() const;
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
   /// Set the adaptation state to a particular value, e.g. reflecting previous

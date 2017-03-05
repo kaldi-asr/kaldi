@@ -33,39 +33,57 @@ namespace kaldi {
 namespace nnet3 {
 
 
+// See also the decodable object in decodable-simple-looped.h, which is better
+// and faster in most situations, including TDNNs and LSTMs (but not for
+// BLSTMs).
+
+
 // Note: the 'simple' in the name means it applies to networks
 // for which IsSimpleNnet(nnet) would return true.
 struct NnetSimpleComputationOptions {
   int32 extra_left_context;
   int32 extra_right_context;
+  int32 extra_left_context_initial;
+  int32 extra_right_context_final;
   int32 frame_subsampling_factor;
   int32 frames_per_chunk;
   BaseFloat acoustic_scale;
   bool debug_computation;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
+  CachingOptimizingCompilerOptions compiler_config;
 
   NnetSimpleComputationOptions():
       extra_left_context(0),
-      extra_right_context(0),      
+      extra_right_context(0),
+      extra_left_context_initial(-1),
+      extra_right_context_final(-1),
       frame_subsampling_factor(1),
       frames_per_chunk(50),
       acoustic_scale(0.1),
-      debug_computation(false) { }
+      debug_computation(false) {
+    compiler_config.cache_capacity += frames_per_chunk;
+  }
 
   void Register(OptionsItf *opts) {
     opts->Register("extra-left-context", &extra_left_context,
                    "Number of frames of additional left-context to add on top "
                    "of the neural net's inherent left context (may be useful in "
                    "recurrent setups");
-    opts->Register("frame-subsampling-factor", &frame_subsampling_factor,
-                   "Required if the frame-rate of the output (e.g. in 'chain' "
-                   "models) is less than the frame-rate of the original "
-                   "alignment.");
     opts->Register("extra-right-context", &extra_right_context,
                    "Number of frames of additional right-context to add on top "
                    "of the neural net's inherent right context (may be useful in "
                    "recurrent setups");
+    opts->Register("extra-left-context-initial", &extra_left_context_initial,
+                   "If >= 0, overrides the --extra-left-context value at the "
+                   "start of an utterance.");
+    opts->Register("extra-right-context-final", &extra_right_context_final,
+                   "If >= 0, overrides the --extra-right-context value at the "
+                   "end of an utterance.");
+    opts->Register("frame-subsampling-factor", &frame_subsampling_factor,
+                   "Required if the frame-rate of the output (e.g. in 'chain' "
+                   "models) is less than the frame-rate of the original "
+                   "alignment.");
     opts->Register("acoustic-scale", &acoustic_scale,
                    "Scaling factor for acoustic log-likelihoods");
     opts->Register("frames-per-chunk", &frames_per_chunk,
@@ -87,13 +105,13 @@ struct NnetSimpleComputationOptions {
 };
 
 /*
-  This base-class for DecodableAmNnetSimple handles just the nnet computation;
-  it can also be used if you just want the nnet output directly.
+  This class handles the neural net computation; it's mostly accessed
+  via other wrapper classes.
 
-   It can accept just input features, or
-   input features plus iVectors.
-*/
-class NnetDecodableBase {
+  Note: this class used to be called NnetDecodableBase.
+
+  It can accept just input features, or input features plus iVectors.  */
+class DecodableNnetSimple {
  public:
   /**
      This constructor takes features as input, and you can either supply a
@@ -109,6 +127,14 @@ class NnetDecodableBase {
      @param [in] priors Vector of priors-- if supplied and nonempty, we subtract
                         the log of these priors from the nnet output.
      @param [in] feats  The input feature matrix.
+     @param [in] compiler  A pointer to the compiler object to use-- this enables the
+                        user to maintain a common object in the calling code that
+                        will cache computations across decodes.  Note: the compiler code
+                        has no locking mechanism (and it would be tricky to design one,
+                        as we'd need to lock the individual computations also),
+                        so the calling code has to make sure that if there are
+                        multiple threads, they do not share the same compiler
+                        object.
      @param [in] ivector If you are using iVectors estimated in batch mode,
                          a pointer to the iVector, else NULL.
      @param [in] ivector If you are using iVectors estimated in batch mode,
@@ -120,13 +146,14 @@ class NnetDecodableBase {
                         (i.e. if online_ivectors != NULL) gives the periodicity
                         (in frames) with which the iVectors are estimated.
   */
-  NnetDecodableBase(const NnetSimpleComputationOptions &opts,
-                    const Nnet &nnet,
-                    const VectorBase<BaseFloat> &priors,
-                    const MatrixBase<BaseFloat> &feats,
-                    const VectorBase<BaseFloat> *ivector = NULL,
-                    const MatrixBase<BaseFloat> *online_ivectors = NULL,
-                    int32 online_ivector_period = 1);
+  DecodableNnetSimple(const NnetSimpleComputationOptions &opts,
+                      const Nnet &nnet,
+                      const VectorBase<BaseFloat> &priors,
+                      const MatrixBase<BaseFloat> &feats,
+                      CachingOptimizingCompiler *compiler,
+                      const VectorBase<BaseFloat> *ivector = NULL,
+                      const MatrixBase<BaseFloat> *online_ivectors = NULL,
+                      int32 online_ivector_period = 1);
 
 
   // returns the number of frames of likelihoods.  The same as feats_.NumRows()
@@ -153,6 +180,8 @@ class NnetDecodableBase {
                              pdf_id);
   }
  private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableNnetSimple);
+
   // This call is made to ensure that we have the log-probs for this frame
   // cached in current_log_post_.
   void EnsureFrameIsComputed(int32 subsampled_frame);
@@ -204,7 +233,10 @@ class NnetDecodableBase {
   // number of frames the rows of ivector_feats are separated by.
   int32 online_ivector_period_;
 
-  CachingOptimizingCompiler compiler_;
+  // a reference to a compiler passed in via the constructor, which may be
+  // declared at the top level of the program so that we don't have to recompile
+  // computations each time.
+  CachingOptimizingCompiler &compiler_;
 
   // The current log-posteriors that we got from the last time we
   // ran the computation.
@@ -213,12 +245,9 @@ class NnetDecodableBase {
   // opts_.frame_subsampling_factor > 1, this will be measured in subsampled
   // frames.
   int32 current_log_post_subsampled_offset_;
-
-
 };
 
-class DecodableAmNnetSimple: public DecodableInterface,
-                             private NnetDecodableBase {
+class DecodableAmNnetSimple: public DecodableInterface {
  public:
   /**
      This constructor takes features as input, and you can either supply a
@@ -230,10 +259,13 @@ class DecodableAmNnetSimple: public DecodableInterface,
      @param [in] opts   The options class.  Warning: it includes an acoustic
                         weight, whose default is 0.1; you may sometimes want to
                         change this to 1.0.
-     @param [in] nnet   The neural net that we're going to do the computation with
-     @param [in] priors Vector of priors-- if supplied and nonempty, we subtract
-                        the log of these priors from the nnet output.
-     @param [in] feats  The input feature matrix.
+     @param [in] trans_model  The transition model to use.  This takes care of the
+                        mapping from transition-id (which is an arg to
+                        LogLikelihood()) to pdf-id (which is used internally).
+     @param [in] am_nnet   The neural net that we're going to do the computation with;
+                         we also get the priors to divide by, if applicable, from here.
+     @param [in] feats   A pointer to the input feature matrix; must be non-NULL.
+                         We
      @param [in] ivector If you are using iVectors estimated in batch mode,
                          a pointer to the iVector, else NULL.
      @param [in] ivector If you are using iVectors estimated in batch mode,
@@ -244,6 +276,12 @@ class DecodableAmNnetSimple: public DecodableInterface,
      @param [in] online_ivector_period If you are using iVectors estimated 'online'
                         (i.e. if online_ivectors != NULL) gives the periodicity
                         (in frames) with which the iVectors are estimated.
+     @param [in,out] compiler  A pointer to a compiler [optional]-- the user
+                        can declare one in the calling code and repeatedly
+                        supply pointers to it, which allows for caching of computations
+                        across consecutive decodes.  You'd want to have initialized
+                        the compiler object with as
+                        compiler(am_nnet.GetNnet(), opts.optimize_config).
   */
   DecodableAmNnetSimple(const NnetSimpleComputationOptions &opts,
                         const TransitionModel &trans_model,
@@ -251,12 +289,15 @@ class DecodableAmNnetSimple: public DecodableInterface,
                         const MatrixBase<BaseFloat> &feats,
                         const VectorBase<BaseFloat> *ivector = NULL,
                         const MatrixBase<BaseFloat> *online_ivectors = NULL,
-                        int32 online_ivector_period = 1);
+                        int32 online_ivector_period = 1,
+                        CachingOptimizingCompiler *compiler = NULL);
 
 
   virtual BaseFloat LogLikelihood(int32 frame, int32 transition_id);
 
-  virtual inline int32 NumFramesReady() const { return NumFrames(); }
+  virtual inline int32 NumFramesReady() const {
+    return decodable_nnet_.NumFrames();
+  }
 
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
 
@@ -265,12 +306,92 @@ class DecodableAmNnetSimple: public DecodableInterface,
     return (frame == NumFramesReady() - 1);
   }
 
-
-
  private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmNnetSimple);
+  // This compiler object is only used if the 'compiler'
+  // argument to the constructor is NULL.
+  CachingOptimizingCompiler compiler_;
+  DecodableNnetSimple decodable_nnet_;
+  const TransitionModel &trans_model_;
+};
+
+
+class DecodableAmNnetSimpleParallel: public DecodableInterface {
+ public:
+  /**
+     This decodable object is for use in multi-threaded decoding.
+     It differs from DecodableAmNnetSimple in two respects:
+        (1) It doesn't keep around pointers to the features and iVectors;
+            instead, it creates copies of them (so the caller can
+            delete the originals).
+        (2) It doesn't support the user passing in a pointer to the
+            CachingOptimizingCompiler-- because making that thread safe
+            would be quite complicated, and in any case multi-threaded
+            decoding probably makes the most sense when using CPU, and
+            in that case we don't expect the compilation phase to dominate.
+
+     This constructor takes features as input, and you can either supply a
+     single iVector input, estimated in batch-mode ('ivector'), or 'online'
+     iVectors ('online_ivectors' and 'online_ivector_period', or none at all.
+     Note: it stores references to all arguments to the constructor, so don't
+     delete them till this goes out of scope.
+
+     @param [in] opts   The options class.  Warning: it includes an acoustic
+                        weight, whose default is 0.1; you may sometimes want to
+                        change this to 1.0.
+     @param [in] trans_model  The transition model to use.  This takes care of the
+                        mapping from transition-id (which is an arg to
+                        LogLikelihood()) to pdf-id (which is used internally).
+     @param [in] am_nnet The neural net that we're going to do the computation with;
+                        it may provide priors to divide by.
+     @param [in] feats   A pointer to the input feature matrix; must be non-NULL.
+     @param [in] ivector If you are using iVectors estimated in batch mode,
+                         a pointer to the iVector, else NULL.
+     @param [in] online_ivectors
+                        If you are using iVectors estimated 'online'
+                        a pointer to the iVectors, else NULL.
+     @param [in] online_ivector_period If you are using iVectors estimated 'online'
+                        (i.e. if online_ivectors != NULL) gives the periodicity
+                        (in frames) with which the iVectors are estimated.
+  */
+  DecodableAmNnetSimpleParallel(
+      const NnetSimpleComputationOptions &opts,
+      const TransitionModel &trans_model,
+      const AmNnetSimple &am_nnet,
+      const MatrixBase<BaseFloat> &feats,
+      const VectorBase<BaseFloat> *ivector = NULL,
+      const MatrixBase<BaseFloat> *online_ivectors = NULL,
+      int32 online_ivector_period = 1);
+
+
+  virtual BaseFloat LogLikelihood(int32 frame, int32 transition_id);
+
+  virtual inline int32 NumFramesReady() const {
+    return decodable_nnet_->NumFrames();
+  }
+
+  virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
+
+  virtual bool IsLastFrame(int32 frame) const {
+    KALDI_ASSERT(frame < NumFramesReady());
+    return (frame == NumFramesReady() - 1);
+  }
+
+  ~DecodableAmNnetSimpleParallel() { DeletePointers(); }
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmNnetSimpleParallel);
+  void DeletePointers();
+
+  CachingOptimizingCompiler compiler_;
   const TransitionModel &trans_model_;
 
+  Matrix<BaseFloat> *feats_copy_;
+  Vector<BaseFloat> *ivector_copy_;
+  Matrix<BaseFloat> *online_ivectors_copy_;
+
+  DecodableNnetSimple *decodable_nnet_;
 };
+
 
 
 } // namespace nnet3

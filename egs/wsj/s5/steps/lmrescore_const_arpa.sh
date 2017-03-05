@@ -9,6 +9,7 @@
 cmd=run.pl
 skip_scoring=false
 stage=1
+scoring_opts=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -17,7 +18,7 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# != 5 ]; then
    echo "Does language model rescoring of lattices (remove old LM, add new LM)"
-   echo "Usage: steps/lmrescore.sh [options] <old-lang-dir> <new-lang-dir> \\"
+   echo "Usage: $0 [options] <old-lang-dir> <new-lang-dir> \\"
    echo "                   <data-dir> <input-decode-dir> <output-decode-dir>"
    echo "options: [--cmd (run.pl|queue.pl [queue opts])]"
    exit 1;
@@ -40,6 +41,10 @@ newlm=$newlang/G.carpa
 ! ls $indir/lat.*.gz >/dev/null &&\
   echo "$0: No lattices input directory $indir" && exit 1;
 
+if ! cmp -s $oldlang/words.txt $newlang/words.txt; then
+  echo "$0: $oldlang/words.txt and $newlang/words.txt differ: make sure you know what you are doing.";
+fi
+
 oldlmcommand="fstproject --project_output=true $oldlm |"
 
 mkdir -p $outdir/log
@@ -57,7 +62,7 @@ fi
 if ! $skip_scoring && [ $stage -le 2 ]; then
   err_msg="Not scoring because local/score.sh does not exist or not executable."
   [ ! -x local/score.sh ] && echo $err_msg && exit 1;
-  local/score.sh --cmd "$cmd" $data $newlang $outdir
+  local/score.sh --cmd "$cmd" $scoring_opts $data $newlang $outdir
 else
   echo "Not scoring because requested so..."
 fi

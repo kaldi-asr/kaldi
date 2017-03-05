@@ -30,8 +30,8 @@
 #include <fst/fst-decl.h>
 #include "fstext/determinize-star.h"
 #include "fstext/remove-eps-local.h"
-#include "../base/kaldi-common.h" // for error reporting macros.
-#include "../util/text-utils.h" // for SplitStringToVector
+#include "base/kaldi-common.h" // for error reporting macros.
+#include "util/text-utils.h" // for SplitStringToVector
 #include "fst/script/print-impl.h"
 
 namespace fst {
@@ -116,7 +116,7 @@ void MinimizeEncoded(VectorFst<Arc> *fst, float delta = kDelta) {
   Map(fst, QuantizeMapper<Arc>(delta));
   EncodeMapper<Arc> encoder(kEncodeLabels | kEncodeWeights, ENCODE);
   Encode(fst, &encoder);
-  AcceptorMinimize(fst);
+  internal::AcceptorMinimize(fst);
   Decode(fst, encoder);
 }
 
@@ -165,7 +165,7 @@ bool GetLinearSymbolSequences(const Fst<Arc> &fst,
 template<class Arc>
 void ConvertNbestToVector(const Fst<Arc> &fst,
                           vector<VectorFst<Arc> > *fsts_out);
-  
+
 
 /// Takes the n-shortest-paths (using ShortestPath), but outputs
 /// the result as a vector of up to n fsts.  This function will

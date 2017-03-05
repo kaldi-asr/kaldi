@@ -56,7 +56,7 @@ class LatticeWeightTpl {
   inline void SetValue1(T f) { value1_ = f; }
 
   inline void SetValue2(T f) { value2_ = f; }
-  
+
   LatticeWeightTpl() { }
 
   LatticeWeightTpl(T a, T b): value1_(a), value2_(b) {}
@@ -72,7 +72,7 @@ class LatticeWeightTpl {
   LatticeWeightTpl<FloatType> Reverse() const {
     return *this;
   }
-  
+
   static const LatticeWeightTpl Zero() {
     return LatticeWeightTpl(numeric_limits<T>::infinity(),
                             numeric_limits<T>::infinity());
@@ -81,7 +81,7 @@ class LatticeWeightTpl {
   static const LatticeWeightTpl One() {
     return LatticeWeightTpl(0.0, 0.0);
   }
-  
+
   static const string &Type() {
     static const string type = (sizeof(T) == 4 ? "lattice4" : "lattice8") ;
     return type;
@@ -107,7 +107,7 @@ class LatticeWeightTpl {
     }
     return true;
   }
-  
+
   LatticeWeightTpl Quantize(float delta = kDelta) const {
     if (value1_+value2_ == -numeric_limits<T>::infinity()) {
       return LatticeWeightTpl(-numeric_limits<T>::infinity(), -numeric_limits<T>::infinity());
@@ -123,7 +123,7 @@ class LatticeWeightTpl {
     return kLeftSemiring | kRightSemiring | kCommutative |
         kPath | kIdempotent;
   }
-  
+
   // This is used in OpenFst for binary I/O.  This is OpenFst-style,
   // not Kaldi-style, I/O.
   istream &Read(istream &strm) {
@@ -169,7 +169,7 @@ class LatticeWeightTpl {
     else
       strm << f;
   }
-  
+
   // Internal helper function, used in ReadNoParen.
   inline static void ReadFloatType(istream &strm, T &f) {
     string s;
@@ -213,7 +213,7 @@ class LatticeWeightTpl {
     ReadFloatType(strm, value2_);
     return strm;
   }
-  
+
   friend istream &operator>> <FloatType>(istream&, LatticeWeightTpl<FloatType>&);
   friend ostream &operator<< <FloatType>(ostream&, const LatticeWeightTpl<FloatType>&);
 
@@ -221,12 +221,12 @@ class LatticeWeightTpl {
   T value1_;
   T value2_;
 
-  
+
 };
 
 
 /* ScaleTupleWeight is a function defined for LatticeWeightTpl and
-   CompactLatticeWeightTpl that mutliplies the pair (value1_, value2_) by a 2x2 
+   CompactLatticeWeightTpl that mutliplies the pair (value1_, value2_) by a 2x2
    matrix.  Used, for example, in applying acoustic scaling.
  */
 template<class FloatType, class ScaleFloatType>
@@ -239,7 +239,7 @@ inline LatticeWeightTpl<FloatType> ScaleTupleWeight(
   return LatticeWeightTpl<FloatType>(scale[0][0] * w.Value1() + scale[0][1] * w.Value2(),
                                      scale[1][0] * w.Value1() + scale[1][1] * w.Value2());
 }
-                                        
+
 /* For testing purposes and in case it's ever useful, we define a similar
    function to apply to LexicographicWeight and the like, templated on
    TropicalWeight<float> etc.; we use PairWeight which is the base class of
@@ -261,7 +261,7 @@ inline PairWeight<TropicalWeightTpl<FloatType>,
   return PairType(BaseType(scale[0][0] * f1 + scale[0][1] * f2),
                   BaseType(scale[1][0] * f1 + scale[1][1] * f2));
 }
-                                        
+
 
 
 template<class FloatType>
@@ -315,23 +315,26 @@ inline LatticeWeightTpl<FloatType> Plus(const LatticeWeightTpl<FloatType> &w1,
 }
 
 
-// For efficiency, override the NaturalLess template class.  
+// For efficiency, override the NaturalLess template class.
 template<class FloatType>
 class NaturalLess<LatticeWeightTpl<FloatType> > {
  public:
   typedef LatticeWeightTpl<FloatType> Weight;
+
+  NaturalLess() {}
+
   bool operator()(const Weight &w1, const Weight &w2) const {
     // NaturalLess is a negative order (opposite to normal ordering).
     // This operator () corresponds to "<" in the negative order, which
     // corresponds to the ">" in the normal order.
-    return (Compare(w1, w2) == 1); 
+    return (Compare(w1, w2) == 1);
   }
 };
 
 template<class FloatType>
 inline LatticeWeightTpl<FloatType> Times(const LatticeWeightTpl<FloatType> &w1,
                                          const LatticeWeightTpl<FloatType> &w2) {
-  return LatticeWeightTpl<FloatType>(w1.Value1()+w2.Value1(), w1.Value2()+w2.Value2());  
+  return LatticeWeightTpl<FloatType>(w1.Value1()+w2.Value1(), w1.Value2()+w2.Value2());
 }
 
 // divide w1 by w2 (on left/right/any doesn't matter as
@@ -344,8 +347,8 @@ inline LatticeWeightTpl<FloatType> Divide(const LatticeWeightTpl<FloatType> &w1,
   T a = w1.Value1() - w2.Value1(), b = w1.Value2() - w2.Value2();
   if (a != a || b != b || a == -numeric_limits<T>::infinity()
      || b == -numeric_limits<T>::infinity()) {
-    std::cerr << "LatticeWeightTpl::Divide, NaN or invalid number produced. "
-              << "[dividing by zero?]  Returning zero.";
+    KALDI_WARN << "LatticeWeightTpl::Divide, NaN or invalid number produced. "
+               << "[dividing by zero?]  Returning zero";
     return LatticeWeightTpl<T>::Zero();
   }
   if (a == numeric_limits<T>::infinity() ||
@@ -377,7 +380,7 @@ template <class FloatType>
 inline istream &operator >>(istream &strm, LatticeWeightTpl<FloatType> &w1) {
   CHECK(FLAGS_fst_weight_separator.size() == 1);
   // separator defaults to ','
-  return w1.ReadNoParen(strm, FLAGS_fst_weight_separator[0]); 
+  return w1.ReadNoParen(strm, FLAGS_fst_weight_separator[0]);
 }
 
 
@@ -395,7 +398,7 @@ class CompactLatticeWeightTpl {
   typedef WeightType W;
 
   typedef CompactLatticeWeightTpl<WeightType, IntType> ReverseWeight;
-  
+
   // Plus is like LexicographicWeight on the pair (weight_, string_), but where we
   // use standard lexicographic order on string_ [this is not the same as
   // NaturalLess on the StringWeight equivalent, which does not define a
@@ -407,7 +410,7 @@ class CompactLatticeWeightTpl {
 
   CompactLatticeWeightTpl(const WeightType &w, const vector<IntType> &s):
       weight_(w), string_(s) { }
-  
+
   CompactLatticeWeightTpl &operator=(const CompactLatticeWeightTpl<WeightType, IntType> &w) {
     weight_ = w.weight_;
     string_ = w.string_;
@@ -421,7 +424,7 @@ class CompactLatticeWeightTpl {
   void SetWeight(const W &w) { weight_ = w; }
 
   void SetString(const vector<IntType> &s) { string_ = s; }
-  
+
   static const CompactLatticeWeightTpl<WeightType, IntType> Zero() {
     return CompactLatticeWeightTpl<WeightType, IntType>(
         WeightType::Zero(), vector<IntType>());
@@ -449,7 +452,7 @@ class CompactLatticeWeightTpl {
         WeightType::NoWeight(), std::vector<IntType>());
   }
 
-  
+
   CompactLatticeWeightTpl<WeightType, IntType> Reverse() const {
     size_t s = string_.size();
     vector<IntType> v(s);
@@ -457,7 +460,7 @@ class CompactLatticeWeightTpl {
       v[i] = string_[s-i-1];
     return CompactLatticeWeightTpl<WeightType, IntType>(weight_, v);
   }
-  
+
   bool Member() const {
     // a semiring has only one zero, this is the important property
     // we're trying to maintain here.  So force string_ to be empty if
@@ -486,7 +489,7 @@ class CompactLatticeWeightTpl {
     ReadType(strm, &sz);
     if (strm.fail()){ return strm; }
     if (sz < 0) {
-      std::cerr << "Negative string size!  Read failure.";
+      KALDI_WARN << "Negative string size!  Read failure";
       strm.clear(std::ios::badbit);
       return strm;
     }
@@ -520,7 +523,7 @@ class CompactLatticeWeightTpl {
   }
  private:
   W weight_;
-  vector<IntType> string_; 
+  vector<IntType> string_;
 
 };
 
@@ -564,7 +567,7 @@ inline int Compare (const CompactLatticeWeightTpl<WeightType, IntType> &w1,
   if (c1 != 0) return c1;
   int l1 = w1.String().size(), l2 = w2.String().size();
   // Use opposite order on the string lengths, so that if the costs are the same,
-  // the shorter string wins.  
+  // the shorter string wins.
   if (l1 > l2) return -1;
   else if (l1 < l2) return 1;
   for(int i = 0; i < l1; i++) {
@@ -579,11 +582,14 @@ template<class FloatType, class IntType>
 class NaturalLess<CompactLatticeWeightTpl<LatticeWeightTpl<FloatType>, IntType> > {
  public:
   typedef CompactLatticeWeightTpl<LatticeWeightTpl<FloatType>, IntType> Weight;
+
+  NaturalLess() {}
+
   bool operator()(const Weight &w1, const Weight &w2) const {
     // NaturalLess is a negative order (opposite to normal ordering).
     // This operator () corresponds to "<" in the negative order, which
     // corresponds to the ">" in the normal order.
-    return (Compare(w1, w2) == 1); 
+    return (Compare(w1, w2) == 1);
   }
 };
 
@@ -596,14 +602,14 @@ inline int Compare(const TropicalWeight &w1,
   else if (f1 > f2) return -1;
   else return 1;
 }
-                   
+
 
 
 template<class WeightType, class IntType>
 inline CompactLatticeWeightTpl<WeightType, IntType> Plus(
     const CompactLatticeWeightTpl<WeightType, IntType> &w1,
     const CompactLatticeWeightTpl<WeightType, IntType> &w2) {
-  return (Compare(w1, w2) >= 0 ? w1 : w2); 
+  return (Compare(w1, w2) >= 0 ? w1 : w2);
 }
 
 template<class WeightType, class IntType>
@@ -632,40 +638,34 @@ inline CompactLatticeWeightTpl<WeightType, IntType> Divide(const CompactLatticeW
     if (w2.Weight() != WeightType::Zero()) {
       return CompactLatticeWeightTpl<WeightType, IntType>::Zero();
     } else {
-      std::cerr << "Division by zero [0/0] in CompactLatticeWeightTpl\n";
-      exit(1);
+      KALDI_ERR << "Division by zero [0/0]";
     }
   } else if (w2.Weight() == WeightType::Zero()) {
-    std::cerr << "Error: division by zero in CompactLatticeWeightTpl::Divide()";
-    exit(1);
+    KALDI_ERR << "Error: division by zero";
   }
   WeightType w = Divide(w1.Weight(), w2.Weight());
 
   const vector<IntType> v1 = w1.String(), v2 = w2.String();
   if (v2.size() > v1.size()) {
-    std::cerr << "Error in Divide (CompactLatticeWeightTpl): cannot divide, length mismatch.\n";
-    exit(1);
+    KALDI_ERR << "Cannot divide, length mismatch";
   }
   typename vector<IntType>::const_iterator v1b = v1.begin(),
       v1e = v1.end(), v2b = v2.begin(), v2e = v2.end();
   if (div == DIVIDE_LEFT) {
     if (!std::equal(v2b, v2e, v1b)) { // v2 must be identical to first part of v1.
-      std::cerr << "Error in Divide (CompactLatticeWeighTpl): cannot divide, data mismatch.\n";
-      exit(1);
+      KALDI_ERR << "Cannot divide, data mismatch";
     }
     return CompactLatticeWeightTpl<WeightType, IntType>(
         w, vector<IntType>(v1b+(v2e-v2b), v1e)); // return last part of v1.
   } else if (div == DIVIDE_RIGHT) {
     if (!std::equal(v2b, v2e, v1e-(v2e-v2b))) { // v2 must be identical to last part of v1.
-      std::cerr << "Error in Divide (CompactLatticeWeighTpl): cannot divide, data mismatch.\n";
-      exit(1);
+      KALDI_ERR << "Cannot divide, data mismatch";
     }
     return CompactLatticeWeightTpl<WeightType, IntType>(
         w, vector<IntType>(v1b, v1e-(v2e-v2b))); // return first part of v1.
 
   } else {
-    std::cerr << "Cannot divide CompactLatticeWeightTpl with DIVIDE_ANY.\n";
-    exit(1);
+    KALDI_ERR << "Cannot divide CompactLatticeWeightTpl with DIVIDE_ANY";
   }
   return CompactLatticeWeightTpl<WeightType,IntType>::Zero(); // keep compiler happy.
 }
@@ -691,9 +691,9 @@ inline istream &operator >>(istream &strm, CompactLatticeWeightTpl<WeightType, I
     return strm;
   }
   CHECK(FLAGS_fst_weight_separator.size() == 1);
-  size_t pos = s.find_last_of(FLAGS_fst_weight_separator); // normally ","  
+  size_t pos = s.find_last_of(FLAGS_fst_weight_separator); // normally ","
   if (pos == std::string::npos) {
-    strm.clear(std::ios::badbit);    
+    strm.clear(std::ios::badbit);
     return strm;
   }
   // get parts of str before and after the separator (default: ',');
@@ -729,7 +729,7 @@ template<class BaseWeightType, class IntType>
 class CompactLatticeWeightCommonDivisorTpl {
  public:
   typedef CompactLatticeWeightTpl<BaseWeightType, IntType> Weight;
-  
+
   Weight operator()(const Weight &w1, const Weight &w2) const {
     // First find longest common prefix of the strings.
     typename vector<IntType>::const_iterator s1b = w1.String().begin(),
@@ -754,7 +754,7 @@ inline CompactLatticeWeightTpl<Weight, IntType> ScaleTupleWeight(
     const CompactLatticeWeightTpl<Weight, IntType> &w,
     const vector<vector<ScaleFloatType> > &scale) {
   return CompactLatticeWeightTpl<Weight, IntType>(
-      ScaleTupleWeight(w.Weight(), scale), w.String());
+      Weight(ScaleTupleWeight(w.Weight(), scale)), w.String());
 }
 
 /** Define some ConvertLatticeWeight functions that are used in various lattice
@@ -804,8 +804,6 @@ inline double ConvertToCost(const TropicalWeightTpl<Float> &w) {
 }
 
 
-
-  
-} // end namespace fst
+}  // namespace fst
 
 #endif  // KALDI_FSTEXT_LATTICE_WEIGHT_H_

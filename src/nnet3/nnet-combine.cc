@@ -34,6 +34,14 @@ NnetCombiner::NnetCombiner(const NnetCombineConfig &config,
     nnet_params_(std::min(num_nnets, config_.max_effective_inputs),
                  NumParameters(first_nnet)),
     tot_input_weighting_(nnet_params_.NumRows()) {
+
+  if (config_.sum_to_one_penalty != 0.0 &&
+      config_.enforce_sum_to_one) {
+    KALDI_WARN << "--sum-to-one-penalty=" << config_.sum_to_one_penalty
+              << " is nonzero, so setting --enforce-sum-to-one=false.";
+    config_.enforce_sum_to_one = false;
+  }
+  SetDropoutProportion(0, &nnet_);
   SubVector<BaseFloat> first_params(nnet_params_, 0);
   VectorizeNnet(nnet_, &first_params);
   tot_input_weighting_(0) += 1.0;
@@ -42,7 +50,6 @@ NnetCombiner::NnetCombiner(const NnetCombineConfig &config,
   NnetComputeProbOptions compute_prob_opts;
   compute_prob_opts.compute_deriv = true;
   prob_computer_ = new NnetComputeProb(compute_prob_opts, nnet_);
-
 }
 
 void NnetCombiner::ComputeUpdatableComponentDims(){
@@ -129,12 +136,12 @@ void NnetCombiner::Combine() {
                          // itself, so this is BFGS.
   lbfgs_options.first_step_impr = config_.initial_impr;
 
-  Vector<BaseFloat> params(dim), deriv(dim);
-  BaseFloat objf, initial_objf;
+  Vector<double> params(dim), deriv(dim);
+  double objf, initial_objf;
   GetInitialParameters(&params);
 
 
-  OptimizeLbfgs<BaseFloat> lbfgs(params, lbfgs_options);
+  OptimizeLbfgs<double> lbfgs(params, lbfgs_options);
 
   for (int32 i = 0; i < config_.num_iters; i++) {
     params.CopyFromVec(lbfgs.GetProposedValue());
@@ -145,12 +152,25 @@ void NnetCombiner::Combine() {
     lbfgs.DoStep(objf, deriv);
   }
 
-  KALDI_LOG << "Combining nnets, objective function changed from "
-            << initial_objf << " to " << objf;
+  if (!config_.sum_to_one_penalty) {
+    KALDI_LOG << "Combining nnets, objective function changed from "
+              << initial_objf << " to " << objf;
+  } else {
+    Vector<double> weights(WeightDim());
+    GetWeights(params, &weights);
+    bool print_weights = true;
+    double penalty = GetSumToOnePenalty(weights, NULL, print_weights);
+    // note: initial_objf has no penalty term because it summed exactly
+    // to one.
+    KALDI_LOG << "Combining nnets, objective function changed from "
+              << initial_objf << " to " << objf << " = "
+              << (objf - penalty) << " + " << penalty;
+  }
+
 
   // must recompute nnet_ if "params" is not exactly equal to the
   // final params that LB
-  Vector<BaseFloat> final_params(dim);
+  Vector<double> final_params(dim);
   final_params.CopyFromVec(lbfgs.GetValue(&objf));
   if (!params.ApproxEqual(final_params, 0.0)) {
     // the following call makes sure that nnet_ corresponds to the parameters
@@ -161,9 +181,8 @@ void NnetCombiner::Combine() {
 }
 
 
-void NnetCombiner::PrintParams(const VectorBase<BaseFloat> &params) const {
-
-  Vector<BaseFloat> weights(params.Dim()), normalized_weights(params.Dim());
+void NnetCombiner::PrintParams(const VectorBase<double> &params) const {
+  Vector<double> weights(WeightDim()), normalized_weights(WeightDim());
   GetWeights(params, &weights);
   GetNormalizedWeights(weights, &normalized_weights);
   int32 num_models = nnet_params_.NumRows(),
@@ -213,21 +232,21 @@ void NnetCombiner::PrintParams(const VectorBase<BaseFloat> &params) const {
 bool NnetCombiner::SelfTestDerivatives() {
   int32 num_tests = 2;  // more properly, this is the number of dimensions in a
                         // single test.
-  BaseFloat delta = 0.001;
+  double delta = 0.001;
   int32 dim = ParameterDim();
 
-  Vector<BaseFloat> params(dim), deriv(dim);
-  Vector<BaseFloat> predicted_changes(num_tests),
+  Vector<double> params(dim), deriv(dim);
+  Vector<double> predicted_changes(num_tests),
       observed_changes(num_tests);
 
   GetInitialParameters(&params);
-  BaseFloat initial_objf = ComputeObjfAndDerivFromParameters(params,
+  double initial_objf = ComputeObjfAndDerivFromParameters(params,
                                                              &deriv);
   for (int32 i = 0; i < num_tests; i++) {
-    Vector<BaseFloat> new_deriv(dim), offset(dim), new_params(params);
+    Vector<double> new_deriv(dim), offset(dim), new_params(params);
     offset.SetRandn();
     new_params.AddVec(delta, offset);
-    BaseFloat new_objf = ComputeObjfAndDerivFromParameters(new_params,
+    double new_objf = ComputeObjfAndDerivFromParameters(new_params,
                                                            &new_deriv);
     // for predicted changes, interpolate old and new derivs.
     predicted_changes(i) =
@@ -235,7 +254,7 @@ bool NnetCombiner::SelfTestDerivatives() {
         0.5 * VecVec(new_params, new_deriv) - 0.5 * VecVec(params, new_deriv);
     observed_changes(i) = new_objf - initial_objf;
   }
-  BaseFloat threshold = 0.1;
+  double threshold = 0.1;
   KALDI_LOG << "predicted_changes = " << predicted_changes;
   KALDI_LOG << "observed_changes = " << observed_changes;
   if (!ApproxEqual(predicted_changes, observed_changes, threshold)) {
@@ -252,23 +271,23 @@ void NnetCombiner::SelfTestModelDerivatives() {
                         // single test.
   int32 dim = ParameterDim();
 
-  Vector<BaseFloat> params(dim), deriv(dim);
-  Vector<BaseFloat> predicted_changes(num_tests),
+  Vector<double> params(dim), deriv(dim);
+  Vector<double> predicted_changes(num_tests),
       observed_changes(num_tests);
 
   GetInitialParameters(&params);
-  Vector<BaseFloat> weights(WeightDim()), normalized_weights(WeightDim()),
-      nnet_params(NnetParameterDim(), kUndefined),
+  Vector<double> weights(WeightDim()), normalized_weights(WeightDim());
+  Vector<BaseFloat> nnet_params(NnetParameterDim(), kUndefined),
       nnet_deriv(NnetParameterDim(), kUndefined);
   GetWeights(params, &weights);
   GetNormalizedWeights(weights, &normalized_weights);
   GetNnetParameters(normalized_weights, &nnet_params);
 
-  BaseFloat initial_objf = ComputeObjfAndDerivFromNnet(nnet_params,
+  double initial_objf = ComputeObjfAndDerivFromNnet(nnet_params,
                                                        &nnet_deriv);
 
-  BaseFloat delta = 0.002 * std::sqrt(VecVec(nnet_params, nnet_params) /
-                                      NnetParameterDim());
+  double delta = 0.002 * std::sqrt(VecVec(nnet_params, nnet_params) /
+                                   NnetParameterDim());
 
 
   for (int32 i = 0; i < num_tests; i++) {
@@ -276,7 +295,7 @@ void NnetCombiner::SelfTestModelDerivatives() {
         offset(NnetParameterDim()), new_nnet_params(nnet_params);
     offset.SetRandn();
     new_nnet_params.AddVec(delta, offset);
-    BaseFloat new_objf = ComputeObjfAndDerivFromNnet(new_nnet_params,
+    double new_objf = ComputeObjfAndDerivFromNnet(new_nnet_params,
                                                      &new_nnet_deriv);
     // for predicted changes, interpolate old and new derivs.
     predicted_changes(i) =
@@ -286,7 +305,7 @@ void NnetCombiner::SelfTestModelDerivatives() {
         0.5 * VecVec(nnet_params, new_nnet_deriv);
     observed_changes(i) = new_objf - initial_objf;
   }
-  BaseFloat threshold = 0.1;
+  double threshold = 0.1;
   KALDI_LOG << "model-derivatives: predicted_changes = " << predicted_changes;
   KALDI_LOG << "model-derivatives: observed_changes = " << observed_changes;
   if (!ApproxEqual(predicted_changes, observed_changes, threshold))
@@ -304,7 +323,7 @@ int32 NnetCombiner::ParameterDim() const {
 }
 
 
-void NnetCombiner::GetInitialParameters(VectorBase<BaseFloat> *params) const {
+void NnetCombiner::GetInitialParameters(VectorBase<double> *params) const {
   KALDI_ASSERT(params->Dim() == ParameterDim());
   params->Set(1.0 / nnet_params_.NumRows());
   if (config_.enforce_positive_weights) {
@@ -314,8 +333,8 @@ void NnetCombiner::GetInitialParameters(VectorBase<BaseFloat> *params) const {
   }
 }
 
-void NnetCombiner::GetWeights(const VectorBase<BaseFloat> &params,
-                              VectorBase<BaseFloat> *weights) const {
+void NnetCombiner::GetWeights(const VectorBase<double> &params,
+                              VectorBase<double> *weights) const {
   KALDI_ASSERT(weights->Dim() == WeightDim());
   if (config_.separate_weights_per_component) {
     weights->CopyFromVec(params);
@@ -335,12 +354,12 @@ void NnetCombiner::GetWeights(const VectorBase<BaseFloat> &params,
 }
 
 
-void NnetCombiner::GetParamsDeriv(const VectorBase<BaseFloat> &weights,
-                                  const VectorBase<BaseFloat> &weights_deriv,
-                                  VectorBase<BaseFloat> *param_deriv) {
+void NnetCombiner::GetParamsDeriv(const VectorBase<double> &weights,
+                                  const VectorBase<double> &weights_deriv,
+                                  VectorBase<double> *param_deriv) {
   KALDI_ASSERT(weights.Dim() == WeightDim() &&
                param_deriv->Dim() == ParameterDim());
-  Vector<BaseFloat> preexp_weights_deriv(weights_deriv);
+  Vector<double> preexp_weights_deriv(weights_deriv);
   if (config_.enforce_positive_weights) {
     // to enforce positive weights we first compute weights (call these
     // preexp_weights) and then take exponential.  Note, d/dx exp(x) = exp(x).
@@ -360,7 +379,68 @@ void NnetCombiner::GetParamsDeriv(const VectorBase<BaseFloat> &weights,
 }
 
 
-void NnetCombiner::GetNnetParameters(const Vector<BaseFloat> &weights,
+double NnetCombiner::GetSumToOnePenalty(
+    const VectorBase<double> &weights,
+    VectorBase<double> *weights_penalty_deriv,
+    bool print_weights) const {
+
+  KALDI_ASSERT(config_.sum_to_one_penalty >= 0.0);
+  double penalty = config_.sum_to_one_penalty;
+  if (penalty == 0.0) {
+    weights_penalty_deriv->SetZero();
+    return 0.0;
+  }
+  double ans = 0.0;
+  int32 num_uc = NumUpdatableComponents(),
+    num_models = nnet_params_.NumRows();
+  Vector<double> tot_weights(num_uc);
+  std::ostringstream tot_weight_info;
+  for (int32 c = 0; c < num_uc; c++) {
+    double this_total_weight = 0.0;
+    for (int32 m = 0; m < num_models; m++) {
+      int32 index = m * num_uc + c;
+      double this_weight = weights(index);
+      this_total_weight += this_weight;
+    }
+    tot_weights(c) = this_total_weight;
+    // this_total_weight_deriv is the derivative of the penalty
+    // term w.r.t. this component's total weight.
+    double this_total_weight_deriv;
+    if (config_.enforce_positive_weights) {
+      // if config_.enforce_positive_weights is true, then we choose to
+      // formulate the penalty in a slightly different way.. this solves the
+      // problem that with the formulation in the 'else' below, if for some
+      // reason the total weight is << 1.0, the deriv w.r.t. the actual
+      // parameters gets tiny [because weight = exp(params)].
+      double log_total = log(this_total_weight);
+      ans += -0.5 * penalty * log_total * log_total;
+      double log_total_deriv = -1.0 * penalty * log_total;
+      this_total_weight_deriv = log_total_deriv / this_total_weight;
+    } else {
+      ans += -0.5 * penalty *
+             (this_total_weight - 1.0) * (this_total_weight - 1.0);
+      this_total_weight_deriv = penalty * (1.0 - this_total_weight);
+
+    }
+    if (weights_penalty_deriv != NULL) {
+      KALDI_ASSERT(weights.Dim() == weights_penalty_deriv->Dim());
+      for (int32 m = 0; m < num_models; m++) {
+        int32 index = m * num_uc + c;
+        (*weights_penalty_deriv)(index) = this_total_weight_deriv;
+      }
+    }
+  }
+  if (print_weights) {
+    Vector<BaseFloat> tot_weights_float(tot_weights);
+    KALDI_LOG << "Total weights per component: "
+              << PrintVectorPerUpdatableComponent(nnet_,
+                                                  tot_weights_float);
+  }
+  return ans;
+}
+
+
+void NnetCombiner::GetNnetParameters(const Vector<double> &weights,
                                      VectorBase<BaseFloat> *nnet_params) const {
   KALDI_ASSERT(nnet_params->Dim() == nnet_params_.NumCols());
   nnet_params->SetZero();
@@ -386,7 +466,7 @@ void NnetCombiner::GetNnetParameters(const Vector<BaseFloat> &weights,
 // compare GetNnetParameters.
 void NnetCombiner::GetWeightsDeriv(
     const VectorBase<BaseFloat> &nnet_params_deriv,
-    VectorBase<BaseFloat> *weights_deriv) {
+    VectorBase<double> *weights_deriv) {
   KALDI_ASSERT(nnet_params_deriv.Dim() == nnet_params_.NumCols() &&
                weights_deriv->Dim() == WeightDim());
   int32 num_uc = NumUpdatableComponents(),
@@ -437,30 +517,35 @@ double NnetCombiner::ComputeObjfAndDerivFromNnet(
 
 
 double NnetCombiner::ComputeObjfAndDerivFromParameters(
-    VectorBase<BaseFloat> &params,
-    VectorBase<BaseFloat> *params_deriv) {
-  Vector<BaseFloat> weights(WeightDim()), normalized_weights(WeightDim()),
-      nnet_params(NnetParameterDim(), kUndefined),
-      nnet_params_deriv(NnetParameterDim(), kUndefined),
+    VectorBase<double> &params,
+    VectorBase<double> *params_deriv) {
+  Vector<double> weights(WeightDim()), normalized_weights(WeightDim()),
+      weights_sum_to_one_penalty_deriv(WeightDim()),
       normalized_weights_deriv(WeightDim()), weights_deriv(WeightDim());
+  Vector<BaseFloat>
+      nnet_params(NnetParameterDim(), kUndefined),
+      nnet_params_deriv(NnetParameterDim(), kUndefined);
   GetWeights(params, &weights);
+  double ans = GetSumToOnePenalty(weights, &weights_sum_to_one_penalty_deriv);
   GetNormalizedWeights(weights, &normalized_weights);
   GetNnetParameters(normalized_weights, &nnet_params);
-  double ans = ComputeObjfAndDerivFromNnet(nnet_params, &nnet_params_deriv);
+  ans += ComputeObjfAndDerivFromNnet(nnet_params, &nnet_params_deriv);
   if (ans != ans || ans - ans != 0) // NaN or inf
     return ans;  // No point computing derivative
   GetWeightsDeriv(nnet_params_deriv, &normalized_weights_deriv);
   GetUnnormalizedWeightsDeriv(weights, normalized_weights_deriv,
                               &weights_deriv);
+  weights_deriv.AddVec(1.0, weights_sum_to_one_penalty_deriv);
   GetParamsDeriv(weights, weights_deriv, params_deriv);
   return ans;
 }
 
 
-// enforces the constraint that the weights for each component must sum to one.
+// enforces the constraint that the weights for each component must sum to one,
+// if necessary.
 void NnetCombiner::GetNormalizedWeights(
-    const VectorBase<BaseFloat> &unnorm_weights,
-    VectorBase<BaseFloat> *norm_weights) const {
+    const VectorBase<double> &unnorm_weights,
+    VectorBase<double> *norm_weights) const {
   if (!config_.enforce_sum_to_one) {
     norm_weights->CopyFromVec(unnorm_weights);
     return;
@@ -468,12 +553,12 @@ void NnetCombiner::GetNormalizedWeights(
   int32 num_uc = NumUpdatableComponents(),
       num_models = nnet_params_.NumRows();
   for (int32 c = 0; c < num_uc; c++) {
-    BaseFloat sum = 0.0;
+    double sum = 0.0;
     for (int32 m = 0; m < num_models; m++) {
       int32 index = m * num_uc + c;
       sum += unnorm_weights(index);
     }
-    BaseFloat inv_sum = 1.0 / sum;  // if it's NaN then it's OK, we'll get NaN
+    double inv_sum = 1.0 / sum;  // if it's NaN then it's OK, we'll get NaN
                                     // weights and eventually -inf objective.
     for (int32 m = 0; m < num_models; m++) {
       int32 index = m * num_uc + c;
@@ -483,9 +568,9 @@ void NnetCombiner::GetNormalizedWeights(
 }
 
 void NnetCombiner::GetUnnormalizedWeightsDeriv(
-    const VectorBase<BaseFloat> &unnorm_weights,
-    const VectorBase<BaseFloat> &norm_weights_deriv,
-    VectorBase<BaseFloat> *unnorm_weights_deriv) {
+    const VectorBase<double> &unnorm_weights,
+    const VectorBase<double> &norm_weights_deriv,
+    VectorBase<double> *unnorm_weights_deriv) {
   if (!config_.enforce_sum_to_one) {
     unnorm_weights_deriv->CopyFromVec(norm_weights_deriv);
     return;
@@ -493,13 +578,13 @@ void NnetCombiner::GetUnnormalizedWeightsDeriv(
   int32 num_uc = NumUpdatableComponents(),
       num_models = nnet_params_.NumRows();
   for (int32 c = 0; c < num_uc; c++) {
-    BaseFloat sum = 0.0;
+    double sum = 0.0;
     for (int32 m = 0; m < num_models; m++) {
       int32 index = m * num_uc + c;
       sum += unnorm_weights(index);
     }
-    BaseFloat inv_sum = 1.0 / sum;
-    BaseFloat inv_sum_deriv = 0.0;
+    double inv_sum = 1.0 / sum;
+    double inv_sum_deriv = 0.0;
     for (int32 m = 0; m < num_models; m++) {
       int32 index = m * num_uc + c;
       // in the forward direction, we'd do:
@@ -508,7 +593,7 @@ void NnetCombiner::GetUnnormalizedWeightsDeriv(
       inv_sum_deriv += norm_weights_deriv(index) * unnorm_weights(index);
     }
     // note: d/dx (1/x) = -1/x^2
-    BaseFloat sum_deriv = -1.0 * inv_sum_deriv * inv_sum * inv_sum;
+    double sum_deriv = -1.0 * inv_sum_deriv * inv_sum * inv_sum;
     for (int32 m = 0; m < num_models; m++) {
       int32 index = m * num_uc + c;
       (*unnorm_weights_deriv)(index) += sum_deriv;

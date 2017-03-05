@@ -27,7 +27,7 @@
 dir=data/local/dict
 mkdir -p $dir
 echo "Getting CMU dictionary"
-svn co  https://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict  $dir/cmudict
+svn co -r 13068 https://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict  $dir/cmudict
 
 # silence phones, one per line. 
 for w in sil laughter noise oov; do echo $w; done > $dir/silence_phones.txt
@@ -116,11 +116,8 @@ cp $srcdict $dir/lexicon0.txt || exit 1;
 patch <local/dict.patch $dir/lexicon0.txt || exit 1;
 
 #(2a) Dictionary preparation:
-# Pre-processing (Upper-case, remove comments)
-awk 'BEGIN{getline}($0 !~ /^#/) {print}' \
-  $dir/lexicon0.txt | sort | awk '($0 !~ /^[[:space:]]*$/) {print}' \
-   > $dir/lexicon1_swbd.txt || exit 1;
-
+# Pre-processing (remove comments)
+grep -v '^#' $dir/lexicon0.txt | awk 'NF>0' | sort > $dir/lexicon1_swbd.txt || exit 1;
 
 cat $dir/lexicon1_swbd.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p in phones) print p;}' | \
   grep -v SIL > $dir/nonsilence_phones_msu.txt  || exit 1;

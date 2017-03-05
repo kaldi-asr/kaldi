@@ -179,9 +179,8 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
     return;
   } else {
     // Or suggest to use compute exclusive mode
-    if (num_gpus > 1) {
-      KALDI_WARN << "Suggestion: use 'nvidia-smi -c 1' to set compute exclusive mode";
-    }
+    KALDI_WARN << "Suggestion: use 'nvidia-smi -c 3' to set compute exclusive mode";
+
     // And select the GPU according to proportion of free memory
     if (SelectGpuIdAuto()) {
       FinalizeActiveGpu();
@@ -435,7 +434,7 @@ std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
   // WARNING! the CUDA API is inconsistent accross versions!
 #ifdef _MSC_VER
   size_t mem_free, mem_total;
-  cuMemGetInfo_v2(handle_, &mem_free, &mem_total);
+  cuMemGetInfo_v2(&mem_free, &mem_total);
 #else
 #if (CUDA_VERSION >= 3020)
   // define the function signature type
@@ -447,9 +446,6 @@ std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
     // we will load cuMemGetInfo_v2 dynamically from libcuda.so
     // pre-fill ``safe'' values that will not cause problems
     mem_free = 1; mem_total = 1;
-#ifdef _MSC_VER
-    cuMemGetInfo_v2(handle_, &mem_free, &mem_total);
-#else
     // open libcuda.so
     void* libcuda = dlopen("libcuda.so",RTLD_LAZY);
     if (NULL == libcuda) {
@@ -473,7 +469,6 @@ std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
       // close the library
       dlclose(libcuda);
     }
-#endif
   }
 #endif
   // copy the output values outside
@@ -567,13 +562,16 @@ void CuDevice::CheckGpuHealth() {
   }
 */
 
-CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true),
-                      allocator_(CuAllocatorOptions()) { }
+CuDevice::CuDevice() :
+    active_gpu_id_(-1), verbose_(true), debug_stride_mode_(false),
+    num_debug_stride_allocations_(0), allocator_(CuAllocatorOptions()) {
+}
 
 
 CuDevice::~CuDevice() {
   if (Enabled()) {
     cublasDestroy(handle_);
+    cudaDeviceReset();
   }
 }
 

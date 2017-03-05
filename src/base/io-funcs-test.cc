@@ -43,8 +43,20 @@ void UnitTestIo(bool binary) {
     WriteIntegerVector(outfile, binary, vec2);
     if (!binary) outfile << " \n";
     std::vector<char> vec3;
-    for (size_t i = 0; i < 10; i++) vec3.push_back(Rand()%100);
+
+    int32 size = RandInt(0, 10);
+    for (size_t i = 0; i < size; i++) vec3.push_back(Rand()%100);
     WriteIntegerVector(outfile, binary, vec3);
+    std::vector<std::pair<int32, int32> > vec4;
+    WriteIntegerPairVector(outfile, binary, vec4);
+    if (!binary && Rand()%2 == 0) outfile << " \n";
+    std::vector<std::pair<uint16, uint16> > vec5;
+    for (size_t i = 0; i < size; i++) vec5.push_back(std::make_pair<uint16, uint16>(Rand()%100 - 10, Rand()%100 - 10));
+    WriteIntegerPairVector(outfile, binary, vec5);
+    if (!binary) outfile << " \n";
+    std::vector<std::pair<char, char> > vec6;
+    for (size_t i = 0; i < size; i++) vec6.push_back(std::make_pair<char, char>(Rand()%100, Rand()%100));
+    WriteIntegerPairVector(outfile, binary, vec6);
     if (!binary && Rand()%2 == 0) outfile << " \n";
     const char *token1 = "Hi";
     WriteToken(outfile, binary, token1);
@@ -90,6 +102,15 @@ void UnitTestIo(bool binary) {
       std::vector<char> vec3_in;
       ReadIntegerVector(infile, binary_in, &vec3_in);
       KALDI_ASSERT(vec3_in == vec3);
+      std::vector<std::pair<int32, int32> > vec4_in;
+      ReadIntegerPairVector(infile, binary_in, &vec4_in);
+      KALDI_ASSERT(vec4_in == vec4);
+      std::vector<std::pair<uint16, uint16> > vec5_in;
+      ReadIntegerPairVector(infile, binary_in, &vec5_in);
+      KALDI_ASSERT(vec5_in == vec5);
+      std::vector<std::pair<char, char> > vec6_in;
+      ReadIntegerPairVector(infile, binary_in, &vec6_in);
+      KALDI_ASSERT(vec6_in == vec6);
       std::string  token1_in, token2_in;
       KALDI_ASSERT(Peek(infile, binary_in) == static_cast<int>(*token1));
       KALDI_ASSERT(PeekToken(infile, binary_in) == static_cast<int>(*token1));

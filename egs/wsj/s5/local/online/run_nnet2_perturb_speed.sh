@@ -21,7 +21,7 @@ If you want to use GPUs (and have them), go to src/, and configure and make on a
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="-l gpu=1"
+  parallel_opts="--gpu 1"
   num_threads=1
   minibatch_size=512
   # the _a is in case I want to change the parameters.

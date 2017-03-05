@@ -32,8 +32,10 @@ int main(int argc, char *argv[]) {
     typedef kaldi::uint64 uint64;
 
     const char *usage =
-        "Take a union of the indexed lattices. The input index is in the T*T*T semiring and\n"
-        "the output index is also in the T*T*T semiring. At the end of this program, encoded\n"
+        "Take a union of the indexed lattices. The input index is in "
+        " the T*T*T semiring and\n"
+        "the output index is also in the T*T*T semiring. At the end of "
+        "this program, encoded\n"
         "epsilon removal, determinization and minimization will be applied.\n"
         "\n"
         "Usage: kws-index-union [options]  index-rspecifier index-wspecifier\n"
@@ -44,9 +46,12 @@ int main(int argc, char *argv[]) {
     bool strict = true;
     bool skip_opt = false;
     int32 max_states = -1;
-    po.Register("strict", &strict, "Will allow 0 lattice if it is set to false.");
-    po.Register("skip-optimization", &skip_opt, "Skip optimization if it's set to true.");
-    po.Register("max-states", &max_states, "Maximum states for DeterminizeStar.");
+    po.Register("strict", &strict,
+        "Will allow 0 lattice if it is set to false.");
+    po.Register("skip-optimization", &skip_opt,
+        "Skip optimization if it's set to true.");
+    po.Register("max-states", &max_states,
+        "Maximum states for DeterminizeStar.");
 
     po.Read(argc, argv);
 
@@ -58,8 +63,10 @@ int main(int argc, char *argv[]) {
     std::string index_rspecifier = po.GetArg(1),
         index_wspecifier = po.GetOptArg(2);
 
-    SequentialTableReader< VectorFstTplHolder<KwsLexicographicArc> > index_reader(index_rspecifier);
-    TableWriter< VectorFstTplHolder<KwsLexicographicArc> > index_writer(index_wspecifier);
+    SequentialTableReader< VectorFstTplHolder<KwsLexicographicArc> >
+                                                index_reader(index_rspecifier);
+    TableWriter< VectorFstTplHolder<KwsLexicographicArc> >
+                                                index_writer(index_wspecifier);
 
     int32 n_done = 0;
     KwsLexicographicFst global_index;
@@ -85,7 +92,7 @@ int main(int argc, char *argv[]) {
                    << " (should affect speed of search but not results)";
         global_index = ifst;
       }
-      Minimize(&global_index);
+      Minimize(&global_index, static_cast<KwsLexicographicFst*>(NULL), kDelta, true);
       Decode(&global_index, encoder);
     } else {
       KALDI_LOG << "Skipping index optimization...";

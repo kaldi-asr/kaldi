@@ -60,6 +60,8 @@ oov=`cat $lang/oov.int` || exit 1;
 
 mkdir -p $dir
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
+
 cp -r $lang $dir/
 
 # Compute grammar FST which corresponds to unigram decoding graph.
@@ -118,12 +120,20 @@ feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 
 # add-ivector (optional),
 if [ -e $D/ivector_dim ]; then
-  ivector_dim=$(cat $D/ivector_dim)
-  [ -z $ivector ] && echo "Missing --ivector, they were used in training! (dim $ivector_dim)" && exit 1
-  ivector_dim2=$(copy-vector --print-args=false "$ivector" ark,t:- | head -n1 | awk '{ print NF-3 }') || true
-  [ $ivector_dim != $ivector_dim2 ] && "Error, i-vector dimensionality mismatch! (expected $ivector_dim, got $ivector_dim2 in $ivector)" && exit 1
-  # Append to feats
-  feats="$feats append-vector-to-feats ark:- '$ivector' ark:- |"
+  [ -z $ivector ] && echo "Missing --ivector, they were used in training!" && exit 1
+  # Get the tool,
+  ivector_append_tool=append-vector-to-feats # default,
+  [ -e $D/ivector_append_tool ] && ivector_append_tool=$(cat $D/ivector_append_tool)
+  # Check dims,
+  feats_job_1=$(sed 's:JOB:1:g' <(echo $feats))
+  dim_raw=$(feat-to-dim "$feats_job_1" -)
+  dim_raw_and_ivec=$(feat-to-dim "$feats_job_1 $ivector_append_tool ark:- '$ivector' ark:- |" -)
+  dim_ivec=$((dim_raw_and_ivec - dim_raw))
+  [ $dim_ivec != "$(cat $D/ivector_dim)" ] && \
+    echo "Error, i-vector dim. mismatch (expected $(cat $D/ivector_dim), got $dim_ivec in '$ivector')" && \
+    exit 1
+  # Append to feats,
+  feats="$feats $ivector_append_tool ark:- '$ivector' ark:- |"
 fi
 
 # nnet-forward,
@@ -144,7 +154,9 @@ if [ $sub_split -eq 1 ]; then
   # Prepare 'scp' for storing lattices separately and gzipped
   for n in `seq $nj`; do
     [ ! -d $dir/lat$n ] && mkdir $dir/lat$n;
-    cat $sdata/$n/feats.scp | awk '{ print $1" | gzip -c >'$dir'/lat'$n'/"$1".gz"; }' 
+    cat $sdata/$n/feats.scp | \
+    awk -v dir=$dir -v n=$n '{ utt=$1; utt_noslash=gensub("/","_","g",utt);
+                               printf("%s | gzip -c >%s/lat%d/%s.gz\n", utt, dir, n, utt_noslash); }'
   done >$dir/lat.store_separately_as_gz.scp
   # Generate the lattices
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode_den.JOB.log \
@@ -165,18 +177,18 @@ else
       echo "Not processing subset $n as already done (delete $dir/.done.$n if not)";
       this_pid=
     else
-      sdata2=$data/split$nj/$n/split$sub_split;
-      if [ ! -d $sdata2 ] || [ $sdata2 -ot $sdata/$n/feats.scp ]; then
-        split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
-      fi
+      sdata2=$data/split$nj/$n/split${sub_split}utt;
+      split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
-      feats_subset=$(echo $feats | sed s:JOB/:$n/split$sub_split/JOB/:g)
+      feats_subset=$(echo $feats | sed s:JOB/:$n/split${sub_split}utt/JOB/:g)
       # Prepare 'scp' for storing lattices separately and gzipped
       for k in `seq $sub_split`; do
         [ ! -d $dir/lat$n/$k ] && mkdir -p $dir/lat$n/$k;
-        cat $sdata2/$k/feats.scp | awk '{ print $1" | gzip -c >'$dir'/lat'$n'/'$k'/"$1".gz"; }' 
-      done >$dir/lat.$n.store_separately_as_gz.scp
+        cat $sdata2/$k/feats.scp | \
+        awk -v dir=$dir -v n=$n -v k=$k '{ utt=$1; utt_noslash=gensub("/","_","g",utt);
+                                           printf("%s | gzip -c >%s/lat%d/%d/%s.gz\n", utt, dir, n, k, utt_noslash); }'
+      done >$dir/lat.${n}.store_separately_as_gz.scp
       # Generate lattices
       $cmd $parallel_opts JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
         latgen-faster-mapped --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \

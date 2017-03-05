@@ -28,7 +28,6 @@
 #include "cudamatrix/cu-vector.h"
 #include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-kernels.h"
-#include "cudamatrix/cu-randkernels.h"
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-vector.h"
 #include "cudamatrix/cu-matrix.h"
@@ -51,7 +50,7 @@ Real VecVec(const CuVectorBase<Real> &a,
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     CU_SAFE_CALL(cublas_dot(GetCublasHandle(), a.Dim(), a.Data(), 1, b.Data(),
-			    1, &result));
+                            1, &result));
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
 } else
 #endif
@@ -256,6 +255,14 @@ void CuVectorBase<Real>::SetRandn() {
   tmp.RandGaussian(this);
 }
 
+template<typename Real>
+void CuVectorBase<Real>::SetRandUniform() {
+  if (dim_ == 0) return;
+  CuRand<Real> tmp;
+  tmp.RandUniform(this);
+}
+
+
 
 template<typename Real>
 Real CuVectorBase<Real>::Sum() const {
@@ -263,31 +270,30 @@ Real CuVectorBase<Real>::Sum() const {
     return 0.0;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    Real result;
     Timer tim;
-    int max_threads = 2048;
-    // This is the smallest block of consecutive vector elements, which
-    // its sum will save at the partial vector.
-    int block_size = (dim_ + max_threads - 1) / max_threads;
-    if (block_size > 3) {
-      int dimBlock(CU1DBLOCK);
-      int dimGrid(n_blocks(max_threads, CU1DBLOCK));
-      CuVector<Real> g(dimGrid);
-      cuda_pvec_sum(dimGrid, dimBlock, data_, g.Data(), dim_, block_size);
-      CU_SAFE_CALL(cudaGetLastError());
-      Vector<Real> tmp(dimGrid);
-      g.CopyToVec(&tmp);
-      CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-      return tmp.Sum();
+
+    // Small vectors are copied to RAM and reduced on CPU.
+    // The length is chosen by cu-vector-speed-test
+    if (dim_ < 4096) {
+      Vector<Real> ans_cpu(*this);
+      result = ans_cpu.Sum();
     } else {
-      if (dim_ == 0) return 0.0;
-      CuVector<Real> tmp(1, kUndefined);
-      int dimBlock(CU1DBLOCK);
-      int dimGrid = 1; // only 1 block here. we have loops in each thread.
-      cuda_vec_sum(dimGrid, dimBlock, data_, tmp.Data(), dim_, 1);
+      // Use no more than 256 blocks (still too many?)
+      int dimBlock = CU1DBLOCK;
+      int dimGrid = n_blocks(dim_, dimBlock);
+      if (dimGrid > 256) {
+        dimGrid = 256;
+      }
+      CuVector<Real> ans(dimGrid, kUndefined);
+      cuda_vec_sum(dimGrid, dimBlock, data_, ans.Data(), dim_, 1);
       CU_SAFE_CALL(cudaGetLastError());
-      CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-      return tmp(0);
+      Vector<Real> ans_cpu(ans);
+      result = ans_cpu.Sum();
     }
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    return result;
   } else
 #endif
   {
@@ -301,7 +307,7 @@ void CuVectorBase<Real>::ApplySoftMax() {
   if (CuDevice::Instantiate().Enabled()) {
     if (dim_ == 0) return;
     Timer tim;
-    size_t dimBlock = dim_ > CU1DBLOCK ? CU1DBLOCK : dim_; // for cuda_softmax_reduce function, dimBlock value is fixed min(CU1DBLOCK, dim) , represent CU1DBLOCK threads reduce a row at the same time.
+    size_t dimBlock = CU1DBLOCK;
     size_t dimGrid = 1;       // dimGrid value represent the number of rows
     ::MatrixDim dim = { 1, this->dim_, this->dim_};
     cuda_softmax_reduce(dimGrid, dimBlock, data_, data_, dim, this->dim_);//actually dim is not stride...
@@ -354,7 +360,7 @@ MatrixIndexT CuVectorBase<Real>::ApplyCeiling(Real ceiling_val) {
     cuda_vec_apply_ceiling(dimGrid, dimBlock, data_, ceiling_val, count_vec.Data(), dim_);
     CU_SAFE_CALL(cudaGetLastError());
     num_ceiled = count_vec.Sum();
-    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloor", tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyCeiling", tim.Elapsed());
   } else
 #endif
   {
@@ -377,7 +383,7 @@ void CuVectorBase<Real>::ApplyPow(Real power) {
     // num_cols is Dim(), num_rows is 1, stride is 1 (it's a don't-care).
     cuda_apply_pow(dimGrid, dimBlock, data_, power, fake_matrix_dim);
     CU_SAFE_CALL(cudaGetLastError());
-    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloor", tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyPow", tim.Elapsed());
   } else
 #endif
   {
@@ -446,9 +452,9 @@ void CuVectorBase<Real>::AddMatVec(const Real alpha,
     // Everything is backwards in CuBlas.  We need to reverse rows, columns,
     // transpose-ness.
     CU_SAFE_CALL(cublas_gemv(GetCublasHandle(),
-			    (trans==kTrans? CUBLAS_OP_N:CUBLAS_OP_T),
-			    M.NumCols(), M.NumRows(), alpha, M.Data(),
-			    M.Stride(), v.Data(), 1, beta, data_, 1));
+                             (trans==kTrans? CUBLAS_OP_N:CUBLAS_OP_T),
+                             M.NumCols(), M.NumRows(), alpha, M.Data(),
+                             M.Stride(), v.Data(), 1, beta, data_, 1));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -473,7 +479,7 @@ void CuVectorBase<Real>::AddSpVec(const Real alpha,
     // Note: in our opinion the CuSpMatrix represents a lower-triangular matrix, but
     // in CUBLAS, for some stupid reason, everything is reversed.
     CU_SAFE_CALL(cublas_spmv(GetCublasHandle(), CUBLAS_FILL_MODE_UPPER, Dim(),
-			    alpha, M.Data(), v.Data(), 1, beta, data_, 1));
+                             alpha, M.Data(), v.Data(), 1, beta, data_, 1));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -535,47 +541,65 @@ void CuVectorBase<Real>::AddDiagMat2(Real alpha, const CuMatrixBase<Real> &M,
 }
 
 template<typename Real>
-void CuVectorBase<Real>::AddDiagMatMat(
-    Real alpha,
-    const CuMatrixBase<Real> &M, MatrixTransposeType transM,
-    const CuMatrixBase<Real> &N, MatrixTransposeType transN,
-    Real beta) {
+void CuVectorBase<Real>::AddDiagMatMat(Real alpha, const CuMatrixBase<Real> &M,
+                                       MatrixTransposeType transM,
+                                       const CuMatrixBase<Real> &N,
+                                       MatrixTransposeType transN, Real beta) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    MatrixIndexT dim = this->dim_,
-        M_col_dim = (transM == kTrans ? M.NumRows() : M.NumCols()),
-        N_row_dim = (transN == kTrans ? N.NumCols() : N.NumRows());
-    KALDI_ASSERT(M_col_dim == N_row_dim); // this is the dimension we sum over
-    MatrixIndexT M_row_stride = M.Stride(), M_col_stride = 1;
-    if (transM == kTrans) std::swap(M_row_stride, M_col_stride);
-    MatrixIndexT N_row_stride = N.Stride(), N_col_stride = 1;
-    if (transN == kTrans) std::swap(N_row_stride, N_col_stride);
-    if (dim_ == 0) return;
 
-    // This kernel can take a variable grid dimension, it makes use
-    // of the extra threads by partitioning each vector-vector dot
-    // product into multiple pieces.
-    int dimBlock(CU1DBLOCK);
-    int dimGrid(n_blocks(dim,CU1DBLOCK));
-    int threads_per_element = 1;
-    // dimGridLimit may be any power of two between 1 and 256 inclusive; it was
-    // determined empirically based on speed tests.
-    int dimGridLimit = (transM == kNoTrans && transN == kTrans ? 2048 :
-                        (transM == kTrans && transN == kNoTrans ? 16 : 32));
-
-
-    while (M_col_dim > 10 * threads_per_element &&
-           dimGrid < dimGridLimit && threads_per_element < 256) {
-      threads_per_element *= 2;
-      dimGrid = n_blocks(dim * threads_per_element, CU1DBLOCK);
+    if (transM != transN) {
+      KALDI_ASSERT(M.NumCols() == N.NumCols());
+      KALDI_ASSERT(M.NumRows() == N.NumRows());
+      if (transM == kNoTrans) {
+        // Case 1: diag(M*N') == sum(M.*N, 2)
+        // 1D grid and 1D block. One block per row of N.
+        // 1D grid expands along the column of N.
+        int dimBlock(CU1DBLOCK);
+        int dimGrid(M.NumRows());
+        cuda_add_diag_mat_mat_MNT(dimGrid, dimBlock, alpha, M.Data(), M.Dim(),
+                                  N.Data(), N.Stride(), beta, data_);
+      } else {
+        // Case 2: diag(M'*N) == sum(M.*N, 1)
+        // 16x16 or 8x32 2D block for coalesced memory access.
+        // One block per 'tile_dim' columns of N.
+        // Large tile dim only for large matrix
+        // 1D grid expands along the row of N.
+        int tile_dim =
+            sizeof(Real) == sizeof(float) && N.NumCols() >= 1536 ? 32 : 16;
+        dim3 dimBlock(tile_dim, CU1DBLOCK / tile_dim);
+        dim3 dimGrid(n_blocks(N.NumCols(), tile_dim));
+        cuda_add_diag_mat_mat_MTN(dimGrid, dimBlock, alpha, M.Data(),
+                                  M.Stride(), N.Data(), N.Dim(), beta, data_);
+      }
+    } else {
+      KALDI_ASSERT(M.NumCols() == N.NumRows());
+      KALDI_ASSERT(N.NumCols() == M.NumRows());
+      if (transM == kNoTrans) {
+        // Case 3: diag(M*N) == sum(M'.*N, 1)
+        // 16x16 or 8x32 2D block for matrix transpose and coalesced memory access.
+        // One block per 'tile_dim' columns of N.
+        // 1D grid expands along the row of N.
+        int tile_dim =
+            sizeof(Real) == sizeof(float) && N.NumCols() >= 2048 ? 32 : 16;
+        dim3 dimBlock(tile_dim, CU1DBLOCK / tile_dim);
+        dim3 dimGrid(n_blocks(N.NumCols(), tile_dim));
+        cuda_add_diag_mat_mat_MN(dimGrid, dimBlock, alpha, M.Data(), M.Stride(),
+                                 N.Data(), N.Dim(), beta, data_);
+      } else {
+        // Case 4: diag(M'*N') == sum(N'.*M, 1)
+        // Same kernel and config as case 3 except M and N are swapped.
+        int tile_dim =
+            sizeof(Real) == sizeof(float) && N.NumCols() >= 2048 ? 32 : 16;
+        dim3 dimBlock(tile_dim, CU1DBLOCK / tile_dim);
+        dim3 dimGrid(n_blocks(M.NumCols(), tile_dim));
+        cuda_add_diag_mat_mat_MN(dimGrid, dimBlock, alpha, N.Data(), N.Stride(),
+                                 M.Data(), M.Dim(), beta, data_);
+      }
     }
-
-    cuda_add_diag_mat_mat(dimGrid, dimBlock, alpha, data_, dim,
-                          M.Data(), M_col_dim, M_row_stride, M_col_stride,
-                          N.Data(), N_row_stride, N_col_stride,
-                          threads_per_element, beta);
     CU_SAFE_CALL(cudaGetLastError());
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -620,7 +644,7 @@ void CuVectorBase<Real>::MulTp(const CuTpMatrix<Real> &M, const MatrixTransposeT
     if (dim_ == 0) return;
     Timer tim;
     cublas_tpmv(GetCublasHandle(), (trans==kTrans? CUBLAS_OP_N:CUBLAS_OP_T),
-		M.NumRows(), M.Data(), data_, 1);
+                M.NumRows(), M.Data(), data_, 1);
     CuDevice::Instantiate().AccuProfile("CuVectorBase::MulTp", tim.Elapsed());
   } else
 #endif
@@ -638,10 +662,26 @@ Real CuVectorBase<Real>::Min() const {
       return std::numeric_limits<Real>::infinity();
     }
     Timer tim;
-    CuVector<Real> ans(1);
-    cuda_vec_min(data_, ans.Data(), dim_);
-    CU_SAFE_CALL(cudaGetLastError());
-    result = ans(0);
+
+    // Small vectors are copied to RAM and reduced on CPU.
+    // The length is chosen by cu-vector-speed-test
+    if (dim_ < 4096) {
+      Vector<Real> ans_cpu(*this);
+      result = ans_cpu.Min();
+    } else {
+      // Use no more than 256 blocks (still too many?)
+      int dimBlock = CU1DBLOCK;
+      int dimGrid = n_blocks(dim_, dimBlock);
+      if (dimGrid > 256) {
+        dimGrid = 256;
+      }
+      CuVector<Real> ans(dimGrid, kUndefined);
+      cuda_vec_min(dimGrid, dimBlock, data_, ans.Data(), dim_, 1);
+      CU_SAFE_CALL(cudaGetLastError());
+      Vector<Real> ans_cpu(ans);
+      result = ans_cpu.Min();
+    }
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -660,10 +700,26 @@ Real CuVectorBase<Real>::Max() const {
       return -std::numeric_limits<Real>::infinity();
     }
     Timer tim;
-    CuVector<Real> ans(1);
-    cuda_vec_max(data_, ans.Data(), dim_);
-    CU_SAFE_CALL(cudaGetLastError());
-    result = ans(0);
+
+    // Small vectors are copied to RAM and reduced on CPU.
+    // The length is chosen by cu-vector-speed-test
+    if (dim_ < 4096) {
+      Vector<Real> ans_cpu(*this);
+      result = ans_cpu.Max();
+    } else {
+      // Use no more than 256 blocks (still too many?)
+      int dimBlock = CU1DBLOCK;
+      int dimGrid = n_blocks(dim_, dimBlock);
+      if (dimGrid > 256) {
+        dimGrid = 256;
+      }
+      CuVector<Real> ans(dimGrid, kUndefined);
+      cuda_vec_max(dimGrid, dimBlock, data_, ans.Data(), dim_, 1);
+      CU_SAFE_CALL(cudaGetLastError());
+      Vector<Real> ans_cpu(ans);
+      result = ans_cpu.Max();
+    }
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -718,10 +774,7 @@ void CuVectorBase<double>::CopyFromVec(const CuVectorBase<float> &src) {
   if (CuDevice::Instantiate().Enabled()) {
     if (dim_ == 0) return;
     Timer tim;
-    int dimBlock(CU2DBLOCK);
-    int dimGrid(n_blocks(dim_, CU2DBLOCK));
-    cuda_copy_from_vec_df(dimGrid, dimBlock, data_, src.data_, dim_);
-    CU_SAFE_CALL(cudaGetLastError());
+    CU_SAFE_CALL(cublas_copy(GetCublasHandle(), dim_, src.Data(), 1, data_, 1));
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -738,10 +791,7 @@ void CuVectorBase<float>::CopyFromVec(const CuVectorBase<double> &src) {
   if (CuDevice::Instantiate().Enabled()) {
     if (dim_ == 0) return;
     Timer tim;
-    int dimBlock(CU1DBLOCK);
-    int dimGrid(n_blocks(dim_, CU1DBLOCK));
-    cuda_copy_from_vec_fd(dimGrid, dimBlock, data_, src.data_, dim_);
-    CU_SAFE_CALL(cudaGetLastError());
+    CU_SAFE_CALL(cublas_copy(GetCublasHandle(), dim_, src.Data(), 1, data_, 1));
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -1039,7 +1089,7 @@ void CuVectorBase<Real>::CopyDiagFromMat(const CuMatrix<Real> &M) {
     KALDI_ASSERT(dim_ == std::min(M.NumRows(), M.NumCols()));
     Timer tim;
     CU_SAFE_CALL(cublas_copy(GetCublasHandle(), dim_, M.Data(), M.Stride() + 1,
-			    data_, 1));
+                             data_, 1));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else

@@ -1,0 +1,100 @@
+
+# ./run_prepare_shared.sh  # if not already done.
+# ./run.sh --mic sdm1
+#
+
+# steps/info/gmm_dir_info.pl exp/sdm1/{mono,tri1,tri2,tri3,tri3_cleaned}
+# exp/sdm1/mono: nj=30 align prob=-88.10 over 10.76h [retry=7.1%, fail=0.2%] states=137 gauss=979
+# exp/sdm1/tri1: nj=30 align prob=-86.11 over 76.10h [retry=5.0%, fail=0.2%] states=3794 gauss=80189 tree-impr=2.92
+# exp/sdm1/tri2: nj=30 align prob=-51.15 over 76.06h [retry=4.4%, fail=0.2%] states=3894 gauss=80148 tree-impr=3.24 lda-sum=10.02 mllt:impr,logdet=0.55,0.90
+# exp/sdm1/tri3: nj=30 align prob=-52.11 over 76.11h [retry=2.4%, fail=0.2%] states=3965 gauss=80086 fmllr-impr=4.12 over 54.22h tree-impr=4.53
+# exp/sdm1/tri3_cleaned: nj=50 align prob=-51.61 over 69.44h [retry=0.6%, fail=0.0%] states=3961 gauss=80052 fmllr-impr=0.99 over 53.43h tree-impr=5.06
+
+# steps/info/nnet3_dir_info.pl exp/sdm1/nnet3_cleaned/tdnn_sp_ihmali exp/sdm1/nnet3_cleaned/tdnn_sp exp/sdm1/nnet3/tdnn_sp_ihmali
+# exp/sdm1/nnet3_cleaned/tdnn_sp_ihmali: num-iters=82 nj=2..12 num-params=10.9M dim=40+100->3980 combine=-2.30->-2.25 loglike:train/valid[53,81,final]=(-2.51,-2.29,-2.28/-2.94,-2.93,-2.93) accuracy:train/valid[53,81,final]=(0.43,0.46,0.46/0.36,0.36,0.37)
+# exp/sdm1/nnet3_cleaned/tdnn_sp: num-iters=82 nj=2..12 num-params=10.9M dim=40+100->3961 combine=-2.24->-2.19 loglike:train/valid[53,81,final]=(-2.41,-2.20,-2.19/-2.86,-2.87,-2.87) accuracy:train/valid[53,81,final]=(0.45,0.49,0.49/0.39,0.39,0.40)
+# exp/sdm1/nnet3/tdnn_sp_ihmali: num-iters=92 nj=2..12 num-params=10.9M dim=40+100->3980 combine=-2.15->-2.10 loglike:train/valid[60,91,final]=(-2.33,-2.14,-2.13/-2.99,-3.02,-3.03) accuracy:train/valid[60,91,final]=(0.45,0.48,0.49/0.36,0.36,0.36)
+
+
+# for d in exp/sdm1/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
+
+%WER 61.5 | 14827 94516 | 44.3 36.0 19.7 5.8 61.5 72.0 | 0.412 | exp/sdm1/tri2/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_12/dev_o4.ctm.filt.sys
+%WER 67.0 | 14014 89827 | 37.7 36.8 25.4 4.7 67.0 72.5 | 0.364 | exp/sdm1/tri2/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
+
+%WER 59.4 | 14535 94520 | 46.3 35.2 18.5 5.7 59.4 73.2 | 0.587 | exp/sdm1/tri3/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_14/dev_o4.ctm.filt.sys
+%WER 64.4 | 13743 89614 | 40.6 37.3 22.1 5.0 64.4 73.2 | 0.580 | exp/sdm1/tri3/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval_o4.ctm.filt.sys
+
+%WER 59.4 | 14688 94526 | 46.5 35.4 18.1 5.9 59.4 72.5 | 0.584 | exp/sdm1/tri3_cleaned/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_14/dev_o4.ctm.filt.sys
+%WER 64.3 | 13702 89815 | 40.2 36.1 23.8 4.5 64.3 73.9 | 0.565 | exp/sdm1/tri3_cleaned/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_15/eval_o4.ctm.filt.sys
+
+
+# local/nnet3/run_tdnn.sh --mic sdm1
+# xent TDNN system; cleaned data and sdm1 alignments.
+# for d in  exp/sdm1/nnet3_cleaned/tdnn_sp/decode*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 44.9 | 15486 94503 | 60.1 25.0 14.8 5.0 44.9 64.9 | 0.633 | exp/sdm1/nnet3_cleaned/tdnn_sp/decode_dev/ascore_12/dev_hires_o4.ctm.filt.sys
+%WER 49.3 | 13740 89784 | 55.1 27.1 17.8 4.4 49.3 70.0 | 0.602 | exp/sdm1/nnet3_cleaned/tdnn_sp/decode_eval/ascore_12/eval_hires_o4.ctm.filt.sys
+
+# xent TDNN system; cleaned data and IHM alignments.
+# local/nnet3/run_tdnn.sh --mic sdm1  --use-ihm-ali true --stage 8
+# for d in  exp/sdm1/nnet3_cleaned/tdnn_sp_ihmali/decode*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 41.6 | 14108 94505 | 63.3 23.5 13.2 4.9 41.6 69.1 | 0.644 | exp/sdm1/nnet3_cleaned/tdnn_sp_ihmali/decode_dev/ascore_13/dev_hires_o4.ctm.filt.sys
+%WER 46.0 | 13299 89636 | 58.5 26.0 15.4 4.6 46.0 70.3 | 0.619 | exp/sdm1/nnet3_cleaned/tdnn_sp_ihmali/decode_eval/ascore_12/eval_hires_o4.ctm.filt.sys
+
+# xent TDNN system; non-cleaned data and IHM alignments.  [cleaning makes no difference for these xent models.]
+#local/nnet3/run_tdnn.sh --use-ihm-ali true --mic sdm1 --train-set train --gmm tri3 --nnet3-affix "" --stage 12
+# for d in  exp/sdm1/nnet3/tdnn_sp_ihmali/decode*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 41.6 | 14493 94516 | 63.3 23.5 13.2 4.9 41.6 66.8 | 0.639 | exp/sdm1/nnet3/tdnn_sp_ihmali/decode_dev/ascore_13/dev_hires_o4.ctm.filt.sys
+%WER 46.0 | 13597 89967 | 57.5 24.9 17.6 3.6 46.0 68.1 | 0.601 | exp/sdm1/nnet3/tdnn_sp_ihmali/decode_eval/ascore_14/eval_hires_o4.ctm.filt.sys
+
+# xent BLSTM system; cleaned data and IHM alignments.
+# local/nnet3/run_blstm.sh --mic sdm1 --use-ihm-ali true
+# for d in exp/sdm1/nnet3_cleaned/lstm_bidirectional_sp/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 37.9 | 15953 94512 | 66.7 22.0 11.3 4.7 37.9 58.9 | 0.734 | exp/sdm1/nnet3_cleaned/lstm_bidirectional_sp_ihmali/decode_dev/ascore_12/dev_hires_o4.ctm.filt.sys
+%WER 41.2 | 13271 89635 | 62.9 23.8 13.2 4.2 41.2 67.8 | 0.722 | exp/sdm1/nnet3_cleaned/lstm_bidirectional_sp_ihmali/decode_eval/ascore_11/eval_hires_o4.ctm.filt.sys
+
+# =========================
+
+
+# local/chain/run_tdnn.sh --mic sdm1 --stage 12 &
+
+# cleanup + chain TDNN model, alignments from sdm1 data itself.
+# for d in exp/sdm1/chain_cleaned/tdnn_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 41.6 | 14357 94500 | 62.0 19.2 18.8 3.6 41.6 68.4 | 0.592 | exp/sdm1/chain_cleaned/tdnn_sp_bi/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+%WER 45.4 | 12886 89960 | 58.1 21.0 20.9 3.5 45.4 71.9 | 0.558 | exp/sdm1/chain_cleaned/tdnn_sp_bi/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+
+
+# cleanup + chain TDNN model, alignments from IHM data (IHM alignments help).
+# local/chain/run_tdnn.sh --mic sdm1 --use-ihm-ali true --stage 12 &
+# cleanup + chain TDNN model, cleaned data and alignments from ihm data.
+# for d in exp/sdm1/chain_cleaned/tdnn_sp_bi_ihmali/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 40.7 | 14321 94501 | 63.0 19.6 17.4 3.7 40.7 67.7 | 0.592 | exp/sdm1/chain_cleaned/tdnn_sp_bi_ihmali/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+%WER 44.8 | 14293 89976 | 58.6 21.3 20.1 3.3 44.8 64.2 | 0.559 | exp/sdm1/chain_cleaned/tdnn_sp_bi_ihmali/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+
+# no-cleanup + chain TDNN model, IHM alignments.
+# A bit worse than with cleanup [+0.1, +0.4].
+# local/chain/run_tdnn.sh --use-ihm-ali true --mic sdm1 --train-set train --gmm tri3 --nnet3-affix "" --stage 17
+ for d in exp/sdm1/chain/tdnn_sp_bi_ihmali/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 40.7 | 14549 94520 | 63.6 21.4 15.0 4.3 40.7 66.2 | 0.617 | exp/sdm1/chain/tdnn_sp_bi_ihmali/decode_dev/ascore_8/dev_hires_o4.ctm.filt.sys
+%WER 45.1 | 13296 89971 | 59.1 23.4 17.6 4.2 45.1 69.5 | 0.591 | exp/sdm1/chain/tdnn_sp_bi_ihmali/decode_eval/ascore_8/eval_hires_o4.ctm.filt.sys
+
+# local/chain/multi_condition/run_tdnn.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned 
+# cleanup + chain TDNN model, SDM original + IHM reverberated data, alignments from ihm data.
+# for d in exp/sdm1/chain_cleaned_rvb/tdnn_sp_rvb_bi_ihmali/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 38.6 | 14760 94502 | 65.3 19.3 15.4 3.9 38.6 64.9 | 0.599 | exp/sdm1/chain_cleaned_rvb/tdnn_sp_rvb_bi_ihmali/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+%WER 42.7 | 14070 89982 | 60.9 21.0 18.0 3.6 42.7 64.5 | 0.571 | exp/sdm1/chain_cleaned_rvb/tdnn_sp_rvb_bi_ihmali/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+
+# local/chain/tuning/run_tdnn_lstm_1i.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned
+# cleanup + chain TDNN+LSTM model, SDM audio + alignments from ihm data.
+%WER 37.6 | 15122 94495 | 66.1 18.7 15.1 3.7 37.6 63.2 | 0.646 | exp/sdm1/chain_cleaned/tdnn_lstm1i_sp_bi_ihmali_ld5/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 40.9 | 13807 89961 | 62.4 20.0 17.6 3.3 40.9 65.7 | 0.612 | exp/sdm1/chain_cleaned/tdnn_lstm1i_sp_bi_ihmali_ld5/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+
+
+# local/chain/multi_condition/tuning/run_tdnn_lstm_1a.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned 
+# cleanup + chain TDNN+LSTM model, SDM original + IHM reverberated data, alignments from ihm data.
+# *** best system ***
+%WER 34.0 | 14455 94497 | 69.8 17.7 12.5 3.8 34.0 63.9 | 0.675 | exp/sdm1/chain_cleaned_rvb/tdnn_lstm1i_sp_rvb_bi_ihmali/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 37.5 | 13261 89982 | 65.9 19.3 14.7 3.5 37.5 66.2 | 0.642 | exp/sdm1/chain_cleaned_rvb/tdnn_lstm1i_sp_rvb_bi_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+

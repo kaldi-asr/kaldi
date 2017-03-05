@@ -98,6 +98,8 @@ int main(int argc, char *argv[]) {
     RandomAccessBaseFloatVectorReaderMapped ivector_reader(
         ivector_rspecifier, utt2spk_rspecifier);
 
+    CachingOptimizingCompiler compiler(nnet, opts.optimize_config);
+
     BaseFloatMatrixWriter matrix_writer(matrix_wspecifier);
 
     int32 num_success = 0, num_fail = 0;
@@ -135,9 +137,9 @@ int main(int argc, char *argv[]) {
       }
 
       Vector<BaseFloat> priors;
-      NnetDecodableBase nnet_computer(
+      DecodableNnetSimple nnet_computer(
           opts, nnet, priors,
-          features,
+          features, &compiler,
           ivector, online_ivectors,
           online_ivector_period);
 

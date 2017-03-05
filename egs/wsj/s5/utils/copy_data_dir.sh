@@ -46,8 +46,13 @@ srcdir=$1
 destdir=$2
 
 if [ ! -f $srcdir/utt2spk ]; then
-  echo "copy_data_dir.sh: no such file $srcdir/utt2spk" 
+  echo "copy_data_dir.sh: no such file $srcdir/utt2spk"
   exit 1;
+fi
+
+if [ "$destdir" == "$srcdir" ]; then
+  echo "$0: this script requires <srcdir> and <destdir> to be different."
+  exit 1
 fi
 
 set -e;
@@ -82,13 +87,16 @@ if [ -f $srcdir/segments ]; then
     cp $srcdir/reco2file_and_channel $destdir/
   fi
 else # no segments->wav indexed by utt.
-  if [ -f $srcdir/wav.scp ]; then 
+  if [ -f $srcdir/wav.scp ]; then
     utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/wav.scp >$destdir/wav.scp
   fi
 fi
 
 if [ -f $srcdir/text ]; then
   utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/text >$destdir/text
+fi
+if [ -f $srcdir/utt2dur ]; then
+  utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/utt2dur >$destdir/utt2dur
 fi
 if [ -f $srcdir/spk2gender ]; then
   utils/apply_map.pl -f 1 $destdir/spk_map <$srcdir/spk2gender >$destdir/spk2gender
@@ -105,6 +113,16 @@ done
 rm $destdir/spk_map $destdir/utt_map
 
 echo "$0: copied data from $srcdir to $destdir"
+
+for f in feats.scp cmvn.scp vad.scp utt2lang utt2uniq utt2dur utt2num_frames text wav.scp reco2file_and_channel stm glm ctm; do
+  if [ -f $destdir/$f ] && [ ! -f $srcdir/$f ]; then
+    echo "$0: file $f exists in dest $destdir but not in src $srcdir.  Moving it to"
+    echo " ... $destdir/.backup/$f"
+    mkdir -p $destdir/.backup
+    mv $destdir/$f $destdir/.backup/
+  fi
+done
+
 
 [ ! -f $srcdir/feats.scp ] && validate_opts="$validate_opts --no-feats"
 [ ! -f $srcdir/text ] && validate_opts="$validate_opts --no-text"

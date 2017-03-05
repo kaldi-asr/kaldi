@@ -21,12 +21,13 @@
 #ifndef KALDI_LM_ARPA_FILE_PARSER_H_
 #define KALDI_LM_ARPA_FILE_PARSER_H_
 
+#include <fst/fst-decl.h>
+
 #include <string>
 #include <vector>
 
-#include <fst/fst-decl.h>
-
 #include "base/kaldi-types.h"
+#include "itf/options-itf.h"
 
 namespace kaldi {
 
@@ -37,19 +38,28 @@ struct ArpaParseOptions {
   enum OovHandling {
     kRaiseError,     ///< Abort on OOV words
     kAddToSymbols,   ///< Add novel words to the symbol table.
-    kReplaceWithUnk, ///< Replace OOV words with <unk>.
+    kReplaceWithUnk,  ///< Replace OOV words with <unk>.
     kSkipNGram       ///< Skip n-gram with OOV word and continue.
   };
 
   ArpaParseOptions()
       : bos_symbol(-1), eos_symbol(-1), unk_symbol(-1),
-        oov_handling(kRaiseError), use_log10(false) { }
+        oov_handling(kRaiseError), max_warnings(30) { }
+
+  void Register(OptionsItf *opts) {
+    // Registering only the max_warnings count, since other options are
+    // treated differently by client programs: some want integer symbols,
+    // while other are passed words in their command line.
+    opts->Register("max-arpa-warnings", &max_warnings,
+                   "Maximum warnings to report on ARPA parsing, "
+                   "0 to disable, -1 to show all");
+  }
 
   int32 bos_symbol;  ///< Symbol for <s>, Required non-epsilon.
   int32 eos_symbol;  ///< Symbol for </s>, Required non-epsilon.
   int32 unk_symbol;  ///< Symbol for <unk>, Required for kReplaceWithUnk.
   OovHandling oov_handling;  ///< How to handle OOV words in the file.
-  bool use_log10;    ///< Use log10 for prob and backoff weight, not ln.
+  int32 max_warnings;  ///< Maximum warnings to report, <0 unlimited.
 };
 
 /**
@@ -65,7 +75,7 @@ struct NGram {
 /**
     ArpaFileParser is an abstract base class for ARPA LM file conversion.
 
-    See ConstArpaLmBuilder for a usage example.
+    See ConstArpaLmBuilder and ArpaLmCompiler for usage examples.
 */
 class ArpaFileParser {
  public:
@@ -85,6 +95,7 @@ class ArpaFileParser {
   /// supported.
   void Read(std::istream &is, bool binary);
 
+  /// Parser options.
   const ArpaParseOptions& Options() const { return options_; }
 
  protected:
@@ -104,11 +115,19 @@ class ArpaFileParser {
   /// Override function called after the last n-gram has been consumed.
   virtual void ReadComplete() { }
 
-  /// Read-only access to symbol table.
+  /// Read-only access to symbol table. Not owned, do not make public.
   const fst::SymbolTable* Symbols() const { return symbols_; }
 
   /// Inside ConsumeNGram(), provides the current line number.
   int32 LineNumber() const { return line_number_; }
+
+  /// Inside ConsumeNGram(), returns a formatted reference to the line being
+  /// compiled, to print out as part of diagnostics.
+  std::string LineReference() const;
+
+  /// Increments warning count, and returns true if a warning should be
+  /// printed or false if the count has exceeded the set maximum.
+  bool ShouldWarn();
 
   /// N-gram counts. Valid in and after a call to HeaderAvailable().
   const std::vector<int32>& NgramCounts() const { return ngram_counts_; }
@@ -117,6 +136,8 @@ class ArpaFileParser {
   ArpaParseOptions options_;
   fst::SymbolTable* symbols_;  // Not owned.
   int32 line_number_;
+  uint32 warning_count_;
+  std::string current_line_;
   std::vector<int32> ngram_counts_;
 };
 

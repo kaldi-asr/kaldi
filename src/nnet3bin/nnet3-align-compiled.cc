@@ -1,8 +1,9 @@
 // nnet2bin/nnet-align-compiled.cc
 
-// Copyright 2009-2012  Microsoft Corporation
-//                      Johns Hopkins University (author: Daniel Povey)
-//                2015  Vijayaditya Peddinti
+// Copyright 2009-2012     Microsoft Corporation
+//                         Johns Hopkins University (author: Daniel Povey)
+//                2015     Vijayaditya Peddinti
+//                2015-16  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -41,7 +42,8 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Align features given nnet3 neural net model\n"
-        "Usage:   nnet3-align-compiled [options] <nnet-in> <graphs-rspecifier> <features-rspecifier> <alignments-wspecifier>\n"
+        "Usage:   nnet3-align-compiled [options] <nnet-in> <graphs-rspecifier> "
+        "<features-rspecifier> <alignments-wspecifier>\n"
         "e.g.: \n"
         " nnet3-align-compiled 1.mdl ark:graphs.fsts scp:train.scp ark:1.ali\n"
         "or:\n"
@@ -52,7 +54,6 @@ int main(int argc, char *argv[]) {
     AlignConfig align_config;
     NnetSimpleComputationOptions decodable_opts;
     std::string use_gpu = "yes";
-    BaseFloat acoustic_scale = 1.0;
     BaseFloat transition_scale = 1.0;
     BaseFloat self_loop_scale = 1.0;
 
@@ -62,13 +63,11 @@ int main(int argc, char *argv[]) {
     int32 online_ivector_period = 0;
     align_config.Register(&po);
     decodable_opts.Register(&po);
-    
+
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Register("transition-scale", &transition_scale,
                 "Transition-probability scale [relative to acoustics]");
-    po.Register("acoustic-scale", &acoustic_scale,
-                "Scaling factor for acoustic likelihoods");
     po.Register("self-loop-scale", &self_loop_scale,
                 "Scale of self-loop versus non-self-loop "
                 "log probs [relative to acoustics]");
@@ -102,6 +101,7 @@ int main(int argc, char *argv[]) {
     double tot_like = 0.0;
     kaldi::int64 frame_count = 0;
 
+
     {
       TransitionModel trans_model;
       AmNnetSimple am_nnet;
@@ -111,6 +111,10 @@ int main(int argc, char *argv[]) {
         trans_model.Read(ki.Stream(), binary);
         am_nnet.Read(ki.Stream(), binary);
       }
+      // this compiler object allows caching of computations across
+      // different utterances.
+      CachingOptimizingCompiler compiler(am_nnet.GetNnet(),
+                                         decodable_opts.optimize_config);
 
       RandomAccessBaseFloatMatrixReader online_ivector_reader(
           online_ivector_rspecifier);
@@ -174,7 +178,7 @@ int main(int argc, char *argv[]) {
         DecodableAmNnetSimple nnet_decodable(
             decodable_opts, trans_model, am_nnet,
             features, ivector, online_ivectors,
-            online_ivector_period);
+            online_ivector_period, &compiler);
 
         AlignUtteranceWrapper(align_config, utt,
                               decodable_opts.acoustic_scale,
@@ -200,5 +204,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

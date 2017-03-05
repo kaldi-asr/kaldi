@@ -99,7 +99,7 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
 
 # BLSTM + clean alignments
 #  local/nnet3/run_blstm.sh --mic sdm1 \
-#    --chunk-right-context 20 \ 
+#    --chunk-right-context 20 \
 #    --use-sat-alignments true \
 #    --use-ihm-ali true
 # Note: Chunk right context of 20 limits the latency of the acoustic model to
@@ -107,6 +107,17 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
 
 %WER 38.5 | 14828 94514 | 66.6 22.7 10.6 5.2 38.5 63.7 | -25.569 | exp/sdm1_cleanali/nnet3/lstm_sp_bidirectional_ld0/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
 %WER 41.8 | 12828 89977 | 62.5 24.6 12.9 4.3 41.8 70.8 | -24.813 | exp/sdm1_cleanali/nnet3/lstm_sp_bidirectional_ld0/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+
+##################################
+# chain model results
+  # local/chain/run_tdnn_ami_5.sh  --mic sdm1 --affix msl1.5_45wer
+  %WER 42.8 | 14391 94487 | 60.8 19.3 19.9 3.6 42.8 69.1 | 0.588 | exp/sdm1/chain/tdnn_ami4_msl1.5_45wer_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+  %WER 46.1 | 13754 89977 | 57.5 20.7 21.9 3.6 46.1 69.2 | 0.561 | exp/sdm1/chain/tdnn_ami4_msl1.5_45wer_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+
+  # local/chain/run_tdnn_ami_5.sh  --mic sdm1 --use-ihm-ali true --max-wer 50 --affix msl1.5_50wer
+  %WER 41.6 | 14793 94504 | 61.8 19.3 18.9 3.4 41.6 65.3 | 0.591 | exp/sdm1_cleanali/chain/tdnn_ami4_msl1.5_50wer_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+  %WER 45.4 | 14141 89972 | 57.9 20.7 21.4 3.3 45.4 64.8 | 0.567 | exp/sdm1_cleanali/chain/tdnn_ami4_msl1.5_50wer_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 
 #--------------------------------------------------------------------------------------------------------------------------------------------
 # Karel, JSALT 2015, (28.7.2015)

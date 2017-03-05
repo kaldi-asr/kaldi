@@ -7,12 +7,12 @@
 cmd=run.pl
 stage=0
 decode_mbr=true
-min_lmwt=9
+min_lmwt=7
 max_lmwt=15
 asclite=true
+iter=final
 overlap_spk=4
 # end configuration section.
-
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
 
@@ -30,9 +30,9 @@ data=$1
 lang=$2 # Note: may be graph directory not lang directory, but has the necessary stuff copied.
 dir=$3
 
-model=$dir/../final.mdl # assume model one level up from decoding dir.
+model=$dir/../$iter.mdl # assume model one level up from decoding dir.
 
-hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl 
+hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl
 [ ! -f $hubscr ] && echo "Cannot find scoring program at $hubscr" && exit 1;
 hubdir=`dirname $hubscr`
 
@@ -41,6 +41,15 @@ for f in $data/stm $data/glm $lang/words.txt $lang/phones/word_boundary.int \
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
 
+if [ -f $dir/../frame_shift ]; then
+  frame_shift_opt="--frame-shift=$(cat $dir/../frame_shift)"
+  echo "$0: $dir/../frame_shift exists, using $frame_shift_opt"
+elif [ -f $dir/../frame_subsampling_factor ]; then
+  factor=$(cat $dir/../frame_subsampling_factor) || exit 1
+  frame_shift_opt="--frame-shift=0.0$factor"
+  echo "$0: $dir/../frame_subsampling_factor exists, using $frame_shift_opt"
+fi
+
 name=`basename $data`; # e.g. eval2000
 nj=$(cat $dir/num_jobs)
 
@@ -48,6 +57,8 @@ mkdir -p $dir/ascoring/log
 
 if [ $stage -le 0 ]; then
   for LMWT in $(seq $min_lmwt $max_lmwt); do
+    rm -f $dir/.error
+    (
     $cmd JOB=1:$nj $dir/ascoring/log/get_ctm.${LMWT}.JOB.log \
       mkdir -p $dir/ascore_${LMWT}/ '&&' \
       lattice-scale --inv-acoustic-scale=${LMWT} "ark:gunzip -c $dir/lat.JOB.gz|" ark:- \| \
@@ -55,19 +66,22 @@ if [ $stage -le 0 ]; then
       lattice-push --push-strings=false ark:- ark:- \| \
       lattice-align-words-lexicon --max-expand=10.0 \
        $lang/phones/align_lexicon.int $model ark:- ark:- \| \
-      lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- - \| \
+      lattice-to-ctm-conf $frame_shift_opt --decode-mbr=$decode_mbr ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt  \| \
       utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
-      '>' $dir/ascore_${LMWT}/${name}.JOB.ctm || exit 1;
+      '>' $dir/ascore_${LMWT}/${name}.JOB.ctm || touch $dir/.error;
     # Merge and clean,
     for ((n=1; n<=nj; n++)); do cat $dir/ascore_${LMWT}/${name}.${n}.ctm; done > $dir/ascore_${LMWT}/${name}.ctm
-    rm  $dir/ascore_${LMWT}/${name}.*.ctm
+    rm -f $dir/ascore_${LMWT}/${name}.*.ctm
+    )&
   done
+  wait;
+  [ -f $dir/.error ] && echo "$0: error during ctm generation. check $dir/ascoring/log/get_ctm.*.log" && exit 1;
 fi
 
 if [ $stage -le 1 ]; then
 # Remove some stuff we don't want to score, from the ctm.
-# - we remove hesitations here, otherwise the CTM would have a bug! 
+# - we remove hesitations here, otherwise the CTM would have a bug!
 #   (confidences in place of the removed hesitations),
   for x in $dir/ascore_*/${name}.ctm; do
     cp $x $dir/tmpf;
@@ -78,7 +92,7 @@ if [ $stage -le 1 ]; then
   done
 fi
 
-if [ $stage -le 2 ]; then  
+if [ $stage -le 2 ]; then
   if [ "$asclite" == "true" ]; then
     oname=$name
     [ ! -z $overlap_spk ] && oname=${name}_o$overlap_spk

@@ -114,7 +114,7 @@ steps/train_mono.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
 
 
 
-utils/mkgraph.sh --mono data/lang_test_tgpr_5k exp/mono0a exp/mono0a/graph_tgpr_5k
+utils/mkgraph.sh data/lang_test_tgpr_5k exp/mono0a exp/mono0a/graph_tgpr_5k
 #steps/decode.sh --nj 8  \
 #  exp/mono0a/graph_tgpr_5k data/test_eval92_5k_clean exp/mono0a/decode_tgpr_eval92_5k_clean
 steps/decode.sh --nj 8  --cmd "$train_cmd" \
