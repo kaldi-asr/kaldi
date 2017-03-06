@@ -115,7 +115,9 @@ void SegmentationPostProcessor::Check() const {
               << "--max-blend-length. It must be positive.";
   }
 
-  if (IsRemovingSegmentsToBeDone(opts_) && remove_labels_[0] < 0) {
+  if (IsRemovingSegmentsToBeDone(opts_) && 
+      (remove_labels_[0] < -1 || 
+       (remove_labels_.size() > 1 && remove_labels_[0] == -1))) {
     KALDI_ERR << "Invalid value " << opts_.remove_labels_csl
               << " for option " << "--remove-labels. "
               << "The labels must be non-negative.";

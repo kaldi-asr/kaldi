@@ -150,12 +150,12 @@ void IntersectSegmentationAndAlignment(const Segmentation &in_segmentation,
  * changing the class_id of the filtered sub-segments.
  * The label for the newly created subsegments is determined as follows:
  * if secondary segment's label == secondary_label:
- *   if subsegment_label > 0:
+ *   if subsegment_label >= 0:
  *     label = subsegment_label
  *   else:
  *     label = secondary_label
  * else:
- *   if unmatched_label > 0:
+ *   if unmatched_label >= 0:
  *     label = unmatched_label
  *   else:
  *     label = primary_label

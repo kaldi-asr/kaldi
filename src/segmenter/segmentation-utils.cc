@@ -115,11 +115,15 @@ void RemoveSegments(const std::vector<int32> &labels,
 
   for (SegmentList::iterator it = segmentation->Begin();
         it != segmentation->End(); ) {
-    if ((max_remove_length == -1 || 
-         it->Length() < max_remove_length) && 
-        std::binary_search(labels.begin(), labels.end(), 
-                           it->Label())) {
-      it = segmentation->Erase(it);
+    if (max_remove_length == -1) {
+      if (std::binary_search(labels.begin(), labels.end(), 
+                             it->Label()))
+        it = segmentation->Erase(it);
+    } else if (it->Length() < max_remove_length) {
+      if (std::binary_search(labels.begin(), labels.end(), 
+                             it->Label()) ||
+          (labels.size() == 1 && labels[0] == -1))
+        it = segmentation->Erase(it);
     } else {
       ++it;
     }
@@ -355,7 +359,7 @@ void SubSegmentUsingNonOverlappingSegments(
 
     for (SegmentList::const_iterator f_it = filter_segmentation.Begin();
           f_it != filter_segmentation.End(); ++f_it) {
-      int32 label = (unmatched_label > 0 ? unmatched_label : it->Label());
+      int32 label = (unmatched_label >= 0 ? unmatched_label : it->Label());
       if (f_it->Label() == secondary_label) {
         if (subsegment_label >= 0) {
           label = subsegment_label;
