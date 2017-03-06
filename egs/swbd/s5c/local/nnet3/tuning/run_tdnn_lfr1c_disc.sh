@@ -1,13 +1,20 @@
 #!/bin/bash
 
 # This script does discriminative training on top of the CE nnet3 LFR system
-# from run_tdnn_lfr1c. To simplify things, this assumes you are using the 
+# from run_tdnn_lfr1c. To simplify things, this assumes you are using the
 # "speed-perturbed" data
 # (--speed_perturb true, which is the default) in the baseline run_tdnn_d.sh script.
 #
 # note: this relies on having a cluster that has plenty of CPUs as well as GPUs,
 # since the lattice generation runs in about real-time, so takes of the order of
 # 1000 hours of CPU time.
+
+# Comparing effect of shift:
+# System                tdnn_lfr1c_sp_smbr:1 tdnn_lfr1c_sp_smbr:2 tdnn_lfr1c_sp_smbr:3 tdnn_lfr1c_sp_fs_smbr:1 tdnn_lfr1c_sp_fs_smbr:2 tdnn_lfr1c_sp_fs_smbr:3
+# WER on train_dev(tg)      16.26     16.11     16.02     16.02     15.77     15.78
+# WER on train_dev(fg)      15.01     14.91     14.80     14.79     14.58     14.50
+# WER on eval2000(tg)        18.9      18.7      18.6      18.6      18.5      18.5
+# WER on eval2000(fg)        17.4      17.2      17.1      17.1      17.0      16.9
 
 
 set -e
@@ -23,16 +30,6 @@ degs_dir=  # set this to use preexisting degs.
 nj=65 # have a high number of jobs because this could take a while, and we might
        # have some stragglers.
 
-. ./cmd.sh
-. ./path.sh
-. ./utils/parse_options.sh
-
-srcdir=exp/nnet3/tdnn_lfr1c_sp
-graph_dir=$srcdir/graph_sw1_tg
-train_data_dir=data/train_nodup_sp_hires
-online_ivector_dir=exp/nnet3/ivectors_train_nodup_sp
-
-
 ## Objective options
 criterion=smbr
 one_silence_class=true
@@ -47,8 +44,6 @@ one_silence_class=true
 # before checking in the script, removed the slow2 affix but left with
 # the lowest learning rate.
 disc_affix=
-
-dir=${srcdir}_${criterion}${disc_affix}
 
 ## Egs options.  Give quite a few choices of chunk length,
 ## so it can split utterances without much gap or overlap.
@@ -74,10 +69,22 @@ regularization_opts=          # Applicable for providing --xent-regularize and -
                               # in chain models.
 minibatch_size="300=32,16/150=64,32"  # rule says: if chunk size is closer to 300, use minibatch size 32 (or 16 for mop-up);
                                       # if chunk size is closer to 150, use mini atch size of 64 (or 32 for mop-up).
-
+shift_feats=false
 
 ## Decode options
 decode_start_epoch=1 # can be used to avoid decoding all epochs, e.g. if we decided to run more.
+
+
+. ./cmd.sh
+. ./path.sh
+. ./utils/parse_options.sh
+
+srcdir=exp/nnet3/tdnn_lfr1c_sp
+graph_dir=$srcdir/graph_sw1_tg
+train_data_dir=data/train_nodup_sp_hires
+online_ivector_dir=exp/nnet3/ivectors_train_nodup_sp
+dir=${srcdir}_${criterion}${disc_affix}
+
 
 if $use_gpu; then
   if ! cuda-compiled; then
@@ -106,7 +113,7 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
 fi
 
 affix=    # Will be set if doing input frame shift
-if [ $frame_subsampling_factor -ne 1 ]; then
+if [[ "$shift_feats" = true && $frame_subsampling_factor -ne 1 ]]; then
   if [ $stage -le 0 ]; then
 
     utils/data/shift_and_combine_feats.sh $frame_subsampling_factor $train_data_dir ${train_data_dir}_fs || exit 1;
@@ -167,6 +174,7 @@ if [ $stage -le 3 ]; then
   [ -z "$degs_dir" ] && degs_dir=${srcdir}_degs${affix}
   steps/nnet3/train_discriminative.sh --cmd "$decode_cmd" \
     --stage $train_stage \
+    --acoustic-scale 0.333 \
     --effective-lrate $effective_learning_rate --max-param-change $max_param_change \
     --criterion $criterion --drop-frames true \
     --num-epochs $num_epochs --one-silence-class $one_silence_class --minibatch-size "$minibatch_size" \
