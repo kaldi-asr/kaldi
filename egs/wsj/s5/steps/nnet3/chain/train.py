@@ -546,17 +546,17 @@ def train(args, run_opts, background_process_handler):
             left_context=left_context, right_context=right_context,
             leaky_hmm_coefficient=args.leaky_hmm_coefficient,
             leakynum_args="--leakynum-leak-prob={0} \
-                    --leakynum-unleak-prob={1} \
-                    --leakynum-regular-xent={2} \
-                    --leakynum-use-priors={3} \
-                    --leakynum-scale-first-transitions={4} \
-                    --leakynum-extra-den-scale={5}".format(
-                        get_leakynum_leak_prob(num_archives_to_process),
-                        args.leakynum_unleak_prob,
-                        args.leakynum_regular_xent,
-                        args.leakynum_use_priors,
-                        args.leakynum_scale_first_transitions,
-                        args.leakynum_extra_den_scale),
+                --leakynum-unleak-prob={1} \
+                --leakynum-regular-xent={2} \
+                --leakynum-use-priors={3} \
+                --leakynum-scale-first-transitions={4} \
+                --leakynum-extra-den-scale={5}".format(
+                    get_leakynum_leak_prob(num_archives_to_process),
+                    args.leakynum_unleak_prob,
+                    args.leakynum_regular_xent,
+                    args.leakynum_use_priors,
+                    args.leakynum_scale_first_transitions,
+                    args.leakynum_extra_den_scale),
             l2_regularize=args.l2_regularize,
             xent_regularize=args.xent_regularize,
             run_opts=run_opts,

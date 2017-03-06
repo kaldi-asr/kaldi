@@ -1,11 +1,17 @@
 #!/bin/bash
 
-# since 4, supervision creation is changed again so that the num 
-# FSTs are now normalized such that the sum of outgoing weights for
-# each state is now 1.0, this will increase the base of the objf so the objf
-# values are not comparable to previous exps. 
+# b is as a but with leakyhmm=0.1 (i.e. baseline)
 
-# 4b is as 4a, but the scheduling starts from near-0
+#System               tdnn_leak6a tdnn_leak6b
+#WER on train_dev(tg)      14.44     14.26
+#WER on train_dev(fg)      13.37     13.09
+#WER on eval2000(tg)        16.9      16.8
+#WER on eval2000(fg)        15.2      15.3
+#Final train prob     -0.0761301 -0.0912405
+#Final valid prob     -0.0979717 -0.114332
+#Final train prob (xent)      -1.36397  -1.30061
+#Final valid prob (xent)      -1.45073  -1.39084
+
 
 set -e
 
@@ -15,7 +21,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_leak4b  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_leak6b  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 
 # training options
@@ -30,15 +36,17 @@ num_jobs_final=16
 minibatch_size=128
 frames_per_eg=150
 remove_egs=false
-common_egs_dir=exp/chain/tdnn_leak4a_sp/egs
+common_egs_dir=exp/chain/tdnn_leak6a_sp/egs
 xent_regularize=0.1
 l2_reg=0.00005
-leaky_hmm_coefficient=0.00001
+leaky_hmm_coefficient=0.1
 
-leakynum_leak_prob="0.0001,0.01,0.1"
+leakynum_leak_prob="0.00001,0.001,0.01"
 leakynum_use_priors=1
 leakynum_regular_xent=true
 leakynum_unleak_prob=0.1
+leakynum_scale_first_transitions=true
+leakynum_extra_den_scale=1.0
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -170,6 +178,8 @@ if [ $stage -le 13 ]; then
     --chain.leakynum-use-priors $leakynum_use_priors \
     --chain.leakynum-unleak-prob "$leakynum_unleak_prob" \
     --chain.leakynum-regular-xent "$leakynum_regular_xent" \
+    --chain.leakynum-scale-first-transitions "$leakynum_scale_first_transitions" \
+    --chain.leakynum-extra-den-scale "$leakynum_extra_den_scale" \
     --chain.l2-regularize $l2_reg \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \

@@ -1,10 +1,16 @@
 #!/bin/bash
 
-# since 4, supervision creation is changed again so that the num 
-# FSTs are now normalized such that the sum of outgoing weights for
-# each state is now 1.0, this will increase the base of the objf so the objf
-# values are not comparable to previous exps. 
+# Since 6, we push in log and enable scale-first transitions
 
+#System                  tdnn_7htdnn_leak6a
+#WER on train_dev(tg)      13.96     14.44
+#WER on train_dev(fg)      12.86     13.37
+#WER on eval2000(tg)        16.5      16.9
+#WER on eval2000(fg)        14.8      15.2
+#Final train prob     -0.0925208-0.0761301
+#Final valid prob      -0.116597-0.0979717
+#Final train prob (xent)        -1.317  -1.36397
+#Final valid prob (xent)      -1.40473  -1.45073
 
 set -e
 
@@ -14,7 +20,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_leak4a  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_leak6a  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 
 # training options
@@ -30,13 +36,11 @@ minibatch_size=128
 frames_per_eg=150
 remove_egs=false
 common_egs_dir=
-############################################
 xent_regularize=0.1
 l2_reg=0.00005
 leaky_hmm_coefficient=0.00001
 
-leakynum_leak_prob=0.0
-num_leakage_schedule="100%:0.01"
+leakynum_leak_prob="0.00001,0.001,0.01"
 leakynum_use_priors=1
 leakynum_regular_xent=true
 leakynum_unleak_prob=0.1
@@ -168,7 +172,6 @@ if [ $stage -le 13 ]; then
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient $leaky_hmm_coefficient \
     --chain.leakynum-leak-prob "$leakynum_leak_prob" \
-    --chain.num-leakage-schedule "$num_leakage_schedule" \
     --chain.leakynum-use-priors $leakynum_use_priors \
     --chain.leakynum-unleak-prob "$leakynum_unleak_prob" \
     --chain.leakynum-regular-xent "$leakynum_regular_xent" \
@@ -211,15 +214,15 @@ if [ $stage -le 15 ]; then
   fi
   for decode_set in train_dev eval2000; do
       (
-      steps/nnet3/decode.sh --acwt 0.1 --post-decode-acwt 1.0 \
+      steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj 50 --cmd "$decode_cmd" $iter_opts \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
           $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_${decode_suff} || exit 1;
-      #if $has_fisher; then
-      #    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-      #      data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-      #      $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_{tg,fsh_fg} || exit 1;
-      #fi
+      if $has_fisher; then
+          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
+            $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_{tg,fsh_fg} || exit 1;
+      fi
       ) &
   done
 fi

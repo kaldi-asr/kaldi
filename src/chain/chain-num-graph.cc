@@ -147,6 +147,7 @@ void NumeratorGraph::PrintInfo(bool print_transitions) const {
             ;
   if (!print_transitions)
     return;
+
   for (int seq = 0; seq < NumSequences(); seq++) {
     std::cout << "\n\n------ SEQUENCE " << seq << " ------\n"
               << "num-states: " << NumStates()[seq] << "\n";
@@ -161,10 +162,15 @@ void NumeratorGraph::PrintInfo(bool print_transitions) const {
       }
     }
   }
+
   std::cout << "****** TotWeights: ******";
-  
   for (int seq = 0; seq < NumSequences(); seq++) {
     std::cout << "tot weight for seq " << seq << " is " << tot_weight_sum_[seq] << "\n";
+  }
+
+  std::cout << "****** Offsets: ******";
+  for (int seq = 0; seq < NumSequences(); seq++) {
+    std::cout << "offset for seq " << seq << " is " << first_transition_offsets_(seq) << "\n";
   }
 
 }

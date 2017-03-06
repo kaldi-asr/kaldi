@@ -41,12 +41,12 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
   if (nnet_output_deriv)
     nnet_output_deriv->SetZero();
 
-  KALDI_LOG << "---------- Supervision.NumStates: " << supervision.fst.NumStates();
-  KALDI_LOG << "---------- opts.leak_prob: " << opts.leakynum_leak_prob
-	    << ", unleak_prob: " << opts.leakynum_unleak_prob
-	    << ", use_priors: " << opts.leakynum_use_priors
-	    << ", scale_first_transitions: " << opts.leakynum_scale_first_transitions
-	    << ", extra den scale: " << opts.leakynum_extra_den_scale;
+  KALDI_LOG << "Supervision.NumStates: " << supervision.fst.NumStates();
+  KALDI_LOG << "opts.leak_prob: " << opts.leakynum_leak_prob
+	          << ", unleak_prob: " << opts.leakynum_unleak_prob
+	          << ", use_priors: " << opts.leakynum_use_priors
+	          << ", scale_first_transitions: " << opts.leakynum_scale_first_transitions
+	          << ", extra den scale: " << opts.leakynum_extra_den_scale;
   if (opts.leakynum_leak_prob == 0.0) {
     NumeratorComputation numerator(supervision, nnet_output);
     // note: supervision.weight is included as a factor in the derivative from
@@ -63,28 +63,28 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
       xent_output_deriv->SetZero();
       numerator.Backward(xent_output_deriv);
     }
-    KALDI_LOG << "----------- Regular0 numlogprob weighted: " << num_logprob_weighted;
+    KALDI_LOG << "Regular0 numlogprob weighted: " << num_logprob_weighted;
   } else {  // exactly the same as above but with leaky num computation
     NumeratorGraph ng(supervision, opts.leakynum_scale_first_transitions);
     CuLeakyNumeratorComputation numerator(opts, ng, den_graph, nnet_output);
     num_logprob_weighted = numerator.Forward();
     if (nnet_output_deriv) {
       bool numok = numerator.Backward(nnet_output_deriv);
-      KALDI_LOG << "numok: " << numok;
+      KALDI_LOG << "num-ok: " << numok;
       if (!opts.leakynum_regular_xent && xent_output_deriv)
         xent_output_deriv->CopyFromMat(*nnet_output_deriv);
     } else if (!opts.leakynum_regular_xent && xent_output_deriv) {
       xent_output_deriv->SetZero();
       bool xnumok = numerator.Backward(xent_output_deriv);
-      KALDI_LOG << "xnumok: " << xnumok;
+      KALDI_LOG << "xnum-ok: " << xnumok;
     }
-    KALDI_LOG << "----------- Leaky numlogprob weighted: " << num_logprob_weighted;
+    KALDI_LOG << "Leaky numlogprob weighted: " << num_logprob_weighted;
     if (opts.leakynum_regular_xent && xent_output_deriv) {
       NumeratorComputation orignum(supervision, nnet_output);
       xent_output_deriv->SetZero();
       BaseFloat rl = orignum.Forward();
       orignum.Backward(xent_output_deriv);
-      KALDI_LOG << "----------- Regularrr numlogprob weighted: " << rl;
+      KALDI_LOG << "Regular numlogprob weighted: " << rl;
     }
   }
 
@@ -101,7 +101,7 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
   *objf = num_logprob_weighted - supervision.weight * den_logprob;
   *weight = supervision.weight * supervision.num_sequences *
       supervision.frames_per_sequence;
-  KALDI_LOG << "----------- OOOOBBBJJJJFFFF: " << *objf << ",     WEIGHT: " << *weight
+  KALDI_LOG << "----------- OBJF ---------- : " << *objf << ",     WEIGHT: " << *weight
 	    << "den-logprob: " << supervision.weight * den_logprob;
   
   if (!((*objf) - (*objf) == 0) || !ok) {
