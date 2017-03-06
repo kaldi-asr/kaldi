@@ -47,7 +47,7 @@ awk '{print $1}' $srcdir/lexicon.txt | grep -v -w '!SIL' > $dir/wordlist.txt
 
 # if $wclass_dir was set, word classes are used; in that case the training text
 # has to be modified -> word class entries are replaced with word class labels
-if [ -d $wclass_dir ]; then
+if [ -n $wclass_dir ] && [ -d $wclass_dir ]; then
   if [ -f $wclass_dir/wsj.classes ]; then
     # uncompress the text which is used for language model training
     gunzip $srcdir/cleaned.gz

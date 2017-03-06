@@ -7,7 +7,7 @@ use warnings;
 use Getopt::Long;
 
 my $Usage = <<EOU;
-Usage:  determine_wclass_specific_counts.pl [options] <wclass-name> <wclass-label> <wclass-list> <all-wclass-count> <one-wclass-count>
+Usage:  $0 [options] <wclass-name> <wclass-label> <wclass-list> <all-wclass-count> <one-wclass-count>
 
 This script takes a file with the replacement counts of entries for all word
 classes and extracts the counts for a specific word class.
@@ -132,7 +132,7 @@ if ($wclass_oov_prob == 1.0) {
         # to be able to compute the right ${wclass_label}_SWU (== OOV) count, if
         # applicable (see below).
         if($replace_blanks_with_dash eq "true") {
-  	$class_entry =~ s/ /-/g;
+          $class_entry =~ s/ /-/g;
         }
         print OWCF "$count_for_class_entry $class_entry\n";
         $overall_class_entry_count += $count_for_class_entry;

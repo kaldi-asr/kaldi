@@ -47,7 +47,7 @@ fi
 wclass_usage=0
 words_txt=$lang/words.txt
 
-if [ -d $wclass_dir ]; then
+if [ -n $wclass_dir ] && [ -d $wclass_dir ]; then
   # ok, word classes are used
   # -> remember this and create class-specific sub-language model(s)
   wclass_usage=1

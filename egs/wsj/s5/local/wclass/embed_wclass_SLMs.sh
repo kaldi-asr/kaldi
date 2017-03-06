@@ -55,7 +55,7 @@ for wclass in $( cat $wclass_list | awk '{ print $1 }' | sed 's/^C=//' ); do
 
   # Embedding of sub-language models in the overall language model
   if [ -n "$wclass_word_id" ]; then
-    fstreplace --epsilon_on_replace $g_wclass_fst 0 $wclass_lm_dir/$wclass.fst $wclass_word_id |\
+    fstreplace --epsilon_on_replace $g_wclass_fst -1 $wclass_lm_dir/$wclass.fst $wclass_word_id |\
     fstrmepsilon |\
     fstminimizeencoded |\
     fstarcsort --sort_type=ilabel > $g_tmp_fst

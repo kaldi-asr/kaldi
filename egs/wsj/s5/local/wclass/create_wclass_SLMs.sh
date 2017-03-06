@@ -26,10 +26,21 @@ set -e
 
 echo "$0 $@"  # Print the command line for logging
 . ./path.sh
+
+# begin configuration section
+swu_ngram_size=1
+# end configuration section
+
 . utils/parse_options.sh
 
 if [ $# -ne 3 ]; then
-  echo "usage: create_wclass_SLMs.sh <wclass-dir> <words-txt> <corpus-name>" && exit 1;
+  echo "Usage: "
+  echo "  $0 [options] <wclass-dir> <words-txt> <corpus-name>"
+  echo "e.g.:"
+  echo " $0 --swu-ngram-size=5 data/local/wclass data/lang_nosp_bd/words.txt wsj"
+  echo "Options"
+  echo "   --swu-ngram-size=<int>     # the n-gram size used for SWU-based OOV detection, default: 3"
+  exit 1;
 fi
 
 wclass_dir=$1
@@ -136,7 +147,7 @@ for wclass_label in $( cat $wclass_list | awk '{ print $1 }' ); do
   #   symbols when entering and leaving the word class graph)
   gunzip -c $wclass_lm_dir/lm.${wclass}.gz | \
   arpa2fst - | fstminimize | fstrmepsilon | fstprint | \
-  local/wclass/convert_self-loop_to_two-state_fst.pl | \
+  local/wclass/convert_to_embeddable_fst.pl | \
   local/wclass/replace_BOS_and_EOS_with_disambig_symbol.pl \
              --bos-input-symbol "#$wclass" --bos-output-symbol "<eps>" \
 	     --eos-input-symbol "#$wclass" --eos-output-symbol "<eps>" \
@@ -158,12 +169,12 @@ for wclass_label in $( cat $wclass_list | awk '{ print $1 }' ); do
 
     # Count occurences of the SWUs for the OOV model of the category
     ngram-count -text $wclass_dir/$wclass.swu -write $wclass_lm_dir/counts.${wclass}_SWU
-    ngram-count -order 1 -read $wclass_lm_dir/counts.${wclass}_SWU -lm $wclass_lm_dir/lm.${wclass}_SWU && gzip -f $wclass_lm_dir/lm.${wclass}_SWU
+    ngram-count -order $swu_ngram_size -read $wclass_lm_dir/counts.${wclass}_SWU -lm $wclass_lm_dir/lm.${wclass}_SWU && gzip -f $wclass_lm_dir/lm.${wclass}_SWU
 
     # Create an FST from class-specific SWU sub-language model for OOV detection
     gunzip -c $wclass_lm_dir/lm.${wclass}_SWU.gz | \
     arpa2fst - | fstminimize | fstrmepsilon | fstprint | \
-    local/wclass/convert_self-loop_to_two-state_fst.pl --back-transition "#${wclass}_SWU_BACK" | \
+    local/wclass/convert_to_embeddable_fst.pl --back-transition "#${wclass}_SWU_BACK" | \
     local/wclass/replace_BOS_and_EOS_with_disambig_symbol.pl \
                --bos-input-symbol "#${wclass}_SWU" --bos-output-symbol "#${wclass}_SWU" \
 	       --eos-input-symbol "#${wclass}_SWU" --eos-output-symbol "#${wclass}_SWU" \
@@ -177,7 +188,7 @@ for wclass_label in $( cat $wclass_list | awk '{ print $1 }' ); do
 
     # Embedding the sub-word unit-based OOV model in the word-class sub-language model
     if [ -n "$swu_model_label" ]; then
-      fstreplace --epsilon_on_replace $wclass_lm_dir/$wclass.fst 0 $wclass_lm_dir/${wclass}_SWU.fst $swu_model_label |\
+      fstreplace --epsilon_on_replace $wclass_lm_dir/$wclass.fst -1 $wclass_lm_dir/${wclass}_SWU.fst $swu_model_label |\
       fstrmepsilon |\
       fstminimizeencoded |\
       fstarcsort --sort_type=ilabel > $wclass_lm_dir/${wclass}_new.fst
