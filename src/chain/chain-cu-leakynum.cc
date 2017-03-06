@@ -220,7 +220,7 @@ void CuLeakyNumeratorComputation::AlphaNumFrame(int32 t) {
                 prev_hmm_state = trans_iter->hmm_state;
           BaseFloat prob = prob_data[pdf_id * prob_stride + s],
               this_prev_alpha_num = prev_alpha_num[prev_hmm_state * num_sequences_ + s];
-          this_tot_alpha += (this_prev_alpha_num + prev_alpha_prime(s)) / inv_arbitrary_scale * transition_prob * prob; //* unleak_etas_(s)
+          this_tot_alpha += (this_prev_alpha_num + prev_alpha_prime(s)) / inv_arbitrary_scale * transition_prob * prob;
           if (this_tot_alpha - this_tot_alpha != 0) {
             KALDI_LOG << "t: " << t << ", seq: " << s << ", h: " << h
             << ", prev-alpha: " << this_prev_alpha_num
@@ -389,10 +389,10 @@ void CuLeakyNumeratorComputation::AlphaHat(int32 t) {
 BaseFloat CuLeakyNumeratorComputation::Forward() {
   AlphaFirstFrame();
   for (int32 t = 1; t <= frames_per_sequence_; t++) {
-    AlphaSumAndPrime(t - 1);
-    AlphaNumFrame(t);
-    AlphaDenFrame(t);
-    AlphaHat(t);
+    AlphaSumAndPrime(t - 1);  // compute alpha-sum(t-1) and alpha-prime_{t-1} (to be added to alpha_{t-1} in alpha_t computation)
+    AlphaNumFrame(t);  // compute alpha_t for num states (add alphaprime_{t-1} (scaled by unleak_eta) to alpha_{t-1}'s)
+    AlphaDenFrame(t);  // standard compute alpha_t for den states
+    AlphaHat(t);  // compute alphahat_t and add it (scaled by leak_eta) to alpha_t for den states
   }
   return ComputeTotLogLike();
 }
@@ -600,12 +600,12 @@ void CuLeakyNumeratorComputation::BetaNumFrame(int32 t) {
           BaseFloat variable_factor2 = (next_beta_prob + next_beta_prime(s)) *
                                        shared_factor;
           tot_variable_factor += variable_factor2;
-          BaseFloat occupation_prob = variable_factor1 * this_alpha_prob; //occupation_factor; #SCC#
+          BaseFloat occupation_prob = variable_factor1 * this_alpha_prob;
           log_prob_deriv_data[pdf_id * deriv_stride + s] += occupation_prob;
 
           /// handle Gamma Leaky Transitions:
           log_prob_deriv_data[pdf_id * deriv_stride + s] += shared_factor * (
-             (this_alpha_prob * next_beta_prime(s))    +    (next_beta_prob * alpha_prime(s))  ); //* unleak_etas_(s)
+             (this_alpha_prob * next_beta_prime(s))    +    (next_beta_prob * alpha_prime(s))  );
 
           if (tot_variable_factor - tot_variable_factor != 0) {
             KALDI_LOG << "t: " << t << ", seq: " << s << ", h: " << h << ", pdf_id: " << pdf_id
@@ -771,7 +771,7 @@ void CuLeakyNumeratorComputation::BetaHat(int32 t) {
         next_beta_hat += next_beta_s * transition_prob * obs_prob * arbitrary_scale;
       }
       KALDI_ASSERT(next_beta_hat - next_beta_hat == 0);
-      beta_hats(s) = next_beta_hat; //* unleak_etas_(s);
+      beta_hats(s) = next_beta_hat;
     }
   }
 

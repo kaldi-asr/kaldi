@@ -141,10 +141,12 @@ class CuLeakyNumeratorComputation {
 
   CuVector<BaseFloat> tot_prob_;
 
-  BaseFloat leak_eta_;
-  CuVector<BaseFloat> unleak_etas_;
+  BaseFloat leak_eta_;  // the coefficient of leaking. i.e. 
+                        // the weight on each leaking transition (optionally scaled by den graph initial state probs)
+  CuVector<BaseFloat> unleak_etas_; // the weight on unleaking transitions, indexed by sequence (it is the same
+                                    // for all unleaking transitions of a specific sequence).
   BaseFloat num_transitions_scale_; // scale applied to all num to num transitions (except when we are computing hats or primes) 
-  BaseFloat den_transitions_scale_;
+  BaseFloat den_transitions_scale_; // the same but for den
 
   // the log of tot_prob_.
   CuVector<BaseFloat> tot_log_prob_;
