@@ -4,6 +4,11 @@
 
 # Apache 2.0
 
+write_utt2orig=              # if provided, this script will write
+                             # a mapping of shifted utterance ids
+                             # to the original ones into the file
+                             # specified by this option
+
 echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . utils/parse_options.sh
@@ -34,11 +39,18 @@ if [ -f $destdir/feats.scp ]; then
   exit 1
 fi
 
+if [ ! -z $write_utt2orig ]; then
+  awk '{print $1 " " $1}' $srcdir/feats.scp >$write_utt2orig
+fi
+
 tmp_shift_destdirs=()
 for frame_shift in `seq $[-(frame_subsampling_factor/2)] $[-(frame_subsampling_factor/2) + frame_subsampling_factor - 1]`; do
   if [ "$frame_shift" == 0 ]; then continue; fi
   utils/data/shift_feats.sh $frame_shift $srcdir ${destdir}_fs$frame_shift || exit 1
   tmp_shift_destdirs+=("${destdir}_fs$frame_shift")
+  if [ ! -z $write_utt2orig ]; then
+    awk -v prefix="fs$frame_shift-" '{printf("%s%s %s\n", prefix, $1, $1);}' $srcdir/feats.scp >>$write_utt2orig
+  fi  
 done
 utils/data/combine_data.sh $destdir $srcdir ${tmp_shift_destdirs[@]} || exit 1
 rm -r ${tmp_shift_destdirs[@]}
