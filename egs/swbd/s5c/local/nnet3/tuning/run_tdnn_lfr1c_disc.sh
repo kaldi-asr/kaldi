@@ -115,19 +115,12 @@ fi
 affix=    # Will be set if doing input frame shift
 if [[ "$shift_feats" = true && $frame_subsampling_factor -ne 1 ]]; then
   if [ $stage -le 0 ]; then
-
-    utils/data/shift_and_combine_feats.sh $frame_subsampling_factor $train_data_dir ${train_data_dir}_fs || exit 1;
-
-    mkdir -p ${online_ivector_dir}_fs
-    cp -r $online_ivector_dir/{conf,ivector_period} ${online_ivector_dir}_fs
-    cp $online_ivector_dir/ivector_online.scp ${online_ivector_dir}_fs  # we do not append fs0- for 0-shifted features
-    for frame_shift in `seq $[-(frame_subsampling_factor/2)] $[-(frame_subsampling_factor/2) + frame_subsampling_factor - 1]`; do
-      if [ "$frame_shift" == 0 ]; then continue; fi
-      awk -v nfs=$frame_shift '{print "fs"nfs"-"$0}' $online_ivector_dir/ivector_online.scp >> ${online_ivector_dir}_fs/ivector_online.scp
-    done
-
+    utils/data/shift_and_combine_feats.sh --write-utt2orig ${train_data_dir}/utt2orig \
+					    $frame_subsampling_factor $train_data_dir ${train_data_dir}_fs
+    steps/online/nnet2/copy_ivector_dir.sh --utt2orig ${train_data_dir}/utt2orig \
+					   $online_ivector_dir ${online_ivector_dir}_fs
+    rm ${train_data_dir}/utt2orig
   fi
-
   online_ivector_dir=${online_ivector_dir}_fs
   train_data_dir=${train_data_dir}_fs
   affix=_fs
