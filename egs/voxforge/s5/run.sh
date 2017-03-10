@@ -5,7 +5,7 @@
 
 # NOTE: You will want to download the data set first, before executing this script.
 #       This can be done for example by:
-#       1. Setting the DATA_ROOT in path.sh variable to point to a
+#       1. Setting the variable DATA_ROOT in path.sh to point to a
 #          directory with enough free space (at least 20-25GB
 #          currently (Feb 2014))
 #       2. Running "getdata.sh"
