@@ -94,6 +94,8 @@ GSYMS
 /tools/openfst-1.6.0/
 /tools/openfst-1.6.1.tar.gz
 /tools/openfst-1.6.1/
+/tools/openfst-1.6.2.tar.gz
+/tools/openfst-1.6.2/
 /tools/pa_stable_v19_20111121.tgz
 /tools/portaudio/
 /tools/sctk-2.4.0-20091110-0958.tar.bz2
@@ -131,4 +133,3 @@ GSYMS
 /tools/sequitur-g2p/
 
 /kaldiwin_vs*
-
