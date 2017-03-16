@@ -1,19 +1,22 @@
 #!/bin/bash
 
-# tdnn_blstm_1a is same as blstm_6k, but with the initial tdnn layers
+# tdnn_blstm_1b is same as tdnn_blstm_1b, but with the more tdnn layers
+# and with tdnn layers interspliced with lstm layers
+
 # blstm_6k : num-parameters: 41155430
 # tdnn_blstm_1a : num-parameters: 53688166
+# tdnn_blstm_1b : num-parameters: 56835942
 
-# local/chain/compare_wer_general.sh blstm_6l_sp blstm_6k_sp
-# System                blstm_6k_sp tdnn_blstm_1a_sp
-# WER on train_dev(tg)      13.25     12.95
-# WER on train_dev(fg)      12.27     11.98
-# WER on eval2000(tg)        15.7      15.5
-# WER on eval2000(fg)        14.5      14.1
-# Final train prob         -0.052    -0.041
-# Final valid prob         -0.080    -0.072
-# Final train prob (xent)        -0.743    -0.629
-# Final valid prob (xent)       -0.8816   -0.8091
+# local/chain/compare_wer_general.sh tdnn_blstm_1a_sp tdnn_blstm_1b_sp
+# System                tdnn_blstm_1a_sp tdnn_blstm_1b_sp
+# WER on train_dev(tg)      12.95     13.10
+# WER on train_dev(fg)      11.98     12.15
+# WER on eval2000(tg)        15.5      15.5
+# WER on eval2000(fg)        14.1      14.1
+# Final train prob         -0.041    -0.037
+# Final valid prob         -0.072    -0.068
+# Final train prob (xent)        -0.629    -0.596
+# Final valid prob (xent)       -0.8091   -0.7919
 
 set -e
 
@@ -22,7 +25,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_blstm_1a  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_blstm_1b  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_dir_affix=
 
@@ -141,13 +144,19 @@ if [ $stage -le 12 ]; then
 
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
   fast-lstmp-layer name=blstm1-forward input=tdnn3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=512
   fast-lstmp-layer name=blstm1-backward input=tdnn3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $lstm_opts
+  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=512
 
-  fast-lstmp-layer name=blstm2-forward input=Append(blstm1-forward, blstm1-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
-  fast-lstmp-layer name=blstm2-backward input=Append(blstm1-forward, blstm1-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $lstm_opts
 
-  fast-lstmp-layer name=blstm3-forward input=Append(blstm2-forward, blstm2-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
-  fast-lstmp-layer name=blstm3-backward input=Append(blstm2-forward, blstm2-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $lstm_opts
+  fast-lstmp-layer name=blstm2-forward input=Append(tdnn4, tdnn5) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=512
+  fast-lstmp-layer name=blstm2-backward input=Append(tdnn4, tdnn5) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $lstm_opts
+  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=512
+
+
+  fast-lstmp-layer name=blstm3-forward input=Append(tdnn6, tdnn7) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  fast-lstmp-layer name=blstm3-backward input=Append(tdnn6, tdnn7) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $lstm_opts
 
   ## adding the layers for chain branch
   output-layer name=output input=Append(blstm3-forward, blstm3-backward) output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
