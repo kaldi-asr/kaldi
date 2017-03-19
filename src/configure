@@ -1097,7 +1097,7 @@ if $android ; then
   OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a $OPENBLASROOT/lib/libclapack.a $OPENBLASROOT/lib/liblapack.a $OPENBLASROOT/lib/libblas.a $OPENBLASROOT/lib/libf2c.a"
   echo "OPENBLASINC = $OPENBLASROOT/include" >> kaldi.mk
   echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
-  echo "ANDROIDINCDIR = $ANDROIDINCDIR" >> kaldi.mk
+  echo "ANDROIDINC = $ANDROIDINCDIR" >> kaldi.mk
 
   cat makefiles/android_openblas.mk >> kaldi.mk
 
