@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# tdnn_blstm_1b is same as tdnn_blstm_1b, but with the more tdnn layers
+# tdnn_blstm_1b is same as tdnn_blstm_1a, but with the more tdnn layers
 # and with tdnn layers interspliced with lstm layers
 
 # blstm_6k : num-parameters: 41155430
