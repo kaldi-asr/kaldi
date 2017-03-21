@@ -208,11 +208,9 @@ bool convert_special_number(const std::string &str, T *out) {
   return false;
 }
 
+
 bool ConvertStringToReal(const std::string &str,
                          double *out) {
-  const char *this_str = str.c_str();
-  char *end = NULL;
-  errno = 0;
 
 #if defined(_MSC_VER)
   // TODO: check if the new MSVC already supports it
@@ -221,20 +219,20 @@ bool ConvertStringToReal(const std::string &str,
     return true;
 #endif  // defined(_MSC_VER)
 
-  double d = KALDI_STRTOD(this_str, &end);
-  if (end != this_str)
-    while (isspace(*end)) end++;
-  if (end == this_str || *end != '\0' || errno != 0)
+  // http://stackoverflow.com/questions/3825392/string-to-float-conversion
+  std::istringstream i(str);
+
+  if (!(i >> *out)) {
+    // Number conversion failed
+    *out = 0.0;
     return false;
-  *out = d;
+  }
+
   return true;
 }
 
 bool ConvertStringToReal(const std::string &str,
                          float *out) {
-  const char *this_str = str.c_str();
-  char *end = NULL;
-  errno = 0;
 
 #ifdef _MSC_VER
   // TODO: check if the new MSVC already supports it
@@ -242,13 +240,16 @@ bool ConvertStringToReal(const std::string &str,
   if (convert_special_number(str, out))
     return true;
 #endif  // _MSC_VER
+  
+  // http://stackoverflow.com/questions/3825392/string-to-float-conversion
+  std::istringstream i(str);
 
-  float f = KALDI_STRTOF(this_str, &end);
-  if (end != this_str)
-    while (isspace(*end)) end++;
-  if (end == this_str || *end != '\0' || errno != 0)
+  if (!(i >> *out)) {
+    // Number conversion failed
+    *out = 0.0;
     return false;
-  *out = f;
+  }
+
   return true;
 }
 
