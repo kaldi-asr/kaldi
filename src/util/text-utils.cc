@@ -224,8 +224,18 @@ bool ConvertStringToReal(const std::string &str,
 
   if (!(i >> *out)) {
     // Number conversion failed
-    *out = 0.0;
     return false;
+  }
+
+  // if it is not the end of the stream, we
+  // must check if there is only spaces
+  if (i.tellg() != -1){
+    std::string rem;
+    i >> rem;
+    if(rem.find_first_not_of(' ') != std::string::npos){
+      // there is not only spaces
+      return false;
+    }
   }
 
   return true;
@@ -240,14 +250,23 @@ bool ConvertStringToReal(const std::string &str,
   if (convert_special_number(str, out))
     return true;
 #endif  // _MSC_VER
-  
-  // http://stackoverflow.com/questions/3825392/string-to-float-conversion
+
   std::istringstream i(str);
 
   if (!(i >> *out)) {
     // Number conversion failed
-    *out = 0.0;
     return false;
+  }
+
+  // if it is not the end of the stream, we
+  // must check if there is only spaces
+  if (i.tellg() != -1){
+    std::string rem;
+    i >> rem;
+    if(rem.find_first_not_of(' ') != std::string::npos){
+      // there is not only spaces
+      return false;
+    }
   }
 
   return true;
