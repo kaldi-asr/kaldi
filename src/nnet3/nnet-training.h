@@ -36,8 +36,8 @@ struct NnetTrainerOptions {
   int32 print_interval;
   bool debug_computation;
   BaseFloat momentum;
-  BaseFloat adversarial_training_scale;
-  int32 adversarial_training_interval;
+  BaseFloat backstitch_training_scale;
+  int32 backstitch_training_interval;
   std::string read_cache;
   std::string write_cache;
   bool binary_write_cache;
@@ -51,8 +51,8 @@ struct NnetTrainerOptions {
       print_interval(100),
       debug_computation(false),
       momentum(0.0),
-      adversarial_training_scale(0.0),
-      adversarial_training_interval(1),
+      backstitch_training_scale(0.0),
+      backstitch_training_interval(1),
       binary_write_cache(true),
       max_param_change(2.0) { }
   void Register(OptionsItf *opts) {
@@ -74,12 +74,12 @@ struct NnetTrainerOptions {
                    "so that the 'effective' learning rate is the same as "
                    "before (because momentum would normally increase the "
                    "effective learning rate by 1/(1-momentum))");
-    opts->Register("adversarial-training-scale", &adversarial_training_scale,
-                   "adversarial traning factor. "
+    opts->Register("backstitch-training-scale", &backstitch_training_scale,
+                   "backstitch traning factor. "
                    "if 0 then in the normal training mode.");
-    opts->Register("adversarial-training-interval",
-                   &adversarial_training_interval,
-                   "do adversarial training with the specified interval of "
+    opts->Register("backstitch-training-interval",
+                   &backstitch_training_interval,
+                   "do backstitch training with the specified interval of "
                    "minibatches.");
     opts->Register("read-cache", &read_cache, "the location where we can read "
                    "the cached computation from");
@@ -171,22 +171,22 @@ class NnetTrainer {
  private:
   void TrainInternal(const NnetExample &eg,
                      const NnetComputation &computation,
-                     bool is_adversarial_step);
+                     bool is_backstitch_step);
 
-  void ProcessOutputs(bool is_adversarial_step, const NnetExample &eg,
+  void ProcessOutputs(bool is_backstitch_step, const NnetExample &eg,
                       NnetComputer *computer);
 
   // Applies per-component max-change and global max-change to all updatable
   // components in *delta_nnet_, and use *delta_nnet_ to update parameters
-  // in *nnet_. If is_adversarial_step && config_.adversarial_training_scale > 0,
-  // the update is an adversarial step where the params are scaled by
-  // -config_.adversarial_training_scale;
-  // if !is_adversarial_step && config_.adversarial_training_scale > 0 the
+  // in *nnet_. If is_backstitch_step && config_.backstitch_training_scale > 0,
+  // the update is an backstitch step where the params are scaled by
+  // -config_.backstitch_training_scale;
+  // if !is_backstitch_step && config_.backstitch_training_scale > 0 the
   // update is a normal step where the params are scaled by
-  // 1+opts_.adversarial_training_scale; otherwise
-  // !is_adversarial_step && config_.adversarial_training_scale == 0, and it is
+  // 1+opts_.backstitch_training_scale; otherwise
+  // !is_backstitch_step && config_.backstitch_training_scale == 0, and it is
   // a normal step
-  void UpdateParamsWithMaxChange(bool is_adversarial_step = false);
+  void UpdateParamsWithMaxChange(bool is_backstitch_step = false);
 
   const NnetTrainerOptions config_;
   Nnet *nnet_;

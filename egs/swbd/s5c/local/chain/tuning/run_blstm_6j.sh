@@ -33,7 +33,6 @@ chunk_width=150
 chunk_left_context=40
 chunk_right_context=40
 xent_regularize=0.025
-alpha=0.0
 self_repair_scale=0.00001
 label_delay=0
 
@@ -186,7 +185,6 @@ if [ $stage -le 13 ]; then
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.momentum 0.0 \
-    --trainer.optimization.adversarial-training-scale $alpha \
     --trainer.deriv-truncate-margin 8 \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
