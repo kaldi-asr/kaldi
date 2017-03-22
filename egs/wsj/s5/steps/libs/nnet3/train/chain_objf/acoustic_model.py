@@ -129,7 +129,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      min_deriv_time, max_deriv_time_relative,
                      l2_regularize, xent_regularize, leaky_hmm_coefficient,
                      momentum,
-                     adversarial_training_scale, adversarial_training_interval,
+                     backstitch_training_scale, backstitch_training_interval,
                      max_param_change,
                      shuffle_buffer_size, num_chunk_per_minibatch_str,
                      frame_subsampling_factor,
@@ -177,8 +177,8 @@ def train_new_models(dir, iter, srand, num_jobs,
                     {cache_io_opts}  --xent-regularize={xent_reg} \
                     {deriv_time_opts} \
                     --print-interval=10 --momentum={momentum} \
-                    --adversarial-training-scale={adversarial_training_scale} \
-                    --adversarial-training-interval={adversarial_training_interval} \
+                    --backstitch-training-scale={backstitch_training_scale} \
+                    --backstitch-training-interval={backstitch_training_interval} \
                     --max-param-change={max_param_change} \
                     "{raw_model}" {dir}/den.fst \
                     "ark,bg:nnet3-chain-copy-egs \
@@ -200,8 +200,8 @@ def train_new_models(dir, iter, srand, num_jobs,
                         xent_reg=xent_regularize, leaky=leaky_hmm_coefficient,
                         parallel_train_opts=run_opts.parallel_train_opts,
                         momentum=momentum,
-                        adversarial_training_scale=adversarial_training_scale,
-                        adversarial_training_interval=adversarial_training_interval,
+                        backstitch_training_scale=backstitch_training_scale,
+                        backstitch_training_interval=backstitch_training_interval,
                         max_param_change=max_param_change,
                         raw_model=raw_model_string,
                         egs_dir=egs_dir, archive_index=archive_index,
@@ -236,7 +236,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         l2_regularize, xent_regularize,
                         leaky_hmm_coefficient,
                         momentum,
-                        adversarial_training_scale, adversarial_training_interval,
+                        backstitch_training_scale, backstitch_training_interval,
                         max_param_change, shuffle_buffer_size,
                         frame_subsampling_factor,
                         run_opts, dropout_edit_string="",
@@ -345,8 +345,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      xent_regularize=xent_regularize,
                      leaky_hmm_coefficient=leaky_hmm_coefficient,
                      momentum=momentum,
-                     adversarial_training_scale=adversarial_training_scale,
-                     adversarial_training_interval=adversarial_training_interval,
+                     backstitch_training_scale=backstitch_training_scale,
+                     backstitch_training_interval=backstitch_training_interval,
                      max_param_change=cur_max_param_change,
                      shuffle_buffer_size=shuffle_buffer_size,
                      num_chunk_per_minibatch_str=cur_num_chunk_per_minibatch_str,

@@ -68,24 +68,24 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
                              &request);
   const NnetComputation *computation = compiler_.Compile(request);
 
-  if (nnet_config.adversarial_training_scale > 0.0 && num_minibatches_processed_
-      % nnet_config.adversarial_training_interval == 0) {
-    // adversarial training is incompatible with momentum > 0
+  if (nnet_config.backstitch_training_scale > 0.0 && num_minibatches_processed_
+      % nnet_config.backstitch_training_interval == 0) {
+    // backstitch training is incompatible with momentum > 0
     KALDI_ASSERT(nnet_config.momentum == 0.0);
     FreezeNaturalGradient(true, delta_nnet_);
-    bool is_adversarial_step = true;
-    TrainInternal(chain_eg, *computation, is_adversarial_step);
+    bool is_backstitch_step = true;
+    TrainInternal(chain_eg, *computation, is_backstitch_step);
     FreezeNaturalGradient(false, delta_nnet_); // un-freeze natural gradient
   }
 
-  bool is_adversarial_step = false;
-  TrainInternal(chain_eg, *computation, is_adversarial_step);
+  bool is_backstitch_step = false;
+  TrainInternal(chain_eg, *computation, is_backstitch_step);
   num_minibatches_processed_++;
 }
 
 void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
                                      const NnetComputation &computation,
-                                     bool is_adversarial_step) {
+                                     bool is_backstitch_step) {
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   NnetComputer computer(nnet_config.compute_config, computation,
                         *nnet_, delta_nnet_);
@@ -93,18 +93,18 @@ void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
   computer.AcceptInputs(*nnet_, eg.inputs);
   computer.Run();
 
-  this->ProcessOutputs(is_adversarial_step, eg, &computer);
+  this->ProcessOutputs(is_backstitch_step, eg, &computer);
   computer.Run();
 
-  UpdateParamsWithMaxChange(is_adversarial_step);
+  UpdateParamsWithMaxChange(is_backstitch_step);
 }
 
-void NnetChainTrainer::ProcessOutputs(bool is_adversarial_step,
+void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step,
                                       const NnetChainExample &eg,
                                       NnetComputer *computer) {
   // normally the eg will have just one output named 'output', but
   // we don't assume this.
-  const std::string suffix = (is_adversarial_step ? "_adv" : "");
+  const std::string suffix = (is_backstitch_step ? "_backstitch" : "");
   std::vector<NnetChainSupervision>::const_iterator iter = eg.outputs.begin(),
       end = eg.outputs.end();
   for (; iter != end; ++iter) {
@@ -168,7 +168,7 @@ void NnetChainTrainer::ProcessOutputs(bool is_adversarial_step,
   }
 }
 
-void NnetChainTrainer::UpdateParamsWithMaxChange(bool is_adversarial_step) {
+void NnetChainTrainer::UpdateParamsWithMaxChange(bool is_backstitch_step) {
   KALDI_ASSERT(delta_nnet_ != NULL);
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   // computes scaling factors for per-component max-change
@@ -247,13 +247,13 @@ void NnetChainTrainer::UpdateParamsWithMaxChange(bool is_adversarial_step) {
   }
   // applies both of the max-change scalings all at once, component by component
   // and updates parameters
-  if (nnet_config.adversarial_training_scale > 0.0) {
+  if (nnet_config.backstitch_training_scale > 0.0) {
     KALDI_ASSERT(nnet_config.momentum == 0.0);
-    BaseFloat scale_adversarial =
-        (is_adversarial_step ? -nnet_config.adversarial_training_scale :
-        (1 + nnet_config.adversarial_training_scale));
-    scale_factors.Scale(scale * scale_adversarial);
-    AddNnetComponents(*delta_nnet_, scale_factors, scale * scale_adversarial,
+    BaseFloat scale_backstitch =
+        (is_backstitch_step ? -nnet_config.backstitch_training_scale :
+        (1 + nnet_config.backstitch_training_scale));
+    scale_factors.Scale(scale * scale_backstitch);
+    AddNnetComponents(*delta_nnet_, scale_factors, scale * scale_backstitch,
                       nnet_);
     ScaleNnet(0.0, delta_nnet_);
   } else {

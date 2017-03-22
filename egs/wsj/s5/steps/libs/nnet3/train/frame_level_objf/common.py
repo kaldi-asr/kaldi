@@ -27,7 +27,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      raw_model_string, egs_dir,
                      left_context, right_context,
                      momentum,
-                     adversarial_training_scale, adversarial_training_interval,
+                     backstitch_training_scale, backstitch_training_interval,
                      max_param_change,
                      shuffle_buffer_size, minibatch_size_str,
                      cache_read_opt, run_opts,
@@ -87,8 +87,8 @@ def train_new_models(dir, iter, srand, num_jobs,
                     nnet3-train {parallel_train_opts} {cache_read_opt} \
                     {cache_write_opt} --print-interval=10 \
                     --momentum={momentum} \
-                    --adversarial-training-scale={adversarial_training_scale} \
-                    --adversarial-training-interval={adversarial_training_interval} \
+                    --backstitch-training-scale={backstitch_training_scale} \
+                    --backstitch-training-interval={backstitch_training_interval} \
                     --max-param-change={max_param_change} \
                     {deriv_time_opts} "{raw_model}" \
                     "ark,bg:nnet3-copy-egs {frame_opts} {context_opts} """
@@ -111,8 +111,8 @@ def train_new_models(dir, iter, srand, num_jobs,
                                     if chunk_level_training
                                     else "--frame={0}".format(frame)),
                         momentum=momentum,
-                        adversarial_training_scale=adversarial_training_scale,
-                        adversarial_training_interval=adversarial_training_interval,
+                        backstitch_training_scale=backstitch_training_scale,
+                        backstitch_training_interval=backstitch_training_interval,
                         max_param_change=max_param_change,
                         deriv_time_opts=" ".join(deriv_time_opts),
                         raw_model=raw_model_string, context_opts=context_opts,
@@ -141,7 +141,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         num_hidden_layers, add_layers_period,
                         left_context, right_context,
                         momentum,
-                        adversarial_training_scale, adversarial_training_interval,
+                        backstitch_training_scale, backstitch_training_interval,
                         max_param_change, shuffle_buffer_size,
                         run_opts, frames_per_eg=-1,
                         min_deriv_time=None, max_deriv_time_relative=None,
@@ -282,8 +282,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      raw_model_string=raw_model_string, egs_dir=egs_dir,
                      left_context=left_context, right_context=right_context,
                      momentum=momentum,
-                     adversarial_training_scale=adversarial_training_scale,
-                     adversarial_training_interval=adversarial_training_interval,
+                     backstitch_training_scale=backstitch_training_scale,
+                     backstitch_training_interval=backstitch_training_interval,
                      max_param_change=cur_max_param_change,
                      shuffle_buffer_size=shuffle_buffer_size,
                      minibatch_size_str=cur_minibatch_size_str,

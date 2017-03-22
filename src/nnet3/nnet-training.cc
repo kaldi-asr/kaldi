@@ -62,40 +62,40 @@ void NnetTrainer::Train(const NnetExample &eg) {
                         &request);
   const NnetComputation *computation = compiler_.Compile(request);
 
-  if (config_.adversarial_training_scale > 0.0 &&
-      num_minibatches_processed_ % config_.adversarial_training_interval == 0) {
-    // adversarial training is incompatible with momentum > 0
+  if (config_.backstitch_training_scale > 0.0 &&
+      num_minibatches_processed_ % config_.backstitch_training_interval == 0) {
+    // backstitch training is incompatible with momentum > 0
     KALDI_ASSERT(config_.momentum == 0.0);
     FreezeNaturalGradient(true, delta_nnet_);
-    bool is_adversarial_step = true;
-    TrainInternal(eg, *computation, is_adversarial_step);
+    bool is_backstitch_step = true;
+    TrainInternal(eg, *computation, is_backstitch_step);
     FreezeNaturalGradient(false, delta_nnet_); // un-freeze natural gradient
   }
 
-  bool is_adversarial_step = false;
-  TrainInternal(eg, *computation, is_adversarial_step);
+  bool is_backstitch_step = false;
+  TrainInternal(eg, *computation, is_backstitch_step);
   num_minibatches_processed_++;
 }
 
 void NnetTrainer::TrainInternal(const NnetExample &eg,
                                 const NnetComputation &computation,
-                                bool is_adversarial_step) {
+                                bool is_backstitch_step) {
   NnetComputer computer(config_.compute_config, computation,
                         *nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
   computer.Run();
 
-  this->ProcessOutputs(is_adversarial_step, eg, &computer);
+  this->ProcessOutputs(is_backstitch_step, eg, &computer);
   computer.Run();
 
-  UpdateParamsWithMaxChange(is_adversarial_step);
+  UpdateParamsWithMaxChange(is_backstitch_step);
 }
 
-void NnetTrainer::ProcessOutputs(bool is_adversarial_step,
+void NnetTrainer::ProcessOutputs(bool is_backstitch_step,
                                  const NnetExample &eg,
                                  NnetComputer *computer) {
-  const std::string suffix = (is_adversarial_step ? "_adv" : "");
+  const std::string suffix = (is_backstitch_step ? "_backstitch" : "");
   std::vector<NnetIo>::const_iterator iter = eg.io.begin(),
       end = eg.io.end();
   for (; iter != end; ++iter) {
@@ -117,7 +117,7 @@ void NnetTrainer::ProcessOutputs(bool is_adversarial_step,
   }
 }
 
-void NnetTrainer::UpdateParamsWithMaxChange(bool is_adversarial_step) {
+void NnetTrainer::UpdateParamsWithMaxChange(bool is_backstitch_step) {
   KALDI_ASSERT(delta_nnet_ != NULL);
   // computes scaling factors for per-component max-change
   const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
@@ -195,13 +195,13 @@ void NnetTrainer::UpdateParamsWithMaxChange(bool is_adversarial_step) {
   }
   // applies both of the max-change scalings all at once, component by component
   // and updates parameters
-  if (config_.adversarial_training_scale > 0.0) {
+  if (config_.backstitch_training_scale > 0.0) {
     KALDI_ASSERT(config_.momentum == 0.0);
-    BaseFloat scale_adversarial =
-        (is_adversarial_step ? -config_.adversarial_training_scale :
-        (1 + config_.adversarial_training_scale));
-    scale_factors.Scale(scale * scale_adversarial);
-    AddNnetComponents(*delta_nnet_, scale_factors, scale * scale_adversarial,
+    BaseFloat scale_backstitch =
+        (is_backstitch_step ? -config_.backstitch_training_scale :
+        (1 + config_.backstitch_training_scale));
+    scale_factors.Scale(scale * scale_backstitch);
+    AddNnetComponents(*delta_nnet_, scale_factors, scale * scale_backstitch,
                       nnet_);
     ScaleNnet(0.0, delta_nnet_);
   } else {

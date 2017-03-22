@@ -72,22 +72,22 @@ class NnetChainTrainer {
  private:
   void TrainInternal(const NnetChainExample &eg,
                      const NnetComputation &computation,
-                     bool is_adversarial_step);
+                     bool is_backstitch_step);
 
-  void ProcessOutputs(bool is_adversarial_step, const NnetChainExample &eg,
+  void ProcessOutputs(bool is_backstitch_step, const NnetChainExample &eg,
                       NnetComputer *computer);
 
   // Applies per-component max-change and global max-change to all updatable
   // components in *delta_nnet_, and use *delta_nnet_ to update parameters
-  // in *nnet_. If is_adversarial_step && opts_.adversarial_training_scale > 0,
-  // the update is an adversarial step where the params are scaled by
-  // -opts_.adversarial_training_scale;
-  // if !is_adversarial_step && opts_.adversarial_training_scale > 0 the update
+  // in *nnet_. If is_backstitch_step && opts_.backstitch_training_scale > 0,
+  // the update is an backstitch step where the params are scaled by
+  // -opts_.backstitch_training_scale;
+  // if !is_backstitch_step && opts_.backstitch_training_scale > 0 the update
   // is a normal step where the params are scaled by
-  // 1+opts_.adversarial_training_scale; otherwise
-  // !is_adversarial_step && opts_.adversarial_training_scale == 0, and it is
+  // 1+opts_.backstitch_training_scale; otherwise
+  // !is_backstitch_step && opts_.backstitch_training_scale == 0, and it is
   // a normal step
-  void UpdateParamsWithMaxChange(bool is_adversarial_step = false);
+  void UpdateParamsWithMaxChange(bool is_backstitch_step = false);
 
   const NnetChainTrainingOptions opts_;
 
