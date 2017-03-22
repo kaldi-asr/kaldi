@@ -310,29 +310,31 @@ echo ---------------------------------------------------------------------
 echo "Preparing kws data files in ${dataset_dir} on" `date`
 echo ---------------------------------------------------------------------
 lang=data/lang
-if ! $skip_kws  ; then
-  if  $extra_kws ; then
-    L1_lex=data/local/lexiconp.txt
-    . ./local/datasets/extra_kws.sh || exit 1
-  fi
-  if  $vocab_kws ; then
-    . ./local/datasets/vocab_kws.sh || exit 1
-  fi
-  if [ ! -f data/lang.phn/G.fst ] ; then
-    ./local/syllab/run_phones.sh --stage -2 ${dataset_dir}
-  else
-    ./local/syllab/run_phones.sh ${dataset_dir}
-  fi
+if [ ! -f data/dev10h.pem/.done.kws.dev ] ; then
+  if ! $skip_kws  ; then
+    if  $extra_kws ; then
+      L1_lex=data/local/lexiconp.txt
+      . ./local/datasets/extra_kws.sh || exit 1
+    fi
+    if  $vocab_kws ; then
+      . ./local/datasets/vocab_kws.sh || exit 1
+    fi
+    if [ ! -f data/lang.phn/G.fst ] ; then
+      ./local/syllab/run_phones.sh --stage -2 ${dataset_dir}
+    else
+      ./local/syllab/run_phones.sh ${dataset_dir}
+    fi
 
-  if [ ! -f data/lang.syll/G.fst ] ; then
-    ./local/syllab/run_syllabs.sh --stage -2  ${dataset_dir}
-  else
-    ./local/syllab/run_syllabs.sh ${dataset_dir}
-  fi
+    if [ ! -f data/lang.syll/G.fst ] ; then
+      ./local/syllab/run_syllabs.sh --stage -2  ${dataset_dir}
+    else
+      ./local/syllab/run_syllabs.sh ${dataset_dir}
+    fi
 
-  ./local/search/run_search.sh --dir ${dataset_dir##*/}
-  ./local/search/run_phn_search.sh --dir ${dataset_dir##*/}
-  ./local/search/run_syll_search.sh --dir ${dataset_dir##*/}
+    ./local/search/run_search.sh --dir ${dataset_dir##*/}
+    ./local/search/run_phn_search.sh --dir ${dataset_dir##*/}
+    ./local/search/run_syll_search.sh --dir ${dataset_dir##*/}
+  fi
 fi
 
 if $data_only ; then
@@ -430,6 +432,9 @@ if [ -f exp/nnet3/lstm_bidirectional_sp/final.mdl ]; then
   decode=exp/nnet3/lstm_bidirectional_sp/decode_${dataset_id}
   rnn_opts=" --extra-left-context 40 --extra-right-context 40  --frames-per-chunk 20 "
   decode_script=steps/nnet3/decode.sh
+  my_nj_backup=$my_nj
+  echo "Modifying the number of jobs as this is an RNN and decoding can be extremely slow."
+  my_nj=`cat ${dataset_dir}_hires/spk2utt|wc -l`
   if [ ! -f $decode/.done ]; then
     mkdir -p $decode
     $decode_script --nj $my_nj --cmd "$decode_cmd" $rnn_opts \
@@ -446,6 +451,8 @@ if [ -f exp/nnet3/lstm_bidirectional_sp/final.mdl ]; then
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/langp_test $decode
+
+  my_nj=$my_nj_backup
 fi
 
 if [ -f exp/nnet3/lstm_realigned_bidirectional_sp/final.mdl ]; then
@@ -533,6 +540,7 @@ if [ -f exp/$chain_model/final.mdl ]; then
     touch exp/nnet3$parent_dir_suffix/ivectors_${dataset_id}/.done
   fi
 
+  my_nj_backup=$my_nj
   rnn_opts=
   if [ "$is_rnn" == "true" ]; then
     rnn_opts=" --extra-left-context $extra_left_context --extra-right-context $extra_right_context  --frames-per-chunk $frames_per_chunk "
@@ -558,6 +566,7 @@ if [ -f exp/$chain_model/final.mdl ]; then
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_chain_extra_opts[@]}" \
     ${dataset_dir} data/langp_test $decode
+  my_nj=$my_nj_backup
 else
   echo "no chain model exp/$chain_model"
 fi

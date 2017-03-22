@@ -148,20 +148,10 @@ cp $input_lexicon $toplevel_dir/input_lexicon.txt  # just to have a record of wh
 
 loc=`which ngram-count`;
 if [ -z $loc ]; then
-  if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
-    sdir=`pwd`/../../../tools/srilm/bin/i686-m64
-  else
-    sdir=`pwd`/../../../tools/srilm/bin/i686
-  fi
-  if [ -f $sdir/ngram-count ]; then
-    echo Using SRILM tools from $sdir
-    export PATH=$PATH:$sdir
-  else
-    echo You appear to not have SRILM tools installed, either on your path,
-    echo or installed in $sdir.  See tools/install_srilm.sh for installation
-    echo instructions.
-    exit 1
-  fi
+  echo You appear to not have SRILM tools installed, either on your path,
+  echo or installed in $sdir.  See tools/install_srilm.sh for installation
+  echo instructions.
+  exit 1
 fi
 
 
@@ -231,10 +221,9 @@ if [ $stage -le -3 ]; then
 
   echo "$0: using SRILM to train syllable LM"
 
-  ngram-count -lm $dir/3gram.kn022.gz -kndiscount1 -gt1min 0 -kndiscount2 -gt2min 2 -kndiscount3 -gt3min 2 -order 3 -text $dir/syllable_text.txt -sort
-
+  ngram-count -lm $dir/3gram.me.gz -maxent -maxent-convert-to-arpa  -kndiscount1 -gt1min 0 -kndiscount2 -gt2min 2 -kndiscount3 -gt3min 2 -order 3 -text $dir/syllable_text.txt -sort
   rm $dir/lm.gz 2>/dev/null
-  ln -s 3gram.kn022.gz $dir/lm.gz
+  ln -s 3gram.me.gz $dir/lm.gz
 fi
 
 

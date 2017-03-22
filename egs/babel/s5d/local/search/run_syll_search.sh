@@ -30,9 +30,9 @@ datatype=${dir#*.}
 
 lang=data/lang.syll
 if [ "$dir" == "$dataset" ]; then
-  data=data/${dataset}.syll.${datatype}
-else
   data=data/${dataset}.syll
+else
+  data=data/${dataset}.syll.${datatype}
 fi
 
 set +o nounset
