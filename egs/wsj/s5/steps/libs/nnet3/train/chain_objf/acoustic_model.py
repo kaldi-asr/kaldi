@@ -130,6 +130,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      l2_regularize, xent_regularize, leaky_hmm_coefficient,
                      momentum,
                      backstitch_training_scale, backstitch_training_interval,
+                     backstitch_training_epsilon,
                      max_param_change,
                      shuffle_buffer_size, num_chunk_per_minibatch_str,
                      frame_subsampling_factor,
@@ -179,6 +180,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                     --print-interval=10 --momentum={momentum} \
                     --backstitch-training-scale={backstitch_training_scale} \
                     --backstitch-training-interval={backstitch_training_interval} \
+                    --backstitch-training-epsilon={backstitch_training_epsilon} \
                     --max-param-change={max_param_change} \
                     "{raw_model}" {dir}/den.fst \
                     "ark,bg:nnet3-chain-copy-egs \
@@ -237,6 +239,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         leaky_hmm_coefficient,
                         momentum,
                         backstitch_training_scale, backstitch_training_interval,
+                        backstitch_training_epsilon,
                         max_param_change, shuffle_buffer_size,
                         frame_subsampling_factor,
                         run_opts, dropout_edit_string="",
@@ -347,6 +350,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      momentum=momentum,
                      backstitch_training_scale=backstitch_training_scale,
                      backstitch_training_interval=backstitch_training_interval,
+                     backstitch_training_epsilon=backstitch_training_epsilon,
                      max_param_change=cur_max_param_change,
                      shuffle_buffer_size=shuffle_buffer_size,
                      num_chunk_per_minibatch_str=cur_num_chunk_per_minibatch_str,
