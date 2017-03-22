@@ -219,16 +219,29 @@ bool ConvertStringToReal(const std::string &str,
     return true;
 #endif  // defined(_MSC_VER)
 
-  // http://stackoverflow.com/questions/3825392/string-to-float-conversion
   std::istringstream i(str);
 
   if (!(i >> *out)) {
-    // Number conversion failed
-    return false;
+    // Number conversion failed.
+    // I know it's not a numeric value.
+    // These lines are here just do check if str is nan or inf
+    const char *this_str = str.c_str();
+    char *end = NULL;
+    errno = 0;
+
+    double d = KALDI_STRTOD(this_str, &end);
+
+    if (end != this_str)
+      while (isspace(*end)) end++;
+    if (end == this_str || *end != '\0' || errno != 0)
+      return false;
+
+    *out = d;
+    return true;
   }
 
-  // if it is not the end of the stream, we
-  // must check if there is only spaces
+  // if istringstream was successfully converted to a number, we
+  // need to garantee that there is not any other token in str
   if (i.tellg() != -1){
     std::string rem;
     i >> rem;
@@ -254,12 +267,26 @@ bool ConvertStringToReal(const std::string &str,
   std::istringstream i(str);
 
   if (!(i >> *out)) {
-    // Number conversion failed
-    return false;
+    // Number conversion failed.
+    // I know it's not a numeric value.
+    // These lines are here just do check if str is nan or inf
+    const char *this_str = str.c_str();
+    char *end = NULL;
+    errno = 0;
+
+    float d = KALDI_STRTOF(this_str, &end);
+
+    if (end != this_str)
+      while (isspace(*end)) end++;
+    if (end == this_str || *end != '\0' || errno != 0)
+      return false;
+
+    *out = d;
+    return true;
   }
 
-  // if it is not the end of the stream, we
-  // must check if there is only spaces
+  // if istringstream was successfully converted to a number, we
+  // need to garantee that there is not any other token in str
   if (i.tellg() != -1){
     std::string rem;
     i >> rem;
