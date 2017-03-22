@@ -240,6 +240,8 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &command_type_int);
     command_type = static_cast<CommandType>(command_type_int);
   } else {
+    // this branch is slow but we don't care much, as we'd normally write in
+    // binary format.
     std::string command_type_str;
     getline(is, command_type_str);
     if (command_type_str == "kAllocMatrixZeroed") {
@@ -284,6 +286,8 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
       command_type = kProvideOutput;
     } else if (command_type_str == "kNoOperation") {
       command_type = kNoOperation;
+    } else if (command_type_str == "kNoOperationPermanent") {
+      command_type = kNoOperationPermanent;
     } else if (command_type_str == "kNoOperationMarker") {
       command_type = kNoOperationMarker;
     } else if (command_type_str == "kNoOperationLabel") {
@@ -379,6 +383,9 @@ void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
         break;
       case kNoOperation:
         os << "kNoOperation\n";
+        break;
+      case kNoOperationPermanent:
+        os << "kNoOperationPermanent\n";
         break;
       case kNoOperationMarker:
         os << "kNoOperationMarker\n";
@@ -599,7 +606,11 @@ static void PrintCommand(std::ostream &os,
       const std::vector<std::pair<int32, int32> > &pairs =
            computation.indexes_ranges[c.arg3];
       for (size_t i = 0; i < pairs.size(); i++) {
-        os << pairs[i].first << ":" << (pairs[i].second - 1);
+        if (pairs[i].first == -1) {
+          os << "null";
+        } else {
+          os << pairs[i].first << ":" << (pairs[i].second - 1);
+        }
         if (i + 1 < pairs.size()) os << ",";
       }
       os << "])\n";
@@ -615,6 +626,9 @@ static void PrintCommand(std::ostream &os,
       break;
     case kNoOperation:
       os << "[no-op]\n";
+      break;
+    case kNoOperationPermanent:
+      os << "[no-op-permanent]\n";
       break;
     case kNoOperationMarker:
       os << "# computation segment separator [e.g., begin backward commands]\n";

@@ -380,6 +380,7 @@ void ComputeCommandAttributes(
         break;
       }
       case kNoOperation:
+      case kNoOperationPermanent:
       case kNoOperationMarker:
       case kNoOperationLabel:
       case kGotoLabel:
@@ -925,6 +926,7 @@ void ComputationChecker::CheckComputationIndexes() const {
         break;
       }
       case kNoOperation:
+      case kNoOperationPermanent:
       case kNoOperationMarker:
       case kNoOperationLabel:
         break;

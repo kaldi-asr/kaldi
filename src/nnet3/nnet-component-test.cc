@@ -524,8 +524,8 @@ int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
   TestStringsApproxEqual();
-  kaldi::int32 loop = 0;
 #if HAVE_CUDA == 1
+  kaldi::int32 loop = 0;
   for (loop = 0; loop < 2; loop++) {
     //CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)

@@ -188,6 +188,10 @@ class Compiler {
   // to an input node.
   void AddForwardStepInput(int32 step, NnetComputation *computation) const;
 
+  // Returns true if step 'step' is an input step.   If step >= steps_.size(),
+  // returns false.
+  bool IsInputStep(int32 step) const;
+
 
   // Called from DoForwardComputation, handles the case where the step
   // corresponds to type kDescriptor

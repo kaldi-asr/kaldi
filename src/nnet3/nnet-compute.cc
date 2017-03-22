@@ -279,7 +279,8 @@ void NnetComputer::ExecuteCommand() {
         dest.AddRowRanges(src, pairs);
         break;
       }
-      case kNoOperation: case kNoOperationMarker: case kNoOperationLabel:
+      case kNoOperation: case kNoOperationPermanent: case kNoOperationMarker:
+      case kNoOperationLabel:
         break;
       case kGotoLabel:
         KALDI_ASSERT(computation_.commands[c.arg1].command_type == kNoOperationLabel);
@@ -368,8 +369,11 @@ void NnetComputer::Run() {
   const std::vector<NnetComputation::Command> &c = computation_.commands;
   int32 num_commands = c.size();
 
-  if (program_counter_ >= num_commands)
-    KALDI_ERR << "Running computation that has already finished.";
+  if (program_counter_ >= num_commands) {
+    computation_.Print(std::cerr, nnet_);
+    KALDI_ERR << "Running computation that has finished: program-counter="
+              << program_counter_;
+  }
   CheckNoPendingIo();
 
   CommandDebugInfo info;
