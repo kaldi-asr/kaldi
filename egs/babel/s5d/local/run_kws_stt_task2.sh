@@ -71,14 +71,26 @@ fi
 if ! $skip_kws ; then
   [ ! -f $data_dir/extra_kws_tasks ] && exit 0
 
-  syll_data_dir=$(echo $data_dir | perl -pe 's/\.(pem|seg)$/.syll.$1/g' )
+  idata=$(basename $data_dir)
+  idir=$(dirname $data_dir)
+
+  idataset=${idata%%.*}
+  idatatype=${idata#*.}
+
+  if [ "$idata" == "$idataset" ]; then
+    syll_data_dir=$idir/${idataset}.syll
+    phn_data_dir=$idir/${idataset}.phn
+  else
+    syll_data_dir=$idir/${idataset}.syll.${idatatype}
+    phn_data_dir=$idir/${idataset}.phn.${idatatype}
+  fi
+
   if [ -d ${syll_data_dir} ] && [ ! -f ${decode_dir}/syllabs/.done ] ; then
     local/syllab/lattice_word2syll.sh --cmd "$cmd --mem 8G" \
       $data_dir $lang_dir ${lang_dir}.syll $decode_dir ${decode_dir}/syllabs
     touch ${decode_dir}/syllabs/.done
   fi
 
-  phn_data_dir=$(echo $data_dir | perl -pe 's/\.(pem|seg)$/.phn.$1/g' )
   if [ -d ${phn_data_dir} ] && [ ! -f ${decode_dir}/phones/.done ] ; then
     local/syllab/lattice_word2syll.sh --cmd "$cmd --mem 8G" \
       $data_dir $lang_dir ${lang_dir}.phn $decode_dir ${decode_dir}/phones

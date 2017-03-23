@@ -67,8 +67,11 @@ if [ $stage -le 2 ] ; then
     #--   data/dev10h.pem/${set}_oov_kws/tmp/L1.lex data/dev10h.pem/kwset_${set}/tmp.3
     if [ -d data/local/extend ]; then
       echo "Detected extended lexicon system..."
-      local/search/compile_proxy_keywords.sh --cmd "$decode_cmd --mem 12G" --filter "OOV=1&&Characters>2"\
-        --beam 5 --nbest 50 --nj 64 --phone-beam 5 --phone-nbest 300  --confusion-matrix exp/conf_matrix/confusions.txt  \
+      local/search/compile_proxy_keywords.sh --filter "OOV=1&&Characters>2"\
+        --cmd "$decode_cmd --mem 24G --max-jobs-run 64" --nj 128 \
+        --beam $extlex_proxy_beam --nbest $extlex_proxy_nbest \
+        --phone-beam $extlex_proxy_phone_beam --phone-nbest $extlex_proxy_phone_nbest\
+        --confusion-matrix exp/conf_matrix/confusions.txt  \
         data/$dir/kwset_${set} data/lang data/local/lexiconp.txt exp/g2p \
         data/$dir/kwset_${set}/tmp.4
     else

@@ -29,7 +29,11 @@ dataset=${dir%%.*}
 datatype=${dir#*.}
 
 lang=data/lang.phn
-data=data/${dataset}.phn.${datatype}
+if [ "$dir" == "$dataset" ]; then
+  data=data/${dataset}.phn
+else
+  data=data/${dataset}.phn.${datatype}
+fi
 
 set +o nounset
 eval kwsets=${!dataset_kwlists[@]}
@@ -76,7 +80,7 @@ if [ $stage -le 2 ] ; then
       ${data}/kwset_${set}/tmp.4
 
     # and finally, replace the categories by the word-level categories
-    cp data/$dir/kwset_${set}/categories $data/kwset_${set}/categories
+    cp data/${dir}/kwset_${set}/categories $data/kwset_${set}/categories
   done
 fi
 

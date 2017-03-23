@@ -4,15 +4,16 @@
 
 # Begin configuration section.
 language="201-haitian"
+corpus=/export/babel/data/
+indus=/export/babel/data/scoring/IndusDB
 # End configuration section
 . ./utils/parse_options.sh
 
 set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
-corpus=/export/babel/data/$language
+corpus=$corpus/$language
 lists=./conf/lists/$language/
-indus=/export/babel/data/scoring/IndusDB
 
 corpusdir=$(find $corpus -maxdepth 1 -name "*-build" -type d) || exit 1
 [ -z "$corpusdir" ] && "Corpus directory for $language not found!" && exit 1
