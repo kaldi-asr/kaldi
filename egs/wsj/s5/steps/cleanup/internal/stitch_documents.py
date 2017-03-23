@@ -48,7 +48,7 @@ def _get_args():
                         document-id, obtained by stitching input documents
                         corresponding to the query.""")
     parser.add_argument("--check-sorted-docs-per-query", type=str,
-                        choices=["true", "false"], default="true",
+                        choices=["true", "false"], default="false",
                         help="If specified, the script will expect "
                         "the document ids in --query2docs to be "
                         "sorted.")
@@ -89,7 +89,11 @@ def _run(args):
 
                 if args.check_sorted_docs_per_query:
                     if prev_doc_id != '':
-                        assert doc_id > prev_doc_id
+                        if doc_id <= prev_doc_id:
+                            raise RuntimeError(
+                                "Documents not sorted and "
+                                "--check-sorted-docs-per-query was True; "
+                                "{0} <= {1}".format(doc_id, prev_doc_id))
                     prev_doc_id = doc_id
 
                 doc = documents[doc_id]

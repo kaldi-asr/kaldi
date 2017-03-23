@@ -1094,7 +1094,10 @@ class Segment(object):
 
         _global_logger.debug("Before merging: %s", self)
 
-        assert not self.stats.compare(other.stats), "%s %s" % (self, other)
+        assert (not self.stats.compare(other.stats)
+                or self.start_time() != other.start_time()
+                or self.end_time() != other.end_time()
+                ), "%s %s" % (self, other)
         self.stats.combine(other.stats)
 
         _global_logger.debug("Other segment: %s", other)
@@ -1700,7 +1703,7 @@ def get_segments_for_utterance(split_lines_of_utt, args, utterance_stats):
 
     new_segments = []
     for s in segments:
-        if s.contains_at_least_one_scored_non_oov_word():
+        if s.contains_atleast_one_scored_non_oov_word():
             new_segments.append(s)
         else:
             s.debug_str += '[deleted-because-no-scored-non-oov-words]'

@@ -82,7 +82,7 @@ if [ $stage -le 1 ]; then
   echo "$0: Building biased-language-model decoding graphs..."
   steps/cleanup/make_biased_lm_graphs.sh $graph_opts \
     --nj $nj --cmd "$cmd" \
-     $data $lang $dir
+     $data $lang $dir $dir/graphs
 fi
 
 if [ $stage -le 2 ]; then
@@ -100,7 +100,7 @@ if [ $stage -le 2 ]; then
   steps/cleanup/decode_segmentation.sh \
       --beam 15.0 --nj $nj --cmd "$cmd --mem 4G" $transform_opt \
       --skip-scoring true --allow-partial false \
-       $dir $data $dir/lats
+       $dir/graphs $data $dir/lats
 
   # the following is for diagnostics, e.g. it will give us the lattice depth.
   steps/diagnostic/analyze_lats.sh --cmd "$cmd" $lang $dir/lats
@@ -195,12 +195,12 @@ if [ $stage -le 8 ]; then
 fi
 
 if [ $stage -le 9 ]; then
-  utils/data/get_utt2num_frames.sh $data
-  cat $dir/segments | cut -d ' ' -f 1,2 | \
-    utils/apply_map.pl -f 2 $data/utt2num_frames > $data_out/utt2max_frames
-  utils/data/get_subsegment_feats.sh $data/feats.scp 0.01 0.015 $dir/segments | \
-    utils/data/fix_subsegmented_feats.pl $data_out/utt2max_frames > \
-    $data_out/feats.scp
+  # utils/data/get_utt2num_frames.sh $data
+  # cat $dir/segments | cut -d ' ' -f 1,2 | \
+  #   utils/apply_map.pl -f 2 $data/utt2num_frames > $data_out/utt2max_frames
+  # utils/data/get_subsegmented_feats.sh $data/feats.scp 0.01 0.015 $dir/segments | \
+  #   utils/data/fix_subsegmented_feats.pl $data_out/utt2max_frames > \
+  #   $data_out/feats.scp
   
   echo "$0: recomputing CMVN stats for the new data"
   # Caution: this script puts the CMVN stats in $data_out/data,

@@ -27,7 +27,17 @@ class IDFStats(object):
 
     def get_inverse_document_frequency(self, term, weighting_scheme="log"):
         """Get IDF for a term.
-        We use add-1 smoothing to avoid zero infinities.
+
+        Weighting scheme is the function applied on the raw
+        inverse-document frequencies n(t) = |d in D: t in d|
+        when computing idf(t,d).
+        Let N = Total number of documents.
+
+        IDF weighting schemes:-
+        unary  : idf(t,D) = 1
+        log    : idf(t,D) = log (N / (1 + n(t)))
+        log-smoothed : idf(t,D) = log(1 + N / n(t))
+        probabilistic: idf(t,D) = log((N - n(t)) / n(t))
         """
         n_t = float(self.num_docs_for_term.get(term, 0))
         num_terms = len(self.num_docs_for_term)
@@ -38,12 +48,11 @@ class IDFStats(object):
         if weighting_scheme == "unary":
             return 1
         if weighting_scheme == "log":
-            return math.log(float(num_terms + self.num_docs) / (1.0 + n_t))
+            return math.log(float(self.num_docs) / (1.0 + n_t))
         if weighting_scheme == "log-smoothed":
-            return math.log(1.0
-                            + float(num_terms + self.num_docs) / (1.0 + n_t))
+            return math.log(1.0 + float(self.num_docs) / (1.0 + n_t))
         if weighting_scheme == "probabilitic":
-            return math.log((self.num_docs - n_t + num_terms + 1)
+            return math.log((self.num_docs - n_t - 1)
                             / (1.0 + n_t))
 
     def accumulate(self, term):
@@ -61,7 +70,7 @@ class IDFStats(object):
         for term, num in self.num_docs_for_term.iteritems():
             if num == 0:
                 continue
-            assert isinstance(term) == tuple
+            assert isinstance(term, tuple)
             print ("{term} {n}".format(term=" ".join(term), n=num),
                    file=file_handle)
 
@@ -373,7 +382,7 @@ def write_tfidf_from_stats(
             normalization_factor=tf_normalization_factor)
 
         idf_value = idf_stats.get_inverse_document_frequency(
-            doc, weighting_scheme=idf_weighting_scheme)
+            term, weighting_scheme=idf_weighting_scheme)
 
         print("{order} {term} {doc} {tfidf}".format(
             order=len(term), term=" ".join(term),

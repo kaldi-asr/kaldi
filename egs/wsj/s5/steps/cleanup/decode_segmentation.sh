@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright 2014  Guoguo Chen, 2015 GoVivace Inc. (Nagendra Goel)
+#           2017  Vimal Manohar
 # Apache 2.0
 
 set -e 
@@ -86,6 +87,16 @@ if [ -z "$model" ]; then # if --model <mdl> was not specified on the command lin
   else model=$srcdir/$iter.mdl; fi
 fi
 
+if [ $(basename $model) != final.alimdl ] ; then
+  # Do not use the $srcpath -- look at the path where the model is
+  if [ -f $(dirname $model)/final.alimdl ] && [ -z "$transform_dir" ]; then
+    echo -e '\n\n'
+    echo $0 'WARNING: Running speaker independent system decoding using a SAT model!'
+    echo $0 'WARNING: This is OK if you know what you are doing...'
+    echo -e '\n\n'
+  fi
+fi
+
 for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $model $graphdir/HCLG.fsts.scp; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
@@ -101,7 +112,8 @@ fi
 
 
 mkdir -p $dir/split_fsts
-utils/filter_scps.pl --no-warn -f 1 JOB=1:$nj $sdata/JOB/feats.scp $graphdir/HCLG.fsts.scp $dir/split_fsts/HCLG.fsts.JOB.scp
+utils/filter_scps.pl --no-warn -f 1 JOB=1:$nj \
+  $sdata/JOB/feats.scp $graphdir/HCLG.fsts.scp $dir/split_fsts/HCLG.fsts.JOB.scp
 HCLG=scp:$dir/split_fsts/HCLG.fsts.JOB.scp
 
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
@@ -151,7 +163,7 @@ fi
 if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \
     echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-  steps/score_kaldi.sh --cmd "$cmd" $scoring_opts $data $graphdir $dir ||
+  local/score.sh --cmd "$cmd" $scoring_opts $data $graphdir $dir ||
     { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
 fi
 

@@ -1,16 +1,23 @@
 #! /usr/bin/env python
 
+# Copyright 2016    Vimal Manohar
+# Apache 2.0.
+
+"""This module aligns a hypothesis (CTM or text) with a reference to
+find the best matching sub-sequence in the reference for the hypothesis.
+"""
+
 from __future__ import print_function
 import argparse
 import logging
 import sys
 
 sys.path.insert(0, 'steps')
-import libs.exceptions as kaldi_exceptions
+import libs.common as common_lib
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
-formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)s - "
+formatter = logging.Formatter("%(asctime)s [%(pathname)s:%(lineno)s - "
                               "%(funcName)s - %(levelname)s ] %(message)s")
 handler.setFormatter(formatter)
 logger.setLevel(logging.DEBUG)
@@ -48,6 +55,11 @@ def _get_args():
     parser.add_argument("--debug-only", type=str, default="false",
                         choices=["true", "false"],
                         help="Run test functions only")
+    parser.add_argument("--align-full-hyp", type=str,
+                        action=common_lib.StrToBoolAction,
+                        choices=["true", "false"], default=True,
+                        help="Align full hypothesis i.e. trackback from "
+                        "the end to get the alignment.")
     parser.add_argument("--ref", dest='ref_in_file',
                         type=argparse.FileType('r'), required=True,
                         help="Reference text file")
@@ -61,7 +73,7 @@ def _get_args():
     args = parser.parse_args()
 
     if args.hyp_format == "CTM" and args.reco2file_and_channel is None:
-        raise kaldi_exceptions.ArgumentError(
+        raise RuntimeError(
             "--reco2file-and-channel must be provided for "
             "hyp-format=CTM")
 
@@ -82,9 +94,9 @@ def read_text(text_file):
     for line in text_file:
         parts = line.strip().split()
         if len(parts) <= 2:
-            raise kaldi_exceptions.InputError(
-                "Did not get enough columns.",
-                line=line, input_file=text_file.name)
+            raise RuntimeError(
+                "Did not get enough columns; line {0} in {1}"
+                "".format(line, text_file.name))
         yield parts[0], parts[1:]
     text_file.close()
 
@@ -127,7 +139,7 @@ def read_ctm(ctm_file, file_and_channel2reco=None):
 
 def smith_waterman_alignment(ref, hyp, similarity_score_function,
                              del_score, ins_score,
-                             eps_symbol="<eps>"):
+                             eps_symbol="<eps>", align_full_hyp=True):
     """Does Smith-Waterman alignment of reference sequence and hypothesis
     sequence.
     This is a special case of the Smith-Waterman alignment that assumes that
@@ -140,98 +152,135 @@ def smith_waterman_alignment(ref, hyp, similarity_score_function,
 
     output = []
 
-    M = len(ref)
-    N = len(hyp)
+    ref_len = len(ref)
+    hyp_len = len(hyp)
 
-    bp = [[] for x in range(M+1)]
-    H = [[] for x in range(M+1)]
+    bp = [[] for x in range(ref_len+1)]
 
-    for m in range(M+1):
-        H[m] = [0 for x in range(N+1)]
-        bp[m] = [(0, 0) for x in range(N+1)]
+    # Score matrix of size (ref_len + 1) x (hyp_len + 1)
+    # The index m, n in this matrix corresponds to the score
+    # of the best matching sub-sequence pair between reference and hypothesis
+    # ending with the reference word ref[m-1] and hypothesis word hyp[n-1].
+    # If align_full_hyp is True, then the hypothesis sub-sequence is from
+    # the 0th word i.e. hyp[0].
+    H = [[] for x in range(ref_len+1)]
 
-    max_score = 0
+    for ref_index in range(ref_len+1):
+        if align_full_hyp:
+            H[ref_index] = [-(hyp_len+2) for x in range(hyp_len+1)]
+            H[ref_index][0] = 0
+        else:
+            H[ref_index] = [0 for x in range(hyp_len+1)]
+        bp[ref_index] = [(0, 0) for x in range(hyp_len+1)]
+
+        if align_full_hyp and ref_index == 0:
+            for hyp_index in range(1, hyp_len+1):
+                H[0][hyp_index] = H[0][hyp_index-1] + ins_score
+                bp[ref_index][hyp_index] = (ref_index, hyp_index-1)
+                logger.debug(
+                    "({0},{1}) -> ({2},{3}): {4}"
+                    "".format(ref_index, hyp_index-1, ref_index, hyp_index,
+                              H[ref_index][hyp_index]))
+
+    max_score = -float("inf")
     max_score_element = (0, 0)
 
-    for m in range(1, M+1):     # Reference
-        for n in range(1, N+1):     # Hypothesis
-            sub_or_ok = (H[m-1][n-1]
-                         + similarity_score_function(ref[m-1], hyp[n-1]))
+    for ref_index in range(1, ref_len+1):     # Reference
+        for hyp_index in range(1, hyp_len+1):     # Hypothesis
+            sub_or_ok = (H[ref_index-1][hyp_index-1]
+                         + similarity_score_function(ref[ref_index-1],
+                                                     hyp[hyp_index-1]))
 
-            if sub_or_ok > 0:
-                H[m][n] = sub_or_ok
-                bp[m][n] = (m-1, n-1)
+            if ((not align_full_hyp and sub_or_ok > 0)
+                    or (align_full_hyp
+                        and sub_or_ok >= H[ref_index][hyp_index])):
+                H[ref_index][hyp_index] = sub_or_ok
+                bp[ref_index][hyp_index] = (ref_index-1, hyp_index-1)
                 logger.debug(
-                    "({0},{1}) -> ({2},{3}): {4} ({5},{6})".format(
-                        m-1, n-1, m, n, H[m][n], ref[m-1], hyp[n-1]))
+                    "({0},{1}) -> ({2},{3}): {4} ({5},{6})"
+                    "".format(ref_index-1, hyp_index-1, ref_index, hyp_index,
+                              H[ref_index][hyp_index],
+                              ref[ref_index-1], hyp[hyp_index-1]))
 
-            if H[m-1][n] + del_score > H[m][n]:
-                H[m][n] = H[m-1][n] + del_score
-                bp[m][n] = (m-1, n)
+            if H[ref_index-1][hyp_index] + del_score > H[ref_index][hyp_index]:
+                H[ref_index][hyp_index] = H[ref_index-1][hyp_index] + del_score
+                bp[ref_index][hyp_index] = (ref_index-1, hyp_index)
                 logger.debug(
-                    "({0},{1}) -> ({2},{3}): {4}".format(m-1, n, m, n,
-                                                         H[m][n]))
+                    "({0},{1}) -> ({2},{3}): {4}"
+                    "".format(ref_index-1, hyp_index, ref_index, hyp_index,
+                              H[ref_index][hyp_index]))
 
-            if H[m][n-1] + ins_score > H[m][n]:
-                H[m][n] = H[m][n-1] + ins_score
-                bp[m][n] = (m, n-1)
+            if H[ref_index][hyp_index-1] + ins_score > H[ref_index][hyp_index]:
+                H[ref_index][hyp_index] = H[ref_index][hyp_index-1] + ins_score
+                bp[ref_index][hyp_index] = (ref_index, hyp_index-1)
                 logger.debug(
-                    "({0},{1}) -> ({2},{3}): {4}".format(m, n-1, m, n,
-                                                         H[m][n]))
+                    "({0},{1}) -> ({2},{3}): {4}"
+                    "".format(ref_index, hyp_index-1, ref_index, hyp_index,
+                              H[ref_index][hyp_index]))
 
-            #if n == N and H[m][n] >= max_score:
-            if H[m][n] >= max_score:
-                max_score = H[m][n]
-                max_score_element = (m, n)
+            #if hyp_index == hyp_len and H[ref_index][hyp_index] >= max_score:
+            if ((not align_full_hyp or hyp_index == hyp_len)
+                    and H[ref_index][hyp_index] >= max_score):
+                max_score = H[ref_index][hyp_index]
+                max_score_element = (ref_index, hyp_index)
 
-    m, n = max_score_element
+    ref_index, hyp_index = max_score_element
     score = max_score
-    logger.debug("Alignment score: %s for (%d, %d)", score, m, n)
+    logger.debug("Alignment score: %s for (%d, %d)",
+                 score, ref_index, hyp_index)
 
-    while score >= 0:
+    while ((not align_full_hyp and score >= 0)
+           or (align_full_hyp and hyp_index > 0)):
         try:
-            prev_m, prev_n = bp[m][n]
+            prev_ref_index, prev_hyp_index = bp[ref_index][hyp_index]
 
-            if (prev_m, prev_n) == (m, n) or (prev_m, prev_n) == (0, 0):
-                m, n = (prev_m, prev_n)
-                score = H[m][n]
+            if ((prev_ref_index, prev_hyp_index) == (ref_index, hyp_index)
+                    or (prev_ref_index, prev_hyp_index) == (0, 0)):
+                ref_index, hyp_index = (prev_ref_index, prev_hyp_index)
+                score = H[ref_index][hyp_index]
                 break
 
-            if (m == prev_m + 1 and n == prev_n + 1):
+            if (ref_index == prev_ref_index + 1
+                    and hyp_index == prev_hyp_index + 1):
                 # Substitution or correct
-                output.append((ref[m-1] if m > 0 else eps_symbol,
-                               hyp[n-1] if n > 0 else eps_symbol,
-                               prev_m, prev_n, m, n))
-            elif (prev_n == n):
+                output.append(
+                    (ref[ref_index-1] if ref_index > 0 else eps_symbol,
+                     hyp[hyp_index-1] if hyp_index > 0 else eps_symbol,
+                     prev_ref_index, prev_hyp_index, ref_index, hyp_index))
+            elif (prev_hyp_index == hyp_index):
                 # Deletion
-                assert prev_m == m - 1
-                output.append((ref[m-1] if m > 0 else eps_symbol,
-                               eps_symbol,
-                               prev_m, prev_n, m, n))
-            elif (prev_m == m):
+                assert prev_ref_index == ref_index - 1
+                output.append(
+                    (ref[ref_index-1] if ref_index > 0 else eps_symbol,
+                     eps_symbol,
+                     prev_ref_index, prev_hyp_index, ref_index, hyp_index))
+            elif (prev_ref_index == ref_index):
                 # Insertion
-                assert prev_n == n - 1
-                output.append((eps_symbol,
-                               hyp[n-1] if n > 0 else eps_symbol,
-                               prev_m, prev_n, m, n))
+                assert prev_hyp_index == hyp_index - 1
+                output.append(
+                    (eps_symbol,
+                     hyp[hyp_index-1] if hyp_index > 0 else eps_symbol,
+                     prev_ref_index, prev_hyp_index, ref_index, hyp_index))
             else:
                 raise RuntimeError
 
-            m, n = (prev_m, prev_n)
-            score = H[m][n]
+            ref_index, hyp_index = (prev_ref_index, prev_hyp_index)
+            score = H[ref_index][hyp_index]
         except Exception:
             logger.error("Unexpected entry (%d,%d) -> (%d,%d), %s, %s",
-                         prev_m, prev_n, m, n, ref[prev_m], hyp[prev_n])
+                         prev_ref_index, prev_hyp_index, ref_index, hyp_index,
+                         ref[prev_ref_index], hyp[prev_hyp_index])
             raise RuntimeError("Unexpected result: Bug in code!!")
 
-    assert(score == 0)
+    assert (align_full_hyp or score == 0)
 
     output.reverse()
 
     if verbose_level > 2:
-        for m in range(M+1):
-            for n in range(N+1):
-                print ("{0} ".format(H[m][n]), end='', file=sys.stderr)
+        for ref_index in range(ref_len+1):
+            for hyp_index in range(hyp_len+1):
+                print ("{0} ".format(H[ref_index][hyp_index]), end='',
+                       file=sys.stderr)
             print ("", file=sys.stderr)
 
     logger.debug("Aligned output:")
@@ -395,7 +444,7 @@ def test_alignment():
 
     output, score = smith_waterman_alignment(
         ref, hyp, similarity_score_function=lambda x, y: 2 if (x == y) else -1,
-        del_score=-1, ins_score=-1, eps_symbol="-")
+        del_score=-1, ins_score=-1, eps_symbol="-", align_full_hyp=True)
 
     print_alignment("Alignment", output, eps_symbol="-",
                     out_file_handle=sys.stderr)
@@ -441,6 +490,7 @@ def _run(args):
                                                   file_and_channel2reco)}
 
     num_err = 0
+    num_done = 0
     for reco, ref_text in read_text(args.ref_in_file):
         try:
             if reco not in hyp_lines:
@@ -463,7 +513,8 @@ def _run(args):
             output, score = smith_waterman_alignment(
                 ref_text, hyp_array, eps_symbol=args.eps_symbol,
                 similarity_score_function=similarity_score_function,
-                del_score=del_score, ins_score=ins_score)
+                del_score=del_score, ins_score=ins_score,
+                align_full_hyp=args.align_full_hyp)
 
             if args.hyp_format == "CTM":
                 ctm_edits = get_ctm_edits(output, hyp_lines[reco],
@@ -479,6 +530,7 @@ def _run(args):
                 print_alignment(
                     reco, output, eps_symbol=args.eps_symbol,
                     out_file_handle=args.alignment_out_file)
+            num_done += 1
         except:
             logger.error("Alignment failed for recording {0} "
                          "with ref = {1} and hyp = {2}".format(
@@ -486,6 +538,10 @@ def _run(args):
                              " ".join(hyp_array)))
             raise
 
+    logger.info("Processed %d recordings; failed with %d", num_done, num_err)
+
+    if num_done == 0:
+        raise RuntimeError("Processed 0 recordings.")
 
 def main():
     args = _get_args()
