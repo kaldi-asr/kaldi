@@ -91,7 +91,7 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
 ###############################################################################
 # Segment long recordings using TF-IDF retrieval of reference text 
 # for uniformly segmented audio chunks based on Smith-Waterman alignment.
-# Use a model trained on train_si84 (tri2b)
+# Use a model trained on train_2k (tri1b)
 ###############################################################################
 bash -x steps/cleanup/segment_long_utterances.sh --cmd "$train_cmd" \
   --stage $segment_stage \
@@ -110,7 +110,7 @@ utils/fix_data_dir.sh data/train_reseg${affix}
 # used for segmentation. (tri2_reseg)
 ###############################################################################
 
-# Align tri2b system with reseg${affix} data
+# Align tri1b system with reseg${affix} data
 steps/align_si.sh  --nj 40 --cmd "$train_cmd" \
   data/train_reseg${affix} \
   data/lang_nosp exp/tri1b exp/tri1b_ali_reseg${affix}  || exit 1;
