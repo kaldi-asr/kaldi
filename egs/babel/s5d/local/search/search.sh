@@ -26,6 +26,7 @@ silence_word=  # specify this if you did to in kws_setup.sh, it's more accurate.
 strict=false
 duptime=0.6
 ntrue_scale=1.0
+frame_subsampling_factor=1
 nbest=-1
 max_silence_frames=50
 # End configuration section.

@@ -80,7 +80,7 @@ if [[ ! -f $lexicon || $lexicon -ot "$lexicon_file" ]]; then
 
   local/lexicon/make_unicode_lexicon.py --tag_percentage $tag_percentage --fmt $fmt \
     --nonspeech data/local/nonspeech.txt --extraspeech data/local/extraspeech.txt \
-    --verbose data/local/word_list.txt data/local/lexicon.txt
+    --verbose data/local/word_list.txt data/local/lexicon.txt data/local/
   local/prepare_unicode_lexicon.py --nonspeech data/local/nonspeech.txt \
     --extraspeech data/local/extraspeech.txt data/local/lexicon_table.txt data/local
   cp data/local/lexicon.txt data/local/filtered_lexicon.txt
