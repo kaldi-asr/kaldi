@@ -16,10 +16,6 @@
 # GMM Results for speaker-independent (SI) and speaker adaptive training (SAT) systems on dev and test sets
 # [will add these later].
 
-set -e
-set -o pipefail
-set -u
-
 stage=0
 cleanup_stage=0
 data=data/train
@@ -31,6 +27,11 @@ decode_num_threads=4
 
 . ./path.sh
 . ./cmd.sh
+
+set -e
+set -o pipefail
+set -u
+
 . utils/parse_options.sh
 
 cleaned_data=${data}_${cleanup_affix}
@@ -55,12 +56,16 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  # Test with the models trained on cleaned-up data.
+  # Test with the model trained on cleaned-up data.
   utils/mkgraph.sh data/lang_nosp_test ${cleaned_dir} ${cleaned_dir}/graph_nosp
 
-  for dset in eval98.pem; do
+  for dset in eval97.pem eval98.pem eval99_1.pem eval99_2.pem; do
+    this_nj=`cat data/$dset/spk2utt | wc -l`
+    if [ $this_nj -gt $decode_nj ]; then
+      this_nj=$decode_nj
+    fi
     steps/decode_fmllr.sh --nj $decode_nj --num-threads $decode_num_threads \
-       --cmd "$decode_cmd"  --num-threads 4 \
+       --cmd "$decode_cmd" \
        ${cleaned_dir}/graph_nosp data/${dset} ${cleaned_dir}/decode_nosp_${dset}
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang_nosp_test data/lang_nosp_test_rescore \
        data/${dset} ${cleaned_dir}/decode_nosp_${dset} ${cleaned_dir}/decode_nosp_${dset}_rescore
@@ -80,12 +85,16 @@ fi
 
 cleaned_dir=exp/tri4b_${cleanup_affix}
 if [ $stage -le 7 ]; then
-  # Test with the models trained on cleaned-up data.
+  # Test with the larger model trained on cleaned-up data.
   utils/mkgraph.sh data/lang_nosp_test ${cleaned_dir} ${cleaned_dir}/graph_nosp
 
-  for dset in eval98.pem; do
+  for dset in eval97.pem eval98.pem eval99_1.pem eval99_2.pem; do
+    this_nj=`cat data/$dset/spk2utt | wc -l`
+    if [ $this_nj -gt $decode_nj ]; then
+      this_nj=$decode_nj
+    fi
     steps/decode_fmllr.sh --nj $decode_nj --num-threads $decode_num_threads \
-       --cmd "$decode_cmd"  --num-threads 4 \
+       --cmd "$decode_cmd"  \
        ${cleaned_dir}/graph_nosp data/${dset} ${cleaned_dir}/decode_nosp_${dset}
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang_nosp_test data/lang_nosp_test_rescore \
        data/${dset} ${cleaned_dir}/decode_nosp_${dset} ${cleaned_dir}/decode_nosp_${dset}_rescore

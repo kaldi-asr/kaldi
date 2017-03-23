@@ -14,7 +14,6 @@ mfccdir=`pwd`/mfcc
 nj=40
 
 false && {
-
 # Prepare 1996 English Broadcast News Train (HUB4)
 local/data_prep/prepare_1996_bn_data.py --noise-word="<NOISE>" \
   --spoken-noise-word="<SPOKEN_NOISE>" \
@@ -78,7 +77,6 @@ for x in train dev96ue dev96pe eval96 eval96.pem eval97 eval97.pem eval98 eval98
   steps/compute_cmvn_stats.sh data/$x exp/make_mfcc $mfccdir
   utils/fix_data_dir.sh data/$x
 done
-}
 
 utils/subset_data_dir.sh --shortest data/train 1000 data/train_1kshort
 utils/subset_data_dir.sh data/train 2000 data/train_2k
@@ -110,7 +108,7 @@ steps/train_sat.sh --cmd "$train_cmd" 4200 40000 \
 utils/mkgraph.sh data/lang_nosp_test exp/tri3 exp/tri3/graph_nosp
 
 (
-for dset in eval96.pem eval97.pem; do
+for dset in eval97.pem; do
   this_nj=`cat data/$dset/spk2utt | wc -l`
   if [ $this_nj -gt 20 ]; then
     this_nj=20
@@ -131,8 +129,9 @@ steps/train_sat.sh --cmd "$train_cmd" 5000 100000 \
   data/train data/lang_nosp exp/tri3_ali exp/tri4
 
 utils/mkgraph.sh data/lang_nosp_test exp/tri4 exp/tri4/graph_nosp
+}
 
-for dset in eval96.pem eval97.pem; do
+for dset in eval97.pem; do
   this_nj=`cat data/$dset/spk2utt | wc -l`
   if [ $this_nj -gt 20 ]; then
     this_nj=20

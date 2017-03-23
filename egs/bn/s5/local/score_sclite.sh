@@ -8,6 +8,7 @@ min_lmwt=5
 max_lmwt=17
 iter=final
 word_ins_penalty=0.0,0.5,1.0
+resolve_ctm_overlaps=false
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -60,13 +61,30 @@ if [ $stage -le 0 ]; then
       lattice-1best ark:- ark:- \| \
       lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
       nbest-to-ctm $frame_shift_opt ark:- - \| \
-      utils/int2sym.pl -f 5 $lang/words.txt  \| \
-      utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
-      '>' $dir/score_LMWT_${wip}/$name.ctm || exit 1;
+      utils/int2sym.pl -f 5 $lang/words.txt '>' \
+      $dir/score_LMWT_${wip}/$name.utt_ctm || exit 1;
   done
 fi
 
+utils/data/get_reco2utt.sh $data
 if [ $stage -le 1 ]; then
+  for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+    if $resolve_ctm_overlaps; then
+      $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/resolve_ctm_overlaps.LMWT.${wip}.log \
+        steps/resolve_ctm_overlaps.py $data/segments $data/reco2utt \
+          $dir/score_LMWT_${wip}/$name.utt_ctm - \| \
+        utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
+        '>' $dir/score_LMWT_${wip}/$name.ctm || exit 1;
+    else
+      $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/convert_ctm.LMWT.${wip}.log \
+        cat $dir/score_LMWT_${wip}/$name.utt_ctm \| \
+        utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
+        '>' $dir/score_LMWT_${wip}/$name.ctm || exit 1;
+    fi
+  done
+fi
+
+if [ $stage -le 2 ]; then
   # Remove some stuff we don't want to score, from the ctm.
   # the big expression in parentheses contains all the things that get mapped
   # by the glm file, into hesitations.
@@ -83,7 +101,7 @@ if [ $stage -le 1 ]; then
 fi
 
 # Score the set...
-if [ $stage -le 2 ]; then
+if [ $stage -le 3 ]; then
   for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.${wip}.log \
       cp $data/stm $dir/score_LMWT_${wip}/ '&&' \
