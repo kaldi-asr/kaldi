@@ -41,7 +41,7 @@ text_files=
 
 # Combine utt2spk and text from the segments into utt2spk and text for the whole
 # recording.
-cat $data/segments | perl -e '
+cat $data/segments | sort -k2,2 -k3,4n | perl -e '
 if (scalar @ARGV == 4) {
   ($utt2spk_in, $utt2spk_out, $text_in, $text_out) = @ARGV;
 } elsif (scalar @ARGV == 2) {

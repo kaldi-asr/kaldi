@@ -53,7 +53,7 @@ if [ -z $temp ]; then
 fi
 
 head -n 10 $dir/utt2dur | paste - $temp | \
-   awk '{ dur += $2; frames += $4; } END { shift = dur / frames; if (shift > 0.01 && shift < 0.0102) shift = 0.01; print shift; }' || exit 1;
+   awk '{ dur += $2; frames += $4; } END { shift = dur / frames; if (shift > 0.0098 && shift < 0.0102) shift = 0.01; print shift; }' || exit 1;
 
 rm $temp
 
