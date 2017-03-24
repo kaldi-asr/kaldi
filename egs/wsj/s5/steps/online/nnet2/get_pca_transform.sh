@@ -11,7 +11,7 @@
 # Begin configuration.
 cmd=run.pl
 config=
-stage=-5
+stage=0
 dim=40 # The dim after applying PCA
 normalize_variance=true # If the PCA transform normalizes the variance
 normalize_mean=true # If the PCA transform centers
