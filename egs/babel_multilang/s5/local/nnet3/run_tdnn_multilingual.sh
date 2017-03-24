@@ -267,7 +267,7 @@ if [ $stage -le 13 ]; then
       $dir/final.raw - | \
       nnet3-am-init ${multi_ali_dirs[$lang_index]}/final.mdl - \
       $lang_dir/final.mdl || exit 1;
-    cp $dir/cmvn_opts ${multi_ali_dirs[$lang_index]}/cmvn_opts || exit 1;
+    cp $dir/cmvn_opts $lang_dir/cmvn_opts || exit 1;
     echo "$0: compute average posterior and readjust priors for language ${lang_list[$lang_index]}."
     steps/nnet3/adjust_priors.sh --cmd "$decode_cmd" \
       --use-gpu true \

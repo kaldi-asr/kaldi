@@ -334,9 +334,9 @@ if [ $stage -le 3 ]; then
   sleep 5  # wait for file system to sync.
   cat $dir/valid_combine.egs $dir/train_combine.egs > $dir/combine.egs
   if $generate_egs_scp; then
-    cat $dir/valid_combine.egs $dir/train_combine.egs > $dir/combine.tmp.egs
-    nnet3-copy-egs ark:$dir/combine.tmp.egs ark,scp:$dir/combine.egs,$dir/combine.scp
-    rm $dir/{train,valid}_combine.scp combine.tmp.egs
+    cat $dir/valid_combine.egs $dir/train_combine.egs > | \
+    nnet3-copy-egs ark:- ark,scp:$dir/combine.egs,$dir/combine.scp
+    rm $dir/{train,valid}_combine.scp
   else
     cat $dir/valid_combine.egs $dir/train_combine.egs > $dir/combine.egs
   fi

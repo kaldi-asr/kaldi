@@ -4,51 +4,45 @@
 #
 # Apache 2.0.
 
-""" This script generates egs.archive.scp and ranges.* used for multilingual setup.
-    Also this script generates outputs.*.ark and weight.*.ark, where each line
-    corresponds to language-id and weight for the same example in egs.*.scp.
-    weight.*.ark is archive of table indexed by the key of input example
-    used to scale the eg's output supervision during training.
-    Scaling output supervision is the same as scaling the derivative during
-    training for linear objectives.
-    output.*.ark is archive of table indexed by the key of input example and
-    value of output-name as target language for eg.
-    ranges.*.scp is randomly generated list of examples from input languages
-    generated using frequency distribution of remaining examples in each language.
+""" This script generates egs.*.scp used for multilingual setup.
+    Also this script generates output.*.ark and weight.*.ark.
+    weight.*.ark map from the key of the example to the language-specific
+    weight of that example.
+    output.*.ark map from the key of the example to the name of the output-node
+    in the neural net for that specific language, e.g. 'output-2'.
 
-    You call this script as (e.g.)
+    ranges.*.txt are temporary files that are used by the script itself,
+    each one corresponding to one 'egs' file that will be generated.
+    Each line in ranges.*.txt corresponds to ranges of  examples
+    selected from one of the input languages's scp files as:
+    <lang> <local-scp-line> <num-examples>
 
-    allocate_multilingual_examples.py [opts] num-of-languages example-scp-lists
+    That can be interpreted as selecting <num-example> examples starting from
+    <local-scp-line> line from {lang}_th 'egs' file in "egs_scp_list".
+    (note that <local-scp-line> is the zero-based line number.)
+
+    Example lines might look like:
+    0 0 256
+    2 1024 256
+
+    egs.*.scp is generated using ranges.*.txt as following:
+    "<num-examples>" consecutive examples starting from line "<local-scp-line>" from
+    {lang}_th input "egs" scp-file is copied to egs.*.scp.
+
+    You can call this script as (e.g.):
+
+    allocate_multilingual_examples.py [opts] example-scp-lists
         multilingual-egs-dir
 
-    allocate_multilingual_examples.py --num-jobs 10 --samples-per-iter 10000
-        --minibatch-size 512
-        --lang2weight exp/multi/lang2weight 2 "exp/lang1/egs.scp exp/lang2/egs.scp"
+    allocate_multilingual_examples.py --num-jobs 10 --minibatch-size 512
+        --lang2weight  "0.2,0.8" exp/lang1/egs.scp exp/lang2/egs.scp
         exp/multi/egs
 
-    This script outputs specific ranges.* files to the temp directory (exp/multi/egs/temp)
-    that will enable you to creat egs.*.scp files for multilingual training.
-    exp/multi/egs/temp/ranges.* contains something like the following:
-    e.g.
-    lang1 0 256
-    lang2 256 256
-
-    where each line can be interpreted as follows:
-    <source-language> <local-scp-line> <num-examples>
-
-    note that <local-scp-line> is the zero-based line number in egs.scp for
-    that language.
-    num-examples should be multiple of actual minibatch-size.
-
-    egs.1.scp is generated using ranges.1.scp as following:
-    "minibatch-size" consecutive examples starting from line "local-scp-line" from
-    egs.scp file for language "source-lang" is copied to egs.1.scp.
-
-    To avoid loading whole scp files from all langs in memory,
-    egs.scp is processed line by line using readline() for input langs
+    To avoid loading whole scp files from all languages in memory,
+    input egs.scp files are processed line by line using readline() for input languages
     and to have more randomization across different archives,
-    num_jobs * num_archives temporary scp.job.archive_index files created in
-    egs/temp dir and all num_jobs scp.*.archive_index combined
+    "num_jobs * num_archives" temporary scp.job.archive_index files created in
+    egs/temp dir and all "num_jobs" scp.*.archive_index combined
     into egs.archiv_index.scp.
 """
 
@@ -73,21 +67,20 @@ logger.info('Start generating multilingual examples (allocate_multilingual_examp
 
 def get_args():
 
-    parser = argparse.ArgumentParser(description="Writes ranges.*, outputs.* and weights.* files "
+    parser = argparse.ArgumentParser(description="Writes ranges.*, output.* and weight.* files "
                                    "in preparation for dumping egs for multilingual training.",
                                    epilog="Called by steps/nnet3/multilingual/get_egs.sh")
     parser.add_argument("--samples-per-iter", type=int, default=40000,
                         help="The target number of egs in each archive of egs, "
                         "(prior to merging egs). ")
     parser.add_argument("--num-jobs", type=int, default=20,
-                        help="This can be used for better randomness in distributing "
-                        "languages across archives, where egs.job.archive.scp generated "
-                        "randomly and examples are combined "
-                        "across all jobs as eg.archive.scp.")
+                        help="This can be used for better randomization in distributing "
+                        "languages's examples across archives, where egs.job.*.scp are generated "
+                        "randomly and examples are combined across all jobs.")
     parser.add_argument("--random-lang", type=str, action=common_lib.StrToBoolAction,
-                        help="If true, the lang-id in ranges.* selected"
+                        help="If true, ranges.*.txt are generated"
                         " w.r.t frequency distribution of remaining examples in each language,"
-                        " otherwise it is selected sequentially.",
+                        " otherwise it is generated sequentially.",
                       default=True, choices = ["false", "true"])
     parser.add_argument("--max-archives", type=int, default=1000,
                         help="max number of archives used to generate egs.*.scp")
@@ -108,7 +101,7 @@ def get_args():
                         help="list of egs.scp files per input language."
                            "e.g. exp/lang1/egs/egs.scp exp/lang2/egs/egs.scp")
     parser.add_argument("egs_dir",
-                        help="Name of egs directory e.g. exp/multilingual_a/egs")
+                        help="Name of egs directory e.g. exp/tdnn_multilingual_sp/egs")
 
 
     print(sys.argv, file=sys.stderr)
@@ -161,7 +154,7 @@ def  process_multilingual_egs(args):
     if args.lang2weight is None:
         lang2weight = [ 1.0 ] * num_langs
     else:
-        lang2weight = args.lang2weight.split()
+        lang2weight = args.lang2weight.split(",")
         assert(len(lang2weight) == num_langs)
 
     if not os.path.exists("{0}/temp".format(args.egs_dir)):
@@ -227,7 +220,7 @@ def  process_multilingual_egs(args):
         logger.info("Combine {1}job.{0}.scp across all jobs into "
                     "{1}{0}.scp.".format(archive, args.prefix))
         this_ranges = []
-        f = open("{0}/temp/{1}ranges.{2}".format(
+        f = open("{0}/temp/{1}ranges.{2}.txt".format(
                     args.egs_dir, args.prefix, archive + 1),
                  'w')
         o = open("{0}/{1}output.{2}.ark".format(
@@ -279,8 +272,8 @@ def  process_multilingual_egs(args):
         w.close()
         scp_per_archive_file.close()
     logger.info("allocate_multilingual_examples.py finished generating "
-                "{0}*.scp, {0}ranges.*, {0}output.*.ark "
-                "and {0}weights.*.ark files".format(args.prefix))
+                "{0}*.scp, {0}ranges.*.txt, {0}output.*.ark "
+                "and {0}weight.*.ark files".format(args.prefix))
 
 
 def main():

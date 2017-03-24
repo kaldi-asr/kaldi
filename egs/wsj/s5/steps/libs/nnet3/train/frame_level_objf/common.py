@@ -414,8 +414,8 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
     scp_or_ark = "scp" if use_multitask_egs else "ark"
     egs_suffix = ".scp" if use_multitask_egs else ".egs"
 
-    egs_rspecifier = ("{1}:{0}/valid_diagnostic{2}".format(
-        egs_dir, scp_or_ark, egs_suffix))
+    egs_rspecifier = ("{0}:{1}/valid_diagnostic{2}".format(
+        scp_or_ark, egs_dir, egs_suffix))
 
     multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
                              egs_dir,
@@ -437,8 +437,8 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                                         multitask_egs_opts=multitask_egs_opts),
         wait=wait, background_process_handler=background_process_handler)
 
-    egs_rspecifier = ("{1}:{0}/train_diagnostic{2}".format(
-        egs_dir, scp_or_ark, egs_suffix))
+    egs_rspecifier = ("{0}:{1}/train_diagnostic{2}".format(
+        scp_or_ark, egs_dir, egs_suffix))
 
     multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
                              egs_dir,
@@ -479,8 +479,8 @@ def compute_progress(dir, iter, egs_dir, left_context, right_context,
     scp_or_ark = "scp" if use_multitask_egs else "ark"
     egs_suffix = ".scp" if use_multitask_egs else ".egs"
 
-    egs_rspecifier = "{1}:{0}/train_diagnostic{2}".format(
-        egs_dir, scp_or_ark, egs_suffix)
+    egs_rspecifier = "{0}:{1}/train_diagnostic{2}".format(
+        scp_or_ark, egs_dir, egs_suffix)
 
     multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
                              egs_dir,
@@ -549,8 +549,8 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
     scp_or_ark = "scp" if use_multitask_egs else "ark"
     egs_suffix = ".scp" if use_multitask_egs else ".egs"
 
-    egs_rspecifier = "{1}:{0}/combine{2}".format(egs_dir,
-                                                 scp_or_ark, egs_suffix)
+    egs_rspecifier = "{0}:{1}/combine{2}".format(scp_or_ark,
+                                                 egs_dir, egs_suffix)
 
     multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
                              egs_dir,
