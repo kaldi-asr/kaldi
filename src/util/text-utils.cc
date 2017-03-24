@@ -19,9 +19,9 @@
 
 #include "util/text-utils.h"
 #include <limits>
-#include "base/kaldi-common.h"
 #include <map>
 #include <algorithm>
+#include "base/kaldi-common.h"
 
 namespace kaldi {
 
@@ -191,43 +191,42 @@ inline bool is_nan_text(const std::string &in, const std::string &prefix) {
 }
 
 template <class T>
-class number_istream
-{
+class number_istream{
  public:
-
-  number_istream (std::istream &i) : in_(i) {}
+  explicit number_istream(std::istream &i) : in_(i) {}
 
   number_istream & operator >> (T &x) {
     bool neg = false;
-    char c;
     if (!in_.good()) return *this;
-    while (isspace(c = in_.peek())) in_.get();
-    if (c == '-') { neg = true; }
+    in_ >> std::ws;  // eat up any leading white spaces
+    if (in_.peek() == '-') { neg = true; }
     in_ >> x;
-    if (! in_.fail()) return *this;
-    return parse_on_fail(x, neg);
+    if (!in_.fail()) return *this;
+    return parse_on_fail(&x, neg);
   }
 
  private:
   std::istream &in_;
 
-  number_istream & parse_on_fail (T &x, bool neg)
-   {
-    std::map<std::string, T> inf_nam_map;
+  number_istream & parse_on_fail(T *x, bool neg) {
+    std::map<std::string, T> inf_nan_map;
     // we'll keep just lowercase values.
-    inf_nam_map["inf"] = std::numeric_limits<T>::infinity();
-    inf_nam_map["nan"] = std::numeric_limits<T>::quiet_NaN();
+    inf_nan_map["inf"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["nan"] = std::numeric_limits<T>::quiet_NaN();
 
     std::string c;
     in_.clear();
-    if (!(in_ >> c)) return *this; //If the stream is broken even before trying to read from it, it's pointless to try.
+    // If the stream is broken even before trying
+    // to read from it, it's pointless to try.
+    if (!(in_ >> c)) return *this;
 
-    std::transform(c.begin(), c.end(), c.begin(), ::tolower); // transform c to lowercase.
+    // transform c to lowercase.
+    std::transform(c.begin(), c.end(), c.begin(), ::tolower);
 
-    if(inf_nam_map.find(c) != inf_nam_map.end()) {
-      x = inf_nam_map[c];
-      if(neg) x = -x;
-    }else{
+    if (inf_nan_map.find(c) != inf_nan_map.end()) {
+      *x = inf_nan_map[c];
+      if (neg) *x = - *x;
+    } else {
       in_.setstate(std::ios_base::failbit);
     }
 
@@ -252,10 +251,10 @@ bool ConvertStringToReal(const std::string &str,
 
   // if istringstream was successfully converted to a number, we
   // need to garantee that there is not any other token in str
-  if (iss.tellg() != -1){
+  if (iss.tellg() != -1) {
     std::string rem;
     iss >> rem;
-    if(rem.find_first_not_of(' ') != std::string::npos){
+    if (rem.find_first_not_of(' ') != std::string::npos) {
       // there is not only spaces
       return false;
     }
