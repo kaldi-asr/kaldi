@@ -84,3 +84,5 @@ def prepare_initial_acoustic_model(dir, alidir, run_opts,
                 "ark:gunzip -c {alidir}/ali.*.gz|" {dir}/0.mdl
         """.format(command=run_opts.command,
                    dir=dir, alidir=alidir))
+
+

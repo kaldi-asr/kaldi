@@ -99,7 +99,7 @@ if [ $stage -le 1 ]; then
       --random-lang false \
       --max-archives 1 --num-jobs 1 \
       --minibatch-size $minibatch_size \
-      --prefix "combine." \
+      --egs-prefix "combine." \
       $combine_scp_list $megs_dir || exit 1;
 
   echo "$0: combine train_diagnostic.scp examples from all langs in $megs_dir/train_diagnostic.scp."
@@ -109,7 +109,7 @@ if [ $stage -le 1 ]; then
       --random-lang false \
       --max-archives 1 --num-jobs 1 \
       --minibatch-size $minibatch_size \
-      --prefix "train_diagnostic." \
+      --egs-prefix "train_diagnostic." \
       $train_diagnostic_scp_list $megs_dir || exit 1;
 
 
@@ -119,7 +119,7 @@ if [ $stage -le 1 ]; then
   steps/nnet3/multilingual/allocate_multilingual_examples.py \
       --random-lang false --max-archives 1 --num-jobs 1\
       --minibatch-size $minibatch_size \
-      --prefix "valid_diagnostic." \
+      --egs-prefix "valid_diagnostic." \
       $valid_diagnostic_scp_list $megs_dir || exit 1;
 
 fi

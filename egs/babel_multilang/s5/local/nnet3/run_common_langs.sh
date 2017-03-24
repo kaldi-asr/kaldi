@@ -1,5 +1,5 @@
 #!/bin/bash
-# This script uses to generated MFCC+pitch features for input language L.
+# This script used to generate MFCC+pitch features for input language lang.
 
 . ./cmd.sh
 set -e

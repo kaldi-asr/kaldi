@@ -21,6 +21,7 @@ import libs.nnet3.train.common as common_train_lib
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
+
 def train_new_models(dir, iter, srand, num_jobs,
                      num_archives_processed, num_archives,
                      raw_model_string, egs_dir,

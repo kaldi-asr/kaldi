@@ -3,7 +3,7 @@
 # This script generates separate egs directory for each input
 # language in multilingual setup, which contains both egs.*.ark and egs.*.scp.
 #
-# This script will generally be called from nnet training script.
+# This script will generally be called from nnet3 multilingual training script.
 
 echo "$0 $@"  # Print the command line for logging
 . ./cmd.sh
