@@ -195,40 +195,40 @@ class number_istream
 {
  public:
 
-  number_istream (std::istream &i) : in(i) {}
+  number_istream (std::istream &i) : in_(i) {}
 
   number_istream & operator >> (T &x) {
     bool neg = false;
     char c;
-    if (!in.good()) return *this;
-    while (isspace(c = in.peek())) in.get();
+    if (!in_.good()) return *this;
+    while (isspace(c = in_.peek())) in_.get();
     if (c == '-') { neg = true; }
-    in >> x;
-    if (! in.fail()) return *this;
+    in_ >> x;
+    if (! in_.fail()) return *this;
     return parse_on_fail(x, neg);
   }
 
  private:
-  std::istream &in;
+  std::istream &in_;
 
   number_istream & parse_on_fail (T &x, bool neg)
    {
-    std::map<std::string, T> infNanMap;
+    std::map<std::string, T> inf_nam_map;
     // we'll keep just lowercase values.
-    infNanMap["inf"] = std::numeric_limits<T>::infinity();
-    infNanMap["nan"] = std::numeric_limits<T>::quiet_NaN();
+    inf_nam_map["inf"] = std::numeric_limits<T>::infinity();
+    inf_nam_map["nan"] = std::numeric_limits<T>::quiet_NaN();
 
     std::string c;
-    in.clear();
-    if (!(in >> c)) return *this; //If the stream is broken even before trying to read from it, it's pointless to try.
+    in_.clear();
+    if (!(in_ >> c)) return *this; //If the stream is broken even before trying to read from it, it's pointless to try.
 
     std::transform(c.begin(), c.end(), c.begin(), ::tolower); // transform c to lowercase.
 
-    if(infNanMap.find(c) != infNanMap.end()) {
-      x = infNanMap[c];
+    if(inf_nam_map.find(c) != inf_nam_map.end()) {
+      x = inf_nam_map[c];
       if(neg) x = -x;
     }else{
-      in.setstate(std::ios_base::failbit);
+      in_.setstate(std::ios_base::failbit);
     }
 
     return *this;
