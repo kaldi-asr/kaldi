@@ -9,15 +9,16 @@
 # System                tdnn_lstm1a_sp tdnn_lstm1b_sp
 # WER on dev(orig)           11.0      11.0
 #         [looped:]          11.0      11.1
-# WER on dev(rescored)       10.3      10.3
+# WER on dev(rescored)       10.4      10.3
 #         [looped:]          10.3      10.5
-# WER on test(orig)          10.8      10.6
+# WER on test(orig)          10.7      10.6
 #         [looped:]          10.7      10.7
 # WER on test(rescored)      10.1       9.9
 #         [looped:]          10.0      10.0
-# Final train prob     -0.68810.7954-0.68970.7946
-# Final valid prob     -0.77960.7611-0.79890.7582
-
+# Final train prob        -0.6881   -0.6897
+# Final valid prob        -0.7796   -0.7989
+# Final train acc          0.7954    0.7946
+# Final valid acc          0.7611    0.7582
 
 # by default, with cleanup:
 # local/nnet3/run_tdnn_lstm.sh
@@ -53,18 +54,10 @@ label_delay=5
 chunk_width=40,30,20
 chunk_left_context=40
 chunk_right_context=0
-# decode chunk-size options (for non-looped decoding)
-extra_left_context=50
-extra_right_context=0
 
 # training options
 srand=0
 remove_egs=true
-
-#decode options
-extra_left_context=
-extra_right_context=
-frames_per_chunk=
 
 . ./cmd.sh
 . ./path.sh
@@ -91,8 +84,7 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 gmm_dir=exp/${gmm}
 graph_dir=$gmm_dir/graph
 ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
-dir=exp/nnet3${nnet3_affix}/tdnn_lstm${affix}
-dir=${dir}_sp
+dir=exp/nnet3${nnet3_affix}/tdnn_lstm${affix}_sp
 train_data_dir=data/${train_set}_sp_hires_comb
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
 
@@ -175,15 +167,14 @@ if [ $stage -le 13 ]; then
 fi
 
 if [ $stage -le 14 ]; then
-  [ -z $extra_left_context ] && extra_left_context=$chunk_left_context;
-  [ -z $extra_right_context ] && extra_right_context=$chunk_right_context;
-  [ -z $frames_per_chunk ] && frames_per_chunk=$chunk_width;
+  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   rm $dir/.error 2>/dev/null || true
   for dset in dev test; do
    (
     steps/nnet3/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
-        --extra-left-context $extra_left_context \
-        --extra-right-context $extra_right_context \
+        --extra-left-context $chunk_left_context \
+        --extra-right-context $chunk_right_context \
+        --frames-per-chunk $frames_per_chunk \
         --extra-left-context-initial 0 --extra-right-context-final 0 \
         --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
       ${graph_dir} data/${dset}_hires ${dir}/decode_${dset} || exit 1

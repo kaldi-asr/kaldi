@@ -64,7 +64,7 @@ fi
 extra_files=
 if [ ! -z "$online_ivector_dir" ]; then
   steps/nnet2/check_ivectors_compatible.sh $srcdir $online_ivector_dir || exit 1
-  extra_files="$srcdir/final.ie.id $online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
+  extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
 fi
 
 for f in $srcdir/tree $srcdir/${iter}.mdl $data/feats.scp $lang/L.fst $extra_files; do

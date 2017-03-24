@@ -1,19 +1,19 @@
 #!/bin/bash
 
-# Copyright 2012  Johns Hopkins University (Author: Daniel Povey). 
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey).
 #           2013  Xiaohui Zhang
 #           2013  Guoguo Chen
 #           2014  Vimal Manohar
 # Apache 2.0.
 
 
-# This script trains neural network with pnorm nonlinearities. 
-# The difference with train_tanh.sh is that, instead of setting 
+# This script trains neural network with pnorm nonlinearities.
+# The difference with train_tanh.sh is that, instead of setting
 # hidden_layer_size, you should set pnorm_input_dim and pnorm_output_dim.
 # Also the P value (the order of the p-norm) should be set.
-# 
+#
 # [Vimal Manohar - Oct 2014]
-# The script now supports realignment during training, which can be done by 
+# The script now supports realignment during training, which can be done by
 # specifying realign_epochs.
 
 # Begin configuration section.
@@ -30,7 +30,7 @@ bias_stddev=0.5
 softmax_learning_rate_factor=1.0 # In the default setting keep the same learning rate.
 
 combine_regularizer=1.0e-14 # Small regularizer so that parameters won't go crazy.
-pnorm_input_dim=3000 
+pnorm_input_dim=3000
 pnorm_output_dim=300
 p=2
 minibatch_size=128 # by default use a smallish minibatch size for neural net
@@ -56,7 +56,7 @@ add_layers_period=2 # by default, add new layers every 2 iterations.
 num_hidden_layers=3
 stage=-5
 
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time. 
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time.
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 randprune=4.0 # speeds up LDA.
 alpha=4.0
@@ -72,7 +72,7 @@ lda_opts=
 lda_dim=
 egs_opts=
 transform_dir=     # If supplied, overrides alidir
-cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.  
+cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
             # only relevant for "raw" features, not lda.
 feat_type=  # Can be used to force "raw" features.
 prior_subset_size=10000 # 10k samples per job, for computing priors.  Should be
@@ -118,7 +118,7 @@ if [ $# != 4 ]; then
   echo "                                                   # this, you may want to decrease the batch size."
   echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads... "
-  echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
+  echo "  --io-opts <opts|\"--max-jobs-run 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
@@ -137,7 +137,7 @@ if [ $# != 4 ]; then
   echo "  --num-jobs-align <#njobs|30>                     # Number of jobs to perform realignment"
   echo "  --stage <stage|-9>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
-  
+
   exit 1;
 fi
 
@@ -233,7 +233,7 @@ SoftmaxComponent dim=$num_leaves
 EOF
 
   # to hidden.config it will write the part of the config corresponding to a
-  # single hidden layer; we need this to add new layers. 
+  # single hidden layer; we need this to add new layers.
   cat >$dir/hidden.config <<EOF
 AffineComponentPreconditioned input-dim=$pnorm_output_dim output-dim=$pnorm_input_dim alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
 PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim p=$p
@@ -286,7 +286,7 @@ done
 cur_egs_dir=$egs_dir
 
 while [ $x -lt $num_iters ]; do
-    
+
   if [ ! -z "${realign_this_iter[$x]}" ]; then
     prev_egs_dir=$cur_egs_dir
     cur_egs_dir=$dir/egs_${realign_this_iter[$x]}
@@ -328,7 +328,7 @@ while [ $x -lt $num_iters ]; do
         steps/nnet2/remove_egs.sh $prev_egs_dir
       fi
     fi
-    
+
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
@@ -341,7 +341,7 @@ while [ $x -lt $num_iters ]; do
         ark:$cur_egs_dir/train_diagnostic.egs '&&' \
         nnet-am-info $dir/$x.mdl &
     fi
-    
+
     echo "Training neural net (pass $x)"
     if [ $x -gt 0 ] && \
       [ $x -le $[($num_hidden_layers-1)*$add_layers_period] ] && \
@@ -369,16 +369,16 @@ while [ $x -lt $num_iters ]; do
     softmax_learning_rate=`perl -e "print $learning_rate * $softmax_learning_rate_factor;"`;
     nnet-am-info $dir/$[$x+1].1.mdl > $dir/foo  2>/dev/null || exit 1
     nu=`cat $dir/foo | grep num-updatable-components | awk '{print $2}'`
-    na=`cat $dir/foo | grep -v Fixed | grep AffineComponent | wc -l` 
+    na=`cat $dir/foo | grep -v Fixed | grep AffineComponent | wc -l`
     # na is number of last updatable AffineComponent layer [one-based, counting only
     # updatable components.]
     lr_string="$learning_rate"
-    for n in `seq 2 $nu`; do 
+    for n in `seq 2 $nu`; do
       if [ $n -eq $na ] || [ $n -eq $[$na-1] ]; then lr=$softmax_learning_rate;
       else lr=$learning_rate; fi
       lr_string="$lr_string:$lr"
     done
-    
+
     $cmd $dir/log/average.$x.log \
       nnet-am-average $nnets_list - \| \
       nnet-am-copy --learning-rates=$lr_string - $dir/$[$x+1].mdl || exit 1;
@@ -479,7 +479,7 @@ if $cleanup; then
   fi
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do
-    if [ $[$x%100] -ne 0 ] && [ $x -lt $[$num_iters-$num_iters_final+1] ]; then 
+    if [ $[$x%100] -ne 0 ] && [ $x -lt $[$num_iters-$num_iters_final+1] ]; then
        # delete all but every 100th model; don't delete the ones which combine to form the final model.
       rm $dir/$x.mdl
     fi

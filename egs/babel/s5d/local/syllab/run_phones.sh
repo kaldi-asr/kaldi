@@ -21,10 +21,20 @@ if [ $# -ne 1 ] ; then
 fi
 
 idir=$1
+
+if [ ! -d "$idir" ] ; then
+  echo "The directory $idir does not exist"
+  exit 1
+fi
+
 idata=${idir##*/}
 
 
-odata=${idata%%.*}.phn.${idata#*.}
+if [ "$idata" == ${idata%%.*} ]; then
+  odata=${idata%%.*}.phn
+else
+  odata=${idata%%.*}.phn.${idata#*.}
+fi
 
 if [ $stage -le -1 ] ; then
   local/syllab/generate_phone_lang.sh \

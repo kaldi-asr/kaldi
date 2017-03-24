@@ -29,5 +29,6 @@ utils/dict_dir_add_pronprobs.sh --max-normalize true $idict  \
   $amdir/pron_bigram_counts_nowb.txt $odict
 
 utils/prepare_lang.sh  --phone-symbol-table $langdir/phones.txt \
+  --share-silence-phones true \
   $odict "$unk" $olocallang $olang
 
