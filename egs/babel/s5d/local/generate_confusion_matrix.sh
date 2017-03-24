@@ -61,7 +61,7 @@ fi
 mkdir -p $wdir/log
 
 cat $data/phones.txt | sed 's/_[B|E|I|S]//g' |\
-  sed 's/_[%|"]//g' | sed 's/_[0-9]\+//g' > $wdir/phones.txt
+  sed 's/_[%|"]//g' | sed 's/_[0-9]\+//g' | sed 's/_[^ ]*//g' > $wdir/phones.txt
 
 echo "Converting alignments to phone sequences..."
 $cmd JOB=1:$nj $wdir/log/ali_to_phones.JOB.log \
@@ -81,7 +81,8 @@ for i in `seq 1 $nj` ; do
 done
 
 echo "Converting statistics..."
-cat $confusion_files | cut -f 2- -d ' ' | sed 's/ *; */\n/g'| sort | uniq -c | \
+cat $confusion_files | cut -f 2- -d ' ' | sed 's/ *; */\n/g' | \
+  sed 's/ *$//g' | sed 's/^ *//g' | sort | uniq -c | \
   grep -v -E '<oov>|<sss>|<vns>|SIL' | \
   perl -ane '
     die unless scalar @F == 3;

@@ -100,7 +100,7 @@ case "$mode" in
      # grammar and transition weights.
     mdl=`dirname $indir`/final.mdl
     [ ! -f $mdl ] && echo No such model $mdl && exit 1;
-    [[ -f `dirname $indir`/frame_subsampling_factor && $self_loop_scale != 1.0 ]] && \
+    [[ -f `dirname $indir`/frame_subsampling_factor && "$self_loop_scale" == 0.1 ]] && \
       echo "$0: WARNING: chain models need '--self-loop-scale 1.0'";
     $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
       gunzip -c $indir/lat.JOB.gz \| \

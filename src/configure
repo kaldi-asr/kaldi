@@ -952,7 +952,7 @@ do
     static_fst=true;
     dynamic_kaldi=false;
     MATHLIB='OPENBLAS';
-    ANDROIDINCDIR=`read_dirname $1`;
+    ANDROIDINC=`read_dirname $1`;
     shift;;
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
@@ -1076,7 +1076,7 @@ echo >> kaldi.mk
 echo "Doing OS specific configurations ..."
 
 if $android ; then
-  if [ -z $ANDROIDINCDIR ] ;  then
+  if [ -z $ANDROIDINC ] ;  then
     failure "--android-incdir must be specified for android builds."
   fi
 
@@ -1097,7 +1097,7 @@ if $android ; then
   OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a $OPENBLASROOT/lib/libclapack.a $OPENBLASROOT/lib/liblapack.a $OPENBLASROOT/lib/libblas.a $OPENBLASROOT/lib/libf2c.a"
   echo "OPENBLASINC = $OPENBLASROOT/include" >> kaldi.mk
   echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
-  echo "ANDROIDINCDIR = $ANDROIDINCDIR" >> kaldi.mk
+  echo "ANDROIDINC = $ANDROIDINC" >> kaldi.mk
 
   cat makefiles/android_openblas.mk >> kaldi.mk
 

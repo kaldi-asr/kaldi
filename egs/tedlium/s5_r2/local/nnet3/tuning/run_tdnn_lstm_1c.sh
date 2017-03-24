@@ -8,6 +8,8 @@
 # local/chain/tuning/run_tdnn_lstm_1e.sh, but a non-chain nnet3 system, and
 # with 1.5 times larger hidden dimensions.
 
+# exp/nnet3_cleaned/tdnn_lstm1c_sp: num-iters=246 nj=3..15 num-params=18.7M dim=40+100->4187 combine=-0.67->-0.66 loglike:train/valid[163,245,combined]=(-0.71,-0.63,-0.60/-0.92,-0.88,-0.85) accuracy:train/valid[163,245,combined]=(0.77,0.79,0.80/0.74,0.75,0.75)
+
 # local/nnet3/compare_wer.sh --looped exp/nnet3_cleaned/tdnn_lstm1a_sp exp/nnet3_cleaned/tdnn_lstm1b_sp exp/nnet3_cleaned/tdnn_lstm1c_sp
 # System                tdnn_lstm1a_sp tdnn_lstm1b_sp tdnn_lstm1c_sp
 # WER on dev(orig)           11.0      11.0      11.0

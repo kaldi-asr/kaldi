@@ -70,8 +70,8 @@ fi
 if [ $stage -le 3 ]; then
   mfccdir=mfcc_hires
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
-    date=$(date +'%m_%d_%H_%M')
-    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$date/s5b/$mfccdir/storage $mfccdir/storage
+    utils/create_split_dir.pl \
+      /export/b0{1,2,3,4}/$USER/kaldi-data/egs/kaldi-$(date +'%m_%d_%H_%M')/s5d/$RANDOM/$mfccdir/storage $mfccdir/storage
   fi
 
   # the 100k_nodup directory is copied seperately, as
@@ -151,8 +151,8 @@ train_set=train_sp_mc
 if [ $stage -le 7 ]; then
   mfccdir=mfcc_reverb
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
-    date=$(date +'%m_%d_%H_%M')
-    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/babel_reverb-$date/s5/$mfccdir/storage $mfccdir/storage
+    utils/create_split_dir.pl \
+      /export/b0{1,2,3,4}/$USER/kaldi-data/egs/babel_reverb-$(date +'%m_%d_%H_%M')/s5d/$RANDOM/$mfccdir/storage $mfccdir/storage
   fi
   for data_dir in $train_set; do
     utils/copy_data_dir.sh data/$data_dir data/${data_dir}_hires
