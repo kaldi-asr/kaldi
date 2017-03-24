@@ -18,7 +18,6 @@ gmm=tri3_cleaned          # This specifies a GMM-dir from the features of the ty
                          # it should contain alignments for 'train_set'.
 
 num_threads_ubm=32
-feat_type=lda
 nnet3_affix=_cleaned     # affix for exp/nnet3 directory to put iVector stuff in, so it
                          # becomes exp/nnet3_cleaned or whatever.
 
@@ -26,19 +25,25 @@ nnet3_affix=_cleaned     # affix for exp/nnet3 directory to put iVector stuff in
 . ./path.sh
 . utils/parse_options.sh
 
+
 gmm_dir=exp/${gmm}
 ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
 
-if [ ! -f data/${train_set}/feats.scp ]; then
-  echo "$0: expected file data/${train_set}/feats.scp to exist"
-  exit 1
-fi
+for f in data/${train_set}/feats.scp ${gmm_dir}/final.mdl; do
+  if [ ! -f $f ]; then
+    echo "$0: expected file $f to exist"
+    exit 1
+  fi
+done
+
+
 
 if [ $stage -le 2 ] && [ -f data/${train_set}_sp_hires/feats.scp ]; then
   echo "$0: data/${train_set}_sp_hires/feats.scp already exists."
   echo " ... Please either remove it, or rerun this script with stage > 2."
   exit 1
 fi
+
 
 if [ $stage -le 1 ]; then
   echo "$0: preparing directory for speed-perturbed data"
@@ -104,35 +109,19 @@ if [ $stage -le 4 ]; then
     echo "$0: warning: number of feats $n1 != $n2, if these are very different it could be bad."
   fi
 
-  case $feat_type in
-    lda)
-      if [ ! -f ${gmm_dir}/final.mdl ]; then
-        echo "$0: expected file ${gmm_dir}/final.mdl to exist"
-        exit 1;
-      fi
-      echo "$0: training a system on the hires data for its LDA+MLLT transform, in order to produce the diagonal GMM."
-      if [ -e exp/nnet3${nnet3_affix}/tri5/final.mdl ]; then
-        # we don't want to overwrite old stuff, ask the user to delete it.
-        echo "$0: exp/nnet3${nnet3_affix}/tri5/final.mdl already exists: "
-        echo " ... please delete and then rerun, or use a later --stage option."
-        exit 1;
-      fi
-      steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 7 --mllt-iters "2 4 6" \
-        --splice-opts "--left-context=3 --right-context=3" \
-        3000 10000 $temp_data_root/${train_set}_hires data/lang \
-        $gmm_dir exp/nnet3${nnet3_affix}/tri5
-      ;;
-    pca)
-      echo "$0: computing a PCA transform from the hires data."
-      steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
-        --splice-opts "--left-context=3 --right-context=3" \
-        --max-utts 10000 --subsample 2 \
-        $temp_data_root/${train_set}_hires \
-        exp/nnet3${nnet3_affix}/tri5
-      ;;
-    *) echo "$0: invalid feature type $feature_type" && exit 1;
-  esac
+  echo "$0: training a system on the hires data for its LDA+MLLT transform, in order to produce the diagonal GMM."
+  if [ -e exp/nnet3${nnet3_affix}/tri5/final.mdl ]; then
+    # we don't want to overwrite old stuff, ask the user to delete it.
+    echo "$0: exp/nnet3${nnet3_affix}/tri5/final.mdl already exists: "
+    echo " ... please delete and then rerun, or use a later --stage option."
+    exit 1;
+  fi
+  steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 7 --mllt-iters "2 4 6" \
+     --splice-opts "--left-context=3 --right-context=3" \
+     3000 10000 $temp_data_root/${train_set}_hires data/lang \
+      $gmm_dir exp/nnet3${nnet3_affix}/tri5
 fi
+
 
 if [ $stage -le 5 ]; then
   echo "$0: computing a subset of data to train the diagonal UBM."
@@ -201,10 +190,11 @@ if [ $stage -le 7 ]; then
 fi
 
 if [ -f data/${train_set}_sp/feats.scp ] && [ $stage -le 9 ]; then
-  echo "$0: data/${train_set}_sp/feats.scp already exists.  Refusing to overwrite the features "
+  echo "$0: $feats already exists.  Refusing to overwrite the features "
   echo " to avoid wasting time.  Please remove the file and continue if you really mean this."
   exit 1;
 fi
+
 
 if [ $stage -le 8 ]; then
   echo "$0: preparing directory for low-resolution speed-perturbed data (for alignment)"
