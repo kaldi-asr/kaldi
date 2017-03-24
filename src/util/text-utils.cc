@@ -20,6 +20,8 @@
 #include "util/text-utils.h"
 #include <limits>
 #include "base/kaldi-common.h"
+#include <map>
+#include <algorithm>
 
 namespace kaldi {
 
@@ -188,108 +190,71 @@ inline bool is_nan_text(const std::string &in, const std::string &prefix) {
   return true;
 }
 
-template<typename T>
-bool convert_special_number(const std::string &str, T *out) {
-  if (stricmp(str, "infinity") || stricmp(str, "inf") ||
-      starts_with(str, "1.#INF")) {
-    *out = std::numeric_limits<T>::infinity();
-    return true;
-  } else if (stricmp(str, "-infinity") || stricmp(str, "-inf") ||
-             starts_with(str, "-1.#INF")) {
-    *out = -std::numeric_limits<T>::infinity();
-    return true;
-  } else if (is_nan_text(str, "nan") || starts_with(str, "1.#QNAN")) {
-    *out = std::numeric_limits<T>::quiet_NaN();
-    return true;
-  } else if (is_nan_text(str, "-nan") || starts_with(str, "-1.#QNAN")) {
-    *out = -std::numeric_limits<T>::quiet_NaN();
-    return true;
-  }
-  return false;
-}
+template <class T>
+class number_istream
+{
+ public:
 
+  number_istream (std::istream &i) : in(i) {}
 
-bool ConvertStringToReal(const std::string &str,
-                         double *out) {
-
-#if defined(_MSC_VER)
-  // TODO: check if the new MSVC already supports it
-  // depending on claims of the C++11 support, it should have
-  if (convert_special_number(str, out))
-    return true;
-#endif  // defined(_MSC_VER)
-
-  std::istringstream i(str);
-
-  if (!(i >> *out)) {
-    // Number conversion failed.
-    // I know it's not a numeric value.
-    // These lines are here just do check if str is nan or inf
-    const char *this_str = str.c_str();
-    char *end = NULL;
-    errno = 0;
-
-    double d = KALDI_STRTOD(this_str, &end);
-
-    if (end != this_str)
-      while (isspace(*end)) end++;
-    if (end == this_str || *end != '\0' || errno != 0)
-      return false;
-
-    *out = d;
-    return true;
+  number_istream & operator >> (T &x) {
+    bool neg = false;
+    char c;
+    if (!in.good()) return *this;
+    while (isspace(c = in.peek())) in.get();
+    if (c == '-') { neg = true; }
+    in >> x;
+    if (! in.fail()) return *this;
+    return parse_on_fail(x, neg);
   }
 
-  // if istringstream was successfully converted to a number, we
-  // need to garantee that there is not any other token in str
-  if (i.tellg() != -1){
-    std::string rem;
-    i >> rem;
-    if(rem.find_first_not_of(' ') != std::string::npos){
-      // there is not only spaces
-      return false;
+ private:
+  std::istream &in;
+
+  number_istream & parse_on_fail (T &x, bool neg)
+   {
+    std::map<std::string, T> infNanMap;
+    // we'll keep just lowercase values.
+    infNanMap["inf"] = std::numeric_limits<T>::infinity();
+    infNanMap["nan"] = std::numeric_limits<T>::quiet_NaN();
+
+    std::string c;
+    in.clear();
+    if (!(in >> c)) return *this; //If the stream is broken even before trying to read from it, it's pointless to try.
+
+    std::transform(c.begin(), c.end(), c.begin(), ::tolower); // transform c to lowercase.
+
+    if(infNanMap.find(c) != infNanMap.end()) {
+      x = infNanMap[c];
+      if(neg) x = -x;
+    }else{
+      in.setstate(std::ios_base::failbit);
     }
+
+    return *this;
   }
+};
 
-  return true;
-}
 
+template <typename T>
 bool ConvertStringToReal(const std::string &str,
-                         float *out) {
+                         T *out) {
+  std::stringstream iss(str);
 
-#ifdef _MSC_VER
-  // TODO: check if the new MSVC already supports it
-  // depending on claims of the C++11 support, it should have
-  if (convert_special_number(str, out))
-    return true;
-#endif  // _MSC_VER
+  number_istream<T> i(iss);
 
-  std::istringstream i(str);
+  i >> *out;
 
-  if (!(i >> *out)) {
+  if (iss.fail()) {
     // Number conversion failed.
-    // I know it's not a numeric value.
-    // These lines are here just do check if str is nan or inf
-    const char *this_str = str.c_str();
-    char *end = NULL;
-    errno = 0;
-
-    float d = KALDI_STRTOF(this_str, &end);
-
-    if (end != this_str)
-      while (isspace(*end)) end++;
-    if (end == this_str || *end != '\0' || errno != 0)
-      return false;
-
-    *out = d;
-    return true;
+    return false;
   }
 
   // if istringstream was successfully converted to a number, we
   // need to garantee that there is not any other token in str
-  if (i.tellg() != -1){
+  if (iss.tellg() != -1){
     std::string rem;
-    i >> rem;
+    iss >> rem;
     if(rem.find_first_not_of(' ') != std::string::npos){
       // there is not only spaces
       return false;
