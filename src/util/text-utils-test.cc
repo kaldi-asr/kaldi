@@ -178,6 +178,10 @@ void TestConvertStringToReal() {
   KALDI_ASSERT(ConvertStringToReal("Inf", &d) && d > 0 && d - d != 0);
   KALDI_ASSERT(ConvertStringToReal("INF", &d) && d > 0 && d - d != 0);
   KALDI_ASSERT(ConvertStringToReal("InF", &d) && d > 0 && d - d != 0);
+  KALDI_ASSERT(ConvertStringToReal("infinity", &d) && d > 0 && d - d != 0);
+  KALDI_ASSERT(ConvertStringToReal("-infinity", &d) && d < 0 && d - d != 0);
+  KALDI_ASSERT(ConvertStringToReal("1.#INF", &d) && d > 0 && d - d != 0);
+  KALDI_ASSERT(ConvertStringToReal("-1.#INF", &d) && d < 0 && d - d != 0);
 
   KALDI_ASSERT(ConvertStringToReal("nan", &d) && d != d);
   KALDI_ASSERT(ConvertStringToReal("+nan", &d) && d != d);
@@ -185,6 +189,8 @@ void TestConvertStringToReal() {
   KALDI_ASSERT(ConvertStringToReal("Nan", &d) && d != d);
   KALDI_ASSERT(ConvertStringToReal("NAN", &d) && d != d);
   KALDI_ASSERT(ConvertStringToReal("NaN", &d) && d != d);
+  KALDI_ASSERT(ConvertStringToReal("1.#QNAN", &d) && d != d);
+  KALDI_ASSERT(ConvertStringToReal("-1.#QNAN", &d) && d != d);
 }
 
 

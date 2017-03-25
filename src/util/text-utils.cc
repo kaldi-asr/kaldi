@@ -212,6 +212,7 @@ class number_istream{
     std::map<std::string, T> inf_nan_map;
     // we'll keep just lowercase values.
     inf_nan_map["inf"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["infinity"] = std::numeric_limits<T>::infinity();
     inf_nan_map["nan"] = std::numeric_limits<T>::quiet_NaN();
 
     std::string c;
@@ -238,6 +239,20 @@ class number_istream{
 template <typename T>
 bool ConvertStringToReal(const std::string &str,
                          T *out) {
+  if (starts_with(str, "1.#INF")) {
+    *out = std::numeric_limits<T>::infinity();
+    return true;
+  } else if (starts_with(str, "-1.#INF")) {
+    *out = -std::numeric_limits<T>::infinity();
+    return true;
+  } else if (starts_with(str, "1.#QNAN")) {
+    *out = std::numeric_limits<T>::quiet_NaN();
+    return true;
+  } else if (starts_with(str, "-1.#QNAN")) {
+    *out = -std::numeric_limits<T>::quiet_NaN();
+    return true;
+  }
+
   std::stringstream iss(str);
 
   number_istream<T> i(iss);
