@@ -167,48 +167,26 @@ inline bool starts_with(const std::string &in, const std::string &prefix) {
   return in.substr(0, prefix.size()) == prefix;
 }
 
-inline bool stricmp(const std::string &in, const std::string &prefix) {
-  int ret = KALDI_STRCASECMP(in.c_str(), prefix.c_str());
-  return ret == 0;
-}
-
-inline bool is_nan_text(const std::string &in, const std::string &prefix) {
-  if (in.size() < prefix.size())
-    return false;
-
-  if (stricmp(in, prefix))
-    return true;
-
-  for (int i = 0; i < prefix.size(); ++i)
-    if (tolower(in[i]) != tolower(prefix[i]))
-      return false;
-
-  for (int i = prefix.size(); i < in.size(); ++i)
-    if (!isalpha(in[i]) && (in[i] != '_'))
-      return false;
-
-  return true;
-}
 
 template <class T>
-class number_istream{
+class NumberIstream{
  public:
-  explicit number_istream(std::istream &i) : in_(i) {}
+  explicit NumberIstream(std::istream &i) : in_(i) {}
 
-  number_istream & operator >> (T &x) {
+  NumberIstream & operator >> (T &x) {
     bool neg = false;
     if (!in_.good()) return *this;
     in_ >> std::ws;  // eat up any leading white spaces
     if (in_.peek() == '-') { neg = true; }
     in_ >> x;
     if (!in_.fail()) return *this;
-    return parse_on_fail(&x, neg);
+    return ParseOnFail(&x, neg);
   }
 
  private:
   std::istream &in_;
 
-  number_istream & parse_on_fail(T *x, bool neg) {
+  NumberIstream & ParseOnFail(T *x, bool neg) {
     std::map<std::string, T> inf_nan_map;
     // we'll keep just lowercase values.
     inf_nan_map["inf"] = std::numeric_limits<T>::infinity();
@@ -239,23 +217,9 @@ class number_istream{
 template <typename T>
 bool ConvertStringToReal(const std::string &str,
                          T *out) {
-  if (starts_with(str, "1.#INF")) {
-    *out = std::numeric_limits<T>::infinity();
-    return true;
-  } else if (starts_with(str, "-1.#INF")) {
-    *out = -std::numeric_limits<T>::infinity();
-    return true;
-  } else if (starts_with(str, "1.#QNAN")) {
-    *out = std::numeric_limits<T>::quiet_NaN();
-    return true;
-  } else if (starts_with(str, "-1.#QNAN")) {
-    *out = -std::numeric_limits<T>::quiet_NaN();
-    return true;
-  }
+  std::istringstream iss(str);
 
-  std::stringstream iss(str);
-
-  number_istream<T> i(iss);
+  NumberIstream<T> i(iss);
 
   i >> *out;
 
@@ -264,11 +228,22 @@ bool ConvertStringToReal(const std::string &str,
     return false;
   }
 
-  // if istringstream was successfully converted to a number, we
-  // need to garantee that there is not any other token in str
+  // if something remains in the istringstream,
+  // we'll check if it is #INF or #QNAN (to deal with
+  // MSVC stuffs), or if it is some garbage text.
   if (iss.tellg() != -1) {
     std::string rem;
     iss >> rem;
+
+    if (starts_with(rem, "#INF")) {
+      *out = *out * std::numeric_limits<T>::infinity();
+      return true;
+    } else if (starts_with(rem, "#QNAN")) {
+      *out = *out * std::numeric_limits<T>::quiet_NaN();
+      return true;
+    }
+
+    // guarantee that there is not any garbage text
     if (rem.find_first_not_of(' ') != std::string::npos) {
       // there is not only spaces
       return false;
