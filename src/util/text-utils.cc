@@ -19,6 +19,8 @@
 
 #include "util/text-utils.h"
 #include <limits>
+#include <map>
+#include <algorithm>
 #include "base/kaldi-common.h"
 
 namespace kaldi {
@@ -188,58 +190,89 @@ inline bool is_nan_text(const std::string &in, const std::string &prefix) {
   return true;
 }
 
-template<typename T>
-bool convert_special_number(const std::string &str, T *out) {
-  if (stricmp(str, "infinity") || stricmp(str, "inf") ||
-      stricmp(str, "+infinity") || stricmp(str, "+inf") ||
-      starts_with(str, "1.#INF")) {
-    *out = std::numeric_limits<T>::infinity();
-    return true;
-  } else if (stricmp(str, "-infinity") || stricmp(str, "-inf") ||
-             starts_with(str, "-1.#INF")) {
-    *out = -std::numeric_limits<T>::infinity();
-    return true;
-  } else if (is_nan_text(str, "nan") || is_nan_text(str, "+nan") ||
-             starts_with(str, "1.#QNAN")) {
-    *out = std::numeric_limits<T>::quiet_NaN();
-    return true;
-  } else if (is_nan_text(str, "-nan") || starts_with(str, "-1.#QNAN")) {
-    *out = -std::numeric_limits<T>::quiet_NaN();
-    return true;
+template <class T>
+class number_istream{
+ public:
+  explicit number_istream(std::istream &i) : in_(i) {}
+
+  number_istream & operator >> (T &x) {
+    bool neg = false;
+    if (!in_.good()) return *this;
+    in_ >> std::ws;  // eat up any leading white spaces
+    if (in_.peek() == '-') { neg = true; }
+    in_ >> x;
+    if (!in_.fail()) return *this;
+    return parse_on_fail(&x, neg);
   }
-  return false;
-}
+
+ private:
+  std::istream &in_;
+
+  number_istream & parse_on_fail(T *x, bool neg) {
+    std::map<std::string, T> inf_nan_map;
+    // we'll keep just lowercase values.
+    inf_nan_map["inf"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["infinity"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["nan"] = std::numeric_limits<T>::quiet_NaN();
+
+    std::string c;
+    in_.clear();
+    // If the stream is broken even before trying
+    // to read from it, it's pointless to try.
+    if (!(in_ >> c)) return *this;
+
+    // transform c to lowercase.
+    std::transform(c.begin(), c.end(), c.begin(), ::tolower);
+
+    if (inf_nan_map.find(c) != inf_nan_map.end()) {
+      *x = inf_nan_map[c];
+      if (neg) *x = - *x;
+    } else {
+      in_.setstate(std::ios_base::failbit);
+    }
+
+    return *this;
+  }
+};
+
 
 template <typename T>
 bool ConvertStringToReal(const std::string &str,
                          T *out) {
-  // remove initial and final spaces
-  std::string trimmed_str = str;
-  Trim(&trimmed_str);
-
-  // if trimmed_str has more than one token,
-  // we will not try to convert it.
-  if (!IsToken(trimmed_str)) {
-    return false;
-  }
-
-  // deals with nan and inf
-  if (convert_special_number(trimmed_str, out)) {
+  if (starts_with(str, "1.#INF")) {
+    *out = std::numeric_limits<T>::infinity();
+    return true;
+  } else if (starts_with(str, "-1.#INF")) {
+    *out = -std::numeric_limits<T>::infinity();
+    return true;
+  } else if (starts_with(str, "1.#QNAN")) {
+    *out = std::numeric_limits<T>::quiet_NaN();
+    return true;
+  } else if (starts_with(str, "-1.#QNAN")) {
+    *out = -std::numeric_limits<T>::quiet_NaN();
     return true;
   }
 
-  std::istringstream iss(trimmed_str);
+  std::stringstream iss(str);
 
-  if (!(iss >> *out)) {
+  number_istream<T> i(iss);
+
+  i >> *out;
+
+  if (iss.fail()) {
     // Number conversion failed.
     return false;
   }
 
-  // if there was a letter appended to the number,
-  // the number was converted, but the letter stayed
-  // in the stream. We should say the conversion failed
+  // if istringstream was successfully converted to a number, we
+  // need to garantee that there is not any other token in str
   if (iss.tellg() != -1) {
-    return false;
+    std::string rem;
+    iss >> rem;
+    if (rem.find_first_not_of(' ') != std::string::npos) {
+      // there is not only spaces
+      return false;
+    }
   }
 
   return true;
