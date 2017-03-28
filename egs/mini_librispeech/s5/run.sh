@@ -11,12 +11,14 @@ lm_url=www.openslr.org/resources/11
 . ./path.sh
 
 # TODO(galv): Reconsider this
-set -euo pipefail
+set -euxo pipefail
 
 # TODO(galv): Modify openslr.org to contain the minified training dataset.
-# for part in dev-clean dev-other train-clean-5; do
+# for part in dev-clean-2 train-clean-5; do
 #   local/download_and_untar.sh $data $data_url $part
 # done
+
+if false; then
 
 $librispeech_dir/local/download_lm.sh $lm_url data/local/lm
 
@@ -73,11 +75,11 @@ steps/train_mono.sh --boost-silence 1.25 --nj 5 --cmd "$train_cmd" \
 )&
 
 steps/align_si.sh --boost-silence 1.25 --nj 5 --cmd "$train_cmd" \
-  data/train_clean_5 data/lang_nosp exp/mono exp/mono_ali_clean_5
+  data/train_clean_5 data/lang_nosp exp/mono exp/mono_ali_train_clean_5
 
 # train a first delta + delta-delta triphone system on all utterances
 steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
-  2000 10000 data/train_clean_5 data/lang_nosp exp/mono_ali_clean_5 exp/tri1
+  2000 10000 data/train_clean_5 data/lang_nosp exp/mono_ali_train_clean_5 exp/tri1
 
 # decode using the tri1 model
 (
@@ -95,13 +97,13 @@ steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
 )&
 
 steps/align_si.sh --nj 5 --cmd "$train_cmd" \
-  data/train_clean_5 data/lang_nosp exp/tri1 exp/tri1_ali_clean_5
+  data/train_clean_5 data/lang_nosp exp/tri1 exp/tri1_ali_train_clean_5
 
 
 # train an LDA+MLLT system.
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
    --splice-opts "--left-context=3 --right-context=3" 2500 15000 \
-   data/train_clean_5 data/lang_nosp exp/tri1_ali_clean_5 exp/tri2b
+   data/train_clean_5 data/lang_nosp exp/tri1_ali_train_clean_5 exp/tri2b
 
 # decode using the LDA+MLLT model
 (
@@ -120,11 +122,11 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
 
 # Align utts using the tri2b model
 steps/align_si.sh  --nj 5 --cmd "$train_cmd" --use-graphs true \
-  data/train_clean_5 data/lang_nosp exp/tri2b exp/tri2b_ali_clean_5
+  data/train_clean_5 data/lang_nosp exp/tri2b exp/tri2b_ali_train_clean_5
 
 # Train tri3b, which is LDA+MLLT+SAT
 steps/train_sat.sh --cmd "$train_cmd" 2500 15000 \
-  data/train_clean_5 data/lang_nosp exp/tri2b_ali_clean_5 exp/tri3b
+  data/train_clean_5 data/lang_nosp exp/tri2b_ali_train_clean_5 exp/tri3b
 
 # decode using the tri3b model
 (
@@ -142,10 +144,31 @@ steps/train_sat.sh --cmd "$train_cmd" 2500 15000 \
   done
 )&
 
-# align the entire train_clean_5 subset using the tri3b model
+# Now we compute the pronunciation and silence probabilities from training data,
+# and re-create the lang directory.
+steps/get_prons.sh --cmd "$train_cmd" \
+  data/train_clean_5 data/lang_nosp exp/tri3b
+utils/dict_dir_add_pronprobs.sh --max-normalize true \
+  data/local/dict_nosp \
+  exp/tri3b/pron_counts_nowb.txt exp/tri3b/sil_counts_nowb.txt \
+  exp/tri3b/pron_bigram_counts_nowb.txt data/local/dict
+
+utils/prepare_lang.sh data/local/dict \
+  "<UNK>" data/local/lang_tmp data/lang
+
+$librispeech_dir/local/format_lms.sh --src-dir data/lang data/local/lm
+
+utils/build_const_arpa_lm.sh \
+  data/local/lm/lm_tglarge.arpa.gz data/lang data/lang_test_tglarge
+utils/build_const_arpa_lm.sh \
+  data/local/lm/lm_fglarge.arpa.gz data/lang data/lang_test_fglarge
+
 steps/align_fmllr.sh --nj 5 --cmd "$train_cmd" \
-  data/train_clean_5 data/lang_nosp \
-  exp/tri3b exp/tri3b_ali_clean_5
+  data/train_clean_5 data/lang exp/tri3b exp/tri3b_ali_train_clean_5
+
+fi # false
+
+local/chain/run_tdnn.sh --stage 6
 
 # Don't finish until all background decoding jobs are finished.
 wait
