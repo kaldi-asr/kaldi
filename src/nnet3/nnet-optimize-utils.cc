@@ -188,7 +188,7 @@ class ComputationRenumberer {
 
   struct SubMatrixHasher {
     SubMatrixHasher() { }
-    size_t operator () (const NnetComputation::SubMatrixInfo &submat) const {
+    size_t operator () (const NnetComputation::SubMatrixInfo &submat) const noexcept {
       // these numbers are arbitrarily chosen primes.
       return submat.matrix_index +
           19553 * submat.row_offset +

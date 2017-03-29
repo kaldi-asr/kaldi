@@ -100,7 +100,7 @@ struct IoSpecification {
 };
 
 struct IoSpecificationHasher {
-  size_t operator () (const IoSpecification &io_spec) const;
+  size_t operator () (const IoSpecification &io_spec) const noexcept;
 };
 
 

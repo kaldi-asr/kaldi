@@ -1140,7 +1140,7 @@ void NnetComputation::GetWholeSubmatrices(
 }
 
 size_t IoSpecificationHasher::operator () (
-    const IoSpecification &io_spec) const {
+    const IoSpecification &io_spec) const noexcept {
   StringHasher string_hasher;
   IndexVectorHasher indexes_hasher;
   // 4261 was chosen at random from a list of primes.
