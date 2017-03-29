@@ -342,14 +342,14 @@ void ReadCindexVector(std::istream &is, bool binary,
   }
 }
 
-size_t IndexHasher::operator () (const Index &index) const {
+size_t IndexHasher::operator () (const Index &index) const noexcept {
   // The numbers that appear below were chosen arbitrarily from a list of primes
   return index.n +
       1619 * index.t +
       15649 * index.x;
 }
 
-size_t CindexHasher::operator () (const Cindex &cindex) const {
+size_t CindexHasher::operator () (const Cindex &cindex) const noexcept {
   // The numbers that appear below were chosen arbitrarily from a list of primes
   return cindex.first +
        1619 * cindex.second.n +
@@ -359,7 +359,7 @@ size_t CindexHasher::operator () (const Cindex &cindex) const {
 }
 
 size_t CindexVectorHasher::operator () (
-    const std::vector<Cindex> &cindex_vector) const {
+    const std::vector<Cindex> &cindex_vector) const noexcept {
   // this is an arbitrarily chosen prime.
   size_t kPrime = 23539, ans = 0;
   std::vector<Cindex>::const_iterator iter = cindex_vector.begin(),
@@ -371,7 +371,7 @@ size_t CindexVectorHasher::operator () (
 }
 
 size_t IndexVectorHasher::operator () (
-    const std::vector<Index> &index_vector) const {
+    const std::vector<Index> &index_vector) const noexcept {
   size_t n1 = 15, n2 = 10;  // n1 and n2 are used to extract only a subset of
                             // elements to hash; this makes the hasher faster by
                             // skipping over more elements.  Setting n1 large or
