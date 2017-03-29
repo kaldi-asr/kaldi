@@ -49,7 +49,7 @@ namespace nnet3 {
    compute this output without seeing a range of input frames.  For example,
    it may be impossible to compute the output without seeing the range of
    't' values from t = 150 through t = 157.  In this case (glossing over details),
-   we'd say that the network has a \b left-context of 3 and a \b right-context of 4.
+   we'd say that the network has a \b left-context of 4 and a \b right-context of 3.
    The actual computation of the context is a bit more complex as it has to
    take into account special cases like where, say, the behavior for odd and
    even 't' values is different (c.f. Round() descriptors in
