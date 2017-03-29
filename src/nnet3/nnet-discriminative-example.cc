@@ -396,7 +396,7 @@ void ShiftDiscriminativeExampleTimes(int32 frame_shift,
 }
 
 size_t NnetDiscriminativeExampleStructureHasher::operator () (
-    const NnetDiscriminativeExample &eg) const {
+    const NnetDiscriminativeExample &eg) const noexcept {
   // these numbers were chosen at random from a list of primes.
   NnetIoStructureHasher io_hasher;
   size_t size = eg.inputs.size(), ans = size * 35099;

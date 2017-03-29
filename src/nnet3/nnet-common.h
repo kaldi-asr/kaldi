@@ -106,21 +106,21 @@ void ReadIndexVector(std::istream &is, bool binary,
 typedef std::pair<int32, Index> Cindex;
 
 struct IndexHasher {
-  size_t operator () (const Index &cindex) const;
+  size_t operator () (const Index &cindex) const noexcept;
 };
 
 struct CindexHasher {
-  size_t operator () (const Cindex &cindex) const;
+  size_t operator () (const Cindex &cindex) const noexcept;
 };
 
 struct CindexVectorHasher {
-  size_t operator () (const std::vector<Cindex> &cindex_vector) const;
+  size_t operator () (const std::vector<Cindex> &cindex_vector) const noexcept;
 };
 
 // Note: because IndexVectorHasher is used in some things where we really need
 // it to be fast, it doesn't look at all the indexes, just most of them.
 struct IndexVectorHasher {
-  size_t operator () (const std::vector<Index> &index_vector) const;
+  size_t operator () (const std::vector<Index> &index_vector) const noexcept;
 };
 
 

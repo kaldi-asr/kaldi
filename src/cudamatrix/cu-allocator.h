@@ -141,7 +141,7 @@ class CuMemoryAllocator {
       // be a multiple of 4, and num_rows will frequently be a multiple of
       // powers of 2 also.  We need to shift right and add so that there will be
       // some action in the lower-order bits.
-      size_t operator () (const std::pair<size_t,size_t> &p) const {
+      size_t operator () (const std::pair<size_t,size_t> &p) const noexcept {
         size_t temp = p.first + 1867 * p.second;
         return temp + (temp >> 2) + (temp >> 8);
       }
@@ -206,7 +206,7 @@ class CuMemoryAllocator {
   };
 
   struct PointerHasher {
-    size_t operator() (const void *arg) const {
+    size_t operator() (const void *arg) const noexcept {
       // the last few bits tend to be very predictable, for alignment reasons (CUDA
       // allocation may align on 256 byte or 512 byte boundaries or something similar).
       size_t temp = reinterpret_cast<size_t>(arg);
