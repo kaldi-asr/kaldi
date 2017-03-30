@@ -115,10 +115,18 @@ void GenerateConfigSequenceSimple(
 
   bool use_final_nonlinearity = (opts.allow_final_nonlinearity &&
                                  RandInt(0, 1) == 0);
+  bool use_batch_norm = (RandInt(0, 1) == 0);
+
   os << "component name=affine1 type=NaturalGradientAffineComponent input-dim="
      << spliced_dim << " output-dim=" << hidden_dim << std::endl;
   os << "component name=relu1 type=RectifiedLinearComponent dim="
      << hidden_dim << std::endl;
+  if (use_batch_norm) {
+    int32 block_dim = (hidden_dim % 2 == 0 ? hidden_dim / 2 : hidden_dim);
+    os << "component name=batch-norm type=BatchNormComponent dim="
+       << hidden_dim << " block-dim=" << block_dim
+       << " epsilon=0.2 target-rms=2.0\n";
+  }
   os << "component name=final_affine type=NaturalGradientAffineComponent input-dim="
      << hidden_dim << " output-dim=" << output_dim << std::endl;
   if (use_final_nonlinearity) {
@@ -145,7 +153,12 @@ void GenerateConfigSequenceSimple(
   }
   os << ")\n";
   os << "component-node name=nonlin1 component=relu1 input=affine1_node\n";
-  os << "component-node name=final_affine component=final_affine input=nonlin1\n";
+  if (use_batch_norm) {
+    os << "component-node name=batch-norm component=batch-norm input=nonlin1\n";
+    os << "component-node name=final_affine component=final_affine input=batch-norm\n";
+  } else {
+    os << "component-node name=final_affine component=final_affine input=nonlin1\n";
+  }
   if (use_final_nonlinearity) {
     os << "component-node name=output_nonlin component=logsoftmax input=final_affine\n";
     os << "output-node name=output input=output_nonlin\n";
@@ -1130,7 +1143,7 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
-  int32 n = RandInt(0, 30);
+  int32 n = RandInt(0, 33);
   BaseFloat learning_rate = 0.001 * RandInt(1, 100);
 
   std::ostringstream os;
@@ -1434,6 +1447,16 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       // set self-repair scale to zero so the derivative tests will pass.
       os << "cell-dim=" << RandInt(1, 200)
          << " self-repair-scale=0.0";
+      break;
+    }
+    case 31: case 32: case 33: {
+      *component_type = "BatchNormComponent";
+      int32 block_dim = RandInt(1, 10), dim = block_dim * RandInt(1, 2);
+      bool test_mode = (RandInt(0, 1) == 0);
+      os << "epsilon=" << 0.5 << " dim=" << dim
+         << " block-dim=" << block_dim << " target-rms="
+         << RandInt(1, 2) << " test-mode="
+         << (test_mode ? "true" : "false");
       break;
     }
     default:

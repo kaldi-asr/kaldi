@@ -860,25 +860,28 @@ void Compiler::AddForwardStepComponent(int32 step,
   int32 node_index = step_info.node_index;
   const NetworkNode &node = nnet_.GetNode(node_index);
   KALDI_ASSERT(node.node_type == kComponent);
+  int32 component_index = node.u.component_index;
+  const Component *component = nnet_.GetComponent(component_index);
 
-  int32 input_submatrix_index = input_step_info.value,
-      output_submatrix_index = step_info.value;
+  // note RE memo_index: we'll renumber them in optimization to get rid of gaps.
+  // The use of 'step' as the memo index is OK because step > 0 if we're doing
+  // forward propagation, there must be preceding steps for inputs or for
+  // component-input nodes).
+  int32 properties = component->Properties(),
+      input_submatrix_index = input_step_info.value,
+      output_submatrix_index = step_info.value,
+      memo_index = (step_info.deriv > 0 && (properties & kUsesMemo) ? step : 0),
+      store_stats = (requests_[0]->store_component_stats &&
+                     (properties & kStoresStats) ?  1 : 0);
+
   NnetComputation::Command c(kPropagate,
-                             node.u.component_index,
+                             component_index,
                              step_info.precomputed_indexes_index,
                              input_submatrix_index,
-                             output_submatrix_index);
+                             output_submatrix_index,
+                             memo_index,
+                             store_stats);
   computation->commands.push_back(c);
-
-  if (requests_[0]->store_component_stats) {
-    const Component *c = nnet_.GetComponent(node.u.component_index);
-    if (c->Properties() & kStoresStats) {
-      NnetComputation::Command c(kStoreStats,
-                                 node.u.component_index,
-                                 output_submatrix_index);
-      computation->commands.push_back(c);
-    }
-  }
 }
 
 
@@ -911,18 +914,20 @@ void Compiler::AddBackwardStepComponent(int32 step,
   KALDI_ASSERT(node.node_type == kComponent);
   int32 component_index = node.u.component_index;
   const Component *component = nnet_.GetComponent(component_index);
+  int32 properties = component->Properties();
 
   int32 input_submatrix_index = input_step_info.value,
       output_submatrix_index = step_info.value,
       input_deriv_submatrix_index = input_step_info.deriv,
-      output_deriv_submatrix_index = step_info.deriv;
+      output_deriv_submatrix_index = step_info.deriv,
+      memo_index = (properties & kUsesMemo ? step : 0);
   KALDI_ASSERT(output_deriv_submatrix_index > 0 &&
                (input_deriv_submatrix_index > 0 ||
-                component->Properties() & kUpdatableComponent));
+                properties & kUpdatableComponent));
 
-  if (! (component->Properties() & kBackpropNeedsInput))
+  if (! (properties & kBackpropNeedsInput))
     input_submatrix_index = 0;
-  if (! (component->Properties() & kBackpropNeedsOutput))
+  if (! (properties & kBackpropNeedsOutput))
     output_submatrix_index = 0;
 
   NnetComputation::Command c(kBackprop,
@@ -931,7 +936,8 @@ void Compiler::AddBackwardStepComponent(int32 step,
                              input_submatrix_index,
                              output_submatrix_index,
                              output_deriv_submatrix_index,
-                             input_deriv_submatrix_index);
+                             input_deriv_submatrix_index,
+                             memo_index);
   computation->commands.push_back(c);
 }
 

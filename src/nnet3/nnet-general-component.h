@@ -64,7 +64,7 @@ class DistributeComponent: public Component {
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Type() const { return "DistributeComponent"; }
   virtual int32 Properties() const { return kLinearInInput; }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -72,6 +72,7 @@ class DistributeComponent: public Component {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *, // to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -214,7 +215,7 @@ class StatisticsExtractionComponent: public Component {
     return kPropagateAdds|kReordersIndexes|
         (include_variance_ ? kBackpropNeedsInput : 0);
   }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -222,6 +223,7 @@ class StatisticsExtractionComponent: public Component {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *, // to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -349,7 +351,7 @@ class StatisticsPoolingComponent: public Component {
          kBackpropNeedsOutput : 0) |
         (num_log_count_features_ == 0 ? kBackpropNeedsInput : 0);
   }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -357,6 +359,7 @@ class StatisticsPoolingComponent: public Component {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *, // to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -477,7 +480,7 @@ class BackpropTruncationComponent: public Component {
 
   virtual Component* Copy() const;
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -485,6 +488,7 @@ class BackpropTruncationComponent: public Component {
                         const CuMatrixBase<BaseFloat> &, // in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -611,7 +615,7 @@ class ConstantComponent: public UpdatableComponent {
     return
         (is_updatable_ ? kUpdatableComponent|kLinearInParameters : 0);
   }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -619,6 +623,7 @@ class ConstantComponent: public UpdatableComponent {
                         const CuMatrixBase<BaseFloat> &, // in_value
                         const CuMatrixBase<BaseFloat> &, // out_value
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -666,7 +671,6 @@ class ConstantComponent: public UpdatableComponent {
   const ConstantComponent &operator
   = (const ConstantComponent &other); // Disallow.
 };
-
 
 
 

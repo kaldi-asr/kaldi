@@ -82,6 +82,7 @@ void TestNnetDecodable(Nnet *nnet) {
       ivector_dim = std::max<int32>(0, nnet->InputDim("ivector"));
   Matrix<BaseFloat> input(num_frames, input_dim);
 
+  SetTestMode(true, nnet);
 
   input.SetRandn();
   Vector<BaseFloat> ivector(ivector_dim);
@@ -226,6 +227,8 @@ void UnitTestNnetCompute() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
+  // uncommenting the following activates extra checks during optimization, that
+  // can help narrow down the source of problems.
   // SetVerboseLevel(4);
 
 

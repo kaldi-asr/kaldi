@@ -164,6 +164,14 @@ std::string NnetInfo(const Nnet &nnet);
 /// the value 'dropout_proportion'
 void SetDropoutProportion(BaseFloat dropout_proportion, Nnet *nnet);
 
+/// This function currently affects only components of type BatchNormComponent.
+/// It sets "test mode" on such components (if you call it with test_mode =
+/// true, otherwise it would set normal mode, but this wouldn't be needed
+/// often).  "test mode" means that instead of using statistics from the batch,
+/// it does a deterministic normalization based on statistics stored at training
+/// time.
+void SetTestMode(bool test_mode, Nnet *nnet);
+
 /// This function finds a list of components that are never used, and outputs
 /// the integer comopnent indexes (you can use these to index
 /// nnet.GetComponentNames() to get their names).

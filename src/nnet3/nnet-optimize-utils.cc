@@ -44,9 +44,6 @@ void IdentifySubmatrixArgs(NnetComputation::Command *c,
       submatrix_args->push_back(&c->arg3);
       submatrix_args->push_back(&c->arg4);
       break;
-    case kStoreStats:
-      submatrix_args->push_back(&c->arg2);
-      break;
     case kBackprop:
     case kBackpropNoModelUpdate:
       submatrix_args->push_back(&c->arg3);
@@ -185,6 +182,8 @@ class ComputationRenumberer {
   void RenumberIndexes();
   // removes unused elements and duplicates within 'computation->indexes_ranges'
   void RenumberIndexesRanges();
+  // renumbers memos, removing any gaps between memo indexes.
+  void RenumberMemos();
 
   struct SubMatrixHasher {
     SubMatrixHasher() { }
@@ -294,6 +293,50 @@ void ComputationRenumberer::CreateRenumbering(
                static_cast<int32>(to_remove.size()));
 }
 
+
+void ComputationRenumberer::RenumberMemos() {
+  // this is indexed by memo-index, and maps to the
+  // (propagate, backprop) commands that use that memo-index, or
+  // (-1, -1) if there are no such commands.
+  std::vector<std::pair<int32, int32> > memo_to_commands;
+  std::vector<int32> memo_indexes_used;
+  std::pair<int32, int32> blank(-1, -1);
+  int32 num_commands = computation_->commands.size();
+  for (int32 c = 0; c < num_commands; c++) {
+    NnetComputation::Command &command = computation_->commands[c];
+    if (command.command_type == kPropagate) {
+      int32 memo_index = command.arg5;
+      if (memo_index > 0) {
+        if (memo_to_commands.size() <= static_cast<size_t>(memo_index))
+          memo_to_commands.resize(memo_index + 1, blank);
+        KALDI_ASSERT(memo_to_commands[memo_index].first == -1);
+        memo_to_commands[memo_index].first = c;
+        memo_indexes_used.push_back(memo_index);
+      }
+    } else if (command.command_type == kBackprop) {
+      int32 memo_index = command.arg7;
+      if (memo_index > 0) {
+        if (memo_to_commands.size() <= static_cast<size_t>(memo_index))
+          memo_to_commands.resize(memo_index + 1, blank);
+        KALDI_ASSERT(memo_to_commands[memo_index].first > 0 &&
+                     memo_to_commands[memo_index].second == -1);
+        memo_to_commands[memo_index].second = c;
+      }
+    }
+  }
+  int32 new_memo_index = 1;
+  for (std::vector<int32>::iterator iter = memo_indexes_used.begin();
+       iter != memo_indexes_used.end(); ++iter) {
+    int32 memo_index = *iter;
+    int32 propagate_command = memo_to_commands[memo_index].first,
+        backprop_command = memo_to_commands[memo_index].second;
+    KALDI_ASSERT(backprop_command > 0 &&
+                 "Propagate generates memo but backprop doesn't use it.");
+    computation_->commands[propagate_command].arg5 = new_memo_index;
+    computation_->commands[backprop_command].arg7 = new_memo_index;
+    new_memo_index++;
+  }
+}
 
 void IdentifySubmatrixArgsInComputation(NnetComputation *computation,
                                         std::vector<int32*> *submatrix_args) {
@@ -454,6 +497,7 @@ void ComputationRenumberer::Renumber() {
   RemoveIndexesMultiDuplicates();
   RenumberIndexes();
   RenumberIndexesRanges();
+  RenumberMemos();
 }
 
 void ComputationRenumberer::RemoveUnusedIndexesMulti() {
@@ -1171,11 +1215,12 @@ void ModelUpdateConsolidator::ConsolidateUpdateForComponent(
       output_deriv_submatrix = ConsolidateSubmatrices(backprop_commands,
                                                       output_deriv_submatrices);
   int32 precomputed_indexes_index = 0,  // unused since simple component
-      input_deriv_submatrix = 0;  // we don't need the input-deriv, so this is
-                                  // zero.
+      input_deriv_submatrix = 0,  // we don't need the input-deriv.
+      memo_index = 0;  // we checked that no memos were used.
   NnetComputation::Command c(kBackprop, component_index, precomputed_indexes_index,
                              input_submatrix, output_submatrix,
-                             output_deriv_submatrix, input_deriv_submatrix);
+                             output_deriv_submatrix, input_deriv_submatrix,
+                             memo_index);
   final_commands_.push_back(c);
 }
 
@@ -1197,7 +1242,8 @@ void ModelUpdateConsolidator::ConsolidateModelUpdate() {
     if (c.command_type == kBackprop) {
       int32 component_index = c.arg1;
       const Component *component = nnet_.GetComponent(component_index);
-      if (component->Properties() & kUpdatableComponent)
+      int32 properties = component->Properties();
+      if ((properties & kUpdatableComponent) && !(properties & kUsesMemo))
         backprop_commands[component_index].push_back(command_index);
     }
   }
@@ -1262,27 +1308,21 @@ void DerivativeTimeLimiter::ModifyCommand(NnetComputation::Command *command) {
     case kDeallocMatrix:
       break;  // we'll deal with allocation and deallocation later on.
     case kPropagate:
-      // Propagate commands are unchanged.
+      // Propagate commands are unchanged, except that if the output of the
+      // propagate is completely outside the accepted time-range (only likely if
+      // we're inside a recurrency), then we don't store stats; this is not
+      // really important, and is mostly done to minimize the difference from an
+      // older version of the code, to reduce the need for testing.
+      if (submatrix_map_[command->arg4] == 0)
+        command->arg6 = 0;
       break;
-    case kStoreStats: {
-      const Component *component = nnet_.GetComponent(command->arg1);
-      if ((component->Properties() & kSimpleComponent)) {
-        // We choose to apply the time-limitation here, as it will save time and
-        // is probably what the user wants.
-        int32 submatrix_mapped = submatrix_map_[command->arg2];
-        if (submatrix_mapped == 0)
-          command->command_type = kNoOperation;
-        else
-          command->arg2 = submatrix_mapped;
-      }
-      break;
-    }
     case kBackpropNoModelUpdate:  // we actually don't expect to encounter this,
                                   // but it's trivial to support as it's the
                                   // same as backprop.
     case kBackprop: {
       const Component *component = nnet_.GetComponent(command->arg1);
-      if (!(component->Properties() & kSimpleComponent)) {
+      int32 properties = component->Properties();
+      if (!(properties & kSimpleComponent)) {
         // we don't (yet) do this optimization for non-simple Components...
         // it would be a bit more complicated as we'd have to recompute the
         // PrecomputedIndexes.
@@ -1304,9 +1344,14 @@ void DerivativeTimeLimiter::ModifyCommand(NnetComputation::Command *command) {
                      mapped_output_submatrix == 0);
         // just delete the command.
         command->command_type = kNoOperation;
+        if (command->arg7 > 0)
+          memos_to_delete_.insert(command->arg7);
       } else if (mapped_output_deriv_submatrix !=
-                 output_deriv_submatrix) {
+                 output_deriv_submatrix &&
+                 !(properties & kUsesMemo)) {
         // we're operating on a range of the input or output.
+        // we can't do this type of mapping of the component uses
+        // a memo, though.
         command->arg3 = mapped_input_submatrix;
         command->arg4 = mapped_output_submatrix;
         command->arg5 = mapped_output_deriv_submatrix;
@@ -1589,7 +1634,25 @@ void DerivativeTimeLimiter::LimitDerivTimes() {
   ModifyCommands();
   PruneMatrices();
   RemoveNoOps(computation_);
+  RemoveUnusedMemos();
   RenumberComputation(computation_);
+}
+
+void DerivativeTimeLimiter::RemoveUnusedMemos() {
+  if (memos_to_delete_.empty())
+    return;
+  size_t num_commands = computation_->commands.size(),
+      num_memos_removed = 0;
+  for (size_t command_index = 0; command_index < num_commands;
+       command_index++) {
+    NnetComputation::Command &c = computation_->commands[command_index];
+    if (c.command_type == kPropagate &&
+        memos_to_delete_.count(c.arg5) != 0) {
+      c.arg5 = 0;
+      num_memos_removed++;
+    }
+  }
+  KALDI_ASSERT(num_memos_removed == memos_to_delete_.size());
 }
 
 void DerivativeTimeLimiter::ComputeMatrixPruneInfo() {
@@ -2607,7 +2670,7 @@ void ComputationExpander::ComputeCommands() {
       case kAllocMatrixUndefined: case kAllocMatrixZeroed:
       case kDeallocMatrix: case kAllocMatrixFromOther:
       case kAllocMatrixFromOtherZeroed:
-      case kPropagate: case kStoreStats: case kBackprop:
+      case kPropagate: case kBackprop:
       case kBackpropNoModelUpdate: case kMatrixCopy: case kMatrixAdd:
         break;
       case kCopyRows: case kAddRows:
