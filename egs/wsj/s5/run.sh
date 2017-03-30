@@ -334,7 +334,7 @@ steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri4b exp/tri4b_ali_si284 || exit 1;
 local/run_mmi_tri4b.sh
 
-# These demonstrate how to build a sytem usable for online-decoding with the nnet2 setup.
+# These demonstrate how to build a system usable for online-decoding with the nnet2 setup.
 # (see local/run_nnet2.sh for other, non-online nnet2 setups).
 local/online/run_nnet2.sh
 local/online/run_nnet2_baseline.sh

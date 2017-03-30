@@ -1,61 +1,35 @@
 #!/bin/bash
 
-# run_tdnn_1b.sh is like run_tdnn_1a.sh but upgrading to xconfig-based
-# config generation.
-
-# Results (11/29/2016, note, this build is is before the upgrade of the LM
-#   done in Nov 2016):
-# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn_sp_bi exp/chain_cleaned/tdnn1b_sp_bi
-# System                tdnn_sp_bi tdnn1b_sp_bi
-# WER on dev(orig)          10.3      10.2
-# WER on dev(rescored)       9.8       9.6
-# WER on test(orig)           9.8       9.7
-# WER on test(rescored)       9.3       9.2
-# Final train prob        -0.0918   -0.0928
-# Final valid prob        -0.1190   -0.1178
-# Final train prob (xent)   -1.3572   -1.4666
-# Final valid prob (xent)   -1.4415   -1.5473
-
-
-## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
-## otherwise call it directly in its location).
-# by default, with cleanup:
-# local/chain/run_tdnn.sh
-
-# without cleanup:
-# local/chain/run_tdnn.sh  --train-set train --gmm tri3 --nnet3-affix "" &
-
-# note, if you have already run the corresponding non-chain nnet3 system
-# (local/nnet3/run_tdnn.sh), you may want to run with --stage 14.
-
-# This script is like run_tdnn_1a.sh except it uses an xconfig-based mechanism
-# to get the configuration.
+# same as 1b but uses PCA instead of
+# LDA features for the ivector extractor.
 
 set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
 stage=0
+mic=ihm
 nj=30
-decode_nj=30
 min_seg_len=1.55
-xent_regularize=0.1
+use_ihm_ali=false
 train_set=train_cleaned
 gmm=tri3_cleaned  # the gmm for the target data
+ihm_gmm=tri3  # the gmm for the IHM system (if --use-ihm-ali true).
 num_threads_ubm=32
+ivector_feat_type=pca
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=1b  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+tdnn_affix=1d  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -69,30 +43,67 @@ EOF
 fi
 
 local/nnet3/run_ivector_common.sh --stage $stage \
+                                  --mic $mic \
                                   --nj $nj \
                                   --min-seg-len $min_seg_len \
                                   --train-set $train_set \
                                   --gmm $gmm \
                                   --num-threads-ubm $num_threads_ubm \
+                                  --feat-type "$ivector_feat_type" \
                                   --nnet3-affix "$nnet3_affix"
 
+# Note: the first stage of the following script is stage 8.
+local/nnet3/prepare_lores_feats.sh --stage $stage \
+                                   --mic $mic \
+                                   --nj $nj \
+                                   --min-seg-len $min_seg_len \
+                                   --use-ihm-ali $use_ihm_ali \
+                                   --train-set $train_set
 
-gmm_dir=exp/$gmm
-ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
-tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
-lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
-dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_bi
-train_data_dir=data/${train_set}_sp_hires_comb
-lores_train_data_dir=data/${train_set}_sp_comb
-train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
+if $use_ihm_ali; then
+  gmm_dir=exp/ihm/${ihm_gmm}
+  ali_dir=exp/${mic}/${ihm_gmm}_ali_${train_set}_sp_comb_ihmdata
+  lores_train_data_dir=data/$mic/${train_set}_ihmdata_sp_comb
+  tree_dir=exp/$mic/chain${nnet3_affix}/tree_bi${tree_affix}_ihmdata
+  lat_dir=exp/$mic/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats_ihmdata
+  dir=exp/$mic/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_bi_ihmali
+  # note: the distinction between when we use the 'ihmdata' suffix versus
+  # 'ihmali' is pretty arbitrary.
+else
+  gmm_dir=exp/${mic}/$gmm
+  ali_dir=exp/${mic}/${gmm}_ali_${train_set}_sp_comb
+  lores_train_data_dir=data/$mic/${train_set}_sp_comb
+  tree_dir=exp/$mic/chain${nnet3_affix}/tree_bi${tree_affix}
+  lat_dir=exp/$mic/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
+  dir=exp/$mic/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_bi
+fi
+
+train_data_dir=data/$mic/${train_set}_sp_hires_comb
+train_ivector_dir=exp/$mic/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
+final_lm=`cat data/local/lm/final_lm`
+LM=$final_lm.pr1-7
 
 
-for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
-    $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz ; do
+for f in $gmm_dir/final.mdl $lores_train_data_dir/feats.scp \
+   $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
-if [ $stage -le 14 ]; then
+
+if [ $stage -le 11 ]; then
+  if [ -f $ali_dir/ali.1.gz ]; then
+    echo "$0: alignments in $ali_dir appear to already exist.  Please either remove them "
+    echo " ... or use a later --stage option."
+    exit 1
+  fi
+  echo "$0: aligning perturbed, short-segment-combined ${maybe_ihm}data"
+  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
+     ${lores_train_data_dir} data/lang $gmm_dir $ali_dir
+fi
+
+[ ! -f $ali_dir/ali.1.gz ] && echo  "$0: expected $ali_dir/ali.1.gz to exist" && exit 1
+
+if [ $stage -le 12 ]; then
   echo "$0: creating lang directory with one state per phone."
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
@@ -115,7 +126,7 @@ if [ $stage -le 14 ]; then
   fi
 fi
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 13 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj 100 --cmd "$train_cmd" ${lores_train_data_dir} \
@@ -123,7 +134,7 @@ if [ $stage -le 15 ]; then
   rm $lat_dir/fsts.*.gz # save space
 fi
 
-if [ $stage -le 16 ]; then
+if [ $stage -le 14 ]; then
   # Build a tree using our new topology.  We know we have alignments for the
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.
@@ -134,12 +145,12 @@ if [ $stage -le 16 ]; then
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
       --leftmost-questions-truncate -1 \
-      --cmd "$train_cmd" 4000 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
+      --cmd "$train_cmd" 4200 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
 fi
 
-if [ $stage -le 17 ]; then
-  mkdir -p $dir
+xent_regularize=0.1
 
+if [ $stage -le 15 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
@@ -158,13 +169,14 @@ if [ $stage -le 17 ]; then
   # the first splicing is moved before the lda layer, so no splicing here
   relu-renorm-layer name=tdnn1 dim=450
   relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=450
-  relu-renorm-layer name=tdnn3 input=Append(-1,0,1,2) dim=450
+  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=450
   relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=450
   relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=450
-  relu-renorm-layer name=tdnn6 input=Append(-6,-3,0) dim=450
+  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=450
+  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=450
 
   ## adding the layers for chain branch
-  relu-renorm-layer name=prefinal-chain input=tdnn6 dim=450 target-rms=0.5
+  relu-renorm-layer name=prefinal-chain input=tdnn7 dim=450 target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
@@ -176,25 +188,27 @@ if [ $stage -le 17 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-renorm-layer name=prefinal-xent input=tdnn6 dim=450 target-rms=0.5
+  relu-renorm-layer name=prefinal-xent input=tdnn7 dim=450 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF
-  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
-if [ $stage -le 18 ]; then
+if [ $stage -le 16 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5b/$dir/egs/storage $dir/egs/storage
   fi
+
+ touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
-    --chain.xent-regularize 0.1 \
+    --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
@@ -218,26 +232,24 @@ if [ $stage -le 18 ]; then
 fi
 
 
-
-if [ $stage -le 19 ]; then
+graph_dir=$dir/graph_${LM}
+if [ $stage -le 17 ]; then
   # Note: it might appear that this data/lang_chain directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang $dir $dir/graph
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_${LM} $dir $graph_dir
 fi
 
-if [ $stage -le 20 ]; then
+if [ $stage -le 18 ]; then
   rm $dir/.error 2>/dev/null || true
-  for dset in dev test; do
+  for decode_set in dev eval; do
       (
-      steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
-          --acwt 1.0 --post-decode-acwt 10.0 \
-          --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
+      steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+          --nj $nj --cmd "$decode_cmd" \
+          --online-ivector-dir exp/$mic/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
           --scoring-opts "--min-lmwt 5 " \
-         $dir/graph data/${dset}_hires $dir/decode_${dset} || exit 1;
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
-        data/${dset}_hires ${dir}/decode_${dset} ${dir}/decode_${dset}_rescore || exit 1
-    ) || touch $dir/.error &
+         $graph_dir data/$mic/${decode_set}_hires $dir/decode_${decode_set} || exit 1;
+      ) || touch $dir/.error &
   done
   wait
   if [ -f $dir/.error ]; then
