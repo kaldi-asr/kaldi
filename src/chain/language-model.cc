@@ -342,23 +342,22 @@ void LanguageModelEstimator::DoKneserNeyDiscounting() {
     for (int32 l = 0; l < num_lm_states; l++) {
       LmState &lm_state = lm_states_[l];
       if (lm_state.tot_count == 0.0 ||
-	  lm_state.history.size() != order)  // olny cosider lm-states which
-	                                     // are active with a hist size of
-	                                     // 'order'
-	continue;
+	        lm_state.history.size() != order)
+	      continue;   // olny cosider lm-states which are active with a hist size
+	                  // of 'order'
       KALDI_ASSERT(lm_state.backoff_lmstate_index != -1);
       LmState &backoff_state = lm_states_[lm_state.backoff_lmstate_index];
       lm_state.total_discount = 0.0;
       std::map<int32, BaseFloat>::iterator
-	iter = lm_state.phone_to_count.begin(),
-	end = lm_state.phone_to_count.end();
+	    iter = lm_state.phone_to_count.begin(),
+	    end = lm_state.phone_to_count.end();
       for (; iter != end; ++iter) {
-	int32 phone = iter->first;
-	KALDI_ASSERT(iter->second >= opts_.discount);
-	iter->second -= opts_.discount;  // TODO(hhadian): maybe make the iterator const and
-	                                 // do this in another fucntion
-	lm_state.total_discount += opts_.discount;
-	backoff_state.AddCount(phone, opts_.discount);
+	      int32 phone = iter->first;
+	      KALDI_ASSERT(iter->second >= opts_.discount);
+	      iter->second -= opts_.discount;  // TODO(hhadian): maybe make the iterator const and
+	                                       // do this in another fucntion
+	      lm_state.total_discount += opts_.discount;
+	      backoff_state.AddCount(phone, opts_.discount);
       }
     }
   }
@@ -449,7 +448,7 @@ void LanguageModelEstimator::OutputToFst(
       tot_count += count;
       tot_logprob += logprob * count;
       if (phone == 0) {  // Interpret as final-prob.
-	// TODO(hhadian): should we add a backoff arc here too?
+	      // TODO(hhadian): should we add a backoff arc here too?
         fst->SetFinal(lm_state.fst_state, fst::TropicalWeight(-logprob));
       } else {  // It becomes a transition.
         std::vector<int32> next_history(lm_state.history);
@@ -460,20 +459,20 @@ void LanguageModelEstimator::OutputToFst(
         fst->AddArc(lm_state.fst_state,
                     fst::StdArc(phone, phone, fst::TropicalWeight(-logprob),
                                 dest_fst_state));
-	// take care of Kneser-Ney interpolating:
-	if (opts_.discount != 0.0 && lm_state.backoff_lmstate_index != -1) {
-	  int32 backoff_fst_state =
-	    lm_states_[lm_state.backoff_lmstate_index].fst_state;
-	  KALDI_ASSERT(backoff_fst_state != -1);
-	  KALDI_ASSERT(lm_state.total_discount != 0.0);
-	  BaseFloat backoff_logprob =
-	    log(lm_state.total_discount / state_count);
-	  fst->AddArc(lm_state.fst_state,
-                    fst::StdArc(0, 0, fst::TropicalWeight(-backoff_logprob),
+	      // take care of Kneser-Ney interpolating:
+	      if (opts_.discount != 0.0 && lm_state.backoff_lmstate_index != -1) {
+	        int32 backoff_fst_state =
+	          lm_states_[lm_state.backoff_lmstate_index].fst_state;
+	        KALDI_ASSERT(backoff_fst_state != -1);
+	        KALDI_ASSERT(lm_state.total_discount != 0.0);
+	        BaseFloat backoff_logprob =
+	          log(lm_state.total_discount / state_count);
+	        fst->AddArc(lm_state.fst_state,
+                      fst::StdArc(0, 0, fst::TropicalWeight(-backoff_logprob),
                                 backoff_fst_state));
-	  tot_count += lm_state.total_discount;
-	  tot_logprob += backoff_logprob;
-	}
+	        tot_count += lm_state.total_discount;
+	        tot_logprob += backoff_logprob;
+	      }
       }
     }
   }
