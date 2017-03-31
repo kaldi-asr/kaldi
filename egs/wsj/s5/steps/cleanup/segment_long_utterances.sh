@@ -144,46 +144,7 @@ if [ $stage -le 2 ]; then
     utils/data/subsegment_data_dir.sh \
       $data $dir/uniform_sub_segments $data_uniform_seg
   fi
-
-  # make frame-overlap slightly larger so that the number of frames decreases 
-  # by perhaps at most 1 to fix some round-off errors.
-  utils/data/get_utt2num_frames.sh --cmd "$cmd" --nj $nj $data
-  awk '{print $1" "$2}' $dir/uniform_sub_segments | \
-    utils/apply_map.pl -f 2 $data/utt2num_frames > \
-    $data_uniform_seg/utt2max_frames
-
-  #rm $data/reco2num_frames $data/reco2dur || true
-  #utils/data/get_reco2num_frames.sh --cmd "$cmd" --nj $nj \
-  #  --frame-shift $frame_shift \
-  #  --frame-overlap `perl -e "print $frame_shift * 1.51"` \
-  #  $data
-
-  #awk '{print $1" "$2}' $data_uniform_seg/segments | \
-  #  utils/apply_map.pl -f 2 $data/reco2num_frames > \
-  #  $data_uniform_seg/utt2max_frames
-
-  utils/data/get_subsegmented_feats.sh $data/feats.scp $frame_shift 0.0 \
-    $dir/uniform_sub_segments | \
-    utils/data/fix_subsegmented_feats.pl $data_uniform_seg/utt2max_frames > \
-    $data_uniform_seg/feats.scp 
-
-  # Map the original text file to the uniform segments,
-  # even though the segments don't actually correspond to the whole text. 
-  # This is ok because this text file is actually used to train the biased
-  # LM and not for any other task.
-  cut -d ' ' -f 1,2 $data/segments > $data/utt2reco
-  cat $dir/new2old_utts | utils/apply_map.pl -f 2 $data/utt2reco | \
-    utils/filter_scp.pl -f 2 $text | \
-    utils/apply_map.pl -f 2 $text > $data_uniform_seg/text
-
-  wc_orig=$(cat $dir/uniform_sub_segments | wc -l)
-  wc_text=$(cat $data_uniform_seg/text | wc -l)
   
-  if [ $[$wc_orig*9] -gt $[$wc_text*10] ]; then
-    echo "$0: Lost too many segments; orig ($wc_orig) vs ($wc_text)"
-    exit 1
-  fi
-
   utils/fix_data_dir.sh $data_uniform_seg
 
   # Compute new cmvn stats for the segmented data directory
