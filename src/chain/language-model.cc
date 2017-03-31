@@ -351,13 +351,17 @@ void LanguageModelEstimator::DoKneserNeyDiscounting() {
       std::map<int32, BaseFloat>::iterator
 	    iter = lm_state.phone_to_count.begin(),
 	    end = lm_state.phone_to_count.end();
-      for (; iter != end; ++iter) {
+      for (; iter != end;) {
 	      int32 phone = iter->first;
 	      KALDI_ASSERT(iter->second >= opts_.discount);
 	      iter->second -= opts_.discount;  // TODO(hhadian): maybe make the iterator const and
 	                                       // do this in another fucntion
 	      lm_state.total_discount += opts_.discount;
 	      backoff_state.AddCount(phone, opts_.discount);
+	      if (iter->second == 0.0)  // erase it
+	        lm_state.phone_to_count.erase(iter++);
+	      else
+	        iter++;
       }
     }
   }
@@ -459,21 +463,22 @@ void LanguageModelEstimator::OutputToFst(
         fst->AddArc(lm_state.fst_state,
                     fst::StdArc(phone, phone, fst::TropicalWeight(-logprob),
                                 dest_fst_state));
-	      // take care of Kneser-Ney interpolating:
-	      if (opts_.discount != 0.0 && lm_state.backoff_lmstate_index != -1) {
-	        int32 backoff_fst_state =
-	          lm_states_[lm_state.backoff_lmstate_index].fst_state;
-	        KALDI_ASSERT(backoff_fst_state != -1);
-	        KALDI_ASSERT(lm_state.total_discount != 0.0);
-	        BaseFloat backoff_logprob =
-	          log(lm_state.total_discount / state_count);
-	        fst->AddArc(lm_state.fst_state,
-                      fst::StdArc(0, 0, fst::TropicalWeight(-backoff_logprob),
-                                backoff_fst_state));
-	        tot_count += lm_state.total_discount;
-	        tot_logprob += backoff_logprob;
-	      }
       }
+    }
+	  // take care of Kneser-Ney interpolating:
+    if (opts_.discount != 0.0 && lm_state.backoff_lmstate_index != -1) {
+      int32 backoff_fst_state =
+        lm_states_[lm_state.backoff_lmstate_index].fst_state;
+      KALDI_ASSERT(backoff_fst_state != -1);
+      KALDI_ASSERT(lm_state.total_discount != 0.0);
+      BaseFloat backoff_logprob =
+        log(lm_state.total_discount / state_count);
+      fst->AddArc(lm_state.fst_state,
+                  fst::StdArc(0, 0, fst::TropicalWeight(-backoff_logprob),
+                            backoff_fst_state));
+      tot_count += lm_state.total_discount;
+      double old_tot_logprob = tot_logprob;
+      tot_logprob += backoff_logprob * lm_state.total_discount;
     }
   }
   BaseFloat perplexity = exp(-(tot_logprob / tot_count));
