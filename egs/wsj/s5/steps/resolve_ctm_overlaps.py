@@ -19,7 +19,6 @@ and the first 2.5s of the second utterance i.e. from 25s to 27.s is truncated.
 from __future__ import print_function
 import argparse
 import logging
-import sys
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -93,7 +92,7 @@ def read_reco2utt(reco2utt_file, segments):
 def read_ctm(ctm_file, reco2utt, segments):
     """Read CTM from ctm_file into a dictionary of values indexed by the
     recording.
-    It is assumed to be sorted recording-id and start-time.
+    It is assumed to be sorted by the recording-id and utterance-id.
 
     Returns a dictionary {recording : ctm_lines}
         where ctm_lines is a list of lines of CTM corresponding to the
@@ -334,8 +333,8 @@ def write_ctm(ctm_lines, out_file):
         print(ctm_line_to_string(line), file=out_file)
 
 
-def _run(args):
-    """the method does everything in this script"""
+def run(args):
+    """this method does everything in this script"""
     segments = {key: value for key, value in read_segments(args.segments)}
     reco2utt = {key: value
                 for key, value in read_reco2utt(args.reco2utt, segments)}
@@ -360,16 +359,17 @@ def _run(args):
 
 
 def main():
-    """The main function which parses arguments and call _run()."""
+    """The main function which parses arguments and call run()."""
+    args = get_args()
     try:
-        args = get_args()
-        _run(args)
+        run(args)
     except:
         logger.error("Failed to resolve overlaps", exc_info=True)
         raise RuntimeError
     finally:
         try:
-            for f in [args.reco2utt, args.segments, args.ctm_in, args.ctm_out]:
+            for f in [args.reco2utt, args.segments,
+                      args.ctm_in, args.ctm_out]:
                 if f is not None:
                     f.close()
         except IOError:

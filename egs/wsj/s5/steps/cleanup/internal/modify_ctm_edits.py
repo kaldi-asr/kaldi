@@ -170,10 +170,10 @@ def ProcessLineForNonScoredWords(a):
         a[7] = edit_type
         return a
 
-    except Exception as e:
-        logger.error("modify_ctm_edits.py: bad line in ctm-edits input: "
-                     "{0}".format(a), exc_info=True)
-        raise
+    except Exception:
+        logger.error("bad line in ctm-edits input: "
+                     "{0}".format(a))
+        raise RuntimeError
 
 # This function processes the split lines of one utterance (as a
 # list of lists of fields), to allow repetitions of words, so if the

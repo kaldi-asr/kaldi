@@ -7,8 +7,10 @@
 
 """
 Script to combine ctms edits with overlapping segments obtained from
-smith-waterman alignment.
-The current approach is very simple. It finds the WER of the overlapped region
+smith-waterman alignment. This script is similar to resolve_ctm_edits.py,
+where the overlapping region is just split in two. The approach here is a
+little more advanced since we have access to the WER
+(w.r.t. the reference text). It finds the WER of the overlapped region
 in the two overlapping segments, and chooses the better one.
 """
 
@@ -34,6 +36,8 @@ def get_args():
     parser = argparse.ArgumentParser(usage)
     parser.add_argument('segments', type=argparse.FileType('r'),
                         help='use segments to resolve overlaps')
+    parser.add_argument('reco2utt', type=argparse.FileType('r'),
+                        help='use reco2utt to get segments in order')
     parser.add_argument('ctm_edits_in', type=argparse.FileType('r'),
                         help='input_ctm_file')
     parser.add_argument('ctm_edits_out', type=argparse.FileType('w'),
@@ -55,7 +59,7 @@ def read_segments(segments_file):
     value is a tuple (recording_id, start_time, end_time)a
     """
     num_lines = 0
-    for line in segments_file.readlines():
+    for line in segments_file:
         num_lines += 1
         parts = line.strip().split()
         assert len(parts) in [4, 5]
@@ -66,7 +70,24 @@ def read_segments(segments_file):
     segments_file.close()
 
 
-def read_ctm_edits(ctm_edits_file, segments):
+def read_reco2utt(reco2utt_file, segments):
+    """Reads from reco2utt_file and yields reco, value pairs where
+    key is the recording-id
+    value is a list of utterance-ids sorted by start-time
+
+    Arguments:
+        reco2utt_file: File containing <reco-id> <List of utt-ids>
+        segments:
+            The output of read_segments() function
+            { utt_id: (recording_id, start_time, end_time) }
+    """
+    for line in reco2utt_file:
+        parts = line.strip().split()
+        yield parts[0], sorted(parts[1:], key=lambda x: segments[x][1])
+    reco2utt_file.close()
+
+
+def read_ctm_edits(ctm_edits_file, reco2utt, segments):
     """Read CTM from ctm_edits_file into a dictionary of values indexed by the
     recording.
     It is assumed to be sorted by the recording-id and utterance-id.
@@ -92,49 +113,27 @@ def read_ctm_edits(ctm_edits_file, segments):
             { utterance_id: (recording_id, start_time, end_time) }
     """
     ctm_edits = {}
+
+    num_lines = 0
+    for line in ctm_edits_file:
+
     for key in [x[0] for x in segments.values()]:
         ctm_edits[key] = []
-
-    ctm_edit = []
-    prev_utt = ""
-    num_lines = 0
-    num_utts = 0
-    for line in ctm_edits_file:
         num_lines += 1
-        try:
-            parts = line.split()
-            if prev_utt == parts[0]:
-                ctm_edit.append([parts[0], parts[1], float(parts[2]),
-                                 float(parts[3]), parts[4], float(parts[5])]
-                                + parts[6:])
-            else:
-                if prev_utt != "":
-                    assert parts[0] > prev_utt    # sorted by utterance-id
+        parts = line.split()
 
-                    # New utterance. Append the previous utterance's CTM
-                    # into the list for the utterance's recording.
-                    reco = segments[prev_utt][0]
-                    ctm_edits[reco].append(ctm_edit)
-                    assert ctm_edit[0][0] == prev_utt
-                    num_utts += 1
+        utt = parts[0]
+        reco = segments[utt][0]
 
-                # Start a new CTM for the new utterance-id parts[0].
-                ctm_edit = [[parts[0], parts[1], float(parts[2]),
-                             float(parts[3]), parts[4], float(parts[5])]
-                            + parts[6:]]
-                prev_utt = parts[0]
-        except:
-            logger.error("Error while reading line %s in CTM file %s",
-                         line, ctm_edits_file.name)
-            raise
+        if (reco, utt) not in ctm_edits:
+            ctm_edits[(reco, utt)] = []
 
-    # Append the last ctm.
-    reco = segments[prev_utt][0]
-    ctm_edits[reco].append(ctm_edit)
+        ctms[(reco, utt)].append([parts[0], parts[1], float(parts[2]),
+                                  float(parts[3]), parts[4], float(parts[5])]
+                                 + parts[6:])
 
-    logger.info("Read %d lines from CTM %s; got %d recordings, "
-                "%d utterances.",
-                num_lines, ctm_edits_file.name, len(ctm_edits), num_utts)
+    logger.info("Read %d lines from CTM %s", num_lines, ctm_edits_file.name)
+
     ctm_edits_file.close()
     return ctm_edits
 
@@ -163,6 +162,49 @@ def choose_best_ctm_lines(first_lines, second_lines,
                         key=lambda x: wer(x[1]))
 
     return i
+
+    #ctm_edit = []
+    #prev_utt = ""
+    #num_lines = 0
+    #num_utts = 0
+    #for line in ctm_edits_file:
+    #    num_lines += 1
+    #    try:
+    #        parts = line.split()
+    #        if prev_utt == parts[0]:
+    #            ctm_edit.append([parts[0], parts[1], float(parts[2]),
+    #                             float(parts[3]), parts[4], float(parts[5])]
+    #                            + parts[6:])
+    #        else:
+    #            if prev_utt != "":
+    #                assert parts[0] > prev_utt    # sorted by utterance-id
+
+    #                # New utterance. Append the previous utterance's CTM
+    #                # into the list for the utterance's recording.
+    #                reco = segments[prev_utt][0]
+    #                ctm_edits[reco].append(ctm_edit)
+    #                assert ctm_edit[0][0] == prev_utt
+    #                num_utts += 1
+
+    #            # Start a new CTM for the new utterance-id parts[0].
+    #            ctm_edit = [[parts[0], parts[1], float(parts[2]),
+    #                         float(parts[3]), parts[4], float(parts[5])]
+    #                        + parts[6:]]
+    #            prev_utt = parts[0]
+    #    except:
+    #        logger.error("Error while reading line %s in CTM file %s",
+    #                     line, ctm_edits_file.name)
+    #        raise
+
+    ## Append the last ctm.
+    #reco = segments[prev_utt][0]
+    #ctm_edits[reco].append(ctm_edit)
+
+    #logger.info("Read %d lines from CTM %s; got %d recordings, "
+    #            "%d utterances.",
+    #            num_lines, ctm_edits_file.name, len(ctm_edits), num_utts)
+    #ctm_edits_file.close()
+    #return ctm_edits
 
 
 def resolve_overlaps(ctm_edits, segments):
@@ -201,6 +243,10 @@ def resolve_overlaps(ctm_edits, segments):
         if utt_index == len(ctm_edits) - 1:
             break
 
+        if len(ctm_edits_for_cur_utt) == 0:
+            next_utt = ctm_edits[utt_index + 1][0][0]
+            continue
+
         cur_utt = ctm_edits_for_cur_utt[0][0]
         if cur_utt != next_utt:
             logger.error(
@@ -211,10 +257,10 @@ def resolve_overlaps(ctm_edits, segments):
             raise ValueError
 
         # Assumption here is that the segments are written in
-        # consecutive order?
+        # consecutive order in time.
         ctm_edits_for_next_utt = ctm_edits[utt_index + 1]
         next_utt = ctm_edits_for_next_utt[0][0]
-        if next_utt <= cur_utt:
+        if segments[next_utt][1] < segments[cur_utt][1]:
             logger.error(
                 "Next utterance %s <= Current utterance %s. "
                 "CTM edits is not sorted by utterance-id.",
@@ -307,15 +353,20 @@ def write_ctm_edits(ctm_edit_lines, out_file):
         print(ctm_edit_line_to_string(line), file=out_file)
 
 
-def _run(args):
-    """the method does everything in this script"""
+def run(args):
+    """this method does everything in this script"""
     segments = {key: value for key, value in read_segments(args.segments)}
+    reco2utt = {key: value
+                for key, value in read_reco2utt(args.reco2utt, segments)}
 
     # Read CTMs into a dictionary indexed by the recording
-    ctm_edits = read_ctm_edits(args.ctm_edits_in, segments)
+    ctm_edits = read_ctm_edits(args.ctm_edits_in, reco2utt, segments)
 
-    for reco in sorted(ctm_edits.keys()):
-        ctm_edits_for_reco = ctm_edits[reco]
+    for reco, utts in reco2utt.iteritems():
+        ctm_edits_for_reco = []
+        for utt in utts:
+            if (reco, utt) in ctms:
+                ctm_edits_for_reco.append(ctm_edits[(reco, utt)])
         try:
             # Process CTMs in the recordings
             ctm_edits_for_reco = resolve_overlaps(ctm_edits_for_reco, segments)
@@ -329,21 +380,25 @@ def _run(args):
 
 
 def main():
-    """The main function which parses arguments and call _run()."""
+    """The main function which parses arguments and call run()."""
+    args = get_args()
     try:
-        args = get_args()
-        _run(args)
+        run(args)
     except:
-        raise
+        logger.error("Failed to resolve overlaps", exc_info=True)
+        raise RuntimeError
     finally:
         try:
-            args.ctm_edits_out.close()
-            args.ctm_edits_in.close()
-            args.segments.close()
+            for f in [args.reco2utt, args.segments,
+                      args.ctm_edits_in, args.ctm_edits_out]:
+                if f is not None:
+                    f.close()
         except IOError:
             logger.error("Could not close some files. "
                          "Disk error or broken pipes?")
             raise
+        except UnboundLocalError:
+            raise SystemExit(1)
 
 
 if __name__ == "__main__":
