@@ -8,8 +8,6 @@ import sys
 import tf_idf
 sys.path.insert(0, 'steps')
 
-import libs.exceptions as kaldi_exceptions
-
 logger = logging.getLogger('tf_idf')
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
@@ -74,12 +72,12 @@ def _get_args():
     args = parser.parse_args()
 
     if args.tf_normalization_factor >= 1.0 or args.tf_normalization_factor < 0:
-        raise Exception("--tf-normalization-factor must be in [0,1)")
+        raise ValueError("--tf-normalization-factor must be in [0,1)")
 
     args.accumulate_over_docs = bool(args.accumulate_over_docs == "true")
 
     if not args.accumulate_over_docs and args.input_idf_stats is None:
-        raise kaldi_exceptions.ArgumentError(
+        raise TypeError(
             "If --accumulate-over-docs=false is provided, "
             "then --input-idf-stats must be provided.")
 
