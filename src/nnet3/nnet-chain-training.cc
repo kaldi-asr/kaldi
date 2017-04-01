@@ -68,17 +68,23 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
                              &request);
   const NnetComputation *computation = compiler_.Compile(request);
 
-  if (nnet_config.backstitch_training_scale > 0.0 &&
-      nnet_config.backstitch_training_epsilon > 0.0 && num_minibatches_processed_
+  if (nnet_config.backstitch_training_scale > 0.0 && num_minibatches_processed_
       % nnet_config.backstitch_training_interval == 0) {
+    // backstitch training is incompatible with momentum > 0
+    KALDI_ASSERT(nnet_config.momentum == 0.0);
+    KALDI_ASSERT(nnet_config.backstitch_training_epsilon > 0.0);
     FreezeNaturalGradient(true, delta_nnet_);
     bool is_backstitch_step = true;
     TrainInternal(chain_eg, *computation, is_backstitch_step);
     FreezeNaturalGradient(false, delta_nnet_); // un-freeze natural gradient
+    is_backstitch_step = false;
+    TrainInternal(chain_eg, *computation, is_backstitch_step);
+  } else {
+    // conventional training
+    bool is_backstitch_step = false;
+    TrainInternal(chain_eg, *computation, is_backstitch_step);
   }
 
-  bool is_backstitch_step = false;
-  TrainInternal(chain_eg, *computation, is_backstitch_step);
   num_minibatches_processed_++;
 }
 
@@ -95,7 +101,42 @@ void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
   this->ProcessOutputs(is_backstitch_step, eg, &computer);
   computer.Run();
 
-  UpdateParamsWithMaxChange(is_backstitch_step);
+  // The configurations if doing conventional training with momentum
+  BaseFloat max_change_scale = 1.0, scale_adding = 1.0 - nnet_config.momentum,
+            scale_delta_nnet = nnet_config.momentum;
+  // The configurations if doing backstitch training
+  if (nnet_config.backstitch_training_scale > 0.0 && num_minibatches_processed_
+      % nnet_config.backstitch_training_interval == 0) {
+    const BaseFloat backstitch_ratio = nnet_config.backstitch_training_scale /
+        nnet_config.backstitch_training_epsilon; // just for convenience
+    if (is_backstitch_step) {
+      // max-change is scaled by epsilon;
+      // delta_nnet is scaled by -epsilon when adding to nnet;
+      // delta_nnet itself is then scaled by
+      // - (alpha/epsilon - 1 - epsilon) / (alpha/epsilon)
+      max_change_scale = nnet_config.backstitch_training_epsilon;
+      scale_adding = -nnet_config.backstitch_training_epsilon;
+      scale_delta_nnet =
+          (-backstitch_ratio + 1.0 + nnet_config.backstitch_training_epsilon) /
+          backstitch_ratio;
+    } else {
+      // max-change is scaled by 1 + epsilon;
+      // delta_nnet is scaled by alpha/epsilon when adding to nnet;
+      // delta_nnet itself is then zeroed
+      max_change_scale = 1.0 + nnet_config.backstitch_training_epsilon;
+      scale_adding = backstitch_ratio;
+      scale_delta_nnet = 0.0;
+    }
+  }
+  // Updates the parameters of nnet
+  bool success = UpdateNnetWithMaxChange(*delta_nnet_,
+      nnet_config.max_param_change, max_change_scale, scale_adding, nnet_,
+      &num_max_change_per_component_applied_, &num_max_change_global_applied_);
+  // Scales delta_nnet
+  if (success)
+    ScaleNnet(scale_delta_nnet, delta_nnet_);
+  else
+    ScaleNnet(0.0, delta_nnet_);
 }
 
 void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step,
@@ -167,121 +208,6 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step,
   }
 }
 
-void NnetChainTrainer::UpdateParamsWithMaxChange(bool is_backstitch_step) {
-  KALDI_ASSERT(delta_nnet_ != NULL);
-  const NnetTrainerOptions &nnet_config = opts_.nnet_config;
-  // computes scaling factors for per-component max-change
-  const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
-  Vector<BaseFloat> scale_factors = Vector<BaseFloat>(num_updatable);
-  BaseFloat param_delta_squared = 0.0;
-  int32 num_max_change_per_component_applied_per_minibatch = 0;
-  BaseFloat min_scale = 1.0;
-  std::string component_name_with_min_scale;
-  BaseFloat max_change_with_min_scale;
-  int32 i = 0;
-  for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
-    Component *comp = delta_nnet_->GetComponent(c);
-    if (comp->Properties() & kUpdatableComponent) {
-      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
-      if (uc == NULL)
-        KALDI_ERR << "Updatable component does not inherit from class "
-                  << "UpdatableComponent; change this code.";
-      BaseFloat max_param_change_per_comp = uc->MaxChange();
-      KALDI_ASSERT(max_param_change_per_comp >= 0.0);
-      if (nnet_config.backstitch_training_scale > 0.0 &&
-          nnet_config.backstitch_training_epsilon > 0.0 &&
-          !is_backstitch_step) {
-        max_param_change_per_comp *=
-            (1 + nnet_config.backstitch_training_epsilon) *
-            nnet_config.backstitch_training_epsilon /
-            nnet_config.backstitch_training_scale;
-      }
-      BaseFloat dot_prod = uc->DotProduct(*uc);
-      if (max_param_change_per_comp != 0.0 &&
-          std::sqrt(dot_prod) > max_param_change_per_comp) {
-        scale_factors(i) = max_param_change_per_comp / std::sqrt(dot_prod);
-        num_max_change_per_component_applied_[i]++;
-        num_max_change_per_component_applied_per_minibatch++;
-        KALDI_VLOG(2) << "Parameters in " << delta_nnet_->GetComponentName(c)
-                      << " change too big: " << std::sqrt(dot_prod) << " > "
-                      << "max-change=" << max_param_change_per_comp
-                      << ", scaling by " << scale_factors(i);
-      } else {
-        scale_factors(i) = 1.0;
-      }
-      if (i == 0 || scale_factors(i) < min_scale) {
-        min_scale =  scale_factors(i);
-        component_name_with_min_scale = delta_nnet_->GetComponentName(c);
-        max_change_with_min_scale = max_param_change_per_comp;
-      }
-      param_delta_squared += std::pow(scale_factors(i),
-                                      static_cast<BaseFloat>(2.0)) * dot_prod;
-      i++;
-    }
-  }
-  KALDI_ASSERT(i == scale_factors.Dim());
-  BaseFloat param_delta = std::sqrt(param_delta_squared);
-  // computes the scale for global max-change (with momentum)
-  BaseFloat scale = (1.0 - nnet_config.momentum);
-  BaseFloat max_param_change = nnet_config.max_param_change;
-  if (max_param_change != 0.0) {
-    if (nnet_config.backstitch_training_scale > 0.0 &&
-        nnet_config.backstitch_training_epsilon > 0.0 && !is_backstitch_step) {
-      max_param_change *= (1 + nnet_config.backstitch_training_epsilon) *
-          nnet_config.backstitch_training_epsilon /
-          nnet_config.backstitch_training_scale;
-    }
-    param_delta *= scale;
-    if (param_delta > max_param_change) {
-      if (param_delta - param_delta != 0.0) {
-        KALDI_WARN << "Infinite parameter change, will not apply.";
-        ScaleNnet(0.0, delta_nnet_);
-      } else {
-        scale *= max_param_change / param_delta;
-        num_max_change_global_applied_++;
-      }
-    }
-  }
-  if ((max_param_change != 0.0 &&
-      param_delta > max_param_change &&
-      param_delta - param_delta == 0.0) || min_scale < 1.0) {
-    std::ostringstream ostr;
-    if (min_scale < 1.0)
-      ostr << "Per-component max-change active on "
-           << num_max_change_per_component_applied_per_minibatch
-           << " / " << num_updatable << " Updatable Components."
-           << "(smallest factor=" << min_scale << " on "
-           << component_name_with_min_scale
-           << " with max-change=" << max_change_with_min_scale <<"). ";
-    if (param_delta > max_param_change)
-      ostr << "Global max-change factor was "
-           << max_param_change / param_delta
-           << " with max-change=" << nnet_config.max_param_change << ".";
-    KALDI_LOG << ostr.str();
-  }
-  // applies both of the max-change scalings all at once, component by component
-  // and updates parameters
-  if (nnet_config.backstitch_training_scale > 0.0 && 
-      nnet_config.backstitch_training_epsilon > 0.0) {
-    const BaseFloat backstitch_ratio = nnet_config.backstitch_training_scale /
-        nnet_config.backstitch_training_epsilon;
-    BaseFloat scale_backstitch =
-        (is_backstitch_step ? -nnet_config.backstitch_training_epsilon :
-        backstitch_ratio);
-    scale_factors.Scale(scale * scale_backstitch);
-    AddNnetComponents(*delta_nnet_, scale_factors, scale * scale_backstitch,
-                      nnet_);
-    scale_backstitch = (is_backstitch_step ? (-backstitch_ratio + 1 +
-        nnet_config.backstitch_training_epsilon) / backstitch_ratio :
-        nnet_config.momentum);
-    ScaleNnet(scale_backstitch, delta_nnet_);
-  } else {
-    scale_factors.Scale(scale);
-    AddNnetComponents(*delta_nnet_, scale_factors, scale, nnet_);
-    ScaleNnet(nnet_config.momentum, delta_nnet_);
-  }
-}
-
 bool NnetChainTrainer::PrintTotalStats() const {
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher>::const_iterator
       iter = objf_info_.begin(),
@@ -310,14 +236,18 @@ void NnetChainTrainer::PrintMaxChangeStats() const {
         KALDI_LOG << "For " << delta_nnet_->GetComponentName(c)
                   << ", per-component max-change was enforced "
                   << (100.0 * num_max_change_per_component_applied_[i]) /
-                     num_minibatches_processed_ << " \% of the time.";
+                     num_minibatches_processed_ /
+                     (opts_.nnet_config.backstitch_training_scale > 0.0 ? 2.0 : 1.0)
+                  << " \% of the time.";
       i++;
     }
   }
   if (num_max_change_global_applied_ > 0)
     KALDI_LOG << "The global max-change was enforced "
               << (100.0 * num_max_change_global_applied_) /
-                 num_minibatches_processed_ << " \% of the time.";
+                 num_minibatches_processed_ /
+                 (opts_.nnet_config.backstitch_training_scale > 0.0 ? 2.0 : 1.0)
+              << " \% of the time.";
 }
 
 NnetChainTrainer::~NnetChainTrainer() {

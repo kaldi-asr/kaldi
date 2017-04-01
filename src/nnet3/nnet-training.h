@@ -54,6 +54,7 @@ struct NnetTrainerOptions {
       momentum(0.0),
       backstitch_training_scale(0.0),
       backstitch_training_interval(1),
+      backstitch_training_epsilon(0.2),
       binary_write_cache(true),
       max_param_change(2.0) { }
   void Register(OptionsItf *opts) {
@@ -179,18 +180,6 @@ class NnetTrainer {
 
   void ProcessOutputs(bool is_backstitch_step, const NnetExample &eg,
                       NnetComputer *computer);
-
-  // Applies per-component max-change and global max-change to all updatable
-  // components in *delta_nnet_, and use *delta_nnet_ to update parameters
-  // in *nnet_. If is_backstitch_step && config_.backstitch_training_scale > 0,
-  // the update is an backstitch step where the params are scaled by
-  // -config_.backstitch_training_scale;
-  // if !is_backstitch_step && config_.backstitch_training_scale > 0 the
-  // update is a normal step where the params are scaled by
-  // 1+opts_.backstitch_training_scale; otherwise
-  // !is_backstitch_step && config_.backstitch_training_scale == 0, and it is
-  // a normal step
-  void UpdateParamsWithMaxChange(bool is_backstitch_step = false);
 
   const NnetTrainerOptions config_;
   Nnet *nnet_;
