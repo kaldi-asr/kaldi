@@ -5415,7 +5415,7 @@ void BatchNormComponent::ComputeDerived() {
   offset_.Resize(block_dim_);
   scale_.Resize(block_dim_);
   offset_.CopyFromVec(stats_sum_);
-  offset_.Scale(1.0 / count_);
+  offset_.Scale(-1.0 / count_);
   // now offset_ is -mean.
   scale_.CopyFromVec(stats_sumsq_);
   scale_.Scale(1.0 / count_);
@@ -5662,7 +5662,6 @@ void* BatchNormComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
     out->CopyFromMat(in);
     out->AddVecToRows(-1.0, mean, 1.0);
     out->MulColsVec(scale);
-
     return static_cast<void*>(memo);
   } else {
     if (offset_.Dim() != block_dim_) {

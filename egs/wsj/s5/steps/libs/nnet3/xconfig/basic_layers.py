@@ -623,7 +623,7 @@ class XconfigBasicLayer(XconfigLayerBase):
         # Here we just list some likely combinations.. you can just add any
         # combinations you want to use, to this list.
         assert first_token in [ 'relu-layer', 'relu-renorm-layer', 'sigmoid-layer',
-                                'tanh-layer' ]
+                                'tanh-layer', 'relu-batchnorm-layer' ]
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -743,6 +743,13 @@ class XconfigBasicLayer(XconfigLayerBase):
             elif nonlinearity == 'renorm':
                 line = ('component name={0}.{1}'
                         ' type=NormalizeComponent dim={2}'
+                        ' target-rms={3}'
+                        ''.format(self.name, nonlinearity, output_dim,
+                            target_rms))
+
+            elif nonlinearity == 'batchnorm':
+                line = ('component name={0}.{1}'
+                        ' type=BatchNormComponent dim={2}'
                         ' target-rms={3}'
                         ''.format(self.name, nonlinearity, output_dim,
                             target_rms))

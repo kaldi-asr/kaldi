@@ -20,6 +20,7 @@ config_to_layer = {
         'output-layer' : xlayers.XconfigOutputLayer,
         'relu-layer' : xlayers.XconfigBasicLayer,
         'relu-renorm-layer' : xlayers.XconfigBasicLayer,
+        'relu-batchnorm-layer' : xlayers.XconfigBasicLayer,
         'sigmoid-layer' : xlayers.XconfigBasicLayer,
         'tanh-layer' : xlayers.XconfigBasicLayer,
         'fixed-affine-layer' : xlayers.XconfigFixedAffineLayer,
