@@ -140,7 +140,7 @@ class LanguageModelEstimator {
     // count, and
     bool backoff_allowed;
 
-    void AddCount(int32 phone, float count);
+    void AddCount(int32 phone, BaseFloat count);
     void PrintInfo();
     // Log-likelihood of data in this case, summed, not averaged:
     // i.e. sum(phone in phones) count(phone) * log-prob(phone | this state).

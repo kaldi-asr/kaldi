@@ -170,7 +170,8 @@ BaseFloat LanguageModelEstimator::LmState::LogLike() const {
     double prob = count / tot_count;
     ans += log(prob) * count;
   }
-  KALDI_ASSERT(tot_count_check == tot_count);  // TODO(hhadian): should be tot_count - total_discount but it is never checked anyway
+  KALDI_ASSERT(tot_count_check == tot_count);  // TODO(hhadian): should be tot_count - total_discount
+                                               // but it is never checked anyway
   return ans;
 }
 
@@ -354,8 +355,8 @@ void LanguageModelEstimator::DoKneserNeyDiscounting() {
       for (; iter != end;) {
 	      int32 phone = iter->first;
 	      KALDI_ASSERT(iter->second >= opts_.discount);
-	      iter->second -= opts_.discount;  // TODO(hhadian): maybe make the iterator const and
-	                                       // do this in another fucntion
+	      iter->second -= opts_.discount;  // TODO(hhadian): maybe make the iterator
+	                                       //  const and do this in another fucntion
 	      lm_state.total_discount += opts_.discount;
 	      backoff_state.AddCount(phone, opts_.discount);
 	      if (iter->second == 0.0)  // erase it
@@ -434,6 +435,10 @@ void LanguageModelEstimator::OutputToFst(
   double tot_count = 0.0;
   double tot_logprob = 0.0;
 
+  // these two are just for checking
+  int64 tot_int_count = 0;
+  double tot_float_count = 0.0;
+
   int32 num_lm_states = lm_states_.size();
   // note: not all lm-states end up being 'active'.
   for (int32 l = 0; l < num_lm_states; l++) {
@@ -451,8 +456,11 @@ void LanguageModelEstimator::OutputToFst(
       BaseFloat logprob = log(count * 1.0 / state_count);
       tot_count += count;
       tot_logprob += logprob * count;
+      if (floorf(count) == count)
+        tot_int_count += static_cast<int64>(count);
+      else
+        tot_float_count += count;
       if (phone == 0) {  // Interpret as final-prob.
-	      // TODO(hhadian): should we add a backoff arc here too?
         fst->SetFinal(lm_state.fst_state, fst::TropicalWeight(-logprob));
       } else {  // It becomes a transition.
         std::vector<int32> next_history(lm_state.history);
@@ -477,10 +485,15 @@ void LanguageModelEstimator::OutputToFst(
                   fst::StdArc(0, 0, fst::TropicalWeight(-backoff_logprob),
                             backoff_fst_state));
       tot_count += lm_state.total_discount;
-      double old_tot_logprob = tot_logprob;
       tot_logprob += backoff_logprob * lm_state.total_discount;
+      if (floorf(lm_state.total_discount) == lm_state.total_discount)
+        tot_int_count += static_cast<int64>(lm_state.total_discount);
+      else
+        tot_float_count += lm_state.total_discount;
     }
   }
+  KALDI_ASSERT(static_cast<double>(tot_int_count) + tot_float_count
+               == tot_count);
   BaseFloat perplexity = exp(-(tot_logprob / tot_count));
   KALDI_LOG << "Total number of phone instances seen was " << tot_count;
   KALDI_LOG << "Perplexity on training data is: " << perplexity;
