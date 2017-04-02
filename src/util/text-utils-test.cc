@@ -230,6 +230,26 @@ void TestConvertStringToReal() {
   KALDI_ASSERT(!ConvertStringToReal("-1.#QNANGARBAGE", &d));
 }
 
+template<class Real>
+void TestNan() {
+  Real d;
+  std::ostringstream strs;
+  strs << sqrt(-1);
+  std::string s = strs.str();
+
+  KALDI_ASSERT(ConvertStringToReal(s, &d) && d != d);
+}
+
+template<class Real>
+void TestInf() {
+  Real d;
+  std::ostringstream strs;
+  strs << 1.0/0.0;
+  std::string s = strs.str();
+
+  KALDI_ASSERT(ConvertStringToReal(s, &d) && d > 0 && d - d != 0);
+}
+
 
 std::string TrimTmp(std::string s) {
   Trim(&s);
@@ -306,6 +326,10 @@ int main() {
   TestSplitStringOnFirstSpace();
   TestIsToken();
   TestIsLine();
+  TestNan<float>();
+  TestNan<double>();
+  TestInf<float>();
+  TestInf<double>();
   std::cout << "Test OK\n";
 }
 
