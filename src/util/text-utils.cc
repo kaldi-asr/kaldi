@@ -167,44 +167,72 @@ inline bool starts_with(const std::string &in, const std::string &prefix) {
   return in.substr(0, prefix.size()) == prefix;
 }
 
-
 template <class T>
 class NumberIstream{
  public:
   explicit NumberIstream(std::istream &i) : in_(i) {}
 
   NumberIstream & operator >> (T &x) {
-    bool neg = false;
     if (!in_.good()) return *this;
-    in_ >> std::ws;  // eat up any leading white spaces
-    if (in_.peek() == '-') { neg = true; }
     in_ >> x;
-    if (!in_.fail()) return *this;
-    return ParseOnFail(&x, neg);
+    if (!in_.fail() && RemainderIsOnlySpaces()) return *this;
+    return ParseOnFail(&x);
   }
 
  private:
   std::istream &in_;
 
-  NumberIstream & ParseOnFail(T *x, bool neg) {
-    std::map<std::string, T> inf_nan_map;
-    // we'll keep just lowercase values.
-    inf_nan_map["inf"] = std::numeric_limits<T>::infinity();
-    inf_nan_map["infinity"] = std::numeric_limits<T>::infinity();
-    inf_nan_map["nan"] = std::numeric_limits<T>::quiet_NaN();
+  bool RemainderIsOnlySpaces() {
+    if (in_.tellg() != -1) {
+      std::string rem;
+      in_ >> rem;
 
-    std::string c;
+      if (rem.find_first_not_of(' ') != std::string::npos) {
+        // there is not only spaces
+        return false;
+      }
+    }
+
     in_.clear();
+    return true;
+  }
+
+  NumberIstream & ParseOnFail(T *x) {
+    std::string str;
+    in_.clear();
+    in_.seekg(0);
     // If the stream is broken even before trying
-    // to read from it, it's pointless to try.
-    if (!(in_ >> c)) return *this;
+    // to read from it or if there are many tokens,
+    // it's pointless to try.
+    if (!(in_ >> str) || !RemainderIsOnlySpaces()) {
+      in_.setstate(std::ios_base::failbit);
+      return *this;
+    }
 
-    // transform c to lowercase.
-    std::transform(c.begin(), c.end(), c.begin(), ::tolower);
+    std::map<std::string, T> inf_nan_map;
+    // we'll keep just uppercase values.
+    inf_nan_map["INF"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["+INF"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["-INF"] = - std::numeric_limits<T>::infinity();
+    inf_nan_map["INFINITY"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["+INFINITY"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["-INFINITY"] = - std::numeric_limits<T>::infinity();
+    inf_nan_map["NAN"] = std::numeric_limits<T>::quiet_NaN();
+    inf_nan_map["+NAN"] = std::numeric_limits<T>::quiet_NaN();
+    inf_nan_map["-NAN"] = - std::numeric_limits<T>::quiet_NaN();
 
-    if (inf_nan_map.find(c) != inf_nan_map.end()) {
-      *x = inf_nan_map[c];
-      if (neg) *x = - *x;
+    std::transform(str.begin(), str.end(), str.begin(), ::toupper);
+
+    if (inf_nan_map.find(str) != inf_nan_map.end()) {
+      *x = inf_nan_map[str];
+    } else if (starts_with(str, "1.#INF")) {  // MSVC
+      *x = std::numeric_limits<T>::infinity();
+    } else if (starts_with(str, "-1.#INF")) {  // MSVC
+      *x = - std::numeric_limits<T>::infinity();
+    } else if (starts_with(str, "1.#QNAN")) {  // MSVC
+      *x = std::numeric_limits<T>::quiet_NaN();
+    } else if (starts_with(str, "-1.#QNAN")) {  // MSVC
+      *x = - std::numeric_limits<T>::quiet_NaN();
     } else {
       in_.setstate(std::ios_base::failbit);
     }
@@ -226,28 +254,6 @@ bool ConvertStringToReal(const std::string &str,
   if (iss.fail()) {
     // Number conversion failed.
     return false;
-  }
-
-  // if something remains in the istringstream,
-  // we'll check if it is #INF or #QNAN (to deal with
-  // MSVC stuffs), or if it is some garbage text.
-  if (iss.tellg() != -1) {
-    std::string rem;
-    iss >> rem;
-
-    if (starts_with(rem, "#INF")) {
-      *out = *out * std::numeric_limits<T>::infinity();
-      return true;
-    } else if (starts_with(rem, "#QNAN")) {
-      *out = *out * std::numeric_limits<T>::quiet_NaN();
-      return true;
-    }
-
-    // guarantee that there is not any garbage text
-    if (rem.find_first_not_of(' ') != std::string::npos) {
-      // there is not only spaces
-      return false;
-    }
   }
 
   return true;
