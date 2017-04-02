@@ -217,7 +217,7 @@ class NumberIstream{
     inf_nan_map["-NAN"] = - std::numeric_limits<T>::quiet_NaN();
     // MSVC
     inf_nan_map["1.#INF"] = std::numeric_limits<T>::infinity();
-    inf_nan_map["-1.#INF"] = - std::numeric_limits<T>::infinity();;
+    inf_nan_map["-1.#INF"] = - std::numeric_limits<T>::infinity();
     inf_nan_map["1.#QNAN"] = std::numeric_limits<T>::quiet_NaN();
     inf_nan_map["-1.#QNAN"] = - std::numeric_limits<T>::quiet_NaN();
 
