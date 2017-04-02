@@ -186,10 +186,12 @@ void TestConvertStringToReal() {
   KALDI_ASSERT(!ConvertStringToReal("GARBAGE inf", &d));
   KALDI_ASSERT(!ConvertStringToReal("GARBAGEinf", &d));
   KALDI_ASSERT(!ConvertStringToReal("infGARBAGE", &d));
+  KALDI_ASSERT(!ConvertStringToReal("inf_GARBAGE", &d));
   KALDI_ASSERT(!ConvertStringToReal("inf GARBAGE", &d));
   KALDI_ASSERT(!ConvertStringToReal("GARBAGE infinity", &d));
   KALDI_ASSERT(!ConvertStringToReal("GARBAGEinfinity", &d));
   KALDI_ASSERT(!ConvertStringToReal("infinityGARBAGE", &d));
+  KALDI_ASSERT(!ConvertStringToReal("infinity_GARBAGE", &d));
   KALDI_ASSERT(!ConvertStringToReal("infinity GARBAGE", &d));
   KALDI_ASSERT(ConvertStringToReal("1.#INF", &d) && d > 0 && d - d != 0);
   KALDI_ASSERT(ConvertStringToReal("-1.#INF", &d) && d < 0 && d - d != 0);
@@ -218,6 +220,7 @@ void TestConvertStringToReal() {
   KALDI_ASSERT(!ConvertStringToReal("GARBAGE nan", &d));
   KALDI_ASSERT(!ConvertStringToReal("GARBAGEnan", &d));
   KALDI_ASSERT(!ConvertStringToReal("nanGARBAGE", &d));
+  KALDI_ASSERT(!ConvertStringToReal("nan_GARBAGE", &d));
   KALDI_ASSERT(!ConvertStringToReal("nan GARBAGE", &d));
   KALDI_ASSERT(!ConvertStringToReal("GARBAGE 1.#QNAN", &d));
   KALDI_ASSERT(!ConvertStringToReal("GARBAGE1.#QNAN", &d));
