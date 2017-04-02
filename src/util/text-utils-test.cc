@@ -233,26 +233,16 @@ void TestConvertStringToReal() {
 template<class Real>
 void TestNan() {
   Real d;
-  std::ostringstream strs;
-  strs << sqrt(-1);
-  std::string s = strs.str();
-
-  KALDI_ASSERT(ConvertStringToReal(s, &d) && d != d);
+  KALDI_ASSERT(ConvertStringToReal(std::to_string(sqrt(-1)), &d) && d != d);
 }
 
 template<class Real>
 void TestInf() {
   Real d;
-  std::ostringstream pos_strs;
-  pos_strs << exp(10000);
-  std::string pos = pos_strs.str();
-
-  std::ostringstream neg_strs;
-  neg_strs << -exp(10000);
-  std::string neg = neg_strs.str();
-
-  KALDI_ASSERT(ConvertStringToReal(pos, &d) && d > 0 && d - d != 0);
-  KALDI_ASSERT(ConvertStringToReal(neg, &d) && d < 0 && d - d != 0);
+  KALDI_ASSERT(ConvertStringToReal(std::to_string(exp(10000)), &d) &&
+               d > 0 && d - d != 0);
+  KALDI_ASSERT(ConvertStringToReal(std::to_string(-exp(10000)), &d) &&
+               d < 0 && d - d != 0);
 }
 
 
