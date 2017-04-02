@@ -243,11 +243,16 @@ void TestNan() {
 template<class Real>
 void TestInf() {
   Real d;
-  std::ostringstream strs;
-  strs << exp(10000);
-  std::string s = strs.str();
+  std::ostringstream pos_strs;
+  pos_strs << exp(10000);
+  std::string pos = pos_strs.str();
 
-  KALDI_ASSERT(ConvertStringToReal(s, &d) && d > 0 && d - d != 0);
+  std::ostringstream neg_strs;
+  neg_strs << -exp(10000);
+  std::string neg = neg_strs.str();
+
+  KALDI_ASSERT(ConvertStringToReal(pos, &d) && d > 0 && d - d != 0);
+  KALDI_ASSERT(ConvertStringToReal(neg, &d) && d < 0 && d - d != 0);
 }
 
 
