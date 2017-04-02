@@ -162,11 +162,6 @@ bool IsLine(const std::string &line) {
   return true;
 }
 
-
-inline bool starts_with(const std::string &in, const std::string &prefix) {
-  return in.substr(0, prefix.size()) == prefix;
-}
-
 template <class T>
 class NumberIstream{
  public:
@@ -220,19 +215,16 @@ class NumberIstream{
     inf_nan_map["NAN"] = std::numeric_limits<T>::quiet_NaN();
     inf_nan_map["+NAN"] = std::numeric_limits<T>::quiet_NaN();
     inf_nan_map["-NAN"] = - std::numeric_limits<T>::quiet_NaN();
+    // MSVC
+    inf_nan_map["1.#INF"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["-1.#INF"] = - std::numeric_limits<T>::infinity();;
+    inf_nan_map["1.#QNAN"] = std::numeric_limits<T>::quiet_NaN();
+    inf_nan_map["-1.#QNAN"] = - std::numeric_limits<T>::quiet_NaN();
 
     std::transform(str.begin(), str.end(), str.begin(), ::toupper);
 
     if (inf_nan_map.find(str) != inf_nan_map.end()) {
       *x = inf_nan_map[str];
-    } else if (starts_with(str, "1.#INF")) {  // MSVC
-      *x = std::numeric_limits<T>::infinity();
-    } else if (starts_with(str, "-1.#INF")) {  // MSVC
-      *x = - std::numeric_limits<T>::infinity();
-    } else if (starts_with(str, "1.#QNAN")) {  // MSVC
-      *x = std::numeric_limits<T>::quiet_NaN();
-    } else if (starts_with(str, "-1.#QNAN")) {  // MSVC
-      *x = - std::numeric_limits<T>::quiet_NaN();
     } else {
       in_.setstate(std::ios_base::failbit);
     }
