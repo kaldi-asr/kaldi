@@ -5424,7 +5424,7 @@ void BatchNormComponent::ComputeDerived() {
   scale_.ApplyFloor(epsilon_);
   scale_.ApplyPow(-0.5);
   // now scale_ = min(variance, epsilon)^{-0.5}.
-  // next, multpiply by the target RMS (normally 1.0).
+  // next, multiply by the target RMS (normally 1.0).
   scale_.Scale(target_rms_);
   offset_.MulElements(scale_);
   // now offset_ is -(scale*mean).
@@ -5842,9 +5842,15 @@ void BatchNormComponent::Write(std::ostream &os, bool binary) const {
 }
 
 void BatchNormComponent::Scale(BaseFloat scale) {
-  count_ *= scale;
-  stats_sum_.Scale(scale);
-  stats_sumsq_.Scale(scale);
+  if (scale == 0) {
+    count_ = 0.0;
+    stats_sum_.SetZero();
+    stats_sumsq_.SetZero();
+  } else {
+    count_ *= scale;
+    stats_sum_.Scale(scale);
+    stats_sumsq_.Scale(scale);
+  }
 }
 
 

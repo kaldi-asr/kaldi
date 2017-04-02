@@ -128,8 +128,9 @@ class NnetComputer {
   // The matrices used in the computation.
   std::vector<CuMatrix<BaseFloat> > matrices_;
 
-  // Memos returnedy Propagate() that must be passed to the corresponding
-  // Backprop() routines.
+  // Memos returned by Propagate() that must be passed to the corresponding
+  // Backprop() routines, indexed by memo-index (zeroth element always
+  // NULL).
   std::vector<void*> memos_;
 
 

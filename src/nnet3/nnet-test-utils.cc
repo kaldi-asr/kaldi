@@ -1449,6 +1449,8 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " self-repair-scale=0.0";
       break;
     }
+    // I think we'll get in the habit of allocating a larger number of case
+    // labels to the most recently added component, so it gets tested more
     case 31: case 32: case 33: {
       *component_type = "BatchNormComponent";
       int32 block_dim = RandInt(1, 10), dim = block_dim * RandInt(1, 2);
