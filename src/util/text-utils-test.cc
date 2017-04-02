@@ -244,7 +244,7 @@ template<class Real>
 void TestInf() {
   Real d;
   std::ostringstream strs;
-  strs << 1.0/0.0;
+  strs << exp(10000);
   std::string s = strs.str();
 
   KALDI_ASSERT(ConvertStringToReal(s, &d) && d > 0 && d - d != 0);
