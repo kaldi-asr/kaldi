@@ -168,7 +168,7 @@ void Optimize(const NnetOptimizeOptions &config,
 // ComputationRequest to hash code by looking at input
 // and output IoSpecifications vectors.
 struct ComputationRequestHasher {
-  size_t operator()(const ComputationRequest *cr) const;
+  size_t operator()(const ComputationRequest *cr) const noexcept;
 };
 
 // Equality function for ComputationRequest pointer

@@ -180,7 +180,7 @@ void NnetTrainer::UpdateParamsWithMaxChange() {
 }
 
 bool NnetTrainer::PrintTotalStats() const {
-  unordered_map<std::string, ObjectiveFunctionInfo>::const_iterator
+  unordered_map<std::string, ObjectiveFunctionInfo, StringHasher>::const_iterator
       iter = objf_info_.begin(),
       end = objf_info_.end();
   bool ans = false;

@@ -189,7 +189,8 @@ void NnetDiscriminativeTrainer::ProcessOutputs(const NnetDiscriminativeExample &
 
 
 bool NnetDiscriminativeTrainer::PrintTotalStats() const {
-  unordered_map<std::string, DiscriminativeObjectiveFunctionInfo>::const_iterator
+  unordered_map<std::string, DiscriminativeObjectiveFunctionInfo,
+    StringHasher>::const_iterator
       iter = objf_info_.begin(),
       end = objf_info_.end();
   bool ans = false;

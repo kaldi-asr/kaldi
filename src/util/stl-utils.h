@@ -216,7 +216,7 @@ void CopyVectorToVector(const std::vector<A> &vec_in, std::vector<B> *vec_out) {
 /// A hashing function-object for vectors.
 template<typename Int>
 struct VectorHasher {  // hashing function for vector<Int>.
-  size_t operator()(const std::vector<Int> &x) const {
+  size_t operator()(const std::vector<Int> &x) const noexcept {
     size_t ans = 0;
     typename std::vector<Int>::const_iterator iter = x.begin(), end = x.end();
     for (; iter != end; ++iter) {
@@ -235,7 +235,7 @@ struct VectorHasher {  // hashing function for vector<Int>.
 /// A hashing function-object for pairs of ints
 template<typename Int1, typename Int2 = Int1>
 struct PairHasher {  // hashing function for pair<int>
-  size_t operator()(const std::pair<Int1, Int2> &x) const {
+  size_t operator()(const std::pair<Int1, Int2> &x) const noexcept {
     // 7853 was chosen at random from a list of primes.
     return x.first + x.second * 7853;
   }
@@ -248,7 +248,7 @@ struct PairHasher {  // hashing function for pair<int>
 
 /// A hashing function object for strings.
 struct StringHasher {  // hashing function for std::string
-  size_t operator()(const std::string &str) const {
+  size_t operator()(const std::string &str) const noexcept {
     size_t ans = 0, len = str.length();
     const char *c = str.c_str(), *end = c + len;
     for (; c != end; c++) {
