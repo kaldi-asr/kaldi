@@ -38,6 +38,16 @@
 
 namespace kaldi {
 
+inline void cuda_add_col_sum_mat(int Gr, int Bl, double* result,
+                                 const double* mat, const MatrixDim d,
+                                 const double alpha, const double beta) {
+  cudaD_add_col_sum_mat(Gr, Bl, result, mat, d, alpha, beta);
+}
+inline void cuda_add_col_sum_mat(int Gr, int Bl, float* result,
+                                 const float* mat, const MatrixDim d,
+                                 const float alpha, const float beta) {
+  cudaF_add_col_sum_mat(Gr, Bl, result, mat, d, alpha, beta);
+}
 inline void cuda_add_cols(dim3 Gr, dim3 Bl, double* dst, const double* src,
                           const MatrixIndexT_cuda* reorder, MatrixDim dst_dim,
                           int src_stride) {

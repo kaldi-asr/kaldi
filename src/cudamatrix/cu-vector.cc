@@ -1173,19 +1173,25 @@ void CuVectorBase<Real>::AddRowSumMat(Real alpha, const CuMatrixBase<Real> &mat,
 
 }
 
-
 template<typename Real>
-void CuVectorBase<Real>::AddColSumMat(Real alpha,
-                                      const CuMatrixBase<Real> &mat,
+void CuVectorBase<Real>::AddColSumMat(Real alpha, const CuMatrixBase<Real> &mat,
                                       Real beta) {
-  KALDI_ASSERT(mat.NumRows() == Dim());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    KALDI_ASSERT(mat.NumRows() == Dim());
 
-  CuVector<Real> ones(mat.NumCols());
-  ones.Set(1.0);
-  this->AddMatVec(alpha, mat, kNoTrans, ones, beta);
+    cuda_add_col_sum_mat(mat.NumRows(), CU1DBLOCK, Data(), mat.Data(),
+                         mat.Dim(), alpha, beta);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Vec().AddColSumMat(alpha, mat.Mat(), beta);
+  }
 }
-
-
 
 template<typename Real>
 void CuVectorBase<Real>::InvertElements() {

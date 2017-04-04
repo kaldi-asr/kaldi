@@ -1220,7 +1220,7 @@ static void _equal_element_mask(const Real *mat1, const Real *mat2, Real *mask,
 }
 
 enum EnumTransformReduce {
-  SUM, MAX, MIN, LINFNORM, L2NORM, L1NORM, L0NORM, LPNORM
+  SUMAB, SUM, MAX, MIN, LINFNORM, L2NORM, L1NORM, L0NORM, LPNORM
 };
 
 template<EnumTransformReduce TransReduceType, typename Real>
@@ -1240,6 +1240,35 @@ struct TransReduceOp {
   __forceinline__
   __device__ Real PostReduce(const Real& x, const Real& output) const {
     return Real(0);
+  }
+};
+
+template<typename Real>
+struct TransReduceOp<SUMAB, Real> {
+  const Real alpha_;
+  const Real beta_;
+  TransReduceOp(const Real& a, const Real& b) :
+      alpha_(a), beta_(b) {
+  }
+  __forceinline__
+  __device__ Real InitValue() const {
+    return Real(0);
+  }
+  __forceinline__
+  __device__ Real Transform(const Real& x) const {
+    return x;
+  }
+  __forceinline__
+  __device__ Real Reduce(const Real& a, const Real& b) const {
+    return a + b;
+  }
+  __forceinline__
+  __device__ Real PostReduce(const Real& x, const Real& output) const {
+    if (beta_ == Real(0)) {
+      return alpha_ * x;
+    } else {
+      return alpha_ * x + beta_ * output;
+    }
   }
 };
 
@@ -3570,6 +3599,12 @@ void cudaF_sum_mat_cols(int Gr, int Bl, float* result, const float* mat,
   _transform_reduce_mat_cols<<<Gr,Bl>>>(result,mat,d,
       TransReduceOp<SUM,float>());
 }
+void cudaF_add_col_sum_mat(int Gr, int Bl, float* result, const float* mat,
+                           const MatrixDim d, const float alpha,
+                           const float beta) {
+  _transform_reduce_mat_cols<<<Gr, Bl>>>(result, mat, d,
+      TransReduceOp<SUMAB, float>(alpha, beta));
+}
 
 void cudaF_replace_value(int Gr, int Bl, float *v, int dim, float orig,
                          float changed) {
@@ -4224,6 +4259,12 @@ void cudaD_sum_mat_cols(int Gr, int Bl, double* result, const double* mat,
                         const MatrixDim d) {
   _transform_reduce_mat_cols<<<Gr,Bl>>>(result,mat,d,
       TransReduceOp<SUM,double>());
+}
+void cudaD_add_col_sum_mat(int Gr, int Bl, double* result, const double* mat,
+                           const MatrixDim d, const double alpha,
+                           const double beta) {
+  _transform_reduce_mat_cols<<<Gr, Bl>>>(result, mat, d,
+      TransReduceOp<SUMAB, double>(alpha, beta));
 }
 
 void cudaD_replace_value(int Gr, int Bl, double *v, int dim, double orig,
