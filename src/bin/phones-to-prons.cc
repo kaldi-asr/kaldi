@@ -80,7 +80,8 @@ int main(int argc, char *argv[]) {
         "<word-end-sym> <phones-rspecifier> <words-rspecifier> <prons-wspecifier>\n"
         "e.g.: \n"
         " ali-to-phones 1.mdl ark:1.ali ark:- | \\\n"
-        "  phones-to-prons L_align.fst 46 47 ark:- 1.tra ark:1.prons\n";
+        "  phones-to-prons L_align.fst 46 47 ark:- "
+        "'ark:sym2int.pl -f 2- words.txt text|' ark:1.prons\n";
 
     ParseOptions po(usage);
     po.Read(argc, argv);
