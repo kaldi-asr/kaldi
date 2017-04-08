@@ -93,9 +93,44 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
 # for uniformly segmented audio chunks based on Smith-Waterman alignment.
 # Use a model trained on train_2k (tri1b)
 ###############################################################################
-bash -x steps/cleanup/segment_long_utterances.sh --cmd "$train_cmd" \
+
+mkdir -p exp/segment_long_utts${affix}_train
+
+# Config saved for reproduction of results
+cat <<EOF > exp/segment_long_utts${affix}_train/segment_long_utts.conf
+# tf-idf similarity search options
+max_words=1000
+num_neighbors_to_search=1
+neighbor_tfidf_threshold=0.5
+
+# first-pass segmentation opts
+min_segment_length=0.5
+min_new_segment_length=1.0
+max_tainted_length=0.05
+max_edge_silence_length=0.5
+max_edge_non_scored_length=0.5
+max_internal_silence_length=2.0
+max_internal_non_scored_length=2.0
+unk_padding=0.05
+max_junk_proportion=0.1
+min_split_point_duration=0.1
+max_deleted_words_kept_when_merging=1
+silence_factor=1
+incorrect_words_factor=1
+tainted_words_factor=1
+max_wer=50
+max_segment_length_for_merging=60
+max_bad_proportion=0.5
+max_intersegment_incorrect_words_length=1
+max_segment_length_for_splitting=10
+hard_max_segment_length=15
+min_silence_length_to_split_at=0.3
+min_non_scored_length_to_split_at=0.3
+EOF
+
+steps/cleanup/segment_long_utterances.sh --cmd "$train_cmd" \
   --stage $segment_stage \
-  --config conf/segment_long_utts.conf \
+  --config exp/segment_long_utts${affix}_train/segment_long_utts.conf \
   --max-segment-duration 30 --overlap-duration 5 \
   --num-neighbors-to-search 1 --nj 80 \
   exp/tri1b data/lang_nosp data/train_long data/train_reseg${affix} \
