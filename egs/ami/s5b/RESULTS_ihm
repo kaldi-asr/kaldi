@@ -40,7 +40,6 @@
 %WER 24.0 | 13098 94470 | 79.4 12.1 8.5 3.4 24.0 57.1 | -0.153 | exp/ihm/nnet3_cleaned/tdnn_sp/decode_dev/ascore_12/dev_hires.ctm.filt.sys
 %WER 25.5 | 12643 89984 | 77.7 14.2 8.2 3.2 25.5 56.4 | -0.139 | exp/ihm/nnet3_cleaned/tdnn_sp/decode_eval/ascore_11/eval_hires.ctm.filt.sys
 
-
 # local/nnet3/run_tdnn.sh --mic ihm --train-set train --gmm tri3 --nnet3-affix ""
 # nnet3 xent TDNN without data cleaning [cleaning makes very small and
 #  inconsistent difference on this dat]
@@ -55,17 +54,21 @@
 %WER 22.4 | 12643 89977 | 80.3 12.5 7.2 2.7 22.4 53.6 | -0.503 | exp/ihm/nnet3_cleaned/lstm_bidirectional_sp/decode_eval/ascore_10/eval_hires.ctm.filt.sys
 
 ############################################
+# cleanup + chain TDNN model.
+# local/chain/run_tdnn.sh --mic ihm --stage 4 &
+# for d in exp/ihm/chain_cleaned/tdnn1d_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 21.7 | 13098 94488 | 81.1 10.4 8.4 2.8 21.7 54.4 | 0.096 | exp/ihm/chain_cleaned/tdnn1d_sp_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+%WER 22.1 | 12643 89979 | 80.5 12.1 7.4 2.6 22.1 52.8 | 0.185 | exp/ihm/chain_cleaned/tdnn1d_sp_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
 
-# local/chain/run_tdnn.sh --mic ihm --stage 12 &
-# cleanup + chain TDNN model
-# for d in exp/ihm/chain_cleaned/tdnn_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
-%WER 22.5 | 13098 94490 | 80.6 10.8 8.6 3.1 22.5 55.0 | 0.072 | exp/ihm/chain_cleaned/tdnn_sp_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
-%WER 22.5 | 12643 89978 | 80.3 12.5 7.2 2.7 22.5 53.1 | 0.149 | exp/ihm/chain_cleaned/tdnn_sp_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
-
+# cleanup + chain TDNN model. Uses LDA instead of PCA for ivector features.
+# local/chain/tuning/run_tdnn_1b.sh --mic ihm --stage 4 &
+# for d in exp/ihm/chain_cleaned/tdnn1b_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 22.0 | 13098 94488 | 80.8 10.2 9.0 2.8 22.0 54.7 | 0.102 | exp/ihm/chain_cleaned/tdnn1b_sp_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+%WER 22.2 | 12643 89968 | 80.3 12.1 7.6 2.6 22.2 52.9 | 0.170 | exp/ihm/chain_cleaned/tdnn1b_sp_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
 
 # local/chain/run_tdnn.sh --mic ihm --train-set train --gmm tri3 --nnet3-affix "" --stage 12
 # chain TDNN model without cleanup [note: cleanup helps very little on this IHM data.]
-for d in exp/ihm/chain/tdnn_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+# for d in exp/ihm/chain/tdnn_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
 %WER 22.4 | 13098 94476 | 80.4 10.4 9.2 2.8 22.4 54.6 | 0.069 | exp/ihm/chain/tdnn_sp_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
 %WER 22.5 | 12643 89974 | 80.0 12.1 7.9 2.6 22.5 52.8 | 0.157 | exp/ihm/chain/tdnn_sp_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
 
