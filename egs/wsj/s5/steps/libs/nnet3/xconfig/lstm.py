@@ -717,9 +717,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,
                         'dropout-proportion' : -1.0, # If -1.0, no dropout will
-                                                     # be used (note: this is
-                                                     # per-frame dropout on the
-                                                     # output of the i_t and f_t gates)
+                                                     # be used)
                          }
 
     def set_derived_configs(self):
