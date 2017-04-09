@@ -330,6 +330,7 @@ void cudaF_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
                             const float* out_deriv, const int out_deriv_stride,
                             float* in_deriv);
 void cudaD_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
+                                  const int have_dropout_mask,
                                   const int num_rows, const double* input,
                                   const int in_stride, const double* params,
                                   const int params_stride,
@@ -349,6 +350,7 @@ void cudaD_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
                                   double* self_repair_sum_out,
                                   const int self_repair_sum_out_stride);
 void cudaF_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
+                                  const int have_dropout_mask,
                                   const int num_rows, const float* input,
                                   const int in_stride, const float* params,
                                   const int params_stride,
@@ -455,12 +457,14 @@ void cudaF_log_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x,
 void cudaD_lstm_nonlinearity(dim3 Gr, dim3 Bl, const double* in,
                              const int in_stride, const double* params,
                              const int params_stride, const int out_stride,
-                             const int cell_dim, const int num_rows,
+                             const int cell_dim, const int have_dropout_mask,
+                             const int num_rows,
                              double* out);
 void cudaF_lstm_nonlinearity(dim3 Gr, dim3 Bl, const float* in,
                              const int in_stride, const float* params,
                              const int params_stride, const int out_stride,
-                             const int cell_dim, const int num_rows,
+                             const int cell_dim, const int have_dropout_mask,
+                             const int num_rows,
                              float* out);
 void cudaD_matrix_add_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
                                double alpha, MatrixElement<double>* x,
@@ -636,93 +640,41 @@ void cudaD_trace_mat_smat_trans(dim3 Gr, dim3 Bl, const double* mat_in,
                                 const MatrixElement<double>* smat_in,
                                 MatrixDim mat_d_in, MatrixIndexT_cuda smat_d_in,
                                 double* trace_vec_out);
-
-void cudaD_matrix_add_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
-                               double alpha, MatrixElement<double>* x,
-                               int num_elements);
-void cudaD_matrix_add_indexed_values(dim3 Gr, dim3 Bl, MatrixDim dim,
-                                     double alpha, const Int32Pair* indices,
-                                     const double* x, int s, double* data);
-void cudaD_comp_obj_deriv(dim3 Gr, dim3 Bl, MatrixElement<double>* x, int s,
-                          const double* z, MatrixDim d, double* z2,
-                          MatrixDim d2, double* t);
-
-void cudaD_sy_add_tr2(dim3 Gr, dim3 Bl, double alpha, double beta,
-                      const double* T, MatrixDim tdim, double *S,
-                      MatrixDim sdim);
-void cudaD_sum_column_ranges(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
-                             const double *src_data, MatrixDim src_dim,
-                             const Int32Pair *indices);
-void cudaD_add_row_ranges(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
-                          const double *src_data, MatrixDim src_dim,
-                          const Int32Pair *indexes);
-void cudaD_matrix_lookup(dim3 Gr, dim3 Bl, const double *data, MatrixDim dim,
-                         const Int32Pair *indices, int indices_size,
-                         double *output);
-
-void cudaD_equal_element_mask(dim3 Gr, dim3 Bl, const double *mat1,
-                              const double *mat2, double *mask,
-                              MatrixDim mat1_dim, int mat2_stride,
-                              int mask_stride);
-
-void cudaD_lstm_nonlinearity(dim3 Gr, dim3 Bl, const double* in,
-                             const int in_stride, const double* params,
-                             const int params_stride, const int out_stride,
-                             const int cell_dim, const int have_dropout_mask,
-                             const int num_rows,
-                             double* out);
-void cudaF_lstm_nonlinearity(dim3 Gr, dim3 Bl, const float* in,
-                             const int in_stride, const float* params,
-                             const int params_stride, const int out_stride,
-                             const int cell_dim, const int have_dropout_mask,
-                             const int num_rows,
-                             float* out);
-void cudaD_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
-                                  const int have_dropout_mask,
-                                  const int num_rows, const double* input,
-                                  const int in_stride, const double* params,
-                                  const int params_stride,
-                                  const double* output_deriv,
-                                  const int output_deriv_stride,
-                                  const double* deriv_sum_in,
-                                  const int deriv_sum_in_stride,
-                                  const double* self_repair_config,
-                                  double count, double* input_deriv,
-                                  const int input_deriv_stride,
-                                  double* params_deriv,
-                                  const int params_deriv_stride,
-                                  double* value_sum_out,
-                                  const int value_sum_out_stride,
-                                  double* deriv_sum_out,
-                                  const int deriv_sum_out_stride,
-                                  double* self_repair_sum_out,
-                                  const int self_repair_sum_out_stride);
-void cudaF_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
-                                  const int have_dropout_mask,
-                                  const int num_rows, const float* input,
-                                  const int in_stride, const float* params,
-                                  const int params_stride,
-                                  const float* output_deriv,
-                                  const int output_deriv_stride,
-                                  const double* deriv_sum_in,
-                                  const int deriv_sum_in_stride,
-                                  const float* self_repair_config, double count,
-                                  float* input_deriv,
-                                  const int input_deriv_stride,
-                                  float* params_deriv,
-                                  const int params_deriv_stride,
-                                  double* value_sum_out,
-                                  const int value_sum_out_stride,
-                                  double* deriv_sum_out,
-                                  const int deriv_sum_out_stride,
-                                  float* self_repair_sum_out,
-                                  const int self_repair_sum_out_stride);
-
-
-void cudaD_copy_cols_from_vec(dim3 Gr, dim3 Bl, double *mat_out,
-                              MatrixDim d_out, const double *v_in);
-void cudaF_copy_cols_from_vec(dim3 Gr, dim3 Bl, float *mat_out, MatrixDim d_out,
-                              const float *v_in);
+void cudaF_trace_mat_smat_trans(dim3 Gr, dim3 Bl, const float* mat_in,
+                                const MatrixElement<float>* smat_in,
+                                MatrixDim mat_d_in, MatrixIndexT_cuda smat_d_in,
+                                float* trace_vec_out);
+void cudaD_vec_apply_ceiling(int Gr, int Bl, double* v, double ceiling_val,
+                             float* num, int dim);
+void cudaF_vec_apply_ceiling(int Gr, int Bl, float* v, float ceiling_val,
+                             float* num, int dim);
+void cudaD_vec_apply_exp(int Gr, int Bl, double* v, int dim);
+void cudaF_vec_apply_exp(int Gr, int Bl, float* v, int dim);
+void cudaD_vec_apply_floor(int Gr, int Bl, double* v, double floor_val,
+                           float* num, int dim);
+void cudaF_vec_apply_floor(int Gr, int Bl, float* v, float floor_val,
+                           float* num, int dim);
+void cudaD_vec_apply_log(int Gr, int Bl, double* v, double* flag, int dim);
+void cudaF_vec_apply_log(int Gr, int Bl, float* v, float* flag, int dim);
+void cudaD_vec_copy_diag_from_packed(int Gr, int Bl, double *dst,
+                                     const double *src, int dim);
+void cudaF_vec_copy_diag_from_packed(int Gr, int Bl, float *dst,
+                                     const float *src, int dim);
+void cudaD_vec_max(int Gr, int Bl, const double* v, double* value, int dim,
+                   int inc);
+void cudaF_vec_max(int Gr, int Bl, const float* v, float* value, int dim,
+                   int inc);
+void cudaD_vec_min(int Gr, int Bl, const double* v, double* value, int dim,
+                   int inc);
+void cudaF_vec_min(int Gr, int Bl, const float* v, float* value, int dim,
+                   int inc);
+void cudaD_vec_mul_elements(int Gr, int Bl, double* v, const double* a,
+                            int dim);
+void cudaF_vec_mul_elements(int Gr, int Bl, float* v, const float* a, int dim);
+void cudaD_vec_soft_max(int Gr, int Bl, double* v, int dim);
+void cudaF_vec_soft_max(int Gr, int Bl, float* v, int dim);
+void cudaD_vec_sum(int Gr, int Bl, double* v, double* value, int dim, int inc);
+void cudaF_vec_sum(int Gr, int Bl, float* v, float* value, int dim, int inc);
 
 } // extern "C"
 

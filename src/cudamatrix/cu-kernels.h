@@ -626,6 +626,7 @@ inline void cuda_diff_log_softmax(dim3 Gr, dim3 Bl,
                          out_deriv, out_deriv_stride, in_deriv);
 }
 inline void cuda_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
+                                        const int have_dropout_mask,
                                         const int num_rows, const double* input,
                                         const int input_stride,
                                         const double* params,
@@ -645,7 +646,8 @@ inline void cuda_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
                                         const int deriv_sum_out_stride,
                                         double* self_repair_sum_out,
                                         const int self_repair_sum_out_stride) {
-  cudaD_diff_lstm_nonlinearity(Gr, Bl, cell_dim, num_rows, input, input_stride,
+  cudaD_diff_lstm_nonlinearity(Gr, Bl, cell_dim, have_dropout_mask, num_rows,
+                               input, input_stride,
                                params, params_stride, output_deriv,
                                output_deriv_stride, deriv_sum_in,
                                deriv_sum_in_stride, self_repair_config, count,
@@ -656,6 +658,7 @@ inline void cuda_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
                                self_repair_sum_out_stride);
 }
 inline void cuda_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
+                                        const int have_dropout_mask,
                                         const int num_rows, const float* input,
                                         const int input_stride,
                                         const float* params,
@@ -675,7 +678,8 @@ inline void cuda_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
                                         const int deriv_sum_out_stride,
                                         float* self_repair_sum_out,
                                         const int self_repair_sum_out_stride) {
-  cudaF_diff_lstm_nonlinearity(Gr, Bl, cell_dim, num_rows, input, input_stride,
+  cudaF_diff_lstm_nonlinearity(Gr, Bl, cell_dim, have_dropout_mask,
+                               num_rows, input, input_stride,
                                params, params_stride, output_deriv,
                                output_deriv_stride, deriv_sum_in,
                                deriv_sum_in_stride, self_repair_config, count,
@@ -849,17 +853,21 @@ inline void cuda_lstm_nonlinearity(dim3 Gr, dim3 Bl, const double* in,
                                    const int in_stride, const double* params,
                                    const int params_stride,
                                    const int out_stride, const int cell_dim,
+                                   const int have_dropout_mask,
                                    const int num_rows, double* out) {
   cudaD_lstm_nonlinearity(Gr, Bl, in, in_stride, params, params_stride,
-                          out_stride, cell_dim, num_rows, out);
+                          out_stride, cell_dim, have_dropout_mask,
+                          num_rows, out);
 }
 inline void cuda_lstm_nonlinearity(dim3 Gr, dim3 Bl, const float* in,
                                    const int in_stride, const float* params,
                                    const int params_stride,
                                    const int out_stride, const int cell_dim,
+                                   const int have_dropout_mask,
                                    const int num_rows, float* out) {
   cudaF_lstm_nonlinearity(Gr, Bl, in, in_stride, params, params_stride,
-                          out_stride, cell_dim, num_rows, out);
+                          out_stride, cell_dim, have_dropout_mask,
+                          num_rows, out);
 }
 inline void cuda_matrix_add_elements(dim3 Gr, dim3 Bl, double *data,
                                      MatrixDim dim, double alpha,
@@ -1300,90 +1308,19 @@ inline void cuda_vec_min(int Gr, int Bl, const float* v, float* value, int dim,
                          int inc) {
   cudaF_vec_min(Gr, Bl, v, value, dim, inc);
 }
-
-inline void cuda_lstm_nonlinearity(dim3 Gr, dim3 Bl, const double* in,
-                                   const int in_stride, const double* params,
-                                   const int params_stride,
-                                   const int out_stride, const int cell_dim,
-                                   const int have_dropout_mask,
-                                   const int num_rows, double* out) {
-  cudaD_lstm_nonlinearity(Gr, Bl, in, in_stride, params, params_stride,
-                          out_stride, cell_dim, have_dropout_mask,
-                          num_rows, out);
+inline void cuda_vec_mul_elements(int Gr, int Bl, double* v, const double* a,
+                                  int dim) {
+  cudaD_vec_mul_elements(Gr, Bl, v, a, dim);
 }
-inline void cuda_lstm_nonlinearity(dim3 Gr, dim3 Bl, const float* in,
-                                   const int in_stride, const float* params,
-                                   const int params_stride,
-                                   const int out_stride, const int cell_dim,
-                                   const int have_dropout_mask,
-                                   const int num_rows, float* out) {
-  cudaF_lstm_nonlinearity(Gr, Bl, in, in_stride, params, params_stride,
-                          out_stride, cell_dim, have_dropout_mask,
-                          num_rows, out);
+inline void cuda_vec_mul_elements(int Gr, int Bl, float* v, const float* a,
+                                  int dim) {
+  cudaF_vec_mul_elements(Gr, Bl, v, a, dim);
 }
-inline void cuda_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
-                                        const int have_dropout_mask,
-                                        const int num_rows, const double* input,
-                                        const int input_stride,
-                                        const double* params,
-                                        const int params_stride,
-                                        const double* output_deriv,
-                                        const int output_deriv_stride,
-                                        const double* deriv_sum_in,
-                                        const int deriv_sum_in_stride,
-                                        const double* self_repair_config,
-                                        double count, double* input_deriv,
-                                        const int input_deriv_stride,
-                                        double* params_deriv,
-                                        const int params_deriv_stride,
-                                        double* value_sum_out,
-                                        const int value_sum_out_stride,
-                                        double* deriv_sum_out,
-                                        const int deriv_sum_out_stride,
-                                        double* self_repair_sum_out,
-                                        const int self_repair_sum_out_stride) {
-  cudaD_diff_lstm_nonlinearity(Gr, Bl, cell_dim, have_dropout_mask, num_rows,
-                               input, input_stride,
-                               params, params_stride, output_deriv,
-                               output_deriv_stride, deriv_sum_in,
-                               deriv_sum_in_stride, self_repair_config, count,
-                               input_deriv, input_deriv_stride, params_deriv,
-                               params_deriv_stride, value_sum_out,
-                               value_sum_out_stride, deriv_sum_out,
-                               deriv_sum_out_stride, self_repair_sum_out,
-                               self_repair_sum_out_stride);
+inline void cuda_vec_soft_max(int Gr, int Bl, double* v, int dim) {
+  cudaD_vec_soft_max(Gr, Bl, v, dim);
 }
-inline void cuda_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
-                                        const int have_dropout_mask,
-                                        const int num_rows, const float* input,
-                                        const int input_stride,
-                                        const float* params,
-                                        const int params_stride,
-                                        const float* output_deriv,
-                                        const int output_deriv_stride,
-                                        const double* deriv_sum_in,
-                                        const int deriv_sum_in_stride,
-                                        const float* self_repair_config,
-                                        double count, float* input_deriv,
-                                        const int input_deriv_stride,
-                                        float* params_deriv,
-                                        const int params_deriv_stride,
-                                        double* value_sum_out,
-                                        const int value_sum_out_stride,
-                                        double* deriv_sum_out,
-                                        const int deriv_sum_out_stride,
-                                        float* self_repair_sum_out,
-                                        const int self_repair_sum_out_stride) {
-  cudaF_diff_lstm_nonlinearity(Gr, Bl, cell_dim, have_dropout_mask,
-                               num_rows, input, input_stride,
-                               params, params_stride, output_deriv,
-                               output_deriv_stride, deriv_sum_in,
-                               deriv_sum_in_stride, self_repair_config, count,
-                               input_deriv, input_deriv_stride, params_deriv,
-                               params_deriv_stride, value_sum_out,
-                               value_sum_out_stride, deriv_sum_out,
-                               deriv_sum_out_stride, self_repair_sum_out,
-                               self_repair_sum_out_stride);
+inline void cuda_vec_soft_max(int Gr, int Bl, float* v, int dim) {
+  cudaF_vec_soft_max(Gr, Bl, v, dim);
 }
 inline void cuda_vec_sum(int Gr, int Bl, double* v, double* value, int dim,
                          int inc) {
