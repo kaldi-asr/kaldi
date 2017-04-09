@@ -720,7 +720,6 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
                                                      # be used (note: this is
                                                      # per-frame dropout on the
                                                      # output of the i_t and f_t gates)
-                        'dropout-exclusive' : False  # option affecting dropout masks.
                          }
 
     def set_derived_configs(self):
@@ -820,7 +819,6 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
 
         lstm_str = self.config['lstm-nonlinearity-options']
         dropout_proportion = self.config['dropout-proportion']
-        dropout_exclusive = 'true' if self.config['dropout-exclusive'] else 'false'
 
         configs = []
 

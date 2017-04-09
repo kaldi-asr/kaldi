@@ -689,8 +689,7 @@ class DropoutMaskComponent: public RandomComponent {
   virtual std::string Info() const;
 
   // possible parameter values with their defaults:
-  // dropout-proportion=0.5 output-dim=-1 exclusive=false
-  // [for the meaning of 'exclusive', see its declaration].
+  // dropout-proportion=0.5 output-dim=-1
   virtual void InitFromConfig(ConfigLine *cfl);
 
   DropoutMaskComponent();
@@ -744,12 +743,6 @@ class DropoutMaskComponent: public RandomComponent {
   int32 output_dim_;
 
   BaseFloat dropout_proportion_;
-
-  // If true, and only in the special case where output_dim_ == 2, this
-  // component will make sure that it's never the case that both columns of a
-  // row of the output are zero.  Note: if this is true, you cannot set
-  // dropout_proportion_ > 0.5.
-  bool exclusive_;
 
   const DropoutMaskComponent &operator
   = (const DropoutMaskComponent &other); // Disallow.

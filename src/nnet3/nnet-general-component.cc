@@ -1380,20 +1380,17 @@ std::string DropoutMaskComponent::Info() const {
   std::ostringstream stream;
   stream << Type()
          << ", output-dim=" << output_dim_
-         << ", dropout-proportion=" << dropout_proportion_
-         << ", exclusive=" << (exclusive_ ? "true" : "false");
+         << ", dropout-proportion=" << dropout_proportion_;
   return stream.str();
 }
 
 DropoutMaskComponent::DropoutMaskComponent():
-    output_dim_(-1), dropout_proportion_(0.5),
-    exclusive_(false) { }
+    output_dim_(-1), dropout_proportion_(0.5) { }
 
 DropoutMaskComponent::DropoutMaskComponent(
     const DropoutMaskComponent &other):
     output_dim_(other.output_dim_),
-    dropout_proportion_(other.dropout_proportion_),
-    exclusive_(other.exclusive_) { }
+    dropout_proportion_(other.dropout_proportion_) { }
 
 void DropoutMaskComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes,
@@ -1407,16 +1404,9 @@ void DropoutMaskComponent::Propagate(
     out->Set(1.0);
     return;
   }
-  if (!exclusive_) {
     const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
     out->Add(-dropout_proportion);
     out->ApplyHeaviside();
-  } else {
-    if (!(output_dim_ == 2 && dropout_proportion <= 0.5)) {
-      KALDI_ERR << "If exclusive=true is set, output-dim must equal 2 (got: "
-                << output_dim_ << " and dropout-proportion must <= 0.5 (got: "
-                << dropout_proportion;
-    }
     // To generate data where it's never the case that both of the dimensions
     // for a row are zero, we generate uniformly distributed data (call this u_i),
     // and for row i, set (*out)(i, 0) = (0 if u_i < dropout_proportion else 1)
@@ -1442,8 +1432,6 @@ void DropoutMaskComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &output_dim_);
   ExpectToken(is, binary, "<DropoutProportion>");
   ReadBasicType(is, binary, &dropout_proportion_);
-  ExpectToken(is, binary, "<Exclusive>");
-  ReadBasicType(is, binary, &exclusive_);
   ExpectToken(is, binary, "</DropoutMaskComponent>");
 }
 
@@ -1454,8 +1442,6 @@ void DropoutMaskComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, output_dim_);
   WriteToken(os, binary, "<DropoutProportion>");
   WriteBasicType(os, binary, dropout_proportion_);
-  WriteToken(os, binary, "<Exclusive>");
-  WriteBasicType(os, binary, exclusive_);
   WriteToken(os, binary, "</DropoutMaskComponent>");
 }
 
@@ -1469,8 +1455,6 @@ void DropoutMaskComponent::InitFromConfig(ConfigLine *cfl) {
   KALDI_ASSERT(ok && output_dim_ > 0);
   dropout_proportion_ = 0.5;
   cfl->GetValue("dropout-proportion", &dropout_proportion_);
-  exclusive_ = false;
-  cfl->GetValue("exclusive", &exclusive_);
 }
 
 
