@@ -1424,7 +1424,6 @@ void DropoutMaskComponent::Propagate(
     out->CopyColFromVec(temp, 1);
     out->ApplyHeaviside();
   }
-}
 
 
 void DropoutMaskComponent::Read(std::istream &is, bool binary) {
