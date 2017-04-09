@@ -2846,6 +2846,9 @@ static void _diff_log_softmax(const MatrixDim in_deriv_dim,
                      consecutive blocks, each of dimension cell_dim,
                      which we name:
                      (i_part, f_part, c_part, o_part, c_{t-1}).
+                     If 'have_dropout_mask' is nonzero, each row of
+                     'in' will have 3 extra elements, interpreted
+                     as dropout masks/scales for i_t, f_t and o_t.
  @param [in] params  A matrix, of dimension 3 by cell_dim,
                      with rows containing the 3 diagonal parameter matrices
                      used in LSTMs, namely
@@ -2870,7 +2873,8 @@ __global__
 static void _lstm_nonlinearity(const Real* in, const int in_stride,
                                const Real* params, const int params_stride,
                                const int out_stride, const int cell_dim,
-                               const int num_rows, Real* out) {
+                               const int have_dropout_mask, const int num_rows,
+                               Real* out) {
   const int tid = threadIdx.x;
   const int i = blockIdx.x;
   const Real* i_part = in + i * in_stride;
@@ -2883,15 +2887,18 @@ static void _lstm_nonlinearity(const Real* in, const int in_stride,
   const Real* w_oc = params + params_stride * 2;
   Real* c_t = out + i * out_stride;
   Real* m_t = out + i * out_stride + cell_dim;
+  Real i_scale = (have_dropout_mask ? in[i * in_stride + cell_dim * 5] : 1),
+       f_scale = (have_dropout_mask ? in[i * in_stride + cell_dim * 5 + 1] : 1),
+       o_scale = (have_dropout_mask ? in[i * in_stride + cell_dim * 5 + 2] : 1);
 
   for (int j = tid; j < cell_dim; j += CU1DBLOCK) {
     Real c_tm1_j = c_tm1[j];
     Real i_t_j = Real(1) / (Real(1) + exp(-i_part[j] - w_ic[j] * c_tm1_j));
     Real f_t_j = Real(1) / (Real(1) + exp(-f_part[j] - w_fc[j] * c_tm1_j));
-    Real c_t_j = f_t_j * c_tm1_j + i_t_j * tanh(c_part[j]);
+    Real c_t_j = f_t_j * f_scale * c_tm1_j + i_t_j * i_scale * tanh(c_part[j]);
     Real o_t_j = Real(1) / (Real(1) + exp(-o_part[j] - w_oc[j] * c_t_j));
     c_t[j] = c_t_j;
-    m_t[j] = o_t_j * tanh(c_t_j);
+    m_t[j] = o_t_j * o_scale * tanh(c_t_j);
   }
 }
 
@@ -2916,6 +2923,9 @@ static void _lstm_nonlinearity(const Real* in, const int in_stride,
                      a multiple of 5).  The column-space is interpreted as 5
                      consecutive blocks, each of dimension C, which we name:
                      (i_part, f_part, c_part, o_part, c_{t-1}).
+                     If 'have_dropout_mask' is nonzero, each row of
+                     'in' will have 3 extra elements, interpreted
+                     as dropout masks/scales for i_t, f_t and o_t.
  @param [in] params  The same as in ComputeLstmNonlinearity().
                      A matrix, of dimension 3 by C, with rows containing the
                      three diagonal parameter matrices used in LSTMs, namely
@@ -2988,7 +2998,8 @@ static void _lstm_nonlinearity(const Real* in, const int in_stride,
 */
 template<typename Real>
 __global__
-static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
+static void _diff_lstm_nonlinearity(const int cell_dim, const int have_dropout_mask,
+                                    const int num_rows,
                                     const Real* input, const int input_stride,
                                     const Real* params, const int params_stride,
                                     const Real* output_deriv,
@@ -3042,6 +3053,7 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
     const Real o_t_self_repair = (update_sr[3] ? sr_config[8] : 0);
     const Real c_t_self_repair = (update_sr[4] ? sr_config[9] : 0);
 
+
     for (int i = i0; i < num_rows; i += grid_stride) {
       const Real i_part = input[i * input_stride + j];
       const Real f_part = input[i * input_stride + j + cell_dim];
@@ -3049,10 +3061,19 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
       const Real o_part = input[i * input_stride + j + 3 * cell_dim];
       const Real c_prev = input[i * input_stride + j + 4 * cell_dim];
 
-      const Real i_t = 1 / (1 + exp(-i_part - w_ic * c_prev));
-      const Real f_t = 1 / (1 + exp(-f_part - w_fc * c_prev));
+
+      const Real i_scale = (have_dropout_mask ?
+                            input[i * input_stride + cell_dim * 5] : 1),
+                 f_scale = (have_dropout_mask ?
+                            input[i * input_stride + cell_dim * 5 + 1] :1),
+                 o_scale = (have_dropout_mask ?
+                            input[i * input_stride + cell_dim * 5 + 2] :1);
+
+
+      const Real i_t = Real(1) / (1 + exp(-i_part - w_ic * c_prev));
+      const Real f_t = Real(1) / (1 + exp(-f_part - w_fc * c_prev));
       const Real tanh_c_part = tanh(c_part);
-      const Real c_t = f_t * c_prev + i_t * tanh_c_part;
+      const Real c_t = f_t * f_scale * c_prev + i_t * i_scale * tanh_c_part;
       const Real o_t = 1 / (1 + exp(-o_part - w_oc * c_t));
       const Real tanh_c_t = tanh(c_t);
 
@@ -3079,20 +3100,20 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
       const Real dc_t_out = output_deriv[i * output_deriv_stride + j];
       const Real dm_t = output_deriv[i * output_deriv_stride + j + cell_dim];
 
-      const Real dtanh_c_t = o_t * dm_t;
-      const Real do_t = tanh_c_t * dm_t;
+      const Real dtanh_c_t = o_t * o_scale * dm_t;
+      const Real do_t = o_scale * tanh_c_t * dm_t;
       const Real do_t_input = (o_t_deriv * do_t
           - (2 * o_t - 1) * o_t_self_repair);
 
       const Real dc_t = (c_t_deriv * dtanh_c_t + dc_t_out + do_t_input * w_oc)
           - tanh_c_t * c_t_self_repair;
-      const Real dtanh_c_part = i_t * dc_t;
-      const Real df_t = dc_t * c_prev;
+      const Real dtanh_c_part = i_t * i_scale * dc_t;
+      const Real df_t = dc_t * f_scale * c_prev;
       const Real df_t_input = (df_t * f_t_deriv
-          - (2 * f_t - 1) * f_t_self_repair);
-      const Real di_t = dc_t * tanh_c_part;
+                               - (2 * f_t - 1) * f_t_self_repair);
+      const Real di_t = dc_t * i_scale * tanh_c_part;
       const Real di_t_input = (di_t * i_t_deriv
-          - (2 * i_t - 1) * i_t_self_repair);
+                               - (2 * i_t - 1) * i_t_self_repair);
 
       if (params_deriv) {
         w_ic_deriv_sum += c_prev * di_t_input;
@@ -3100,7 +3121,7 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
         w_oc_deriv_sum += c_t * do_t_input;
       }
 
-      const Real dc_prev = w_ic * di_t_input + w_fc * df_t_input + f_t * dc_t;
+      const Real dc_prev = w_ic * di_t_input + w_fc * df_t_input + f_t * f_scale * dc_t;
       const Real do_part = do_t_input;
       const Real dc_part = (c_part_deriv * dtanh_c_part
           - tanh_c_part * c_part_self_repair);
@@ -4737,20 +4758,23 @@ void cudaD_trace_mat_smat_trans(dim3 Gr, dim3 Bl, const double* mat_in,
 void cudaD_lstm_nonlinearity(dim3 Gr, dim3 Bl, const double* in,
                              const int in_stride, const double* params,
                              const int params_stride, const int out_stride,
-                             const int cell_dim, const int num_rows,
-                             double* out) {
-  _lstm_nonlinearity<<<Gr, Bl>>>(in, in_stride, params, params_stride,
-      out_stride, cell_dim, num_rows, out);
+                             const int cell_dim, const int have_dropout_mask,
+                             const int num_rows, double* out) {
+  _lstm_nonlinearity<<<Gr, Bl>>>(
+      in, in_stride, params, params_stride,
+      out_stride, cell_dim, have_dropout_mask, num_rows, out);
 }
 void cudaF_lstm_nonlinearity(dim3 Gr, dim3 Bl, const float* in,
                              const int in_stride, const float* params,
                              const int params_stride, const int out_stride,
-                             const int cell_dim, const int num_rows,
-                             float* out) {
-  _lstm_nonlinearity<<<Gr, Bl>>>(in, in_stride, params, params_stride,
-      out_stride, cell_dim, num_rows, out);
+                             const int cell_dim, const int have_dropout_mask,
+                             const int num_rows, float* out) {
+  _lstm_nonlinearity<<<Gr, Bl>>>(
+      in, in_stride, params, params_stride,
+      out_stride, cell_dim, have_dropout_mask, num_rows, out);
 }
 void cudaD_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
+                                  const int have_dropout_mask,
                                   const int num_rows, const double* input,
                                   const int input_stride, const double* params,
                                   const int params_stride,
@@ -4769,7 +4793,8 @@ void cudaD_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
                                   const int deriv_sum_out_stride,
                                   double* self_repair_sum_out,
                                   const int self_repair_sum_out_stride) {
-  _diff_lstm_nonlinearity<<<Gr, Bl>>>(cell_dim, num_rows, input,
+  _diff_lstm_nonlinearity<<<Gr, Bl>>>(
+      cell_dim, have_dropout_mask, num_rows, input,
       input_stride, params, params_stride, output_deriv, output_deriv_stride,
       deriv_sum_in, deriv_sum_in_stride, self_repair_config, count, input_deriv,
       input_deriv_stride, params_deriv, params_deriv_stride, value_sum_out,
@@ -4777,6 +4802,7 @@ void cudaD_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
       self_repair_sum_out, self_repair_sum_out_stride);
 }
 void cudaF_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
+                                  const int have_dropout_mask,
                                   const int num_rows, const float* input,
                                   const int input_stride, const float* params,
                                   const int params_stride,
@@ -4795,7 +4821,8 @@ void cudaF_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
                                   const int deriv_sum_out_stride,
                                   float* self_repair_sum_out,
                                   const int self_repair_sum_out_stride) {
-  _diff_lstm_nonlinearity<<<Gr, Bl>>>(cell_dim, num_rows, input,
+  _diff_lstm_nonlinearity<<<Gr, Bl>>>(
+      cell_dim, have_dropout_mask, num_rows, input,
       input_stride, params, params_stride, output_deriv, output_deriv_stride,
       deriv_sum_in, deriv_sum_in_stride, self_repair_config, count, input_deriv,
       input_deriv_stride, params_deriv, params_deriv_stride, value_sum_out,

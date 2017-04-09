@@ -4939,13 +4939,20 @@ void CompositeComponent::InitFromConfig(ConfigLine *cfl) {
     if(this_component->Type() == "CompositeComponent") {
       DeletePointers(&components);
       delete this_component;
+      // This is not allowed.  If memory is too much with just one
+      // CompositeComponent, try decreasing max-rows-process instead.
       KALDI_ERR << "Found CompositeComponent nested within CompositeComponent."
-                << "Try decreasing max-rows-process instead."
                 << "Nested line: '" << nested_line.WholeLine() << "'\n"
                 << "Toplevel CompositeComponent line '" << cfl->WholeLine()
                 << "'";
     }
     this_component->InitFromConfig(&nested_line);
+    int32 props = this_component->Properties();
+    if ((props & kRandomComponent) != 0 ||
+        (props & kSimpleComponent) == 0) {
+      KALDI_ERR << "CompositeComponent contains disallowed component type: "
+                << nested_line.WholeLine();
+    }
     components.push_back(this_component);
   }
   if (cfl->HasUnusedValues())
@@ -4965,10 +4972,9 @@ void CompositeComponent::SetComponent(int32 i, Component *component) {
   components_[i] = component;
 }
 
-
 int32 LstmNonlinearityComponent::InputDim() const {
   int32 cell_dim = value_sum_.NumCols();
-  return cell_dim * 5;
+  return cell_dim * 5 + (use_dropout_ ? 3 : 0);
 }
 
 int32 LstmNonlinearityComponent::OutputDim() const {
@@ -4990,7 +4996,15 @@ void LstmNonlinearityComponent::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<SelfRepairProb>");
   self_repair_total_.Read(is, binary);
 
-  ExpectToken(is, binary, "<Count>");
+  std::string tok;
+  ReadToken(is, binary, &tok);
+  if (tok == "<UseDropout>") {
+    ReadBasicType(is, binary, &use_dropout_);
+    ReadToken(is, binary, &tok);
+  } else {
+    use_dropout_ = false;
+  }
+  KALDI_ASSERT(tok == "<Count>");
   ReadBasicType(is, binary, &count_);
 
   // For the on-disk format, we normalze value_sum_, deriv_sum_ and
@@ -5037,6 +5051,12 @@ void LstmNonlinearityComponent::Write(std::ostream &os, bool binary) const {
       self_repair_prob.Scale(1.0 / (count_ * cell_dim));
     self_repair_prob.Write(os, binary);
   }
+  if (use_dropout_) {
+    // only write this if true; we have back-compat code in reading anyway.
+    // this makes the models without dropout easier to read with older code.
+    WriteToken(os, binary, "<UseDropout>");
+    WriteBasicType(os, binary, use_dropout_);
+  }
   WriteToken(os, binary, "<Count>");
   WriteBasicType(os, binary, count_);
   WriteToken(os, binary, "</LstmNonlinearityComponent>");
@@ -5047,7 +5067,8 @@ void LstmNonlinearityComponent::Write(std::ostream &os, bool binary) const {
 std::string LstmNonlinearityComponent::Info() const {
   std::ostringstream stream;
   int32 cell_dim = params_.NumCols();
-  stream << UpdatableComponent::Info() << ", cell-dim=" << cell_dim;
+  stream << UpdatableComponent::Info() << ", cell-dim=" << cell_dim
+         << ", use-dropout=" << (use_dropout_ ? "true" : "false");
   PrintParameterStats(stream, "w_ic", params_.Row(0));
   PrintParameterStats(stream, "w_fc", params_.Row(1));
   PrintParameterStats(stream, "w_oc", params_.Row(2));
@@ -5213,6 +5234,7 @@ LstmNonlinearityComponent::LstmNonlinearityComponent(
     const LstmNonlinearityComponent &other):
     UpdatableComponent(other),
     params_(other.params_),
+    use_dropout_(other.use_dropout_),
     value_sum_(other.value_sum_),
     deriv_sum_(other.deriv_sum_),
     self_repair_config_(other.self_repair_config_),
@@ -5221,7 +5243,8 @@ LstmNonlinearityComponent::LstmNonlinearityComponent(
     preconditioner_(other.preconditioner_) { }
 
 void LstmNonlinearityComponent::Init(
-    int32 cell_dim, BaseFloat param_stddev,
+    int32 cell_dim, bool use_dropout,
+    BaseFloat param_stddev,
     BaseFloat tanh_self_repair_threshold,
     BaseFloat sigmoid_self_repair_threshold,
     BaseFloat self_repair_scale) {
@@ -5231,6 +5254,7 @@ void LstmNonlinearityComponent::Init(
                sigmoid_self_repair_threshold >= 0.0 &&
                sigmoid_self_repair_threshold <= 0.25 &&
                self_repair_scale >= 0.0 && self_repair_scale <= 0.1);
+  use_dropout_ = use_dropout;
   params_.Resize(3, cell_dim);
   params_.SetRandn();
   params_.Scale(param_stddev);
@@ -5265,6 +5289,7 @@ void LstmNonlinearityComponent::InitNaturalGradient() {
 void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
   InitLearningRatesFromConfig(cfl);
   bool ok = true;
+  bool use_dropout = false;
   int32 cell_dim;
   // these self-repair thresholds are the normal defaults for tanh and sigmoid
   // respectively.  If, later on, we decide that we want to support different
@@ -5284,6 +5309,7 @@ void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
   cfl->GetValue("sigmoid-self-repair-threshold",
                 &sigmoid_self_repair_threshold);
   cfl->GetValue("self-repair-scale", &self_repair_scale);
+  cfl->GetValue("use-dropout", &use_dropout);
 
   // We may later on want to make it possible to initialize the different
   // parameters w_ic, w_fc and w_oc with different biases.  We'll implement
@@ -5293,7 +5319,7 @@ void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
     KALDI_ERR << "Could not process these elements in initializer: "
               << cfl->UnusedValues();
   if (ok) {
-    Init(cell_dim, param_stddev, tanh_self_repair_threshold,
+    Init(cell_dim, use_dropout, param_stddev, tanh_self_repair_threshold,
          sigmoid_self_repair_threshold, self_repair_scale);
   } else {
     KALDI_ERR << "Invalid initializer for layer of type "

@@ -411,10 +411,11 @@ template<typename Real>
 void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input_mat,
                                 const MatrixBase<Real> &params_mat,
                                 MatrixBase<Real> *output) {
-  int32 num_rows = input_mat.NumRows();
-  int32 cell_dim = input_mat.NumCols() / 5;
+  int32 num_rows = input_mat.NumRows(),
+      input_cols = input_mat.NumCols(),
+        cell_dim = input_cols / 5;
+  KALDI_ASSERT(input_cols == (cell_dim * 5) || input_cols == (cell_dim * 5) + 3);
   KALDI_ASSERT(output->NumRows() == num_rows);
-  KALDI_ASSERT(input_mat.NumCols() % 5 == 0);
   KALDI_ASSERT(params_mat.NumRows() == 3);
   KALDI_ASSERT(params_mat.NumCols() == cell_dim);
   KALDI_ASSERT(output->NumCols() == 2 * cell_dim);
@@ -424,6 +425,11 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input_mat,
   int32 params_stride = params_mat.Stride();
   for (int32 r = 0; r < num_rows; r++) {
     const Real *input_row = input_mat.RowData(r);
+    // i_scale and f_scale relate to dropout, they will normally be 1.0.
+    Real i_scale = (input_cols == cell_dim*5 ? 1.0:input_row[cell_dim*5]),
+         f_scale = (input_cols == cell_dim*5 ? 1.0:input_row[cell_dim*5 + 1]),
+         o_scale = (input_cols == cell_dim*5 ? 1.0:input_row[cell_dim*5 + 2]);
+
     Real *output_row = output_mat.RowData(r);
     for (int32 c = 0; c < cell_dim; c++) {
       Real i_part = input_row[c];
@@ -436,9 +442,9 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input_mat,
       Real w_oc = params_data[c + params_stride * 2];
       Real i_t = ScalarSigmoid(i_part + w_ic * c_prev);
       Real f_t = ScalarSigmoid(f_part + w_fc * c_prev);
-      Real c_t = f_t * c_prev + i_t * ScalarTanh(c_part);
+      Real c_t = f_t * f_scale * c_prev + i_t * i_scale * ScalarTanh(c_part);
       Real o_t = ScalarSigmoid(o_part + w_oc * c_t);
-      Real m_t = o_t * ScalarTanh(c_t);
+      Real m_t = o_t * o_scale * ScalarTanh(c_t);
       output_row[c] = c_t;
       output_row[c + cell_dim] = m_t;
     }
@@ -449,10 +455,11 @@ template<typename Real>
 void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
                              const CuMatrixBase<Real> &params,
                              CuMatrixBase<Real> *output) {
-  int32 num_rows = input.NumRows();
-  int32 cell_dim = input.NumCols() / 5;
+  int32 num_rows = input.NumRows(),
+      input_cols = input.NumCols(),
+        cell_dim = input_cols / 5;
+  KALDI_ASSERT(input_cols == (cell_dim * 5) || input_cols == (cell_dim * 5) + 3);
   KALDI_ASSERT(output->NumRows() == num_rows);
-  KALDI_ASSERT(input.NumCols() % 5 == 0);
   KALDI_ASSERT(params.NumRows() == 3);
   KALDI_ASSERT(params.NumCols() == cell_dim);
   KALDI_ASSERT(output->NumCols() == 2 * cell_dim);
@@ -461,6 +468,8 @@ void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
 
+    int have_dropout_mask = (input_cols == (cell_dim * 5) + 3);
+
     // Each thread block is working on 1 row of the data.
     // It's best that cell dim is a multiple fo CU1DBLOCK
     dim3 dimBlock(CU1DBLOCK);
@@ -468,7 +477,7 @@ void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
 
     cuda_lstm_nonlinearity(dimGrid, dimBlock, input.Data(), input.Stride(),
                            params.Data(), params.Stride(), output->Stride(),
-                           cell_dim, num_rows, output->Data());
+                           cell_dim, have_dropout_mask, num_rows, output->Data());
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -508,10 +517,12 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
                                  MatrixBase<double> *value_sum_out,
                                  MatrixBase<double> *deriv_sum_out,
                                  MatrixBase<Real> *self_repair_sum_out) {
-  int32 num_rows = input.NumRows();
-  int32 cell_dim = input.NumCols() / 5;
+  int32 num_rows = input.NumRows(),
+      input_cols = input
+                   .NumCols(),
+        cell_dim = input.NumCols() / 5;
   // Check dimensions.
-  KALDI_ASSERT(input.NumCols() % 5 == 0);
+  KALDI_ASSERT(input_cols == (cell_dim * 5) || input_cols == (cell_dim * 5) + 3);
   KALDI_ASSERT(params.NumRows() == 3);
   KALDI_ASSERT(params.NumCols() == cell_dim);
   KALDI_ASSERT(output_deriv.NumRows() == num_rows);
@@ -606,6 +617,14 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
           c_part = input_mat(r, c + 2 * cell_dim),
           o_part = input_mat(r, c + 3 * cell_dim),
           c_prev = input_mat(r, c + 4 * cell_dim);
+
+      Real i_scale = (input_cols == cell_dim * 5 ? 1.0 :
+                      input_mat(r, cell_dim * 5)),
+           f_scale = (input_cols == cell_dim * 5 ? 1.0 :
+                      input_mat(r, cell_dim * 5 + 1)),
+           o_scale = (input_cols == cell_dim * 5 ? 1.0 :
+                      input_mat(r, cell_dim * 5 + 2));
+
       // For greater clarity, we give some of the quantities in the
       // forward equations their own names.
       Real i_t_input = i_part + w_ic * c_prev,
@@ -613,7 +632,7 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
           f_t_input = f_part + w_fc * c_prev,
           f_t = ScalarSigmoid(f_t_input),
           tanh_c_part = ScalarTanh(c_part),
-          c_t = f_t * c_prev + i_t * tanh_c_part,
+          c_t = f_t * f_scale * c_prev + i_t * i_scale * tanh_c_part,
           o_t_input = o_part + w_oc * c_t,
           o_t = ScalarSigmoid(o_t_input),
           tanh_c_t = ScalarTanh(c_t);
@@ -645,25 +664,25 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
       // comes directly from the output of this function.
       Real dc_t_out = output_deriv_mat(r, c);
       Real dm_t = output_deriv_mat(r, c + cell_dim);
-      Real dtanh_c_t = o_t * dm_t;
-      Real do_t = tanh_c_t * dm_t;
+      Real dtanh_c_t = o_t * o_scale * dm_t;
+      Real do_t = o_scale * tanh_c_t * dm_t;
       Real do_t_input = (o_t * (1.0F - o_t) * do_t
           - (2.0F * o_t - 1.0F) * o_t_self_repair);
       Real dc_t = ((1.0F - tanh_c_t * tanh_c_t) * dtanh_c_t + dc_t_out
           + do_t_input * w_oc) - tanh_c_t * c_t_self_repair;
-      Real dtanh_c_part = i_t * dc_t;
-      Real df_t = dc_t * c_prev;
-      Real df_t_input = (df_t * f_t * (1.0F - f_t)
-          - (2.0F * f_t - 1.0F) * f_t_self_repair);
-      Real di_t = dc_t * tanh_c_part;
-      Real di_t_input = (di_t * i_t * (1.0F - i_t)
-          - (2.0F * i_t - 1.0F) * i_t_self_repair);
+      Real dtanh_c_part = i_t * i_scale * dc_t;
+      Real df_t = dc_t * f_scale * c_prev;
+      Real df_t_input = ((df_t * f_t * (1.0F - f_t)
+                          - (2.0F * f_t - 1.0F) * f_t_self_repair));
+      Real di_t = dc_t * i_scale * tanh_c_part;
+      Real di_t_input = ((di_t * i_t * (1.0F - i_t)
+                          - (2.0F * i_t - 1.0F) * i_t_self_repair));
 
       w_ic_deriv_sum += c_prev * di_t_input;
       w_fc_deriv_sum += c_prev * df_t_input;
       w_oc_deriv_sum += c_t * do_t_input;
 
-      Real dc_prev = w_ic * di_t_input + w_fc * df_t_input + f_t * dc_t;
+      Real dc_prev = w_ic * di_t_input + w_fc * df_t_input + f_t * f_scale * dc_t;
       Real do_part = do_t_input;
       Real dc_part = ((1.0F - tanh_c_part * tanh_c_part) * dtanh_c_part
           - tanh_c_part * c_part_self_repair);
@@ -724,10 +743,11 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
                               CuMatrixBase<double> *value_sum_out,
                               CuMatrixBase<double> *deriv_sum_out,
                               CuMatrixBase<Real> *self_repair_sum_out) {
-  int32 num_rows = input.NumRows();
-  int32 cell_dim = input.NumCols() / 5;
+  int32 num_rows = input.NumRows(),
+        cell_dim = input.NumCols() / 5,
+      input_cols = input.NumCols();
   // Check dimensions.
-  KALDI_ASSERT(input.NumCols() % 5 == 0);
+  KALDI_ASSERT(input_cols == (cell_dim * 5) || input_cols == (cell_dim*5) + 3);
   KALDI_ASSERT(params.NumRows() == 3);
   KALDI_ASSERT(params.NumCols() == cell_dim);
   KALDI_ASSERT(output_deriv.NumRows() == num_rows);
@@ -762,6 +782,7 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
     // Each thread block is working on 1 row of the data.
     // It's best that cell dim is a multiple fo CU1DBLOCK
 
+    int have_dropout_mask = (input_cols == (cell_dim * 5) + 3);
 
     // Use 2D block (8x32 threads) as we need to compute column sum.
     // Use 1D grid to cover the data matrix width `cell_dim`.
@@ -775,7 +796,8 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
     dim3 dimGrid(n_blocks(cell_dim, dimBlock.x));
     if (input_deriv == NULL) {
       if (params_deriv == NULL) {
-        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim, num_rows,
+        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim,
+                                    have_dropout_mask, num_rows,
                                     input.Data(), input.Stride(), params.Data(),
                                     params.Stride(), output_deriv.Data(),
                                     output_deriv.Stride(), deriv_sum_in.Data(),
@@ -793,7 +815,8 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
                                     0);
 
       } else {
-        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim, num_rows,
+        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim,
+                                    have_dropout_mask, num_rows,
                                     input.Data(), input.Stride(), params.Data(),
                                     params.Stride(), output_deriv.Data(),
                                     output_deriv.Stride(), deriv_sum_in.Data(),
@@ -811,7 +834,8 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
       }
     } else {
       if (params_deriv == NULL) {
-        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim, num_rows,
+        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim,
+                                    have_dropout_mask, num_rows,
                                     input.Data(), input.Stride(), params.Data(),
                                     params.Stride(), output_deriv.Data(),
                                     output_deriv.Stride(), deriv_sum_in.Data(),
@@ -821,7 +845,8 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
                                     NULL,
                                     0, NULL, 0, NULL, 0, NULL, 0);
       } else {
-        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim, num_rows,
+        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim,
+                                    have_dropout_mask, num_rows,
                                     input.Data(), input.Stride(), params.Data(),
                                     params.Stride(), output_deriv.Data(),
                                     output_deriv.Stride(), deriv_sum_in.Data(),
