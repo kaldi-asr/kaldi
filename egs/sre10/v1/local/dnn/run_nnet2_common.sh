@@ -20,7 +20,7 @@ if [ $stage -le 1 ]; then
   mfccdir=mfcc
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     date=$(date +'%m_%d_%H_%M')
-    utils/create_split_dir.pl /export/b0{1,2,3,4}/$(USER)/kaldi-data/egs/fisher_english-$date/s5/$mfccdir/storage $mfccdir/storage
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/fisher_english-$date/s5/$mfccdir/storage $mfccdir/storage
   fi
   utils/copy_data_dir.sh data/train_asr data/train_hires_asr
   steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
