@@ -96,7 +96,7 @@ if [ $# != 5 ]; then
   echo ""
   echo "For options, see top of script file.  Standard options:"
   echo "  --config <config-file>                           # config file containing options"
-  echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs (probably would be good to add -tc 5 or so if using"
+  echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs (probably would be good to add --max-jobs-run 5 or so if using"
   echo "                                                   # GridEngine (to avoid excessive NFS traffic)."
   echo "  --stage <stage|-8>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."

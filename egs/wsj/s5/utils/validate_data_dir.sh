@@ -22,6 +22,8 @@ done
 
 if [ $# -ne 1 ]; then
   echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] <data-dir>"
+  echo "The --no-xxx options mean that the script does not require "
+  echo "xxx.scp to be present, but it will check it if it is present."
   echo "e.g.: $0 data/train"
   exit 1;
 fi
@@ -132,7 +134,7 @@ if [ -f $data/wav.scp ]; then
     check_sorted_and_uniq $data/segments
     # We have a segments file -> interpret wav file as "recording-ids" not utterance-ids.
     ! cat $data/segments | \
-      awk '{if (NF != 4 || ($4 <= $3 && $4 != -1)) { print "Bad line in segments file", $0; exit(1); }}' && \
+      awk '{if (NF != 4 || $4 <= $3) { print "Bad line in segments file", $0; exit(1); }}' && \
       echo "$0: badly formatted segments file" && exit 1;
 
     segments_len=`cat $data/segments | wc -l`

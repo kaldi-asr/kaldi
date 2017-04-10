@@ -1,5 +1,8 @@
 #!/bin/bash
 
+
+# This script is deprecated.
+
 set -o pipefail
 set -e
 # this is run_discriminative.sh

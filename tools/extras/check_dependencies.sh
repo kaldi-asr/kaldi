@@ -181,14 +181,6 @@ if which grep >&/dev/null && pwd | grep -E 'JOB|LMWT' >/dev/null; then
   status=1;
 fi
 
-if [ -f /usr/lib64/libfst.so.1 ] || [ -f /usr/local/include/fst.h ] || \
-   [ -f /usr/include/fst/fst.h ] || [ -f /usr/local/bin/fstinfo ]; then
-  echo "*** $0: Kaldi cannot be installed (for now) if you have OpenFst"
-  echo "***   installed in system space (version mismatches, etc.)"
-  echo "***   Please try to uninstall it."
-  status=1
-fi
-
 if ! $printed && [ $status -eq 0 ]; then
   echo "$0: all OK."
 fi

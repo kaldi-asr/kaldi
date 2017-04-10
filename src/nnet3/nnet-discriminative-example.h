@@ -134,9 +134,9 @@ struct NnetDiscriminativeExample {
 /// without looking at the value of the features.  It will be used in combining
 /// egs into batches of all similar structure.
 struct NnetDiscriminativeExampleStructureHasher {
-  size_t operator () (const NnetDiscriminativeExample &eg) const;
+  size_t operator () (const NnetDiscriminativeExample &eg) const noexcept ;
   // We also provide a version of this that works from pointers.
-  size_t operator () (const NnetDiscriminativeExample *eg) const {
+  size_t operator () (const NnetDiscriminativeExample *eg) const noexcept {
     return (*this)(*eg);
   }
 };

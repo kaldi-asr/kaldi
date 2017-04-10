@@ -8,16 +8,16 @@
 
 # This script trains the i-vector extractor using a DNN-based UBM. It also requires
 # an fGMM, usually created by the script sid/init_full_gmm_from_dnn.sh.
-# Note: there are 3 separate levels of parallelization: num_threads, num_processes, 
-# and num_jobs.  This may seem a bit excessive.  It has to do with minimizing 
-# memory usage and disk I/O, subject to various constraints.  The "num_threads" 
+# Note: there are 3 separate levels of parallelization: num_threads, num_processes,
+# and num_jobs.  This may seem a bit excessive.  It has to do with minimizing
+# memory usage and disk I/O, subject to various constraints.  The "num_threads"
 # is how many threads a program uses; the "num_processes" is the number of separate
 # processes a single  job spawns, and then sums the accumulators in memory.
 # Our recommendation:
 #  - Set num_threads to the minimum of (4, or how many virtual cores your machine has).
 #    (because of needing to lock various global quantities, the program can't
 #    use many more than 4 threads with good CPU utilization).
-#  - Set num_processes to the number of virtual cores on each machine you have, divided by 
+#  - Set num_processes to the number of virtual cores on each machine you have, divided by
 #    num_threads.  E.g. 4, if you have 16 virtual cores.   If you're on a shared queue
 #    that's busy with other people's jobs, it may be wise to set it to rather less
 #    than this maximum though, or your jobs won't get scheduled.  And if memory is
@@ -28,8 +28,8 @@
 #    may want more jobs, though.
 
 # Begin configuration section.
-nj=10   # this is the number of separate queue jobs we run, but each one 
-        # contains num_processes sub-jobs.. the real number of threads we 
+nj=10   # this is the number of separate queue jobs we run, but each one
+        # contains num_processes sub-jobs.. the real number of threads we
         # run is nj * num_processes * num_threads, and the number of
         # separate pieces of data is nj * num_processes.
 num_threads=4
@@ -100,9 +100,9 @@ if [ -f $srcdir/delta_opts ]; then
   cp $srcdir/delta_opts $dir/ 2>/dev/null
 fi
 
-splice_opts=`cat exp/nnet//splice_opts 2>/dev/null` # frame-splicing options           
+splice_opts=`cat exp/nnet//splice_opts 2>/dev/null` # frame-splicing options
 
-parallel_opts="-pe smp $[$num_threads*$num_processes]"
+parallel_opts="--num-threads $[$num_threads*$num_processes]"
 ## Set up features.
 feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
 
@@ -117,7 +117,7 @@ if [ $stage -le -2 ]; then
   $cmd $dir/log/init.log \
     ivector-extractor-init --ivector-dim=$ivector_dim --use-weights=$use_weights \
      $dir/final.ubm $dir/0.ie || exit 1;
-fi 
+fi
 
 # Do Gaussian selection and posterior extraction
 
@@ -167,7 +167,7 @@ while [ $x -lt $num_iters ]; do
     nt=$[$num_threads*$num_processes] # use the same number of threads that
                                       # each accumulation process uses, since we
                                       # can be sure the queue will support this many.
-	$cmd -pe smp $nt $dir/log/update.$x.log \
+	$cmd --num-threads $nt $dir/log/update.$x.log \
 	  ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
 	rm $dir/acc.$x.*
     if $cleanup; then

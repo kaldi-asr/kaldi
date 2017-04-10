@@ -67,7 +67,8 @@ int main(int argc, char *argv[]) {
         "<nbest-wspecifier>\n"
         "Note: if the rspecifiers for lm-cost or ac-cost are the empty string,\n"
         "these value will default to zero.\n"
-        " e.g.: linear-to-nbest ark:1.ali ark:1.tra ark:1.lmscore ark:1.acscore "
+        " e.g.: linear-to-nbest ark:1.ali 'ark:sym2int.pl -f 2- words.txt text|' "
+        "ark:1.lmscore ark:1.acscore "
         "ark:1.nbest\n";
 
     ParseOptions po(usage);

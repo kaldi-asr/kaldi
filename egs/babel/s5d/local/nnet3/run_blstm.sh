@@ -5,7 +5,7 @@ cell_dim=512
 rp_dim=128
 nrp_dim=128
 affix=bidirectional
-multicondition=true
+multicondition=false
 common_egs_dir=
 num_epochs=8
 

@@ -85,7 +85,8 @@ if [ ! -z "$oov_prob_file" ]; then
           print "$log10prob $word\n";
        }
      }} print STDERR "Ceilinged $ceilinged unk-probs\n";' \
-       $oov_prob_file $min_prob $unk_fraction | gzip -c > $destdir/lm_tmp.gz
+       $oov_prob_file $min_prob $unk_fraction | \
+  ngram  -unk -lm - -write-lm $destdir/lm_tmp.gz
   lmfile=$destdir/lm_tmp.gz
 fi
 

@@ -40,12 +40,13 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Align features given neural-net-based model\n"
-        "Usage:   nnet-align-compiled [options] model-in graphs-rspecifier feature-rspecifier alignments-wspecifier\n"
+        "Usage:   nnet-align-compiled [options] model-in graphs-rspecifier "
+        "feature-rspecifier alignments-wspecifier\n"
         "e.g.: \n"
         " nnet-align-compiled 1.mdl ark:graphs.fsts scp:train.scp ark:1.ali\n"
         "or:\n"
-        " compile-train-graphs tree 1.mdl lex.fst ark:train.tra b, ark:- | \\\n"
-        "   nnet-align-compiled 1.mdl ark:- scp:train.scp t, ark:1.ali\n";
+        " compile-train-graphs tree 1.mdl lex.fst 'ark:sym2int.pl -f 2- words.txt text|' \\\n"
+        "   ark:- | nnet-align-compiled 1.mdl ark:- scp:train.scp t, ark:1.ali\n";
 
     ParseOptions po(usage);
     AlignConfig align_config;
