@@ -84,7 +84,7 @@ nj_full=$[$nj*$num_processes]
 sdata=$data/split$nj_full;
 utils/split_data.sh $data $nj_full || exit 1;
 
-parallel_opts="-pe smp $[$num_threads*$num_processes]"
+parallel_opts="--num-threads $[$num_threads*$num_processes]"
 ## Set up features.
 
 feats="ark,s,cs:apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 scp:$sdata/JOB/feats.scp ark:- | add-deltas-sdc ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"

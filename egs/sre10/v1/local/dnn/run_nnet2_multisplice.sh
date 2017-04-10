@@ -34,7 +34,7 @@ local/dnn/run_nnet2_common.sh --stage $stage
 
 if [ $stage -le 6 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
-    utils/create_split_dir.pl /export/b0{6,7,8,9}/$USER/kaldi-data/egs/fisher_english/s5/$dir/egs/storage $dir/egs/storage
+    utils/create_split_dir.pl /export/b0{6,7,8,9}/$(USER)/kaldi-data/egs/fisher_english/s5/$dir/egs/storage $dir/egs/storage
   fi
 
   # Because we have a lot of data here and we don't want the training to take

@@ -97,7 +97,7 @@ sdata_dnn=$data_dnn/split$nj_full;
 utils/split_data.sh $data_dnn $nj_full || exit 1;
 
 
-parallel_opts="-pe smp $[$num_threads*$num_processes]"
+parallel_opts="--num-threads $[$num_threads*$num_processes]"
 
 # Set up features.
 
