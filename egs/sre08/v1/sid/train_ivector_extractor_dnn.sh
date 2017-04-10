@@ -121,8 +121,6 @@ if [ -f $srcdir/delta_opts ]; then
   cp $srcdir/delta_opts $dir/ 2>/dev/null
 fi
 
-splice_opts=`cat exp/nnet//splice_opts 2>/dev/null` # frame-splicing options
-
 parallel_opts="--num-threads $[$num_threads*$num_processes]"
 ## Set up features.
 feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"

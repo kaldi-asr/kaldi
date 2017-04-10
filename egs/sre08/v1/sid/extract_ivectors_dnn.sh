@@ -80,8 +80,6 @@ utils/split_data.sh $data_dnn $nj || exit 1;
 
 delta_opts=`cat $srcdir/delta_opts 2>/dev/null`
 
-splice_opts=`cat exp/nnet//splice_opts 2>/dev/null` # frame-splicing options
-
 ## Set up features.
 feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
 
