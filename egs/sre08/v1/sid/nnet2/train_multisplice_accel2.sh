@@ -8,7 +8,7 @@
 # Apache 2.0.
 
 # This is a modified version of train_multisplice_accel2.sh in
-# steps/nnet2/ for speaker recognition. The main difference is
+# ../../steps/nnet2/ for speaker recognition. The main difference is
 # that it uses different get_lda.sh and get_egs2.sh scripts.
 #
 # The original train_multisplice_accel2.sh was a modified version of
