@@ -106,7 +106,6 @@ utils/fix_data_dir.sh data/train_32k
 # features. This can be used both alone, as a UBM, or to initialize the
 # i-vector extractor in a DNN-based system.
 sid/init_full_ubm_from_dnn.sh --cmd "$train_cmd --mem 15G" \
-  --nj 8 \
   data/train_32k \
   data/train_dnn_32k $nnet exp/full_ubm
 

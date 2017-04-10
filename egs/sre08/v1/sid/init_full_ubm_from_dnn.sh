@@ -8,7 +8,7 @@
 # speaker recognition features.
 
 # Begin configuration section.
-nj=4
+nj=8
 cmd="run.pl"
 stage=-2
 delta_window=3
