@@ -138,8 +138,8 @@ struct RandomState {
   unsigned seed;
 };
 
-// Returns a random integer between min and max inclusive.
-int32 RandInt(int32 min, int32 max, struct RandomState* state = NULL);
+// Returns a random integer between first and last inclusive.
+int32 RandInt(int32 first, int32 last, struct RandomState* state = NULL);
 
 // Returns true with probability "prob",
 bool WithProb(BaseFloat prob, struct RandomState* state = NULL);

@@ -382,6 +382,15 @@ void Compiler::CreateStepInfo(
   }
 }
 
+bool Compiler::IsInputStep(int32 step) const {
+  KALDI_ASSERT(step >= 0);
+  if (step >= steps_.size())
+    return false;
+  const StepInfo &step_info = steps_[step];
+  const NetworkNode &node = nnet_.GetNode(step_info.node_index);
+  return (node.node_type == kInput);
+}
+
 void Compiler::DoForwardComputation(int32 step,
                                     NnetComputation *computation) const {
   KALDI_ASSERT(step < static_cast<int32>(steps_.size()));
@@ -390,6 +399,9 @@ void Compiler::DoForwardComputation(int32 step,
   switch (node.node_type) {
     case kInput:  // Note: input nodes appear before other node types.
       AddForwardStepInput(step, computation);
+      if (!IsInputStep(step + 1))  // Make sure forward computation is nonempty.
+        computation->commands.push_back(
+            NnetComputation::Command(kNoOperationPermanent));
       break;
     case kDimRange: break;  // Nothing to do.
     case kComponent:
@@ -401,6 +413,7 @@ void Compiler::DoForwardComputation(int32 step,
     default:
       KALDI_ERR << "Invalid node type";
   }
+
 }
 
 
@@ -445,27 +458,34 @@ void Compiler::ComputeInputLocationsList(
   submat_locations_list->resize(num_indexes);
 
   for (int32 i = 0; i < num_indexes; i++) {
-    std::vector<int32> input_cindex_ids;
     const Index &index = output_indexes[i];
-    std::vector<Cindex> input_cindexes;
-    CindexSet cindex_set(graph_);
-    bool ans = descriptor.IsComputable(index, cindex_set, &input_cindexes);
-    // earlier compilation stages should have checked that it is computable,
-    // and the graph should still contain required inputs.
-    KALDI_ASSERT(ans);
-    std::sort(input_cindexes.begin(), input_cindexes.end());
-    int32 size = input_cindexes.size();
-    input_cindex_ids.resize(size);
-    for (int32 j = 0; j < size; j++) {
-      int32 c = graph_.GetCindexId(input_cindexes[j]);
-      KALDI_ASSERT(c != -1);
-      input_cindex_ids[j] = c;
-    }
     std::vector<std::pair<int32, int32> > &this_locations_list =
         (*submat_locations_list)[i];
-    this_locations_list.resize(size);
-    for (int32 j = 0; j < size; j++)
-      this_locations_list[j] = cindex_id_to_location_[input_cindex_ids[j]];
+    if (index.t != kNoTime) {
+      // a real Index, not a 'blank' one
+      // ('blank' indexes are inserted by some non-simple Components to
+      // satisfy internal constraints.
+      std::vector<int32> input_cindex_ids;
+      std::vector<Cindex> input_cindexes;
+      CindexSet cindex_set(graph_);
+      bool ans = descriptor.IsComputable(index, cindex_set, &input_cindexes);
+      // earlier compilation stages should have checked that it is computable,
+      // and the graph should still contain required inputs.
+      KALDI_ASSERT(ans);
+      std::sort(input_cindexes.begin(), input_cindexes.end());
+      int32 size = input_cindexes.size();
+      input_cindex_ids.resize(size);
+      for (int32 j = 0; j < size; j++) {
+        int32 c = graph_.GetCindexId(input_cindexes[j]);
+        KALDI_ASSERT(c != -1);
+        input_cindex_ids[j] = c;
+      }
+      this_locations_list.resize(size);
+      for (int32 j = 0; j < size; j++)
+        this_locations_list[j] = cindex_id_to_location_[input_cindex_ids[j]];
+    } else {
+      this_locations_list.clear();
+    }
   }
 }
 
@@ -735,11 +755,13 @@ void Compiler::DoBackwardComputationFromIndexes(
     int32 i;
     for (i = 0; i < num_rows; i++) {
       int32 index_i = indexes[i];
-      KALDI_ASSERT(index_i >= 0 && index_i < input_num_rows);
-      if (reverse_indexes[index_i] == -1)
-        reverse_indexes[index_i] = i;
-      else
-        break;
+      KALDI_ASSERT(index_i >= -1 && index_i < input_num_rows);
+      if (index_i >= 0) {
+        if (reverse_indexes[index_i] == -1)
+          reverse_indexes[index_i] = i;
+        else
+          break;
+      }  // note: there may be -1's in 'indexes', meaning just use zero.
     }
     if (i == num_rows) {
       // There were no repeated elements, and this strategy will work.
@@ -817,6 +839,9 @@ void Compiler::DoBackwardComputation(int32 step,
   switch (node.node_type) {
     case kInput:
       AddBackwardStepInput(step, computation);
+      if (!IsInputStep(step + 1))  // Make sure backward computation is nonempty.
+        computation->commands.push_back(
+            NnetComputation::Command(kNoOperationPermanent));
       break;
     case kDimRange:
       break;  // Nothing to do.

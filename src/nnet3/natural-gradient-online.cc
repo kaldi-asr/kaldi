@@ -63,11 +63,6 @@ void OnlineNaturalGradient::InitOrthonormalSpecial(CuMatrixBase<BaseFloat> *R) {
     }
   }
   R->AddElements(1.0, elems);
-  { // TODO: remove this testing code.
-    CuMatrix<BaseFloat> prod(num_rows, num_rows);
-    prod.AddMatMat(1.0, *R, kNoTrans, *R, kTrans, 0.0);
-    KALDI_ASSERT(prod.IsUnit());
-  }
 }
 
 

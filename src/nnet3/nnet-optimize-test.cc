@@ -252,6 +252,20 @@ static void UnitTestNnetOptimizeInternal(int32 srand_seed) {
                                                                       compiler);
   optimize = optimize_all;
 
+  optimize.snip_row_ops = false;
+  bool succ_no_snip_row_ops = UnitTestNnetOptimizeWithOptions(srand_seed, optimize,
+                                                              compiler);
+  optimize = optimize_all;
+
+
+  optimize.min_deriv_time = std::numeric_limits<int32>::min();
+  optimize.max_deriv_time = std::numeric_limits<int32>::max();
+  optimize.max_deriv_time_relative = std::numeric_limits<int32>::max();
+  bool succ_no_deriv_time = UnitTestNnetOptimizeWithOptions(srand_seed, optimize,
+                                                            compiler);
+  optimize = optimize_all;
+
+
 #define KALDI_SUCCFAIL(b) ((b) ? "SUCCESS" : "FAILURE")
   KALDI_ERR
     << "Test failed with all optimizations enabled. Retried test with the "
@@ -264,7 +278,9 @@ static void UnitTestNnetOptimizeInternal(int32 srand_seed) {
     << "\n  remove_assignments   ... " << KALDI_SUCCFAIL(succ_no_remove_assignments)
     << "\n  initialize_undefined ... " << KALDI_SUCCFAIL(succ_no_initialize_undefined)
     << "\n  allocate_from_other  ... " << KALDI_SUCCFAIL(succ_no_allocate_from_other)
-    << "\n  move_sizing_commands ... " << KALDI_SUCCFAIL(succ_no_move_sizing_commands);
+    << "\n  move_sizing_commands ... " << KALDI_SUCCFAIL(succ_no_move_sizing_commands)
+    << "\n  snip_row_ops         ... " << KALDI_SUCCFAIL(succ_no_snip_row_ops)
+    << "\n  no_deriv_time        ... " << KALDI_SUCCFAIL(succ_no_deriv_time);
 #undef KALDI_SUCCFAIL
 }
 
@@ -284,7 +300,7 @@ static void UnitTestNnetOptimize() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-  //SetVerboseLevel(2);
+  // SetVerboseLevel(3);
 
 #if HAVE_CUDA == 1
   CuDevice::Instantiate().SetDebugStrideMode(true);

@@ -51,15 +51,19 @@ void JoinVectorToString(const std::vector<std::string> &vec_in,
                         const char *delim, bool omit_empty_strings,
                         std::string *str_out);
 
+/**
+  \brief Split a string (e.g. 1:2:3) into a vector of integers.
 
-/// Split a string (e.g. 1:2:3) into a vector of integers.
-/// The delimiting char may be any character in "delim".
-/// returns true on success, false on failure.
-/// If omit_empty_strings == true, 1::2:3: will become
-/// { 1, 2, 3 }.  Otherwise it would be rejected.
-/// Regardless of the value of omit_empty_strings,
-/// the empty string is successfully parsed as an empty
-/// vector of integers
+  \param [in]  delim  String containing a list of characters, any of which
+                      is allowed as a delimiter.
+  \param [in] omit_empty_strings If true, empty strings between delimiters are
+                      allowed and will not produce an output integer; if false,
+                      instances of characters in 'delim' that are consecutive or
+                      at the start or end of the string would be an error.
+                      You'll normally want this to be true if 'delim' consists
+                      of spaces, and false otherwise.
+  \param [out] out   The output list of integers.
+*/
 template<class I>
 bool SplitStringToIntegers(const std::string &full,
                            const char *delim,

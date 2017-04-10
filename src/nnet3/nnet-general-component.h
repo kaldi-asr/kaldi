@@ -33,6 +33,8 @@ namespace nnet3 {
 ///   meaning they care about the indexes they are operating on, don't return
 ///   the kSimpleComponent flag in their Properties(), and may return a different
 ///   number of outputs than inputs.
+///   Also see nnet-convolutional-component.h, which also contains
+///   number of convolution-related 'general' components.
 
 
 
