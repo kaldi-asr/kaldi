@@ -28,7 +28,11 @@ fi
 
 # Note: when you add new tuples here you'll want to add ndew
 # \htmlinclude directives in versions.dox.
-for tuple in "5.0 master c160a9883"; do
+# the tuples will generally be of the form: "x.x master yyyyyy"
+# where yyyyy is the result of git log -1 src/.version done on
+# that version of Kaldi (we only update the .version file when
+# the major/minor version number changes).
+for tuple in "5.0 master c160a9883" "5.1 master 2145519961"; do
   major_minor_number=$(echo $tuple | awk '{print $1}')  # e.g. 5.0
   branch=$(echo $tuple | awk '{print $2}')  # e.g. 'master', or '5.1' (it's a branch name)
   first_commit=$(echo $tuple | awk '{print $3}')

@@ -245,7 +245,7 @@ void Randomize(const CuMatrixBase<double> &src,
 template<typename Real>
 void NormalizePerRow(const CuMatrixBase<Real>& in, const Real target_rms,
                      const bool add_log_stddev, CuMatrixBase<Real>* out) {
-  const Real kSquaredNormFloor = 1.35525271560688e-20; // 2^-66
+  const Real kSquaredNormFloor = 1.3552527156068805425e-20; // 2^-66
   if (add_log_stddev) {
     KALDI_ASSERT(in.NumRows() == out->NumRows());
     KALDI_ASSERT(in.NumCols() + 1 == out->NumCols());
@@ -289,6 +289,100 @@ void NormalizePerRow(const CuMatrixBase<float>& in, const float target_rms,
 template
 void NormalizePerRow(const CuMatrixBase<double>& in, const double target_rms,
                      const bool add_log_stddev, CuMatrixBase<double>* out);
+
+
+// A note on the derivative of NormalizeComponent...
+// let both row_in and row_out be vectors of dimension D.
+// Let p = row_in^T row_in / (D * target_rms^2), and let
+// f = 1.0 / sqrt(max(kSquaredNormFloor, p)), and we compute row_out as:
+// row_out = f row_in.
+// Suppose we have a quantity deriv_out which is the derivative
+// of the objective function w.r.t. row_out.  We want to compute
+// deriv_in which is the derivative of the objective function w.r.t.
+// row_in.  Let the objective function be F.  One term is obvious: we have
+// deriv_in = f deriv_out + ....
+// next we have to take into account the derivative that gets back-propagated
+// through f.  Obviously, dF/df = deriv_out^T row_in.
+// And df/dp = (p <= kSquaredNormFloor ? 0.0 : -0.5 p^{-1.5}) = (f == 1.0 / sqrt(kSquaredNormFloor) ? 0.0 : -0.5 f^3),
+// and dp/d(row_in) = 2/(D * target_rms^2) row_in. [it's vector_valued].
+// So this term in dF/d(row_in) equals:
+// dF/df df/dp dp/d(row_in)   =    2/(D * target_rms^2) (f == 1.0 / sqrt(kSquaredNormFloor)  ? 0.0 : -0.5 f^3) (deriv_out^T row_in) row_in
+// So
+// deriv_in = f deriv_out + (f == 1.0 ? 0.0 : -f^3  / (D * target_rms^2) ) (deriv_out^T row_in) row_in
+//  if add_log_stddev_ true, the deriv_in has another term as
+// dF/dx_i = dF/df . df/dx_i => df/dx_i = x_i/(x^T x)
+template<typename Real>
+void DiffNormalizePerRow(const CuMatrixBase<Real> &in_value,
+                         const CuMatrixBase<Real> &out_deriv,
+                         const Real target_rms, const bool add_log_stddev,
+                         CuMatrixBase<Real>* in_deriv) {
+  const Real kSquaredNormFloor = 1.3552527156068805425e-20; // 2^-66
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    size_t dimBlock = CU1DBLOCK;
+    size_t dimGrid = in_deriv->NumRows();
+    cuda_diff_normalize_per_row(dimGrid, dimBlock, in_deriv->Data(),
+                                in_deriv->Stride(), in_value.Data(),
+                                in_value.Dim(), out_deriv.Data(),
+                                out_deriv.Stride(), target_rms, add_log_stddev);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    const CuSubMatrix<Real> out_deriv_no_log(out_deriv, 0, out_deriv.NumRows(),
+                                             0, in_value.NumCols());
+    CuVector<Real> dot_products(out_deriv.NumRows());
+    dot_products.AddDiagMatMat(1.0, out_deriv_no_log, kNoTrans, in_value,
+                               kTrans, 0.0);
+    CuVector<Real> in_norm(in_value.NumRows());
+    Real d_scaled = (in_value.NumCols() * target_rms * target_rms);
+    in_norm.AddDiagMat2(1.0, in_value, kNoTrans, 0.0);
+
+    if (add_log_stddev) {
+      CuVector<Real> log_stddev_deriv(in_norm), // log_stddev deriv as dF/dy .* (x^T x)^-1
+      out_deriv_for_stddev(out_deriv.NumRows(), kUndefined);
+      // f = log(sqrt(max(epsi, x^T x / D)))
+      // df/dx = epsi^2 * D < x^T x ? (1/(x^T x)) * x  : 0.
+      // we don't compute this exactly below for the case when x^2 x is very
+      // small, but we do make sure that the deriv isn't infinity when the input
+      // is zero.
+      log_stddev_deriv.ApplyFloor(in_value.NumCols() * kSquaredNormFloor);
+      log_stddev_deriv.ApplyPow(-1.0);
+      out_deriv_for_stddev.CopyColFromMat(out_deriv, (out_deriv.NumCols() - 1));
+      log_stddev_deriv.MulElements(out_deriv_for_stddev);
+      if (in_deriv)
+        in_deriv->AddDiagVecMat(1.0, log_stddev_deriv, in_value, kNoTrans, 1.0);
+    }
+    in_norm.Scale(1.0 / d_scaled);
+    in_norm.ApplyFloor(kSquaredNormFloor);
+    in_norm.ApplyPow(-0.5);
+    if (in_deriv) {
+      if (in_deriv->Data() != out_deriv_no_log.Data())
+        in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv_no_log, kNoTrans, 1.0);
+      else
+        in_deriv->MulRowsVec(in_norm);
+      in_norm.ReplaceValue(1.0 / sqrt(kSquaredNormFloor), 0.0);
+      in_norm.ApplyPow(3.0);
+      dot_products.MulElements(in_norm);
+
+      in_deriv->AddDiagVecMat(-1.0 / d_scaled, dot_products, in_value, kNoTrans,
+                              1.0);
+    }
+  }
+}
+
+template
+void DiffNormalizePerRow(const CuMatrixBase<float> &in_value,
+                         const CuMatrixBase<float> &out_deriv,
+                         const float target_rms, const bool add_log_stddev,
+                         CuMatrixBase<float>* in_deriv);
+template
+void DiffNormalizePerRow(const CuMatrixBase<double> &in_value,
+                         const CuMatrixBase<double> &out_deriv,
+                         const double target_rms, const bool add_log_stddev,
+                         CuMatrixBase<double>* in_deriv);
 
 
 // not calling this Sigmoid to reduce the chance of future collisions.
@@ -481,15 +575,15 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
     //  Sigmoid(i_t_input), Sigmoid(f_t_input),
     //  Tanh(c_part), Sigmoid(o_t_input),  Tanh(c_t)
     Real i_t_self_repair = (
-        deriv_sum_in(0, c) / count < sr_config(0) ? sr_config(5) : 0.0);
+        deriv_sum_in_mat(0, c) / count < sr_config(0) ? sr_config(5) : 0.0);
     Real f_t_self_repair = (
-        deriv_sum_in(1, c) / count < sr_config(1) ? sr_config(6) : 0.0);
+        deriv_sum_in_mat(1, c) / count < sr_config(1) ? sr_config(6) : 0.0);
     Real c_part_self_repair = (
-        deriv_sum_in(2, c) / count < sr_config(2) ? sr_config(7) : 0.0);
+        deriv_sum_in_mat(2, c) / count < sr_config(2) ? sr_config(7) : 0.0);
     Real o_t_self_repair = (
-        deriv_sum_in(3, c) / count < sr_config(3) ? sr_config(8) : 0.0);
+        deriv_sum_in_mat(3, c) / count < sr_config(3) ? sr_config(8) : 0.0);
     Real c_t_self_repair = (
-        deriv_sum_in(4, c) / count < sr_config(4) ? sr_config(9) : 0.0);
+        deriv_sum_in_mat(4, c) / count < sr_config(4) ? sr_config(9) : 0.0);
     // Note on how we add self-repair for sigmoids/tanh's.  If self-repair
     // is activated for this unit, then...
     // For sigmoids we'd add -self_repair_scale * (2 * sigmoid(x) - 1.0)
@@ -605,7 +699,7 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
       // deriv_sum_out and deriv_sum_in might point to the same memory.
       for (int32 i = 0; i < 5; i++)
         (*self_repair_sum_out_mat)(i, c) =
-            (deriv_sum_in(i, c) / count < sr_config(i) ? num_rows : 0);
+            (deriv_sum_in_mat(i, c) / count < sr_config(i) ? num_rows : 0);
 
       (*deriv_sum_out_mat)(0, c) += i_t_deriv_sum;
       (*deriv_sum_out_mat)(1, c) += f_t_deriv_sum;

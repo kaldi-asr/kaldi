@@ -510,13 +510,114 @@ static void UnitTestCuMathNormalizePerRow() {
 
     BaseFloat gflops = ((BaseFloat) dim * dim * iter)
         / (tim.Elapsed() * 1.0e+09);
-    KALDI_LOG << "For CuMatrix::NormalizePerRow"
+    KALDI_LOG << "For CuMath::NormalizePerRow"
               << (sizeof(Real)==8?"<double>":"<float>") << ", for dim = "
               << dim << ", speed was " << gflops << " gigaflops.";
     if (tim.Elapsed() > 0.05)
       break;
   }
 }
+
+template<typename Real>
+static void UnitTestCuDiffNormalizePerRow() {
+  for (int32 i = 0; i < 2; i++) {
+    int row = 10 + Rand() % 40;
+    int col = 10 + Rand() % 50;
+
+    Matrix<Real> Hi(row, col);
+    Matrix<Real> Ho(row, col + 1);
+    Matrix<Real> Hid(row, col);
+    Matrix<Real> Hod(row, col + 1);
+    Hi.SetRandn();
+    Hod.SetRandn();
+    Hi.Scale(5.0);
+
+    CuMatrix<Real> Di(row, col);
+    CuMatrix<Real> Do(row, col + 1);
+    CuMatrix<Real> Did(row, col);
+    CuMatrix<Real> Dod(row, col + 1);
+    Di.CopyFromMat(Hi);
+    Dod.CopyFromMat(Hod);
+
+    Real target_rms = 0.3456;
+    bool add_log_stddev = true;
+    const Real kSquaredNormFloor = 1.3552527156068805425e-20; // 2^-66
+
+    //gpu
+    cu::DiffNormalizePerRow(Di, Dod, target_rms, add_log_stddev, &Did);
+
+    //cpu
+    {
+      MatrixBase<Real>* in_deriv = &Hid;
+      MatrixBase<Real>& out_deriv(Hod);
+      MatrixBase<Real>& in_value(Hi);
+
+      const SubMatrix<Real> out_deriv_no_log(out_deriv, 0, out_deriv.NumRows(),
+                                             0, in_value.NumCols());
+      Vector<Real> dot_products(out_deriv.NumRows());
+      dot_products.AddDiagMatMat(1.0, out_deriv_no_log, kNoTrans, in_value,
+                                 kTrans, 0.0);
+      Vector<Real> in_norm(in_value.NumRows());
+      Real d_scaled = (in_value.NumCols() * target_rms * target_rms);
+      in_norm.AddDiagMat2(1.0, in_value, kNoTrans, 0.0);
+      if (add_log_stddev) {
+        Vector<Real> log_stddev_deriv(in_norm), // log_stddev deriv as dF/dy .* (x^T x)^-1
+        out_deriv_for_stddev(out_deriv.NumRows(), kUndefined);
+        // f = log(sqrt(max(epsi, x^T x / D)))
+        // df/dx = epsi^2 * D < x^T x ? (1/(x^T x)) * x  : 0.
+        // we don't compute this exactly below for the case when x^2 x is very
+        // small, but we do make sure that the deriv isn't infinity when the input
+        // is zero.
+        log_stddev_deriv.ApplyFloor(in_value.NumCols() * kSquaredNormFloor);
+        log_stddev_deriv.ApplyPow(-1.0);
+        out_deriv_for_stddev.CopyColFromMat(out_deriv,
+                                            (out_deriv.NumCols() - 1));
+        log_stddev_deriv.MulElements(out_deriv_for_stddev);
+        if (in_deriv)
+          in_deriv->AddDiagVecMat(1.0, log_stddev_deriv, in_value, kNoTrans,
+                                  1.0);
+      }
+      in_norm.Scale(1.0 / d_scaled);
+      in_norm.ApplyFloor(kSquaredNormFloor);
+      in_norm.ApplyPow(-0.5);
+      if (in_deriv) {
+        if (in_deriv->Data() != out_deriv_no_log.Data())
+          in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv_no_log, kNoTrans,
+                                  1.0);
+        else
+          in_deriv->MulRowsVec(in_norm);
+        in_norm.ReplaceValue(1.0 / sqrt(kSquaredNormFloor), 0.0);
+        in_norm.ApplyPow(3.0);
+        dot_products.MulElements(in_norm);
+
+        in_deriv->AddDiagVecMat(-1.0 / d_scaled, dot_products, in_value,
+                                kNoTrans, 1.0);
+      }
+
+      Matrix<Real> Hid2(Did);
+      AssertEqual(Hid, Hid2, 0.00001);
+    }
+  }
+
+  for (int dim = 16; dim <= 1024; dim *= 2) {
+    BaseFloat time_in_secs = 0.025;
+    CuMatrix<Real> id(dim, dim), iv(dim, dim), od(dim, dim + 1);
+    iv.SetRandn();
+    od.SetRandn();
+    Timer tim;
+    int32 iter = 0;
+    for (; tim.Elapsed() < time_in_secs; iter++) {
+      cu::DiffNormalizePerRow(iv, od, Real(0.456), true, &id);
+    }
+    BaseFloat fdim = dim;
+    BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+    KALDI_LOG << "For CuMath::DiffNormalizePerRow"
+              << (sizeof(Real)==8?"<double>":"<float>")
+              << ", for dim = " << dim << ", speed was " << gflops
+              << " gigaflops.";
+  }
+}
+
 
 
 template<typename Real> void CudaMathUnitTest() {
@@ -531,14 +632,16 @@ template<typename Real> void CudaMathUnitTest() {
   UnitTestLstmNonlinearity();
   UnitTestBackpropLstmNonlinearity<Real>();
   UnitTestCuMathNormalizePerRow<Real>();
+  UnitTestCuDiffNormalizePerRow<Real>();
 }
 
 } // namespace kaldi
 
 
 int main() {
-  for (int32 loop = 0; loop < 2; loop++) {
+  int32 loop = 0;
 #if HAVE_CUDA == 1
+  for (; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no"); // -1 means no GPU
@@ -562,8 +665,8 @@ int main() {
       KALDI_LOG << "Tests without GPU use succeeded.";
     else
       KALDI_LOG << "Tests with GPU use (if available) succeeded.";
-  }
 #if HAVE_CUDA == 1
+  } // No for loop if 'HAVE_CUDA != 1',
   CuDevice::Instantiate().PrintProfile();
 #endif
   return 0;

@@ -21,10 +21,19 @@ if [ $# -ne 1 ] ; then
 fi
 
 idir=$1
+
+if [ ! -d "$idir" ] ; then
+  echo "The directory $idir does not exist"
+  exit 1
+fi
+
 idata=${idir##*/}
 
-
-odata=${idata%%.*}.syll.${idata#*.}
+if [ "$idata" == ${idata%%.*} ]; then
+  odata=${idata%%.*}.syll
+else
+  odata=${idata%%.*}.syll.${idata#*.}
+fi
 
 if [ $stage -le -1 ] ; then
   local/syllab/generate_syllable_lang.sh \
@@ -45,7 +54,7 @@ if [ $stage -le -1 ] ; then
   local/arpa2G.sh  data/srilm.syll/lm.gz  data/lang.syll/ data/lang.syll/
 fi
 
-if [ $stage -le 0 ] && [ -f "$idir/text" ] ; then
+if [ $stage -le 0 ] && [ -f "$idir/text" ]; then
   #Create dev10h.syll.pem dir
   steps/align_fmllr.sh \
       --boost-silence $boost_sil --nj $train_nj --cmd "$train_cmd" \

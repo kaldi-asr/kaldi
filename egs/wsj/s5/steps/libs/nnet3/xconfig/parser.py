@@ -22,15 +22,10 @@ config_to_layer = {
         'relu-renorm-layer' : xlayers.XconfigBasicLayer,
         'sigmoid-layer' : xlayers.XconfigBasicLayer,
         'tanh-layer' : xlayers.XconfigBasicLayer,
-        'tdnn-relu-layer' : xlayers.XconfigTdnnLayer,
-        'tdnn-relu-renorm-layer' : xlayers.XconfigTdnnLayer,
-        'tdnn-sigmoid-layer' : xlayers.XconfigTdnnLayer,
-        'tdnn-tanh-layer' : xlayers.XconfigTdnnLayer,
         'fixed-affine-layer' : xlayers.XconfigFixedAffineLayer,
         'affine-layer' : xlayers.XconfigAffineLayer,
         'lstm-layer' : xlayers.XconfigLstmLayer,
         'lstmp-layer' : xlayers.XconfigLstmpLayer,
-        'lstmpc-layer' : xlayers.XconfigLstmpcLayer,
         'fast-lstm-layer' : xlayers.XconfigFastLstmLayer,
         'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer
         }

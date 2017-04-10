@@ -7,7 +7,7 @@
 # begin configuration section.
 cmd=run.pl
 dirname=lats-in-htk-slf
-parallel_opts="-tc 50" # We should limit disk stress
+parallel_opts="--max-jobs-run 50" # We should limit disk stress
 word_to_node=false # Words in arcs or nodes? [default:arcs]
 #end configuration section.
 
@@ -21,7 +21,7 @@ if [ $# -ne 3 ]; then
   echo " Options:"
   echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
   echo "    --word-to-link (true|false)     # put word symbols on links or nodes."
-  echo "    --parallel-opts STR             # parallelization options (def.: '-tc 50')."
+  echo "    --parallel-opts STR             # parallelization options (def.: '--max-jobs-run 50')."
   echo "e.g.:"
   echo "$0 data/dev data/lang exp/tri4a/decode_dev"
   exit 1;

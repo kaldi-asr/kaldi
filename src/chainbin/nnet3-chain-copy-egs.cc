@@ -201,6 +201,7 @@ void ModifyChainExampleContext(const NnetChainExample &eg,
                                int32 right_context,
                                const int32 frame_subsampling_factor,
                                NnetChainExample *eg_out) {
+  static bool warned_left = false, warned_right = false;
   int32 min_input_t, max_input_t,
         min_output_t, max_output_t;
   if (!ContainsSingleExample(eg, &min_input_t, &max_input_t,
@@ -208,19 +209,31 @@ void ModifyChainExampleContext(const NnetChainExample &eg,
     KALDI_ERR << "Too late to perform frame selection/context reduction on "
               << "these examples (already merged?)";
   if (left_context != -1) {
-    if (min_input_t > min_output_t - left_context)
-      KALDI_ERR << "You requested --left-context=" << left_context
-                << ", but example only has left-context of "
-                <<  (min_output_t - min_input_t);
+    int32 observed_left_context = min_output_t - min_input_t;
+    if (!warned_left && observed_left_context < left_context) {
+      warned_left = true;
+      KALDI_WARN << "You requested --left-context=" << left_context
+                 << ", but example only has left-context of "
+                 <<  observed_left_context
+                 << " (will warn only once; this may be harmless if "
+          "using any --*left-context-initial options)";
+    }
     min_input_t = std::max(min_input_t, min_output_t - left_context);
   }
   if (right_context != -1) {
-    if (max_input_t < max_output_t + right_context + frame_subsampling_factor - 1)
-      KALDI_ERR << "You requested --right-context=" << right_context
-                << ", but example only has right-context of "
-                <<  (max_input_t - max_output_t - frame_subsampling_factor + 1);
-    max_input_t = std::min(max_input_t, max_output_t + right_context
-                  + frame_subsampling_factor - 1);
+    int32 observed_right_context = max_input_t - max_output_t;
+
+    if (right_context != -1) {
+      if (!warned_right && observed_right_context < right_context) {
+        warned_right = true;
+        KALDI_ERR << "You requested --right-context=" << right_context
+                  << ", but example only has right-context of "
+                  << observed_right_context
+                 << " (will warn only once; this may be harmless if "
+            "using any --*right-context-final options.";
+      }
+      max_input_t = std::min(max_input_t, max_output_t + right_context);
+    }
   }
   FilterExample(eg,
                 min_input_t, max_input_t,
@@ -252,7 +265,6 @@ int main(int argc, char *argv[]) {
     bool random = false;
     int32 srand_seed = 0;
     int32 frame_shift = 0;
-    int32 truncate_deriv_weights = 0;
     int32 frame_subsampling_factor = -1;
     BaseFloat keep_proportion = 1.0;
     int32 left_context = -1, right_context = -1;
@@ -269,9 +281,6 @@ int main(int argc, char *argv[]) {
                 "in the supervision data (excluding iVector data) - useful in "
                 "augmenting data.  Note, the outputs will remain at the closest "
                 "exact multiples of the frame subsampling factor");
-    po.Register("truncate-deriv-weights", &truncate_deriv_weights,
-                "If nonzero, the number of initial/final subsample frames that "
-                "will have their derivatives' weights set to zero.");
     po.Register("left-context", &left_context, "Can be used to truncate the "
                 "feature left-context that we output.");
     po.Register("right-context", &right_context, "Can be used to truncate the "
@@ -307,7 +316,7 @@ int main(int argc, char *argv[]) {
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
-      if (frame_shift == 0 && truncate_deriv_weights == 0 &&
+      if (frame_shift == 0 &&
           left_context == -1 && right_context == -1) {
         const NnetChainExample &eg = example_reader.Value();
         for (int32 c = 0; c < count; c++) {
@@ -325,8 +334,6 @@ int main(int argc, char *argv[]) {
                                     frame_subsampling_factor, &eg_out);
         else
           eg_out.Swap(&eg);
-        if (truncate_deriv_weights != 0)
-          TruncateDerivWeights(truncate_deriv_weights, &eg_out);
         for (int32 c = 0; c < count; c++) {
           int32 index = (random ? Rand() : num_written) % num_outputs;
           example_writers[index]->Write(key, eg_out);

@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Reads in wav file(s) and simulates online decoding.\n"
-        "Writes .tra and .ali files for WER computation. Utterance "
+        "Writes integerized-text and .ali files for WER computation. Utterance "
         "segmentation is done on-the-fly.\n"
         "Feature splicing/LDA transform is used, if the optional(last) argument "
         "is given.\n"

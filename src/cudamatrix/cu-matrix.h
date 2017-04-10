@@ -96,7 +96,6 @@ class CuMatrixBase {
   /// Copies column r from column indexes[r] of src.
   /// As a special case, if indexes[i] == -1, sets column i to zero
   /// indexes.size() must equal this->NumCols(),
-  /// all elements of "reorder" must be in [-1, src.NumCols()-1],
   /// and src.NumRows() must equal this.NumRows()
   void CopyCols(const CuMatrixBase<Real> &src,
                 const CuArray<MatrixIndexT> &indexes);
@@ -105,14 +104,12 @@ class CuMatrixBase {
   /// Add column indices[r] of src to column r.
   /// As a special case, if indexes[i] == -1, skip column i
   /// indices.size() must equal this->NumCols(),
-  /// all elements of "reorder" must be in [-1, src.NumCols()-1],
   /// and src.NumRows() must equal this.NumRows()
   void AddCols(const CuMatrixBase<Real> &src,
                const CuArray<MatrixIndexT> &indices);
 
   /// Copies row r from row indexes[r] of src.
-  /// As a special case, if indexes[i] < 0, sets row i to zero
-  /// "reorder".size() must equal this->NumRows(), and
+  /// As a special case, if indexes[i] < 0, sets row i to zero.
   /// src.NumCols() must equal this.NumCols()
   void CopyRows(const CuMatrixBase<Real> &src,
                 const CuArray<MatrixIndexT> &indexes);
@@ -136,9 +133,7 @@ class CuMatrixBase {
 
   /// Does for each row r, this.Row(r) += alpha * src.row(indexes[r]).
   /// If indexes[r] < 0, does not add anything.
-  /// "reorder".size() must equal this->NumRows(),
-  /// all elements of "reorder" must be in [0, src.NumRows()-1],
-  /// and src.NumCols() must equal this.NumCols()
+  /// src.NumCols() must equal this.NumCols()
   void AddRows(Real alpha,
                const CuMatrixBase<Real> &src,
                const CuArray<MatrixIndexT> &indexes);
@@ -410,6 +405,8 @@ class CuMatrixBase {
   void DivElements(const CuMatrixBase<Real> &A);
   /// Do, elementwise, *this = max(*this, A).
   void Max(const CuMatrixBase<Real> &A);
+  /// Do, elementwise, *this = min(*this, A).
+  void Min(const CuMatrixBase<Real> &A);
   /// scale i'th column by scale[i]
   void MulColsVec(const CuVectorBase<Real> &scale);
   /// scale i'th row by scale[i]

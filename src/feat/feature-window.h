@@ -76,7 +76,8 @@ struct FrameExtractionOptions {
     opts->Register("blackman-coeff", &blackman_coeff,
                    "Constant coefficient for generalized Blackman window.");
     opts->Register("round-to-power-of-two", &round_to_power_of_two,
-                   "If true, round window size to power of two.");
+                   "If true, round window size to power of two by zero-padding "
+                   "input to FFT.");
     opts->Register("snip-edges", &snip_edges,
                    "If true, end effects will be handled by outputting only frames that "
                    "completely fit in the file, and the number of frames depends on the "

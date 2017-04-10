@@ -12,6 +12,7 @@ cer=0
 
 #Declaring here to make the definition inside the language conf files more
 # transparent and nice
+declare -A train_kwlists
 declare -A dev10h_kwlists
 declare -A dev2h_kwlists
 declare -A evalpart1_kwlists

@@ -870,6 +870,27 @@ static void UnitTestCuMatrixMax() {
   AssertEqual(Ha,Ha2);
 }
 
+template<typename Real>
+static void UnitTestCuMatrixMin() {
+  Matrix<Real> Ha(100,100);
+  Matrix<Real> Hb(100,100);
+  Ha.SetRandn();
+  Hb.SetRandn();
+
+  CuMatrix<Real> Da(100,100);
+  CuMatrix<Real> Db(100,100);
+  Da.CopyFromMat(Ha);
+  Db.CopyFromMat(Hb);
+
+  Da.Min(Db);
+  Ha.Min(Hb);
+
+  Matrix<Real> Ha2(100,100);
+  Da.CopyToMat(&Ha2);
+
+  AssertEqual(Ha, Ha2);
+}
+
 
 
 template<typename Real>
@@ -2620,6 +2641,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixMulElements<Real>();
   UnitTestCuMatrixDivElements<Real>();
   UnitTestCuMatrixMax<Real>();
+  UnitTestCuMatrixMin<Real>();
   UnitTestCuMatrixMulColsVec<Real>();
   UnitTestCuMatrixMulRowsVec<Real>();
   UnitTestCuMatrixDivRowsVec<Real>();
@@ -2707,8 +2729,9 @@ template<typename Real> void CudaMatrixUnitTest() {
 
 
 int main() {
-  for (int32 loop = 0; loop < 2; loop++) {
+  int32 loop = 0;
 #if HAVE_CUDA == 1
+  for (loop = 0; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
@@ -2717,7 +2740,6 @@ int main() {
 #endif
 
     kaldi::CudaMatrixUnitTest<float>();
-
 
 #if HAVE_CUDA == 1
     if (CuDevice::Instantiate().DoublePrecisionSupported()) {
@@ -2733,9 +2755,9 @@ int main() {
       KALDI_LOG << "Tests without GPU use succeeded.";
     else
       KALDI_LOG << "Tests with GPU use (if available) succeeded.";
-  }
-  SetVerboseLevel(4);
 #if HAVE_CUDA == 1
+  } // No for loop if 'HAVE_CUDA != 1',
+  SetVerboseLevel(4);
   CuDevice::Instantiate().PrintProfile();
 #endif
   return 0;

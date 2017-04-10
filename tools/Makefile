@@ -1,30 +1,18 @@
 # SHELL += -x
 
 CXX = g++
-# CXX = clang++  # Uncomment this line to build with Clang.
-CC = gcc    # used for sph2pipe
+CC = gcc         # used for sph2pipe
+# CXX = clang++  # Uncomment these lines
+# CC = clang     # to build with Clang.
 
+# Note: OpenFst requires a relatively recent C++ compiler with C++11 support,
+# e.g. g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3.
+OPENFST_VERSION = 1.6.2
 
-OPENFST_VERSION = 1.3.4
-# Uncomment the next line to build with OpenFst-1.4.1.
-# OPENFST_VERSION = 1.4.1
-# Note: OpenFst >= 1.4 requires C++11 support, hence you will need to use a
-# relatively recent C++ compiler, e.g. gcc >= 4.6, clang >= 3.0.
-
-# On Mac OS 10.9+, clang defaults to the new c++ standard library libc++.
-# Since OpenFst-1.3 uses stuff from the tr1 namespace, we need to tell clang
-# to use libstdc++ instead.
-ifeq ($(OPENFST_VERSION), 1.3.4)
-  COMPILER = $(shell $(CXX) -v 2>&1 )
-  ifeq ($(findstring clang,$(COMPILER)),clang)
-    CXXFLAGS += -stdlib=libstdc++
-    LDFLAGS += -stdlib=libstdc++
-  endif
-else
-  ifneq ($(OPENFST_VERSION), 1.4.1)
-    $(error OpenFst version $(OPENFST_VERSION) is not supported. \
-            Supported versions: 1.3.4, 1.4.1)
-  endif
+OPENFST_VER_NUM := $(shell echo $(OPENFST_VERSION) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
+ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10600)","1")
+    $(error OpenFst-$(OPENFST_VERSION) is not supported. \
+            Supported versions: >= 1.6.0)
 endif
 
 all: check_required_programs sph2pipe atlas sclite openfst
@@ -69,15 +57,14 @@ openfst: openfst_compiled openfst-$(OPENFST_VERSION)/lib
 
 .PHONY: openfst_compiled
 openfst_compiled: openfst-$(OPENFST_VERSION)/Makefile
-	cd openfst-$(OPENFST_VERSION)/ && \
-	$(MAKE) install
+	$(MAKE) -C openfst-$(OPENFST_VERSION) install MAKEOVERRIDES=
 
 openfst-$(OPENFST_VERSION)/lib: | openfst-$(OPENFST_VERSION)/Makefile
 	-cd openfst-$(OPENFST_VERSION) && [ -d lib64 ] && [ ! -d lib ] && ln -s lib64 lib
 
 # Add the -O flag to CXXFLAGS on cygwin as it can fix the compilation error
 # "file too big".
-openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION)/.patched | check_required_programs
+openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION) | check_required_programs
 # Note: OSTYPE path is probably dead for latest cygwin64 (installed on 2016/11/11).
 ifeq ($(OSTYPE),cygwin)
 	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS) -O -Wa,-mbig-obj" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
@@ -85,26 +72,14 @@ ifeq ($(OSTYPE),cygwin)
 else ifeq ($(OS),Windows_NT)
 	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS) -O -Wa,-mbig-obj" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 else
-	# ppc64le needs the newsted config.guess to be correctly indentified
-	[ "$(shell uname -p)" = "ppc64le" ] && wget -O openfst-$(OPENFST_VERSION)/config.guess \
-		"http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD" || \
-		echo "config.guess unchanged"
 	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 endif
-
-# patches for openfst. openfst_gcc41up.patch is a patch for openfst to \
-# support multi-threads when compile with g++ (gcc) version above 4.1
-openfst-$(OPENFST_VERSION)/.patched: | openfst-$(OPENFST_VERSION)
-	cd openfst-$(OPENFST_VERSION)/; \
-	patch -p1 -N < ../extras/openfst-$(OPENFST_VERSION).patch;
-	$(CXX) -dumpversion | awk '{if(NR==1 && $$1>"4.1") print "cd openfst-$(OPENFST_VERSION)/src/include/fst; patch -c -p0 -N < ../../../../extras/openfst_gcc41up.patch"}' | sh -
-	touch $@
 
 openfst-$(OPENFST_VERSION): openfst-$(OPENFST_VERSION).tar.gz
 	tar xozf openfst-$(OPENFST_VERSION).tar.gz
 
 openfst-$(OPENFST_VERSION).tar.gz:
-	wget --tries=1 -T 5 http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-$(OPENFST_VERSION).tar.gz || \
+	wget -T 10 -t 1 http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-$(OPENFST_VERSION).tar.gz || \
 	wget -T 10 -t 3 http://www.openslr.org/resources/2/openfst-$(OPENFST_VERSION).tar.gz
 
 sclite: sclite_compiled
@@ -164,7 +139,7 @@ fortran_opt = $(shell gcc -v 2>&1 | perl -e '$$x = join(" ", <STDIN>); if($$x =~
 
 
 # note: you can uncomment the line that has USE_THREAD=1 and comment the line
-# that has USE_THREADE=0 if you want Open Blas to use multiple threads.  then
+# that has USE_THREAD=0 if you want Open Blas to use multiple threads.  then
 # you could set, for example, OPENBLAS_NUM_THREADS=2 in your path.sh so that the
 # runtime knows how many threads to use.  Note: if you ever get the error
 # "Program is Terminated. Because you tried to allocate too many memory

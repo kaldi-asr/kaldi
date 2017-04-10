@@ -22,11 +22,12 @@ mkdir -p $data/.backup
 
 [ ! -f $data/utt2spk ] && echo "$0: no such file $data/utt2spk" && exit 1;
 
+set -e -o pipefail -u
+
 tmpdir=$(mktemp -d /tmp/kaldi.XXXX);
 trap 'rm -rf "$tmpdir"' EXIT HUP INT PIPE TERM
 
 export LC_ALL=C
-
 
 function check_sorted {
   file=$1
@@ -54,8 +55,8 @@ function filter_file {
   cp $file_to_filter ${file_to_filter}.tmp
   utils/filter_scp.pl $filter ${file_to_filter}.tmp > $file_to_filter
   if ! cmp ${file_to_filter}.tmp  $file_to_filter >&/dev/null; then
-    length1=`cat ${file_to_filter}.tmp | wc -l`
-    length2=`cat ${file_to_filter} | wc -l`
+    length1=$(cat ${file_to_filter}.tmp | wc -l)
+    length2=$(cat ${file_to_filter} | wc -l)
     if [ $length1 -ne $length2 ]; then
       echo "$0: filtered $file_to_filter from $length1 to $length2 lines based on filter $filter."
     fi
@@ -77,7 +78,7 @@ function filter_recordings {
       exit 1;
     fi
     awk '{print $2}' < $data/segments | sort | uniq > $tmpdir/recordings
-    n1=`cat $tmpdir/recordings | wc -l`
+    n1=$(cat $tmpdir/recordings | wc -l)
     [ ! -s $tmpdir/recordings ] && \
       echo "Empty list of recordings (bad file $data/segments)?" && exit 1;
     utils/filter_scp.pl $data/wav.scp $tmpdir/recordings > $tmpdir/recordings.tmp
@@ -91,7 +92,7 @@ function filter_recordings {
 
     filter_file $tmpdir/recordings $data/wav.scp
     [ -f $data/reco2file_and_channel ] && filter_file $tmpdir/recordings $data/reco2file_and_channel
-
+    true
   fi
 }
 

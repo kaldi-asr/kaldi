@@ -575,9 +575,8 @@ static void CuMatrixUnitTest() {
 
 int main() {
   using namespace kaldi;
-
-  for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
+  for (int32 loop = 0; loop < 2; loop++) {
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
     else
@@ -593,9 +592,8 @@ int main() {
     {
       kaldi::CuMatrixUnitTest<double>();
     }
-  }
-
 #if HAVE_CUDA == 1
+  }
   kaldi::CuDevice::Instantiate().PrintProfile();
 #endif
   

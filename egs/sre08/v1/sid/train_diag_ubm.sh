@@ -60,7 +60,7 @@ if [ $# != 3 ]; then
   echo "                                                   # in initialization phase (then split)"
   echo " --num-threads <n|32>                              # number of threads to use in initialization"
   echo "                                                   # phase (must match with parallel-opts option)"
-  echo " --parallel-opts <string|'-pe smp 32'>             # Option should match number of threads in"
+  echo " --parallel-opts <string|'--num-threads 32'>             # Option should match number of threads in"
   echo "                                                   # --num-threads option above"
   echo " --min-gaussian-weight <weight|0.0001>             # min Gaussian weight allowed in GMM"
   echo "                                                   # initialization (this relatively high"
@@ -85,7 +85,7 @@ for f in $data/feats.scp $data/vad.scp; do
    [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1
 done
 
-parallel_opts="-pe smp $num_threads"
+parallel_opts="--num-threads $num_threads"
 delta_opts="--delta-window=$delta_window --delta-order=$delta_order"
 echo $delta_opts > $dir/delta_opts
 
