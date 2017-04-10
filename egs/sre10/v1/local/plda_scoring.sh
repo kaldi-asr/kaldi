@@ -5,6 +5,10 @@
 # This script trains PLDA models and does scoring.
 
 use_existing_models=false
+simple_length_norm=false # If true, replace the default length normalization
+                         # performed in PLDA  by an alternative that
+                         # normalizes the length of the iVectors to be equal
+                         # to the square root of the iVector dimension.
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -38,9 +42,10 @@ fi
 mkdir -p $scores_dir/log
 
 run.pl $scores_dir/log/plda_scoring.log \
-   ivector-plda-scoring --normalize-length=true \
-   --num-utts=ark:${enroll_ivec_dir}/num_utts.ark \
-   "ivector-copy-plda --smoothing=0.0 ${plda_ivec_dir}/plda - |" \
-   "ark:ivector-subtract-global-mean ${plda_ivec_dir}/mean.vec scp:${enroll_ivec_dir}/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |" \
-   "ark:ivector-normalize-length scp:${test_ivec_dir}/ivector.scp ark:- | ivector-subtract-global-mean ${plda_ivec_dir}/mean.vec ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
-   "cat '$trials' | cut -d\  --fields=1,2 |" $scores_dir/plda_scores || exit 1;
+  ivector-plda-scoring --normalize-length=true \
+    --simple-length-normalization=$simple_length_norm \
+    --num-utts=ark:${enroll_ivec_dir}/num_utts.ark \
+    "ivector-copy-plda --smoothing=0.0 ${plda_ivec_dir}/plda - |" \
+    "ark:ivector-subtract-global-mean ${plda_ivec_dir}/mean.vec scp:${enroll_ivec_dir}/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-normalize-length scp:${test_ivec_dir}/ivector.scp ark:- | ivector-subtract-global-mean ${plda_ivec_dir}/mean.vec ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "cat '$trials' | cut -d\  --fields=1,2 |" $scores_dir/plda_scores || exit 1;
