@@ -49,7 +49,7 @@ if [ $# != 3 ]; then
   echo "  --stage <stage|-2>                               # stage to do partial re-run from."
   echo "  --num-gselect <n|30>                             # Number of Gaussians per frame to"
   echo "                                                   # limit computation to, for speed"
-  echo " --subsample <n|5>                                 # In main E-M phase, use every n" 
+  echo " --subsample <n|5>                                 # In main E-M phase, use every n"
   echo "                                                   # frames (a speedup)"
   echo "  --num-frames <n|500000>                          # Maximum num-frames to keep in memory"
   echo "                                                   # for model initialization"
@@ -129,10 +129,11 @@ for x in `seq 0 $[$num_iters-1]`; do
     $cmd $dir/log/update.$x.log \
       gmm-global-est $opt --min-gaussian-weight=$min_gaussian_weight $dir/$x.dubm "gmm-global-sum-accs - $dir/$x.*.acc|" \
       $dir/$[$x+1].dubm || exit 1;
-    rm $dir/$x.*.acc $dir/$x.dubm
+    $cleanup && rm $dir/$x.*.acc $dir/$x.dubm
   fi
 done
 
-rm $dir/gselect.*.gz
+$cleanup && rm $dir/gselect.*.gz
+
 mv $dir/$num_iters.dubm $dir/final.dubm || exit 1;
 exit 0;

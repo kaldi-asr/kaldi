@@ -42,14 +42,14 @@ int main(int argc, char *argv[]) {
         "e.g.: ivector-mean data/spk2utt exp/ivectors.ark exp/spk_ivectors.ark exp/spk_num_utts.ark\n"
         "or: ivector-mean exp/ivectors.ark exp/mean.vec\n"
         "See also: ivector-subtract-global-mean\n";
-    
+
     ParseOptions po(usage);
     bool binary_write = false;
     po.Register("binary", &binary_write, "If true, write output in binary "
                 "(only applicable when writing files, not archives/tables.");
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() < 2 || po.NumArgs() > 4) {
       po.PrintUsage();
       exit(1);
@@ -79,10 +79,10 @@ int main(int argc, char *argv[]) {
           ivector_rspecifier = po.GetArg(2),
           ivector_wspecifier = po.GetArg(3),
           num_utts_wspecifier = po.GetOptArg(4);
-    
+
       double spk_sumsq = 0.0;
       Vector<double> spk_sum;
-    
+
       int64 num_spk_done = 0, num_spk_err = 0,
           num_utt_done = 0, num_utt_err = 0;
 
@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
       SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
       BaseFloatVectorWriter ivector_writer(ivector_wspecifier);
       Int32Writer num_utts_writer(num_utts_wspecifier);
-    
+
       for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
         std::string spk = spk2utt_reader.Key();
         const std::vector<std::string> &uttlist = spk2utt_reader.Value();
@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
           spk_sum.AddVec(1.0, spk_mean);
         }
       }
-      
+
       KALDI_LOG << "Computed mean of " << num_spk_done << " speakers ("
                 << num_spk_err << " with no utterances), consisting of "
                 << num_utt_done << " utterances (" << num_utt_err

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey). 
+# Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey).
 #           2013  Xiaohui Zhang
 #           2013  Guoguo Chen
 #           2014  Vimal Manohar
@@ -8,7 +8,7 @@
 # Apache 2.0.
 
 # This is a modified version of train_multisplice_accel2.sh in
-# steps/nnet2/ for speaker recognition. The main difference is
+# ../../steps/nnet2/ for speaker recognition. The main difference is
 # that it uses different get_lda.sh and get_egs2.sh scripts.
 #
 # The original train_multisplice_accel2.sh was a modified version of
@@ -25,11 +25,11 @@ num_epochs=15      # Number of epochs of training;
 initial_effective_lrate=0.01
 final_effective_lrate=0.001
 bias_stddev=0.5
-pnorm_input_dim=3000 
+pnorm_input_dim=3000
 pnorm_output_dim=300
 minibatch_size=128 # by default use a smallish minibatch size for neural net
                    # training; this controls instability which would otherwise
-                   # be a problem with multi-threaded update. 
+                   # be a problem with multi-threaded update.
 
 samples_per_iter=400000 # each iteration of training, see this many samples
                         # per job.  This option is passed to get_egs.sh
@@ -78,7 +78,7 @@ precondition_rank_out=80 # relates to online preconditioning
 mix_up=0 # Number of components to mix up to (should be > #tree leaves, if
         # specified.)
 num_threads=16
-parallel_opts="-pe smp 16 -l ram_free=1G,mem_free=1G" 
+parallel_opts="-pe smp 16 -l ram_free=1G,mem_free=1G"
   # by default we use 16 threads; this lets the queue know.
   # note: parallel_opts doesn't automatically get adjusted if you adjust num-threads.
 combine_num_threads=8
@@ -92,7 +92,7 @@ transform_dir=     # If supplied, overrides alidir
 feat_type=  # Can be used to force "raw" features.
 align_cmd=              # The cmd that is passed to steps/nnet2/align.sh
 align_use_gpu=          # Passed to use_gpu in steps/nnet2/align.sh [yes/no]
-realign_times=          # List of times on which we realign.  Each time is 
+realign_times=          # List of times on which we realign.  Each time is
                         # floating point number strictly between 0 and 1, which
                         # will be multiplied by the num-iters to get an iteration
                         # number.
@@ -148,7 +148,7 @@ if [ $# != 4 ]; then
   echo "  --stage <stage|-4>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
 
-  
+
   exit 1;
 fi
 
@@ -201,7 +201,7 @@ extra_opts+=(--transform-dir $transform_dir)
 
 if [ $stage -le -4 ]; then
   echo "$0: calling get_lda.sh"
-  local/dnn/get_lda.sh $lda_opts "${extra_opts[@]}" --left-context $first_left_context --right-context $first_right_context --cmd "$cmd" $data $lang $alidir $dir || exit 1;
+  sid/nnet2/get_lda.sh $lda_opts "${extra_opts[@]}" --left-context $first_left_context --right-context $first_right_context --cmd "$cmd" $data $lang $alidir $dir || exit 1;
 fi
 # these files will have been written by get_lda.sh
 feat_dim=$(cat $dir/feat_dim) || exit 1;
@@ -213,7 +213,7 @@ if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
   extra_opts+=(--left-context $nnet_left_context )
   extra_opts+=(--right-context $nnet_right_context )
   echo "$0: calling get_egs2.sh"
-  local/dnn/get_egs2.sh $egs_opts "${extra_opts[@]}" \
+  sid/nnet2/get_egs2.sh $egs_opts "${extra_opts[@]}" \
       --samples-per-iter $samples_per_iter --stage $get_egs_stage \
       --io-opts "$io_opts" \
       --cmd "$cmd" $egs_opts \
@@ -372,7 +372,7 @@ while [ $x -lt $num_iters ]; do
   ilr=$initial_effective_lrate; flr=$final_effective_lrate; np=$num_archives_processed; nt=$num_archives_to_process;
   this_learning_rate=$(perl -e "print (($x + 1 >= $num_iters ? $flr : $ilr*exp($np*log($flr/$ilr)/$nt))*$this_num_jobs);");
 
-  echo "On iteration $x, learning rate is $this_learning_rate."    
+  echo "On iteration $x, learning rate is $this_learning_rate."
 
   if [ ! -z "${realign_this_iter[$x]}" ]; then
     prev_egs_dir=$cur_egs_dir
@@ -417,7 +417,7 @@ while [ $x -lt $num_iters ]; do
         steps/nnet2/remove_egs.sh $prev_egs_dir
       fi
     fi
-    
+
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
@@ -461,7 +461,7 @@ while [ $x -lt $num_iters ]; do
     ( # this sub-shell is so that when we "wait" below,
       # we only wait for the training jobs that we just spawned,
       # not the diagnostic jobs that we spawned above.
-      
+
       # We can't easily use a single parallel SGE job to do the main training,
       # because the computation of which archive and which --frame option
       # to use for each job is a little complex, so we spawn each one separately.
@@ -500,7 +500,7 @@ while [ $x -lt $num_iters ]; do
       n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
           $fn = sprintf($pat,$n); open(F, "<$fn") || die "Error opening log file $fn";
           undef $logprob; while (<F>) { if (m/log-prob-per-frame=(\S+)/) { $logprob=$1; } }
-          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob; 
+          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob;
           $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
       cp $dir/$[$x+1].$n.mdl $dir/$[$x+1].mdl || exit 1;
@@ -537,7 +537,7 @@ if [ $stage -le $num_iters ]; then
     cur_offset=0 # current offset from first_model_combine.
     for n in $(seq $max_models_combine); do
       next_offset=$[($n*$num_models_combine)/$max_models_combine]
-      sub_list="" 
+      sub_list=""
       for o in $(seq $cur_offset $[$next_offset-1]); do
         iter=$[$first_model_combine+$o]
         mdl=$dir/$iter.mdl
