@@ -5,11 +5,14 @@
 #System               tdnn_lstm1i_sp_bi_ld5 tdnn_lstm1l_sp_bi_ld5
 #WER on dev        20.6      19.8
 #WER on eval        20.1      19.2
-#Final train prob      -0.045 -0.067
-#Final valid prob      -0.098 -0.098
-#Final train prob (xent)      -0.723  -0.916
-#Final valid prob (xent)      -1.04  -1.10
+#Final train prob      -0.044763 -0.0666221
+#Final valid prob     -0.0981107 -0.097616
+#Final train prob (xent)     -0.722765 -0.915559
+#Final valid prob (xent)      -1.03985  -1.09907
 
+# steps/info/chain_dir_info.pl exp/ihm/chain_cleaned/tdnn_lstm1i_sp_bi_ld5/ exp/ihm/chain_cleaned/tdnn_lstm1l_sp_bi_ld5/
+# exp/ihm/chain_cleaned/tdnn_lstm1i_sp_bi_ld5/: num-iters=89 nj=2..12 num-params=43.4M dim=40+100->3765 combine=-0.064->-0.059 xent:train/valid[58,88,final]=(-0.940,-0.739,-0.723/-1.14,-1.04,-1.04) logprob:train/valid[58,88,final]=(-0.067,-0.046,-0.045/-0.103,-0.099,-0.098)
+# exp/ihm/chain_cleaned/tdnn_lstm1l_sp_bi_ld5/: num-iters=89 nj=2..12 num-params=43.4M dim=40+100->3765 combine=-0.094->-0.082 xent:train/valid[58,88,final]=(-3.10,-1.11,-0.916/-3.17,-1.29,-1.10) logprob:train/valid[58,88,final]=(-0.164,-0.073,-0.067/-0.182,-0.104,-0.098)
 
 set -e -o pipefail
 
