@@ -47,10 +47,13 @@ static void WriteIndexVectorElementBinary(
     const std::vector<Index> &vec,
     int32 i) {
   bool binary = true;
-  Index index = vec[i];
+  const Index &index = vec[i];
   if (i == 0) {
+    // we don't use std::abs(index.t) < 125 here because it doesn't have the
+    // right (or even well-defined) behavior for
+    // index.t == std::numeric_limits<int32>::min().
     if (index.n == 0 && index.x == 0 &&
-        std::abs(index.t) < 125) {
+        index.t > -125 && index.t < 125) {
       // handle this common case in one character.
       os.put(static_cast<signed char>(index.t));
     } else {  // handle the general case less efficiently.
@@ -174,8 +177,12 @@ static void WriteCindexVectorElementBinary(
   if (i == 0) {
     // we don't need to be concerned about reserving space for character 124
     // ('|') here, since (wastefully) '|' is always printed for i == 0.
+    //
+    // we don't use std::abs(index.t) < 125 here because it doesn't have the
+    // right (or even well-defined) behavior for
+    // index.t == std::numeric_limits<int32>::min().
     if (index.n == 0 && index.x == 0 &&
-        std::abs(index.t) < 125) {
+        index.t > -125 && index.t < 125) {
       // handle this common case in one character.
       os.put(static_cast<signed char>(index.t));
     } else if (index.t == 0 && index.x == 0 &&
