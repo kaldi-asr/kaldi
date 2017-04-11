@@ -556,6 +556,14 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
             print("{0}: warning: model file {1} does not exist "
                   "(final combination)".format(sys.argv[0], model_file))
 
+    # We reverse the order of the raw model strings so that the freshest one
+    # goes first.  This is important for systems that include batch
+    # normalization-- it means that the freshest batch-norm stats are used.
+    # Since the batch-norm stats are not technically parameters, they are not
+    # combined in the combination code, they are just obtained from the first
+    # model.
+    raw_model_strings = list(reversed(raw_model_strings))
+
     common_lib.run_job(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
                 nnet3-chain-combine --num-iters={opt_iters} \

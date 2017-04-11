@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
 
     std::string
         den_fst_rxfilename = po.GetArg(1),
-        raw_nnet_rxfilename = po.GetArg(po.NumArgs() - 2),
+        raw_nnet_rxfilename = po.GetArg(2),
         valid_examples_rspecifier = po.GetArg(po.NumArgs() - 1),
         nnet_wxfilename = po.GetArg(po.NumArgs());
 
@@ -75,15 +75,14 @@ int main(int argc, char *argv[]) {
     ReadFstKaldi(den_fst_rxfilename, &den_fst);
 
     Nnet nnet;
-    // note: nnet_rxfilename is the last arg, which with the way we call it, is
-    // the most recent averaged batch of models.  This is mainly important for
-    // batch-norm-- it ensures that the stats used for batch normalization are
-    // fresh.  (since the batch-norm stats are not technically parameters, they
-    // are obtained from the main model given to the combiner, and are not
-    // subject to combination).
     ReadKaldiObject(raw_nnet_rxfilename, &nnet);
-    SetTestMode(true, &nnet);  // relates to batch-norm.
 
+    // This is needed for batch-norm.  We also ensure in the calling script
+    // that the freshest model comes first on the command line; this
+    // means we use the freshest batch-norm stats.  (Since the batch-norm
+    // stats are not technically parameters, they are not subject to
+    // combination like the rest of the model parameters).
+    SetTestMode(true, &nnet);
 
     std::vector<NnetChainExample> egs;
     egs.reserve(10000);  // reserve a lot of space to minimize the chance of
@@ -103,13 +102,8 @@ int main(int argc, char *argv[]) {
     NnetChainCombiner combiner(combine_config, chain_config,
                                num_nnets, egs, den_fst, nnet);
 
-    // we don't start from the one at position 'num_nnets + 1' because that one
-    // was used to initialize the 'combiner'.  we're reversing the order because
-    // we wanted the 1st model to initialize the combiner (to get fresh
-    // batch-norm stats, if relevant), and reversing the order rather than
-    // mixing it up makes the printed weights easier to view.
-    for (int32 n = num_nnets; n >= 2; n--) {
-      std::string this_nnet_rxfilename = po.GetArg(n);
+    for (int32 n = 1; n < num_nnets; n++) {
+      std::string this_nnet_rxfilename = po.GetArg(n + 2);
       ReadKaldiObject(this_nnet_rxfilename, &nnet);
       combiner.AcceptNnet(nnet);
     }
