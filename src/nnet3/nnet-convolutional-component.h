@@ -218,7 +218,7 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
         kReordersIndexes|kBackpropAdds|kBackpropNeedsInput|
         kInputContiguous|kOutputContiguous;
   }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -226,6 +226,7 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   // This ReorderIndexes function may insert 'blank' indexes (indexes with

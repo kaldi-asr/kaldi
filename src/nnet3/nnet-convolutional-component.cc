@@ -223,7 +223,7 @@ void TimeHeightConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
   ComputeDerived();
 }
 
-void TimeHeightConvolutionComponent::Propagate(
+void* TimeHeightConvolutionComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes_in,
     const CuMatrixBase<BaseFloat> &in,
     CuMatrixBase<BaseFloat> *out) const {
@@ -239,6 +239,7 @@ void TimeHeightConvolutionComponent::Propagate(
     out_reshaped.CopyRowsFromVec(bias_params_);
   }
   ConvolveForward(indexes->computation, in, linear_params_, out);
+  return NULL;
 }
 
 void TimeHeightConvolutionComponent::Backprop(
@@ -247,6 +248,7 @@ void TimeHeightConvolutionComponent::Backprop(
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &, // out_value
     const CuMatrixBase<BaseFloat> &out_deriv,
+    void*, // memo
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
   const PrecomputedIndexes *indexes =
@@ -608,5 +610,3 @@ void TimeHeightConvolutionComponent::PrecomputedIndexes::Read(
 
 } // namespace nnet3
 } // namespace kaldi
-
-
