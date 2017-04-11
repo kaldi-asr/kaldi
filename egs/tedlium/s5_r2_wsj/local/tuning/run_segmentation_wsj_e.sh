@@ -22,7 +22,6 @@ cleanup_stage=-8
 # STAGE 0
 ###
 
-true && {
 utils/data/convert_data_dir_to_whole.sh data/train data/train_long
 steps/make_mfcc.sh --nj 40 --cmd "$train_cmd" \
   data/train_long exp/make_mfcc/train_long mfcc
@@ -31,43 +30,41 @@ steps/compute_cmvn_stats.sh \
 utils/fix_data_dir.sh data/train_long
 
 # Config saved for reproduction of results
-cat <<EOF > exp/segment_wsj_long_utts${affix}_train/segment_long_utts.conf
-# tf-idf similarity search options
-max_words=1000
-num_neighbors_to_search=1
-neighbor_tfidf_threshold=0.5
+# # TF-IDF similarity search options
+# max_words=1000
+# num_neighbors_to_search=1
+# neighbor_tfidf_threshold=0.5
+#
+# align_full_hyp=false
+# 
+# # first-pass segmentation opts
+# min_segment_length=0.5
+# min_new_segment_length=1.0
+# max_tainted_length=0.05
+# max_edge_silence_length=0.5
+# max_edge_non_scored_length=0.5
+# max_internal_silence_length=2.0
+# max_internal_non_scored_length=2.0
+# unk_padding=0.05
+# max_junk_proportion=0.1
+# min_split_point_duration=0.1
+# max_deleted_words_kept_when_merging=1
+# silence_factor=1
+# incorrect_words_factor=1
+# tainted_words_factor=1
+# max_wer=50
+# max_segment_length_for_merging=60
+# max_bad_proportion=0.5
+# max_intersegment_incorrect_words_length=1
+# max_segment_length_for_splitting=10
+# hard_max_segment_length=15
+# min_silence_length_to_split_at=0.3
+# min_non_scored_length_to_split_at=0.3
 
-# first-pass segmentation opts
-min_segment_length=0.5
-min_new_segment_length=1.0
-max_tainted_length=0.05
-max_edge_silence_length=0.5
-max_edge_non_scored_length=0.5
-max_internal_silence_length=2.0
-max_internal_non_scored_length=2.0
-unk_padding=0.05
-max_junk_proportion=0.1
-min_split_point_duration=0.1
-max_deleted_words_kept_when_merging=1
-silence_factor=1
-incorrect_words_factor=1
-tainted_words_factor=1
-max_wer=50
-max_segment_length_for_merging=60
-max_bad_proportion=0.5
-max_intersegment_incorrect_words_length=1
-max_segment_length_for_splitting=10
-hard_max_segment_length=15
-min_silence_length_to_split_at=0.3
-min_non_scored_length_to_split_at=0.3
-EOF
-
-bash -x steps/cleanup/segment_long_utterances.sh \
-  --cmd "$train_cmd" \
+steps/cleanup/segment_long_utterances.sh \
+  --cmd "$train_cmd" --nj 80 \
   --stage $segment_stage \
-  --config exp/segment_wsj_long_utts${affix}_train/segment_long_utts.conf
-  --max-segment-duration 30 --overlap-duration 5 \
-  --num-neighbors-to-search 1 --nj 80 --align-full-hyp false \
+  --max-bad-proportion 0.5 --align-full-hyp false \
   exp/wsj_tri2b data/lang_nosp data/train_long data/train_long/text data/train_reseg${affix} \
   exp/segment_wsj_long_utts${affix}_train
 
@@ -75,7 +72,7 @@ steps/compute_cmvn_stats.sh \
   data/train_reseg${affix} exp/make_mfcc/train_reseg${affix} mfcc
 utils/fix_data_dir.sh data/train_reseg${affix}
 
-rm -rf data/train_reseg${affix}/split20
+rm -r data/train_reseg${affix}/split20 || true
 steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
   data/train_reseg${affix} data/lang_nosp exp/wsj_tri4a exp/wsj_tri4${affix}_ali_train_reseg${affix} || exit 1;
 
@@ -92,7 +89,6 @@ for dset in dev test; do
     data/${dset} exp/tri4${affix}/decode_${dset} \
     exp/tri4${affix}/decode_${dset}_rescore
 done
-}
 
 new_affix=`echo $affix | perl -ne 'm/(\S+)([0-9])(\S+)/; print $1 . ($2+1) . $3;'`
 
@@ -100,15 +96,10 @@ new_affix=`echo $affix | perl -ne 'm/(\S+)([0-9])(\S+)/; print $1 . ($2+1) . $3;
 # STAGE 1
 ###
 
-true && {
-cp exp/segment_wsj_long_utts${affix}_train/segment_long_utts.conf \
-  exp/segment_long_utts${new_affix}_train
-bash -x steps/cleanup/segment_long_utterances.sh \
-  --cmd "$train_cmd" \
+steps/cleanup/segment_long_utterances.sh \
+  --cmd "$train_cmd" --nj 80 \
   --stage $segment_stage \
-  --config exp/segment_long_utts${new_affix}_train/segment_long_utts.conf \
-  --max-segment-duration 30 --overlap-duration 5 \
-  --num-neighbors-to-search 1 --nj 80 --align-full-hyp false \
+  --max-bad-proportion 0.75 --align-full-hyp false \
   exp/tri4${affix} data/lang_nosp data/train_long data/train_long/text data/train_reseg${new_affix} \
   exp/segment_long_utts${new_affix}_train
 
@@ -131,13 +122,11 @@ for dset in dev test; do
     data/${dset} exp/tri5${new_affix}/decode_nosp_${dset} \
     exp/tri5${new_affix}/decode_nosp_${dset}_rescore
 done
-}
 
 ###
 # STAGE 2
 ###
 
-true && {
 steps/get_prons.sh --cmd "$train_cmd" data/train_reseg${new_affix} \
   data/lang_nosp exp/tri5${new_affix}
 utils/dict_dir_add_pronprobs.sh --max-normalize true \
@@ -159,7 +148,6 @@ for dset in dev test; do
      data/${dset} exp/tri5${new_affix}/decode_${dset} \
      exp/tri5${new_affix}/decode_${dset}_rescore
 done
-}
 
 ###
 # STAGE 3
@@ -170,7 +158,6 @@ cleanup_affix=cleaned
 cleaned_data=data/train_reseg${new_affix}_${cleanup_affix}
 cleaned_dir=${srcdir}_${cleanup_affix}
 
-true && {
 steps/cleanup/clean_and_segment_data.sh --stage $cleanup_stage --nj 80 \
   --cmd "$train_cmd" \
   data/train_reseg${new_affix} data/lang_nosp $srcdir \
@@ -182,7 +169,6 @@ steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" \
 steps/train_sat.sh --cmd "$train_cmd" \
   5000 100000 $cleaned_data data/lang_nosp ${srcdir}_ali_${cleanup_affix} \
   ${cleaned_dir}
-}
 
 utils/mkgraph.sh data/lang_nosp $cleaned_dir ${cleaned_dir}/graph_nosp
 
@@ -195,4 +181,3 @@ for dset in dev test; do
 done
 
 exit 0
-
