@@ -39,9 +39,11 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Align features given [GMM-based] models.\n"
-        "Usage:   gmm-align [options] tree-in model-in lexicon-fst-in feature-rspecifier transcriptions-rspecifier alignments-wspecifier\n"
+        "Usage:   gmm-align [options] tree-in model-in lexicon-fst-in feature-rspecifier "
+        "transcriptions-rspecifier alignments-wspecifier\n"
         "e.g.: \n"
-        " gmm-align tree 1.mdl lex.fst scp:train.scp ark:train.tra ark:1.ali\n";
+        " gmm-align tree 1.mdl lex.fst scp:train.scp "
+        "'ark:sym2int.pl -f 2- words.txt text|' ark:1.ali\n";
     ParseOptions po(usage);
     AlignConfig align_config;
     BaseFloat acoustic_scale = 1.0;
