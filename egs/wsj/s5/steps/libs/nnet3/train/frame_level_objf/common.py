@@ -489,6 +489,15 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
     context_opts = "--left-context={lc} --right-context={rc}".format(
         lc=left_context, rc=right_context)
 
+
+    # We reverse the order of the raw model strings so that the freshest one
+    # goes first.  This is important for systems that include batch
+    # normalization-- it means that the freshest batch-norm stats are used.
+    # Since the batch-norm stats are not technically parameters, they are not
+    # combined in the combination code, they are just obtained from the first
+    # model.
+    raw_model_strings = list(reversed(raw_model_strings))
+
     common_lib.run_job(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
                 nnet3-combine --num-iters=80 \
