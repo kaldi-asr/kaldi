@@ -71,6 +71,11 @@ def get_args():
                         rule as accepted by the --minibatch-size option of
                         nnet3-merge-egs; run that program without args to see
                         the format.""")
+    parser.add_argument("--compute-average-posteriors",
+                        type=str, action=common_lib.StrToBoolAction,
+                        choices=["true", "false"], default=False,
+                        help="""If true, then the average output of the
+                        network is computed and dumped as post.final.vec""")
 
     # General options
     parser.add_argument("--nj", type=int, default=4,
@@ -175,9 +180,6 @@ def train(args, run_opts, background_process_handler):
     try:
         model_left_context = variables['model_left_context']
         model_right_context = variables['model_right_context']
-        add_lda = common_lib.str_to_bool(variables['add_lda'])
-        include_log_softmax = common_lib.str_to_bool(
-            variables['include_log_softmax'])
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in "
                         "{1}".format(str(e), '{0}/configs'.format(args.dir)))
@@ -256,6 +258,8 @@ def train(args, run_opts, background_process_handler):
     # copy the properties of the egs to dir for
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
+
+    add_lda = common_train_lib.is_lda_added(config_dir)
 
     if (add_lda and args.stage <= -3):
         logger.info('Computing the preconditioning matrix for input features')
@@ -361,7 +365,7 @@ def train(args, run_opts, background_process_handler):
             get_raw_nnet_from_am=False,
             sum_to_one_penalty=args.combine_sum_to_one_penalty)
 
-    if include_log_softmax and args.stage <= num_iters + 1:
+    if compute_average_posteriors and args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
                     "adjusting the priors.")
         train_lib.common.compute_average_posterior(
