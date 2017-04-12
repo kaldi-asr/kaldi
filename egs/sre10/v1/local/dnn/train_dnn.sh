@@ -10,7 +10,6 @@
 . path.sh
 mfccdir=`pwd`/mfcc
 set -e
-
 # the next command produces the data in local/train_all_asr
 local/dnn/fisher_data_prep.sh /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 \
    /export/corpora3/LDC/LDC2004S13 /export/corpora3/LDC/LDC2005S13
@@ -169,5 +168,5 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 # this will help find issues with the lexicon.
 # steps/cleanup/debug_lexicon.sh --nj 300 --cmd "$train_cmd" data/train_asr_100k data/lang exp/tri5a data/local/dict/lexicon.txt exp/debug_lexicon_100k
 
-## The following is based on the best current neural net recipe.
+# The following is based on an older nnet2 recipe.
 local/dnn/run_nnet2_multisplice.sh

@@ -135,10 +135,11 @@ for x in `seq 0 $[$num_iters-1]`; do
     $cmd $dir/log/update.$x.log \
       gmm-global-est $opt --min-gaussian-weight=$min_gaussian_weight $dir/$x.dubm "gmm-global-sum-accs - $dir/$x.*.acc|" \
       $dir/$[$x+1].dubm || exit 1;
-    rm $dir/$x.*.acc $dir/$x.dubm
+    $cleanup && rm $dir/$x.*.acc $dir/$x.dubm
   fi
 done
 
-rm $dir/gselect.*.gz
+$cleanup && rm $dir/gselect.*.gz
+
 mv $dir/$num_iters.dubm $dir/final.dubm || exit 1;
 exit 0;

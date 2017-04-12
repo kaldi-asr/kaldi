@@ -8,7 +8,7 @@
 # Apache 2.0.
 
 # This is a modified version of train_multisplice_accel2.sh in
-# steps/nnet2/ for speaker recognition. The main difference is
+# ../../steps/nnet2/ for speaker recognition. The main difference is
 # that it uses different get_lda.sh and get_egs2.sh scripts.
 #
 # The original train_multisplice_accel2.sh was a modified version of
@@ -201,7 +201,7 @@ extra_opts+=(--transform-dir $transform_dir)
 
 if [ $stage -le -4 ]; then
   echo "$0: calling get_lda.sh"
-  local/dnn/get_lda.sh $lda_opts "${extra_opts[@]}" --left-context $first_left_context --right-context $first_right_context --cmd "$cmd" $data $lang $alidir $dir || exit 1;
+  sid/nnet2/get_lda.sh $lda_opts "${extra_opts[@]}" --left-context $first_left_context --right-context $first_right_context --cmd "$cmd" $data $lang $alidir $dir || exit 1;
 fi
 # these files will have been written by get_lda.sh
 feat_dim=$(cat $dir/feat_dim) || exit 1;
@@ -213,7 +213,7 @@ if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
   extra_opts+=(--left-context $nnet_left_context )
   extra_opts+=(--right-context $nnet_right_context )
   echo "$0: calling get_egs2.sh"
-  local/dnn/get_egs2.sh $egs_opts "${extra_opts[@]}" \
+  sid/nnet2/get_egs2.sh $egs_opts "${extra_opts[@]}" \
       --samples-per-iter $samples_per_iter --stage $get_egs_stage \
       --io-opts "$io_opts" \
       --cmd "$cmd" $egs_opts \

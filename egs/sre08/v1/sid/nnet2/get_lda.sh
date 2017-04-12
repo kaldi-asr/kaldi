@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012 Johns Hopkins University (Author: Daniel Povey).  
+# Copyright 2012 Johns Hopkins University (Author: Daniel Povey).
 #           2015 David Snyder
 # Apache 2.0.
 #
@@ -108,7 +108,7 @@ N=$[$num_feats/$nj]
 case $feat_type in
   raw) feats="ark,s,cs:utils/subset_scp.pl --quiet $N $sdata/JOB/feats.scp | apply-cmvn-sliding --center=true scp:- ark:- |"
    ;;
-  lda) 
+  lda)
     splice_opts=`cat $alidir/splice_opts 2>/dev/null`
     cp $alidir/{splice_opts,final.mat} $dir || exit 1;
      feats="ark,s,cs:utils/subset_scp.pl --quiet $N $sdata/JOB/feats.scp | apply-cmvn-sliding --center=true scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
@@ -144,7 +144,7 @@ fi
 echo $ivector_dim >$dir/ivector_dim
 
 if [ -z "$lda_dim" ]; then
-  spliced_feats_one="$(echo "$spliced_feats" | sed s:JOB:1:g)"  
+  spliced_feats_one="$(echo "$spliced_feats" | sed s:JOB:1:g)"
   lda_dim=$(feat-to-dim "$spliced_feats_one" -) || exit 1;
 fi
 
