@@ -1,7 +1,12 @@
 #!/bin/bash
 
-# same as 1i but with per-frame dropout on LSTM layer
-#IHM
+# This (1l.sh) is the same as 1j but with per-frame dropout on LSTM layer
+# It is a regular (non-fast) LSTM with per-frame dropout on [i, f, o] gates of the LSTM,
+# the dropout-adding place is "place4" in paper : http://www.danielpovey.com/files/2017_interspeech_dropout.pdf.
+# We have tried both 4-epoch and 5-epoch training.
+
+### IHM
+# Results with flags : --mic ihm  --train-set train_cleaned  --gmm tri3_cleaned\
 #System               tdnn_lstm1i_sp_bi_ld5 tdnn_lstm1l_sp_bi_ld5
 #WER on dev        20.6      19.8
 #WER on eval        20.1      19.2
@@ -10,9 +15,52 @@
 #Final train prob (xent)     -0.722765 -0.915559
 #Final valid prob (xent)      -1.03985  -1.09907
 
-# steps/info/chain_dir_info.pl exp/ihm/chain_cleaned/tdnn_lstm1i_sp_bi_ld5/ exp/ihm/chain_cleaned/tdnn_lstm1l_sp_bi_ld5/
+# ./steps/info/chain_dir_info.pl exp/ihm/chain_cleaned/tdnn_lstm1i_sp_bi_ld5/ exp/ihm/chain_cleaned/tdnn_lstm1l_sp_bi_ld5/
 # exp/ihm/chain_cleaned/tdnn_lstm1i_sp_bi_ld5/: num-iters=89 nj=2..12 num-params=43.4M dim=40+100->3765 combine=-0.064->-0.059 xent:train/valid[58,88,final]=(-0.940,-0.739,-0.723/-1.14,-1.04,-1.04) logprob:train/valid[58,88,final]=(-0.067,-0.046,-0.045/-0.103,-0.099,-0.098)
 # exp/ihm/chain_cleaned/tdnn_lstm1l_sp_bi_ld5/: num-iters=89 nj=2..12 num-params=43.4M dim=40+100->3765 combine=-0.094->-0.082 xent:train/valid[58,88,final]=(-3.10,-1.11,-0.916/-3.17,-1.29,-1.10) logprob:train/valid[58,88,final]=(-0.164,-0.073,-0.067/-0.182,-0.104,-0.098)
+
+# Results with flags for (1l.sh) : --num-epochs 5 --tlstm-affix 1i_5epoch --mic ihm  --train-set train_cleaned  --gmm tri3_cleaned\
+# Results with flags for (1i.sh) : --num-epochs 5 --tlstm-affix 1l_5epoch --mic ihm  --train-set train_cleaned  --gmm tri3_cleaned\
+#System            tdnn_lstm1i_5epoch_sp_bi_ld5 tdnn_lstm1l_5epoch_sp_bi_ld5
+#WER on dev        20.8      19.7
+#WER on eval        20.6      19.3
+#Final train prob     -0.0347795-0.0600903
+#Final valid prob      -0.102486-0.0964607
+#Final train prob (xent)     -0.621007  -0.84667
+#Final valid prob (xent)      -1.02634  -1.04725
+
+# ./steps/info/chain_dir_info.pl exp/ihm/chain_cleaned/tdnn_lstm1i_5epoch_sp_bi_ld5/ exp/ihm/chain_cleaned/tdnn_lstm1l_5epoch_sp_bi_ld5/
+# exp/ihm/chain_cleaned/tdnn_lstm1i_5epoch_sp_bi_ld5/: num-iters=111 nj=2..12 num-params=43.4M dim=40+100->3765 combine=-0.053->-0.049 xent:train/valid[73,110,final]=(-0.832,-0.631,-0.621/-1.09,-1.03,-1.03) logprob:train/valid[73,110,final]=(-0.057,-0.037,-0.035/-0.102,-0.103,-0.102)
+# exp/ihm/chain_cleaned/tdnn_lstm1l_5epoch_sp_bi_ld5/: num-iters=111 nj=2..12 num-params=43.4M dim=40+100->3765 combine=-0.085->-0.074 xent:train/valid[73,110,final]=(-3.14,-1.02,-0.847/-3.20,-1.21,-1.05) logprob:train/valid[73,110,final]=(-0.162,-0.065,-0.060/-0.177,-0.101,-0.096)
+
+### SDM
+# Results with flags : --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned \
+#System            tdnn_lstm1i_sp_bi_ihmali_ld5 tdnn_lstm1l_sp_bi_ihmali_ld5
+#WER on dev        37.0      35.9
+#WER on eval        40.0      39.4
+#Final train prob      -0.106971  -0.15439
+#Final valid prob      -0.252201 -0.244499
+#Final train prob (xent)      -1.41142  -1.73795
+#Final valid prob (xent)      -2.13741  -2.14519
+
+# ./steps/info/chain_dir_info.pl exp/sdm1/chain_cleaned/tdnn_lstm1i_sp_bi_ihmali_ld5/ exp/sdm1/chain_cleaned/tdnn_lstm1l_sp_bi_ihmali_ld5/
+# exp/sdm1/chain_cleaned/tdnn_lstm1i_sp_bi_ihmali_ld5/: num-iters=87 nj=2..12 num-params=43.4M dim=40+100->3741 combine=-0.138->-0.128 xent:train/valid[57,86,final]=(-1.78,-1.42,-1.41/-2.23,-2.14,-2.14) logprob:train/valid[57,86,final]=(-0.155,-0.108,-0.107/-0.251,-0.254,-0.252)
+# exp/sdm1/chain_cleaned/tdnn_lstm1l_sp_bi_ihmali_ld5/: num-iters=87 nj=2..12 num-params=43.4M dim=40+100->3741 combine=-0.192->-0.174 xent:train/valid[57,86,final]=(-3.74,-1.95,-1.74/-3.86,-2.31,-2.15) logprob:train/valid[57,86,final]=(-0.287,-0.165,-0.154/-0.335,-0.250,-0.244)
+
+# Results with flags for (1i.sh) : --num-epochs 5 --tlstm-affix 1i_5epoch --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned\
+# Results with flags for (1l.sh) : --num-epochs 5 --tlstm-affix 1l_5epoch --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned\
+#System            tdnn_lstm1i_5epoch_sp_bi_ihmali_ld5 tdnn_lstm1l_5epoch_sp_bi_ihmali_ld5
+#WER on dev        36.9      35.8
+#WER on eval        40.2      39.5
+#Final train prob     -0.0854552 -0.134189
+#Final valid prob      -0.262789 -0.244183
+#inal train prob (xent)       -1.2195  -1.58789
+#Final valid prob (xent)      -2.13389  -2.08964
+
+# ./steps/info/chain_dir_info.pl exp/sdm1/chain_cleaned/tdnn_lstm1i_5epoch_sp_bi_ihmali_ld5 exp/sdm1/chain_cleaned/tdnn_lstm1l_5epoch_sp_bi_ihmali_ld5/
+# exp/sdm1/chain_cleaned/tdnn_lstm1i_5epoch_sp_bi_ihmali_ld5: num-iters=109 nj=2..12 num-params=43.4M dim=40+100->3741 combine=-0.111->-0.104 xent:train/valid[71,108,final]=(-1.61,-1.25,-1.22/-2.16,-2.15,-2.13) logprob:train/valid[71,108,final]=(-0.133,-0.089,-0.085/-0.246,-0.264,-0.263)
+# exp/sdm1/chain_cleaned/tdnn_lstm1l_5epoch_sp_bi_ihmali_ld5/: num-iters=109 nj=2..12 num-params=43.4M dim=40+100->3741 combine=-0.170->-0.153 xent:train/valid[71,108,final]=(-3.67,-1.76,-1.59/-3.81,-2.22,-2.09) logprob:train/valid[71,108,final]=(-0.274,-0.144,-0.134/-0.327,-0.248,-0.244)
+
 
 set -e -o pipefail
 
