@@ -29,6 +29,7 @@
 #include "decoder/decoder-wrappers.h"
 #include "decoder/training-graph-compiler.h"
 #include "nnet3/nnet-am-decodable-simple.h"
+#include "nnet3/nnet-utils.h"
 #include "lat/kaldi-lattice.h"
 
 int main(int argc, char *argv[]) {
@@ -111,6 +112,7 @@ int main(int argc, char *argv[]) {
         trans_model.Read(ki.Stream(), binary);
         am_nnet.Read(ki.Stream(), binary);
       }
+      SetTestMode(true, &(am_nnet.GetNnet()));
       // this compiler object allows caching of computations across
       // different utterances.
       CachingOptimizingCompiler compiler(am_nnet.GetNnet(),

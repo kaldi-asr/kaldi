@@ -238,6 +238,13 @@ class DerivativeTimeLimiter {
   // matrices are allocated (it may remove some matrices entirely).
   void PruneMatrices();
 
+  // this function modifies commands of type kPropagate to set the memo indexes
+  // to zero if the memo indexes appear in the list memos_to_delete_.  It's
+  // because if a backprop command has been deleted, the propagate command
+  // should no longer store a memo.
+  void RemoveUnusedMemos();
+
+
   // called from PruneMatrices only for matrices that are derivatives,
   // not inputs or outputs of the computation, and which are partly
   // inside the time range, this function returns true if we can
@@ -334,6 +341,10 @@ class DerivativeTimeLimiter {
   std::vector<int32> submatrix_map_if_deriv_;
 
   std::vector<MatrixPruneInfo> prune_info_;
+
+  // List of indexes of memos that will no longer be stored because the backprop
+  // commands using them were deleted.
+  std::unordered_set<int32> memos_to_delete_;
 };
 
 
@@ -440,10 +451,10 @@ bool SnipRowOps(NnetComputation *computation);
 
 /// This function detects submatrices and matrices that are never used (e.g. due
 /// to changes made in other optimization code), and members of indexes,
-/// indexes_multi and indexes_ranges that are unused or are duplicates, and
-/// removes them from the computation by way of suitable renumbering.  It does
-/// not remove no-ops from computation->commands_; to do that, call
-/// RemoveNoOps(computation).
+/// indexes_multi and indexes_ranges that are unused or are duplicates, and memo
+/// indexes that are unused; and it removes them from the computation by way of
+/// suitable renumbering.  It does not remove no-ops from
+/// computation->commands_; to do that, call RemoveNoOps(computation).
 void RenumberComputation(NnetComputation *computation);
 
 /// Removes commands of type kNoOperation in the computation.

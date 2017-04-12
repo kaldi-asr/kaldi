@@ -128,6 +128,11 @@ class NnetComputer {
   // The matrices used in the computation.
   std::vector<CuMatrix<BaseFloat> > matrices_;
 
+  // Memos returned by Propagate() that must be passed to the corresponding
+  // Backprop() routines, indexed by memo-index (zeroth element always
+  // NULL).
+  std::vector<void*> memos_;
+
 
   // executes the command in computation_.commands[program_counter_].
   void ExecuteCommand();
@@ -184,6 +189,17 @@ class NnetComputer {
   void DebugAfterExecute(int32 command,
                          const CommandDebugInfo &info,
                          double command_execution_time);
+
+  // simple helper function used in executing Propagate().
+  // saves 'memo' at memo-index 'memo_index'; if memo
+  // is non-NULL and memo_index is 0, it is an error.
+  inline void SaveMemo(int32 memo_index, const Component &c, void *memo);
+
+  // simple helper function used in executing Backprop().
+  // Retrieves memo from 'memo_index' (or returns NULL if
+  // memo_index = 0), and sets that value to NULL as
+  // memos are not reusable.
+  inline void *GetMemo(int32 memo_index);
 
 
 };

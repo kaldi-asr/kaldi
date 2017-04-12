@@ -166,6 +166,22 @@ bool IsToken(const std::string &token);
 bool IsLine(const std::string &line);
 
 
+
+/**
+   This function returns true when two text strings are approximately equal, and
+   false when they are not.  The definition of 'equal' is normal string
+   equality, except that two substrings like "0.31134" and "0.311341" would be
+   considered equal.  'decimal_places_tolerance' controls how many digits after
+   the '.' have to match up.
+   E.g. StringsApproxEqual("hello 0.23 there", "hello 0.24 there", 2) would
+   return false because there is a difference in the 2nd decimal, but with
+   an argument of 1 it would return true.
+ */
+bool StringsApproxEqual(const std::string &a,
+                        const std::string &b,
+                        int32 decimal_places_check = 2);
+
+
 }  // namespace kaldi
 
 #endif  // KALDI_UTIL_TEXT_UTILS_H_

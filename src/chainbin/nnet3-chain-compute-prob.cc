@@ -20,6 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "nnet3/nnet-chain-diagnostics.h"
+#include "nnet3/nnet-utils.h"
 
 
 int main(int argc, char *argv[]) {
@@ -37,6 +38,7 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet3-chain-compute-prob [options] <raw-nnet3-model-in> <denominator-fst> <training-examples-in>\n"
         "e.g.: nnet3-chain-compute-prob 0.mdl den.fst ark:valid.egs\n";
 
+    bool test_mode = true;
 
     // This program doesn't support using a GPU, because these probabilities are
     // used for diagnostics, and you can just compute them with a small enough
@@ -47,6 +49,9 @@ int main(int argc, char *argv[]) {
     chain::ChainTrainingOptions chain_opts;
 
     ParseOptions po(usage);
+
+    po.Register("test-mode", &test_mode,
+                "If true, set test-mode to true on any BatchNormComponents.");
 
     nnet_opts.Register(&po);
     chain_opts.Register(&po);
@@ -64,6 +69,9 @@ int main(int argc, char *argv[]) {
 
     Nnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
+
+    if (test_mode)
+      SetTestMode(true, &nnet);
 
     fst::StdVectorFst den_fst;
     ReadFstKaldi(den_fst_rxfilename, &den_fst);

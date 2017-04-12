@@ -82,8 +82,11 @@ enum ComponentProperties {
                              // Tanh, Sigmoid, ReLU and Softmax).
   kInputContiguous = 0x1000,  // true if the component requires its input data (and
                               // input derivatives) to have Stride()== NumCols().
-  kOutputContiguous = 0x2000  // true if the component requires its input data (and
-                              // output derivatives) to have Stride()== NumCols().
+  kOutputContiguous = 0x2000,  // true if the component requires its input data (and
+                               // output derivatives) to have Stride()== NumCols().
+  kUsesMemo = 0x4000  // true if the component returns a void* pointer from its
+                      // Propagate() function that needs to be passed into the
+                      // corresponding Backprop function.
 };
 
 
@@ -126,9 +129,12 @@ class Component {
   ///      be set and the initial value ignored.  Each Component chooses whether
   ///      it is more convenient implementation-wise to add or set, and the
   ///      calling code has to deal with it.
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const = 0;
+  ///   \return  Normally returns NULL, but may return a non-NULL value for
+  ///      components which have the flag kUsesMemo set.  This value will
+  ///      be passed into the corresponding Backprop routine.
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const = 0;
 
   /// \brief Backprop function; depending on which of the arguments 'to_update'
   ///     and 'in_deriv' are non-NULL, this can compute input-data derivatives
@@ -146,6 +152,11 @@ class Component {
   ///      function.  Will be ignored (and may be empty) if
   ///      Properties()&kBackpropNeedsOutput == 0
   ///   \param [in] out_deriv  The derivative at the output of this component.
+  ///   \param [in] memo       This will normally be NULL, but for component
+  ///       types that set the flag kUsesMemo, this will be the return value
+  ///       of the Propagate() function that corresponds to this Backprop()
+  ///       function.  Ownership of any pointers is not transferred to the
+  ///       Backprop function; DeleteMemo() will be called to delete it.
   ///   \param [out] to_update  If model update is desired, the Component
   ///       to be updated, else NULL.  Does not have to be identical to this.
   ///       If supplied, you can assume that
@@ -160,23 +171,31 @@ class Component {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update, // may be NULL; may be identical
                                               // to "this" or different.
                         CuMatrixBase<BaseFloat> *in_deriv) const = 0;
 
-
   /// \brief This function may store stats on average activation values, and for
   ///        some component types, the average value of the derivative of the
   ///        nonlinearity.  It only does something for those components that
-  ///        have nonzero Properties()&kStoresStats.  It only needs as input
-  ///        the value at the output of the nonlinearity.
-
-  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value) { }
+  ///        have nonzero Properties()&kStoresStats.
+  ///
+  /// \param [in] in_value  The input to the Propagate() function.  Note: if
+  ///        the component sets the flag kPropagateInPlace, this should not
+  ///        be used; the empty matrix will be provided here if in-place
+  ///        propagation was used.
+  /// \param [in] out_value  The output of the Propagate() function.
+  /// \param [in] memo  The 'memo' returned by the Propagate() function; this
+  ///        will usually be NULL.
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &in_value,
+                          const CuMatrixBase<BaseFloat> &out_value,
+                          void *memo) { }
 
   /// \brief Components that provide an implementation of StoreStats should also
   ///        provide an implementation of ZeroStats(), to set those stats to
   ///        zero.  Other components that store other types of statistics
-  ///        (e.g. regarding gradient clipping) are free to implement ZeroStats()
+  ///        (e.g. regarding gradient clipping) should implement ZeroStats()
   ///        also.
   virtual void ZeroStats() { }
 
@@ -330,7 +349,9 @@ class Component {
   /// This virtual function when called by
   //    -- an UpdatableComponent scales the parameters
   ///      by "scale" when called by an UpdatableComponent.
-  //    -- a Nonlinear component it relates to scaling activation stats, not parameters.
+  //    -- a Nonlinear component (or another component that
+  ///      stores stats, like BatchNormComponent-- it relates
+  ///      to scaling activation stats, not parameters.
   virtual void Scale(BaseFloat scale) {};
 
   /// This virtual function when called by
@@ -340,6 +361,13 @@ class Component {
   ///    -- a NonlinearComponent it relates to adding stats
   /// Otherwise it should do nothing.
   virtual void Add(BaseFloat alpha, const Component &other) {};
+
+  /// This virtual function only needs to be overwritten by Components that
+  /// return a non-NULL memo from their Propagate() function.  It's called by
+  /// NnetComputer in cases where Propagate returns a memo but there will be no
+  /// backprop to consume it.
+  virtual void DeleteMemo(void *memo) const { KALDI_ASSERT(memo == NULL); }
+
 
   Component() { }
 
