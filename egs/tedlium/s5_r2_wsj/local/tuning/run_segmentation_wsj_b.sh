@@ -27,38 +27,6 @@ steps/compute_cmvn_stats.sh \
   data/train_long exp/make_mfcc/train_long mfcc
 utils/fix_data_dir.sh data/train_long
 
-# Config saved for reproduction of results
-# # TF-IDF similarity search options
-# max_words=1000
-# num_neighbors_to_search=1
-# neighbor_tfidf_threshold=0.5
-#
-# align_full_hyp=false
-# 
-# # first-pass segmentation opts
-# min_segment_length=0.5
-# min_new_segment_length=1.0
-# max_tainted_length=0.05
-# max_edge_silence_length=0.5
-# max_edge_non_scored_length=0.5
-# max_internal_silence_length=2.0
-# max_internal_non_scored_length=2.0
-# unk_padding=0.05
-# max_junk_proportion=0.1
-# min_split_point_duration=0.1
-# max_deleted_words_kept_when_merging=1
-# silence_factor=1
-# incorrect_words_factor=1
-# tainted_words_factor=1
-# max_wer=50
-# max_segment_length_for_merging=60
-# max_bad_proportion=0.5
-# max_intersegment_incorrect_words_length=1
-# max_segment_length_for_splitting=10
-# hard_max_segment_length=15
-# min_silence_length_to_split_at=0.3
-# min_non_scored_length_to_split_at=0.3
-
 steps/cleanup/segment_long_utterances.sh \
   --cmd "$train_cmd" --nj 80 \
   --stage $segment_stage \
@@ -179,3 +147,27 @@ for dset in dev test; do
 done
 
 exit 0
+
+# Baseline | %WER 17.9 | 507 17783 | 85.1 10.5 4.4 3.0 17.9 90.9 | -0.055 | exp/tri3_cleaned/decode_dev_rescore/score_15_0.0/ctm.filt.filt.sys
+# STAGE 0 | %WER 19.4 | 507 17783 | 84.0 11.0 4.9 3.4 19.4 92.3 | -0.182 | exp/tri4_2b/decode_dev_rescore/score_13_0.0/ctm.filt.filt.sys
+# STAGE 1 | %WER 18.8 | 507 17783 | 84.5 10.4 5.0 3.4 18.8 91.5 | -0.216 | exp/tri5_3b/decode_nosp_dev_rescore/score_13_0.0/ctm.filt.filt.sys
+# STAGE 2 | %WER 18.3 | 507 17783 | 85.2 10.5 4.3 3.5 18.3 90.3 | -0.184 | exp/tri5_3b/decode_dev_rescore/score_14_0.0/ctm.filt.filt.sys
+# STAGE 3 | %WER 18.8 | 507 17783 | 84.3 10.6 5.1 3.1 18.8 91.5 | -0.186 | exp/tri5_3b_cleaned/decode_nosp_dev_rescore/score_15_0.0/ctm.filt.filt.sys
+
+# Baseline | %WER 16.6 | 1155 27500 | 85.8 10.9 3.4 2.4 16.6 86.4 | -0.058 | exp/tri3_cleaned/decode_test_rescore/score_15_0.0/ctm.filt.filt.sys
+# STAGE 0 | %WER 18.1 | 1155 27500 | 84.3 11.8 4.0 2.4 18.1 87.3 | -0.036 | exp/tri4_2b/decode_test_rescore/score_13_0.0/ctm.filt.filt.sys
+# STAGE 1 | %WER 17.7 | 1155 27500 | 84.6 11.5 3.9 2.3 17.7 87.3 | -0.053 | exp/tri5_3b/decode_nosp_test_rescore/score_13_0.0/ctm.filt.filt.sys
+# STAGE 2 | %WER 17.0 | 1155 27500 | 85.7 11.2 3.2 2.6 17.0 86.7 | -0.075 | exp/tri5_3b/decode_test_rescore/score_13_0.0/ctm.filt.filt.sys
+# STAGE 3 | %WER 17.7 | 1155 27500 | 84.7 11.6 3.7 2.4 17.7 87.9 | -0.082 | exp/tri5_3b_cleaned/decode_nosp_test_rescore/score_12_0.0/ctm.filt.filt.sys
+
+# Baseline | %WER 19.0 | 507 17783 | 83.9 11.4 4.7 2.9 19.0 92.1 | -0.054 | exp/tri3_cleaned/decode_dev/score_13_0.5/ctm.filt.filt.sys
+# STAGE 0 | %WER 20.5 | 507 17783 | 82.9 11.8 5.3 3.4 20.5 93.5 | -0.120 | exp/tri4_2b/decode_dev/score_14_0.0/ctm.filt.filt.sys
+# STAGE 1 | %WER 20.1 | 507 17783 | 83.1 11.6 5.3 3.3 20.1 93.5 | -0.116 | exp/tri5_3b/decode_nosp_dev/score_14_0.0/ctm.filt.filt.sys
+# STAGE 2 | %WER 19.5 | 507 17783 | 84.0 11.4 4.6 3.5 19.5 92.9 | -0.115 | exp/tri5_3b/decode_dev/score_15_0.0/ctm.filt.filt.sys
+# STAGE 3 | %WER 20.0 | 507 17783 | 83.6 11.6 4.8 3.6 20.0 93.7 | -0.128 | exp/tri5_3b_cleaned/decode_nosp_dev/score_13_0.0/ctm.filt.filt.sys
+
+# Baseline | %WER 17.6 | 1155 27500 | 84.8 11.7 3.5 2.4 17.6 87.6 | 0.001 | exp/tri3_cleaned/decode_test/score_15_0.0/ctm.filt.filt.sys
+# STAGE 0 | %WER 19.0 | 1155 27500 | 83.3 12.3 4.4 2.3 19.0 88.6 | 0.016 | exp/tri4_2b/decode_test/score_14_0.0/ctm.filt.filt.sys
+# STAGE 1 | %WER 18.8 | 1155 27500 | 83.6 12.3 4.1 2.4 18.8 88.0 | -0.001 | exp/tri5_3b/decode_nosp_test/score_13_0.0/ctm.filt.filt.sys
+# STAGE 2 | %WER 18.1 | 1155 27500 | 84.5 12.1 3.4 2.6 18.1 88.2 | -0.005 | exp/tri5_3b/decode_test/score_14_0.0/ctm.filt.filt.sys
+# STAGE 3 | %WER 18.6 | 1155 27500 | 83.6 12.2 4.2 2.2 18.6 88.5 | -0.010 | exp/tri5_3b_cleaned/decode_nosp_test/score_14_0.0/ctm.filt.filt.sys
