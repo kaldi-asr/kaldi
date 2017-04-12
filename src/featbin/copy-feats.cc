@@ -102,19 +102,31 @@ int main(int argc, char *argv[]) {
         CompressedMatrixWriter kaldi_writer(wspecifier);
         if (htk_in) {
           SequentialTableReader<HtkMatrixHolder> htk_reader(rspecifier);
-          for (; !htk_reader.Done(); htk_reader.Next(), num_done++)
+          for (; !htk_reader.Done(); htk_reader.Next(), num_done++) {
             kaldi_writer.Write(htk_reader.Key(),
                                CompressedMatrix(htk_reader.Value().first));
+            if (!num_frames_wspecifier.empty())
+              num_frames_writer.Write(htk_reader.Key(),
+                                      htk_reader.Value().first.NumRows());
+          }
         } else if (sphinx_in) {
           SequentialTableReader<SphinxMatrixHolder<> > sphinx_reader(rspecifier);
-          for (; !sphinx_reader.Done(); sphinx_reader.Next(), num_done++)
+          for (; !sphinx_reader.Done(); sphinx_reader.Next(), num_done++) {
             kaldi_writer.Write(sphinx_reader.Key(),
                                CompressedMatrix(sphinx_reader.Value()));
+            if (!num_frames_wspecifier.empty())
+              num_frames_writer.Write(sphinx_reader.Key(),
+                                      sphinx_reader.Value().NumRows());
+          }
         } else {
           SequentialBaseFloatMatrixReader kaldi_reader(rspecifier);
-          for (; !kaldi_reader.Done(); kaldi_reader.Next(), num_done++)
+          for (; !kaldi_reader.Done(); kaldi_reader.Next(), num_done++) {
             kaldi_writer.Write(kaldi_reader.Key(),
                                CompressedMatrix(kaldi_reader.Value()));
+            if (!num_frames_wspecifier.empty())
+              num_frames_writer.Write(kaldi_reader.Key(),
+                                      kaldi_reader.Value().NumRows());
+          }
         }
       }
       KALDI_LOG << "Copied " << num_done << " feature matrices.";
