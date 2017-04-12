@@ -269,7 +269,11 @@ def check_model_contexts(config_dir):
         if ((contexts['init']['left-context'] > contexts['ref']['left-context'])
            or (contexts['init']['right-context'] > contexts['ref']['right-context'])):
            raise Exception("Model specified in {0}/init.config requires greater"
-                           " context than the model specified in {0}/ref.config.")
+                           " context than the model specified in {0}/ref.config."
+                           " This might be due to use of label-delay at the output"
+                           " in ref.config. Please use delay=$label_delay in the"
+                           " initial fixed-affine-layer of the network, to avoid"
+                           " this issue.")
 
 
 
