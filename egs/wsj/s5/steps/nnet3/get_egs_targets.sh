@@ -217,7 +217,7 @@ if [ $num_archives -eq 1 ]; then
   echo "*** $0: warning: the --frames-per-eg is too large to generate one archive with"
   echo "*** as many as --samples-per-iter egs in it.  Consider reducing --frames-per-eg."
   sleep 4
-done
+fi
 
 # We may have to first create a smaller number of larger archives, with number
 # $num_archives_intermediate, if $num_archives is more than the maximum number
