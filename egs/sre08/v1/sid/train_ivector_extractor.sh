@@ -158,5 +158,6 @@ while [ $x -lt $num_iters ]; do
   fi
   x=$[$x+1]
 done
-$cleanup && rm $dir/post.*.gz
+$cleanup && rm -f $dir/post.*.gz
+rm -f $dir/final.ie
 ln -s $x.ie $dir/final.ie

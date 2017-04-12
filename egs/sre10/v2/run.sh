@@ -111,7 +111,7 @@ sid/init_full_ubm_from_dnn.sh --cmd "$train_cmd --mem 15G" \
 
 # Train an i-vector extractor based on just the supervised-GMM.
 sid/train_ivector_extractor.sh \
-  --cmd "$train_cmd --mem 100G" \
+  --cmd "$train_cmd --mem 120G" \
   --ivector-dim 600 \
   --num-iters 5 exp/full_ubm/final.ubm data/train \
   exp/extractor_sup_gmm
