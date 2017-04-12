@@ -1,5 +1,6 @@
 # Copyright 2016    Johns Hopkins University (Dan Povey)
 #           2016    Vijayaditya Peddinti
+#           2017    Google Inc. (vpeddinti@google.com)
 # Apache 2.0.
 
 """ This module contains the parent class from which all layers are inherited
@@ -775,7 +776,7 @@ class XconfigBasicLayer(XconfigLayerBase):
 #   input='[-1]'             [Descriptor giving the input of the layer.]
 #   dim=None                   [Output dimension of layer; defaults to the same as the input dim.]
 #   affine-transform-file='' [Must be specified.]
-#
+#   delay=0                  [Optional delay for the output-node in init.config]
 class XconfigFixedAffineLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         assert first_token == 'fixed-affine-layer'
@@ -787,6 +788,7 @@ class XconfigFixedAffineLayer(XconfigLayerBase):
         self.config = { 'input':'[-1]',
                         'dim':-1,
                         'affine-transform-file':'',
+                        'delay':0,
                         'write-init-config':True}
 
     def check_configs(self):
@@ -819,11 +821,19 @@ class XconfigFixedAffineLayer(XconfigLayerBase):
         transform_file = self.config['affine-transform-file']
 
         if self.config['write-init-config']:
-            # to init.config we write an output-node with the name 'output' and
-            # with a Descriptor equal to the descriptor that's the input to this
-            # layer.  This will be used to accumulate stats to learn the LDA transform.
-            line = 'output-node name=output input={0}'.format(descriptor_final_string)
-            ans.append(('init', line))
+            if self.config['delay'] != 0:
+                line = 'component name={0}.delayed type=NoOpComponent dim={1}'.format(self.name, input_dim)
+                ans.append(('init', line))
+                line = 'component-node name={0}.delayed component={0}.delayed input={1}'.format(self.name, descriptor_final_string)
+                ans.append(('init', line))
+                line = 'output-node name=output input=Offset({0}.delayed, {1})'.format(self.name, self.config['delay'])
+                ans.append(('init', line))
+            else:
+                # to init.config we write an output-node with the name 'output' and
+                # with a Descriptor equal to the descriptor that's the input to this
+                # layer.  This will be used to accumulate stats to learn the LDA transform.
+                line = 'output-node name=output input={0}'.format(descriptor_final_string)
+                ans.append(('init', line))
 
         # write the 'real' component to final.config
         line = 'component name={0} type=FixedAffineComponent matrix={1}'.format(
