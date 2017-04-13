@@ -106,7 +106,8 @@ from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 
 class XconfigConvLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
-        assert first_token == "lstm-layer"
+        assert first_token in ['conv-layer', 'conv-batchnorm-layer',
+                               'conv-renorm-layer']
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -174,11 +175,11 @@ class XconfigConvLayer(XconfigLayerBase):
         height_offsets = self.config['height-offsets']
         time_offsets = self.config['time-offsets']
         required_time_offsets = self.config['required-time-offsets']
-        if not check_offsets_var(height_offsets):
+        if not self.check_offsets_var(height_offsets):
             raise RuntimeError("height-offsets={0} is not valid".format(height_offsets))
-        if not check_offsets_var(time_offsets):
+        if not self.check_offsets_var(time_offsets):
             raise RuntimeError("time-offsets={0} is not valid".format(time_offsets))
-        if required_time_offsets != "" and not check_offsets_var(required_time_offsets):
+        if required_time_offsets != "" and not self.check_offsets_var(required_time_offsets):
             raise RuntimeError("required-time-offsets={0} is not valid".format(
                 required_time_offsets))
 
@@ -224,19 +225,20 @@ class XconfigConvLayer(XconfigLayerBase):
 
     # convenience function to generate the CNN config
     def generate_cnn_config(self):
+        configs = []
 
         name = self.name
         num_filters_out =  self.config['num-filters-out']
         height_out =  self.config['height-out']
-        input_descriptor = self.config['input']['final-string']
+        input_descriptor = self.descriptors['input']['final-string']
 
         conv_opts = ''
         for opt_name in [
                 'param-stddev', 'bias-stddev', 'use-natural-gradient',
                 'rank-in', 'rank-out', 'num-minibatches-history',
-                'alpha-in', 'alpha-out', 'num-filters-in', 'height-in',
-                'height-out', 'height-subsample-out', 'height-offsets',
-                'time-offsets', 'required-time-offsets']:
+                'alpha-in', 'alpha-out', 'num-filters-in', 'num-filters-out',
+                'height-in','height-out', 'height-subsample-out',
+                'height-offsets', 'time-offsets', 'required-time-offsets']:
             assert opt_name in self.config
             if self.config[opt_name] != '':
                 conv_opts += ' {0}={1}'.format(opt_name, self.config[opt_name])
@@ -251,14 +253,14 @@ class XconfigConvLayer(XconfigLayerBase):
             configs.append('component name={0}.batchnorm  type=BatchNormComponent dim={1} '
                            'block-dim={2} target-rms={3}'.format(
                                name, num_filters_out * height_out, num_filters_out,
-                               self.configs['target-rms']))
+                               self.config['target-rms']))
             configs.append('component-node name={0}.batchnorm component={0}.batchnorm '
                            'input={0}.conv'.format(name))
         elif self.layer_type == 'conv-renorm-layer':
             configs.append('component name={0}.renorm type=NormalizeComponent '
                            'dim={1} target-rms={2}'.format(
                                name, num_filters_out * height_out,
-                               self.configs['target-rms']))
+                               self.config['target-rms']))
             configs.append('component name={0}.renorm component={0}.renorm '
                            'input={0}.conv'.format(name))
         else:

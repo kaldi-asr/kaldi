@@ -1,25 +1,10 @@
 #!/bin/bash
 
 
-# This was modified from run_tdnn_lstm_1a.sh, making similar
-# changes as the diff from run_tdnn_lstm_1a.sh->run_tdnn_1c.sh
-# in egs/tedlium/s5_r2/local/nnet3/tuning,
-# specifically:
-# changing chunk_left_context to zero, shrink from 0.99->1
-# (since it's not applicable to ReLUs), and removing
-# the deriv-truncate-margin option since it's only applicable
-# to recurrent setups; removing label-delay.
-# adding pre-final layers (I experimented with this,
-# it did seem helpful); using 3M not 1.5M frames per iter to keep the
-# time per job reasonable; and fewer final jobs (5 not 10).
+# This was modified from run_tdnn_1a.sh; it's the
+# first stab at a setup including convolutional components.
 
 
-# steps/info/chain_dir_info.pl exp/chain/tdnn1a_sp
-# exp/chain/tdnn1a_sp: num-iters=102 nj=2..5 num-params=7.6M dim=40+100->2889 combine=-0.052->-0.051 xent:train/valid[67,101,final]=(-0.881,-0.824,-0.822/-0.953,-0.922,-0.921) logprob:train/valid[67,101,final]=(-0.048,-0.042,-0.041/-0.064,-0.064,-0.063)
-
-# The following table compares (nnet3 TDNN, chain TDNN+LSTM, this experiment == chain TDNN).
-# This is better than the nnet3 TDNN, but the difference with the chain TDNN+LSTM
-# is inconsistent.
 
 # local/chain/compare_wer.sh --online exp/nnet3/tdnn1a_sp exp/chain/tdnn_lstm1a_sp exp/chain/tdnn1a_sp
 # System                tdnn1a_sp tdnn_lstm1a_sp tdnn1a_sp
@@ -109,7 +94,7 @@ local/nnet3/run_ivector_common.sh \
 gmm_dir=exp/${gmm}
 ali_dir=exp/${gmm}_ali_${train_set}_sp
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
-dir=exp/chain${nnet3_affix}/tdnn${affix}_sp
+dir=exp/chain${nnet3_affix}/cnn_tdnn${affix}_sp
 train_data_dir=data/${train_set}_sp_hires
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 lores_train_data_dir=data/${train_set}_sp
@@ -190,18 +175,27 @@ if [ $stage -le 15 ]; then
   input dim=100 name=ivector
   input dim=40 name=input
 
-  # please note that it is important to have input layer with the name=input
-  # as the layer immediately preceding the fixed-affine-layer to enable
-  # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  # this takes the MFCCs and generates filterbank coefficients.  The MFCCs
+  # are more compressible so we prefer to dump the MFCCs to disk rather
+  # than filterbanks.
+  idct-layer name=idct input=input dim=40 cepstral-lifter=22 affine-transform-file=$dir/configs/idct.mat
 
-  # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=512
-  relu-renorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
-  relu-renorm-layer name=tdnn3 dim=512 input=Append(-1,0,1)
-  relu-renorm-layer name=tdnn4 dim=512 input=Append(-3,0,3)
-  relu-renorm-layer name=tdnn5 dim=512 input=Append(-3,0,3)
-  relu-renorm-layer name=tdnn6 dim=512 input=Append(-6,-3,0)
+  # pre-process the ivector with fully connected layers; later we will combine
+  # it with the output of the CNN layers.
+  # The learning-rate-factor >1.0 is because these layers will be instantiated
+  # once per sequence (for t==0), which will tend to make it train too slowly.
+  relu-renorm-layer name=ivector-1 input=ivector dim=200 learning-rate-factor=2.0
+  relu-renorm-layer name=ivector-2 dim=200 learning-rate-factor=2.0
+
+  conv-batchnorm-layer name=cnn1 input=idct height-in=40 height-out=40 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=32
+  conv-batchnorm-layer name=cnn2 height-in=40 height-out=40 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=32
+  conv-batchnorm-layer name=cnn3 height-in=40 height-out=20 height-subsample-out=2 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=64
+  conv-batchnorm-layer name=cnn4 height-in=20 height-out=20 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=64
+  conv-batchnorm-layer name=cnn5 height-in=20 height-out=20 time-offsets=-3,0,3 height-offsets=-1,0,1 num-filters-out=32
+
+  # the last two layers are fully connected.
+  relu-renorm-layer name=tdnn6 dim=512 input=Append(-3,0,3,ReplaceIndex(ivector-2, t, 0))
+  relu-renorm-layer name=tdnn7 dim=512 input=Append(-6,-3,0)
 
   ## adding the layers for chain branch
   relu-renorm-layer name=prefinal-chain dim=512 target-rms=0.5
@@ -216,7 +210,7 @@ if [ $stage -le 15 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-renorm-layer name=prefinal-xent input=tdnn6 dim=512 target-rms=0.5
+  relu-renorm-layer name=prefinal-xent input=tdnn7 dim=512 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/

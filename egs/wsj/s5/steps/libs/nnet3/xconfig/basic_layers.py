@@ -620,6 +620,8 @@ class XconfigOutputLayer(XconfigLayerBase):
 #   input='[-1]'             [Descriptor giving the input of the layer.]
 #   dim=None                   [Output dimension of layer, e.g. 1024]
 #   self-repair-scale=1.0e-05  [Affects relu, sigmoid and tanh layers.]
+#   learning-rate-factor=1.0   [This can be used to make the affine component
+#                               train faster or slower].
 #
 class XconfigBasicLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
@@ -638,6 +640,7 @@ class XconfigBasicLayer(XconfigLayerBase):
                         'max-change' : 0.75,
                         'self-repair-scale' : 1.0e-05,
                         'target-rms' : 1.0,
+                        'learning-rate-factor' : 1.0,
                         'ng-affine-options' : ''}
 
     def check_configs(self):
@@ -649,6 +652,9 @@ class XconfigBasicLayer(XconfigLayerBase):
         if self.config['target-rms'] < 0.0:
             raise RuntimeError("target-rms has invalid value {0}"
                                .format(self.config['target-rms']))
+        if self.config['learning-rate-factor'] <= 0.0:
+            raise RuntimeError("learning-rate-factor has invalid value {0}"
+                               .format(self.config['learning-rate-factor']))
 
     def output_name(self, auxiliary_output=None):
         # at a later stage we might want to expose even the pre-nonlinearity
@@ -702,6 +708,9 @@ class XconfigBasicLayer(XconfigLayerBase):
         target_rms = self.config['target-rms']
         max_change = self.config['max-change']
         ng_affine_options = self.config['ng-affine-options']
+        learning_rate_factor=self.config['learning-rate-factor']
+        learning_rate_option=('learning-rate-factor={0}'.format(learning_rate_factor)
+                              if learning_rate_factor != 1.0 else '')
 
         configs = []
         # First the affine node.
@@ -710,9 +719,10 @@ class XconfigBasicLayer(XconfigLayerBase):
                 ' input-dim={1}'
                 ' output-dim={2}'
                 ' max-change={3}'
-                ' {4}'
+                ' {4} {5} '
                 ''.format(self.name, input_dim, output_dim,
-                    max_change, ng_affine_options))
+                          max_change, ng_affine_options,
+                          learning_rate_option))
         configs.append(line)
 
         line = ('component-node name={0}.affine'
