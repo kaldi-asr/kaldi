@@ -7,6 +7,7 @@
 
 from __future__ import print_function
 
+import logging
 import sys
 import libs.nnet3.xconfig.layers as xlayers
 import libs.nnet3.xconfig.utils as xutils
@@ -24,6 +25,7 @@ config_to_layer = {
         'sigmoid-layer' : xlayers.XconfigBasicLayer,
         'tanh-layer' : xlayers.XconfigBasicLayer,
         'fixed-affine-layer' : xlayers.XconfigFixedAffineLayer,
+        'idct-layer' : xlayers.XconfigIdctLayer,
         'affine-layer' : xlayers.XconfigAffineLayer,
         'lstm-layer' : xlayers.XconfigLstmLayer,
         'lstmp-layer' : xlayers.XconfigLstmpLayer,
@@ -48,10 +50,11 @@ def xconfig_line_to_object(config_line, prev_layers = None):
         if not config_to_layer.has_key(first_token):
             raise RuntimeError("No such layer type '{0}'".format(first_token))
         return config_to_layer[first_token](first_token, key_to_value, prev_layers)
-    except Exception as e:
-        print("***Exception caught while parsing the following xconfig line:\n"
-              "*** {0}".format(config_line), file=sys.stderr)
-        raise e
+    except Exception:
+        logging.error(
+            "***Exception caught while parsing the following xconfig line:\n"
+            "*** {0}".format(config_line))
+        raise
 
 # This function reads an xconfig file and returns it as a list of layers
 # (usually we use the variable name 'all_layers' elsewhere for this).
