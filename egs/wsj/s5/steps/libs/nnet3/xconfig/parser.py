@@ -28,8 +28,11 @@ config_to_layer = {
         'lstm-layer' : xlayers.XconfigLstmLayer,
         'lstmp-layer' : xlayers.XconfigLstmpLayer,
         'fast-lstm-layer' : xlayers.XconfigFastLstmLayer,
-        'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer
-        }
+        'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer,
+        'conv-layer': xlayers.XconfigConvLayer,
+        'conv-batchnorm-layer': xlayers.XconfigConvLayer,
+         'conv-renorm-layer': xlayers.XconfigConvLayer
+}
 
 # Turn a config line and a list of previous layers into
 # either an object representing that line of the config file; or None
