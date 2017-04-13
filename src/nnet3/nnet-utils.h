@@ -164,6 +164,14 @@ std::string NnetInfo(const Nnet &nnet);
 /// the value 'dropout_proportion'
 void SetDropoutProportion(BaseFloat dropout_proportion, Nnet *nnet);
 
+/// This function currently affects only components of type BatchNormComponent.
+/// It sets "test mode" on such components (if you call it with test_mode =
+/// true, otherwise it would set normal mode, but this wouldn't be needed
+/// often).  "test mode" means that instead of using statistics from the batch,
+/// it does a deterministic normalization based on statistics stored at training
+/// time.
+void SetTestMode(bool test_mode, Nnet *nnet);
+
 /// This function finds a list of components that are never used, and outputs
 /// the integer comopnent indexes (you can use these to index
 /// nnet.GetComponentNames() to get their names).
@@ -203,6 +211,8 @@ void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes);
 
     set-learning-rate [name=<name-pattern>] learning-rate=<learning-rate>
        Sets the learning rate for any updatable nodes matching the name pattern.
+       Note: this sets the 'underlying' learning rate, i.e. it will get
+       multiplied by any 'learning-rate-factor' set in the nodes.
 
     rename-node old-name=<old-name> new-name=<new-name>
        Renames a node; this is a surface renaming that does not affect the structure

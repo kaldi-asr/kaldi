@@ -66,7 +66,8 @@ class Compiler {
   // Some generic information about each step of the computation... a step is an
   // instance of a NetworkNode, but a NetworkNode may in general have multiple
   // steps.  A single step may turn into no commands (for input nodes), or
-  // multiple commands.
+  // multiple commands.  The StepInfo also contains info about the backprop
+  // corresponding to its forward command.
   struct StepInfo {
     int32 node_index;  // network-node index
     int32 value;  // sub-matrix index of value that this step outputs.
@@ -187,6 +188,10 @@ class Compiler {
   // Called from DoForwardComputation, handles the case where the step corresponds
   // to an input node.
   void AddForwardStepInput(int32 step, NnetComputation *computation) const;
+
+  // Returns true if step 'step' is an input step.   If step >= steps_.size(),
+  // returns false.
+  bool IsInputStep(int32 step) const;
 
 
   // Called from DoForwardComputation, handles the case where the step

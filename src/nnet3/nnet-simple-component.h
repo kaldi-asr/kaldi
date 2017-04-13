@@ -56,14 +56,15 @@ class PnormComponent: public Component {
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const { return output_dim_; }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const { return new PnormComponent(input_dim_,
@@ -114,7 +115,7 @@ class DropoutComponent : public RandomComponent {
   // Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -122,6 +123,7 @@ class DropoutComponent : public RandomComponent {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const { return new DropoutComponent(dim_,
@@ -155,14 +157,15 @@ class ElementwiseProductComponent: public Component {
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const { return output_dim_; }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const { return new ElementwiseProductComponent(input_dim_,
@@ -200,14 +203,15 @@ class NormalizeComponent: public Component {
   virtual std::string Type() const { return "NormalizeComponent"; }
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual Component* Copy() const { return new NormalizeComponent(*this); }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -233,6 +237,36 @@ class NormalizeComponent: public Component {
 };
 
 
+/*
+   Implements the sigmoid nonlinearity, i.e. the function y = exp(-x).
+
+   Configuration values accepted:
+      dim              Dimension of this component, e.g. 1024
+
+   Configuration values inherited from NonlinearComponent, and their
+   local meanings:
+      self-repair-lower-threshold e.g. self-repair-lower-threshold=0.05.  This
+                    controls the self-repair mechanism, which for sigmoid units
+                    consists of identifying units which are oversaturated (i.e.
+                    usually close to -1 or +1) and nudging the inputs to be
+                    closer to zero.  It gates on the average derivative of the
+                    nonlinearity, which for sigmoid is a value between 0 and
+                    0.25.  For units where the average function-derivative
+                    accumulated during this iteration (job) of training is less
+                    than this threshold, we activate self-repair, which consists
+                    of adding (-self-repair-scale * (2*the output of the
+                    nonlinearity - 1.0)) to the backpropagated derivatives.
+                    This just happens to be a convenient-to-compute function
+                    that's +1 for large negative inputs, and -1 for large positive
+                    inputs, and smooth in between.
+                    The default value of this is -1000, which the code internally
+                    maps to 0.05 which is suitable for sigmoid units; if you do set it,
+                    you can set it to a value like 0.025 or 0.075.
+      self-repair-scale  Scale for the self-repair mechanism; see comments above.
+                    default=0, but we usually set this to 1.0e-05 (or
+                    occasionally 1.0e-04) in the scripts.
+
+ */
 class SigmoidComponent: public NonlinearComponent {
  public:
   explicit SigmoidComponent(const SigmoidComponent &other): NonlinearComponent(other) { }
@@ -242,17 +276,20 @@ class SigmoidComponent: public NonlinearComponent {
     return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace|kStoresStats;
   }
   virtual Component* Copy() const { return new SigmoidComponent(*this); }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const CuMatrixBase<BaseFloat> &, //in_value
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
-  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &in_value,
+                          const CuMatrixBase<BaseFloat> &out_value,
+                          void *memo);
  private:
   // this function is called from Backprop code and only does something if the
   // self-repair-scale config value is set.
@@ -263,6 +300,33 @@ class SigmoidComponent: public NonlinearComponent {
   SigmoidComponent &operator = (const SigmoidComponent &other); // Disallow.
 };
 
+/*
+   Implements the tanh nonlinearity, i.e. the function y = tanh(x).
+
+   Configuration values accepted:
+      dim           Dimension of this component, e.g. 1024
+
+   Configuration values inherited from NonlinearComponent, and their
+   local meanings:
+      self-repair-lower-threshold e.g. self-repair-lower-threshold=0.2.  This
+                    controls the self-repair mechanism, which for tanh units
+                    consists of identifying units which are oversaturated (i.e.
+                    usually close to -1 or +1) and nudging the inputs to be
+                    closer to zero.  It gates on the average derivative of
+                    the nonlinearity, which for tanh is a value between 0 and 1.
+                    For units where the average function-derivative accumulated
+                    during this iteration (job) of training is less than
+                    this threshold, we activate self-repair, which consists of
+                    adding (-self-repair-scale * the output of the nonlinearity),
+                    i.e. (-self-repair-scale * tanh(x)) to the backpropagated
+                    derivatives.
+                    The default value of this is -1000, which the code internally
+                    maps to 0.2 which is suitable for tanh units; if you do set it,
+                    you can set it to a value like 0.1 or 0.3.
+      self-repair-scale  Scale for the self-repair mechanism; see comments above.
+                    default=0, but we usually set this to 1.0e-05 (or
+                    occasionally 1.0e-04) in the scripts.
+ */
 class TanhComponent: public NonlinearComponent {
  public:
   explicit TanhComponent(const TanhComponent &other): NonlinearComponent(other) { }
@@ -272,7 +336,7 @@ class TanhComponent: public NonlinearComponent {
   virtual int32 Properties() const {
     return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace|kStoresStats;
   }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -280,9 +344,12 @@ class TanhComponent: public NonlinearComponent {
                         const CuMatrixBase<BaseFloat> &, //in_value
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
-  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &in_value,
+                          const CuMatrixBase<BaseFloat> &out_value,
+                          void *memo);
  private:
   // this function is called from Backprop code and only does something if the
   // self-repair-scale config value is set.
@@ -294,6 +361,34 @@ class TanhComponent: public NonlinearComponent {
 };
 
 
+/*
+   Implements the Rectified Linear Unit nonlinearity, a.k.a. ReLU.
+
+   Configuration values accepted:
+      dim              Dimension of this component, e.g. 1024
+
+   Configuration values inherited from NonlinearComponent, and their
+   local meanings:
+      self-repair-lower-threshold e.g. self-repair-lower-threshold=0.05.  (Lower
+                       threshold for self-repair, if set; in this case acts on
+                       the average function-derivative, which is the proportion
+                       of the time the output is > 0.  For any unit where the
+                       average function-derivative is lower than this threshold,
+                       we add 'self-repair-scale' to the backpropagated
+                       derivatives in backprop.  There is no default
+                       (default=-1000, which is interpreted specially).
+      self-repair-upper-threshold e.g. self-repair-upper-threshold=0.95.
+                       Like self-repair-lower-threshold, but controls self-repair
+                       for units that are active *too* much of the time.  Units
+                       whose average function-derivative exceeds this threshold
+                       will have the negative of 'self-repair-scale' added to their
+                       input derivatives in backprop.  There is no default
+                       (default=-1000, which is interpreted specially).
+      self-repair-scale  Scale for the self-repair mechanism; see comments for
+                       self-repair-lower-threshold and self-repair-upper-threshold
+                       for details.  default=0, but we usually set this to 1.0e-05
+                       (or occasionally 1.0e-04) in the scripts.
+ */
 class RectifiedLinearComponent: public NonlinearComponent {
  public:
   explicit RectifiedLinearComponent(const RectifiedLinearComponent &other):
@@ -305,7 +400,7 @@ class RectifiedLinearComponent: public NonlinearComponent {
     return kSimpleComponent|kLinearInInput|kBackpropNeedsOutput|kPropagateInPlace|
         kStoresStats;
   }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -313,10 +408,12 @@ class RectifiedLinearComponent: public NonlinearComponent {
                         const CuMatrixBase<BaseFloat> &, //in_value
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
-  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);
-
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &in_value,
+                          const CuMatrixBase<BaseFloat> &out_value,
+                          void *memo);
  private:
   // this function is called from Backprop code and only does something if the
   // self-repair-scale config value is set.
@@ -349,7 +446,7 @@ class SumReduceComponent: public Component {
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const { return output_dim_; }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -357,6 +454,7 @@ class SumReduceComponent: public Component {
                         const CuMatrixBase<BaseFloat> &, // in_value
                         const CuMatrixBase<BaseFloat> &, // out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *, // to_update
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const { return new SumReduceComponent(input_dim_,
@@ -401,7 +499,7 @@ class AffineComponent: public UpdatableComponent {
   }
 
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -409,6 +507,7 @@ class AffineComponent: public UpdatableComponent {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -501,7 +600,7 @@ class BlockAffineComponent : public UpdatableComponent {
       kBackpropNeedsInput|kBackpropAdds;
   }
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
 
@@ -510,6 +609,7 @@ class BlockAffineComponent : public UpdatableComponent {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -564,7 +664,7 @@ class RepeatedAffineComponent: public UpdatableComponent {
     return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
         kBackpropNeedsInput|kBackpropAdds|kInputContiguous|kOutputContiguous;
   }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -572,6 +672,7 @@ class RepeatedAffineComponent: public UpdatableComponent {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -660,7 +761,7 @@ class SoftmaxComponent: public NonlinearComponent {
   virtual int32 Properties() const {
     return kSimpleComponent|kBackpropNeedsOutput|kStoresStats;
   }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -668,15 +769,30 @@ class SoftmaxComponent: public NonlinearComponent {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
-  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);
-
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &in_value,
+                          const CuMatrixBase<BaseFloat> &out_value,
+                          void *memo);
   virtual Component* Copy() const { return new SoftmaxComponent(*this); }
  private:
   SoftmaxComponent &operator = (const SoftmaxComponent &other); // Disallow.
 };
 
+
+/*
+   Implements the log of a softmax nonlinearity, so it's the same
+   as shifting each input vector by a constant offset so that, when
+   exponentiated, it would sum to one.
+
+   We usually use this in place of softmax because the log-scale
+   output will not saturate.
+
+   Configuration values accepted:
+      dim            e.g. dim=8061.   Usually this is the last component
+                     in a network, so 'dim' is the number of classes.
+ */
 class LogSoftmaxComponent: public NonlinearComponent {
  public:
   explicit LogSoftmaxComponent(const LogSoftmaxComponent &other):
@@ -686,7 +802,7 @@ class LogSoftmaxComponent: public NonlinearComponent {
   virtual int32 Properties() const {
     return kSimpleComponent|kBackpropNeedsOutput|kStoresStats;
   }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -694,6 +810,7 @@ class LogSoftmaxComponent: public NonlinearComponent {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -702,15 +819,66 @@ class LogSoftmaxComponent: public NonlinearComponent {
   LogSoftmaxComponent &operator = (const LogSoftmaxComponent &other); // Disallow.
 };
 
-/// Keywords: natural gradient descent, NG-SGD, naturalgradient.  For
-/// the top-level of the natural gradient code look here, and also in
-/// nnet-precondition-online.h.
-/// NaturalGradientAffineComponent is
-/// a version of AffineComponent that has a non-(multiple of unit) learning-rate
-/// matrix.  See nnet-precondition-online.h for a description of the technique.
-/// It is described, under the name Online NG-SGD, in the paper "Parallel
-/// training of DNNs with Natural Gradient and Parameter Averaging" (ICLR
-/// workshop, 2015) by Daniel Povey, Xiaohui Zhang and Sanjeev Khudanpur.
+/*
+  Keywords: natural gradient descent, NG-SGD, naturalgradient.  For
+  the top-level of the natural gradient code look here, and also in
+  nnet-precondition-online.h.
+  NaturalGradientAffineComponent is
+  a version of AffineComponent that has a non-(multiple of unit) learning-rate
+  matrix.  See nnet-precondition-online.h for a description of the technique.
+  It is described, under the name Online NG-SGD, in the paper "Parallel
+  training of DNNs with Natural Gradient and Parameter Averaging" (ICLR
+  workshop, 2015) by Daniel Povey, Xiaohui Zhang and Sanjeev Khudanpur.
+
+  Configuration values accepted by this component:
+
+  Values inherited from UpdatableComponent (see its declaration in
+  nnet-component-itf for details):
+     learning-rate
+     learning-rate-factor
+     max-change
+
+  Values used in initializing the component's parameters:
+     input-dim             e.g. input-dim=1024.  The input dimension.
+     output-dim            e.g. output-dim=1024.  The output dimension.
+     param-stddev          e.g. param-stddev=0.025.  The standard deviation
+                           used to randomly initialize the linear parameters
+                           (as Gaussian random values * param-stddev).
+                           Defaults to 1/sqrt(input-dim), which is Glorot
+                           initialization.
+     bias-stddev           e.g. bias-stddev=0.0.  The standard deviation
+                           used to randomly initialize the bias parameters.
+                           Defaults to 1.0 but we usually set it to 0.0
+                           in the config.
+     bias-mean             e.g. bias-mean=1.0.  Allows you to ininialize the
+                           bias parameters with an offset.  Default is 0.0
+                           which is normally suitable
+
+     matrix                e.g. matrix=foo/bar/init.mat  May be used as an
+                           alternative to (input-dim, output-dim, param-stddev,
+                           bias-stddev, bias-mean) to initialize the parameters.
+                           Dimension is output-dim by (input-dim + 1), last
+                           column is interpreted as the bias.
+
+   Options to the natural gradient (you won't normally have to set these,
+   the defaults are suitable):
+
+      num-samples-history   Number of frames used as the time-constant to
+                            determine how 'up-to-date' the Fisher-matrix
+                            estimates are.  Smaller -> more up-to-date, but more
+                            noisy.  default=2000.
+      alpha                 Constant that determines how much we smooth the
+                            Fisher-matrix estimates with the unit matrix.
+                            Larger means more smoothing. default=4.0
+      rank-in               Rank used in low-rank-plus-unit estimate of Fisher
+                            matrix in the input space.  default=20.
+      rank-out              Rank used in low-rank-plus-unit estimate of Fisher
+                            matrix in the output-derivative space.  default=80.
+      update-period         Determines after with what frequency (in
+                            minibatches) we update the Fisher-matrix estimates;
+                            making this > 1 saves a little time in training.
+                            default=4.
+*/
 class NaturalGradientAffineComponent: public AffineComponent {
  public:
   virtual std::string Type() const { return "NaturalGradientAffineComponent"; }
@@ -719,16 +887,14 @@ class NaturalGradientAffineComponent: public AffineComponent {
   void Init(int32 input_dim, int32 output_dim,
             BaseFloat param_stddev, BaseFloat bias_stddev, BaseFloat bias_mean,
             int32 rank_in, int32 rank_out, int32 update_period,
-            BaseFloat num_samples_history, BaseFloat alpha,
-            BaseFloat max_change_per_sample);
+            BaseFloat num_samples_history, BaseFloat alpha);
   void Init(int32 rank_in, int32 rank_out, int32 update_period,
             BaseFloat num_samples_history,
-            BaseFloat alpha, BaseFloat max_change_per_sample,
-            std::string matrix_filename);
+            BaseFloat alpha, std::string matrix_filename);
   // this constructor does not really initialize, use Init() or Read().
   NaturalGradientAffineComponent();
-  virtual void Resize(int32 input_dim, int32 output_dim);
-  virtual void InitFromConfig(ConfigLine *cfl);
+  void Resize(int32 input_dim, int32 output_dim);
+  void InitFromConfig(ConfigLine *cfl);
   virtual std::string Info() const;
   virtual Component* Copy() const;
   virtual void Scale(BaseFloat scale);
@@ -736,8 +902,6 @@ class NaturalGradientAffineComponent: public AffineComponent {
   // copy constructor
   explicit NaturalGradientAffineComponent(
       const NaturalGradientAffineComponent &other);
-  virtual void ZeroStats();
-
  private:
   // disallow assignment operator.
   NaturalGradientAffineComponent &operator= (
@@ -754,29 +918,6 @@ class NaturalGradientAffineComponent: public AffineComponent {
   OnlineNaturalGradient preconditioner_in_;
 
   OnlineNaturalGradient preconditioner_out_;
-
-  // If > 0, max_change_per_sample_ is the maximum amount of parameter
-  // change (in L2 norm) that we allow per sample, averaged over the minibatch.
-  // This was introduced in order to control instability.
-  // Instead of the exact L2 parameter change, for
-  // efficiency purposes we limit a bound on the exact
-  // change.  The limit is applied via a constant <= 1.0
-  // for each minibatch, A suitable value might be, for
-  // example, 10 or so; larger if there are more
-  // parameters.
-  BaseFloat max_change_per_sample_;
-
-  // update_count_ records how many updates we have done.
-  double update_count_;
-
-  // active_scaling_count_ records how many updates we have done,
-  // where the scaling factor is active (not 1.0).
-  double active_scaling_count_;
-
-  // max_change_scale_stats_ records the sum of scaling factors
-  // in each update, so we can compute the averaged scaling factor
-  // in Info().
-  double max_change_scale_stats_;
 
   // Sets the configs rank, alpha and eta in the preconditioner objects,
   // from the class variables.
@@ -813,7 +954,7 @@ class FixedAffineComponent: public Component {
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -821,6 +962,7 @@ class FixedAffineComponent: public Component {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -865,7 +1007,7 @@ public:
   SumGroupComponent() { }
   virtual std::string Type() const { return "SumGroupComponent"; }
   virtual int32 Properties() const { return kSimpleComponent|kLinearInInput; }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -873,6 +1015,7 @@ public:
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const;
@@ -912,7 +1055,7 @@ class FixedScaleComponent: public Component {
   virtual int32 InputDim() const { return scales_.Dim(); }
   virtual int32 OutputDim() const { return scales_.Dim(); }
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -920,6 +1063,7 @@ class FixedScaleComponent: public Component {
                         const CuMatrixBase<BaseFloat> &, // in_value
                         const CuMatrixBase<BaseFloat> &, // out_value
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *, // to_update
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const;
@@ -954,7 +1098,7 @@ class FixedBiasComponent: public Component {
   virtual int32 InputDim() const { return bias_.Dim(); }
   virtual int32 OutputDim() const { return bias_.Dim(); }
   using Component::Propagate; // to avoid name hiding
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -962,6 +1106,7 @@ class FixedBiasComponent: public Component {
                         const CuMatrixBase<BaseFloat> &, // in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *, // to_update
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const;
@@ -984,14 +1129,15 @@ class NoOpComponent: public NonlinearComponent {
     return kSimpleComponent|kLinearInInput|kPropagateInPlace;
   }
   virtual Component* Copy() const { return new NoOpComponent(*this); }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const CuMatrixBase<BaseFloat> &, //in_value
                         const CuMatrixBase<BaseFloat> &, // out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
  private:
@@ -1059,7 +1205,7 @@ class ClipGradientComponent: public Component {
                                      num_self_repaired_,
                                      num_backpropped_);}
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -1067,6 +1213,7 @@ class ClipGradientComponent: public Component {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -1162,7 +1309,7 @@ class PermuteComponent: public Component {
 
   virtual Component* Copy() const;
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -1170,6 +1317,7 @@ class PermuteComponent: public Component {
                         const CuMatrixBase<BaseFloat> &, //in_value
                         const CuMatrixBase<BaseFloat> &, // out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -1212,7 +1360,7 @@ class PerElementScaleComponent: public UpdatableComponent {
         kLinearInParameters|kBackpropNeedsInput|kPropagateInPlace;
   }
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -1220,6 +1368,7 @@ class PerElementScaleComponent: public UpdatableComponent {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -1283,7 +1432,7 @@ class PerElementOffsetComponent: public UpdatableComponent {
            kBackpropInPlace|kPropagateInPlace;
   }
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -1291,6 +1440,7 @@ class PerElementOffsetComponent: public UpdatableComponent {
                         const CuMatrixBase<BaseFloat> &, // in_value
                         const CuMatrixBase<BaseFloat> &, // out_value
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -1352,7 +1502,7 @@ class ConstantFunctionComponent: public UpdatableComponent {
         (InputDim() == OutputDim() ? kPropagateInPlace: 0) |
         kBackpropAdds;
   }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -1360,6 +1510,7 @@ class ConstantFunctionComponent: public UpdatableComponent {
                         const CuMatrixBase<BaseFloat> &, // in_value
                         const CuMatrixBase<BaseFloat> &, // out_value
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -1418,16 +1569,12 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
 
   void Init(int32 dim, BaseFloat param_mean,
             BaseFloat param_stddev, int32 rank, int32 update_period,
-            BaseFloat num_samples_history, BaseFloat alpha,
-            BaseFloat max_change_per_minibatch);
+            BaseFloat num_samples_history, BaseFloat alpha);
   void Init(std::string vector_filename,
             int32 rank, int32 update_period, BaseFloat num_samples_history,
-            BaseFloat alpha, BaseFloat max_change_per_minibatch);
+            BaseFloat alpha);
 
  private:
-  // configuration value for imposing max-change...
-  BaseFloat max_change_per_minibatch_;
-
   // unlike the NaturalGradientAffineComponent, there is only one dimension to
   // consider as the parameters are a vector not a matrix, so we only need one
   // preconditioner.
@@ -1549,7 +1696,7 @@ class ConvolutionComponent: public UpdatableComponent {
            kBackpropAdds|kPropagateAdds;
   }
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -1557,6 +1704,7 @@ class ConvolutionComponent: public UpdatableComponent {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update_in,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   void Update(const std::string &debug_info,
@@ -1658,56 +1806,82 @@ class ConvolutionComponent: public UpdatableComponent {
 };
 
 
-// LstmNonlinearityComponent is a component that implements part of an LSTM, by
-// combining together the sigmoids and tanh's, plus some diagonal terms, into
-// a single block.
-// We will refer to the LSTM formulation used in
-//
-// Long Short-Term Memory Recurrent Neural Network Architectures for Large Scale Acoustic Modeling"
-// by H. Sak et al,
-// http://static.googleusercontent.com/media/research.google.com/en//pubs/archive/43905.pdf.
-//
-// Suppose the cell dimension is C.  Then outside this component, we compute
-// the 4 * C-dimensional quantity consisting of 4 blocks as follows, by a single
-// matrix multiplication:
-//
-// i_part = W_{ix} x_t + W_{im} m_{t-1} + b_i
-// f_part = W_{fx} x_t + W_{fm} m_{t-1} + b_f
-// c_part = W_{cx} x_t + W_{cm} m_{t-1} + b_c
-// o_part = W_{cx} x_t + W_{om} m_{t-1} + b_o
-//
-// The part of the computation that takes place in this component is as follows.
-// Its input is of dimension 5C, consisting of 5 blocks: (i_part, f_part, c_part, o_part, and
-// c_{t-1}).  Its output is of dimension 2C, consisting of 2 blocks: c_t and m_t.
-//
-// To recap: the input is (i_part, f_part, c_part, o_part, c_{t-1}); the output is (c_t, m_t).
-//
-//
-// This component has parameters, 3C of them in total: the diagonal matrices w_i, w_f
-// and w_o.
-//
-//
-// In the forward pass (Propagate), this component computes the following:
-//
-//    i_t = Sigmoid(i_part + w_{ic}*c_{t-1})   (1)
-//    f_t = Sigmoid(f_part + w_{fc}*c_{t-1})   (2)
-//    c_t = f_t*c_{t-1} + i_t * Tanh(c_part)   (3)
-//    o_t = Sigmoid(o_part + w_{oc}*c_t)       (4)
-//    m_t = o_t * Tanh(c_t)                    (5)
-//   # note: the outputs are just c_t and m_t.
-//
-// The backprop is as you would think, but for the "self-repair" we need to pass
-// in additional vectors (of the same dim as the parameters of the layer) that
-// dictate whether or not we add an additional term to the backpropagated
-// derivatives.  (This term helps force the input to the nonlinearities into the
-// range where the derivatives are not too small).
-//
-// This component stores stats of the same form as are normally stored by the
-// StoreStats() functions for the sigmoid and tanh units, i.e. averages of the
-// activations and derivatives, but this is done inside the Backprop() functions.
-// [the StoreStats() functions don't take the input data as an argument, so
-// storing this data that way is impossible, and anyway it's more efficient to
-// do it as part of backprop.]
+/*
+  LstmNonlinearityComponent is a component that implements part of an LSTM, by
+  combining together the sigmoids and tanh's, plus some diagonal terms, into
+  a single block.
+  We will refer to the LSTM formulation used in
+
+  Long Short-Term Memory Recurrent Neural Network Architectures for Large Scale Acoustic Modeling"
+  by H. Sak et al,
+  http://static.googleusercontent.com/media/research.google.com/en//pubs/archive/43905.pdf.
+
+  Suppose the cell dimension is C.  Then outside this component, we compute
+  the 4 * C-dimensional quantity consisting of 4 blocks as follows, by a single
+  matrix multiplication:
+
+  i_part = W_{ix} x_t + W_{im} m_{t-1} + b_i
+  f_part = W_{fx} x_t + W_{fm} m_{t-1} + b_f
+  c_part = W_{cx} x_t + W_{cm} m_{t-1} + b_c
+  o_part = W_{cx} x_t + W_{om} m_{t-1} + b_o
+
+  The part of the computation that takes place in this component is as follows.
+  Its input is of dimension 5C, consisting of 5 blocks: (i_part, f_part, c_part, o_part, and
+  c_{t-1}).  Its output is of dimension 2C, consisting of 2 blocks: c_t and m_t.
+
+  To recap: the input is (i_part, f_part, c_part, o_part, c_{t-1}); the output is (c_t, m_t).
+
+
+  This component has parameters, 3C of them in total: the diagonal matrices w_i, w_f
+  and w_o.
+
+
+  In the forward pass (Propagate), this component computes the following:
+
+     i_t = Sigmoid(i_part + w_{ic}*c_{t-1})   (1)
+     f_t = Sigmoid(f_part + w_{fc}*c_{t-1})   (2)
+     c_t = f_t*c_{t-1} + i_t * Tanh(c_part)   (3)
+     o_t = Sigmoid(o_part + w_{oc}*c_t)       (4)
+     m_t = o_t * Tanh(c_t)                    (5)
+    # note: the outputs are just c_t and m_t.
+
+  The backprop is as you would think, but for the "self-repair" we need to pass
+  in additional vectors (of the same dim as the parameters of the layer) that
+  dictate whether or not we add an additional term to the backpropagated
+  derivatives.  (This term helps force the input to the nonlinearities into the
+  range where the derivatives are not too small).
+
+  This component stores stats of the same form as are normally stored by the
+  StoreStats() functions for the sigmoid and tanh units, i.e. averages of the
+  activations and derivatives, but this is done inside the Backprop() functions.
+  [the StoreStats() functions don't take the input data as an argument, so
+  storing this data that way is impossible, and anyway it's more efficient to
+  do it as part of backprop.]
+
+  Configuration values accepted:
+         cell-dim          e.g. cell-dim=1024  Cell dimension.  The input
+                          dimension of this component is cell-dim * 5, and the
+                          output dimension is cell-dim * 2.  Note: this
+                          component implements only part of the LSTM layer,
+                          see comments above.
+         param-stddev     Standard deviation for random initialization of
+                          the diagonal matrices (AKA peephole connections).
+                          default=1.0, which is probably too high but
+                          we couldn't see any reliable gain from decreasing it.
+         tanh-self-repair-threshold   Equivalent to the self-repair-lower-threshold
+                          in a TanhComponent; applies to both the tanh nonlinearities.
+                          default=0.2, you probably won't want to changethis.
+         sigmoid-self-repair-threshold   Equivalent to self-repair-lower-threshold
+                          in a SigmoidComponent; applies to all three of the sigmoid
+                          nonlinearities.  default=0.05, you probably won't want to
+                          change this.
+         self-repair-scale Equivalent to the self-repair-scale in a SigmoidComponent
+                          or TanhComponent; applies to both the sigmoid and tanh
+                          nonlinearities.  default=1.0e-05, which you probably won't
+                          want to change unless dealing with an objective function
+                          that has smaller or larger dynamic range than normal, in
+                          which case you might want to make it smaller or larger.
+*/
 class LstmNonlinearityComponent: public UpdatableComponent {
  public:
 
@@ -1721,7 +1895,7 @@ class LstmNonlinearityComponent: public UpdatableComponent {
     return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput;
   }
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -1729,6 +1903,7 @@ class LstmNonlinearityComponent: public UpdatableComponent {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update_in,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -1758,14 +1933,13 @@ class LstmNonlinearityComponent: public UpdatableComponent {
 
   void Init(std::string vector_filename,
             int32 rank, int32 update_period, BaseFloat num_samples_history,
-            BaseFloat alpha, BaseFloat max_change_per_minibatch);
+            BaseFloat alpha);
 
  private:
 
   // Initializes the natural-gradient object with the configuration we
   // use for this object, which for now is hardcoded at the C++ level.
   void InitNaturalGradient();
-
 
   // Notation: C is the cell dimension; it equals params_.NumCols().
 
@@ -1855,7 +2029,6 @@ class LstmNonlinearityComponent: public UpdatableComponent {
  *
  *
  */
-
 class MaxpoolingComponent: public Component {
  public:
 
@@ -1867,7 +2040,6 @@ class MaxpoolingComponent: public Component {
 
   virtual int32 InputDim() const;
   virtual int32 OutputDim() const;
-  virtual void Check() const;
 
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl);
@@ -1877,7 +2049,7 @@ class MaxpoolingComponent: public Component {
            kBackpropAdds;
   }
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -1885,6 +2057,7 @@ class MaxpoolingComponent: public Component {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *, // to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -1895,12 +2068,15 @@ class MaxpoolingComponent: public Component {
   virtual void Write(std::ostream &os, bool binary) const;
   virtual Component* Copy() const { return new MaxpoolingComponent(*this); }
 
+
+ protected:
   void InputToInputPatches(const CuMatrixBase<BaseFloat>& in,
                            CuMatrix<BaseFloat> *patches) const;
   void InderivPatchesToInderiv(const CuMatrix<BaseFloat>& in_deriv_patches,
                                CuMatrixBase<BaseFloat> *in_deriv) const;
+  virtual void Check() const;
 
- protected:
+
   int32 input_x_dim_;   // size of the input along x-axis
   // (e.g. number of time steps)
   int32 input_y_dim_;   // size of input along y-axis
@@ -1920,6 +2096,172 @@ class MaxpoolingComponent: public Component {
   // before computing the next pool
 
 };
+
+
+/*
+  BatchNormComponent
+
+  This implements batch normalization; for each dimension of the
+  input it normalizes the data to be zero-mean, unit-variance.  You
+  can set the block-dim configuration value to implement spatial
+  batch normalization, see the comment for the variable.
+
+  It's a simple component (uses the kSimpleComponent flag), but it is unusual in
+  that it will give different results if you call it on half the matrix at a
+  time.  Most of the time this would be pretty harmless, so we still return the
+  kSimpleComponent flag.  We may have to modify the test code a little to
+  account for this, or possibly remove the kSimpleComponent flag.  In some sense
+  each output Index depends on every input Index, but putting those dependencies
+  explicitly into the dependency-tracking framework as a GeneralComponent
+  would be very impractical and might lead to a lot of unnecessary things being
+  computed.  You have to be a bit careful where you put this component, and understand
+  what you're doing e.g. putting it in the path of a recurrence is a bit problematic
+  if the minibatch size were small.
+ */
+class BatchNormComponent: public Component {
+ public:
+
+  BatchNormComponent(): dim_(0), block_dim_(0),
+                        epsilon_(1.0e-03), target_rms_(1.0),
+                        test_mode_(false), count_(0) { }
+
+  // call this with 'true' to set 'test mode' where the batch normalization is
+  // done with stored stats.  There won't normally be any need to specially
+  // accumulate these stats; they are stored as a matter of course on each
+  // iteration of training, as for NonlinearComponents, and we'll use the stats
+  // from the most recent [script-level] iteration.
+  void SetTestMode(bool test_mode);
+
+  // constructor using another component
+  BatchNormComponent(const BatchNormComponent &other);
+
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
+
+  virtual std::string Info() const;
+  // supports the config variables dim, block-dim (which defaults to dim),
+  // epsilon (which defaults to 1.0e-3), and target-rms (which defaults to 1.0,
+  // and is a scaling on the output; it's comparable to the target-rms of
+  // NormalizeComponent).  it also accepts a boolean 'test-mode' config which is
+  // only intended for use in testing code, and not in real situations.  (note:
+  // test-mode is a real thing that's used during 'inference' given a previously
+  // computed model, and we do set test mode in real situations; we just don't
+  // do so from the config, we use the function SetTestMode().
+  virtual void InitFromConfig(ConfigLine *cfl);
+  virtual std::string Type() const { return "BatchNormComponent"; }
+  virtual int32 Properties() const {
+    // If the block-dim is less than the dim, we need the input and output
+    // matrices to be contiguous (stride==num-cols), as we'll be reshaping
+    // internally.  This is not much of a cost, because this will be used
+    // in convnets where we have to do this anyway.
+    return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace|
+        kBackpropInPlace|
+        (block_dim_ < dim_ ? kInputContiguous|kOutputContiguous : 0)|
+        (test_mode_ ? 0 : kUsesMemo|kStoresStats);
+  }
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
+                        Component *, // to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary); // This Read function
+  // requires that the Component has the correct type.
+
+  /// Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual Component* Copy() const { return new BatchNormComponent(*this); }
+
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void ZeroStats();
+
+
+  virtual void DeleteMemo(void *memo) const { delete static_cast<Memo*>(memo); }
+
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &in_value,
+                          const CuMatrixBase<BaseFloat> &out_value,
+                          void *memo);
+ private:
+
+  struct Memo {
+    // number of frames (after any reshaping).
+    int32 num_frames;
+    // 'sum_sumsq_scale' is of dimension 4 by block_dim_:
+    // Row 0 = mean = the mean of the rows of the input
+    // Row 1 = uvar = the uncentered variance of the input (= sumsq / num_frames).
+    // Row 2 = scale = the scale of the renormalization, which is
+    // Row 3 is used as a temporary in Backprop.
+    //    the inverse stddev of the input (modified by epsilon_,
+    //    see the Propagate function.
+    CuMatrix<BaseFloat> mean_uvar_scale;
+  };
+
+  void Check() const;
+
+  // this function is used in a couple of places; it turns the raw stats into
+  // the offset/scale term of a normalizing transform.
+  static void ComputeOffsetAndScale(double count,
+                                    BaseFloat epsilon,
+                                    const Vector<double> &stats_sum,
+                                    const Vector<double> &stats_sumsq,
+                                    Vector<BaseFloat> *offset,
+                                    Vector<BaseFloat> *scale);
+  // computes derived parameters offset_ and scale_.
+  void ComputeDerived();
+
+  // Dimension of the input and output.
+  int32 dim_;
+  // This would normally be the same as dim_, but if it's less (and it must be >
+  // 0 and must divide dim_), then each separate block of the input of dimension
+  // 'block_dim_' is treated like a separate frame for the purposes of
+  // normalization.  This can be used to implement spatial batch normalization
+  // for convolutional setups-- assuming the filter-dim has stride 1, which it
+  // always will in the new code in nnet-convolutional-component.h, when it's
+  // finished.
+  int32 block_dim_;
+
+  // Used to avoid exact-zero variances, epsilon has the dimension of a
+  // covariance; in this work it is applied as a floor, not as an additive term
+  // (this is safer in the presence of numerical roundoff).
+  BaseFloat epsilon_;
+
+  // This value will normally be 1.0, which is the default, but you can set it
+  // to other values as a way to control how fast the following layer learns
+  // (smaller -> slower).  The same config exists in NormalizeComponent.
+  BaseFloat target_rms_;
+
+  // This is true if we want the batch normalization to operate in 'test mode'
+  // meaning the data mean and stddev used for the normalziation are fixed
+  // quantities based on previously accumulated stats.  Note: the stats we use
+  // for this are based on the same 'StoreStats' mechanism as we use for
+  // components like SigmoidComponent and ReluComponent; we'll be using
+  // the stats from the most recent [script-level] iteration of training.
+  bool test_mode_;
+
+
+  // total count of stats stored by StoreStats().
+  double count_;
+  // sum-of-data component of stats of input data.
+  CuVector<double> stats_sum_;
+  // sum-of-squared component of stats of input data.
+  CuVector<double> stats_sumsq_;
+
+  // offset_ and scale_ are derived from stats_sum_ and stats_sumsq_; they
+  // dictate the transform that is done in 'test mode'.  They are set only when
+  // reading the model from disk and when calling SetTestMode(true); they are
+  // resized to empty when the stats are updated, to ensure that out-of-date
+  // values are not kept around.
+  CuVector<BaseFloat> offset_;
+  CuVector<BaseFloat> scale_;
+};
+
 
 
 /**
@@ -1971,7 +2313,7 @@ class CompositeComponent: public UpdatableComponent {
   // call would involve propagating the internals.
   virtual int32 Properties() const;
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -1979,6 +2321,7 @@ class CompositeComponent: public UpdatableComponent {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 

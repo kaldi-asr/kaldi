@@ -77,6 +77,12 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     ReadKaldiObject(raw_nnet_rxfilename, &nnet);
 
+    // This is needed for batch-norm.  We also ensure in the calling script
+    // that the freshest model comes first on the command line; this
+    // means we use the freshest batch-norm stats.  (Since the batch-norm
+    // stats are not technically parameters, they are not subject to
+    // combination like the rest of the model parameters).
+    SetTestMode(true, &nnet);
 
     std::vector<NnetChainExample> egs;
     egs.reserve(10000);  // reserve a lot of space to minimize the chance of
@@ -117,5 +123,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-
