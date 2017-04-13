@@ -568,7 +568,7 @@ int32 TimeHeightConvolutionComponent::NumParameters() const {
 void TimeHeightConvolutionComponent::Vectorize(
     VectorBase<BaseFloat> *params) const {
   KALDI_ASSERT(params->Dim() == NumParameters());
-  int32 linear_size = linear_params_.NumRows() + linear_params_.NumCols(),
+  int32 linear_size = linear_params_.NumRows() * linear_params_.NumCols(),
       bias_size = bias_params_.Dim();
   params->Range(0, linear_size).CopyRowsFromMat(linear_params_);
   params->Range(linear_size, bias_size).CopyFromVec(bias_params_);
@@ -577,7 +577,7 @@ void TimeHeightConvolutionComponent::Vectorize(
 void TimeHeightConvolutionComponent::UnVectorize(
     const VectorBase<BaseFloat> &params) {
   KALDI_ASSERT(params.Dim() == NumParameters());
-  int32 linear_size = linear_params_.NumRows() + linear_params_.NumCols(),
+  int32 linear_size = linear_params_.NumRows() * linear_params_.NumCols(),
       bias_size = bias_params_.Dim();
   linear_params_.CopyRowsFromVec(params.Range(0, linear_size));
   bias_params_.CopyFromVec(params.Range(linear_size, bias_size));
