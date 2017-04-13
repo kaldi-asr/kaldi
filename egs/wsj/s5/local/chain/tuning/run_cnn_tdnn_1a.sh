@@ -2,32 +2,30 @@
 
 
 # This was modified from run_tdnn_1a.sh; it's the
-# first stab at a setup including convolutional components.
+# first attempt at a setup including convolutional components.
 
+# steps/info/chain_dir_info.pl exp/chain/cnn_tdnn1a_sp
+# exp/chain/cnn_tdnn1a_sp: num-iters=102 nj=2..5 num-params=5.5M dim=40+100->2889 combine=-0.068->-0.066 xent:train/valid[67,101,final]=(-1.14,-1.09,-1.09/-1.19,-1.15,-1.15) logprob:train/valid[67,101,final]=(-0.058,-0.053,-0.053/-0.078,-0.076,-0.075)
 
+# The following table compares chain (TDNN+LSTM, TDNN, CNN+TDNN).
+# The CNN+TDNN doesn't seem to have any advantages versus the TDNN (and it's
+# about 5 times slower per iteration).  But it's not well tuned.
+# And the num-params is fewer (5.5M vs 7.6M for TDNN).
 
-# local/chain/compare_wer.sh --online exp/nnet3/tdnn1a_sp exp/chain/tdnn_lstm1a_sp exp/chain/tdnn1a_sp
-# System                tdnn1a_sp tdnn_lstm1a_sp tdnn1a_sp
-#WER dev93 (tgpr)                9.18      7.48      7.87
-#             [online:]                    7.49      8.02
-#WER dev93 (tg)                  8.59      7.41      7.61
-#             [online:]                    7.40      7.70
-#WER dev93 (big-dict,tgpr)       6.45      5.64      5.71
-#             [online:]                    5.70      5.60
-#WER dev93 (big-dict,fg)         5.83      5.40      5.10
-#             [online:]                    5.19      5.21
-#WER eval92 (tgpr)               6.15      5.67      5.23
-#             [online:]                    5.60      5.44
-#WER eval92 (tg)                 5.55      5.46      4.87
-#             [online:]                    5.53      4.87
-#WER eval92 (big-dict,tgpr)      3.58      3.69      3.24
-#             [online:]                    3.63      3.31
-#WER eval92 (big-dict,fg)        2.98      3.28      2.71
-#             [online:]                    3.31      2.92
-# Final train prob                  -0.0341   -0.0414
-# Final valid prob                  -0.0506   -0.0634
-# Final train prob (xent)             -0.5643   -0.8216
-# Final valid prob (xent)             -0.6648   -0.9208
+# local/chain/compare_wer.sh exp/chain/tdnn_lstm1a_sp exp/chain/tdnn1a_sp exp/chain/cnn_tdnn1a_sp
+# System                tdnn_lstm1a_sp tdnn1a_sp cnn_tdnn1a_sp
+#WER dev93 (tgpr)                7.48      7.87      9.02
+#WER dev93 (tg)                  7.41      7.61      8.60
+#WER dev93 (big-dict,tgpr)       5.64      5.71      6.97
+#WER dev93 (big-dict,fg)         5.40      5.10      6.12
+#WER eval92 (tgpr)               5.67      5.23      5.56
+#WER eval92 (tg)                 5.46      4.87      5.05
+#WER eval92 (big-dict,tgpr)      3.69      3.24      3.40
+#WER eval92 (big-dict,fg)        3.28      2.71      2.73
+# Final train prob        -0.0341   -0.0414   -0.0532
+# Final valid prob        -0.0506   -0.0634   -0.0752
+# Final train prob (xent)   -0.5643   -0.8216   -1.0857
+# Final valid prob (xent)   -0.6648   -0.9208   -1.1505
 
 
 

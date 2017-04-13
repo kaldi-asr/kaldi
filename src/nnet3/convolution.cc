@@ -1263,9 +1263,6 @@ void AppendInputFrames(const ConvolutionModel &model,
   // Undo the time-shifting that we did before.
   ShiftAllTimeOffsets(first_time_offset, model_appended);
 
-  KALDI_LOG << "Original model is: " << model.Info()
-            << ", appended model is: " << model_appended->Info();
-
   model_appended->ComputeDerived();
   KALDI_ASSERT(model_appended->Check(false, false));
 }
