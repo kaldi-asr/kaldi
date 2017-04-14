@@ -484,6 +484,15 @@ void SetDropoutProportion(BaseFloat dropout_proportion,
   }
 }
 
+void ResetGenerators(Nnet *nnet){
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    RandomComponent *rc = dynamic_cast<RandomComponent*>(comp);
+    if (rc != NULL)
+      rc->ResetGenerator();
+  }
+}
+
 void FindOrphanComponents(const Nnet &nnet, std::vector<int32> *components) {
   int32 num_components = nnet.NumComponents(), num_nodes = nnet.NumNodes();
   std::vector<bool> is_used(num_components, false);

@@ -32,7 +32,8 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
     nnet_(nnet),
     compiler_(*nnet, opts_.nnet_config.optimize_config,
               opts_.nnet_config.compiler_config),
-    num_minibatches_processed_(0) {
+    num_minibatches_processed_(0),
+    srand_seed_(RandInt(0, 100000)) {
   if (opts.nnet_config.zero_component_stats)
     ZeroComponentStats(nnet);
   KALDI_ASSERT(opts.nnet_config.momentum >= 0.0 &&
@@ -91,6 +92,9 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
 void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
                                      const NnetComputation &computation,
                                      bool is_backstitch_step) {
+  srand(srand_seed_ + num_minibatches_processed_);
+  ResetGenerators(nnet_);
+ 
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   NnetComputer computer(nnet_config.compute_config, computation,
                         *nnet_, delta_nnet_);

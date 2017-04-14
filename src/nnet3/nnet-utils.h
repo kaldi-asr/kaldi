@@ -167,6 +167,15 @@ std::string NnetInfo(const Nnet &nnet);
 /// dropout_proportion value.
 void SetDropoutProportion(BaseFloat dropout_proportion, Nnet *nnet);
 
+/**
+  \brief  This function calls 'ResetGenerator()' on all components in 'nnet'
+     that inherit from class RandomComponent.  It's used when you need
+     to ensure consistency in things like dropout masks, across subsequent
+     neural net evaluations.  You will likely want to call srand() before calling
+     this.
+*/
+void ResetGenerators(Nnet *nnet);
+
 /// This function finds a list of components that are never used, and outputs
 /// the integer comopnent indexes (you can use these to index
 /// nnet.GetComponentNames() to get their names).

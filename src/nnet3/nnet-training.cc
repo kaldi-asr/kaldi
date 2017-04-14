@@ -29,7 +29,8 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
     config_(config),
     nnet_(nnet),
     compiler_(*nnet, config_.optimize_config, config_.compiler_config),
-    num_minibatches_processed_(0) {
+    num_minibatches_processed_(0),
+    srand_seed_(RandInt(0, 100000)) {
   if (config.zero_component_stats)
     ZeroComponentStats(nnet);
   KALDI_ASSERT(config.momentum >= 0.0 &&
@@ -84,6 +85,9 @@ void NnetTrainer::Train(const NnetExample &eg) {
 void NnetTrainer::TrainInternal(const NnetExample &eg,
                                 const NnetComputation &computation,
                                 bool is_backstitch_step) {
+  srand(srand_seed_ + num_minibatches_processed_);
+  ResetGenerators(nnet_);
+
   NnetComputer computer(config_.compute_config, computation,
                         *nnet_, delta_nnet_);
   // give the inputs to the computer object.
