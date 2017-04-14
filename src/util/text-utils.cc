@@ -251,4 +251,12 @@ bool ConvertStringToReal(const std::string &str,
   return true;
 }
 
+template
+bool ConvertStringToReal(const std::string &str,
+                         float *out);
+template
+bool ConvertStringToReal(const std::string &str,
+                         double *out);
+
+
 }  // end namespace kaldi
