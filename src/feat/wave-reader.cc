@@ -36,7 +36,8 @@ void WaveData::Expect4ByteTag(std::istream &is, const char *expected) {
   tmp[4] = '\0';
   is.read(tmp, 4);
   if (is.fail())
-    KALDI_ERR << "WaveData: expected " << expected << ", failed to read anything";
+    KALDI_ERR << "WaveData: expected " << expected
+              << ", failed to read anything";
   if (strcmp(tmp, expected))
     KALDI_ERR << "WaveData: expected " << expected << ", got " << tmp;
 }
@@ -176,11 +177,11 @@ void WaveData::Read(std::istream &is, ReadDataType read_data) {
   if (num_channels <= 0)
     KALDI_ERR << "WaveData: no channels present";
   samp_freq_ = static_cast<BaseFloat>(sample_rate);
-  if (bits_per_sample != 8 && bits_per_sample != 16 && bits_per_sample != 32)
-    KALDI_ERR << "WaveData: bits_per_sample is " << bits_per_sample;
+  if (bits_per_sample != 16)
+    KALDI_ERR << "WaveData: unsupported bits_per_sample = " << bits_per_sample;
   if (byte_rate != sample_rate * bits_per_sample/8 * num_channels)
     KALDI_ERR << "Unexpected byte rate " << byte_rate << " vs. "
-              << sample_rate <<" * " << (bits_per_sample/8)
+              << sample_rate << " * " << (bits_per_sample/8)
               << " * " << num_channels;
   if (block_align != num_channels * bits_per_sample/8)
     KALDI_ERR << "Unexpected block_align: " << block_align << " vs. "
@@ -286,32 +287,11 @@ void WaveData::Read(std::istream &is, ReadDataType read_data) {
   data_.Resize(num_channels, num_samp);
   for (uint32 i = 0; i < num_samp; i++) {
     for (uint32 j = 0; j < num_channels; j++) {
-      switch (bits_per_sample) {
-        case 8:
-          data_(j, i) = *data_ptr;
-          data_ptr++;
-          break;
-        case 16:
-          {
-            int16 k = *reinterpret_cast<uint16*>(data_ptr);
-            if (swap)
-              KALDI_SWAP2(k);
-            data_(j, i) =  k;
-            data_ptr += 2;
-            break;
-          }
-        case 32:
-          {
-            int32 k = *reinterpret_cast<uint32*>(data_ptr);
-            if (swap)
-              KALDI_SWAP4(k);
-            data_(j, i) =  k;
-            data_ptr += 4;
-            break;
-          }
-        default:
-          KALDI_ERR << "bits per sample is " << bits_per_sample;  // already checked this.
-      }
+      int16 k = *reinterpret_cast<uint16*>(data_ptr);
+      if (swap)
+        KALDI_SWAP2(k);
+      data_(j, i) =  k;
+      data_ptr += 2;
     }
   }
 }
