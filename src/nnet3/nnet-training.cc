@@ -102,7 +102,7 @@ void NnetTrainer::TrainInternal(const NnetExample &eg,
             scale_delta_nnet = config_.momentum;
   // The configurations if doing backstitch training
   if (config_.backstitch_training_scale > 0.0 && num_minibatches_processed_
-      % nnet_config.backstitch_training_interval == 0) {
+      % config_.backstitch_training_interval == 0) {
     const BaseFloat backstitch_ratio = config_.backstitch_training_scale /
         config_.backstitch_training_epsilon; // just for convenience
     if (is_backstitch_step) {
