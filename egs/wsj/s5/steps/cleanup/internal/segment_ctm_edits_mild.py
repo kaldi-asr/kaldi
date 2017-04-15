@@ -14,8 +14,12 @@ from collections import defaultdict
 
 """
 This script reads 'ctm-edits' file format that is produced by align_ctm_ref.py
-and modified by modify_ctm_edits.py and taint_ctm_edits.py Its function is to
+and modified by modify_ctm_edits.py and taint_ctm_edits.py. Its function is to
 produce a segmentation and text from the ctm-edits input.
+
+It is a milder version of the script segment_ctm_edits.py i.e. it allows
+to keep more of the reference. This is useful for segmenting long-audio
+based on imperfect transcripts.
 
 The ctm-edits file format that this script expects is as follows
 <file-id> <channel> <start-time> <duration> <conf> <hyp-word> <ref-word> <edit>

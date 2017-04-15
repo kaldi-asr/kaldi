@@ -6,7 +6,25 @@
 """This script reads an archive of mapping from query to
 documents and stitches the documents for each query into a
 new document.
-Here "document" is just a vector of words.
+Here "document" is just a list of words.
+
+query2docs is a mapping from query-id to a list of tuples
+(document-id, start-fraction, end-fraction)
+The tuple can be just the document-id, which is equivaluent to
+specifying a start-fraction and end-fraction of 1.0
+The start and end fractions are used to stitch only a part of the
+document to the retrieved set for the query.
+
+e.g.
+query1 doc1 doc2
+query2 doc1,0,0.3 doc2,1,1
+
+input-documents
+doc1 A B C
+doc2 D E
+output-documents
+query1 A B C D E
+query2 C D E
 """
 
 from __future__ import print_function
@@ -25,7 +43,7 @@ for l in [logger, logging.getLogger('libs')]:
     l.addHandler(handler)
 
 
-def _get_args():
+def get_args():
     """Returns arguments parsed from command-line."""
 
     parser = argparse.ArgumentParser(
@@ -61,7 +79,7 @@ def _get_args():
     return args
 
 
-def _run(args):
+def run(args):
     documents = {}
     for line in args.input_documents:
         parts = line.strip().split()
@@ -103,6 +121,7 @@ def _run(args):
                     assert end_fraction == end_fraction
                     output_document.extend(doc)
                 else:
+                    assert (start_fraction + end_fraction < 1.0)
                     if start_fraction > 0:
                         output_document.extend(
                             doc[0:int(start_fraction * num_words)])
@@ -119,16 +138,19 @@ def _run(args):
 
 
 def main():
-    args = _get_args()
+    args = get_args()
 
     try:
-        _run(args)
+        run(args)
     except:
-        raise
+        logger.error("Failed to stictch document; got error ",
+                     exc_info=True)
+        raise SystemExit(1)
     finally:
-        args.query2docs.close()
-        args.input_documents.close()
-        args.output_documents.close()
+        for f in [args.query2docs, args.input_documents,
+                  args.output_documents]:
+            if f is not None:
+                f.close()
 
 
 if __name__ == '__main__':

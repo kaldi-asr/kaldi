@@ -56,7 +56,7 @@ def get_args():
 def read_segments(segments_file):
     """Read from segments and yield key, value pairs where
     key is the utterance-id
-    value is a tuple (recording_id, start_time, end_time)a
+    value is a tuple (recording_id, start_time, end_time)
     """
     num_lines = 0
     for line in segments_file:

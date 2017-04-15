@@ -24,12 +24,14 @@ lmwt=10
 
 # TF-IDF similarity search options
 max_words=1000
-num_neighbors_to_search=1
-neighbor_tfidf_threshold=0.5
+num_neighbors_to_search=1   # Number of neighboring documents to search around the one retrieved based on maximum tf-idf similarity. 
+neighbor_tfidf_threshold=0.5   
 
-align_full_hyp=false
+align_full_hyp=false  # Align full hypothesis i.e. trackback from the end to get the alignment.
 
 # First-pass segmentation opts
+# These options are passed to the script 
+# steps/cleanup/internal/segment_ctm_edits_mild.py
 min_segment_length=0.5
 min_new_segment_length=1.0
 max_tainted_length=0.05
@@ -99,35 +101,24 @@ frame_shift=`utils/data/get_frame_shift.sh $data`
 
 # First we split the data into segments of around 30s long, on which 
 # it would be possible to do a decoding. 
+# A diarization step will be added in the future. 
 if [ $stage -le 1 ]; then
   echo "$0: Stage 1 (Splitting data directory $data into uniform segments)"
 
   utils/data/get_utt2dur.sh $data
-
-  # TODO: Write this script
-  # utils/data/get_uniform_subsegments.py \
-  #   --max-segment-duration=$max_segment_duration \
-  #   --overlap-duration=$overlap_duration \
-  #   $data/segments > $dir/uniform_sub_segments
-
   if [ ! -f $data/segments ]; then
     utils/data/get_segments_for_data.sh $data > $data/segments
   fi
 
-  cat $data/utt2spk | awk 'BEGIN{i=1} {print $1" "i; i++}' > $data/utt2label
-
-  segmentation-init-from-segments --shift-to-zero=true \
-    --utt2label-rspecifier=ark,t:$data/utt2label $data/segments ark:- | \
-    segmentation-post-process \
-      --max-segment-length=`perl -e "print $max_segment_duration * 100"` \
-      --overlap-length=`perl -e "print $overlap_duration * 100"` \
-      ark:- ark:- | \
-    segmentation-to-segments --single-speaker --frame-shift=$frame_shift \
-      --frame-overlap=0 ark:- ark:/dev/null $dir/uniform_sub_segments
+  utils/data/get_uniform_subsegments.py \
+    --max-segment-duration=$max_segment_duration \
+    --overlap-duration=$overlap_duration \
+    --max-remaining-duration=$(perl -e "print $max_segment_duration / 2.0") \
+    $data/segments > $dir/uniform_sub_segments
 
   # Get a mapping from the new to old utterance-ids.
-  # Old-utterance is the whole recording.
-  awk '{print $1" "$2}' $dir/uniform_sub_segments > $dir/new2old_utts
+  # Typically, the old-utterance is the whole recording.
+  awk '{print $1" "$2}' $dir/uniform_sub_segments > $dir/new2orig_utt
 fi
 
 if [ $stage -le 2 ]; then
@@ -162,13 +153,14 @@ if [ $stage -le 3 ]; then
   cp $srcdir/{splice_opts,delta_opts,final.mat,final.alimdl} $dir 2>/dev/null || true
   cp $srcdir/phones.txt $dir
 
-  # Make graphs w.r.t. to the original text (recording-level) and then copy it to the segments. 
+  # Make graphs w.r.t. to the original text (usually recording-level) 
   steps/cleanup/make_biased_lm_graphs.sh $graph_opts \
     --nj $nj --cmd "$cmd" \
      $text $lang $dir $dir/graphs
 
+  # and then copy it to the sub-segments. 
   mkdir -p $graph_dir
-  cat $data_uniform_seg/segments | awk '{print $1" "$2}' | \
+  cat $dir/uniform_sub_segments | awk '{print $1" "$2}' | \
     utils/apply_map.pl -f 2 $dir/graphs/HCLG.fsts.scp > \
     $graph_dir/HCLG.fsts.scp
   
@@ -203,19 +195,22 @@ if [ $stage -le 5 ]; then
     $data_uniform_seg $lang $decode_dir
 fi
 
+# Split the original text into documents, over which we can do 
+# searching reasonably efficiently. Also get a mapping from the original
+# text to the created documents (i.e. text2doc)
+# Since the Smith-Waterman alignment is linear in the length of the 
+# text, we want to keep it reasonably small (a few thousand words). 
+
 if [ $stage -le 6 ]; then
+  # Split the reference text into documents.
   mkdir -p $dir/docs
-  # Split the original text into documents, over which we can do 
-  # searching reasonably efficiently. Also get a mapping from the original
-  # text to the created documents (i.e. text2doc)
-  # Since the Smith-Waterman alignment is linear in the length of the 
-  # text, we want to keep it reasonably small (a few thousand words). 
   steps/cleanup/internal/split_text_into_docs.pl --max-words $max_words \
     $text $dir/docs/doc2text $dir/docs/docs.txt
   utils/utt2spk_to_spk2utt.pl $dir/docs/doc2text > $dir/docs/text2doc
 fi
 
 if [ $stage -le 7 ]; then
+  # Get TF-IDF for the reference documents.
   echo $nj > $dir/docs/num_jobs
   
   utils/split_data.sh $data_uniform_seg $nj
@@ -231,13 +226,17 @@ if [ $stage -le 7 ]; then
     $dir/docs/docs.txt $dir/docs/src_tf_idf.txt
   
   # Split documents so that they can be accessed easily by parallel jobs.
+  mkdir -p $dir/docs/split$nj/
+  for n in `seq $nj`; do
+    text2doc_splits="$text2doc_splits $dir/docs/split$nj/text2doc.$n"
+  done
+  sdir=$dir/docs/split$nj
+
+  utils/split_scp.pl $dir/docs/text2doc $text2doc_splits
   $cmd JOB=1:$nj $dir/docs/log/split_docs.JOB.log \
-    mkdir -p $dir/docs/split$nj/JOB '&&' \
-    utils/data/get_reco2utt.sh $data_uniform_seg/split$nj/JOB '&&' \
-    utils/filter_scp.pl $data_uniform_seg/split$nj/JOB/reco2utt $dir/docs/text2doc \| \
-    utils/spk2utt_to_utt2spk.pl \| \
+    utils/spk2utt_to_utt2spk.pl $sdir/text2doc.JOB \| \
     utils/filter_scp.pl /dev/stdin $dir/docs/docs.txt '>' \
-    $dir/docs/split$nj/JOB/docs.txt
+    $sdir/docs.JOB.txt
 
   # Compute TF-IDF for the source documents. 
   $cmd JOB=1:$nj $dir/docs/log/get_tfidf_for_source_texts.JOB.log \
@@ -245,7 +244,17 @@ if [ $stage -le 7 ]; then
       --tf-weighting-scheme="raw" \
       --idf-weighting-scheme="log" \
       --input-idf-stats=$dir/docs/idf_stats.txt \
-      $dir/docs/split$nj/JOB/docs.txt $dir/docs/split$nj/JOB/src_tf_idf.txt 
+      $sdir/docs.JOB.txt $sdir/src_tf_idf.JOB.txt 
+
+  # Make $sdir an absolute pathname.
+  sdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $sdir ${PWD}`
+
+  for n in `seq $nj`; do
+    awk -v f="$sdir/src_tf_idf.$n.txt" '{print $1" "f}' \
+      $sdir/text2doc.$n
+  done > $dir/docs/source2tf_idf.scp
+
+
 fi
 
 if [ $stage -le 8 ]; then
@@ -262,11 +271,10 @@ if [ $stage -le 8 ]; then
 fi
 
 if [ $stage -le 9 ]; then
-  for n in `seq $nj`; do
-    awk '{print ($1" "$1" 1")}' $data_uniform_seg/split$nj/$n/utt2spk > \
-      $dir/lats/fake_reco2file_and_channel.$n
-  done
+  sdir=$dir/query_docs/split$nj
 
+  # Compute TF-IDF for the query documents (decode hypotheses). 
+  # The output is an archive of TF-IDF indexed by the query.
   $cmd JOB=1:$nj $dir/lats/log/compute_query_tf_idf.JOB.log \
     steps/cleanup/internal/ctm_to_text.pl --non-scored-words $dir/non_scored_words.txt \
       $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm.JOB \| \
@@ -275,32 +283,40 @@ if [ $stage -le 9 ]; then
       --idf-weighting-scheme="log" \
       --input-idf-stats=$dir/docs/idf_stats.txt \
       --accumulate-over-docs=false \
-      - $dir/docs/split$nj/JOB/query_tf_idf.txt 
+      - $sdir/query_tf_idf.JOB.ark.txt
   
   # The relevant documents can be found using TF-IDF similarity and nearby
   # documents can also be picked for the Smith-Waterman alignment stage.
 
-  cut -d ' ' -f 1,2 $data_uniform_seg/segments > $data_uniform_seg/utt2reco
-
+  # The query TF-IDFs are all indexed by the utterance-id of the sub-segments.
+  # The source TF-IDFs use the document-ids created by splitting the reference
+  # text into documents.
+  # For each query, we need to retrieve the documents that were created from 
+  # the same original utterance that the sub-segment was from. For this, 
+  # we have to load the source TF-IDF that has those documents. This 
+  # information is provided using the option --source-text2tf-idf-file.
+  # The output of this script is a file where the first column is the 
+  # query-id (i.e. sub-segment-id) and the remaining columns, which is at least
+  # one in number and a maxmium of (1 + 2 * num-neighbors-to-search) columns
+  # is the document-ids for the retrieved documents.
   $cmd JOB=1:$nj $dir/lats/log/retrieve_similar_docs.JOB.log \
     steps/cleanup/internal/retrieve_similar_docs.py \
-      --query-tfidf=$dir/docs/split$nj/JOB/query_tf_idf.txt \
-      --source-tfidf=$dir/docs/split$nj/JOB/src_tf_idf.txt \
+      --query-tfidf=$dir/query_docs/split$nj/query_tf_idf.JOB.ark.txt \
+      --source-text2tfidf-file=$dir/docs/source2tf_idf.scp \
       --source-text-id2doc-ids=$dir/docs/text2doc \
-      --query-id2source-text-id=$data_uniform_seg/utt2reco \
+      --query-id2source-text-id=$data_uniform_seg/new2orig_utt \
       --num-neighbors-to-search=$num_neighbors_to_search \
       --neighbor-tfidf-threshold=$neighbor_tfidf_threshold \
-      --relevant-docs=$dir/docs/split$nj/JOB/relevant_docs.txt
+      --relevant-docs=$dir/query_docs/split$nj/relevant_docs.JOB.txt
   
   $cmd JOB=1:$nj $dir/lats/log/get_ctm_edits.JOB.log \
     steps/cleanup/internal/stitch_documents.py \
-      --query2docs=$dir/docs/split$nj/JOB/relevant_docs.txt \
+      --query2docs=$dir/query_docs/split$nj/relevant_docs.JOB.txt \
       --input-documents=$dir/docs/split$nj/JOB/docs.txt \
       --output-documents=- \| \
     steps/cleanup/internal/align_ctm_ref.py --eps-symbol='"<eps>"' \
       --oov-word="'`cat $lang/oov.txt`'" --symbol-table=$lang/words.txt \
       --hyp-format=CTM --align-full-hyp=$align_full_hyp \
-      --reco2file-and-channel=$dir/lats/fake_reco2file_and_channel.JOB \
       --hyp=$dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm.JOB --ref=- \
       --output=$dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.JOB 
   
@@ -382,17 +398,6 @@ fi
 
 mkdir -p $out_data
 if [ $stage -le 14 ]; then
-  utils/data/subsegment_data_dir.sh $data_uniform_seg $dir/segments $dir/text $out_data
-  
-  utils/data/get_reco2num_frames.sh --frame-shift 0.01 --frame-overlap 0.0151 \
-    $data
-
-  awk '{print $1" "$2}' $out_data/segments | \
-    utils/apply_map.pl -f 2 $data/reco2num_frames > \
-    $out_data/utt2max_frames
-
-  utils/data/get_subsegmented_feats.sh $data_uniform_seg/feats.scp 0.01 0.015 \
-    $dir/segments | \
-    utils/data/fix_subsegmented_feats.pl $out_data/utt2max_frames > \
-    $out_data/feats.scp 
+  utils/data/subsegment_data_dir.sh $data_uniform_seg \
+    $dir/segments $dir/text $out_data
 fi

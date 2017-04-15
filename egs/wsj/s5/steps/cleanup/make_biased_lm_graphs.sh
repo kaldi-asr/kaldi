@@ -127,6 +127,8 @@ done
 utils/split_scp.pl $text $split_text
 
 mkdir -p $graph_dir/log $graph_dir/fsts
+
+# Make $dir an absolute pathname
 dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $dir ${PWD}`
 
 if [ $stage -le 1 ]; then

@@ -4,6 +4,8 @@
 #           2017  Vimal Manohar
 # Apache 2.0
 
+# Some basic error checking, similar to steps/decode.sh is added.
+
 set -e 
 set -o pipefail
 

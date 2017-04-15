@@ -4,7 +4,11 @@
 # Apache 2.0.
 
 """This module aligns a hypothesis (CTM or text) with a reference to
-find the best matching sub-sequence in the reference for the hypothesis.
+find the best matching sub-sequence in the reference for the hypothesis
+using Smith-Waterman like alignment.
+
+e.g.: align_ctm_ref.py --hyp-format=CTM --ref=data/train/text --hyp=foo/ctm
+        --output=foo/ctm_edits
 """
 
 from __future__ import print_function
@@ -24,26 +28,37 @@ logger.setLevel(logging.DEBUG)
 
 verbose_level = 0
 
-def _get_args():
-    parser = argparse.ArgumentParser()
+
+def get_args():
+    parser = argparse.ArgumentParser(description="""
+    This module aligns a hypothesis (CTM or text) with a reference to find the
+    best matching sub-sequence in the reference for the hypothesis using
+    Smith-Waterman like alignment.
+
+    e.g.: align_ctm_ref.py --align-full-hyp=false --hyp-format=CTM
+    --reco2file-and-channel=data/foo/reco2file_and_channel --ref=data/train/text
+    --hyp=foo/ctm --output=foo/ctm_edits
+    """)
 
     parser.add_argument("--hyp-format", type=str, choices=["Text", "CTM"],
                         default="CTM",
                         help="Format used for the hypothesis")
     parser.add_argument("--reco2file-and-channel", type=argparse.FileType('r'),
-                        help="reco2file_and_channel file, "
-                        "required for CTM format hypothesis")
+                        help="""reco2file_and_channel file.
+                        This will be used to match references that are usually
+                        indexed by the recording-id with the CTM lines that have
+                        file and channel. This option is typically not
+                        required.""")
     parser.add_argument("--eps-symbol", type=str, default="-",
                         help="Symbol used to contain alignment "
                         "to empty symbol")
     parser.add_argument("--oov-word", type=str, default=None,
+                        action=common_lib.NullstrToNoneAction,
                         help="Symbol of OOV word in hypothesis")
     parser.add_argument("--symbol-table", type=argparse.FileType('r'),
-                        help="Symbol table for words in vocabulary.")
+                        help="""Symbol table for words in vocabulary. Used
+                        to determine if a word is a OOV or not""")
 
-    parser.add_argument("--verbose", type=int, default=0,
-                        choices=[0, 1, 2, 3],
-                        help="Use larger value for more verbose logging.")
     parser.add_argument("--correct-score", type=int, default=1,
                         help="Score for correct matches")
     parser.add_argument("--substitution-penalty", type=int, default=1,
@@ -52,14 +67,22 @@ def _get_args():
                         help="Penalty for deletion errors")
     parser.add_argument("--insertion-penalty", type=int, default=1,
                         help="Penalty for insertion errors")
-    parser.add_argument("--debug-only", type=str, default="false",
-                        choices=["true", "false"],
-                        help="Run test functions only")
+
     parser.add_argument("--align-full-hyp", type=str,
                         action=common_lib.StrToBoolAction,
                         choices=["true", "false"], default=True,
-                        help="Align full hypothesis i.e. trackback from "
-                        "the end to get the alignment.")
+                        help="""Align full hypothesis i.e. trackback from
+                        the end to get the alignment. This is different
+                        from the normal Smith-Waterman alignment, where the
+                        traceback will be from the maximum score.""")
+
+    parser.add_argument("--debug-only", type=str, default="false",
+                        choices=["true", "false"],
+                        help="Run test functions only")
+    parser.add_argument("--verbose", type=int, default=0,
+                        choices=[0, 1, 2, 3],
+                        help="Use larger value for more verbose logging.")
+
     parser.add_argument("--ref", dest='ref_in_file',
                         type=argparse.FileType('r'), required=True,
                         help="Reference text file")
@@ -68,7 +91,10 @@ def _get_args():
                         help="Hypothesis text or CTM file")
     parser.add_argument("--output", dest='alignment_out_file', required=True,
                         type=argparse.FileType('w'),
-                        help="File to write output alignment.")
+                        help="""File to write output alignment.
+                        If hyp-format=CTM, then the output is in the form of
+                        CTM, but with two additional columns of Edit-type and
+                        Reference-word matched to the hypothesis.""")
 
     args = parser.parse_args()
 
@@ -91,6 +117,14 @@ def _get_args():
 
 
 def read_text(text_file):
+    """Reads a kaldi-format text file and yield elements of a dictionary
+        { utterane_id : transcript (as a list of words) }
+
+    The first-column of the text file is the utterance-id, which will be
+    used as the key to index the dictionary elements.
+    The remaining columns of the file are text of the transcript and they are
+    returned as a list of words.
+    """
     for line in text_file:
         parts = line.strip().split()
         if len(parts) <= 2:
@@ -102,6 +136,14 @@ def read_text(text_file):
 
 
 def read_ctm(ctm_file, file_and_channel2reco=None):
+    """Reads a CTM file and yields elements of a dictionary
+        { utterance-id : CTM for the utterance },
+    where CTM for the utterance is stored as a list of lines
+    from a CTM correponding to the utterance.
+
+    Note: *_reco in the variables usually correspond to utterances rather
+    than recordings.
+    """
     prev_reco = ""
     ctm_lines = []
     for line in ctm_file:
@@ -121,8 +163,8 @@ def read_ctm(ctm_file, file_and_channel2reco=None):
                 if parts[1] != '1':
                     raise ValueError("Channel should be 1, "
                                      "got {0}".format(parts[1]))
-
-            reco = file_and_channel2reco[(parts[0], parts[1])]
+            else:
+                reco = file_and_channel2reco[(parts[0], parts[1])]
             if prev_reco != "" and reco != prev_reco:
                 # New recording
                 yield prev_reco, ctm_lines
@@ -145,11 +187,19 @@ def smith_waterman_alignment(ref, hyp, similarity_score_function,
     This is a special case of the Smith-Waterman alignment that assumes that
     the deletion and insertion costs are linear with number of incorrect words.
 
+    If align_full_hyp is True, then the traceback of the alignment
+    is started at the end of the hypothesis. This is when we want the
+    reference that aligns with the full hypothesis.
+    This differs from the normal Smith-Waterman alignment, where the traceback
+    is from the highest score in the alignment score matrix. This
+    can be obtained by setting align_full_hyp as False. This gets only the
+    sub-sequence of the hypothesis that best matches with a
+    sub-sequence of the reference.
+
     Returns a list of tuples where each tuple has the format:
         (ref_word, hyp_word, ref_word_from_index, hyp_word_from_index,
          ref_word_to_index, hyp_word_to_index)
     """
-
     output = []
 
     ref_len = len(ref)
@@ -294,7 +344,7 @@ def smith_waterman_alignment(ref, hyp, similarity_score_function,
     return (output, max_score)
 
 
-def print_alignment(recording, alignment, eps_symbol, out_file_handle):
+def print_alignment(recording, alignment, out_file_handle):
     out_text = [recording]
     for line in alignment:
         try:
@@ -446,11 +496,10 @@ def test_alignment():
         ref, hyp, similarity_score_function=lambda x, y: 2 if (x == y) else -1,
         del_score=-1, ins_score=-1, eps_symbol="-", align_full_hyp=True)
 
-    print_alignment("Alignment", output, eps_symbol="-",
-                    out_file_handle=sys.stderr)
+    print_alignment("Alignment", output, out_file_handle=sys.stderr)
 
 
-def _run(args):
+def run(args):
     if args.debug_only:
         test_alignment()
         raise SystemExit("Exiting since --debug-only was true")
@@ -473,6 +522,8 @@ def _run(args):
             reco2file_and_channel[parts[0]] = (parts[1], parts[2])
             file_and_channel2reco[(parts[1], parts[2])] = parts[0]
         args.reco2file_and_channel.close()
+    else:
+        file_and_channel2reco = None
 
     symbol_table = {}
     if args.symbol_table is not None:
@@ -528,8 +579,7 @@ def _run(args):
                           file=args.alignment_out_file)
             else:
                 print_alignment(
-                    reco, output, eps_symbol=args.eps_symbol,
-                    out_file_handle=args.alignment_out_file)
+                    reco, output, out_file_handle=args.alignment_out_file)
             num_done += 1
         except:
             logger.error("Alignment failed for recording {0} "
@@ -543,13 +593,16 @@ def _run(args):
     if num_done == 0:
         raise RuntimeError("Processed 0 recordings.")
 
+
 def main():
-    args = _get_args()
+    args = get_args()
 
     try:
-        _run(args)
+        run(args)
     except Exception:
-        raise
+        logger.error("Failed to align ref and hypotheses; "
+                     "got exception ", exc_info=True)
+        raise SystemExit(1)
     finally:
         if args.reco2file_and_channel is not None:
             args.reco2file_and_channel.close()

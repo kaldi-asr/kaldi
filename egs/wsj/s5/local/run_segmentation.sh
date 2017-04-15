@@ -7,6 +7,9 @@
 # The basic idea is to decode with an existing in-domain acoustic model, and a
 # bigram language model built from the reference, and then work out the
 # segmentation from a ctm like file.
+# See the script local/run_segmentation_long_utts.sh for 
+# a more sophesticated approach using Smith-Waterman alignment
+# to align decoded hypothesis and parts of imperfect long-transcripts # retrieved using TF-IDF document similarities.
 
 stage=0
 

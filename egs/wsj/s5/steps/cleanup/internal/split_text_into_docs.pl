@@ -1,5 +1,22 @@
 #! /usr/bin/perl
 
+# Copyright 2017  Vimal Manohar
+# Apache 2.0.
+
+# If 'text' contains:
+#  utterance1 A B C D
+#  utterance2 C B
+#  and you ran:
+#  split_text_into_docs.pl --max-words 2 text doc2text docs
+#  then 'doc2text' would contain:
+#  utterance1-1 utterance1
+#  utterance1-2 utterance1
+#  utterance2-1 utterance2
+#  and 'docs' would contain:
+#  utterance1-1 A B
+#  utterance1-2 C D
+#  utterance2-1 C B
+
 use warnings;
 use strict;
 

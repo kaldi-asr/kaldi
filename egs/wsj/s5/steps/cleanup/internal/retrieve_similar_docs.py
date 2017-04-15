@@ -1,8 +1,80 @@
 #! /usr/bin/env python
 
-"""This script finds retrieves documents similar to the query documents
+# Copyright 2017  Vimal Manohar
+# Apache 2.0.
+
+"""This script retrieves documents similar to the query documents
 using a similarity score based on the total TFIDF for all the terms in the
 query document.
+
+Some terminology:
+    original utterance-id = The utterance-id of the original long audio segments
+        and the corresponding reference transcript
+    source-text = reference transcript
+    source-text-id = original utterance-id
+    sub-segment = Approximately 30s long chunk of the original utterance
+    query-id = utterance-id of the sub-segment
+    document = Approximately 1000 words of a source-text
+    doc-id = Id of the document
+
+e.g.
+foo1 A B C D E F is in the original text file
+and foo1 foo 100 200 is in the original segments file.
+
+Here foo1 is the source-text-id and "A B C D" is the reference transcript. It
+is a 100s long segment from the recording foo.
+
+foo1 is split into 30s long sub-segments as follows:
+foo1-1 foo1 100 130
+foo1-2 foo1 125 155
+foo1-3 foo1 150 180
+foo1-4 foo1 175 200
+
+foo1-{1,2,3,4} are query-ids.
+
+The source-text for foo1 is split into two-word documents.
+doc1 A B
+doc2 C D
+doc3 E F
+
+doc{1,2,3} are doc-ids.
+
+--source-text2doc-ids option is given a mapping that contains
+foo1 doc1 doc2 doc3
+
+--query-id2source-text-id option is given a mapping that contains
+foo1-1 foo1
+foo1-2 foo1
+foo1-3 foo1
+foo1-4 foo1
+
+The query TF-IDFs are all indexed by the utterance-id of the sub-segments
+of the original utterances.
+The source TF-IDFs use the document-ids created by splitting the source-text
+(corresponding to original utterances) into documents.
+
+For each query (sub-segment), we need to retrieve the documents that were
+created from the same original utterance that the sub-segment was from. For
+this, we have to load the source TF-IDF that has those documents. This
+information is provided using the option --source-text2tf-idf-file, which
+is like an SCP file with the first column being the source-text-id and the
+second column begin the location of TF-IDF for the documents corresponding
+to that source-text-id.
+
+The output of this script is a file where the first column is the
+query-id (i.e. sub-segment-id) and the remaining columns, which is at least
+one in number and a maxmium of (1 + 2 * num-neighbors-to-search) columns
+are tuples separated by commas
+(<doc-id>, <start-fraction>, <end-fraction>), where <doc-id> is the document-id
+<start-fraction> is the proportion of the document from the beginning
+that needs to be in the retrieved set.
+<end-fraction> is the proportion of the document from the end
+that needs to be in the retrieved set.
+If both <start-fraction> and <end-fraction> are 1, then the full document is
+added to the retrieved set.
+Some examples of the lines in the output file are:
+foo1-1 doc1,1,1
+foo1-2 doc1,0,0.2 doc2,1,1 doc3,0.2,0
 """
 
 from __future__ import print_function
@@ -24,17 +96,34 @@ for l in [logger, logging.getLogger('tf_idf'), logging.getLogger('libs')]:
     l.addHandler(handler)
 
 
-def _get_args():
+def get_args():
     parser = argparse.ArgumentParser(
-        description="""This script finds retrieves documents similar to the
+        description="""This script retrieves documents similar to the
         query documents using a similarity score based on the total TFIDF for
-        all the terms in the query document.""")
+        all the terms in the query document.
+        See the beginning of the script for more details about the
+        arguments to the script.""")
 
-    parser.add_argument("--partial-doc-fraction", default=0.2,
-                        help="""The fraction of neighboring document that will
-                        be part of the retrieved document set.""")
     parser.add_argument("--verbose", type=int, default=0, choices=[0, 1, 2, 3],
                         help="Higher for more logging statements")
+
+    parser.add_argument("--num-neighbors-to-search", type=int, default=0,
+                        help="""Number of neighboring documents to search
+                        around the one retrieved based on maximum tf-idf
+                        similarity. A value of 0 means only the document
+                        with the maximum tf-idf similarity is retrieved,
+                        and none of the documents adjacent to it.""")
+    parser.add_argument("--neighbor-tfidf-threshold", type=float, default=0.9,
+                        help="""Ignore neighbors that have tf-idf similarity
+                        with the query document less than this threshold
+                        factor lower than the best score.""")
+    parser.add_argument("--partial-doc-fraction", default=0.2,
+                        help="""The fraction of neighboring document that will
+                        be part of the retrieved document set.
+                        If this is greater than 0, then a fraction of words
+                        from the neighboring documents is added to the
+                        retrieved document.""")
+
     parser.add_argument("--source-text-id2doc-ids",
                         type=argparse.FileType('r'), required=True,
                         help="""A mapping from the source text to a list of
@@ -46,25 +135,20 @@ def _get_args():
                         help="""A mapping from the query document-id to a
                         source text from which a document needs to be
                         retrieved.""")
-    parser.add_argument("--num-neighbors-to-search", type=int, default=0,
-                        help="""Number of neighboring documents to search
-                        around the one retrieved based on maximum tf-idf
-                        similarity.""")
-    parser.add_argument("--neighbor-tfidf-threshold", type=float, default=0.9,
-                        help="""Ignore neighbors that have tf-idf similarity
-                        with the query document less than this threshold
-                        factor lower than the best best score.""")
+    parser.add_argument("--source-text-id2tfidf", type=argparse.FileType('r'),
+                        required=True,
+                        help="""An SCP file for the TF-IDF for source
+                        documents indexed by the source-text-id.""")
     parser.add_argument("--query-tfidf", type=argparse.FileType('r'),
                         required=True,
-                        help="""Archive of TF-IDF for query documents
-                        indexed by the document-id""")
-    parser.add_argument("--source-tfidf", type=argparse.FileType('r'),
-                        required=True,
-                        help="""TF-IDF for source documents that need to be
-                        retrieved""")
+                        help="""Archive of TF-IDF objects for query documents
+                        indexed by the query-id.
+                        The format is
+                        query-id <TFIDF> ... </TFIDF>
+                        """)
     parser.add_argument("--relevant-docs", type=argparse.FileType('w'),
                         required=True,
-                        help="""Archive of a list of source documents
+                        help="""Output archive of a list of source documents
                         similar to a query document, indexed by the
                         query document id.""")
 
@@ -87,16 +171,16 @@ def read_map(file_handle, num_values_per_key=None,
 
     Arguments:
         file_handle - A handle to an opened input file containing the map
-        num_values_per_key - If provided, the function raises an InputError if
+        num_values_per_key - If provided, the function raises an error if
                              the number of values read for a key in the input
                              file does not match the "num_values_per_key"
-        min_num_values_per_key - If provided, the function raises an InputError
+        min_num_values_per_key - If provided, the function raises an error
                                  if the number of values read for a key in the
                                  input file is less than
                                  "min_num_values_per_key"
-        must_contain_unique_key - If provided, the function raises a
-                                  KeyNotUniqueError when a duplicate key is
-                                  read from the file.
+        must_contain_unique_key - If set to True, then it is required that the
+                                  file has a unique key; otherwise this
+                                  function will exit with error.
 
     Returns:
         { key: tuple(values) }
@@ -151,7 +235,7 @@ def get_document_ids(source_docs, indexes):
     return doc_ids
 
 
-def _run(args):
+def run(args):
     """The main function that does all the processing.
     Takes as argument the Namespace object obtained from _get_args().
     """
@@ -160,16 +244,22 @@ def _run(args):
     source_text_id2doc_ids = read_map(args.source_text_id2doc_ids,
                                       min_num_values_per_key=1)
 
-    source_tfidf = tf_idf.TFIDF()
-    source_tfidf.read(args.source_tfidf)
+    source_text_id2tfidf = read_map(args.source_text_id2tfidf,
+                                    num_values_per_key=1)
 
     num_queries = 0
+    prev_source_text_id = ""
     for query_id, query_tfidf in tf_idf.read_tfidf_ark(args.query_tfidf):
         num_queries += 1
 
         # The source text from which a document is to be retrieved for the
         # input query
         source_text_id = query_id2source_text_id[query_id]
+
+        if prev_source_text_id != source_text_id:
+            source_tfidf = tf_idf.TFIDF()
+            source_tfidf.read(source_text_id2tfidf[source_text_id])
+            prev_source_text_id = source_text_id
 
         # The source documents corresponding to the source text.
         # This is set of documents which will be searched over for the query.
@@ -247,18 +337,16 @@ def _run(args):
 
 
 def main():
-    args = _get_args()
+    args = get_args()
 
     if args.verbose > 1:
         handler.setLevel(logging.DEBUG)
     try:
-        _run(args)
+        run(args)
     finally:
-        args.query_id2source_text_id.close()
-        args.source_text_id2doc_ids.close()
-        args.relevant_docs.close()
-        args.query_tfidf.close()
-        args.source_tfidf.close()
+        for f in [args.query_id2source_text_id, args.source_text_id2doc_ids,
+                  args.relevant_docs, args.query_tfidf, args.source_tfidf]:
+            f.close()
 
 
 if __name__ == '__main__':

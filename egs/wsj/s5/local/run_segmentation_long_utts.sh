@@ -9,6 +9,9 @@ set -e -o pipefail
 # The basic idea is to decode with an existing in-domain acoustic model, and a
 # bigram language model built from the reference, and then work out the
 # segmentation from a ctm like file.
+# This is similar to the script local/run_segmentation.sh, but 
+# uses a more sophesticated approach using Smith-Waterman alignment
+# to align decoded hypothesis and parts of imperfect long-transcripts # retrieved using TF-IDF document similarities.
 
 ## %WER results. 
 

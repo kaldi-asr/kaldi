@@ -391,6 +391,22 @@ def write_tfidf_from_stats(
     print ("</TFIDF>", file=tf_idf_file)
 
 
+def read_key(fd):
+  """ [str] = read_key(fd)
+   Read the utterance-key from the opened ark/stream descriptor 'fd'.
+  """
+  str = ''
+  while 1:
+    char = fd.read(1)
+    if char == '' : break
+    if char == ' ' : break
+    str += char
+  str = str.strip()
+  if str == '': return None # end of file,
+  assert(re.match('^[\.a-zA-Z0-9_-]+$',str) != None) # check format,
+  return str
+
+
 def read_tfidf_ark(file_handle):
     """Read a kaldi archive of TFIDF objects indexed by a key (document-id).
     <document-id1> <tf-idf-object1>
@@ -398,7 +414,7 @@ def read_tfidf_ark(file_handle):
     ...
     """
     try:
-        key = kaldi_io.read_key(file_handle)
+        key = read_key(file_handle)
         while key:
             tf_idf = TFIDF()
             try:
@@ -406,6 +422,6 @@ def read_tfidf_ark(file_handle):
             except RuntimeError:
                 raise
             yield key, tf_idf
-            key = kaldi_io.read_key(file_handle)
+            key = read_key(file_handle)
     finally:
         file_handle.close()
