@@ -1,3 +1,6 @@
+
+#### This is a testing of git functionalities ###
+
 [![Build Status](https://travis-ci.org/kaldi-asr/kaldi.svg?branch=master)]
 (https://travis-ci.org/kaldi-asr/kaldi)
 
