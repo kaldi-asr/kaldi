@@ -226,6 +226,8 @@ enum GeneralMatrixType {
 /// targets which might be sparse or not, and might be compressed or not.
 class GeneralMatrix {
  public:
+  /// Returns the type of the matrix: kSparseMatrix, kCompressedMatrix or
+  /// kFullMatrix.  If this matrix is empty, returns kFullMatrix.
   GeneralMatrixType Type() const;
 
   void Compress();  // If it was a full matrix, compresses, changing Type() to
@@ -235,6 +237,7 @@ class GeneralMatrix {
                       // Type() to kFullMatrix; otherwise does nothing.
 
   void Write(std::ostream &os, bool binary) const;
+
 
   /// Note: if you write a compressed matrix in text form, it will be read as
   /// a regular full matrix.
@@ -252,6 +255,10 @@ class GeneralMatrix {
   /// Type() returns kCompressedMatrix, or NumRows() == 0; otherwise it will
   /// crash.
   const CompressedMatrix &GetCompressedMatrix() const;
+
+  /// Swaps the with the given CompressedMatrix.  This will only work if
+  /// Type() returns kCompressedMatrix, or NumRows() == 0.
+  void SwapCompressedMatrix(CompressedMatrix *cmat);
 
   /// Returns the contents as a Matrix<BaseFloat>.  This will only work if
   /// Type() returns kFullMatrix, or NumRows() == 0; otherwise it will crash.
@@ -363,6 +370,20 @@ void FilterGeneralMatrixRows(const GeneralMatrix &in,
                              const std::vector<bool> &keep_rows,
                              GeneralMatrix *out);
 
+/// This function extracts a row-range of a GeneralMatrix and writes
+/// as a GeneralMatrix containing the same type of underlying
+/// matrix.  If the row-range is partly outside the row-range of 'in'
+/// (i.e. if row_offset < 0 or row_offset + num_rows > in.NumRows())
+/// then it will pad with copies of the first and last row as
+/// needed.
+/// This is more efficient than un-compressing and
+/// re-compressing the underlying CompressedMatrix, and causes
+/// less accuracy loss due to re-compression (no loss in most cases).
+void ExtractRowRangeWithPadding(
+    const GeneralMatrix &in,
+    int32 row_offset,
+    int32 num_rows,
+    GeneralMatrix *out);
 
 
 /// @} end of \addtogroup matrix_group
