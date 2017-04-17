@@ -177,7 +177,7 @@ void DistributeComponent::ComputeInputPointers(
 
 
 // virtual
-void DistributeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+void* DistributeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                     const CuMatrixBase<BaseFloat> &in,
                                     CuMatrixBase<BaseFloat> *out) const {
   KALDI_ASSERT(indexes != NULL &&
@@ -187,6 +187,7 @@ void DistributeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   ComputeInputPointers(indexes, in, num_output_rows, &input_pointers);
   CuArray<const BaseFloat*> input_pointers_cuda(input_pointers);
   out->CopyRows(input_pointers_cuda);
+  return NULL;
 }
 
 // virtual
@@ -195,6 +196,7 @@ void DistributeComponent::Backprop(const std::string &debug_info,
                                    const CuMatrixBase<BaseFloat> &, // in_value,
                                    const CuMatrixBase<BaseFloat> &, // out_value
                                    const CuMatrixBase<BaseFloat> &out_deriv,
+                                   void *memo,
                                    Component *, // to_update,
                                    CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv == NULL) return;
@@ -442,7 +444,7 @@ void StatisticsExtractionComponent::GetInputIndexes(
 }
 
 
-void StatisticsExtractionComponent::Propagate(
+void* StatisticsExtractionComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes_in,
     const CuMatrixBase<BaseFloat> &in,
     CuMatrixBase<BaseFloat> *out) const {
@@ -468,6 +470,7 @@ void StatisticsExtractionComponent::Propagate(
                   input_dim_).AddRowRanges(in_squared,
                                            indexes->forward_indexes);
   }
+  return NULL;
 }
 
 void StatisticsExtractionComponent::Backprop(
@@ -476,6 +479,7 @@ void StatisticsExtractionComponent::Backprop(
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &, // out_value,
     const CuMatrixBase<BaseFloat> &out_deriv,
+    void *memo,
     Component *, // to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
   KALDI_ASSERT(indexes_in != NULL);
@@ -764,7 +768,7 @@ StatisticsPoolingComponent::PrecomputeIndexes(
   return ans;
 }
 
-void StatisticsPoolingComponent::Propagate(
+void* StatisticsPoolingComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes_in,
     const CuMatrixBase<BaseFloat> &in,
     CuMatrixBase<BaseFloat> *out) const {
@@ -810,6 +814,7 @@ void StatisticsPoolingComponent::Propagate(
     // compute the standard deviation via square root.
     variance.ApplyPow(0.5);
   }
+  return NULL;
 }
 
 void StatisticsPoolingComponent::Backprop(
@@ -818,6 +823,7 @@ void StatisticsPoolingComponent::Backprop(
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &out_value,
     const CuMatrixBase<BaseFloat> &out_deriv_in,
+    void *memo,
     Component *, // to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
   KALDI_ASSERT(indexes_in != NULL);
@@ -1078,13 +1084,14 @@ BackpropTruncationComponent::PrecomputeIndexes(
 }
 
 // virtual
-void BackpropTruncationComponent::Propagate(
+void* BackpropTruncationComponent::Propagate(
                                  const ComponentPrecomputedIndexes *indexes,
                                  const CuMatrixBase<BaseFloat> &in,
                                  CuMatrixBase<BaseFloat> *out) const {
   out->CopyFromMat(in);
   if (scale_ != 1.0)
     out->Scale(scale_);
+  return NULL;
 }
 
 // virtual
@@ -1093,6 +1100,7 @@ void BackpropTruncationComponent::Backprop(const std::string &debug_info,
                              const CuMatrixBase<BaseFloat> &, //in_value
                              const CuMatrixBase<BaseFloat> &,
                              const CuMatrixBase<BaseFloat> &out_deriv,
+                             void *memo,
                              Component *to_update_in, // may be NULL; may be
                              // identical to "this" or different.
                              CuMatrixBase<BaseFloat> *in_deriv) const {
@@ -1213,11 +1221,12 @@ ConstantComponent::ConstantComponent(
     use_natural_gradient_(other.use_natural_gradient_),
     preconditioner_(other.preconditioner_) { }
 
-void ConstantComponent::Propagate(
+void* ConstantComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes,
     const CuMatrixBase<BaseFloat> &in,
     CuMatrixBase<BaseFloat> *out) const {
   out->CopyRowsFromVec(output_);
+  return NULL;
 }
 
 void ConstantComponent::Backprop(
@@ -1226,6 +1235,7 @@ void ConstantComponent::Backprop(
     const CuMatrixBase<BaseFloat> &, // in_value
     const CuMatrixBase<BaseFloat> &, // out_value
     const CuMatrixBase<BaseFloat> &out_deriv,
+    void *memo,
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
   // we don't update in_deriv, since we set the flag

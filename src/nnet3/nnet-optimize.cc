@@ -437,6 +437,7 @@ void Optimize(const NnetOptimizeOptions &config,
   if (GetVerboseLevel() >= 4)
     CheckComputation(nnet, *computation, true);
 
+
   { // Call LimitDerivativeTimes(); it's important that this
     // should come before other optimizations (search for "insist" in
     // nnet-optimize-utils.cc for the reasons).
@@ -446,8 +447,10 @@ void Optimize(const NnetOptimizeOptions &config,
     if (config.max_deriv_time_relative != std::numeric_limits<int32>::max())
       max_deriv_time = config.max_deriv_time_relative +
           max_output_time_in_request;
-    LimitDerivativeTimes(nnet, config.min_deriv_time,
-                         max_deriv_time, computation);
+    if (config.min_deriv_time != std::numeric_limits<int32>::min() ||
+        max_deriv_time != std::numeric_limits<int32>::max())
+      LimitDerivativeTimes(nnet, config.min_deriv_time,
+                           max_deriv_time, computation);
   }
 
   if (GetVerboseLevel() >= 3)

@@ -1,6 +1,6 @@
 // nnet3/nnet-analyze.h
 
-// Copyright 2015    Johns Hopkins University (author: Daniel Povey)
+// Copyright 2015-2017    Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
