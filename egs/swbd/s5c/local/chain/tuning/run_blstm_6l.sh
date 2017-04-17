@@ -4,6 +4,7 @@
 # location4 as paper : http://www.danielpovey.com/files/2017_interspeech_dropout.pdf
 
 # local/chain/compare_wer_general.sh blstm_6k_sp blstm_6l_sp
+# attention: the blatm_6k_sp result here is far better than the updated
 # result (14.5 vs 14.1), this may due to noise
 
 # System                blstm_6k_sp blstm_6l_sp
