@@ -39,7 +39,7 @@ namespace nnet3 {
 */
 
 static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
-                        const MatrixBase<BaseFloat> &feats,
+                        const GeneralMatrix &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
                         int32 ivector_period,
                         const chain::Supervision &supervision,
@@ -108,21 +108,13 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
     nnet_chain_eg.inputs.resize(ivector_feats != NULL ? 2 : 1);
 
     int32 tot_input_frames = chunk.left_context + chunk.num_frames +
-        chunk.right_context;
+        chunk.right_context,
+        start_frame = chunk.first_frame - chunk.left_context;
 
-    Matrix<BaseFloat> input_frames(tot_input_frames, feats.NumCols(),
-                                   kUndefined);
+    GeneralMatrix input_frames;
+    ExtractRowRangeWithPadding(feats, start_frame, tot_input_frames,
+                               &input_frames);
 
-    int32 start_frame = chunk.first_frame - chunk.left_context;
-    for (int32 t = start_frame; t < start_frame + tot_input_frames; t++) {
-      int32 t2 = t;
-      if (t2 < 0) t2 = 0;
-      if (t2 >= num_input_frames) t2 = num_input_frames - 1;
-      int32 j = t - start_frame;
-      SubVector<BaseFloat> src(feats, t2),
-          dest(input_frames, j);
-      dest.CopyFromVec(src);
-    }
     NnetIo input_io("input", -chunk.left_context, input_frames);
     nnet_chain_eg.inputs[0].Swap(&input_io);
 
@@ -193,8 +185,11 @@ int main(int argc, char *argv[]) {
     std::string online_ivector_rspecifier;
 
     ParseOptions po(usage);
-    po.Register("compress", &compress, "If true, write egs in "
-                "compressed format.");
+    po.Register("compress", &compress, "If true, write egs with input features "
+                "in compressed format (recommended).  Update: this is now "
+                "only relevant if the features being read are un-compressed; "
+                "if already compressed, we keep we same compressed format when "
+                "dumping-egs.");
     po.Register("ivectors", &online_ivector_rspecifier, "Alias for "
                 "--online-ivectors option, for back compatibility");
     po.Register("online-ivectors", &online_ivector_rspecifier, "Rspecifier of "
@@ -242,7 +237,9 @@ int main(int argc, char *argv[]) {
       KALDI_ASSERT(normalization_fst.NumStates() > 0);
     }
 
-    SequentialBaseFloatMatrixReader feat_reader(feature_rspecifier);
+    // Read as GeneralMatrix so we don't need to un-compress and re-compress
+    // when selecting parts of matrices.
+    SequentialGeneralMatrixReader feat_reader(feature_rspecifier);
     chain::RandomAccessSupervisionReader supervision_reader(
         supervision_rspecifier);
     NnetChainExampleWriter example_writer(examples_wspecifier);
@@ -253,7 +250,7 @@ int main(int argc, char *argv[]) {
 
     for (; !feat_reader.Done(); feat_reader.Next()) {
       std::string key = feat_reader.Key();
-      const Matrix<BaseFloat> &feats = feat_reader.Value();
+      const GeneralMatrix &feats = feat_reader.Value();
       if (!supervision_reader.HasKey(key)) {
         KALDI_WARN << "No pdf-level posterior for key " << key;
         num_err++;

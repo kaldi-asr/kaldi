@@ -65,6 +65,16 @@ NnetIo::NnetIo(const std::string &name,
     indexes[i].t = t_begin + i;
 }
 
+NnetIo::NnetIo(const std::string &name,
+               int32 t_begin, const GeneralMatrix &feats):
+    name(name), features(feats) {
+  int32 num_rows = feats.NumRows();
+  KALDI_ASSERT(num_rows > 0);
+  indexes.resize(num_rows);  // sets all n,t,x to zeros.
+  for (int32 i = 0; i < num_rows; i++)
+    indexes[i].t = t_begin + i;
+}
+
 void NnetIo::Swap(NnetIo *other) {
   name.swap(other->name);
   indexes.swap(other->indexes);
