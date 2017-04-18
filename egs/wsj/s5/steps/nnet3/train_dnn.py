@@ -184,9 +184,6 @@ def train(args, run_opts, background_process_handler):
     try:
         model_left_context = variables['model_left_context']
         model_right_context = variables['model_right_context']
-        # this is really the number of times we add layers to the network for
-        # discriminative pretraining
-        num_hidden_layers = variables['num_hidden_layers']
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in "
                         "{1}".format(str(e), '{0}/configs'.format(args.dir)))
@@ -232,7 +229,7 @@ def train(args, run_opts, background_process_handler):
 
     [egs_left_context, egs_right_context,
      frames_per_eg_str, num_archives] = (
-        common_train_lib.verify_egs_dir(egs_dir, feat_dim, 
+        common_train_lib.verify_egs_dir(egs_dir, feat_dim,
                                         ivector_dim, ivector_id,
                                         left_context, right_context))
     assert(str(args.frames_per_eg) == frames_per_eg_str)
@@ -278,10 +275,9 @@ def train(args, run_opts, background_process_handler):
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
 
-    models_to_combine = common_train_lib.verify_iterations(
+    models_to_combine = common_train_lib.get_model_combine_iters(
         num_iters, args.num_epochs,
-        num_hidden_layers, num_archives_expanded,
-        args.max_models_combine, args.add_layers_period,
+        num_archives_expanded, args.max_models_combine,
         args.num_jobs_final)
 
     def learning_rate(iter, current_num_jobs, num_archives_processed):
@@ -320,8 +316,6 @@ def train(args, run_opts, background_process_handler):
                     iter),
                 minibatch_size_str=args.minibatch_size,
                 frames_per_eg=args.frames_per_eg,
-                num_hidden_layers=num_hidden_layers,
-                add_layers_period=args.add_layers_period,
                 left_context=left_context,
                 right_context=right_context,
                 momentum=args.momentum,

@@ -28,8 +28,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      left_context, right_context,
                      momentum, max_param_change,
                      shuffle_buffer_size, minibatch_size_str,
-                     cache_read_opt, run_opts,
-                     frames_per_eg=-1,
+                     run_opts, frames_per_eg=-1,
                      min_deriv_time=None, max_deriv_time_relative=None):
     """ Called from train_one_iteration(), this model does one iteration of
     training with 'num_jobs' jobs, and writes files like
@@ -73,17 +72,16 @@ def train_new_models(dir, iter, srand, num_jobs,
         if not chunk_level_training:
             frame = (k / num_archives + archive_index) % frames_per_eg
 
-        cache_write_opt = ""
-        if job == 1:
-            # an option for writing cache (storing pairs of nnet-computations
-            # and computation-requests) during training.
-            cache_write_opt = "--write-cache={dir}/cache.{iter}".format(
-                dir=dir, iter=iter+1)
+        cache_io_opts = (("--read-cache={dir}/cache.{iter}".format(dir=dir,
+                                                                  iter=iter)
+                          if iter > 0 else "") +
+                         (" --write-cache={0}/cache.{1}".format(dir, iter + 1)
+                          if job == 1 else ""))
 
         process_handle = common_lib.run_job(
             """{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
-                    nnet3-train {parallel_train_opts} {cache_read_opt} \
-                    {cache_write_opt} --print-interval=10 \
+                    nnet3-train {parallel_train_opts} {cache_io_opts} \
+                    --print-interval=10 \
                     --momentum={momentum} \
                     --max-param-change={max_param_change} \
                     {deriv_time_opts} "{raw_model}" \
@@ -101,8 +99,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         next_iter=iter + 1,
                         job=job,
                         parallel_train_opts=run_opts.parallel_train_opts,
-                        cache_read_opt=cache_read_opt,
-                        cache_write_opt=cache_write_opt,
+                        cache_io_opts=cache_io_opts,
                         frame_opts=(""
                                     if chunk_level_training
                                     else "--frame={0}".format(frame)),
@@ -131,7 +128,6 @@ def train_new_models(dir, iter, srand, num_jobs,
 def train_one_iteration(dir, iter, srand, egs_dir,
                         num_jobs, num_archives_processed, num_archives,
                         learning_rate, minibatch_size_str,
-                        num_hidden_layers, add_layers_period,
                         left_context, right_context,
                         momentum, max_param_change, shuffle_buffer_size,
                         run_opts, frames_per_eg=-1,
@@ -195,49 +191,16 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                          get_raw_nnet_from_am=get_raw_nnet_from_am,
                          background_process_handler=background_process_handler)
 
-    # an option for writing cache (storing pairs of nnet-computations
-    # and computation-requests) during training.
-    cache_read_opt = ""
-    if (iter > 0 and (iter <= (num_hidden_layers-1) * add_layers_period)
-            and iter % add_layers_period == 0):
+    do_average = (iter > 0)
 
-        # if we've just added new hiden layer, don't do averaging but take the
-        # best.
-        do_average = False
-
-        cur_num_hidden_layers = 1 + iter / add_layers_period
-        config_file = "{0}/configs/layer{1}.config".format(
-            dir, cur_num_hidden_layers)
-        if get_raw_nnet_from_am:
-            raw_model_string = ("nnet3-am-copy --raw=true "
-                                "--learning-rate={lr} {dir}/{iter}.mdl - | "
-                                "nnet3-init --srand={srand} - "
-                                "{config} - |".format(
-                                    lr=learning_rate, dir=dir, iter=iter,
-                                    srand=iter + srand, config=config_file))
-        else:
-            raw_model_string = ("nnet3-copy --learning-rate={lr} "
-                                "{dir}/{iter}.raw - | "
-                                "nnet3-init --srand={srand} - "
-                                "{config} - |".format(
-                                    lr=learning_rate, dir=dir, iter=iter,
-                                    srand=iter + srand, config=config_file))
+    if get_raw_nnet_from_am:
+        raw_model_string = ("nnet3-am-copy --raw=true --learning-rate={0} "
+                            "{1}/{2}.mdl - |".format(learning_rate,
+                                                     dir, iter))
     else:
-        do_average = True
-        if iter == 0:
-            # on iteration 0, pick the best, don't average.
-            do_average = False
-        else:
-            cache_read_opt = "--read-cache={dir}/cache.{iter}".format(
-                dir=dir, iter=iter)
-        if get_raw_nnet_from_am:
-            raw_model_string = ("nnet3-am-copy --raw=true --learning-rate={0} "
-                                "{1}/{2}.mdl - |".format(learning_rate,
-                                                         dir, iter))
-        else:
-            raw_model_string = ("nnet3-copy --learning-rate={lr} "
-                                "{dir}/{iter}.raw - |".format(
-                                    lr=learning_rate, dir=dir, iter=iter))
+        raw_model_string = ("nnet3-copy --learning-rate={lr} "
+                            "{dir}/{iter}.raw - |".format(
+                                lr=learning_rate, dir=dir, iter=iter))
 
     raw_model_string = raw_model_string + dropout_edit_string
 
@@ -245,14 +208,13 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         cur_minibatch_size_str = minibatch_size_str
         cur_max_param_change = max_param_change
     else:
-        # on iteration zero or when we just added a layer, use a smaller
-        # minibatch size (and we will later choose the output of just one of
-        # the jobs): the model-averaging isn't always helpful when the model is
-        # changing too fast (i.e. it can worsen the objective function), and
-        # the smaller minibatch size will help to keep the update stable.
+        # on iteration zero, use a smaller minibatch size (and we will later
+        # choose the output of just one of the jobs): the model-averaging isn't
+        # always helpful when the model is changing too fast (i.e. it can worsen
+        # the objective function), and the smaller minibatch size will help to
+        # keep the update stable.
         cur_minibatch_size_str = common_train_lib.halve_minibatch_size_str(minibatch_size_str)
         cur_max_param_change = float(max_param_change) / math.sqrt(2)
-
     try:
         os.remove("{0}/.error".format(dir))
     except OSError:
@@ -275,7 +237,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      momentum=momentum, max_param_change=cur_max_param_change,
                      shuffle_buffer_size=shuffle_buffer_size,
                      minibatch_size_str=cur_minibatch_size_str,
-                     cache_read_opt=cache_read_opt, run_opts=run_opts,
+                     run_opts=run_opts,
                      frames_per_eg=frames_per_eg,
                      min_deriv_time=min_deriv_time,
                      max_deriv_time_relative=max_deriv_time_relative)
@@ -322,7 +284,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     elif os.stat(new_model).st_size == 0:
         raise Exception("{0} has size 0. Something went wrong in "
                         "iteration {1}".format(new_model, iter))
-    if cache_read_opt and os.path.exists("{0}/cache.{1}".format(dir, iter)):
+    if os.path.exists("{0}/cache.{1}".format(dir, iter)):
         os.remove("{0}/cache.{1}".format(dir, iter))
 
 

@@ -130,8 +130,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      l2_regularize, xent_regularize, leaky_hmm_coefficient,
                      momentum, max_param_change,
                      shuffle_buffer_size, num_chunk_per_minibatch_str,
-                     frame_subsampling_factor,
-                     cache_io_opts, run_opts):
+                     frame_subsampling_factor, run_opts):
     """
     Called from train_one_iteration(), this method trains new models
     with 'num_jobs' jobs, and
@@ -161,11 +160,12 @@ def train_new_models(dir, iter, srand, num_jobs,
         # previous : frame_shift = (k/num_archives) % frame_subsampling_factor
         frame_shift = ((archive_index + k/num_archives)
                        % frame_subsampling_factor)
-        if job == 1:
-            cur_cache_io_opts = "{0} --write-cache={1}/cache.{2}".format(
-                cache_io_opts, dir, iter + 1)
-        else:
-            cur_cache_io_opts = cache_io_opts
+
+        cache_io_opts = (("--read-cache={dir}/cache.{iter}".format(dir=dir,
+                                                                  iter=iter)
+                          if iter > 0 else "") +
+                         (" --write-cache={0}/cache.{1}".format(dir, iter + 1)
+                          if job == 1 else ""))
 
         process_handle = common_lib.run_job(
             """{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
@@ -194,12 +194,12 @@ def train_new_models(dir, iter, srand, num_jobs,
                         app_deriv_wts=apply_deriv_weights,
                         fr_shft=frame_shift, l2=l2_regularize,
                         xent_reg=xent_regularize, leaky=leaky_hmm_coefficient,
+                        cache_io_opts=cache_io_opts,
                         parallel_train_opts=run_opts.parallel_train_opts,
                         momentum=momentum, max_param_change=max_param_change,
                         raw_model=raw_model_string,
                         egs_dir=egs_dir, archive_index=archive_index,
                         buf_size=shuffle_buffer_size,
-                        cache_io_opts=cur_cache_io_opts,
                         num_chunk_per_mb=num_chunk_per_minibatch_str),
             wait=False)
 
@@ -222,7 +222,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         num_jobs, num_archives_processed, num_archives,
                         learning_rate, shrinkage_value,
                         num_chunk_per_minibatch_str,
-                        num_hidden_layers, add_layers_period,
                         left_context, right_context,
                         apply_deriv_weights, min_deriv_time,
                         max_deriv_time_relative,
@@ -272,42 +271,20 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         compute_progress(dir, iter, run_opts,
                          background_process_handler=background_process_handler)
 
-    if (iter > 0 and (iter <= (num_hidden_layers-1) * add_layers_period)
-            and iter % add_layers_period == 0):
+    do_average = (iter > 0)
 
-        # if we've just added new hiden layer, don't do averaging but take the
-        # best.
-        do_average = False
-
-        cur_num_hidden_layers = 1 + iter / add_layers_period
-        config_file = "{0}/configs/layer{1}.config".format(
-            dir, cur_num_hidden_layers)
-        raw_model_string = ("nnet3-am-copy --raw=true --learning-rate={lr} "
-                            "{dir}/{iter}.mdl - | nnet3-init --srand={srand} "
-                            "- {config} - |".format(lr=learning_rate, dir=dir,
-                                                    iter=iter,
-                                                    srand=iter + srand,
-                                                    config=config_file))
-        cache_io_opts = ""
-    else:
-        do_average = True
-        if iter == 0:
-            # on iteration 0, pick the best, don't average.
-            do_average = False
-        raw_model_string = ("nnet3-am-copy --raw=true --learning-rate={0} "
-                            "{1}/{2}.mdl - |".format(learning_rate, dir, iter))
-        cache_io_opts = "--read-cache={dir}/cache.{iter}".format(dir=dir,
-                                                                 iter=iter)
+    raw_model_string = ("nnet3-am-copy --raw=true --learning-rate={0} "
+                        "{1}/{2}.mdl - |".format(learning_rate, dir, iter))
 
     if do_average:
         cur_num_chunk_per_minibatch_str = num_chunk_per_minibatch_str
         cur_max_param_change = max_param_change
     else:
-        # on iteration zero or when we just added a layer, use a smaller
-        # minibatch size (and we will later choose the output of just one of
-        # the jobs): the model-averaging isn't always helpful when the model is
-        # changing too fast (i.e. it can worsen the objective function), and
-        # the smaller minibatch size will help to keep the update stable.
+        # on iteration zero, use a smaller minibatch size (and we will later
+        # choose the output of just one of the jobs): the model-averaging isn't
+        # always helpful when the model is changing too fast (i.e. it can worsen
+        # the objective function), and the smaller minibatch size will help to
+        # keep the update stable.
         cur_num_chunk_per_minibatch_str = common_train_lib.halve_minibatch_size_str(
             num_chunk_per_minibatch_str)
         cur_max_param_change = float(max_param_change) / math.sqrt(2)
@@ -340,7 +317,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      shuffle_buffer_size=shuffle_buffer_size,
                      num_chunk_per_minibatch_str=cur_num_chunk_per_minibatch_str,
                      frame_subsampling_factor=frame_subsampling_factor,
-                     cache_io_opts=cache_io_opts, run_opts=run_opts)
+                     run_opts=run_opts)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
          num_jobs, '{0}/log/train.{1}.%.log'.format(dir, iter))

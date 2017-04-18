@@ -209,7 +209,7 @@ def write_config_files(config_dir, all_layers):
             raise
 
 
-def add_back_compatibility_info(config_dir):
+def add_nnet_context_info(config_dir):
     """This will be removed when python script refactoring is done."""
 
     common_lib.run_kaldi_command("nnet3-init {0}/ref.config "
@@ -228,18 +228,13 @@ def add_back_compatibility_info(config_dir):
             continue
         info[parts[0].strip()] = int(parts[1].strip())
 
-    # Writing the back-compatible vars file
+    # Writing the 'vars' file:
     #   model_left_context=0
     #   model_right_context=7
-    #   num_hidden_layers=3
     vf = open('{0}/vars'.format(config_dir), 'w')
     vf.write('model_left_context={0}\n'.format(info['left-context']))
     vf.write('model_right_context={0}\n'.format(info['right-context']))
-    vf.write('num_hidden_layers=1\n')
     vf.close()
-
-    common_lib.force_symlink("final.config".format(config_dir),
-                             "{0}/layer1.config".format(config_dir))
 
 def check_model_contexts(config_dir):
     contexts = {}
@@ -284,7 +279,7 @@ def main():
     write_expanded_xconfig_files(args.config_dir, all_layers)
     write_config_files(args.config_dir, all_layers)
     check_model_contexts(args.config_dir)
-    add_back_compatibility_info(args.config_dir)
+    add_nnet_context_info(args.config_dir)
 
 
 if __name__ == '__main__':
