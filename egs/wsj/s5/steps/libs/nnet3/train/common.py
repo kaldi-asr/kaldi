@@ -293,9 +293,15 @@ def parse_generic_config_vars_file(var_file):
             elif field_name in ['model_right_context', 'right_context']:
                 variables['model_right_context'] = int(field_value)
             elif field_name == 'num_hidden_layers':
-                variables['num_hidden_layers'] = int(field_value)
+                if int(field_value) > 1:
+                    raise Exception(
+                        "You have num_hidden_layers={0} (real meaning: your config files "
+                        "are intended to do discriminative pretraining).  Since Kaldi 5.2, "
+                        "this is no longer supported --> use newer config-creation scripts, "
+                        "i.e. xconfig_to_configs.py.".format(field_value))
             else:
                 variables[field_name] = field_value
+
         return variables
     except ValueError:
         # we will throw an error at the end of the function so I will just pass
@@ -448,30 +454,23 @@ def prepare_initial_network(dir, run_opts, srand=-3):
         common_lib.run_job(
             """{command} {dir}/log/add_first_layer.log \
                     nnet3-init --srand={srand} {dir}/init.raw \
-                    {dir}/configs/layer1.config {dir}/0.raw""".format(
+                    {dir}/configs/final.config {dir}/0.raw""".format(
                         command=run_opts.command, srand=srand,
                         dir=dir))
     else:
         common_lib.run_job(
-            """{command} {dir}/log/add_first_layer.log \
-                    nnet3-init --srand={srand} \
-                    {dir}/configs/layer1.config {dir}/0.raw""".format(
+            """{command} {dir}/log/init_model.log \
+           nnet3-init --srand={srand} {dir}/configs/final.config {dir}/0.raw""".format(
                         command=run_opts.command, srand=srand,
                         dir=dir))
 
 
-def verify_iterations(num_iters, num_epochs, num_hidden_layers,
+def get_model_combine_iters(num_iters, num_epochs,
                       num_archives, max_models_combine,
-                      add_layers_period, num_jobs_final):
-    """ Verifies that number of iterations are sufficient for various
-        phases of training."""
-
-    finish_add_layers_iter = num_hidden_layers * add_layers_period
-
-    if num_iters <= (finish_add_layers_iter + 2):
-        raise Exception("There are insufficient number of epochs. "
-                        "These are not even sufficient for "
-                        "layer-wise discriminatory training.")
+                      num_jobs_final):
+    """ Figures out the list of iterations for which we'll use those models
+        in the final model-averaging phase.  (note: it's a weighted average
+        where the weights are worked out from a subset of training data.)"""
 
     approx_iters_per_epoch_final = num_archives/num_jobs_final
     # Note: it used to be that we would combine over an entire epoch,
@@ -486,13 +485,12 @@ def verify_iterations(num_iters, num_epochs, num_hidden_layers,
     # nnet3-combine-fast invocation.
     # The number we use is:
     # min(max(max_models_combine, approx_iters_per_epoch_final/2+1),
-    #     1/2 * iters_after_last_layer_added)
+    #     iters/2)
     # But if this value is > max_models_combine, then the models
     # are subsampled to get these many models to combine.
-    half_iters_after_add_layers = (num_iters - finish_add_layers_iter)/2
 
     num_iters_combine_initial = min(approx_iters_per_epoch_final/2 + 1,
-                                    half_iters_after_add_layers)
+                                    num_iters/2)
 
     if num_iters_combine_initial > max_models_combine:
         subsample_model_factor = int(
@@ -504,8 +502,7 @@ def verify_iterations(num_iters, num_epochs, num_hidden_layers,
         models_to_combine.add(num_iters)
     else:
         subsample_model_factor = 1
-        num_iters_combine = min(max_models_combine,
-                                half_iters_after_add_layers)
+        num_iters_combine = min(max_models_combine, num_iters/2)
         models_to_combine = set(range(num_iters - num_iters_combine + 1,
                                       num_iters + 1))
 
@@ -709,11 +706,6 @@ class CommonParser:
                                  since in the preconditioning method, 2 samples
                                  in the same minibatch can affect each others'
                                  gradients.""")
-        self.parser.add_argument("--trainer.add-layers-period", type=int,
-                                 dest='add_layers_period', default=2,
-                                 help="""The number of iterations between
-                                 adding layers during layer-wise discriminative
-                                 training.""")
         self.parser.add_argument("--trainer.max-param-change", type=float,
                                  dest='max_param_change', default=2.0,
                                  help="""The maximum change in parameters
