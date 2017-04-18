@@ -133,3 +133,8 @@ GSYMS
 /tools/sequitur-g2p/
 
 /kaldiwin_vs*
+
+*.DS_Store
+/egs/dkt/
+*.idea
+
