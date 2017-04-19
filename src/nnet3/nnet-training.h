@@ -229,6 +229,14 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               BaseFloat *tot_weight,
                               BaseFloat *tot_objf);
 
+// This function computes objective functions which do not require supervision
+void ComputeObjectiveFunction(ObjectiveType objective_type,
+                              const std::string &output_name,
+                              bool supply_deriv,
+                              NnetComputer *computer,
+                              BaseFloat *tot_weight,
+                              BaseFloat *tot_objf);
+
 
 
 } // namespace nnet3

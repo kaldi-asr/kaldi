@@ -43,13 +43,15 @@ namespace nnet3 {
 /// interpret the supervision labels.  However, the core of the framework never
 /// makes use of the objective types, other than making them available to
 /// calling code which then supplies the derivatives.
+///    - Objective type kNoObj is intended for neural network outputs which
+///      are not used in any loss function.
 ///    - Objective type kLinear is intended for Neural nets where the final
 ///      component is a LogSoftmaxComponent, so the log-prob (negative
 ///      cross-entropy) objective is just a linear function of the input.
 ///    - Objective type kQuadratic is used to mean the objective function
 ///      f(x, y) = -0.5 (x-y).(x-y), which is to be maximized, as in the kLinear
 ///      case.
-enum ObjectiveType { kLinear, kQuadratic };
+enum ObjectiveType { kNoObj, kLinear, kQuadratic };
 
 
 enum NodeType { kInput, kDescriptor, kComponent, kDimRange, kNone };
@@ -162,6 +164,9 @@ class Nnet {
   /// Returns true if this is an output node, meaning that it is of type kDescriptor
   /// and is not directly followed by a node of type kComponent.
   bool IsOutputNode(int32 node) const;
+
+  /// Returns the output nodes
+  void GetOutputNodeIndexes(std::vector<int32>* output_nodes) const;
 
   /// Returns true if this is component-input node, i.e. a node of type kDescriptor
   /// that immediately precedes a node of type kComponent.

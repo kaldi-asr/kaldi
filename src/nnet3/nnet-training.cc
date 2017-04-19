@@ -74,8 +74,12 @@ void NnetTrainer::Train(const NnetExample &eg) {
   UpdateParamsWithMaxChange();
 }
 
+// Compute the objective function, if specified,
+// for the output_nodes
 void NnetTrainer::ProcessOutputs(const NnetExample &eg,
                                  NnetComputer *computer) {
+  std::vector<int32> output_node_indexes;
+  nnet_->GetOutputNodeIndexes(&output_node_indexes);
   std::vector<NnetIo>::const_iterator iter = eg.io.begin(),
       end = eg.io.end();
   for (; iter != end; ++iter) {
@@ -84,12 +88,40 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
     KALDI_ASSERT(node_index >= 0);
     if (nnet_->IsOutputNode(node_index)) {
       ObjectiveType obj_type = nnet_->GetNode(node_index).u.objective_type;
+      if (obj_type != kNone)  {
+        BaseFloat tot_weight, tot_objf;
+        bool supply_deriv = true;
+        ComputeObjectiveFunction(io.features, obj_type, io.name,
+                                 supply_deriv, computer,
+                                 &tot_weight, &tot_objf);
+        objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
+                                        num_minibatches_processed_++,
+                                        tot_weight, tot_objf);
+        std::vector<int32>::iterator found_output_index =
+            std::find(output_node_indexes.begin(), output_node_indexes.end(),
+                      node_index);
+        if (found_output_index != output_node_indexes.end())
+          output_node_indexes.erase(found_output_index);
+      }
+    }
+  }
+
+  // Computing the objfn for output nodes which do not have supervision
+  // but have an objective specified
+  for (size_t i = 0; i < output_node_indexes.size(); i++) {
+    int32 node_index = output_node_indexes[i];
+    const std::string node_name = nnet_->GetNodeName(node_index);
+    KALDI_ASSERT(node_index >= 0);
+    KALDI_ASSERT(nnet_->IsOutputNode(node_index));
+    ObjectiveType obj_type =
+        nnet_->GetNode(node_index).u.objective_type;
+    if (obj_type != kNone)  {
       BaseFloat tot_weight, tot_objf;
       bool supply_deriv = true;
-      ComputeObjectiveFunction(io.features, obj_type, io.name,
+      ComputeObjectiveFunction(obj_type, node_name,
                                supply_deriv, computer,
                                &tot_weight, &tot_objf);
-      objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
+      objf_info_[node_name].UpdateStats(node_name, config_.print_interval,
                                       num_minibatches_processed_++,
                                       tot_weight, tot_objf);
     }
@@ -368,6 +400,56 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                 << " not handled.";
   }
 }
+
+// This method computes objective functions which do not require supervision
+void ComputeObjectiveFunction(ObjectiveType objective_type,
+                              const std::string &output_name,
+                              bool supply_deriv,
+                              NnetComputer *computer,
+                              BaseFloat *tot_weight,
+                              BaseFloat *tot_objf) {
+  const CuMatrixBase<BaseFloat> &output = computer->GetOutput(output_name);
+  *tot_weight = output.NumRows();
+
+  switch (objective_type) {
+    case kLinear: {
+      // objective is -|x|^T*1.
+      // derivative is -|x|/x
+
+      CuMatrix<BaseFloat> output_for_loss(output);
+      output_for_loss.ApplyPowAbs(1.0);
+      *tot_objf = output_for_loss.Sum();
+      if (supply_deriv) {
+        // sign_mat = sign(output);
+        //TODO: p.vijayaditya@gmail.com
+        // replace the following sequence of operations with a single cuda kernel
+        CuMatrix<BaseFloat> sign_mat(output);
+        sign_mat.ApplyHeaviside();
+        sign_mat.Scale(2.0);
+        sign_mat.Add(-1.0);
+        computer->AcceptOutputDeriv(output_name, &sign_mat);
+      }
+      break;
+    }
+    case kQuadratic: {
+      // objective is -0.5 y^T*y
+      *tot_weight = output.NumRows();
+      *tot_objf = -0.5 * TraceMatMat(output, output, kTrans);
+      if (supply_deriv) {
+        CuMatrix<BaseFloat> output_deriv(output);
+        output_deriv.Scale(-1.0);
+        computer->AcceptOutputDeriv(output_name, &output_deriv);
+      }
+      break;
+    }
+    default:
+      KALDI_ERR << "Objective function type " << objective_type
+                << " not handled.";
+  }
+}
+
+
+
 
 
 

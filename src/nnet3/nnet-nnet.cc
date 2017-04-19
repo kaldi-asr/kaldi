@@ -86,8 +86,20 @@ std::string Nnet::GetAsConfigLine(int32 node_index, bool include_dim) const {
       node.descriptor.WriteConfig(ans, node_names_);
       if (include_dim)
         ans << " dim=" << node.Dim(*this);
-      ans << " objective=" << (node.u.objective_type == kLinear ? "linear" :
-                               "quadratic");
+      ans << " objective=";
+      switch (node.u.objective_type)  {
+        case kNoObj:
+          ans << "none";
+          break;
+        case kLinear:
+          ans << "linear";
+          break;
+        case kQuadratic:
+          ans << "quadratic";
+          break;
+        default:
+          KALDI_ERR << "Unknown objective type";
+      }
       break;
     case kComponent:
       ans << "component-node name=" << name << " component="
@@ -388,7 +400,9 @@ void Nnet::ProcessOutputNodeConfigLine(
                 << config->WholeLine();
     std::string objective_type;
     if (config->GetValue("objective", &objective_type)) {
-      if (objective_type == "linear") {
+      if (objective_type == "none") {
+        nodes_[node_index].u.objective_type = kNoObj;
+      } else if (objective_type == "linear") {
         nodes_[node_index].u.objective_type = kLinear;
       } else if (objective_type == "quadratic") {
         nodes_[node_index].u.objective_type = kQuadratic;
@@ -470,6 +484,12 @@ int32 Nnet::GetComponentIndex(const std::string &component_name) const {
   return -1;
 }
 
+void Nnet::GetOutputNodeIndexes(std::vector<int32>* output_nodes) const {
+  int32 size = nodes_.size();
+  for (int32 i = 0; i < size; i++)
+    if (IsOutputNode(i))
+      output_nodes->push_back(i);
+}
 
 // note: the input to this function is a config generated from the nnet,
 // containing the node info, concatenated with a config provided by the user.
