@@ -191,11 +191,17 @@ exit 0
 %WER 24.3 | 2628 21594 | 78.6 15.0 6.4 2.9 24.3 60.0 | exp/nnet3/tdnn_cnn_sp/decode_eval2000_hires_sw1_tg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
 
 
-# current best 'chain' models with TDNNs (see local/chain/run_tdnn_7g.sh)
+# current best 'chain' models with TDNNs (see local/chain/tuning/run_tdnn_7k.sh)
+# (4 epoch training on data being speed-perturbed, volume-perturbed)
+%WER 15.0 | 4459 42989 | 86.6 8.7 4.7 1.7 15.0 51.1 | exp/chain/tdnn_7k_sp/decode_eval2000_sw1_fsh_fg/score_10_0.5/eval2000_hires.ctm.filt.sys
+%WER 10.1 | 1831 21395 | 91.1 6.0 3.0 1.2 10.1 44.7 | exp/chain/tdnn_7k_sp/decode_eval2000_sw1_fsh_fg/score_10_0.5/eval2000_hires.ctm.swbd.filt.sys
+%WER 19.9 | 2628 21594 | 82.3 11.4 6.3 2.2 19.9 55.6 | exp/chain/tdnn_7k_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+
+#(see local/chain/multi_condition/run_tdnn_7f.sh)
 # (2 epoch training on data being speed-perturbed, volume-perturbed and reverberated with room impulse responses)
-%WER 14.6 | 4459 42989 | 87.1 8.7 4.2 1.7 14.6 50.7 | exp/chain/tdnn_7g_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
-%WER 9.8 | 1831 21395 | 91.2 5.7 3.1 1.1 9.8 43.4 | exp/chain/tdnn_7g_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
-%WER 19.3 | 2628 21594 | 83.0 11.5 5.5 2.3 19.3 55.8 | exp/chain/tdnn_7g_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 14.6 | 4459 42989 | 87.1 8.7 4.2 1.7 14.6 50.7 | exp/chain/tdnn_7f_sp_rvb1/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+%WER 9.8 | 1831 21395 | 91.2 5.7 3.1 1.1 9.8 43.4 | exp/chain/tdnn_7f_sp_rvb1/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 19.3 | 2628 21594 | 83.0 11.5 5.5 2.3 19.3 55.8 | exp/chain/tdnn_7f_sp_rvb1/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
 
 # current best 'chain' models with LSTM (see local/chain/run_lstm_d.sh)
 %WER 15.9 | 4459 42989 | 86.0 9.6 4.3 2.0 15.9 51.7 | exp/chain/lstm_d_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
