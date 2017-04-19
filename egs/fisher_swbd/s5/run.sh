@@ -4,8 +4,10 @@
 . ./cmd.sh
 . ./path.sh
 mfccdir=mfcc
-set -xe
+set -e
 rescore=true
+
+# check for kaldi_lm
 which get_word_map.pl > /dev/null
 if [ $? -ne 0 ]; then
   echo "This recipe requires installation of tools/kaldi_lm. Please run install_kaldi_lm.sh in tools/" && exit 1;
