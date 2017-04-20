@@ -104,6 +104,14 @@ void Group2norm(const CuMatrixBase<Real> &src,
                      o_t = Sigmoid(o_part + w_{oc}*c_t)
                      m_t = o_t * Tanh(c_t)
 
+                     Note on dropout: if the dropout mask is provided, let the
+                     mask values be i_t_mask, f_t_mask and o_t_mask (for each
+                     matrix row, these are scalars while i_t, f_t and o_t are of
+                     dimension C, because this is 'per-frame' dropout as described in
+                     http://www.danielpovey.com/files/2017_interspeech_dropout.pdf).
+                     Then the modification to the equations above consists of
+                     replacing 'i_t' with 'i_t_mask * i_t' in the RHS of the equations
+                     above, and the same type of change for f_t and o_t.
  */
 template<typename Real>
 void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
