@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This (1l.sh) is the same as 1j but with per-frame dropout on LSTM layer
+# This (1l.sh) is the same as 1i but with per-frame dropout on LSTM layer
 # It is a regular (non-fast) LSTM with per-frame dropout on [i, f, o] gates of the LSTM,
 # the dropout-adding place is "place4" in paper : http://www.danielpovey.com/files/2017_interspeech_dropout.pdf.
 # We have tried both 4-epoch and 5-epoch training.
