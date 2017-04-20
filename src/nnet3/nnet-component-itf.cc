@@ -24,8 +24,10 @@
 #include "nnet3/nnet-component-itf.h"
 #include "nnet3/nnet-simple-component.h"
 #include "nnet3/nnet-general-component.h"
+#include "nnet3/nnet-convolutional-component.h"
 #include "nnet3/nnet-parse.h"
 #include "nnet3/nnet-computation-graph.h"
+
 
 // \file This file contains some more-generic component code: things in base classes.
 //       See nnet-component.cc for the code of the actual Components.
@@ -57,6 +59,8 @@ ComponentPrecomputedIndexes* ComponentPrecomputedIndexes::NewComponentPrecompute
     ans = new StatisticsPoolingComponentPrecomputedIndexes();
   } else if (cpi_type == "BackpropTruncationComponentPrecomputedIndexes") {
     ans = new BackpropTruncationComponentPrecomputedIndexes();
+  } else if (cpi_type == "TimeHeightConvolutionComponentPrecomputedIndexes") {
+    ans = new TimeHeightConvolutionComponent::PrecomputedIndexes();
   }
   if (ans != NULL) {
     KALDI_ASSERT(cpi_type == ans->Type());
@@ -151,6 +155,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new BackpropTruncationComponent();
   } else if (component_type == "LstmNonlinearityComponent") {
     ans = new LstmNonlinearityComponent();
+  } else if (component_type == "TimeHeightConvolutionComponent") {
+    ans = new TimeHeightConvolutionComponent();
   }
   if (ans != NULL) {
     KALDI_ASSERT(component_type == ans->Type());

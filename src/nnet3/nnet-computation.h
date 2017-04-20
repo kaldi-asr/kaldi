@@ -226,7 +226,13 @@ struct ComputationRequest {
      matrix of derivatives w.r.t. an input.  arg1 is the submatrix index of the
      output (which we expect to be a whole matrix), arg2 is the index of the
      network node associated with it (e.g. the node for "output").
-   - kNoOperation: does nothing (sometimes useful during optimization)
+   - kNoOperation: does nothing, and will be removed by optimization code
+     (sometimes useful during optimization)
+   - kNoOperationPermanent: like kNoOperation, but won't be removed by
+     optimization code.  This is used to ensure that for 'trivial'
+     computations, which just copy the input to the output, the
+     block of commands for the forward or backward propagation is
+     nonempty (to avoid confusing the computation code).
    - kNoOperationMarker: does nothing, but used to mark end of a block
      of commands (like forward commands).
    - kNoOperationLabel: does nothing, but is the destination for
@@ -244,7 +250,8 @@ enum CommandType {
   kMatrixCopy, kMatrixAdd, kCopyRows, kAddRows,
   kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti, kAddToRowsMulti,
   kAddRowRanges, kAcceptInput, kProvideOutput,
-  kNoOperation, kNoOperationMarker, kNoOperationLabel, kGotoLabel };
+  kNoOperation, kNoOperationPermanent, kNoOperationMarker, kNoOperationLabel,
+  kGotoLabel };
 
 
 

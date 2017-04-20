@@ -2493,10 +2493,7 @@ void ConstantFunctionComponent::UnVectorize(const VectorBase<BaseFloat> &params)
 }
 
 
-NaturalGradientAffineComponent::NaturalGradientAffineComponent():
-    max_change_per_sample_(0.0),
-    update_count_(0.0), active_scaling_count_(0.0),
-    max_change_scale_stats_(0.0) { }
+NaturalGradientAffineComponent::NaturalGradientAffineComponent() { }
 
 // virtual
 void NaturalGradientAffineComponent::Resize(
@@ -2529,18 +2526,28 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &num_samples_history_);
   ExpectToken(is, binary, "<Alpha>");
   ReadBasicType(is, binary, &alpha_);
-  ExpectToken(is, binary, "<MaxChangePerSample>");
-  ReadBasicType(is, binary, &max_change_per_sample_);
-  ExpectToken(is, binary, "<IsGradient>");
-  ReadBasicType(is, binary, &is_gradient_);
   std::string token;
   ReadToken(is, binary, &token);
+  if (token == "<MaxChangePerSample>") {
+    BaseFloat temp;
+    ReadBasicType(is, binary, &temp);
+    ReadToken(is, binary, &token);
+  }
+  if (token != "<IsGradient>") {
+    KALDI_ERR << "Expected token <IsGradient>, got "
+              << token;
+  }
+  ReadBasicType(is, binary, &is_gradient_);
+
+  ReadToken(is, binary, &token);
   if (token == "<UpdateCount>") {
-    ReadBasicType(is, binary, &update_count_);
+    // back-compatibility branch (these configs were added and then removed).
+    double temp;
+    ReadBasicType(is, binary, &temp);
     ExpectToken(is, binary, "<ActiveScalingCount>");
-    ReadBasicType(is, binary, &active_scaling_count_);
+    ReadBasicType(is, binary, &temp);
     ExpectToken(is, binary, "<MaxChangeScaleStats>");
-    ReadBasicType(is, binary, &max_change_scale_stats_);
+    ReadBasicType(is, binary, &temp);
     ReadToken(is, binary, &token);
   }
   if (token != "<NaturalGradientAffineComponent>" &&
@@ -2560,15 +2567,19 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   InitLearningRatesFromConfig(cfl);
   cfl->GetValue("num-samples-history", &num_samples_history);
   cfl->GetValue("alpha", &alpha);
+  // the max-change-per-sample config value is deprecated.
   cfl->GetValue("max-change-per-sample", &max_change_per_sample);
+  if (max_change_per_sample != 0.0) {
+    KALDI_WARN << "The max-change-per-sample configuration value is now "
+        "ignored, use 'max-change'.";
+  }
   cfl->GetValue("rank-in", &rank_in);
   cfl->GetValue("rank-out", &rank_out);
   cfl->GetValue("update-period", &update_period);
 
   if (cfl->GetValue("matrix", &matrix_filename)) {
     Init(rank_in, rank_out, update_period,
-         num_samples_history, alpha, max_change_per_sample,
-         matrix_filename);
+         num_samples_history, alpha, matrix_filename);
     if (cfl->GetValue("input-dim", &input_dim))
       KALDI_ASSERT(input_dim == InputDim() &&
                    "input-dim mismatch vs. matrix.");
@@ -2587,7 +2598,7 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
     cfl->GetValue("bias-mean", &bias_mean);
     Init(input_dim, output_dim, param_stddev,
          bias_stddev, bias_mean, rank_in, rank_out, update_period,
-         num_samples_history, alpha, max_change_per_sample);
+         num_samples_history, alpha);
   }
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
@@ -2610,7 +2621,6 @@ void NaturalGradientAffineComponent::SetNaturalGradientConfigs() {
 void NaturalGradientAffineComponent::Init(
     int32 rank_in, int32 rank_out,
     int32 update_period, BaseFloat num_samples_history, BaseFloat alpha,
-    BaseFloat max_change_per_sample,
     std::string matrix_filename) {
   rank_in_ = rank_in;
   rank_out_ = rank_out;
@@ -2618,8 +2628,6 @@ void NaturalGradientAffineComponent::Init(
   num_samples_history_ = num_samples_history;
   alpha_ = alpha;
   SetNaturalGradientConfigs();
-  KALDI_ASSERT(max_change_per_sample >= 0.0);
-  max_change_per_sample_ = max_change_per_sample;
   CuMatrix<BaseFloat> mat;
   ReadKaldiObject(matrix_filename, &mat); // will abort on failure.
   KALDI_ASSERT(mat.NumCols() >= 2);
@@ -2629,17 +2637,13 @@ void NaturalGradientAffineComponent::Init(
   linear_params_.CopyFromMat(mat.Range(0, output_dim, 0, input_dim));
   bias_params_.CopyColFromMat(mat, input_dim);
   is_gradient_ = false;  // not configurable; there's no reason you'd want this
-  update_count_ = 0.0;
-  active_scaling_count_ = 0.0;
-  max_change_scale_stats_ = 0.0;
 }
 
 void NaturalGradientAffineComponent::Init(
     int32 input_dim, int32 output_dim,
     BaseFloat param_stddev, BaseFloat bias_stddev, BaseFloat bias_mean,
     int32 rank_in, int32 rank_out, int32 update_period,
-    BaseFloat num_samples_history, BaseFloat alpha,
-    BaseFloat max_change_per_sample) {
+    BaseFloat num_samples_history, BaseFloat alpha) {
   linear_params_.Resize(output_dim, input_dim);
   bias_params_.Resize(output_dim);
   KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0 &&
@@ -2655,17 +2659,7 @@ void NaturalGradientAffineComponent::Init(
   num_samples_history_ = num_samples_history;
   alpha_ = alpha;
   SetNaturalGradientConfigs();
-  if (max_change_per_sample > 0.0)
-    KALDI_WARN << "You are setting a positive max_change_per_sample for "
-               << "NaturalGradientAffineComponent. But it has been deprecated. "
-               << "Please use max_change for all updatable components instead "
-               << "to activate the per-component max change mechanism.";
-  KALDI_ASSERT(max_change_per_sample >= 0.0);
-  max_change_per_sample_ = max_change_per_sample;
   is_gradient_ = false;  // not configurable; there's no reason you'd want this
-  update_count_ = 0.0;
-  active_scaling_count_ = 0.0;
-  max_change_scale_stats_ = 0.0;
 }
 
 void NaturalGradientAffineComponent::Write(std::ostream &os,
@@ -2685,16 +2679,8 @@ void NaturalGradientAffineComponent::Write(std::ostream &os,
   WriteBasicType(os, binary, num_samples_history_);
   WriteToken(os, binary, "<Alpha>");
   WriteBasicType(os, binary, alpha_);
-  WriteToken(os, binary, "<MaxChangePerSample>");
-  WriteBasicType(os, binary, max_change_per_sample_);
   WriteToken(os, binary, "<IsGradient>");
   WriteBasicType(os, binary, is_gradient_);
-  WriteToken(os, binary, "<UpdateCount>");
-  WriteBasicType(os, binary, update_count_);
-  WriteToken(os, binary, "<ActiveScalingCount>");
-  WriteBasicType(os, binary, active_scaling_count_);
-  WriteToken(os, binary, "<MaxChangeScaleStats>");
-  WriteBasicType(os, binary, max_change_scale_stats_);
   WriteToken(os, binary, "</NaturalGradientAffineComponent>");
 }
 
@@ -2707,13 +2693,7 @@ std::string NaturalGradientAffineComponent::Info() const {
          << ", rank-out=" << rank_out_
          << ", num_samples_history=" << num_samples_history_
          << ", update_period=" << update_period_
-         << ", alpha=" << alpha_
-         << ", max-change-per-sample=" << max_change_per_sample_;
-  if (update_count_ > 0.0 && max_change_per_sample_ > 0.0) {
-    stream << ", avg-scaling-factor=" << max_change_scale_stats_ / update_count_
-           << ", active-scaling-portion="
-           << active_scaling_count_ / update_count_;
-  }
+         << ", alpha=" << alpha_;
   return stream.str();
 }
 
@@ -2730,11 +2710,7 @@ NaturalGradientAffineComponent::NaturalGradientAffineComponent(
     num_samples_history_(other.num_samples_history_),
     alpha_(other.alpha_),
     preconditioner_in_(other.preconditioner_in_),
-    preconditioner_out_(other.preconditioner_out_),
-    max_change_per_sample_(other.max_change_per_sample_),
-    update_count_(other.update_count_),
-    active_scaling_count_(other.active_scaling_count_),
-    max_change_scale_stats_(other.max_change_scale_stats_) {
+    preconditioner_out_(other.preconditioner_out_) {
   SetNaturalGradientConfigs();
 }
 
@@ -2784,30 +2760,18 @@ void NaturalGradientAffineComponent::Update(
   precon_ones.CopyColFromMat(in_value_temp, in_value_temp.NumCols() - 1);
 
   BaseFloat local_lrate = scale * learning_rate_;
-  update_count_ += 1.0;
+
   bias_params_.AddMatVec(local_lrate, out_deriv_temp, kTrans,
                          precon_ones, 1.0);
   linear_params_.AddMatMat(local_lrate, out_deriv_temp, kTrans,
                            in_value_precon_part, kNoTrans, 1.0);
 }
 
-void NaturalGradientAffineComponent::ZeroStats()  {
-  update_count_ = 0.0;
-  max_change_scale_stats_ = 0.0;
-  active_scaling_count_ = 0.0;
-}
-
 void NaturalGradientAffineComponent::Scale(BaseFloat scale) {
   if (scale == 0.0) {
-    update_count_ = 0.0;
-    max_change_scale_stats_ = 0.0;
-    active_scaling_count_ = 0.0;
     linear_params_.SetZero();
     bias_params_.SetZero();
   } else {
-    update_count_ *= scale;
-    max_change_scale_stats_ *= scale;
-    active_scaling_count_ *= scale;
     linear_params_.Scale(scale);
     bias_params_.Scale(scale);
   }
@@ -2817,9 +2781,6 @@ void NaturalGradientAffineComponent::Add(BaseFloat alpha, const Component &other
   const NaturalGradientAffineComponent *other =
       dynamic_cast<const NaturalGradientAffineComponent*>(&other_in);
   KALDI_ASSERT(other != NULL);
-  update_count_ += alpha * other->update_count_;
-  max_change_scale_stats_ += alpha * other->max_change_scale_stats_;
-  active_scaling_count_ += alpha * other->active_scaling_count_;
   linear_params_.AddMat(alpha, other->linear_params_);
   bias_params_.AddVec(alpha, other->bias_params_);
 }
@@ -3269,9 +3230,16 @@ void NaturalGradientPerElementScaleComponent::Read(
   ExpectToken(is, binary, "<Alpha>");
   ReadBasicType(is, binary, &alpha);
   preconditioner_.SetAlpha(alpha);
-  ExpectToken(is, binary, "<MaxChangePerMinibatch>");
-  ReadBasicType(is, binary, &max_change_per_minibatch_);
-  ExpectToken(is, binary, "</NaturalGradientPerElementScaleComponent>");
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<MaxChangePerMinibatch>") {
+    // back compatibility; this was removed, it's now handled by the
+    // 'max-change' config variable.
+    BaseFloat temp;
+    ReadBasicType(is, binary, &temp);
+    ReadToken(is, binary, &token);
+  }
+  KALDI_ASSERT(token == "</NaturalGradientPerElementScaleComponent>");
 }
 
 void NaturalGradientPerElementScaleComponent::Write(std::ostream &os,
@@ -3289,8 +3257,6 @@ void NaturalGradientPerElementScaleComponent::Write(std::ostream &os,
   WriteBasicType(os, binary, preconditioner_.GetNumSamplesHistory());
   WriteToken(os, binary, "<Alpha>");
   WriteBasicType(os, binary, preconditioner_.GetAlpha());
-  WriteToken(os, binary, "<MaxChangePerMinibatch>");
-  WriteBasicType(os, binary, max_change_per_minibatch_);
   WriteToken(os, binary, "</NaturalGradientPerElementScaleComponent>");
 }
 
@@ -3300,8 +3266,7 @@ std::string NaturalGradientPerElementScaleComponent::Info() const {
          << ", rank=" << preconditioner_.GetRank()
          << ", update-period=" << preconditioner_.GetUpdatePeriod()
          << ", num-samples-history=" << preconditioner_.GetNumSamplesHistory()
-         << ", alpha=" << preconditioner_.GetAlpha()
-         << ", max-change-per-minibatch=" << max_change_per_minibatch_;
+         << ", alpha=" << preconditioner_.GetAlpha();
   return stream.str();
 }
 
@@ -3311,10 +3276,6 @@ void NaturalGradientPerElementScaleComponent::InitFromConfig(ConfigLine *cfl) {
                    // for the preconditioner actually exceeds the memory for the
                    // parameters (by "rank").
       update_period = 10;
-  // the max_change_per_minibatch is the maximum amount of parameter-change, in 2-norm,
-  // that we allow per minibatch; if change is greater than that, we scale down
-  // the parameter-change.  It has the same purpose as the max-change-per-sample in
-  // the NaturalGradientAffineComponent.
   BaseFloat num_samples_history = 2000.0, alpha = 4.0,
       max_change_per_minibatch = 0.0;
   cfl->GetValue("rank", &rank);
@@ -3322,6 +3283,8 @@ void NaturalGradientPerElementScaleComponent::InitFromConfig(ConfigLine *cfl) {
   cfl->GetValue("num-samples-history", &num_samples_history);
   cfl->GetValue("alpha", &alpha);
   cfl->GetValue("max-change-per-minibatch", &max_change_per_minibatch);
+  if (max_change_per_minibatch != 0.0)
+    KALDI_WARN << "max-change-per-minibatch is now ignored, use 'max-change'";
   InitLearningRatesFromConfig(cfl);
   std::string filename;
   // Accepts "scales" config (for filename) or "dim" -> random init, for testing.
@@ -3329,8 +3292,8 @@ void NaturalGradientPerElementScaleComponent::InitFromConfig(ConfigLine *cfl) {
     if (cfl->HasUnusedValues())
       KALDI_ERR << "Invalid initializer for layer of type "
                 << Type() << ": \"" << cfl->WholeLine() << "\"";
-    Init(filename, rank, update_period, num_samples_history,
-         alpha, max_change_per_minibatch);
+    Init(filename, rank, update_period, num_samples_history, alpha);
+
   } else {
     BaseFloat param_mean = 1.0, param_stddev = 0.0;
     cfl->GetValue("param-mean", &param_mean);
@@ -3343,46 +3306,37 @@ void NaturalGradientPerElementScaleComponent::InitFromConfig(ConfigLine *cfl) {
     KALDI_ASSERT(dim > 0);
 
     Init(dim, param_mean, param_stddev, rank, update_period,
-         num_samples_history, alpha, max_change_per_minibatch);
+         num_samples_history, alpha);
   }
 }
 
 void NaturalGradientPerElementScaleComponent::Init(
     int32 dim, BaseFloat param_mean,
     BaseFloat param_stddev, int32 rank, int32 update_period,
-    BaseFloat num_samples_history, BaseFloat alpha,
-    BaseFloat max_change_per_minibatch) {
+    BaseFloat num_samples_history, BaseFloat alpha) {
   PerElementScaleComponent::Init(dim, param_mean,
                                  param_stddev);
   preconditioner_.SetRank(rank);
   preconditioner_.SetUpdatePeriod(update_period);
   preconditioner_.SetNumSamplesHistory(num_samples_history);
   preconditioner_.SetAlpha(alpha);
-  max_change_per_minibatch_ = max_change_per_minibatch;
-  if (max_change_per_minibatch > 0.0)
-    KALDI_WARN << "You are setting a positive max_change_per_minibatch for "
-               << "NaturalGradientPerElementScaleComponent. But it has been deprecated. "
-               << "Please use max_change for all updatable components instead "
-               << "to activate the per-component max change mechanism.";
 }
 
 void NaturalGradientPerElementScaleComponent::Init(
     std::string vector_filename,
     int32 rank, int32 update_period, BaseFloat num_samples_history,
-    BaseFloat alpha, BaseFloat max_change_per_minibatch) {
+    BaseFloat alpha) {
   PerElementScaleComponent::Init(vector_filename);
   preconditioner_.SetRank(rank);
   preconditioner_.SetUpdatePeriod(update_period);
   preconditioner_.SetNumSamplesHistory(num_samples_history);
   preconditioner_.SetAlpha(alpha);
-  max_change_per_minibatch_ = max_change_per_minibatch;
 }
 
 
 NaturalGradientPerElementScaleComponent::NaturalGradientPerElementScaleComponent(
     const NaturalGradientPerElementScaleComponent &other):
     PerElementScaleComponent(other),
-    max_change_per_minibatch_(other.max_change_per_minibatch_),
     preconditioner_(other.preconditioner_) { }
 
 

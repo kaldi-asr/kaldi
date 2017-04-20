@@ -61,8 +61,8 @@ struct NnetTrainerOptions {
     opts->Register("print-interval", &print_interval, "Interval (measured in "
                    "minibatches) after which we print out objective function "
                    "during training\n");
-    opts->Register("max-param-change", &max_param_change, "The maximum change in"
-                   "parameters allowed per minibatch, measured in Frobenius norm "
+    opts->Register("max-param-change", &max_param_change, "The maximum change in "
+                   "parameters allowed per minibatch, measured in Euclidean norm "
                    "over the entire model (change will be clipped to this value)");
     opts->Register("momentum", &momentum, "momentum constant to apply during "
                    "training (help stabilize update).  e.g. 0.9.  Note: we "
