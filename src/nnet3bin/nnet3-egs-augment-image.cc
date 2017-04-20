@@ -28,236 +28,140 @@ namespace nnet3 {
 
 struct ImageAugmentationConfig {
   int32 num_channels;
-  BaesFloat horizontal_flip_prob;
+  BaseFloat horizontal_flip_prob;
   BaseFloat horizontal_shift;
   BaseFloat vertical_shift;
 
-
   ImageAugmentationConfig():
       num_channels(1),
-      horizontal_flip_prob(0.0), horizontal_shift(0.0),
+      horizontal_flip_prob(0.0),
+      horizontal_shift(0.0),
       vertical_shift(0.0) { }
 
 
   void Register(ParseOptions *po) {
-    po.Register("num-channels", &num_channels, "Number of colors in the image.");
-
-    po.Register("horizontal-flip-prob", &horizontal_flip_prob,
-                "Probability of doing horizontal flip");
-    po.Reister("horizontal-shift", &horizontal_shift,
-               "Maximum allowed horizontal shift as proportion of image width.");
-
+    po->Register("num-channels", &num_channels, "Number of colors in the image."
+                 "It is is important to specify this (helps interpret the image "
+                 "correctly.");
+    po->Register("horizontal-flip-prob", &horizontal_flip_prob,
+                 "Probability of doing horizontal flip");
+    po->Register("horizontal-shift", &horizontal_shift,
+                 "Maximum allowed horizontal shift as proportion of image "
+                 "width.  Padding is with closest pixel.");
+    // TODO: vertical_shift
   }
 
+  void Check() const {
+    KALDI_ASSERT(num_channels >= 1);
+    KALDI_ASSERT(horizontal_flip_prob >= 0 &&
+                 horizontal_flip_prob <= 1);
+    KALDI_ASSERT(horizontal_shift >= 0 && horizontal_shift <= 1);
+    KALDI_ASSERT(vertical_shift >= 0 && vertical_shift <= 1);
+  }
+};
 
+
+/* Flips the image horizontally. */
+void HorizontalFlip(MatrixBase<BaseFloat> *image) {
+  int32 num_rows = image->NumRows();
+  Vector<BaseFloat> temp(image->NumCols());
+  for (int32 r = 0; r < num_rows / 2; r++) {
+    SubVector<BaseFloat> row_a(*image, r), row_b(*image,
+                                                 num_rows - r - 1);
+    temp.CopyFromVec(row_a);
+    // TODO
+  }
 }
 
 
-/** Returns true if the "eg" contains just a single example, meaning
-    that all the "n" values in the indexes are zero, and the example
-    has NnetIo members named both "input" and "output"
-
-    Also computes the minimum and maximum "t" values in the "input" and
-    "output" NnetIo members.
- */
-bool ContainsSingleExample(const NnetExample &eg) {
-  bool done_input = false, done_output = false;
-  int32 num_indexes = eg.io.size();
-  for (int32 i = 0; i < num_indexes; i++) {
-    const NnetIo &io = eg.io[i];
-    std::vector<Index>::const_iterator iter = io.indexes.begin(),
-                                        end = io.indexes.end();
-    // Should not have an empty input/output type.
-    KALDI_ASSERT(!io.indexes.empty());
-    if (io.name == "input" || io.name == "output") {
-      int32 min_t = iter->t, max_t = iter->t;
-      for (; iter != end; ++iter) {
-        int32 this_t = iter->t;
-        min_t = std::min(min_t, this_t);
-        max_t = std::max(max_t, this_t);
-        if (iter->n != 0) {
-          KALDI_WARN << "Example does not contain just a single example; "
-                     << "too late to do frame selection or reduce context.";
-          return false;
-        }
-      }
-      if (io.name == "input") {
-        done_input = true;
-        *min_input_t = min_t;
-        *max_input_t = max_t;
-      } else {
-        KALDI_ASSERT(io.name == "output");
-        done_output = true;
-        *min_output_t = min_t;
-        *max_output_t = max_t;
-      }
-    } else {
-      for (; iter != end; ++iter) {
-        if (iter->n != 0) {
-          KALDI_WARN << "Example does not contain just a single example; "
-                     << "too late to do frame selection or reduce context.";
-          return false;
-        }
-      }
-    }
-  }
-  if (!done_input) {
-    KALDI_WARN << "Example does not have any input named 'input'";
-    return false;
-  }
-  if (!done_output) {
-    KALDI_WARN << "Example does not have any output named 'output'";
-    return false;
-  }
-  return true;
+// Shifts the image horizontally by 'horizontal_shift' (+ve == to the right).
+void HorizontalShift(int32 horizontal_shift,
+                     MatrixBase<BaseFloat> *image) {
+  // TODO.
 }
+
+void VerticalShift(int32 vertical_shift,
+                   int32 num_channels,
+                   MatrixBase<BaseFloat> *image) {
+  // TODO.
+  int32 num_rows = image->NumRows(),
+      num_cols = image->NumCols(), height = num_cols / num_channels;
+  KALDI_ASSERT(num_cols % num_channels == 0);
+  for (int32 r = 0; r < num_rows; r++) {
+    BaseFloat *this_row = image->RowData(r);
+    // TODO: Do something with 'this_row'.
+  }
+}
+
+
 
 /**
-   This function filters the indexes (and associated feature rows) in a
-   NnetExample, removing any index/row in an NnetIo named "input" with t <
-   min_input_t or t > max_input_t and any index/row in an NnetIo named "output" with t <
-   min_output_t or t > max_output_t.
-   Will crash if filtering removes all Indexes of "input" or "output".
- */
-void FilterExample(const NnetExample &eg,
-                   int32 min_input_t,
-                   int32 max_input_t,
-                   int32 min_output_t,
-                   int32 max_output_t,
-                   NnetExample *eg_out) {
-  eg_out->io.clear();
-  eg_out->io.resize(eg.io.size());
-  for (size_t i = 0; i < eg.io.size(); i++) {
-    bool is_input_or_output;
-    int32 min_t, max_t;
-    const NnetIo &io_in = eg.io[i];
-    NnetIo &io_out = eg_out->io[i];
-    const std::string &name = io_in.name;
-    io_out.name = name;
-    if (name == "input") {
-      min_t = min_input_t;
-      max_t = max_input_t;
-      is_input_or_output = true;
-    } else if (name == "output") {
-      min_t = min_output_t;
-      max_t = max_output_t;
-      is_input_or_output = true;
-    } else {
-      is_input_or_output = false;
-    }
-    if (!is_input_or_output) {  // Just copy everything.
-      io_out.indexes = io_in.indexes;
-      io_out.features = io_in.features;
-    } else {
-      const std::vector<Index> &indexes_in = io_in.indexes;
-      std::vector<Index> &indexes_out = io_out.indexes;
-      indexes_out.reserve(indexes_in.size());
-      int32 num_indexes = indexes_in.size(), num_kept = 0;
-      KALDI_ASSERT(io_in.features.NumRows() == num_indexes);
-      std::vector<bool> keep(num_indexes, false);
-      std::vector<Index>::const_iterator iter_in = indexes_in.begin(),
-                                          end_in = indexes_in.end();
-      std::vector<bool>::iterator iter_out = keep.begin();
-      for (; iter_in != end_in; ++iter_in,++iter_out) {
-        int32 t = iter_in->t;
-        bool is_within_range = (t >= min_t && t <= max_t);
-        *iter_out = is_within_range;
-        if (is_within_range) {
-          indexes_out.push_back(*iter_in);
-          num_kept++;
-        }
-      }
-      KALDI_ASSERT(iter_out == keep.end());
-      if (num_kept == 0)
-        KALDI_ERR << "FilterExample removed all indexes for '" << name << "'";
+  This function randomly modifies (perturbs) the image.
 
-      FilterGeneralMatrixRows(io_in.features, keep,
-                              &io_out.features);
-      KALDI_ASSERT(io_out.features.NumRows() == num_kept &&
-                   indexes_out.size() == static_cast<size_t>(num_kept));
-    }
+  @param [in] config  Configuration class that says how
+                      to perturb the image.
+  @param [in,out] image  The image matrix to be modified.
+                     image->NumRows() is the width (number of x values) in
+                     the image; image->NumCols() is the height times number
+                     of channels/colors (channel varies the fastest).
+ */
+void PerturbImage(const ImageAugmentationConfig &config,
+                  MatrixBase<BaseFloat> *image) {
+  config.Check();
+  int32 image_width = image->NumRows(),
+      num_channels = config.num_channels,
+      image_height = image->NumCols() / num_channels;
+  if (image->NumCols() % num_channels != 0) {
+    KALDI_ERR << "Number of columns in image must divide the number "
+        "of channels";
   }
+  if (WithProb(config.horizontal_flip_prob)) {
+    HorizontalFlip(image);
+  }
+  { // horizontal shift
+    int32 horizontal_shift_max =
+        static_cast<int32>(0.5 + config.horizontal_shift * image_width);
+    if (horizontal_shift_max > image_width - 1)
+      horizontal_shift_max = image_width - 1;  // would be very strange.
+    int32 horizontal_shift = RandInt(-horizontal_shift_max,
+                                     horizontal_shift_max);
+    if (horizontal_shift != 0)
+      HorizontalShift(horizontal_shift_max, image);
+  }
+
+  // TODO, vertical shift
+
 }
 
 
 /**
-   This function is responsible for possibly selecting one frame from multiple
-   supervised frames, and reducing the left and right context as specified.  If
-   frame == "" it does not reduce the supervised frames; if frame == "random" it
-   selects one random frame; otherwise it expects frame to be an integer, and
-   will select only the output with that frame index (or return false if there was
-   no such output).
+   This function does image perturbation as directed by 'config'
+   The example 'eg' is expected to contain a NnetIo member with the
+   name 'input', representing an image.
+ */
+void PerturbImageInNnetExample(
+    const ImageAugmentationConfig &config,
+    NnetExample *eg) {
+  int32 io_size = eg->io.size();
+  bool found_input = false;
+  for (int32 i = 0; i < io_size; i++) {
+    NnetIo &io = eg->io[i];
+    if (io.name == "input") {
+      found_input = true;
+      Matrix<BaseFloat> image;
+      io.features.GetMatrix(&image);
+      // note: 'GetMatrix' may uncompress if it was compressed.
+      // We won't recompress, but this won't matter because this
+      // program is intended to be used as part of a pipe, we
+      // likely won't be dumping the perturbed data to disk.
+      PerturbImage(config, &image);
 
-   If left_context != -1 it removes any inputs with t < (smallest output - left_context).
-      If left_context != -1 it removes any inputs with t < (smallest output - left_context).
-
-   It returns true if it was able to select a frame.  We only anticipate it ever
-   returning false in situations where frame is an integer, and the eg came from
-   the end of a file and has a smaller than normal number of supervised frames.
-
-*/
-bool SelectFromExample(const NnetExample &eg,
-                       std::string frame_str,
-                       int32 left_context,
-                       int32 right_context,
-                       int32 frame_shift,
-                       NnetExample *eg_out) {
-  static bool warned_left = false, warned_right = false;
-  int32 min_input_t, max_input_t,
-      min_output_t, max_output_t;
-  if (!ContainsSingleExample(eg, &min_input_t, &max_input_t,
-                             &min_output_t, &max_output_t))
-    KALDI_ERR << "Too late to perform frame selection/context reduction on "
-              << "these examples (already merged?)";
-  if (frame_str != "") {
-    // select one frame.
-    if (frame_str == "random") {
-      min_output_t = max_output_t = RandInt(min_output_t,
-                                                          max_output_t);
-    } else {
-      int32 frame;
-      if (!ConvertStringToInteger(frame_str, &frame))
-        KALDI_ERR << "Invalid option --frame='" << frame_str << "'";
-      if (frame < min_output_t || frame > max_output_t) {
-        // Frame is out of range.  Should happen only rarely.  Calling code
-        // makes sure of this.
-        return false;
-      }
-      min_output_t = max_output_t = frame;
+      // modify the 'io' object.
+      io.features = image;
     }
   }
-  if (left_context != -1) {
-    if (!warned_left && min_input_t > min_output_t - left_context) {
-      warned_left = true;
-      KALDI_WARN << "You requested --left-context=" << left_context
-                 << ", but example only has left-context of "
-                 <<  (min_output_t - min_input_t)
-                 << " (will warn only once; this may be harmless if "
-          "using any --*left-context-initial options)";
-    }
-    min_input_t = std::max(min_input_t, min_output_t - left_context);
-  }
-  if (right_context != -1) {
-    if (!warned_right && max_input_t < max_output_t + right_context) {
-      warned_right = true;
-      KALDI_WARN << "You requested --right-context=" << right_context
-                << ", but example only has right-context of "
-                <<  (max_input_t - max_output_t)
-                 << " (will warn only once; this may be harmless if "
-            "using any --*right-context-final options.";
-    }
-    max_input_t = std::min(max_input_t, max_output_t + right_context);
-  }
-  FilterExample(eg,
-                min_input_t, max_input_t,
-                min_output_t, max_output_t,
-                eg_out);
-  if (frame_shift != 0) {
-    std::vector<std::string> exclude_names;  // we can later make this
-    exclude_names.push_back(std::string("ivector")); // configurable.
-    ShiftExampleTimes(frame_shift, exclude_names, eg_out);
-  }
-  return true;
+  if (!found_input)
+    KALDI_ERR << "Nnet example to perturb had no NnetIo object named 'input'";
 }
 
 
@@ -287,33 +191,13 @@ int main(int argc, char *argv[]) {
         "See also: nnet3-copy-egs\n";
 
 
-    int32 srand_seed = 0,
+    int32 srand_seed = 0;
 
-        ImageAugmentationConfig config;
+    ImageAugmentationConfig config;
 
     ParseOptions po(usage);
     po.Register("srand", &srand_seed, "Seed for the random number generator");
     config.Register(&po);
-
-    po.Register("frame-shift", &frame_shift, "Allows you to shift time values "
-                "in the supervision data (excluding iVector data).  Only really "
-                "useful in clockwork topologies (i.e. any topology for which "
-                "modulus != 1).  Shifting is done after any frame selection.");
-    po.Register("keep-proportion", &keep_proportion, "If <1.0, this program will "
-                "randomly keep this proportion of the input samples.  If >1.0, it will "
-                "in expectation copy a sample this many times.  It will copy it a number "
-                "of times equal to floor(keep-proportion) or ceil(keep-proportion).");
-    po.Register("srand", &srand_seed, "Seed for random number generator "
-                "(only relevant if --random=true or --keep-proportion != 1.0)");
-    po.Register("frame", &frame_str, "This option can be used to select a single "
-                "frame from each multi-frame example.  Set to a number 0, 1, etc. "
-                "to select a frame with a given index, or 'random' to select a "
-                "random frame.");
-    po.Register("left-context", &left_context, "Can be used to truncate the "
-                "feature left-context that we output.");
-    po.Register("right-context", &right_context, "Can be used to truncate the "
-                "feature right-context that we output.");
-
 
     po.Read(argc, argv);
 
@@ -324,46 +208,22 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string examples_rspecifier = po.GetArg(1);
+    std::string examples_rspecifier = po.GetArg(1),
+        examples_wspecifier = po.GetArg(2);
 
     SequentialNnetExampleReader example_reader(examples_rspecifier);
-
-    int32 num_outputs = po.NumArgs() - 1;
-    std::vector<NnetExampleWriter*> example_writers(num_outputs);
-    for (int32 i = 0; i < num_outputs; i++)
-      example_writers[i] = new NnetExampleWriter(po.GetArg(i+2));
+    NnetExampleWriter example_writer(examples_wspecifier);
 
 
-    int64 num_read = 0, num_written = 0;
-    for (; !example_reader.Done(); example_reader.Next(), num_read++) {
-      // count is normally 1; could be 0, or possibly >1.
-      int32 count = GetCount(keep_proportion);
+    int64 num_done = 0;
+    for (; !example_reader.Done(); example_reader.Next(), num_done++) {
       std::string key = example_reader.Key();
-      const NnetExample &eg = example_reader.Value();
-      for (int32 c = 0; c < count; c++) {
-        int32 index = (random ? Rand() : num_written) % num_outputs;
-        if (frame_str == "" && left_context == -1 && right_context == -1 &&
-            frame_shift == 0) {
-          example_writers[index]->Write(key, eg);
-          num_written++;
-        } else { // the --frame option or context options were set.
-          NnetExample eg_modified;
-          if (SelectFromExample(eg, frame_str, left_context, right_context,
-                                frame_shift, &eg_modified)) {
-            // this branch of the if statement will almost always be taken (should only
-            // not be taken for shorter-than-normal egs from the end of a file.
-            example_writers[index]->Write(key, eg_modified);
-            num_written++;
-          }
-        }
-      }
+      NnetExample eg(example_reader.Value());
+      PerturbImageInNnetExample(config, &eg);
+      example_writer.Write(key, eg);
     }
-
-    for (int32 i = 0; i < num_outputs; i++)
-      delete example_writers[i];
-    KALDI_LOG << "Read " << num_read << " neural-network training examples, wrote "
-              << num_written;
-    return (num_written == 0 ? 1 : 0);
+    KALDI_LOG << "Perturbed" << num_done << " neural-network training images.";
+    return (num_done == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
