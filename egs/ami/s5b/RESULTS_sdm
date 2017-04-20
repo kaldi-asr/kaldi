@@ -91,6 +91,11 @@
 %WER 37.6 | 15122 94495 | 66.1 18.7 15.1 3.7 37.6 63.2 | 0.646 | exp/sdm1/chain_cleaned/tdnn_lstm1i_sp_bi_ihmali_ld5/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
 %WER 40.9 | 13807 89961 | 62.4 20.0 17.6 3.3 40.9 65.7 | 0.612 | exp/sdm1/chain_cleaned/tdnn_lstm1i_sp_bi_ihmali_ld5/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
 
+# local/chain/tuning/run_tdnn_lstm_1l.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned
+# same as local/chain/tuning/run_tdnn_lstm_1i.sh, except that dropout is adopted
+# cleanup + chain TDNN+LSTM model, SDM audio + alignments from ihm data + per-frame dropout.
+%WER 35.9 | 14900 94497 | 67.8 18.2 14.1 3.7 35.9 62.5 | 0.647 | exp/sdm1/chain_cleaned/tdnn_lstm1l_sp_bi_ihmali_ld5/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+%WER 39.4 | 13223 89946 | 64.1 19.7 16.2 3.5 39.4 67.0 | 0.611 | exp/sdm1/chain_cleaned/tdnn_lstm1l_sp_bi_ihmali_ld5/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 
 # local/chain/multi_condition/tuning/run_tdnn_lstm_1a.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned 
 # cleanup + chain TDNN+LSTM model, SDM original + IHM reverberated data, alignments from ihm data.

@@ -21,6 +21,7 @@
 #include "nnet3/nnet-utils.h"
 #include "nnet3/nnet-graph.h"
 #include "nnet3/nnet-simple-component.h"
+#include "nnet3/nnet-general-component.h"
 #include "nnet3/nnet-parse.h"
 
 namespace kaldi {
@@ -461,6 +462,10 @@ void SetDropoutProportion(BaseFloat dropout_proportion,
     DropoutComponent *dc = dynamic_cast<DropoutComponent*>(comp);
     if (dc != NULL)
       dc->SetDropoutProportion(dropout_proportion);
+    DropoutMaskComponent *mc =
+        dynamic_cast<DropoutMaskComponent*>(nnet->GetComponent(c));
+    if (mc != NULL)
+      mc->SetDropoutProportion(dropout_proportion);
   }
 }
 
@@ -629,15 +634,19 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
         KALDI_ERR << "In edits-config, expected proportion to be set in line: "
                   << config_line.WholeLine();
       }
-      DropoutComponent *dropout_component = NULL;
       int32 num_dropout_proportions_set = 0;
       for (int32 c = 0; c < nnet->NumComponents(); c++) {
         if (NameMatchesPattern(nnet->GetComponentName(c).c_str(),
-                               name_pattern.c_str()) &&
-            (dropout_component =
-             dynamic_cast<DropoutComponent*>(nnet->GetComponent(c)))) {
+                               name_pattern.c_str())) {
+          DropoutComponent *dropout_component =
+             dynamic_cast<DropoutComponent*>(nnet->GetComponent(c));
+          DropoutMaskComponent *mask_component =
+             dynamic_cast<DropoutMaskComponent*>(nnet->GetComponent(c));
           if (dropout_component != NULL) {
             dropout_component->SetDropoutProportion(proportion);
+            num_dropout_proportions_set++;
+          } else if (mask_component != NULL){
+            mask_component->SetDropoutProportion(proportion);
             num_dropout_proportions_set++;
           }
         }

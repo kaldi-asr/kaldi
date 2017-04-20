@@ -82,8 +82,11 @@ enum ComponentProperties {
                              // Tanh, Sigmoid, ReLU and Softmax).
   kInputContiguous = 0x1000,  // true if the component requires its input data (and
                               // input derivatives) to have Stride()== NumCols().
-  kOutputContiguous = 0x2000  // true if the component requires its input data (and
+  kOutputContiguous = 0x2000,  // true if the component requires its input data (and
                               // output derivatives) to have Stride()== NumCols().
+  kRandomComponent = 0x4000   // true if the component has some kind of
+                              // randomness, like DropoutComponent (these should
+                              // inherit from class RandomComponent.
 };
 
 

@@ -1,15 +1,65 @@
 #!/bin/bash
 
-# same as 1g but with TDNN output dim 1024 instead of 512
-# (num-params 1g:21309812 1i: 43447156)
-# results on sdm1 using ihm ali
-#System               tdnn_lstm1g_sp_bi_ihmali_ld5 tdnn_lstm1i_sp_bi_ihmali_ld5
-#WER on dev        38.3      37.6
-#WER on eval        41.6      40.9
-#Final train prob      -0.138017 -0.114135
-#Final valid prob      -0.238659 -0.245208
-#Final train prob (xent)      -1.66834  -1.47648
-#Final valid prob (xent)      -2.17419  -2.16365
+# This (1m.sh) is the same as 1j but with per-frame dropout on LSTM layer
+# It is a fast LSTM with per-frame dropout on [i, f, o] gates of the LSTM,
+# the dropout-adding place is "place4" in paper : http://www.danielpovey.com/files/2017_interspeech_dropout.pdf.
+# We have tried both 4-epoch and 5-epoch training.
+
+### IHM
+# Results with flags : --mic ihm  --train-set train_cleaned  --gmm tri3_cleaned \
+#System            tdnn_lstm1j_sp_bi_ld5 tdnn_lstm1m_sp_bi_ld5
+#WER on dev        20.8      19.9
+#WER on eval        20.3      19.3
+#Final train prob     -0.0439145 -0.0653269
+#Final valid prob       -0.10673 -0.0998743
+#Final train prob (xent)     -0.683776 -0.884698
+#Final valid prob (xent)      -1.05254  -1.09002
+
+# steps/info/chain_dir_info.pl exp/ihm/chain_cleaned/tdnn_lstm1j_sp_bi_ld5/ exp/ihm/chain_cleaned/tdnn_lstm1m_sp_bi_ld5/
+# exp/ihm/chain_cleaned/tdnn_lstm1j_sp_bi_ld5: num-iters=89 nj=2..12 num-params=43.4M dim=40+100->3765 combine=-0.063->-0.058 xent:train/valid[58,88,final]=(-0.888,-0.695,-0.684/-1.12,-1.06,-1.05) logprob:train/valid[58,88,final]=(-0.065,-0.045,-0.044/-0.105,-0.107,-0.107)
+# exp/ihm/chain_cleaned/tdnn_lstm1m_sp_bi_ld5: num-iters=89 nj=2..12 num-params=43.4M dim=40+100->3765 combine=-0.092->-0.080 xent:train/valid[58,88,final]=(-3.12,-1.09,-0.885/-3.20,-1.27,-1.09) logprob:train/valid[58,88,final]=(-0.164,-0.072,-0.065/-0.181,-0.103,-0.100)
+
+# Results with flags for (1m.sh) : --num-epochs 5 --tlstm-affix 1m_5epoch --mic ihm  --train-set train_cleaned  --gmm tri3_cleaned \
+# Results with flags for (1j.sh) : --num-epochs 5 --tlstm-affix 1j_5epoch --mic ihm  --train-set train_cleaned  --gmm tri3_cleaned \
+#System            tdnn_lstm1j_5epoch_sp_bi_ld5 tdnn_lstm1m_5epoch_sp_bi_ld5
+#WER on dev        21.1      19.9
+#WER on eval        20.9      19.8
+#Final train prob     -0.0365079 -0.057024
+#Final valid prob      -0.112709-0.0992725
+#inal train prob (xent)     -0.601602 -0.800653
+#Final valid prob (xent)      -1.03241  -1.04748
+
+# ./steps/info/chain_dir_info.pl exp/ihm/chain_cleaned/tdnn_lstm1j_5epoch_sp_bi_ld5/ exp/ihm/chain_cleaned/tdnn_lstm1m_5epoch_sp_bi_ld5/
+# exp/ihm/chain_cleaned/tdnn_lstm1j_5epoch_sp_bi_ld5/: num-iters=111 nj=2..12 num-params=43.4M dim=40+100->3765 combine=-0.053->-0.049 xent:train/valid[73,110,final]=(-0.813,-0.615,-0.602/-1.08,-1.04,-1.03) logprob:train/valid[73,110,final]=(-0.057,-0.038,-0.037/-0.106,-0.113,-0.113)
+# exp/ihm/chain_cleaned/tdnn_lstm1m_5epoch_sp_bi_ld5/: num-iters=111 nj=2..12 num-params=43.4M dim=40+100->3765 combine=-0.080->-0.072 xent:train/valid[73,110,final]=(-3.15,-0.985,-0.801/-3.26,-1.21,-1.05) logprob:train/valid[73,110,final]=(-0.161,-0.062,-0.057/-0.183,-0.102,-0.099)
+
+#### SDM
+# Results with flags : --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned \
+#System            tdnn_lstm1j_sp_bi_ihmali_ld5 tdnn_lstm1m_sp_bi_ihmali_ld5
+#WER on dev        36.9      36.4
+#WER on eval        40.5      39.9
+#Final train prob      -0.108141 -0.148861
+#Final valid prob      -0.257468 -0.240962
+#Final train prob (xent)      -1.38179  -1.70258
+#Final valid prob (xent)      -2.13095  -2.12803
+
+# ./steps/info/chain_dir_info.pl exp/sdm1/chain_cleaned/tdnn_lstm1j_sp_bi_ihmali_ld5/ exp/sdm1/chain_cleaned/tdnn_lstm1m_sp_bi_ihmali_ld5/
+# exp/sdm1/chain_cleaned/tdnn_lstm1j_sp_bi_ihmali_ld5/: num-iters=87 nj=2..12 num-params=43.4M dim=40+100->3741 combine=-0.138->-0.128 xent:train/valid[57,86,final]=(-1.71,-1.39,-1.38/-2.18,-2.14,-2.13) logprob:train/valid[57,86,final]=(-0.150,-0.110,-0.108/-0.251,-0.260,-0.257)
+# exp/sdm1/chain_cleaned/tdnn_lstm1m_sp_bi_ihmali_ld5/: num-iters=87 nj=2..12 num-params=43.4M dim=40+100->3741 combine=-0.187->-0.170 xent:train/valid[57,86,final]=(-3.74,-1.90,-1.70/-3.88,-2.28,-2.13) logprob:train/valid[57,86,final]=(-0.286,-0.158,-0.149/-0.336,-0.245,-0.241)
+
+# Results with flags for (1m.sh) : --num-epochs 5 --tlstm-affix 1m_5epoch --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned\
+# Results with flags for (1j.sh) : --num-epochs 5 --tlstm-affix 1j_5epoch --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned\
+#System            tdnn_lstm1j_5epoch_sp_bi_ihmali_ld5 tdnn_lstm1m_5epoch_sp_bi_ihmali_ld5
+#WER on dev        37.4      36.0
+#WER on eval        40.7      39.6
+#Final train prob     -0.0879063 -0.133092
+#Final valid prob      -0.270953 -0.243246
+#Final train prob (xent)      -1.20822  -1.56293
+#Final valid prob (xent)       -2.1425  -2.07265
+
+# ./steps/info/chain_dir_info.pl exp/sdm1/chain_cleaned/tdnn_lstm1j_5epoch_sp_bi_ihmali_ld5/ exp/sdm1/chain_cleaned/tdnn_lstm1m_5epoch_sp_bi_ihmali_ld5/
+# exp/sdm1/chain_cleaned/tdnn_lstm1j_5epoch_sp_bi_ihmali_ld5/: num-iters=109 nj=2..12 num-params=43.4M dim=40+100->3741 combine=-0.115->-0.107 xent:train/valid[71,108,final]=(-1.56,-1.22,-1.21/-2.16,-2.16,-2.14) logprob:train/valid[71,108,final]=(-0.131,-0.090,-0.088/-0.256,-0.273,-0.271)
+# exp/sdm1/chain_cleaned/tdnn_lstm1m_5epoch_sp_bi_ihmali_ld5/: num-iters=109 nj=2..12 num-params=43.4M dim=40+100->3741 combine=-0.167->-0.153 xent:train/valid[71,108,final]=(-3.69,-1.71,-1.56/-3.84,-2.20,-2.07) logprob:train/valid[71,108,final]=(-0.279,-0.140,-0.133/-0.329,-0.247,-0.243)
 
 
 set -e -o pipefail
@@ -26,6 +76,8 @@ gmm=tri3_cleaned  # the gmm for the target data
 ihm_gmm=tri3  # the gmm for the IHM system (if --use-ihm-ali true).
 num_threads_ubm=32
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
+dropout_schedule='0,0@0.20,0.3@0.50,0' # dropout schedule controls the dropout
+                                       # proportion for each training iteration.
 num_epochs=4
 
 chunk_width=150
@@ -36,7 +88,7 @@ label_delay=5
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tlstm_affix=1i  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
+tlstm_affix=1m  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 
 
@@ -176,6 +228,8 @@ if [ $stage -le 15 ]; then
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
+  lstm_opts="decay-time=20 dropout-proportion=0.0"
+
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
@@ -192,15 +246,15 @@ if [ $stage -le 15 ]; then
   relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
-  lstmp-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  fast-lstmp-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
   relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
-  lstmp-layer name=lstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  fast-lstmp-layer name=lstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
   relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn8 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn9 input=Append(-3,0,3) dim=1024
-  lstmp-layer name=lstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  fast-lstmp-layer name=lstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
 
   ## adding the layers for chain branch
   output-layer name=output input=lstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
@@ -241,7 +295,10 @@ if [ $stage -le 16 ]; then
     --egs.chunk-width $chunk_width \
     --egs.chunk-left-context $chunk_left_context \
     --egs.chunk-right-context $chunk_right_context \
-    --trainer.num-chunk-per-minibatch 64 \
+    --egs.chunk-left-context-initial 0 \
+    --egs.chunk-right-context-final 0 \
+    --trainer.dropout-schedule $dropout_schedule \
+    --trainer.num-chunk-per-minibatch 64,32 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \
     --trainer.optimization.shrink-value 0.99 \
@@ -279,6 +336,8 @@ if [ $stage -le 18 ]; then
           --nj $nj --cmd "$decode_cmd" \
           --extra-left-context $extra_left_context  \
           --frames-per-chunk "$frames_per_chunk" \
+          --extra-left-context-initial 0 \
+          --extra-right-context-final 0 \
           --online-ivector-dir exp/$mic/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
           --scoring-opts "--min-lmwt 5 " \
          $graph_dir data/$mic/${decode_set}_hires $dir/decode_${decode_set} || exit 1;

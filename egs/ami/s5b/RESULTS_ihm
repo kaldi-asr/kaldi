@@ -84,6 +84,11 @@
 %WER 20.8 | 13098 94489 | 82.0 10.0 8.0 2.8 20.8 53.2 | -0.096 | exp/ihm/chain_cleaned/tdnn_lstm1i_sp_bi_ld5/decode_dev/ascore_11/dev_hires.ctm.filt.sys
 %WER 20.7 | 12643 89980 | 81.7 11.5 6.8 2.5 20.7 51.8 | 0.015 | exp/ihm/chain_cleaned/tdnn_lstm1i_sp_bi_ld5/decode_eval/ascore_11/eval_hires.ctm.filt.sys
 
+# local/chain/tuning/run_tdnn_lstm_1l.sh --mic ihm  --train-set train_cleaned  --gmm tri3_cleaned
+# same as local/chain/tuning/run_tdnn_lstm_1i.sh, except that dropout is adopted
+# cleanup + chain TDNN+LSTM model + per-frame dropout
+%WER 19.8 | 13098 94475 | 83.1 9.6 7.4 2.8 19.8 51.8 | -0.041 | exp/ihm/chain_cleaned/tdnn_lstm1l_sp_bi_ld5/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+%WER 19.2 | 12643 89964 | 83.2 10.7 6.1 2.5 19.2 49.7 | 0.079 | exp/ihm/chain_cleaned/tdnn_lstm1l_sp_bi_ld5/decode_eval/ascore_10/eval_hires.ctm.filt.sys
 
 # local/chain/multi_condition/tuning/run_tdnn_lstm_1a.sh --mic ihm
 # cleanup + chain TDNN+LSTM model + IHM reverberated data
