@@ -54,23 +54,19 @@
 %WER 22.4 | 12643 89977 | 80.3 12.5 7.2 2.7 22.4 53.6 | -0.503 | exp/ihm/nnet3_cleaned/lstm_bidirectional_sp/decode_eval/ascore_10/eval_hires.ctm.filt.sys
 
 ############################################
-# cleanup + chain TDNN model.
+# cleanup + chain TDNN model 
 # local/chain/run_tdnn.sh --mic ihm --stage 4 &
-# for d in exp/ihm/chain_cleaned/tdnn1d_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
-%WER 21.7 | 13098 94488 | 81.1 10.4 8.4 2.8 21.7 54.4 | 0.096 | exp/ihm/chain_cleaned/tdnn1d_sp_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
-%WER 22.1 | 12643 89979 | 80.5 12.1 7.4 2.6 22.1 52.8 | 0.185 | exp/ihm/chain_cleaned/tdnn1d_sp_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
+# for d in exp/ihm/chain_cleaned/tdnn1e_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 21.4 | 13098 94487 | 81.4 10.1 8.5 2.8 21.4 53.7 | 0.090 | exp/ihm/chain_cleaned/tdnn1e_batch_sp_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+%WER 21.5 | 12643 89977 | 81.0 11.8 7.2 2.5 21.5 52.4 | 0.168 | exp/ihm/chain_cleaned/tdnn1e_batch_sp_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
 
-# cleanup + chain TDNN model. Uses LDA instead of PCA for ivector features.
-# local/chain/tuning/run_tdnn_1b.sh --mic ihm --stage 4 &
-# for d in exp/ihm/chain_cleaned/tdnn1b_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
-%WER 22.0 | 13098 94488 | 80.8 10.2 9.0 2.8 22.0 54.7 | 0.102 | exp/ihm/chain_cleaned/tdnn1b_sp_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
-%WER 22.2 | 12643 89968 | 80.3 12.1 7.6 2.6 22.2 52.9 | 0.170 | exp/ihm/chain_cleaned/tdnn1b_sp_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
 
 # local/chain/run_tdnn.sh --mic ihm --train-set train --gmm tri3 --nnet3-affix "" --stage 4
 # chain TDNN model without cleanup [note: cleanup helps very little on this IHM data.]
 # for d in exp/ihm/chain/tdnn1d_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
 %WER 21.8 | 13098 94484 | 80.7 9.7 9.6 2.5 21.8 54.2 | 0.114 | exp/ihm/chain/tdnn1d_sp_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
 %WER 22.1 | 12643 89965 | 80.2 11.5 8.3 2.3 22.1 52.5 | 0.203 | exp/ihm/chain/tdnn1d_sp_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sy
+
 
 # local/chain/multi_condition/run_tdnn.sh --mic ihm
 # cleanup + chain TDNN model + IHM reverberated data
