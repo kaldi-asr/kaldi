@@ -32,10 +32,12 @@ echo 3 > data/cifar10_train/num_colors
 echo 3 > data/cifar10_test/num_colors
 
 local/process_data.py --dataset train $cifar10 data/cifar10_train/ | \
-  copy-feats --compress=true ark:- ark,scp:data/cifar10_train/data/images.ark,data/cifar10_train/images.scp || exit 1
+  copy-feats --compress=true --compression-method=6 \
+   ark:- ark,scp:data/cifar10_train/data/images.ark,data/cifar10_train/images.scp || exit 1
 
 local/process_data.py --dataset test $cifar10 data/cifar10_test/ | \
-  copy-feats --compress=true ark:- ark,scp:data/cifar10_test/data/images.ark,data/cifar10_test/images.scp || exit 1
+  copy-feats --compress=true --compression-method=6 \
+    ark:- ark,scp:data/cifar10_test/data/images.ark,data/cifar10_test/images.scp || exit 1
 
 
 
@@ -63,8 +65,9 @@ echo 3 > data/cifar100_train/num_colors
 echo 3 > data/cifar100_test/num_colors
 
 local/process_data.py --dataset train $cifar100 data/cifar100_train/ | \
-  copy-feats --compress=true ark:- ark,scp:data/cifar100_train/data/images.ark,data/cifar100_train/images.scp || exit 1
+  copy-feats --compress=true --compression-method=6 \
+    ark:- ark,scp:data/cifar100_train/data/images.ark,data/cifar100_train/images.scp || exit 1
 
 local/process_data.py --dataset test $cifar100 data/cifar100_test/ | \
-  copy-feats --compress=true ark:- ark,scp:data/cifar100_test/data/images.ark,data/cifar100_test/images.scp || exit 1
-
+  copy-feats --compress=true --compression-method=6 \
+    ark:- ark,scp:data/cifar100_test/data/images.ark,data/cifar100_test/images.scp || exit 1

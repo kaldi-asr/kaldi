@@ -10,7 +10,6 @@ if [ $stage -le 0 ]; then
   # data preparation
   local/prepare_data.sh
   for x in cifar{10,100}_{train,test}; do
-    image/validate_data_dir.sh data/$x
+    image/validate_image_dir.sh data/$x
   done
 fi
-

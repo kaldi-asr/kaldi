@@ -18,14 +18,14 @@ sys.path.insert(0, 'steps')
 import libs.common as common_lib
 
 parser = argparse.ArgumentParser(description="""Converts train/test data of
-                                                CIFAR-10 or CIFAR-100 to 
+                                                CIFAR-10 or CIFAR-100 to
                                                 Kaldi feature format""")
 parser.add_argument('database', type=str,
                     default='data/dl/cifar-10-batches-bin',
-                    description='path to downloaded cifar data (binary version)')
-parser.add_argument('dir', type=str, description='output dir')
+                    help='path to downloaded cifar data (binary version)')
+parser.add_argument('dir', type=str, help='output dir')
 parser.add_argument('--dataset', type=str, default='train', choices=['train', 'test'])
-parser.add_argument('--out-ark', type=str, default='-', description='where to write output feature data')
+parser.add_argument('--out-ark', type=str, default='-', help='where to write output feature data')
 
 args = parser.parse_args()
 
@@ -42,7 +42,7 @@ def load_cifar10_data_batch(datafile):
         for i in range(num_images_in_batch):
             label = ord(fh.read(1))
             bin_img = fh.read(C * H * W)
-            img = [[[ord(byte) for byte in bin_img[channel*H*W+row*W:channel*H*W+(row+1)*W]]
+            img = [[[ord(byte) / 255.0 for byte in bin_img[channel*H*W+row*W:channel*H*W+(row+1)*W]]
                   for row in range(H)] for channel in range(C)]
             labels += [label]
             data += [img]
@@ -58,7 +58,7 @@ def load_cifar100_data_batch(datafile):
             coarse_label = ord(fh.read(1))
             fine_label = ord(fh.read(1))
             bin_img = fh.read(C * H * W)
-            img = [[[ord(byte) for byte in bin_img[channel*H*W+row*W:channel*H*W+(row+1)*W]]
+            img = [[[ord(byte) / 255.0 for byte in bin_img[channel*H*W+row*W:channel*H*W+(row+1)*W]]
                   for row in range(H)] for channel in range(C)]
             fine_labels += [fine_label]
             coarse_labels += [coarse_label]
@@ -108,7 +108,7 @@ if cifar10:
     img_id = 1  # similar to utt_id
     labels_file = os.path.join(args.dir, 'labels.txt')
     labels_fh = open(labels_file, 'wb')
-    
+
 
     if args.dataset == 'train':
         for i in range(1, 6):
