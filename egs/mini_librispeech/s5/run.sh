@@ -175,8 +175,29 @@ if [ $stage -le 7 ]; then
     data/train_clean_5 data/lang exp/tri3b exp/tri3b_ali_train_clean_5
 fi
 
-# Train a chain model
+
 if [ $stage -le 8 ]; then
+  # Test the tri3b system with the silprobs and pron-probs.
+
+  # decode using the tri3b model
+  utils/mkgraph.sh data/lang_test_tgsmall \
+                   exp/tri3b exp/tri3b/graph_tgsmall
+  for test in dev_clean_2; do
+    steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
+                          exp/tri3b/graph_tgsmall data/$test \
+                          exp/tri3b/decode_tgsmall_$test
+    steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
+                       data/$test exp/tri3b/decode_{tgsmall,tgmed}_$test
+    steps/lmrescore_const_arpa.sh \
+      --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
+      data/$test exp/tri3b/decode_{tgsmall,tglarge}_$test
+  done
+fi
+
+exit 0 # temp
+
+# Train a chain model
+if [ $stage -le 9 ]; then
   local/chain/run_tdnn.sh --stage 0
 fi
 
