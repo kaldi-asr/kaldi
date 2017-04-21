@@ -163,7 +163,8 @@ int main(int argc, char *argv[]) {
         "An example [where $feats expands to the actual features]:\n"
         "nnet3-get-egs --num-pdfs=2658 --left-context=12 --right-context=9 --num-frames=8 \"$feats\"\\\n"
         "\"ark:gunzip -c exp/nnet/ali.1.gz | ali-to-pdf exp/nnet/1.nnet ark:- ark:- | ali-to-post ark:- ark:- |\" \\\n"
-        "   ark:- \n";
+        "   ark:- \n"
+        "See also: nnet3-chain-get-egs, nnet3-get-egs-simple\n";
 
 
     bool compress = true;
