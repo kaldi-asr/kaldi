@@ -22,10 +22,10 @@ parser = argparse.ArgumentParser(description="""Converts train/test data of
                                                 Kaldi feature format""")
 parser.add_argument('database', type=str,
                     default='data/dl/cifar-10-batches-bin',
-                    description='path to downloaded cifar data (binary version)')
-parser.add_argument('dir', type=str, description='output dir')
+                    help='path to downloaded cifar data (binary version)')
+parser.add_argument('dir', type=str, help='output dir')
 parser.add_argument('--dataset', type=str, default='train', choices=['train', 'test'])
-parser.add_argument('--out-ark', type=str, default='-', description='where to write output feature data')
+parser.add_argument('--out-ark', type=str, default='-', help='where to write output feature data')
 
 args = parser.parse_args()
 
