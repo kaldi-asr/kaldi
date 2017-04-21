@@ -60,7 +60,10 @@ namespace kaldi {
                         representable range of values chosen automatically with
                         the minimum and maximum elements of the matrix as its
                         edges.
-    kOneByteZeroOne = 6 Each element is stored in
+    kOneByteUnsignedInteger = 6 Each element is stored in
+                        one byte as a uint8, with the representable range of
+                        values equal to [0.0, 255.0].
+    kOneByteZeroOne = 7 Each element is stored in
                         one byte as a uint8, with the representable range of
                         values equal to [0.0, 1.0].  Suitable for image data
                         that has previously been compressed as int8.
@@ -75,7 +78,7 @@ enum CompressionMethod {
   kTwoByteAuto = 3,
   kTwoByteSignedInteger = 4,
   kOneByteAuto = 5,
-  kOneByteInteger = 6,
+  kOneByteUnsignedInteger = 6,
   kOneByteZeroOne = 7
 };
 
