@@ -1,0 +1,17 @@
+#!/bin/bash
+
+for x in exp/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done
+exit 0
+
+# Results on on dev_clean_2
+%WER 49.89 [ 10047 / 20138, 456 ins, 2371 del, 7220 sub ] exp/mono/decode_nosp_tgsmall_dev_clean_2/wer_8_0.0
+%WER 20.84 [ 4196 / 20138, 471 ins, 606 del, 3119 sub ] exp/tri1/decode_nosp_tglarge_dev_clean_2/wer_16_0.0
+%WER 24.56 [ 4946 / 20138, 417 ins, 843 del, 3686 sub ] exp/tri1/decode_nosp_tgmed_dev_clean_2/wer_15_0.0
+%WER 27.30 [ 5497 / 20138, 454 ins, 980 del, 4063 sub ] exp/tri1/decode_nosp_tgsmall_dev_clean_2/wer_14_0.0
+%WER 18.37 [ 3699 / 20138, 429 ins, 497 del, 2773 sub ] exp/tri2b/decode_nosp_tglarge_dev_clean_2/wer_17_0.0
+%WER 22.01 [ 4432 / 20138, 420 ins, 726 del, 3286 sub ] exp/tri2b/decode_nosp_tgmed_dev_clean_2/wer_16_0.0
+%WER 24.32 [ 4898 / 20138, 422 ins, 864 del, 3612 sub ] exp/tri2b/decode_nosp_tgsmall_dev_clean_2/wer_15_0.0
+%WER 13.14 [ 2647 / 20138, 368 ins, 303 del, 1976 sub ] exp/tri3b/decode_nosp_tglarge_dev_clean_2/wer_16_0.0
+%WER 16.06 [ 3235 / 20138, 319 ins, 506 del, 2410 sub ] exp/tri3b/decode_nosp_tgmed_dev_clean_2/wer_17_0.0
+%WER 17.66 [ 3557 / 20138, 346 ins, 570 del, 2641 sub ] exp/tri3b/decode_nosp_tgsmall_dev_clean_2/wer_16_0.0
+%WER 24.46 [ 4926 / 20138, 482 ins, 783 del, 3661 sub ] exp/tri3b/decode_nosp_tgsmall_dev_clean_2.si/wer_15_0.0
