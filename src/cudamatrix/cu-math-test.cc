@@ -144,7 +144,8 @@ static void UnitTestCuMathComputeLstmNonlinearity() {
   for (int i = 0; i < 3; i++) {
     int32 num_rows = 1 + Rand() % 100;
     int32 cell_dim = 1 + Rand() % 2000;
-    Matrix<Real> Hinput(num_rows, 5 * cell_dim);
+    int32 dropout_dim = (RandInt(0, 1) == 0 ? 0 : 3);
+    Matrix<Real> Hinput(num_rows, 5 * cell_dim + dropout_dim);
     Matrix<Real> Hparams(3, cell_dim);
     Matrix<Real> Houtput(num_rows, 2 * cell_dim);
     Hinput.SetRandn();
@@ -165,7 +166,8 @@ static void UnitTestCuMathComputeLstmNonlinearity() {
     BaseFloat time_in_secs = 0.025;
     int32 num_rows = i;
     int32 cell_dim = i;
-    CuMatrix<Real> input(num_rows, 5 * cell_dim);
+    int32 dropout_dim = (RandInt(0, 1) == 0 ? 0 : 3);
+    CuMatrix<Real> input(num_rows, 5 * cell_dim + dropout_dim);
     CuMatrix<Real> params(3, cell_dim);
     CuMatrix<Real> output(num_rows, 2 * cell_dim);
     input.SetRandn();
@@ -190,7 +192,8 @@ void UnitTestLstmNonlinearity() {
 
     // problem dimensions.
     int32 num_rows = RandInt(5, 20),
-        cell_dim = RandInt(2, 200);
+          cell_dim = RandInt(2, 200),
+        dropout_dim = (RandInt(0, 1) == 0 ? 0 : 3);
 
     // Pick the (input or params block), and output block, for which we'll
     // spot-check the derivative values.  This will give us test failures
@@ -207,7 +210,7 @@ void UnitTestLstmNonlinearity() {
       test_params = -1;
 
 
-    CuMatrix<BaseFloat> input(num_rows, cell_dim * 5),
+    CuMatrix<BaseFloat> input(num_rows, cell_dim * 5 + dropout_dim),
         params(3, cell_dim),
         output_deriv(num_rows, cell_dim * 2);
     input.SetRandn();
@@ -230,7 +233,7 @@ void UnitTestLstmNonlinearity() {
     CuVector<BaseFloat> self_repair_config(10.0); // leave at zero... we don't really test this here.
     CuMatrix<BaseFloat>
         self_repair_sum(5, cell_dim),
-        input_deriv(num_rows, 5 * cell_dim),
+        input_deriv(num_rows, 5 * cell_dim + dropout_dim),
         params_deriv(3, cell_dim);
 
     double count_in = 0.0;
@@ -249,7 +252,7 @@ void UnitTestLstmNonlinearity() {
         measured_objf_change(test_dim);
 
     for (int32 i = 0; i < test_dim; i++) {
-      CuMatrix<BaseFloat> delta_input(num_rows, 5 * cell_dim),
+      CuMatrix<BaseFloat> delta_input(num_rows, 5 * cell_dim + dropout_dim),
           delta_params(3, cell_dim);
       if (test_input >= 0) {
         delta_input.ColRange(test_input * cell_dim, cell_dim).SetRandn();
@@ -260,11 +263,8 @@ void UnitTestLstmNonlinearity() {
         delta_params.Scale(delta);
       }
 
-
-
       predicted_objf_change(i) = TraceMatMat(delta_input, input_deriv, kTrans) +
           TraceMatMat(delta_params, params_deriv, kTrans);
-
 
       CuMatrix<BaseFloat> perturbed_input(input);
       perturbed_input.AddMat(1.0, delta_input);
@@ -280,7 +280,9 @@ void UnitTestLstmNonlinearity() {
       measured_objf_change(i) = objf_change;
     }
     KALDI_LOG << "LSTM nonlinearity test: num_rows=" << num_rows
-              << ", cell_dim=" << cell_dim << ", test_input=" << test_input
+              << ", cell_dim=" << cell_dim
+              << ", dropout_dim=" << dropout_dim
+              << ", test_input=" << test_input
               << ", test_params=" << test_params
               << ", test_output=" << test_output
               << ", predicted_objf_change=" << predicted_objf_change
@@ -296,16 +298,17 @@ template<typename Real>
 static void UnitTestBackpropLstmNonlinearity() {
   for (int i = 0; i < 3; i++) {
     int32 num_rows = 1 + Rand() % 200;
-    int32 cell_dim = 1 + Rand() % 2000;
+    int32 cell_dim = 1 + Rand() % 2000,
+       dropout_dim = (RandInt(0, 1) == 0 ? 0 : 3);
 //    KALDI_LOG << num_rows << ", " << cell_dim;
 
-    Matrix<Real> hinput(num_rows, 5 * cell_dim);
+    Matrix<Real> hinput(num_rows, 5 * cell_dim + dropout_dim);
     Matrix<Real> hparams(3, cell_dim);
     Matrix<Real> houtput_deriv(num_rows, 2 * cell_dim);
     Matrix<double> hderiv_sum_in(5, cell_dim);
     Vector<Real> hself_repair_config(10);
     double count_in;
-    Matrix<Real> hinput_deriv(num_rows, 5 * cell_dim);
+    Matrix<Real> hinput_deriv(num_rows, 5 * cell_dim + dropout_dim);
     Matrix<Real> hparams_deriv(3, cell_dim);
     Matrix<double> hvalue_sum_out(5, cell_dim);
     Matrix<double> hderiv_sum_out(5, cell_dim);
@@ -409,15 +412,16 @@ static void UnitTestBackpropLstmNonlinearity() {
     BaseFloat time_in_secs = 0.025;
     int32 num_rows = i;
     int32 cell_dim = i;
+    int32 dropout_dim = (RandInt(0, 1) == 0 ? 0 : 3);
 
-    CuMatrix<Real> input(num_rows, 5 * cell_dim);
+    CuMatrix<Real> input(num_rows, 5 * cell_dim + dropout_dim);
     CuMatrix<Real> params(3, cell_dim);
     CuMatrix<Real> output_deriv(num_rows, 2 * cell_dim);
     CuMatrix<double> deriv_sum_in(5, cell_dim);
     CuVector<Real> self_repair_config(10);
     double count_in;
 
-    CuMatrix<Real> input_deriv(num_rows, 5 * cell_dim);
+    CuMatrix<Real> input_deriv(num_rows, 5 * cell_dim + dropout_dim);
     CuMatrix<Real> params_deriv(3, cell_dim);
     CuMatrix<double> value_sum_out(5, cell_dim);
     CuMatrix<double> deriv_sum_out(5, cell_dim);

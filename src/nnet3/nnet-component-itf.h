@@ -84,9 +84,12 @@ enum ComponentProperties {
                               // input derivatives) to have Stride()== NumCols().
   kOutputContiguous = 0x2000,  // true if the component requires its input data (and
                                // output derivatives) to have Stride()== NumCols().
-  kUsesMemo = 0x4000  // true if the component returns a void* pointer from its
-                      // Propagate() function that needs to be passed into the
-                      // corresponding Backprop function.
+  kUsesMemo = 0x4000,  // true if the component returns a void* pointer from its
+                       // Propagate() function that needs to be passed into the
+                       // corresponding Backprop function.
+  kRandomComponent = 0x8000   // true if the component has some kind of
+                              // randomness, like DropoutComponent (these should
+                              // inherit from class RandomComponent.
 };
 
 
