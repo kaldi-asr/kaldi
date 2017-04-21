@@ -58,7 +58,7 @@ void CompressedMatrix::ComputeGlobalHeader(
     case kTwoByteAuto: case kTwoByteSignedInteger:
       header->format = static_cast<int32>(kTwoByte);  // 2.
       break;
-    case kOneByteAuto: case kOneByteInteger: case kOneByteZeroOne:
+    case kOneByteAuto: case kOneByteUnsignedInteger: case kOneByteZeroOne:
       header->format = static_cast<int32>(kOneByte);  // 3.
       break;
     default:
@@ -93,6 +93,11 @@ void CompressedMatrix::ComputeGlobalHeader(
     case kTwoByteSignedInteger: {
       header->min_value = -32768.0;
       header->range = 65535.0;
+      break;
+    }
+    case kOneByteUnsignedInteger: {
+      header->min_value = 0.0;
+      header->range = 255.0;
       break;
     }
     case kOneByteZeroOne: {
