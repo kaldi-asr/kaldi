@@ -3298,20 +3298,28 @@ class ComputationLoopedOptimizer {
 
   // This function creates a mapping from a matrix-index > 0,
   // to a pair (unique_id, time_offset) that represents the debug-info
-  // for that matrix-id in computation.debug_info.
-  // The output vector is indexed by the matrix-index in the computation (the
-  // zeroth member is not valid).  It requires that the
-  // The 'time_offset' is equal to the 't' value of the zeroth element of the
-  // cindexes vetor.  The 'unique_id' is an integer that uniquely identifies
-  // what we get from subtracting the 'time_offset' from each 't' value of
-  // that 'cindexes' vector, and then pairing it up with the 'is_deriv'
-  // value of the DebugInfo.  That is, if two 'cindexes' vectors differ only
-  // by a time offset, and the 'is_deriv' values are the same they will map to the same
-  // unique_id.
-  // The output 'matrix_to_pair' is indexed by matrix index (the zeroth element is
-  // not set).
+  // for that matrix-id in computation.debug_info (these terms are explained
+  // below).
+  //
+  // The output vector 'matrix_to_pair' is indexed by the matrix-index in the
+  // computation (the zeroth member is not valid).
+  //
+  // The 'time_offset' is equal to the 't' value of the first member of the
+  // cindexes vector for with t != kNoTime.  The 'unique_id' is an integer that
+  // uniquely identifies what we get from subtracting the 'time_offset' from
+  // each 't' value of that 'cindexes' vector for which t != kNoTime, and then
+  // pairing it up with the 'is_deriv' value of the DebugInfo.  That is, if two
+  // 'cindexes' vectors differ only by a time offset, and the 'is_deriv' values
+  // are the same they will map to the same unique_id.
   static void CreateMatrixPairs(const NnetComputation &computation,
                                 std::vector<std::pair<int32, int32> > *matrix_to_pair);
+
+  // This helper function, used in CreateMatrixPairs, find the value 't' which
+  // is the first (*cindexes)[i].second.t that is not kNoTime; it then subtracts
+  // that 't' value from all (*cindexes)[i].second.t that are not kNoTime.  If
+  // all the 't' values are kNoTime, which we don't expect to happen, we throw
+  // an error.
+  static inline int32 NormalizeCindexes(std::vector<Cindex> *cindexes);
 
 
   // This very simple helper function reverses the map 'matrix_to_pair' so we can
@@ -3499,6 +3507,29 @@ int32 ComputationLoopedOptimizer::FindTimeShift(
   return t_offset;
 }
 
+// static inline
+int32 ComputationLoopedOptimizer::NormalizeCindexes(
+    std::vector<Cindex> *cindexes) {
+  std::vector<Cindex>::iterator iter = cindexes->begin(),
+      end = cindexes->end();
+  int32 ans;
+  for (; iter != end; iter++) {
+    if (iter->second.t != kNoTime) {
+      ans = iter->second.t;
+      break;
+    }
+  }
+  if (iter == end) {
+    // this should not happen.
+    KALDI_ERR << "All t value are kNoTime in matrix.";
+  }
+  iter = cindexes->begin();
+  for (; iter != end; iter++)
+    if (iter->second.t != kNoTime)
+      iter->second.t -= ans;
+  return ans;
+}
+
 // static
 void ComputationLoopedOptimizer::CreateMatrixPairs(
     const NnetComputation &computation,
@@ -3516,10 +3547,7 @@ void ComputationLoopedOptimizer::CreateMatrixPairs(
   for (int32 m = 1; m < num_matrices; m++) {
     KALDI_ASSERT(!computation.matrix_debug_info[m].cindexes.empty());
     std::vector<Cindex> cindexes = computation.matrix_debug_info[m].cindexes;
-    int32 t_offset = cindexes[0].second.t;
-    for (std::vector<Cindex>::iterator iter = cindexes.begin();
-         iter != cindexes.end(); ++iter)
-      iter->second.t -= t_offset;
+    int32 t_offset = NormalizeCindexes(&cindexes);
     MapType::const_iterator iter = cindex_map.find(cindexes);
     int32 vector_id;
     if (iter != cindex_map.end()) {
@@ -3722,7 +3750,8 @@ void ComputationLoopedOptimizer::CheckIdentifiedMatrices(
     for (; iter1 != end1; iter1++,iter2++) {
       KALDI_ASSERT(iter2->first == iter1->first &&
                    iter2->second.n == iter1->second.n &&
-                   iter2->second.t == iter1->second.t + time_difference &&
+                   (iter1->second.t == kNoTime && iter2->second.t ==kNoTime ||
+                    iter2->second.t == iter1->second.t + time_difference) &&
                    iter2->second.x == iter1->second.x);
     }
   }

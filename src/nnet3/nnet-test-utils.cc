@@ -1040,17 +1040,21 @@ void GenerateConfigSequenceCnnNew(
     ss << "component-node name=layer" << l << "-conv component=layer"
        << l << "-conv input=" << cur_layer_descriptor << std::endl;
 
-    ss << "component type=RectifiedLinearComponent name=layer" << l
-       << "-relu dim=" << (next_height * next_num_filt) << std::endl;
-    ss << "component-node name=layer" << l << "-relu component=layer"
-       << l << "-relu input=layer" << l << "-conv" << std::endl;
+    bool use_relu = false;
+    if (use_relu) {
+      ss << "component type=RectifiedLinearComponent name=layer" << l
+         << "-relu dim=" << (next_height * next_num_filt) << std::endl;
+      ss << "component-node name=layer" << l << "-relu component=layer"
+         << l << "-relu input=layer" << l << "-conv" << std::endl;
+    }
 
     std::ostringstream desc_ss;
     if (next_height == cur_height && next_num_filt == cur_num_filt
         && RandInt(0, 1) == 0) {
-      desc_ss << "Sum(" << cur_layer_descriptor << ", layer" << l << "-relu)";
+      desc_ss << "Sum(" << cur_layer_descriptor << ", layer" << l
+              << (use_relu ? "-relu)" : "-conv)");
     } else {
-      desc_ss << "layer" << l << "-relu";
+      desc_ss << "layer" << l << (use_relu ? "-relu" : "-conv");
     }
 
     if (RandInt(0, 3) == 0) {
