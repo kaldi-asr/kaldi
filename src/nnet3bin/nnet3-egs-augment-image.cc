@@ -1,6 +1,7 @@
 // nnet3bin/nnet3-egs-augment-image.cc
 
 // Copyright      2017  Johns Hopkins University (author:  Daniel Povey)
+//                2017  Yiwen Shao
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -48,7 +49,9 @@ struct ImageAugmentationConfig {
     po->Register("horizontal-shift", &horizontal_shift,
                  "Maximum allowed horizontal shift as proportion of image "
                  "width.  Padding is with closest pixel.");
-    // TODO: vertical_shift
+    po->Register("vertical-shift", &vertical_shift,
+                 "Maximum allowed vertical shift as proportion of image "
+                 "height.  Padding is with closest pixel.");
   }
 
   void Check() const {
@@ -61,7 +64,7 @@ struct ImageAugmentationConfig {
 };
 
 
-/* Flips the image horizontally. */
+// Flips the image horizontally.
 void HorizontalFlip(MatrixBase<BaseFloat> *image) {
   int32 num_rows = image->NumRows();
   Vector<BaseFloat> temp(image->NumCols());
@@ -69,27 +72,67 @@ void HorizontalFlip(MatrixBase<BaseFloat> *image) {
     SubVector<BaseFloat> row_a(*image, r), row_b(*image,
                                                  num_rows - r - 1);
     temp.CopyFromVec(row_a);
-    // TODO
+    row_a.CopyFromVec(row_b);
+    row_b.CopyFromVec(temp);
   }
 }
 
-
-// Shifts the image horizontally by 'horizontal_shift' (+ve == to the right).
+ // Shifts the image horizontally by 'horizontal_shift' (+ve == to the right).
 void HorizontalShift(int32 horizontal_shift,
                      MatrixBase<BaseFloat> *image) {
-  // TODO.
+  int32 num_rows = image->NumRows(), num_cols = image->NumCols();
+  for (int32 r = 0; r < num_rows; r++) {
+    int32 current_row_n, origin_row_n;
+    // +ve == to the right, do shifting from right to left; otherwise, from left to right
+    if (horizontal_shift > 0) {
+      current_row_n = r;
+    } else {
+      current_row_n = num_rows - 1 - r;
+    }
+    // use the neareast value to fill points out of boundary
+    if (current_row_n + horizontal_shift > num_rows - 1) {
+      origin_row_n = num_rows - 1;
+    } else if (current_row_n + horizontal_shift < 0) {
+      origin_row_n = 0;
+    } else {
+      origin_row_n = current_row_n + horizontal_shift;
+    }
+
+    SubVector<BaseFloat> current_row(*image, current_row_n), origin_row(*image, origin_row_n);
+    current_row.CopyFromVec(origin_row);
+  }
 }
 
+/* Shifts the image vertically by 'vertical_shift' (+ve == to the top).*/
 void VerticalShift(int32 vertical_shift,
                    int32 num_channels,
                    MatrixBase<BaseFloat> *image) {
-  // TODO.
   int32 num_rows = image->NumRows(),
       num_cols = image->NumCols(), height = num_cols / num_channels;
   KALDI_ASSERT(num_cols % num_channels == 0);
   for (int32 r = 0; r < num_rows; r++) {
     BaseFloat *this_row = image->RowData(r);
-    // TODO: Do something with 'this_row'.
+    for (int32 c = 0; c < height; c++) {
+      int32 current_index, origin_index;
+      // +ve == to the top, do shifting from top to bottom; otherwise, bottom to top
+      if (vertical_shift > 0) {
+        current_index = height - 1 - c;
+      } else {
+        current_index = c;
+      }
+      // use the neareast value to fill points out of boundary
+      if (current_index + vertical_shift > height - 1) {
+        origin_index = height -1;
+      } else if (current_index + vertical_shift < 0) {
+        origin_index = 0;
+      } else {
+        origin_index = current_index + vertical_shift;
+      }
+      for (int32 ch = 0; ch < num_channels; ch++) {
+        this_row[num_channels * current_index + ch] =
+            this_row[num_channels * origin_index + ch];
+      }
+    }
   }
 }
 
@@ -97,7 +140,6 @@ void VerticalShift(int32 vertical_shift,
 
 /**
   This function randomly modifies (perturbs) the image.
-
   @param [in] config  Configuration class that says how
                       to perturb the image.
   @param [in,out] image  The image matrix to be modified.
@@ -126,10 +168,19 @@ void PerturbImage(const ImageAugmentationConfig &config,
     int32 horizontal_shift = RandInt(-horizontal_shift_max,
                                      horizontal_shift_max);
     if (horizontal_shift != 0)
-      HorizontalShift(horizontal_shift_max, image);
+      HorizontalShift(horizontal_shift, image);
   }
 
-  // TODO, vertical shift
+  { // vertical shift
+    int32 vertical_shift_max =
+        static_cast<int32>(0.5 + config.vertical_shift * image_height);
+    if (vertical_shift_max > image_height - 1)
+      vertical_shift_max = image_height - 1;  // would be very strange.
+    int32 vertical_shift = RandInt(-vertical_shift_max,
+                                     vertical_shift_max);
+    if (vertical_shift != 0)
+      VerticalShift(vertical_shift, num_channels, image);
+  }
 
 }
 

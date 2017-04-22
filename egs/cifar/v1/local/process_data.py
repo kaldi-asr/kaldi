@@ -10,12 +10,6 @@
 import argparse
 import os
 import sys
-import re
-import errno
-
-
-sys.path.insert(0, 'steps')
-import libs.common as common_lib
 
 parser = argparse.ArgumentParser(description="""Converts train/test data of
                                                 CIFAR-10 or CIFAR-100 to
