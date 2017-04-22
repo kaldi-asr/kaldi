@@ -1,6 +1,24 @@
 #!/bin/bash
 
-# This is like 1a, but adding dropout.   It seems g
+# This is like 1a, but adding dropout.   It's definitely helpful,
+# and you can see in the objf values that the train-test difference
+# is less.
+
+
+# steps/info/nnet3_dir_info.pl exp/nnet3/tdnn_lstm1b_sp
+# exp/nnet3/tdnn_lstm1b_sp: num-iters=32 nj=2..2 num-params=8.4M dim=40+100->2041 combine=-0.71->-0.58 loglike:train/valid[20,31,combined]=(-2.78,-0.95,-0.57/-2.94,-1.31,-0.98) accuracy:train/valid[20,31,combined]=(0.48,0.75,0.81/0.45,0.67,0.71)
+
+# local/nnet3/compare_wer.sh --online exp/nnet3/tdnn_lstm1a_sp exp/nnet3/tdnn_lstm1b_sp
+# System                tdnn_lstm1a_sp tdnn_lstm1b_sp
+#WER dev_clean_2 (tgsmall)      17.67     17.01
+#             [online:]         18.06     17.26
+#WER dev_clean_2 (tglarge)      13.43     12.63
+#             [online:]         13.73     12.94
+# Final train prob        -0.3660   -0.5680
+# Final valid prob        -1.0236   -0.9771
+# Final train acc          0.8737    0.8067
+# Final valid acc          0.7222    0.7144
+
 
 
 # Set -e here so that we catch if any executable fails immediately

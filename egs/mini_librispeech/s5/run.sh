@@ -194,7 +194,6 @@ if [ $stage -le 8 ]; then
   done
 fi
 
-exit 0 # temp
 
 # Train a chain model
 if [ $stage -le 9 ]; then
