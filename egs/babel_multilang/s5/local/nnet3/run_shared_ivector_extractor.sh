@@ -3,14 +3,14 @@
 . ./cmd.sh
 set -e
 stage=4
-use_flp=false
 suffix= # _sp, to use speed-perturbed data to generate lda+mllt model.
 
 [ ! -f ./conf/common_vars.sh ] && echo 'the file conf/common_vars.sh does not exist!' && exit 1;
 
 . conf/common_vars.sh || exit 1;
 
-[ -f local.conf ] && . ./local.conf
+[ ! -f local.conf ] && echo 'the file local.conf does not exist!' && exit 1;
+. local.conf || exit 1;
 
 . ./utils/parse_options.sh
 
@@ -18,8 +18,7 @@ lda_mllt_lang=$1
 multi_data_dir=$2
 global_extractor_dir_dir=$3
 
-. local/prepare_lang_conf.sh --fullLP $use_flp $lda_mllt_lang
-langconf=langconf/$lda_mllt_lang/lang.conf
+langconf=conf/$lda_mllt_lang/lang.conf
 [ ! -f $langconf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
 . $langconf || exit 1;
 

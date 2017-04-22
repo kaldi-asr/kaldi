@@ -26,7 +26,6 @@ frames_per_chunk=0
 aux_suffix=
 ivector_suffix=
 iter=final
-use_flp=false
 
 # params for extracting bn features
 multidir=exp/nnet3/multi_bnf_sp
@@ -46,9 +45,8 @@ fi
 
 lang=$1
 
-. local/prepare_lang_conf.sh --fullLP $use_flp $lang || exit 1;
 
-langconf=langconf/$lang/lang.conf
+langconf=conf/$lang/lang.conf
 
 [ ! -f $langconf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
 . $langconf || exit 1;

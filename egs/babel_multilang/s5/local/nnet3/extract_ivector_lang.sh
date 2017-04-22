@@ -12,8 +12,6 @@ ivector_suffix=_gb
 
 . conf/common_vars.sh || exit 1;
 
-[ -f local.conf ] && . ./local.conf
-
 . ./utils/parse_options.sh
 
 lang=$1

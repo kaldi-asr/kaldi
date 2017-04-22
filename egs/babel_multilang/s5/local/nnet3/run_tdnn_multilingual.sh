@@ -43,29 +43,20 @@ feat_suffix=_hires_mfcc # The feature suffix describing features used in
                         # _hires_mfcc -> 40dim MFCC
                         # _hire_mfcc_pitch -> 40dim MFCC + pitch
                         # _hires_mfcc_pitch_bnf -> 40dim MFCC +pitch + BNF
-# corpora
-# language list used for multilingual training
-# The map for lang-name to its abreviation can be find in
-# local/prepare_flp_langconf.sh
-# e.g lang_list=(101-cantonese 102-assamese 103-bengali)
-lang_list=(101-cantonese 102-assamese 103-bengali)
-
-# The language in this list decodes using Hybrid multilingual system.
-# e.g. decode_lang_list=(101-cantonese)
-decode_lang_list=(102-assamese 103-bengali)
 
 ivector_suffix=_gb # if ivector_suffix = _gb, the iVector extracted using global iVector extractor
                    # trained on pooled data from all languages.
                    # Otherwise, it uses iVector extracted using local iVector extractor.
 bnf_dim=           # If non-empty, the bottleneck layer with this dimension is added at two layers before softmax.
-use_flp=false      # If true, fullLP training data and configs used for training.
 dir=exp/nnet3/multi_bnf
 
 . ./path.sh
 . ./cmd.sh
 . ./utils/parse_options.sh
 
-[ -f local.conf ] && . ./local.conf
+[ ! -f local.conf ] && echo 'the file local.conf does not exist!' && exit 1;
+. local.conf || exit 1;
+
 
 num_langs=${#lang_list[@]}
 
@@ -123,7 +114,7 @@ if $use_ivector; then
     echo "languages in $multi_data_dir, using an LDA+MLLT transform trained "
     echo "on ${lang_list[0]}."
     local/nnet3/run_shared_ivector_extractor.sh  \
-      --suffix $suffix --use-flp $use_flp \
+      --suffix $suffix \
       --stage $stage ${lang_list[0]} \
       $multi_data_dir $global_extractor || exit 1;
     touch $global_extractor/extractor/.done
@@ -283,7 +274,7 @@ if [ $stage -le 14 ]; then
     if [ ! -f $dir/${decode_lang_list[$lang_index]}/decode_dev10h.pem/.done ]; then
       echo "Decoding lang ${decode_lang_list[$lang_index]} using multilingual hybrid model $dir"
       run-4-anydecode-langs.sh --use-ivector $use_ivector \
-        --nnet3-dir $dir --iter final_adj --use-flp $use_flp \
+        --nnet3-dir $dir --iter final_adj \
         ${decode_lang_list[$lang_index]} || exit 1;
       touch $dir/${decode_lang_list[$lang_index]}/decode_dev10h.pem/.done
     fi
