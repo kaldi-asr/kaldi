@@ -182,21 +182,21 @@ if [ $stage -le 15 ]; then
   # it with the output of the CNN layers.
   # The learning-rate-factor >1.0 is because these layers will be instantiated
   # once per sequence (for t==0), which will tend to make it train too slowly.
-  relu-renorm-layer name=ivector-1 input=ivector dim=200 learning-rate-factor=2.0
-  relu-renorm-layer name=ivector-2 dim=200 learning-rate-factor=2.0
+  relu-batchnorm-layer name=ivector-1 input=ivector dim=200
+  relu-batchnorm-layer name=ivector-2 dim=200
 
-  conv-batchnorm-layer name=cnn1 input=idct height-in=40 height-out=40 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=32
-  conv-batchnorm-layer name=cnn2 height-in=40 height-out=40 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=32
-  conv-batchnorm-layer name=cnn3 height-in=40 height-out=20 height-subsample-out=2 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=64
-  conv-batchnorm-layer name=cnn4 height-in=20 height-out=20 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=64
-  conv-batchnorm-layer name=cnn5 height-in=20 height-out=20 time-offsets=-3,0,3 height-offsets=-1,0,1 num-filters-out=32
+  conv-relu-batchnorm-layer name=cnn1 input=idct height-in=40 height-out=40 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=32
+  conv-relu-batchnorm-layer name=cnn2 height-in=40 height-out=40 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=32
+  conv-relu-batchnorm-layer name=cnn3 height-in=40 height-out=20 height-subsample-out=2 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=64
+  conv-relu-batchnorm-layer name=cnn4 height-in=20 height-out=20 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=64
+  conv-relu-batchnorm-layer name=cnn5 height-in=20 height-out=20 time-offsets=-3,0,3 height-offsets=-1,0,1 num-filters-out=32
 
   # the last two layers are fully connected.
-  relu-renorm-layer name=tdnn6 dim=512 input=Append(-3,0,3,ReplaceIndex(ivector-2, t, 0))
-  relu-renorm-layer name=tdnn7 dim=512 input=Append(-6,-3,0)
+  relu-batchnorm-layer name=tdnn6 dim=512 input=Append(-3,0,3,ReplaceIndex(ivector-2, t, 0))
+  relu-batchnorm-layer name=tdnn7 dim=512 input=Append(-6,-3,0)
 
   ## adding the layers for chain branch
-  relu-renorm-layer name=prefinal-chain dim=512 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-chain dim=512 target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
@@ -208,7 +208,7 @@ if [ $stage -le 15 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-renorm-layer name=prefinal-xent input=tdnn7 dim=512 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn7 dim=512 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -239,7 +239,7 @@ if [ $stage -le 16 ]; then
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
-    --trainer.num-chunk-per-minibatch=256,128,64 \
+    --trainer.num-chunk-per-minibatch=192,128,64 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=$chunk_left_context \

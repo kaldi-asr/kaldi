@@ -31,9 +31,12 @@ config_to_layer = {
         'lstmp-layer' : xlayers.XconfigLstmpLayer,
         'fast-lstm-layer' : xlayers.XconfigFastLstmLayer,
         'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer,
-        'conv-layer': xlayers.XconfigConvLayer,
-        'conv-batchnorm-layer': xlayers.XconfigConvLayer,
-        'conv-renorm-layer': xlayers.XconfigConvLayer
+        'relu-conv-layer': xlayers.XconfigConvLayer,
+        'conv-relu-layer': xlayers.XconfigConvLayer,
+        'relu-conv-renorm-layer': xlayers.XconfigConvLayer,
+        'conv-relu-renorm-layer': xlayers.XconfigConvLayer,
+        'relu-conv-batchnorm-layer': xlayers.XconfigConvLayer,
+        'conv-relu-batchnorm-layer': xlayers.XconfigConvLayer
 }
 
 # Turn a config line and a list of previous layers into

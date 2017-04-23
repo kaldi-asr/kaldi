@@ -7,7 +7,7 @@
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 
-dl_dir=data/dl
+dl_dir=data/download
 cifar10=$dl_dir/cifar-10-batches-bin
 cifar10_url=https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz
 cifar100=$dl_dir/cifar-100-binary
@@ -51,15 +51,17 @@ else
     wget -P $dl_dir $cifar100_url || exit 1;
   fi
   tar -xvzf $dl_dir/cifar-100-binary.tar.gz -C $dl_dir || exit 1;
-  echo Done downaloding and extracting CIFAR-100
+  echo Done downloadding and extracting CIFAR-100
 fi
 
 mkdir -p data/cifar100_{train,test}/data
-seq 0 99 | paste -d' ' $cifar100/fine_label_names.txt - | grep '\S' >data/cifar100_train/fine_classes.txt
-seq 0 19 | paste -d' ' $cifar100/coarse_label_names.txt - | grep '\S' >data/cifar100_train/coarse_classes.txt
+seq 0 99 | paste -d' ' $cifar100/fine_label_names.txt - | grep '\S' >data/cifar100_train/classes.txt
 
-cp data/cifar100_{train,test}/fine_classes.txt
-cp data/cifar100_{train,test}/coarse_classes.txt
+# seq 0 19 | paste -d' ' $cifar100/coarse_label_names.txt - | grep '\S' >data/cifar100_train/coarse_classes.txt
+
+cp data/cifar100_{train,test}/classes.txt
+
+#cp data/cifar100_{train,test}/coarse_classes.txt
 
 echo 3 > data/cifar100_train/num_channels
 echo 3 > data/cifar100_test/num_channels

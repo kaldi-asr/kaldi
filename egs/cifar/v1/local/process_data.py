@@ -42,8 +42,7 @@ def load_cifar10_data_batch(datafile):
             data += [img]
     return data, labels
 
-def load_cifar100_data_batch(datafile):
-    num_images_in_batch = 10000
+def load_cifar100_data_batch(datafile, num_images_in_batch):
     data = []
     fine_labels = []
     coarse_labels = []
@@ -127,33 +126,33 @@ if cifar10:
     labels_fh.close()
 else:
     img_id = 1  # similar to utt_id
-    fine_labels_file = os.path.join(args.dir, 'fine_labels.txt')
-    coarse_labels_file = os.path.join(args.dir, 'coarse_labels.txt')
+    fine_labels_file = os.path.join(args.dir, 'labels.txt')
+    # coarse_labels_file = os.path.join(args.dir, 'coarse_labels.txt')
     fine_labels_fh = open(fine_labels_file, 'wb')
-    coarse_labels_fh = open(coarse_labels_file, 'wb')
+    # coarse_labels_fh = open(coarse_labels_file, 'wb')
 
     if args.dataset == 'train':
         fpath = os.path.join(args.database, 'train.bin')
-        data, fine_labels, coarse_labels = load_cifar100_data_batch(fpath)
+        data, fine_labels, coarse_labels = load_cifar100_data_batch(fpath, 50000)
         for i in range(len(data)):
             key = zeropad(img_id, 5)
             fine_labels_fh.write(key + ' ' + str(fine_labels[i]) + '\n')
-            coarse_labels_fh.write(key + ' ' + str(coarse_labels[i]) + '\n')
+            # coarse_labels_fh.write(key + ' ' + str(coarse_labels[i]) + '\n')
             feat_mat = image_to_feat_matrix(data[i])
             write_kaldi_matrix(out_fh, feat_mat, key)
             img_id += 1
     else:
         fpath = os.path.join(args.database, 'test.bin')
-        data, fine_labels, coarse_labels = load_cifar100_data_batch(fpath)
+        data, fine_labels, coarse_labels = load_cifar100_data_batch(fpath, 10000)
         for i in range(len(data)):
             key = zeropad(img_id, 5)
             fine_labels_fh.write(key + ' ' + str(fine_labels[i]) + '\n')
-            coarse_labels_fh.write(key + ' ' + str(coarse_labels[i]) + '\n')
+            # coarse_labels_fh.write(key + ' ' + str(coarse_labels[i]) + '\n')
             feat_mat = image_to_feat_matrix(data[i])
             write_kaldi_matrix(out_fh, feat_mat, key)
             img_id += 1
 
     fine_labels_fh.close()
-    coarse_labels_fh.close()
+    # coarse_labels_fh.close()
 
 out_fh.close()

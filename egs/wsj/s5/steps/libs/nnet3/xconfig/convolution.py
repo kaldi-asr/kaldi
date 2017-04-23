@@ -93,6 +93,11 @@ from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 #                            and sometimes we set target-rms=0.5 for the layer
 #                            prior to the final layer to make the final layer
 #                            train more slowly.
+#   self-repair-scale=2.0e-05  This affects the ReLu's.  It is a scale on the
+#                            'self-repair' mechanism that nudges the inputs to the
+#                            ReLUs into the appropriate range in cases where
+#                            the unit is active either too little of the time
+#                            (<10%) or too much of the time (>90%).
 #
 # The following initialization and natural-gradient related options are, if
 # provided, passed through to the config file; if not, they are left at the
@@ -106,8 +111,8 @@ from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 
 class XconfigConvLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
-        assert first_token in ['conv-layer', 'conv-batchnorm-layer',
-                               'conv-renorm-layer']
+        for operation in first_token.split('-')[:-1]:
+            assert operation in ['conv', 'renorm', 'batchnorm', 'relu']
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -120,6 +125,7 @@ class XconfigConvLayer(XconfigLayerBase):
                        'time-offsets':'',
                        'required-time-offsets':'',
                        'target-rms':1.0,
+                       'self-repair-scale': 2.0e-05,
                        # the following are not really inspected by this level of
                        # code, just passed through if set.
                        'param-stddev':'', 'bias-stddev':'', 'use-natural-gradient':'',
@@ -198,15 +204,14 @@ class XconfigConvLayer(XconfigLayerBase):
 
     def output_name(self, auxiliary_output = None):
         assert auxiliary_output is None
-        if self.layer_type == 'conv-layer':
-            return '{0}.conv'.format(self.name)
-        elif self.layer_type == 'conv-batchnorm-layer':
-            return '{0}.batchnorm'.format(self.name)
-        elif self.layer_type == 'conv-renorm-layer':
-            return '{0}.renorm'.format(self.name)
-        else:
-            raise RuntimeError("Un-handled layer type {0}".format(self.layer_type))
-
+        # note: the [:-1] is to remove the '-layer'.
+        operations = self.layer_type.split('-')[:-1]
+        assert len(operations) > 1
+        last_operation = operations[-1]
+        assert last_operation in ['relu', 'conv',
+                                  'renorm', 'batchnorm']
+        # we'll return something like 'layer1.batchnorm'.
+        return '{0}.{1}'.format(self.name, last_operation)
 
     def output_dim(self, auxiliary_output = None):
         assert auxiliary_output is None
@@ -228,42 +233,64 @@ class XconfigConvLayer(XconfigLayerBase):
         configs = []
 
         name = self.name
-        num_filters_out =  self.config['num-filters-out']
-        height_out =  self.config['height-out']
-        input_descriptor = self.descriptors['input']['final-string']
 
-        conv_opts = ''
-        for opt_name in [
-                'param-stddev', 'bias-stddev', 'use-natural-gradient',
-                'rank-in', 'rank-out', 'num-minibatches-history',
-                'alpha-in', 'alpha-out', 'num-filters-in', 'num-filters-out',
-                'height-in','height-out', 'height-subsample-out',
-                'height-offsets', 'time-offsets', 'required-time-offsets']:
-            assert opt_name in self.config
-            if self.config[opt_name] != '':
-                conv_opts += ' {0}={1}'.format(opt_name, self.config[opt_name])
+        # These 3 variables will be updated as we add components.
+        cur_num_filters = self.config['num-filters-in']
+        cur_height = self.config['height-in']
+        cur_descriptor = self.descriptors['input']['final-string']
 
+        # note: the [:-1] is to remove the '-layer'.
+        operations = self.layer_type.split('-')[:-1]
+        # e.g.:
+        # operations = [ 'conv', 'relu', 'batchnorm' ]
+        # or:
+        # operations = [ 'relu', 'conv', 'renorm' ]
 
-        configs.append("### Begin convolutional layer '{0}'".format(name))
-        configs.append('component name={0}.conv type=TimeHeightConvolutionComponent {1}'.format(name, conv_opts))
-        configs.append('component-node name={0}.conv component={0}.conv input={1}'.format(
-            name, input_descriptor))
+        for operation in operations:
+            if operation == 'conv':
+                a = []
+                for opt_name in [
+                        'param-stddev', 'bias-stddev', 'use-natural-gradient',
+                        'rank-in', 'rank-out', 'num-minibatches-history',
+                        'alpha-in', 'alpha-out', 'num-filters-in', 'num-filters-out',
+                        'height-in','height-out', 'height-subsample-out',
+                        'height-offsets', 'time-offsets', 'required-time-offsets']:
+                    value = self.config[opt_name]
+                    if value != '':
+                        a.append('{0}={1}'.format(opt_name, value))
+                conv_opts = ' '.join(a)
 
-        if self.layer_type == 'conv-batchnorm-layer':
-            configs.append('component name={0}.batchnorm  type=BatchNormComponent dim={1} '
-                           'block-dim={2} target-rms={3}'.format(
-                               name, num_filters_out * height_out, num_filters_out,
-                               self.config['target-rms']))
-            configs.append('component-node name={0}.batchnorm component={0}.batchnorm '
-                           'input={0}.conv'.format(name))
-        elif self.layer_type == 'conv-renorm-layer':
-            configs.append('component name={0}.renorm type=NormalizeComponent '
+                configs.append("### Begin convolutional layer '{0}'".format(name))
+                configs.append('component name={0}.conv type=TimeHeightConvolutionComponent '
+                               '{1}'.format(name, conv_opts))
+                configs.append('component-node name={0}.conv component={0}.conv '
+                               'input={1}'.format(name, cur_descriptor))
+                cur_num_filters = self.config['num-filters-out']
+                cur_height = self.config['height-out']
+            elif operation == 'batchnorm':
+                configs.append('component name={0}.batchnorm  type=BatchNormComponent dim={1} '
+                               'block-dim={2} target-rms={3}'.format(
+                                   name, cur_num_filters * cur_height, cur_num_filters,
+                                   self.config['target-rms']))
+                configs.append('component-node name={0}.batchnorm component={0}.batchnorm '
+                               'input={1}'.format(name, cur_descriptor))
+            elif operation == 'renorm':
+                configs.append('component name={0}.renorm type=NormalizeComponent '
                            'dim={1} target-rms={2}'.format(
-                               name, num_filters_out * height_out,
+                               name, cur_num_filters * cur_height,
                                self.config['target-rms']))
-            configs.append('component name={0}.renorm component={0}.renorm '
-                           'input={0}.conv'.format(name))
-        else:
-            assert self.layer_type == 'conv-layer'
+                configs.append('component-node name={0}.renorm component={0}.renorm '
+                               'input={1}'.format(name, cur_descriptor))
+            elif operation == 'relu':
+                configs.append('component name={0}.relu type=RectifiedLinearComponent '
+                           'dim={1} self-repair-scale={2}'.format(
+                               name, cur_num_filters * cur_height,
+                               self.config['self-repair-scale']))
+                configs.append('component-node name={0}.relu component={0}.relu '
+                               'input={1}'.format(name, cur_descriptor))
+            else:
+                raise RuntimeError("Un-handled operation type: " + operation)
+
+            cur_descriptor = '{0}.{1}'.format(name, operation)
 
         return configs

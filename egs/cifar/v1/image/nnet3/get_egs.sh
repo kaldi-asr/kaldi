@@ -11,6 +11,7 @@ cmd=run.pl
 egs_per_archive=25000
 train_subset_egs=5000
 test_mode=false
+stage=0
 # end configuration section
 
 echo "$0 $@"  # Print the command line for logging
@@ -19,7 +20,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 
-if [ $# != 2 ]; then
+if [ $# != 3 ]; then
   echo "Usage: $0 [opts] <train-data-dir> <test-or-dev-data-dir> <egs-dir>"
   echo " e.g.: $0 --egs-per-iter 25000 data/cifar10_train exp/cifar10_train_egs"
   echo " or: $0 --test-mode true data/cifar10_test exp/cifar10_test_egs"
@@ -39,11 +40,13 @@ if [ $# != 2 ]; then
 fi
 
 
+set -eu
+
 train=$1
 test=$2
-egs=$3
+dir=$3
 
-for f in train/images.scp train/labels.txt test/images.scp test/labels.txt; do
+for f in $train/images.scp $train/labels.txt $test/images.scp $test/labels.txt; do
    if [ ! -f $f ]; then
      echo "$0: expected file $f to exist"
      exit 1
@@ -52,8 +55,8 @@ done
 
 
 
-if ! mkdir -p $egs; then
-  echo "$0: could not make directory $egs"
+if ! mkdir -p $dir; then
+  echo "$0: could not make directory $dir"
   exit 1
 fi
 
@@ -86,35 +89,73 @@ awk '{print $1}' $train/labels.txt | utils/shuffle_list.pl | \
    head -n $train_subset_egs > $dir/train_subset_ids.txt
 
 
-num_classes=$(wc -l <$dir/classes.txt)
+num_classes=$(wc -l <$train/classes.txt)
+num_classes_test=$(wc -l <$test/classes.txt)
 
-$cmd $dir/log/get_train_diagnostic_egs.log \
-  ali-to-post 'scp:filter_scp.pl $dir/train_subset_ids.txt $train/labels.scp|' ark:- \| \
-  post-to-smat --dim=$num_classes ark:- ark:- \| \
-  nnet3-get-egs-simple input='scp:filter_scp.pl $dir/train_subset_ids.txt $train/images.scp|' \
-    output=ark:- ark:$dir/train_diagnostic.egs
+if ! [ "$num_classes" -eq "$num_classes_test" ]; then
+  echo "$0: training and test dirs $train and $test are not compatible"
+  exit 1
+fi
 
-$cmd $dir/log/get_test_or_dev_egs.log \
-  ali-to-post scp:$test/labels.txt ark:- \| \
-  post-to-smat --dim=$num_classes ark:- ark:- \| \
-  nnet3-get-egs-simple input='scp:$test/images.scp|' \
-    output=ark:$dir/train_diagnostic.egs \
+if [ $stage -le 0 ]; then
+  $cmd $dir/log/get_train_diagnostic_egs.log \
+       ali-to-post "ark:filter_scp.pl $dir/train_subset_ids.txt $train/labels.txt|" ark:- \| \
+       post-to-smat --dim=$num_classes ark:- ark:- \| \
+       nnet3-get-egs-simple input="scp:filter_scp.pl $dir/train_subset_ids.txt $train/images.scp|" \
+       output=ark:- ark:$dir/train_diagnostic.egs
+fi
 
+
+
+if [ $stage -le 1 ]; then
+  # we use the same filenames as the regular training script, but
+  # the 'valid_diagnostic' egs are actually used as the test or dev
+  # set.
+  $cmd $dir/log/get_test_or_dev_egs.log \
+       ali-to-post ark:$test/labels.txt ark:- \| \
+       post-to-smat --dim=$num_classes ark:- ark:- \| \
+       nnet3-get-egs-simple input=scp:$test/images.scp \
+       output=ark:- ark:$dir/valid_diagnostic.egs
+fi
 
 # Now work out the split of the training data.
 
 num_train_images=$(wc -l <$train/labels.txt)
 
 # the + 1 is to round up, not down... we assume it doesn't divide exactly.
-num_archives=$[num_train_images/samples_per_iter+1]
-
-echo "$0: creating $num_archive archives of egs"
-
-awk '{print $1}' <$train/labels.txt >$dir/train_ids.txt
-
-split_ids=$(for n in $(seq $num_archives); do echo $dir/train_ids.$n.txt; done)
-
-utils/split_scp.pl $dir/train_ids.txt $split_ids || exit 1
+num_archives=$[num_train_images/egs_per_archive+1]
 
 
+if [ $stage -le 2 ]; then
+  echo "$0: creating $num_archives archives of egs"
 
+  image/split_image_dir.sh $train $num_archives
+
+  sdata=$train/split$num_archives
+
+  $cmd JOB=1:$num_archives $dir/log/get_egs.JOB.log \
+       ali-to-post ark:$sdata/JOB/labels.txt ark:- \| \
+       post-to-smat --dim=$num_classes ark:- ark:- \| \
+       nnet3-get-egs-simple input=scp:$sdata/JOB/images.scp \
+        output=ark:- ark:$dir/egs.JOB.ark
+fi
+
+rm $dir/train_subset_ids.txt 2>/dev/null || true
+
+ln -sf train_diagnostic.egs $dir/combine.egs
+
+echo $num_archives >$dir/info/num_archives
+
+# 'frames_per_eg' is actually the number of supervised frames per example, and
+# in this case we only have supervision on t=0 at the output.
+echo 1 >$dir/info/frames_per_eg
+
+echo $num_train_images >$dir/info/num_frames
+
+# actually 'output_dim' is not something that would be present in the
+# 'info' directory for speech tasks; we add it here for the convenience of
+# the training script, to make it easier to get the number of classes.
+echo $num_classes >$dir/info/output_dim
+
+echo "$0: finished generating egs"
+exit 0
