@@ -12,8 +12,7 @@ lm_url=www.openslr.org/resources/11
 stage=0
 . utils/parse_options.sh
 
-# TODO(galv): Reconsider this
-set -euxo pipefail
+set -euo pipefail
 
 # TODO(galv): Modify openslr.org to contain the minified training dataset.
 # for part in dev-clean-2 train-clean-5; do
