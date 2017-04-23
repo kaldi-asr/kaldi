@@ -80,25 +80,24 @@ void HorizontalFlip(MatrixBase<BaseFloat> *image) {
  // Shifts the image horizontally by 'horizontal_shift' (+ve == to the right).
 void HorizontalShift(int32 horizontal_shift,
                      MatrixBase<BaseFloat> *image) {
-  int32 num_rows = image->NumRows(), num_cols = image->NumCols();
+  int32 num_rows = image->NumRows();
   for (int32 r = 0; r < num_rows; r++) {
-    int32 current_row_n, origin_row_n;
+    int32 current_r;
     // +ve == to the right, do shifting from right to left; otherwise, from left to right
     if (horizontal_shift > 0) {
-      current_row_n = r;
-    } else {
-      current_row_n = num_rows - 1 - r;
-    }
-    // use the neareast value to fill points out of boundary
-    if (current_row_n + horizontal_shift > num_rows - 1) {
-      origin_row_n = num_rows - 1;
-    } else if (current_row_n + horizontal_shift < 0) {
-      origin_row_n = 0;
-    } else {
-      origin_row_n = current_row_n + horizontal_shift;
+      current_r = r;
+    } else {  // do it in the reverse order.
+      current_r = num_rows - 1 - r;
     }
 
-    SubVector<BaseFloat> current_row(*image, current_row_n), origin_row(*image, origin_row_n);
+    int32 origin_r = current_r - horizontal_shift;
+    if (origin_r < 0)
+      origin_r = 0;
+    if (origin_r >= num_rows)
+      origin_r = num_rows - 1;
+
+    SubVector<BaseFloat> current_row(*image, current_r),
+        origin_row(*image, origin_r);
     current_row.CopyFromVec(origin_row);
   }
 }
@@ -113,25 +112,22 @@ void VerticalShift(int32 vertical_shift,
   for (int32 r = 0; r < num_rows; r++) {
     BaseFloat *this_row = image->RowData(r);
     for (int32 c = 0; c < height; c++) {
-      int32 current_index, origin_index;
+      int32 current_index;
       // +ve == to the top, do shifting from top to bottom; otherwise, bottom to top
       if (vertical_shift > 0) {
         current_index = height - 1 - c;
       } else {
         current_index = c;
       }
-      // use the neareast value to fill points out of boundary
-      if (current_index + vertical_shift > height - 1) {
-        origin_index = height -1;
-      } else if (current_index + vertical_shift < 0) {
+      int32 origin_index = current_index - vertical_shift;
+      if (origin_index < 0)
         origin_index = 0;
-      } else {
-        origin_index = current_index + vertical_shift;
-      }
-      for (int32 ch = 0; ch < num_channels; ch++) {
+      if (origin_index >= num_cols)
+        origin_index = num_cols;
+
+      for (int32 ch = 0; ch < num_channels; ch++)
         this_row[num_channels * current_index + ch] =
             this_row[num_channels * origin_index + ch];
-      }
     }
   }
 }

@@ -76,5 +76,11 @@ if ! utils/int2sym.pl -f 2 $dir/classes.txt <$dir/labels.txt >/dev/null; then
 fi
 
 
+if ! awk '{ if(NF != 2 || $2 != NR-1) { print "Bad line of classes.txt: " $0; exit(1); }}' $dir/classes.txt; then
+  echo "$0: $dir/classes.txt doesn't look right."
+  exit 1
+fi
+
+
 echo "$0: validated image-data directory $dir"
 exit 0

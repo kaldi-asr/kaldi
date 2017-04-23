@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
           break;
         }
         const GeneralMatrix &other_feats = other_readers[i]->Value(key);
-        eg.io.push_back(NnetIo(other_names[i], t, feats));
+        eg.io.push_back(NnetIo(other_names[i], t, other_feats));
       }
       if (!all_ok) {
         num_err++;
