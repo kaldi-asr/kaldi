@@ -115,15 +115,19 @@ void RemoveSegments(const std::vector<int32> &labels,
 
   for (SegmentList::iterator it = segmentation->Begin();
         it != segmentation->End(); ) {
-    if (max_remove_length == -1) {
+    if (max_remove_length < 0) {
       if (std::binary_search(labels.begin(), labels.end(), 
                              it->Label()))
         it = segmentation->Erase(it);
+      else
+        ++it;
     } else if (it->Length() < max_remove_length) {
       if (std::binary_search(labels.begin(), labels.end(), 
                              it->Label()) ||
           (labels.size() == 1 && labels[0] == -1))
         it = segmentation->Erase(it);
+      else 
+        ++it;
     } else {
       ++it;
     }
