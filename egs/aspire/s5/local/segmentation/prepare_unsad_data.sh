@@ -38,8 +38,6 @@ sat_model_dir=  # Model directory used for getting alignments
 lang_test=  # Language directory used to build graph. 
             # If its not provided, $lang will be used instead.
 
-speeds="0.9 1.0 1.1"
-
 . utils/parse_options.sh
 
 if [ $# -ne 4 ]; then
@@ -190,15 +188,13 @@ if [ $stage -le -2 ]; then
   utils/data/get_utt2dur.sh ${whole_data_dir}
 fi 
 
-num_speeds=`echo $speeds | awk '{print NF}'`
 if $speed_perturb; then
-  plpdir=${plpdir}_sp$num_speeds
-  mfccdir=${mfccdir}_sp$num_speeds
-
+  plpdir=${plpdir}_sp
+  mfccdir=${mfccdir}_sp
  
   if [ $stage -le -1 ]; then
-    utils/data/perturb_data_dir_speed_${num_speeds}way.sh ${whole_data_dir} ${whole_data_dir}_sp${num_speeds}
-    utils/data/perturb_data_dir_speed_${num_speeds}way.sh ${data_dir} ${data_dir}_sp${num_speeds}
+    utils/data/perturb_data_dir_speed_3way.sh ${whole_data_dir} ${whole_data_dir}_sp
+    utils/data/perturb_data_dir_speed_3way.sh ${data_dir} ${data_dir}_sp
 
     if [ $feat_type == "mfcc" ]; then
       if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
@@ -208,9 +204,9 @@ if $speed_perturb; then
       make_mfcc --cmd "$cmd --max-jobs-run 40" --nj $nj \
         --mfcc-config $feat_config \
         --add-pitch $add_pitch --pitch-config $pitch_config \
-        ${whole_data_dir}_sp${num_speeds} exp/make_mfcc $mfccdir || exit 1
+        ${whole_data_dir}_sp exp/make_mfcc $mfccdir || exit 1
       steps/compute_cmvn_stats.sh \
-        ${whole_data_dir}_sp${num_speeds} exp/make_mfcc $mfccdir || exit 1
+        ${whole_data_dir}_sp exp/make_mfcc $mfccdir || exit 1
     elif [ $feat_type == "plp" ]; then
       if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $plpdir/storage ]; then
         utils/create_split_dir.pl \
@@ -220,20 +216,20 @@ if $speed_perturb; then
       make_plp --cmd "$cmd --max-jobs-run 40" --nj $nj \
         --plp-config $feat_config \
         --add-pitch $add_pitch --pitch-config $pitch_config \
-        ${whole_data_dir}_sp${num_speeds} exp/make_plp $plpdir || exit 1
+        ${whole_data_dir}_sp exp/make_plp $plpdir || exit 1
       steps/compute_cmvn_stats.sh \
-        ${whole_data_dir}_sp${num_speeds} exp/make_plp $plpdir || exit 1
+        ${whole_data_dir}_sp exp/make_plp $plpdir || exit 1
     else
       echo "$0: Unknown feat-type $feat_type. Must be mfcc or plp."
       exit 1
     fi
         
-    utils/fix_data_dir.sh ${whole_data_dir}_sp${num_speeds}
+    utils/fix_data_dir.sh ${whole_data_dir}_sp
   fi
 
-  data_dir=${data_dir}_sp${num_speeds}
-  whole_data_dir=${whole_data_dir}_sp${num_speeds}
-  data_id=${data_id}_sp${num_speeds}
+  data_dir=${data_dir}_sp
+  whole_data_dir=${whole_data_dir}_sp
+  data_id=${data_id}_sp
 fi
 
 
@@ -241,18 +237,9 @@ fi
 # Compute length of recording
 ###############################################################################
 
-utils/data/get_reco2utt.sh $data_dir
-
 if [ $stage -le 0 ]; then
-  utils/data/get_utt2num_frames.sh \
-    --frame-shift $frame_shift --frame-overlap $frame_overlap \
-    --cmd "$cmd" --nj $reco_nj $whole_data_dir 
-
-  awk '{print $1" "$2}' ${data_dir}/segments | utils/apply_map.pl -f 2 ${whole_data_dir}/utt2num_frames > $data_dir/utt2max_frames
-  utils/data/get_subsegmented_feats.sh ${whole_data_dir}/feats.scp \
-    $frame_shift $frame_overlap ${data_dir}/segments | \
-    utils/data/fix_subsegmented_feats.pl $data_dir/utt2max_frames \
-    > ${data_dir}/feats.scp
+  utils/subsegment_data_dir.sh $whole_data_dir ${data_dir}/segments ${data_dir}/tmp
+  cp $data_dir/tmp/feats.scp $data_dir
 
   if [ $feat_type == mfcc ]; then
     steps/compute_cmvn_stats.sh ${data_dir} exp/make_mfcc/${data_id} $mfccdir
@@ -380,14 +367,9 @@ fi
 
 
 if [ $stage -le 6 ]; then
-  utils/data/get_reco2utt.sh $outside_data_dir
-  awk '{print $1" "$2}' $outside_data_dir/segments | utils/apply_map.pl -f 2 $whole_data_dir/utt2num_frames > $outside_data_dir/utt2max_frames
-
-  utils/data/get_subsegmented_feats.sh ${whole_data_dir}/feats.scp \
-    $frame_shift $frame_overlap ${outside_data_dir}/segments | \
-    utils/data/fix_subsegmented_feats.pl $outside_data_dir/utt2max_frames \
-    > ${outside_data_dir}/feats.scp
-
+  utils/data/subsegment_data_dir.sh $whole_data_dir $outside_data_dir/segments \
+    $outside_data_dir/tmp
+  cp $outside_data_dir/tmp/feats.scp $outside_data_dir
 fi
 
 extended_data_dir=$dir/${data_id}_extended

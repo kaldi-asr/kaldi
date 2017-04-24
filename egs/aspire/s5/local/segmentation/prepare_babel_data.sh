@@ -68,20 +68,18 @@ EOF
 # The original data directory which will be converted to a whole (recording-level) directory.
 utils/copy_data_dir.sh $ROOT_DIR/data/train data/babel_${lang_id}_train
 train_data_dir=data/babel_${lang_id}_train
-speeds="0.9 1.0 1.1"
-num_speeds=$(echo $speeds | awk '{print NF}')
 
 # Expecting the user to have done run.sh to have $model_dir,
 # $sat_model_dir, $lang, $lang_test, $train_data_dir
 local/segmentation/prepare_unsad_data.sh \
-  --sad-map $dir/babel_sad.map --speeds "$speeds" \
+  --sad-map $dir/babel_sad.map \
   --config-dir $ROOT_DIR/conf --feat-type plp --add-pitch true \
   --reco-nj 40 --nj 100 --cmd "$train_cmd" \
   --sat-model-dir $sat_model_dir \
   --lang-test $lang_test \
   $train_data_dir $lang $model_dir $dir
 
-orig_data_dir=${train_data_dir}_sp${num_speeds}
+orig_data_dir=${train_data_dir}_sp
 
 data_dir=${train_data_dir}_whole
 
@@ -92,16 +90,16 @@ if [ ! -z $subset ]; then
   data_dir=${data_dir}_$subset
 fi
 
-reco_vad_dir=$dir/`basename $model_dir`_reco_vad_`basename $train_data_dir`_sp4
+reco_vad_dir=$dir/`basename $model_dir`_reco_vad_`basename $train_data_dir`_sp
 
 # Add noise from MUSAN corpus to data directory and create a new data directory
-local/segmentation/do_corruption_data_dir.sh \
-  --data-dir $data_dir --speeds "$speeds" \
+local/segmentation/do_corruption_data_dir_snr.sh \
+  --data-dir $data_dir \
   --reco-vad-dir $reco_vad_dir \
   --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf 
 
 # Add music from MUSAN corpus to data directory and create a new data directory
 local/segmentation/do_corruption_data_dir_music.sh \
-  --data-dir $data_dir --speeds "$speeds" \
+  --data-dir $data_dir \
   --reco-vad-dir $reco_vad_dir \
   --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf

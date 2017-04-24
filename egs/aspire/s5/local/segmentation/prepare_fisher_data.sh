@@ -56,7 +56,6 @@ oov_I 3
 oov_S 3
 EOF
 
-true && {
 # Expecting the user to have done run.sh to have $model_dir,
 # $sat_model_dir, $lang, $lang_test, $train_data_dir
 local/segmentation/prepare_unsad_data.sh \
@@ -66,21 +65,20 @@ local/segmentation/prepare_unsad_data.sh \
   --sat-model-dir $sat_model_dir \
   --lang-test $lang_test \
   $train_data_dir $lang $model_dir $dir
-}
 
 data_dir=${train_data_dir}_whole
 
 if [ ! -z $subset ]; then
   # Work on a subset
-  true && utils/subset_data_dir.sh ${data_dir} $subset \
+  false && utils/subset_data_dir.sh ${data_dir} $subset \
     ${data_dir}_$subset
   data_dir=${data_dir}_$subset
 fi
 
-reco_vad_dir=$dir/`basename $model_dir`_reco_vad_`basename $train_data_dir`_sp4
+reco_vad_dir=$dir/`basename $model_dir`_reco_vad_`basename $train_data_dir`_sp
 
 # Add noise from MUSAN corpus to data directory and create a new data directory
-true && local/segmentation/do_corruption_data_dir.sh \
+local/segmentation/do_corruption_data_dir_snr.sh \
   --data-dir $data_dir \
   --reco-vad-dir $reco_vad_dir \
   --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf 
