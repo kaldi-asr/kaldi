@@ -52,11 +52,11 @@ export LC_ALL=C
 srcdir=$1
 subsegments=$2
 
-no_text=true
+add_subsegment_text=false
 if [ $# -eq 4 ]; then
   new_text=$3
   dir=$4
-  no_text=false
+  add_subsegment_text=true
 
   if [ ! -f "$new_text" ]; then
     echo "$0: no such file $new_text"
@@ -78,7 +78,7 @@ if ! mkdir -p $dir; then
   echo "$0: failed to create directory $dir"
 fi
 
-if ! $no_text; then
+if $add_subsegment_text; then
   if ! cmp <(awk '{print $1}' <$subsegments)  <(awk '{print $1}' <$new_text); then
     echo "$0: expected the first fields of the files $subsegments and $new_text to be identical"
     exit 1
@@ -102,7 +102,7 @@ utils/apply_map.pl -f 2 $srcdir/utt2spk < $dir/new2old_utt >$dir/utt2spk
 # .. and the new spk2utt file.
 utils/utt2spk_to_spk2utt.pl  <$dir/utt2spk >$dir/spk2utt
 
-if ! $no_text; then
+if $add_subsegment_text; then
   # the new text file is just what the user provides.
   cp $new_text $dir/text
 fi
@@ -143,6 +143,10 @@ if [ -f $srcdir/feats.scp ]; then
   frame_shift=$(utils/data/get_frame_shift.sh $srcdir)
   echo "$0: note: frame shift is $frame_shift [affects feats.scp]"
 
+  utils/data/get_utt2num_frames.sh --cmd "run.pl" --nj 1 $srcdir
+  awk '{print $1" "$2}' $subsegments | \
+    utils/apply_map.pl -f 2 $srcdir/utt2num_frames > \
+    $dir/utt2max_frames
 
   # The subsegments format is <new-utt-id> <old-utt-id> <start-time> <end-time>.
   # e.g. 'utt_foo-1 utt_foo 7.21 8.93'
@@ -165,10 +169,22 @@ if [ -f $srcdir/feats.scp ]; then
   # utt_foo-1 some command|[721:892]
   # Lastly, utils/data/normalize_data_range.pl will only do something nontrivial if
   # the original data-dir already had data-ranges in square brackets.
-  awk -v s=$frame_shift '{print $1, $2, int(($3/s)+0.5), int(($4/s)-0.5);}' <$subsegments| \
+  cat $subsegments | awk -v s=$frame_shift '{print $1, $2, int(($3/s)+0.5), int(($4/s)-0.5);}' | \
     utils/apply_map.pl -f 2 $srcdir/feats.scp | \
     awk '{p=NF-1; for (n=1;n<NF-2;n++) printf("%s ", $n); k=NF-2; l=NF-1; printf("%s[%d:%d]\n", $k, $l, $NF)}' | \
-    utils/data/normalize_data_range.pl  >$dir/feats.scp
+    utils/data/normalize_data_range.pl | \
+    utils/data/fix_subsegmented_feats.pl $dir/utt2max_frames >$dir/feats.scp
+  
+  cat $dir/feats.scp | perl -ne 'm/^(\S+) .+\[(\d+):(\d+)\]$/; print "$1 " . ($3-$2+1) . "\n"' > \
+    $dir/utt2num_frames
+
+  if [ -f $srcdir/vad.scp ]; then
+    cat $subsegments | awk -v s=$frame_shift '{print $1, $2, int(($3/s)+0.5), int(($4/s)-0.5);}' | \
+      utils/apply_map.pl -f 2 $srcdir/vad.scp | \
+      awk '{p=NF-1; for (n=1;n<NF-2;n++) printf("%s ", $n); k=NF-2; l=NF-1; printf("%s[%d:%d]\n", $k, $l, $NF)}' | \
+      utils/data/normalize_data_range.pl | \
+      utils/data/fix_subsegmented_feats.pl $dir/utt2max_frames >$dir/vad.scp
+  fi
 fi
 
 
@@ -202,7 +218,7 @@ utils/data/fix_data_dir.sh $dir
 validate_opts=
 [ ! -f $srcdir/feats.scp ] && validate_opts="$validate_opts --no-feats"
 [ ! -f $srcdir/wav.scp ] && validate_opts="$validate_opts --no-wav"
-$no_text && validate_opts="$validate_opts --no-text"
+! $add_subsegment_text && validate_opts="$validate_opts --no-text"
 
 utils/data/validate_data_dir.sh $validate_opts $dir
 

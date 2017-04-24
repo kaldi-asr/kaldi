@@ -19,7 +19,7 @@ fi
 
 data=$1
 
-if [ -f $data/utt2num_frames ]; then
+if [ -s $data/utt2num_frames ]; then
   echo "$0: $data/utt2num_frames already present!"
   exit 0;
 fi
