@@ -10,7 +10,7 @@ nj=4
 cmd=run.pl
 mfcc_config=conf/mfcc.conf
 compress=true
-write_utt2num_frames=false  # if true writes utt2num_frames
+write_utt2num_frames=true # if true writes utt2num_frames
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging

@@ -96,6 +96,12 @@ for n in $(seq $nj); do
   utils/create_data_link.pl $mfcc_pitch_dir/raw_mfcc_pitch_$name.$n.ark
 done
 
+if $write_utt2num_frames; then
+  write_num_frames_opt="--write-num-frames=ark,t:$logdir/utt2num_frames.JOB"
+else
+  write_num_frames_opt=
+fi
+
 if [ -f $data/segments ]; then
   echo "$0 [info]: segments file exists: using that."
   split_segments=""
@@ -111,7 +117,7 @@ if [ -f $data/segments ]; then
 
   $cmd JOB=1:$nj $logdir/make_mfcc_pitch_${name}.JOB.log \
     paste-feats --length-tolerance=$paste_length_tolerance "$mfcc_feats" "$pitch_feats" ark:- \| \
-    copy-feats --compress=$compress ark:- \
+    copy-feats --compress=$compress $write_num_frames_opt ark:- \
       ark,scp:$mfcc_pitch_dir/raw_mfcc_pitch_$name.JOB.ark,$mfcc_pitch_dir/raw_mfcc_pitch_$name.JOB.scp \
      || exit 1;
 
@@ -129,7 +135,7 @@ else
 
   $cmd JOB=1:$nj $logdir/make_mfcc_pitch_${name}.JOB.log \
     paste-feats --length-tolerance=$paste_length_tolerance "$mfcc_feats" "$pitch_feats" ark:- \| \
-    copy-feats --compress=$compress ark:- \
+    copy-feats --compress=$compress $write_num_frames_opt ark:- \
       ark,scp:$mfcc_pitch_dir/raw_mfcc_pitch_$name.JOB.ark,$mfcc_pitch_dir/raw_mfcc_pitch_$name.JOB.scp \
       || exit 1;
 
@@ -146,6 +152,13 @@ fi
 for n in $(seq $nj); do
   cat $mfcc_pitch_dir/raw_mfcc_pitch_$name.$n.scp || exit 1;
 done > $data/feats.scp
+
+if $write_utt2num_frames; then
+  for n in $(seq $nj); do
+    cat $logdir/utt2num_frames.$n || exit 1;
+  done > $data/utt2num_frames || exit 1
+  rm $logdir/uttnum_frames.*
+fi
 
 rm $logdir/wav_${name}.*.scp  $logdir/segments.* 2>/dev/null
 
