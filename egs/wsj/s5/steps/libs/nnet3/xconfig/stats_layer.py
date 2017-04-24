@@ -6,7 +6,6 @@
 
 from __future__ import print_function
 import re
-from libs.nnet3.xconfig.utils import XconfigParserError as xparser_error
 from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 
 
@@ -46,13 +45,13 @@ class XconfigStatsLayer(XconfigLayerBase):
     def set_derived_configs(self):
         config_string = self.config['config']
         if config_string == '':
-            raise xparser_error("config has to be non-empty",
+            raise RuntimeError("config has to be non-empty",
                                 self.str())
         m = re.search("(mean|mean\+stddev|mean\+count|mean\+stddev\+count)"
                       "\((-?\d+):(-?\d+):(-?\d+):(-?\d+)\)",
                       config_string)
         if m is None:
-            raise xparser_error("Invalid statistic-config string: {0}".format(
+            raise RuntimeError("Invalid statistic-config string: {0}".format(
                 config_string), self)
 
         self._output_stddev = (m.group(1) in ['mean+stddev',
@@ -69,7 +68,7 @@ class XconfigStatsLayer(XconfigLayerBase):
                       + 1 if self._output_log_counts else 0)
 
         if self.config['dim'] > 0 and self.config['dim'] != output_dim:
-            raise xparser_error(
+            raise RuntimeError(
                 "Invalid dim supplied {0:d} != "
                 "actual output dim {1:d}".format(
                     self.config['dim'], output_dim))
@@ -81,7 +80,7 @@ class XconfigStatsLayer(XconfigLayerBase):
                 and self._left_context % self._stats_period == 0
                 and self._right_context % self._stats_period == 0
                 and self._stats_period % self._input_period == 0):
-            raise xparser_error(
+            raise RuntimeError(
                 "Invalid configuration of statistics-extraction: {0}".format(
                     self.config['config']), self)
         super(XconfigStatsLayer, self).check_configs()

@@ -5,5 +5,4 @@
 
 from basic_layers import *
 from lstm import *
-from tdnn import *
 from stats_layer import *
