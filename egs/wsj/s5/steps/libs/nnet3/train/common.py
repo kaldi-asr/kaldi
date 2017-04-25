@@ -806,10 +806,6 @@ class CommonParser:
                                  type=int, dest='backstitch_training_interval',
                                  default=1, help="""the interval of minibatches
                                  that backstitch training is applied on.""")
-        self.parser.add_argument("--trainer.optimization.backstitch-training-epsilon",
-                                 type=float, dest='backstitch_training_epsilon',
-                                 default=0.0, help="""epsilon of backstitch
-                                 training.""")
 
         # General options
         self.parser.add_argument("--stage", type=int, default=-4,

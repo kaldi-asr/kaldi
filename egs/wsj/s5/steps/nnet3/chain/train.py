@@ -471,7 +471,6 @@ def train(args, run_opts, background_process_handler):
                 momentum=args.momentum,
                 backstitch_training_scale=args.backstitch_training_scale,
                 backstitch_training_interval=args.backstitch_training_interval,
-                backstitch_training_epsilon=args.backstitch_training_epsilon,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 frame_subsampling_factor=args.frame_subsampling_factor,

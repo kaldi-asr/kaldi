@@ -73,7 +73,6 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
       % nnet_config.backstitch_training_interval == 0) {
     // backstitch training is incompatible with momentum > 0
     KALDI_ASSERT(nnet_config.momentum == 0.0);
-    KALDI_ASSERT(nnet_config.backstitch_training_epsilon > 0.0);
     FreezeNaturalGradient(true, delta_nnet_);
     bool is_backstitch_step = true;
     TrainInternal(chain_eg, *computation, is_backstitch_step);
@@ -111,24 +110,19 @@ void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
   // The configurations if doing backstitch training
   if (nnet_config.backstitch_training_scale > 0.0 && num_minibatches_processed_
       % nnet_config.backstitch_training_interval == 0) {
-    const BaseFloat backstitch_ratio = nnet_config.backstitch_training_scale /
-        nnet_config.backstitch_training_epsilon; // just for convenience
     if (is_backstitch_step) {
-      // max-change is scaled by epsilon;
-      // delta_nnet is scaled by -epsilon when adding to nnet;
-      // delta_nnet itself is then scaled by
-      // - (alpha/epsilon - 1 - epsilon) / (alpha/epsilon)
-      max_change_scale = nnet_config.backstitch_training_epsilon;
-      scale_adding = -nnet_config.backstitch_training_epsilon;
-      scale_delta_nnet =
-          (-backstitch_ratio + 1.0 + nnet_config.backstitch_training_epsilon) /
-          backstitch_ratio;
-    } else {
-      // max-change is scaled by 1 + epsilon;
-      // delta_nnet is scaled by alpha/epsilon when adding to nnet;
+      // max-change is scaled by backstitch_training_scale;
+      // delta_nnet is scaled by -backstitch_training_scale when added to nnet;
       // delta_nnet itself is then zeroed
-      max_change_scale = 1.0 + nnet_config.backstitch_training_epsilon;
-      scale_adding = backstitch_ratio;
+      max_change_scale = nnet_config.backstitch_training_scale;
+      scale_adding = -nnet_config.backstitch_training_scale;
+      scale_delta_nnet = 0.0;
+    } else {
+      // max-change is scaled by 1 + backstitch_training_scale;
+      // delta_nnet is scaled by 1 + backstitch_training_scale when added to nnet;
+      // delta_nnet itself is then zeroed
+      max_change_scale = 1.0 + nnet_config.backstitch_training_scale;
+      scale_adding = 1.0 + nnet_config.backstitch_training_scale;
       scale_delta_nnet = 0.0;
     }
   }

@@ -38,7 +38,6 @@ struct NnetTrainerOptions {
   BaseFloat momentum;
   BaseFloat backstitch_training_scale;
   int32 backstitch_training_interval;
-  BaseFloat backstitch_training_epsilon;
   std::string read_cache;
   std::string write_cache;
   bool binary_write_cache;
@@ -54,7 +53,6 @@ struct NnetTrainerOptions {
       momentum(0.0),
       backstitch_training_scale(0.0),
       backstitch_training_interval(1),
-      backstitch_training_epsilon(0.2),
       binary_write_cache(true),
       max_param_change(2.0) { }
   void Register(OptionsItf *opts) {
@@ -83,9 +81,6 @@ struct NnetTrainerOptions {
                    &backstitch_training_interval,
                    "do backstitch training with the specified interval of "
                    "minibatches.");
-    opts->Register("backstitch-training-epsilon", &backstitch_training_epsilon,
-                   "backstitch traning epsilon. "
-                   "if 0 then in the normal training mode.");
     opts->Register("read-cache", &read_cache, "the location where we can read "
                    "the cached computation from");
     opts->Register("write-cache", &write_cache, "the location where we want to "
