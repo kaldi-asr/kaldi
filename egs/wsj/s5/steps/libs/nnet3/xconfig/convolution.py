@@ -103,7 +103,7 @@ from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 # provided, passed through to the config file; if not, they are left at the
 # defaults in the code.  See nnet-convolutional-component.h for more information.
 #
-#  param-stddev, bias-stddev (float)
+#  param-stddev, bias-stddev, max-change (float)
 #  use-natural-gradient (bool)
 #  rank-in, rank-out    (int)
 #  num-minibatches-history (float)
@@ -127,8 +127,9 @@ class XconfigConvLayer(XconfigLayerBase):
                        'target-rms':1.0,
                        'self-repair-scale': 2.0e-05,
                        # the following are not really inspected by this level of
-                       # code, just passed through if set.
-                       'param-stddev':'', 'bias-stddev':'', 'use-natural-gradient':'',
+                       # code, just passed through (but not if left at '').
+                       'param-stddev':'', 'bias-stddev':'',
+                       'max-change': 0.75, 'use-natural-gradient':'',
                        'rank-in':'', 'rank-out':'', 'num-minibatches-history':'',
                        'alpha-in':'', 'alpha-out':''}
 
@@ -251,7 +252,7 @@ class XconfigConvLayer(XconfigLayerBase):
                 a = []
                 for opt_name in [
                         'param-stddev', 'bias-stddev', 'use-natural-gradient',
-                        'rank-in', 'rank-out', 'num-minibatches-history',
+                        'max-change', 'rank-in', 'rank-out', 'num-minibatches-history',
                         'alpha-in', 'alpha-out', 'num-filters-in', 'num-filters-out',
                         'height-in','height-out', 'height-subsample-out',
                         'height-offsets', 'time-offsets', 'required-time-offsets']:

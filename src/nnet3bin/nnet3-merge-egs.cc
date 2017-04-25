@@ -49,10 +49,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "This copies nnet training examples from input to output, but while doing so it\n"
         "merges many NnetExample objects into one, forming a minibatch consisting of a\n"
-        "single NnetExample.  Note: if --measure-output-frames=true, which it is by default,\n"
-        "the --minibatch-size option will be interpreted as a target number of output frames;\n"
-        "otherwise as a number of input examples to combine.  This makes a difference\n"
-        "if the input examples have multiple supervised frames in them.\n"
+        "single NnetExample.\n"
         "\n"
         "Usage:  nnet3-merge-egs [options] <egs-rspecifier> <egs-wspecifier>\n"
         "e.g.\n"

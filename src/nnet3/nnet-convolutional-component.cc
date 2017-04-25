@@ -70,7 +70,7 @@ std::string TimeHeightConvolutionComponent::Info() const {
   // as a component-level info string, it has
   // {num-filters,height}-{in-out}, offsets=[...], required-time-offsets=[...],
   // {input,output}-dim.
-  stream << UpdatableComponent::Info() << model_.Info();
+  stream << UpdatableComponent::Info() << ' ' << model_.Info();
   PrintParameterStats(stream, "filter-params", linear_params_);
   PrintParameterStats(stream, "bias-params", bias_params_, true);
   stream << ", num-params=" << NumParameters()
@@ -368,7 +368,7 @@ void TimeHeightConvolutionComponent::ReorderIndexes(
 }
 
 void TimeHeightConvolutionComponent::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<TimeHeightConvolutionComponent>");
+  WriteUpdatableCommon(os, binary);  // Write opening tag and learning rate.
   WriteToken(os, binary, "<Model>");
   model_.Write(os, binary);
   WriteToken(os, binary, "<LinearParams>");
@@ -395,8 +395,13 @@ void TimeHeightConvolutionComponent::Write(std::ostream &os, bool binary) const 
 }
 
 void TimeHeightConvolutionComponent::Read(std::istream &is, bool binary) {
-  ExpectOneOrTwoTokens(is, binary, "<TimeHeightConvolutionComponent>",
-                       "<Model>");
+  std::string token = ReadUpdatableCommon(is, binary);
+  // the next few lines are only for back compatibility.
+  if (token != "") {
+    KALDI_ASSERT(token == "<Model>");
+  } else {
+    ExpectToken(is, binary, "<Model>");
+  }
   model_.Read(is, binary);
   ExpectToken(is, binary, "<LinearParams>");
   linear_params_.Read(is, binary);

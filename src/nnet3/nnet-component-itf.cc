@@ -208,7 +208,8 @@ void UpdatableComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {
 }
 
 
-void UpdatableComponent::ReadUpdatableCommon(std::istream &is, bool binary) {
+std::string UpdatableComponent::ReadUpdatableCommon(std::istream &is,
+                                                    bool binary) {
   std::ostringstream opening_tag;
   opening_tag << '<' << this->Type() << '>';
   std::string token;
@@ -238,9 +239,9 @@ void UpdatableComponent::ReadUpdatableCommon(std::istream &is, bool binary) {
   }
   if (token == "<LearningRate>") {
     ReadBasicType(is, binary, &learning_rate_);
+    return "";
   } else {
-    KALDI_ERR << "Expected token <LearningRate>, got "
-              << token;
+    return token;
   }
 }
 

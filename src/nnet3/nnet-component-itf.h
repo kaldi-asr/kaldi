@@ -494,7 +494,11 @@ class UpdatableComponent: public Component {
 
   // To be used in child-class Read() functions, this function reads the opening
   // tag <ThisComponentType> and the learning-rate factor and the learning-rate.
-  void ReadUpdatableCommon(std::istream &is, bool binary);
+  //
+  // Its return value may not always be needed to be inspected by calling code;
+  // if there was a token that it read but could not process it returns it, else
+  // it returns "".
+  std::string ReadUpdatableCommon(std::istream &is, bool binary);
 
   // To be used in child-class Write() functions, writes the opening
   // <ThisComponentType> tag and the learning-rate factor (if not 1.0) and the
