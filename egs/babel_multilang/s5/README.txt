@@ -41,6 +41,9 @@ b) Prepare the data and alignments for languages in multilingual setup.
           lda_mllt_lang=101-cantonese
           # lang_list is space-separated language list used for multilingual training
           lang_list=(101-cantonese 102-assamese 103-bengali)
+          # lang2weight is comma-separated list of weights, one per language, used to
+          # scale example's output w.r.t its input language during training.
+          lang2weight="0.3,0.3,0.4"
           # The language list used for decoding.
           decode_lang_list=(101-cantonese)
         EOF
@@ -58,7 +61,7 @@ a) You can run the following script to train multilingual TDNN model using
         global i-vector extractor over pooled data.
 
     iii) Generates separate egs-dir in exp/lang-name/nnet3/egs for all languages
-        in lagn_list
+        in lang_list
 
     iv) Creates multilingual-egs-dir and train the multilingual model.
 

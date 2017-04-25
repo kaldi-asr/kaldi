@@ -1,14 +1,16 @@
 #!/bin/bash
 #
-# This script uses separate input egs directory for each language as input,
-# to generate egs.*.scp files in multilingual egs directory
-# where the scp line points to the original archive for each egs directory.
-# $megs/egs.*.scp is randomized w.r.t language id.
+# This script generates examples for multilingual training of neural network
+# using separate input egs dir per language as input.
+# This scripts produces 3 sets of files --
+# egs.*.scp, egs.output.*.ark, egs.weight.*.ark
 #
-# Also this script generates egs.JOB.scp, output.JOB.scp and weight.JOB.scp,
-# where output file contains language-id for each example
-# and weight file contains weights for scaling output posterior
-# for each example w.r.t input language.
+# egs.*.scp are the SCP files of the training examples.
+# egs.weight.*.ark map from the key of the example to the language-specific
+# weight of that example.
+# egs.output.*.ark map from the key of the example to the name of
+# the output-node in the neural net for that specific language, e.g.
+# 'output-2'.
 #
 # Begin configuration section.
 cmd=run.pl
@@ -22,6 +24,8 @@ samples_per_iter=400000 # this is the target number of egs in each archive of eg
                         # it egs_per_iter. This is just a guideline; it will pick
                         # a number that divides the number of samples in the
                         # entire data.
+lang2weight=            # array of weights one per input languge to scale example's output
+                        # w.r.t its input language during training.
 stage=0
 
 echo "$0 $@"  # Print the command line for logging
@@ -83,9 +87,12 @@ done
 
 if [ $stage -le 0 ]; then
   echo "$0: allocating multilingual examples for training."
+  if [ ! -z "$lang2weight" ]; then
+    egs_opt="--lang2weight '$lang2weight'"
+  fi
   # Generate egs.*.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_train.log \
-  steps/nnet3/multilingual/allocate_multilingual_examples.py \
+  steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
       --minibatch-size $minibatch_size \
       --samples-per-iter $samples_per_iter \
       $train_scp_list $megs_dir || exit 1;
@@ -99,7 +106,7 @@ if [ $stage -le 1 ]; then
       --random-lang false \
       --max-archives 1 --num-jobs 1 \
       --minibatch-size $minibatch_size \
-      --prefix "combine." \
+      --egs-prefix "combine." \
       $combine_scp_list $megs_dir || exit 1;
 
   echo "$0: combine train_diagnostic.scp examples from all langs in $megs_dir/train_diagnostic.scp."
@@ -109,7 +116,7 @@ if [ $stage -le 1 ]; then
       --random-lang false \
       --max-archives 1 --num-jobs 1 \
       --minibatch-size $minibatch_size \
-      --prefix "train_diagnostic." \
+      --egs-prefix "train_diagnostic." \
       $train_diagnostic_scp_list $megs_dir || exit 1;
 
 
@@ -119,7 +126,7 @@ if [ $stage -le 1 ]; then
   steps/nnet3/multilingual/allocate_multilingual_examples.py \
       --random-lang false --max-archives 1 --num-jobs 1\
       --minibatch-size $minibatch_size \
-      --prefix "valid_diagnostic." \
+      --egs-prefix "valid_diagnostic." \
       $valid_diagnostic_scp_list $megs_dir || exit 1;
 
 fi

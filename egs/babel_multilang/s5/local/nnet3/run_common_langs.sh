@@ -1,5 +1,8 @@
 #!/bin/bash
-# This script uses to generated MFCC+pitch features for input language L.
+
+# Copyright 2016 Pegah Ghahremani
+
+# This script used to generate MFCC+pitch features for input language lang.
 
 . ./cmd.sh
 set -e

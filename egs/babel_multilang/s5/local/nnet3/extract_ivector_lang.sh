@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# Copyright 2016 Pegah Ghahremani
+
 # This scripts extracts iVector using global iVector extractor
 # trained on all languages in multilingual setup.
 

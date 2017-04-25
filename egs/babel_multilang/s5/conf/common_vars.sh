@@ -1,1 +1,1 @@
-../../../babel/s5c/conf/common_vars.sh
+../../../babel/s5d/conf/common_vars.sh

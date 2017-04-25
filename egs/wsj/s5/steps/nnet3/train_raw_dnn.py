@@ -292,7 +292,7 @@ def train(args, run_opts, background_process_handler):
         if (os.path.exists('{0}/valid_diagnostic.egs'.format(args.egs_dir))):
             raise Exception('both {0}/valid_diagnostic.egs and '
                             '{0}/valid_diagnostic.scp exist.'
-                            'This script expects one of them to exist.'
+                            'This script expects only one of them to exist.'
                             ''.format(args.egs_dir))
         use_multitask_egs = True
     else:

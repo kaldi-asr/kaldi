@@ -19,7 +19,6 @@ stage=1
 speed_perturb=true
 multilingual_dir=exp/nnet3/multi_bnf
 global_extractor=exp/multi/nnet3/extractor
-lang_list=(404-georgian 403-dholuo 402-javanese 401-mongolian 307-amharic)
 bnf_dim=42
 . ./utils/parse_options.sh
 
@@ -30,6 +29,9 @@ langconf=conf/$lang/lang.conf
 
 [ ! -f $langconf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1;
 . $langconf || exit 1;
+
+[ ! -f local.conf ] && echo 'the file local.conf does not exist!' && exit 1;
+. local.conf || exit 1;
 
 suffix=
 if $speed_perturb; then

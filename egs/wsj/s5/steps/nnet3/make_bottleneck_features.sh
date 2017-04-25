@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#           2016  Pegah Ghahremani
-# Apache 2.0
+# Copyright 2016 Pegah Ghahremani
+
 # This script dumps bottleneck feature for model trained using nnet3.
 
 # Begin configuration section.
@@ -18,9 +18,9 @@ echo "$0 $@"  # Print the command line for logging
 [ -f path.sh ] && . ./path.sh # source the path.
 . parse_options.sh || exit 1;
 
-if [ $# -lt 3 ]; then
-   echo "usage: steps/nnet3/dump_bottleneck_features.sh <bnf-node-name> <input-data-dir> <bnf-data-dir> <nnet-dir> [<log-dir> [<bnfdir>] ]"
-   echo "e.g.:  steps/nnet3/dump_bottleneck_features.sh tdnn_bn.renorm data/train data/train_bnf exp/nnet3/tdnn_bnf exp_bnf/dump_bnf bnf"
+if [[ ( $# -lt 4 ) || ( $# gt 6 ) ]]; then
+   echo "usage: steps/nnet3/make_bottleneck_features.sh <bnf-node-name> <input-data-dir> <bnf-data-dir> <nnet-dir> [<log-dir> [<bnfdir>] ]"
+   echo "e.g.:  steps/nnet3/make_bottleneck_features.sh tdnn_bn.renorm data/train data/train_bnf exp/nnet3/tdnn_bnf exp_bnf/dump_bnf bnf"
    echo "Note: <log-dir> dafaults to <bnf-data-dir>/log and <bnfdir> defaults to"
    echo " <bnf-data-dir>/data"
    echo "main options (for others, see top of script file)"
@@ -35,12 +35,12 @@ data=$2
 bnf_data=$3
 nnetdir=$4
 if [ $# -ge 4 ]; then
-  logdir=$4
+  logdir=$5
 else
   logdir=$bnf_data/log
 fi
 if [ $# -ge 5]; then
-  bnfdir=$4
+  bnfdir=$6
 else
   bnfdir=$bnf_data/data
 fi
@@ -78,8 +78,9 @@ echo $nj > $nnetdir/num_jobs
 splice_opts=`cat $nnetdir/splice_opts 2>/dev/null`
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
-if [ "$ivector_dir" != "" ];then
+if [ ! -z "$ivector_dir" ];then
   use_ivector=true
+  steps/nnet2/check_ivectors_compatible.sh $nnetdir $ivector_dir || exit 1;
 fi
 
 feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
@@ -88,8 +89,8 @@ ivector_feats="scp:utils/filter_scp.pl $sdata/JOB/utt2spk $ivector_dir/ivector_o
 if [ $stage -le 1 ]; then
   echo "$0: Generating bottleneck features using $bnf_nnet model as output of "
   echo "    component-node with name $bnf_name."
-  echo "output-node name=output input=$bnf_name" > output.config
-  modified_bnf_nnet="nnet3-copy --edits='remove-output-nodes name=output' $bnf_nnet - | nnet3-copy --nnet-config=output.config - - |"
+  echo "output-node name=output input=$bnf_name" > $bnf_data/output.config
+  modified_bnf_nnet="nnet3-copy --edits='remove-output-nodes name=output' $bnf_nnet - | nnet3-copy --nnet-config=$bnf_data/output.config - - |"
   ivector_opts=
   if $use_ivector; then
     ivector_period=`grep ivector-period $ivector_dir/conf/ivector_extractor.conf  | cut -d"=" -f2`
