@@ -103,7 +103,7 @@ from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 # provided, passed through to the config file; if not, they are left at the
 # defaults in the code.  See nnet-convolutional-component.h for more information.
 #
-#  param-stddev, bias-stddev, max-change (float)
+#  param-stddev, bias-stddev, max-change, learning-rate-factor (float)
 #  use-natural-gradient (bool)
 #  rank-in, rank-out    (int)
 #  num-minibatches-history (float)
@@ -129,7 +129,8 @@ class XconfigConvLayer(XconfigLayerBase):
                        # the following are not really inspected by this level of
                        # code, just passed through (but not if left at '').
                        'param-stddev':'', 'bias-stddev':'',
-                       'max-change': 0.75, 'use-natural-gradient':'',
+                       'max-change': 0.75, 'learning-rate-factor':'',
+                       'use-natural-gradient':'',
                        'rank-in':'', 'rank-out':'', 'num-minibatches-history':'',
                        'alpha-in':'', 'alpha-out':''}
 
@@ -255,7 +256,8 @@ class XconfigConvLayer(XconfigLayerBase):
                         'max-change', 'rank-in', 'rank-out', 'num-minibatches-history',
                         'alpha-in', 'alpha-out', 'num-filters-in', 'num-filters-out',
                         'height-in','height-out', 'height-subsample-out',
-                        'height-offsets', 'time-offsets', 'required-time-offsets']:
+                        'height-offsets', 'time-offsets', 'required-time-offsets',
+                        'learning-rate-factor']:
                     value = self.config[opt_name]
                     if value != '':
                         a.append('{0}={1}'.format(opt_name, value))

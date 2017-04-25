@@ -3750,7 +3750,7 @@ void ComputationLoopedOptimizer::CheckIdentifiedMatrices(
     for (; iter1 != end1; iter1++,iter2++) {
       KALDI_ASSERT(iter2->first == iter1->first &&
                    iter2->second.n == iter1->second.n &&
-                   (iter1->second.t == kNoTime && iter2->second.t ==kNoTime ||
+                   ((iter1->second.t == kNoTime && iter2->second.t == kNoTime) ||
                     iter2->second.t == iter1->second.t + time_difference) &&
                    iter2->second.x == iter1->second.x);
     }
