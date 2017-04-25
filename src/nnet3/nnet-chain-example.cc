@@ -401,7 +401,7 @@ void ShiftChainExampleTimes(int32 frame_shift,
 
 
 size_t NnetChainExampleStructureHasher::operator () (
-    const NnetChainExample &eg) const {
+    const NnetChainExample &eg) const noexcept {
   // these numbers were chosen at random from a list of primes.
   NnetIoStructureHasher io_hasher;
   size_t size = eg.inputs.size(), ans = size * 35099;

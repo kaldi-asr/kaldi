@@ -22,6 +22,8 @@ done
 
 if [ $# -ne 1 ]; then
   echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] <data-dir>"
+  echo "The --no-xxx options mean that the script does not require "
+  echo "xxx.scp to be present, but it will check it if it is present."
   echo "e.g.: $0 data/train"
   exit 1;
 fi

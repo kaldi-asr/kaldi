@@ -533,7 +533,8 @@ void Optimize(const NnetOptimizeOptions &config,
 
 // ComputationRequests are distinguished by the names and indexes
 // of inputs and outputs
-size_t ComputationRequestHasher::operator() (const ComputationRequest *cr) const {
+size_t ComputationRequestHasher::operator() (
+    const ComputationRequest *cr) const noexcept {
   size_t ans = 0;
   size_t p1 = 4111, p2 = 26951;
   IoSpecificationHasher io_hasher;
@@ -862,7 +863,7 @@ void FixGotoOutputReordering(const Nnet &nnet,
   FixGotoLabel(computation);  // make sure the destination label of the goto statement was
                               // correct.
   int32 goto_command_index = -1;
-  for (int32 c = computation->commands.size(); c >= 0; c--)
+  for (int32 c = computation->commands.size() - 1; c >= 0; c--)
     if (computation->commands[c].command_type == kGotoLabel)
       goto_command_index = c;
   KALDI_ASSERT(goto_command_index > 0);

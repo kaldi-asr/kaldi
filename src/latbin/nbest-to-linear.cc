@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
         "Usage: nbest-to-linear [options] <nbest-rspecifier> <alignments-wspecifier> "
         "[<transcriptions-wspecifier> [<lm-cost-wspecifier> [<ac-cost-wspecifier>]]]\n"
         " e.g.: lattice-to-nbest --n=10 ark:1.lats ark:- | \\\n"
-        "   nbest-to-linear ark:1.lats ark,t:1.ali ark,t:1.tra\n";
+        "   nbest-to-linear ark:1.lats ark,t:1.ali 'ark,t:|int2sym.pl -f 2- words.txt > text'\n";
 
     ParseOptions po(usage);
 

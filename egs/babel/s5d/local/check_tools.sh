@@ -18,20 +18,20 @@
 [ -f ./path.sh ] && . ./path.sh
 
 sph2pipe=`command -v sph2pipe 2>/dev/null` \
-  || { echo  >&2 "sph2pipe not found on PATH. Did you run make in the $KALDI_ROOT/tools directory?"; return 1; }
+  || { echo  >&2 "sph2pipe not found on PATH. Did you run make in the $KALDI_ROOT/tools directory?"; exit 1; }
 
 srilm=`command -v ngram 2>/dev/null` \
-  || { echo  >&2 "srilm not found on PATH. Please use the script $KALDI_ROOT/tools/extras/install_srilm.sh"; return 1; }
+  || { echo  >&2 "srilm not found on PATH. Please use the script $KALDI_ROOT/tools/extras/install_srilm.sh"; exit 1; }
 
 sox=`command -v sox 2>/dev/null` \
-  || { echo  >&2 "sox not found on PATH. Please install it manually (you will need version 14.4.0 and higher)."; return 1; }
+  || { echo  >&2 "sox not found on PATH. Please install it manually (you will need version 14.4.0 and higher)."; exit 1; }
 
 # If sox is found on path, check if the version is correct
 if [ ! -z "$sox" ]; then
   sox_version=`$sox --version 2>&1| head -1 | sed -e 's?.*: ??' -e 's?.* ??'`
   if [[ ! $sox_version =~ v14.4.* ]]; then
     echo "Unsupported sox version $sox_version found on path. You will need version v14.4.0 and higher."
-    return 1
+    exit 1
   fi
 fi
 

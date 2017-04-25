@@ -61,9 +61,12 @@ namespace kaldi {
 \endverbatim
 There is one TopologyEntry in this particular HmmTopology object, and it covers
 phones 1 through 8 (so in this example there are just eight phones and they all
-share the same topology).  There are three emitting states; each has a self-loop
+share the same topology).  There are three emitting states (i.e. states that
+have pdfs associated with them and 'emit' feature vectors); each has a self-loop
 and a transition to the next state.  There is also a fourth, non-emitting state,
-state 3 (there is no \<PdfClass\> entry for it) which has no transitions out of it.  This is
+state 3 (there is no \<PdfClass\> entry for it) which has no transitions out of it
+(implicitly, it connects to the next phone in the sequence).
+This is
 a standard feature of these topology entries; Kaldi treats the first state (state
 zero) as the start state, and the last state, which should always be nonemitting and
 have no transitions out of it, has final-probability one.  You

@@ -145,13 +145,4 @@ template<> class KaldiCompileTimeAssert<true> {
 #  define KALDI_STRTOLL(cur_cstr, end_cstr) strtoll(cur_cstr, end_cstr, 10);
 #endif
 
-#define KALDI_STRTOD(cur_cstr, end_cstr) strtod(cur_cstr, end_cstr)
-
-#ifdef _MSC_VER
-#  define KALDI_STRTOF(cur_cstr, end_cstr) \
-    static_cast<float>(strtod(cur_cstr, end_cstr));
-#else
-#  define KALDI_STRTOF(cur_cstr, end_cstr) strtof(cur_cstr, end_cstr);
-#endif
-
 #endif  // KALDI_BASE_KALDI_UTILS_H_

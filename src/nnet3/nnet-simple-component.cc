@@ -485,48 +485,10 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
                                   const CuMatrixBase<BaseFloat> &out_deriv,
                                   Component *to_update,
                                   CuMatrixBase<BaseFloat> *in_deriv) const {
-  if (!in_deriv)  return;
-  const CuSubMatrix<BaseFloat> out_deriv_no_log(out_deriv,
-                                                0, out_deriv.NumRows(),
-                                                0, input_dim_);
-  CuVector<BaseFloat> dot_products(out_deriv.NumRows());
-  dot_products.AddDiagMatMat(1.0, out_deriv_no_log, kNoTrans,
-                             in_value, kTrans, 0.0);
-  CuVector<BaseFloat> in_norm(in_value.NumRows());
-  BaseFloat d_scaled = (in_value.NumCols() * target_rms_ * target_rms_);
-  in_norm.AddDiagMat2(1.0, in_value, kNoTrans, 0.0);
-
-  if (add_log_stddev_) {
-    CuVector<BaseFloat> log_stddev_deriv(in_norm), // log_stddev deriv as dF/dy .* (x^T x)^-1
-        out_deriv_for_stddev(out_deriv.NumRows(), kUndefined);
-    // f = log(sqrt(max(epsi, x^T x / D)))
-    // df/dx = epsi^2 * D < x^T x ? (1/(x^T x)) * x  : 0.
-    // we don't compute this exactly below for the case wehn x^2 x is very
-    // small, but we do make sure that the deriv isn't infinity when the input
-    // is zero.
-    log_stddev_deriv.ApplyFloor(input_dim_ * kSquaredNormFloor);
-    log_stddev_deriv.ApplyPow(-1.0);
-    out_deriv_for_stddev.CopyColFromMat(out_deriv, (out_deriv.NumCols() - 1));
-    log_stddev_deriv.MulElements(out_deriv_for_stddev);
-    if (in_deriv)
-      in_deriv->AddDiagVecMat(1.0, log_stddev_deriv, in_value, kNoTrans, 1.0);
-  }
-  in_norm.Scale(1.0 / d_scaled);
-  in_norm.ApplyFloor(kSquaredNormFloor);
-  in_norm.ApplyPow(-0.5);
-  if (in_deriv) {
-    if (in_deriv->Data() != out_deriv_no_log.Data())
-      in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv_no_log, kNoTrans, 1.0);
-    else
-      in_deriv->MulRowsVec(in_norm);
-    in_norm.ReplaceValue(1.0 / sqrt(kSquaredNormFloor), 0.0);
-    in_norm.ApplyPow(3.0);
-    dot_products.MulElements(in_norm);
-
-    in_deriv->AddDiagVecMat(-1.0 / d_scaled,
-                            dot_products, in_value,
-                            kNoTrans, 1.0);
-  }
+  if (!in_deriv)
+    return;
+  cu::DiffNormalizePerRow(in_value, out_deriv, target_rms_, add_log_stddev_,
+                          in_deriv);
 }
 
 void SigmoidComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -2945,11 +2907,19 @@ void NaturalGradientAffineComponent::ZeroStats()  {
 }
 
 void NaturalGradientAffineComponent::Scale(BaseFloat scale) {
-  update_count_ *= scale;
-  max_change_scale_stats_ *= scale;
-  active_scaling_count_ *= scale;
-  linear_params_.Scale(scale);
-  bias_params_.Scale(scale);
+  if (scale == 0.0) {
+    update_count_ = 0.0;
+    max_change_scale_stats_ = 0.0;
+    active_scaling_count_ = 0.0;
+    linear_params_.SetZero();
+    bias_params_.SetZero();
+  } else {
+    update_count_ *= scale;
+    max_change_scale_stats_ *= scale;
+    active_scaling_count_ *= scale;
+    linear_params_.Scale(scale);
+    bias_params_.Scale(scale);
+  }
 }
 
 void NaturalGradientAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
@@ -5204,13 +5174,20 @@ void CompositeComponent::InitFromConfig(ConfigLine *cfl) {
     if(this_component->Type() == "CompositeComponent") {
       DeletePointers(&components);
       delete this_component;
+      // This is not allowed.  If memory is too much with just one
+      // CompositeComponent, try decreasing max-rows-process instead.
       KALDI_ERR << "Found CompositeComponent nested within CompositeComponent."
-                << "Try decreasing max-rows-process instead."
                 << "Nested line: '" << nested_line.WholeLine() << "'\n"
                 << "Toplevel CompositeComponent line '" << cfl->WholeLine()
                 << "'";
     }
     this_component->InitFromConfig(&nested_line);
+    int32 props = this_component->Properties();
+    if ((props & kRandomComponent) != 0 ||
+        (props & kSimpleComponent) == 0) {
+      KALDI_ERR << "CompositeComponent contains disallowed component type: "
+                << nested_line.WholeLine();
+    }
     components.push_back(this_component);
   }
   if (cfl->HasUnusedValues())
@@ -5230,10 +5207,9 @@ void CompositeComponent::SetComponent(int32 i, Component *component) {
   components_[i] = component;
 }
 
-
 int32 LstmNonlinearityComponent::InputDim() const {
   int32 cell_dim = value_sum_.NumCols();
-  return cell_dim * 5;
+  return cell_dim * 5 + (use_dropout_ ? 3 : 0);
 }
 
 int32 LstmNonlinearityComponent::OutputDim() const {
@@ -5255,7 +5231,15 @@ void LstmNonlinearityComponent::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<SelfRepairProb>");
   self_repair_total_.Read(is, binary);
 
-  ExpectToken(is, binary, "<Count>");
+  std::string tok;
+  ReadToken(is, binary, &tok);
+  if (tok == "<UseDropout>") {
+    ReadBasicType(is, binary, &use_dropout_);
+    ReadToken(is, binary, &tok);
+  } else {
+    use_dropout_ = false;
+  }
+  KALDI_ASSERT(tok == "<Count>");
   ReadBasicType(is, binary, &count_);
 
   // For the on-disk format, we normalze value_sum_, deriv_sum_ and
@@ -5302,6 +5286,12 @@ void LstmNonlinearityComponent::Write(std::ostream &os, bool binary) const {
       self_repair_prob.Scale(1.0 / (count_ * cell_dim));
     self_repair_prob.Write(os, binary);
   }
+  if (use_dropout_) {
+    // only write this if true; we have back-compat code in reading anyway.
+    // this makes the models without dropout easier to read with older code.
+    WriteToken(os, binary, "<UseDropout>");
+    WriteBasicType(os, binary, use_dropout_);
+  }
   WriteToken(os, binary, "<Count>");
   WriteBasicType(os, binary, count_);
   WriteToken(os, binary, "</LstmNonlinearityComponent>");
@@ -5312,7 +5302,8 @@ void LstmNonlinearityComponent::Write(std::ostream &os, bool binary) const {
 std::string LstmNonlinearityComponent::Info() const {
   std::ostringstream stream;
   int32 cell_dim = params_.NumCols();
-  stream << UpdatableComponent::Info() << ", cell-dim=" << cell_dim;
+  stream << UpdatableComponent::Info() << ", cell-dim=" << cell_dim
+         << ", use-dropout=" << (use_dropout_ ? "true" : "false");
   PrintParameterStats(stream, "w_ic", params_.Row(0));
   PrintParameterStats(stream, "w_fc", params_.Row(1));
   PrintParameterStats(stream, "w_oc", params_.Row(2));
@@ -5478,6 +5469,7 @@ LstmNonlinearityComponent::LstmNonlinearityComponent(
     const LstmNonlinearityComponent &other):
     UpdatableComponent(other),
     params_(other.params_),
+    use_dropout_(other.use_dropout_),
     value_sum_(other.value_sum_),
     deriv_sum_(other.deriv_sum_),
     self_repair_config_(other.self_repair_config_),
@@ -5486,7 +5478,8 @@ LstmNonlinearityComponent::LstmNonlinearityComponent(
     preconditioner_(other.preconditioner_) { }
 
 void LstmNonlinearityComponent::Init(
-    int32 cell_dim, BaseFloat param_stddev,
+    int32 cell_dim, bool use_dropout,
+    BaseFloat param_stddev,
     BaseFloat tanh_self_repair_threshold,
     BaseFloat sigmoid_self_repair_threshold,
     BaseFloat self_repair_scale) {
@@ -5496,6 +5489,7 @@ void LstmNonlinearityComponent::Init(
                sigmoid_self_repair_threshold >= 0.0 &&
                sigmoid_self_repair_threshold <= 0.25 &&
                self_repair_scale >= 0.0 && self_repair_scale <= 0.1);
+  use_dropout_ = use_dropout;
   params_.Resize(3, cell_dim);
   params_.SetRandn();
   params_.Scale(param_stddev);
@@ -5530,6 +5524,7 @@ void LstmNonlinearityComponent::InitNaturalGradient() {
 void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
   InitLearningRatesFromConfig(cfl);
   bool ok = true;
+  bool use_dropout = false;
   int32 cell_dim;
   // these self-repair thresholds are the normal defaults for tanh and sigmoid
   // respectively.  If, later on, we decide that we want to support different
@@ -5549,6 +5544,7 @@ void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
   cfl->GetValue("sigmoid-self-repair-threshold",
                 &sigmoid_self_repair_threshold);
   cfl->GetValue("self-repair-scale", &self_repair_scale);
+  cfl->GetValue("use-dropout", &use_dropout);
 
   // We may later on want to make it possible to initialize the different
   // parameters w_ic, w_fc and w_oc with different biases.  We'll implement
@@ -5558,7 +5554,7 @@ void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
     KALDI_ERR << "Could not process these elements in initializer: "
               << cfl->UnusedValues();
   if (ok) {
-    Init(cell_dim, param_stddev, tanh_self_repair_threshold,
+    Init(cell_dim, use_dropout, param_stddev, tanh_self_repair_threshold,
          sigmoid_self_repair_threshold, self_repair_scale);
   } else {
     KALDI_ERR << "Invalid initializer for layer of type "

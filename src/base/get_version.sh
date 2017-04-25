@@ -54,20 +54,20 @@ elif [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != true ]; then
   echo "$0: Using the version number \"$version\" specified in src/.version."
 else
   # Figure out patch number.
-  version_commit=$(git log -1 --pretty=oneline ../.version | cut -f 1 -d ' ')
-  patch_number=$(git rev-list ${version_commit}..HEAD | wc -l)
+  version_commit=$(git log -1 --pretty=oneline ../.version | awk '{print $1}')
+  patch_number=$(git rev-list ${version_commit}..HEAD | wc -l | awk '{print $1}')
   version="$version.$patch_number"
 
   # Check for uncommitted changes in src/.
-  uncommitted_changes=$(git diff-index HEAD -- .. | wc -l)
+  uncommitted_changes=$(git diff-index HEAD -- .. | wc -l | awk '{print $1}')
   if [ $uncommitted_changes -gt 0 ]; then
     # Add suffix ~N if there are N files in src/ with uncommitted changes
     version="$version~$uncommitted_changes"
   fi
 
   # Figure out HEAD commit SHA-1.
-  head_commit=$(git log -1 --pretty=oneline | cut -f 1 -d ' ')
-  head_commit_short=$(git log -1 --oneline --abbrev=4 | cut -f 1 -d ' ')
+  head_commit=$(git log -1 --pretty=oneline | awk '{print $1}')
+  head_commit_short=$(git log -1 --oneline --abbrev=4 | awk '{print $1}')
   version="$version-${head_commit_short}"
 fi
 

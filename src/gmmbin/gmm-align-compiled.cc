@@ -44,8 +44,8 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         " gmm-align-compiled 1.mdl ark:graphs.fsts scp:train.scp ark:1.ali\n"
         "or:\n"
-        " compile-train-graphs tree 1.mdl lex.fst ark:train.tra b, ark:- | \\\n"
-        "   gmm-align-compiled 1.mdl ark:- scp:train.scp t, ark:1.ali\n";
+        " compile-train-graphs tree 1.mdl lex.fst 'ark:sym2int.pl -f 2- words.txt text|' \\\n"
+        "   ark:- | gmm-align-compiled 1.mdl ark:- scp:train.scp t, ark:1.ali\n";
 
     ParseOptions po(usage);
     AlignConfig align_config;

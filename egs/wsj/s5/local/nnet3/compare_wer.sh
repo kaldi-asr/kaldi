@@ -78,7 +78,7 @@ for n in 0 1 2 3 4 5 6 7; do
      set_names $x  # sets $dirname and $epoch_infix
      decode_names=(tgpr_dev93 tg_dev93 bd_tgpr_dev93 bd_tgpr_dev93_fg tgpr_eval92 tg_eval92 bd_tgpr_eval92 bd_tgpr_eval92_fg)
 
-     wer=$(cat $dirname/decode_${decode_names[$n]}/scoring_kaldi/best_wer | utils/best_wer.sh | awk '{print $2}')
+     wer=$(cat $dirname/decode_${decode_names[$n]}$epoch_infix/scoring_kaldi/best_wer | utils/best_wer.sh | awk '{print $2}')
      printf "% 10s" $wer
    done
    echo
@@ -86,7 +86,7 @@ for n in 0 1 2 3 4 5 6 7; do
      echo -n "#             [looped:]    "
      for x in $*; do
        set_names $x  # sets $dirname and $epoch_infix
-       wer=$(cat $dirname/decode_looped_${decode_names[$n]}/scoring_kaldi/best_wer | utils/best_wer.sh | awk '{print $2}')
+       wer=$(cat $dirname/decode_looped_${decode_names[$n]}$epoch_infix/scoring_kaldi/best_wer | utils/best_wer.sh | awk '{print $2}')
        printf "% 10s" $wer
      done
      echo
@@ -95,7 +95,7 @@ for n in 0 1 2 3 4 5 6 7; do
      echo -n "#             [online:]    "
      for x in $*; do
        set_names $x  # sets $dirname and $epoch_infix
-       wer=$(cat ${dirname}_online/decode_${decode_names[$n]}/scoring_kaldi/best_wer | utils/best_wer.sh | awk '{print $2}')
+       wer=$(cat ${dirname}_online/decode_${decode_names[$n]}$epoch_infix/scoring_kaldi/best_wer | utils/best_wer.sh | awk '{print $2}')
        printf "% 10s" $wer
      done
      echo

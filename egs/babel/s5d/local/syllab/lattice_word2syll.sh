@@ -26,7 +26,7 @@ mkdir -p $output/log
 
 if [ -f $olang/lex.words2syllabs.fst ] ; then
   fstinvert $olang/lex.words2syllabs.fst | fstreverse | \
-    fstminimize | fstreverse > $output/L.fst
+    fstminimize --allow_nondet | fstreverse > $output/L.fst
 
   $cmd JOB=1:$nj $output/log/convert.JOB.log \
     lattice-push --push-strings ark:"gunzip -c $input/lat.JOB.gz|" ark:- \| \

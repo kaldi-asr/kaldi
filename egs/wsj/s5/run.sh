@@ -123,7 +123,7 @@ if [ $stage -le 2 ]; then
 
     for data in dev93 eval92; do
       nspk=$(wc -l <data/test_${data}/spk2utt)
-      steps/decode.sh --nj $nj --cmd "$decode_cmd" exp/tri1/graph_nosp_tgpr \
+      steps/decode.sh --nj $nspk --cmd "$decode_cmd" exp/tri1/graph_nosp_tgpr \
         data/test_${data} exp/tri1/decode_nosp_tgpr_${data} || exit 1;
 
       # test various modes of LM rescoring (4 is the default one).

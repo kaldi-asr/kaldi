@@ -31,7 +31,7 @@ namespace kaldi {
   relate to the commonalities:
    - \ref transform_apply
    - \ref transform_perspk
-   - \ref transform_utt2spk 
+   - \ref transform_utt2spk
    - \ref transform_compose
    - \ref transform_weight
 
@@ -49,8 +49,8 @@ namespace kaldi {
 
   We next discuss regression class trees and transforms that use them:
     - \ref transform_regtree
-    
-    
+
+
   \section transform_apply Applying global linear or affine feature transforms
 
   In the case of feature-space transforms and projections that are global,
@@ -59,22 +59,22 @@ namespace kaldi {
   projection is represented as a matrix by which we will left-multiply a feature vector,
   so the transformed feature is \f$ A x \f$.  An affine transform or projection
   is represented the same way, but we imagine a 1 has been appended to the
-  feature vector, so the transformed feature is 
+  feature vector, so the transformed feature is
   \f$ W \left[ \begin{array}{c} x \\ 1 \end{array} \right] \f$ where
    \f$ W = \left[ A ; b \right] \f$, with A and b being the linear transform
   and the constant offset.
   Note that this convention differs from some of the literature, where the 1 may appear as
-  the first dimension rather than the last.  
+  the first dimension rather than the last.
   Global transforms and projections are generally written
   as a type Matrix<BaseFloat> to a single file, and speaker or utterance-specific
   transforms or projections are stored in a table of such matrices (see \ref io_sec_tables)
-  indexed by speaker-id or utterance-id.  
+  indexed by speaker-id or utterance-id.
 
   Transforms may be applied to features
   using the program transform-feats.  Its syntax is
 \verbatim
  transform-feats <transform> <input-feats> <output-feats>
-\endverbatim 
+\endverbatim
   where <input-feats> is an rspecifier, <output-feats> is an wspecifier, and <transform>
   may be an rxfilename or an rspecifier (see \ref io_sec_specifiers and \ref io_sec_xfilename).
   The program will work out whether the transform
@@ -83,14 +83,14 @@ namespace kaldi {
   This program is typically used as part of a pipe.
   A typical example is:
 \verbatim
- feats="ark:splice-feats scp:data/train.scp ark:- | 
+ feats="ark:splice-feats scp:data/train.scp ark:- |
           transform-feats $dir/0.mat ark:- ark:-|"
  some-program some-args "$feats" some-other-args ...
 \endverbatim
  Here, the file 0.mat contains a single matrix.  An example of applying
  speaker-specific transforms is:
 \verbatim
- feats="ark:add-deltas scp:data/train.scp ark:- | 
+ feats="ark:add-deltas scp:data/train.scp ark:- |
    transform-feats --utt2spk=ark:data/train.utt2spk ark:$dir/0.trans ark:- ark:-|"
  some-program some-args "$feats" some-other-args ...
 \endverbatim
@@ -98,33 +98,33 @@ A per-utterance example would be as above but removing the --utt2spk option.
 In this example, the archive file 0.trans would contain transforms (e.g. CMLLR transforms)
 indexed by speaker-id, and the file data/train.utt2spk would have
 lines of the form "utt-id spk-id" (see next section for more explanation).
-The program transform-feats does not care how the transformation matrix was 
+The program transform-feats does not care how the transformation matrix was
 estimated, it just applies it to the
 features.  After it has been through all the features it prints out the average
 per-frame log determinant.  This can be useful when comparing objective functions
 (this log determinant would have to be added to the per-frame likelihood printed
 out by programs like gmm-align, gmm-acc-stats, or gmm-decode-kaldi).  If the
 linear part A of the transformation (i.e. ignoring the offset term) is not square,
-then the program will instead print out the per-frame average of 
+then the program will instead print out the per-frame average of
 \f$ \frac{1}{2} \mathbf{logdet} (A A^T) \f$.  It refers to this as the pseudo-log-determinant.
-This is useful in checking convergence of MLLT estimation where the transformation matrix 
+This is useful in checking convergence of MLLT estimation where the transformation matrix
 being applied is the MLLT matrix times an LDA matrix.
 
 \section transform_perspk Speaker-independent versus per-speaker versus per-utterance adaptation
 
 Programs that estimate transforms are generally set up to do a particular kind of
 adaptation, i.e. speaker-independent versus (speaker- or utterance-specific).  For example, LDA
-and MLLT/STC transforms are speaker-independent but fMLLR transforms are speaker- or 
+and MLLT/STC transforms are speaker-independent but fMLLR transforms are speaker- or
 utterance-specific.  Programs that estimate speaker- or utterance-specific transforms
 will work in per-utterance mode by default, but in per-speaker mode if the --spk2utt
-option is supplied (see below).  
+option is supplied (see below).
 
 One program that can accept either speaker-independent or speaker- or utterance-specific
 transforms is transform-feats.  This program detects whether the first argument (the transform)
 is an rxfilename (see \ref io_sec_xfilename)
 or an rspecifier (see \ref io_sec_specifiers).  If the former, it treats it as a speaker-independent
 transform (e.g. a file containing a single matrix).
-If the latter, there are two choices.  If no --utt2spk option is provided, 
+If the latter, there are two choices.  If no --utt2spk option is provided,
 it treats the transform as a table of matrices indexed by utterance id.  If an --utt2spk option is provided
 (utt2spk is a table of strings indexed by utterance that contains the string-valued speaker id),
 then the transforms are assumed to be indexed by speaker id, and the table
@@ -133,13 +133,13 @@ provided to the --utt2spk option is used to map each utterance to a speaker id.
 \section transform_utt2spk Utterance-to-speaker and speaker-to-utterance maps
 
  At this point we give a general overview of the --utt2spk and --spk2utt options.
- These options are accepted by programs that deal with transformations; they are used when 
+ These options are accepted by programs that deal with transformations; they are used when
  you are doing per-speaker (as opposed to per-utterance) adaptation.
  Typically programs that process already-created transforms will need the --utt2spk
- option and programs that create the transforms will need the --spk2utt option. 
+ option and programs that create the transforms will need the --spk2utt option.
  A typical case is that there will be a file called some-directory/utt2spk
  that looks like:
-\verbatim 
+\verbatim
 spk1utt1  spk1
 spk1utt2  spk1
 spk2utt1  spk2
@@ -148,11 +148,11 @@ spk2utt2  spk2
 \endverbatim
 where these strings are just examples, they stand for generic speaker and
 utterance identifiers; and there will be a file called some-directory/spk2utt that looks like:
-\verbatim 
+\verbatim
 spk1 spk1utt1 spk1utt2
 spk2 spk2utt1 spk2utt2
 ...
-\endverbatim 
+\endverbatim
  and you will supply options that look like --utt2spk=ark:some-directory/utt2spk
  or --spk2utt=ark:some-directory/spk2utt.  The 'ark:' prefix is necessary because
  these files are given as rspecifiers by the Table code, and are interpreted as archives
@@ -177,7 +177,7 @@ spk2 spk2utt1 spk2utt2
  for more discussion of this issue.
 
  \section transform_compose Composing transforms
- 
+
  Another program that accepts generic transforms is the program compose-transforms.
  The general syntax is "compose-transforms a b c", and it performs the multiplication
  c = a b (although this involves a little more than matrix multiplication if a is affine).
@@ -197,7 +197,7 @@ spk2 spk2utt1 spk2utt2
  feats="ark:splice-feats scp:data/train.scp ark:- |
          transform-feats 0.mat ark:- ark:- |
          transform-feats ark:1.trans ark:- ark:- |"
- ...         
+ ...
 \endverbatim
  In general, the transforms a and b that are the inputs to compose-transforms
  may be either speaker-independent transforms or speaker- or utterance-specific
@@ -208,11 +208,11 @@ spk2 spk2utt1 spk2utt2
  represent either tables or normal files (i.e. either {r,w}specifiers or {r,w}xfilenames),
  subject to consistency requirements.
 
- If a is an affine transform, in order to perform the composition correctly, compose-transforms 
+ If a is an affine transform, in order to perform the composition correctly, compose-transforms
  needs to know whether b is affine or linear (it does not know this because it does not have access
  to the dimension of the features
  that are transformed by b).  This is controlled by the option --b-is-affine (bool, default false).
- If b is affine but you forget to set this option and a is affine, compose-transforms 
+ If b is affine but you forget to set this option and a is affine, compose-transforms
  will treat b as a linear transform from dimension (the real input feature dimension) plus one,
  and will output a transform whose input dimension is (the real input feature dimension) plus two.  There
  is no way for "transform-feats" to interpret this when it is to be applied to features,
@@ -225,7 +225,7 @@ Eliminating silence frames can be helpful when estimating speaker adaptive
 transforms such as CMLLR.  This even appears to be true when using
 a multi-class approach with a regression tree (for which, see \ref transform_regtree).
 The way we implement this is by weighting down the posteriors associated with
-silence phones.  This takes place as a modification to the \ref hmm_post 
+silence phones.  This takes place as a modification to the \ref hmm_post
 "state-level posteriors".  An extract of a bash shell script that does this
 is below (this script is discussed in more detail in \ref transform_cmllr_global):
 \verbatim
@@ -249,7 +249,7 @@ class LdaEstimate {
   void Accumulate(const VectorBase<BaseFloat> &data, int32 class_id,
                   BaseFloat weight=1.0);
 };
-\endverbatim 
+\endverbatim
 The program acc-lda accumulates LDA statistics using the acoustic states (i.e. pdf-ids) as the
 classes.  It requires the transition model in order to map the alignments (expressed in terms
 of transition-ids) to pdf-ids.  However, it is not limited to a particular type of acoustic model.
@@ -262,16 +262,16 @@ when using LDA as an initialization for HLDA.
 
 \section transform_splice Frame splicing
 
-Frame splicing (e.g. splicing nine consecutive frames together) is typically done 
+Frame splicing (e.g. splicing nine consecutive frames together) is typically done
 to the raw MFCC features prior to LDA.  The program splice-feats does this.  A typical
 line from a script that uses this is the following:
 \verbatim
 feats="ark:splice-feats scp:data/train.scp ark:- |
         transform-feats $dir/0.mat ark:- ark:-|"
 \endverbatim
-and the "feats" variable would later be used as an rspecifier (c.f. \ref io_sec_specifiers) 
+and the "feats" variable would later be used as an rspecifier (c.f. \ref io_sec_specifiers)
 by some program that needs to read features.  In this example we don't specify the number of frames to splice
-together because we are using the defaults (--left-context=4, --right-context=4, or 
+together because we are using the defaults (--left-context=4, --right-context=4, or
 9 frames in total).
 
 \section transform_delta Delta feature computation
@@ -279,7 +279,7 @@ together because we are using the defaults (--left-context=4, --right-context=4,
 Computation of delta features is done by the program add-deltas, which uses the
 function ComputeDeltas.  The delta feature computation has the same default setup
 as HTK's, i.e. to compute the first delta feature we multiply by the features
-by a sliding window of values [ -2, 1, 0, 1, 2 ], and then normalize by 
+by a sliding window of values [ -2, -1, 0, 1, 2 ], and then normalize by
 dividing by (2^2 + 1^2 + 0^2 + 1^2 + 2^2 = 10).  The second delta feature
 is computed by applying the same approach to the first delta feature.  The
 number of frames of context on each side is controlled by --delta-window (default: 2)
@@ -311,9 +311,9 @@ feats="ark:add-deltas --print-args=false scp:data/train.scp ark:- |"
  case they need to be defined
  slightly differently for the accepted and rejected dimensions.
  Suppose the original feature dimension is D and the
- reduced feature dimension is K.  
+ reduced feature dimension is K.
  Let us forget the iteration superscript r, and use subscript j for state and
- m for Gaussian mixture. 
+ m for Gaussian mixture.
  For accepted dimensions (\f$0 \leq i < K\f$), the statistics are:
  \f[
    \mathbf{G}^{(i)} = \sum_{t,j,m} \gamma_{jm}(t) \frac{1}{ \sigma^2_{jm}(i) } (\mu_{jm} - \mathbf{x}(t)) (\mu_{jm} - \mathbf{x}(t))^T
@@ -333,13 +333,13 @@ feats="ark:add-deltas --print-args=false scp:data/train.scp ark:- |"
  same, so in the code we only store statistics for K+1 rather than D dimensions.
 
  Also, it is convenient for the program that accumulates the statistics to only have
- access to the K-dimensional model, so during HLDA accumulation we accumulate 
+ access to the K-dimensional model, so during HLDA accumulation we accumulate
  statistics sufficient to estimate the K-dimensional means \f$\mu_{jm}\f$, and insead of
- G we accumulate the following statistics: for accepted dimensions (\f$0 \leq i < K\f$), 
+ G we accumulate the following statistics: for accepted dimensions (\f$0 \leq i < K\f$),
  \f[
    \mathbf{S}^{(i)} = \sum_{t,j,m} \gamma_{jm}(t) \frac{1}{ \sigma^2_{jm}(i) }  \mathbf{x}(t) \mathbf{x}(t)^T
  \f]
- and for rejected dimensions \f$K \leq i < D\f$ 
+ and for rejected dimensions \f$K \leq i < D\f$
  \f[
    \mathbf{S}^{(i)} = \sum_{t,j,m} \gamma_{jm}(t)  \mathbf{x}(t) \mathbf{x}(t)^T ,
  \f]
@@ -350,13 +350,13 @@ feats="ark:add-deltas --print-args=false scp:data/train.scp ark:- |"
  \f]
  and for \f$K \leq i < D\f$,
  \f[
-  \mathbf{G}^{(i)} = \mathbf{S}^{(i)} - \beta \mu \mu^T, 
+  \mathbf{G}^{(i)} = \mathbf{S}^{(i)} - \beta \mu \mu^T,
  \f]
  where \f$ \beta = \sum_{j,m} \gamma_{jm} \f$ is the total count and \f$\mu = \frac{1}{\beta} \sum_{j,m} \mu_{j,m}\f$
  is the global feature mean.   After computing the transform from the G statistics using the same computation as MLLT,
  we output the transform, and we also use the first K rows of the transform to project the means
  into dimension K and write out the transformed model.
- 
+
  The computation described here is fairly slow; it is \f$ O(K^3) \f$ on each frame,
  and K is fairly large (e.g. 117).  This is the price we pay for compact statistics;
  if we stored full mean and variance statistics, the per-frame computation would be \f$O(K^2)\f$.
@@ -366,14 +366,14 @@ feats="ark:add-deltas --print-args=false scp:data/train.scp ark:- |"
  the frames.  If this option is activated, we need to store two separate
  versions of the sufficient statistics for the means.  One version of the mean
  statistics, accumulated on the subset, is only used in the HLDA computation, and
- corresponds to the quantities \f$\gamma_{jm}\f$ and \f$\mu_{jm}\f$ in the formulas above. 
+ corresponds to the quantities \f$\gamma_{jm}\f$ and \f$\mu_{jm}\f$ in the formulas above.
  The other version of the mean statistics is accumulated on all the training data
- and is used to write out the transformed model.  
- 
+ and is used to write out the transformed model.
+
  The overall HLDA estimation process is as follows (see rm_recipe_2/scripts/train_tri2j.sh):
     - First initialize it with LDA (we store both the reduced dimension matrix
       and the full matrix).
-    - Start model-building and training process.  On certain (non-consecutive) 
+    - Start model-building and training process.  On certain (non-consecutive)
       iterations where we have decided to do the HLDA update, do the following:
       - Accumulate HLDA statistics (S, plus statistics for the full-dimensional means).
         The program that accumulates these (gmm-acc-hlda) needs the model, the un-transformed features,
@@ -384,14 +384,14 @@ feats="ark:add-deltas --print-args=false scp:data/train.scp ark:- |"
         transformation matrix which it needs to start the optimization and to correctly
         report auxiliary function changes.  It outputs the new transform (both full and
         reduced dimension), and the model with newly estimated and transformed means.
-   
+
  \section transform_mllt Global Semi-tied Covariance (STC) / Maximum Likelihood Linear Transform (MLLT) estimation
 
   Global STC/MLLT is a square feature-transformation matrix.  For more details,
-  see "Semi-tied Covariance Matrices for Hidden Markov Models", by Mark Gales, 
+  see "Semi-tied Covariance Matrices for Hidden Markov Models", by Mark Gales,
   IEEE Transactions on Speech and Audio Processing, vol. 7, 1999, pages 272-281.
   Viewing it as a feature-space transform, the objective function is the average
-  per-frame log-likelihood of the transformed features given the model, plus the 
+  per-frame log-likelihood of the transformed features given the model, plus the
   log determinant of the transform.  The means of the model are also rotated by
   transform in the update phase.  The sufficient statistics are the following,
   for \f$ 0 \leq i < D \f$ where D is the feature dimension:
@@ -399,9 +399,9 @@ feats="ark:add-deltas --print-args=false scp:data/train.scp ark:- |"
    \mathbf{G}^{(i)} = \sum_{t,j,m} \gamma_{jm}(t) \frac{1}{ \sigma^2_{jm}(i) } (\mu_{jm} - \mathbf{x}(t)) (\mu_{jm} - \mathbf{x}(t))^T
  \f]
   See the reference, Equations (22) and (23) for the update equations.  These are
-  basically a simplified form of the diagonal row-by-row Constrained MLLR/fMLLR update 
+  basically a simplified form of the diagonal row-by-row Constrained MLLR/fMLLR update
   equations, where the first-order term of the quadratic equation disappears.  Note that
-  our implementation differs from that reference by using a column of the inverse of the matrix 
+  our implementation differs from that reference by using a column of the inverse of the matrix
   rather than the cofactor, since multiplying by the determinant does not make a difference to the
   result and could potentially cause problems with floating-point underflow or overflow.
 
@@ -411,9 +411,9 @@ feats="ark:add-deltas --print-args=false scp:data/train.scp ark:- |"
 
   - Estimate the LDA transformation matrix (we only need the first rows of this, not the full matrix).
     Call this matrix \f$\mathbf{M}\f$.
-  - Start a normal model building process, always using features transformed with \f$\mathbf{M}\f$.  
+  - Start a normal model building process, always using features transformed with \f$\mathbf{M}\f$.
     At certain selected iterations (where we will update the MLLT matrix), we do the following:
-      - Accumulate MLLT statistics in the current fully-transformed space 
+      - Accumulate MLLT statistics in the current fully-transformed space
         (i.e., on top of features transformed with \f$\mathbf{M}\f$).  For efficiency we do this using
         a subset of the training data.
       - Do the MLLT update; let this produce a square matrix \f$\mathbf{T}\f$.
@@ -423,34 +423,34 @@ feats="ark:add-deltas --print-args=false scp:data/train.scp ark:- |"
   The programs involved in MLLT estimation are gmm-acc-mllt and est-mllt.  We also need the
   programs gmm-transform-means (to transform the Gaussian means using \f$\mathbf{T}\f$), and
   compose-transforms (to do the multiplication \f$\mathbf{M} \leftarrow \mathbf{T} \mathbf{M} \f$).
-   
+
 
  \section transform_cmllr_global Global CMLLR/fMLLR transforms
 
   Constrained Maximum Likelihood Linear Regression (CMLLR), also known as feature-space MLLR (fMLLR),
   is an affine feature transform of the form \f$ \mathbf{x} \rightarrow \mathbf{A} \mathbf{x}  + \mathbf{b} \f$,
-  which we write in the form  \f$ \mathbf{x} \rightarrow \mathbf{W} \mathbf{x}^+ \f$, where 
+  which we write in the form  \f$ \mathbf{x} \rightarrow \mathbf{W} \mathbf{x}^+ \f$, where
   \f$\mathbf{x}^+ = \left[\begin{array}{c} \mathbf{x} \\ 1 \end{array} \right]\f$ is the feature with
-  a 1 appended.  Note that this differs from some of the literature where the 1 comes first.  
+  a 1 appended.  Note that this differs from some of the literature where the 1 comes first.
 
   For a review paper that explains CMLLR and the estimation techniques we use, see
  "Maximum likelihood linear transformations for HMM-based speech recognition" by Mark Gales,
-  Computer Speech and Language Vol. 12, pages 75-98.  
+  Computer Speech and Language Vol. 12, pages 75-98.
 
   The sufficient statistics we store are:
   \f[ \mathbf{K} = \sum_{t,j,m} \gamma_{j,m}(t) \Sigma_{jm}^{-1} \mu_{jm} \mathbf{x}(t)^+ \f]
   where \f$\Sigma_{jm}^{-1}\f$ is the inverse covariance matrix,
   and for \f$0 \leq i < D \f$ where D is the feature dimension,
-  \f[ \mathbf{G}^{(i)} = \sum_{t,j,m} \gamma_{j,m}(t) \frac{1}{\sigma^2_{j,m}(i)} \mathbf{x}(t)^+  \left.\mathbf{x}(t)^+\right.^T \f]   
+  \f[ \mathbf{G}^{(i)} = \sum_{t,j,m} \gamma_{j,m}(t) \frac{1}{\sigma^2_{j,m}(i)} \mathbf{x}(t)^+  \left.\mathbf{x}(t)^+\right.^T \f]
 
   Our estimation scheme is the standard one, see Appendix B of the reference (in particular section B.1,
   "Direct method over rows").  We differ by using a column of the inverse in place of the cofactor row,
   i.e. ignoring the factor of the determinant, as it does not affect the result and causes danger of
   numerical underflow or overflow.
 
-  Estimation of global Constrained MLLR (CMLLR) transforms is done by the 
+  Estimation of global Constrained MLLR (CMLLR) transforms is done by the
   class FmllrDiagGmmAccs,
-  and by the program gmm-est-fmllr (also see gmm-est-fmllr-gpost).  The syntax 
+  and by the program gmm-est-fmllr (also see gmm-est-fmllr-gpost).  The syntax
   of gmm-est-fmllr is:
 \verbatim
 gmm-est-fmllr [options] <model-in> <feature-rspecifier> \
@@ -486,27 +486,27 @@ feats="ark:add-deltas --print-args=false scp:data/test.scp ark:- |
 gmm-decode-faster --beam=30.0 --acoustic-scale=0.08333 \
   --word-symbol-table=data/words.txt $model $graphdir/HCLG.fst \
  "$feats" ark,t:$dir/test.tra ark,t:$dir/test.ali 2>$dir/decode.log
-\endverbatim                     
+\endverbatim
 
  \section transform_lvtln Linear VTLN (LVTLN)
 
  In recent years, there have been a number of papers that describe
  implementations of Vocal Tract Length Normalization (VTLN) that
- work out a linear feature transform corresponding to each VTLN 
+ work out a linear feature transform corresponding to each VTLN
  warp factor.  See, for example, ``Using VTLN for broadcast news transcription'',
  by D. Y. Kim, S. Umesh, M. J. F. Gales, T. Hain and P. C. Woodland, ICSLP 2004.
- 
+
  We implement a method in this general category using the class LinearVtln, and programs
  such as gmm-init-lvtln, gmm-train-lvtln-special, and gmm-est-lvtln-trans.
  The LinearVtln object essentially stores a set of linear feature transforms,
  one for each warp factor.  Let these linear feature transform matrices
  be
    \f[\mathbf{A}^{(i)},  0\leq i < N,  \f]
- where for instance we might have \f$N\f$=31, corresponding to 31 different warp 
- factors. We will describe below how we obtain these matrices below.  
+ where for instance we might have \f$N\f$=31, corresponding to 31 different warp
+ factors. We will describe below how we obtain these matrices below.
  The way the speaker-specific transform is estimated is as follows.
  First, we require some kind of model and a corresponding alignment.  In the
- example scripts we do this either with a small monophone model, or with 
+ example scripts we do this either with a small monophone model, or with
  a full triphone model.  From this model and alignment, and using the original,
  unwarped features, we compute the conventional statistics for estimating
  CMLLR.  When computing the LVTLN transform, what we do is take each matrix
@@ -514,33 +514,33 @@ gmm-decode-faster --beam=30.0 --acoustic-scale=0.08333 \
  maximizes the CMLLR auxiliary function for the transform
   \f$\mathbf{W} = \left[  \mathbf{A}^{(i)} \, ; \, \mathbf{b} \right]\f$.
  This value of \f$\mathbf{W}\f$ that gave the best auxiliary function value
- (i.e. maximizing over i) becomes the transform for that speaker.  Since we 
+ (i.e. maximizing over i) becomes the transform for that speaker.  Since we
  are estimating a mean offset here,
  we are essentially combining a kind of model-based cepstral mean normalization
  (or alternatively an offset-only form of CMLLR) with VTLN warping implemented
- as a linear transform.  This avoids us having to implement mean normalization 
+ as a linear transform.  This avoids us having to implement mean normalization
  as a separate step.
 
  We next describe how we estimate the matrices \f$\mathbf{A}^{(i)}\f$.  We
  don't do this in the same way as described in the referenced paper; our method
  is simpler (and easier to justify).  Here we describe our computation for a
  particular warp factor; in the current scripts we have 31 distinct warp
- factors ranging from 0.85, 0.86, ..., 1.15.  
+ factors ranging from 0.85, 0.86, ..., 1.15.
  We take a subset of feature data (e.g. several tens of utterances),
  and for this subset we compute both the original and transformed features,
  where the transformed features are computed using a conventional VLTN computation
- (see \ref feat_vtln). 
- Call the original and transformed features \f$\mathbf{x}(t)\f$ and \f$\mathbf{y}(t)\f$ respectively, 
+ (see \ref feat_vtln).
+ Call the original and transformed features \f$\mathbf{x}(t)\f$ and \f$\mathbf{y}(t)\f$ respectively,
  where \f$t\f$ will range over the frames of the selected utterances.
  We compute the affine transform that maps \f$\mathbf{x}\f$ to \f$\mathbf{y}\f$ in a least-squares
- sense, i.e. if \f$\mathbf{y}' = \mathbf{A} \mathbf{x} + \mathbf{b}\f$, 
+ sense, i.e. if \f$\mathbf{y}' = \mathbf{A} \mathbf{x} + \mathbf{b}\f$,
  we compute \f$\mathbf{A}\f$ and \f$\mathbf{b}\f$ that minimizes the sum-of-squares
  difference \f$\sum_t (\mathbf{y}'(t) - \mathbf{y}(t) )^T (\mathbf{y}'(t) - \mathbf{y}(t) )\f$.
  Then we normalize the diagonal variance as follows: we compute the
  variance of the original features as \f$\mathbf{\Sigma}^{(x)}\f$ and of the linearly transformed
  features as \f$\mathbf{\Sigma}^{(y')}\f$, and for each dimension index d we multiply the
- d'th row of \f$\mathbf{A}\f$ by 
-  \f$\sqrt{ \frac{\mathbf{\Sigma}^{(x)}_{d,d}}{\mathbf{\Sigma}^{(y')}_{d,d}}}\f$.  
+ d'th row of \f$\mathbf{A}\f$ by
+  \f$\sqrt{ \frac{\mathbf{\Sigma}^{(x)}_{d,d}}{\mathbf{\Sigma}^{(y')}_{d,d}}}\f$.
  The resulting matrix will become \f$\mathbf{A}^{(i)}\f$ for some value of i.
 
  The command-line tools support the option to ignore the log determinant term
@@ -579,8 +579,8 @@ gmm-decode-faster --beam=30.0 --acoustic-scale=0.08333 \
  are speaker-specific; other quantities (i.e. \f$\mathbf{A}\f$ and
  \f$\mathbf{B}\f$) are global and shared across all speakers.
 
- The most important factor in this equation is the middle one, 
- with the exponential function in it.  
+ The most important factor in this equation is the middle one,
+ with the exponential function in it.
  The factor \f$\mathbf{D}_s\f$ gives us the ability to combine
  model-based mean and optionally variance normalization (i.e. offset-only
  or diagonal-only CMLLR)
@@ -596,7 +596,7 @@ gmm-decode-faster --beam=30.0 --acoustic-scale=0.08333 \
  there would be no point to this technique as the other quantities in the
  equation would add no degrees of freedom.  The tools support three kinds of
  constraints on \f$\mathbf{D}_s\f$: it may be of the form
- \f$[ {\mathbf I} \, \;\, {\mathbf 0} ]\f$ (no adaptation), or 
+ \f$[ {\mathbf I} \, \;\, {\mathbf 0} ]\f$ (no adaptation), or
  \f$[ {\mathbf I} \, \;\, {\mathbf m} ]\f$ (offset only), or
  \f$[ {\mathrm{diag}}( {\mathbf d} ) \, \;\, {\mathbf m} ]\f$ (diagonal CMLLR);
  this is controlled by the --normalize-type options to the command-line tools.
@@ -613,9 +613,9 @@ gmm-decode-faster --beam=30.0 --acoustic-scale=0.08333 \
  if we were to warp by a factor f and then a factor g,
  this should be the same as warping by the combined factor
  fg.  Let l = log(f) and m = log(g).  Then we achieve this
- property via the identity 
+ property via the identity
   \f[ \exp( l \mathbf{A} ) \exp( m \mathbf{A}) = \exp( (l+m) \mathbf{A} ) . \f]
- 
+
  The ET computation for a particular speaker is as follows; this assumes we
  are given \f$\mathbf{A}\f$ and \f$\mathbf{B}\f$.  We accumulate conventional
  CMLLR sufficient statistics for the speaker.  In the update phase we iteratively optimize
@@ -636,9 +636,9 @@ gmm-decode-faster --beam=30.0 --acoustic-scale=0.08333 \
  \f$\mathbf{B}\f$, or the model.
    - If updating \f$\mathbf{A}\f$, we do this given fixed values of
      \f$t_s\f$ and \f$\mathbf{D}_s\f$.  The update is not guaranteed to
-     converge, but converges rapidly in practice; it's based on a 
+     converge, but converges rapidly in practice; it's based on a
      quadratic "weak-sense auxiliary function"
-     where the quadratic term is obtained using a first-order truncation 
+     where the quadratic term is obtained using a first-order truncation
      of the Taylor series expansion of the matrix exponential function.
      After updating \f$\mathbf{A}\f$, we modify \f$\mathbf{B}\f$ in order
      to renormalize the \f$t_s\f$ to zero; this involves premultiplying
@@ -646,11 +646,11 @@ gmm-decode-faster --beam=30.0 --acoustic-scale=0.08333 \
      value of \f$t_s\f$.
 
    - If updating \f$\mathbf{B}\f$, this is also done using fixed values of
-     \f$t_s\f$ and \f$\mathbf{D}_s\f$, and the update is similar to MLLT 
+     \f$t_s\f$ and \f$\mathbf{D}_s\f$, and the update is similar to MLLT
      (a.k.a. global STC).
      For purposes of the accumulation and update, we imagine we are estimating
      an MLLT matrix just to the left of \f$\mathbf{A}\f$, i.e. some matrix
-     \f$\mathbf{C} \in \Re^{D\times D}\f$; let us define 
+     \f$\mathbf{C} \in \Re^{D\times D}\f$; let us define
      \f$\mathbf{C}^+ = \left[ \begin{array}{cc} \mathbf{C} & 0 \\ 0 & 1 \end{array} \right]\f$.
      The transform will be
      \f$\mathbf{W}_s = \mathbf{D}_s \mathbf{C}^+ \exp ( t_s \mathbf{A} ) \mathbf{B}\f$.
@@ -660,24 +660,24 @@ gmm-decode-faster --beam=30.0 --acoustic-scale=0.08333 \
      \f$\exp ( t_s \mathbf{A} ) \mathbf{B}\f$ as a feature-space transform (i.e.
      as part of the features).  After estimating \f$\mathbf{C}\f$, we will use the identity
 \f[
-   \mathbf{C}^+ \exp ( t_s \mathbf{A} ) =  \exp ( t_s \mathbf{C}^+ \mathbf{A}  \left.\mathbf{C}^+\right.^{-1} ) \mathbf{C}^+ 
+   \mathbf{C}^+ \exp ( t_s \mathbf{A} ) =  \exp ( t_s \mathbf{C}^+ \mathbf{A}  \left.\mathbf{C}^+\right.^{-1} ) \mathbf{C}^+
 \f]
   so the update becomes:
 \f[
         \mathbf{A} \leftarrow \mathbf{C}^+ \mathbf{A}  \left.\mathbf{C}^+\right.^{-1} , \ \ \mathbf{B} \leftarrow \mathbf{C}^+ \mathbf{B} .
 \f]
      At this point we need to transform the model means with the matrix
-     \f$\mathbf{C}\f$.  The reader might question how this interacts with the 
+     \f$\mathbf{C}\f$.  The reader might question how this interacts with the
      fact that for estimating \f$\mathbf{C}\f$, we viewed the quantity
      \f$\mathbf{D}_s\f$ as a model-space transform.  If \f$\mathbf{D}_s\f$ only
-     contains a mean offset, we can still prove that the auxiliary function 
+     contains a mean offset, we can still prove that the auxiliary function
      would increase, except we would have to change the offsets appropriately
      (this is not necessary to do explicitly, as we will re-estimate them on
-     the next iteration anyway).  However, if \f$\mathbf{D}_s\f$ has non-unit 
-     diagonal (i.e. is diagonal not offset CMLLR),  this re-estimation process 
-     is not guaranteed to improve the likelihood; the tools will print a warning 
+     the next iteration anyway).  However, if \f$\mathbf{D}_s\f$ has non-unit
+     diagonal (i.e. is diagonal not offset CMLLR),  this re-estimation process
+     is not guaranteed to improve the likelihood; the tools will print a warning
      in this case.  In order to avoid encountering this case, our scripts
-     train in a mode where \f$\mathbf{D}_s\f$ is an offset-only transform; but 
+     train in a mode where \f$\mathbf{D}_s\f$ is an offset-only transform; but
      in test time we allow \f$\mathbf{D}_s\f$ to be a diagonal CMLLR transform, which seems
      to give slightly better results than the offset-only case.
 
@@ -704,7 +704,7 @@ expanded features).  For very fast operation, it is possible to apply these
 approaches using a very tiny model with a phone-based language model, and some of
 our example scripts demonstrate this.  There is also the capability in the
 feature extraction code to subtract the mean on a per-utterance basis (the
---subtract-mean option to compute-mfcc-feats and compute-plp-feats).  
+--subtract-mean option to compute-mfcc-feats and compute-plp-feats).
 
 In order to support per-utterance and per-speaker mean and variance normalization
 we provide the programs compute-cmvn-stats and apply-cmvn.  The program

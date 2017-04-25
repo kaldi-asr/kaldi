@@ -27,7 +27,7 @@ def main():
     unicode_transcription = baseform2unicode(baseforms)
     encoded_transcription, table = encode(unicode_transcription,
                                           args.tag_percentage,
-                                          log=args.verbose)
+                                          log=args.log)
     write_table(table, args.lex_out)
     
     # Extract dictionary of nonspeech pronunciations
@@ -59,7 +59,7 @@ def parse_input():
         Parse commandline input.
     '''
     if len(sys.argv[1:]) == 0:
-        print("Usage: ./make_unicode_lexicon.py [opts] lex_in lex_out")
+        print("Usage: ./make_unicode_lexicon.py [opts] lex_in lex_out [log]")
         sys.exit(1)
 
     parser = argparse.ArgumentParser()
@@ -67,7 +67,9 @@ def parse_input():
                         "paired with a baseform. 1 word per line with the "
                         "baseform separated by a tab")
     parser.add_argument("lex_out", help="Path of output output "
-                        "graphemc lexicon")
+                        "graphemic lexicon")
+    parser.add_argument("log", nargs='?', default=None,
+                        help="Directory in which the logs will be stored");
     parser.add_argument("-F", "--fmt", help="Format of input word list",
                         action="store", default="word_list")
     parser.add_argument("-T", "--tag_percentage", help="Percentage of least"
@@ -246,12 +248,11 @@ def encode(unicode_transcription, tag_percentage, log=False):
     graph_counts = graph_counts_dict
   
     # Print grapheme counts to histogram
-    if log:
+    if log is not None:
         graph_counts_sorted = sorted(graph_counts, reverse=True,
                                      key=graph_counts.get)
-        if not os.path.exists("lex_log"):
-            os.makedirs("lex_log")
-        with codecs.open("lex_log/grapheme_histogram.txt", "w", "utf-8") as fp:
+        logfile = "{}/grapheme_histogram.txt".format(log)
+        with codecs.open(logfile, "w", "utf-8") as fp:
             fp.write("Graphemes (Count Threshold = %.6f)\n" % count_thresh)
             for g in graph_counts_sorted:
                 weight = ("-" * int(np.ceil(500.0 * graph_counts[g])) +

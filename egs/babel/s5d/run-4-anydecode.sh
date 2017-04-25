@@ -26,7 +26,7 @@ extra_left_context=40
 extra_right_context=40
 frames_per_chunk=20
 
-echo "run-4-test.sh $@"
+echo "$0 $@"
 
 . utils/parse_options.sh
 
@@ -61,7 +61,9 @@ dataset_type=${dir%%.*}
 #By default, we want the script to accept how the dataset should be handled,
 #i.e. of  what kind is the dataset
 if [ -z ${kind} ] ; then
-  if [ "$dataset_type" == "dev2h" ] || [ "$dataset_type" == "dev10h" ]; then
+  if [ "$dataset_type" == "dev2h" ] || \
+    [ "$dataset_type" == "dev10h" ] || \
+    [ "$dataset_type" == "train" ]; then
     dataset_kind=supervised
   else
     dataset_kind=unsupervised
@@ -96,10 +98,23 @@ if [ -z $my_data_dir ] || [ -z $my_data_list ] ; then
   exit 1
 fi
 
+if [ "$dataset_type" == "train" ] ;  then
+  local/ali_to_rttm.sh --cmd "$decode_cmd" data/train  data/langp_test exp/tri5_ali
+  bash -x  local/qbe/wav_to_ecf.sh  data/train/wav.scp > data/train/ecf.train.xml
+  train_rttm_file=./exp/tri5_ali/rttm
+  train_ecf_file=./data/train/ecf.train.xml
+fi
+
+
 eval my_stm_file=\$${dataset_type}_stm_file
 eval my_ecf_file=\$${dataset_type}_ecf_file
 eval my_rttm_file=\$${dataset_type}_rttm_file
 eval my_nj=\$${dataset_type}_nj  #for shadow, this will be re-set when appropriate
+
+echo "my_stm_file=$my_stm_file"
+echo "my_ecf_file=$my_ecf_file"
+echo "my_rttm_file=$my_rttm_file"
+echo "my_nj=$my_nj"
 
 if [ -z "$my_nj" ]; then
   echo >&2 "You didn't specify the number of jobs -- variable \"${dataset_type}_nj\" not defined."
@@ -214,7 +229,8 @@ if [ ! -f  $dataset_dir/.done ] ; then
       . ./local/datasets/supervised_seg.sh || exit 1
     elif [ "$dataset_segments" == "uem" ]; then
       . ./local/datasets/supervised_uem.sh || exit 1
-    elif [ "$dataset_segments" == "pem" ]; then
+    elif [ "$dataset_segments" == "train" ] ||\
+         [ "$dataset_segments" == "pem" ]; then
       . ./local/datasets/supervised_pem.sh || exit 1
     else
       echo "Unknown type of the dataset: \"$dataset_segments\"!";
@@ -294,29 +310,31 @@ echo ---------------------------------------------------------------------
 echo "Preparing kws data files in ${dataset_dir} on" `date`
 echo ---------------------------------------------------------------------
 lang=data/lang
-if ! $skip_kws ; then
-  if  $extra_kws ; then
-    L1_lex=data/local/lexiconp.txt
-    . ./local/datasets/extra_kws.sh || exit 1
-  fi
-  if  $vocab_kws ; then
-    . ./local/datasets/vocab_kws.sh || exit 1
-  fi
-  if [ ! -f data/lang.phn/G.fst ] ; then
-    ./local/syllab/run_phones.sh --stage -2 ${dataset_dir}
-  else
-    ./local/syllab/run_phones.sh ${dataset_dir}
-  fi
+if [ ! -f data/dev10h.pem/.done.kws.dev ] ; then
+  if ! $skip_kws  ; then
+    if  $extra_kws ; then
+      L1_lex=data/local/lexiconp.txt
+      . ./local/datasets/extra_kws.sh || exit 1
+    fi
+    if  $vocab_kws ; then
+      . ./local/datasets/vocab_kws.sh || exit 1
+    fi
+    if [ ! -f data/lang.phn/G.fst ] ; then
+      ./local/syllab/run_phones.sh --stage -2 ${dataset_dir}
+    else
+      ./local/syllab/run_phones.sh ${dataset_dir}
+    fi
 
-  if [ ! -f data/lang.syll/G.fst ] ; then
-    ./local/syllab/run_syllabs.sh --stage -2  ${dataset_dir}
-  else
-    ./local/syllab/run_syllabs.sh ${dataset_dir}
-  fi
+    if [ ! -f data/lang.syll/G.fst ] ; then
+      ./local/syllab/run_syllabs.sh --stage -2  ${dataset_dir}
+    else
+      ./local/syllab/run_syllabs.sh ${dataset_dir}
+    fi
 
-  ./local/search/run_search.sh --dir ${dataset_dir##*/}
-  ./local/search/run_phn_search.sh --dir ${dataset_dir##*/}
-  ./local/search/run_syll_search.sh --dir ${dataset_dir##*/}
+    ./local/search/run_search.sh --dir ${dataset_dir##*/}
+    ./local/search/run_phn_search.sh --dir ${dataset_dir##*/}
+    ./local/search/run_syll_search.sh --dir ${dataset_dir##*/}
+  fi
 fi
 
 if $data_only ; then
@@ -379,72 +397,6 @@ if $tri5_only; then
   exit 0
 fi
 
-####################################################################
-## SGMM2 decoding
-## We Include the SGMM_MMI inside this, as we might only have the DNN systems
-## trained and not PLP system. The DNN systems build only on the top of tri5 stage
-####################################################################
-if [ -f exp/sgmm5/.done ]; then
-  decode=exp/sgmm5/decode_fmllr_${dataset_id}
-  if [ ! -f $decode/.done ]; then
-    echo ---------------------------------------------------------------------
-    echo "Spawning $decode on" `date`
-    echo ---------------------------------------------------------------------
-    utils/mkgraph.sh \
-      data/langp_test exp/sgmm5 exp/sgmm5/graph |tee exp/sgmm5/mkgraph.log
-
-    mkdir -p $decode
-    steps/decode_sgmm2.sh --skip-scoring true --use-fmllr true --nj $my_nj \
-      --cmd "$decode_cmd" --transform-dir exp/tri5/decode_${dataset_id} "${decode_extra_opts[@]}"\
-      exp/sgmm5/graph ${dataset_dir} $decode |tee $decode/decode.log
-    touch $decode/.done
-
-    if ! $fast_path ; then
-      local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
-        --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-        --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-        "${lmwt_plp_extra_opts[@]}" \
-        ${dataset_dir} data/langp_test  exp/sgmm5/decode_fmllr_${dataset_id}
-    fi
-  fi
-
-  ####################################################################
-  ##
-  ## SGMM_MMI rescoring
-  ##
-  ####################################################################
-
-  for iter in 1 2 3 4; do
-      # Decode SGMM+MMI (via rescoring).
-    decode=exp/sgmm5_mmi_b0.1/decode_fmllr_${dataset_id}_it$iter
-    if [ -x exp/sgmm5_mmi_b0.1 ] && [ ! -f $decode/.done ]; then
-
-      mkdir -p $decode
-      steps/decode_sgmm2_rescore.sh  --skip-scoring true \
-        --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_${dataset_id} \
-        data/langp_test ${dataset_dir} exp/sgmm5/decode_fmllr_${dataset_id} $decode | tee ${decode}/decode.log
-
-      touch $decode/.done
-    fi
-  done
-
-  #We are done -- all lattices has been generated. We have to
-  #a)Run MBR decoding
-  #b)Run KW search
-  for iter in 1 2 3 4; do
-    # Decode SGMM+MMI (via rescoring).
-    decode=exp/sgmm5_mmi_b0.1/decode_fmllr_${dataset_id}_it$iter
-    if [ -f $decode/.done ]; then
-      local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
-        --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-        --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-      "${lmwt_plp_extra_opts[@]}" \
-      ${dataset_dir} data/langp_test $decode
-    fi
-  done
-fi
-
-
 
 ####################################################################
 ##
@@ -476,10 +428,13 @@ fi
 ## nnet3 model decoding
 ##
 ####################################################################
-if [ -f exp/nnet3/lstm_bidirectional_sp/.done ]; then
+if [ -f exp/nnet3/lstm_bidirectional_sp/final.mdl ]; then
   decode=exp/nnet3/lstm_bidirectional_sp/decode_${dataset_id}
   rnn_opts=" --extra-left-context 40 --extra-right-context 40  --frames-per-chunk 20 "
   decode_script=steps/nnet3/decode.sh
+  my_nj_backup=$my_nj
+  echo "Modifying the number of jobs as this is an RNN and decoding can be extremely slow."
+  my_nj=`cat ${dataset_dir}_hires/spk2utt|wc -l`
   if [ ! -f $decode/.done ]; then
     mkdir -p $decode
     $decode_script --nj $my_nj --cmd "$decode_cmd" $rnn_opts \
@@ -496,9 +451,11 @@ if [ -f exp/nnet3/lstm_bidirectional_sp/.done ]; then
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/langp_test $decode
+
+  my_nj=$my_nj_backup
 fi
 
-if [ -f exp/nnet3/lstm_realigned_bidirectional_sp//.done ]; then
+if [ -f exp/nnet3/lstm_realigned_bidirectional_sp/final.mdl ]; then
   decode=exp/nnet3/lstm_realigned_bidirectional_sp//decode_${dataset_id}
   rnn_opts=" --extra-left-context 40 --extra-right-context 40  --frames-per-chunk 20 "
   decode_script=steps/nnet3/decode.sh
@@ -519,7 +476,7 @@ if [ -f exp/nnet3/lstm_realigned_bidirectional_sp//.done ]; then
     "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/langp_test $decode
 fi
-if [ -f exp/nnet3/lstm_sp/.done ]; then
+if [ -f exp/nnet3/lstm_sp/final.mdl ]; then
   decode=exp/nnet3/lstm_sp/decode_${dataset_id}
   rnn_opts=" --extra-left-context 40 --extra-right-context 0  --frames-per-chunk 20 "
   decode_script=steps/nnet3/decode.sh
@@ -541,7 +498,7 @@ if [ -f exp/nnet3/lstm_sp/.done ]; then
     ${dataset_dir} data/langp_test $decode
 fi
 
-if [ -f exp/$nnet3_model/.done ]; then
+if [ -f exp/$nnet3_model/final.mdl ]; then
   decode=exp/$nnet3_model/decode_${dataset_id}
   rnn_opts=
   decode_script=steps/nnet3/decode.sh
@@ -583,6 +540,7 @@ if [ -f exp/$chain_model/final.mdl ]; then
     touch exp/nnet3$parent_dir_suffix/ivectors_${dataset_id}/.done
   fi
 
+  my_nj_backup=$my_nj
   rnn_opts=
   if [ "$is_rnn" == "true" ]; then
     rnn_opts=" --extra-left-context $extra_left_context --extra-right-context $extra_right_context  --frames-per-chunk $frames_per_chunk "
@@ -608,6 +566,7 @@ if [ -f exp/$chain_model/final.mdl ]; then
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_chain_extra_opts[@]}" \
     ${dataset_dir} data/langp_test $decode
+  my_nj=$my_nj_backup
 else
   echo "no chain model exp/$chain_model"
 fi
@@ -720,5 +679,72 @@ for dnn in tri6_nnet_semi_supervised tri6_nnet_semi_supervised2 \
       ${dataset_dir} data/langp_test $decode
   fi
 done
+
+####################################################################
+## SGMM2 decoding
+## We Include the SGMM_MMI inside this, as we might only have the DNN systems
+## trained and not PLP system. The DNN systems build only on the top of tri5 stage
+####################################################################
+if [ -f exp/sgmm5/.done ]; then
+  decode=exp/sgmm5/decode_fmllr_${dataset_id}
+  if [ ! -f $decode/.done ]; then
+    echo ---------------------------------------------------------------------
+    echo "Spawning $decode on" `date`
+    echo ---------------------------------------------------------------------
+    utils/mkgraph.sh \
+      data/langp_test exp/sgmm5 exp/sgmm5/graph |tee exp/sgmm5/mkgraph.log
+
+    mkdir -p $decode
+    steps/decode_sgmm2.sh --skip-scoring true --use-fmllr true --nj $my_nj \
+      --cmd "$decode_cmd" --transform-dir exp/tri5/decode_${dataset_id} "${decode_extra_opts[@]}"\
+      exp/sgmm5/graph ${dataset_dir} $decode |tee $decode/decode.log
+    touch $decode/.done
+
+    if ! $fast_path ; then
+      local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
+        --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
+        --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+        "${lmwt_plp_extra_opts[@]}" \
+        ${dataset_dir} data/langp_test  exp/sgmm5/decode_fmllr_${dataset_id}
+    fi
+  fi
+
+  ####################################################################
+  ##
+  ## SGMM_MMI rescoring
+  ##
+  ####################################################################
+
+  for iter in 1 2 3 4; do
+      # Decode SGMM+MMI (via rescoring).
+    decode=exp/sgmm5_mmi_b0.1/decode_fmllr_${dataset_id}_it$iter
+    if [ -x exp/sgmm5_mmi_b0.1 ] && [ ! -f $decode/.done ]; then
+
+      mkdir -p $decode
+      steps/decode_sgmm2_rescore.sh  --skip-scoring true \
+        --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_${dataset_id} \
+        data/langp_test ${dataset_dir} exp/sgmm5/decode_fmllr_${dataset_id} $decode | tee ${decode}/decode.log
+
+      touch $decode/.done
+    fi
+  done
+
+  #We are done -- all lattices has been generated. We have to
+  #a)Run MBR decoding
+  #b)Run KW search
+  for iter in 1 2 3 4; do
+    # Decode SGMM+MMI (via rescoring).
+    decode=exp/sgmm5_mmi_b0.1/decode_fmllr_${dataset_id}_it$iter
+    if [ -f $decode/.done ]; then
+      local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
+        --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
+        --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+      "${lmwt_plp_extra_opts[@]}" \
+      ${dataset_dir} data/langp_test $decode
+    fi
+  done
+fi
+
+
 echo "Everything looking good...."
 exit 0

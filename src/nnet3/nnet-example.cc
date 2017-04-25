@@ -167,7 +167,7 @@ void NnetExample::Compress(int32 format) {
 
 
 size_t NnetIoStructureHasher::operator () (
-    const NnetIo &io) const {
+    const NnetIo &io) const noexcept {
   StringHasher string_hasher;
   IndexVectorHasher indexes_hasher;
 
@@ -190,7 +190,7 @@ bool NnetIoStructureCompare::operator () (
 
 
 size_t NnetExampleStructureHasher::operator () (
-    const NnetExample &eg) const {
+    const NnetExample &eg) const noexcept {
   // these numbers were chosen at random from a list of primes.
   NnetIoStructureHasher io_hasher;
   size_t size = eg.io.size(), ans = size * 35099;

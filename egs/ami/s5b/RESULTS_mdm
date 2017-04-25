@@ -65,17 +65,16 @@
 
 # cleanup + chain TDNN model, alignments from IHM data (IHM alignments help).
 # local/chain/run_tdnn.sh --mic mdm8 --use-ihm-ali true --stage 12 &
-# for d in exp/mdm8/chain_cleaned/tdnn_sp_bi_ihmali/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
-%WER 37.4 | 15286 94509 | 66.6 18.0 15.5 3.9 37.4 62.8 | 0.624 | exp/mdm8/chain_cleaned/tdnn_sp_bi_ihmali/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
-%WER 40.6 | 13381 89982 | 62.7 18.9 18.3 3.3 40.6 67.6 | 0.594 | exp/mdm8/chain_cleaned/tdnn_sp_bi_ihmali/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
-
+# for d in exp/mdm8/chain_cleaned/tdnn1d_sp_bi_ihmali/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 36.4 | 15140 94513 | 67.3 17.5 15.2 3.6 36.4 63.2 | 0.613 | exp/mdm8/chain_cleaned/tdnn1d_sp_bi_ihmali/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+%WER 39.7 | 13835 89969 | 63.2 18.4 18.4 3.0 39.7 65.7 | 0.584 | exp/mdm8/chain_cleaned/tdnn1d_sp_bi_ihmali/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 
 # local/chain/run_tdnn.sh --use-ihm-ali true --mic mdm8 --train-set train --gmm tri3 --nnet3-affix "" --stage 12 &
 # chain TDNN model-- no cleanup, but IHM alignments.
-#  note, this system is worse by [0.8, 1.3] than the system without cleanup.
-# for d in exp/mdm8/chain/tdnn_sp_bi_ihmali/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
-%WER 37.9 | 15635 94514 | 66.5 19.1 14.4 4.4 37.9 61.2 | 0.646 | exp/mdm8/chain/tdnn_sp_bi_ihmali/decode_dev/ascore_8/dev_hires_o4.ctm.filt.sys
-%WER 41.5 | 13884 89975 | 62.3 20.3 17.4 3.8 41.5 66.0 | 0.621 | exp/mdm8/chain/tdnn_sp_bi_ihmali/decode_eval/ascore_8/eval_hires_o4.ctm.filt.sys
+# note, this system is worse by [0.5, 0.5] than the system without cleanup.
+# for d in exp/mdm8/chain/tdnn1d_sp_bi_ihmali/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 36.9 | 15282 94502 | 67.1 18.5 14.4 4.1 36.9 62.5 | 0.635 | exp/mdm8/chain/tdnn1d_sp_bi_ihmali/decode_dev/ascore_8/dev_hires_o4.ctm.filt.sys
+%WER 40.2 | 13729 89992 | 63.3 19.8 17.0 3.5 40.2 66.4 | 0.608 | exp/mdm8/chain/tdnn1d_sp_bi_ihmali/decode_eval/ascore_8/eval_hires_o4.ctm.filt.sys
 
 # local/chain/multi_condition/run_tdnn.sh --mic mdm8 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned
 # cleanup + chain TDNN model, MDM original + IHM reverberated data, alignments from IHM data

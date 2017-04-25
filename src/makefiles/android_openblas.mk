@@ -29,7 +29,7 @@ CXXFLAGS = -std=c++11 -I.. -I$(OPENFSTINC) $(EXTRA_CXXFLAGS) \
            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
            -Wno-deprecated-declarations -Winit-self -Wno-mismatched-tags \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
-           -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_OPENBLAS -DANDROID_BUILD \
+           -DHAVE_CXXABI_H -DHAVE_OPENBLAS -DANDROID_BUILD \
            -I$(OPENBLASINC) -I$(ANDROIDINC) -ftree-vectorize -mfloat-abi=hard \
            -mfpu=neon -mhard-float -D_NDK_MATH_NO_SOFTFP=1 -pthread \
            -g # -O0 -DKALDI_PARANOID

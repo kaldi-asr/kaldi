@@ -81,7 +81,7 @@ std::string PrintVectorPerUpdatableComponent(const Nnet &nnet,
 
 /// This function returns true if the nnet has the following properties:
 ///  It has an output called "output" (other outputs are allowed but may be
-///          ignored).
+///  ignored).
 ///  It has an input called "input", and possibly an extra input called
 ///    "ivector", but no other inputs.
 ///  There are probably some other properties that we really ought to
@@ -160,7 +160,7 @@ void ConvertRepeatedToBlockAffine(Nnet *nnet);
 /// Info() function (we need this in the CTC code).
 std::string NnetInfo(const Nnet &nnet);
 
-/// This function sets the dropout proportion in all dropout component to
+/// This function sets the dropout proportion in all dropout components to
 /// dropout_proportion value.
 void SetDropoutProportion(BaseFloat dropout_proportion, Nnet *nnet);
 

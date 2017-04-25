@@ -669,6 +669,88 @@ class ConstantComponent: public UpdatableComponent {
 
 
 
+// DropoutMaskComponent outputs a random zero-or-one value for all dimensions of
+// all requested indexes, and it has no dependencies on any input.  It's like a
+// ConstantComponent, but with random output that has value zero
+// a proportion (dropout_proportion) of the time, and otherwise one.
+// This is not the normal way to implement dropout; you'd normally use a
+// DropoutComponent (see nnet-simple-component.h).  This component is used while
+// implementing per-frame dropout with the LstmNonlinearityComponent; we
+// generate a two-dimensional output representing dropout
+//
+class DropoutMaskComponent: public RandomComponent {
+ public:
+  // actually this component requires no inputs; this value
+  // is really a don't-care.
+  virtual int32 InputDim() const { return output_dim_; }
+
+  virtual int32 OutputDim() const { return output_dim_; }
+
+  virtual std::string Info() const;
+
+  // possible parameter values with their defaults:
+  // dropout-proportion=0.5 output-dim=-1
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  DropoutMaskComponent();
+
+  DropoutMaskComponent(const DropoutMaskComponent &other);
+
+  virtual std::string Type() const { return "DropoutMaskComponent"; }
+  virtual int32 Properties() const { return kRandomComponent; }
+  // note: the matrix 'in' will be empty.
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  // backprop does nothing, there is nothing to backprop to and nothing
+  // to update.
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const { }
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  // Some functions that are only to be reimplemented for GeneralComponents.
+  virtual void GetInputIndexes(const MiscComputationInfo &misc_info,
+                               const Index &output_index,
+                               std::vector<Index> *desired_indexes) const {
+    desired_indexes->clear();  // requires no inputs.
+  }
+
+  // This function returns true if at least one of the input indexes used to
+  // compute this output index is computable.
+  // it's simple because this component requires no inputs.
+  virtual bool IsComputable(const MiscComputationInfo &misc_info,
+                            const Index &output_index,
+                            const IndexSet &input_index_set,
+                            std::vector<Index> *used_inputs) const {
+    if (used_inputs) used_inputs->clear();
+    return true;
+  }
+
+  void SetDropoutProportion(BaseFloat p) { dropout_proportion_ = p; }
+
+ private:
+
+  // The output dimension
+  int32 output_dim_;
+
+  BaseFloat dropout_proportion_;
+
+  const DropoutMaskComponent &operator
+  = (const DropoutMaskComponent &other); // Disallow.
+};
+
+
+
+
 
 
 } // namespace nnet3
