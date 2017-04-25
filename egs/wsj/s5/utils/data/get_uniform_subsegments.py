@@ -6,10 +6,27 @@
 import argparse
 import logging
 import sys
+import textwrap
 
 def get_args():
     parser = argparse.ArgumentParser(
-        description="""Get uniform subsegments of segments.""")
+        description=textwrap.dedent("""
+        Creates a subsegments file from an input segments file
+        that has the format
+        <subsegment-id> <utterance-id> <start-time> <end-time>,
+        where the timing are relative to the start-time of the
+        <utterance-id> in the input segments file.
+
+        e.g.: get_uniform_subsegments.py data/dev/segments > \\
+                data/dev_uniform_segments/sub_segments
+
+        utils/data/subsegment_data_dir.sh data/dev \\
+            data/dev_uniform_segments/sub_segments data/dev_uniform_segments
+
+        The output is written to stdout. The resulting file can be
+        passed to utils/data/subsegment_data_dir.sh to sub-segment
+        the data directory."""),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--max-segment-duration", type=float,
                         default=30, help="""Maximum duration of the
                         subsegments (in seconds)""")
@@ -21,7 +38,7 @@ def get_args():
                         if the left-over duration is more than this
                         many seconds""")
     parser.add_argument("segments_file", type=argparse.FileType('r'),
-                        help="""Kaldi segments file""")
+                        help="""Input kaldi segments file""")
 
     args = parser.parse_args()
     return args
