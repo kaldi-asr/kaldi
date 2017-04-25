@@ -449,7 +449,6 @@ def train(args, run_opts, background_process_handler):
         avg_post_vec_file = train_lib.common.compute_average_posterior(
             dir=args.dir, iter='combined', egs_dir=egs_dir,
             num_archives=num_archives,
-            left_context=left_context, right_context=right_context,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts)
 
         logger.info("Re-adjusting priors based on computed posteriors")
