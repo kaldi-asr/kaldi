@@ -3,19 +3,33 @@
 . ./cmd.sh
 . ./path.sh
 
-# This is same as a, but has a bug-fix.
-
 set -e -o pipefail -u
 
-segment_stage=-7
+# This differs from _d by using the --align-full-hyp false, which
+# gets best matching subsequence of reference and hypothesis using
+# Smith-Waterman alignment,
+# as against using Levenshtein distance w.r.t. full hypothesis.
+
+# _d
+# STAGE 2 | %WER 19.1 | 507 17783 | 84.1 10.7 5.2 3.2 19.1 91.1 | -0.193 | exp/tri5_2d_cleaned/decode_nosp_dev_rescore/score_14_0.0/ctm.filt.filt.sys
+# STAGE 2 | %WER 17.7 | 1155 27500 | 84.6 11.4 3.9 2.3 17.7 87.4 | -0.076 | exp/tri5_2d_cleaned/decode_nosp_test_rescore/score_13_0.0/ctm.filt.filt.sys
+
+# _e
+# STAGE 3 | %WER 17.4 | 1155 27500 | 85.0 11.4 3.7 2.4 17.4 87.2 | -0.086 | exp/tri5_2e_cleaned/decode_nosp_test_rescore/score_12_0.0/ctm.filt.filt.sys
+# STAGE 3 | %WER 18.8 | 507 17783 | 84.4 10.7 4.9 3.2 18.8 91.3 | -0.162 | exp/tri5_2e_cleaned/decode_nosp_dev_rescore/score_14_0.0/ctm.filt.filt.sys
+
+# Note: Better results can be obtained by using silence and pronunciation
+# probs as seen in STAGE 2.
+
+segment_stage=-10
 affix=_1e
 decode_nj=30
-cleanup_stage=-8
+cleanup_stage=-10
 
 ###############################################################################
 # Segment long recordings using TF-IDF retrieval of reference text 
 # for uniformly segmented audio chunks based on Smith-Waterman alignment.
-# Use a model trained on train_si84 (tri2b)
+# Use a model trained on WSJ train_si84 (tri2b)
 ###############################################################################
 
 ###

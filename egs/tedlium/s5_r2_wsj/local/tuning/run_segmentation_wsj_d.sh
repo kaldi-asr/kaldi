@@ -5,15 +5,21 @@
 
 set -e -o pipefail -u
 
-segment_stage=-13
+# This differs from _e by using the option --align-full-hyp true, which
+# retrieves the best match (based on Levenshtein distance) of the 
+# reference with the full hypothesis for the segment,
+# as against teh best matching subsequence using Smith-Waterman alignment.
+
+segment_stage=-10
 affix=_1d
 decode_nj=30
-cleanup_stage=-1
+cleanup_stage=-10
 
 ###############################################################################
 # Segment long recordings using TF-IDF retrieval of reference text 
-# for uniformly segmented audio chunks based on Smith-Waterman alignment.
-# Use a model trained on train_si84 (tri2b)
+# for uniformly segmented audio chunks based on 
+# modified Levenshtein alignment.
+# Use a model trained on WSJ train_si84 (tri2b)
 ###############################################################################
 
 ###
