@@ -1,10 +1,12 @@
 #!/bin/bash
 
 
-# note: the final 'valid accuracy' (0.69) is actually the test accuracy.
+# 1b is like 1a but a smaller model.
+# The result is worse.
 
-# steps/info/nnet3_dir_info.pl exp/cnn1a_cifar10
-# exp/cnn1a_cifar10: num-iters=60 nj=1..2 num-params=0.2M dim=96->10 combine=-0.04->-0.02 loglike:train/valid[39,59,final]=(-0.18,-0.02,-0.02/-1.08,-1.38,-1.39) accuracy:train/valid[39,59,final]=(0.95,1.00,1.00/0.70,0.69,0.69)
+# steps/info/nnet3_dir_info.pl exp/cnn1b_cifar10
+# exp/cnn1b_cifar10: num-iters=60 nj=1..2 num-params=0.1M dim=96->10 combine=-0.39->-0.31 loglike:train/valid[39,59,final]=(-0.55,-0.33,-0.31/-1.00,-1.16,-1.16) accuracy:train/valid[39,59,final]=(0.82,0.89,0.90/0.67,0.66,0.66)
+
 
 
 # Set -e here so that we catch if any executable fails immediately
@@ -18,7 +20,7 @@ train_stage=-10
 dataset=cifar10
 srand=0
 reporting_email=
-affix=1a
+affix=1b
 
 
 # End configuration section.
@@ -72,25 +74,26 @@ if [ $stage -le 1 ]; then
   # Note: we hardcode in the CNN config that we are dealing with 32x3x color
   # images.
 
-  common="required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=32"
+  common1="required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=16"
+  common2="required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=32"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=96 name=input
-  conv-relu-batchnorm-layer name=cnn1 height-in=32 height-out=32 time-offsets=-1,0,1 $common
-  conv-relu-batchnorm-layer name=cnn2 height-in=32 height-out=32 time-offsets=-1,0,1 $common
-  conv-relu-batchnorm-layer name=cnn3 height-in=32 height-out=32 time-offsets=-1,0,1 $common
-  conv-relu-batchnorm-layer name=cnn4 height-in=32 height-out=16 time-offsets=-1,0,1 $common height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn5 height-in=16 height-out=16 time-offsets=-2,0,2 $common
-  conv-relu-batchnorm-layer name=cnn6 height-in=16 height-out=16 time-offsets=-2,0,2 $common
-  conv-relu-batchnorm-layer name=cnn7 height-in=16 height-out=8  time-offsets=-2,0,2 $common height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn8 height-in=8 height-out=8   time-offsets=-4,0,4 $common
-  conv-relu-batchnorm-layer name=cnn9 height-in=8 height-out=8   time-offsets=-4,0,4 $common
-  conv-relu-batchnorm-layer name=cnn10 height-in=8 height-out=4   time-offsets=-4,0,4 $common height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn11 height-in=4 height-out=4   time-offsets=-8,0,8 $common
-  conv-relu-batchnorm-layer name=cnn12 height-in=4 height-out=4   time-offsets=-8,0,8 $common
-  relu-batchnorm-layer name=fully_connected1 input=Append(0,8,16,24) dim=128
-  relu-batchnorm-layer name=fully_connected2 dim=256
+  conv-relu-batchnorm-layer name=cnn1 height-in=32 height-out=32 time-offsets=-1,0,1 $common1
+  conv-relu-batchnorm-layer name=cnn2 height-in=32 height-out=32 time-offsets=-1,0,1 $common1
+  conv-relu-batchnorm-layer name=cnn3 height-in=32 height-out=32 time-offsets=-1,0,1 $common1
+  conv-relu-batchnorm-layer name=cnn4 height-in=32 height-out=16 time-offsets=-1,0,1 $common1 height-subsample-out=2
+  conv-relu-batchnorm-layer name=cnn5 height-in=16 height-out=16 time-offsets=-2,0,2 $common1
+  conv-relu-batchnorm-layer name=cnn6 height-in=16 height-out=16 time-offsets=-2,0,2 $common1
+  conv-relu-batchnorm-layer name=cnn7 height-in=16 height-out=8  time-offsets=-2,0,2 $common1 height-subsample-out=2
+  conv-relu-batchnorm-layer name=cnn8 height-in=8 height-out=8   time-offsets=-4,0,4 $common1
+  conv-relu-batchnorm-layer name=cnn9 height-in=8 height-out=8   time-offsets=-4,0,4 $common1
+  conv-relu-batchnorm-layer name=cnn10 height-in=8 height-out=4   time-offsets=-4,0,4 $common1 height-subsample-out=2
+  conv-relu-batchnorm-layer name=cnn11 height-in=4 height-out=4   time-offsets=-8,0,8 $common2
+  conv-relu-batchnorm-layer name=cnn12 height-in=4 height-out=4   time-offsets=-8,0,8 $common2
+  relu-batchnorm-layer name=fully_connected1 input=Append(0,8,16,24) dim=64
+  relu-batchnorm-layer name=fully_connected2 dim=128
   output-layer name=output dim=$num_targets
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/

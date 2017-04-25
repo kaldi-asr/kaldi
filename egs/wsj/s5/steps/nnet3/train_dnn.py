@@ -73,10 +73,10 @@ def get_args():
                         the format.""")
 
     # General options
-    parser.add_argument("--feat-dir", type=str, required=True,
+    parser.add_argument("--feat-dir", type=str, required=False,
                         help="Directory with features used for training "
                         "the neural network.")
-    parser.add_argument("--lang", type=str, required=True,
+    parser.add_argument("--lang", type=str, required=False,
                         help="Language directory")
     parser.add_argument("--ali-dir", type=str, required=True,
                         help="Directory with alignments used for training "
@@ -209,6 +209,9 @@ def train(args, run_opts, background_process_handler):
     if (args.stage <= -4) and args.egs_dir is None:
         logger.info("Generating egs")
 
+        if args.feat_dir is None:
+            raise Exception("--feat-dir option is required if you don't supply --egs-dir")
+
         train_lib.acoustic_model.generate_egs(
             data=args.feat_dir, alidir=args.ali_dir, egs_dir=default_egs_dir,
             left_context=left_context, right_context=right_context,
@@ -316,8 +319,6 @@ def train(args, run_opts, background_process_handler):
                     iter),
                 minibatch_size_str=args.minibatch_size,
                 frames_per_eg=args.frames_per_eg,
-                left_context=left_context,
-                right_context=right_context,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
@@ -350,7 +351,6 @@ def train(args, run_opts, background_process_handler):
             dir=args.dir, num_iters=num_iters,
             models_to_combine=models_to_combine,
             egs_dir=egs_dir,
-            left_context=left_context, right_context=right_context,
             minibatch_size_str=args.minibatch_size, run_opts=run_opts,
             background_process_handler=background_process_handler,
             sum_to_one_penalty=args.combine_sum_to_one_penalty)
@@ -361,7 +361,6 @@ def train(args, run_opts, background_process_handler):
         avg_post_vec_file = train_lib.common.compute_average_posterior(
             dir=args.dir, iter='combined', egs_dir=egs_dir,
             num_archives=num_archives,
-            left_context=left_context, right_context=right_context,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts)
 
         logger.info("Re-adjusting priors based on computed posteriors")

@@ -193,7 +193,6 @@ if [ $stage -le 8 ]; then
   done
 fi
 
-
 # Train a chain model
 if [ $stage -le 9 ]; then
   local/chain/run_tdnn.sh --stage 0

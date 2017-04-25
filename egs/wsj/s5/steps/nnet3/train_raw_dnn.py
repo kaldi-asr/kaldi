@@ -79,11 +79,11 @@ def get_args():
                         action=common_lib.StrToBoolAction,
                         default=True, choices=["true", "false"],
                         help="Train neural network using dense targets")
-    parser.add_argument("--feat-dir", type=str, required=True,
+    parser.add_argument("--feat-dir", type=str, required=False,
                         help="Directory with features used for training "
                         "the neural network.")
-    parser.add_argument("--targets-scp", type=str, required=True,
-                        help="Target for training neural network.")
+    parser.add_argument("--targets-scp", type=str, required=False,
+                        help="Targets for training neural network.")
     parser.add_argument("--dir", type=str, required=True,
                         help="Directory to store the models and "
                         "all other files.")
@@ -162,6 +162,8 @@ def train(args, run_opts, background_process_handler):
     logger.info("Arguments for the experiment\n{0}".format(arg_string))
 
     # Set some variables.
+
+    # note, feat_dim gets set to 0 if args.feat_dir is unset (None).
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
     ivector_id = common_lib.get_ivector_extractor_id(args.online_ivector_dir)
@@ -175,9 +177,11 @@ def train(args, run_opts, background_process_handler):
     try:
         model_left_context = variables['model_left_context']
         model_right_context = variables['model_right_context']
-        add_lda = common_lib.str_to_bool(variables['add_lda'])
-        include_log_softmax = common_lib.str_to_bool(
-            variables['include_log_softmax'])
+        if 'include_log_softmax' in variables:
+            include_log_softmax = common_lib.str_to_bool(
+                variables['include_log_softmax'])
+        else:
+            include_log_softmax = False
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in "
                         "{1}".format(str(e), '{0}/configs'.format(args.dir)))
@@ -185,13 +189,13 @@ def train(args, run_opts, background_process_handler):
     left_context = model_left_context
     right_context = model_right_context
 
+
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
-
-    if (args.stage <= -5):
-        logger.info("Initializing a basic network")
+    if (args.stage <= -5) and os.path.exists(args.dir+"/configs/init.config"):
+        logger.info("Initializing the network for computing the LDA stats")
         common_lib.run_job(
             """{command} {dir}/log/nnet_init.log \
                     nnet3-init --srand=-2 {dir}/configs/init.config \
@@ -200,6 +204,10 @@ def train(args, run_opts, background_process_handler):
 
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -4) and args.egs_dir is None:
+        if args.targets_scp is None or args.feat_dir is None:
+            raise Exception("If you don't supply the --egs-dir option, the "
+                            "--targets-scp and --feat-dir options are required.")
+
         logger.info("Generating egs")
 
         if args.use_dense_targets:
@@ -257,7 +265,7 @@ def train(args, run_opts, background_process_handler):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (add_lda and args.stage <= -3):
+    if (args.stage <= -3) and os.path.exists(args.dir+"/configs/init.config"):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
@@ -320,8 +328,6 @@ def train(args, run_opts, background_process_handler):
                     iter),
                 minibatch_size_str=args.minibatch_size,
                 frames_per_eg=args.frames_per_eg,
-                left_context=left_context,
-                right_context=right_context,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
@@ -355,7 +361,6 @@ def train(args, run_opts, background_process_handler):
         train_lib.common.combine_models(
             dir=args.dir, num_iters=num_iters,
             models_to_combine=models_to_combine, egs_dir=egs_dir,
-            left_context=left_context, right_context=right_context,
             minibatch_size_str=args.minibatch_size, run_opts=run_opts,
             background_process_handler=background_process_handler,
             get_raw_nnet_from_am=False,
@@ -367,7 +372,6 @@ def train(args, run_opts, background_process_handler):
         train_lib.common.compute_average_posterior(
             dir=args.dir, iter='final', egs_dir=egs_dir,
             num_archives=num_archives,
-            left_context=left_context, right_context=right_context,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts,
             get_raw_nnet_from_am=False)
 

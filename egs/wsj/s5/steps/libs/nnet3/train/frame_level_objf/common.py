@@ -25,7 +25,6 @@ logger.addHandler(logging.NullHandler())
 def train_new_models(dir, iter, srand, num_jobs,
                      num_archives_processed, num_archives,
                      raw_model_string, egs_dir,
-                     left_context, right_context,
                      momentum, max_param_change,
                      shuffle_buffer_size, minibatch_size_str,
                      run_opts, frames_per_eg=-1,
@@ -58,9 +57,6 @@ def train_new_models(dir, iter, srand, num_jobs,
         deriv_time_opts.append("--optimization.max-deriv-time-relative={0}".format(
                            max_deriv_time_relative))
 
-    context_opts = "--left-context={0} --right-context={1}".format(
-        left_context, right_context)
-
     processes = []
     for job in range(1, num_jobs+1):
         # k is a zero-based index that we will derive the other indexes from.
@@ -85,7 +81,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                     --momentum={momentum} \
                     --max-param-change={max_param_change} \
                     {deriv_time_opts} "{raw_model}" \
-                    "ark,bg:nnet3-copy-egs {frame_opts} {context_opts} """
+                    "ark,bg:nnet3-copy-egs {frame_opts} """
             """ark:{egs_dir}/egs.{archive_index}.ark ark:- |"""
             """nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} """
             """--srand={srand} ark:- ark:- | """
@@ -105,7 +101,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                                     else "--frame={0}".format(frame)),
                         momentum=momentum, max_param_change=max_param_change,
                         deriv_time_opts=" ".join(deriv_time_opts),
-                        raw_model=raw_model_string, context_opts=context_opts,
+                        raw_model=raw_model_string,
                         egs_dir=egs_dir, archive_index=archive_index,
                         shuffle_buffer_size=shuffle_buffer_size,
                         minibatch_size_str=minibatch_size_str), wait=False)
@@ -128,7 +124,6 @@ def train_new_models(dir, iter, srand, num_jobs,
 def train_one_iteration(dir, iter, srand, egs_dir,
                         num_jobs, num_archives_processed, num_archives,
                         learning_rate, minibatch_size_str,
-                        left_context, right_context,
                         momentum, max_param_change, shuffle_buffer_size,
                         run_opts, frames_per_eg=-1,
                         min_deriv_time=None, max_deriv_time_relative=None,
@@ -176,7 +171,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     # validation set objectives
     compute_train_cv_probabilities(
         dir=dir, iter=iter, egs_dir=egs_dir,
-        left_context=left_context, right_context=right_context,
         run_opts=run_opts,
         get_raw_nnet_from_am=get_raw_nnet_from_am, wait=False,
         background_process_handler=background_process_handler)
@@ -184,8 +178,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     if iter > 0:
         # Runs in the background
         compute_progress(dir=dir, iter=iter, egs_dir=egs_dir,
-                         left_context=left_context,
-                         right_context=right_context,
                          run_opts=run_opts,
                          wait=False,
                          get_raw_nnet_from_am=get_raw_nnet_from_am,
@@ -233,7 +225,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      num_archives_processed=num_archives_processed,
                      num_archives=num_archives,
                      raw_model_string=raw_model_string, egs_dir=egs_dir,
-                     left_context=left_context, right_context=right_context,
                      momentum=momentum, max_param_change=cur_max_param_change,
                      shuffle_buffer_size=shuffle_buffer_size,
                      minibatch_size_str=cur_minibatch_size_str,
@@ -338,8 +329,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     common_lib.force_symlink("../lda.mat", "{0}/configs/lda.mat".format(dir))
 
 
-def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
-                                   right_context, run_opts,
+def compute_train_cv_probabilities(dir, iter, egs_dir, run_opts,
                                    wait=False, background_process_handler=None,
                                    get_raw_nnet_from_am=True):
     if get_raw_nnet_from_am:
@@ -348,19 +338,16 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
     else:
         model = "{dir}/{iter}.raw".format(dir=dir, iter=iter)
 
-    context_opts = "--left-context={lc} --right-context={rc}".format(
-        lc=left_context, rc=right_context)
 
     common_lib.run_job(
         """ {command} {dir}/log/compute_prob_valid.{iter}.log \
                 nnet3-compute-prob "{model}" \
-                "ark,bg:nnet3-copy-egs {context_opts} \
+                "ark,bg:nnet3-copy-egs \
                     ark:{egs_dir}/valid_diagnostic.egs ark:- | \
                     nnet3-merge-egs --minibatch-size=1:64 ark:- \
                     ark:- |" """.format(command=run_opts.command,
                                         dir=dir,
                                         iter=iter,
-                                        context_opts=context_opts,
                                         model=model,
                                         egs_dir=egs_dir),
         wait=wait, background_process_handler=background_process_handler)
@@ -368,19 +355,18 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
     common_lib.run_job(
         """{command} {dir}/log/compute_prob_train.{iter}.log \
                 nnet3-compute-prob "{model}" \
-                "ark,bg:nnet3-copy-egs {context_opts} \
+                "ark,bg:nnet3-copy-egs \
                     ark:{egs_dir}/train_diagnostic.egs ark:- | \
                     nnet3-merge-egs --minibatch-size=1:64 ark:- \
                     ark:- |" """.format(command=run_opts.command,
                                         dir=dir,
                                         iter=iter,
-                                        context_opts=context_opts,
                                         model=model,
                                         egs_dir=egs_dir),
         wait=wait, background_process_handler=background_process_handler)
 
 
-def compute_progress(dir, iter, egs_dir, left_context, right_context,
+def compute_progress(dir, iter, egs_dir,
                      run_opts, background_process_handler=None, wait=False,
                      get_raw_nnet_from_am=True):
     if get_raw_nnet_from_am:
@@ -391,28 +377,23 @@ def compute_progress(dir, iter, egs_dir, left_context, right_context,
         prev_model = '{0}/{1}.raw'.format(dir, iter - 1)
         model = '{0}/{1}.raw'.format(dir, iter)
 
-    context_opts = "--left-context={lc} --right-context={rc}".format(
-        lc=left_context, rc=right_context)
-
     common_lib.run_job(
             """{command} {dir}/log/progress.{iter}.log \
                     nnet3-info "{model}" '&&' \
                     nnet3-show-progress --use-gpu=no "{prev_model}" "{model}" \
-                    "ark,bg:nnet3-copy-egs {context_opts} \
+                    "ark,bg:nnet3-copy-egs \
                         ark:{egs_dir}/train_diagnostic.egs ark:- | \
                         nnet3-merge-egs --minibatch-size=1:64 ark:- \
                         ark:- |" """.format(command=run_opts.command,
                                             dir=dir,
                                             iter=iter,
                                             model=model,
-                                            context_opts=context_opts,
                                             prev_model=prev_model,
                                             egs_dir=egs_dir),
             wait=wait, background_process_handler=background_process_handler)
 
 
 def combine_models(dir, num_iters, models_to_combine, egs_dir,
-                   left_context, right_context,
                    minibatch_size_str,
                    run_opts, background_process_handler=None,
                    chunk_width=None, get_raw_nnet_from_am=True,
@@ -448,9 +429,6 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
     else:
         out_model = '{dir}/final.raw'.format(dir=dir)
 
-    context_opts = "--left-context={lc} --right-context={rc}".format(
-        lc=left_context, rc=right_context)
-
 
     # We reverse the order of the raw model strings so that the freshest one
     # goes first.  This is important for systems that include batch
@@ -467,7 +445,7 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
                 --sum-to-one-penalty={penalty} \
                 --enforce-positive-weights=true \
                 --verbose=3 {raw_models} \
-                "ark,bg:nnet3-copy-egs {context_opts} \
+                "ark,bg:nnet3-copy-egs \
                     ark:{egs_dir}/combine.egs ark:- | \
                         nnet3-merge-egs --measure-output-frames=false \
                         --minibatch-size={mbsize} ark:- ark:- |" \
@@ -477,7 +455,6 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
                    dir=dir, raw_models=" ".join(raw_model_strings),
                    hard_enforce=(sum_to_one_penalty <= 0),
                    penalty=sum_to_one_penalty,
-                   context_opts=context_opts,
                    mbsize=minibatch_size_str,
                    out_model=out_model,
                    egs_dir=egs_dir))
@@ -488,13 +465,11 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
     if get_raw_nnet_from_am:
         compute_train_cv_probabilities(
             dir=dir, iter='combined', egs_dir=egs_dir,
-            left_context=left_context, right_context=right_context,
             run_opts=run_opts, wait=False,
             background_process_handler=background_process_handler)
     else:
         compute_train_cv_probabilities(
             dir=dir, iter='final', egs_dir=egs_dir,
-            left_context=left_context, right_context=right_context,
             run_opts=run_opts, wait=False,
             background_process_handler=background_process_handler,
             get_raw_nnet_from_am=False)
@@ -563,7 +538,7 @@ def align(dir, data, lang, run_opts, iter=None, transform_dir=None,
 
 
 def realign(dir, iter, feat_dir, lang, prev_egs_dir, cur_egs_dir,
-            prior_subset_size, num_archives, left_context, right_context,
+            prior_subset_size, num_archives,
             run_opts, transform_dir=None, online_ivector_dir=None):
     raise Exception("Realignment stage has not been implemented in nnet3")
     logger.info("Getting average posterior for purposes of adjusting "
@@ -575,7 +550,6 @@ def realign(dir, iter, feat_dir, lang, prev_egs_dir, cur_egs_dir,
     avg_post_vec_file = compute_average_posterior(
             dir=dir, iter=iter, egs_dir=prev_egs_dir,
             num_archives=num_archives, prior_subset_size=prior_subset_size,
-            left_context=left_context, right_context=right_context,
             run_opts=run_opts)
 
     avg_post_vec_file = "{dir}/post.{iter}.vec".format(dir=dir, iter=iter)
@@ -609,7 +583,7 @@ def adjust_am_priors(dir, input_model, avg_posterior_vector, output_model,
 
 
 def compute_average_posterior(dir, iter, egs_dir, num_archives,
-                              prior_subset_size, left_context, right_context,
+                              prior_subset_size,
                               run_opts, get_raw_nnet_from_am=True):
     """ Computes the average posterior of the network
     Note: this just uses CPUs, using a smallish subset of data.
@@ -627,13 +601,10 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
     else:
         model = "{dir}/final.raw".format(dir=dir)
 
-    context_opts = "--left-context={lc} --right-context={rc}".format(
-        lc=left_context, rc=right_context)
-
     common_lib.run_job(
         """{command} JOB=1:{num_jobs_compute_prior} {prior_queue_opt} \
                 {dir}/log/get_post.{iter}.JOB.log \
-                nnet3-copy-egs {context_opts} \
+                nnet3-copy-egs \
                 ark:{egs_dir}/egs.{egs_part}.ark ark:- \| \
                 nnet3-subset-egs --srand=JOB --n={prior_subset_size} \
                 ark:- ark:- \| \
@@ -649,7 +620,6 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
                     prior_queue_opt=run_opts.prior_queue_opt,
                     iter=iter, prior_subset_size=prior_subset_size,
                     egs_dir=egs_dir, egs_part=egs_part,
-                    context_opts=context_opts,
                     prior_gpu_opt=run_opts.prior_gpu_opt))
 
     # make sure there is time for $dir/post.{iter}.*.vec to appear.

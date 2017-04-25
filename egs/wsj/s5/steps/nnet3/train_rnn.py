@@ -123,10 +123,10 @@ def get_args():
                         the model's {left,right}-context.""")
 
     # General options
-    parser.add_argument("--feat-dir", type=str, required=True,
+    parser.add_argument("--feat-dir", type=str, required=False,
                         help="Directory with features used for training "
                         "the neural network.")
-    parser.add_argument("--lang", type=str, required=True,
+    parser.add_argument("--lang", type=str, required=False,
                         help="Language directory")
     parser.add_argument("--ali-dir", type=str, required=True,
                         help="Directory with alignments used for training "
@@ -269,6 +269,9 @@ def train(args, run_opts, background_process_handler):
     if (args.stage <= -4) and args.egs_dir is None:
         logger.info("Generating egs")
 
+        if args.feat_dir is None:
+            raise Exception("--feat-dir option is required if you don't supply --egs-dir")
+
         train_lib.acoustic_model.generate_egs(
             data=args.feat_dir, alidir=args.ali_dir,
             egs_dir=default_egs_dir,
@@ -401,8 +404,6 @@ def train(args, run_opts, background_process_handler):
                     iter),
                 shrinkage_value=shrinkage_value,
                 minibatch_size_str=args.num_chunk_per_minibatch,
-                left_context=left_context,
-                right_context=right_context,
                 min_deriv_time=min_deriv_time,
                 max_deriv_time_relative=max_deriv_time_relative,
                 momentum=args.momentum,
@@ -437,7 +438,6 @@ def train(args, run_opts, background_process_handler):
             dir=args.dir, num_iters=num_iters,
             models_to_combine=models_to_combine, egs_dir=egs_dir,
             run_opts=run_opts,
-            left_context=left_context, right_context=right_context,
             minibatch_size_str=args.num_chunk_per_minibatch,
             background_process_handler=background_process_handler,
             chunk_width=args.chunk_width,

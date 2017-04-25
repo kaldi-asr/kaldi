@@ -327,8 +327,11 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
             # an older version of the script
             pass
 
-        egs_ivector_dim = int(open('{0}/info/ivector_dim'.format(
-                                    egs_dir)).readline())
+        try:
+            egs_ivector_dim = int(open('{0}/info/ivector_dim'.format(
+                egs_dir)).readline())
+        except:
+            egs_ivector_dim = 0
         egs_left_context = int(open('{0}/info/left_context'.format(
                                     egs_dir)).readline())
         egs_right_context = int(open('{0}/info/right_context'.format(
@@ -344,7 +347,9 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
         except:  # older scripts didn't write this, treat it as -1 in that case.
             egs_right_context_final = -1
 
-        if (feat_dim != egs_feat_dim) or (ivector_dim != egs_ivector_dim):
+        # if feat_dim was supplied as 0, it means the --feat-dir option was not
+        # supplied to the script, so we simply don't know what the feature dim is.
+        if (feat_dim != 0 and feat_dim != egs_feat_dim) or (ivector_dim != egs_ivector_dim):
             raise Exception("There is mismatch between featdim/ivector_dim of "
                             "the current experiment and the provided "
                             "egs directory")

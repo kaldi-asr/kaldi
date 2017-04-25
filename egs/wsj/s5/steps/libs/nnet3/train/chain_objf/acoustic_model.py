@@ -124,7 +124,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
 
 def train_new_models(dir, iter, srand, num_jobs,
                      num_archives_processed, num_archives,
-                     raw_model_string, egs_dir, left_context, right_context,
+                     raw_model_string, egs_dir,
                      apply_deriv_weights,
                      min_deriv_time, max_deriv_time_relative,
                      l2_regularize, xent_regularize, leaky_hmm_coefficient,
@@ -178,7 +178,6 @@ def train_new_models(dir, iter, srand, num_jobs,
                     --max-param-change={max_param_change} \
                     "{raw_model}" {dir}/den.fst \
                     "ark,bg:nnet3-chain-copy-egs \
-                        --left-context={lc} --right-context={rc} \
                         --frame-shift={fr_shft} \
                         ark:{egs_dir}/cegs.{archive_index}.ark ark:- | \
                         nnet3-chain-shuffle-egs --buffer-size={buf_size} \
@@ -190,7 +189,6 @@ def train_new_models(dir, iter, srand, num_jobs,
                         dir=dir, iter=iter, srand=iter + srand,
                         next_iter=iter + 1, job=job,
                         deriv_time_opts=" ".join(deriv_time_opts),
-                        lc=left_context, rc=right_context,
                         app_deriv_wts=apply_deriv_weights,
                         fr_shft=frame_shift, l2=l2_regularize,
                         xent_reg=xent_regularize, leaky=leaky_hmm_coefficient,
@@ -222,7 +220,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         num_jobs, num_archives_processed, num_archives,
                         learning_rate, shrinkage_value,
                         num_chunk_per_minibatch_str,
-                        left_context, right_context,
                         apply_deriv_weights, min_deriv_time,
                         max_deriv_time_relative,
                         l2_regularize, xent_regularize,
@@ -261,7 +258,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     # validation set objectives
     compute_train_cv_probabilities(
         dir=dir, iter=iter, egs_dir=egs_dir,
-        left_context=left_context, right_context=right_context,
         l2_regularize=l2_regularize, xent_regularize=xent_regularize,
         leaky_hmm_coefficient=leaky_hmm_coefficient, run_opts=run_opts,
         background_process_handler=background_process_handler)
@@ -305,7 +301,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      num_archives=num_archives,
                      raw_model_string=raw_model_string,
                      egs_dir=egs_dir,
-                     left_context=left_context, right_context=right_context,
                      apply_deriv_weights=apply_deriv_weights,
                      min_deriv_time=min_deriv_time,
                      max_deriv_time_relative=max_deriv_time_relative,
@@ -444,8 +439,7 @@ def prepare_initial_acoustic_model(dir, run_opts, srand=-1):
                 {dir}/0.mdl""".format(command=run_opts.command, dir=dir))
 
 
-def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
-                                   right_context, l2_regularize,
+def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
                                    xent_regularize, leaky_hmm_coefficient,
                                    run_opts, wait=False,
                                    background_process_handler=None):
@@ -456,11 +450,9 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                 nnet3-chain-compute-prob --l2-regularize={l2} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
                 "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
-                "ark,bg:nnet3-chain-copy-egs --left-context={lc} \
-                    --right-context={rc} ark:{egs_dir}/valid_diagnostic.cegs \
+                "ark,bg:nnet3-chain-copy-egs ark:{egs_dir}/valid_diagnostic.cegs \
                     ark:- | nnet3-chain-merge-egs --minibatch-size=1:64 ark:- ark:- |" \
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
-                   lc=left_context, rc=right_context,
                    l2=l2_regularize, leaky=leaky_hmm_coefficient,
                    xent_reg=xent_regularize,
                    egs_dir=egs_dir), wait=wait,
@@ -475,7 +467,6 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                     --right-context={rc} ark:{egs_dir}/train_diagnostic.cegs \
                     ark:- | nnet3-chain-merge-egs --minibatch-size=1:64 ark:- ark:- |" \
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
-                   lc=left_context, rc=right_context,
                    l2=l2_regularize, leaky=leaky_hmm_coefficient,
                    xent_reg=xent_regularize,
                    egs_dir=egs_dir), wait=wait,
@@ -503,8 +494,7 @@ def compute_progress(dir, iter, run_opts, wait=False,
 
 
 def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_str,
-                   egs_dir, left_context, right_context,
-                   leaky_hmm_coefficient, l2_regularize,
+                   egs_dir, leaky_hmm_coefficient, l2_regularize,
                    xent_regularize, run_opts,
                    background_process_handler=None,
                    sum_to_one_penalty=0.0):
@@ -550,8 +540,7 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
                 --sum-to-one-penalty={penalty} \
                 --enforce-positive-weights=true \
                 --verbose=3 {dir}/den.fst {raw_models} \
-                "ark,bg:nnet3-chain-copy-egs --left-context={lc} \
-                    --right-context={rc} ark:{egs_dir}/combine.cegs ark:- | \
+                "ark,bg:nnet3-chain-copy-egs ark:{egs_dir}/combine.cegs ark:- | \
                     nnet3-chain-merge-egs --minibatch-size={num_chunk_per_mb} \
                     ark:- ark:- |" - \| \
                 nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl \
@@ -560,7 +549,6 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
                     combine_queue_opt=run_opts.combine_queue_opt,
                     opt_iters=(20 if sum_to_one_penalty <= 0 else 80),
                     separate_weights=(sum_to_one_penalty > 0),
-                    lc=left_context, rc=right_context,
                     l2=l2_regularize, leaky=leaky_hmm_coefficient,
                     dir=dir, raw_models=" ".join(raw_model_strings),
                     hard_enforce=(sum_to_one_penalty <= 0),
@@ -574,7 +562,6 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
     # different subsets will lead to different probs.
     compute_train_cv_probabilities(
         dir=dir, iter='final', egs_dir=egs_dir,
-        left_context=left_context, right_context=right_context,
         l2_regularize=l2_regularize, xent_regularize=xent_regularize,
         leaky_hmm_coefficient=leaky_hmm_coefficient,
         run_opts=run_opts, wait=False,

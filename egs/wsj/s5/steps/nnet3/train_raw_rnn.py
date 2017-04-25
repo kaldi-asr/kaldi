@@ -233,9 +233,11 @@ def train(args, run_opts, background_process_handler):
     try:
         model_left_context = variables['model_left_context']
         model_right_context = variables['model_right_context']
-        add_lda = common_lib.str_to_bool(variables['add_lda'])
-        include_log_softmax = common_lib.str_to_bool(
-            variables['include_log_softmax'])
+        if 'include_log_softmax' in variables:
+            include_log_softmax = common_lib.str_to_bool(
+                variables['include_log_softmax'])
+        else:
+            include_log_softmax = False
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in "
                         "{1}".format(str(e), '{0}/configs'.format(args.dir)))
@@ -252,8 +254,8 @@ def train(args, run_opts, background_process_handler):
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
 
-    if (args.stage <= -4):
-        logger.info("Initializing a basic network")
+    if (args.stage <= -4) and os.path.exists(args.dir+"/configs/init.config"):
+        logger.info("Initializing the network for computing the LDA stats")
         common_lib.run_job(
             """{command} {dir}/log/nnet_init.log \
                     nnet3-init --srand=-2 {dir}/configs/init.config \
@@ -325,7 +327,7 @@ def train(args, run_opts, background_process_handler):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (add_lda and args.stage <= -2):
+    if (args.stage <= -2) and os.path.exists(args.dir+"/configs/init.config"):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
@@ -406,8 +408,6 @@ def train(args, run_opts, background_process_handler):
                     iter),
                 shrinkage_value=shrinkage_value,
                 minibatch_size_str=args.num_chunk_per_minibatch,
-                left_context=left_context,
-                right_context=right_context,
                 min_deriv_time=min_deriv_time,
                 max_deriv_time_relative=max_deriv_time_relative,
                 momentum=args.momentum,
@@ -443,7 +443,6 @@ def train(args, run_opts, background_process_handler):
         train_lib.common.combine_models(
             dir=args.dir, num_iters=num_iters,
             models_to_combine=models_to_combine, egs_dir=egs_dir,
-            left_context=left_context, right_context=right_context,
             minibatch_size_str=args.num_chunk_per_minibatch,
             run_opts=run_opts, chunk_width=args.chunk_width,
             background_process_handler=background_process_handler,
@@ -456,7 +455,6 @@ def train(args, run_opts, background_process_handler):
         train_lib.common.compute_average_posterior(
             dir=args.dir, iter='final', egs_dir=egs_dir,
             num_archives=num_archives,
-            left_context=left_context, right_context=right_context,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts,
             get_raw_nnet_from_am=False)
 
