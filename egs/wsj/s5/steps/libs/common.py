@@ -291,9 +291,10 @@ def get_number_of_leaves_from_model(dir):
 def get_number_of_jobs(alidir):
     try:
         num_jobs = int(open('{0}/num_jobs'.format(alidir)).readline().strip())
-    except (IOError, ValueError) as e:
-        raise Exception("Exception while reading the "
-                        "number of alignment jobs: {0}".format(e))
+    except IOError, ValueError:
+        logger.error("Exception while reading the "
+                     "number of alignment jobs: ", exc_info=True)
+        raise SystemExit(1)
     return num_jobs
 
 

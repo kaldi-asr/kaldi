@@ -1,1 +1,0 @@
-../../../rt/s5/local/run_prepare_rt.sh

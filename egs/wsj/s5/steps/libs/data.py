@@ -1,13 +1,19 @@
 import os
+import sys
 
+sys.path.insert(0, 'steps')
 import libs.common as common_lib
 
+
 def get_frame_shift(data_dir):
-    frame_shift = common_lib.run_kaldi_command("utils/data/get_frame_shift.sh {0}".format(data_dir))[0]
+    frame_shift = common_lib.run_kaldi_command(
+        "utils/data/get_frame_shift.sh {0}".format(data_dir))[0]
     return float(frame_shift.strip())
+
 
 def generate_utt2dur(data_dir):
     common_lib.run_kaldi_command("utils/data/get_utt2dur.sh {0}".format(data_dir))
+
 
 def get_utt2dur(data_dir):
     generate_utt2dur(data_dir)
@@ -16,6 +22,7 @@ def get_utt2dur(data_dir):
         parts = line.split()
         utt2dur[parts[0]] = float(parts[1])
     return utt2dur
+
 
 def get_utt2uniq(data_dir):
     utt2uniq_file = '{0}/utt2uniq'.format(data_dir)
@@ -32,6 +39,7 @@ def get_utt2uniq(data_dir):
             uniq2utt[parts[1]] = [parts[0]]
     return utt2uniq, uniq2utt
 
+
 def get_num_frames(data_dir, utts = None):
     generate_utt2dur(data_dir)
     frame_shift = get_frame_shift(data_dir)
@@ -43,12 +51,15 @@ def get_num_frames(data_dir, utts = None):
         total_duration = total_duration + utt2dur[utt]
     return int(float(total_duration)/frame_shift)
 
+
 def create_data_links(file_names):
     # if file_names already exist create_data_link.pl returns with code 1
     # so we just delete them before calling create_data_link.pl
     for file_name in file_names:
         try_to_delete(file_name)
-    common_lib.run_kaldi_command(" utils/create_data_link.pl {0}".format(" ".join(file_names)))
+    common_lib.run_kaldi_command("utils/create_data_link.pl {0}"
+                                 "".format(" ".join(file_names)))
+
 
 def try_to_delete(file_name):
     try:
