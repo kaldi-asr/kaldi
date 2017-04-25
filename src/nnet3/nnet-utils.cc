@@ -470,7 +470,7 @@ void SetDropoutProportion(BaseFloat dropout_proportion,
 }
 
 
-void SetTestMode(bool test_mode,  Nnet *nnet) {
+void SetBatchnormTestMode(bool test_mode,  Nnet *nnet) {
   for (int32 c = 0; c < nnet->NumComponents(); c++) {
     Component *comp = nnet->GetComponent(c);
     BatchNormComponent *bc = dynamic_cast<BatchNormComponent*>(comp);
@@ -479,6 +479,14 @@ void SetTestMode(bool test_mode,  Nnet *nnet) {
   }
 }
 
+void SetDropoutTestMode(bool test_mode,  Nnet *nnet) {
+ for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    RandomComponent *rc = dynamic_cast<RandomComponent*>(comp);
+    if (rc != NULL)
+      rc->SetTestMode(test_mode);
+  }
+}
 
 void FindOrphanComponents(const Nnet &nnet, std::vector<int32> *components) {
   int32 num_components = nnet.NumComponents(), num_nodes = nnet.NumNodes();

@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
         "e.g.: nnet3-compute-prob 0.raw ark:valid.egs\n";
 
 
-    bool test_mode = true;
+    bool batchnorm_test_mode = true, dropout_test_mode = true;
 
     // This program doesn't support using a GPU, because these probabilities are
     // used for diagnostics, and you can just compute them with a small enough
@@ -49,8 +49,12 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
-    po.Register("test-mode", &test_mode,
+    po.Register("batchnorm-test-mode", &batchnorm_test_mode,
                 "If true, set test-mode to true on any BatchNormComponents.");
+
+    po.Register("dropout-test-mode", &dropout_test_mode,
+                "If true, set test-mode to true on any DropoutComponents and "
+                "DropoutMaskComponents.");
 
     opts.Register(&po);
 
@@ -67,8 +71,11 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     ReadKaldiObject(raw_nnet_rxfilename, &nnet);
 
-    if (test_mode)
-      SetTestMode(true, &nnet);
+    if (batchnorm_test_mode)
+      SetBatchnormTestMode(true, &nnet);
+
+    if (dropout_test_mode)
+      SetDropoutTestMode(true, &nnet);
 
     NnetComputeProb prob_computer(opts, nnet);
 

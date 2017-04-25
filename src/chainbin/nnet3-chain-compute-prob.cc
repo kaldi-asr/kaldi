@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet3-chain-compute-prob [options] <raw-nnet3-model-in> <denominator-fst> <training-examples-in>\n"
         "e.g.: nnet3-chain-compute-prob 0.mdl den.fst ark:valid.egs\n";
 
-    bool test_mode = true;
+    bool batchnorm_test_mode = true, dropout_test_mode = true;
 
     // This program doesn't support using a GPU, because these probabilities are
     // used for diagnostics, and you can just compute them with a small enough
@@ -50,8 +50,12 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
-    po.Register("test-mode", &test_mode,
+    po.Register("batchnorm-test-mode", &batchnorm_test_mode,
                 "If true, set test-mode to true on any BatchNormComponents.");
+
+    po.Register("dropout-test-mode", &dropout_test_mode,
+                "If true, set test-mode to true on any DropoutComponents and "
+                "DropoutMaskComponents.");
 
     nnet_opts.Register(&po);
     chain_opts.Register(&po);
@@ -70,8 +74,11 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
 
-    if (test_mode)
-      SetTestMode(true, &nnet);
+    if (batchnorm_test_mode)
+      SetBatchnormTestMode(true, &nnet);
+
+    if (dropout_test_mode)
+      SetDropoutTestMode(true, &nnet);
 
     fst::StdVectorFst den_fst;
     ReadFstKaldi(den_fst_rxfilename, &den_fst);

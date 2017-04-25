@@ -397,8 +397,18 @@ class RandomComponent: public Component {
   // validation-set performance), but check where else we call srand().  You'll
   // need to call srand prior to making this call.
   void ResetGenerator() { random_generator_.SeedGpu(); }
+
+  // Call this with 'true' to set 'test mode' where the behavior is different
+  // from normal mode.
+  void SetTestMode(bool test_mode) { test_mode_ = test_mode; }
+
+  RandomComponent(): test_mode_(false) { }
  protected:
   CuRand<BaseFloat> random_generator_;
+
+  // This is true if we want a different behavior for inference from  that for
+  // training.
+  bool test_mode_;
 };
 
 /**
