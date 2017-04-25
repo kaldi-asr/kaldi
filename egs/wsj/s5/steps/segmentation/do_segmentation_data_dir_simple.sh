@@ -14,7 +14,10 @@ nj=32  # works on recordings as against on speakers
 mfcc_config=conf/mfcc_hires_bp.conf
 feat_affix=bp   # Affix for the type of feature used
 
-skip_output_computation=false
+convert_data_dir_to_whole=true
+
+# Set to true if the test data has > 8kHz sampling frequency.
+do_downsampling=false
 
 stage=-1
 sad_stage=-1
@@ -32,16 +35,12 @@ extra_right_context=0
 
 frame_subsampling_factor=1  # Subsampling at the output
 
-transition_scale=1.0
+transition_scale=3.0
 loopscale=0.1
 acwt=1.0
 
-# Set to true if the test data has > 8kHz sampling frequency.
-do_downsampling=false
-
 # Segmentation configs
 segmentation_config=conf/segmentation_speech.conf
-convert_data_dir_to_whole=true
 
 echo $* 
 
@@ -82,10 +81,12 @@ if $convert_data_dir_to_whole; then
       utils/data/downsample_data_dir.sh $freq $whole_data_dir
     fi
 
+    rm -r ${test_data_dir} || true
     utils/copy_data_dir.sh ${whole_data_dir} $test_data_dir
   fi
 else
   if [ $stage -le 0 ]; then
+    rm -r ${test_data_dir} || true
     utils/copy_data_dir.sh $src_data_dir $test_data_dir
 
     if $do_downsampling; then
@@ -179,63 +180,3 @@ if [ $stage -le 7 ]; then
 
   cp $src_data_dir/wav.scp ${data_dir}_seg
 fi
-
-exit 0
-
-segments_opts="--single-speaker" 
-
-if false; then
-  mkdir -p ${seg_dir}/post_process_${data_id}
-  echo $nj > ${seg_dir}/post_process_${data_id}/num_jobs
-
-  $train_cmd JOB=1:$nj $seg_dir/log/convert_to_segments.JOB.log \
-    segmentation-init-from-ali "ark:gunzip -c $seg_dir/ali.JOB.gz |" ark:- \| \
-    segmentation-copy --label-map=$lang/phone2sad_map --frame-subsampling-factor=$frame_subsampling_factor ark:- ark:- \| \
-    segmentation-to-segments --frame-overlap=0.02 $segments_opts ark:- \
-    ark,t:${seg_dir}/post_process_${data_id}/utt2spk.JOB \
-    ${seg_dir}/post_process_${data_id}/segments.JOB
-
-  for n in `seq $nj`; do 
-    cat ${seg_dir}/post_process_${data_id}/segments.$n
-  done > ${seg_dir}/post_process_${data_id}/segments
-  
-  for n in `seq $nj`; do 
-    cat ${seg_dir}/post_process_${data_id}/utt2spk.$n
-  done > ${seg_dir}/post_process_${data_id}/utt2spk
-
-  rm -r ${data_dir}_seg || true
-  mkdir -p ${data_dir}_seg
-  
-  utils/data/subsegment_data_dir.sh ${test_data_dir} \
-    ${seg_dir}/post_process_${data_id}/segments ${data_dir}_seg
-
-  cp ${src_data_dir}/wav.scp ${data_dir}_seg
-  cp ${seg_dir}/post_process_${data_id}/utt2spk ${data_dir}_seg
-  for f in stm glm reco2file_and_channel; do
-    [ -f $src_data_dir/$f ] && cp ${src_data_dir}/$f ${data_dir}_seg
-  done
-  
-  rm ${data_dir}/{cmvn.scp,spk2utt} || true
-  utils/fix_data_dir.sh ${data_dir}_seg
-fi
-
-exit 0
-
-# Subsegment data directory
-if [ $stage -le 8 ]; then
-  utils/data/get_reco2num_frames.sh ${test_data_dir} 
-  awk '{print $1" "$2}' ${data_dir}_seg/segments | \
-    utils/apply_map.pl -f 2 ${test_data_dir}/reco2num_frames > \
-    ${data_dir}_seg/utt2max_frames
-
-  frame_shift_info=`cat $mfcc_config | steps/segmentation/get_frame_shift_info_from_config.pl`
-  utils/data/get_subsegment_feats.sh ${test_data_dir}/feats.scp \
-    $frame_shift_info ${data_dir}_seg/segments | \
-    utils/data/fix_subsegmented_feats.pl ${data_dir}_seg/utt2max_frames > \
-    ${data_dir}_seg/feats.scp
-  steps/compute_cmvn_stats.sh --fake ${data_dir}_seg
-
-  utils/fix_data_dir.sh ${data_dir}_seg
-fi
-
-

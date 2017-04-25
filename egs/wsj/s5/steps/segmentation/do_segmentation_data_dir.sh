@@ -130,11 +130,11 @@ if [ $stage -le 4 ]; then
     utils/apply_map.pl -f 2 ${test_data_dir}/reco2num_frames > \
     ${data_dir}_seg/utt2max_frames
 
-  frame_shift_info=`cat $mfcc_config | steps/segmentation/get_frame_shift_info_from_config.pl`
-  utils/data/get_subsegment_feats.sh ${test_data_dir}/feats.scp \
-    $frame_shift_info ${data_dir}_seg/segments | \
-    utils/data/fix_subsegmented_feats.pl ${data_dir}_seg/utt2max_frames > \
-    ${data_dir}_seg/feats.scp
+  #frame_shift_info=`cat $mfcc_config | steps/segmentation/get_frame_shift_info_from_config.pl`
+  #utils/data/get_subsegment_feats.sh ${test_data_dir}/feats.scp \
+  #  $frame_shift_info ${data_dir}_seg/segments | \
+  #  utils/data/fix_subsegmented_feats.pl ${data_dir}_seg/utt2max_frames > \
+  #  ${data_dir}_seg/feats.scp
   steps/compute_cmvn_stats.sh --fake ${data_dir}_seg
 
   utils/fix_data_dir.sh ${data_dir}_seg
