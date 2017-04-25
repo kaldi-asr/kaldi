@@ -116,9 +116,9 @@ void GetBootstrapWERInterval(
       BaseFloat *mean, BaseFloat *interval) {
     BaseFloat wer_accum = 0.0, wer_mult_accum = 0.0;
 
-    for (int32 i = 0; i <= replications; ++i) {
+    for (int32 i = 0; i < replications; ++i) {
       int32 num_words = 0, word_errs = 0;
-      for (int32 j = 0; j <= edit_word_per_hyp.size(); ++j) {
+      for (int32 j = 0; j < edit_word_per_hyp.size(); ++j) {
         int32 random_pos = kaldi::RandInt(0, edit_word_per_hyp.size());
         word_errs += edit_word_per_hyp[random_pos].first;
         num_words += edit_word_per_hyp[random_pos].second;
@@ -140,9 +140,9 @@ void GetBootstrapWERTwoSystemComparison(
       int32 replications, BaseFloat *p_improv) {
     int32 improv_accum = 0.0;
 
-    for (int32 i = 0; i <= replications; ++i) {
+    for (int32 i = 0; i < replications; ++i) {
       int32 word_errs = 0;
-      for (int32 j = 0; j <= edit_word_per_hyp.size(); ++j) {
+      for (int32 j = 0; j < edit_word_per_hyp.size(); ++j) {
         int32 random_pos = kaldi::RandInt(0, edit_word_per_hyp.size());
         word_errs += edit_word_per_hyp[random_pos].first -
                         edit_word_per_hyp2[random_pos].first;
