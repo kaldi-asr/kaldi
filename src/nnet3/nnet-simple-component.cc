@@ -104,6 +104,7 @@ void DropoutComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = cfl->GetValue("dim", &dim) &&
     cfl->GetValue("dropout-proportion", &dropout_proportion);
   cfl->GetValue("dropout-per-frame", &dropout_per_frame);
+  // It only makes sense to set test-mode in the config for testing purposes.
   cfl->GetValue("test-mode", &test_mode_);
     // for this stage, dropout is hard coded in
     // normal mode if not declared in config
@@ -131,8 +132,8 @@ void* DropoutComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   BaseFloat dropout = dropout_proportion_;
   KALDI_ASSERT(dropout >= 0.0 && dropout <= 1.0);
   if (test_mode_) {
-    out->Set(1.0 - dropout);
-    out->MulElements(in);
+    out->CopyFromMat(in);
+    out->Scale(1.0 - dropout);
     return NULL;
   }
   if (!dropout_per_frame_) {
