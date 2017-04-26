@@ -1,5 +1,12 @@
 #! /usr/bin/env python
 
+# Copyright 2016  Vimal Manohar
+# Apache 2.0
+
+"""This script generates a bigram G.fst lang for decoding for
+segmentation.
+"""
+
 from __future__ import print_function
 import argparse
 import logging
@@ -22,10 +29,11 @@ def get_args():
         It needs as an input classes_info file with the format:
         <class-id (1-indexed)> <initial-probability> <list-of-pairs>,
         where each pair is <destination-class>:<transition-probability>.
-        destination-class -1 is used to represent final probabilitiy.""")
+        destination-class "-1" is used to represent final probabilitiy.""",
+        formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument("classes_info", type=argparse.FileType('r'),
-                        help="File with classes_info")
+                        help="""File with classes_info.""")
     parser.add_argument("out_file", type=argparse.FileType('w'),
                         help="Output G.fst. Use '-' for stdout")
     args = parser.parse_args()
@@ -33,6 +41,16 @@ def get_args():
 
 
 class ClassInfo(object):
+    """Stores the following info about the classes.
+
+    class_id - Class ID
+    start_state - Index of the start state of the class
+    initial_prob - Probability of a transition into the start state of
+                   the class.
+    transitions - A dictionary of transition probabilities indexed by
+                  destination class id
+    """
+
     def __init__(self, class_id):
         self.class_id = class_id
         self.start_state = -1
@@ -49,6 +67,11 @@ class ClassInfo(object):
 
 
 def read_classes_info(file_handle):
+    """Read classes info from a file. It has the format:
+    <class-id (1-indexed)> <initial-probability> <list-of-pairs>,
+    where each pair is <destination-class>:<transition-probability>.
+    destination-class "-1" is used to represent final probability.
+    """
     classes_info = {}
 
     num_states = 1
@@ -117,6 +140,8 @@ def read_classes_info(file_handle):
 
 
 def print_states_for_class(class_id, classes_info, out_file):
+    """Print the states corresponding to the particular class-id to out_file.
+    """
     class_info = classes_info[class_id]
 
     state = class_info.start_state
@@ -162,8 +187,8 @@ def main():
         args = get_args()
         run(args)
     except Exception:
-        logger.error("Failed to make G.fst")
-        raise
+        logger.error("Failed to make G.fst", exc_info=True)
+        raise SystemExit(1)
     finally:
         for f in [args.classes_info, args.out_file]:
             if f is not None:

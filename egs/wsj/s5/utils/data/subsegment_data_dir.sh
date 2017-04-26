@@ -32,7 +32,6 @@ if [ $# != 4 ] && [ $# != 3 ]; then
   echo "and <text-file> is of the form <new-utt> <word1> <word2> ... <wordN>."
   echo "This script appropriately combines the <subsegments-file> with the original"
   echo "segments file, if necessary, and if not, creates a segments file."
-  echo "<text-file> is an optional argument."
   echo "e.g.:"
   echo " $0 data/train [options] exp/tri3b_resegment/segments exp/tri3b_resegment/text data/train_resegmented"
   echo " Options:"

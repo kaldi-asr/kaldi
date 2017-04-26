@@ -1,5 +1,8 @@
 #! /bin/bash
 
+# Copyright 2016  Vimal Manohar
+# Apache 2.0.
+
 set -o pipefail
 set -e
 set -u

@@ -4,9 +4,9 @@
 #                2016  Vimal Manohar
 # Apache 2.0.
 
-# This script does decoding with a neural-net.  If the neural net was built on
-# top of fMLLR transforms from a conventional system, you should provide the
-# --transform-dir option.
+# This script does forward propagation through a neural network. 
+# If the neural net was built on top of fMLLR transforms from a conventional
+# system, you should provide the --transform-dir option.
 
 # Begin configuration section.
 stage=1
@@ -15,7 +15,6 @@ nj=4 # number of jobs.  If --transform-dir set, must match that number!
 cmd=run.pl
 use_gpu=false
 frames_per_chunk=50
-ivector_scale=1.0
 iter=final
 extra_left_context=0
 extra_right_context=0
@@ -23,11 +22,13 @@ extra_left_context_initial=-1
 extra_right_context_final=-1
 frame_subsampling_factor=1
 feat_type=
-compress=false
+compress=false    # Specifies whether the output should be compressed before
+                  # dumping to disk
 online_ivector_dir=
-post_vec=
-output_name=
-use_raw_nnet=true
+priors=           # Priors vector to convert posteriors to pseudo-log
+                  # likelihoods
+output_name=      # Dump outputs for this output-node
+use_raw_nnet=true  # Use raw neural-network (without transition model)
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -149,9 +150,9 @@ if ! $use_raw_nnet; then
 else 
   output_wspecifier="ark:| copy-feats --compress=$compress ark:- ark:- | gzip -c > $dir/nnet_output.JOB.gz"
 
-  if [ ! -z $post_vec ]; then
+  if [ ! -z $priors ]; then
     if [ $stage -le 1 ]; then
-      copy-vector --binary=false $post_vec - | \
+      copy-vector --binary=false $priors - | \
         awk '{for (i = 2; i < NF; i++) { sum += i; };
       printf ("[");
       for (i = 2; i < NF; i++) { printf " "log(i/sum); };

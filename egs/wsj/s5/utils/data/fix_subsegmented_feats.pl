@@ -7,9 +7,8 @@ use warnings;
 
 # This script modifies the feats ranges and ensures that they don't 
 # exceed the max number of frames supplied in utt2max_frames.
-# utt2max_frames can be computed by using 
-# steps/segmentation/get_reco2num_frames.sh <data>
-# cut -d ' ' -f 1,2 <data>/segments | utils/apply_map.pl -f 2 <data>/reco2num_frames > <data>/utt2max_frames
+# utt2max_frames can be specified to be the utt2num_frames of the source 
+# directory (i.e. before using subsegment_data_dir.sh)
 
 (scalar @ARGV == 1) or die "Usage: fix_subsegmented_feats.pl <utt2max_frames>";
 

@@ -1,11 +1,14 @@
 #!/usr/bin/perl
 
+# Copyright 2016  Vimal Manohar
+# Apache 2.0
+
 # This script convert per-frame speech probabilities into 
 # 0-1 labels.
 
 @ARGV <= 1 or die "Usage: quantize_vector.pl [threshold]";
 
-my $t = 0.5;
+my $threshold = 0.5;
 
 if (scalar @ARGV == 1) {
   $t = $ARGV[0];
@@ -17,7 +20,7 @@ while (<STDIN>) {
 
   my $str = "$F[0]";
   for (my $i = 2; $i < $#F; $i++) {
-    if ($F[$i] >= $t) {
+    if ($F[$i] >= $threshold) {
       $str = "$str 1";
     } else {
       $str = "$str 0";

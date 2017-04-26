@@ -37,12 +37,12 @@ nj=`cat $vad_dir/num_jobs` || exit 1
 utils/split_data.sh $data_dir $nj
 
 if [ $stage -le 0 ]; then
-  # Convert the original SAD into segmentation
+  # Convert the original frame-level SAD into segmentation format
   $cmd JOB=1:$nj $dir/log/segmentation.JOB.log \
     segmentation-init-from-ali \
-    "ark:gunzip -c $vad_dir/ali.JOB.gz |" ark:- \| \
+      "ark:gunzip -c $vad_dir/ali.JOB.gz |" ark:- \| \
     segmentation-copy --label-map=$phone2sad_map \
-    --frame-subsampling-factor=$frame_subsampling_factor ark:- \
+      --frame-subsampling-factor=$frame_subsampling_factor ark:- \
     "ark:| gzip -c > $dir/orig_segmentation.JOB.gz"
 fi
 
@@ -68,25 +68,12 @@ if [ $stage -le 2 ]; then
 fi
 
 mv $segmented_data_dir/segments $segmented_data_dir/sub_segments
-utils/data/subsegment_data_dir.sh --segment-end-padding `perl -e "print $frame_overlap"` \
+utils/data/subsegment_data_dir.sh \
+  --segment-end-padding $frame_overlap \
   $data_dir $segmented_data_dir/sub_segments $segmented_data_dir
-utils/fix_data_dir.sh $segmented_data_dir
-
-utils/data/get_reco2num_frames.sh --nj $nj --cmd "$cmd" ${data_dir} 
-mv $segmented_data_dir/feats.scp $segmented_data_dir/feats.scp.tmp
-cat $segmented_data_dir/segments | awk '{print $1" "$2}' | \
-  utils/apply_map.pl -f 2 $data_dir/reco2num_frames > \
-  $segmented_data_dir/utt2max_frames
-cat $segmented_data_dir/feats.scp.tmp | \
-  utils/data/fix_subsegmented_feats.pl $segmented_data_dir/utt2max_frames > \
-  $segmented_data_dir/feats.scp
-
-utils/utt2spk_to_spk2utt.pl $segmented_data_dir/utt2spk > \
-  $segmented_data_dir/spk2utt || exit 1
 utils/fix_data_dir.sh $segmented_data_dir
 
 if [ ! -s $segmented_data_dir/utt2spk ] || [ ! -s $segmented_data_dir/segments ]; then
   echo "$0: Segmentation failed to generate segments or utt2spk!"
   exit 1
 fi
-

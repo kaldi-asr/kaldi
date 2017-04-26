@@ -1,4 +1,26 @@
 #! /usr/bin/perl
+
+# Copyright 2016  Vimal Manohar
+# Apache 2.0.
+
+# This script adds a prefix such as "rev${n}" to particular field in a 
+# text file, where $n goes from 1 to <num-reps>.
+# For speed perturbed utterances, it adds the "prefix" as an affix after
+# the speed perturbation prefix.
+
+# e.g. get_reverb_scp.pl -f 1-2 2 <(echo "foo foo-1")
+# rev1_foo rev1_foo1
+# rev2_foo rev2_foo1
+#                   
+# e.g. get_reverb_scp.pl -f 1 3 <(echo "foo A B")
+# rev1_foo A B
+# rev2_foo A B
+# rev3_foo A B
+
+# e.g. get_reverb_scp.pl -f 1-2 2 <(echo "sp1.1-foo foo-1")
+# sp1.1-rev1_foo rev1_foo1
+# sp1.1-rev2_foo rev2_foo1
+
 use strict;
 use warnings;
 

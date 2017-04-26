@@ -7,8 +7,7 @@
 # the wav.scp to perturb the volume (typically useful for training data when
 # using systems that don't have cepstral mean normalization).
 
-reco2vol=
-force=false
+reco2vol=   # Use these volumes for the recording
 scale_low=0.125
 scale_high=2
 

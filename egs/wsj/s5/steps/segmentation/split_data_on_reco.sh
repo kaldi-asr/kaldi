@@ -1,8 +1,13 @@
 #! /bin/bash
 
+# Copyright 2016  Vimal Manohar
+# Apache 2.0
+
 set -e 
 
 if [ $# -ne 3 ]; then
+  echo "This script splits <data-dir> on recording-level in the same "
+  echo "way as <ref-data-dir> is split."
   echo "Usage: split_data_on_reco.sh <ref-data-dir> <data-dir> <nj>"
   exit 1
 fi

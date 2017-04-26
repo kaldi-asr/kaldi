@@ -145,7 +145,6 @@ def get_args():
                         steps/nnet3/get_saturation.pl) exceeds this threshold
                         we scale the parameter matrices with the
                         shrink-value.""")
-
     # RNN-specific training options
     parser.add_argument("--trainer.deriv-truncate-margin", type=int,
                         dest='deriv_truncate_margin', default=None,
@@ -413,10 +412,6 @@ def train(args, run_opts, background_process_handler):
                                                   num_archives_to_process,
                                                   args.initial_effective_lrate,
                                                   args.final_effective_lrate)
-
-    if args.dropout_schedule is not None:
-        dropout_schedule = common_train_lib.parse_dropout_option(
-            num_archives_to_process, args.dropout_schedule)
 
     min_deriv_time = None
     max_deriv_time_relative = None

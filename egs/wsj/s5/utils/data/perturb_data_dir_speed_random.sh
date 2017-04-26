@@ -54,10 +54,4 @@ utils/data/combine_data.sh $destdir ${speed_dirs} || exit 1
 rm -r $speed_dirs ${srcdir}/split${num_speeds}reco
 
 echo "$0: generated $num_speeds-way speed-perturbed version of random subsets of data in $srcdir, in $destdir"
-if [ -f $srcdir/text ]; then
-  utils/validate_data_dir.sh --no-feats $destdir
-else
-  utils/validate_data_dir.sh --no-feats --no-text $destdir
-fi
-
-
+utils/validate_data_dir.sh --no-feats --no-text $destdir

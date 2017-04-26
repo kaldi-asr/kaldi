@@ -38,7 +38,7 @@ if [ ! -s $dir/utt2dur ]; then
   utils/data/get_utt2dur.sh $dir 1>&2
 fi
 
-if [ ! -f $dir/frame_shift ]; then
+if [ ! -s $dir/frame_shift ]; then
   if [ ! -f $dir/feats.scp ]; then
     echo "$0: $dir/feats.scp does not exist" 1>&2
     exit 1
@@ -53,7 +53,8 @@ if [ ! -f $dir/frame_shift ]; then
     exit 1
   fi
 
-  frame_shift=$(head -n 10 $dir/utt2dur | paste - $temp | awk '{ dur += $2; frames += $4; } END { shift = dur / frames; if (shift > 0.01 && shift < 0.0102) shift = 0.01; print shift; }') || exit 1;
+  frame_shift=$(head -n 10 $dir/utt2dur | paste - $temp | \
+    awk '{ dur += $2; frames += $4; } END { shift = dur / frames; if (shift > 0.01 && shift < 0.0102) shift = 0.01; print shift; }') || exit 1;
 
   echo $frame_shift > $dir/frame_shift
   rm $temp

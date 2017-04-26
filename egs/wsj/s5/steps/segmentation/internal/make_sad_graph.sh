@@ -1,14 +1,18 @@
 #!/bin/bash
 
 # Copyright 2016    Vimal Manohar
+# Apache 2.0
+
+# This script makes HCLG.fst graph for segmentation.
+# It is based off the script utils/mkgraph.sh.
 
 # Begin configuration section.
 stage=0
 cmd=run.pl
 iter=final  # use $iter.mdl from $model_dir
-tree=tree
-tscale=1.0 # transition scale.
-loopscale=0.1 # scale for self-loops.
+tree=tree   # The name of the context-dependency file
+tscale=1.0  # transition scale.
+loopscale=0.1   # scale for self-loops.
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging

@@ -167,7 +167,6 @@ def process_args(args):
                         "directory which is the output of "
                         "make_configs.py script")
 
-
     if args.transform_dir is None:
         args.transform_dir = args.ali_dir
 
@@ -360,10 +359,6 @@ def train(args, run_opts, background_process_handler):
                                                   args.initial_effective_lrate,
                                                   args.final_effective_lrate)
 
-    if args.dropout_schedule is not None:
-        dropout_schedule = common_train_lib.parse_dropout_option(
-            num_archives_to_process, args.dropout_schedule)
-
     min_deriv_time = None
     max_deriv_time_relative = None
     if args.deriv_truncate_margin is not None:
@@ -412,8 +407,8 @@ def train(args, run_opts, background_process_handler):
                 minibatch_size_str=args.num_chunk_per_minibatch,
                 num_hidden_layers=num_hidden_layers,
                 add_layers_period=args.add_layers_period,
-                max_left_context = left_context,
-                max_right_context = right_context,
+                left_context=left_context,
+                right_context=right_context,
                 min_deriv_time=min_deriv_time,
                 max_deriv_time_relative=max_deriv_time_relative,
                 momentum=args.momentum,

@@ -1,4 +1,12 @@
-#!/bin/bash
+#! /bin/bash
+
+# Copyright 2016  Vimal Manohar
+# Apache 2.0.
+
+# This script does nnet3-based speech activity detection given an input kaldi
+# directory and outputs an output kaldi directory.
+# This script can also do music detection and other similar segmentation
+# using appropriate options such as --output-name output-music.
 
 set -e 
 set -o pipefail
@@ -8,7 +16,9 @@ set -u
 . cmd.sh
 
 affix=  # Affix for the segmentation
-nj=32  # works on recordings as against on speakers
+nj=32
+stage=-1
+sad_stage=-1
 
 # Feature options (Must match training)
 mfcc_config=conf/mfcc_hires_bp.conf
@@ -16,14 +26,15 @@ feat_affix=bp   # Affix for the type of feature used
 
 convert_data_dir_to_whole=true
 
-# Set to true if the test data has > 8kHz sampling frequency.
+# Set to true if the test data needs to be downsampled. 
+# The appropriate sample-frequency is read from the mfcc_config.
 do_downsampling=false
 
-stage=-1
-sad_stage=-1
 output_name=output-speech   # The output node in the network
 sad_name=sad    # Base name for the directory storing the computed loglikes
+                # Can be music for music detection
 segmentation_name=segmentation  # Base name for the directory doing segmentation
+                                # Can be segmentation_music for music detection
 
 # SAD network config
 iter=final  # Model iteration to use
@@ -35,9 +46,9 @@ extra_right_context=0
 
 frame_subsampling_factor=1  # Subsampling at the output
 
+# Decoding options
 transition_scale=3.0
 loopscale=0.1
-acwt=1.0
 
 # Segmentation configs
 segmentation_config=conf/segmentation_speech.conf
@@ -53,9 +64,10 @@ if [ $# -ne 5 ]; then
 fi
 
 src_data_dir=$1   # The input data directory that needs to be segmented.
-                  # Any segments in that will be ignored.
+                  # If convert_data_dir_to_whole is true, any segments in that will be ignored.
 sad_nnet_dir=$2   # The SAD neural network
-lang=$3
+lang=$3           # Directory with information about the classes, using which
+                  # a simple HMM topology is created.
 mfcc_dir=$4       # The directory to store the features
 data_dir=$5       # The output data directory will be ${data_dir}_seg
 
@@ -65,9 +77,6 @@ feat_affix=${feat_affix:+_$feat_affix}
 data_id=`basename $data_dir`
 sad_dir=${sad_nnet_dir}/${sad_name}${affix}_${data_id}_whole${feat_affix}
 seg_dir=${sad_nnet_dir}/${segmentation_name}${affix}_${data_id}_whole${feat_affix}
-
-export PATH="$KALDI_ROOT/tools/sph2pipe_v2.5/:$PATH"
-[ ! -z `which sph2pipe` ]
 
 test_data_dir=data/${data_id}${feat_affix}_hires
 
@@ -106,19 +115,20 @@ fi
 
 post_vec=$sad_nnet_dir/post_${output_name}.vec
 if [ ! -f $sad_nnet_dir/post_${output_name}.vec ]; then
-  echo "$0: Could not find $sad_nnet_dir/post_${output_name}.vec. See the last stage of local/segmentation/run_train_sad.sh"
+  echo "$0: Could not find $sad_nnet_dir/post_${output_name}.vec. "
+  echo "Re-run the corresponding stage in the training script."
+  echo "See local/segmentation/train_lstm_sad_music.sh for example."
   exit 1
 fi
 
-create_topo=true
-if $create_topo; then
-  if [ ! -f $lang/classes_info.txt ]; then
-    echo "$0: Could not find $lang/topo or $lang/classes_info.txt"
-    exit 1
-  else
-    steps/segmentation/internal/prepare_simple_hmm_lang.py \
-      $lang/classes_info.txt $lang
-  fi
+if [ ! -f $lang/classes_info.txt ]; then
+  echo "$0: Could not find $lang/topo or $lang/classes_info.txt"
+  exit 1
+fi
+
+if [ $stage -le 2 ]; then
+  steps/segmentation/internal/prepare_simple_hmm_lang.py \
+    $lang/classes_info.txt $lang
 fi
 
 if [ $stage -le 3 ]; then
@@ -144,7 +154,6 @@ if [ $stage -le 4 ]; then
 fi
 
 graph_dir=${sad_nnet_dir}/graph_${output_name}
-
 if [ $stage -le 5 ]; then
   cp -r $lang $graph_dir
 

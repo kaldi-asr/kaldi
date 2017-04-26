@@ -1,5 +1,12 @@
 #! /usr/bin/perl
 
+# Copyright 2016  Vimal Manohar
+# Apache 2.0
+
+# This script reads an archive of vectors in text format and 
+# writes an archive of the maximum element of the vector indexed by the 
+# same key.
+
 use warnings;
 use strict;
 

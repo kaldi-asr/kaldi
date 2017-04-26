@@ -1,5 +1,8 @@
 #! /bin/bash
 
+# Copyright 2016  Vimal Manohar
+# Apache 2.0
+
 # This scripts converts a data directory into a "whole" data directory
 # by removing the segments and using the recordings themselves as 
 # utterances

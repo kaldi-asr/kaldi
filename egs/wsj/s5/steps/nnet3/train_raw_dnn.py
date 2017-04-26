@@ -299,10 +299,6 @@ def train(args, run_opts, background_process_handler):
                                                   args.initial_effective_lrate,
                                                   args.final_effective_lrate)
 
-    if args.dropout_schedule is not None:
-        dropout_schedule = common_train_lib.parse_dropout_option(
-            num_archives_to_process, args.dropout_schedule)
-
     logger.info("Training will run for {0} epochs = "
                 "{1} iterations".format(args.num_epochs, num_iters))
 

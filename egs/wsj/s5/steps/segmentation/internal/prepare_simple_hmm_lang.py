@@ -1,5 +1,11 @@
 #! /usr/bin/env python
 
+# Copyright 2016  Vimal Manohar
+# Apache 2.0
+
+"""Prepares a lang directory with a simple HMM topology for segmentation.
+"""
+
 from __future__ import print_function
 import argparse
 import logging
@@ -22,13 +28,14 @@ logger.addHandler(handler)
 
 def get_args():
     parser = argparse.ArgumentParser(
-        description="""This script generates a lang directory for decoding with
-        simple HMM model.
-        It needs as an input classes_info file with the
-        format:
-        <class-id (1-indexed)> <initial-probability> <self-loop-probability> <min-duration> <list-of-pairs>,
-        where each pair is <destination-class>:<transition-probability>.
-        destination-class -1 is used to represent final probabilitiy.""")
+        description="This script generates a lang directory for decoding with "
+        "simple HMM model.\n"
+        "It needs as an input classes_info file with the format:\n"
+        "<class-id (1-indexed)> <initial-probability> <self-loop-probability> "
+        "<min-duration> <list-of-pairs>,\n"
+        "where each pair is <destination-class>:<transition-probability>.\n"
+        "destination-class -1 is used to represent final probabilitiy.",
+        formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument("classes_info", type=argparse.FileType('r'),
                         help="File with classes_info")

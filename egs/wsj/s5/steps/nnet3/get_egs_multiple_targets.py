@@ -4,6 +4,12 @@
 #           2016    Vimal Manohar
 # Apache 2.0.
 
+"""This script is a more general version of get_egs_targets.sh that
+supports getting egs with multiple outputs (targets), where each output
+can be either dense matrix or sparse matrix (posteriors).
+It also supports the option of per-frame deriv weights for each output
+separately."""
+
 from __future__ import print_function
 import os
 import argparse
@@ -34,8 +40,18 @@ def get_args():
     parser = argparse.ArgumentParser(
         description="""Generates training examples used to train the 'nnet3'
         network (and also the validation examples used for diagnostics),
-        and puts them in separate archives.""",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        and puts them in separate archives.
+
+        This script is a more general version of get_egs_targets.sh that
+        supports getting egs with multiple outputs (targets), where each output
+        can be either dense matrix or sparse matrix (posteriors).  It also
+        supports the option of per-frame deriv weights for each output
+        separately.
+
+        See the option --targets-parameters to see how multiple targets
+        can be specified.
+        """,
+        formatter_class=argparse.RawHelpTextFormatter)
 
     parser.add_argument("--cmd", type=str, default="run.pl",
                         help="Specifies the script to launch jobs."
@@ -146,15 +162,28 @@ def get_args():
                         --targets-rspecifier=<targets_rspecifier>
                             # rspecifier for the targets, can be alignment or
                             # matrix.
-                        --num-targets=<n>
+                        --dim=<n>
                             # targets dimension. required for sparse feats.
-                        --target-type=<dense|sparse>""")
+                        --target-type=<dense|sparse>
+                        --output-name=<str>
+                        --compress=<true|false>
+                            # Specifies whether the
+                            # features must be compressed
+                        --compress-format
+                            # Format for compressing target.
+                        --deriv-weights-scp
+                            # Per-frame deriv weights for this output
+                        --scp2ark-cmd
+                            # The command that is used to convert
+                            # targets scp to archive. e.g. An scp of
+                            # alignments can be converted to posteriors using
+                            # ali-to-post""")
 
     parser.add_argument("--dir", type=str, required=True,
                         help="Directory to store the examples")
 
-    print(' '.join(sys.argv))
-    print(sys.argv)
+    print(' '.join(sys.argv), file=sys.stderr)
+    print(sys.argv, file=sys.stderr)
 
     args = parser.parse_args()
 
@@ -231,20 +260,40 @@ def parse_targets_parameters_array(para_array):
 
     for t in targets_parameters:
         if not os.path.isfile(t.targets_scp):
-            raise Exception("Expected {0} to exist.".format(t.targets_scp))
+            raise RuntimeError(
+                "Expected {0} to exist.".format(t.targets_scp))
 
         if t.target_type == "dense":
             dim = common_lib.get_feat_dim_from_scp(t.targets_scp)
             if t.dim != -1 and t.dim != dim:
-                raise Exception('Mismatch in --dim provided and feat dim for '
-                                'file {0}; {1} vs {2}'.format(t.targets_scp,
-                                                              t.dim, dim))
+                raise RuntimeError(
+                    'Mismatch in --dim provided and feat dim for '
+                    'file {0}; {1} vs {2}'.format(t.targets_scp,
+                                                  t.dim, dim))
             t.dim = -dim
 
     return targets_parameters
 
 
 def sample_utts(feat_dir, num_utts_subset, min_duration, exclude_list=None):
+    """Samples a subset of utterances that satisfy the min_duration constrain
+    and returns it as a list.
+
+    Arguments:
+        feat_dir - Kaldi data directory
+        num_utts_subset -- An integer specifying the number of utterances to be
+            sampled. If it is None, then all the utterances are included
+            (i.e. no sampling) that satisfy the minimum duration constraint
+            and are not in the exclude_list
+        min_duration -- Minimum duration (in seconds) of utterances to
+            be selected.
+        exclude_list -- List of utterance that are excluded from the output
+            list.
+
+    If utt2uniq is present in the data directory, all perturbations of the
+    utterance are also sampled or excluded.
+    """
+
     utt2durs_dict = data_lib.get_utt2dur(feat_dir)
     utt2durs = utt2durs_dict.items()
     utt2uniq, uniq2utt = data_lib.get_utt2uniq(feat_dir)
@@ -297,11 +346,11 @@ def sample_utts(feat_dir, num_utts_subset, min_duration, exclude_list=None):
 
 
 def write_list(listd, file_name):
-    file_handle = open(file_name, 'w')
+    """Write the contents of the list with one item per line."""
     assert(type(listd) == list)
-    for item in listd:
-        file_handle.write(str(item)+"\n")
-    file_handle.close()
+    with file_handle as open(file_name, 'w'):
+        for item in listd:
+            print(str(item), file=file_handle)
 
 
 def get_max_open_files():
@@ -441,6 +490,9 @@ def get_egs_options(targets_parameters, frames_per_eg,
 
 
 def get_targets_list(targets_parameters, subset_list):
+    """Returns the arguments to nnet3-get-egs-multiple-targets corresponding "
+    to all the targets.
+    """
     targets_list = []
     for t in targets_parameters:
         rspecifier = "ark,s,cs:" if t.scp2ark_cmd != "" else "scp,s,cs:"

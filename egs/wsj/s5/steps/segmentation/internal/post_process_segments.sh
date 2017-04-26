@@ -3,6 +3,9 @@
 # Copyright 2015-16  Vimal Manohar
 # Apache 2.0.
 
+# This script post-processes per-frame SAD labels into kaldi segments
+# and outputs a new data directory.
+
 set -e 
 set -o pipefail 
 set -u

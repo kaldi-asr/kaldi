@@ -1,5 +1,8 @@
 #! /usr/bin/env python
 
+# Copyright 2016  Vimal Manohar
+# Apache 2.0.
+
 """This script prints a mapping from phones to speech
 activity labels
 0 for silence, 1 for speech, 2 for noise and 3 for OOV.
@@ -45,7 +48,8 @@ def get_args():
         An initial SAD map can be provided using --init-sad-map to override
         the above default mapping of phones. This is useful to say map
         <UNK> or noise phones <NSN> to separate SAD labels.
-        """)
+        """,
+        formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument("--init-sad-map", type=str, action=common_lib.NullstrToNoneAction,
                         help="""Initial SAD map that will be used to override
@@ -127,6 +131,7 @@ def main():
         if l == 3 and args.map_unk_to_speech:
             l = 1
         print ("{0} {1}".format(x, l))
+
 
 if __name__ == "__main__":
     main()

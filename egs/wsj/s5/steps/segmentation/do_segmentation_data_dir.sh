@@ -1,4 +1,13 @@
-#!/bin/bash
+#! /bin/bash
+
+# Copyright 2016  Vimal Manohar
+# Apache 2.0.
+
+# This script is deprecated!
+# This script does nnet3-based speech activity detection given an input kaldi
+# directory and outputs an output kaldi directory.
+# This script can also do music detection using appropriate options 
+# such as --output-name output-music.
 
 set -e 
 set -o pipefail
@@ -7,18 +16,22 @@ set -u
 . path.sh
 . cmd.sh
 
-affix=  # Affix for the segmentation
-reco_nj=32  # works on recordings as against on speakers
+affix=      # Affix for the segmentation
+nj=4
+stage=-1
+sad_stage=-1
 
-# Feature options (Must match training)
+# Feature options (Must match feats used to train nnet3 model)
+# Applicable only when convert_data_dir_to_whole is true
+convert_data_dir_to_whole=true
 mfcc_config=conf/mfcc_hires_bp.conf
 feat_affix=bp   # Affix for the type of feature used
 
-stage=-1
-sad_stage=-1
-output_name=output-speech   # The output node in the network
+output_name=output-speech   # The output node in the network. 
 sad_name=sad    # Base name for the directory storing the computed loglikes
+                # Can be music for music detection
 segmentation_name=segmentation  # Base name for the directory doing segmentation
+                                # Can be segmentation_music for music detection
 
 # SAD network config
 iter=final  # Model iteration to use
@@ -28,18 +41,20 @@ iter=final  # Model iteration to use
 extra_left_context=0  # Set to some large value, typically 40 for LSTM (must match training)
 extra_right_context=0  
 
-frame_subsampling_factor=3  # Subsampling at the output
+frame_subsampling_factor=3    # Subsampling at the output
 
-# Set to true if the test data has > 8kHz sampling frequency.
+# Set to true if the test data has > 8kHz sampling frequency and 
+# requires downsampling
 do_downsampling=false
 
-# Segmentation configs
-min_silence_duration=30
-min_speech_duration=30
-sil_prior=0.5
-speech_prior=0.5
-segmentation_config=conf/segmentation_speech.conf
-convert_data_dir_to_whole=true
+# Segmentation config
+min_silence_duration=30   # Minimum duration of silence (in 10ms units)
+min_speech_duration=30    # Minimum duratoin of speech (in 10ms units)
+sil_prior=0.5       # Prior probability on silence
+speech_prior=0.5    # Prior probability on speech
+
+# Post-processing options passed to post_process_sad_to_segments.sh
+segmentation_config=conf/segmentation_speech.conf   
 
 echo $* 
 
@@ -52,7 +67,7 @@ if [ $# -ne 4 ]; then
 fi
 
 src_data_dir=$1   # The input data directory that needs to be segmented.
-                  # Any segments in that will be ignored.
+                  # If convert_data_dir_to_whole is true, any segments in that will be ignored.
 sad_nnet_dir=$2   # The SAD neural network
 mfcc_dir=$3       # The directory to store the features
 data_dir=$4       # The output data directory will be ${data_dir}_seg
@@ -64,12 +79,9 @@ data_id=`basename $data_dir`
 sad_dir=${sad_nnet_dir}/${sad_name}${affix}_${data_id}_whole${feat_affix}
 seg_dir=${sad_nnet_dir}/${segmentation_name}${affix}_${data_id}_whole${feat_affix}
 
-export PATH="$KALDI_ROOT/tools/sph2pipe_v2.5/:$PATH"
-[ ! -z `which sph2pipe` ]
-
-whole_data_dir=${sad_dir}/${data_id}_whole
-
 if $convert_data_dir_to_whole; then
+  whole_data_dir=${sad_dir}/${data_id}_whole
+
   if [ $stage -le 0 ]; then
     utils/data/convert_data_dir_to_whole.sh $src_data_dir ${whole_data_dir}
     
@@ -82,7 +94,7 @@ if $convert_data_dir_to_whole; then
   fi
 
   if [ $stage -le 1 ]; then
-    steps/make_mfcc.sh --mfcc-config $mfcc_config --nj $reco_nj --cmd "$train_cmd" \
+    steps/make_mfcc.sh --mfcc-config $mfcc_config --nj $nj --cmd "$train_cmd" \
       ${whole_data_dir}${feat_affix}_hires exp/make_hires/${data_id}_whole${feat_affix} $mfcc_dir
     steps/compute_cmvn_stats.sh ${whole_data_dir}${feat_affix}_hires exp/make_hires/${data_id}_whole${feat_affix} $mfcc_dir
     utils/fix_data_dir.sh ${whole_data_dir}${feat_affix}_hires
@@ -94,13 +106,15 @@ fi
 
 post_vec=$sad_nnet_dir/post_${output_name}.vec
 if [ ! -f $sad_nnet_dir/post_${output_name}.vec ]; then
-  echo "$0: Could not find $sad_nnet_dir/post_${output_name}.vec. See the last stage of local/segmentation/run_train_sad.sh"
+  echo "$0: Could not find $sad_nnet_dir/post_${output_name}.vec."
+  echo "Re-run the corresponding stage in the training script."
+  echo "See local/segmentation/train_lstm_sad_music.sh for example."
   exit 1
 fi
 
 if [ $stage -le 2 ]; then
-  steps/nnet3/compute_output.sh --nj $reco_nj --cmd "$train_cmd" \
-    --post-vec "$post_vec" \
+  steps/nnet3/compute_output.sh --nj $nj --cmd "$train_cmd" \
+    --priors "$post_vec" \
     --iter $iter \
     --extra-left-context $extra_left_context \
     --extra-right-context $extra_right_context \
@@ -120,22 +134,4 @@ if [ $stage -le 3 ]; then
     --speech-prior $speech_prior \
     --segmentation-config $segmentation_config --cmd "$train_cmd" \
     ${test_data_dir} $sad_dir $seg_dir ${data_dir}_seg
-fi
-
-# Subsegment data directory
-if [ $stage -le 4 ]; then
-  rm ${data_dir}_seg/feats.scp || true
-  utils/data/get_reco2num_frames.sh --cmd "$train_cmd" --nj $reco_nj ${test_data_dir} 
-  awk '{print $1" "$2}' ${data_dir}_seg/segments | \
-    utils/apply_map.pl -f 2 ${test_data_dir}/reco2num_frames > \
-    ${data_dir}_seg/utt2max_frames
-
-  #frame_shift_info=`cat $mfcc_config | steps/segmentation/get_frame_shift_info_from_config.pl`
-  #utils/data/get_subsegment_feats.sh ${test_data_dir}/feats.scp \
-  #  $frame_shift_info ${data_dir}_seg/segments | \
-  #  utils/data/fix_subsegmented_feats.pl ${data_dir}_seg/utt2max_frames > \
-  #  ${data_dir}_seg/feats.scp
-  steps/compute_cmvn_stats.sh --fake ${data_dir}_seg
-
-  utils/fix_data_dir.sh ${data_dir}_seg
 fi

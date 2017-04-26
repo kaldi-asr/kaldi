@@ -4,6 +4,8 @@
 # Apache 2.0.
 
 if [ $# -ne 2 ]; then
+  echo "This script downsamples a data directory to specific frequency "
+  echo "using sox."
   echo "Usage: $0 <frequency> <data-dir>"
   exit 1
 fi

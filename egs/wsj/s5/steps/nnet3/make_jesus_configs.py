@@ -141,6 +141,73 @@ for name in [ "jesus_hidden_dim", "jesus_forward_output_dim", "jesus_forward_inp
                 printable_name, old_val, new_val, args.num_jesus_blocks))
         setattr(args, name, new_val);
 
+# this is a bit like a struct, initialized from a string, which describes how to
+# set up the statistics-pooling and statistics-extraction components.
+# An example string is 'mean(-99:3:9::99)', which means, compute the mean of
+# data within a window of -99 to +99, with distinct means computed every 9 frames
+# (we round to get the appropriate one), and with the input extracted on multiples
+# of 3 frames (so this will force the input to this layer to be evaluated
+# every 3 frames).  Another example string is 'mean+stddev(-99:3:9:99)',
+# which will also cause the standard deviation to be computed.
+class StatisticsConfig:
+    # e.g. c = StatisticsConfig('mean+stddev(-99:3:9:99)', 400, 'jesus1-forward-output-affine')
+    def __init__(self, config_string, input_dim, input_name):
+        self.input_dim = input_dim
+        self.input_name = input_name
+
+        m = re.search("(mean|mean\+stddev)\((-?\d+):(-?\d+):(-?\d+):(-?\d+)\)",
+                      config_string)
+        if m == None:
+            sys.exit("Invalid splice-index or statistics-config string: " + config_string)
+        self.output_stddev = (m.group(1) != 'mean')
+        self.left_context = -int(m.group(2))
+        self.input_period = int(m.group(3))
+        self.stats_period = int(m.group(4))
+        self.right_context = int(m.group(5))
+        if not (self.left_context > 0 and self.right_context > 0 and
+                self.input_period > 0 and self.stats_period > 0 and
+                self.left_context % self.stats_period == 0 and
+                self.right_context % self.stats_period == 0 and
+                self.stats_period % self.input_period == 0):
+            sys.exit("Invalid configuration of statistics-extraction: " + config_string)
+
+    # OutputDim() returns the output dimension of the node that this produces.
+    def OutputDim(self):
+        return self.input_dim * (2 if self.output_stddev else 1)
+
+    # OutputDims() returns an array of output dimensions, consisting of
+    # [ input-dim ] if just "mean" was specified, otherwise
+    # [ input-dim input-dim ]
+    def OutputDims(self):
+        return [ self.input_dim, self.input_dim ] if self.output_stddev else [ self.input_dim ]
+
+    # Descriptor() returns the textual form of the descriptor by which the
+    # output of this node is to be accessed.
+    def Descriptor(self):
+        return 'Round({0}-pooling-{1}-{2}, {3})'.format(self.input_name, self.left_context, self.right_context,
+                                                       self.stats_period)
+
+    # This function writes the configuration lines need to compute the specified
+    # statistics, to the file f.
+    def WriteConfigs(self, f):
+        print('component name={0}-extraction-{1}-{2} type=StatisticsExtractionComponent input-dim={3} '
+              'input-period={4} output-period={5} include-variance={6} '.format(
+                self.input_name, self.left_context, self.right_context,
+                self.input_dim, self.input_period, self.stats_period,
+                ('true' if self.output_stddev else 'false')), file=f)
+        print('component-node name={0}-extraction-{1}-{2} component={0}-extraction-{1}-{2} input={0} '.format(
+                self.input_name, self.left_context, self.right_context), file=f)
+        stats_dim = 1 + self.input_dim * (2 if self.output_stddev else 1)
+        print('component name={0}-pooling-{1}-{2} type=StatisticsPoolingComponent input-dim={3} '
+              'input-period={4} left-context={1} right-context={2} num-log-count-features=0 '
+              'output-stddevs={5} '.format(self.input_name, self.left_context, self.right_context,
+                                           stats_dim, self.stats_period,
+                                           ('true' if self.output_stddev else 'false')),
+              file=f)
+        print('component-node name={0}-pooling-{1}-{2} component={0}-pooling-{1}-{2} input={0}-extraction-{1}-{2} '.format(
+                self.input_name, self.left_context, self.right_context), file=f)
+
+
 
 
 ## Work out splice_array

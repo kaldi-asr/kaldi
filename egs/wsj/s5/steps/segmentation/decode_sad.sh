@@ -1,5 +1,12 @@
 #! /bin/bash
 
+# Copyright 2016  Vimal Manohar
+# Apache 2.0.
+
+# This script does Viterbi decoding using a matrix of frame log-likelihoods 
+# with the columns corresponding to the pdfs.
+# It is a wrapper around the binary decode-faster-mapped.
+
 set -e
 set -o pipefail
 
@@ -7,7 +14,7 @@ cmd=run.pl
 acwt=0.1
 beam=8
 max_active=1000
-get_pdfs=false
+write_pdf_alignment=false   # As against word (usually phone) alignment
 iter=final
 
 . path.sh
@@ -45,7 +52,7 @@ decoder_opts+=(--acoustic-scale=$acwt --beam=$beam --max-active=$max_active)
 
 ali="ark:| ali-to-phones --per-frame $srcdir/$iter.mdl ark:- ark:- | gzip -c > $dir/ali.JOB.gz"
 
-if $get_pdfs; then
+if $write_pdf_alignment; then
   ali="ark:| ali-to-pdf $srcdir/$iter.mdl ark:- ark:- | gzip -c > $dir/ali.JOB.gz"
 fi
 

@@ -1,27 +1,39 @@
 #! /bin/bash
 
+# Copyright 2016  Vimal Manohar
+# Apache 2.0.
+
+# This script does Viterbi decoding using frame log-likelihoods corresponding
+# to non-speech and speech and post-processes the alignments into 
+# kaldi segments.
+
 set -e 
 set -o pipefail 
 set -u
 
 stage=-1
-segmentation_config=conf/segmentation.conf
 cmd=run.pl
+
+segmentation_config=conf/segmentation.conf  # Post-processsing options
 
 # Viterbi options
 min_silence_duration=30   # minimum number of frames for silence
 min_speech_duration=30    # minimum number of frames for speech
-frame_subsampling_factor=1
-nonsil_transition_probability=0.1
-sil_transition_probability=0.1
-sil_prior=0.5
-speech_prior=0.5
-use_unigram_lm=true
+frame_subsampling_factor=1  # output-frame rate TODO: Read it from somewhere else
+nonsil_transition_probability=0.1   # transition probability out of non-silence state
+sil_transition_probability=0.1      # transition probability out of silence state
+sil_prior=0.5       # prior probability on silence
+speech_prior=0.5    # prior probability on speech
+use_unigram_lm=true   # If true, uses unigram LM 
+                      # (i.e. just the above priors on silence and speech)
+                      # If false, then a bigram LM with probabilities 
+                      # defined for all 4 transitions involving speech and 
+                      # nonspeech (TODO: Make this configurable)
 
 # Decoding options
 acwt=1
 beam=10
-max_active=7000
+max_active=1000
 
 . utils/parse_options.sh
 
