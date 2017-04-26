@@ -61,11 +61,11 @@ def load_cifar100_data_batch(datafile, num_images_in_batch):
 
 def image_to_feat_matrix(img):
   mat = [0]*H  # 32 * 96
-  for row in range(H):
-    mat[row] = [0]*C*W
+  for i in range(W):
+    mat[i] = [0]*C*H
     for ch in range(C):
-      for col in range(W):
-        mat[row][col*C+ch] = img[ch][row][col]
+      for j in range(H):
+        mat[i][j*C+ch] = img[ch][j][i]
   return mat
 
 def write_kaldi_matrix(file_handle, matrix, key):
