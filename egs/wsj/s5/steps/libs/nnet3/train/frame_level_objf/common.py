@@ -27,6 +27,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      raw_model_string, egs_dir,
                      momentum, max_param_change,
                      shuffle_buffer_size, minibatch_size_str,
+                     image_augmentation_opts,
                      run_opts, frames_per_eg=-1,
                      min_deriv_time=None, max_deriv_time_relative=None):
     """ Called from train_one_iteration(), this model does one iteration of
@@ -74,6 +75,13 @@ def train_new_models(dir, iter, srand, num_jobs,
                          (" --write-cache={0}/cache.{1}".format(dir, iter + 1)
                           if job == 1 else ""))
 
+        if image_augmentation_opts:
+            image_augmentation_cmd = (
+                'nnet3-egs-augment-image {aug_opts} ark:- ark:- |'.format(
+                aug_opts=image_augmentation_opts))
+        else:
+            image_augmentation_cmd = ''
+
         process_handle = common_lib.run_job(
             """{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
                     nnet3-train {parallel_train_opts} {cache_io_opts} \
@@ -84,7 +92,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                     "ark,bg:nnet3-copy-egs {frame_opts} """
             """ark:{egs_dir}/egs.{archive_index}.ark ark:- |"""
             """nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} """
-            """--srand={srand} ark:- ark:- | """
+            """--srand={srand} ark:- ark:- | {aug_cmd} """
             """nnet3-merge-egs --minibatch-size={minibatch_size_str} """
             """--measure-output-frames=false """
             """--discard-partial-minibatches=true ark:- ark:- |" \
@@ -104,7 +112,8 @@ def train_new_models(dir, iter, srand, num_jobs,
                         raw_model=raw_model_string,
                         egs_dir=egs_dir, archive_index=archive_index,
                         shuffle_buffer_size=shuffle_buffer_size,
-                        minibatch_size_str=minibatch_size_str), wait=False)
+                        minibatch_size_str=minibatch_size_str,
+                        aug_cmd=image_augmentation_cmd), wait=False)
 
         processes.append(process_handle)
 
@@ -125,6 +134,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         num_jobs, num_archives_processed, num_archives,
                         learning_rate, minibatch_size_str,
                         momentum, max_param_change, shuffle_buffer_size,
+                        image_augmentation_opts,
                         run_opts, frames_per_eg=-1,
                         min_deriv_time=None, max_deriv_time_relative=None,
                         shrinkage_value=1.0, dropout_edit_string="",
@@ -231,7 +241,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      run_opts=run_opts,
                      frames_per_eg=frames_per_eg,
                      min_deriv_time=min_deriv_time,
-                     max_deriv_time_relative=max_deriv_time_relative)
+                     max_deriv_time_relative=max_deriv_time_relative,
+                     image_augmentation_opts=image_augmentation_opts)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
          num_jobs, '{0}/log/train.{1}.%.log'.format(dir, iter))
