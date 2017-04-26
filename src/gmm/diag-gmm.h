@@ -32,8 +32,6 @@
 #include "matrix/matrix-lib.h"
 #include "tree/cluster-utils.h"
 #include "tree/clusterable-classes.h"
-#include "util/kaldi-table.h"
-#include "util/kaldi-holder.h"
 
 namespace kaldi {
 
@@ -256,14 +254,6 @@ operator << (std::ostream &os, const kaldi::DiagGmm &gmm);
 /// istream operator that calls DiagGMM::Read()
 std::istream &
 operator >> (std::istream &is, kaldi::DiagGmm &gmm);
-
-typedef KaldiObjectHolder<DiagGmm> DiagGmmHolder;
-
-typedef TableWriter<DiagGmmHolder> DiagGmmWriter;
-typedef SequentialTableReader<DiagGmmHolder> SequentialDiagGmmReader;
-typedef RandomAccessTableReader<DiagGmmHolder> RandomAccessDiagGmmReader;
-typedef RandomAccessTableReaderMapped<DiagGmmHolder> 
-RandomAccessDiagGmmReaderMapped;
 
 }  // End namespace kaldi
 
