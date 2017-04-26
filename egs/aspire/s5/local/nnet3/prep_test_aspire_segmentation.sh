@@ -16,8 +16,6 @@ decode_num_jobs=30
 num_jobs=30
 affix=
 
-sad_iter=final
-
 # ivector opts
 max_count=75 # parameter for extract_ivectors.sh
 sub_speaker_frames=6000
@@ -40,7 +38,7 @@ post_decode_acwt=1.0 # important to change this when using chain models
 . utils/parse_options.sh || exit 1;
 
 if [ $# -ne 5 ]; then
-  echo "Usage: $0 [options] <data-dir> <sad-nnet-dir> <lang-dir> <graph-dir> <model-dir>"
+  echo "Usage: $0 [options] <data-set> <seg-data-dir> <lang-dir> <graph-dir> <model-dir>"
   echo " Options:"
   echo "    --stage (0|1|2)   # start scoring script from part-way through."
   echo "e.g.:"
@@ -49,7 +47,7 @@ if [ $# -ne 5 ]; then
 fi
 
 data_set=$1 
-sad_nnet_dir=$2
+seg_data_dir=$2
 lang=$3 # data/lang
 graph=$4 #exp/tri5a/graph_pp
 dir=$5 # exp/nnet3/tdnn
@@ -73,18 +71,13 @@ else
   exit 1
 fi
 
-if [ $stage -le 1 ]; then
-  steps/segmentation/do_segmentation_data_dir.sh --reco-nj $num_jobs \
-    --mfcc-config conf/mfcc_hires_bp.conf --feat-affix bp --iter $sad_iter \
-    --do-downsampling false --extra-left-context 100 --extra-right-context 20 \
-    --output-name output-speech --frame-subsampling-factor 6 \
-    data/${data_set} $sad_nnet_dir mfcc_hires_bp data/${data_set}${affix}
-  # Output will be in data/${data_set}_seg
-fi
-
 # uniform segmentation script would have created this dataset
 # so update that script if you plan to change this variable
 segmented_data_set=${data_set}${affix}_seg
+
+if [ $stage -le 1 ]; then
+  utils/copy_data_dir.sh $seg_data_dir data/${segmented_data_set}
+fi
 
 if [ $stage -le 2 ]; then
   mfccdir=mfcc_reverb
