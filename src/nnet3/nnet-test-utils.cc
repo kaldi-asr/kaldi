@@ -1583,8 +1583,10 @@ static void GenerateRandomComponentConfig(std::string *component_type,
     }
     case 29: {
       *component_type = "DropoutComponent";
+      bool test_mode = (RandInt(0, 1) == 0);
       os << "dim=" << RandInt(1, 200)
-         << " dropout-proportion=" << RandUniform();
+         << " dropout-proportion=" << RandUniform() << " test-mode="
+         << (test_mode ? "true" : "false");
       break;
     }
     case 30: {

@@ -463,8 +463,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
                 nnet3-chain-compute-prob --l2-regularize={l2} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
                 "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
-                "ark,bg:nnet3-chain-copy-egs --left-context={lc} \
-                    --right-context={rc} ark:{egs_dir}/train_diagnostic.cegs \
+                "ark,bg:nnet3-chain-copy-egs ark:{egs_dir}/train_diagnostic.cegs \
                     ark:- | nnet3-chain-merge-egs --minibatch-size=1:64 ark:- ark:- |" \
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
                    l2=l2_regularize, leaky=leaky_hmm_coefficient,

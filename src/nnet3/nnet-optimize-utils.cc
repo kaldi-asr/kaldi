@@ -1601,6 +1601,8 @@ void DerivativeTimeLimiter::MapAddRowRangesCommand(
   const std::vector<std::pair<int32,int32> > &old_indexes_ranges(
       computation_->indexes_ranges[indexes_ranges_index]);
   std::vector<std::pair<int32,int32> > new_indexes_ranges(dest_num_rows);
+
+  bool must_keep_command = false;
   for (int32 i = 0; i < dest_num_rows; i++) {
     std::pair<int32, int32> &this_pair = new_indexes_ranges[i];
     this_pair = old_indexes_ranges[i + dest_left_prune];
@@ -1625,6 +1627,7 @@ void DerivativeTimeLimiter::MapAddRowRangesCommand(
       } else {
         start -= src_left_prune;
         end -= src_left_prune;
+        must_keep_command = true;
         // the next assert is because if we were outside the 'kept' part of the
         // submatrix, RowIsKept() should have instructed us to modify the value.
         KALDI_ASSERT(start >= 0 && end <= src_num_rows && start < end);
@@ -1633,10 +1636,14 @@ void DerivativeTimeLimiter::MapAddRowRangesCommand(
     this_pair.first = start;
     this_pair.second = end;
   }
-  c->arg1 = dest_submatrix_mapped;
-  c->arg2 = src_submatrix_mapped;
-  c->arg3 = computation_->indexes_ranges.size();
-  computation_->indexes_ranges.push_back(new_indexes_ranges);
+  if (must_keep_command) {
+    c->arg1 = dest_submatrix_mapped;
+    c->arg2 = src_submatrix_mapped;
+    c->arg3 = computation_->indexes_ranges.size();
+    computation_->indexes_ranges.push_back(new_indexes_ranges);
+  } else {
+    c->command_type = kNoOperation;
+  }
 }
 
 
@@ -2204,8 +2211,9 @@ static void FindNumLeadingAndTrailingIdenticals(
       *end = ptr + vec.size();
   while (ptr != end && ptr->first == ptr->second)
     ptr++;
-  // note regarding error message: we assume all negative numbers are -1, due to
-  // the way this is called, but it only affects how we describe the error.
+  // note regarding error message: we assume all pairs of identical numbers are
+  // -1, due to the way this is called, but it only affects how we describe the
+  // error.
   KALDI_ASSERT(ptr != end && "Vector consists entirely of -1's.");
   *num_leading_identicals = ptr - begin;
   const std::pair<int32, int32> *ptr2 = end - 1;
