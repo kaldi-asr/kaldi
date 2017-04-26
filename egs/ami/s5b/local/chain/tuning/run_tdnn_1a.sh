@@ -224,12 +224,8 @@ if [ $stage -le 18 ]; then
   rm $dir/.error 2>/dev/null || true
   for decode_set in dev eval; do
       (
-      nj_dev=`cat data/$mic/${decode_set}_hires/spk2utt | wc -l`
-      if [ $nj_dev -gt $nj ]; then
-        nj_dev=$nj
-      fi
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-          --nj $nj_dev --cmd "$decode_cmd" \
+          --nj $nj --cmd "$decode_cmd" \
           --online-ivector-dir exp/$mic/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
           --scoring-opts "--min-lmwt 5 " \
          $graph_dir data/$mic/${decode_set}_hires $dir/decode_${decode_set} || exit 1;
