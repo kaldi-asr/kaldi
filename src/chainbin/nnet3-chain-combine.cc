@@ -82,7 +82,8 @@ int main(int argc, char *argv[]) {
     // means we use the freshest batch-norm stats.  (Since the batch-norm
     // stats are not technically parameters, they are not subject to
     // combination like the rest of the model parameters).
-    SetTestMode(true, &nnet);
+    SetBatchnormTestMode(true, &nnet);
+    SetDropoutTestMode(true, &nnet);
 
     std::vector<NnetChainExample> egs;
     egs.reserve(10000);  // reserve a lot of space to minimize the chance of

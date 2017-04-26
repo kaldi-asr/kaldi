@@ -83,7 +83,8 @@ void TestNnetDecodable(Nnet *nnet) {
       ivector_dim = std::max<int32>(0, nnet->InputDim("ivector"));
   Matrix<BaseFloat> input(num_frames, input_dim);
 
-  SetTestMode(true, nnet);
+  SetBatchnormTestMode(true, nnet);
+  SetDropoutTestMode(true, nnet);
 
   input.SetRandn();
   Vector<BaseFloat> ivector(ivector_dim);
