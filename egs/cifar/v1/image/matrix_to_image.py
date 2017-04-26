@@ -23,8 +23,7 @@ EOF
 
 import argparse
 import sys
-import numpy as ny
-from PIL import Image
+from bmp_encoder import *
 
 
 parser = argparse.ArgumentParser(description="""Converts Kaldi-format text matrix
@@ -41,22 +40,24 @@ matrix = []
 num_rows = 0
 num_cols = 0
 while True:
-    tmp = sys.stdin.readline().strip('\n').split()
-    if tmp == []:
+    line = sys.stdin.readline().strip('\n').split()
+    if line == []:
         break
-    if tmp[0] == '[': # drop the "[" in the first row
-        tmp = tmp[1:]
-    if tmp[-1] == ']': # drop the "]" in the last row
-        tmp = tmp[:-1]
-    if num_rows == 0:
-        num_cols = len(tmp) # initialize
-    if len(tmp) != num_cols:
+    if line == ['[']:# deal with the case that the first row only contains "["
+        continue
+    if line[0] == '[': # drop the "[" in the first row
+        line = line[1:]
+    if line[-1] == ']': # drop the "]" in the last row
+        line = line[:-1]
+    if num_cols == 0:
+        num_cols = len(line) # initialize
+    if len(line) != num_cols:
         raise Exception("All rows should be of same length")
-    tmp = map(float, tmp) # string to float
-    if max(tmp) > 1:
+    line = map(float, line) # string to float
+    if max(line) > 1:
         raise Excetion("Elmement vaule in the matrix should be normalized and no larger than 1")
-    tmp = [int(x * 255) for x in tmp] # float to integer ranging from 0 to 255
-    matrix.append(tmp)
+    line = [int(x * 255) for x in line] # float to integer ranging from 0 to 255
+    matrix.append(line)
     num_rows+=1
 
 if args.color == 3:
@@ -64,20 +65,15 @@ if args.color == 3:
         raise Exception("Number of columns should be 3*n in the colorful mode")
     width = num_rows
     height = num_cols/3
+    # reform the image matrix
+    image_array = [[0 for i in range(width * 3)]for j in range(height)]
+    for i in range(height):
+        for j in range(width):
+            image_array[i][3 * j] = matrix[j][3 * i]
+	    image_array[i][3 * j + 1] = matrix[j][3 * i + 1]
+	    image_array[i][3 * j + 2] = matrix[j][3 * i + 2]
+    bmp_encoder(image_array, width, height)
 
-    image_array = ny.zeros((height, width, chan), dtype=ny.uint8)
-    for i in range(height):
-        for j in range(width):
-            image_array[i,j] = [matrix[j][3*i], matrix[j][3*i+1], matrix[j][3*i+2]]
-    im = Image.fromarray(image_array)
-    im.save(sys.stdout,'png')
-else:
-    width = num_rows
-    height = num_cols
-    image_array = ny.zeros((height,width),dtype=ny.uint8)
-    for i in range(height):
-        for j in range(width):
-            image_array[i,j] = matrix[j][i]
-    im = Image.fromarray(image_array)
-    im.save(sys.stdout,'png')
+    
+
 
