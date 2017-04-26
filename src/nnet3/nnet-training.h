@@ -169,6 +169,11 @@ class NnetTrainer {
 
   ~NnetTrainer();
  private:
+  // The internal function for doing one step of SGD training. There are three
+  // scenarios, depending on if we are using backsitch training:
+  // 1) conventional SGD training;
+  // 2) the first step (if is_backstitch_step == true) of backstitch training;
+  // 3) the second step (if is_backstitch_step == false) of backstitch training
   void TrainInternal(const NnetExample &eg,
                      const NnetComputation &computation,
                      bool is_backstitch_step);

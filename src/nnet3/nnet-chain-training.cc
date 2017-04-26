@@ -75,9 +75,13 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
     KALDI_ASSERT(nnet_config.momentum == 0.0);
     FreezeNaturalGradient(true, delta_nnet_);
     bool is_backstitch_step = true;
+    srand(srand_seed_ + num_minibatches_processed_);
+    ResetGenerators(nnet_);
     TrainInternal(chain_eg, *computation, is_backstitch_step);
     FreezeNaturalGradient(false, delta_nnet_); // un-freeze natural gradient
     is_backstitch_step = false;
+    srand(srand_seed_ + num_minibatches_processed_);
+    ResetGenerators(nnet_);
     TrainInternal(chain_eg, *computation, is_backstitch_step);
   } else {
     // conventional training
@@ -91,9 +95,6 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
 void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
                                      const NnetComputation &computation,
                                      bool is_backstitch_step) {
-  srand(srand_seed_ + num_minibatches_processed_);
-  ResetGenerators(nnet_);
- 
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   NnetComputer computer(nnet_config.compute_config, computation,
                         *nnet_, delta_nnet_);
