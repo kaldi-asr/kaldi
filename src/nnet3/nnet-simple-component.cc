@@ -100,9 +100,12 @@ void DropoutComponent::InitFromConfig(ConfigLine *cfl) {
   int32 dim = 0;
   BaseFloat dropout_proportion = 0.0;
   bool dropout_per_frame = false;
+  test_mode_ = false;
   bool ok = cfl->GetValue("dim", &dim) &&
     cfl->GetValue("dropout-proportion", &dropout_proportion);
   cfl->GetValue("dropout-per-frame", &dropout_per_frame);
+  // It only makes sense to set test-mode in the config for testing purposes.
+  cfl->GetValue("test-mode", &test_mode_);
     // for this stage, dropout is hard coded in
     // normal mode if not declared in config
   if (!ok || cfl->HasUnusedValues() || dim <= 0 ||
@@ -128,6 +131,11 @@ void* DropoutComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
 
   BaseFloat dropout = dropout_proportion_;
   KALDI_ASSERT(dropout >= 0.0 && dropout <= 1.0);
+  if (test_mode_) {
+    out->CopyFromMat(in);
+    out->Scale(1.0 - dropout);
+    return NULL;
+  }
   if (!dropout_per_frame_) {
     // This const_cast is only safe assuming you don't attempt
     // to use multi-threaded code with the GPU.
@@ -188,9 +196,14 @@ void DropoutComponent::Read(std::istream &is, bool binary) {
   if (token == "<DropoutPerFrame>") {
     ReadBasicType(is, binary, &dropout_per_frame_);  // read dropout mode
     ReadToken(is, binary, &token);
-    KALDI_ASSERT(token == "</DropoutComponent>");
   } else {
     dropout_per_frame_ = false;
+  }
+  if (token == "<TestMode>") {
+    ReadBasicType(is, binary, &test_mode_);  // read test mode
+    ExpectToken(is, binary, "</DropoutComponent>");
+  } else {
+    test_mode_ = false;
     KALDI_ASSERT(token == "</DropoutComponent>");
   }
 }
@@ -203,6 +216,8 @@ void DropoutComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, dropout_proportion_);
   WriteToken(os, binary, "<DropoutPerFrame>");
   WriteBasicType(os, binary, dropout_per_frame_);
+  WriteToken(os, binary, "<TestMode>");
+  WriteBasicType(os, binary, test_mode_); 
   WriteToken(os, binary, "</DropoutComponent>");
 }
 

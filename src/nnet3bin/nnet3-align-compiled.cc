@@ -112,7 +112,8 @@ int main(int argc, char *argv[]) {
         trans_model.Read(ki.Stream(), binary);
         am_nnet.Read(ki.Stream(), binary);
       }
-      SetTestMode(true, &(am_nnet.GetNnet()));
+      SetBatchnormTestMode(true, &(am_nnet.GetNnet()));
+      SetDropoutTestMode(true, &(am_nnet.GetNnet()));
       // this compiler object allows caching of computations across
       // different utterances.
       CachingOptimizingCompiler compiler(am_nnet.GetNnet(),
