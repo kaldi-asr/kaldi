@@ -37,7 +37,7 @@ b) Prepare the data and alignments for languages in multilingual setup.
         cat <<OEF > local.conf
           use_pitch=true
           use_ivector=true
-          # lda-mllt transform for used to train global-ivector
+          # lda-mllt transform used to train global-ivector
           lda_mllt_lang=101-cantonese
           # lang_list is space-separated language list used for multilingual training
           lang_list=(101-cantonese 102-assamese 103-bengali)

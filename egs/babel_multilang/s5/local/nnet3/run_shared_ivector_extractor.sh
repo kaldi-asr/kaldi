@@ -19,9 +19,6 @@ boost_sil=1.0 # Factor by which to boost silence likelihoods in alignment
 
 . conf/common_vars.sh || exit 1;
 
-[ ! -f local.conf ] && echo 'the file local.conf does not exist!' && exit 1;
-. local.conf || exit 1;
-
 . parse_options.sh || exit 1;
 
 if [ $# -ne 3 ]; then
@@ -30,7 +27,7 @@ if [ $# -ne 3 ]; then
   exit 1;
 fi
 
-lda_mllt_lang=$1
+lda_mllt_lang=$1 # lda-mllt transform used to train global-ivector
 multi_data_dir=$2
 global_extractor_dir=$3
 

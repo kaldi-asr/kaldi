@@ -103,14 +103,14 @@ if $use_ivector; then
     mkdir -p exp/multi/nnet3
     global_extractor=exp/multi/nnet3
     ivector_extractor=$global_extractor/extractor
-    multi_dir_data=data/multi/train${suffix}_hires
+    multi_data_dir=data/multi/train${suffix}_hires
     ivector_suffix=_gb
     echo "$0: combine training data using all langs for training global i-vector extractor."
-    if [ ! -f $multi_dir_data/.done ]; then
+    if [ ! -f $multi_data_dir/.done ]; then
       echo ---------------------------------------------------------------------
-      echo "Pooling training data in $multi_dir_data on" `date`
+      echo "Pooling training data in $multi_data_dir on" `date`
       echo ---------------------------------------------------------------------
-      mkdir -p $multi_dir_data
+      mkdir -p $multi_data_dir
       combine_lang_list=""
       for lang_index in `seq 0 $[$num_langs-1]`;do
         combine_lang_list="$combine_lang_list data/${lang_list[$lang_index]}/train${suffix}_hires"
@@ -121,12 +121,13 @@ if $use_ivector; then
     fi
   fi
   if [ ! -f $global_extractor/extractor/.done ]; then
+    if [ -z $lda_mllt_lang ]; then lda_mllt_lang=${lang_list[0]}; fi
     echo "$0: Generate global i-vector extractor on pooled data from all "
     echo "languages in $multi_data_dir, using an LDA+MLLT transform trained "
-    echo "on ${lang_list[0]}."
+    echo "on ${lda_mllt_lang}."
     local/nnet3/run_shared_ivector_extractor.sh  \
       --suffix $suffix \
-      --stage $stage ${lang_list[0]} \
+      --stage $stage $lda_mllt_lang \
       $multi_data_dir $global_extractor || exit 1;
     touch $global_extractor/extractor/.done
   fi
