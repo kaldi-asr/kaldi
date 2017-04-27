@@ -345,7 +345,10 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      xent_regularize=xent_regularize,
                      leaky_hmm_coefficient=leaky_hmm_coefficient,
                      momentum=momentum,
-                     backstitch_training_scale=backstitch_training_scale,
+                     # linearly increase backstitch_training_scale during the
+                     # first few iterations(hard-coded as 15 for now)
+                     backstitch_training_scale=(backstitch_training_scale *
+                         iter / 15 if iter < 15 else backstitch_training_scale),
                      backstitch_training_interval=backstitch_training_interval,
                      max_param_change=cur_max_param_change,
                      shuffle_buffer_size=shuffle_buffer_size,
