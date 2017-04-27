@@ -1,1 +1,1 @@
-tuning/run_segmentation_wsj_b.sh
+tuning/run_segmentation_wsj_e.sh
