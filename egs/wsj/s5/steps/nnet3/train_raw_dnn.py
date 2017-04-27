@@ -53,6 +53,10 @@ def get_args():
     parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
                         default=8,
                         help="Number of output labels per example")
+    parser.add_argument("--image.augmentation-opts", type=str,
+                        dest='image_augmentation_opts',
+                        default=None,
+                        help="Image augmentation options")
 
     # trainer options
     parser.add_argument("--trainer.prior-subset-size", type=int,
@@ -333,7 +337,8 @@ def train(args, run_opts, background_process_handler):
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
                 get_raw_nnet_from_am=False,
-                background_process_handler=background_process_handler)
+                background_process_handler=background_process_handler,
+                image_augmentation_opts=args.image_augmentation_opts)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
