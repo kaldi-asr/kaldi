@@ -160,18 +160,17 @@ if [ $stage -le 8 ]; then
   if [ -z $bnf_dim ]; then
     bnf_dim=1024
   fi
-  input_layer_dim=$[3*$feat_dim+$ivector_dim]
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=$ivector_dim name=ivector
   input dim=$feat_dim name=input
-  output name=output-tmp input=Append(-1,0,1,ReplaceIndex(ivector, t, 0))
+  output name=output-tmp input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0))
 
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 input=Append(input@-2,input@-1,input,input@1,input@2,ReplaceIndex(ivector, t, 0)) dim=$input_layer_dim
+  relu-renorm-layer name=tdnn1 input=Append(input@-2,input@-1,input,input@1,input@2,ReplaceIndex(ivector, t, 0)) dim=1024
   relu-renorm-layer name=tdnn2 dim=1024
   relu-renorm-layer name=tdnn3 input=Append(-1,2) dim=1024
   relu-renorm-layer name=tdnn4 input=Append(-3,3) dim=1024

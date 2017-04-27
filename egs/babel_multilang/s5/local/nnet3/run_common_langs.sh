@@ -12,7 +12,6 @@ generate_alignments=true # If true, it regenerates alignments.
 speed_perturb=true
 use_pitch=true      # If true, it generates pitch features and combine it with 40dim MFCC.
 pitch_conf=conf/pitch.conf # Configuration used for pitch extraction.
-use_pitch_plp=false # If true, it generated plp+pitch to be used in regenerating alignments.
 
 [ ! -f ./conf/common_vars.sh ] && echo 'the file conf/common_vars.sh does not exist!' && exit 1
 
@@ -36,10 +35,10 @@ if [ "$speed_perturb" == "true" ]; then
 
         # Extract Plp+pitch feature for perturbed data.
         featdir=plp_perturbed/$lang
-        if $use_pitch_plp; then
-          steps/make_plp_pitch.sh --cmd "$train_cmd" --nj $train_nj  data/$lang/${datadir}_sp exp/$lang/make_plp_pitch/${datadir}_sp $featdir
+        if $use_pitch; then
+          steps/make_plp_pitch.sh --cmd "$train_cmd" --nj 70  data/$lang/${datadir}_sp exp/$lang/make_plp_pitch/${datadir}_sp $featdir
         else
-          steps/make_plp.sh --cmd "$train_cmd" --nj $train_nj data/$lang/${datadir}_sp exp/$lang/make_plp/${datadir}_sp $featdir
+          steps/make_plp.sh --cmd "$train_cmd" --nj 70 data/$lang/${datadir}_sp exp/$lang/make_plp/${datadir}_sp $featdir
         fi
         steps/compute_cmvn_stats.sh data/$lang/${datadir}_sp exp/$lang/make_plp/${datadir}_sp $featdir || exit 1;
         utils/fix_data_dir.sh data/$lang/${datadir}_sp
@@ -58,16 +57,16 @@ if [ "$speed_perturb" == "true" ]; then
   fi
 fi
 
-if [ $stage -le 3 ] && [ ! -f data/$lang/${train_set}_hires/.done ]; then
-  hires_config="--mfcc-config conf/mfcc_hires.conf"
-  feat_suffix=_hires_mfcc
-  mfccdir=mfcc_hires/$lang
-  if $use_pitch; then
-    feat_suffix=${feat_suffix}_pitch
-    hires_config="$hires_configs --pitch-config $pitch_conf"
-    mfccdir=${mfccdir}_pitch/$lang
-  fi
+hires_config="--mfcc-config conf/mfcc_hires.conf"
+feat_suffix=_hires_mfcc
+mfccdir=mfcc_hires/$lang
+if $use_pitch; then
+  feat_suffix=${feat_suffix}_pitch
+  hires_config="$hires_configs --pitch-config $pitch_conf"
+  mfccdir=${mfccdir}_pitch/$lang
+fi
 
+if [ $stage -le 3 ] && [ ! -f data/$lang/${train_set}${feat_suffix}/.done ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     date=$(date +'%m_%d_%H_%M')
     utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/$lang-$date/s5c/$mfccdir/storage $mfccdir/storage
