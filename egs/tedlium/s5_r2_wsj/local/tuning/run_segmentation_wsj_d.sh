@@ -8,7 +8,7 @@ set -e -o pipefail -u
 # This differs from _e by using the option --align-full-hyp true, which
 # retrieves the best match (based on Levenshtein distance) of the 
 # reference with the full hypothesis for the segment,
-# as against teh best matching subsequence using Smith-Waterman alignment.
+# as against the best matching subsequence using Smith-Waterman alignment.
 
 segment_stage=-10
 affix=_1d

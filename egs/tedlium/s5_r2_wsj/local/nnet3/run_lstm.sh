@@ -1,1 +1,0 @@
-tuning/run_lstm_1a.sh
