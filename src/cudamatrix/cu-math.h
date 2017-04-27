@@ -88,6 +88,9 @@ void Group2norm(const CuMatrixBase<Real> &src,
                      a multiple of 5).  The column-space is interpreted as 5
                      consecutive blocks, each of dimension C, which we name:
                      (i_part, f_part, c_part, o_part, c_{t-1}).
+                     This function will also accept input of dimension N by 5C + 3,
+                     and the three final elements will be used as scaling factors
+                     on i_t, f_t and o_t (useful as per-frame dropout masks).
  @param [in] params  A matrix, of dimension 3 by C, with rows containing the three
                      diagonal parameter matrices used in LSTMs, namely
                      w_{ic}, w_{fc} and w_{oc}.
@@ -101,7 +104,14 @@ void Group2norm(const CuMatrixBase<Real> &src,
                      o_t = Sigmoid(o_part + w_{oc}*c_t)
                      m_t = o_t * Tanh(c_t)
 
-
+                     Note on dropout: if the dropout mask is provided, let the
+                     mask values be i_t_mask, f_t_mask and o_t_mask (for each
+                     matrix row, these are scalars while i_t, f_t and o_t are of
+                     dimension C, because this is 'per-frame' dropout as described in
+                     http://www.danielpovey.com/files/2017_interspeech_dropout.pdf).
+                     Then the modification to the equations above consists of
+                     replacing 'i_t' with 'i_t_mask * i_t' in the RHS of the equations
+                     above, and the same type of change for f_t and o_t.
  */
 template<typename Real>
 void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
@@ -134,6 +144,9 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input,
                      a multiple of 5).  The column-space is interpreted as 5
                      consecutive blocks, each of dimension C, which we name:
                      (i_part, f_part, c_part, o_part, c_{t-1}).
+                     This function will also accept input of dimension N by 5C + 3,
+                     and the three final elements will be interpreted as scaling factors
+                     on i_t, f_t and o_t (useful as per-frame dropout masks).
  @param [in] params  The same as in ComputeLstmNonlinearity().
                      A matrix, of dimension 3 by C, with rows containing the three
                      diagonal parameter matrices used in LSTMs, namely
@@ -165,9 +178,13 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input,
                      May be NULL; if not, this function writes, to this
                      location, the backpropagated derivative of the objective
                      function w.r.t. the 'input' matrix.  This matrix should
-                     have the same dimension as 'input' i.e.  N by 5C.  In
-                     addition to the regular backpropagated derivative, the
-                     output will include small values relating to 'self-repair'.
+                     have the same dimension as 'input'.  In addition to the
+                     regular backpropagated derivative, the output will include
+                     small values relating to 'self-repair'.  If the input
+                     is of column-dimension  5C + 3 (i.e. we are using dropout
+                     masks), the derivatives w.r.t. the dropout masks will not
+                     be set; they will retain their value prior to this
+                     function call.
  @param [out] params_deriv
                      May be NULL; if not, this is where this function *writes*
                      [not adds] the backpropagated derivative of the objective
@@ -196,6 +213,7 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input,
                      processed outside this function into self-repair stats for
                      diagnostics.
 */
+
 template<typename Real>
 void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
                               const CuMatrixBase<Real> &params,

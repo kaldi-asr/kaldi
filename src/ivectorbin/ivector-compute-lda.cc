@@ -100,9 +100,9 @@ void ComputeLdaTransform(
   int32 lda_dim = lda_out->NumRows(), dim = lda_out->NumCols();
   KALDI_ASSERT(dim == utt2ivector.begin()->second->Dim());
   KALDI_ASSERT(lda_dim > 0 && lda_dim <= dim);
-  
+
   CovarianceStats stats(dim);
-  
+
   std::map<std::string, std::vector<std::string> >::const_iterator iter;
   for (iter = spk2utt.begin(); iter != spk2utt.end(); ++iter) {
     const std::vector<std::string> &uttlist = iter->second;
@@ -134,10 +134,10 @@ void ComputeLdaTransform(
   SpMatrix<double> mat_to_normalize(dim);
   mat_to_normalize.AddSp(total_covariance_factor, total_covar);
   mat_to_normalize.AddSp(1.0 - total_covariance_factor, within_covar);
-  
-  Matrix<double> T(dim, dim); 
+
+  Matrix<double> T(dim, dim);
   ComputeNormalizingTransform(mat_to_normalize, &T);
-  
+
   SpMatrix<double> between_covar(total_covar);
   between_covar.AddSp(-1.0, within_covar);
 
@@ -152,7 +152,7 @@ void ComputeLdaTransform(
                                        // really matter)
   SortSvd(&s, &U, static_cast<Matrix<double>*>(NULL),
           sort_on_absolute_value);
-  
+
   KALDI_LOG << "Singular values of between-class covariance after projecting "
             << "with interpolated [total/within] covariance with a weight of "
             << total_covariance_factor << " on the total covariance, are: " << s;
@@ -205,12 +205,12 @@ int main(int argc, char *argv[]) {
         "<lda-matrix-out>\n"
         "e.g.: \n"
         " ivector-compute-lda ark:ivectors.ark ark:utt2spk lda.mat\n";
-    
+
     ParseOptions po(usage);
 
     int32 lda_dim = 100; // Dimension we reduce to
     BaseFloat total_covariance_factor = 0.0;
-    bool binary = true;    
+    bool binary = true;
 
     po.Register("dim", &lda_dim, "Dimension we keep with the LDA transform");
     po.Register("total-covariance-factor", &total_covariance_factor,
@@ -218,9 +218,9 @@ int main(int argc, char *argv[]) {
                 "unit; if 1.0, the total covariance; if between, we normalize "
                 "an interpolated matrix.");
     po.Register("binary", &binary, "Write output in binary mode");
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
@@ -229,12 +229,12 @@ int main(int argc, char *argv[]) {
     std::string ivector_rspecifier = po.GetArg(1),
         utt2spk_rspecifier = po.GetArg(2),
         lda_wxfilename = po.GetArg(3);
-    
+
     int32 num_done = 0, num_err = 0, dim = 0;
-    
+
     SequentialBaseFloatVectorReader ivector_reader(ivector_rspecifier);
     RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
-    
+
     std::map<std::string, Vector<BaseFloat> *> utt2ivector;
     std::map<std::string, std::vector<std::string> > spk2utt;
 
@@ -277,7 +277,7 @@ int main(int argc, char *argv[]) {
     ComputeAndSubtractMean(utt2ivector, &mean);
     KALDI_LOG << "2-norm of iVector mean is " << mean.Norm(2.0);
 
-    
+
     Matrix<BaseFloat> lda_mat(lda_dim, dim + 1); // LDA matrix without the offset term.
     SubMatrix<BaseFloat> linear_part(lda_mat, 0, lda_dim, 0, dim);
     ComputeLdaTransform(utt2ivector,
@@ -287,15 +287,15 @@ int main(int argc, char *argv[]) {
     Vector<BaseFloat> offset(lda_dim);
     offset.AddMatVec(-1.0, linear_part, kNoTrans, mean, 0.0);
     lda_mat.CopyColFromVec(offset, dim); // add mean-offset to transform
-    
+
     KALDI_VLOG(2) << "2-norm of transformed iVector mean is "
                   << offset.Norm(2.0);
-    
+
     WriteKaldiObject(lda_mat, lda_wxfilename, binary);
 
     KALDI_LOG << "Wrote LDA transform to "
               << PrintableWxfilename(lda_wxfilename);
-    
+
     std::map<std::string, Vector<BaseFloat> *>::iterator iter;
     for (iter = utt2ivector.begin(); iter != utt2ivector.end(); ++iter)
       delete iter->second;

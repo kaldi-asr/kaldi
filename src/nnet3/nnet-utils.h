@@ -161,7 +161,7 @@ void ConvertRepeatedToBlockAffine(Nnet *nnet);
 std::string NnetInfo(const Nnet &nnet);
 
 /// This function sets the dropout proportion in all dropout components to
-/// the value 'dropout_proportion'
+/// dropout_proportion value.
 void SetDropoutProportion(BaseFloat dropout_proportion, Nnet *nnet);
 
 /// This function finds a list of components that are never used, and outputs

@@ -1,12 +1,17 @@
 #!/bin/bash
 
 # It's best to run the commands in this one by one.
-
 . ./cmd.sh
 . ./path.sh
 mfccdir=mfcc
 set -e
 rescore=true
+
+# check for kaldi_lm
+which get_word_map.pl > /dev/null
+if [ $? -ne 0 ]; then
+  echo "This recipe requires installation of tools/kaldi_lm. Please run extras/kaldi_lm.sh in tools/" && exit 1;
+fi
 
 # prepare fisher data and put it under data/train_fisher
 local/fisher_data_prep.sh /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 \

@@ -12,6 +12,7 @@
 nj=40
 cmd="run.pl"
 stage=-2
+cleanup=true
 
 # End configuration section.
 
@@ -76,5 +77,12 @@ $cmd $dir/log/init.log \
   fgmm-global-init-from-accs --verbose=2 \
   "fgmm-global-sum-accs - $dir/stats.*.acc |" $num_components \
   $dir/final.ubm || exit 1;
+
+if $cleanup; then
+  echo "$0: removing stats"
+  for g in $(seq $nj); do
+    rm $dir/stats.$g.acc || exit 1
+  done
+fi
 
 exit 0;

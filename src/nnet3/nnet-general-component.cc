@@ -1376,5 +1376,88 @@ void ConstantComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
 
 
 
+std::string DropoutMaskComponent::Info() const {
+  std::ostringstream stream;
+  stream << Type()
+         << ", output-dim=" << output_dim_
+         << ", dropout-proportion=" << dropout_proportion_;
+  return stream.str();
+}
+
+DropoutMaskComponent::DropoutMaskComponent():
+    output_dim_(-1), dropout_proportion_(0.5) { }
+
+DropoutMaskComponent::DropoutMaskComponent(
+    const DropoutMaskComponent &other):
+    output_dim_(other.output_dim_),
+    dropout_proportion_(other.dropout_proportion_) { }
+
+void DropoutMaskComponent::Propagate(
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(in.NumRows() == 0 && out->NumCols() == output_dim_);
+  BaseFloat dropout_proportion = dropout_proportion_;
+  KALDI_ASSERT(dropout_proportion >= 0.0 && dropout_proportion <= 1.0);
+
+  if (dropout_proportion_ == 0) {
+    out->Set(1.0);
+    return;
+  }
+    const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
+    out->Add(-dropout_proportion);
+    out->ApplyHeaviside();
+    // To generate data where it's never the case that both of the dimensions
+    // for a row are zero, we generate uniformly distributed data (call this u_i),
+    // and for row i, set (*out)(i, 0) = (0 if u_i < dropout_proportion else 1)
+    //                and (*out)(i, 1) = (0 if u_i > 1-dropout_proportion else 1)
+    int32 num_rows = out->NumRows();
+    // later we may make this a bit more efficient.
+    CuVector<BaseFloat> temp(num_rows, kUndefined);
+    const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(&temp);
+    temp.Add(-dropout_proportion);
+    out->CopyColFromVec(temp, 0);
+    temp.Add(-1.0 + (2.0 * dropout_proportion));
+    // Now, 'temp' contains the original uniformly-distributed data plus
+    // -(1 - dropout_proportion).
+    temp.Scale(-1.0);
+    out->CopyColFromVec(temp, 1);
+    out->ApplyHeaviside();
+  }
+
+
+void DropoutMaskComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<DropoutMaskComponent>", "<OutputDim>");
+  ReadBasicType(is, binary, &output_dim_);
+  ExpectToken(is, binary, "<DropoutProportion>");
+  ReadBasicType(is, binary, &dropout_proportion_);
+  ExpectToken(is, binary, "</DropoutMaskComponent>");
+}
+
+
+void DropoutMaskComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<DropoutMaskComponent>");
+  WriteToken(os, binary, "<OutputDim>");
+  WriteBasicType(os, binary, output_dim_);
+  WriteToken(os, binary, "<DropoutProportion>");
+  WriteBasicType(os, binary, dropout_proportion_);
+  WriteToken(os, binary, "</DropoutMaskComponent>");
+}
+
+Component* DropoutMaskComponent::Copy() const {
+  return new DropoutMaskComponent(*this);
+}
+
+void DropoutMaskComponent::InitFromConfig(ConfigLine *cfl) {
+  output_dim_ = 0;
+  bool ok = cfl->GetValue("output-dim", &output_dim_);
+  KALDI_ASSERT(ok && output_dim_ > 0);
+  dropout_proportion_ = 0.5;
+  cfl->GetValue("dropout-proportion", &dropout_proportion_);
+}
+
+
+
+
 } // namespace nnet3
 } // namespace kaldi

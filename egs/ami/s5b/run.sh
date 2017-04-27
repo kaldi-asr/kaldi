@@ -56,7 +56,7 @@ if [ "$base_mic" == "mdm" ]; then
   PROCESSED_AMI_DIR=$AMI_DIR/beamformed
   if [ $stage -le 1 ]; then
     # for MDM data, do beamforming
-    ! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; make beamformit;'" && exit 1
+    ! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; extras/install_beamformit.sh; cd -;'" && exit 1
     local/ami_beamform.sh --cmd "$train_cmd" --nj 20 $nmics $AMI_DIR $PROCESSED_AMI_DIR
   fi
 else

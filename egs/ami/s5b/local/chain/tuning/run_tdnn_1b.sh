@@ -212,9 +212,7 @@ if [ $stage -le 16 ]; then
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5b/$dir/egs/storage $dir/egs/storage
   fi
 
- touch $dir/egs/.nodelete # keep egs around when that run dies.
-
- steps/nnet3/chain/train.py --stage $train_stage \
+  steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
