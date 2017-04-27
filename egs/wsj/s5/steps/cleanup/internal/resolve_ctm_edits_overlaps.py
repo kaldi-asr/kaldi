@@ -36,8 +36,6 @@ def get_args():
     parser = argparse.ArgumentParser(usage)
     parser.add_argument('segments', type=argparse.FileType('r'),
                         help='use segments to resolve overlaps')
-    parser.add_argument('reco2utt', type=argparse.FileType('r'),
-                        help='use reco2utt to get segments in order')
     parser.add_argument('ctm_edits_in', type=argparse.FileType('r'),
                         help='input_ctm_file')
     parser.add_argument('ctm_edits_out', type=argparse.FileType('w'),
@@ -54,40 +52,29 @@ def get_args():
 
 
 def read_segments(segments_file):
-    """Read from segments and yield key, value pairs where
-    key is the utterance-id
-    value is a tuple (recording_id, start_time, end_time)
+    """Read from segments and returns two dictionaries,
+    {utterance-id: (recording_id, start_time, end_time)}
+    {recording_id: list-of-utterances}
     """
+    segments = {}
+    reco2utt = defaultdict(list)
+
     num_lines = 0
     for line in segments_file:
         num_lines += 1
         parts = line.strip().split()
         assert len(parts) in [4, 5]
-        yield parts[0], (parts[1], float(parts[2]), float(parts[3]))
+        segments[parts[0]] = (parts[1], float(parts[2]), float(parts[3]))
+        reco2utt[parts[1]].append(parts[0])
 
     logger.info("Read %d lines from segments file %s",
                 num_lines, segments_file.name)
     segments_file.close()
 
-
-def read_reco2utt(reco2utt_file, segments):
-    """Reads from reco2utt_file and yields reco, value pairs where
-    key is the recording-id
-    value is a list of utterance-ids sorted by start-time
-
-    Arguments:
-        reco2utt_file: File containing <reco-id> <List of utt-ids>
-        segments:
-            The output of read_segments() function
-            { utt_id: (recording_id, start_time, end_time) }
-    """
-    for line in reco2utt_file:
-        parts = line.strip().split()
-        yield parts[0], sorted(parts[1:], key=lambda x: segments[x][1])
-    reco2utt_file.close()
+    return segments, reco2utt
 
 
-def read_ctm_edits(ctm_edits_file, reco2utt, segments):
+def read_ctm_edits(ctm_edits_file, segments):
     """Read CTM from ctm_edits_file into a dictionary of values indexed by the
     recording.
     It is assumed to be sorted by the recording-id and utterance-id.
@@ -355,16 +342,12 @@ def write_ctm_edits(ctm_edit_lines, out_file):
 
 def run(args):
     """this method does everything in this script"""
-    segments = {key: value for key, value in read_segments(args.segments)}
-    reco2utt = {key: value
-                for key, value in read_reco2utt(args.reco2utt, segments)}
-
-    # Read CTMs into a dictionary indexed by the recording
-    ctm_edits = read_ctm_edits(args.ctm_edits_in, reco2utt, segments)
+    segments, reco2utt = read_segments(args.segments)
+    ctm_edits = read_ctm_edits(args.ctm_edits_in, segments)
 
     for reco, utts in reco2utt.iteritems():
         ctm_edits_for_reco = []
-        for utt in utts:
+        for utt in sorted(utts, key=lambda x: segments[x][1]):
             if (reco, utt) in ctms:
                 ctm_edits_for_reco.append(ctm_edits[(reco, utt)])
         try:
@@ -389,8 +372,7 @@ def main():
         raise RuntimeError
     finally:
         try:
-            for f in [args.reco2utt, args.segments,
-                      args.ctm_edits_in, args.ctm_edits_out]:
+            for f in [args.segments, args.ctm_edits_in, args.ctm_edits_out]:
                 if f is not None:
                     f.close()
         except IOError:

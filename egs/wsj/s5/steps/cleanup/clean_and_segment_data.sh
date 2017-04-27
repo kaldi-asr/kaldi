@@ -195,18 +195,10 @@ if [ $stage -le 8 ]; then
 fi
 
 if [ $stage -le 9 ]; then
-  # utils/data/get_utt2num_frames.sh $data
-  # cat $dir/segments | cut -d ' ' -f 1,2 | \
-  #   utils/apply_map.pl -f 2 $data/utt2num_frames > $data_out/utt2max_frames
-  # utils/data/get_subsegmented_feats.sh $data/feats.scp 0.01 0.015 $dir/segments | \
-  #   utils/data/fix_subsegmented_feats.pl $data_out/utt2max_frames > \
-  #   $data_out/feats.scp
-  
   echo "$0: recomputing CMVN stats for the new data"
   # Caution: this script puts the CMVN stats in $data_out/data,
   # e.g. data/train_cleaned/data.  This is not the general pattern we use.
   steps/compute_cmvn_stats.sh $data_out $data_out/log $data_out/data
-  utils/fix_data_dir.sh $data_out
 fi
 
 if $cleanup; then

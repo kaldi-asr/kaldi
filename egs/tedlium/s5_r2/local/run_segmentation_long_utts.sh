@@ -24,7 +24,8 @@
 
 ## Segmentation + Cleanup
 
-# cleaned - Default segmentation-opts
+# cleaned - 
+# Default segmentation-opts "--max-junk-proportion=1 --max-deleted-words-kept-when-merging=1 --min-split-point-duration=0.1" 
 # cleaned_b -
 # "--max-junk-proportion=0.5 --max-deleted-words-kept-when-merging=10"
 # cleaned_c -
@@ -61,9 +62,14 @@ decode_nj=8   # note: should not be >38 which is the number of speakers in the d
               # this will be too many jobs if you're using run.pl.
 
 ###############################################################################
-## Simulate unsegmented data directory.
+# Simulate unsegmented data directory.
 ###############################################################################
 utils/data/convert_data_dir_to_whole.sh data/train data/train_long
+
+###############################################################################
+# Train system on a small subset of 2000 utterances that are 
+# manually segmented.
+###############################################################################
 
 utils/subset_data_dir.sh --speakers data/train 2000 data/train_2k
 utils/subset_data_dir.sh --shortest data/train_2k 500 data/train_2k_short500
@@ -72,6 +78,7 @@ steps/make_mfcc.sh --cmd "$train_cmd" --nj 32 \
   data/train_long exp/make_mfcc/train_long mfcc || exit 1
 steps/compute_cmvn_stats.sh data/train_long \
   exp/make_mfcc/train_long mfcc
+
 
 steps/train_mono.sh --nj 20 --cmd "$train_cmd" \
   data/train_2k_short500 data/lang_nosp exp/mono_a
