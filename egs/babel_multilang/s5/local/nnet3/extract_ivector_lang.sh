@@ -20,7 +20,7 @@ ivector_suffix=_gb
 lang=$1
 global_extractor=$2
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 7 ]; then
   # We extract iVectors on all the train_nodup data, which will be what we
   # train the system on.
   # having a larger number of speakers is helpful for generalization, and to

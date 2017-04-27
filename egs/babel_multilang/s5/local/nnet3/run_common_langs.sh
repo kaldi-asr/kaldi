@@ -59,57 +59,39 @@ if [ "$speed_perturb" == "true" ]; then
 fi
 
 if [ $stage -le 3 ] && [ ! -f data/$lang/${train_set}_hires/.done ]; then
+  hires_config="--mfcc-config conf/mfcc_hires.conf"
+  feat_suffix=_hires_mfcc
   mfccdir=mfcc_hires/$lang
+  if $use_pitch; then
+    feat_suffix=${feat_suffix}_pitch
+    hires_config="$hires_configs --pitch-config $pitch_conf"
+    mfccdir=${mfccdir}_pitch/$lang
+  fi
+
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     date=$(date +'%m_%d_%H_%M')
     utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/$lang-$date/s5c/$mfccdir/storage $mfccdir/storage
   fi
 
+
   for dataset in $train_set ; do
-    utils/copy_data_dir.sh data/$lang/$dataset data/$lang/${dataset}_hires
+    data_dir=data/$lang/${dataset}${feat_suffix}
+    log_dir=exp/$lang/make${feat_suffix}/$dataset
+
+    utils/copy_data_dir.sh data/$lang/$dataset ${data_dir} || exit 1;
 
     # scale the waveforms, this is useful as we don't use CMVN
-    data_dir=data/$lang/${dataset}_hires
+    utils/data/perturb_data_dir_volume.sh $data_dir || exit 1;
 
-    utils/data/perturb_data_dir_volume.sh $data_dir || exit 1 ;
+    steps/make${feat_suffix}.sh --nj 70 $hires_config \
+      --cmd "$train_cmd" ${data_dir} $log_dir $mfccdir;
 
-    steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
-      --cmd "$train_cmd" data/$lang/${dataset}_hires exp/$lang/make_hires/$dataset $mfccdir;
-
-    steps/compute_cmvn_stats.sh data/$lang/${dataset}_hires exp/$lang/make_hires/${dataset} $mfccdir;
+    steps/compute_cmvn_stats.sh ${data_dir} $log_dir $mfccdir;
 
     # Remove the small number of utterances that couldn't be extracted for some
     # reason (e.g. too short; no such file).
-    utils/fix_data_dir.sh data/$lang/${dataset}_hires;
+    utils/fix_data_dir.sh ${data_dir};
   done
-  touch data/$lang/${train_set}_hires/.done
+  touch ${data_dir}/.done
 fi
-
-if [ $stage -le 4 ]; then
-  if [[ "$use_pitch" == "true" ]]; then
-    pitchdir=pitch/$lang
-    train_set=${train_set}_hires
-    for dataset in $train_set; do
-      if $use_pitch; then
-        mkdir -p $pitchdir
-        if [ ! -f data/$lang/${dataset}_pitch/feats.scp ]; then
-          echo "$0: Generating pitch features for data/$lang as use_pitch=$use_pitch"
-          utils/copy_data_dir.sh data/$lang/$dataset data/$lang/${dataset}_pitch
-          steps/make_pitch.sh --nj 70 --pitch-config $pitch_conf \
-            --cmd "$train_cmd" data/$lang/${dataset}_pitch exp/$lang/make_pitch/${dataset} $pitchdir;
-        fi
-        feat_suffix=_pitch
-      fi
-
-      if [ ! -f data/$lang/${dataset}_mfcc${feat_suffix}/feats.scp ]; then
-        steps/append_feats.sh --nj 16 --cmd "$train_cmd" data/$lang/${dataset} \
-          data/$lang/${dataset}${feat_suffix} data/$lang/${dataset}_mfcc${feat_suffix} \
-          exp/$lang/append_mfcc${feat_suffix}/${dataset} mfcc${feat_suffix}/$lang
-
-        steps/compute_cmvn_stats.sh data/$lang/${dataset}_mfcc${feat_suffix} exp/$lang/make_cmvn_mfcc${feat_suffix}/${x} mfcc${feat_suffix}/$lang
-      fi
-    done
-  fi
-fi
-
 exit 0;

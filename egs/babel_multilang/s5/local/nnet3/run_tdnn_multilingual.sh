@@ -155,7 +155,7 @@ else
 fi
 feat_dim=`feat-to-dim scp:${multi_data_dirs[0]}/feats.scp -`
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 8 ]; then
   echo "$0: creating multilingual neural net configs using the xconfig parser";
   if [ -z $bnf_dim ]; then
     bnf_dim=1024
@@ -202,7 +202,7 @@ EOF
   nnet3-copy --edits="remove-output-nodes name=output-tmp" $dir/configs/ref.raw $dir/configs/ref.raw || exit 1;
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 9 ]; then
   echo "$0: Generates separate egs dir per language for multilingual training."
   # sourcing the "vars" below sets
   #model_left_context=(something)
@@ -225,7 +225,7 @@ if [ -z $megs_dir ];then
   megs_dir=$dir/egs
 fi
 
-if [ $stage -le 11 ] && [ ! -z $megs_dir ]; then
+if [ $stage -le 10 ] && [ ! -z $megs_dir ]; then
   echo "$0: Generate multilingual egs dir using "
   echo "separate egs dirs for multilingual training."
   if [ ! -z "$lang2weight" ]; then
@@ -238,7 +238,7 @@ if [ $stage -le 11 ] && [ ! -z $megs_dir ]; then
     $num_langs ${common_egs_dir[@]} || exit 1;
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 11 ]; then
   steps/nnet3/train_raw_dnn.py --stage=$train_stage \
     --cmd="$decode_cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
@@ -262,7 +262,7 @@ if [ $stage -le 12 ]; then
     --dir=$dir  || exit 1;
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 12 ]; then
   for lang_index in `seq 0 $[$num_langs-1]`;do
     lang_dir=$dir/${lang_list[$lang_index]}
     mkdir -p  $lang_dir
@@ -282,7 +282,7 @@ if [ $stage -le 13 ]; then
 fi
 
 # decoding different languages
-if [ $stage -le 14 ]; then
+if [ $stage -le 13 ]; then
   num_decode_lang=${#decode_lang_list[@]}
   for lang_index in `seq 0 $[$num_decode_lang-1]`; do
     if [ ! -f $dir/${decode_lang_list[$lang_index]}/decode_dev10h.pem/.done ]; then
