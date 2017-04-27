@@ -41,7 +41,6 @@ NnetCombiner::NnetCombiner(const NnetCombineConfig &config,
               << " is nonzero, so setting --enforce-sum-to-one=false.";
     config_.enforce_sum_to_one = false;
   }
-  SetDropoutProportion(0, &nnet_);
   SubVector<BaseFloat> first_params(nnet_params_, 0);
   VectorizeNnet(nnet_, &first_params);
   tot_input_weighting_(0) += 1.0;
@@ -178,6 +177,19 @@ void NnetCombiner::Combine() {
     ComputeObjfAndDerivFromParameters(final_params, &deriv);
   }
   PrintParams(final_params);
+
+  if (HasBatchnorm(nnet_)) {
+    RecomputeBatchnormStats();
+  }
+}
+
+void NnetCombiner::RecomputeBatchnormStats() {
+  KALDI_LOG << "Recomputing batch-norm stats on nnet.";
+  NnetTrainerOptions train_opts;
+  train_opts.train = false;
+  NnetTrainer trainer(train_opts, &nnet_);
+  for (size_t i = 0; i < egs_.size(); i++)
+    trainer.Train(egs_[i]);
 }
 
 
