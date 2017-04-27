@@ -32,20 +32,9 @@ align_full_hyp=false  # Align full hypothesis i.e. trackback from the end to get
 # First-pass segmentation opts
 # These options are passed to the script 
 # steps/cleanup/internal/segment_ctm_edits_mild.py
-min_segment_length=0.5
-min_new_segment_length=1.0
-max_tainted_length=0.05
-max_edge_silence_length=0.5
-max_edge_non_scored_length=0.5
-max_internal_silence_length=2.0
-max_internal_non_scored_length=2.0
-unk_padding=0.05
-max_junk_proportion=0.1
+segmentation_extra_opts=
 min_split_point_duration=0.1
 max_deleted_words_kept_when_merging=1
-silence_factor=1
-incorrect_words_factor=1
-tainted_words_factor=1
 max_wer=50
 max_segment_length_for_merging=60
 max_bad_proportion=0.75
@@ -356,20 +345,8 @@ if [ $stage -le 13 ]; then
   echo "$0: creating segmentation from ctm-edits file."
 
   segmentation_opts=(
-  --min-segment-length=$min_segment_length
-  --min-new-segment-length=$min_new_segment_length
-  --max-tainted-length=$max_tainted_length
-  --max-edge-silence-length=$max_edge_silence_length
-  --max-edge-non-scored-length=$max_edge_non_scored_length
-  --max-internal-silence-length=$max_internal_silence_length
-  --max-internal-non-scored-length=$max_internal_non_scored_length
-  --unk-padding=$unk_padding
-  --max-junk-proportion=$max_junk_proportion
   --min-split-point-duration=$min_split_point_duration
   --max-deleted-words-kept-when-merging=$max_deleted_words_kept_when_merging
-  --merging-score.silence-factor=$silence_factor
-  --merging-score.incorrect-words-factor=$incorrect_words_factor
-  --merging-score.tainted-words-factor=$tainted_words_factor
   --merging.max-wer=$max_wer
   --merging.max-segment-length=$max_segment_length_for_merging
   --merging.max-bad-proportion=$max_bad_proportion
@@ -382,7 +359,7 @@ if [ $stage -le 13 ]; then
   
   $cmd $dir/log/segment_ctm_edits.log \
     steps/cleanup/internal/segment_ctm_edits_mild.py \
-      ${segmentation_opts[@]} \
+      ${segmentation_opts[@]} $segmentation_extra_opts \
       --oov-symbol-file=$lang/oov.txt \
       --ctm-edits-out=$dir/ctm_edits.segmented \
       --word-stats-out=$dir/word_stats.txt \

@@ -32,7 +32,6 @@ if [ $# != 4 ] && [ $# != 3 ]; then
   echo "and <text-file> is of the form <new-utt> <word1> <word2> ... <wordN>."
   echo "This script appropriately combines the <subsegments-file> with the original"
   echo "segments file, if necessary, and if not, creates a segments file."
-  echo "<text-file> is an optional argument."
   echo "e.g.:"
   echo " $0 data/train [options] exp/tri3b_resegment/segments exp/tri3b_resegment/text data/train_resegmented"
   echo " Options:"
@@ -143,10 +142,6 @@ if [ -f $srcdir/feats.scp ]; then
   frame_shift=$(utils/data/get_frame_shift.sh $srcdir)
   echo "$0: note: frame shift is $frame_shift [affects feats.scp]"
 
-  utils/data/get_utt2num_frames.sh --cmd "run.pl" --nj 1 $srcdir
-  awk '{print $1" "$2}' $subsegments | \
-    utils/apply_map.pl -f 2 $srcdir/utt2num_frames > \
-    $dir/utt2max_frames
 
   # The subsegments format is <new-utt-id> <old-utt-id> <start-time> <end-time>.
   # e.g. 'utt_foo-1 utt_foo 7.21 8.93'
@@ -169,22 +164,10 @@ if [ -f $srcdir/feats.scp ]; then
   # utt_foo-1 some command|[721:892]
   # Lastly, utils/data/normalize_data_range.pl will only do something nontrivial if
   # the original data-dir already had data-ranges in square brackets.
-  cat $subsegments | awk -v s=$frame_shift '{print $1, $2, int(($3/s)+0.5), int(($4/s)-0.5);}' | \
+  awk -v s=$frame_shift '{print $1, $2, int(($3/s)+0.5), int(($4/s)-0.5);}' <$subsegments| \
     utils/apply_map.pl -f 2 $srcdir/feats.scp | \
     awk '{p=NF-1; for (n=1;n<NF-2;n++) printf("%s ", $n); k=NF-2; l=NF-1; printf("%s[%d:%d]\n", $k, $l, $NF)}' | \
-    utils/data/normalize_data_range.pl | \
-    utils/data/fix_subsegmented_feats.pl $dir/utt2max_frames >$dir/feats.scp
-  
-  cat $dir/feats.scp | perl -ne 'm/^(\S+) .+\[(\d+):(\d+)\]$/; print "$1 " . ($3-$2+1) . "\n"' > \
-    $dir/utt2num_frames
-
-  if [ -f $srcdir/vad.scp ]; then
-    cat $subsegments | awk -v s=$frame_shift '{print $1, $2, int(($3/s)+0.5), int(($4/s)-0.5);}' | \
-      utils/apply_map.pl -f 2 $srcdir/vad.scp | \
-      awk '{p=NF-1; for (n=1;n<NF-2;n++) printf("%s ", $n); k=NF-2; l=NF-1; printf("%s[%d:%d]\n", $k, $l, $NF)}' | \
-      utils/data/normalize_data_range.pl | \
-      utils/data/fix_subsegmented_feats.pl $dir/utt2max_frames >$dir/vad.scp
-  fi
+    utils/data/normalize_data_range.pl  >$dir/feats.scp
 fi
 
 
