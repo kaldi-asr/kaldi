@@ -56,6 +56,17 @@ oov_I 3
 oov_S 3
 EOF
 
+if [ ! -d RIRS_NOISES/ ]; then
+  # Prepare MUSAN rirs and noises
+  wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
+  unzip rirs_noises.zip
+fi
+
+if [ ! -d RIRS_NOISES/music ]; then
+  # Prepare MUSAN music
+  local/segmentation/prepare_musan_music.sh /export/corpora/JHU/musan RIRS_NOISES/music
+fi
+
 # Expecting the user to have done run.sh to have $model_dir,
 # $sat_model_dir, $lang, $lang_test, $train_data_dir
 local/segmentation/prepare_unsad_data.sh \
