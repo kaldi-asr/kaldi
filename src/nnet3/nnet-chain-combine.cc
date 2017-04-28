@@ -19,6 +19,7 @@
 
 #include "nnet3/nnet-chain-combine.h"
 #include "nnet3/nnet-utils.h"
+#include "nnet3/nnet-chain-training.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -38,7 +39,6 @@ NnetChainCombiner::NnetChainCombiner(const NnetCombineConfig &combine_config,
     nnet_params_(std::min(num_nnets, combine_config_.max_effective_inputs),
                  NumParameters(first_nnet)),
     tot_input_weighting_(nnet_params_.NumRows()) {
-  SetDropoutProportion(0, &nnet_);
 
   if (combine_config_.sum_to_one_penalty != 0.0 &&
       combine_config_.enforce_sum_to_one) {
@@ -182,6 +182,18 @@ void NnetChainCombiner::Combine() {
     ComputeObjfAndDerivFromParameters(final_params, &deriv);
   }
   PrintParams(final_params);
+  if (HasBatchnorm(nnet_)) {
+    RecomputeBatchnormStats();
+  }
+}
+
+void NnetChainCombiner::RecomputeBatchnormStats() {
+  KALDI_LOG << "Recomputing batch-norm stats on nnet.";
+  NnetChainTrainingOptions train_opts;
+  train_opts.nnet_config.train = false;
+  NnetChainTrainer trainer(train_opts, den_fst_, &nnet_);
+  for (size_t i = 0; i < egs_.size(); i++)
+    trainer.Train(egs_[i]);
 }
 
 

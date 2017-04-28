@@ -164,6 +164,11 @@ std::string NnetInfo(const Nnet &nnet);
 /// dropout_proportion value.
 void SetDropoutProportion(BaseFloat dropout_proportion, Nnet *nnet);
 
+
+/// Returns true if nnet has at least one component of type
+/// BatchNormComponent.
+bool HasBatchnorm(const Nnet &nnet);
+
 /// This function affects only components of type BatchNormComponent.
 /// It sets "test mode" on such components (if you call it with test_mode =
 /// true, otherwise it would set normal mode, but this wouldn't be needed

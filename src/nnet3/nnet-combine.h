@@ -240,6 +240,8 @@ class NnetCombiner {
 
   void ComputeUpdatableComponentDims();
   void FinishPreprocessingInput();
+  void RecomputeBatchnormStats();
+
 
 };
 

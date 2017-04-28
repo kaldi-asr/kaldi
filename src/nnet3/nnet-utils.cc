@@ -469,6 +469,16 @@ void SetDropoutProportion(BaseFloat dropout_proportion,
   }
 }
 
+bool HasBatchnorm(const Nnet &nnet) {
+  for (int32 c = 0; c < nnet.NumComponents(); c++) {
+    const Component *comp = nnet.GetComponent(c);
+    const BatchNormComponent *bc =
+        dynamic_cast<const BatchNormComponent*>(comp);
+    if (bc != NULL)
+      return true;
+  }
+  return false;
+}
 
 void SetBatchnormTestMode(bool test_mode,  Nnet *nnet) {
   for (int32 c = 0; c < nnet->NumComponents(); c++) {
