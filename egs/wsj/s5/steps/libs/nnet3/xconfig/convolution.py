@@ -112,7 +112,7 @@ from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 class XconfigConvLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         for operation in first_token.split('-')[:-1]:
-            assert operation in ['conv', 'renorm', 'batchnorm', 'relu']
+            assert operation in ['conv', 'renorm', 'batchnorm', 'relu', 'dropout']
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -132,7 +132,8 @@ class XconfigConvLayer(XconfigLayerBase):
                        'max-change': 0.75, 'learning-rate-factor':'',
                        'use-natural-gradient':'',
                        'rank-in':'', 'rank-out':'', 'num-minibatches-history':'',
-                       'alpha-in':'', 'alpha-out':''}
+                       'alpha-in':'', 'alpha-out':'',
+                       'dropout-proportion': 0.5}
 
     def set_derived_configs(self):
         # sets 'num-filters-in'.
@@ -211,7 +212,7 @@ class XconfigConvLayer(XconfigLayerBase):
         assert len(operations) > 1
         last_operation = operations[-1]
         assert last_operation in ['relu', 'conv',
-                                  'renorm', 'batchnorm']
+                                  'renorm', 'batchnorm', 'dropout']
         # we'll return something like 'layer1.batchnorm'.
         return '{0}.{1}'.format(self.name, last_operation)
 
@@ -290,6 +291,13 @@ class XconfigConvLayer(XconfigLayerBase):
                                name, cur_num_filters * cur_height,
                                self.config['self-repair-scale']))
                 configs.append('component-node name={0}.relu component={0}.relu '
+                               'input={1}'.format(name, cur_descriptor))
+            elif operation == 'dropout':
+                configs.append('component name={0}.dropout type=DropoutComponent '
+                           'dim={1} dropout-proportion={2}'.format(
+                               name, cur_num_filters * cur_height,
+                               self.config['dropout-proportion']))
+                configs.append('component-node name={0}.dropout component={0}.dropout '
                                'input={1}'.format(name, cur_descriptor))
             else:
                 raise RuntimeError("Un-handled operation type: " + operation)
