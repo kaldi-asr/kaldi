@@ -110,7 +110,7 @@ if [ $stage -le 4 ]; then
   utils/copy_data_dir.sh $corrupted_data_dir ${corrupted_data_dir}_$feat_suffix
   corrupted_data_dir=${corrupted_data_dir}_$feat_suffix
   steps/make_mfcc.sh --mfcc-config $mfcc_config \
-    --cmd "$cmd" --nj $reco_nj \
+    --cmd "$cmd" --nj $reco_nj --write-utt2num-frames true \
     $corrupted_data_dir exp/make_${feat_suffix}/${corrupted_data_id} $mfccdir
   steps/compute_cmvn_stats.sh --fake \
     $corrupted_data_dir exp/make_${feat_suffix}/${corrupted_data_id} $mfccdir

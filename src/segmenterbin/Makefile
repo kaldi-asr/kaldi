@@ -18,16 +18,8 @@ BINFILES = segmentation-copy segmentation-get-stats \
 					 segmentation-intersect-segments \
 					 segmentation-init-from-additive-signals-info \
 					 class-counts-per-frame-to-labels \
-					 agglomerative-cluster-ib \
-					 intersect-int-vectors \
-					 gmm-global-init-models-from-feats \
-					 segmentation-cluster-adjacent-segments \
-					 ib-scoring-dense #\
-					 gmm-acc-pdf-stats-segmentation \
-					 gmm-est-segmentation gmm-update-segmentation \
-					 segmentation-init-from-diarization \
-					 segmentation-compute-class-ctm-conf \
-					 combine-vector-segments 
+					 segmentation-speed-perturb \
+					 intersect-int-vectors 
 
 OBJFILES =
 
