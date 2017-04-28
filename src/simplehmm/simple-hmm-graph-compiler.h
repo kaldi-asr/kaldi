@@ -29,7 +29,8 @@
 
 // This header provides functionality to compile a graph directly from the 
 // alignment where the alignment is of classes that are simple mappings 
-// of 'pdf-ids' (same as pdf classes for SimpleHmm).
+// of 'pdf-ids' (1 + pdf_id)
+// Note: For SimpleHmm, pdf-id is same as PdfClass
 
 namespace kaldi {
 
@@ -62,7 +63,7 @@ class SimpleHmmGraphCompiler {
     model_(model), opts_(opts) { }
 
 
-  /// CompileGraph compiles a single training graph its input is a
+  /// CompileGraph compiles a single training graph. Its input is a
   /// weighted acceptor (G) at the class level, its output is HCLG-type graph.
   /// Note: G could actually be an acceptor, it would also work.
   /// This function is not const for technical reasons involving the cache.
@@ -76,13 +77,13 @@ class SimpleHmmGraphCompiler {
       const std::vector<const fst::VectorFst<fst::StdArc> *> &class_fsts,
       std::vector<fst::VectorFst<fst::StdArc> *> *out_fsts);
 
-  // This version creates an FST from the per-frame alignment and calls 
-  // CompileGraph.
+  // This function creates an FST from the per-frame alignment (of class-ids)
+  // and calls CompileGraph.
   bool CompileGraphFromAlignment(const std::vector<int32> &alignment,
                                  fst::VectorFst<fst::StdArc> *out_fst);
 
-  // This function creates FSTs from the per-frame alignment and calls 
-  // CompileGraphs.
+  // This function creates a vector of FSTs from a vector of per-frame
+  // alignments (of class-ids) and calls CompileGraphs.
   bool CompileGraphsFromAlignments(
       const std::vector<std::vector<int32> >  &alignments,
       std::vector<fst::VectorFst<fst::StdArc> *> *out_fsts);

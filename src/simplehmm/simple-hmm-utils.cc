@@ -44,7 +44,7 @@ fst::VectorFst<fst::StdArc>* GetHTransducer(
     for (MutableArcIterator<MutableFst<Arc> > aiter(fst, s);
          !aiter.Done(); aiter.Next()) {
       Arc arc = aiter.Value();
-      if (arc.ilabel == 0) {
+      if (arc.ilabel == 0) {  // epsilon arcs
         KALDI_ASSERT(arc.olabel == 0);
         continue;
       }
@@ -52,6 +52,7 @@ fst::VectorFst<fst::StdArc>* GetHTransducer(
       KALDI_ASSERT(arc.ilabel == arc.olabel && 
                    arc.ilabel <= model.NumTransitionIds());
 
+      // Convert pdf-id to 1-indexed class-id
       arc.olabel = model.TransitionIdToPdf(arc.ilabel) + 1;
       aiter.SetValue(arc);
     }

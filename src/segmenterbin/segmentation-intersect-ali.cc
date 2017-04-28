@@ -21,6 +21,37 @@
 #include "util/common-utils.h"
 #include "segmenter/segmentation-utils.h"
 
+namespace kaldi {
+namespace segmenter {
+
+void IntersectSegmentationAndAlignment(const Segmentation &in_segmentation,
+                                       const std::vector<int32> &alignment,
+                                       int32 ali_label,
+                                       int32 min_align_chunk_length,
+                                       Segmentation *out_segmentation) {
+  KALDI_ASSERT(out_segmentation);
+
+  for (SegmentList::const_iterator it = in_segmentation.Begin();
+        it != in_segmentation.End(); ++it) {
+    Segmentation filter_segmentation;
+    InsertFromAlignment(alignment, it->start_frame,
+                        std::min(it->end_frame + 1,
+                                 static_cast<int32>(alignment.size())),
+                        0, &filter_segmentation, NULL);
+
+    for (SegmentList::const_iterator f_it = filter_segmentation.Begin();
+          f_it != filter_segmentation.End(); ++f_it) {
+      if (f_it->Length() < min_align_chunk_length) continue;
+      if (ali_label != -1 && f_it->Label() != ali_label) continue;
+      out_segmentation->EmplaceBack(f_it->start_frame, f_it->end_frame,
+                                    it->Label());
+    }
+  }
+}
+
+}  // end namespace segmenter
+}  // end namespace kaldi
+
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -28,15 +59,15 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Intersect (like sets) segmentation with an alignment and retain \n"
-        "only segments where the alignment is the specified label. \n"
-        "\n"
+        "only segments where a chunk of alignment is of label specified by \n"
+        "--ali-label and is at least --min-alignment-chunk-length frames \n"
+        "long.\n\n"
         "Usage: segmentation-intersect-alignment [options] "
         "<segmentation-rspecifier> <ali-rspecifier> "
         "<segmentation-wspecifier>\n"
-        " e.g.: segmentation-intersect-alignment --binary=false ark:foo.seg "
+        " e.g.: segmentation-intersect-alignment --ali-label=1 ark:foo.seg "
         "ark:filter.ali ark,t:-\n"
-        "See also: segmentation-combine-segments, "
-        "segmentation-intersect-segments, segmentation-create-subsegments\n";
+        "See also: segmentation-create-subsegments\n";
 
     ParseOptions po(usage);
 

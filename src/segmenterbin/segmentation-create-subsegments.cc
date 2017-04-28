@@ -21,6 +21,70 @@
 #include "util/common-utils.h"
 #include "segmenter/segmentation-utils.h"
 
+namespace kaldi {
+namespace segmenter {
+
+/**
+ * This function is a little complicated in what it does. But this is required
+ * for one of the applications.
+ * This function creates a new segmentation by sub-segmenting an arbitrary
+ * "primary_segmentation" and assign new label "subsegment_label" to regions
+ * where the "primary_segmentation" intersects the non-overlapping
+ * "secondary_segmentation" segments with label "secondary_label".
+ * This is similar to the function "IntersectSegments", but instead of keeping
+ * only the filtered subsegments, all the subsegments are kept, while only
+ * changing the class_id of the filtered sub-segments.
+ * The label for the newly created subsegments is determined as follows:
+ * if secondary segment's label == secondary_label:
+ *   if subsegment_label >= 0:
+ *     label = subsegment_label
+ *   else:
+ *     label = secondary_label
+ * else:
+ *   if unmatched_label >= 0:
+ *     label = unmatched_label
+ *   else:
+ *     label = primary_label
+**/
+void SubSegmentUsingNonOverlappingSegments(
+    const Segmentation &primary_segmentation,
+    const Segmentation &secondary_segmentation, int32 secondary_label,
+    int32 subsegment_label, int32 unmatched_label,
+    Segmentation *out_segmentation) {
+  KALDI_ASSERT(out_segmentation);
+  KALDI_ASSERT(secondary_segmentation.Dim() > 0);
+
+  std::vector<int32> alignment;
+  ConvertToAlignment(secondary_segmentation, -1, -1, 0, &alignment);
+
+  for (SegmentList::const_iterator it = primary_segmentation.Begin();
+        it != primary_segmentation.End(); ++it) {
+    if (it->end_frame >= alignment.size()) {
+      alignment.resize(it->end_frame + 1, -1);
+    }
+    Segmentation filter_segmentation;
+    InsertFromAlignment(alignment, it->start_frame, it->end_frame + 1,
+                        0, &filter_segmentation, NULL);
+
+    for (SegmentList::const_iterator f_it = filter_segmentation.Begin();
+          f_it != filter_segmentation.End(); ++f_it) {
+      int32 label = (unmatched_label >= 0 ? unmatched_label : it->Label());
+      if (f_it->Label() == secondary_label) {
+        if (subsegment_label >= 0) {
+          label = subsegment_label;
+        } else {
+          label = f_it->Label();
+        }
+      }
+      out_segmentation->EmplaceBack(f_it->start_frame, f_it->end_frame,
+                                    label);
+    }
+  }
+}
+
+}  // end namespace segmenter
+}  // end namespace kaldi
+
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -42,8 +106,6 @@ int main(int argc, char *argv[]) {
         "     label = unmatched_label\n"
         "   else\n:"
         "     label = primary_label\n"
-        "See the function SubSegmentUsingNonOverlappingSegments() "
-        "for more details.\n"
         "\n"
         "Usage: segmentation-create-subsegments [options] "
         "<segmentation-rspecifier> "

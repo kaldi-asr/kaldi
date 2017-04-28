@@ -6,10 +6,16 @@
 
 if [ $# -ne 4 ]; then
   echo "This scripts gets subsegmented_feats (by adding ranges to data/feats.scp) "
-  echo "for the subsegments file. This is does one part of the "
-  echo "functionality in subsegment_data_dir.sh, which additionally "
+  echo "for the subsegments file and writes it to stdout."
+  echo "<subsegments-file> is to have lines of the form "
+  echo "<new-utt> <old-utt> <start-time-within-old-utt> <end-time-within-old-utt>"
+  echo "<frame-shift> in seconds is used to convert the segment timings into "
+  echo "frame index ranges of the original feats.scp file"
+  echo "<frame-overlap> is used to ensure that exactly the right number of frames are written, accounting for edge effects."
+  echo "This script does one part of the "
+  echo "functionality in subsegment_data_dir.sh, which also "
   echo "creates a new subsegmented data directory."
-  echo "Usage: $0 <feats> <frame-shift> <frame-overlap> <subsegments>" 
+  echo "Usage: $0 <feats> <frame-shift> <frame-overlap> <subsegments-file>" 
   echo " e.g.: $0 data/train/feats.scp 0.01 0.015 subsegments"
   exit 1
 fi

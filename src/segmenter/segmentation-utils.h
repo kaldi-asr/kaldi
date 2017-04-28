@@ -35,19 +35,27 @@ void MergeLabels(const std::vector<int32> &merge_labels,
                  int32 dest_label, Segmentation *segmentation);
 
 // Relabel segments using a map from old to new label.
-// If segment label is not found in the map, the function exits with
-// an error.
+// Some special functionality is as follows:
+// 1) If segment label is not found in the map, the function exits with
+// an error, unless it has a default_label defined as follows.
+// 2) If label_map contains a mapping from -1 to a new label (other than -1),
+// then that new label is the default_label. Any segment whose label is not
+// found in the label_map is assigned the default_label.
+// 3) Any segment with new label -1 is removed from the segmentation.
 void RelabelSegmentsUsingMap(const unordered_map<int32, int32> &label_map,
                              Segmentation *segmentation);
 
 // Relabel all segments to class-id label
 void RelabelAllSegments(int32 label, Segmentation *segmentation);
 
-// Scale frame shift by this factor.
-// Usually frame length is 0.01 and frame shift 0.015. But sometimes
-// the alignments are obtained using a subsampling factor of 3. This
-// function can be used to maintain consistency among different
-// alignments and segmentations.
+/**
+ * Scale frame shift by this factor. 
+ * Scales both start_time and end_time of the segments.
+ * Usually frame length is 0.01 and frame shift 0.015. But sometimes
+ * the alignments are obtained using a subsampling factor of 3. This
+ * function can be used to maintain consistency among different
+ * alignments and segmentations.
+ **/
 void ScaleFrameShift(BaseFloat factor, Segmentation *segmentation);
 
 /**
@@ -56,16 +64,20 @@ void ScaleFrameShift(BaseFloat factor, Segmentation *segmentation);
 void RemoveSegments(int32 label, Segmentation *segmentation);
 
 /**
- * This removes any segment whose label is
+ * This function removes any segment whose label is
  * contained in the vector "labels" and has a length smaller than
- * max_remove_length. max_remove_length can be provided -1 to 
- * specify a value of +infinity i.e. to remove segments 
- * based on only the labels and irrespective of their lengths.
+ * max_remove_length. 
+ * max_remove_length can be provided -1, which has a special meaning of +inf
+ * i.e. to remove segments based on only the labels and irrespective of the
+ * lengths.
 **/
 void RemoveSegments(const std::vector<int32> &labels,
                     int32 max_remove_length,
                     Segmentation *segmentation);
 
+/**
+ * This function removes segments that are shorter than min_length frames.
+ **/
 void RemoveShortSegments(int32 label, int32 min_length,
                          Segmentation *segmentation);
 
@@ -88,7 +100,7 @@ void SplitInputSegmentation(const Segmentation &in_segmentation,
 
 /**
  * This function splits the segments in the the segmentation
- * into pieces of segment_length.
+ * into pieces of length segment_length.
  * But if the last remaining piece is smaller than min_remainder, then the last
  * piece is merged to the piece before it, resulting in a piece that is of
  * length < segment_length + min_remainder.
@@ -127,72 +139,21 @@ void SplitSegmentsUsingAlignment(int32 segment_length,
                                  Segmentation *segmentation);
 
 /**
- * This function is a standard intersection of the set of times represented by
- * the segmentation in_segmentation and the set of times of where
- * alignment contains ali_label for at least min_align_chunk_length
- * consecutive frames
-**/
-void IntersectSegmentationAndAlignment(const Segmentation &in_segmentation,
-                                       const std::vector<int32>  &alignment,
-                                       int32 ali_label,
-                                       int32 min_align_chunk_length,
-                                       Segmentation *out_segmentation);
-
-/**
- * This function is a little complicated in what it does. But this is required
- * for one of the applications.
- * This function creates a new segmentation by sub-segmenting an arbitrary
- * "primary_segmentation" and assign new label "subsegment_label" to regions
- * where the "primary_segmentation" intersects the non-overlapping
- * "secondary_segmentation" segments with label "secondary_label".
- * This is similar to the function "IntersectSegments", but instead of keeping
- * only the filtered subsegments, all the subsegments are kept, while only
- * changing the class_id of the filtered sub-segments.
- * The label for the newly created subsegments is determined as follows:
- * if secondary segment's label == secondary_label:
- *   if subsegment_label >= 0:
- *     label = subsegment_label
- *   else:
- *     label = secondary_label
- * else:
- *   if unmatched_label >= 0:
- *     label = unmatched_label
- *   else:
- *     label = primary_label
-**/
-void SubSegmentUsingNonOverlappingSegments(
-    const Segmentation &primary_segmentation,
-    const Segmentation &secondary_segmentation, int32 secondary_label,
-    int32 subsegment_label, int32 unmatched_label,
-    Segmentation *out_segmentation);
-
-/**
  * This function is used to merge segments next to each other in the SegmentList
  * and within a distance of max_intersegment_length frames from each other,
  * provided the segments are of the same label.
  * This function requires the segmentation to be sorted before passing it.
  **/
 void MergeAdjacentSegments(int32 max_intersegment_length,
-                           Segmentation *segmentation);
+                           Segmentation *segmentation,
+                           bool sort = true);
 
 /**
  * This function is used to pad segments of label "label" by "length"
  * frames on either side of the segment.
- * This is useful to pad segments of speech.
+ * This is useful to pad segments of speech by a few frames.
 **/
 void PadSegments(int32 label, int32 length, Segmentation *segmentation);
-
-/**
- * This function is used to widen segments of label "label" by "length"
- * frames on either side of the segment.
- * This is similar to PadSegments, but while widening, it also reduces the
- * length of the segment adjacent to it.
- * This may not be required in some applications, but it is ok for speech /
- * silence. By this process, we are calling frames within a "length" number of
- * frames near the speech segment as speech and hence we reduce the width of the
- * silence segment before it.
-**/
-void WidenSegments(int32 label, int32 length, Segmentation *segmentation);
 
 /**
  * This function is used to shrink segments of class_id "label" by "length"
@@ -216,7 +177,8 @@ void ShrinkSegments(int32 label, int32 length, Segmentation *segmentation);
 **/
 void BlendShortSegmentsWithNeighbors(int32 label, int32 max_length,
                                      int32 max_intersegment_distance,
-                                     Segmentation *segmentation);
+                                     Segmentation *segmentation,
+                                     bool sort = true);
 
 /**
  * This function is used to convert the segmentation into frame-level alignment
@@ -329,6 +291,9 @@ bool GetClassCountsPerFrame(
 
 // Checks if segmentation is non-overlapping
 bool IsNonOverlapping(const Segmentation &segmentation);
+
+// Check if segmentation is sorted
+bool IsSorted(const Segmentation &segmentation);
 
 // Sorts segments on start frame.
 void Sort(Segmentation *segmentation);

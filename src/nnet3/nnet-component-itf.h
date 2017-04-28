@@ -401,11 +401,6 @@ class UpdatableComponent: public Component {
   /// Sets the learning rate directly, bypassing learning_rate_factor_.
   virtual void SetActualLearningRate(BaseFloat lrate) { learning_rate_ = lrate; }
 
-  /// Sets the learning rate factor
-  virtual void SetLearningRateFactor(BaseFloat lrate_factor) {
-    learning_rate_factor_ = lrate_factor;
-  }
-  
   /// \brief Sets is_gradient_ to true and sets learning_rate_ to 1, ignoring
   /// learning_rate_factor_.
   virtual void SetAsGradient() { learning_rate_ = 1.0; is_gradient_ = true; }
@@ -415,15 +410,12 @@ class UpdatableComponent: public Component {
   /// a different value than x will returned.
   BaseFloat LearningRate() const { return learning_rate_; }
 
-  /// Gets the learning rate factor
-  BaseFloat LearningRateFactor() const { return learning_rate_factor_; }
-  
   /// Gets per-component max-change value. Note: the components themselves do
   /// not enforce the per-component max-change; it's enforced in class
   /// NnetTrainer by querying the max-changes for each component.
   /// See NnetTrainer::UpdateParamsWithMaxChange() in nnet3/nnet-training.cc.
   BaseFloat MaxChange() const { return max_change_; }
-  
+
   virtual std::string Info() const;
 
   /// The following new virtual function returns the total dimension of

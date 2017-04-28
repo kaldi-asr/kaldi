@@ -1,5 +1,4 @@
-// segmenter/segmentation-utils.cc
-
+// segmenter/segmentation-utils.cc 
 // Copyright 2016    Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -29,8 +28,8 @@ void MergeLabels(const std::vector<int32> &merge_labels,
 
   // Check if sorted and unique
   KALDI_ASSERT(std::adjacent_find(merge_labels.begin(),
-                merge_labels.end(), std::greater<int32>())
-                == merge_labels.end());
+                                  merge_labels.end(), std::greater<int32>())
+               == merge_labels.end());
 
   for (SegmentList::iterator it = segmentation->Begin();
        it != segmentation->End(); ++it) {
@@ -49,9 +48,9 @@ void RelabelSegmentsUsingMap(const unordered_map<int32, int32> &label_map,
   int32 default_label = -1;
   unordered_map<int32, int32>::const_iterator it = label_map.find(-1);
   if (it != label_map.end()) {
-    default_label = it->second;
+    default_label = it->second; // default_label is defined.
     KALDI_ASSERT(default_label != -1);
-  }
+  } // else no default_label
 
   for (SegmentList::iterator it = segmentation->Begin();
        it != segmentation->End(); ) {
@@ -59,7 +58,7 @@ void RelabelSegmentsUsingMap(const unordered_map<int32, int32> &label_map,
         it->Label());
     int32 dest_label = -100;
     if (map_it == label_map.end()) {
-      if (default_label == -1)
+      if (default_label == -1)  // no default_label
         KALDI_ERR << "Could not find label " << it->Label()
                   << " in label map.";
       else
@@ -113,9 +112,10 @@ void RemoveSegments(const std::vector<int32> &labels,
   KALDI_ASSERT(std::adjacent_find(labels.begin(),
                labels.end(), std::greater<int32>()) == labels.end());
 
+  KALDI_ASSERT (max_remove_length >= -1);
   for (SegmentList::iterator it = segmentation->Begin();
         it != segmentation->End(); ) {
-    if (max_remove_length < 0) {
+    if (max_remove_length == -1) {  // remove all segments
       if (std::binary_search(labels.begin(), labels.end(), 
                              it->Label()))
         it = segmentation->Erase(it);
@@ -137,7 +137,6 @@ void RemoveSegments(const std::vector<int32> &labels,
 #endif
 }
 
-// Opposite of RemoveSegments()
 void KeepSegments(int32 label, Segmentation *segmentation) {
   for (SegmentList::iterator it = segmentation->Begin();
         it != segmentation->End(); ) {
@@ -265,10 +264,12 @@ void SplitSegmentsUsingAlignment(int32 segment_length,
     KeepSegments(ali_label, &ali_segmentation);
     MergeAdjacentSegments(0, &ali_segmentation);
 
-    // Get largest alignment chunk where label == ali_label
+    // Get largest chunk of alignment where label == ali_label
     SegmentList::iterator s_it = ali_segmentation.MaxElement();
 
     if (s_it == ali_segmentation.End() || s_it->Length() < min_silence_length) {
+      // The largest chunk is smaller than min_silence_length, so
+      // skip splitting this segment.
       ++it;
       continue;
     }
@@ -316,70 +317,14 @@ void SplitSegmentsUsingAlignment(int32 segment_length,
 }
 
 // TODO(Vimal): Write test code for this
-void IntersectSegmentationAndAlignment(const Segmentation &in_segmentation,
-                                       const std::vector<int32> &alignment,
-                                       int32 ali_label,
-                                       int32 min_align_chunk_length,
-                                       Segmentation *out_segmentation) {
-  KALDI_ASSERT(out_segmentation);
-
-  for (SegmentList::const_iterator it = in_segmentation.Begin();
-        it != in_segmentation.End(); ++it) {
-    Segmentation filter_segmentation;
-    InsertFromAlignment(alignment, it->start_frame,
-                        std::min(it->end_frame + 1,
-                                 static_cast<int32>(alignment.size())),
-                        0, &filter_segmentation, NULL);
-
-    for (SegmentList::const_iterator f_it = filter_segmentation.Begin();
-          f_it != filter_segmentation.End(); ++f_it) {
-      if (f_it->Length() < min_align_chunk_length) continue;
-      if (ali_label != -1 && f_it->Label() != ali_label) continue;
-      out_segmentation->EmplaceBack(f_it->start_frame, f_it->end_frame,
-                                    it->Label());
-    }
-  }
-}
-
-void SubSegmentUsingNonOverlappingSegments(
-    const Segmentation &primary_segmentation,
-    const Segmentation &secondary_segmentation, int32 secondary_label,
-    int32 subsegment_label, int32 unmatched_label,
-    Segmentation *out_segmentation) {
-  KALDI_ASSERT(out_segmentation);
-  KALDI_ASSERT(secondary_segmentation.Dim() > 0);
-
-  std::vector<int32> alignment;
-  ConvertToAlignment(secondary_segmentation, -1, -1, 0, &alignment);
-
-  for (SegmentList::const_iterator it = primary_segmentation.Begin();
-        it != primary_segmentation.End(); ++it) {
-    if (it->end_frame >= alignment.size()) {
-      alignment.resize(it->end_frame + 1, -1);
-    }
-    Segmentation filter_segmentation;
-    InsertFromAlignment(alignment, it->start_frame, it->end_frame + 1,
-                        0, &filter_segmentation, NULL);
-
-    for (SegmentList::const_iterator f_it = filter_segmentation.Begin();
-          f_it != filter_segmentation.End(); ++f_it) {
-      int32 label = (unmatched_label >= 0 ? unmatched_label : it->Label());
-      if (f_it->Label() == secondary_label) {
-        if (subsegment_label >= 0) {
-          label = subsegment_label;
-        } else {
-          label = f_it->Label();
-        }
-      }
-      out_segmentation->EmplaceBack(f_it->start_frame, f_it->end_frame,
-                                    label);
-    }
-  }
-}
-
-// TODO(Vimal): Write test code for this
 void MergeAdjacentSegments(int32 max_intersegment_length,
-                           Segmentation *segmentation) {
+                           Segmentation *segmentation,
+                           bool sort) {
+  if (sort) Sort(segmentation);
+#ifdef KALDI_PARANOID
+  else KALDI_ASSERT(IsSorted(*segmentation));
+#endif
+
   SegmentList::iterator it = segmentation->Begin(),
                    prev_it = segmentation->Begin();
 
@@ -395,8 +340,10 @@ void MergeAdjacentSegments(int32 max_intersegment_length,
         // extend the previous segment to the end_frame of the current
         // segment and remove the current segment.
         prev_it->end_frame = it->end_frame;
-      }   // else simply remove the current segment.
-      it = segmentation->Erase(it);
+      }   // else current segment is entirely within the previous segment 
+          // and can simple by removed
+      it = segmentation->Erase(it);  
+      // After erase, it points to the next segment.
     } else {
       // no merging of segments
       prev_it = it;
@@ -419,72 +366,6 @@ void PadSegments(int32 label, int32 length, Segmentation *segmentation) {
     it->end_frame += length;
 
     if (it->start_frame < 0) it->start_frame = 0;
-  }
-}
-
-void WidenSegments(int32 label, int32 length, Segmentation *segmentation) {
-  for (SegmentList::iterator it = segmentation->Begin();
-        it != segmentation->End(); ++it) {
-    if (it->Label() == label) {
-      if (it != segmentation->Begin()) {
-        // it is not the beginning of the segmentation, so we can widen it on
-        // the start_frame side
-        SegmentList::iterator prev_it = it;
-        --prev_it;
-        it->start_frame -= length;
-        if (prev_it->Label() == label && it->start_frame < prev_it->end_frame) {
-          // After widening this segment, it overlaps the previous segment that
-          // also has the same class_id. Then turn this segment into a composite
-          // one
-          it->start_frame = prev_it->start_frame;
-          // and remove the previous segment from the list.
-          segmentation->Erase(prev_it);
-        } else if (prev_it->Label() != label &&
-                   it->start_frame < prev_it->end_frame) {
-          // Previous segment is not the same class_id, so we cannot turn this
-          // into a composite segment.
-          if (it->start_frame <= prev_it->start_frame) {
-            // The extended segment absorbs the previous segment into it
-            // So remove the previous segment
-            segmentation->Erase(prev_it);
-          } else {
-            // The extended segment reduces the length of the previous
-            // segment. But does not completely overlap it.
-            prev_it->end_frame -= length;
-            if (prev_it->end_frame < prev_it->start_frame)
-              segmentation->Erase(prev_it);
-          }
-        }
-        if (it->start_frame < 0) it->start_frame = 0;
-      } else {
-        it->start_frame -= length;
-        if (it->start_frame < 0) it->start_frame = 0;
-      }
-
-      SegmentList::iterator next_it = it;
-      ++next_it;
-
-      if (next_it != segmentation->End())
-        // We do not know the length of the file.
-        // So we don't want to extend the last one.
-        it->end_frame += length;                                // Line (1)
-    } else {  // if (it->Label() != label)
-      if (it != segmentation->Begin()) {
-        SegmentList::iterator prev_it = it;
-        --prev_it;
-        if (prev_it->end_frame >= it->end_frame) {
-          // The extended previous segment in Line (1) completely
-          // overlaps the current segment. So remove the current segment.
-          it = segmentation->Erase(it);
-          // So that we can increment in the for loop
-          --it;   // TODO(Vimal): This is buggy.
-        } else if (prev_it->end_frame >= it->start_frame) {
-          // The extended previous segment in Line (1) reduces the length of
-          // this segment.
-          it->start_frame = prev_it->end_frame + 1;
-        }
-      }
-    }
   }
 }
 
@@ -511,7 +392,13 @@ void ShrinkSegments(int32 label, int32 length, Segmentation *segmentation) {
 
 void BlendShortSegmentsWithNeighbors(int32 label, int32 max_length,
                                      int32 max_intersegment_length,
-                                     Segmentation *segmentation) {
+                                     Segmentation *segmentation, 
+                                     bool sort) {
+  if (sort) Sort(segmentation);
+#ifdef KALDI_PARANOID
+  else KALDI_ASSERT(IsSorted(*segmentation));
+#endif
+
   for (SegmentList::iterator it = segmentation->Begin();
         it != segmentation->End(); ) {
     if (it == segmentation->Begin()) {
@@ -743,6 +630,22 @@ bool IsNonOverlapping(const Segmentation &segmentation) {
       vec[i] = true;
     }
   }
+  return true;
+}
+
+bool IsSorted(const Segmentation &segmentation) {
+  SegmentList::const_iterator it = segmentation.Begin(),
+    prev_it = segmentation.Begin();
+
+  if (segmentation.Dim() <= 1) return true;
+  ++it;
+
+  while (it != segmentation.End()) {
+    if (prev_it->start_frame > it->start_frame) 
+      return false;
+    ++it; ++prev_it;
+  }
+
   return true;
 }
 

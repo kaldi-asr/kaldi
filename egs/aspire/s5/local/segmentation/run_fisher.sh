@@ -3,6 +3,12 @@
 # Copyright 2016  Vimal Manohar
 # Apache 2.0.
 
+if [ ! -d RIRS_NOISES/ ]; then
+  # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
+  wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
+  unzip rirs_noises.zip
+fi
+
 local/segmentation/prepare_fisher_data.sh
 
 local/segmentation/tuning/train_lstm_sad_music_snr_fisher_1k.sh

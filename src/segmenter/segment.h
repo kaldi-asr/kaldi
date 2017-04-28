@@ -78,7 +78,6 @@ struct Segment {
 /** 
  * Comparator to order segments based on start frame
 **/
-
 class SegmentComparator {
   public:
     bool operator() (const Segment &lhs, const Segment &rhs) const {
@@ -89,7 +88,6 @@ class SegmentComparator {
 /** 
  * Comparator to order segments based on length
 **/
-
 class SegmentLengthComparator {
   public:
     bool operator() (const Segment &lhs, const Segment &rhs) const {

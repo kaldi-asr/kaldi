@@ -26,6 +26,16 @@
 
 namespace kaldi {
 
+/**
+ * SimpleHmm is a HMM that can be directly used for decoding in the
+ * place of a HCLG.fst. It is implemented as a TransitionModel object 
+ * with a single "phone". It is useful to model transitions 
+ * for speech activity detection, music detection etc, and can
+ * either be fixed or trained.
+ * The 0-indexed "pdf-class" (also equal to the pdf-id) of a SimpleHmm state
+ * uniquely maps to a 1-indexed class-id = pdf-id + 1, which is the symbol
+ * used for decoding.
+ **/
 class SimpleHmm: public TransitionModel {
  public:
   SimpleHmm(const HmmTopology &hmm_topo): 
@@ -41,6 +51,8 @@ class SimpleHmm: public TransitionModel {
  private:
   void CheckSimpleHmm() const;
 
+  // Implements a ContextDependencyInterface that defines a 
+  // mapping from transition-id to pdf-class (pdf-id)
   class FakeContextDependency: public ContextDependencyInterface {
    public:
     int ContextWidth() const { return 1; }
@@ -55,14 +67,18 @@ class SimpleHmm: public TransitionModel {
       return false;
     }
     
+    // Stores into *pdf_info:
+    // [(1, 0), (1, 1), ..., (1, num_pdf)]
     void GetPdfInfo(
-        const std::vector<int32> &phones,  // list of phones
-        const std::vector<int32> &num_pdf_classes,  // indexed by phone,
+        const std::vector<int32> &phones,  // [ 1 ]
+        const std::vector<int32> &num_pdf_classes,  // [0, num_pdfs]
         std::vector<std::vector<std::pair<int32, int32> > > *pdf_info) const;
   
+    // Stores into *pdf_info:
+    // [ [ ], [ [(0, 0)], [(1, 1)], ..., [(num_pdfs-1, num_pdfs-1)] ] ]
     void GetPdfInfo(
-      const std::vector<int32> &phones,
-      const std::vector<std::vector<std::pair<int32, int32> > > &pdf_class_pairs,
+      const std::vector<int32> &phones,   // [ 1 ]
+      const std::vector<std::vector<std::pair<int32, int32> > > &pdf_class_pairs,  // [ [ ], [ (0,0), (1,1), ..., (num_pdfs-1, num_pdfs-1) ] ]
       std::vector<std::vector<std::vector<std::pair<int32, int32> > > > *pdf_info)
       const;
     
@@ -71,7 +87,8 @@ class SimpleHmm: public TransitionModel {
     int32 NumPdfs() const { return num_pdfs_; }
 
     FakeContextDependency(const HmmTopology &topo) {
-      KALDI_ASSERT(topo.GetPhones().size() == 1);
+      const std::vector<int32> &phones = topo.GetPhones();
+      KALDI_ASSERT(phones.size() == 1 && phones[0] == 1);
       num_pdfs_ = topo.NumPdfClasses(1);
     }
 

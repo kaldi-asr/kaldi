@@ -38,8 +38,6 @@ def get_args():
     parser = argparse.ArgumentParser(usage)
     parser.add_argument('segments', type=argparse.FileType('r'),
                         help='use segments to resolve overlaps')
-    parser.add_argument('reco2utt', type=argparse.FileType('r'),
-                        help='use reco2utt to get segments in order')
     parser.add_argument('ctm_in', type=argparse.FileType('r'),
                         help='input_ctm_file')
     parser.add_argument('ctm_out', type=argparse.FileType('w'),
@@ -303,8 +301,7 @@ def main():
         raise RuntimeError
     finally:
         try:
-            for f in [args.reco2utt, args.segments,
-                      args.ctm_in, args.ctm_out]:
+            for f in [args.segments, args.ctm_in, args.ctm_out]:
                 if f is not None:
                     f.close()
         except IOError:

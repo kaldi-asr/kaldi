@@ -27,19 +27,24 @@
 
 namespace kaldi {
 
+/**
+ * Converts the SimpleHmm into H tranducer; result owned by caller.
+ * The H transducer has on the input transition-ids.
+ * The output side contains the one-indexed mappings of pdf_ids, 
+ * which is pdf_id + 1.
+ * Unlike the GetHTransducer function called for the normal TransitionModel,
+ * the output HTransducer includes self-loops.
+ **/
 fst::VectorFst<fst::StdArc>* GetHTransducer(
     const SimpleHmm &model, 
     BaseFloat transition_scale = 1.0, BaseFloat self_loop_scale = 1.0);
 
 /**
-  * Converts the SimpleHmm into H tranducer; result owned by caller.
-  * Caution: our version of
-  * the H transducer does not include self-loops; you have to add those later.
-  * See \ref hmm_graph_get_h_transducer.  The H transducer has on the
-  * input transition-ids.
-  * The output side contains the one-indexed mappings of pdf_ids, typically
-  * just pdf_id + 1.
-  */
+ * Convert SimpleHMM into an FST with appropriate scale applied on
+ * self-loop transitions and other transitions.
+ * You might want a self_loop_scale of 0.1 and a transition_scale
+ * of 3.0 or 10.0 as that behaves like language model scale.
+ **/
 fst::VectorFst<fst::StdArc>*
 GetSimpleHmmAsFst (const SimpleHmm &model, 
                    BaseFloat transition_scale = 1.0, 

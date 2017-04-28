@@ -106,7 +106,8 @@ void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
         totals.tot_weight += tot_weight;
         totals.tot_objective += tot_objf;
       }
-      if (config_.compute_accuracy) {
+      // May not be meaningful if non-classification tasks
+      if (config_.compute_accuracy) {  
         BaseFloat tot_weight, tot_accuracy;
         PerDimObjectiveInfo &totals = accuracy_info_[io.name];
 

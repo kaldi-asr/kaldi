@@ -49,7 +49,6 @@ int main(int argc, char *argv[]) {
     gopts.transition_scale = 0.0;  // Change the default to 0.0 since we will generally add the
     // transition probs in the alignment phase (since they change eacm time)
     gopts.self_loop_scale = 0.0;  // Ditto for self-loop probs.
-    std::string disambig_rxfilename;
     gopts.Register(&po);
 
     po.Register("batch-size", &batch_size,
@@ -86,7 +85,7 @@ int main(int argc, char *argv[]) {
         for (std::vector<int32>::iterator it = alignment.begin();
              it != alignment.end(); ++it) {
           KALDI_ASSERT(*it < model.NumPdfs());
-          ++(*it);
+          ++(*it);  // Convert pdf-id to class-id
         }
 
         VectorFst<StdArc> decode_fst;
@@ -118,7 +117,7 @@ int main(int argc, char *argv[]) {
           for (std::vector<int32>::iterator it = alignments.back().begin();
                it != alignments.back().end(); ++it) {
             KALDI_ASSERT(*it < model.NumPdfs());
-            ++(*it);
+            ++(*it);  // Convert pdf-id to class-id
           }
         }
         std::vector<fst::VectorFst<fst::StdArc>* > fsts;
