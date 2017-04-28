@@ -11,8 +11,8 @@ set -e
 
 stage=-2
 cmd=queue.pl
-reco_nj=40
-nj=100
+reco_nj=40      # Number of jobs to work at recording-level
+nj=100          # Number of jobs to work at utterance-level
 
 # Options to be passed to get_sad_map.py 
 map_noise_to_sil=true   # Map noise phones to silence label (0)
@@ -21,7 +21,8 @@ sad_map=    # Initial mapping from phones to speech/non-speech labels.
             # Overrides the default mapping using phones/silence.txt 
             # and phones/nonsilence.txt
 
-# Options for feature extraction
+# Options for feature extraction 
+# (These must match the features used for model_dir and sat_model_dir)
 feat_type=mfcc        # mfcc or plp
 add_pitch=false       # Add pitch features
 
@@ -117,10 +118,10 @@ function make_mfcc {
   fi
 
   if $add_pitch; then
-    steps/make_mfcc_pitch.sh --cmd "$cmd" --nj $nj \
+    steps/make_mfcc_pitch.sh --cmd "$cmd" --nj $nj --write-utt2num-frames true \
       --mfcc-config $mfcc_config --pitch-config $pitch_config $1 $2 $3 || exit 1
   else
-    steps/make_mfcc.sh --cmd "$cmd" --nj $nj \
+    steps/make_mfcc.sh --cmd "$cmd" --nj $nj --write-utt2num-frames true \
       --mfcc-config $mfcc_config $1 $2 $3 || exit 1
   fi
 
@@ -160,10 +161,10 @@ function make_plp {
   fi
   
   if $add_pitch; then
-    steps/make_plp_pitch.sh --cmd "$cmd" --nj $nj \
+    steps/make_plp_pitch.sh --cmd "$cmd" --nj $nj --write-utt2num-frames true \
       --plp-config $plp_config --pitch-config $pitch_config $1 $2 $3 || exit 1
   else
-    steps/make_plp.sh --cmd "$cmd" --nj $nj \
+    steps/make_plp.sh --cmd "$cmd" --nj $nj --write-utt2num-frames true \
       --plp-config $plp_config $1 $2 $3 || exit 1
   fi
 }
@@ -177,15 +178,16 @@ data_id=$(basename $data_dir)
 whole_data_dir=${data_dir}_whole
 whole_data_id=${data_id}_whole
 
-if [ $stage -le -2 ]; then
+if [ $stage -le -3 ]; then
   steps/segmentation/get_sad_map.py \
     --init-sad-map="$sad_map" \
     --map-noise-to-sil=$map_noise_to_sil \
     --map-unk-to-speech=$map_unk_to_speech \
     $lang | utils/sym2int.pl -f 1 $lang/phones.txt > $dir/sad_map
+fi
 
+if [ $stage -le 2 ]; then
   utils/data/convert_data_dir_to_whole.sh ${data_dir} ${whole_data_dir}
-  utils/data/get_utt2dur.sh ${whole_data_dir}
 fi 
 
 if $speed_perturb; then
@@ -231,11 +233,6 @@ if $speed_perturb; then
   whole_data_dir=${whole_data_dir}_sp
   data_id=${data_id}_sp
 fi
-
-
-###############################################################################
-# Compute length of recording
-###############################################################################
 
 if [ $stage -le 0 ]; then
   utils/subsegment_data_dir.sh $whole_data_dir ${data_dir}/segments ${data_dir}/tmp
@@ -300,14 +297,6 @@ if [ $stage -le 4 ]; then
 fi
 
   
-#utils/split_data.sh --per-reco $data_dir $reco_nj
-#segmentation-combine-segments ark,s:$vad_dir/sad_seg.scp 
-#  "ark,s:segmentation-init-from-segments --shift-to-zero=false --frame-shift=$ali_frame_shift --frame-overlap=$ali_frame_overlap ${data}/split${reco_nj}reco/JOB/segments ark:- |" \
-#  "ark:cat ${data}/split${reco_nj}reco/JOB/segments | cut -d ' ' -f 1,2 | utils/utt2spk_to_spk2utt.pl | sort -k1,1 |" ark:- 
-
-###############################################################################
-
-
 # Create extended data directory that consists of the provided 
 # segments along with the segments outside it.
 # This is basically dividing the whole recording into pieces
@@ -320,49 +309,30 @@ fi
 
 outside_data_dir=$dir/${data_id}_outside
 if [ $stage -le 5 ]; then
-  rm -rf $outside_data_dir
-  mkdir -p $outside_data_dir/split${reco_nj}reco
+  rm -r $outside_data_dir || true
 
   for f in wav.scp reco2file_and_channel stm glm; do 
     [ -f ${data_dir}/$f ] && cp ${data_dir}/$f $outside_data_dir
   done
    
-  steps/segmentation/split_data_on_reco.sh $data_dir $whole_data_dir $reco_nj
+  utils/data/get_utt2num_frames.sh $whole_data_dir
 
-  for n in `seq $reco_nj`; do 
-    dsn=$whole_data_dir/split${reco_nj}reco/$n
-    awk '{print $2}' $dsn/segments | \
-      utils/filter_scp.pl /dev/stdin $whole_data_dir/utt2num_frames > \
-      $dsn/utt2num_frames
-    mkdir -p $outside_data_dir/split${reco_nj}reco/$n
-  done
-
-  $cmd JOB=1:$reco_nj $outside_data_dir/log/get_empty_segments.JOB.log \
+  $cmd $outside_data_dir/log/get_empty_segments.log \
     segmentation-init-from-segments --frame-shift=$frame_shift \
-    --frame-overlap=$frame_overlap --shift-to-zero=false \
-    ${data_dir}/split${reco_nj}reco/JOB/segments ark:- \| \
+      --frame-overlap=$frame_overlap --shift-to-zero=false \
+      ${data_dir}/segments ark:- \| \
     segmentation-combine-segments-to-recordings ark:- \
-    "ark,t:cut -d ' ' -f 1,2 ${data_dir}/split${reco_nj}reco/JOB/segments  | utils/utt2spk_to_spk2utt.pl |" ark:- \| \
+      "ark,t:utils/data/get_reco2utt.sh ${data_dir} |" ark:- \| \
     segmentation-create-subsegments --filter-label=1 --subsegment-label=0 \
-    "ark:segmentation-init-from-lengths --label=1 ark,t:${whole_data_dir}/split${reco_nj}reco/JOB/utt2num_frames ark:- |" \
-    ark:- ark:- \| \
+      "ark:segmentation-init-from-lengths --label=1 ark,t:${whole_data_dir}/utt2num_frames ark:- |" \
+      ark:- ark:- \| \
     segmentation-post-process --remove-labels=0 --max-segment-length=1000 \
-    --post-process-label=1 --overlap-length=50 \
-    ark:- ark:- \| segmentation-to-segments --single-speaker=true \
-    --frame-shift=$frame_shift --frame-overlap=$frame_overlap \
-    ark:- ark,t:$outside_data_dir/split${reco_nj}reco/JOB/utt2spk \
-    $outside_data_dir/split${reco_nj}reco/JOB/segments || exit 1
-
-  for n in `seq $reco_nj`; do
-    cat $outside_data_dir/split${reco_nj}reco/$n/utt2spk
-  done | sort -k1,1 > $outside_data_dir/utt2spk
-  
-  for n in `seq $reco_nj`; do
-    cat $outside_data_dir/split${reco_nj}reco/$n/segments
-  done | sort -k1,1 > $outside_data_dir/segments
+      --post-process-label=1 --overlap-length=50 ark:- ark:- \| \
+    segmentation-to-segments --single-speaker=true \
+      --frame-shift=$frame_shift --frame-overlap=$frame_overlap \
+      ark:- ark,t:$outside_data_dir/utt2spk $outside_data_dir/segments
 
   utils/fix_data_dir.sh $outside_data_dir
-  
 fi
 
 
@@ -378,8 +348,6 @@ if [ $stage -le 7 ]; then
   utils/fix_data_dir.sh $outside_data_dir
   
   utils/combine_data.sh $extended_data_dir $data_dir $outside_data_dir
-
-  steps/segmentation/split_data_on_reco.sh $data_dir $extended_data_dir $reco_nj
 fi
 
 ###############################################################################
@@ -442,15 +410,29 @@ reco_vad_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir";
 echo $reco_nj > $reco_vad_dir/num_jobs
 
 if [ $stage -le 11 ]; then
+  utils/data/get_reco2utt.sh $extended_data_dir > $reco_vad_dir/reco2utt
+  splits=
+  for n in `seq $reco_nj`; do
+    splits="$splits $reco_vad_dir/reco2utt.$n.$reco_nj"
+  done
+  utils/split_scp.pl $reco_vad_dir/reco2utt $splits
+  
+  for n in `seq $reco_nj`; do
+    utils/spk2utt_to_utt2spk.pl $reco_vad_dir/reco2utt.$n.$reco_nj > $reco_vad_dir/utt2reco.$n.$reco_nj
+  done
+
   $cmd JOB=1:$reco_nj $reco_vad_dir/log/intersect_vad.JOB.log \
-    segmentation-intersect-segments --mismatch-label=10 \
-    "scp:cat $vad_dir/sad_seg.scp $vad_dir/outside_sad_seg.scp | sort -k1,1 | utils/filter_scp.pl $extended_data_dir/split${reco_nj}reco/JOB/utt2spk |" \
-    "scp:utils/filter_scp.pl $extended_data_dir/split${reco_nj}reco/JOB/utt2spk $decode_vad_dir/sad_seg.scp |" \
-    ark:- \| segmentation-post-process --remove-labels=10 \
-    --merge-adjacent-segments --max-intersegment-length=10 ark:- ark:- \| \
-    segmentation-combine-segments ark:- "ark:segmentation-init-from-segments --shift-to-zero=false $extended_data_dir/split${reco_nj}reco/JOB/segments ark:- |" \
-    ark,t:$extended_data_dir/split${reco_nj}reco/JOB/reco2utt \
-    ark,scp:$reco_vad_dir/sad_seg.JOB.ark,$reco_vad_dir/sad_seg.JOB.scp
+    segmentation-intersect-segments --mismatch-label=1000 \
+      "scp:cat $vad_dir/sad_seg.scp $vad_dir/outside_sad_seg.scp | sort -k1,1 | utils/filter_scp.pl $reco_vad_dir/utt2reco.JOB.$reco_nj |" \
+      "scp:utils/filter_scp.pl $reco_vad_dir/utt2reco.JOB.$reco_nj $decode_vad_dir/sad_seg.scp |" \
+      ark:- \| \
+    segmentation-post-process --remove-labels=1000 \
+      --merge-adjacent-segments --max-intersegment-length=10 ark:- ark:- \| \
+    segmentation-combine-segments ark:- \
+      "ark:utils/filter_scp.pl $reco_vad_dir/utt2reco.JOB.$reco_nj $extended_data_dir/segments | segmentation-init-from-segments --shift-to-zero=false - ark:- |" \
+      ark,t:$reco_vad_dir/reco2utt.JOB.$reco_nj \
+      ark,scp:$reco_vad_dir/sad_seg.JOB.ark,$reco_vad_dir/sad_seg.JOB.scp
+
   for n in `seq $reco_nj`; do
     cat $reco_vad_dir/sad_seg.$n.scp
   done > $reco_vad_dir/sad_seg.scp
@@ -464,51 +446,58 @@ for n in `seq $reco_nj`; do
 done
 set -e
 
+# Deriv weights to train only on "good" frames, i.e. where alignment and decoding match
 if [ $stage -le 12 ]; then
   $cmd JOB=1:$reco_nj $reco_vad_dir/log/get_deriv_weights.JOB.log \
     segmentation-post-process --merge-labels=0:1:2:3 --merge-dst-label=1 \
-    scp:$reco_vad_dir/sad_seg.JOB.scp ark:- \| \
+      scp:$reco_vad_dir/sad_seg.JOB.scp ark:- \| \
     segmentation-to-ali --lengths-rspecifier=ark,t:${whole_data_dir}/utt2num_frames ark:- ark,t:- \| \
     steps/segmentation/convert_ali_to_vec.pl \| copy-vector ark,t:- \
-    ark,scp:$reco_vad_dir/deriv_weights.JOB.ark,$reco_vad_dir/deriv_weights.JOB.scp
+      ark,scp:$reco_vad_dir/deriv_weights.JOB.ark,$reco_vad_dir/deriv_weights.JOB.scp
   
   for n in `seq $reco_nj`; do
     cat $reco_vad_dir/deriv_weights.$n.scp
   done > $reco_vad_dir/deriv_weights.scp
 fi
 
+# Deriv weights to train only on silence frames
 if [ $stage -le 13 ]; then
   $cmd JOB=1:$reco_nj $reco_vad_dir/log/get_deriv_weights_for_uncorrupted.JOB.log \
-    segmentation-post-process --remove-labels=1:2:3 scp:$reco_vad_dir/sad_seg.JOB.scp \
-    ark:- \| segmentation-post-process --merge-labels=0 --merge-dst-label=1 ark:- ark:- \| \
+    segmentation-post-process --remove-labels=1:2:3 scp:$reco_vad_dir/sad_seg.JOB.scp ark:- \| \
+    segmentation-post-process --merge-labels=0 --merge-dst-label=1 ark:- ark:- \| \
     segmentation-to-ali --lengths-rspecifier=ark,t:${whole_data_dir}/utt2num_frames ark:- ark,t:- \| \
     steps/segmentation/convert_ali_to_vec.pl \| copy-vector ark,t:- \
-    ark,scp:$reco_vad_dir/deriv_weights_for_uncorrupted.JOB.ark,$reco_vad_dir/deriv_weights_for_uncorrupted.JOB.scp
+      ark,scp:$reco_vad_dir/deriv_weights_for_uncorrupted.JOB.ark,$reco_vad_dir/deriv_weights_for_uncorrupted.JOB.scp
+
   for n in `seq $reco_nj`; do
     cat $reco_vad_dir/deriv_weights_for_uncorrupted.$n.scp
   done > $reco_vad_dir/deriv_weights_for_uncorrupted.scp
 fi
 
+# Get per-frame SAD labels at recording-level
 if [ $stage -le 14 ]; then
   $cmd JOB=1:$reco_nj $reco_vad_dir/log/get_speech_labels.JOB.log \
     segmentation-copy --keep-label=1 scp:$reco_vad_dir/sad_seg.JOB.scp ark:- \| \
     segmentation-to-ali --lengths-rspecifier=ark,t:${whole_data_dir}/utt2num_frames \
-    ark:- ark,scp:$reco_vad_dir/speech_labels.JOB.ark,$reco_vad_dir/speech_labels.JOB.scp
+      ark:- ark,scp:$reco_vad_dir/speech_labels.JOB.ark,$reco_vad_dir/speech_labels.JOB.scp
+
   for n in `seq $reco_nj`; do
     cat $reco_vad_dir/speech_labels.$n.scp
   done > $reco_vad_dir/speech_labels.scp
 fi
 
+# Deriv weights to train only on manual segments
 if [ $stage -le 15 ]; then
   $cmd JOB=1:$reco_nj $reco_vad_dir/log/convert_manual_segments_to_deriv_weights.JOB.log \
-    segmentation-init-from-segments --shift-to-zero=false \
-    $data_dir/split${reco_nj}reco/JOB/segments ark:- \| \
+    segmentation-init-from-segments --shift-to-zero=false --frame-shift=$frame_shift --frame-overlap=$frame_overlap \
+      "utils/filter_scp.pl $reco_vad_dir/utt2reco.JOB.$reco_nj $data_dir/segments |" ark:- \| \
     segmentation-combine-segments-to-recordings ark:- \
-    ark:$data_dir/split${reco_nj}reco/JOB/reco2utt ark:- \| \
+      "ark,t:utils/data/get_reco2utt.sh $data_dir | utils/filter_scp.pl $reco_vad_dir/reco2utt.JOB.$reco_nj |" \
+      ark:- \| \
     segmentation-to-ali --lengths-rspecifier=ark,t:${whole_data_dir}/utt2num_frames \
-    ark:- ark,t:- \| \
+      ark:- ark,t:- \| \
     steps/segmentation/convert_ali_to_vec.pl \| copy-vector ark,t:- \
-    ark,scp:$reco_vad_dir/deriv_weights_manual_seg.JOB.ark,$reco_vad_dir/deriv_weights_manual_seg.JOB.scp
+      ark,scp:$reco_vad_dir/deriv_weights_manual_seg.JOB.ark,$reco_vad_dir/deriv_weights_manual_seg.JOB.scp
 
   for n in `seq $reco_nj`; do
     cat $reco_vad_dir/deriv_weights_manual_seg.$n.scp

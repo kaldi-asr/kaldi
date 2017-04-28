@@ -13,21 +13,25 @@ set -o pipefail
 data_dir=data/train_si284
 vad_dir=      # Location of directory with VAD labels
 
-num_data_reps=5
+num_data_reps=5   # Number of corrupted versions
 foreground_snrs="5:2:1:0:-2:-5:-10:-20"
 background_snrs="5:2:1:0:-2:-5:-10:-20"
 
-cmd=run.pl
-nj=4
-
 stage=0
 
+# Parallel options
+nj=4
+cmd=run.pl
+
+
+# Options for feature extraction
 mfcc_config=conf/mfcc_hires_bp.conf
 feat_suffix=hires_bp
 
-dry_run=false   # If true, exits after preparing the corrupted wav.scp
+corrupt_only=false
 speed_perturb=true
 speeds="0.9 1.0 1.1"
+resample_data_dir=false
 
 label_dir=music_labels    # Directory to dump music labels
 
@@ -70,6 +74,17 @@ for f in RIRS_NOISES/simulated_rirs/smallroom/rir_list \
   echo "$0: Could not find $f" && exit 1
 done
 
+if $resample_data_dir; then
+  sample_frequency=`cat $mfcc_config | perl -ne 'if (m/--sample-frequency=(\S+)/) { print $1; }'` 
+  if [ -z "$sample_frequency" ]; then
+    sample_frequency=16000
+  fi
+
+  utils/data/resample_data_dir.sh $sample_frequency ${data_dir} || exit 1
+  data_id=`basename ${data_dir}`
+  rvb_opts+=(--source-sampling-rate=$sample_frequency)
+fi
+
 corrupted_data_id=${data_id}_music_corrupted
 orig_corrupted_data_id=$corrupted_data_id
 
@@ -85,10 +100,6 @@ if [ $stage -le 1 ]; then
     --num-replications=$num_data_reps \
     --max-noises-per-minute=5 \
     data/${data_id} data/${corrupted_data_id}
-fi
-
-if $dry_run; then
-  exit 0
 fi
 
 corrupted_data_dir=data/${corrupted_data_id}
@@ -109,6 +120,11 @@ if $speed_perturb; then
     utils/data/perturb_data_dir_volume.sh --scale-low 0.03125 --scale-high 2 \
       ${corrupted_data_dir}
   fi
+fi
+
+if $corrupt_only; then
+  echo "$0: Got corrupted data directory in ${corrupted_data_dir}"
+  exit 0
 fi
 
 mfccdir=`basename $mfcc_config`
@@ -215,11 +231,13 @@ if [ $stage -le 7 ]; then
       ark:$music_dir/music_segmentation.JOB.ark \
       ark,scp:$label_dir/music_labels_${corrupted_data_id}.JOB.ark,$label_dir/music_labels_${corrupted_data_id}.JOB.scp
   fi
-fi
 
-for n in `seq $nj`; do
-  cat $label_dir/music_labels_${corrupted_data_id}.$n.scp
-done | utils/filter_scp.pl ${corrupted_data_dir}/utt2spk > ${corrupted_data_dir}/music_labels.scp
+  for n in `seq $nj`; do
+    cat $label_dir/music_labels_${corrupted_data_id}.$n.scp
+  done | \
+    steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps "music" | \
+    utils/filter_scp.pl ${corrupted_data_dir}/utt2spk > ${corrupted_data_dir}/music_labels.scp
+fi
 
 if [ $stage -le 8 ]; then
   utils/split_data.sh --per-utt ${corrupted_data_dir} $nj

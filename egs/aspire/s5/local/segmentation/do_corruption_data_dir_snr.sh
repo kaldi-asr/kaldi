@@ -9,32 +9,33 @@ set -o pipefail
 
 . path.sh
 
-stage=0
-corruption_stage=-10
-corrupt_only=false
-
-# Data options
+# The following are the main parameters to modify
 data_dir=data/train_si284   # Expecting whole data directory.
-speed_perturb=true
+vad_dir=   # Output of prepare_unsad_data.sh. 
+           # If provided, the speech labels and deriv weights will be 
+           # copied into the output data directory.
+
 num_data_reps=5   # Number of corrupted versions
-snrs="20:10:15:5:0:-5"
 foreground_snrs="20:10:15:5:0:-5"
 background_snrs="20:10:15:5:2:0:-2:-5"
-base_rirs=simulated
-speeds="0.9 1.0 1.1"
-resample_data_dir=false
+
+stage=0
 
 # Parallel options
-reco_nj=40  
-cmd=queue.pl
+nj=4
+cmd=run.pl
 
 # Options for feature extraction
 mfcc_config=conf/mfcc_hires_bp.conf
 feat_suffix=hires_bp
 
-reco_vad_dir=   # Output of prepare_unsad_data.sh. 
-                # If provided, the speech labels and deriv weights will be 
-                # copied into the output data directory.
+# Data options
+corrupt_only=false
+speed_perturb=true
+speeds="0.9 1.0 1.1"
+resample_data_dir=false
+
+
 
 . utils/parse_options.sh
 
@@ -45,18 +46,24 @@ fi
 
 data_id=`basename ${data_dir}`
 
-rvb_opts=()
-if [ "$base_rirs" == "simulated" ]; then
-  # This is the config for the system using simulated RIRs and point-source noises
-  rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/smallroom/rir_list")
-  rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/mediumroom/rir_list")
-  rvb_opts+=(--noise-set-parameters "0.1, RIRS_NOISES/pointsource_noises/background_noise_list")
-  rvb_opts+=(--noise-set-parameters "0.9, RIRS_NOISES/pointsource_noises/foreground_noise_list")
-else
-  # This is the config for the JHU ASpIRE submission system
-  rvb_opts+=(--rir-set-parameters "1.0, RIRS_NOISES/real_rirs_isotropic_noises/rir_list")
-  rvb_opts+=(--noise-set-parameters RIRS_NOISES/real_rirs_isotropic_noises/noise_list)
+if [ ! -d RIRS_NOISES/ ]; then
+  # Prepare MUSAN rirs and noises
+  wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
+  unzip rirs_noises.zip
 fi
+
+rvb_opts=()
+# This is the config for the system using simulated RIRs and point-source noises
+rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/smallroom/rir_list")
+rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/mediumroom/rir_list")
+rvb_opts+=(--noise-set-parameters "0.1, RIRS_NOISES/pointsource_noises/background_noise_list")
+rvb_opts+=(--noise-set-parameters "0.9, RIRS_NOISES/pointsource_noises/foreground_noise_list")
+
+for f in RIRS_NOISES/simulated_rirs/smallroom/rir_list \
+    RIRS_NOISES/simulated_rirs/mediumroom/rir_list \
+    $data_dir/wav.scp; do 
+  echo "$0: Could not find $f" && exit 1
+done
 
 if $resample_data_dir; then
   sample_frequency=`cat $mfcc_config | perl -ne 'if (m/--sample-frequency=(\S+)/) { print $1; }'` 
@@ -134,7 +141,7 @@ if [ $stage -le 4 ]; then
   utils/copy_data_dir.sh $corrupted_data_dir ${corrupted_data_dir}_$feat_suffix
   corrupted_data_dir=${corrupted_data_dir}_$feat_suffix
   steps/make_mfcc.sh --mfcc-config $mfcc_config \
-    --cmd "$cmd" --nj $reco_nj \
+    --cmd "$cmd" --nj $reco_nj --write-utt2num-frames true \
     $corrupted_data_dir exp/make_${feat_suffix}/${corrupted_data_id} $mfccdir
   steps/compute_cmvn_stats.sh --fake \
     $corrupted_data_dir exp/make_${feat_suffix}/${corrupted_data_id} $mfccdir
@@ -202,7 +209,7 @@ if [ $stage -le 7 ]; then
     --cepstral-lifter=$cepstral_lifter \
     exp/make_irm_targets/$corrupted_data_id/idct_matrix
 
-  # Get log-SNR targets 
+  # Get log-IRM targets 
   steps/segmentation/make_snr_targets.sh \
     --nj $reco_nj --cmd "$cmd" \
     --target-type Irm --compress false \
@@ -213,21 +220,21 @@ fi
 
 
 if [ $stage -le 8 ]; then
-  if [ ! -z "$reco_vad_dir" ]; then
-    if [ ! -f $reco_vad_dir/speech_labels.scp ]; then
-      echo "$0: Could not find file $reco_vad_dir/speech_labels.scp"
+  if [ ! -z "$vad_dir" ]; then
+    if [ ! -f $vad_dir/speech_labels.scp ]; then
+      echo "$0: Could not find file $vad_dir/speech_labels.scp"
       exit 1
     fi
     
-    cat $reco_vad_dir/speech_labels.scp | \
+    cat $vad_dir/speech_labels.scp | \
       steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps | \
       sort -k1,1 > ${corrupted_data_dir}/speech_labels.scp
   
-    cat $reco_vad_dir/deriv_weights.scp | \
+    cat $vad_dir/deriv_weights.scp | \
       steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps | \
       sort -k1,1 > ${corrupted_data_dir}/deriv_weights.scp
     
-    cat $reco_vad_dir/deriv_weights_manual_seg.scp | \
+    cat $vad_dir/deriv_weights_manual_seg.scp | \
       steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps | \
       sort -k1,1 > ${corrupted_data_dir}/deriv_weights_for_irm_targets.scp
   fi

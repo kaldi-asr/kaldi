@@ -9,31 +9,33 @@ set -o pipefail
 
 . path.sh
 
-stage=0
-corruption_stage=-10
-corrupt_only=false
-
-# Data options
+# The following are the main parameters to modify
 data_dir=data/train_si284   # Expecting whole data directory.
-speed_perturb=true
+vad_dir=   # Output of prepare_unsad_data.sh. 
+           # If provided, the speech labels and deriv weights will be 
+           # copied into the output data directory.
+
 num_data_reps=5   # Number of corrupted versions
-snrs="20:10:15:5:0:-5"
 foreground_snrs="20:10:15:5:0:-5"
 background_snrs="20:10:15:5:2:0:-2:-5"
-base_rirs=simulated
-speeds="0.9 1.0 1.1"
+
+stage=0
 
 # Parallel options
-reco_nj=40  
-cmd=queue.pl
+nj=4
+cmd=run.pl
 
 # Options for feature extraction
 mfcc_config=conf/mfcc_hires_bp.conf
 feat_suffix=hires_bp
 
-reco_vad_dir=   # Output of prepare_unsad_data.sh. 
-                # If provided, the speech labels and deriv weights will be 
-                # copied into the output data directory.
+# Data options
+corrupt_only=false
+speed_perturb=true
+speeds="0.9 1.0 1.1"
+resample_data_dir=false
+
+
 
 . utils/parse_options.sh
 
@@ -45,16 +47,21 @@ fi
 data_id=`basename ${data_dir}`
 
 rvb_opts=()
-if [ "$base_rirs" == "simulated" ]; then
-  # This is the config for the system using simulated RIRs and point-source noises
-  rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/smallroom/rir_list")
-  rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/mediumroom/rir_list")
-  rvb_opts+=(--noise-set-parameters "0.1, RIRS_NOISES/pointsource_noises/background_noise_list")
-  rvb_opts+=(--noise-set-parameters "0.9, RIRS_NOISES/pointsource_noises/foreground_noise_list")
-else
-  # This is the config for the JHU ASpIRE submission system
-  rvb_opts+=(--rir-set-parameters "1.0, RIRS_NOISES/real_rirs_isotropic_noises/rir_list")
-  rvb_opts+=(--noise-set-parameters RIRS_NOISES/real_rirs_isotropic_noises/noise_list)
+# This is the config for the system using simulated RIRs and point-source noises
+rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/smallroom/rir_list")
+rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/mediumroom/rir_list")
+rvb_opts+=(--noise-set-parameters "0.1, RIRS_NOISES/pointsource_noises/background_noise_list")
+rvb_opts+=(--noise-set-parameters "0.9, RIRS_NOISES/pointsource_noises/foreground_noise_list")
+
+if $resample_data_dir; then
+  sample_frequency=`cat $mfcc_config | perl -ne 'if (m/--sample-frequency=(\S+)/) { print $1; }'` 
+  if [ -z "$sample_frequency" ]; then
+    sample_frequency=16000
+  fi
+
+  utils/data/resample_data_dir.sh $sample_frequency ${data_dir} || exit 1
+  data_id=`basename ${data_dir}`
+  rvb_opts+=(--source-sampling-rate=$sample_frequency)
 fi
 
 corrupted_data_id=${data_id}_corrupted
@@ -119,17 +126,17 @@ else
 fi 
 
 if [ $stage -le 8 ]; then
-  if [ ! -z "$reco_vad_dir" ]; then
-    if [ ! -f $reco_vad_dir/speech_labels.scp ]; then
-      echo "$0: Could not find file $reco_vad_dir/speech_labels.scp"
+  if [ ! -z "$vad_dir" ]; then
+    if [ ! -f $vad_dir/speech_labels.scp ]; then
+      echo "$0: Could not find file $vad_dir/speech_labels.scp"
       exit 1
     fi
     
-    cat $reco_vad_dir/speech_labels.scp | \
+    cat $vad_dir/speech_labels.scp | \
       steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps | \
       sort -k1,1 > ${corrupted_data_dir}/speech_labels.scp
   
-    cat $reco_vad_dir/deriv_weights.scp | \
+    cat $vad_dir/deriv_weights.scp | \
       steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps | \
       sort -k1,1 > ${corrupted_data_dir}/deriv_weights.scp
   fi
