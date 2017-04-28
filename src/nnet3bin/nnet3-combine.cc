@@ -108,11 +108,15 @@ int main(int argc, char *argv[]) {
 #if HAVE_CUDA==1
       CuDevice::Instantiate().PrintProfile();
 #endif
-      WriteKaldiObject(combiner.GetNnet(), nnet_wxfilename, binary_write);
+      nnet = combiner.GetNnet();
+      if (HasBatchnorm(nnet))
+        RecomputeStats(egs, &nnet);
+      WriteKaldiObject(nnet, nnet_wxfilename, binary_write);
     } else {
       KALDI_LOG << "Copying the single input model directly to the output, "
                 << "without any combination.";
-      SetDropoutProportion(0, &nnet);
+      if (HasBatchnorm(nnet))
+        RecomputeStats(egs, &nnet);
       WriteKaldiObject(nnet, nnet_wxfilename, binary_write);
     }
     KALDI_LOG << "Finished combining neural nets, wrote model to "

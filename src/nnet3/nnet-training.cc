@@ -55,7 +55,7 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
 
 
 void NnetTrainer::Train(const NnetExample &eg) {
-  bool need_model_derivative = config_.train;
+  bool need_model_derivative = true;
   ComputationRequest request;
   GetComputationRequest(*nnet_, eg, need_model_derivative,
                         config_.store_component_stats,
@@ -69,16 +69,9 @@ void NnetTrainer::Train(const NnetExample &eg) {
   computer.Run();
 
   this->ProcessOutputs(eg, &computer);
+  computer.Run();
 
-  if (config_.train) {
-    computer.Run();
-
-    UpdateParamsWithMaxChange();
-  } else {
-    // all parameter derivs will be zero; here we're just adding the stored stats.
-    AddNnet(*delta_nnet_, 1.0, nnet_);
-    ScaleNnet(0.0, delta_nnet_);
-  }
+  UpdateParamsWithMaxChange();
 }
 
 void NnetTrainer::ProcessOutputs(const NnetExample &eg,
@@ -92,7 +85,7 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
     if (nnet_->IsOutputNode(node_index)) {
       ObjectiveType obj_type = nnet_->GetNode(node_index).u.objective_type;
       BaseFloat tot_weight, tot_objf;
-      bool supply_deriv = config_.train;
+      bool supply_deriv = true;
       ComputeObjectiveFunction(io.features, obj_type, io.name,
                                supply_deriv, computer,
                                &tot_weight, &tot_objf);

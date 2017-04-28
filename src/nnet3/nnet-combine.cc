@@ -178,20 +178,7 @@ void NnetCombiner::Combine() {
   }
   PrintParams(final_params);
 
-  if (HasBatchnorm(nnet_)) {
-    RecomputeBatchnormStats();
-  }
 }
-
-void NnetCombiner::RecomputeBatchnormStats() {
-  KALDI_LOG << "Recomputing batch-norm stats on nnet.";
-  NnetTrainerOptions train_opts;
-  train_opts.train = false;
-  NnetTrainer trainer(train_opts, &nnet_);
-  for (size_t i = 0; i < egs_.size(); i++)
-    trainer.Train(egs_[i]);
-}
-
 
 void NnetCombiner::PrintParams(const VectorBase<double> &params) const {
   Vector<double> weights(WeightDim()), normalized_weights(WeightDim());

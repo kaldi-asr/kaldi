@@ -58,8 +58,8 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
 
 
 void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
+  bool need_model_derivative = true;
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
-  bool need_model_derivative = nnet_config.train;
   bool use_xent_regularization = (opts_.chain_config.xent_regularize != 0.0);
   ComputationRequest request;
   GetChainComputationRequest(*nnet_, chain_eg, need_model_derivative,
@@ -73,21 +73,16 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, chain_eg.inputs);
   computer.Run();
+
   this->ProcessOutputs(chain_eg, &computer);
-  if (nnet_config.train) {
-    computer.Run();
-    UpdateParamsWithMaxChange();
-  } else {
-    // all parameter derivs will be zero; here we're just adding the stored stats.
-    AddNnet(*delta_nnet_, 1.0, nnet_);
-    ScaleNnet(0.0, delta_nnet_);
-  }
+  computer.Run();
+
+  UpdateParamsWithMaxChange();
 }
 
 
 void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
                                       NnetComputer *computer) {
-  bool train = opts_.nnet_config.train;
   // normally the eg will have just one output named 'output', but
   // we don't assume this.
   std::vector<NnetChainSupervision>::const_iterator iter = eg.outputs.begin(),
@@ -116,7 +111,7 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
     ComputeChainObjfAndDeriv(opts_.chain_config, den_graph_,
                              sup.supervision, nnet_output,
                              &tot_objf, &tot_l2_term, &tot_weight,
-                             (train ? &nnet_output_deriv : NULL),
+                             &nnet_output_deriv,
                              (use_xent ? &xent_deriv : NULL));
 
     if (use_xent) {
@@ -131,21 +126,20 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
                                         tot_weight, xent_objf);
     }
 
-    if (train && opts_.apply_deriv_weights && sup.deriv_weights.Dim() != 0) {
+    if (opts_.apply_deriv_weights && sup.deriv_weights.Dim() != 0) {
       CuVector<BaseFloat> cu_deriv_weights(sup.deriv_weights);
       nnet_output_deriv.MulRowsVec(cu_deriv_weights);
       if (use_xent)
         xent_deriv.MulRowsVec(cu_deriv_weights);
     }
 
-    if (train)
-      computer->AcceptInput(sup.name, &nnet_output_deriv);
+    computer->AcceptInput(sup.name, &nnet_output_deriv);
 
     objf_info_[sup.name].UpdateStats(sup.name, opts_.nnet_config.print_interval,
                                      num_minibatches_processed_++,
                                      tot_weight, tot_objf, tot_l2_term);
 
-    if (train && use_xent) {
+    if (use_xent) {
       xent_deriv.Scale(opts_.chain_config.xent_regularize);
       computer->AcceptInput(xent_name, &xent_deriv);
     }

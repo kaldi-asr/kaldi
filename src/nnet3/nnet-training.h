@@ -33,7 +33,6 @@ namespace nnet3 {
 struct NnetTrainerOptions {
   bool zero_component_stats;
   bool store_component_stats;
-  bool train;
   int32 print_interval;
   bool debug_computation;
   BaseFloat momentum;
@@ -47,7 +46,6 @@ struct NnetTrainerOptions {
   NnetTrainerOptions():
       zero_component_stats(true),
       store_component_stats(true),
-      train(true),
       print_interval(100),
       debug_computation(false),
       momentum(0.0),
@@ -78,10 +76,6 @@ struct NnetTrainerOptions {
                    "write the cached computation to");
     opts->Register("binary-write-cache", &binary_write_cache, "Write "
                    "computation cache in binary mode");
-    opts->Register("train", &train, "If true, actually do the training "
-                   "(if false, it will do only the forward propagation, "
-                   "which affects stored stats for batch-norm, among other "
-                   "things.)");
 
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);

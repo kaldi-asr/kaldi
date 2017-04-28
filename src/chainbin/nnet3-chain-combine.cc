@@ -115,11 +115,15 @@ int main(int argc, char *argv[]) {
 
     combiner.Combine();
 
+    nnet = combiner.GetNnet();
+    if (HasBatchnorm(nnet))
+      RecomputeStats(egs, chain_config, den_fst, &nnet);
+
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();
 #endif
 
-    WriteKaldiObject(combiner.GetNnet(), nnet_wxfilename, binary_write);
+    WriteKaldiObject(nnet, nnet_wxfilename, binary_write);
 
     KALDI_LOG << "Finished combining neural nets, wrote model to "
               << nnet_wxfilename;
