@@ -194,6 +194,7 @@ class NnetChainCombiner {
 
   void ComputeUpdatableComponentDims();
   void FinishPreprocessingInput();
+  void RecomputeBatchnormStats();
 
 };
 

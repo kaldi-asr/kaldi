@@ -41,6 +41,8 @@ int main(int argc, char *argv[]) {
         " nnet3-combine den.fst 35.raw 36.raw 37.raw 38.raw ark:valid.cegs final.raw\n";
 
     bool binary_write = true;
+    bool batchnorm_test_mode = false,
+        dropout_test_mode = true;
     std::string use_gpu = "yes";
     NnetCombineConfig combine_config;
     chain::ChainTrainingOptions chain_config;
@@ -49,6 +51,11 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
+    po.Register("batchnorm-test-mode", &batchnorm_test_mode,
+                "If true, set test-mode to true on any BatchNormComponents.");
+    po.Register("dropout-test-mode", &dropout_test_mode,
+                "If true, set test-mode to true on any DropoutComponents and "
+                "DropoutMaskComponents.");
 
     combine_config.Register(&po);
     chain_config.Register(&po);
@@ -77,13 +84,10 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     ReadKaldiObject(raw_nnet_rxfilename, &nnet);
 
-    // This is needed for batch-norm.  We also ensure in the calling script
-    // that the freshest model comes first on the command line; this
-    // means we use the freshest batch-norm stats.  (Since the batch-norm
-    // stats are not technically parameters, they are not subject to
-    // combination like the rest of the model parameters).
-    SetBatchnormTestMode(true, &nnet);
-    SetDropoutTestMode(true, &nnet);
+    if (batchnorm_test_mode)
+      SetBatchnormTestMode(true, &nnet);
+    if (dropout_test_mode)
+      SetDropoutTestMode(true, &nnet);
 
     std::vector<NnetChainExample> egs;
     egs.reserve(10000);  // reserve a lot of space to minimize the chance of

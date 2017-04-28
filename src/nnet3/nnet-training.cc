@@ -74,6 +74,10 @@ void NnetTrainer::Train(const NnetExample &eg) {
     computer.Run();
 
     UpdateParamsWithMaxChange();
+  } else {
+    // all parameter derivs will be zero; here we're just adding the stored stats.
+    AddNnet(*delta_nnet_, 1.0, nnet_);
+    ScaleNnet(0.0, delta_nnet_);
   }
 }
 
