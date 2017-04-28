@@ -628,7 +628,7 @@ class XconfigBasicLayer(XconfigLayerBase):
         # Here we just list some likely combinations.. you can just add any
         # combinations you want to use, to this list.
         assert first_token in [ 'relu-layer', 'relu-renorm-layer', 'sigmoid-layer',
-                                'tanh-layer', 'relu-batchnorm-layer' ]
+                                'tanh-layer', 'relu-batchnorm-layer', 'relu-dropout-layer' ]
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -641,7 +641,8 @@ class XconfigBasicLayer(XconfigLayerBase):
                         'self-repair-scale' : 1.0e-05,
                         'target-rms' : 1.0,
                         'learning-rate-factor' : 1.0,
-                        'ng-affine-options' : ''}
+                        'ng-affine-options' : '',
+                        'dropout-proportion': 0.5}
 
     def check_configs(self):
         if self.config['dim'] < 0:
@@ -766,6 +767,12 @@ class XconfigBasicLayer(XconfigLayerBase):
                         ' target-rms={3}'
                         ''.format(self.name, nonlinearity, output_dim,
                             target_rms))
+
+            elif nonlinearity == 'dropout':
+                line = ('component name={0}.{1} type=DropoutComponent '
+                           'dim={2} dropout-proportion={3}'.format(
+                               self.name, nonlinearity, output_dim,
+                               self.config['dropout-proportion']))
 
             else:
                 raise RuntimeError("Unknown nonlinearity type: {0}"
