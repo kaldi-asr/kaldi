@@ -52,16 +52,20 @@ bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
     col_range.push_back(0);
     col_range.push_back(input.NumCols() - 1);
   }
+
+  int32 length_tolerance = 2;
   if (!(status && row_range.size() == 2 && col_range.size() == 2 &&
         row_range[0] >= 0 && row_range[0] <= row_range[1] &&
-        row_range[1] < input.NumRows() && col_range[0] >=0 &&
+        row_range[1] < input.NumRows() + length_tolerance && 
+        col_range[0] >=0 &&
         col_range[0] <= col_range[1] && col_range[1] < input.NumCols())) {
     KALDI_ERR << "Invalid range specifier: " << range
               << " for matrix of size " << input.NumRows()
               << "x" << input.NumCols();
     return false;
   }
-  int32 row_size = row_range[1] - row_range[0] + 1,
+  int32 row_size = std::min(row_range[1], input.NumRows() - 1) 
+                   - row_range[0] + 1,
         col_size = col_range[1] - col_range[0] + 1;
   output->Resize(row_size, col_size, kUndefined);
   output->CopyFromMat(input.Range(row_range[0], row_size,
@@ -98,14 +102,15 @@ bool ExtractObjectRange(const Vector<Real> &input, const std::string &range,
     index_range.push_back(input.Dim() - 1);
   }
 
+  int32 length_tolerance = 2;
   if (!(status && index_range.size() == 2 &&
         index_range[0] >= 0 && index_range[0] <= index_range[1] &&
-        index_range[1] < input.Dim())) {
+        index_range[1] < input.Dim() + length_tolerance)) {
     KALDI_ERR << "Invalid range specifier: " << range
               << " for vector of size " << input.Dim();
     return false;
   }
-  int32 size = index_range[1] - index_range[0] + 1;
+  int32 size = std::min(index_range[1], input.Dim() - 1) - index_range[0] + 1;
   output->Resize(size, kUndefined);
   output->CopyFromVec(input.Range(index_range[0], size));
   return true;

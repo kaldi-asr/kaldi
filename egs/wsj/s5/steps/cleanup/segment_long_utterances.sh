@@ -53,15 +53,19 @@ cmd=run.pl
 if [ $# -ne 6 ]; then
     cat <<EOF
 Usage: $0 [options] <model-dir> <lang> <data-in> <text-in> <segmented-data-out> <work-dir>
- e.g.: $0 exp/tri3 data/train_unsegmented data/train_segmented exp/tri3_segmentation
-This script performs segmentation of the data in <data-in>, writing the segmented
-data (with a segments file) to <segmented-data-out>.  The purpose of this script is
-to divide up the input data (which may consist of long recordings such as television
-shows or audiobooks) into segments which are of manageable length for further
-processing, along with the portion of the transcript that seems to match each segment.
-The output data is not necessarily particularly clean; you are advised to 
-run steps/cleanup/clean_and_segment_data.sh on the output in order to further
-clean it and eliminate data where the transcript doesn't seem to match.
+ e.g.: $0 exp/wsj_tri2b data/lang_nosp data/train_long data/train_long/text data/train_reseg exp/segment_wsj_long_utts_train
+This script performs segmentation of the data in <data-in> and 
+transcript <text-in>, writing the segmented data (with a segments file) to
+<segmented-data-out> along with the corresponding aligned transcription.  
+Note: <text-in> must be indexed by the utterance-ids of the utterances in
+<data-in>
+The purpose of this script is to divide up the input data (which may consist of
+long recordings such as television shows or audiobooks) into segments which are
+of manageable length for further processing, along with the portion of the
+transcript that seems to match each segment.
+The output data is not necessarily particularly clean; you are advised to run
+steps/cleanup/clean_and_segment_data.sh on the output in order to further clean
+it and eliminate data where the transcript doesn't seem to match.
 EOF
     exit 1
 fi
