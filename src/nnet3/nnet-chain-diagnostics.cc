@@ -218,10 +218,19 @@ const ChainObjectiveInfo* NnetChainComputeProb::GetObjective(
 }
 
 void RecomputeStats(const std::vector<NnetChainExample> &egs,
-                    const chain::ChainTrainingOptions &chain_config,
+                    const chain::ChainTrainingOptions &chain_config_in,
                     const fst::StdVectorFst &den_fst,
                     Nnet *nnet) {
   KALDI_LOG << "Recomputing stats on nnet (affects batch-norm)";
+  chain::ChainTrainingOptions chain_config(chain_config_in);
+  if (nnet->GetNodeIndex("output-xent") != -1 &&
+      chain_config.xent_regularize == 0) {
+    // this forces it to compute the output for 'output-xent', which
+    // means that we'll be computing batch-norm stats for any
+    // components in that branch that have batch-norm.
+    chain_config.xent_regularize = 0.1;
+  }
+
   ZeroComponentStats(nnet);
   NnetComputeProbOptions nnet_config;
   nnet_config.store_component_stats = true;
