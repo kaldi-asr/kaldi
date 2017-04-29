@@ -53,7 +53,10 @@ bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
     col_range.push_back(input.NumCols() - 1);
   }
 
-  int32 length_tolerance = 2;
+  // Length tolerance of 3 -- 2 to account for edge effects when
+  // frame-length is 25ms and frame-shift is 10ms, and 1 for rounding effects
+  // since segments are usually retained up to 2 decimal places.
+  int32 length_tolerance = 3;
   if (!(status && row_range.size() == 2 && col_range.size() == 2 &&
         row_range[0] >= 0 && row_range[0] <= row_range[1] &&
         row_range[1] < input.NumRows() + length_tolerance && 
@@ -102,7 +105,10 @@ bool ExtractObjectRange(const Vector<Real> &input, const std::string &range,
     index_range.push_back(input.Dim() - 1);
   }
 
-  int32 length_tolerance = 2;
+  // Length tolerance of 3 -- 2 to account for edge effects when
+  // frame-length is 25ms and frame-shift is 10ms, and 1 for rounding effects
+  // since segments are usually retained up to 2 decimal places.
+  int32 length_tolerance = 3;
   if (!(status && index_range.size() == 2 &&
         index_range[0] >= 0 && index_range[0] <= index_range[1] &&
         index_range[1] < input.Dim() + length_tolerance)) {
