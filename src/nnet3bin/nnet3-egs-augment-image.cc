@@ -1,7 +1,7 @@
 // nnet3bin/nnet3-egs-augment-image.cc
 
 // Copyright      2017  Johns Hopkins University (author:  Daniel Povey)
-//                2017  Yiwen Shao
+//                2017  Hossein Hadian
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -63,75 +63,60 @@ struct ImageAugmentationConfig {
   }
 };
 
-
-// Flips the image horizontally.
-void HorizontalFlip(MatrixBase<BaseFloat> *image) {
-  int32 num_rows = image->NumRows();
-  Vector<BaseFloat> temp(image->NumCols());
-  for (int32 r = 0; r < num_rows / 2; r++) {
-    SubVector<BaseFloat> row_a(*image, r), row_b(*image,
-                                                 num_rows - r - 1);
-    temp.CopyFromVec(row_a);
-    row_a.CopyFromVec(row_b);
-    row_b.CopyFromVec(temp);
-  }
-}
-
- // Shifts the image horizontally by 'horizontal_shift' (+ve == to the right).
-void HorizontalShift(int32 horizontal_shift,
-                     MatrixBase<BaseFloat> *image) {
-  int32 num_rows = image->NumRows();
-  for (int32 r = 0; r < num_rows; r++) {
-    int32 current_r;
-    // +ve == to the right, do shifting from right to left; otherwise, from left to right
-    if (horizontal_shift > 0) {
-      current_r = r;
-    } else {  // do it in the reverse order.
-      current_r = num_rows - 1 - r;
-    }
-
-    int32 origin_r = current_r - horizontal_shift;
-    if (origin_r < 0)
-      origin_r = 0;
-    if (origin_r >= num_rows)
-      origin_r = num_rows - 1;
-
-    SubVector<BaseFloat> current_row(*image, current_r),
-        origin_row(*image, origin_r);
-    current_row.CopyFromVec(origin_row);
-  }
-}
-
-/* Shifts the image vertically by 'vertical_shift' (+ve == to the top).*/
-void VerticalShift(int32 vertical_shift,
-                   int32 num_channels,
-                   MatrixBase<BaseFloat> *image) {
+void ApplyAffineTransform(MatrixBase<BaseFloat> &transform,
+                          int32 num_channels,
+                          MatrixBase<BaseFloat> *image) {
   int32 num_rows = image->NumRows(),
-      num_cols = image->NumCols(), height = num_cols / num_channels;
+        num_cols = image->NumCols(),
+        height = num_cols / num_channels;
   KALDI_ASSERT(num_cols % num_channels == 0);
+  Matrix<BaseFloat> original_image(*image);
   for (int32 r = 0; r < num_rows; r++) {
-    BaseFloat *this_row = image->RowData(r);
     for (int32 c = 0; c < height; c++) {
-      int32 current_index;
-      // +ve == to the top, do shifting from top to bottom; otherwise, bottom to top
-      if (vertical_shift > 0) {
-        current_index = height - 1 - c;
-      } else {
-        current_index = c;
-      }
-      int32 origin_index = current_index - vertical_shift;
-      if (origin_index < 0)
-        origin_index = 0;
-      if (origin_index >= num_cols)
-        origin_index = num_cols;
+      BaseFloat r_old = transform(0, 0) * r +
+                                          transform(0, 1) * c + transform(0, 2);
+      BaseFloat c_old = transform(1, 0) * r +
+                                          transform(1, 1) * c + transform(1, 2);
 
-      for (int32 ch = 0; ch < num_channels; ch++)
-        this_row[num_channels * current_index + ch] =
-            this_row[num_channels * origin_index + ch];
+      // we are going to do bilinear interpolation between 4 closest points
+      // to the point [r_old, c_old]. r1  <=  r_old  <=  r2
+      //                              c1  <=  c_old  <=  c2
+
+      int32 r1 = static_cast<int32>(floor(r_old));
+      int32 c1 = static_cast<int32>(floor(c_old));
+      int32 r2 = r1 + 1;
+      int32 c2 = c1 + 1;
+
+      // TODO(hhadian): it might be better to use the following 'if' only when
+      // none of the 4 points are available. For now, we only check one of them.
+      if (r1 < 0 || c1 < 0 || r1 > num_rows - 1 ||
+          c1 > num_cols - 1) {  // use the nearest point
+        int32 nearest_row = (r > 0) ? (r - 1) : (r + 1);
+        for (int32 ch = 0; ch < num_channels; ch++) {
+          (*image)(r, num_channels * c + ch) =
+                                   (*image)(nearest_row, num_channels * c + ch);
+        }
+      } else {
+        if (r2 > num_rows - 1)
+          r2 = num_rows - 1;
+        if (c2 > num_cols - 1)
+          c2 = num_cols - 1;
+        for (int32 ch = 0; ch < num_channels; ch++) {
+          // find the values at the 4 points
+          BaseFloat p11 = original_image(r1, num_channels * c1 + ch),
+                    p12 = original_image(r1, num_channels * c2 + ch),
+                    p21 = original_image(r2, num_channels * c1 + ch),
+                    p22 = original_image(r2, num_channels * c2 + ch);
+          BaseFloat interpolate = (r1 + 1 - r_old) * (c1 + 1 - c_old) * p11 +
+                                  (r_old - r1) * (c1 + 1 - c_old) * p12 +
+                                  (r1 + 1 - r_old) * (c_old - c1) * p21 +
+                                  (r_old - r1) * (c_old - c1) * p22;
+          (*image)(r, num_channels * c + ch) = interpolate;
+        }
+      }
     }
   }
 }
-
 
 
 /**
@@ -147,37 +132,91 @@ void PerturbImage(const ImageAugmentationConfig &config,
                   MatrixBase<BaseFloat> *image) {
   config.Check();
   int32 image_width = image->NumRows(),
-      num_channels = config.num_channels,
-      image_height = image->NumCols() / num_channels;
+    num_channels = config.num_channels,
+    image_height = image->NumCols() / num_channels;
   if (image->NumCols() % num_channels != 0) {
     KALDI_ERR << "Number of columns in image must divide the number "
         "of channels";
   }
-  if (WithProb(config.horizontal_flip_prob)) {
-    HorizontalFlip(image);
-  }
-  { // horizontal shift
-    int32 horizontal_shift_max =
-        static_cast<int32>(0.5 + config.horizontal_shift * image_width);
-    if (horizontal_shift_max > image_width - 1)
-      horizontal_shift_max = image_width - 1;  // would be very strange.
-    int32 horizontal_shift = RandInt(-horizontal_shift_max,
-                                     horizontal_shift_max);
-    if (horizontal_shift != 0)
-      HorizontalShift(horizontal_shift, image);
-  }
 
-  { // vertical shift
-    int32 vertical_shift_max =
-        static_cast<int32>(0.5 + config.vertical_shift * image_height);
-    if (vertical_shift_max > image_height - 1)
-      vertical_shift_max = image_height - 1;  // would be very strange.
-    int32 vertical_shift = RandInt(-vertical_shift_max,
-                                     vertical_shift_max);
-    if (vertical_shift != 0)
-      VerticalShift(vertical_shift, num_channels, image);
-  }
+  // We do an affine transform which
+  // handles flipping, translation, rotation, magnification, and shear.
 
+  // Prepare the affine transform for geometric transformation
+  Matrix<BaseFloat> transform_mat(3, 3, kUndefined);
+  transform_mat.SetUnit();
+
+  Matrix<BaseFloat> shift_mat(3, 3, kUndefined);
+  shift_mat.SetUnit();
+  // translation (shift) mat:
+  // [ 1   0  x_shift
+  //   0   1  y_shift
+  //   0   0  1       ]
+
+  BaseFloat horizontal_shift = (2.0 * RandUniform() - 1.0) *
+                               config.horizontal_shift * image_width;
+  BaseFloat vertical_shift = (2.0 * RandUniform() - 1.0) *
+                             config.vertical_shift * image_height;
+  shift_mat(0, 2) = floor(horizontal_shift);  // best to floor shifts to avoid blurring
+  shift_mat(1, 2) = floor(vertical_shift);
+  // since we will center the image before applying the transform,
+  // horizontal flipping is simply achieved by setting [0, 0] to -1:
+  if (WithProb(config.horizontal_flip_prob))
+    shift_mat(0, 0) = -1;
+
+
+  Matrix<BaseFloat> rotation_mat(3, 3, kUndefined);
+  rotation_mat.SetUnit();
+  // rotation mat:
+  // [ cos(theta)  -sin(theta)  0
+  //   sin(theta)  cos(theta)   0
+  //   0           0            1 ]
+
+
+  Matrix<BaseFloat> shear_mat(3, 3, kUndefined);
+  shear_mat.SetUnit();
+  // shear mat:
+  // [ 1    -sin(shear)   0
+  //   0     cos(shear)   0
+  //   0     0            1 ]
+
+
+  Matrix<BaseFloat> zoom_mat(3, 3, kUndefined);
+  zoom_mat.SetUnit();
+  // zoom mat:
+  // [ x_zoom   0   0
+  //   0   y_zoom   0
+  //   0     0      1 ]
+
+  // transform_mat = rotation_mat * shift_mat * shear_mat * zoom_mat:
+  transform_mat.AddMatMat(1.0, shift_mat, kNoTrans,
+                               shear_mat, kNoTrans, 0.0);
+  transform_mat.AddMatMatMat(1.0, rotation_mat, kNoTrans,
+                               transform_mat, kNoTrans,
+                               zoom_mat, kNoTrans, 0.0);
+
+  if (transform_mat.IsUnit())  // nothing to do
+    return;
+
+  // we should now change the origin of transform to the center of
+  // the image (necessary for flipping, zoom, shear, and rotation)
+  // we do this by using two translations: one before the main transform
+  // and one after.
+  Matrix<BaseFloat> set_origin_mat(3, 3, kUndefined);
+  set_origin_mat.SetUnit();
+  set_origin_mat(0, 2) = image_width / 2.0 - 0.5;
+  set_origin_mat(1, 2) = image_height / 2.0 - 0.5;
+
+  Matrix<BaseFloat> reset_origin_mat(3, 3, kUndefined);
+  reset_origin_mat.SetUnit();
+  reset_origin_mat(0, 2) = -image_width / 2.0 + 0.5;
+  reset_origin_mat(1, 2) = -image_height / 2.0 + 0.5;
+
+  // transform_mat = set_origin_mat * transform_mat * reset_origin_mat
+  transform_mat.AddMatMatMat(1.0, set_origin_mat, kNoTrans,
+                                  transform_mat, kNoTrans,
+                                  reset_origin_mat, kNoTrans, 0.0);
+  ApplyAffineTransform(transform_mat, config.num_channels, image);
 }
 
 
