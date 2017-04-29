@@ -37,7 +37,7 @@ def create_phone_lm(dir, tree_dir, run_opts, lm_opts=None):
     alignments=' '.join(['{0}/ali.{1}.gz'.format(tree_dir, job)
                          for job in range(1, num_ali_jobs + 1)])
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/make_phone_lm.log \
     gunzip -c {alignments} \| \
     ali-to-phones {tree_dir}/final.mdl ark:- ark:- \| \
@@ -49,10 +49,10 @@ def create_phone_lm(dir, tree_dir, run_opts, lm_opts=None):
 
 
 def create_denominator_fst(dir, tree_dir, run_opts):
-    common_lib.run_job(
+    common_lib.execute_command(
         """copy-transition-model {tree_dir}/final.mdl \
                 {dir}/0.trans_mdl""".format(dir=dir, tree_dir=tree_dir))
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/make_den_fst.log \
                    chain-make-den-fst {dir}/tree {dir}/0.trans_mdl \
                    {dir}/phone_lm.fst \
@@ -75,7 +75,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
     See options in that script.
     """
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """steps/nnet3/chain/get_egs.sh {egs_opts} \
                 --cmd "{command}" \
                 --cmvn-opts "{cmvn_opts}" \
@@ -151,7 +151,7 @@ def train_new_models(dir, iter, srand, num_jobs,
         deriv_time_opts.append("--optimization.max-deriv-time-relative={0}".format(
                                     int(max_deriv_time_relative)))
 
-    processes = []
+    threads = []
     for job in range(1, num_jobs+1):
         # k is a zero-based index that we will derive the other indexes from.
         k = num_archives_processed + job - 1
@@ -167,7 +167,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                          (" --write-cache={0}/cache.{1}".format(dir, iter + 1)
                           if job == 1 else ""))
 
-        process_handle = common_lib.run_job(
+        thread = common_lib.background_command(
             """{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
                     nnet3-chain-train {parallel_train_opts} \
                     --apply-deriv-weights={app_deriv_wts} \
@@ -199,21 +199,14 @@ def train_new_models(dir, iter, srand, num_jobs,
                         egs_dir=egs_dir, archive_index=archive_index,
                         buf_size=shuffle_buffer_size,
                         num_chunk_per_mb=num_chunk_per_minibatch_str),
-            wait=False)
+            require_zero_status=True)
 
-        processes.append(process_handle)
+        threads.append(thread)
 
-    all_success = True
-    for process in processes:
-        process.wait()
-        process.communicate()
-        if process.returncode != 0:
-            all_success = False
 
-    if not all_success:
-        open('{0}/.error'.format(dir), 'w').close()
-        raise Exception("There was error during training "
-                        "iteration {0}".format(iter))
+    for thread in threads:
+        thread.join()
+
 
 
 def train_one_iteration(dir, iter, srand, egs_dir,
@@ -226,8 +219,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         leaky_hmm_coefficient,
                         momentum, max_param_change, shuffle_buffer_size,
                         frame_subsampling_factor,
-                        run_opts, dropout_edit_string="",
-                        background_process_handler=None):
+                        run_opts, dropout_edit_string=""):
     """ Called from steps/nnet3/chain/train.py for one iteration for
     neural network training with LF-MMI objective
 
@@ -259,13 +251,11 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     compute_train_cv_probabilities(
         dir=dir, iter=iter, egs_dir=egs_dir,
         l2_regularize=l2_regularize, xent_regularize=xent_regularize,
-        leaky_hmm_coefficient=leaky_hmm_coefficient, run_opts=run_opts,
-        background_process_handler=background_process_handler)
+        leaky_hmm_coefficient=leaky_hmm_coefficient, run_opts=run_opts)
 
     if iter > 0:
         # Runs in the background
-        compute_progress(dir, iter, run_opts,
-                         background_process_handler=background_process_handler)
+        compute_progress(dir, iter, run_opts)
 
     do_average = (iter > 0)
 
@@ -378,7 +368,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
             num_lda_jobs = max_lda_jobs
 
     # Write stats with the same format as stats for LDA.
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
                 nnet3-chain-acc-lda-stats --rand-prune={rand_prune} \
                 {dir}/init.raw "ark:{egs_dir}/cegs.JOB.ark" \
@@ -393,7 +383,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     lda_stat_files = map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
                          range(1, num_lda_jobs + 1))
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/sum_transform_stats.log \
                 sum-lda-accs {dir}/lda_stats {lda_stat_files}""".format(
                     command=run_opts.command,
@@ -409,7 +399,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     # in Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's a scaled
     # variant of an LDA transform but without dimensionality reduction.
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/get_transform.log \
                 nnet-get-feature-transform {lda_opts} {dir}/lda.mat \
                 {dir}/lda_stats""".format(
@@ -433,7 +423,7 @@ def prepare_initial_acoustic_model(dir, run_opts, srand=-1):
     # We ensure that they have the same mode (even if someone changed the
     # script to make one or both of them text mode) by copying them both
     # before concatenating them.
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/init_mdl.log \
                 nnet3-am-init {dir}/0.trans_mdl {dir}/0.raw \
                 {dir}/0.mdl""".format(command=run_opts.command, dir=dir))
@@ -441,11 +431,10 @@ def prepare_initial_acoustic_model(dir, run_opts, srand=-1):
 
 def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
                                    xent_regularize, leaky_hmm_coefficient,
-                                   run_opts, wait=False,
-                                   background_process_handler=None):
+                                   run_opts):
     model = '{0}/{1}.mdl'.format(dir, iter)
 
-    common_lib.run_job(
+    common_lib.background_command(
         """{command} {dir}/log/compute_prob_valid.{iter}.log \
                 nnet3-chain-compute-prob --l2-regularize={l2} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
@@ -455,10 +444,9 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
                    l2=l2_regularize, leaky=leaky_hmm_coefficient,
                    xent_reg=xent_regularize,
-                   egs_dir=egs_dir), wait=wait,
-        background_process_handler=background_process_handler)
+                   egs_dir=egs_dir))
 
-    common_lib.run_job(
+    common_lib.background_command(
         """{command} {dir}/log/compute_prob_train.{iter}.log \
                 nnet3-chain-compute-prob --l2-regularize={l2} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
@@ -468,17 +456,15 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
                    l2=l2_regularize, leaky=leaky_hmm_coefficient,
                    xent_reg=xent_regularize,
-                   egs_dir=egs_dir), wait=wait,
-        background_process_handler=background_process_handler)
+                   egs_dir=egs_dir))
 
 
-def compute_progress(dir, iter, run_opts, wait=False,
-                     background_process_handler=None):
+def compute_progress(dir, iter, run_opts):
 
     prev_model = '{0}/{1}.mdl'.format(dir, iter - 1)
     model = '{0}/{1}.mdl'.format(dir, iter)
 
-    common_lib.run_job(
+    common_lib.background_command(
         """{command} {dir}/log/progress.{iter}.log \
                 nnet3-am-info {model} '&&' \
                 nnet3-show-progress --use-gpu=no \
@@ -488,14 +474,11 @@ def compute_progress(dir, iter, run_opts, wait=False,
                    dir=dir,
                    iter=iter,
                    model=model,
-                   prev_model=prev_model), wait=wait,
-        background_process_handler=background_process_handler)
-
+                   prev_model=prev_model))
 
 def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_str,
                    egs_dir, leaky_hmm_coefficient, l2_regularize,
                    xent_regularize, run_opts,
-                   background_process_handler=None,
                    sum_to_one_penalty=0.0):
     """ Function to do model combination
 
@@ -530,7 +513,7 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
     # model.
     raw_model_strings = list(reversed(raw_model_strings))
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
                 nnet3-chain-combine --num-iters={opt_iters} \
                 --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
@@ -563,5 +546,4 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
         dir=dir, iter='final', egs_dir=egs_dir,
         l2_regularize=l2_regularize, xent_regularize=xent_regularize,
         leaky_hmm_coefficient=leaky_hmm_coefficient,
-        run_opts=run_opts, wait=False,
-        background_process_handler=background_process_handler)
+        run_opts=run_opts)

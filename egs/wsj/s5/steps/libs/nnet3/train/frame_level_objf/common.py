@@ -1,7 +1,7 @@
 
-
-# Copyright 2016    Vijayaditya Peddinti.
-#           2016    Vimal Manohar
+# Copyright 2016 Vijayaditya Peddinti.
+#           2016 Vimal Manohar
+#           2017 Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0.
 
 """ This is a module with methods which will be used by scripts for training of
@@ -58,7 +58,7 @@ def train_new_models(dir, iter, srand, num_jobs,
         deriv_time_opts.append("--optimization.max-deriv-time-relative={0}".format(
                            max_deriv_time_relative))
 
-    processes = []
+    threads = []
     for job in range(1, num_jobs+1):
         # k is a zero-based index that we will derive the other indexes from.
         k = num_archives_processed + job - 1
@@ -82,7 +82,8 @@ def train_new_models(dir, iter, srand, num_jobs,
         else:
             image_augmentation_cmd = ''
 
-        process_handle = common_lib.run_job(
+        # note: the thread waits on that process's completion.
+        thread = common_lib.background_command(
             """{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
                     nnet3-train {parallel_train_opts} {cache_io_opts} \
                     --print-interval=10 \
@@ -113,21 +114,13 @@ def train_new_models(dir, iter, srand, num_jobs,
                         egs_dir=egs_dir, archive_index=archive_index,
                         shuffle_buffer_size=shuffle_buffer_size,
                         minibatch_size_str=minibatch_size_str,
-                        aug_cmd=image_augmentation_cmd), wait=False)
+                        aug_cmd=image_augmentation_cmd),
+            require_zero_status=True)
 
-        processes.append(process_handle)
+        threads.append(thread)
 
-    all_success = True
-    for process in processes:
-        process.wait()
-        process.communicate()
-        if process.returncode != 0:
-            all_success = False
-
-    if not all_success:
-        open('{0}/.error'.format(dir), 'w').close()
-        raise Exception("There was error during training "
-                        "iteration {0}".format(iter))
+    for thread in threads:
+        thread.join()
 
 
 def train_one_iteration(dir, iter, srand, egs_dir,
@@ -138,8 +131,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         frames_per_eg=-1,
                         min_deriv_time=None, max_deriv_time_relative=None,
                         shrinkage_value=1.0, dropout_edit_string="",
-                        get_raw_nnet_from_am=True,
-                        background_process_handler=None):
+                        get_raw_nnet_from_am=True):
     """ Called from steps/nnet3/train_*.py scripts for one iteration of neural
     network training
 
@@ -182,16 +174,13 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     compute_train_cv_probabilities(
         dir=dir, iter=iter, egs_dir=egs_dir,
         run_opts=run_opts,
-        get_raw_nnet_from_am=get_raw_nnet_from_am, wait=False,
-        background_process_handler=background_process_handler)
+        get_raw_nnet_from_am=get_raw_nnet_from_am)
 
     if iter > 0:
         # Runs in the background
         compute_progress(dir=dir, iter=iter, egs_dir=egs_dir,
                          run_opts=run_opts,
-                         wait=False,
-                         get_raw_nnet_from_am=get_raw_nnet_from_am,
-                         background_process_handler=background_process_handler)
+                         get_raw_nnet_from_am=get_raw_nnet_from_am)
 
     do_average = (iter > 0)
 
@@ -217,10 +206,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         # keep the update stable.
         cur_minibatch_size_str = common_train_lib.halve_minibatch_size_str(minibatch_size_str)
         cur_max_param_change = float(max_param_change) / math.sqrt(2)
-    try:
-        os.remove("{0}/.error".format(dir))
-    except OSError:
-        pass
 
     shrink_info_str = ''
     if shrinkage_value != 1.0:
@@ -298,7 +283,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
             num_lda_jobs = max_lda_jobs
 
     # Write stats with the same format as stats for LDA.
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
                 nnet3-acc-lda-stats --rand-prune={rand_prune} \
                 {dir}/init.raw "ark:{egs_dir}/egs.JOB.ark" \
@@ -313,7 +298,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     lda_stat_files = map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
                          range(1, num_lda_jobs + 1))
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/sum_transform_stats.log \
                 sum-lda-accs {dir}/lda_stats {lda_stat_files}""".format(
                     command=run_opts.command,
@@ -330,7 +315,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     # in Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's a scaled
     # variant of an LDA transform but without dimensionality reduction.
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/get_transform.log \
                 nnet-get-feature-transform {lda_opts} {dir}/lda.mat \
                 {dir}/lda_stats""".format(
@@ -341,7 +326,6 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
 
 
 def compute_train_cv_probabilities(dir, iter, egs_dir, run_opts,
-                                   wait=False, background_process_handler=None,
                                    get_raw_nnet_from_am=True):
     if get_raw_nnet_from_am:
         model = "nnet3-am-copy --raw=true {dir}/{iter}.mdl - |".format(
@@ -350,7 +334,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, run_opts,
         model = "{dir}/{iter}.raw".format(dir=dir, iter=iter)
 
 
-    common_lib.run_job(
+    common_lib.background_command(
         """ {command} {dir}/log/compute_prob_valid.{iter}.log \
                 nnet3-compute-prob "{model}" \
                 "ark,bg:nnet3-copy-egs \
@@ -360,10 +344,9 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, run_opts,
                                         dir=dir,
                                         iter=iter,
                                         model=model,
-                                        egs_dir=egs_dir),
-        wait=wait, background_process_handler=background_process_handler)
+                                        egs_dir=egs_dir))
 
-    common_lib.run_job(
+    common_lib.background_command(
         """{command} {dir}/log/compute_prob_train.{iter}.log \
                 nnet3-compute-prob "{model}" \
                 "ark,bg:nnet3-copy-egs \
@@ -373,12 +356,11 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, run_opts,
                                         dir=dir,
                                         iter=iter,
                                         model=model,
-                                        egs_dir=egs_dir),
-        wait=wait, background_process_handler=background_process_handler)
+                                        egs_dir=egs_dir))
 
 
 def compute_progress(dir, iter, egs_dir,
-                     run_opts, background_process_handler=None, wait=False,
+                     run_opts,
                      get_raw_nnet_from_am=True):
     if get_raw_nnet_from_am:
         prev_model = "nnet3-am-copy --raw=true {0}/{1}.mdl - |".format(
@@ -388,7 +370,7 @@ def compute_progress(dir, iter, egs_dir,
         prev_model = '{0}/{1}.raw'.format(dir, iter - 1)
         model = '{0}/{1}.raw'.format(dir, iter)
 
-    common_lib.run_job(
+    common_lib.background_command(
             """{command} {dir}/log/progress.{iter}.log \
                     nnet3-info "{model}" '&&' \
                     nnet3-show-progress --use-gpu=no "{prev_model}" "{model}" \
@@ -400,13 +382,12 @@ def compute_progress(dir, iter, egs_dir,
                                             iter=iter,
                                             model=model,
                                             prev_model=prev_model,
-                                            egs_dir=egs_dir),
-            wait=wait, background_process_handler=background_process_handler)
+                                            egs_dir=egs_dir))
 
 
 def combine_models(dir, num_iters, models_to_combine, egs_dir,
                    minibatch_size_str,
-                   run_opts, background_process_handler=None,
+                   run_opts,
                    chunk_width=None, get_raw_nnet_from_am=True,
                    sum_to_one_penalty=0.0):
     """ Function to do model combination
@@ -449,7 +430,7 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
     # model.
     raw_model_strings = list(reversed(raw_model_strings))
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
                 nnet3-combine --num-iters=80 \
                 --enforce-sum-to-one={hard_enforce} \
@@ -476,14 +457,11 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
     if get_raw_nnet_from_am:
         compute_train_cv_probabilities(
             dir=dir, iter='combined', egs_dir=egs_dir,
-            run_opts=run_opts, wait=False,
-            background_process_handler=background_process_handler)
+            run_opts=run_opts)
     else:
         compute_train_cv_probabilities(
             dir=dir, iter='final', egs_dir=egs_dir,
-            run_opts=run_opts, wait=False,
-            background_process_handler=background_process_handler,
-            get_raw_nnet_from_am=False)
+            run_opts=run_opts, get_raw_nnet_from_am=False)
 
 
 def get_realign_iters(realign_times, num_iters,
@@ -523,7 +501,7 @@ def align(dir, data, lang, run_opts, iter=None, transform_dir=None,
     logger.info("Aligning the data{gpu}with {num_jobs} jobs.".format(
         gpu=" using gpu " if run_opts.realign_use_gpu else " ",
         num_jobs=run_opts.realign_num_jobs))
-    common_lib.run_job(
+    common_lib.execute_command(
         """steps/nnet3/align.sh --nj {num_jobs_align} \
                 --cmd "{align_cmd} {align_queue_opt}" \
                 --use-gpu {align_use_gpu} \
@@ -570,7 +548,7 @@ def realign(dir, iter, feat_dir, lang, prev_egs_dir, cur_egs_dir,
 
     alidir = align(dir, feat_dir, lang, run_opts, iter,
                    transform_dir, online_ivector_dir)
-    common_lib.run_job(
+    common_lib.execute_command(
         """steps/nnet3/relabel_egs.sh --cmd "{command}" --iter {iter} \
                 {alidir} {prev_egs_dir} {cur_egs_dir}""".format(
                     command=run_opts.command,
@@ -583,7 +561,7 @@ def realign(dir, iter, feat_dir, lang, prev_egs_dir, cur_egs_dir,
 
 def adjust_am_priors(dir, input_model, avg_posterior_vector, output_model,
                      run_opts):
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/adjust_priors.final.log \
                 nnet3-am-adjust-priors "{input_model}" {avg_posterior_vector} \
                 "{output_model}" """.format(
@@ -612,7 +590,7 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
     else:
         model = "{dir}/final.raw".format(dir=dir)
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} JOB=1:{num_jobs_compute_prior} {prior_queue_opt} \
                 {dir}/log/get_post.{iter}.JOB.log \
                 nnet3-copy-egs \
@@ -636,7 +614,7 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
     # make sure there is time for $dir/post.{iter}.*.vec to appear.
     time.sleep(5)
     avg_post_vec_file = "{dir}/post.{iter}.vec".format(dir=dir, iter=iter)
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/vector_sum.{iter}.log \
                 vector-sum {dir}/post.{iter}.*.vec {output_file}
         """.format(command=run_opts.command,

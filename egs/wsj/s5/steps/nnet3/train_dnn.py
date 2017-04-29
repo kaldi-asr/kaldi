@@ -2,6 +2,7 @@
 
 # Copyright 2016    Vijayaditya Peddinti.
 #           2016    Vimal Manohar
+#           2017 Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0.
 
 """ This script is based on steps/nnet3/tdnn/train.sh
@@ -148,7 +149,7 @@ def process_args(args):
     return [args, run_opts]
 
 
-def train(args, run_opts, background_process_handler):
+def train(args, run_opts):
     """ The main function for training.
 
     Args:
@@ -199,7 +200,7 @@ def train(args, run_opts, background_process_handler):
     if (args.stage <= -5) and os.path.exists(args.dir+"/configs/init.config"):
         logger.info("Initializing a basic network for estimating "
                     "preconditioning matrix")
-        common_lib.run_job(
+        common_lib.execute_command(
             """{command} {dir}/log/nnet_init.log \
                     nnet3-init --srand=-2 {dir}/configs/init.config \
                     {dir}/init.raw""".format(command=run_opts.command,
@@ -322,8 +323,7 @@ def train(args, run_opts, background_process_handler):
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
-                run_opts=run_opts,
-                background_process_handler=background_process_handler)
+                run_opts=run_opts)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
@@ -352,7 +352,6 @@ def train(args, run_opts, background_process_handler):
             models_to_combine=models_to_combine,
             egs_dir=egs_dir,
             minibatch_size_str=args.minibatch_size, run_opts=run_opts,
-            background_process_handler=background_process_handler,
             sum_to_one_penalty=args.combine_sum_to_one_penalty)
 
     if args.stage <= num_iters + 1:
@@ -393,25 +392,25 @@ def train(args, run_opts, background_process_handler):
     with open("{dir}/accuracy.report".format(dir=args.dir), "w") as f:
         f.write(report)
 
-    common_lib.run_job("steps/info/nnet3_dir_info.pl "
-                       "{0}".format(args.dir))
+    common_lib.execute_command("steps/info/nnet3_dir_info.pl "
+                               "{0}".format(args.dir))
 
 
 def main():
     [args, run_opts] = get_args()
     try:
-        background_process_handler = common_lib.BackgroundProcessHandler(
-            polling_time=args.background_polling_time)
-        train(args, run_opts, background_process_handler)
-        background_process_handler.ensure_processes_are_done()
-    except Exception as e:
+        train(args, run_opts)
+        common_lib.wait_for_background_commands()
+    except BaseException as e:
+        # look for BaseException so we catch KeyboardInterrupt, which is
+        # what we get when a background thread dies.
         if args.email is not None:
             message = ("Training session for experiment {dir} "
                        "died due to an error.".format(dir=args.dir))
             common_lib.send_mail(message, message, args.email)
-        traceback.print_exc()
-        background_process_handler.stop()
-        raise e
+        if not isinstance(e, KeyboardInterrupt):
+            traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
