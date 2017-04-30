@@ -48,11 +48,12 @@ def get_args():
     parser = argparse.ArgumentParser(
         description="""Parses the training logs and generates a variety of
         plots.
-        e.g. (deprecated): steps/nnet3/report/generate_plots.py \\
-        --comparison-dir exp/nnet3/tdnn1 --comparison-dir exp/nnet3/tdnn2 \\
+        e.g. (deprecated): steps/nnet3/report/generate_plots.py
+        --comparison-dir exp/nnet3/tdnn1 --comparison-dir exp/nnet3/tdnn2
         exp/nnet3/tdnn exp/nnet3/tdnn/report
-        e.g. (current): steps/nnet3/report/generate_plots.py \\
-        exp/nnet3/tdnn exp/nnet3/tdnn1 exp/nnet3/tdnn2 exp/nnet3/tdnn/report""")
+        or (current): steps/nnet3/report/generate_plots.py
+        exp/nnet3/tdnn exp/nnet3/tdnn1 exp/nnet3/tdnn2 exp/nnet3/tdnn/report.
+        Look for the report.pdf in the output (report) directory.""")
 
     parser.add_argument("--comparison-dir", type=str, action='append',
                         help="other experiment directories for comparison. "
@@ -134,7 +135,7 @@ class LatexReport:
         lat_file.close()
         logger.info("Compiling the latex report.")
         try:
-            common_lib.run_kaldi_command(
+            common_lib.execute_command(
                 "pdflatex -interaction=batchmode "
                 "-output-directory={0} {1}".format(dir_name, latex_file))
         except Exception as e:
@@ -238,7 +239,7 @@ def plot_a_nonlin_component(fig, dirs, stat_tables_per_component_per_dir,
     index = 0
     legend_handle = [extra, extra, extra, extra]
     legend_label = ["", '5th percentile', '50th percentile', '95th percentile']
-            
+
     for dir in dirs:
         color_val = g_plot_colors[index]
         index += 1
@@ -262,7 +263,7 @@ def plot_a_nonlin_component(fig, dirs, stat_tables_per_component_per_dir,
                 linestyle='--')
         insert_a_column_legend(legend_handle, legend_label, lp, mp, hp,
                 dir, prefix_length, index+1)
-                  
+
         ax.set_ylabel('Value-{0}'.format(component_type))
         ax.grid(True)
 
@@ -292,7 +293,7 @@ def plot_a_nonlin_component(fig, dirs, stat_tables_per_component_per_dir,
 #    contains all the statistics in each component of each directory.
 # 3) The statistics of each component are stored into corresponding log files.
 #    Each line of the log file contains the statistics of one iteration.
-# 4) Plot the "Per-dimension average-(value, derivative) percentiles" figure 
+# 4) Plot the "Per-dimension average-(value, derivative) percentiles" figure
 #    for each nonlinearity component.
 def generate_nonlin_stats_plots(exp_dir, output_dir, plot, comparison_dir=None,
                                 start_iter=1, latex_report=None):
@@ -359,13 +360,13 @@ def generate_nonlin_stats_plots(exp_dir, output_dir, plot, comparison_dir=None,
             given experiment dirs are not the same, so comparison plots are
             provided only for common component names. Make sure that these are
             comparable experiments before analyzing these plots.""")
-        
+
         fig = plt.figure()
-        
+
         common_prefix = os.path.commonprefix(dirs)
         prefix_length = common_prefix.rfind('/')
         common_prefix = common_prefix[0:prefix_length]
-        
+
         for component_name in main_component_names:
             if stats_per_dir[exp_dir][component_name]['type'] == 'LstmNonlinearity':
                 for i in range(0,5):
@@ -425,7 +426,7 @@ def generate_clipped_proportion_plots(exp_dir, output_dir, plot,
                           " this might be because there are no "
                           "ClipGradientComponents.".format(dir))
             continue
-        if len(stats_per_dir[dir]) == 0: 
+        if len(stats_per_dir[dir]) == 0:
             logger.warning("Couldn't find any rows for the"
                            "clipped proportion plot, not generating it")
     try:
