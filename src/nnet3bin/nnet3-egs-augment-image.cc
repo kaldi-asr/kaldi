@@ -2,6 +2,7 @@
 
 // Copyright      2017  Johns Hopkins University (author:  Daniel Povey)
 //                2017  Hossein Hadian
+//                2017  Yiwen Shao
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -79,40 +80,51 @@ void ApplyAffineTransform(MatrixBase<BaseFloat> &transform,
                                           transform(1, 1) * c + transform(1, 2);
 
       // we are going to do bilinear interpolation between 4 closest points
-      // to the point [r_old, c_old]. r1  <=  r_old  <=  r2
-      //                              c1  <=  c_old  <=  c2
+      // to the point [r_old, c_old]. We have: r1  <=  r_old  <=  r2
+      //                                       c1  <=  c_old  <=  c2
 
       int32 r1 = static_cast<int32>(floor(r_old));
       int32 c1 = static_cast<int32>(floor(c_old));
       int32 r2 = r1 + 1;
       int32 c2 = c1 + 1;
 
-      // TODO(hhadian): it might be better to use the following 'if' only when
-      // none of the 4 points are available. For now, we only check one of them.
-      if (r1 < 0 || c1 < 0 || r1 > num_rows - 1 ||
-          c1 > num_cols - 1) {  // use the nearest point
-        int32 nearest_row = (r > 0) ? (r - 1) : (r + 1);
-        for (int32 ch = 0; ch < num_channels; ch++) {
-          (*image)(r, num_channels * c + ch) =
-                                   (*image)(nearest_row, num_channels * c + ch);
-        }
-      } else {
-        if (r2 > num_rows - 1)
-          r2 = num_rows - 1;
-        if (c2 > num_cols - 1)
-          c2 = num_cols - 1;
-        for (int32 ch = 0; ch < num_channels; ch++) {
-          // find the values at the 4 points
-          BaseFloat p11 = original_image(r1, num_channels * c1 + ch),
-                    p12 = original_image(r1, num_channels * c2 + ch),
-                    p21 = original_image(r2, num_channels * c1 + ch),
-                    p22 = original_image(r2, num_channels * c2 + ch);
-          BaseFloat interpolate = (r1 + 1 - r_old) * (c1 + 1 - c_old) * p11 +
-                                  (r_old - r1) * (c1 + 1 - c_old) * p12 +
-                                  (r1 + 1 - r_old) * (c_old - c1) * p21 +
-                                  (r_old - r1) * (c_old - c1) * p22;
-          (*image)(r, num_channels * c + ch) = interpolate;
-        }
+      if (r1 < 0) {
+        r1 = 0;
+        r_old = 0.0;  // hold the above conditions
+        if (r2 < 0)
+          r2 = 0;
+      }
+      if (r2 >= num_rows) {
+        r2 = num_rows - 1;
+        r_old = num_rows - 1;  // hold the above conditions
+        if (r1 >= num_rows)
+          r1 = num_rows - 1;
+      }
+
+      if (c1 < 0) {
+        c1 = 0;
+        c_old = 0.0;  // hold the above conditions
+        if (c2 < 0)
+          c2 = 0;
+      }
+      if (c2 >= num_cols) {
+        c2 = num_cols - 1;
+        c_old = num_cols - 1;  // hold the above conditions
+        if (c1 >= num_cols)
+          c1 = num_cols - 1;
+      }
+
+      for (int32 ch = 0; ch < num_channels; ch++) {
+        // find the values at the 4 points
+        BaseFloat p11 = original_image(r1, num_channels * c1 + ch),
+                  p12 = original_image(r1, num_channels * c2 + ch),
+                  p21 = original_image(r2, num_channels * c1 + ch),
+                  p22 = original_image(r2, num_channels * c2 + ch);
+        BaseFloat interpolate = (r1 + 1 - r_old) * (c1 + 1 - c_old) * p11 +
+                                (r_old - r1) * (c1 + 1 - c_old) * p12 +
+                                (r1 + 1 - r_old) * (c_old - c1) * p21 +
+                                (r_old - r1) * (c_old - c1) * p22;
+        (*image)(r, num_channels * c + ch) = interpolate;
       }
     }
   }
@@ -157,12 +169,13 @@ void PerturbImage(const ImageAugmentationConfig &config,
                                config.horizontal_shift * image_width;
   BaseFloat vertical_shift = (2.0 * RandUniform() - 1.0) *
                              config.vertical_shift * image_height;
-  shift_mat(0, 2) = floor(horizontal_shift);  // best to floor shifts to avoid blurring
+  shift_mat(0, 2) = floor(horizontal_shift);  // best to floor the shifts to
+                                              // avoid unnecessary blurring
   shift_mat(1, 2) = floor(vertical_shift);
   // since we will center the image before applying the transform,
   // horizontal flipping is simply achieved by setting [0, 0] to -1:
   if (WithProb(config.horizontal_flip_prob))
-    shift_mat(0, 0) = -1;
+    shift_mat(0, 0) = -1.0;
 
 
   Matrix<BaseFloat> rotation_mat(3, 3, kUndefined);
