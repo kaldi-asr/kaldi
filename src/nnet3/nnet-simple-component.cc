@@ -26,6 +26,7 @@
 #include "nnet3/nnet-simple-component.h"
 #include "nnet3/nnet-parse.h"
 #include "cudamatrix/cu-math.h"
+#include "nnet3/nnet-utils.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -2646,12 +2647,14 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
       KALDI_ERR << "Bad initializer " << cfl->WholeLine();
     BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
         bias_stddev = 1.0, bias_mean = 0.0;
+    bool init_orthogonal = true;
     cfl->GetValue("param-stddev", &param_stddev);
     cfl->GetValue("bias-stddev", &bias_stddev);
     cfl->GetValue("bias-mean", &bias_mean);
+    cfl->GetValue("init-orthogonal", &init_orthogonal);
     Init(input_dim, output_dim, param_stddev,
-         bias_stddev, bias_mean, rank_in, rank_out, update_period,
-         num_samples_history, alpha);
+         bias_stddev, bias_mean, init_orthogonal, rank_in, rank_out,
+         update_period, num_samples_history, alpha);
   }
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
@@ -2695,13 +2698,15 @@ void NaturalGradientAffineComponent::Init(
 void NaturalGradientAffineComponent::Init(
     int32 input_dim, int32 output_dim,
     BaseFloat param_stddev, BaseFloat bias_stddev, BaseFloat bias_mean,
-    int32 rank_in, int32 rank_out, int32 update_period,
+    bool init_orthogonal, int32 rank_in, int32 rank_out, int32 update_period,
     BaseFloat num_samples_history, BaseFloat alpha) {
   linear_params_.Resize(output_dim, input_dim);
   bias_params_.Resize(output_dim);
   KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0 &&
                bias_stddev >= 0.0);
-  linear_params_.SetRandn(); // sets to random normally distributed noise.
+  // linear_params_.SetRandn(); // sets to random normally distributed noise.
+  if (init_orthogonal) SetRandOrthogonal(&linear_params_);
+  else linear_params_.SetRandn();
   linear_params_.Scale(param_stddev);
   bias_params_.SetRandn();
   bias_params_.Scale(bias_stddev);

@@ -52,7 +52,7 @@ class XconfigLstmLayer(XconfigLayerBase):
                         'clipping-threshold' : 30.0,
                         'delay' : -1,
                         'ng-per-element-scale-options' : ' max-change=0.75',
-                        'ng-affine-options' : ' max-change=0.75 ',
+                        'ng-affine-options' : ' max-change=0.75 init-orthogonal=false ',
                         'self-repair-scale-nonlinearity' : 0.00001,
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,

@@ -641,7 +641,7 @@ class XconfigBasicLayer(XconfigLayerBase):
                         'self-repair-scale' : 1.0e-05,
                         'target-rms' : 1.0,
                         'learning-rate-factor' : 1.0,
-                        'ng-affine-options' : '',
+                        'ng-affine-options' : ' init-orthogonal=false ',
                         'dropout-proportion': 0.5}
 
     def check_configs(self):
@@ -909,7 +909,7 @@ class XconfigAffineLayer(XconfigLayerBase):
                         'bias-mean' : 0.0,
                         'max-change' : 0.75,
                         'learning-rate-factor' : 1.0,
-                        'ng-affine-options' : ''}
+                        'ng-affine-options' : ' init-orthogonal=false '}
 
     def set_derived_configs(self):
         super(XconfigAffineLayer, self).set_derived_configs()

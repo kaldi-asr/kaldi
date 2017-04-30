@@ -23,6 +23,7 @@
 #include "nnet3/nnet-convolutional-component.h"
 #include "nnet3/nnet-computation-graph.h"
 #include "nnet3/nnet-parse.h"
+#include "nnet3/nnet-utils.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -169,15 +170,19 @@ void TimeHeightConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
 
   // 3. Parameter-initialization configs.
   BaseFloat param_stddev = -1, bias_stddev = 0.0;
+  bool init_orthogonal = true;
   cfl->GetValue("param-stddev", &param_stddev);
   cfl->GetValue("bias-stddev", &bias_stddev);
+  cfl->GetValue("init-orthogonal", &init_orthogonal);
   if (param_stddev < 0.0) {
     param_stddev = 1.0 / sqrt(model_.num_filters_in *
                               model_.offsets.size());
   }
   // initialize the parameters.
   linear_params_.Resize(model_.ParamRows(), model_.ParamCols());
-  linear_params_.SetRandn();
+  // linear_params_.SetRandn();
+  if (init_orthogonal) SetRandOrthogonal(&linear_params_);
+  else linear_params_.SetRandn();
   linear_params_.Scale(param_stddev);
   bias_params_.Resize(model_.num_filters_out);
   bias_params_.SetRandn();

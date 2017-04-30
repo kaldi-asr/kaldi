@@ -100,6 +100,32 @@ void UnitTestConvertRepeatedToBlockAffineComposite() {
   }
 }
 
+void UnitTestOrthogonalMatrix(int N) {
+  for (int k = 0; k < N; k++) {
+    int32 row = RandInt(1, 20);
+    int32 col = RandInt(1, 20);
+    CuMatrix<BaseFloat> mat(row, col);
+    mat.SetRandn();
+    SetRandOrthogonal(&mat);
+    BaseFloat norm = mat.FrobeniusNorm();
+    if (row <= col) {
+      BaseFloat norm_id = std::sqrt(mat.NumRows());
+      mat.Scale(norm_id / norm);
+      CuMatrix<BaseFloat> mat_o(mat.NumRows(), mat.NumRows());
+      mat_o.AddMatMat(1, mat, kNoTrans, mat, kTrans, 0);
+      KALDI_ASSERT(mat_o.NumRows() == mat_o.NumCols());
+      KALDI_ASSERT(mat_o.IsUnit());
+    } else {
+      BaseFloat norm_id = std::sqrt(mat.NumCols());
+      mat.Scale(norm_id / norm);
+      CuMatrix<BaseFloat> mat_o(mat.NumCols(), mat.NumCols());
+      mat_o.AddMatMat(1, mat, kTrans, mat, kNoTrans, 0);
+      KALDI_ASSERT(mat_o.NumRows() == mat_o.NumCols());
+      KALDI_ASSERT(mat_o.IsUnit());
+    }
+  }
+}
+
 } // namespace nnet3
 } // namespace kaldi
 
@@ -111,6 +137,7 @@ int main() {
   UnitTestNnetContext();
   UnitTestConvertRepeatedToBlockAffine();
   UnitTestConvertRepeatedToBlockAffineComposite();
+  UnitTestOrthogonalMatrix(1000);
 
   KALDI_LOG << "Nnet tests succeeded.";
 

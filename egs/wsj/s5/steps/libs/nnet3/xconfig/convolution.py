@@ -129,7 +129,8 @@ class XconfigConvLayer(XconfigLayerBase):
                        # the following are not really inspected by this level of
                        # code, just passed through (but not if left at '').
                        'param-stddev':'', 'bias-stddev':'',
-                       'max-change': 0.75, 'learning-rate-factor':'',
+                       'max-change': 0.75, 'init-orthogonal': 'false',
+                       'learning-rate-factor':'',
                        'use-natural-gradient':'',
                        'rank-in':'', 'rank-out':'', 'num-minibatches-history':'',
                        'alpha-in':'', 'alpha-out':'',
@@ -258,7 +259,7 @@ class XconfigConvLayer(XconfigLayerBase):
                         'alpha-in', 'alpha-out', 'num-filters-in', 'num-filters-out',
                         'height-in','height-out', 'height-subsample-out',
                         'height-offsets', 'time-offsets', 'required-time-offsets',
-                        'learning-rate-factor']:
+                        'learning-rate-factor', 'init-orthogonal']:
                     value = self.config[opt_name]
                     if value != '':
                         a.append('{0}={1}'.format(opt_name, value))

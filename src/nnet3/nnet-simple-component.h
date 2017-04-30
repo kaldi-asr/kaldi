@@ -854,7 +854,9 @@ class LogSoftmaxComponent: public NonlinearComponent {
      bias-mean             e.g. bias-mean=1.0.  Allows you to ininialize the
                            bias parameters with an offset.  Default is 0.0
                            which is normally suitable
-
+     init-orthogonal       If true, use orthogonal initialization as
+                           recommended in https://arxiv.org/abs/1312.6120.
+                           Defaults to true.
      matrix                e.g. matrix=foo/bar/init.mat  May be used as an
                            alternative to (input-dim, output-dim, param-stddev,
                            bias-stddev, bias-mean) to initialize the parameters.
@@ -887,7 +889,7 @@ class NaturalGradientAffineComponent: public AffineComponent {
   virtual void Write(std::ostream &os, bool binary) const;
   void Init(int32 input_dim, int32 output_dim,
             BaseFloat param_stddev, BaseFloat bias_stddev, BaseFloat bias_mean,
-            int32 rank_in, int32 rank_out, int32 update_period,
+            bool init_orthogonal, int32 rank_in, int32 rank_out, int32 update_period,
             BaseFloat num_samples_history, BaseFloat alpha);
   void Init(int32 rank_in, int32 rank_out, int32 update_period,
             BaseFloat num_samples_history,

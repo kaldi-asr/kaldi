@@ -121,6 +121,10 @@ namespace nnet3 {
                       unit stddev if the input has unit stddev.
       bias-stddev     Standard deviation of bias terms.  default=0.0.
 
+      init-orthogonal If true, use orthogonal initialization as
+                      recommended in https://arxiv.org/abs/1312.6120.
+                      Defaults to true.
+
 
    Natural-gradient related options are below; you won't normally have to
    set these.

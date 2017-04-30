@@ -701,6 +701,35 @@ bool NnetIsRecurrent(const Nnet &nnet) {
   return GraphHasCycles(graph);
 }
 
+void SetRandOrthogonal(CuMatrix<BaseFloat> *mat) {
+  if (mat->NumRows() < mat->NumCols()) {
+    CuMatrix<BaseFloat> mat_trans(mat->NumCols(), mat->NumRows());
+    SetRandOrthogonal(&mat_trans);
+    // copy to mat, transposed;
+    mat->CopyFromMat(mat_trans, kTrans);
+    return;
+  }
+  // Now assume that num_rows >= num_cols, and we'll make the
+  // columns orthogonal.  Doing it this way round (num_rows >= num_cols)
+  // saves a temporary matrix inside Svd (note: because LAPACK has a
+  // FORTRAN origin, it's very oriented towards operation on columns,
+  // which is super-suboptimal in C/C++ from a memory access order perspective,
+  // but that project has a lot of inertia).
+  
+  mat->SetRandn();
+  BaseFloat old_norm = mat->FrobeniusNorm();
+  // Do SVD with mat->DestructiveSvd(), mat = U*diag(S)*Vt. 
+  // We don't care about Vt, so make it NULL.  U will have the same
+  // dim as 'mat', and after SVD it will have orthonormal rows.
+  Matrix<BaseFloat> U(mat->NumRows(), mat->NumCols());
+  Vector<BaseFloat> s(mat->NumCols());
+  Matrix<BaseFloat> mat_cpu(*mat);
+  mat_cpu.DestructiveSvd(&s, &U, NULL);
+  mat->CopyFromMat(U);
+  // Scale 'mat' by a positive scalar chosen so that its frobenius norm is
+  // the same as it was before we did the SVD:
+  mat->Scale(old_norm / mat->FrobeniusNorm());
+}
 
 
 } // namespace nnet3

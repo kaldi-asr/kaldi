@@ -245,6 +245,17 @@ void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes);
 */
 void ReadEditConfig(std::istream &config_file, Nnet *nnet);
 
+/// This function is used in orthogonal initialization of parameters in neural
+/// networks, as recommended in the paper "Exact solutions to the nonlinear
+///  dynamics of learning in deep linear neural networks"
+/// https://arxiv.org/pdf/1312.6120.pdf.
+/// If mat->NumRows() is <= mat->NumCols(), then this function sets the
+/// rows of the matrix to random orthogonal vectors with equal norm, scaled
+/// in such a way that the vector 2-norm (Frobenius norm) of the matrix is 
+/// distributed the same as if you had called mat->SetRandn().
+/// If mat->NumRows() > mat->NumCols(), then replace "rows" in the previous
+/// sentence with "columns".
+void SetRandOrthogonal(CuMatrix<BaseFloat> *mat);
 
 } // namespace nnet3
 } // namespace kaldi
