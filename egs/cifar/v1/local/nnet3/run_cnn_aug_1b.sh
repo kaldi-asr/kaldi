@@ -1,8 +1,7 @@
 #!/bin/bash
 
-
-# aug_1a is as 1a but with data augmentation
-# accuracy 79.5%
+# aug_1b is the same as 1e but with data augmentation
+# accuracy 84.5%
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -15,7 +14,7 @@ train_stage=-10
 dataset=cifar10
 srand=0
 reporting_email=
-affix=_aug_1a
+affix=_aug_1e
 
 
 # End configuration section.
@@ -69,25 +68,18 @@ if [ $stage -le 1 ]; then
   # Note: we hardcode in the CNN config that we are dealing with 32x3x color
   # images.
 
-  common="required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=32"
+  common1="required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=32"
+  common2="required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=64"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=96 name=input
-  conv-relu-batchnorm-layer name=cnn1 height-in=32 height-out=32 time-offsets=-1,0,1 $common
-  conv-relu-batchnorm-layer name=cnn2 height-in=32 height-out=32 time-offsets=-1,0,1 $common
-  conv-relu-batchnorm-layer name=cnn3 height-in=32 height-out=32 time-offsets=-1,0,1 $common
-  conv-relu-batchnorm-layer name=cnn4 height-in=32 height-out=16 time-offsets=-1,0,1 $common height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn5 height-in=16 height-out=16 time-offsets=-2,0,2 $common
-  conv-relu-batchnorm-layer name=cnn6 height-in=16 height-out=16 time-offsets=-2,0,2 $common
-  conv-relu-batchnorm-layer name=cnn7 height-in=16 height-out=8  time-offsets=-2,0,2 $common height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn8 height-in=8 height-out=8   time-offsets=-4,0,4 $common
-  conv-relu-batchnorm-layer name=cnn9 height-in=8 height-out=8   time-offsets=-4,0,4 $common
-  conv-relu-batchnorm-layer name=cnn10 height-in=8 height-out=4   time-offsets=-4,0,4 $common height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn11 height-in=4 height-out=4   time-offsets=-8,0,8 $common
-  conv-relu-batchnorm-layer name=cnn12 height-in=4 height-out=4   time-offsets=-8,0,8 $common
-  relu-batchnorm-layer name=fully_connected1 input=Append(0,8,16,24) dim=128
-  relu-batchnorm-layer name=fully_connected2 dim=256
+  conv-relu-batchnorm-layer name=cnn1 height-in=32 height-out=32 time-offsets=-1,0,1 $common1
+  conv-relu-batchnorm-dropout-layer name=cnn2 height-in=32 height-out=16 time-offsets=-1,0,1 dropout-proportion=0.25 $common1 height-subsample-out=2
+  conv-relu-batchnorm-layer name=cnn3 height-in=16 height-out=16 time-offsets=-2,0,2 $common2
+  conv-relu-batchnorm-dropout-layer name=cnn4 height-in=16 height-out=8 time-offsets=-2,0,2 dropout-proportion=0.25 $common2 height-subsample-out=2
+  conv-relu-batchnorm-layer name=cnn5 height-in=8 height-out=8 time-offsets=-4,0,4 $common2
+  relu-dropout-layer name=fully_connected1 input=Append(2,6,10,14,18,22,26,30) dropout-proportion=0.5 dim=512
   output-layer name=output dim=$num_targets
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -105,8 +97,8 @@ if [ $stage -le 2 ]; then
     --egs.frames-per-eg=1 \
     --trainer.optimization.num-jobs-initial=1 \
     --trainer.optimization.num-jobs-final=2 \
-    --trainer.optimization.initial-effective-lrate=0.0003 \
-    --trainer.optimization.final-effective-lrate=0.00003 \
+    --trainer.optimization.initial-effective-lrate=0.003 \
+    --trainer.optimization.final-effective-lrate=0.0003 \
     --trainer.optimization.minibatch-size=256,128,64 \
     --trainer.shuffle-buffer-size=2000 \
     --egs.dir="$egs" \
