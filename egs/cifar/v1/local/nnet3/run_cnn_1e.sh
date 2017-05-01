@@ -9,7 +9,7 @@
 # (it also have half the parameters of 1d).
 
 # exp/cnn1e_cifar10: num-iters=60 nj=1..2 num-params=2.2M dim=96->10 combine=-0.15->-0.12 loglike:train/valid[39,59]=(-0.06,-0.01/-0.58,-0.60) accuracy:train/valid[39,59]=(0.99,1.00/0.82,0.83)
-
+# exp/cnn1e_cifar100: num-iters=60 nj=1..2 num-params=2.3M dim=96->100 combine=-0.65->-0.57 loglike:train/valid[39,59]=(-0.39,-0.12/-1.82,-1.89) accuracy:train/valid[39,59]=(0.92,0.99/0.53,0.54)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
