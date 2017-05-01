@@ -170,7 +170,7 @@ if [ $stage -le 3 ]; then
 
        # compare lattice rescoring with biglm decoding, going from tgpr to tg.
       steps/decode_biglm.sh --nj ${nspk} --cmd "$decode_cmd" \
-        exp/tri2b/graph_nosp_tgpr data/lang_test_{tgpr,tg}/G.fst \
+        exp/tri2b/graph_nosp_tgpr data/lang_nosp_test_{tgpr,tg}/G.fst \
         data/test_${data} exp/tri2b/decode_nosp_tgpr_${data}_tg_biglm
 
        # baseline via LM rescoring of lattices.
