@@ -66,7 +66,7 @@ struct ImageAugmentationConfig {
 
 /**
   This function applies a geometric transformation 'transform' to the image.
-  References: [1] Digital Image Processing book by Gonzalez and Woods.
+  Reference: Digital Image Processing book by Gonzalez and Woods.
   @param [in] transform  The 3x3 geometric transformation matrix to apply.
   @param [in] num_channels  Number of channels (i.e. colors) of the image
   @param [in,out] image  The image matrix to be modified.
@@ -138,8 +138,8 @@ void ApplyAffineTransform(MatrixBase<BaseFloat> &transform,
 /**
   This function randomly modifies (perturbs) the image by applying different
   geometric transformations according to the options in 'config'.
-  References: [1] Digital Image Processing book by Gonzalez and Woods.
-  [2] Keras: github.com/fchollet/keras/blob/master/keras/preprocessing/image.py
+  References: "Digital Image Processing book by Gonzalez and Woods" and
+  "Keras: github.com/fchollet/keras/blob/master/keras/preprocessing/image.py"
   @param [in] config  Configuration class that says how
                       to perturb the image.
   @param [in,out] image  The image matrix to be modified.
