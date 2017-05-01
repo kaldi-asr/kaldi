@@ -2,7 +2,10 @@
 
 
 # aug_1a is as 1a but with data augmentation
-# accuracy 79.5%
+# accuracy 79.5% (1a had accuracy 69%)
+
+# steps/info/nnet3_dir_info.pl exp/cnn_aug_1a_cifar10
+# exp/cnn_aug_1a_cifar10: num-iters=60 nj=1..2 num-params=0.2M dim=96->10 combine=-0.61->-0.58 loglike:train/valid[39,59,final]=(-0.60,-0.49,-0.57/-0.68,-0.60,-0.67) accuracy:train/valid[39,59,final]=(0.79,0.83,0.81/0.76,0.79,0.77)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail

@@ -1,7 +1,10 @@
 #!/bin/bash
 
 # aug_1b is the same as 1e but with data augmentation
-# accuracy 84.5%
+# accuracy 84.5% (1e has accuracy 83%)
+
+# steps/info/nnet3_dir_info.pl exp/cnn_aug_1b_cifar10
+# exp/cnn_aug_1b_cifar10/: num-iters=60 nj=1..2 num-params=0.2M dim=96->10 combine=-0.53->-0.50 loglike:train/valid[39,59,final]=(-0.57,-0.45,-0.48/-0.68,-0.62,-0.64) accuracy:train/valid[39,59,final]=(0.80,0.84,0.83/0.76,0.79,0.78)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
