@@ -64,6 +64,16 @@ struct ImageAugmentationConfig {
   }
 };
 
+/**
+  This function applies a geometric transformation 'transform' to the image.
+  References: [1] Digital Image Processing book by Gonzalez and Woods.
+  @param [in] transform  The 3x3 geometric transformation matrix to apply.
+  @param [in] num_channels  Number of channels (i.e. colors) of the image
+  @param [in,out] image  The image matrix to be modified.
+                     image->NumRows() is the width (number of x values) in
+                     the image; image->NumCols() is the height times number
+                     of channels (channel varies the fastest).
+ */
 void ApplyAffineTransform(MatrixBase<BaseFloat> &transform,
                           int32 num_channels,
                           MatrixBase<BaseFloat> *image) {
@@ -74,65 +84,62 @@ void ApplyAffineTransform(MatrixBase<BaseFloat> &transform,
   Matrix<BaseFloat> original_image(*image);
   for (int32 r = 0; r < num_rows; r++) {
     for (int32 c = 0; c < height; c++) {
+      // (r_old, c_old) is the coordinate of the pixel in the original image
+      // while (r, c) is the coordinate in the new (transformed) image.
       BaseFloat r_old = transform(0, 0) * r +
                                           transform(0, 1) * c + transform(0, 2);
       BaseFloat c_old = transform(1, 0) * r +
                                           transform(1, 1) * c + transform(1, 2);
-
-      // we are going to do bilinear interpolation between 4 closest points
-      // to the point [r_old, c_old]. We have: r1  <=  r_old  <=  r2
-      //                                       c1  <=  c_old  <=  c2
-
+      // We are going to do bilinear interpolation between 4 closest points
+      // to the point (r_old, c_old) of the original image. We have:
+      // r1  <=  r_old  <=  r2
+      // c1  <=  c_old  <=  c2
       int32 r1 = static_cast<int32>(floor(r_old));
       int32 c1 = static_cast<int32>(floor(c_old));
       int32 r2 = r1 + 1;
       int32 c2 = c1 + 1;
 
+      // These weights determine how much each of the 4 points contributes
+      // to the final interpolated value:
+      BaseFloat weight_11 = (r2 - r_old) * (c2 - c_old),
+                weight_12 = (r_old - r1) * (c2 - c_old),
+                weight_21 = (r2 - r_old) * (c_old - c1),
+                weight_22 = (r_old - r1) * (c_old - c1);
+      // Handle edge conditions:
       if (r1 < 0) {
         r1 = 0;
-        r_old = 0.0;  // hold the above conditions
-        if (r2 < 0)
-          r2 = 0;
+        if (r2 < 0) r2 = 0;
       }
       if (r2 >= num_rows) {
         r2 = num_rows - 1;
-        r_old = num_rows - 1;  // hold the above conditions
-        if (r1 >= num_rows)
-          r1 = num_rows - 1;
+        if (r1 >= num_rows) r1 = num_rows - 1;
       }
-
       if (c1 < 0) {
         c1 = 0;
-        c_old = 0.0;  // hold the above conditions
-        if (c2 < 0)
-          c2 = 0;
+        if (c2 < 0) c2 = 0;
       }
       if (c2 >= num_cols) {
         c2 = num_cols - 1;
-        c_old = num_cols - 1;  // hold the above conditions
-        if (c1 >= num_cols)
-          c1 = num_cols - 1;
+        if (c1 >= num_cols) c1 = num_cols - 1;
       }
-
       for (int32 ch = 0; ch < num_channels; ch++) {
         // find the values at the 4 points
         BaseFloat p11 = original_image(r1, num_channels * c1 + ch),
                   p12 = original_image(r1, num_channels * c2 + ch),
                   p21 = original_image(r2, num_channels * c1 + ch),
                   p22 = original_image(r2, num_channels * c2 + ch);
-        BaseFloat interpolate = (r1 + 1 - r_old) * (c1 + 1 - c_old) * p11 +
-                                (r_old - r1) * (c1 + 1 - c_old) * p12 +
-                                (r1 + 1 - r_old) * (c_old - c1) * p21 +
-                                (r_old - r1) * (c_old - c1) * p22;
-        (*image)(r, num_channels * c + ch) = interpolate;
+        (*image)(r, num_channels * c + ch) = weight_11 * p11 + weight_12 * p12 +
+                                             weight_21 * p21 + weight_22 * p22;
       }
     }
   }
 }
 
-
 /**
-  This function randomly modifies (perturbs) the image.
+  This function randomly modifies (perturbs) the image by applying different
+  geometric transformations according to the options in 'config'.
+  References: [1] Digital Image Processing book by Gonzalez and Woods.
+  [2] Keras: github.com/fchollet/keras/blob/master/keras/preprocessing/image.py
   @param [in] config  Configuration class that says how
                       to perturb the image.
   @param [in,out] image  The image matrix to be modified.
@@ -150,11 +157,8 @@ void PerturbImage(const ImageAugmentationConfig &config,
     KALDI_ERR << "Number of columns in image must divide the number "
         "of channels";
   }
-
   // We do an affine transform which
   // handles flipping, translation, rotation, magnification, and shear.
-
-  // Prepare the affine transform for geometric transformation
   Matrix<BaseFloat> transform_mat(3, 3, kUndefined);
   transform_mat.SetUnit();
 
@@ -164,7 +168,6 @@ void PerturbImage(const ImageAugmentationConfig &config,
   // [ 1   0  x_shift
   //   0   1  y_shift
   //   0   0  1       ]
-
   BaseFloat horizontal_shift = (2.0 * RandUniform() - 1.0) *
                                config.horizontal_shift * image_width;
   BaseFloat vertical_shift = (2.0 * RandUniform() - 1.0) *
@@ -177,7 +180,6 @@ void PerturbImage(const ImageAugmentationConfig &config,
   if (WithProb(config.horizontal_flip_prob))
     shift_mat(0, 0) = -1.0;
 
-
   Matrix<BaseFloat> rotation_mat(3, 3, kUndefined);
   rotation_mat.SetUnit();
   // rotation mat:
@@ -185,14 +187,12 @@ void PerturbImage(const ImageAugmentationConfig &config,
   //   sin(theta)  cos(theta)   0
   //   0           0            1 ]
 
-
   Matrix<BaseFloat> shear_mat(3, 3, kUndefined);
   shear_mat.SetUnit();
   // shear mat:
   // [ 1    -sin(shear)   0
   //   0     cos(shear)   0
   //   0     0            1 ]
-
 
   Matrix<BaseFloat> zoom_mat(3, 3, kUndefined);
   zoom_mat.SetUnit();
@@ -207,7 +207,6 @@ void PerturbImage(const ImageAugmentationConfig &config,
   transform_mat.AddMatMatMat(1.0, rotation_mat, kNoTrans,
                                transform_mat, kNoTrans,
                                zoom_mat, kNoTrans, 0.0);
-
   if (transform_mat.IsUnit())  // nothing to do
     return;
 
@@ -219,7 +218,6 @@ void PerturbImage(const ImageAugmentationConfig &config,
   set_origin_mat.SetUnit();
   set_origin_mat(0, 2) = image_width / 2.0 - 0.5;
   set_origin_mat(1, 2) = image_height / 2.0 - 0.5;
-
   Matrix<BaseFloat> reset_origin_mat(3, 3, kUndefined);
   reset_origin_mat.SetUnit();
   reset_origin_mat(0, 2) = -image_width / 2.0 + 0.5;
