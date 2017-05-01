@@ -220,6 +220,7 @@ if [ $stage -le 7 ]; then
   
   # Split documents so that they can be accessed easily by parallel jobs.
   mkdir -p $dir/docs/split$nj/
+  text2doc_splits=
   for n in `seq $nj`; do
     text2doc_splits="$text2doc_splits $dir/docs/split$nj/text2doc.$n"
   done
@@ -265,6 +266,7 @@ fi
 
 if [ $stage -le 9 ]; then
   sdir=$dir/query_docs/split$nj
+  mkdir -p $sdir
 
   # Compute TF-IDF for the query documents (decode hypotheses). 
   # The output is an archive of TF-IDF indexed by the query.
