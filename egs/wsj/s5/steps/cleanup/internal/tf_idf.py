@@ -12,7 +12,6 @@ import re
 import sys
 
 sys.path.insert(0, 'steps')
-import libs.kaldi_io as kaldi_io
 
 logger = logging.getLogger('__name__')
 logger.addHandler(logging.NullHandler())
