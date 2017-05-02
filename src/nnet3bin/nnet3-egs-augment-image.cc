@@ -312,13 +312,13 @@ int main(int argc, char *argv[]) {
 
 
     int32 srand_seed = 0;
-    std::string fill_mode_string = Null;
+    std::string fill_mode_string = "nearest";
 
     ImageAugmentationConfig config;
 
     ParseOptions po(usage);
     po.Register("srand", &srand_seed, "Seed for the random number generator");
-    po.Register("fill_mode",&fill_mode_string, "Mode for filling the out-bundaries points")
+    po.Register("fill_mode", &fill_mode_string, "Mode for filling the out-bundaries points = {nearest (default), reflect}")
     config.Register(&po);
 
     po.Read(argc, argv);
