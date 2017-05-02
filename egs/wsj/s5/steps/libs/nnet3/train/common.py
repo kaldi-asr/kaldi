@@ -99,7 +99,7 @@ def get_average_nnet_model(dir, iter, nnets_list, run_opts,
             out_model = "{dir}/{next_iter}.raw".format(dir=dir,
                                                        next_iter=next_iter)
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/average.{iter}.log \
                 nnet3-average {nnets_list} \
                 {out_model}""".format(command=run_opts.command,
@@ -128,7 +128,7 @@ def get_best_nnet_model(dir, iter, best_model_index, run_opts,
         out_model = "{dir}/{next_iter}.raw".format(dir=dir,
                                                    next_iter=iter + 1)
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/select.{iter}.log \
                 nnet3-copy --scale={scale} {best_model} \
                 {out_model}""".format(command=run_opts.command,
@@ -411,7 +411,7 @@ def compute_presoftmax_prior_scale(dir, alidir, num_jobs, run_opts,
                                    presoftmax_prior_scale_power=-0.25):
 
     # getting the raw pdf count
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} JOB=1:{num_jobs} {dir}/log/acc_pdf.JOB.log \
                 ali-to-post "ark:gunzip -c {alidir}/ali.JOB.gz|" ark:- \| \
                 post-to-tacc --per-pdf=true  {alidir}/final.mdl ark:- \
@@ -420,7 +420,7 @@ def compute_presoftmax_prior_scale(dir, alidir, num_jobs, run_opts,
                                                dir=dir,
                                                alidir=alidir))
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/sum_pdf_counts.log \
                 vector-sum --binary=false {dir}/pdf_counts.* {dir}/pdf_counts \
         """.format(command=run_opts.command, dir=dir))
@@ -456,14 +456,14 @@ def smooth_presoftmax_prior_scale_vector(pdf_counts,
 
 def prepare_initial_network(dir, run_opts, srand=-3):
     if os.path.exists(dir+"/configs/init.config"):
-        common_lib.run_job(
+        common_lib.execute_command(
             """{command} {dir}/log/add_first_layer.log \
                     nnet3-init --srand={srand} {dir}/init.raw \
                     {dir}/configs/final.config {dir}/0.raw""".format(
                         command=run_opts.command, srand=srand,
                         dir=dir))
     else:
-        common_lib.run_job(
+        common_lib.execute_command(
             """{command} {dir}/log/init_model.log \
            nnet3-init --srand={srand} {dir}/configs/final.config {dir}/0.raw""".format(
                         command=run_opts.command, srand=srand,
@@ -537,12 +537,12 @@ def do_shrinkage(iter, model_file, shrink_saturation_threshold,
         return True
 
     if get_raw_nnet_from_am:
-        output, error = common_lib.run_kaldi_command(
-            "nnet3-am-info --print-args=false {0} | "
+        output = common_lib.get_command_stdout(
+            "nnet3-am-info {0} 2>/dev/null | "
             "steps/nnet3/get_saturation.pl".format(model_file))
     else:
-        output, error = common_lib.run_kaldi_command(
-            "nnet3-info --print-args=false {0} | "
+        output = common_lib.get_command_stdout(
+            "nnet3-info 2>/dev/null {0} | "
             "steps/nnet3/get_saturation.pl".format(model_file))
     output = output.strip().split("\n")
     try:
@@ -558,8 +558,8 @@ def do_shrinkage(iter, model_file, shrink_saturation_threshold,
 
 
 def remove_nnet_egs(egs_dir):
-    common_lib.run_job("steps/nnet2/remove_egs.sh {egs_dir}".format(
-                            egs_dir=egs_dir))
+    common_lib.execute_command("steps/nnet2/remove_egs.sh {egs_dir}".format(
+            egs_dir=egs_dir))
 
 
 def clean_nnet_dir(nnet_dir, num_iters, egs_dir,
@@ -852,12 +852,6 @@ class CommonParser:
                                  iterations.
                                  If 0 and reporting mail has been specified
                                  then only failure notifications are sent""")
-        self.parser.add_argument("--background-polling-time",
-                                 dest="background_polling_time",
-                                 type=float, default=60,
-                                 help="""Polling frequency in seconds at which
-                                 the background process handler checks for
-                                 errors in the processes.""")
 
 
 if __name__ == '__main__':

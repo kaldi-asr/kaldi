@@ -52,7 +52,6 @@ int main(int argc, char *argv[]) {
 
     po.Register("batchnorm-test-mode", &batchnorm_test_mode,
                 "If true, set test-mode to true on any BatchNormComponents.");
-
     po.Register("dropout-test-mode", &dropout_test_mode,
                 "If true, set test-mode to true on any DropoutComponents and "
                 "DropoutMaskComponents.");

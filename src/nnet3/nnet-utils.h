@@ -26,8 +26,8 @@
 #include "nnet3/nnet-common.h"
 #include "nnet3/nnet-component-itf.h"
 #include "nnet3/nnet-descriptor.h"
-
-#include "nnet-computation-graph.h"
+#include "nnet3/nnet-computation.h"
+#include "nnet3/nnet-example.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -164,6 +164,11 @@ std::string NnetInfo(const Nnet &nnet);
 /// dropout_proportion value.
 void SetDropoutProportion(BaseFloat dropout_proportion, Nnet *nnet);
 
+
+/// Returns true if nnet has at least one component of type
+/// BatchNormComponent.
+bool HasBatchnorm(const Nnet &nnet);
+
 /// This function affects only components of type BatchNormComponent.
 /// It sets "test mode" on such components (if you call it with test_mode =
 /// true, otherwise it would set normal mode, but this wouldn't be needed
@@ -171,6 +176,15 @@ void SetDropoutProportion(BaseFloat dropout_proportion, Nnet *nnet);
 /// it does a deterministic normalization based on statistics stored at training
 /// time.
 void SetBatchnormTestMode(bool test_mode, Nnet *nnet);
+
+
+/// This function zeros the stored component-level stats in the nnet using
+/// ZeroComponentStats(), then recomputes them with the supplied egs.  It
+/// affects batch-norm, for instance.  See also the version of RecomputeStats
+/// declared in nnet-chain-diagnostics.h.
+void RecomputeStats(const std::vector<NnetExample> &egs, Nnet *nnet);
+
+
 
 /// This function affects components of child-classes of
 /// RandomComponent( currently only DropoutComponent and DropoutMaskComponent).
