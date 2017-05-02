@@ -76,7 +76,8 @@ struct ImageAugmentationConfig {
  */
 void ApplyAffineTransform(MatrixBase<BaseFloat> &transform,
                           int32 num_channels,
-                          MatrixBase<BaseFloat> *image) {
+                          MatrixBase<BaseFloat> *image,
+			  fill_mode_type fill_mode) {
   int32 num_rows = image->NumRows(),
         num_cols = image->NumCols(),
         height = num_cols / num_channels;
@@ -106,21 +107,41 @@ void ApplyAffineTransform(MatrixBase<BaseFloat> &transform,
                 weight_21 = (r2 - r_old) * (c_old - c1),
                 weight_22 = (r_old - r1) * (c_old - c1);
       // Handle edge conditions:
-      if (r1 < 0) {
-        r1 = 0;
-        if (r2 < 0) r2 = 0;
-      }
-      if (r2 >= num_rows) {
-        r2 = num_rows - 1;
-        if (r1 >= num_rows) r1 = num_rows - 1;
-      }
-      if (c1 < 0) {
-        c1 = 0;
-        if (c2 < 0) c2 = 0;
-      }
-      if (c2 >= num_cols) {
-        c2 = num_cols - 1;
-        if (c1 >= num_cols) c1 = num_cols - 1;
+      if (fill_mode == kNearest) {
+	if (r1 < 0) {
+	  r1 = 0;
+	  if (r2 < 0) r2 = 0;
+	}
+	if (r2 >= num_rows) {
+	  r2 = num_rows - 1;
+	  if (r1 >= num_rows) r1 = num_rows - 1;
+	}
+	if (c1 < 0) {
+	  c1 = 0;
+	  if (c2 < 0) c2 = 0;
+	}
+	if (c2 >= num_cols) {
+	  c2 = num_cols - 1;
+	  if (c1 >= num_cols) c1 = num_cols - 1;
+	}
+      } else {
+	KALDI_ASSERT(fill_mode == kReflect);
+	if (r1 < 0) {
+	  r1 = - r1;
+	  if (r2 < 0) r2 = - r2;
+	}
+	if (r2 >= num_rows) {
+	  r2 = num_rows -1 - (r2 - num_rows + 1);
+	  if (r1 >= num_rows) r1 = num_rows - 1 - (r1 - num_rows + 1);
+	}
+	if (c1 < 0) {
+	  c1 = - c1;
+	  if (c2 < 0) c2 = -c2;
+	}
+	if (c2 >= num_cols) {
+	  c2 = num_cols - 1 - (c2 - num_cols + 1);
+	  if (c1 >= num_cols) c1 = num_cols - 1 - (c1 - num_cols + 1);
+	}
       }
       for (int32 ch = 0; ch < num_channels; ch++) {
         // find the values at the 4 points
@@ -148,7 +169,8 @@ void ApplyAffineTransform(MatrixBase<BaseFloat> &transform,
                      of channels/colors (channel varies the fastest).
  */
 void PerturbImage(const ImageAugmentationConfig &config,
-                  MatrixBase<BaseFloat> *image) {
+                  MatrixBase<BaseFloat> *image,
+		  fill_mode_type fill_mode) {
   config.Check();
   int32 image_width = image->NumRows(),
     num_channels = config.num_channels,
@@ -227,7 +249,7 @@ void PerturbImage(const ImageAugmentationConfig &config,
   transform_mat.AddMatMatMat(1.0, set_origin_mat, kNoTrans,
                                   transform_mat, kNoTrans,
                                   reset_origin_mat, kNoTrans, 0.0);
-  ApplyAffineTransform(transform_mat, config.num_channels, image);
+  ApplyAffineTransform(transform_mat, config.num_channels, image, fill_mode);
 }
 
 
@@ -238,7 +260,8 @@ void PerturbImage(const ImageAugmentationConfig &config,
  */
 void PerturbImageInNnetExample(
     const ImageAugmentationConfig &config,
-    NnetExample *eg) {
+    NnetExample *eg,
+    fill_mode_type fill_mode) {
   int32 io_size = eg->io.size();
   bool found_input = false;
   for (int32 i = 0; i < io_size; i++) {
@@ -251,7 +274,7 @@ void PerturbImageInNnetExample(
       // We won't recompress, but this won't matter because this
       // program is intended to be used as part of a pipe, we
       // likely won't be dumping the perturbed data to disk.
-      PerturbImage(config, &image);
+      PerturbImage(config, &image, fill_mode);
 
       // modify the 'io' object.
       io.features = image;
@@ -289,11 +312,13 @@ int main(int argc, char *argv[]) {
 
 
     int32 srand_seed = 0;
+    std::string fill_mode_string = Null;
 
     ImageAugmentationConfig config;
 
     ParseOptions po(usage);
     po.Register("srand", &srand_seed, "Seed for the random number generator");
+    po.Register("fill_mode",&fill_mode_string, "Mode for filling the out-bundaries points")
     config.Register(&po);
 
     po.Read(argc, argv);
@@ -303,6 +328,13 @@ int main(int argc, char *argv[]) {
     if (po.NumArgs() < 2) {
       po.PrintUsage();
       exit(1);
+    }
+    enum fill_mode_type {kNearest, kReflect};
+    fill_mode_type fill_mode;
+    if (fill_mode_string == "reflect"){
+      fill_mode = kReflect;
+    } else {
+      fill_mode = kNearest;
     }
 
     std::string examples_rspecifier = po.GetArg(1),
@@ -316,7 +348,7 @@ int main(int argc, char *argv[]) {
     for (; !example_reader.Done(); example_reader.Next(), num_done++) {
       std::string key = example_reader.Key();
       NnetExample eg(example_reader.Value());
-      PerturbImageInNnetExample(config, &eg);
+      PerturbImageInNnetExample(config, &eg, fill_mode);
       example_writer.Write(key, eg);
     }
     KALDI_LOG << "Perturbed" << num_done << " neural-network training images.";
