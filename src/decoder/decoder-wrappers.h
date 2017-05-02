@@ -69,7 +69,8 @@ void AlignUtteranceWrapper(
     int32 *num_error,
     int32 *num_retried,
     double *tot_like,
-    int64 *frame_count);
+    int64 *frame_count,
+    BaseFloatVectorWriter *per_frame_acwt_writer = NULL);
 
 
 

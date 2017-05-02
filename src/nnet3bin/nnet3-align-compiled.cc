@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
     std::string use_gpu = "yes";
     BaseFloat transition_scale = 1.0;
     BaseFloat self_loop_scale = 1.0;
+    std::string per_frame_acwt_wspecifier;
 
     std::string ivector_rspecifier,
         online_ivector_rspecifier,
@@ -71,6 +72,9 @@ int main(int argc, char *argv[]) {
     po.Register("self-loop-scale", &self_loop_scale,
                 "Scale of self-loop versus non-self-loop "
                 "log probs [relative to acoustics]");
+    po.Register("write-per-frame-acoustic-loglikes", &per_frame_acwt_wspecifier,
+                "Wspecifier for table of vectors containing the acoustic log-likelihoods "
+                "per frame for each utterance. E.g. ark:foo/per_frame_logprobs.1.ark");
     po.Register("ivectors", &ivector_rspecifier, "Rspecifier for "
                 "iVectors as vectors (i.e. not estimated online); per utterance "
                 "by default, or per speaker if you provide the --utt2spk option.");
@@ -126,7 +130,7 @@ int main(int argc, char *argv[]) {
       RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
       Int32VectorWriter alignment_writer(alignment_wspecifier);
       BaseFloatWriter scores_writer(scores_wspecifier);
-
+      BaseFloatVectorWriter per_frame_acwt_writer(per_frame_acwt_wspecifier);
 
       for (; !fst_reader.Done(); fst_reader.Next()) {
         std::string utt = fst_reader.Key();
@@ -185,7 +189,7 @@ int main(int argc, char *argv[]) {
                               &decode_fst, &nnet_decodable,
                               &alignment_writer, &scores_writer,
                               &num_done, &num_err, &num_retry,
-                              &tot_like, &frame_count);
+                              &tot_like, &frame_count, &per_frame_acwt_writer);
       }
       KALDI_LOG << "Overall log-likelihood per frame is "
                 << (tot_like/frame_count)
