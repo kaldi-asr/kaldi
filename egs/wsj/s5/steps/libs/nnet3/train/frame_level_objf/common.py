@@ -95,8 +95,7 @@ def train_new_models(dir, iter, srand, num_jobs,
             """nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} """
             """--srand={srand} ark:- ark:- | {aug_cmd} """
             """nnet3-merge-egs --minibatch-size={minibatch_size_str} """
-            """--measure-output-frames=false """
-            """--discard-partial-minibatches=true ark:- ark:- |" \
+            """ark:- ark:- |" \
                     {dir}/{next_iter}.{job}.raw""".format(
                         command=run_opts.command,
                         train_queue_opt=run_opts.train_queue_opt,
@@ -439,8 +438,7 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
                 --verbose=3 {raw_models} \
                 "ark,bg:nnet3-copy-egs \
                     ark:{egs_dir}/combine.egs ark:- | \
-                        nnet3-merge-egs --measure-output-frames=false \
-                        --minibatch-size={mbsize} ark:- ark:- |" \
+                      nnet3-merge-egs --minibatch-size={mbsize} ark:- ark:- |" \
                 "{out_model}"
         """.format(command=run_opts.command,
                    combine_queue_opt=run_opts.combine_queue_opt,
@@ -597,8 +595,7 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
                 ark:{egs_dir}/egs.{egs_part}.ark ark:- \| \
                 nnet3-subset-egs --srand=JOB --n={prior_subset_size} \
                 ark:- ark:- \| \
-                nnet3-merge-egs --measure-output-frames=true \
-                --minibatch-size=128 ark:- ark:- \| \
+                nnet3-merge-egs --minibatch-size=128 ark:- ark:- \| \
                 nnet3-compute-from-egs {prior_gpu_opt} --apply-exp=true \
                 "{model}" ark:- ark:- \| \
                 matrix-sum-rows ark:- ark:- \| vector-sum ark:- \
