@@ -10,10 +10,12 @@
 set -e
 stage=4
 use_flp=false
-suffix=       # _sp, to use speed-perturbed data to generate lda+mllt model.
+suffix=_sp
+feat_suffix=_hires # feat_suffix used in train_set for lda_mllt training.
 numLeavesMLLT=5500
 numGaussMLLT=90000
 boost_sil=1.0 # Factor by which to boost silence likelihoods in alignment
+ivector_transform_type=lda # transformation used for iVector extraction
 
 [ ! -f ./conf/common_vars.sh ] && echo 'the file conf/common_vars.sh does not exist!' && exit 1;
 
@@ -32,20 +34,34 @@ multi_data_dir=$2
 global_extractor_dir=$3
 
 langconf=conf/$lda_mllt_lang/lang.conf
-[ ! -f $langconf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
+[ ! -f $langconf ] && echo 'Language configuration lang.conf does not exist! Use the configurations in conf/$lda_mllt_lang/* as a startup' && exit 1
 . $langconf || exit 1;
 
 if [ $stage -le 4 ]; then
-  # We need to build a small system just because we need the LDA+MLLT transform
+  # We need to build a small system just because we need the LDA+MLLT or PCA transform
   # to train the diag-UBM on top of.  We use --num-iters 13 because after we get
   # the transform (12th iter is the last), any further training is pointless.
   # this decision is based on fisher_english
   mkdir -p exp/$lda_mllt_lang/nnet3
-  steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
-    --splice-opts "--left-context=3 --right-context=3" \
-    --boost-silence $boost_sil \
-    $numLeavesMLLT $numGaussMLLT data/$lda_mllt_lang/train${suffix}_hires \
-    data/$lda_mllt_lang/lang exp/$lda_mllt_lang/tri5_ali${suffix} exp/$lda_mllt_lang/nnet3/tri3b
+  case $ivector_transform_type in
+  lda)
+    steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
+      --splice-opts "--left-context=3 --right-context=3" \
+      --boost-silence $boost_sil \
+      $numLeavesMLLT $numGaussMLLT data/$lda_mllt_lang/train${suffix}${feat_suffix} \
+      data/$lda_mllt_lang/lang exp/$lda_mllt_lang/tri5_ali${suffix} exp/$lda_mllt_lang/nnet3/tri3b
+    ;;
+  pca)
+    echo "$0: computing a PCA transform from the hires data."
+    steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
+      --splice-opts "--left-context=3 --right-context=3" \
+      --max-utts 10000 --subsample 2 \
+      data/$lda_mllt_lang/train${suffix}${feat_suffix} \
+      exp/$lda_mllt_lang/nnet3/tri3b
+    ;;
+  *) echo "$0: invalid iVector transformation type $ivector_transform_typ" && exit 1;
+    ;;
+  esac
 fi
 
 if [ $stage -le 5 ]; then

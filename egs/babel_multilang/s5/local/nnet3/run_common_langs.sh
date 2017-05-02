@@ -12,6 +12,7 @@ generate_alignments=true # If true, it regenerates alignments.
 speed_perturb=true
 use_pitch=true      # If true, it generates pitch features and combine it with 40dim MFCC.
 pitch_conf=conf/pitch.conf # Configuration used for pitch extraction.
+feat_suffix=_hires  # feature suffix for training data
 
 [ ! -f ./conf/common_vars.sh ] && echo 'the file conf/common_vars.sh does not exist!' && exit 1
 
@@ -25,6 +26,13 @@ lang=$1
 
 # perturbed data preparation
 train_set=train
+
+if [ $# -ne 1 ]; then
+  echo "Usage:$0 [options] <language-id>"
+  echo "e.g. $0 102-assamese"
+  exit 1;
+fi
+
 if [ "$speed_perturb" == "true" ]; then
   if [ $stage -le 1 ]; then
     #Although the nnet will be trained by high resolution data, we still have to perturbe the normal data to get the alignment
@@ -58,12 +66,12 @@ if [ "$speed_perturb" == "true" ]; then
 fi
 
 hires_config="--mfcc-config conf/mfcc_hires.conf"
-feat_suffix=_hires_mfcc
 mfccdir=mfcc_hires/$lang
+mfcc_affix=""
 if $use_pitch; then
-  feat_suffix=${feat_suffix}_pitch
-  hires_config="$hires_configs --pitch-config $pitch_conf"
+  hires_config="$hires_config --pitch-config $pitch_conf"
   mfccdir=${mfccdir}_pitch/$lang
+  mfcc_affix=_pitch
 fi
 
 if [ $stage -le 3 ] && [ ! -f data/$lang/${train_set}${feat_suffix}/.done ]; then
@@ -82,7 +90,7 @@ if [ $stage -le 3 ] && [ ! -f data/$lang/${train_set}${feat_suffix}/.done ]; the
     # scale the waveforms, this is useful as we don't use CMVN
     utils/data/perturb_data_dir_volume.sh $data_dir || exit 1;
 
-    steps/make${feat_suffix}.sh --nj 70 $hires_config \
+    steps/make_mfcc${mfcc_affix}.sh --nj 70 $hires_config \
       --cmd "$train_cmd" ${data_dir} $log_dir $mfccdir;
 
     steps/compute_cmvn_stats.sh ${data_dir} $log_dir $mfccdir;

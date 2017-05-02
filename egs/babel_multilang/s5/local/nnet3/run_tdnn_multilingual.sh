@@ -43,12 +43,6 @@ use_pitch=true
 use_ivector=true
 megs_dir=
 alidir=tri5_ali
-feat_suffix=_hires_mfcc # The feature suffix describing features used in
-                        # multilingual training
-                        # _hires_mfcc -> 40dim MFCC
-                        # _hire_mfcc_pitch -> 40dim MFCC + pitch
-                        # _hires_mfcc_pitch_bnf -> 40dim MFCC +pitch + BNF
-
 ivector_extractor=  # If empty, the global iVector extractor trained on pooled data
                     # from all languages and iVectors are
                     # extracted using global ivector extractor and ivector_suffix ='_gb'.
@@ -67,6 +61,11 @@ dir=exp/nnet3/multi_bnf
 
 
 num_langs=${#lang_list[@]}
+feat_suffix=_hires      # The feature suffix describing features used in
+                        # multilingual training
+                        # _hires -> 40dim MFCC
+                        # _hires_pitch -> 40dim MFCC + pitch
+                        # _hires_pitch_bnf -> 40dim MFCC +pitch + BNF
 
 echo "$0 $@"  # Print the command line for logging
 if ! cuda-compiled; then
@@ -92,18 +91,19 @@ for lang_index in `seq 0 $[$num_langs-1]`; do
   echo "$0: extract high resolution 40dim MFCC + pitch for speed-perturbed data "
   echo "and extract alignment."
   local/nnet3/run_common_langs.sh --stage $stage \
+    --feat-suffix $feat_suffix \
     --use-pitch $use_pitch \
     --speed-perturb $speed_perturb ${lang_list[$lang_index]} || exit 1;
 done
 
 if $use_ivector; then
-  ivector_suffix=
+  ivector_suffix=""
   if [ -z "$ivector_extractor" ]; then
     mkdir -p data/multi
     mkdir -p exp/multi/nnet3
     global_extractor=exp/multi/nnet3
     ivector_extractor=$global_extractor/extractor
-    multi_data_dir=data/multi/train${suffix}_hires
+    multi_data_dir=data/multi/train${suffix}${feat_suffix}
     ivector_suffix=_gb
     echo "$0: combine training data using all langs for training global i-vector extractor."
     if [ ! -f $multi_data_dir/.done ]; then
@@ -113,11 +113,11 @@ if $use_ivector; then
       mkdir -p $multi_data_dir
       combine_lang_list=""
       for lang_index in `seq 0 $[$num_langs-1]`;do
-        combine_lang_list="$combine_lang_list data/${lang_list[$lang_index]}/train${suffix}_hires"
+        combine_lang_list="$combine_lang_list data/${lang_list[$lang_index]}/train${suffix}${feat_suffix}"
       done
-      utils/combine_data.sh data/multi/train${suffix}_hires $combine_lang_list
-      utils/validate_data_dir.sh --no-feats data/multi/train${suffix}_hires
-      touch data/multi/train${suffix}_hires/.done
+      utils/combine_data.sh data/multi/train${suffix}${feat_suffix} $combine_lang_list
+      utils/validate_data_dir.sh --no-feats data/multi/train${suffix}${feat_suffix}
+      touch data/multi/train${suffix}${feat_suffix}/.done
     fi
   fi
   if [ ! -f $global_extractor/extractor/.done ]; then
@@ -127,6 +127,7 @@ if $use_ivector; then
     echo "on ${lda_mllt_lang}."
     local/nnet3/run_shared_ivector_extractor.sh  \
       --suffix $suffix \
+      --feat-suffix $feat_suffix \
       --stage $stage $lda_mllt_lang \
       $multi_data_dir $global_extractor || exit 1;
     touch $global_extractor/extractor/.done
@@ -134,7 +135,7 @@ if $use_ivector; then
   echo "$0: Extracts ivector for all languages using $global_extractor/extractor."
   for lang_index in `seq 0 $[$num_langs-1]`; do
     local/nnet3/extract_ivector_lang.sh --stage $stage \
-      --train-set train$suffix \
+      --train-set train${suffix}${feat_suffix} \
       --ivector-suffix $ivector_suffix \
       ${lang_list[$lang_index]} \
       $ivector_extractor || exit;
