@@ -3,8 +3,8 @@
 # This is a basic TDNN+LSTM nnet3 experiment.
 
 
-# steps/info/nnet3_dir_info.pl  exp/nnet3/tdnn_lstm1a_sp
-# exp/nnet3/tdnn_lstm1a_sp: num-iters=32 nj=1..2 num-params=8.4M dim=40+100->2022 combine=-0.49->-0.39 loglike:train/valid[20,31,combined]=(-0.65,-0.41,-0.39/-1.03,-0.96,-0.97) accuracy:train/valid[20,31,combined]=(0.78,0.86,0.87/0.70,0.72,0.72)
+# steps/info/nnet3_dir_info.pl exp/nnet3/tdnn_lstm1a_sp
+# exp/nnet3/tdnn_lstm1a_sp: num-iters=32 nj=2..2 num-params=8.4M dim=40+100->2041 combine=-0.47->-0.38 loglike:train/valid[20,31,combined]=(-0.62,-0.38,-0.37/-1.03,-1.03,-1.02) accuracy:train/valid[20,31,combined]=(0.79,0.87,0.87/0.70,0.72,0.72)
 
 # Below, comparing with the chain TDNN system.  It's a little better with the
 # small-vocab decoding.  Both systems are probably super-badly tuned, and the

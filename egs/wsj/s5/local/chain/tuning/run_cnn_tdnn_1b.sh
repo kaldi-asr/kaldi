@@ -2,15 +2,11 @@
 
 
 # 1b is like 1a, but converting the batch-norm layers in all but the CNN
-# components back into renorm layers.  We noticed that the train and valid probs
-# in the progress logs in 1a were worse than expected, and setting
-# --test-mode=false resolved this... so it looks like at least for some parts of
-# the network, the 'test-mode' batch-norm is not behaving the same as the
-# 'train-mode' batch norm.  Converting some parts of the network back to renoem
-# might help resolve this.
+# components back into renorm layers.
+# Note: I'm not confident that the differences from 1a are entirely due
+# to this change, as there have also been code changes, about how the
+# combination works.
 
-# This was modified from run_tdnn_1a.sh; it's the
-# first attempt at a setup including convolutional components.
 
 # steps/info/chain_dir_info.pl exp/chain/cnn_tdnn1a_sp
 # exp/chain/cnn_tdnn1a_sp: num-iters=102 nj=2..5 num-params=5.5M dim=40+100->2889 combine=-0.068->-0.066 xent:train/valid[67,101,final]=(-1.14,-1.09,-1.09/-1.19,-1.15,-1.15) logprob:train/valid[67,101,final]=(-0.058,-0.053,-0.053/-0.078,-0.076,-0.075)
