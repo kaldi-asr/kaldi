@@ -365,14 +365,18 @@ def train(args, run_opts):
 
         num_archives_processed = num_archives_processed + current_num_jobs
 
-    if args.stage <= num_iters and args.final_combination:
-        logger.info("Doing final combination to produce final.raw")
-        train_lib.common.combine_models(
-            dir=args.dir, num_iters=num_iters,
-            models_to_combine=models_to_combine, egs_dir=egs_dir,
-            minibatch_size_str=args.minibatch_size, run_opts=run_opts,
-            get_raw_nnet_from_am=False,
-            sum_to_one_penalty=args.combine_sum_to_one_penalty)
+    if args.stage <= num_iters:
+        if args.final_combination:
+            logger.info("Doing final combination to produce final.raw")
+            train_lib.common.combine_models(
+                dir=args.dir, num_iters=num_iters,
+                models_to_combine=models_to_combine, egs_dir=egs_dir,
+                minibatch_size_str=args.minibatch_size, run_opts=run_opts,
+                get_raw_nnet_from_am=False,
+                sum_to_one_penalty=args.combine_sum_to_one_penalty)
+        else:
+            common_lib.force_symlink("{}.raw".format(num_iters),
+                                     "{}/final.raw".format(args.dir))
 
     if include_log_softmax and args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
