@@ -375,8 +375,8 @@ def train(args, run_opts):
                 get_raw_nnet_from_am=False,
                 sum_to_one_penalty=args.combine_sum_to_one_penalty)
         else:
-            common_lib.force_symlink("{}.raw".format(num_iters),
-                                     "{}/final.raw".format(args.dir))
+            common_lib.force_symlink("{0}.raw".format(num_iters),
+                                     "{0}/final.raw".format(args.dir))
 
     if include_log_softmax and args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
