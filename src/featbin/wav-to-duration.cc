@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
         std::string key = wav_reader.Key();
         const WaveInfo &wave_info = wav_reader.Value();
         if (wave_info.IsStreamed())
-          KALDI_ERR << "Error: member " << key << " has no manifest duration. "
+          KALDI_ERR << "Error: member " << key << " has no duration in header. "
                     << "Check the source, and/or try --read-entire-file.";
         BaseFloat duration = wave_info.Duration();
         duration_writer.Write(key, duration);

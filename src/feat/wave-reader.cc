@@ -30,13 +30,13 @@
 
 namespace kaldi {
 
-// A utility class closure for reading wave header
-struct WaveHeaderReadClosure {
+// A utility class for reading wave header.
+struct WaveHeaderReadGofer {
   std::istream &is;
   bool swap;
   char tag[5];
 
-  WaveHeaderReadClosure(std::istream &is) : is(is), swap(false) {
+  WaveHeaderReadGofer(std::istream &is) : is(is), swap(false) {
     memset(tag, '\0', sizeof tag);
   }
 
@@ -52,7 +52,7 @@ struct WaveHeaderReadClosure {
   void Read4ByteTag() {
     is.read(tag, 4);
     if (is.fail())
-      KALDI_ERR << "WaveData: expected 4-byte chunk-name, got read errror";
+      KALDI_ERR << "WaveData: expected 4-byte chunk-name, got read error";
   }
 
   uint32 ReadUint32() {
@@ -64,7 +64,7 @@ struct WaveHeaderReadClosure {
     if (swap)
       KALDI_SWAP4(u.result);
     if (is.fail())
-      KALDI_ERR << "WaveData: unexpected end of file.";
+      KALDI_ERR << "WaveData: unexpected end of file or read error";
     return u.ans;
   }
 
@@ -77,7 +77,7 @@ struct WaveHeaderReadClosure {
     if (swap)
       KALDI_SWAP2(u.result);
     if (is.fail())
-      KALDI_ERR << "WaveData: unexpected end of file.";
+      KALDI_ERR << "WaveData: unexpected end of file or read error";
     return u.ans;
   }
 };
@@ -111,7 +111,7 @@ static void WriteUint16(std::ostream &os, int16 i) {
 }
 
 void WaveInfo::Read(std::istream &is) {
-  WaveHeaderReadClosure reader(is);
+  WaveHeaderReadGofer reader(is);
   reader.Read4ByteTag();
   if (strcmp(reader.tag, "RIFF") == 0)
     reverse_bytes_ = false;
