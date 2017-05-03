@@ -28,6 +28,8 @@
 namespace kaldi {
 namespace nnet3 {
 
+enum fill_mode_type {kNearest, kReflect};
+  
 struct ImageAugmentationConfig {
   int32 num_channels;
   BaseFloat horizontal_flip_prob;
@@ -302,7 +304,7 @@ int main(int argc, char *argv[]) {
         "parameters).\n"
         "E.g.:\n"
         "  nnet3-egs-augment-image --horizontal-flip-prob=0.5 --horizontal-shift=0.1\\\n"
-        "       --vertical-shift=0.1 --srand=103 --num-channels=3 ark:- ark:-\n"
+        "       --vertical-shift=0.1 --srand=103 --num-channels=3 --fill_mode=nearest ark:- ark:-\n"
         "\n"
         "Requires that each eg contain a NnetIo object 'input', with successive\n"
         "'t' values representing different x offsets , and the feature dimension\n"
@@ -318,7 +320,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     po.Register("srand", &srand_seed, "Seed for the random number generator");
-    po.Register("fill_mode", &fill_mode_string, "Mode for filling the out-bundaries points = {nearest (default), reflect}")
+    po.Register("fill_mode", &fill_mode_string, "Mode for filling the out-bundaries points = {nearest, reflect}");
     config.Register(&po);
 
     po.Read(argc, argv);
@@ -329,7 +331,7 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
-    enum fill_mode_type {kNearest, kReflect};
+    
     fill_mode_type fill_mode;
     if (fill_mode_string == "reflect"){
       fill_mode = kReflect;
