@@ -71,7 +71,7 @@ mfcc_affix=""
 if $use_pitch; then
   hires_config="$hires_config --pitch-config $pitch_conf"
   mfccdir=${mfccdir}_pitch/$lang
-  mfcc_affix=_pitch
+  mfcc_affix=_pitch_online
 fi
 
 if [ $stage -le 3 ] && [ ! -f data/$lang/${train_set}${feat_suffix}/.done ]; then

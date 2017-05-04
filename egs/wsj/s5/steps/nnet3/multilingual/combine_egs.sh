@@ -76,11 +76,15 @@ for lang in $(seq 0 $[$num_langs-1]);do
 
   # check parameter dimension to be the same in all egs dirs
   for f in $check_params; do
-    f1=$(cat $megs_dir/$f)
-    f2=$(cat ${multi_egs_dir[$lang]}/$f)
-    if [ "$f1" != "$f2" ]  ; then
-      echo "$0: mismatch for $f in $megs_dir vs. ${multi_egs_dir[$lang]}($f1 vs. $f2)."
-      exit 1;
+    if [ -f $megs_dir/$f ] && [ -f ${multi_egs_dir[$lang]}/$f ]; then
+      f1=$(cat $megs_dir/$f)
+      f2=$(cat ${multi_egs_dir[$lang]}/$f)
+      if [ "$f1" != "$f2" ]  ; then
+        echo "$0: mismatch for $f in $megs_dir vs. ${multi_egs_dir[$lang]}($f1 vs. $f2)."
+        exit 1;
+      fi
+    else
+      echo "$0: file $f does not exits in $megs_dir or ${multi_egs_dir[$lang]}/$f ."
     fi
   done
 done

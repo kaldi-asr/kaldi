@@ -9,7 +9,6 @@
 . ./cmd.sh
 set -e
 stage=4
-use_flp=false
 suffix=_sp
 feat_suffix=_hires # feat_suffix used in train_set for lda_mllt training.
 numLeavesMLLT=5500

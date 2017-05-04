@@ -100,8 +100,4 @@ if [ ! $exp_dir/tri6/.done -nt $exp_dir/tri5b/.done ]; then
   touch $exp_dir/tri6/.done
 fi
 
-echo ---------------------------------------------------------------------
-echo "$0: next, run run-6-bnf-sgmm-semisupervised.sh"
-echo ---------------------------------------------------------------------
-
 exit 0;

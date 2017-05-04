@@ -262,7 +262,7 @@ def check_model_contexts(config_dir, nnet_edits=None):
             contexts[file_name] = {}
             common_lib.run_kaldi_command("nnet3-init {0}/{1}.config "
                                          "{0}/{1}.raw".format(config_dir, file_name))
-            model = "{0}/ref.raw".format(config_dir)
+            model = "{0}/{1}.raw".format(config_dir, file_name)
             if nnet_edits is not None:
                 model = """nnet3-copy --edits='{0}' {1} - |""".format(nnet_edits,
                                                                       model)
@@ -284,14 +284,16 @@ def check_model_contexts(config_dir, nnet_edits=None):
 
     if contexts.has_key('init'):
         assert(contexts.has_key('ref'))
-        if ((contexts['init']['left-context'] > contexts['ref']['left-context'])
-           or (contexts['init']['right-context'] > contexts['ref']['right-context'])):
-           raise Exception("Model specified in {0}/init.config requires greater"
-                           " context than the model specified in {0}/ref.config."
-                           " This might be due to use of label-delay at the output"
-                           " in ref.config. Please use delay=$label_delay in the"
-                           " initial fixed-affine-layer of the network, to avoid"
-                           " this issue.")
+        if (contexts['init'].has_key('left-context') and
+            contexts['ref'].has_key('left-context')):
+            if ((contexts['init']['left-context'] > contexts['ref']['left-context'])
+               or (contexts['init']['right-context'] > contexts['ref']['right-context'])):
+               raise Exception("Model specified in {0}/init.config requires greater"
+                               " context than the model specified in {0}/ref.config."
+                               " This might be due to use of label-delay at the output"
+                               " in ref.config. Please use delay=$label_delay in the"
+                               " initial fixed-affine-layer of the network, to avoid"
+                               " this issue.")
 
 
 
