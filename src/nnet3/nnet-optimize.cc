@@ -575,9 +575,11 @@ void CachingOptimizingCompiler::UpdateCache(const ComputationRequest *request,
         computation_cache_.find(access_queue_.front());
     KALDI_ASSERT(it != computation_cache_.end());
     // purge the least-recently-accessed request
-    delete it->first;
-    delete it->second.first;
+    const ComputationRequest *r = it->first;
+    const NnetComputation *c = it->second.first;
     computation_cache_.erase(it);
+    delete r;
+    delete c;
     access_queue_.pop_front();
   }
   AqType::iterator ait = access_queue_.insert(access_queue_.end(), request);
