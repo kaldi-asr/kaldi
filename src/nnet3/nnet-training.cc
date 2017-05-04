@@ -154,7 +154,6 @@ void NnetTrainer::ProcessOutputs(bool is_backstitch_step,
                                       tot_weight, tot_objf);
     }
   }
-  num_minibatches_processed_++;
 }
 
 bool NnetTrainer::PrintTotalStats() const {
