@@ -998,8 +998,7 @@ class XconfigIdctLayer(XconfigLayerBase):
         self.config = {'input': '[-1]',
                        'dim': -1,
                        'cepstral-lifter': 22.0,
-                       'affine-transform-file': '',
-                       'write-init-config': False}
+                       'affine-transform-file': ''}
 
     def check_configs(self):
         if self.config['affine-transform-file'] is None:
@@ -1030,13 +1029,6 @@ class XconfigIdctLayer(XconfigLayerBase):
         input_dim = self.descriptors['input']['dim']
         output_dim = self.output_dim()
         transform_file = self.config['affine-transform-file']
-
-        if self.config['write-init-config']:
-            # to init.config we write an output-node with the name 'output' and
-            # with a Descriptor equal to the descriptor that's the input to this
-            # layer.  This will be used to accumulate stats to learn the LDA transform.
-            line = 'output-node name=output input={0}'.format(descriptor_final_string)
-            ans.append(('init', line))
 
         idct_mat = common_lib.compute_idct_matrix(
             input_dim, output_dim, self.config['cepstral-lifter'])
