@@ -999,7 +999,7 @@ class XconfigIdctLayer(XconfigLayerBase):
                        'dim': -1,
                        'cepstral-lifter': 22.0,
                        'affine-transform-file': '',
-                       'write-init-config': True}
+                       'write-init-config': False}
 
     def check_configs(self):
         if self.config['affine-transform-file'] is None:
