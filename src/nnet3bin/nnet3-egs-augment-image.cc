@@ -28,7 +28,7 @@
 namespace kaldi {
 namespace nnet3 {
 
-enum fill_mode_type {kNearest, kReflect};
+enum fill_mode_type { kNearest, kReflect};
   
 struct ImageAugmentationConfig {
   int32 num_channels;
@@ -133,16 +133,16 @@ void ApplyAffineTransform(MatrixBase<BaseFloat> &transform,
 	  if (r2 < 0) r2 = - r2;
 	}
 	if (r2 >= num_rows) {
-	  r2 = num_rows -1 - (r2 - num_rows + 1);
-	  if (r1 >= num_rows) r1 = num_rows - 1 - (r1 - num_rows + 1);
+	  r2 = 2 * num_rows -2 - r2;
+	  if (r1 >= num_rows) r1 = 2 * num_rows - 2 - r1;
 	}
 	if (c1 < 0) {
 	  c1 = - c1;
 	  if (c2 < 0) c2 = -c2;
 	}
 	if (c2 >= num_cols) {
-	  c2 = num_cols - 1 - (c2 - num_cols + 1);
-	  if (c1 >= num_cols) c1 = num_cols - 1 - (c1 - num_cols + 1);
+	  c2 = 2 * num_cols - 2 - c2;
+	  if (c1 >= num_cols) c1 = 2 * num_cols - 2 - c1;
 	}
       }
       for (int32 ch = 0; ch < num_channels; ch++) {
@@ -304,7 +304,7 @@ int main(int argc, char *argv[]) {
         "parameters).\n"
         "E.g.:\n"
         "  nnet3-egs-augment-image --horizontal-flip-prob=0.5 --horizontal-shift=0.1\\\n"
-        "       --vertical-shift=0.1 --srand=103 --num-channels=3 --fill_mode=nearest ark:- ark:-\n"
+        "       --vertical-shift=0.1 --srand=103 --num-channels=3 --fill-mode=nearest ark:- ark:-\n"
         "\n"
         "Requires that each eg contain a NnetIo object 'input', with successive\n"
         "'t' values representing different x offsets , and the feature dimension\n"
@@ -320,7 +320,9 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     po.Register("srand", &srand_seed, "Seed for the random number generator");
-    po.Register("fill_mode", &fill_mode_string, "Mode for filling the out-bundaries points = {nearest, reflect}");
+    po.Register("fill-mode", &fill_mode_string, "Mode for dealing with "
+		"points outside the image boundary when applying transformations. "
+		"Choices = {nearest, reflect}");
     config.Register(&po);
 
     po.Read(argc, argv);
@@ -333,10 +335,15 @@ int main(int argc, char *argv[]) {
     }
     
     fill_mode_type fill_mode;
-    if (fill_mode_string == "reflect"){
+    if (fill_mode_string == "reflect") {
       fill_mode = kReflect;
     } else {
-      fill_mode = kNearest;
+      if (fill_mode_string != "nearest") {
+	KALDI_ERR << "Choices for --fill-mode are 'nearest' or 'reflect', got: "
+		  << fill_mode_string;
+      } else {
+	fill_mode = kNearest;
+      }
     }
 
     std::string examples_rspecifier = po.GetArg(1),
