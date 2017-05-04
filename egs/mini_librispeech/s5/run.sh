@@ -3,7 +3,7 @@
 # Note: this works only on pre-downloaded data on the CLSP servers
 data=/export/a05/dgalvez/
 
-data_url=www.openslr.org/resources/TODO # TODO
+data_url=www.openslr.org/resources/31
 lm_url=www.openslr.org/resources/11
 
 . ./cmd.sh
@@ -14,10 +14,11 @@ stage=0
 
 set -euo pipefail
 
-# TODO(galv): Modify openslr.org to contain the minified training dataset.
-# for part in dev-clean-2 train-clean-5; do
-#   local/download_and_untar.sh $data $data_url $part
-# done
+mkdir -p $data
+
+for part in dev-clean-2 train-clean-5; do
+  local/download_and_untar.sh $data $data_url $part
+done
 
 if [ $stage -le 0 ]; then
   local/download_lm.sh $lm_url data/local/lm
