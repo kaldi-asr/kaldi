@@ -149,21 +149,23 @@ def background_command(command, require_zero_status = False):
 
     """
 
-    thread = threading.Thread(target=background_command_runner,
-                              args=(command, require_zero_status))
+    p = subprocess.Popen(command, shell=True)
+    thread = threading.Thread(target=background_command_waiter,
+                              args=(command, p, require_zero_status))
+    thread.daemon=True  # make sure it exits if main thread is terminated
+                        # abnormally.
     thread.start()
     return thread
 
 
-def background_command_runner(command, require_zero_status):
+def background_command_waiter(command, popen_object, require_zero_status):
     """ This is the function that is called from background_command, in
         a separate thread."""
-    p = subprocess.Popen(command, shell=True)
 
-    p.communicate()
-    if p.returncode is not 0:
+    popen_object.communicate()
+    if popen_object.returncode is not 0:
         str = "Command exited with status {0}: {1}".format(
-            p.returncode, command)
+            popen_object.returncode, command)
         if require_zero_status:
             logger.error(str)
             # thread.interrupt_main() sends a KeyboardInterrupt to the main
