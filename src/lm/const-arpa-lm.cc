@@ -278,7 +278,9 @@ void ConstArpaLmBuilder::ConsumeNGram(const NGram &ngram) {
                            cur_order == ngram_order_ - 1,
                            ngram.logprob, ngram.backoff);
 
-    KALDI_ASSERT(seq_to_state_.find(ngram.words) == seq_to_state_.end());
+    if (seq_to_state_.find(ngram.words) != seq_to_state_.end()) {
+      KALDI_ERR << "ngram " << ngram.words << " appears twice in the arpa file";
+    }
     seq_to_state_[ngram.words] = lm_state;
   }
 
