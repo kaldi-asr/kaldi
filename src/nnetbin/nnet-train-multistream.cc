@@ -357,7 +357,7 @@ int main(int argc, char *argv[]) {
         for (size_t i = 0; i < frame_num_utt.size(); i++) {
           os << frame_num_utt[i] << " ";
         }
-        os <<"]";
+        os << "]";
 
         KALDI_LOG << "frame_num_utt[" << frame_num_utt.size() << "]" << os.str();
       }
