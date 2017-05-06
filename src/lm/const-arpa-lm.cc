@@ -279,7 +279,14 @@ void ConstArpaLmBuilder::ConsumeNGram(const NGram &ngram) {
                            ngram.logprob, ngram.backoff);
 
     if (seq_to_state_.find(ngram.words) != seq_to_state_.end()) {
-      KALDI_ERR << "ngram " << ngram.words << " appears twice in the arpa file";
+      std::ostringstream os;
+      os << "[ ";
+      for (size_t i = 0; i < ngram.words.size(); i++) {
+        os << ngram.words[i] << " ";
+      }
+      os <<"]";
+
+      KALDI_ERR << "N-gram " << os.str() << " appears twice in the arpa file";
     }
     seq_to_state_[ngram.words] = lm_state;
   }
