@@ -77,8 +77,9 @@ def train_new_models(dir, iter, srand, num_jobs,
 
         if image_augmentation_opts:
             image_augmentation_cmd = (
-                'nnet3-egs-augment-image {aug_opts} ark:- ark:- |'.format(
-                aug_opts=image_augmentation_opts))
+                'nnet3-egs-augment-image --srand={srand} {aug_opts} ark:- ark:- |'.format(
+                    srand=k+srand,
+                    aug_opts=image_augmentation_opts))
         else:
             image_augmentation_cmd = ''
 
@@ -95,8 +96,7 @@ def train_new_models(dir, iter, srand, num_jobs,
             """nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} """
             """--srand={srand} ark:- ark:- | {aug_cmd} """
             """nnet3-merge-egs --minibatch-size={minibatch_size_str} """
-            """ark:- ark:- |" \
-                    {dir}/{next_iter}.{job}.raw""".format(
+            """ ark:- ark:- |" {dir}/{next_iter}.{job}.raw""".format(
                         command=run_opts.command,
                         train_queue_opt=run_opts.train_queue_opt,
                         dir=dir, iter=iter, srand=iter + srand,

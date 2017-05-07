@@ -22,7 +22,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# != 3 ]; then
   echo "Usage: $0 [opts] <train-data-dir> <test-or-dev-data-dir> <egs-dir>"
-  echo " e.g.: $0 --egs-per-iter 25000 data/cifar10_train exp/cifar10_train_egs"
+  echo " e.g.: $0 --egs-per-archive 25000 data/cifar10_train exp/cifar10_train_egs"
   echo " or: $0 --test-mode true data/cifar10_test exp/cifar10_test_egs"
   echo "Options (with defaults):"
   echo "  --cmd 'run.pl'     How to run jobs (e.g. queue.pl)"
@@ -122,8 +122,7 @@ fi
 
 num_train_images=$(wc -l <$train/labels.txt)
 
-# the + 1 is to round up, not down... we assume it doesn't divide exactly.
-num_archives=$[num_train_images/egs_per_archive+1]
+num_archives=$[(num_train_images-1)/egs_per_archive+1]
 
 
 if [ $stage -le 2 ]; then

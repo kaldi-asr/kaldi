@@ -1,11 +1,30 @@
 #!/bin/bash
 
-# aug_1c is the same as aug_1b but with many more epochs and smaller
-# final learning rate
-# accuracy improved from 85.8% to 88%
+# 1b2 is as 1b but using smaller learning rates on the last 2 layers since
+# they seemed to be training too fast.
+# test accuracy changes from 0.9114 -> 0.9026, so a bit worse.
 
-# steps/info/nnet3_dir_info.pl exp/cnn_aug_1c_cifar10/
-# exp/cnn_aug_1c_cifar10: num-iters=200 nj=1..2 num-params=2.2M dim=96->10 combine=-0.23->-0.24 loglike:train/valid[132,199,final]=(-0.17,-0.12,-0.12/-0.39,-0.36,-0.37) accuracy:train/valid[132,199,final]=(0.94,0.96,0.96/0.87,0.88,0.88)
+# Accuracy is 86.0, versus 85.6 in 1b, but not sure how significant that would be.
+# grep acc exp/cnn_aug_1b2_cifar10/log/compute_prob_valid.final.log
+# LOG (nnet3-compute-prob[5.1]:PrintTotalStats():nnet-diagnostics.cc:165) Overall accuracy for 'output' is 0.8603 per frame, over 10000 frames.
+# grep acc exp/cnn_aug_1b_cifar10/log/compute_prob_valid.final.log
+#LOG (nnet3-compute-prob[5.1]:PrintTotalStats():nnet-diagnostics.cc:165) Overall accuracy for 'output' is 0.8567 per frame, over 10000 frames.
+
+
+# steps/info/nnet3_dir_info.pl exp/cnn_aug_1b_cifar10
+# exp/cnn_aug_1b_cifar10: num-iters=60 nj=1..2 num-params=2.2M dim=96->10 combine=-0.40->-0.38 loglike:train/valid[39,59,final]=(-0.35,-0.26,-0.26/-0.47,-0.42,-0.42) accuracy:train/valid[39,59,final]=(0.88,0.91,0.91/0.84,0.86,0.86)
+# a05:v1: steps/info/nnet3_dir_info.pl exp/cnn_aug_1b2_cifar10
+# exp/cnn_aug_1b2_cifar10: num-iters=60 nj=1..2 num-params=2.2M dim=96->10 combine=-0.40->-0.38 loglike:train/valid[39,59,final]=(-0.36,-0.28,-0.28/-0.46,-0.41,-0.40) accuracy:train/valid[39,59,final]=(0.87,0.90,0.90/0.84,0.86,0.86)
+
+# run_cnn_aug_1b is the same as run_cnn_1e but with data augmentation.
+
+# accuracy is 0.857, vs. 0.83 for the un-augmented baseline.
+
+# exp/cnn_aug_1b_cifar10: num-iters=60 nj=1..2 num-params=2.2M dim=96->10 combine=-0.40->-0.38 loglike:train/valid[39,59,final]=(-0.35,-0.26,-0.26/-0.47,-0.42,-0.42) accuracy:train/valid[39,59,final]=(0.88,0.91,0.91/0.84,0.86,0.86)
+
+# grep Overall exp/cnn_aug_1b_cifar10/log/compute_prob_valid.final.log  | grep acc
+# LOG (nnet3-compute-prob[5.1]:PrintTotalStats():nnet-diagnostics.cc:165) Overall accuracy for 'output' is 0.8567 per frame, over 10000 frames.#
+
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -18,7 +37,7 @@ train_stage=-10
 dataset=cifar10
 srand=0
 reporting_email=
-affix=_aug_1c
+affix=_aug_1b2
 
 
 # End configuration section.
@@ -83,8 +102,8 @@ if [ $stage -le 1 ]; then
   conv-relu-batchnorm-layer name=cnn3 height-in=16 height-out=16 time-offsets=-2,0,2 $common2
   conv-relu-batchnorm-dropout-layer name=cnn4 height-in=16 height-out=8 time-offsets=-2,0,2 dropout-proportion=0.25 $common2 height-subsample-out=2
   conv-relu-batchnorm-layer name=cnn5 height-in=8 height-out=8 time-offsets=-4,0,4 $common2
-  relu-dropout-layer name=fully_connected1 input=Append(2,6,10,14,18,22,26,30) dropout-proportion=0.5 dim=512
-  output-layer name=output dim=$num_targets
+  relu-dropout-layer name=fully_connected1 input=Append(2,6,10,14,18,22,26,30) dropout-proportion=0.5 learning-rate-factor=0.5 dim=512
+  output-layer name=output learning-rate-factor=0.25 dim=$num_targets
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -97,12 +116,12 @@ if [ $stage -le 2 ]; then
     --image.augmentation-opts="--horizontal-flip-prob=0.5 --horizontal-shift=0.1 --vertical-shift=0.1 --num-channels=3" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=100 \
+    --trainer.num-epochs=30 \
     --egs.frames-per-eg=1 \
     --trainer.optimization.num-jobs-initial=1 \
     --trainer.optimization.num-jobs-final=2 \
     --trainer.optimization.initial-effective-lrate=0.003 \
-    --trainer.optimization.final-effective-lrate=0.0001 \
+    --trainer.optimization.final-effective-lrate=0.0003 \
     --trainer.optimization.minibatch-size=256,128,64 \
     --trainer.shuffle-buffer-size=2000 \
     --egs.dir="$egs" \

@@ -1,11 +1,27 @@
 #!/bin/bash
 
-# aug_1c is the same as aug_1b but with many more epochs and smaller
-# final learning rate
-# accuracy improved from 85.8% to 88%
+# 1b7 is as 1b6 but reducing the dim of the relu layer at the end from
+#   256 to nf3=96, to reduce params.
+#     The final test accuracy is slightly better than 1b6, 0.9095 -> 0.9111.
 
-# steps/info/nnet3_dir_info.pl exp/cnn_aug_1c_cifar10/
-# exp/cnn_aug_1c_cifar10: num-iters=200 nj=1..2 num-params=2.2M dim=96->10 combine=-0.23->-0.24 loglike:train/valid[132,199,final]=(-0.17,-0.12,-0.12/-0.39,-0.36,-0.37) accuracy:train/valid[132,199,final]=(0.94,0.96,0.96/0.87,0.88,0.88)
+# 1b6 is as 1b4 but reducing nf3 from 128 to 96, to reduce the num-params.
+#   See also 1b5 where we reduced the num-params by removing a layer.
+# 1b4 is as 1b3 but the same change as 1f->1e, removing the last convolutional layer
+
+# 1b3 is as 1b2 but changing direct-convolution-source to batchnorm.
+# 1b2 is as 1b but re-running after fixing a bug in image augmentation.
+# 1b is as 1a but adding batchnorm before relu at last layer, and removing the dropout.
+# also reverting the learning rates to be like our normal learning rates (10x larger
+# than 1a).
+
+# run_resnet_1a.sh is modified run_cnn_aug_1b.sh (i.e. it has augmentation), but
+# it's very unlike the baseline- we are moving to a resnet-like architecture.
+# (however, when changing num-filters or when downsampling, we use a regular
+# convolutional layer).
+#
+
+
+#
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -18,7 +34,7 @@ train_stage=-10
 dataset=cifar10
 srand=0
 reporting_email=
-affix=_aug_1c
+affix=1b7
 
 
 # End configuration section.
@@ -38,7 +54,7 @@ fi
 
 
 
-dir=exp/cnn${affix}_${dataset}
+dir=exp/resnet${affix}_${dataset}
 
 egs=exp/${dataset}_egs
 
@@ -72,19 +88,28 @@ if [ $stage -le 1 ]; then
   # Note: we hardcode in the CNN config that we are dealing with 32x3x color
   # images.
 
-  common1="required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=32"
-  common2="required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=64"
+
+  nf1=32
+  nf2=64
+  nf3=96
+
+  common="required-time-offsets=0 height-offsets=-1,0,1"
+  res_opts="direct-lr-factor=0.0 direct-convolution-source=batchnorm"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=96 name=input
-  conv-relu-batchnorm-layer name=cnn1 height-in=32 height-out=32 time-offsets=-1,0,1 $common1
-  conv-relu-batchnorm-dropout-layer name=cnn2 height-in=32 height-out=16 time-offsets=-1,0,1 dropout-proportion=0.25 $common1 height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn3 height-in=16 height-out=16 time-offsets=-2,0,2 $common2
-  conv-relu-batchnorm-dropout-layer name=cnn4 height-in=16 height-out=8 time-offsets=-2,0,2 dropout-proportion=0.25 $common2 height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn5 height-in=8 height-out=8 time-offsets=-4,0,4 $common2
-  relu-dropout-layer name=fully_connected1 input=Append(2,6,10,14,18,22,26,30) dropout-proportion=0.5 dim=512
-  output-layer name=output dim=$num_targets
+  conv-layer name=conv1 height-in=32 height-out=32 time-offsets=-1,0,1 required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=$nf1
+  res-block name=res2 num-filters=$nf1 height=32 time-period=1 $res_opts
+  res-block name=res3 num-filters=$nf1 height=32 time-period=1 $res_opts
+  conv-layer name=conv4 height-in=32 height-out=16 height-subsample-out=2 time-offsets=-1,0,1 $common num-filters-out=$nf2
+  res-block name=res5 num-filters=$nf2 height=16 time-period=2 $res_opts
+  res-block name=res6 num-filters=$nf2 height=16 time-period=2 $res_opts
+  conv-layer name=conv7 height-in=16 height-out=8 height-subsample-out=2 time-offsets=-2,0,2 $common num-filters-out=$nf3
+  res-block name=res8 num-filters=$nf3 height=8 time-period=4 $res_opts
+  res-block name=res9 num-filters=$nf3 height=8 time-period=4 $res_opts
+  relu-batchnorm-layer name=fully_connected1 input=Sum(2,6,10,14,18,22,24,28) dim=$nf3
+  output-layer name=output learning-rate-factor=0.1 dim=$num_targets
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -97,12 +122,12 @@ if [ $stage -le 2 ]; then
     --image.augmentation-opts="--horizontal-flip-prob=0.5 --horizontal-shift=0.1 --vertical-shift=0.1 --num-channels=3" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=100 \
+    --trainer.num-epochs=30 \
     --egs.frames-per-eg=1 \
     --trainer.optimization.num-jobs-initial=1 \
     --trainer.optimization.num-jobs-final=2 \
     --trainer.optimization.initial-effective-lrate=0.003 \
-    --trainer.optimization.final-effective-lrate=0.0001 \
+    --trainer.optimization.final-effective-lrate=0.0003 \
     --trainer.optimization.minibatch-size=256,128,64 \
     --trainer.shuffle-buffer-size=2000 \
     --egs.dir="$egs" \

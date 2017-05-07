@@ -1,14 +1,33 @@
 #!/bin/bash
 
-# run_cnn_aug_1b is the same as run_cnn_1e but with data augmentation.
 
-# accuracy is 0.857, vs. 0.83 for the un-augmented baseline.
+# 1b10 is as 1b7 but removing the final fully connected hidden layer entirely.
+#    had to change the learning rate of the new final layer to be 10x smaller than before,
+#    as it was learning too fast.
+#   It's a bit worse: 0.9111 -> 0.9083.
 
-# exp/cnn_aug_1b_cifar10: num-iters=60 nj=1..2 num-params=2.2M dim=96->10 combine=-0.40->-0.38 loglike:train/valid[39,59,final]=(-0.35,-0.26,-0.26/-0.47,-0.42,-0.42) accuracy:train/valid[39,59,final]=(0.88,0.91,0.91/0.84,0.86,0.86)
+# 1b7 is as 1b6 but reducing the dim of the relu layer at the end from
+#   256 to nf3=96, to reduce params.
+#     The final test accuracy is slightly better than 1b6, 0.9095 -> 0.9111.
 
-# grep Overall exp/cnn_aug_1b_cifar10/log/compute_prob_valid.final.log  | grep acc
-# LOG (nnet3-compute-prob[5.1]:PrintTotalStats():nnet-diagnostics.cc:165) Overall accuracy for 'output' is 0.8567 per frame, over 10000 frames.#
+# 1b6 is as 1b4 but reducing nf3 from 128 to 96, to reduce the num-params.
+#   See also 1b5 where we reduced the num-params by removing a layer.
+# 1b4 is as 1b3 but the same change as 1f->1e, removing the last convolutional layer
 
+# 1b3 is as 1b2 but changing direct-convolution-source to batchnorm.
+# 1b2 is as 1b but re-running after fixing a bug in image augmentation.
+# 1b is as 1a but adding batchnorm before relu at last layer, and removing the dropout.
+# also reverting the learning rates to be like our normal learning rates (10x larger
+# than 1a).
+
+# run_resnet_1a.sh is modified run_cnn_aug_1b.sh (i.e. it has augmentation), but
+# it's very unlike the baseline- we are moving to a resnet-like architecture.
+# (however, when changing num-filters or when downsampling, we use a regular
+# convolutional layer).
+#
+
+
+#
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -21,7 +40,7 @@ train_stage=-10
 dataset=cifar10
 srand=0
 reporting_email=
-affix=_aug_1b
+affix=1b10
 
 
 # End configuration section.
@@ -41,7 +60,7 @@ fi
 
 
 
-dir=exp/cnn${affix}_${dataset}
+dir=exp/resnet${affix}_${dataset}
 
 egs=exp/${dataset}_egs
 
@@ -75,19 +94,27 @@ if [ $stage -le 1 ]; then
   # Note: we hardcode in the CNN config that we are dealing with 32x3x color
   # images.
 
-  common1="required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=32"
-  common2="required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=64"
+
+  nf1=32
+  nf2=64
+  nf3=96
+
+  common="required-time-offsets=0 height-offsets=-1,0,1"
+  res_opts="direct-lr-factor=0.0 direct-convolution-source=batchnorm"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=96 name=input
-  conv-relu-batchnorm-layer name=cnn1 height-in=32 height-out=32 time-offsets=-1,0,1 $common1
-  conv-relu-batchnorm-dropout-layer name=cnn2 height-in=32 height-out=16 time-offsets=-1,0,1 dropout-proportion=0.25 $common1 height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn3 height-in=16 height-out=16 time-offsets=-2,0,2 $common2
-  conv-relu-batchnorm-dropout-layer name=cnn4 height-in=16 height-out=8 time-offsets=-2,0,2 dropout-proportion=0.25 $common2 height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn5 height-in=8 height-out=8 time-offsets=-4,0,4 $common2
-  relu-dropout-layer name=fully_connected1 input=Append(2,6,10,14,18,22,26,30) dropout-proportion=0.5 dim=512
-  output-layer name=output dim=$num_targets
+  conv-layer name=conv1 height-in=32 height-out=32 time-offsets=-1,0,1 required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=$nf1
+  res-block name=res2 num-filters=$nf1 height=32 time-period=1 $res_opts
+  res-block name=res3 num-filters=$nf1 height=32 time-period=1 $res_opts
+  conv-layer name=conv4 height-in=32 height-out=16 height-subsample-out=2 time-offsets=-1,0,1 $common num-filters-out=$nf2
+  res-block name=res5 num-filters=$nf2 height=16 time-period=2 $res_opts
+  res-block name=res6 num-filters=$nf2 height=16 time-period=2 $res_opts
+  conv-layer name=conv7 height-in=16 height-out=8 height-subsample-out=2 time-offsets=-2,0,2 $common num-filters-out=$nf3
+  res-block name=res8 num-filters=$nf3 height=8 time-period=4 $res_opts
+  res-block name=res9 num-filters=$nf3 height=8 time-period=4 $res_opts
+  output-layer input=Sum(2,6,10,14,18,22,24,28) name=output learning-rate-factor=0.0025 dim=$num_targets
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
