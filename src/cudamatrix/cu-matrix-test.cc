@@ -1223,38 +1223,94 @@ static void UnitTestCuMatrixAddMat() {
   }
 }
 
+
+// this tests the branch of AddMatBlocks() that is taken when
+// 'this' has a smaller dimension than 'src' (it sums).
 template<typename Real>
-static void UnitTestCuMatrixAddMatBlocks() {
-  int32 num_row_blocks = 10, num_col_blocks = 20;
-  Matrix<Real> Ha1(100, 100), Ha2(100, 100);
-  Matrix<Real> Hb(100 * num_row_blocks, 100 * num_col_blocks);
-  Ha1.SetRandn();
-  Ha2.SetRandn();
-  Hb.SetRandn();
+static void UnitTestCuMatrixAddMatBlocks1() {
+  for (int32 l = 0; l < 5; l++) {
+    int32 num_row_blocks = RandInt(1, 10), num_col_blocks = RandInt(1, 20);
+    int32 block_rows = RandInt(1, 100), block_cols = RandInt(1, 100);
+    BaseFloat alpha = RandInt(3, 10);
+    CuMatrix<Real> dst(block_rows, block_cols);
+    dst.SetRandn();
+    CuMatrix<Real> src(num_row_blocks * block_rows,
+                       num_col_blocks * block_cols);
+    src.SetRandn();
 
-  CuMatrix<Real> Da1(100, 100), Da2(100, 100);
-  CuMatrix<Real> Db(100 * num_row_blocks, 100 * num_col_blocks);
-  Da1.CopyFromMat(Ha1);
-  Da2.CopyFromMat(Ha2);
-  Db.CopyFromMat(Hb);
-
-  for (int32 i = 0; i < num_row_blocks; i++) {
-    for (int32 j = 0; j < num_col_blocks; j++) {
-      SubMatrix<Real> Hs(Hb.Range(i * 100, 100, j * 100, 100));
-      Ha1.AddMat(0.5, Hs, kNoTrans);
-      Ha2.AddMat(0.5, Hs, kTrans);
+    CuMatrix<Real> dst_copy(dst);
+    for (int32 rb = 0; rb < num_row_blocks; rb++) {
+      for (int32 cb = 0; cb < num_col_blocks; cb++) {
+        CuSubMatrix<Real> src_part(src,
+                                   rb * block_rows, block_rows,
+                                   cb * block_cols, block_cols);
+        dst_copy.AddMat(alpha, src_part);
+      }
     }
+    dst.AddMatBlocks(alpha, src);
+    AssertEqual(dst, dst_copy);
   }
-
-  Da1.AddMatBlocks(0.5, Db, kNoTrans);
-  Da2.AddMatBlocks(0.5, Db, kTrans);
-  Matrix<Real> Ha11(100, 100);
-  Da1.CopyToMat(&Ha11);
-  AssertEqual(Ha1,Ha11);
-  Matrix<Real> Ha22(100, 100);
-  Da2.CopyToMat(&Ha22);
-  AssertEqual(Ha2,Ha22);
 }
+
+// this is as UnitTestCuMatrixAddMatBlocks1, but tests with transpose.
+template<typename Real>
+static void UnitTestCuMatrixAddMatBlocks1Trans() {
+  for (int32 l = 0; l < 5; l++) {
+    int32 num_row_blocks = RandInt(1, 10), num_col_blocks = RandInt(1, 20);
+    int32 block_rows = RandInt(1, 100), block_cols = RandInt(1, 100);
+    BaseFloat alpha = RandInt(3, 10);
+    CuMatrix<Real> dst(block_cols, block_rows);
+    dst.SetRandn();
+    CuMatrix<Real> src(num_row_blocks * block_rows,
+                       num_col_blocks * block_cols);
+    src.SetRandn();
+
+    CuMatrix<Real> dst_copy(dst);
+    for (int32 rb = 0; rb < num_row_blocks; rb++) {
+      for (int32 cb = 0; cb < num_col_blocks; cb++) {
+        CuSubMatrix<Real> src_part(src,
+                                   rb * block_rows, block_rows,
+                                   cb * block_cols, block_cols);
+        dst_copy.AddMat(alpha, src_part, kTrans);
+      }
+    }
+    dst.AddMatBlocks(alpha, src, kTrans);
+    AssertEqual(dst, dst_copy);
+  }
+}
+
+
+// this tests the branch of AddMatBlocks() that is taken when
+// 'this' has a larger dimension than 'src'.  In this case, it does
+// a broadcasting rather than a summing operation.
+template<typename Real>
+static void UnitTestCuMatrixAddMatBlocks2() {
+  for (int32 l = 0; l < 5; l++) {
+    int32 num_row_blocks = RandInt(1, 10), num_col_blocks = RandInt(1, 20);
+    int32 block_rows = RandInt(1, 100), block_cols = RandInt(1, 100);
+    BaseFloat alpha = RandInt(3, 10);
+    CuMatrix<Real> src(block_rows, block_cols);
+    src.SetRandn();
+    CuMatrix<Real> dst(num_row_blocks * block_rows,
+                       num_col_blocks * block_cols);
+    src.SetRandn();
+
+    CuMatrix<Real> dst_copy(dst);
+    for (int32 rb = 0; rb < num_row_blocks; rb++) {
+      for (int32 cb = 0; cb < num_col_blocks; cb++) {
+        CuSubMatrix<Real> dst_copy_part(dst_copy,
+                                        rb * block_rows, block_rows,
+                                        cb * block_cols, block_cols);
+        dst_copy_part.AddMat(alpha, src);
+      }
+    }
+    dst.AddMatBlocks(alpha, src);
+    AssertEqual(dst, dst_copy);
+  }
+}
+
+
+
 
 template<typename Real>
 static void UnitTestCuMatrixReduceSum() {
@@ -2646,7 +2702,9 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixMulRowsVec<Real>();
   UnitTestCuMatrixDivRowsVec<Real>();
   UnitTestCuMatrixAddMat<Real>();
-  UnitTestCuMatrixAddMatBlocks<Real>();
+  UnitTestCuMatrixAddMatBlocks1<Real>();
+  UnitTestCuMatrixAddMatBlocks1Trans<Real>();
+  UnitTestCuMatrixAddMatBlocks2<Real>();
   UnitTestCuMatrixReduceSum<Real>();
   UnitTestCuMatrixReduceMax<Real>();
   UnitTestCuMatrixReduceMin<Real>();

@@ -1005,7 +1005,8 @@ void GenerateConfigSequenceCnnNew(
        << " height-in=" << cur_height
        << " height-out=" << next_height
        << " height-offsets=" << (height_padding ? "-1,0,1" : "0,1,2")
-       << " time-offsets=" << time_offsets;
+       << " time-offsets=" << time_offsets
+       << " use-spatial-averages=" << (RandInt(0,1) == 0 ? "true" : "false");
 
     if (RandInt(0, 1) == 0) {
       // this limits the 'temp memory' usage to 100
