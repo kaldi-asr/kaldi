@@ -28,6 +28,11 @@
 #include <cstdlib>
 #include <cassert>
 #include <cstring>
+#include <climits>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "util/parse-options.h"
 #include "util/text-utils.h"
@@ -38,7 +43,8 @@ namespace kaldi {
 
 ParseOptions::ParseOptions(const std::string &prefix,
                            OptionsItf *other):
-    print_args_(false), help_(false), usage_(""), argc_(0), argv_(NULL) {
+    print_args_(false), help_(false), anchor_dir_(""), usage_(""),
+    argc_(0), argv_(NULL) {
   ParseOptions *po = dynamic_cast<ParseOptions*>(other);
   if (po != NULL && po->other_parser_ != NULL) {
     // we get here if this constructor is used twice, recursively.
@@ -462,11 +468,27 @@ void ParseOptions::PrintConfig(std::ostream &os) {
   os << '\n';
 }
 
+std::string ParseOptions::ResolvePath(const std::string &relative) {
+  if (anchor_dir_ == "")
+        return relative;
+
+  struct stat info;
+  if (::stat(relative.c_str(), &info) == 0)
+    return relative;
+
+  char tmp[PATH_MAX];
+  std::string cat = anchor_dir_ + "/" + relative;
+  ::realpath(cat.c_str(), tmp);
+  return std::string(tmp);
+}
+
 
 void ParseOptions::ReadConfigFile(const std::string &filename) {
-  std::ifstream is(filename.c_str(), std::ifstream::in);
+  std::string full_path = ResolvePath(filename);
+
+  std::ifstream is(full_path.c_str(), std::ifstream::in);
   if (!is.good()) {
-    KALDI_ERR << "Cannot open config file: " << filename;
+    KALDI_ERR << "Cannot open config file: " << full_path;
   }
 
   std::string line, key, value;
@@ -483,7 +505,7 @@ void ParseOptions::ReadConfigFile(const std::string &filename) {
     if (line.length() == 0) continue;
 
     if (line.substr(0, 2) != "--") {
-      KALDI_ERR << "Reading config file " << filename
+      KALDI_ERR << "Reading config file " << full_path
                 << ": line " << line_number << " does not look like a line "
                 << "from a Kaldi command-line program's config file: should "
                 << "be of the form --x=y.  Note: config files intended to "
@@ -497,7 +519,7 @@ void ParseOptions::ReadConfigFile(const std::string &filename) {
     Trim(&value);
     if (!SetOption(key, value, has_equal_sign)) {
       PrintUsage(true);
-      KALDI_ERR << "Invalid option " << line << " in config file " << filename;
+      KALDI_ERR << "Invalid option " << line << " in config file " << full_path;
     }
   }
 }
