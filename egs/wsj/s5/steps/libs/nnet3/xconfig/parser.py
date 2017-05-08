@@ -42,7 +42,8 @@ config_to_layer = {
         'conv-relu-batchnorm-layer': xlayers.XconfigConvLayer,
         'conv-relu-batchnorm-dropout-layer': xlayers.XconfigConvLayer,
         'conv-relu-dropout-layer': xlayers.XconfigConvLayer,
-        'res-block': xlayers.XconfigResBlock
+        'res-block': xlayers.XconfigResBlock,
+        'channel-average-layer': xlayers.ChannelAverageLayer
 }
 
 # Turn a config line and a list of previous layers into

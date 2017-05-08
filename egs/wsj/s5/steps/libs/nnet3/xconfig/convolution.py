@@ -323,7 +323,7 @@ class XconfigConvLayer(XconfigLayerBase):
 #
 # Note: the res-block does not support subsampling or changing the number of
 # filters.  If you want to do that, we recommend that you should do it with a
-# single batchnorm-conv-relu-layer.
+# single relu-batchnorm-conv-layer.
 #
 # Here are the most important configuration values, with defaults shown if
 # defaults exist:
@@ -335,12 +335,38 @@ class XconfigConvLayer(XconfigLayerBase):
 # num-filters     The number of filters on the input and output, e.g. 64.
 #                 It does not have to be specified; if it is not specified,
 #                 we work it out from the input dimension.
+# num-bottleneck-filters   If specified then this will be a 'bottleneck'
+#                 ResBlock, in which there is a 1x1 convolution from
+#                 num-filters->num-bottleneck-filters, a 3x3 convolution
+#                 from num-bottleneck-filters->num-bottleneck-filters, and
+#                 a 1x1 convolution from num-bottleneck-filters->num-filters.
+#
 # time-period=1   Think of this as the stride in the time dimension.  At the
 #                 input of the network will always have time-period=1; then
 #                 after subsampling once in time we'd have time-period=2; then
 #                 after subsampling again we'd have time-period=4.  Because of
 #                 the way nnet3 works, subsampling on the time axis is an
 #                 implicit, not explicit, operation.
+# bypass-source=noop
+#                       The output of this component is Sum(convolution, x), and
+#                       this option controls what 'x' is.  There are 3 options
+#                       here: 'noop', 'input', 'relu' or 'batchnorm'.  'noop' is
+#                       equivalent to 'input' in what it computes; it just
+#                       inserts a 'noop' component in order to make the
+#                       computation more efficient.  For both 'noop' and
+#                       'input', x is the input to this component.  If
+#                       bypass-source=relu then we use the relu of the
+#                       input; if 'batchnorm', then we use the relu+batchnorm of
+#                       the input.
+# allow-zero-padding=true By default this will allow zero-padding in the time
+#                       dimension, meaning that you don't need extra frames at
+#                       the input to compute the output.  There may be ASR
+#                       applications where you want to pad in the time dimension
+#                       with repeats of the first or last frame (as we do for
+#                       TDNNs), where it would be appropriate to write
+#                       allow-zero-padding=false.  Note: the way we have
+#                       set it up, it does zero-padding on the height axis
+#                       regardless
 #
 # Less important config variables:
 #  self-repair-scale=2.0e-05  This affects the ReLu's.  It is a scale on the
@@ -349,33 +375,11 @@ class XconfigConvLayer(XconfigLayerBase):
 #                            the unit is active either too little of the time
 #                            (<10%) or too much of the time (>90%).
 #  max-change=0.75           Max-parameter-change constant (per minibatch)
-#                            used for convolutional components.  But this will
-#                            be multiplied by 'direct-lr-factor' before being
-#                            given to the single component on the 'direct' path.
+#                            used for convolutional components.
 #
-#  direct-lr-factor     Learning-rate (and also max-change) factor on the 'direct
-#                       branch' (the branch of the computation that has only one
-#                       convolutional unit instead of two, and is initialized with
-#                       the unit matrix).  You can set this to zero if you won't
-#                       want that branch to be trained at all.  If you set this to
-#                       zero, we'll set direct-kernel-size=1 even if not specified
-#                       as such, to improve efficiency, since a larger kernel would
-#                       be useless if not learned.
-#  direct-kernel-size=3  You can set this to 1 or 3 (3 is the default); it affects the
-#                       kernel size on the 'direct path.  The kernels
-#                       on the non-direct path (i.e. the path that has 2 convolutions)
-#                       both have 3x3 kernels and that cannot be changed at this level.
-#  direct-convolution-source=input
-#                       There are 3 options here: 'input', 'relu' or 'batchnorm'.
-#                       If 'input', then the direct convolution (the one that's
-#                       initialized to the identity matrix) sees the input of the
-#                       layer, and we get standard ResNets, I believe.  If 'relu'
-#                       then the direct convolution sees the relu of the input; if
-#                       'batchnorm' then the direct convolution sees the relu+batchnorm
-#                       of the input.
 #
 # The following natural-gradient-related configuration variables are passed in
-# to all convolution components.
+# to the convolution components, if specified:
 #  use-natural-gradient (bool)
 #  rank-in, rank-out    (int)
 #  num-minibatches-history (float)
@@ -390,12 +394,12 @@ class XconfigResBlock(XconfigLayerBase):
         self.config = {'input':'[-1]',
                        'height':-1,
                        'num-filters':-1,
+                       'num-bottleneck-filters':-1,
                        'time-period':1,
                        'self-repair-scale': 2.0e-05,
                        'max-change': 0.75,
-                       'direct-lr-factor': 1.0,
-                       'direct-kernel-size': 3,
-                       'direct-convolution-source' : 'input',
+                       'allow-zero-padding': True,
+                       'bypass-source' : 'noop',
                        # the following are not really inspected by this level of
                        # code, just passed through (but not if left at '').
                        'param-stddev':'', 'bias-stddev':'',
@@ -425,20 +429,9 @@ class XconfigResBlock(XconfigLayerBase):
                                    input_dim));
 
     def check_configs(self):
-        direct_kernel_size = self.config['direct-kernel-size']
-        if direct_kernel_size != 1 and direct_kernel_size != 3:
-            raise RuntimeError("Expected direct-kernel-size to be "
-                               "1 or 3, got {0}".format(direct_kernel_size))
         # we checked the dimensions in set_derived_configs.
-        if self.config['direct-lr-factor'] < 0.0:
-            raise RuntimeError("direct-lr-factor cannot be negative.")
-        if self.config['direct-lr-factor'] == 0.0:
-            # if we're not going to be learning the 'direct' convolution,
-            # then use a 1x1 rather than a 3x3 kernel, since those extra
-            # parameters would otherwise just stay at zero.
-            self.config['direct-kernel-size'] = 1
-        if not self.config['direct-convolution-source'] in [
-                'input', 'relu', 'batchnorm' ]:
+        if not self.config['bypass-source'] in [
+                'input', 'noop', 'relu', 'batchnorm' ]:
             raise RuntimeError("Expected direct-convolution-source to "
                                "be input, relu or batchnorm, got: {1}".format(
                                    self.config['direct-convolution-source']))
@@ -447,7 +440,22 @@ class XconfigResBlock(XconfigLayerBase):
         return []
 
     def output_name(self, auxiliary_output = None):
-        return 'Sum({0}.conv-direct, {0}.conv2)'.format(self.name)
+        bypass_source = self.config['bypass-source']
+        b = self.config['num-bottleneck-filters']
+        conv = ('{0}.conv2' if b <= 0 else '{0}.conv3').format(self.name)
+        if bypass_source == 'input':
+            residual = self.descriptors['input']['final-string']
+        elif bypass_source == 'noop':
+            # we let the noop be the sum of the convolutional part and the
+            # input, so just return the output of the no-op component.
+            return '{0}.noop'.format(self.name)
+        elif bypass_source == 'relu':
+            residual = '{0}.relu1'.format(self.name)
+        else:
+            assert bypass_source == 'batchnorm'
+            residual = '{0}.batchnorm1'.format(self.name)
+
+        return 'Sum({0}, {1})'.format(conv, residual)
 
     def output_dim(self, auxiliary_output = None):
         assert auxiliary_output is None
@@ -456,7 +464,11 @@ class XconfigResBlock(XconfigLayerBase):
 
     def get_full_config(self):
         ans = []
-        config_lines = self.generate_resblock_config()
+        b = self.config['num-bottleneck-filters']
+        if b <= 0:
+            config_lines = self.generate_normal_resblock_config()
+        else:
+            config_lines = self.generate_bottleneck_resblock_config()
 
         for line in config_lines:
             for config_name in ['ref', 'final']:
@@ -465,36 +477,40 @@ class XconfigResBlock(XconfigLayerBase):
                 ans.append((config_name, line))
         return ans
 
-    # convenience function to generate the res-block config
-    # Note: the architecture inside the res-block is as follows.
+    # generate_normal_resblock_config is a convenience function to generate the
+    # res-block config (the non-bottleck version).
     #
-    # If simple-direct-path=false (the default), then:
-    #  Branch 1: input -> relu1 -> batchnorm1 -> conv1 -> relu2 -> batchnorm2 -> conv2
-    #  Branch 2: input -> relu1 -> batchnorm1 -> conv-direct
-    #              output = Sum(conv-direct, conv2).
+    # The main path inside the res-block in the non-bottleneck case is as
+    # follows:
     #
-    # If simple-direct-path=true, then
+    # input -> relu1 -> batchnorm1 -> conv1 -> relu2 -> batchnorm2 -> conv2
     #
-    #  Branch 1: input -> relu1 -> batchnorm1 -> conv1 -> relu2 -> batchnorm2 -> conv2
-    #  Branch 2: input -> conv-direct
-    # and as before, output = Sum(conv-direct, conv2).
+    # We put the relu before the batchnorm because we think it makes more sense;
+    # because the Torch people seemed to find that this works better
+    # (https://github.com/gcr/torch-residual-networks/issues/5);
+    # and because in our batchnorm component we haven't implemented the beta and
+    # gamma; these would be essential to having it work before relu, but
+    # when before a convolution or linear component, they add no extra modeling
+    # power.
     #
-    # note that in both cases, we initialize conv-direct as the identity transform.
-    # You can control its kernel size by 'direct-kernel-size' (default: 3, could be 3 or 1),
-    # and you can control whether the direct branch is trained, and how fast, by
-    # 'direct-lr-factor' (set it to zero to stop it being trained).
-    #
-    # .. and then the output is the sum of conv2 and conv-direct.
-    def generate_resblock_config(self):
+    # The output of the res-block can be the sum of the last convolutional
+    # component (conv2), with the input.  However, the option ('bypass-source')
+    # controls whether we sum with the raw input, or its relu or relu+batchnorm.
+    # If the term is going to be the raw input, we give the option ('noop') and
+    # to cache the output sum via a NoOpComponent)-- because due to how nnet3
+    # works, if we didn't do this, redundant summing operations would take
+    # place.
+    def generate_normal_resblock_config(self):
         configs = []
 
         name = self.name
         num_filters = self.config['num-filters']
+        assert self.config['num-bottleneck-filters'] == -1
         height = self.config['height']
         input_descriptor = self.descriptors['input']['final-string']
+        allow_zero_padding = self.config['allow-zero-padding']
         time_period = self.config['time-period']
 
-        # first generate the non-direct branch, which is:
         # input -> relu1 -> batchnorm1 -> conv1 -> relu2 -> batchnorm2 -> conv2
         cur_descriptor = input_descriptor
         for n in [1, 2]:
@@ -528,8 +544,9 @@ class XconfigResBlock(XconfigLayerBase):
                 if value != '':
                         a.append('{0}={1}'.format(opt_name, value))
             conv_opts = ('height-in={h} height-out={h} height-offsets=-1,0,1 time-offsets=-{p},0,{p} '
-                         'required-time-offsets=0 num-filters-in={f} num-filters-out={f} {o}'.format(
+                         'num-filters-in={f} num-filters-out={f} {r} {o}'.format(
                              h=height, p=time_period, f=num_filters,
+                             r=('required-time-offsets=0' if allow_zero_padding else ''),
                              o=' '.join(a)))
 
             configs.append('component name={0}.conv{1} type=TimeHeightConvolutionComponent '
@@ -539,55 +556,182 @@ class XconfigResBlock(XconfigLayerBase):
             cur_descriptor = '{0}.conv{1}'.format(name, n)
 
 
-        # Now handle the direct branch.  The only component we have to add is a
-        # convolutional component, initialized to be the same as the identity
-        # transform.  If it gets relu and batch-norm on its input, those
-        # components will be shared with the non-direct branch so we don't have
-        # to add them.
-        direct_convolution_source = self.config['direct-convolution-source']
-        direct_lr_factor = self.config['direct-lr-factor']
-        direct_kernel_size = self.config['direct-kernel-size']
-        direct_max_change = self.config['max-change']
-        if direct_lr_factor != 0.0:
-            direct_max_change *= direct_lr_factor
 
-        if direct_convolution_source == 'input':
-            cur_descriptor = input_descriptor
-        elif direct_convolution_source == 'relu':
-            cur_descriptor = '{0}.relu1'.format(name)
-        else:
-            assert direct_convolution_source == 'batchnorm'
-            cur_descriptor = '{0}.batchnorm1'.format(name)
+        if self.config['bypass-source'] == 'noop':
+            dim = self.descriptors['input']['dim']
+            configs.append('component name={0}.noop dim={1} type=NoOpComponent'.format(
+                name, dim))
+            configs.append('component-node name={0}.noop component={0}.noop '
+                           'input=Sum({1}, {0}.conv2)'.format(name,
+                                                              input_descriptor))
 
-        time_offsets = ('0' if direct_kernel_size == 1 else
-                        '-{p},0,{p}'.format(p=time_period))
-        height_offsets = ('0' if direct_kernel_size == 1 else '-1,0,1')
-
-        a = []
-        for opt_name in [
-                'param-stddev', 'bias-stddev', 'use-natural-gradient',
-                'rank-in', 'rank-out', 'num-minibatches-history',
-                'alpha-in', 'alpha-out' ]:
-            value = self.config[opt_name]
-            if value != '':
-                a.append('{0}={1}'.format(opt_name, value))
-        conv_opts = ('height-in={h} height-out={h} height-offsets={ho} time-offsets={t} '
-                     'required-time-offsets=0 num-filters-in={f} num-filters-out={f} '
-                     'learning-rate-factor={l} learning-rate={r} '
-                     'max-change={m} init-unit=true {o}'.format(
-                         h=height, t=time_offsets, f=num_filters,
-                         ho=height_offsets,
-                         l=direct_lr_factor, m=direct_max_change,
-                         r=direct_lr_factor*0.001, o=' '.join(a)))
+        # Note: the function 'output_name' is responsible for returning the
+        # descriptor corresponding to the output of the network.
+        return configs
 
 
-        configs.append('component name={0}.conv-direct type=TimeHeightConvolutionComponent '
-                       '{1}'.format(name, conv_opts))
-        configs.append('component-node name={0}.conv-direct component={0}.conv-direct '
-                       'input={1}'.format(name, cur_descriptor))
+
+    # generate_bottleneck_resblock_config is a convenience function to generate the
+    # res-block config (this is the bottleneck version, where there is
+    # a 3x3 kernel with a smaller number of filters than at the input and output,
+    # sandwiched between two 1x1 kernels.
+    #
+    # The main path inside the res-block in the bottleneck case is as follows:
+    #
+    # input -> relu1 -> batchnorm1 -> conv1 -> relu2 -> batchnorm2 -> conv2 ->
+    #   relu3 -> batchnorm3 -> conv3
+    #
+    # power.
+    #
+    # The output of the res-block can be the sum of the last convolutional
+    # component (conv3), with the input.  However we give the option
+    # ('bypass-source') to sum with the raw input, or its relu or
+    # relu+batchnorm.  If the term is going to be the raw input, we give the
+    # option ('noop') and to cache the output sum via a NoOpComponent)-- because
+    # due to how nnet3 works, if we didn't do this, redundant summing operations
+    # would take place.
+    def generate_bottleneck_resblock_config(self):
+        configs = []
+
+        name = self.name
+        num_filters = self.config['num-filters']
+        num_bottleneck_filters = self.config['num-bottleneck-filters']
+        assert num_bottleneck_filters > 0
+        height = self.config['height']
+        input_descriptor = self.descriptors['input']['final-string']
+        allow_zero_padding = self.config['allow-zero-padding']
+        time_period = self.config['time-period']
+
+        # input -> relu1 -> batchnorm1 -> conv1 -> relu2 -> batchnorm2 -> conv2
+        cur_descriptor = input_descriptor
+        cur_num_filters = num_filters
+
+        for n in [1, 2, 3]:
+            # the ReLU
+            configs.append('component name={0}.relu{1} type=RectifiedLinearComponent '
+                           'dim={2} self-repair-scale={3}'.format(
+                               name, n, cur_num_filters * height,
+                               self.config['self-repair-scale']))
+            configs.append('component-node name={0}.relu{1} component={0}.relu{1} '
+                           'input={2}'.format(name, n, cur_descriptor))
+
+            cur_descriptor = '{0}.relu{1}'.format(name, n)
+
+            # the batch-norm
+            configs.append('component name={0}.batchnorm{1}  type=BatchNormComponent dim={2} '
+                               'block-dim={3}'.format(
+                                   name, n, cur_num_filters * height,
+                                   cur_num_filters))
+            configs.append('component-node name={0}.batchnorm{1} component={0}.batchnorm{1} '
+                           'input={2}'.format(name, n, cur_descriptor))
+            cur_descriptor = '{0}.batchnorm{1}'.format(name, n)
 
 
-        # .. and the output of this layer will be
-        # 'Sum({0}.conv-direct, {0}.conv2)'.format(name)
-        # but this is handled in the 'output_name' function.
+            # the convolution.
+            a = []
+            for opt_name in [
+                    'param-stddev', 'bias-stddev', 'use-natural-gradient',
+                    'max-change', 'rank-in', 'rank-out', 'num-minibatches-history',
+                    'alpha-in', 'alpha-out' ]:
+                value = self.config[opt_name]
+                if value != '':
+                        a.append('{0}={1}'.format(opt_name, value))
+
+            height_offsets = ('-1,0,1' if n == 2 else '0')
+            time_offsets = ('-{t},0,{t}'.format(t=time_period) if n == 2 else '0')
+            num_filters_in = cur_num_filters
+            num_filters_out = (num_filters if n == 3 else num_bottleneck_filters)
+            cur_num_filters = num_filters_out
+
+            conv_opts = ('height-in={h} height-out={h} height-offsets={ho} time-offsets={to} '
+                         'num-filters-in={fi} num-filters-out={fo} {r} {o}'.format(
+                             h=height, ho=height_offsets, to=time_offsets,
+                             fi=num_filters_in, fo=num_filters_out,
+                             r=('required-time-offsets=0' if allow_zero_padding else ''),
+                             o=' '.join(a)))
+
+            configs.append('component name={0}.conv{1} type=TimeHeightConvolutionComponent '
+                           '{2}'.format(name, n, conv_opts))
+            configs.append('component-node name={0}.conv{1} component={0}.conv{1} '
+                           'input={2}'.format(name, n, cur_descriptor))
+            cur_descriptor = '{0}.conv{1}'.format(name, n)
+
+
+
+        if self.config['bypass-source'] == 'noop':
+            dim = self.descriptors['input']['dim']
+            configs.append('component name={0}.noop dim={1} type=NoOpComponent'.format(
+                name, dim))
+            configs.append('component-node name={0}.noop component={0}.noop '
+                           'input=Sum({1}, {0}.conv3)'.format(name,
+                                                              input_descriptor))
+
+        # Note: the function 'output_name' is responsible for returning the
+        # descriptor corresponding to the output of the network.
+        return configs
+
+
+# This layer just maps to a single component, a SumBlockComponent.  It's for
+# doing channel averaging at the end of neural networks.  See scripts for
+# examples of how to use it.
+# An example line using this layer is:
+# channel-average-layer name=channel-average input=Append(2, 4, 6, 8) dim=64
+
+# the configuration value 'dim' is the output dimension of this layer.
+# The input dimension is expected to be a multiple of 'dim'.  The output
+# will be the average of 'dim'-sized blocks of the input.
+class ChannelAverageLayer(XconfigLayerBase):
+    def __init__(self, first_token, key_to_value, prev_names = None):
+        assert first_token == "channel-average-layer"
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def set_default_configs(self):
+        self.config = {'input':'[-1]',
+                       'dim': -1 }
+
+    def set_derived_configs(self):
+        pass
+
+    def check_configs(self):
+        input_dim = self.descriptors['input']['dim']
+        dim = self.config['dim']
+        if dim <= 0:
+            raise RuntimeError("dim must be specified and > 0.")
+        if input_dim % dim != 0:
+            raise RuntimeError("input-dim={0} is not a multiple of dim={1}".format(
+                input_dim, dim))
+
+    def auxiliary_outputs(self):
+        return []
+
+    def output_name(self, auxiliary_output = None):
+        assert auxiliary_output is None
+        return self.name
+
+    def output_dim(self, auxiliary_output = None):
+        assert auxiliary_output is None
+        return self.config['dim']
+
+
+    def get_full_config(self):
+        ans = []
+        config_lines = self.generate_channel_average_config()
+        for line in config_lines:
+            for config_name in ['ref', 'final']:
+                ans.append((config_name, line))
+        return ans
+
+    def generate_channel_average_config(self):
+        configs = []
+        name = self.name
+        input_dim = self.descriptors['input']['dim']
+        input_descriptor = self.descriptors['input']['final-string']
+        dim = self.config['dim']
+        # choose the scale that makes it an average rather than a sum.
+        scale = dim * 1.0 / input_dim
+        configs.append('component name={0} type=SumBlockComponent input-dim={1} '
+                       'output-dim={2} scale={3}'.format(name, input_dim,
+                                                         dim, scale))
+        configs.append('component-node name={0} component={0} input={1}'.format(
+            name, input_descriptor))
         return configs

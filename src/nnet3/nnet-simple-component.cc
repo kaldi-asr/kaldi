@@ -217,7 +217,7 @@ void DropoutComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<DropoutPerFrame>");
   WriteBasicType(os, binary, dropout_per_frame_);
   WriteToken(os, binary, "<TestMode>");
-  WriteBasicType(os, binary, test_mode_); 
+  WriteBasicType(os, binary, test_mode_);
   WriteToken(os, binary, "</DropoutComponent>");
 }
 
@@ -5869,6 +5869,79 @@ void BatchNormComponent::ZeroStats() {
     count_ = 0.0;
     stats_sum_.SetZero();
     stats_sumsq_.SetZero();
+  }
+}
+
+
+SumBlockComponent::SumBlockComponent(const SumBlockComponent &other):
+    input_dim_(other.input_dim_), output_dim_(other.output_dim_),
+    scale_(other.scale_) { }
+
+void SumBlockComponent::InitFromConfig(ConfigLine *cfl) {
+  scale_ = 1.0;
+  bool ok = cfl->GetValue("input-dim", &input_dim_) &&
+      cfl->GetValue("output-dim", &output_dim_);
+  if (!ok)
+    KALDI_ERR << "input-dim and output-dim must both be provided.";
+  if (input_dim_ <= 0 || input_dim_ % output_dim_ != 0)
+    KALDI_ERR << "Invalid values input-dim=" << input_dim_
+              << " output-dim=" << output_dim_;
+  cfl->GetValue("scale", &scale_);
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Could not process these elements in initializer: "
+              << cfl->UnusedValues();
+}
+
+void SumBlockComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<SumBlockComponent>", "<InputDim>");
+  ReadBasicType(is, binary, &input_dim_);
+  ExpectToken(is, binary, "<OutputDim>");
+  ReadBasicType(is, binary, &output_dim_);
+  ExpectToken(is, binary, "<Scale>");
+  ReadBasicType(is, binary, &scale_);
+  ExpectToken(is, binary, "</SumBlockComponent>");
+}
+
+void SumBlockComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<SumBlockComponent>");
+  WriteToken(os, binary, "<InputDim>");
+  WriteBasicType(os, binary, input_dim_);
+  WriteToken(os, binary, "<OutputDim>");
+  WriteBasicType(os, binary, output_dim_);
+  WriteToken(os, binary, "<Scale>");
+  WriteBasicType(os, binary, scale_);
+  WriteToken(os, binary, "</SumBlockComponent>");
+}
+
+std::string SumBlockComponent::Info() const {
+  std::ostringstream stream;
+  stream << Type() << ", input-dim=" << input_dim_
+         << ", output-dim=" << output_dim_
+         << ", scale=" << scale_;
+  return stream.str();
+}
+
+void* SumBlockComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                   const CuMatrixBase<BaseFloat> &in,
+                                   CuMatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(out->NumRows() == in.NumRows() &&
+               out->NumCols() == output_dim_ &&
+               in.NumCols() == input_dim_);
+  out->AddMatBlocks(scale_, in, kNoTrans);
+  return NULL;
+}
+
+void SumBlockComponent::Backprop(
+    const std::string &debug_info,
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &, //in_value
+    const CuMatrixBase<BaseFloat> &, // out_value,
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    void *memo,
+    Component *to_update,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (in_deriv) {
+    in_deriv->AddMatBlocks(scale_, out_deriv, kNoTrans);
   }
 }
 
