@@ -40,8 +40,8 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Align features given neural-net-based model\n"
-        "Usage:   nnet-align-compiled [options] model-in graphs-rspecifier "
-        "feature-rspecifier alignments-wspecifier\n"
+        "Usage:   nnet-align-compiled [options] <model-in> <graphs-rspecifier> "
+        "<feature-rspecifier> <alignments-wspecifier>\n"
         "e.g.: \n"
         " nnet-align-compiled 1.mdl ark:graphs.fsts scp:train.scp ark:1.ali\n"
         "or:\n"
@@ -54,6 +54,7 @@ int main(int argc, char *argv[]) {
     BaseFloat acoustic_scale = 1.0;
     BaseFloat transition_scale = 1.0;
     BaseFloat self_loop_scale = 1.0;
+    std::string per_frame_acwt_wspecifier;
 
     align_config.Register(&po);
     po.Register("transition-scale", &transition_scale,
@@ -63,6 +64,9 @@ int main(int argc, char *argv[]) {
     po.Register("self-loop-scale", &self_loop_scale,
                 "Scale of self-loop versus non-self-loop "
                 "log probs [relative to acoustics]");
+    po.Register("write-per-frame-acoustic-loglikes", &per_frame_acwt_wspecifier,
+                "Wspecifier for table of vectors containing the acoustic log-likelihoods "
+                "per frame for each utterance. E.g. ark:foo/per_frame_logprobs.1.ark");
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Read(argc, argv);
@@ -75,7 +79,7 @@ int main(int argc, char *argv[]) {
 #if HAVE_CUDA==1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
-    
+
     std::string model_in_filename = po.GetArg(1),
         fst_rspecifier = po.GetArg(2),
         feature_rspecifier = po.GetArg(3),
@@ -100,6 +104,7 @@ int main(int argc, char *argv[]) {
       RandomAccessBaseFloatCuMatrixReader feature_reader(feature_rspecifier);
       Int32VectorWriter alignment_writer(alignment_wspecifier);
       BaseFloatWriter scores_writer(scores_wspecifier);
+      BaseFloatVectorWriter per_frame_acwt_writer(per_frame_acwt_wspecifier);
 
       for (; !fst_reader.Done(); fst_reader.Next()) {
         std::string utt = fst_reader.Key();
@@ -135,7 +140,7 @@ int main(int argc, char *argv[]) {
                               acoustic_scale, &decode_fst, &nnet_decodable,
                               &alignment_writer, &scores_writer,
                               &num_done, &num_err, &num_retry,
-                              &tot_like, &frame_count);
+                              &tot_like, &frame_count, &per_frame_acwt_writer);
       }
       KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count)
                 << " over " << frame_count<< " frames.";
@@ -152,5 +157,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-
