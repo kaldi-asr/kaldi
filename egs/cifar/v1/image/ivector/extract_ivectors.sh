@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Copyright     2013  Daniel Povey
-#               2014  David Snyder
+#          2014-2017  David Snyder
 # Apache 2.0.
 
 # This script extracts iVectors for a set of images, given
