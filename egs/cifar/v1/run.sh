@@ -15,6 +15,8 @@ if [ $stage -le 0 ]; then
 fi
 
 
+local/run_ivector.sh
+
 # cifar10 egs preparation
 image/nnet3/get_egs.sh --cmd "$train_cmd" data/cifar10_train data/cifar10_test exp/cifar10_egs
 
