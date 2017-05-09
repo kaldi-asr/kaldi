@@ -1,13 +1,11 @@
 #!/bin/bash
 
-# 1b24 is as 1b19 but introducing a channel-average-layer to do channel
-# averaging instead of appending stuff.  Also increasing $nf3 to compensate for
-# the reduced parameters.  [actually we have more parameters in this experiment,
-# 0.66 -> 0.87 million]
-#
-# test accuracy 0.9114 -> 0.9109, train accuracy 0.9964->0.9978.
+# 1b26 is as 1b24 but changing nf3 from 128 to 110 to better
+# match the num-params in 1b29.
 
-# exp/resnet1b24_cifar10: num-iters=60 nj=1..2 num-params=0.9M dim=96->10 combine=-0.024->-0.014
+# 1b24 is as 1b19 but introducing a channel-average-layer
+# to do channel averaging instead of appending stuff.  Also
+# increasing $nf3 to compensate for the reduced parameters
 
 # 1b19 is as 1b7 but after changing convolution.py to generate
 # the res-block config in a different way, without a
@@ -47,7 +45,7 @@ train_stage=-10
 dataset=cifar10
 srand=0
 reporting_email=
-affix=1b24
+affix=1b26
 
 
 # End configuration section.
@@ -104,7 +102,7 @@ if [ $stage -le 1 ]; then
 
   nf1=32
   nf2=64
-  nf3=128
+  nf3=110
 
   common="required-time-offsets=0 height-offsets=-1,0,1"
   res_opts="bypass-source=batchnorm"

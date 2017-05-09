@@ -1,13 +1,23 @@
 #!/bin/bash
 
-# 1b24 is as 1b19 but introducing a channel-average-layer to do channel
-# averaging instead of appending stuff.  Also increasing $nf3 to compensate for
-# the reduced parameters.  [actually we have more parameters in this experiment,
-# 0.66 -> 0.87 million]
-#
-# test accuracy 0.9114 -> 0.9109, train accuracy 0.9964->0.9978.
+# 1b28 is as 1b27 but changing the configs so that the initial convolutional
+# layer never sees any zero padding (but produces one pixel less output).
 
-# exp/resnet1b24_cifar10: num-iters=60 nj=1..2 num-params=0.9M dim=96->10 combine=-0.024->-0.014
+# 1b27 is as 1b25 but reducing the bottleneck dimension from 128 to 96.
+
+# 1b25 is as 1b24 but using a larger number (256, not 128) of
+# filters near the end, with a bottleneck in the res-block layers of
+# 128 filters; and having 3 of these layers instead of 2.
+# actually num-params is increased 0.87 -> 0.99 million.
+#
+# valid accuracy 1b19=0.9114, 1b24=0.9109, 1b25=0.9154.
+# train accuracy 1b19=0.9964, 1b24=0.9978, 1b25=0.9988.
+#
+#
+
+# 1b24 is as 1b19 but introducing a channel-average-layer
+# to do channel averaging instead of appending stuff.  Also
+# increasing $nf3 to compensate for the reduced parameters
 
 # 1b19 is as 1b7 but after changing convolution.py to generate
 # the res-block config in a different way, without a
@@ -47,7 +57,7 @@ train_stage=-10
 dataset=cifar10
 srand=0
 reporting_email=
-affix=1b24
+affix=1b28
 
 
 # End configuration section.
@@ -98,13 +108,14 @@ if [ $stage -le 1 ]; then
 
   num_targets=$(cat $egs/info/output_dim)
 
-  # Note: we hardcode in the CNN config that we are dealing with 32x3x color
+  # Note: we hardcode in the CNN config that we are dealing with 32x32 color
   # images.
 
 
   nf1=32
   nf2=64
-  nf3=128
+  nf3=256
+  nb3=96
 
   common="required-time-offsets=0 height-offsets=-1,0,1"
   res_opts="bypass-source=batchnorm"
@@ -112,15 +123,16 @@ if [ $stage -le 1 ]; then
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=96 name=input
-  conv-layer name=conv1 height-in=32 height-out=32 time-offsets=-1,0,1 required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=$nf1
-  res-block name=res2 num-filters=$nf1 height=32 time-period=1 $res_opts
-  res-block name=res3 num-filters=$nf1 height=32 time-period=1 $res_opts
-  conv-layer name=conv4 height-in=32 height-out=16 height-subsample-out=2 time-offsets=-1,0,1 $common num-filters-out=$nf2
-  res-block name=res5 num-filters=$nf2 height=16 time-period=2 $res_opts
-  res-block name=res6 num-filters=$nf2 height=16 time-period=2 $res_opts
-  conv-layer name=conv7 height-in=16 height-out=8 height-subsample-out=2 time-offsets=-2,0,2 $common num-filters-out=$nf3
-  res-block name=res8 num-filters=$nf3 height=8 time-period=4 $res_opts
-  res-block name=res9 num-filters=$nf3 height=8 time-period=4 $res_opts
+  conv-layer name=conv1 height-in=32 height-out=30 time-offsets=-1,0,1 required-time-offsets=-1,0,1 height-offsets=0,1,2 num-filters-out=$nf1
+  res-block name=res2 num-filters=$nf1 height=30 time-period=1 $res_opts
+  res-block name=res3 num-filters=$nf1 height=30 time-period=1 $res_opts
+  conv-layer name=conv4 height-in=30 height-out=14 height-subsample-out=2 time-offsets=-1,0,1 required-time-offsets=0 height-offsets=0,1,2 num-filters-out=$nf2
+  res-block name=res5 num-filters=$nf2 height=14 time-period=2 $res_opts
+  res-block name=res6 num-filters=$nf2 height=14 time-period=2 $res_opts
+  conv-layer name=conv7 height-in=14 height-out=7 height-subsample-out=2 time-offsets=-2,0,2 $common num-filters-out=$nf3
+  res-block name=res8 num-filters=$nf3 num-bottleneck-filters=$nb3 height=7 time-period=4 $res_opts
+  res-block name=res9 num-filters=$nf3 num-bottleneck-filters=$nb3 height=7 time-period=4 $res_opts
+  res-block name=res10 num-filters=$nf3 num-bottleneck-filters=$nb3 height=7 time-period=4 $res_opts
   channel-average-layer name=channel-average input=Append(2,6,10,14,18,22,24,28) dim=$nf3
   output-layer name=output learning-rate-factor=0.1 dim=$num_targets
 EOF
