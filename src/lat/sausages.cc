@@ -154,7 +154,7 @@ void MinimumBayesRisk::AccStats() {
   std::vector<map<int32, double> > gamma(Q+1); // temp. form of gamma.
   // index 1...Q [word] -> occ.
 
-  vector<map<int32, double> > tau_b(Q+1), tau_e(Q+1);
+  std::vector<map<int32, double> > tau_b(Q+1), tau_e(Q+1);
 
   // The tau arrays below are the sums over words of the tau_b
   // and tau_e timing quantities mentioned in Appendix C of

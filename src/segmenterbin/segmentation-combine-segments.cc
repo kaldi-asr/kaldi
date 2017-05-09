@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
               << num_err << " utterances; "
               << "wrote a total of " << num_segments << " segments.";
 
-    return ((num_done > 0 && num_err < num_done) ? 0 : 1);
+    return ((num_done > num_err) ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

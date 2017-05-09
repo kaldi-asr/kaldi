@@ -62,7 +62,7 @@ rvb_opts+=(--noise-set-parameters "0.9, RIRS_NOISES/pointsource_noises/foregroun
 for f in RIRS_NOISES/simulated_rirs/smallroom/rir_list \
     RIRS_NOISES/simulated_rirs/mediumroom/rir_list \
     $data_dir/wav.scp; do 
-  echo "$0: Could not find $f" && exit 1
+  [ ! -f $f ] && echo "$0: Could not find $f" && exit 1
 done
 
 if $resample_data_dir; then
@@ -141,7 +141,7 @@ if [ $stage -le 4 ]; then
   utils/copy_data_dir.sh $corrupted_data_dir ${corrupted_data_dir}_$feat_suffix
   corrupted_data_dir=${corrupted_data_dir}_$feat_suffix
   steps/make_mfcc.sh --mfcc-config $mfcc_config \
-    --cmd "$cmd" --nj $reco_nj --write-utt2num-frames true \
+    --cmd "$cmd" --nj $nj --write-utt2num-frames true \
     $corrupted_data_dir exp/make_${feat_suffix}/${corrupted_data_id} $mfccdir
   steps/compute_cmvn_stats.sh --fake \
     $corrupted_data_dir exp/make_${feat_suffix}/${corrupted_data_id} $mfccdir
@@ -153,7 +153,7 @@ if [ $stage -le 5 ]; then
   utils/copy_data_dir.sh $clean_data_dir ${clean_data_dir}_$feat_suffix
   clean_data_dir=${clean_data_dir}_$feat_suffix
   steps/make_mfcc.sh --mfcc-config $mfcc_config \
-    --cmd "$cmd" --nj $reco_nj \
+    --cmd "$cmd" --nj $nj \
     $clean_data_dir exp/make_${feat_suffix}/${clean_data_id} $mfccdir
   steps/compute_cmvn_stats.sh --fake \
     $clean_data_dir exp/make_${feat_suffix}/${clean_data_id} $mfccdir
@@ -165,7 +165,7 @@ if [ $stage -le 6 ]; then
   utils/copy_data_dir.sh $noise_data_dir ${noise_data_dir}_$feat_suffix
   noise_data_dir=${noise_data_dir}_$feat_suffix
   steps/make_mfcc.sh --mfcc-config $mfcc_config \
-    --cmd "$cmd" --nj $reco_nj \
+    --cmd "$cmd" --nj $nj \
     $noise_data_dir exp/make_${feat_suffix}/${noise_data_id} $mfccdir
   steps/compute_cmvn_stats.sh --fake \
     $noise_data_dir exp/make_${feat_suffix}/${noise_data_id} $mfccdir
@@ -211,7 +211,7 @@ if [ $stage -le 7 ]; then
 
   # Get log-IRM targets 
   steps/segmentation/make_snr_targets.sh \
-    --nj $reco_nj --cmd "$cmd" \
+    --nj $nj --cmd "$cmd" \
     --target-type Irm --compress false \
     --transform-matrix exp/make_irm_targets/$corrupted_data_id/idct_matrix \
     ${clean_data_dir} ${noise_data_dir} ${corrupted_data_dir} \
@@ -230,13 +230,17 @@ if [ $stage -le 8 ]; then
       steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps | \
       sort -k1,1 > ${corrupted_data_dir}/speech_labels.scp
   
-    cat $vad_dir/deriv_weights.scp | \
-      steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps | \
-      sort -k1,1 > ${corrupted_data_dir}/deriv_weights.scp
+    if [ -f $vad_dir/deriv_weights.scp ]; then
+      cat $vad_dir/deriv_weights.scp | \
+        steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps | \
+        sort -k1,1 > ${corrupted_data_dir}/deriv_weights.scp
+    fi
     
-    cat $vad_dir/deriv_weights_manual_seg.scp | \
-      steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps | \
-      sort -k1,1 > ${corrupted_data_dir}/deriv_weights_for_irm_targets.scp
+    if [ -f $vad_dir/deriv_weights_manual_seg.scp ]; then
+      cat $vad_dir/deriv_weights_manual_seg.scp | \
+        steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps | \
+        sort -k1,1 > ${corrupted_data_dir}/deriv_weights_for_irm_targets.scp
+    fi
   fi
 fi
 

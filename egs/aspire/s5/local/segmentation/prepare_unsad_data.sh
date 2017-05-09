@@ -312,7 +312,9 @@ if [ $stage -le 5 ]; then
   rm -r $outside_data_dir || true
 
   for f in wav.scp reco2file_and_channel stm glm; do 
-    [ -f ${data_dir}/$f ] && cp ${data_dir}/$f $outside_data_dir
+    if [ -f ${data_dir}/$f ]; then
+      cp ${data_dir}/$f $outside_data_dir
+    fi
   done
    
   utils/data/get_utt2num_frames.sh $whole_data_dir

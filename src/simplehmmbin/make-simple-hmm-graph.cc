@@ -24,7 +24,7 @@
 #include "fstext/table-matcher.h"
 #include "fstext/fstext-utils.h"
 #include "fstext/context-fst.h"
-#include "decoder/simple-hmm-graph-compiler.h"
+#include "simplehmm/simple-hmm-graph-compiler.h"
 
 
 int main(int argc, char *argv[]) {

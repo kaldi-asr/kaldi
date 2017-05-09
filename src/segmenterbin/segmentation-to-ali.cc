@@ -35,6 +35,7 @@ int main(int argc, char *argv[]) {
 
     std::string lengths_rspecifier;
     int32 default_label = 0, length_tolerance = 2;
+    bool ignore_missing_lengths = false;
 
     ParseOptions po(usage);
 
@@ -46,6 +47,10 @@ int main(int argc, char *argv[]) {
                 "with this label");
     po.Register("length-tolerance", &length_tolerance, "Tolerate shortage of "
                 "this many frames in the specified lengths file");
+    po.Register("ignore-missing-lengths", &ignore_missing_lengths,
+                "If true, ignore when lengths are missing i.e. don't call "
+                "it an error.");
+              
 
     po.Read(argc, argv);
 
@@ -71,10 +76,13 @@ int main(int argc, char *argv[]) {
       if (lengths_rspecifier != "") {
         if (!lengths_reader.HasKey(key)) {
           KALDI_WARN << "Could not find length for utterance " << key;
-          num_err++;
-          continue;
+          if (!ignore_missing_lengths) {
+            num_err++;
+            continue;
+          }
+        } else {
+          length = lengths_reader.Value(key);
         }
-        length = lengths_reader.Value(key);
       }
 
       std::vector<int32> ali;

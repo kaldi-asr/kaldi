@@ -71,7 +71,7 @@ for f in RIRS_NOISES/simulated_rirs/smallroom/rir_list \
     RIRS_NOISES/music/music_list \
     RIRS_NOISES/music/split_utt2num_frames \
     $data_dir/wav.scp; do 
-  echo "$0: Could not find $f" && exit 1
+  [ ! -f $f ] && echo "$0: Could not find $f" && exit 1
 done
 
 if $resample_data_dir; then
@@ -162,9 +162,11 @@ if [ $stage -le 5 ]; then
       steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps "music" | \
       sort -k1,1 > ${corrupted_data_dir}/speech_labels.scp
     
-    cat $vad_dir/deriv_weights.scp | \
-      steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps "music" | \
-      sort -k1,1 > ${corrupted_data_dir}/deriv_weights.scp
+    if [ -f $vad_dir/deriv_weights.scp ]; then
+      cat $vad_dir/deriv_weights.scp | \
+        steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps "music" | \
+        sort -k1,1 > ${corrupted_data_dir}/deriv_weights.scp
+    fi
   fi
 fi
 
@@ -203,16 +205,20 @@ if [ $stage -le 6 ]; then
     segmentation-init-from-additive-signals-info \
       --lengths-rspecifier=ark,t:$orig_corrupted_data_dir/reco2num_frames \
       --additive-signals-segmentation-rspecifier="ark:segmentation-init-from-lengths ark,t:$music_utt2num_frames ark:- |" \
-      ark,t:$music_dir/additive_signals_info.JOB.$nj.txt ark:- \| \
+      ark,t:$music_dir/additive_signals_info.JOB.${nj}.txt ark:- \| \
     segmentation-to-ali ark:- ark,t:- \| \
     steps/segmentation/convert_ali_to_vec.pl \| \
-    vector-to-feats ark,t:- ark:- \| 
+    vector-to-feat ark,t:- ark:- \| \
     extract-feature-segments ark:- $orig_corrupted_data_dir/segments \
       ark:- \| extract-column ark:- ark,t:- \| \
     steps/segmentation/quantize_vector.pl \| \
-    segmentation-init-from-ali --lengths-rspecifier=$orig_corrupted_data_dir/utt2num_frames ark:- ark:- \| \
+    segmentation-init-from-ali ark:- ark:- \| \
     segmentation-post-process --merge-adjacent-segments \
-      ark:- ark:$music_dir/music_segmentation.JOB.ark
+      ark:- ark,scp:$music_dir/music_segmentation.JOB.ark,$music_dir/music_segmentation.JOB.scp
+
+  for n in `seq $nj`; do 
+    cat $music_dir/music_segmentation.$n.scp
+  done > $music_dir/music_segmentation.scp
 fi
 
 # Convert label_dir to absolute pathname
@@ -220,14 +226,15 @@ mkdir -p $label_dir
 label_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $label_dir ${PWD}`
  
 if [ $stage -le 7 ]; then
+  utils/split_data.sh $corrupted_data_dir $nj
   if $speed_perturb; then
     $cmd JOB=1:$nj $music_dir/log/get_music_labels.JOB.log \
-      segmentation-speed-perturb --speeds=0.9:1.0:1.1 ark:$music_dir/music_segmentation.JOB.ark ark:0 \| \
-      segmentation-to-ali --lengths-rspecifier=$corrupted_data_dir/utt2num_frames ark:- \
+      segmentation-speed-perturb --speeds=0.9:1.0:1.1 ark:$music_dir/music_segmentation.JOB.ark ark:- \| \
+      segmentation-to-ali --ignore-missing-lengths --lengths-rspecifier=ark,t:$corrupted_data_dir/utt2num_frames ark:- \
       ark,scp:$label_dir/music_labels_${corrupted_data_id}.JOB.ark,$label_dir/music_labels_${corrupted_data_id}.JOB.scp
   else
     $cmd JOB=1:$nj $music_dir/log/get_music_labels.JOB.log \
-      segmentation-to-ali --lengths-rspecifier=$corrupted_data_dir/utt2num_frames \
+      segmentation-to-ali --ignore-missing-lengths --lengths-rspecifier=ark,t:$corrupted_data_dir/utt2num_frames \
       ark:$music_dir/music_segmentation.JOB.ark \
       ark,scp:$label_dir/music_labels_${corrupted_data_id}.JOB.ark,$label_dir/music_labels_${corrupted_data_id}.JOB.scp
   fi
@@ -235,8 +242,12 @@ if [ $stage -le 7 ]; then
   for n in `seq $nj`; do
     cat $label_dir/music_labels_${corrupted_data_id}.$n.scp
   done | \
-    steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps "music" | \
-    utils/filter_scp.pl ${corrupted_data_dir}/utt2spk > ${corrupted_data_dir}/music_labels.scp
+    utils/filter_scp.pl ${corrupted_data_dir}/utt2spk | sort -k1,1 > ${corrupted_data_dir}/music_labels.scp
+
+  if [ ! -s $corrupted_data_dir/music_labels.scp ]; then
+    echo "$0: $corrupted_data_dir/music_labels.scp is empty" && exit 1
+  fi
+
 fi
 
 if [ $stage -le 8 ]; then

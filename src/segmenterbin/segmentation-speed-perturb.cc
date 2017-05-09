@@ -17,6 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <sstream>
+
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "segmenter/segmentation.h"
@@ -76,17 +78,17 @@ int main(int argc, char *argv[]) {
         KALDI_ASSERT(*it > 0.1 && *it < 10);
 
         Segmentation this_seg(seg);
-        ScaleFrameShift(*it, &this_seg);
+        ScaleFrameShift(1.0 / *it, &this_seg);
 
-        ostringstream oss;
+        std::ostringstream oss;
         oss << prefix << *it << "-" << key;
 
         writer.Write(oss.str(), this_seg);
       }
-
-      KALDI_LOG << "Speed perturbed " << num_done << " segmentation";
-      return (num_done != 0 ? 0 : 1);
     }
+    
+    KALDI_LOG << "Speed perturbed " << num_done << " segmentation";
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

@@ -5,6 +5,7 @@
 
 from __future__ import print_function
 import argparse
+import numpy as np
 import sys
 
 sys.path.insert(0, 'steps')

@@ -80,6 +80,9 @@ $ignore_noise_dir && utils/split_data.sh $data $nj
 targets_dir=`perl -e '($data,$pwd)= @ARGV; if($data!~m:^/:) { $data = "$pwd/$data"; } print $data; ' $targets_dir ${PWD}`
 
 for n in `seq $nj`; do 
+  if [ -f $targets_dir/${data_id}.$n.ark ]; then
+    rm $targets_dir/${data_id}.$n.ark
+  fi
   utils/create_data_link.pl $targets_dir/${data_id}.$n.ark
 done
 
@@ -93,14 +96,14 @@ if [ ! -z "$transform_matrix" ]; then
   copy_feats_opts="transform-feats $transform_matrix"
 fi
 
-if [ $target_type == "IRM" ]; then
+if [ $target_type == "Irm" ]; then
   prefix=irm_targets
-elif [ $target_type == "SNR" ]; then
+elif [ $target_type == "Snr" ]; then
   prefix=snr_targets
 elif [ $target_type == "FbankMask" ]; then
   prefix=fbm_targets
 else 
-  echo "$0: Unknown target-type. Must be (IRM|SNR|FbankMask)"
+  echo "$0: Unknown target-type. Must be (Irm|Snr|FbankMask)"
   exit 1
 fi
 

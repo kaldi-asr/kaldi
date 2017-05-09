@@ -23,6 +23,7 @@ map_unk_to_speech=true  # Map unk phones to speech label (1)
 sad_map=    # Initial mapping from phones to speech/non-speech labels.
             # Overrides the default mapping using phones/silence.txt 
             # and phones/nonsilence.txt
+speed_perturb=false
 
 . utils/parse_options.sh
 
@@ -99,14 +100,22 @@ if [ $stage -le 2 ]; then
   done
   set -e
 
-  $cmd JOB=1:$nj $vad_dir/log/get_speech_labels.JOB.log \
-    segmentation-copy --keep-label=1 scp:$vad_dir/sad_seg.JOB.scp ark:- \| \
-    segmentation-to-ali --lengths-rspecifier=ark,t:$data_dir/utt2num_frames \
-      ark:- ark,scp:$vad_dir/speech_labels.JOB.ark,$vad_dir/speech_labels.JOB.scp
+  if ! $speed_perturb; then
+    $cmd JOB=1:$nj $vad_dir/log/get_speech_labels.JOB.log \
+      segmentation-copy --keep-label=1 scp:$vad_dir/sad_seg.JOB.scp ark:- \| \
+      segmentation-to-ali --lengths-rspecifier=ark,t:$data_dir/utt2num_frames \
+        ark:- ark,scp:$vad_dir/speech_labels.JOB.ark,$vad_dir/speech_labels.JOB.scp
+  else
+    $cmd JOB=1:$nj $vad_dir/log/get_speech_labels.JOB.log \
+      segmentation-copy --keep-label=1 scp:$vad_dir/sad_seg.JOB.scp ark:- \| \
+      segmentation-speed-perturb --speeds=0.9:1.0:1.1 ark:- ark:- \| \
+      segmentation-to-ali \
+        ark:- ark,scp:$vad_dir/speech_labels.JOB.ark,$vad_dir/speech_labels.JOB.scp
+  fi
 
   for n in `seq $nj`; do
     cat $vad_dir/speech_labels.$n.scp
-  done > $vad_dir/speech_labels.scp
+  done | sort -k1,1 > $vad_dir/speech_labels.scp
 
   cp $vad_dir/speech_labels.scp $data_dir
 fi

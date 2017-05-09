@@ -10,7 +10,7 @@ speeds="0.9 1.0 1.1"
 
 if [ $# != 2 ]; then
   echo "Usage: perturb_data_dir_speed_random.sh <srcdir> <destdir>"
-  echo "Applies 3-way speed perturbation using factors of 0.9, 1.0 and 1.1 on random subsets."
+  echo "Perturbs data randomly with specified speeds."
   echo "e.g.:"
   echo " $0 data/train data/train_spr"
   echo "Note: if <destdir>/feats.scp already exists, this will refuse to run."
@@ -36,22 +36,22 @@ echo "... you might need it."
 utils/data/get_utt2dur.sh ${srcdir}
 
 num_speeds=`echo $speeds | awk '{print NF}'`
-utils/split_data.sh --per-reco $srcdir $num_speeds
+utils/split_data.sh $srcdir $num_speeds
 
 speed_dirs=
 i=1
 for speed in $speeds; do 
   if [ $speed != 1.0 ]; then
-    utils/data/perturb_data_dir_speed.sh $speed ${srcdir}/split${num_speeds}reco/$i ${destdir}_speed$speed || exit 1
+    utils/data/perturb_data_dir_speed.sh $speed ${srcdir}/split${num_speeds}/$i ${destdir}_speed$speed || exit 1
     speed_dirs="${speed_dirs} ${destdir}_speed$speed"
   else 
-    speed_dirs="$speed_dirs ${srcdir}/split${num_speeds}reco/$i"
+    speed_dirs="$speed_dirs ${srcdir}/split${num_speeds}/$i"
   fi
 done
 
 utils/data/combine_data.sh $destdir ${speed_dirs} || exit 1
 
-rm -r $speed_dirs ${srcdir}/split${num_speeds}reco
+rm -r $speed_dirs ${srcdir}/split${num_speeds}
 
 echo "$0: generated $num_speeds-way speed-perturbed version of random subsets of data in $srcdir, in $destdir"
 utils/validate_data_dir.sh --no-feats --no-text $destdir
