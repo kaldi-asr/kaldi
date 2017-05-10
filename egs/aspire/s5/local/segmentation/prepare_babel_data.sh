@@ -94,12 +94,14 @@ reco_vad_dir=$dir/`basename $model_dir`_reco_vad_`basename $train_data_dir`_sp
 
 # Add noise from MUSAN corpus to data directory and create a new data directory
 local/segmentation/do_corruption_data_dir_snr.sh \
+  --cmd "$train_cmd" --nj 40 \
   --data-dir $data_dir \
   --vad-dir $reco_vad_dir \
   --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf 
 
 # Add music from MUSAN corpus to data directory and create a new data directory
 local/segmentation/do_corruption_data_dir_music.sh \
+  --cmd "$train_cmd" --nj 40 \
   --data-dir $data_dir \
   --vad-dir $reco_vad_dir \
   --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf
