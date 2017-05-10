@@ -29,10 +29,15 @@ namespace kaldi {
 class Timer {
  public:
   Timer() { Reset(); }
+
+  // You can initialize with bool to control whether or not you want the time to
+  // be set when the object is created.
+  explicit Timer(bool set_timer) { if (set_timer) Reset(); }
+
   void Reset() {
     QueryPerformanceCounter(&time_start_);
   }
-  double Elapsed() {
+  double Elapsed() const {
     LARGE_INTEGER time_end;
     LARGE_INTEGER freq;
     QueryPerformanceCounter(&time_end);

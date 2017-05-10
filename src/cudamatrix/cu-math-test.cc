@@ -643,6 +643,7 @@ template<typename Real> void CudaMathUnitTest() {
 
 
 int main() {
+  SetVerboseLevel(1);
   int32 loop = 0;
 #if HAVE_CUDA == 1
   for (; loop < 2; loop++) {
