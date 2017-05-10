@@ -114,6 +114,11 @@ void PadImage(int32 num_channels,
 }
 
 
+void ApplyLog(BaseFloat offset, Matrix<BaseFloat> *image) {
+  image->Add(offset);
+  image->ApplyLog();
+}
+
 void SubtractMean(int32 num_channels, Matrix<BaseFloat> *image) {
   KALDI_ASSERT(image->NumCols() % num_channels == 0);
   int32 width = image->NumRows(),
@@ -154,10 +159,13 @@ int main(int argc, char *argv[]) {
     int32 horizontal_padding = 0,
         vertical_padding = 0;
     int32 num_channels = 1;
+    BaseFloat log_offset = 0.0;
     ParseOptions po(usage);
 
     po.Register("binary", &binary,
                 "Write in binary mode (only relevant if output is a wxfilename)");
+    po.Register("log-offset", &log_offset, "If set to a value >0, we will add this "
+                "to the image and then take a log.");
     po.Register("compress", &compress, "If true, write output in compressed form");
     po.Register("subtract-mean", &subtract_mean, "If true, subtract the mean per "
                 "channel of the output.");
@@ -199,6 +207,9 @@ int main(int argc, char *argv[]) {
       if (horizontal_padding != 0 || vertical_padding != 0)
         PadImage(num_channels, horizontal_padding, vertical_padding,
                  &image);
+
+      if (log_offset > 0)
+        ApplyLog(log_offset, &image);
 
       if (subtract_mean)
         SubtractMean(num_channels, &image);
