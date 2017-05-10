@@ -11,19 +11,19 @@ skip_scoring=
 extra_kws=true
 vocab_kws=false
 tri5_only=false
-use_plp_pitch=true
 use_pitch=true
 use_ivector=false
 use_bnf=false
 pitch_conf=conf/pitch.conf
 wip=0.5
 decode_stage=-1
+nnet3_affix=
 nnet3_dir=nnet3/tdnn_sp
 is_rnn=false
 extra_left_context=0
 extra_right_context=0
 frames_per_chunk=0
-aux_suffix=
+feat_suffix=
 ivector_suffix=
 iter=final
 
@@ -85,6 +85,23 @@ if [ -z ${kind} ] ; then
   fi
 else
   dataset_kind=$kind
+fi
+
+dataset=$(basename $dataset_dir)
+mfccdir=mfcc_hires/$lang
+mfcc_affix=""
+hires_config="--mfcc-config conf/mfcc_hires.conf"
+data_dir=${dataset_dir}_hires
+feat_suffix="_hires"
+log_dir=exp/$lang/make_hires/$dataset
+
+if $use_pitch; then
+  mfcc_affix="_pitch_online"
+  hires_config="$hires_config --online-pitch-config $pitch_conf"
+  mfccdir=mfcc_hires_pitch/lang
+  data_dir=${dataset_dir}_hires_pitch
+  feat_suffix="_hires_pitch"
+  log_dir=exp/$lang/make_hires_pitch/$dataset
 fi
 
 if [ -z $dataset_segments ]; then
@@ -149,7 +166,7 @@ function make_plp {
   target=$1
   logdir=$2
   output=$3
-  if $use_plp_pitch; then
+  if $use_pitch; then
     steps/make_plp_pitch.sh --cmd "$decode_cmd" --nj $my_nj $target $logdir $output
   else
     steps/make_plp.sh --cmd "$decode_cmd" --nj $my_nj $target $logdir $output
@@ -267,88 +284,59 @@ if [ ! -f  $dataset_dir/.done ] ; then
   fi
 
 
-  if [ ! -f ${dataset_dir}_hires/.mfcc.done ]; then
-    dataset=$(basename $dataset_dir)
+  if [ ! -f ${data_dir}/.mfcc.done ]; then
     echo ---------------------------------------------------------------------
-    echo "Preparing ${dataset_kind} MFCC features in  ${dataset_dir}_hires and corresponding iVectors in exp/$lang/nnet3/ivectors_${dataset}${ivector_suffix} on" `date`
+    echo "Preparing ${dataset_kind} MFCC features in  ${data_dir} and corresponding iVectors in exp/$lang/nnet3${nnet3_affix}/ivectors_${dataset}${feat_suffix}${ivector_suffix} on" `date`
     echo ---------------------------------------------------------------------
-    if [ ! -d ${dataset_dir}_hires ]; then
-      utils/copy_data_dir.sh $data/$dataset $data/${dataset}_hires
+    if [ ! -d ${data_dir} ]; then
+      utils/copy_data_dir.sh $data/$dataset ${data_dir}
     fi
 
-    mfccdir=mfcc_hires/$lang
-    steps/make_mfcc.sh --nj $my_nj --mfcc-config conf/mfcc_hires.conf \
-        --cmd "$train_cmd" ${dataset_dir}_hires exp/$lang/make_hires/$dataset $mfccdir;
-    steps/compute_cmvn_stats.sh ${dataset_dir}_hires exp/$lang/make_hires/${dataset} $mfccdir;
-    utils/fix_data_dir.sh ${dataset_dir}_hires;
-    touch ${dataset_dir}_hires/.mfcc.done
 
-
-    touch ${dataset_dir}_hires/.done
+    steps/make_mfcc${mfcc_affix}.sh --nj $my_nj $hires_config \
+        --cmd "$train_cmd" ${data_dir} $log_dir $mfccdir;
+    steps/compute_cmvn_stats.sh ${data_dir} $log_dir $mfccdir;
+    utils/fix_data_dir.sh ${data_dir};
+    touch ${data_dir}/.mfcc.done
   fi
   touch $dataset_dir/.done
 fi
 
 # extract ivector
 dataset=$(basename $dataset_dir)
-ivector_dir=exp/$lang/nnet3/ivectors_${dataset}${ivector_suffix}
+ivector_dir=exp/$lang/nnet3${nnet3_affix}/ivectors_${dataset}${feat_suffix}${ivector_suffix}
 if $use_ivector && [ ! -f $ivector_dir/.ivector.done ];then
-  extractor=exp/multi/nnet3/extractor
+  extractor=exp/multi/nnet3${nnet3_affix}/extractor
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $my_nj \
-    ${dataset_dir}_hires $extractor $ivector_dir || exit 1;
+    ${dataset_dir}${feat_suffix} $extractor $ivector_dir || exit 1;
   touch $ivector_dir/.ivector.done
-fi
-
-if [[ "$use_pitch" == "true" ]]; then
-  dataset=$(basename $dataset_dir)
-  pitchdir=pitch/$lang
-  if $use_pitch; then
-    if [ ! -f ${dataset_dir}_pitch/.done ]; then
-      utils/copy_data_dir.sh ${dataset_dir} ${dataset_dir}_pitch
-      steps/make_pitch.sh --nj 70 --pitch-config $pitch_conf \
-        --cmd "$train_cmd" ${dataset_dir}_pitch exp/$lang/make_pitch/${dataset} $pitchdir;
-      touch ${dataset_dir}_pitch/.done
-    fi
-    aux_suffix=${aux_suffix}_pitch
-  fi
-
-  if [ ! -f ${dataset_dir}_hires_mfcc${aux_suffix}/.done ]; then
-    steps/append_feats.sh --nj 16 --cmd "$train_cmd" ${dataset_dir}_hires \
-      ${dataset_dir}${aux_suffix} ${dataset_dir}_hires_mfcc${aux_suffix} \
-      exp/$lang/append_mfcc${aux_suffix}/${dataset} mfcc_hires${aux_suffix}/$lang
-
-    steps/compute_cmvn_stats.sh ${dataset_dir}_hires_mfcc${aux_suffix} \
-      exp/$lang/make_cmvn_mfcc${aux_suffix}/${dataset} mfcc_hires${aux_suffix}/$lang
-
-    touch ${dataset_dir}_hires_mfcc${aux_suffix}/.done
-  fi
 fi
 
 if $use_bnf; then
   # put the archives in ${dump_bnf_dir}/.
   dataset=$(basename $dataset_dir)
-  multi_ivector_dir=exp/$lang/nnet3/ivectors_${dataset}_gb
-  bnf_data_dir=${dataset_dir}_bnf
+  multi_ivector_dir=exp/$lang/nnet3${nnet3_affix}/ivectors_${dataset}${feat_suffix}${ivector_suffix}
+  bnf_data_dir=${dataset_dir}_bnf/$lang
   if [ ! -f $bnf_data_dir/.done ]; then
   steps/nnet3/dump_bottleneck_features.sh --use-gpu true --nj 100 --cmd "$train_cmd" \
     --ivector-dir $multi_ivector_dir \
     --feat-type raw \
-    ${dataset_dir}_hires_mfcc${aux_suffix} $bnf_data_dir \
+    ${dataset_dir}${feat_suffix} $bnf_data_dir \
     $multidir $dump_bnf_dir/$lang exp/$lang/make_${dataset}_bnf || exit 1;
   touch $bnf_data_dir/.done
   fi
-  appended_bnf=${dataset_dir}_hires_mfcc${aux_suffix}_bnf
+  appended_bnf=${dataset_dir}${feat_suffix}_bnf
   if [ ! -f $appended_bnf/.done ]; then
     steps/append_feats.sh  --nj 16 --cmd "$train_cmd" \
-      $bnf_data_dir ${dataset_dir}_hires_mfcc${aux_suffix} \
-      ${dataset_dir}_hires_mfcc${aux_suffix}_bnf exp/$lang/append_mfcc${aux_suffix}_bnf \
-      mfcc_hires${aux_suffix}_bnf/$lang || exit 1;
+      $bnf_data_dir ${dataset_dir}${feat_suffix} \
+      ${dataset_dir}${feat_suffix}_bnf exp/$lang/append${feat_suffix}_bnf \
+      mfcc${feat_suffix}_bnf/$lang || exit 1;
 
-    steps/compute_cmvn_stats.sh $appended_bnf exp/$lang/make_cmvn${aux_suffix}_bnf \
-      mfcc_hires${aux_suffix}_bnf/$lang || exit 1;
+    steps/compute_cmvn_stats.sh $appended_bnf exp/$lang/make_cmvn${feat_suffix}_bnf \
+      mfcc${feat_suffix}_bnf/$lang || exit 1;
     touch $appended_bnf/.done
   fi
-  aux_suffix=${aux_suffix}_bnf
+  feat_suffix=${feat_suffix}_bnf
 fi
 
 #####################################################################
@@ -414,21 +402,19 @@ fi
 if [ -f $nnet3_dir/$lang/final.mdl ]; then
   decode=$nnet3_dir/$lang/decode_${dataset_id}
   rnn_opts=
-  aux_suffix=
+  feat_suffix=_hires
 
   # suffix for using other features such as pitch
   if $use_pitch; then
-    aux_suffix=${aux_suffix}_mfcc
-    if $use_pitch; then
-      aux_suffix=${aux_suffix}_pitch
-    fi
-    if $use_bnf; then
-      aux_suffix=${aux_suffix}_bnf
-    fi
+    feat_suffix=${feat_suffix}_pitch
+    nnet3_affix=_pitch
+  fi
+  if $use_bnf; then
+    feat_suffix=${feat_suffix}_bnf
   fi
   ivector_opts=
   if $use_ivector; then
-    ivector_opts="--online-ivector-dir exp/$lang/nnet3/ivectors_${dataset_id}${ivector_suffix}"
+    ivector_opts="--online-ivector-dir exp/$lang/nnet3${nnet3_affix}/ivectors_${dataset_id}${feat_suffix}${ivector_suffix}"
   fi
   if [ "$is_rnn" == "true" ]; then
     rnn_opts=" --extra-left-context $extra_left_context --extra-right-context $extra_right_context  --frames-per-chunk $frames_per_chunk "
@@ -441,7 +427,7 @@ if [ -f $nnet3_dir/$lang/final.mdl ]; then
           --stage $decode_stage \
           --beam $dnn_beam --lattice-beam $dnn_lat_beam \
           $score_opts $ivector_opts \
-          exp/$lang/tri5/graph ${dataset_dir}_hires${aux_suffix} $decode | tee $decode/decode.log
+          exp/$lang/tri5/graph ${dataset_dir}${feat_suffix} $decode | tee $decode/decode.log
 
     touch $decode/.done
   fi

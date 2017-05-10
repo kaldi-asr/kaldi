@@ -69,8 +69,8 @@ hires_config="--mfcc-config conf/mfcc_hires.conf"
 mfccdir=mfcc_hires/$lang
 mfcc_affix=""
 if $use_pitch; then
-  hires_config="$hires_config --pitch-config $pitch_conf"
-  mfccdir=${mfccdir}_pitch/$lang
+  hires_config="$hires_config --online-pitch-config $pitch_conf"
+  mfccdir=mfcc_hires_pitch/$lang
   mfcc_affix=_pitch_online
 fi
 

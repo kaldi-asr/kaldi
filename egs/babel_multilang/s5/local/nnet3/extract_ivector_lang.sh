@@ -11,6 +11,7 @@ stage=1
 train_set=train_sp_hires # train_set used to extract ivector using shared ivector
                          # extractor.
 ivector_suffix=_gb
+nnet3_affix=
 
 [ ! -f ./conf/common_vars.sh ] && echo 'the file conf/common_vars.sh does not exist!' && exit 1
 
@@ -27,9 +28,9 @@ if [ $stage -le 7 ]; then
   # having a larger number of speakers is helpful for generalization, and to
   # handle per-utterance decoding well (iVector starts at zero).
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/$lang/${train_set} data/$lang/${train_set}_max2
-  if [ ! -f exp/$lang/nnet3/ivectors_${train_set}${ivector_suffix}/ivector_online.scp ]; then
+  if [ ! -f exp/$lang/nnet3${nnet3_affix}/ivectors_${train_set}${ivector_suffix}/ivector_online.scp ]; then
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 200 \
-      data/$lang/${train_set}_max2 $global_extractor exp/$lang/nnet3/ivectors_${train_set}${ivector_suffix} || exit 1;
+      data/$lang/${train_set}_max2 $global_extractor exp/$lang/nnet3${nnet3_affix}/ivectors_${train_set}${ivector_suffix} || exit 1;
   fi
 fi
 exit 0;

@@ -85,8 +85,8 @@ done
 if [ "$speed_perturb" == "true" ]; then suffix=_sp; fi
 dir=${dir}${suffix}
 
-if $use_pitch; then feat_suffix=${feat_suffix}_pitch ; fi
-
+if $use_pitch; then feat_suffix=${feat_suffix}_pitch ; nnet3_affix=_pitch ; fi
+echo nnet3-affix = $nnet3_affix
 for lang_index in `seq 0 $[$num_langs-1]`; do
   echo "$0: extract high resolution 40dim MFCC + pitch for speed-perturbed data "
   echo "and extract alignment."
@@ -101,7 +101,7 @@ if $use_ivector; then
   if [ -z "$ivector_extractor" ]; then
     mkdir -p data/multi
     mkdir -p exp/multi/nnet3
-    global_extractor=exp/multi/nnet3
+    global_extractor=exp/multi/nnet3${nnet3_affix}
     ivector_extractor=$global_extractor/extractor
     multi_data_dir=data/multi/train${suffix}${feat_suffix}
     ivector_suffix=_gb
@@ -126,7 +126,7 @@ if $use_ivector; then
     echo "languages in $multi_data_dir, using an LDA+MLLT transform trained "
     echo "on ${lda_mllt_lang}."
     local/nnet3/run_shared_ivector_extractor.sh  \
-      --suffix $suffix \
+      --suffix $suffix --nnet3-affix $nnet3_affix \
       --feat-suffix $feat_suffix \
       --stage $stage $lda_mllt_lang \
       $multi_data_dir $global_extractor || exit 1;
@@ -137,6 +137,7 @@ if $use_ivector; then
     local/nnet3/extract_ivector_lang.sh --stage $stage \
       --train-set train${suffix}${feat_suffix} \
       --ivector-suffix $ivector_suffix \
+      --nnet3-affix $nnet3_affix \
       ${lang_list[$lang_index]} \
       $ivector_extractor || exit;
   done
@@ -144,9 +145,9 @@ fi
 
 for lang_index in `seq 0 $[$num_langs-1]`; do
   multi_data_dirs[$lang_index]=data/${lang_list[$lang_index]}/train${suffix}${feat_suffix}
-  multi_egs_dirs[$lang_index]=exp/${lang_list[$lang_index]}/nnet3/egs${ivector_suffix}
+  multi_egs_dirs[$lang_index]=exp/${lang_list[$lang_index]}/nnet3${nnet3_affix}/egs${feat_suffix}${ivector_suffix}
   multi_ali_dirs[$lang_index]=exp/${lang_list[$lang_index]}/${alidir}${suffix}
-  multi_ivector_dirs[$lang_index]=exp/${lang_list[$lang_index]}/nnet3/ivectors_train${suffix}${feat_suffix}${ivector_suffix}
+  multi_ivector_dirs[$lang_index]=exp/${lang_list[$lang_index]}/nnet3${nnet3_affix}/ivectors_train${suffix}${feat_suffix}${ivector_suffix}
 done
 
 if $use_ivector; then
@@ -290,6 +291,7 @@ if [ $stage -le 13 ]; then
       echo "Decoding lang ${decode_lang_list[$lang_index]} using multilingual hybrid model $dir"
       run-4-anydecode-langs.sh --use-ivector $use_ivector \
         --nnet3-dir $dir --iter final_adj \
+        --nnet3-affix $nnet3_affix \
         ${decode_lang_list[$lang_index]} || exit 1;
       touch $dir/${decode_lang_list[$lang_index]}/decode_dev10h.pem/.done
     fi

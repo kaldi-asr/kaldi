@@ -11,6 +11,7 @@ set -e
 stage=4
 suffix=_sp
 feat_suffix=_hires # feat_suffix used in train_set for lda_mllt training.
+nnet3_affix=
 numLeavesMLLT=5500
 numGaussMLLT=90000
 boost_sil=1.0 # Factor by which to boost silence likelihoods in alignment
@@ -41,14 +42,14 @@ if [ $stage -le 4 ]; then
   # to train the diag-UBM on top of.  We use --num-iters 13 because after we get
   # the transform (12th iter is the last), any further training is pointless.
   # this decision is based on fisher_english
-  mkdir -p exp/$lda_mllt_lang/nnet3
+  mkdir -p exp/$lda_mllt_lang/nnet3${nnet3_affix}
   case $ivector_transform_type in
   lda)
     steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
       --splice-opts "--left-context=3 --right-context=3" \
       --boost-silence $boost_sil \
       $numLeavesMLLT $numGaussMLLT data/$lda_mllt_lang/train${suffix}${feat_suffix} \
-      data/$lda_mllt_lang/lang exp/$lda_mllt_lang/tri5_ali${suffix} exp/$lda_mllt_lang/nnet3/tri3b
+      data/$lda_mllt_lang/lang exp/$lda_mllt_lang/tri5_ali${suffix} exp/$lda_mllt_lang/nnet3${nnet3_affix}/tri3b
     ;;
   pca)
     echo "$0: computing a PCA transform from the hires data."
@@ -56,9 +57,9 @@ if [ $stage -le 4 ]; then
       --splice-opts "--left-context=3 --right-context=3" \
       --max-utts 10000 --subsample 2 \
       data/$lda_mllt_lang/train${suffix}${feat_suffix} \
-      exp/$lda_mllt_lang/nnet3/tri3b
+      exp/$lda_mllt_lang/nnet3${nnet3_affix}/tri3b
     ;;
-  *) echo "$0: invalid iVector transformation type $ivector_transform_typ" && exit 1;
+  *) echo "$0: invalid iVector transformation type $ivector_transform_type" && exit 1;
     ;;
   esac
 fi
@@ -66,7 +67,7 @@ fi
 if [ $stage -le 5 ]; then
   # To train a diagonal UBM we don't need very much data, so use the smallest subset.
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 200 --num-frames 500000 \
-    $multi_data_dir $numGaussUBM exp/$lda_mllt_lang/nnet3/tri3b $global_extractor_dir/diag_ubm
+    $multi_data_dir $numGaussUBM exp/$lda_mllt_lang/nnet3${nnet3_affix}/tri3b $global_extractor_dir/diag_ubm
 fi
 
 if [ $stage -le 6 ]; then
