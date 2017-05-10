@@ -39,6 +39,7 @@ config_to_layer = {
         'relu-conv-renorm-layer': xlayers.XconfigConvLayer,
         'conv-relu-renorm-layer': xlayers.XconfigConvLayer,
         'batchnorm-conv-relu-layer': xlayers.XconfigConvLayer,
+        'relu-batchnorm-conv-layer': xlayers.XconfigConvLayer,
         'conv-relu-batchnorm-layer': xlayers.XconfigConvLayer,
         'conv-relu-batchnorm-dropout-layer': xlayers.XconfigConvLayer,
         'conv-relu-dropout-layer': xlayers.XconfigConvLayer,
