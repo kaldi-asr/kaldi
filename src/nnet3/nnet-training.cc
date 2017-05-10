@@ -62,20 +62,40 @@ void NnetTrainer::Train(const NnetExample &eg) {
                         &request);
   const NnetComputation *computation = compiler_.Compile(request);
 
-  NnetComputer computer(config_.compute_config, *computation,
+  if (config_.backstitch_training_scale > 0.0 &&
+      num_minibatches_processed_ % config_.backstitch_training_interval == 0) {
+    // backstitch training is incompatible with momentum > 0
+    KALDI_ASSERT(config_.momentum == 0.0);
+    FreezeNaturalGradient(true, delta_nnet_);
+    bool is_backstitch_step = true;
+    TrainInternal(eg, *computation, is_backstitch_step);
+    FreezeNaturalGradient(false, delta_nnet_); // un-freeze natural gradient
+  }
+
+  bool is_backstitch_step = false;
+  TrainInternal(eg, *computation, is_backstitch_step);
+  num_minibatches_processed_++;
+}
+
+void NnetTrainer::TrainInternal(const NnetExample &eg,
+                                const NnetComputation &computation,
+                                bool is_backstitch_step) {
+  NnetComputer computer(config_.compute_config, computation,
                         *nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
   computer.Run();
 
-  this->ProcessOutputs(eg, &computer);
+  this->ProcessOutputs(is_backstitch_step, eg, &computer);
   computer.Run();
 
-  UpdateParamsWithMaxChange();
+  UpdateParamsWithMaxChange(is_backstitch_step);
 }
 
-void NnetTrainer::ProcessOutputs(const NnetExample &eg,
+void NnetTrainer::ProcessOutputs(bool is_backstitch_step,
+                                 const NnetExample &eg,
                                  NnetComputer *computer) {
+  const std::string suffix = (is_backstitch_step ? "_backstitch" : "");
   std::vector<NnetIo>::const_iterator iter = eg.io.begin(),
       end = eg.io.end();
   for (; iter != end; ++iter) {
@@ -89,14 +109,15 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
       ComputeObjectiveFunction(io.features, obj_type, io.name,
                                supply_deriv, computer,
                                &tot_weight, &tot_objf);
-      objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
-                                      num_minibatches_processed_++,
+      objf_info_[io.name + suffix].UpdateStats(io.name + suffix,
+                                      config_.print_interval,
+                                      num_minibatches_processed_,
                                       tot_weight, tot_objf);
     }
   }
 }
 
-void NnetTrainer::UpdateParamsWithMaxChange() {
+void NnetTrainer::UpdateParamsWithMaxChange(bool is_backstitch_step) {
   KALDI_ASSERT(delta_nnet_ != NULL);
   // computes scaling factors for per-component max-change
   const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
@@ -174,9 +195,20 @@ void NnetTrainer::UpdateParamsWithMaxChange() {
   }
   // applies both of the max-change scalings all at once, component by component
   // and updates parameters
-  scale_factors.Scale(scale);
-  AddNnetComponents(*delta_nnet_, scale_factors, scale, nnet_);
-  ScaleNnet(config_.momentum, delta_nnet_);
+  if (config_.backstitch_training_scale > 0.0) {
+    KALDI_ASSERT(config_.momentum == 0.0);
+    BaseFloat scale_backstitch =
+        (is_backstitch_step ? -config_.backstitch_training_scale :
+        (1 + config_.backstitch_training_scale));
+    scale_factors.Scale(scale * scale_backstitch);
+    AddNnetComponents(*delta_nnet_, scale_factors, scale * scale_backstitch,
+                      nnet_);
+    ScaleNnet(0.0, delta_nnet_);
+  } else {
+    scale_factors.Scale(scale);
+    AddNnetComponents(*delta_nnet_, scale_factors, scale, nnet_);
+    ScaleNnet(config_.momentum, delta_nnet_);
+  }
 }
 
 bool NnetTrainer::PrintTotalStats() const {
@@ -226,7 +258,7 @@ void ObjectiveFunctionInfo::UpdateStats(
     BaseFloat this_minibatch_tot_aux_objf) {
   int32 phase = minibatch_counter / minibatches_per_phase;
   if (phase != current_phase) {
-    KALDI_ASSERT(phase == current_phase + 1); // or doesn't really make sense.
+    KALDI_ASSERT(phase > current_phase); // or doesn't really make sense.
     PrintStatsForThisPhase(output_name, minibatches_per_phase);
     current_phase = phase;
     tot_weight_this_phase = 0.0;
