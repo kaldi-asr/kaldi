@@ -60,7 +60,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# != 4 ] && [ $# != 5 ]; then
   echo "Usage: $0 [options] <data> <lang> <extractor-dir> [<alignment-dir>|<decode-dir>|<weights-archive>] <ivector-dir>"
-  echo " e.g.: $0 data/test exp/nnet2_online/extractor exp/tri3/decode_test exp/nnet2_online/ivectors_test"
+  echo " e.g.: $0 data/test data/lang exp/nnet2_online/extractor exp/tri3/decode_test exp/nnet2_online/ivectors_test"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."

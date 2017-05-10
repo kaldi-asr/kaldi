@@ -19,6 +19,7 @@
 
 #include "decoder/decoder-wrappers.h"
 #include "decoder/faster-decoder.h"
+#include "lat/lattice-functions.h"
 
 namespace kaldi {
 
@@ -419,13 +420,13 @@ void ModifyGraphForCarefulAlignment(
   fst::Concat(fst, fst_rhs);
 }
 
-    
+
 void AlignUtteranceWrapper(
     const AlignConfig &config,
     const std::string &utt,
     BaseFloat acoustic_scale,  // affects scores written to scores_writer, if
                                // present
-    fst::VectorFst<fst::StdArc> *fst,  // non-const in case config.careful == 
+    fst::VectorFst<fst::StdArc> *fst,  // non-const in case config.careful ==
                                        // true.
     DecodableInterface *decodable,  // not const but is really an input.
     Int32VectorWriter *alignment_writer,
@@ -434,7 +435,8 @@ void AlignUtteranceWrapper(
     int32 *num_error,
     int32 *num_retried,
     double *tot_like,
-    int64 *frame_count) {
+    int64 *frame_count,
+    BaseFloatVectorWriter *per_frame_acwt_writer) {
 
   if ((config.retry_beam != 0 && config.retry_beam <= config.beam) ||
       config.beam <= 0.0) {
@@ -460,7 +462,7 @@ void AlignUtteranceWrapper(
   decoder.Decode(decodable);
 
   bool ans = decoder.ReachedFinal();  // consider only final states.
-  
+
   if (!ans && config.retry_beam != 0.0) {
     if (num_retried != NULL) (*num_retried)++;
     KALDI_WARN << "Retrying utterance " << utt << " with beam "
@@ -477,7 +479,7 @@ void AlignUtteranceWrapper(
     if (num_error != NULL) (*num_error)++;
     return;
   }
-  
+
   fst::VectorFst<LatticeArc> decoded;  // linear FST.
   decoder.GetBestPath(&decoded);
   if (decoded.NumStates() == 0) {
@@ -485,7 +487,7 @@ void AlignUtteranceWrapper(
     if (num_error != NULL) (*num_error)++;
     return;
   }
-    
+
   std::vector<int32> alignment;
   std::vector<int32> words;
   LatticeWeight weight;
@@ -499,10 +501,16 @@ void AlignUtteranceWrapper(
 
   if (alignment_writer != NULL && alignment_writer->IsOpen())
     alignment_writer->Write(utt, alignment);
-  
+
   if (scores_writer != NULL && scores_writer->IsOpen())
     scores_writer->Write(utt, -(weight.Value1()+weight.Value2()));
-}
 
+  Vector<BaseFloat> per_frame_loglikes;
+  if (per_frame_acwt_writer != NULL && per_frame_acwt_writer->IsOpen()) {
+    GetPerFrameAcousticCosts(decoded, &per_frame_loglikes);
+    per_frame_loglikes.Scale(-1 / acoustic_scale);
+    per_frame_acwt_writer->Write(utt, per_frame_loglikes);
+  }
+}
 
 } // end namespace kaldi.
