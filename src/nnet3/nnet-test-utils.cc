@@ -1463,14 +1463,7 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " learning-rate=" << learning_rate << param_config;
       break;
     }
-    case 20: {
-      *component_type = "SumReduceComponent";
-      int32 output_dim = RandInt(1, 50), group_size = RandInt(1, 15),
-          input_dim = output_dim * group_size;
-      os << "input-dim=" << input_dim << " output-dim=" << output_dim;
-      break;
-    }
-    case 21: {
+    case 20: case 21: {
       *component_type = "CompositeComponent";
       int32 cur_dim = RandInt(20, 30), num_components = RandInt(1, 3),
           max_rows_process = RandInt(1, 30);
