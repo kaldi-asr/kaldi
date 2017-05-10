@@ -13,7 +13,7 @@ def get_args():
     that can be passed to steps/data/reverberate_data_dir.py.  The wav files in
     wav.scp is trimmed randomly into pieces based on options such options such
     as --max-duration, --skip-initial-duration and --num-parts-per-minute.""",
-    formatter_class=arparse.ArgumentDefaultsHelpFormatter)
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("--max-duration", type=float, default=30,
                         help="Maximum duration in seconds of the created "
@@ -57,17 +57,19 @@ def get_noise_set(reco, reco_dur, wav_rspecifier_split, sampling_rate,
         duration = min(round(random.random() * (max_duration-min_duration)
                              + min_duration, 2),
                        reco_dur - start_time)
+        if duration < min_duration:
+            continue
 
         if len(wav_rspecifier_split) == 1:
             rspecifier = ("sox -D {wav} -r {sr} -t wav - "
                           "trim {st} {dur} |".format(
                               wav=wav_rspecifier_split[0],
-                              sr=sampling_rate, st=start_time, dur=duration)
+                              sr=sampling_rate, st=start_time, dur=duration))
         else:
             rspecifier = ("{wav} sox -D -t wav - -r {sr} -t wav - "
                           "trim {st} {dur} |".format(
                               wav=" ".join(wav_rspecifier_split),
-                              sr=sampling_rate, st=start_time, dur=duration)
+                              sr=sampling_rate, st=start_time, dur=duration))
 
         noise_set.append( (utt, rspecifier, duration) )
     return noise_set

@@ -4,7 +4,6 @@
 # Apache 2.0.
 
 set -o pipefail
-set -e
 set -u
 
 . path.sh
@@ -32,8 +31,10 @@ ali_dir=$1
 phone_map=$2
 dir=$3
 
-for f in $phone_map $ali_dir/ali.1.gz; do 
-  [ ! -f $f ] && echo "$0: Could not find $f" && exit 1
+for f in $phone_map $ali_dir/ali.1.gz $ali_dir/final.mdl; do 
+  if [ ! -f $f ]; then
+    echo "$0: Could not find $f" && exit 1
+  fi
 done
 
 mkdir -p $dir

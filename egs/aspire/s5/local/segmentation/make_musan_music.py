@@ -41,6 +41,7 @@ def write_music(utt, file_path, music_list):
 def prepare_music_set(root_dir, use_vocals, music_list):
     vocals = {}
     music_dir = os.path.join(root_dir, "music")
+    num_done = 0
     for root, dirs, files in os.walk(music_dir):
         if os.path.exists(os.path.join(root, "ANNOTATIONS")):
             vocals = read_vocals(os.path.join(root, "ANNOTATIONS"))
@@ -51,7 +52,10 @@ def prepare_music_set(root_dir, use_vocals, music_list):
                 utt = str(f).replace(".wav", "")
                 if not use_vocals and utt in vocals:
                     continue
+                num_done += 1
                 write_music(utt, file_path, music_list)
+    if num_done == 0:
+        raise RuntimeError("Failed to get any music files")
     music_list.close()
 
 

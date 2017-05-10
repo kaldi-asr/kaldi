@@ -12,8 +12,6 @@ set -o pipefail
 . path.sh
 
 cmd=run.pl
-utt_as_spk=false    # If true, each utterance is treated as as speaker.
-                    # If false, each recording is treated as a speaker.
 
 . parse_options.sh
 
@@ -27,7 +25,7 @@ data=$1
 dir=$2
 
 if [ ! -f $data/segments ]; then
-  # Data directory already does not contain segments. So just copy it.
+  echo "$0: Data directory already does not contain segments. So just copying it."
   utils/copy_data_dir.sh $data $dir
   exit 0
 fi
@@ -94,23 +92,15 @@ if (defined $text_in) {
 
 foreach $file (keys %file2utt) {
   my @utts = @{$file2utt{$file}};
-  print "$file " . join(" ", @utts) . "\n";
+  print "$file $file\n";
 
   if (defined $text_in) {
     $text_line = "";
     print TO "$file $text_line\n";
   }
 }
-' $data/utt2spk $text_files > $dir/reco2utt
+' $data/utt2spk $text_files > $dir/utt2spk
 
-utils/spk2utt_to_utt2spk.pl $dir/reco2utt > $dir/utt2reco
-
-if $utt_as_spk; then
-  awk '{print $1" "$1}' $dir/utt2reco | sort -u > $dir/utt2spk
-  utils/utt2spk_to_spk2utt.pl $dir/utt2spk > $dir/spk2utt
-else
-  cp $dir/utt2reco $dir/utt2spk
-  cp $dir/reco2utt $dir/spk2utt
-fi
+utils/spk2utt_to_utt2spk.pl $dir/utt2spk > $dir/spk2utt
 
 utils/fix_data_dir.sh $dir

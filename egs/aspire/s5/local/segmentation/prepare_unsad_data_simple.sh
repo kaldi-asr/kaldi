@@ -47,7 +47,7 @@ dir=$4
 
 extra_files=
 
-for f in $data_dir/feats.scp $lang/phones.txt $lang/phones/silence.txt $lang/phones/nonsilence.txt $sad_map $ali_dir/ali.1.gz $ali_dir/final.mdl $ali_dir/tree $extra_files; do
+for f in $lang/phones.txt $lang/phones/silence.txt $lang/phones/nonsilence.txt $sad_map $ali_dir/ali.1.gz $ali_dir/final.mdl $ali_dir/tree $extra_files; do
   if [ ! -f $f ]; then
     echo "$f could not be found"
     exit 1
@@ -92,8 +92,6 @@ if [ $stage -le 2 ]; then
   # Create per-frame speech / non-speech labels. 
   nj=`cat $vad_dir/num_jobs`
   
-  utils/data/get_utt2num_frames.sh --nj $nj --cmd "$cmd" $data_dir
-
   set +e 
   for n in `seq $nj`; do
     utils/create_data_link.pl $vad_dir/speech_labels.$n.ark
@@ -103,7 +101,7 @@ if [ $stage -le 2 ]; then
   if ! $speed_perturb; then
     $cmd JOB=1:$nj $vad_dir/log/get_speech_labels.JOB.log \
       segmentation-copy --keep-label=1 scp:$vad_dir/sad_seg.JOB.scp ark:- \| \
-      segmentation-to-ali --lengths-rspecifier=ark,t:$data_dir/utt2num_frames \
+      segmentation-to-ali \
         ark:- ark,scp:$vad_dir/speech_labels.JOB.ark,$vad_dir/speech_labels.JOB.scp
   else
     $cmd JOB=1:$nj $vad_dir/log/get_speech_labels.JOB.log \

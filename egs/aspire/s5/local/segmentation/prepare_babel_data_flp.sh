@@ -13,12 +13,12 @@ set -e
 set -o pipefail
 set -u
 
-lang_id=assamese
+lang_id=assamese_flp
 subset=     # Number of recordings to keep before speed perturbation and corruption. 
             # In limitedLP, this is about 120. So subset, if specified, must be lower that that.
 
 # All the paths below can be modified to any absolute path.
-ROOT_DIR=/home/vimal/workspace_waveform/egs/babel/s5c_assamese/
+ROOT_DIR=/export/b17/jtrmal/babel/101-cantonese-flp-p-basic
 
 stage=-1
 
@@ -72,7 +72,7 @@ train_data_dir=data/babel_${lang_id}_train
 # Expecting the user to have done run.sh to have $model_dir,
 # $sat_model_dir, $lang, $lang_test, $train_data_dir
 local/segmentation/prepare_unsad_data.sh \
-  --sad-map $dir/babel_sad.map \
+  --sad-map $dir/babel_sad.map --stage 9 \
   --config-dir $ROOT_DIR/conf --feat-type plp --add-pitch true \
   --reco-nj 40 --nj 100 --cmd "$train_cmd" \
   --sat-model-dir $sat_model_dir \
@@ -94,12 +94,14 @@ reco_vad_dir=$dir/`basename $model_dir`_reco_vad_`basename $train_data_dir`_sp
 
 # Add noise from MUSAN corpus to data directory and create a new data directory
 local/segmentation/do_corruption_data_dir_snr.sh \
+  --cmd "$train_cmd" --nj 40 \
   --data-dir $data_dir \
   --vad-dir $reco_vad_dir \
   --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf 
 
 # Add music from MUSAN corpus to data directory and create a new data directory
 local/segmentation/do_corruption_data_dir_music.sh \
+  --cmd "$train_cmd" --nj 40 \
   --data-dir $data_dir \
   --vad-dir $reco_vad_dir \
   --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf

@@ -201,20 +201,30 @@ if [ $stage -le 6 ]; then
 
   utils/data/get_utt2num_frames.sh $orig_corrupted_data_dir
   
-  $cmd JOB=1:$nj $music_dir/log/get_music_seg.JOB.log \
-    segmentation-init-from-additive-signals-info \
-      --lengths-rspecifier=ark,t:$orig_corrupted_data_dir/reco2num_frames \
-      --additive-signals-segmentation-rspecifier="ark:segmentation-init-from-lengths ark,t:$music_utt2num_frames ark:- |" \
-      ark,t:$music_dir/additive_signals_info.JOB.${nj}.txt ark:- \| \
-    segmentation-to-ali ark:- ark,t:- \| \
-    steps/segmentation/convert_ali_to_vec.pl \| \
-    vector-to-feat ark,t:- ark:- \| \
-    extract-feature-segments ark:- $orig_corrupted_data_dir/segments \
-      ark:- \| extract-column ark:- ark,t:- \| \
-    steps/segmentation/quantize_vector.pl \| \
-    segmentation-init-from-ali ark:- ark:- \| \
-    segmentation-post-process --merge-adjacent-segments \
-      ark:- ark,scp:$music_dir/music_segmentation.JOB.ark,$music_dir/music_segmentation.JOB.scp
+  if [ -f $orig_corrupted_data_dir/segments ]; then
+    $cmd JOB=1:$nj $music_dir/log/get_music_seg.JOB.log \
+      segmentation-init-from-additive-signals-info \
+        --lengths-rspecifier=ark,t:$orig_corrupted_data_dir/reco2num_frames \
+        --additive-signals-segmentation-rspecifier="ark:segmentation-init-from-lengths ark,t:$music_utt2num_frames ark:- |" \
+        ark,t:$music_dir/additive_signals_info.JOB.${nj}.txt ark:- \| \
+      segmentation-to-ali ark:- ark,t:- \| \
+      steps/segmentation/convert_ali_to_vec.pl \| \
+      vector-to-feat ark,t:- ark:- \| \
+      extract-feature-segments ark:- $orig_corrupted_data_dir/segments \
+        ark:- \| extract-column ark:- ark,t:- \| \
+      steps/segmentation/quantize_vector.pl \| \
+      segmentation-init-from-ali ark:- ark:- \| \
+      segmentation-post-process --merge-adjacent-segments \
+        ark:- ark,scp:$music_dir/music_segmentation.JOB.ark,$music_dir/music_segmentation.JOB.scp
+  else
+    $cmd JOB=1:$nj $music_dir/log/get_music_seg.JOB.log \
+      segmentation-init-from-additive-signals-info \
+        --lengths-rspecifier=ark,t:$orig_corrupted_data_dir/reco2num_frames \
+        --additive-signals-segmentation-rspecifier="ark:segmentation-init-from-lengths ark,t:$music_utt2num_frames ark:- |" \
+        ark,t:$music_dir/additive_signals_info.JOB.${nj}.txt ark:- \| \
+      segmentation-post-process --merge-adjacent-segments \
+        ark:- ark,scp:$music_dir/music_segmentation.JOB.ark,$music_dir/music_segmentation.JOB.scp
+  fi
 
   for n in `seq $nj`; do 
     cat $music_dir/music_segmentation.$n.scp

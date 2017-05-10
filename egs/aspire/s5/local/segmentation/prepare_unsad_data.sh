@@ -9,7 +9,7 @@ set -e
 
 . path.sh
 
-stage=-2
+stage=-3
 cmd=queue.pl
 reco_nj=40      # Number of jobs to work at recording-level
 nj=100          # Number of jobs to work at utterance-level
@@ -178,15 +178,7 @@ data_id=$(basename $data_dir)
 whole_data_dir=${data_dir}_whole
 whole_data_id=${data_id}_whole
 
-if [ $stage -le -3 ]; then
-  steps/segmentation/get_sad_map.py \
-    --init-sad-map="$sad_map" \
-    --map-noise-to-sil=$map_noise_to_sil \
-    --map-unk-to-speech=$map_unk_to_speech \
-    $lang | utils/sym2int.pl -f 1 $lang/phones.txt > $dir/sad_map
-fi
-
-if [ $stage -le 2 ]; then
+if [ $stage -le -1 ]; then
   utils/data/convert_data_dir_to_whole.sh ${data_dir} ${whole_data_dir}
 fi 
 
@@ -194,7 +186,7 @@ if $speed_perturb; then
   plpdir=${plpdir}_sp
   mfccdir=${mfccdir}_sp
  
-  if [ $stage -le -1 ]; then
+  if [ $stage -le 0 ]; then
     utils/data/perturb_data_dir_speed_3way.sh ${whole_data_dir} ${whole_data_dir}_sp
     utils/data/perturb_data_dir_speed_3way.sh ${data_dir} ${data_dir}_sp
 
@@ -234,8 +226,8 @@ if $speed_perturb; then
   data_id=${data_id}_sp
 fi
 
-if [ $stage -le 0 ]; then
-  utils/subsegment_data_dir.sh $whole_data_dir ${data_dir}/segments ${data_dir}/tmp
+if [ $stage -le 1 ]; then
+  utils/data/subsegment_data_dir.sh $whole_data_dir ${data_dir}/segments ${data_dir}/tmp
   cp $data_dir/tmp/feats.scp $data_dir
 
   if [ $feat_type == mfcc ]; then
@@ -248,17 +240,17 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ -z "$sat_model_dir" ]; then
-  ali_dir=${model_dir}_ali_${data_id}
+  ali_dir=$dir/`basename ${model_dir}`_ali_${data_id}
   if [ $stage -le 2 ]; then
     steps/align_si.sh --nj $nj --cmd "$cmd" \
-      ${data_dir} ${lang} ${model_dir} ${model_dir}_ali_${data_id} || exit 1
+      ${data_dir} ${lang} ${model_dir} $ali_dir || exit 1
   fi
 else
-  ali_dir=${sat_model_dir}_ali_${data_id}
+  ali_dir=$dir/`basename ${sat_model_dir}`_ali_${data_id}
   #obtain the alignment of the perturbed data
   if [ $stage -le 2 ]; then
     steps/align_fmllr.sh --nj $nj --cmd "$cmd" \
-      ${data_dir} ${lang} ${sat_model_dir} ${sat_model_dir}_ali_${data_id} || exit 1
+      ${data_dir} ${lang} ${sat_model_dir} $ali_dir || exit 1
   fi
 fi
 
@@ -275,6 +267,12 @@ utils/split_data.sh $data_dir $nj
 
 vad_dir=$dir/`basename ${ali_dir}`_vad_${data_id}
 if [ $stage -le 3 ]; then
+  steps/segmentation/get_sad_map.py \
+    --init-sad-map="$sad_map" \
+    --map-noise-to-sil=$map_noise_to_sil \
+    --map-unk-to-speech=$map_unk_to_speech \
+    $lang | utils/sym2int.pl -f 1 $lang/phones.txt > $dir/sad_map
+
   steps/segmentation/internal/convert_ali_to_vad.sh --cmd "$cmd" \
     $ali_dir $dir/sad_map $vad_dir
 fi
@@ -310,6 +308,7 @@ fi
 outside_data_dir=$dir/${data_id}_outside
 if [ $stage -le 5 ]; then
   rm -r $outside_data_dir || true
+  mkdir -p $outside_data_dir
 
   for f in wav.scp reco2file_and_channel stm glm; do 
     if [ -f ${data_dir}/$f ]; then
@@ -324,7 +323,7 @@ if [ $stage -le 5 ]; then
       --frame-overlap=$frame_overlap --shift-to-zero=false \
       ${data_dir}/segments ark:- \| \
     segmentation-combine-segments-to-recordings ark:- \
-      "ark,t:utils/data/get_reco2utt.sh ${data_dir} |" ark:- \| \
+      "ark,t:utils/data/get_reco2utt_for_data.sh ${data_dir} |" ark:- \| \
     segmentation-create-subsegments --filter-label=1 --subsegment-label=0 \
       "ark:segmentation-init-from-lengths --label=1 ark,t:${whole_data_dir}/utt2num_frames ark:- |" \
       ark:- ark:- \| \
@@ -335,17 +334,14 @@ if [ $stage -le 5 ]; then
       ark:- ark,t:$outside_data_dir/utt2spk $outside_data_dir/segments
 
   utils/fix_data_dir.sh $outside_data_dir
-fi
-
-
-if [ $stage -le 6 ]; then
+  
   utils/data/subsegment_data_dir.sh $whole_data_dir $outside_data_dir/segments \
     $outside_data_dir/tmp
   cp $outside_data_dir/tmp/feats.scp $outside_data_dir
 fi
 
 extended_data_dir=$dir/${data_id}_extended
-if [ $stage -le 7 ]; then
+if [ $stage -le 6 ]; then
   cp $dir/${data_id}_manual_segments/cmvn.scp ${outside_data_dir} || exit 1
   utils/fix_data_dir.sh $outside_data_dir
   
@@ -358,10 +354,14 @@ fi
 
 # TODO: By default, we use word LM. If required, we can think 
 # consider phone LM.
-graph_dir=$model_dir/graph
-if [ $stage -le 8 ]; then
-  if [ ! -d $graph_dir ]; then
-    utils/mkgraph.sh ${lang_test} $model_dir $graph_dir || exit 1
+  
+model_id=`basename $model_dir`
+
+graph_dir=$dir/$model_id/graph
+if [ $stage -le 7 ]; then
+  if [ ! -f $graph_dir/HCLG.fst ]; then
+    cp -rT $lang_test/ $dir/lang_test
+    utils/mkgraph.sh $dir/lang_test $model_dir $graph_dir || exit 1
   fi
 fi
 
@@ -369,24 +369,24 @@ fi
 # Decode extended data directory
 ###############################################################################
 
-
+decode_dir=$dir/${model_id}/decode_${data_id}_extended
 # Decode without lattice (get only best path)
 if [ $stage -le 8 ]; then
+  mkdir -p $decode_dir
+  cp $model_dir/{final.mdl,final.mat,*_opts,tree} $dir/${model_id}
+
   steps/decode_nolats.sh --cmd "$cmd --mem 2G" --nj $nj \
     --max-active 1000 --beam 10.0 --write-words false \
     --write-alignments true \
-    $graph_dir ${extended_data_dir} \
-    ${model_dir}/decode_${data_id}_extended || exit 1
-  cp ${model_dir}/final.mdl ${model_dir}/decode_${data_id}_extended
+    $graph_dir ${extended_data_dir} $decode_dir
 fi
-
-model_id=`basename $model_dir`
 
 # Get VAD based on the decoded best path
 decode_vad_dir=$dir/${model_id}_decode_vad_${data_id}
 if [ $stage -le 9 ]; then
+  cp $dir/$model_id/final.mdl $decode_dir
   steps/segmentation/internal/convert_ali_to_vad.sh --cmd "$cmd" \
-    ${model_dir}/decode_${data_id}_extended $dir/sad_map $decode_vad_dir
+    ${decode_dir} $dir/sad_map $decode_vad_dir
 fi
 
 [ ! -s $decode_vad_dir/sad_seg.scp ] && echo "$0: $decode_vad_dir/vad.scp is empty" && exit 1
@@ -412,7 +412,7 @@ reco_vad_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir";
 echo $reco_nj > $reco_vad_dir/num_jobs
 
 if [ $stage -le 11 ]; then
-  utils/data/get_reco2utt.sh $extended_data_dir > $reco_vad_dir/reco2utt
+  utils/data/get_reco2utt_for_data.sh $extended_data_dir > $reco_vad_dir/reco2utt
   splits=
   for n in `seq $reco_nj`; do
     splits="$splits $reco_vad_dir/reco2utt.$n.$reco_nj"
@@ -494,7 +494,7 @@ if [ $stage -le 15 ]; then
     segmentation-init-from-segments --shift-to-zero=false --frame-shift=$frame_shift --frame-overlap=$frame_overlap \
       "utils/filter_scp.pl $reco_vad_dir/utt2reco.JOB.$reco_nj $data_dir/segments |" ark:- \| \
     segmentation-combine-segments-to-recordings ark:- \
-      "ark,t:utils/data/get_reco2utt.sh $data_dir | utils/filter_scp.pl $reco_vad_dir/reco2utt.JOB.$reco_nj |" \
+      "ark,t:utils/data/get_reco2utt_for_data.sh $data_dir | utils/filter_scp.pl $reco_vad_dir/reco2utt.JOB.$reco_nj |" \
       ark:- \| \
     segmentation-to-ali --lengths-rspecifier=ark,t:${whole_data_dir}/utt2num_frames \
       ark:- ark,t:- \| \

@@ -211,15 +211,5 @@ done
 
 rm $dir/new2old_utt
 
-echo "$0: calling fix_data_dir.sh to remove any unused speakers, utterances, etc."
-utils/data/fix_data_dir.sh $dir
-
-validate_opts=
-[ ! -f $srcdir/feats.scp ] && validate_opts="$validate_opts --no-feats"
-[ ! -f $srcdir/wav.scp ] && validate_opts="$validate_opts --no-wav"
-! $add_subsegment_text && validate_opts="$validate_opts --no-text"
-
-utils/data/validate_data_dir.sh $validate_opts $dir
-
 echo "$0: subsegmented data from $srcdir to $dir"
 
