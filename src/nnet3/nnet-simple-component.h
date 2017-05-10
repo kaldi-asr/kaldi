@@ -1417,9 +1417,23 @@ class PerElementScaleComponent: public UpdatableComponent {
   CuVector<BaseFloat> scales_;
 };
 
+/*
+  PerElementOffsetComponent offsets each dimension of its input with a separate
+  trainable bias; it's like an affine component with fixed weight matrix which
+  is always equal to I.
 
-// PerElementOffsetComponent offsets each dimension of its input with a separate
-// trainable bias; it's like an affine component with fixed weight matrix which is always equal to I.
+  Accepted values on its config line, with defaults if applicable.
+
+     vector           If specified, the offsets will be read from this file ('vector'
+                      is interpreted as an rxfilename).
+
+     dim              If 'vector' is not specified, you should specify the
+                      dimension 'dim', and will be randomly initialized according
+                      to 'param-mean' and 'param-stddev'.
+     param-mean=0.0   Mean of randomly initialized offset parameters.
+     param-stddev=0.0 Standard deviation of randomly initialized offset parameters.
+
+*/
 class PerElementOffsetComponent: public UpdatableComponent {
  public:
   virtual int32 InputDim() const { return offsets_.Dim(); }
