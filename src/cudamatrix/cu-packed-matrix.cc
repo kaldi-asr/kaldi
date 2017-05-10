@@ -281,7 +281,7 @@ void CuPackedMatrix<Real>::SetDiag(Real alpha) {
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(NumRows(),CU1DBLOCK));
     cuda_set_diag_packed(dimGrid,dimBlock,data_,alpha,num_rows_);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     CuDevice::Instantiate().AccuProfile("CuPackedMatrix::SetDiag", tim.Elapsed());
   } else
 #endif
@@ -315,7 +315,7 @@ void CuPackedMatrix<Real>::ScaleDiag(Real alpha) {
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(NumRows(),CU1DBLOCK));
     cuda_scale_diag_packed(dimGrid,dimBlock,data_,alpha,num_rows_);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     CuDevice::Instantiate().AccuProfile("CuPackedMatrix::ScaleDiag", tim.Elapsed());
   } else
 #endif
@@ -351,7 +351,7 @@ void CuPackedMatrix<Real>::AddToDiag(Real r) {
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(NumRows(),CU1DBLOCK));
     cuda_add_diag_packed(dimGrid,dimBlock,data_,r,num_rows_);
-    CU_SAFE_CALL(cudaGetLastError());    
+    CUDA_GET_LAST_ERROR;    
     CuDevice::Instantiate().AccuProfile("CuPackedMatrix::AddToDiag", tim.Elapsed());
   } else
 #endif

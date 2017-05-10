@@ -71,7 +71,7 @@ void CuTpMatrix<Real>::Invert() {
     int dim = this->NumRows();
     Real alpha = 1.0;
     cuda_set_diag(dimGrid, dimBlock, tmp.Data(), alpha, tmp.Dim());
-    CU_SAFE_CALL(cudaGetLastError());        
+    CUDA_GET_LAST_ERROR;        
     CuMatrix<Real> tmp2(dim, dim);
     tmp2.CopyFromTp(*this);
     CU_SAFE_CALL(cublas_trsm(GetCublasHandle(), dim, dim, alpha, tmp2.Data(), tmp2.Dim().stride, 
@@ -100,7 +100,7 @@ void CuTpMatrix<Real>::CopyFromMat(const CuMatrixBase<Real> &M,
     } else {
       cuda_take_upper(dimGrid, dimBlock, M.Data(), this->data_, M.Dim());
     }
-    CU_SAFE_CALL(cudaGetLastError());        
+    CUDA_GET_LAST_ERROR;        
   } else
 #endif
   {

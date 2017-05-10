@@ -251,7 +251,7 @@ void CuBlockMatrix<Real>::AddMatMat(
     cuda_block_add_mat_mat(dimGrid, dimBlock, cu_data_, NumBlocks(),
                            A.Data(), A_num_cols, A_row_stride, A_col_stride,
                            B.Data(), B_row_stride, B_col_stride, alpha, beta);
-    CU_SAFE_CALL(cudaGetLastError());    
+    CUDA_GET_LAST_ERROR;    
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
   } else
 #endif

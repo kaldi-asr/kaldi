@@ -34,7 +34,13 @@
 #include <cuda_runtime_api.h>
 
 
-
+/**
+ * Here we execute 'fun', check the return value and 'synchronize'...
+ *
+ * Removing 'cudaDeviceSynchronize()' would save extra 10% of BLSTM training
+ * time, but this leads to totally unusable 'time-stats' in the 'profile'
+ * (all CUBLAS call durations are measured after completing this macro),
+ */
 #define CU_SAFE_CALL(fun) \
 { \
   int32 ret; \
@@ -44,6 +50,24 @@
   cudaDeviceSynchronize(); \
 }
 
+/**
+ * Here we call 'cudaGetLastError()', while we don't 'synchronize',
+ * - this leads to inaccurate 'time-stats' for some functions,
+ * - the 'time-stats' will become precise if we add 'cudaDeviceSynchronize()',
+ *   but BLSTM training would be 80% slower,
+ */
+#define CUDA_GET_LAST_ERROR \
+{ \
+  int32 ret; \
+  if ((ret = cudaGetLastError()) != 0) { \
+    KALDI_ERR << "cudaError_t " << ret << " : \"" << cudaGetErrorString((cudaError_t)ret) << "\" returned from 'cudaGetLastError()'"; \
+  } \
+}
+// #define CUDA_GET_LAST_ERROR ; // using an empty macro would save 3% of BLSTM training time (not worthy)...
+
+/**
+ * This is almost never used, only in 'cu-device.cc'
+ */
 #define KALDI_CUDA_ERR(ret, msg) \
 { \
   if (ret != 0) { \

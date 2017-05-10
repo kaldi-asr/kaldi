@@ -65,15 +65,15 @@ class CuArray {
   const T* Data() const { return data_; }
 
   T* Data() { return data_; }
- 
+
   /// Allocate the memory.  resize_type may be kSetZero or kUndefined.
   /// kCopyData not yet supported (can be implemented if needed).
   void Resize(MatrixIndexT dim, MatrixResizeType resize_type = kSetZero);
-  
+
   /// Deallocate the memory and set dim_ and data_ to zero.  Does not call any
   /// destructors of the objects stored.
   void Destroy();
-  
+
   /// This function resizes if needed.  Note: copying to GPU is done via memcpy,
   /// and any constructors or assignment operators are not called.
   void CopyFromVec(const std::vector<T> &src);
@@ -96,13 +96,13 @@ class CuArray {
   /// Sets the memory for the object to zero, via memset.  You should verify
   /// that this makes sense for type T.
   void SetZero();
-  
+
   /// Set to a constant value.  Note: any copying is done as if using memcpy, and
   /// assignment operators or destructors are not called.  This is NOT IMPLEMENTED
   /// YET except for T == int32 (the current implementation will just crash).
   void Set(const T &value);
-  
-  /// Add a constant value. This is NOT IMPLEMENTED YET except for T == int32 
+
+  /// Add a constant value. This is NOT IMPLEMENTED YET except for T == int32
   /// (the current implementation will just crash).
   void Add(const T &value);
 
@@ -125,7 +125,7 @@ class CuArray {
   /// I/O
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &is, bool binary) const;
-  
+
  private:
   MatrixIndexT dim_;     ///< dimension of the vector
   T *data_;  ///< GPU data pointer (if GPU not available,
