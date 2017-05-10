@@ -3301,8 +3301,7 @@ class ComputationLoopedOptimizer {
  private:
 
   // Figures out the time shift between the successive computation requests.
-  static int32 FindTimeShift(const NnetComputation &computation,
-                             const std::vector<int32> &segment_ends);
+  static int32 FindTimeShift(const NnetComputation &computation);
 
   // This function creates a mapping from a matrix-index > 0,
   // to a pair (unique_id, time_offset) that represents the debug-info
@@ -3440,7 +3439,7 @@ class ComputationLoopedOptimizer {
 
 
 
-  /// Given a list of command indexes ('segment_end_commands') which are
+  /// Given a list of command indexes ('splice_point_commands') which are
   /// expected to be command indexes of the kNoOperationMarker at segment
   /// boundaries, this function outputs for each of these command indexes a list
   /// of matrices which are 'active' at that point in time.  By 'active' we mean
@@ -3448,12 +3447,12 @@ class ComputationLoopedOptimizer {
   /// initialization with zeros as being written to); and will be read after
   /// that time.  These is the list of matrices that 'need to be in scope'
   /// at those points in time.  '*active_matrices' is indexed by the
-  /// same index as 'segment_end_commands', and is then a list of active
+  /// same index as 'splice_point_commands', and is then a list of active
   /// matrices, in numerical order of matrix index.
   /// Note: for each i, (*active_matrices)[i] will be sorted and unique.
   static void FindActiveMatrices(const NnetComputation &computation,
                                  const Analyzer &analyzer,
-                                 const std::vector<int32> &segment_end_commands,
+                                 const std::vector<int32> &splice_point_commands,
                                  std::vector<std::vector<int32> > *active_matrices);
 
 
@@ -3462,13 +3461,14 @@ class ComputationLoopedOptimizer {
   Analyzer analyzer_;
   std::vector<std::pair<int32, int32> > matrix_to_pair_;
 
-  std::vector<int32> segment_end_commands_;
+  std::vector<int32> splice_point_commands_;
 };
 
 // static
 int32 ComputationLoopedOptimizer::FindTimeShift(
-    const NnetComputation &computation,
-    const std::vector<int32> &segment_ends) {
+    const NnetComputation &computation) {
+  std::vector<int32> segment_ends;
+  GetCommandsOfType(computation, kNoOperationMarker, &segment_ends);
   KALDI_ASSERT(segment_ends.size() >= 3);
   // Ignore the first segment as it tends to be a special case
   // (it has more left context),
@@ -3647,19 +3647,9 @@ bool ComputationLoopedOptimizer::FindFirstRepeat(
   // differ.
   KALDI_ASSERT(num_segments >= 2);
 
-  bool perform_time_offset_check = true;
-  if (normalized_active_pairs.back().empty()) {
-    // If there are no variables active after the end of the last-but-one segment
-    // (which is the last element in segment_ends, since we remove the end of the
-    // very last segment), then don't perform the check related to
-    // time-offsets, it's not relevant.  [this would probably be a computation
-    // that doesn't require any context].
-    perform_time_offset_check = false;
-  }
   for (int32 s = 0; s < num_segments; s++) {
     for (int32 t = s + 1; t < num_segments; t++) {
-      if ((!perform_time_offset_check ||
-           time_offsets[t]-time_offsets[s] == (t-s) * time_shift_per_segment) &&
+      if ((time_offsets[t]-time_offsets[s] == (t-s) * time_shift_per_segment) &&
           normalized_active_pairs[s] == normalized_active_pairs[t]) {
         *seg1 = s;
         *seg2 = t;
@@ -3696,16 +3686,16 @@ void ComputationLoopedOptimizer::PairListToMatrixList(
 void ComputationLoopedOptimizer::FindActiveMatrices(
     const NnetComputation &computation,
     const Analyzer &analyzer,
-    const std::vector<int32> &segment_end_commands,
+    const std::vector<int32> &splice_point_commands,
     std::vector<std::vector<int32> > *active_matrices) {
   int32 num_matrices = computation.matrices.size();
-  int32 num_segments = segment_end_commands.size();
+  int32 num_splice_points = splice_point_commands.size();
   active_matrices->clear();
-  active_matrices->resize(num_segments);
+  active_matrices->resize(num_splice_points);
   // this object just makes available some extra functions, vs. the Analyzer
   // object.
   ComputationAnalysis analysis(computation, analyzer);
-  KALDI_ASSERT(IsSortedAndUniq(segment_end_commands));
+  KALDI_ASSERT(IsSortedAndUniq(splice_point_commands));
 
   // the following vector gives us, for each matrix index, a submatrix index
   // that covers the whole of that matrix (needed by interface of 'analysis' object).
@@ -3713,18 +3703,18 @@ void ComputationLoopedOptimizer::FindActiveMatrices(
   computation.GetWholeSubmatrices(&whole_submatrices);
   for (int32 m = 1; m < num_matrices; m++) {
     // the following are command indexes, comparable with the indexes
-    // in 'segment_end_commands'.
+    // in 'splice_point_commands'.
     int32 s = whole_submatrices[m],  // submatrix consisting of the whole of
                                      // 'm'.
         first_access = analysis.FirstAccess(s),
         last_access = analysis.LastAccess(s);
-    for (int32 seg = 0; seg < num_segments; seg++) {
-      int32 segment_end = segment_end_commands[seg];
-      if (first_access < segment_end && last_access > segment_end) {
+    for (int32 i = 0; i < num_splice_points; i++) {
+      int32 splice_point = splice_point_commands[i];
+      if (first_access < splice_point && last_access > splice_point) {
         // If the block of time during which the matrix is accessed, includes
-        // this segment end-point, then the matrix is considered 'active' at
-        // that time.
-        (*active_matrices)[seg].push_back(m);
+        // this command index, then the matrix is considered 'active' at this
+        // time.
+        (*active_matrices)[i].push_back(m);
       }
     }
   }
@@ -3860,8 +3850,8 @@ void ComputationLoopedOptimizer::FormInfiniteLoop(
   KALDI_ASSERT(static_cast<int32>(computation->commands.size()) >=
                command2 + 1 && command1 < command2);
   KALDI_ASSERT(
-      computation->commands[command1].command_type == kNoOperationMarker &&
-      computation->commands[command2].command_type == kNoOperationMarker);
+      computation->commands[command1].command_type == kNoOperationPermanent &&
+      computation->commands[command2].command_type == kNoOperationPermanent);
   // Remove any commands after 'command2'.
   computation->commands.resize(command2 + 1);
   computation->commands[command2].command_type = kGotoLabel;
@@ -3880,25 +3870,22 @@ bool ComputationLoopedOptimizer::Optimize() {
                "You must request matrix debug info when compiling "
                "looped computations.");
 
-  // get the indexes of the separator commands at the ends of segments.
-  std::vector<int32> segment_ends;
-  GetSegmentEnds(*computation_, &segment_ends);
-  int32 time_shift_per_segment = FindTimeShift(*computation_,
-                                               segment_ends);
-
-  // Ignore the end of the very last segment- it is not a candidate for a
-  // 'splice point'.  What we're doing here is like creating a tape loop; we
-  // have to find a place where the list of variables is the same except for a
-  // time offset.
-  // [note: it's not exactly like a tape loop because the prologue can
-  // vary... the sequence is of the form like a b b b b b .. ]
-  segment_ends.pop_back();
+  // get the indexes of potential splice points, one per segment of the
+  // computation.  We locate the splice points where kNoOperationPermanent is.
+  // This is guaranteed to be after the inputs have been received, and before
+  // the bulk of the computation in the segment, and of course before we provide
+  // the output.  It happens that by choosing this as the splice point we avoid
+  // certain problems that would arise, for instance, if we chose the segment
+  // boundaries (kNoOperationMarker).
+  std::vector<int32> splice_points;
+  GetCommandsOfType(*computation_, kNoOperationPermanent,
+                    &splice_points);
+  int32 time_shift_per_segment = FindTimeShift(*computation_);
 
 
   std::vector<std::vector<int32> > active_matrices;
-  // Find the list of matrices active at each of those segment-end-command
-  // times.
-  FindActiveMatrices(*computation_, analyzer_, segment_ends,
+  // Find the list of matrices active at each of the potential splice points.
+  FindActiveMatrices(*computation_, analyzer_, splice_points,
                      &active_matrices);
 
   // Find a representation of the matrices of the computation as pairs
@@ -3912,7 +3899,7 @@ bool ComputationLoopedOptimizer::Optimize() {
   unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > pair_to_matrix;
   GetPairToMatrixMap(matrix_to_pair, &pair_to_matrix);
 
-  // get lists of matrix per segment in the pair representation.
+  // get lists of matrix per splice-point in the pair representation.
   std::vector<std::vector<std::pair<int32, int32> > > pair_lists;
   ConvertListsToPairLists(active_matrices, matrix_to_pair,
                           &pair_lists);
@@ -3920,8 +3907,8 @@ bool ComputationLoopedOptimizer::Optimize() {
   std::vector<int32> time_offsets;
   NormalizePairLists(&pair_lists, &time_offsets);
 
-  // Note: seg1 and seg2 are indexes into 'segment_ends', representing
-  // points in time (that happen to be the ends of segments).
+  // Note: seg1 and seg2 are indexes into 'splice_points', representing
+  // potential splice points (located near the beginnings of segments).
   int32 seg1, seg2;
   if (!FindFirstRepeat(pair_lists,
                        time_offsets,
@@ -3945,7 +3932,7 @@ bool ComputationLoopedOptimizer::Optimize() {
                           time_difference);
 
 
-  FormInfiniteLoop(segment_ends[seg1], segment_ends[seg2], computation_);
+  FormInfiniteLoop(splice_points[seg1], splice_points[seg2], computation_);
 
   AddMatrixSwapCommands(seg1_matrices, seg2_matrices, computation_);
 
