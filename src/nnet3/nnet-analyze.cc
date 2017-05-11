@@ -1280,12 +1280,13 @@ void Analyzer::Init(const Nnet &nnet, const NnetComputation &computation) {
                         &matrix_accesses);
 }
 
-void GetSegmentEnds(const NnetComputation &computation,
-                    std::vector<int32> *command_indexes) {
+void GetCommandsOfType(const NnetComputation &computation,
+                       CommandType t,
+                       std::vector<int32> *command_indexes) {
   int32 num_commands = computation.commands.size();
   command_indexes->clear();
   for (int32 c = 0; c < num_commands; c++)
-    if (computation.commands[c].command_type == kNoOperationMarker)
+    if (computation.commands[c].command_type == t)
       command_indexes->push_back(c);
 }
 
