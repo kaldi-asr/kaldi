@@ -32,6 +32,7 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include "base/kaldi-common.h"
+#include "base/timer.h"
 #include "cudamatrix/cu-allocator.h"
 
 namespace kaldi {
@@ -192,8 +193,9 @@ class CuDevice {
 // an unnecessary system call if the verbose level is 0 and you
 // won't be accumulating the timing stats.
 class CuTimer: public Timer {
+ public:
   CuTimer(): Timer(GetVerboseLevel() >= 1) { }
-}
+};
 
 // This function is declared as a more convenient way to get the CUDA device handle for use
 // in the CUBLAS v2 API, since we so frequently need to access it.

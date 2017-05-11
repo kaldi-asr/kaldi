@@ -388,6 +388,7 @@ bool CuDevice::SelectGpuIdAuto() {
 void CuDevice::AccuProfile(const char *function_name,
                            const CuTimer &timer) {
   if (GetVerboseLevel() >= 1) {
+    std::string key(function_name);
     cudaDeviceSynchronize();
     double elapsed = timer.Elapsed();
 
@@ -520,7 +521,7 @@ void CuDevice::DeviceGetName(char* name, int32 len, int32 dev) {
 
 void CuDevice::CheckGpuHealth() {
   if (!Enabled()) return;
-  Timer t;
+  CuTimer t;
   // prepare small matrices for a quick test
   Matrix<BaseFloat> a(50, 100);
   Matrix<BaseFloat> b(100 ,50);
@@ -535,7 +536,7 @@ void CuDevice::CheckGpuHealth() {
   // check that relative differnence is <1%
   AssertEqual(c, Matrix<BaseFloat>(c1), 0.01);
   // measure time spent in this check
-  AccuProfile(__func__, t.Elapsed());
+  AccuProfile(__func__, t);
 }
 
 

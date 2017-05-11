@@ -64,12 +64,17 @@ class Timer {
  public:
   Timer() { Reset(); }
 
+  // You can initialize with bool to control whether or not you want the time to
+  // be set when the object is created.
+  explicit Timer(bool set_timer) { if (set_timer) Reset(); }
+
   void Reset() { gettimeofday(&this->time_start_, &time_zone_); }
 
   /// Returns time in seconds.
-  double Elapsed() {
+  double Elapsed() const {
     struct timeval time_end;
-    gettimeofday(&time_end, &time_zone_);
+    struct timezone time_zone;
+    gettimeofday(&time_end, &time_zone);
     double t1, t2;
     t1 =  static_cast<double>(time_start_.tv_sec) +
           static_cast<double>(time_start_.tv_usec)/(1000*1000);

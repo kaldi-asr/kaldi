@@ -320,7 +320,7 @@ void CuMatrixBase<Real>::CopyFromMat(const MatrixBase<Real> &src,
       CU_SAFE_CALL(cudaMemcpy2D(data_, dst_pitch, src.Data(), src_pitch,
                                 width, src.NumRows(), cudaMemcpyHostToDevice));
 
-      CuDevice::Instantiate().AccuProfile("CuMatrixBase::CopyFromMat(from CPU)",tim.Elapsed());
+      CuDevice::Instantiate().AccuProfile("CuMatrixBase::CopyFromMat(from CPU)", tim);
     } else {
       CuMatrix<Real> trans_mat(src); // Do the transpose on the GPU board.
       this->CopyFromMat(trans_mat, kTrans);
@@ -361,7 +361,7 @@ void CuMatrixBase<Real>::CopyFromSp(const CuSpMatrix<Real> &M) {
     dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK),
                  n_blocks(NumRows(), CU2DBLOCK));
     cuda_copy_from_sp(dimGrid, dimBlock, M.Data(), data_, Dim());
-    CuDevice::Instantiate().AccuProfile("CuMatrix::CopyFromSp",tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuMatrix::CopyFromSp", tim);
   } else
 #endif
   {
@@ -428,7 +428,7 @@ void CuMatrixBase<Real>::CopyToMat(MatrixBase<OtherReal> *dst,
       CU_SAFE_CALL(cudaMemcpy2D(dst->Data(), dst_pitch, this->data_, src_pitch,
                                 width, this->num_rows_, cudaMemcpyDeviceToHost));
 
-      CuDevice::Instantiate().AccuProfile("CuMatrix::CopyToMatD2H",tim.Elapsed());
+      CuDevice::Instantiate().AccuProfile("CuMatrix::CopyToMatD2H", tim);
     }
   } else
   #endif

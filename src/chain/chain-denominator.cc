@@ -120,7 +120,7 @@ void DenominatorComputation::AlphaGeneralFrame(int32 t) {
         dimGrid.y = num_hmm_states;
       }
     }
-    CuDevice::Instantiate().AccuProfile(__func__, tim)
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {

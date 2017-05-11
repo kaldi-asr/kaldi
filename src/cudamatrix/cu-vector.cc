@@ -815,7 +815,7 @@ void CuVectorBase<Real>::CopyFromVec(const VectorBase<OtherReal> &src) {
       if (dim_ == 0) return;
       CuTimer tim;
       CU_SAFE_CALL(cudaMemcpy(data_, src.Data(), src.Dim()*sizeof(Real), cudaMemcpyHostToDevice));
-      CuDevice::Instantiate().AccuProfile("CuVector::CopyFromVecH2D",tim.Elapsed());
+      CuDevice::Instantiate().AccuProfile("CuVector::CopyFromVecH2D", tim);
     }
   } else
   #endif
@@ -992,7 +992,7 @@ void CuVectorBase<Real>::SetZero() {
     KALDI_ASSERT(data_!=NULL);
     CuTimer tim;
     CU_SAFE_CALL(cudaMemset(data_, 0, dim_*sizeof(Real)));
-    CuDevice::Instantiate().AccuProfile("CuVector::SetZero",tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuVector::SetZero", tim);
   } else
 #endif
   {
