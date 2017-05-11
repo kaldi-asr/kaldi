@@ -33,11 +33,11 @@
 
 namespace kaldi {
 
-template<> 
+template<>
 void CuArray<int32>::Set(const int32 &value) {
   if (dim_ == 0) return;
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
 
     dim3 dimBlock(CU2DBLOCK);
@@ -45,7 +45,7 @@ void CuArray<int32>::Set(const int32 &value) {
     ::MatrixDim d = { 1, Dim(), Dim() };
 
     cuda_int32_set_const(dimGrid, dimBlock, data_, value, d);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -58,11 +58,11 @@ void CuArray<int32>::Set(const int32 &value) {
 }
 
 
-template<> 
+template<>
 void CuArray<int32>::Add(const int32 &value) {
   if (dim_ == 0) return;
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
 
     dim3 dimBlock(CU2DBLOCK);
@@ -70,7 +70,7 @@ void CuArray<int32>::Add(const int32 &value) {
     ::MatrixDim d = { 1, Dim(), Dim() };
 
     cuda_int32_add(dimGrid, dimBlock, data_, value, d);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -80,7 +80,7 @@ void CuArray<int32>::Add(const int32 &value) {
       data_[i] += value;
     }
   }
-} 
+}
 
 
 }  // namespace kaldi

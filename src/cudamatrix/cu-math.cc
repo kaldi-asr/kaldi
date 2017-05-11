@@ -45,7 +45,7 @@ void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *grad, Real l1,
 
     cuda_regularize_l1(dimGrid, dimBlock, weight->Data(), grad->Data(), l1, lr,
                        weight->Dim(), grad->Stride());
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -110,7 +110,7 @@ void Randomize(const CuMatrixBase<Real> &src,
 
     cuda_randomize(dimGrid, dimBlock, tgt->Data(), src.Data(),
                    copy_from_idx.Data(), dimtgt, dimsrc);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -144,7 +144,7 @@ void Splice(const CuMatrixBase<Real> &src, const CuArray<int32> &frame_offsets,
 
     cuda_splice(dimGrid, dimBlock, tgt->Data(), src.Data(),
                 frame_offsets.Data(), tgt->Dim(), src.Dim());
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -185,7 +185,7 @@ void Copy(const CuMatrixBase<Real> &src, const CuArray<int32> &copy_from_indices
 
     cuda_copy(dimGrid, dimBlock, tgt->Data(), src.Data(),
               copy_from_indices.Data(), tgt->Dim(), src.Dim());
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -260,7 +260,7 @@ void NormalizePerRow(const CuMatrixBase<Real>& in, const Real target_rms,
     size_t dimGrid = out->NumRows();
     cuda_normalize_per_row(dimGrid, dimBlock, out->Data(), out->Stride(),
                            in.Data(), in.Dim(), target_rms, add_log_stddev);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -326,7 +326,7 @@ void DiffNormalizePerRow(const CuMatrixBase<Real> &in_value,
                                 in_deriv->Stride(), in_value.Data(),
                                 in_value.Dim(), out_deriv.Data(),
                                 out_deriv.Stride(), target_rms, add_log_stddev);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -478,7 +478,7 @@ void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
     cuda_lstm_nonlinearity(dimGrid, dimBlock, input.Data(), input.Stride(),
                            params.Data(), params.Stride(), output->Stride(),
                            cell_dim, have_dropout_mask, num_rows, output->Data());
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -864,7 +864,7 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
       }
     }
 
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else

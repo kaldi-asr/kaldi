@@ -115,7 +115,7 @@ template<typename Real> void TestCuVectorSumChooseMinLength() {
         }
         CuVector<Real> ans(dimGrid, kUndefined);
         cuda_vec_sum(dimGrid, dimBlock, M.Data(), ans.Data(), M.Dim(), 1);
-        CU_SAFE_CALL(cudaGetLastError());
+        CUDA_GET_LAST_ERROR;
         Vector<Real> ans_cpu(ans);
         result = ans_cpu.Sum();
       }

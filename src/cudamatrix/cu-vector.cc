@@ -84,7 +84,7 @@ void CuVectorBase<Real>::CopyColFromMat(const CuMatrixBase<Real> &mat, MatrixInd
     Timer tim;
     cublas_copy(GetCublasHandle(),
                 this->dim_, mat.Data() + col, mat.Stride(), this->data_, 1);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     CuDevice::Instantiate().AccuProfile("CuVectorBase::CopyColFromMat", tim.Elapsed());
   } else
 #endif
@@ -105,7 +105,7 @@ void CuVectorBase<double>::CopyColFromMat(const CuMatrixBase<float> &mat, Matrix
     int dimGrid(n_blocks(dim_,CU1DBLOCK));
 
     cuda_copy_col_from_mat_df(dimGrid, dimBlock, data_, col, mat.Data(), mat.Dim(), dim_);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     CuDevice::Instantiate().AccuProfile("CuVectorBase::CopyColFromMat", tim.Elapsed());
   } else
 #endif
@@ -127,7 +127,7 @@ void CuVectorBase<float>::CopyColFromMat(const CuMatrixBase<double> &mat, Matrix
     int dimGrid(n_blocks(dim_,CU1DBLOCK));
 
     cuda_copy_col_from_mat_fd(dimGrid, dimBlock, data_, col, mat.Data(), mat.Dim(), dim_);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     CuDevice::Instantiate().AccuProfile("CuVectorBase::CopyColFromMat", tim.Elapsed());
   } else
 #endif
@@ -207,7 +207,7 @@ void CuVectorBase<Real>::CopyRowsFromMat(const MatrixBase<Real> &mat) {
         vec_data += mat.NumCols();
       }
     }
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -287,7 +287,7 @@ Real CuVectorBase<Real>::Sum() const {
       }
       CuVector<Real> ans(dimGrid, kUndefined);
       cuda_vec_sum(dimGrid, dimBlock, data_, ans.Data(), dim_, 1);
-      CU_SAFE_CALL(cudaGetLastError());
+      CUDA_GET_LAST_ERROR;
       Vector<Real> ans_cpu(ans);
       result = ans_cpu.Sum();
     }
@@ -311,7 +311,7 @@ void CuVectorBase<Real>::ApplySoftMax() {
     size_t dimGrid = 1;       // dimGrid value represent the number of rows
     ::MatrixDim dim = { 1, this->dim_, this->dim_};
     cuda_softmax_reduce(dimGrid, dimBlock, data_, data_, dim, this->dim_);//actually dim is not stride...
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -333,7 +333,7 @@ MatrixIndexT CuVectorBase<Real>::ApplyFloor(Real floor_val) {
     CuVector<float> count_vec(dim_, kUndefined);
 
     cuda_vec_apply_floor(dimGrid, dimBlock, data_, floor_val, count_vec.Data(), dim_);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     num_floored = count_vec.Sum();
     CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloor", tim.Elapsed());
   } else
@@ -358,7 +358,7 @@ MatrixIndexT CuVectorBase<Real>::ApplyCeiling(Real ceiling_val) {
     CuVector<float> count_vec(dim_, kUndefined);
 
     cuda_vec_apply_ceiling(dimGrid, dimBlock, data_, ceiling_val, count_vec.Data(), dim_);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     num_ceiled = count_vec.Sum();
     CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyCeiling", tim.Elapsed());
   } else
@@ -382,7 +382,7 @@ void CuVectorBase<Real>::ApplyPow(Real power) {
     ::MatrixDim fake_matrix_dim = { 1, Dim(), 1 };
     // num_cols is Dim(), num_rows is 1, stride is 1 (it's a don't-care).
     cuda_apply_pow(dimGrid, dimBlock, data_, power, fake_matrix_dim);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyPow", tim.Elapsed());
   } else
 #endif
@@ -402,7 +402,7 @@ void CuVectorBase<Real>::ApplyExp() {
     int dimGrid(n_blocks(dim_,CU1DBLOCK));
 
     cuda_vec_apply_exp(dimGrid, dimBlock, data_, dim_);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyExp", tim.Elapsed());
   } else
 #endif
@@ -423,7 +423,7 @@ void CuVectorBase<Real>::ApplyLog() {
 
     CuVector<Real> flag(1);
     cuda_vec_apply_log(dimGrid, dimBlock, data_, flag.Data(), dim_);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     if (flag(0) > 0)
       KALDI_ERR << "Trying to take log of a negative number.";
     CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyLog", tim.Elapsed());
@@ -502,7 +502,7 @@ void CuVectorBase<Real>::AddVecVec(Real alpha, const CuVectorBase<Real> &v,
     int dimGrid(n_blocks(dim_,CU1DBLOCK));
 
     cuda_add_vec_vec(dimGrid, dimBlock, alpha, data_, v.Data(), r.Data(), beta, dim_);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     CuDevice::Instantiate().AccuProfile("CuVectorBase::AddVecVec", tim.Elapsed());
   } else
 #endif
@@ -598,7 +598,7 @@ void CuVectorBase<Real>::AddDiagMatMat(Real alpha, const CuMatrixBase<Real> &M,
                                  M.Data(), M.Dim(), beta, data_);
       }
     }
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -677,7 +677,7 @@ Real CuVectorBase<Real>::Min() const {
       }
       CuVector<Real> ans(dimGrid, kUndefined);
       cuda_vec_min(dimGrid, dimBlock, data_, ans.Data(), dim_, 1);
-      CU_SAFE_CALL(cudaGetLastError());
+      CUDA_GET_LAST_ERROR;
       Vector<Real> ans_cpu(ans);
       result = ans_cpu.Min();
     }
@@ -715,7 +715,7 @@ Real CuVectorBase<Real>::Max() const {
       }
       CuVector<Real> ans(dimGrid, kUndefined);
       cuda_vec_max(dimGrid, dimBlock, data_, ans.Data(), dim_, 1);
-      CU_SAFE_CALL(cudaGetLastError());
+      CUDA_GET_LAST_ERROR;
       Vector<Real> ans_cpu(ans);
       result = ans_cpu.Max();
     }
@@ -738,7 +738,7 @@ void CuVectorBase<Real>::ReplaceValue(Real orig, Real changed) {
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_, CU1DBLOCK));
     cuda_replace_value(dimGrid, dimBlock, data_, dim_, orig, changed);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -757,7 +757,7 @@ void CuVectorBase<Real>::MulElements(const CuVectorBase<Real> &v) {
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_, CU1DBLOCK));
     cuda_vec_mul_elements(dimGrid, dimBlock, data_, v.Data(), dim_);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     CuDevice::Instantiate().AccuProfile("CuVectorBase::MulElements", tim.Elapsed());
   } else
 #endif
@@ -1030,7 +1030,7 @@ void CuVectorBase<Real>::Set(Real value) {
     ::MatrixDim d = { 1, Dim(), Dim() };
 
     cuda_set_const(dimGrid, dimBlock, data_, value, d);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -1052,7 +1052,7 @@ void CuVectorBase<Real>::Add(Real value) {
     ::MatrixDim d = { 1, Dim(), Dim() };
 
     cuda_add(dimGrid, dimBlock, data_, value, d);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -1071,7 +1071,7 @@ void CuVectorBase<Real>::CopyDiagFromPacked(const CuPackedMatrix<Real> &M) {
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(Dim(), CU1DBLOCK));
     cuda_vec_copy_diag_from_packed(dimGrid, dimBlock, data_, M.Data(), dim_);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -1111,7 +1111,7 @@ void CuVectorBase<Real>::Scale(Real value) {
     dim3 dimGrid(n_blocks(Dim(), CU1DBLOCK));
     ::MatrixDim d = { 1, Dim(), Dim() };
     cuda_scale(dimGrid, dimBlock, data_, value, d);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -1183,7 +1183,7 @@ void CuVectorBase<Real>::AddColSumMat(Real alpha, const CuMatrixBase<Real> &mat,
 
     cuda_add_col_sum_mat(mat.NumRows(), CU1DBLOCK, Data(), mat.Data(),
                          mat.Dim(), alpha, beta);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -1204,7 +1204,7 @@ void CuVectorBase<Real>::InvertElements() {
     MatrixDim d = {1, dim_, dim_};
 
     cuda_invert_elements(dimGrid, dimBlock, data_, d);
-    CU_SAFE_CALL(cudaGetLastError());
+    CUDA_GET_LAST_ERROR;
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else

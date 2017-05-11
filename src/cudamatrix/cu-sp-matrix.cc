@@ -58,7 +58,7 @@ void CuSpMatrix<Real>::CopyFromMat(const CuMatrixBase<Real> &M,
           dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
           dim3 dimGrid(n_blocks(D, CU2DBLOCK), n_blocks(D, CU2DBLOCK));
           cuda_take_mean(dimGrid, dimBlock, M.Data(), this->data_, M.Dim());
-          CU_SAFE_CALL(cudaGetLastError());
+          CUDA_GET_LAST_ERROR;
         }
         break;
       case kTakeLower:
@@ -67,7 +67,7 @@ void CuSpMatrix<Real>::CopyFromMat(const CuMatrixBase<Real> &M,
           dim3 dimBlock(1, block_size);
           dim3 dimGrid(D, n_blocks(D, block_size));
           cuda_take_lower(dimGrid, dimBlock, M.Data(), this->data_, M.Dim());
-          CU_SAFE_CALL(cudaGetLastError());
+          CUDA_GET_LAST_ERROR;
         }
         break;
       case kTakeUpper:
@@ -75,7 +75,7 @@ void CuSpMatrix<Real>::CopyFromMat(const CuMatrixBase<Real> &M,
           dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
           dim3 dimGrid(n_blocks(D, CU2DBLOCK), n_blocks(D, CU2DBLOCK));
           cuda_take_upper(dimGrid, dimBlock, M.Data(), this->data_, M.Dim());
-          CU_SAFE_CALL(cudaGetLastError());
+          CUDA_GET_LAST_ERROR;
         }
         break;
       default:
