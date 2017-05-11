@@ -95,7 +95,7 @@ class CuDevice {
 
   /// This function accumulates stats on timing that
   /// are printed out when you call PrintProfile().  However,
-  /// it only does something if VerboseLevel() >= 2.
+  /// it only does something if VerboseLevel() >= 1.
   void AccuProfile(const char *function_name, const CuTimer &timer);
   void PrintProfile();
 
