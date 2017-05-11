@@ -86,6 +86,13 @@ class CuDevice {
     return active_gpu_id_;
   }
 
+  void DeviceReset() {
+   if ( Enabled() ) {
+     cudaSetDevice( ActiveGpuId() );
+     cudaDeviceReset();
+    }
+  }
+
   /// Returns true if either we have no GPU, or we have a GPU
   /// and it supports double precision.
   bool DoublePrecisionSupported();

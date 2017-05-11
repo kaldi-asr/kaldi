@@ -102,6 +102,7 @@ int main(int argc, char *argv[]) {
     }
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();
+    CuDevice::Instantiate().DeviceReset();
 #endif
     
     KALDI_LOG << "Finished training, processed " << num_examples
