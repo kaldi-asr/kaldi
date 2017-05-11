@@ -17,24 +17,24 @@ thchs=/nfs/public/materials/data/thchs30-openslr
 #local/download_and_untar.sh $thchs  http://www.openslr.org/resources/18 resource      || exit 1
 #local/download_and_untar.sh $thchs  http://www.openslr.org/resources/18 test-noise    || exit 1
 
-#data preparation 
+#data preparation
 #generate text, wav.scp, utt2pk, spk2utt
 local/thchs-30_data_prep.sh $H $thchs/data_thchs30 || exit 1;
 
-#produce MFCC features 
+#produce MFCC features
 rm -rf data/mfcc && mkdir -p data/mfcc &&  cp -R data/{train,dev,test,test_phone} data/mfcc || exit 1;
 for x in train dev test; do
-   #make  mfcc 
+   #make  mfcc
    steps/make_mfcc.sh --nj $n --cmd "$train_cmd" data/mfcc/$x exp/make_mfcc/$x mfcc/$x || exit 1;
    #compute cmvn
    steps/compute_cmvn_stats.sh data/mfcc/$x exp/mfcc_cmvn/$x mfcc/$x || exit 1;
 done
-#copy feats and cmvn to test.ph, avoid duplicated mfcc & cmvn 
+#copy feats and cmvn to test.ph, avoid duplicated mfcc & cmvn
 cp data/mfcc/test/feats.scp data/mfcc/test_phone && cp data/mfcc/test/cmvn.scp data/mfcc/test_phone || exit 1;
 
 
 #prepare language stuff
-#build a large lexicon that invovles words in both the training and decoding. 
+#build a large lexicon that invovles words in both the training and decoding.
 (
   echo "make word graph ..."
   cd $H; mkdir -p data/{dict,lang,graph} && \
@@ -60,7 +60,7 @@ cp data/mfcc/test/feats.scp data/mfcc/test_phone && cp data/mfcc/test/cmvn.scp d
 )
 
 #monophone
-steps/train_mono.sh --boost-silence 1.25 --nj $n --cmd "$train_cmd" data/mfcc/train data/lang exp/mono || exit 1; 
+steps/train_mono.sh --boost-silence 1.25 --nj $n --cmd "$train_cmd" data/mfcc/train data/lang exp/mono || exit 1;
 #test monophone model
 local/thchs-30_decode.sh --mono true --nj $n "steps/decode.sh" exp/mono data/mfcc &
 
@@ -104,9 +104,9 @@ steps/align_fmllr.sh --nj $n --cmd "$train_cmd" data/mfcc/train data/lang exp/tr
 steps/align_fmllr.sh --nj $n --cmd "$train_cmd" data/mfcc/dev data/lang exp/tri4b exp/tri4b_ali_cv || exit 1;
 
 #train dnn model
-local/nnet/run_dnn.sh --stage 0 --nj $n  exp/tri4b exp/tri4b_ali exp/tri4b_ali_cv || exit 1;  
+local/nnet/run_dnn.sh --stage 0 --nj $n  exp/tri4b exp/tri4b_ali exp/tri4b_ali_cv || exit 1;
 
 #train dae model
 #python2.6 or above is required for noisy data generation.
 #To speed up the process, pyximport for python is recommeded.
-local/dae/run_dae.sh --stage 0  $thchs || exit 1;
+local/dae/run_dae.sh $thchs || exit 1;
