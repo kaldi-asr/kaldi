@@ -449,9 +449,9 @@ int main(int argc, char *argv[]) {
           const Posterior *posterior = &(sparse_targets_readers[n]->Value(key));
 
           if (abs(static_cast<int32>(posterior->size()) - feats.NumRows()) 
-              > length_tolerance
-              || posterior->size() < feats.NumRows()) {
-            KALDI_WARN << "Posterior has wrong size " << posterior->size()
+              > length_tolerance) {
+            KALDI_WARN << "For key " << key 
+                       << " posterior has wrong size " << posterior->size()
                        << " versus " << feats.NumRows();
             break;
           }
