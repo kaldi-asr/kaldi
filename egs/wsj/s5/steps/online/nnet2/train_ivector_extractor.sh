@@ -152,19 +152,26 @@ while [ $x -lt $num_iters ]; do
   if [ $stage -le $x ]; then
     rm $dir/.error 2>/dev/null
 
-    Args=() # bash array of training commands for 1:nj, that put accs to stdout.
-    for j in $(seq $nj_full); do
-      Args[$j]=`echo "ivector-extractor-acc-stats --num-threads=$num_threads $dir/$x.ie '$feats' 'ark,s,cs:gunzip -c $dir/post.JOB.gz|' -|" | sed s/JOB/$j/g`
-    done
+    if [ $num_processes -eq 1 ] && [ $num_threads -eq 1 ]; then #submit as an array
+        $cmd --num-threads 1 JOB=1:$nj_full $dir/log/acc.$x.JOB.log \
+            ivector-extractor-sum-accs --parallel=true \
+                "ivector-extractor-acc-stats --num-threads=1 $dir/$x.ie '$feats' 'ark,s,cs:gunzip -c $dir/post.JOB.gz|' -|"  $dir/acc.$x.JOB || touch $dir/.error
+    else
+         Args=() # bash array of training commands for 1:nj, that put accs to stdout.
+         for j in $(seq $nj_full); do
+           Args[$j]=`echo "ivector-extractor-acc-stats --num-threads=$num_threads $dir/$x.ie '$feats' 'ark,s,cs:gunzip -c $dir/post.JOB.gz|' -|" | sed s/JOB/$j/g`
+         done
 
-    echo "Accumulating stats (pass $x)"
-    for g in $(seq $nj); do
-      start=$[$num_processes*($g-1)+1]
-      $cmd --num-threads $[$num_threads*$num_processes] $dir/log/acc.$x.$g.log \
-        ivector-extractor-sum-accs --parallel=true "${Args[@]:$start:$num_processes}" \
-          $dir/acc.$x.$g || touch $dir/.error &
-    done
-    wait
+        echo "Accumulating stats (pass $x)"
+        for g in $(seq $nj); do
+            start=$[$num_processes*($g-1)+1]
+            $cmd --num-threads $[$num_threads*$num_processes] $dir/log/acc.$x.$g.log \
+                ivector-extractor-sum-accs --parallel=true "${Args[@]:$start:$num_processes}" \
+                $dir/acc.$x.$g || touch $dir/.error &
+        done
+        wait
+    fi
+
     [ -f $dir/.error ] && echo "Error accumulating stats on iteration $x" && exit 1;
 	accs=""
 	for j in $(seq $nj); do
