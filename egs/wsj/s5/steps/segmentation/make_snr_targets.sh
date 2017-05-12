@@ -79,12 +79,14 @@ $ignore_noise_dir && utils/split_data.sh $data $nj
 
 targets_dir=`perl -e '($data,$pwd)= @ARGV; if($data!~m:^/:) { $data = "$pwd/$data"; } print $data; ' $targets_dir ${PWD}`
 
+set +e
 for n in `seq $nj`; do 
   if [ -f $targets_dir/${data_id}.$n.ark ]; then
     rm $targets_dir/${data_id}.$n.ark
   fi
   utils/create_data_link.pl $targets_dir/${data_id}.$n.ark
 done
+set -e
 
 apply_exp_opts=
 if $apply_exp; then

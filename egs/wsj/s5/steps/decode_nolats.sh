@@ -85,10 +85,10 @@ splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
 cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 delta_opts=`cat $srcdir/delta_opts 2>/dev/null`
 
-utils/lang/check_phones_compatible.sh $graph/phones.txt $srcdir/phones.txt || exit 1;
+utils/lang/check_phones_compatible.sh $graphdir/phones.txt $srcdir/phones.txt || exit 1;
 
 if $write_alignments; then
-  cp $graph/phones.txt $dir || exit 1;
+  cp $graphdir/phones.txt $dir || exit 1;
 
   cp $srcdir/{tree,final.mdl} $dir || exit 1;
   cp $srcdir/final.alimdl $dir 2>/dev/null
