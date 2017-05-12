@@ -312,6 +312,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      num_archives_processed=num_archives_processed,
                      num_archives=num_archives,
                      raw_model_string=raw_model_string, egs_dir=egs_dir,
+                     left_context=left_context, right_context=right_context,
                      momentum=momentum, max_param_change=cur_max_param_change,
                      shuffle_buffer_size=shuffle_buffer_size,
                      minibatch_size_str=cur_minibatch_size_str,
@@ -448,11 +449,12 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
         """ {command} {dir}/log/compute_prob_valid.{iter}.log \
                 nnet3-compute-prob "{model}" \
                 "ark,bg:nnet3-copy-egs {opts} {context_opts} \
-                    ark:{egs_dir}/valid_diagnostic.egs ark:- |{extra_egs_copy_cmd} \
+                    {egs_rspecifier} ark:- |{extra_egs_copy_cmd} \
                     nnet3-merge-egs --minibatch-size=1:64 ark:- \
                     ark:- |" """.format(command=run_opts.command,
                                         dir=dir,
                                         iter=iter,
+                                        egs_rspecifier=valid_diagnostic_egs,
                                         opts=' '.join(opts),
                                         context_opts=context_opts,
                                         model=model,

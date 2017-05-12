@@ -1,5 +1,5 @@
 # Copyright 2016    Johns Hopkins University (Author: Daniel Povey)
-            2016    Vimal Manohar
+#           2016    Vimal Manohar
 # Apache 2.0.
 
 """ This module contains the statistics extraction and pooling layer.

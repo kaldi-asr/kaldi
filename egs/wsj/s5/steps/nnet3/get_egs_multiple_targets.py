@@ -51,7 +51,7 @@ def get_args():
         See the option --targets-parameters to see how multiple targets
         can be specified.
         """,
-        formatter_class=argparse.RawHelpTextFormatter)
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("--cmd", type=str, default="run.pl",
                         help="Specifies the script to launch jobs."
@@ -348,7 +348,7 @@ def sample_utts(feat_dir, num_utts_subset, min_duration, exclude_list=None):
 def write_list(listd, file_name):
     """Write the contents of the list with one item per line."""
     assert(type(listd) == list)
-    with file_handle as open(file_name, 'w'):
+    with open(file_name, 'w') as file_handle:
         for item in listd:
             print(str(item), file=file_handle)
 
@@ -445,7 +445,7 @@ def get_egs_options(targets_parameters, frames_per_eg,
                     left_context, right_context,
                     valid_left_context, valid_right_context,
                     compress_input,
-                    input_compress_format=0, length_tolerance=0):
+                    input_compress_format=0, length_tolerance=2):
 
     train_egs_opts = []
     train_egs_opts.append("--left-context={0}".format(left_context))

@@ -273,7 +273,7 @@ def check_model_contexts(config_dir):
                 if key in ['left-context', 'right-context']:
                     contexts[file_name][key] = value
 
-    if contexts.has_key('init'):
+    if contexts.has_key('init') and contexts['init'].has_key('left-context'):
         assert(contexts.has_key('ref'))
         if ((contexts['init']['left-context'] > contexts['ref']['left-context'])
            or (contexts['init']['right-context'] > contexts['ref']['right-context'])):
