@@ -204,7 +204,9 @@ void CuArray<int32>::Add(const int32 &value);
 template<class T>
 inline T CuArray<T>::Min() const {
   KALDI_ASSERT(this->Dim() > 0);
+#if HAVE_CUDA == 1
   CuTimer tim;
+#endif
   std::vector<T> tmp(Dim());
   CopyToVec(&tmp);
   T ans = *std::min_element(tmp.begin(), tmp.end());
@@ -220,7 +222,9 @@ inline T CuArray<T>::Min() const {
 template<class T>
 inline T CuArray<T>::Max() const {
   KALDI_ASSERT(this->Dim() > 0);
+#if HAVE_CUDA == 1
   CuTimer tim;
+#endif
   std::vector<T> tmp(Dim());
   CopyToVec(&tmp);
   T ans = *std::max_element(tmp.begin(), tmp.end());
