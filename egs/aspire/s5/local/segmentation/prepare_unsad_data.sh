@@ -374,6 +374,7 @@ decode_dir=$dir/${model_id}/decode_${data_id}_extended
 if [ $stage -le 8 ]; then
   mkdir -p $decode_dir
   cp $model_dir/{final.mdl,final.mat,*_opts,tree} $dir/${model_id}
+  cp $model_dir/phones.txt $dir/$model_id
 
   steps/decode_nolats.sh --cmd "$cmd --mem 2G" --nj $nj \
     --max-active 1000 --beam 10.0 --write-words false \

@@ -72,7 +72,7 @@ train_data_dir=data/babel_${lang_id}_train
 # Expecting the user to have done run.sh to have $model_dir,
 # $sat_model_dir, $lang, $lang_test, $train_data_dir
 local/segmentation/prepare_unsad_data.sh \
-  --sad-map $dir/babel_sad.map --stage 9 \
+  --sad-map $dir/babel_sad.map \
   --config-dir $ROOT_DIR/conf --feat-type plp --add-pitch true \
   --reco-nj 40 --nj 100 --cmd "$train_cmd" \
   --sat-model-dir $sat_model_dir \

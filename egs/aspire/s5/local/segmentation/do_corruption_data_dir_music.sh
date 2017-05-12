@@ -173,6 +173,8 @@ fi
 # music_dir is without speed perturbation 
 music_dir=exp/make_music_labels/${orig_corrupted_data_id}
 mkdir -p $music_dir
+  
+cp $music_utt2num_frames $music_dir/music_utt2num_frames
 
 if [ $stage -le 6 ]; then
   if [ ! -f $orig_corrupted_data_dir/additive_signals_info.txt ]; then
@@ -205,9 +207,9 @@ if [ $stage -le 6 ]; then
     $cmd JOB=1:$nj $music_dir/log/get_music_seg.JOB.log \
       segmentation-init-from-additive-signals-info \
         --lengths-rspecifier=ark,t:$orig_corrupted_data_dir/reco2num_frames \
-        --additive-signals-segmentation-rspecifier="ark:segmentation-init-from-lengths ark,t:$music_utt2num_frames ark:- |" \
+        --additive-signals-segmentation-rspecifier="ark:segmentation-init-from-lengths ark,t:$music_dir/music_utt2num_frames ark:- |" \
         ark,t:$music_dir/additive_signals_info.JOB.${nj}.txt ark:- \| \
-      segmentation-to-ali ark:- ark,t:- \| \
+      segmentation-to-ali --lengths-rspecifier=ark,t:$orig_corrupted_data_dir/reco2num_frames ark:- ark,t:- \| \
       steps/segmentation/convert_ali_to_vec.pl \| \
       vector-to-feat ark,t:- ark:- \| \
       extract-feature-segments ark:- $orig_corrupted_data_dir/segments \
@@ -220,8 +222,10 @@ if [ $stage -le 6 ]; then
     $cmd JOB=1:$nj $music_dir/log/get_music_seg.JOB.log \
       segmentation-init-from-additive-signals-info \
         --lengths-rspecifier=ark,t:$orig_corrupted_data_dir/reco2num_frames \
-        --additive-signals-segmentation-rspecifier="ark:segmentation-init-from-lengths ark,t:$music_utt2num_frames ark:- |" \
+        --additive-signals-segmentation-rspecifier="ark:segmentation-init-from-lengths ark,t:$music_dir/music_utt2num_frames ark:- |" \
         ark,t:$music_dir/additive_signals_info.JOB.${nj}.txt ark:- \| \
+      segmentation-to-ali --lengths-rspecifier=ark,t:$orig_corrupted_data_dir/reco2num_frames ark:- ark:- \| \
+      segmentation-init-from-ali ark:- ark:- \| \
       segmentation-post-process --merge-adjacent-segments \
         ark:- ark,scp:$music_dir/music_segmentation.JOB.ark,$music_dir/music_segmentation.JOB.scp
   fi
@@ -237,14 +241,19 @@ label_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } 
  
 if [ $stage -le 7 ]; then
   utils/split_data.sh $corrupted_data_dir $nj
+  utils/data/get_utt2num_frames.sh $orig_corrupted_data_dir
+
+  awk '{print $1" "$2; print "sp0.9-"$1" "int($2 / 0.9); print "sp1.1-"$1" "int($2 / 1.1)}' $orig_corrupted_data_dir/utt2num_frames > \
+    $music_dir/utt2num_frames_sp
+
   if $speed_perturb; then
     $cmd JOB=1:$nj $music_dir/log/get_music_labels.JOB.log \
       segmentation-speed-perturb --speeds=0.9:1.0:1.1 ark:$music_dir/music_segmentation.JOB.ark ark:- \| \
-      segmentation-to-ali --ignore-missing-lengths --lengths-rspecifier=ark,t:$corrupted_data_dir/utt2num_frames ark:- \
+      segmentation-to-ali --lengths-rspecifier=ark,t:$music_dir/utt2num_frames_sp ark:- \
       ark,scp:$label_dir/music_labels_${corrupted_data_id}.JOB.ark,$label_dir/music_labels_${corrupted_data_id}.JOB.scp
   else
     $cmd JOB=1:$nj $music_dir/log/get_music_labels.JOB.log \
-      segmentation-to-ali --ignore-missing-lengths --lengths-rspecifier=ark,t:$corrupted_data_dir/utt2num_frames \
+      segmentation-to-ali --lengths-rspecifier=ark,t:$corrupted_data_dir/utt2num_frames \
       ark:$music_dir/music_segmentation.JOB.ark \
       ark,scp:$label_dir/music_labels_${corrupted_data_id}.JOB.ark,$label_dir/music_labels_${corrupted_data_id}.JOB.scp
   fi

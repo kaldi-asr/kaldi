@@ -35,10 +35,10 @@ if [ $# -ne 0 ]; then
   exit 1
 fi
 
-dir=exp/unsad/make_unsad_fisher_train_100k  # Work dir
-model_dir=$ROOT_DIR/exp/tri4a_ali_fisher_train_100k_sp
+dir=exp/unsad_simple/make_unsad_fisher_train_100k_sp  # Work dir
 train_data_dir=$ROOT_DIR/data/train_100k_sp
 unperturbed_data_dir=$ROOT_DIR/data/train_100k
+model_dir=$ROOT_DIR/exp/tri4a
 lang=$ROOT_DIR/data/lang  # Language directory
 
 mkdir -p $dir
@@ -79,11 +79,11 @@ if [ ! -d RIRS_NOISES/music ]; then
   local/segmentation/prepare_musan_music.sh /export/corpora/JHU/musan RIRS_NOISES/music
 fi
 
-utils/copy_data_dir.sh $train_data_dir data/fisher_train_100k_sp
-train_data_dir=data/fisher_train_100k_sp
+utils/copy_data_dir.sh $train_data_dir data/fisher_train_100k_simple_sp
+train_data_dir=data/fisher_train_100k_simple_sp
 
-utils/copy_data_dir.sh $unperturbed_data_dir data/fisher_train_100k
-unperturbed_data_dir=data/fisher_train_100k
+utils/copy_data_dir.sh $unperturbed_data_dir data/fisher_train_100k_simple
+unperturbed_data_dir=data/fisher_train_100k_simple
 
 # Expecting the user to have done run.sh to have $model_dir,
 # $sat_model_dir, $lang, $lang_test, $train_data_dir
@@ -101,9 +101,9 @@ if $realign; then
 else
   local/segmentation/prepare_unsad_data_simple.sh --speed-perturb true \
     --sad-map $dir/fisher_sad.map --cmd "$train_cmd" \
-    $train_data_dir $lang $model_dir $dir
+    $unperturbed_data_dir $lang $model_dir $dir
 
-  vad_dir=$dir/`basename $model_dir`_vad_$(basename $train_data_dir)
+  vad_dir=$dir/`basename $model_dir`_vad_$(basename $unperturbed_data_dir)
 fi
 
 data_dir=${unperturbed_data_dir}
@@ -120,7 +120,7 @@ fi
 
 # Add noise from MUSAN corpus to data directory and create a new data directory
 local/segmentation/do_corruption_data_dir_snr.sh \
-  --cmd "$train_cmd" --nj 40 \
+  --cmd "$train_cmd" --nj 40 --stage 8 \
   --data-dir $data_dir \
   --vad-dir $vad_dir \
   --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf 

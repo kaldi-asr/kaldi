@@ -105,7 +105,7 @@ fi
 
 # Add noise from MUSAN corpus to data directory and create a new data directory
 local/segmentation/do_corruption_data_dir_snr.sh \
-  --cmd "$train_cmd" --nj 40 \
+  --cmd "$train_cmd" --nj 40 --stage 8 \
   --data-dir $data_dir \
   --vad-dir $vad_dir \
   --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf 
@@ -116,3 +116,5 @@ local/segmentation/do_corruption_data_dir_music.sh \
   --data-dir $data_dir \
   --vad-dir $vad_dir \
   --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf
+
+utils/fix_data_dir.sh --utt-extra-files "irm_targets.scp speech_labels.scp music_labels.scp speech_music_labels.scp deriv_weights.scp deriv_weights_manual_seg.scp deriv_weights_for_irm_targets.scp" ${data_dir}_corrupted_spr_hires_bp

@@ -98,16 +98,19 @@ if [ $stage -le 2 ]; then
   done
   set -e
 
+  utils/data/get_utt2num_frames.sh $data_dir
   if ! $speed_perturb; then
     $cmd JOB=1:$nj $vad_dir/log/get_speech_labels.JOB.log \
       segmentation-copy --keep-label=1 scp:$vad_dir/sad_seg.JOB.scp ark:- \| \
-      segmentation-to-ali \
+      segmentation-to-ali --lengths-rspecifier=ark,t:$data_dir/utt2num_frames \
         ark:- ark,scp:$vad_dir/speech_labels.JOB.ark,$vad_dir/speech_labels.JOB.scp
   else
+    awk '{print $1" "$2; print "sp0.9-"$1" "int($2 / 0.9); print "sp1.1-"$1" "int($2 / 1.1)}' $data_dir/utt2num_frames > \
+      $vad_dir/utt2num_frames_sp
     $cmd JOB=1:$nj $vad_dir/log/get_speech_labels.JOB.log \
       segmentation-copy --keep-label=1 scp:$vad_dir/sad_seg.JOB.scp ark:- \| \
       segmentation-speed-perturb --speeds=0.9:1.0:1.1 ark:- ark:- \| \
-      segmentation-to-ali \
+      segmentation-to-ali --lengths-rspecifier=ark,t:$vad_dir/utt2num_frames_sp \
         ark:- ark,scp:$vad_dir/speech_labels.JOB.ark,$vad_dir/speech_labels.JOB.scp
   fi
 
