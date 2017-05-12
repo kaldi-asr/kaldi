@@ -1,29 +1,104 @@
 #!/bin/bash
 
-# 1b35 is as 1b32 but using 50, not 30, epochs and a 10x smaller
-# learning rate at the end.
-# It's better on train but a bit worse on test.
+# 1b40i is as 1b40e but more epochs, 90 not 60.
+# slightly better with more epochs, esp. on cifar100:
 
-# local/nnet3/compare.sh exp/resnet1b32_cifar10 exp/resnet1b35_cifar10
-# System                resnet1b32_cifar10 resnet1b35_cifar10
-# final test accuracy:       0.9095      0.9074
-# final train accuracy:        0.998       0.999
-# final test objf:         -0.327783   -0.382246
-# final train objf:       -0.0139392 -0.00925882
+# local/nnet3/compare.sh exp/resnet1b32_cifar10 exp/resnet1b40e_cifar10 exp/resnet1b40i_cifar10
+# System                resnet1b32_cifar10 resnet1b40e_cifar10 resnet1b40i_cifar10
+# final test accuracy:       0.9095      0.9429      0.9446
+# final train accuracy:        0.998      0.9944      0.9968
+# final test objf:         -0.327783   -0.177449   -0.176049
+# final train objf:       -0.0139392  -0.0263591  -0.0186943
+# num-parameters:            752010      752010      752010
+
+# local/nnet3/compare.sh exp/resnet1b32_cifar10 exp/resnet1b40e_cifar100 exp/resnet1b40i_cifar100
+# System                resnet1b32_cifar10 resnet1b40e_cifar100 resnet1b40i_cifar100
+# final test accuracy:       0.9095      0.7292      0.7371
+# final train accuracy:        0.998      0.8962      0.9158
+# final test objf:         -0.327783   -0.969647   -0.937621
+# final train objf:       -0.0139392   -0.383473   -0.324718
+#
+
+# 1b40e is as 1b40d but doubling proportional-shrink to 50.0.
+# 1b40d is as 1b40c but using more epochs, 60 not 30.
+# 1b40c is as 1b40b but going to proportional-shrink,
+#   trying 25.0
+# 1b40b is as 1b40 but changing shrinkage to 0.95.
+# 1b40 is as 1b32 but adding shrinkage (as a kind of approximation
+# to l2 regularization, since that is not supported in nnet3).
+# Setting the shrinkage value to 0.97.
+
+# ... the larger proportional-shrink in 40e is definitely helpful:
+# local/nnet3/compare.sh exp/resnet1b32_cifar10 exp/resnet1b40c_cifar10 exp/resnet1b40d_cifar10 exp/resnet1b40e_cifar10
+# System                resnet1b32_cifar10 resnet1b40c_cifar10 resnet1b40d_cifar10 resnet1b40e_cifar10
+# final test accuracy:       0.9095      0.9266      0.9379      0.9429
+# final train accuracy:        0.998      0.9942           1      0.9944
+# final test objf:         -0.327783    -0.23229    -0.20726   -0.177449
+# final train objf:       -0.0139392  -0.0271758 -0.00622737  -0.0263591
+# num-parameters:            752010      752010      752010      752010
+
+# local/nnet3/compare.sh exp/resnet1b32_cifar100 exp/resnet1b40c_cifar100 exp/resnet1b40d_cifar100 exp/resnet1b40e_cifar100
+# System                resnet1b32_cifar100 resnet1b40c_cifar100 resnet1b40d_cifar100 resnet1b40e_cifar100
+# final test accuracy:       0.6676       0.698      0.7207      0.7292
+# final train accuracy:       0.9174      0.8906      0.9576      0.8962
+# final test objf:          -1.27745    -1.06413    -1.03634   -0.969647
+# final train objf:        -0.291935   -0.406009   -0.201047   -0.383473
+# num-parameters:            775140      775140      775140      775140
+
+
+
+# definitely helpful:
+# local/nnet3/compare.sh exp/resnet1b32_cifar100 exp/resnet1b40_cifar100 exp/resnet1b41_cifar100
+# System                resnet1b32_cifar100 resnet1b40_cifar100 resnet1b41_cifar100
+# final test accuracy:       0.6676      0.6901      0.6845
+# final train accuracy:       0.9174      0.8908      0.9172
+# final test objf:          -1.27745    -1.08769    -1.17057
+# final train objf:        -0.291935   -0.401026   -0.317533
+# num-parameters:            775140      775140      775140
+
+
+# Definitely helpful.  Towards the end (from the progress logs/ grep for
+# Relative), many of the conv layers seem to be training faster than they
+# should be.
+
+# local/nnet3/compare.sh exp/resnet1b32_cifar10 exp/resnet1b40_cifar10
+# System                resnet1b32_cifar10 resnet1b40_cifar10
+# final test accuracy:       0.9095      0.9239
+# final train accuracy:        0.998      0.9944
+# final test objf:         -0.327783   -0.245887
+# final train objf:       -0.0139392  -0.0248141
 # num-parameters:            752010      752010
 
-# local/nnet3/compare.sh exp/resnet1b32_cifar100 exp/resnet1b35_cifar100
-# System                resnet1b32_cifar100 resnet1b35_cifar100
-# final test accuracy:       0.6676      0.6636
-# final train accuracy:       0.9174      0.9486
-# final test objf:          -1.27745    -1.35241
-# final train objf:        -0.291935   -0.208037
+# local/nnet3/compare.sh exp/resnet1b32_cifar100 exp/resnet1b40_cifar100
+# System                resnet1b32_cifar100 resnet1b40_cifar100
+# final test accuracy:       0.6676      0.6901
+# final train accuracy:       0.9174      0.8908
+# final test objf:          -1.27745    -1.08769
+# final train objf:        -0.291935   -0.401026
 # num-parameters:            775140      775140
 
 # 1b32 is as 1b27 but using the "egs2" egs, with more data per archive.
 # This is as a more relevant baseline for 30 and 31.
 # It's about the same (maybe 0.15% or 0.2% worse).
 
+# local/nnet3/compare.sh exp/resnet1b27_cifar10 exp/resnet1b32_cifar10
+# System                resnet1b27_cifar10 resnet1b32_cifar10
+# final test accuracy:       0.9109      0.9095
+# final train accuracy:       0.9968       0.998
+# final test objf:         -0.341826   -0.327783
+# final train objf:       -0.0166946  -0.0139392
+# num-parameters:            752010      752010
+
+# local/nnet3/compare.sh exp/resnet1b27_cifar100 exp/resnet1b32_cifar100
+# System                resnet1b27_cifar100 resnet1b32_cifar100
+# final test accuracy:       0.6696      0.6676
+# final train accuracy:       0.9234      0.9174
+# final test objf:          -1.28065    -1.27745
+# final train objf:        -0.284288   -0.291935
+# num-parameters:            775140      775140
+
+
+#
 # 1b27 is as 1b25 but reducing the bottleneck dimension from 128 to 96.
 
 # 1b25 is as 1b24 but using a larger number (256, not 128) of
@@ -78,7 +153,7 @@ train_stage=-10
 dataset=cifar10
 srand=0
 reporting_email=
-affix=1b35
+affix=1b40i
 
 
 # End configuration section.
@@ -168,13 +243,14 @@ if [ $stage -le 2 ]; then
     --image.augmentation-opts="--horizontal-flip-prob=0.5 --horizontal-shift=0.1 --vertical-shift=0.1 --num-channels=3" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=50 \
+    --trainer.num-epochs=90 \
     --egs.frames-per-eg=1 \
     --trainer.optimization.num-jobs-initial=1 \
     --trainer.optimization.num-jobs-final=2 \
     --trainer.optimization.initial-effective-lrate=0.003 \
-    --trainer.optimization.final-effective-lrate=0.00003 \
+    --trainer.optimization.final-effective-lrate=0.0003 \
     --trainer.optimization.minibatch-size=256,128,64 \
+    --trainer.optimization.proportional-shrink=50.0 \
     --trainer.shuffle-buffer-size=2000 \
     --egs.dir="$egs" \
     --use-gpu=true \

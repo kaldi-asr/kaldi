@@ -39,6 +39,8 @@ struct ImageAugmentationConfig {
   BaseFloat color_scale;
   BaseFloat brightness_shift;
   BaseFloat brightness_scale;
+  BaseFloat output_epsilon;  // epsilon is a small probabilty we add to
+                             // the posteriors of all classes.
   std::string fill_mode_string;
 
   ImageAugmentationConfig():
@@ -50,6 +52,7 @@ struct ImageAugmentationConfig {
       color_scale(0.0),
       brightness_shift(0.0),
       brightness_scale(0.0),
+      output_epsilon(0.0),
       fill_mode_string("nearest") { }
 
 
@@ -73,6 +76,11 @@ struct ImageAugmentationConfig {
                  "Magnitude of random brightness shift (e.g. 0.1).");
     po->Register("brightness-scale", &brightness_scale,
                  "Magnitude of random brightness scale (e.g. 0.1).");
+    po->Register("output-epsilon", &output_epsilon,
+                 "A constant we add to all output probabilities, after "
+                 "dividing by the number of classes (helps "
+                 "prevent the probabilities for wrong classes from getting "
+                 "too negative, thus limiting the range of the output)");
     po->Register("fill-mode", &fill_mode_string, "Mode for dealing with "
 		 "points outside the image boundary when applying transformation. "
 		 "Choices = {nearest, reflect}");
@@ -400,6 +408,12 @@ void PerturbImageInNnetExample(
       PerturbImage(config, &image);
 
       // modify the 'io' object.
+      io.features = image;
+    }
+    if (io.name == "output" && config.output_epsilon != 0.0) {
+      Matrix<BaseFloat> image;
+      io.features.GetMatrix(&image);
+      image.Add(config.output_epsilon / image.NumCols());
       io.features = image;
     }
   }

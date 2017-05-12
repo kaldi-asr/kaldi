@@ -78,26 +78,17 @@ def get_successful_models(num_models, log_file_pattern,
 
 
 def get_average_nnet_model(dir, iter, nnets_list, run_opts,
-                           get_raw_nnet_from_am=True, shrink=None):
-    scale = 1.0
-    if shrink is not None:
-        scale = shrink
+                           get_raw_nnet_from_am=True):
 
     next_iter = iter + 1
     if get_raw_nnet_from_am:
-        out_model = ("""- \| nnet3-am-copy --set-raw-nnet=- --scale={scale} \
+        out_model = ("""- \| nnet3-am-copy --set-raw-nnet=-  \
                         {dir}/{iter}.mdl {dir}/{next_iter}.mdl""".format(
                             dir=dir, iter=iter,
-                            next_iter=next_iter,
-                            scale=scale))
+                            next_iter=next_iter))
     else:
-        if shrink is not None:
-            out_model = """- \| nnet3-copy --scale={scale} \
-                           - {dir}/{next_iter}.raw""".format(
-                                   dir=dir, next_iter=next_iter, scale=scale)
-        else:
-            out_model = "{dir}/{next_iter}.raw".format(dir=dir,
-                                                       next_iter=next_iter)
+        out_model = "{dir}/{next_iter}.raw".format(
+            dir=dir, next_iter=next_iter)
 
     common_lib.execute_command(
         """{command} {dir}/log/average.{iter}.log \
@@ -110,10 +101,7 @@ def get_average_nnet_model(dir, iter, nnets_list, run_opts,
 
 
 def get_best_nnet_model(dir, iter, best_model_index, run_opts,
-                        get_raw_nnet_from_am=True, shrink=None):
-    scale = 1.0
-    if shrink is not None:
-        scale = shrink
+                        get_raw_nnet_from_am=True):
 
     best_model = "{dir}/{next_iter}.{best_model_index}.raw".format(
             dir=dir,
@@ -130,11 +118,11 @@ def get_best_nnet_model(dir, iter, best_model_index, run_opts,
 
     common_lib.execute_command(
         """{command} {dir}/log/select.{iter}.log \
-                nnet3-copy --scale={scale} {best_model} \
+                nnet3-copy {best_model} \
                 {out_model}""".format(command=run_opts.command,
                                       dir=dir, iter=iter,
                                       best_model=best_model,
-                                      out_model=out_model, scale=scale))
+                                      out_model=out_model))
 
 
 def validate_chunk_width(chunk_width):
@@ -530,8 +518,8 @@ def get_learning_rate(iter, num_jobs, num_iters, num_archives_processed,
     return num_jobs * effective_learning_rate
 
 
-def do_shrinkage(iter, model_file, shrink_saturation_threshold,
-                 get_raw_nnet_from_am=True):
+def should_do_shrinkage(iter, model_file, shrink_saturation_threshold,
+                        get_raw_nnet_from_am=True):
 
     if iter == 0:
         return True

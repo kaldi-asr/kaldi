@@ -185,12 +185,14 @@ def train_one_iteration(dir, iter, srand, egs_dir,
 
     if get_raw_nnet_from_am:
         raw_model_string = ("nnet3-am-copy --raw=true --learning-rate={0} "
-                            "{1}/{2}.mdl - |".format(learning_rate,
-                                                     dir, iter))
+                            "--scale={1} {2}/{3}.mdl - |".format(
+                                learning_rate, shrinkage_value,
+                                dir, iter))
     else:
-        raw_model_string = ("nnet3-copy --learning-rate={lr} "
+        raw_model_string = ("nnet3-copy --learning-rate={lr} --scale={s} "
                             "{dir}/{iter}.raw - |".format(
-                                lr=learning_rate, dir=dir, iter=iter))
+                                lr=learning_rate, s=shrinkage_value,
+                                dir=dir, iter=iter))
 
     raw_model_string = raw_model_string + dropout_edit_string
 
@@ -240,8 +242,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
             dir=dir, iter=iter,
             nnets_list=" ".join(nnets_list),
             run_opts=run_opts,
-            get_raw_nnet_from_am=get_raw_nnet_from_am,
-            shrink=shrinkage_value)
+            get_raw_nnet_from_am=get_raw_nnet_from_am)
 
     else:
         # choose the best model from different jobs
@@ -249,8 +250,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
             dir=dir, iter=iter,
             best_model_index=best_model,
             run_opts=run_opts,
-            get_raw_nnet_from_am=get_raw_nnet_from_am,
-            shrink=shrinkage_value)
+            get_raw_nnet_from_am=get_raw_nnet_from_am)
 
     try:
         for i in range(1, num_jobs + 1):

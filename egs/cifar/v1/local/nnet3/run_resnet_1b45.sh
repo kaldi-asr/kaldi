@@ -1,29 +1,36 @@
 #!/bin/bash
 
-# 1b35 is as 1b32 but using 50, not 30, epochs and a 10x smaller
-# learning rate at the end.
-# It's better on train but a bit worse on test.
+# 1b45 is as 1b43 but changing the --output-epsilon to 0.1.
+# 1b43 is as 1b42 but changing the --output-epsilon to 0.01.
 
-# local/nnet3/compare.sh exp/resnet1b32_cifar10 exp/resnet1b35_cifar10
-# System                resnet1b32_cifar10 resnet1b35_cifar10
-# final test accuracy:       0.9095      0.9074
-# final train accuracy:        0.998       0.999
-# final test objf:         -0.327783   -0.382246
-# final train objf:       -0.0139392 -0.00925882
-# num-parameters:            752010      752010
+# 1b42 is as 1b32 but adding --output-epsilon=0.0001 to the
+# augmentation opts.  This will tend to prevent the probabilities
+# for the wrong classes from getting too small, which acts
+# a bit like regularization.
 
-# local/nnet3/compare.sh exp/resnet1b32_cifar100 exp/resnet1b35_cifar100
-# System                resnet1b32_cifar100 resnet1b35_cifar100
-# final test accuracy:       0.6676      0.6636
-# final train accuracy:       0.9174      0.9486
-# final test objf:          -1.27745    -1.35241
-# final train objf:        -0.291935   -0.208037
-# num-parameters:            775140      775140
 
 # 1b32 is as 1b27 but using the "egs2" egs, with more data per archive.
 # This is as a more relevant baseline for 30 and 31.
 # It's about the same (maybe 0.15% or 0.2% worse).
 
+# local/nnet3/compare.sh exp/resnet1b27_cifar10 exp/resnet1b32_cifar10
+# System                resnet1b27_cifar10 resnet1b32_cifar10
+# final test accuracy:       0.9109      0.9095
+# final train accuracy:       0.9968       0.998
+# final test objf:         -0.341826   -0.327783
+# final train objf:       -0.0166946  -0.0139392
+# num-parameters:            752010      752010
+
+# local/nnet3/compare.sh exp/resnet1b27_cifar100 exp/resnet1b32_cifar100
+# System                resnet1b27_cifar100 resnet1b32_cifar100
+# final test accuracy:       0.6696      0.6676
+# final train accuracy:       0.9234      0.9174
+# final test objf:          -1.28065    -1.27745
+# final train objf:        -0.284288   -0.291935
+# num-parameters:            775140      775140
+
+
+#
 # 1b27 is as 1b25 but reducing the bottleneck dimension from 128 to 96.
 
 # 1b25 is as 1b24 but using a larger number (256, not 128) of
@@ -78,7 +85,7 @@ train_stage=-10
 dataset=cifar10
 srand=0
 reporting_email=
-affix=1b35
+affix=1b45
 
 
 # End configuration section.
@@ -165,15 +172,15 @@ if [ $stage -le 2 ]; then
 
   steps/nnet3/train_raw_dnn.py --stage=$train_stage \
     --cmd="$train_cmd" \
-    --image.augmentation-opts="--horizontal-flip-prob=0.5 --horizontal-shift=0.1 --vertical-shift=0.1 --num-channels=3" \
+    --image.augmentation-opts="--horizontal-flip-prob=0.5 --horizontal-shift=0.1 --vertical-shift=0.1 --num-channels=3 --output-epsilon=0.1" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=50 \
+    --trainer.num-epochs=30 \
     --egs.frames-per-eg=1 \
     --trainer.optimization.num-jobs-initial=1 \
     --trainer.optimization.num-jobs-final=2 \
     --trainer.optimization.initial-effective-lrate=0.003 \
-    --trainer.optimization.final-effective-lrate=0.00003 \
+    --trainer.optimization.final-effective-lrate=0.0003 \
     --trainer.optimization.minibatch-size=256,128,64 \
     --trainer.shuffle-buffer-size=2000 \
     --egs.dir="$egs" \

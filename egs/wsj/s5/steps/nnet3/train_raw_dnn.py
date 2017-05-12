@@ -81,6 +81,27 @@ def get_args():
                         nnet3-merge-egs; run that program without args to see
                         the format.""")
 
+    parser.add_argument("--trainer.optimization.shrink-value", type=float,
+                        dest='shrink_value', default=1.0,
+                        help="""Scaling factor applied on each iteration
+                        (unlike for train_rnn.py, it is applied unconditionally).
+                        Can be used to roughly approximate l2 regularization.
+                        E.g. 0.99.""")
+
+    parser.add_argument("--trainer.optimization.proportional-shrink", type=float,
+                        dest='proportional_shrink', default=0.0,
+                        help="""If nonzero, this will set a shrinkage (scaling)
+                        factor for the parameters, whose value is set as:
+                        shrink-value=(1.0 - proportional-shrink * learning-rate), where
+                        'learning-rate' is the learning rate being applied
+                        on the current iteration, which will vary from
+                        initial-effective-lrate*num-jobs-initial to
+                        final-effective-lrate*num-jobs-final.
+                        Unlike for train_rnn.py, this is applied unconditionally,
+                        it does not depend on saturation of nonlinearities.
+                        Can be used to roughly approximate l2 regularization.""")
+
+
     # General options
     parser.add_argument("--nj", type=int, default=4,
                         help="Number of parallel jobs")
@@ -122,6 +143,10 @@ def process_args(args):
         raise Exception("This scripts expects {0} to exist and have a configs "
                         "directory which is the output of "
                         "make_configs.py script")
+
+    if args.shrink_value < 0.5 or args.shrink_value > 1.0:
+        raise Exception("Invalid shrinkage value {0}".format(
+            args.shrink_value))
 
     # set the options corresponding to args.use_gpu
     run_opts = common_train_lib.RunOpts()
@@ -320,6 +345,17 @@ def train(args, run_opts):
                                + (args.num_jobs_final - args.num_jobs_initial)
                                * float(iter) / num_iters)
 
+        lrate = learning_rate(iter, current_num_jobs,
+                              num_archives_processed)
+        shrink_value = args.shrink_value
+        if args.proportional_shrink != 0.0:
+            shrink_value = 1.0 - (args.proportional_shrink * lrate)
+            if shrink_value <= 0.5:
+                raise Exception("proportional-shrink={0} is too large, it gives "
+                                "shrink-value={1}".format(args.proportional_shrink,
+                                                          shrink_value))
+
+
         if args.stage <= iter:
             train_lib.common.train_one_iteration(
                 dir=args.dir,
@@ -329,8 +365,7 @@ def train(args, run_opts):
                 num_jobs=current_num_jobs,
                 num_archives_processed=num_archives_processed,
                 num_archives=num_archives,
-                learning_rate=learning_rate(iter, current_num_jobs,
-                                            num_archives_processed),
+                learning_rate=lrate,
                 dropout_edit_string=common_train_lib.get_dropout_edit_string(
                     args.dropout_schedule,
                     float(num_archives_processed) / num_archives_to_process,
@@ -339,6 +374,7 @@ def train(args, run_opts):
                 frames_per_eg=args.frames_per_eg,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
+                shrinkage_value=shrink_value,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
                 get_raw_nnet_from_am=False,
