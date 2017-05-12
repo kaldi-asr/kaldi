@@ -70,8 +70,8 @@ def get_args():
                         without the log-softmax layer for the outputs.  As
                         l2-norm of the log-softmax outputs can dominate the
                         objective function.""")
-    parser.add_argument("--chain.xent-regularize", type=float,
-                        dest='xent_regularize', default=0.0,
+    parser.add_argument("--chain.xent-regularize", type=str,
+                        dest='xent_regularize', default="0.0",
                         help="Weight of regularization function which is the "
                         "cross-entropy cost the outputs.")
     parser.add_argument("--chain.right-tolerance", type=int,
@@ -413,6 +413,13 @@ def train(args, run_opts, background_process_handler):
                                                   args.initial_effective_lrate,
                                                   args.final_effective_lrate)
 
+    def get_xent_regularize(num_archives_processed):
+      if (args.xent_regularize.find(",") == -1):
+        return float(args.xent_regularize)
+      start, end = list(map(float, args.xent_regularize.split(",")))
+      x = float(num_archives_processed) / num_archives_to_process
+      return x * (end - start) + start
+
     min_deriv_time = None
     max_deriv_time_relative = None
     if args.deriv_truncate_margin is not None:
@@ -466,7 +473,7 @@ def train(args, run_opts, background_process_handler):
                 min_deriv_time=min_deriv_time,
                 max_deriv_time_relative=max_deriv_time_relative,
                 l2_regularize=args.l2_regularize,
-                xent_regularize=args.xent_regularize,
+                xent_regularize=get_xent_regularize(num_archives_processed),
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
@@ -506,7 +513,7 @@ def train(args, run_opts, background_process_handler):
             left_context=left_context, right_context=right_context,
             leaky_hmm_coefficient=args.leaky_hmm_coefficient,
             l2_regularize=args.l2_regularize,
-            xent_regularize=args.xent_regularize,
+            xent_regularize=get_xent_regularize(num_archives_to_process),
             run_opts=run_opts,
             background_process_handler=background_process_handler,
             sum_to_one_penalty=args.combine_sum_to_one_penalty)
