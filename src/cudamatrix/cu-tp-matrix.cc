@@ -64,7 +64,7 @@ void CuTpMatrix<Real>::Invert() {
 #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) {
     if (this->num_rows_ == 0) return;
-    Timer tim;
+    CuTimer tim;
     int dimBlock(CU2DBLOCK);
     int dimGrid(n_blocks(this->NumRows(), CU2DBLOCK));
     CuMatrix<Real> tmp(this->NumRows(), this->NumRows());
@@ -92,7 +92,7 @@ void CuTpMatrix<Real>::CopyFromMat(const CuMatrixBase<Real> &M,
     MatrixIndexT num_rows = this->num_rows_;
     KALDI_ASSERT(num_rows == M.NumRows() && this->num_rows_ == M.NumCols());
     if (num_rows == 0) return;
-    Timer tim;
+    CuTimer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(num_rows, CU2DBLOCK), n_blocks(num_rows, CU2DBLOCK));
     if (Trans == kNoTrans) {

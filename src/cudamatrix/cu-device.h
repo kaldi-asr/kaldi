@@ -32,9 +32,12 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include "base/kaldi-common.h"
+#include "base/timer.h"
 #include "cudamatrix/cu-allocator.h"
 
 namespace kaldi {
+
+class CuTimer;
 
 /**
  * Singleton object which represents the CUDA device
@@ -90,10 +93,10 @@ class CuDevice {
   /// and it supports double precision.
   bool DoublePrecisionSupported();
 
-  void SetVerbose(bool verbose) {  verbose_ = verbose; }
-
-  /// Sum the IO time
-  void AccuProfile(const std::string &key, double time);
+  /// This function accumulates stats on timing that
+  /// are printed out when you call PrintProfile().  However,
+  /// it only does something if VerboseLevel() >= 1.
+  void AccuProfile(const char *function_name, const CuTimer &timer);
   void PrintProfile();
 
   void PrintMemoryUsage() const;
@@ -172,14 +175,27 @@ class CuDevice {
 
   cudaDeviceProp properties_;
 
-  bool verbose_;
-
+  // there used to be a 'bool verbose_' here.  I'm leaving a placeholder here
+  // instead of removing it because it causes particularly hard-to-debug errors
+  // if compilation is not done right (e.g. make depend was not done), and this
+  // class's members move about.
+  bool unused_;
   bool debug_stride_mode_;
   uint32 num_debug_stride_allocations_;
 
   CuMemoryAllocator allocator_;
 
 }; // class CuDevice
+
+
+// Class CuTimer is a convenience wrapper for class Timer which only
+// sets the time if the verbose level is >= 1.  This helps avoid
+// an unnecessary system call if the verbose level is 0 and you
+// won't be accumulating the timing stats.
+class CuTimer: public Timer {
+ public:
+  CuTimer(): Timer(GetVerboseLevel() >= 1) { }
+};
 
 // This function is declared as a more convenient way to get the CUDA device handle for use
 // in the CUBLAS v2 API, since we so frequently need to access it.

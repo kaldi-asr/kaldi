@@ -742,8 +742,8 @@ template<typename Real> void CuVectorUnitTest() {
 
 
 int main(int argc, char *argv[]) {
-  //Select the GPU
   using namespace kaldi;
+  SetVerboseLevel(1);
   const char *usage = "Usage: cu-vector-test [options]";
 
   ParseOptions po(usage);
@@ -755,7 +755,7 @@ int main(int argc, char *argv[]) {
     po.PrintUsage();
     exit(1);
   }
-  
+
   int32 loop = 0;
 #if HAVE_CUDA == 1
   for (; loop < 2; loop++) {
