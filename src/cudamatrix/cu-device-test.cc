@@ -99,6 +99,7 @@ void CudaMatrixResizeTest() {
 
 
 int main() {
+  SetVerboseLevel(1);
 #if HAVE_CUDA == 1
   for (int32 loop = 0; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);

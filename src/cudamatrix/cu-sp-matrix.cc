@@ -44,7 +44,7 @@ void CuSpMatrix<Real>::CopyFromMat(const CuMatrixBase<Real> &M,
     return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     MatrixIndexT D = this->NumRows();
     if (D == 0)
       return;
@@ -81,7 +81,7 @@ void CuSpMatrix<Real>::CopyFromMat(const CuMatrixBase<Real> &M,
       default:
         KALDI_ASSERT("Invalid argument to CuSpMatrix::CopyFromMat");
     }
-    CuDevice::Instantiate().AccuProfile("CuSpMatrix::CopyFromMat(from CuMatrixBase)", tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuSpMatrix::CopyFromMat(from CuMatrixBase)", tim);
   } else
 #endif
   {
@@ -110,7 +110,7 @@ void CuSpMatrix<Real>::AddVec2(const Real alpha, const CuVectorBase<Real> &v) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     if (this->num_rows_ == 0) return;
-    Timer tim;
+    CuTimer tim;
     size_t nr = this->num_rows_;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(nr, CU2DBLOCK), n_blocks(nr, CU2DBLOCK));
@@ -118,7 +118,7 @@ void CuSpMatrix<Real>::AddVec2(const Real alpha, const CuVectorBase<Real> &v) {
     CU_SAFE_CALL(cublas_spr(GetCublasHandle(), CUBLAS_FILL_MODE_UPPER, this->num_rows_, alpha, v.Data(),
                1, this->Data()));
     
-    CuDevice::Instantiate().AccuProfile("CuSpMatrix::AddVec2", tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuSpMatrix::AddVec2", tim);
   } else
 #endif
   {
@@ -135,7 +135,7 @@ void CuSpMatrix<Real>::AddMat2(const Real alpha, const CuMatrixBase<Real> &M,
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     if (this->num_rows_ == 0) return;
-    Timer tim;
+    CuTimer tim;
     MatrixIndexT this_dim = this->NumRows(),
         m_other_dim = (transM == kNoTrans ? M.NumCols() : M.NumRows());
 
@@ -152,7 +152,7 @@ void CuSpMatrix<Real>::AddMat2(const Real alpha, const CuMatrixBase<Real> &M,
                 M.Stride(), beta, tmp_mat.Data(), tmp_mat.Stride());
     this->CopyFromMat(tmp_mat, kTakeLower);
     
-    CuDevice::Instantiate().AccuProfile("CuSpMatrix::AddMat2", tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuSpMatrix::AddMat2", tim);
   } else
 #endif
   {
