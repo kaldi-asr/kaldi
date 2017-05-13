@@ -41,7 +41,6 @@
   if ((ret = (fun)) != 0) { \
     KALDI_ERR << "cudaError_t " << ret << " : \"" << cudaGetErrorString((cudaError_t)ret) << "\" returned from '" << #fun << "'"; \
   } \
-  cudaDeviceSynchronize(); \
 }
 
 #define KALDI_CUDA_ERR(ret, msg) \
@@ -49,8 +48,8 @@
   if (ret != 0) { \
     KALDI_ERR << msg << ", diagnostics: cudaError_t " << ret << " : \"" << cudaGetErrorString((cudaError_t)ret) << "\", in " << __FILE__ << ":" << __LINE__; \
   } \
-  cudaDeviceSynchronize(); \
 }
+
 
 namespace kaldi {
 

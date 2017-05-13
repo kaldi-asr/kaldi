@@ -152,6 +152,13 @@ def train_new_models(dir, iter, srand, num_jobs,
                                     int(max_deriv_time_relative)))
 
     threads = []
+    # the GPU timing info is only printed if we use the --verbose=1 flag; this
+    # slows down the computation slightly, so don't accumulate it on every
+    # iteration.  Don't do it on iteration 0 either, because we use a smaller
+    # than normal minibatch size, and people may get confused thinking it's
+    # slower for iteration 0 because of the verbose option.
+    verbose_opt = ("--verbose=1" if iter % 20 == 0 and iter > 0 else "")
+
     for job in range(1, num_jobs+1):
         # k is a zero-based index that we will derive the other indexes from.
         k = num_archives_processed + job - 1
@@ -169,7 +176,7 @@ def train_new_models(dir, iter, srand, num_jobs,
 
         thread = common_lib.background_command(
             """{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
-                    nnet3-chain-train {parallel_train_opts} \
+                    nnet3-chain-train {parallel_train_opts} {verbose_opt} \
                     --apply-deriv-weights={app_deriv_wts} \
                     --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
                     {cache_io_opts}  --xent-regularize={xent_reg} \
@@ -194,6 +201,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         xent_reg=xent_regularize, leaky=leaky_hmm_coefficient,
                         cache_io_opts=cache_io_opts,
                         parallel_train_opts=run_opts.parallel_train_opts,
+                        verbose_opt=verbose_opt,
                         momentum=momentum, max_param_change=max_param_change,
                         raw_model=raw_model_string,
                         egs_dir=egs_dir, archive_index=archive_index,
