@@ -1,7 +1,30 @@
 #!/bin/bash
 
 # 1b40l is as 1b40k but using more epochs: 100 instead of 60,
-# since e->i was helpful.
+# since e->i was helpful. This helps a bit:
+
+#exp/resnet1b40l_cifar10: num-iters=133 nj=1..2 num-params=1.3M dim=96->10 combine=-0.01->-0.01 loglike:train/valid[87,132,final]=(-0.13,-0.03,-0.01/-0.27,-0.21,-0.16) accuracy:train/valid[87,132,final]=(0.95,0.99,1.00/0.91,0.94,0.95)
+#exp/resnet1b40l_cifar100: num-iters=133 nj=1..2 num-params=1.3M dim=96->100 combine=-0.22->-0.19 loglike:train/valid[87,132,final]=(-0.75,-0.27,-0.16/-1.22,-1.06,-0.89) accuracy:train/valid[87,132,final]=(0.78,0.93,0.96/0.67,0.72,0.76)
+
+
+# local/nnet3/compare.sh exp/resnet1b40k_cifar10 exp/resnet1b40l_cifar10
+# System                resnet1b40k_cifar10 resnet1b40l_cifar10
+# final test accuracy:       0.9481      0.9521
+# final train accuracy:       0.9992      0.9998
+# final test objf:         -0.171369   -0.160283
+# final train objf:      -0.00980603 -0.00672504
+# num-parameters:           1322730     1322730
+
+# local/nnet3/compare.sh exp/resnet1b40k_cifar100 exp/resnet1b40l_cifar100
+# System                resnet1b40k_cifar100 resnet1b40l_cifar100
+# final test accuracy:       0.7478      0.7597
+# final train accuracy:       0.9446      0.9638
+# final test objf:         -0.899789   -0.889707
+# final train objf:         -0.22468   -0.163996
+# num-parameters:           1345860     1345860
+
+
+
 # 1b40k is as 1b40e but a larger model.
 #  Definitely better:
 
