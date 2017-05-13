@@ -386,7 +386,7 @@ def train(args, run_opts):
             shrinkage_value = 1.0
             if args.shrink_value != 1.0:
                 shrinkage_value = (args.shrink_value
-                                   if common_train_lib.do_shrinkage(
+                                   if common_train_lib.should_do_shrinkage(
                                         iter, model_file,
                                         args.shrink_saturation_threshold,
                                         get_raw_nnet_from_am=False)

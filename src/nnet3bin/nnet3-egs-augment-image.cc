@@ -35,6 +35,12 @@ struct ImageAugmentationConfig {
   BaseFloat horizontal_flip_prob;
   BaseFloat horizontal_shift;
   BaseFloat vertical_shift;
+  BaseFloat color_shift;
+  BaseFloat color_scale;
+  BaseFloat brightness_shift;
+  BaseFloat brightness_scale;
+  BaseFloat output_epsilon;  // epsilon is a small probabilty we add to
+                             // the posteriors of all classes.
   std::string fill_mode_string;
 
   ImageAugmentationConfig():
@@ -42,6 +48,11 @@ struct ImageAugmentationConfig {
       horizontal_flip_prob(0.0),
       horizontal_shift(0.0),
       vertical_shift(0.0),
+      color_shift(0.0),
+      color_scale(0.0),
+      brightness_shift(0.0),
+      brightness_scale(0.0),
+      output_epsilon(0.0),
       fill_mode_string("nearest") { }
 
 
@@ -57,6 +68,19 @@ struct ImageAugmentationConfig {
     po->Register("vertical-shift", &vertical_shift,
                  "Maximum allowed vertical shift as proportion of image "
                  "height.  Padding is with closest pixel.");
+    po->Register("color-shift", &color_shift,
+                 "Magnitude of random color shift (e.g. 0.1).");
+    po->Register("color-scale", &color_scale,
+                 "Magnitude of random color scale (e.g. 0.1).");
+    po->Register("brightness-shift", &brightness_shift,
+                 "Magnitude of random brightness shift (e.g. 0.1).");
+    po->Register("brightness-scale", &brightness_scale,
+                 "Magnitude of random brightness scale (e.g. 0.1).");
+    po->Register("output-epsilon", &output_epsilon,
+                 "A constant we add to all output probabilities, after "
+                 "dividing by the number of classes (helps "
+                 "prevent the probabilities for wrong classes from getting "
+                 "too negative, thus limiting the range of the output)");
     po->Register("fill-mode", &fill_mode_string, "Mode for dealing with "
 		 "points outside the image boundary when applying transformation. "
 		 "Choices = {nearest, reflect}");
@@ -180,6 +204,90 @@ void ApplyAffineTransform(MatrixBase<BaseFloat> &transform,
   }
 }
 
+// this does the color-space part of the image perturbation.
+void PerturbImageColors(const ImageAugmentationConfig &config,
+                        MatrixBase<BaseFloat> *image) {
+  // do these things in random order.
+  enum ColorAction { kColorShift, kColorScale, kBrightnessShift, kBrightnessScale };
+  std::vector<ColorAction> actions(4);
+  actions[0] = kColorShift;
+  actions[1] = kColorScale;
+  actions[2] = kBrightnessShift;
+  actions[3] = kBrightnessScale;
+  std::random_shuffle(actions.begin(), actions.end());
+  int32 num_rows = image->NumRows(),
+      num_cols = image->NumCols(),
+      num_channels = config.num_channels,
+      height = num_cols / num_channels;
+  for (size_t i = 0; i < actions.size(); i++) {
+    ColorAction action = actions[i];
+    switch (action) {
+      case kColorShift: {
+        if (config.color_shift != 0.0) {
+          for (int32 channel = 0; channel < num_channels; channel++) {
+            BaseFloat shift = config.color_shift * (-1.0 + 2.0 * RandUniform());
+            for (int32 r = 0; r < num_rows; r++) {
+              for (int32 c = 0; c < height; c++) {
+                BaseFloat &b = (*image)(r, channel + c * num_channels);
+                b += shift;
+                if (b < 0.0) b = 0.0;
+                if (b > 1.0) b = 1.0;
+              }
+            }
+          }
+        }
+        break;
+      }
+      case kColorScale: {
+        if (config.color_scale != 0.0) {
+          for (int32 channel = 0; channel < num_channels; channel++) {
+            BaseFloat scale = 1.0 +
+                config.color_scale * (-1.0 + 2.0 * RandUniform());
+            for (int32 r = 0; r < num_rows; r++) {
+              for (int32 c = 0; c < height; c++) {
+                BaseFloat &b = (*image)(r, channel + c * num_channels);
+                b = 0.5 + (b - 0.5) * scale;
+                if (b < 0.0) b = 0.0;
+                if (b > 1.0) b = 1.0;
+              }
+            }
+          }
+        }
+        break;
+      }
+      case kBrightnessShift: {
+        if (config.brightness_shift != 0.0) {
+          BaseFloat shift = config.brightness_shift * (-1.0 + 2.0 * RandUniform());
+          for (int32 r = 0; r < num_rows; r++) {
+            for (int32 c = 0; c < num_cols; c++) {
+              BaseFloat &b = (*image)(r, c);
+              b += shift;
+              if (b < 0.0) b = 0.0;
+              if (b > 1.0) b = 1.0;
+            }
+          }
+        }
+        break;
+      }
+      case kBrightnessScale: {
+        if (config.brightness_scale != 0.0) {
+          BaseFloat scale = 1.0 +
+              config.brightness_scale * (-1.0 + 2.0 * RandUniform());
+          for (int32 r = 0; r < num_rows; r++) {
+            for (int32 c = 0; c < num_cols; c++) {
+              BaseFloat &b = (*image)(r, c);
+              b = 0.5 + (b - 0.5) * scale;
+              if (b < 0.0) b = 0.0;
+              if (b > 1.0) b = 1.0;
+            }
+          }
+        }
+        break;
+      }
+    }
+  }
+}
+
 /**
    This function randomly modifies (perturbs) the image by applying different
    geometric transformations according to the options in 'config'.
@@ -199,10 +307,10 @@ void PerturbImage(const ImageAugmentationConfig &config,
   int32 image_width = image->NumRows(),
       num_channels = config.num_channels,
       image_height = image->NumCols() / num_channels;
-  if (image->NumCols() % num_channels != 0) {
+  if (image->NumCols() % num_channels != 0)
     KALDI_ERR << "Number of columns in image must divide the number "
         "of channels";
-  }
+  PerturbImageColors(config, image);
   // We do an affine transform which
   // handles flipping, translation, rotation, magnification, and shear.
   Matrix<BaseFloat> transform_mat(3, 3, kUndefined);
@@ -300,6 +408,12 @@ void PerturbImageInNnetExample(
       PerturbImage(config, &image);
 
       // modify the 'io' object.
+      io.features = image;
+    }
+    if (io.name == "output" && config.output_epsilon != 0.0) {
+      Matrix<BaseFloat> image;
+      io.features.GetMatrix(&image);
+      image.Add(config.output_epsilon / image.NumCols());
       io.features = image;
     }
   }

@@ -5,7 +5,7 @@
 # accuracy improved from 85.8% to 88%
 
 # steps/info/nnet3_dir_info.pl exp/cnn_aug_1c_cifar10/
-# exp/cnn_aug_1c_cifar10/: num-iters=200 nj=1..2 num-params=2.2M dim=96->10 combine=-0.24->-0.24 loglike:train/valid[132,199,final]=(-0.18,-0.12,-0.12/-0.39,-0.37,-0.37) accuracy:train/valid[132,199,final]=(0.94,0.96,0.96/0.87,0.88,0.88)
+# exp/cnn_aug_1c_cifar10: num-iters=200 nj=1..2 num-params=2.2M dim=96->10 combine=-0.23->-0.24 loglike:train/valid[132,199,final]=(-0.17,-0.12,-0.12/-0.39,-0.36,-0.37) accuracy:train/valid[132,199,final]=(0.94,0.96,0.96/0.87,0.88,0.88)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail

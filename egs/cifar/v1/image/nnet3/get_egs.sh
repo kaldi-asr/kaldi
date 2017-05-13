@@ -10,6 +10,7 @@
 cmd=run.pl
 egs_per_archive=25000
 train_subset_egs=5000
+preprocess_opts=
 test_mode=false
 stage=0
 # end configuration section
@@ -22,7 +23,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# != 3 ]; then
   echo "Usage: $0 [opts] <train-data-dir> <test-or-dev-data-dir> <egs-dir>"
-  echo " e.g.: $0 --egs-per-iter 25000 data/cifar10_train exp/cifar10_train_egs"
+  echo " e.g.: $0 --egs-per-archive 25000 data/cifar10_train exp/cifar10_train_egs"
   echo " or: $0 --test-mode true data/cifar10_test exp/cifar10_test_egs"
   echo "Options (with defaults):"
   echo "  --cmd 'run.pl'     How to run jobs (e.g. queue.pl)"
@@ -36,6 +37,10 @@ if [ $# != 3 ]; then
   echo "                     each iteration and for combination at the end"
   echo "                     (note: there is no data held-out from training"
   echo "                     data; we use the test or dev set for that.)"
+  echo "  --preprocess-opts ''   Options to give to the binary 'image-preprocess'; "
+  echo "                     if this option specified, we will include that binary "
+  echo "                     in the feature processing pipeline with the provided "
+  echo "                     options."
   exit 1;
 fi
 
@@ -63,10 +68,24 @@ fi
 mkdir -p $dir/info $dir/log
 
 
+
 paf="--print-args=false"
 num_channels=$(cat $train/num_channels)
-num_cols=$(head -n 1 $train/images.scp | feat-to-dim $paf scp:- -)
-num_rows=$(head -n 1 $train/images.scp | feat-to-len $paf scp:- ark,t:- | awk '{print $2}')
+
+
+if [ ! -z "$preprocess_opts" ]; then
+  all_preprocess_opts="--num-channels=$num_channels $preprocess_opts"
+fi
+
+if [ -z "$preprocess_opts" ]; then
+  preprocess_command="copy-matrix scp:- ark:-"
+else
+  preprocess_command="image-preprocess $all_preprocess_opts scp:- ark:-"
+fi
+
+
+num_cols=$(head -n 1 $train/images.scp | $preprocess_command | feat-to-dim $paf ark:- -)
+num_rows=$(head -n 1 $train/images.scp | $preprocess_command | feat-to-len $paf ark:- ark,t:- | awk '{print $2}')
 width=$num_rows
 height=$[$num_cols/$num_channels]
 # the width of the image equals $num_rows.
@@ -98,10 +117,15 @@ if ! [ "$num_classes" -eq "$num_classes_test" ]; then
 fi
 
 if [ $stage -le 0 ]; then
+  if [ -z "$preprocess_opts" ]; then
+     input_str="scp:filter_scp.pl $dir/train_subset_ids.txt $train/images.scp|"
+  else
+    input_str="ark:filter_scp.pl $dir/train_subset_ids.txt $train/images.scp | image-preprocess $all_preprocess_opts scp:- ark:- |"
+  fi
   $cmd $dir/log/get_train_diagnostic_egs.log \
        ali-to-post "ark:filter_scp.pl $dir/train_subset_ids.txt $train/labels.txt|" ark:- \| \
        post-to-smat --dim=$num_classes ark:- ark:- \| \
-       nnet3-get-egs-simple input="scp:filter_scp.pl $dir/train_subset_ids.txt $train/images.scp|" \
+       nnet3-get-egs-simple input="$input_str" \
        output=ark:- ark:$dir/train_diagnostic.egs
 fi
 
@@ -111,10 +135,15 @@ if [ $stage -le 1 ]; then
   # we use the same filenames as the regular training script, but
   # the 'valid_diagnostic' egs are actually used as the test or dev
   # set.
+  if [ -z "$preprocess_opts" ]; then
+    input_str="scp:$test/images.scp"
+  else
+    input_str="ark:image-preprocess $all_preprocess_opts scp:$test/images.scp ark:- |"
+  fi
   $cmd $dir/log/get_test_or_dev_egs.log \
        ali-to-post ark:$test/labels.txt ark:- \| \
        post-to-smat --dim=$num_classes ark:- ark:- \| \
-       nnet3-get-egs-simple input=scp:$test/images.scp \
+       nnet3-get-egs-simple input="$input_str" \
        output=ark:- ark:$dir/valid_diagnostic.egs
 fi
 
@@ -122,22 +151,26 @@ fi
 
 num_train_images=$(wc -l <$train/labels.txt)
 
-# the + 1 is to round up, not down... we assume it doesn't divide exactly.
-num_archives=$[num_train_images/egs_per_archive+1]
+num_archives=$[(num_train_images-1)/egs_per_archive+1]
 
 
 if [ $stage -le 2 ]; then
   echo "$0: creating $num_archives archives of egs"
 
   image/split_image_dir.sh $train $num_archives
-
   sdata=$train/split$num_archives
+
+  if [ -z "$preprocess_opts" ]; then
+    input_str="scp:$sdata/JOB/images.scp"
+  else
+    input_str="ark:image-preprocess $all_preprocess_opts scp:$sdata/JOB/images.scp ark:- |"
+  fi
 
   $cmd JOB=1:$num_archives $dir/log/get_egs.JOB.log \
        ali-to-post ark:$sdata/JOB/labels.txt ark:- \| \
        post-to-smat --dim=$num_classes ark:- ark:- \| \
-       nnet3-get-egs-simple input=scp:$sdata/JOB/images.scp \
-        output=ark:- ark:$dir/egs.JOB.ark
+       nnet3-get-egs-simple input="$input_str" \
+         output=ark:- ark:$dir/egs.JOB.ark
 fi
 
 rm $dir/train_subset_ids.txt 2>/dev/null || true
