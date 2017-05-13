@@ -260,7 +260,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     do_average = (iter > 0)
 
     raw_model_string = ("nnet3-am-copy --raw=true --learning-rate={0} "
-                        "{1}/{2}.mdl - |".format(learning_rate, dir, iter))
+                        "--scale={1} {2}/{3}.mdl - |".format(
+                            learning_rate, shrinkage_value, dir, iter))
 
     if do_average:
         cur_num_chunk_per_minibatch_str = num_chunk_per_minibatch_str
@@ -315,16 +316,14 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         common_train_lib.get_average_nnet_model(
             dir=dir, iter=iter,
             nnets_list=" ".join(nnets_list),
-            run_opts=run_opts,
-            shrink=shrinkage_value)
+            run_opts=run_opts)
 
     else:
         # choose the best model from different jobs
         common_train_lib.get_best_nnet_model(
             dir=dir, iter=iter,
             best_model_index=best_model,
-            run_opts=run_opts,
-            shrink=shrinkage_value)
+            run_opts=run_opts)
 
     try:
         for i in range(1, num_jobs + 1):

@@ -1,10 +1,14 @@
 #!/bin/bash
 
-# aug_1b is the same as 1e but with data augmentation
-# accuracy 84.5% (1e has accuracy 83%)
+# run_cnn_aug_1b is the same as run_cnn_1e but with data augmentation.
 
-# steps/info/nnet3_dir_info.pl exp/cnn_aug_1b_cifar10
-# exp/cnn_aug_1b_cifar10/: num-iters=60 nj=1..2 num-params=0.2M dim=96->10 combine=-0.53->-0.50 loglike:train/valid[39,59,final]=(-0.57,-0.45,-0.48/-0.68,-0.62,-0.64) accuracy:train/valid[39,59,final]=(0.80,0.84,0.83/0.76,0.79,0.78)
+# accuracy is 0.857, vs. 0.83 for the un-augmented baseline.
+
+# exp/cnn_aug_1b_cifar10: num-iters=60 nj=1..2 num-params=2.2M dim=96->10 combine=-0.40->-0.38 loglike:train/valid[39,59,final]=(-0.35,-0.26,-0.26/-0.47,-0.42,-0.42) accuracy:train/valid[39,59,final]=(0.88,0.91,0.91/0.84,0.86,0.86)
+
+# grep Overall exp/cnn_aug_1b_cifar10/log/compute_prob_valid.final.log  | grep acc
+# LOG (nnet3-compute-prob[5.1]:PrintTotalStats():nnet-diagnostics.cc:165) Overall accuracy for 'output' is 0.8567 per frame, over 10000 frames.#
+
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -17,7 +21,7 @@ train_stage=-10
 dataset=cifar10
 srand=0
 reporting_email=
-affix=_aug_1e
+affix=_aug_1b
 
 
 # End configuration section.
@@ -93,7 +97,7 @@ if [ $stage -le 2 ]; then
 
   steps/nnet3/train_raw_dnn.py --stage=$train_stage \
     --cmd="$train_cmd" \
-    --image.augmentation-opts="--horizontal-flip-prob=0.5 --horizontal-shift=0.1 --vertical-shift=0.1" \
+    --image.augmentation-opts="--horizontal-flip-prob=0.5 --horizontal-shift=0.1 --vertical-shift=0.1 --num-channels=3" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=30 \

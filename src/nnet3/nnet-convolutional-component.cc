@@ -87,6 +87,32 @@ std::string TimeHeightConvolutionComponent::Info() const {
 }
 
 
+void TimeHeightConvolutionComponent::InitUnit() {
+  if (model_.num_filters_in != model_.num_filters_out) {
+    KALDI_ERR << "You cannot specify init-unit if the num-filters-in "
+              << "and num-filters-out differ.";
+  }
+  size_t i;
+  int32 zero_offset = 0;
+  for (i = 0; i < model_.offsets.size(); i++) {
+    if (model_.offsets[i].time_offset == 0 &&
+        model_.offsets[i].height_offset == 0) {
+      zero_offset = i;
+      break;
+    }
+  }
+  if (i == model_.offsets.size())  // did not break.
+    KALDI_ERR << "You cannot specify init-unit if the model does "
+              << "not have the offset (0, 0).";
+
+  CuSubMatrix<BaseFloat> zero_offset_block(
+      linear_params_, 0, linear_params_.NumRows(),
+      zero_offset * model_.num_filters_in, model_.num_filters_in);
+
+  KALDI_ASSERT(zero_offset_block.NumRows() == zero_offset_block.NumCols());
+  zero_offset_block.AddToDiag(1.0);  // set this block to the unit matrix.
+}
+
 void TimeHeightConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
   // 1. Config values inherited from UpdatableComponent.
   InitLearningRatesFromConfig(cfl);
@@ -169,16 +195,22 @@ void TimeHeightConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
 
   // 3. Parameter-initialization configs.
   BaseFloat param_stddev = -1, bias_stddev = 0.0;
+  bool init_unit = false;
   cfl->GetValue("param-stddev", &param_stddev);
   cfl->GetValue("bias-stddev", &bias_stddev);
+  cfl->GetValue("init-unit", &init_unit);
   if (param_stddev < 0.0) {
     param_stddev = 1.0 / sqrt(model_.num_filters_in *
                               model_.offsets.size());
   }
   // initialize the parameters.
   linear_params_.Resize(model_.ParamRows(), model_.ParamCols());
-  linear_params_.SetRandn();
-  linear_params_.Scale(param_stddev);
+  if (!init_unit) {
+    linear_params_.SetRandn();
+    linear_params_.Scale(param_stddev);
+  } else {
+    InitUnit();
+  }
   bias_params_.Resize(model_.num_filters_out);
   bias_params_.SetRandn();
   bias_params_.Scale(bias_stddev);
