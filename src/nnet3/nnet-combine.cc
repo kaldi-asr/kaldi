@@ -222,7 +222,7 @@ void NnetCombiner::PrintParams(const VectorBase<double> &params) const {
   int32 num_effective_nnets = nnet_params_.NumRows();
   if (num_effective_nnets != num_real_input_nnets_)
     KALDI_LOG << "Above, only " << num_effective_nnets << " weights were "
-              "printed due to the the --num-effective-nnets option; "
+              "printed due to the the --max-effective-inputs option; "
               "there were " << num_real_input_nnets_ << " actual input nnets. "
               "Each weight corresponds to a weighted average over a range of "
               "nnets in the sequence (with triangular bins)";

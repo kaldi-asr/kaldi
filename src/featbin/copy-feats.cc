@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
                 "(only currently supported for wxfilename, i.e. archive/script,"
                 "output)");
     po.Register("compression-method", &compression_method_in,
-                "Only relevant if --compress=true; the method (1 through 6) to "
+                "Only relevant if --compress=true; the method (1 through 7) to "
                 "compress the matrix.  Search for CompressionMethod in "
                 "src/matrix/compressed-matrix.h.");
     po.Register("write-num-frames", &num_frames_wspecifier,

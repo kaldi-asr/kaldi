@@ -217,83 +217,9 @@ void DropoutComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<DropoutPerFrame>");
   WriteBasicType(os, binary, dropout_per_frame_);
   WriteToken(os, binary, "<TestMode>");
-  WriteBasicType(os, binary, test_mode_); 
+  WriteBasicType(os, binary, test_mode_);
   WriteToken(os, binary, "</DropoutComponent>");
 }
-
-void SumReduceComponent::Init(int32 input_dim, int32 output_dim)  {
-  input_dim_ = input_dim;
-  output_dim_ = output_dim;
-  KALDI_ASSERT(input_dim_ > 0 && output_dim_ > 0 &&
-               input_dim_ % output_dim_ == 0);
-}
-
-void SumReduceComponent::InitFromConfig(ConfigLine *cfl) {
-  int32 input_dim = 0;
-  int32 output_dim = 0;
-  bool ok = cfl->GetValue("output-dim", &output_dim) &&
-      cfl->GetValue("input-dim", &input_dim);
-  if (!ok || cfl->HasUnusedValues() || output_dim <= 0)
-    KALDI_ERR << "Invalid initializer for layer of type "
-              << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(input_dim, output_dim);
-}
-
-
-void* SumReduceComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
-                                   const CuMatrixBase<BaseFloat> &in,
-                                   CuMatrixBase<BaseFloat> *out) const {
-  KALDI_ASSERT(out->NumRows() == in.NumRows() && in.NumCols() == input_dim_
-               && out->NumCols() == output_dim_);
-  int32 num_blocks = input_dim_ / output_dim_;
-  for (int32 i = 0; i < num_blocks; i++) {
-    CuSubMatrix<BaseFloat> in_block(in, 0, in.NumRows(),
-                                    i * output_dim_, output_dim_);
-    if (i == 0)
-      out->CopyFromMat(in_block);
-    else
-      out->AddMat(1.0, in_block);
-  }
-  return NULL;
-}
-
-void SumReduceComponent::Backprop(const std::string &debug_info,
-                                  const ComponentPrecomputedIndexes *indexes,
-                                  const CuMatrixBase<BaseFloat> &, // in_value
-                                  const CuMatrixBase<BaseFloat> &, // out_value
-                                  const CuMatrixBase<BaseFloat> &out_deriv,
-                                  void *memo,
-                                  Component *, // to_update
-                                  CuMatrixBase<BaseFloat> *in_deriv) const {
-  if (!in_deriv)  return;
-  KALDI_ASSERT(out_deriv.NumRows() == in_deriv->NumRows() &&
-               in_deriv->NumCols() == input_dim_ &&
-               out_deriv.NumCols() == output_dim_);
-  int32 num_blocks = input_dim_ / output_dim_;
-  for (int32 i = 0; i < num_blocks; i++) {
-    CuSubMatrix<BaseFloat> in_deriv_block(*in_deriv, 0, in_deriv->NumRows(),
-                                          i * output_dim_, output_dim_);
-    in_deriv_block.CopyFromMat(out_deriv);
-  }
-}
-
-void SumReduceComponent::Read(std::istream &is, bool binary) {
-  ExpectOneOrTwoTokens(is, binary, "<SumReduceComponent>", "<InputDim>");
-  ReadBasicType(is, binary, &input_dim_);
-  ExpectToken(is, binary, "<OutputDim>");
-  ReadBasicType(is, binary, &output_dim_);
-  ExpectToken(is, binary, "</SumReduceComponent>");
-}
-
-void SumReduceComponent::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<SumReduceComponent>");
-  WriteToken(os, binary, "<InputDim>");
-  WriteBasicType(os, binary, input_dim_);
-  WriteToken(os, binary, "<OutputDim>");
-  WriteBasicType(os, binary, output_dim_);
-  WriteToken(os, binary, "</SumReduceComponent>");
-}
-
 
 void ElementwiseProductComponent::Init(int32 input_dim, int32 output_dim)  {
   input_dim_ = input_dim;
@@ -5869,6 +5795,79 @@ void BatchNormComponent::ZeroStats() {
     count_ = 0.0;
     stats_sum_.SetZero();
     stats_sumsq_.SetZero();
+  }
+}
+
+
+SumBlockComponent::SumBlockComponent(const SumBlockComponent &other):
+    input_dim_(other.input_dim_), output_dim_(other.output_dim_),
+    scale_(other.scale_) { }
+
+void SumBlockComponent::InitFromConfig(ConfigLine *cfl) {
+  scale_ = 1.0;
+  bool ok = cfl->GetValue("input-dim", &input_dim_) &&
+      cfl->GetValue("output-dim", &output_dim_);
+  if (!ok)
+    KALDI_ERR << "input-dim and output-dim must both be provided.";
+  if (input_dim_ <= 0 || input_dim_ % output_dim_ != 0)
+    KALDI_ERR << "Invalid values input-dim=" << input_dim_
+              << " output-dim=" << output_dim_;
+  cfl->GetValue("scale", &scale_);
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Could not process these elements in initializer: "
+              << cfl->UnusedValues();
+}
+
+void SumBlockComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<SumBlockComponent>", "<InputDim>");
+  ReadBasicType(is, binary, &input_dim_);
+  ExpectToken(is, binary, "<OutputDim>");
+  ReadBasicType(is, binary, &output_dim_);
+  ExpectToken(is, binary, "<Scale>");
+  ReadBasicType(is, binary, &scale_);
+  ExpectToken(is, binary, "</SumBlockComponent>");
+}
+
+void SumBlockComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<SumBlockComponent>");
+  WriteToken(os, binary, "<InputDim>");
+  WriteBasicType(os, binary, input_dim_);
+  WriteToken(os, binary, "<OutputDim>");
+  WriteBasicType(os, binary, output_dim_);
+  WriteToken(os, binary, "<Scale>");
+  WriteBasicType(os, binary, scale_);
+  WriteToken(os, binary, "</SumBlockComponent>");
+}
+
+std::string SumBlockComponent::Info() const {
+  std::ostringstream stream;
+  stream << Type() << ", input-dim=" << input_dim_
+         << ", output-dim=" << output_dim_
+         << ", scale=" << scale_;
+  return stream.str();
+}
+
+void* SumBlockComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                   const CuMatrixBase<BaseFloat> &in,
+                                   CuMatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(out->NumRows() == in.NumRows() &&
+               out->NumCols() == output_dim_ &&
+               in.NumCols() == input_dim_);
+  out->AddMatBlocks(scale_, in, kNoTrans);
+  return NULL;
+}
+
+void SumBlockComponent::Backprop(
+    const std::string &debug_info,
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &, //in_value
+    const CuMatrixBase<BaseFloat> &, // out_value,
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    void *memo,
+    Component *to_update,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (in_deriv) {
+    in_deriv->AddMatBlocks(scale_, out_deriv, kNoTrans);
   }
 }
 

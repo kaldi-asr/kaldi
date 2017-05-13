@@ -120,6 +120,12 @@ namespace nnet3 {
                       filters; this value will ensure that the output has
                       unit stddev if the input has unit stddev.
       bias-stddev     Standard deviation of bias terms.  default=0.0.
+      init-unit       Defaults to false.  If true, it is required that
+                      num-filters-in equal num-filters-out and there should
+                      exist a (height, time) offset in the model equal to (0,
+                      0).  We will initialize the parameter matrix to be
+                      equivalent to the identity transform.  In this case,
+                      param-stddev is ignored.
 
 
    Natural-gradient related options are below; you won't normally have to
@@ -308,7 +314,9 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
       const CuMatrixBase<BaseFloat> &in_value,
       const CuMatrixBase<BaseFloat> &out_deriv);
 
-
+  // Function called to initialize linear_params_ if init-unit=true in the config
+  // line.
+  void InitUnit();
 
   time_height_convolution::ConvolutionModel model_;
 

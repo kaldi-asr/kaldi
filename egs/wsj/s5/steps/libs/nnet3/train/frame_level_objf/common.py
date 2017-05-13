@@ -77,8 +77,9 @@ def train_new_models(dir, iter, srand, num_jobs,
 
         if image_augmentation_opts:
             image_augmentation_cmd = (
-                'nnet3-egs-augment-image {aug_opts} ark:- ark:- |'.format(
-                aug_opts=image_augmentation_opts))
+                'nnet3-egs-augment-image --srand={srand} {aug_opts} ark:- ark:- |'.format(
+                    srand=k+srand,
+                    aug_opts=image_augmentation_opts))
         else:
             image_augmentation_cmd = ''
 
@@ -95,8 +96,7 @@ def train_new_models(dir, iter, srand, num_jobs,
             """nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} """
             """--srand={srand} ark:- ark:- | {aug_cmd} """
             """nnet3-merge-egs --minibatch-size={minibatch_size_str} """
-            """ark:- ark:- |" \
-                    {dir}/{next_iter}.{job}.raw""".format(
+            """ ark:- ark:- |" {dir}/{next_iter}.{job}.raw""".format(
                         command=run_opts.command,
                         train_queue_opt=run_opts.train_queue_opt,
                         dir=dir, iter=iter, srand=iter + srand,
@@ -185,12 +185,14 @@ def train_one_iteration(dir, iter, srand, egs_dir,
 
     if get_raw_nnet_from_am:
         raw_model_string = ("nnet3-am-copy --raw=true --learning-rate={0} "
-                            "{1}/{2}.mdl - |".format(learning_rate,
-                                                     dir, iter))
+                            "--scale={1} {2}/{3}.mdl - |".format(
+                                learning_rate, shrinkage_value,
+                                dir, iter))
     else:
-        raw_model_string = ("nnet3-copy --learning-rate={lr} "
+        raw_model_string = ("nnet3-copy --learning-rate={lr} --scale={s} "
                             "{dir}/{iter}.raw - |".format(
-                                lr=learning_rate, dir=dir, iter=iter))
+                                lr=learning_rate, s=shrinkage_value,
+                                dir=dir, iter=iter))
 
     raw_model_string = raw_model_string + dropout_edit_string
 
@@ -240,8 +242,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
             dir=dir, iter=iter,
             nnets_list=" ".join(nnets_list),
             run_opts=run_opts,
-            get_raw_nnet_from_am=get_raw_nnet_from_am,
-            shrink=shrinkage_value)
+            get_raw_nnet_from_am=get_raw_nnet_from_am)
 
     else:
         # choose the best model from different jobs
@@ -249,8 +250,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
             dir=dir, iter=iter,
             best_model_index=best_model,
             run_opts=run_opts,
-            get_raw_nnet_from_am=get_raw_nnet_from_am,
-            shrink=shrinkage_value)
+            get_raw_nnet_from_am=get_raw_nnet_from_am)
 
     try:
         for i in range(1, num_jobs + 1):
