@@ -122,14 +122,6 @@ if which apt-get >&/dev/null && ! which zypper >/dev/null; then
     echo " sudo apt-get install libatlas3-base"
     printed=true
   fi
-  # Debian systems generally link /bin/sh to dash, which doesn't work
-  # with some scripts as it doesn't expand x.{1,2}.y to x.1.y x.2.y
-  if [ "$(readlink /bin/sh)" == "dash" ]; then
-    echo "/bin/sh is linked to dash, and currently some of the scripts will not run"
-    echo "properly.  We recommend to run:"
-    echo " sudo ln -s -f bash /bin/sh"
-    printed=true
-  fi
 fi
 
 if which yum >&/dev/null; then

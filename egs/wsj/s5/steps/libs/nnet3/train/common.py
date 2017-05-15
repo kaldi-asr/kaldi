@@ -78,28 +78,19 @@ def get_successful_models(num_models, log_file_pattern,
 
 
 def get_average_nnet_model(dir, iter, nnets_list, run_opts,
-                           get_raw_nnet_from_am=True, shrink=None):
-    scale = 1.0
-    if shrink is not None:
-        scale = shrink
+                           get_raw_nnet_from_am=True):
 
     next_iter = iter + 1
     if get_raw_nnet_from_am:
-        out_model = ("""- \| nnet3-am-copy --set-raw-nnet=- --scale={scale} \
+        out_model = ("""- \| nnet3-am-copy --set-raw-nnet=-  \
                         {dir}/{iter}.mdl {dir}/{next_iter}.mdl""".format(
                             dir=dir, iter=iter,
-                            next_iter=next_iter,
-                            scale=scale))
+                            next_iter=next_iter))
     else:
-        if shrink is not None:
-            out_model = """- \| nnet3-copy --scale={scale} \
-                           - {dir}/{next_iter}.raw""".format(
-                                   dir=dir, next_iter=next_iter, scale=scale)
-        else:
-            out_model = "{dir}/{next_iter}.raw".format(dir=dir,
-                                                       next_iter=next_iter)
+        out_model = "{dir}/{next_iter}.raw".format(
+            dir=dir, next_iter=next_iter)
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/average.{iter}.log \
                 nnet3-average {nnets_list} \
                 {out_model}""".format(command=run_opts.command,
@@ -110,10 +101,7 @@ def get_average_nnet_model(dir, iter, nnets_list, run_opts,
 
 
 def get_best_nnet_model(dir, iter, best_model_index, run_opts,
-                        get_raw_nnet_from_am=True, shrink=None):
-    scale = 1.0
-    if shrink is not None:
-        scale = shrink
+                        get_raw_nnet_from_am=True):
 
     best_model = "{dir}/{next_iter}.{best_model_index}.raw".format(
             dir=dir,
@@ -128,13 +116,13 @@ def get_best_nnet_model(dir, iter, best_model_index, run_opts,
         out_model = "{dir}/{next_iter}.raw".format(dir=dir,
                                                    next_iter=iter + 1)
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/select.{iter}.log \
-                nnet3-copy --scale={scale} {best_model} \
+                nnet3-copy {best_model} \
                 {out_model}""".format(command=run_opts.command,
                                       dir=dir, iter=iter,
                                       best_model=best_model,
-                                      out_model=out_model, scale=scale))
+                                      out_model=out_model))
 
 
 def validate_chunk_width(chunk_width):
@@ -327,8 +315,11 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
             # an older version of the script
             pass
 
-        egs_ivector_dim = int(open('{0}/info/ivector_dim'.format(
-                                    egs_dir)).readline())
+        try:
+            egs_ivector_dim = int(open('{0}/info/ivector_dim'.format(
+                egs_dir)).readline())
+        except:
+            egs_ivector_dim = 0
         egs_left_context = int(open('{0}/info/left_context'.format(
                                     egs_dir)).readline())
         egs_right_context = int(open('{0}/info/right_context'.format(
@@ -344,7 +335,9 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
         except:  # older scripts didn't write this, treat it as -1 in that case.
             egs_right_context_final = -1
 
-        if (feat_dim != egs_feat_dim) or (ivector_dim != egs_ivector_dim):
+        # if feat_dim was supplied as 0, it means the --feat-dir option was not
+        # supplied to the script, so we simply don't know what the feature dim is.
+        if (feat_dim != 0 and feat_dim != egs_feat_dim) or (ivector_dim != egs_ivector_dim):
             raise Exception("There is mismatch between featdim/ivector_dim of "
                             "the current experiment and the provided "
                             "egs directory")
@@ -406,7 +399,7 @@ def compute_presoftmax_prior_scale(dir, alidir, num_jobs, run_opts,
                                    presoftmax_prior_scale_power=-0.25):
 
     # getting the raw pdf count
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} JOB=1:{num_jobs} {dir}/log/acc_pdf.JOB.log \
                 ali-to-post "ark:gunzip -c {alidir}/ali.JOB.gz|" ark:- \| \
                 post-to-tacc --per-pdf=true  {alidir}/final.mdl ark:- \
@@ -415,7 +408,7 @@ def compute_presoftmax_prior_scale(dir, alidir, num_jobs, run_opts,
                                                dir=dir,
                                                alidir=alidir))
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/sum_pdf_counts.log \
                 vector-sum --binary=false {dir}/pdf_counts.* {dir}/pdf_counts \
         """.format(command=run_opts.command, dir=dir))
@@ -451,14 +444,14 @@ def smooth_presoftmax_prior_scale_vector(pdf_counts,
 
 def prepare_initial_network(dir, run_opts, srand=-3):
     if os.path.exists(dir+"/configs/init.config"):
-        common_lib.run_job(
+        common_lib.execute_command(
             """{command} {dir}/log/add_first_layer.log \
                     nnet3-init --srand={srand} {dir}/init.raw \
                     {dir}/configs/final.config {dir}/0.raw""".format(
                         command=run_opts.command, srand=srand,
                         dir=dir))
     else:
-        common_lib.run_job(
+        common_lib.execute_command(
             """{command} {dir}/log/init_model.log \
            nnet3-init --srand={srand} {dir}/configs/final.config {dir}/0.raw""".format(
                         command=run_opts.command, srand=srand,
@@ -525,19 +518,19 @@ def get_learning_rate(iter, num_jobs, num_iters, num_archives_processed,
     return num_jobs * effective_learning_rate
 
 
-def do_shrinkage(iter, model_file, shrink_saturation_threshold,
-                 get_raw_nnet_from_am=True):
+def should_do_shrinkage(iter, model_file, shrink_saturation_threshold,
+                        get_raw_nnet_from_am=True):
 
     if iter == 0:
         return True
 
     if get_raw_nnet_from_am:
-        output, error = common_lib.run_kaldi_command(
-            "nnet3-am-info --print-args=false {0} | "
+        output = common_lib.get_command_stdout(
+            "nnet3-am-info {0} 2>/dev/null | "
             "steps/nnet3/get_saturation.pl".format(model_file))
     else:
-        output, error = common_lib.run_kaldi_command(
-            "nnet3-info --print-args=false {0} | "
+        output = common_lib.get_command_stdout(
+            "nnet3-info 2>/dev/null {0} | "
             "steps/nnet3/get_saturation.pl".format(model_file))
     output = output.strip().split("\n")
     try:
@@ -553,8 +546,8 @@ def do_shrinkage(iter, model_file, shrink_saturation_threshold,
 
 
 def remove_nnet_egs(egs_dir):
-    common_lib.run_job("steps/nnet2/remove_egs.sh {egs_dir}".format(
-                            egs_dir=egs_dir))
+    common_lib.execute_command("steps/nnet2/remove_egs.sh {egs_dir}".format(
+            egs_dir=egs_dir))
 
 
 def clean_nnet_dir(nnet_dir, num_iters, egs_dir,
@@ -847,12 +840,6 @@ class CommonParser:
                                  iterations.
                                  If 0 and reporting mail has been specified
                                  then only failure notifications are sent""")
-        self.parser.add_argument("--background-polling-time",
-                                 dest="background_polling_time",
-                                 type=float, default=60,
-                                 help="""Polling frequency in seconds at which
-                                 the background process handler checks for
-                                 errors in the processes.""")
 
 
 def is_lda_added(config_dir):

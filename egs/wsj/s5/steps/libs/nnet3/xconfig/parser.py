@@ -21,6 +21,8 @@ config_to_layer = {
         'output-layer' : xlayers.XconfigOutputLayer,
         'relu-layer' : xlayers.XconfigBasicLayer,
         'relu-renorm-layer' : xlayers.XconfigBasicLayer,
+        'relu-batchnorm-dropout-layer' : xlayers.XconfigBasicLayer,
+        'relu-dropout-layer': xlayers.XconfigBasicLayer,
         'relu-batchnorm-layer' : xlayers.XconfigBasicLayer,
         'sigmoid-layer' : xlayers.XconfigBasicLayer,
         'tanh-layer' : xlayers.XconfigBasicLayer,
@@ -32,11 +34,17 @@ config_to_layer = {
         'fast-lstm-layer' : xlayers.XconfigFastLstmLayer,
         'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer,
         'relu-conv-layer': xlayers.XconfigConvLayer,
+        'conv-layer': xlayers.XconfigConvLayer,
         'conv-relu-layer': xlayers.XconfigConvLayer,
         'relu-conv-renorm-layer': xlayers.XconfigConvLayer,
         'conv-relu-renorm-layer': xlayers.XconfigConvLayer,
-        'relu-conv-batchnorm-layer': xlayers.XconfigConvLayer,
-        'conv-relu-batchnorm-layer': xlayers.XconfigConvLayer
+        'batchnorm-conv-relu-layer': xlayers.XconfigConvLayer,
+        'relu-batchnorm-conv-layer': xlayers.XconfigConvLayer,
+        'conv-relu-batchnorm-layer': xlayers.XconfigConvLayer,
+        'conv-relu-batchnorm-dropout-layer': xlayers.XconfigConvLayer,
+        'conv-relu-dropout-layer': xlayers.XconfigConvLayer,
+        'res-block': xlayers.XconfigResBlock,
+        'channel-average-layer': xlayers.ChannelAverageLayer
 }
 
 # Turn a config line and a list of previous layers into

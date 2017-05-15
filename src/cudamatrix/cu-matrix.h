@@ -421,9 +421,25 @@ class CuMatrixBase {
   void AddMat(Real alpha, const CuMatrixBase<Real> &A,
               MatrixTransposeType trans = kNoTrans);
 
-  /// if A.NumRows() is multiple of (*this)->NumRows and A.NumCols() is multiple of (*this)->NumCols
-  /// divide A into blocks of the same size as (*this) and add them to *this (times alpha)
-  void AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType trans = kNoTrans);
+
+  /// This function is like AddMat (it does *this += alpha * src),
+  /// except that it supports cases where *this and src have
+  /// different dimension.  There are two allowed cases:
+  ///
+  ///  (1) *this is larger than src; we do a broadcasting operation.  *this must
+  ///       have NumRows() == a * src.NumRows() and NumCols() == b *
+  ///       src.NumCols() for integer a >= 1, b >= 1.  *this will be treated as
+  ///       a being made up of of blocks with the same size as src, and to each
+  ///       block we'll add alpha * src.  This case does not support trans ==
+  ///       kTrans.
+  ///
+  ///  (2) *this is smaller than src; we sum.  src.NumRows() must == a *
+  ///      this->NumRows(), and src.NumCols() must == b * this->NumCols(), for a
+  ///      >= 1, b >= 1.  In this case, src will be treated as being made up of
+  ///      blocks with the same size as *this, and to *this we will add the
+  ///      summation of all of those blocks.
+  void AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,
+                    MatrixTransposeType trans = kNoTrans);
 
   /// (for each column c of *this), c = alpha * col + beta * c
   void AddVecToCols(Real alpha, const CuVectorBase<Real> &col, Real beta = 1.0);

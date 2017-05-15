@@ -1414,6 +1414,10 @@ void* DropoutMaskComponent::Propagate(
     out->Set(1.0);
     return NULL;
   }
+  if (test_mode_) {
+    out->Set(1.0 - dropout_proportion);
+    return NULL;
+  }
   const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
   out->Add(-dropout_proportion);
   out->ApplyHeaviside();
@@ -1442,7 +1446,15 @@ void DropoutMaskComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &output_dim_);
   ExpectToken(is, binary, "<DropoutProportion>");
   ReadBasicType(is, binary, &dropout_proportion_);
-  ExpectToken(is, binary, "</DropoutMaskComponent>");
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<TestMode>") {
+    ReadBasicType(is, binary, &test_mode_);  // read test mode
+    ExpectToken(is, binary, "</DropoutMaskComponent>");
+  } else {
+    test_mode_ = false;
+    KALDI_ASSERT(token == "</DropoutMaskComponent>");
+  }
 }
 
 
@@ -1452,6 +1464,8 @@ void DropoutMaskComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, output_dim_);
   WriteToken(os, binary, "<DropoutProportion>");
   WriteBasicType(os, binary, dropout_proportion_);
+  WriteToken(os, binary, "<TestMode>");
+  WriteBasicType(os, binary, test_mode_);
   WriteToken(os, binary, "</DropoutMaskComponent>");
 }
 
@@ -1465,6 +1479,8 @@ void DropoutMaskComponent::InitFromConfig(ConfigLine *cfl) {
   KALDI_ASSERT(ok && output_dim_ > 0);
   dropout_proportion_ = 0.5;
   cfl->GetValue("dropout-proportion", &dropout_proportion_);
+  test_mode_ = false;
+  cfl->GetValue("test-mode", &test_mode_);
 }
 
 

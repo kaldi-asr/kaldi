@@ -53,8 +53,17 @@ def get_args():
     parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
                         default=8,
                         help="Number of output labels per example")
+    parser.add_argument("--image.augmentation-opts", type=str,
+                        dest='image_augmentation_opts',
+                        default=None,
+                        help="Image augmentation options")
 
     # trainer options
+    parser.add_argument("--trainer.final-combination", type=str,
+                        action=common_lib.StrToBoolAction,
+                        default=True, choices=["true", "false"],
+                        dest='final_combination',
+                        help="If false, skip final combination step")
     parser.add_argument("--trainer.prior-subset-size", type=int,
                         dest='prior_subset_size', default=20000,
                         help="Number of samples for computing priors")
@@ -71,7 +80,20 @@ def get_args():
                         rule as accepted by the --minibatch-size option of
                         nnet3-merge-egs; run that program without args to see
                         the format.""")
-    parser.add_argument("--compute-average-posteriors",
+
+    parser.add_argument("--trainer.optimization.proportional-shrink", type=float,
+                        dest='proportional_shrink', default=0.0,
+                        help="""If nonzero, this will set a shrinkage (scaling)
+                        factor for the parameters, whose value is set as:
+                        shrink-value=(1.0 - proportional-shrink * learning-rate), where
+                        'learning-rate' is the learning rate being applied
+                        on the current iteration, which will vary from
+                        initial-effective-lrate*num-jobs-initial to
+                        final-effective-lrate*num-jobs-final.
+                        Unlike for train_rnn.py, this is applied unconditionally,
+                        it does not depend on saturation of nonlinearities.
+                        Can be used to roughly approximate l2 regularization.""")
+  parser.add_argument("--compute-average-posteriors",
                         type=str, action=common_lib.StrToBoolAction,
                         choices=["true", "false"], default=False,
                         help="""If true, then the average output of the
@@ -84,11 +106,11 @@ def get_args():
                         action=common_lib.StrToBoolAction,
                         default=True, choices=["true", "false"],
                         help="Train neural network using dense targets")
-    parser.add_argument("--feat-dir", type=str, required=True,
+    parser.add_argument("--feat-dir", type=str, required=False,
                         help="Directory with features used for training "
                         "the neural network.")
-    parser.add_argument("--targets-scp", type=str, required=True,
-                        help="Target for training neural network.")
+    parser.add_argument("--targets-scp", type=str, required=False,
+                        help="Targets for training neural network.")
     parser.add_argument("--dir", type=str, required=True,
                         help="Directory to store the models and "
                         "all other files.")
@@ -154,7 +176,7 @@ def process_args(args):
     return [args, run_opts]
 
 
-def train(args, run_opts, background_process_handler):
+def train(args, run_opts):
     """ The main function for training.
 
     Args:
@@ -167,6 +189,8 @@ def train(args, run_opts, background_process_handler):
     logger.info("Arguments for the experiment\n{0}".format(arg_string))
 
     # Set some variables.
+
+    # note, feat_dim gets set to 0 if args.feat_dir is unset (None).
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
     ivector_id = common_lib.get_ivector_extractor_id(args.online_ivector_dir)
@@ -180,6 +204,7 @@ def train(args, run_opts, background_process_handler):
     try:
         model_left_context = variables['model_left_context']
         model_right_context = variables['model_right_context']
+
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in "
                         "{1}".format(str(e), '{0}/configs'.format(args.dir)))
@@ -187,14 +212,14 @@ def train(args, run_opts, background_process_handler):
     left_context = model_left_context
     right_context = model_right_context
 
+
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
-
-    if (args.stage <= -5):
-        logger.info("Initializing a basic network")
-        common_lib.run_job(
+    if (args.stage <= -5) and os.path.exists(args.dir+"/configs/init.config"):
+        logger.info("Initializing the network for computing the LDA stats")
+        common_lib.execute_command(
             """{command} {dir}/log/nnet_init.log \
                     nnet3-init --srand=-2 {dir}/configs/init.config \
                     {dir}/init.raw""".format(command=run_opts.command,
@@ -202,6 +227,10 @@ def train(args, run_opts, background_process_handler):
 
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -4) and args.egs_dir is None:
+        if args.targets_scp is None or args.feat_dir is None:
+            raise Exception("If you don't supply the --egs-dir option, the "
+                            "--targets-scp and --feat-dir options are required.")
+
         logger.info("Generating egs")
 
         if args.use_dense_targets:
@@ -307,6 +336,17 @@ def train(args, run_opts, background_process_handler):
                                + (args.num_jobs_final - args.num_jobs_initial)
                                * float(iter) / num_iters)
 
+        lrate = learning_rate(iter, current_num_jobs,
+                              num_archives_processed)
+        shrink_value = 1.0
+        if args.proportional_shrink != 0.0:
+            shrink_value = 1.0 - (args.proportional_shrink * lrate)
+            if shrink_value <= 0.5:
+                raise Exception("proportional-shrink={0} is too large, it gives "
+                                "shrink-value={1}".format(args.proportional_shrink,
+                                                          shrink_value))
+
+
         if args.stage <= iter:
             train_lib.common.train_one_iteration(
                 dir=args.dir,
@@ -316,22 +356,20 @@ def train(args, run_opts, background_process_handler):
                 num_jobs=current_num_jobs,
                 num_archives_processed=num_archives_processed,
                 num_archives=num_archives,
-                learning_rate=learning_rate(iter, current_num_jobs,
-                                            num_archives_processed),
+                learning_rate=lrate,
                 dropout_edit_string=common_train_lib.get_dropout_edit_string(
                     args.dropout_schedule,
                     float(num_archives_processed) / num_archives_to_process,
                     iter),
                 minibatch_size_str=args.minibatch_size,
                 frames_per_eg=args.frames_per_eg,
-                left_context=left_context,
-                right_context=right_context,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
+                shrinkage_value=shrink_value,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
                 get_raw_nnet_from_am=False,
-                background_process_handler=background_process_handler)
+                image_augmentation_opts=args.image_augmentation_opts)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
@@ -355,15 +393,17 @@ def train(args, run_opts, background_process_handler):
         num_archives_processed = num_archives_processed + current_num_jobs
 
     if args.stage <= num_iters:
-        logger.info("Doing final combination to produce final.raw")
-        train_lib.common.combine_models(
-            dir=args.dir, num_iters=num_iters,
-            models_to_combine=models_to_combine, egs_dir=egs_dir,
-            left_context=left_context, right_context=right_context,
-            minibatch_size_str=args.minibatch_size, run_opts=run_opts,
-            background_process_handler=background_process_handler,
-            get_raw_nnet_from_am=False,
-            sum_to_one_penalty=args.combine_sum_to_one_penalty)
+        if args.final_combination:
+            logger.info("Doing final combination to produce final.raw")
+            train_lib.common.combine_models(
+                dir=args.dir, num_iters=num_iters,
+                models_to_combine=models_to_combine, egs_dir=egs_dir,
+                minibatch_size_str=args.minibatch_size, run_opts=run_opts,
+                get_raw_nnet_from_am=False,
+                sum_to_one_penalty=args.combine_sum_to_one_penalty)
+        else:
+            common_lib.force_symlink("{0}.raw".format(num_iters),
+                                     "{0}/final.raw".format(args.dir))
 
     if compute_average_posteriors and args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
@@ -371,7 +411,6 @@ def train(args, run_opts, background_process_handler):
         train_lib.common.compute_average_posterior(
             dir=args.dir, iter='final', egs_dir=egs_dir,
             num_archives=num_archives,
-            left_context=left_context, right_context=right_context,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts,
             get_raw_nnet_from_am=False)
 
@@ -399,25 +438,25 @@ def train(args, run_opts, background_process_handler):
     with open("{dir}/accuracy.report".format(dir=args.dir), "w") as f:
         f.write(report)
 
-    common_lib.run_job("steps/info/nnet3_dir_info.pl "
-                       "{0}".format(args.dir))
+    common_lib.execute_command("steps/info/nnet3_dir_info.pl "
+                               "{0}".format(args.dir))
 
 
 def main():
     [args, run_opts] = get_args()
     try:
-        background_process_handler = common_lib.BackgroundProcessHandler(
-            polling_time=args.background_polling_time)
-        train(args, run_opts, background_process_handler)
-        background_process_handler.ensure_processes_are_done()
-    except Exception as e:
+        train(args, run_opts)
+        common_lib.wait_for_background_commands()
+    except BaseException as e:
+        # look for BaseException so we catch KeyboardInterrupt, which is
+        # what we get when a background thread dies.
         if args.email is not None:
             message = ("Training session for experiment {dir} "
                        "died due to an error.".format(dir=args.dir))
             common_lib.send_mail(message, message, args.email)
-        traceback.print_exc()
-        background_process_handler.stop()
-        raise e
+        if not isinstance(e, KeyboardInterrupt):
+            traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":

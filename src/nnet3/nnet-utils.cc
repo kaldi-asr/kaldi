@@ -23,6 +23,8 @@
 #include "nnet3/nnet-simple-component.h"
 #include "nnet3/nnet-general-component.h"
 #include "nnet3/nnet-parse.h"
+#include "nnet3/nnet-computation-graph.h"
+#include "nnet3/nnet-diagnostics.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -469,8 +471,32 @@ void SetDropoutProportion(BaseFloat dropout_proportion,
   }
 }
 
+bool HasBatchnorm(const Nnet &nnet) {
+  for (int32 c = 0; c < nnet.NumComponents(); c++) {
+    const Component *comp = nnet.GetComponent(c);
+    const BatchNormComponent *bc =
+        dynamic_cast<const BatchNormComponent*>(comp);
+    if (bc != NULL)
+      return true;
+  }
+  return false;
+}
 
-void SetTestMode(bool test_mode,  Nnet *nnet) {
+void RecomputeStats(const std::vector<NnetExample> &egs, Nnet *nnet) {
+  KALDI_LOG << "Recomputing stats on nnet (affects batch-norm)";
+  ZeroComponentStats(nnet);
+  NnetComputeProbOptions opts;
+  opts.store_component_stats = true;
+  NnetComputeProb prob_computer(opts, nnet);
+  for (size_t i = 0; i < egs.size(); i++)
+    prob_computer.Compute(egs[i]);
+  prob_computer.PrintTotalStats();
+  KALDI_LOG << "Done recomputing stats.";
+}
+
+
+
+void SetBatchnormTestMode(bool test_mode,  Nnet *nnet) {
   for (int32 c = 0; c < nnet->NumComponents(); c++) {
     Component *comp = nnet->GetComponent(c);
     BatchNormComponent *bc = dynamic_cast<BatchNormComponent*>(comp);
@@ -479,6 +505,14 @@ void SetTestMode(bool test_mode,  Nnet *nnet) {
   }
 }
 
+void SetDropoutTestMode(bool test_mode,  Nnet *nnet) {
+ for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    RandomComponent *rc = dynamic_cast<RandomComponent*>(comp);
+    if (rc != NULL)
+      rc->SetTestMode(test_mode);
+  }
+}
 
 void FindOrphanComponents(const Nnet &nnet, std::vector<int32> *components) {
   int32 num_components = nnet.NumComponents(), num_nodes = nnet.NumNodes();

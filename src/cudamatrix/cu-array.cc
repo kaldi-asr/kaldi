@@ -38,7 +38,7 @@ void CuArray<int32>::Set(const int32 &value) {
   if (dim_ == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
+    CuTimer tim;
 
     dim3 dimBlock(CU2DBLOCK);
     dim3 dimGrid(n_blocks(Dim(), CU2DBLOCK));
@@ -47,7 +47,7 @@ void CuArray<int32>::Set(const int32 &value) {
     cuda_int32_set_const(dimGrid, dimBlock, data_, value, d);
     CU_SAFE_CALL(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -63,7 +63,7 @@ void CuArray<int32>::Add(const int32 &value) {
   if (dim_ == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
+    CuTimer tim;
 
     dim3 dimBlock(CU2DBLOCK);
     dim3 dimGrid(n_blocks(Dim(), CU2DBLOCK));
@@ -72,7 +72,7 @@ void CuArray<int32>::Add(const int32 &value) {
     cuda_int32_add(dimGrid, dimBlock, data_, value, d);
     CU_SAFE_CALL(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {

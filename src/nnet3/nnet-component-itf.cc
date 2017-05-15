@@ -99,8 +99,6 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new NormalizeComponent();
   } else if (component_type == "PnormComponent") {
     ans = new PnormComponent();
-  } else if (component_type == "SumReduceComponent") {
-    ans = new SumReduceComponent();
   } else if (component_type == "AffineComponent") {
     ans = new AffineComponent();
   } else if (component_type == "NaturalGradientAffineComponent") {
@@ -161,6 +159,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new BatchNormComponent();
   } else if (component_type == "TimeHeightConvolutionComponent") {
     ans = new TimeHeightConvolutionComponent();
+  } else if (component_type == "SumBlockComponent") {
+    ans = new SumBlockComponent();
   }
   if (ans != NULL) {
     KALDI_ASSERT(component_type == ans->Type());
@@ -208,7 +208,8 @@ void UpdatableComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {
 }
 
 
-void UpdatableComponent::ReadUpdatableCommon(std::istream &is, bool binary) {
+std::string UpdatableComponent::ReadUpdatableCommon(std::istream &is,
+                                                    bool binary) {
   std::ostringstream opening_tag;
   opening_tag << '<' << this->Type() << '>';
   std::string token;
@@ -238,9 +239,9 @@ void UpdatableComponent::ReadUpdatableCommon(std::istream &is, bool binary) {
   }
   if (token == "<LearningRate>") {
     ReadBasicType(is, binary, &learning_rate_);
+    return "";
   } else {
-    KALDI_ERR << "Expected token <LearningRate>, got "
-              << token;
+    return token;
   }
 }
 

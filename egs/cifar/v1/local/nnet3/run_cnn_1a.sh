@@ -1,10 +1,14 @@
 #!/bin/bash
 
 
+# note: the final 'valid accuracy' (0.69) is actually the test accuracy.
+
+# steps/info/nnet3_dir_info.pl exp/cnn1a_cifar10
+# exp/cnn1a_cifar10: num-iters=60 nj=1..2 num-params=0.2M dim=96->10 combine=-0.04->-0.02 loglike:train/valid[39,59,final]=(-0.18,-0.02,-0.02/-1.08,-1.38,-1.39) accuracy:train/valid[39,59,final]=(0.95,1.00,1.00/0.70,0.69,0.69)
+
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
-
 
 
 

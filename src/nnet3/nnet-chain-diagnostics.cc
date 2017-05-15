@@ -33,23 +33,46 @@ NnetChainComputeProb::NnetChainComputeProb(
     den_graph_(den_fst, nnet.OutputDim("output")),
     nnet_(nnet),
     compiler_(nnet, nnet_config_.optimize_config, nnet_config_.compiler_config),
+    deriv_nnet_owned_(true),
     deriv_nnet_(NULL),
     num_minibatches_processed_(0) {
   if (nnet_config_.compute_deriv) {
     deriv_nnet_ = new Nnet(nnet_);
     ScaleNnet(0.0, deriv_nnet_);
     SetNnetAsGradient(deriv_nnet_); // force simple update
+  } else if (nnet_config_.store_component_stats) {
+    KALDI_ERR << "If you set store_component_stats == true and "
+              << "compute_deriv == false, use the other constructor.";
   }
 }
 
+
+NnetChainComputeProb::NnetChainComputeProb(
+    const NnetComputeProbOptions &nnet_config,
+    const chain::ChainTrainingOptions &chain_config,
+    const fst::StdVectorFst &den_fst,
+    Nnet *nnet):
+    nnet_config_(nnet_config),
+    chain_config_(chain_config),
+    den_graph_(den_fst, nnet->OutputDim("output")),
+    nnet_(*nnet),
+    compiler_(*nnet, nnet_config_.optimize_config, nnet_config_.compiler_config),
+    deriv_nnet_owned_(false),
+    deriv_nnet_(nnet),
+    num_minibatches_processed_(0) {
+  KALDI_ASSERT(nnet_config.store_component_stats && !nnet_config.compute_deriv);
+}
+
+
 const Nnet &NnetChainComputeProb::GetDeriv() const {
-  if (deriv_nnet_ == NULL)
+  if (!nnet_config_.compute_deriv)
     KALDI_ERR << "GetDeriv() called when no derivatives were requested.";
   return *deriv_nnet_;
 }
 
 NnetChainComputeProb::~NnetChainComputeProb() {
-  delete deriv_nnet_;  // delete does nothing if pointer is NULL.
+  if (deriv_nnet_owned_)
+    delete deriv_nnet_;  // delete does nothing if pointer is NULL.
 }
 
 void NnetChainComputeProb::Reset() {
@@ -63,7 +86,7 @@ void NnetChainComputeProb::Reset() {
 
 void NnetChainComputeProb::Compute(const NnetChainExample &chain_eg) {
   bool need_model_derivative = nnet_config_.compute_deriv,
-      store_component_stats = false;
+      store_component_stats = nnet_config_.store_component_stats;
   ComputationRequest request;
   // if the options specify cross-entropy regularization, we'll be computing
   // this objective (not interpolated with the regular objective-- we give it a
@@ -193,6 +216,32 @@ const ChainObjectiveInfo* NnetChainComputeProb::GetObjective(
   else
     return NULL;
 }
+
+void RecomputeStats(const std::vector<NnetChainExample> &egs,
+                    const chain::ChainTrainingOptions &chain_config_in,
+                    const fst::StdVectorFst &den_fst,
+                    Nnet *nnet) {
+  KALDI_LOG << "Recomputing stats on nnet (affects batch-norm)";
+  chain::ChainTrainingOptions chain_config(chain_config_in);
+  if (nnet->GetNodeIndex("output-xent") != -1 &&
+      chain_config.xent_regularize == 0) {
+    // this forces it to compute the output for 'output-xent', which
+    // means that we'll be computing batch-norm stats for any
+    // components in that branch that have batch-norm.
+    chain_config.xent_regularize = 0.1;
+  }
+
+  ZeroComponentStats(nnet);
+  NnetComputeProbOptions nnet_config;
+  nnet_config.store_component_stats = true;
+  NnetChainComputeProb prob_computer(nnet_config, chain_config, den_fst, nnet);
+  for (size_t i = 0; i < egs.size(); i++)
+    prob_computer.Compute(egs[i]);
+  prob_computer.PrintTotalStats();
+  KALDI_LOG << "Done recomputing stats.";
+}
+
+
 
 } // namespace nnet3
 } // namespace kaldi

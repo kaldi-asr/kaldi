@@ -3,18 +3,21 @@
 # This is a basic TDNN+LSTM nnet3 experiment.
 
 
+# steps/info/nnet3_dir_info.pl exp/nnet3/tdnn_lstm1a_sp
+# exp/nnet3/tdnn_lstm1a_sp: num-iters=32 nj=2..2 num-params=8.4M dim=40+100->2041 combine=-0.47->-0.38 loglike:train/valid[20,31,combined]=(-0.62,-0.38,-0.37/-1.03,-1.03,-1.02) accuracy:train/valid[20,31,combined]=(0.79,0.87,0.87/0.70,0.72,0.72)
+
 # Below, comparing with the chain TDNN system.  It's a little better with the
 # small-vocab decoding.  Both systems are probably super-badly tuned, and the
 # chain system probably used too many jobs.
 #
 # local/nnet3/compare_wer.sh exp/chain/tdnn1a_sp exp/nnet3/tdnn_lstm1a_sp
 # System                tdnn1a_sp tdnn_lstm1a_sp
-#WER dev_clean_2 (tgsmall)      18.58     17.67
-#WER dev_clean_2 (tglarge)      13.35     13.43
-# Final train prob                  -0.3660
-# Final valid prob                  -1.0236
-# Final train acc                    0.8737
-# Final valid acc                    0.7222
+#WER dev_clean_2 (tgsmall)      18.43     17.37
+#WER dev_clean_2 (tglarge)      13.15     13.43
+# Final train prob                  -0.3933
+# Final valid prob                  -0.9662
+# Final train acc                    0.8652
+# Final valid acc                    0.7206
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
