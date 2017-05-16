@@ -237,6 +237,7 @@ const SimpleObjectiveInfo* NnetComputeProb::GetObjective(
 
 double NnetComputeProb::GetTotalObjective(double *tot_weight) const {
   double tot_objectives = 0.0;
+  *tot_weight = 0.0;
   unordered_map<std::string, SimpleObjectiveInfo, StringHasher>::const_iterator
     iter = objf_info_.begin(), end = objf_info_.end();
   for (; iter != end; ++iter) {

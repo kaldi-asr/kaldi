@@ -38,7 +38,6 @@ int main(int argc, char *argv[]) {
         "\n"
         "See also: process-kaldi-pitch-feats, compute-and-process-kaldi-pitch-feats\n";
 
-
     ParseOptions po(usage);
     PitchExtractionOptions pitch_opts;
     int32 channel = -1; // Note: this isn't configurable because it's not a very

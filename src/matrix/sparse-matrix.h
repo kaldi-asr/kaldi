@@ -102,7 +102,7 @@ class SparseVector {
   void Write(std::ostream &os, bool binary) const;
 
   void Read(std::istream &os, bool binary);
-  
+
   /// Scale all elements of sparse vector.
   void Scale(Real alpha);
 
@@ -198,7 +198,7 @@ class SparseMatrix {
   /// kUndefined behaves the same as kSetZero.
   void Resize(MatrixIndexT rows, MatrixIndexT cols,
               MatrixResizeType resize_type = kSetZero);
-  
+
   /// Scale all elements in sparse matrix.
   void Scale(Real alpha);
 
@@ -289,8 +289,8 @@ class GeneralMatrix {
   /// Implemented in ../cudamatrix/cu-sparse-matrix.cc
   void AddToMat(BaseFloat alpha, CuMatrixBase<BaseFloat> *cu_mat,
                 MatrixTransposeType trans = kNoTrans) const;
-  
-  /// scale each element of matrix with a scalar value.
+
+  /// Scale each element of matrix by apla.
   void Scale(BaseFloat alpha);
 
   /// Assignment from regular matrix.

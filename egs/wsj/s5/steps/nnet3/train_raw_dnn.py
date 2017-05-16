@@ -287,7 +287,7 @@ def train(args, run_opts, background_process_handler):
         num_hidden_layers, num_archives_expanded,
         args.max_models_combine, args.add_layers_period,
         args.num_jobs_final)
-    use_multitask_egs = False
+
     if (os.path.exists('{0}/valid_diagnostic.scp'.format(args.egs_dir))):
         if (os.path.exists('{0}/valid_diagnostic.egs'.format(args.egs_dir))):
             raise Exception('both {0}/valid_diagnostic.egs and '

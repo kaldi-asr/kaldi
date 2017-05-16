@@ -62,7 +62,7 @@ def get_multitask_egs_opts(egs_dir, egs_prefix="",
                            use_multitask_egs=False):
     """ Generates egs option for multitask(or multilingual) training setup,
         if {egs_prefix}output.*.ark or {egs_prefix}weight.*.ark files exists in egs_dir.
-        Each example line in {egs_prefix}*.scp has corresponding line containing
+        Each line in {egs_prefix}*.scp has a corresponding line containing
         name of the output-node in the network and language-dependent weight in
         {egs_prefix}output.*.ark or {egs_prefix}weight.*.ark respectively.
         e.g. Returns the empty string ('') if use_multitask_egs == False,
