@@ -164,13 +164,13 @@ if [ $stage -le 2 ]; then
       weight-post ark:- "ark,s,cs:gunzip -c $dir/weights.gz|" ark:- \| \
       ivector-extract --acoustic-weight=$posterior_scale --compute-objf-change=true \
         --max-count=$max_count --spk2utt=ark:$this_sdata/JOB/spk2utt \
-      $srcdir/final.ie "$feats" ark,s,cs:- ark,t:$dir/ivectors_spk.JOB.ark
+      $srcdir/final.ie "$feats" ark,s,cs:- ark:$dir/ivectors_spk.JOB.ark
   else
     $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
       gmm-global-get-post --n=$num_gselect --min-post=$min_post $srcdir/final.dubm "$gmm_feats" ark:- \| \
       ivector-extract --acoustic-weight=$posterior_scale --compute-objf-change=true \
         --max-count=$max_count --spk2utt=ark:$this_sdata/JOB/spk2utt \
-      $srcdir/final.ie "$feats" ark,s,cs:- ark,t:$dir/ivectors_spk.JOB.ark
+      $srcdir/final.ie "$feats" ark,s,cs:- ark:$dir/ivectors_spk.JOB.ark
   fi
 fi
 
@@ -181,38 +181,27 @@ if [ $stage -le 3 ]; then
       gmm-global-get-post --n=$num_gselect --min-post=$min_post $srcdir/final.dubm "$gmm_feats" ark:- \| \
       weight-post ark:- "ark,s,cs:gunzip -c $dir/weights.gz|" ark:- \| \
       ivector-extract --acoustic-weight=$posterior_scale --compute-objf-change=true --max-count=$max_count \
-      $srcdir/final.ie "$feats" ark,s,cs:- ark,t:$dir/ivectors_utt.JOB.ark
+      $srcdir/final.ie "$feats" ark,s,cs:- ark:$dir/ivectors_utt.JOB.ark
   else
     $cmd JOB=1:$nj $dir/log/extract_ivectors_utt.JOB.log \
       gmm-global-get-post --n=$num_gselect --min-post=$min_post $srcdir/final.dubm "$gmm_feats" ark:- \| \
       ivector-extract --acoustic-weight=$posterior_scale --compute-objf-change=true --max-count=$max_count \
-      $srcdir/final.ie "$feats" ark,s,cs:- ark,t:$dir/ivectors_utt.JOB.ark
+      $srcdir/final.ie "$feats" ark,s,cs:- ark:$dir/ivectors_utt.JOB.ark
   fi
 fi
 
-
-# get an utterance-level set of iVectors (just duplicate the speaker-level ones).
-# note: if $this_sdata is set $dir/split$nj, then these won't be real speakers, they'll
-# be "sub-speakers" (speakers split up into multiple utterances).
-if [ $stage -le 4 ]; then
-  for j in $(seq $nj); do
-    utils/apply_map.pl -f 2 $dir/ivectors_spk.${j}.ark <$this_sdata/$j/utt2spk >$dir/ivectors_spk-as-utt.${j}.ark
-  done
-fi
-
-ivector_dim=$[$(head -n 1 $dir/ivectors_spk.1.ark | wc -w) - 3]
-echo  "$0: iVector dim is $ivector_dim"
-
 absdir=$(readlink -f $dir)
-
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   echo "$0: merging iVectors across jobs"
   copy-vector "ark:cat $dir/ivectors_spk.*.ark |" ark,scp:$absdir/ivectors_spk.ark,$dir/ivectors_spk.scp
   rm $dir/ivectors_spk.*.ark
-  copy-vector "ark:cat $dir/ivectors_spk-as-utt.*.ark |" ark,scp:$absdir/ivectors_spk-as-utt.ark,$dir/ivectors_spk-as-utt.scp
-  rm $dir/ivectors_spk-as-utt.*.ark
   copy-vector "ark:cat $dir/ivectors_utt.*.ark |" ark,scp:$absdir/ivectors_utt.ark,$dir/ivectors_utt.scp
   rm $dir/ivectors_utt.*.ark
+fi
+
+# duplicate the `speaker' i-vector to all `utterances' of that speaker,
+if [ $stage -le 5 ]; then
+  utils/apply_map.pl -f 2 $dir/ivectors_spk.scp <$data/utt2spk >$dir/ivectors_spk-as-utt.scp
 fi
 
 echo "$0: done extracting iVectors (per-speaker, per-sentence) into '$dir'"

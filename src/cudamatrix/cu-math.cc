@@ -38,7 +38,7 @@ void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *grad, Real l1,
   KALDI_ASSERT(SameDim(*weight, *grad));
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
 
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(weight->NumCols(), CU2DBLOCK), n_blocks(weight->NumRows(), CU2DBLOCK));
@@ -47,7 +47,7 @@ void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *grad, Real l1,
                        weight->Dim(), grad->Stride());
     CU_SAFE_CALL(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
   #endif
   {
@@ -87,7 +87,7 @@ void Randomize(const CuMatrixBase<Real> &src,
 
   #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
 
     /*
     Note: default 16x16 block-size limits the --cachesize to matrix size 16*65535 x 16*65535
@@ -112,7 +112,7 @@ void Randomize(const CuMatrixBase<Real> &src,
                    copy_from_idx.Data(), dimtgt, dimsrc);
     CU_SAFE_CALL(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
   #endif
   {
@@ -137,7 +137,7 @@ void Splice(const CuMatrixBase<Real> &src, const CuArray<int32> &frame_offsets,
 
   #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
 
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(tgt->NumCols(), CU2DBLOCK), n_blocks(tgt->NumRows(), CU2DBLOCK));
@@ -146,7 +146,7 @@ void Splice(const CuMatrixBase<Real> &src, const CuArray<int32> &frame_offsets,
                 frame_offsets.Data(), tgt->Dim(), src.Dim());
     CU_SAFE_CALL(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
   #endif
   {
@@ -178,7 +178,7 @@ void Copy(const CuMatrixBase<Real> &src, const CuArray<int32> &copy_from_indices
 
   #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
 
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(tgt->NumCols(), CU2DBLOCK), n_blocks(tgt->NumRows(), CU2DBLOCK));
@@ -187,7 +187,7 @@ void Copy(const CuMatrixBase<Real> &src, const CuArray<int32> &copy_from_indices
               copy_from_indices.Data(), tgt->Dim(), src.Dim());
     CU_SAFE_CALL(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
   #endif
   {
@@ -255,13 +255,13 @@ void NormalizePerRow(const CuMatrixBase<Real>& in, const Real target_rms,
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     size_t dimBlock = CU1DBLOCK;
     size_t dimGrid = out->NumRows();
     cuda_normalize_per_row(dimGrid, dimBlock, out->Data(), out->Stride(),
                            in.Data(), in.Dim(), target_rms, add_log_stddev);
     CU_SAFE_CALL(cudaGetLastError());
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -319,7 +319,7 @@ void DiffNormalizePerRow(const CuMatrixBase<Real> &in_value,
   const Real kSquaredNormFloor = 1.3552527156068805425e-20; // 2^-66
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     size_t dimBlock = CU1DBLOCK;
     size_t dimGrid = in_deriv->NumRows();
     cuda_diff_normalize_per_row(dimGrid, dimBlock, in_deriv->Data(),
@@ -327,7 +327,7 @@ void DiffNormalizePerRow(const CuMatrixBase<Real> &in_value,
                                 in_value.Dim(), out_deriv.Data(),
                                 out_deriv.Stride(), target_rms, add_log_stddev);
     CU_SAFE_CALL(cudaGetLastError());
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -466,7 +466,7 @@ void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
 
     int have_dropout_mask = (input_cols == (cell_dim * 5) + 3);
 
@@ -480,7 +480,7 @@ void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
                            cell_dim, have_dropout_mask, num_rows, output->Data());
     CU_SAFE_CALL(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -778,7 +778,7 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     // Each thread block is working on 1 row of the data.
     // It's best that cell dim is a multiple fo CU1DBLOCK
 
@@ -866,7 +866,7 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
 
     CU_SAFE_CALL(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {

@@ -31,7 +31,7 @@ using namespace kaldi;
 
 namespace kaldi {
 
-template<typename Real> 
+template<typename Real>
 static bool ApproxEqual(const CuBlockMatrix<Real> &A,
                         const CuBlockMatrix<Real> &B,
                         float tol = 0.001) {
@@ -91,7 +91,7 @@ static void UnitTestCuBlockMatrixAddMatBlock() {
     MatrixTransposeType transB = (i % 2 == 1 ? kTrans : kNoTrans),
         transA = (i % 3 == 1 ? kTrans : kNoTrans);
     if (transB == kTrans) std::swap(B_num_rows, B_num_cols);
-    
+
     int32 X_num_rows = 100 + Rand() % 255, X_num_cols = B_num_cols,
         A_num_rows = X_num_rows, A_num_cols = B_num_rows;
     if (data.size() == 0) { X_num_rows = 0; A_num_rows = 0; }
@@ -125,8 +125,8 @@ static void UnitTestCuBlockMatrixAddMatMat() {
       data[b].Resize(dimM, dimN);
       KALDI_LOG << "dimM " << dimM << ", dimN " << dimN << ", stride " << data[b].Stride();
       data[b].SetRandn();
-    }    
-    
+    }
+
     CuBlockMatrix<Real> B(data);
     int32 B_num_rows = B.NumRows(), B_num_cols = B.NumCols();
     // will do B += C D
@@ -143,7 +143,7 @@ static void UnitTestCuBlockMatrixAddMatMat() {
     CuMatrix<Real> C(C_num_rows, C_num_cols), D(D_num_rows, D_num_cols);
     C.SetRandn();
     D.SetRandn();
-    
+
     CuMatrix<Real> Bmat(B);
 
     Real alpha = 2.0, beta = -1.0;
@@ -151,7 +151,7 @@ static void UnitTestCuBlockMatrixAddMatMat() {
     CuBlockMatrix<Real> Bcopy(B);
 
     B.AddMatMat(alpha, C, transC, D, transD, beta);
-    
+
     Bmat.AddMatMat(alpha, C, transC, D, transD, beta);
 
     // Now check that the block-structured part of Bmat is the
@@ -181,6 +181,7 @@ template<typename Real> void CuBlockMatrixUnitTest() {
 
 
 int main() {
+  SetVerboseLevel(1);
   int32 loop = 0;
 #if HAVE_CUDA == 1
   for (; loop < 2; loop++) {

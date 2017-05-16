@@ -49,14 +49,14 @@ void CuArray<T>::Resize(MatrixIndexT dim, MatrixResizeType resize_type) {
   Destroy();
 
   if (dim == 0) return;
-  
+
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     this->data_ = static_cast<T*>(CuDevice::Instantiate().Malloc(dim * sizeof(T)));
     this->dim_ = dim;
     if (resize_type == kSetZero) this->SetZero();
-    CuDevice::Instantiate().AccuProfile("CuArray::Resize", tim.Elapsed());    
+    CuDevice::Instantiate().AccuProfile("CuArray::Resize", tim);
   } else
 #endif
   {
@@ -79,7 +79,7 @@ void CuArray<T>::Resize(MatrixIndexT dim, MatrixResizeType resize_type) {
 template<typename T>
 void CuArray<T>::Destroy() {
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
     if (data_ != NULL) {
       CuDevice::Instantiate().Free(this->data_);
     }
@@ -100,9 +100,9 @@ void CuArray<T>::CopyFromVec(const std::vector<T> &src) {
   if (src.empty()) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     CU_SAFE_CALL(cudaMemcpy(data_, &src.front(), src.size()*sizeof(T), cudaMemcpyHostToDevice));
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -117,10 +117,10 @@ void CuArray<T>::CopyFromArray(const CuArray<T> &src) {
   if (dim_ == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     CU_SAFE_CALL(cudaMemcpy(this->data_, src.data_, dim_ * sizeof(T),
                             cudaMemcpyDeviceToDevice));
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -136,10 +136,10 @@ void CuArray<T>::CopyToVec(std::vector<T> *dst) const {
   }
   if (dim_ == 0) return;
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
     CU_SAFE_CALL(cudaMemcpy(&dst->front(), Data(), dim_ * sizeof(T), cudaMemcpyDeviceToHost));
-    CuDevice::Instantiate().AccuProfile("CuArray::CopyToVecD2H", tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuArray::CopyToVecD2H", tim);
   } else
 #endif
   {
@@ -153,10 +153,10 @@ void CuArray<T>::CopyToHost(T *dst) const {
   if (dim_ == 0) return;
   KALDI_ASSERT(dst != NULL);
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
     CU_SAFE_CALL(cudaMemcpy(dst, Data(), dim_ * sizeof(T), cudaMemcpyDeviceToHost));
-    CuDevice::Instantiate().AccuProfile("CuArray::CopyToVecD2H", tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuArray::CopyToVecD2H", tim);
   } else
 #endif
   {
@@ -164,15 +164,15 @@ void CuArray<T>::CopyToHost(T *dst) const {
   }
 }
 
- 
+
 template<typename T>
 void CuArray<T>::SetZero() {
   if (dim_ == 0) return;
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
     CU_SAFE_CALL(cudaMemset(data_, 0, dim_ * sizeof(T)));
-    CuDevice::Instantiate().AccuProfile("CuArray::SetZero", tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuArray::SetZero", tim);
   } else
 #endif
   {
@@ -181,52 +181,56 @@ void CuArray<T>::SetZero() {
 }
 
 
-template<class T> 
+template<class T>
 void CuArray<T>::Set(const T &value) {
   // This is not implemented yet, we'll do so if it's needed.
   KALDI_ERR << "CuArray<T>::Set not implemented yet for this type.";
 }
 // int32 specialization implemented in 'cudamatrix/cu-array.cc',
-template<> 
+template<>
 void CuArray<int32>::Set(const int32 &value);
 
 
-template<class T> 
+template<class T>
 void CuArray<T>::Add(const T &value) {
   // This is not implemented yet, we'll do so if it's needed.
   KALDI_ERR << "CuArray<T>::Add not implemented yet for this type.";
 }
 // int32 specialization implemented in 'cudamatrix/cu-array.cc',
-template<> 
+template<>
 void CuArray<int32>::Add(const int32 &value);
 
 
-template<class T> 
+template<class T>
 inline T CuArray<T>::Min() const {
   KALDI_ASSERT(this->Dim() > 0);
-  Timer tim;
+#if HAVE_CUDA == 1
+  CuTimer tim;
+#endif
   std::vector<T> tmp(Dim());
   CopyToVec(&tmp);
   T ans = *std::min_element(tmp.begin(), tmp.end());
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   }
 #endif
   return ans;
 }
 
 
-template<class T> 
+template<class T>
 inline T CuArray<T>::Max() const {
   KALDI_ASSERT(this->Dim() > 0);
-  Timer tim;
+#if HAVE_CUDA == 1
+  CuTimer tim;
+#endif
   std::vector<T> tmp(Dim());
   CopyToVec(&tmp);
   T ans = *std::max_element(tmp.begin(), tmp.end());
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   }
 #endif
   return ans;

@@ -60,13 +60,13 @@ template<typename Real>
 void CuRand<Real>::RandUniform(CuMatrixBase<Real> *tgt) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     // Better use 'tmp' matrix, 'tgt' can be a window into a larger matrix,
     // so we should not use it to generate random numbers over whole stride.
     CuMatrix<Real> tmp(tgt->NumRows(), tgt->NumCols(), kUndefined);
     CU_SAFE_CALL(curandGenerateUniformWrap(gen_, tmp.Data(), tmp.NumRows() * tmp.Stride()));
     tgt->CopyFromMat(tmp);
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -78,10 +78,10 @@ template<typename Real>
 void CuRand<Real>::RandUniform(CuMatrix<Real> *tgt) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     // Here we don't need to use 'tmp' matrix,
     CU_SAFE_CALL(curandGenerateUniformWrap(gen_, tgt->Data(), tgt->NumRows() * tgt->Stride()));
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -93,9 +93,9 @@ template<typename Real>
 void CuRand<Real>::RandUniform(CuVectorBase<Real> *tgt) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     CU_SAFE_CALL(curandGenerateUniformWrap(gen_, tgt->Data(), tgt->Dim()));
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -107,7 +107,7 @@ template<typename Real>
 void CuRand<Real>::RandGaussian(CuMatrixBase<Real> *tgt) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     // Better use 'tmp' matrix, 'tgt' can be a window into a larger matrix,
     // so we should not use it to generate random numbers over whole stride.
     // Also, we ensure to have 'even' number of elements for calling 'curand'
@@ -117,7 +117,7 @@ void CuRand<Real>::RandGaussian(CuMatrixBase<Real> *tgt) {
     CuMatrix<Real> tmp(tgt->NumRows(), num_cols_even, kUndefined);
     CU_SAFE_CALL(curandGenerateNormalWrap(gen_, tmp.Data(), tmp.NumRows()*tmp.Stride()));
     tgt->CopyFromMat(tmp.ColRange(0,tgt->NumCols()));
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -129,7 +129,7 @@ template<typename Real>
 void CuRand<Real>::RandGaussian(CuMatrix<Real> *tgt) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     // Here we don't need to use 'tmp' matrix, if the number of elements is even,
     MatrixIndexT num_elements = tgt->NumRows() * tgt->Stride();
     if (0 == (num_elements % 2)) {
@@ -141,7 +141,7 @@ void CuRand<Real>::RandGaussian(CuMatrix<Real> *tgt) {
       CU_SAFE_CALL(curandGenerateNormalWrap(gen_, tmp.Data(), tmp.NumRows()*tmp.Stride()));
       tgt->CopyFromMat(tmp.ColRange(0,tgt->NumCols()));
     }
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -153,7 +153,7 @@ template<typename Real>
 void CuRand<Real>::RandGaussian(CuVectorBase<Real> *tgt) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     // To ensure 'even' number of elements, we use 'tmp' vector of even length.
     // Even number of elements is required by 'curand' functions:
     // curandGenerateUniform(), curandGenerateUniformDouble().
@@ -166,7 +166,7 @@ void CuRand<Real>::RandGaussian(CuVectorBase<Real> *tgt) {
       CU_SAFE_CALL(curandGenerateNormalWrap(gen_, tmp.Data(), tmp.Dim()));
       tgt->CopyFromVec(tmp.Range(0,tgt->Dim()));
     }
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {

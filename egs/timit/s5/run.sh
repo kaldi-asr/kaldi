@@ -2,17 +2,17 @@
 
 #
 # Copyright 2013 Bagher BabaAli,
-#           2014 Brno University of Technology (Author: Karel Vesely)
+#           2014-2017 Brno University of Technology (Author: Karel Vesely)
 #
 # TIMIT, description of the database:
 # http://perso.limsi.fr/lamel/TIMIT_NISTIR4930.pdf
 #
-# Hon and Lee paper on TIMIT, 1988, introduces mapping to 48 training phonemes, 
+# Hon and Lee paper on TIMIT, 1988, introduces mapping to 48 training phonemes,
 # then re-mapping to 39 phonemes for scoring:
 # http://repository.cmu.edu/cgi/viewcontent.cgi?article=2768&context=compsci
 #
 
-. ./cmd.sh 
+. ./cmd.sh
 [ -f path.sh ] && . ./path.sh
 set -e
 
@@ -57,7 +57,7 @@ echo ===========================================================================
 mfccdir=mfcc
 
 
-for x in train dev test; do 
+for x in train dev test; do
   steps/make_mfcc.sh --cmd "$train_cmd" --nj $feats_nj data/$x exp/make_mfcc/$x $mfccdir
   steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
 done
@@ -141,7 +141,7 @@ echo ===========================================================================
 steps/align_fmllr.sh --nj "$train_nj" --cmd "$train_cmd" \
  data/train data/lang exp/tri3 exp/tri3_ali
 
-#exit 0 # From this point you can run Karel's DNN : local/nnet/run_dnn.sh 
+exit 0 # From this point you can run Karel's DNN : local/nnet/run_dnn.sh
 
 steps/train_ubm.sh --cmd "$train_cmd" \
  $numGaussUBM data/train data/lang exp/tri3_ali exp/ubm4
