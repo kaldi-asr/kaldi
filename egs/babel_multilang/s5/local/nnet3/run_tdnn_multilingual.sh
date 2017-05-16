@@ -39,7 +39,8 @@ decode_stage=-10
 num_jobs_initial=2
 num_jobs_final=8
 speed_perturb=true
-use_pitch=true
+use_pitch=true  # if true, pitch feature used to train multilingual setup
+use_pitch_ivector=false # if true, pitch feature used in ivector extraction.
 use_ivector=true
 megs_dir=
 alidir=tri5_ali
@@ -85,8 +86,10 @@ done
 if [ "$speed_perturb" == "true" ]; then suffix=_sp; fi
 dir=${dir}${suffix}
 
-if $use_pitch; then feat_suffix=${feat_suffix}_pitch ; nnet3_affix=_pitch ; fi
-echo nnet3-affix = $nnet3_affix
+ivec_feat_suffix=${feat_suffix}
+if $use_pitch; then feat_suffix=${feat_suffix}_pitch ; fi
+if $use_pitch_ivector; then nnet3_affix=_pitch; ivec_feat_suffix=${feat_suffix}_pitch ; fi
+
 for lang_index in `seq 0 $[$num_langs-1]`; do
   echo "$0: extract high resolution 40dim MFCC + pitch for speed-perturbed data "
   echo "and extract alignment."
@@ -94,6 +97,13 @@ for lang_index in `seq 0 $[$num_langs-1]`; do
     --feat-suffix $feat_suffix \
     --use-pitch $use_pitch \
     --speed-perturb $speed_perturb ${lang_list[$lang_index]} || exit 1;
+  if $use_pitch && ! $use_pitch_ivector; then
+    echo "$0: select MFCC features for ivector extraction."
+    featdir=data/${lang_list[$lang_index]}/train${suffix}${feat_suffix}
+    mfcc_only_dim=`feat-to-dim scp:$featdir/feats.scp - | awk '{print $1-3}'`
+    local/select_feats.sh 0-$[$mfcc_only_dim-1] $featdir \
+      data/${lang_list[$lang_index]}/train${suffix}_hires || exit 1;
+  fi
 done
 
 if $use_ivector; then
@@ -127,7 +137,7 @@ if $use_ivector; then
     echo "on ${lda_mllt_lang}."
     local/nnet3/run_shared_ivector_extractor.sh  \
       --suffix $suffix --nnet3-affix $nnet3_affix \
-      --feat-suffix $feat_suffix \
+      --feat-suffix $ivec_feat_suffix \
       --stage $stage $lda_mllt_lang \
       $multi_data_dir $global_extractor || exit 1;
     touch $global_extractor/extractor/.done
@@ -135,7 +145,7 @@ if $use_ivector; then
   echo "$0: Extracts ivector for all languages using $global_extractor/extractor."
   for lang_index in `seq 0 $[$num_langs-1]`; do
     local/nnet3/extract_ivector_lang.sh --stage $stage \
-      --train-set train${suffix}${feat_suffix} \
+      --train-set train${suffix}${ivec_feat_suffix} \
       --ivector-suffix $ivector_suffix \
       --nnet3-affix $nnet3_affix \
       ${lang_list[$lang_index]} \
@@ -147,7 +157,7 @@ for lang_index in `seq 0 $[$num_langs-1]`; do
   multi_data_dirs[$lang_index]=data/${lang_list[$lang_index]}/train${suffix}${feat_suffix}
   multi_egs_dirs[$lang_index]=exp/${lang_list[$lang_index]}/nnet3${nnet3_affix}/egs${feat_suffix}${ivector_suffix}
   multi_ali_dirs[$lang_index]=exp/${lang_list[$lang_index]}/${alidir}${suffix}
-  multi_ivector_dirs[$lang_index]=exp/${lang_list[$lang_index]}/nnet3${nnet3_affix}/ivectors_train${suffix}${feat_suffix}${ivector_suffix}
+  multi_ivector_dirs[$lang_index]=exp/${lang_list[$lang_index]}/nnet3${nnet3_affix}/ivectors_train${suffix}${ivec_feat_suffix}${ivector_suffix}
 done
 
 if $use_ivector; then
@@ -290,6 +300,7 @@ if [ $stage -le 13 ]; then
     if [ ! -f $dir/${decode_lang_list[$lang_index]}/decode_dev10h.pem/.done ]; then
       echo "Decoding lang ${decode_lang_list[$lang_index]} using multilingual hybrid model $dir"
       run-4-anydecode-langs.sh --use-ivector $use_ivector \
+        --use-pitch-ivector $use_pitch_ivector \
         --nnet3-dir $dir --iter final_adj \
         --nnet3-affix $nnet3_affix \
         ${decode_lang_list[$lang_index]} || exit 1;

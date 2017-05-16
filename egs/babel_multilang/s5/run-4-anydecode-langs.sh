@@ -12,6 +12,7 @@ extra_kws=true
 vocab_kws=false
 tri5_only=false
 use_pitch=true
+use_pitch_ivector=false # if true, pitch feature used in ivector extraction.  
 use_ivector=false
 use_bnf=false
 pitch_conf=conf/pitch.conf
@@ -307,8 +308,16 @@ dataset=$(basename $dataset_dir)
 ivector_dir=exp/$lang/nnet3${nnet3_affix}/ivectors_${dataset}${feat_suffix}${ivector_suffix}
 if $use_ivector && [ ! -f $ivector_dir/.ivector.done ];then
   extractor=exp/multi/nnet3${nnet3_affix}/extractor
+  ivec_feat_suffix=$feat_suffix
+  if ! $use_pitch_ivector; then
+    ivec_feat_suffix=_hires
+    featdir=${dataset_dir}${feat_suffix}
+    mfcc_only_dim=`feat-to-dim scp:$featdir/feats.scp - | awk '{print $1-3}'`
+    steps/select_feats.sh 0-$[$mfcc_only_dim-1] $featdir ${dataset_dir}${ivec_feat_suffix} || exit 1;
+  fi
+
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $my_nj \
-    ${dataset_dir}${feat_suffix} $extractor $ivector_dir || exit 1;
+    ${dataset_dir}${ivec_feat_suffix} $extractor $ivector_dir || exit 1;
   touch $ivector_dir/.ivector.done
 fi
 
