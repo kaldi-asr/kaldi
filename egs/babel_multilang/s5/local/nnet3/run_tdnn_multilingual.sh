@@ -100,9 +100,13 @@ for lang_index in `seq 0 $[$num_langs-1]`; do
   if $use_pitch && ! $use_pitch_ivector; then
     echo "$0: select MFCC features for ivector extraction."
     featdir=data/${lang_list[$lang_index]}/train${suffix}${feat_suffix}
+    ivec_featdir=data/${lang_list[$lang_index]}/train${suffix}_hires
     mfcc_only_dim=`feat-to-dim scp:$featdir/feats.scp - | awk '{print $1-3}'`
-    local/select_feats.sh 0-$[$mfcc_only_dim-1] $featdir \
-      data/${lang_list[$lang_index]}/train${suffix}_hires || exit 1;
+    if [ ! -f $ivec_featdir/.done ]; then
+      steps/select_feats.sh --cmd "$train_cmd" --nj 70 0-$[$mfcc_only_dim-1] \
+        $featdir ${ivec_featdir} || exit 1;
+      touch ${ivec_featdir}/.done || exit 1;
+    fi
   fi
 done
 
@@ -136,8 +140,8 @@ if $use_ivector; then
     echo "languages in $multi_data_dir, using an LDA+MLLT transform trained "
     echo "on ${lda_mllt_lang}."
     local/nnet3/run_shared_ivector_extractor.sh  \
-      --suffix $suffix --nnet3-affix $nnet3_affix \
-      --feat-suffix $ivec_feat_suffix \
+      --suffix "$suffix" --nnet3-affix "$nnet3_affix" \
+      --feat-suffix "$ivec_feat_suffix" \
       --stage $stage $lda_mllt_lang \
       $multi_data_dir $global_extractor || exit 1;
     touch $global_extractor/extractor/.done
@@ -146,8 +150,8 @@ if $use_ivector; then
   for lang_index in `seq 0 $[$num_langs-1]`; do
     local/nnet3/extract_ivector_lang.sh --stage $stage \
       --train-set train${suffix}${ivec_feat_suffix} \
-      --ivector-suffix $ivector_suffix \
-      --nnet3-affix $nnet3_affix \
+      --ivector-suffix "$ivector_suffix" \
+      --nnet3-affix "$nnet3_affix" \
       ${lang_list[$lang_index]} \
       $ivector_extractor || exit;
   done
@@ -302,7 +306,7 @@ if [ $stage -le 13 ]; then
       run-4-anydecode-langs.sh --use-ivector $use_ivector \
         --use-pitch-ivector $use_pitch_ivector \
         --nnet3-dir $dir --iter final_adj \
-        --nnet3-affix $nnet3_affix \
+        --nnet3-affix "$nnet3_affix" \
         ${decode_lang_list[$lang_index]} || exit 1;
       touch $dir/${decode_lang_list[$lang_index]}/decode_dev10h.pem/.done
     fi

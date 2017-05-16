@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/BIN/BASH
 set -e
 set -o pipefail
 
@@ -12,7 +12,7 @@ extra_kws=true
 vocab_kws=false
 tri5_only=false
 use_pitch=true
-use_pitch_ivector=false # if true, pitch feature used in ivector extraction.  
+use_pitch_ivector=false # if true, pitch feature used in ivector extraction.
 use_ivector=false
 use_bnf=false
 pitch_conf=conf/pitch.conf
@@ -309,11 +309,12 @@ ivector_dir=exp/$lang/nnet3${nnet3_affix}/ivectors_${dataset}${feat_suffix}${ive
 if $use_ivector && [ ! -f $ivector_dir/.ivector.done ];then
   extractor=exp/multi/nnet3${nnet3_affix}/extractor
   ivec_feat_suffix=$feat_suffix
-  if ! $use_pitch_ivector; then
+  if $use_pitch && ! $use_pitch_ivector; then
     ivec_feat_suffix=_hires
     featdir=${dataset_dir}${feat_suffix}
     mfcc_only_dim=`feat-to-dim scp:$featdir/feats.scp - | awk '{print $1-3}'`
-    steps/select_feats.sh 0-$[$mfcc_only_dim-1] $featdir ${dataset_dir}${ivec_feat_suffix} || exit 1;
+    steps/select_feats.sh --cmd "$train_cmd" --nj $my_nj 0-$[$mfcc_only_dim-1] \
+      $featdir ${dataset_dir}${ivec_feat_suffix} || exit 1;
   fi
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $my_nj \
@@ -324,7 +325,7 @@ fi
 if $use_bnf; then
   # put the archives in ${dump_bnf_dir}/.
   dataset=$(basename $dataset_dir)
-  multi_ivector_dir=exp/$lang/nnet3${nnet3_affix}/ivectors_${dataset}${feat_suffix}${ivector_suffix}
+  multi_ivector_dir=exp/$lang/nnet3${nnet3_affix}/ivectors_${dataset}${ivec_feat_suffix}${ivector_suffix}
   bnf_data_dir=${dataset_dir}_bnf/$lang
   if [ ! -f $bnf_data_dir/.done ]; then
   steps/nnet3/dump_bottleneck_features.sh --use-gpu true --nj 100 --cmd "$train_cmd" \
@@ -423,7 +424,7 @@ if [ -f $nnet3_dir/$lang/final.mdl ]; then
   fi
   ivector_opts=
   if $use_ivector; then
-    ivector_opts="--online-ivector-dir exp/$lang/nnet3${nnet3_affix}/ivectors_${dataset_id}${feat_suffix}${ivector_suffix}"
+    ivector_opts="--online-ivector-dir exp/$lang/nnet3${nnet3_affix}/ivectors_${dataset_id}${ivec_feat_suffix}${ivector_suffix}"
   fi
   if [ "$is_rnn" == "true" ]; then
     rnn_opts=" --extra-left-context $extra_left_context --extra-right-context $extra_right_context  --frames-per-chunk $frames_per_chunk "
