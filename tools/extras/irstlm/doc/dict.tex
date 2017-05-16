@@ -1,0 +1,115 @@
+{\tt dict} is the command which copes with the dictionaries.
+
+\begin{itemize}
+\item It extracts the dictionary from a corpus or a dictionary;
+\item It computes and shows the dictionary growth curve;
+\item It computes and shows the out-of-vocabulary rate on a test corpus.
+\end{itemize}
+
+\subsubsection{Synopsis}
+
+\begin{tabular}{llll}
+\multicolumn{4}{l}{USAGE}\\
+    & \multicolumn{3}{l}{\tt dict -i=$<$inputfile$>$ [options]} \\
+    \\
+\multicolumn{4}{l}{OPTIONS} \\
+    & {\tt Curve}& {\tt c} &      show dictionary growth curve; default is false\\
+    & {\tt CurveSize} & {\tt cs} &    default 10\\
+    & {\tt Freq} & {\tt f} &    output word frequencies; default is false\\
+    & {\tt Help} & {\tt h} &    print this help\\
+    & {\tt InputFile} & {\tt i} &    input file (Mandatory)\\
+    & {\tt IntSymb} & {\tt is} &    interruption symbol\\
+    & {\tt ListOOV} & {\tt oov} &    print OOV words to stderr; default is false\\
+    & {\tt LoadFactor} & {\tt lf} &    set the load factor for cache; it should be a positive real value; default is 0\\
+    & {\tt OutputFile} & {\tt o} &    output file\\
+    & {\tt PruneFreq} & {\tt pf} &    prune words with frequency below the specified value\\
+    & {\tt PruneRank} & {\tt pr} &    prune words with frequency rank above the specified value\\
+    & {\tt Size} & {\tt s} &    initial dictionary size; default is $10^6$\\
+    & {\tt sort} & & sort dictionary by frequency; default is false\\
+    & {\tt TestFile} & {\tt t} &    compute OOV rates on the specified test corpus\\
+\end{tabular}
+
+
+\subsubsection{Extraction of a dictionary}
+To extract the dictionary from a given a text and store it in a file, run the following command:
+
+\begin{verbatim}
+$> dict -i=train.txt.se -o=train.dict -f=true
+\end{verbatim}
+
+The input text can be also generated on the fly by passing a command as value of the parameter{\tt InputFile }; in this case the single or double quotation marks are required.  
+\begin{verbatim}
+$> dict -i="cat train.txt | add-start-end.sh" -o=train.dict -f=true
+\end{verbatim}
+
+\noindent
+For some applications like speech recognition, it  can be useful to limit the LM dictionary.
+You can obtain such a pruned list either by means of the parameter {\tt PruneRank}, which only stores the top frequent, let us say, 10K words:
+\begin{verbatim}
+$> dict -i=train.txt.se -o=train.dict.pr10k -pr=10000
+\end{verbatim}
+
+\noindent
+or by means of the parameter {\tt PruneFreq}, which only store the terms occurring more than a given amount of times, let us say, 5:
+\begin{verbatim}
+$> dict -i=train.txt.se -o=train.dict.pf5 -pf=5
+\end{verbatim}
+
+\noindent
+The two pruning strategies can be combined.
+
+
+
+\subsubsection{Dictionary growth curve}
+{\tt dict} can display the distribution of the terms according to their frequency in a text or in a pre-computed dictionary. This facility is enabled by the parameter {\tt Curve}; the maximum frequency taken into account is specified by the parameter {\tt CurveSize}.
+ 
+\begin{verbatim}
+dict -i=train.dict -c=yes -cs=50
+\end{verbatim}
+
+\noindent
+The output looks as follows
+\begin{verbatim}
+Dict size: 7893
+**************** DICTIONARY GROWTH CURVE ****************
+Freq  Entries  Percent
+>0    7893     100.00%
+>1    4880      61.83%
+>2    3721      47.14%
+>3    2990      37.88%
+...
+>47   271        3.43%
+>48   264        3.34%
+>49   258        3.27%
+*********************************************************
+\end{verbatim}
+\noindent
+Each row of the table reports, given the value in the first column, the amount of terms (second column) having at least the given frequency (first column), and its percentage  (third column) with respect to the total amount of entries.
+
+
+
+\subsubsection{Out-of-vocabulary rate statistics}
+{\tt dict} can display the distribution of the terms according to their frequency in a text or in a pre-computed dictionary; the maximum frequency taken into account is specified by the parameter {\tt CurveSize}.
+\begin{verbatim}
+$> dict -i=train.dict -t=test.txt.se -cs=50
+\end{verbatim}
+
+\noindent
+The output looks as follows
+\begin{verbatim}
+Dict size: 7893
+Words of test: 1009
+**************** OOV RATE STATISTICS ****************
+Freq  OOV_Entries  OOV_Rate
+<1    119          11.79%
+<2    151          14.97%
+<3    191          18.93%
+...
+<48   457          45.29%
+<49   457          45.29%
+<50   457          45.29%
+*********************************************************
+
+\end{verbatim}
+\noindent
+Each row of the table reports, given the value in the first column, the out-of-vocabulary rate on the test set, assuming to prune the dictionary at the given frequency. In other words, 191 (18.93\%) of the running terms in the test set has a frequency smaller than 3 in the dictionary.

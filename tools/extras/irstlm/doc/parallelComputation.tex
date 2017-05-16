@@ -1,0 +1,18 @@
+This package provides facilities to build a gigantic LM in parallel in order to reduce computation time.
+The script implementing this feature is based on the {\tt SUN Grid Engine} software\footnote{http://www.sun.com/software/gridware}.
+
+\noindent
+To apply the parallel computation run the following script (instead of {\tt build-lm.sh}):
+
+\begin{verbatim}
+$> build-lm-qsub.sh -i "gunzip -c train.gz" -n 3  -o train.ilm.gz -k 5
+\end{verbatim}
+Besides the options of {\tt build-lm.sh}, parameters for the SGE manager can be provided through the following one:
+
+\begin{verbatim}
+   -q      parameters for qsub, e.g. "-q <queue>", "-l <resources>"
+\end{verbatim}
+
+\noindent
+The script performs the same {\em split-and-merge} policy described in Section~\ref{sec:giganticLM}, but some computation is performed in parallel (instead of sequentially) distributing the tasks on several machines.
+

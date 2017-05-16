@@ -1,0 +1,20 @@
+# compute-mfcc-feats --verbose=2 --config=conf/mfcc.conf scp,p:exp/make_mfcc/test/wav_test.1.scp ark:- | copy-feats --compress=true ark:- ark,scp:/home/abhilash/kaldi/egs/0_MP_Digits/mfcc/raw_mfcc_test.1.ark,/home/abhilash/kaldi/egs/0_MP_Digits/mfcc/raw_mfcc_test.1.scp 
+# Started at Mon May 15 17:17:21 IST 2017
+#
+copy-feats --compress=true ark:- ark,scp:/home/abhilash/kaldi/egs/0_MP_Digits/mfcc/raw_mfcc_test.1.ark,/home/abhilash/kaldi/egs/0_MP_Digits/mfcc/raw_mfcc_test.1.scp 
+compute-mfcc-feats --verbose=2 --config=conf/mfcc.conf scp,p:exp/make_mfcc/test/wav_test.1.scp ark:- 
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_2
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_3
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_4
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_5
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_6
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_7
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_8
+LOG (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:177) Processed 10 utterances
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_9
+LOG (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:181)  Done 10 out of 10 utterances.
+LOG (copy-feats[5.1.87~1-6eebc]:main():copy-feats.cc:132) Copied 10 feature matrices.
+# Accounting: time=0 threads=1
+# Ended (code 0) at Mon May 15 17:17:21 IST 2017, elapsed time 0 seconds

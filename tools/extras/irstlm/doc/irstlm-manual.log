@@ -1,0 +1,369 @@
+This is pdfTeXk, Version 3.1415926-1.40.9 (Web2C 7.5.7) (format=pdflatex 2009.2.11)  11 JAN 2015 20:10
+entering extended mode
+ %&-line parsing enabled.
+**irstlm-manual.tex
+(./irstlm-manual.tex
+LaTeX2e <2005/12/01>
+Babel <v3.8l> and hyphenation patterns for english, usenglishmax, dumylang, noh
+yphenation, german-x-2008-06-18, ngerman-x-2008-06-18, ancientgreek, ibycus, ar
+abic, basque, bulgarian, catalan, pinyin, coptic, croatian, czech, danish, dutc
+h, esperanto, estonian, farsi, finnish, french, galician, german, ngerman, mono
+greek, greek, hungarian, icelandic, indonesian, interlingua, irish, italian, la
+tin, lithuanian, mongolian, mongolian2a, bokmal, nynorsk, polish, portuguese, r
+omanian, russian, sanskrit, serbian, slovak, slovenian, spanish, swedish, turki
+sh, ukenglish, ukrainian, uppersorbian, welsh, loaded.
+(/usr/local/texlive/2008/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2005/09/16 v1.4f Standard LaTeX document class
+(/usr/local/texlive/2008/texmf-dist/tex/latex/base/size11.clo
+File: size11.clo 2005/09/16 v1.4f Standard LaTeX file (size option)
+)
+\c@part=\count79
+\c@section=\count80
+\c@subsection=\count81
+\c@subsubsection=\count82
+\c@paragraph=\count83
+\c@subparagraph=\count84
+\c@figure=\count85
+\c@table=\count86
+\abovecaptionskip=\skip41
+\belowcaptionskip=\skip42
+\bibindent=\dimen102
+)
+(/usr/local/texlive/2008/texmf-dist/tex/latex/preprint/fullpage.sty
+Package: fullpage 1999/02/23 1.1 (PWD)
+\FP@margin=\skip43
+)
+(/usr/local/texlive/2008/texmf-dist/tex/latex/psnfss/times.sty
+Package: times 2005/04/12 PSNFSS-v9.2a (SPQR) 
+)
+(/usr/local/texlive/2008/texmf-dist/tex/latex/base/latexsym.sty
+Package: latexsym 1998/08/17 v2.2e Standard LaTeX package (lasy symbols)
+\symlasy=\mathgroup4
+LaTeX Font Info:    Overwriting symbol font `lasy' in version `bold'
+(Font)                  U/lasy/m/n --> U/lasy/b/n on input line 47.
+)
+(/usr/local/texlive/2008/texmf-dist/tex/generic/epsf/epsf.sty
+This is `epsf.tex' v2.7.3 <23 July 2005>
+\epsffilein=\read1
+\epsfframemargin=\dimen103
+\epsfframethickness=\dimen104
+\epsfrsize=\dimen105
+\epsftmp=\dimen106
+\epsftsize=\dimen107
+\epsfxsize=\dimen108
+\epsfysize=\dimen109
+\pspoints=\dimen110
+) (/usr/local/texlive/2008/texmf-dist/tex/latex/graphics/graphicx.sty
+Package: graphicx 1999/02/16 v1.0f Enhanced LaTeX Graphics (DPC,SPQR)
+
+(/usr/local/texlive/2008/texmf-dist/tex/latex/graphics/keyval.sty
+Package: keyval 1999/03/16 v1.13 key=value parser (DPC)
+\KV@toks@=\toks14
+)
+(/usr/local/texlive/2008/texmf-dist/tex/latex/graphics/graphics.sty
+Package: graphics 2006/02/20 v1.0o Standard LaTeX Graphics (DPC,SPQR)
+
+(/usr/local/texlive/2008/texmf-dist/tex/latex/graphics/trig.sty
+Package: trig 1999/03/16 v1.09 sin cos tan (DPC)
+)
+(/usr/local/texlive/2008/texmf/tex/latex/config/graphics.cfg
+File: graphics.cfg 2007/01/18 v1.5 graphics configuration of teTeX/TeXLive
+)
+Package graphics Info: Driver file: pdftex.def on input line 90.
+
+(/usr/local/texlive/2008/texmf-dist/tex/latex/pdftex-def/pdftex.def
+File: pdftex.def 2008/09/08 v0.04l Graphics/color for pdfTeX
+\Gread@gobject=\count87
+))
+\Gin@req@height=\dimen111
+\Gin@req@width=\dimen112
+)
+(/usr/local/texlive/2008/texmf-dist/tex/latex/ltxmisc/version.sty)
+(/usr/local/texlive/2008/texmf-dist/tex/latex/graphics/color.sty
+Package: color 2005/11/14 v1.0j Standard LaTeX Color (DPC)
+
+(/usr/local/texlive/2008/texmf/tex/latex/config/color.cfg
+File: color.cfg 2007/01/18 v1.5 color configuration of teTeX/TeXLive
+)
+Package color Info: Driver file: pdftex.def on input line 130.
+
+(/usr/local/texlive/2008/texmf-dist/tex/latex/graphics/dvipsnam.def
+File: dvipsnam.def 1999/02/16 v3.0i Driver-dependant file (DPC,SPQR)
+))
+(/usr/local/texlive/2008/texmf-dist/tex/latex/ltxmisc/framed.sty
+Package: framed 2007/10/04 v 0.95: framed or shaded text with page breaks
+\fb@frw=\dimen113
+\fb@frh=\dimen114
+\FrameRule=\dimen115
+\FrameSep=\dimen116
+)
+No file irstlm-manual.aux.
+\openout1 = `irstlm-manual.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 27.
+LaTeX Font Info:    ... okay on input line 27.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 27.
+LaTeX Font Info:    ... okay on input line 27.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 27.
+LaTeX Font Info:    ... okay on input line 27.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 27.
+LaTeX Font Info:    ... okay on input line 27.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 27.
+LaTeX Font Info:    ... okay on input line 27.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 27.
+LaTeX Font Info:    ... okay on input line 27.
+LaTeX Font Info:    Try loading font information for OT1+ptm on input line 27.
+(/usr/local/texlive/2008/texmf-dist/tex/latex/psnfss/ot1ptm.fd
+File: ot1ptm.fd 2001/06/04 font definitions for OT1/ptm.
+)
+(/usr/local/texlive/2008/texmf-dist/doc/pdftex/manual/samplepdf/supp-pdf.tex
+(/usr/local/texlive/2008/texmf-dist/doc/pdftex/manual/samplepdf/supp-mis.tex
+loading : Context Support Macros / Miscellaneous (2004.10.26)
+\protectiondepth=\count88
+\scratchcounter=\count89
+\scratchtoks=\toks15
+\scratchdimen=\dimen117
+\scratchskip=\skip44
+\scratchmuskip=\muskip10
+\scratchbox=\box26
+\scratchread=\read2
+\scratchwrite=\write3
+\zeropoint=\dimen118
+\onepoint=\dimen119
+\onebasepoint=\dimen120
+\minusone=\count90
+\thousandpoint=\dimen121
+\onerealpoint=\dimen122
+\emptytoks=\toks16
+\nextbox=\box27
+\nextdepth=\dimen123
+\everyline=\toks17
+\!!counta=\count91
+\!!countb=\count92
+\recursecounter=\count93
+)
+loading : Context Support Macros / PDF (2004.03.26)
+\nofMPsegments=\count94
+\nofMParguments=\count95
+\MPscratchCnt=\count96
+\MPscratchDim=\dimen124
+\MPnumerator=\count97
+\everyMPtoPDFconversion=\toks18
+)
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <12> on input line 34.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <8> on input line 34.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <6> on input line 34.
+LaTeX Font Info:    Try loading font information for U+lasy on input line 34.
+ (/usr/local/texlive/2008/texmf-dist/tex/latex/base/ulasy.fd
+File: ulasy.fd 1998/08/17 v2.2e LaTeX symbol font definitions
+) (..//RELEASE)
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10.95> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 40.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <10.95> on input line 51.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <9> on input line 51.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <5> on input line 51.
+LaTeX Font Info:    Try loading font information for OT1+pcr on input line 51.
+
+(/usr/local/texlive/2008/texmf-dist/tex/latex/psnfss/ot1pcr.fd
+File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
+) [1
+
+{/usr/local/texlive/2008/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <14.4> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 64.
+
+No file irstlm-manual.toc.
+\tf@toc=\write4
+\openout4 = `irstlm-manual.toc'.
+
+[2] (./introduction.tex
+LaTeX Font Info:    Try loading font information for OMS+ptm on input line 4.
+
+(/usr/local/texlive/2008/texmf-dist/tex/latex/psnfss/omsptm.fd
+File: omsptm.fd 
+)
+LaTeX Font Info:    Font shape `OMS/ptm/m/n' in size <10.95> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 4.
+
+
+LaTeX Warning: Reference `sec:ReferenceMaterial' on page 3 undefined on input l
+ine 34.
+
+) [3] (./installation.tex
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <12> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 6.
+ [4]
+
+LaTeX Warning: Reference `sec:caching' on page 5 undefined on input line 65.
+
+
+LaTeX Warning: Reference `sec:regressionTests' on page 5 undefined on input lin
+e 84.
+
+) [5] (./gettingStarted.tex
+
+LaTeX Warning: Reference `sec:commands' on page 6 undefined on input line 8.
+
+
+LaTeX Warning: Reference `sec:functions' on page 6 undefined on input line 9.
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 14--14
+\OT1/ptm/m/n/10.95 All pro-grams as-sume that the en-vi-ron-ment vari-able \OT1
+/ptm/b/n/10.95 IRSTLM \OT1/ptm/m/n/10.95 is cor-rectly set to
+ []
+
+[6]) [7] (./LMFileFormats.tex [8] [9]
+LaTeX Font Info:    Try loading font information for OMS+pcr on input line 107.
+
+
+(/usr/local/texlive/2008/texmf-dist/tex/latex/psnfss/omspcr.fd
+File: omspcr.fd 
+)
+LaTeX Font Info:    Font shape `OMS/pcr/m/n' in size <10.95> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 107.
+ [10] [11]
+[12]) [13] (./LMsmoothing.tex) (./mixtureLM.tex) (./interpolatedLM.tex)
+[14] (./ClassAndChunkLMs.tex
+Overfull \hbox (16.4244pt too wide) in paragraph at lines 28--28
+[] \OT1/pcr/m/n/10.95 <lmfilename> is a file containing a LM (format compatible
+ with {\IRSTLM})[] 
+ []
+
+[15] [16]
+Overfull \hbox (3.28441pt too wide) in paragraph at lines 175--175
+[]\OT1/pcr/m/n/10.95 $> compile-lm --eval test/test.w-micro cfgfile/cfg.2ndfld-
+map-cllps -d=1[] 
+ []
+
+) [17] (./dict.tex
+Overfull \hbox (11.94783pt too wide) in paragraph at lines 40--41
+[]\OT1/ptm/m/n/10.95 The in-put text can be also gen-er-ated on the fly by pass
+-ing a com-mand as value of the pa-ram-e-ter\OT1/pcr/m/n/10.95 InputFile
+ []
+
+[18] [19]) (./ngt.tex) (./tlm.tex [20] [21]) (./compileLM.tex)
+(./interpolateLM.tex) (./pruneLM.tex) (./quantizeLM.tex) (./LMAdaptation.tex
+Overfull \hbox (10.24498pt too wide) in paragraph at lines 29--29
+[]\OT1/pcr/m/n/10 $> tlm -tr=train.www -lm=wb -n=3 -te=test -dub=1000000 -ad=ad
+apt -ar=0.8 -ao=yes[] 
+ []
+
+
+Overfull \hbox (4.24498pt too wide) in paragraph at lines 43--43
+[]\OT1/pcr/m/n/10 $> tlm -tr=train-adapt.www -lm=msb -n=3 -te=test -dub=1000000
+ -ad=adapt -ar=0.8[] 
+ []
+
+[22]) (./giganticLM.tex [23]
+Overfull \hbox (9.8544pt too wide) in paragraph at lines 51--51
+[]\OT1/pcr/m/n/10.95 $> compile-lm train.ilm.gz --text yes /dev/stdout | gzip -
+c > train.lm.gz[] 
+ []
+
+
+Overfull \hbox (42.70436pt too wide) in paragraph at lines 72--72
+[]\OT1/pcr/m/n/10.95 $> build-lm.sh -i "gunzip -c train.gz" -n 3  -o  train.ilm
+.gz -k 5 -p -d sdict[] 
+ []
+
+) [24] (./LMPruning.tex) [25] (./LMQuantization.tex) [26] (./LMCompilation.tex
+Underfull \hbox (badness 10000) in paragraph at lines 7--12
+
+ []
+
+) [27] (./LMInterpolation.tex
+Underfull \hbox (badness 10000) in paragraph at lines 19--23
+
+ []
+
+) [28] (./LMFiltering.tex) [29] (./ParallelComputation.tex
+
+LaTeX Warning: Reference `sec:giganticLM' on page 30 undefined on input line 17
+.
+
+) [30] (./LMInterface.tex
+Underfull \hbox (badness 10000) in paragraph at lines 33--35
+
+ []
+
+
+Overfull \hbox (16.4244pt too wide) in paragraph at lines 51--51
+[]\OT1/pcr/m/n/10.95 $> tlm -tr=train.www -n=3 -lm=wb -te=test -o=train.lm -ps=
+no -dub=10000000[] 
+ []
+
+
+Overfull \hbox (4.24498pt too wide) in paragraph at lines 74--74
+[]\OT1/pcr/m/n/10 %% sent_Nw=1 sent_PP=23.22 sent_PPwp=0.00 sent_Nbo=0 sent_Noo
+v=0 sent_OOV=0.00%[] 
+ []
+
+
+Overfull \hbox (40.24498pt too wide) in paragraph at lines 74--74
+[]\OT1/pcr/m/n/10 %% sent_Nw=8 sent_PP=7489.50 sent_PPwp=7356.27 sent_Nbo=7 sen
+t_Noov=2 sent_OOV=25.00%[] 
+ []
+
+
+Overfull \hbox (22.24498pt too wide) in paragraph at lines 74--74
+[]\OT1/pcr/m/n/10 %% sent_Nw=9 sent_PP=1231.44 sent_PPwp=0.00 sent_Nbo=14 sent_
+Noov=0 sent_OOV=0.00%[] 
+ []
+
+
+Overfull \hbox (58.24498pt too wide) in paragraph at lines 74--74
+[]\OT1/pcr/m/n/10 %% sent_Nw=6 sent_PP=27759.10 sent_PPwp=25867.42 sent_Nbo=19 
+sent_Noov=1 sent_OOV=16.67%[] 
+ []
+
+[31]
+Overfull \hbox (34.24498pt too wide) in paragraph at lines 74--74
+[]\OT1/pcr/m/n/10 %% sent_Nw=5 sent_PP=378.38 sent_PPwp=0.00 sent_Nbo=39893 sen
+t_Noov=0 sent_OOV=0.00%[] 
+ []
+
+
+Overfull \hbox (64.24498pt too wide) in paragraph at lines 74--74
+[]\OT1/pcr/m/n/10 %% sent_Nw=15 sent_PP=4300.44 sent_PPwp=2831.89 sent_Nbo=3990
+7 sent_Noov=1 sent_OOV=6.67%[] 
+ []
+
+) [32] (./regressionTests.tex) [33] (./referenceMaterial.tex) [34]
+(./releaseNotes.tex [35] [36] [37] [38]) [39] (./irstlm-manual.aux)
+
+LaTeX Warning: There were undefined references.
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+ ) 
+Here is how much of TeX's memory you used:
+ 1619 strings out of 493876
+ 22592 string characters out of 1150568
+ 72741 words of memory out of 3000000
+ 4790 multiletter control sequences out of 10000+50000
+ 27471 words of font info for 63 fonts, out of 3000000 for 5000
+ 714 hyphenation exceptions out of 8191
+ 25i,8n,19p,394b,297s stack positions out of 5000i,500n,10000p,200000b,50000s
+{/usr/local/texlive/2008/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/local/t
+exlive/2008/texmf-dist/fonts/type1/bluesky/cm/cmmi10.pfb></usr/local/texlive/20
+08/texmf-dist/fonts/type1/bluesky/cm/cmmi12.pfb></usr/local/texlive/2008/texmf-
+dist/fonts/type1/bluesky/cm/cmr10.pfb></usr/local/texlive/2008/texmf-dist/fonts
+/type1/bluesky/cm/cmr8.pfb></usr/local/texlive/2008/texmf-dist/fonts/type1/blue
+sky/cm/cmsy10.pfb></usr/local/texlive/2008/texmf-dist/fonts/type1/urw/courier/u
+crr8a.pfb></usr/local/texlive/2008/texmf-dist/fonts/type1/urw/times/utmb8a.pfb>
+</usr/local/texlive/2008/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/loca
+l/texlive/2008/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
+Output written on irstlm-manual.pdf (39 pages, 155611 bytes).
+PDF statistics:
+ 166 PDF objects out of 1000 (max. 8388607)
+ 0 named destinations out of 1000 (max. 131072)
+ 1 words of extra memory for PDF output out of 10000 (max. 10000000)
+

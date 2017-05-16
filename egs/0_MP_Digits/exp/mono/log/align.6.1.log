@@ -1,0 +1,106 @@
+# gmm-align-compiled --transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1 --beam=10 --retry-beam=40 --careful=false "gmm-boost-silence --boost=1.0 1 exp/mono/6.mdl - |" "ark:gunzip -c exp/mono/fsts.1.gz|" "ark,s,cs:apply-cmvn  --utt2spk=ark:data/train/split1/1/utt2spk scp:data/train/split1/1/cmvn.scp scp:data/train/split1/1/feats.scp ark:- | add-deltas ark:- ark:- |" "ark,t:|gzip -c >exp/mono/ali.1.gz" 
+# Started at Mon May 15 17:17:25 IST 2017
+#
+gmm-align-compiled --transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1 --beam=10 --retry-beam=40 --careful=false 'gmm-boost-silence --boost=1.0 1 exp/mono/6.mdl - |' 'ark:gunzip -c exp/mono/fsts.1.gz|' 'ark,s,cs:apply-cmvn  --utt2spk=ark:data/train/split1/1/utt2spk scp:data/train/split1/1/cmvn.scp scp:data/train/split1/1/feats.scp ark:- | add-deltas ark:- ark:- |' 'ark,t:|gzip -c >exp/mono/ali.1.gz' 
+gmm-boost-silence --boost=1.0 1 exp/mono/6.mdl - 
+WARNING (gmm-boost-silence[5.1.87~1-6eebc]:main():gmm-boost-silence.cc:82) The pdfs for the silence phones may be shared by other phones (note: this probably does not matter.)
+LOG (gmm-boost-silence[5.1.87~1-6eebc]:main():gmm-boost-silence.cc:93) Boosted weights for 5 pdfs, by factor of 1
+LOG (gmm-boost-silence[5.1.87~1-6eebc]:main():gmm-boost-silence.cc:103) Wrote model to -
+add-deltas ark:- ark:- 
+apply-cmvn --utt2spk=ark:data/train/split1/1/utt2spk scp:data/train/split1/1/cmvn.scp scp:data/train/split1/1/feats.scp ark:- 
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker10_0
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker10_1
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker10_2
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker10_3
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker10_4
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker10_5
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker10_6
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker10_7
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker10_8
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker10_9
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker2_0
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker2_1
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker2_2
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker2_3
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker2_4
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker2_5
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker2_6
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker2_7
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker2_8
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker2_9
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker3_0
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker3_1
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker3_2
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker3_3
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker3_4
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker3_5
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker3_6
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker3_7
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker3_8
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker3_9
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker4_0
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker4_1
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker4_2
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker4_3
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker4_4
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker4_5
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker4_6
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker4_7
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker4_8
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker4_9
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker5_0
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker5_1
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker5_2
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker5_3
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker5_4
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker5_5
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker5_6
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker5_7
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker5_8
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker5_9
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker6_0
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker6_1
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker6_2
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker6_3
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker6_4
+LOG (apply-cmvn[5.1.87~1-6eebc]:main():apply-cmvn.cc:146) Applied cepstral mean normalization to 89 utterances, errors on 0
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker6_5
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker6_6
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker6_7
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker6_8
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker6_9
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker7_0
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker7_1
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker7_2
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker7_3
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker7_4
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker7_5
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker7_6
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker7_7
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker7_8
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker7_9
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker8_0
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker8_1
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker8_2
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker8_3
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker8_4
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker8_5
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker8_6
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker8_7
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker8_8
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker8_9
+WARNING (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:103) No features for utterance Speaker9_0
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker9_1
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker9_2
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker9_3
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker9_4
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker9_5
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker9_6
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker9_7
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker9_8
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:127) Speaker9_9
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:135) Overall log-likelihood per frame is -95.794 over 4329 frames.
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:137) Retried 0 out of 90 utterances.
+LOG (gmm-align-compiled[5.1.87~1-6eebc]:main():gmm-align-compiled.cc:139) Done 89, errors on 1
+# Accounting: time=0 threads=1
+# Ended (code 0) at Mon May 15 17:17:25 IST 2017, elapsed time 0 seconds

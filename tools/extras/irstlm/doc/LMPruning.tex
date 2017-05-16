@@ -1,0 +1,47 @@
+Large LMs files can be pruned in a smart way by means of the command 
+{\tt prune-lm} that removes $n$-grams for which resorting to the back-off 
+results in a small loss. {\IRSTLM} implements a method similar to the 
+Weighted Difference Method described in the paper {\em Scalable Backoff
+Language Models} by Seymore and Rosenfeld.
+
+\noindent
+The syntax is as follows:
+\begin{verbatim}
+$> prune-lm --threshold=1e-6,1e-6  train.lm.gz  train.plm
+\end{verbatim}
+Thresholds for each n-gram level, up from 2-grams, are based on empirical 
+evidence. Threshold zero results in no pruning. If less thresholds are specified,
+the right most is applied to the higher levels. Hence, in the above example we
+could have just specified one threshold, namely {\tt --threshold=1e-6}. 
+The effect of pruning is shown in the following messages of {\tt prune-lm}:
+
+\begin{verbatim}1-grams: reading 15059 entries
+2-grams: reading 142684 entries
+3-grams: reading 293685 entries
+done
+OOV code is 15058
+OOV code is 15058
+pruning LM with thresholds: 
+ 1e-06 1e-06
+savetxt: train.plm
+save: 15059 1-grams
+save: 138252 2-grams
+save: 194194 3-grams
+\end{verbatim}
+
+\noindent
+The saved LM table {\tt train.plm}  contains about 3\% less bigrams, and 34\%  
+less trigrams.
+Notice that the output of prune-lm is an ARPA LM file, while the input can be 
+either an ARPA or binary LM. 
+In order to measure the loss in accuracy introduced
+by pruning, perplexity of the resulting LM can be computed (see below).
+
+\paragraph{Warning:} the possible quantization should be performed after pruning.
+
+\paragraph{Warning:} 
+{\IRSTLM} does not provide a reliable probability for the special
+1-gram composed by the ``sentence start symbol'' ({\tt <s>}) , because none
+should ever ask for it.  However, this pruning method requires the
+computation of the probability of this 1-gram.  Hence, (only) in this case
+the probability of this special 1-gram is arbitrarily set to 1.

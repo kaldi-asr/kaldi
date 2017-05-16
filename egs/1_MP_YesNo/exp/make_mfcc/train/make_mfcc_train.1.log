@@ -1,0 +1,64 @@
+# compute-mfcc-feats --verbose=2 --config=conf/mfcc.conf scp,p:exp/make_mfcc/train/wav_train.1.scp ark:- | copy-feats --compress=true ark:- ark,scp:/home/abhilash/kaldi/egs/1_MP_YesNo/mfcc/raw_mfcc_train.1.ark,/home/abhilash/kaldi/egs/1_MP_YesNo/mfcc/raw_mfcc_train.1.scp 
+# Started at Tue May 16 14:39:55 IST 2017
+#
+copy-feats --compress=true ark:- ark,scp:/home/abhilash/kaldi/egs/1_MP_YesNo/mfcc/raw_mfcc_train.1.ark,/home/abhilash/kaldi/egs/1_MP_YesNo/mfcc/raw_mfcc_train.1.scp 
+compute-mfcc-feats --verbose=2 --config=conf/mfcc.conf scp,p:exp/make_mfcc/train/wav_train.1.scp ark:- 
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_0_0_1_1_1_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_0_1_0_0_0_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_0_1_0_1_1_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_1_0_0_0_1_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_1_0_0_1_1_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_1_0_0_1_1_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_1_0_1_0_0_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_1_0_1_0_0_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_1_0_1_0_1_1
+LOG (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:177) Processed 10 utterances
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_1_1_0_0_0_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_1_1_0_1_0_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_1_1_0_1_1_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_1_1_0_1_1_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_1_1_1_0_0_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_1_1_1_0_0_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_1_1_1_1_0_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_0_1_1_1_1_1_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_1_0_0_0_1_0_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_1_0_0_0_1_1_0
+LOG (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:177) Processed 20 utterances
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_1_0_0_1_0_1_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_1_0_0_1_0_1_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_1_0_1_0_0_0_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_1_0_1_1_0_1_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_1_0_1_1_1_0_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_1_1_0_0_1_1_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_1_1_0_0_1_1_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_1_1_1_0_0_0_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_1_1_1_0_0_1_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_1_1_1_0_1_0_1
+LOG (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:177) Processed 30 utterances
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_1_1_1_1_0_1_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_0_1_1_1_1_1_1_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_0_0_0_0_0_0_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_0_0_0_0_0_0_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_0_0_0_0_0_1_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_0_0_0_1_0_0_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_0_0_1_0_1_1_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_0_1_0_1_0_0_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_0_1_1_0_1_1_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_0_1_1_1_0_1_0
+LOG (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:177) Processed 40 utterances
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_0_1_1_1_1_0_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_1_0_0_0_0_0_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_1_0_0_0_1_1_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_1_0_0_1_0_1_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_1_0_0_1_0_1_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_1_0_0_1_1_1_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_1_0_1_0_1_0_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_1_0_1_0_1_1_0
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_1_0_1_1_0_0_1
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_1_0_1_1_0_1_1
+LOG (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:177) Processed 50 utterances
+VLOG[2] (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:178) Processed features for key Speaker1_1_1_0_1_1_1_1_0
+LOG (compute-mfcc-feats[5.1.87~1-6eebc]:main():compute-mfcc-feats.cc:181)  Done 50 out of 50 utterances.
+LOG (copy-feats[5.1.87~1-6eebc]:main():copy-feats.cc:132) Copied 50 feature matrices.
+# Accounting: time=1 threads=1
+# Ended (code 0) at Tue May 16 14:39:56 IST 2017, elapsed time 1 seconds

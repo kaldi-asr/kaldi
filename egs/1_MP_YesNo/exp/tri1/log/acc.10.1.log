@@ -1,0 +1,13 @@
+# gmm-acc-stats-ali exp/tri1/10.mdl "ark,s,cs:apply-cmvn  --utt2spk=ark:data/train/split1/1/utt2spk scp:data/train/split1/1/cmvn.scp scp:data/train/split1/1/feats.scp ark:- | add-deltas  ark:- ark:- |" "ark,s,cs:gunzip -c exp/tri1/ali.1.gz|" exp/tri1/10.1.acc 
+# Started at Tue May 16 14:40:57 IST 2017
+#
+gmm-acc-stats-ali exp/tri1/10.mdl 'ark,s,cs:apply-cmvn  --utt2spk=ark:data/train/split1/1/utt2spk scp:data/train/split1/1/cmvn.scp scp:data/train/split1/1/feats.scp ark:- | add-deltas  ark:- ark:- |' 'ark,s,cs:gunzip -c exp/tri1/ali.1.gz|' exp/tri1/10.1.acc 
+add-deltas ark:- ark:- 
+apply-cmvn --utt2spk=ark:data/train/split1/1/utt2spk scp:data/train/split1/1/cmvn.scp scp:data/train/split1/1/feats.scp ark:- 
+LOG (apply-cmvn[5.1.87~1-6eebc]:main():apply-cmvn.cc:146) Applied cepstral mean normalization to 50 utterances, errors on 0
+LOG (gmm-acc-stats-ali[5.1.87~1-6eebc]:main():gmm-acc-stats-ali.cc:105) Processed 50 utterances; for utterance Speaker1_1_1_0_1_1_1_1_0 avg. like is -79.4517 over 619 frames.
+LOG (gmm-acc-stats-ali[5.1.87~1-6eebc]:main():gmm-acc-stats-ali.cc:112) Done 50 files, 0 with errors.
+LOG (gmm-acc-stats-ali[5.1.87~1-6eebc]:main():gmm-acc-stats-ali.cc:115) Overall avg like per frame (Gaussian only) = -78.6594 over 30498 frames.
+LOG (gmm-acc-stats-ali[5.1.87~1-6eebc]:main():gmm-acc-stats-ali.cc:123) Written accs.
+# Accounting: time=1 threads=1
+# Ended (code 0) at Tue May 16 14:40:58 IST 2017, elapsed time 1 seconds

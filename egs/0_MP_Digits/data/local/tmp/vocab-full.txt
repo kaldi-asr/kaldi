@@ -1,0 +1,14 @@
+-pau-
+</s>
+<s>
+<unk>
+eight
+five
+four
+nine
+one
+seven
+six
+three
+two
+zero

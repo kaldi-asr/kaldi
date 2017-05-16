@@ -1,0 +1,91 @@
+Language model adaptation can be  applied when little training data is given for the 
+task at hand, but much more data from other less related sources is available.  {\tt tlm} supports two adaptation methods.
+
+\subsection{Minimum Discriminative Information Adaptation}
+MDI adaptation  is used  when domain related  data is very  little but
+enough to  estimate a  unigram LM.  Basically,  the n-gram probs  of a
+general  purpose (background)  LM are  scaled so  that they  match the
+target unigram distribution.
+	
+\noindent	 
+Relevant parameters:
+\begin{itemize}
+\item {\tt -ar=value}: the adaptation {\tt rate},  a real number ranging 
+ from 0 (=no adaptation) to 1 (=strong adaptation).
+
+\item {\tt -ad=file}: the  adaptation file,  either a text  or a
+  unigram table.
+
+\item {\tt -ao=y}: open vocabulary mode, which  must be set if the adaptation file
+ might contain new words to be added to the basic dictionary.
+\end{itemize}
+
+\noindent
+As an example, we apply MDI adaptation on the ``adapt'' file:
+\begin{small}
+\begin{verbatim}
+$> tlm -tr=train.www -lm=wb -n=3 -te=test -dub=1000000 -ad=adapt -ar=0.8 -ao=yes
+   n=49984 LP=326327.8053 PP=684.470312 OVVRate=0.04193341869
+\end{verbatim}
+\end{small}
+
+\noindent
+\paragraph{Warning:}  modified shift-beta  smoothing  cannot  be applied  in  open
+vocabulary mode  ({\tt -ao=yes}).  If  this is the  case, you  should either
+change  smoothing method  or simply  add  the adaptation  text to  the
+background LM (use {\tt -aug} parameter  of {\tt ngt}). In
+general, this solution should  provide better performance.
+\begin{small}
+\begin{verbatim}
+$> ngt -i=train.www -aug=adapt -o=train-adapt.www -n=3 -b=yes
+$> tlm -tr=train-adapt.www -lm=msb -n=3 -te=test -dub=1000000 -ad=adapt -ar=0.8
+  n=49984 LP=312276.1746 PP=516.7311396 OVVRate=0.04193341869
+\end{verbatim}
+\end{small}
+
+\subsection{Mixture Adaptation}
+
+\noindent
+Mixture adaptation  is useful  when you have  enough training  data to
+estimate a  bigram or  trigram LM and  you also have  data collections
+from other domains.
+
+\noindent
+Relevant parameters:
+\begin{itemize}
+\item {\tt-lm=mix} : specifies mixture smoothing method
+\item {\tt -slmi=<filename>}: specifies filename with information about LMs to combine.
+\end{itemize}
+
+\noindent
+In the example directory, the file {\tt sublmi} contains the following lines:
+\begin{verbatim}
+2
+-slm=msb -str=adapt -sp=0
+-slm=msb -str=train.www -sp=0
+\end{verbatim}
+
+\noindent
+This means  that we use train a  mixture model on the  {\tt adapt} data set and
+combine it  with the train data. For each data  set the desired
+smoothing method is specified  (disregard the parameter {\tt -sp}). The file
+used for adaptation is the one in FIRST position.
+
+\begin{verbatim}
+$> tlm -tr=train.www -lm=mix -slmi=sublm -n=3 -te=test -dub=1000000
+  n=49984 LP=307199.3273 PP=466.8244383 OVVRate=0.04193341869
+\end{verbatim}
+
+\noindent
+{\bf Warning}: for  computational reasons it  is expected that  the $n$-gram
+table  specified by {\tt -tr}  contains AT  LEAST the  $n$-grams of  the last
+table specified in the slmi file, i.e. {\tt train.www} in  the example.
+Faster computations are achieved by putting the largest dataset as the
+last sub-model in the list and the union of all data sets as training
+file.
+
+\noindent
+It is  also IMPORTANT  that a  large {\tt -dub} value  is specified  so that
+probabilities  of  sub-LMs  can  be  correctly  computed  in  case  of
+out-of-vocabulary words.
+

@@ -1,0 +1,6 @@
+sil sil_B sil_E sil_I sil_S
+spn spn_B spn_E spn_I spn_S
+k_B k_E k_I k_S
+ah_B ah_E ah_I ah_S
+n_B n_E n_I n_S
+ow_B ow_E ow_I ow_S

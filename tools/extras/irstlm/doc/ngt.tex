@@ -1,0 +1,33 @@
+{\tt ngt} is the command which copes with the $n$-gram counts.
+
+
+\begin{itemize}
+\item It extracts the $n$-gram counts and stores into a $n$-gram table.
+\item It prunes $n$-gram table.
+\item It merges $n$-gram tables.
+\item It transforms $n$-gram table formats.
+\end{itemize}
+
+\noindent
+A new  $n$-gram table for the  limited dictionary can  be computed with {\tt ngt} by specifying 
+the sub-dictionary:
+\begin{verbatim}
+$> ngt -i=train.www -sd=top10k -n=3 -o=train.10k.www -b=yes
+\end{verbatim}
+The command replaces  all words outside  top10K with  the special
+out-of-vocabulary symbol {\tt \_unk\_}.{\tt dict} is the command which copes with the dictionaries.
+
+\noindent
+Another useful feature of ngt is the merging of two $n$-gram tables. Assume that we have 
+split our training corpus into files  {\tt text-a} and file {\tt text-b} and have computed $n$-gram 
+tables for both files, we can merge them with the option {\tt -aug}:
+\begin{verbatim}
+$> ngt -i="gunzip -c text-a.gz" -n=3 -o=text-a.www -b=yes
+$> ngt -i="gunzip -c text-b.gz" -n=3 -o=text-b.www -b=yes
+$> ngt -i=text-a.www -aug=text-b.www -n=3 -o=text.www -b=yes
+\end{verbatim}
+
+\paragraph{Warning:} Note that if the concatenation of {\tt text-a.gz} and {\tt text-b.gz} is equal to {\tt train.gz} the resulting $n$-gram tables
+{\tt text.www} and {\tt train.www} can slightly differ. This happens because during the construction of each single $n$-gram table few $n$-grams are automatically added to make it consistent for further computation.
+
+

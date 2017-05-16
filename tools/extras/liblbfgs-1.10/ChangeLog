@@ -1,0 +1,120 @@
+2010-xx-xx  Naoaki Okazaki  <okazaki at chokkan org>
+
+	* libLBFGS 1.10:
+	- Fixed compiling errors on Mac OS X; this patch was kindly submitted by Nic Schraudolph.
+	- Reduced compiling warnings on Mac OS X; this patch was kindly submitted by Tamas Nepusz.
+
+
+2010-01-29  Naoaki Okazaki  <okazaki at chokkan org>
+
+	* libLBFGS 1.9:
+	- Fixed a mistake in checking the validity of the parameters "ftol" and "wolfe"; this mistake was discovered by Kevin S. Van Horn.
+
+
+2009-07-13  Naoaki Okazaki  <okazaki at chokkan org>
+
+	* libLBFGS 1.8:
+	- Accepted the patch submitted by Takashi Imamichi; the backtracking method now has three criteria for choosing the step length.
+	- Updated the documentation to explain the above three criteria.
+
+
+2009-02-28  Naoaki Okazaki  <okazaki at chokkan org>
+
+	* libLBFGS 1.7:
+	- Improved OWL-QN routines for stability.
+	- Removed the support of OWL-QN method in MoreThuente algorithm
+	  because it accidentally fails in early stages of iterations for some
+	  objectives. Because of this change, the OW-LQN method must be used
+	  with the backtracking algorithm (LBFGS_LINESEARCH_BACKTRACKING), or
+	  the library returns LBFGSERR_INVALID_LINESEARCH.
+	- Renamed line search algorithms as follows:
+	    - LBFGS_LINESEARCH_BACKTRACKING: regular Wolfe condition.
+	    - LBFGS_LINESEARCH_BACKTRACKING_LOOSE: regular Wolfe condition.
+	    - LBFGS_LINESEARCH_BACKTRACKING_STRONG: strong Wolfe condition.
+	- Source code clean-up.
+
+
+2008-11-02  Naoaki Okazaki  <okazaki at chokkan org>
+
+	* libLBFGS 1.6:
+	- Improved line-search algorithm with strong Wolfe condition, which
+	  was contributed by Takashi Imamichi. This routine is now default for
+	  LBFGS_LINESEARCH_BACKTRACKING. The previous line search algorithm
+	  with regular Wolfe condition is still available as
+	  LBFGS_LINESEARCH_BACKTRACKING_LOOSE.
+	- Configurable stop index for L1-norm computation. A member variable
+	  lbfgs_parameter_t::orthantwise_end was added to specify the index
+	  number at which the library stops computing the L1 norm of the
+	  variables. This is useful to prevent some variables from being
+	  regularized by the OW-LQN method.
+	- A sample program written in C++ (sample/sample.cpp).
+
+
+2008-07-10  Naoaki Okazaki  <okazaki at chokkan org>
+
+	* libLBFGS 1.5:
+	- Configurable starting index for L1-norm computation. A member
+	  variable lbfgs_parameter_t::orthantwise_start was added to specify
+	  the index number from which the library computes the L1 norm of the
+	  variables.
+	- Fixed a zero-division error when the initial variables have already
+	  been a minimizer (reported by Takashi Imamichi). In this case, the
+	  library returns LBFGS_ALREADY_MINIMIZED status code.
+	- Defined LBFGS_SUCCESS status code as zero; removed unused constants,
+	  LBFGSFALSE and LBFGSTRUE.
+	- Fixed a compile error in an implicit down-cast.
+
+
+2008-04-25  Naoaki Okazaki  <okazaki at chokkan org>
+
+	* libLBFGS 1.4:
+	- Configurable line search algorithms. A member variable
+	  lbfgs_parameter_t::linesearch was added to choose either MoreThuente
+	  method (LBFGS_LINESEARCH_MORETHUENTE) or backtracking algorithm
+	  (LBFGS_LINESEARCH_BACKTRACKING).
+	- Fixed a bug: the previous version did not compute psuedo-gradients
+	  properly in the line search routines for OW-LQN. This bug might quit
+	  an iteration process too early when the OW-LQN routine was activated
+	  (0 < lbfgs_parameter_t::orthantwise_c).
+	- Configure script for POSIX environments.
+	- SSE/SSE2 optimizations with GCC.
+	- New functions lbfgs_malloc and lbfgs_free to use SSE/SSE2 routines
+	  transparently. It is uncessary to use these functions for libLBFGS
+	  built without SSE/SSE2 routines; you can still use any memory
+	  allocators if SSE/SSE2 routines are disabled in libLBFGS.
+
+
+2007-12-16  Naoaki Okazaki  <okazaki at chokkan org>
+
+	* libLBFGS 1.3:
+	- An API change. An argument was added to lbfgs() function to receive
+	  the final value of the objective function. This argument can be set
+	  to NULL if the final value is unnecessary.
+	- Fixed a null-pointer bug in the sample code (reported by Takashi
+	  Imamichi).
+	- Added build scripts for Microsoft Visual Studio 2005 and GCC.
+	- Added README file.
+	
+
+2007-12-13  Naoaki Okazaki  <okazaki at chokkan org>
+
+	* libLBFGS 1.2:
+	- Fixed a serious bug in orthant-wise L-BFGS. An important variable
+	  was used without initialization.
+	- Configurable L-BFGS parameters (number of limited memories, epsilon).
+	
+	
+2007-12-01  Naoaki Okazaki  <okazaki at chokkan org>
+
+	* libLBFGS 1.1:
+	- Implemented orthant-wise L-BFGS.
+	- Implemented lbfgs_parameter_init() function.
+	- Fixed several bugs.
+	- API documentation.
+	
+	
+2007-09-20  Naoaki Okazaki  <okazaki at chokkan org>
+
+	* libLBFGS 1.0
+	- Initial release.
+

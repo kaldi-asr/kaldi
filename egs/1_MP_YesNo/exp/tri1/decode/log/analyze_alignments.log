@@ -1,0 +1,20 @@
+# gunzip -c exp/tri1/decode/phone_stats.*.gz | steps/diagnostic/analyze_phone_length_stats.py exp/tri1/graph 
+# Started at Tue May 16 14:41:27 IST 2017
+#
+At utterance begin, sil accounts for 90.0% of phone occurrences, with duration (median, mean, 95-percentile) is (83,88.7,99) frames.
+At utterance begin, nonsilence accounts for 10.0% of phone occurrences, with duration (median, mean, 95-percentile) is (3,3.0,3) frames.
+At utterance begin, k_B accounts for 10.0% of phone occurrences, with duration (median, mean, 95-percentile) is (3,3.0,3) frames.
+At utterance end, sil accounts for 100.0% of phone occurrences, with duration (median, mean, 95-percentile) is (73,73.5,93) frames.
+Overall, nonsilence accounts for 80.4% of phone occurrences, with duration (median, mean, 95-percentile) is (20,19.6,39) frames.
+Overall, k_B accounts for 20.7% of phone occurrences, with duration (median, mean, 95-percentile) is (21,20.8,24) frames.
+Overall, ah_I accounts for 20.7% of phone occurrences, with duration (median, mean, 95-percentile) is (20,20.1,24) frames.
+Overall, n_E accounts for 20.7% of phone occurrences, with duration (median, mean, 95-percentile) is (9,10.5,25) frames.
+Overall, sil accounts for 19.6% of phone occurrences, with duration (median, mean, 95-percentile) is (13,35.2,94) frames.
+Overall, n_B accounts for 9.2% of phone occurrences, with duration (median, mean, 95-percentile) is (17,17.6,21) frames.
+Overall, ow_E accounts for 9.2% of phone occurrences, with duration (median, mean, 95-percentile) is (38,38.5,45) frames.
+The optional-silence phone sil occupies 30.4% of frames overall 
+Limiting the stats to the 75.0% of frames not covered by an utterance-[begin/end] phone, optional-silence sil occupies 7.3% of frames.
+Assuming 100 frames per second, the alignments represent 0.0 hours of data, or 0.0 hours if sil frames are excluded.
+Utterance-internal optional-silences sil comprise 13.5% of utterance-internal phones, with duration (median, mean, 95-percentile) = (8,9.9,17)
+# Accounting: time=0 threads=1
+# Ended (code 0) at Tue May 16 14:41:27 IST 2017, elapsed time 0 seconds

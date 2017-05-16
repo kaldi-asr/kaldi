@@ -1,0 +1,4 @@
+!SIL 1.0 sil_S
+<UNK> 1.0 spn_S
+can 1.0 k_B ah_I n_E
+no 1.0 n_B ow_E

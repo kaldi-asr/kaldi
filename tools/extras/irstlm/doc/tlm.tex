@@ -1,0 +1,88 @@
+Language models have to  cope with out-of-vocabulary words, that is internally represented
+with the word class  {\tt \_unk\_}.  In order  to
+compare perplexity of LMs having  different vocabulary size it is better
+to define  a conventional dictionary  size, or dictionary  upper bound
+size,  trough the  parameter  ({\tt -dub}).  In  the  following example,  we
+compare the perplexity of the full vocabulary LM against the perplexity of the
+LM estimated over the more frequent 10K-words. In our comparison, we assume a dictionary 
+upper bound of one million words.
+
+\begin{verbatim}
+$>tlm -tr=train.10k.www -n=3 -lm=wb -te=test -dub=1000000
+  n=49984 LP=342160.8721 PP=939.5565162 OVVRate=0.07666453265
+
+$>tlm -tr=train.www -n=3 -lm=wb -te=test -dub=1000000
+  n=49984 LP=336276.7842 PP=835.2144716 OVVRate=0.05007602433
+\end{verbatim}
+
+
+\noindent
+The  large  difference  in  perplexity  between the two LMs is   explained  by  the 
+significantly higher  OOV rate of the 10K-word LM.
+
+\noindent
+N-gram LMs generally apply frequency smoothing techniques, and combine
+smoothed frequencies according to  two main schemes: interpolation and
+back-off.  The  toolkit assumes interpolation
+as default.  The back-off  scheme is computationally more costly but
+often provides better performance. It  can be activated with the option
+{\tt -bo=yes}, e.g.:
+
+\begin{verbatim}
+$>tlm -tr=train.10k.www -n=3 -lm=wb -te=test -dub=1000000 -bo=yes
+  n=49984 LP=337278.3227 PP=852.1186066 OVVRate=0.07666453265
+\end{verbatim}
+
+
+\noindent
+This toolkit implements several frequency smoothing methods, which are
+specified  by  the  parameter  {\tt -lm}.  Three  methods  are  particularly
+recommended:
+\begin{itemize}
+\item [a)] {\bf Modified shift-beta}, also known as  ``improved kneser-ney smoothing''.  
+This smoothing scheme gives top performance when training data is not 
+very sparse but it is more time and memory consuming during the estimation phase: 
+
+\begin{verbatim}
+$>tlm -tr=train.www -n=3 -lm=msb -te=test -dub=1000000 -bo=yes
+  n=49984 LP=321877.3411 PP=626.1609806 OVVRate=0.05007602433
+\end{verbatim}
+
+
+\item [b)] {\bf Witten Bell smoothing}. This is an excellent smoothing
+   method which works well in every data condition and is much less time and memory consuming:
+
+\begin{verbatim}
+$> tlm -tr=train.www -n=3 -lm=wb -te=test -dub=1000000  -bo=yes
+  n=49984 LP=331577.2279 PP=760.2652095 OVVRate=0.05007602433
+\end{verbatim}
+
+\item [c)] {\bf Shift-beta smoothing}. This smoothing method is a simpler and cheaper version
+of the Modified shift-beta method and works sometimes better than Witten-Bell method: 
+
+\begin{verbatim}
+$> tlm -tr=train.www -n=3 -lm=sb -te=test -dub=1000000  -bo=yes
+  n=49984 LP=334724.5032 PP=809.6750442 OVVRate=0.05007602433
+\end{verbatim}
+
+\noindent
+Moreover, the non linear smoothing parameter $\beta$ can be specified with the option {\tt -beta}:
+\begin{verbatim}
+$> tlm -tr=train.www -n=3 -lm=sb -beta=0.001 -te=test -dub=1000000  
+       -bo=yes
+  n=49984 LP=449339.8282 PP=8019.836058 OVVRate=0.05007602433
+\end{verbatim}
+This could be helpful in case we need to use language models with very limited frequency smoothing.
+
+\end{itemize}
+\subsection*{Limited Vocabulary}
+\noindent
+Using an  n-gram table  with a fixed  or limited  dictionary  will cause
+some performance  degradation, as LM smoothing  statistics result
+slightly distorted. A  valid alternative is to estimate  the LM on the
+full dictionary of the training corpus and to use a limited dictionary
+just when  saving the  LM on a  file.  This  can be achieved  with the
+option {\tt -d} (or {\tt -dictionary}):
+\begin{verbatim}
+$> tlm -tr=train.www -n=3 -lm=msb -bo=y -te=test -o=train.lm -d=top10k
+\end{verbatim}

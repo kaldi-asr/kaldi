@@ -1,0 +1,7 @@
+# ali-to-phones --per-frame=true exp/mono/decode/../final.mdl "ark:gunzip -c exp/mono/decode/ali_tmp.1.gz|" ark,t:- | paste /dev/stdin <( gunzip -c exp/mono/decode/depth_tmp.1.gz ) | awk '{ half=NF/2; for (n=2; n<=half; n++) { m=n+half; count[$n " " $m]++;}} END{for(k in count) print k, count[k]; }' | gzip -c > exp/mono/decode/depth_stats_tmp.1.gz 
+# Started at Tue May 16 14:40:44 IST 2017
+#
+ali-to-phones --per-frame=true exp/mono/decode/../final.mdl 'ark:gunzip -c exp/mono/decode/ali_tmp.1.gz|' ark,t:- 
+LOG (ali-to-phones[5.1.87~1-6eebc]:main():ali-to-phones.cc:134) Done 10 utterances.
+# Accounting: time=0 threads=1
+# Ended (code 0) at Tue May 16 14:40:44 IST 2017, elapsed time 0 seconds

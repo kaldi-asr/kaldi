@@ -1,0 +1,5 @@
+# cat exp/tri1/decode/scoring/17.tra | utils/int2sym.pl -f 2- exp/tri1/graph/words.txt | sed s:\<UNK\>::g | compute-wer --text --mode=present ark:exp/tri1/decode/scoring/test_filt.txt ark,p:- >& exp/tri1/decode/wer_17 
+# Started at Tue May 16 14:41:27 IST 2017
+#
+# Accounting: time=0 threads=1
+# Ended (code 0) at Tue May 16 14:41:27 IST 2017, elapsed time 0 seconds

@@ -1,0 +1,71 @@
+
+           libLBFGS: C library of limited-memory BFGS (L-BFGS)
+
+                                       Copyright (c) 1990, Jorge Nocedal
+                                 Copyright (c) 2007-2010, Naoaki Okazaki
+
+=========================================================================
+1. Introduction
+=========================================================================
+libLBFGS is a C port of the implementation of Limited-memory
+Broyden-Fletcher-Goldfarb-Shanno (L-BFGS) method written by Jorge Nocedal.
+The original FORTRAN source code is available at:
+http://www.ece.northwestern.edu/~nocedal/lbfgs.html
+
+The L-BFGS method solves the unconstrainted minimization problem:
+    minimize F(x), x = (x1, x2, ..., xN),
+only if the objective function F(x) and its gradient G(x) are computable.
+
+Refer to the libLBFGS web site for more information.
+http://www.chokkan.org/software/liblbfgs/
+
+
+
+=========================================================================
+2. How to build
+=========================================================================
+[Microsoft Visual Studio 2008]
+Open the solution file "lbfgs.sln" and build it.
+
+[GCC]
+$ ./configure
+$ make
+$ make install  # To install libLBFGS library and header.
+
+
+
+=========================================================================
+3. Note on SSE/SSE2 optimization
+=========================================================================
+This library has SSE/SSE2 optimization routines for vector arithmetic
+operations on Intel/AMD processors. The SSE2 routine is for 64 bit double
+values, and the SSE routine is for 32 bit float values. Since the default
+parameters in libLBFGS are tuned for double precision values, it may need
+to modify these parameters to use the SSE optimization routines.
+
+To use the SSE2 optimization routine, specify --enable-sse2 option to the
+configure script.
+
+$ ./configure --enable-sse2
+
+To build libLBFGS with SSE2 optimization enabled on Microsoft Visual
+Studio 2005, define USE_SSE and __SSE2__ symbols.
+
+Make sure to run libLBFGS on processors where SSE2 instrunctions are
+available. The library does not check the existence of SSE2 instructions.
+
+To package maintainers,
+
+Please do not enable SSE/SSE2 optimization routine. The library built
+with SSE/SSE2 optimization will crash without any notice when necessary
+SSE/SSE2 instructions are unavailable on CPUs.
+
+
+
+=========================================================================
+4. License
+=========================================================================
+libLBFGS is distributed under the term of the MIT license.
+Please refer to COPYING file in the distribution.
+
+$Id$

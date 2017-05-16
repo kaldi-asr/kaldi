@@ -1,0 +1,7 @@
+compile-questions data/lang/topo exp/tri1/questions.int exp/tri1/questions.qst 
+LOG (compile-questions[5.1.87~1-6eebc]:ProcessTopo():compile-questions.cc:51) Max # pdf classes is 5
+LOG (compile-questions[5.1.87~1-6eebc]:main():compile-questions.cc:131) Setting questions for phonetic-context position 0
+LOG (compile-questions[5.1.87~1-6eebc]:main():compile-questions.cc:131) Setting questions for phonetic-context position 1
+LOG (compile-questions[5.1.87~1-6eebc]:main():compile-questions.cc:131) Setting questions for phonetic-context position 2
+LOG (compile-questions[5.1.87~1-6eebc]:main():compile-questions.cc:151) Setting questions for hmm-position [hmm-position ranges from 0 to 4]
+LOG (compile-questions[5.1.87~1-6eebc]:main():compile-questions.cc:155) Wrote questions to exp/tri1/questions.qst

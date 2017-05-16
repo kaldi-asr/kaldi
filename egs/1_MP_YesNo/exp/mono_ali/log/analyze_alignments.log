@@ -1,0 +1,20 @@
+# gunzip -c exp/mono_ali/phone_stats.*.gz | steps/diagnostic/analyze_phone_length_stats.py data/lang 
+# Started at Tue May 16 14:40:46 IST 2017
+#
+At utterance begin, sil accounts for 100.0% of phone occurrences, with duration (median, mean, 95-percentile) is (85,85.9,103) frames.
+At utterance end, sil accounts for 98.0% of phone occurrences, with duration (median, mean, 95-percentile) is (78,83.7,124) frames.
+At utterance end, nonsilence accounts for 2.0% of phone occurrences, with duration (median, mean, 95-percentile) is (6,6.0,6) frames.
+At utterance end, n_E accounts for 2.0% of phone occurrences, with duration (median, mean, 95-percentile) is (6,6.0,6) frames.
+Overall, nonsilence accounts for 83.6% of phone occurrences, with duration (median, mean, 95-percentile) is (20,21.3,42) frames.
+Overall, n_B accounts for 17.1% of phone occurrences, with duration (median, mean, 95-percentile) is (18,18.2,23) frames.
+Overall, ow_E accounts for 17.1% of phone occurrences, with duration (median, mean, 95-percentile) is (39,38.5,46) frames.
+Overall, sil accounts for 16.4% of phone occurrences, with duration (median, mean, 95-percentile) is (48,47.3,105) frames.
+Overall, k_B accounts for 16.4% of phone occurrences, with duration (median, mean, 95-percentile) is (21,21.2,25) frames.
+Overall, ah_I accounts for 16.4% of phone occurrences, with duration (median, mean, 95-percentile) is (20,19.5,24) frames.
+Overall, n_E accounts for 16.4% of phone occurrences, with duration (median, mean, 95-percentile) is (8,8.5,17) frames.
+The optional-silence phone sil occupies 30.4% of frames overall 
+Limiting the stats to the 72.5% of frames not covered by an utterance-[begin/end] phone, optional-silence sil occupies 4.0% of frames.
+Assuming 100 frames per second, the alignments represent 0.1 hours of data, or 0.1 hours if sil frames are excluded.
+Utterance-internal optional-silences sil comprise 8.9% of utterance-internal phones, with duration (median, mean, 95-percentile) = (8,9.0,16)
+# Accounting: time=0 threads=1
+# Ended (code 0) at Tue May 16 14:40:46 IST 2017, elapsed time 0 seconds

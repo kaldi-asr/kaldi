@@ -1,0 +1,54 @@
+LMs in ARPA, iARPA, and qARPA format can be stored in a compact binary table through the command:
+
+\begin{verbatim}
+$> compile-lm train.lm train.blm
+\end{verbatim}
+
+\noindent
+which generates the binary file {\tt train.blm} that can be quickly loaded in memory.  If the LM
+is really very large, {\tt compile-lm} can avoid to create the binary LM directly in memory through the 
+option {\tt -memmap=1}, which exploits the {\em Memory Mapping} mechanism in order to work as 
+much as possible on disk rather than in RAM. \\
+
+\begin{verbatim}
+$> compile-lm train.lm train.blm --memmap=1
+\end{verbatim}
+\noindent
+This option clearly pays a fee  in terms of speed, but  is often the only way to proceed. It is also recommended 
+that the hard disk for the LM storage belongs to the computer on which the compilation is performed.
+
+\noindent
+Notice that most of the functionalities of {\tt compile-lm} (see below) apply to binary and quantized models. 
+
+\noindent
+By default, the command uses the directory ``/tmp'' for storing
+intermediate results.  For huge LMs, the temporary files can grow
+dramatically causing a ``disk full'' system error.  It is possible to
+explicitly set the directory used for temporary computation through the
+parameter ``--tmpdir''.
+\begin{verbatim}
+$> compile-lm train.lm train.blm --tmpdir=<mytmpdir>
+\end{verbatim}
+
+
+\subsection{Inverted order of ngrams}
+\label{sec:inverted-lm}
+For a faster access, the ngrams can be stored in inverted order with the following two commands:
+\begin{verbatim}
+$> sort-lm.pl -inv -ilm train.lm -olm train.inv.lm
+$> compile-lm train.inv.lm train.inv.blm --invert=yes
+\end{verbatim}
+
+\paragraph{Warning:} The following pipeline is no more allowed!!
+
+\COMMENT{
+or with the following pipeline:
+}
+\begin{verbatim}
+$> cat train.lm | sort-lm.pl -inv | \
+   compile-lm /dev/stdin train.inv.blm --invert=yes
+\end{verbatim}
+
+
+
+

@@ -1,0 +1,28 @@
+# lattice-best-path --lm-scale=14 --word-symbol-table=exp/tri1/graph/words.txt "ark:gunzip -c exp/tri1/decode/lat.*.gz|" ark,t:exp/tri1/decode/scoring/14.tra 
+# Started at Tue May 16 14:41:27 IST 2017
+#
+lattice-best-path --lm-scale=14 --word-symbol-table=exp/tri1/graph/words.txt 'ark:gunzip -c exp/tri1/decode/lat.*.gz|' ark,t:exp/tri1/decode/scoring/14.tra 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_1_1_1_0_0_0_0_1, best cost 527.91 + 50275.3 = 50803.3 over 602 frames.
+Speaker1_1_1_1_0_0_0_0_1 can can can no no no no can 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_1_1_1_0_0_1_0_1, best cost 538.876 + 53123.6 = 53662.5 over 633 frames.
+Speaker1_1_1_1_0_0_1_0_1 can can can no no can no can 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_1_1_1_0_0_1_1_1, best cost 585.468 + 49665.1 = 50250.6 over 569 frames.
+Speaker1_1_1_1_0_0_1_1_1 can can can no no can can can 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_1_1_1_0_1_0_1_0, best cost 498.749 + 51734.1 = 52232.9 over 605 frames.
+Speaker1_1_1_1_0_1_0_1_0 can can can no can no can no 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_1_1_1_0_1_0_1_1, best cost 555.909 + 52292 = 52847.9 over 620 frames.
+Speaker1_1_1_1_0_1_0_1_1 can can can no can no can can 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_1_1_1_1_0_0_1_0, best cost 600.203 + 56521.1 = 57121.3 over 670 frames.
+Speaker1_1_1_1_1_0_0_1_0 can can can can no no can no 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_1_1_1_1_0_1_0_0, best cost 582.172 + 48037.4 = 48619.6 over 538 frames.
+Speaker1_1_1_1_1_0_1_0_0 can can can can can no can no no 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_1_1_1_1_1_0_0_0, best cost 599.569 + 53134.9 = 53734.4 over 612 frames.
+Speaker1_1_1_1_1_1_0_0_0 can can can can can no no no 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_1_1_1_1_1_1_0_0, best cost 573.417 + 56852.5 = 57425.9 over 656 frames.
+Speaker1_1_1_1_1_1_1_0_0 can can can can can can no no 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_1_1_1_1_1_1_1_1, best cost 619.444 + 52825.6 = 53445 over 644 frames.
+Speaker1_1_1_1_1_1_1_1_1 can can can can can can can can 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:124) Overall cost per frame is 86.2162 = 0.924006 [graph] + 85.2922 [acoustic] over 6149 frames.
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:128) Done 10 lattices, failed for 0
+# Accounting: time=0 threads=1
+# Ended (code 0) at Tue May 16 14:41:27 IST 2017, elapsed time 0 seconds

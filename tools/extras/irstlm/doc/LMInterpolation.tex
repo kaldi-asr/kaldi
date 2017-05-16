@@ -1,0 +1,75 @@
+We provide a convenient tool to estimate mixtures of LMs that have been already 
+created in one of the available formats.  The tool permits to estimate interpolation
+weights through the EM algorithm, to compute the perplexity, and to query the interpolated
+LM. 
+
+\noindent
+Data used in those examples can be found in the directory {\tt example/interpolateLM/},
+which represents the relative path for all the parameters of the referred commands.
+
+\noindent
+Interpolated LMs are defined by a configuration file in the following format:
+\begin{verbatim}
+3
+0.3 lm-file1
+0.3 lm-file2
+0.4 lm-file3
+\end{verbatim}
+
+\noindent
+The first number indicates the number of LMs to be interpolated, then each LM is specified
+by its weight and its file (either in ARPA or binary format). Notice that you can interpolate
+LMs with different orders\\
+
+\noindent
+Given an initial configuration file {\tt lmlist.init} (with arbitrary weights), new weights can be estimated
+through Expectation-Maximization on some text sample {\tt test} by running the command:
+\begin{verbatim}
+$> interpolate-lm lmlist.init --learn=test
+\end{verbatim}
+\noindent
+New weights will be written in the updated configuration file, called by default {\tt lmlist.init.out}.
+You can also specify the name of the updated configuration file as follows:
+
+\begin{verbatim}
+$> interpolate-lm lmlist.init lmlist.final --learn=test
+\end{verbatim}
+
+
+\noindent
+Similarly to {\tt compile-lm}, interpolated LMs can be queried through the option {\tt --score}
+
+\begin{verbatim}
+$> interpolate-lm lmlist.final --score=yes < test
+\end{verbatim}
+
+\noindent
+and can return the perplexity of a given input text (``{\tt --eval text-file}''), optionally  at sentence level  by enabling the option ``{\tt --sentence yes}'',
+
+\begin{verbatim}
+$> interpolate-lm lmlist.final --eval=test 
+$> interpolate-lm lmlist.final --eval=test --sentence=yes
+\end{verbatim}
+
+\bigskip
+\noindent
+If there are binary LMs in the list,  {\tt interpolate-lm} can avoid to load them in memory through the memory 
+mapping option {\tt -memmap=1}.
+
+
+\noindent
+The full list of options is:
+
+\begin{verbatim}
+--learn text-file   learn optimal interpolation for text-file
+--order n           order of n-grams used in --learn (optional)
+--eval text-file    compute perplexity on text-file
+--dub dict-size     dictionary upper bound (default 10^7)
+--score [yes|no]    compute log-probs of n-grams from stdin
+--debug [1-3]       verbose output for --eval option (see compile-lm)
+--sentence [yes|no] (compute perplexity at sentence level (identified
+                    through the end symbol)
+--memmap 1          use memory map to read a binary LM
+\end{verbatim}
+ 
+
