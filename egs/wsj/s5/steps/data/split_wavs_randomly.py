@@ -9,7 +9,7 @@ import random
 
 def get_args():
     parser = argparse.ArgumentParser(description="""This script converts a
-    wav.scp into split wav.scp that can be converted into noise-set-paramters
+    wav.scp into split_wav.scp that can be converted into noise-set-paramters
     that can be passed to steps/data/reverberate_data_dir.py.  The wav files in
     wav.scp is trimmed randomly into pieces based on options such options such
     as --max-duration, --skip-initial-duration and --num-parts-per-minute.""",

@@ -60,7 +60,7 @@ stage=0
 nj=6         # This should be set to the maximum number of jobs you are
              # comfortable to run in parallel; you can increase it if your disk
              # speed is greater and you have more machines.
-srand=0     # rand seed for nnet3-copy-egs and nnet3-shuffle-egs
+srand=0
 online_ivector_dir=  # can be used if we are including speaker information as iVectors.
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
@@ -300,7 +300,6 @@ egs_opts="--left-context=$left_context --right-context=$right_context --compress
 [ $right_context_final -ge 0 ] && egs_opts="$egs_opts --right-context-final=$right_context_final"
 
 [ ! -z "$deriv_weights_scp" ] && egs_opts="$egs_opts --deriv-weights-rspecifier=scp:$deriv_weights_scp"
-
 [ ! -z "$deriv_weights_scp" ] && valid_egs_opts="$valid_egs_opts --deriv-weights-rspecifier=scp:$deriv_weights_scp"
 
 echo $left_context > $dir/info/left_context

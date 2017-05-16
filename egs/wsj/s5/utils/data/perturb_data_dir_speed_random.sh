@@ -1,8 +1,11 @@
 #!/bin/bash
 
 # Copyright 2017  Vimal Manohar
-
 # Apache 2.0
+
+# This script is similar to perturb_data_dir_speech_3way, but does 
+# not create multiple copies of a recording. It perturbs each 
+# recording with a randomly chosen speed.
 
 speeds="0.9 1.0 1.1"
 

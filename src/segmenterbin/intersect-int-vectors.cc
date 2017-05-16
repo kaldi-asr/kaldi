@@ -1,6 +1,6 @@
 // segmenterbin/intersect-int-vectors.cc
 
-// Copyright 2017   Vimal Manohar (Johns Hopkins University)
+// Copyright 2017   Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //

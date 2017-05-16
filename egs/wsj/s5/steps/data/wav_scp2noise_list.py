@@ -3,6 +3,9 @@
 # Copyright 2016    Vimal Manohar
 # Apache 2.0
 
+"""This script converts a wav.scp into noise-set-paramters
+that can be passed to steps/data/reverberate_data_dir.py."""
+
 from __future__ import print_function
 import argparse
 

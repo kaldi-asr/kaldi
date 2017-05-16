@@ -13,11 +13,13 @@ set -e
 set -o pipefail
 set -u
 
-lang_id=assamese
+lang_id=assamese    # An arbitrary name added as a suffix to the created 
+                    # directories.
 subset=     # Number of recordings to keep before speed perturbation and corruption. 
-            # In limitedLP, this is about 120. So subset, if specified, must be lower that that.
+            # In limitedLP, this is about 120. 
 
-# All the paths below can be modified to any absolute path.
+# The path below can be modified to any absolute path containing the 
+# Babel system.
 ROOT_DIR=/home/vimal/workspace_waveform/egs/babel/s5c_assamese/
 
 stage=-10
@@ -66,13 +68,14 @@ SIL_I 0
 SIL_S 0
 EOF
 
-# The original data directory which will be converted to a whole (recording-level) directory.
 utils/copy_data_dir.sh $ROOT_DIR/data/train data/babel_${lang_id}_train
 train_data_dir=data/babel_${lang_id}_train
 
 if [ $stage -le 0 ]; then
-  # Expecting the user to have done run.sh to have $model_dir,
-  # $sat_model_dir, $lang, $lang_test, $train_data_dir
+  # The original data directory which will be converted to a whole (recording-level) directory.
+  # Expecting the user to have done run-1-main.sh to have $model_dir,
+  # $sat_model_dir, $lang, $lang_test, $train_data_dir. 
+  # The default config using plp + pitch is assumed.
   local/segmentation/prepare_unsad_data.sh \
     --sad-map $dir/babel_sad.map --stage $prepare_stage \
     --config-dir $ROOT_DIR/conf --feat-type plp --add-pitch true \
@@ -82,12 +85,10 @@ if [ $stage -le 0 ]; then
     $train_data_dir $lang $model_dir $dir
 fi
 
-orig_data_dir=${train_data_dir}_sp
-
 data_dir=${train_data_dir}_whole
 
 if [ ! -z $subset ]; then
-  # Work on a subset
+  # Work on a subset of recordings.
   utils/subset_data_dir.sh --speakers ${data_dir} $subset \
     ${data_dir}_$subset
   data_dir=${data_dir}_$subset

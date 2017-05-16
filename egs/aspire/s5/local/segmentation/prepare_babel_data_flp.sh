@@ -5,6 +5,7 @@
 
 # This script prepares Babel data for training speech activity detection,
 # music detection.
+# This script is similar to prepare_babel_data.sh, but uses FullLP systems.
 
 . path.sh
 . cmd.sh
@@ -13,14 +14,16 @@ set -e
 set -o pipefail
 set -u
 
-lang_id=assamese_flp
+lang_id=cantonese_flp   # An arbitrary name added as a suffix to the created 
+                        # directories.
 subset=     # Number of recordings to keep before speed perturbation and corruption. 
             # In limitedLP, this is about 120. So subset, if specified, must be lower that that.
 
 # All the paths below can be modified to any absolute path.
 ROOT_DIR=/export/b17/jtrmal/babel/101-cantonese-flp-p-basic
 
-stage=-1
+stage=-10
+prepare_stage=-10
 
 . utils/parse_options.sh
 
@@ -31,6 +34,8 @@ if [ $# -ne 0 ]; then
   exit 1
 fi
 
+# The path below can be modified to any absolute path containing the 
+# Babel system.
 dir=exp/unsad/make_unsad_babel_${lang_id}_train   # Work dir
 
 model_dir=$ROOT_DIR/exp/tri4  # Model directory used for decoding
@@ -65,21 +70,21 @@ SIL_I 0
 SIL_S 0
 EOF
 
-# The original data directory which will be converted to a whole (recording-level) directory.
 utils/copy_data_dir.sh $ROOT_DIR/data/train data/babel_${lang_id}_train
 train_data_dir=data/babel_${lang_id}_train
 
-# Expecting the user to have done run.sh to have $model_dir,
-# $sat_model_dir, $lang, $lang_test, $train_data_dir
-local/segmentation/prepare_unsad_data.sh \
-  --sad-map $dir/babel_sad.map \
-  --config-dir $ROOT_DIR/conf --feat-type plp --add-pitch true \
-  --reco-nj 40 --nj 100 --cmd "$train_cmd" \
-  --sat-model-dir $sat_model_dir \
-  --lang-test $lang_test \
-  $train_data_dir $lang $model_dir $dir
-
-orig_data_dir=${train_data_dir}_sp
+if [ $stage -le 0 ]; then
+  # The original data directory which will be converted to a whole (recording-level) directory.
+  # Expecting the user to have done run.sh to have $model_dir,
+  # $sat_model_dir, $lang, $lang_test, $train_data_dir
+  local/segmentation/prepare_unsad_data.sh \
+    --sad-map $dir/babel_sad.map --stage $prepare_stage \
+    --config-dir $ROOT_DIR/conf --feat-type plp --add-pitch true \
+    --reco-nj 40 --nj 100 --cmd "$train_cmd" \
+    --sat-model-dir $sat_model_dir \
+    --lang-test $lang_test \
+    $train_data_dir $lang $model_dir $dir
+fi
 
 data_dir=${train_data_dir}_whole
 
@@ -92,16 +97,20 @@ fi
 
 reco_vad_dir=$dir/`basename $model_dir`_reco_vad_`basename $train_data_dir`_sp
 
-# Add noise from MUSAN corpus to data directory and create a new data directory
-local/segmentation/do_corruption_data_dir_snr.sh \
-  --cmd "$train_cmd" --nj 40 \
-  --data-dir $data_dir \
-  --vad-dir $reco_vad_dir \
-  --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf 
+if [ $stage -le 1 ]; then
+  # Add noise from MUSAN corpus to data directory and create a new data directory
+  local/segmentation/do_corruption_data_dir_snr.sh \
+    --cmd "$train_cmd" --nj 40 --stage $prepare_stage \
+    --data-dir $data_dir \
+    --vad-dir $reco_vad_dir \
+    --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf 
+fi
 
-# Add music from MUSAN corpus to data directory and create a new data directory
-local/segmentation/do_corruption_data_dir_music.sh \
-  --cmd "$train_cmd" --nj 40 \
-  --data-dir $data_dir \
-  --vad-dir $reco_vad_dir \
-  --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf
+if [ $stage -le 2 ]; then
+  # Add music from MUSAN corpus to data directory and create a new data directory
+  local/segmentation/do_corruption_data_dir_music.sh \
+    --cmd "$train_cmd" --nj 40 --stage $prepare_stage \
+    --data-dir $data_dir \
+    --vad-dir $reco_vad_dir \
+    --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf
+fi

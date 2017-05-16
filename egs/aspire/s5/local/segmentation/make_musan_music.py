@@ -1,5 +1,10 @@
 #! /usr/bin/env python
 
+# Copyright 2017  Vimal Manohar
+# Apache 2.0.
+
+"""This script prepares MUSAN music corpus for perturbing data directory."""
+
 from __future__ import print_function
 import argparse
 import os
@@ -34,11 +39,14 @@ def read_vocals(annotations):
 
 
 def write_music(utt, file_path, music_list):
+    """Write music file to list"""
     print ('{utt} {file_path}'.format(
         utt=utt, file_path=file_path), file=music_list)
 
 
 def prepare_music_set(root_dir, use_vocals, music_list):
+    """The main function that goes through the music part of the MUSAN corpus
+    and writes out the files to a table indexed by the recording-id."""
     vocals = {}
     music_dir = os.path.join(root_dir, "music")
     num_done = 0

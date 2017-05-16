@@ -3,6 +3,8 @@
 # Copyright 2015  Vimal Manohar
 # Apache 2.0.
 
+# This script is deprecated.
+
 set -e -o pipefail -u
 . path.sh
 
@@ -91,20 +93,20 @@ else
   utils/split_data.sh $data_dir $nj
 
   for n in `seq $nj`; do
-    utils/data/get_reco2utt.sh $data_dir/split$nj/$n
-    utils/filter_scp.pl $data_dir/split$nj/$n/reco2utt $weights_scp > \
+    utils/data/get_reco2utt_for_data.sh $data_dir/split$nj | \
+    utils/filter_scp.pl /dev/stdin $weights_scp > \
       $dir/weights.$n.scp
   done
 
   $cmd JOB=1:$nj $dir/log/weights_to_segments.JOB.log \
     copy-vector scp:$dir/weights.JOB.scp ark,t:- \| \
-    awk -v t=$weight_threshold '{printf $1; for (i=3; i < NF; i++) { if ($i >= t) printf (" 1"); else printf (" 0"); }; print "";}' \| \
-    segmentation-init-from-ali \
-    ark,t:- ark:- \| segmentation-combine-segments ark:- \
-    "ark:segmentation-init-from-segments --shift-to-zero=false --frame-shift=$frame_shift_subsampled $data_dir/split$nj/JOB/segments ark:- |" \
-    "ark,t:$data_dir/split$nj/JOB/reco2utt" ark:- \| \
+    steps/segmentation/quantize_vector.pl $weight_threshold \| \
+    segmentation-init-from-ali ark,t:- ark:- \| \
+    segmentation-combine-segments ark:- \
+      "ark:segmentation-init-from-segments --shift-to-zero=false --frame-shift=$frame_shift_subsampled $data_dir/split$nj/JOB/segments ark:- |" \
+      "ark,t:utils/data/get_reco2utt_for_data.sh $data_dir/split$nj |" ark:- \| \
     segmentation-copy --frame-subsampling-factor=$frame_subsampling_factor \
-    ark:- "ark:| gzip -c > $dir/orig_segmentation.JOB.gz"
+      ark:- "ark:| gzip -c > $dir/orig_segmentation.JOB.gz"
 fi
 
 echo $nj > $dir/num_jobs

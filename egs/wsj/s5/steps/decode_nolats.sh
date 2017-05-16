@@ -88,6 +88,8 @@ delta_opts=`cat $srcdir/delta_opts 2>/dev/null`
 utils/lang/check_phones_compatible.sh $graphdir/phones.txt $srcdir/phones.txt || exit 1;
 
 if $write_alignments; then
+  # Copy model and options that are generally expected in an alignment 
+  # directory.
   cp $graphdir/phones.txt $dir || exit 1;
 
   cp $srcdir/{tree,final.mdl} $dir || exit 1;

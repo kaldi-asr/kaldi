@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright 2016  Vimal Manohar
+# Apache 2.0.
+
 # This script prepares speech labels and deriv weights for 
 # training unsad network for speech activity detection and music detection.
 
@@ -20,6 +23,7 @@ map_unk_to_speech=true  # Map unk phones to speech label (1)
 sad_map=    # Initial mapping from phones to speech/non-speech labels.
             # Overrides the default mapping using phones/silence.txt 
             # and phones/nonsilence.txt
+            # The format is <phone> <label>
 
 # Options for feature extraction 
 # (These must match the features used for model_dir and sat_model_dir)
@@ -227,6 +231,7 @@ if $speed_perturb; then
 fi
 
 if [ $stage -le 1 ]; then
+  # Get feats for the manual segments
   utils/data/subsegment_data_dir.sh $whole_data_dir ${data_dir}/segments ${data_dir}/tmp
   cp $data_dir/tmp/feats.scp $data_dir
 
@@ -239,6 +244,7 @@ if [ $stage -le 1 ]; then
   utils/fix_data_dir.sh $data_dir
 fi
 
+#obtain the alignment of the perturbed data
 if [ -z "$sat_model_dir" ]; then
   ali_dir=$dir/`basename ${model_dir}`_ali_${data_id}
   if [ $stage -le 2 ]; then
@@ -247,7 +253,6 @@ if [ -z "$sat_model_dir" ]; then
   fi
 else
   ali_dir=$dir/`basename ${sat_model_dir}`_ali_${data_id}
-  #obtain the alignment of the perturbed data
   if [ $stage -le 2 ]; then
     steps/align_fmllr.sh --nj $nj --cmd "$cmd" \
       ${data_dir} ${lang} ${sat_model_dir} $ali_dir || exit 1
@@ -302,7 +307,8 @@ fi
 # and outside the provided segments.
 
 ###############################################################################
-# Create segments outside of the manual segments
+# Create segments outside of the manual segments and split them 
+# into 10s long chunks.
 ###############################################################################
 
 outside_data_dir=$dir/${data_id}_outside
@@ -318,7 +324,7 @@ if [ $stage -le 5 ]; then
    
   utils/data/get_utt2num_frames.sh $whole_data_dir
 
-  $cmd $outside_data_dir/log/get_empty_segments.log \
+  $cmd $outside_data_dir/log/get_outside_segments.log \
     segmentation-init-from-segments --frame-shift=$frame_shift \
       --frame-overlap=$frame_overlap --shift-to-zero=false \
       ${data_dir}/segments ark:- \| \
@@ -394,6 +400,7 @@ fi
 
 vad_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $vad_dir ${PWD}`
 
+# Assume that the regions outside manual segments is all silence.
 if [ $stage -le 10 ]; then
   segmentation-init-from-segments --frame-shift=$frame_shift \
     --frame-overlap=$frame_overlap --label=0 \

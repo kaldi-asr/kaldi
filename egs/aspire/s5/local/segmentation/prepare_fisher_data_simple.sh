@@ -2,6 +2,9 @@
 
 # This script prepares Fisher data for training a speech activity detection 
 # and music detection system
+# This script is similar to prepare_fisher_data.sh, but is a simpler version
+# that create perturbed data at utterance-level using only manual segment
+# regions.
 
 # Copyright 2016  Vimal Manohar
 # Apache 2.0.
@@ -18,13 +21,17 @@ if [ $# -ne 0 ]; then
   exit 1
 fi
 
-subset_fraction=0.15
-realign=false
+subset_fraction=0.15  # Fraction of utterances to keep before perturbation and 
+                      # corruption.
+realign=false   # If true, the speed-perturbed data is realigned using 
+                # the SAT model. Otherwise, the existing alignment is 
+                # warped to the required speed.
 
 # All the paths below can be modified to any absolute path.
 ROOT_DIR=/export/a15/vmanoha1/workspace_snr/egs/aspire/s5
 
-stage=-1
+stage=-10
+prepare_stage=-10
 
 . utils/parse_options.sh
 
@@ -90,18 +97,24 @@ unperturbed_data_dir=data/fisher_train_100k_simple
 if $realign; then
   ali_dir=$dir/`basename $model_dir`_ali_$(basename $train_data_dir)
 
-  steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" \
-    $train_data_dir $lang $model_dir $ali_dir
+  if [ $stage -le 0 ]; then
+    steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" \
+      $train_data_dir $lang $model_dir $ali_dir
+  fi
 
-  local/segmentation/prepare_unsad_data_simple.sh \
-    --sad-map $dir/fisher_sad.map --cmd "$train_cmd" \
-    $train_data_dir $lang $ali_dir $dir
+  if [ $stage -le 1 ]; then
+    local/segmentation/prepare_unsad_data_simple.sh \
+      --sad-map $dir/fisher_sad.map --cmd "$train_cmd" \
+      $train_data_dir $lang $ali_dir $dir
+  fi
 
   vad_dir=$dir/`basename $ali_dir`_vad_$(basename $train_data_dir)
 else
-  local/segmentation/prepare_unsad_data_simple.sh --speed-perturb true \
-    --sad-map $dir/fisher_sad.map --cmd "$train_cmd" \
-    $unperturbed_data_dir $lang $model_dir $dir
+  if [ $stage -le 1 ]; then
+    local/segmentation/prepare_unsad_data_simple.sh --speed-perturb true \
+      --sad-map $dir/fisher_sad.map --cmd "$train_cmd" \
+      $unperturbed_data_dir $lang $model_dir $dir
+  fi
 
   vad_dir=$dir/`basename $model_dir`_vad_$(basename $unperturbed_data_dir)
 fi
@@ -118,16 +131,20 @@ if [ ! -z "$subset_fraction" ]; then
   data_dir=${unperturbed_data_dir}_${subset_affix}
 fi
 
-# Add noise from MUSAN corpus to data directory and create a new data directory
-local/segmentation/do_corruption_data_dir_snr.sh \
-  --cmd "$train_cmd" --nj 40 --stage 8 \
-  --data-dir $data_dir \
-  --vad-dir $vad_dir \
-  --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf 
+if [ $stage -le 2 ]; then
+  # Add noise from MUSAN corpus to data directory and create a new data directory
+  local/segmentation/do_corruption_data_dir_snr.sh \
+    --cmd "$train_cmd" --nj 40 --stage $prepare_stage \
+    --data-dir $data_dir \
+    --vad-dir $vad_dir \
+    --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf 
+fi
 
-# Add music from MUSAN corpus to data directory and create a new data directory
-local/segmentation/do_corruption_data_dir_music.sh \
-  --cmd "$train_cmd" --nj 40 \
-  --data-dir $data_dir \
-  --vad-dir $vad_dir \
-  --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf
+if [ $stage -le 3 ]; then
+  # Add music from MUSAN corpus to data directory and create a new data directory
+  local/segmentation/do_corruption_data_dir_music.sh \
+    --cmd "$train_cmd" --nj 40 --stage $prepare_stage \
+    --data-dir $data_dir \
+    --vad-dir $vad_dir \
+    --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf
+fi

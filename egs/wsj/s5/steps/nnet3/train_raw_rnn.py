@@ -372,10 +372,6 @@ def train(args, run_opts, background_process_handler):
                                                   args.initial_effective_lrate,
                                                   args.final_effective_lrate)
 
-    if args.dropout_schedule is not None:
-        dropout_schedule = common_train_lib.parse_dropout_option(
-            num_archives_to_process, args.dropout_schedule)
-
     min_deriv_time = None
     max_deriv_time_relative = None
     if args.deriv_truncate_margin is not None:

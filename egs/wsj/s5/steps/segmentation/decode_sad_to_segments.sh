@@ -6,6 +6,7 @@
 # This script does Viterbi decoding using frame log-likelihoods corresponding
 # to non-speech and speech and post-processes the alignments into 
 # kaldi segments.
+# This script is deprecated in favor of decode_sad_to_subsegments.sh.
 
 set -e 
 set -o pipefail 

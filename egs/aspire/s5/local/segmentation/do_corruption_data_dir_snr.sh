@@ -3,17 +3,22 @@
 # Copyright 2016  Vimal Manohar
 # Apache 2.0
 
+# This script adds reverberation and noise to speech waveforms and 
+# creates speech_labels.scp for speech activity detection, along with
+# irm_targets.scp for auxiliary subband-level targets for training neural network.
+
 set -e
 set -u
 set -o pipefail
 
 . path.sh
 
-# The following are the main parameters to modify
+# The following are the main parameters to modify. 
 data_dir=data/train_si284   # Expecting whole data directory.
-vad_dir=   # Output of prepare_unsad_data.sh. 
-           # If provided, the speech labels and deriv weights will be 
-           # copied into the output data directory.
+vad_dir=   # Output of prepare_unsad_data.sh containing speech_labels.scp,
+           # deriv_weights.scp and deriv_weights_manual_seg.scp.
+           # The archives are all to be indexed by the utterance-id of the input data.
+           # If provided, these archives will be copied into the output data directory.
 
 num_data_reps=5   # Number of corrupted versions
 foreground_snrs="20:10:15:5:0:-5"
@@ -26,16 +31,21 @@ nj=4
 cmd=run.pl
 
 # Options for feature extraction
-mfcc_config=conf/mfcc_hires_bp.conf
+mfcc_config=conf/mfcc_hires_bp.conf   # Band-passed config for telephone speech
 feat_suffix=hires_bp
 
 # Data options
-corrupt_only=false
-speed_perturb=true
+corrupt_only=false      # If true, exits after creating the corrupted directory
+speed_perturb=true      # Do speed perturbation by randomly perturbing the 
+                        # recordings at speeds specified by the --speeds
+                        # option.
 speeds="0.9 1.0 1.1"
-resample_data_dir=false
+resample_data_dir=false   # If true, the input data is resampled at the       
+                          # sampling-rate specified in the mfcc-config.
+                          # Usually applicable when the input data is 8kHz
+                          # and needs to be upsampled to 16kHz.
 
-
+targets_dir=irm_targets   # Directory to dump irm_targets
 
 . utils/parse_options.sh
 
@@ -66,6 +76,8 @@ for f in RIRS_NOISES/simulated_rirs/smallroom/rir_list \
 done
 
 if $resample_data_dir; then
+  # Resample input data directory at a different sampling rate.
+  # It is assumed that the noise and impulse responses are at 8kHz.
   sample_frequency=`cat $mfcc_config | perl -ne 'if (m/--sample-frequency=(\S+)/) { print $1; }'` 
   if [ -z "$sample_frequency" ]; then
     sample_frequency=16000
@@ -173,7 +185,6 @@ else
   noise_data_dir=${noise_data_dir}_$feat_suffix
 fi 
 
-targets_dir=irm_targets
 if [ $stage -le 7 ]; then
   mkdir -p exp/make_log_snr/${corrupted_data_id}
 
@@ -218,7 +229,6 @@ if [ $stage -le 7 ]; then
     exp/make_irm_targets/${corrupted_data_id} $targets_dir
 fi
 
-
 if [ $stage -le 8 ]; then
   if [ ! -z "$vad_dir" ]; then
     if [ ! -f $vad_dir/speech_labels.scp ]; then
@@ -226,6 +236,7 @@ if [ $stage -le 8 ]; then
       exit 1
     fi
     
+    # Get speech labels for corrupted data
     cat $vad_dir/speech_labels.scp | \
       steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps | \
       sort -k1,1 > ${corrupted_data_dir}/speech_labels.scp

@@ -3,6 +3,8 @@
 # Copyright 2016  Vimal Manohar
 # Apache 2.0
 
+# This script is deprecated in favor of do_corruption_data_dir_snr.sh
+
 set -e
 set -u
 set -o pipefail

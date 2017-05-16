@@ -3,15 +3,22 @@
 # Copyright 2016  Vimal Manohar
 # Apache 2.0
 
+# This script adds music to speech waveforms and creates music_labels.scp
+# for music / non-music detection and speech_labels.scp for speech activity
+# detection.
+
 set -e
 set -u
 set -o pipefail
 
 . path.sh
 
-# The following are the main parameters to modify
+# The following are the main parameters to modify. These are required!
 data_dir=data/train_si284
-vad_dir=      # Location of directory with VAD labels
+vad_dir=      # Location of directory with VAD labels (speech_labels.scp)
+              # This is created by the script prepare_unsad_labels.sh and
+              # the archive must be indexed by the utterance-id of the 
+              # input data.
 
 num_data_reps=5   # Number of corrupted versions
 foreground_snrs="5:2:1:0:-2:-5:-10:-20"
@@ -23,15 +30,19 @@ stage=0
 nj=4
 cmd=run.pl
 
-
 # Options for feature extraction
-mfcc_config=conf/mfcc_hires_bp.conf
-feat_suffix=hires_bp
+mfcc_config=conf/mfcc_hires_bp.conf   # Band-passed config for telephone speech
+feat_suffix=hires_bp        
 
-corrupt_only=false
-speed_perturb=true
+corrupt_only=false      # If true, exits after creating the corrupted directory
+speed_perturb=true      # Do speed perturbation by randomly perturbing the 
+                        # recordings at speeds specified by the --speeds
+                        # option.
 speeds="0.9 1.0 1.1"
-resample_data_dir=false
+resample_data_dir=false   # If true, the input data is resampled at the       
+                          # sampling-rate specified in the mfcc-config.
+                          # Usually applicable when the input data is 8kHz
+                          # and needs to be upsampled to 16kHz.
 
 label_dir=music_labels    # Directory to dump music labels
 
@@ -75,6 +86,8 @@ for f in RIRS_NOISES/simulated_rirs/smallroom/rir_list \
 done
 
 if $resample_data_dir; then
+  # Resample input data directory at a different sampling rate.
+  # It is assumed that the noise and impulse responses are at 8kHz.
   sample_frequency=`cat $mfcc_config | perl -ne 'if (m/--sample-frequency=(\S+)/) { print $1; }'` 
   if [ -z "$sample_frequency" ]; then
     sample_frequency=16000
@@ -154,10 +167,12 @@ fi
 if [ $stage -le 5 ]; then
   if [ ! -z "$vad_dir" ]; then
     if [ ! -f $vad_dir/speech_labels.scp ]; then
-      echo "$0: Could not find file $vad_dir/speech_labels.scp"
+      echo "$0: Could not find file $vad_dir/speech_labels.scp."
+      echo "$0: Run script prepare_unsad_data.sh or similar to create this file."
       exit 1
     fi
     
+    # Get speech labels for music-corrupted and reverberated data
     cat $vad_dir/speech_labels.scp | \
       steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps "music" | \
       sort -k1,1 > ${corrupted_data_dir}/speech_labels.scp
@@ -188,6 +203,7 @@ if [ $stage -le 6 ]; then
     splits="$splits $music_dir/additive_signals_info.$n.$nj.txt"
   done
   utils/split_scp.pl $orig_corrupted_data_dir/additive_signals_info.txt $splits
+  
   # additive_signals_info.txt is created by the script reverberate_data_dir.py.
   # additive_signals_info.txt is indexed by the recording-id and has the format:
   # <recording-id> list-of-space-separated-tuples
@@ -201,8 +217,6 @@ if [ $stage -le 6 ]; then
   awk -v fs=`utils/data/get_frame_shift.sh $corrupted_data_dir` '{print $1" "int($2 / fs)}' \
     $orig_corrupted_data_dir/reco2dur > $orig_corrupted_data_dir/reco2num_frames 
 
-  utils/data/get_utt2num_frames.sh $orig_corrupted_data_dir
-  
   if [ -f $orig_corrupted_data_dir/segments ]; then
     $cmd JOB=1:$nj $music_dir/log/get_music_seg.JOB.log \
       segmentation-init-from-additive-signals-info \

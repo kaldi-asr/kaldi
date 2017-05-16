@@ -19,7 +19,10 @@ if [ $# -ne 0 ]; then
 fi
 
 dir=exp/unsad/make_unsad_fisher_train_100k  # Work dir
-subset=900
+subset=900  # Number of recordings to keep before speed perturbation and corruption. 
+
+stage=-10
+prepare_stage=-10
 
 # All the paths below can be modified to any absolute path.
 
@@ -67,15 +70,17 @@ if [ ! -d RIRS_NOISES/music ]; then
   local/segmentation/prepare_musan_music.sh /export/corpora/JHU/musan RIRS_NOISES/music
 fi
 
-# Expecting the user to have done run.sh to have $model_dir,
-# $sat_model_dir, $lang, $lang_test, $train_data_dir
-local/segmentation/prepare_unsad_data.sh \
-  --sad-map $dir/fisher_sad.map \
-  --config-dir conf \
-  --reco-nj 40 --nj 100 --cmd "$train_cmd" \
-  --sat-model-dir $sat_model_dir \
-  --lang-test $lang_test \
-  $train_data_dir $lang $model_dir $dir
+if [ $stage -le 0 ]; then
+  # Expecting the user to have done run.sh to have $model_dir,
+  # $sat_model_dir, $lang, $lang_test, $train_data_dir
+  local/segmentation/prepare_unsad_data.sh \
+    --sad-map $dir/fisher_sad.map --stage $prepare_stage \
+    --config-dir conf \
+    --reco-nj 40 --nj 100 --cmd "$train_cmd" \
+    --sat-model-dir $sat_model_dir \
+    --lang-test $lang_test \
+    $train_data_dir $lang $model_dir $dir
+fi
 
 data_dir=${train_data_dir}_whole
 
@@ -88,14 +93,20 @@ fi
 
 reco_vad_dir=$dir/`basename $model_dir`_reco_vad_`basename $train_data_dir`_sp
 
-# Add noise from MUSAN corpus to data directory and create a new data directory
-local/segmentation/do_corruption_data_dir_snr.sh \
-  --data-dir $data_dir \
-  --vad-dir $reco_vad_dir \
-  --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf 
+if [ $stage -le 1 ]; then
+  # Add noise from MUSAN corpus to data directory and create a new data directory
+  local/segmentation/do_corruption_data_dir_snr.sh \
+    --cmd "$train_cmd" --nj 40 --stage $prepare_stage \
+    --data-dir $data_dir \
+    --vad-dir $reco_vad_dir \
+    --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf 
+fi
 
-# Add music from MUSAN corpus to data directory and create a new data directory
-local/segmentation/do_corruption_data_dir_music.sh \
-  --data-dir $data_dir \
-  --vad-dir $reco_vad_dir \
-  --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf
+if [ $stage -le 2 ]; then
+  # Add music from MUSAN corpus to data directory and create a new data directory
+  local/segmentation/do_corruption_data_dir_music.sh \
+    --cmd "$train_cmd" --nj 40 --stage $prepare_stage \
+    --data-dir $data_dir \
+    --vad-dir $reco_vad_dir \
+    --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf
+fi

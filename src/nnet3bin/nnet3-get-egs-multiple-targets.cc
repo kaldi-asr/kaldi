@@ -44,9 +44,10 @@ bool ToBool(std::string str) {
   return false;  // never reached
 }
 
-static void ProcessFile(
+static bool ProcessFile(
     const MatrixBase<BaseFloat> &feats,
     const MatrixBase<BaseFloat> *ivector_feats,
+    int32 ivector_period,
     const std::vector<std::string> &output_names,
     const std::vector<int32> &output_dims,
     const std::vector<const MatrixBase<BaseFloat>* > &dense_target_matrices,
@@ -57,105 +58,108 @@ static void ProcessFile(
     int32 input_compress_format,
     const std::vector<bool> &compress_targets,
     const std::vector<int32> &targets_compress_formats,
-    int32 left_context,
-    int32 right_context,
-    int32 frames_per_eg,
-    std::vector<int64> *num_frames_written,
-    std::vector<int64> *num_egs_written,
+    UtteranceSplitter *utt_splitter,
     NnetExampleWriter *example_writer) {
+  int32 num_input_frames = feats.NumRows();
+  KALDI_ASSERT(output_names.size() > 0);  // at least one output required 
   
-  KALDI_ASSERT(output_names.size() > 0);
+  std::vector<ChunkTimeInfo> chunks;
 
-  for (int32 t = 0; t < feats.NumRows(); t += frames_per_eg) {
+  utt_splitter->GetChunksForUtterance(num_input_frames, &chunks);
 
-    int32 tot_frames = left_context + frames_per_eg + right_context;
+  if (chunks.empty()) {
+    KALDI_WARN << "Not producing egs for utterance " << utt_id
+               << " because it is too short: "
+               << num_input_frames << " frames.";
+    return false;
+  }
 
-    Matrix<BaseFloat> input_frames(tot_frames, feats.NumCols(), kUndefined);
-    
-    // Set up "input_frames".
-    for (int32 j = -left_context; j < frames_per_eg + right_context; j++) {
-      int32 t2 = j + t;
+  // 'frame_subsampling_factor' is not used in any recipes at the time of
+  // writing, this is being supported to unify the code with the 'chain' recipes
+  // and in case we need it for some reason in future.
+  int32 frame_subsampling_factor =
+      utt_splitter->Config().frame_subsampling_factor;
+
+  for (size_t c = 0; c < chunks.size(); c++) {
+    const ChunkTimeInfo &chunk = chunks[c];
+
+    int32 tot_input_frames = chunk.left_context + chunk.num_frames +
+        chunk.right_context;
+
+    Matrix<BaseFloat> input_frames(tot_input_frames, feats.NumCols(),
+                                   kUndefined);
+
+    int32 start_frame = chunk.first_frame - chunk.left_context;
+    for (int32 t = start_frame; t < start_frame + tot_input_frames; t++) {
+      int32 t2 = t;
       if (t2 < 0) t2 = 0;
-      if (t2 >= feats.NumRows()) t2 = feats.NumRows() - 1;
+      if (t2 >= num_input_frames) t2 = num_input_frames - 1;
+      int32 j = t - start_frame;
       SubVector<BaseFloat> src(feats, t2),
-          dest(input_frames, j + left_context);
+          dest(input_frames, j);
       dest.CopyFromVec(src);
     }
 
     NnetExample eg;
-    
+
     // call the regular input "input".
-    eg.io.push_back(NnetIo("input", - left_context,
-                           input_frames));
+    eg.io.push_back(NnetIo("input", -chunk.left_context, input_frames));
 
     if (compress_input)
       eg.io.back().Compress(input_compress_format);
-    
-    // if applicable, add the iVector feature.
-    if (ivector_feats) {
-      int32 actual_frames_per_eg = std::min(frames_per_eg,
-                                            feats.NumRows() - t);
-      // try to get closest frame to middle of window to get
-      // a representative iVector.
-      int32 closest_frame = t + (actual_frames_per_eg / 2);
-      KALDI_ASSERT(ivector_feats->NumRows() > 0);
-      if (closest_frame >= ivector_feats->NumRows())
-        closest_frame = ivector_feats->NumRows() - 1;
+
+    if (ivector_feats != NULL) {
+      // if applicable, add the iVector feature.
+      // choose iVector from a random frame in the chunk
+      int32 ivector_frame = RandInt(start_frame,
+                                    start_frame + num_input_frames - 1),
+          ivector_frame_subsampled = ivector_frame / ivector_period;
+      if (ivector_frame_subsampled < 0)
+        ivector_frame_subsampled = 0;
+      if (ivector_frame_subsampled >= ivector_feats->NumRows())
+        ivector_frame_subsampled = ivector_feats->NumRows() - 1;
       Matrix<BaseFloat> ivector(1, ivector_feats->NumCols());
-      ivector.Row(0).CopyFromVec(ivector_feats->Row(closest_frame));
+      ivector.Row(0).CopyFromVec(ivector_feats->Row(ivector_frame_subsampled));
       eg.io.push_back(NnetIo("ivector", 0, ivector));
     }
+
+    // Note: chunk.first_frame and chunk.num_frames will both be
+    // multiples of frame_subsampling_factor.
+    // We expect frame_subsampling_factor to usually be 1 for now.
+    int32 start_frame_subsampled = chunk.first_frame / frame_subsampling_factor,
+        num_frames_subsampled = chunk.num_frames / frame_subsampling_factor;
 
     int32 num_outputs_added = 0;
 
     for (int32 n = 0; n < output_names.size(); n++) {
+      KALDI_ASSERT(start_frame_subsampled + num_frames_subsampled - 1 <
+                   targets.NumRows());
       Vector<BaseFloat> this_deriv_weights(0);
       if (deriv_weights[n]) {
-        // actual_frames_per_eg is the number of frames with actual targets.
-        // At the end of the file, we pad with the last frame repeated
-        // so that all examples have the same structure (prevents the need
-        // for recompilations).
-        int32 actual_frames_per_eg = std::min(
-            std::min(frames_per_eg, feats.NumRows() - t),
-            deriv_weights[n]->Dim() - t);
-
-        this_deriv_weights.Resize(frames_per_eg);
-        int32 frames_to_copy = std::min(t + actual_frames_per_eg, 
-                                        deriv_weights[n]->Dim()) - t; 
-        this_deriv_weights.Range(0, frames_to_copy).CopyFromVec(
-            deriv_weights[n]->Range(t, frames_to_copy));
+        this_deriv_weights(num_frames_subsampled);
+        for (int32 i = 0; i < num_frames_subsampled; i++) {
+          int32 t = i + start_frame_subsampled;
+          if (t >= targets.NumRows())
+            t = targets.NumRows() - 1;
+          this_deriv_weights(i) = (*deriv_weights)(t);
+        }
       }
 
       if (dense_target_matrices[n]) {
         const MatrixBase<BaseFloat> &targets = *dense_target_matrices[n];
-        Matrix<BaseFloat> targets_dest(frames_per_eg, targets.NumCols());
-        
-        // actual_frames_per_eg is the number of frames with actual targets.
-        // At the end of the file, we pad with the last frame repeated
-        // so that all examples have the same structure (prevents the need
-        // for recompilations).
-        int32 actual_frames_per_eg = std::min(
-            std::min(frames_per_eg, feats.NumRows() - t),
-            targets.NumRows() - t);
-
-        for (int32 i = 0; i < actual_frames_per_eg; i++) {
+        Matrix<BaseFloat> targets_part(num_frames_subsampled, 
+                                       targets.NumCols());
+        for (int32 i = 0; i < num_frames_subsampled; i++) {
           // Copy the i^th row of the target matrix from the (t+i)^th row of the
           // input targets matrix
-          SubVector<BaseFloat> this_target_dest(targets_dest, i);
-          SubVector<BaseFloat> this_target_src(targets, t+i);
+          int32 t = i + start_frame_subsampled;
+          if (t >= targets.NumRows())
+            t = targets.NumRows() - 1;
+          SubVector<BaseFloat> this_target_dest(targets_part, i);
+          SubVector<BaseFloat> this_target_src(targets, t);
           this_target_dest.CopyFromVec(this_target_src);
         }
-        
-        // Copy the last frame's target to the padded frames
-        for (int32 i = actual_frames_per_eg; i < frames_per_eg; i++) {
-          // Copy the i^th row of the target matrix from the last row of the 
-          // input targets matrix
-          KALDI_ASSERT(t + actual_frames_per_eg - 1 == targets.NumRows() - 1); 
-          SubVector<BaseFloat> this_target_dest(targets_dest, i);
-          SubVector<BaseFloat> this_target_src(targets, 
-                                               t + actual_frames_per_eg - 1);
-          this_target_dest.CopyFromVec(this_target_src);
-        }
+
 
         if (deriv_weights[n]) {
           eg.io.push_back(NnetIo(output_names[n], this_deriv_weights, 
@@ -165,42 +169,33 @@ static void ProcessFile(
         }
       } else if (posteriors[n]) {
         const Posterior &pdf_post = *(posteriors[n]);
-
-        // actual_frames_per_eg is the number of frames with actual targets.
-        // At the end of the file, we pad with the last frame repeated
-        // so that all examples have the same structure (prevents the need
-        // for recompilations).
-        int32 actual_frames_per_eg = std::min(
-            std::min(frames_per_eg, feats.NumRows() - t),
-            static_cast<int32>(pdf_post.size()) - t);
-
-        Posterior labels(frames_per_eg);
-        for (int32 i = 0; i < actual_frames_per_eg; i++)
-          labels[i] = pdf_post[t + i];
-        // remaining posteriors for frames are empty.
-
-        if (deriv_weights[n]) {
-          eg.io.push_back(NnetIo(output_names[n], this_deriv_weights,
-                                 output_dims[n], 0, labels));
-        } else {
-          eg.io.push_back(NnetIo(output_names[n], output_dims[n], 0, labels));
+        Posterior labels(num_frames_subsampled);
+        for (int32 i = 0; i < num_frames_subsampled; i++) {
+          int32 t = i + start_frame_subsampled;
+          if (t >= pdf_post.size()) 
+            t = pdf_post.size() - 1;
+          labels[i] = pdf_post[t];
+          for (std::vector<std::pair<int32, BaseFloat> >::iterator
+                iter = labels[i].begin(); iter != labels[i].end(); ++iter)
+            iter->second *= chunk.output_weights[i];
         }
-      } else 
+      } else {
+        KALDI_WARN << "No target found for output " << output_names[n];
         continue;
+      }
+      
       if (compress_targets[n])
         eg.io.back().Compress(targets_compress_formats[n]);
 
       num_outputs_added++;
       // Actually actual_frames_per_eg, but that depends on the different
       // output. For simplification, frames_per_eg is used.
-      (*num_frames_written)[n] += frames_per_eg;   
-      (*num_egs_written)[n] += 1;
     }
 
     if (num_outputs_added != output_names.size()) continue;
       
     std::ostringstream os;
-    os << utt_id << "-" << t;
+    os << utt_id << "-" << chunk.first_frame;
 
     std::string key = os.str(); // key is <utt_id>-<frame_id>
 
@@ -248,7 +243,7 @@ int main(int argc, char *argv[]) {
     int32 left_context = 0, right_context = 0,
           num_frames = 1, length_tolerance = 2;
         
-    std::string ivector_rspecifier, 
+    std::string online_ivector_rspecifier, 
                 targets_compress_formats_str,
                 compress_targets_str;
     std::string output_dims_str;
@@ -269,8 +264,13 @@ int main(int argc, char *argv[]) {
                 "context the neural net requires.");
     po.Register("num-frames", &num_frames, "Number of frames with labels "
                 "that each example contains.");
-    po.Register("ivectors", &ivector_rspecifier, "Rspecifier of ivector "
-                "features, as matrix.");
+    po.Register("ivectors", &online_ivector_rspecifier, "Alias for "
+                "--online-ivectors option, for back compatibility");
+    po.Register("online-ivectors", &online_ivector_rspecifier, "Rspecifier of "
+                "ivector features, as a matrix.");
+    po.Register("online-ivector-period", &online_ivector_period, "Number of "
+                "frames between iVectors in matrices supplied to the "
+                "--online-ivectors option");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
     po.Register("output-dims", &output_dims_str, "CSL of output node dims");
@@ -288,8 +288,10 @@ int main(int argc, char *argv[]) {
 
     // Read in all the training files.
     SequentialBaseFloatMatrixReader feat_reader(feature_rspecifier);
-    RandomAccessBaseFloatMatrixReader ivector_reader(ivector_rspecifier);
+    RandomAccessBaseFloatMatrixReader online_ivector_reader(online_ivector_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
+
+    int32 num_err = 0;
 
     int32 num_outputs = (po.NumArgs() - 2) / 2;
     KALDI_ASSERT(num_outputs > 0);
@@ -381,32 +383,28 @@ int main(int argc, char *argv[]) {
                 << " target-compress-format=" << targets_compress_formats[n];
     }
 
-    int32 num_done = 0, num_err = 0;
-    
-    std::vector<int64> num_frames_written(num_outputs, 0);
-    std::vector<int64> num_egs_written(num_outputs, 0);
-    
     for (; !feat_reader.Done(); feat_reader.Next()) {
       std::string key = feat_reader.Key();
       const Matrix<BaseFloat> &feats = feat_reader.Value();
         
-      const Matrix<BaseFloat> *ivector_feats = NULL;
-      if (!ivector_rspecifier.empty()) {
-        if (!ivector_reader.HasKey(key)) {
+      const Matrix<BaseFloat> *online_ivector_feats = NULL;
+      if (!online_ivector_rspecifier.empty()) {
+        if (!online_ivector_reader.HasKey(key)) {
           KALDI_WARN << "No iVectors for utterance " << key;
+          num_err++;
           continue;
         } else {
           // this address will be valid until we call HasKey() or Value()
           // again.
-          ivector_feats = &(ivector_reader.Value(key));
+          online_ivector_feats = &(online_ivector_reader.Value(key));
         }
       }
 
-      if (ivector_feats && 
-          (abs(feats.NumRows() - ivector_feats->NumRows()) > length_tolerance
-           || ivector_feats->NumRows() == 0)) {
+      if (online_ivector_feats && 
+          (abs(feats.NumRows() - online_ivector_feats->NumRows()) > length_tolerance
+           || online_ivector_feats->NumRows() == 0)) {
         KALDI_WARN << "Length difference between feats " << feats.NumRows()
-                   << " and iVectors " << ivector_feats->NumRows()
+                   << " and iVectors " << online_ivector_feats->NumRows()
                    << "exceeds tolerance " << length_tolerance;
         num_err++;
         continue;
@@ -491,37 +489,25 @@ int main(int argc, char *argv[]) {
         continue;
       }
 
-      ProcessFile(feats, ivector_feats, output_names, output_dims,
+      if (!ProcessFile(feats, ivector_feats, output_names, output_dims,
                   dense_targets, sparse_targets,
                   deriv_weights, key,
                   compress_input, input_compress_format, 
                   compress_targets, targets_compress_formats,
                   left_context, right_context, num_frames,
-                  &num_frames_written, &num_egs_written,
-                  &example_writer);
-      num_done++;
+                  &utt_splitter, &example_writer))
+        num_err++;
     }
-
-    int64 max_num_egs_written = 0, max_num_frames_written = 0;
     for (int32 n = 0; n < num_outputs; n++) {
       delete dense_targets_readers[n];
       delete sparse_targets_readers[n];
       delete deriv_weights_readers[n];
-      if (num_egs_written[n] == 0) return false;
-      if (num_egs_written[n] > max_num_egs_written) {
-        max_num_egs_written = num_egs_written[n];
-        max_num_frames_written = num_frames_written[n];
-      }
     }
-
-    KALDI_LOG << "Finished generating examples, "
-              << "successfully processed " << num_done
-              << " feature files, wrote at most " << max_num_egs_written 
-              << " examples, "
-              << " with at most " << max_num_frames_written << " egs in total; "
-              << num_err << " files had errors.";
-
-    return (num_err > num_done ? 1 : 0);
+    if (num_err > 0) 
+      KALDI_WARN << num_err << " utterannces had errors and could "
+              "not be processed.";
+    // utt_splitter prints stats in its destructor.
+    return utt_splitter.ExitStatus();
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;

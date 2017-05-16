@@ -168,20 +168,17 @@ class BackgroundProcessHandler():
         self.start()
 
     def is_process_done(self, t):
-        p, command, exit_on_failure = t
+        p, command = t
         if p.poll() is None:
             return False
         return True
 
     def ensure_process_is_done(self, t):
-        p, command, exit_on_failure = t
+        p, command = t
         logger.debug("Waiting for process '{0}' to end".format(command))
         [stdout, stderr] = p.communicate()
         if p.returncode is not 0:
-            print("There was an error while running the command "
-                  "{0}\n{1}\n{2}".format(command, "-"*10, stderr))
-            if exit_on_failure:
-                os._exit(1)
+            raise KaldiCommandException(command, stderr)
 
     def ensure_processes_are_done(self):
         self.__process_queue.reverse()
@@ -198,8 +195,7 @@ class BackgroundProcessHandler():
             logger.info("Process '{0}' is running".format(command))
 
 
-def run_job(command, wait=True, background_process_handler=None,
-            exit_on_failure=False):
+def run_job(command, wait=True, background_process_handler=None):
     """ Runs a kaldi job, usually using a script such as queue.pl and
         run.pl, and redirects the stdout and stderr to the parent
         process's streams.
@@ -213,14 +209,12 @@ def run_job(command, wait=True, background_process_handler=None,
         wait: If True, wait until the process is completed. However, if the
             background_process_handler is provided, this option will be
             ignored and the process will be run in the background.
-        exit_on_failure: If True, will exit from the script on failure.
-            Only applicable when background_process_handler is specified.
     """
     p = subprocess.Popen(command, shell=True)
 
     if background_process_handler is not None:
         wait = False
-        background_process_handler.add_process((p, command, exit_on_failure))
+        background_process_handler.add_process((p, command))
 
     if wait:
         p.communicate()
@@ -231,8 +225,7 @@ def run_job(command, wait=True, background_process_handler=None,
         return p
 
 
-def run_kaldi_command(command, wait=True, background_process_handler=None,
-                      exit_on_failure=False):
+def run_kaldi_command(command, wait=True, background_process_handler=None):
     """ Runs commands frequently seen in Kaldi scripts and
         captures the stdout and stderr.
         These are usually a sequence of commands connected by pipes, so we use
@@ -245,8 +238,6 @@ def run_kaldi_command(command, wait=True, background_process_handler=None,
         wait: If True, wait until the process is completed. However, if the
             background_process_handler is provided, this option will be
             ignored and the process will be run in the background.
-        exit_on_failure: If True, will exit from the script on failure.
-            Only applicable when background_process_handler is specified.
     """
     p = subprocess.Popen(command, shell=True,
                          stdout=subprocess.PIPE,
@@ -254,7 +245,7 @@ def run_kaldi_command(command, wait=True, background_process_handler=None,
 
     if background_process_handler is not None:
         wait = False
-        background_process_handler.add_process((p, command, exit_on_failure))
+        background_process_handler.add_process((p, command))
 
     if wait:
         [stdout, stderr] = p.communicate()
@@ -334,17 +325,11 @@ def get_feat_dim_from_scp(feat_scp):
     return feat_dim
 
 
-def split_data(data, num_jobs, per_utt=False, per_reco=False):
+def split_data(data, num_jobs, per_utt=False):
     if per_utt:
-        if per_reco:
-            raise TypeError("per_utt and per_reco cannot both be True")
         run_kaldi_command("utils/split_data.sh --per-utt {data} {num_jobs}"
                           "".format(data=data, num_jobs=num_jobs))
         return "{data}/split{num_jobs}utt".format(data=data, num_jobs=num_jobs)
-    elif per_reco:
-        run_kaldi_command("utils/split_data.sh --per-reco {data} {num_jobs}"
-                          "".format(data=data, num_jobs=num_jobs))
-        return "{data}/split{num_jobs}reco".format(data=data, num_jobs=num_jobs)
 
     run_kaldi_command("utils/split_data.sh {data} {num_jobs}"
                       "".format(data=data, num_jobs=num_jobs))

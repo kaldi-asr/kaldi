@@ -117,10 +117,10 @@ static void MergeIo(const std::vector<NnetExample> &src,
   std::vector<std::string>::const_iterator names_begin = names.begin(),
                                              names_end = names.end();
   std::vector<NnetExample>::const_iterator eg_iter = src.begin(),
-                                            eg_end = src.end();
+    eg_end = src.end();
   for (int32 n = 0; eg_iter != eg_end; ++eg_iter, ++n) {
     std::vector<NnetIo>::const_iterator io_iter = eg_iter->io.begin(),
-                                         io_end = eg_iter->io.end();
+      io_end = eg_iter->io.end();
     for (; io_iter != io_end; ++io_iter) {
       const NnetIo &io = *io_iter;
       std::vector<std::string>::const_iterator names_iter =
@@ -181,6 +181,8 @@ static void MergeIo(const std::vector<NnetExample> &src,
     }
   }
 }
+
+
 
 void MergeExamples(const std::vector<NnetExample> &src,
                    bool compress,

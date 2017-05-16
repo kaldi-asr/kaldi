@@ -50,6 +50,10 @@ def train_new_models(dir, iter, srand, num_jobs,
             implies frame-level training, which is applicable for DNN training.
             If it is > 0, then each parallel SGE job created, a different frame
             numbered 0..frames_per_eg-1 is used.
+        extra_egs_copy_cmd: Used to pass a command that reads egs from the pipe
+            and makes modifications to it such as removing particular
+            outputs.
+            e.g. "nnet3-copy-egs --keep-outputs=output-speech ark:- ark:- |"
     """
 
     chunk_level_training = False if frames_per_eg > 0 else True
@@ -447,8 +451,8 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
 
     common_lib.run_job(
         """ {command} {dir}/log/compute_prob_valid.{iter}.log \
-                nnet3-compute-prob "{model}" \
-                "ark,bg:nnet3-copy-egs {opts} {context_opts} \
+                nnet3-compute-prob {opts} "{model}" \
+                "ark,bg:nnet3-copy-egs {context_opts} \
                     {egs_rspecifier} ark:- |{extra_egs_copy_cmd} \
                     nnet3-merge-egs --minibatch-size=1:64 ark:- \
                     ark:- |" """.format(command=run_opts.command,

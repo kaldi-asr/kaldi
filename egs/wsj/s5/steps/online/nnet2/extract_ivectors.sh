@@ -229,8 +229,8 @@ if [ $stage -le 2 ]; then
   if [ ! -z "$ali_or_decode_dir" ]; then
     $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
       gmm-global-get-post --n=$num_gselect --min-post=$min_post $srcdir/final.dubm "$gmm_feats" ark:- \| \
-      weight-post --length-tolerance=1 ark:- "ark,s,cs:gunzip -c $dir/weights.gz|" ark:- \| \
-      ivector-extract --length-tolerance=1 --acoustic-weight=$posterior_scale --compute-objf-change=true \
+      weight-post --length-tolerance=2 ark:- "ark,s,cs:gunzip -c $dir/weights.gz|" ark:- \| \
+      ivector-extract --length-tolerance=2 --acoustic-weight=$posterior_scale --compute-objf-change=true \
         --max-count=$max_count --spk2utt=ark:$this_sdata/JOB/spk2utt \
       $srcdir/final.ie "$feats" ark,s,cs:- ark,t:$dir/ivectors_spk.JOB.ark || exit 1;
   else

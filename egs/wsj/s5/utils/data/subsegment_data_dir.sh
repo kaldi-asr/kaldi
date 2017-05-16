@@ -171,8 +171,8 @@ if [ -f $srcdir/feats.scp ]; then
   cat $subsegments | awk -v s=$frame_shift '{print $1, $2, int(($3/s)+0.5), int(($4/s)-0.5);}' | \
     utils/apply_map.pl -f 2 $srcdir/feats.scp | \
     awk '{p=NF-1; for (n=1;n<NF-2;n++) printf("%s ", $n); k=NF-2; l=NF-1; printf("%s[%d:%d]\n", $k, $l, $NF)}' | \
-    utils/data/normalize_data_range.pl | \
-    utils/data/fix_subsegmented_feats.pl $dir/utt2max_frames >$dir/feats.scp
+    utils/data/fix_subsegmented_feats.pl $dir/utt2max_frames | \
+    utils/data/normalize_data_range.pl >$dir/feats.scp
   
   cat $dir/feats.scp | perl -ne 'm/^(\S+) .+\[(\d+):(\d+)\]$/; print "$1 " . ($3-$2+1) . "\n"' > \
     $dir/utt2num_frames
@@ -181,8 +181,8 @@ if [ -f $srcdir/feats.scp ]; then
     cat $subsegments | awk -v s=$frame_shift '{print $1, $2, int(($3/s)+0.5), int(($4/s)-0.5);}' | \
       utils/apply_map.pl -f 2 $srcdir/vad.scp | \
       awk '{p=NF-1; for (n=1;n<NF-2;n++) printf("%s ", $n); k=NF-2; l=NF-1; printf("%s[%d:%d]\n", $k, $l, $NF)}' | \
-      utils/data/normalize_data_range.pl | \
-      utils/data/fix_subsegmented_feats.pl $dir/utt2max_frames >$dir/vad.scp
+      utils/data/fix_subsegment_feats.pl $dir/utt2max_frames | \
+      utils/data/normalize_data_range.pl >$dir/vad.scp
   fi
 fi
 

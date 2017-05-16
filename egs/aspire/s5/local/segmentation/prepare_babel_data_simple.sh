@@ -5,6 +5,9 @@
 
 # This script prepares Babel data for training speech activity detection,
 # music detection.
+# This script is similar to prepare_babel_data.sh, but is a simpler version
+# that create perturbed data at utterance-level using only manual segment
+# regions.
 
 . path.sh
 . cmd.sh
@@ -13,14 +16,20 @@ set -e
 set -o pipefail
 set -u
 
-lang_id=cantonese_flp_simple
-subset_fraction=0.1
-realign=false
+lang_id=cantonese_flp_simple  # An arbitrary name added as a suffix to the created 
+                              # directories.
+subset_fraction=0.1   # Fraction of utterances to keep before perturbation and 
+                      # corruption.
+realign=false   # If true, the speed-perturbed data is realigned using 
+                # the SAT model. Otherwise, the existing alignment is 
+                # warped to the required speed.
 
-# All the paths below can be modified to any absolute path.
+# The path below can be modified to any absolute path containing the 
+# Babel system.
 ROOT_DIR=/export/b17/jtrmal/babel/101-cantonese-flp-p-basic
 
-stage=-1
+stage=-10
+prepare_stage=-10
 
 . utils/parse_options.sh
 
@@ -32,10 +41,11 @@ if [ $# -ne 0 ]; then
 fi
 
 dir=exp/unsad_simple/make_unsad_babel_${lang_id}_train_cleaned_pitch_sp   # Work dir
-train_data_dir=$ROOT_DIR/data/train_cleaned_pitch_sp
-unperturbed_data_dir=$ROOT_DIR/data/train_cleaned_pitch
-model_dir=$ROOT_DIR/exp/tri5_cleaned   # Model directory
-lang=$ROOT_DIR/data/lang  # Language directory
+
+train_data_dir=$ROOT_DIR/data/train_cleaned_pitch_sp   # Input data
+unperturbed_data_dir=$ROOT_DIR/data/train_cleaned_pitch   # Unperturbed data directory
+model_dir=$ROOT_DIR/exp/tri5_cleaned   # Model directory  # SAT model used for getting alignments, if --realign is true
+lang=$ROOT_DIR/data/lang  # Language directory  
 
 mkdir -p $dir
 
@@ -73,20 +83,28 @@ unperturbed_data_dir=data/babel_${lang_id}_train
 if $realign; then
   ali_dir=$dir/`basename $model_dir`_ali_$(basename $train_data_dir)
 
-  steps/align_fmllr.sh --nj 32 --cmd "$train_cmd" \
-    $train_data_dir $lang $model_dir $ali_dir
+  if [ $stage -le 0 ]; then
+    steps/align_fmllr.sh --nj 32 --cmd "$train_cmd" \
+      $train_data_dir $lang $model_dir $ali_dir
+  fi
 
-  # Expecting the user to have done run.sh to have $ali_dir,
-  # $lang, $train_data_dir
-  local/segmentation/prepare_unsad_data_simple.sh \
-    --sad-map $dir/babel_sad.map --cmd "$train_cmd" \
-    $train_data_dir $lang $ali_dir $dir
+  if [ $stage -le 1 ]; then
+    # Expecting the user to have done run-1-main.sh to have $model_dir,
+    # $sat_model_dir, $lang, $lang_test, $train_data_dir. 
+    local/segmentation/prepare_unsad_data_simple.sh \
+      --sad-map $dir/babel_sad.map --cmd "$train_cmd" \
+      $train_data_dir $lang $ali_dir $dir
+  fi
   
   vad_dir=$dir/`basename $ali_dir`_vad_$(basename $train_data_dir)
 else
-  local/segmentation/prepare_unsad_data_simple.sh --speed-perturb true \
-    --sad-map $dir/babel_sad.map --cmd "$train_cmd" \
-    $unperturbed_data_dir $lang $model_dir $dir
+  if [ $stage -le 1 ]; then
+    # Expecting the user to have done run-1-main.sh to have $model_dir,
+    # $sat_model_dir, $lang, $lang_test, $train_data_dir. 
+    local/segmentation/prepare_unsad_data_simple.sh --speed-perturb true \
+      --sad-map $dir/babel_sad.map --cmd "$train_cmd" \
+      $unperturbed_data_dir $lang $model_dir $dir
+  fi
 
   vad_dir=$dir/`basename $model_dir`_vad_$(basename $unperturbed_data_dir)
 fi
@@ -94,7 +112,7 @@ fi
 data_dir=${unperturbed_data_dir}
 
 if [ ! -z "$subset_fraction" ]; then
-  # Work on a subset
+  # Work on a subset of utterances
   num_utts=`cat $unperturbed_data_dir/utt2spk | wc -l`
   subset=`python -c "n=int($num_utts * $subset_fraction / 1000.0) * 1000; print (n if n > 4000 else 4000)"`
   subset_affix=`echo $subset | perl -pe 's/000/k/g'`
@@ -103,18 +121,22 @@ if [ ! -z "$subset_fraction" ]; then
   data_dir=${unperturbed_data_dir}_${subset_affix}
 fi
 
-# Add noise from MUSAN corpus to data directory and create a new data directory
-local/segmentation/do_corruption_data_dir_snr.sh \
-  --cmd "$train_cmd" --nj 40 --stage 8 \
-  --data-dir $data_dir \
-  --vad-dir $vad_dir \
-  --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf 
+if [ $stage -le 2 ]; then
+  # Add noise from MUSAN corpus to data directory and create a new data directory
+  local/segmentation/do_corruption_data_dir_snr.sh \
+    --cmd "$train_cmd" --nj 40 --stage $prepare_stage \
+    --data-dir $data_dir \
+    --vad-dir $vad_dir \
+    --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf 
+fi
 
-# Add music from MUSAN corpus to data directory and create a new data directory
-local/segmentation/do_corruption_data_dir_music.sh \
-  --cmd "$train_cmd" --nj 40 \
-  --data-dir $data_dir \
-  --vad-dir $vad_dir \
-  --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf
+if [ $stage -le 3 ]; then
+  # Add music from MUSAN corpus to data directory and create a new data directory
+  local/segmentation/do_corruption_data_dir_music.sh \
+    --cmd "$train_cmd" --nj 40 --stage $prepare_stage \
+    --data-dir $data_dir \
+    --vad-dir $vad_dir \
+    --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf
+fi
 
 utils/fix_data_dir.sh --utt-extra-files "irm_targets.scp speech_labels.scp music_labels.scp speech_music_labels.scp deriv_weights.scp deriv_weights_manual_seg.scp deriv_weights_for_irm_targets.scp" ${data_dir}_corrupted_spr_hires_bp

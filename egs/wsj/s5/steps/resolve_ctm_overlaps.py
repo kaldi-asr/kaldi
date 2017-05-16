@@ -298,7 +298,7 @@ def main():
         run(args)
     except:
         logger.error("Failed to resolve overlaps", exc_info=True)
-        raise RuntimeError
+        raise SystemExit(1)
     finally:
         try:
             for f in [args.segments, args.ctm_in, args.ctm_out]:

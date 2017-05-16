@@ -200,6 +200,7 @@ int main(int argc, char *argv[]) {
     int32 num_targets = -1, length_tolerance = 100, online_ivector_period = 1;
     ExampleGenerationConfig eg_config;  // controls num-frames,
                                         // left/right-context, etc.
+
     std::string online_ivector_rspecifier, deriv_weights_rspecifier;
     ParseOptions po(usage);
 
@@ -258,7 +259,7 @@ int main(int argc, char *argv[]) {
         num_err++;
       } else {
         const Matrix<BaseFloat> &target_matrix = matrix_reader.Value(key);
-        if ((target_matrix.NumRows() - feats.NumRows()) > length_tolerance) {
+        if (abs(target_matrix.NumRows() - feats.NumRows()) > length_tolerance) {
           KALDI_WARN << "Length difference between feats " << feats.NumRows()
                      << " and target matrix " << target_matrix.NumRows()
                      << "exceeds tolerance " << length_tolerance;

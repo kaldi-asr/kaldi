@@ -3,6 +3,8 @@
 # Copyright  2016  Vimal Manohar
 # Apache 2.0
 
+# This script prepares MUSAN music corpus for data perturbation.
+
 if [ $# -ne 2 ]; then
   echo "Usage: $0 <MUSAN-SRC-DIR> <dir>"
   echo " e.g.: $0 /export/corpora/JHU/musan RIRS_NOISES/music"

@@ -3,7 +3,7 @@
 # Copyright 2016  Vimal Manohar
 # Apache 2.0.
 
-# This script is deprecated!
+# This script is deprecated in favor of do_segmentation_data_dir_simple.sh.
 # This script does nnet3-based speech activity detection given an input kaldi
 # directory and outputs an output kaldi directory.
 # This script can also do music detection using appropriate options 
