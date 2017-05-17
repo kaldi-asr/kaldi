@@ -229,7 +229,7 @@ fi
 if [ $stage -le 6 ]; then
   steps/segmentation/decode_sad.sh --acwt 1.0 --cmd "$decode_cmd" \
     --iter ${iter} \
-    --get-pdfs true $graph_dir $sad_dir $seg_dir
+    --write-pdf-alignment true $graph_dir $sad_dir $seg_dir
 fi
 
 ###############################################################################

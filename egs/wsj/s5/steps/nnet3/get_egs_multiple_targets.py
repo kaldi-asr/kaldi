@@ -649,17 +649,19 @@ def generate_valid_train_subset_egs(dir, targets_parameters,
         if pid.returncode != 0:
             raise Exception(stderr)
 
-    common_lib.run_kaldi_command(
-        """cat {dir}/valid_combine.egs {dir}/train_combine.egs > \
-                {dir}/combine.egs""".format(dir=dir))
-
     if generate_egs_scp:
         common_lib.run_kaldi_command(
-            """cat {dir}/valid_combine.egs.scp {dir}/train_combine.egs.scp > \
-                    {dir}/combine.egs.scp""".format(dir=dir))
+            """cat {dir}/valid_combine.egs.scp {dir}/train_combine.egs.scp | \
+                nnet3-copy-egs scp:- \
+                ark,scp:{dir}/combine.egs,{dir}/combine.egs.scp""".format(
+                    dir=dir))
         common_lib.run_kaldi_command(
             "rm {dir}/valid_combine.egs.scp {dir}/train_combine.egs.scp"
             "".format(dir=dir))
+    else:
+        common_lib.run_kaldi_command(
+            """cat {dir}/valid_combine.egs {dir}/train_combine.egs > \
+                    {dir}/combine.egs""".format(dir=dir))
 
     # perform checks
     for file_name in ('{0}/combine.egs {0}/train_diagnostic.egs '
@@ -670,8 +672,8 @@ def generate_valid_train_subset_egs(dir, targets_parameters,
     # clean-up
     for x in ('{0}/valid_all.*.egs {0}/train_subset_all.*.egs '
               '{0}/valid_all.*.egs.scp {0}/train_subset_all.*.egs.scp '
-              '{0}/train_combine.egs '
-              '{0}/valid_combine.egs'.format(dir).split()):
+              '{0}/train_combine.egs {0}/valid_combine.egs'
+              ''.format(dir).split()):
         for file_name in glob.glob(x):
             os.remove(file_name)
 

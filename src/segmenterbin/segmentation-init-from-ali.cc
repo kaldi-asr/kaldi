@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
               << "with a total of " << num_segments << " segments.";
     KALDI_LOG << "Number of frames for the different classes are : ";
 
-    Output ko(counts_wxfilename);
+    Output ko(counts_wxfilename, false);
     std::map<int32, int64>::const_iterator it = frame_counts_per_class.begin(); 
     for (; it != frame_counts_per_class.end(); ++it) {
       if (!counts_wxfilename.empty()) {

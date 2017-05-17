@@ -132,64 +132,75 @@ static bool ProcessFile(
     int32 num_outputs_added = 0;
 
     for (int32 n = 0; n < output_names.size(); n++) {
-      KALDI_ASSERT(start_frame_subsampled + num_frames_subsampled - 1 <
-                   targets.NumRows());
+      int32 num_target_frames = 0;
+      
+      if (dense_target_matrices[n])
+        num_target_frames = dense_target_matrices[n]->NumRows();
+      else if (posteriors[n]) 
+        num_target_frames = posteriors[n]->size();
+      else {
+        KALDI_WARN << "No target found for output " << output_names[n];
+        continue;
+      }
+
       Vector<BaseFloat> this_deriv_weights(0);
       if (deriv_weights[n]) {
-        this_deriv_weights(num_frames_subsampled);
+        this_deriv_weights.Resize(num_frames_subsampled);
         for (int32 i = 0; i < num_frames_subsampled; i++) {
           int32 t = i + start_frame_subsampled;
-          if (t >= targets.NumRows())
-            t = targets.NumRows() - 1;
-          this_deriv_weights(i) = (*deriv_weights)(t);
+          if (t >= num_target_frames) t = num_target_frames - 1;
+          this_deriv_weights(i) = (*(deriv_weights[n]))(t);
         }
       }
 
       if (dense_target_matrices[n]) {
         const MatrixBase<BaseFloat> &targets = *dense_target_matrices[n];
+        KALDI_ASSERT(start_frame_subsampled + num_frames_subsampled - 1 <
+                     targets.NumRows());
         Matrix<BaseFloat> targets_part(num_frames_subsampled, 
                                        targets.NumCols());
         for (int32 i = 0; i < num_frames_subsampled; i++) {
           // Copy the i^th row of the target matrix from the (t+i)^th row of the
           // input targets matrix
           int32 t = i + start_frame_subsampled;
-          if (t >= targets.NumRows())
-            t = targets.NumRows() - 1;
+          if (t >= num_target_frames) t = num_target_frames - 1;
           SubVector<BaseFloat> this_target_dest(targets_part, i);
           SubVector<BaseFloat> this_target_src(targets, t);
           this_target_dest.CopyFromVec(this_target_src);
         }
 
-
         if (deriv_weights[n]) {
           eg.io.push_back(NnetIo(output_names[n], this_deriv_weights, 
-                                 0, targets_dest));
+                                 0, targets_part));
         } else {
-          eg.io.push_back(NnetIo(output_names[n], 0, targets_dest));
+          eg.io.push_back(NnetIo(output_names[n], 0, targets_part));
         }
-      } else if (posteriors[n]) {
+      } else {
         const Posterior &pdf_post = *(posteriors[n]);
+        KALDI_ASSERT(start_frame_subsampled + num_frames_subsampled - 1 <
+                     pdf_post.size());
         Posterior labels(num_frames_subsampled);
         for (int32 i = 0; i < num_frames_subsampled; i++) {
           int32 t = i + start_frame_subsampled;
-          if (t >= pdf_post.size()) 
-            t = pdf_post.size() - 1;
+          if (t >= num_target_frames) t = num_target_frames - 1;
           labels[i] = pdf_post[t];
           for (std::vector<std::pair<int32, BaseFloat> >::iterator
                 iter = labels[i].begin(); iter != labels[i].end(); ++iter)
             iter->second *= chunk.output_weights[i];
         }
-      } else {
-        KALDI_WARN << "No target found for output " << output_names[n];
-        continue;
-      }
+        
+        if (deriv_weights[n]) {
+          eg.io.push_back(NnetIo(output_names[n], this_deriv_weights, 
+                                 output_dims[n], 0, labels));
+        } else {
+          eg.io.push_back(NnetIo(output_names[n], output_dims[n], 0, labels));
+        }
+      } 
       
       if (compress_targets[n])
         eg.io.back().Compress(targets_compress_formats[n]);
 
       num_outputs_added++;
-      // Actually actual_frames_per_eg, but that depends on the different
-      // output. For simplification, frames_per_eg is used.
     }
 
     if (num_outputs_added != output_names.size()) continue;
@@ -203,6 +214,7 @@ static bool ProcessFile(
 
     example_writer->Write(key, eg);
   }
+  return true;
 }
 
 
@@ -242,7 +254,11 @@ int main(int argc, char *argv[]) {
     int32 input_compress_format = 0; 
     int32 left_context = 0, right_context = 0,
           num_frames = 1, length_tolerance = 2;
-        
+    int32 online_ivector_period = 1;
+
+    ExampleGenerationConfig eg_config;  // controls num-frames,
+                                        // left/right-context, etc.
+
     std::string online_ivector_rspecifier, 
                 targets_compress_formats_str,
                 compress_targets_str;
@@ -276,12 +292,16 @@ int main(int argc, char *argv[]) {
     po.Register("output-dims", &output_dims_str, "CSL of output node dims");
     po.Register("output-names", &output_names_str, "CSL of output node names");
     
+    eg_config.Register(&po);
     po.Read(argc, argv);
 
     if (po.NumArgs() < 3) {
       po.PrintUsage();
       exit(1);
     }
+
+    eg_config.ComputeDerived();
+    UtteranceSplitter utt_splitter(eg_config);
 
     std::string feature_rspecifier = po.GetArg(1),
                examples_wspecifier = po.GetArg(po.NumArgs());
@@ -489,13 +509,13 @@ int main(int argc, char *argv[]) {
         continue;
       }
 
-      if (!ProcessFile(feats, ivector_feats, output_names, output_dims,
-                  dense_targets, sparse_targets,
-                  deriv_weights, key,
-                  compress_input, input_compress_format, 
-                  compress_targets, targets_compress_formats,
-                  left_context, right_context, num_frames,
-                  &utt_splitter, &example_writer))
+      if (!ProcessFile(feats, online_ivector_feats, online_ivector_period,
+                       output_names, output_dims,
+                       dense_targets, sparse_targets,
+                       deriv_weights, key,
+                       compress_input, input_compress_format, 
+                       compress_targets, targets_compress_formats,
+                       &utt_splitter, &example_writer))
         num_err++;
     }
     for (int32 n = 0; n < num_outputs; n++) {
