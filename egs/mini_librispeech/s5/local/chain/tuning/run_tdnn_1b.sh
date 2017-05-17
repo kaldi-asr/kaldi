@@ -2,7 +2,7 @@
 
 
 # This is as 1a but increasing epochs from 4 to 10 and adding the option
-# --proportional-shrink=120.0.  Note: without adding the --proportional-shrink
+# --proportional-shrink=150.0.  Note: without adding the --proportional-shrink
 # option, changing the num-epochs to 10 gave a couple of percent degradation.
 # The --proportional-shrink option did also help with 4 epochs (but with a lower
 # optimum, at 80); but those WER numbers were about a percent absolute worse
@@ -10,18 +10,18 @@
 
 # local/chain/compare_wer.sh --online exp/chain/tdnn1a_sp exp/chain/tdnn1b_sp
 # System                tdnn1a_sp tdnn1b_sp
-#WER dev_clean_2 (tgsmall)      18.11     15.60
-#             [online:]         18.12     15.53
-#WER dev_clean_2 (tglarge)      13.20     11.21
-#             [online:]         13.18     11.23
-# Final train prob        -0.0602   -0.0559
-# Final valid prob        -0.1038   -0.0947
-# Final train prob (xent)   -1.4997   -1.2278
-# Final valid prob (xent)   -1.7786   -1.5577
+#WER dev_clean_2 (tgsmall)      18.11     15.24
+#             [online:]         18.12     15.15
+#WER dev_clean_2 (tglarge)      13.20     11.20
+#             [online:]         13.18     11.13
+# Final train prob        -0.0602   -0.0642
+# Final valid prob        -0.1038   -0.1014
+# Final train prob (xent)   -1.4997   -1.3679
+# Final valid prob (xent)   -1.7786   -1.6482
 
 
 # steps/info/chain_dir_info.pl exp/chain/tdnn1b_sp
-# exp/chain/tdnn1b_sp: num-iters=17 nj=2..5 num-params=7.0M dim=40+100->2309 combine=-0.075->-0.060 xent:train/valid[10,16,final]=(-1.84,-1.40,-1.23/-2.01,-1.66,-1.56) logprob:train/valid[10,16,final]=(-0.096,-0.066,-0.056/-0.124,-0.100,-0.095)
+# exp/chain/tdnn1b_sp: num-iters=17 nj=2..5 num-params=7.0M dim=40+100->2309 combine=-0.085->-0.067 xent:train/valid[10,16,final]=(-1.98,-1.54,-1.37/-2.12,-1.76,-1.65) logprob:train/valid[10,16,final]=(-0.104,-0.076,-0.064/-0.129,-0.105,-0.101)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -218,7 +218,7 @@ if [ $stage -le 14 ]; then
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
-    --trainer.optimization.proportional-shrink=120.0 \
+    --trainer.optimization.proportional-shrink=150.0 \
     --trainer.num-chunk-per-minibatch=256,128,64 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
