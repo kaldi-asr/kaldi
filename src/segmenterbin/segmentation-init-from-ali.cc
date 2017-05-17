@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
         "create recording-level segmentations."
         "\n"
         "Usage: segmentation-init-from-ali [options] "
-        "<ali-rspecifier> <segmentation-wspecifier> \n"
+        "<ali-rspecifier> <segmentation-wspecifier> [<counts>]\n"
         " e.g.: segmentation-init-from-ali ark:1.ali ark:-\n"
         "See also: segmentation-init-from-segments, "
         "segmentation-combine-segments\n";
@@ -40,13 +40,14 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() != 2 && po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string ali_rspecifier = po.GetArg(1),
-       segmentation_wspecifier = po.GetArg(2);
+      segmentation_wspecifier = po.GetArg(2),
+      counts_wxfilename = po.GetOptArg(3);
 
     SegmentationWriter segmentation_writer(segmentation_wspecifier);
 
@@ -81,8 +82,12 @@ int main(int argc, char *argv[]) {
               << "with a total of " << num_segments << " segments.";
     KALDI_LOG << "Number of frames for the different classes are : ";
 
+    Output ko(counts_wxfilename);
     std::map<int32, int64>::const_iterator it = frame_counts_per_class.begin(); 
     for (; it != frame_counts_per_class.end(); ++it) {
+      if (!counts_wxfilename.empty()) {
+        ko.Stream() << it->first << " " << it->second << " ; ";
+      }
       KALDI_LOG << it->first << " " << it->second << " ; "; 
     }
 
