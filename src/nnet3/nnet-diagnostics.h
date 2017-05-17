@@ -102,7 +102,6 @@ class NnetComputeProb {
   // This function returns the total objective over all output nodes recorded here, and
   // outputs to 'tot_weight' the total weight (typically the number of frames)
   // corresponding to it.
-  // NnetCombiner::ComputeObjfAndDerivFromNnet() would use this function instead.
   double GetTotalObjective(double *tot_weight) const;
 
   // if config.compute_deriv == true, returns a reference to the

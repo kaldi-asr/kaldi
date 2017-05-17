@@ -506,8 +506,6 @@ double NnetCombiner::ComputeObjfAndDerivFromNnet(
     prob_computer_->Compute(*iter);
   double tot_weights,
     tot_objf = prob_computer_->GetTotalObjective(&tot_weights);
-  if (tot_objf == 0.0)
-    KALDI_ERR << "Error getting objective info (unsuitable egs?)";
   KALDI_ASSERT(tot_weights > 0.0);
   const Nnet &deriv = prob_computer_->GetDeriv();
   VectorizeNnet(deriv, nnet_params_deriv);

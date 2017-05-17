@@ -23,8 +23,9 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# -lt 3 ] || [ $# -gt 5 ]; then
-   echo "usage: $0 [options] <selector> <src-data-dir>  <dest-data-dir> <log-dir> <path-to-storage-dir>";
+   echo "usage: $0 [options] <selector> <src-data-dir>  <dest-data-dir> [<log-dir> [<path-to-storage-dir>] ]";
    echo "e.g.: $0 0-12 data/train_mfcc_pitch data/train_mfcconly exp/select_pitch_train mfcc"
+   echo "Note: <log-dir> defaults to <data-dir>/log, and <path-to-storage-dir> defaults to <data-dir>/data"
    echo "options: "
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    exit 1;
