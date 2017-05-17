@@ -504,15 +504,14 @@ double NnetCombiner::ComputeObjfAndDerivFromNnet(
                                             end = egs_.end();
   for (; iter != end; ++iter)
     prob_computer_->Compute(*iter);
-  const SimpleObjectiveInfo *objf_info = prob_computer_->GetObjective("output");
-  if (objf_info == NULL)
-    KALDI_ERR << "Error getting objective info (unsuitable egs?)";
-  KALDI_ASSERT(objf_info->tot_weight > 0.0);
+  double tot_weights,
+    tot_objf = prob_computer_->GetTotalObjective(&tot_weights);
+  KALDI_ASSERT(tot_weights > 0.0);
   const Nnet &deriv = prob_computer_->GetDeriv();
   VectorizeNnet(deriv, nnet_params_deriv);
   // we prefer to deal with normalized objective functions.
-  nnet_params_deriv->Scale(1.0 / objf_info->tot_weight);
-  return objf_info->tot_objective / objf_info->tot_weight;
+  nnet_params_deriv->Scale(1.0 / tot_weights);
+  return tot_objf / tot_weights;
 }
 
 
