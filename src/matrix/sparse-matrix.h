@@ -290,7 +290,7 @@ class GeneralMatrix {
   void AddToMat(BaseFloat alpha, CuMatrixBase<BaseFloat> *cu_mat,
                 MatrixTransposeType trans = kNoTrans) const;
 
-  /// Scale each element of matrix by apla.
+  /// Scale each element of matrix by alpha.
   void Scale(BaseFloat alpha);
 
   /// Assignment from regular matrix.
