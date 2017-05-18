@@ -4,7 +4,10 @@
 
 
 stage=1
-
+nnet_affix=_online
+extractor=exp/nnet2${nnet_affix}/extractor
+ivector_dim=50
+mfcc_config=conf/mfcc_hires.conf
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
@@ -26,22 +29,38 @@ else
   num_threads=16
   minibatch_size=128
   parallel_opts="--num-threads $num_threads"
-  dir=exp/nnet2_online/nnet
+  dir=exp/nnet2${nnet_affix}/nnet
 fi
 
+train_set=train
+if [ $stage -le 0 ]; then
+  echo "$0: creating high-resolution MFCC features."
+  mfccdir=data/${train_set}_hires/data
 
-if [ $stage -le 1 ]; then
-  mkdir -p exp/nnet2_online
-  steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 10 --num-frames 200000 \
-    data/train 256 exp/tri3b exp/nnet2_online/diag_ubm
+  for datadir in $train_set test; do
+    utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
+
+    steps/make_mfcc.sh --nj 30 --mfcc-config $mfcc_config \
+      --cmd "$train_cmd" data/${datadir}_hires || exit 1;
+    steps/compute_cmvn_stats.sh data/${datadir}_hires
+    utils/fix_data_dir.sh data/${datadir}_hires
+  done
 fi
 
-if [ $stage -le 2 ]; then
-  # use a smaller iVector dim (50) than the default (100) because RM has a very
-  # small amount of data.
-  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 4 \
-    --ivector-dim 50 \
-   data/train exp/nnet2_online/diag_ubm exp/nnet2_online/extractor || exit 1;
+if [ ! -f $extractor/final.dubm ]; then
+  if [ $stage -le 1 ]; then
+    mkdir -p exp/nnet2${nnet_affix}
+    steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 10 --num-frames 200000 \
+      data/train 256 exp/tri3b exp/nnet2${nnet_affix}/diag_ubm
+  fi
+
+  if [ $stage -le 2 ]; then
+    # use a smaller iVector dim (50) than the default (100) because RM has a very
+    # small amount of data.
+    steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 4 \
+      --ivector-dim $ivector_dim \
+     data/train exp/nnet2${nnet_affix}/diag_ubm $extractor || exit 1;
+  fi
 fi
 
 if [ $stage -le 3 ]; then
@@ -50,5 +69,5 @@ if [ $stage -le 3 ]; then
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/train data/train_max2
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
-    data/train_max2 exp/nnet2_online/extractor exp/nnet2_online/ivectors || exit 1;
+    data/train_max2 $extractor exp/nnet2${nnet_affix}/ivectors || exit 1;
 fi

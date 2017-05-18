@@ -310,7 +310,8 @@ def train(args, run_opts, background_process_handler):
         logger.info("Creating denominator FST")
         chain_lib.create_denominator_fst(args.dir, args.tree_dir, run_opts)
 
-    if (args.stage <= -4):
+    if (args.stage <= -4) and os.path.exists("{dir}/config/init.config".format(
+            dir=args.dir)):
         logger.info("Initializing a basic network for estimating "
                     "preconditioning matrix")
         common_lib.run_kaldi_command(
@@ -358,7 +359,7 @@ def train(args, run_opts, background_process_handler):
 
     [egs_left_context, egs_right_context,
      frames_per_eg_str, num_archives] = (
-        common_train_lib.verify_egs_dir(egs_dir, feat_dim, 
+        common_train_lib.verify_egs_dir(egs_dir, feat_dim,
                                         ivector_dim, ivector_id,
                                         egs_left_context, egs_right_context,
                                         egs_left_context_initial,
@@ -375,7 +376,8 @@ def train(args, run_opts, background_process_handler):
     logger.info("Copying the properties from {0} to {1}".format(egs_dir, args.dir))
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (args.stage <= -2):
+    if (args.stage <= -2) and os.path.exists("{dir}/config/init.config".format(
+            dir=args.dir)):
         logger.info('Computing the preconditioning matrix for input features')
 
         chain_lib.compute_preconditioning_matrix(

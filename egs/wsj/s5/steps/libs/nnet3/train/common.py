@@ -444,7 +444,8 @@ def smooth_presoftmax_prior_scale_vector(pdf_counts,
 
 
 def prepare_initial_network(dir, run_opts, srand=-3):
-    if os.path.exists(dir+"/configs/init.config"):
+    if os.path.exists(dir+"/configs/init.config") or os.path.exists(
+            "{0}/init.raw".format(dir)):
         common_lib.run_job(
             """{command} {dir}/log/add_first_layer.log \
                     nnet3-init --srand={srand} {dir}/init.raw \

@@ -455,6 +455,19 @@ def prepare_initial_acoustic_model(dir, run_opts, srand=-1):
     common_train_lib.prepare_initial_network(dir, run_opts,
                                              srand=srand)
 
+    # edits 0.raw using edits.config before adding transition model.
+    edits_config_file = "{0}/configs/edits.config".format(dir)
+    if os.path.exists(edits_config_file):
+        logger.info("edits 0.raw model using {0}/configs/edits.config."
+                    "".format(dir))
+        common_lib.run_job(
+            """{command} {dir}/log/edit.log \
+                nnet3-copy --edits-config={edits_config} {dir}/0.raw \
+                {dir}/0.raw
+            """.format(command=run_opts.command,
+                       dir=dir,
+                       edits_config=edits_config_file))
+
     # The model-format for a 'chain' acoustic model is just the transition
     # model and then the raw nnet, so we can use 'cat' to create this, as
     # long as they have the same mode (binary or not binary).
@@ -465,7 +478,6 @@ def prepare_initial_acoustic_model(dir, run_opts, srand=-1):
         """{command} {dir}/log/init_mdl.log \
                 nnet3-am-init {dir}/0.trans_mdl {dir}/0.raw \
                 {dir}/0.mdl""".format(command=run_opts.command, dir=dir))
-
 
 def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                                    right_context, l2_regularize,

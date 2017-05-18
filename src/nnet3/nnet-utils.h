@@ -204,6 +204,9 @@ void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes);
     set-learning-rate [name=<name-pattern>] learning-rate=<learning-rate>
        Sets the learning rate for any updatable nodes matching the name pattern.
 
+    set-learning-rate-factor [name=<name-pattern>] learning-rate-factor=<learning-rate-factor>
+       Sets the learning rate factor for any updatable nodes matching the name pattern.
+
     rename-node old-name=<old-name> new-name=<new-name>
        Renames a node; this is a surface renaming that does not affect the structure
        (for structural changes, use the regular config file format, not the

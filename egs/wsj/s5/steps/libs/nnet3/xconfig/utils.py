@@ -60,6 +60,10 @@ def get_dim_from_layer_name(all_layers, current_layer, full_layer_name):
     for layer in all_layers:
         if layer is current_layer:
             break
+        # if "." used in layer name
+        if layer.get_name() == full_layer_name:
+            return  layer.output_dim()
+
         if layer.get_name() == layer_name:
             if not auxiliary_output in layer.auxiliary_outputs() and auxiliary_output is not None:
                 raise RuntimeError("Layer '{0}' has no such auxiliary output: '{1}' ({0}.{1})".format(layer_name, auxiliary_output))
@@ -85,6 +89,10 @@ def get_string_from_layer_name(all_layers, current_layer, full_layer_name):
     for layer in all_layers:
         if layer is current_layer:
             break
+        # full_layer_name with "."
+        if layer.get_name() == full_layer_name:
+            return layer.output_name()
+
         if layer.get_name() == layer_name:
             if not auxiliary_output in layer.auxiliary_outputs() and auxiliary_output is not None:
                 raise RuntimeError("Layer '{0}' has no such auxiliary output: '{1}' ({0}.{1})".format(

@@ -28,6 +28,15 @@ def get_args():
         epilog='Search egs/*/*/local/{nnet3,chain}/*sh for examples')
     parser.add_argument('--xconfig-file', required=True,
                         help='Filename of input xconfig file')
+    parser.add_argument('--existing-model',
+                        help='The component nodes in this model can be '
+                              'used as input to generate new config file. '
+                              'e.g. generate new model using nodes in '
+                              'existing model.')
+    parser.add_argument('--edits-config',
+                        help='This is applied to the raw model before '
+                             'computing model context and back_compatibility. '
+                             'e.g. renaming output-nodes.')
     parser.add_argument('--config-dir', required=True,
                         help='Directory to write config files and variables')
 
@@ -209,11 +218,17 @@ def write_config_files(config_dir, all_layers):
             raise
 
 
-def add_back_compatibility_info(config_dir):
+def add_back_compatibility_info(config_dir, existing_model=None,
+                                edits_config=None):
     """This will be removed when python script refactoring is done."""
-
-    common_lib.run_kaldi_command("nnet3-init {0}/ref.config "
-                                 "{0}/ref.raw".format(config_dir))
+    raw_model = "{0}/ref.raw".format(config_dir)
+    if edits_config is not None:
+        raw_model = " - | nnet3-copy --edits-config={0} - {1}".format(
+            edits_config, raw_model)
+    common_lib.run_kaldi_command("nnet3-init {0} {1}/ref.config "
+                                 "{2}".format(existing_model if
+                                 existing_model is not None else "",
+                                 config_dir, raw_model))
     out, err = common_lib.run_kaldi_command("nnet3-info {0}/ref.raw | "
                                             "head -4".format(config_dir))
     # out looks like this
@@ -241,13 +256,17 @@ def add_back_compatibility_info(config_dir):
     common_lib.force_symlink("final.config".format(config_dir),
                              "{0}/layer1.config".format(config_dir))
 
-def check_model_contexts(config_dir):
+def check_model_contexts(config_dir, existing_model=None, edits_config=None):
     contexts = {}
     for file_name in ['init', 'ref']:
         if os.path.exists('{0}/{1}.config'.format(config_dir, file_name)):
             contexts[file_name] = {}
-            common_lib.run_kaldi_command("nnet3-init {0}/{1}.config "
-                                         "{0}/{1}.raw".format(config_dir, file_name))
+            raw_model = "{0}/{1}.raw".format(config_dir, file_name)
+            if edits_config is not None:
+                raw_model = " - | nnet3-copy --edits-config={0} - {1}".format(
+                    edits_config, raw_model)
+            common_lib.run_kaldi_command("nnet3-init {0} {1}/{2}.config "
+                                         "{3}".format(existing_model if existing_model is not None else "", config_dir, file_name, raw_model))
             out, err = common_lib.run_kaldi_command("nnet3-info {0}/{1}.raw | "
                                                     "head -4".format(config_dir, file_name))
             # out looks like this
@@ -280,11 +299,15 @@ def check_model_contexts(config_dir):
 def main():
     args = get_args()
     backup_xconfig_file(args.xconfig_file, args.config_dir)
-    all_layers = xparser.read_xconfig_file(args.xconfig_file)
+    aux_layers = []
+    if args.existing_model is not None:
+        aux_layers = xparser.read_model(args.existing_model)
+    all_layers = xparser.read_xconfig_file(args.xconfig_file, aux_layers)
     write_expanded_xconfig_files(args.config_dir, all_layers)
     write_config_files(args.config_dir, all_layers)
-    check_model_contexts(args.config_dir)
-    add_back_compatibility_info(args.config_dir)
+    check_model_contexts(args.config_dir, args.existing_model, args.edits_config)
+    add_back_compatibility_info(args.config_dir, args.existing_model,
+                                args.edits_config)
 
 
 if __name__ == '__main__':
