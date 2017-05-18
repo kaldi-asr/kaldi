@@ -71,8 +71,8 @@ while (<>) {
       # sometimes in scp files, we use the command concat-feats to splice together
       # two feature matrices.  Handling this correctly is complicated and we don't
       # anticipate needing it, so we just refuse to process this type of data.
-      print STDERR "normalize_data_range.pl: this script cannot [yet] normalize the data ranges " .
-        "if concat-feats was in the input data\n";
+      print STDERR ("normalize_data_range.pl: this script cannot [yet] normalize the data ranges " .
+        "if concat-feats was in the input data\n");
       exit(1);
     }
     # print STDERR "matched: $before_range $first_range $second_range\n";

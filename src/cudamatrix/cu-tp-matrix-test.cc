@@ -79,11 +79,11 @@ template<typename Real>
 static void UnitTestCuTpMatrixInvert() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 5 * i + Rand() % 10;
-    
+
     TpMatrix<Real> A(dim);
     A.SetRandn();
     CuTpMatrix<Real> B(A);
-    
+
     AssertEqual<Real>(A, B, 0.005);
     A.Invert();
     B.Invert();
@@ -95,14 +95,14 @@ template<typename Real>
 static void UnitTestCuTpMatrixCopyFromTp() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 5 * i + Rand() % 10;
-    
+
     TpMatrix<Real> A(dim);
     A.SetRandn();
     CuTpMatrix<Real> B(dim);
     B.CopyFromTp(A);
     CuTpMatrix<Real> C(dim);
     C.CopyFromTp(B);
-    
+
     AssertEqual<Real>(A, B);
     AssertEqual<Real>(B, C);
   }
@@ -117,7 +117,7 @@ static void UnitTestCuTpMatrixCopyFromMat() {
     CuMatrix<Real> A(dim, dim);
     A.SetRandn();
     Matrix<Real> A2(A);
-    
+
     CuTpMatrix<Real> B(dim);
     B.CopyFromMat(A, trans);
     TpMatrix<Real> B2(dim);
@@ -186,6 +186,7 @@ template<typename Real> void CudaTpMatrixUnitTest() {
 
 int main() {
   using namespace kaldi;
+  SetVerboseLevel(1);
 
   int32 loop = 0;
 #if HAVE_CUDA == 1
@@ -206,7 +207,7 @@ int main() {
 #else
     kaldi::CudaTpMatrixUnitTest<double>();
 #endif
-  
+
     if (loop == 0)
       KALDI_LOG << "Tests without GPU use succeeded.";
     else

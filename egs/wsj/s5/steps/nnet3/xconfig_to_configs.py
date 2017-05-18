@@ -32,9 +32,15 @@ def get_args():
                         help='Directory to write config files and variables')
     parser.add_argument('--nnet-edits', type=str, default=None,
                         action=common_lib.NullstrToNoneAction,
-                        help="Edit network before getting nnet3-info")
+                        help="""This option is useful in case the network you
+                        are creating does not have an output node called
+                        'output' (e.g. for multilingual setups).  You can set
+                        this to an edit-string like: 'rename-node old-name=xxx
+                        new-name=output' if node xxx plays the role of the
+                        output node in this network.  This is only used for
+                        computing the left/right context.""")
 
-    print(' '.join(sys.argv))
+    print(' '.join(sys.argv), file=sys.stderr)
 
     args = parser.parse_args()
     args = check_args(args)
@@ -221,8 +227,6 @@ def add_back_compatibility_info(config_dir, nnet_edits=None):
     if nnet_edits is not None:
         model = """nnet3-copy --edits='{0}' {1} - |""".format(nnet_edits,
                                                               model)
-
-    print("""nnet3-info "{0}" | head -4""".format(model), file=sys.stderr)
     out, err = common_lib.run_kaldi_command("""nnet3-info "{0}" | """
                                             """head -4""".format(model))
     # out looks like this
@@ -250,15 +254,21 @@ def add_back_compatibility_info(config_dir, nnet_edits=None):
     common_lib.force_symlink("final.config".format(config_dir),
                              "{0}/layer1.config".format(config_dir))
 
-def check_model_contexts(config_dir):
+
+def check_model_contexts(config_dir, nnet_edits=None):
     contexts = {}
     for file_name in ['init', 'ref']:
         if os.path.exists('{0}/{1}.config'.format(config_dir, file_name)):
             contexts[file_name] = {}
             common_lib.run_kaldi_command("nnet3-init {0}/{1}.config "
-                                         "{0}/{1}.raw".format(config_dir, file_name))
-            out, err = common_lib.run_kaldi_command("nnet3-info {0}/{1}.raw | "
-                                                    "head -4".format(config_dir, file_name))
+                                         "{0}/{1}.raw".format(config_dir,
+                                                              file_name))
+            model = "{0}/{1}.raw".format(config_dir, file_name)
+            if nnet_edits is not None:
+                model = """nnet3-copy --edits='{0}' {1} - |""".format(
+                    nnet_edits, model)
+            out, err = common_lib.run_kaldi_command(
+                """nnet3-info "{0}" | head -4""".format(model))
             # out looks like this
             # left-context: 7
             # right-context: 0
@@ -273,16 +283,21 @@ def check_model_contexts(config_dir):
                 if key in ['left-context', 'right-context']:
                     contexts[file_name][key] = value
 
-    if contexts.has_key('init') and contexts['init'].has_key('left-context'):
+    if contexts.has_key('init'):
         assert(contexts.has_key('ref'))
-        if ((contexts['init']['left-context'] > contexts['ref']['left-context'])
-           or (contexts['init']['right-context'] > contexts['ref']['right-context'])):
-           raise Exception("Model specified in {0}/init.config requires greater"
-                           " context than the model specified in {0}/ref.config."
-                           " This might be due to use of label-delay at the output"
-                           " in ref.config. Please use delay=$label_delay in the"
-                           " initial fixed-affine-layer of the network, to avoid"
-                           " this issue.")
+        if (contexts['init'].has_key('left-context') and
+            contexts['ref'].has_key('left-context')):
+            if ((contexts['init']['left-context']
+                 > contexts['ref']['left-context'])
+                or (contexts['init']['right-context']
+                    > contexts['ref']['right-context'])):
+               raise Exception(
+                    "Model specified in {0}/init.config requires greater"
+                    " context than the model specified in {0}/ref.config."
+                    " This might be due to use of label-delay at the output"
+                    " in ref.config. Please use delay=$label_delay in the"
+                    " initial fixed-affine-layer of the network, to avoid"
+                    " this issue.")
 
 
 
@@ -292,7 +307,7 @@ def main():
     all_layers = xparser.read_xconfig_file(args.xconfig_file)
     write_expanded_xconfig_files(args.config_dir, all_layers)
     write_config_files(args.config_dir, all_layers)
-    check_model_contexts(args.config_dir)
+    check_model_contexts(args.config_dir, args.nnet_edits)
     add_back_compatibility_info(args.config_dir, args.nnet_edits)
 
 

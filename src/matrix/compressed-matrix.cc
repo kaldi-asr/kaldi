@@ -37,6 +37,17 @@ MatrixIndexT CompressedMatrix::DataSize(const GlobalHeader &header) {
   }
 }
 
+// scale all element of matrix by scaling floats
+// in GlobalHeader with alpha.
+void CompressedMatrix::Scale(float alpha) {
+  if (data_ != NULL) {
+    GlobalHeader *h = reinterpret_cast<GlobalHeader*>(data_);
+    // scale the floating point values in each PerColHolder
+    // and leave all integers the same.
+    h->min_value *= alpha;
+    h->range *= alpha;
+  }
+}
 
 template<typename Real>
 void CompressedMatrix::CopyFromMat(

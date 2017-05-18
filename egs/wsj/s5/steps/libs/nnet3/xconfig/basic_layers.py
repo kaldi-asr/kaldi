@@ -369,8 +369,7 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
 
         # note: self.config['input'] is a descriptor, '[-1]' means output
         # the most recent layer.
-        self.config = {'input': '[-1]',
-                       'dim': -1}
+        self.config = { 'input':'[-1]', 'dim':-1 }
 
     def check_configs(self):
 
@@ -694,7 +693,11 @@ class XconfigBasicLayer(XconfigLayerBase):
         return '{0}.{1}'.format(self.name, last_nonlinearity)
 
     def output_dim(self, auxiliary_output = None):
-        return self.config['output-dim']
+        output_dim = self.config['dim']
+        # If not set, the output-dim defaults to the input-dim.
+        if output_dim <= 0:
+            output_dim = self.descriptors['input']['dim']
+        return output_dim
 
     def get_full_config(self):
         ans = []
@@ -724,11 +727,10 @@ class XconfigBasicLayer(XconfigLayerBase):
         return self._add_components(input_desc, input_dim, nonlinearities)
 
     def _add_components(self, input_desc, input_dim, nonlinearities):
-        output_dim = self.config['dim']
+        output_dim = self.output_dim()
         self_repair_scale = self.config['self-repair-scale']
         target_rms = self.config['target-rms']
         max_change = self.config['max-change']
-        ng_opt_str = self.config['ng-affine-options']
         add_log_stddev = ("true" if self.config['add-log-stddev']
                           else "false")
         ng_affine_options = self.config['ng-affine-options']

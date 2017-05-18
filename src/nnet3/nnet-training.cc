@@ -232,13 +232,15 @@ void ObjectiveFunctionInfo::UpdateStats(
   int32 phase = minibatch_counter / minibatches_per_phase;
   if (phase != current_phase) {
     KALDI_ASSERT(phase > current_phase);
-    PrintStatsForThisPhase(output_name, minibatches_per_phase, phase);
+    PrintStatsForThisPhase(output_name, minibatches_per_phase,
+                           phase);
     current_phase = phase;
     tot_weight_this_phase = 0.0;
     tot_objf_this_phase = 0.0;
     tot_aux_objf_this_phase = 0.0;
     minibatches_this_phase = 0;
   }
+  minibatches_this_phase++;
   tot_weight_this_phase += this_minibatch_weight;
   tot_objf_this_phase += this_minibatch_tot_objf;
   tot_aux_objf_this_phase += this_minibatch_tot_aux_objf;
@@ -249,7 +251,8 @@ void ObjectiveFunctionInfo::UpdateStats(
 
 void ObjectiveFunctionInfo::PrintStatsForThisPhase(
     const std::string &output_name,
-    int32 minibatches_per_phase, int32 phase) const {
+    int32 minibatches_per_phase,
+    int32 phase) const {
   int32 start_minibatch = current_phase * minibatches_per_phase,
       end_minibatch = phase * minibatches_per_phase - 1;
 

@@ -52,16 +52,28 @@ bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
     col_range.push_back(0);
     col_range.push_back(input.NumCols() - 1);
   }
+
+  // Length tolerance of 3 -- 2 to account for edge effects when
+  // frame-length is 25ms and frame-shift is 10ms, and 1 for rounding effects
+  // since segments are usually retained up to 2 decimal places.
+  int32 length_tolerance = 3;
   if (!(status && row_range.size() == 2 && col_range.size() == 2 &&
         row_range[0] >= 0 && row_range[0] <= row_range[1] &&
-        row_range[1] < input.NumRows() && col_range[0] >=0 &&
+        row_range[1] < input.NumRows() + length_tolerance &&
+        col_range[0] >=0 &&
         col_range[0] <= col_range[1] && col_range[1] < input.NumCols())) {
     KALDI_ERR << "Invalid range specifier: " << range
               << " for matrix of size " << input.NumRows()
               << "x" << input.NumCols();
     return false;
   }
-  int32 row_size = row_range[1] - row_range[0] + 1,
+
+  if (row_range[1] >= input.NumRows())
+    KALDI_WARN << "Row range " << row_range[0] << ":" << row_range[1]
+               << " goes beyond the number of rows of the "
+               << "matrix " << input.NumRows();
+  int32 row_size = std::min(row_range[1], input.NumRows() - 1)
+                   - row_range[0] + 1,
         col_size = col_range[1] - col_range[0] + 1;
   output->Resize(row_size, col_size, kUndefined);
   output->CopyFromMat(input.Range(row_range[0], row_size,
@@ -98,14 +110,22 @@ bool ExtractObjectRange(const Vector<Real> &input, const std::string &range,
     index_range.push_back(input.Dim() - 1);
   }
 
+  // Length tolerance of 3 -- 2 to account for edge effects when
+  // frame-length is 25ms and frame-shift is 10ms, and 1 for rounding effects
+  // since segments are usually retained up to 2 decimal places.
+  int32 length_tolerance = 3;
   if (!(status && index_range.size() == 2 &&
         index_range[0] >= 0 && index_range[0] <= index_range[1] &&
-        index_range[1] < input.Dim())) {
+        index_range[1] < input.Dim() + length_tolerance)) {
     KALDI_ERR << "Invalid range specifier: " << range
               << " for vector of size " << input.Dim();
     return false;
   }
-  int32 size = index_range[1] - index_range[0] + 1;
+
+  if (index_range[1] >= input.Dim())
+    KALDI_WARN << "Range " << index_range[0] << ":" << index_range[1]
+               << " goes beyond the vector dimension " << input.Dim();
+  int32 size = std::min(index_range[1], input.Dim() - 1) - index_range[0] + 1;
   output->Resize(size, kUndefined);
   output->CopyFromVec(input.Range(index_range[0], size));
   return true;
@@ -114,8 +134,8 @@ bool ExtractObjectRange(const Vector<Real> &input, const std::string &range,
 // template instantiation
 template bool ExtractObjectRange(const Vector<double> &, const std::string &,
                                  Vector<double> *);
-template bool ExtractObjectRange(const Vector<BaseFloat> &, const std::string &,
-                                 Vector<BaseFloat> *);
+template bool ExtractObjectRange(const Vector<float> &, const std::string &,
+                                 Vector<float> *);
 
 bool ExtractRangeSpecifier(const std::string &rxfilename_with_range,
                            std::string *data_rxfilename,

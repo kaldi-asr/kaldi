@@ -31,9 +31,9 @@ include kaldi.mk
 
 # Reset the default goal, so that the all target will become default
 .DEFAULT_GOAL :=
-all: 
-	$(MAKE) checkversion 
-	$(MAKE) kaldi.mk 
+all:
+	$(MAKE) checkversion
+	$(MAKE) kaldi.mk
 	$(MAKE) mklibdir
 	$(MAKE) subdirs
 	-echo Done

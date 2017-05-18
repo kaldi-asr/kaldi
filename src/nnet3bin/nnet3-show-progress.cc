@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
       exit(0);
     }
 
-    if (!examples_rspecifier.empty()) {
+    if (!examples_rspecifier.empty() && IsSimpleNnet(nnet1)) {
       std::vector<NnetExample> examples;
       SequentialNnetExampleReader example_reader(examples_rspecifier);
       for (; !example_reader.Done(); example_reader.Next())

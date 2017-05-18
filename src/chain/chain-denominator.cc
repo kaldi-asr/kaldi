@@ -95,7 +95,7 @@ void DenominatorComputation::AlphaGeneralFrame(int32 t) {
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     dim3 dimBlock(std::min<int32>(CU1DBLOCK, num_sequences), 1, 1);
     dim3 dimGrid(n_blocks(num_sequences, dimBlock.x), num_hmm_states, 1);
 
@@ -120,7 +120,7 @@ void DenominatorComputation::AlphaGeneralFrame(int32 t) {
         dimGrid.y = num_hmm_states;
       }
     }
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -325,7 +325,7 @@ void DenominatorComputation::BetaDashGeneralFrame(int32 t) {
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     dim3 dimBlock(std::min<int32>(CU1DBLOCK, num_sequences), 1, 1);
     dim3 dimGrid(n_blocks(num_sequences, dimBlock.x), num_hmm_states, 1);
     while (1) {
@@ -351,7 +351,7 @@ void DenominatorComputation::BetaDashGeneralFrame(int32 t) {
         dimGrid.y = num_hmm_states;
       }
     }
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {

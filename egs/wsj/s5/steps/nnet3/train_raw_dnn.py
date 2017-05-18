@@ -291,6 +291,22 @@ def train(args, run_opts, background_process_handler):
         args.max_models_combine, args.add_layers_period,
         args.num_jobs_final)
 
+    if (os.path.exists('{0}/valid_diagnostic.scp'.format(args.egs_dir))):
+        if (os.path.exists('{0}/valid_diagnostic.egs'.format(args.egs_dir))):
+            raise Exception('both {0}/valid_diagnostic.egs and '
+                            '{0}/valid_diagnostic.scp exist.'
+                            'This script expects only one of them to exist.'
+                            ''.format(args.egs_dir))
+        use_multitask_egs = True
+    else:
+        if (not os.path.exists('{0}/valid_diagnostic.egs'
+                               ''.format(args.egs_dir))):
+            raise Exception('neither {0}/valid_diagnostic.egs nor '
+                            '{0}/valid_diagnostic.scp exist.'
+                            'This script expects one of them.'
+                            ''.format(args.egs_dir))
+        use_multitask_egs = False
+
     def learning_rate(iter, current_num_jobs, num_archives_processed):
         return common_train_lib.get_learning_rate(iter, current_num_jobs,
                                                   num_iters,
@@ -337,6 +353,8 @@ def train(args, run_opts, background_process_handler):
                 run_opts=run_opts,
                 get_raw_nnet_from_am=False,
                 background_process_handler=background_process_handler,
+                use_multitask_egs=use_multitask_egs,
+                rename_multitask_outputs=rename_multitask_outputs,
                 extra_egs_copy_cmd=args.extra_egs_copy_cmd)
 
             if args.cleanup:
@@ -369,12 +387,13 @@ def train(args, run_opts, background_process_handler):
             minibatch_size_str=args.minibatch_size, run_opts=run_opts,
             background_process_handler=background_process_handler,
             get_raw_nnet_from_am=False,
-            extra_egs_copy_cmd=args.extra_egs_copy_cmd,
-            sum_to_one_penalty=args.combine_sum_to_one_penalty)
+            sum_to_one_penalty=args.combine_sum_to_one_penalty,
+            use_multitask_egs=use_multitask_egs,
+            rename_multitask_outputs=rename_multitask_outputs,
+            extra_egs_copy_cmd=args.extra_egs_copy_cmd)
 
     if include_log_softmax and args.stage <= num_iters + 1:
-        logger.info("Getting average posterior for purposes of "
-                    "adjusting the priors.")
+        logger.info("Getting average posterior for output-node 'output'.")
         train_lib.common.compute_average_posterior(
             dir=args.dir, iter='final', egs_dir=egs_dir,
             num_archives=num_archives,
@@ -399,13 +418,19 @@ def train(args, run_opts, background_process_handler):
             get_raw_nnet_from_am=False)
 
     # do some reporting
-    [report, times, data] = nnet3_log_parse.generate_acc_logprob_report(args.dir)
-    if args.email is not None:
-        common_lib.send_mail(report, "Update : Expt {0} : "
-                                     "complete".format(args.dir), args.email)
+    outputs_list = common_train_lib.get_outputs_list("{0}/final.raw".format(
+        args.dir), get_raw_nnet_from_am=False)
+    if 'output' in outputs_list:
+        [report, times, data] = nnet3_log_parse.generate_acc_logprob_report(
+            args.dir)
+        if args.email is not None:
+            common_lib.send_mail(report, "Update : Expt {0} : "
+                                         "complete".format(args.dir),
+                                 args.email)
 
-    with open("{dir}/accuracy.report".format(dir=args.dir), "w") as f:
-        f.write(report)
+        with open("{dir}/accuracy.{output_name}.report".format(dir=args.dir),
+                  "w") as f:
+            f.write(report)
 
     common_lib.run_job("steps/info/nnet3_dir_info.pl "
                        "{0}".format(args.dir))
