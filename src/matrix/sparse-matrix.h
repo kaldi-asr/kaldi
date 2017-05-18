@@ -103,6 +103,9 @@ class SparseVector {
 
   void Read(std::istream &os, bool binary);
 
+  /// Scale all elements of sparse vector.
+  void Scale(Real alpha);
+
  private:
   MatrixIndexT dim_;
   // pairs of (row-index, value).  Stored in sorted order with no duplicates.
@@ -196,6 +199,9 @@ class SparseMatrix {
   void Resize(MatrixIndexT rows, MatrixIndexT cols,
               MatrixResizeType resize_type = kSetZero);
 
+  /// Scale all elements in sparse matrix.
+  void Scale(Real alpha);
+
   // Use the Matrix::CopyFromSmat() function to copy from this to Matrix.  Also
   // see Matrix::AddSmat().  There is not very extensive functionality for
   // SparseMat just yet (e.g. no matrix multiply); we will add things as needed
@@ -283,6 +289,9 @@ class GeneralMatrix {
   /// Implemented in ../cudamatrix/cu-sparse-matrix.cc
   void AddToMat(BaseFloat alpha, CuMatrixBase<BaseFloat> *cu_mat,
                 MatrixTransposeType trans = kNoTrans) const;
+
+  /// Scale each element of matrix by alpha.
+  void Scale(BaseFloat alpha);
 
   /// Assignment from regular matrix.
   GeneralMatrix &operator= (const MatrixBase<BaseFloat> &mat);

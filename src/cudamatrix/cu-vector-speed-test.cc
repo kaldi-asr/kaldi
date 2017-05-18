@@ -304,12 +304,13 @@ template<typename Real> void CudaVectorSpeedTest() {
 
 
 int main() {
-    //Select the GPU
+  kaldi::SetVerboseLevel(1);
+  //Select the GPU
 #if HAVE_CUDA == 1
-    CuDevice::Instantiate().SelectGpuId("yes"); //-2 .. automatic selection
+  CuDevice::Instantiate().SelectGpuId("yes"); //-2 .. automatic selection
 #endif
 
-    kaldi::CudaVectorSpeedTest<float>();
+  kaldi::CudaVectorSpeedTest<float>();
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().DoublePrecisionSupported()) {
     kaldi::CudaVectorSpeedTest<double>();

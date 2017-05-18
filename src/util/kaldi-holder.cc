@@ -59,7 +59,7 @@ bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
   int32 length_tolerance = 3;
   if (!(status && row_range.size() == 2 && col_range.size() == 2 &&
         row_range[0] >= 0 && row_range[0] <= row_range[1] &&
-        row_range[1] < input.NumRows() + length_tolerance && 
+        row_range[1] < input.NumRows() + length_tolerance &&
         col_range[0] >=0 &&
         col_range[0] <= col_range[1] && col_range[1] < input.NumCols())) {
     KALDI_ERR << "Invalid range specifier: " << range
@@ -69,10 +69,10 @@ bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
   }
 
   if (row_range[1] >= input.NumRows())
-    KALDI_WARN << "Row range " << row_range[0] << ":" << row_range[1] 
+    KALDI_WARN << "Row range " << row_range[0] << ":" << row_range[1]
                << " goes beyond the number of rows of the "
                << "matrix " << input.NumRows();
-  int32 row_size = std::min(row_range[1], input.NumRows() - 1) 
+  int32 row_size = std::min(row_range[1], input.NumRows() - 1)
                    - row_range[0] + 1,
         col_size = col_range[1] - col_range[0] + 1;
   output->Resize(row_size, col_size, kUndefined);
@@ -121,9 +121,9 @@ bool ExtractObjectRange(const Vector<Real> &input, const std::string &range,
               << " for vector of size " << input.Dim();
     return false;
   }
-  
+
   if (index_range[1] >= input.Dim())
-    KALDI_WARN << "Range " << index_range[0] << ":" << index_range[1] 
+    KALDI_WARN << "Range " << index_range[0] << ":" << index_range[1]
                << " goes beyond the vector dimension " << input.Dim();
   int32 size = std::min(index_range[1], input.Dim() - 1) - index_range[0] + 1;
   output->Resize(size, kUndefined);
@@ -134,8 +134,8 @@ bool ExtractObjectRange(const Vector<Real> &input, const std::string &range,
 // template instantiation
 template bool ExtractObjectRange(const Vector<double> &, const std::string &,
                                  Vector<double> *);
-template bool ExtractObjectRange(const Vector<BaseFloat> &, const std::string &,
-                                 Vector<BaseFloat> *);
+template bool ExtractObjectRange(const Vector<float> &, const std::string &,
+                                 Vector<float> *);
 
 bool ExtractRangeSpecifier(const std::string &rxfilename_with_range,
                            std::string *data_rxfilename,

@@ -29,16 +29,23 @@ def get_args():
     parser.add_argument('--xconfig-file', required=True,
                         help='Filename of input xconfig file')
     parser.add_argument('--existing-model',
-                        help='The component nodes in this model can be '
-                              'used as input to generate new config file. '
-                              'e.g. generate new model using nodes in '
-                              'existing model.')
-    parser.add_argument('--edits-config',
-                        help='This is applied to the raw model before '
-                             'computing model context and back_compatibility. '
-                             'e.g. renaming output-nodes.')
+                        help='This option is useful in case of '
+                             'using component nodes in other network '
+                             'to generate new config file for new model.'
+                             'e.g. Transfer learning: generate new model using '
+                             'nodes in existing model.')
     parser.add_argument('--config-dir', required=True,
                         help='Directory to write config files and variables')
+    parser.add_argument('--nnet-edits', type=str, default=None,
+                        action=common_lib.NullstrToNoneAction,
+                        help="This option is useful in case the network you are "
+                        "creating does not have an output node called 'output' "
+                        "(e.g. for multilingual setups).  You can set this to "
+                        "an edit-string like: "
+                        "'rename-node old-name=xxx new-name=output' "
+                        "if node xxx plays the role of the output node in this "
+                        "network."
+                        "This is only used for computing the left/right context.")
 
     print(' '.join(sys.argv))
 
@@ -219,18 +226,18 @@ def write_config_files(config_dir, all_layers):
 
 
 def add_back_compatibility_info(config_dir, existing_model=None,
-                                edits_config=None):
+                                nnet_edits=None):
     """This will be removed when python script refactoring is done."""
-    raw_model = "{0}/ref.raw".format(config_dir)
-    if edits_config is not None:
-        raw_model = " - | nnet3-copy --edits-config={0} - {1}".format(
-            edits_config, raw_model)
-    common_lib.run_kaldi_command("nnet3-init {0} {1}/ref.config "
-                                 "{2}".format(existing_model if
+    model = "{0}/ref.raw".format(config_dir)
+    if nnet_edits is not None:
+        model = """ - | nnet3-copy --edits-config={0} - {1}""".format(nnet_edits,
+                                                              model)
+    common_lib.run_kaldi_command("""nnet3-init {0} {1}/ref.config """
+                                 """ {2} """.format(existing_model if
                                  existing_model is not None else "",
-                                 config_dir, raw_model))
-    out, err = common_lib.run_kaldi_command("nnet3-info {0}/ref.raw | "
-                                            "head -4".format(config_dir))
+                                 config_dir, model))
+    out, err = common_lib.run_kaldi_command("""nnet3-info {0}/ref.raw | """
+                                            """head -4""".format(config_dir))
     # out looks like this
     # left-context: 7
     # right-context: 0
@@ -256,19 +263,22 @@ def add_back_compatibility_info(config_dir, existing_model=None,
     common_lib.force_symlink("final.config".format(config_dir),
                              "{0}/layer1.config".format(config_dir))
 
-def check_model_contexts(config_dir, existing_model=None, edits_config=None):
+def check_model_contexts(config_dir, existing_model=None, nnet_edits=None):
     contexts = {}
     for file_name in ['init', 'ref']:
         if os.path.exists('{0}/{1}.config'.format(config_dir, file_name)):
             contexts[file_name] = {}
-            raw_model = "{0}/{1}.raw".format(config_dir, file_name)
-            if edits_config is not None:
-                raw_model = " - | nnet3-copy --edits-config={0} - {1}".format(
-                    edits_config, raw_model)
-            common_lib.run_kaldi_command("nnet3-init {0} {1}/{2}.config "
-                                         "{3}".format(existing_model if existing_model is not None else "", config_dir, file_name, raw_model))
-            out, err = common_lib.run_kaldi_command("nnet3-info {0}/{1}.raw | "
-                                                    "head -4".format(config_dir, file_name))
+            model = "{0}/{1}.raw".format(config_dir, file_name)
+            if nnet_edits is not None:
+                model = """ - | nnet3-copy --edits-config={0} - {1}""".format(nnet_edits,
+                                                                      model)
+            common_lib.run_kaldi_command("""nnet3-init {0} {1}/{2}.config """
+                                         """ {3} """.format(existing_model if
+                                                      existing_model is not
+                                                      None else "", config_dir,
+                                                      file_name, model))
+            out, err = common_lib.run_kaldi_command("""nnet3-info {0}/{1}.raw | """
+                                                    """head -4""".format(config_dir, file_name))
             # out looks like this
             # left-context: 7
             # right-context: 0
@@ -285,14 +295,16 @@ def check_model_contexts(config_dir, existing_model=None, edits_config=None):
 
     if contexts.has_key('init'):
         assert(contexts.has_key('ref'))
-        if ((contexts['init']['left-context'] > contexts['ref']['left-context'])
-           or (contexts['init']['right-context'] > contexts['ref']['right-context'])):
-           raise Exception("Model specified in {0}/init.config requires greater"
-                           " context than the model specified in {0}/ref.config."
-                           " This might be due to use of label-delay at the output"
-                           " in ref.config. Please use delay=$label_delay in the"
-                           " initial fixed-affine-layer of the network, to avoid"
-                           " this issue.")
+        if (contexts['init'].has_key('left-context') and
+            contexts['ref'].has_key('left-context')):
+            if ((contexts['init']['left-context'] > contexts['ref']['left-context'])
+               or (contexts['init']['right-context'] > contexts['ref']['right-context'])):
+               raise Exception("Model specified in {0}/init.config requires greater"
+                               " context than the model specified in {0}/ref.config."
+                               " This might be due to use of label-delay at the output"
+                               " in ref.config. Please use delay=$label_delay in the"
+                               " initial fixed-affine-layer of the network, to avoid"
+                               " this issue.")
 
 
 
@@ -305,9 +317,9 @@ def main():
     all_layers = xparser.read_xconfig_file(args.xconfig_file, aux_layers)
     write_expanded_xconfig_files(args.config_dir, all_layers)
     write_config_files(args.config_dir, all_layers)
-    check_model_contexts(args.config_dir, args.existing_model, args.edits_config)
+    check_model_contexts(args.config_dir, args.existing_model, args.nnet_edits)
     add_back_compatibility_info(args.config_dir, args.existing_model,
-                                args.edits_config)
+                                args.nnet_edits)
 
 
 if __name__ == '__main__':

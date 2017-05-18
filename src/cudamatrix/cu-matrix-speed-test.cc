@@ -1085,6 +1085,7 @@ template<typename Real> void CudaMatrixSpeedTest() {
 
 
 int main() {
+  SetVerboseLevel(1);
   int32 loop = 0;
 #if HAVE_CUDA == 1
   for (loop = 0; loop < 2; loop++) {

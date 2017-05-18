@@ -114,7 +114,7 @@ EOF
 EOF
   steps/nnet3/xconfig_to_configs.py --existing-model $src_mdl \
     --xconfig-file  $dir/configs/network.xconfig  \
-    --edits-config $dir/configs/edits.config \
+    --nnet-edits $dir/configs/edits.config \
     --config-dir $dir/configs/
 fi
 

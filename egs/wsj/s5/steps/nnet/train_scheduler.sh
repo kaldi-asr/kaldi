@@ -28,7 +28,7 @@ end_halving_impr=0.001
 halving_factor=0.5
 
 # misc,
-verbose=1
+verbose=0 # 0 No GPU time-stats, 1 with GPU time-stats (slower),
 frame_weights=
 utt_weights=
 

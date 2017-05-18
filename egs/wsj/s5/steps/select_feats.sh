@@ -22,9 +22,10 @@ echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
-if [ $# -ne 5 ]; then
-   echo "usage: $0 [options] <selector> <src-data-dir>  <dest-data-dir> <log-dir> <path-to-storage-dir>";
+if [ $# -lt 3 ] || [ $# -gt 5 ]; then
+   echo "usage: $0 [options] <selector> <src-data-dir>  <dest-data-dir> [<log-dir> [<path-to-storage-dir>] ]";
    echo "e.g.: $0 0-12 data/train_mfcc_pitch data/train_mfcconly exp/select_pitch_train mfcc"
+   echo "Note: <log-dir> defaults to <data-dir>/log, and <path-to-storage-dir> defaults to <data-dir>/data"
    echo "options: "
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    exit 1;
@@ -33,8 +34,17 @@ fi
 selector="$1"
 data_in=$2
 data=$3
-logdir=$4
-ark_dir=$5
+if [ $# -gt 3 ];then
+  logdir=$4
+else
+  logdir=$data/log
+fi
+
+if [ $# -gt 4 ];then
+  ark_dir=$5
+else
+  ark_dir=$data/data
+fi
 
 # make $ark_dir an absolute pathname.
 ark_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $ark_dir ${PWD}`
