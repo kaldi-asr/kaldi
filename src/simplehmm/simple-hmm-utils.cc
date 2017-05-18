@@ -112,8 +112,7 @@ fst::VectorFst<fst::StdArc> *GetSimpleHmmAsFst(
         // not happen with normal topology] .  There is no transition-state
         // involved in this case.
         KALDI_ASSERT(hmm_state != dest_state);
-        log_prob = transition_scale
-                   * Log(entry[hmm_state].transitions[trans_idx].second);
+        log_prob = Log(entry[hmm_state].transitions[trans_idx].second);
         label = 0;
       } else {  // normal probability.
         int32 trans_state =
@@ -123,10 +122,6 @@ fst::VectorFst<fst::StdArc> *GetSimpleHmmAsFst(
           
         log_prob = model.GetTransitionLogProb(trans_id);
 
-        if (hmm_state == dest_state) 
-          log_prob *= self_loop_scale;
-        else 
-          log_prob *= transition_scale;
         // log_prob is a negative number (or zero)...
         label = trans_id;
       }
@@ -137,10 +132,11 @@ fst::VectorFst<fst::StdArc> *GetSimpleHmmAsFst(
   }
 
   fst::RemoveEpsLocal(ans);  // this is safe and will not blow up.
-  // Now apply probability scale.
-  // We waited till after the possible weight-pushing steps,
-  // because weight-pushing needs "real" weights in order to work.
-  // ApplyProbabilityScale(config.transition_scale, ans);
+  
+  std::vector<int32> disambig_syms;
+  AddTransitionProbs(model, disambig_syms, transition_scale,
+                     self_loop_scale, ans);
+
   return ans;
 }
 
