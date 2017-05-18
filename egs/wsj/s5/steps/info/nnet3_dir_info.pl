@@ -143,6 +143,20 @@ sub get_combine_info {
   return "";
 }
 
+sub number_to_string {
+  my ($value, $name) = @_;
+  my $precision;
+  if (abs($value) < 0.02 or ($name eq "accuracy" and abs($value) > 0.98)) {
+    $precision = 4;
+  } elsif (abs($value) < 0.2 or ($name eq "accuracy" and abs($value) > 0.8)) {
+    $precision = 3;
+  } else {
+    $precision = 2;
+  }
+  my $format = "%.${precision}f";  # e.g. "%.2f"
+  return sprintf($format, $value);
+}
+
 # this is used in get_loglike_and_accuracy to format
 # strings like ' loglike[32,48,final],train/valid=(-2.43,-2.32,-2.21/-2.84,-2.71,-2.68)'.
 sub get_printed_string {
@@ -157,8 +171,8 @@ sub get_printed_string {
   foreach my $iter (@iters_array) {
     if (defined($train_hash{$iter}) && defined($valid_hash{$iter})) {
       push @iters_to_print, $iter;
-      push @train_values_to_print, sprintf("%.2f", $train_hash{$iter});
-      push @valid_values_to_print, sprintf("%.2f", $valid_hash{$iter});
+      push @train_values_to_print, number_to_string($train_hash{$iter}, $name);
+      push @valid_values_to_print, number_to_string($valid_hash{$iter}, $name);
     }
   }
   if (@iters_to_print == 0) {  return ""; }
