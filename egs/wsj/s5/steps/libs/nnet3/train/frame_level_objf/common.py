@@ -380,18 +380,13 @@ def compute_progress(dir, iter, egs_dir,
 
     common_lib.background_command(
             """{command} {dir}/log/progress.{iter}.log \
-                    nnet3-info "{model}" '&&' \
-                    nnet3-show-progress --use-gpu=no "{prev_model}" "{model}" \
-                    "ark,bg:nnet3-copy-egs \
-                        ark:{egs_dir}/train_diagnostic.egs ark:- | \
-                        nnet3-merge-egs --minibatch-size=1:64 ark:- \
-                        ark:- |" """.format(command=run_opts.command,
-                                            dir=dir,
+            nnet3-info "{model}" '&&' \
+            nnet3-show-progress --use-gpu=no \
+            "{prev_model}" "{model}" """.format(command=run_opts.command,
+                                             dir=dir,
                                             iter=iter,
-                                            model=model,
-                                            prev_model=prev_model,
-                                            egs_dir=egs_dir))
-
+                                             model=model,
+                                             prev_model=prev_model))
 
 def combine_models(dir, num_iters, models_to_combine, egs_dir,
                    minibatch_size_str,

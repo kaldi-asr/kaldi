@@ -91,16 +91,17 @@ if [ $stage -le 2 ]; then
 
   steps/nnet3/train_raw_dnn.py --stage=$train_stage \
     --cmd="$cmd" \
-    --image.augmentation-opts="--horizontal-flip-prob=0.0 --horizontal-shift=0.1 --vertical-shift=0.1 --num-channels=3" \
+    --image.augmentation-opts="--horizontal-shift=0.04 --vertical-shift=0.08 --num-channels=3" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=150 \
+    --trainer.num-epochs=30 \
     --egs.frames-per-eg=1 \
-    --trainer.optimization.num-jobs-initial=1 \
-    --trainer.optimization.num-jobs-final=2 \
+    --trainer.optimization.num-jobs-initial=2 \
+    --trainer.optimization.num-jobs-final=4 \
     --trainer.optimization.initial-effective-lrate=0.003 \
     --trainer.optimization.final-effective-lrate=0.0003 \
     --trainer.optimization.minibatch-size=256,128,64 \
+    --trainer.optimization.proportional-shrink=25.0 \
     --trainer.shuffle-buffer-size=2000 \
     --egs.dir="$egs" \
     --use-gpu=true \

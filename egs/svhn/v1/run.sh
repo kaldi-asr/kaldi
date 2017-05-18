@@ -15,5 +15,7 @@ if [ $stage -le 0 ]; then
 fi
 
 
-# egs preparation
-image/nnet3/get_egs.sh --cmd "$cmd" data/train_all data/test exp/egs
+if [ $stage -le 1 ]; then
+  # egs preparation
+  image/nnet3/get_egs.sh --egs-per-archive 50000 --cmd "$cmd" data/train_all data/test exp/egs
+fi

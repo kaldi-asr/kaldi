@@ -1,10 +1,19 @@
 #!/bin/bash
 
-# steps/info/nnet3_dir_info.pl exp/cnn1a
-# exp/cnn1a: num-iters=108 nj=2..4 num-params=0.5M dim=96->10 combine=-0.09->-0.09 loglike:train/valid[71,107,final]=(-0.101,-0.074,-0.067/-0.189,-0.144,-0.136) accuracy:train/valid[71,107,final]=(0.973,0.9834,0.9850/0.949,0.963,0.966)
+# exp/resnet1b: num-iters=130 nj=2..4 num-params=1.3M dim=96->10 combine=-0.04->-0.04 loglike:train/valid[85,129,final]=(-0.055,-0.041,-0.035/-0.097,-0.079,-0.074) accuracy:train/valid[85,129,final]=(0.9882,0.9924,0.9946/0.977,0.9817,0.9840)
+
+# This setup is based on the one in cifar/v1/local/nnet3/run_resnet_1{a,b}.sh.
+# We are reducing the number of epochs quite a bit, since there is so much
+# more data here; and reducing the proportional-shrink value since there is
+# more data.
+# The augmentation options are changed, with no horizontal flip, less vertical
+# shift, and much less horizontal shift.
+
+
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
+
 
 
 # training options
@@ -12,7 +21,7 @@ stage=0
 train_stage=-10
 srand=0
 reporting_email=
-affix=1a
+affix=1b
 
 
 # End configuration section.
@@ -32,7 +41,7 @@ fi
 
 
 
-dir=exp/cnn${affix}
+dir=exp/resnet${affix}
 
 egs=exp/egs
 
@@ -66,19 +75,30 @@ if [ $stage -le 1 ]; then
   # Note: we hardcode in the CNN config that we are dealing with 32x3x color
   # images.
 
-  common1="required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=20"
-  common2="required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=30"
+
+  nf1=48
+  nf2=96
+  nf3=256
+  nb3=128
+
+  common="required-time-offsets=0 height-offsets=-1,0,1"
+  res_opts="bypass-source=batchnorm"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=96 name=input
-  conv-relu-batchnorm-layer name=cnn1 height-in=32 height-out=32 time-offsets=-1,0,1 $common1
-  conv-relu-batchnorm-dropout-layer name=cnn2 height-in=32 height-out=16 time-offsets=-1,0,1 dropout-proportion=0.25 $common1 height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn3 height-in=16 height-out=16 time-offsets=-2,0,2 $common2
-  conv-relu-batchnorm-dropout-layer name=cnn4 height-in=16 height-out=8 time-offsets=-2,0,2 dropout-proportion=0.25 $common2 height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn5 height-in=8 height-out=8 time-offsets=-4,0,4 $common2
-  relu-dropout-layer name=fully_connected1 input=Append(2,6,10,14,18,22,26,30) dropout-proportion=0.5 dim=256
-  output-layer name=output dim=$num_targets
+  conv-layer name=conv1 height-in=32 height-out=32 time-offsets=-1,0,1 required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=$nf1
+  res-block name=res2 num-filters=$nf1 height=32 time-period=1 $res_opts
+  res-block name=res3 num-filters=$nf1 height=32 time-period=1 $res_opts
+  conv-layer name=conv4 height-in=32 height-out=16 height-subsample-out=2 time-offsets=-1,0,1 $common num-filters-out=$nf2
+  res-block name=res5 num-filters=$nf2 height=16 time-period=2 $res_opts
+  res-block name=res6 num-filters=$nf2 height=16 time-period=2 $res_opts
+  conv-layer name=conv7 height-in=16 height-out=8 height-subsample-out=2 time-offsets=-2,0,2 $common num-filters-out=$nf3
+  res-block name=res8 num-filters=$nf3 num-bottleneck-filters=$nb3 height=8 time-period=4 $res_opts
+  res-block name=res9 num-filters=$nf3 num-bottleneck-filters=$nb3 height=8 time-period=4 $res_opts
+  res-block name=res10 num-filters=$nf3 num-bottleneck-filters=$nb3 height=8 time-period=4 $res_opts
+  channel-average-layer name=channel-average input=Append(2,6,10,14,18,22,24,28) dim=$nf3
+  output-layer name=output learning-rate-factor=0.1 dim=$num_targets
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -87,10 +107,11 @@ fi
 if [ $stage -le 2 ]; then
 
   steps/nnet3/train_raw_dnn.py --stage=$train_stage \
-    --cmd="$cmd" \
+    --cmd="$train_cmd" \
+    --image.augmentation-opts="--horizontal-shift=0.04 --vertical-shift=0.08 --num-channels=3" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=25 \
+    --trainer.num-epochs=30 \
     --egs.frames-per-eg=1 \
     --trainer.optimization.num-jobs-initial=2 \
     --trainer.optimization.num-jobs-final=4 \

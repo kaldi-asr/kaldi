@@ -218,9 +218,8 @@ void PerturbImage(const ImageAugmentationConfig &config,
       config.horizontal_shift * image_width;
   BaseFloat vertical_shift = (2.0 * RandUniform() - 1.0) *
       config.vertical_shift * image_height;
-  shift_mat(0, 2) = floor(horizontal_shift);  // best to floor the shifts to
-  // avoid unnecessary blurring
-  shift_mat(1, 2) = floor(vertical_shift);
+  shift_mat(0, 2) = round(horizontal_shift);
+  shift_mat(1, 2) = round(vertical_shift);
   // since we will center the image before applying the transform,
   // horizontal flipping is simply achieved by setting [0, 0] to -1:
   if (WithProb(config.horizontal_flip_prob))
