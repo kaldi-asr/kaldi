@@ -107,7 +107,7 @@ def train_new_models(dir, iter, srand, num_jobs,
         scp_or_ark = "scp" if use_multitask_egs else "ark"
 
         egs_rspecifier = (
-            """ark,bg:nnet3-copy-egs {frame_opts} {context_opts} {multitask_egs_opts} \
+            """ark,bg:nnet3-copy-egs {frame_opts} {multitask_egs_opts} \
             {scp_or_ark}:{egs_dir}/egs.{archive_index}.{scp_or_ark} ark:- | \
             nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} \
             --srand={srand} ark:- ark:- | {aug_cmd} \
@@ -115,12 +115,11 @@ def train_new_models(dir, iter, srand, num_jobs,
             --discard-partial-minibatches=true ark:- ark:- |""".format(
                 frame_opts=("" if chunk_level_training
                             else "--frame={0}".format(frame)),
-                context_opts=context_opts, egs_dir=egs_dir,
-                archive_index=archive_index,
+                egs_dir=egs_dir, archive_index=archive_index,
                 shuffle_buffer_size=shuffle_buffer_size,
                 minibatch_size=minibatch_size_str,
                 aug_cmd=image_augmentation_cmd,
-                srand=iter + srand,
+                srand=iter+srand,
                 scp_or_ark=scp_or_ark,
                 multitask_egs_opts=multitask_egs_opts))
 
@@ -135,13 +134,9 @@ def train_new_models(dir, iter, srand, num_jobs,
                     {dir}/{next_iter}.{job}.raw""".format(
                 cache_io_opts=cache_io_opts,
                 verbose_opt=verbose_opt,
-                frame_opts=(""
-                            if chunk_level_training
-                            else "--frame={0}".format(frame)),
                 momentum=momentum, max_param_change=max_param_change,
                 deriv_time_opts=" ".join(deriv_time_opts),
                 raw_model=raw_model_string,
-                aug_cmd=image_augmentation_cmd,
                 egs_rspecifier=egs_rspecifier),
             require_zero_status=True)
 

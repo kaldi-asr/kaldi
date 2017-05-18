@@ -44,13 +44,12 @@ def get_outputs_list(model_file, get_raw_nnet_from_am=True):
     """ Generates list of output-node-names used in nnet3 model configuration.
         It will normally return 'output'.
     """
-    outputs_list=""
     if get_raw_nnet_from_am:
-      outputs_list, error = common_lib.run_kaldi_command(
+      outputs_list = common_lib.get_command_stdout(
           "nnet3-am-info --print-args=false {0} | "
           "grep -e 'output-node' | cut -f2 -d' ' | cut -f2 -d'=' ".format(model_file))
     else:
-      outputs_list, error = common_lib.run_kaldi_command(
+      outputs_list = common_lib.get_command_stdout(
           "nnet3-info --print-args=false {0} | "
           "grep -e 'output-node' | cut -f2 -d' ' | cut -f2 -d'=' ".format(model_file))
 
