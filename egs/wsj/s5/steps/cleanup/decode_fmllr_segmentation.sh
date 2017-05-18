@@ -127,8 +127,9 @@ if [ $n1 != $n2 ]; then
 fi
 
 mkdir -p $dir/split_fsts
+sort -k1,1 $graphdir/HCLG.fsts.scp > $dir/HCLG.fsts.sorted.scp
 utils/filter_scps.pl --no-warn -f 1 JOB=1:$nj \
-  $sdata/JOB/feats.scp $graphdir/HCLG.fsts.scp $dir/split_fsts/HCLG.fsts.JOB.scp
+  $sdata/JOB/feats.scp $dir/HCLG.fsts.sorted.scp $dir/split_fsts/HCLG.fsts.JOB.scp
 HCLG=scp:$dir/split_fsts/HCLG.fsts.JOB.scp
 
 
