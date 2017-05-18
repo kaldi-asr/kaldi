@@ -696,6 +696,32 @@ Real VectorBase<Real>::Sum() const {
 }
 
 template<typename Real>
+Real VectorBase<Real>::SumPower(Real p) const {
+  Real sum = 0.0;
+  if (p == 0.0) {
+    for (MatrixIndexT i = 0; i < dim_; i++)
+      if (data_[i] != 0.0) sum += 1.0;
+  } else if (p == 1.0) {
+    for (MatrixIndexT i = 0; i < dim_; i++)
+      sum += std::abs(data_[i]);
+  } else if (p == 2.0) {
+    for (MatrixIndexT i = 0; i < dim_; i++)
+      sum += data_[i] * data_[i];
+  } else {
+    Real tmp;
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      tmp = pow(std::abs(data_[i]), p);
+      if (tmp == HUGE_VAL) {  // HUGE_VAL is what pow returns on error.
+        KALDI_ERR << "Could not raise element " << i << "to power " << p
+                  << ": returned value = " << tmp;
+      }
+      sum += tmp;
+    }
+  }
+  return sum;
+}
+
+template<typename Real>
 Real VectorBase<Real>::SumLog() const {
   double sum_log = 0.0;
   double prod = 1.0;

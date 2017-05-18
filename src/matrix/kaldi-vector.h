@@ -309,6 +309,10 @@ class VectorBase {
   /// Returns sum of the elements
   Real Sum() const;
 
+  /// Returns sum of the elements raised to power p. For p>0, this is the same
+  /// as Norm(p) raised to the p-th power.
+  Real SumPower(Real p) const;
+
   /// Returns sum of the logs of the elements.  More efficient than
   /// just taking log of each.  Will return NaN if any elements are
   /// negative.
