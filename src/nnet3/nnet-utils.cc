@@ -59,10 +59,9 @@ bool IsSimpleNnet(const Nnet &nnet) {
   // "input" and everything checks out.
   if (NumInputNodes(nnet) == 1)
     return true;
-  // Otherwise, there should be 2 inputs and one
+  // Otherwise, there should be input node with name "input" and one
   // should be called "ivector".
-  return NumInputNodes(nnet) == 2 &&
-      nnet.GetNodeIndex("ivector") != -1 &&
+  return nnet.GetNodeIndex("ivector") != -1 &&
       nnet.IsInputNode(nnet.GetNodeIndex("ivector"));
 }
 
