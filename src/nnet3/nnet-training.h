@@ -100,6 +100,8 @@ struct NnetTrainerOptions {
 struct ObjectiveFunctionInfo {
   int32 current_phase;
 
+  int32 minibatches_this_phase;
+
   double tot_weight;
   double tot_objf;
   double tot_aux_objf;  // An 'auxiliary' objective function that is optional-
@@ -111,7 +113,7 @@ struct ObjectiveFunctionInfo {
   double tot_aux_objf_this_phase;
 
   ObjectiveFunctionInfo():
-      current_phase(0),
+      current_phase(0), minibatches_this_phase(0),
       tot_weight(0.0), tot_objf(0.0), tot_aux_objf(0.0),
       tot_weight_this_phase(0.0), tot_objf_this_phase(0.0),
       tot_aux_objf_this_phase(0.0) { }
@@ -129,7 +131,7 @@ struct ObjectiveFunctionInfo {
 
   // Prints stats for the current phase.
   void PrintStatsForThisPhase(const std::string &output_name,
-                              int32 minibatches_per_phase) const;
+                              int32 minibatches_per_phase, int32 phase) const;
   // Prints total stats, and returns true if total stats' weight was nonzero.
   bool PrintTotalStats(const std::string &output_name) const;
 };

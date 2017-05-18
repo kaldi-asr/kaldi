@@ -62,7 +62,7 @@ echo $*
 . utils/parse_options.sh
 
 if [ $# -ne 6 ]; then
-  echo "This script does nnet3-based speech activity detection given an input kaldi
+  echo "This script does nnet3-based speech activity detection given an input kaldi "
   echo "directory and outputs an output kaldi directory."
   echo "See script for details of the options to be supplied."
   echo "Usage: $0 <src-data-dir> <sad-nnet-dir> <lang> <mfcc-dir> <dir> <out-data-dir>"
@@ -96,7 +96,7 @@ lang=$3           # Directory with information about the classes, using which
                   # a simple HMM topology is created.
 mfcc_dir=$4       # The directory to store the features
 dir=$5            # Work directory
-data_dir=$5       # The output data directory will be ${data_dir}_seg
+data_dir=$6       # The output data directory will be ${data_dir}_seg
 
 affix=${affix:+_$affix}
 feat_affix=${feat_affix:+_$feat_affix}
@@ -165,10 +165,14 @@ fi
 
 post_vec=$sad_nnet_dir/post_${output_name}.vec
 if [ ! -f $sad_nnet_dir/post_${output_name}.vec ]; then
-  echo "$0: Could not find $sad_nnet_dir/post_${output_name}.vec. "
-  echo "Re-run the corresponding stage in the training script."
-  echo "See local/segmentation/train_lstm_sad_music.sh for example."
-  exit 1
+  if [ ! -f $sad_nnet_dir/post_${output_name}.txt ]; then
+    echo "$0: Could not find $sad_nnet_dir/post_${output_name}.vec. "
+    echo "Re-run the corresponding stage in the training script."
+    echo "See local/segmentation/train_lstm_sad_music.sh for example."
+    exit 1
+  else
+    post_vec=$sad_nnet_dir/post_${output_name}.txt
+  fi
 fi
 
 if [ $stage -le 3 ]; then
@@ -178,7 +182,7 @@ if [ $stage -le 3 ]; then
   $cmd $dir/log/get_final_${output_name}_model.log \
     nnet3-am-init $lang/init.mdl \
     "nnet3-copy --edits='rename-node old-name=$output_name new-name=output' $sad_nnet_dir/$iter.raw - |" - \| \
-    nnet3-am-adjust-priors - $sad_nnet_dir/post_${output_name}.vec \
+    nnet3-am-adjust-priors - $post_vec \
     $dir/${iter}_${output_name}.mdl
 fi
 iter=${iter}_${output_name}
@@ -188,13 +192,15 @@ iter=${iter}_${output_name}
 ###############################################################################
 
 if [ $stage -le 4 ]; then
+  cp $sad_nnet_dir/cmvn_opts $dir
+  cp $sad_nnet_dir/{final.mat,splice_opts} $dir || true
   steps/nnet3/compute_output.sh --nj $nj --cmd "$cmd" \
     --iter $iter --use-raw-nnet false \
     --extra-left-context $extra_left_context \
     --extra-right-context $extra_right_context \
     --frames-per-chunk 150 \
     --frame-subsampling-factor $frame_subsampling_factor \
-    ${test_data_dir} $sad_nnet_dir $sad_dir
+    ${test_data_dir} $dir $sad_dir
 fi
 
 ###############################################################################
@@ -227,7 +233,7 @@ fi
 ###############################################################################
 
 if [ $stage -le 6 ]; then
-  steps/segmentation/decode_sad.sh --acwt 1.0 --cmd "$decode_cmd" \
+  steps/segmentation/decode_sad.sh --acwt 1.0 --cmd "$cmd" \
     --iter ${iter} \
     --write-pdf-alignment true $graph_dir $sad_dir $seg_dir
 fi
@@ -238,7 +244,7 @@ fi
 
 if [ $stage -le 7 ]; then
   steps/segmentation/post_process_sad_to_subsegments.sh \
-    --cmd "$train_cmd" --segmentation-config $segmentation_config \
+    --cmd "$cmd" --segmentation-config $segmentation_config \
     --frame-subsampling-factor $frame_subsampling_factor \
     ${test_data_dir} $lang/phone2sad_map ${seg_dir} \
     ${seg_dir} ${data_dir}_seg
