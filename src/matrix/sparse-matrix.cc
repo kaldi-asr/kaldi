@@ -287,14 +287,6 @@ void SparseVector<Real>::Resize(MatrixIndexT dim,
   dim_ = dim;
 }
 
-template <typename Real> 
-void SparseVector<Real>::Scale(BaseFloat scale) {
-  typename std::vector<std::pair<MatrixIndexT, Real> >::iterator it = pairs_.begin();
-  for (; it != pairs_.end(); ++it) {
-    it->second *= scale;
-  }
-}
-
 template <typename Real>
 MatrixIndexT SparseMatrix<Real>::NumRows() const {
   return rows_.size();
@@ -588,14 +580,6 @@ void SparseMatrix<Real>::Resize(MatrixIndexT num_rows,
         rows_[row].Resize(num_cols, kCopyData);
   }
 }
- 
-template <typename Real>
-void SparseMatrix<Real>::Scale(BaseFloat scale) {
-  for (typename std::vector<SparseVector<Real> >::iterator it = rows_.begin();
-       it != rows_.end(); ++it) {
-    it->Scale(scale);
-  }
-}
 
 template <typename Real>
 void SparseMatrix<Real>::AppendSparseMatrixRows(
@@ -776,16 +760,6 @@ void GeneralMatrix::CopyToMat(MatrixBase<BaseFloat> *mat,
   }
 }
 
-void GeneralMatrix::Scale(BaseFloat alpha) {
-  if (mat_.NumRows() != 0) {
-    mat_.Scale(alpha);
-  } else if (cmat_.NumRows() != 0) {
-    cmat_.Scale(alpha);
-  } else if (smat_.NumRows() != 0) {
-    smat_.Scale(alpha);
-  }
-
-}
 const SparseMatrix<BaseFloat>& GeneralMatrix::GetSparseMatrix() const {
   if (mat_.NumRows() != 0 || cmat_.NumRows() != 0)
     KALDI_ERR << "GetSparseMatrix called on GeneralMatrix of wrong type.";

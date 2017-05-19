@@ -59,7 +59,8 @@ def get_outputs_list(model_file, get_raw_nnet_from_am=True):
 
 def get_multitask_egs_opts(egs_dir, egs_prefix="",
                            archive_index=-1,
-                           use_multitask_egs=False):
+                           use_multitask_egs=False,
+                           rename_multitask_outputs=True):
     """ Generates egs option for multitask(or multilingual) training setup,
         if {egs_prefix}output.*.ark or {egs_prefix}weight.*.ark files exists in egs_dir.
         Each line in {egs_prefix}*.scp has a corresponding line containing
@@ -80,7 +81,7 @@ def get_multitask_egs_opts(egs_dir, egs_prefix="",
                                      egs_prefix=egs_prefix,
                                      egs_suffix=egs_suffix))
         output_rename_opt = ""
-        if os.path.isfile(output_file_name):
+        if rename_multitask_outputs and os.path.isfile(output_file_name):
             output_rename_opt = ("--outputs=ark:{output_file_name}".format(
                 output_file_name=output_file_name))
 

@@ -32,8 +32,12 @@ void NnetIo::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, name);
   WriteIndexVector(os, binary, indexes);
   features.Write(os, binary);
-  WriteToken(os, binary, "<DW>");  // for DerivWeights.  Want to save space.
-  WriteVectorAsChar(os, binary, deriv_weights);
+  if (deriv_weights.Dim() > 0) {
+    WriteToken(os, binary, "<DerivWeights>");
+    deriv_weights.Write(os, binary);
+  }
+  //WriteToken(os, binary, "<DW>");  // for DerivWeights.  Want to save space.
+  //WriteVectorAsChar(os, binary, deriv_weights);
   WriteToken(os, binary, "</NnetIo>");
   KALDI_ASSERT(static_cast<size_t>(features.NumRows()) == indexes.size());
 }
@@ -47,8 +51,12 @@ void NnetIo::Read(std::istream &is, bool binary) {
   ReadToken(is, binary, &token);
   // in the future this back-compatibility code can be reworked.
   if (token != "</NnetIo>") {
-    KALDI_ASSERT(token == "<DW>");
-    ReadVectorAsChar(is, binary, &deriv_weights);
+    if (token == "<DW>")
+      ReadVectorAsChar(is, binary, &deriv_weights);
+    else if (token == "<DerivWeights>")
+      deriv_weights.Read(is, binary);
+    else 
+      KALDI_ERR << "Expecting <DerivWeights> or </NnetIo>; got " << token;
     ExpectToken(is, binary, "</NnetIo>");
   }
 }
