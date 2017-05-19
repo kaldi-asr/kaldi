@@ -110,29 +110,7 @@ int main(int argc, char *argv[]) {
 
         double tot_weight = 0.0;
 
-        {
-          const unordered_map<std::string, SimpleObjectiveInfo, StringHasher> &objf_info = prob_computer.GetAllObjectiveInfo();
-
-          unordered_map<std::string, SimpleObjectiveInfo, StringHasher>::const_iterator objf_it = objf_info.begin(),
-                                                                                       objf_end = objf_info.end();
-
-
-          for (; objf_it != objf_end; ++objf_it) {
-            double objf_per_frame = objf_it->second.tot_objective / objf_it->second.tot_weight;
-
-            if (objf_it->first == "output") {
-              KALDI_LOG << "At position " << middle
-                        << ", objf per frame is " << objf_per_frame;
-            } else {
-              KALDI_LOG << "At position " << middle
-                        << ", objf per frame for '" << objf_it->first
-                        << "' is " << objf_per_frame;
-            }
-
-            tot_weight += objf_it->second.tot_weight;
-          }
-        }
-
+        prob_computer.PrintTotalStats();
         const Nnet &nnet_gradient = prob_computer.GetDeriv();
 
         Vector<BaseFloat> old_dotprod(num_updatable), new_dotprod(num_updatable);

@@ -63,6 +63,13 @@ void ScaleAndRenameOutput(BaseFloat weight,
   RenameIoNames("output", new_output_name, eg);
 }
 
+void ApplyWeight(BaseFloat weight, NnetExample *eg) {
+  if (weight == 1.0) return;
+  // scale the supervision weight for egs
+  for (int32 i = 0; i < eg->io.size(); i++)
+    eg->io[i].deriv_weights.Scale(weight);
+}
+
 bool KeepOutputs(const std::vector<std::string> &keep_outputs, 
                  NnetExample *eg) {
   std::vector<NnetIo> io_new;
@@ -440,7 +447,7 @@ int main(int argc, char *argv[]) {
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
       bool modify_eg_output = (!eg_weight_rspecifier.empty() ||
                                !eg_output_rspecifier.empty() ||
-                               !keep_outputs_str.empty())
+                               !keep_outputs_str.empty());
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
@@ -481,8 +488,11 @@ int main(int argc, char *argv[]) {
             frame_shift == 0) {
           if (remove_zero_deriv_outputs) 
             if (!RemoveZeroDerivOutputs(&eg_modified_output)) continue;
-          if (modify_eg_output) // Only for multilingual training
+          if (!eg_weight_rspecifier.empty() && !eg_output_rspecifier.empty())
             ScaleAndRenameOutput(weight, new_output_name, &eg_modified_output);
+          else if (!eg_weight_rspecifier.empty()) {
+            ApplyWeight(weight, &eg_modified_output);
+          }
           example_writers[index]->Write(key, eg);
           num_written++;
         } else { // the --frame option or context options were set.
@@ -491,8 +501,11 @@ int main(int argc, char *argv[]) {
                                 frame_shift, &eg_modified)) {
             if (remove_zero_deriv_outputs) 
               if (!RemoveZeroDerivOutputs(&eg_modified)) continue;
-            if (modify_eg_output)
+            if (!eg_weight_rspecifier.empty() && !eg_output_rspecifier.empty())
               ScaleAndRenameOutput(weight, new_output_name, &eg_modified);
+            else if (!eg_weight_rspecifier.empty()) {
+              ApplyWeight(weight, &eg_modified);
+            }
             // this branch of the if statement will almost always be taken (should only
             // not be taken for shorter-than-normal egs from the end of a file.
             example_writers[index]->Write(key, eg_modified);

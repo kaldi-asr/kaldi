@@ -51,8 +51,9 @@ extra_right_context=0
 frame_subsampling_factor=3  # Subsampling at the output
 
 # Decoding options
-transition_scale=3.0
-loopscale=0.1
+acwt=0.3
+transition_scale=1.0
+loopscale=0.3
 
 # Segmentation config for post-processing
 segmentation_config=conf/segmentation_speech.conf
@@ -219,7 +220,7 @@ if [ $stage -le 5 ]; then
     cp $lang/final.mdl $graph_dir
   fi
 
-  $cmd $lang/log/make_graph.log \
+  $cmd $graph_dir/log/make_graph.log \
     make-simple-hmm-graph --transition-scale=$transition_scale \
     --self-loop-scale=$loopscale \
     $graph_dir/final.mdl \| \
@@ -233,7 +234,7 @@ fi
 ###############################################################################
 
 if [ $stage -le 6 ]; then
-  steps/segmentation/decode_sad.sh --acwt 1.0 --cmd "$cmd" \
+  steps/segmentation/decode_sad.sh --acwt $acwt --cmd "$cmd" \
     --iter ${iter} \
     --write-pdf-alignment true $graph_dir $sad_dir $seg_dir
 fi
