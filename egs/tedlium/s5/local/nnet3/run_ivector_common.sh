@@ -59,14 +59,19 @@ if [ $stage -le 3 ]; then
 
       # this next section does volume perturbation on the data.
     cat $data_dir/wav.scp | python -c "
-import sys, os, subprocess, re, random
+import sys, random
 random.seed(0)
 scale_low = 1.0/8
 scale_high = 2.0
 for line in sys.stdin.readlines():
-  if len(line.strip()) == 0:
+  line = line.strip() #shouldn't change line anyway
+  if not line:
     continue
-  print '{0} sox --vol {1} -t wav - -t wav - |'.format(line.strip(), random.uniform(scale_low, scale_high))
+  if line[-1] == '|':
+    print '{0} sox --vol {1} -t wav - -t wav - |'.format(line, random.uniform(scale_low, scale_high))
+  else:
+    utt, fn = line.split(None, 1)
+    print '{0} sox --vol {1} {2} -t wav - |'.format(utt, random.uniform(scale_low, scale_high),fn)
 "| sort -k1,1 -u  > $data_dir/wav.scp_scaled || exit 1;
     mv $data_dir/wav.scp_scaled $data_dir/wav.scp
 
