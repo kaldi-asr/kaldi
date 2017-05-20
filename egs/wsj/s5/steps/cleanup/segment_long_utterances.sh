@@ -153,7 +153,7 @@ if [ $stage -le 3 ]; then
 
   # and then copy it to the sub-segments. 
   mkdir -p $graph_dir
-  cat $dir/uniform_sub_segments | awk '{print $1" "$2}' | \
+  sort -k1,2 $dir/uniform_sub_segments | awk '{print $1" "$2}' | \
     utils/apply_map.pl -f 2 $dir/graphs/HCLG.fsts.scp > \
     $graph_dir/HCLG.fsts.scp
   
