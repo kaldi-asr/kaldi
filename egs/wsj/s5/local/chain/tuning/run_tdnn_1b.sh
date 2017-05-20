@@ -1,54 +1,25 @@
 #!/bin/bash
 
-# 1b is as 1a but using --proportional-shrink=80.0
+# 1f is as 1a but using --proportional-shrink=60.0
 
 # local/chain/compare_wer.sh exp/chain/tdnn1a_sp exp/chain/tdnn1b_sp
 # System                tdnn1a_sp tdnn1b_sp
-#WER dev93 (tgpr)                7.87      7.41
-#WER dev93 (tg)                  7.61      7.07
-#WER dev93 (big-dict,tgpr)       5.71      5.11
-#WER dev93 (big-dict,fg)         5.10      4.44
-#WER eval92 (tgpr)               5.23      5.35
-#WER eval92 (tg)                 4.87      4.94
-#WER eval92 (big-dict,tgpr)      3.24      3.19
-#WER eval92 (big-dict,fg)        2.71      2.52
-# Final train prob        -0.0414   -0.0624
-# Final valid prob        -0.0634   -0.0716
-# Final train prob (xent)   -0.8216   -1.0209
-# Final valid prob (xent)   -0.9208   -1.0572
+#WER dev93 (tgpr)                7.87      7.24
+#WER dev93 (tg)                  7.61      6.95
+#WER dev93 (big-dict,tgpr)       5.71      5.19
+#WER dev93 (big-dict,fg)         5.10      4.52
+#WER eval92 (tgpr)               5.23      5.09
+#WER eval92 (tg)                 4.87      4.64
+#WER eval92 (big-dict,tgpr)      3.24      2.91
+#WER eval92 (big-dict,fg)        2.71      2.39
+# Final train prob        -0.0414   -0.0570
+# Final valid prob        -0.0634   -0.0680
+# Final train prob (xent)   -0.8216   -0.9587
+# Final valid prob (xent)   -0.9208   -1.0039
 
 
 # steps/info/chain_dir_info.pl exp/chain/tdnn1b_sp
-# exp/chain/tdnn1b_sp: num-iters=102 nj=2..5 num-params=7.6M dim=40+100->2889 combine=-0.071->-0.068 xent:train/valid[67,101,final]=(-1.22,-1.05,-1.02/-1.23,-1.09,-1.06) logprob:train/valid[67,101,final]=(-0.080,-0.065,-0.062/-0.083,-0.074,-0.072)
-
-# The following table compares (nnet3 TDNN, chain TDNN+LSTM, this experiment == chain TDNN).
-# This is better than the nnet3 TDNN, but the difference with the chain TDNN+LSTM
-# is inconsistent.
-
-# local/chain/compare_wer.sh --online exp/nnet3/tdnn1a_sp exp/chain/tdnn_lstm1a_sp exp/chain/tdnn1a_sp
-# System                tdnn1a_sp tdnn_lstm1a_sp tdnn1a_sp
-#WER dev93 (tgpr)                9.18      7.48      7.87
-#             [online:]                    7.49      8.02
-#WER dev93 (tg)                  8.59      7.41      7.61
-#             [online:]                    7.40      7.70
-#WER dev93 (big-dict,tgpr)       6.45      5.64      5.71
-#             [online:]                    5.70      5.60
-#WER dev93 (big-dict,fg)         5.83      5.40      5.10
-#             [online:]                    5.19      5.21
-#WER eval92 (tgpr)               6.15      5.67      5.23
-#             [online:]                    5.60      5.44
-#WER eval92 (tg)                 5.55      5.46      4.87
-#             [online:]                    5.53      4.87
-#WER eval92 (big-dict,tgpr)      3.58      3.69      3.24
-#             [online:]                    3.63      3.31
-#WER eval92 (big-dict,fg)        2.98      3.28      2.71
-#             [online:]                    3.31      2.92
-# Final train prob                  -0.0341   -0.0414
-# Final valid prob                  -0.0506   -0.0634
-# Final train prob (xent)             -0.5643   -0.8216
-# Final valid prob (xent)             -0.6648   -0.9208
-
-
+# exp/chain/tdnn1b_sp: num-iters=102 nj=2..5 num-params=7.6M dim=40+100->2889 combine=-0.066->-0.063 xent:train/valid[67,101,final]=(-1.12,-0.979,-0.959/-1.13,-1.03,-1.00) logprob:train/valid[67,101,final]=(-0.071,-0.058,-0.057/-0.077,-0.069,-0.068)
 
 set -e -o pipefail
 
@@ -64,7 +35,7 @@ num_threads_ubm=32
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
 # Options which are not passed through to run_ivector_common.sh
-affix=1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=1f  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 common_egs_dir=
 reporting_email=
 
@@ -251,7 +222,7 @@ if [ $stage -le 16 ]; then
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
-    --trainer.optimization.proportional-shrink=80.0 \
+    --trainer.optimization.proportional-shrink=60.0 \
     --trainer.num-chunk-per-minibatch=256,128,64 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
