@@ -79,10 +79,13 @@ class KaldiCommandException(Exception):
     kaldi command that caused the error and the error string captured.
     """
     def __init__(self, command, err=None):
+        import re
         Exception.__init__(self,
                            "There was an error while running the command "
-                           "{0}\n{1}\n{2}".format(command, "-"*10,
-                                                  "" if err is None else err))
+                           "{0}\n{1}\n{2}".format(
+                               re.sub('\s+', ' ', command).strip(),
+                               "-"*10,
+                               "" if err is None else err))
 
 
 class BackgroundProcessHandler():
@@ -279,9 +282,10 @@ def get_number_of_leaves_from_model(dir):
 def get_number_of_jobs(alidir):
     try:
         num_jobs = int(open('{0}/num_jobs'.format(alidir)).readline().strip())
-    except (IOError, ValueError) as e:
-        raise Exception("Exception while reading the "
-                        "number of alignment jobs: {0}".format(e.errstr))
+    except IOError, ValueError:
+        logger.error("Exception while reading the "
+                     "number of alignment jobs: ", exc_info=True)
+        raise SystemExit(1)
     return num_jobs
 
 

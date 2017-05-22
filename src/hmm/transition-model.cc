@@ -240,6 +240,16 @@ TransitionModel::TransitionModel(const ContextDependencyInterface &ctx_dep,
   Check();
 }
 
+void TransitionModel::Init(const ContextDependencyInterface &ctx_dep,
+                           const HmmTopology &hmm_topo) {
+  topo_ = hmm_topo;
+  // First thing is to get all possible tuples.
+  ComputeTuples(ctx_dep);
+  ComputeDerived();
+  InitializeProbs();
+  Check();
+}
+
 int32 TransitionModel::TupleToTransitionState(int32 phone, int32 hmm_state, int32 pdf, int32 self_loop_pdf) const {
   Tuple tuple(phone, hmm_state, pdf, self_loop_pdf);
   // Note: if this ever gets too expensive, which is unlikely, we can refactor

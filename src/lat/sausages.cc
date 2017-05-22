@@ -51,10 +51,19 @@ void MinimumBayesRisk::MbrDecode() {
         R_[q] = rhat;
       }
       if (R_[q] != 0) {
-        one_best_times_.push_back(times_[q]);
         BaseFloat confidence = 0.0;
+        bool first_time = true;
         for (int32 j = 0; j < gamma_[q].size(); j++)
-          if (gamma_[q][j].first == R_[q]) confidence = gamma_[q][j].second;
+          if (gamma_[q][j].first == R_[q]) {
+            KALDI_ASSERT(first_time); first_time = false;
+            confidence = gamma_[q][j].second;
+            KALDI_ASSERT(confidence > 0);
+            KALDI_ASSERT(begin_times_[q].count(R_[q]) > 0);
+            KALDI_ASSERT(end_times_[q].count(R_[q]) > 0);
+            one_best_times_.push_back(std::make_pair(
+                                        begin_times_[q][R_[q]] / confidence,
+                                        end_times_[q][R_[q]] / confidence));
+          }
         one_best_confidences_.push_back(confidence);
       }
     }
@@ -145,11 +154,13 @@ void MinimumBayesRisk::AccStats() {
   std::vector<map<int32, double> > gamma(Q+1); // temp. form of gamma.
   // index 1...Q [word] -> occ.
 
+  std::vector<map<int32, double> > tau_b(Q+1), tau_e(Q+1);
+
   // The tau arrays below are the sums over words of the tau_b
   // and tau_e timing quantities mentioned in Appendix C of
   // the paper... we are using these to get averaged times for
   // the sausage bins, not specifically for the 1-best output.
-  Vector<double> tau_b(Q+1), tau_e(Q+1);
+  //Vector<double> tau_b(Q+1), tau_e(Q+1);
 
   double Ltmp = EditDistance(N, Q, alpha, alpha_dash, alpha_dash_arc);
   if (L_ != 0 && Ltmp > L_) { // L_ != 0 is to rule out 1st iter.
@@ -189,8 +200,11 @@ void MinimumBayesRisk::AccStats() {
             // next: gamma(q, w(a)) += beta_dash_arc(q)
             AddToMap(w_a, beta_dash_arc(q), &(gamma[q]));
             // next: accumulating times, see decl for tau_b,tau_e
-            tau_b(q) += state_times_[s_a] * beta_dash_arc(q);
-            tau_e(q) += state_times_[n] * beta_dash_arc(q);
+            AddToMap(w_a, state_times_[s_a] * beta_dash_arc(q), &(tau_b[q]), false);
+            AddToMap(w_a, state_times_[n] * beta_dash_arc(q), &(tau_e[q]), false);
+            KALDI_ASSERT(tau_b[q].size() == tau_e[q].size());
+            //tau_b(q) += state_times_[s_a] * beta_dash_arc(q);
+            //tau_e(q) += state_times_[n] * beta_dash_arc(q);
             break;
           case 2:
             beta_dash(s_a, q) += beta_dash_arc(q);
@@ -203,8 +217,11 @@ void MinimumBayesRisk::AccStats() {
             // WARNING: there was an error in Appendix C.  If we followed
             // the instructions there the next line would say state_times_[sa], but
             // it would be wrong.  I will try to publish an erratum.
-            tau_b(q) += state_times_[n] * beta_dash_arc(q);
-            tau_e(q) += state_times_[n] * beta_dash_arc(q);
+            AddToMap(0, state_times_[n] * beta_dash_arc(q), &(tau_b[q]), false);
+            AddToMap(0, state_times_[n] * beta_dash_arc(q), &(tau_e[q]), false);
+            KALDI_ASSERT(tau_b[q].size() == tau_e[q].size());
+            //tau_b(q) += state_times_[n] * beta_dash_arc(q);
+            //tau_e(q) += state_times_[n] * beta_dash_arc(q);
             break;
           default:
             KALDI_ERR << "Invalid b_arc value"; // error in code.
@@ -221,8 +238,11 @@ void MinimumBayesRisk::AccStats() {
     AddToMap(0, beta_dash_arc(q), &(gamma[q]));
     // the statements below are actually redundant because
     // state_times_[1] is zero.
-    tau_b(q) += state_times_[1] * beta_dash_arc(q);
-    tau_e(q) += state_times_[1] * beta_dash_arc(q);
+    //tau_b(q) += state_times_[1] * beta_dash_arc(q);
+    //tau_e(q) += state_times_[1] * beta_dash_arc(q);
+    AddToMap(0, state_times_[1] * beta_dash_arc(q), &(tau_b[q]), false);
+    AddToMap(0, state_times_[1] * beta_dash_arc(q), &(tau_e[q]), false);
+    KALDI_ASSERT(tau_b[q].size() == tau_e[q].size());
   }
   for (int32 q = 1; q <= Q; q++) { // a check (line 35)
     double sum = 0.0;
@@ -249,9 +269,24 @@ void MinimumBayesRisk::AccStats() {
   // indexing.
   times_.clear();
   times_.resize(Q);
+  begin_times_.clear();
+  begin_times_.resize(Q);
+  end_times_.clear();
+  end_times_.resize(Q);
   for (int32 q = 1; q <= Q; q++) {
-    times_[q-1].first = tau_b(q);
-    times_[q-1].second = tau_e(q);
+    KALDI_ASSERT(tau_b[q].size() == tau_e[q].size());
+    for (map<int32, double>::iterator iter = tau_b[q].begin();
+          iter != tau_b[q].end(); ++iter) {
+      times_[q-1].first += iter->second;
+      begin_times_[q-1].insert(std::make_pair(iter->first, iter->second));
+    }
+    
+    for (map<int32, double>::iterator iter = tau_e[q].begin();
+          iter != tau_e[q].end(); ++iter) {
+      times_[q-1].second += iter->second;
+      end_times_[q-1].insert(std::make_pair(iter->first, iter->second));
+    }
+    
     if (times_[q-1].first > times_[q-1].second) // this is quite bad.
       KALDI_WARN << "Times out of order";
     if (q > 1 && times_[q-2].second > times_[q-1].first) {

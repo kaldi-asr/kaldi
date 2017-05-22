@@ -455,6 +455,11 @@ class MatrixBase {
   /// Apply soft-max to the collection of all elements of the
   /// matrix and return normalizer (log sum of exponentials).
   Real ApplySoftMax();
+  
+  /// Softmax nonlinearity
+  /// Y = Softmax(X) : Yij = e^Xij / sum_k(e^Xik), done to each row
+  /// for each row, the max value is first subtracted for good numerical stability
+  void ApplySoftMaxPerRow();
 
   /// Set each element to the sigmoid of the corresponding element of "src".
   void Sigmoid(const MatrixBase<Real> &src);
@@ -544,6 +549,10 @@ class MatrixBase {
 
   /// *this += alpha * M [or M^T]
   void AddMat(const Real alpha, const MatrixBase<Real> &M,
+              MatrixTransposeType transA = kNoTrans);
+  
+  /// *this += alpha * M [or M^T] when the matrices are stored as log
+  void LogAddExpMat(const Real alpha, const MatrixBase<Real> &M,
               MatrixTransposeType transA = kNoTrans);
 
   /// *this = beta * *this + alpha * M M^T, for symmetric matrices.  It only

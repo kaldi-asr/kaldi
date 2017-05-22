@@ -516,6 +516,8 @@ class ExampleMerger {
 };
 
 
+// Returns the number of outputs in an eg
+int32 NumOutputs(const NnetExample &eg);
 
 } // namespace nnet3
 } // namespace kaldi

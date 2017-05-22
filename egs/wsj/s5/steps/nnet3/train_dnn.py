@@ -412,14 +412,14 @@ def main():
             polling_time=args.background_polling_time)
         train(args, run_opts, background_process_handler)
         background_process_handler.ensure_processes_are_done()
-    except Exception as e:
+    except Exception:
         if args.email is not None:
             message = ("Training session for experiment {dir} "
                        "died due to an error.".format(dir=args.dir))
             common_lib.send_mail(message, message, args.email)
-        traceback.print_exc()
         background_process_handler.stop()
-        raise e
+        logger.error("Training session failed; traceback = ", exc_info=True)
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

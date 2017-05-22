@@ -107,17 +107,17 @@ int main(int argc, char *argv[]) {
                                                  eg_end = examples.end();
         for (; eg_iter != eg_end; ++eg_iter)
           prob_computer.Compute(*eg_iter);
-        const SimpleObjectiveInfo *objf_info = prob_computer.GetObjective("output");
-        double objf_per_frame = objf_info->tot_objective / objf_info->tot_weight;
+
+        double tot_weight = 0.0;
+
+        prob_computer.PrintTotalStats();
         const Nnet &nnet_gradient = prob_computer.GetDeriv();
-        KALDI_LOG << "At position " << middle
-                  << ", objf per frame is " << objf_per_frame;
 
         Vector<BaseFloat> old_dotprod(num_updatable), new_dotprod(num_updatable);
         ComponentDotProducts(nnet_gradient, nnet1, &old_dotprod);
         ComponentDotProducts(nnet_gradient, nnet2, &new_dotprod);
-        old_dotprod.Scale(1.0 / objf_info->tot_weight);
-        new_dotprod.Scale(1.0 / objf_info->tot_weight);
+        old_dotprod.Scale(1.0 / tot_weight);
+        new_dotprod.Scale(1.0 / tot_weight);
         diff.AddVec(1.0/ num_segments, new_dotprod);
         diff.AddVec(-1.0 / num_segments, old_dotprod);
         KALDI_VLOG(1) << "By segment " << s << ", objf change is "

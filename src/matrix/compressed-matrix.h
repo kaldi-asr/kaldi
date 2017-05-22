@@ -35,12 +35,12 @@ namespace kaldi {
 /// column).
 
 /// The basic idea is for each column (in the normal configuration)
-/// we work out the values at the 0th, 25th, 50th and 100th percentiles
+/// we work out the values at the 0th, 25th, 75th and 100th percentiles
 /// and store them as 16-bit integers; we then encode each value in
 /// the column as a single byte, in 3 separate ranges with different
-/// linear encodings (0-25th, 25-50th, 50th-100th).
-/// If the matrix has 8 rows or fewer, we simply store all values as
-/// uint16.
+/// linear encodings (0-25th, 25-75th, 75th-100th).
+/// If the matrix has 8 rows or fewer or format=2, we simply store all values 
+/// as uint16.
 
 class CompressedMatrix {
  public:
@@ -49,7 +49,9 @@ class CompressedMatrix {
   ~CompressedMatrix() { Clear(); }
 
   template<typename Real>
-  CompressedMatrix(const MatrixBase<Real> &mat): data_(NULL) { CopyFromMat(mat); }
+  CompressedMatrix(const MatrixBase<Real> &mat, int32 format = 0): data_(NULL) { 
+    CopyFromMat(mat, format); 
+  }
 
   /// Initializer that can be used to select part of an existing
   /// CompressedMatrix without un-compressing and re-compressing (note: unlike
@@ -65,7 +67,7 @@ class CompressedMatrix {
 
   /// This will resize *this and copy the contents of mat to *this.
   template<typename Real>
-  void CopyFromMat(const MatrixBase<Real> &mat);
+  void CopyFromMat(const MatrixBase<Real> &mat, int32 format = 0);
 
   CompressedMatrix(const CompressedMatrix &mat);
 

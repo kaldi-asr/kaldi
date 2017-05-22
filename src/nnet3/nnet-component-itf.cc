@@ -89,6 +89,10 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new SoftmaxComponent();
   } else if (component_type == "LogSoftmaxComponent") {
     ans = new LogSoftmaxComponent();
+  } else if (component_type == "LogComponent") {
+    ans = new LogComponent();
+  } else if (component_type == "ExpComponent") {
+    ans = new ExpComponent();
   } else if (component_type == "RectifiedLinearComponent") {
     ans = new RectifiedLinearComponent();
   } else if (component_type == "NormalizeComponent") {
@@ -119,6 +123,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new NoOpComponent();
   } else if (component_type == "ClipGradientComponent") {
     ans = new ClipGradientComponent();
+  } else if (component_type == "ScaleGradientComponent") {
+    ans = new ScaleGradientComponent();
   } else if (component_type == "ElementwiseProductComponent") {
     ans = new ElementwiseProductComponent();
   } else if (component_type == "ConvolutionComponent") {
@@ -314,11 +320,14 @@ std::string NonlinearComponent::Info() const {
   std::stringstream stream;
   if (InputDim() == OutputDim()) {
     stream << Type() << ", dim=" << InputDim();
-  } else {
+  } else if (OutputDim() - InputDim() == 1) {
     // Note: this is a very special case tailored for class NormalizeComponent.
     stream << Type() << ", input-dim=" << InputDim()
            << ", output-dim=" << OutputDim()
            << ", add-log-stddev=true";
+  } else {
+    stream << Type() << ", input-dim=" << InputDim()
+           << ", output-dim=" << OutputDim();
   }
 
   if (self_repair_lower_threshold_ != BaseFloat(kUnsetThreshold))
@@ -327,7 +336,7 @@ std::string NonlinearComponent::Info() const {
     stream << ", self-repair-upper-threshold=" << self_repair_upper_threshold_;
   if (self_repair_scale_ != 0.0)
     stream << ", self-repair-scale=" << self_repair_scale_;
-  if (count_ > 0 && value_sum_.Dim() == dim_ &&  deriv_sum_.Dim() == dim_) {
+  if (count_ > 0 && value_sum_.Dim() == dim_) {
     stream << ", count=" << std::setprecision(3) << count_
            << std::setprecision(6);
     stream << ", self-repaired-proportion="
@@ -337,10 +346,12 @@ std::string NonlinearComponent::Info() const {
     Vector<BaseFloat> value_avg(value_avg_dbl);
     value_avg.Scale(1.0 / count_);
     stream << ", value-avg=" << SummarizeVector(value_avg);
-    Vector<double> deriv_avg_dbl(deriv_sum_);
-    Vector<BaseFloat> deriv_avg(deriv_avg_dbl);
-    deriv_avg.Scale(1.0 / count_);
-    stream << ", deriv-avg=" << SummarizeVector(deriv_avg);
+    if (deriv_sum_.Dim() == dim_) {
+      Vector<double> deriv_avg_dbl(deriv_sum_);
+      Vector<BaseFloat> deriv_avg(deriv_avg_dbl);
+      deriv_avg.Scale(1.0 / count_);
+      stream << ", deriv-avg=" << SummarizeVector(deriv_avg);
+    }
   }
   return stream.str();
 }

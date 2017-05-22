@@ -37,6 +37,7 @@
 utts_per_spk_max=-1
 seconds_per_spk_max=-1
 respect_speaker_info=true
+respect_recording_info=true
 # end configuration section
 
 . utils/parse_options.sh
@@ -93,10 +94,26 @@ else
   utt2dur_opt=
 fi
 
-utils/data/internal/modify_speaker_info.py \
-   $utt2dur_opt --respect-speaker-info=$respect_speaker_info \
-  --utts-per-spk-max=$utts_per_spk_max --seconds-per-spk-max=$seconds_per_spk_max \
-  <$srcdir/utt2spk >$destdir/utt2spk
+if ! $respect_speaker_info && $respect_recording_info; then
+  if [ -f $srcdir/segments ]; then
+    cat $srcdir/segments | awk '{print $1" "$2}' | \
+      utils/data/internal/modify_speaker_info.py \
+       $utt2dur_opt --respect-speaker-info=true \
+      --utts-per-spk-max=$utts_per_spk_max --seconds-per-spk-max=$seconds_per_spk_max \
+      >$destdir/utt2spk
+  else
+    cat $srcdir/wav.scp | awk '{print $1" "$2}' | \
+      utils/data/internal/modify_speaker_info.py \
+       $utt2dur_opt --respect-speaker-info=true \
+      --utts-per-spk-max=$utts_per_spk_max --seconds-per-spk-max=$seconds_per_spk_max \
+      >$destdir/utt2spk
+  fi
+else
+  utils/data/internal/modify_speaker_info.py \
+     $utt2dur_opt --respect-speaker-info=$respect_speaker_info \
+    --utts-per-spk-max=$utts_per_spk_max --seconds-per-spk-max=$seconds_per_spk_max \
+    <$srcdir/utt2spk >$destdir/utt2spk
+fi
 
 utils/utt2spk_to_spk2utt.pl <$destdir/utt2spk >$destdir/spk2utt
 

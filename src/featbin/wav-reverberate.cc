@@ -156,6 +156,8 @@ int main(int argc, char *argv[]) {
     bool normalize_output = true;
     BaseFloat volume = 0;
     BaseFloat duration = 0;
+    std::string reverb_wxfilename;
+    std::string additive_noise_wxfilename;
 
     po.Register("multi-channel-output", &multi_channel_output,
                 "Specifies if the output should be multi-channel or not");
@@ -212,6 +214,14 @@ int main(int argc, char *argv[]) {
                 "after reverberating and possibly adding noise. "
                 "If you set this option to a nonzero value, it will be as "
                 "if you had also specified --normalize-output=false.");
+    po.Register("reverb-out-wxfilename", &reverb_wxfilename,
+                "Output the reverberated wave file, i.e. before adding the "
+                "additive noise. "
+                "Useful for computing SNR features or for debugging");
+    po.Register("additive-noise-out-wxfilename", 
+                &additive_noise_wxfilename,
+                "Output the additive noise file used to corrupt the input wave."
+                "Useful for computing SNR features or for debugging");
 
     po.Read(argc, argv);
     if (po.NumArgs() != 2) {
@@ -314,10 +324,23 @@ int main(int argc, char *argv[]) {
     int32 num_samp_output = (duration > 0 ? samp_freq_input * duration :
                               (shift_output ? num_samp_input :
                                               num_samp_input + num_samp_rir - 1));
+    
     Matrix<BaseFloat> out_matrix(num_output_channels, num_samp_output);
+
+    Matrix<BaseFloat> out_reverb_matrix;
+    if (!reverb_wxfilename.empty()) 
+      out_reverb_matrix.Resize(num_output_channels, num_samp_output);
+    
+    Matrix<BaseFloat> out_noise_matrix;
+    if (!additive_noise_wxfilename.empty()) 
+      out_noise_matrix.Resize(num_output_channels, num_samp_output);
 
     for (int32 output_channel = 0; output_channel < num_output_channels; output_channel++) {
       Vector<BaseFloat> input(num_samp_input);
+
+      Vector<BaseFloat> out_reverb(0);
+      Vector<BaseFloat> out_noise(0);
+
       input.CopyRowFromMat(input_matrix, input_channel);
       float power_before_reverb = VecVec(input, input) / input.Dim();
 
@@ -337,6 +360,16 @@ int main(int argc, char *argv[]) {
         }
       }
 
+      if (!reverb_wxfilename.empty()) {
+        out_reverb.Resize(input.Dim());
+        out_reverb.CopyFromVec(input);
+      }
+
+      if (!additive_noise_wxfilename.empty()) {
+        out_noise.Resize(input.Dim());
+        out_noise.SetZero();
+      }
+
       if (additive_signal_matrices.size() > 0) {
         Vector<BaseFloat> noise(0);
         int32 this_noise_channel = (multi_channel_output ? output_channel : noise_channel);
@@ -345,33 +378,86 @@ int main(int argc, char *argv[]) {
         for (int32 i = 0; i < additive_signal_matrices.size(); i++) {
           noise.Resize(additive_signal_matrices[i].NumCols());
           noise.CopyRowFromMat(additive_signal_matrices[i], this_noise_channel);
-          AddNoise(&noise, snr_vector[i], start_time_vector[i],
-                    samp_freq_input, early_energy, &input);
+
+          if (!additive_noise_wxfilename.empty()) {
+            AddNoise(&noise, snr_vector[i], start_time_vector[i],
+                samp_freq_input, early_energy, &out_noise);
+          } else {
+            AddNoise(&noise, snr_vector[i], start_time_vector[i],
+                samp_freq_input, early_energy, &input);
+          }
+        }
+      
+        if (!additive_noise_wxfilename.empty()) {
+          input.AddVec(1.0, out_noise);
         }
       }
 
       float power_after_reverb = VecVec(input, input) / input.Dim();
 
-      if (volume > 0)
+      if (volume > 0) {
         input.Scale(volume);
-      else if (normalize_output)
+        out_reverb.Scale(volume);
+        out_noise.Scale(volume);
+      } else if (normalize_output) {
         input.Scale(sqrt(power_before_reverb / power_after_reverb));
+        out_reverb.Scale(sqrt(power_before_reverb / power_after_reverb));
+        out_noise.Scale(sqrt(power_before_reverb / power_after_reverb));
+      }
 
       if (num_samp_output <= num_samp_input) {
         // trim the signal from the start
         out_matrix.CopyRowFromVec(input.Range(shift_index, num_samp_output), output_channel);
+
+        if (!reverb_wxfilename.empty()) {
+          out_reverb_matrix.CopyRowFromVec(out_reverb.Range(shift_index, num_samp_output), output_channel);
+        } 
+    
+        if (!additive_noise_wxfilename.empty()) {
+          out_noise_matrix.CopyRowFromVec(out_noise.Range(shift_index, num_samp_output), output_channel);
+        }
       } else {
-        // repeat the signal to fill up the duration
-        Vector<BaseFloat> extended_input(num_samp_output);
-        extended_input.SetZero();
-        AddVectorsOfUnequalLength(input.Range(shift_index, num_samp_input), &extended_input);
-        out_matrix.CopyRowFromVec(extended_input, output_channel);
+        {
+          // repeat the signal to fill up the duration
+          Vector<BaseFloat> extended_input(num_samp_output);
+          extended_input.SetZero();
+          AddVectorsOfUnequalLength(input.Range(shift_index, num_samp_input), &extended_input);
+          out_matrix.CopyRowFromVec(extended_input, output_channel);
+        }
+        if (!reverb_wxfilename.empty()) {
+          // repeat the signal to fill up the duration
+          Vector<BaseFloat> extended_input(num_samp_output);
+          extended_input.SetZero();
+          AddVectorsOfUnequalLength(out_reverb.Range(shift_index, num_samp_input), &extended_input);
+          out_reverb_matrix.CopyRowFromVec(extended_input, output_channel);
+        }
+        if (!additive_noise_wxfilename.empty()) {
+          // repeat the signal to fill up the duration
+          Vector<BaseFloat> extended_input(num_samp_output);
+          extended_input.SetZero();
+          AddVectorsOfUnequalLength(out_noise.Range(shift_index, num_samp_input), &extended_input);
+          out_noise_matrix.CopyRowFromVec(extended_input, output_channel);
+        }
       }
     }
+    
+    {
+      WaveData out_wave(samp_freq_input, out_matrix);
+      Output ko(output_wave_file, false);
+      out_wave.Write(ko.Stream());
+    }
+    
+    if (!reverb_wxfilename.empty()) {
+      WaveData out_wave(samp_freq_input, out_reverb_matrix);
+      Output ko(reverb_wxfilename, false);
+      out_wave.Write(ko.Stream());
+    }
 
-    WaveData out_wave(samp_freq_input, out_matrix);
-    Output ko(output_wave_file, false);
-    out_wave.Write(ko.Stream());
+    if (!additive_noise_wxfilename.empty()) {
+      WaveData out_wave(samp_freq_input, out_noise_matrix);
+      Output ko(additive_noise_wxfilename, false);
+      out_wave.Write(ko.Stream());
+    }
 
     return 0;
   } catch(const std::exception &e) {

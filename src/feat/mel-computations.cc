@@ -37,13 +37,7 @@ MelBanks::MelBanks(const MelBanksOptions &opts,
   int32 num_bins = opts.num_bins;
   if (num_bins < 3) KALDI_ERR << "Must have at least 3 mel bins";
   BaseFloat sample_freq = frame_opts.samp_freq;
-  int32 window_length = static_cast<int32>(frame_opts.samp_freq*0.001*frame_opts.frame_length_ms);
-  int32 window_length_padded =
-      (frame_opts.round_to_power_of_two ?
-       RoundUpToNearestPowerOfTwo(window_length) :
-       window_length);
-  KALDI_ASSERT(window_length_padded % 2 == 0);
-  int32 num_fft_bins = window_length_padded/2;
+  int32 num_fft_bins = frame_opts.NumFftBins();
   BaseFloat nyquist = 0.5 * sample_freq;
 
   BaseFloat low_freq = opts.low_freq, high_freq;
@@ -59,8 +53,8 @@ MelBanks::MelBanks(const MelBanksOptions &opts,
               << " and high-freq " << high_freq << " vs. nyquist "
               << nyquist;
 
-  BaseFloat fft_bin_width = sample_freq / window_length_padded;
-  // fft-bin width [think of it as Nyquist-freq / half-window-length]
+  BaseFloat fft_bin_width = sample_freq / num_fft_bins;
+  // fft-bin width [think of it as Nyquist-freq / num_fft_bins]
 
   BaseFloat mel_low_freq = MelScale(low_freq);
   BaseFloat mel_high_freq = MelScale(high_freq);
@@ -104,9 +98,9 @@ MelBanks::MelBanks(const MelBanksOptions &opts,
     center_freqs_(bin) = InverseMelScale(center_mel);
     // this_bin will be a vector of coefficients that is only
     // nonzero where this mel bin is active.
-    Vector<BaseFloat> this_bin(num_fft_bins);
+    Vector<BaseFloat> this_bin(num_fft_bins / 2);
     int32 first_index = -1, last_index = -1;
-    for (int32 i = 0; i < num_fft_bins; i++) {
+    for (int32 i = 0; i < num_fft_bins / 2; i++) {
       BaseFloat freq = (fft_bin_width * i);  // Center frequency of this fft
                                              // bin.
       BaseFloat mel = MelScale(freq);

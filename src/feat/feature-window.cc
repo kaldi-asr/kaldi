@@ -163,7 +163,7 @@ void ExtractWindow(int64 sample_offset,
                    BaseFloat *log_energy_pre_window) {
   KALDI_ASSERT(sample_offset >= 0 && wave.Dim() != 0);
   int32 frame_length = opts.WindowSize(),
-      frame_length_padded = opts.PaddedWindowSize();
+      num_fft_bins = opts.NumFftBins();
   int64 num_samples = sample_offset + wave.Dim(),
       start_sample = FirstSampleOfFrame(f, opts),
       end_sample = start_sample + frame_length;
@@ -175,8 +175,8 @@ void ExtractWindow(int64 sample_offset,
     KALDI_ASSERT(sample_offset == 0 || start_sample >= sample_offset);
   }
 
-  if (window->Dim() != frame_length_padded)
-    window->Resize(frame_length_padded, kUndefined);
+  if (window->Dim() != num_fft_bins)
+    window->Resize(num_fft_bins, kUndefined);
 
   // wave_start and wave_end are start and end indexes into 'wave', for the
   // piece of wave that we're trying to extract.
@@ -206,8 +206,8 @@ void ExtractWindow(int64 sample_offset,
     }
   }
 
-  if (frame_length_padded > frame_length)
-    window->Range(frame_length, frame_length_padded - frame_length).SetZero();
+  if (num_fft_bins > frame_length)
+    window->Range(frame_length, num_fft_bins - frame_length).SetZero();
 
   SubVector<BaseFloat> frame(*window, 0, frame_length);
 

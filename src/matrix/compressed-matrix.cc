@@ -31,7 +31,7 @@ MatrixIndexT CompressedMatrix::DataSize(const GlobalHeader &header) {
     return sizeof(GlobalHeader) +
         header.num_cols * (sizeof(PerColHeader) + header.num_rows);
   } else {
-    KALDI_ASSERT(header.format == 2) ;
+    KALDI_ASSERT(header.format == 2);
     return sizeof(GlobalHeader) +
         2 * header.num_rows * header.num_cols;
   }
@@ -51,7 +51,7 @@ void CompressedMatrix::Scale(float alpha) {
 
 template<typename Real>
 void CompressedMatrix::CopyFromMat(
-    const MatrixBase<Real> &mat) {
+    const MatrixBase<Real> &mat, int32 format) {
   if (data_ != NULL) {
     delete [] static_cast<float*>(data_);  // call delete [] because was allocated with new float[]
     data_ = NULL;
@@ -91,10 +91,16 @@ void CompressedMatrix::CopyFromMat(
   global_header.num_rows = mat.NumRows();
   global_header.num_cols = mat.NumCols();
 
-  if (mat.NumRows() > 8) {
-    global_header.format = 1;  // format where each row has a PerColHeader.
+  if (format <= 0) {
+    if (mat.NumRows() > 8) {
+      global_header.format = 1;  // format where each row has a PerColHeader.
+    } else {
+      global_header.format = 2;  // format where all data is uint16.
+    }
+  } else if (format == 1 || format == 2) {
+    global_header.format = format;
   } else {
-    global_header.format = 2;  // format where all data is uint16.
+    KALDI_ERR << "Error format for compression:format should be <=2.";
   }
 
   int32 data_size = DataSize(global_header);
@@ -135,10 +141,12 @@ void CompressedMatrix::CopyFromMat(
 
 // Instantiate the template for float and double.
 template
-void CompressedMatrix::CopyFromMat(const MatrixBase<float> &mat);
+void CompressedMatrix::CopyFromMat(const MatrixBase<float> &mat,
+                                   int32 format);
 
 template
-void CompressedMatrix::CopyFromMat(const MatrixBase<double> &mat);
+void CompressedMatrix::CopyFromMat(const MatrixBase<double> &mat,
+                                   int32 format);
 
 
 CompressedMatrix::CompressedMatrix(

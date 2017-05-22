@@ -23,9 +23,11 @@
 #include "hmm/transition-model.h"
 #include "nnet3/nnet-example.h"
 #include "nnet3/nnet-example-utils.h"
+#include <algorithm>
 
 namespace kaldi {
 namespace nnet3 {
+
 // rename name of NnetIo with old_name to new_name.
 void RenameIoNames(const std::string &old_name,
                    const std::string &new_name,
@@ -61,6 +63,32 @@ void ScaleAndRenameOutput(BaseFloat weight,
   RenameIoNames("output", new_output_name, eg);
 }
 
+void ApplyWeight(BaseFloat weight, NnetExample *eg) {
+  if (weight == 1.0) return;
+  // scale the supervision weight for egs
+  for (int32 i = 0; i < eg->io.size(); i++)
+    eg->io[i].deriv_weights.Scale(weight);
+}
+
+bool KeepOutputs(const std::vector<std::string> &keep_outputs, 
+                 NnetExample *eg) {
+  std::vector<NnetIo> io_new;
+  int32 num_outputs = 0;
+  for (std::vector<NnetIo>::iterator it = eg->io.begin();
+        it != eg->io.end(); ++it) {
+    if (it->name.find("output") != std::string::npos) {
+      if (!std::binary_search(keep_outputs.begin(), keep_outputs.end(), 
+                              it->name)) 
+        continue;
+      num_outputs++;
+    } 
+    io_new.push_back(*it);
+  }
+  eg->io.swap(io_new);
+
+  return num_outputs;
+}
+
 // returns an integer randomly drawn with expected value "expected_count"
 // (will be either floor(expected_count) or ceil(expected_count)).
 int32 GetCount(double expected_count) {
@@ -92,7 +120,7 @@ bool ContainsSingleExample(const NnetExample &eg,
                                         end = io.indexes.end();
     // Should not have an empty input/output type.
     KALDI_ASSERT(!io.indexes.empty());
-    if (io.name == "input" || io.name == "output") {
+    if (io.name == "input" || io.name.find("output") != std::string::npos) {
       int32 min_t = iter->t, max_t = iter->t;
       for (; iter != end; ++iter) {
         int32 this_t = iter->t;
@@ -109,7 +137,7 @@ bool ContainsSingleExample(const NnetExample &eg,
         *min_input_t = min_t;
         *max_input_t = max_t;
       } else {
-        KALDI_ASSERT(io.name == "output");
+        KALDI_ASSERT(io.name.find("output") != std::string::npos);
         done_output = true;
         *min_output_t = min_t;
         *max_output_t = max_t;
@@ -161,7 +189,7 @@ void FilterExample(const NnetExample &eg,
       min_t = min_input_t;
       max_t = max_input_t;
       is_input_or_output = true;
-    } else if (name == "output") {
+    } else if (name.find("output") != std::string::npos) {
       min_t = min_output_t;
       max_t = max_output_t;
       is_input_or_output = true;
@@ -171,6 +199,7 @@ void FilterExample(const NnetExample &eg,
     if (!is_input_or_output) {  // Just copy everything.
       io_out.indexes = io_in.indexes;
       io_out.features = io_in.features;
+      io_out.deriv_weights = io_in.deriv_weights;
     } else {
       const std::vector<Index> &indexes_in = io_in.indexes;
       std::vector<Index> &indexes_out = io_out.indexes;
@@ -191,6 +220,19 @@ void FilterExample(const NnetExample &eg,
         }
       }
       KALDI_ASSERT(iter_out == keep.end());
+
+      if (io_in.deriv_weights.Dim() > 0) {
+        io_out.deriv_weights.Resize(num_kept, kUndefined);
+        int32 in_dim = 0, out_dim = 0;
+        iter_out = keep.begin();
+        for (; iter_out != keep.end(); ++iter_out, in_dim++) {
+          if (*iter_out)
+            io_out.deriv_weights(out_dim++) = io_in.deriv_weights(in_dim);
+        }
+        KALDI_ASSERT(out_dim == num_kept);
+        KALDI_ASSERT(iter_out == keep.end());
+      }
+
       if (num_kept == 0)
         KALDI_ERR << "FilterExample removed all indexes for '" << name << "'";
 
@@ -283,6 +325,22 @@ bool SelectFromExample(const NnetExample &eg,
   return true;
 }
 
+bool RemoveZeroDerivOutputs(NnetExample *eg) {
+  std::vector<NnetIo> io_new;
+  int32 num_outputs = 0;
+  for (std::vector<NnetIo>::iterator it = eg->io.begin();
+        it != eg->io.end(); ++it) {
+    if (it->name.find("output") != std::string::npos) {
+      if (it->deriv_weights.Dim() > 0 && it->deriv_weights.Sum() == 0)
+        continue;
+      num_outputs++;
+    } 
+    io_new.push_back(*it);
+  }
+  eg->io.swap(io_new);
+
+  return (num_outputs > 0);
+}
 
 } // namespace nnet3
 } // namespace kaldi
@@ -310,6 +368,8 @@ int main(int argc, char *argv[]) {
     int32 srand_seed = 0;
     int32 frame_shift = 0;
     BaseFloat keep_proportion = 1.0;
+    std::string keep_outputs_str;
+    bool remove_zero_deriv_outputs = false;
 
     // The following config variables, if set, can be used to extract a single
     // frame of labels from a multi-frame example, and/or to reduce the amount
@@ -342,6 +402,11 @@ int main(int argc, char *argv[]) {
                 "feature left-context that we output.");
     po.Register("right-context", &right_context, "Can be used to truncate the "
                 "feature right-context that we output.");
+    po.Register("keep-outputs", &keep_outputs_str, "Comma separated list of "
+                "output nodes to keep");
+    po.Register("remove-zero-deriv-outputs", &remove_zero_deriv_outputs,
+                "Remove outputs that do not contribute to the objective "
+                "because of zero deriv-weights");
     po.Register("weights", &eg_weight_rspecifier,
                 "Rspecifier indexed by the key of egs, providing a weight by "
                 "which we will scale the supervision matrix for that eg. "
@@ -372,11 +437,17 @@ int main(int argc, char *argv[]) {
     for (int32 i = 0; i < num_outputs; i++)
       example_writers[i] = new NnetExampleWriter(po.GetArg(i+2));
 
+    std::vector<std::string> keep_outputs;
+    if (!keep_outputs_str.empty()) {
+      SplitStringToVector(keep_outputs_str, ",:", true, &keep_outputs);
+      std::sort(keep_outputs.begin(), keep_outputs.end());
+    }
 
     int64 num_read = 0, num_written = 0, num_err = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
-      bool modify_eg_output = !(eg_output_rspecifier.empty() &&
-                                eg_weight_rspecifier.empty());
+      bool modify_eg_output = (!eg_weight_rspecifier.empty() ||
+                               !eg_output_rspecifier.empty() ||
+                               !keep_outputs_str.empty());
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
@@ -385,11 +456,15 @@ int main(int argc, char *argv[]) {
         &eg = (modify_eg_output ? eg_modified_output : eg_orig);
       // Note: in the normal case we just use 'eg'; eg_modified_output is
       // for the case when the --outputs or --weights option is specified
-      // (only for multilingual training).
+      // (e.g. for multitask learning)
       BaseFloat weight = 1.0;
       std::string new_output_name;
-      if (modify_eg_output) { // This branch is only taken for multilingual training.
+      if (modify_eg_output) { 
+        // This branch is only taken for multilingual training.
         eg_modified_output = eg_orig;
+        if (!keep_outputs_str.empty()) {
+          if (!KeepOutputs(keep_outputs, &eg_modified_output)) continue;
+        }
         if (!eg_weight_rspecifier.empty()) {
           if (!egs_weight_reader.HasKey(key)) {
             KALDI_WARN << "No weight for example key " << key;
@@ -411,16 +486,26 @@ int main(int argc, char *argv[]) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
         if (frame_str == "" && left_context == -1 && right_context == -1 &&
             frame_shift == 0) {
-          if (modify_eg_output) // Only for multilingual training
+          if (remove_zero_deriv_outputs) 
+            if (!RemoveZeroDerivOutputs(&eg_modified_output)) continue;
+          if (!eg_weight_rspecifier.empty() && !eg_output_rspecifier.empty())
             ScaleAndRenameOutput(weight, new_output_name, &eg_modified_output);
+          else if (!eg_weight_rspecifier.empty()) {
+            ApplyWeight(weight, &eg_modified_output);
+          }
           example_writers[index]->Write(key, eg);
           num_written++;
         } else { // the --frame option or context options were set.
           NnetExample eg_modified;
           if (SelectFromExample(eg, frame_str, left_context, right_context,
                                 frame_shift, &eg_modified)) {
-            if (modify_eg_output)
+            if (remove_zero_deriv_outputs) 
+              if (!RemoveZeroDerivOutputs(&eg_modified)) continue;
+            if (!eg_weight_rspecifier.empty() && !eg_output_rspecifier.empty())
               ScaleAndRenameOutput(weight, new_output_name, &eg_modified);
+            else if (!eg_weight_rspecifier.empty()) {
+              ApplyWeight(weight, &eg_modified);
+            }
             // this branch of the if statement will almost always be taken (should only
             // not be taken for shorter-than-normal egs from the end of a file.
             example_writers[index]->Write(key, eg_modified);

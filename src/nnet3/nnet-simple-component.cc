@@ -920,6 +920,87 @@ void ClipGradientComponent::Add(BaseFloat alpha, const Component &other_in) {
   num_clipped_ += alpha * other->num_clipped_;
 }
 
+
+void ScaleGradientComponent::Init(const CuVectorBase<BaseFloat> &scales) {
+  KALDI_ASSERT(scales.Dim() != 0);
+  scales_ = scales;
+}
+
+
+void ScaleGradientComponent::InitFromConfig(ConfigLine *cfl) {
+  std::string filename;
+  // Accepts "scales" config (for filename) or "dim" -> random init, for testing.
+  if (cfl->GetValue("scales", &filename)) {
+    if (cfl->HasUnusedValues())
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
+    CuVector<BaseFloat> vec;
+    ReadKaldiObject(filename, &vec);
+    Init(vec);
+  } else {
+    int32 dim;
+    BaseFloat scale = 1.0;
+    bool scale_ok = cfl->GetValue("scale", &scale);
+    if (!cfl->GetValue("dim", &dim) || cfl->HasUnusedValues())
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
+    KALDI_ASSERT(dim > 0);
+    CuVector<BaseFloat> vec(dim);
+    if (scale_ok) {
+      vec.Set(scale);
+    } else {
+      vec.SetRandn();
+    }
+    Init(vec);
+  }
+}
+
+
+std::string ScaleGradientComponent::Info() const {
+  std::ostringstream stream;
+  stream << Component::Info();
+  PrintParameterStats(stream, "scales", scales_, true);
+  return stream.str();
+}
+
+void ScaleGradientComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                       const CuMatrixBase<BaseFloat> &in,
+                                       CuMatrixBase<BaseFloat> *out) const {
+  out->CopyFromMat(in);  // does nothing if same matrix.
+}
+
+void ScaleGradientComponent::Backprop(const std::string &debug_info,
+                                      const ComponentPrecomputedIndexes *indexes,
+                                      const CuMatrixBase<BaseFloat> &, // in_value
+                                      const CuMatrixBase<BaseFloat> &, // out_value
+                                      const CuMatrixBase<BaseFloat> &out_deriv,
+                                      Component *, // to_update
+                                      CuMatrixBase<BaseFloat> *in_deriv) const {
+  in_deriv->CopyFromMat(out_deriv);  // does nothing if same memory.
+  in_deriv->MulColsVec(scales_);
+}
+
+Component* ScaleGradientComponent::Copy() const {
+  ScaleGradientComponent *ans = new ScaleGradientComponent();
+  ans->scales_ = scales_;
+  return ans;
+}
+
+
+void ScaleGradientComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<ScaleGradientComponent>");
+  WriteToken(os, binary, "<Scales>");
+  scales_.Write(os, binary);
+  WriteToken(os, binary, "</ScaleGradientComponent>");
+}
+
+void ScaleGradientComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<ScaleGradientComponent>", "<Scales>");
+  scales_.Read(is, binary);
+  ExpectToken(is, binary, "</ScaleGradientComponent>");
+}
+
+
 void TanhComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                               const CuMatrixBase<BaseFloat> &in,
                               CuMatrixBase<BaseFloat> *out) const {
@@ -2492,6 +2573,26 @@ void ConstantFunctionComponent::UnVectorize(const VectorBase<BaseFloat> &params)
   output_.CopyFromVec(params);
 }
 
+void ExpComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                  const CuMatrixBase<BaseFloat> &in, 
+                                  CuMatrixBase<BaseFloat> *out) const { 
+  // Applied exp function
+  out->CopyFromMat(in);
+  out->ApplyExp();
+}
+
+void ExpComponent::Backprop(const std::string &debug_info,
+                            const ComponentPrecomputedIndexes *indexes,
+                            const CuMatrixBase<BaseFloat> &,//in_value,
+                            const CuMatrixBase<BaseFloat> &out_value,
+                            const CuMatrixBase<BaseFloat> &out_deriv,
+                            Component *to_update,
+                            CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (in_deriv != NULL) {
+    in_deriv->CopyFromMat(out_value);
+    in_deriv->MulElements(out_deriv);
+  }
+}
 
 NaturalGradientAffineComponent::NaturalGradientAffineComponent():
     max_change_per_sample_(0.0),
@@ -2543,10 +2644,15 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &max_change_scale_stats_);
     ReadToken(is, binary, &token);
   }
-  if (token != "<NaturalGradientAffineComponent>" &&
-      token != "</NaturalGradientAffineComponent>")
-    KALDI_ERR << "Expected <NaturalGradientAffineComponent> or "
-              << "</NaturalGradientAffineComponent>, got " << token;
+
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<NaturalGradientAffineComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</NaturalGradientAffineComponent>"
+
+  if (token != ostr_end.str() &&
+      token != ostr_beg.str())
+    KALDI_ERR << "Expected " << ostr_beg.str() << " or "
+              << ostr_end.str() << ", got " << token;
   SetNaturalGradientConfigs();
 }
 
@@ -2695,7 +2801,10 @@ void NaturalGradientAffineComponent::Write(std::ostream &os,
   WriteBasicType(os, binary, active_scaling_count_);
   WriteToken(os, binary, "<MaxChangeScaleStats>");
   WriteBasicType(os, binary, max_change_scale_stats_);
-  WriteToken(os, binary, "</NaturalGradientAffineComponent>");
+  
+  std::ostringstream ostr_end;
+  ostr_end << "</" << Type() << ">"; // e.g. "</NaturalGradientAffineComponent>"
+  WriteToken(os, binary, ostr_end.str());
 }
 
 std::string NaturalGradientAffineComponent::Info() const {
@@ -3078,6 +3187,126 @@ void SoftmaxComponent::StoreStats(const CuMatrixBase<BaseFloat> &out_value) {
   StoreStatsInternal(out_value, NULL);
 }
 
+std::string LogComponent::Info() const {
+  std::stringstream stream;
+  stream << NonlinearComponent::Info()
+         << ", log-floor=" << log_floor_;
+  return stream.str();
+}
+
+void LogComponent::InitFromConfig(ConfigLine *cfl) {
+  cfl->GetValue("log-floor", &log_floor_);
+  NonlinearComponent::InitFromConfig(cfl);
+}
+
+void LogComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                             const CuMatrixBase<BaseFloat> &in, 
+                             CuMatrixBase<BaseFloat> *out) const { 
+  // Apllies log function (x >= epsi ? log(x) : log(epsi)).
+  out->CopyFromMat(in);
+  out->ApplyFloor(log_floor_);
+  out->ApplyLog();
+}
+
+void LogComponent::Backprop(const std::string &debug_info,
+                            const ComponentPrecomputedIndexes *indexes,
+                            const CuMatrixBase<BaseFloat> &in_value,
+                            const CuMatrixBase<BaseFloat> &out_value,
+                            const CuMatrixBase<BaseFloat> &out_deriv,
+                            Component *to_update,
+                            CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (in_deriv != NULL) {
+    CuMatrix<BaseFloat> divided_in_value(in_value), floored_in_value(in_value);
+    divided_in_value.Set(1.0);
+    floored_in_value.CopyFromMat(in_value);
+    floored_in_value.ApplyFloor(log_floor_); // (x > epsi ? x : epsi) 
+
+    divided_in_value.DivElements(floored_in_value); // (x > epsi ? 1/x : 1/epsi) 
+    in_deriv->CopyFromMat(in_value);
+    in_deriv->Add(-1.0 * log_floor_); // (x - epsi)
+    in_deriv->ApplyHeaviside(); // (x > epsi ? 1 : 0)
+    in_deriv->MulElements(divided_in_value); // (dy/dx: x  > epsi ? 1/x : 0)
+    in_deriv->MulElements(out_deriv);   // dF/dx = dF/dy * dy/dx
+  }
+}
+
+void LogComponent::Read(std::istream &is, bool binary) {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<SigmoidComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</SigmoidComponent>"
+  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<Dim>");
+  ReadBasicType(is, binary, &dim_); // Read dimension.
+  ExpectToken(is, binary, "<ValueAvg>");
+  value_sum_.Read(is, binary);
+  ExpectToken(is, binary, "<DerivAvg>");
+  deriv_sum_.Read(is, binary);
+  ExpectToken(is, binary, "<Count>");
+  ReadBasicType(is, binary, &count_);
+  value_sum_.Scale(count_);
+  deriv_sum_.Scale(count_);
+
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<SelfRepairLowerThreshold>") {
+    ReadBasicType(is, binary, &self_repair_lower_threshold_);
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<SelfRepairUpperThreshold>") {
+    ReadBasicType(is, binary, &self_repair_upper_threshold_);
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<SelfRepairScale>") {
+    ReadBasicType(is, binary, &self_repair_scale_);
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<LogFloor>") {
+    ReadBasicType(is, binary, &log_floor_);
+    ReadToken(is, binary, &token);
+  }
+  if (token != ostr_end.str()) {
+    KALDI_ERR << "Expected token " << ostr_end.str()
+              << ", got " << token;
+  }
+}
+
+void LogComponent::Write(std::ostream &os, bool binary) const {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<SigmoidComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</SigmoidComponent>"
+  WriteToken(os, binary, ostr_beg.str());
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  // Write the values and derivatives in a count-normalized way, for
+  // greater readability in text form.
+  WriteToken(os, binary, "<ValueAvg>");
+  Vector<BaseFloat> temp(value_sum_);
+  if (count_ != 0.0) temp.Scale(1.0 / count_);
+  temp.Write(os, binary);
+  WriteToken(os, binary, "<DerivAvg>");
+
+  temp.Resize(deriv_sum_.Dim(), kUndefined);
+  temp.CopyFromVec(deriv_sum_);
+  if (count_ != 0.0) temp.Scale(1.0 / count_);
+  temp.Write(os, binary);
+  WriteToken(os, binary, "<Count>");
+  WriteBasicType(os, binary, count_);
+  if (self_repair_lower_threshold_ != kUnsetThreshold) {
+    WriteToken(os, binary, "<SelfRepairLowerThreshold>");
+    WriteBasicType(os, binary, self_repair_lower_threshold_);
+  }
+  if (self_repair_upper_threshold_ != kUnsetThreshold) {
+    WriteToken(os, binary, "<SelfRepairUpperThreshold>");
+    WriteBasicType(os, binary, self_repair_upper_threshold_);
+  }
+  if (self_repair_scale_ != 0.0) {
+    WriteToken(os, binary, "<SelfRepairScale>");
+    WriteBasicType(os, binary, self_repair_scale_);
+  }
+  WriteToken(os, binary, "<LogFloor>");
+  WriteBasicType(os, binary, log_floor_);
+  WriteToken(os, binary, ostr_end.str());
+}
+
 
 void LogSoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                     const CuMatrixBase<BaseFloat> &in,
@@ -3118,12 +3347,18 @@ void FixedScaleComponent::InitFromConfig(ConfigLine *cfl) {
     Init(vec);
   } else {
     int32 dim;
+    BaseFloat scale = 1.0;
+    bool scale_ok = cfl->GetValue("scale", &scale);
     if (!cfl->GetValue("dim", &dim) || cfl->HasUnusedValues())
       KALDI_ERR << "Invalid initializer for layer of type "
                 << Type() << ": \"" << cfl->WholeLine() << "\"";
     KALDI_ASSERT(dim > 0);
     CuVector<BaseFloat> vec(dim);
-    vec.SetRandn();
+    if (scale_ok) {
+      vec.Set(scale);
+    } else {
+      vec.SetRandn();
+    }
     Init(vec);
   }
 }

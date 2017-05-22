@@ -1402,7 +1402,8 @@ OnlineProcessPitch::OnlineProcessPitch(
     dim_ ((opts.add_pov_feature ? 1 : 0)
           + (opts.add_normalized_log_pitch ? 1 : 0)
           + (opts.add_delta_pitch ? 1 : 0)
-          + (opts.add_raw_log_pitch ? 1 : 0)) {
+          + (opts.add_raw_log_pitch ? 1 : 0)
+          + (opts.add_raw_pov ? 1 : 0)) {
   KALDI_ASSERT(dim_ > 0 &&
                " At least one of the pitch features should be chosen. "
                "Check your post-process-pitch options.");
@@ -1425,6 +1426,8 @@ void OnlineProcessPitch::GetFrame(int32 frame,
     (*feat)(index++) = GetDeltaPitchFeature(frame_delayed);
   if (opts_.add_raw_log_pitch)
     (*feat)(index++) = GetRawLogPitchFeature(frame_delayed);
+  if (opts_.add_raw_pov)
+    (*feat)(index++) = GetRawPov(frame_delayed);
   KALDI_ASSERT(index == dim_);
 }
 
@@ -1480,6 +1483,13 @@ BaseFloat OnlineProcessPitch::GetNormalizedLogPitchFeature(int32 frame) {
         normalization_stats_[frame].sum_pov,
       normalized_log_pitch = log_pitch - avg_log_pitch;
   return normalized_log_pitch * opts_.pitch_scale;
+}
+
+BaseFloat OnlineProcessPitch::GetRawPov(int32 frame) const {
+  Vector<BaseFloat> tmp(kRawFeatureDim);
+  src_->GetFrame(frame, &tmp);  // (NCCF, pitch) from pitch extractor
+  BaseFloat nccf = tmp(0);
+  return NccfToPov(nccf);
 }
 
 

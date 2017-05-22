@@ -38,23 +38,28 @@ if [ ! -s $dir/utt2dur ]; then
   utils/data/get_utt2dur.sh $dir 1>&2
 fi
 
-if [ ! -f $dir/feats.scp ]; then
-  echo "$0: $dir/feats.scp does not exist" 1>&2
-  exit 1
+if [ ! -s $dir/frame_shift ]; then
+  if [ ! -f $dir/feats.scp ]; then
+    echo "$0: $dir/feats.scp does not exist" 1>&2
+    exit 1
+  fi
+
+  temp=$(mktemp /tmp/tmp.XXXX)
+
+  feat-to-len "scp:head -n 10 $dir/feats.scp|" ark,t:- > $temp
+
+  if [ -z $temp ]; then
+    echo "$0: error running feat-to-len" 1>&2
+    exit 1
+  fi
+
+  frame_shift=$(head -n 10 $dir/utt2dur | paste - $temp | \
+    awk '{ dur += $2; frames += $4; } END { shift = dur / frames; if (shift > 0.01 && shift < 0.0102) shift = 0.01; print shift; }') || exit 1;
+
+  echo $frame_shift > $dir/frame_shift
+  rm $temp
 fi
 
-temp=$(mktemp /tmp/tmp.XXXX)
-
-feat-to-len "scp:head -n 10 $dir/feats.scp|" ark,t:- > $temp
-
-if [ -z $temp ]; then
-  echo "$0: error running feat-to-len" 1>&2
-  exit 1
-fi
-
-head -n 10 $dir/utt2dur | paste - $temp | \
-   awk '{ dur += $2; frames += $4; } END { shift = dur / frames; if (shift > 0.0098 && shift < 0.0102) shift = 0.01; print shift; }' || exit 1;
-
-rm $temp
+cat $dir/frame_shift
 
 exit 0

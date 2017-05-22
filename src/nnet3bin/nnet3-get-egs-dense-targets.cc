@@ -31,12 +31,15 @@ namespace kaldi {
 namespace nnet3 {
 
 
-static void ProcessFile(const MatrixBase<BaseFloat> &feats,
+static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
                         int32 ivector_period,
+                        const VectorBase<BaseFloat> *deriv_weights,
                         const MatrixBase<BaseFloat> &targets,
                         const std::string &utt_id,
                         bool compress,
+                        int32 input_compress_format,
+                        int32 feats_compress_format,
                         int32 num_targets,
                         UtteranceSplitter *utt_splitter,
                         NnetExampleWriter *example_writer) {
@@ -44,7 +47,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
   if (!utt_splitter->LengthsMatch(utt_id, num_input_frames,
                                   targets.NumRows())) {
     if (targets.NumRows() == 0)
-      return;
+      return false;
     // normally we wouldn't process such an utterance but there may be
     // situations when a small disagreement is acceptable.
     KALDI_WARN << " .. processing this utterance anyway.";
@@ -59,7 +62,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     KALDI_WARN << "Not producing egs for utterance " << utt_id
                << " because it is too short: "
                << num_input_frames << " frames.";
-    return;
+    return false;
   }
 
   // 'frame_subsampling_factor' is not used in any recipes at the time of
@@ -92,6 +95,9 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
 
     // call the regular input "input".
     eg.io.push_back(NnetIo("input", -chunk.left_context, input_frames));
+
+    if (compress)
+      eg.io.back().Compress(input_compress_format);
 
     if (ivector_feats != NULL) {
       // if applicable, add the iVector feature.
@@ -131,9 +137,23 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
       this_target_dest.CopyFromVec(this_target_src);
     }
 
-    // push this created targets matrix into the eg
-    eg.io.push_back(NnetIo("output", 0, targets_part));
+    if (!deriv_weights) {
+      // push this created targets matrix into the eg
+      eg.io.push_back(NnetIo("output", 0, targets_part));
+    } else {
+      Vector<BaseFloat> this_deriv_weights(num_frames_subsampled);
+      for (int32 i = 0; i < num_frames_subsampled; i++) {
+        int32 t = i + start_frame_subsampled;
+        if (t >= targets.NumRows())
+          t = targets.NumRows() - 1;
+        this_deriv_weights(i) = (*deriv_weights)(t);
+      }
+      eg.io.push_back(NnetIo("output", this_deriv_weights, 0, targets_part));
+    }
 
+    if (compress)
+      eg.Compress(feats_compress_format);
+      
     if (compress)
       eg.Compress();
 
@@ -144,9 +164,9 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
 
     example_writer->Write(key, eg);
   }
+
+  return true;
 }
-
-
 
 } // namespace nnet2
 } // namespace kaldi
@@ -176,16 +196,21 @@ int main(int argc, char *argv[]) {
 
 
     bool compress = true;
+    int32 input_compress_format = 0, feats_compress_format = 0;
     int32 num_targets = -1, length_tolerance = 100, online_ivector_period = 1;
     ExampleGenerationConfig eg_config;  // controls num-frames,
                                         // left/right-context, etc.
 
-    std::string online_ivector_rspecifier;
+    std::string online_ivector_rspecifier, deriv_weights_rspecifier;
     ParseOptions po(usage);
 
     eg_config.Register(&po);
     po.Register("compress", &compress, "If true, write egs in "
                 "compressed format.");
+    po.Register("compress-format", &feats_compress_format, "Format for "
+                "compressing all feats in general");
+    po.Register("input-compress-format", &input_compress_format, "Format for "
+                "compressing input feats e.g. Use 2 for compressing wave");
     po.Register("num-targets", &num_targets, "Output dimension in egs, "
                 "only used to check targets have correct dim if supplied.");
     po.Register("ivectors", &online_ivector_rspecifier, "Alias for "
@@ -197,6 +222,11 @@ int main(int argc, char *argv[]) {
                 "--online-ivectors option");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
+    po.Register("deriv-weights-rspecifier", &deriv_weights_rspecifier,
+                "Per-frame weights (only binary - 0 or 1) that specifies "
+                "whether a frame's gradient must be backpropagated or not. "
+                "Not specifying this is equivalent to specifying a vector of "
+                "all 1s.");
 
     po.Read(argc, argv);
 
@@ -217,7 +247,8 @@ int main(int argc, char *argv[]) {
     RandomAccessBaseFloatMatrixReader matrix_reader(matrix_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
     RandomAccessBaseFloatMatrixReader online_ivector_reader(online_ivector_rspecifier);
-
+    RandomAccessBaseFloatVectorReader deriv_weights_reader(deriv_weights_rspecifier);
+    
     int32 num_err = 0;
 
     for (; !feat_reader.Done(); feat_reader.Next()) {
@@ -228,10 +259,10 @@ int main(int argc, char *argv[]) {
         num_err++;
       } else {
         const Matrix<BaseFloat> &target_matrix = matrix_reader.Value(key);
-        if (target_matrix.NumRows() != feats.NumRows()) {
-          KALDI_WARN << "Target matrix has wrong size "
-                     << target_matrix.NumRows()
-                     << " versus " << feats.NumRows();
+        if (abs(target_matrix.NumRows() - feats.NumRows()) > length_tolerance) {
+          KALDI_WARN << "Length difference between feats " << feats.NumRows()
+                     << " and target matrix " << target_matrix.NumRows()
+                     << "exceeds tolerance " << length_tolerance;
           num_err++;
           continue;
         }
@@ -258,9 +289,34 @@ int main(int argc, char *argv[]) {
           continue;
         }
 
-        ProcessFile(feats, online_ivector_feats, online_ivector_period,
-                    target_matrix, key, compress, num_targets,
-                    &utt_splitter, &example_writer);
+        const Vector<BaseFloat> *deriv_weights = NULL;
+        if (!deriv_weights_rspecifier.empty()) {
+          if (!deriv_weights_reader.HasKey(key)) {
+            KALDI_WARN << "No deriv weights for utterance " << key;
+            num_err++;
+            continue;
+          } else {
+            // this address will be valid until we call HasKey() or Value()
+            // again.
+            deriv_weights = &(deriv_weights_reader.Value(key));
+          }
+        }
+
+        if (deriv_weights && 
+            (abs(feats.NumRows() - deriv_weights->Dim()) > length_tolerance
+            || deriv_weights->Dim() == 0)) {
+          KALDI_WARN << "Length difference between feats " << feats.NumRows()
+                     << " and deriv weights " << deriv_weights->Dim()
+                     << " exceeds tolerance " << length_tolerance;
+          num_err++;
+          continue;
+        }
+
+        if (!ProcessFile(feats, online_ivector_feats, online_ivector_period,
+                    deriv_weights, target_matrix, key, compress, 
+                    input_compress_format, feats_compress_format, num_targets,
+                    &utt_splitter, &example_writer))
+          num_err++;
       }
     }
     if (num_err > 0)

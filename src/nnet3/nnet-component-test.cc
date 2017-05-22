@@ -381,6 +381,11 @@ bool TestSimpleComponentDataDerivative(const Component &c,
     KALDI_LOG << "Accepting deriv differences since "
               << "it is ClipGradientComponent.";
     return true;
+  } 
+  else if (c.Type() == "ScaleGradientComponent") {
+    KALDI_LOG << "Accepting deriv differences since "
+              << "it is ScaleGradientComponent.";
+    return true;
   }
   return ans;
 }

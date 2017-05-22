@@ -59,7 +59,8 @@ def get_outputs_list(model_file, get_raw_nnet_from_am=True):
 
 def get_multitask_egs_opts(egs_dir, egs_prefix="",
                            archive_index=-1,
-                           use_multitask_egs=False):
+                           use_multitask_egs=False,
+                           rename_multitask_outputs=True):
     """ Generates egs option for multitask(or multilingual) training setup,
         if {egs_prefix}output.*.ark or {egs_prefix}weight.*.ark files exists in egs_dir.
         Each line in {egs_prefix}*.scp has a corresponding line containing
@@ -80,7 +81,7 @@ def get_multitask_egs_opts(egs_dir, egs_prefix="",
                                      egs_prefix=egs_prefix,
                                      egs_suffix=egs_suffix))
         output_rename_opt = ""
-        if os.path.isfile(output_file_name):
+        if rename_multitask_outputs and os.path.isfile(output_file_name):
             output_rename_opt = ("--outputs=ark:{output_file_name}".format(
                 output_file_name=output_file_name))
 
@@ -653,7 +654,7 @@ def remove_model(nnet_dir, iter, num_iters, models_to_combine=None,
         os.remove(file_name)
 
 
-def self_test():
+def _self_test():
     assert halve_minibatch_size_str('64') == '32'
     assert halve_minibatch_size_str('64,16:32') == '32,8:16'
     assert halve_minibatch_size_str('1') == '1'
@@ -741,6 +742,18 @@ class CommonParser:
                                  action=common_lib.NullstrToNoneAction,
                                  help="""String to provide options directly
                                  to steps/nnet3/get_egs.sh script""")
+        self.parser.add_argument("--egs.use-multitask-egs", type=str,
+                                 dest='use_multitask_egs',
+                                 default=False, choices=["true", "false"],
+                                 action=common_lib.StrToBoolAction,
+                                 help="""Use mutlitask egs created using
+                                 allocate_multilingual_egs.py.""")
+        self.parser.add_argument("--egs.rename-multitask-outputs", type=str,
+                                 dest='rename_multitask_outputs',
+                                 default=True, choices=["true", "false"],
+                                 action=common_lib.StrToBoolAction,
+                                 help="""Rename multitask outputs created using
+                                 allocate_multilingual_egs.py.""")
 
         # trainer options
         self.parser.add_argument("--trainer.srand", type=int, dest='srand',
@@ -858,6 +871,13 @@ class CommonParser:
                                  lstm*=0,0.2,0'.  More general should precede
                                  less general patterns, as they are applied
                                  sequentially.""")
+        self.parser.add_argument("--trainer.compute-per-dim-accuracy",
+                                 dest='compute_per_dim_accuracy',
+                                 type=str, choices=['true', 'false'],
+                                 default=False,
+                                 action=common_lib.StrToBoolAction,
+                                 help="Compute train and validation "
+                                 "accuracy per-dim")
 
         # General options
         self.parser.add_argument("--stage", type=int, default=-4,
@@ -924,4 +944,4 @@ class CommonParser:
 
 
 if __name__ == '__main__':
-    self_test()
+    _self_test()

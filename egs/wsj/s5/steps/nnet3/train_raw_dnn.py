@@ -53,6 +53,9 @@ def get_args():
     parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
                         default=8,
                         help="Number of output labels per example")
+    parser.add_argument("--egs.extra-copy-cmd", type=str,
+                        dest='extra_egs_copy_cmd', default = "",
+                        help="""Modify egs before passing it to training""");
 
     # trainer options
     parser.add_argument("--trainer.prior-subset-size", type=int,
@@ -296,10 +299,12 @@ def train(args, run_opts, background_process_handler):
                             ''.format(args.egs_dir))
         use_multitask_egs = True
     else:
-        if (not os.path.exists('{0}/valid_diagnostic.egs'.format(args.egs_dir))):
+        if (not os.path.exists('{0}/valid_diagnostic.egs'
+                               ''.format(args.egs_dir))):
             raise Exception('neither {0}/valid_diagnostic.egs nor '
                             '{0}/valid_diagnostic.scp exist.'
-                            'This script expects one of them.'.format(args.egs_dir))
+                            'This script expects one of them.'
+                            ''.format(args.egs_dir))
         use_multitask_egs = False
 
     def learning_rate(iter, current_num_jobs, num_archives_processed):
@@ -348,7 +353,9 @@ def train(args, run_opts, background_process_handler):
                 run_opts=run_opts,
                 get_raw_nnet_from_am=False,
                 background_process_handler=background_process_handler,
-                use_multitask_egs=use_multitask_egs)
+                use_multitask_egs=use_multitask_egs,
+                rename_multitask_outputs=rename_multitask_outputs,
+                extra_egs_copy_cmd=args.extra_egs_copy_cmd)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
@@ -381,7 +388,9 @@ def train(args, run_opts, background_process_handler):
             background_process_handler=background_process_handler,
             get_raw_nnet_from_am=False,
             sum_to_one_penalty=args.combine_sum_to_one_penalty,
-            use_multitask_egs=use_multitask_egs)
+            use_multitask_egs=use_multitask_egs,
+            rename_multitask_outputs=rename_multitask_outputs,
+            extra_egs_copy_cmd=args.extra_egs_copy_cmd)
 
     if include_log_softmax and args.stage <= num_iters + 1:
         logger.info("Getting average posterior for output-node 'output'.")
@@ -390,7 +399,8 @@ def train(args, run_opts, background_process_handler):
             num_archives=num_archives,
             left_context=left_context, right_context=right_context,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts,
-            get_raw_nnet_from_am=False)
+            get_raw_nnet_from_am=False,
+            extra_egs_copy_cmd=args.extra_egs_copy_cmd)
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory "
@@ -411,10 +421,12 @@ def train(args, run_opts, background_process_handler):
     outputs_list = common_train_lib.get_outputs_list("{0}/final.raw".format(
         args.dir), get_raw_nnet_from_am=False)
     if 'output' in outputs_list:
-        [report, times, data] = nnet3_log_parse.generate_acc_logprob_report(args.dir)
+        [report, times, data] = nnet3_log_parse.generate_acc_logprob_report(
+            args.dir)
         if args.email is not None:
             common_lib.send_mail(report, "Update : Expt {0} : "
-                                         "complete".format(args.dir), args.email)
+                                         "complete".format(args.dir),
+                                 args.email)
 
         with open("{dir}/accuracy.{output_name}.report".format(dir=args.dir),
                   "w") as f:

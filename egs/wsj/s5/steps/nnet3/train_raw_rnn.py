@@ -65,6 +65,9 @@ def get_args():
                         should halve --trainer.samples-per-iter.  May be
                         a comma-separated list of alternatives: first width
                         is the 'principal' chunk-width, used preferentially""")
+    parser.add_argument("--egs.extra-copy-cmd", type=str,
+                        dest='extra_egs_copy_cmd', default = "",
+                        help="""Modify egs before passing it to training""");
 
     # trainer options
     parser.add_argument("--trainer.samples-per-iter", type=int,
@@ -237,11 +240,17 @@ def train(args, run_opts, background_process_handler):
         # discriminative pretraining
         num_hidden_layers = variables['num_hidden_layers']
         add_lda = common_lib.str_to_bool(variables['add_lda'])
-        include_log_softmax = common_lib.str_to_bool(
-            variables['include_log_softmax'])
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in "
                         "{1}".format(str(e), '{0}/configs'.format(args.dir)))
+
+    try:
+        include_log_softmax = common_lib.str_to_bool(
+            variables['include_log_softmax'])
+    except KeyError as e:
+        logger.warning("KeyError {0}: Using default include-log-softmax value "
+                       "as False.".format(str(e)))
+        include_log_softmax = False
 
     left_context = args.chunk_left_context + model_left_context
     right_context = args.chunk_right_context + model_right_context
@@ -421,7 +430,11 @@ def train(args, run_opts, background_process_handler):
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
                 get_raw_nnet_from_am=False,
-                background_process_handler=background_process_handler)
+                background_process_handler=background_process_handler,
+                extra_egs_copy_cmd=args.extra_egs_copy_cmd,
+                use_multitask_egs=args.use_multitask_egs,
+                rename_multitask_outputs=args.rename_multitask_outputs,
+                compute_per_dim_accuracy=args.compute_per_dim_accuracy)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
@@ -446,6 +459,9 @@ def train(args, run_opts, background_process_handler):
 
     if args.stage <= num_iters:
         logger.info("Doing final combination to produce final.raw")
+        common_lib.run_kaldi_command(
+            "cp {dir}/{num_iters}.raw {dir}/pre_combine.raw"
+            "".format(dir=args.dir, num_iters=num_iters))
         train_lib.common.combine_models(
             dir=args.dir, num_iters=num_iters,
             models_to_combine=models_to_combine, egs_dir=egs_dir,
@@ -454,6 +470,8 @@ def train(args, run_opts, background_process_handler):
             run_opts=run_opts, chunk_width=args.chunk_width,
             background_process_handler=background_process_handler,
             get_raw_nnet_from_am=False,
+            extra_egs_copy_cmd=args.extra_egs_copy_cmd,
+            compute_per_dim_accuracy=args.compute_per_dim_accuracy,
             sum_to_one_penalty=args.combine_sum_to_one_penalty)
 
     if include_log_softmax and args.stage <= num_iters + 1:
@@ -464,7 +482,8 @@ def train(args, run_opts, background_process_handler):
             num_archives=num_archives,
             left_context=left_context, right_context=right_context,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts,
-            get_raw_nnet_from_am=False)
+            get_raw_nnet_from_am=False,
+            extra_egs_copy_cmd=args.extra_egs_copy_cmd)
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory "

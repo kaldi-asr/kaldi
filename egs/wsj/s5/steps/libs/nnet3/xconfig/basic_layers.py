@@ -474,6 +474,7 @@ class XconfigOutputLayer(XconfigLayerBase):
                        'param-stddev' : 0.0,
                        'bias-stddev' : 0.0,
                        'output-delay' : 0,
+                       'objective-scale': 1.0,
                        'ng-affine-options' : ''
                       }
 
@@ -484,7 +485,7 @@ class XconfigOutputLayer(XconfigLayerBase):
                                 "".format(self.config['dim']))
 
         if self.config['objective-type'] != 'linear' and \
-                self.config['objective_type'] != 'quadratic':
+                self.config['objective-type'] != 'quadratic':
             raise RuntimeError("In output-layer, objective-type has"
                                 " invalid value {0}"
                                 "".format(self.config['objective-type']))
@@ -537,6 +538,7 @@ class XconfigOutputLayer(XconfigLayerBase):
         bias_stddev = self.config['bias-stddev']
         output_delay = self.config['output-delay']
         max_change = self.config['max-change']
+        objective_scale = self.config['objective-scale']
         ng_affine_options = self.config['ng-affine-options']
 
         # note: ref.config is used only for getting the left-context and
@@ -578,6 +580,18 @@ class XconfigOutputLayer(XconfigLayerBase):
                 ans.append((config_name, line))
                 cur_node = '{0}.fixed-scale'.format(self.name)
 
+            if objective_scale != 1.0:
+                line = ('component name={0}.objective-scale'
+                        ' type=ScaleGradientComponent scale={1} dim={2}'
+                        ''.format(self.name, objective_scale, output_dim))
+                ans.append((config_name, line))
+
+                line = ('component-node name={0}.objective-scale'
+                        ' component={0}.objective-scale input={1}'
+                        ''.format(self.name, cur_node))
+                ans.append((config_name, line))
+                cur_node = '{0}.objective-scale'.format(self.name)
+
             if include_log_softmax:
                 line = ('component name={0}.log-softmax'
                         ' type=LogSoftmaxComponent dim={1}'
@@ -593,7 +607,9 @@ class XconfigOutputLayer(XconfigLayerBase):
             if output_delay != 0:
                 cur_node = 'Offset({0}, {1})'.format(cur_node, output_delay)
 
-            line = ('output-node name={0} input={1}'.format(self.name, cur_node))
+            line = ('output-node name={0} input={1} '
+                    'objective={2}'.format(
+                self.name, cur_node, objective_type))
             ans.append((config_name, line))
         return ans
 
@@ -636,7 +652,24 @@ class XconfigBasicLayer(XconfigLayerBase):
                         'max-change' : 0.75,
                         'self-repair-scale' : 1.0e-05,
                         'target-rms' : 1.0,
-                        'ng-affine-options' : ''}
+                        'ng-affine-options' : '',
+                        'add-log-stddev' : False }
+
+    def set_derived_configs(self):
+        output_dim = self.config['dim']
+        # If not set, the output-dim defaults to the input-dim.
+        if output_dim <= 0:
+            self.config['dim'] = self.descriptors['input']['dim']
+
+        if self.config['add-log-stddev']:
+            split_layer_name = self.layer_type.split('-')
+            assert split_layer_name[-1] == 'layer'
+            nonlinearities = split_layer_name[:-1]
+
+            for nonlinearity in nonlinearities:
+                if nonlinearity == "renorm":
+                    output_dim += 1
+        self.config['output-dim'] = output_dim
 
     def check_configs(self):
         if self.config['dim'] < 0:
@@ -660,12 +693,7 @@ class XconfigBasicLayer(XconfigLayerBase):
         return '{0}.{1}'.format(self.name, last_nonlinearity)
 
     def output_dim(self, auxiliary_output = None):
-        output_dim = self.config['dim']
-        # If not set, the output-dim defaults to the input-dim.
-        if output_dim <= 0:
-            output_dim = self.descriptors['input']['dim']
-        return output_dim
-
+        return self.config['output-dim']
 
     def get_full_config(self):
         ans = []
@@ -695,10 +723,12 @@ class XconfigBasicLayer(XconfigLayerBase):
         return self._add_components(input_desc, input_dim, nonlinearities)
 
     def _add_components(self, input_desc, input_dim, nonlinearities):
-        output_dim = self.output_dim()
+        output_dim = self.config['dim']
         self_repair_scale = self.config['self-repair-scale']
         target_rms = self.config['target-rms']
         max_change = self.config['max-change']
+        add_log_stddev = ("true" if self.config['add-log-stddev']
+                          else "false")
         ng_affine_options = self.config['ng-affine-options']
 
         configs = []
@@ -745,8 +775,11 @@ class XconfigBasicLayer(XconfigLayerBase):
                 line = ('component name={0}.{1}'
                         ' type=NormalizeComponent dim={2}'
                         ' target-rms={3}'
+                        ' add-log-stddev={4}'
                         ''.format(self.name, nonlinearity, output_dim,
-                            target_rms))
+                                  target_rms, add_log_stddev))
+                if self.config['add-log-stddev']:
+                    output_dim += 1
 
             else:
                 raise RuntimeError("Unknown nonlinearity type: {0}"
