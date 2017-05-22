@@ -98,11 +98,6 @@ def get_args():
 
     args = parser.parse_args()
 
-    if args.hyp_format == "CTM" and args.reco2file_and_channel is None:
-        raise RuntimeError(
-            "--reco2file-and-channel must be provided for "
-            "hyp-format=CTM")
-
     args.debug_only = bool(args.debug_only == "true")
 
     global verbose_level
@@ -573,7 +568,7 @@ def run(args):
                                           oov_word=args.oov_word,
                                           symbol_table=symbol_table)
                 for line in ctm_edits:
-                    ctm_line = list(reco2file_and_channel[reco])
+                    ctm_line = [reco, reco2file_and_channel[reco]]
                     ctm_line.extend(line)
                     print(ctm_line_to_string(ctm_line),
                           file=args.alignment_out_file)

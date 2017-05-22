@@ -141,7 +141,11 @@ if [ -f $srcdir/feats.scp ]; then
   # matrices in Kaldi.
   frame_shift=$(utils/data/get_frame_shift.sh $srcdir)
   echo "$0: note: frame shift is $frame_shift [affects feats.scp]"
-
+  
+  utils/data/get_utt2num_frames.sh --cmd "run.pl" --nj 1 $srcdir
+  awk '{print $1" "$2}' $subsegments | \
+    utils/apply_map.pl -f 2 $srcdir/utt2num_frames > \
+    $dir/utt2max_frames
 
   # The subsegments format is <new-utt-id> <old-utt-id> <start-time> <end-time>.
   # e.g. 'utt_foo-1 utt_foo 7.21 8.93'
@@ -167,7 +171,11 @@ if [ -f $srcdir/feats.scp ]; then
   awk -v s=$frame_shift '{print $1, $2, int(($3/s)+0.5), int(($4/s)-0.5);}' <$subsegments| \
     utils/apply_map.pl -f 2 $srcdir/feats.scp | \
     awk '{p=NF-1; for (n=1;n<NF-2;n++) printf("%s ", $n); k=NF-2; l=NF-1; printf("%s[%d:%d]\n", $k, $l, $NF)}' | \
-    utils/data/normalize_data_range.pl  >$dir/feats.scp
+    utils/data/fix_subsegment_feats.pl $dir/utt2max_frames | \
+    utils/data/normalize_data_range.pl >$dir/feats.scp || { echo "Failed to create $dir/feats.scp" && exit; }
+  
+  cat $dir/feats.scp | perl -ne 'm/^(\S+) .+\[(\d+):(\d+)\]$/; print "$1 " . ($3-$2+1) . "\n"' > \
+    $dir/utt2num_frames
 fi
 
 

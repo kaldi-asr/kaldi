@@ -16,6 +16,7 @@ in the two overlapping segments, and chooses the better one.
 
 from __future__ import print_function
 import argparse
+import collections
 import logging
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ def read_segments(segments_file):
     {recording_id: list-of-utterances}
     """
     segments = {}
-    reco2utt = defaultdict(list)
+    reco2utt = collections.defaultdict(list)
 
     num_lines = 0
     for line in segments_file:
@@ -103,9 +104,6 @@ def read_ctm_edits(ctm_edits_file, segments):
 
     num_lines = 0
     for line in ctm_edits_file:
-
-    for key in [x[0] for x in segments.values()]:
-        ctm_edits[key] = []
         num_lines += 1
         parts = line.split()
 
@@ -115,9 +113,9 @@ def read_ctm_edits(ctm_edits_file, segments):
         if (reco, utt) not in ctm_edits:
             ctm_edits[(reco, utt)] = []
 
-        ctms[(reco, utt)].append([parts[0], parts[1], float(parts[2]),
-                                  float(parts[3]), parts[4], float(parts[5])]
-                                 + parts[6:])
+        ctm_edits[(reco, utt)].append(
+            [parts[0], parts[1], float(parts[2]), float(parts[3]),
+             parts[4], float(parts[5])] + parts[6:])
 
     logger.info("Read %d lines from CTM %s", num_lines, ctm_edits_file.name)
 
@@ -149,49 +147,6 @@ def choose_best_ctm_lines(first_lines, second_lines,
                         key=lambda x: wer(x[1]))
 
     return i
-
-    #ctm_edit = []
-    #prev_utt = ""
-    #num_lines = 0
-    #num_utts = 0
-    #for line in ctm_edits_file:
-    #    num_lines += 1
-    #    try:
-    #        parts = line.split()
-    #        if prev_utt == parts[0]:
-    #            ctm_edit.append([parts[0], parts[1], float(parts[2]),
-    #                             float(parts[3]), parts[4], float(parts[5])]
-    #                            + parts[6:])
-    #        else:
-    #            if prev_utt != "":
-    #                assert parts[0] > prev_utt    # sorted by utterance-id
-
-    #                # New utterance. Append the previous utterance's CTM
-    #                # into the list for the utterance's recording.
-    #                reco = segments[prev_utt][0]
-    #                ctm_edits[reco].append(ctm_edit)
-    #                assert ctm_edit[0][0] == prev_utt
-    #                num_utts += 1
-
-    #            # Start a new CTM for the new utterance-id parts[0].
-    #            ctm_edit = [[parts[0], parts[1], float(parts[2]),
-    #                         float(parts[3]), parts[4], float(parts[5])]
-    #                        + parts[6:]]
-    #            prev_utt = parts[0]
-    #    except:
-    #        logger.error("Error while reading line %s in CTM file %s",
-    #                     line, ctm_edits_file.name)
-    #        raise
-
-    ## Append the last ctm.
-    #reco = segments[prev_utt][0]
-    #ctm_edits[reco].append(ctm_edit)
-
-    #logger.info("Read %d lines from CTM %s; got %d recordings, "
-    #            "%d utterances.",
-    #            num_lines, ctm_edits_file.name, len(ctm_edits), num_utts)
-    #ctm_edits_file.close()
-    #return ctm_edits
 
 
 def resolve_overlaps(ctm_edits, segments):
@@ -348,7 +303,7 @@ def run(args):
     for reco, utts in reco2utt.iteritems():
         ctm_edits_for_reco = []
         for utt in sorted(utts, key=lambda x: segments[x][1]):
-            if (reco, utt) in ctms:
+            if (reco, utt) in ctm_edits:
                 ctm_edits_for_reco.append(ctm_edits[(reco, utt)])
         try:
             # Process CTMs in the recordings
