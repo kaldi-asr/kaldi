@@ -181,7 +181,6 @@ if [ $stage -le 8 ]; then
   cat <<EOF > $dir/configs/network.xconfig
   input dim=$ivector_dim name=ivector
   input dim=$feat_dim name=input
-  output name=output-tmp input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0))
 
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
@@ -209,13 +208,8 @@ EOF
     --nnet-edits="rename-node old-name=output-0 new-name=output"
 
   cat <<EOF >> $dir/configs/vars
-add_lda=false
 include_log_softmax=false
 EOF
-
-  # removing the extra output node "output-tmp" added for back-compatiblity with
-  # xconfig to config conversion.
-  nnet3-copy --edits="remove-output-nodes name=output-tmp" $dir/configs/ref.raw $dir/configs/ref.raw || exit 1;
 fi
 
 if [ $stage -le 9 ]; then
