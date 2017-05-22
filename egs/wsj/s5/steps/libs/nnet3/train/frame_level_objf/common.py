@@ -132,6 +132,12 @@ def train_new_models(dir, iter, srand, num_jobs,
                     --max-param-change={max_param_change} \
                     {deriv_time_opts} "{raw_model}" "{egs_rspecifier}" \
                     {dir}/{next_iter}.{job}.raw""".format(
+                command=run_opts.command,
+                train_queue_opt=run_opts.train_queue_opt,
+                dir=dir, iter=iter,
+                next_iter=iter + 1,
+                job=job,
+                parallel_train_opts=run_opts.parallel_train_opts,
                 cache_io_opts=cache_io_opts,
                 verbose_opt=verbose_opt,
                 momentum=momentum, max_param_change=max_param_change,

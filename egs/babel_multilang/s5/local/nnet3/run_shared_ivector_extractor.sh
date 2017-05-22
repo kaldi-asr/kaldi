@@ -34,7 +34,7 @@ multi_data_dir=$2
 global_extractor_dir=$3
 
 langconf=conf/$lda_mllt_lang/lang.conf
-[ ! -f $langconf ] && echo 'Language configuration lang.conf does not exist! Use the configurations in conf/$lda_mllt_lang/* as a startup' && exit 1
+[ ! -f $langconf ] && echo "Language configuration lang.conf does not exist! Use the configurations in conf/${lda_mllt_lang}/* as a startup" && exit 1
 . $langconf || exit 1;
 
 if [ $stage -le 4 ]; then

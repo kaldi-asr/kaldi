@@ -198,6 +198,10 @@ def train(args, run_opts):
     try:
         model_left_context = variables['model_left_context']
         model_right_context = variables['model_right_context']
+        if 'add_lda' in variables:
+            add_lda = common_lib.str_to_bool(variables['add_lda'])
+        else:
+            add_lda = True
         if 'include_log_softmax' in variables:
             include_log_softmax = common_lib.str_to_bool(
                 variables['include_log_softmax'])
@@ -286,7 +290,7 @@ def train(args, run_opts):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (args.stage <= -3) and os.path.exists(args.dir+"/configs/init.config"):
+    if (add_lda and args.stage <= -3) and os.path.exists(args.dir+"/configs/init.config"):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
