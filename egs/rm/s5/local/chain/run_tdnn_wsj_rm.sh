@@ -1,4 +1,12 @@
 #!/bin/bash
+
+# This script uses weight transfer as Transfer learning method
+# and use already trained model on wsj and remove the last layer and
+# add new randomly initialized layer and retrain the whole network.
+# while training new added layer using rm data.
+# The chain config is as run_tdnn_5n.sh and the result is:
+#System tdnn_5n tdnn_wsj_rm
+#WER      2.71     2.21
 set -e
 
 # configs for 'chain'
@@ -114,7 +122,7 @@ EOF
 EOF
   steps/nnet3/xconfig_to_configs.py --existing-model $src_mdl \
     --xconfig-file  $dir/configs/network.xconfig  \
-    --nnet-edits $dir/configs/edits.config \
+    --edits-config $dir/configs/edits.config \
     --config-dir $dir/configs/
 fi
 

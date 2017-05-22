@@ -181,7 +181,6 @@ if [ $stage -le 8 ]; then
   cat <<EOF > $dir/configs/network.xconfig
   input dim=$ivector_dim name=ivector
   input dim=$feat_dim name=input
-  output name=output-tmp input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0))
 
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
@@ -209,10 +208,9 @@ EOF
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig \
     --config-dir $dir/configs/ \
-    --nnet-edits=$dir/configs/edits.config
+    --edits-config=$dir/configs/edits.config
 
   cat <<EOF >> $dir/configs/vars
-add_lda=false
 include_log_softmax=false
 EOF
 

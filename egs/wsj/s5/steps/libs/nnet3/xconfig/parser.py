@@ -49,10 +49,11 @@ def xconfig_line_to_object(config_line, prev_layers = None):
               "*** {0}".format(config_line), file=sys.stderr)
         raise e
 
-# This function reads existing model file with nnet3 format and returns it as
-# list of layers with name and dimension to be used as auxilary information
-# to generate xconfig.
-def read_model(model_filename):
+# This reads raw existing model (*.raw) and returns array of
+# XconfigInputLayer one per input-node or component-node with same 'name' used
+# in raw model and 'dim' equal to 'output-dim' for component-node and input-dim for
+# input-node.
+def get_model_component_info(model_filename):
     all_layers = []
     try:
         f = open(model_filename, 'r')
@@ -105,6 +106,8 @@ def read_model(model_filename):
 # (usually we use the variable name 'all_layers' elsewhere for this).
 # It will die if the xconfig file is empty or if there was
 # some error parsing it.
+# aux_layers is a list of auxilary layers(component-nodes or input-node) that
+# can be used as input to component-nodes used in xconfig_file.
 def read_xconfig_file(xconfig_filename, aux_layers=[]):
     try:
         f = open(xconfig_filename, 'r')

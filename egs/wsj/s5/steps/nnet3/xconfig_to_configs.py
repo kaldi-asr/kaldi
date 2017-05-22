@@ -29,19 +29,21 @@ def get_args():
     parser.add_argument('--xconfig-file', required=True,
                         help='Filename of input xconfig file')
     parser.add_argument('--existing-model',
-                        help='This option is useful in case of '
-                             'using component nodes in other network '
+                        help='Filename of previously trained neural net '
+                             '(e.g. final.mdl) which is useful in case of '
+                             'using list of component-node in already trained model '
                              'to generate new config file for new model.'
-                             'e.g. Transfer learning: generate new model using '
+                             'e.g. In Transfer learning: generate new model using '
                              'nodes in existing model.')
     parser.add_argument('--config-dir', required=True,
                         help='Directory to write config files and variables')
-    parser.add_argument('--nnet-edits', type=str, default=None,
+    parser.add_argument('--edits-config', type=str, default=None,
                         action=common_lib.NullstrToNoneAction,
-                        help="This option is useful in case the network you are "
+                        help="This is nnet3 config filename that is useful in "
+                        "case the network you are "
                         "creating does not have an output node called 'output' "
                         "(e.g. for multilingual setups).  You can set this to "
-                        "an edit-string like: "
+                        "an edits-config can contain string like: "
                         "'rename-node old-name=xxx new-name=output' "
                         "if node xxx plays the role of the output node in this "
                         "network."
@@ -225,12 +227,12 @@ def write_config_files(config_dir, all_layers):
             raise
 
 
-def add_back_compatibility_info(config_dir, existing_model=None,
-                                nnet_edits=None):
+def add_nnet_context_info(config_dir, existing_model=None,
+                                edits_config=None):
     """This will be removed when python script refactoring is done."""
     model = "{0}/ref.raw".format(config_dir)
-    if nnet_edits is not None:
-        model = """ - | nnet3-copy --edits-config={0} - {1}""".format(nnet_edits,
+    if edits_config is not None:
+        model = """ - | nnet3-copy --edits-config={0} - {1}""".format(edits_config,
                                                               model)
     common_lib.run_kaldi_command("""nnet3-init {0} {1}/ref.config """
                                  """ {2} """.format(existing_model if
@@ -250,27 +252,25 @@ def add_back_compatibility_info(config_dir, existing_model=None,
             continue
         info[parts[0].strip()] = int(parts[1].strip())
 
-    # Writing the back-compatible vars file
+    # Writing the 'vars' file:
     #   model_left_context=0
     #   model_right_context=7
-    #   num_hidden_layers=3
     vf = open('{0}/vars'.format(config_dir), 'w')
     vf.write('model_left_context={0}\n'.format(info['left-context']))
     vf.write('model_right_context={0}\n'.format(info['right-context']))
-    vf.write('num_hidden_layers=1\n')
     vf.close()
 
     common_lib.force_symlink("final.config".format(config_dir),
                              "{0}/layer1.config".format(config_dir))
 
-def check_model_contexts(config_dir, existing_model=None, nnet_edits=None):
+def check_model_contexts(config_dir, existing_model=None, edits_config=None):
     contexts = {}
     for file_name in ['init', 'ref']:
         if os.path.exists('{0}/{1}.config'.format(config_dir, file_name)):
             contexts[file_name] = {}
             model = "{0}/{1}.raw".format(config_dir, file_name)
-            if nnet_edits is not None:
-                model = """ - | nnet3-copy --edits-config={0} - {1}""".format(nnet_edits,
+            if edits_config is not None:
+                model = """ - | nnet3-copy --edits-config={0} - {1}""".format(edits_config,
                                                                       model)
             common_lib.run_kaldi_command("""nnet3-init {0} {1}/{2}.config """
                                          """ {3} """.format(existing_model if
@@ -313,13 +313,13 @@ def main():
     backup_xconfig_file(args.xconfig_file, args.config_dir)
     aux_layers = []
     if args.existing_model is not None:
-        aux_layers = xparser.read_model(args.existing_model)
+        aux_layers = xparser.get_model_component_info(args.existing_model)
     all_layers = xparser.read_xconfig_file(args.xconfig_file, aux_layers)
     write_expanded_xconfig_files(args.config_dir, all_layers)
     write_config_files(args.config_dir, all_layers)
-    check_model_contexts(args.config_dir, args.existing_model, args.nnet_edits)
-    add_back_compatibility_info(args.config_dir, args.existing_model,
-                                args.nnet_edits)
+    check_model_contexts(args.config_dir, args.existing_model, args.edits_config)
+    add_nnet_context_info(args.config_dir, args.existing_model,
+                                args.edits_config)
 
 
 if __name__ == '__main__':

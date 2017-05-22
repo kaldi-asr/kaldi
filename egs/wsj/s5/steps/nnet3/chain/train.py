@@ -285,7 +285,6 @@ def train(args, run_opts, background_process_handler):
         model_right_context = variables['model_right_context']
         # this is really the number of times we add layers to the network for
         # discriminative pretraining
-        num_hidden_layers = variables['num_hidden_layers']
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in "
                         "{1}".format(str(e), '{0}/configs'.format(args.dir)))
@@ -310,7 +309,7 @@ def train(args, run_opts, background_process_handler):
         logger.info("Creating denominator FST")
         chain_lib.create_denominator_fst(args.dir, args.tree_dir, run_opts)
 
-    if (args.stage <= -4) and os.path.exists("{dir}/config/init.config".format(
+    if (args.stage <= -4) and os.path.exists("{dir}/configs/init.config".format(
             dir=args.dir)):
         logger.info("Initializing a basic network for estimating "
                     "preconditioning matrix")
@@ -376,7 +375,7 @@ def train(args, run_opts, background_process_handler):
     logger.info("Copying the properties from {0} to {1}".format(egs_dir, args.dir))
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (args.stage <= -2) and os.path.exists("{dir}/config/init.config".format(
+    if (args.stage <= -2) and os.path.exists("{dir}/configs/init.config".format(
             dir=args.dir)):
         logger.info('Computing the preconditioning matrix for input features')
 
