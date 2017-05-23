@@ -107,9 +107,9 @@ if [ $stage -le 0 ]; then
   set -o pipefail
   total_count=$(awk '{x+=$1} END{print x}' < $graph_dir/word_counts.int)
   # print top-n words with their unigram probabilities.
-  awk -v tot=$total_count -v weight=$top_n_words_weight '{print ($1*weight)/tot, $2;}' \
+  awk -v tot=$total_count -v weight=$top_n_words_weight '{print $2, ($1*weight)/tot;}' \
      <$graph_dir/word_counts.int >$graph_dir/top_words.int
-  utils/int2sym.pl -f 2 $lang/words.txt <$graph_dir/top_words.int >$graph_dir/top_words.txt
+  utils/int2sym.pl -f 1 $lang/words.txt <$graph_dir/top_words.int >$graph_dir/top_words.txt
 fi
 
 word_disambig_symbol=$(cat $lang/words.txt | grep -w "#0" | awk '{print $2}')
@@ -135,7 +135,7 @@ if [ $stage -le 1 ]; then
   echo "$0: creating utterance-group-specific decoding graphs with biased LMs"
 
   # These options are passed through directly to make_one_biased_lm.py.
-  lm_opts="--word-disambig-symbol=$word_disambig_symbol --ngram-order=$ngram_order --min-lm-state-count=$min_lm_state_count --discounting-constant=$discounting_constant"
+  lm_opts="--word-disambig-symbol=$word_disambig_symbol --ngram-order=$ngram_order --min-lm-state-count=$min_lm_state_count --discounting-constant=$discounting_constant --top-words=$graph_dir/top_words.int"
 
   $cmd JOB=1:$nj $graph_dir/log/compile_decoding_graphs.JOB.log \
     utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $graph_dir/texts/text.JOB \| \
