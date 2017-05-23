@@ -6,14 +6,30 @@
 use strict;
 use warnings;
 
-my $prev_utt = "";
-my @text;
+if (scalar @ARGV != 1 && scalar @ARGV != 3) {
+  my $usage = <<END;
+This script converts a CTM into kaldi text format by concatenating the words
+belonging to the same utterance (or recording) and outputs the same to the
+standard output.
+If --non-scored-words list file is provided with one word per line, then 
+those words are not added to the text.
+
+The CTM format is <file> <channel> <start-time> <duration> <word> [<conf>].
+This script assumes the CTM to be in NIST sorted order given by UNIX
+sort command "sort +0 -1 +1 -2 +2nb -3"
+
+Usage: ctm_to_text.pl [--non-scored-words <file>] <ctm-file> > <text>
+END
+  die $usage;
+}
 
 my $non_scored_words_list = "";
-if (scalar @ARGV > 0) {
+if (scalar @ARGV > 1) {
   if ($ARGV[0] eq "--non-scored-words") {
     shift @ARGV;
     $non_scored_words_list = shift @ARGV;
+  } else {
+    die "Unknown option $ARGV[0]\n";
   }
 }
 
@@ -25,11 +41,20 @@ if ($non_scored_words_list ne "") {
   
   while (<NONSCORED>) {
     chomp;
-    $non_scored_words{$_} = 1;
+    my @F = split;
+    $non_scored_words{$F[0]} = 1;
   }
+
+  close NONSCORED;
 }
 
-while (<>) {
+my $ctm_file = shift @ARGV;
+open CTM, $ctm_file or die "Failed to open $ctm_file";
+
+my $prev_utt = "";
+my @text;
+
+while (<CTM>) {
   chomp;
   my @F = split;
 
@@ -40,12 +65,19 @@ while (<>) {
     }
     @text = ();
   }
+  
+  if (scalar @F < 5 || scalar @F > 6) {
+    die "Invalid line $_ in CTM $ctm_file\n";
+  }
+
   if (!defined $non_scored_words{$F[4]}) {
     push @text, $F[4];
   }
 
   $prev_utt = $utt;
 }
+
+close CTM;
     
 if (scalar @text > 0) {
   print $prev_utt . " " . join(" ", @text) . "\n";

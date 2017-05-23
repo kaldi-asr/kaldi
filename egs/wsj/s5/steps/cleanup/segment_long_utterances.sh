@@ -54,13 +54,14 @@ if [ $# -ne 5 ] && [ $# -ne 7 ]; then
     cat <<EOF
 Usage: $0 [options] <model-dir> <lang> <data-in> [<text-in> <utt2text>] <segmented-data-out> <work-dir>
  e.g.: $0 exp/wsj_tri2b data/lang_nosp data/train_long data/train_long/text data/train_reseg exp/segment_wsj_long_utts_train
-This script performs segmentation of the data in <data-in> and 
-transcript <text-in>, writing the segmented data (with a segments file) to
+This script performs segmentation of the data in <data-in> and writes out the
+segmented data (with a segments file) to
 <segmented-data-out> along with the corresponding aligned transcription.  
-Note: If <utt2text> is not provided, the text in <data-in> is used as the 
-original transcript.
-If <utt2text>, if provided, is a mapping from the utterance in <data-in> to the 
-<original-transript> in <text-in>.
+Note: If <utt2text> is not provided, the "text" file in <data-in> is used as the 
+raw transcripts to train biased LM for the utterances.
+If <utt2text> is provided, then it should be a mapping from the utterance-ids in 
+<data-in> to the transcript-keys in the file <text-in>, which will be 
+used to train biased LMs for the utterances.
 The purpose of this script is to divide up the input data (which may consist of
 long recordings such as television shows or audiobooks) into segments which are
 of manageable length for further processing, along with the portion of the
@@ -288,7 +289,16 @@ if [ $stage -le 7 ]; then
   for n in `seq $nj`; do
     awk -v f="$sdir/src_tf_idf.$n.txt" '{print $1" "f}' \
       $sdir/text2doc.$n
-  done | perl -ane 'BEGIN{ %tfidfs = (); } { if (!defined $tfidfs{$F[0]}) { $tfidfs{$F[0]} = $F[1]; } } END{while(my ($k, $v) = each %tfidfs) { print "$k $v\n"; }}' > $dir/docs/source2tf_idf.scp
+  done | perl -ane 'BEGIN { %tfidfs = (); } 
+  { 
+    if (!defined $tfidfs{$F[0]}) { 
+      $tfidfs{$F[0]} = $F[1]; 
+    } 
+  } 
+  END {
+  while(my ($k, $v) = each %tfidfs) { 
+    print "$k $v\n"; 
+  } }' > $dir/docs/source2tf_idf.scp
 fi
 
 if [ $stage -le 8 ]; then

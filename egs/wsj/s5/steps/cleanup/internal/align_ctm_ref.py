@@ -552,7 +552,7 @@ def run(args):
                 hyp_array = hyp_lines[reco]
 
             if args.reco2file_and_channel is None:
-                reco2file_and_channel[reco] = "1"
+                reco2file_and_channel[reco] = (reco, "1")
 
             logger.debug("Running Smith-Waterman alignment for %s", reco)
 
@@ -568,7 +568,7 @@ def run(args):
                                           oov_word=args.oov_word,
                                           symbol_table=symbol_table)
                 for line in ctm_edits:
-                    ctm_line = [reco, reco2file_and_channel[reco]]
+                    ctm_line = list(reco2file_and_channel[reco])
                     ctm_line.extend(line)
                     print(ctm_line_to_string(ctm_line),
                           file=args.alignment_out_file)
