@@ -258,7 +258,8 @@ def run(args):
 
         if prev_source_text_id != source_text_id:
             source_tfidf = tf_idf.TFIDF()
-            source_tfidf.read(source_text_id2tfidf[source_text_id])
+            source_tfidf.read(
+                open(source_text_id2tfidf[source_text_id]))
             prev_source_text_id = source_text_id
 
         # The source documents corresponding to the source text.
@@ -332,6 +333,10 @@ def run(args):
         print ("{0} {1}".format(query_id, " ".join(
             ["%s,%.2f,%.2f" % x for x in best_docs])),
                file=args.relevant_docs)
+
+    if num_queries == 0:
+        raise RuntimeError("Failed to retrieve any document.")
+
     logger.info("Retrieved similar documents for "
                 "%d queries", num_queries)
 
@@ -345,7 +350,7 @@ def main():
         run(args)
     finally:
         for f in [args.query_id2source_text_id, args.source_text_id2doc_ids,
-                  args.relevant_docs, args.query_tfidf, args.source_tfidf]:
+                  args.relevant_docs, args.query_tfidf, args.source_text_id2tfidf]:
             f.close()
 
 
