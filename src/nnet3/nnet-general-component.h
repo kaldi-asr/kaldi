@@ -33,6 +33,8 @@ namespace nnet3 {
 ///   meaning they care about the indexes they are operating on, don't return
 ///   the kSimpleComponent flag in their Properties(), and may return a different
 ///   number of outputs than inputs.
+///   Also see nnet-convolutional-component.h, which also contains
+///   number of convolution-related 'general' components.
 
 
 
@@ -64,7 +66,7 @@ class DistributeComponent: public Component {
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Type() const { return "DistributeComponent"; }
   virtual int32 Properties() const { return kLinearInInput; }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -72,6 +74,7 @@ class DistributeComponent: public Component {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *, // to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -214,7 +217,7 @@ class StatisticsExtractionComponent: public Component {
     return kPropagateAdds|kReordersIndexes|
         (include_variance_ ? kBackpropNeedsInput : 0);
   }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -222,6 +225,7 @@ class StatisticsExtractionComponent: public Component {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *, // to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -349,7 +353,7 @@ class StatisticsPoolingComponent: public Component {
          kBackpropNeedsOutput : 0) |
         (num_log_count_features_ == 0 ? kBackpropNeedsInput : 0);
   }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -357,6 +361,7 @@ class StatisticsPoolingComponent: public Component {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *, // to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -477,7 +482,7 @@ class BackpropTruncationComponent: public Component {
 
   virtual Component* Copy() const;
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -485,6 +490,7 @@ class BackpropTruncationComponent: public Component {
                         const CuMatrixBase<BaseFloat> &, // in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -611,7 +617,7 @@ class ConstantComponent: public UpdatableComponent {
     return
         (is_updatable_ ? kUpdatableComponent|kLinearInParameters : 0);
   }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -619,6 +625,7 @@ class ConstantComponent: public UpdatableComponent {
                         const CuMatrixBase<BaseFloat> &, // in_value
                         const CuMatrixBase<BaseFloat> &, // out_value
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -699,9 +706,9 @@ class DropoutMaskComponent: public RandomComponent {
   virtual std::string Type() const { return "DropoutMaskComponent"; }
   virtual int32 Properties() const { return kRandomComponent; }
   // note: the matrix 'in' will be empty.
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const;
   // backprop does nothing, there is nothing to backprop to and nothing
   // to update.
   virtual void Backprop(const std::string &debug_info,
@@ -709,6 +716,7 @@ class DropoutMaskComponent: public RandomComponent {
                         const CuMatrixBase<BaseFloat> &, // in_value
                         const CuMatrixBase<BaseFloat> &, // out_value
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const { }
 
@@ -747,7 +755,6 @@ class DropoutMaskComponent: public RandomComponent {
   const DropoutMaskComponent &operator
   = (const DropoutMaskComponent &other); // Disallow.
 };
-
 
 
 

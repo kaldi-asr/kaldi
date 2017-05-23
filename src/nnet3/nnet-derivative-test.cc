@@ -84,13 +84,13 @@ void SetDerivTimesOptions(const ComputationRequest &request,
             << ',' << output_max_t << "), input (min,max) = (" << orig_min_t
             << ',' << orig_max_t << "), limiting deriv times to ("
             << opt_config->min_deriv_time << ','
-            << opt_config->max_deriv_time;
+            << opt_config->max_deriv_time << ')';
 }
 
 // This test makes sure that the model-derivatives are correct.
 void UnitTestNnetModelDerivatives() {
-  int32 num_tries = 20, num_success = 0, num_fail = 0;
-  for (int32 n = 0; n < num_tries; n++) {
+  int32 N = 20;
+  for (int32 n = 0; n < N; n++) {
     struct NnetGenerationOptions gen_config;
     //gen_config.allow_nonlinearity = false;
     //gen_config.allow_recursion = false;
@@ -218,32 +218,34 @@ void UnitTestNnetModelDerivatives() {
               << predicted_objf_change_vec;
     KALDI_LOG << "Vector of measured objf-change is: "
               << measured_objf_change_vec;
-    BaseFloat delta_thresh = 0.05;
+    BaseFloat delta_thresh_warn = 0.05, delta_thresh_fail = 0.15;
     if (limit_deriv_times) {
       KALDI_LOG << "Not checking that predicted/measured changes matched "
                 << "because we limited times of derivatives.";
     } else {
       if (!ApproxEqual(predicted_objf_change_vec,
-                       measured_objf_change_vec, delta_thresh)) {
-        KALDI_WARN << "Predicted and measured objf-changes differ too much.";
-        num_fail++;
-      } else {
-        num_success++;
+                       measured_objf_change_vec, delta_thresh_fail)) {
+        if (NnetIsRecurrent(nnet)) {
+          KALDI_WARN << "Predicted and measured objf-changes differ too much. "
+                     << "(would normally be beyond error threshold, but this "
+                     << "nnet is recurrent, so letting it pass.";
+        } else {
+          KALDI_ERR << "Predicted and measured objf-changes differ too much.";
+        }
+      }
+      if (!ApproxEqual(predicted_objf_change_vec,
+                       measured_objf_change_vec, delta_thresh_warn)) {
+        KALDI_WARN << "Predicted and measured objf-changes differ quite a lot.";
       }
     }
   }
-  KALDI_LOG << "Model-derivative check succeeded for " << num_success << " out of "
-            << (num_fail + num_success) << " tries.";
-  int32 num_checked = num_fail + num_success;
-  if (num_success < num_checked - (2 + num_checked / 5))
-    KALDI_ERR << "Failed too many times.";
 }
 
 
 // This test makes sure that the input-derivatives are correct.
 void UnitTestNnetInputDerivatives() {
-  int32 num_tries = 20, num_success = 0;
-  for (int32 n = 0; n < num_tries; n++) {
+  int32 N = 20;
+  for (int32 n = 0; n < N; n++) {
     struct NnetGenerationOptions gen_config;
     //gen_config.allow_nonlinearity = false;
     //gen_config.allow_recursion = false;
@@ -395,18 +397,21 @@ void UnitTestNnetInputDerivatives() {
               << predicted_objf_change_vec;
     KALDI_LOG << "Vector of measured objf-change is: "
               << measured_objf_change_vec;
-    BaseFloat delta_thresh = 0.1;
+     BaseFloat delta_thresh_warn = 0.05, delta_thresh_fail = 0.25;
     if (!ApproxEqual(predicted_objf_change_vec,
-                     measured_objf_change_vec, delta_thresh)) {
-      KALDI_WARN << "Predicted and measured objf-changes differ too much.";
-    } else {
-      num_success++;
+                     measured_objf_change_vec, delta_thresh_fail)) {
+      if (NnetIsRecurrent(nnet)) {
+        KALDI_WARN << "Predicted and measured objf-changes differ too much. "
+                   << "(would normally be beyond error threshold, but this "
+                   << "nnet is recurrent, so letting it pass.";
+      } else {
+        KALDI_ERR << "Predicted and measured objf-changes differ too much.";
+      }
+    } else if (!ApproxEqual(predicted_objf_change_vec,
+                            measured_objf_change_vec, delta_thresh_warn)) {
+      KALDI_WARN << "Predicted and measured objf-changes differ quite a lot";
     }
   }
-  KALDI_LOG << "Input-derivative check succeeded for " << num_success << " out of "
-            << num_tries << " tries.";
-  if (num_success < num_tries - (2 + num_tries / 5))
-    KALDI_ERR << "Failed too many times.";
 }
 
 
@@ -417,7 +422,7 @@ int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
   kaldi::int32 loop = 0;
-  //SetVerboseLevel(2);
+  SetVerboseLevel(3);
 #if HAVE_CUDA == 1
   for (loop = 0; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);

@@ -16,10 +16,12 @@ export decode_cmd="queue.pl --mem 4G"
 
 host=$(hostname -f)
 if [ ${host#*.} == "fit.vutbr.cz" ]; then
-  queue_conf=$HOME/queue_conf/default.conf # see example /homes/kazi/iveselyk/queue_conf/default.conf,
-  export train_cmd="queue.pl --config $queue_conf --mem 2G --matylda 0.2"
-  export decode_cmd="queue.pl --config $queue_conf --mem 3G --matylda 0.1"
-  export cuda_cmd="queue.pl --config $queue_conf --gpu 1 --mem 10G --tmp 40G"
+  # BUT cluster:
+  queue="all.q@@blade,all.q@@speech"
+  gpu_queue="long.q@@gpu"
+  storage="matylda5"
+  export train_cmd="queue.pl -q $queue -l ram_free=1500M,mem_free=1500M,${storage}=1"
+  export decode_cmd="queue.pl -q $queue -l ram_free=2500M,mem_free=2500M,${storage}=0.5"
 elif [ ${host#*.} == "cm.cluster" ]; then
   # MARCC bluecrab cluster:
   export train_cmd="slurm.pl --time 4:00:00 "

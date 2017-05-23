@@ -37,7 +37,7 @@ def create_phone_lm(dir, tree_dir, run_opts, lm_opts=None):
     alignments=' '.join(['{0}/ali.{1}.gz'.format(tree_dir, job)
                          for job in range(1, num_ali_jobs + 1)])
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/make_phone_lm.log \
     gunzip -c {alignments} \| \
     ali-to-phones {tree_dir}/final.mdl ark:- ark:- \| \
@@ -49,10 +49,10 @@ def create_phone_lm(dir, tree_dir, run_opts, lm_opts=None):
 
 
 def create_denominator_fst(dir, tree_dir, run_opts):
-    common_lib.run_job(
+    common_lib.execute_command(
         """copy-transition-model {tree_dir}/final.mdl \
                 {dir}/0.trans_mdl""".format(dir=dir, tree_dir=tree_dir))
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/make_den_fst.log \
                    chain-make-den-fst {dir}/tree {dir}/0.trans_mdl \
                    {dir}/phone_lm.fst \
@@ -75,7 +75,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
     See options in that script.
     """
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """steps/nnet3/chain/get_egs.sh {egs_opts} \
                 --cmd "{command}" \
                 --cmvn-opts "{cmvn_opts}" \
@@ -124,14 +124,13 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
 
 def train_new_models(dir, iter, srand, num_jobs,
                      num_archives_processed, num_archives,
-                     raw_model_string, egs_dir, left_context, right_context,
+                     raw_model_string, egs_dir,
                      apply_deriv_weights,
                      min_deriv_time, max_deriv_time_relative,
                      l2_regularize, xent_regularize, leaky_hmm_coefficient,
                      momentum, max_param_change,
                      shuffle_buffer_size, num_chunk_per_minibatch_str,
-                     frame_subsampling_factor,
-                     cache_io_opts, run_opts):
+                     frame_subsampling_factor, run_opts):
     """
     Called from train_one_iteration(), this method trains new models
     with 'num_jobs' jobs, and
@@ -152,6 +151,7 @@ def train_new_models(dir, iter, srand, num_jobs,
         deriv_time_opts.append("--optimization.max-deriv-time-relative={0}".format(
                                     int(max_deriv_time_relative)))
 
+    threads = []
     # the GPU timing info is only printed if we use the --verbose=1 flag; this
     # slows down the computation slightly, so don't accumulate it on every
     # iteration.  Don't do it on iteration 0 either, because we use a smaller
@@ -159,7 +159,6 @@ def train_new_models(dir, iter, srand, num_jobs,
     # slower for iteration 0 because of the verbose option.
     verbose_opt = ("--verbose=1" if iter % 20 == 0 and iter > 0 else "")
 
-    processes = []
     for job in range(1, num_jobs+1):
         # k is a zero-based index that we will derive the other indexes from.
         k = num_archives_processed + job - 1
@@ -168,13 +167,14 @@ def train_new_models(dir, iter, srand, num_jobs,
         # previous : frame_shift = (k/num_archives) % frame_subsampling_factor
         frame_shift = ((archive_index + k/num_archives)
                        % frame_subsampling_factor)
-        if job == 1:
-            cur_cache_io_opts = "{0} --write-cache={1}/cache.{2}".format(
-                cache_io_opts, dir, iter + 1)
-        else:
-            cur_cache_io_opts = cache_io_opts
 
-        process_handle = common_lib.run_job(
+        cache_io_opts = (("--read-cache={dir}/cache.{iter}".format(dir=dir,
+                                                                  iter=iter)
+                          if iter > 0 else "") +
+                         (" --write-cache={0}/cache.{1}".format(dir, iter + 1)
+                          if job == 1 else ""))
+
+        thread = common_lib.background_command(
             """{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
                     nnet3-chain-train {parallel_train_opts} {verbose_opt} \
                     --apply-deriv-weights={app_deriv_wts} \
@@ -185,7 +185,6 @@ def train_new_models(dir, iter, srand, num_jobs,
                     --max-param-change={max_param_change} \
                     "{raw_model}" {dir}/den.fst \
                     "ark,bg:nnet3-chain-copy-egs \
-                        --left-context={lc} --right-context={rc} \
                         --frame-shift={fr_shft} \
                         ark:{egs_dir}/cegs.{archive_index}.ark ark:- | \
                         nnet3-chain-shuffle-egs --buffer-size={buf_size} \
@@ -197,49 +196,38 @@ def train_new_models(dir, iter, srand, num_jobs,
                         dir=dir, iter=iter, srand=iter + srand,
                         next_iter=iter + 1, job=job,
                         deriv_time_opts=" ".join(deriv_time_opts),
-                        lc=left_context, rc=right_context,
                         app_deriv_wts=apply_deriv_weights,
                         fr_shft=frame_shift, l2=l2_regularize,
                         xent_reg=xent_regularize, leaky=leaky_hmm_coefficient,
+                        cache_io_opts=cache_io_opts,
                         parallel_train_opts=run_opts.parallel_train_opts,
                         verbose_opt=verbose_opt,
                         momentum=momentum, max_param_change=max_param_change,
                         raw_model=raw_model_string,
                         egs_dir=egs_dir, archive_index=archive_index,
                         buf_size=shuffle_buffer_size,
-                        cache_io_opts=cur_cache_io_opts,
                         num_chunk_per_mb=num_chunk_per_minibatch_str),
-            wait=False)
+            require_zero_status=True)
 
-        processes.append(process_handle)
+        threads.append(thread)
 
-    all_success = True
-    for process in processes:
-        process.wait()
-        process.communicate()
-        if process.returncode != 0:
-            all_success = False
 
-    if not all_success:
-        open('{0}/.error'.format(dir), 'w').close()
-        raise Exception("There was error during training "
-                        "iteration {0}".format(iter))
+    for thread in threads:
+        thread.join()
+
 
 
 def train_one_iteration(dir, iter, srand, egs_dir,
                         num_jobs, num_archives_processed, num_archives,
                         learning_rate, shrinkage_value,
                         num_chunk_per_minibatch_str,
-                        num_hidden_layers, add_layers_period,
-                        left_context, right_context,
                         apply_deriv_weights, min_deriv_time,
                         max_deriv_time_relative,
                         l2_regularize, xent_regularize,
                         leaky_hmm_coefficient,
                         momentum, max_param_change, shuffle_buffer_size,
                         frame_subsampling_factor,
-                        run_opts, dropout_edit_string="",
-                        background_process_handler=None):
+                        run_opts, dropout_edit_string=""):
     """ Called from steps/nnet3/chain/train.py for one iteration for
     neural network training with LF-MMI objective
 
@@ -270,52 +258,28 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     # validation set objectives
     compute_train_cv_probabilities(
         dir=dir, iter=iter, egs_dir=egs_dir,
-        left_context=left_context, right_context=right_context,
         l2_regularize=l2_regularize, xent_regularize=xent_regularize,
-        leaky_hmm_coefficient=leaky_hmm_coefficient, run_opts=run_opts,
-        background_process_handler=background_process_handler)
+        leaky_hmm_coefficient=leaky_hmm_coefficient, run_opts=run_opts)
 
     if iter > 0:
         # Runs in the background
-        compute_progress(dir, iter, run_opts,
-                         background_process_handler=background_process_handler)
+        compute_progress(dir, iter, run_opts)
 
-    if (iter > 0 and (iter <= (num_hidden_layers-1) * add_layers_period)
-            and iter % add_layers_period == 0):
+    do_average = (iter > 0)
 
-        # if we've just added new hiden layer, don't do averaging but take the
-        # best.
-        do_average = False
-
-        cur_num_hidden_layers = 1 + iter / add_layers_period
-        config_file = "{0}/configs/layer{1}.config".format(
-            dir, cur_num_hidden_layers)
-        raw_model_string = ("nnet3-am-copy --raw=true --learning-rate={lr} "
-                            "{dir}/{iter}.mdl - | nnet3-init --srand={srand} "
-                            "- {config} - |".format(lr=learning_rate, dir=dir,
-                                                    iter=iter,
-                                                    srand=iter + srand,
-                                                    config=config_file))
-        cache_io_opts = ""
-    else:
-        do_average = True
-        if iter == 0:
-            # on iteration 0, pick the best, don't average.
-            do_average = False
-        raw_model_string = ("nnet3-am-copy --raw=true --learning-rate={0} "
-                            "{1}/{2}.mdl - |".format(learning_rate, dir, iter))
-        cache_io_opts = "--read-cache={dir}/cache.{iter}".format(dir=dir,
-                                                                 iter=iter)
+    raw_model_string = ("nnet3-am-copy --raw=true --learning-rate={0} "
+                        "--scale={1} {2}/{3}.mdl - |".format(
+                            learning_rate, shrinkage_value, dir, iter))
 
     if do_average:
         cur_num_chunk_per_minibatch_str = num_chunk_per_minibatch_str
         cur_max_param_change = max_param_change
     else:
-        # on iteration zero or when we just added a layer, use a smaller
-        # minibatch size (and we will later choose the output of just one of
-        # the jobs): the model-averaging isn't always helpful when the model is
-        # changing too fast (i.e. it can worsen the objective function), and
-        # the smaller minibatch size will help to keep the update stable.
+        # on iteration zero, use a smaller minibatch size (and we will later
+        # choose the output of just one of the jobs): the model-averaging isn't
+        # always helpful when the model is changing too fast (i.e. it can worsen
+        # the objective function), and the smaller minibatch size will help to
+        # keep the update stable.
         cur_num_chunk_per_minibatch_str = common_train_lib.halve_minibatch_size_str(
             num_chunk_per_minibatch_str)
         cur_max_param_change = float(max_param_change) / math.sqrt(2)
@@ -336,7 +300,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      num_archives=num_archives,
                      raw_model_string=raw_model_string,
                      egs_dir=egs_dir,
-                     left_context=left_context, right_context=right_context,
                      apply_deriv_weights=apply_deriv_weights,
                      min_deriv_time=min_deriv_time,
                      max_deriv_time_relative=max_deriv_time_relative,
@@ -348,7 +311,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      shuffle_buffer_size=shuffle_buffer_size,
                      num_chunk_per_minibatch_str=cur_num_chunk_per_minibatch_str,
                      frame_subsampling_factor=frame_subsampling_factor,
-                     cache_io_opts=cache_io_opts, run_opts=run_opts)
+                     run_opts=run_opts)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
          num_jobs, '{0}/log/train.{1}.%.log'.format(dir, iter))
@@ -361,16 +324,14 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         common_train_lib.get_average_nnet_model(
             dir=dir, iter=iter,
             nnets_list=" ".join(nnets_list),
-            run_opts=run_opts,
-            shrink=shrinkage_value)
+            run_opts=run_opts)
 
     else:
         # choose the best model from different jobs
         common_train_lib.get_best_nnet_model(
             dir=dir, iter=iter,
             best_model_index=best_model,
-            run_opts=run_opts,
-            shrink=shrinkage_value)
+            run_opts=run_opts)
 
     try:
         for i in range(1, num_jobs + 1):
@@ -414,7 +375,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
             num_lda_jobs = max_lda_jobs
 
     # Write stats with the same format as stats for LDA.
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
                 nnet3-chain-acc-lda-stats --rand-prune={rand_prune} \
                 {dir}/init.raw "ark:{egs_dir}/cegs.JOB.ark" \
@@ -429,7 +390,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     lda_stat_files = map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
                          range(1, num_lda_jobs + 1))
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/sum_transform_stats.log \
                 sum-lda-accs {dir}/lda_stats {lda_stat_files}""".format(
                     command=run_opts.command,
@@ -445,7 +406,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     # in Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's a scaled
     # variant of an LDA transform but without dimensionality reduction.
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/get_transform.log \
                 nnet-get-feature-transform {lda_opts} {dir}/lda.mat \
                 {dir}/lda_stats""".format(
@@ -468,7 +429,7 @@ def prepare_initial_acoustic_model(dir, run_opts, srand=-1):
     if os.path.exists(edits_config_file):
         logger.info("edits 0.raw model using {0}/configs/edits.config."
                     "".format(dir))
-        common_lib.run_job(
+        common_lib.execute_command(
             """{command} {dir}/log/edit.log \
                 nnet3-copy --edits-config={edits_config} {dir}/0.raw \
                 {dir}/0.raw
@@ -482,56 +443,48 @@ def prepare_initial_acoustic_model(dir, run_opts, srand=-1):
     # We ensure that they have the same mode (even if someone changed the
     # script to make one or both of them text mode) by copying them both
     # before concatenating them.
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/init_mdl.log \
                 nnet3-am-init {dir}/0.trans_mdl {dir}/0.raw \
                 {dir}/0.mdl""".format(command=run_opts.command, dir=dir))
 
-def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
-                                   right_context, l2_regularize,
+
+def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
                                    xent_regularize, leaky_hmm_coefficient,
-                                   run_opts, wait=False,
-                                   background_process_handler=None):
+                                   run_opts):
     model = '{0}/{1}.mdl'.format(dir, iter)
 
-    common_lib.run_job(
+    common_lib.background_command(
         """{command} {dir}/log/compute_prob_valid.{iter}.log \
                 nnet3-chain-compute-prob --l2-regularize={l2} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
                 "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
-                "ark,bg:nnet3-chain-copy-egs --left-context={lc} \
-                    --right-context={rc} ark:{egs_dir}/valid_diagnostic.cegs \
+                "ark,bg:nnet3-chain-copy-egs ark:{egs_dir}/valid_diagnostic.cegs \
                     ark:- | nnet3-chain-merge-egs --minibatch-size=1:64 ark:- ark:- |" \
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
-                   lc=left_context, rc=right_context,
                    l2=l2_regularize, leaky=leaky_hmm_coefficient,
                    xent_reg=xent_regularize,
-                   egs_dir=egs_dir), wait=wait,
-        background_process_handler=background_process_handler)
+                   egs_dir=egs_dir))
 
-    common_lib.run_job(
+    common_lib.background_command(
         """{command} {dir}/log/compute_prob_train.{iter}.log \
                 nnet3-chain-compute-prob --l2-regularize={l2} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
                 "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
-                "ark,bg:nnet3-chain-copy-egs --left-context={lc} \
-                    --right-context={rc} ark:{egs_dir}/train_diagnostic.cegs \
+                "ark,bg:nnet3-chain-copy-egs ark:{egs_dir}/train_diagnostic.cegs \
                     ark:- | nnet3-chain-merge-egs --minibatch-size=1:64 ark:- ark:- |" \
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
-                   lc=left_context, rc=right_context,
                    l2=l2_regularize, leaky=leaky_hmm_coefficient,
                    xent_reg=xent_regularize,
-                   egs_dir=egs_dir), wait=wait,
-        background_process_handler=background_process_handler)
+                   egs_dir=egs_dir))
 
 
-def compute_progress(dir, iter, run_opts, wait=False,
-                     background_process_handler=None):
+def compute_progress(dir, iter, run_opts):
 
     prev_model = '{0}/{1}.mdl'.format(dir, iter - 1)
     model = '{0}/{1}.mdl'.format(dir, iter)
 
-    common_lib.run_job(
+    common_lib.background_command(
         """{command} {dir}/log/progress.{iter}.log \
                 nnet3-am-info {model} '&&' \
                 nnet3-show-progress --use-gpu=no \
@@ -541,15 +494,11 @@ def compute_progress(dir, iter, run_opts, wait=False,
                    dir=dir,
                    iter=iter,
                    model=model,
-                   prev_model=prev_model), wait=wait,
-        background_process_handler=background_process_handler)
-
+                   prev_model=prev_model))
 
 def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_str,
-                   egs_dir, left_context, right_context,
-                   leaky_hmm_coefficient, l2_regularize,
+                   egs_dir, leaky_hmm_coefficient, l2_regularize,
                    xent_regularize, run_opts,
-                   background_process_handler=None,
                    sum_to_one_penalty=0.0):
     """ Function to do model combination
 
@@ -576,7 +525,15 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
             print("{0}: warning: model file {1} does not exist "
                   "(final combination)".format(sys.argv[0], model_file))
 
-    common_lib.run_job(
+    # We reverse the order of the raw model strings so that the freshest one
+    # goes first.  This is important for systems that include batch
+    # normalization-- it means that the freshest batch-norm stats are used.
+    # Since the batch-norm stats are not technically parameters, they are not
+    # combined in the combination code, they are just obtained from the first
+    # model.
+    raw_model_strings = list(reversed(raw_model_strings))
+
+    common_lib.execute_command(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
                 nnet3-chain-combine --num-iters={opt_iters} \
                 --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
@@ -585,8 +542,7 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
                 --sum-to-one-penalty={penalty} \
                 --enforce-positive-weights=true \
                 --verbose=3 {dir}/den.fst {raw_models} \
-                "ark,bg:nnet3-chain-copy-egs --left-context={lc} \
-                    --right-context={rc} ark:{egs_dir}/combine.cegs ark:- | \
+                "ark,bg:nnet3-chain-copy-egs ark:{egs_dir}/combine.cegs ark:- | \
                     nnet3-chain-merge-egs --minibatch-size={num_chunk_per_mb} \
                     ark:- ark:- |" - \| \
                 nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl \
@@ -595,7 +551,6 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
                     combine_queue_opt=run_opts.combine_queue_opt,
                     opt_iters=(20 if sum_to_one_penalty <= 0 else 80),
                     separate_weights=(sum_to_one_penalty > 0),
-                    lc=left_context, rc=right_context,
                     l2=l2_regularize, leaky=leaky_hmm_coefficient,
                     dir=dir, raw_models=" ".join(raw_model_strings),
                     hard_enforce=(sum_to_one_penalty <= 0),
@@ -609,8 +564,6 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
     # different subsets will lead to different probs.
     compute_train_cv_probabilities(
         dir=dir, iter='final', egs_dir=egs_dir,
-        left_context=left_context, right_context=right_context,
         l2_regularize=l2_regularize, xent_regularize=xent_regularize,
         leaky_hmm_coefficient=leaky_hmm_coefficient,
-        run_opts=run_opts, wait=False,
-        background_process_handler=background_process_handler)
+        run_opts=run_opts)

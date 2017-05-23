@@ -45,7 +45,7 @@ $num_jobs = 0;
 $job_id = 0;
 $utt2spk_file = "";
 
-for ($x = 1; $x <= 2; $x++) {
+for ($x = 1; $x <= 2 && @ARGV > 0; $x++) {
     if ($ARGV[0] eq "-j") {
         shift @ARGV;
         $num_jobs = shift @ARGV;

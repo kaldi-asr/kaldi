@@ -47,10 +47,13 @@ static void WriteIndexVectorElementBinary(
     const std::vector<Index> &vec,
     int32 i) {
   bool binary = true;
-  Index index = vec[i];
+  const Index &index = vec[i];
   if (i == 0) {
+    // we don't use std::abs(index.t) < 125 here because it doesn't have the
+    // right (or even well-defined) behavior for
+    // index.t == std::numeric_limits<int32>::min().
     if (index.n == 0 && index.x == 0 &&
-        std::abs(index.t) < 125) {
+        index.t > -125 && index.t < 125) {
       // handle this common case in one character.
       os.put(static_cast<signed char>(index.t));
     } else {  // handle the general case less efficiently.
@@ -61,8 +64,12 @@ static void WriteIndexVectorElementBinary(
     }
   } else {
     Index last_index = vec[i-1];
+    // we don't do if (std::abs(index.t - last_index.t) < 125)
+    // below because this doesn't work right if that difference
+    // equals std::numeric_limits<int32>::min().
     if (index.n == last_index.n && index.x == last_index.x &&
-        std::abs(index.t - last_index.t) < 125) {
+        index.t - last_index.t < 125 &&
+        index.t - last_index.t > -125) {
       signed char c = index.t - last_index.t;
       os.put(c);
     } else {  // handle the general case less efficiently.
@@ -158,21 +165,24 @@ static void WriteCindexVectorElementBinary(
     int32 i) {
   bool binary = true;
   int32 node_index = vec[i].first;
-  Index index = vec[i].second;
+  const Index &index = vec[i].second;
   if (i == 0 || node_index != vec[i-1].first) {
-    // '|' into ranges that each have all the same node name, like:
-    // [node_1: index_1 index_2] [node_2: index_3 index_4]
-    // Caution: '|' is character 124 so we have to avoid that
-    // character in places where it might be confused with
-    // this separator.
+    // divide using '|' into ranges that each have all the same node name, like:
+    // [node_1: index_1 index_2] [node_2: index_3 index_4] Caution: '|' is
+    // character 124 so we have to avoid that character in places where it might
+    // be confused with this separator.
     os.put('|');
     WriteBasicType(os, binary, node_index);
   }
   if (i == 0) {
     // we don't need to be concerned about reserving space for character 124
     // ('|') here, since (wastefully) '|' is always printed for i == 0.
+    //
+    // we don't use std::abs(index.t) < 125 here because it doesn't have the
+    // right (or even well-defined) behavior for
+    // index.t == std::numeric_limits<int32>::min().
     if (index.n == 0 && index.x == 0 &&
-        std::abs(index.t) < 125) {
+        index.t > -125 && index.t < 125) {
       // handle this common case in one character.
       os.put(static_cast<signed char>(index.t));
     } else if (index.t == 0 && index.x == 0 &&
@@ -186,12 +196,17 @@ static void WriteCindexVectorElementBinary(
       WriteBasicType(os, binary, index.x);
     }
   } else {
-    Index last_index = vec[i-1].second;
+    const Index &last_index = vec[i-1].second;
+    // we don't do if std::abs(index.t - last_index.t) < 124
+    // below because it doesn't work right if the difference
+    // equals std::numeric_limits<int32>::min().
     if (index.n == last_index.n && index.x == last_index.x &&
-        std::abs(index.t - last_index.t) < 124) {
+        index.t - last_index.t < 124 &&
+        index.t - last_index.t > -124) {
       signed char c = index.t - last_index.t;
       os.put(c);
-      // note: we have to reserve character 124 ('|') for when 'n' changes.
+      // note: we have to reserve character 124 ('|') for when 'n' or 'x'
+      // changes.
     } else if (index.t == last_index.t && index.x == last_index.x &&
               (index.n == last_index.n || index.n == last_index.n + 1)) {
       os.put(125 + index.n - last_index.n);
@@ -535,7 +550,8 @@ void PrintIntegerVector(std::ostream &os,
   os << "]";
 }
 
-
+// this will be the most negative number representable as int32.
+const int kNoTime = std::numeric_limits<int32>::min();
 
 } // namespace nnet3
 } // namespace kaldi

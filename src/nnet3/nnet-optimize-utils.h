@@ -238,6 +238,13 @@ class DerivativeTimeLimiter {
   // matrices are allocated (it may remove some matrices entirely).
   void PruneMatrices();
 
+  // this function modifies commands of type kPropagate to set the memo indexes
+  // to zero if the memo indexes appear in the list memos_to_delete_.  It's
+  // because if a backprop command has been deleted, the propagate command
+  // should no longer store a memo.
+  void RemoveUnusedMemos();
+
+
   // called from PruneMatrices only for matrices that are derivatives,
   // not inputs or outputs of the computation, and which are partly
   // inside the time range, this function returns true if we can
@@ -291,6 +298,13 @@ class DerivativeTimeLimiter {
                              int32 *left_prune,
                              int32 *right_prune) const;
 
+  // This helper function, used while mapping commands, returns true if the
+  // Cindex represented by the pair (submatrix, row_index) has a 't' value
+  // within the range [min_deriv_time_, max_deriv_time_].
+  bool RowIsKept(int32 submatrix,
+                 int32 row_index) const;
+
+
   struct MatrixPruneInfo {
     bool is_deriv;  // true if the matrix represents a derivative (copied from
                     // the debug-info; repeated here for convenience).
@@ -334,6 +348,10 @@ class DerivativeTimeLimiter {
   std::vector<int32> submatrix_map_if_deriv_;
 
   std::vector<MatrixPruneInfo> prune_info_;
+
+  // List of indexes of memos that will no longer be stored because the backprop
+  // commands using them were deleted.
+  std::unordered_set<int32> memos_to_delete_;
 };
 
 
@@ -361,23 +379,12 @@ void LimitDerivativeTimes(const Nnet &nnet,
 
       - All of its inputs and outputs contain 'n' values for all 0 <= n < N,
         for some N > 2.  [we output this 'N' as 'num_n_values'].
-      - All of its inputs and outputs have 'regular' structure.
-
-        What it means for an input or output (i.e. an IoSpecification) to have a
-        'regular' structure, is as follows:
-          - The 't' and 'x' values present are the same for each 'n',
-          - The order in which the indexes appear is EITHER of the following:
-             - The 'n' index varies 'fast', i.e. the order is:
-                 (t1,x1,0), (t1,x1,1) ... (t1,x1,N-1) \
-                 (t2,x2,0), (t2,x2,1) ... (t2,x2,N-1)  ...
-             - The 'n' index varies 'slowly', i.e. the order is:
-                 (t1,x1,0), (t2,x2,0) ...  \
-                 (t1,x1,1), (t2,x2,1) ...  \
-                 ...                       \
-                 (t1,x2,N-1), (t2,x2,N-1) ...
-            In either case, there does not have to be any particular rhyme or
-            reason to the order of the t and x values; the regularity on 'n' is
-            all that we care about.
+      - All of its inputs and outputs have 'regular' structure: chiefly, that
+        within vectors of Indexes, each (t, x) pair should be present for the
+        same set of 'n' values (0, 1, ... N-1), and that we should be able to
+        identify the stride of the 'n' index.  For more precise details on this
+        regular structure, look at the comment for the function FindNStride(),
+        in nnet-optimize-utils.cc.
  */
 bool RequestIsDecomposable(const ComputationRequest &request,
                            ComputationRequest *mini_request,
@@ -440,10 +447,10 @@ bool SnipRowOps(NnetComputation *computation);
 
 /// This function detects submatrices and matrices that are never used (e.g. due
 /// to changes made in other optimization code), and members of indexes,
-/// indexes_multi and indexes_ranges that are unused or are duplicates, and
-/// removes them from the computation by way of suitable renumbering.  It does
-/// not remove no-ops from computation->commands_; to do that, call
-/// RemoveNoOps(computation).
+/// indexes_multi and indexes_ranges that are unused or are duplicates, and memo
+/// indexes that are unused; and it removes them from the computation by way of
+/// suitable renumbering.  It does not remove no-ops from
+/// computation->commands_; to do that, call RemoveNoOps(computation).
 void RenumberComputation(NnetComputation *computation);
 
 /// Removes commands of type kNoOperation in the computation.
@@ -500,10 +507,10 @@ void IdentifyIndexesRangesArgs(std::vector<NnetComputation::Command> *commands,
 
 /// This function tries to optimize computation 'computation' for an 'looped'
 /// computation.  It expects as input a computation with no backprop but with
-/// multiple 'segments' separated by command kNoOperation, where each segment
-/// corresponds to a new chunk of input and output.  It tries to locate a pair
-/// of segment boundaries, with command indexes c1 and c2, where the active
-/// matrices have the same debug-info other than a time offset and can be
+/// multiple 'segments' separated by command kNoOperationLabel, where each
+/// segment corresponds to a new chunk of input and output.  It tries to locate
+/// a pair of segment boundaries, with command indexes c1 and c2, where the
+/// active matrices have the same debug-info other than a time offset and can be
 /// identified with each other, and the no-op command at c2 can be replaced with
 /// 'got c1', creating a computation that 'goes on forever'.
 /// If it can't do this, it does nothing.  You can figure out that this is the

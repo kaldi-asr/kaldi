@@ -234,12 +234,12 @@ def add_nnet_context_info(config_dir, existing_model=None,
     if edits_config is not None:
         model = """ - | nnet3-copy --edits-config={0} - {1}""".format(edits_config,
                                                               model)
-    common_lib.run_kaldi_command("""nnet3-init {0} {1}/ref.config """
+    common_lib.execute_command("""nnet3-init {0} {1}/ref.config """
                                  """ {2} """.format(existing_model if
                                  existing_model is not None else "",
                                  config_dir, model))
-    out, err = common_lib.run_kaldi_command("""nnet3-info {0}/ref.raw | """
-                                            """head -4""".format(config_dir))
+    out = common_lib.get_command_stdout("""nnet3-info {0}/ref.raw | """
+                                        """head -4""".format(config_dir))
     # out looks like this
     # left-context: 7
     # right-context: 0
@@ -260,9 +260,6 @@ def add_nnet_context_info(config_dir, existing_model=None,
     vf.write('model_right_context={0}\n'.format(info['right-context']))
     vf.close()
 
-    common_lib.force_symlink("final.config".format(config_dir),
-                             "{0}/layer1.config".format(config_dir))
-
 def check_model_contexts(config_dir, existing_model=None, edits_config=None):
     contexts = {}
     for file_name in ['init', 'ref']:
@@ -272,13 +269,13 @@ def check_model_contexts(config_dir, existing_model=None, edits_config=None):
             if edits_config is not None:
                 model = """ - | nnet3-copy --edits-config={0} - {1}""".format(edits_config,
                                                                       model)
-            common_lib.run_kaldi_command("""nnet3-init {0} {1}/{2}.config """
+            common_lib.execute_command("""nnet3-init {0} {1}/{2}.config """
                                          """ {3} """.format(existing_model if
                                                       existing_model is not
                                                       None else "", config_dir,
                                                       file_name, model))
-            out, err = common_lib.run_kaldi_command("""nnet3-info {0}/{1}.raw | """
-                                                    """head -4""".format(config_dir, file_name))
+            out = common_lib.get_command_stdout("""nnet3-info {0}/{1}.raw | """
+                                                """head -4""".format(config_dir, file_name))
             # out looks like this
             # left-context: 7
             # right-context: 0

@@ -25,6 +25,7 @@
 #include "fstext/fstext-lib.h"
 #include "hmm/transition-model.h"
 #include "nnet3/nnet-am-decodable-simple.h"
+#include "nnet3/nnet-utils.h"
 #include "thread/kaldi-task-sequence.h"
 #include "tree/context-dep.h"
 #include "util/common-utils.h"
@@ -99,6 +100,8 @@ int main(int argc, char *argv[]) {
       Input ki(model_in_filename, &binary);
       trans_model.Read(ki.Stream(), binary);
       am_nnet.Read(ki.Stream(), binary);
+      SetBatchnormTestMode(true, &(am_nnet.GetNnet()));
+      SetDropoutTestMode(true, &(am_nnet.GetNnet()));
     }
 
     bool determinize = config.determinize_lattice;

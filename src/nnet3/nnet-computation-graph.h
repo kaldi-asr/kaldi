@@ -416,9 +416,19 @@ class ComputationStepsComputer {
   /// Constructor.
   ///  @param [in] nnet        The neural network that this computation is for.
   ///  @param [in,out]  graph  The computation graph that we're computing the steps
-  ///                          for.  It's only non-const because in certain
-  ///                          unusual cases relating to nodes of type kDimRange,
-  ///                          we may need to add new cindexes.
+  ///                          for.  It's only non-const because there are couple of
+  ///                          unusual situations in which we may need to add new
+  ///                          cindexes:
+  ///                              (1) For nodes of type kDimRange, we may add
+  ///                          cindexes to enable the node to span a contiguous range
+  ///                          of the input indexes.
+  ///                              (2) For certain non-simple Components
+  ///                          (principally CNN-related components), we may need
+  ///                          to add 'blank' cindexes (defined as cindexes
+  ///                          where the 't' indexes are replaced by kNoTime),
+  ///                          for zero-padding and to turn irregularly
+  ///                          structured computations into regularly structured
+  ///                          ones as needed by the component's implementation.
   ///  @param [out] steps     The main output of this class, which is
   ///                         a sequence of steps, each step being an ordered list of cindex_ids.
   ///                         It just gets cleared in the constructor; it's set up

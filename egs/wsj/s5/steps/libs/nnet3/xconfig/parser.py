@@ -7,6 +7,7 @@
 
 from __future__ import print_function
 
+import logging
 import sys
 import libs.nnet3.xconfig.layers as xlayers
 import libs.nnet3.xconfig.utils as xutils
@@ -20,15 +21,31 @@ config_to_layer = {
         'output-layer' : xlayers.XconfigOutputLayer,
         'relu-layer' : xlayers.XconfigBasicLayer,
         'relu-renorm-layer' : xlayers.XconfigBasicLayer,
+        'relu-batchnorm-dropout-layer' : xlayers.XconfigBasicLayer,
+        'relu-dropout-layer': xlayers.XconfigBasicLayer,
+        'relu-batchnorm-layer' : xlayers.XconfigBasicLayer,
         'sigmoid-layer' : xlayers.XconfigBasicLayer,
         'tanh-layer' : xlayers.XconfigBasicLayer,
         'fixed-affine-layer' : xlayers.XconfigFixedAffineLayer,
+        'idct-layer' : xlayers.XconfigIdctLayer,
         'affine-layer' : xlayers.XconfigAffineLayer,
         'lstm-layer' : xlayers.XconfigLstmLayer,
         'lstmp-layer' : xlayers.XconfigLstmpLayer,
         'fast-lstm-layer' : xlayers.XconfigFastLstmLayer,
-        'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer
-        }
+        'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer,
+        'relu-conv-layer': xlayers.XconfigConvLayer,
+        'conv-layer': xlayers.XconfigConvLayer,
+        'conv-relu-layer': xlayers.XconfigConvLayer,
+        'relu-conv-renorm-layer': xlayers.XconfigConvLayer,
+        'conv-relu-renorm-layer': xlayers.XconfigConvLayer,
+        'batchnorm-conv-relu-layer': xlayers.XconfigConvLayer,
+        'relu-batchnorm-conv-layer': xlayers.XconfigConvLayer,
+        'conv-relu-batchnorm-layer': xlayers.XconfigConvLayer,
+        'conv-relu-batchnorm-dropout-layer': xlayers.XconfigConvLayer,
+        'conv-relu-dropout-layer': xlayers.XconfigConvLayer,
+        'res-block': xlayers.XconfigResBlock,
+        'channel-average-layer': xlayers.ChannelAverageLayer
+}
 
 # Turn a config line and a list of previous layers into
 # either an object representing that line of the config file; or None
@@ -44,10 +61,11 @@ def xconfig_line_to_object(config_line, prev_layers = None):
         if not config_to_layer.has_key(first_token):
             raise RuntimeError("No such layer type '{0}'".format(first_token))
         return config_to_layer[first_token](first_token, key_to_value, prev_layers)
-    except Exception as e:
-        print("***Exception caught while parsing the following xconfig line:\n"
-              "*** {0}".format(config_line), file=sys.stderr)
-        raise e
+    except Exception:
+        logging.error(
+            "***Exception caught while parsing the following xconfig line:\n"
+            "*** {0}".format(config_line))
+        raise
 
 # This reads raw existing model (*.raw) and returns array of
 # XconfigInputLayer one per input-node or component-node with same 'name' used
@@ -61,8 +79,8 @@ def get_model_component_info(model_filename):
         sys.exit("{0}: error reading model file '{1}'".format(sys.argv[0], model_filename, repr(e)))
 
     # use nnet3-info to get component names in the model.
-    out, err = common_lib.run_kaldi_command("nnet3-info {0} | grep '\-node' "
-                                            "".format(model_filename))
+    out = common_lib.get_command_stdout("""nnet3-info {0} | grep '\-node' """
+                                        """ """.format(model_filename))
 
     # out contains all component-nodes used in model_filename
     layer_names = []

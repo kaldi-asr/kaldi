@@ -1,6 +1,7 @@
 // util/text-utils-test.cc
 
 // Copyright 2009-2011     Microsoft Corporation
+//                2017     Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -307,6 +308,23 @@ void TestIsLine() {
   KALDI_ASSERT(!IsLine(" a b"));
 }
 
+
+void TestStringsApproxEqual() {
+  // we must test the test.
+  KALDI_ASSERT(!StringsApproxEqual("a", "b"));
+  KALDI_ASSERT(!StringsApproxEqual("1", "2"));
+  KALDI_ASSERT(StringsApproxEqual("1.234", "1.235", 2));
+  KALDI_ASSERT(!StringsApproxEqual("1.234", "1.235", 3));
+  KALDI_ASSERT(StringsApproxEqual("x 1.234 y", "x 1.2345 y", 3));
+  KALDI_ASSERT(!StringsApproxEqual("x 1.234 y", "x 1.2345 y", 4));
+  KALDI_ASSERT(StringsApproxEqual("x 1.234 y 6.41", "x 1.235 y 6.49", 1));
+  KALDI_ASSERT(!StringsApproxEqual("x 1.234 y 6.41", "x 1.235 y 6.49", 2));
+  KALDI_ASSERT(StringsApproxEqual("x 1.234 y 6.41", "x 1.235 y 6.411", 2));
+  KALDI_ASSERT(StringsApproxEqual("x 1.0 y", "x 1.0001 y", 3));
+  KALDI_ASSERT(!StringsApproxEqual("x 1.0 y", "x 1.0001 y", 4));
+}
+
+
 }  // end namespace kaldi
 
 int main() {
@@ -321,12 +339,10 @@ int main() {
   TestSplitStringOnFirstSpace();
   TestIsToken();
   TestIsLine();
+  TestStringsApproxEqual();
   TestNan<float>();
   TestNan<double>();
   TestInf<float>();
   TestInf<double>();
   std::cout << "Test OK\n";
 }
-
-
-

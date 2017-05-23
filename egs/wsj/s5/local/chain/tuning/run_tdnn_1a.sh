@@ -60,7 +60,7 @@ num_threads_ubm=32
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
 # Options which are not passed through to run_ivector_common.sh
-affix=1d  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 common_egs_dir=
 reporting_email=
 

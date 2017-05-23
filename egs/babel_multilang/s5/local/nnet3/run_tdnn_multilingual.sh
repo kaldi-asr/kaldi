@@ -57,7 +57,7 @@ dir=exp/nnet3/multi_bnf
 . ./cmd.sh
 . ./utils/parse_options.sh
 
-[ ! -f local.conf ] && echo 'the file local.conf does not exist!' && exit 1;
+[ ! -f local.conf ] && echo 'the file local.conf does not exist! Read README.txt for more details.' && exit 1;
 . local.conf || exit 1;
 
 
@@ -117,14 +117,14 @@ if $use_ivector; then
     mkdir -p exp/multi/nnet3
     global_extractor=exp/multi/nnet3${nnet3_affix}
     ivector_extractor=$global_extractor/extractor
-    multi_data_dir=data/multi/train${suffix}${feat_suffix}
+    multi_data_dir_for_ivec=data/multi/train${suffix}${ivec_feat_suffix}
     ivector_suffix=_gb
     echo "$0: combine training data using all langs for training global i-vector extractor."
-    if [ ! -f $multi_data_dir/.done ]; then
+    if [ ! -f $multi_data_dir_for_ivec/.done ]; then
       echo ---------------------------------------------------------------------
-      echo "Pooling training data in $multi_data_dir on" `date`
+      echo "Pooling training data in $multi_data_dir_for_ivec on" `date`
       echo ---------------------------------------------------------------------
-      mkdir -p $multi_data_dir
+      mkdir -p $multi_data_dir_for_ivec
       combine_lang_list=""
       for lang_index in `seq 0 $[$num_langs-1]`;do
         combine_lang_list="$combine_lang_list data/${lang_list[$lang_index]}/train${suffix}${feat_suffix}"
@@ -137,13 +137,13 @@ if $use_ivector; then
   if [ ! -f $global_extractor/extractor/.done ]; then
     if [ -z $lda_mllt_lang ]; then lda_mllt_lang=${lang_list[0]}; fi
     echo "$0: Generate global i-vector extractor on pooled data from all "
-    echo "languages in $multi_data_dir, using an LDA+MLLT transform trained "
+    echo "languages in $multi_data_dir_for_ivec, using an LDA+MLLT transform trained "
     echo "on ${lda_mllt_lang}."
     local/nnet3/run_shared_ivector_extractor.sh  \
       --suffix "$suffix" --nnet3-affix "$nnet3_affix" \
       --feat-suffix "$ivec_feat_suffix" \
       --stage $stage $lda_mllt_lang \
-      $multi_data_dir $global_extractor || exit 1;
+      $multi_data_dir_for_ivec $global_extractor || exit 1;
     touch $global_extractor/extractor/.done
   fi
   echo "$0: Extracts ivector for all languages using $global_extractor/extractor."
@@ -213,10 +213,6 @@ EOF
   cat <<EOF >> $dir/configs/vars
 include_log_softmax=false
 EOF
-
-  # removing the extra output node "output-tmp" added for back-compatiblity with
-  # xconfig to config conversion.
-  nnet3-copy --edits="remove-output-nodes name=output-tmp" $dir/configs/ref.raw $dir/configs/ref.raw || exit 1;
 fi
 
 if [ $stage -le 9 ]; then

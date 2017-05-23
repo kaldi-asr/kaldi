@@ -145,6 +145,34 @@ void NnetComputer::DebugAfterExecute(int32 command,
 }
 
 
+void NnetComputer::SaveMemo(int32 memo_index,
+                            const Component &c, void *memo) {
+  if (memo_index <= 0) {
+    if (memo != NULL) {  // memo was returned but is not needed.
+      c.DeleteMemo(memo);
+    }
+  } else {
+    if (memos_.size() <= static_cast<size_t>(memo_index))
+      memos_.resize(memo_index + 1, NULL);
+    memos_[memo_index] = memo;
+  }
+}
+
+void* NnetComputer::GetMemo(int32 memo_index) {
+  if (memo_index == 0) {
+    return NULL;
+  } else {
+    if (static_cast<size_t>(memo_index) >= memos_.size())
+      KALDI_ERR << "Memo requested that was not generated.";
+    void *ans = memos_[memo_index];
+    memos_[memo_index] = NULL;
+    return ans;
+  }
+}
+
+
+
+
 void NnetComputer::ExecuteCommand() {
   const NnetComputation::Command &c = computation_.commands[program_counter_];
   int32 m1, m2;
@@ -185,14 +213,18 @@ void NnetComputer::ExecuteCommand() {
             computation_.component_precomputed_indexes[c.arg2].data;
         const CuSubMatrix<BaseFloat> input(GetSubMatrix(c.arg3));
         CuSubMatrix<BaseFloat> output(GetSubMatrix(c.arg4));
-        component->Propagate(indexes, input, &output);
-        break;
-      }
-      case kStoreStats: {
-        KALDI_ASSERT(nnet_to_update_ != NULL);
-        Component *upd_component = nnet_to_update_->GetComponent(c.arg1);
-        CuSubMatrix<BaseFloat> output(GetSubMatrix(c.arg2));
-        upd_component->StoreStats(output);
+        void *memo = component->Propagate(indexes, input, &output);
+        if (c.arg6) {  // need to store stats.
+          KALDI_ASSERT(nnet_to_update_ != NULL);
+          Component *upd_component = nnet_to_update_->GetComponent(c.arg1);
+          bool was_in_place = (c.arg3 == c.arg4);
+          // if propagate was in-place, provide empty matrix and not 'input', as
+          // input is no longer valid.
+          const CuSubMatrix<BaseFloat> maybe_input(
+              GetSubMatrix(was_in_place ? 0 : c.arg3));
+          upd_component->StoreStats(maybe_input, output, memo);
+        }
+        SaveMemo(c.arg5, *component, memo);
         break;
       }
       case kBackprop:
@@ -213,9 +245,13 @@ void NnetComputer::ExecuteCommand() {
         const CuSubMatrix<BaseFloat> out_value(GetSubMatrix(c.arg4));
         const CuSubMatrix<BaseFloat> out_deriv(GetSubMatrix(c.arg5));
         CuSubMatrix<BaseFloat> in_deriv(GetSubMatrix(c.arg6));
+        void *memo = GetMemo(c.arg7);
         component->Backprop(debug_str.str(), indexes,
-                            in_value, out_value, out_deriv, upd_component,
+                            in_value, out_value, out_deriv,
+                            memo, upd_component,
                             c.arg6 == 0 ? NULL : &in_deriv);
+        if (memo != NULL)
+          component->DeleteMemo(memo);
         break;
       }
       case kMatrixCopy: {
@@ -279,7 +315,8 @@ void NnetComputer::ExecuteCommand() {
         dest.AddRowRanges(src, pairs);
         break;
       }
-      case kNoOperation: case kNoOperationMarker: case kNoOperationLabel:
+      case kNoOperation: case kNoOperationPermanent: case kNoOperationMarker:
+      case kNoOperationLabel:
         break;
       case kGotoLabel:
         KALDI_ASSERT(computation_.commands[c.arg1].command_type == kNoOperationLabel);
@@ -368,8 +405,11 @@ void NnetComputer::Run() {
   const std::vector<NnetComputation::Command> &c = computation_.commands;
   int32 num_commands = c.size();
 
-  if (program_counter_ >= num_commands)
-    KALDI_ERR << "Running computation that has already finished.";
+  if (program_counter_ >= num_commands) {
+    computation_.Print(std::cerr, nnet_);
+    KALDI_ERR << "Running computation that has finished: program-counter="
+              << program_counter_;
+  }
   CheckNoPendingIo();
 
   CommandDebugInfo info;
