@@ -371,7 +371,7 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
 
         # note: self.config['input'] is a descriptor, '[-1]' means output
         # the most recent layer.
-        self.config = { 'input':'[-1]' }
+        self.config = { 'input':'[-1]', 'dim':-1 }
 
     def check_configs(self):
 
