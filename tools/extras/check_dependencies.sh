@@ -84,7 +84,7 @@ fi
 
 if which python >&/dev/null ; then
   version=`python 2>&1 --version | awk '{print $2}' `
-  if [[ $version != "2."* ]] ; then
+  if [[ $version != "2.7"* ]] ; then
     if which python2.7 >&/dev/null  || which python2 >&/dev/null ; then
       echo "$0: python 2.7 is not the default python. You should either make it"
       echo "$0: default or create an bash alias for kaldi scripts to run correctly"
