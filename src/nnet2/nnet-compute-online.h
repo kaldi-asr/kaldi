@@ -69,6 +69,7 @@ class NnetOnlineComputer {
   // calling Flush.  It's valid to call Flush if no frames have been
   // input or if no frames have been output; this produces empty output.
   void Flush(CuMatrix<BaseFloat> *output);
+  int getLastSeenInputFrameLength();
 
  private:
   void Propagate();
