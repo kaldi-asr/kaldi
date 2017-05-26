@@ -3728,7 +3728,7 @@ void UnitTestNonsymmetricPower() {
   for (MatrixIndexT iter = 0; iter < 30; iter++) {
     MatrixIndexT dimM = 1 + Rand() % 20;
     Matrix<Real> M(dimM, dimM);
-    M.SetRandn();
+    InitRandNonsingular(&M);
 
     Matrix<Real> MM(dimM, dimM);
     MM.AddMatMat(1.0, M, kNoTrans, M, kNoTrans, 0.0);  // MM = M M.
@@ -4246,6 +4246,22 @@ template<typename Real> static void UnitTestCompressedMatrix() {
       }
     }
 
+    { // Check Scale() method for compressedMatrix.
+      for (int32 t = 0; t < 10; t++) {
+        float alpha = 0.1;
+        MatrixIndexT num_rows = 4 + Rand() % 20,
+          num_cols = 10 + Rand() % 50;
+        Matrix<Real> M(num_rows, num_cols);
+        M.SetRandn();
+        CompressedMatrix cmat(M);
+        Matrix<Real> scaled_comp_mat(num_rows, num_cols),
+          scaled_mat(M);
+        scaled_mat.Scale(alpha);
+        cmat.Scale(alpha);
+        cmat.CopyToMat(&scaled_comp_mat);
+        AssertEqual(scaled_comp_mat, scaled_mat);
+      }
+    }
     if (n < 5) {  // test I/O.
       bool binary = (n % 2 == 1);
       {
