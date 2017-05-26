@@ -23,7 +23,7 @@
 #include "lat/lattice-functions.h"
 #include "lat/push-lattice.h"
 #include "lat/minimize-lattice.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 

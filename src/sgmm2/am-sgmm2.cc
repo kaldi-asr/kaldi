@@ -24,7 +24,7 @@
 #include <functional>
 
 #include "sgmm2/am-sgmm2.h"
-#include "thread/kaldi-thread.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 using std::vector;
@@ -107,7 +107,7 @@ void AmSgmm2::Read(std::istream &in_stream, bool binary) {
   ReadBasicType(in_stream, binary, &feat_dim);
   ExpectToken(in_stream, binary, "<NUMGAUSS>");
   ReadBasicType(in_stream, binary, &num_gauss);
-  
+
   KALDI_ASSERT(num_pdfs > 0 && feat_dim > 0);
 
   ReadToken(in_stream, binary, &token);
@@ -250,7 +250,7 @@ void AmSgmm2::Write(std::ostream &out_stream,
 
   if (write_params & kSgmmStateParams) {
     WriteToken(out_stream, binary, "<PDF2GROUP>");
-    WriteIntegerVector(out_stream, binary, pdf2group_);    
+    WriteIntegerVector(out_stream, binary, pdf2group_);
     WriteToken(out_stream, binary, "<v>");
     for (int32 j1 = 0; j1 < NumGroups(); j1++) {
       v_[j1].Write(out_stream, binary);
@@ -289,7 +289,7 @@ void AmSgmm2::Check(bool show_properties) {
               << ", speaker-space dim =" << spk_dim;
   KALDI_ASSERT(J1 > 0 && num_gauss > 0 && feat_dim > 0 && phn_dim > 0
                && J2 > 0 && J2 >= J1);
-  
+
   std::ostringstream debug_str;
 
   // First check the diagonal-covariance UBM.
@@ -320,7 +320,7 @@ void AmSgmm2::Check(bool show_properties) {
   } else {
     KALDI_ASSERT(N_.size() == 0 && u_.NumRows() == 0);
   }
-  
+
   KALDI_ASSERT(M_.size() == static_cast<size_t>(num_gauss));
   for (int32 i = 0; i < num_gauss; i++) {
     KALDI_ASSERT(M_[i].NumRows() == feat_dim && M_[i].NumCols() == phn_dim);
@@ -349,7 +349,7 @@ void AmSgmm2::Check(bool show_properties) {
     KALDI_ASSERT(nSubstateWeights >= nSubstatesTot);
     debug_str << "SubstateWeights: "<< (nSubstateWeights) << ".  ";
   }
-  
+
   // check normalizers.
   if (n_.size() == 0) {
     debug_str << "Normalizers: no.  ";
@@ -373,7 +373,7 @@ void AmSgmm2::Check(bool show_properties) {
                    w_jmi_[j1].NumCols() == num_gauss);
     }
   }
-  
+
   if (show_properties)
     KALDI_LOG << "Subspace GMM model properties: " << debug_str.str();
 }
@@ -394,7 +394,7 @@ void AmSgmm2::InitializeFromFullGmm(const FullGmm &full_gmm,
     phn_subspace_dim = full_gmm.Dim() + 1;
   }
   KALDI_ASSERT(spk_subspace_dim >= 0);
-  
+
   w_.Resize(0, 0);
   N_.clear();
   c_.clear();
@@ -418,7 +418,7 @@ void AmSgmm2::CopyFromSgmm2(const AmSgmm2 &other,
   KALDI_LOG << "Copying AmSgmm2";
   pdf2group_ = other.pdf2group_;
   group2pdf_ = other.group2pdf_;
-  
+
   // Copy background GMMs
   diag_ubm_.CopyFromDiagGmm(other.diag_ubm_);
   full_ubm_.CopyFromFullGmm(other.full_ubm_);
@@ -435,7 +435,7 @@ void AmSgmm2::CopyFromSgmm2(const AmSgmm2 &other,
   c_ = other.c_;
   if (copy_normalizers) n_ = other.n_;
   if (copy_weights) w_jmi_ = other.w_jmi_;
-  
+
   KALDI_LOG << "Done.";
 }
 
@@ -499,11 +499,11 @@ void AmSgmm2::ComponentLogLikes(const Sgmm2PerFrameDerivedVars &per_frame_vars,
     logp_xi.AddMatVec(1.0, v_[j1], kNoTrans, per_frame_vars.zti.Row(ki), 0.0);
     logp_xi.AddVec(1.0, n_[j1].Row(i));  // for all substates, add n_{jim}
     logp_xi.Add(per_frame_vars.nti(ki));  // for all substates, add n_{i}(t)
-  }    
+  }
   if (speaker_dep_weights) { // [SSGMM]
     Vector<BaseFloat> &log_d = spk_vars->log_d_jms[j1];
     if (log_d.Dim() == 0) { // have not yet cached this quantity.
-      log_d.Resize(num_substates); 
+      log_d.Resize(num_substates);
       log_d.AddMatVec(1.0, w_jmi_[j1], kNoTrans, spk_vars->b_is, 0.0);
       log_d.ApplyLog();
     }
@@ -538,7 +538,7 @@ BaseFloat AmSgmm2::LogLikelihood(const Sgmm2PerFrameDerivedVars &per_frame_vars,
   // if random_test == true at this point, it was already cached, and we will
   // verify that we return the same value as the cached one.
   pdf_cache.t = t;
-  
+
   int32 j1 = pdf2group_[j2];
   Sgmm2LikelihoodCache::SubstateCacheElement &substate_cache =
       cache->substate_cache[j1];
@@ -557,16 +557,16 @@ BaseFloat AmSgmm2::LogLikelihood(const Sgmm2PerFrameDerivedVars &per_frame_vars,
     // each substate index.  You have to multiply by exp(remaining_log_like)
     // to get a real likelihood.
   }
-  
+
   BaseFloat log_like = substate_cache.remaining_log_like
       + Log(VecVec(substate_cache.likes, c_[j2]));
 
   if (random_test)
     KALDI_ASSERT(ApproxEqual(pdf_cache.log_like, log_like));
-  
+
   pdf_cache.log_like = log_like;
   KALDI_ASSERT(log_like == log_like && log_like - log_like == 0); // check
-  // that it's not NaN or infinity.  
+  // that it's not NaN or infinity.
   return log_like;
 }
 
@@ -605,7 +605,7 @@ void AmSgmm2::SplitSubstatesInGroup(const Vector<BaseFloat> &pdf_occupancies,
   int32 phn_dim = PhoneSpaceDim(), cur_M = NumSubstatesForGroup(j1),
       num_pdfs_for_group = pdfs.size();
   Vector<BaseFloat> rand_vec(phn_dim), v_shift(phn_dim);
-  
+
   KALDI_ASSERT(tgt_M >= cur_M);
   if (cur_M == tgt_M) return;
   // Resize v[j1] to fit new substates
@@ -621,7 +621,7 @@ void AmSgmm2::SplitSubstatesInGroup(const Vector<BaseFloat> &pdf_occupancies,
     int32 j2 = pdfs[i];
     c_j.Row(i).Range(0, cur_M).CopyFromVec(c_[j2]);
   }
-  
+
   // Keep splitting substates until obtaining the desired number
   for (; cur_M < tgt_M; cur_M++) {
     int32 split_m; // substate to split.
@@ -666,7 +666,7 @@ void AmSgmm2::SplitSubstates(const Vector<BaseFloat> &pdf_occupancies,
 
   GetSplitTargets(group_occupancies, opts.split_substates,
                   opts.power, opts.min_count, &tgt_num_substates);
-  
+
   int32 tot_num_substates_old = 0, tot_num_substates_new = 0;
   vector< SpMatrix<BaseFloat> > H_i;
   SpMatrix<BaseFloat> sqrt_H_sm;
@@ -826,11 +826,17 @@ class ComputeNormalizersClass: public MultiThreadable { // For multi-threaded.
       entropy_sum_ptr_(entropy_sum_ptr), entropy_count_(0),
       entropy_sum_(0.0) { }
 
+  ComputeNormalizersClass(const ComputeNormalizersClass &other):
+      MultiThreadable(other),
+      am_sgmm_(other.am_sgmm_), entropy_count_ptr_(other.entropy_count_ptr_),
+      entropy_sum_ptr_(other.entropy_sum_ptr_), entropy_count_(0),
+      entropy_sum_(0.0) { }
+
   ~ComputeNormalizersClass() {
     *entropy_count_ptr_ += entropy_count_;
     *entropy_sum_ptr_ += entropy_sum_;
   }
-  
+
   inline void operator() () {
     // Note: give them local copy of the sums we're computing,
     // which will be propagated to original pointer in the destructor.
@@ -883,7 +889,7 @@ void AmSgmm2::ComputeNormalizersInternal(int32 num_threads, int32 thread,
   }
 
   int32 J1 = NumGroups();
-  
+
   int block_size = (NumPdfs() + num_threads-1) / num_threads;
   int j_start = thread * block_size, j_end = std::min(J1, j_start + block_size);
 
@@ -894,24 +900,24 @@ void AmSgmm2::ComputeNormalizersInternal(int32 num_threads, int32 thread,
     n_[j1].Resize(I, M);
     Matrix<BaseFloat> mu_jmi(M, FeatureDim());
     Matrix<BaseFloat> SigmaInv_mu(M, FeatureDim());
-        
+
     // (in logs): w_jm = softmax([w_{k1}^T ... w_{kD}^T] * v_{jkm}) eq.(7)
     log_w_jm.AddMatMat(1.0, v_[j1], kNoTrans, w_, kTrans, 0.0);
     for (int32 m = 0; m < M; m++) {
-      log_w_jm.Row(m).Add(-1.0 * log_w_jm.Row(m).LogSumExp());    
+      log_w_jm.Row(m).Add(-1.0 * log_w_jm.Row(m).LogSumExp());
       {  // DIAGNOSTIC CODE
         (*entropy_count)++;
         for (int32 i = 0; i < NumGauss(); i++) {
           (*entropy_sum) -= log_w_jm(m, i) * Exp(log_w_jm(m, i));
         }
       }
-    }      
-    
-    for (int32 i = 0; i < I; i++) {    
+    }
+
+    for (int32 i = 0; i < I; i++) {
       // mu_jmi = M_{i} * v_{jm}
       mu_jmi.AddMatMat(1.0, v_[j1], kNoTrans, M_[i], kTrans, 0.0);
       SigmaInv_mu.AddMatSp(1.0, mu_jmi, kNoTrans, SigmaInv_[i], 0.0);
-    
+
       for (int32 m = 0; m < M; m++) {
         // mu_{jmi} * \Sigma_{i}^{-1} * mu_{jmi}
         BaseFloat mu_SigmaInv_mu = VecVec(mu_jmi.Row(m), SigmaInv_mu.Row(m));
@@ -950,7 +956,7 @@ BaseFloat AmSgmm2::GetDjms(int32 j1, int32 m,
   if (log_d.Dim() == 0) {
     log_d.Resize(NumSubstatesForGroup(j1));
     log_d.AddMatVec(1.0, w_jmi_[j1], kNoTrans, spk_vars->b_is, 0.0);
-    log_d.ApplyLog();    
+    log_d.ApplyLog();
   }
   return Exp(log_d(m));
 }
@@ -1000,7 +1006,7 @@ void AmSgmm2::ComputeFmllrPreXform(const Vector<BaseFloat> &state_occs,
       // Eq. (7): w_jm = softmax([w_{1}^T ... w_{D}^T] * v_{jm})
       w_jm.AddMatVec(1.0, w_, kNoTrans, v_[j1].Row(m), 0.0);
       w_jm.ApplySoftMax();
-      
+
       for (int32 i = 0; i < num_gauss; i++) {
         BaseFloat weight = this_substate_weight * w_jm(i);
         mu_jmi.AddMatVec(1.0, M_[i], kNoTrans, v_[j1].Row(m), 0.0);  // Eq. (6)
@@ -1035,13 +1041,13 @@ void AmSgmm2::ComputeFmllrPreXform(const Vector<BaseFloat> &state_occs,
   diag_mean_scatter->Resize(dim);
   xform->Resize(dim, dim + 1);
   inv_xform->Resize(dim, dim + 1);
-  
+
   tmpB.Eig(diag_mean_scatter, &U);  // Eq. (B.5): B = U D V^T
 
   int32 n;
   if ((n = diag_mean_scatter->ApplyFloor(1.0e-04)) != 0)
     KALDI_WARN << "Floored " << n << " elements of the mean-scatter matrix.";
-  
+
   // Eq. (B.6): A_{pre} = U^T * L^{-1}
   SubMatrix<BaseFloat> Apre(*xform, 0, dim, 0, dim);
   Apre.AddMatMat(1.0, U, kTrans, tmpLInvFull, kNoTrans, 0.0);
@@ -1149,13 +1155,13 @@ void AmSgmm2::InitializeNu(int32 spk_subspace_dim,
                           const Matrix<BaseFloat> &norm_xform,
                           bool speaker_dependent_weights) {
   int32 ddim = full_ubm_.Dim();
-  
+
   int32 num_gauss = full_ubm_.NumGauss();
   N_.resize(num_gauss);
   for (int32 i = 0; i < num_gauss; i++) {
     N_[i].Resize(ddim, spk_subspace_dim);
     // Eq. (28): N_{i} = [ (J)_{1:D, 1:T)}]
-    
+
     int32 nonrandom_dim = std::min(spk_subspace_dim, ddim),
         random_dim = spk_subspace_dim - nonrandom_dim;
 
@@ -1175,10 +1181,10 @@ void AmSgmm2::InitializeNu(int32 spk_subspace_dim,
 
 void AmSgmm2::CopyGlobalsInitVecs(const AmSgmm2 &other,
                                   const std::vector<int32> &pdf2group,
-                                  BaseFloat self_weight) {  
+                                  BaseFloat self_weight) {
   KALDI_LOG << "Initializing model";
   pdf2group_ = pdf2group;
-  ComputePdfMappings();  
+  ComputePdfMappings();
 
   // Copy background GMMs
   diag_ubm_.CopyFromDiagGmm(other.diag_ubm_);
@@ -1191,7 +1197,7 @@ void AmSgmm2::CopyGlobalsInitVecs(const AmSgmm2 &other,
   w_ = other.w_;
   u_ = other.u_;
   N_ = other.N_;
-  
+
   InitializeVecsAndSubstateWeights(self_weight);
 }
 
@@ -1333,7 +1339,7 @@ void ComputeFeatureNormalizingTransform(const FullGmm &gmm, Matrix<BaseFloat> *x
   Matrix<BaseFloat> U(dim, dim);
   LBL.Eig(&Dvec, &U);
   SortSvd(&Dvec, &U);
-  
+
   xform->Resize(dim, dim);
   chol_full.CopyFromTp(chol);
   // T := L U, eq (23)

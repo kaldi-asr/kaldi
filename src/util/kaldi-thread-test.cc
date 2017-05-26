@@ -1,7 +1,8 @@
-// thread/kaldi-task-sequence-test.cc
+// util/kaldi-thread-test.cc
 
 // Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 //                 Frantisek Skala
+//           2017  University of Southern California (Author: Dogan Can)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -18,11 +19,66 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-
+#include <algorithm>
 #include "base/kaldi-common.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
+
+// Sums up integers from 0 to max_to_count-1.
+class MyThreadClass : public MultiThreadable {
+ public:
+  MyThreadClass(int32 max_to_count, int32 *i):
+      max_to_count_(max_to_count), iptr_(i), private_counter_(0) { }
+
+  // We are defining a copy constructor to ensure that whenever an instance of
+  // this class is copied, the default *copy* constructor for MultiThreadable
+  // is called instead the default constructor for MultiThreadable.
+  MyThreadClass(const MyThreadClass &other):
+      MultiThreadable(other),
+      max_to_count_(other.max_to_count_), iptr_(other.iptr_),
+      private_counter_(0) { }
+
+  void operator() () {
+    int32 block_size = (max_to_count_+ (num_threads_-1) ) / num_threads_;
+    int32 start = block_size * thread_id_,
+        end = std::min(max_to_count_, start + block_size);
+    for (int32 j = start; j < end; j++)
+      private_counter_ += j;
+  }
+
+  ~MyThreadClass() {
+    *iptr_ += private_counter_;
+  }
+
+ private:
+  MyThreadClass() { }  // Disallow empty constructor.
+  int32 max_to_count_;
+  int32 *iptr_;
+  int32 private_counter_;
+};
+
+
+void TestThreads() {
+  g_num_threads = 8;
+  // run method with temporary threads on 8 threads
+  // Note: uncomment following line for the possibility of simple benchmarking
+  // for(int i=0; i<100000; i++)
+  {
+    int32 max_to_count = 10000, tot = 0;
+    MyThreadClass c(max_to_count, &tot);
+    RunMultiThreaded(c);
+    KALDI_ASSERT(tot == (10000*(10000-1))/2);
+  }
+  g_num_threads = 1;
+  // let's try the same, but with only one thread
+  {
+    int32 max_to_count = 10000, tot = 0;
+    MyThreadClass c(max_to_count, &tot);
+    RunMultiThreaded(c);
+    KALDI_ASSERT(tot == (10000*(10000-1))/2);
+  }
+}
 
 class MyTaskClass { // spins for a while, then outputs a pre-given integer.
  public:
@@ -53,7 +109,7 @@ void TestTaskSequencer() {
     config.num_threads_total = config.num_threads + Rand() % config.num_threads;
 
   int32 num_tasks = Rand() % 100;
-  
+
   std::vector<int32> task_output;
   {
     TaskSequencer<MyTaskClass> sequencer(config);
@@ -66,11 +122,12 @@ void TestTaskSequencer() {
     KALDI_ASSERT(task_output[i] == i);
 }
 
+
 }  // end namespace kaldi.
 
 int main() {
   using namespace kaldi;
+  TestThreads();
   for (int32 i = 0; i < 1000; i++)
     TestTaskSequencer();
 }
-
