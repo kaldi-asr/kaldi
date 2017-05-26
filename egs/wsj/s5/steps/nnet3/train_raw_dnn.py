@@ -416,7 +416,7 @@ def train(args, run_opts, background_process_handler):
             common_lib.send_mail(report, "Update : Expt {0} : "
                                          "complete".format(args.dir), args.email)
 
-        with open("{dir}/accuracy.{output_name}.report".format(dir=args.dir),
+        with open("{dir}/accuracy.{output_name}.report".format(dir=args.dir, output_name="output"),
                   "w") as f:
             f.write(report)
 
