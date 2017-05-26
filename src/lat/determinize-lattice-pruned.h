@@ -155,11 +155,16 @@ struct DeterminizeLatticePhonePrunedOptions {
   bool word_determinize;
   // minimize: if true, push and minimize after determinization.
   bool minimize;
+  // extra parameters for speed 
+  int max_loop;
+  int max_arcs;
   DeterminizeLatticePhonePrunedOptions(): delta(kDelta),
                                           max_mem(50000000),
                                           phone_determinize(true),
                                           word_determinize(true),
-                                          minimize(false) {}
+                                          minimize(false) ,
+                                          max_loop(-1),
+                                          max_arcs(-1) {}
   void Register (kaldi::OptionsItf *opts) {
     opts->Register("delta", &delta, "Tolerance used in determinization");
     opts->Register("max-mem", &max_mem, "Maximum approximate memory usage in "
