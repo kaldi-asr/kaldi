@@ -18,19 +18,31 @@ num_decode_jobs=40
 #NB: or just plain (already unpacked) directories. The list of transcript is then
 #NB: obtained using find command
 
+#Make sure you edit this section to reflect whers you keep the LDC data on your cluster
+
 #This is CLSP configuration. We add the 2014 GALE data. We got around 2 % 
 #improvement just by including it. The gain might be large if someone would tweak
 # the number of leaves and states and so on.
 
-#Make sure you edit this section to reflect whers you keep the LDC data on your cluster
+#audio=(
+#  /export/corpora/LDC/LDC2013S02/
+#  /export/corpora/LDC/LDC2013S07/
+#  /export/corpora/LDC/LDC2014S07/
+#)
+#text=(
+#  /export/corpora/LDC/LDC2013T17
+#  /export/corpora/LDC/LDC2013T04
+#  /export/corpora/LDC/LDC2014T17
+#)
+
 audio=(
   /data/sls/scratch/amali/data/GALE/LDC2013S02
-  /data/sls/scratch/amali/data/GALE/LDC2013S07 
-  /data/sls/scratch/amali/data/GALE/LDC2014S07 
+  /data/sls/scratch/amali/data/GALE/LDC2013S07
+  /data/sls/scratch/amali/data/GALE/LDC2014S07
 )
 text=(
-  /data/sls/scratch/amali/data/GALE/LDC2013T17.tgz 
-  /data/sls/scratch/amali/data/GALE/LDC2013T04.tgz 
+  /data/sls/scratch/amali/data/GALE/LDC2013T17.tgz
+  /data/sls/scratch/amali/data/GALE/LDC2013T04.tgz
   /data/sls/scratch/amali/data/GALE/LDC2014T17.tgz
 )
 
@@ -142,7 +154,7 @@ steps/align_fmllr.sh --nj $num_jobs --cmd "$train_cmd" \
 
 # nnet3 cross-entropy 
 local/nnet3/run_tdnn.sh #tdnn recipe:
-local/nnet3/run_lstm.sh #lstm recipe:
+local/nnet3/run_lstm.sh --stage 12  #lstm recipe (we skip ivector training)
 
 # chain lattice-free 
 local/chain/run_tdnn.sh      #tdnn recipe:

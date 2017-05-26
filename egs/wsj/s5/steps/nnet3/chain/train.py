@@ -211,7 +211,8 @@ def process_args(args):
             or not os.path.exists(args.dir+"/configs")):
         raise Exception("This scripts expects {0} to exist and have a configs "
                         "directory which is the output of "
-                        "make_configs.py script")
+                        "make_configs.py script".format(
+                        args.dir))
 
     if args.transform_dir is None:
         args.transform_dir = args.lat_dir
