@@ -121,6 +121,16 @@ namespace time_height_convolution {
    means that to compute the output at height-index  0 we need the input at
    height-index -1, which doesn't exist; this implies zero padding on the
    bottom of the image.
+
+   Also, there is the "special" pair off offsets (kNoTime, kNoTime) which
+   represents the average over the entire input image (i.e. a spatial average),
+   so if you see
+
+   offsets={ (-2147483648,-2147483648),(-3,-1),(-3,0),(-3,1), (0,-1),(0,0),(0,2), (3,-1),(3,0),(3,1) }
+
+   than the convolution "sees" the average over the whole input image, in
+   addition to the specified offsets around the output pixel.
+
  */
 struct ConvolutionModel {
   int32 num_filters_in;   // number of input filters, e.g. 128.
@@ -158,22 +168,25 @@ struct ConvolutionModel {
 
   // This set, 'required_time_offsets', relates to zero-padding on the time
   // axis.  It should consist of a nonempty subset of the time-offset values
-  // that have been seen in offsets[*].time_offset.  If there is no zero-padding
-  // on the time (width) axis it would be that entire set.  If there is
-  // zero-padding it would in most circumstances contain just the middle one,
-  // e.g. of {0,1,2} we'd keep just {1}, or of {-3,0,3} we'd keep just {0}.  The
-  // way to understand it is that all the time-offsets define dependencies in
-  // the computation, but the list of 'required' offsets determines when a
-  // computation can proceed when some of the dependencies are not present (any
-  // non-required depenencies that were not present default to zero).
+  // other than kNoTime that have been seen in offsets[*].time_offset.  If there
+  // is no zero-padding on the time (width) axis it would be that entire set.
+  // If there is zero-padding it would in most circumstances contain just the
+  // middle one, e.g. of {0,1,2} we'd keep just {1}, or of {-3,0,3} we'd keep
+  // just {0}.  The way to understand it is that all the time-offsets define
+  // dependencies in the computation, but the list of 'required' offsets
+  // determines when a computation can proceed when some of the dependencies are
+  // not present (any non-required depenencies that were not present default to
+  // zero).
   std::set<int32> required_time_offsets;
 
   // This variable, which is derived from 'offsets', stores all the time offsets
-  // that are present there, i.e. all the values of 'offsets[*].time_offset'
+  // that are present there (not counting any instance of kNoTime), i.e. all the
+  // values of 'offsets[*].time_offset'
   std::set<int32> all_time_offsets;
 
   // This variable, which is derived from 'offsets', is the greatest common
-  // divisor of the differences between the members of 'all_time_offsets';
+  // divisor of the differences between the members of 'all_time_offsets',
+  // excluding any element that is kNoTime.
   // e.g. if 'all_time_offsets' is {1,3,5} it would be 2.  It is used to figure
   // out what grid structure the input to the computation should have.  It is
   // set to zero if all_time_offsets.size() == 1.
@@ -255,11 +268,13 @@ struct ConvolutionComputation {
   // height_out will be the same as in the model, but height_in may be
   // affected by reshaping (may be larger than the model's height_in).
   int32 height_in, height_out;
-  // num_t_in and num_t_out are the number of rows in the input and output
-  // matrices, but num_t_in may be affected by reshaping (may be smaller
-  // than the model's num_t_in).
-  // num_t_in will be >= num_times_out, and if it's greater it will be greater by a
-  // small additive term, not by a multiplicative factor.
+  // num_t_in and num_t_out are the number of rows per image in the input and
+  // output matrices, but num_t_in may be affected by reshaping (may be smaller
+  // than the ConvolutionComputationIo's num_t_in).  num_t_in will be >=
+  // num_t_out, and if it's greater it will be greater by a small additive term,
+  // not by a multiplicative factor.
+  // note: when going through the row indexes, the image index varies the fastest;
+  // the 'time' index varies the slowest.
   int32 num_t_in, num_t_out;
   // num_images is the number of (n,x) pairs present in the input/output
   // indexes (although in most setups the x values will all be zero and
@@ -287,6 +302,13 @@ struct ConvolutionComputation {
   // 'input_time_shift' (which is the number of input rows to discard at the
   // start of the input matrix, and won't be the same as the increment in 't',
   // if t_step_in in the ConvolutionComputationIo != 1.
+  //
+  // Note: if the convolution "sees" the spatial average over the input
+  // channels, which would be represented by a (kNoTime, kNoTime) pair
+  // in the 'offsets' list of the ConvolutionModel, this is not
+  // explicitly represented by a separate ConvolutionStep, but it is
+  // implicitly represented by the fact that steps[0].params_start_col
+  // != 0 (i.e. there are parameters before the first step).
   struct ConvolutionStep {
     // input_time_shift >= 0 is the number of initial time-indexes of the input
     // (i.e. the number of initial rows of the matrix) that we discard for this
@@ -572,6 +594,7 @@ void GetIndexesForComputation(
 
 
 /**
+  [This function is used internally, it's not user-level.]
    This function extends the set of input indexes that the computation
    has, to account for any required zero-padding in the time dimension.
    It reads model.all_time_offsets and model.time_offsets_modulus;
@@ -584,6 +607,7 @@ void PadComputationInputTime(const ConvolutionModel &model,
 
 
 /**
+  [This function is used internally, it's not user-level.]
   This function takes a model that might require zero padding
   in the height dimension and outputs a model accepting a
   possibly-larger input dimension which does not require zero
@@ -599,7 +623,9 @@ void PadModelHeight(const ConvolutionModel &model,
                     ConvolutionModel *model_padded);
 
 
-/** This function modifies, if necessary, a computation that has been built for
+/**
+    [This function is used internally, it's not user-level.]
+    This function modifies, if necessary, a computation that has been built for
     the model 'model_padded', so that it can work for the original model
     'model'.  This may involve modifying the members 'height_in', 'temp_cols',
     and the column-related members of the elements of the 'steps' array.
@@ -620,6 +646,7 @@ void UnPadModelHeight(const ConvolutionComputationOptions &opts,
                       ConvolutionComputation *computation);
 
 /**
+   [This function is used internally, it's not user-level.]
    This function takes an input model and I/O specification, and it modifies
    both of them if necessary to ensure that the output 'io_appended' object has
    the same input and output time strides (i.e. t_stride_in == t_stride_out).

@@ -110,7 +110,8 @@ void ConvolutionModel::ComputeDerived() {
     all_time_offsets.clear();
     for (std::vector<Offset>::const_iterator iter = offsets.begin();
          iter != offsets.end(); ++iter)
-      all_time_offsets.insert(iter->time_offset);
+      if (iter->time_offset != kNoTime)
+        all_time_offsets.insert(iter->time_offset);
   }
   { // compute time_offsets_modulus
     time_offsets_modulus = 0;
@@ -118,8 +119,11 @@ void ConvolutionModel::ComputeDerived() {
     int32 cur_offset = *iter;
     for (++iter; iter != all_time_offsets.end(); ++iter) {
       int32 this_offset = *iter;
-      time_offsets_modulus = Gcd(time_offsets_modulus,
-                                 this_offset - cur_offset);
+      // note: kNoTime is negative, so that would always be the first, if
+      // present.
+      if (cur_offset != kNoTime)
+        time_offsets_modulus = Gcd(time_offsets_modulus,
+                                   this_offset - cur_offset);
       cur_offset = this_offset;
     }
   }
@@ -141,6 +145,11 @@ bool ConvolutionModel::Check(bool check_heights_used,
     KALDI_WARN << "Derived variables are incorrect.";
     return false;
   }
+  // make this an assertion because there's no way user input should
+  // cause this error to happen.
+  KALDI_ASSERT(all_time_offsets.count(kNoTime) == 0  &&
+               required_time_offsets.count(kNoTime) == 0);
+
   // check that required_time_offsets is included in all_time_offsets.
   for (std::set<int32>::iterator iter = required_time_offsets.begin();
        iter != required_time_offsets.end(); ++iter) {
@@ -161,6 +170,11 @@ bool ConvolutionModel::Check(bool check_heights_used,
     bool some_input_available = false;
     for (size_t i = 0; i < offsets.size(); i++) {
       const Offset &offset = offsets[i];
+      if (offset.time_offset == kNoTime) {
+        KALDI_ASSERT(offset.height_offset == kNoTime && i == 0);
+        offsets_used[i] = true;
+        continue;
+      }
       int32 h_in = h_out + offset.height_offset;
       if (h_in >= 0 && h_in < height_in) {
         offsets_used[i] = true;
@@ -438,6 +452,133 @@ void ConvolutionComputation::Check() const {
   KALDI_ASSERT((temp_cols != 0) == temp_mat_required);
 }
 
+// This is called from ConvolveForward() in case we are using the spatial
+// averages of the input features.  This would happen if there was a model with
+// the offset pair (kNoTime, kNoTime).
+static void ProcessSpatialAveragesForward(
+    const ConvolutionComputation &cc,
+    const CuMatrixBase<BaseFloat> &input,
+    const CuMatrixBase<BaseFloat> &params,
+    CuMatrixBase<BaseFloat> *output) {
+
+  // the part of the parameters that is used for spatial averages will
+  // always be the first block (with 'num_filters_in' columns), because
+  // kNoTime is very negative, it will come before the 'real' offsets.
+  CuSubMatrix<BaseFloat> params_part(params,
+                                     0, cc.num_filters_out,
+                                     0, cc.num_filters_in);
+
+  // This matrix will store the spatial averages of the input channels, for each
+  // image.
+  CuMatrix<BaseFloat> input_channel_averages(cc.num_images,
+                                             cc.num_filters_in);
+
+  // 'scale' is a value less than one that will turn the sum into an average.
+  // Note: the average includes any zero-padded elements; this doesn't matter
+  // much as long as we're consistent, and it's much easier to implement because
+  // in this code we don't have access to the ConvolutionComputationIo object
+  // which would tell us the un-padded size.
+  BaseFloat scale = cc.num_images * cc.num_filters_in * 1.0 /
+      (input.NumRows() * input.NumCols());
+  // What this 'AddMatBlocks' call does is to sum up over all
+  // blocks of the input matrix, where the blocks are of size
+  // num-images rows by num-filters-in columns.  In the row axis
+  // we sum over time, and in the column axis we sum over height.
+  input_channel_averages.AddMatBlocks(scale, input);
+
+  // output_term is the contribution to the output from the spatial-average
+  // term; it will need to be duplicated across the output.
+  CuMatrix<BaseFloat> output_term(cc.num_images,
+                                  cc.num_filters_out);
+
+  output_term.AddMatMat(1.0, input_channel_averages, kNoTrans,
+                        params_part, kTrans, 0.0);
+
+  // The following 'AddMatBlocks' call adds while (conceptually) replicating
+  // 'output_term' column-wise and block-wise to have the same dime as *output.
+  output->AddMatBlocks(1.0, output_term);
+}
+
+
+// This is called from ConvolveBackwardData() in case we are using the spatial
+// averages of the input features.  This would happen if there was a model with
+// the offset pair (kNoTime, kNoTime).  It is one of the backward passes
+// corresponding to ProcessSpatialAveragesForward().
+static void ProcessSpatialAveragesBackwardData(
+    const ConvolutionComputation &cc,
+    const CuMatrixBase<BaseFloat> &params,
+    const CuMatrixBase<BaseFloat> &output_deriv,
+    CuMatrixBase<BaseFloat> *input_deriv) {
+
+  // the part of the parameters that is used for spatial averages will
+  // always be the first block (with 'num_filters_in' columns), because
+  // kNoTime is very negative, it will come before the 'real' offsets.
+  CuSubMatrix<BaseFloat> params_part(params,
+                                     0, cc.num_filters_out,
+                                     0, cc.num_filters_in);
+
+  // This matrix will store the spatial sum of the output derivatives,
+  // for each output channel and image.
+  CuMatrix<BaseFloat> output_deriv_sum(cc.num_images,
+                                       cc.num_filters_out);
+
+  output_deriv_sum.AddMatBlocks(1.0, output_deriv);
+
+  CuMatrix<BaseFloat> input_deriv_sum(cc.num_images,
+                                      cc.num_filters_in);
+
+  // 'scale' is the same scalar we used in the forward pass.
+  // We can multiply by it at any point; we use it here.
+  BaseFloat scale = cc.num_images * cc.num_filters_in * 1.0 /
+      (input_deriv->NumRows() * input_deriv->NumCols());
+
+  input_deriv_sum.AddMatMat(scale, output_deriv_sum, kNoTrans,
+                            params_part, kNoTrans, 0.0);
+
+  // Duplicate the input deriv for each block of 'input_deriv' and
+  // add it to input_deriv.
+  input_deriv->AddMatBlocks(1.0, input_deriv_sum);
+}
+
+
+// This is called from ConvolveBackwardParams() in case we are using the spatial
+// averages of the input features.  This would happen if there was a model with
+// the offset pair (kNoTime, kNoTime).  It is one of the backward passes
+// corresponding to ProcessSpatialAveragesForward().
+static void ProcessSpatialAveragesBackwardParams(
+    const ConvolutionComputation &cc,
+    const CuMatrixBase<BaseFloat> &input,
+    const CuMatrixBase<BaseFloat> &output_deriv,
+    BaseFloat alpha,
+    CuMatrixBase<BaseFloat> *params_deriv) {
+
+  // the part of the parameters that is used for spatial averages will
+  // always be the first block (with 'num_filters_in' columns), because
+  // kNoTime is very negative, it will come before the 'real' offsets.
+  CuSubMatrix<BaseFloat> params_deriv_part(*params_deriv,
+                                           0, cc.num_filters_out,
+                                           0, cc.num_filters_in);
+
+  // This matrix will store the spatial sum of the output derivatives,
+  // for each output channel and image.
+  CuMatrix<BaseFloat> output_deriv_sum(cc.num_images,
+                                       cc.num_filters_out);
+
+  output_deriv_sum.AddMatBlocks(1.0, output_deriv);
+
+  CuMatrix<BaseFloat> input_sum(cc.num_images,
+                                cc.num_filters_in);
+
+  input_sum.AddMatBlocks(1.0, input);
+
+  // 'scale' is the same scalar we used in the forward pass.
+  BaseFloat scale = cc.num_images * cc.num_filters_in * 1.0 /
+      (input.NumRows() * input.NumCols());
+
+  params_deriv_part.AddMatMat(scale * alpha, output_deriv_sum, kTrans,
+                              input_sum, kNoTrans, 1.0);
+}
+
 
 // Internal function called inside ConvolveForward.
 // Note: the number of time steps covered may be different
@@ -462,6 +603,7 @@ static void ConvolveForwardInternal(
                output_rows % cc.num_images == 0);
 
   int32 num_steps = cc.steps.size();
+
   for (int32 s = 0; s < num_steps; s++) {
     const ConvolutionComputation::ConvolutionStep &step = cc.steps[s];
     int32 input_row_start = step.input_time_shift * cc.num_images;
@@ -553,6 +695,12 @@ void ConvolveForward(
     ConvolveForward(cc, input_reshaped, params, output);
     return;
   }
+
+  // This is relevant if the list offsets_ in the model contains the pair
+  // (kNoTime, kNoTime), indicating that spatial averages over the entire input
+  // are one of the things the convolution 'sees'.
+  if (cc.steps[0].params_start_col != 0)
+    ProcessSpatialAveragesForward(cc, input, params, output);
 
   CuMatrix<BaseFloat> temp_mat(cc.temp_rows, cc.temp_cols,
                                kUndefined, kStrideEqualNumCols);
@@ -713,6 +861,12 @@ void ConvolveBackwardData(
     return;
   }
 
+  // This is relevant if the list offsets_ in the model contains the pair
+  // (kNoTime, kNoTime), indicating that spatial averages over the entire input
+  // are one of the things the convolution 'sees'.
+  if (cc.steps[0].params_start_col != 0)
+    ProcessSpatialAveragesBackwardData(cc, params, output_deriv, input_deriv);
+
   CuMatrix<BaseFloat> temp_mat(cc.temp_rows, cc.temp_cols,
                                kSetZero, kStrideEqualNumCols);
 
@@ -872,6 +1026,13 @@ void ConvolveBackwardParams(
     return;
   }
 
+  // This is relevant if the list offsets_ in the model contains the pair
+  // (kNoTime, kNoTime), indicating that spatial averages over the entire input
+  // are one of the things the convolution 'sees'.
+  if (cc.steps[0].params_start_col != 0)
+    ProcessSpatialAveragesBackwardParams(cc, input, output_deriv, alpha,
+                                         params_deriv);
+
   CuMatrix<BaseFloat> temp_mat(cc.temp_rows, cc.temp_cols,
                                kUndefined, kStrideEqualNumCols);
 
@@ -918,10 +1079,12 @@ void PadModelHeight(const ConvolutionModel &model,
                     ConvolutionModel *model_padded) {
   *model_padded = model;
   KALDI_ASSERT(!model.offsets.empty());
-  int32 min_height_offset = model.offsets[0].height_offset,
-      max_height_offset = model.offsets[0].height_offset,
+  int32 first_real_offset = (model.offsets[0].time_offset == kNoTime ?
+                             1 : 0);
+  int32 min_height_offset = model.offsets[first_real_offset].height_offset,
+      max_height_offset = model.offsets[first_real_offset].height_offset,
       num_offsets = model.offsets.size();
-  for (int32 i = 1; i < num_offsets; i++) {
+  for (int32 i = first_real_offset + 1; i < num_offsets; i++) {
     min_height_offset = std::min<int32>(min_height_offset,
                                         model.offsets[i].height_offset);
     max_height_offset = std::max<int32>(max_height_offset,
@@ -937,15 +1100,16 @@ void PadModelHeight(const ConvolutionModel &model,
   if (top_padding < 0)
     top_padding = 0;
   model_padded->height_in += bottom_padding + top_padding;
-  for (int32 i = 0; i < num_offsets; i++)
-    model_padded->offsets[i].height_offset += bottom_padding;
-
+  for (int32 i = 0; i < num_offsets; i++) {
+    if (model_padded->offsets[i].time_offset != kNoTime)
+      model_padded->offsets[i].height_offset += bottom_padding;
+  }
   // The reason why we say 'allow_height_padding = false' below is obvious--
   // we've 'manually' padded by changing the model, so this modified model
   // should not require height padding.  The reason we set 'check_heights_used'
-  // is a little more non-obvious.  The very lowest and hightest heights
-  // should always be used, but there may, in unusual models, be other heights
-  // that are not used.  We found this in random testing.
+  // to false is a little more non-obvious.  The very lowest and hightest
+  // heights should always be used, but there may, in unusual models, be other
+  // heights that are not used.  We found this in random testing.
   KALDI_ASSERT(model_padded->Check(false, false));
 }
 
@@ -1002,8 +1166,11 @@ void UnPadModelHeight(const ConvolutionComputationOptions &opts,
                       const ConvolutionModel &model_padded,
                       ConvolutionComputation *computation) {
   // First work out how much padding was done in PadModelHeight().
-  int32 bottom_padding = (model_padded.offsets[0].height_offset -
-                          model.offsets[0].height_offset),
+
+  int32 first_real_offset = (model_padded.offsets[0].time_offset == kNoTime ?
+                             1 : 0);
+  int32 bottom_padding = (model_padded.offsets[first_real_offset].height_offset -
+                          model.offsets[first_real_offset].height_offset),
       total_padding = model_padded.height_in - model.height_in,
       top_padding = total_padding - bottom_padding;
 
@@ -1113,7 +1280,8 @@ static void ShiftAllTimeOffsets(int32 shift,
         iter = model->offsets.begin(),
         end = model->offsets.end();
     for (; iter != end; ++iter)
-      iter->time_offset += shift;
+      if (iter->time_offset != kNoTime)
+        iter->time_offset += shift;
   }
   std::set<int32> temp;
   std::set<int32>::const_iterator iter;
@@ -1242,6 +1410,10 @@ void AppendInputFrames(const ConvolutionModel &model,
   for (int32 i = 0; i < num_offsets; i++) {
     const ConvolutionModel::Offset &old_offset = model_temp.offsets[i];
     ConvolutionModel::Offset &new_offset = model_appended->offsets[i];
+    if (old_offset.time_offset == kNoTime) {
+      new_offset = old_offset;
+      continue;
+    }
     // The following two lines are important!!  They are the core of how
     // we handle subsampling in this framework.
     new_offset.time_offset = RoundDownToMultipleOf(old_offset.time_offset,
@@ -1633,6 +1805,11 @@ void MakeComputation(const ConvolutionModel &model,
 
   int32 num_offsets = model.offsets.size(),
       cur_start_offset = 0, cur_end_offset = 0;
+  if (model.offsets[0].time_offset == kNoTime) {
+    // this is a 'special' offset that relates to spatial averaging and the
+    // processing of it is explicitly represented as a step in the computation.
+    cur_start_offset = 1;
+  }
   for(; cur_start_offset < num_offsets; cur_start_offset = cur_end_offset) {
     cur_end_offset = cur_start_offset;
     while (cur_end_offset < num_offsets &&
