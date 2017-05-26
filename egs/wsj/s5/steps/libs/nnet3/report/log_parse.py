@@ -310,7 +310,7 @@ def parse_progress_logs_for_param_diff(exp_dir, pattern):
 def parse_train_logs(exp_dir):
     train_log_files = "%s/log/train.*.log" % (exp_dir)
     train_log_lines = common_lib.run_kaldi_command(
-        'grep -e Accounting {0}'.format(train_log_files))[0].decode()
+        'grep -e Accounting {0}'.format(train_log_files))[0]
     parse_regex = re.compile(".*train\.([0-9]+)\.([0-9]+)\.log:# "
                              "Accounting: time=([0-9]+) thread.*")
 
@@ -335,9 +335,9 @@ def parse_prob_logs(exp_dir, key='accuracy', output="output"):
     train_prob_files = "%s/log/compute_prob_train.*.log" % (exp_dir)
     valid_prob_files = "%s/log/compute_prob_valid.*.log" % (exp_dir)
     train_prob_strings = common_lib.run_kaldi_command(
-        'grep -e {0} {1}'.format(key, train_prob_files), wait=True)[0].decode()
+        'grep -e {0} {1}'.format(key, train_prob_files), wait=True)[0]
     valid_prob_strings = common_lib.run_kaldi_command(
-        'grep -e {0} {1}'.format(key, valid_prob_files))[0].decode()
+        'grep -e {0} {1}'.format(key, valid_prob_files))[0]
 
     # LOG
     # (nnet3-chain-compute-prob:PrintTotalStats():nnet-chain-diagnostics.cc:149)
