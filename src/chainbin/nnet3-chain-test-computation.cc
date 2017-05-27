@@ -6,7 +6,6 @@
 #include "nnet3/nnet-chain-example.h"
 #include "chain/chain-num-graph.h"
 #include "chain/chain-numerator.h"
-#include "chain/chain-cu-numerator.h"
 #include "chain/chain-cu-leakynum.h"
 #include "chain/chain-training.h"
 #include "chainbin/profiler2.h"
