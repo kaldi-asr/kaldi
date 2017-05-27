@@ -442,8 +442,9 @@ class UpdateWClass: public MultiThreadable {
       MultiThreadable(other),
       accs_(other.accs_), model_(other.model_), w_(other.w_),
       log_a_(other.log_a_), F_i_ptr_(other.F_i_ptr_), g_i_ptr_(other.g_i_ptr_),
-      F_i_(other.F_i_), g_i_(other.g_i_), tot_like_ptr_(other.tot_like_ptr_),
-      tot_like_(0.0) { }
+      F_i_(other.F_i_.NumRows(), other.F_i_.NumCols()),
+      g_i_(other.g_i_.NumRows(), other.g_i_.NumCols()),
+      tot_like_ptr_(other.tot_like_ptr_), tot_like_(0.0) { }
 
   ~UpdateWClass() {
     F_i_ptr_->AddMat(1.0, F_i_, kNoTrans);
