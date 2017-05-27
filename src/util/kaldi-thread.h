@@ -75,9 +75,8 @@ class MultiThreadable {
   // Does the main function of the class
   //  Subclasses have to redefine this
   virtual ~MultiThreadable();
-  // Optional destructor.  Note: the destructor
-  // the object passed by the user will also be called, so
-  // watch out.
+  // Optional destructor.  Note: the destructor of the object passed by the user
+  // will also be called, so watch out.
 
  public:
   // Do not redeclare thread_id_ and num_threads_ in derived classes.
@@ -130,7 +129,7 @@ class MultiThreader {
       for (int32 i = 0; i < threads_.size(); i++) {
         cvec_[i].thread_id_ = i;
         cvec_[i].num_threads_ = threads_.size();
-        threads_[i] = std::thread(cvec_[i]);
+        threads_[i] = std::thread(std::ref(cvec_[i]));
       }
     }
   }
