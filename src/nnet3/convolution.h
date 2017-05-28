@@ -409,6 +409,9 @@ struct ConvolutionComputationIo {
   // a reshaping such that we can imagine that the input and output have the
   // same 't' increment; it's useful in subsampling convolutions..
   int32 reorder_t_in;
+
+  void Write(std::ostream &os, bool binary) const;
+  void Read(std::istream &is, bool binary);
 };
 
 /**
@@ -437,9 +440,15 @@ void CheckModelAndIo(const ConvolutionModel &model,
                       each Index (n,t,x) in 'output_indexes', the Index
                       (n,t+time_offset,x) must be present in 'input_indexes'
                       for each time_offset in model.required_time_offsets.
+   @param [in] opts  Options class (currently has just the memory limit).
    @param [out] computation  If non-NULL, the compiled computation will be
                       written to this location.
-
+   @param [out] input_indexes_modified.  This is like 'input_indexes', but
+                      it will be sorted in the way we require and it may be
+                      padded as needed with Indexes of the form (n, kNoTime, x).
+   @param [out] output_indexes_modified.  This is like 'output_indexes', but
+                      it will be sorted in the way we require and it may be
+                      padded as needed with Indexes of the form (n, kNoTime, x).
  */
 void CompileConvolutionComputation(
     const ConvolutionModel &model,
@@ -449,6 +458,7 @@ void CompileConvolutionComputation(
     ConvolutionComputation *computation,
     std::vector<Index> *input_indexes_modified,
     std::vector<Index> *output_indexes_modified);
+
 
 
 /**
@@ -581,6 +591,18 @@ void GetIndexesForComputation(
  */
 void PadComputationInputTime(const ConvolutionModel &model,
                              ConvolutionComputationIo *io);
+
+
+/*
+  This function pads the 'io' object; it's a special case that is used in
+  TimeConvolutionComponent.  It makes sure that the t_step_in and t_step_out are
+  both one, and then it ensures that for each output frame, a left and right
+  context given by 'frames_left_context' and 'frames_right_context' are present.
+ */
+void PadComputationIoSpecial(int32 frames_left_context,
+                             int32 frames_right_context,
+                             ConvolutionComputationIo *io);
+
 
 
 /**

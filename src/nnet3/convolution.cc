@@ -1096,6 +1096,51 @@ void PadComputationInputTime(const ConvolutionModel &model,
   }
 }
 
+
+// see comment in header for what this does.
+void PadComputationIoSpecial(int32 frames_left_context,
+                             int32 frames_right_context,
+                             ConvolutionComputationIo *io) {
+  KALDI_ASSERT(frames_left_context >= 0 && frames_right_context >= 0);
+
+  // fill in any gaps in the output, make it contiguous.
+  if (io->t_step_out == 0) {
+    KALDI_ASSERT(io->num_t_out == 1);
+    io->t_step_out = 1;
+  } else {
+    io->num_t_out *= io->t_step_out;
+    io->num_t_out -= (io->t_step_out - 1);
+    io->t_step_out = 1;
+  }
+  // fill in any gaps in the input, make it contiguous.
+  if (io->t_step_in == 0) {
+    KALDI_ASSERT(io->num_t_in == 1);
+    io->t_step_in = 1;
+  } else {
+    io->num_t_in *= io->t_step_in;
+    io->num_t_in -= (io->t_step_in - 1);
+    io->t_step_in = 1;
+  }
+  KALDI_ASSERT(io->start_t_in <= io->start_t_out);
+  // the following two statements use the fact that the t_steps are both 1.
+  int32 last_t_in = io->start_t_in + io->num_t_in - 1;
+  int32 last_t_out = io->start_t_out + io->num_t_out - 1;
+  KALDI_ASSERT(io->start_t_in <= io->start_t_out &&
+               last_t_in >= last_t_out);
+  int32 input_left_padding =
+      frames_left_context - (io->start_t_out - io->start_t_in),
+      input_right_padding =
+      frames_right_context - (last_t_in - last_t_out);
+  // the following assert is based on knowledge of how this function
+  // is called in practice.
+  KALDI_ASSERT(input_left_padding >= 0 && input_right_padding >= 0);
+  // the following two statements ensure that there is enough left and right
+  // context.
+  io->start_t_in -= input_left_padding;
+  io->num_t_in += (input_left_padding + input_right_padding);
+}
+
+
 // returns i rounded down to a multiple of n,
 // e.g. RoundDownToMultipleOf(3, 2) = 2,
 //      RoundDownToMultipleOf(-1, 3) = -3
@@ -1676,6 +1721,41 @@ void MakeComputation(const ConvolutionModel &model,
   }
   ComputeTempMatrixSize(opts, computation);
 }
+
+void ConvolutionComputationIo::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<ConvComputationIo>");
+  WriteToken(os, binary, "<NumImages>");
+  WriteBasicType(os, binary, num_images);
+  WriteToken(os, binary, "<TInStartStepCount>");
+  WriteBasicType(os, binary, start_t_in);
+  WriteBasicType(os, binary, t_step_in);
+  WriteBasicType(os, binary, num_t_in);
+  WriteToken(os, binary, "<TOutStartStepCount>");
+  WriteBasicType(os, binary, start_t_out);
+  WriteBasicType(os, binary, t_step_out);
+  WriteBasicType(os, binary, num_t_out);
+  WriteToken(os, binary, "<ReorderTIn>");
+  WriteBasicType(os, binary, reorder_t_in);
+  WriteToken(os, binary, "</ConvComputationIo>");
+}
+
+void ConvolutionComputationIo::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<ConvComputationIo>",
+                       "<NumImages>");
+  ReadBasicType(is, binary, &num_images);
+  ExpectToken(is, binary, "<TInStartStepCount>");
+  ReadBasicType(is, binary, &start_t_in);
+  ReadBasicType(is, binary, &t_step_in);
+  ReadBasicType(is, binary, &num_t_in);
+  ExpectToken(is, binary, "<TOutStartStepCount>");
+  ReadBasicType(is, binary, &start_t_out);
+  ReadBasicType(is, binary, &t_step_out);
+  ReadBasicType(is, binary, &num_t_out);
+  ExpectToken(is, binary, "<ReorderTIn>");
+  ReadBasicType(is, binary, &reorder_t_in);
+  ExpectToken(is, binary, "</ConvComputationIo>");
+}
+
 
 } // namespace time_height_convolution
 } // namespace nnet3

@@ -61,6 +61,8 @@ ComponentPrecomputedIndexes* ComponentPrecomputedIndexes::NewComponentPrecompute
     ans = new BackpropTruncationComponentPrecomputedIndexes();
   } else if (cpi_type == "TimeHeightConvolutionComponentPrecomputedIndexes") {
     ans = new TimeHeightConvolutionComponent::PrecomputedIndexes();
+  } else if (cpi_type == "TimeConvolutionComponentPrecomputedIndexes") {
+    ans = new TimeConvolutionComponent::PrecomputedIndexes();
   }
   if (ans != NULL) {
     KALDI_ASSERT(cpi_type == ans->Type());
@@ -159,6 +161,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new BatchNormComponent();
   } else if (component_type == "TimeHeightConvolutionComponent") {
     ans = new TimeHeightConvolutionComponent();
+  } else if (component_type == "TimeConvolutionComponent") {
+    ans = new TimeConvolutionComponent();
   } else if (component_type == "SumBlockComponent") {
     ans = new SumBlockComponent();
   }

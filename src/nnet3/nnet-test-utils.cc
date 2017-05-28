@@ -940,12 +940,34 @@ void GenerateConfigSequenceCnn(
 }
 
 
+void GenerateConfigSequenceCnnTime(
+    const NnetGenerationOptions &opts,
+    std::vector<std::string> *configs) {
+  std::ostringstream ss;
+  // just generate a config with a single component.
+  int32 samples_per_sub_frame = RandInt(1, 10),
+      num_filters_out = RandInt(1, 10),
+      sub_frames_per_frame = RandInt(1, 5),
+      sub_frames_left_context = RandInt(0, 5),
+      sub_frames_right_context = RandInt(0, 5);
+  bool zero_pad = (RandInt(0, 1) == 0);
+  int32 input_dim = samples_per_sub_frame * sub_frames_per_frame;
+  ss << "input-node name=input dim=" << input_dim << std::endl;
+  ss << "component name=layer1-conv type=TimeConvolutionComponent input-dim=" << input_dim
+     << " num-filters-out=" << num_filters_out
+     << " sub-frames-per-frame=" << sub_frames_per_frame
+     << " sub-frames-left-context=" << sub_frames_left_context
+     << " sub-frames-right-context=" << sub_frames_right_context
+     << " zero-pad=" << (zero_pad ? "true" : "false") << std::endl;
+  ss << "component-node name=layer1-conv component=layer1-conv input=input\n";
+  ss << "output-node name=output input=layer1-conv";
+  configs->push_back(ss.str());
+}
 
 void GenerateConfigSequenceCnnNew(
     const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
   std::ostringstream ss;
-
 
   int32 cur_height = RandInt(5, 15),
       cur_num_filt = RandInt(1, 3),
@@ -1070,7 +1092,6 @@ void GenerateConfigSequenceCnnNew(
   }
 
   ss << "output-node name=output input=" << cur_layer_descriptor << std::endl;
-
 
   configs->push_back(ss.str());
 }
@@ -1212,10 +1233,15 @@ start:
       // We're allocating more case statements to the most recently
       // added type of model, to give more thorough testing where
       // it's needed most.
-    case 12: case 13: case 14:
+    case 12: case 13:
       if (!opts.allow_nonlinearity || !opts.allow_context)
         goto start;
       GenerateConfigSequenceCnnNew(opts, configs);
+      break;
+    case 14:
+      if (!opts.allow_context)
+        goto start;
+      GenerateConfigSequenceCnnTime(opts, configs);
       break;
     default:
       KALDI_ERR << "Error generating config sequence.";

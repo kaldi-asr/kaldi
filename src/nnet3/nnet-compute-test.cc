@@ -126,7 +126,8 @@ void TestNnetDecodable(Nnet *nnet) {
 
   if (!NnetIsRecurrent(*nnet) &&
       nnet->Info().find("statistics-extraction") == std::string::npos &&
-      nnet->Info().find("TimeHeightConvolutionComponent") == std::string::npos) {
+      nnet->Info().find("TimeHeightConvolutionComponent") == std::string::npos &&
+      nnet->Info().find("TimeConvolutionComponent") == std::string::npos) {
     // this equivalence will not hold for recurrent nnets, or those that
     // have the statistics-extraction/statistics-pooling layers,
     // or in general for nnets with convolution components (because these

@@ -245,7 +245,7 @@ class Component {
   ///    @param [in] input_index_set  The set of indexes that is available at the
   ///              input of this Component.
   ///    @param [out] used_inputs If this is non-NULL and the output is
-  ///       computable this will be set to the list of input indexes that will
+  ///       computable, this will be set to the list of input indexes that will
   ///       actually be used in the computation.
   ///    @return Returns true iff this output is computable from the provided
   ///          inputs.
