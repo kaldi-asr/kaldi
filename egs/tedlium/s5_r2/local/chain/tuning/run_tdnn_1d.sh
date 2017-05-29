@@ -52,6 +52,7 @@ train_set=train_cleaned
 gmm=tri3_cleaned  # the gmm for the target data
 num_threads_ubm=32
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
+num_epochs=4
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
@@ -213,7 +214,7 @@ if [ $stage -le 18 ]; then
     --egs.chunk-width 150 \
     --trainer.num-chunk-per-minibatch 128 \
     --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs 4 \
+    --trainer.num-epochs $num_epochs \
     --trainer.optimization.num-jobs-initial 2 \
     --trainer.optimization.num-jobs-final 12 \
     --trainer.optimization.initial-effective-lrate 0.001 \
