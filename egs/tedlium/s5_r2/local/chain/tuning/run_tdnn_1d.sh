@@ -59,6 +59,7 @@ train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
 tdnn_affix=1d  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
+remove_egs=true
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -218,7 +219,7 @@ if [ $stage -le 18 ]; then
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.max-param-change 2.0 \
-    --cleanup.remove-egs true \
+    --cleanup.remove-egs $remove_egs \
     --feat-dir $train_data_dir \
     --tree-dir $tree_dir \
     --lat-dir $lat_dir \

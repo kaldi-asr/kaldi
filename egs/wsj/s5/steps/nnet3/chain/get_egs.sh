@@ -64,6 +64,7 @@ online_ivector_dir=  # can be used if we are including speaker information as iV
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
             # LDA transform).  This is used to turn off CMVN in the online-nnet experiments.
+lattice_lm_scale=
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -303,6 +304,9 @@ chain_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$ali
 
 [ ! -z $left_tolerance ] && \
   chain_supervision_all_opts="$chain_supervision_all_opts --left-tolerance=$left_tolerance"
+
+[ ! -z $lattice_lm_scale ] && \
+  chain_supervision_all_opts="$chain_supervision_all_opts --lm-scale=$lattice_lm_scale"
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context

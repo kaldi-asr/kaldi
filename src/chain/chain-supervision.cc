@@ -19,6 +19,7 @@
 
 #include "chain/chain-supervision.h"
 #include "lat/lattice-functions.h"
+#include "lat/push-lattice.h"
 #include "util/text-utils.h"
 #include "hmm/hmm-utils.h"
 #include <numeric>
@@ -142,9 +143,9 @@ bool ProtoSupervision::operator == (const ProtoSupervision &other) const {
           fst::Equal(fst, other.fst));
 }
 
-bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
-                                    const CompactLattice &lat,
-                                    ProtoSupervision *proto_supervision) {
+bool PhoneLatticeToProtoSupervisionInternal(const SupervisionOptions &opts,
+                                            const CompactLattice &lat,
+                                          ProtoSupervision *proto_supervision) {
   opts.Check();
   if (lat.NumStates() == 0) {
     KALDI_WARN << "Empty lattice provided";
@@ -176,9 +177,10 @@ bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
         return false;
       }
       proto_supervision->fst.AddArc(state,
-                                    fst::StdArc(phone, phone,
-                                                fst::TropicalWeight::One(),
-                                                lat_arc.nextstate));
+        fst::StdArc(phone, phone,
+                    fst::TropicalWeight(lat_arc.weight.Weight().Value1()
+                                        * opts.lm_scale),
+                    lat_arc.nextstate));
       int32 t_begin = std::max<int32>(0, (state_time - opts.left_tolerance)),
               t_end = std::min<int32>(num_frames,
                                       (next_state_time + opts.right_tolerance)),
@@ -207,6 +209,46 @@ bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
   return true;
 }
 
+bool NormalizePhoneLattice(CompactLattice *clat) {
+  if (clat->Properties(fst::kTopSorted, false) == 0) {
+    if (fst::TopSort(clat) == false) {
+      KALDI_WARN << "Cycles detected in lattice: cannot normalize.";
+      return false;
+    }
+  }
+
+  std::vector<double> beta;
+  if (!ComputeCompactLatticeBetas(*clat, &beta)) {
+    KALDI_WARN << "Failed to compute backward probabilities on lattice.";
+    return false;
+  }
+
+  CompactLattice::Arc::StateId start = clat->Start();  // Should be 0
+  BaseFloat total_backward_cost = beta[start];
+
+  for (fst::StateIterator<CompactLattice> sit(*clat); !sit.Done(); sit.Next()) {
+    CompactLatticeWeight f = clat->Final(sit.Value());
+    LatticeWeight w = f.Weight();
+    w.SetValue1(w.Value1() + total_backward_cost);
+    f.SetWeight(w);
+    clat->SetFinal(sit.Value(), f);
+  }
+  return fst::PushCompactLatticeWeights(clat);
+}
+
+bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
+                                    const CompactLattice &lat,
+                                    ProtoSupervision *proto_supervision) {
+  if (opts.lm_scale == 0.0) {
+    return PhoneLatticeToProtoSupervisionInternal(opts, lat, proto_supervision);
+  } else {
+    CompactLattice normalized_clat(lat);
+    NormalizePhoneLattice(&normalized_clat);
+    return PhoneLatticeToProtoSupervisionInternal(opts,
+                                                  normalized_clat,
+                                                  proto_supervision);
+  }
+}
 
 bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
   // the following call will do the range-check on 'ilabel'.
