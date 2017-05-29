@@ -5,7 +5,7 @@
 # Apache 2.0
 
 # Similar to steps/cleanup/decode_segmentation.sh, but does fMLLR adaptation.
-# Decoding script with per-utterance graph that does fMLLR adaptation. 
+# Decoding script with per-utterance graph that does fMLLR adaptation.
 # This can be on top of delta+delta-delta, or LDA+MLLT features.
 
 # There are 3 models involved potentially in this script,
@@ -26,7 +26,7 @@
 #  "adaptation model"  $srcdir/final.mdl                 --adapt-model <model>
 #  "final model"       $srcdir/final.mdl                 --final-model <model>
 
-set -e 
+set -e
 set -o pipefail
 
 # Begin configuration section
@@ -127,8 +127,9 @@ if [ $n1 != $n2 ]; then
 fi
 
 mkdir -p $dir/split_fsts
+sort -k1,1 $graphdir/HCLG.fsts.scp > $dir/HCLG.fsts.sorted.scp
 utils/filter_scps.pl --no-warn -f 1 JOB=1:$nj \
-  $sdata/JOB/feats.scp $graphdir/HCLG.fsts.scp $dir/split_fsts/HCLG.fsts.JOB.scp
+  $sdata/JOB/feats.scp $dir/HCLG.fsts.sorted.scp $dir/split_fsts/HCLG.fsts.JOB.scp
 HCLG=scp:$dir/split_fsts/HCLG.fsts.JOB.scp
 
 

@@ -26,7 +26,7 @@
 #include "hmm/transition-model.h"
 #include "nnet3/nnet-am-decodable-simple.h"
 #include "nnet3/nnet-utils.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 #include "tree/context-dep.h"
 #include "util/common-utils.h"
 

@@ -22,11 +22,11 @@
 #ifndef KALDI_NNET3_NNET_COMPONENT_ITF_H_
 #define KALDI_NNET3_NNET_COMPONENT_ITF_H_
 
+#include <iostream>
+#include <mutex>
 #include "nnet3/nnet-common.h"
 #include "nnet3/nnet-parse.h"
 #include "base/kaldi-error.h"
-#include "thread/kaldi-mutex.h"
-#include <iostream>
 
 namespace kaldi {
 namespace nnet3 {
@@ -618,7 +618,7 @@ class NonlinearComponent: public Component {
   BaseFloat self_repair_scale_;
 
   // The mutex is used in UpdateStats, only for resizing vectors.
-  Mutex mutex_;
+  std::mutex mutex_;
 };
 
 } // namespace nnet3
