@@ -186,10 +186,11 @@ struct ComputationRequest {
        for simple Components)
      - arg3 is sub-matrix index of input
      - arg4 is sub-matrix index of output
-   - kStoreStats: Call Component::StoreStats() (used for computing diagnostics
-      such as average activations; called after Propagate).
-     - arg1 is component-index in neural net
-     - arg2 is sub-matrix index of the output of the Propagate function
+     - arg5 is the index of the memo saved from Propagate()'s return value,
+        or 0 if it saves no memo.
+     - arg6 is 1 if we need to call StoreStats() after the Propagate, or 0
+       if we don't.  We used to have a separate command for storing the
+       stats, but that has been removed.
    - kBackprop: Do the back-propagation operation, see Component::Backprop()
      - arg1 is index of component in neural net
      - arg2 is index into ComponentPrecomputedIndexes (0 if NULL; always 0
@@ -198,6 +199,8 @@ struct ComputationRequest {
      - arg4 is submatrix-index of output value (output of Propagate()); 0 if unused
      - arg5 is submatrix-index of output derivative
      - arg6 is submatrix-index of input derivative; 0 if unused.
+     - arg7 is the index of the memo which is generated from the corresponding
+          Propagate() function if the flag kUsesMemo is set; 0 if unused.
    - kBackpropNoModelUpdate: as kBackprop, but does not set the
      'to_update' argument to the Backprop call, even if the model  is updatable,
      so it skips the model-update phase of backprop.
@@ -226,7 +229,13 @@ struct ComputationRequest {
      matrix of derivatives w.r.t. an input.  arg1 is the submatrix index of the
      output (which we expect to be a whole matrix), arg2 is the index of the
      network node associated with it (e.g. the node for "output").
-   - kNoOperation: does nothing (sometimes useful during optimization)
+   - kNoOperation: does nothing, and will be removed by optimization code
+     (sometimes useful during optimization)
+   - kNoOperationPermanent: like kNoOperation, but won't be removed by
+     optimization code.  This is used to ensure that for 'trivial'
+     computations, which just copy the input to the output, the
+     block of commands for the forward or backward propagation is
+     nonempty (to avoid confusing the computation code).
    - kNoOperationMarker: does nothing, but used to mark end of a block
      of commands (like forward commands).
    - kNoOperationLabel: does nothing, but is the destination for
@@ -240,11 +249,12 @@ struct ComputationRequest {
 enum CommandType {
   kAllocMatrixUndefined, kAllocMatrixZeroed,
   kDeallocMatrix, kAllocMatrixFromOther, kAllocMatrixFromOtherZeroed,
-  kPropagate, kStoreStats, kBackprop, kBackpropNoModelUpdate,
+  kPropagate, kBackprop, kBackpropNoModelUpdate,
   kMatrixCopy, kMatrixAdd, kCopyRows, kAddRows,
   kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti, kAddToRowsMulti,
   kAddRowRanges, kAcceptInput, kProvideOutput,
-  kNoOperation, kNoOperationMarker, kNoOperationLabel, kGotoLabel };
+  kNoOperation, kNoOperationPermanent, kNoOperationMarker, kNoOperationLabel,
+  kGotoLabel };
 
 
 
@@ -294,11 +304,12 @@ struct NnetComputation {
     int32 arg4;
     int32 arg5;
     int32 arg6;
+    int32 arg7;
     Command(CommandType command_type = kNoOperationMarker,
             int32 arg1 = -1, int32 arg2 = -1, int32 arg3 = -1, int32 arg4 = -1,
-            int32 arg5 = -1, int arg6 = -1):
+            int32 arg5 = -1, int32 arg6 = -1, int32 arg7 = -1):
         command_type(command_type), arg1(arg1), arg2(arg2), arg3(arg3),
-        arg4(arg4), arg5(arg5), arg6(arg6) { }
+        arg4(arg4), arg5(arg5), arg6(arg6), arg7(arg7) { }
     void Read(std::istream &istream, bool binary);
     void Write(std::ostream &ostream, bool binary) const;
   };

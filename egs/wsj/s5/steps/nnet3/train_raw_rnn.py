@@ -3,6 +3,7 @@
 
 # Copyright 2016 Vijayaditya Peddinti.
 #           2016 Vimal Manohar
+#           2017 Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0.
 
 """ This script is similar to steps/nnet3/train_rnn.py but trains a
@@ -206,7 +207,7 @@ def process_args(args):
     return [args, run_opts]
 
 
-def train(args, run_opts, background_process_handler):
+def train(args, run_opts):
     """ The main function for training.
 
     Args:
@@ -233,12 +234,11 @@ def train(args, run_opts, background_process_handler):
     try:
         model_left_context = variables['model_left_context']
         model_right_context = variables['model_right_context']
-        # this is really the number of times we add layers to the network for
-        # discriminative pretraining
-        num_hidden_layers = variables['num_hidden_layers']
-        add_lda = common_lib.str_to_bool(variables['add_lda'])
-        include_log_softmax = common_lib.str_to_bool(
-            variables['include_log_softmax'])
+        if 'include_log_softmax' in variables:
+            include_log_softmax = common_lib.str_to_bool(
+                variables['include_log_softmax'])
+        else:
+            include_log_softmax = False
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in "
                         "{1}".format(str(e), '{0}/configs'.format(args.dir)))
@@ -255,9 +255,9 @@ def train(args, run_opts, background_process_handler):
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
 
-    if (args.stage <= -4):
-        logger.info("Initializing a basic network")
-        common_lib.run_job(
+    if (args.stage <= -4) and os.path.exists(args.dir+"/configs/init.config"):
+        logger.info("Initializing the network for computing the LDA stats")
+        common_lib.execute_command(
             """{command} {dir}/log/nnet_init.log \
                     nnet3-init --srand=-2 {dir}/configs/init.config \
                     {dir}/init.raw""".format(command=run_opts.command,
@@ -328,7 +328,7 @@ def train(args, run_opts, background_process_handler):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (add_lda and args.stage <= -2):
+    if (args.stage <= -2) and os.path.exists(args.dir+"/configs/init.config"):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
@@ -349,10 +349,9 @@ def train(args, run_opts, background_process_handler):
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
 
-    models_to_combine = common_train_lib.verify_iterations(
+    models_to_combine = common_train_lib.get_model_combine_iters(
         num_iters, args.num_epochs,
-        num_hidden_layers, num_archives,
-        args.max_models_combine, args.add_layers_period,
+        num_archives, args.max_models_combine,
         args.num_jobs_final)
 
     def learning_rate(iter, current_num_jobs, num_archives_processed):
@@ -387,7 +386,7 @@ def train(args, run_opts, background_process_handler):
             shrinkage_value = 1.0
             if args.shrink_value != 1.0:
                 shrinkage_value = (args.shrink_value
-                                   if common_train_lib.do_shrinkage(
+                                   if common_train_lib.should_do_shrinkage(
                                         iter, model_file,
                                         args.shrink_saturation_threshold,
                                         get_raw_nnet_from_am=False)
@@ -410,18 +409,13 @@ def train(args, run_opts, background_process_handler):
                     iter),
                 shrinkage_value=shrinkage_value,
                 minibatch_size_str=args.num_chunk_per_minibatch,
-                num_hidden_layers=num_hidden_layers,
-                add_layers_period=args.add_layers_period,
-                left_context=left_context,
-                right_context=right_context,
                 min_deriv_time=min_deriv_time,
                 max_deriv_time_relative=max_deriv_time_relative,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
-                get_raw_nnet_from_am=False,
-                background_process_handler=background_process_handler)
+                get_raw_nnet_from_am=False)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
@@ -449,10 +443,8 @@ def train(args, run_opts, background_process_handler):
         train_lib.common.combine_models(
             dir=args.dir, num_iters=num_iters,
             models_to_combine=models_to_combine, egs_dir=egs_dir,
-            left_context=left_context, right_context=right_context,
             minibatch_size_str=args.num_chunk_per_minibatch,
             run_opts=run_opts, chunk_width=args.chunk_width,
-            background_process_handler=background_process_handler,
             get_raw_nnet_from_am=False,
             sum_to_one_penalty=args.combine_sum_to_one_penalty)
 
@@ -462,7 +454,6 @@ def train(args, run_opts, background_process_handler):
         train_lib.common.compute_average_posterior(
             dir=args.dir, iter='final', egs_dir=egs_dir,
             num_archives=num_archives,
-            left_context=left_context, right_context=right_context,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts,
             get_raw_nnet_from_am=False)
 
@@ -490,26 +481,25 @@ def train(args, run_opts, background_process_handler):
     with open("{dir}/accuracy.report".format(dir=args.dir), "w") as f:
         f.write(report)
 
-    common_lib.run_job("steps/info/nnet3_dir_info.pl "
-                       "{0}".format(args.dir))
+    common_lib.execute_command("steps/info/nnet3_dir_info.pl "
+                               "{0}".format(args.dir))
 
 
 def main():
     [args, run_opts] = get_args()
     try:
-        background_process_handler = common_lib.BackgroundProcessHandler(
-            polling_time=args.background_polling_time)
-        train(args, run_opts, background_process_handler)
-        background_process_handler.ensure_processes_are_done()
-    except Exception as e:
+        train(args, run_opts)
+        common_lib.wait_for_background_commands()
+    except BaseException as e:
+        # look for BaseException so we catch KeyboardInterrupt, which is
+        # what we get when a background thread dies.
         if args.email is not None:
             message = ("Training session for experiment {dir} "
                        "died due to an error.".format(dir=args.dir))
             common_lib.send_mail(message, message, args.email)
-        traceback.print_exc()
-        background_process_handler.stop()
-        raise e
-
+        if not isinstance(e, KeyboardInterrupt):
+            traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

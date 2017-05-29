@@ -219,17 +219,17 @@ def write_config_files(config_dir, all_layers):
             raise
 
 
-def add_back_compatibility_info(config_dir, nnet_edits=None):
-    """This will be removed when python script refactoring is done."""
+def add_nnet_context_info(config_dir, nnet_edits=None):
+    """Create the 'vars' file that specifies model_left_context, etc."""
 
-    common_lib.run_kaldi_command("nnet3-init {0}/ref.config "
-                                 "{0}/ref.raw".format(config_dir))
+    common_lib.execute_command("nnet3-init {0}/ref.config "
+                               "{0}/ref.raw".format(config_dir))
     model = "{0}/ref.raw".format(config_dir)
     if nnet_edits is not None:
-        model = """nnet3-copy --edits='{0}' {1} - |""".format(nnet_edits,
-                                                              model)
-    out, err = common_lib.run_kaldi_command("""nnet3-info "{0}" | """
-                                            """head -4""".format(model))
+        model = "nnet3-copy --edits='{0}' {1} - |".format(nnet_edits,
+                                                          model)
+    out = common_lib.get_command_stdout('nnet3-info "{0}" | head -n 4 '
+                                        .format(model))
     # out looks like this
     # left-context: 7
     # right-context: 0
@@ -242,32 +242,27 @@ def add_back_compatibility_info(config_dir, nnet_edits=None):
             continue
         info[parts[0].strip()] = int(parts[1].strip())
 
-    # Writing the back-compatible vars file
+    # Writing the 'vars' file:
     #   model_left_context=0
     #   model_right_context=7
-    #   num_hidden_layers=3
     vf = open('{0}/vars'.format(config_dir), 'w')
     vf.write('model_left_context={0}\n'.format(info['left-context']))
     vf.write('model_right_context={0}\n'.format(info['right-context']))
-    vf.write('num_hidden_layers=1\n')
     vf.close()
-
-    common_lib.force_symlink("final.config".format(config_dir),
-                             "{0}/layer1.config".format(config_dir))
 
 def check_model_contexts(config_dir, nnet_edits=None):
     contexts = {}
     for file_name in ['init', 'ref']:
         if os.path.exists('{0}/{1}.config'.format(config_dir, file_name)):
             contexts[file_name] = {}
-            common_lib.run_kaldi_command("nnet3-init {0}/{1}.config "
-                                         "{0}/{1}.raw".format(config_dir, file_name))
+            common_lib.execute_command("nnet3-init {0}/{1}.config "
+                                       "{0}/{1}.raw".format(config_dir, file_name))
             model = "{0}/{1}.raw".format(config_dir, file_name)
             if nnet_edits is not None:
-                model = """nnet3-copy --edits='{0}' {1} - |""".format(nnet_edits,
-                                                                      model)
-            out, err = common_lib.run_kaldi_command("""nnet3-info "{0}" | """
-                                                    """head -4""".format(model))
+                model = "nnet3-copy --edits='{0}' {1} - |".format(nnet_edits,
+                                                                  model)
+            out = common_lib.get_command_stdout('nnet3-info "{0}" | head -n 4 '
+                                                .format(model))
             # out looks like this
             # left-context: 7
             # right-context: 0
@@ -304,7 +299,7 @@ def main():
     write_expanded_xconfig_files(args.config_dir, all_layers)
     write_config_files(args.config_dir, all_layers)
     check_model_contexts(args.config_dir, args.nnet_edits)
-    add_back_compatibility_info(args.config_dir, args.nnet_edits)
+    add_nnet_context_info(args.config_dir, args.nnet_edits)
 
 
 if __name__ == '__main__':

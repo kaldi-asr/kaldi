@@ -177,7 +177,7 @@ void DistributeComponent::ComputeInputPointers(
 
 
 // virtual
-void DistributeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+void* DistributeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                     const CuMatrixBase<BaseFloat> &in,
                                     CuMatrixBase<BaseFloat> *out) const {
   KALDI_ASSERT(indexes != NULL &&
@@ -187,6 +187,7 @@ void DistributeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   ComputeInputPointers(indexes, in, num_output_rows, &input_pointers);
   CuArray<const BaseFloat*> input_pointers_cuda(input_pointers);
   out->CopyRows(input_pointers_cuda);
+  return NULL;
 }
 
 // virtual
@@ -195,6 +196,7 @@ void DistributeComponent::Backprop(const std::string &debug_info,
                                    const CuMatrixBase<BaseFloat> &, // in_value,
                                    const CuMatrixBase<BaseFloat> &, // out_value
                                    const CuMatrixBase<BaseFloat> &out_deriv,
+                                   void *memo,
                                    Component *, // to_update,
                                    CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv == NULL) return;
@@ -442,7 +444,7 @@ void StatisticsExtractionComponent::GetInputIndexes(
 }
 
 
-void StatisticsExtractionComponent::Propagate(
+void* StatisticsExtractionComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes_in,
     const CuMatrixBase<BaseFloat> &in,
     CuMatrixBase<BaseFloat> *out) const {
@@ -468,6 +470,7 @@ void StatisticsExtractionComponent::Propagate(
                   input_dim_).AddRowRanges(in_squared,
                                            indexes->forward_indexes);
   }
+  return NULL;
 }
 
 void StatisticsExtractionComponent::Backprop(
@@ -476,6 +479,7 @@ void StatisticsExtractionComponent::Backprop(
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &, // out_value,
     const CuMatrixBase<BaseFloat> &out_deriv,
+    void *memo,
     Component *, // to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
   KALDI_ASSERT(indexes_in != NULL);
@@ -764,7 +768,7 @@ StatisticsPoolingComponent::PrecomputeIndexes(
   return ans;
 }
 
-void StatisticsPoolingComponent::Propagate(
+void* StatisticsPoolingComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes_in,
     const CuMatrixBase<BaseFloat> &in,
     CuMatrixBase<BaseFloat> *out) const {
@@ -810,6 +814,7 @@ void StatisticsPoolingComponent::Propagate(
     // compute the standard deviation via square root.
     variance.ApplyPow(0.5);
   }
+  return NULL;
 }
 
 void StatisticsPoolingComponent::Backprop(
@@ -818,6 +823,7 @@ void StatisticsPoolingComponent::Backprop(
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &out_value,
     const CuMatrixBase<BaseFloat> &out_deriv_in,
+    void *memo,
     Component *, // to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
   KALDI_ASSERT(indexes_in != NULL);
@@ -1078,13 +1084,14 @@ BackpropTruncationComponent::PrecomputeIndexes(
 }
 
 // virtual
-void BackpropTruncationComponent::Propagate(
+void* BackpropTruncationComponent::Propagate(
                                  const ComponentPrecomputedIndexes *indexes,
                                  const CuMatrixBase<BaseFloat> &in,
                                  CuMatrixBase<BaseFloat> *out) const {
   out->CopyFromMat(in);
   if (scale_ != 1.0)
     out->Scale(scale_);
+  return NULL;
 }
 
 // virtual
@@ -1093,6 +1100,7 @@ void BackpropTruncationComponent::Backprop(const std::string &debug_info,
                              const CuMatrixBase<BaseFloat> &, //in_value
                              const CuMatrixBase<BaseFloat> &,
                              const CuMatrixBase<BaseFloat> &out_deriv,
+                             void *memo,
                              Component *to_update_in, // may be NULL; may be
                              // identical to "this" or different.
                              CuMatrixBase<BaseFloat> *in_deriv) const {
@@ -1213,11 +1221,12 @@ ConstantComponent::ConstantComponent(
     use_natural_gradient_(other.use_natural_gradient_),
     preconditioner_(other.preconditioner_) { }
 
-void ConstantComponent::Propagate(
+void* ConstantComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes,
     const CuMatrixBase<BaseFloat> &in,
     CuMatrixBase<BaseFloat> *out) const {
   out->CopyRowsFromVec(output_);
+  return NULL;
 }
 
 void ConstantComponent::Backprop(
@@ -1226,6 +1235,7 @@ void ConstantComponent::Backprop(
     const CuMatrixBase<BaseFloat> &, // in_value
     const CuMatrixBase<BaseFloat> &, // out_value
     const CuMatrixBase<BaseFloat> &out_deriv,
+    void *memo,
     Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
   // we don't update in_deriv, since we set the flag
@@ -1392,7 +1402,7 @@ DropoutMaskComponent::DropoutMaskComponent(
     output_dim_(other.output_dim_),
     dropout_proportion_(other.dropout_proportion_) { }
 
-void DropoutMaskComponent::Propagate(
+void* DropoutMaskComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes,
     const CuMatrixBase<BaseFloat> &in,
     CuMatrixBase<BaseFloat> *out) const {
@@ -1402,28 +1412,33 @@ void DropoutMaskComponent::Propagate(
 
   if (dropout_proportion_ == 0) {
     out->Set(1.0);
-    return;
+    return NULL;
   }
-    const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
-    out->Add(-dropout_proportion);
-    out->ApplyHeaviside();
-    // To generate data where it's never the case that both of the dimensions
-    // for a row are zero, we generate uniformly distributed data (call this u_i),
-    // and for row i, set (*out)(i, 0) = (0 if u_i < dropout_proportion else 1)
-    //                and (*out)(i, 1) = (0 if u_i > 1-dropout_proportion else 1)
-    int32 num_rows = out->NumRows();
-    // later we may make this a bit more efficient.
-    CuVector<BaseFloat> temp(num_rows, kUndefined);
-    const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(&temp);
-    temp.Add(-dropout_proportion);
-    out->CopyColFromVec(temp, 0);
-    temp.Add(-1.0 + (2.0 * dropout_proportion));
-    // Now, 'temp' contains the original uniformly-distributed data plus
-    // -(1 - dropout_proportion).
-    temp.Scale(-1.0);
-    out->CopyColFromVec(temp, 1);
-    out->ApplyHeaviside();
+  if (test_mode_) {
+    out->Set(1.0 - dropout_proportion);
+    return NULL;
   }
+  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
+  out->Add(-dropout_proportion);
+  out->ApplyHeaviside();
+  // To generate data where it's never the case that both of the dimensions
+  // for a row are zero, we generate uniformly distributed data (call this u_i),
+  // and for row i, set (*out)(i, 0) = (0 if u_i < dropout_proportion else 1)
+  //                and (*out)(i, 1) = (0 if u_i > 1-dropout_proportion else 1)
+  int32 num_rows = out->NumRows();
+  // later we may make this a bit more efficient.
+  CuVector<BaseFloat> temp(num_rows, kUndefined);
+  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(&temp);
+  temp.Add(-dropout_proportion);
+  out->CopyColFromVec(temp, 0);
+  temp.Add(-1.0 + (2.0 * dropout_proportion));
+  // Now, 'temp' contains the original uniformly-distributed data plus
+  // -(1 - dropout_proportion).
+  temp.Scale(-1.0);
+  out->CopyColFromVec(temp, 1);
+  out->ApplyHeaviside();
+  return NULL;
+}
 
 
 void DropoutMaskComponent::Read(std::istream &is, bool binary) {
@@ -1431,7 +1446,15 @@ void DropoutMaskComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &output_dim_);
   ExpectToken(is, binary, "<DropoutProportion>");
   ReadBasicType(is, binary, &dropout_proportion_);
-  ExpectToken(is, binary, "</DropoutMaskComponent>");
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<TestMode>") {
+    ReadBasicType(is, binary, &test_mode_);  // read test mode
+    ExpectToken(is, binary, "</DropoutMaskComponent>");
+  } else {
+    test_mode_ = false;
+    KALDI_ASSERT(token == "</DropoutMaskComponent>");
+  }
 }
 
 
@@ -1441,6 +1464,8 @@ void DropoutMaskComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, output_dim_);
   WriteToken(os, binary, "<DropoutProportion>");
   WriteBasicType(os, binary, dropout_proportion_);
+  WriteToken(os, binary, "<TestMode>");
+  WriteBasicType(os, binary, test_mode_);
   WriteToken(os, binary, "</DropoutMaskComponent>");
 }
 
@@ -1454,6 +1479,8 @@ void DropoutMaskComponent::InitFromConfig(ConfigLine *cfl) {
   KALDI_ASSERT(ok && output_dim_ > 0);
   dropout_proportion_ = 0.5;
   cfl->GetValue("dropout-proportion", &dropout_proportion_);
+  test_mode_ = false;
+  cfl->GetValue("test-mode", &test_mode_);
 }
 
 

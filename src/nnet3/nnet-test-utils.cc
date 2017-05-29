@@ -115,10 +115,18 @@ void GenerateConfigSequenceSimple(
 
   bool use_final_nonlinearity = (opts.allow_final_nonlinearity &&
                                  RandInt(0, 1) == 0);
+  bool use_batch_norm = (RandInt(0, 1) == 0);
+
   os << "component name=affine1 type=NaturalGradientAffineComponent input-dim="
      << spliced_dim << " output-dim=" << hidden_dim << std::endl;
   os << "component name=relu1 type=RectifiedLinearComponent dim="
      << hidden_dim << std::endl;
+  if (use_batch_norm) {
+    int32 block_dim = (hidden_dim % 2 == 0 ? hidden_dim / 2 : hidden_dim);
+    os << "component name=batch-norm type=BatchNormComponent dim="
+       << hidden_dim << " block-dim=" << block_dim
+       << " epsilon=0.2 target-rms=2.0\n";
+  }
   os << "component name=final_affine type=NaturalGradientAffineComponent input-dim="
      << hidden_dim << " output-dim=" << output_dim << std::endl;
   if (use_final_nonlinearity) {
@@ -145,7 +153,12 @@ void GenerateConfigSequenceSimple(
   }
   os << ")\n";
   os << "component-node name=nonlin1 component=relu1 input=affine1_node\n";
-  os << "component-node name=final_affine component=final_affine input=nonlin1\n";
+  if (use_batch_norm) {
+    os << "component-node name=batch-norm component=batch-norm input=nonlin1\n";
+    os << "component-node name=final_affine component=final_affine input=batch-norm\n";
+  } else {
+    os << "component-node name=final_affine component=final_affine input=nonlin1\n";
+  }
   if (use_final_nonlinearity) {
     os << "component-node name=output_nonlin component=logsoftmax input=final_affine\n";
     os << "output-node name=output input=output_nonlin\n";
@@ -926,6 +939,143 @@ void GenerateConfigSequenceCnn(
   configs->push_back(os.str());
 }
 
+
+
+void GenerateConfigSequenceCnnNew(
+    const NnetGenerationOptions &opts,
+    std::vector<std::string> *configs) {
+  std::ostringstream ss;
+
+
+  int32 cur_height = RandInt(5, 15),
+      cur_num_filt = RandInt(1, 3),
+      num_layers = RandInt(0, 3);
+  // note: generating zero layers is a bit odd but it exercises some code that
+  // we otherwise wouldn't exercise.
+
+
+  std::string cur_layer_descriptor = "input";
+
+  { // input layer.
+    ss << "input-node name=input dim=" << (cur_height * cur_num_filt)
+       << std::endl;
+  }
+
+
+  for (int32 l = 0; l < num_layers; l++) {
+    int32 next_num_filt = RandInt(1, 10);
+
+    bool height_padding = (cur_height < 5 || RandInt(0, 1) == 0);
+    int32 height_subsampling_factor = RandInt(1, 2);
+    if (cur_height < 4) {
+      // output height of 1 causes a problem with unused height-offsets,
+      // so don't subsample in that case.
+      height_subsampling_factor = 1;
+    }
+
+    int32 next_height = cur_height;
+    if (!height_padding) {
+      next_height -= 2;  // the kernel will have height 3.
+    }
+    next_height = (next_height + height_subsampling_factor - 1) /
+        height_subsampling_factor;
+
+    if (next_height == cur_height && RandInt(0, 1) == 0) {
+      // ensure that with sufficient frequency, we have the
+      // same height and num-filt out; this enables ResNet-style
+      // addition.
+      next_num_filt = cur_num_filt;
+    }
+
+    std::string time_offsets, required_time_offsets;
+    if (RandInt(0, 3) == 0) {
+      time_offsets = "0";
+      required_time_offsets = (RandInt(0, 1) == 0 ? "" : "0");
+    } else if (RandInt(0, 1) == 0) {
+      time_offsets = "-1,0,1";
+      required_time_offsets = (RandInt(0, 1) == 0 ? "" : "-1");
+    } else {
+      time_offsets = "-2,0,2";
+      required_time_offsets = (RandInt(0, 1) == 0 ? "" : "0");
+    }
+
+    ss << "component type=TimeHeightConvolutionComponent name=layer" << l << "-conv "
+       << "num-filters-in=" << cur_num_filt
+       << " num-filters-out=" << next_num_filt
+       << " height-in=" << cur_height
+       << " height-out=" << next_height
+       << " height-offsets=" << (height_padding ? "-1,0,1" : "0,1,2")
+       << " time-offsets=" << time_offsets;
+
+    if (RandInt(0, 1) == 0) {
+      // this limits the 'temp memory' usage to 100
+      // bytes, which will test another code path where
+      // it breaks up the temporary matrix into pieces
+      ss << " max-memory-mb=1.0e-04";
+    }
+
+    if (height_subsampling_factor != 1 || RandInt(0, 1) == 0)
+      ss << " height-subsample-out=" << height_subsampling_factor;
+    if (required_time_offsets == "" && RandInt(0, 1) == 0) {
+      required_time_offsets = time_offsets;
+      // it should default to this, but we're exercising more of the config
+      // parsing code this way.
+    }
+    if (required_time_offsets != "")
+      ss << " required-time-offsets=" << required_time_offsets;
+    if (RandInt(0, 1) == 0)
+      ss << " param-stddev=0.1 bias-stddev=1";
+    if (RandInt(0, 1) == 0)
+      ss << " use-natural-gradient=false";
+    if (RandInt(0, 1) == 0)
+      ss << " rank-in=4";
+    if (RandInt(0, 1) == 0)
+      ss << " rank-out=4";
+    if (RandInt(0, 1) == 0)
+      ss << " alpha-in=2.0";
+    if (RandInt(0, 1) == 0)
+      ss << " alpha-out=2.0";
+    ss << std::endl;
+
+    ss << "component-node name=layer" << l << "-conv component=layer"
+       << l << "-conv input=" << cur_layer_descriptor << std::endl;
+
+    bool use_relu = false;
+    if (use_relu) {
+      ss << "component type=RectifiedLinearComponent name=layer" << l
+         << "-relu dim=" << (next_height * next_num_filt) << std::endl;
+      ss << "component-node name=layer" << l << "-relu component=layer"
+         << l << "-relu input=layer" << l << "-conv" << std::endl;
+    }
+
+    std::ostringstream desc_ss;
+    if (next_height == cur_height && next_num_filt == cur_num_filt
+        && RandInt(0, 1) == 0) {
+      desc_ss << "Sum(" << cur_layer_descriptor << ", layer" << l
+              << (use_relu ? "-relu)" : "-conv)");
+    } else {
+      desc_ss << "layer" << l << (use_relu ? "-relu" : "-conv");
+    }
+
+    if (RandInt(0, 3) == 0) {
+      std::ostringstream round_desc_ss;
+      int32 modulus = RandInt(2, 3);
+      round_desc_ss << "Round(" << desc_ss.str() << ", " << modulus << ")";
+      cur_layer_descriptor = round_desc_ss.str();
+    } else {
+      cur_layer_descriptor = desc_ss.str();
+    }
+    cur_height = next_height;
+    cur_num_filt = next_num_filt;
+  }
+
+  ss << "output-node name=output input=" << cur_layer_descriptor << std::endl;
+
+
+  configs->push_back(ss.str());
+}
+
+
 // generates a config sequence involving DistributeComponent.
 void GenerateConfigSequenceDistribute(
     const NnetGenerationOptions &opts,
@@ -996,7 +1146,7 @@ void GenerateConfigSequence(
     const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
 start:
-  int32 network_type = RandInt(0, 11);
+  int32 network_type = RandInt(0, 14);
   switch(network_type) {
     case 0:
       GenerateConfigSequenceSimplest(opts, configs);
@@ -1058,6 +1208,14 @@ start:
           !opts.allow_nonlinearity)
         goto start;
       GenerateConfigSequenceLstmWithTruncation(opts, configs);
+      break;
+      // We're allocating more case statements to the most recently
+      // added type of model, to give more thorough testing where
+      // it's needed most.
+    case 12: case 13: case 14:
+      if (!opts.allow_nonlinearity || !opts.allow_context)
+        goto start;
+      GenerateConfigSequenceCnnNew(opts, configs);
       break;
     default:
       KALDI_ERR << "Error generating config sequence.";
@@ -1130,7 +1288,7 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
-  int32 n = RandInt(0, 30);
+  int32 n = RandInt(0, 32);
   BaseFloat learning_rate = 0.001 * RandInt(1, 100);
 
   std::ostringstream os;
@@ -1305,14 +1463,7 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " learning-rate=" << learning_rate << param_config;
       break;
     }
-    case 20: {
-      *component_type = "SumReduceComponent";
-      int32 output_dim = RandInt(1, 50), group_size = RandInt(1, 15),
-          input_dim = output_dim * group_size;
-      os << "input-dim=" << input_dim << " output-dim=" << output_dim;
-      break;
-    }
-    case 21: {
+    case 20: case 21: {
       *component_type = "CompositeComponent";
       int32 cur_dim = RandInt(20, 30), num_components = RandInt(1, 3),
           max_rows_process = RandInt(1, 30);
@@ -1425,8 +1576,10 @@ static void GenerateRandomComponentConfig(std::string *component_type,
     }
     case 29: {
       *component_type = "DropoutComponent";
+      bool test_mode = (RandInt(0, 1) == 0);
       os << "dim=" << RandInt(1, 200)
-         << " dropout-proportion=" << RandUniform();
+         << " dropout-proportion=" << RandUniform() << " test-mode="
+         << (test_mode ? "true" : "false");
       break;
     }
     case 30: {
@@ -1434,6 +1587,28 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       // set self-repair scale to zero so the derivative tests will pass.
       os << "cell-dim=" << RandInt(1, 200)
          << " self-repair-scale=0.0";
+      break;
+    }
+    // I think we'll get in the habit of allocating a larger number of case
+    // labels to the most recently added component, so it gets tested more
+    case 31: {
+      *component_type = "BatchNormComponent";
+      int32 block_dim = RandInt(1, 10), dim = block_dim * RandInt(1, 2);
+      bool test_mode = (RandInt(0, 1) == 0);
+      os << "epsilon=" << 0.5 << " dim=" << dim
+         << " block-dim=" << block_dim << " target-rms="
+         << RandInt(1, 2) << " test-mode="
+         << (test_mode ? "true" : "false");
+      break;
+    }
+    case 32: {
+      *component_type = "SumBlockComponent";
+      BaseFloat scale = 0.5 * RandInt(1, 3);
+      BaseFloat output_dim = RandInt(1, 10),
+          input_dim = output_dim * RandInt(1, 3);
+      os << "input-dim=" << input_dim
+         << " output-dim=" << output_dim
+         << " scale=" << scale;
       break;
     }
     default:

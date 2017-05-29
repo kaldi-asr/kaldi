@@ -1,6 +1,6 @@
 // nnet3/nnet-analyze.h
 
-// Copyright 2015    Johns Hopkins University (author: Daniel Povey)
+// Copyright 2015-2017    Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -423,13 +423,11 @@ class ComputationChecker {
 };
 
 
-/// This utility function works out from a computation, the locations of the
-/// 'segment ends'.  This is useful for online compilation, where the
-/// computation has multiple segments corresponding to new pieces of input data
-/// to process.  The implementation of the function is extremely simple; it
-/// just gives you the locations of commands of type 'kNoOperationMarker'.
-void GetSegmentEnds(const NnetComputation &computation,
-                    std::vector<int32> *command_indexes);
+/// This utility function works out from a computation, the command-indexes of
+/// the commands of the given type.
+void GetCommandsOfType(const NnetComputation &computation,
+                       CommandType t,
+                       std::vector<int32> *command_indexes);
 
 /// This is a convenience interface for class ComputationChecker.  Call it with
 /// check_rewrite = true only if the computation is pre-optimization.

@@ -51,15 +51,19 @@ void JoinVectorToString(const std::vector<std::string> &vec_in,
                         const char *delim, bool omit_empty_strings,
                         std::string *str_out);
 
+/**
+  \brief Split a string (e.g. 1:2:3) into a vector of integers.
 
-/// Split a string (e.g. 1:2:3) into a vector of integers.
-/// The delimiting char may be any character in "delim".
-/// returns true on success, false on failure.
-/// If omit_empty_strings == true, 1::2:3: will become
-/// { 1, 2, 3 }.  Otherwise it would be rejected.
-/// Regardless of the value of omit_empty_strings,
-/// the empty string is successfully parsed as an empty
-/// vector of integers
+  \param [in]  delim  String containing a list of characters, any of which
+                      is allowed as a delimiter.
+  \param [in] omit_empty_strings If true, empty strings between delimiters are
+                      allowed and will not produce an output integer; if false,
+                      instances of characters in 'delim' that are consecutive or
+                      at the start or end of the string would be an error.
+                      You'll normally want this to be true if 'delim' consists
+                      of spaces, and false otherwise.
+  \param [out] out   The output list of integers.
+*/
 template<class I>
 bool SplitStringToIntegers(const std::string &full,
                            const char *delim,
@@ -162,6 +166,22 @@ bool IsToken(const std::string &token);
 /// Returns true if "line" is free of \n characters and unprintable
 /// characters, and does not contain leading or trailing whitespace.
 bool IsLine(const std::string &line);
+
+
+
+/**
+   This function returns true when two text strings are approximately equal, and
+   false when they are not.  The definition of 'equal' is normal string
+   equality, except that two substrings like "0.31134" and "0.311341" would be
+   considered equal.  'decimal_places_tolerance' controls how many digits after
+   the '.' have to match up.
+   E.g. StringsApproxEqual("hello 0.23 there", "hello 0.24 there", 2) would
+   return false because there is a difference in the 2nd decimal, but with
+   an argument of 1 it would return true.
+ */
+bool StringsApproxEqual(const std::string &a,
+                        const std::string &b,
+                        int32 decimal_places_check = 2);
 
 
 }  // namespace kaldi

@@ -2,6 +2,7 @@
 
 # Copyright 2016    Vijayaditya Peddinti.
 #           2016    Vimal Manohar
+#           2017 Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0.
 
 """ This script is based on steps/nnet3/tdnn/train.sh
@@ -74,10 +75,10 @@ def get_args():
                         the format.""")
 
     # General options
-    parser.add_argument("--feat-dir", type=str, required=True,
+    parser.add_argument("--feat-dir", type=str, required=False,
                         help="Directory with features used for training "
                         "the neural network.")
-    parser.add_argument("--lang", type=str, required=True,
+    parser.add_argument("--lang", type=str, required=False,
                         help="Language directory")
     parser.add_argument("--ali-dir", type=str, required=True,
                         help="Directory with alignments used for training "
@@ -149,7 +150,7 @@ def process_args(args):
     return [args, run_opts]
 
 
-def train(args, run_opts, background_process_handler):
+def train(args, run_opts):
     """ The main function for training.
 
     Args:
@@ -170,7 +171,8 @@ def train(args, run_opts, background_process_handler):
 
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
-    common_lib.split_data(args.feat_dir, num_jobs)
+    common_lib.execute_command("utils/split_data.sh {0} {1}".format(
+            args.feat_dir, num_jobs))
     shutil.copy('{0}/tree'.format(args.ali_dir), args.dir)
 
     with open('{0}/num_jobs'.format(args.dir), 'w') as f:
@@ -185,9 +187,6 @@ def train(args, run_opts, background_process_handler):
     try:
         model_left_context = variables['model_left_context']
         model_right_context = variables['model_right_context']
-        # this is really the number of times we add layers to the network for
-        # discriminative pretraining
-        num_hidden_layers = variables['num_hidden_layers']
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in "
                         "{1}".format(str(e), '{0}/configs'.format(args.dir)))
@@ -203,7 +202,7 @@ def train(args, run_opts, background_process_handler):
     if (args.stage <= -5) and os.path.exists(args.dir+"/configs/init.config"):
         logger.info("Initializing a basic network for estimating "
                     "preconditioning matrix")
-        common_lib.run_job(
+        common_lib.execute_command(
             """{command} {dir}/log/nnet_init.log \
                     nnet3-init --srand=-2 {dir}/configs/init.config \
                     {dir}/init.raw""".format(command=run_opts.command,
@@ -212,6 +211,9 @@ def train(args, run_opts, background_process_handler):
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -4) and args.egs_dir is None:
         logger.info("Generating egs")
+
+        if args.feat_dir is None:
+            raise Exception("--feat-dir option is required if you don't supply --egs-dir")
 
         train_lib.acoustic_model.generate_egs(
             data=args.feat_dir, alidir=args.ali_dir, egs_dir=default_egs_dir,
@@ -279,10 +281,9 @@ def train(args, run_opts, background_process_handler):
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
 
-    models_to_combine = common_train_lib.verify_iterations(
+    models_to_combine = common_train_lib.get_model_combine_iters(
         num_iters, args.num_epochs,
-        num_hidden_layers, num_archives_expanded,
-        args.max_models_combine, args.add_layers_period,
+        num_archives_expanded, args.max_models_combine,
         args.num_jobs_final)
 
     def learning_rate(iter, current_num_jobs, num_archives_processed):
@@ -321,15 +322,10 @@ def train(args, run_opts, background_process_handler):
                     iter),
                 minibatch_size_str=args.minibatch_size,
                 frames_per_eg=args.frames_per_eg,
-                num_hidden_layers=num_hidden_layers,
-                add_layers_period=args.add_layers_period,
-                left_context=left_context,
-                right_context=right_context,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
-                run_opts=run_opts,
-                background_process_handler=background_process_handler)
+                run_opts=run_opts)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
@@ -357,9 +353,7 @@ def train(args, run_opts, background_process_handler):
             dir=args.dir, num_iters=num_iters,
             models_to_combine=models_to_combine,
             egs_dir=egs_dir,
-            left_context=left_context, right_context=right_context,
             minibatch_size_str=args.minibatch_size, run_opts=run_opts,
-            background_process_handler=background_process_handler,
             sum_to_one_penalty=args.combine_sum_to_one_penalty)
 
     if args.stage <= num_iters + 1:
@@ -368,7 +362,6 @@ def train(args, run_opts, background_process_handler):
         avg_post_vec_file = train_lib.common.compute_average_posterior(
             dir=args.dir, iter='combined', egs_dir=egs_dir,
             num_archives=num_archives,
-            left_context=left_context, right_context=right_context,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts)
 
         logger.info("Re-adjusting priors based on computed posteriors")
@@ -401,25 +394,25 @@ def train(args, run_opts, background_process_handler):
     with open("{dir}/accuracy.report".format(dir=args.dir), "w") as f:
         f.write(report)
 
-    common_lib.run_job("steps/info/nnet3_dir_info.pl "
-                       "{0}".format(args.dir))
+    common_lib.execute_command("steps/info/nnet3_dir_info.pl "
+                               "{0}".format(args.dir))
 
 
 def main():
     [args, run_opts] = get_args()
     try:
-        background_process_handler = common_lib.BackgroundProcessHandler(
-            polling_time=args.background_polling_time)
-        train(args, run_opts, background_process_handler)
-        background_process_handler.ensure_processes_are_done()
-    except Exception as e:
+        train(args, run_opts)
+        common_lib.wait_for_background_commands()
+    except BaseException as e:
+        # look for BaseException so we catch KeyboardInterrupt, which is
+        # what we get when a background thread dies.
         if args.email is not None:
             message = ("Training session for experiment {dir} "
                        "died due to an error.".format(dir=args.dir))
             common_lib.send_mail(message, message, args.email)
-        traceback.print_exc()
-        background_process_handler.stop()
-        raise e
+        if not isinstance(e, KeyboardInterrupt):
+            traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":

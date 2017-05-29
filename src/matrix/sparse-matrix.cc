@@ -781,6 +781,12 @@ void GeneralMatrix::SwapSparseMatrix(SparseMatrix<BaseFloat> *smat) {
   smat->Swap(&smat_);
 }
 
+void GeneralMatrix::SwapCompressedMatrix(CompressedMatrix *cmat) {
+  if (mat_.NumRows() != 0 || smat_.NumRows() != 0)
+    KALDI_ERR << "GetSparseMatrix called on GeneralMatrix of wrong type.";
+  cmat->Swap(&cmat_);
+}
+
 const CompressedMatrix &GeneralMatrix::GetCompressedMatrix() const {
   if (mat_.NumRows() != 0 || smat_.NumRows() != 0)
     KALDI_ERR << "GetCompressedMatrix called on GeneralMatrix of wrong type.";
@@ -1125,6 +1131,63 @@ void GeneralMatrix::Swap(GeneralMatrix *other) {
   mat_.Swap(&(other->mat_));
   cmat_.Swap(&(other->cmat_));
   smat_.Swap(&(other->smat_));
+}
+
+
+void ExtractRowRangeWithPadding(
+    const GeneralMatrix &in,
+    int32 row_offset,
+    int32 num_rows,
+    GeneralMatrix *out) {
+  // make sure 'out' is empty to start with.
+  Matrix<BaseFloat> empty_mat;
+  *out = empty_mat;
+  if (num_rows == 0) return;
+  switch (in.Type()) {
+    case kFullMatrix: {
+      const Matrix<BaseFloat> &mat_in = in.GetFullMatrix();
+      int32 num_rows_in = mat_in.NumRows(), num_cols = mat_in.NumCols();
+      KALDI_ASSERT(num_rows_in > 0);  // we can't extract >0 rows from an empty
+                                      // matrix.
+      Matrix<BaseFloat> mat_out(num_rows, num_cols, kUndefined);
+      for (int32 row = 0; row < num_rows; row++) {
+        int32 row_in = row + row_offset;
+        if (row_in < 0) row_in = 0;
+        else if (row_in >= num_rows_in) row_in = num_rows_in - 1;
+        SubVector<BaseFloat> vec_in(mat_in, row_in),
+            vec_out(mat_out, row);
+        vec_out.CopyFromVec(vec_in);
+      }
+      out->SwapFullMatrix(&mat_out);
+      break;
+    }
+    case kSparseMatrix: {
+      const SparseMatrix<BaseFloat> &smat_in = in.GetSparseMatrix();
+      int32 num_rows_in = smat_in.NumRows(),
+          num_cols = smat_in.NumCols();
+      KALDI_ASSERT(num_rows_in > 0);  // we can't extract >0 rows from an empty
+                                      // matrix.
+      SparseMatrix<BaseFloat> smat_out(num_rows, num_cols);
+      for (int32 row = 0; row < num_rows; row++) {
+        int32 row_in = row + row_offset;
+        if (row_in < 0) row_in = 0;
+        else if (row_in >= num_rows_in) row_in = num_rows_in - 1;
+        smat_out.SetRow(row, smat_in.Row(row_in));
+      }
+      out->SwapSparseMatrix(&smat_out);
+      break;
+    }
+    case kCompressedMatrix: {
+      const CompressedMatrix &cmat_in = in.GetCompressedMatrix();
+      bool allow_padding = true;
+      CompressedMatrix cmat_out(cmat_in, row_offset, num_rows,
+                                0, cmat_in.NumCols(), allow_padding);
+      out->SwapCompressedMatrix(&cmat_out);
+      break;
+    }
+    default:
+      KALDI_ERR << "Bad matrix type.";
+  }
 }
 
 

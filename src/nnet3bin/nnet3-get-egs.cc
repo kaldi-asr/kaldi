@@ -30,7 +30,7 @@ namespace kaldi {
 namespace nnet3 {
 
 
-static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
+static bool ProcessFile(const GeneralMatrix &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
                         int32 ivector_period,
                         const Posterior &pdf_post,
@@ -66,22 +66,18 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
     int32 tot_input_frames = chunk.left_context + chunk.num_frames +
         chunk.right_context;
 
-    Matrix<BaseFloat> input_frames(tot_input_frames, feats.NumCols(),
-                                   kUndefined);
-
     int32 start_frame = chunk.first_frame - chunk.left_context;
-    for (int32 t = start_frame; t < start_frame + tot_input_frames; t++) {
-      int32 t2 = t;
-      if (t2 < 0) t2 = 0;
-      if (t2 >= num_input_frames) t2 = num_input_frames - 1;
-      int32 j = t - start_frame;
-      SubVector<BaseFloat> src(feats, t2),
-          dest(input_frames, j);
-      dest.CopyFromVec(src);
-    }
+
+    GeneralMatrix input_frames;
+    ExtractRowRangeWithPadding(feats, start_frame, tot_input_frames,
+                               &input_frames);
+
+    // 'input_frames' now stores the relevant rows (maybe with padding) from the
+    // original Matrix or (more likely) CompressedMatrix.  If a CompressedMatrix,
+    // it does this without un-compressing and re-compressing, so there is no loss
+    // of accuracy.
 
     NnetExample eg;
-
     // call the regular input "input".
     eg.io.push_back(NnetIo("input", -chunk.left_context, input_frames));
 
@@ -167,7 +163,8 @@ int main(int argc, char *argv[]) {
         "An example [where $feats expands to the actual features]:\n"
         "nnet3-get-egs --num-pdfs=2658 --left-context=12 --right-context=9 --num-frames=8 \"$feats\"\\\n"
         "\"ark:gunzip -c exp/nnet/ali.1.gz | ali-to-pdf exp/nnet/1.nnet ark:- ark:- | ali-to-post ark:- ark:- |\" \\\n"
-        "   ark:- \n";
+        "   ark:- \n"
+        "See also: nnet3-chain-get-egs, nnet3-get-egs-simple\n";
 
 
     bool compress = true;
@@ -181,8 +178,11 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
-    po.Register("compress", &compress, "If true, write egs in "
-                "compressed format (recommended).");
+    po.Register("compress", &compress, "If true, write egs with input features "
+                "in compressed format (recommended).  Update: this is now "
+                "only relevant if the features being read are un-compressed; "
+                "if already compressed, we keep we same compressed format when "
+                "dumping-egs.");
     po.Register("num-pdfs", &num_pdfs, "Number of pdfs in the acoustic "
                 "model");
     po.Register("ivectors", &online_ivector_rspecifier, "Alias for "
@@ -213,8 +213,11 @@ int main(int argc, char *argv[]) {
         pdf_post_rspecifier = po.GetArg(2),
         examples_wspecifier = po.GetArg(3);
 
-    // Read in all the training files.
-    SequentialBaseFloatMatrixReader feat_reader(feature_rspecifier);
+    // SequentialGeneralMatrixReader can read either a Matrix or
+    // CompressedMatrix (or SparseMatrix, but not as relevant here),
+    // and it retains the type.  This way, we can generate parts of
+    // the feature matrices without uncompressing and re-compressing.
+    SequentialGeneralMatrixReader feat_reader(feature_rspecifier);
     RandomAccessPosteriorReader pdf_post_reader(pdf_post_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
     RandomAccessBaseFloatMatrixReader online_ivector_reader(
@@ -224,7 +227,7 @@ int main(int argc, char *argv[]) {
 
     for (; !feat_reader.Done(); feat_reader.Next()) {
       std::string key = feat_reader.Key();
-      const Matrix<BaseFloat> &feats = feat_reader.Value();
+      const GeneralMatrix &feats = feat_reader.Value();
       if (!pdf_post_reader.HasKey(key)) {
         KALDI_WARN << "No pdf-level posterior for key " << key;
         num_err++;
