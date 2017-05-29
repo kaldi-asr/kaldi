@@ -186,7 +186,7 @@ gzip -f $lmdir/lm_tgpr_5k.arpa || exit 1;
 
 if [ ! -f wsj0-train-spkrinfo.txt ] || [ `cat wsj0-train-spkrinfo.txt | wc -l` -ne 134 ]; then
   rm wsj0-train-spkrinfo.txt
-  ! wget http://www.ldc.upenn.edu/Catalog/docs/LDC93S6A/wsj0-train-spkrinfo.txt && \
+  ! wget https://catalog.ldc.upenn.edu/docs/LDC93S6A/wsj0-train-spkrinfo.txt && \
     echo "Getting wsj0-train-spkrinfo.txt from backup location" && \
     wget --no-check-certificate https://sourceforge.net/projects/kaldi/files/wsj0-train-spkrinfo.txt
 fi

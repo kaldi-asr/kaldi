@@ -84,7 +84,7 @@ fi
 
 if which python >&/dev/null ; then
   version=`python 2>&1 --version | awk '{print $2}' `
-  if [[ $version != "2."* ]] ; then
+  if [[ $version != "2.7"* ]] ; then
     if which python2.7 >&/dev/null  || which python2 >&/dev/null ; then
       echo "$0: python 2.7 is not the default python. You should either make it"
       echo "$0: default or create an bash alias for kaldi scripts to run correctly"
@@ -122,9 +122,7 @@ if which apt-get >&/dev/null && ! which zypper >/dev/null; then
     echo " sudo apt-get install libatlas3-base"
     printed=true
   fi
-fi
-
-if which yum >&/dev/null; then
+elif which yum >&/dev/null; then
   if [ ! -z "$redhat_packages" ]; then
     echo "$0: we recommend that you run (our best guess):"
     echo " sudo yum install $redhat_packages"
@@ -136,9 +134,7 @@ if which yum >&/dev/null; then
     echo "sudo yum install atlas.x86_64"
     printed=true
   fi
-fi
-
-if which zypper >&/dev/null; then
+elif which zypper >&/dev/null; then
   if [ ! -z "$opensuse_packages" ]; then
     echo "$0: we recommend that you run (our best guess):"
     echo " sudo zypper install $opensuse_packages"

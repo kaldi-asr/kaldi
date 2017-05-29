@@ -30,7 +30,7 @@
 #include "gmm/decodable-am-diag-gmm.h"
 #include "base/timer.h"
 #include "feat/feature-functions.h"  // feature reversal
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 
 int main(int argc, char *argv[]) {

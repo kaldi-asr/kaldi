@@ -6,7 +6,7 @@
 
 # Some basic error checking, similar to steps/decode.sh is added.
 
-set -e 
+set -e
 set -o pipefail
 
 # Begin configuration section.
@@ -114,8 +114,9 @@ fi
 
 
 mkdir -p $dir/split_fsts
+sort -k1,1 $graphdir/HCLG.fsts.scp > $dir/HCLG.fsts.sorted.scp
 utils/filter_scps.pl --no-warn -f 1 JOB=1:$nj \
-  $sdata/JOB/feats.scp $graphdir/HCLG.fsts.scp $dir/split_fsts/HCLG.fsts.JOB.scp
+  $sdata/JOB/feats.scp $dir/HCLG.fsts.sorted.scp $dir/split_fsts/HCLG.fsts.JOB.scp
 HCLG=scp:$dir/split_fsts/HCLG.fsts.JOB.scp
 
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
