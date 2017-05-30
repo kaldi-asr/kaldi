@@ -14,13 +14,15 @@ tdnn_affix=_sup1a  # affix for the supervised chain-model directory
 train_supervised_opts="--stage -10 --train-stage -10"
 
 # combination options
+decode_affix=
+egs_affix=  # affix for the egs that are generated from unsupervised data and for the comined egs dir
 comb_affix=_comb1a  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
 unsup_decode_lattice_beam=8.0
 unsup_frames_per_eg=  # if empty will be equal to the supervised model's config
 lattice_lm_scale=0.1  # lm-scale for using the weights from unsupervised lattices
 left_tolerance=2
 right_tolerance=2
-train_combined_opts=
+train_combined_opts="--num-epochs 5"
 
 # to tune:
 # frames_per_eg for unsupervised
@@ -77,7 +79,7 @@ if [ $stage -le -3 ]; then
     echo " ... or use a later --stage option."
     exit 1
   fi
-  echo "$0: aligning with the supervised data data/${supervised_set}"
+  echo "$0: aligning the supervised data data/${supervised_set}"
   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
                        data/${supervised_set} data/lang exp/$base_gmm exp/$gmm
 fi
@@ -112,11 +114,11 @@ if [ $stage -le 0 ]; then
             --acwt 1.0 --post-decode-acwt 10.0 --lattice-beam $unsup_decode_lattice_beam \
             --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${unsupervised_set}_hires \
             --scoring-opts "--min-lmwt 5 " \
-            $chaindir/graph data/${unsupervised_set}_hires $chaindir/decode_${unsupervised_set}
+            $chaindir/graph data/${unsupervised_set}_hires $chaindir/decode_${unsupervised_set}${decode_affix}
   steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
               data/${unsupervised_set}_hires \
-              ${chaindir}/decode_${unsupervised_set} ${chaindir}/decode_${unsupervised_set}_rescore
-  ln -s ../final.mdl $chaindir/decode_${unsupervised_set}_rescore/final.mdl || true
+              ${chaindir}/decode_${unsupervised_set}${decode_affix} ${chaindir}/decode_${unsupervised_set}${decode_affix}_rescore
+  ln -s ../final.mdl $chaindir/decode_${unsupervised_set}${decode_affix}_rescore/final.mdl || true
 fi
 
 if [ $stage -le 1 ]; then
@@ -130,15 +132,16 @@ if [ $stage -le 1 ]; then
              --frame-subsampling-factor $frame_subsampling_factor \
              --cmvn-opts "$cmvn_opts" --lattice-lm-scale $lattice_lm_scale \
              --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${unsupervised_set}_hires \
-             data/${unsupervised_set}_hires $chaindir ${chaindir}/decode_${unsupervised_set}_rescore $chaindir/unsup_egs
+             data/${unsupervised_set}_hires $chaindir \
+             ${chaindir}/decode_${unsupervised_set}${decode_affix}_rescore $chaindir/unsup_egs${decode_affix}${egs_affix}
 fi
 
+sup_egs_dir=$chaindir/egs
+unsup_egs_dir=$chaindir/unsup_egs${decode_affix}${egs_affix}
+comb_egs_dir=$chaindir/comb_egs${decode_affix}${egs_affix}
 if [ $stage -le 2 ]; then
   echo "$0: combining supervised/unsupervised egs"
-  num_archives=`cat $sup_chaindir/egs/info/num_archives`
-  sup_egs_dir=$sup_chaindir/egs
-  unsup_egs_dir=$chaindir/unsup_egs
-  comb_egs_dir=$chaindir/comb_egs
+  num_archives=`cat $chaindir/egs/info/num_archives`
   mkdir -p $comb_egs_dir/log
   cp {$sup_egs_dir,$comb_egs_dir}/train_diagnostic.cegs
   cp {$sup_egs_dir,$comb_egs_dir}/valid_diagnostic.cegs
@@ -159,15 +162,16 @@ if [ $stage -le 2 ]; then
   #          nnet3-chain-shuffle-egs --srand=$srand "ark:cat $egs_list|" ark:- \| \
   #    nnet3-chain-copy-egs --random=true --srand=$srand ark:- $out_egs_list
   $decode_cmd $comb_egs_dir/log/combine.log \
-        nnet3-chain-copy-egs "ark:cat $egs_list|" $out_egs_list
+              nnet3-chain-copy-egs "ark:cat $egs_list|" $out_egs_list
 fi
 
 if [ $stage -le 3 ]; then
   echo "$0: training on the supervised+unsupervised subset"
   # the train-set and gmm do not matter as we are providing the egs
   local/chain/run_tdnn.sh --stage 17 --remove-egs false --train-set $supervised_set --gmm $gmm \
-        --nnet3-affix $nnet3_affix --tdnn-affix ${tdnn_affix}${comb_affix} \
-        --common-egs-dir $chaindir/comb_egs $train_combined_opts
+                          --nnet3-affix $nnet3_affix \
+                          --tdnn-affix ${tdnn_affix}${decode_affix}${egs_affix}${comb_affix} \
+                          --common-egs-dir $comb_egs_dir $train_combined_opts
 fi
 
 #final_combined_chaindir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}${comb_affix}_sp_bi
