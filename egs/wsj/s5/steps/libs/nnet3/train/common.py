@@ -901,5 +901,16 @@ class CommonParser:
                                  then only failure notifications are sent""")
 
 
+def is_lda_added(config_dir):
+    """Returns true if there is an lda.mat in init.config
+    which suggests the LDA matrix training stage needs to be executed in the
+    nnet training"""
+    for line in open("{config_dir}/init.config".format(config_dir)):
+        line = line.strip().split("#")[0]
+        if re.search(r"lda\.mat", line):
+            return True
+    return False
+
+
 if __name__ == '__main__':
     self_test()
