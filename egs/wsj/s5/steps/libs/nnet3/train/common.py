@@ -780,6 +780,18 @@ class CommonParser:
                                  dest='presoftmax_prior_scale_power',
                                  default=-0.25,
                                  help="Scale on presofmax prior")
+        self.parser.add_argument("--trainer.optimization.proportional-shrink", type=float,
+                                 dest='proportional_shrink', default=0.0,
+                                 help="""If nonzero, this will set a shrinkage (scaling)
+                        factor for the parameters, whose value is set as:
+                        shrink-value=(1.0 - proportional-shrink * learning-rate), where
+                        'learning-rate' is the learning rate being applied
+                        on the current iteration, which will vary from
+                        initial-effective-lrate*num-jobs-initial to
+                        final-effective-lrate*num-jobs-final.
+                        Unlike for train_rnn.py, this is applied unconditionally,
+                        it does not depend on saturation of nonlinearities.
+                        Can be used to roughly approximate l2 regularization.""")
 
         # Parameters for the optimization
         self.parser.add_argument(
