@@ -94,9 +94,9 @@ def get_args():
                         it does not depend on saturation of nonlinearities.
                         Can be used to roughly approximate l2 regularization.""")
   parser.add_argument("--compute-average-posteriors",
-                        type=str, action=common_lib.StrToBoolAction,
-                        choices=["true", "false"], default=False,
-                        help="""If true, then the average output of the
+                      type=str, action=common_lib.StrToBoolAction,
+                      choices=["true", "false"], default=False,
+                      help="""If true, then the average output of the
                         network is computed and dumped as post.final.vec""")
 
     # General options
@@ -288,9 +288,7 @@ def train(args, run_opts):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    add_lda = common_train_lib.is_lda_added(config_dir)
-
-    if (add_lda and args.stage <= -3):
+    if (args.stage <= -3) and os.path.exists(args.dir+"/configs/init.config"):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
@@ -421,7 +419,7 @@ def train(args, run_opts):
             common_lib.force_symlink("{0}.raw".format(num_iters),
                                      "{0}/final.raw".format(args.dir))
 
-    if compute_average_posteriors and args.stage <= num_iters + 1:
+    if args.compute_average_posteriors and args.stage <= num_iters + 1:
         logger.info("Getting average posterior for output-node 'output'.")
         train_lib.common.compute_average_posterior(
             dir=args.dir, iter='final', egs_dir=egs_dir,
