@@ -48,7 +48,7 @@ def generate_egs_using_targets(data, targets_scp, egs_dir,
             raise Exception("--num-targets is required if "
                             "target-type is sparse")
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """steps/nnet3/get_egs_targets.sh {egs_opts} \
                 --cmd "{command}" \
                 --cmvn-opts "{cmvn_opts}" \

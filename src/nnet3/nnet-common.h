@@ -52,6 +52,9 @@ struct Index {
   bool operator == (const Index &a) const {
     return n == a.n && t == a.t && x == a.x;
   }
+  bool operator != (const Index &a) const {
+    return n != a.n || t != a.t || x != a.x;
+  }
   bool operator < (const Index &a) const {
     if (t < a.t) { return true; }
     else if (t > a.t) { return false; }
@@ -74,6 +77,12 @@ struct Index {
   void Read(std::istream &os, bool binary);
 };
 
+
+// this will be the most negative number representable as int32.  It is used as
+// the 't' value when we need to mark an 'invalid' index.  This can happen with
+// certain non-simple components whose ReorderIndexes() function need to insert
+// spaces into their inputs or outputs.
+extern const int kNoTime;
 
 // This struct can be used as a comparison object when you want to
 // sort the indexes first on n, then x, then t (Index's own comparison

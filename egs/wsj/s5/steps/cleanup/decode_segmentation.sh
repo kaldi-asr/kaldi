@@ -6,7 +6,7 @@
 
 # Some basic error checking, similar to steps/decode.sh is added.
 
-set -e 
+set -e
 set -o pipefail
 
 # Begin configuration section.

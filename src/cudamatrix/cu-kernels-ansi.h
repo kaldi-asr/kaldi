@@ -97,6 +97,10 @@ void cudaD_add_mat_blocks(dim3 Gr, dim3 Bl, double alpha, const double *src,
 void cudaF_add_mat_blocks(dim3 Gr, dim3 Bl, float alpha, const float *src,
                           int32_cuda num_row_blocks, int32_cuda num_col_blocks,
                           float *dst, MatrixDim d, int src_stride, int A_trans);
+void cudaD_add_mat_repeated(dim3 Gr, dim3 Bl, double alpha, const double *src,
+                            MatrixDim src_dim, double *dst, MatrixDim dst_dim);
+void cudaF_add_mat_repeated(dim3 Gr, dim3 Bl, float alpha, const float *src,
+                            MatrixDim src_dim, float *dst, MatrixDim dst_dim);
 void cudaD_add_mat_diag_vec(dim3 Gr, dim3 Bl, double alpha, double *mat,
                             MatrixDim mat_dim, const double *mat2,
                             int mat2_row_stride, int mat2_col_stride,

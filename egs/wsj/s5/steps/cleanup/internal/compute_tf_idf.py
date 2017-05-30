@@ -127,7 +127,6 @@ def _run(args):
     if num_done == 0:
         raise RuntimeError("Could not compute TF-IDF for any query documents")
 
-
 def main():
     args = _get_args()
 

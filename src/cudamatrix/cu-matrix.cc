@@ -912,6 +912,7 @@ void CuMatrixBase<Real>::DivRowsVec(const CuVectorBase<Real> &div) {
   }
 }
 
+
 template<typename Real>
 void CuMatrixBase<Real>::InvertElements() {
 #if HAVE_CUDA == 1
@@ -969,43 +970,81 @@ template<typename Real>
 void CuMatrixBase<Real>::AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,
                                       MatrixTransposeType transA) {
   if (num_rows_ == 0 || num_cols_ == 0) return;
-  int32 num_row_blocks, num_col_blocks;
-  if (transA == kNoTrans) {
-    KALDI_ASSERT(A.NumRows() % num_rows_ == 0 && A.NumCols() % num_cols_ == 0);
-    num_row_blocks = A.Mat().NumRows() / num_rows_;
-    num_col_blocks = A.Mat().NumCols() / num_cols_;
-  } else {
-    KALDI_ASSERT(A.NumRows() % num_cols_ == 0 && A.NumCols() % num_rows_ == 0);
-    num_row_blocks = A.Mat().NumRows() / num_cols_;
-    num_col_blocks = A.Mat().NumCols() / num_rows_;
-  }
-#if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
-    CuTimer tim;
-    dim3 dimGrid, dimBlock;
-    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
-                                          &dimGrid, &dimBlock);
-    cuda_add_mat_blocks(dimGrid, dimBlock, alpha, A.data_, num_row_blocks,
-                        num_col_blocks, data_, Dim(), A.Stride(),
-                        (transA == kTrans ? 1 : 0));
-    CU_SAFE_CALL(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__, tim);
-  } else
-#endif
-  {
-    int32 nr, nc;
+  if (A.NumRows() >= num_rows_ && A.NumCols() >= num_cols_) {
+    // This is the "summing", not broadcasting, version of AddMatBlocks.
+    // It supports both regular and transposed operation.
+    int32 num_row_blocks, num_col_blocks;
     if (transA == kNoTrans) {
-      nr = num_rows_;
-      nc = num_cols_;
+      KALDI_ASSERT(A.NumRows() % num_rows_ == 0 && A.NumCols() % num_cols_ == 0);
+      num_row_blocks = A.Mat().NumRows() / num_rows_;
+      num_col_blocks = A.Mat().NumCols() / num_cols_;
     } else {
-      nr = num_cols_;
-      nc = num_rows_;
+      KALDI_ASSERT(A.NumRows() % num_cols_ == 0 && A.NumCols() % num_rows_ == 0);
+      num_row_blocks = A.Mat().NumRows() / num_cols_;
+      num_col_blocks = A.Mat().NumCols() / num_rows_;
     }
-    for (int32 i = 0; i < num_row_blocks; i++) {
-      for (int32 j = 0; j < num_col_blocks; j++) {
-        Mat().AddMat(alpha, SubMatrix<Real>(A.Mat(), i * nr, nr, j * nc, nc),
-                     transA);
+#if HAVE_CUDA == 1
+    if (CuDevice::Instantiate().Enabled()) {
+      CuTimer tim;
+      dim3 dimGrid, dimBlock;
+      GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                            &dimGrid, &dimBlock);
+      cuda_add_mat_blocks(dimGrid, dimBlock, alpha, A.data_, num_row_blocks,
+                          num_col_blocks, data_, Dim(), A.Stride(),
+                          (transA == kTrans ? 1 : 0));
+      CU_SAFE_CALL(cudaGetLastError());
+
+      CuDevice::Instantiate().AccuProfile(__func__, tim);
+    } else
+#endif
+    {
+      int32 nr, nc;
+      if (transA == kNoTrans) {
+        nr = num_rows_;
+        nc = num_cols_;
+      } else {
+        nr = num_cols_;
+        nc = num_rows_;
+      }
+      for (int32 i = 0; i < num_row_blocks; i++) {
+        for (int32 j = 0; j < num_col_blocks; j++) {
+          Mat().AddMat(alpha, SubMatrix<Real>(A.Mat(), i * nr, nr, j * nc, nc),
+                       transA);
+        }
+      }
+    }
+  } else {
+    // This is the "broadcasting" version of AddMatBlocks, where
+    // *this is larger than src.
+    if (!(num_rows_ % A.NumRows() == 0 && num_cols_ % A.NumCols() == 0))
+      KALDI_ERR << "Invalid sizes of arguments";
+    if (transA != kNoTrans)
+      KALDI_ERR << "Transposed operation not supported currently.";
+#if HAVE_CUDA == 1
+    if (CuDevice::Instantiate().Enabled()) {
+      CuTimer tim;
+      dim3 dimGrid, dimBlock;
+      GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                            &dimGrid, &dimBlock);
+      cuda_add_mat_repeated(dimGrid, dimBlock, alpha,
+                            A.data_, A.Dim(), data_, Dim());
+      CU_SAFE_CALL(cudaGetLastError());
+      CuDevice::Instantiate().AccuProfile(__func__, tim);
+    } else
+#endif
+    {
+      const MatrixBase<Real> &src_mat = A.Mat(),
+          &this_mat = this->Mat();
+      for (int32 row_offset = 0; row_offset < NumRows();
+           row_offset += src_mat.NumRows()) {
+        for (int32 col_offset = 0; col_offset < NumCols();
+             col_offset += src_mat.NumCols()) {
+          SubMatrix<Real> this_part(this_mat,
+                                    row_offset, src_mat.NumRows(),
+                                    col_offset, src_mat.NumCols());
+          this_part.AddMat(alpha, src_mat);
+        }
       }
     }
   }

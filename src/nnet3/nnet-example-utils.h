@@ -125,7 +125,7 @@ struct ExampleGenerationConfig {
     po->Register("num-frames", &num_frames_str, "Number of frames with labels "
                 "that each example contains (i.e. the left and right context "
                 "are to be added to this).  May just be an integer (e.g. "
-                "--num-frames=8), or an principal value followed by "
+                "--num-frames=8), or a principal value followed by "
                 "alternative values to be used at most once for each utterance "
                 "to deal with odd-sized input, e.g. --num-frames=40,25,50 means "
                 "that most of the time the number of frames will be 40, but to "
