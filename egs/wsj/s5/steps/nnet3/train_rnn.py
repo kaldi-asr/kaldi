@@ -7,6 +7,7 @@
 """ This script is based on steps/nnet3/lstm/train.sh
 """
 
+from __future__ import print_function
 import argparse
 import logging
 import os
@@ -56,7 +57,7 @@ def get_args():
             3. RNNs can also be trained with state preservation training""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         conflict_handler='resolve',
-        parents=[common_train_lib.CommonParser(default_chunk_left_context = 40).parser])
+        parents=[common_train_lib.CommonParser(default_chunk_left_context=40).parser])
 
     # egs extraction options
     parser.add_argument("--egs.chunk-width", type=str, dest='chunk_width',
@@ -150,10 +151,10 @@ def process_args(args):
     """
 
     if not common_train_lib.validate_chunk_width(args.chunk_width):
-        raise Exception("--egs.chunk-width has an invalid value");
+        raise Exception("--egs.chunk-width has an invalid value")
 
     if not common_train_lib.validate_minibatch_size_str(args.num_chunk_per_minibatch):
-        raise Exception("--trainer.rnn.num-chunk-per-minibatch has an invalid value");
+        raise Exception("--trainer.rnn.num-chunk-per-minibatch has an invalid value")
 
     if args.chunk_left_context < 0:
         raise Exception("--egs.chunk-left-context should be non-negative")
@@ -226,7 +227,7 @@ def train(args, run_opts):
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
     common_lib.execute_command("utils/split_data.sh {0} {1}".format(
-            args.feat_dir, num_jobs))
+        args.feat_dir, num_jobs))
     shutil.copy('{0}/tree'.format(args.ali_dir), args.dir)
 
     with open('{0}/num_jobs'.format(args.dir), 'w') as f:
@@ -257,7 +258,7 @@ def train(args, run_opts):
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
 
-    if (args.stage <= -5):
+    if args.stage <= -5:
         logger.info("Initializing a basic network for estimating "
                     "preconditioning matrix")
         common_lib.execute_command(
@@ -267,7 +268,7 @@ def train(args, run_opts):
                                              dir=args.dir))
 
     default_egs_dir = '{0}/egs'.format(args.dir)
-    if (args.stage <= -4) and args.egs_dir is None:
+    if args.stage <= -4 and args.egs_dir is None:
         logger.info("Generating egs")
 
         if args.feat_dir is None:
@@ -297,16 +298,16 @@ def train(args, run_opts):
 
     [egs_left_context, egs_right_context,
      frames_per_eg_str, num_archives] = (
-        common_train_lib.verify_egs_dir(egs_dir, feat_dim,
-                                        ivector_dim, ivector_id,
-                                        left_context, right_context,
-                                        left_context_initial, right_context_final))
+         common_train_lib.verify_egs_dir(egs_dir, feat_dim,
+                                         ivector_dim, ivector_id,
+                                         left_context, right_context,
+                                         left_context_initial, right_context_final))
     if args.chunk_width != frames_per_eg_str:
         raise Exception("mismatch between --egs.chunk-width and the frames_per_eg "
                         "in the egs dir {0} vs {1}".format(args.chunk_width,
                                                            frames_per_eg_str))
 
-    if (args.num_jobs_final > num_archives):
+    if args.num_jobs_final > num_archives:
         raise Exception('num_jobs_final cannot exceed the number of archives '
                         'in the egs directory')
 
@@ -314,7 +315,7 @@ def train(args, run_opts):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (args.stage <= -3):
+    if args.stage <= -3:
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
@@ -322,17 +323,17 @@ def train(args, run_opts):
             max_lda_jobs=args.max_lda_jobs,
             rand_prune=args.rand_prune)
 
-    if (args.stage <= -2):
+    if args.stage <= -2:
         logger.info("Computing initial vector for FixedScaleComponent before"
                     " softmax, using priors^{prior_scale} and rescaling to"
                     " average 1".format(
                         prior_scale=args.presoftmax_prior_scale_power))
 
         common_train_lib.compute_presoftmax_prior_scale(
-                args.dir, args.ali_dir, num_jobs, run_opts,
-                presoftmax_prior_scale_power=args.presoftmax_prior_scale_power)
+            args.dir, args.ali_dir, num_jobs, run_opts,
+            presoftmax_prior_scale_power=args.presoftmax_prior_scale_power)
 
-    if (args.stage <= -1):
+    if args.stage <= -1:
         logger.info("Preparing the initial acoustic model.")
         train_lib.acoustic_model.prepare_initial_acoustic_model(
             args.dir, args.ali_dir, run_opts)
@@ -348,16 +349,8 @@ def train(args, run_opts):
 
     models_to_combine = common_train_lib.get_model_combine_iters(
         num_iters, args.num_epochs,
-        num_archives,  args.max_models_combine,
+        num_archives, args.max_models_combine,
         args.num_jobs_final)
-
-    def learning_rate(iter, current_num_jobs, num_archives_processed):
-        return common_train_lib.get_learning_rate(iter, current_num_jobs,
-                                                  num_iters,
-                                                  num_archives_processed,
-                                                  num_archives_to_process,
-                                                  args.initial_effective_lrate,
-                                                  args.final_effective_lrate)
 
     min_deriv_time = None
     max_deriv_time_relative = None
@@ -380,14 +373,24 @@ def train(args, run_opts):
         if args.stage <= iter:
             model_file = "{dir}/{iter}.mdl".format(dir=args.dir, iter=iter)
 
-            shrinkage_value = 1.0
-            if args.shrink_value != 1.0:
+
+            lrate = common_train_lib.get_learning_rate(iter, current_num_jobs,
+                                                       num_iters,
+                                                       num_archives_processed,
+                                                       num_archives_to_process,
+                                                       args.initial_effective_lrate,
+                                                       args.final_effective_lrate)
+
+            shrinkage_value = 1.0 - (args.proportional_shrink * lrate)
+            if shrinkage_value <= 0.5:
+                raise Exception("proportional-shrink={0} is too large, it gives "
+                                "shrink-value={1}".format(args.proportional_shrink,
+                                                          shrinkage_value))
+            if args.shrink_value < shrinkage_value:
                 shrinkage_value = (args.shrink_value
                                    if common_train_lib.should_do_shrinkage(
-                                        iter, model_file,
-                                        args.shrink_saturation_threshold)
-                                   else 1
-                                   )
+                                           iter, model_file,
+                                           args.shrink_saturation_threshold) else 1.0)
 
             train_lib.common.train_one_iteration(
                 dir=args.dir,
@@ -397,8 +400,7 @@ def train(args, run_opts):
                 num_jobs=current_num_jobs,
                 num_archives_processed=num_archives_processed,
                 num_archives=num_archives,
-                learning_rate=learning_rate(iter, current_num_jobs,
-                                            num_archives_processed),
+                learning_rate=lrate,
                 dropout_edit_string=common_train_lib.get_dropout_edit_string(
                     args.dropout_schedule,
                     float(num_archives_processed) / num_archives_to_process,
