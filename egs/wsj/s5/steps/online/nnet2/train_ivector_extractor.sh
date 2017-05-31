@@ -18,7 +18,7 @@
 # subject to various constraints.  The "num_threads" is how many threads a
 # program uses; the "num_processes" is the number of separate processes a single
 # job spawns, and then sums the accumulators in memory.  Our recommendation:
-#  - Set num_threads to the minimum of (4, or how many virtual cores your machine has).
+#  - Set num_threads to the maximum of (4, or how many virtual cores your machine has).
 #    (because of needing to lock various global quantities, the program can't
 #    use many more than 4 threads with good CPU utilization).
 #  - Set num_processes to the number of virtual cores on each machine you have, divided by
