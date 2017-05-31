@@ -9,7 +9,7 @@
 """ This script is similar to steps/nnet3/train_rnn.py but trains a
 raw neural network instead of an acoustic model.
 """
-
+from __future__ import print_function
 import argparse
 import logging
 import pprint
@@ -160,10 +160,10 @@ def process_args(args):
     """
 
     if not common_train_lib.validate_chunk_width(args.chunk_width):
-        raise Exception("--egs.chunk-width has an invalid value");
+        raise Exception("--egs.chunk-width has an invalid value")
 
     if not common_train_lib.validate_minibatch_size_str(args.num_chunk_per_minibatch):
-        raise Exception("--trainer.rnn.num-chunk-per-minibatch has an invalid value");
+        raise Exception("--trainer.rnn.num-chunk-per-minibatch has an invalid value")
 
     if args.chunk_left_context < 0:
         raise Exception("--egs.chunk-left-context should be non-negative")
@@ -312,15 +312,15 @@ def train(args, run_opts):
 
     [egs_left_context, egs_right_context,
      frames_per_eg_str, num_archives] = (
-        common_train_lib.verify_egs_dir(egs_dir, feat_dim,
-                                        ivector_dim, ivector_id,
-                                        left_context, right_context))
+         common_train_lib.verify_egs_dir(egs_dir, feat_dim,
+                                         ivector_dim, ivector_id,
+                                         left_context, right_context))
     if args.chunk_width != frames_per_eg_str:
         raise Exception("mismatch between --egs.chunk-width and the frames_per_eg "
                         "in the egs dir {0} vs {1}".format(args.chunk_width,
-                                                     frames_per_eg_str))
+                                                           frames_per_eg_str))
 
-    if (args.num_jobs_final > num_archives):
+    if args.num_jobs_final > num_archives:
         raise Exception('num_jobs_final cannot exceed the number of archives '
                         'in the egs directory')
 
@@ -328,7 +328,7 @@ def train(args, run_opts):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (args.stage <= -2) and os.path.exists(args.dir+"/configs/init.config"):
+    if args.stage <= -2 and os.path.exists(args.dir+"/configs/init.config"):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
@@ -336,7 +336,7 @@ def train(args, run_opts):
             max_lda_jobs=args.max_lda_jobs,
             rand_prune=args.rand_prune)
 
-    if (args.stage <= -1):
+    if args.stage <= -1:
         logger.info("Preparing the initial network.")
         common_train_lib.prepare_initial_network(args.dir, run_opts)
 
@@ -392,9 +392,9 @@ def train(args, run_opts):
             if args.shrink_value < shrinkage_value:
                 shrinkage_value = (args.shrink_value
                                    if common_train_lib.should_do_shrinkage(
-                                        iter, model_file,
-                                        args.shrink_saturation_threshold,
-                                        get_raw_nnet_from_am=False)
+                                           iter, model_file,
+                                           args.shrink_saturation_threshold,
+                                           get_raw_nnet_from_am=False)
                                    else shrinkage_value)
 
             train_lib.common.train_one_iteration(

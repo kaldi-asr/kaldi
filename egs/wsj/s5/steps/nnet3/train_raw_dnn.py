@@ -8,6 +8,7 @@
 raw neural network instead of an acoustic model.
 """
 
+from __future__ import print_function
 import argparse
 import logging
 import pprint
@@ -47,7 +48,7 @@ def get_args():
         DNNs include simple DNNs, TDNNs and CNNs.""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         conflict_handler='resolve',
-        parents=[common_train_lib.CommonParser(include_chunk_context = False).parser])
+        parents=[common_train_lib.CommonParser(include_chunk_context=False).parser])
 
     # egs extraction options
     parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
@@ -120,7 +121,7 @@ def process_args(args):
         raise Exception("--egs.frames-per-eg should have a minimum value of 1")
 
     if not common_train_lib.validate_minibatch_size_str(args.minibatch_size):
-        raise Exception("--trainer.optimization.minibatch-size has an invalid value");
+        raise Exception("--trainer.optimization.minibatch-size has an invalid value")
 
     if (not os.path.exists(args.dir)
             or not os.path.exists(args.dir+"/configs")):
@@ -262,12 +263,12 @@ def train(args, run_opts):
 
     [egs_left_context, egs_right_context,
      frames_per_eg_str, num_archives] = (
-        common_train_lib.verify_egs_dir(egs_dir, feat_dim,
-                                        ivector_dim, ivector_id,
-                                        left_context, right_context))
-    assert(str(args.frames_per_eg) == frames_per_eg_str)
+         common_train_lib.verify_egs_dir(egs_dir, feat_dim,
+                                         ivector_dim, ivector_id,
+                                         left_context, right_context))
+    assert str(args.frames_per_eg) == frames_per_eg_str
 
-    if (args.num_jobs_final > num_archives):
+    if args.num_jobs_final > num_archives:
         raise Exception('num_jobs_final cannot exceed the number of archives '
                         'in the egs directory')
 
@@ -275,7 +276,7 @@ def train(args, run_opts):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (args.stage <= -3) and os.path.exists(args.dir+"/configs/init.config"):
+    if args.stage <= -3 and os.path.exists(args.dir+"/configs/init.config"):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
@@ -283,7 +284,7 @@ def train(args, run_opts):
             max_lda_jobs=args.max_lda_jobs,
             rand_prune=args.rand_prune)
 
-    if (args.stage <= -1):
+    if args.stage <= -1:
         logger.info("Preparing the initial network.")
         common_train_lib.prepare_initial_network(args.dir, run_opts)
 
@@ -302,15 +303,15 @@ def train(args, run_opts):
         num_archives_expanded, args.max_models_combine,
         args.num_jobs_final)
 
-    if (os.path.exists('{0}/valid_diagnostic.scp'.format(args.egs_dir))):
-        if (os.path.exists('{0}/valid_diagnostic.egs'.format(args.egs_dir))):
+    if os.path.exists('{0}/valid_diagnostic.scp'.format(args.egs_dir)):
+        if os.path.exists('{0}/valid_diagnostic.egs'.format(args.egs_dir)):
             raise Exception('both {0}/valid_diagnostic.egs and '
                             '{0}/valid_diagnostic.scp exist.'
                             'This script expects only one of them to exist.'
                             ''.format(args.egs_dir))
         use_multitask_egs = True
     else:
-        if (not os.path.exists('{0}/valid_diagnostic.egs'.format(args.egs_dir))):
+        if not os.path.exists('{0}/valid_diagnostic.egs'.format(args.egs_dir)):
             raise Exception('neither {0}/valid_diagnostic.egs nor '
                             '{0}/valid_diagnostic.scp exist.'
                             'This script expects one of them.'.format(args.egs_dir))

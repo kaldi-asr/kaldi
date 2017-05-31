@@ -49,7 +49,7 @@ def get_args():
         cross-entropy objective.  DNNs include simple DNNs, TDNNs and CNNs.""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         conflict_handler='resolve',
-        parents=[common_train_lib.CommonParser(include_chunk_context = False).parser])
+        parents=[common_train_lib.CommonParser(include_chunk_context=False).parser])
 
     # egs extraction options
     parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
@@ -105,7 +105,7 @@ def process_args(args):
         raise Exception("--egs.frames-per-eg should have a minimum value of 1")
 
     if not common_train_lib.validate_minibatch_size_str(args.minibatch_size):
-        raise Exception("--trainer.rnn.num-chunk-per-minibatch has an invalid value");
+        raise Exception("--trainer.rnn.num-chunk-per-minibatch has an invalid value")
 
     if (not os.path.exists(args.dir)
             or not os.path.exists(args.dir+"/configs")):
@@ -172,7 +172,7 @@ def train(args, run_opts):
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
     common_lib.execute_command("utils/split_data.sh {0} {1}".format(
-            args.feat_dir, num_jobs))
+        args.feat_dir, num_jobs))
     shutil.copy('{0}/tree'.format(args.ali_dir), args.dir)
 
     with open('{0}/num_jobs'.format(args.dir), 'w') as f:
@@ -235,12 +235,12 @@ def train(args, run_opts):
 
     [egs_left_context, egs_right_context,
      frames_per_eg_str, num_archives] = (
-        common_train_lib.verify_egs_dir(egs_dir, feat_dim,
-                                        ivector_dim, ivector_id,
-                                        left_context, right_context))
-    assert(str(args.frames_per_eg) == frames_per_eg_str)
+         common_train_lib.verify_egs_dir(egs_dir, feat_dim,
+                                         ivector_dim, ivector_id,
+                                         left_context, right_context))
+    assert str(args.frames_per_eg) == frames_per_eg_str
 
-    if (args.num_jobs_final > num_archives):
+    if args.num_jobs_final > num_archives:
         raise Exception('num_jobs_final cannot exceed the number of archives '
                         'in the egs directory')
 
@@ -248,7 +248,7 @@ def train(args, run_opts):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (args.stage <= -3) and os.path.exists(args.dir+"/configs/init.config"):
+    if args.stage <= -3 and os.path.exists(args.dir+"/configs/init.config"):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
@@ -256,17 +256,17 @@ def train(args, run_opts):
             max_lda_jobs=args.max_lda_jobs,
             rand_prune=args.rand_prune)
 
-    if (args.stage <= -2):
+    if args.stage <= -2:
         logger.info("Computing initial vector for FixedScaleComponent before"
                     " softmax, using priors^{prior_scale} and rescaling to"
                     " average 1".format(
                         prior_scale=args.presoftmax_prior_scale_power))
 
         common_train_lib.compute_presoftmax_prior_scale(
-                args.dir, args.ali_dir, num_jobs, run_opts,
-                presoftmax_prior_scale_power=args.presoftmax_prior_scale_power)
+            args.dir, args.ali_dir, num_jobs, run_opts,
+            presoftmax_prior_scale_power=args.presoftmax_prior_scale_power)
 
-    if (args.stage <= -1):
+    if args.stage <= -1:
         logger.info("Preparing the initial acoustic model.")
         train_lib.acoustic_model.prepare_initial_acoustic_model(
             args.dir, args.ali_dir, run_opts)
