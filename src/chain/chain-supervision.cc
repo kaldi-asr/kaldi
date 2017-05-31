@@ -243,7 +243,8 @@ bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
     return PhoneLatticeToProtoSupervisionInternal(opts, lat, proto_supervision);
   } else {
     CompactLattice normalized_clat(lat);
-    NormalizePhoneLattice(&normalized_clat);
+    if (!NormalizePhoneLattice(&normalized_clat))
+      return false;  // Already warned
     return PhoneLatticeToProtoSupervisionInternal(opts,
                                                   normalized_clat,
                                                   proto_supervision);
