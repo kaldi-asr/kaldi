@@ -111,8 +111,7 @@ def train_new_models(dir, iter, srand, num_jobs,
             {scp_or_ark}:{egs_dir}/egs.{archive_index}.{scp_or_ark} ark:- | \
             nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} \
             --srand={srand} ark:- ark:- | {aug_cmd} \
-            nnet3-merge-egs --minibatch-size={minibatch_size} \
-            --discard-partial-minibatches=true ark:- ark:- |""".format(
+            nnet3-merge-egs --minibatch-size={minibatch_size} ark:- ark:- |""".format(
                 frame_opts=("" if chunk_level_training
                             else "--frame={0}".format(frame)),
                 egs_dir=egs_dir, archive_index=archive_index,

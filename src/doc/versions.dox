@@ -89,8 +89,21 @@
        models like LSTMs.
      - The sequence-training scripts in nnet3 are refactored and are now simpler
        and use less disk space.
+     - There are scripts for segmentation of long transcribed audio files.
 
   \htmlinclude 5.1.html
 
+   \subsection versions_versions_52 Version 5.2
+
+  Version 5.2 is the current master branch of Kaldi.
+  Some of the changes introduced in version 5.2 are:
+    - Upgrades to nnet3 to support batch-norm and convolutional components;
+      recipes for certain image tasks (like CIFAR).
+    - nnet3 training script simplifications and refactoring.
+    - Some of the recipes are upgraded to include dropout and
+      the --proportional-shrink option (which approximates l2 regularization);
+      this improves results.
+
+  \htmlinclude 5.2.html
 
 */
