@@ -3,6 +3,10 @@
 # same as 1e but uses batchnorm components instead of renorm also adding
 # proportional-shrink 10, trained with 4 epochs
 
+
+# local/chain/tuning/run_tdnn_1f.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned
+
+# local/chain/compare_wer_general.sh sdm1 tdnn1e_sp_bi_ihmali tdnn1f_sp_bi_ihmali
 # System               tdnn1e_sp_bi_ihmali tdnn1f_sp_bi_ihmali
 # WER on dev        39.2      37.5
 # WER on eval        42.8      41.3
