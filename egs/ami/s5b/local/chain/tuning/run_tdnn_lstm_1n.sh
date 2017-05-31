@@ -5,7 +5,6 @@
 # 5 epochs to train
 
 # local/chain/tuning/run_tdnn_lstm_1n.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned
-
 # local/chain/compare_wer_general.sh sdm1 tdnn_lstmli_5epoch_sp_bi_ihmali_ld5 tdnn_lstm1n_sp_bi_ihmali_ld5
 # System               tdnn_lstmli_5epoch_sp_bi_ihmali_ld5 tdnn_lstm1n_sp_bi_ihmali_ld5
 # WER on dev        36.9      34.2
@@ -14,6 +13,7 @@
 # Final valid prob      -0.266945 -0.234348
 # Final train prob (xent)      -1.22333  -1.5112
 # Final valid prob (xent)      -2.13335  -2.01698
+
 
 
 set -e -o pipefail

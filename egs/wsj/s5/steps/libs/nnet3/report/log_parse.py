@@ -398,7 +398,7 @@ def generate_acc_logprob_report(exp_dir, key="accuracy", output="output"):
     report = []
     report.append("%Iter\tduration\ttrain_loss\tvalid_loss\tdifference")
     try:
-        data = parse_prob_logs(exp_dir, key, output)
+        data = list(parse_prob_logs(exp_dir, key, output))
     except:
         tb = traceback.format_exc()
         logger.warning("Error getting info from logs, exception was: " + tb)

@@ -207,10 +207,6 @@ EOF
     --config-dir $dir/configs/ \
     --nnet-edits="rename-node old-name=output-0 new-name=output"
 
-  cat <<EOF >> $dir/configs/vars
-include_log_softmax=false
-EOF
-fi
 
 if [ $stage -le 9 ]; then
   echo "$0: Generates separate egs dir per language for multilingual training."

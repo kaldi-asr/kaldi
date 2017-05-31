@@ -91,6 +91,7 @@ def _run(args):
     if args.input_idf_stats is not None:
         idf_stats.read(args.input_idf_stats)
 
+    num_done = 0
     for line in args.docs:
         parts = line.strip().split()
         doc = parts[0]
@@ -106,6 +107,7 @@ def _run(args):
                 tf_normalization_factor=args.tf_normalization_factor,
                 expected_document_id=doc)
             tf_stats = tf_idf.TFStats()
+        num_done += 1
 
     if args.accumulate_over_docs:
         tf_stats.compute_term_stats(idf_stats=idf_stats
@@ -122,6 +124,8 @@ def _run(args):
             idf_weighting_scheme=args.idf_weighting_scheme,
             tf_normalization_factor=args.tf_normalization_factor)
 
+    if num_done == 0:
+        raise RuntimeError("Could not compute TF-IDF for any query documents")
 
 def main():
     args = _get_args()

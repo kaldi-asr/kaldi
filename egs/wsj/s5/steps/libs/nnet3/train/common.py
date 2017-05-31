@@ -893,7 +893,7 @@ class CommonParser:
                                  expertise to setup. """)
         self.parser.add_argument("--reporting.interval",
                                  dest="reporting_interval",
-                                 type=int, default=0.1,
+                                 type=float, default=0.1,
                                  help="""Frequency with which reports have to
                                  be sent, measured in terms of fraction of
                                  iterations.

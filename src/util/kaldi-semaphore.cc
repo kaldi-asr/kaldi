@@ -1,6 +1,7 @@
-// thread/kaldi-mutex.h
+// util/kaldi-semaphore.cc
 
 // Copyright 2012  Karel Vesely (Brno University of Technology)
+//           2017  Dogan Can (University of Southern California)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -18,42 +19,39 @@
 // limitations under the License.
 
 
-#ifndef KALDI_THREAD_KALDI_MUTEX_H_
-#define KALDI_THREAD_KALDI_MUTEX_H_ 1
 
-#include <pthread.h>
+#include "base/kaldi-error.h"
+#include "util/kaldi-semaphore.h"
 
 namespace kaldi {
 
-/**
- * This class encapsulates mutex to ensure 
- * exclusive access to some critical section
- * which manipulates shared resources.
- *
- * Note.: The mutex MUST BE UNLOCKED from 
- * the SAME THREAD which has locked it!
- */
-class Mutex {
- public:
-  Mutex();
-  ~Mutex();
+Semaphore::Semaphore(int32 count) {
+  KALDI_ASSERT(count >= 0);
+  count_ = count;
+}
 
-  void Lock();
+Semaphore::~Semaphore() {}
 
-  /**
-   * Try to lock the mutex without waiting for it.
-   * Returns: true when lock successfull,
-   *         false when mutex was already locked
-   */
-  bool TryLock();
-  
-  void Unlock();
+bool Semaphore::TryWait() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  if(count_) {
+      count_--;
+      return true;
+  }
+  return false;
+}
 
- private:
-  pthread_mutex_t mutex_;
-  KALDI_DISALLOW_COPY_AND_ASSIGN(Mutex);  
-};
+void Semaphore::Wait() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  while(!count_)
+    condition_variable_.wait(lock);
+  count_--;
+}
+
+void Semaphore::Signal() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  count_++;
+  condition_variable_.notify_one();
+}
 
 } // namespace kaldi
-
-#endif // KALDI_THREAD_KALDI_MUTEX_H_

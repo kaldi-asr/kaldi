@@ -27,7 +27,7 @@
 #include "decoder/decoder-wrappers.h"
 #include "nnet2/decodable-am-nnet.h"
 #include "base/timer.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 
 int main(int argc, char *argv[]) {
