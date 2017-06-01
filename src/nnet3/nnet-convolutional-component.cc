@@ -81,7 +81,7 @@ std::string TimeHeightConvolutionComponent::Info() const {
            << ", rank-in=" << preconditioner_in_.GetRank()
            << ", rank-out=" << preconditioner_out_.GetRank()
            << ", alpha-in=" << preconditioner_in_.GetAlpha()
-           << ", alpha-out=" << preconditioner_in_.GetAlpha();
+           << ", alpha-out=" << preconditioner_out_.GetAlpha();
   }
   return stream.str();
 }

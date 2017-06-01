@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# search for VERSIONS below to see how to change this when
+# Kaldi's version number increases.
+
 # Note: this script assumes that it's part of a git repository where
 # the official kaldi repo is a remote named 'upstream', as shown
 # here:
@@ -26,17 +29,24 @@ fi
 
 # echo "fooXXabcYYbar" | perl -ane ' if (m/XX(.+)YY/) { $a=$`;$x=$1;$y=$'\''; $x =~ s/a/b/g; print "${a}XX${x}YY${y}"; } else {print;}'
 
-# Note: when you add new tuples here you'll want to add ndew
-# \htmlinclude directives in versions.dox.
-# the tuples will generally be of the form: "x.x master yyyyyy"
-# where yyyyy is the result of git log -1 src/.version done on
+# VERSION
+# When you increment the version of Kaldi you'll want to
+# add a new tuple to the 'for' statement, of the form "5.x master yyyy".
+# where the tuples will generally be of the form: "x.x master yyyyyy"
+# where yyyyy is the result of git log -1 src/.version on
 # that version of Kaldi (we only update the .version file when
 # the major/minor version number changes).
-for tuple in "5.0 master c160a9883" "5.1 master 2145519961"; do
+# You should change the previous 'master' to the previous version number,
+# e.g. 5.2 (this assumes you created a branch in Kaldi's repository that
+# archives that version of Kaldi).
+# Note: when you add new tuples here you'll also want to add ndew
+# \htmlinclude directives in versions.dox.
+
+
+for tuple in "5.0 5.0 c160a9883" "5.1 5.1 2145519961" "5.2 master 393ef73caa93"; do
   major_minor_number=$(echo $tuple | awk '{print $1}')  # e.g. 5.0
   branch=$(echo $tuple | awk '{print $2}')  # e.g. 'master', or '5.1' (it's a branch name)
   first_commit=$(echo $tuple | awk '{print $3}')
-
 
 
   tempfile=$(mktemp /tmp/temp.XXXXXX)
@@ -47,7 +57,7 @@ for tuple in "5.0 master c160a9883" "5.1 master 2145519961"; do
   # $first_commit to $branch... --boundary causes it to include $first_commit
   # in the range, but with a dash (-) included for the first commit, so we
   # use a sed command to get rid of that.
-  for rev in $(git rev-list --reverse $first_commit..$branch --boundary | sed s/-//); do
+  for rev in $(git rev-list --reverse $first_commit..upstream/$branch --boundary | sed s/-//); do
     # %h is abbrev. commit hash, %H is long commit hash, %cd is the commit date,
     # %%s is the one-line log message; x09 is tab.
     # so we're printing "<patch-number> <short-commit> <long-commit> <commit-date> <commit-subject>"
