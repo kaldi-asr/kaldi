@@ -122,7 +122,10 @@ void OptimizeFactorTransducer(KwsLexicographicFst *index_transducer,
   Encode(&ifst, &encoder);
   KALDI_VLOG(2) << "OptimizeFactorTransducer: determinization...";
   if (allow_partial) {
-    DeterminizeStar(ifst, index_transducer, kDelta, NULL, max_states, true);
+    bool is_partial = DeterminizeStar(ifst, index_transducer, kDelta, NULL, max_states, true);
+    if (is_partial) {
+      *index_transducer = ifst;
+    }
   } else {
       try {
         DeterminizeStar(ifst, index_transducer, kDelta, NULL, max_states,
@@ -133,7 +136,7 @@ void OptimizeFactorTransducer(KwsLexicographicFst *index_transducer,
       }
   }
   KALDI_VLOG(2) << "OptimizeFactorTransducer: minimization...";
-  Minimize(index_transducer);
+  Minimize(index_transducer, static_cast<KwsLexicographicFst *>(NULL), fst::kDelta, true);
   Decode(index_transducer, encoder);
 }
 
