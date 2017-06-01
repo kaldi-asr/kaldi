@@ -128,11 +128,10 @@ def train_new_models(dir, iter, srand, num_jobs,
                      apply_deriv_weights,
                      min_deriv_time, max_deriv_time_relative,
                      l2_regularize, xent_regularize, leaky_hmm_coefficient,
-                     momentum,
-                     backstitch_training_scale, backstitch_training_interval,
-                     max_param_change,
+                     momentum, max_param_change,
                      shuffle_buffer_size, num_chunk_per_minibatch_str,
-                     frame_subsampling_factor, run_opts):
+                     frame_subsampling_factor, run_opts,
+                     backstitch_training_scale=0.0, backstitch_training_interval=1):
     """
     Called from train_one_iteration(), this method trains new models
     with 'num_jobs' jobs, and
@@ -184,9 +183,10 @@ def train_new_models(dir, iter, srand, num_jobs,
                     {cache_io_opts}  --xent-regularize={xent_reg} \
                     {deriv_time_opts} \
                     --print-interval=10 --momentum={momentum} \
+                    --max-param-change={max_param_change} \
                     --backstitch-training-scale={backstitch_training_scale} \
                     --backstitch-training-interval={backstitch_training_interval} \
-                    --max-param-change={max_param_change} \
+                    --srand={srand} \
                     "{raw_model}" {dir}/den.fst \
                     "ark,bg:nnet3-chain-copy-egs \
                         --frame-shift={fr_shft} \
@@ -206,10 +206,9 @@ def train_new_models(dir, iter, srand, num_jobs,
                         cache_io_opts=cache_io_opts,
                         parallel_train_opts=run_opts.parallel_train_opts,
                         verbose_opt=verbose_opt,
-                        momentum=momentum,
+                        momentum=momentum, max_param_change=max_param_change,
                         backstitch_training_scale=backstitch_training_scale,
                         backstitch_training_interval=backstitch_training_interval,
-                        max_param_change=max_param_change,
                         raw_model=raw_model_string,
                         egs_dir=egs_dir, archive_index=archive_index,
                         buf_size=shuffle_buffer_size,
@@ -232,11 +231,10 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         max_deriv_time_relative,
                         l2_regularize, xent_regularize,
                         leaky_hmm_coefficient,
-                        momentum,
-                        backstitch_training_scale, backstitch_training_interval,
-                        max_param_change, shuffle_buffer_size,
+                        momentum, max_param_change, shuffle_buffer_size,
                         frame_subsampling_factor,
-                        run_opts, dropout_edit_string=""):
+                        run_opts, dropout_edit_string="",
+                        backstitch_training_scale=0.0, backstitch_training_interval=1):
     """ Called from steps/nnet3/chain/train.py for one iteration for
     neural network training with LF-MMI objective
 
@@ -316,16 +314,16 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      xent_regularize=xent_regularize,
                      leaky_hmm_coefficient=leaky_hmm_coefficient,
                      momentum=momentum,
-                     # linearly increase backstitch_training_scale during the
-                     # first few iterations(hard-coded as 15 for now)
-                     backstitch_training_scale=(backstitch_training_scale *
-                         iter / 15 if iter < 15 else backstitch_training_scale),
-                     backstitch_training_interval=backstitch_training_interval,
                      max_param_change=cur_max_param_change,
                      shuffle_buffer_size=shuffle_buffer_size,
                      num_chunk_per_minibatch_str=cur_num_chunk_per_minibatch_str,
                      frame_subsampling_factor=frame_subsampling_factor,
-                     run_opts=run_opts)
+                     run_opts=run_opts,
+                     # linearly increase backstitch_training_scale during the
+                     # first few iterations (hard-coded as 15)
+                     backstitch_training_scale=(backstitch_training_scale *
+                         iter / 15 if iter < 15 else backstitch_training_scale),
+                     backstitch_training_interval=backstitch_training_interval)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
          num_jobs, '{0}/log/train.{1}.%.log'.format(dir, iter))

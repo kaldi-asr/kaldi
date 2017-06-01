@@ -70,31 +70,29 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   const NnetComputation *computation = compiler_.Compile(request);
 
   if (nnet_config.backstitch_training_scale > 0.0 && num_minibatches_processed_
-      % nnet_config.backstitch_training_interval == 0) {
+      % nnet_config.backstitch_training_interval ==
+      srand_seed_ % nnet_config.backstitch_training_interval) {
     // backstitch training is incompatible with momentum > 0
     KALDI_ASSERT(nnet_config.momentum == 0.0);
     FreezeNaturalGradient(true, delta_nnet_);
-    bool is_backstitch_step = true;
+    bool is_backstitch_step1 = true;
     srand(srand_seed_ + num_minibatches_processed_);
     ResetGenerators(nnet_);
-    TrainInternal(chain_eg, *computation, is_backstitch_step);
+    TrainInternalBackstitch(chain_eg, *computation, is_backstitch_step1);
     FreezeNaturalGradient(false, delta_nnet_); // un-freeze natural gradient
-    is_backstitch_step = false;
+    is_backstitch_step1 = false;
     srand(srand_seed_ + num_minibatches_processed_);
     ResetGenerators(nnet_);
-    TrainInternal(chain_eg, *computation, is_backstitch_step);
-  } else {
-    // conventional training
-    bool is_backstitch_step = false;
-    TrainInternal(chain_eg, *computation, is_backstitch_step);
+    TrainInternalBackstitch(chain_eg, *computation, is_backstitch_step1);
+  } else { // conventional training
+    TrainInternal(chain_eg, *computation);
   }
 
   num_minibatches_processed_++;
 }
 
 void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
-                                     const NnetComputation &computation,
-                                     bool is_backstitch_step) {
+                                     const NnetComputation &computation) {
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   NnetComputer computer(nnet_config.compute_config, computation,
                         *nnet_, delta_nnet_);
@@ -102,48 +100,63 @@ void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
   computer.AcceptInputs(*nnet_, eg.inputs);
   computer.Run();
 
-  this->ProcessOutputs(is_backstitch_step, eg, &computer);
+  this->ProcessOutputs(false, eg, &computer);
   computer.Run();
 
-  // The configurations if doing conventional training with momentum
-  BaseFloat max_change_scale = 1.0, scale_adding = 1.0 - nnet_config.momentum,
-            scale_delta_nnet = nnet_config.momentum;
-  // The configurations if doing backstitch training
-  if (nnet_config.backstitch_training_scale > 0.0 && num_minibatches_processed_
-      % nnet_config.backstitch_training_interval == 0) {
-    if (is_backstitch_step) {
-      // max-change is scaled by backstitch_training_scale;
-      // delta_nnet is scaled by -backstitch_training_scale when added to nnet;
-      // delta_nnet itself is then zeroed
-      max_change_scale = nnet_config.backstitch_training_scale;
-      scale_adding = -nnet_config.backstitch_training_scale;
-      scale_delta_nnet = 0.0;
-    } else {
-      // max-change is scaled by 1 + backstitch_training_scale;
-      // delta_nnet is scaled by 1 + backstitch_training_scale when added to nnet;
-      // delta_nnet itself is then zeroed
-      max_change_scale = 1.0 + nnet_config.backstitch_training_scale;
-      scale_adding = 1.0 + nnet_config.backstitch_training_scale;
-      scale_delta_nnet = 0.0;
-    }
-  }
   // Updates the parameters of nnet
   bool success = UpdateNnetWithMaxChange(*delta_nnet_,
-      nnet_config.max_param_change, max_change_scale, scale_adding, nnet_,
+      nnet_config.max_param_change, 1.0, 1.0 - nnet_config.momentum, nnet_,
       &num_max_change_per_component_applied_, &num_max_change_global_applied_);
   // Scales delta_nnet
   if (success)
-    ScaleNnet(scale_delta_nnet, delta_nnet_);
+    ScaleNnet(nnet_config.momentum, delta_nnet_);
   else
     ScaleNnet(0.0, delta_nnet_);
 }
 
-void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step,
+void NnetChainTrainer::TrainInternalBackstitch(const NnetChainExample &eg,
+                                               const NnetComputation &computation,
+                                               bool is_backstitch_step1) {
+  const NnetTrainerOptions &nnet_config = opts_.nnet_config;
+  NnetComputer computer(nnet_config.compute_config, computation,
+                        *nnet_, delta_nnet_);
+  // give the inputs to the computer object.
+  computer.AcceptInputs(*nnet_, eg.inputs);
+  computer.Run();
+
+  bool is_backstitch_step2 = !is_backstitch_step1;
+  this->ProcessOutputs(is_backstitch_step2, eg, &computer);
+  computer.Run();
+
+  BaseFloat max_change_scale, scale_adding;
+  if (is_backstitch_step1) {
+    // max-change is scaled by backstitch_training_scale;
+    // delta_nnet is scaled by -backstitch_training_scale when added to nnet;
+    max_change_scale = nnet_config.backstitch_training_scale;
+    scale_adding = -nnet_config.backstitch_training_scale;
+  } else {
+    // max-change is scaled by 1 + backstitch_training_scale;
+    // delta_nnet is scaled by 1 + backstitch_training_scale when added to nnet;
+    max_change_scale = 1.0 + nnet_config.backstitch_training_scale;
+    scale_adding = 1.0 + nnet_config.backstitch_training_scale;
+  }
+
+  // Updates the parameters of nnet
+  UpdateNnetWithMaxChange(*delta_nnet_,
+      nnet_config.max_param_change, max_change_scale, scale_adding, nnet_,
+      &num_max_change_per_component_applied_, &num_max_change_global_applied_);
+  
+  ScaleNnet(0.0, delta_nnet_);
+}
+
+void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
                                       const NnetChainExample &eg,
                                       NnetComputer *computer) {
   // normally the eg will have just one output named 'output', but
   // we don't assume this.
-  const std::string suffix = (is_backstitch_step ? "_backstitch" : "");
+  // In backstitch training, the output-name with the "_backstitch" suffix is
+  // the one computed after the first, backward step of backstitch.
+  const std::string suffix = (is_backstitch_step2 ? "_backstitch" : "");
   std::vector<NnetChainSupervision>::const_iterator iter = eg.outputs.begin(),
       end = eg.outputs.end();
   for (; iter != end; ++iter) {
@@ -235,8 +248,8 @@ void NnetChainTrainer::PrintMaxChangeStats() const {
         KALDI_LOG << "For " << delta_nnet_->GetComponentName(c)
                   << ", per-component max-change was enforced "
                   << (100.0 * num_max_change_per_component_applied_[i]) /
-                     num_minibatches_processed_ /
-                     (opts_.nnet_config.backstitch_training_scale > 0.0 ? 2.0 : 1.0)
+                     (num_minibatches_processed_ *
+                     (opts_.nnet_config.backstitch_training_scale > 0.0 ? 2.0 : 1.0))
                   << " \% of the time.";
       i++;
     }
@@ -244,8 +257,8 @@ void NnetChainTrainer::PrintMaxChangeStats() const {
   if (num_max_change_global_applied_ > 0)
     KALDI_LOG << "The global max-change was enforced "
               << (100.0 * num_max_change_global_applied_) /
-                 num_minibatches_processed_ /
-                 (opts_.nnet_config.backstitch_training_scale > 0.0 ? 2.0 : 1.0)
+                 (num_minibatches_processed_ *
+                 (opts_.nnet_config.backstitch_training_scale > 0.0 ? 2.0 : 1.0))
               << " \% of the time.";
 }
 

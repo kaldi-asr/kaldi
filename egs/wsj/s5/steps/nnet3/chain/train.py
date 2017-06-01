@@ -467,12 +467,12 @@ def train(args, run_opts):
                 xent_regularize=args.xent_regularize,
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
                 momentum=args.momentum,
-                backstitch_training_scale=args.backstitch_training_scale,
-                backstitch_training_interval=args.backstitch_training_interval,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 frame_subsampling_factor=args.frame_subsampling_factor,
-                run_opts=run_opts)
+                run_opts=run_opts,
+                backstitch_training_scale=args.backstitch_training_scale,
+                backstitch_training_interval=args.backstitch_training_interval)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain

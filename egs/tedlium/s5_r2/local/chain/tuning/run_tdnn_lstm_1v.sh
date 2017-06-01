@@ -4,19 +4,18 @@
 # num of epochs increased to 7
 
 # ./local/chain/compare_wer_general.sh --looped exp/chain_cleaned/tdnn_lstm1e_sp_bi exp/chain_cleaned/tdnn_lstm1t_sp_bi
-# System                tdnn_lstm1v_sp_bi tdnn_lstm1t_sp_bi
-# WER on dev(orig)            8.6       9.0
-#         [looped:]           8.7       9.0
-# WER on dev(rescored)        8.3       8.4
-#         [looped:]           8.2       8.4
-# WER on test(orig)           8.2       8.9
-#         [looped:]           8.3       8.9
-# WER on test(rescored)       7.8       8.4
-#         [looped:]           7.8       8.4
+# System                tdnn_lstm1t_sp_bi tdnn_lstm1v_sp_bi
+# WER on dev(orig)            9.0       8.6
+#         [looped:]           9.0       8.7
+# WER on dev(rescored)        8.4       8.3
+#         [looped:]           8.4       8.2
+# WER on test(orig)           8.9       8.2
+#         [looped:]           8.9       8.3
+# WER on test(rescored)       8.4       7.8
+#         [looped:]           8.4       7.8
 
-# exp/chain_cleaned/tdnn_lstm1v_sp_bi: num-iters=444 nj=2..12 num-params=33.9M dim=40+100->3608 combine=-0.05->-0.05 xent:train/valid[295,443,final]=(-0.771,-0.622,-0.623/-0.865,-0.769,-0.768) logprob:train/valid[295,443,final]=(-0.054,-0.037,-0.037/-0.074,-0.064,-0.064)
 # exp/chain_cleaned/tdnn_lstm1t_sp_bi: num-iters=253 nj=2..12 num-params=37.1M dim=40+100->3626 combine=-0.055->-0.055 xent:train/valid[167,252,final]=(-0.774,-0.655,-0.643/-0.928,-0.883,-0.873) logprob:train/valid[167,252,final]=(-0.063,-0.048,-0.046/-0.087,-0.089,-0.087)
-
+# exp/chain_cleaned/tdnn_lstm1v_sp_bi: num-iters=444 nj=2..12 num-params=33.9M dim=40+100->3608 combine=-0.05->-0.05 xent:train/valid[295,443,final]=(-0.771,-0.622,-0.623/-0.865,-0.769,-0.768) logprob:train/valid[295,443,final]=(-0.054,-0.037,-0.037/-0.074,-0.064,-0.064)
 
 set -e -o pipefail
 

@@ -358,15 +358,15 @@ def train(args, run_opts):
                 minibatch_size_str=args.minibatch_size,
                 frames_per_eg=args.frames_per_eg,
                 momentum=args.momentum,
-                backstitch_training_scale=args.backstitch_training_scale,
-                backstitch_training_interval=args.backstitch_training_interval,
                 max_param_change=args.max_param_change,
                 shrinkage_value=shrinkage_value,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
                 get_raw_nnet_from_am=False,
                 image_augmentation_opts=args.image_augmentation_opts,
-                use_multitask_egs=use_multitask_egs)
+                use_multitask_egs=use_multitask_egs,
+                backstitch_training_scale=args.backstitch_training_scale,
+                backstitch_training_interval=args.backstitch_training_interval)
 
             if args.cleanup:
                 # do a clean up everything but the last 2 models, under certain

@@ -269,7 +269,7 @@ void ReadEditConfig(std::istream &config_file, Nnet *nnet);
 /**
    This function does the operation '*nnet += scale * delta_nnet', while
    respecting any max-parameter-change (max-param-change) specified in the
-   updatable components, plus the global max-param-change specified as
+   updatable components, and also the global max-param-change specified as
    'max_param_change'.
 
    With max-changes taken into account, the operation of this function is
@@ -309,9 +309,10 @@ void ReadEditConfig(std::istream &config_file, Nnet *nnet);
    @param [in] scale  This value, which will normally be 1.0, is a scaling
                factor used when adding to 'nnet', applied after any max-changes.
    @param [in,out] nnet  The nnet which we add to.
-   @param [in,out] num_max_change_per_component_applied  Stats for per-component
-                   max-change.
-   @param [in,out] num_max_change_global_applied  Stats for global max-change.
+   @param [out] num_max_change_per_component_applied  We add to the elements of
+                   this the count for each per-component max-change.
+   @param [out] num_max_change_global_applied  We to this the count for the
+                   global max-change.
 */
 bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
                              BaseFloat max_param_change,
