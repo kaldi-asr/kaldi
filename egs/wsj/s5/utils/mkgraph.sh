@@ -135,7 +135,7 @@ fi
 trap "rm -f $dir/HCLG.fst.$$" EXIT HUP INT PIPE TERM
 if [[ ! -s $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
   add-self-loops --self-loop-scale=$loopscale --reorder=true \
-    $model < $dir/HCLGa.fst > $dir/HCLG.fst.$$ || exit 1;
+    $model < $dir/HCLGa.fst | fstconvert --fst_type=const > $dir/HCLG.fst.$$ || exit 1;
   mv $dir/HCLG.fst.$$ $dir/HCLG.fst
   if [ $tscale == 1.0 -a $loopscale == 1.0 ]; then
     # No point doing this test if transition-scale not 1, as it is bound to fail.
@@ -168,6 +168,4 @@ cp $lang/phones/disambig.{txt,int} $dir/phones/ 2> /dev/null
 cp $lang/phones/silence.csl $dir/phones/ || exit 1;
 cp $lang/phones.txt $dir/ 2> /dev/null # ignore the error if it's not there.
 
-# to make const fst:
-# fstconvert --fst_type=const $dir/HCLG.fst $dir/HCLG_c.fst
 am-info --print-args=false $model | grep pdfs | awk '{print $NF}' > $dir/num_pdfs

@@ -415,7 +415,7 @@ bool IsStochasticFst(const Fst<Arc> &fst,
 
 
 // IsStochasticFstInLog makes sure it's stochastic after casting to log.
-inline bool IsStochasticFstInLog(const VectorFst<StdArc> &fst,
+inline bool IsStochasticFstInLog(const Fst<StdArc> &fst,
                                  float delta = kDelta,  // kDelta = 1.0/1024.0 by default.
                                  StdArc::Weight *min_sum = NULL,
                                  StdArc::Weight *max_sum = NULL);
