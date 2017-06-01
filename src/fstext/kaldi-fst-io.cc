@@ -91,7 +91,7 @@ Fst<StdArc> *ReadFstKaldiGeneric(std::string rxfilename, bool throw_on_err) {
   return fst;
 }
 
-VectorFst<StdArc> *CastToVectorFst(Fst<StdArc> *fst) {
+VectorFst<StdArc> *CastOrConvertToVectorFst(Fst<StdArc> *fst) {
   // This version currently supports ConstFst<StdArc> or VectorFst<StdArc>         
   std::string real_type = fst->Type();
   KALDI_ASSERT(real_type == "vector" || real_type == "const");

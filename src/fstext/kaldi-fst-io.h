@@ -55,7 +55,7 @@ Fst<StdArc> *ReadFstKaldiGeneric(std::string rxfilename,
 // type VectorFst<StdArc>. If this succeeds, it returns the same pointer;
 // if it fails, it converts the FST type (by creating a new VectorFst<stdArc>
 // initialized by 'fst'), prints a warning, and deletes 'fst'.
-VectorFst<StdArc> *CastToVectorFst(Fst<StdArc> *fst);
+VectorFst<StdArc> *CastOrConvertToVectorFst(Fst<StdArc> *fst);
 
 // Version of ReadFstKaldi() that writes to a pointer.  Assumes
 // the FST is binary with no binary marker.  Crashes on error.

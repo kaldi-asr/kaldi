@@ -195,11 +195,11 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(ki.Stream(), binary);
     }
     
-    VectorFst<StdArc> *old_lm_fst = fst::CastToVectorFst(
+    VectorFst<StdArc> *old_lm_fst = fst::CastOrConvertToVectorFst(
         fst::ReadFstKaldiGeneric(old_lm_fst_rxfilename));
     ApplyProbabilityScale(-1.0, old_lm_fst); // Negate old LM probs...
     
-    VectorFst<StdArc> *new_lm_fst = fst::CastToVectorFst(
+    VectorFst<StdArc> *new_lm_fst = fst::CastOrConvertToVectorFst(
         fst::ReadFstKaldiGeneric(new_lm_fst_rxfilename));
 
     fst::BackoffDeterministicOnDemandFst<StdArc> old_lm_dfst(*old_lm_fst);
