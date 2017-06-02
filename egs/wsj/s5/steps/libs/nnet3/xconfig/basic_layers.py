@@ -643,7 +643,10 @@ class XconfigBasicLayer(XconfigLayerBase):
                         'target-rms' : 1.0,
                         'learning-rate-factor' : 1.0,
                         'ng-affine-options' : '',
-                        'dropout-proportion': 0.5}
+                        'dropout-proportion': 0.5}  # dropout-proportion only
+                                                    # affects layers with
+                                                    # 'dropout' in the name.
+
 
     def check_configs(self):
         if self.config['dim'] < 0:
