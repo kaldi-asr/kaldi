@@ -27,6 +27,7 @@
 #include "fstext/fstext-lib.h"
 #include "lat/lattice-functions.h"
 #include "util/kaldi-thread.h"
+#include "nnet3/nnet-utils.h"
 
 namespace kaldi {
 
