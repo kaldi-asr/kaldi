@@ -160,6 +160,8 @@ int main(int argc, char *argv[]) {
       Input ki(nnet3_rxfilename, &binary);
       trans_model.Read(ki.Stream(), binary);
       am_nnet.Read(ki.Stream(), binary);
+      SetBatchnormTestMode(true, &(am_nnet.GetNnet()));
+      SetDropoutTestMode(true, &(am_nnet.GetNnet()));
     }
 
     // this object contains precomputed stuff that is used by all decodable
