@@ -2,6 +2,12 @@
 
 set -e -o pipefail
 
+# e.g. try lm-scale:
+# local/chain/run_semisupervised.sh --stage 1 --tdnn-affix _sup1a --egs-affix _lmwt1.0 --lattice-lm-scale 1.0
+
+
+# frames_per_eg 300
+# local/chain/run_semisupervised.sh --stage 1 --tdnn-affix _sup1d --unsup-frames-per-eg 300 --egs-affix _fpe300
 
 stage=0
 nj=30
@@ -17,9 +23,10 @@ train_supervised_opts="--stage -10 --train-stage -10"
 decode_affix=
 egs_affix=  # affix for the egs that are generated from unsupervised data and for the comined egs dir
 comb_affix=_comb1a  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
-unsup_decode_lattice_beam=8.0
 unsup_frames_per_eg=  # if empty will be equal to the supervised model's config
+unsup_egs_weight=1.0
 lattice_lm_scale=0.1  # lm-scale for using the weights from unsupervised lattices
+lattice_prune_beam=  # If supplied will prune the lattices prior to getting egs for unsupervised data
 left_tolerance=2
 right_tolerance=2
 train_combined_opts="--num-epochs 5"
@@ -111,7 +118,7 @@ cmvn_opts=`cat $chaindir/cmvn_opts`
 if [ $stage -le 0 ]; then
   echo "$0: getting the decoding lattices for the unsupervised subset using the chain model at: $chaindir"
   steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
-            --acwt 1.0 --post-decode-acwt 10.0 --lattice-beam $unsup_decode_lattice_beam \
+            --acwt 1.0 --post-decode-acwt 10.0 \
             --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${unsupervised_set}_hires \
             --scoring-opts "--min-lmwt 5 " \
             $chaindir/graph data/${unsupervised_set}_hires $chaindir/decode_${unsupervised_set}${decode_affix}
@@ -122,7 +129,6 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  # TODO: set supervision.weight for the unsupervised data and tune it (maybe try 0.25,0.5,0.75)
   echo "$0: generating egs from the unsupervised data"
   steps/nnet3/chain/get_egs.sh --cmd "$decode_cmd" --alignment-subsampling-factor 1 \
              --left-tolerance $left_tolerance --right-tolerance $right_tolerance \
@@ -131,6 +137,8 @@ if [ $stage -le 1 ]; then
              --frames-per-eg $unsup_frames_per_eg --frames-per-iter 1500000 \
              --frame-subsampling-factor $frame_subsampling_factor \
              --cmvn-opts "$cmvn_opts" --lattice-lm-scale $lattice_lm_scale \
+             --lattice-prune-beam "$lattice_prune_beam" \
+             --egs-weight $unsup_egs_weight \
              --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${unsupervised_set}_hires \
              data/${unsupervised_set}_hires $chaindir \
              ${chaindir}/decode_${unsupervised_set}${decode_affix}_rescore $chaindir/unsup_egs${decode_affix}${egs_affix}
@@ -158,9 +166,6 @@ if [ $stage -le 2 ]; then
       out_egs_list="$out_egs_list ark:$comb_egs_dir/cegs.$n.ark"
   done
   srand=0
-  #    $decode_cmd --mem 8G $comb_egs_dir/log/shuffle_combine.log \
-  #          nnet3-chain-shuffle-egs --srand=$srand "ark:cat $egs_list|" ark:- \| \
-  #    nnet3-chain-copy-egs --random=true --srand=$srand ark:- $out_egs_list
   $decode_cmd $comb_egs_dir/log/combine.log \
               nnet3-chain-copy-egs "ark:cat $egs_list|" $out_egs_list
 fi
@@ -173,6 +178,4 @@ if [ $stage -le 3 ]; then
                           --tdnn-affix ${tdnn_affix}${decode_affix}${egs_affix}${comb_affix} \
                           --common-egs-dir $comb_egs_dir $train_combined_opts
 fi
-
-#final_combined_chaindir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}${comb_affix}_sp_bi
 

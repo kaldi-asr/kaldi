@@ -64,7 +64,13 @@ online_ivector_dir=  # can be used if we are including speaker information as iV
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
             # LDA transform).  This is used to turn off CMVN in the online-nnet experiments.
-lattice_lm_scale=
+lattice_lm_scale=     # If supplied, the graph/lm weight of the lattices will be
+                      # used (with this scale) in generating supervisions
+egs_weight=1.0    # The weight which determines how much each training example
+                           # contributes to gradients while training (can be used
+                           # to down/up-weight a dataset)
+lattice_prune_beam=         # If supplied, the lattices will be pruned to this beam,
+                      # before being used to get supervisions.
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -286,8 +292,10 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: copying training lattices"
 
+  [ ! -z $lattice_prune_beam ] && \
+    prune_cmd="ark:- | lattice-prune --acoustic-scale=0.1 --beam=$lattice_prune_beam ark:-"
   $cmd --max-jobs-run 6 JOB=1:$num_lat_jobs $dir/log/lattice_copy.JOB.log \
-    lattice-copy "ark:gunzip -c $latdir/lat.JOB.gz|" ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp || exit 1;
+    lattice-copy "ark:gunzip -c $latdir/lat.JOB.gz|" $prune_cmd ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp || exit 1;
 
   for id in $(seq $num_lat_jobs); do cat $dir/lat.$id.scp; done > $dir/lat.scp
 fi
@@ -386,6 +394,7 @@ if [ $stage -le 4 ]; then
     utils/filter_scp.pl $sdata/JOB/utt2spk $dir/lat.scp \| \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
     chain-get-supervision $chain_supervision_all_opts \
+      --weight=$egs_weight \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
     nnet3-chain-get-egs $ivector_opts --srand=\$[JOB+$srand] $egs_opts \
       --num-frames-overlap=$frames_overlap_per_eg \
