@@ -169,7 +169,6 @@ if [ $stage -le 13 ]; then
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
-    --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --trainer.num-chunk-per-minibatch 64 \
     --trainer.frames-per-iter 1200000 \

@@ -103,7 +103,6 @@ void FilterExample(const NnetChainExample &eg,
     io_out.name = name;
     io_out.indexes = io_in.indexes;
     io_out.supervision = io_in.supervision;
-    io_out.deriv_weights = io_in.deriv_weights;
   }
 }
 

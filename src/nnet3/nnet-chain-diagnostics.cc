@@ -143,14 +143,6 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
                              (nnet_config_.compute_deriv ? &nnet_output_deriv :
                               NULL), (use_xent ? &xent_deriv : NULL));
 
-    // note: in this context we don't want to apply 'sup.deriv_weights' because
-    // this code is used only in combination, where it's part of an L-BFGS
-    // optimization algorithm, and in that case if there is a mismatch between
-    // the computed objective function and the derivatives, it may cause errors
-    // in the optimization procedure such as early termination.  (line search
-    // and conjugate gradient descent both rely on the derivatives being
-    // accurate, and don't fail gracefully if the derivatives are not accurate).
-
     ChainObjectiveInfo &totals = objf_info_[sup.name];
     totals.tot_weight += tot_weight;
     totals.tot_like += tot_like;

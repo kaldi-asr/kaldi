@@ -31,15 +31,12 @@ void NnetChainSupervision::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, name);
   WriteIndexVector(os, binary, indexes);
   supervision.Write(os, binary);
-  WriteToken(os, binary, "<DW>");  // for DerivWeights.  Want to save space.
-  WriteVectorAsChar(os, binary, deriv_weights);
   WriteToken(os, binary, "</NnetChainSup>");
 }
 
 bool NnetChainSupervision::operator == (const NnetChainSupervision &other) const {
   return name == other.name && indexes == other.indexes &&
-      supervision == other.supervision &&
-      deriv_weights.ApproxEqual(other.deriv_weights);
+      supervision == other.supervision;
 }
 
 void NnetChainSupervision::Read(std::istream &is, bool binary) {
@@ -47,14 +44,7 @@ void NnetChainSupervision::Read(std::istream &is, bool binary) {
   ReadToken(is, binary, &name);
   ReadIndexVector(is, binary, &indexes);
   supervision.Read(is, binary);
-  std::string token;
-  ReadToken(is, binary, &token);
-  // in the future this back-compatibility code can be reworked.
-  if (token != "</NnetChainSup>") {
-    KALDI_ASSERT(token == "<DW>");
-    ReadVectorAsChar(is, binary, &deriv_weights);
-    ExpectToken(is, binary, "</NnetChainSup>");
-  }
+  ExpectToken(is, binary, "</NnetChainSup>");
   CheckDim();
 }
 
@@ -80,24 +70,17 @@ void NnetChainSupervision::CheckDim() const {
       KALDI_ASSERT(indexes[k] == index);
     }
   }
-  if (deriv_weights.Dim() != 0) {
-    KALDI_ASSERT(deriv_weights.Dim() == indexes.size());
-    KALDI_ASSERT(deriv_weights.Min() >= 0.0 &&
-                 deriv_weights.Max() <= 1.0);
-  }
 }
 
 NnetChainSupervision::NnetChainSupervision(const NnetChainSupervision &other):
     name(other.name),
     indexes(other.indexes),
-    supervision(other.supervision),
-    deriv_weights(other.deriv_weights) { CheckDim(); }
+    supervision(other.supervision) { CheckDim(); }
 
 void NnetChainSupervision::Swap(NnetChainSupervision *other) {
   name.swap(other->name);
   indexes.swap(other->indexes);
   supervision.Swap(&(other->supervision));
-  deriv_weights.Swap(&(other->deriv_weights));
   if (RandInt(0, 5) == 0)
     CheckDim();
 }
@@ -105,12 +88,10 @@ void NnetChainSupervision::Swap(NnetChainSupervision *other) {
 NnetChainSupervision::NnetChainSupervision(
     const std::string &name,
     const chain::Supervision &supervision,
-    const VectorBase<BaseFloat> &deriv_weights,
     int32 first_frame,
     int32 frame_skip):
     name(name),
-    supervision(supervision),
-    deriv_weights(deriv_weights) {
+    supervision(supervision) {
   // note: this will set the 'x' index to zero.
   indexes.resize(supervision.num_sequences *
                  supervision.frames_per_sequence);
@@ -235,23 +216,6 @@ static void MergeSupervision(
   // because they should be first sorted by 't' and next by 'n'.
   // 'sort' will fix this, due to the operator < on type Index.
   std::sort(output->indexes.begin(), output->indexes.end());
-
-  // merge the deriv_weights.
-  if (inputs[0]->deriv_weights.Dim() != 0) {
-    int32 frames_per_sequence = inputs[0]->deriv_weights.Dim();
-    output->deriv_weights.Resize(output->indexes.size(), kUndefined);
-    KALDI_ASSERT(output->deriv_weights.Dim() ==
-                 frames_per_sequence * num_inputs);
-    for (int32 n = 0; n < num_inputs; n++) {
-      const Vector<BaseFloat> &src_deriv_weights = inputs[n]->deriv_weights;
-      KALDI_ASSERT(src_deriv_weights.Dim() == frames_per_sequence);
-      // the ordering of the deriv_weights corresponds to the ordering of the
-      // Indexes, where the time dimension has the greater stride.
-      for (int32 t = 0; t < frames_per_sequence; t++) {
-        output->deriv_weights(t * num_inputs + n) = src_deriv_weights(t);
-      }
-    }
-  }
   output->CheckDim();
 }
 
