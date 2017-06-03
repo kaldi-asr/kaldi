@@ -27,6 +27,7 @@
 #include "fstext/fstext-lib.h"
 #include "lat/lattice-functions.h"
 #include "util/kaldi-thread.h"
+#include "nnet3/nnet-utils.h"
 
 namespace kaldi {
 
@@ -160,6 +161,8 @@ int main(int argc, char *argv[]) {
       Input ki(nnet3_rxfilename, &binary);
       trans_model.Read(ki.Stream(), binary);
       am_nnet.Read(ki.Stream(), binary);
+      SetBatchnormTestMode(true, &(am_nnet.GetNnet()));
+      SetDropoutTestMode(true, &(am_nnet.GetNnet()));
     }
 
     // this object contains precomputed stuff that is used by all decodable
