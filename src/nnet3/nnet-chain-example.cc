@@ -44,7 +44,15 @@ void NnetChainSupervision::Read(std::istream &is, bool binary) {
   ReadToken(is, binary, &name);
   ReadIndexVector(is, binary, &indexes);
   supervision.Read(is, binary);
-  ExpectToken(is, binary, "</NnetChainSup>");
+  std::string token;
+  ReadToken(is, binary, &token);
+  // in the future this back-compatibility code can be reworked.
+  if (token != "</NnetChainSup>") {
+    KALDI_ASSERT(token == "<DW>");
+    Vector<BaseFloat> deriv_weights;
+    ReadVectorAsChar(is, binary, &deriv_weights);
+    ExpectToken(is, binary, "</NnetChainSup>");
+  }
   CheckDim();
 }
 

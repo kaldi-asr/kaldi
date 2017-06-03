@@ -81,6 +81,11 @@ def get_args():
     parser.add_argument("--chain.leaky-hmm-coefficient", type=float,
                         dest='leaky_hmm_coefficient', default=0.00001,
                         help="")
+    parser.add_argument("--chain.apply-deriv-weights", type=str,
+                        dest='apply_deriv_weights', default=True,
+                        action=common_lib.StrToBoolAction,
+                        choices=["true", "false"],
+                        help="Deprecated. Kept for back compatibility")
     parser.add_argument("--chain.frame-subsampling-factor", type=int,
                         dest='frame_subsampling_factor', default=3,
                         help="ratio of frames-per-second of features we "
