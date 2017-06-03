@@ -5,6 +5,11 @@ utils/lang/make_unk_lm.sh data/local/dict exp/unk_lang_model
 
 utils/prepare_lang.sh --unk-fst exp/unk_lang_model/unk_fst.txt data/local/dict "<unk>" data/local/lang data/lang_unk
 
+# note: it's important that the LM we built in data/lang/G.fst was created using
+# pocolm with the option --limit-unk-history=true (see ted_train_lm.sh).  This
+# keeps the graph compact after adding the unk model (we only have to add one
+# copy of it).
+
 cp data/lang/G.fst data/lang_unk/G.fst
 
 utils/mkgraph.sh data/lang_unk exp/tri3 exp/tri3/graph_unk

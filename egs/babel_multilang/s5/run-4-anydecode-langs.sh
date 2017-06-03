@@ -1,4 +1,4 @@
-#!/BIN/BASH
+#!/bin/bash
 set -e
 set -o pipefail
 
@@ -93,8 +93,13 @@ mfccdir=mfcc_hires/$lang
 mfcc_affix=""
 hires_config="--mfcc-config conf/mfcc_hires.conf"
 data_dir=${dataset_dir}_hires
-feat_suffix="_hires"
+feat_suffix=_hires
+ivec_feat_suffix=_hires
 log_dir=exp/$lang/make_hires/$dataset
+
+if $use_pitch_ivector; then
+  ivec_feat_suffix=_hires_pitch
+fi
 
 if $use_pitch; then
   mfcc_affix="_pitch_online"
@@ -305,7 +310,7 @@ fi
 
 # extract ivector
 dataset=$(basename $dataset_dir)
-ivector_dir=exp/$lang/nnet3${nnet3_affix}/ivectors_${dataset}${feat_suffix}${ivector_suffix}
+ivector_dir=exp/$lang/nnet3${nnet3_affix}/ivectors_${dataset}${ivec_feat_suffix}${ivector_suffix}
 if $use_ivector && [ ! -f $ivector_dir/.ivector.done ];then
   extractor=exp/multi/nnet3${nnet3_affix}/extractor
   ivec_feat_suffix=$feat_suffix
@@ -413,11 +418,14 @@ if [ -f $nnet3_dir/$lang/final.mdl ]; then
   decode=$nnet3_dir/$lang/decode_${dataset_id}
   rnn_opts=
   feat_suffix=_hires
+  ivec_feat_suffix=_hires
 
   # suffix for using other features such as pitch
   if $use_pitch; then
     feat_suffix=${feat_suffix}_pitch
-    nnet3_affix=_pitch
+  fi
+  if $use_pitch_ivector; then
+    ivec_feat_suffix=_hires_pitch
   fi
   if $use_bnf; then
     feat_suffix=${feat_suffix}_bnf

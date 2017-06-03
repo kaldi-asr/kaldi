@@ -18,9 +18,9 @@
 // limitations under the License.
 
 #include "base/kaldi-common.h"
-#include "util/common-utils.h"
 #include "feat/feature-mfcc.h"
 #include "feat/wave-reader.h"
+#include "util/common-utils.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -71,13 +71,15 @@ int main(int argc, char *argv[]) {
         max_duration = std::max<double>(max_duration, duration);
         num_done++;
       }
-    }
-    else {
+    } else {
       SequentialTableReader<WaveInfoHolder> wav_reader(wav_rspecifier);
       for (; !wav_reader.Done(); wav_reader.Next()) {
         std::string key = wav_reader.Key();
-        const WaveData &wave_data = wav_reader.Value();
-        BaseFloat duration = wave_data.Duration();
+        const WaveInfo &wave_info = wav_reader.Value();
+        if (wave_info.IsStreamed())
+          KALDI_ERR << "Error: member " << key << " has no duration in header. "
+                    << "Check the source, and/or try --read-entire-file.";
+        BaseFloat duration = wave_info.Duration();
         duration_writer.Write(key, duration);
 
         sum_duration += duration;
@@ -99,4 +101,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

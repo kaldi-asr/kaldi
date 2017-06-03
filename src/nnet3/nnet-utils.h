@@ -26,8 +26,8 @@
 #include "nnet3/nnet-common.h"
 #include "nnet3/nnet-component-itf.h"
 #include "nnet3/nnet-descriptor.h"
-
-#include "nnet-computation-graph.h"
+#include "nnet3/nnet-computation.h"
+#include "nnet3/nnet-example.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -164,6 +164,36 @@ std::string NnetInfo(const Nnet &nnet);
 /// dropout_proportion value.
 void SetDropoutProportion(BaseFloat dropout_proportion, Nnet *nnet);
 
+
+/// Returns true if nnet has at least one component of type
+/// BatchNormComponent.
+bool HasBatchnorm(const Nnet &nnet);
+
+/// This function affects only components of type BatchNormComponent.
+/// It sets "test mode" on such components (if you call it with test_mode =
+/// true, otherwise it would set normal mode, but this wouldn't be needed
+/// often).  "test mode" means that instead of using statistics from the batch,
+/// it does a deterministic normalization based on statistics stored at training
+/// time.
+void SetBatchnormTestMode(bool test_mode, Nnet *nnet);
+
+
+/// This function zeros the stored component-level stats in the nnet using
+/// ZeroComponentStats(), then recomputes them with the supplied egs.  It
+/// affects batch-norm, for instance.  See also the version of RecomputeStats
+/// declared in nnet-chain-diagnostics.h.
+void RecomputeStats(const std::vector<NnetExample> &egs, Nnet *nnet);
+
+
+
+/// This function affects components of child-classes of
+/// RandomComponent( currently only DropoutComponent and DropoutMaskComponent).
+/// It sets "test mode" on such components (if you call it with test_mode =
+/// true, otherwise it would set normal mode, but this wouldn't be needed often).
+/// "test mode" means that having a mask containing (1-dropout_prob) in all
+/// elements.
+void SetDropoutTestMode(bool test_mode, Nnet *nnet);
+
 /// This function finds a list of components that are never used, and outputs
 /// the integer comopnent indexes (you can use these to index
 /// nnet.GetComponentNames() to get their names).
@@ -203,6 +233,8 @@ void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes);
 
     set-learning-rate [name=<name-pattern>] learning-rate=<learning-rate>
        Sets the learning rate for any updatable nodes matching the name pattern.
+       Note: this sets the 'underlying' learning rate, i.e. it will get
+       multiplied by any 'learning-rate-factor' set in the nodes.
 
     rename-node old-name=<old-name> new-name=<new-name>
        Renames a node; this is a surface renaming that does not affect the structure

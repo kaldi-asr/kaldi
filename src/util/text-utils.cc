@@ -259,4 +259,85 @@ bool ConvertStringToReal(const std::string &str,
                          double *out);
 
 
+
+/*
+  This function is a helper function of StringsApproxEqual.  It should be
+  thought of as a recursive function-- it was designed that way-- but rather
+  than actually recursing (which would cause problems with stack overflow), we
+  just set the args and return to the start.
+
+  The 'decimal_places_tolerance' argument is just passed in from outside,
+  see the documentation for StringsApproxEqual in text-utils.h to see an
+  explanation.  The argument 'places_into_number' provides some information
+  about the strings 'a' and 'b' that precedes the current pointers.
+  For purposes of this comment, let's define the 'decimal' of a number
+  as the part that comes after the decimal point, e.g. in '99.123',
+  '123' would be the decimal.  If 'places_into_number' is -1, it means
+  we're not currently inside some place like that (i.e. it's not the
+  case that we're pointing to the '1' or the '2' or the '3').
+  If it's 0, then we'd be pointing to the first place after the decimal,
+  '1' in this case.  Note if one of the numbers is shorter than the
+  other, like '99.123' versus '99.1234' and 'a' points to the first '3'
+  while 'b' points to the second '4', 'places_into_number' referes to the
+  shorter of the two, i.e. it would be 2 in this example.
+
+
+ */
+bool StringsApproxEqualInternal(const char *a, const char *b,
+                                int32 decimal_places_tolerance,
+                                int32 places_into_number) {
+start:
+  char ca = *a, cb = *b;
+  if (ca == cb) {
+    if (ca == '\0') {
+      return true;
+    } else {
+      if (places_into_number >= 0) {
+        if (isdigit(ca)) {
+          places_into_number++;
+        } else {
+          places_into_number = -1;
+        }
+      } else {
+        if (ca == '.') {
+          places_into_number = 0;
+        }
+      }
+      a++;
+      b++;
+      goto start;
+    }
+  } else {
+    if (places_into_number  >= decimal_places_tolerance &&
+        (isdigit(ca) || isdigit(cb))) {
+      // we're potentially willing to accept this difference between the
+      // strings.
+      if (isdigit(ca)) a++;
+      if (isdigit(cb)) b++;
+      // we'll have advanced at least one of the two strings.
+      goto start;
+    } else if (places_into_number >= 0 &&
+               ((ca == '0' && !isdigit(cb)) || (cb == '0' && !isdigit(ca)))) {
+      // this clause is designed to ensure that, for example,
+      // "0.1" would count the same as "0.100001".
+      if (ca == '0') a++;
+      else b++;
+      places_into_number++;
+      goto start;
+    } else {
+      return false;
+    }
+  }
+
+}
+
+
+bool StringsApproxEqual(const std::string &a,
+                        const std::string &b,
+                        int32 decimal_places_tolerance) {
+  return StringsApproxEqualInternal(a.c_str(), b.c_str(),
+                                    decimal_places_tolerance, -1);
+}
+
+
 }  // end namespace kaldi

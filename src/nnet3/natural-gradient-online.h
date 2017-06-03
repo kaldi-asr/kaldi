@@ -20,12 +20,11 @@
 #ifndef KALDI_NNET3_NATURAL_GRADIENT_ONLINE_H_
 #define KALDI_NNET3_NATURAL_GRADIENT_ONLINE_H_
 
+#include <iostream>
+#include <mutex>
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
 #include "cudamatrix/cu-matrix-lib.h"
-#include "thread/kaldi-mutex.h"
-
-#include <iostream>
 
 namespace kaldi {
 namespace nnet3 {
@@ -560,11 +559,11 @@ class OnlineNaturalGradient {
 
 
   // Used to prevent parameters being read or written in an inconsistent state.
-  Mutex read_write_mutex_;
+  std::mutex read_write_mutex_;
 
   // This mutex is used to control which thread gets to update the
   // parameters, in multi-threaded code.
-  Mutex update_mutex_;
+  std::mutex update_mutex_;
 };
 
 } // namespace nnet3

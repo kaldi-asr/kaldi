@@ -32,7 +32,7 @@ def generate_egs(data, alidir, egs_dir,
     the model final.mdl and alignments.
     """
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """steps/nnet3/get_egs.sh {egs_opts} \
                 --cmd "{command}" \
                 --cmvn-opts "{cmvn_opts}" \
@@ -77,7 +77,7 @@ def prepare_initial_acoustic_model(dir, alidir, run_opts,
                                              srand=srand)
 
     # Convert to .mdl, train the transitions, set the priors.
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/init_mdl.log \
                 nnet3-am-init {alidir}/final.mdl {dir}/0.raw - \| \
                 nnet3-am-train-transitions - \

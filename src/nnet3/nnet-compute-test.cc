@@ -46,8 +46,9 @@ void UnitTestNnetComputationIo(NnetComputation *computation) {
   computation2.Write(os3, binary);
 
   if (binary) {
-    KALDI_ASSERT(os2.str() == original_output);
-    KALDI_ASSERT(os3.str() == original_output);
+    if (!(os2.str() == original_output)) {
+      KALDI_ERR << "Outputs differ for computation";
+    }
   }
 }
 
@@ -82,6 +83,8 @@ void TestNnetDecodable(Nnet *nnet) {
       ivector_dim = std::max<int32>(0, nnet->InputDim("ivector"));
   Matrix<BaseFloat> input(num_frames, input_dim);
 
+  SetBatchnormTestMode(true, nnet);
+  SetDropoutTestMode(true, nnet);
 
   input.SetRandn();
   Vector<BaseFloat> ivector(ivector_dim);
@@ -122,9 +125,12 @@ void TestNnetDecodable(Nnet *nnet) {
 
 
   if (!NnetIsRecurrent(*nnet) &&
-      nnet->Info().find("statistics-extraction") == std::string::npos) {
-    // this equivalence will not hold for recurrent nnets or those that
-    // have the statistics-extraction/statistics-pooling layers.
+      nnet->Info().find("statistics-extraction") == std::string::npos &&
+      nnet->Info().find("TimeHeightConvolutionComponent") == std::string::npos) {
+    // this equivalence will not hold for recurrent nnets, or those that
+    // have the statistics-extraction/statistics-pooling layers,
+    // or in general for nnets with convolution components (because these
+    // might have 'optional' context if required-time-offsets != time-offsets.
     for (int32 t = 0; t < num_frames; t++) {
       SubVector<BaseFloat> row1(output1, t),
           row2(output2, t);
@@ -136,7 +142,6 @@ void TestNnetDecodable(Nnet *nnet) {
 void UnitTestNnetCompute() {
   for (int32 n = 0; n < 20; n++) {
     struct NnetGenerationOptions gen_config;
-
 
     std::vector<std::string> configs;
     GenerateConfigSequence(gen_config, &configs);
@@ -226,6 +231,8 @@ void UnitTestNnetCompute() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
+  // uncommenting the following activates extra checks during optimization, that
+  // can help narrow down the source of problems.
   // SetVerboseLevel(4);
 
 

@@ -182,6 +182,10 @@ if [ $stage -le -5 ]; then
    awk '{for(n=2;n<=NF;n++) seen[$n]=1;} END{for (key in seen) print key;}' >$dir/phonelist
 
   cat $dir/phonelist | perl -e ' @ids = ("a".."z", "A".."Z", "0".."9", ":", "=", "?", "@", "[", "]", "^", "+", "\$", "%", "&", "#", "*", "!", "(", ")", "{", "}" );
+  use open ":std", ":encoding(UTF-8)";
+  foreach $elem (150..250) {
+    push @ids, chr($elem);
+  }
   @map = (); while(<>) {
   chomp;  $output = "$_ ";
   @col = split("_");
@@ -198,7 +202,7 @@ if [ $stage -le -5 ]; then
     }
     $output .= "$map[$p]->{$col[$p]}";
   }
-  print "$output\n"; }' > $dir/phone_map
+  print "$output\n"; }' > $dir/phone_map || exit 1
   cat $dir/phone_map | awk '{print $2, $1}' > $dir/phone_map.reverse
 
   cat $toplevel_dir/input_lexicon.txt | \
@@ -245,6 +249,7 @@ if [ $stage -le -1 ]; then
   rm $dir/probs.* 2>/dev/null
 
   echo '#!/usr/bin/perl
+  use open ":std", ":encoding(UTF-8)";
 while(1) {
  $sent = <>; $line=<>; if ($line !~ m/sentences/) { $sent =~ m/^file/ || die "Bad sent $sent"; exit(0); }
  $line = <>; if ($line !~ m/logprob= (\S+)/) { die "Bad line $line"; } print "$1 $sent";
@@ -344,14 +349,20 @@ if [ $stage -le $g2p_iters ]; then
     \> $dir/p2g_output.JOB || exit 1;
   perl -wlne 'use strict;
             our %P;
+            my $l = $_;
             my ($prn,$num,$prb,$spl)=m/^(\S+)\s+(\S+)\s+(\S+)\s+(.*)$/;
+
+            print STDERR "Warning: error parsing line \"$l\"\n" unless (defined $prb);
+            next unless defined($prb);
+
             my $tok=$prn."=".$spl;
             $P{$tok} = [ $num, $prb ] unless (defined($P{$tok}) && $P{$tok}[1] < $prb);
             END {
-                map{ my ($prn,$spl)=m/^(.*)=(.*)$/;
+                map{ $tok = $_;
+                     my ($prn,$spl)=m/^(.*)=(.*)$/;
                      my ($num, $prb) = @{$P{$tok}};
                      print join("\t",$prn,$num,$prb,$spl)
-                   } sort keys %P
+                   } sort keys %P;
             }' $dir/p2g_output.* > $dir/p2g_output
   rm $dir/p2g_output.*
 fi
@@ -495,7 +506,7 @@ if [ $stage -le $[$g2p_iters+2] ]; then
   cp $dir/oov2prob $toplevel_dir/oov2prob
 fi
 
-# Finally, if $dev_text is not empty, print out OOV rate. We assame $dev_text is
+# Finally, if $dev_text is not empty, print out OOV rate. We assume $dev_text is
 # in the following format:
 # 14350_A_20121123_042710_001717 yebo yini
 # where "14350_A_20121123_042710_001717" is the utterance id and "yebo yini" is
