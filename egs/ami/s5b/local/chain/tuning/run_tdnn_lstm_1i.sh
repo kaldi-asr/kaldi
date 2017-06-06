@@ -185,14 +185,9 @@ if [ $stage -le 15 ]; then
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
-  idct-layer name=idct input=input dim=40 cepstral-lifter=22 affine-transform-file=$dir/configs/idct.mat
-
-  conv-relu-batchnorm-layer name=cnn1 input=idct height-in=40 height-out=40 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=32 learning-rate-factor=0.333 max-change=0.25
-  conv-relu-batchnorm-layer name=cnn2 input=cnn1 height-in=40 height-out=40 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=32
-  relu-batchnorm-layer name=tdnn0 input=cnn2 dim=512
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 input=Append(tdnn0,lda) dim=1024
+  relu-renorm-layer name=tdnn1 dim=1024
   relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
   relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
