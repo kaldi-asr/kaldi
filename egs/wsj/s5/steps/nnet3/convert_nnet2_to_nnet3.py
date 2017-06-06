@@ -1,13 +1,17 @@
 #!/usr/bin/env python
-# Copyright 2016
+
+# Copyright 2017    Joachim Fainberg.
 
 # This script converts nnet2 models into nnet3 models.
 # It requires knowledge of valid components which
 # can be modified in the configuration section below.
 
-import argparse, subprocess, os, tempfile, logging, sys, shutil, fileinput, re
+import argparse, os, tempfile, logging, sys, shutil, fileinput, re
 from collections import defaultdict, namedtuple
 import numpy as np
+sys.path.insert(0, 'steps/')
+import libs.nnet3.train.common as common_train_lib
+import libs.common as common_lib
 
 # Begin configuration section
 # Components and their corresponding node names
@@ -70,7 +74,7 @@ def GetArgs():
                         help="Will not remove the temporary directory.")
     parser.add_argument("--model", type=str, default='final.mdl',
                         help="Choose a specific model to convert.")
-    parser.add_argument("--binary", type=str, default="false",
+    parser.add_argument("--binary", type=str, default="true",
                         help="Whether to write the model in binary or not.")
     parser.add_argument("nnet2_dir", metavar="src-nnet2-dir", type=str,
                         help="")
@@ -170,27 +174,25 @@ class Nnet3Model(object):
                     "\n".format(inp=previous_component, obj='linear'))
 
     def write_model(self, model, binary="true"):
-        result = 0
+        if not os.path.exists(self.config):
+            raise IOError("Config file {0} does not exist.".format(self.config))
 
         # write raw model
-        result += subprocess.call("nnet3-init --binary=true {0} {1}"
-            .format(self.config, os.path.join(tmpdir, "nnet3.raw")), shell=True)
+        common_lib.run_kaldi_command("nnet3-init --binary=true {0} {1}"
+            .format(self.config, os.path.join(tmpdir, "nnet3.raw")))
 
         # add transition model
-        result += subprocess.call("nnet3-am-init --binary=true {0} {1} {2}"
+        common_lib.run_kaldi_command("nnet3-am-init --binary=true {0} {1} {2}"
             .format(self.transition_model, os.path.join(tmpdir, "nnet3.raw"),
-                    os.path.join(tmpdir, "nnet3_no_prior.mdl")), shell=True)
+                    os.path.join(tmpdir, "nnet3_no_prior.mdl")))
 
         # add priors
-        result += subprocess.call("nnet3-am-adjust-priors "
-                                  "--binary={0} {1} {2} {3}"
+        common_lib.run_kaldi_command("nnet3-am-adjust-priors "
+                                     "--binary={0} {1} {2} {3}"
             .format(binary, os.path.join(tmpdir, "nnet3_no_prior.mdl"), 
-                    self.priors, model), shell=True)
+                    self.priors, model))
 
-        if (result != 0):
-            raise OSError("Encountered an error writing the model.")
-
-def parse_nnet2(line_buffer):
+def parse_nnet2_to_nnet3(line_buffer):
     """Reads an Nnet2 model into an Nnet3 object.
 
     Parses by passing line_buffer objects depending upon the
@@ -312,6 +314,9 @@ def parse_fixed_bias_component(component, line, line_buffer):
     return {"<Bias>" : filename}
 
 def parse_splice_component(component, line, line_buffer):
+    if component == "<SpliceMaxComponent>":
+        raise NotImplementedError("Script doesn't support SpliceMaxComponent.")
+
     line = consume_token(component, line)
     line = consume_token("<InputDim>", line)
     [input_dim, _, line] = line.strip().partition(' ')
@@ -399,9 +404,9 @@ def token_to_string(token):
 
 def consume_token(token, line):
     """Returns line without token"""
-    if token != line.split()[0]:
+    if token != line.split(None, 1)[0]:
         logger.error("Unexpected token, expected '{0}', got '{1}'."
-              .format(token, line.split()[0]))
+              .format(token, line.split(None, 1)[0]))
 
     return line.partition(token)[2]
 
@@ -427,15 +432,13 @@ def Main():
     tmpdir = tempfile.mkdtemp(dir=args.tmpdir) 
 
     # Convert nnet2 model to text and remove preconditioning
-    result = subprocess.call("nnet-am-copy --remove-preconditioning=true "
-                             "--binary=false {0}/{1} {2}/{1}"
-            .format(args.nnet2_dir, args.model, tmpdir), shell=True)
-    if (result != 0):
-        raise OSError("Could not run nnet-am-copy. Did you source path.sh?")
+    common_lib.run_kaldi_command("nnet-am-copy "
+            "--remove-preconditioning=true --binary=false {0}/{1} {2}/{1}"
+            .format(args.nnet2_dir, args.model, tmpdir))
 
     # Parse nnet2 and return nnet3 object
     with open(os.path.join(tmpdir, args.model)) as f:
-        nnet3 = parse_nnet2(f)
+        nnet3 = parse_nnet2_to_nnet3(f)
 
     # Write model
     nnet3.write_config(os.path.join(tmpdir, "config"))
