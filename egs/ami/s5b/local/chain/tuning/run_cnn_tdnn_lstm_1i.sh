@@ -316,8 +316,8 @@ if $test_online_decoding && [ $stage -le 19 ]; then
       # feature type does not matter.
       steps/online/nnet3/decode.sh \
         --nj $nspk --cmd "$decode_cmd" \
-        $graph_dir data/$mic/${decode_set}_hires $dir/decode_online_${decode_set} || exit 1
-    ) || touch $dir/.error &
+        $graph_dir data/$mic/${decode_set}_hires ${dir}_online/decode_online_${decode_set} || exit 1
+    ) || touch ${dir}_online/.error &
   done
   wait
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
