@@ -52,24 +52,19 @@
 %WER 37.9 | 15953 94512 | 66.7 22.0 11.3 4.7 37.9 58.9 | 0.734 | exp/sdm1/nnet3_cleaned/lstm_bidirectional_sp_ihmali/decode_dev/ascore_12/dev_hires_o4.ctm.filt.sys
 %WER 41.2 | 13271 89635 | 62.9 23.8 13.2 4.2 41.2 67.8 | 0.722 | exp/sdm1/nnet3_cleaned/lstm_bidirectional_sp_ihmali/decode_eval/ascore_11/eval_hires_o4.ctm.filt.sys
 
-# =========================
 
+############################################
+# cleanup + chain TDNN model, alignments from IHM data (IHM alignments help)
+# local/chain/run_tdnn.sh --mic sdm1 --use-ihm-ali true --stage 12 &
+# for d in exp/sdm1/chain_cleaned/tdnn1e_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 39.1 | 14457 94509 | 64.6 19.7 15.7 3.7 39.1 66.5 | 0.585 | exp/sdm1/chain_cleaned/tdnn1e_sp_bi_ihmali/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+%WER 43.2 | 13551 89981 | 60.3 20.9 18.8 3.5 43.2 67.1 | 0.554 | exp/sdm1/chain_cleaned/tdnn1e_sp_bi_ihmali/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 
-# local/chain/run_tdnn.sh --mic sdm1 --stage 12 &
 
 # cleanup + chain TDNN model, alignments from sdm1 data itself.
 # for d in exp/sdm1/chain_cleaned/tdnn_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
 %WER 41.6 | 14357 94500 | 62.0 19.2 18.8 3.6 41.6 68.4 | 0.592 | exp/sdm1/chain_cleaned/tdnn_sp_bi/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
 %WER 45.4 | 12886 89960 | 58.1 21.0 20.9 3.5 45.4 71.9 | 0.558 | exp/sdm1/chain_cleaned/tdnn_sp_bi/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
-
-
-
-# cleanup + chain TDNN model, alignments from IHM data (IHM alignments help).
-# local/chain/run_tdnn.sh --mic sdm1 --use-ihm-ali true --stage 12 &
-# cleanup + chain TDNN model, cleaned data and alignments from ihm data.
-# for d in exp/sdm1/chain_cleaned/tdnn1d_sp_bi_ihmali/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
-%WER 39.5 | 14280 94503 | 64.0 19.3 16.7 3.5 39.5 67.7 | 0.582 | exp/sdm1/chain_cleaned/tdnn1d_sp_bi_ihmali/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
-%WER 43.9 | 13566 89961 | 59.3 20.9 19.9 3.1 43.9 67.9 | 0.547 | exp/sdm1/chain_cleaned/tdnn1d_sp_bi_ihmali/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 
 
 # no-cleanup + chain TDNN model, IHM alignments.
@@ -78,6 +73,7 @@
 # for d in exp/sdm1/chain/tdnn1d_sp_bi_ihmali/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
 %WER 39.8 | 15384 94535 | 64.4 21.0 14.6 4.2 39.8 62.8 | 0.610 | exp/sdm1/chain/tdnn1d_sp_bi_ihmali/decode_dev/ascore_8/dev_hires_o4.ctm.filt.sys
 %WER 44.3 | 14046 90002 | 59.6 23.1 17.3 3.9 44.3 65.6 | 0.571 | exp/sdm1/chain/tdnn1d_sp_bi_ihmali/decode_eval/ascore_8/eval_hires_o4.ctm.filt.sys
+
 
 # local/chain/multi_condition/run_tdnn.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned 
 # cleanup + chain TDNN model, SDM original + IHM reverberated data, alignments from ihm data.

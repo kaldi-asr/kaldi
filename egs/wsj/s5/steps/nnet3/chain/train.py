@@ -211,7 +211,8 @@ def process_args(args):
             or not os.path.exists(args.dir+"/configs")):
         raise Exception("This scripts expects {0} to exist and have a configs "
                         "directory which is the output of "
-                        "make_configs.py script")
+                        "make_configs.py script".format(
+                        args.dir))
 
     if args.transform_dir is None:
         args.transform_dir = args.lat_dir
@@ -245,7 +246,7 @@ def process_args(args):
     return [args, run_opts]
 
 
-def train(args, run_opts, background_process_handler):
+def train(args, run_opts):
     """ The main function for training.
 
     Args:
@@ -269,7 +270,8 @@ def train(args, run_opts, background_process_handler):
 
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
-    common_lib.split_data(args.feat_dir, num_jobs)
+    common_lib.execute_command("utils/split_data.sh {0} {1}".format(
+            args.feat_dir, num_jobs))
     shutil.copy('{0}/tree'.format(args.tree_dir), args.dir)
     with open('{0}/num_jobs'.format(args.dir), 'w') as f:
         f.write(str(num_jobs))
@@ -283,9 +285,6 @@ def train(args, run_opts, background_process_handler):
     try:
         model_left_context = variables['model_left_context']
         model_right_context = variables['model_right_context']
-        # this is really the number of times we add layers to the network for
-        # discriminative pretraining
-        num_hidden_layers = variables['num_hidden_layers']
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in "
                         "{1}".format(str(e), '{0}/configs'.format(args.dir)))
@@ -310,10 +309,10 @@ def train(args, run_opts, background_process_handler):
         logger.info("Creating denominator FST")
         chain_lib.create_denominator_fst(args.dir, args.tree_dir, run_opts)
 
-    if (args.stage <= -4):
+    if (args.stage <= -4) and os.path.exists(args.dir+"/configs/init.config"):
         logger.info("Initializing a basic network for estimating "
                     "preconditioning matrix")
-        common_lib.run_kaldi_command(
+        common_lib.execute_command(
             """{command} {dir}/log/nnet_init.log \
                     nnet3-init --srand=-2 {dir}/configs/init.config \
                     {dir}/init.raw""".format(command=run_opts.command,
@@ -321,6 +320,9 @@ def train(args, run_opts, background_process_handler):
 
     egs_left_context = left_context + args.frame_subsampling_factor / 2
     egs_right_context = right_context + args.frame_subsampling_factor / 2
+    # note: the '+ args.frame_subsampling_factor / 2' is to allow for the
+    # fact that we'll be shifting the data slightly during training to give
+    # variety to the training data.
     egs_left_context_initial = (left_context_initial + args.frame_subsampling_factor / 2 if
                                 left_context_initial >= 0 else -1)
     egs_right_context_final = (right_context_final + args.frame_subsampling_factor / 2 if
@@ -358,7 +360,7 @@ def train(args, run_opts, background_process_handler):
 
     [egs_left_context, egs_right_context,
      frames_per_eg_str, num_archives] = (
-        common_train_lib.verify_egs_dir(egs_dir, feat_dim, 
+        common_train_lib.verify_egs_dir(egs_dir, feat_dim,
                                         ivector_dim, ivector_id,
                                         egs_left_context, egs_right_context,
                                         egs_left_context_initial,
@@ -375,7 +377,7 @@ def train(args, run_opts, background_process_handler):
     logger.info("Copying the properties from {0} to {1}".format(egs_dir, args.dir))
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (args.stage <= -2):
+    if (args.stage <= -2) and os.path.exists(args.dir+"/configs/init.config"):
         logger.info('Computing the preconditioning matrix for input features')
 
         chain_lib.compute_preconditioning_matrix(
@@ -399,19 +401,10 @@ def train(args, run_opts, background_process_handler):
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
 
-    models_to_combine = common_train_lib.verify_iterations(
+    models_to_combine = common_train_lib.get_model_combine_iters(
         num_iters, args.num_epochs,
-        num_hidden_layers, num_archives_expanded,
-        args.max_models_combine, args.add_layers_period,
+        num_archives_expanded, args.max_models_combine,
         args.num_jobs_final)
-
-    def learning_rate(iter, current_num_jobs, num_archives_processed):
-        return common_train_lib.get_learning_rate(iter, current_num_jobs,
-                                                  num_iters,
-                                                  num_archives_processed,
-                                                  num_archives_to_process,
-                                                  args.initial_effective_lrate,
-                                                  args.final_effective_lrate)
 
     min_deriv_time = None
     max_deriv_time_relative = None
@@ -433,14 +426,24 @@ def train(args, run_opts, background_process_handler):
 
         if args.stage <= iter:
             model_file = "{dir}/{iter}.mdl".format(dir=args.dir, iter=iter)
-            shrinkage_value = 1.0
-            if args.shrink_value != 1.0:
+
+            lrate = common_train_lib.get_learning_rate(iter, current_num_jobs,
+                                                       num_iters,
+                                                       num_archives_processed,
+                                                       num_archives_to_process,
+                                                       args.initial_effective_lrate,
+                                                       args.final_effective_lrate)
+            shrinkage_value = 1.0 - (args.proportional_shrink * lrate)
+            if shrinkage_value <= 0.5:
+                raise Exception("proportional-shrink={0} is too large, it gives "
+                                "shrink-value={1}".format(args.proportional_shrink,
+                                                          shrinkage_value))
+            if args.shrink_value < shrinkage_value:
                 shrinkage_value = (args.shrink_value
-                                   if common_train_lib.do_shrinkage(
+                                   if common_train_lib.should_do_shrinkage(
                                         iter, model_file,
                                         args.shrink_saturation_threshold)
-                                   else 1
-                                   )
+                                   else shrinkage_value)
 
             chain_lib.train_one_iteration(
                 dir=args.dir,
@@ -450,18 +453,13 @@ def train(args, run_opts, background_process_handler):
                 num_jobs=current_num_jobs,
                 num_archives_processed=num_archives_processed,
                 num_archives=num_archives,
-                learning_rate=learning_rate(iter, current_num_jobs,
-                                            num_archives_processed),
+                learning_rate=lrate,
                 dropout_edit_string=common_train_lib.get_dropout_edit_string(
                     args.dropout_schedule,
                     float(num_archives_processed) / num_archives_to_process,
                     iter),
                 shrinkage_value=shrinkage_value,
                 num_chunk_per_minibatch_str=args.num_chunk_per_minibatch,
-                num_hidden_layers=num_hidden_layers,
-                add_layers_period=args.add_layers_period,
-                left_context=left_context,
-                right_context=right_context,
                 apply_deriv_weights=args.apply_deriv_weights,
                 min_deriv_time=min_deriv_time,
                 max_deriv_time_relative=max_deriv_time_relative,
@@ -472,8 +470,7 @@ def train(args, run_opts, background_process_handler):
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 frame_subsampling_factor=args.frame_subsampling_factor,
-                run_opts=run_opts,
-                background_process_handler=background_process_handler)
+                run_opts=run_opts)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
@@ -503,12 +500,10 @@ def train(args, run_opts, background_process_handler):
             models_to_combine=models_to_combine,
             num_chunk_per_minibatch_str=args.num_chunk_per_minibatch,
             egs_dir=egs_dir,
-            left_context=left_context, right_context=right_context,
             leaky_hmm_coefficient=args.leaky_hmm_coefficient,
             l2_regularize=args.l2_regularize,
             xent_regularize=args.xent_regularize,
             run_opts=run_opts,
-            background_process_handler=background_process_handler,
             sum_to_one_penalty=args.combine_sum_to_one_penalty)
 
 
@@ -536,26 +531,25 @@ def train(args, run_opts, background_process_handler):
     with open("{dir}/accuracy.report".format(dir=args.dir), "w") as f:
         f.write(report)
 
-    common_lib.run_kaldi_command("steps/info/nnet3_dir_info.pl "
-                                 "{0}".format(args.dir))
+    common_lib.execute_command("steps/info/nnet3_dir_info.pl "
+                               "{0}".format(args.dir))
 
 
 def main():
     [args, run_opts] = get_args()
     try:
-        background_process_handler = common_lib.BackgroundProcessHandler(
-            polling_time=args.background_polling_time)
-        train(args, run_opts, background_process_handler)
-        background_process_handler.ensure_processes_are_done()
-    except Exception as e:
+        train(args, run_opts)
+        common_lib.wait_for_background_commands()
+    except BaseException as e:
+        # look for BaseException so we catch KeyboardInterrupt, which is
+        # what we get when a background thread dies.
         if args.email is not None:
             message = ("Training session for experiment {dir} "
                        "died due to an error.".format(dir=args.dir))
             common_lib.send_mail(message, message, args.email)
-        traceback.print_exc()
-        background_process_handler.stop()
-        raise e
-
+        if not isinstance(e, KeyboardInterrupt):
+            traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,7 @@
 # Copyright 2016    Johns Hopkins University (Dan Povey)
 #           2016    Vijayaditya Peddinti
 #           2017    Google Inc. (vpeddinti@google.com)
+#           2017    Vimal Manohar
 # Apache 2.0.
 
 """ This module contains the parent class from which all layers are inherited
@@ -12,6 +13,7 @@ import math
 import re
 import sys
 import libs.nnet3.xconfig.utils as xutils
+import libs.common as common_lib
 
 
 class XconfigLayerBase(object):
@@ -618,13 +620,16 @@ class XconfigOutputLayer(XconfigLayerBase):
 #   input='[-1]'             [Descriptor giving the input of the layer.]
 #   dim=None                   [Output dimension of layer, e.g. 1024]
 #   self-repair-scale=1.0e-05  [Affects relu, sigmoid and tanh layers.]
+#   learning-rate-factor=1.0   [This can be used to make the affine component
+#                               train faster or slower].
 #
 class XconfigBasicLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         # Here we just list some likely combinations.. you can just add any
         # combinations you want to use, to this list.
         assert first_token in [ 'relu-layer', 'relu-renorm-layer', 'sigmoid-layer',
-                                'tanh-layer' ]
+                                'tanh-layer', 'relu-batchnorm-layer', 'relu-dropout-layer',
+                                'relu-batchnorm-dropout-layer' ]
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -636,7 +641,12 @@ class XconfigBasicLayer(XconfigLayerBase):
                         'max-change' : 0.75,
                         'self-repair-scale' : 1.0e-05,
                         'target-rms' : 1.0,
-                        'ng-affine-options' : ''}
+                        'learning-rate-factor' : 1.0,
+                        'ng-affine-options' : '',
+                        'dropout-proportion': 0.5}  # dropout-proportion only
+                                                    # affects layers with
+                                                    # 'dropout' in the name.
+
 
     def check_configs(self):
         if self.config['dim'] < 0:
@@ -647,6 +657,9 @@ class XconfigBasicLayer(XconfigLayerBase):
         if self.config['target-rms'] < 0.0:
             raise RuntimeError("target-rms has invalid value {0}"
                                .format(self.config['target-rms']))
+        if self.config['learning-rate-factor'] <= 0.0:
+            raise RuntimeError("learning-rate-factor has invalid value {0}"
+                               .format(self.config['learning-rate-factor']))
 
     def output_name(self, auxiliary_output=None):
         # at a later stage we might want to expose even the pre-nonlinearity
@@ -700,6 +713,9 @@ class XconfigBasicLayer(XconfigLayerBase):
         target_rms = self.config['target-rms']
         max_change = self.config['max-change']
         ng_affine_options = self.config['ng-affine-options']
+        learning_rate_factor=self.config['learning-rate-factor']
+        learning_rate_option=('learning-rate-factor={0}'.format(learning_rate_factor)
+                              if learning_rate_factor != 1.0 else '')
 
         configs = []
         # First the affine node.
@@ -708,9 +724,10 @@ class XconfigBasicLayer(XconfigLayerBase):
                 ' input-dim={1}'
                 ' output-dim={2}'
                 ' max-change={3}'
-                ' {4}'
+                ' {4} {5} '
                 ''.format(self.name, input_dim, output_dim,
-                    max_change, ng_affine_options))
+                          max_change, ng_affine_options,
+                          learning_rate_option))
         configs.append(line)
 
         line = ('component-node name={0}.affine'
@@ -747,6 +764,19 @@ class XconfigBasicLayer(XconfigLayerBase):
                         ' target-rms={3}'
                         ''.format(self.name, nonlinearity, output_dim,
                             target_rms))
+
+            elif nonlinearity == 'batchnorm':
+                line = ('component name={0}.{1}'
+                        ' type=BatchNormComponent dim={2}'
+                        ' target-rms={3}'
+                        ''.format(self.name, nonlinearity, output_dim,
+                            target_rms))
+
+            elif nonlinearity == 'dropout':
+                line = ('component name={0}.{1} type=DropoutComponent '
+                           'dim={2} dropout-proportion={3}'.format(
+                               self.name, nonlinearity, output_dim,
+                               self.config['dropout-proportion']))
 
             else:
                 raise RuntimeError("Unknown nonlinearity type: {0}"
@@ -939,6 +969,92 @@ class XconfigAffineLayer(XconfigLayerBase):
         for conf_name in ['final', 'ref']:
             for line in conf_lines:
                 ans.append((conf_name, line))
+        return ans
+
+
+class XconfigIdctLayer(XconfigLayerBase):
+    """
+    This class is for lines like
+     'idct-layer name=idct dim=40 cepstral-lifter=22 affine-transform-file=foo/bar/idct.mat'
+
+    This is used to convert input MFCC-features to Filterbank featurs. The
+    affine transformation is written out to the file specified via
+    'affine-transform-file=xxx'.
+    The output dimension of the layer may be specified via 'dim=xxx', but if not specified,
+    the dimension defaults to the same as the input.
+
+    See other configuration values below.
+
+    Parameters of the class, and their defaults:
+      input='[-1]'             [Descriptor giving the input of the layer.]
+      dim=None                   [Output dimension of layer; defaults to the same as the input dim.]
+      cepstral-lifter=22       [Apply liftering co-efficient.]
+      affine-transform-file='' [Must be specified.]
+
+    """
+    def __init__(self, first_token, key_to_value, prev_names = None):
+        assert first_token == 'idct-layer'
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def set_default_configs(self):
+        # note: self.config['input'] is a descriptor, '[-1]' means output
+        # the most recent layer.
+        self.config = {'input': '[-1]',
+                       'dim': -1,
+                       'cepstral-lifter': 22.0,
+                       'affine-transform-file': ''}
+
+    def check_configs(self):
+        if self.config['affine-transform-file'] is None:
+            raise RuntimeError("affine-transform-file must be set.")
+
+
+    def output_name(self, auxiliary_output = None):
+        # Fixed affine layer computes only one vector, there are no intermediate
+        # vectors.
+        assert auxiliary_output == None
+        return self.name
+
+    def output_dim(self, auxiliary_output = None):
+        output_dim = self.config['dim']
+        # If not set, the output-dim defaults to the input-dim.
+        if output_dim <= 0:
+            output_dim = self.descriptors['input']['dim']
+        return output_dim
+
+    def get_full_config(self):
+        ans = []
+
+        # note: each value of self.descriptors is (descriptor, dim,
+        # normalized-string, output-string).
+        # by 'descriptor_final_string' we mean a string that can appear in
+        # config-files, i.e. it contains the 'final' names of nodes.
+        descriptor_final_string = self.descriptors['input']['final-string']
+        input_dim = self.descriptors['input']['dim']
+        output_dim = self.output_dim()
+        transform_file = self.config['affine-transform-file']
+
+        idct_mat = common_lib.compute_idct_matrix(
+            input_dim, output_dim, self.config['cepstral-lifter'])
+        # append a zero column to the matrix, this is the bias of the fixed
+        # affine component
+        for n in range(0, output_dim):
+            idct_mat[n].append(0)
+        common_lib.write_kaldi_matrix(transform_file, idct_mat)
+
+        # write the 'real' component to final.config
+        line = 'component name={0} type=FixedAffineComponent matrix={1}'.format(
+            self.name, transform_file)
+        ans.append(('final', line))
+        # write a random version of the component, with the same dims, to ref.config
+        line = 'component name={0} type=FixedAffineComponent input-dim={1} output-dim={2}'.format(
+            self.name, input_dim, output_dim)
+        ans.append(('ref', line))
+        # the component-node gets written to final.config and ref.config.
+        line = 'component-node name={0} component={0} input={1}'.format(
+            self.name, descriptor_final_string)
+        ans.append(('final', line))
+        ans.append(('ref', line))
         return ans
 
 

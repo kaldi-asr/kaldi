@@ -40,11 +40,18 @@ int main(int argc, char *argv[]) {
         " nnet3-combine 1.1.raw 1.2.raw 1.3.raw ark:valid.egs 2.raw\n";
 
     bool binary_write = true;
+    bool batchnorm_test_mode = false,
+        dropout_test_mode = true;
     std::string use_gpu = "yes";
     NnetCombineConfig combine_config;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
+    po.Register("batchnorm-test-mode", &batchnorm_test_mode,
+                "If true, set test-mode to true on any BatchNormComponents.");
+    po.Register("dropout-test-mode", &dropout_test_mode,
+                "If true, set test-mode to true on any DropoutComponents and "
+                "DropoutMaskComponents.");
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
 
@@ -69,6 +76,10 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
 
+    if (batchnorm_test_mode)
+      SetBatchnormTestMode(true, &nnet);
+    if (dropout_test_mode)
+      SetDropoutTestMode(true, &nnet);
 
     std::vector<NnetExample> egs;
     egs.reserve(10000);  // reserve a lot of space to minimize the chance of
@@ -92,19 +103,20 @@ int main(int argc, char *argv[]) {
         ReadKaldiObject(po.GetArg(1 + n), &nnet);
         combiner.AcceptNnet(nnet);
       }
-
       combiner.Combine();
-
 
 #if HAVE_CUDA==1
       CuDevice::Instantiate().PrintProfile();
 #endif
-
-      WriteKaldiObject(combiner.GetNnet(), nnet_wxfilename, binary_write);
+      nnet = combiner.GetNnet();
+      if (HasBatchnorm(nnet))
+        RecomputeStats(egs, &nnet);
+      WriteKaldiObject(nnet, nnet_wxfilename, binary_write);
     } else {
       KALDI_LOG << "Copying the single input model directly to the output, "
                 << "without any combination.";
-      SetDropoutProportion(0, &nnet);
+      if (HasBatchnorm(nnet))
+        RecomputeStats(egs, &nnet);
       WriteKaldiObject(nnet, nnet_wxfilename, binary_write);
     }
     KALDI_LOG << "Finished combining neural nets, wrote model to "
@@ -114,5 +126,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

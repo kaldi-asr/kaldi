@@ -94,7 +94,7 @@ test: test_compile
 	      rm -rf core;		\
 	    fi;				\
 	  else				\
-	    echo " $${time_taken}s... SUCCESS";		\
+	    echo " $${time_taken}s... SUCCESS $$x";		\
 	    rm -f $$x.testlog;		\
 	  fi;				\
 	done;				\

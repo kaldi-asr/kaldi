@@ -23,7 +23,7 @@ if [ ! -z "$id_a" ] && [ ! -z "${id_b}" ] ; then
   if [ "${id_a}" == "${id_b}" ]; then
     exit 0
   else
-    echo >&2 "$0: ERROR: iVector id in ${id_a} and the iVector id in ${id_a} do not match"
+    echo >&2 "$0: ERROR: iVector id ${id_a} in $dir_a and the iVector id ${id_b} in $dir_b do not match"
     echo >&2 "$0: ERROR: that means that the systems are not compatible."
     exit 1
   fi

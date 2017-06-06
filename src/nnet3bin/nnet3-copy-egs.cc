@@ -304,7 +304,8 @@ int main(int argc, char *argv[]) {
         "e.g.\n"
         "nnet3-copy-egs ark:train.egs ark,t:text.egs\n"
         "or:\n"
-        "nnet3-copy-egs ark:train.egs ark:1.egs ark:2.egs\n";
+        "nnet3-copy-egs ark:train.egs ark:1.egs ark:2.egs\n"
+        "See also: nnet3-subset-egs, nnet3-get-egs, nnet3-merge-egs, nnet3-shuffle-egs\n";
 
     bool random = false;
     int32 srand_seed = 0;

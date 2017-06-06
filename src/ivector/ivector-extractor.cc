@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "ivector/ivector-extractor.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 
@@ -842,7 +842,7 @@ void IvectorExtractorStats::CommitStatsForM(
     const VectorBase<double> &ivec_mean,
     const SpMatrix<double> &ivec_var) {
 
-  gamma_Y_lock_.Lock();
+  gamma_Y_lock_.lock();
 
   // We do the occupation stats here also.
   gamma_.AddVec(1.0, utt_stats.gamma_);
@@ -852,17 +852,17 @@ void IvectorExtractorStats::CommitStatsForM(
     Y_[i].AddVecVec(1.0, utt_stats.X_.Row(i),
                     Vector<double>(ivec_mean));
   }
-  gamma_Y_lock_.Unlock();
+  gamma_Y_lock_.unlock();
 
   SpMatrix<double> ivec_scatter(ivec_var);
   ivec_scatter.AddVec2(1.0, ivec_mean);
 
-  R_cache_lock_.Lock();
+  R_cache_lock_.lock();
   while (R_num_cached_ == R_gamma_cache_.NumRows()) {
     // Cache full.  The "while" statement is in case of certain race conditions.
-    R_cache_lock_.Unlock();
+    R_cache_lock_.unlock();
     FlushCache();
-    R_cache_lock_.Lock();
+    R_cache_lock_.lock();
   }
   R_gamma_cache_.Row(R_num_cached_).CopyFromVec(utt_stats.gamma_);
   int32 ivector_dim = ivec_mean.Dim();
@@ -870,11 +870,11 @@ void IvectorExtractorStats::CommitStatsForM(
                                      ivector_dim * (ivector_dim + 1) / 2);
   R_ivec_scatter_cache_.Row(R_num_cached_).CopyFromVec(ivec_scatter_vec);
   R_num_cached_++;
-  R_cache_lock_.Unlock();
+  R_cache_lock_.unlock();
 }
 
 void IvectorExtractorStats::FlushCache() {
-  R_cache_lock_.Lock();
+  R_cache_lock_.lock();
   if (R_num_cached_ > 0) {
     KALDI_VLOG(1) << "Flushing cache for IvectorExtractorStats";
     // Store these quantities as copies in memory so other threads can use the
@@ -887,13 +887,13 @@ void IvectorExtractorStats::FlushCache() {
                                     0, R_ivec_scatter_cache_.NumCols()));
     R_num_cached_ = 0; // As far as other threads are concerned, the cache is
                        // cleared and they may write to it.
-    R_cache_lock_.Unlock();
-    R_lock_.Lock();
+    R_cache_lock_.unlock();
+    R_lock_.lock();
     R_.AddMatMat(1.0, R_gamma_cache, kTrans,
                  R_ivec_scatter_cache, kNoTrans, 1.0);
-    R_lock_.Unlock();
+    R_lock_.unlock();
   } else {
-    R_cache_lock_.Unlock();
+    R_cache_lock_.unlock();
   }
 }
 
@@ -901,13 +901,13 @@ void IvectorExtractorStats::FlushCache() {
 void IvectorExtractorStats::CommitStatsForSigma(
     const IvectorExtractor &extractor,
     const IvectorExtractorUtteranceStats &utt_stats) {
-  variance_stats_lock_.Lock();
+  variance_stats_lock_.lock();
   // Storing the raw scatter statistics per Gaussian.  In the update phase we'll
   // take into account some other terms relating to the model means and their
   // correlation with the data.
   for (int32 i = 0; i < extractor.NumGauss(); i++)
     S_[i].AddSp(1.0, utt_stats.S_[i]);
-  variance_stats_lock_.Unlock();
+  variance_stats_lock_.unlock();
 }
 
 
@@ -936,7 +936,7 @@ void IvectorExtractorStats::CommitStatsForWPoint(
     linear_coeff(i) = gamma_i - gamma * w(i) + max_term * logw_unnorm(i);
     quadratic_coeff(i) = max_term;
   }
-  weight_stats_lock_.Lock();
+  weight_stats_lock_.lock();
   G_.AddVecVec(weight, linear_coeff, Vector<double>(ivector));
 
   int32 ivector_dim = extractor.IvectorDim();
@@ -945,7 +945,7 @@ void IvectorExtractorStats::CommitStatsForWPoint(
   SubVector<double> outer_prod_vec(outer_prod.Data(),
                                    ivector_dim * (ivector_dim + 1) / 2);
   Q_.AddVecVec(weight, quadratic_coeff, outer_prod_vec);
-  weight_stats_lock_.Unlock();
+  weight_stats_lock_.unlock();
 }
 
 void IvectorExtractorStats::CommitStatsForW(
@@ -982,11 +982,11 @@ void IvectorExtractorStats::CommitStatsForPrior(
     const SpMatrix<double> &ivec_var) {
   SpMatrix<double> ivec_scatter(ivec_var);
   ivec_scatter.AddVec2(1.0, ivec_mean);
-  prior_stats_lock_.Lock();
+  prior_stats_lock_.lock();
   num_ivectors_ += 1.0;
   ivector_sum_.AddVec(1.0, ivec_mean);
   ivector_scatter_.AddSp(1.0, ivec_scatter);
-  prior_stats_lock_.Unlock();
+  prior_stats_lock_.unlock();
 }
 
 
