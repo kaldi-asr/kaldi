@@ -309,6 +309,9 @@ if $test_online_decoding && [ $stage -le 19 ]; then
 
   rm $dir/.error 2>/dev/null || true
 
+  [ -z $extra_left_context ] && extra_left_context=$chunk_left_context;
+  [ -z $frames_per_chunk ] && frames_per_chunk=$chunk_width;
+
   for decode_set in dev eval; do
     (
       nspk=$(wc -l <data/$mic/${decode_set}_hires/spk2utt)
@@ -316,6 +319,9 @@ if $test_online_decoding && [ $stage -le 19 ]; then
       # feature type does not matter.
       steps/online/nnet3/decode.sh \
         --nj $nspk --cmd "$decode_cmd" \
+        --extra-left-context-initial $extra_left_context \
+        --frames-per-chunk "$frames_per_chunk" \
+        --scoring-opts "--min-lmwt 5 " \
         $graph_dir data/$mic/${decode_set}_hires ${dir}_online/decode_online_${decode_set} || exit 1
     ) || touch ${dir}_online/.error &
   done
