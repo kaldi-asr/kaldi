@@ -309,9 +309,9 @@ if $test_online_decoding && [ $stage -le 19 ]; then
 
   rm $dir/.error 2>/dev/null || true
 
-  for data in dev eval; do
+  for decode_set in dev eval; do
     (
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
+      nspk=$(wc -l <data/$mic/${decode_set}_hires/spk2utt)
       # note: we just give it "data/${data}" as it only uses the wav.scp, the
       # feature type does not matter.
       steps/online/nnet3/decode.sh \
