@@ -302,7 +302,7 @@ if [ $stage -le 18 ]; then
   fi
 fi
 
-if $test_online_decoding && [ $stage -le 13 ]; then
+if $test_online_decoding && [ $stage -le 19 ]; then
   steps/online/nnet3/prepare_online_decoding.sh \
     --mfcc-config conf/mfcc_hires.conf \
     data/lang_${LM} exp/$mic/nnet3${nnet3_affix}/extractor ${dir} ${dir}_online

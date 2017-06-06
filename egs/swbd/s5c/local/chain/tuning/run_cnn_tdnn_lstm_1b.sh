@@ -252,7 +252,7 @@ if [ $stage -le 15 ]; then
   fi
 fi
 
-if $test_online_decoding && [ $stage -le 17 ]; then
+if $test_online_decoding && [ $stage -le 16 ]; then
   # note: if the features change (e.g. you add pitch features), you will have to
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \
