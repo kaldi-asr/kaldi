@@ -5,6 +5,7 @@
 cmd=run.pl
 min_lmwt=5
 max_lmwt=17
+iter=
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
