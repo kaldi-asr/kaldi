@@ -1,12 +1,15 @@
 #!/bin/bash
 
-# This is just to show experiment progress about CNN, not for merging.
-# For this scripts, I replace the 40dim MFCC with 64dim (changing as Github shows)
-# and change local/nnet3/run_ivector_common.sh to extrct sp 64dim feature also a
-# ivector-extractor based on the new 64dim features and corresponding online-ivector
-# **For the alignments for sp feature and tree preparation(stage from 8-14), I use the
-# one from 40dim features, for I find this is based on 13dim MFCC, change from dim40
-# to dim64 should not be affected by stage 8-14.
+# same as 1g but with TDNN output dim 1024 instead of 512
+# (num-params 1g:21309812 1i: 43447156)
+# results on sdm1 using ihm ali
+#System               tdnn_lstm1g_sp_bi_ihmali_ld5 tdnn_lstm1i_sp_bi_ihmali_ld5
+#WER on dev        38.3      37.6
+#WER on eval        41.6      40.9
+#Final train prob      -0.138017 -0.114135
+#Final valid prob      -0.238659 -0.245208
+#Final train prob (xent)      -1.66834  -1.47648
+#Final valid prob (xent)      -2.17419  -2.16365
 
 
 set -e -o pipefail
@@ -24,7 +27,6 @@ ihm_gmm=tri3  # the gmm for the IHM system (if --use-ihm-ali true).
 num_threads_ubm=32
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 num_epochs=4
-feature_type=_64fbank
 
 chunk_width=150
 chunk_left_context=40
@@ -60,7 +62,6 @@ fi
 
 
 local/nnet3/run_ivector_common.sh --stage $stage \
-                                  --feature-type _64fbank \
                                   --mic $mic \
                                   --nj $nj \
                                   --min-seg-len $min_seg_len \
@@ -97,8 +98,8 @@ fi
 
 if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi
 
-train_data_dir=data/$mic/${train_set}_sp_hires${feature_type}_comb
-train_ivector_dir=exp/$mic/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb${feature_type}
+train_data_dir=data/$mic/${train_set}_sp_hires_comb
+train_ivector_dir=exp/$mic/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
 
@@ -283,9 +284,9 @@ if [ $stage -le 18 ]; then
           --nj $nj --cmd "$decode_cmd" \
           --extra-left-context $extra_left_context  \
           --frames-per-chunk "$frames_per_chunk" \
-          --online-ivector-dir exp/$mic/nnet3${nnet3_affix}/ivectors_${decode_set}_hires${feature_type} \
+          --online-ivector-dir exp/$mic/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
           --scoring-opts "--min-lmwt 5 " \
-         $graph_dir data/$mic/${decode_set}_hires${feature_type} $dir/decode_${decode_set} || exit 1;
+         $graph_dir data/$mic/${decode_set}_hires $dir/decode_${decode_set} || exit 1;
       ) || touch $dir/.error &
   done
   wait
