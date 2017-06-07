@@ -1,0 +1,31 @@
+This is an audio + language model + acoustic data dataset  that is suitable 
+for use with Wit Zieliński's 
+
+CREATING A SIMPLE ASR SYSTEM IN KALDI TOOLKIT FROM 
+SCRATCH USING SMALL DIGITS CORPORA
+IN OTHER WORDS: KALDI FOR DUMMIES
+
+tutorial, as seen at https://groups.google.com/d/msg/kaldi-help/tzyCwt7zgMQ/wvCLpVVpBgAJ
+
+I obtained the audio by cutting spoken digits out of English-language recitations 
+of pi found on Youtube.*
+
+In addition to the audio, this dataset contains all the langugage model and 
+acoustic data files referenced by Chapters 5 and 6 in Kaldi for Dummies. If you
+want to use it, you must do all the other steps yourself.
+
+This dataset complies nearly exactly with the tutorial's Exemplary Project.  There
+are only two changes:
+
+1) I've added 'o' to the lexicon because some participants say 'oh' instead of 'zero'.
+2) The audio is sampled at 44.1kHz, and the default in the project tools is 16kHz,  
+   so to use this audio you will need to add this line to your mfcc.conf:
+
+   --sample-frequency 44100 
+
+Using this audio, I've managed to successfully run the tutorial, getting word 
+error rates of 30%ish.
+
+* Distribution of this audio isn't super compatible with the Youtube Standard License, 
+which permits streaming only, so if you think about republishing it somewhere, 
+please consider that.
