@@ -74,7 +74,8 @@ def GetArgs():
                         help="Will not remove the temporary directory.")
     parser.add_argument("--model", type=str, default='final.mdl',
                         help="Choose a specific model to convert.")
-    parser.add_argument("--binary", type=str, default="true",
+    parser.add_argument("--binary", type=str, default="true", 
+                        choices=["true","false"], 
                         help="Whether to write the model in binary or not.")
     parser.add_argument("nnet2_dir", metavar="src-nnet2-dir", type=str,
                         help="")
