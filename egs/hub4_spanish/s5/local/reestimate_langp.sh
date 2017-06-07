@@ -23,7 +23,7 @@ olang=$7
 mkdir -p $odict
 mkdir -p $olang
 mkdir -p $olocallang
-steps/get_prons.sh --cmd "$train_cmd" $datadir $langdir $amdir
+steps/get_prons.sh --cmd "$cmd" $datadir $langdir $amdir
 utils/dict_dir_add_pronprobs.sh --max-normalize true $idict  \
   $amdir/pron_counts_nowb.txt $amdir/sil_counts_nowb.txt \
   $amdir/pron_bigram_counts_nowb.txt $odict

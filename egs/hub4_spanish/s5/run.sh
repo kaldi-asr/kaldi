@@ -26,9 +26,6 @@ numLeavesMLLT=6000
 numGaussMLLT=75000
 numLeavesSAT=6000
 numGaussSAT=75000
-numGaussUBM=800
-numLeavesSGMM=10000
-numGaussSGMM=80000
 unk="<unk>"
 
 . ./cmd.sh
@@ -214,65 +211,17 @@ if [ $stage -le 11 ]; then
     exp/tri5_ali data/local/dictp/tri5_ali data/local/langp/tri5_ali data/langp/tri5_ali
 fi
 
-
 if [ $stage -le 12 ]; then
   echo ---------------------------------------------------------------------
-  echo "Stage 12: Starting exp/ubm5 on" `date`
-  echo ---------------------------------------------------------------------
-  steps/train_ubm.sh \
-    --cmd "$train_cmd" $numGaussUBM \
-    data/train data/langp/tri5_ali exp/tri5_ali exp/ubm5
-fi
-
-if [ $stage -le 13 ]; then
-  echo ---------------------------------------------------------------------
-  echo "Stage 13: Starting exp/sgmm5 on" `date`
-  echo ---------------------------------------------------------------------
-  steps/train_sgmm2.sh \
-    --cmd "$train_cmd" $numLeavesSGMM $numGaussSGMM \
-    data/train data/langp/tri5_ali exp/tri5_ali exp/ubm5/final.ubm exp/sgmm5
-fi
-
-if [ $stage -le 14 ]; then
-  echo ---------------------------------------------------------------------
-  echo "Stage 14: Starting exp/sgmm5_ali/ on" `date`
-  echo ---------------------------------------------------------------------
-  steps/align_sgmm2.sh \
-    --nj 32  --cmd "$train_cmd" --transform-dir exp/tri5_ali \
-    --use-graphs true --use-gselect true \
-    data/train data/langp/tri5_ali exp/sgmm5 exp/sgmm5_ali
-fi
-
-if [ $stage -le 15 ]; then
-  echo ---------------------------------------------------------------------
-  echo "Stage 15: Starting exp/sgmm5_denlats/ on" `date`
-  echo ---------------------------------------------------------------------
-  steps/make_denlats_sgmm2.sh \
-    --nj 32 --sub-split 32 --num-threads 4 \
-    --beam 10.0 --lattice-beam 6 --cmd "$decode_cmd" --transform-dir exp/tri5_ali \
-    data/train data/langp/tri5_ali exp/sgmm5_ali exp/sgmm5_denlats
-fi
-
-if [ $stage -le 16 ]; then
-  echo ---------------------------------------------------------------------
-  echo "Stage 16: Starting exp/sgmm5_mmi_b0.1/ on" `date`
-  echo ---------------------------------------------------------------------
-  steps/train_mmi_sgmm2.sh \
-     --cmd "$train_cmd" --drop-frames true --transform-dir exp/tri5_ali --boost 0.1 \
-     data/train data/langp/tri5_ali exp/sgmm5_ali exp/sgmm5_denlats  exp/sgmm5_mmi_b0.1
-fi
-
-if [ $stage -le 17 ]; then
-  echo ---------------------------------------------------------------------
-  echo "Stage 17: Building lang dir" `date`
+  echo "Stage 12: Building lang dir" `date`
   echo ---------------------------------------------------------------------
   cp -R data/langp/tri5_ali/ data/langp_test
   cp data/lang_test/G.fst data/langp_test
 fi
 
-if [ $stage -le 18 ]; then
+if [ $stage -le 13 ]; then
   echo ---------------------------------------------------------------------
-  echo "Stage 18: Running decoding with SAT models  on" `date`
+  echo "Stage 13: Running decoding with SAT models  on" `date`
   echo ---------------------------------------------------------------------
   decode=exp/tri5/decode_test
   utils/mkgraph.sh \
@@ -285,32 +234,6 @@ if [ $stage -le 18 ]; then
   touch ${decode}/.done
 fi
 
-if [ $stage -le 19 ]; then
-  echo ---------------------------------------------------------------------
-  echo "Stage 19: Running decoding with SGMM2 models  on" `date`
-  echo ---------------------------------------------------------------------
-  utils/mkgraph.sh \
-    data/langp_test exp/sgmm5 exp/tri5/graph |tee exp/sgmm5/mkgraph.log
 
-  decode=exp/sgmm5/decode_test/
-  mkdir -p $decode
-  steps/decode_sgmm2.sh  --beam 10 --lattice-beam 4\
-    --nj 32 --cmd "$decode_cmd"\
-    --transform-dir exp/tri5/decode_test \
-    exp/sgmm5/graph data/eval/ ${decode} |tee ${decode}/decode.log
-fi
-
-if [ $stage -le 20 ]; then
-  echo ---------------------------------------------------------------------
-  echo "Stage 20: Running rescoring with SGMM2+bMMI models  on" `date`
-  echo ---------------------------------------------------------------------
-  for iter in 1 2 3 4; do
-    decode=exp/sgmm5_mmi_b0.1/decode_test_it$iter
-    mkdir -p $decode
-    steps/decode_sgmm2_rescore.sh  \
-      --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_test/ \
-      data/langp_test data/eval/  exp/sgmm5/decode_test $decode
-  done
-fi
-
-
+#./local/chain/run_tdnn.sh
+#./local/run_sgmm2.sh
