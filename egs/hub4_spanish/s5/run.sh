@@ -68,7 +68,8 @@ if [ $stage -le 3 ]; then
   local/train_lms_srilm.sh  --oov-symbol "$unk"\
       --train-text data/train/text data data/srilm
   cp -R data/lang data/lang_test
-  local/arpa2G.sh data/srilm/lm.gz data/lang_test data/lang_test
+  utils/format_lm.sh \
+    data/lang data/srilm/lm.gz  data/local/lexicon.txt data/lang_test
 fi
 
 if [ $stage -le 4 ]; then
