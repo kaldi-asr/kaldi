@@ -228,6 +228,14 @@ struct CollapseModelConfig {
                          collapse_affine(true),
                          collapse_scale(true) { }
 };
+
+/**
+   This function modifies the neural net for efficiency, in a way that
+   suitable to be done in test time.  For example, it tries to get
+   rid of dropout, batchnorm and fixed-scale components, and to
+   collapse subsequent affine components if doing so won't hurt
+   speed.
+ */
 void CollapseModel(const CollapseModelConfig &config,
                    Nnet *nnet);
 

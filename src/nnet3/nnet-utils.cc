@@ -1220,7 +1220,7 @@ class ModelCollapser {
 
 
     int32 input_dim = affine_component->InputDim();
-    if (transform_dim % input_dim != 0) {
+    if (input_dim % transform_dim != 0) {
       KALDI_ERR << "Dimension mismatch when modifying affine component.";
     }
     // 'full_offset' and 'full_scale' may be repeated versions of
@@ -1305,7 +1305,19 @@ class ModelCollapser {
 void CollapseModel(const CollapseModelConfig &config,
                    Nnet *nnet) {
   ModelCollapser c(config, nnet);
+  std::string info_before_collapse;
+  if (GetVerboseLevel() >= 4)
+    info_before_collapse = nnet->Info();
   c.Collapse();
+  if (GetVerboseLevel() >= 4) {
+    std::string info_after_collapse = nnet->Info();
+    if (info_after_collapse != info_before_collapse) {
+      KALDI_VLOG(4) << "Collapsing model: info before collapse was: "
+                    << info_before_collapse
+                    << ", info after collapse was:"
+                    << info_after_collapse;
+    }
+  }
 }
 
 } // namespace nnet3
