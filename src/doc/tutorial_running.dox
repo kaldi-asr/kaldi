@@ -445,7 +445,7 @@ grep Overall exp/mono/log/acc.{?,??}.{?,??}.log
 You can see the acoustic likelihods on each iteration.  Next look at one of the files
 exp/mono/log/update.*.log to see what kind of information is in the update log.
 
-When the monophone training is finished, we can test the monophone decoding. Before decoding, we have to creat the decode graph. Type:
+When the monophone training is finished, we can test the monophone decoding. Before decoding, we have to create the decode graph. Type:
 \verbatim
 utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
 \endverbatim
