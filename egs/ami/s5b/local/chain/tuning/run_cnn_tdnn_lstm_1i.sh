@@ -319,11 +319,10 @@ if $test_online_decoding && [ $stage -le 19 ]; then
       # feature type does not matter.
       steps/online/nnet3/decode.sh \
         --nj $nspk --cmd "$decode_cmd" \
-        --acwt 1.0 \
-        --extra-left-context-initial $extra_left_context \
+        --acwt 1.0 --post-decode-acwt 10.0 \
+        --extra-left-context-initial 0 \
         --frames-per-chunk "$frames_per_chunk" \
         --scoring-opts "--min-lmwt 5 " \
-        $graph_dir data/$mic/${decode_set}_hires ${dir}_online/decode_online_${decode_set} || exit 1
     ) || touch ${dir}_online/.error &
   done
   wait
