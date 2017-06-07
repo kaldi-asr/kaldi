@@ -166,6 +166,11 @@ class OffsetForwardingDescriptor: public ForwardingDescriptor {
                              Index offset): src_(src), offset_(offset) { }
 
   virtual ~OffsetForwardingDescriptor() { delete src_; }
+
+
+  // this function is not in the shared interface. it's used
+  // in class ModelCollapser.
+  const ForwardingDescriptor &Src() const { return *src_; }
  private:
   ForwardingDescriptor *src_;  // Owned here.
   Index offset_;  // The index-offset to be added to the index.
@@ -378,6 +383,10 @@ class SimpleSumDescriptor: public SumDescriptor {
 
   SimpleSumDescriptor(ForwardingDescriptor *src): src_(src) { }
   virtual ~SimpleSumDescriptor() { delete src_; }
+
+  // this function is not in the shared interface. it's used
+  // in class ModelCollapser.
+  const ForwardingDescriptor &Src() const { return *src_; }
  private:
   ForwardingDescriptor *src_;
 };

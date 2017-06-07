@@ -22,6 +22,7 @@
 #include "nnet3/nnet-compile.h"
 #include "nnet3/nnet-analyze.h"
 #include "nnet3/nnet-test-utils.h"
+#include "nnet3/nnet-utils.h"
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-compute.h"
 #include "nnet3/nnet-am-decodable-simple.h"
@@ -158,9 +159,20 @@ void UnitTestNnetCompute() {
 
     NnetComputation computation;
     Compiler compiler(request, nnet);
-
     CompilerOptions opts;
     compiler.CreateComputation(opts, &computation);
+
+    // Test CollapseModel().  Note: lines with 'collapse' in some part of them
+    // are not necessary for the rest of the test to run; they only test
+    // CollapseModel().
+    Nnet nnet_collapsed(nnet);
+    CollapseModelConfig collapse_config;
+    CollapseModel(collapse_config, &nnet_collapsed);
+    NnetComputation computation_collapsed;
+    Compiler compiler_collapsed(request, nnet_collapsed);
+    compiler_collapsed.CreateComputation(opts, &computation_collapsed);
+    computation_collapsed.ComputeCudaIndexes();
+
     {
       std::ostringstream os;
       computation.Print(os, nnet);
@@ -196,16 +208,34 @@ void UnitTestNnetCompute() {
                           computation,
                           nnet,
                           &nnet);
+    computation_collapsed.ComputeCudaIndexes();
+    NnetComputer computer_collapsed(compute_opts,
+                                    computation_collapsed,
+                                    nnet_collapsed,
+                                    &nnet_collapsed);
+
     // provide the input to the computation.
     for (size_t i = 0; i < request.inputs.size(); i++) {
       CuMatrix<BaseFloat> temp(inputs[i]);
       KALDI_LOG << "Input sum is " << temp.Sum();
       computer.AcceptInput(request.inputs[i].name, &temp);
+
+      CuMatrix<BaseFloat> temp_collapsed(inputs[i]);
+      computer_collapsed.AcceptInput(request.inputs[i].name, &temp_collapsed);
     }
     computer.Run();
+    computer_collapsed.Run();
+
     const CuMatrixBase<BaseFloat> &output(computer.GetOutput("output"));
+    const CuMatrixBase<BaseFloat> &output_collapsed(computer_collapsed.GetOutput("output"));
+
 
     KALDI_LOG << "Output sum is " << output.Sum();
+    KALDI_LOG << "Output sum [collapsed] is " << output_collapsed.Sum();
+    if (!ApproxEqual(output, output_collapsed)) {
+      KALDI_ERR << "Regular and collapsed computations' outputs differ";
+    }
+
     CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols());
     output_deriv.SetRandn();
     // output_deriv sum won't be informative so don't print it.

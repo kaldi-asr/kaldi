@@ -205,6 +205,33 @@ void FindOrphanComponents(const Nnet &nnet, std::vector<int32> *components);
 void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes);
 
 
+
+/**
+   Config class for the CollapseModel function.  This function
+   is reponsible for collapsing together sequential components where
+   doing so could make the test-time operation more efficient.
+   For example, dropout components and batch-norm components that
+   are in test mode can be combined with the next layer; and if there
+   are successive affine components it may also be possible to
+   combine these under some circumstances.
+
+   It expects batch-norm components to be in test mode; you should probably call
+   SetBatchnormTestMode() and SetDropoutTestMode() before CollapseModel().
+ */
+struct CollapseModelConfig {
+  bool collapse_dropout;  // dropout then affine/conv.
+  bool collapse_batchnorm;  // batchnorm then affine.
+  bool collapse_affine;  // affine or fixed-affine then affine.
+  bool collapse_scale;  // affine then fixed-scale.
+  CollapseModelConfig(): collapse_dropout(true),
+                         collapse_batchnorm(true),
+                         collapse_affine(true),
+                         collapse_scale(true) { }
+};
+void CollapseModel(const CollapseModelConfig &config,
+                   Nnet *nnet);
+
+
 /**
    ReadEditConfig() reads a file with a similar-looking format to the config file
    read by Nnet::ReadConfig(), but this consists of a sequence of operations to

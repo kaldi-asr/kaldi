@@ -158,6 +158,15 @@ void Nnet::SetComponent(int32 c, Component *component) {
   components_[c] = component;
 }
 
+int32 Nnet::AddComponent(const std::string &name,
+                         Component *component) {
+  int32 ans = components_.size();
+  KALDI_ASSERT(IsValidName(name) && component != NULL);
+  components_.push_back(component);
+  component_names_.push_back(name);
+  return ans;
+}
+
 /// Returns true if this is component-input node, i.e. a node of type kDescriptor
 /// that immediately precedes a node of type kComponent.
 bool Nnet::IsComponentInputNode(int32 node) const {
