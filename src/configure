@@ -192,6 +192,8 @@ function check_for_slow_expf {
     cd probe
     rm -f exp-test
     make -f Makefile.slow_expf 1>/dev/null
+    ldd --version
+    ldd ./exp-test
     ./exp-test
     if [ $? -eq 1 ]; then
         echo "*** WARNING: expf() seems to be slower than exp() on your machine. This is a known bug in old versions of glibc. Please consider updating glibc. ***"
