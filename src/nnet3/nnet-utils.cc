@@ -916,6 +916,8 @@ class ModelCollapser {
         node_index + 1 >= nnet_->NumNodes())
       return false;
     NetworkNode &component_node = nnet_->GetNode(node_index + 1);
+    if (component_node.node_type != kComponent)
+      return false;
     Descriptor &descriptor = descriptor_node.descriptor;
     int32 component_index = component_node.u.component_index;
 
@@ -1036,7 +1038,7 @@ class ModelCollapser {
 
     std::ostringstream new_component_name_os;
     new_component_name_os << nnet_->GetComponentName(component_index1)
-                          << ":" << nnet_->GetComponentName(component_index2);
+                          << "." << nnet_->GetComponentName(component_index2);
     std::string new_component_name = new_component_name_os.str();
     int32 new_component_index = nnet_->GetComponentIndex(new_component_name);
     if (new_component_index >= 0)
@@ -1134,7 +1136,7 @@ class ModelCollapser {
 
     std::ostringstream new_component_name_os;
     new_component_name_os << nnet_->GetComponentName(component_index1)
-                          << ":" << nnet_->GetComponentName(component_index2);
+                          << "." << nnet_->GetComponentName(component_index2);
     std::string new_component_name = new_component_name_os.str();
     int32 new_component_index = nnet_->GetComponentIndex(new_component_name);
     if (new_component_index >= 0)
@@ -1204,7 +1206,7 @@ class ModelCollapser {
       return component_index;  // identity transform.
     std::ostringstream new_component_name_os;
     new_component_name_os << src_identifier
-                          << ":"
+                          << "."
                           << nnet_->GetComponentName(component_index);
     std::string new_component_name = new_component_name_os.str();
     int32 new_component_index = nnet_->GetComponentIndex(new_component_name);
