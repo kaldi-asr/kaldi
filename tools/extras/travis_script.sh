@@ -4,7 +4,7 @@
 # Typical usage shown below; any one can be safely left unset.
 #   INCDIRS="~/xroot/usr/include"
 #   LIBDIRS="~/xroot/usr/lib /usr/lib/openblas-base"
-#   CXX=clang++-3.8
+#   CXX=clang++-3.9
 #   CFLAGS="-march=native -O2"
 #   LDFLAGS="-llapack"
 

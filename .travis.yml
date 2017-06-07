@@ -10,14 +10,14 @@ addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
-      - llvm-toolchain-precise-3.8
+      - llvm-toolchain-precise-3.9
     packages:
       - gdb
       - gcc-4.9
       - g++-4.9
       - gfortran-4.9
       - liblapack-dev
-      - clang-3.8
+      - clang-3.9
 
 branches:
   only:
@@ -30,7 +30,7 @@ before_install:
   - tools/extras/travis_install_bindeps.sh $XROOT
 
 script:
-  - CXX=clang++-3.8
+  - CXX=clang++-3.9
     CFLAGS="-march=native"
     LDFLAGS="-llapack"
     INCDIRS="$XROOT/usr/include"
