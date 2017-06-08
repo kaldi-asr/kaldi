@@ -77,6 +77,7 @@ endif
 
 openfst-$(OPENFST_VERSION): openfst-$(OPENFST_VERSION).tar.gz
 	tar xozf openfst-$(OPENFST_VERSION).tar.gz
+	if [ -f ./extras/openfst-$(OPENFST_VERSION).patch ] ; then cd openfst-$(OPENFST_VERSION); patch -p1 < ../extras/openfst-$(OPENFST_VERSION).patch; fi
 
 openfst-$(OPENFST_VERSION).tar.gz:
 	wget -T 10 -t 1 http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-$(OPENFST_VERSION).tar.gz || \
