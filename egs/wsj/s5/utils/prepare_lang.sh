@@ -303,7 +303,7 @@ echo $ndisambig > $tmpdir/lex_ndisambig
 # need to be added to the list of phone-level disambiguation symbols.
 if [ ! -z "$extra_word_disambig_syms" ]; then
   # We expect a file containing valid word-level disambiguation symbols.
-  cat $extra_word_disambig_syms | awk '{ print $1 }' >> $dir/phones/disambig.txt
+  cat $extra_word_disambig_syms >> $dir/phones/disambig.txt
 fi
 
 # Create phone symbol table.
@@ -448,7 +448,7 @@ echo '#0' >$dir/phones/wdisambig.txt
 if [ ! -z "$extra_word_disambig_syms" ]; then
   # We expect a file containing valid word-level disambiguation symbols.
   # The regular expression for awk is just a paranoia filter (e.g. for empty lines).
-  cat $extra_word_disambig_syms | awk '{ print $1 }' >> $dir/phones/wdisambig.txt
+  cat $extra_word_disambig_syms >> $dir/phones/wdisambig.txt
 fi
 
 utils/sym2int.pl $dir/phones.txt <$dir/phones/wdisambig.txt >$dir/phones/wdisambig_phones.int

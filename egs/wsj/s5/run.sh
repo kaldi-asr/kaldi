@@ -44,7 +44,35 @@ if [ $stage -le 0 ]; then
   # probabilities are added.
   local/wsj_prepare_dict.sh --dict-suffix "_nosp" || exit 1;
 
-  utils/prepare_lang.sh data/local/dict_nosp \
+  # 'wclass_usage=1' will switch on the use of word classes
+  wclass_usage=0
+
+  # this option is passed on to utils/prepare_lang.sh
+  prep_lang_wclass_opt=""
+
+  # this option is passed on to LM scripts
+  wclass_opt=""
+
+  if [ $wclass_usage == 1 ]; then
+    # The source of the word class data (local/wclass/resources) is just an example
+    wclass_src_dir=local/wclass/resources
+    wclass_dst_dir=data/local/wclass
+
+    # Steps necessary to integrate word classes will be only done if
+    # - the script local/wsj_wclass_prep.sh and
+    # - the word class source dir
+    # both exist
+    if [ -x local/wsj_wclass_prep.sh ] && [ -d $wclass_src_dir ]; then
+      local/wsj_wclass_prep.sh $wclass_src_dir $wclass_dst_dir || exit 1;
+      prep_lang_wclass_opt="--extra-word-disambig-syms $wclass_dst_dir/wclass_disambig_syms.txt"
+      wclass_opt="--wclass-dir $wclass_dst_dir"
+    else
+      echo run.sh: not all scripts and directories necessary for word classes could be found, exiting...
+      exit 1;
+    fi
+  fi
+
+  utils/prepare_lang.sh $prep_lang_wclass_opt data/local/dict_nosp \
                         "<SPOKEN_NOISE>" data/local/lang_tmp_nosp data/lang_nosp || exit 1;
 
   local/wsj_format_data.sh --lang-suffix "_nosp" || exit 1;
@@ -61,10 +89,10 @@ if [ $stage -le 0 ]; then
   # use local/cstr_wsj_extend_dict.sh --dict-suffix "_nosp" $corpus/wsj1/doc/ instead.
   (
     local/wsj_extend_dict.sh --dict-suffix "_nosp" $wsj1/13-32.1  && \
-      utils/prepare_lang.sh data/local/dict_nosp_larger \
+      utils/prepare_lang.sh $prep_lang_wclass_opt data/local/dict_nosp_larger \
                             "<SPOKEN_NOISE>" data/local/lang_tmp_nosp_larger data/lang_nosp_bd && \
-      local/wsj_train_lms.sh --dict-suffix "_nosp" &&
-      local/wsj_format_local_lms.sh --lang-suffix "_nosp" # &&
+      local/wsj_train_lms.sh $wclass_opt --dict-suffix "_nosp" &&
+      local/wsj_format_local_lms.sh $wclass_opt --lang-suffix "_nosp" # &&
   ) &
 
   # Now make MFCC features.

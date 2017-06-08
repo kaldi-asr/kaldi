@@ -4,6 +4,7 @@
 #           Guoguo Chen 2014
 
 lang_suffix=
+wclass_dir=     # if set, then use word class info in that directory
 
 echo "$0 $@"  # Print the command line for logging
 . ./path.sh
@@ -42,38 +43,73 @@ if [[ -z $bos || -z $eos ]]; then
   exit 1;
 fi
 
+# check if there are word classes to be used
+wclass_usage=0
+words_txt=$lang/words.txt
+
+if [ -n $wclass_dir ] && [ -d $wclass_dir ]; then
+  # ok, word classes are used
+  # -> remember this and create class-specific sub-language model(s)
+  wclass_usage=1
+  local/wclass/create_wclass_SLMs.sh $wclass_dir $lang/words.txt wsj || exit 1;
+  # Since there are now also non-terminal symbols in the language model, we need
+  # to use an extension of words.txt.
+  words_txt=$wclass_dir/all_words.txt
+fi
+
+
 # Be careful: this time we dispense with the grep -v '<s> <s>' so this might
 # not work for LMs generated from all toolkits.
 gunzip -c $lm_srcdir_3g/lm_pr6.0.gz | \
   arpa2fst --disambig-symbol=#0 \
-           --read-symbol-table=$lang/words.txt - data/lang${lang_suffix}_test_bd_tgpr/G.fst || exit 1;
+           --read-symbol-table=$words_txt - data/lang${lang_suffix}_test_bd_tgpr/G.fst || exit 1;
+
+if [ $wclass_usage == 1 ]; then
+  local/wclass/embed_wclass_SLMs.sh $wclass_dir data/lang${lang_suffix}_test_bd_tgpr || exit 1;
+fi
+
   fstisstochastic data/lang${lang_suffix}_test_bd_tgpr/G.fst
 
 gunzip -c $lm_srcdir_3g/lm_unpruned.gz | \
   arpa2fst --disambig-symbol=#0 \
-           --read-symbol-table=$lang/words.txt - data/lang${lang_suffix}_test_bd_tg/G.fst || exit 1;
+           --read-symbol-table=$words_txt - data/lang${lang_suffix}_test_bd_tg/G.fst || exit 1;
+
+if [ $wclass_usage == 1 ]; then
+  local/wclass/embed_wclass_SLMs.sh $wclass_dir data/lang${lang_suffix}_test_bd_tg || exit 1;
+fi
+
   fstisstochastic data/lang${lang_suffix}_test_bd_tg/G.fst
 
 # Build ConstArpaLm for the unpruned language model.
 gunzip -c $lm_srcdir_3g/lm_unpruned.gz | \
-  utils/map_arpa_lm.pl $lang/words.txt | \
+  utils/map_arpa_lm.pl $words_txt | \
   arpa-to-const-arpa --bos-symbol=$bos --eos-symbol=$eos \
   --unk-symbol=$unk - data/lang${lang_suffix}_test_bd_tgconst/G.carpa || exit 1
 
 gunzip -c $lm_srcdir_4g/lm_unpruned.gz | \
   arpa2fst --disambig-symbol=#0 \
-           --read-symbol-table=$lang/words.txt - data/lang${lang_suffix}_test_bd_fg/G.fst || exit 1;
+           --read-symbol-table=$words_txt - data/lang${lang_suffix}_test_bd_fg/G.fst || exit 1;
+
+if [ $wclass_usage == 1 ]; then
+  local/wclass/embed_wclass_SLMs.sh $wclass_dir data/lang${lang_suffix}_test_bd_fg || exit 1;
+fi
+
   fstisstochastic data/lang${lang_suffix}_test_bd_fg/G.fst
 
 # Build ConstArpaLm for the unpruned language model.
 gunzip -c $lm_srcdir_4g/lm_unpruned.gz | \
-  utils/map_arpa_lm.pl $lang/words.txt | \
+  utils/map_arpa_lm.pl $words_txt | \
   arpa-to-const-arpa --bos-symbol=$bos --eos-symbol=$eos \
   --unk-symbol=$unk - data/lang${lang_suffix}_test_bd_fgconst/G.carpa || exit 1
 
 gunzip -c $lm_srcdir_4g/lm_pr7.0.gz | \
   arpa2fst --disambig-symbol=#0 \
-           --read-symbol-table=$lang/words.txt - data/lang${lang_suffix}_test_bd_fgpr/G.fst || exit 1;
+           --read-symbol-table=$words_txt - data/lang${lang_suffix}_test_bd_fgpr/G.fst || exit 1;
+
+if [ $wclass_usage == 1 ]; then
+  local/wclass/embed_wclass_SLMs.sh $wclass_dir data/lang${lang_suffix}_test_bd_fgpr || exit 1;
+fi
+
   fstisstochastic data/lang${lang_suffix}_test_bd_fgpr/G.fst
 
 exit 0;

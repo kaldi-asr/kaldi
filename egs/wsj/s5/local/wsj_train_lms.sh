@@ -7,6 +7,7 @@
 # derive pronunciations for.
 
 dict_suffix=
+wclass_dir=     # if set, then use word class info in that directory
 
 echo "$0 $@"  # Print the command line for logging
 . utils/parse_options.sh || exit 1;
@@ -43,6 +44,29 @@ fi
 # Get a wordlist-- keep everything but silence, which should not appear in
 # the LM.
 awk '{print $1}' $srcdir/lexicon.txt | grep -v -w '!SIL' > $dir/wordlist.txt
+
+# if $wclass_dir was set, word classes are used; in that case the training text
+# has to be modified -> word class entries are replaced with word class labels
+if [ -n $wclass_dir ] && [ -d $wclass_dir ]; then
+  if [ -f $wclass_dir/wsj.classes ]; then
+    # uncompress the text which is used for language model training
+    gunzip $srcdir/cleaned.gz
+    # replace word class entries with word class labels
+    local/wclass/replace_wclass_entries_with_labels.sh $srcdir/cleaned $wclass_dir wsj
+    # compresse the LM training text again
+    gzip $srcdir/cleaned
+    # adjust the word list so it also contains the word class labels
+    awk '{print $1}' $wclass_dir/wclass_list.txt | cat $dir/wordlist.txt - > $dir/wordlist_with_classes.txt
+    mv $dir/wordlist.txt $dir/wordlist_no_classes.txt
+    mv $dir/wordlist_with_classes.txt $dir/wordlist.txt
+  else
+    echo "Word class list \"$wclass_dir/wsj.classes\" is missing, exiting ..." && exit 1;
+  fi
+else
+  echo "No word classes used (word class dir not set -> this is not an error)"
+fi
+
+
 
 # Get training data with OOV words (w.r.t. our current vocab) replaced with <UNK>.
 echo "Getting training data with OOV words replaced with <UNK> (train_nounk.gz)" 
