@@ -1,0 +1,9 @@
+Speaker10 /home/abhilash/kaldi/egs/0_MP_Digits/mfcc/cmvn_train.ark:10
+Speaker2 /home/abhilash/kaldi/egs/0_MP_Digits/mfcc/cmvn_train.ark:258
+Speaker3 /home/abhilash/kaldi/egs/0_MP_Digits/mfcc/cmvn_train.ark:506
+Speaker4 /home/abhilash/kaldi/egs/0_MP_Digits/mfcc/cmvn_train.ark:754
+Speaker5 /home/abhilash/kaldi/egs/0_MP_Digits/mfcc/cmvn_train.ark:1002
+Speaker6 /home/abhilash/kaldi/egs/0_MP_Digits/mfcc/cmvn_train.ark:1250
+Speaker7 /home/abhilash/kaldi/egs/0_MP_Digits/mfcc/cmvn_train.ark:1498
+Speaker8 /home/abhilash/kaldi/egs/0_MP_Digits/mfcc/cmvn_train.ark:1746
+Speaker9 /home/abhilash/kaldi/egs/0_MP_Digits/mfcc/cmvn_train.ark:1994

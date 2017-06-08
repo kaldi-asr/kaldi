@@ -1,0 +1,229 @@
+\documentclass[11pt]{article}
+\usepackage{fullpage}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage{epsf}
+\usepackage{graphicx}
+\usepackage{version}
+\usepackage[usenames,dvipsnames]{color}
+
+%\usepackage{mdframed}
+\usepackage{framed}
+
+\newcommand{\IRSTLM}{{\bf IRSTLM Toolkit}}
+
+
+\newcommand*{\MyPath}{../}
+\newcommand{\versionnumber}{\input{\MyPath/RELEASE}}
+
+%\newcommand{\IMPORTANT}[1]{\begin{mdframed}[linecolor=red]\noindent #1\end{mdframed}}
+\newcommand{\IMPORTANT}[1]{\begin{framed}\noindent #1\end{framed}}
+\newcommand{\WARNING}[1]{\paragraph{Warning:} #1}
+\newcommand{\NOTE}[1]{\textcolor{red}{\bf Note}: #1}
+\newcommand{\COMMENT}[1]{}
+
+\def\thesubsubsection{\thesubsection.\alph{subsubsection}} 
+
+\begin{document}   
+
+\title{IRST Language Modeling Toolkit \\USER MANUAL}
+			         
+\author{M. Federico, N. Bertoldi, M. Cettolo\\FBK-irst, Trento, Italy}			       
+\date{\today}
+ 
+\maketitle
+\centerline{Version \versionnumber}
+%% INTRODUCTION %%%%
+
+\vspace*{3cm}
+\noindent
+The official website of {\IRSTLM} is
+
+\bigskip
+
+{\bf http://hlt.fbk.eu/en/irstlm}
+
+\bigskip
+\noindent It contains this manual, source code, examples and regression tests.
+
+\vspace*{1cm}
+\noindent
+{\IRSTLM} is distributed under the GNU General Public License version 3 (GPLv3).\footnote{\tt http://www.gnu.org/licenses/gpl-3.0.html}
+
+\vspace*{1cm}
+\noindent
+Users of {\IRSTLM}  might cite in their publications:
+\begin{quote}
+M. Federico,  N. Bertoldi,  M. Cettolo, {\em IRSTLM: an Open Source Toolkit for Handling Large Scale Language Models}, Proceedings of Interspeech, Brisbane, Australia, pp. 1618-1621, 2008.
+\end{quote}
+
+
+
+\newpage
+\setcounter{tocdepth}{2}  
+\tableofcontents
+
+
+%%%% INTRODUCTION %%%%%%%%%
+\newpage
+\section{Introduction}
+\label{sec:introduction}
+\input{introduction}
+
+
+%%%% INSTALLATION %%%%%%%%%
+\newpage
+\section{Installation}
+\label{sec:installation}
+\input{installation}
+
+%%%% GETTING STARTED %%%%%%%%%
+\newpage
+\section{Getting started}
+\label{sec:gettingStarted}
+\input{gettingStarted}
+
+%%%% LM FORMATS %%%%%%%%%%%
+\newpage
+\section{LM File Formats}
+\label{sec:LMFileFormats}
+\input{LMFileFormats}
+
+%%%% LM TYPES %%%%%%%%%
+\newpage
+\section{LM Types}
+\label{sec:LMTypes}
+
+%%%% LM SMOOTHING %%%%%%%%%
+\subsection{LM smoothing}
+\label{sec:LMSmoothing}
+\input{LMSmoothing}
+
+%%%% MIXTURE LM %%%%%%%%%
+\subsection{Mixture LM}
+\label{sec:mixtureLM}
+\input{mixtureLM}
+
+%%%% INTERPOLATED LM %%%%%%%%%
+\subsection{Interpolated LM}
+\label{sec:InterpolatedLM}
+\input{interpolatedLM}
+
+%%%% CHUNK LM %%%%%%%%%
+\newpage
+\subsection{Class and Chunk LMs}
+\label{sec:ClassAndChunkLMs}
+\input{ClassAndChunkLMs}
+
+%%%% IRSTLM COMMANDS %%%%%%%%%
+\newpage
+\section{IRSTLM commands}
+\label{sec:commands}
+
+\subsection{dict}
+\label{sec:dict}
+\input{dict}
+
+\subsection{ngt}
+\label{sec:ngt}
+\input{ngt}
+
+\subsection{tlm}
+\label{sec:tlm}
+\input{tlm}
+
+\subsection{compile-lm}
+\label{sec:compileLM}
+\input{compileLM}
+
+\subsection{interpolate-lm}
+\label{sec:interpolateLM}
+\input{interpolateLM}
+
+\subsection{prune-lm}
+\label{sec:pruneLM}
+\input{pruneLM}
+
+\subsection{quantize-lm}
+\label{sec:quantizeLM}
+\input{quantizeLM}
+
+
+%% LM ADAPTATION %%%%
+\section{IRSTLM functions}
+\label{sec:functions}
+
+\subsection{LM Adaptation}
+\label{sec:LMAdaptation}
+\input{LMAdaptation}
+
+
+%% ESTIMATING GIGANTIC LMs %%%%
+\subsection{Estimating Gigantic LMs}
+\label{sec:giganticLM}
+\input{giganticLM}
+
+
+%%%% LM PRUNING %%%%%
+\newpage
+\subsection{LM Pruning}
+\label{sec:LMPruning}
+\input{LMPruning}
+
+%%%% LM QUANTIZATION %%%%%
+\newpage
+\subsection{LM Quantization}
+\label{sec:LMQuantization}
+\input{LMQuantization}
+
+%%%% LM COMPILATION %%%%%
+\newpage
+\subsection{LM Compilation}
+\label{sec:LMCompilation}
+\input{LMCompilation}
+
+%%%% LM INTERPOLATION %%%%%%%%%
+\newpage
+\subsection{LM Interpolation}
+\label{sec:LMInterpolation}
+\input{LMInterpolation}
+
+\newpage
+\subsection{Filtering a LM}
+\label{sec:LMFiltering}
+\input{LMFiltering}
+
+%%%% PARALLEL COMPUTATION %%%%%%%%%
+\newpage
+\section{Parallel Computation}
+\label{sec:ParallelComputation}
+\input{parallelComputation}
+
+%%%% LM INTERFACE %%%%%%%%%
+\newpage
+\section{IRSTLM Interface}
+\label{sec:LMInterface}
+\input{LMInterface}
+
+%%%% REGRESSION TESTS %%%%%%%%%
+\newpage
+\section{Regression Tests}
+\label{sec:regressionTests}
+\input{regressionTests}
+
+%%%% APPENDIX %%%%%%%%%
+\appendix
+
+
+\newpage
+\section{Reference Material}
+\label{sec:ReferenceMaterial}
+\input{referenceMaterial}
+
+\newpage
+\section{Release Notes}
+\label{sec:releaseNotes}
+\input{releaseNotes}
+
+
+\end{document}

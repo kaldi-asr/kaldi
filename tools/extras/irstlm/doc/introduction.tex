@@ -1,0 +1,35 @@
+This manual illustrates the functionalities of  the IRST Language  Modeling (LM)  toolkit ({\IRSTLM}). It  should  
+put you quickly  in  the condition of:
+\begin{itemize}
+\item extracting the dictionary from a corpus
+\item extracting n-gram statistics from it
+\item estimating n-gram LMs using different smoothing criteria
+\item saving a LM into several textual and binary file
+\item adapting a LM on task-specific data
+\item estimating and handling gigantic LMs
+\item pruning a LM
+\item reducing LM size through quantization
+\item querying a LM through a command or script
+\end{itemize}
+
+\noindent
+{\IRSTLM} features very efficient algorithms and data structures suitable to estimate, store, and access very  large LMs. 
+
+\noindent
+{\IRSTLM} provides adaptation methods to effectively adapt generic LM to specific task when only little task-related data are available. 
+
+\noindent
+{\IRSTLM} provides standalone programs for all its functionalities, as well as library for its exploitation in other softwares, like for instance speech recognizers, machine translation decoders, and POS taggers.
+
+\noindent
+{\IRSTLM} has been integrated into a popular open source SMT decoder  called {\tt Moses}\footnote{http://www.statmt.org/moses/}, and is compatible with LMs created with other tools, such as the SRILM Tooolkit\footnote{http://www.speech.sri.com/projects/srilm}.
+
+
+\paragraph{Acknowledgments.}Users of this toolkit  might cite in their publications:
+\begin{quote}
+M. Federico,  N. Bertoldi,  M. Cettolo, {\em IRSTLM: an Open Source Toolkit for Handling Large Scale Language Models}, Proceedings of Interspeech, Brisbane, Australia, pp. 1618-1621, 2008.
+\end{quote}
+
+\noindent
+References to introductory material on $n$-gram LMs are given in Appendix~\ref{sec:ReferenceMaterial}. 
+

@@ -1,0 +1,1309 @@
+%% This is file `mdframed.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% mdframed.dtx  (with options: `package')
+%% ----------------------------------------------------------------
+%% Working with the command fbox or fcolorbox, one has to
+%% handle page breaks by hand. The present package defines the
+%% environment mdframed which automatically deals with page breaks.
+%% 
+%% Author's name: Marco Daniel and Elke Schubert (!new)
+%% License type: lppl
+%% 
+%% ==================================================
+%% ========Is based on the idea of framed.sty========
+%% ==================================================
+%% ===== Currently the package has a beta-Status ====
+%% ==================================================
+%%  WITH THANKS TO (alphabetically):
+%%  ROLF NIEPRASCHK
+%%  HEIKO OBERDIEK
+%%  HERBERT VOSS
+%% 
+%%  Copyright (c) 2010 Marco Daniel
+%% 
+%%  This package may be distributed under the terms of the LaTeX Project
+%%  Public License, as described in lppl.txt in the base LaTeX distribution.
+%%  Either version 1.0 or, at your option, any later version.
+%% 
+%% 
+%% =================================================
+%%  Erstellung eines Rahmens, der am Seitenende keine
+%%  horizontale Linie einfuegt
+%% &gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;
+%%       _______________
+%%       |    page 1   |
+%%       |    Text     |
+%%       |  __Text__   |
+%%       |  | Text |   |
+%%      P A G E B R E A K
+%%       |  | Text |   |
+%%       |  |_Text_|   |
+%%       |    Text     |
+%%       |____page 2___|
+%% 
+%% &gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;
+%% ==================================================
+%% 
+\def\mdversion{v1.6b}
+\def\mdframedpackagename{mdframed}
+\def\mdf@maindate@svn$#1: #2 #3 #4-#5-#6 #7 #8${#4/#5/#6\space }
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{mdframed}%
+     [\mdf@maindate@svn$Id: mdframed.dtx 426 2012-06-02 12:18:56Z marco $%
+      \mdversion: \mdframedpackagename]
+\newcommand*\mdf@PackageError[1]{\PackageError{\mdframedpackagename}{#1}}
+\newcommand*\mdf@PackageWarning[1]{\PackageWarning{\mdframedpackagename}{#1}}
+\newcommand*\mdf@PackageInfo[1]{\PackageInfo{\mdframedpackagename}{#1}}
+\newcommand*\mdf@LoadFile@IfExist[1]{%
+ \IfFileExists{#1.sty}{%
+          \RequirePackage{#1}%
+        }{%
+        \mdf@PackageWarning{The file #1 does not exist\MessageBreak
+                           but needed by \mdframedpackagename\MessageBreak
+                           see documentation fo further information
+                           }%
+       }
+}
+\RequirePackage{kvoptions}
+\RequirePackage{xparse}
+\RequirePackage{etoolbox}[2011/01/03]
+\RequirePackage{zref-abspage}
+\RequirePackage{color}
+\SetupKeyvalOptions{family=mdf,prefix=mdf@}
+
+\newlength{\mdf@templength}
+\def\mdf@iflength#1{%
+  \afterassignment\mdf@iflength@check%
+  \mdf@templength=#1\mdf@defaultunit\relax\relax
+  \expandafter\endgroup\next
+}
+\def\mdf@iflength@check#1{%
+  \begingroup
+  \ifx\relax#1\@empty
+    \def\next{\@secondoftwo}
+  \else
+    \def\next{\@firstoftwo}
+    \expandafter\mdf@iflength@cleanup
+  \fi
+}
+\def\mdf@iflength@cleanup#1\relax{}
+\DeclareListParser*{\mdf@dolist}{,}
+\newrobustcmd*{\mdf@option@length}[2]{%
+ \expandafter\newlength\csname mdf@#1@length\endcsname%
+ \expandafter\setlength\csname mdf@#1@length\endcsname{#2}%
+ }
+\newrobustcmd*{\mdf@define@key@length}[1]{%
+   \define@key{mdf}{#1}{%
+      \def\@tempa{##1}
+      \mdf@iflength{\@tempa}%
+       {\csxdef{mdfl@#1}{\the\mdf@templength}}%
+       {\csxdef{mdfl@#1}{\the\mdf@templength}}%
+       \setlength{\csname mdf@#1@length\endcsname}{\csname mdfl@#1\endcsname}%
+   }%
+}
+\def\mdf@do@lengthoption#1{%
+  \mdf@lengthoption@doubledo#1\@nil%
+}
+\def\mdf@lengthoption@doubledo#1==#2\@nil{%
+   \mdf@option@length{#1}{#2}%
+   \mdf@define@key@length{#1}%
+}
+\def\mdf@do@stringoption#1{%
+   \mdf@stringoption@doubledo#1\@nil%
+}
+\def\mdf@stringoption@doubledo#1==#2\@nil{%
+   \expandafter\gdef\csname mdf@#1\endcsname{#2}%
+   \define@key{mdf}{#1}{%
+      \csdef{mdf@#1}{##1}%
+   }%
+}
+\def\mdf@do@booloption#1{%
+   \mdf@booloption@doubledo#1\@nil%
+}
+\def\mdf@booloption@doubledo#1==#2\@nil{%
+   \newbool{mdf@#1}\setbool{mdf@#1}{#2}%
+   \define@key{mdf}{#1}[#2]{%
+      \setbool{mdf@#1}{##1}%
+   }%
+}
+\def\mdf@do@alignoption#1{%
+   \mdf@alignoption@tripledo#1\@nil%
+}
+\def\mdf@alignoption@tripledo#1==#2==#3\@nil{%
+   \csdef{mdf@align@#1@left}{\null\hspace*{#2}}%
+   \csdef{mdf@align@#1@right}{\hspace*{#3}\null}%
+}
+\newcounter{mdf@globalstyle@cnt}
+\defcounter{mdf@globalstyle@cnt}{0}
+\newcommand*\mdfglobal@style{0}
+\define@key{mdf}{style}{%
+  \mdf@PackageWarning{package option style is depreciated^^J
+                      use framemethod instead\MessageBreak}%
+  \renewcommand*\mdfglobal@style{#1}%
+  \defcounter{mdf@globalstyle@cnt}{#1}%
+  \ifcase\value{mdf@globalstyle@cnt}\relax
+     \or\mdf@LoadFile@IfExist{tikz}%=1
+     \or\mdf@LoadFile@IfExist{pstricks-add}%=2
+     \or\defcounter{mdf@globalstyle@cnt}{2}%=3
+        \mdf@LoadFile@IfExist{pst-node}%
+     \or\mdf@LoadFile@IfExist{pst-node}%=4
+  \else%%&gt;4
+     \mdf@PackageWarning{Unknown global style \value{mdf@globalstyle@cnt}}%
+  \fi%
+}
+\providecommand*\mdf@framemethod{}
+\def\mdf@framemethod@i{}%
+\def\mdf@framemethod@ii{}%
+\def\mdf@framemethod@iii{}%
+\define@key{mdf}{framemethod}[default]{%
+  \lowercase{\def\mdf@tempa{#1}}%lowercase not expandable
+  \forcsvlist{\listadd\mdf@framemethod@i}{default,tex,latex,none,0}
+  \forcsvlist{\listadd\mdf@framemethod@ii}{pgf,tikz,1}
+  \forcsvlist{\listadd\mdf@framemethod@iii}{pstricks,ps,2,postscript}
+  \xifinlist{\mdf@tempa}{\mdf@framemethod@i}%
+    {\def\mdf@@framemethod{default}\defcounter{mdf@globalstyle@cnt}{0}}%
+    {\xifinlist{\mdf@tempa}{\mdf@framemethod@ii}%
+       {\def\mdf@@framemethod{tikz}\defcounter{mdf@globalstyle@cnt}{1}}%
+       {\xifinlist{\mdf@tempa}{\mdf@framemethod@iii}%
+          {\def\mdf@@framemethod{pstricks}\defcounter{mdf@globalstyle@cnt}{2}}%
+          {\mdf@LoadFile@IfExist{#1}}%
+       }%
+    }%
+  \ifcase\value{mdf@globalstyle@cnt}\relax%
+     \or\mdf@LoadFile@IfExist{tikz}%=1
+     \or\mdf@LoadFile@IfExist{pst-node}%=2
+     \or\mdf@LoadFile@IfExist{pst-node}%=3
+  \fi%
+}
+\mdf@dolist{\mdf@do@lengthoption}{%
+   {skipabove==\z@},%
+   {skipbelow==\z@},%
+   {leftmargin==\z@},%
+   {rightmargin==\z@},%
+   {innerleftmargin==10pt},%
+   {innerrightmargin==10pt},%
+   {innertopmargin==0.4\baselineskip},%
+   {innerbottommargin==0.4\baselineskip},%
+   {splittopskip==\z@},%
+   {splitbottomskip==\z@},%
+   {outermargin==\z@},%
+   {innermargin==\z@},%
+   {linewidth==0.4pt},%
+   {innerlinewidth==\z@},%
+   {middlelinewidth==\expandafter\mdf@linewidth@length},%
+   {outerlinewidth==\z@},%
+   {roundcorner==\z@},%
+   {footenotedistance==\medskipamount},
+   {userdefinedwidth==\linewidth},
+   {frametitleaboveskip==5pt},
+   {frametitlebelowskip==5pt},
+   {frametitlerulewidth==.2pt},
+   {frametitleleftmargin==10pt},%
+   {frametitlerightmargin==10pt},%
+   {shadowsize==8pt},%
+   {extratopheight==\z@},%
+   {subtitleabovelinewidth==.8pt},%
+   {subtitlebelowlinewidth==.6pt},%
+   {subtitleaboveskip==\baselineskip},%
+   {subtitlebelowskip==1.2\baselineskip},%
+   {subtitleinneraboveskip==.5\baselineskip},%
+   {subtitleinnerbelowskip==.5\baselineskip},%
+   {subsubtitleabovelinewidth==.8pt},%
+   {subsubtitlebelowlinewidth==.6pt},%
+   {subsubtitleaboveskip==\baselineskip},%
+   {subsubtitlebelowskip==1.2\baselineskip},%
+   {subsubtitleinneraboveskip==.5\baselineskip},%
+   {subsubtitleinnerbelowskip==.5\baselineskip},%
+}
+\mdf@dolist{\mdf@do@stringoption}{%
+    {frametitle=={}},%
+    {defaultunit==pt},%
+    {linecolor==black},%
+    {backgroundcolor==white},%
+    {fontcolor==black},%
+    {frametitlefontcolor==black},%
+    {innerlinecolor==\mdf@linecolor},%
+    {outerlinecolor==\mdf@linecolor},%
+    {middlelinecolor==\mdf@linecolor},%
+    {psroundlinecolor==\mdf@backgroundcolor},%
+    {frametitlerulecolor==\mdf@linecolor},
+    {frametitlebackgroundcolor==\mdf@backgroundcolor},%
+    {shadowcolor==black!50},%
+    {settings=={}},%
+    {frametitlesettings=={}},%
+    {font=={}},%
+    {frametitlefont==\normalfont\bfseries},%
+    {printheight==none},%
+    {alignment=={}},%
+    {frametitlealignment=={}},%
+    {theoremseparator=={:}},%
+    {theoremcountersep=={.}},%
+    {theoremtitlefont=={}},%
+    {theoremspace=={\space}},%
+    {singleextra=={}},
+    {firstextra=={}},
+    {middleextra=={}},
+    {secondextra=={}},
+    {subtitlefont==\normalfont\bfseries},%
+    {subsubtitlefont==\normalfont},%
+    {subtitlebackgroundcolor==white},%
+    {subsubtitlebackgroundcolor==white},%
+    {subtitleabovelinecolor==black},%
+    {subtitlebelowlinecolor==black},%
+    {subsubtitleabovelinecolor==black},%
+    {subsubtitlebelowlinecolor==black},%
+}
+\mdf@dolist{\mdf@do@booloption}{%
+    {ntheorem==false},%
+    {topline==true},%
+    {leftline==true},%
+    {bottomline==true},%
+    {rightline==true},%
+    {frametitletopline==true},%
+    {frametitleleftline==true},%
+    {frametitlebottomline==true},%
+    {frametitlerightline==true},%
+    {frametitlerule==false},%
+    {nobreak==false},%
+    {footnoteinside==true},%
+    {usetwoside==true},%
+    {repeatframetitle==false},%Noch nicht richtig implementiert
+    {shadow==false},%
+    {everyline==false},%
+    {ignorelastdescenders==false},%
+    {subtitleaboveline==false},
+    {subtitlebelowline==false},
+    {subsubtitleaboveline==false},
+    {subsubtitlebelowline==false},
+}
+%%special boolflag hidealllines:
+\newbool{mdf@hidealllines}%
+\define@key{mdf}{hidealllines}[false]{%
+\setbool{mdf@hidealllines}{#1}%
+ \ifbool{mdf@hidealllines}{%
+   \kvsetkeys{mdf}{leftline=false,topline=false,%
+                   rightline=false,bottomline=false}%
+ }{}%
+}
+\mdf@dolist{\mdf@do@alignoption}{%
+    {left==\mdf@leftmargin@length==\z@},%
+    {center==\fill==\fill},%
+    {right==\fill==\mdf@rightmargin@length},%
+    {outer==\fill==\mdf@rightmargin@length},%not supported yet
+    {outer==\mdf@leftmargin@length==\fill},%not supported yet
+}
+\newcommand*\mdf@align{}%
+\newcommand*\mdf@makeboxalign@left{\null\hspace*{\mdf@leftmargin@length}}%
+\newcommand*\mdf@makeboxalign@right{}%
+\define@key{mdf}{align}[left]{%
+   \ifcsundef{mdf@align@#1@left}{%
+       \mdf@PackageWarning{Unknown alignment #1\MessageBreak}%
+       \letcs\mdf@makeboxalign@left{mdf@align@left@left}%
+       \letcs\mdf@makeboxalign@right{mdf@align@left@right}%
+   }{%
+       \def\mdf@makeboxalign@left{\csuse{mdf@align@#1@left}}%
+       \def\mdf@makeboxalign@right{\csuse{mdf@align@#1@right}}%
+   }%
+}
+\def\mdf@tikzset@local{\tikzset{tikzsetting/.style={}}}
+\define@key{mdf}{tikzsetting}{%
+  \def\mdf@tikzset@local{\tikzset{tikzsetting/.style={#1}}}%
+}
+\define@key{mdf}{apptotikzsetting}{%
+  \appto\mdf@tikzset@local{#1}%
+}
+\def\mdf@psset@local{}
+\define@key{mdf}{pstrickssetting}{%
+  \def\mdf@psset@local{#1}
+}
+\def\mdfpstricks@appendsettings{}
+\define@key{mdf}{pstricksappsetting}{%
+  \def\mdfpstricks@appendsettings{#1}%
+}
+\def\mdf@xcolor{}
+\define@key{mdf}{xcolor}[]{%
+  \def\@tempa{#1}%
+  \@ifpackageloaded{xcolor}{%
+     \let\mdf@xcolor\@empty %ignoriere die Eingabe der Optionen
+     \def\@tempa{}%
+     }{}%
+  \ifx\relax\@tempa\relax\else
+     \PassOptionsToPackage{\mdf@xcolor}{xcolor}%
+      \RequirePackage{xcolor}%
+  \fi%
+}%
+\define@key{mdf}{needspace}[\z@]{%
+     \begingroup%
+        \setlength{\dimen@}{#1}%
+        \vskip\z@\@plus\dimen@%
+        \penalty -100\vskip\z@\@plus -\dimen@%
+        \vskip\dimen@%
+        \penalty 9999%
+        \vskip -\dimen@%
+        \vskip\z@skip % hide the previous |\vskip| from |\addvspace|
+      \endgroup%
+}
+\DeclareDefaultOption{%
+   \mdf@PackageError{Unknown Option '\CurrentOption' for mdframed}}
+\ProcessKeyvalOptions*\relax
+\newrobustcmd*{\mdfsetup}{\kvsetkeys{mdf}}
+\define@key{mdf}{style}{%
+  \ifcsundef{mdf@definestyle@#1}{%
+    \mdf@PackageWarning{Unknown definedstyle #1^^J
+                       You have to define a style ^^J
+                       via \string\mdfdefinedstyle\MessageBreak
+                      }%
+   }%
+   {\expandafter\expandafter\expandafter\mdfsetup\expandafter%
+    \expandafter\expandafter{\csname mdf@definestyle@#1\endcsname}}%
+}%
+\let\mdf@PackageNoInfo\@gobble
+\newrobustcmd*\mdf@ifstrequal@expand{%
+\expandafter\ifstrequal\expandafter{\mdf@printheight}%
+}
+\newrobustcmd*\mdf@print@space{%
+  %case "none"
+  \mdf@ifstrequal@expand{none}{\def\mdf@tempa{NoInfo}}{%
+      %case "info"
+      \mdf@ifstrequal@expand{info}{\def\mdf@tempa{Info}}{%
+         %case "warning"
+         \mdf@ifstrequal@expand{warning}{\def\mdf@tempa{Warning}}{%
+            %case "unknown"
+            \mdf@PackageWarning{Unknown key for printheight=\mdf@printheight^^J
+                               use none, info or warning}%
+             \def\mdf@tempa{none}%
+         }%
+      }%
+  }%
+\def\mdf@PackageInfoSpace{\csname mdf@Package\mdf@tempa\endcsname}%
+}
+\newsavebox\mdf@frametitlebox
+\newsavebox\mdf@footnotebox
+\newsavebox\mdf@splitbox@one
+\newsavebox\mdf@splitbox@two
+\newsavebox\mdf@splitbox@save
+\newlength\mdfsplitboxwidth
+\newlength\mdfsplitboxtotalwidth
+\newlength\mdfsplitboxheight
+\newlength\mdfsplitboxdepth
+\newlength\mdfsplitboxtotalheight
+\newlength\mdfframetitleboxwidth
+\newlength\mdfframetitleboxtotalwidth
+\newlength\mdfframetitleboxheight
+\newlength\mdfframetitleboxdepth
+\newlength\mdfframetitleboxtotalheight
+\newlength\mdffootnoteboxwidth
+\newlength\mdffootnoteboxtotalwidth
+\newlength\mdffootnoteboxheight
+\newlength\mdffootnoteboxdepth
+\newlength\mdffootnoteboxtotalheight
+
+\newlength\mdftotallinewidth
+
+\newlength\mdfboundingboxwidth
+\newlength\mdfboundingboxtotalwidth
+
+\newlength\mdfboundingboxheight
+\newlength\mdfboundingboxdepth
+\newlength\mdfboundingboxtotalheight
+
+\newlength\mdf@freevspace@length
+\newlength\mdf@horizontalwidthofbox@length
+\newlength\mdf@verticalmarginwhole@length
+
+\newtoggle{mdf@notfirstframetitle}%
+\togglefalse{mdf@notfirstframetitle}%
+
+\newrobustcmd\mdfcreateextratikz{}
+
+\def\mdf@lrbox#1{%
+%%patch to work with amsthm
+  \mdf@patchamsthm
+%%%end patch
+ \edef\mdf@restoreparams{%
+   \parindent=\the\parindent\relax \parskip=\the\parskip\relax}%
+ \setbox#1\vbox\bgroup%
+   \color@begingroup%
+     \mdf@horizontalmargin@equation%
+     \columnwidth=\hsize%
+     \textwidth=\hsize%
+     \let\if@nobreak\iffalse%
+     \let\if@noskipsec\iffalse%
+     \let\par\@@par%
+     \let\-\@dischyph%
+     \let\'\@acci\let\`\@accii\let\=\@acciii%
+     \parindent\z@ \parskip\z@skip%
+     \linewidth\hsize%
+     \@totalleftmargin\z@%
+     \leftskip\z@skip \rightskip\z@skip \@rightskip\z@skip%
+     \parfillskip\@flushglue \lineskip\normallineskip%
+     \baselineskip\normalbaselineskip%
+%%  \sloppy%
+     \let\\\@normalcr%
+     \mdf@restoreparams\relax%
+     \@afterindentfalse%
+     \@afterheading%
+}
+
+\def\endmdf@lrbox{\color@endgroup\egroup}
+
+\newrobustcmd*\mdf@ignorevbadness{%
+   \edef\mdf@currentvbadness{\the\vbadness}%
+   \vbadness=\@M%
+   \afterassignment\mdf@restorevbadness}
+\newrobustcmd*\mdf@restorevbadness{\vbadness=\mdf@currentvbadness\relax}
+\@ifpackageloaded{amsthm}%
+{%
+ \newrobustcmd\mdf@patchamsthm{%
+   \let\mdf@deferred@thm@head\deferred@thm@head
+   \patchcmd{\deferred@thm@head}{\indent}{}%
+      {\mdf@PackageInfo{mdframed detected package amsthm ^^J
+                        changed the theoerem header of amsthm\MessageBreak}%
+      }{%
+       \mdf@PackageError{mdframed detected package amsthm ^^J
+                         changed the theoerem header of amsthm
+                         failed\MessageBreak}%
+       }%
+     }%
+}{\let\mdf@patchamsthm\relax}%
+\def\mdf@trivlist#1{%
+  \setlength{\topsep}{#1}%
+  \partopsep\z@%
+  \parsep\z@%
+  \@nmbrlistfalse%
+  \@trivlist%
+  \labelwidth\z@%
+  \leftmargin\z@%
+  \itemindent\z@%
+  \let\@itemlabel\@empty%
+  \def\makelabel##1{##1}%
+%%  \item\leavevmode\hrule \@height\z@ \@width\linewidth\relax%
+%%  \item\mbox{}\relax% second version
+  \item\relax% first Version
+}
+\let\endmdf@trivlist\endtrivlist
+\patchcmd\endmdf@trivlist\@endparenv\mdf@endparenv{%
+  \immediate\typeout{^^J****** mdframed patching \string\endmdf@trivlist}%
+  \immediate\typeout{^^J****** -- success******^^J}%
+  }{%
+  \immediate\typeout{^^J****** mdframed patching \string\endmdf@trivlist}%
+  \immediate\typeout{^^J****** -- failed******^^J}%
+}
+\def\mdf@endparenv{%
+  \addpenalty\@endparpenalty\addvspace\mdf@skipbelow@length\@endpetrue}
+
+\newrobustcmd*\mdf@makebox@out[2][\linewidth]{%
+ \noindent\hb@xt@\z@{%
+    \noindent\makebox[\dimexpr #1\relax][l]{#2}%
+ \hss}%
+}%
+\newrobustcmd*\mdf@makebox@in[2][\mdf@userdefinedwidth@length]{%
+ \noindent\makebox[\dimexpr #1\relax][l]{#2}%
+}
+\newrobustcmd*\mdfdefinestyle[2]{%
+  \csdef{mdf@definestyle@#1}{#2}%
+}
+\newrobustcmd*\mdfapptodefinestyle[2]{%
+ \ifcsundef{mdf@definestyle@#1}%
+   {\mdf@PackageWarning{Unknown style #1}}%
+   {\csappto{mdf@definestyle@#1}{,#2}}%
+}
+\newrobustcmd*{\mdflength}[1]{\csuse{mdf@#1@length}}
+
+\newrobustcmd*{\surroundwithmdframed}[2][]{%
+  \BeforeBeginEnvironment{#2}{\begin{mdframed}[#1]}%
+  \AfterEndEnvironment{#2}{\end{mdframed}}%
+}
+\newrobustcmd*\newmdenv[2][]{%
+  \newenvironment{#2}{%
+     \mdfsetup{#1}%
+     \begin{mdframed}%
+    }{%
+     \end{mdframed}%
+  }%
+}
+\newrobustcmd*\renewmdenv[2][]{%
+  \expandafter\let\csname #2\endcsname\relax%
+  \expandafter\let\csname end#2\endcsname\relax%
+  \newmdenv[#1]{#2}%
+  }%
+\DeclareDocumentCommand\newmdtheoremenv{O{} m o m o }{%
+ \ifboolexpr{ test {\IfNoValueTF {#3}} and test {\IfNoValueTF {#5}} }%
+    {\newtheorem{#2}{#4}}{%
+     \IfValueTF{#3}{\newtheorem{#2}[#3]{#4}}{}%
+     \IfValueTF{#5}{\newtheorem{#2}{#4}[#5]}{}%
+    }%
+  \BeforeBeginEnvironment{#2}{%
+     \begin{mdframed}[#1]}%
+  \AfterEndEnvironment{#2}{%
+     \end{mdframed}}%
+}
+\newrobustcmd*\mdf@thm@caption[2]{}
+\AtBeginDocument{%
+ \@ifpackageloaded{ntheorem}%
+   {\renewrobustcmd*\mdf@thm@caption{\thm@thmcaption}}{}%
+ }
+\DeclareDocumentCommand{\mdtheorem}{ O{} m o m o }%
+ {\ifcsdef{#2}%
+   {\mdf@PackageWarning{Environment #2 already exits\MessageBreak}}%
+   {%
+    \IfNoValueTF {#3}%
+     {%#3 not given -- number relationship
+      \IfNoValueTF {#5}%
+        {%#3+#5 not given
+        \@definecounter{#2}%
+        \expandafter\xdef\csname the#2\endcsname{\@thmcounter{#2}}%
+        \newenvironment{#2}[1][]{%
+          \refstepcounter{#2}%
+          \ifstrempty{##1}%
+            {\let\@temptitle\relax}%
+            {%
+             \def\@temptitle{\mdf@theoremseparator%
+                             \mdf@theoremspace%
+                             \mdf@theoremtitlefont%
+                             ##1}%
+             \mdf@thm@caption{#2}{{#4}{\csname the#2\endcsname}{##1}}%
+             }%
+          \begin{mdframed}[#1,frametitle={\strut#4\ \csname the#2\endcsname%
+                                          \@temptitle}]}%
+          {\end{mdframed}}%
+        \newenvironment{#2*}[1][]{%
+          \ifstrempty{##1}{\let\@temptitle\relax}{\def\@temptitle{:\ ##1}}%
+          \begin{mdframed}[#1,frametitle={\strut#4\@temptitle}]}%
+          {\end{mdframed}}%
+        }%
+        {%#5 given -- reset counter
+        \@definecounter{#2}\@newctr{#2}[#5]%
+        \expandafter\xdef\csname the#2\endcsname{\@thmcounter{#2}}%
+        \expandafter\xdef\csname the#2\endcsname{%
+               \expandafter\noexpand\csname the#5\endcsname \@thmcountersep%
+                  \@thmcounter{#2}}%
+        \newenvironment{#2}[1][]{%
+          \refstepcounter{#2}%
+          \ifstrempty{##1}%
+            {\let\@temptitle\relax}%
+            {%
+             \def\@temptitle{\mdf@theoremseparator%
+                             \mdf@theoremspace%
+                             \mdf@theoremtitlefont%
+                             ##1}%
+             \mdf@thm@caption{#2}{{#4}{\csname the#2\endcsname}{##1}}%
+             }
+          \begin{mdframed}[#1,frametitle={\strut#4\ \csname the#2\endcsname%
+                                          \@temptitle}]}%
+          {\end{mdframed}}%
+        \newenvironment{#2*}[1][]{%
+          \ifstrempty{##1}%
+            {\let\@temptitle\relax}%
+            {%
+             \def\@temptitle{\mdf@theoremseparator%
+                             \mdf@theoremspace%
+                             \mdf@theoremtitlefont%
+                             ##1}%
+             \mdf@thm@caption{#2}{{#4}{\csname the#2\endcsname}{##1}}%
+             }%
+          \begin{mdframed}[#1,frametitle={\strut#4\@temptitle}]}%
+          {\end{mdframed}}%
+        }%
+     }%
+     {%#3 given -- number relationship
+        \global\@namedef{the#2}{\@nameuse{the#3}}%
+        \newenvironment{#2}[1][]{%
+          \refstepcounter{#3}%
+          \ifstrempty{##1}%
+            {\let\@temptitle\relax}%
+            {%
+             \def\@temptitle{\mdf@theoremseparator%
+                             \mdf@theoremspace%
+                             \mdf@theoremtitlefont%
+                             ##1}%
+             \mdf@thm@caption{#2}{{#4}{\csname the#2\endcsname}{##1}}%
+             }
+          \begin{mdframed}[#1,frametitle={\strut#4\ \csname the#2\endcsname%
+                                          \@temptitle}]}%
+          {\end{mdframed}}%
+        \newenvironment{#2*}[1][]{%
+          \ifstrempty{##1}{\let\@temptitle\relax}{\def\@temptitle{:\ ##1}}%
+          \begin{mdframed}[#1,frametitle={\strut#4\@temptitle}]}%
+          {\end{mdframed}}%
+     }%
+   }%
+ }
+
+\newrobustcmd\mdfframedtitleenv[1]{%
+    \mdf@lrbox{\mdf@frametitlebox}%
+     \mdf@frametitlealignment%
+       \leavevmode\color{\mdf@frametitlefontcolor}%
+           \normalfont\mdf@frametitlefont{#1}
+       \ifbool{mdf@ignorelastdescenders}%
+         {%
+          \par\strut\par
+          \unskip\unskip\setbox0=\lastbox
+          \vspace*{\dimexpr\ht\strutbox-\baselineskip\relax}%
+         }{}%
+    \par\unskip\ifvmode\nointerlineskip\hrule \@height\z@ \@width\hsize\fi%%
+    \endmdf@lrbox\relax%
+   \mdf@ignorevbadness%
+   \setbox\mdf@frametitlebox=\vbox{\unvbox\mdf@frametitlebox}%
+   \mdfframetitleboxwidth=\wd\mdf@frametitlebox\relax%
+   \mdfframetitleboxheight=\ht\mdf@frametitlebox\relax%
+   \mdfframetitleboxdepth=\dp\mdf@frametitlebox\relax%
+   \mdfframetitleboxtotalheight=\dimexpr
+                                  \ht\mdf@frametitlebox
+                                  +\dp\mdf@frametitlebox%
+                                  +\mdf@frametitleaboveskip@length
+                                  +\mdf@frametitlebelowskip@length
+                                \relax%
+}
+
+\newrobustcmd*\mdf@@frametitle{%
+    \mdfframedtitleenv{\mdf@frametitle}%
+}
+
+\newrobustcmd*\mdf@@frametitle@use{%
+   \parskip\z@\relax%
+   \parindent\z@\relax%
+   \offinterlineskip\relax%
+   \mdf@ignorevbadness%
+   \setbox\mdf@splitbox@one=\vbox{%
+       \unvcopy\mdf@frametitlebox\relax%
+       \mdf@@frametitlerule\relax%
+       \unvbox\mdf@splitbox@one\relax%
+    }%
+   \mdf@ignorevbadness%
+   \setbox\mdf@splitbox@one=\vbox{\unvbox\mdf@splitbox@one}%
+   \mdfsetup{innertopmargin=\mdf@frametitleaboveskip@length}%
+}
+\newrobustcmd*\mdf@checkntheorem{%
+  \ifbool{mdf@ntheorem}%
+    {\ifundef{\theorempreskipamount}%
+          {\mdf@PackageWarning{You have not loaded ntheorem yet}}%
+          {\setlength{\theorempreskipamount}{\z@}%
+           \setlength{\theorempostskipamount}{\z@}%
+    }%
+  }{}%
+}
+\newrobustcmd*\mdf@footnoterule{%
+    \kern0\p@%
+    \hrule \@width 1in \kern 2.6\p@}
+\newrobustcmd*\mdf@footnoteoutput{%
+     \ifvoid\@mpfootins\else%
+          \nobreak%
+          \vskip\mdf@footenotedistance@length%
+          \normalcolor%
+          \mdf@footnoterule%
+          \unvbox\@mpfootins%
+     \fi%
+}
+\newrobustcmd*\mdf@footnoteinput{%
+   \def\@mpfn{mpfootnote}%
+   \def\thempfn{\thempfootnote}%
+   \c@mpfootnote\z@%
+   \let\@footnotetext\@mpfootnotetext%
+}
+\newrobustcmd*\mdf@load@style{%
+\ifcase\value{mdf@globalstyle@cnt}\relax%
+    \input{md-frame-0.mdf}%
+ \or\input{md-frame-1.mdf}%
+ \or\input{md-frame-2.mdf}%
+ \or\input{md-frame-3.mdf}%
+ \else%
+    \IfFileExists{md-frame-\value{mdf@globalstyle@cnt}.mdf}%
+    {\input{md-frame-\value{mdf@globalstyle@cnt}.mdf}}%
+    {%
+     \input{md-frame-0.mdf}%
+     \mdf@PackageWarning{The style number \value{mdf@globalstyle@cnt}
+                         does not exist^^J
+                         mdframed ues instead style=0 \mdframedpackagename}%
+    }%
+\fi%
+}%
+\mdf@load@style
+\newrobustcmd*\mdf@styledefinition{%AVOID!!!Needed for framemethod=default
+    \ifnumequal{\value{mdf@globalstyle@cnt}}{0}%
+    {\deflength{\mdf@innerlinewidth@length}{\z@}%
+     \deflength{\mdf@middlelinewidth@length}{\mdf@linewidth@length}%
+     \deflength{\mdf@outerlinewidth@length}{\z@}%
+     \let\mdf@innerlinecolor\mdf@linecolor%
+     \let\mdf@middlelinecolor\mdf@linecolor%
+     \let\mdf@outerlinecolor\mdf@linecolor%
+    }{}%
+}
+\let\mdf@reserved@a\@empty
+\newrobustcmd*\detected@mdf@put@frame{%
+  \ifmdf@nobreak%Option nobreak=true?
+     \def\mdf@reserved@a{\mdf@put@frame@standalone}%
+  \else
+     \def\mdf@reserved@a{\mdf@put@frame}%
+     \ifx\@captype\@undefined
+         \def\mdf@reserved@a{\mdf@put@frame}%
+     \else
+         \mdf@PackageInfo{mdframed inside float  ^^J
+                          mdframed uses option nobreak \mdframedpackagename}%
+         \def\mdf@reserved@a{\mdf@put@frame@standalone}%
+     \fi
+     \if@minipage%
+           \mdf@PackageInfo{mdframed inside minipage  ^^J
+                           mdframed uses option nobreak \mdframedpackagename}%
+           \def\mdf@reserved@a{\mdf@put@frame@standalone}%
+     \fi%
+     \ifinner%
+          \mdf@PackageInfo{mdframed inside a box ^^J
+                          mdframed uses option nobreak \mdframedpackagename}%
+          \def\mdf@reserved@a{\mdf@put@frame@standalone}%
+     \fi%
+  \fi%
+\mdf@reserved@a%
+}
+\newenvironment{mdframed}[1][]{%
+\color@begingroup%
+   \mdfsetup{userdefinedwidth=\linewidth,#1}%
+   \mdf@twoside@checklength%
+   \let\width\z@%
+   \let\height\z@%
+   \mdf@checkntheorem%
+   \mdf@styledefinition%
+   \mdf@footnoteinput%
+   \color{\mdf@fontcolor}%
+   \mdf@font%
+   \ifvmode\nointerlineskip\fi%
+   \mdf@trivlist{\mdf@skipabove@length}%%
+   \ifdefempty{\mdf@frametitle}{}{\mdf@@frametitle}%
+   \mdf@settings%
+   \mdf@lrbox{\mdf@splitbox@one}%
+  }%
+  {%
+   \ifbool{mdf@ignorelastdescenders}%
+     {%
+      \par\strut\par
+      \unskip\unskip\setbox0=\lastbox
+      \vspace*{\dimexpr\ht\strutbox-\baselineskip\relax}%
+     }{}%
+    \par\unskip\ifvmode\nointerlineskip\hrule \@height\z@ \@width\hsize\fi%%
+    \ifmdf@footnoteinside%
+      \def\mdf@reserveda{%
+        \mdf@footnoteoutput%
+        \endmdf@lrbox%
+        \ifdefempty{\mdf@frametitle}{}{\mdf@@frametitle@use}%
+        \detected@mdf@put@frame}%
+    \else%
+      \def\mdf@reserveda{%
+        \endmdf@lrbox%
+        \ifdefempty{\mdf@frametitle}{}{\mdf@@frametitle@use}%
+        \detected@mdf@put@frame%
+        \mdf@footnoteoutput%
+        }%
+    \fi%
+    \mdf@reserveda%
+    \endmdf@trivlist%
+\color@endgroup\@doendpe%
+}
+
+\newtoggle{md:checktwoside}
+\settoggle{md:checktwoside}{false}
+\newrobustcmd*\mdf@twoside@checklength{%
+ \if@twoside
+   \ifbool{mdf@usetwoside}%
+      {\mdf@PackageInfo{mdframed works in twoside mode}%
+       \settoggle{md:checktwoside}{true}%
+       \setlength\mdf@rightmargin@length{\mdf@outermargin@length}%
+       \setlength\mdf@leftmargin@length{\mdf@innermargin@length}%
+      }%
+      {\mdf@PackageInfo{mdframed inside twoside mode but\MessageBreak
+                       works with oneside mode}%
+       \settoggle{md:checktwoside}{false}%
+      }%
+ \fi%
+}
+
+\newcounter{mdf@zref@counter}%keine doppelten laebes
+\zref@newprop*{mdf@pagevalue}[0]{\number\value{page}}
+\zref@addprop{\ZREF@mainlist}{mdf@pagevalue}
+\newrobustcmd*\mdf@zref@label{%
+   \stepcounter{mdf@zref@counter}
+   \zref@label{mdf@pagelabel-\number\value{mdf@zref@counter}}%
+}
+\newrobustcmd*\if@mdf@pageodd{%
+ \zref@refused{mdf@pagelabel-\the\value{mdf@zref@counter}}%
+ \ifodd\zref@extract{mdf@pagelabel-\the\value{mdf@zref@counter}}%
+                    {mdf@pagevalue}%
+    \setlength\mdf@rightmargin@length{\mdf@outermargin@length}%
+    \setlength\mdf@leftmargin@length{\mdf@innermargin@length}%
+ \else
+    \setlength\mdf@rightmargin@length{\mdf@innermargin@length}%
+    \setlength\mdf@leftmargin@length{\mdf@outermargin@length}%
+ \fi%
+}
+\newrobustcmd*\mdf@@setzref{%
+ \iftoggle{md:checktwoside}{\mdf@zref@label\if@mdf@pageodd}{}%
+}
+\newrobustcmd*\mdf@freepagevspace{%
+     \bgroup\@nobreakfalse\addpenalty\z@\egroup%added 29.5.12
+     \penalty\@M\relax\vskip 2\baselineskip\relax%
+     \penalty9999\relax\vskip -2\baselineskip\relax%
+     \penalty9999%
+     \ifdimequal{\pagegoal}{\maxdimen}%
+          {\mdf@freevspace@length\vsize}%
+          {\mdf@freevspace@length=\pagegoal\relax%
+           \advance\mdf@freevspace@length by -\pagetotal\relax%
+           \addtolength\mdf@freevspace@length{\dimexpr-\parskip\relax}\relax%
+          }%
+}
+\newrobustcmd*\mdf@advancelength@horizontalmargin@sub[1]{%
+  \advance\mdf@horizontalspaceofbox by -\csname mdf@#1@length\endcsname\relax%
+}
+\newlength\mdf@horizontalspaceofbox
+\newrobustcmd*\mdf@horizontalmargin@equation{%
+    \setlength{\mdf@horizontalspaceofbox}{\mdf@userdefinedwidth@length}%
+    \mdf@dolist{\mdf@advancelength@horizontalmargin@sub}{%
+             leftmargin,outerlinewidth,middlelinewidth,%
+             innerlinewidth,innerleftmargin,innerrightmargin,%
+             innerlinewidth,middlelinewidth,outerlinewidth,%
+             rightmargin}%
+    \notbool{mdf@leftline}%
+       {%
+        \advance\mdf@horizontalspaceofbox by \mdf@innerlinewidth@length\relax%
+        \advance\mdf@horizontalspaceofbox by \mdf@middlelinewidth@length\relax%
+        \advance\mdf@horizontalspaceofbox by \mdf@outerlinewidth@length\relax%
+       }{}%
+    \notbool{mdf@rightline}%
+       {%
+        \advance\mdf@horizontalspaceofbox by \mdf@innerlinewidth@length\relax%
+        \advance\mdf@horizontalspaceofbox by \mdf@middlelinewidth@length\relax%
+        \advance\mdf@horizontalspaceofbox by \mdf@outerlinewidth@length\relax%
+       }{}%
+    \ifdimless{\mdf@horizontalspaceofbox}{3cm}%
+      {\mdf@PackageWarning{You have only a width of 3cm}}{}%
+    \hsize=\mdf@horizontalspaceofbox%
+}
+\newrobustcmd*\mdf@keeplines@single{%
+  \notbool{mdf@topline}%
+     {%
+      \advance\mdf@verticalmarginwhole@length %
+               by -\mdf@innerlinewidth@length\relax%
+      \advance\mdf@verticalmarginwhole@length %
+               by -\mdf@middlelinewidth@length\relax%
+      \advance\mdf@verticalmarginwhole@length %
+               by -\mdf@outerlinewidth@length\relax%
+     }{}%
+  \notbool{mdf@bottomline}%
+     {%
+      \advance\mdf@verticalmarginwhole@length %
+               by -\mdf@innerlinewidth@length\relax%
+      \advance\mdf@verticalmarginwhole@length %
+               by -\mdf@middlelinewidth@length\relax%
+      \advance\mdf@verticalmarginwhole@length %
+               by -\mdf@outerlinewidth@length\relax%
+     }{}%
+}
+\newrobustcmd*\mdf@advancelength@verticalmarginwhole[1]{%
+  \advance\mdf@verticalmarginwhole@length %
+           by \csname mdf@#1@length\endcsname\relax%
+}
+\newrobustcmd*\mdf@advancelength@freevspace@sub[1]{%
+  \advance\dimen@ by -\csname mdf@#1@length\endcsname\relax%
+}
+\newrobustcmd*\mdf@advancelength@freevspace@add[1]{%
+  \advance\dimen@ by \csname mdf@#1@length\endcsname\relax%
+}
+\protected@edef\mdf@reset{\boxmaxdepth\the\boxmaxdepth
+                          \splittopskip\the\splittopskip}%
+\newrobustcmd*\mdf@put@frame@standalone{\relax%
+   \ifvoid\mdf@splitbox@one\relax
+      \mdf@PackageWarning{The environment is empty\MessageBreak}%
+      \let\mdf@reserved@a\relax%
+   \else
+      %Hier berechnung Box-Inhalt+Rahmen oben und unten
+      \setlength{\mdf@verticalmarginwhole@length}%
+                 {\dimexpr\ht\mdf@splitbox@one+\dp\mdf@splitbox@one\relax}%
+      \mdf@dolist{\mdf@advancelength@verticalmarginwhole}{%
+                  outerlinewidth,middlelinewidth,innerlinewidth,%
+                  innertopmargin,innerbottommargin,innerlinewidth,%
+                  middlelinewidth,outerlinewidth}%
+      \mdf@keeplines@single%
+      \def\mdf@reserved@a{\mdf@putbox@single}%
+   \fi
+   \mdf@reserved@a%
+}
+\def\mdf@put@frame{\relax%
+\ifvoid\mdf@splitbox@one\relax
+  \mdf@PackageWarning{The environment is empty\MessageBreak}%
+  \let\mdf@reserved@a\relax%
+\else
+  \setlength\mdfboundingboxwidth{\wd\mdf@splitbox@one}%
+  \mdf@print@space%
+  \mdf@freepagevspace%gives \mdf@freevspace@length
+  \mdf@PackageInfoSpace{\the\mdf@freevspace@length before the
+                        beginning of \MessageBreak
+                        the environment ending on input line \MessageBreak}%
+  \ifdimless{\mdf@freevspace@length}{2\baselineskip}
+    {%
+     \mdf@PackageInfo{Not enough space on this page}
+     \vfill\eject%
+     \def\mdf@reserved@a{\mdf@put@frame}%
+    }{%
+      %Hier berechnung Box-Inhalt+Rahmen oben und unten
+      \setlength{\mdf@verticalmarginwhole@length}%
+                {\dimexpr\ht\mdf@splitbox@one+\dp\mdf@splitbox@one\relax}%
+      \mdf@dolist{\mdf@advancelength@verticalmarginwhole}%
+                 {%
+                  outerlinewidth,middlelinewidth,innerlinewidth,%
+                  innertopmargin,innerbottommargin,%
+                  innerlinewidth,middlelinewidth,outerlinewidth}%
+      \mdf@keeplines@single%
+      \ifdimless{\mdf@verticalmarginwhole@length}{\mdf@freevspace@length}%
+         {%passt auf Seite%
+          \begingroup\mdf@@setzref\mdf@putbox@single\endgroup%Output no break
+          \let\mdf@reserved@a\relax%
+         }%
+         {%
+          \def\mdf@reserved@a{\mdf@put@frame@i}%passt nicht auf Seite
+         }
+    }%
+\fi
+\mdf@reserved@a%
+}
+\def\mdf@put@frame@i{%Box must be splitted
+ \mdf@freepagevspace%gives \mdf@freevspace@length
+ \dimen@=\the\mdf@freevspace@length\relax%
+ \dimen@i=\mdf@innertopmargin@length\relax%
+ \advance\dimen@i by \mdf@innerlinewidth@length\relax%
+ \advance\dimen@i by \mdf@middlelinewidth@length\relax%
+ \advance\dimen@i by \mdf@outerlinewidth@length\relax%
+ \advance\dimen@i by 2\baselineskip\relax%
+ \ifdimless{\dimen@}{\dimen@i}%
+   {\hrule \@height\z@ \@width\hsize%
+    \vfill\eject%
+    \def\mdf@reserved@a{\mdf@put@frame}%
+   }%
+   {%
+    \mdf@dolist{\mdf@advancelength@freevspace@sub}{%calculate with \dimen@
+              outerlinewidth,middlelinewidth,innerlinewidth,%
+              innertopmargin,splitbottomskip}%
+    \ifbool{mdf@everyline}%
+      {%
+       \ifbool{mdf@bottomline}%
+          {%
+           \advance\dimen@ by -\mdf@innerlinewidth@length%
+           \advance\dimen@ by -\mdf@middlelinewidth@length%
+           \advance\dimen@ by -\mdf@outerlinewidth@length%
+          }{}%
+      }{}%
+    \notbool{mdf@topline}%
+       {%
+        \advance\dimen@ by \mdf@innerlinewidth@length%
+        \advance\dimen@ by \mdf@middlelinewidth@length%
+        \advance\dimen@ by \mdf@outerlinewidth@length%
+       }{}%
+    \advance\dimen@.8\pageshrink
+    \ifdimless{\ht\mdf@splitbox@one+\dp\mdf@splitbox@one}{\dimen@}%
+       {\mdf@PackageWarning{You got a bad break\MessageBreak
+                            because the last box will be empty\MessageBreak
+                           you have to change it manually\MessageBreak
+                           by changing the text, the space\MessageBreak
+                           or something else}%
+        \advance\dimen@ by -1.8\baselineskip\relax%needed????????????????????
+       }{}%
+    \setbox\mdf@splitbox@save=\vbox{\unvcopy\mdf@splitbox@one}%
+    \splitmaxdepth\z@ \splittopskip\mdf@splittopskip@length%
+    \mdf@ignorevbadness%
+    \setbox\mdf@splitbox@two\vsplit\mdf@splitbox@one to \dimen@
+    \setbox\mdf@splitbox@two\vbox{\unvbox\mdf@splitbox@two}%
+    \setbox\mdf@splitbox@one\vbox{\unvbox\mdf@splitbox@one}%
+    \ifdimgreater{\ht\mdf@splitbox@two+\dp\mdf@splitbox@two}{\dimen@}%
+      {%splitted wrong
+       \mdf@PackageInfo{Box was splittet wrong^^M starting loop to iterate
+                        the splitting point\MessageBreak}%
+       \setbox\mdf@splitbox@one=\vbox{\unvcopy\mdf@splitbox@save}%
+       \dimen@i=\dimen@%\relax
+       \@tempcnta=\z@\relax
+       \loop
+        \ifdim\dimexpr\ht\mdf@splitbox@two+\dp\mdf@splitbox@two\relax&gt;\dimen@
+          \advance\dimen@i by -\p@\relax
+          \advance\@tempcnta by \@ne\relax
+          \ifnum\@tempcnta&gt;100
+            \let\iterate\relax
+            \mdf@PackageWarning{correct box splittet fails^^M
+                                It seems you are using a non splittable
+                                contents\MessageBreak}
+          \fi
+          \mdf@ignorevbadness%
+          \setbox\mdf@splitbox@one=\vbox{\break\unvcopy\mdf@splitbox@save}%
+          \splitmaxdepth\z@ \splittopskip\mdf@splittopskip@length%
+          \mdf@ignorevbadness%
+          \setbox\mdf@splitbox@two\vsplit\mdf@splitbox@one to \dimen@i\relax%
+          \setbox\mdf@splitbox@two\vbox{\unvbox\mdf@splitbox@two}%
+          \setbox\mdf@splitbox@one\vbox{\unvbox\mdf@splitbox@one}%
+       \repeat%
+      }{}%
+    \ifvoid\mdf@splitbox@one\relax%
+      \mdf@PackageWarning{You got a bad break because the splittet box
+                          is empty^^M
+                          You have to change the page settings^^M
+                          like enlargethispage or something else^^M
+                          the package increases do
+                          \enlargethispage{\baselineskip}\MessageBreak}%
+      \setbox\mdf@splitbox@one=\vbox{\unvcopy\mdf@splitbox@save}
+      \enlargethispage{\baselineskip}%
+      \def\mdf@reserved@a{\mdf@put@frame}%
+    \fi%
+    \ifdim\wd\mdf@splitbox@two=\wd\mdf@splitbox@one\relax
+    \else%
+      \mdf@PackageInfo{You first box width is to small^^M
+                       mdframed fixed it\MessageBreak}%
+      \setbox\mdf@splitbox@two=\vbox%
+                   {%
+                    \hrule \@height\z@ \@width\wd\mdf@splitbox@one\relax
+                    \unvcopy\mdf@splitbox@two%
+                   }%
+    \fi%
+    \ifvoid\mdf@splitbox@two\relax%
+        {\hrule \@height\f@size pt \@width\z@%
+         \hrule \@height\z@ \@width\hsize}%
+         \setbox\mdf@splitbox@one=\vbox{\unvcopy\mdf@splitbox@save}%
+         \def\mdf@reserved@a{\mdf@put@frame}%
+     \else%
+        \ifdimequal{\ht\mdf@splitbox@two}{0pt}%
+          {\hrule \@height\z@ \@width\hsize%
+           \vfill\eject%
+           \setbox\mdf@splitbox@one=\vbox{\unvcopy\mdf@splitbox@save}%
+           \def\mdf@reserved@a{\mdf@put@frame}%
+          }%
+          {%
+          \begingroup\mdf@@setzref\mdf@putbox@first\endgroup%
+          \hrule \@height\z@ \@width\hsize%
+          \vfill\eject%
+          \def\mdf@reserved@a{\mdf@put@frame@ii}%
+          }%
+     \fi%
+   }%
+\mdf@reserved@a%
+}
+\def\mdf@put@frame@ii{%
+  \setlength{\mdf@freevspace@length}{\vsize}%
+    \ifbool{mdf@repeatframetitle}%
+      {%
+       \toggletrue{mdf@notfirstframetitle}%
+       \splitmaxdepth\z@ \splittopskip\z@%
+       \setbox\mdf@splitbox@one=\vbox{\break\unvbox\mdf@splitbox@one}%
+       \mdf@ignorevbadness%
+       \setbox0=\vsplit\mdf@splitbox@one to \z@\relax%
+       \setbox\mdf@splitbox@one=\vbox{\unvbox\mdf@splitbox@one}
+       \setbox\mdf@splitbox@one\vbox%
+          {%
+           \vbox to \mdf@frametitleaboveskip@length{}
+           \unvcopy\mdf@frametitlebox\relax%
+           \mdf@@frametitlerule\relax%
+           \unvbox\mdf@splitbox@one\relax%
+          }%
+       \setbox\mdf@splitbox@one=\vbox{\unvbox\mdf@splitbox@one}%
+      }{}%
+  \setlength{\dimen@}{\dimexpr\ht\mdf@splitbox@one+\dp\mdf@splitbox@one\relax}%
+  \mdf@dolist{\mdf@advancelength@freevspace@add}%
+        {%used \dimen@
+         innerbottommargin,innerlinewidth,middlelinewidth,outerlinewidth,%
+        }%
+  \ifbool{mdf@everyline}%
+    {%
+     \ifbool{mdf@topline}%
+      {%
+       \advance\dimen@ by \mdf@innerlinewidth@length\relax%
+       \advance\dimen@ by \mdf@middlelinewidth@length\relax%
+       \advance\dimen@ by \mdf@outerlinewidth@length\relax%
+      }{}%
+    }{}%
+   \notbool{mdf@bottomline}%
+     {%
+      \advance\dimen@ by -\mdf@innerlinewidth@length\relax%
+      \advance\dimen@ by -\mdf@middlelinewidth@length\relax%
+      \advance\dimen@ by -\mdf@outerlinewidth@length\relax%
+      \relax%
+     }{}%
+   \ifdimgreater{\dimen@}{\mdf@freevspace@length}%
+    {%have a middle box
+     \advance\mdf@freevspace@length by -\mdf@splitbottomskip@length\relax%
+     \ifbool{mdf@everyline}%
+       {%
+        \ifbool{mdf@topline}%
+          {%
+          \advance\mdf@freevspace@length by -\mdf@innerlinewidth@length\relax%
+          \advance\mdf@freevspace@length by -\mdf@middlelinewidth@length\relax%
+          \advance\mdf@freevspace@length by -\mdf@outerlinewidth@length\relax%
+          }{}%
+        \ifbool{mdf@bottomline}%
+          {%
+          \advance\mdf@freevspace@length by -\mdf@innerlinewidth@length\relax%
+          \advance\mdf@freevspace@length by -\mdf@middlelinewidth@length\relax%
+          \advance\mdf@freevspace@length by -\mdf@outerlinewidth@length\relax%
+          \relax
+          }{}%
+       }{}%
+     \setbox\mdf@splitbox@save=\vbox{\unvcopy\mdf@splitbox@one}%
+     \splitmaxdepth\z@ \splittopskip\mdf@splittopskip@length%
+     \mdf@ignorevbadness%
+     \setbox\mdf@splitbox@two\vsplit\mdf@splitbox@one to \mdf@freevspace@length
+     \setbox\mdf@splitbox@two\vbox{\unvbox\mdf@splitbox@two}
+     \setbox\mdf@splitbox@one\vbox{\unvbox\mdf@splitbox@one}
+     \ifdimgreater{\ht\mdf@splitbox@two+\dp\mdf@splitbox@two}{\dimen@}%
+       {%splitted wrong
+        \mdf@PackageInfo{Box was splittet wrong^^M starting loop to iterate
+                         the splitting point\MessageBreak}%
+        \dimen@i=\mdf@freevspace@length%\relax
+        \@tempcnta=\z@\relax
+        \loop
+        \ifdim\dimexpr\ht\mdf@splitbox@two+\dp\mdf@splitbox@two\relax&gt;%
+              \mdf@freevspace@length\relax
+          \advance\dimen@i by -\p@\relax%
+          \advance\@tempcnta by \@ne\relax%
+          \ifnum\@tempcnta&gt;100
+            \let\iterate\relax%
+            \mdf@PackageWarning{correct box splittet fails^^M
+                                It seems you are using a non splittable
+                                contents\MessageBreak}%
+          \fi
+          \setbox\mdf@splitbox@one=\vbox{\break\unvcopy\mdf@splitbox@save}%
+          \splitmaxdepth\z@ \splittopskip\mdf@splittopskip@length%
+          \mdf@ignorevbadness%
+          \setbox\mdf@splitbox@two\vsplit\mdf@splitbox@one to \dimen@i\relax%
+          \setbox\mdf@splitbox@two\vbox{\unvbox\mdf@splitbox@two}%
+          \setbox\mdf@splitbox@one\vbox{\unvbox\mdf@splitbox@one}%
+        \repeat%
+       }{}%
+     \ifvoid\mdf@splitbox@one\relax%
+        \mdf@PackageWarning{You got a bad break because the splittet box is
+                            empty^^M
+                            You have to change the page settings^^M
+                            like enlargethispage or something else^^M
+                            the package increases do
+                            \enlargethispage{\baselineskip}\MessageBreak}%
+        \setbox\mdf@splitbox@one=\vbox{\unvcopy\mdf@splitbox@save}%
+        \enlargethispage{\baselineskip}%
+        \def\mdf@reserved@a{\mdf@put@frame@ii}%
+     \else
+        \begingroup\mdf@@setzref\mdf@putbox@middle\endgroup%
+          \hrule \@height\z@ \@width\hsize%
+          \vfill\eject%
+          \def\mdf@reserved@a{\mdf@put@frame@ii}%
+        \fi
+     }%End middle box case
+     {%start last box case
+      \ifvoid\mdf@splitbox@one
+           \mdf@PackageWarning{You got a bad break\MessageBreak
+                               because the last split box is empty\MessageBreak
+                               You have to change the settings}%%
+           \setbox\mdf@splitbox@one=\vbox%
+                  {%
+                   \unvbox\mdf@splitbox@one%
+                   \hrule \@height\z@ \@width\mdfboundingboxwidth
+                  }%
+      \fi%
+      \ifdimless{\ht\mdf@splitbox@one}{1sp}%
+         {%
+          \mdf@PackageWarning{You got a bad break\MessageBreak
+                              because the last split box is empty\MessageBreak
+                              You have to change the settings}%
+
+          \let\mdf@reserved@a\relax%
+          \setbox\mdf@splitbox@one=\vbox%
+                 {%
+                  \unvbox\mdf@splitbox@one%
+                  \hrule \@height\z@ \@width\mdfboundingboxwidth
+                 }%
+         }{}%
+      \begingroup\mdf@@setzref\mdf@putbox@second\endgroup%
+      \hrule \@height\z@ \@width\hsize%
+      \let\mdf@reserved@a\relax%
+     }%
+  \mdf@reserved@a%
+}
+
+%%%%    _____t_____
+%%%%   |           |
+%%%%   |           |
+%%%%   |           |
+%%%%  l|           |r
+%%%%   |           |
+%%%%   |           |
+%%%%   |___________|
+%%%%         b
+%%Zusammenhaenge abfragen:
+\newrobustcmd*\mdf@test@ltrb{%
+    \ifboolexpr{ (bool {mdf@topline}) and (bool {mdf@bottomline})
+                 and (bool {mdf@leftline}) and (bool {mdf@rightline})}}
+\newrobustcmd*\mdf@test@ltr{%
+    \ifboolexpr{ (bool {mdf@topline}) and not (bool {mdf@bottomline})
+                 and (bool {mdf@leftline}) and (bool {mdf@rightline})}}
+\newrobustcmd*\mdf@test@ltb{%
+    \ifboolexpr{ (bool {mdf@topline}) and (bool {mdf@bottomline})
+                 and (bool {mdf@leftline}) and not (bool {mdf@rightline})}}
+\newrobustcmd*\mdf@test@trb{%
+    \ifboolexpr{ (bool {mdf@topline}) and (bool {mdf@bottomline})
+                 and not (bool {mdf@leftline}) and (bool {mdf@rightline})}}
+\newrobustcmd*\mdf@test@lrb{%
+    \ifboolexpr{ not (bool {mdf@topline}) and (bool {mdf@bottomline})
+                 and (bool {mdf@leftline}) and (bool {mdf@rightline})}}
+\newrobustcmd*\mdf@test@lb{%
+    \ifboolexpr{ not (bool {mdf@topline}) and (bool {mdf@bottomline})
+                 and (bool {mdf@leftline}) and not (bool {mdf@rightline})}}
+\newrobustcmd*\mdf@test@rb{%
+    \ifboolexpr{ not (bool {mdf@topline}) and (bool {mdf@bottomline})
+                 and not (bool {mdf@leftline}) and (bool {mdf@rightline})}}
+\newrobustcmd*\mdf@test@tr{%
+    \ifboolexpr{ (bool {mdf@topline}) and not (bool {mdf@bottomline})
+                 and not (bool {mdf@leftline}) and (bool {mdf@rightline})}}
+\newrobustcmd*\mdf@test@lt{%
+    \ifboolexpr{ (bool {mdf@topline}) and not (bool {mdf@bottomline})
+                 and (bool {mdf@leftline}) and not (bool {mdf@rightline})}}
+\newrobustcmd*\mdf@test@lr{%
+    \ifboolexpr{ not (bool {mdf@topline}) and not (bool {mdf@bottomline})
+                 and (bool {mdf@leftline}) and (bool {mdf@rightline})}}
+\newrobustcmd*\mdf@test@tb{%
+    \ifboolexpr{ (bool {mdf@topline}) and (bool {mdf@bottomline})
+                 and not (bool {mdf@leftline}) and not (bool {mdf@rightline})}}
+\newrobustcmd*\mdf@test@l{%
+    \ifboolexpr{ not (bool {mdf@topline}) and not (bool {mdf@bottomline})
+                 and (bool {mdf@leftline}) and not (bool {mdf@rightline})}}
+\newrobustcmd*\mdf@test@r{%
+    \ifboolexpr{ not (bool {mdf@topline}) and not (bool {mdf@bottomline})
+                 and not (bool {mdf@leftline}) and (bool {mdf@rightline})}}
+\newrobustcmd*\mdf@test@t{%
+    \ifboolexpr{ (bool {mdf@topline}) and not (bool {mdf@bottomline})
+                 and not (bool {mdf@leftline}) and not (bool {mdf@rightline})}}
+\newrobustcmd*\mdf@test@b{%
+    \ifboolexpr{ not (bool {mdf@topline}) and (bool {mdf@bottomline})
+                 and not (bool {mdf@leftline}) and not (bool {mdf@rightline})}}
+\newrobustcmd*\mdf@test@noline{%
+    \ifboolexpr{ not (bool {mdf@topline}) and not (bool {mdf@bottomline})
+                 and not (bool {mdf@leftline}) and not (bool {mdf@rightline})}}
+\newrobustcmd*\mdf@test@single{%
+    \ifboolexpr{ not (test {\mdf@test@ltrb} or test {\mdf@test@ltr} or
+                 test {\mdf@test@ltb} or test {\mdf@test@trb} or
+                 test {\mdf@test@lrb}  or test {\mdf@test@lb} or
+                 test {\mdf@test@rb} or test {\mdf@test@tr} or
+                 test {\mdf@test@lt} ) }}
+\DisableKeyvalOption[action=warning,package=mdframed]{mdf}{framemethod}%
+\DisableKeyvalOption[action=warning,package=mdframed]{mdf}{xcolor}%
+
+ \endinput
+%% 
+%% ================================================================
+%% Copyright (C) 2012 by Marco Daniel
+%% 
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License (LPPL), either
+%% version 1.3c of this license or (at your option) any later
+%% version.  The latest version of this license is in the file:
+%% 
+%% http://www.latex-project.org/lppl.txt
+%% 
+%% This work is "maintained" (as per LPPL maintenance status) by
+%% Marco Daniel.
+%% 
+%% Have fun!
+%% 
+%% ================================================================
+%%
+%% End of file `mdframed.sty'.

@@ -1,0 +1,28 @@
+# gmm-init-model --write-occs=exp/tri1/1.occs exp/tri1/tree exp/tri1/treeacc data/lang/topo exp/tri1/1.mdl 
+# Started at Mon May 15 17:17:36 IST 2017
+#
+gmm-init-model --write-occs=exp/tri1/1.occs exp/tri1/tree exp/tri1/treeacc data/lang/topo exp/tri1/1.mdl 
+LOG (gmm-init-model[5.1.87~1-6eebc]:main():gmm-init-model.cc:271) Number of separate statistics is 10
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 2 with no stats; corresponding phone list: 11 12 13 14 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 3 with no stats; corresponding phone list: 15 16 17 18 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 4 with no stats; corresponding phone list: 19 20 21 22 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 5 with no stats; corresponding phone list: 23 24 25 26 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 6 with no stats; corresponding phone list: 27 28 29 30 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 7 with no stats; corresponding phone list: 31 32 33 34 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 8 with no stats; corresponding phone list: 35 36 37 38 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 9 with no stats; corresponding phone list: 39 40 41 42 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 10 with no stats; corresponding phone list: 43 44 45 46 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 11 with no stats; corresponding phone list: 47 48 49 50 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 12 with no stats; corresponding phone list: 51 52 53 54 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 13 with no stats; corresponding phone list: 55 56 57 58 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 14 with no stats; corresponding phone list: 59 60 61 62 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 15 with no stats; corresponding phone list: 63 64 65 66 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 16 with no stats; corresponding phone list: 67 68 69 70 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 17 with no stats; corresponding phone list: 71 72 73 74 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 18 with no stats; corresponding phone list: 75 76 77 78 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 19 with no stats; corresponding phone list: 79 80 81 82 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 20 with no stats; corresponding phone list: 83 84 85 86 
+WARNING (gmm-init-model[5.1.87~1-6eebc]:InitAmGmm():gmm-init-model.cc:55) Tree has pdf-id 21 with no stats; corresponding phone list: 87 88 89 90 
+LOG (gmm-init-model[5.1.87~1-6eebc]:main():gmm-init-model.cc:306) Wrote model.
+# Accounting: time=0 threads=1
+# Ended (code 0) at Mon May 15 17:17:36 IST 2017, elapsed time 0 seconds

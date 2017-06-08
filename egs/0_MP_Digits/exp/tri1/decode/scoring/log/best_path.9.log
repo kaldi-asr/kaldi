@@ -1,0 +1,28 @@
+# lattice-best-path --lm-scale=9 --word-symbol-table=exp/tri1/graph/words.txt "ark:gunzip -c exp/tri1/decode/lat.*.gz|" ark,t:exp/tri1/decode/scoring/9.tra 
+# Started at Mon May 15 17:17:42 IST 2017
+#
+lattice-best-path --lm-scale=9 --word-symbol-table=exp/tri1/graph/words.txt 'ark:gunzip -c exp/tri1/decode/lat.*.gz|' ark,t:exp/tri1/decode/scoring/9.tra 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_0, best cost 45.3148 + 5863.36 = 5908.68 over 51 frames.
+Speaker1_0 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_1, best cost 45.7795 + 5467.29 = 5513.06 over 51 frames.
+Speaker1_1 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_2, best cost 48.3602 + 6155.41 = 6203.77 over 53 frames.
+Speaker1_2 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_3, best cost 41.2906 + 5039.52 = 5080.81 over 45 frames.
+Speaker1_3 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_4, best cost 59.009 + 4438.71 = 4497.72 over 40 frames.
+Speaker1_4 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_5, best cost 43.9846 + 4203.12 = 4247.1 over 39 frames.
+Speaker1_5 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_6, best cost 58.3403 + 6770.93 = 6829.27 over 62 frames.
+Speaker1_6 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_7, best cost 41.4765 + 5139.95 = 5181.42 over 45 frames.
+Speaker1_7 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_8, best cost 36.4639 + 3790.26 = 3826.72 over 38 frames.
+Speaker1_8 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:99) For utterance Speaker1_9, best cost 42.8017 + 5891.32 = 5934.13 over 55 frames.
+Speaker1_9 
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:124) Overall cost per frame is 111.112 = 0.966224 [graph] + 110.146 [acoustic] over 479 frames.
+LOG (lattice-best-path[5.1.87~1-6eebc]:main():lattice-best-path.cc:128) Done 10 lattices, failed for 0
+# Accounting: time=0 threads=1
+# Ended (code 0) at Mon May 15 17:17:42 IST 2017, elapsed time 0 seconds

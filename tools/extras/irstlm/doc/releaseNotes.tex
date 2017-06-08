@@ -1,0 +1,224 @@
+
+\IMPORTANT{If present, the index in parentheses refers to the revision number in IRSTLM repository (until 5.60.02) or SourceForge repository (from 5.60.03).}
+\subsection{Version 3.2}
+\begin{itemize}
+\item Quantization of probabilities
+\item Efficient run-time data structure for LM querying 
+\item Dismissal of MT output format
+\end{itemize}
+
+\subsection{Version 4.2}
+\begin{itemize}
+\item Distinction between open source and internal Irstlm tools
+\item More memory efficient versions of binarization and quantization commands
+\item Memory mapping of run-time LM
+\item Scripts and data structures for the estimation and handling of gigantic LMs 
+\item Integration of {\IRSTLM} into Moses Decoder
+\end{itemize}
+
+\subsection{Version 5.00}
+\begin{itemize}
+\item Fixed bug in the documentation 
+\item General script {\tt build-lm.sh} for the estimation of large LMs.
+\item Management of iARPA file format.
+\item Bug fixes
+\item Estimation of LM over a partial dictionary.
+\end{itemize}
+
+
+\subsection{Version 5.04}
+\begin{itemize}
+\item Extended documentation with ShiftBeta smoothing. 
+\item Smoothing parameter of ShiftBeta can be set manually.
+\item Robust handling for smoothing parameters of ModifiedShiftBeta.
+\item Fixed probability checks in TLM.
+\item Parallel estimation of gigantic LM through SGE
+\item Better management of sub dictionary with build-lm.sh   
+\item Minor bug fixes
+\end{itemize}
+
+\subsection{Version 5.05}
+\begin{itemize}
+\item (Optional) computation of OOV penalty in terms of single OOV word instead of OOV class
+\item Extended use of OOV penalty to the standard input LM scores of compile-lm. 
+\item Minor bug fixes
+\end{itemize}
+
+\subsection{Version 5.10}
+\begin{itemize}
+\item Extended ngt to compute statistics for approximated Kneser-Ney smoothing
+\item New implementation of approximated Kneser-Ney smoothing method
+\item Minor bug fixes
+\item More to be added here ....
+\end{itemize}
+
+\subsection{Version 5.20}
+\begin{itemize}
+\item Improved tracing of back-offs
+\item Added command prune-lm  (thanks to Fabio Brugnara)
+\item Extended lprob function to supply back-off weight/level information
+\item Improved back-off handling of OOV words with quantized LM
+\item Added more debug modalities to compile-lm
+\item Fixed minor bugs in regression tests
+\item Updated documentation
+\end{itemize}
+
+\subsection{Version 5.21}
+\begin{itemize}
+\item Addition of interpolate-lm 
+\item Added LM filtering to compile-lm
+\item Improved regression tests
+\item Integration of interpolated LMs in Moses
+\item Extended tests on compilers and platforms
+\item Improved documentation with website
+\end{itemize}
+
+\subsection{Version 5.22}
+\begin{itemize}
+\item Use of AutoConf/AutoMake toolkit compilation and installation
+\end{itemize}
+
+\subsection{Version 5.30}
+\begin{itemize}
+\item Support for a safe management of LMs with a total amount of $n$-grams larger than 250 million
+\item Use of a new parameter to specify a directory for temporary computation because the default ("/tmp") could be too small
+\item Improved a safer method of concatenation of gzipped sub lms
+\item Improved management of log files
+\end{itemize}
+
+\subsection{Version 5.40}
+\begin{itemize}
+\item Merging of internal-only tlm code into the public version
+\item Updated documentation into the public version
+\item Included documentation into the public version
+\end{itemize}
+
+\subsection{Version 5.50}
+
+\begin{itemize}
+\item {\bf 5.50.01}
+\begin{itemize}
+\item Binary saving directly with tlm
+\item Speed improvement through 
+\item Caching of probability and states of $n$-grams in the LM interface
+\item Storing of $n$-grams in inverted order
+\end{itemize}
+
+\item {\bf 5.50.02}
+\begin{itemize}
+\item Optional creation of documentation
+\item Improved documentation
+\item Optional computation of the perplexity at sentence-level
+\end{itemize}
+
+\end{itemize}
+
+\subsection{Version 5.60}
+\begin{itemize}
+\item {\bf 5.60.01}
+\begin{itemize}
+\item Handling of class/chunk LMs with both compile-lm and interpolate-lm
+\item Improved pruning strategy to handle with sentence-start symbols
+\item Improved documentation and examples
+\end{itemize}
+\item {\bf 5.60.02}
+\begin{itemize}
+\item Code cleanup 
+\end{itemize}
+\item {\bf 5.60.03 (r404)}
+\begin{itemize}
+\item Xcode project
+\item import from IRSTLM repository (revision 4263)
+\end{itemize}
+
+\end{itemize}
+
+\subsection{Version 5.70}
+\begin{itemize}
+\item {\bf 5.70.01 (r454)}
+\begin{itemize}
+\item Class-based LM
+\item Added improved-kneser-ney smoothing for lm-build-qsub.sh
+\item Enabled different singleton pruning policy for each submodel of mixture LM
+\item Enabled the possibility to load an existing LM up to a specific level smaller than the actual LM order
+\item Code tracing
+\item Handling of error codes
+\item Handling of long filenames and parameters
+\item Improved parallel code compilation
+\item Improved documentation and examples
+\end{itemize}
+\item {\bf 5.70.02 (r469)}
+\begin{itemize}
+\item Code optimization
+\item Common interface for all LM types
+\end{itemize}
+\end{itemize}
+
+\subsection{Version 5.80}
+\begin{itemize}
+\item {\bf 5.80.01 (r501)}
+\begin{itemize}
+\item Facility to {\em beautify} source code
+\item Re-activation of filtering on a sub-dictionary
+\item Code optimization related to LM dumping
+\item Transformation of scripts into Bourne shell scripts 
+\end{itemize}
+\item {\bf 5.80.03 (r579)}
+\begin{itemize}
+\item Data selection tool
+\item Handling of precision upper- and lower-bounds by means of constants.
+\item Improved of Xcode project
+\item Improved code compilation
+\item Improved documentation
+\item Improved handling of help
+\item Facility to check whether IRSTLM is compile with or without caching
+\end{itemize}
+\item {\bf 5.80.05 (r642)}
+\begin{itemize}
+\item Introduction of {\em namespace irstlm}
+\item Code optimization
+\item Code compliant with OsX Maverick
+\item Support for Redis output format to ngt
+\item Support CRC16 algorithm
+\item Improved plsa command and regression test
+\item Improved handling of tracing
+\item Improved handling of help
+\item Improved handling of error messages
+\end{itemize}
+\item {\bf 5.80.06 (r647)}
+\begin{itemize}
+\item Improved code compilation
+\end{itemize}
+\item {\bf 5.80.07}
+\begin{itemize}
+\item Changes to LM smoothing types; removed Good-Turing, added Approximated Modified ShiftBeta, renaming
+\item Added an additional pruning method, based on level-dependent pruning frequency
+\item Improved code compilation
+\item Improved documentation
+\item Code cleanup
+\item Added support for long names of parameters
+\item Improved output format 
+\end{itemize}
+\item {\bf 5.80.08}
+\begin{itemize}
+\item Added functionality to score n-grams in isolation
+\item Added level-based caches for storing prob, state, and statesize
+\item Improved management of tracing assert
+\item Improved management of tracing/assert/caching AutoConf compilation flags
+\item Improved output format
+\item Improved code compilation
+\item Code cleanup
+\end{itemize}
+\end{itemize}
+
+
+\COMMENT{
+\subsection{Version 5.xx}
+\begin{itemize}
+\item {\bf 5.xx.01}
+\begin{itemize}
+\item 
+\end{itemize}
+\end{itemize}
+}
+

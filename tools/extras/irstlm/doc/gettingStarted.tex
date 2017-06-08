@@ -1,0 +1,85 @@
+After a successful installation, you are ready to use {\IRSTLM}.
+
+\noindent
+In this Section, a basic 4-step procedure is given to estimate a LM and to compute its perplexity on a text.
+Many changes to this procedure can be done in order to optimize effectiveness and efficiency according to your needs.
+
+\noindent 
+Please refer to Section~\ref{sec:commands} to learn more about each IRSTLM commands, and 
+to Section~\ref{sec:functions} to get hints about IRSTLM functionalities.
+
+
+
+
+\IMPORTANT{All programs assume that the environment variable {\bf IRSTLM} is correctly set to {\tt /path/to/install/doc}, and that that environment variable {\bf PATH} includes the command directory {\tt /path/to/install/bin}. see above}
+
+\noindent
+Data used in the following usage examples can be found in an archive you can download from the official website of {\IRSTLM}.
+Most of them are very little, so the reported figures are not reliable.
+
+\subsection{Preparation of Training Data}
+In order to estimate a Language Model, you first need to prepare your training corpus. The corpus just consists of a text.
+We assume that the text is already preprocessed according to the user needs; this means that lowercasing, uppercasing, tokenization, and any other text transformation has to be performed beforehand with other tools.
+
+\noindent
+You can only decide whether you are interested that {\IRSTLM} is aware of sentence boundaries, i.e. where a sentence starts and ends. Otherwise, it considers the corpus as a continuous stream of text, and does not identify sentence splits. 
+
+\noindent
+The following script adds start and end symbols ({\tt <s>} and {\tt </s>}, respectively) to all lines in your training corpus.
+\begin{verbatim}
+$> cat train.txt | add-start-end.sh > train.txt.se
+\end{verbatim}
+
+\noindent
+{\IRSTLM} does not compute probabilities for cross-sentence $n$-grams, i.e. $n$-grams including the pair {\tt </s>  <s>}.
+
+
+\IMPORTANT{{\IRSTLM} assumes that each line corresponds to a sentence, regardless the presence of punctuation inside or at the end of the line.}
+\IMPORTANT{Start and end symbols ({\tt <s>} and {\tt </s>}) should be considered reserved symbols, and used only as sentence boundaries.}
+
+
+\subsection{Computation of $n$-gram statistics}
+\noindent
+You can now collect $n$-gram statistics for your training data (3-gram in this example) by running the command:
+
+\begin{verbatim}
+$> ngt -i=train.txt.se -n=3 -o=train.www -b=yes
+\end{verbatim}
+
+\noindent
+The $n$-grams counts are saved in the binary file "train.www".
+
+
+\subsection{Estimation of the LM}
+\noindent
+You can now estimate a $n$-gram LM (3-gram LM in this example) smoothed according to the Linear Witten Bell method by running the command:
+
+\begin{verbatim}
+$> tlm -tr=train.www -n=3 -lm=LinearWittenBell -obin=train.blm
+\end{verbatim}
+\noindent
+The estimated LM is saved in the binary file "train.blm".
+
+
+\subsection{Computation of the Perplexity}
+\noindent
+With the estimated LM, you can now compute the perplexity of any text contained in "test.txt" by running the commands below.
+
+\noindent
+To be compliant with the training data actually used to estimate the LM, start and end symbols are added to the text as well.
+
+\begin{verbatim}
+$> cat test.txt | add-start-end.sh > test.txt.se
+$> compile-lm  train.blm  --eval=test.txt.se
+\end{verbatim}
+
+\noindent
+which produces the output:
+\begin{verbatim}
+%% Nw=1009 PP=8547.90 PPwp=6870.51 Nbo=983 Noov=119 OOV=11.79%
+\end{verbatim}
+
+\noindent
+The output shows the number of  words ({\tt Nw}), the LM perplexity ({\tt PP}), the portion of PP due to the out-of-vocabulary words ({\tt PPwp}), the amount of backoff calls({\tt Nbo}) required for computing PP, the amount of out-of-vocabulary words ({\tt Noov}), and the out-of-vocabulary rate ({\tt OOV}).
+
+

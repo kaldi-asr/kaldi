@@ -1,0 +1,3 @@
+compute-cmvn-stats --spk2utt=ark:data/train/spk2utt scp:data/train/feats.scp ark,scp:/home/abhilash/kaldi/egs/0_MP_Digits/mfcc/cmvn_train.ark,/home/abhilash/kaldi/egs/0_MP_Digits/mfcc/cmvn_train.scp 
+WARNING (compute-cmvn-stats[5.1.87~1-6eebc]:main():compute-cmvn-stats.cc:107) Did not find features for utterance Speaker9_0
+LOG (compute-cmvn-stats[5.1.87~1-6eebc]:main():compute-cmvn-stats.cc:171) Done accumulating CMVN stats for 89 utterances; 1 had errors.

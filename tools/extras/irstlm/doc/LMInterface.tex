@@ -1,0 +1,112 @@
+LMs are useful when they can be queried through another application in order to compute 
+perplexity scores or n-gram probabilities. {\IRSTLM} provides two possible interfaces: 
+\begin{itemize}
+\item at the command level, through  {\tt compile-lm}
+\item at the c++ library level, mainly through methods of the class {\tt lmtable}
+\end{itemize}
+
+\noindent
+In the following, we will only focus on the command level interface. Details about
+the c++ library interface will be provided in a future version of this manual.  
+
+\subsection{Perplexity Computation}
+Assume we have estimated and saved the following LM:
+
+\begin{verbatim}
+$> tlm -tr=train.www -n=3 -lm=wb -te=test -o=train.lm -ps=no
+ n=49984 LP=308057.0419 PP=474.9041687 OVVRate=0.05007602433
+\end{verbatim}
+
+\noindent
+To compute the perplexity directly from the LM on disk, we can use the command:
+
+\begin{verbatim}
+$> compile-lm train.lm  --eval=test
+ %% Nw=49984 PP=1064.40 PPwp=589.50 Nbo=38071 Noov=2503 OOV=5.01%
+\end{verbatim}
+Notice that {\tt PPwp} reports the contribution of OOV words to the perplexity. Each OOV word is indeed penalized by dividing the
+LM probability of the {\tt unk} word by  the quantity
+
+
+\centerline{{\tt DictionaryUpperBound} - {\tt SizeOfDictionary}}
+
+\noindent
+The OOV penalty can be modify by changing the {\tt DictionaryUpperBound} with the parameter {\tt --dub} (whose default value is set to $10^7$). \\
+
+\noindent
+The perplexity of the pruned LM can be computed with the command:
+\begin{verbatim}
+$> compile-lm train.plm --eval=test --dub=10000000
+%% Nw=49984 PP=1019.69 PPwp=564.73 Nbo=39907 Noov=2503 OOV=5.01%
+\end{verbatim}
+Interestingly, a slightly better value is obtained which could be explained by the 
+fact that pruning has removed many unfrequent trigrams and has redistributed 
+their probabilities over more frequent bigrams.
+
+\noindent
+Notice that {\tt PPwp} reports the perplexity with a fixed dictionary upper-bound of 10 million words. Indeed:
+\begin{verbatim}
+$> tlm -tr=train.www -n=3 -lm=wb -te=test -o=train.lm -ps=no -dub=10000000 
+n=49984 LP=348396.8632 PP=1064.401254 OVVRate=0.05007602433
+\end{verbatim}
+
+\bigskip
+\noindent
+Again, if the LM is in binary format and is very large, {\tt compile-lm} can avoid to load it in memory,
+through the memory mapping option {\tt -memmap=1}.
+
+\bigskip
+\noindent
+By enabling the option ``{\tt --sentence yes}'', {\tt compile-lm} computes perplexity and related figures (OOV rate, number of backoffs, etc.) for each input sentence. The end of a sentence is identified by a given symbol ({\tt </s>} by default).
+\begin{verbatim}
+$> compile-lm train.plm --eval=test --dub=10000000 --sentence=yes	
+\end{verbatim}
+{\small 
+\begin{verbatim}
+%% sent_Nw=1 sent_PP=23.22 sent_PPwp=0.00 sent_Nbo=0 sent_Noov=0 sent_OOV=0.00%
+%% sent_Nw=8 sent_PP=7489.50 sent_PPwp=7356.27 sent_Nbo=7 sent_Noov=2 sent_OOV=25.00%
+%% sent_Nw=9 sent_PP=1231.44 sent_PPwp=0.00 sent_Nbo=14 sent_Noov=0 sent_OOV=0.00%
+%% sent_Nw=6 sent_PP=27759.10 sent_PPwp=25867.42 sent_Nbo=19 sent_Noov=1 sent_OOV=16.67%
+.....
+%% sent_Nw=5 sent_PP=378.38 sent_PPwp=0.00 sent_Nbo=39893 sent_Noov=0 sent_OOV=0.00%
+%% sent_Nw=15 sent_PP=4300.44 sent_PPwp=2831.89 sent_Nbo=39907 sent_Noov=1 sent_OOV=6.67%
+%% Nw=49984 PP=1019.69 PPwp=564.73 Nbo=39907 Noov=2503 OOV=5.01%
+\end{verbatim}
+}
+
+\bigskip
+\noindent
+Finally, tracing information with the {\tt --eval }  option are shown by setting 
+debug levels from 1 to 4 ({\tt --debug}):
+\begin{enumerate}
+\item reports the back-off level for each word
+\item adds the log-prob 
+\item adds the back-off weight
+\item check if probabilities sum up to 1.
+\end{enumerate}
+
+
+\subsection{Probability Computations}
+Word-by-word log-probabilities  can be computed as well from standard input with the command:
+\begin{verbatim}
+$> compile-lm train.lm --score=yes < test
+
+> </s>  1 p= NULL
+> <s> <unk>     1 p= NULL
+> <s> <unk> of  1 p= -3.530047e+00 bo= 2
+> <unk> of the  1 p= -1.250668e+00 bo= 1
+> of the senate 1 p= -1.170901e+01 bo= 1
+> the senate (  1 p= -5.457265e+00 bo= 2
+> senate ( <unk>        1 p= -2.166440e+01 bo= 2
+....
+....
+\end{verbatim}
+
+\noindent
+the command reports the currently observed n-gram, 
+including {\tt\_unk\_} words, a dummy
+constant frequency 1, the log-probability of the n-gram, and the 
+number of back-offs performed by the LM.  
+
+\paragraph{Warning:} All cross-sentence $n$-grams are skipped. The 1-grams with the sentence start symbol are also skipped. In a $n$-grams all words before the sentence start symbol are removed. For $n$-grams, whose size is smaller than the LM order, probability is not computed, but a {\tt NULL} value is returned.
+

@@ -1,0 +1,247 @@
+{\IRSTLM} supports several types of input and output formats for handling LMs, $n$-gram counts, dictionaries.
+
+%{\IRSTLM} supports three output formats of LMs. These formats have the
+%purpose of permitting  the use of LMs by  external programs.
+
+
+\subsection{File Formats for Dictionary}
+The dictionary is the data structure exploited by  {\IRSTLM} to store a set of terms. 
+
+{\IRSTLM} saves a dictionary in textual file format consisting of:
+\begin{itemize}
+\item a header line specifying the most important information about the file itself: the keyword "dictionary", a fixed value 0, and the amount of terms the dictionary contains;
+\item a set of terms listed according to either their occurrence or their frequency in the data.
+\end{itemize}
+Here is an excerpt.
+\begin{verbatim}
+dictionary 0 7893
+<s>
+</s>
+solemn
+ceremony
+marks
+....
+\end{verbatim}
+
+\noindent
+Optionally, the occurrence frequencies of each term can be stored as well; in this case the keyword is "DICTIONARY".
+
+\noindent
+Here is an excerpt.
+\begin{verbatim}
+DICTIONARY 0 7893
+<s> 5000
+</s> 5001
+solemn 7
+ceremony 59
+....
+\end{verbatim}
+
+\IMPORTANT{The list order is used by {\IRSTLM} to define the internal codes of the terms.
+In the vast majority of cases, it is completely transparent and irrelevant to the user.
+Only in very few cases highlighted in this manual, this order is crucial.}
+
+\subsection{File Formats for $n$-gram Table}
+The $n$-gram table is the data structure exploited by  {\IRSTLM} to store a set of $n$-grams. {\IRSTLM} stores an $n$-gram table either in textual or binary formats.
+
+\subsubsection{Textual format}
+The textual format consists of:
+\begin{itemize}
+\item a header line specifying the most important information about the file itself: the keyword "nGrAm", the order $n$ of the $n$-grams, the amount of $n$-grams the $n$-gram table contains, and a second keyword representing the table type;
+\item a second line reporting the size of the dictionary associated to the $n$-grams;
+\item the terms of the dictionary (one term per line) with their frequency;
+\item the list of all $n$-grams with their counts.
+\end{itemize}
+Here is an excerpt.
+\begin{verbatim}
+NgRaM 3 76857 ngram
+7893
+<s> 5000
+</s> 5001
+solemn 7
+ceremony 59
+...
+<s> <s> <s>     2
+<s> <s> </s>    1
+<s> </s> </s>   1
+<s> solemn ceremony     1
+<s> a solemn    1
+\end{verbatim}
+
+\subsubsection{Binary format}
+The binary format is similar, but its main keyword is "{\tt NgRaM}" (different caseing), and the list of $n$-grams is binarized; hence, the last portion of the binary $n$-gram table is not user-readable.
+
+\subsubsection{Google $n$-gram format}
+{\IRSTLM} supports the Google $n$-gram format as well both for input and output. This format, always textual, simply consists of the list of all $n$-grams with their counts.
+Here is an excerpt.
+\begin{verbatim}
+<s> <s> <s>     2
+<s> <s> </s>    1
+<s> </s> </s>   1
+<s> solemn ceremony     1
+<s> a solemn    1
+...
+\end{verbatim}
+
+
+
+
+\subsubsection{Table types}
+The table type keyword represents the way the $n$-grams are collected and the way they are exploited for further computation:
+\begin{itemize}
+\item{\tt ngram}: each entry is a standard $n$-gram, i.e. a contiguous sequence of $n$ terms; they are usually used to estimate a standard $n$-gram LM;
+\item{\tt co-occ$K$}: each entry is a xxxxxx, where $K$ is XXXXXX;
+\item{\tt hm$S$}: each entry is a xxxxxx, where $K$ is XXXXXX;
+\end{itemize}
+
+\subsection{File Formats for LM}
+{\IRSTLM} handles LM both in textual and binary formats.
+It provides facilities to save disk space storing probabilities as quantized values instead of floating  point values, and to reduce access time saving $n$-grams in inverted order.
+ 
+\subsubsection{Textual Format}
+The textual format is the well-known ARPA format introduced in DARPA ASR evaluations  to exchange LMs.
+ARPA format  is  supported by most third party LM toolkit, like SRILM and KenLM.
+
+The ARPA format consists of:
+\begin{itemize}
+\item one block reporting the amount $n$-grams stored for level $m$ of the LM ($m<n$); this block starts with the keyword "{\tt \textbackslash{}data}";
+\item one block per level reporting the set of $m$-grams for that level together with their log-probability (first field), and the backoff log-probability (last field); each block starts with the keyword "{\tt \textbackslash{}$m$-grams}", with the correct value for $m$;
+\item the keyword  "{\tt \textbackslash{}end\textbackslash{}}" closes the file.
+\end{itemize}
+
+\noindent
+Here is an excerpt.
+\begin{verbatim}
+\data\
+ngram  1=      7894
+ngram  2=     46269
+ngram  3=     12188
+\1-grams:
+-4.79871        <s>     -0.826378
+....
+-1.20244        <unk>
+\2-grams:
+-3.29024        <s> <s> -0.221849
+...
+-0.289359       restructuring of
+\3-grams:
+-0.397606       <s> <s> <s>
+-1.67881        <s> a hong_kong
+...
+-0.420213       seymf council ,
+\end\
+\end{verbatim}
+
+\noindent
+Empty lines can occur before and after each block.
+
+\noindent
+There is no limit to the order $n$ of $n$-grams.
+
+\IMPORTANT{Backoff log-probabilities are not reported if equal to 0; backoff log-probabilities do not exist for the largest order.}
+
+
+\subsubsection{Quantized Textual Format}
+This textual format extends the ARPA textual format including codebooks that quantize 
+probabilities and back-off weights of each $n$-gram level.
+
+The quantized ARPA format consists of:
+\begin{itemize}
+\item a header line specifying the most important information about the file itself: the keyword "qARPA", the order $n$ of the LM, the size of the $n$ codebooks
+\item one block reporting the amount $n$-grams stored for level $m$ of the LM ($m<n$); this block starts with the keyword "{\tt \textbackslash{}data}";
+\item one block per level reporting first the codebooks for the level and then the set of $m$-grams for that level together with their quantized log probability (first field), and the backoff quantized  log-probability (last field); each block starts with the keyword "{\tt \textbackslash{}$m$-grams}", with the correct value for $m$;
+\item the keyword  "{\tt \textbackslash{}end\textbackslash{}}" closes the file.
+\end{itemize}
+
+
+\noindent
+Here is an excerpt.
+\begin{verbatim}
+qARPA 3 256 256 256
+\data\
+ngram 1= 7894
+ngram 2= 46269
+ngram 3= 12188
+\1-grams:
+256
+-4.79885 -99
+-4.62261 -1.75587
+....
+0       <s>     53
+186     </s>    0
+....
+\2-grams:
+256
+-3.79901 -99
+-3.62278 -3.01953
+...
+7       <s>     <s>     255
+65      <s>     </s>    255
+....
+\end\
+\end{verbatim}
+
+
+\subsubsection{Intermediate Textual Format}
+This is an {\em intermediate} ARPA format used by {\IRSTLM} for optimizing computation of huge LM. It differs from the ARPA format in two aspects:
+\begin{itemize}
+\item the header line contains only the keyword {\tt iARPA};
+\item the first field of each $n$-gram entry is its smoothed frequency of instead of its log-probability.
+\end{itemize}
+
+\COMMENT{
+\noindent
+Nevertheless, iARPA format is properly managed by the {\tt compile-lm} command
+in order to generate a binary version or a standard ARPA version.
+}
+
+\subsubsection{Binary Format}
+The binary format supported by {\IRSTLM} allows for save disk space and upload the LM quicker.
+
+\noindent 
+The binary format consists of:
+\begin{itemize}
+\item a header line specifying the most important information about the file itself: the keyword "blmt", the order $n$ of the LM, and the amount $n$-grams stored for level $m$ of the LM ($m<n$);
+\item a second line reporting the size of the dictionary associated to the $n$-grams;
+\item the terms of the dictionary (one term per line) with their frequency, if available;
+\item a binary section containing $n$-grams and their probabilities; this portion is not user-readable.
+\end{itemize}
+
+\begin{verbatim}
+blmt 3       7894      46269      12188
+7894
+<s> 1
+</s> 5001
+solemn 7
+...
+_binary_data_
+\end{verbatim}
+
+\subsubsection{Quantized Binary Format}
+The quantized binary format stores the quantized version of a LM.
+
+\noindent 
+It consists of:
+\begin{itemize}
+\item a header line specifying the most important information about the file itself: the keyword "Qblmt", the order $n$ of the LM, and the amount $n$-grams stored for level $m$ of the LM ($m<n$);
+\item a second line specifying the most important information of the codebooks of each level: the keyword "NumCenters", and  the size of the $n$ codebooks;
+\item a third line reporting the size of the dictionary associated to the $n$-grams;
+\item the terms of the dictionary (one term per line) with their frequency, if available;
+\item a binary section containing the codebooks, the $n$-grams and their quantized probabilities; this portion is not user-readable.
+\end{itemize}
+
+\begin{verbatim}
+Qblmt 3 7894 46269 12188
+NumCenters 256 256 256
+7894
+<s> 1
+</s> 5001
+solemn 7
+...
+_binary_data_
+\end{verbatim}
+
+
+
+\subsubsection{Inverted Binary Format}
+{\IRSTLM} can store the $n$-grams in inverted order to speed up access time. This applies to both standard and quantized binary formats, namely {\tt blmt} or {\tt Qblmt}. The keywords are {\tt blmtI} or {\tt QblmtI}, respectively.

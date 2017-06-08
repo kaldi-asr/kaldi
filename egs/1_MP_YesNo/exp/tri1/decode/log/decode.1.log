@@ -1,0 +1,32 @@
+# gmm-latgen-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-scale=0.083333 --allow-partial=true --word-symbol-table=exp/tri1/graph/words.txt exp/tri1/final.mdl exp/tri1/graph/HCLG.fst "ark,s,cs:apply-cmvn  --utt2spk=ark:data/test/split1/1/utt2spk scp:data/test/split1/1/cmvn.scp scp:data/test/split1/1/feats.scp ark:- | add-deltas  ark:- ark:- |" "ark:|gzip -c > exp/tri1/decode/lat.1.gz" 
+# Started at Tue May 16 14:41:25 IST 2017
+#
+gmm-latgen-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-scale=0.083333 --allow-partial=true --word-symbol-table=exp/tri1/graph/words.txt exp/tri1/final.mdl exp/tri1/graph/HCLG.fst 'ark,s,cs:apply-cmvn  --utt2spk=ark:data/test/split1/1/utt2spk scp:data/test/split1/1/cmvn.scp scp:data/test/split1/1/feats.scp ark:- | add-deltas  ark:- ark:- |' 'ark:|gzip -c > exp/tri1/decode/lat.1.gz' 
+apply-cmvn --utt2spk=ark:data/test/split1/1/utt2spk scp:data/test/split1/1/cmvn.scp scp:data/test/split1/1/feats.scp ark:- 
+add-deltas ark:- ark:- 
+Speaker1_1_1_1_0_0_0_0_1 can can can no no no no can 
+LOG (gmm-latgen-faster[5.1.87~1-6eebc]:DecodeUtteranceLatticeFaster():decoder-wrappers.cc:286) Log-like per frame for utterance Speaker1_1_1_1_0_0_0_0_1 is -7.0221 over 602 frames.
+Speaker1_1_1_1_0_0_1_0_1 can can can no no can no can 
+LOG (gmm-latgen-faster[5.1.87~1-6eebc]:DecodeUtteranceLatticeFaster():decoder-wrappers.cc:286) Log-like per frame for utterance Speaker1_1_1_1_0_0_1_0_1 is -7.05441 over 633 frames.
+Speaker1_1_1_1_0_0_1_1_1 can can can no no can can can 
+LOG (gmm-latgen-faster[5.1.87~1-6eebc]:DecodeUtteranceLatticeFaster():decoder-wrappers.cc:286) Log-like per frame for utterance Speaker1_1_1_1_0_0_1_1_1 is -7.34722 over 569 frames.
+Speaker1_1_1_1_0_1_0_1_0 can can can no can no can no 
+LOG (gmm-latgen-faster[5.1.87~1-6eebc]:DecodeUtteranceLatticeFaster():decoder-wrappers.cc:286) Log-like per frame for utterance Speaker1_1_1_1_0_1_0_1_0 is -7.18477 over 605 frames.
+Speaker1_1_1_1_0_1_0_1_1 can can can no can no can can 
+LOG (gmm-latgen-faster[5.1.87~1-6eebc]:DecodeUtteranceLatticeFaster():decoder-wrappers.cc:286) Log-like per frame for utterance Speaker1_1_1_1_0_1_0_1_1 is -7.09251 over 620 frames.
+Speaker1_1_1_1_1_0_0_1_0 can can can can no no can no 
+LOG (gmm-latgen-faster[5.1.87~1-6eebc]:DecodeUtteranceLatticeFaster():decoder-wrappers.cc:286) Log-like per frame for utterance Speaker1_1_1_1_1_0_0_1_0 is -7.09394 over 670 frames.
+LOG (apply-cmvn[5.1.87~1-6eebc]:main():apply-cmvn.cc:146) Applied cepstral mean normalization to 10 utterances, errors on 0
+Speaker1_1_1_1_1_0_1_0_0 can can can can can no can no no 
+LOG (gmm-latgen-faster[5.1.87~1-6eebc]:DecodeUtteranceLatticeFaster():decoder-wrappers.cc:286) Log-like per frame for utterance Speaker1_1_1_1_1_0_1_0_0 is -7.518 over 538 frames.
+Speaker1_1_1_1_1_1_0_0_0 can can can can can no no no 
+LOG (gmm-latgen-faster[5.1.87~1-6eebc]:DecodeUtteranceLatticeFaster():decoder-wrappers.cc:286) Log-like per frame for utterance Speaker1_1_1_1_1_1_0_0_0 is -7.30509 over 612 frames.
+Speaker1_1_1_1_1_1_1_0_0 can can can can can can no no 
+LOG (gmm-latgen-faster[5.1.87~1-6eebc]:DecodeUtteranceLatticeFaster():decoder-wrappers.cc:286) Log-like per frame for utterance Speaker1_1_1_1_1_1_1_0_0 is -7.28451 over 656 frames.
+Speaker1_1_1_1_1_1_1_1_1 can can can can can can can can 
+LOG (gmm-latgen-faster[5.1.87~1-6eebc]:DecodeUtteranceLatticeFaster():decoder-wrappers.cc:286) Log-like per frame for utterance Speaker1_1_1_1_1_1_1_1_1 is -6.90429 over 644 frames.
+LOG (gmm-latgen-faster[5.1.87~1-6eebc]:main():gmm-latgen-faster.cc:176) Time taken 1.36763s: real-time factor assuming 100 frames/sec is 0.0222415
+LOG (gmm-latgen-faster[5.1.87~1-6eebc]:main():gmm-latgen-faster.cc:179) Done 10 utterances, failed for 0
+LOG (gmm-latgen-faster[5.1.87~1-6eebc]:main():gmm-latgen-faster.cc:181) Overall log-likelihood per frame is -7.17365 over 6149 frames.
+# Accounting: time=1 threads=1
+# Ended (code 0) at Tue May 16 14:41:26 IST 2017, elapsed time 1 seconds

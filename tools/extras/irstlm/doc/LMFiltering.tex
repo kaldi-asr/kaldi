@@ -1,0 +1,16 @@
+A large LM can be filtered according to a word list through the command:
+
+\begin{verbatim}
+$> compile-lm  train.lm filtered.lm --filter=list
+\end{verbatim}
+The resulting LM will only contain n-grams inside the provided list of words,
+with the exception of the 1-gram level, which by default is preserved identical
+to the original LM. This behavior can be changed by setting the option 
+{\tt --keepunigrams no}.  LM filtering can be useful once very large LMs can
+be specialized in advance to work on a particular portion of language.
+\noindent
+If the original LM is in binary format and is very large, {\tt compile-lm} can avoid to load it in memory,
+through the memory mapping option {\tt -memmap=1}.
+
+
+

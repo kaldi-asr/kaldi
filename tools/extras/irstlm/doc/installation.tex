@@ -1,0 +1,87 @@
+\IMPORTANT{The installation procedure has been tested using the {\tt bash} shell on the following operating systems: Mac OSx 10.6.8 (Snow Leopard), Ubuntu 14.04 LTS (trusty), Scientific Linux release 6.3 (carbon).}
+
+\noindent In order to install {\IRSTLM} on your machine, please perform the following steps.
+
+
+\subsection{Step 0: Preparation of the Configuration Scripts}
+Run the following command to prepare up-to-date configuration scripts.
+\begin{verbatim}
+$> ./regenerate-makefiles.sh [--force]
+\end{verbatim}
+
+\WARNING{Run with the "--force" parameter if you want to recreate all links to the autotools.}
+
+\subsection{Step 1: Configuration of the Compilation}
+Run the following command to prepare up-to-date compilation scripts, and to optionally set the installation directory (parameter "{\tt -prefix}".
+\begin{verbatim}
+$> ./configure [--prefix=/path/to/install] [optional-parameters]
+\end{verbatim}
+
+You can set other optional parameters to modify the standard compilation behavior.
+\begin{verbatim}
+  --enable-doc|--disable-doc
+    Enable or Disable (default) creation of documentation
+  --enable-trace|--disable-trace
+    Enable (default) or Disable trace info at run-time
+  --enable-debugging|--disable-debugging
+    Enable or Disable (default) debugging info ("-g -O2")
+  --enable-profiling|--disable-profiling
+    Enable or Disable (default) profiling info
+  --enable-caching|--disable-caching
+    Enable or Disable (default) internal caches
+    to store probs and other info
+  --enable-interpolatedsearch|--disable-interpolatedsearch
+    Enable or Disable (default) interpolated search for n-grams
+  --enable-optimization|--disable-optimization
+    Enable or Disable (default) C++ optimization info ("-O3")
+\end{verbatim}
+
+
+\noindent
+Run the following command to get more details on the compilation options.
+\begin{verbatim}
+$> configure --help
+\end{verbatim}
+
+\subsection{Step 2: Compilation}
+
+\begin{verbatim}
+$> make clean
+$> make
+\end{verbatim}
+
+\subsection{Step 3: Installation}
+\begin{verbatim}
+$> make install
+\end{verbatim}
+
+\noindent
+Libraries and commands are generated,  respectively, under the directories\newline {\tt /path/to/install/lib} and {\tt /path/to/install/bin}.
+
+\noindent
+If enabled and PdfLatex is installed, this user manual (in pdf) is generated under the directory\newline {\tt /path/to/install/doc}.
+
+\noindent
+Although caching is not enabled by default, it is highly recommended to activate through its compilation flag "{\tt --enable-caching}".
+%See Section~\ref{sec:caching} to learn more.
+
+
+\subsection{Step 4: Environment Settings}
+Set the environment variable {\tt IRSTLM} to {\tt /path/to/install}.
+
+\noindent
+Include the command directory {\tt /path/to/install/bin} into your environment variable {\tt PATH}.
+For instance, you can run the following commands
+
+\begin{verbatim}
+$> export IRSTLM=/path/to/install/
+$> export PATH=${IRSTLM/bin:${PATH}
+\end{verbatim}
+
+
+
+\subsection{Step 5: Regression Tests}
+If the installation procedure succeeds, you can also run the regression tests to double-check the integrity of the software.
+Please go to Section~\ref{sec:regressionTests} to learn hot to run the regression tests.
+
+\noindent Regression tests should be run also in the case of any change made in the source code.

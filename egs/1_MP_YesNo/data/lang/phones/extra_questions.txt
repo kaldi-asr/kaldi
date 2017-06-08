@@ -1,0 +1,9 @@
+k_B ah_B n_B ow_B 
+k_E ah_E n_E ow_E 
+k_I ah_I n_I ow_I 
+k_S ah_S n_S ow_S 
+sil spn 
+sil_B spn_B 
+sil_E spn_E 
+sil_I spn_I 
+sil_S spn_S 

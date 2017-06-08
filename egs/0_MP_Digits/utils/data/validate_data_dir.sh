@@ -1,0 +1,1 @@
+../validate_data_dir.sh

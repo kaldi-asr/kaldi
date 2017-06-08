@@ -1,0 +1,14 @@
+A language model file in ARPA  format, created with the IRST LM toolkit or
+with other tools, can be quantized and stored in a compact data structure, 
+called language model table.  Quantization can be performed by the command:
+
+\begin{verbatim}
+$> quantize-lm  train.lm train.qlm
+\end{verbatim}
+
+\noindent
+which  generates   the  quantized  version  {\tt train.qlm} that  encodes all probabilities and back-off 
+weights in 8 bits. The  output is a  modified ARPA format, called qARPA. Notice that quantized
+LMs reduce memory consumptions at the cost of some loss in performance. Moreover, probabilities
+of quantized LMs are not supposed to be properly normalized.
+

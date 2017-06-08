@@ -1,0 +1,79 @@
+LM estimation starts with the collection of n-grams and their frequency counters. Then, 
+smoothing parameters are estimated for each n-gram level; infrequent n-grams are
+possibly pruned and, finally, a LM file is created containing n-grams with probabilities and 
+back-off weights.  This procedure can be very demanding in terms of memory and
+time if it applied on huge corpora.   We provide here a way to split LM training  into smaller and independent steps, that can be easily distributed among independent processes. The  
+procedure relies on a training scripts that makes little use of computer RAM and implements 
+the  Witten-Bell smoothing method in an exact way.  
+
+\noindent
+Before starting, let us create a working directory under {\tt examples}, as many files will be created:
+
+\begin{verbatim}
+$> mkdir stat
+\end{verbatim}
+
+The script to generate the LM is:
+
+\begin{verbatim}
+$> build-lm.sh -i "gunzip -c train.gz" -n 3  -o train.ilm.gz -k 5
+\end{verbatim}
+where the available options are:
+
+\begin{verbatim}
+-i    Input training file e.g. 'gunzip -c train.gz'
+-o    Output gzipped LM, e.g. lm.gz
+-k    Number of splits (default 5)
+-n    Order of language model (default 3)
+-t    Directory for temporary files (default ./stat)
+-p    Prune singleton n-grams (default false)
+-s    Smoothing: witten-bell (default), kneser-ney, improved-kneser-ney 
+-b    Include sentence boundary n-grams (optional)
+-d    Define subdictionary for n-grams (optional)
+-v    Verbose
+\end{verbatim}
+
+\noindent
+The script splits the estimation procedure into 5 distinct jobs, that are explained in
+the following section. There are other options that can be used. We recommend for instance to use pruning of singletons to get smaller LM files. 
+Notice that {\tt build-lm.sh} produces a LM file {\tt train.ilm.gz} that is NOT in the final ARPA format, but in
+an intermediate format called {\tt iARPA}, that is recognized by the {\tt compile-lm} 
+command and by the Moses SMT decoder running with {\IRSTLM}. 
+To convert the file into the standard ARPA format you can use the command:
+
+\begin{verbatim}
+$> compile-lm train.ilm.gz train.lm --text=yes
+\end{verbatim}
+this will create the proper ARPA file {\tt lm-final}.
+To create a gzipped file you might also use:
+\begin{verbatim}
+$> compile-lm train.ilm.gz /dev/stdout --text=yes | gzip -c > train.lm.gz
+\end{verbatim}
+
+
+\noindent
+In the following sections, we will discuss on LM file formats, on compiling LMs into a 
+more compact and efficient binary format, and on querying LMs.
+
+\subsection{Estimating a LM with a Partial Dictionary}
+
+A sub-dictionary can be defined by just taking words occurring more than 5 times ({\tt -pf=5})
+and at most the top frequent 5000 words ({\tt -pr=5000}):
+\begin{verbatim}
+$>dict -i="gunzip -c train.gz" -o=sdict -pr=5000 -pf=5 
+\end{verbatim}
+
+
+\noindent
+The LM can be restricted to the defined sub-dictionary with the 
+command {\tt build-lm.sh} by using the option {\tt -d}: 
+\begin{verbatim}
+$> build-lm.sh -i "gunzip -c train.gz" -n 3  -o  train.ilm.gz -k 5 -p -d sdict 
+\end{verbatim}
+
+\noindent
+Notice that all words outside the sub-dictionary will be mapped into the {\tt <unk>}
+class, the probability of which will be directly estimated from the corpus statistics.
+A preferable alternative to this approach is to estimate a large LM and then to filter
+it according to a list of words (see Filtering a LM).
+

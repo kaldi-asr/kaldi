@@ -1,0 +1,210 @@
+{\IRSTLM} allows the use of class and chunk LMs, and a special
+handling of input tokens which are concatenation of $N \ge 1$ fields separated
+by the character \#, e.g.
+
+\begin{verbatim}
+   word#lemma#part-of-speech#word-class
+\end{verbatim}
+
+\noindent The processing is guided by the format of the file passed to
+Moses or {\tt compile-lm}: if it contains just the LM, either in textual or
+binary format, it is treated as usual; otherwise, it is supposed to have
+the following format:
+
+\begin{verbatim}
+LMMACRO <lmmacroSize> <selectedField> <collapse>
+<lmfilename>
+<mapfilename>
+\end{verbatim}
+
+\noindent where:
+\begin{verbatim}
+ LMMACRO is a reserved keyword
+ <lmmacroSize> is a positive integer
+ <selectedField> is an integer >=-1
+ <collapse> is a boolean value (true, false)
+ <lmfilename> is a file containing a LM (format compatible with {\IRSTLM})
+ <mapfilename> is an (optional) file with a (one|many)-to-one map
+\end{verbatim}
+
+\noindent The various cases are discussed with examples in the
+following. Data used in those examples can be found in the directory {\tt
+example/chunkLM/} which represents the relative path for all the parameters
+of the referred commands.  Note that texts with different tokens (words,
+POS, word\#POS pairs...) used either as input or for training LMs are all
+derived from the same multifield texts in order to allow direct comparison
+of results.
+
+\subsection{Field selection}
+
+The simplest case is that of the LM in {\tt <lmfilename>} referring just to
+one specific field of the input tokens. In this case, it is possible to
+specify the field to be selected before querying the LM through the integer
+{\tt <selectedField>} ($0$ for the first filed, $1$ for the
+second...). With the value $-1$, no selection is applied and the LM is
+queried with n-grams of whole strings.  The other parameters are set as:
+
+\begin{verbatim}
+ <lmmacroSize> : set to the size of the LM in <lmfilename>
+ <collapse>    : false
+\end{verbatim}
+
+\noindent The third line optionally reserved to {\tt <mapfilename>} does not exist.
+
+\bigskip
+\noindent
+Examples:
+
+\bigskip
+\noindent
+\thesubsection.a) selection of the second field:
+\begin{verbatim}
+$> compile-lm --eval=test/test.w-micro cfgfile/cfg.2ndfield
+%% Nw=126 PP=2.68 PPwp=0.00 Nbo=0 Noov=0 OOV=0.00%
+\end{verbatim}
+
+\noindent
+\thesubsection.b) selection of the first field:
+\begin{verbatim}
+$> compile-lm --eval=test/test.w-micro cfgfile/cfg.1stfield
+%% Nw=126 PP=9.71 PPwp=0.00 Nbo=76 Noov=0 OOV=0.00%
+\end{verbatim}
+
+\noindent The result of the latter case is identical to that obtained with
+the standard configuration involving just words:
+
+\bigskip
+\noindent
+\thesubsection.c) usual case on words:
+\begin{verbatim}
+$> compile-lm --eval=test/test.w lm/train.en.blm 
+%% Nw=126 PP=9.71 PPwp=0.00 Nbo=76 Noov=0 OOV=0.00%
+\end{verbatim}
+
+
+\subsection{Class LMs}
+
+Possibly, a many-to-one or one-to-one map can be passed through the
+{\tt <mapfilename>} parameter which has the simple format:
+
+\begin{verbatim}
+w1 class(w1)
+w2 class(w2)
+ ...
+wM class(wM)
+\end{verbatim}
+
+
+\noindent The map is applied to each component of ngrams before the LM
+query. Examples:
+\bigskip
+
+\noindent \thesubsection.a) map applied to the second field:
+\begin{verbatim}
+$> compile-lm --eval=test/test.w-micro cfgfile/cfg.2ndfld-map
+%% Nw=126 PP=16.40 PPwp=0.00 Nbo=33 Noov=0 OOV=0.00%
+\end{verbatim}
+
+
+
+\noindent \thesubsection.b) just to assess the correctness of the (16.2.a) result:
+\begin{verbatim}
+$> compile-lm --eval=test/test.macro lm/train.macro.blm
+%% Nw=126 PP=16.40 PPwp=0.00 Nbo=33 Noov=0 OOV=0.00%
+
+
+\end{verbatim}
+
+
+\subsection{Chunk LMs}
+
+A particular processing is performed whenever fields are supposed to
+correspond to microtags, i.e. the per-word projections of chunk labels. By
+means of the {\tt <collapse>} parameter, it is possible to activate a
+processing aiming at collapsing the sequence of microtags defining a
+chunk. The chunk LM is then queried with ngrams of chunk labels, in an
+asynchronous manner with respect to the sequence of words, as in general
+chunks consist of more words.
+
+\noindent
+The collapsing operation is automatically activated if the sequence of
+microtags is:
+
+\begin{verbatim}
+ TAG( TAG+ TAG+ ... TAG+ TAG)
+\end{verbatim}
+
+\noindent
+Such a sequence is collapsed into a single chunk label (let us say {\tt
+CHNK}) as long as {\tt TAG(}, {\tt TAG+} and {\tt TAG)} are all mapped into
+the same label {\tt CHNK}. The map into different labels or a different
+use/position of characters $($, $+$ and $)$ in the lexicon of tags prevent
+the collapsing operation even if {\tt <collapse>} is set to {\tt true}. Of
+course, if {\tt <collapse>} is {\tt false}, no collapse is attempted.
+
+\paragraph{Warning:} In this context, it assumes an important role the parameter {\tt
+<lmmacroSize>}: it defines the size of the n-gram before the collapsing
+operation, that is the number of microtags of the actually processed
+sequence. {\tt <lmmacroSize>} should be large enough to ensure that after
+the collapsing operation, the resulting n-gram of chunks is at least of the
+size of the LM to be queried (the {\tt <lmfilename>}). As an example,
+assuming {\tt <lmmacroSize>=6}, {\tt <selectedField>=1}, {\tt
+<collapse>=true} and 3 the size of the chunk LM, the following input
+
+\begin{verbatim}
+ on#PP average#NP( 30#NP+ -#NP+ 40#NP+ cm#NP)
+\end{verbatim}
+
+\noindent will yield to query the LM with just the bigram {\tt (PP,NP)},
+instead of a more informative trigram; for this particular case, the value
+6 for {\tt <lmmacroSize>} is not enough.  On the other side, for efficiency
+reasons, it cannot be set to an unlimited valued. A reasonable value could
+derive from the average number of microtags per chunk (2-3), which means
+setting {\tt <lmmacroSize>} to two-three times the size of the LM in {\tt
+<lmfilename>}.  Examples:
+\bigskip
+
+\noindent \thesubsection.a) second field, micro$\rightarrow$macro map, collapse:
+\begin{verbatim}
+$> compile-lm --eval=test/test.w-micro cfgfile/cfg.2ndfld-map-cllps
+%% Nw=126 PP=1.84 PPwp=0.00 Nbo=0 Noov=0 OOV=0.00%
+
+$> compile-lm --eval=test/test.w-micro cfgfile/cfg.2ndfld-map-cllps -d=1
+%% Nw=126 PP=1.83774013 ... OOV=0.00% logPr=-33.29979642
+
+\end{verbatim}
+
+\noindent
+\thesubsection.b) whole token,  micro$\rightarrow$macro map, collapse:
+\begin{verbatim}
+$> compile-lm --eval=test/test.micro cfgfile/cfg.token-map-cllps
+%% Nw=126 PP=1.84 PPwp=0.00 Nbo=0 Noov=0 OOV=0.00%
+\end{verbatim}
+
+\noindent
+\thesubsection.c)  whole token,  micro$\rightarrow$macro map, NO collapse:
+\begin{verbatim}
+$> compile-lm --eval=test/test.micro cfgfile/cfg.token-map
+%% Nw=126 PP=16.40 PPwp=0.00 Nbo=0 Noov=0 OOV=0.00%
+\end{verbatim}
+\noindent Note that the configuration (16.3.c) gives the same result of that in
+example (16.2.b), as they are equivalent.
+
+\bigskip
+\noindent
+\thesubsection.d) As an actual example related to the ``warning'' note
+reported above, the following configuration with usual LM:
+
+\begin{verbatim}
+$> compile-lm --eval=test/test.chunk lm/train.macro.blm -d=1
+Nw=73 PP=2.85754443 ... OOV=0.00000000% logPr=-33.28748842
+\end{verbatim}
+
+\noindent not necessarily yields the same log-likelihood ({\tt logPr}) nor the same perplexity ({\tt PP}) of case (16.3.a).
+In fact, concerning {\tt PP}, the length of the input sequence is definitely different (126 tokens before collapsing, 73 after that).
+Even the {\tt logPr} is different (-33.29979642 vs. -33.28748842) because in (16.3.a) some 6-grams ({\tt
+<lmmacroSize>} is set to 6) after collapsing reduce to $n$-grams of size less
+than 3 (the size of lm/train.macro.blm). By setting {\tt <lmmacroSize>} to
+a larger value (e.g. 8), the same {\tt logPr} will be computed.
+
+

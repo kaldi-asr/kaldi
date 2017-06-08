@@ -1,0 +1,10 @@
+#! /bin/sh
+
+#set machine type for compilation
+MY_ARCH=`uname -m`
+
+name=`basename $0`
+dir=`dirname $0`"/$MY_ARCH"
+
+$dir/$name "$@" 
+

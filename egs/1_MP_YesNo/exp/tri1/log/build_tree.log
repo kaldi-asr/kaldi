@@ -1,0 +1,20 @@
+# build-tree --verbose=1 --max-leaves=2000 --cluster-thresh=-1 exp/tri1/treeacc data/lang/phones/roots.int exp/tri1/questions.qst data/lang/topo exp/tri1/tree 
+# Started at Tue May 16 14:40:47 IST 2017
+#
+build-tree --verbose=1 --max-leaves=2000 --cluster-thresh=-1 exp/tri1/treeacc data/lang/phones/roots.int exp/tri1/questions.qst data/lang/topo exp/tri1/tree 
+LOG (build-tree[5.1.87~1-6eebc]:main():build-tree.cc:100) Number of separate statistics is 47
+LOG (build-tree[5.1.87~1-6eebc]:BuildTree():build-tree.cc:159) BuildTree: before building trees, map has 6 leaves.
+LOG (build-tree[5.1.87~1-6eebc]:SplitDecisionTree():build-tree-utils.cc:577) DoDecisionTreeSplit: split 20 times, #leaves now 26
+LOG (build-tree[5.1.87~1-6eebc]:BuildTree():build-tree.cc:185) Setting clustering threshold to smallest split 354.104
+VLOG[1] (build-tree[5.1.87~1-6eebc]:BuildTree():build-tree.cc:194) After decision tree split, num-leaves = 26, like-impr = 5.20116 per frame over 30498 frames.
+VLOG[1] (build-tree[5.1.87~1-6eebc]:BuildTree():build-tree.cc:198) Including just phones that were split, improvement is 5.20116 per frame over 30498 frames.
+LOG (build-tree[5.1.87~1-6eebc]:BuildTree():build-tree.cc:213) BuildTree: removed 2 leaves.
+VLOG[1] (build-tree[5.1.87~1-6eebc]:BuildTree():build-tree.cc:220) Objf change due to clustering -0.0146977 per frame.
+VLOG[1] (build-tree[5.1.87~1-6eebc]:BuildTree():build-tree.cc:223) Normalizing over only split phones, this is: -0.0146977 per frame.
+VLOG[1] (build-tree[5.1.87~1-6eebc]:BuildTree():build-tree.cc:226) Num-leaves is now 24
+VLOG[1] (build-tree[5.1.87~1-6eebc]:main():build-tree.cc:138) For pdf-id 1, low count 0
+VLOG[1] (build-tree[5.1.87~1-6eebc]:main():build-tree.cc:138) For pdf-id 13, low count 45
+WARNING (build-tree[5.1.87~1-6eebc]:main():build-tree.cc:180) Saw no stats for following phones: 2 3 4 5 6 7 8 9 10 12 13 14 15 16 18 21 22 23 25 26 
+LOG (build-tree[5.1.87~1-6eebc]:main():build-tree.cc:184) Wrote tree
+# Accounting: time=0 threads=1
+# Ended (code 0) at Tue May 16 14:40:47 IST 2017, elapsed time 0 seconds
