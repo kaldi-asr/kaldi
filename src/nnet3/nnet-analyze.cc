@@ -941,10 +941,10 @@ void ComputationChecker::CheckComputationIndexes() const {
         if (label_index < 0 || label_index >= command_index ||
             computation_.commands[label_index].command_type != kNoOperationLabel)
           KALDI_ERR << "kGotoLabel command has invalid destination index.";
-        break;
         if (command_index + 1 != num_commands) {
           KALDI_ERR << "kGotoLabel is not the last command in the computation";
         }
+        break;
       }
       default:
         KALDI_ERR << "Unknown command type.";
