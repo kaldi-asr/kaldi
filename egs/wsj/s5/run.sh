@@ -130,7 +130,7 @@ if [ $stage -le 2 ]; then
       # This is just confirming they're equivalent.
       for mode in 1 2 3 4; do
         steps/lmrescore.sh --mode $mode --cmd "$decode_cmd" \
-          data/lang_nosp_test_{tgpr,tg} data/test_dev93 \
+          data/lang_nosp_test_{tgpr,tg} data/test_${data} \
           exp/tri1/decode_nosp_tgpr_${data} \
           exp/tri1/decode_nosp_tgpr_${data}_tg$mode  || exit 1;
       done
@@ -170,7 +170,7 @@ if [ $stage -le 3 ]; then
 
        # compare lattice rescoring with biglm decoding, going from tgpr to tg.
       steps/decode_biglm.sh --nj ${nspk} --cmd "$decode_cmd" \
-        exp/tri2b/graph_nosp_tgpr data/lang_test_{tgpr,tg}/G.fst \
+        exp/tri2b/graph_nosp_tgpr data/lang_nosp_test_{tgpr,tg}/G.fst \
         data/test_${data} exp/tri2b/decode_nosp_tgpr_${data}_tg_biglm
 
        # baseline via LM rescoring of lattices.

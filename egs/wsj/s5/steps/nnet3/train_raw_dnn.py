@@ -8,6 +8,7 @@
 raw neural network instead of an acoustic model.
 """
 
+from __future__ import print_function
 import argparse
 import logging
 import pprint
@@ -47,14 +48,23 @@ def get_args():
         DNNs include simple DNNs, TDNNs and CNNs.""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         conflict_handler='resolve',
-        parents=[common_train_lib.CommonParser(include_chunk_context = False).parser])
+        parents=[common_train_lib.CommonParser(include_chunk_context=False).parser])
 
     # egs extraction options
     parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
                         default=8,
                         help="Number of output labels per example")
+    parser.add_argument("--image.augmentation-opts", type=str,
+                        dest='image_augmentation_opts',
+                        default=None,
+                        help="Image augmentation options")
 
     # trainer options
+    parser.add_argument("--trainer.final-combination", type=str,
+                        action=common_lib.StrToBoolAction,
+                        default=True, choices=["true", "false"],
+                        dest='final_combination',
+                        help="If false, skip final combination step")
     parser.add_argument("--trainer.prior-subset-size", type=int,
                         dest='prior_subset_size', default=20000,
                         help="Number of samples for computing priors")
@@ -71,6 +81,11 @@ def get_args():
                         rule as accepted by the --minibatch-size option of
                         nnet3-merge-egs; run that program without args to see
                         the format.""")
+    parser.add_argument("--compute-average-posteriors",
+                        type=str, action=common_lib.StrToBoolAction,
+                        choices=["true", "false"], default=False,
+                        help="""If true, then the average output of the
+                        network is computed and dumped as post.final.vec""")
 
     # General options
     parser.add_argument("--nj", type=int, default=4,
@@ -79,11 +94,11 @@ def get_args():
                         action=common_lib.StrToBoolAction,
                         default=True, choices=["true", "false"],
                         help="Train neural network using dense targets")
-    parser.add_argument("--feat-dir", type=str, required=True,
+    parser.add_argument("--feat-dir", type=str, required=False,
                         help="Directory with features used for training "
                         "the neural network.")
-    parser.add_argument("--targets-scp", type=str, required=True,
-                        help="Target for training neural network.")
+    parser.add_argument("--targets-scp", type=str, required=False,
+                        help="Targets for training neural network.")
     parser.add_argument("--dir", type=str, required=True,
                         help="Directory to store the models and "
                         "all other files.")
@@ -106,7 +121,7 @@ def process_args(args):
         raise Exception("--egs.frames-per-eg should have a minimum value of 1")
 
     if not common_train_lib.validate_minibatch_size_str(args.minibatch_size):
-        raise Exception("--trainer.optimization.minibatch-size has an invalid value");
+        raise Exception("--trainer.optimization.minibatch-size has an invalid value")
 
     if (not os.path.exists(args.dir)
             or not os.path.exists(args.dir+"/configs")):
@@ -149,7 +164,7 @@ def process_args(args):
     return [args, run_opts]
 
 
-def train(args, run_opts, background_process_handler):
+def train(args, run_opts):
     """ The main function for training.
 
     Args:
@@ -162,6 +177,8 @@ def train(args, run_opts, background_process_handler):
     logger.info("Arguments for the experiment\n{0}".format(arg_string))
 
     # Set some variables.
+
+    # note, feat_dim gets set to 0 if args.feat_dir is unset (None).
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
     ivector_id = common_lib.get_ivector_extractor_id(args.online_ivector_dir)
@@ -175,9 +192,7 @@ def train(args, run_opts, background_process_handler):
     try:
         model_left_context = variables['model_left_context']
         model_right_context = variables['model_right_context']
-        add_lda = common_lib.str_to_bool(variables['add_lda'])
-        include_log_softmax = common_lib.str_to_bool(
-            variables['include_log_softmax'])
+
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in "
                         "{1}".format(str(e), '{0}/configs'.format(args.dir)))
@@ -185,14 +200,14 @@ def train(args, run_opts, background_process_handler):
     left_context = model_left_context
     right_context = model_right_context
 
+
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
-
-    if (args.stage <= -5):
-        logger.info("Initializing a basic network")
-        common_lib.run_job(
+    if (args.stage <= -5) and os.path.exists(args.dir+"/configs/init.config"):
+        logger.info("Initializing the network for computing the LDA stats")
+        common_lib.execute_command(
             """{command} {dir}/log/nnet_init.log \
                     nnet3-init --srand=-2 {dir}/configs/init.config \
                     {dir}/init.raw""".format(command=run_opts.command,
@@ -200,6 +215,10 @@ def train(args, run_opts, background_process_handler):
 
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -4) and args.egs_dir is None:
+        if args.targets_scp is None or args.feat_dir is None:
+            raise Exception("If you don't supply the --egs-dir option, the "
+                            "--targets-scp and --feat-dir options are required.")
+
         logger.info("Generating egs")
 
         if args.use_dense_targets:
@@ -244,12 +263,12 @@ def train(args, run_opts, background_process_handler):
 
     [egs_left_context, egs_right_context,
      frames_per_eg_str, num_archives] = (
-        common_train_lib.verify_egs_dir(egs_dir, feat_dim,
-                                        ivector_dim, ivector_id,
-                                        left_context, right_context))
-    assert(str(args.frames_per_eg) == frames_per_eg_str)
+         common_train_lib.verify_egs_dir(egs_dir, feat_dim,
+                                         ivector_dim, ivector_id,
+                                         left_context, right_context))
+    assert str(args.frames_per_eg) == frames_per_eg_str
 
-    if (args.num_jobs_final > num_archives):
+    if args.num_jobs_final > num_archives:
         raise Exception('num_jobs_final cannot exceed the number of archives '
                         'in the egs directory')
 
@@ -257,7 +276,7 @@ def train(args, run_opts, background_process_handler):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (add_lda and args.stage <= -3):
+    if args.stage <= -3 and os.path.exists(args.dir+"/configs/init.config"):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
@@ -265,7 +284,7 @@ def train(args, run_opts, background_process_handler):
             max_lda_jobs=args.max_lda_jobs,
             rand_prune=args.rand_prune)
 
-    if (args.stage <= -1):
+    if args.stage <= -1:
         logger.info("Preparing the initial network.")
         common_train_lib.prepare_initial_network(args.dir, run_opts)
 
@@ -284,13 +303,19 @@ def train(args, run_opts, background_process_handler):
         num_archives_expanded, args.max_models_combine,
         args.num_jobs_final)
 
-    def learning_rate(iter, current_num_jobs, num_archives_processed):
-        return common_train_lib.get_learning_rate(iter, current_num_jobs,
-                                                  num_iters,
-                                                  num_archives_processed,
-                                                  num_archives_to_process,
-                                                  args.initial_effective_lrate,
-                                                  args.final_effective_lrate)
+    if os.path.exists('{0}/valid_diagnostic.scp'.format(args.egs_dir)):
+        if os.path.exists('{0}/valid_diagnostic.egs'.format(args.egs_dir)):
+            raise Exception('both {0}/valid_diagnostic.egs and '
+                            '{0}/valid_diagnostic.scp exist.'
+                            'This script expects only one of them to exist.'
+                            ''.format(args.egs_dir))
+        use_multitask_egs = True
+    else:
+        if not os.path.exists('{0}/valid_diagnostic.egs'.format(args.egs_dir)):
+            raise Exception('neither {0}/valid_diagnostic.egs nor '
+                            '{0}/valid_diagnostic.scp exist.'
+                            'This script expects one of them.'.format(args.egs_dir))
+        use_multitask_egs = False
 
     logger.info("Training will run for {0} epochs = "
                 "{1} iterations".format(args.num_epochs, num_iters))
@@ -304,6 +329,19 @@ def train(args, run_opts, background_process_handler):
                                * float(iter) / num_iters)
 
         if args.stage <= iter:
+            lrate = common_train_lib.get_learning_rate(iter, current_num_jobs,
+                                                       num_iters,
+                                                       num_archives_processed,
+                                                       num_archives_to_process,
+                                                       args.initial_effective_lrate,
+                                                       args.final_effective_lrate)
+
+            shrinkage_value = 1.0 - (args.proportional_shrink * lrate)
+            if shrinkage_value <= 0.5:
+                raise Exception("proportional-shrink={0} is too large, it gives "
+                                "shrink-value={1}".format(args.proportional_shrink,
+                                                          shrinkage_value))
+
             train_lib.common.train_one_iteration(
                 dir=args.dir,
                 iter=iter,
@@ -312,25 +350,24 @@ def train(args, run_opts, background_process_handler):
                 num_jobs=current_num_jobs,
                 num_archives_processed=num_archives_processed,
                 num_archives=num_archives,
-                learning_rate=learning_rate(iter, current_num_jobs,
-                                            num_archives_processed),
+                learning_rate=lrate,
                 dropout_edit_string=common_train_lib.get_dropout_edit_string(
                     args.dropout_schedule,
                     float(num_archives_processed) / num_archives_to_process,
                     iter),
                 minibatch_size_str=args.minibatch_size,
                 frames_per_eg=args.frames_per_eg,
-                left_context=left_context,
-                right_context=right_context,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
+                shrinkage_value=shrinkage_value,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
                 get_raw_nnet_from_am=False,
-                background_process_handler=background_process_handler)
+                image_augmentation_opts=args.image_augmentation_opts,
+                use_multitask_egs=use_multitask_egs)
 
             if args.cleanup:
-                # do a clean up everythin but the last 2 models, under certain
+                # do a clean up everything but the last 2 models, under certain
                 # conditions
                 common_train_lib.remove_model(
                     args.dir, iter-2, num_iters, models_to_combine,
@@ -351,23 +388,24 @@ def train(args, run_opts, background_process_handler):
         num_archives_processed = num_archives_processed + current_num_jobs
 
     if args.stage <= num_iters:
-        logger.info("Doing final combination to produce final.raw")
-        train_lib.common.combine_models(
-            dir=args.dir, num_iters=num_iters,
-            models_to_combine=models_to_combine, egs_dir=egs_dir,
-            left_context=left_context, right_context=right_context,
-            minibatch_size_str=args.minibatch_size, run_opts=run_opts,
-            background_process_handler=background_process_handler,
-            get_raw_nnet_from_am=False,
-            sum_to_one_penalty=args.combine_sum_to_one_penalty)
+        if args.final_combination:
+            logger.info("Doing final combination to produce final.raw")
+            train_lib.common.combine_models(
+                dir=args.dir, num_iters=num_iters,
+                models_to_combine=models_to_combine, egs_dir=egs_dir,
+                minibatch_size_str=args.minibatch_size, run_opts=run_opts,
+                get_raw_nnet_from_am=False,
+                sum_to_one_penalty=args.combine_sum_to_one_penalty,
+                use_multitask_egs=use_multitask_egs)
+        else:
+            common_lib.force_symlink("{0}.raw".format(num_iters),
+                                     "{0}/final.raw".format(args.dir))
 
-    if include_log_softmax and args.stage <= num_iters + 1:
-        logger.info("Getting average posterior for purposes of "
-                    "adjusting the priors.")
+    if args.compute_average_posteriors and args.stage <= num_iters + 1:
+        logger.info("Getting average posterior for output-node 'output'.")
         train_lib.common.compute_average_posterior(
             dir=args.dir, iter='final', egs_dir=egs_dir,
             num_archives=num_archives,
-            left_context=left_context, right_context=right_context,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts,
             get_raw_nnet_from_am=False)
 
@@ -387,33 +425,38 @@ def train(args, run_opts, background_process_handler):
             get_raw_nnet_from_am=False)
 
     # do some reporting
-    [report, times, data] = nnet3_log_parse.generate_acc_logprob_report(args.dir)
-    if args.email is not None:
-        common_lib.send_mail(report, "Update : Expt {0} : "
-                                     "complete".format(args.dir), args.email)
+    outputs_list = common_train_lib.get_outputs_list("{0}/final.raw".format(
+        args.dir), get_raw_nnet_from_am=False)
+    if 'output' in outputs_list:
+        [report, times, data] = nnet3_log_parse.generate_acc_logprob_report(args.dir)
+        if args.email is not None:
+            common_lib.send_mail(report, "Update : Expt {0} : "
+                                         "complete".format(args.dir), args.email)
 
-    with open("{dir}/accuracy.report".format(dir=args.dir), "w") as f:
-        f.write(report)
+        with open("{dir}/accuracy.{output_name}.report".format(dir=args.dir,
+                                                               output_name="output"),
+                  "w") as f:
+            f.write(report)
 
-    common_lib.run_job("steps/info/nnet3_dir_info.pl "
-                       "{0}".format(args.dir))
+    common_lib.execute_command("steps/info/nnet3_dir_info.pl "
+                               "{0}".format(args.dir))
 
 
 def main():
     [args, run_opts] = get_args()
     try:
-        background_process_handler = common_lib.BackgroundProcessHandler(
-            polling_time=args.background_polling_time)
-        train(args, run_opts, background_process_handler)
-        background_process_handler.ensure_processes_are_done()
-    except Exception as e:
+        train(args, run_opts)
+        common_lib.wait_for_background_commands()
+    except BaseException as e:
+        # look for BaseException so we catch KeyboardInterrupt, which is
+        # what we get when a background thread dies.
         if args.email is not None:
             message = ("Training session for experiment {dir} "
                        "died due to an error.".format(dir=args.dir))
             common_lib.send_mail(message, message, args.email)
-        traceback.print_exc()
-        background_process_handler.stop()
-        raise e
+        if not isinstance(e, KeyboardInterrupt):
+            traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":

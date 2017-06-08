@@ -371,7 +371,7 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
 
         # note: self.config['input'] is a descriptor, '[-1]' means output
         # the most recent layer.
-        self.config = { 'input':'[-1]' }
+        self.config = { 'input':'[-1]', 'dim':-1 }
 
     def check_configs(self):
 
@@ -628,7 +628,8 @@ class XconfigBasicLayer(XconfigLayerBase):
         # Here we just list some likely combinations.. you can just add any
         # combinations you want to use, to this list.
         assert first_token in [ 'relu-layer', 'relu-renorm-layer', 'sigmoid-layer',
-                                'tanh-layer', 'relu-batchnorm-layer' ]
+                                'tanh-layer', 'relu-batchnorm-layer', 'relu-dropout-layer',
+                                'relu-batchnorm-dropout-layer' ]
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -641,7 +642,11 @@ class XconfigBasicLayer(XconfigLayerBase):
                         'self-repair-scale' : 1.0e-05,
                         'target-rms' : 1.0,
                         'learning-rate-factor' : 1.0,
-                        'ng-affine-options' : ''}
+                        'ng-affine-options' : '',
+                        'dropout-proportion': 0.5}  # dropout-proportion only
+                                                    # affects layers with
+                                                    # 'dropout' in the name.
+
 
     def check_configs(self):
         if self.config['dim'] < 0:
@@ -766,6 +771,12 @@ class XconfigBasicLayer(XconfigLayerBase):
                         ' target-rms={3}'
                         ''.format(self.name, nonlinearity, output_dim,
                             target_rms))
+
+            elif nonlinearity == 'dropout':
+                line = ('component name={0}.{1} type=DropoutComponent '
+                           'dim={2} dropout-proportion={3}'.format(
+                               self.name, nonlinearity, output_dim,
+                               self.config['dropout-proportion']))
 
             else:
                 raise RuntimeError("Unknown nonlinearity type: {0}"
@@ -991,8 +1002,7 @@ class XconfigIdctLayer(XconfigLayerBase):
         self.config = {'input': '[-1]',
                        'dim': -1,
                        'cepstral-lifter': 22.0,
-                       'affine-transform-file': '',
-                       'write-init-config': True}
+                       'affine-transform-file': ''}
 
     def check_configs(self):
         if self.config['affine-transform-file'] is None:
@@ -1023,13 +1033,6 @@ class XconfigIdctLayer(XconfigLayerBase):
         input_dim = self.descriptors['input']['dim']
         output_dim = self.output_dim()
         transform_file = self.config['affine-transform-file']
-
-        if self.config['write-init-config']:
-            # to init.config we write an output-node with the name 'output' and
-            # with a Descriptor equal to the descriptor that's the input to this
-            # layer.  This will be used to accumulate stats to learn the LDA transform.
-            line = 'output-node name=output input={0}'.format(descriptor_final_string)
-            ans.append(('init', line))
 
         idct_mat = common_lib.compute_idct_matrix(
             input_dim, output_dim, self.config['cepstral-lifter'])

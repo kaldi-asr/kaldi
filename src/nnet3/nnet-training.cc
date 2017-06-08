@@ -90,10 +90,11 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
                                supply_deriv, computer,
                                &tot_weight, &tot_objf);
       objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
-                                      num_minibatches_processed_++,
+                                      num_minibatches_processed_,
                                       tot_weight, tot_objf);
     }
   }
+  num_minibatches_processed_++;
 }
 
 void NnetTrainer::UpdateParamsWithMaxChange() {
@@ -226,13 +227,16 @@ void ObjectiveFunctionInfo::UpdateStats(
     BaseFloat this_minibatch_tot_aux_objf) {
   int32 phase = minibatch_counter / minibatches_per_phase;
   if (phase != current_phase) {
-    KALDI_ASSERT(phase == current_phase + 1); // or doesn't really make sense.
-    PrintStatsForThisPhase(output_name, minibatches_per_phase);
+    KALDI_ASSERT(phase > current_phase);
+    PrintStatsForThisPhase(output_name, minibatches_per_phase,
+                           phase);
     current_phase = phase;
     tot_weight_this_phase = 0.0;
     tot_objf_this_phase = 0.0;
     tot_aux_objf_this_phase = 0.0;
+    minibatches_this_phase = 0;
   }
+  minibatches_this_phase++;
   tot_weight_this_phase += this_minibatch_weight;
   tot_objf_this_phase += this_minibatch_tot_objf;
   tot_aux_objf_this_phase += this_minibatch_tot_aux_objf;
@@ -243,25 +247,44 @@ void ObjectiveFunctionInfo::UpdateStats(
 
 void ObjectiveFunctionInfo::PrintStatsForThisPhase(
     const std::string &output_name,
-    int32 minibatches_per_phase) const {
+    int32 minibatches_per_phase,
+    int32 phase) const {
   int32 start_minibatch = current_phase * minibatches_per_phase,
-      end_minibatch = start_minibatch + minibatches_per_phase - 1;
+      end_minibatch = phase * minibatches_per_phase - 1;
 
   if (tot_aux_objf_this_phase == 0.0) {
-    KALDI_LOG << "Average objective function for '" << output_name
-              << "' for minibatches " << start_minibatch
-              << '-' << end_minibatch << " is "
-              << (tot_objf_this_phase / tot_weight_this_phase) << " over "
-              << tot_weight_this_phase << " frames.";
+    if (minibatches_per_phase == minibatches_this_phase) {
+      KALDI_LOG << "Average objective function for '" << output_name
+                << "' for minibatches " << start_minibatch
+                << '-' << end_minibatch << " is "
+                << (tot_objf_this_phase / tot_weight_this_phase) << " over "
+                << tot_weight_this_phase << " frames.";
+    } else {
+      KALDI_LOG << "Average objective function for '" << output_name
+                << " using " << minibatches_this_phase
+                << " minibatches in minibatch range " << start_minibatch
+                << '-' << end_minibatch << " is "
+                << (tot_objf_this_phase / tot_weight_this_phase) << " over "
+                << tot_weight_this_phase << " frames.";
+    }
   } else {
     BaseFloat objf = (tot_objf_this_phase / tot_weight_this_phase),
         aux_objf = (tot_aux_objf_this_phase / tot_weight_this_phase),
         sum_objf = objf + aux_objf;
-    KALDI_LOG << "Average objective function for '" << output_name
-              << "' for minibatches " << start_minibatch
-              << '-' << end_minibatch << " is "
-              << objf << " + " << aux_objf << " = " << sum_objf
-              << " over " << tot_weight_this_phase << " frames.";
+    if (minibatches_per_phase == minibatches_this_phase) {
+      KALDI_LOG << "Average objective function for '" << output_name
+                << "' for minibatches " << start_minibatch
+                << '-' << end_minibatch << " is "
+                << objf << " + " << aux_objf << " = " << sum_objf
+                << " over " << tot_weight_this_phase << " frames.";
+    } else {
+      KALDI_LOG << "Average objective function for '" << output_name
+                << "' using " << minibatches_this_phase
+                << " minibatches in  minibatch range " << start_minibatch
+                << '-' << end_minibatch << " is "
+                << objf << " + " << aux_objf << " = " << sum_objf
+                << " over " << tot_weight_this_phase << " frames.";
+    }
   }
 }
 

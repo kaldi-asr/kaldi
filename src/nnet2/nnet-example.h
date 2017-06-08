@@ -24,7 +24,7 @@
 #include "nnet2/nnet-nnet.h"
 #include "util/table-types.h"
 #include "lat/kaldi-lattice.h"
-#include "thread/kaldi-semaphore.h"
+#include "util/kaldi-semaphore.h"
 
 namespace kaldi {
 namespace nnet2 {

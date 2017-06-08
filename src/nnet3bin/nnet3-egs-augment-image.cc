@@ -1,6 +1,7 @@
 // nnet3bin/nnet3-egs-augment-image.cc
 
 // Copyright      2017  Johns Hopkins University (author:  Daniel Povey)
+//                2017  Hossein Hadian
 //                2017  Yiwen Shao
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -27,22 +28,26 @@
 namespace kaldi {
 namespace nnet3 {
 
+enum FillMode { kNearest, kReflect };
+
 struct ImageAugmentationConfig {
   int32 num_channels;
   BaseFloat horizontal_flip_prob;
   BaseFloat horizontal_shift;
   BaseFloat vertical_shift;
+  std::string fill_mode_string;
 
   ImageAugmentationConfig():
       num_channels(1),
       horizontal_flip_prob(0.0),
       horizontal_shift(0.0),
-      vertical_shift(0.0) { }
+      vertical_shift(0.0),
+      fill_mode_string("nearest") { }
 
 
   void Register(ParseOptions *po) {
     po->Register("num-channels", &num_channels, "Number of colors in the image."
-                 "It is is important to specify this (helps interpret the image "
+                 "It is important to specify this (helps interpret the image "
                  "correctly.");
     po->Register("horizontal-flip-prob", &horizontal_flip_prob,
                  "Probability of doing horizontal flip");
@@ -52,6 +57,9 @@ struct ImageAugmentationConfig {
     po->Register("vertical-shift", &vertical_shift,
                  "Maximum allowed vertical shift as proportion of image "
                  "height.  Padding is with closest pixel.");
+    po->Register("fill-mode", &fill_mode_string, "Mode for dealing with "
+		 "points outside the image boundary when applying transformation. "
+		 "Choices = {nearest, reflect}");
   }
 
   void Check() const {
@@ -60,92 +68,134 @@ struct ImageAugmentationConfig {
                  horizontal_flip_prob <= 1);
     KALDI_ASSERT(horizontal_shift >= 0 && horizontal_shift <= 1);
     KALDI_ASSERT(vertical_shift >= 0 && vertical_shift <= 1);
+    KALDI_ASSERT(fill_mode_string == "nearest" || fill_mode_string == "reflect");
+  }
+
+  FillMode GetFillMode() const {
+    FillMode fill_mode;
+    if (fill_mode_string == "reflect") {
+      fill_mode = kReflect;
+    } else {
+      if (fill_mode_string != "nearest") {
+	KALDI_ERR << "Choices for --fill-mode are 'nearest' or 'reflect', got: "
+		  << fill_mode_string;
+      } else {
+	fill_mode = kNearest;
+      }
+    }
+    return fill_mode;
   }
 };
 
-
-// Flips the image horizontally.
-void HorizontalFlip(MatrixBase<BaseFloat> *image) {
-  int32 num_rows = image->NumRows();
-  Vector<BaseFloat> temp(image->NumCols());
-  for (int32 r = 0; r < num_rows / 2; r++) {
-    SubVector<BaseFloat> row_a(*image, r), row_b(*image,
-                                                 num_rows - r - 1);
-    temp.CopyFromVec(row_a);
-    row_a.CopyFromVec(row_b);
-    row_b.CopyFromVec(temp);
-  }
-}
-
- // Shifts the image horizontally by 'horizontal_shift' (+ve == to the right).
-void HorizontalShift(int32 horizontal_shift,
-                     MatrixBase<BaseFloat> *image) {
-  int32 num_rows = image->NumRows();
-  for (int32 r = 0; r < num_rows; r++) {
-    int32 current_r;
-    // +ve == to the right, do shifting from right to left; otherwise, from left to right
-    if (horizontal_shift > 0) {
-      current_r = r;
-    } else {  // do it in the reverse order.
-      current_r = num_rows - 1 - r;
-    }
-
-    int32 origin_r = current_r - horizontal_shift;
-    if (origin_r < 0)
-      origin_r = 0;
-    if (origin_r >= num_rows)
-      origin_r = num_rows - 1;
-
-    SubVector<BaseFloat> current_row(*image, current_r),
-        origin_row(*image, origin_r);
-    current_row.CopyFromVec(origin_row);
-  }
-}
-
-/* Shifts the image vertically by 'vertical_shift' (+ve == to the top).*/
-void VerticalShift(int32 vertical_shift,
-                   int32 num_channels,
-                   MatrixBase<BaseFloat> *image) {
-  int32 num_rows = image->NumRows(),
-      num_cols = image->NumCols(), height = num_cols / num_channels;
-  KALDI_ASSERT(num_cols % num_channels == 0);
-  for (int32 r = 0; r < num_rows; r++) {
-    BaseFloat *this_row = image->RowData(r);
-    for (int32 c = 0; c < height; c++) {
-      int32 current_index;
-      // +ve == to the top, do shifting from top to bottom; otherwise, bottom to top
-      if (vertical_shift > 0) {
-        current_index = height - 1 - c;
-      } else {
-        current_index = c;
-      }
-      int32 origin_index = current_index - vertical_shift;
-      if (origin_index < 0)
-        origin_index = 0;
-      if (origin_index >= num_cols)
-        origin_index = num_cols;
-
-      for (int32 ch = 0; ch < num_channels; ch++)
-        this_row[num_channels * current_index + ch] =
-            this_row[num_channels * origin_index + ch];
-    }
-  }
-}
-
-
-
 /**
-  This function randomly modifies (perturbs) the image.
-  @param [in] config  Configuration class that says how
-                      to perturb the image.
+  This function applies a geometric transformation 'transform' to the image.
+  Reference: Digital Image Processing book by Gonzalez and Woods.
+  @param [in] transform  The 3x3 geometric transformation matrix to apply.
+  @param [in] num_channels  Number of channels (i.e. colors) of the image
   @param [in,out] image  The image matrix to be modified.
                      image->NumRows() is the width (number of x values) in
                      the image; image->NumCols() is the height times number
-                     of channels/colors (channel varies the fastest).
+                     of channels (channel varies the fastest).
  */
+void ApplyAffineTransform(MatrixBase<BaseFloat> &transform,
+                          int32 num_channels,
+                          MatrixBase<BaseFloat> *image,
+                          FillMode fill_mode) {
+  int32 num_rows = image->NumRows(),
+        num_cols = image->NumCols(),
+        height = num_cols / num_channels,
+        width = num_rows;
+  KALDI_ASSERT(num_cols % num_channels == 0);
+  Matrix<BaseFloat> original_image(*image);
+  for (int32 r = 0; r < width; r++) {
+    for (int32 c = 0; c < height; c++) {
+      // (r_old, c_old) is the coordinate of the pixel in the original image
+      // while (r, c) is the coordinate in the new (transformed) image.
+      BaseFloat r_old = transform(0, 0) * r +
+                                          transform(0, 1) * c + transform(0, 2);
+      BaseFloat c_old = transform(1, 0) * r +
+                                          transform(1, 1) * c + transform(1, 2);
+      // We are going to do bilinear interpolation between 4 closest points
+      // to the point (r_old, c_old) of the original image. We have:
+      // r1  <=  r_old  <=  r2
+      // c1  <=  c_old  <=  c2
+      int32 r1 = static_cast<int32>(floor(r_old));
+      int32 c1 = static_cast<int32>(floor(c_old));
+      int32 r2 = r1 + 1;
+      int32 c2 = c1 + 1;
+
+      // These weights determine how much each of the 4 points contributes
+      // to the final interpolated value:
+      BaseFloat weight_11 = (r2 - r_old) * (c2 - c_old),
+          weight_12 = (r2 - r_old) * (c_old - c1),
+          weight_21 = (r_old - r1) * (c2 - c_old),
+          weight_22 = (r_old - r1) * (c_old - c1);
+      // Handle edge conditions:
+      if (fill_mode == kNearest) {
+        if (r1 < 0) {
+          r1 = 0;
+          if (r2 < 0) r2 = 0;
+        }
+        if (r2 >= width) {
+          r2 = width - 1;
+          if (r1 >= width) r1 = width - 1;
+        }
+        if (c1 < 0) {
+          c1 = 0;
+          if (c2 < 0) c2 = 0;
+        }
+        if (c2 >= height) {
+          c2 = height - 1;
+          if (c1 >= height) c1 = height - 1;
+        }
+      } else {
+        KALDI_ASSERT(fill_mode == kReflect);
+        if (r1 < 0) {
+          r1 = - r1;
+          if (r2 < 0) r2 = - r2;
+        }
+        if (r2 >= width) {
+          r2 = 2 * width - 2 - r2;
+          if (r1 >= width) r1 = 2 * width - 2 - r1;
+        }
+        if (c1 < 0) {
+          c1 = - c1;
+          if (c2 < 0) c2 = -c2;
+        }
+        if (c2 >= height) {
+          c2 = 2 * height - 2 - c2;
+          if (c1 >= height) c1 = 2 * height - 2 - c1;
+        }
+      }
+      for (int32 ch = 0; ch < num_channels; ch++) {
+        // find the values at the 4 points
+        BaseFloat p11 = original_image(r1, num_channels * c1 + ch),
+            p12 = original_image(r1, num_channels * c2 + ch),
+            p21 = original_image(r2, num_channels * c1 + ch),
+            p22 = original_image(r2, num_channels * c2 + ch);
+        (*image)(r, num_channels * c + ch) = weight_11 * p11 + weight_12 * p12 +
+            weight_21 * p21 + weight_22 * p22;
+      }
+    }
+  }
+}
+
+/**
+   This function randomly modifies (perturbs) the image by applying different
+   geometric transformations according to the options in 'config'.
+   References: "Digital Image Processing book by Gonzalez and Woods" and
+   "Keras: github.com/fchollet/keras/blob/master/keras/preprocessing/image.py"
+   @param [in] config  Configuration class that says how
+   to perturb the image.
+   @param [in,out] image  The image matrix to be modified.
+   image->NumRows() is the width (number of x values) in
+   the image; image->NumCols() is the height times number
+   of channels/colors (channel varies the fastest).
+*/
 void PerturbImage(const ImageAugmentationConfig &config,
                   MatrixBase<BaseFloat> *image) {
   config.Check();
+  FillMode fill_mode = config.GetFillMode();
   int32 image_width = image->NumRows(),
       num_channels = config.num_channels,
       image_height = image->NumCols() / num_channels;
@@ -153,31 +203,76 @@ void PerturbImage(const ImageAugmentationConfig &config,
     KALDI_ERR << "Number of columns in image must divide the number "
         "of channels";
   }
-  if (WithProb(config.horizontal_flip_prob)) {
-    HorizontalFlip(image);
-  }
-  { // horizontal shift
-    int32 horizontal_shift_max =
-        static_cast<int32>(0.5 + config.horizontal_shift * image_width);
-    if (horizontal_shift_max > image_width - 1)
-      horizontal_shift_max = image_width - 1;  // would be very strange.
-    int32 horizontal_shift = RandInt(-horizontal_shift_max,
-                                     horizontal_shift_max);
-    if (horizontal_shift != 0)
-      HorizontalShift(horizontal_shift, image);
-  }
+  // We do an affine transform which
+  // handles flipping, translation, rotation, magnification, and shear.
+  Matrix<BaseFloat> transform_mat(3, 3, kUndefined);
+  transform_mat.SetUnit();
 
-  { // vertical shift
-    int32 vertical_shift_max =
-        static_cast<int32>(0.5 + config.vertical_shift * image_height);
-    if (vertical_shift_max > image_height - 1)
-      vertical_shift_max = image_height - 1;  // would be very strange.
-    int32 vertical_shift = RandInt(-vertical_shift_max,
-                                     vertical_shift_max);
-    if (vertical_shift != 0)
-      VerticalShift(vertical_shift, num_channels, image);
-  }
+  Matrix<BaseFloat> shift_mat(3, 3, kUndefined);
+  shift_mat.SetUnit();
+  // translation (shift) mat:
+  // [ 1   0  x_shift
+  //   0   1  y_shift
+  //   0   0  1       ]
+  BaseFloat horizontal_shift = (2.0 * RandUniform() - 1.0) *
+      config.horizontal_shift * image_width;
+  BaseFloat vertical_shift = (2.0 * RandUniform() - 1.0) *
+      config.vertical_shift * image_height;
+  shift_mat(0, 2) = round(horizontal_shift);
+  shift_mat(1, 2) = round(vertical_shift);
+  // since we will center the image before applying the transform,
+  // horizontal flipping is simply achieved by setting [0, 0] to -1:
+  if (WithProb(config.horizontal_flip_prob))
+    shift_mat(0, 0) = -1.0;
 
+  Matrix<BaseFloat> rotation_mat(3, 3, kUndefined);
+  rotation_mat.SetUnit();
+  // rotation mat:
+  // [ cos(theta)  -sin(theta)  0
+  //   sin(theta)  cos(theta)   0
+  //   0           0            1 ]
+
+  Matrix<BaseFloat> shear_mat(3, 3, kUndefined);
+  shear_mat.SetUnit();
+  // shear mat:
+  // [ 1    -sin(shear)   0
+  //   0     cos(shear)   0
+  //   0     0            1 ]
+
+  Matrix<BaseFloat> zoom_mat(3, 3, kUndefined);
+  zoom_mat.SetUnit();
+  // zoom mat:
+  // [ x_zoom   0   0
+  //   0   y_zoom   0
+  //   0     0      1 ]
+
+  // transform_mat = rotation_mat * shift_mat * shear_mat * zoom_mat:
+  transform_mat.AddMatMat(1.0, shift_mat, kNoTrans,
+                          shear_mat, kNoTrans, 0.0);
+  transform_mat.AddMatMatMat(1.0, rotation_mat, kNoTrans,
+                             transform_mat, kNoTrans,
+                             zoom_mat, kNoTrans, 0.0);
+  if (transform_mat.IsUnit())  // nothing to do
+    return;
+
+  // we should now change the origin of transform to the center of
+  // the image (necessary for flipping, zoom, shear, and rotation)
+  // we do this by using two translations: one before the main transform
+  // and one after.
+  Matrix<BaseFloat> set_origin_mat(3, 3, kUndefined);
+  set_origin_mat.SetUnit();
+  set_origin_mat(0, 2) = image_width / 2.0 - 0.5;
+  set_origin_mat(1, 2) = image_height / 2.0 - 0.5;
+  Matrix<BaseFloat> reset_origin_mat(3, 3, kUndefined);
+  reset_origin_mat.SetUnit();
+  reset_origin_mat(0, 2) = -image_width / 2.0 + 0.5;
+  reset_origin_mat(1, 2) = -image_height / 2.0 + 0.5;
+
+  // transform_mat = set_origin_mat * transform_mat * reset_origin_mat
+  transform_mat.AddMatMatMat(1.0, set_origin_mat, kNoTrans,
+                             transform_mat, kNoTrans,
+                             reset_origin_mat, kNoTrans, 0.0);
+  ApplyAffineTransform(transform_mat, config.num_channels, image, fill_mode);
 }
 
 
@@ -185,7 +280,7 @@ void PerturbImage(const ImageAugmentationConfig &config,
    This function does image perturbation as directed by 'config'
    The example 'eg' is expected to contain a NnetIo member with the
    name 'input', representing an image.
- */
+*/
 void PerturbImageInNnetExample(
     const ImageAugmentationConfig &config,
     NnetExample *eg) {
@@ -229,7 +324,7 @@ int main(int argc, char *argv[]) {
         "parameters).\n"
         "E.g.:\n"
         "  nnet3-egs-augment-image --horizontal-flip-prob=0.5 --horizontal-shift=0.1\\\n"
-        "       --vertical-shift=0.1 --srand=103 --num-channels=3 ark:- ark:-\n"
+        "       --vertical-shift=0.1 --srand=103 --num-channels=3 --fill-mode=nearest ark:- ark:-\n"
         "\n"
         "Requires that each eg contain a NnetIo object 'input', with successive\n"
         "'t' values representing different x offsets , and the feature dimension\n"
@@ -244,6 +339,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     po.Register("srand", &srand_seed, "Seed for the random number generator");
+
     config.Register(&po);
 
     po.Read(argc, argv);
@@ -254,6 +350,7 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
+
 
     std::string examples_rspecifier = po.GetArg(1),
         examples_wspecifier = po.GetArg(2);

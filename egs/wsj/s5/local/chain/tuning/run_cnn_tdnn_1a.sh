@@ -4,8 +4,9 @@
 # This was modified from run_tdnn_1a.sh; it's the
 # first attempt at a setup including convolutional components.
 
+
 # steps/info/chain_dir_info.pl exp/chain/cnn_tdnn1a_sp
-# exp/chain/cnn_tdnn1a_sp: num-iters=102 nj=2..5 num-params=5.5M dim=40+100->2889 combine=-0.068->-0.066 xent:train/valid[67,101,final]=(-1.14,-1.09,-1.09/-1.19,-1.15,-1.15) logprob:train/valid[67,101,final]=(-0.058,-0.053,-0.053/-0.078,-0.076,-0.075)
+# exp/chain/cnn_tdnn1a_sp: num-iters=102 nj=2..5 num-params=5.5M dim=40+100->2889 combine=-0.062->-0.058 xent:train/valid[67,101,final]=(-1.00,-1.09,-0.913/-1.08,-1.16,-1.05) logprob:train/valid[67,101,final]=(-0.055,-0.058,-0.047/-0.071,-0.077,-0.074)
 
 # The following table compares chain (TDNN+LSTM, TDNN, CNN+TDNN).
 # The CNN+TDNN doesn't seem to have any advantages versus the TDNN (and it's

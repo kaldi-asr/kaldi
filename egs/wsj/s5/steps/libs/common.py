@@ -2,6 +2,7 @@
 
 # Copyright 2016 Vijayaditya Peddinti.
 #           2016 Vimal Manohar
+#           2017 Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0
 
 """ This module contains several utility functions and classes that are
@@ -74,187 +75,109 @@ def check_if_cuda_compiled():
         return True
 
 
-class KaldiCommandException(Exception):
-    """ An Exception class that throws an error string with the
-    kaldi command that caused the error and the error string captured.
-    """
-    def __init__(self, command, err=None):
-        Exception.__init__(self,
-                           "There was an error while running the command "
-                           "{0}\n{1}\n{2}".format(command, "-"*10,
-                                                  "" if err is None else err))
+def execute_command(command):
+    """ Runs a kaldi job in the foreground and waits for it to complete; raises an
+        exception if its return status is nonzero.  The command is executed in
+        'shell' mode so 'command' can involve things like pipes.  Often,
+        'command' will start with 'run.pl' or 'queue.pl'.  The stdout and stderr
+        are merged with the calling process's stdout and stderr so they will
+        appear on the screen.
 
-
-class BackgroundProcessHandler():
-    """ This class handles background processes to ensure that a top-level
-    script waits until all the processes end before exiting
-
-    A top-level script is expected to instantiate an object of this class
-    and pass it to all calls of run_kaldi_command that are to be run in the
-    background. The background processes are queued and these are polled
-    in a parallel thread at set interval to check for failures.
-    The top-level script can ensure at the end ensure that all processes are
-    completed before exiting.
-
-    Attributes:
-        __process_queue: Stores a list of process handles and command tuples
-        __polling_time: The time after which the processes are polled
-        __timer: Internal timer object
-        __is_running: Stores whether a timer is running
-    """
-
-    def __init__(self, polling_time=600):
-        self.__process_queue = []
-        self.__polling_time = polling_time
-        self.__timer = None
-        self.__lock = threading.Lock()
-        self.__is_running = False
-
-    def __run(self):
-        """ Internal function to run a poll. Calls poll(). """
-        assert(self.__is_running)
-        self.__is_running = False
-        logger.debug("Polling...")
-        if self.poll():
-            # If there are any more background processes running,
-            # start a new timer
-            self.start()
-
-    def start(self):
-        """ Start the background process handler.
-
-        Repeatedly calls itself through the __run() method every
-        __polling_time seconds.
-        """
-        if not self.__is_running:
-            self.__timer = threading.Timer(self.__polling_time, self.__run)
-            logger.debug("Starting new timer...")
-            self.__is_running = True
-            self.__timer.start()
-
-    def stop(self):
-        """ Stop the background process handler by cancelling any running timer.
-        """
-        if self.__timer is not None:
-            self.__timer.cancel()
-        self.__is_running = False
-
-    def poll(self):
-        """ Poll background processes and check their statuses.
-
-        Returns True if any processes are still in the queue.
-        """
-        with self.__lock:
-            remaining_processes = []
-            for t in self.__process_queue:
-                if self.is_process_done(t):
-                    self.ensure_process_is_done(t)
-                else:
-                    remaining_processes.append(t)
-            self.__process_queue = remaining_processes
-            num_processes = len(self.__process_queue)
-            logger.debug("Number of processes remaining is {0}...".format(
-                            num_processes))
-        return (num_processes > 0)
-
-    def add_process(self, t):
-        """ Add a (process handle, command) tuple to the queue.
-        """
-        with self.__lock:
-            self.__process_queue.append(t)
-        self.start()
-
-    def is_process_done(self, t):
-        p, command = t
-        if p.poll() is None:
-            return False
-        return True
-
-    def ensure_process_is_done(self, t):
-        p, command = t
-        logger.debug("Waiting for process '{0}' to end".format(command))
-        [stdout, stderr] = p.communicate()
-        if p.returncode is not 0:
-            raise KaldiCommandException(command, stderr)
-
-    def ensure_processes_are_done(self):
-        self.__process_queue.reverse()
-        while len(self.__process_queue) > 0:
-            t = self.__process_queue.pop()
-            self.ensure_process_is_done(t)
-        self.stop()
-
-    def __del__(self):
-        self.stop()
-
-    def debug(self):
-        for p, command in self.__process_queue:
-            logger.info("Process '{0}' is running".format(command))
-
-
-def run_job(command, wait=True, background_process_handler=None):
-    """ Runs a kaldi job, usually using a script such as queue.pl and
-        run.pl, and redirects the stdout and stderr to the parent
-        process's streams.
-        These are usually a sequence of commands connected by pipes, so we use
-        shell=True.
-
-    Args:
-        background_process_handler: An object of the BackgroundProcessHandler
-            class that is instantiated by the top-level script. If this is
-            provided, then the created process handle is added to the object.
-        wait: If True, wait until the process is completed. However, if the
-            background_process_handler is provided, this option will be
-            ignored and the process will be run in the background.
+        See also: get_command_stdout, background_command
     """
     p = subprocess.Popen(command, shell=True)
-
-    if background_process_handler is not None:
-        wait = False
-        background_process_handler.add_process((p, command))
-
-    if wait:
-        p.communicate()
-        if p.returncode is not 0:
-            raise KaldiCommandException(command)
-        return None
-    else:
-        return p
+    p.communicate()
+    if p.returncode is not 0:
+        raise Exception("Command exited with status {0}: {1}".format(
+                p.returncode, command))
 
 
-def run_kaldi_command(command, wait=True, background_process_handler=None):
-    """ Runs commands frequently seen in Kaldi scripts and
-        captures the stdout and stderr.
-        These are usually a sequence of commands connected by pipes, so we use
-        shell=True.
+def get_command_stdout(command, require_zero_status = True):
+    """ Executes a command and returns its stdout output as a string.  The
+        command is executed with shell=True, so it may contain pipes and
+        other shell constructs.
 
-    Args:
-        background_process_handler: An object of the BackgroundProcessHandler
-            class that is instantiated by the top-level script. If this is
-            provided, then the created process handle is added to the object.
-        wait: If True, wait until the process is completed. However, if the
-            background_process_handler is provided, this option will be
-            ignored and the process will be run in the background.
+        If require_zero_stats is True, this function will raise an exception if
+        the command has nonzero exit status.  If False, it just prints a warning
+        if the exit status is nonzero.
+
+        See also: execute_command, background_command
     """
     p = subprocess.Popen(command, shell=True,
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE)
+                         stdout=subprocess.PIPE)
 
-    if background_process_handler is not None:
-        wait = False
-        background_process_handler.add_process((p, command))
+    stdout = p.communicate()[0]
+    if p.returncode is not 0:
+        output = "Command exited with status {0}: {1}".format(
+            p.returncode, command)
+        if require_zero_status:
+            raise Exception(output)
+        else:
+            logger.warning(output)
+    return stdout if type(stdout) is str else stdout.decode()
 
-    if wait:
-        [stdout, stderr] = p.communicate()
-        if p.returncode is not 0:
-            raise KaldiCommandException(command, stderr)
-        return stdout, stderr
-    else:
-        return p
+
+
+
+def wait_for_background_commands():
+    """ This waits for all threads to exit.  You will often want to
+        run this at the end of programs that have launched background
+        threads, so that the program will wait for its child processes
+        to terminate before it dies."""
+    for t in threading.enumerate():
+        if not t == threading.current_thread():
+            t.join()
+
+def background_command(command, require_zero_status = False):
+    """Executes a command in a separate thread, like running with '&' in the shell.
+       If you want the program to die if the command eventually returns with
+       nonzero status, then set require_zero_status to True.  'command' will be
+       executed in 'shell' mode, so it's OK for it to contain pipes and other
+       shell constructs.
+
+       This function returns the Thread object created, just in case you want
+       to wait for that specific command to finish.  For example, you could do:
+             thread = background_command('foo | bar')
+             # do something else while waiting for it to finish
+             thread.join()
+
+       See also:
+         - wait_for_background_commands(), which can be used
+           at the end of the program to wait for all these commands to terminate.
+         - execute_command() and get_command_stdout(), which allow you to
+           execute commands in the foreground.
+
+    """
+
+    p = subprocess.Popen(command, shell=True)
+    thread = threading.Thread(target=background_command_waiter,
+                              args=(command, p, require_zero_status))
+    thread.daemon=True  # make sure it exits if main thread is terminated
+                        # abnormally.
+    thread.start()
+    return thread
+
+
+def background_command_waiter(command, popen_object, require_zero_status):
+    """ This is the function that is called from background_command, in
+        a separate thread."""
+
+    popen_object.communicate()
+    if popen_object.returncode is not 0:
+        str = "Command exited with status {0}: {1}".format(
+            popen_object.returncode, command)
+        if require_zero_status:
+            logger.error(str)
+            # thread.interrupt_main() sends a KeyboardInterrupt to the main
+            # thread, which will generally terminate the program.
+            import thread
+            thread.interrupt_main()
+        else:
+            logger.warning(str)
 
 
 def get_number_of_leaves_from_tree(alidir):
-    [stdout, stderr] = run_kaldi_command(
+    stdout = get_command_stdout(
         "tree-info {0}/tree 2>/dev/null | grep num-pdfs".format(alidir))
     parts = stdout.split()
     assert(parts[0] == "num-pdfs")
@@ -265,7 +188,7 @@ def get_number_of_leaves_from_tree(alidir):
 
 
 def get_number_of_leaves_from_model(dir):
-    [stdout, stderr] = run_kaldi_command(
+    stdout = get_command_stdout(
         "am-info {0}/final.mdl 2>/dev/null | grep -w pdfs".format(dir))
     parts = stdout.split()
     # number of pdfs 7115
@@ -288,7 +211,7 @@ def get_number_of_jobs(alidir):
 def get_ivector_dim(ivector_dir=None):
     if ivector_dir is None:
         return 0
-    [stdout_val, stderr_val] = run_kaldi_command(
+    stdout_val = get_command_stdout(
         "feat-to-dim --print-args=false "
         "scp:{dir}/ivector_online.scp -".format(dir=ivector_dir))
     ivector_dim = int(stdout_val)
@@ -297,7 +220,7 @@ def get_ivector_dim(ivector_dir=None):
 def get_ivector_extractor_id(ivector_dir=None):
     if ivector_dir is None:
         return None
-    [stdout_val, stderr_val] = run_kaldi_command(
+    stdout_val = get_command_stdout(
         "steps/nnet2/get_ivector_id.sh {dir}".format(dir=ivector_dir))
 
     if (stdout_val.strip() == "") or (stdout_val is None):
@@ -306,7 +229,9 @@ def get_ivector_extractor_id(ivector_dir=None):
     return stdout_val.strip()
 
 def get_feat_dim(feat_dir):
-    [stdout_val, stderr_val] = run_kaldi_command(
+    if feat_dir is None:
+        return 0
+    stdout_val = get_command_stdout(
         "feat-to-dim --print-args=false "
         "scp:{data}/feats.scp -".format(data=feat_dir))
     feat_dim = int(stdout_val)
@@ -314,17 +239,11 @@ def get_feat_dim(feat_dir):
 
 
 def get_feat_dim_from_scp(feat_scp):
-    [stdout_val, stderr_val] = run_kaldi_command(
+    stdout_val = get_command_stdout(
         "feat-to-dim --print-args=false "
         "scp:{feat_scp} -".format(feat_scp=feat_scp))
     feat_dim = int(stdout_val)
     return feat_dim
-
-
-def split_data(data, num_jobs):
-    run_kaldi_command("utils/split_data.sh {data} {num_jobs}".format(
-                        data=data,
-                        num_jobs=num_jobs))
 
 
 def read_kaldi_matrix(matrix_file):
@@ -413,4 +332,3 @@ def write_idct_matrix(feat_dim, cepstral_lifter, file_path):
     for k in range(0, feat_dim):
         idct_matrix[k].append(0)
     write_kaldi_matrix(file_path, idct_matrix)
-

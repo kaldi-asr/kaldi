@@ -18,6 +18,7 @@ parser.add_argument('database', type=str,
                     default='data/dl/cifar-10-batches-bin',
                     help='path to downloaded cifar data (binary version)')
 parser.add_argument('dir', type=str, help='output dir')
+parser.add_argument('--cifar-version', type=str, default='CIFAR-10', choices=['CIFAR-10', 'CIFAR-100'])
 parser.add_argument('--dataset', type=str, default='train', choices=['train', 'test'])
 parser.add_argument('--out-ark', type=str, default='-', help='where to write output feature data')
 
@@ -60,11 +61,11 @@ def load_cifar100_data_batch(datafile, num_images_in_batch):
 
 def image_to_feat_matrix(img):
   mat = [0]*H  # 32 * 96
-  for row in range(H):
-    mat[row] = [0]*C*W
+  for i in range(W):
+    mat[i] = [0]*C*H
     for ch in range(C):
-      for col in range(W):
-        mat[row][col*C+ch] = img[ch][row][col]
+      for j in range(H):
+        mat[i][j*C+ch] = img[ch][j][i]
   return mat
 
 def write_kaldi_matrix(file_handle, matrix, key):
@@ -91,7 +92,7 @@ def zeropad(x, length):
   return s
 
 ### main ###
-cifar10 = (args.database.find('cifar-100') == -1)
+cifar10 = (args.cifar_version.lower() == 'cifar-10')
 if args.out_ark == '-':
   out_fh = sys.stdout  # output file handle to write the feats to
 else:

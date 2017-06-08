@@ -51,6 +51,7 @@ online_ivector_dir=  # can be used if we are including speaker information as iV
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
             # LDA transform).  This is used to turn off CMVN in the online-nnet experiments.
+generate_egs_scp=false # If true, it will generate egs.JOB.*.scp per egs archive
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -229,7 +230,10 @@ fi
 # We may have to first create a smaller number of larger archives, with number
 # $num_archives_intermediate, if $num_archives is more than the maximum number
 # of open filehandles that the system allows per process (ulimit -n).
+# This sometimes gives a misleading answer as GridEngine sometimes changes that
+# somehow, so we limit it to 512.
 max_open_filehandles=$(ulimit -n) || exit 1
+[ $max_open_filehandles -gt 512 ] && max_open_filehandles=512
 num_archives_intermediate=$num_archives
 archives_multiple=1
 while [ $[$num_archives_intermediate+4] -gt $max_open_filehandles ]; do
@@ -309,23 +313,36 @@ if [ $stage -le 3 ]; then
   wait;
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."
+  if $generate_egs_scp; then
+    valid_diagnostic_output="ark,scp:$dir/valid_diagnostic.egs,$dir/valid_diagnostic.scp"
+    train_diagnostic_output="ark,scp:$dir/train_diagnostic.egs,$dir/train_diagnostic.scp"
+  else
+    valid_diagnostic_output="ark:$dir/valid_diagnostic.egs"
+    train_diagnostic_output="ark:$dir/train_diagnostic.egs"
+  fi
   $cmd $dir/log/create_valid_subset_combine.log \
     nnet3-subset-egs --n=$[$num_valid_frames_combine/$frames_per_eg_principal] ark:$dir/valid_all.egs \
-    ark:$dir/valid_combine.egs || touch $dir/.error &
+      ark:$dir/valid_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_valid_subset_diagnostic.log \
     nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg_principal] ark:$dir/valid_all.egs \
-    ark:$dir/valid_diagnostic.egs || touch $dir/.error &
+    $valid_diagnostic_output || touch $dir/.error &
 
   $cmd $dir/log/create_train_subset_combine.log \
     nnet3-subset-egs --n=$[$num_train_frames_combine/$frames_per_eg_principal] ark:$dir/train_subset_all.egs \
-    ark:$dir/train_combine.egs || touch $dir/.error &
+      ark:$dir/train_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_train_subset_diagnostic.log \
     nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg_principal] ark:$dir/train_subset_all.egs \
-    ark:$dir/train_diagnostic.egs || touch $dir/.error &
+    $train_diagnostic_output || touch $dir/.error &
   wait
   sleep 5  # wait for file system to sync.
   cat $dir/valid_combine.egs $dir/train_combine.egs > $dir/combine.egs
-
+  if $generate_egs_scp; then
+    cat $dir/valid_combine.egs $dir/train_combine.egs  | \
+    nnet3-copy-egs ark:- ark,scp:$dir/combine.egs,$dir/combine.scp
+    rm $dir/{train,valid}_combine.scp
+  else
+    cat $dir/valid_combine.egs $dir/train_combine.egs > $dir/combine.egs
+  fi
   for f in $dir/{combine,train_diagnostic,valid_diagnostic}.egs; do
     [ ! -s $f ] && echo "No examples in file $f" && exit 1;
   done
@@ -360,15 +377,33 @@ if [ $stage -le 5 ]; then
   done
 
   if [ $archives_multiple == 1 ]; then # normal case.
+    if $generate_egs_scp; then
+      output_archive="ark,scp:$dir/egs.JOB.ark,$dir/egs.JOB.scp"
+    else
+      output_archive="ark:$dir/egs.JOB.ark"
+    fi
     $cmd --max-jobs-run $nj JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
-      nnet3-shuffle-egs --srand=\$[JOB+$srand] "ark:cat $egs_list|" ark:$dir/egs.JOB.ark  || exit 1;
+      nnet3-shuffle-egs --srand=\$[JOB+$srand] "ark:cat $egs_list|" $output_archive  || exit 1;
+
+    if $generate_egs_scp; then
+      #concatenate egs.JOB.scp in single egs.scp
+      rm -rf $dir/egs.scp
+      for j in $(seq $num_archives_intermediate); do
+        cat $dir/egs.$j.scp || exit 1;
+      done > $dir/egs.scp || exit 1;
+      for f in $dir/egs.*.scp; do rm $f; done
+    fi
   else
     # we need to shuffle the 'intermediate archives' and then split into the
     # final archives.  we create soft links to manage this splitting, because
     # otherwise managing the output names is quite difficult (and we don't want
     # to submit separate queue jobs for each intermediate archive, because then
     # the --max-jobs-run option is hard to enforce).
-    output_archives="$(for y in $(seq $archives_multiple); do echo ark:$dir/egs.JOB.$y.ark; done)"
+    if $generate_egs_scp; then
+      output_archives="$(for y in $(seq $archives_multiple); do echo ark,scp:$dir/egs.JOB.$y.ark,$dir/egs.JOB.$y.scp; done)"
+    else
+      output_archives="$(for y in $(seq $archives_multiple); do echo ark:$dir/egs.JOB.$y.ark; done)"
+    fi
     for x in $(seq $num_archives_intermediate); do
       for y in $(seq $archives_multiple); do
         archive_index=$[($x-1)*$archives_multiple+$y]
@@ -379,8 +414,18 @@ if [ $stage -le 5 ]; then
     $cmd --max-jobs-run $nj JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
       nnet3-shuffle-egs --srand=\$[JOB+$srand] "ark:cat $egs_list|" ark:- \| \
       nnet3-copy-egs ark:- $output_archives || exit 1;
-  fi
 
+    if $generate_egs_scp; then
+      #concatenate egs.JOB.scp in single egs.scp
+      rm -rf $dir/egs.scp
+      for j in $(seq $num_archives_intermediate); do
+        for y in $(seq $num_archives_intermediate); do
+          cat $dir/egs.$j.$y.scp || exit 1;
+        done
+      done > $dir/egs.scp || exit 1;
+      for f in $dir/egs.*.*.scp; do rm $f; done
+    fi
+  fi
 fi
 
 if [ $stage -le 6 ]; then

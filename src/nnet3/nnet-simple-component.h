@@ -136,6 +136,7 @@ class DropoutComponent : public RandomComponent {
     dropout_proportion_ = dropout_proportion;
   }
 
+  BaseFloat DropoutProportion() const { return dropout_proportion_; }
  private:
   int32 dim_;
   /// dropout-proportion is the proportion that is dropped out,
@@ -424,54 +425,6 @@ class RectifiedLinearComponent: public NonlinearComponent {
   RectifiedLinearComponent &operator = (const RectifiedLinearComponent &other); // Disallow.
 };
 
-/**
-   This component is a fixed (non-trainable) nonlinearity that sums its inputs
-   to produce outputs.  Currently the only supported configuration is that its
-   input-dim is interpreted as consisting of n blocks, and the output is just a
-   summation over the n blocks, where  n = input-dim / output-dim, so for instance
-    output[n] = input[n] + input[block-size + n] + .... .
-   Later if needed we can add a configuration variable that allows you to sum
-   over 'interleaved' input.
- */
-class SumReduceComponent: public Component {
- public:
-  void Init(int32 input_dim, int32 output_dim);
-  explicit SumReduceComponent(int32 input_dim, int32 output_dim) {
-    Init(input_dim, output_dim);
-  }
-  virtual int32 Properties() const {
-    return kSimpleComponent|kLinearInInput;
-  }
-  SumReduceComponent(): input_dim_(0), output_dim_(0) { }
-  virtual std::string Type() const { return "SumReduceComponent"; }
-  virtual void InitFromConfig(ConfigLine *cfl);
-  virtual int32 InputDim() const { return input_dim_; }
-  virtual int32 OutputDim() const { return output_dim_; }
-  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const;
-  virtual void Backprop(const std::string &debug_info,
-                        const ComponentPrecomputedIndexes *indexes,
-                        const CuMatrixBase<BaseFloat> &, // in_value
-                        const CuMatrixBase<BaseFloat> &, // out_value,
-                        const CuMatrixBase<BaseFloat> &out_deriv,
-                        void *memo,
-                        Component *, // to_update
-                        CuMatrixBase<BaseFloat> *in_deriv) const;
-  virtual Component* Copy() const { return new SumReduceComponent(input_dim_,
-                                                                  output_dim_); }
-
-  virtual void Read(std::istream &is, bool binary); // This Read function
-  // requires that the Component has the correct type.
-
-  /// Write component to stream
-  virtual void Write(std::ostream &os, bool binary) const;
-
- protected:
-  int32 input_dim_;
-  int32 output_dim_;
-};
-
 
 class FixedAffineComponent;
 class FixedScaleComponent;
@@ -529,9 +482,8 @@ class AffineComponent: public UpdatableComponent {
 
   // Some functions that are specific to this class.
 
-  // This new function is used when mixing up:
-  virtual void SetParams(const VectorBase<BaseFloat> &bias,
-                         const MatrixBase<BaseFloat> &linear);
+  virtual void SetParams(const CuVectorBase<BaseFloat> &bias,
+                         const CuMatrixBase<BaseFloat> &linear);
   const CuVector<BaseFloat> &BiasParams() const { return bias_params_; }
   const CuMatrix<BaseFloat> &LinearParams() const { return linear_params_; }
   explicit AffineComponent(const AffineComponent &other);
@@ -546,15 +498,6 @@ class AffineComponent: public UpdatableComponent {
   // This function resizes the dimensions of the component, setting the
   // parameters to zero, while leaving any other configuration values the same.
   virtual void Resize(int32 input_dim, int32 output_dim);
-
-  // The following functions are used for collapsing multiple layers
-  // together.  They return a pointer to a new Component equivalent to
-  // the sequence of two components.  We haven't implemented this for
-  // FixedLinearComponent yet.
-  Component *CollapseWithNext(const AffineComponent &next) const ;
-  Component *CollapseWithNext(const FixedAffineComponent &next) const;
-  Component *CollapseWithNext(const FixedScaleComponent &next) const;
-  Component *CollapseWithPrevious(const FixedAffineComponent &prev) const;
 
  protected:
   friend class NaturalGradientAffineComponent;
@@ -972,8 +915,8 @@ class FixedAffineComponent: public Component {
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
-  // Function to provide access to linear_params_.
   const CuMatrix<BaseFloat> &LinearParams() const { return linear_params_; }
+  const CuVector<BaseFloat> &BiasParams() const { return bias_params_; }
  protected:
   friend class AffineComponent;
   CuMatrix<BaseFloat> linear_params_;
@@ -1071,8 +1014,8 @@ class FixedScaleComponent: public Component {
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
+  const CuVector<BaseFloat> &Scales() const { return scales_; }
  protected:
-  friend class AffineComponent;  // necessary for collapse
   CuVector<BaseFloat> scales_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedScaleComponent);
 };
@@ -1119,8 +1062,10 @@ class FixedBiasComponent: public Component {
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedBiasComponent);
 };
 
-// NoOpComponent just duplicates its input.  We don't anticipate this being used
-// very often, but it may sometimes make your life easier
+/** NoOpComponent just duplicates its input.  We don't anticipate this being used
+    very often, but it may sometimes make your life easier
+    The only config parameter it accepts is 'dim', e.g. 'dim=400'.
+*/
 class NoOpComponent: public NonlinearComponent {
  public:
   explicit NoOpComponent(const NoOpComponent &other): NonlinearComponent(other) { }
@@ -1144,6 +1089,54 @@ class NoOpComponent: public NonlinearComponent {
  private:
   NoOpComponent &operator = (const NoOpComponent &other); // Disallow.
 };
+
+/**  SumBlockComponent sums over blocks of its input: for instance, if
+     you create one with the config "input-dim=400 output-dim=100",
+     its output will be the sum over the 4 100-dimensional blocks of
+     the input.
+
+     The "scale" config parameter may be used if you want to do averaging
+     instead of summing, e.g. "input-dim=400 output-dim=100 scale=0.25"
+     will accomplish averaging.
+
+     Accepted values on its config-file line are:
+        input-dim  The input dimension.  Required.
+        output-dim  The block dimension.  Required.  Must divide input-dim.
+        scale      A scaling factor on the output.  Defaults to 1.0.
+ */
+class SumBlockComponent: public Component {
+ public:
+  explicit SumBlockComponent(const SumBlockComponent &other);
+  SumBlockComponent() { }
+  virtual std::string Type() const { return "SumBlockComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kLinearInInput|kPropagateAdds|kBackpropAdds;
+  }
+  virtual void InitFromConfig(ConfigLine *cfl);
+  virtual int32 InputDim() const { return input_dim_; }
+  virtual int32 OutputDim() const { return output_dim_; }
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual std::string Info() const;
+  virtual Component* Copy() const { return new SumBlockComponent(*this); }
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, //in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+ private:
+  int32 input_dim_;
+  int32 output_dim_;
+  BaseFloat scale_;
+  SumBlockComponent &operator = (const SumBlockComponent &other); // Disallow.
+};
+
 
 // ClipGradientComponent just duplicates its input, but clips gradients
 // during backpropagation if they cross a predetermined threshold.
@@ -1395,7 +1388,6 @@ class PerElementScaleComponent: public UpdatableComponent {
   void Init(std::string vector_filename);
 
  protected:
-  friend class AffineComponent;  // necessary for collapse
   // This function Update() is for extensibility; child classes may override
   // this, e.g. for natural gradient update.
   virtual void Update(
@@ -1415,9 +1407,23 @@ class PerElementScaleComponent: public UpdatableComponent {
   CuVector<BaseFloat> scales_;
 };
 
+/*
+  PerElementOffsetComponent offsets each dimension of its input with a separate
+  trainable bias; it's like an affine component with fixed weight matrix which
+  is always equal to I.
 
-// PerElementOffsetComponent offsets each dimension of its input with a separate
-// trainable bias; it's like an affine component with fixed weight matrix which is always equal to I.
+  Accepted values on its config line, with defaults if applicable.
+
+     vector           If specified, the offsets will be read from this file ('vector'
+                      is interpreted as an rxfilename).
+
+     dim              If 'vector' is not specified, you should specify the
+                      dimension 'dim', and will be randomly initialized according
+                      to 'param-mean' and 'param-stddev'.
+     param-mean=0.0   Mean of randomly initialized offset parameters.
+     param-stddev=0.0 Standard deviation of randomly initialized offset parameters.
+
+*/
 class PerElementOffsetComponent: public UpdatableComponent {
  public:
   virtual int32 InputDim() const { return offsets_.Dim(); }
@@ -2195,6 +2201,12 @@ class BatchNormComponent: public Component {
   virtual void StoreStats(const CuMatrixBase<BaseFloat> &in_value,
                           const CuMatrixBase<BaseFloat> &out_value,
                           void *memo);
+
+  // Members specific to this component type.
+  // Note: the offset and scale will only be nonempty in 'test mode'.
+  const CuVector<BaseFloat> &Offset() const { return offset_; }
+  const CuVector<BaseFloat> &Scale() const { return scale_; }
+
  private:
 
   struct Memo {

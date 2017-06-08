@@ -41,7 +41,6 @@ NnetCombiner::NnetCombiner(const NnetCombineConfig &config,
               << " is nonzero, so setting --enforce-sum-to-one=false.";
     config_.enforce_sum_to_one = false;
   }
-  SetDropoutProportion(0, &nnet_);
   SubVector<BaseFloat> first_params(nnet_params_, 0);
   VectorizeNnet(nnet_, &first_params);
   tot_input_weighting_(0) += 1.0;
@@ -178,8 +177,8 @@ void NnetCombiner::Combine() {
     ComputeObjfAndDerivFromParameters(final_params, &deriv);
   }
   PrintParams(final_params);
-}
 
+}
 
 void NnetCombiner::PrintParams(const VectorBase<double> &params) const {
   Vector<double> weights(WeightDim()), normalized_weights(WeightDim());
@@ -223,7 +222,7 @@ void NnetCombiner::PrintParams(const VectorBase<double> &params) const {
   int32 num_effective_nnets = nnet_params_.NumRows();
   if (num_effective_nnets != num_real_input_nnets_)
     KALDI_LOG << "Above, only " << num_effective_nnets << " weights were "
-              "printed due to the the --num-effective-nnets option; "
+              "printed due to the the --max-effective-inputs option; "
               "there were " << num_real_input_nnets_ << " actual input nnets. "
               "Each weight corresponds to a weighted average over a range of "
               "nnets in the sequence (with triangular bins)";
@@ -504,15 +503,14 @@ double NnetCombiner::ComputeObjfAndDerivFromNnet(
                                             end = egs_.end();
   for (; iter != end; ++iter)
     prob_computer_->Compute(*iter);
-  const SimpleObjectiveInfo *objf_info = prob_computer_->GetObjective("output");
-  if (objf_info == NULL)
-    KALDI_ERR << "Error getting objective info (unsuitable egs?)";
-  KALDI_ASSERT(objf_info->tot_weight > 0.0);
+  double tot_weights,
+    tot_objf = prob_computer_->GetTotalObjective(&tot_weights);
+  KALDI_ASSERT(tot_weights > 0.0);
   const Nnet &deriv = prob_computer_->GetDeriv();
   VectorizeNnet(deriv, nnet_params_deriv);
   // we prefer to deal with normalized objective functions.
-  nnet_params_deriv->Scale(1.0 / objf_info->tot_weight);
-  return objf_info->tot_objective / objf_info->tot_weight;
+  nnet_params_deriv->Scale(1.0 / tot_weights);
+  return tot_objf / tot_weights;
 }
 
 

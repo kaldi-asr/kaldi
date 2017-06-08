@@ -30,7 +30,7 @@
 #include "gmm/decodable-am-diag-gmm.h"
 #include "base/timer.h"
 #include "feat/feature-functions.h"  // feature reversal
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 
 int main(int argc, char *argv[]) {
@@ -39,6 +39,7 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
     using fst::SymbolTable;
     using fst::VectorFst;
+    using fst::Fst;
     using fst::StdArc;
 
     const char *usage =
@@ -111,7 +112,7 @@ int main(int argc, char *argv[]) {
     double tot_like = 0.0;
     kaldi::int64 frame_count = 0;
     int num_done = 0, num_err = 0;
-    VectorFst<StdArc> *decode_fst = NULL; // only used if there is a single
+    Fst<StdArc> *decode_fst = NULL; // only used if there is a single
                                           // decoding graph.
 
     TaskSequencer<DecodeUtteranceLatticeFasterClass> sequencer(sequencer_config);
@@ -120,7 +121,7 @@ int main(int argc, char *argv[]) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
       // Input FST is just one FST, not a table of FSTs.
 
-      decode_fst = fst::ReadFstKaldi(fst_in_str);
+      decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
       timer.Reset();
 
       {

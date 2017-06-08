@@ -580,6 +580,22 @@ static void _add_mat_blocks(Real alpha, const Real* src,
 
 template<typename Real>
 __global__
+static void _add_mat_repeated(Real alpha, const Real* src,
+                              MatrixDim src_dim, Real* dst,
+                              MatrixDim dst_dim) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda src_i = i % src_dim.cols,
+      src_j = j % src_dim.rows,
+      dst_index = i + j * dst_dim.stride,
+      src_index = src_i + src_j * src_dim.stride;
+  if (i < dst_dim.cols && j < dst_dim.rows)
+    dst[dst_index] += alpha * src[src_index];
+}
+
+
+template<typename Real>
+__global__
 static void _add_mat_blocks_trans(Real alpha, const Real* src,
                                   int32_cuda num_row_blocks,
                                   int32_cuda num_col_blocks, Real* dst,
@@ -3558,6 +3574,12 @@ void cudaF_add_mat_blocks(dim3 Gr, dim3 Bl, float alpha, const float* src,
   }
 }
 
+void cudaF_add_mat_repeated(dim3 Gr, dim3 Bl, float alpha, const float* src,
+                            MatrixDim src_dim, float *dst, MatrixDim dst_dim) {
+  _add_mat_repeated<<<Gr,Bl>>>(alpha, src, src_dim, dst, dst_dim);
+}
+
+
 void cudaF_set_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A, const float *B,
                                const float *C, float *dst, MatrixDim d,
                                int stride_a, int stride_b, int stride_c) {
@@ -4215,6 +4237,11 @@ void cudaD_add_mat_blocks(dim3 Gr, dim3 Bl, double alpha, const double* src,
     _add_mat_blocks<<<Gr,Bl>>>(alpha, src, num_row_blocks, num_col_blocks, dst,
         d, src_stride);
   }
+}
+
+void cudaD_add_mat_repeated(dim3 Gr, dim3 Bl, double alpha, const double* src,
+                            MatrixDim src_dim, double *dst, MatrixDim dst_dim) {
+  _add_mat_repeated<<<Gr,Bl>>>(alpha, src, src_dim, dst, dst_dim);
 }
 
 void cudaD_set_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A,

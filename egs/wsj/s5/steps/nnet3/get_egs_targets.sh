@@ -222,7 +222,10 @@ fi
 # We may have to first create a smaller number of larger archives, with number
 # $num_archives_intermediate, if $num_archives is more than the maximum number
 # of open filehandles that the system allows per process (ulimit -n).
+# This sometimes gives a misleading answer as GridEngine sometimes changes the
+# limit, so we limit it to 512.
 max_open_filehandles=$(ulimit -n) || exit 1
+[ $max_open_filehandles -gt 512 ] && max_open_filehandles=512
 num_archives_intermediate=$num_archives
 archives_multiple=1
 while [ $[$num_archives_intermediate+4] -gt $max_open_filehandles ]; do

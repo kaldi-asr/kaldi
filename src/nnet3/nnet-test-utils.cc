@@ -1288,7 +1288,7 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
-  int32 n = RandInt(0, 33);
+  int32 n = RandInt(0, 32);
   BaseFloat learning_rate = 0.001 * RandInt(1, 100);
 
   std::ostringstream os;
@@ -1463,14 +1463,7 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " learning-rate=" << learning_rate << param_config;
       break;
     }
-    case 20: {
-      *component_type = "SumReduceComponent";
-      int32 output_dim = RandInt(1, 50), group_size = RandInt(1, 15),
-          input_dim = output_dim * group_size;
-      os << "input-dim=" << input_dim << " output-dim=" << output_dim;
-      break;
-    }
-    case 21: {
+    case 20: case 21: {
       *component_type = "CompositeComponent";
       int32 cur_dim = RandInt(20, 30), num_components = RandInt(1, 3),
           max_rows_process = RandInt(1, 30);
@@ -1583,8 +1576,10 @@ static void GenerateRandomComponentConfig(std::string *component_type,
     }
     case 29: {
       *component_type = "DropoutComponent";
+      bool test_mode = (RandInt(0, 1) == 0);
       os << "dim=" << RandInt(1, 200)
-         << " dropout-proportion=" << RandUniform();
+         << " dropout-proportion=" << RandUniform() << " test-mode="
+         << (test_mode ? "true" : "false");
       break;
     }
     case 30: {
@@ -1596,7 +1591,7 @@ static void GenerateRandomComponentConfig(std::string *component_type,
     }
     // I think we'll get in the habit of allocating a larger number of case
     // labels to the most recently added component, so it gets tested more
-    case 31: case 32: case 33: {
+    case 31: {
       *component_type = "BatchNormComponent";
       int32 block_dim = RandInt(1, 10), dim = block_dim * RandInt(1, 2);
       bool test_mode = (RandInt(0, 1) == 0);
@@ -1604,6 +1599,16 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " block-dim=" << block_dim << " target-rms="
          << RandInt(1, 2) << " test-mode="
          << (test_mode ? "true" : "false");
+      break;
+    }
+    case 32: {
+      *component_type = "SumBlockComponent";
+      BaseFloat scale = 0.5 * RandInt(1, 3);
+      BaseFloat output_dim = RandInt(1, 10),
+          input_dim = output_dim * RandInt(1, 3);
+      os << "input-dim=" << input_dim
+         << " output-dim=" << output_dim
+         << " scale=" << scale;
       break;
     }
     default:

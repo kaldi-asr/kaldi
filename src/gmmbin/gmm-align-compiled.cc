@@ -39,8 +39,8 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Align features given [GMM-based] models.\n"
-        "Usage:   gmm-align-compiled [options] model-in graphs-rspecifier "
-        "feature-rspecifier alignments-wspecifier [scores-wspecifier]\n"
+        "Usage:   gmm-align-compiled [options] <model-in> <graphs-rspecifier> "
+        "<feature-rspecifier> <alignments-wspecifier> [scores-wspecifier]\n"
         "e.g.: \n"
         " gmm-align-compiled 1.mdl ark:graphs.fsts scp:train.scp ark:1.ali\n"
         "or:\n"
@@ -52,6 +52,7 @@ int main(int argc, char *argv[]) {
     BaseFloat acoustic_scale = 1.0;
     BaseFloat transition_scale = 1.0;
     BaseFloat self_loop_scale = 1.0;
+    std::string per_frame_acwt_wspecifier;
 
     align_config.Register(&po);
     po.Register("transition-scale", &transition_scale,
@@ -60,13 +61,16 @@ int main(int argc, char *argv[]) {
                 "Scaling factor for acoustic likelihoods");
     po.Register("self-loop-scale", &self_loop_scale,
                 "Scale of self-loop versus non-self-loop log probs [relative to acoustics]");
+    po.Register("write-per-frame-acoustic-loglikes", &per_frame_acwt_wspecifier,
+                "Wspecifier for table of vectors containing the acoustic log-likelihoods "
+                "per frame for each utterance. E.g. ark:foo/per_frame_logprobs.1.ark");
     po.Read(argc, argv);
 
     if (po.NumArgs() < 4 || po.NumArgs() > 5) {
       po.PrintUsage();
       exit(1);
     }
-    
+
     std::string model_in_filename = po.GetArg(1),
         fst_rspecifier = po.GetArg(2),
         feature_rspecifier = po.GetArg(3),
@@ -86,6 +90,7 @@ int main(int argc, char *argv[]) {
     RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
     Int32VectorWriter alignment_writer(alignment_wspecifier);
     BaseFloatWriter scores_writer(scores_wspecifier);
+    BaseFloatVectorWriter per_frame_acwt_writer(per_frame_acwt_wspecifier);
 
     int num_done = 0, num_err = 0, num_retry = 0;
     double tot_like = 0.0;
@@ -118,12 +123,13 @@ int main(int argc, char *argv[]) {
 
         DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model, features,
                                                acoustic_scale);
-         
+
+        KALDI_LOG << utt;
         AlignUtteranceWrapper(align_config, utt,
                               acoustic_scale, &decode_fst, &gmm_decodable,
                               &alignment_writer, &scores_writer,
                               &num_done, &num_err, &num_retry,
-                              &tot_like, &frame_count);
+                              &tot_like, &frame_count, &per_frame_acwt_writer);
       }
     }
     KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count)
@@ -137,5 +143,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

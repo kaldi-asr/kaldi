@@ -4,7 +4,7 @@
 #      2014-2015  David Snyder
 #           2015  Johns Hopkins University (Author: Daniel Garcia-Romero)
 #           2015  Johns Hopkins University (Author: Daniel Povey)
-#           2016  Go-Vivace Inc. (Author: Mousmita Sarma)
+#      2016-2017  Go-Vivace Inc. (Author: Mousmita Sarma)
 # Apache 2.0.
 
 # This script trains the i-vector extractor using a DNN-based UBM. It also requires
@@ -29,12 +29,12 @@
 #    may want more jobs, though.
 
 # Begin configuration section.
-nj=10   # this is the number of separate queue jobs we run, but each one
-        # contains num_processes sub-jobs.. the real number of threads we
-        # run is nj * num_processes * num_threads, and the number of
-        # separate pieces of data is nj * num_processes.
+nj=5   # this is the number of separate queue jobs we run, but each one
+       # contains num_processes sub-jobs.. the real number of threads we
+       # run is nj * num_processes * num_threads, and the number of
+       # separate pieces of data is nj * num_processes.
 num_threads=4
-num_processes=4 # each job runs this many processes, each with --num-threads threads
+num_processes=1 # each job runs this many processes, each with --num-threads threads
 cmd="run.pl"
 stage=-4
 num_gselect=20 # Gaussian-selection using diagonal model: number of Gaussians to select
@@ -47,6 +47,9 @@ cleanup=true
 posterior_scale=1.0 # This scale helps to control for successve features being highly
                     # correlated.  E.g. try 0.1 or 0.3
 sum_accs_opt=
+use_gpu=true
+chunk_size=256
+nnet_job_opt=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -57,7 +60,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# != 5 ]; then
   echo "Usage: $0 <fgmm-model> <dnn-model> <data-language-id> <data-dnn> <extractor-dir>"
-  echo " e.g.: $0 exp/full_ubm/final.ubm nnet=exp/nnet2_online/nnet_ms_a/final.mdl data/train data/train_dnn exp/extractor_dnn"
+  echo " e.g.: $0 exp/full_ubm/final.ubm exp/nnet2_online/nnet_ms_a/final.mdl data/train data/train_dnn exp/extractor_dnn"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
@@ -71,7 +74,11 @@ if [ $# != 5 ]; then
   echo "  --num-gselect <n|20>                             # Number of Gaussians to select using"
   echo "                                                   # diagonal model."
   echo "  --sum-accs-opt <option|''>                       # Option e.g. '-l hostname=a15' to localize"
+  echo "  --use-gpu <true/false>                           # Use GPU to extract DNN posteriors"
   echo "                                                   # sum-accs process to nfs server."
+  echo "  --nnet-job-opt <option|''>                       # Options for the DNN jobs which add to or"
+  echo "                                                   # replace those specified by --cmd"
+  echo "  --chunk-size <n|256>                             # Number of frames processed at a time by the DNN"
   exit 1;
 fi
 
@@ -80,6 +87,22 @@ nnet=$2
 data=$3
 data_dnn=$4
 dir=$5
+
+gpu_opt=""
+if $use_gpu; then
+  nnet_job_opt="$nnet_job_opt --gpu 1"
+  gpu_opt="--use-gpu=yes"
+  if ! cuda-compiled; then
+    echo "$0: WARNING: you are trying to use the GPU but you have not compiled"
+    echo "   for CUDA.  If you have GPUs and have nvcc installed, go to src/"
+    echo "   and do ./configure; make"
+    exit 1
+  fi
+else
+  echo "$0: without using a GPU this will be slow."
+  gpu_opt="--use-gpu=no"
+fi
+
 
 srcdir=$(dirname $fgmm_model)
 
@@ -96,15 +119,12 @@ utils/split_data.sh $data $nj_full || exit 1;
 sdata_dnn=$data_dnn/split$nj_full;
 utils/split_data.sh $data_dnn $nj_full || exit 1;
 
-
 parallel_opts="--num-threads $[$num_threads*$num_processes]"
 
-# Set up features.
-
+# Set up language recognition features
 feats="ark,s,cs:apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 scp:$sdata/JOB/feats.scp ark:- | add-deltas-sdc ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
-
+# Set up nnet features
 nnet_feats="ark,s,cs:apply-cmvn-sliding --center=true scp:$sdata_dnn/JOB/feats.scp ark:- |"
-
 
 # Initialize the i-vector extractor using the FGMM input
 if [ $stage -le -2 ]; then
@@ -116,17 +136,23 @@ if [ $stage -le -2 ]; then
      $dir/final.ubm $dir/0.ie || exit 1;
 fi
 
+
 # Do Gaussian selection and posterior extracion
 
 if [ $stage -le -1 ]; then
   echo $nj_full > $dir/num_jobs
   echo "$0: doing DNN posterior computation"
-  $cmd JOB=1:$nj_full $dir/log/post.JOB.log \
-  nnet-am-compute --apply-log=true $nnet "$nnet_feats" ark:- \
-  \| select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- \
-  \| logprob-to-post --min-post=$min_post ark,s,cs:- ark:- \| \
-  scale-post ark:- $posterior_scale "ark:|gzip -c >$dir/post.JOB.gz" || exit 1;
-
+  for g in $(seq $nj_full); do
+    $cmd $nnet_job_opt $dir/log/post.$g.log \
+    nnet-am-compute $gpu_opt \
+        --chunk-size=${chunk_size} --apply-log=true $nnet \
+        "`echo $nnet_feats | sed s/JOB/$g/g`" \
+        ark:- \
+        \| select-voiced-frames ark:- scp,s,cs:$sdata/$g/vad.scp ark:- \
+        \| logprob-to-post --min-post=$min_post ark,s,cs:- ark:- \| \
+        scale-post ark:- $posterior_scale "ark:|gzip -c >$dir/post.$g.gz" || exit 1 &
+  done
+  wait
 else
   if ! [ $nj_full -eq $(cat $dir/num_jobs) ]; then
     echo "Num-jobs mismatch $nj_full versus $(cat $dir/num_jobs)"
@@ -138,12 +164,10 @@ x=0
 while [ $x -lt $num_iters ]; do
   if [ $stage -le $x ]; then
     rm $dir/.error 2>/dev/null
-
     Args=() # bash array of training commands for 1:nj, that put accs to stdout.
     for j in $(seq $nj_full); do
       Args[$j]=`echo "ivector-extractor-acc-stats --num-threads=$num_threads --num-samples-for-weights=$num_samples_for_weights $dir/$x.ie '$feats' 'ark,s,cs:gunzip -c $dir/post.JOB.gz|' -|" | sed s/JOB/$j/g`
     done
-
     echo "Accumulating stats (pass $x)"
     for g in $(seq $nj); do
       start=$[$num_processes*($g-1)+1]
@@ -164,12 +188,16 @@ while [ $x -lt $num_iters ]; do
     nt=$[$num_threads*$num_processes] # use the same number of threads that
                                       # each accumulation process uses, since we
                                       # can be sure the queue will support this many.
-    $cmd --num-threads $nt $dir/log/update.$x.log \
+    $cmd $parallel_opts $dir/log/update.$x.log \
       ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
-    rm $dir/acc.$x.*
-    $cleanup && rm $dir/acc.$x $dir/$x.ie
+	rm $dir/acc.$x.*
+    if $cleanup; then
+      rm $dir/acc.$x
+    fi
   fi
   x=$[$x+1]
 done
 
+$cleanup && rm -f $dir/post.*.gz
+rm -f $dir/final.ie
 ln -s $x.ie $dir/final.ie

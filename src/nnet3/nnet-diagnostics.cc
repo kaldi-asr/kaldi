@@ -27,6 +27,7 @@ NnetComputeProb::NnetComputeProb(const NnetComputeProbOptions &config,
                                  const Nnet &nnet):
     config_(config),
     nnet_(nnet),
+    deriv_nnet_owned_(true),
     deriv_nnet_(NULL),
     compiler_(nnet, config_.optimize_config, config_.compiler_config),
     num_minibatches_processed_(0) {
@@ -34,17 +35,35 @@ NnetComputeProb::NnetComputeProb(const NnetComputeProbOptions &config,
     deriv_nnet_ = new Nnet(nnet_);
     ScaleNnet(0.0, deriv_nnet_);
     SetNnetAsGradient(deriv_nnet_); // force simple update
+  } else if (config_.store_component_stats) {
+    KALDI_ERR << "If you set store_component_stats == true and "
+              << "compute_deriv == false, use the other constructor.";
   }
 }
 
+
+NnetComputeProb::NnetComputeProb(const NnetComputeProbOptions &config,
+                                 Nnet *nnet):
+    config_(config),
+    nnet_(*nnet),
+    deriv_nnet_owned_(false),
+    deriv_nnet_(nnet),
+    compiler_(*nnet, config_.optimize_config, config_.compiler_config),
+    num_minibatches_processed_(0) {
+  KALDI_ASSERT(config.store_component_stats && !config.compute_deriv);
+}
+
+
+
 const Nnet &NnetComputeProb::GetDeriv() const {
-  if (deriv_nnet_ == NULL)
+  if (!config_.compute_deriv)
     KALDI_ERR << "GetDeriv() called when no derivatives were requested.";
   return *deriv_nnet_;
 }
 
 NnetComputeProb::~NnetComputeProb() {
-  delete deriv_nnet_;  // delete does nothing if pointer is NULL.
+  if (deriv_nnet_owned_)
+    delete deriv_nnet_;  // delete does nothing if pointer is NULL.
 }
 
 void NnetComputeProb::Reset() {
@@ -59,7 +78,7 @@ void NnetComputeProb::Reset() {
 
 void NnetComputeProb::Compute(const NnetExample &eg) {
   bool need_model_derivative = config_.compute_deriv,
-      store_component_stats = false;
+      store_component_stats = config_.store_component_stats;
   ComputationRequest request;
   GetComputationRequest(nnet_, eg, need_model_derivative,
                         store_component_stats,
@@ -233,6 +252,18 @@ const SimpleObjectiveInfo* NnetComputeProb::GetObjective(
     return &(iter->second);
   else
     return NULL;
+}
+
+double NnetComputeProb::GetTotalObjective(double *tot_weight) const {
+  double tot_objectives = 0.0;
+  *tot_weight = 0.0;
+  unordered_map<std::string, SimpleObjectiveInfo, StringHasher>::const_iterator
+    iter = objf_info_.begin(), end = objf_info_.end();
+  for (; iter != end; ++iter) {
+    tot_objectives += iter->second.tot_objective;
+    (*tot_weight) += iter->second.tot_weight;
+  }
+  return tot_objectives;
 }
 
 } // namespace nnet3

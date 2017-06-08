@@ -55,34 +55,38 @@ vely"
         exit 1;
 fi
 
-if [ ! -d links/LDC2010S01/DISC1/data/speech -o ! -d links/LDC2010S01/DISC2/data/speech ];
+#if [ ! -d links/LDC2010S01/DISC1/data/speech -o ! -d links/LDC2010S01/DISC2/data/speech ];
+if [ ! -d links/LDC2010S01/data/speech ];
 then
-        echo "Disc 1 and 2 directories missing or not properly organised within the speech data dir"
-        echo "Typical format is LDC2010S01/DISC?/data/speech"
+        echo "Speech directories missing or not properly organised within the speech data dir"
+        echo "Typical format is LDC2010S01/data/speech"
         exit 1;
 fi
 
 #Check the transcripts directories as well to see if they exist
-if [ ! -d links/LDC2010T04/data/transcripts ];
+if [ ! -d links/LDC2010T04/fisher_spa_tr/data/transcripts ];
 then
         echo "Transcript directories missing or not properly organised"
-        echo "Typical format is LDC2010T04/data/transcripts"
+        echo "Typical format is LDC2010T04/fisher_spa_tr/data/transcripts"
         exit 1;
 fi
 
-speech_d1=$dir/links/LDC2010S01/DISC1/data/speech
-speech_d2=$dir/links/LDC2010S01/DISC2/data/speech
-transcripts=$dir/links/LDC2010T04/data/transcripts
+#speech_d1=$dir/links/LDC2010S01/DISC1/data/speech
+#speech_d2=$dir/links/LDC2010S01/DISC2/data/speech
+speech=$dir/links/LDC2010S01/data/speech
+transcripts=$dir/links/LDC2010T04/fisher_spa_tr/data/transcripts
 
-fcount_d1=`find ${speech_d1} -iname '*.sph' | wc -l`
-fcount_d2=`find ${speech_d2} -iname '*.sph' | wc -l`
+#fcount_d1=`find ${speech_d1} -iname '*.sph' | wc -l`
+#fcount_d2=`find ${speech_d2} -iname '*.sph' | wc -l`
+fcount_s=`find ${speech} -iname '*.sph' | wc -l`
 fcount_t=`find ${transcripts} -iname '*.tdf' | wc -l`
 #TODO:it seems like not all speech files have transcripts
 #Now check if we got all the files that we needed
-if [ $fcount_d1 != 411 -o $fcount_d2 != 408 -o $fcount_t != 819 ];
+#if [ $fcount_d1 != 411 -o $fcount_d2 != 408 -o $fcount_t != 819 ];
+if [ $fcount_s != 819 -o $fcount_t != 819 ];
 then
         echo "Incorrect number of files in the data directories"
-        echo "DISC1 and DISC2 should contain 411 and 408 .sph files respectively"
+        echo "DISC1 and DISC2 should contain 411 and 408 .sph files respectively (Total = 819)"
         echo "The transcripts should contain 819 files"
         exit 1;
 fi
@@ -91,8 +95,9 @@ if [ $stage -le 0 ]; then
 	#Gather all the speech files together to create a file list
 	#TODO: Train and test split might be required
 	(
-	    find $speech_d1 -iname '*.sph';
-	    find $speech_d2 -iname '*.sph';
+			#find $speech_d1 -iname '*.sph';
+			#find $speech_d2 -iname '*.sph';
+	    find $speech -iname '*.sph';
 	)  > $tmpdir/train_sph.flist
 
 	#Get all the transcripts in one place

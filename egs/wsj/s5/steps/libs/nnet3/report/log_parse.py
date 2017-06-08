@@ -52,7 +52,7 @@ class KaldiLogParseException(Exception):
                            "There was an error while trying to parse the logs."
                            " Details : \n{0}\n".format(message))
 
-# This function is used to fill stats_per_component_per_iter table with the 
+# This function is used to fill stats_per_component_per_iter table with the
 # results of regular expression.
 def fill_nonlin_stats_table_with_regex_result(groups, gate_index, stats_table):
     iteration = int(groups[0])
@@ -61,7 +61,7 @@ def fill_nonlin_stats_table_with_regex_result(groups, gate_index, stats_table):
     value_percentiles = groups[3+gate_index*6]
     value_mean = float(groups[4+gate_index*6])
     value_stddev = float(groups[5+gate_index*6])
-    value_percentiles_split = re.split(',| ',value_percentiles)    
+    value_percentiles_split = re.split(',| ',value_percentiles)
     assert len(value_percentiles_split) == 13
     value_5th = float(value_percentiles_split[4])
     value_50th = float(value_percentiles_split[6])
@@ -69,7 +69,7 @@ def fill_nonlin_stats_table_with_regex_result(groups, gate_index, stats_table):
     deriv_percentiles = groups[6+gate_index*6]
     deriv_mean = float(groups[7+gate_index*6])
     deriv_stddev = float(groups[8+gate_index*6])
-    deriv_percentiles_split = re.split(',| ',deriv_percentiles)    
+    deriv_percentiles_split = re.split(',| ',deriv_percentiles)
     assert len(deriv_percentiles_split) == 13
     deriv_5th = float(deriv_percentiles_split[4])
     deriv_50th = float(deriv_percentiles_split[6])
@@ -115,8 +115,9 @@ def parse_progress_logs_for_nonlinearity_stats(exp_dir):
     progress_log_files = "%s/log/progress.*.log" % (exp_dir)
     stats_per_component_per_iter = {}
 
-    progress_log_lines = common_lib.run_kaldi_command(
-        'grep -e "value-avg.*deriv-avg" {0}'.format(progress_log_files))[0]
+    progress_log_lines = common_lib.get_command_stdout(
+        'grep -e "value-avg.*deriv-avg" {0}'.format(progress_log_files),
+        require_zero_status = False)
 
     parse_regex = re.compile(g_normal_nonlin_regex_pattern)
 
@@ -172,9 +173,10 @@ def parse_progress_logs_for_clipped_proportion(exp_dir):
 
     progress_log_files = "%s/log/progress.*.log" % (exp_dir)
     component_names = set([])
-    progress_log_lines = common_lib.run_kaldi_command(
+    progress_log_lines = common_lib.get_command_stdout(
         'grep -e "{0}" {1}'.format(
-            "clipped-proportion", progress_log_files))[0]
+            "clipped-proportion", progress_log_files),
+        require_zero_status=False)
     parse_regex = re.compile(".*progress\.([0-9]+)\.log:component "
                              "name=(.*) type=.* "
                              "clipped-proportion=([0-9\.e\-]+)")
@@ -255,8 +257,8 @@ def parse_progress_logs_for_param_diff(exp_dir, pattern):
     progress_log_files = "%s/log/progress.*.log" % (exp_dir)
     progress_per_iter = {}
     component_names = set([])
-    progress_log_lines = common_lib.run_kaldi_command(
-        'grep -e "{0}" {1}'.format(pattern, progress_log_files))[0]
+    progress_log_lines = common_lib.get_command_stdout(
+        'grep -e "{0}" {1}'.format(pattern, progress_log_files))
     parse_regex = re.compile(".*progress\.([0-9]+)\.log:"
                              "LOG.*{0}.*\[(.*)\]".format(pattern))
     for line in progress_log_lines.split("\n"):
@@ -309,8 +311,8 @@ def parse_progress_logs_for_param_diff(exp_dir, pattern):
 
 def parse_train_logs(exp_dir):
     train_log_files = "%s/log/train.*.log" % (exp_dir)
-    train_log_lines = common_lib.run_kaldi_command(
-        'grep -e Accounting {0}'.format(train_log_files))[0]
+    train_log_lines = common_lib.get_command_stdout(
+        'grep -e Accounting {0}'.format(train_log_files))
     parse_regex = re.compile(".*train\.([0-9]+)\.([0-9]+)\.log:# "
                              "Accounting: time=([0-9]+) thread.*")
 
@@ -334,10 +336,10 @@ def parse_train_logs(exp_dir):
 def parse_prob_logs(exp_dir, key='accuracy', output="output"):
     train_prob_files = "%s/log/compute_prob_train.*.log" % (exp_dir)
     valid_prob_files = "%s/log/compute_prob_valid.*.log" % (exp_dir)
-    train_prob_strings = common_lib.run_kaldi_command(
-        'grep -e {0} {1}'.format(key, train_prob_files), wait=True)[0]
-    valid_prob_strings = common_lib.run_kaldi_command(
-        'grep -e {0} {1}'.format(key, valid_prob_files))[0]
+    train_prob_strings = common_lib.get_command_stdout(
+        'grep -e {0} {1}'.format(key, train_prob_files))
+    valid_prob_strings = common_lib.get_command_stdout(
+        'grep -e {0} {1}'.format(key, valid_prob_files))
 
     # LOG
     # (nnet3-chain-compute-prob:PrintTotalStats():nnet-chain-diagnostics.cc:149)
@@ -391,12 +393,17 @@ def parse_prob_logs(exp_dir, key='accuracy', output="output"):
 
 
 def generate_acc_logprob_report(exp_dir, key="accuracy", output="output"):
-    times = parse_train_logs(exp_dir)
+    try:
+        times = parse_train_logs(exp_dir)
+    except:
+        tb = traceback.format_exc()
+        logger.warning("Error getting info from logs, exception was: " + tb)
+        times = []
 
     report = []
     report.append("%Iter\tduration\ttrain_loss\tvalid_loss\tdifference")
     try:
-        data = parse_prob_logs(exp_dir, key, output)
+        data = list(parse_prob_logs(exp_dir, key, output))
     except:
         tb = traceback.format_exc()
         logger.warning("Error getting info from logs, exception was: " + tb)

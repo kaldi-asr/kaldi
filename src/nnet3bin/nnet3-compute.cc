@@ -92,7 +92,9 @@ int main(int argc, char *argv[]) {
 
     Nnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
-    SetTestMode(true, &nnet);
+    SetBatchnormTestMode(true, &nnet);
+    SetDropoutTestMode(true, &nnet);
+    CollapseModel(CollapseModelConfig(), &nnet);
 
     RandomAccessBaseFloatMatrixReader online_ivector_reader(
         online_ivector_rspecifier);

@@ -385,11 +385,18 @@ bool CuDevice::SelectGpuIdAuto() {
 }
 
 
-void CuDevice::AccuProfile(const std::string &key, double time) {
-  if (profile_map_.find(key) == profile_map_.end()) {
-    profile_map_[key] = 0.0;
+void CuDevice::AccuProfile(const char *function_name,
+                           const CuTimer &timer) {
+  if (GetVerboseLevel() >= 1) {
+    std::string key(function_name);
+    cudaDeviceSynchronize();
+    double elapsed = timer.Elapsed();
+
+    if (profile_map_.find(key) == profile_map_.end())
+      profile_map_[key] = elapsed;
+    else
+      profile_map_[key] += elapsed;
   }
-  profile_map_[key] += time;
 }
 
 void CuDevice::PrintMemoryUsage() const {
@@ -403,7 +410,7 @@ void CuDevice::PrintMemoryUsage() const {
 }
 
 void CuDevice::PrintProfile() {
-  if (verbose_ && Enabled()) {
+  if (GetVerboseLevel() >= 1) {
     std::ostringstream os;
     os << "-----\n[cudevice profile]\n";
     unordered_map<std::string, double, StringHasher>::iterator it;
@@ -514,7 +521,7 @@ void CuDevice::DeviceGetName(char* name, int32 len, int32 dev) {
 
 void CuDevice::CheckGpuHealth() {
   if (!Enabled()) return;
-  Timer t;
+  CuTimer t;
   // prepare small matrices for a quick test
   Matrix<BaseFloat> a(50, 100);
   Matrix<BaseFloat> b(100 ,50);
@@ -529,7 +536,7 @@ void CuDevice::CheckGpuHealth() {
   // check that relative differnence is <1%
   AssertEqual(c, Matrix<BaseFloat>(c1), 0.01);
   // measure time spent in this check
-  AccuProfile(__func__, t.Elapsed());
+  AccuProfile(__func__, t);
 }
 
 
@@ -563,7 +570,7 @@ void CuDevice::CheckGpuHealth() {
 */
 
 CuDevice::CuDevice() :
-    active_gpu_id_(-1), verbose_(true), debug_stride_mode_(false),
+    active_gpu_id_(-1), debug_stride_mode_(false),
     num_debug_stride_allocations_(0), allocator_(CuAllocatorOptions()) {
 }
 
