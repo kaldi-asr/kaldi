@@ -57,6 +57,7 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0, inv_acoustic_scale = 1.0, lm_scale = 1.0;
     BaseFloat frame_shift = 0.01;
+    int32 confidence_digits = 2;
 
     std::string word_syms_filename;
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for "
@@ -66,6 +67,8 @@ int main(int argc, char *argv[]) {
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model "
                 "probabilities");
     po.Register("frame-shift", &frame_shift, "Time in seconds between frames.");
+    po.Register("confidence-digits", &confidence_digits, "Number of decimal digits for confidences in 'ctm'.");
+
 
     MinimumBayesRiskOptions mbr_opts;
     mbr_opts.Register(&po);
@@ -118,7 +121,7 @@ int main(int argc, char *argv[]) {
     Output ko(ctm_wxfilename, false); // false == non-binary writing mode.
     ko.Stream() << std::fixed;  // Set to "fixed" floating point model, where precision() specifies
     // the #digits after the decimal point.
-    ko.Stream().precision(2);
+    ko.Stream().precision(confidence_digits);
 
     int32 n_done = 0, n_words = 0;
     BaseFloat tot_bayes_risk = 0.0;
