@@ -14,7 +14,7 @@ dl_dir=$DATA_DOWNLOAD_PATH
 
 # Various other paths
 devkit_dir=$dl_dir/devkit_t3
-train_dir=$dl_dir/train_t3/train_t3
+train_dir=$dl_dir/train_t3
 val_dir=$dl_dir/val
 test_dir=$dl_dir/test
 
@@ -30,7 +30,7 @@ devkit_dir_t12=$dl_dir/devkit_t12
 devkit_tar_t12=ILSVRC2012_devkit_t12.tar.gz
 
 # Check if dataset is downloaded 
-if [ ! -d $dl_dir ] || [ ! -f $dl_dir/$devkit_tar ] || [ ! -f $dl_dir/train_t3/$train_tar ] || \
+if [ ! -d $dl_dir ] || [ ! -f $dl_dir/$devkit_tar ] || [ ! -f $dl_dir/$train_tar ] || \
    [ ! -f $dl_dir/$val_tar ] || [ ! -f $dl_dir/$test_tar ] || [ ! -f $dl_dir/$devkit_tar_t12 ]; then
   echo Need to download ImageNet2012 dataset first. Need the tar file for devkit train val and test data.
   exit 1

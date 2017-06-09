@@ -96,6 +96,7 @@ if args.dataset == 'train':
             for img_Name in class_contents:
                 key = zeropad(image_id,8)
                 im = misc.imread(potential_path + '/' + img_Name)
+		im = np.divide(im,255.0)
                 im_shape = im.shape
                 W = im_shape[1]
                 H = im_shape[0]
@@ -117,6 +118,7 @@ else:
                 keyNum = zeropad(image_num,8)
                 file_name = args.databasePath + '/' + datasetYearVect[0] + '_val_' + keyID + '.JPEG'
                 im = misc.imread(file_name)
+		im = np.divide(im,255.0)
                 im_shape = im.shape
                 W = im_shape[1]
                 H = im_shape[0]
