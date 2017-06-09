@@ -4,13 +4,16 @@
 # and using proportional-shrink with value 10, this model uses
 # 5 epochs to train
 
+# local/chain/tuning/run_tdnn_lstm_1n.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned
+# local/chain/compare_wer_general.sh sdm1 tdnn_lstmli_5epoch_sp_bi_ihmali_ld5 tdnn_lstm1n_sp_bi_ihmali_ld5
 # System               tdnn_lstmli_5epoch_sp_bi_ihmali_ld5 tdnn_lstm1n_sp_bi_ihmali_ld5
-# WER on dev        36.9      34.6
-# WER on eval        40.4      37.9
-# Final train prob     -0.0867643 -0.134102
-# Final valid prob      -0.266945 -0.234435
-# Final train prob (xent)      -1.22333  -1.52368
-# Final valid prob (xent)      -2.13335  -2.02384
+# WER on dev        36.9      34.2
+# WER on eval        40.4      37.7
+# Final train prob     -0.0867643 -0.132712
+# Final valid prob      -0.266945 -0.234348
+# Final train prob (xent)      -1.22333  -1.5112
+# Final valid prob (xent)      -2.13335  -2.01698
+
 
 
 set -e -o pipefail
@@ -188,19 +191,19 @@ if [ $stage -le 15 ]; then
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=1024
-  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
-  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
+  relu-batchnorm-layer name=tdnn1 dim=1024
+  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
+  relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
   lstmp-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
-  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
   lstmp-layer name=lstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
-  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn8 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn9 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn8 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn9 input=Append(-3,0,3) dim=1024
   lstmp-layer name=lstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
 
   ## adding the layers for chain branch
