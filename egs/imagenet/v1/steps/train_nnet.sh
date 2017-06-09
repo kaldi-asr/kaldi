@@ -1,1 +1,0 @@
-nnet/train.sh
