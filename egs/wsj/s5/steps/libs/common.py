@@ -114,7 +114,7 @@ def get_command_stdout(command, require_zero_status = True):
             raise Exception(str)
         else:
             logger.warning(str)
-    return stdout if type(stdout) is type('str') else stdout.decode()
+    return stdout if type(stdout) is str else stdout.decode()
 
 
 
