@@ -38,10 +38,12 @@ static bool ProcessFile(const GeneralMatrix &feats,
                         bool compress,
                         int32 num_pdfs,
                         UtteranceSplitter *utt_splitter,
-                        NnetExampleWriter *example_writer) {
+                        NnetExampleWriter *example_writer,
+                        int32 length_tolerance = 2) {
   int32 num_input_frames = feats.NumRows();
   if (!utt_splitter->LengthsMatch(utt_id, num_input_frames,
-                             static_cast<int32>(pdf_post.size())))
+                                  static_cast<int32>(pdf_post.size()),
+                                  length_tolerance))
     return false;  // LengthsMatch() will have printed a warning.
 
   std::vector<ChunkTimeInfo> chunks;
@@ -101,12 +103,6 @@ static bool ProcessFile(const GeneralMatrix &feats,
     int32 start_frame_subsampled = chunk.first_frame / frame_subsampling_factor,
         num_frames_subsampled = chunk.num_frames / frame_subsampling_factor;
 
-    KALDI_ASSERT(start_frame_subsampled + num_frames_subsampled - 1 <
-                 static_cast<int32>(pdf_post.size()));
-
-    // Note: in all current cases there is no subsampling of output-frames going
-    // on (--frame-subsampling-factor=1), so you could read
-    // 'num_frames_subsampled' as just 'num_frames'.
     Posterior labels(num_frames_subsampled);
 
     // TODO: it may be that using these weights is not actually helpful (with
@@ -116,7 +112,8 @@ static bool ProcessFile(const GeneralMatrix &feats,
     // helpful.
     for (int32 i = 0; i < num_frames_subsampled; i++) {
       int32 t = i + start_frame_subsampled;
-      labels[i] = pdf_post[t];
+      if (t < pdf_post.size())
+        labels[i] = pdf_post[t];
       for (std::vector<std::pair<int32, BaseFloat> >::iterator
                iter = labels[i].begin(); iter != labels[i].end(); ++iter)
         iter->second *= chunk.output_weights[i];
@@ -233,12 +230,6 @@ int main(int argc, char *argv[]) {
         num_err++;
       } else {
         const Posterior &pdf_post = pdf_post_reader.Value(key);
-        if (pdf_post.size() != feats.NumRows()) {
-          KALDI_WARN << "Posterior has wrong size " << pdf_post.size()
-                     << " versus " << feats.NumRows();
-          num_err++;
-          continue;
-        }
         const Matrix<BaseFloat> *online_ivector_feats = NULL;
         if (!online_ivector_rspecifier.empty()) {
           if (!online_ivector_reader.HasKey(key)) {
@@ -265,7 +256,7 @@ int main(int argc, char *argv[]) {
 
         if (!ProcessFile(feats, online_ivector_feats, online_ivector_period,
                          pdf_post, key, compress, num_pdfs,
-                         &utt_splitter, &example_writer))
+                         &utt_splitter, &example_writer, length_tolerance))
             num_err++;
       }
     }

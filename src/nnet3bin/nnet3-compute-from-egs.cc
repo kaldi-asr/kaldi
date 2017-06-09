@@ -36,7 +36,8 @@ class NnetComputerFromEg {
 
   // Compute the output (which will have the same number of rows as the number
   // of Indexes in the output of the eg), and put it in "output".
-  void Compute(const NnetExample &eg, Matrix<BaseFloat> *output) {
+  void Compute(const NnetExample &eg, const std::string &output_name, 
+               Matrix<BaseFloat> *output) {
     ComputationRequest request;
     bool need_backprop = false, store_stats = false;
     GetComputationRequest(nnet_, eg, need_backprop, store_stats, &request);
@@ -47,7 +48,7 @@ class NnetComputerFromEg {
     NnetComputer computer(options, computation, nnet_, NULL);
     computer.AcceptInputs(nnet_, eg.io);
     computer.Run();
-    const CuMatrixBase<BaseFloat> &nnet_output = computer.GetOutput("output");
+    const CuMatrixBase<BaseFloat> &nnet_output = computer.GetOutput(output_name);
     output->Resize(nnet_output.NumRows(), nnet_output.NumCols());
     nnet_output.CopyToMat(output);
   }
@@ -80,11 +81,14 @@ int main(int argc, char *argv[]) {
     bool binary_write = true,
         apply_exp = false;
     std::string use_gpu = "yes";
+    std::string output_name = "output";
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("apply-exp", &apply_exp, "If true, apply exp function to "
                 "output");
+    po.Register("output-name", &output_name, "Do computation for "
+                "specified output");
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
 
@@ -115,7 +119,7 @@ int main(int argc, char *argv[]) {
 
     for (; !example_reader.Done(); example_reader.Next(), num_egs++) {
       Matrix<BaseFloat> output;
-      computer.Compute(example_reader.Value(), &output);
+      computer.Compute(example_reader.Value(), output_name, &output);
       KALDI_ASSERT(output.NumRows() != 0);
       if (apply_exp)
         output.ApplyExp();

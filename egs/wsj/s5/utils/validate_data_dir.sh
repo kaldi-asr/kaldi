@@ -4,8 +4,9 @@
 no_feats=false
 no_wav=false
 no_text=false
+no_spk_sort=false
 
-for x in `seq 3`; do
+for x in `seq 4`; do
   if [ "$1" == "--no-feats" ]; then
     no_feats=true
     shift;
@@ -16,6 +17,10 @@ for x in `seq 3`; do
   fi
   if [ "$1" == "--no-wav" ]; then
     no_wav=true
+    shift;
+  fi
+  if [ "$1" == "--no-spk-sort" ]; then
+    no_spk_sort=true
     shift;
   fi
 done
@@ -78,9 +83,11 @@ function partial_diff {
 
 check_sorted_and_uniq $data/utt2spk
 
-! cat $data/utt2spk | sort -k2 | cmp -s - $data/utt2spk && \
-   echo "$0: utt2spk is not in sorted order when sorted first on speaker-id " && \
-   echo "(fix this by making speaker-ids prefixes of utt-ids)" && exit 1;
+if ! $no_spk_sort; then
+  ! cat $data/utt2spk | sort -k2 | cmp -s - $data/utt2spk && \
+     echo "$0: utt2spk is not in sorted order when sorted first on speaker-id " && \
+     echo "(fix this by making speaker-ids prefixes of utt-ids)" && exit 1;
+fi
 
 check_sorted_and_uniq $data/spk2utt
 

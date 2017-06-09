@@ -486,7 +486,7 @@ class XconfigOutputLayer(XconfigLayerBase):
                                 "".format(self.config['dim']))
 
         if self.config['objective-type'] != 'linear' and \
-                self.config['objective_type'] != 'quadratic':
+                self.config['objective-type'] != 'quadratic':
             raise RuntimeError("In output-layer, objective-type has"
                                 " invalid value {0}"
                                 "".format(self.config['objective-type']))
@@ -595,7 +595,9 @@ class XconfigOutputLayer(XconfigLayerBase):
             if output_delay != 0:
                 cur_node = 'Offset({0}, {1})'.format(cur_node, output_delay)
 
-            line = ('output-node name={0} input={1}'.format(self.name, cur_node))
+            line = ('output-node name={0} input={1} '
+                    'objective={2}'.format(
+                self.name, cur_node, objective_type))
             ans.append((config_name, line))
         return ans
 
@@ -643,10 +645,26 @@ class XconfigBasicLayer(XconfigLayerBase):
                         'target-rms' : 1.0,
                         'learning-rate-factor' : 1.0,
                         'ng-affine-options' : '',
-                        'dropout-proportion': 0.5}  # dropout-proportion only
+                        'dropout-proportion': 0.5,  # dropout-proportion only
                                                     # affects layers with
                                                     # 'dropout' in the name.
+                        'add-log-stddev' : False }
 
+    def set_derived_configs(self):
+        output_dim = self.config['dim']
+        # If not set, the output-dim defaults to the input-dim.
+        if output_dim <= 0:
+            self.config['dim'] = self.descriptors['input']['dim']
+
+        if self.config['add-log-stddev']:
+            split_layer_name = self.layer_type.split('-')
+            assert split_layer_name[-1] == 'layer'
+            nonlinearities = split_layer_name[:-1]
+
+            for nonlinearity in nonlinearities:
+                if nonlinearity == "renorm":
+                    output_dim += 1
+        self.config['output-dim'] = output_dim
 
     def check_configs(self):
         if self.config['dim'] < 0:
@@ -673,12 +691,7 @@ class XconfigBasicLayer(XconfigLayerBase):
         return '{0}.{1}'.format(self.name, last_nonlinearity)
 
     def output_dim(self, auxiliary_output = None):
-        output_dim = self.config['dim']
-        # If not set, the output-dim defaults to the input-dim.
-        if output_dim <= 0:
-            output_dim = self.descriptors['input']['dim']
-        return output_dim
-
+        return self.config['output-dim']
 
     def get_full_config(self):
         ans = []
@@ -708,10 +721,12 @@ class XconfigBasicLayer(XconfigLayerBase):
         return self._add_components(input_desc, input_dim, nonlinearities)
 
     def _add_components(self, input_desc, input_dim, nonlinearities):
-        output_dim = self.output_dim()
+        output_dim = self.config['dim']
         self_repair_scale = self.config['self-repair-scale']
         target_rms = self.config['target-rms']
         max_change = self.config['max-change']
+        add_log_stddev = ("true" if self.config['add-log-stddev']
+                          else "false")
         ng_affine_options = self.config['ng-affine-options']
         learning_rate_factor=self.config['learning-rate-factor']
         learning_rate_option=('learning-rate-factor={0}'.format(learning_rate_factor)
@@ -762,8 +777,11 @@ class XconfigBasicLayer(XconfigLayerBase):
                 line = ('component name={0}.{1}'
                         ' type=NormalizeComponent dim={2}'
                         ' target-rms={3}'
+                        ' add-log-stddev={4}'
                         ''.format(self.name, nonlinearity, output_dim,
-                            target_rms))
+                                  target_rms, add_log_stddev))
+                if self.config['add-log-stddev']:
+                    output_dim += 1
 
             elif nonlinearity == 'batchnorm':
                 line = ('component name={0}.{1}'

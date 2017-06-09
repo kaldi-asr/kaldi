@@ -412,7 +412,8 @@ def train(args, run_opts):
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
-                run_opts=run_opts)
+                run_opts=run_opts,
+                compute_per_dim_accuracy=args.compute_per_dim_accuracy)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
@@ -442,7 +443,8 @@ def train(args, run_opts):
             run_opts=run_opts,
             minibatch_size_str=args.num_chunk_per_minibatch,
             chunk_width=args.chunk_width,
-            sum_to_one_penalty=args.combine_sum_to_one_penalty)
+            sum_to_one_penalty=args.combine_sum_to_one_penalty,
+            compute_per_dim_accuracy=args.compute_per_dim_accuracy)
 
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "

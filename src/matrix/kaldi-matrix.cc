@@ -2547,6 +2547,15 @@ Real MatrixBase<Real>::ApplySoftMax() {
 }
 
 template<typename Real>
+void MatrixBase<Real>::ApplySoftMaxPerRow() {
+  for (MatrixIndexT i = 0; i < num_rows_; i++) {
+    Row(i).ApplySoftMax();
+    kaldi::ApproxEqual(Row(i).Sum(), 1.0);
+  }
+  KALDI_ASSERT(Max() <= 1.0 && Min() >= 0.0);
+}
+
+template<typename Real>
 void MatrixBase<Real>::Tanh(const MatrixBase<Real> &src) {
   KALDI_ASSERT(SameDim(*this, src));
 

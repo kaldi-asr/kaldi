@@ -31,7 +31,7 @@ namespace kaldi {
 namespace nnet3 {
 
 
-static void ProcessFile(const MatrixBase<BaseFloat> &feats,
+static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
                         int32 ivector_period,
                         const MatrixBase<BaseFloat> &targets,
@@ -44,7 +44,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
   if (!utt_splitter->LengthsMatch(utt_id, num_input_frames,
                                   targets.NumRows())) {
     if (targets.NumRows() == 0)
-      return;
+      return false;
     // normally we wouldn't process such an utterance but there may be
     // situations when a small disagreement is acceptable.
     KALDI_WARN << " .. processing this utterance anyway.";
@@ -59,7 +59,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     KALDI_WARN << "Not producing egs for utterance " << utt_id
                << " because it is too short: "
                << num_input_frames << " frames.";
-    return;
+    return false;
   }
 
   // 'frame_subsampling_factor' is not used in any recipes at the time of
@@ -144,9 +144,9 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
 
     example_writer->Write(key, eg);
   }
+
+  return true;
 }
-
-
 
 } // namespace nnet2
 } // namespace kaldi
@@ -228,10 +228,10 @@ int main(int argc, char *argv[]) {
         num_err++;
       } else {
         const Matrix<BaseFloat> &target_matrix = matrix_reader.Value(key);
-        if (target_matrix.NumRows() != feats.NumRows()) {
-          KALDI_WARN << "Target matrix has wrong size "
-                     << target_matrix.NumRows()
-                     << " versus " << feats.NumRows();
+        if (abs(target_matrix.NumRows() - feats.NumRows()) > length_tolerance) {
+          KALDI_WARN << "Length difference between feats " << feats.NumRows()
+                     << " and target matrix " << target_matrix.NumRows()
+                     << "exceeds tolerance " << length_tolerance;
           num_err++;
           continue;
         }
@@ -258,9 +258,10 @@ int main(int argc, char *argv[]) {
           continue;
         }
 
-        ProcessFile(feats, online_ivector_feats, online_ivector_period,
+        if (!ProcessFile(feats, online_ivector_feats, online_ivector_period,
                     target_matrix, key, compress, num_targets,
-                    &utt_splitter, &example_writer);
+                    &utt_splitter, &example_writer))
+          num_err++;
       }
     }
     if (num_err > 0)

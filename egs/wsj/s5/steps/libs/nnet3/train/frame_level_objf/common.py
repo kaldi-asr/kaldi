@@ -13,6 +13,7 @@ import glob
 import logging
 import math
 import os
+import random
 import time
 
 import libs.common as common_lib
@@ -204,7 +205,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         dir=dir, iter=iter, egs_dir=egs_dir,
         run_opts=run_opts,
         get_raw_nnet_from_am=get_raw_nnet_from_am,
-        use_multitask_egs=use_multitask_egs)
+        use_multitask_egs=use_multitask_egs,
+        compute_per_dim_accuracy=compute_per_dim_accuracy)
 
     if iter > 0:
         # Runs in the background
@@ -360,7 +362,8 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
 
 def compute_train_cv_probabilities(dir, iter, egs_dir, run_opts,
                                    get_raw_nnet_from_am=True,
-                                   use_multitask_egs=False):
+                                   use_multitask_egs=False,
+                                   compute_per_dim_accuracy=False):
     if get_raw_nnet_from_am:
         model = "nnet3-am-copy --raw=true {dir}/{iter}.mdl - |".format(
                     dir=dir, iter=iter)
@@ -371,6 +374,10 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, run_opts,
     egs_suffix = ".scp" if use_multitask_egs else ".egs"
     egs_rspecifier = ("{0}:{1}/valid_diagnostic{2}".format(
         scp_or_ark, egs_dir, egs_suffix))
+
+    opts = []
+    if compute_per_dim_accuracy:
+        opts.append("--compute-per-dim-accuracy")
 
     multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
                              egs_dir,
@@ -387,7 +394,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, run_opts,
                                         dir=dir,
                                         iter=iter,
                                         egs_rspecifier=egs_rspecifier,
-                                        model=model,
+                                        opts=' '.join(opts), model=model,
                                         multitask_egs_opts=multitask_egs_opts))
 
     egs_rspecifier = ("{0}:{1}/train_diagnostic{2}".format(
@@ -400,7 +407,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, run_opts,
 
     common_lib.background_command(
         """{command} {dir}/log/compute_prob_train.{iter}.log \
-                nnet3-compute-prob "{model}" \
+                nnet3-compute-prob {opts} "{model}" \
                 "ark,bg:nnet3-copy-egs {multitask_egs_opts} \
                     {egs_rspecifier} ark:- | \
                     nnet3-merge-egs --minibatch-size=1:64 ark:- \
@@ -408,9 +415,8 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, run_opts,
                                         dir=dir,
                                         iter=iter,
                                         egs_rspecifier=egs_rspecifier,
-                                        model=model,
+                                        opts=' '.join(opts), model=model,
                                         multitask_egs_opts=multitask_egs_opts))
-
 
 
 def compute_progress(dir, iter, egs_dir,
@@ -458,7 +464,8 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
                    run_opts,
                    chunk_width=None, get_raw_nnet_from_am=True,
                    sum_to_one_penalty=0.0,
-                   use_multitask_egs=False):
+                   use_multitask_egs=False,
+                   compute_per_dim_accuracy=False):
     """ Function to do model combination
 
     In the nnet3 setup, the logic
@@ -536,12 +543,15 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
     if get_raw_nnet_from_am:
         compute_train_cv_probabilities(
             dir=dir, iter='combined', egs_dir=egs_dir,
-            run_opts=run_opts, use_multitask_egs=use_multitask_egs)
+            run_opts=run_opts, use_multitask_egs=use_multitask_egs,
+            compute_per_dim_accuracy=compute_per_dim_accuracy)
     else:
         compute_train_cv_probabilities(
             dir=dir, iter='final', egs_dir=egs_dir,
             run_opts=run_opts, get_raw_nnet_from_am=False,
-            use_multitask_egs=use_multitask_egs)
+            use_multitask_egs=use_multitask_egs,
+            compute_per_dim_accuracy=compute_per_dim_accuracy)
+
 
 def get_realign_iters(realign_times, num_iters,
                       num_jobs_initial, num_jobs_final):
@@ -648,6 +658,7 @@ def adjust_am_priors(dir, input_model, avg_posterior_vector, output_model,
                     dir=dir, input_model=input_model,
                     avg_posterior_vector=avg_posterior_vector,
                     output_model=output_model))
+
 
 def compute_average_posterior(dir, iter, egs_dir, num_archives,
                               prior_subset_size,

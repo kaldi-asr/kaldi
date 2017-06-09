@@ -354,6 +354,21 @@ def train(args, run_opts):
         num_archives, args.max_models_combine,
         args.num_jobs_final)
 
+    if (os.path.exists('{0}/valid_diagnostic.scp'.format(egs_dir))):
+        if (os.path.exists('{0}/valid_diagnostic.egs'.format(egs_dir))):
+            raise Exception('both {0}/valid_diagnostic.egs and '
+                            '{0}/valid_diagnostic.scp exist.'
+                            'This script expects only one of them to exist.'
+                            ''.format(egs_dir))
+        use_multitask_egs = True
+    else:
+        if (not os.path.exists('{0}/valid_diagnostic.egs'
+                               ''.format(egs_dir))):
+            raise Exception('neither {0}/valid_diagnostic.egs nor '
+                            '{0}/valid_diagnostic.scp exist.'
+                            'This script expects one of them.'
+                            ''.format(egs_dir))
+        use_multitask_egs = False
 
     min_deriv_time = None
     max_deriv_time_relative = None
@@ -418,7 +433,9 @@ def train(args, run_opts):
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
-                get_raw_nnet_from_am=False)
+                get_raw_nnet_from_am=False,
+                use_multitask_egs=use_multitask_egs,
+                compute_per_dim_accuracy=args.compute_per_dim_accuracy)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
@@ -443,12 +460,16 @@ def train(args, run_opts):
 
     if args.stage <= num_iters:
         logger.info("Doing final combination to produce final.raw")
+        common_lib.execute_command(
+            "cp {dir}/{num_iters}.raw {dir}/pre_combine.raw"
+            "".format(dir=args.dir, num_iters=num_iters))
         train_lib.common.combine_models(
             dir=args.dir, num_iters=num_iters,
             models_to_combine=models_to_combine, egs_dir=egs_dir,
             minibatch_size_str=args.num_chunk_per_minibatch,
             run_opts=run_opts, chunk_width=args.chunk_width,
             get_raw_nnet_from_am=False,
+            compute_per_dim_accuracy=args.compute_per_dim_accuracy,
             sum_to_one_penalty=args.combine_sum_to_one_penalty)
 
     if args.compute_average_posteriors and args.stage <= num_iters + 1:

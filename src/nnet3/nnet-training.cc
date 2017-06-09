@@ -184,11 +184,12 @@ bool NnetTrainer::PrintTotalStats() const {
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher>::const_iterator
       iter = objf_info_.begin(),
       end = objf_info_.end();
-  bool ans = false;
+  bool ans = true;
   for (; iter != end; ++iter) {
     const std::string &name = iter->first;
     const ObjectiveFunctionInfo &info = iter->second;
-    ans = ans || info.PrintTotalStats(name);
+    if (!info.PrintTotalStats(name)) 
+      ans = false;
   }
   PrintMaxChangeStats();
   return ans;

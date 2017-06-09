@@ -36,7 +36,12 @@ struct SimpleObjectiveInfo {
   double tot_objective;
   SimpleObjectiveInfo(): tot_weight(0.0),
                          tot_objective(0.0) { }
+};
 
+struct PerDimObjectiveInfo : SimpleObjectiveInfo {
+  Vector<BaseFloat> tot_weight_vec;
+  Vector<BaseFloat> tot_objective_vec;
+  PerDimObjectiveInfo(): SimpleObjectiveInfo() { }
 };
 
 
@@ -49,6 +54,8 @@ struct NnetComputeProbOptions {
   // constructor of NnetComputeProb that takes a pointer to the nnet, and the
   // stats will be stored there.
   bool store_component_stats;
+  
+  bool compute_per_dim_accuracy;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
   CachingOptimizingCompilerOptions compiler_config;
@@ -56,7 +63,8 @@ struct NnetComputeProbOptions {
       debug_computation(false),
       compute_deriv(false),
       compute_accuracy(true),
-      store_component_stats(false) { }
+      store_component_stats(false),
+      compute_per_dim_accuracy(false) { }
   void Register(OptionsItf *opts) {
     // compute_deriv is not included in the command line options
     // because it's not relevant for nnet3-compute-prob.
@@ -66,6 +74,8 @@ struct NnetComputeProbOptions {
                    "debug for the actual computation (very verbose!)");
     opts->Register("compute-accuracy", &compute_accuracy, "If true, compute "
                    "accuracy values as well as objective functions");
+    opts->Register("compute-per-dim-accuracy", &compute_per_dim_accuracy,
+                   "If true, compute accuracy values per-dim");
 
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
@@ -108,7 +118,7 @@ class NnetComputeProb {
   void Compute(const NnetExample &eg);
 
   // Prints out the final stats, and return true if there was a nonzero count.
-  bool PrintTotalStats() const;
+  bool PrintTotalStats(double *tot_weight) const;
 
   // returns the objective-function info for this output name (e.g. "output"),
   // or NULL if there is no such info.
@@ -140,7 +150,7 @@ class NnetComputeProb {
 
   unordered_map<std::string, SimpleObjectiveInfo, StringHasher> objf_info_;
 
-  unordered_map<std::string, SimpleObjectiveInfo, StringHasher> accuracy_info_;
+  unordered_map<std::string, PerDimObjectiveInfo, StringHasher> accuracy_info_;
 };
 
 
@@ -175,7 +185,9 @@ class NnetComputeProb {
 void ComputeAccuracy(const GeneralMatrix &supervision,
                      const CuMatrixBase<BaseFloat> &nnet_output,
                      BaseFloat *tot_weight,
-                     BaseFloat *tot_accuracy);
+                     BaseFloat *tot_accuracy,
+                     Vector<BaseFloat> *tot_weight_vec = NULL,
+                     Vector<BaseFloat> *tot_accuracy_vec = NULL);
 
 
 } // namespace nnet3
