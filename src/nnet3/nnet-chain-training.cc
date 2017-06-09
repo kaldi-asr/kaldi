@@ -218,6 +218,7 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
       computer->AcceptInput(xent_name, &xent_deriv);
     }
   }
+  num_minibatches_processed_++;
 }
 
 bool NnetChainTrainer::PrintTotalStats() const {
