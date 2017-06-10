@@ -51,7 +51,9 @@ sub combine_ranges {
     if ($start1 + $end2 > $end1) {
       chop $line;
       print STDERR ("normalize_data_range.pl: could not make sense of line $line " .
-            "[second $row_or_column range too large vs first range, $start1 + $end2 > $end1]; adjusting end.\n");
+            "[second $row_or_column range too large vs first range, $start1 + $end2 > $end1]\n");
+          # exit(1);
+      return ($start2+$start1, $end1);
     }
     return ($start2+$start1, $end2+$start1);
   }
