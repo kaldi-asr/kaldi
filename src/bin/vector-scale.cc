@@ -28,9 +28,13 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
 
     const char *usage =
-        "Scale a set of vectors in a Table (useful for speaker vectors and "
+        "Scale vectors, or archives of vectors (useful for speaker vectors and "
         "per-frame weights)\n"
-        "Usage: vector-scale [options] <in-vector_in_fn> <out-vector_out_fn>\n";
+        "Usage: vector-scale [options] <vector-in-rspecifier> <vector-out-wspecifier>\n"
+        "   or: vector-scale [options] <vector-in-rxfilename> <vector-out-wxfilename>\n"
+        " e.g.: vector-scale --scale=-1.0 1.vec -\n"
+        "       vector-scale --scale=-2.0 ark:vec.ark ark,t:-\n"
+        "See also: copy-vector, vector-sum\n";
 
     ParseOptions po(usage);
     BaseFloat scale = 1.0;

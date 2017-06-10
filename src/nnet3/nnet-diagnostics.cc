@@ -146,7 +146,7 @@ void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
   num_minibatches_processed_++;
 }
 
-bool NnetComputeProb::PrintTotalStats(double *tot_weight = NULL) const {
+bool NnetComputeProb::PrintTotalStats() const {
   bool ans = false;
   { // First print regular objectives
     unordered_map<std::string, SimpleObjectiveInfo, 
@@ -166,7 +166,6 @@ bool NnetComputeProb::PrintTotalStats(double *tot_weight = NULL) const {
                 << ", over " << info.tot_weight << " frames.";
       if (info.tot_weight > 0)
         ans = true;
-      if (tot_weight) *tot_weight += info.tot_weight;
     }
   }
   { 

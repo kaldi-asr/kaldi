@@ -57,24 +57,24 @@ bool NnetIo::operator == (const NnetIo &other) const {
 
 NnetIo::NnetIo(const std::string &name,
                int32 t_begin, const MatrixBase<BaseFloat> &feats,
-               int32 skip_frame):
+               int32 frame_subsampling_factor):
     name(name), features(feats) {
-  int32 num_skipped_rows = feats.NumRows();
-  KALDI_ASSERT(num_skipped_rows > 0);
-  indexes.resize(num_skipped_rows);  // sets all n,t,x to zeros.
-  for (int32 i = 0; i < num_skipped_rows; i++)
-    indexes[i].t = t_begin + i * skip_frame;
+  int32 num_rows_subsampled = feats.NumRows();
+  KALDI_ASSERT(num_rows_subsampled > 0);
+  indexes.resize(num_rows_subsampled);  // sets all n,t,x to zeros.
+  for (int32 i = 0; i < num_rows_subsampled; i++)
+    indexes[i].t = t_begin + i * frame_subsampling_factor;
 }
 
 NnetIo::NnetIo(const std::string &name,
                int32 t_begin, const GeneralMatrix &feats,
-               int32 skip_frame):
+               int32 frame_subsampling_factor):
     name(name), features(feats) {
-  int32 num_skipped_rows = feats.NumRows();
-  KALDI_ASSERT(num_skipped_rows > 0);
-  indexes.resize(num_skipped_rows);  // sets all n,t,x to zeros.
-  for (int32 i = 0; i < num_skipped_rows; i++)
-    indexes[i].t = t_begin + i * skip_frame;
+  int32 num_rows_subsampled = feats.NumRows();
+  KALDI_ASSERT(num_rows_subsampled > 0);
+  indexes.resize(num_rows_subsampled);  // sets all n,t,x to zeros.
+  for (int32 i = 0; i < num_rows_subsampled; i++)
+    indexes[i].t = t_begin + i * frame_subsampling_factor;
 }
 
 void NnetIo::Swap(NnetIo *other) {
@@ -87,15 +87,15 @@ NnetIo::NnetIo(const std::string &name,
                int32 dim,
                int32 t_begin,
                const Posterior &labels,
-               int32 skip_frame):
+               int32 frame_subsampling_factor):
     name(name) {
-  int32 num_skipped_rows = labels.size();
-  KALDI_ASSERT(num_skipped_rows > 0);
+  int32 num_rows_subsampled = labels.size();
+  KALDI_ASSERT(num_rows_subsampled > 0);
   SparseMatrix<BaseFloat> sparse_feats(dim, labels);
   features = sparse_feats;
-  indexes.resize(num_skipped_rows);  // sets all n,t,x to zeros.
-  for (int32 i = 0; i < num_skipped_rows; i++)
-    indexes[i].t = t_begin + i * skip_frame;
+  indexes.resize(num_rows_subsampled);  // sets all n,t,x to zeros.
+  for (int32 i = 0; i < num_rows_subsampled; i++)
+    indexes[i].t = t_begin + i * frame_subsampling_factor;
 }
 
 
