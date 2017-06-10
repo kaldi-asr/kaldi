@@ -207,8 +207,8 @@ void ComputeAccuracy(const GeneralMatrix &supervision,
                      const CuMatrixBase<BaseFloat> &nnet_output,
                      BaseFloat *tot_weight_out,
                      BaseFloat *tot_accuracy_out,
-                     Vector<BaseFloat> *tot_weight_vec,
-                     Vector<BaseFloat> *tot_accuracy_vec) {
+                     VectorBase<BaseFloat> *tot_weight_vec,
+                     VectorBase<BaseFloat> *tot_accuracy_vec) {
   int32 num_rows = nnet_output.NumRows(),
       num_cols = nnet_output.NumCols();
   KALDI_ASSERT(supervision.NumRows() == num_rows &&
@@ -218,8 +218,8 @@ void ComputeAccuracy(const GeneralMatrix &supervision,
     KALDI_ASSERT(tot_accuracy_vec && tot_weight_vec &&
                  tot_accuracy_vec->Dim() == num_cols &&
                  tot_weight_vec->Dim() == num_cols);
-  if (tot_accuracy_vec) tot_accuracy_vec.Set(0.0);
-  if (tot_weight_vec) tot_weight_vec.Set(0.0);
+  if (tot_accuracy_vec) tot_accuracy_vec->Set(0.0);
+  if (tot_weight_vec) tot_weight_vec->Set(0.0);
 
   CuArray<int32> best_index(num_rows);
   nnet_output.FindRowMaxId(&best_index);

@@ -205,8 +205,8 @@ void ComputeAccuracy(const GeneralMatrix &supervision,
                      const CuMatrixBase<BaseFloat> &nnet_output,
                      BaseFloat *tot_weight,
                      BaseFloat *tot_accuracy,
-                     Vector<BaseFloat> *tot_weight_vec = NULL,
-                     Vector<BaseFloat> *tot_accuracy_vec = NULL);
+                     VectorBase<BaseFloat> *tot_weight_vec = NULL,
+                     VectorBase<BaseFloat> *tot_accuracy_vec = NULL);
 
 
 } // namespace nnet3
