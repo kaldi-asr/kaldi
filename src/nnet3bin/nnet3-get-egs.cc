@@ -37,9 +37,9 @@ static bool ProcessFile(const GeneralMatrix &feats,
                         const std::string &utt_id,
                         bool compress,
                         int32 num_pdfs,
+                        int32 length_tolerance,
                         UtteranceSplitter *utt_splitter,
-                        NnetExampleWriter *example_writer,
-                        int32 length_tolerance = 2) {
+                        NnetExampleWriter *example_writer) {
   int32 num_input_frames = feats.NumRows();
   if (!utt_splitter->LengthsMatch(utt_id, num_input_frames,
                                   static_cast<int32>(pdf_post.size()),
@@ -255,8 +255,8 @@ int main(int argc, char *argv[]) {
         }
 
         if (!ProcessFile(feats, online_ivector_feats, online_ivector_period,
-                         pdf_post, key, compress, num_pdfs,
-                         &utt_splitter, &example_writer, length_tolerance))
+                         pdf_post, key, compress, num_pdfs, length_tolerance,
+                         &utt_splitter, &example_writer))
             num_err++;
       }
     }

@@ -189,14 +189,16 @@ class NnetComputeProb {
                      supervision and nnet_output is the same, of the sum of 
                      the r'th row of supervision (i.e. the row's weight).
    @param [out] *tot_weight_vec  The counts per-class in the supervision matrix.
-                    This will be the same dimension as the corresponding output
-                    in the network.
+                    This is expected to have the same dimension as the 
+                    corresponding output in the network. Any value present 
+                    in the vector will be reset.
    @param [out] *tot_accuracy_vec  The accuracy per-class. For index j, 
                     the value is equal to the sum 
                     over all row indexes r such that the maximum column index 
                     of row r of supervision is j and nnet_output is also j,
                     of the sum of the r'th row of supervision 
                     (i.e. the row's weight)
+                    Any value present in the vector will be reset.
 
 */
 void ComputeAccuracy(const GeneralMatrix &supervision,
