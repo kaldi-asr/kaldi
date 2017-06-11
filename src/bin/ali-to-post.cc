@@ -33,10 +33,18 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int32 int32;
   try {
     const char *usage =
-        "Convert alignments to posteriors\n"
+        "Convert alignments to posteriors.  This is simply a format change\n"
+        "from integer vectors to Posteriors, which are vectors of lists of\n"
+        "pairs (int, float) where the float represents the posterior.  The\n"
+        "floats would all be 1.0 in this case.\n"
+        "The posteriors will still be in terms of whatever integer index\n"
+        "the input contained, which will be transition-ids if they came\n"
+        "directly from decoding, or pdf-ids if they were processed by\n"
+        "ali-to-post.\n"
         "Usage:  ali-to-post [options] <alignments-rspecifier> <posteriors-wspecifier>\n"
         "e.g.:\n"
-        " ali-to-post ark:1.ali ark:1.post\n";
+        " ali-to-post ark:1.ali ark:1.post\n"
+        "See also: ali-to-pdf, ali-to-phones, show-alignments, post-to-weights\n";
 
     ParseOptions po(usage);
 
@@ -69,5 +77,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-
