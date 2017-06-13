@@ -2,5 +2,6 @@ This directory contains example scripts for image classification with the Imagen
 
 So far the scripts in this directory are incomplete.
 Everything called from "run.sh" is done.
-Still need to finish changing code to deal with multiple image sizes.
-Will need to edit things in "steps" directory.
+
+TODO: Need to switch order of cropping and scaling in nnet3-egs-augment-image.
+TODO: Need to add option in get_egs to augment images for diagnostic

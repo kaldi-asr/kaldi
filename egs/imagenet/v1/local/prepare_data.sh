@@ -36,31 +36,39 @@ if [ ! -d $dl_dir ] || [ ! -f $dl_dir/$devkit_tar ] || [ ! -f $dl_dir/$train_tar
   exit 1
 else
   if [ ! -d $devkit_dir ]; then
-    # mkdir -p $devkit_dir
-    # tar -xvzf $dl_dir/$devkit_tar -C $devkit_dir || exit 1
-    echo Missing devkit
-    exit 1
+    mkdir -p $devkit_dir
+    tar -xvzf $dl_dir/$devkit_tar -C $devkit_dir || exit 1
+    # echo Missing devkit
+    # exit 1
+  fi
+
+  if [ ! -d $devkit_dir_t12 ]; then
+    mkdir -p $devkit_dir_t12
+    tar -xvzf $dl_dir/$devkit_tar_t12 -C $devkit_dir || exit 1
+    # echo Missing devkit_t12
+    # exit 1
   fi
 
   if [ ! -d $train_dir ]; then
-    # mkdir -p $train_dir
-    # tar -xvf $dl_dir/$train_tar -C $train_dir || exit 1
-    echo Missing train
-    exit 1
+    mkdir -p $train_dir
+    tar -xvf $dl_dir/$train_tar -C $train_dir || exit 1
+    find $train_dir -name "*.tar" | while read NAME; do mkdir -p "${NAME%.tar}"; tar -xvf "${NAME}" -C "${NAME%.tar}";done
+    # echo Missing train
+    # exit 1
   fi
 
   if [ ! -d $val_dir ]; then
-    # mkdir -p $val_dir
-    # tar -xvf $dl_dir/$val_tar -C $val_dir || exit 1
-    echo Missing val
-    exit 1
+    mkdir -p $val_dir
+    tar -xvf $dl_dir/$val_tar -C $val_dir || exit 1
+    # echo Missing val
+    # exit 1
   fi
 
   if [ ! -d $test_dir ]; then
-    # mkdir -p $test_dir
-    # tar -xvf $dl_dir/$test_tar -C $test_dir || exit 1
-    echo Missing test
-    exit 1
+    mkdir -p $test_dir
+    tar -xvf $dl_dir/$test_tar -C $test_dir || exit 1
+    # echo Missing test
+    # exit 1
   fi
 fi
 
@@ -84,7 +92,8 @@ local/process_data.py $train_dir $devkit_dir $devkit_tar data/train --dataset tr
 
 # Process testing data
 # Using validation data instead because testing data does not include ground truth
-local/process_data.py $val_dir $devkit_dir $devkit_tar data/test --dataset test | \
+#local/process_data.py $val_dir $devkit_dir $devkit_tar data/test --dataset test --scale-size 256 --crop-size 224
+local/process_data.py $val_dir $devkit_dir $devkit_tar data/test --dataset test --scale-size 256 --crop-size 224| \
   copy-feats --compress=true --compression-method=7 \
     ark:- ark,scp:data/test/data/images.ark,data/test/images.scp || exit 1
 

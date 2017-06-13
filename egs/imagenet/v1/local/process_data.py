@@ -19,6 +19,8 @@ parser.add_argument('tarName',type=str, help='name of extracted tar file')
 parser.add_argument('dir', type=str, help='output dir')
 parser.add_argument('--dataset', type=str, default='train', choices=['train', 'test'])
 parser.add_argument('--out-ark', type=str, default='-', help='where to write the output feature file')
+parser.add_argument('--scale-size', type=int, default=256, help='size to rescale the test image')
+parser.add_argument('--crop-size', type=int, default=224, help='crop size of test image')
 
 args = parser.parse_args()
 
@@ -68,6 +70,35 @@ def findIndex(listOfLists,wnid):
         index = index + 1
     return None
 
+def cropImage(im):
+    crop_size = args.crop_size
+    scale_size = float(args.scale_size)
+    sx = im.shape[1]
+    sy = im.shape[0]
+    if sx > sy:
+        scale = scale_size/sy
+    else:
+        scale = scale_size/sx
+    im = misc.imresize(im,scale)
+
+    W = im.shape[1]
+    H = im.shape[0]
+    crop_topleft = im[0:crop_size,0:crop_size]
+    crop_topleft_fliplr = np.fliplr(crop_topleft)
+    crop_topright = im[0:crop_size,(W-crop_size):W]
+    crop_topright_fliplr = np.fliplr(crop_topright)
+    crop_bottomleft = im[(H-crop_size):H,0:crop_size]
+    crop_bottomleft_fliplr = np.fliplr(crop_bottomleft)
+    crop_bottomright = im[(H-crop_size):H,(W-crop_size):W]
+    crop_bottomright_fliplr = np.fliplr(crop_bottomright)
+    center_left = float(W)/2 - float(crop_size)/2
+    center_top = float(H)/2 - float(crop_size)/2
+    crop_center = im[center_top:(center_top+crop_size),center_left:(center_left+crop_size)]
+    crop_center_fliplr = np.fliplr(crop_center)
+    tup1 = (crop_topleft, crop_topright, crop_bottomleft, crop_bottomright, crop_center)
+    tup2 = (crop_topleft_fliplr, crop_topright_fliplr, crop_bottomleft_fliplr, crop_bottomright_fliplr, crop_center_fliplr)
+    tup = tup1 + tup2
+    return tup
 
 ### main ###
 mat_path, val_ground_truth_path = parse_mat_path()
@@ -97,10 +128,9 @@ if args.dataset == 'train':
                 key = zeropad(image_id,8)
                 im = misc.imread(potential_path + '/' + img_Name)
 		im = np.divide(im,255.0)
-                im_shape = im.shape
-                W = im_shape[1]
-                H = im_shape[0]
-                if len(im_shape) == 3:
+                W = im.shape[1]
+                H = im.shape[0]
+                if len(im.shape) == 3:
                     data = np.reshape(np.transpose(im, (1, 0, 2)), (W, H * C))
                 else:
                     data = np.reshape(np.transpose(np.dstack((im, im, im)), (1, 0, 2)), (W, H * C))
@@ -115,20 +145,21 @@ else:
         for line in f:
             if int(line) > 0:
                 keyID = zeropad(image_id,8)
-                keyNum = zeropad(image_num,8)
                 file_name = args.databasePath + '/' + datasetYearVect[0] + '_val_' + keyID + '.JPEG'
-                im = misc.imread(file_name)
-		im = np.divide(im,255.0)
-                im_shape = im.shape
-                W = im_shape[1]
-                H = im_shape[0]
-                if len(im_shape) == 3:
-                    data = np.reshape(np.transpose(im, (1, 0, 2)), (W, H * C))
-                else:
-                    data = np.reshape(np.transpose(np.dstack((im, im, im)), (1, 0, 2)), (W, H * C))
-                labels_fh.write(keyNum + ' ' + str(int(line)-1) + '\n')
-                write_kaldi_matrix(out_fh, data, keyNum)
-                image_num = image_num + 1
+                im_orig = misc.imread(file_name)
+		im_orig = np.divide(im_orig,255.0)
+		im_tup = cropImage(im_orig)
+		for im in im_tup:
+		    keyNum = zeropad(image_num,8)
+                    W = im.shape[1]
+                    H = im.shape[0]
+                    if len(im.shape) == 3:
+                        data = np.reshape(np.transpose(im, (1, 0, 2)), (W, H * C))
+                    else:
+                        data = np.reshape(np.transpose(np.dstack((im, im, im)), (1, 0, 2)), (W, H * C))
+                    labels_fh.write(keyNum + ' ' + str(int(line)-1) + '\n')
+                    write_kaldi_matrix(out_fh, data, keyNum)
+                    image_num = image_num + 1
             image_id = image_id + 1
 
 labels_fh.close()
