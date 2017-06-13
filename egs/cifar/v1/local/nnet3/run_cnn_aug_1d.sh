@@ -1,10 +1,29 @@
 #!/bin/bash
 
-# nnet topology similar to 1a but bigger and with more epochs and data augmentation (improved 95 --> 97)
+
+# 1d is as 1c but setting num-minibatches-history=40.
+# A bit better.
+
+# local/nnet3/compare.sh exp/cnn_aug_1c_cifar10 exp/cnn_aug_1d_cifar10
+# System                cnn_aug_1c_cifar10 cnn_aug_1d_cifar10
+# final test accuracy:       0.8834      0.8857
+# final train accuracy:       0.9644      0.9626
+# final test objf:         -0.362241   -0.356861
+# final train objf:        -0.114712   -0.114144
+# num-parameters:           2205290     2205290
+
+# local/nnet3/compare.sh exp/cnn_aug_1c_cifar100 exp/cnn_aug_1d_cifar100
+# System                cnn_aug_1c_cifar100 cnn_aug_1d_cifar100
+# final test accuracy:       0.6219      0.6237
+# final train accuracy:       0.8634      0.8688
+# final test objf:          -1.42399    -1.40784
+# final train objf:        -0.493349   -0.482047
+# num-parameters:           2251460     2251460
 
 
-# steps/info/nnet3_dir_info.pl exp/cnn_aug1a
-# exp/cnn_aug1a: num-iters=130 nj=2..4 num-params=2.8M dim=96->10 combine=-0.07->-0.06 loglike:train/valid[85,129,final]=(-0.090,-0.060,-0.054/-0.163,-0.110,-0.102) accuracy:train/valid[85,129,final]=(0.9764,0.9868,0.9886/0.958,0.9731,0.9762)
+# steps/info/nnet3_dir_info.pl exp/cnn_aug_1d_cifar10{,0}
+# exp/cnn_aug_1d_cifar10: num-iters=200 nj=1..2 num-params=2.2M dim=96->10 combine=-0.24->-0.23 loglike:train/valid[132,199,final]=(-0.172,-0.114,-0.114/-0.38,-0.36,-0.36) accuracy:train/valid[132,199,final]=(0.938,0.963,0.963/0.879,0.887,0.886)
+# exp/cnn_aug_1d_cifar100: num-iters=200 nj=1..2 num-params=2.3M dim=96->100 combine=-0.90->-0.92 loglike:train/valid[132,199,final]=(-0.63,-0.48,-0.48/-1.43,-1.41,-1.41) accuracy:train/valid[132,199,final]=(0.821,0.868,0.869/0.61,0.62,0.62)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -14,9 +33,10 @@ set -euo pipefail
 # training options
 stage=0
 train_stage=-10
+dataset=cifar10
 srand=0
 reporting_email=
-affix=_aug1a
+affix=_aug_1d
 
 
 # End configuration section.
@@ -36,9 +56,9 @@ fi
 
 
 
-dir=exp/cnn${affix}
+dir=exp/cnn${affix}_${dataset}
 
-egs=exp/egs
+egs=exp/${dataset}_egs
 
 if [ ! -d $egs ]; then
   echo "$0: expected directory $egs to exist.  Run the get_egs.sh commands in the"
@@ -70,8 +90,9 @@ if [ $stage -le 1 ]; then
   # Note: we hardcode in the CNN config that we are dealing with 32x3x color
   # images.
 
-  common1="required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=40"
-  common2="required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=80"
+  a="num-minibatches-history=40.0"
+  common1="$a required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=32"
+  common2="$a required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=64"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -91,18 +112,17 @@ fi
 if [ $stage -le 2 ]; then
 
   steps/nnet3/train_raw_dnn.py --stage=$train_stage \
-    --cmd="$cmd" \
-    --image.augmentation-opts="--horizontal-shift=0.04 --vertical-shift=0.08 --num-channels=3" \
+    --cmd="$train_cmd" \
+    --image.augmentation-opts="--horizontal-flip-prob=0.5 --horizontal-shift=0.1 --vertical-shift=0.1 --num-channels=3" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=30 \
+    --trainer.num-epochs=100 \
     --egs.frames-per-eg=1 \
-    --trainer.optimization.num-jobs-initial=2 \
-    --trainer.optimization.num-jobs-final=4 \
+    --trainer.optimization.num-jobs-initial=1 \
+    --trainer.optimization.num-jobs-final=2 \
     --trainer.optimization.initial-effective-lrate=0.003 \
-    --trainer.optimization.final-effective-lrate=0.0003 \
+    --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.minibatch-size=256,128,64 \
-    --trainer.optimization.proportional-shrink=25.0 \
     --trainer.shuffle-buffer-size=2000 \
     --egs.dir="$egs" \
     --use-gpu=true \
