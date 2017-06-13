@@ -160,7 +160,7 @@ EventMap *DoTableSplitMultiple(const EventMap &orig, const std::vector<EventKeyT
     EventMap *cur = NULL;  // would make it &orig, except for const issues.
     for (size_t i = 0; i < keys.size(); i++) {
       EventMap *next = DoTableSplit( (cur ? *cur : orig), keys[i], stats, num_leaves);
-      if (cur != NULL) delete cur;  // delete intermediate maps.
+      delete cur;  // delete intermediate maps.
       cur = next;
     }
     return cur;
@@ -316,7 +316,7 @@ BaseFloat ComputeInitialSplit(const std::vector<Clusterable*> &summed_stats,
     const std::vector<EventValueType> &yes_set = questions_of_this_key[i];
     std::vector<int32> assignments(summed_stats.size(), 0);  // 0 is index of "no".
     std::vector<Clusterable*> clusters(2);  // no and yes clusters.
-    for (std::vector<EventValueType>::const_iterator iter = yes_set.begin(); iter != yes_set.end(); iter++) {
+    for (std::vector<EventValueType>::const_iterator iter = yes_set.begin(); iter != yes_set.end(); ++iter) {
       KALDI_ASSERT(*iter>=0);
       if (*iter < (EventValueType)assignments.size()) assignments[*iter] = 1;
     }
@@ -367,7 +367,7 @@ BaseFloat FindBestSplitForKey(const BuildTreeStatsType &stats,
   // find best basic question.
 
   std::vector<int32> assignments(summed_stats.size(), 0);  // assigns to "no" (0) by default.
-  for (std::vector<EventValueType>::const_iterator iter = yes_set.begin(); iter != yes_set.end(); iter++) {
+  for (std::vector<EventValueType>::const_iterator iter = yes_set.begin(); iter != yes_set.end(); ++iter) {
     KALDI_ASSERT(*iter>=0);
     if (*iter < (EventValueType)assignments.size()) {
       // this guard necessary in case stats did not have all the
@@ -450,8 +450,8 @@ class DecisionTreeSplitter {
     FindBestSplit();
   }
   ~DecisionTreeSplitter() {
-    if (yes_) delete yes_;
-    if (no_) delete no_;
+    delete yes_;
+    delete no_;
   }
  private:
   void DoSplitInternal(int32 *next_leaf) {

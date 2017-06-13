@@ -7,6 +7,7 @@
 
 download=true
 sampling_rate=8k
+output_bit=16
 DBname=OPENAIR
 file_splitter=  #script to generate job scripts given the command file
 
@@ -432,12 +433,13 @@ echo "Found $total_files impulse responses in ${RIR_home}/open_air/"
 file_count=1 # affix to ensure that files with same name are not overwritten
 for data_file in ${data_files[@]}; do
   # open-air has multiple formats of wav audio, some of which are not compatible with python's wav.read() function
-  # so we convert everything to 32bit PCM.
-  output_file_name=${DBname}_type${type_num}_${file_count}_`basename $data_file| tr '[:upper:]' '[:lower:]'`
-  echo "sox -t wav $data_file -t wav -r $sampling_rate -e signed-integer -b 32 ${output_dir}/${output_file_name}" >> $command_file
+#  output_file_name=${DBname}_type${type_num}_${file_count}_`basename $data_file| tr '[:upper:]' '[:lower:]'`
+  output_file_name=${DBname}_type${type_num}_`basename $data_file| tr '[:upper:]' '[:lower:]'`
+  echo "sox -t wav $data_file -t wav -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}" >> $command_file
   echo ${output_dir}/${output_file_name} >>  $log_dir/${DBname}_type${type_num}.rir.list
   file_count=$((file_count + 1))
 done
+
 
 if [ ! -z "$file_splitter" ]; then
   num_jobs=$($file_splitter $command_file || exit 1)

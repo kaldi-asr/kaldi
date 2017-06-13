@@ -1,4 +1,4 @@
-// bin/sum-mllt.cc
+// bin/sum-mllt-accs.cc
 
 // Copyright 2014 LINSE/UFSC; Augusto Henrique Hentz
 

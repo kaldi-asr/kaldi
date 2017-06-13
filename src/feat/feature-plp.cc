@@ -1,6 +1,7 @@
 // feat/feature-plp.cc
 
 // Copyright 2009-2011  Petr Motlicek;  Karel Vesely
+//                2016  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -19,13 +20,16 @@
 
 
 #include "feat/feature-plp.h"
-#include "util/parse-options.h"
-
 
 namespace kaldi {
 
-Plp::Plp(const PlpOptions &opts)
-    : opts_(opts), feature_window_function_(opts.frame_opts), srfft_(NULL) {
+PlpComputer::PlpComputer(const PlpOptions &opts):
+    opts_(opts), srfft_(NULL),
+    mel_energies_duplicated_(opts_.mel_opts.num_bins + 2, kUndefined),
+    autocorr_coeffs_(opts_.lpc_order + 1, kUndefined),
+    lpc_coeffs_(opts_.lpc_order, kUndefined),
+    raw_cepstrum_(opts_.lpc_order, kUndefined) {
+
   if (opts.cepstral_lifter != 0.0) {
     lifter_coeffs_.Resize(opts.num_ceps);
     ComputeLifterCoeffs(opts.cepstral_lifter, &lifter_coeffs_);
@@ -41,28 +45,42 @@ Plp::Plp(const PlpOptions &opts)
     srfft_ = new SplitRadixRealFft<BaseFloat>(padded_window_size);
 
   // We'll definitely need the filterbanks info for VTLN warping factor 1.0.
-  // [note: this call caches it.]  The reason we call this here is to
-  // improve the efficiency of the "const" version of Compute().
+  // [note: this call caches it.]
   GetMelBanks(1.0);
 }
 
-Plp::~Plp() {
+PlpComputer::PlpComputer(const PlpComputer &other):
+    opts_(other.opts_), lifter_coeffs_(other.lifter_coeffs_),
+    idft_bases_(other.idft_bases_), log_energy_floor_(other.log_energy_floor_),
+    mel_banks_(other.mel_banks_), equal_loudness_(other.equal_loudness_),
+    srfft_(NULL),
+    mel_energies_duplicated_(opts_.mel_opts.num_bins + 2, kUndefined),
+    autocorr_coeffs_(opts_.lpc_order + 1, kUndefined),
+    lpc_coeffs_(opts_.lpc_order, kUndefined),
+    raw_cepstrum_(opts_.lpc_order, kUndefined) {
   for (std::map<BaseFloat, MelBanks*>::iterator iter = mel_banks_.begin();
-      iter != mel_banks_.end();
-      ++iter)
-    delete iter->second;
-
-  for (std::map<BaseFloat,
-                Vector<BaseFloat>* >::iterator iter = equal_loudness_.begin();
-      iter != equal_loudness_.end();
-      ++iter)
-    delete iter->second;
-
-  if (srfft_ != NULL)
-    delete srfft_;
+       iter != mel_banks_.end(); ++iter)
+    iter->second = new MelBanks(*(iter->second));
+  for (std::map<BaseFloat, Vector<BaseFloat>*>::iterator
+           iter = equal_loudness_.begin();
+       iter != equal_loudness_.end(); ++iter)
+    iter->second = new Vector<BaseFloat>(*(iter->second));
+  if (other.srfft_ != NULL)
+    srfft_ = new SplitRadixRealFft<BaseFloat>(*(other.srfft_));
 }
 
-const MelBanks *Plp::GetMelBanks(BaseFloat vtln_warp) {
+PlpComputer::~PlpComputer() {
+  for (std::map<BaseFloat, MelBanks*>::iterator iter = mel_banks_.begin();
+      iter != mel_banks_.end(); ++iter)
+    delete iter->second;
+  for (std::map<BaseFloat, Vector<BaseFloat>* >::iterator
+           iter = equal_loudness_.begin();
+       iter != equal_loudness_.end(); ++iter)
+    delete iter->second;
+  delete srfft_;
+}
+
+const MelBanks *PlpComputer::GetMelBanks(BaseFloat vtln_warp) {
   MelBanks *this_mel_banks = NULL;
   std::map<BaseFloat, MelBanks*>::iterator iter = mel_banks_.find(vtln_warp);
   if (iter == mel_banks_.end()) {
@@ -76,23 +94,7 @@ const MelBanks *Plp::GetMelBanks(BaseFloat vtln_warp) {
   return this_mel_banks;
 }
 
-const MelBanks *Plp::GetMelBanks(BaseFloat vtln_warp, bool *must_delete) const {
-  MelBanks *this_mel_banks = NULL;
-  std::map<BaseFloat, MelBanks*>::const_iterator iter =
-      mel_banks_.find(vtln_warp);
-  if (iter == mel_banks_.end()) {
-    this_mel_banks = new MelBanks(opts_.mel_opts,
-                                  opts_.frame_opts,
-                                  vtln_warp);
-    *must_delete = true;
-  } else {
-    this_mel_banks = iter->second;
-    *must_delete = false;
-  }
-  return this_mel_banks;
-}
-
-const Vector<BaseFloat> *Plp::GetEqualLoudness(BaseFloat vtln_warp) {
+const Vector<BaseFloat> *PlpComputer::GetEqualLoudness(BaseFloat vtln_warp) {
   const MelBanks *this_mel_banks = GetMelBanks(vtln_warp);
   Vector<BaseFloat> *ans = NULL;
   std::map<BaseFloat, Vector<BaseFloat>*>::iterator iter
@@ -107,160 +109,81 @@ const Vector<BaseFloat> *Plp::GetEqualLoudness(BaseFloat vtln_warp) {
   return ans;
 }
 
+void PlpComputer::Compute(BaseFloat signal_log_energy,
+                          BaseFloat vtln_warp,
+                          VectorBase<BaseFloat> *signal_frame,
+                          VectorBase<BaseFloat> *feature) {
+  KALDI_ASSERT(signal_frame->Dim() == opts_.frame_opts.PaddedWindowSize() &&
+               feature->Dim() == this->Dim());
 
-const Vector<BaseFloat> *Plp::GetEqualLoudness(BaseFloat vtln_warp,
-                                               const MelBanks &mel_banks,
-                                               bool *must_delete) const {
-  Vector<BaseFloat> *ans = NULL;
-  std::map<BaseFloat, Vector<BaseFloat>*>::const_iterator iter
-      = equal_loudness_.find(vtln_warp);
-  if (iter == equal_loudness_.end()) {
-    ans = new Vector<BaseFloat>;
-    GetEqualLoudnessVector(mel_banks, ans);
-    *must_delete = true;
-  } else {
-    ans = iter->second;
-    *must_delete = false;
-  }
-  return ans;
-}
+  const MelBanks &mel_banks = *GetMelBanks(vtln_warp);
+  const Vector<BaseFloat> &equal_loudness = *GetEqualLoudness(vtln_warp);
 
 
-void Plp::Compute(const VectorBase<BaseFloat> &wave,
-                   BaseFloat vtln_warp,
-                   Matrix<BaseFloat> *output,
-                   Vector<BaseFloat> *wave_remainder) {
-  const MelBanks *mel_banks = GetMelBanks(vtln_warp);
-  const Vector<BaseFloat> *equal_loudness = GetEqualLoudness(vtln_warp);
-  ComputeInternal(wave, *mel_banks,
-                  *equal_loudness,
-                  output, wave_remainder);  
-}
-
-void Plp::Compute(const VectorBase<BaseFloat> &wave,
-                   BaseFloat vtln_warp,
-                   Matrix<BaseFloat> *output,
-                   Vector<BaseFloat> *wave_remainder) const {
-  bool must_delete_mel_banks, must_delete_equal_loudness;
-  const MelBanks *mel_banks = GetMelBanks(vtln_warp,
-                                               &must_delete_mel_banks);
-  const Vector<BaseFloat> *equal_loudness
-      = GetEqualLoudness(vtln_warp, *mel_banks,
-                         &must_delete_equal_loudness);
-
-  ComputeInternal(wave, *mel_banks, *equal_loudness,
-                  output, wave_remainder);
-
-  if (must_delete_mel_banks)
-    delete mel_banks;
-  if (must_delete_equal_loudness)
-    delete equal_loudness;  
-}
-
-
-void Plp::ComputeInternal(const VectorBase<BaseFloat> &wave,
-                          const MelBanks &mel_banks,
-                          const Vector<BaseFloat> &equal_loudness,
-                          Matrix<BaseFloat> *output,
-                          Vector<BaseFloat> *wave_remainder) const {
-  KALDI_ASSERT(output != NULL);
-  int32 rows_out = NumFrames(wave.Dim(), opts_.frame_opts),
-      cols_out = opts_.num_ceps;
-  if (rows_out == 0) {
-    output->Resize(0, 0);
-    *wave_remainder = wave;
-    return;
-  }
-  output->Resize(rows_out, cols_out);
-  if (wave_remainder != NULL)
-    ExtractWaveformRemainder(wave, opts_.frame_opts, wave_remainder);
-  Vector<BaseFloat> window;  // windowed waveform.
-  int32 num_mel_bins = opts_.mel_opts.num_bins;
-  Vector<BaseFloat> mel_energies(num_mel_bins);
-  Vector<BaseFloat> mel_energies_duplicated(num_mel_bins+2);
-  Vector<BaseFloat> autocorr_coeffs(opts_.lpc_order+1);
-  Vector<BaseFloat> lpc_coeffs(opts_.lpc_order);
-  Vector<BaseFloat> raw_cepstrum(opts_.lpc_order);  // not including C0,
-  // and size may differ from final size.
-  Vector<BaseFloat> final_cepstrum(opts_.num_ceps);
-  std::vector<BaseFloat> temp_buffer;  // used by srfft.
-  
   KALDI_ASSERT(opts_.num_ceps <= opts_.lpc_order+1);  // our num-ceps includes C0.
-  for (int32 r = 0; r < rows_out; r++) {  // r is frame index..
-    BaseFloat log_energy;
-    ExtractWindow(wave, r, opts_.frame_opts,
-                  feature_window_function_, &window,
-                  (opts_.use_energy && opts_.raw_energy ? &log_energy : NULL));
 
-    if (opts_.use_energy && !opts_.raw_energy)
-      log_energy = Log(std::max(VecVec(window, window),
-                                std::numeric_limits<BaseFloat>::min()));
 
-    if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
-      srfft_->Compute(window.Data(), true, &temp_buffer);
-    else  // An alternative algorithm that works for non-powers-of-two.
-      RealFft(&window, true);
+  if (opts_.use_energy && !opts_.raw_energy)
+    signal_log_energy = Log(std::max(VecVec(*signal_frame, *signal_frame),
+                                     std::numeric_limits<BaseFloat>::min()));
 
-    // Convert the FFT into a power spectrum.
-    ComputePowerSpectrum(&window);  // elements 0 ... window.Dim()/2
+  if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
+    srfft_->Compute(signal_frame->Data(), true);
+  else  // An alternative algorithm that works for non-powers-of-two.
+    RealFft(signal_frame, true);
 
-    SubVector<BaseFloat> power_spectrum(window, 0, window.Dim()/2 + 1);
+  // Convert the FFT into a power spectrum.
+  ComputePowerSpectrum(signal_frame);  // elements 0 ... signal_frame->Dim()/2
 
-    mel_banks.Compute(power_spectrum, &mel_energies);
+  SubVector<BaseFloat> power_spectrum(*signal_frame,
+                                      0, signal_frame->Dim() / 2 + 1);
 
-    mel_energies.MulElements(equal_loudness);
-    
-    mel_energies.ApplyPow(opts_.compress_factor);
-    
-    // duplicate first and last elements.
-    {
-      SubVector<BaseFloat> v(mel_energies_duplicated, 1, num_mel_bins);
-      v.CopyFromVec(mel_energies);
-    }
-    mel_energies_duplicated(0) = mel_energies(0);
-    mel_energies_duplicated(num_mel_bins+1) = mel_energies(num_mel_bins-1);
+  int32 num_mel_bins = opts_.mel_opts.num_bins;
 
-    autocorr_coeffs.AddMatVec(1.0, idft_bases_, kNoTrans,
-                              mel_energies_duplicated,  0.0);
-    
-    BaseFloat energy = ComputeLpc(autocorr_coeffs, &lpc_coeffs);
+  SubVector<BaseFloat> mel_energies(mel_energies_duplicated_, 1, num_mel_bins);
 
-    energy = std::max(energy,
-                      std::numeric_limits<BaseFloat>::min());
-    
-    Lpc2Cepstrum(opts_.lpc_order, lpc_coeffs.Data(), raw_cepstrum.Data());
-    {
-      SubVector<BaseFloat> dst(final_cepstrum, 1, opts_.num_ceps-1);
-      SubVector<BaseFloat> src(raw_cepstrum, 0, opts_.num_ceps-1);
-      dst.CopyFromVec(src);
-      final_cepstrum(0) = energy;
-    }
+  mel_banks.Compute(power_spectrum, &mel_energies);
 
-    if (opts_.cepstral_lifter != 0.0)
-      final_cepstrum.MulElements(lifter_coeffs_);
+  mel_energies.MulElements(equal_loudness);
 
-    if (opts_.cepstral_scale != 1.0)
-      final_cepstrum.Scale(opts_.cepstral_scale);
+  mel_energies.ApplyPow(opts_.compress_factor);
 
-    if (opts_.use_energy) {
-      if (opts_.energy_floor > 0.0 && log_energy < log_energy_floor_)
-        log_energy = log_energy_floor_;
-      final_cepstrum(0) = log_energy;
-    }
+  // duplicate first and last elements
+  mel_energies_duplicated_(0) = mel_energies_duplicated_(1);
+  mel_energies_duplicated_(num_mel_bins + 1) =
+      mel_energies_duplicated_(num_mel_bins);
 
-    if (opts_.htk_compat) {
-      BaseFloat energy = final_cepstrum(0);
-      for (int32 i = 0; i < opts_.num_ceps-1; i++)
-        final_cepstrum(i) = final_cepstrum(i+1);
-      // if (!opts_.use_energy)
-        // energy *= M_SQRT2;  // scale on C0 (actually removing scale
-      // we previously added that's part of one common definition of
-      // cosine transform.)
-      final_cepstrum(opts_.num_ceps-1)  = energy;
-    }
+  autocorr_coeffs_.SetZero();  // In case of NaNs or infs
+  autocorr_coeffs_.AddMatVec(1.0, idft_bases_, kNoTrans,
+                             mel_energies_duplicated_,  0.0);
 
-    output->Row(r).CopyFromVec(final_cepstrum);
-    // std::cout << "FIN" << final_cepstrum;
+  BaseFloat residual_log_energy = ComputeLpc(autocorr_coeffs_, &lpc_coeffs_);
+
+  residual_log_energy = std::max(residual_log_energy,
+                                 std::numeric_limits<BaseFloat>::min());
+
+  Lpc2Cepstrum(opts_.lpc_order, lpc_coeffs_.Data(), raw_cepstrum_.Data());
+  feature->Range(1, opts_.num_ceps - 1).CopyFromVec(
+      raw_cepstrum_.Range(0, opts_.num_ceps - 1));
+  (*feature)(0) = residual_log_energy;
+
+  if (opts_.cepstral_lifter != 0.0)
+    feature->MulElements(lifter_coeffs_);
+
+  if (opts_.cepstral_scale != 1.0)
+    feature->Scale(opts_.cepstral_scale);
+
+  if (opts_.use_energy) {
+    if (opts_.energy_floor > 0.0 && signal_log_energy < log_energy_floor_)
+      signal_log_energy = log_energy_floor_;
+    (*feature)(0) = signal_log_energy;
+  }
+
+  if (opts_.htk_compat) {  // reorder the features.
+    BaseFloat log_energy = (*feature)(0);
+    for (int32 i = 0; i < opts_.num_ceps-1; i++)
+      (*feature)(i) = (*feature)(i+1);
+    (*feature)(opts_.num_ceps-1)  = log_energy;
   }
 }
 

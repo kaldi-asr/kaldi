@@ -1,4 +1,4 @@
-// cudamatrix/cu-sp-matrix-test.cc
+// cudamatrix/cu-packed-matrix-test.cc
 //
 // Copyright 2013  Ehsan Variani
 //                 Lucas Ondel
@@ -243,6 +243,7 @@ template<typename Real> void CudaPackedMatrixUnitTest() {
 int main() {
   using namespace kaldi;
 #if HAVE_CUDA == 1
+  CuDevice::Instantiate().SetDebugStrideMode(true);
   // Select the GPU
   CuDevice::Instantiate().SelectGpuId("yes");
 #endif

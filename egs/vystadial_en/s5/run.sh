@@ -109,7 +109,7 @@ steps/train_mpe.sh $WORK/train $WORK/lang $EXP/tri2b_ali $EXP/tri2b_denlats $EXP
 #######################################################################
 for lm in $LMs ; do
   lm=`basename "$lm"`
-  utils/mkgraph.sh --mono $WORK/lang_${lm} $EXP/mono $EXP/mono/graph_${lm} || exit 1
+  utils/mkgraph.sh $WORK/lang_${lm} $EXP/mono $EXP/mono/graph_${lm} || exit 1
   utils/mkgraph.sh $WORK/lang_${lm} $EXP/tri1 $EXP/tri1/graph_${lm} || exit 1
   utils/mkgraph.sh $WORK/lang_${lm} $EXP/tri2a $EXP/tri2a/graph_${lm} || exit 1
   utils/mkgraph.sh $WORK/lang_${lm} $EXP/tri2b $EXP/tri2b/graph_${lm} || exit 1

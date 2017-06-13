@@ -38,15 +38,35 @@ inline CuSubMatrix<Real>::CuSubMatrix(const CuMatrixBase<Real> &mat,
     KALDI_ASSERT(row_offset >= 0 && col_offset >= 0 &&
                  row_offset + num_rows <= mat.num_rows_ &&
                  col_offset + num_cols <= mat.num_cols_);
-    this->data_ = mat.data_ + (row_offset * mat.stride_) + col_offset;
+    this->data_ = mat.data_ + static_cast<size_t>(col_offset) +
+        static_cast<size_t>(row_offset) * static_cast<size_t>(mat.stride_);
     this->num_cols_ = num_cols;
     this->num_rows_ = num_rows;
     this->stride_ = mat.stride_;
   }
 }
-  
+
+template<typename Real>
+inline CuSubMatrix<Real>::CuSubMatrix(const Real *data,
+                                      const MatrixIndexT num_rows,
+                                      const MatrixIndexT num_cols,
+                                      const MatrixIndexT stride):
+    CuMatrixBase<Real>(const_cast<Real*>(data), num_rows, num_cols, stride) {
+  // in general if you use SubMatrix or CuSubMatrix, const-correctness is not
+  // preserved (preserving it would require us duplicating the class and it
+  // would have been a hassle).
+
+  // Note: we used to check that stride >= num_cols.  We no longer check for
+  // this as there are some situations where having stride < num_cols is useful,
+  // but beware because most if not all CUBLAS calls will crash when given
+  // such an input, even in a situation where it makes sense.
+  KALDI_ASSERT((num_rows != 0) == (num_cols != 0) && stride >= 0 &&
+               num_rows >= 0 && num_cols >= 0 && stride >= 0);
+}
+
+
 } // namespace kaldi
 
 #endif
 
-  
+

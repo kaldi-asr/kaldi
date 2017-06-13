@@ -29,13 +29,13 @@ class LatticePhoneAligner {
  public:
   typedef CompactLatticeArc::StateId StateId;
   typedef CompactLatticeArc::Label Label;
-  
+
   class ComputationState { /// The state of the computation in which,
     /// along a single path in the lattice, we work out the phone
     /// boundaries and output phone-aligned arcs. [These may or may not have
     /// words on them; the word symbols are not aligned with anything.
    public:
-    
+
     /// Advance the computation state by adding the symbols and weights
     /// from this arc.  Gets rid of the weight and puts it in "weight" which
     /// will be put on the output arc; this keeps the state-space small.
@@ -71,9 +71,9 @@ class LatticePhoneAligner {
                        const PhoneAlignLatticeOptions &opts,
                        CompactLatticeArc *arc_out,
                        bool *error);
-      
+
     bool IsEmpty() { return (transition_ids_.empty() && word_labels_.empty()); }
-    
+
     /// FinalWeight() will return "weight" if both transition_ids
     /// and word_labels are empty, otherwise it will return
     /// Weight::Zero().
@@ -95,7 +95,7 @@ class LatticePhoneAligner {
                         const PhoneAlignLatticeOptions &opts,
                         CompactLatticeArc *arc_out,
                         bool *error);
-    
+
     size_t Hash() const {
       VectorHasher<int32> vh;
       return vh(transition_ids_) + 90647 * vh(word_labels_);
@@ -112,7 +112,7 @@ class LatticePhoneAligner {
               && word_labels_ == other.word_labels_
               && weight_ == other.weight_);
     }
-    
+
     ComputationState(): weight_(LatticeWeight::One()) { } // initial state.
     ComputationState(const ComputationState &other):
         transition_ids_(other.transition_ids_), word_labels_(other.word_labels_),
@@ -134,7 +134,7 @@ class LatticePhoneAligner {
   struct TupleHash {
     size_t operator() (const Tuple &state) const {
       return state.input_state + 102763 * state.comp_state.Hash();
-      // 102763 is just an arbitrary prime number 
+      // 102763 is just an arbitrary prime number
     }
   };
   struct TupleEqual {
@@ -144,9 +144,9 @@ class LatticePhoneAligner {
               && state1.comp_state == state2.comp_state);
     }
   };
-  
+
   typedef unordered_map<Tuple, StateId, TupleHash, TupleEqual> MapType;
-  
+
   StateId GetStateForTuple(const Tuple &tuple, bool add_to_queue) {
     MapType::iterator iter = map_.find(tuple);
     if (iter == map_.end()) { // not in map.
@@ -159,17 +159,17 @@ class LatticePhoneAligner {
       return iter->second;
     }
   }
-  
+
   void ProcessFinal(Tuple tuple, StateId output_state) {
     // ProcessFinal is only called if the input_state has
     // final-prob of One().  [else it should be zero.  This
     // is because we called CreateSuperFinal().]
-    
+
     if (tuple.comp_state.IsEmpty()) { // computation state doesn't have
       // anything pending.
       std::vector<int32> empty_vec;
       CompactLatticeWeight cw(tuple.comp_state.FinalWeight(), empty_vec);
-      lat_out_->SetFinal(output_state, Plus(lat_out_->Final(output_state), cw));      
+      lat_out_->SetFinal(output_state, Plus(lat_out_->Final(output_state), cw));
     } else {
       // computation state has something pending, i.e. input or
       // output symbols that need to be flushed out.  Note: OutputArc() would
@@ -187,8 +187,8 @@ class LatticePhoneAligner {
       lat_out_->AddArc(output_state, lat_arc);
     }
   }
-  
-  
+
+
   void ProcessQueueElement() {
     KALDI_ASSERT(!queue_.empty());
     Tuple tuple = queue_.back().first;
@@ -240,7 +240,7 @@ class LatticePhoneAligner {
       }
     }
   }
-  
+
   LatticePhoneAligner(const CompactLattice &lat,
                       const TransitionModel &tmodel,
                       const PhoneAlignLatticeOptions &opts,
@@ -258,7 +258,7 @@ class LatticePhoneAligner {
   void RemoveEpsilonsFromLattice() {
     RmEpsilon(lat_out_, true); // true = connect.
   }
-  
+
   bool AlignLattice() {
     lat_out_->DeleteStates();
     if (lat_.Start() == fst::kNoStateId) {
@@ -269,16 +269,16 @@ class LatticePhoneAligner {
     Tuple initial_tuple(lat_.Start(), initial_comp_state);
     StateId start_state = GetStateForTuple(initial_tuple, true); // True = add this to queue.
     lat_out_->SetStart(start_state);
-    
+
     while (!queue_.empty())
       ProcessQueueElement();
 
     if (opts_.remove_epsilon)
       RemoveEpsilonsFromLattice();
-    
+
     return !error_;
   }
-  
+
   CompactLattice lat_;
   const TransitionModel &tmodel_;
   const PhoneAlignLatticeOptions &opts_;
@@ -286,7 +286,7 @@ class LatticePhoneAligner {
 
   std::vector<std::pair<Tuple, StateId> > queue_;
   MapType map_; // map from tuples to StateId.
-  bool error_;  
+  bool error_;
 };
 
 bool LatticePhoneAligner::ComputationState::OutputPhoneArc(
@@ -334,7 +334,7 @@ bool LatticePhoneAligner::ComputationState::OutputPhoneArc(
   *arc_out = CompactLatticeArc(output_label, output_label,
                                CompactLatticeWeight(weight_, tids_out),
                                fst::kNoStateId);
-  transition_ids_.erase(transition_ids_.begin(), transition_ids_.begin()+i); 
+  transition_ids_.erase(transition_ids_.begin(), transition_ids_.begin()+i);
   weight_ = LatticeWeight::One(); // we just output the weight.
   return true;
 }
@@ -346,7 +346,7 @@ bool LatticePhoneAligner::ComputationState::OutputWordArc(
     bool *error) {
   // output a word but no phones.
   if (word_labels_.size() < 2) return false;
-  
+
   int32 output_label = word_labels_[0];
   word_labels_.erase(word_labels_.begin(), word_labels_.begin()+1);
 
@@ -356,7 +356,7 @@ bool LatticePhoneAligner::ComputationState::OutputWordArc(
   weight_ = LatticeWeight::One(); // we just output the weight, so set it to one.
   return true;
 }
-  
+
 
 void LatticePhoneAligner::ComputationState::OutputArcForce(
     const TransitionModel &tmodel,
@@ -370,7 +370,7 @@ void LatticePhoneAligner::ComputationState::OutputArcForce(
   // the code.  IsEmpty() would be true if we had transition_ids_.empty()
   // and opts.replace_output_symbols, so we would already die by assertion;
   // in fact, this function would neve be called.
-  
+
   if (!transition_ids_.empty()) { // Do some checking here.
     int32 tid = transition_ids_[0];
     phone = tmodel.TransitionIdToPhone(tid);
@@ -388,7 +388,7 @@ void LatticePhoneAligner::ComputationState::OutputArcForce(
     if (num_final != 1 && ! *error) {
       KALDI_WARN << "Problem phone-aligning lattice: saw " << num_final
                  << " final-states in last phone in lattice (forced out?) "
-                 << "Producing patial lattice.";
+                 << "Producing partial lattice.";
       *error = true;
     }
   }

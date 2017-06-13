@@ -1,4 +1,4 @@
-// gmmbin/am-info.cc
+// bin/am-info.cc
 
 // Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey)
 

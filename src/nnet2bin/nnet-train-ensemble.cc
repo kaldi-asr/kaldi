@@ -1,4 +1,4 @@
-// nnet2bin/nnet-train-simple.cc
+// nnet2bin/nnet-train-ensemble.cc
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 //           2014  Xiaohui Zhang

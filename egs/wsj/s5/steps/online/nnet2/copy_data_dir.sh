@@ -3,12 +3,13 @@
 # Copyright 2013-2014  Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0
 
+# Warning, this script is deprecated, please use utils/data/modify_speaker_info.sh
+
 # This script is as utils/copy_data_dir.sh in that it copies a data-dir,
 # but it supports the --utts-per-spk-max option.  If nonzero, it modifies
 # the utt2spk and spk2utt files by splitting each speaker into multiple
 # versions, so that each speaker has no more than --utts-per-spk-max
 # utterances.
-
 
 # begin configuration section
 utts_per_spk_max=-1
@@ -28,13 +29,15 @@ if [ $# != 2 ]; then
 fi
 
 
+echo "$0: this script is deprecated, please use utils/data/modify_speaker_info.sh."
+
 export LC_ALL=C
 
 srcdir=$1
 destdir=$2
 
 if [ ! -f $srcdir/utt2spk ]; then
-  echo "$0: no such file $srcdir/utt2spk" 
+  echo "$0: no such file $srcdir/utt2spk"
   exit 1;
 fi
 
@@ -81,5 +84,6 @@ echo "$0: copied data from $srcdir to $destdir, with --utts-per-spk-max $utts_pe
 opts=
 [ ! -f $srcdir/feats.scp ] && opts="--no-feats"
 [ ! -f $srcdir/text ] && opts="$opts --no-text"
+[ ! -f $srcdir/wav.scp ] && opts="$opts --no-wav"
 
 utils/validate_data_dir.sh $opts $destdir

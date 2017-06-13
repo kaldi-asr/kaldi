@@ -48,12 +48,12 @@ OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
   }  // else use the defaults.
 
   if (config.fbank_config != "") {
-    ReadConfigFromFile(config.plp_config, &fbank_opts);
+    ReadConfigFromFile(config.fbank_config, &fbank_opts);
     if (feature_type != "fbank")
       KALDI_WARN << "--fbank-config option has no effect "
                  << "since feature type is set to " << feature_type << ".";
   }  // else use the defaults.
-  
+
   add_pitch = config.add_pitch;
   if (config.pitch_config != "") {
     ReadConfigFromFile(config.pitch_config, &pitch_opts);
@@ -285,9 +285,9 @@ void OnlineFeaturePipeline::InputFinished() {
 
 BaseFloat OnlineFeaturePipelineConfig::FrameShiftInSeconds() const {
   if (feature_type == "mfcc") {
-    return mfcc_opts.frame_opts.frame_shift_ms * 1.0e-03;
+    return mfcc_opts.frame_opts.frame_shift_ms / 1000.0f;
   } else if (feature_type == "plp") {
-    return plp_opts.frame_opts.frame_shift_ms * 1.0e-03;
+    return plp_opts.frame_opts.frame_shift_ms / 1000.0f;
   } else {
     KALDI_ERR << "Unknown feature type " << feature_type;
     return 0.0;

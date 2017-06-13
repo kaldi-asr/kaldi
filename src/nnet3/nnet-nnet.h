@@ -1,7 +1,7 @@
 // nnet3/nnet-nnet.h
 
 // Copyright   2012-2015  Johns Hopkins University (author: Daniel Povey)
-
+//             2016  Daniel Galvez
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,7 +46,7 @@ namespace nnet3 {
 ///    - Objective type kLinear is intended for Neural nets where the final
 ///      component is a LogSoftmaxComponent, so the log-prob (negative
 ///      cross-entropy) objective is just a linear function of the input.
-///    - Objective type kQuadratic is used to mean the objective function 
+///    - Objective type kQuadratic is used to mean the objective function
 ///      f(x, y) = -0.5 (x-y).(x-y), which is to be maximized, as in the kLinear
 ///      case.
 enum ObjectiveType { kLinear, kQuadratic };
@@ -78,7 +78,7 @@ enum NodeType { kInput, kDescriptor, kComponent, kDimRange, kNone };
 /// component and output.  output maps to kDescriptor, but the nodes of type
 /// kDescriptor that represent the input to a component, are described in the
 /// same config-file line as the Component itself.
-struct NetworkNode {  
+struct NetworkNode {
   NodeType node_type;
   // "descriptor" is relevant only for nodes of type kDescriptor.
   Descriptor descriptor;
@@ -101,7 +101,7 @@ struct NetworkNode {
   int32 dim;
   // for kDimRange, the dimension of the offset into the input component's feature.
   int32 dim_offset;
-  
+
   int32 Dim(const Nnet &nnet) const;  // Dimension that this node outputs.
 
   NetworkNode(NodeType nt = kNone):
@@ -117,27 +117,24 @@ class Nnet {
   // This function can be used either to initialize a new Nnet from a config
   // file, or to add to an existing Nnet, possibly replacing certain parts of
   // it.  It will die with error if something went wrong.
+  // Also see the function ReadEditConfig() in nnet-utils.h (it's made a
+  // non-member because it doesn't need special access).
   void ReadConfig(std::istream &config_file);
-  
+
   int32 NumComponents() const { return components_.size(); }
 
   int32 NumNodes() const { return nodes_.size(); }
-  
-  /// return component indexed c.  not a copy; not owned by caller.
+
+  /// Return component indexed c.  Not a copy; not owned by caller.
   Component *GetComponent(int32 c);
 
-  /// return component indexed c (const version).  not a copy; not owned by
+  /// Return component indexed c (const version).  Not a copy; not owned by
   /// caller.
   const Component *GetComponent(int32 c) const;
 
-
-  /// return the component corresponding to the node indexed n, which must
-  /// be of type kComponent.  Convenience function.  Result is not a copy and
-  /// not owned by the caller.
-  Component *GetComponentForNode(int32 n);
-  /// Const version of GetComponentForNode().
-  const Component *GetComponentForNode(int32 n) const;
-
+  /// Replace the component indexed by c with a new component.
+  /// Frees previous component indexed by c.
+  void SetComponent(int32 c, Component *component);
 
   /// returns const reference to a particular numbered network node.
   const NetworkNode &GetNode(int32 node) const {
@@ -152,7 +149,7 @@ class Nnet {
   /// Returns true if this is a dim-range node, meaning that it is of type
   /// kDimRange.
   bool IsDimRangeNode(int32 node) const;
-  
+
   /// Returns true if this is an output node, meaning that it is of type
   /// kInput.
   bool IsInputNode(int32 node) const;
@@ -161,14 +158,14 @@ class Nnet {
   /// kDescriptor.  Exactly one of IsOutput or IsComponentInput will also
   /// apply.
   bool IsDescriptorNode(int32 node) const;
-  
+
   /// Returns true if this is an output node, meaning that it is of type kDescriptor
   /// and is not directly followed by a node of type kComponent.
   bool IsOutputNode(int32 node) const;
 
   /// Returns true if this is component-input node, i.e. a node of type kDescriptor
   /// that immediately precedes a node of type kComponent.
-  bool IsComponentInputNode(int32 node) const;  
+  bool IsComponentInputNode(int32 node) const;
 
   /// returns vector of node names (needed by some parsing code, for instance).
   const std::vector<std::string> &GetNodeNames() const;
@@ -176,12 +173,17 @@ class Nnet {
   /// returns individual node name.
   const std::string &GetNodeName(int32 node_index) const;
 
+  /// This can be used to modify invidual node names.  Note, this does not
+  /// affect the neural net structure at all, it just assigns a new
+  /// name to an existing node while leaving all connections identical.
+  void SetNodeName(int32 node_index, const std::string &new_name);
+
   /// returns vector of component names (needed by some parsing code, for instance).
   const std::vector<std::string> &GetComponentNames() const;
 
   /// returns individual component name.
   const std::string &GetComponentName(int32 component_index) const;
-  
+
   /// returns index associated with this node name, or -1 if no such index.
   int32 GetNodeIndex(const std::string &node_name) const;
 
@@ -197,20 +199,21 @@ class Nnet {
   // name "input_name" (e.g. output_name="input"), or -1 if there is
   // no such input.
   int32 OutputDim(const std::string &output_name) const;
-  
+
   void Read(std::istream &istream, bool binary);
 
   void Write(std::ostream &ostream, bool binary) const;
 
-  /// note to self: one thing of many that we need to check is that no output
-  /// nodes are referred to in Descriptors.  This might mess up the combination
-  /// of each output node into a single step, as dependencies would be messed
-  /// up.  Also make sure no nodes referred to in Descriptors, or in kDimRange,
-  /// are themselves Descriptors.
-  void Check() const;
+  /// Checks the neural network for validity (dimension matches and various
+  /// other requirements).
+  /// You can call this with warn_for_orphans = false to disable the warnings
+  /// that are printed if orphan nodes or components exist.
+  void Check(bool warn_for_orphans = true) const;
 
   /// returns some human-readable information about the network, mostly for
   /// debugging purposes.
+  /// Also see function NnetInfo() in nnet-utils.h, which prints out more
+  /// extensive infoformation.
   std::string Info() const;
 
   /// [Relevant for clockwork RNNs and similar].  Computes the smallest integer
@@ -230,18 +233,25 @@ class Nnet {
 
   Nnet *Copy() const { return new Nnet(*this); }
 
+  void Swap(Nnet *other);
+
   // Assignment operator
   Nnet& operator =(const Nnet &nnet);
- private:
-  
-  void Destroy();
-  
-  // This function returns as a string the contents of a line of a config-file
-  // corresponding to the node indexed "node_index", which must not be of type
-  // kComponentInput.  If include_dim=false, it appears in the same format as it
-  // would appear in a line of a config-file; if include_dim=true, we also
-  // include dimension information that would not be provided in a config file.
-  std::string GetAsConfigLine(int32 node_index, bool include_dim) const;
+
+  // Removes nodes that are never needed to compute any output.
+  void RemoveOrphanNodes(bool remove_orphan_inputs = false);
+
+  // Removes components that are not used by any node.
+  void RemoveOrphanComponents();
+
+  // Removes some nodes.  This is not to be called without a lot of thought,
+  // as it could ruin the graph structure if done carelessly.
+  void RemoveSomeNodes(const std::vector<int32> &nodes_to_remove);
+
+  void ResetGenerators(); // resets random-number generators for all
+  // random components.  You must call srand() prior to this call, for this to
+  // be effective.
+
 
   // This function outputs to "config_lines" the lines of a config file.  If you
   // provide include_dim=false, this will enable you to reconstruct the nodes in
@@ -251,6 +261,18 @@ class Nnet {
   // accepted as the config-file format.
   void GetConfigLines(bool include_dim,
                       std::vector<std::string> *config_lines) const;
+
+ private:
+
+  void Destroy();
+
+  // This function returns as a string the contents of a line of a config-file
+  // corresponding to the node indexed "node_index", which must not be of type
+  // kComponentInput.  If include_dim=false, it appears in the same format as it
+  // would appear in a line of a config-file; if include_dim=true, we also
+  // include dimension information that would not be provided in a config file.
+  std::string GetAsConfigLine(int32 node_index, bool include_dim) const;
+
 
   // This function is used when reading config files; it exists in order to
   // handle replacement of existing nodes.  The two input vectors have the same
@@ -265,9 +287,8 @@ class Nnet {
   // means literally "name", but "xxx" stands in for the actual name,
   // e.g. "my-funky-component."
   static void RemoveRedundantConfigLines(int32 num_lines_initial,
-                                         std::vector<std::string> *first_tokens,
-                                         std::vector<ConfigLine> *configs);
-  
+                                         std::vector<ConfigLine> *config_lines);
+
   void ProcessComponentConfigLine(int32 initial_num_components,
                                   ConfigLine *config);
   void ProcessComponentNodeConfigLine(int32 pass,
@@ -285,17 +306,17 @@ class Nnet {
   // they are not allowed.
   void GetSomeNodeNames(std::vector<std::string> *modified_node_names) const;
 
-  
+
   // the names of the components of the network.  Note, these may be distinct
   // from the network node names below (and live in a different namespace); the
   // same component may be used in multiple network nodes, to define parameter
   // sharing.
   std::vector<std::string> component_names_;
-  
+
   // the components of the nnet, in arbitrary order.  The network topology is
   // defined separately, below; a given Component may appear more than once in
   // the network if necessary for parameter tying.
-  std::vector<Component*> components_;  
+  std::vector<Component*> components_;
 
   // names of network nodes, i.e. inputs, components and outputs, used only in
   // reading and writing code.  Indexed by network-node index.  Note,
@@ -305,9 +326,8 @@ class Nnet {
 
   // the network nodes of the network.
   std::vector<NetworkNode> nodes_;
-  
-};
 
+};
 
 
 } // namespace nnet3

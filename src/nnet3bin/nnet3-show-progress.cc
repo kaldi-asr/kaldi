@@ -46,12 +46,15 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     int32 num_segments = 1;
-    std::string use_gpu = "optional";
+    std::string use_gpu = "no";
+    NnetComputeProbOptions compute_prob_opts;
+    compute_prob_opts.compute_deriv = true;
 
     po.Register("num-segments", &num_segments,
                 "Number of line segments used for computing derivatives");
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
+    compute_prob_opts.Register(&po);
 
     po.Read(argc, argv);
 
@@ -77,7 +80,7 @@ int main(int argc, char *argv[]) {
       exit(0);
     }
 
-    if (!examples_rspecifier.empty()) {
+    if (!examples_rspecifier.empty() && IsSimpleNnet(nnet1)) {
       std::vector<NnetExample> examples;
       SequentialNnetExampleReader example_reader(examples_rspecifier);
       for (; !example_reader.Done(); example_reader.Next())
@@ -99,8 +102,6 @@ int main(int argc, char *argv[]) {
         ScaleNnet(middle, &interp_nnet);
         AddNnet(nnet1, 1.0 - middle, &interp_nnet);
 
-        NnetComputeProbOptions compute_prob_opts;
-        compute_prob_opts.compute_deriv = true;
         NnetComputeProb prob_computer(compute_prob_opts, interp_nnet);
         std::vector<NnetExample>::const_iterator eg_iter = examples.begin(),
                                                  eg_end = examples.end();
@@ -139,15 +140,20 @@ int main(int argc, char *argv[]) {
       Vector<BaseFloat> baseline_prod(num_updatable);
       ComponentDotProducts(nnet1, nnet1, &baseline_prod);
       baseline_prod.ApplyPow(0.5);
+
+      KALDI_LOG << "Norms of parameter matrices are "
+                << PrintVectorPerUpdatableComponent(nnet1, baseline_prod);
+
       dot_prod.DivElements(baseline_prod);
       KALDI_LOG << "Relative parameter differences per layer are "
                 << PrintVectorPerUpdatableComponent(nnet1, dot_prod);
     }
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().PrintProfile();
+#endif
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }
 }
-
-

@@ -1,4 +1,4 @@
-// onlinebin/online2-wav-nnet2-latgen-thread.cc
+// online2bin/online2-wav-nnet2-latgen-threaded.cc
 
 // Copyright 2014-2015  Johns Hopkins University (author: Daniel Povey)
 
@@ -19,12 +19,13 @@
 
 #include "feat/wave-reader.h"
 #include "online2/online-nnet2-decoding-threaded.h"
+#include "online2/online-nnet2-feature-pipeline.h"
 #include "online2/onlinebin-util.h"
 #include "online2/online-timing.h"
 #include "online2/online-endpoint.h"
 #include "fstext/fstext-lib.h"
 #include "lat/lattice-functions.h"
-#include "thread/kaldi-thread.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 
@@ -163,7 +164,7 @@ int main(int argc, char *argv[]) {
       am_nnet.Read(ki.Stream(), binary);
     }
     
-    fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldi(fst_rxfilename);
+    fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldiGeneric(fst_rxfilename);
     
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_rxfilename != "")

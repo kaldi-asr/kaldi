@@ -50,13 +50,24 @@ name=`basename $data`; # e.g. eval2000
 
 mkdir -p $dir/scoring/log
 
+if [ -f $dir/../frame_shift ]; then
+  frame_shift_opt="--frame-shift=$(cat $dir/../frame_shift)"
+  echo "$0: $dir/../frame_shift exists, using $frame_shift_opt"
+elif [ -f $dir/../frame_subsampling_factor ]; then
+  factor=$(cat $dir/../frame_subsampling_factor) || exit 1
+  frame_shift_opt="--frame-shift=0.0$factor"
+  echo "$0: $dir/../frame_subsampling_factor exists, using $frame_shift_opt"
+fi
+
+
+
 if [ $stage -le 0 ]; then
   if [ -f $data/segments ] && $use_segments; then
     f=$data/reco2file_and_channel
     [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
     filter_cmd="utils/convert_ctm.pl $data/segments $data/reco2file_and_channel"
   else
-    filter_cmd=cat    
+    filter_cmd=cat
   fi
 
   if [ -f $lang/phones/word_boundary.int ]; then
@@ -64,7 +75,7 @@ if [ $stage -le 0 ]; then
       mkdir -p $dir/score_LMWT/ '&&' \
       lattice-prune --inv-acoustic-scale=LMWT --beam=5 "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
       lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
-      lattice-to-ctm-conf --decode-mbr=true --inv-acoustic-scale=LMWT ark:- - \| \
+      lattice-to-ctm-conf $frame_shift_opt --decode-mbr=true --inv-acoustic-scale=LMWT ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
       $filter_cmd '>' $dir/score_LMWT/$name.ctm || exit 1;
   else
@@ -77,7 +88,7 @@ if [ $stage -le 0 ]; then
       mkdir -p $dir/score_LMWT/ '&&' \
       lattice-prune --inv-acoustic-scale=LMWT --beam=5 "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
       lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
-      lattice-to-ctm-conf --decode-mbr=true --inv-acoustic-scale=LMWT ark:- - \| \
+      lattice-to-ctm-conf $frame_shift_opt --decode-mbr=true --inv-acoustic-scale=LMWT ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
       $filter_cmd '>' $dir/score_LMWT/$name.ctm || exit 1;
   fi

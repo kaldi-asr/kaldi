@@ -1,7 +1,7 @@
 #!/bin/bash
 
 . path.sh
- 
+
 echo Preparing language models for test
 
 for lm_suffix in tg; do
@@ -10,10 +10,10 @@ for lm_suffix in tg; do
   rm -rf data/lang_test_${lm_suffix}
   cp -r data/lang data/lang_test_${lm_suffix}
 
-  cat input/task.arpabo | arpa2fst - | fstprint | utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt --osymbols=$test/words.txt --keep_isymbols=false --keep_osymbols=false | fstrmepsilon | fstarcsort --sort_type=ilabel > $test/G.fst
-  #cat input/G.txt | utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt --osymbols=$test/words.txt --keep_isymbols=false --keep_osymbols=false | fstrmepsilon | fstarcsort --sort_type=ilabel > $test/G.fst
+  arpa2fst --disambig-symbol=#0 --read-symbol-table=$test/words.txt input/task.arpabo $test/G.fst
+
   fstisstochastic $test/G.fst
-      
+
  # The output is like:
  # 9.14233e-05 -0.259833
  # we do expect the first of these 2 numbers to be close to zero (the second is
@@ -30,7 +30,7 @@ for lm_suffix in tg; do
     < data/local/dict/lexicon.txt  >tmpdir.g/select_empty.fst.txt
   fstcompile --isymbols=$test/words.txt --osymbols=$test/words.txt tmpdir.g/select_empty.fst.txt | \
    fstarcsort --sort_type=olabel | fstcompose - $test/G.fst > tmpdir.g/empty_words.fst
-  fstinfo tmpdir.g/empty_words.fst | grep cyclic | grep -w 'y' && 
+  fstinfo tmpdir.g/empty_words.fst | grep cyclic | grep -w 'y' &&
     echo "Language model has cycles with empty words" && exit 1
   rm -r tmpdir.g
 done

@@ -5,7 +5,7 @@
 
 train_stage=-100
 temp_dir=  # e.g. --temp-dir /export/m1-02/dpovey/kaldi-dan2/egs/wsj/s5/
-parallel_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network, you'll likely have to change it.
+parallel_opts="--gpu 1"  # This is suitable for the CLSP network, you'll likely have to change it.
 dir=exp/nnet5d_gpu
 
 # Note: since we multiplied the num-jobs by 1/4, we halved the
@@ -13,7 +13,7 @@ dir=exp/nnet5d_gpu
 . ./cmd.sh
 . utils/parse_options.sh
 
-( 
+(
 
   if [ ! -z "$temp_dir" ] && [ ! -e $dir/egs ]; then
     mkdir -p $dir
@@ -32,19 +32,19 @@ dir=exp/nnet5d_gpu
    --p 2 \
     data/train_si284 data/lang exp/tri4b_ali_si284 $dir || exit 1
 
-  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 10 \
+  steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 10 \
     --transform-dir exp/tri4b/decode_tgpr_dev93 \
      exp/tri4b/graph_tgpr data/test_dev93 $dir/decode_tgpr_dev93
 
-  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 8 \
+  steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 8 \
     --transform-dir exp/tri4b/decode_tgpr_eval92 \
      exp/tri4b/graph_tgpr data/test_eval92 $dir/decode_tgpr_eval92
 
-  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 10 \
+  steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 10 \
     --transform-dir exp/tri4b/decode_bd_tgpr_dev93 \
      exp/tri4b/graph_bd_tgpr data/test_dev93 $dir/decode_bd_tgpr_dev93
 
-  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 8 \
+  steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 8 \
     --transform-dir exp/tri4b/decode_bd_tgpr_eval92 \
      exp/tri4b/graph_bd_tgpr data/test_eval92 $dir/decode_bd_tgpr_eval92
 )

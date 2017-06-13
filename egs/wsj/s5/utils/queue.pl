@@ -18,7 +18,7 @@ use Getopt::Long;
 
 # The script now supports configuring the queue system using a config file
 # (default in conf/queue.conf; but can be passed specified with --config option)
-# and a set of command line options. 
+# and a set of command line options.
 # The current script handles:
 # 1) Normal configuration arguments
 # For e.g. a command line option of "--gpu 1" could be converted into the option
@@ -28,7 +28,7 @@ use Getopt::Long;
 # $0 here in the line is replaced with the argument read from the CLI and the
 # resulting string is passed to qsub.
 # 2) Special arguments to options such as
-# gpu=0 
+# gpu=0
 # If --gpu 0 is given in the command line, then no special "-q" is given.
 # 3) Default argument
 # default gpu=0
@@ -65,8 +65,8 @@ my %cli_options = ();
 my $jobname;
 my $jobstart;
 my $jobend;
-
 my $array_job = 0;
+my $sge_job_id;
 
 sub print_usage() {
   print STDERR
@@ -90,16 +90,24 @@ sub print_usage() {
   exit 1;
 }
 
+sub caught_signal {
+  if ( defined $sge_job_id ) { # Signal trapped after submitting jobs
+    my $signal = $!;
+    system ("qdel $sge_job_id");
+    die "Caught a signal: $signal , deleting SGE task: $sge_job_id and exiting\n";
+  }
+}
+
 if (@ARGV < 2) {
   print_usage();
 }
 
-for (my $x = 1; $x <= 3; $x++) { # This for-loop is to 
+for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
   # allow the JOB=1:n option to be interleaved with the
   # options to qsub.
   while (@ARGV >= 2 && $ARGV[0] =~ m:^-:) {
     my $switch = shift @ARGV;
-    
+
     if ($switch eq "-V") {
       $qsub_opts .= "-V ";
     } else {
@@ -116,10 +124,10 @@ for (my $x = 1; $x <= 3; $x++) { # This for-loop is to
         $num_threads = $argument2;
       } elsif ($switch =~ m/^--/) { # Config options
         # Convert CLI option to variable name
-        # by removing '--' from the switch and replacing any 
+        # by removing '--' from the switch and replacing any
         # '-' with a '_'
         $switch =~ s/^--//;
-        $switch =~ s/-/_/g;         
+        $switch =~ s/-/_/g;
         $cli_options{$switch} = $argument;
       } else {  # Other qsub options - passed as is
         $qsub_opts .= "$switch $argument ";
@@ -145,7 +153,7 @@ for (my $x = 1; $x <= 3; $x++) { # This for-loop is to
     $jobend = $2;
     shift;
   } elsif ($ARGV[0] =~ m/.+\=.*\:.*$/) {
-    print STDERR "Warning: suspicious first argument to queue.pl: $ARGV[0]\n";
+    print STDERR "queue.pl: Warning: suspicious first argument to queue.pl: $ARGV[0]\n";
   }
 }
 
@@ -155,7 +163,7 @@ if (@ARGV < 2) {
 
 if (exists $cli_options{"config"}) {
   $config = $cli_options{"config"};
-}  
+}
 
 my $default_config_file = <<'EOF';
 # Default configuration
@@ -172,12 +180,15 @@ EOF
 
 # Here the configuration options specified by the user on the command line
 # (e.g. --mem 2G) are converted to options to the qsub system as defined in
-# the config file. (e.g. if the config file has the line 
+# the config file. (e.g. if the config file has the line
 # "option mem=* -l ram_free=$0,mem_free=$0"
 # and the user has specified '--mem 2G' on the command line, the options
 # passed to queue system would be "-l ram_free=2G,mem_free=2G
 # A more detailed description of the ways the options would be handled is at
 # the top of this file.
+
+$SIG{INT} = \&caught_signal;
+$SIG{TERM} = \&caught_signal;
 
 my $opened_config_file = 1;
 
@@ -186,7 +197,7 @@ open CONFIG, "<$config" or $opened_config_file = 0;
 my %cli_config_options = ();
 my %cli_default_options = ();
 
-if ($opened_config_file == 0 && exists($cli_options{"config"})) {   
+if ($opened_config_file == 0 && exists($cli_options{"config"})) {
   print STDERR "Could not open config file $config\n";
   exit(1);
 } elsif ($opened_config_file == 0 && !exists($cli_options{"config"})) {
@@ -206,12 +217,12 @@ while(<CONFIG>) {
   if ($_ =~ /^command (.+)/) {
     $read_command = 1;
     $qsub_cmd = $1 . " ";
-  } elsif ($_ =~ m/^option ([^=]+)=\* (.+)$/) { 
+  } elsif ($_ =~ m/^option ([^=]+)=\* (.+)$/) {
     # Config option that needs replacement with parameter value read from CLI
     # e.g.: option mem=* -l mem_free=$0,ram_free=$0
     my $option = $1;     # mem
     my $arg= $2;         # -l mem_free=$0,ram_free=$0
-    if ($arg !~ m:\$0:) {  
+    if ($arg !~ m:\$0:) {
       die "Unable to parse line '$line' in config file ($config)\n";
     }
     if (exists $cli_options{$option}) {
@@ -231,7 +242,7 @@ while(<CONFIG>) {
     }
   } elsif ($_ =~ m/^default (\S+)=(\S+)/) {
     # Default options. Used for setting default values to options i.e. when
-    # the user does not specify the option on the command line 
+    # the user does not specify the option on the command line
     # e.g. default gpu=0
     my $option = $1;  # gpu
     my $value = $2;   # 0
@@ -291,7 +302,7 @@ if ($array_job == 1 && $logfile !~ m/$jobname/
 #
 my $cmd = "";
 
-foreach my $x (@ARGV) { 
+foreach my $x (@ARGV) {
   if ($x =~ m/^\S+$/) { $cmd .= $x . " "; } # If string contains no spaces, take
                                             # as-is.
   elsif ($x =~ m:\":) { $cmd .= "'$x' "; } # else if no dbl-quotes, use single
@@ -312,19 +323,21 @@ if (!-d $dir) { die "Cannot make the directory $dir\n"; }
 # make a directory called "q",
 # where we will put the log created by qsub... normally this doesn't contain
 # anything interesting, evertyhing goes to $logfile.
-if (! -d "$qdir") { 
-  system "mkdir $qdir 2>/dev/null";
+# in $qdir/sync we'll put the done.* files... we try to keep this
+# directory small because it's transmitted over NFS many times.
+if (! -d "$qdir/sync") {
+  system "mkdir -p $qdir/sync 2>/dev/null";
   sleep(5); ## This is to fix an issue we encountered in denominator lattice creation,
   ## where if e.g. the exp/tri2b_denlats/log/15/q directory had just been
   ## created and the job immediately ran, it would die with an error because nfs
   ## had not yet synced.  I'm also decreasing the acdirmin and acdirmax in our
   ## NFS settings to something like 5 seconds.
-} 
+}
 
 my $queue_array_opt = "";
 if ($array_job == 1) { # It's an array job.
-  $queue_array_opt = "-t $jobstart:$jobend"; 
-  $logfile =~ s/$jobname/\$SGE_TASK_ID/g; # This variable will get 
+  $queue_array_opt = "-t $jobstart:$jobend";
+  $logfile =~ s/$jobname/\$SGE_TASK_ID/g; # This variable will get
   # replaced by qsub, in each job, with the job-id.
   $cmd =~ s/$jobname/\$\{SGE_TASK_ID\}/g; # same for the command...
   $queue_logfile =~ s/\.?$jobname//; # the log file in the q/ subdirectory
@@ -345,9 +358,9 @@ if ($queue_scriptfile !~ m:^/:) {
 # Also keep our current PATH around, just in case there was something
 # in it that we need (although we also source ./path.sh)
 
-my $syncfile = "$qdir/done.$$";
+my $syncfile = "$qdir/sync/done.$$";
 
-system("rm $queue_logfile $syncfile 2>/dev/null");
+unlink($queue_logfile, $syncfile);
 #
 # Write to the script file, and then close it.
 #
@@ -383,20 +396,39 @@ if (!close(Q)) { # close was not successful... || die "Could not close script fi
   die "Failed to close the script file (full disk?)";
 }
 
-my $ret = system ($qsub_cmd);
-if ($ret != 0) {
-  if ($sync && $ret == 256) { # this is the exit status when a job failed (bad exit status)
-    if (defined $jobname) { $logfile =~ s/\$SGE_TASK_ID/*/g; }
-    print STDERR "queue.pl: job writing to $logfile failed\n";
+# This block submits the job to the queue.
+for (my $try = 1; $try < 5; $try++) {
+  my $ret = system ($qsub_cmd);
+  if ($ret != 0) {
+    if ($sync && $ret == 256) { # this is the exit status when a job failed (bad exit status)
+      if (defined $jobname) {
+        $logfile =~ s/\$SGE_TASK_ID/*/g;
+      }
+      print STDERR "queue.pl: job writing to $logfile failed\n";
+      exit(1);
+    } else {
+      print STDERR "queue.pl: Error submitting jobs to queue (return status was $ret)\n";
+      print STDERR "queue log file is $queue_logfile, command was $qsub_cmd\n";
+      my $err = `tail $queue_logfile`;
+      print STDERR "Output of qsub was: $err\n";
+      if ($err =~ m/gdi request/ || $err =~ m/qmaster/) {
+        # When we get queue connectivity problems we usually see a message like:
+        # Unable to run job: failed receiving gdi request response for mid=1 (got
+        # syncron message receive timeout error)..
+        my $waitfor = 20;
+        print STDERR "queue.pl: It looks like the queue master may be inaccessible. " .
+          " Trying again after $waitfor seconts\n";
+        sleep($waitfor);
+        # ... and continue throught the loop.
+      } else {
+        exit(1);
+      }
+    }
   } else {
-    print STDERR "queue.pl: error submitting jobs to queue (return status was $ret)\n";
-    print STDERR "queue log file is $queue_logfile, command was $qsub_cmd\n";
-    print STDERR `tail $queue_logfile`;
+    last;  # break from the loop.
   }
-  exit(1);
 }
 
-my $sge_job_id;
 if (! $sync) { # We're not submitting with -sync y, so we
   # need to wait for the jobs to finish.  We wait for the
   # sync-files we "touched" in the script to exist.
@@ -409,7 +441,8 @@ if (! $sync) { # We're not submitting with -sync y, so we
     }
   }
   # We will need the sge_job_id, to check that job still exists
-  { # Get the SGE job-id from the log file in q/
+  { # This block extracts the numeric SGE job-id from the log file in q/.
+    # It may be used later to query 'qstat' about the job.
     open(L, "<$queue_logfile") || die "Error opening log file $queue_logfile";
     undef $sge_job_id;
     while (<L>) {
@@ -427,11 +460,11 @@ if (! $sync) { # We're not submitting with -sync y, so we
     }
   }
   my $check_sge_job_ctr=1;
-  #
+
   my $wait = 0.1;
   my $counter = 0;
   foreach my $f (@syncfiles) {
-    # wait for them to finish one by one.
+    # wait for the jobs to finish one by one.
     while (! -f $f) {
       sleep($wait);
       $wait *= 1.2;
@@ -440,9 +473,9 @@ if (! $sync) { # We're not submitting with -sync y, so we
         # the following (.kick) commands are basically workarounds for NFS bugs.
         if (rand() < 0.25) { # don't do this every time...
           if (rand() > 0.5) {
-            system("touch $qdir/.kick");
+            system("touch $qdir/sync/.kick");
           } else {
-            system("rm $qdir/.kick 2>/dev/null");
+            unlink("$qdir/sync/.kick");
           }
         }
         if ($counter++ % 10 == 0) {
@@ -451,36 +484,44 @@ if (! $sync) { # We're not submitting with -sync y, so we
           # updated, even though the file exists on the server.
           # Only do this every 10 waits (every 30 seconds) though, or if there
           # are many jobs waiting they can overwhelm the file server.
-          system("ls $qdir >/dev/null");
+          system("ls $qdir/sync >/dev/null");
         }
       }
 
-      # Check that the job exists in SGE. Job can be killed if duration 
-      # exceeds some hard limit, or in case of a machine shutdown. 
-      if (($check_sge_job_ctr++ % 10) == 0) { # Don't run qstat too often, avoid stress on SGE.
-        if ( -f $f ) { next; }; #syncfile appeared: OK.
-        $ret = system("qstat -j $sge_job_id >/dev/null 2>/dev/null");
-        # system(...) : To get the actual exit value, shift $ret right by eight bits.
-        if ($ret>>8 == 1) {     # Job does not seem to exist
-          # Don't consider immediately missing job as error, first wait some  
+      # The purpose of the next block is so that queue.pl can exit if the job
+      # was killed without terminating.  It's a bit complicated because (a) we
+      # don't want to overload the qmaster by querying it too frequently), and
+      # (b) sometimes the qmaster is unreachable or temporarily down, and we
+      # don't want this to necessarily kill the job.
+      if (($check_sge_job_ctr < 100 && ($check_sge_job_ctr++ % 10) == 0) ||
+          ($check_sge_job_ctr >= 100 && ($check_sge_job_ctr++ % 50) == 0)) {
+        # Don't run qstat too often, avoid stress on SGE; the if-condition above
+        # is designed to check every 10 waits at first, and eventually every 50
+        # waits.
+        if ( -f $f ) { next; }  #syncfile appeared: OK.
+        my $output = `qstat -j $sge_job_id 2>&1`;
+        my $ret = $?;
+        if ($ret >> 8 == 1 && $output !~ m/qmaster/ &&
+            $output !~ m/gdi request/) {
+          # Don't consider immediately missing job as error, first wait some
           # time to make sure it is not just delayed creation of the syncfile.
 
           sleep(3);
           # Sometimes NFS gets confused and thinks it's transmitted the directory
           # but it hasn't, due to timestamp issues.  Changing something in the
           # directory will usually fix that.
-          system("touch $qdir/.kick");
-          system("rm $qdir/.kick 2>/dev/null");
+          system("touch $qdir/sync/.kick");
+          unlink("$qdir/sync/.kick");
           if ( -f $f ) { next; }   #syncfile appeared, ok
           sleep(7);
-          system("touch $qdir/.kick");
+          system("touch $qdir/sync/.kick");
           sleep(1);
-          system("rm $qdir/.kick 2>/dev/null");
+          unlink("qdir/sync/.kick");
           if ( -f $f ) {  next; }   #syncfile appeared, ok
           sleep(60);
-          system("touch $qdir/.kick");
+          system("touch $qdir/sync/.kick");
           sleep(1);
-          system("rm $qdir/.kick 2>/dev/null");
+          unlink("$qdir/sync/.kick");
           if ( -f $f ) { next; }  #syncfile appeared, ok
           $f =~ m/\.(\d+)$/ || die "Bad sync-file name $f";
           my $job_id = $1;
@@ -504,17 +545,18 @@ if (! $sync) { # We're not submitting with -sync y, so we
               "longer exists, log is in $logfile, last line is '$last_line', " .
               "syncfile is $f, return status of qstat was $ret\n" .
               "Possible reasons: a) Exceeded time limit? -> Use more jobs!" .
-              " b) Shutdown/Frozen machine? -> Run again!\n";
+              " b) Shutdown/Frozen machine? -> Run again!  Qmaster output " .
+              "was: $output\n";
             exit(1);
           }
         } elsif ($ret != 0) {
           print STDERR "queue.pl: Warning: qstat command returned status $ret (qstat -j $sge_job_id,$!)\n";
+          print STDERR "queue.pl: output was: $output";
         }
       }
     }
   }
-  my $all_syncfiles = join(" ", @syncfiles);
-  system("rm $all_syncfiles 2>/dev/null");
+  unlink(@syncfiles);
 }
 
 # OK, at this point we are synced; we know the job is done.
@@ -526,7 +568,7 @@ if (!defined $jobname) { # not an array job.
   push @logfiles, $logfile;
 } else {
   for (my $jobid = $jobstart; $jobid <= $jobend; $jobid++) {
-    my $l = $logfile; 
+    my $l = $logfile;
     $l =~ s/\$SGE_TASK_ID/$jobid/g;
     push @logfiles, $l;
   }

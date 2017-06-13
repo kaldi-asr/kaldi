@@ -15,4 +15,6 @@ windows/INSTALL*   eol=native
 windows/NewGuidCmd.exe.config text eol=crlf
 windows/NewGuidCmd.exe binary
 
+# Prevent git changing CR-LF to LF when archiving (patch requires CR-LF on Windows).
+**/*.patch            -text
 

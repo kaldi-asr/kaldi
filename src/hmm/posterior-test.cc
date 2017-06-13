@@ -77,7 +77,7 @@ void TestPosteriorIo() {
       KALDI_ASSERT(post[i].size() == post2[i].size());
       for (int32 j = 0; j < post[i].size(); j++) {
         KALDI_ASSERT(post[i][j].first == post2[i][j].first &&
-                     fabs(post[i][j].second - post2[i][j].second < 0.01));
+                     fabs(post[i][j].second - post2[i][j].second) < 0.01);
       }
     }
   }

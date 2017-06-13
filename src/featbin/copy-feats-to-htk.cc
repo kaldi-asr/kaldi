@@ -50,8 +50,8 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     std::string dir_out = "./";
     std::string ext_out = "fea";
-    int32 sample_period = 10000;
-    int32 sample_kind = 9; //USER  
+    int32 sample_period = 100000; // 100ns unit : 10ms = 100000,
+    int32 sample_kind = 9; // USER,
     /*
     0 WAVEFORM sampled waveform
     1 LPC linear prediction filter coefficients

@@ -41,10 +41,11 @@ void ConstIntegerSet<I>::InitInternal() {
     size_t range = highest_member_ + 1 - lowest_member_;
     if (range == slow_set_.size()) {
       contiguous_ = true;
-      quick_=false;
+      quick_= false;
     } else {
       contiguous_ = false;
-      if (range < slow_set_.size() * 8 * sizeof(I)) {  // If it would be more compact to store as bool
+      // If it would be more compact to store as bool
+      if (range < slow_set_.size() * 8 * sizeof(I)) {
         // (assuming 1 bit per element)...
         quick_set_.resize(range, false);
         for (size_t i = 0;i < slow_set_.size();i++)
@@ -59,11 +60,13 @@ void ConstIntegerSet<I>::InitInternal() {
 
 template<class I>
 int ConstIntegerSet<I>::count(I i) const {
-  if (i < lowest_member_ || i > highest_member_) return 0;
-  else {
+  if (i < lowest_member_ || i > highest_member_) {
+    return 0;
+  } else {
     if (contiguous_) return true;
-    if (quick_) return (quick_set_[i-lowest_member_] ? 1 : 0);
-    else {
+    if (quick_) {
+      return (quick_set_[i-lowest_member_] ? 1 : 0);
+    } else {
       bool ans = std::binary_search(slow_set_.begin(), slow_set_.end(), i);
       return (ans ? 1 : 0);
     }
@@ -83,6 +86,6 @@ void ConstIntegerSet<I>::Read(std::istream &is, bool binary) {
 
 
 
-} // end namespace kaldi
+}  // end namespace kaldi
 
-#endif
+#endif  // KALDI_UTIL_CONST_INTEGER_SET_INL_H_

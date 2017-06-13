@@ -1,4 +1,4 @@
-// gst-plugin/gst-online-decode-faster.cc
+// gst-plugin/gst-online-gmm-decode-faster.cc
 
 // Copyright 2013  Tanel Alumae, Tallinn University of Technology
 // Copyright 2012 Cisco Systems (author: Matthias Paulik)
@@ -287,7 +287,7 @@ gst_online_gmm_decode_faster_init(GstOnlineGmmDecodeFaster * filter) {
   std::vector<std::pair<std::string, SimpleOptions::OptionInfo> > option_info_list;
   option_info_list = filter->simple_options_->GetOptionInfoList();
   int32 i = 0;
-  for (vector<std::pair<std::string,
+  for (std::vector<std::pair<std::string,
       SimpleOptions::OptionInfo> >::iterator dx = option_info_list.begin();
       dx != option_info_list.end(); dx++) {
     std::pair<std::string, SimpleOptions::OptionInfo> result = (*dx);
@@ -747,7 +747,7 @@ gst_online_gmm_decode_faster_loop(GstOnlineGmmDecodeFaster * filter) {
       std::vector<int32> word_ids;
       filter->decoder_->FinishTraceBack(filter->out_fst_);
       fst::GetLinearSymbolSequence(*(filter->out_fst_),
-                                   static_cast<vector<int32> *>(0),
+                                   static_cast<std::vector<int32> *>(0),
                                    &word_ids,
                                    static_cast<LatticeArc::Weight*>(0));
       gst_online_gmm_decode_faster_push_words(filter, filter->srcpad_, word_ids, filter->word_syms_, partial_res || word_ids.size());
@@ -758,7 +758,7 @@ gst_online_gmm_decode_faster_loop(GstOnlineGmmDecodeFaster * filter) {
       std::vector<int32> word_ids;
       if (filter->decoder_->PartialTraceback(filter->out_fst_)) {
         fst::GetLinearSymbolSequence(*(filter->out_fst_),
-                                     static_cast<vector<int32> *>(0),
+                                     static_cast<std::vector<int32> *>(0),
                                      &word_ids,
                                      static_cast<LatticeArc::Weight*>(0));
         gst_online_gmm_decode_faster_push_words(filter, filter->srcpad_, word_ids, filter->word_syms_, false);

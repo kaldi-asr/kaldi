@@ -52,9 +52,15 @@ Real SparseVector<Real>::Sum() const {
   return sum;
 }
 
+template<typename Real>
+void SparseVector<Real>::Scale(Real alpha) {
+  for (int32 i = 0; i < pairs_.size(); ++i)
+    pairs_[i].second *= alpha;
+}
+
 template <typename Real>
 template <typename OtherReal>
-void SparseVector<Real>::CopyToVec(VectorBase<OtherReal> *vec) const {
+void SparseVector<Real>::CopyElementsToVec(VectorBase<OtherReal> *vec) const {
   KALDI_ASSERT(vec->Dim() == this->dim_);
   vec->SetZero();
   OtherReal *other_data = vec->Data();
@@ -63,7 +69,14 @@ void SparseVector<Real>::CopyToVec(VectorBase<OtherReal> *vec) const {
   for (; iter != end; ++iter)
     other_data[iter->first] = iter->second;
 }
-
+template
+void SparseVector<float>::CopyElementsToVec(VectorBase<float> *vec) const;
+template
+void SparseVector<float>::CopyElementsToVec(VectorBase<double> *vec) const;
+template
+void SparseVector<double>::CopyElementsToVec(VectorBase<float> *vec) const;
+template
+void SparseVector<double>::CopyElementsToVec(VectorBase<double> *vec) const;
 
 template <typename Real>
 template <typename OtherReal>
@@ -342,7 +355,7 @@ void SparseMatrix<Real>::CopyToMat(MatrixBase<OtherReal> *other,
     KALDI_ASSERT(other->NumRows() == num_rows);
     for (MatrixIndexT i = 0; i < num_rows; i++) {
       SubVector<OtherReal> vec(*other, i);
-      rows_[i].CopyToVec(&vec);
+      rows_[i].CopyElementsToVec(&vec);
     }
   } else {
     OtherReal *other_col_data = other->Data();
@@ -374,23 +387,18 @@ void SparseMatrix<double>::CopyToMat(MatrixBase<double> *other,
                                     MatrixTransposeType trans) const;
 
 template <typename Real>
-template <typename OtherReal>
-void SparseMatrix<Real>::CopyToVec(VectorBase<OtherReal> *other) const {
+void SparseMatrix<Real>::CopyElementsToVec(VectorBase<Real> *other) const {
   KALDI_ASSERT(other->Dim() == NumElements());
-  OtherReal *dst_data = other->Data();
+  Real *dst_data = other->Data();
   int32 dst_index = 0;
   for (int32 i = 0; i < rows_.size(); ++i) {
     for (int32 j = 0; j < rows_[i].NumElements(); ++j) {
       dst_data[dst_index] =
-          static_cast<OtherReal>(rows_[i].GetElement(j).second);
+          static_cast<Real>(rows_[i].GetElement(j).second);
       dst_index++;
     }
   }
 }
-template void SparseMatrix<float>::CopyToVec(VectorBase<float> *other) const;
-template void SparseMatrix<float>::CopyToVec(VectorBase<double> *other) const;
-template void SparseMatrix<double>::CopyToVec(VectorBase<float> *other) const;
-template void SparseMatrix<double>::CopyToVec(VectorBase<double> *other) const;
 
 template <typename Real>
 template <typename OtherReal>
@@ -605,6 +613,13 @@ void SparseMatrix<Real>::AppendSparseMatrixRows(
 }
 
 template<typename Real>
+void SparseMatrix<Real>::Scale(Real alpha) {
+  MatrixIndexT num_rows = rows_.size();
+  for (MatrixIndexT row = 0; row < num_rows; row++)
+    rows_[row].Scale(alpha);
+}
+
+template<typename Real>
 Real TraceMatSmat(const MatrixBase<Real> &A,
                   const SparseMatrix<Real> &B,
                   MatrixTransposeType trans) {
@@ -744,6 +759,16 @@ void GeneralMatrix::CopyToMat(MatrixBase<BaseFloat> *mat,
   }
 }
 
+void GeneralMatrix::Scale(BaseFloat alpha) {
+  if (mat_.NumRows() != 0) {
+    mat_.Scale(alpha);
+  } else if (cmat_.NumRows() != 0) {
+    cmat_.Scale(alpha);
+  } else if (smat_.NumRows() != 0) {
+    smat_.Scale(alpha);
+  }
+
+}
 const SparseMatrix<BaseFloat>& GeneralMatrix::GetSparseMatrix() const {
   if (mat_.NumRows() != 0 || cmat_.NumRows() != 0)
     KALDI_ERR << "GetSparseMatrix called on GeneralMatrix of wrong type.";
@@ -754,6 +779,12 @@ void GeneralMatrix::SwapSparseMatrix(SparseMatrix<BaseFloat> *smat) {
   if (mat_.NumRows() != 0 || cmat_.NumRows() != 0)
     KALDI_ERR << "GetSparseMatrix called on GeneralMatrix of wrong type.";
   smat->Swap(&smat_);
+}
+
+void GeneralMatrix::SwapCompressedMatrix(CompressedMatrix *cmat) {
+  if (mat_.NumRows() != 0 || smat_.NumRows() != 0)
+    KALDI_ERR << "GetSparseMatrix called on GeneralMatrix of wrong type.";
+  cmat->Swap(&cmat_);
 }
 
 const CompressedMatrix &GeneralMatrix::GetCompressedMatrix() const {
@@ -1095,6 +1126,70 @@ Real SparseVector<Real>::Max(int32 *index_out) const {
   *index_out = index;
   return 0.0;
 }
+
+void GeneralMatrix::Swap(GeneralMatrix *other) {
+  mat_.Swap(&(other->mat_));
+  cmat_.Swap(&(other->cmat_));
+  smat_.Swap(&(other->smat_));
+}
+
+
+void ExtractRowRangeWithPadding(
+    const GeneralMatrix &in,
+    int32 row_offset,
+    int32 num_rows,
+    GeneralMatrix *out) {
+  // make sure 'out' is empty to start with.
+  Matrix<BaseFloat> empty_mat;
+  *out = empty_mat;
+  if (num_rows == 0) return;
+  switch (in.Type()) {
+    case kFullMatrix: {
+      const Matrix<BaseFloat> &mat_in = in.GetFullMatrix();
+      int32 num_rows_in = mat_in.NumRows(), num_cols = mat_in.NumCols();
+      KALDI_ASSERT(num_rows_in > 0);  // we can't extract >0 rows from an empty
+                                      // matrix.
+      Matrix<BaseFloat> mat_out(num_rows, num_cols, kUndefined);
+      for (int32 row = 0; row < num_rows; row++) {
+        int32 row_in = row + row_offset;
+        if (row_in < 0) row_in = 0;
+        else if (row_in >= num_rows_in) row_in = num_rows_in - 1;
+        SubVector<BaseFloat> vec_in(mat_in, row_in),
+            vec_out(mat_out, row);
+        vec_out.CopyFromVec(vec_in);
+      }
+      out->SwapFullMatrix(&mat_out);
+      break;
+    }
+    case kSparseMatrix: {
+      const SparseMatrix<BaseFloat> &smat_in = in.GetSparseMatrix();
+      int32 num_rows_in = smat_in.NumRows(),
+          num_cols = smat_in.NumCols();
+      KALDI_ASSERT(num_rows_in > 0);  // we can't extract >0 rows from an empty
+                                      // matrix.
+      SparseMatrix<BaseFloat> smat_out(num_rows, num_cols);
+      for (int32 row = 0; row < num_rows; row++) {
+        int32 row_in = row + row_offset;
+        if (row_in < 0) row_in = 0;
+        else if (row_in >= num_rows_in) row_in = num_rows_in - 1;
+        smat_out.SetRow(row, smat_in.Row(row_in));
+      }
+      out->SwapSparseMatrix(&smat_out);
+      break;
+    }
+    case kCompressedMatrix: {
+      const CompressedMatrix &cmat_in = in.GetCompressedMatrix();
+      bool allow_padding = true;
+      CompressedMatrix cmat_out(cmat_in, row_offset, num_rows,
+                                0, cmat_in.NumCols(), allow_padding);
+      out->SwapCompressedMatrix(&cmat_out);
+      break;
+    }
+    default:
+      KALDI_ERR << "Bad matrix type.";
+  }
+}
+
 
 template class SparseVector<float>;
 template class SparseVector<double>;

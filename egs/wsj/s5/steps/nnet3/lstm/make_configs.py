@@ -1,230 +1,183 @@
 #!/usr/bin/env python
 
+# This script is deprecated, please use ../xconfig_to_configs.py
+
 from __future__ import print_function
 import os
 import argparse
 import sys
 import warnings
 import copy
+import imp
 
-# adds the input nodes and returns the descriptor
-def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0):
-    components = config_lines['components']
-    component_nodes = config_lines['component-nodes']
-    output_dim = 0
-    components.append('input-node name=input dim=' + str(feat_dim))
-    list = [('Offset(input, {0})'.format(n) if n != 0 else 'input') for n in splice_indexes]
-    output_dim += len(splice_indexes) * feat_dim
-    if args.ivector_dim > 0:
-        components.append('input-node name=ivector dim=' + str(ivector_dim))
-        list.append('ReplaceIndex(ivector, t, 0)')
-        output_dim += ivector_dim
-    splice_descriptor = "Append({0})".format(", ".join(list))
-    print(splice_descriptor)
-    return {'descriptor': splice_descriptor,
-            'dimension': output_dim}
+nodes = imp.load_source('nodes', 'steps/nnet3/components.py')
+sys.path.insert(0, 'steps')
+import libs.common as common_lib
 
-def AddLdaLayer(config_lines, name, input, lda_file):
-    components = config_lines['components']
-    component_nodes = config_lines['component-nodes']
+def GetArgs():
+    # we add compulsary arguments as named arguments for readability
+    parser = argparse.ArgumentParser(description="Writes config files and variables "
+                                                 "for LSTMs creation and training",
+                                     epilog="See steps/nnet3/lstm/train.sh for example.")
 
-    components.append('component name={0}_lda type=FixedAffineComponent matrix={1}'.format(name, lda_file))
-    component_nodes.append('component-node name={0}_lda component={0}_lda input={1}'.format(name, input['descriptor']))
+    # Only one of these arguments can be specified, and one of them has to
+    # be compulsarily specified
+    feat_group = parser.add_mutually_exclusive_group(required = True)
+    feat_group.add_argument("--feat-dim", type=int,
+                            help="Raw feature dimension, e.g. 13")
+    feat_group.add_argument("--feat-dir", type=str,
+                            help="Feature directory, from which we derive the feat-dim")
 
-    return {'descriptor':  '{0}_lda'.format(name),
-            'dimension': input['dimension']}
+    # only one of these arguments can be specified
+    ivector_group = parser.add_mutually_exclusive_group(required = False)
+    ivector_group.add_argument("--ivector-dim", type=int,
+                                help="iVector dimension, e.g. 100", default=0)
+    ivector_group.add_argument("--ivector-dir", type=str,
+                                help="iVector dir, which will be used to derive the ivector-dim  ", default=None)
 
-def AddAffineLayer(config_lines, name, input, output_dim, ng_affine_options = ""):
-    components = config_lines['components']
-    component_nodes = config_lines['component-nodes']
+    num_target_group = parser.add_mutually_exclusive_group(required = True)
+    num_target_group.add_argument("--num-targets", type=int,
+                                  help="number of network targets (e.g. num-pdf-ids/num-leaves)")
+    num_target_group.add_argument("--ali-dir", type=str,
+                                  help="alignment directory, from which we derive the num-targets")
+    num_target_group.add_argument("--tree-dir", type=str,
+                                  help="directory with final.mdl, from which we derive the num-targets")
 
-    components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], output_dim, ng_affine_options))
-    component_nodes.append("component-node name={0}_affine component={0}_affine input={1}".format(name, input['descriptor']))
+    # General neural network options
+    parser.add_argument("--splice-indexes", type=str,
+                        help="Splice indexes at input layer, e.g. '-3,-2,-1,0,1,2,3'", required = True, default="0")
+    parser.add_argument("--xent-regularize", type=float,
+                        help="For chain models, if nonzero, add a separate output for cross-entropy "
+                        "regularization (with learning-rate-factor equal to the inverse of this)",
+                        default=0.0)
+    parser.add_argument("--include-log-softmax", type=str, action=common_lib.StrToBoolAction,
+                        help="add the final softmax layer ", default=True, choices = ["false", "true"])
+    parser.add_argument("--max-change-per-component", type=float,
+                        help="Enforces per-component max change (except for the final affine layer). "
+                        "if 0 it would not be enforced.", default=0.75)
+    parser.add_argument("--max-change-per-component-final", type=float,
+                        help="Enforces per-component max change for the final affine layer. "
+                        "if 0 it would not be enforced.", default=1.5)
 
-    return {'descriptor':  '{0}_affine'.format(name),
-            'dimension': output_dim}
+    # LSTM options
+    parser.add_argument("--num-lstm-layers", type=int,
+                        help="Number of LSTM layers to be stacked", default=1)
+    parser.add_argument("--cell-dim", type=int,
+                        help="dimension of lstm-cell")
+    parser.add_argument("--recurrent-projection-dim", type=int,
+                        help="dimension of recurrent projection")
+    parser.add_argument("--non-recurrent-projection-dim", type=int,
+                        help="dimension of non-recurrent projection")
+    parser.add_argument("--hidden-dim", type=int,
+                        help="dimension of fully-connected layers")
 
-def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options = ""):
-    components = config_lines['components']
-    component_nodes = config_lines['component-nodes']
+    # Natural gradient options
+    parser.add_argument("--ng-per-element-scale-options", type=str,
+                        help="options to be supplied to NaturalGradientPerElementScaleComponent", default="")
+    parser.add_argument("--ng-affine-options", type=str,
+                        help="options to be supplied to NaturalGradientAffineComponent", default="")
 
-    components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], output_dim, ng_affine_options))
-    components.append("component name={0}_relu type=RectifiedLinearComponent dim={1}".format(name, output_dim))
-    components.append("component name={0}_renorm type=NormalizeComponent dim={1}".format(name, output_dim))
+    # Gradient clipper options
+    parser.add_argument("--norm-based-clipping", type=str, action=common_lib.StrToBoolAction,
+                        help="Outdated option retained for back compatibility, has no effect.",
+                        default=True, choices = ["false", "true"])
+    parser.add_argument("--clipping-threshold", type=float,
+                        help="clipping threshold used in BackpropTruncation components, "
+                        "if clipping-threshold=0 no clipping is done", default=30)
+    parser.add_argument("--zeroing-threshold", type=float,
+                        help="zeroing threshold used in BackpropTruncation components, "
+                        "if zeroing-threshold=0 no periodic zeroing is done", default=15.0)
+    parser.add_argument("--zeroing-interval", type=int,
+                        help="zeroing interval used in BackpropTruncation components", default=20)
+    parser.add_argument("--self-repair-scale-nonlinearity", type=float,
+                        help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=0.00001)
+    parser.add_argument("--self-repair-scale-clipgradient", type=float,
+                        help="Outdated option retained for back compatibility, has no effect.",
+                        default=1.0)
 
-    component_nodes.append("component-node name={0}_affine component={0}_affine input={1}".format(name, input['descriptor']))
-    component_nodes.append("component-node name={0}_relu component={0}_relu input={0}_affine".format(name))
-    component_nodes.append("component-node name={0}_renorm component={0}_renorm input={0}_relu".format(name))
+    # Delay options
+    parser.add_argument("--label-delay", type=int, default=None,
+                        help="option to delay the labels to make the lstm robust")
 
-    return {'descriptor':  '{0}_renorm'.format(name),
-            'dimension': output_dim}
+    parser.add_argument("--lstm-delay", type=str, default=None,
+                        help="option to have different delays in recurrence for each lstm")
 
+    parser.add_argument("config_dir",
+                        help="Directory to write config files and variables")
 
+    print(' '.join(sys.argv))
 
-def AddSoftmaxLayer(config_lines, name, input):
-    components = config_lines['components']
-    component_nodes = config_lines['component-nodes']
+    args = parser.parse_args()
+    args = CheckArgs(args)
 
-    components.append("component name={0}_log_softmax type=LogSoftmaxComponent dim={1}".format(name, input['dimension']))
-    component_nodes.append("component-node name={0}_log_softmax component={0}_log_softmax input={1}".format(name, input['descriptor']))
+    return args
 
-    return {'descriptor':  '{0}_log_softmax'.format(name),
-            'dimension': input['dimension']}
+def CheckArgs(args):
+    if not os.path.exists(args.config_dir):
+        os.makedirs(args.config_dir)
 
-def AddOutputNode(config_lines, input):
-    components = config_lines['components']
-    component_nodes = config_lines['component-nodes']
-    component_nodes.append('output-node name=output input={0}'.format(input['descriptor']))
+    ## Check arguments.
+    if args.feat_dir is not None:
+        args.feat_dim = common_lib.get_feat_dim(args.feat_dir)
 
-def AddFinalLayer(config_lines, input, output_dim, ng_affine_options = ""):
-    prev_layer_output = AddAffineLayer(config_lines, "Final", input, output_dim, ng_affine_options)
-    prev_layer_output = AddSoftmaxLayer(config_lines, "Final", prev_layer_output)
-    AddOutputNode(config_lines, prev_layer_output)
+    if args.ali_dir is not None:
+        args.num_targets = common_lib.get_number_of_leaves_from_tree(args.ali_dir)
+    elif args.tree_dir is not None:
+        args.num_targets = common_lib.get_number_of_leaves_from_tree(args.tree_dir)
 
-def AddLstmLayer(config_lines,
-                 name, input, cell_dim,
-                 recurrent_projection_dim = 0,
-                 non_recurrent_projection_dim = 0,
-                 clipping_threshold = 1.0,
-                 norm_based_clipping = "false",
-                 ng_per_element_scale_options = "",
-                 ng_affine_options = ""):
-    assert(recurrent_projection_dim >= 0 and non_recurrent_projection_dim >= 0)
-    components = config_lines['components']
-    component_nodes = config_lines['component-nodes']
+    if args.ivector_dir is not None:
+        args.ivector_dim = common_lib.get_ivector_dim(args.ivector_dir)
 
-    input_descriptor = input['descriptor']
-    input_dim = input['dimension']
-    name = name.strip()
+    if not args.feat_dim > 0:
+        raise Exception("feat-dim has to be postive")
 
-    if (recurrent_projection_dim == 0):
-        add_recurrent_projection = False
-        recurrent_projection_dim = cell_dim
-        recurrent_connection = "m_t"
+    if not args.num_targets > 0:
+        print(args.num_targets)
+        raise Exception("num_targets has to be positive")
+
+    if not args.ivector_dim >= 0:
+        raise Exception("ivector-dim has to be non-negative")
+
+    if not args.max_change_per_component >= 0 or not args.max_change_per_component_final >= 0:
+        raise Exception("max-change-per-component and max_change-per-component-final should be non-negative")
+
+    if (args.num_lstm_layers < 1):
+        sys.exit("--num-lstm-layers has to be a positive integer")
+    if (args.clipping_threshold < 0 or args.zeroing_threshold < 0):
+        sys.exit("--clipping-threshold and --zeroing-threshold have to be non-negative")
+    if not args.zeroing_interval > 0:
+        raise Exception("--zeroing-interval has to be positive")
+    if args.lstm_delay is None:
+        args.lstm_delay = [[-1]] * args.num_lstm_layers
     else:
-        add_recurrent_projection = True
-        recurrent_connection = "r_t"
-    if (non_recurrent_projection_dim == 0):
-        add_non_recurrent_projection = False
-    else:
-        add_non_recurrent_projection = True
+        try:
+            args.lstm_delay = ParseLstmDelayString(args.lstm_delay.strip())
+        except ValueError:
+            sys.exit("--lstm-delay has incorrect format value. Provided value is '{0}'".format(args.lstm_delay))
+        if len(args.lstm_delay) != args.num_lstm_layers:
+            sys.exit("--lstm-delay: Number of delays provided has to match --num-lstm-layers")
 
-    # Natural gradient per element scale parameters
-    ng_per_element_scale_options += " param-mean=0.0 param-stddev=1.0 "
-    # Parameter Definitions W*(* replaced by - to have valid names)
-    components.append("# Input gate control : W_i* matrices")
-    components.append("component name={0}_W_i-xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + recurrent_projection_dim, cell_dim, ng_affine_options))
-    components.append("# note : the cell outputs pass through a diagonal matrix")
-    components.append("component name={0}_w_ic type=NaturalGradientPerElementScaleComponent  dim={1} {2}".format(name, cell_dim, ng_per_element_scale_options))
-
-    components.append("# Forget gate control : W_f* matrices")
-    components.append("component name={0}_W_f-xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + recurrent_projection_dim, cell_dim, ng_affine_options))
-    components.append("# note : the cell outputs pass through a diagonal matrix")
-    components.append("component name={0}_w_fc type=NaturalGradientPerElementScaleComponent  dim={1} {2}".format(name, cell_dim, ng_per_element_scale_options))
-
-    components.append("#  Output gate control : W_o* matrices")
-    components.append("component name={0}_W_o-xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + recurrent_projection_dim, cell_dim, ng_affine_options))
-    components.append("# note : the cell outputs pass through a diagonal matrix")
-    components.append("component name={0}_w_oc type=NaturalGradientPerElementScaleComponent  dim={1} {2}".format(name, cell_dim, ng_per_element_scale_options))
-
-    components.append("# Cell input matrices : W_c* matrices")
-    components.append("component name={0}_W_c-xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + recurrent_projection_dim, cell_dim, ng_affine_options))
-
-
-    components.append("# Defining the non-linearities")
-    components.append("component name={0}_i type=SigmoidComponent dim={1}".format(name, cell_dim))
-    components.append("component name={0}_f type=SigmoidComponent dim={1}".format(name, cell_dim))
-    components.append("component name={0}_o type=SigmoidComponent dim={1}".format(name, cell_dim))
-    components.append("component name={0}_g type=TanhComponent dim={1}".format(name, cell_dim))
-    components.append("component name={0}_h type=TanhComponent dim={1}".format(name, cell_dim))
-
-    components.append("# Defining the cell computations")
-    components.append("component name={0}_c1 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
-    components.append("component name={0}_c2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
-    components.append("component name={0}_m type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
-    components.append("component name={0}_c type=ClipGradientComponent dim={1} clipping-threshold={2} norm-based-clipping={3} ".format(name, cell_dim, clipping_threshold, norm_based_clipping))
-
-    # c1_t and c2_t defined below
-    component_nodes.append("component-node name={0}_c_t component={0}_c input=Sum({0}_c1_t, {0}_c2_t)".format(name))
-    c_tminus1_descriptor = "IfDefined(Offset({0}_c_t, -1))".format(name)
-
-    component_nodes.append("# i_t")
-    component_nodes.append("component-node name={0}_i1 component={0}_W_i-xr input=Append({1}, IfDefined(Offset({0}_{2}, -1)))".format(name, input_descriptor, recurrent_connection))
-    component_nodes.append("component-node name={0}_i2 component={0}_w_ic  input={1}".format(name, c_tminus1_descriptor))
-    component_nodes.append("component-node name={0}_i_t component={0}_i input=Sum({0}_i1, {0}_i2)".format(name))
-
-    component_nodes.append("# f_t")
-    component_nodes.append("component-node name={0}_f1 component={0}_W_f-xr input=Append({1}, IfDefined(Offset({0}_{2}, -1)))".format(name, input_descriptor, recurrent_connection))
-    component_nodes.append("component-node name={0}_f2 component={0}_w_fc  input={1}".format(name, c_tminus1_descriptor))
-    component_nodes.append("component-node name={0}_f_t component={0}_f input=Sum({0}_f1,{0}_f2)".format(name))
-
-    component_nodes.append("# o_t")
-    component_nodes.append("component-node name={0}_o1 component={0}_W_o-xr input=Append({1}, IfDefined(Offset({0}_{2}, -1)))".format(name, input_descriptor, recurrent_connection))
-    component_nodes.append("component-node name={0}_o2 component={0}_w_oc input={0}_c_t".format(name))
-    component_nodes.append("component-node name={0}_o_t component={0}_o input=Sum({0}_o1, {0}_o2)".format(name))
-
-    component_nodes.append("# h_t")
-    component_nodes.append("component-node name={0}_h_t component={0}_h input={0}_c_t".format(name))
-
-    component_nodes.append("# g_t")
-    component_nodes.append("component-node name={0}_g1 component={0}_W_c-xr input=Append({1}, IfDefined(Offset({0}_{2}, -1)))".format(name, input_descriptor, recurrent_connection))
-    component_nodes.append("component-node name={0}_g_t component={0}_g input={0}_g1".format(name))
-
-    component_nodes.append("# parts of c_t")
-    component_nodes.append("component-node name={0}_c1_t component={0}_c1  input=Append({0}_f_t, {1})".format(name, c_tminus1_descriptor))
-    component_nodes.append("component-node name={0}_c2_t component={0}_c2 input=Append({0}_i_t, {0}_g_t)".format(name))
-
-    component_nodes.append("# m_t")
-    component_nodes.append("component-node name={0}_m_t component={0}_m input=Append({0}_o_t, {0}_h_t)".format(name))
-
-    # add the recurrent connections
-    if (add_recurrent_projection and add_non_recurrent_projection):
-        components.append("# projection matrices : Wrm and Wpm")
-        components.append("component name={0}_W-m type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, cell_dim, recurrent_projection_dim + non_recurrent_projection_dim, ng_affine_options))
-        components.append("component name={0}_r type=ClipGradientComponent dim={1} clipping-threshold={2} norm-based-clipping={3} ".format(name, recurrent_projection_dim, clipping_threshold, norm_based_clipping))
-        component_nodes.append("# r_t and p_t")
-        component_nodes.append("component-node name={0}_rp_t component={0}_W-m input={0}_m_t".format(name))
-        component_nodes.append("dim-range-node name={0}_r_t_preclip input-node={0}_rp_t dim-offset=0 dim={1}".format(name, recurrent_projection_dim))
-        component_nodes.append("component-node name={0}_r_t component={0}_r input={0}_r_t_preclip".format(name))
-        output_descriptor = '{0}_rp_t'.format(name)
-        output_dim = recurrent_projection_dim + non_recurrent_projection_dim
-
-    elif add_recurrent_projection:
-        components.append("# projection matrices : Wrm")
-        components.append("component name={0}_Wrm type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, cell_dim, recurrent_projection_dim, ng_affine_options))
-        components.append("component name={0}_r type=ClipGradientComponent dim={1} clipping-threshold={2} norm-based-clipping={3} ".format(name, recurrent_projection_dim, clipping_threshold, norm_based_clipping))
-        component_nodes.append("# r_t")
-        component_nodes.append("component-node name={0}_r_t_preclip component={0}_Wrm input={0}_m_t".format(name))
-        component_nodes.append("component-node name={0}_r_t component={0}_r input={0}_r_t_preclip".format(name))
-        output_descriptor = '{0}_r_t'.format(name)
-        output_dim = recurrent_projection_dim
-
-    else:
-        components.append("component name={0}_r type=ClipGradientComponent dim={1} clipping-threshold={2} norm-based-clipping={3} ".format(name, cell_dim, clipping_threshold, norm_based_clipping))
-        component_nodes.append("component-node name={0}_r_t component={0}_r input={0}_m_t".format(name))
-        output_descriptor = '{0}_r_t'.format(name)
-        output_dim = cell_dim
-
-    return {
-            'descriptor': output_descriptor,
-            'dimension':output_dim
-            }
+    return args
 
 def PrintConfig(file_name, config_lines):
     f = open(file_name, 'w')
     f.write("\n".join(config_lines['components'])+"\n")
     f.write("\n#Component nodes\n")
-    f.write("\n".join(config_lines['component-nodes']))
+    f.write("\n".join(config_lines['component-nodes'])+"\n")
     f.close()
 
-def ParseSpliceString(splice_indexes):
+def ParseSpliceString(splice_indexes, label_delay=None):
     ## Work out splice_array e.g. splice_array = [ [ -3,-2,...3 ], [0], [-2,2], .. [ -8,8 ] ]
     split1 = splice_indexes.split(" ");  # we already checked the string is nonempty.
     if len(split1) < 1:
         splice_indexes = "0"
 
-    left_context = 0
-    right_context = 0
+    left_context=0
+    right_context=0
+    if label_delay is not None:
+        left_context = -label_delay
+        right_context = label_delay
+
     splice_array = []
     try:
         for i in range(len(split1)):
@@ -255,129 +208,169 @@ def ParseSpliceString(splice_indexes):
             'num_hidden_layers':len(splice_array)
             }
 
-if __name__ == "__main__":
-    # we add compulsary arguments as named arguments for readability
-    parser = argparse.ArgumentParser(description="Writes config files and variables "
-                                                 "for LSTMs creation and training",
-                                     epilog="See steps/nnet3/lstm/train.sh for example.")
-    # General neural network options
-    parser.add_argument("--splice-indexes", type=str,
-                        help="Splice indexes at input layer, e.g. '-3,-2,-1,0,1,2,3' [compulsary argument]", default="0")
-    parser.add_argument("--feat-dim", type=int,
-                        help="Raw feature dimension, e.g. 13")
-    parser.add_argument("--ivector-dim", type=int,
-                        help="iVector dimension, e.g. 100", default=0)
+def ParseLstmDelayString(lstm_delay):
+    ## Work out lstm_delay e.g. "-1 [-1,1] -2" -> list([ [-1], [-1, 1], [-2] ])
+    split1 = lstm_delay.split(" ");
+    lstm_delay_array = []
+    try:
+        for i in range(len(split1)):
+            indexes = map(lambda x: int(x), split1[i].strip().lstrip('[').rstrip(']').strip().split(","))
+            if len(indexes) < 1:
+                raise ValueError("invalid --lstm-delay argument, too-short element: "
+                                + lstm_delay)
+            elif len(indexes) == 2 and indexes[0] * indexes[1] >= 0:
+                raise ValueError('Warning: ' + str(indexes) + ' is not a standard BLSTM mode. There should be a negative delay for the forward, and a postive delay for the backward.')
+            if len(indexes) == 2 and indexes[0] > 0: # always a negative delay followed by a postive delay
+                indexes[0], indexes[1] = indexes[1], indexes[0]
+            lstm_delay_array.append(indexes)
+    except ValueError as e:
+        raise ValueError("invalid --lstm-delay argument " + lstm_delay + str(e))
 
-    # LSTM options
-    parser.add_argument("--num-lstm-layers", type=int,
-                        help="Number of LSTM layers to be stacked", default=1)
-    parser.add_argument("--cell-dim", type=int,
-                        help="dimension of lstm-cell")
-    parser.add_argument("--recurrent-projection-dim", type=int,
-                        help="dimension of recurrent projection")
-    parser.add_argument("--non-recurrent-projection-dim", type=int,
-                        help="dimension of non-recurrent projection")
-    parser.add_argument("--hidden-dim", type=int,
-                        help="dimension of fully-connected layers")
-    parser.add_argument("--chunk-left-context", type=int,
-                        help="number of frames used to estimate the state of the first frame in truncated BPTT ", default=20)
-
-    # Natural gradient options
-    parser.add_argument("--ng-per-element-scale-options", type=str,
-                        help="options to be supplied to NaturalGradientPerElementScaleComponent", default="")
-    parser.add_argument("--ng-affine-options", type=str,
-                        help="options to be supplied to NaturalGradientAffineComponent", default="")
-
-    # Gradient clipper options
-    parser.add_argument("--norm-based-clipping", type=str,
-                        help="use norm based clipping in ClipGradient components ", default="false", choices = ["false", "true"])
-    parser.add_argument("--clipping-threshold", type=float,
-                        help="clipping threshold used in ClipGradient components, if clipping-threshold=0 no clipping is done", default=15)
-
-    parser.add_argument("--num-targets", type=int,
-                        help="number of network targets (e.g. num-pdf-ids/num-leaves)")
-    parser.add_argument("config_dir",
-                        help="Directory to write config files and variables")
-
-    print(' '.join(sys.argv))
-
-    args = parser.parse_args()
-
-    if not os.path.exists(args.config_dir):
-        os.makedirs(args.config_dir)
-
-    ## Check arguments.
-    if args.splice_indexes is None:
-        sys.exit("--splice-indexes argument is required")
-    if args.feat_dim is None or not (args.feat_dim > 0):
-        sys.exit("--feat-dim argument is required")
-    if args.num_targets is None or not (args.num_targets > 0):
-        sys.exit("--feat-dim argument is required")
-    if (args.num_lstm_layers < 1):
-        sys.exit("--num-lstm-layers has to be a positive integer")
-    if (args.chunk_left_context < 0):
-        sys.exit("--chunk-left-context has to be a non-negative integer")
-    if (args.clipping_threshold < 0):
-        sys.exit("--clipping-threshold has to be a non-negative")
+    return lstm_delay_array
 
 
-
-    parsed_splice_output = ParseSpliceString(args.splice_indexes.strip())
-    left_context = parsed_splice_output['left_context']
-    right_context = parsed_splice_output['right_context']
-    num_hidden_layers = parsed_splice_output['num_hidden_layers']
-    splice_indexes = parsed_splice_output['splice_indexes']
-
-    if (num_hidden_layers < args.num_lstm_layers):
-        sys.exit("--num-lstm-layers : number of lstm layers has to be greater than number of layers, decided based on splice-indexes")
-
-    left_context = left_context + args.chunk_left_context
-    right_context = right_context
-
-    # write the files used by other scripts like steps/nnet3/get_egs.sh
-    f = open(args.config_dir + "/vars", "w")
-    print('left_context=' + str(left_context), file=f)
-    print('right_context=' + str(right_context), file=f)
-    print('num_hidden_layers=' + str(num_hidden_layers), file=f)
-    # print('initial_right_context=' + str(splice_array[0][-1]), file=f)
-    f.close()
+def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
+                splice_indexes, lstm_delay, cell_dim, hidden_dim,
+                recurrent_projection_dim, non_recurrent_projection_dim,
+                num_lstm_layers, num_hidden_layers,
+                norm_based_clipping, clipping_threshold, zeroing_threshold, zeroing_interval,
+                ng_per_element_scale_options, ng_affine_options,
+                label_delay, include_log_softmax, xent_regularize,
+                self_repair_scale_nonlinearity, self_repair_scale_clipgradient,
+                max_change_per_component, max_change_per_component_final):
 
     config_lines = {'components':[], 'component-nodes':[]}
 
     config_files={}
-    prev_layer_output = AddInputLayer(config_lines, args.feat_dim, splice_indexes[0], args.ivector_dim)
+    prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0], ivector_dim)
 
     # Add the init config lines for estimating the preconditioning matrices
     init_config_lines = copy.deepcopy(config_lines)
     init_config_lines['components'].insert(0, '# Config file for initializing neural network prior to')
     init_config_lines['components'].insert(0, '# preconditioning matrix computation')
-    AddOutputNode(init_config_lines, prev_layer_output)
-    config_files[args.config_dir + '/init.config'] = init_config_lines
+    nodes.AddOutputLayer(init_config_lines, prev_layer_output)
+    config_files[config_dir + '/init.config'] = init_config_lines
 
-    prev_layer_output = AddLdaLayer(config_lines, "L0", prev_layer_output, args.config_dir + '/lda.mat')
+    prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
 
-    for i in range(args.num_lstm_layers):
-        prev_layer_output = AddLstmLayer(config_lines, "Lstm{0}".format(i+1), prev_layer_output, args.cell_dim,
-                                         args.recurrent_projection_dim, args.non_recurrent_projection_dim,
-                                         args.clipping_threshold, args.norm_based_clipping,
-                                         args.ng_per_element_scale_options, args.ng_affine_options)
+    for i in range(num_lstm_layers):
+        if len(lstm_delay[i]) == 2: # add a bi-directional LSTM layer
+            prev_layer_output = nodes.AddBLstmLayer(config_lines = config_lines,
+                                                    name = "BLstm{0}".format(i+1),
+                                                    input = prev_layer_output,
+                                                    cell_dim = cell_dim,
+                                                    recurrent_projection_dim = recurrent_projection_dim,
+                                                    non_recurrent_projection_dim = non_recurrent_projection_dim,
+                                                    clipping_threshold = clipping_threshold,
+                                                    zeroing_threshold = zeroing_threshold,
+                                                    zeroing_interval = zeroing_interval,
+                                                    ng_per_element_scale_options = ng_per_element_scale_options,
+                                                    ng_affine_options = ng_affine_options,
+                                                    lstm_delay = lstm_delay[i],
+                                                    self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
+                                                    max_change_per_component = max_change_per_component)
+        else: # add a uni-directional LSTM layer
+            prev_layer_output = nodes.AddLstmLayer(config_lines = config_lines,
+                                                   name = "Lstm{0}".format(i+1),
+                                                   input = prev_layer_output,
+                                                   cell_dim = cell_dim,
+                                                   recurrent_projection_dim = recurrent_projection_dim,
+                                                   non_recurrent_projection_dim = non_recurrent_projection_dim,
+                                                   clipping_threshold = clipping_threshold,
+                                                   zeroing_threshold = zeroing_threshold,
+                                                   zeroing_interval = zeroing_interval,
+                                                   ng_per_element_scale_options = ng_per_element_scale_options,
+                                                   ng_affine_options = ng_affine_options,
+                                                   lstm_delay = lstm_delay[i][0],
+                                                   self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
+                                                   max_change_per_component = max_change_per_component)
         # make the intermediate config file for layerwise discriminative
         # training
-        AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options)
-        config_files['{0}/layer{1}.config'.format(args.config_dir, i+1)] = config_lines
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, max_change_per_component = max_change_per_component_final, label_delay = label_delay, include_log_softmax = include_log_softmax)
+
+
+        if xent_regularize != 0.0:
+            nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                                include_log_softmax = True, label_delay = label_delay,
+                                max_change_per_component = max_change_per_component_final,
+                                name_affix = 'xent')
+
+        config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 
-    for i in range(args.num_lstm_layers, num_hidden_layers):
-        prev_layer_output = AddAffRelNormLayer(config_lines, "L{0}".format(i+1),
-                                               prev_layer_output, args.hidden_dim,
-                                               args.ng_affine_options)
+    for i in range(num_lstm_layers, num_hidden_layers):
+        prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "L{0}".format(i+1),
+                                               prev_layer_output, hidden_dim,
+                                               ng_affine_options, self_repair_scale = self_repair_scale_nonlinearity, max_change_per_component = max_change_per_component)
         # make the intermediate config file for layerwise discriminative
         # training
-        AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options)
-        config_files['{0}/layer{1}.config'.format(args.config_dir, i+1)] = config_lines
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, max_change_per_component = max_change_per_component_final, label_delay = label_delay, include_log_softmax = include_log_softmax)
+
+        if xent_regularize != 0.0:
+            nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                                include_log_softmax = True, label_delay = label_delay,
+                                max_change_per_component = max_change_per_component_final,
+                                name_affix = 'xent')
+
+        config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 
     # printing out the configs
     # init.config used to train lda-mllt train
     for key in config_files.keys():
         PrintConfig(key, config_files[key])
+
+
+
+
+def ProcessSpliceIndexes(config_dir, splice_indexes, label_delay, num_lstm_layers):
+    parsed_splice_output = ParseSpliceString(splice_indexes.strip(), label_delay)
+    left_context = parsed_splice_output['left_context']
+    right_context = parsed_splice_output['right_context']
+    num_hidden_layers = parsed_splice_output['num_hidden_layers']
+    splice_indexes = parsed_splice_output['splice_indexes']
+
+    if (num_hidden_layers < num_lstm_layers):
+        raise Exception("num-lstm-layers : number of lstm layers has to be greater than number of layers, decided based on splice-indexes")
+
+    # write the files used by other scripts like steps/nnet3/get_egs.sh
+    f = open(config_dir + "/vars", "w")
+    print('model_left_context=' + str(left_context), file=f)
+    print('model_right_context=' + str(right_context), file=f)
+    print('num_hidden_layers=' + str(num_hidden_layers), file=f)
+    # print('initial_right_context=' + str(splice_array[0][-1]), file=f)
+    f.close()
+
+    return [left_context, right_context, num_hidden_layers, splice_indexes]
+
+
+def Main():
+    args = GetArgs()
+    [left_context, right_context, num_hidden_layers, splice_indexes] = ProcessSpliceIndexes(args.config_dir, args.splice_indexes, args.label_delay, args.num_lstm_layers)
+
+    MakeConfigs(config_dir = args.config_dir,
+                feat_dim = args.feat_dim, ivector_dim = args.ivector_dim,
+                num_targets = args.num_targets,
+                splice_indexes = splice_indexes, lstm_delay = args.lstm_delay,
+                cell_dim = args.cell_dim,
+                hidden_dim = args.hidden_dim,
+                recurrent_projection_dim = args.recurrent_projection_dim,
+                non_recurrent_projection_dim = args.non_recurrent_projection_dim,
+                num_lstm_layers = args.num_lstm_layers,
+                num_hidden_layers = num_hidden_layers,
+                norm_based_clipping = args.norm_based_clipping,
+                clipping_threshold = args.clipping_threshold,
+                zeroing_threshold = args.zeroing_threshold,
+                zeroing_interval = args.zeroing_interval,
+                ng_per_element_scale_options = args.ng_per_element_scale_options,
+                ng_affine_options = args.ng_affine_options,
+                label_delay = args.label_delay,
+                include_log_softmax = args.include_log_softmax,
+                xent_regularize = args.xent_regularize,
+                self_repair_scale_nonlinearity = args.self_repair_scale_nonlinearity,
+                self_repair_scale_clipgradient = args.self_repair_scale_clipgradient,
+                max_change_per_component = args.max_change_per_component,
+                max_change_per_component_final = args.max_change_per_component_final)
+
+if __name__ == "__main__":
+    Main()

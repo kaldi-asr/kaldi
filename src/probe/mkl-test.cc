@@ -1,4 +1,4 @@
-// mkl-test.cc
+// probe/mkl-test.cc
 
 // Copyright (c) 2015, Johns Hopkins University (Yenda Trmal<jtrmal@gmail.com>)
 
@@ -17,10 +17,10 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include <iostream> 
+#include <iostream>
 #include <mkl.h>
 
-int main(void) 
+int main(void)
 {
   int len=512;
   char buf[len+1];
@@ -30,7 +30,7 @@ int main(void)
 
   float a[] = { 0.11, 0.12,
                 0.21, 0.22 };
- 
+
   float b[] = { 1011, 1012,
                 1031, 1032 };
 
@@ -39,6 +39,6 @@ int main(void)
 
   cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 2, 2, 2, 1.0, a, 2, b, 2, 0.0, c,2);
 
-  return 0; 
+  return 0;
 }
 

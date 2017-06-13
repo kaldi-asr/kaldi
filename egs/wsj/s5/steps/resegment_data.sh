@@ -41,6 +41,9 @@ rm $data_out/* 2>/dev/null # Old stuff that's partial can cause problems later i
                            # thrown out.
 mkdir -p $dir/log || exit 1;
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $alidir/phones.txt $dir || exit 1;
+
 for f in $data/feats.scp $lang/phones.txt $alidir/ali.1.gz $alidir/num_jobs; do
   if [ ! -f $f ]; then 
     echo "$0: no such file $f"

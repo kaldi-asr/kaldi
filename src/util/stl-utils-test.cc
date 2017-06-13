@@ -42,7 +42,7 @@ static void TestIsSortedAndUniq() {
     for (int i = 0;i < len;i++)
       vec.push_back(Rand() % 10);
 
-    if (! IsSortedAndUniq(vec)) {
+    if (!IsSortedAndUniq(vec)) {
       bool ok = false;
       for (size_t i = 0; i+1 < (size_t)len; i++)
         if (vec[i] >= vec[i+1]) ok = true;  // found out-of-order or dup.
@@ -88,9 +88,10 @@ static void TestSortAndUniq() {
       if (ok)  vec.push_back(n);
     }
     // don't sort.
-    std::vector<int> vec2(vec);  // make sure all things in "vec" represented in vec2.
+    std::vector<int> vec2(vec);  // make sure all things in "vec" represented
+                                 // in vec2.
     int len2 = Rand()%10;
-    if (vec.size() > 0) // add more, randomly.
+    if (vec.size() > 0)  // add more, randomly.
       for (int i = 0;i < len2;i++)
         vec2.push_back(vec[Rand()%vec.size()]);
     SortAndUniq(&vec2);
@@ -120,7 +121,8 @@ void TestCopyMapToVector() {
     std::vector<std::pair<int, int> > v;
     CopyMapToVector(mp, &v);
     KALDI_ASSERT(mp.size() == v.size());
-    for (size_t i = 0;i < v.size();i++) KALDI_ASSERT(mp[v[i].first] == v[i].second);
+    for (size_t i = 0;i < v.size();i++)
+      KALDI_ASSERT(mp[v[i].first] == v[i].second);
   }
 }
 
@@ -146,7 +148,8 @@ void TestCopyMapValuesToVector() {
     CopyMapValuesToVector(mp, &v);
     KALDI_ASSERT(mp.size() == v.size());
     int i = 0;
-    for (std::map<int, int>::iterator iter = mp.begin(); iter != mp.end(); iter++) {
+    for (std::map<int, int>::iterator iter = mp.begin(); iter != mp.end();
+         iter++) {
       KALDI_ASSERT(v[i++] == iter->second);
     }
   }
@@ -189,7 +192,11 @@ void TestContainsNullPointers() {
     std::vector<char*> vec;
     int sz = Rand() % 3;
     bool is_null = false;
-    for (int i = 0;i < sz;i++) { vec.push_back( reinterpret_cast<char*>(static_cast<intptr_t>(Rand() % 2))); if (vec.back() == NULL) is_null = true; }
+    for (int i = 0;i < sz;i++) {
+      vec.push_back(reinterpret_cast<char*>(static_cast<intptr_t>(Rand() % 2)));
+      if (vec.back() == NULL)
+        is_null = true;
+    }
     KALDI_ASSERT(is_null == ContainsNullPointers(vec));
   }
 }
@@ -199,7 +206,7 @@ void TestReverseVector() {
     std::vector<int> vec;
     int sz = Rand() % 5;
     for (int i = 0;i < sz;i++)
-      vec.push_back( Rand() % 4) ;
+      vec.push_back(Rand() % 4);
     std::vector<int> vec2(vec), vec3(vec);
     ReverseVector(&vec2);
     ReverseVector(&vec2);
@@ -220,7 +227,8 @@ void TestMergePairVectorSumming() {
       int16 val = (Rand() % 5) - 2;
       v.push_back(std::make_pair(key, val));
       if (m.count(key) == 0) m[key] = val;
-      else m[key] += val;
+      else
+        m[key] += val;
     }
     MergePairVectorSumming(&v);
     KALDI_ASSERT(IsSorted(v));
@@ -235,15 +243,14 @@ void TestMergePairVectorSumming() {
         size_t i;
         for (i = 0; i < v.size(); i++)
           if (v[i].first == iter->first) break;
-        KALDI_ASSERT(i != v.size()); // Or we didn't find this
+        KALDI_ASSERT(i != v.size());  // Or we didn't find this
         // key in v.
       }
     }
   }
 }
-  
 
-} // end namespace kaldi
+}  // end namespace kaldi
 
 int main() {
   using namespace kaldi;

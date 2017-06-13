@@ -26,6 +26,7 @@
 #include "fstext/fstext-lib.h"
 #include "decoder/decoder-wrappers.h"
 #include "nnet3/nnet-am-decodable-simple.h"
+#include "nnet3/nnet-utils.h"
 #include "base/timer.h"
 
 
@@ -38,7 +39,7 @@ int main(int argc, char *argv[]) {
     using namespace kaldi::nnet3;
     typedef kaldi::int32 int32;
     using fst::SymbolTable;
-    using fst::VectorFst;
+    using fst::Fst;
     using fst::StdArc;
 
     const char *usage =
@@ -48,10 +49,9 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     Timer timer;
     bool allow_partial = false;
-    BaseFloat acoustic_scale = 0.1;
     LatticeFasterDecoderConfig config;
-    DecodableAmNnetSimpleOptions decodable_opts;
-    
+    NnetSimpleComputationOptions decodable_opts;
+
     std::string word_syms_filename;
     std::string ivector_rspecifier,
         online_ivector_rspecifier,
@@ -72,9 +72,9 @@ int main(int argc, char *argv[]) {
     po.Register("online-ivector-period", &online_ivector_period, "Number of frames "
                 "between iVectors in matrices supplied to the --online-ivectors "
                 "option");
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() < 4 || po.NumArgs() > 6) {
       po.PrintUsage();
       exit(1);
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
         lattice_wspecifier = po.GetArg(4),
         words_wspecifier = po.GetOptArg(5),
         alignment_wspecifier = po.GetOptArg(6);
-    
+
     TransitionModel trans_model;
     AmNnetSimple am_nnet;
     {
@@ -94,6 +94,8 @@ int main(int argc, char *argv[]) {
       Input ki(model_in_filename, &binary);
       trans_model.Read(ki.Stream(), binary);
       am_nnet.Read(ki.Stream(), binary);
+      SetBatchnormTestMode(true, &(am_nnet.GetNnet()));
+      SetDropoutTestMode(true, &(am_nnet.GetNnet()));
     }
 
     bool determinize = config.determinize_lattice;
@@ -108,12 +110,12 @@ int main(int argc, char *argv[]) {
         online_ivector_rspecifier);
     RandomAccessBaseFloatVectorReaderMapped ivector_reader(
         ivector_rspecifier, utt2spk_rspecifier);
-    
+
     Int32VectorWriter words_writer(words_wspecifier);
     Int32VectorWriter alignment_writer(alignment_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
-    if (word_syms_filename != "") 
+    if (word_syms_filename != "")
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
         KALDI_ERR << "Could not read symbol table from file "
                    << word_syms_filename;
@@ -121,16 +123,21 @@ int main(int argc, char *argv[]) {
     double tot_like = 0.0;
     kaldi::int64 frame_count = 0;
     int num_success = 0, num_fail = 0;
+    // this compiler object allows caching of computations across
+    // different utterances.
+    CachingOptimizingCompiler compiler(am_nnet.GetNnet(),
+                                       decodable_opts.optimize_config);
 
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
-      
+
       // Input FST is just one FST, not a table of FSTs.
-      VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_str);
+      Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
+      timer.Reset();
 
       {
         LatticeFasterDecoder decoder(*decode_fst, config);
-    
+
         for (; !feature_reader.Done(); feature_reader.Next()) {
           std::string utt = feature_reader.Key();
           const Matrix<BaseFloat> &features (feature_reader.Value());
@@ -159,20 +166,21 @@ int main(int argc, char *argv[]) {
               online_ivectors = &online_ivector_reader.Value(utt);
             }
           }
-          
+
           DecodableAmNnetSimple nnet_decodable(
               decodable_opts, trans_model, am_nnet,
               features, ivector, online_ivectors,
-              online_ivector_period);
+              online_ivector_period, &compiler);
 
           double like;
           if (DecodeUtteranceLatticeFaster(
                   decoder, nnet_decodable, trans_model, word_syms, utt,
-                  acoustic_scale, determinize, allow_partial, &alignment_writer,
-                  &words_writer, &compact_lattice_writer, &lattice_writer,
+                  decodable_opts.acoustic_scale, determinize, allow_partial,
+                  &alignment_writer, &words_writer, &compact_lattice_writer,
+                  &lattice_writer,
                   &like)) {
             tot_like += like;
-            frame_count += features.NumRows();
+            frame_count += nnet_decodable.NumFramesReady();
             num_success++;
           } else num_fail++;
         }
@@ -180,7 +188,7 @@ int main(int argc, char *argv[]) {
       delete decode_fst; // delete this only after decoder goes out of scope.
     } else { // We have different FSTs for different utterances.
       SequentialTableReader<fst::VectorFstHolder> fst_reader(fst_in_str);
-      RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);          
+      RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
       for (; !fst_reader.Done(); fst_reader.Next()) {
         std::string utt = fst_reader.Key();
         if (!feature_reader.HasKey(utt)) {
@@ -195,7 +203,7 @@ int main(int argc, char *argv[]) {
           num_fail++;
           continue;
         }
-        
+
         LatticeFasterDecoder decoder(fst_reader.Value(), config);
 
         const Matrix<BaseFloat> *online_ivectors = NULL;
@@ -218,35 +226,39 @@ int main(int argc, char *argv[]) {
             online_ivectors = &online_ivector_reader.Value(utt);
           }
         }
-        
+
         DecodableAmNnetSimple nnet_decodable(
             decodable_opts, trans_model, am_nnet,
             features, ivector, online_ivectors,
-            online_ivector_period);
-        
+            online_ivector_period, &compiler);
+
         double like;
         if (DecodeUtteranceLatticeFaster(
                 decoder, nnet_decodable, trans_model, word_syms, utt,
-                acoustic_scale, determinize, allow_partial, &alignment_writer,
-                &words_writer, &compact_lattice_writer, &lattice_writer,
-                &like)) {
+                decodable_opts.acoustic_scale, determinize, allow_partial,
+                &alignment_writer, &words_writer, &compact_lattice_writer,
+                &lattice_writer, &like)) {
           tot_like += like;
-          frame_count += features.NumRows();
+          frame_count += nnet_decodable.NumFramesReady();
           num_success++;
         } else num_fail++;
       }
     }
-      
+
+    kaldi::int64 input_frame_count =
+        frame_count * decodable_opts.frame_subsampling_factor;
+
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "
-              << (elapsed*100.0/frame_count);
+              << (elapsed * 100.0 / input_frame_count);
     KALDI_LOG << "Done " << num_success << " utterances, failed for "
               << num_fail;
-    KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count) << " over "
-              << frame_count<<" frames.";
+    KALDI_LOG << "Overall log-likelihood per frame is "
+              << (tot_like / frame_count) << " over "
+              << frame_count << " frames.";
 
-    if (word_syms) delete word_syms;
+    delete word_syms;
     if (num_success != 0) return 0;
     else return 1;
   } catch(const std::exception &e) {

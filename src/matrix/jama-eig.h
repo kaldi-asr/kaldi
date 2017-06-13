@@ -912,8 +912,8 @@ EigenvalueDecomposition<Real>::~EigenvalueDecomposition() {
   delete [] d_;
   delete [] e_;
   delete [] V_;
-  if (H_) delete [] H_;
-  if (ort_) delete [] ort_;
+  delete [] H_;
+  delete [] ort_;
 }
 
 // see function MatrixBase<Real>::Eig in kaldi-matrix.cc

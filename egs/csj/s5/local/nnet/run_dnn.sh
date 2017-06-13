@@ -20,27 +20,28 @@
 
 . ./path.sh ## Source the tools/utils (import the queue.pl)
 
-
+if [ -e data/train_dev ] ;then
+    dev_set=train_dev
+fi
 
 # Config:
 config=conf/config_opt
 . $config
-gmmdir=exp/tri4
+gmmdir=exp/tri4 
 data_fmllr=data-fmllr-tri4
 stage=0 # resume training with --stage=N
 # End of config.
 
 . utils/parse_options.sh || exit 1;
 
-
 if [ $stage -le 0 ]; then
   # Store fMLLR features, so we can train on them easily,
   # evaluation set
-    for eval_num in `seq 3`; do
-	dir=$data_fmllr/eval${eval_num}
+    for eval_num in eval1 eval2 eval3 $dev_set ; do
+	dir=$data_fmllr/$eval_num
 	steps/nnet/make_fmllr_feats.sh --nj 10 --cmd "$train_cmd" \
-	    --transform-dir $gmmdir/decode_eval${eval_num}_csj \
-     $dir data/eval${eval_num} $gmmdir $dir/log $dir/data || exit 1
+	    --transform-dir $gmmdir/decode_${eval_num}_csj \
+     $dir data/$eval_num $gmmdir $dir/log $dir/data || exit 1
     done
   # train
   dir=$data_fmllr/train_nodup
@@ -60,7 +61,7 @@ if [ $stage -le 1 ]; then
 fi
 
 
-if [ $stage -le 2 ]; then  
+if [ $stage -le 2 ]; then 
   # Train the DNN optimizing per-frame cross-entropy.
   dir=exp/dnn5b_pretrain-dbn_dnn
   ali=${gmmdir}_ali_nodup
@@ -72,9 +73,9 @@ if [ $stage -le 2 ]; then
     steps/nnet/train.sh --config $config --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate $learn_rate \
     $data_fmllr/train_nodup_tr90 $data_fmllr/train_nodup_cv10 data/lang $ali $ali $dir || exit 1;
   # Decode with the trigram csj language model.
-  for eval_num in `seq 3`; do
+  for eval_num in eval1 eval2 eval3 $dev_set ; do
       steps/nnet/decode.sh --nj 10 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.08333 \
-	  $gmmdir/graph_csj_tg $data_fmllr/eval${eval_num} $dir/decode_eval${eval_num}_csj || exit 1;
+	  $gmmdir/graph_csj_tg $data_fmllr/$eval_num $dir/decode_${eval_num}_csj || exit 1;
   done
 fi
 
@@ -86,7 +87,7 @@ dir=exp/dnn5b_pretrain-dbn_dnn_smbr
 srcdir=exp/dnn5b_pretrain-dbn_dnn
 acwt=0.0909
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 3 ]; then 
   # First we generate lattices and alignments:
   steps/nnet/align.sh --nj 10 --cmd "$train_cmd" \
     $data_fmllr/train_nodup data/lang $srcdir ${srcdir}_ali || exit 1;
@@ -99,12 +100,12 @@ if [ $stage -le 4 ]; then
   steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 1 --acwt $acwt --do-smbr true \
     $data_fmllr/train_nodup data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
   # Decode (reuse HCLG graph)
-  for eval_num in `seq 3`; do
+  for eval_num in eval1 eval2 eval3 $dev_set ; do
       for ITER in 1; do
 	  # Decode with the trigram csj language model. 
 	  steps/nnet/decode.sh --nj 10 --cmd "$decode_cmd" --config conf/decode_dnn.config \
 	      --nnet $dir/${ITER}.nnet --acwt $acwt \
-	      $gmmdir/graph_csj_tg $data_fmllr/eval${eval_num} $dir/decode_eval${eval_num}_csj || exit 1;
+	      $gmmdir/graph_csj_tg $data_fmllr/$eval_num $dir/decode_${eval_num}_csj || exit 1;
       done 
   done
 fi
@@ -127,12 +128,12 @@ if [ $stage -le 6 ]; then
   steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 2 --acwt $acwt --do-smbr true \
     $data_fmllr/train_nodup data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
   # Decode (reuse HCLG graph)
-  for eval_num in `seq 3`; do
+  for eval_num in eval1 eval2 eval3 $dev_set ; do
       for ITER in 1 2; do
 	  # Decode with the trigram swbd language model. 
 	  steps/nnet/decode.sh --nj 10 --cmd "$decode_cmd" --config conf/decode_dnn.config \
 	      --nnet $dir/${ITER}.nnet --acwt $acwt \
-	      $gmmdir/graph_csj_tg $data_fmllr/eval${eval_num} $dir/decode_eval${eval_num}_csj || exit 1;
+	      $gmmdir/graph_csj_tg $data_fmllr/$eval_num $dir/decode_${eval_num}_csj || exit 1;
       done 
   done
 fi

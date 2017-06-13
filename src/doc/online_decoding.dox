@@ -29,6 +29,8 @@ namespace kaldi {
  because "real-time decoding" can also be used to mean decoding whose speed is
  not slower than real time, even if it is applied in batch mode).
 
+ Note: see \subpage online_programs for some now-deprecated online recognizers.
+
  The approach that we took with Kaldi was to focus for the first few years
  on off-line recognition, in order to reach state of the art performance
  as quickly as possible.  Now we are making more of an effort to support
@@ -40,11 +42,11 @@ namespace kaldi {
  deprecated, and may eventually be removed from the trunk (but remain in
  ^/branches/complete).
 
- There is some documentation for the older setup \ref online_programs "here", 
+ There is some documentation for the older setup \ref online_programs "here",
  but we recommend to read this page first.
 
   \section online_decoding_scope Scope of online decoding in Kaldi
-   
+
   In Kaldi we aim to provide facilities for online decoding as a library.
   That is, we aim to provide the functionality for online decoding but
   not necessarily command-line tools for it.  The reason is, different
@@ -59,7 +61,7 @@ namespace kaldi {
   neural net models (see section \ref online_decoding_nnet2).
 
   \section GMM-based online decoding
- 
+
   The program online2-wav-gmm-latgen-faster.cc is currently the primary example program
   for the GMM-based online-decoding setup.  It reads in whole wave files but internally it processes them chunk by chunk with
   no dependency on the future.  In the example script egs/rm/s5/local/online/run_gmm.sh
@@ -68,7 +70,7 @@ namespace kaldi {
   procedure within a typical batch-processing framework, so that you can easily
   evaluate word error rates.  We plan to add similar programs for SGMMs and DNNs.
   In order to actually do online decoding, you would have to modify this program.
-  We should note (and this is obvious to speech recognition people but not to outsiders) 
+  We should note (and this is obvious to speech recognition people but not to outsiders)
   that the audio sample rate needs to exactly match what you used in training (and
   oversampling won't work but subsampling will).
 
@@ -77,11 +79,11 @@ namespace kaldi {
   In Kaldi, when we use the term "decoder" we don't generally mean the entire decoding
   program.  We mean the inner decoder object, generally of the type LatticeFasterDecoder.
   This object takes the decoding graph (as an FST), and the decodable object
-  (see \ref decodable_interface).  All the decoders naturally support online decoding; it 
+  (see \ref decodable_interface).  All the decoders naturally support online decoding; it
   is the code in the decoding program (but outside of the decoder) that needs to
   change.  We should note, though, a difference in how you need to invoke the decoder
   for online decoding.
-     - In the old online-decoding setup (in online/), if "decoder" is some decoder 
+     - In the old online-decoding setup (in online/), if "decoder" is some decoder
        (e.g. of type LatticeFasterDecoder) and "decodable" is a decodable object of
        a suitable type, you would call decoder.Decode(&decodable),
        and this call would block until the input was finished (because the decoder
@@ -90,16 +92,16 @@ namespace kaldi {
        decoder.InitDecoding(), and then each time you get more feature data, you
        would call decoder.AdvanceDecoding().  For offline use, you can still call
        Decode().
-  
+
   We should mention here that in the old online setup, there is a decoder called
   OnlineFasterDecoder.  Do not assume from the name of this that it is the only
   decoder to support online decoding.  The special thing about the OnlineFasterDecoder
   is that it has the ability to work out which words are going to be "inevitably"
   decoded regardless of what audio data comes in in future, so you can output those
   words.  This is useful in an online-transcription context, and if there seems to
-  be a demand for this, we may move that decoder from online/ into the decoder/ 
-  directory and make it compatible with the new online setup.  
-  
+  be a demand for this, we may move that decoder from online/ into the decoder/
+  directory and make it compatible with the new online setup.
+
 
   \section online_decoding_feature Feature extraction in online decoding
 
@@ -113,14 +115,14 @@ namespace kaldi {
   (OnlineFeatureInterface::GetFrame()) and how it says how many frames
   are ready (OnlineFeatureInterface::NumFramesReady()), but does not
   say how it obtains those features.  That is up to the child class.
-  
+
   In online-feature.h we define classes OnlineMfcc and OnlinePlp which
-  are the lowest-level features.  They have a member function 
+  are the lowest-level features.  They have a member function
   OnlineMfccOrPlp::AcceptWaveform(), which the user should call when
   data is captured.  All the other online feature types in online-feature.h
   are "derived" features, so they take an object of OnlineFeatureInterface
   in their constructor and get their input features through a stored pointer
-  to that object.  
+  to that object.
 
   The only part of the online feature extraction code in online-feature.h
   that is non-trivial is the cepstral mean and variance normalization (CMVN)
@@ -143,7 +145,7 @@ namespace kaldi {
   In the Kaldi scripts, cepstral mean and variance normalization (CMVN) is
   generally done on a per-speaker basis.  Obviously in an online-decoding
   context, this is impossible to do because it is "non-causal" (the current
-  feature depends on future features).  
+  feature depends on future features).
 
   The basic solution we use is to do "moving-window" cepstral mean
   normalization.  We accumulate the mean over a moving window of, by default, 6
@@ -178,7 +180,7 @@ namespace kaldi {
   using a method called basis-fMLLR (again, see below) where we incrementally
   estimate the parameters, and it is not completely invariant to offsets.
 
- 
+
   \section online_decoding_adaptation  Adaptation in online decoding
 
  The most standard adaptation method used for speech recognition is
@@ -187,13 +189,13 @@ namespace kaldi {
  code and documentation.  fMLLR consists of an affine (linear + offset) transform
  of the features; the number of parameters is d * (d+1), where d is the
  final feature dimension (typically 40).  In the online decoding program
- a basis method to incrementally estimate an increasing number of 
+ a basis method to incrementally estimate an increasing number of
  transform parameters as we decode more data.  The top-level logic for this at the
  decoder level is mostly implemented in class SingleUtteranceGmmDecoder.
- 
+
  The fMLLR estimation is done not continuously but periodically, since it involvesa
  computing lattice posteriors and this can't very easily be done in a continuous
- manner.  Configuration variables in class OnlineGmmDecodingAdaptationPolicyConfig 
+ manner.  Configuration variables in class OnlineGmmDecodingAdaptationPolicyConfig
  determine when we re-estimate fMLLR.  The default currently is, during the first
  utterance, to estimate it after 2 seconds, and thereafter at times in a geometrically
  increasing ratio with constant 1.5 (so at 2 seconds, 3 seconds, 4.5 seconds...).
@@ -202,11 +204,11 @@ namespace kaldi {
 
  Note that the CMN adaptation state is frozen, as mentioned above, the first time
  we estimate fMLLR for a speaker, which by default will be two seconds into the
- first utterance.  
+ first utterance.
 
  \section online_decoding_models  Use of multiple models in GMM-based online decoding
 
-   In the online decoding decode for GMMs in online-gmm-decoding.h, up to three 
+   In the online decoding decode for GMMs in online-gmm-decoding.h, up to three
   models can be supplied.  These are held in class OnlineGmmDecodingModels, which
   takes care of the logic necessary to decide which model to use for different purposes
   if fewer models are supplied.  The three models are:
@@ -215,12 +217,12 @@ namespace kaldi {
      - A speaker adapted model, trained with fMLLR
      - A discriminatively trained version of the speaker adapted model
   It is our practice to use a Maximum Likelihood estimated model to estimate
-  adaptation parameters, as this is more consistent with the Maximum framework 
+  adaptation parameters, as this is more consistent with the Maximum framework
   than using a discriminatively trained model, although this probably makes little
   difference and you would lose little (and save some memory) by using the discriminatively
-  trained model for this purpose. 
+  trained model for this purpose.
 
-  
+
  \section online_decoding_nnet2  Neural net based online decoding with iVectors
 
   Our best online-decoding setup, which we recommend should be used, is the neural
@@ -245,31 +247,31 @@ namespace kaldi {
  example setups, e.g. in egs/rm/s5, egs/wsj/s5, egs/swbd/s5b,  and egs/fisher_english/s5.
  The top-level example script is always called local/online/run_nnet2.sh.  In the case of the
  Resource Management recipe there is also a script local/online/run_nnet2_wsj.sh.  This demonstrates
- how to take a larger neural net trained on out-of-domain speech with the same sampling rate (in 
+ how to take a larger neural net trained on out-of-domain speech with the same sampling rate (in
  this example, WSJ), and retrain it on in-domain data.  In this way we obtained our best-ever
  results on RM.
 
  We are currently working on example scripts for discriminative training for this setup.
 
   \subsection online_decoding_nnet2_example Example for using already-built online-nnet2 models
-  
+
   In this section we will explain how to download already-build online-nnet2 models from www.kaldi-asr.org
   and evaluate them on your own data.
 
- The reader can download the models and other relating files from <b> 
- http://kaldi-asr.org/downloads/build/2/sandbox/online/egs/fisher_english/s5 </b>, 
+ The reader can download the models and other relating files from <b>
+ http://kaldi-asr.org/downloads/build/2/sandbox/online/egs/fisher_english/s5 </b>,
  which are built using the fisher_english recipe. To use the online-nnet2 models, the reader
- only needs to download two directories: exp/tri5a/graph and exp/nnet2_online/nnet_a_gpu_online. Use the 
+ only needs to download two directories: exp/tri5a/graph and exp/nnet2_online/nnet_a_gpu_online. Use the
  following commands to download the archives and extract them:
- 
+
  \verbatim
 wget http://kaldi-asr.org/downloads/build/5/trunk/egs/fisher_english/s5/exp/nnet2_online/nnet_a_gpu_online/archive.tar.gz -O nnet_a_gpu_online.tar.gz
 wget http://kaldi-asr.org/downloads/build/2/sandbox/online/egs/fisher_english/s5/exp/tri5a/graph/archive.tar.gz -O graph.tar.gz
 mkdir -p nnet_a_gpu_online graph
 tar zxvf nnet_a_gpu_online.tar.gz -C nnet_a_gpu_online
 tar zxvf graph.tar.gz -C graph
- \endverbatim 
- Here the archives are extracted to the local directory.  We need to modify pathnames in the 
+ \endverbatim
+ Here the archives are extracted to the local directory.  We need to modify pathnames in the
  config files, which we can do as follows:
 \verbatim
 for x in nnet_a_gpu_online/conf/*conf; do
@@ -280,7 +282,7 @@ done
  Next, choose a single wav file to decode. The reader can download a sample file by typing
  \verbatim
  wget http://www.signalogic.com/melp/EngSamples/Orig/ENG_M.wav
- \endverbatim 
+ \endverbatim
  This is a 8kHz-sampled wav file that we found online (unfortunately it is UK
  English, so the accuracy is not very good).  It can be decoded with the following command:
  \verbatim
@@ -289,22 +291,153 @@ done
     --config=nnet_a_gpu_online/conf/online_nnet2_decoding.conf \
     --max-active=7000 --beam=15.0 --lattice-beam=6.0 \
     --acoustic-scale=0.1 --word-symbol-table=graph/words.txt \
-   nnet_a_gpu_online/smbr_epoch2.mdl graph/HCLG.fst "ark:echo utterance-id1 utterance-id1|" "scp:echo utterance-id1 ENG_M.wav|" \
+   nnet_a_gpu_online/final.mdl graph/HCLG.fst "ark:echo utterance-id1 utterance-id1|" "scp:echo utterance-id1 ENG_M.wav|" \
    ark:/dev/null
  \endverbatim
  We added the <code>--online=false</code> option because it tends to slightly improve results.
  You can see the result in the logging output (although there are other ways to retrieve this).
  For us, the logging output was as follows:
 \verbatim
-/home/dpovey/kaldi-online/src/online2bin/online2-wav-nnet2-latgen-faster --do-endpointing=false --online=false --config=nnet_a_gpu_online/conf/online_nnet2_decoding.conf --max-active=7000 --beam=15.0 --lattice-beam=6.0 --acoustic-scale=0.1 --word-symbol-table=graph/words.txt nnet_a_gpu_online/smbr_epoch2.mdl graph/HCLG.fst 'ark:echo utterance-id1 utterance-id1|' 'scp:echo utterance-id1 ENG_M.wav|' ark:/dev/null 
+/home/dpovey/kaldi-online/src/online2bin/online2-wav-nnet2-latgen-faster --do-endpointing=false --online=false --config=nnet_a_gpu_online/conf/online_nnet2_decoding.conf --max-active=7000 --beam=15.0 --lattice-beam=6.0 --acoustic-scale=0.1 --word-symbol-table=graph/words.txt nnet_a_gpu_online/smbr_epoch2.mdl graph/HCLG.fst 'ark:echo utterance-id1 utterance-id1|' 'scp:echo utterance-id1 ENG_M.wav|' ark:/dev/null
 LOG (online2-wav-nnet2-latgen-faster:ComputeDerivedVars():ivector-extractor.cc:180) Computing derived variables for iVector extractor
 LOG (online2-wav-nnet2-latgen-faster:ComputeDerivedVars():ivector-extractor.cc:201) Done.
-utterance-id1 tons of who was on the way for races two miles and then in nineteen ninety to buy sodas sale the rate them all these to commemorate columbus is drawn into the new world five hundred years ago on the one to the moon is to promote the use of so the sales in space exploration 
+utterance-id1 tons of who was on the way for races two miles and then in nineteen ninety to buy sodas sale the rate them all these to commemorate columbus is drawn into the new world five hundred years ago on the one to the moon is to promote the use of so the sales in space exploration
 LOG (online2-wav-nnet2-latgen-faster:main():online2-wav-nnet2-latgen-faster.cc:253) Decoded utterance utterance-id1
 LOG (online2-wav-nnet2-latgen-faster:Print():online-timing.cc:51) Timing stats: real-time factor for offline decoding was 1.62102 = 26.7482 seconds  / 16.5009 seconds.
 LOG (online2-wav-nnet2-latgen-faster:main():online2-wav-nnet2-latgen-faster.cc:259) Decoded 1 utterances, 0 with errors.
 LOG (online2-wav-nnet2-latgen-faster:main():online2-wav-nnet2-latgen-faster.cc:261) Overall likelihood per frame was 0.230575 per frame over 1648 frames.
 \endverbatim
+
+Note that for mismatched data, sometimes the iVector estimation can get confused and lead to bad results.
+Something that we have found useful is to weight down the silence in the iVector estimation.
+To do this you can set e.g. <code>--ivector-silence-weighting.silence-weight=0.001</code>; you need to set the silence
+phones as appropriate, e.g. <code>--ivector-silence-weighting.silence-phones=1:2:3:4</code>
+(this should be a list of silence or noise phones in your phones.txt; you can experiment with
+which ones to include).
+
+\subsection online_decoding_nnet2_lm Example for using your own language model with existing online-nnet2 models
+Oftentimes users will have to use their own language model to improve the
+recognition accuracy. In this section we will explain how to build a language
+model with SRILM, and how to incorporate this language model to the existing
+online-nnet2 models.
+
+We first have to build an ARPA format language model with SRILM. Note that SRILM
+comes with a lot of training options, and we assume it's the user's
+responsibility to figure out what is the best setting for their own application.
+Suppose "train.txt" is our language model training corpus (e.g., training
+data transcriptions), and "wordlist" is our vocabulary. Here we assume the
+language model vocabulary is the same as the recognizer's vocabulary, i.e., it
+only contains the words from data/lang/words.txt, except the epsilon symbol
+"<eps>" and disambiguation symbol "#0". We will explain how we can use a
+different vocabulary in the next section. We can build a 3gram Kneser-Ney
+language model using the following SRILM command
+\verbatim
+ngram-count -text train.txt -order 3 -limit-vocab -vocab wordlist -unk \
+  -map-unk "<unk>" -kndiscount -interpolate -lm srilm.o3g.kn.gz
+\endverbatim
+
+Now that we have the ARPA format language model trained, we have to compile it
+into WFST format. Let's first define the following variables
+\verbatim
+dict_dir=data/local/dict                # The dict directory provided by the online-nnet2 models
+lm=srilm.o3g.kn.gz                      # ARPA format LM you just built.
+lang=data/lang                          # Old lang directory provided by the online-nnet2 models
+lang_own=data/lang_own                  # New lang directory we are going to create, which contains the new language model
+\endverbatim
+
+Given the above variables, we can compile an ARPA format language model into
+WFST format using the following commands
+\verbatim
+utils/format_lm.sh $lang $lm $dict_dir/lexicon.txt $lang_own
+\endverbatim
+
+Now, we can compile the decoding graph with the new language model, using the
+following command
+\verbatim
+graph_own_dir=$model_dir/graph_own
+utils/mkgraph.sh $lang_own $model_dir $graph_own_dir || exit 1;
+\endverbatim
+where $model_dir is the model directory which contains the model "final.mdl"
+and the tree "tree". At this point, we can use $graph_own_dir/HCLG.fst to
+replace the old HCLG.fst, which uses the language model we just built.
+
+\subsection online_decoding_nnet2_vocab Example for using a different vocabulary with existing online-nnet2 models
+For most applications users will also have to change the recognizer's existing
+vocabulary, for example, adding out-of-vocabulary words such as person names
+to the existing vocabulary. In this section we will explain how this can be
+done.
+
+We first have to create a new pronunciation lexicon, typically by adding more
+words to the recognizer's existing pronunciation lexicon. The recognizer's
+lexicon that we are going to modify is usually located at the $dict_dir/lexicon.txt,
+where $dict_dir is the recognizer's dictionary directory, and is usually
+data/local/dict. The new lexicon can be created manually by adding new lexical
+entries to $dict_dir/lexicon.txt. If we do not have pronunciations for the new
+words, we can use grapheme-to-phoneme (G2P) conversion to generate pronunciations
+automatically. The commonly used G2P tools are Sequitur and Phonetisaurus, the
+later is usually much faster.
+
+The second step is to create a dictionary directory for our new lexicon, which
+contains the required files, for example, lexicon.txt, lexiconp.txt, etc.
+Most likely if we don't change the lexicon's phone set, the old files such as
+extra_questions.txt, nonsilence_phones.txt, optional_silence.txt,
+silence_phones.txt can be re-used. For details of how to create those files, we
+suggest the users follow the existing Kaldi scripts, for example this one:
+egs/wsj/s5/local/wsj_prepare_dict.sh. The format of the dictionary directory is
+described \ref data_prep_lang_creating "here".
+
+Now we can create a new lang directory with the updated lexicon. Suppose
+$lang is the recognizer's old lang directory, $lang_own is the new lang
+directory that we are going to create, $dict_own is the dictionary directory we
+just created, and "<SPOKEN_NOISE>" is the word symbol that represents
+out-of-vocabulary words in the lexicon, we can generate the new lang directory
+with the updated lexicon using the following command
+\verbatim
+lang_own_tmp=data/local/lang_own_tmp/   # Temporary directory.
+utils/prepare_lang.sh \
+  --phone-symbol-table $lang/phones.txt \
+  $dict_own "<SPOKEN_NOISE>" $lang_own_tmp $lang_own
+\endverbatim
+Make usre you use the option "--phone-symbol-table", which makes sure that
+phones in your new lexicon will be compatible with the recognizer.
+
+The last step is of course to update the decoding graph, using the following
+command
+\verbatim
+graph_own_dir=$model_dir/graph_own
+utils/mkgraph.sh $lang_own $model_dir $graph_own_dir || exit 1;
+\endverbatim
+where $model_dir is the model directory which contains the model "final.mdl"
+and the tree "tree". We now can use $graph_own_dir/HCLG.fst to replace the old
+HCLG.fst.
+
+
+\section online_decoding_nnet3 Online decoding with nnet3 models
+
+Online decoding with nnet3 models is basically the same as with nnet2
+models as described in \ref online_decoding_nnet2.  However, there are
+some limitations as to the model type you can use.  In Kaldi 5.0 and
+earlier, online nnet3 decoding does not support recurrent models.
+In Kaldi 5.1 and later, online nnet3 decoding supports "forward"
+recurrent models such as LSTMs, but not bidirectional ones like BLSTMs.
+In addition, online nnet3 decoding with recurrent
+models may not give optimal results unless
+you use "Kaldi-5.1-style" configuration, including the "decay-time"
+option and specifying --extra-left-context-initial 0; see
+\ref dnn3_scripts_context for more discussions of these issues.
+
+
+Many of the issues in online nnet3 decoding are the same as in nnet2
+decoding and the command lines are quite similar.  For online nnet3
+decoding with Kaldi 5.1 and later, the best example script for online
+decoding including model training is, at the
+time of writing, egs/tedlium/s5_r2/local/chain/tuning/run_tdnn_lstm_1e.sh
+(at the time of writing this is only available in the 'shortcut' branch,
+as Kaldi 5.1 has not yet been merged to master);
+and downloadable models that can be used with online nnet3 decoding, please
+see http://kaldi-asr.org/models.html (the first model there, the ASPIRE model,
+includes instructions in a README file).
+
 
 
 */

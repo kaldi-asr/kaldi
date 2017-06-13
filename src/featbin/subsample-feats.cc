@@ -31,17 +31,17 @@ int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace std;
-    
+
     const char *usage =
-        "Sub-samples features by taking every n'th frame."
+        "Sub-samples features by taking every n'th frame.\n"
         "With negative values of n, will repeat each frame n times\n"
         "(e.g. --n=-2 will repeat each frame twice)\n"
         "\n"
         "Usage: subsample-feats [options] <in-rspecifier> <out-wspecifier>\n"
         "  e.g. subsample-feats --n=2 ark:- ark:-\n";
-    
+
     ParseOptions po(usage);
-    
+
     int32 n = 1, offset = 0;
 
     po.Register("n", &n, "Take every n'th feature, for this value of n"
@@ -53,23 +53,23 @@ int main(int argc, char *argv[]) {
     if (n < 0)
       KALDI_ASSERT(offset == 0 &&
                    "--offset option cannot be used with negative n.");
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
-    }    
+    }
 
     string rspecifier = po.GetArg(1);
     string wspecifier = po.GetArg(2);
-    
+
     SequentialBaseFloatMatrixReader feat_reader(rspecifier);
     BaseFloatMatrixWriter feat_writer(wspecifier);
 
     int32 num_done = 0, num_err = 0;
     int64 frames_in = 0, frames_out = 0;
-    
+
     // process all keys
     for (; !feat_reader.Done(); feat_reader.Next()) {
       std::string utt = feat_reader.Key();
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
 
         frames_in += feats.NumRows();
         frames_out += num_indexes;
-      
+
         if (num_indexes == 0) {
           KALDI_WARN << "For utterance " << utt << ", output would have no rows, "
                      << "producing no output.";
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
           output.Row(i).CopyFromVec(feats.Row(i / repeat));
         frames_in += feats.NumRows();
         frames_out += feats.NumRows() * repeat;
-        feat_writer.Write(utt, output);        
+        feat_writer.Write(utt, output);
         num_done++;
       }
     }

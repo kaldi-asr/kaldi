@@ -15,13 +15,13 @@ set -e
 # assume use_gpu=true since it would be way too slow otherwise.
 
 if ! cuda-compiled; then
-  cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+  cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
 fi
-parallel_opts="-l gpu=1" 
+parallel_opts="--gpu 1"
 num_threads=1
 minibatch_size=512
 dir=exp/nnet2_online/nnet_ms_a
@@ -34,12 +34,12 @@ local/online/run_nnet2_common.sh --stage $stage
 
 if [ $stage -le 6 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
-    utils/create_split_dir.pl /export/b0{6,7,8,9}/$(USER)/kaldi-dsata/egs/fisher_english/s5/$dir/egs/storage $dir/egs/storage
+    utils/create_split_dir.pl /export/b0{6,7,8,9}/$(USER)/kaldi-data/egs/fisher_english/s5/$dir/egs/storage $dir/egs/storage
   fi
-  
+
   # Because we have a lot of data here and we don't want the training to take
   # too long, we reduce the number of epochs from the defaults (15 + 5) to (3 +
-  # 1).  The option "--io-opts '-tc 12'" is to have more than the default number
+  # 1).  The option "--io-opts '--max-jobs-run 12'" is to have more than the default number
   # (5) of jobs dumping the egs to disk; this is OK since we're splitting our
   # data across four filesystems for speed.
 
@@ -71,7 +71,7 @@ if [ $stage -le 7 ]; then
 fi
 
 if [ $stage -le 8 ]; then
-  # do the actual online decoding with iVectors, carrying info forward from 
+  # do the actual online decoding with iVectors, carrying info forward from
   # previous utterances of the same speaker.
    steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
       exp/tri5a/graph data/dev ${dir}_online/decode_dev || exit 1;

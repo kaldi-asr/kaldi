@@ -48,7 +48,6 @@
 namespace kaldi {
 
 template<class I, class T> class HashList {
-
  public:
   struct Elem {
     I key;
@@ -56,7 +55,8 @@ template<class I, class T> class HashList {
     Elem *tail;
   };
 
-  /// Constructor takes no arguments.  Call SetSize to inform it of the likely size.
+  /// Constructor takes no arguments.
+  /// Call SetSize to inform it of the likely size.
   HashList();
 
   /// Clears the hash and gives the head of the current list to the user;
@@ -65,43 +65,50 @@ template<class I, class T> class HashList {
   Elem *Clear();
 
   /// Gives the head of the current list to the user.  Ownership retained in the
-  /// class.  Caution: in December 2013 the return type was changed to const Elem*
-  /// and this function was made const.  You may need to change some types of
-  /// local Elem* variables to const if this produces compilation errors.
+  /// class.  Caution: in December 2013 the return type was changed to const
+  /// Elem* and this function was made const.  You may need to change some types
+  /// of local Elem* variables to const if this produces compilation errors.
   const Elem *GetList() const;
 
   /// Think of this like delete().  It is to be called for each Elem in turn
-  /// after you "obtained ownership" by doing Clear().  This is not the opposite of
-  /// Insert, it is the opposite of New.  It's really a memory operation.
+  /// after you "obtained ownership" by doing Clear().  This is not the opposite
+  /// of. Insert, it is the opposite of New.  It's really a memory operation.
   inline void Delete(Elem *e);
 
-  /// This should probably not be needed to be called directly by the user.  Think of it as opposite
+  /// This should probably not be needed to be called directly by the user.
+  /// Think of it as opposite
   /// to Delete();
   inline Elem *New();
 
   /// Find tries to find this element in the current list using the hashtable.
-  /// It returns NULL if not present.  The Elem it returns is not owned by the user,
-  /// it is part of the internal list owned by this object, but the user is
-  /// free to modify the "val" element.
+  /// It returns NULL if not present.  The Elem it returns is not owned by the
+  /// user, it is part of the internal list owned by this object, but the user
+  /// is free to modify the "val" element.
   inline Elem *Find(I key);
-  
-  /// Insert inserts a new element into the hashtable/stored list.  By calling this,
+
+  /// Insert inserts a new element into the hashtable/stored list.  By calling
+  /// this,
   /// the user asserts that it is not already present (e.g. Find was called and
-  /// returned NULL).  With current code, calling this if an element already exists will
-  /// result in duplicate elements in the structure, and Find() will find the
-  /// first one that was added.  [but we don't guarantee this behavior].
+  /// returned NULL).  With current code, calling this if an element already
+  ///  exists will result in duplicate elements in the structure, and Find()
+  ///  will find the first one that was added.
+  /// [but we don't guarantee this behavior].
   inline void Insert(I key, T val);
 
-  /// Insert inserts another element with same key into the hashtable/stored list.
-  /// By calling this, the user asserts that one element with that key is already present.
-  /// We insert it that way, that all elements with the same key follow each other.
+  /// Insert inserts another element with same key into the hashtable/
+  /// stored list.
+  /// By calling this, the user asserts that one element with that key is
+  /// already present.
+  /// We insert it that way, that all elements with the same key
+  /// follow each other.
   /// Find() will return the first one of the elements with the same key.
   inline void InsertMore(I key, T val);
 
-  /// SetSize tells the object how many hash buckets to allocate (should typically be
-  /// at least twice the number of objects we expect to go in the structure, for fastest
-  /// performance).  It must be called while the hash is empty (e.g. after Clear() or
-  /// after initializing the object, but before adding anything to the hash.
+  /// SetSize tells the object how many hash buckets to allocate (should
+  /// typically be at least twice the number of objects we expect to go in the
+  /// structure, for fastest performance).  It must be called while the hash
+  /// is empty (e.g. after Clear() or after initializing the object, but before
+  /// adding anything to the hash.
   void SetSize(size_t sz);
 
   /// Returns current number of hash buckets.
@@ -111,8 +118,8 @@ template<class I, class T> class HashList {
  private:
 
   struct HashBucket {
-    size_t prev_bucket;  // index to next bucket (-1 if list tail).  Note: list of buckets
-    // goes in opposite direction to list of Elems.
+    size_t prev_bucket;  // index to next bucket (-1 if list tail).  Note:
+    // list of buckets goes in opposite direction to list of Elems.
     Elem *last_elem;  // pointer to last element in this bucket (NULL if empty)
     inline HashBucket(size_t i, Elem *e): prev_bucket(i), last_elem(e) {}
   };
@@ -124,17 +131,19 @@ template<class I, class T> class HashList {
 
   std::vector<HashBucket> buckets_;
 
-  Elem *freed_head_;  // head of list of currently freed elements. [ready for allocation]
+  Elem *freed_head_;  // head of list of currently freed elements. [ready for
+  // allocation]
 
   std::vector<Elem*> allocated_;  // list of allocated blocks.
 
-  static const size_t allocate_block_size_ = 1024;  // Number of Elements to allocate in one block.  Must be
-  // largish so storing allocated_ doesn't become a problem.
+  static const size_t allocate_block_size_ = 1024;  // Number of Elements to
+  // allocate in one block.  Must be largish so storing allocated_ doesn't
+  // become a problem.
 };
 
 
-} // end namespace kaldi
+}  // end namespace kaldi
 
-#include "hash-list-inl.h"
+#include "util/hash-list-inl.h"
 
-#endif
+#endif  // KALDI_UTIL_HASH_LIST_H_

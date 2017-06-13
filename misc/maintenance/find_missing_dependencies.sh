@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "$0: finding missing inter-directory dependencies in src/Makefile"
+
 cd src
 
 for x in */Makefile; do

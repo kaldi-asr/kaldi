@@ -1,4 +1,4 @@
-// bin/compute-atwv.cc
+// kwsbin/compute-atwv.cc
 
 // Copyright (c) 2015, Johns Hopkins University (Yenda Trmal<jtrmal@gmail.com>)
 
@@ -37,13 +37,39 @@ int main(int argc, char *argv[]) {
 
     const char *usage = "Computes the Actual Term-Weighted Value and prints it."
         "\n"
-        "Usage: compute-atwv [options]  ref-rspecifier hyp-rspecifier [alignment csv]\n"
-        " e.g.: compute-atwv ark:ref.1 ark:hyp.1 ali.csv\n"
+        "Usage: \n"
+        " compute-atwv [options] <nof-trials> <ref-rspecifier>"
+        " <hyp-rspecifier> [alignment-csv-filename]\n"
+        "e.g.: \n"
+        " compute-atwv 32485.4 ark:ref.1 ark:hyp.1 ali.csv\n"
+        "or: \n"
+        " compute-atwv 32485.4 ark:ref.1 ark:hyp.1\n"
         "\n"
-        "where the alignment format is compatible with the alignment produced\n"
-        "using the F4DE tool -- you are responsible for mapping the utterance\n"
-        "identifiers and the term string to the correct ones - use the script\n"
-        "utils/int2sym.pl and the utterance/keyword maps\n";
+        "NOTES: \n"
+        "  a) the number of trials is usually equal to the size of the searched\n"
+        "     collection in seconds\n"
+        "  b  the ref-rspecifier/hyp-rspecifier are the kaldi IO specifiers \n"
+        "     for both the reference and the hypotheses (found hits), "
+        "     respectively The format is the same for both of them. Each line\n"
+        "     is of the following format\n"
+        "\n"
+        "     <KW-ID> <utterance-id> <start-frame> <end-frame> <score>\n\n"
+        "     e.g.:\n\n"
+        "     KW106-189 348 459 560 0.8\n"
+        "\n"
+        "  b) the alignment-csv-filename is an optional parameter. \n"
+        "     If present, the alignment i.e. detailed information about what \n"
+        "     hypotheses match up with which reference entries will be \n"
+        "     generated. The alignemnt file format is equivalent to \n"
+        "     the alignment file produced using the F4DE tool. However, we do"
+        "     not set some fields and the utterance identifiers are numeric.\n"
+        "     You can use the script utils/int2sym.pl and the utterance and \n"
+        "     keyword maps to convert the numerical ids into text form\n"
+        "  c) the scores are expected to be probabilities. Please note that\n"
+        "     the output from the kws-search is in -log(probability).\n"
+        "  d) compute-atwv does not perform any score normalization (it's just\n"
+        "     for scoring purposes). Without score normalization/calibration\n"
+        "     the performance of the search will be quite poor.\n";
 
     ParseOptions po(usage);
     KwsTermsAlignerOptions ali_opts;
@@ -58,7 +84,7 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if ((po.NumArgs() < 3) || (po.NumArgs() > 4)) {
+    if (po.NumArgs() < 3 || po.NumArgs() > 4) {
       po.PrintUsage();
       exit(1);
     }
@@ -140,7 +166,6 @@ int main(int argc, char *argv[]) {
     std::cout << "aproximate OTWV = "
       << std::fixed << std::setprecision(4)
       << otwv << std::endl;
-
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

@@ -14,7 +14,9 @@ OBJFILES = nnet-nnet.o nnet-component.o nnet-loss.o \
 
 LIBNAME = kaldi-nnet
 
-ADDLIBS = ../cudamatrix/kaldi-cudamatrix.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a  ../util/kaldi-util.a 
+ADDLIBS = ../cudamatrix/kaldi-cudamatrix.a ../hmm/kaldi-hmm.a \
+          ../tree/kaldi-tree.a ../util/kaldi-util.a \
+          ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk
 

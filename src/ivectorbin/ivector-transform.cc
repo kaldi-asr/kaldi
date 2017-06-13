@@ -22,7 +22,7 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "ivector/ivector-extractor.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 
 int main(int argc, char *argv[]) {
@@ -36,11 +36,11 @@ int main(int argc, char *argv[]) {
         "<ivector-wspecifier>\n"
         "e.g.: \n"
         " ivector-transform transform.mat ark:ivectors.ark ark:transformed_ivectors.ark\n";
-    
+
     ParseOptions po(usage);
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
 
     Matrix<BaseFloat> transform;
     ReadKaldiObject(matrix_rxfilename, &transform);
-    
+
     int32 num_done = 0;
 
     // The following quantities will be needed if we're doing
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
 
     Vector<double> sum(transform.NumRows());
     double sumsq = 0.0;
-    
+
     SequentialBaseFloatVectorReader ivector_reader(ivector_rspecifier);
     BaseFloatVectorWriter ivector_writer(ivector_wspecifier);
 
@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
       std::string key = ivector_reader.Key();
       const Vector<BaseFloat> &ivector = ivector_reader.Value();
 
-      Vector<BaseFloat> transformed_ivector(transform.NumRows());      
+      Vector<BaseFloat> transformed_ivector(transform.NumRows());
       if (ivector.Dim() == transform.NumCols()) {
         transformed_ivector.AddMatVec(1.0, transform, kNoTrans, ivector, 0.0);
       } else {
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "Norm of mean was " << mean_length
                 << " (should be close to zero), length divided by sqrt(dim) was "
                 << norm_length << " (should probably be close to one)";
-    }      
+    }
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

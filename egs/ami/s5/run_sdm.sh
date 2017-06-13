@@ -3,31 +3,34 @@
 . ./cmd.sh
 . ./path.sh
 
-# SDM - Signle Distant Microphone 
+# SDM - Signle Distant Microphone
 micid=1 #which mic from array should be used?
 mic=sdm$micid
 
-stage=0
+stage=1
 . utils/parse_options.sh
 
-# Set bash to 'debug' mode, it will exit on : 
-# -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
-set -e
-set -u
-set -o pipefail
-set -x
+# Set bash to 'debug' mode, it prints the commands (option '-x') and exits on :
+# -e 'error', -u 'undefined variable', -o pipefail 'error in pipeline',
+set -euxo pipefail
 
 # Path where AMI gets downloaded (or where locally available):
-[ ! -r conf/ami_dir ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
-AMI_DIR=$(cat conf/ami_dir)
+AMI_DIR=$PWD/wav_db # Default,
+case $(hostname -d) in
+  fit.vutbr.cz) AMI_DIR=/mnt/matylda5/iveselyk/KALDI_AMI_WAV ;; # BUT,
+  clsp.jhu.edu) AMI_DIR=/export/corpora4/ami/amicorpus ;; # JHU,
+  cstr.ed.ac.uk) AMI_DIR= ;; # Edinburgh,
+esac
 
+[ ! -r data/local/lm/final_lm ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
 
 # Download AMI corpus (distant channels), You need arount 130GB of free space to get whole data ihm+mdm,
-if [ $stage -le 0 ]; then
+# Avoiding re-download, using 'wget --continue ...',
+if [ $stage -le 1 ]; then
   [ -e data/local/downloads/wget_sdm.sh ] && \
-    echo "$data/local/downloads/wget_sdm.sh already exists, better quit than re-download... (use --stage N)" && \
+    echo "data/local/downloads/wget_sdm.sh already exists, better quit than re-download... (use --stage N)" && \
     exit 1
   local/ami_download.sh --mics $micid sdm $AMI_DIR
 fi
@@ -53,9 +56,8 @@ fi
 
 if [ $stage -le 4 ]; then
   # Taking a subset, now unused, can be handy for quick experiments,
-  # Full set 77h, reduced set 9.5h,
-  local/remove_dup_utts.sh 20 data/$mic/train data/$mic/train_nodup # remvove uh-huh,
-  utils/subset_data_dir.sh --shortest data/$mic/train_nodup 30000 data/$mic/train_30k
+  # Full set 77h, reduced set 10.8h,
+  utils/subset_data_dir.sh data/$mic/train 15000 data/$mic/train_15k
 fi
 
 # Train systems,
@@ -154,38 +156,55 @@ if [ $stage -le 12 ]; then
   local/nnet/run_dnn_lda_mllt.sh $mic
 fi
 
-# TDNN training.
+# nnet3 systems
 if [ $stage -le 13 ]; then
-  local/online/run_nnet2_ms_perturbed.sh \
-    --mic $mic \
-    --hidden-dim 850 \
-    --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer2/-3:3 layer3/-7:2 layer4/-3:3" \
-    --use-sat-alignments false
-  
-  local/online/run_nnet2_ms_sp_disc.sh  \
-    --mic $mic  \
-    --gmm-dir exp/$mic/tri3a \
-    --srcdir exp/$mic/nnet2_online/nnet_ms_sp
-fi
+  # Slightly better WERs can be obtained by using --use-sat-alignments true
+  # however the SAT systems (see below) have to be built before that
 
-#LSTM training   
-if [ $stage -le 14 ]; then   
+  #TDNN model + xent training
+  local/nnet3/run_tdnn.sh \
+    --mic $mic \
+    --use-sat-alignments false
+
+  #LSTM model + xent training
   local/nnet3/run_lstm.sh \
     --mic $mic \
-    --train-stage -5 \
-    --stage 7 \
-    --speed-perturb true \
-    --norm-based-clipping true \
-    --clipping-threshold 1 \
+    --stage 10 \
     --use-sat-alignments false
-fi   
 
+   #BLSTM model + xent training
+   local/nnet3/run_blstm.sh \
+     --mic $mic \
+     --stage 10 \
+     --use-sat-alignments false
+
+  # TDNN model + chain training
+  local/chain/run_tdnn_ami_5.sh  --mic sdm1 --affix msl1.5_45wer
+
+fi
 echo "Done."
 
+exit 0;
 
-# By default we do not build systems adapted to sessions for AMI in distant scnearios 
+# Older nnet2 scripts. They are still kept here
+# as we have not yet committed sMBR training scripts for AMI in nnet3
+#if [ $stage -le 13 ]; then
+#  local/online/run_nnet2_ms_perturbed.sh \
+#    --mic $mic \
+#    --hidden-dim 850 \
+#    --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer2/-3:3 layer3/-7:2 layer4/-3:3" \
+#    --use-sat-alignments false
+#
+#  local/online/run_nnet2_ms_sp_disc.sh  \
+#    --mic $mic  \
+#    --gmm-dir exp/$mic/tri3a \
+#    --srcdir exp/$mic/nnet2_online/nnet_ms_sp
+#fi
+
+
+# By default we do not build systems adapted to sessions for AMI in distant scnearios
 # as this does not help a lot (around 1%), but one can do this by running below code:
-exit;
+exit 0;
 
 # Train tri4a, which is LDA+MLLT+SAT,
 steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
@@ -199,7 +218,7 @@ graph_dir=exp/$mic/tri4a/graph_${LM}
 $highmem_cmd $graph_dir/mkgraph.log \
   utils/mkgraph.sh data/lang_${LM} exp/$mic/tri4a $graph_dir
 steps/decode_fmllr.sh --nj $nj_dev --cmd "$decode_cmd" --config conf/decode.conf \
-  $graph_dir data/$mic/dev exp/$mic/tri4a/decode_dev_${LM} 
+  $graph_dir data/$mic/dev exp/$mic/tri4a/decode_dev_${LM}
 steps/decode_fmllr.sh --nj $nj_eval --cmd "$decode_cmd" --config conf/decode.conf \
-  $graph_dir data/$mic/eval exp/$mic/tri4a/decode_eval_${LM} 
+  $graph_dir data/$mic/eval exp/$mic/tri4a/decode_eval_${LM}
 

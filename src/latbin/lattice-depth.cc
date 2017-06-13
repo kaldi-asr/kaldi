@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
     using fst::VectorFst;
     using fst::StdArc;
     typedef StdArc::StateId StateId;
-    
+
     const char *usage =
         "Compute the lattice depths in terms of the average number of arcs that\n"
         "cross a frame.  See also lattice-depth-per-frame\n"
@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
         "E.g.: lattice-depth ark:- ark,t:-\n";
 
     ParseOptions po(usage);
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() < 1 || po.NumArgs() > 2) {
@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
       std::string key = clat_reader.Key();
 
       TopSortCompactLatticeIfNeeded(&clat);
-      
+
       int32 t;
       BaseFloat depth = CompactLatticeDepth(clat, &t);
 

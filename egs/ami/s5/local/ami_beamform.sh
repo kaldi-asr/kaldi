@@ -34,6 +34,8 @@ set -u
 mkdir -p $odir
 mkdir -p $wdir/log
 
+[ -e $odir/.done_beamforming ] && echo "Beamforming already done, skipping..." && exit 0
+
 meetings=$wdir/meetings.list
 
 cat local/split_train.orig local/split_dev.orig local/split_eval.orig | sort > $meetings
@@ -74,3 +76,4 @@ echo -e "Beamforming\n"
 $cmd JOB=1:$nj $wdir/log/beamform.JOB.log \
      local/beamformit.sh $nj JOB $numch $meetings $sdir $odir
 
+touch $odir/.done_beamforming

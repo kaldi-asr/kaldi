@@ -13,14 +13,14 @@ def read_raw(input_filename, precision = np.float32):
 
 def wav_write(file_handle, fs, data):
   if str(data.dtype) in set(['float64', 'float32']):
-    data = (0.99 * data / np.max(np.abs(data))) * (2 ** 31)
-    data = data.astype('int32', copy = False)
-  elif str(data.dtype) == 'int32':
+    data = (0.99 * data / np.max(np.abs(data))) * (2 ** 15)
+    data = data.astype('int16', copy = False)
+  elif str(data.dtype) == 'int16':
     pass
   else:
     raise Exception('Not implemented for '+str(data.dtype))
   scipy.io.wavfile.write(file_handle, fs, data)
- 
+
 
 def usage():
   return """This is a python script to read impulse responses stored in custom formats. It handles AIR database."""
@@ -53,5 +53,5 @@ if __name__ == "__main__":
     data = data.transpose()
     assert(data.shape[1] == 2)
     if params.output_sampling_rate != sr:
-      data = signal.resample(data,  params.output_sampling_rate * float(data.shape[0]) / sr, axis = 0)
+      data = signal.resample(data,  int(params.output_sampling_rate * float(data.shape[0]) / sr), axis = 0)
   wav_write(output, params.output_sampling_rate, data)

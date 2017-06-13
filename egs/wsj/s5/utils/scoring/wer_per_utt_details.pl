@@ -75,7 +75,7 @@ sub cjustify {
 while (<STDIN>) {
   chomp;
   (my $utt_id, my $alignment) = split (" ", $_, 2);
-  my @alignment_pairs = split(/ *\Q$separator\E */, $alignment);
+  my @alignment_pairs = split(" ", $alignment); #splits on spaces, does not create empty fields
  
   my @HYP;
   my @REF;
@@ -86,12 +86,14 @@ while (<STDIN>) {
     "S" => 0,
     "C" => 0
   );
-  for my $pair (@alignment_pairs) {
-    my @tmp = split(" ", $pair);
-    die "Incompatible entry $pair in utterance $utt_id" if @tmp != 2;
 
-    my $ref = $tmp[0];
-    my $hyp = $tmp[1];
+  while(@alignment_pairs) {
+    my $ref = shift @alignment_pairs;
+    my $hyp = shift @alignment_pairs;
+    if (@alignment_pairs) {
+      my $sep = shift @alignment_pairs;
+      die "Detected incorrect separator $sep (expected $separator).\n" unless ($sep eq $separator);
+    }
 
     push @HYP, $hyp;
     push @REF, $ref;

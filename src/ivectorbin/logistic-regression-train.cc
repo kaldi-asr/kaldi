@@ -31,10 +31,10 @@ int main(int argc, char *argv[]) {
         "Trains a model using Logistic Regression with L-BFGS from\n"
         "a set of vectors. The class labels in <classes-rspecifier>\n"
         "must be a set of integers such that there are no gaps in \n"
-        "its range and the smallest label must be 0.\n" 
+        "its range and the smallest label must be 0.\n"
         "Usage: logistic-regression-train <vector-rspecifier>\n"
         "<classes-rspecifier> <model-out>\n";
-    
+
     ParseOptions po(usage);
 
     bool binary = true;
@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
     config.Register(&po);
     po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
 
     RandomAccessBaseFloatVectorReader vector_reader(vector_rspecifier);
     SequentialInt32Reader class_reader(class_rspecifier);
-    
+
     std::vector<int32> ys;
     std::vector<std::string> utt_ids;
     std::vector<Vector<BaseFloat> > vectors;
@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
         ys.push_back(class_label);
         const Vector<BaseFloat> &vector = vector_reader.Value(utt);
         vectors.push_back(vector);
-    
+
         // Since there are no gaps in the class labels and we
         // start at 0, the largest label is the number of the
         // of the classes - 1.
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
       xs.Row(i).CopyFromVec(vectors[i]);
     }
     vectors.clear();
-  
+
     LogisticRegression classifier = LogisticRegression();
     classifier.Train(xs, ys, config);
     WriteKaldiObject(classifier, model_out, binary);

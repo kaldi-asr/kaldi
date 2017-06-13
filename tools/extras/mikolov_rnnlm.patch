@@ -1,0 +1,11 @@
+--- rnnlmlib.h	2015-10-14 17:57:52.315280379 -0400
++++ rnnlmlib.h	2015-10-14 17:58:03.723969289 -0400
+@@ -9,7 +9,7 @@
+ #ifndef _RNNLMLIB_H_
+ #define _RNNLMLIB_H_
+ 
+-#define MAX_STRING 100
++#define MAX_STRING 300
+ 
+ typedef double real;		// doubles for NN weights
+ typedef double direct_t;	// doubles for ME weights; TODO: check why floats are not enough for RNNME (convergence problems)

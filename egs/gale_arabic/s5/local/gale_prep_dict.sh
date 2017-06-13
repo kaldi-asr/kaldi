@@ -30,3 +30,4 @@ sort -u >  $dir/nonsilence_phones.txt || exit 1;
  
 echo Dictionary preparation succeeded
 
+exit 0

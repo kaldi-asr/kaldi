@@ -83,4 +83,4 @@ class Sgmm2Project {
 
 } // end namespace kaldi
 
-#endif  // KALDI_SGMM_AM_SGMM_PROJECT_H_
+#endif  // KALDI_SGMM2_AM_SGMM2_PROJECT_H_

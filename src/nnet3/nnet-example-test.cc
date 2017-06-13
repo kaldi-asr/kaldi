@@ -50,13 +50,14 @@ void UnitTestNnetExample() {
     eg.Write(os, binary);
     NnetExample eg_copy;
     if (RandInt(0, 1) == 0)
-      eg_copy = eg; 
+      eg_copy = eg;
     std::istringstream is(os.str());
     eg_copy.Read(is, binary);
     std::ostringstream os2;
     eg_copy.Write(os2, binary);
     if (binary) {
       KALDI_ASSERT(os.str() == os2.str());
+      KALDI_ASSERT(eg_copy == eg);
     }
     KALDI_ASSERT(ExampleApproxEqual(eg, eg_copy, 0.1));
   }

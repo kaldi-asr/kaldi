@@ -5,6 +5,8 @@
 
 . cmd.sh
 
+big_memory_cmd="$decode_cmd --mem 8G"
+
 states=20000
 dir=exp/tri4b_pretrain-dbn_dnn/
 

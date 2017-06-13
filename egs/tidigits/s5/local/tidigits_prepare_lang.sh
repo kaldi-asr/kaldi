@@ -88,10 +88,11 @@ utils/make_lexicon_fst.pl $tmpdir/lexicon.txt 0.5 sil | \
 
 cp $lang/L.fst $lang/L_disambig.fst
 
-silphonelist=`cat $lang/phones/silence.csl | sed 's/:/ /g'`
-nonsilphonelist=`cat $lang/phones/nonsilence.csl | sed 's/:/ /g'`
-cat conf/topo.proto | sed "s:NONSILENCEPHONES:$nonsilphonelist:" | \
-   sed "s:SILENCEPHONES:$silphonelist:" > $lang/topo
+num_sil_states=5
+num_nonsil_states=3
+silphonelist=`cat $lang/phones/silence.csl`
+nonsilphonelist=`cat $lang/phones/nonsilence.csl`
+utils/gen_topo.pl $num_nonsil_states $num_sil_states $nonsilphonelist $silphonelist >$lang/topo
 
 # Now we prepare a simple grammar G.fst that's a kind of loop of
 # digits (no silence in this, since that's handled in L.fst)

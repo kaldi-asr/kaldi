@@ -138,7 +138,8 @@ struct PitchExtractionOptions {
                    "file, if specified there)");
     opts->Register("frame-length", &frame_length_ms, "Frame length in "
                    "milliseconds");
-    opts->Register("frame-shift", &frame_shift_ms, "Frame shift in milliseconds");
+    opts->Register("frame-shift", &frame_shift_ms, "Frame shift in "
+                   "milliseconds");
     opts->Register("preemphasis-coefficient", &preemph_coeff,
                    "Coefficient for use in signal preemphasis (deprecated)");
     opts->Register("min-f0", &min_f0,
@@ -190,20 +191,21 @@ struct PitchExtractionOptions {
                    "if --frames-per-chunk > 0 and "
                    "--simulate-first-pass-online=true");
     opts->Register("snip-edges", &snip_edges, "If this is set to false, the "
-                   "incomplete frames near the ending edge won't be snipped, so "
-                   "that the number of frames is the file size divided by the "
-                   "frame-shift. This makes different types of features give the "
-                   "same number of frames.");
-
+                   "incomplete frames near the ending edge won't be snipped, "
+                   "so that the number of frames is the file size divided by "
+                   "the frame-shift. This makes different types of features "
+                   "give the same number of frames.");
   }
   /// Returns the window-size in samples, after resampling.  This is the
   /// "basic window size", not the full window size after extending by max-lag.
+  // Because of floating point representation, it is more reliable to divide
+  // by 1000 instead of multiplying by 0.001, but it is a bit slower.
   int32 NccfWindowSize() const {
-    return static_cast<int32>(resample_freq * 0.001 * frame_length_ms);
+    return static_cast<int32>(resample_freq * frame_length_ms / 1000.0);
   }
   /// Returns the window-shift in samples, after resampling.
   int32 NccfWindowShift() const {
-    return static_cast<int32>(resample_freq * 0.001 * frame_shift_ms);
+    return static_cast<int32>(resample_freq * frame_shift_ms / 1000.0);
   }
 };
 
@@ -224,12 +226,12 @@ struct ProcessPitchOptions {
 
   int32 delta_window;
   int32 delay;
-  
-  bool add_pov_feature;  
-  bool add_normalized_log_pitch;  
+
+  bool add_pov_feature;
+  bool add_normalized_log_pitch;
   bool add_delta_pitch;
   bool add_raw_log_pitch;
-  
+
   ProcessPitchOptions() :
       pitch_scale(2.0),
       pov_scale(2.0),
@@ -272,7 +274,8 @@ struct ProcessPitchOptions {
                    "Number of frames on each side of central frame, to use for "
                    "delta window.");
     opts->Register("delay", &delay,
-                   "Number of frames by which the pitch information is delayed.");
+                   "Number of frames by which the pitch information is "
+                   "delayed.");
     opts->Register("add-pov-feature", &add_pov_feature,
                    "If true, the warped NCCF is added to output features");
     opts->Register("add-normalized-log-pitch", &add_normalized_log_pitch,
@@ -301,6 +304,8 @@ class OnlinePitchFeature: public OnlineBaseFeature {
   virtual int32 Dim() const { return 2; /* (NCCF, pitch) */ }
 
   virtual int32 NumFramesReady() const;
+
+  virtual BaseFloat FrameShiftInSeconds() const;
 
   virtual bool IsLastFrame(int32 frame) const;
 
@@ -331,10 +336,13 @@ class OnlineProcessPitch: public OnlineFeatureInterface {
   virtual bool IsLastFrame(int32 frame) const {
     if (frame <= -1)
       return src_->IsLastFrame(-1);
-    else if (frame < opts_.delay) 
+    else if (frame < opts_.delay)
       return src_->IsLastFrame(-1) == true ? false : src_->IsLastFrame(0);
     else
-      return src_->IsLastFrame(frame - opts_.delay); 
+      return src_->IsLastFrame(frame - opts_.delay);
+  }
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return src_->FrameShiftInSeconds();
   }
 
   virtual int32 NumFramesReady() const;
@@ -348,7 +356,9 @@ class OnlineProcessPitch: public OnlineFeatureInterface {
                      OnlineFeatureInterface *src);
 
  private:
-  static const int32 kRawFeatureDim = 2;  // input: (nccf, pitch)
+  enum { kRawFeatureDim = 2};  // anonymous enum to define a constant.
+                               // kRawFeatureDim defines the dimension
+                               // of the input: (nccf, pitch)
 
   ProcessPitchOptions opts_;
   OnlineFeatureInterface *src_;
@@ -371,15 +381,15 @@ class OnlineProcessPitch: public OnlineFeatureInterface {
   std::vector<NormalizationStats> normalization_stats_;
 
   /// Computes and returns the POV feature for this frame.
-  /// Called from GetFrame().  
-  inline BaseFloat GetPovFeature(int32 frame) const;  
+  /// Called from GetFrame().
+  inline BaseFloat GetPovFeature(int32 frame) const;
 
   /// Computes and returns the delta-log-pitch feature for this frame.
   /// Called from GetFrame().
   inline BaseFloat GetDeltaPitchFeature(int32 frame);
 
   /// Computes and returns the raw log-pitch feature for this frame.
-  /// Called from GetFrame().  
+  /// Called from GetFrame().
   inline BaseFloat GetRawLogPitchFeature(int32 frame) const;
 
   /// Computes and returns the mean-subtracted log-pitch feature for this frame.

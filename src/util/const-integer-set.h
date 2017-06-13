@@ -63,7 +63,8 @@ template<class I> class ConstIntegerSet {
     CopySetToVector(input, &slow_set_);
     InitInternal();
   }
-  explicit ConstIntegerSet(const ConstIntegerSet<I> &other): slow_set_(other.slow_set_) {
+  explicit ConstIntegerSet(const ConstIntegerSet<I> &other):
+                           slow_set_(other.slow_set_) {
     InitInternal();
   }
 
@@ -88,8 +89,8 @@ template<class I> class ConstIntegerSet {
   void InitInternal();
 };
 
-} // end namespace kaldi
+}  // end namespace kaldi
 
-#include "const-integer-set-inl.h"
+#include "util/const-integer-set-inl.h"
 
-#endif
+#endif  // KALDI_UTIL_CONST_INTEGER_SET_H_

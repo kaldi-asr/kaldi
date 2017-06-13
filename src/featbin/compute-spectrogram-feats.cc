@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
       SubVector<BaseFloat> waveform(wave_data.Data(), this_chan);
       Matrix<BaseFloat> features;
       try {
-        spec.Compute(waveform, &features, NULL);
+        spec.Compute(waveform, 1.0, &features, NULL);
       } catch (...) {
         KALDI_WARN << "Failed to compute features for utterance "
                    << utt;

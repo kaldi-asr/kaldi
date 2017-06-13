@@ -1,6 +1,7 @@
 // nnet3/nnet-optimize.h
 
-// Copyright 2015    Johns Hopkins University (author: Daniel Povey)
+// Copyright      2015-2016  Johns Hopkins University (author: Daniel Povey)
+//                2015       Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,38 +24,80 @@
 #include "nnet3/nnet-compile.h"
 #include "nnet3/nnet-analyze.h"
 
+#include <list>
+
 namespace kaldi {
 namespace nnet3 {
 
-// Options class for optimizing a NnetComputation The main projected use for
+// Options class for optimizing a NnetComputation.  The main projected use for
 // this is in debugging the optimization code itself, so that if an error is
 // detected, we can work out which optimization was responsible for the error.
 struct NnetOptimizeOptions {
   bool optimize;  // setting this false disallow all optimization.
+  bool consolidate_model_update;
   bool propagate_in_place;
   bool backprop_in_place;
+  bool optimize_row_ops;
+  bool convert_addition;
   bool remove_assignments;
+  bool allow_left_merge;
+  bool allow_right_merge;
   bool initialize_undefined;
   bool move_sizing_commands;
   bool allocate_from_other;
+  int32 min_deriv_time;
+  int32 max_deriv_time;
+  int32 max_deriv_time_relative;
+  bool snip_row_ops;
+  // optimize_looped_computation is a 'hidden config' not available from
+  // the command line; it's set to true to enable the optimization for
+  // looped computation that turns a linear computation into a loop.
+  bool optimize_looped_computation;
 
-  NnetOptimizeOptions(): optimize(true),
-                         propagate_in_place(true),
-                         backprop_in_place(true),
-                         remove_assignments(true),
-                         initialize_undefined(true),
-                         move_sizing_commands(true),
-                         allocate_from_other(true) { }
+  NnetOptimizeOptions():
+      optimize(true),
+      consolidate_model_update(true),
+      propagate_in_place(true),
+      backprop_in_place(true),
+      optimize_row_ops(true),
+      convert_addition(true),
+      remove_assignments(true),
+      allow_left_merge(true),
+      allow_right_merge(true),
+      initialize_undefined(true),
+      move_sizing_commands(true),
+      allocate_from_other(true),
+      min_deriv_time(std::numeric_limits<int32>::min()),
+      max_deriv_time(std::numeric_limits<int32>::max()),
+      max_deriv_time_relative(std::numeric_limits<int32>::max()),
+      snip_row_ops(true),
+      optimize_looped_computation(false) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("optimize", &optimize, "Set this to false to turn off all "
                  "optimizations");
+    opts->Register("consolidate-model-update", &consolidate_model_update,
+                   "Set to false to disable optimization that consolidates "
+                   "the model-update phase of backprop (e.g. for recurrent "
+                   "architectures");
     opts->Register("propagate-in-place", &propagate_in_place, "Set to false to "
                    "disable optimization that allows in-place propagation");
     opts->Register("backprop-in-place", &backprop_in_place, "Set to false to "
                    "disable optimization that allows in-place backprop");
+    opts->Register("optimize-row-ops", &optimize_row_ops, "Set to false to "
+                   "disable certain optimizations that act on operations of "
+                   "type *Row*.");
+    opts->Register("convert-addition", &convert_addition, "Set to false to "
+                   "disable the optimization that converts Add commands into "
+                   "Copy commands wherever possible.");
     opts->Register("remove-assignments", &remove_assignments, "Set to false to "
                    "disable optimization that removes redundant assignments");
+    opts->Register("allow-left-merge", &allow_left_merge, "Set to false to "
+                   "disable left-merging of variables in remove-assignments "
+                   "(obscure option)");
+    opts->Register("allow-right-merge", &allow_right_merge, "Set to false to "
+                   "disable right-merging of variables in remove-assignments "
+                   "(obscure option)");
     opts->Register("initialize-undefined", &initialize_undefined, "Set to false "
                    "to disable optimization that avoids redundant zeroing");
     opts->Register("move-sizing-commands", &move_sizing_commands, "Set to false "
@@ -63,139 +106,255 @@ struct NnetOptimizeOptions {
     opts->Register("allocate-from-other", &allocate_from_other, "Instead of "
                    "deleting a matrix of a given size and then allocating "
                    "a matrix of the same size, allow re-use of that memory");
+    opts->Register("min-deriv-time", &min_deriv_time, "You can set this to "
+                   "the minimum t value that you want derivatives to be computed "
+                   "at when updating the model.  This is an optimization that "
+                   "saves time in the backprop phase for recurrent frameworks");
+    opts->Register("max-deriv-time", &max_deriv_time, "You can set this to "
+                   "the maximum t value that you want derivatives to be computed "
+                   "at when updating the model.  This is an optimization that "
+                   "saves time in the backprop phase for recurrent frameworks");
+    opts->Register("max-deriv-time-relative", &max_deriv_time_relative,
+                   "An alternative mechanism for setting the --max-deriv-time, "
+                   "suitable for situations where the length of the egs is "
+                   "variable.  If set, it is equivalent to setting the "
+                   "--max-deriv-time to this value plus the largest 't' value "
+                   "in any 'output' node of the computation request.");
+    opts->Register("snip-row-ops", &snip_row_ops, "Set this to false to "
+                   "disable an optimization that reduces the size of certain "
+                   "per-row operations");
+  }
+  void Read(std::istream &is, bool binary);
+  void Write(std::ostream &os, bool binary) const;
+  bool operator == (const NnetOptimizeOptions &other) const;
+};
+
+
+/* This utility function, used in code that calls LimitDerivativeTimes() (and
+   required in code that calls Optimize(), returns the largest time
+   't' in any of the 'outputs' in the computation request, or crashes if there
+   are no outputs (or no cindexes in those outputs). */
+int32 MaxOutputTimeInRequest(const ComputationRequest &request);
+
+
+/** This is the top-level function for optimizing a computation.  Note: it
+    should really be called OptimizeAndPostprocess(), because there is at least
+    one thing it does (reordering I/O commands) that is necessary for a
+    computation to be run.
+
+    @param [in] config   The options that control, among other things,
+                         which optimizations to apply.
+    @param [in] nnet     The neural net for which the computation is being built
+    @param [in] max_output_time_in_request  This value is only needed when the
+                         max-deriv-time-relative config value is set in
+                         'config'.  It should be set to the largest 't' value
+                         encountered in any of the indexes in the 'output'
+                         IoSpecifications in the ComputationRequests used to
+                         compile the computation.  However if there are multiple
+                         ComputationRequests (i.e. it was an online computation)
+                         you can just set it to any value you want, because
+                         backpropagation is not supported so the
+                         max-deriv-time-relative configuration value would not
+                         have any effect.
+    @param [in,out] computation  The computation to be optimized; this function
+                         modifies it in-place.
+ */
+void Optimize(const NnetOptimizeOptions &config,
+              const Nnet &nnet,
+              int32 max_output_time_in_request,
+              NnetComputation *computation);
+
+// Hash function for ComputationRequest. It converts
+// ComputationRequest to hash code by looking at input
+// and output IoSpecifications vectors.
+struct ComputationRequestHasher {
+  size_t operator()(const ComputationRequest *cr) const noexcept;
+};
+
+// Equality function for ComputationRequest pointer
+struct ComputationRequestPtrEqual {
+ public:
+  bool operator() (const ComputationRequest* cr1,
+                   const ComputationRequest* cr2) const {
+    return (*cr1) == (*cr2);
   }
 };
 
 
-/// This is the top-level function for optimizing a computation.
-/// The rest of this file contains various things that are
-/// called from this, and which you probably won't need to call
-/// directly.
-void Optimize(const NnetOptimizeOptions &config,
-              const Nnet &nnet,
-              const ComputationRequest &request,
-              NnetComputation *computation);
 
+struct CachingOptimizingCompilerOptions {
+  bool use_shortcut;
+  int32 cache_capacity;
+
+  CachingOptimizingCompilerOptions():
+      use_shortcut(true),
+      cache_capacity(64) { }
+
+  void Register(OptionsItf *opts) {
+    opts->Register("use-shortcut", &use_shortcut,
+                   "If true, use the 'shortcut' in compilation whereby "
+                   "computation requests with regular structure are identified "
+                   "as such, a computation with a smaller number of distinct "
+                   "values of 'n' is compiled (e.g. 2), and the compiled "
+                   "computation is expanded to match the size of the real "
+                   "computation request.");
+    opts->Register("cache-capacity", &cache_capacity,
+                   "Determines how many computations the computation-cache will "
+                   "store (most-recently-used).");
+  }
+};
 
 /// This class enables you to do the compilation and optimization in one call,
 /// and also ensures that if the ComputationRequest is identical to the previous
 /// one, the compilation process is not repeated.
 class CachingOptimizingCompiler {
  public:
-  CachingOptimizingCompiler(const Nnet &nnet): nnet_(nnet) { }
+  CachingOptimizingCompiler(const Nnet &nnet,
+                            const CachingOptimizingCompilerOptions config =
+                            CachingOptimizingCompilerOptions());
 
   /// Note: nnet is retained as a const reference but opt_config is copied.
   CachingOptimizingCompiler(const Nnet &nnet,
-                            const NnetOptimizeOptions &opt_config):
-      nnet_(nnet), opt_config_(opt_config) { }
+                            const NnetOptimizeOptions &opt_config,
+                            const CachingOptimizingCompilerOptions config =
+                            CachingOptimizingCompilerOptions());
 
+  ~CachingOptimizingCompiler();
   /// Does the compilation and returns a const pointer to
   /// the result, which is owned by this class, not the caller.
   /// It calls ComputeCudaIndexes() for you, because you wouldn't
   /// be able to do this on a const object.
-  const NnetComputation* Compile(const ComputationRequest  &request);
+  const NnetComputation* Compile(const ComputationRequest &request);
+  void ReadCache(std::istream &is, bool binary);
+  void WriteCache(std::ostream &os, bool binary) const;
  private:
+
+  // This function just implements the work of Compile(); it's made a separate
+  // function for the convenience of the timer code, to avoid it being called
+  // twice (we also call this function directly from inside the class).
+  const NnetComputation* CompileInternal(const ComputationRequest &request);
+
+  // This function, called from CompileInternal(), is called when a
+  // ComputationRequest has been determined not to have already been cached.  It
+  // otherwise has the same interface as CompileInternal(), but assumes that
+  // there is nothing cached for this computation as yet.  It compiles the
+  // computation and takes care of caching it.
+  const NnetComputation* CompileAndCache(const ComputationRequest &request);
+
+
+  // This function, called from CompileAndCache(), tries to compile the
+  // ComputationRequest 'request' via 'shortcut' compilation; if this is
+  // possible, it returns a pointer to a newly allocated computation that it has
+  // compiled this way (note: this computation will not yet have been placed in
+  // the computation cache).  If this is not possible for some reason
+  // (e.g. shortcut compilation is disabled in the config; or the computation
+  // request was not decomposable because of too few n values or irregular or
+  // unexpected structure), this function returns NULL and you should compile
+  // via CompileNoShortcut.
+  const NnetComputation* CompileViaShortcut(const ComputationRequest &request);
+
+  // This function, called from CompileAndCache(), tries to compile the
+  // ComputationRequest 'request' via the regular (not shortcut) compilation
+  // process; it returns a pointer to a newly allocated computation that it has
+  // compiled this way (note: this computation will not yet have been placed in
+  // the computation cache).
+  const NnetComputation* CompileNoShortcut(const ComputationRequest &request);
+
   const Nnet &nnet_;
+  CachingOptimizingCompilerOptions config_;
   NnetOptimizeOptions opt_config_;
-  ComputationRequest request_;
-  NnetComputation computation_;
+
+  // The access queue for keeping track of the freshness of computation.
+  // Most-recently-accessed computation is at the end, and
+  // least-recently-accessed computaiton is at the beginning.
+  // Together with computation_cache_, this forms a most-recently-used (MRU)
+  // cache for Computations, indexed by ComputationRequest. Pointers
+  // are owned in computation_cache_.
+  typedef std::list<const ComputationRequest*> AqType;
+  AqType access_queue_;
+
+  // Map from computation-request to pair of (computation, and position in
+  // access_queue_). Used for fast lookup of previously compiled computations.
+  // All pointers are owned here.
+  typedef unordered_map<const ComputationRequest*,
+                        std::pair<const NnetComputation*, AqType::iterator>,
+                        ComputationRequestHasher,
+                        ComputationRequestPtrEqual> CacheType;
+  CacheType computation_cache_;
+
+  // seconds spent in various phases of compilation-- for diagnostic messages
+  double seconds_taken_total_;
+  double seconds_taken_compile_;
+  double seconds_taken_optimize_;
+  double seconds_taken_expand_;
+  double seconds_taken_check_;
+  double seconds_taken_indexes_;
+
+  // This function updates the computation cache. It is called within
+  // CompileInternal().  It takes ownership of the pointers.  It inserts the
+  // request at the end of the queue, and purges the least-recently-accessed
+  // request from the queue and the cache if the capacity is reached.
+  void UpdateCache(const ComputationRequest *request,
+                   const NnetComputation *computation);
+  // This function updates the recently accessed queue.
+  void UpdateAccessQueue(CacheType::iterator &cit);
 };
 
 
-/**
-   This class is responsible for merging matrices.  Suppose there are m1 and s1
-   on the one hand, where s1 is a submatrix consisting of the whole of m1, and
-   s2 which is a submatrix of m2 on the other hand, and somewhere in the
-   computation we have a command C, which is one of:
-      (a) the assignment command  "s2 = s1", or
-      (b) a propagate command with s1 as input and s2 as output, with a component
-          that supports propagate in place, or
-      (c) a backprop command with s1 as output-deriv and s2 as input-deriv, with
-          a component that supports backprop in place.
-   Suppose also that:
-     - m1 is not an output (or it's case (a))
-     - m1 is not an input, or s2 is the whole of m2.
-     - if it's case (a), assignment, then:
-        - m1 is never written to after command C, and
-        - If s2 is written to after command C, then m1 is never accessed
-          to at time >= (the first time s2 is written to after command C)
-     - otherwise:
-      - after command C, s1 is never accessed [apart from deallocating its matrix]
-     - before command C, s2 is never accessed, apart from initializing it and possibly
-       zeroing it
-     - m2 is not an input.
-   Of course the matrices will have the same size.
+/// This optimization, which has no effect unless you set --min-deriv-time or
+/// --max-deriv-time, modifies the backprop operations for efficiency based on
+/// the assumption that derivatives for any Cindex with t < min_deriv_time or t
+/// > max_deriv_time are zero.  (this is based on the fact that derivatives in
+/// recurrent setups will either decay to zero over time, or will explode and
+/// anyway become meaningless).  This is only applied if you are not comoputing
+/// any input-derivatives).  The assumption, for simple Components, is that
+/// backprop operations are no-ops as long as the input was zeroed, because the
+/// back-propagated derivatives would be zero and the model would not be
+/// updated.
+///
+/// The most important effect of this operation is to modify some operations of
+/// type kBackprop and kBackpropNoModelUpdate for simple Components, to either
+/// make them operate on row ranges of their original input (which in general
+/// will be newly created submatrices), or to remove them altogether if they do
+/// not operate on any 't' values within the correct range.
+///
+/// We assert as a requirement of this optimization that all allocation commands
+/// must zero their matrices (this effectively means that you cannot apply this
+/// optimization after RemoveUnnecessaryZeroing()).  This means that we don't
+/// have to worry about leaving things undefined after removing backprop
+/// operations.  We also assert that backprop commands that set instead of
+/// adding to their input, must not be outputting to things that were
+/// previously set to nonzero values.   (this shouldn't ever be a problem, but
+/// we do check.
+///
+/// Note: after this optimization it will likely be beneficial to call
+/// RemoveUnnecessaryOperations to remove operations not of type kBackprop that have
+/// now become unnecessary-- e.g. operations that do the backprop through
+/// Descriptors.
+void LimitDerivativeTimes(const Nnet &nnet,
+                          const ComputationRequest &request,
+                          const NnetOptimizeOptions &opts,
+                          NnetComputation *computation);
 
-   We merge the variables as follows:
-     - All submatrices that reference m1, make them reference m2 instead.
-       [later we'll renumber so that there are no duplicates.]
-     - If m1 was an input, replace it as an input with m2.
-     - If it was case (a), replace the assignment command with a no-op.
-     - If both m1 and m2 have commands that deallocate them, keep only the
-       later of the two and make it refer to m2 (otherwise delete any
-       deallocation command).
+/// This consolidates the model-update parts of the backprop into larger
+/// operations (applicable mostly to recurrent setups)-- internally it uses
+/// class ModelUpdateConsolidator.  Will fail if called a
+/// second time.
+void ConsolidateModelUpdate(const Nnet &nnet,
+                            NnetComputation *computation);
 
-    At the end when we call RemoveOrphanMatrices(), renumbering code will
-    automatically detect that there are duplicate submatrices, and will merge
-    them, as well as removing the now-unused matrix indexes.
- */
-class VariableMergingOptimizer {
- public:
-  VariableMergingOptimizer(const NnetOptimizeOptions &config,
-                           const Nnet &nnet,
-                           const ComputationRequest &request,
-                           NnetComputation *computation);
-  // Note: you can call this only once.  If it returns true, it means it has
-  // merged variables.  In this case, you have the option to instantiate another
-  // copy of the class and try again with that other copy.
-  bool MergeVariables();
+/// This converts addition operations (things with Add in their names) to
+/// copy operations (things with Copy in their names).  This is both slightly
+/// more efficient,
+void ConvertAdditionToAssignment(const Nnet &nnet,
+                                 NnetComputation *computation);
 
- private:
-  // this function, called while testing whether the pair (s1,s2) is a candidate
-  // for optimization, returns true if all the following conditions hold:
-  //   - s1 != s2
-  //   - s1 and s2 correspond to the whole of their corresponding matrices m1 and m2.
-  //   - neither matrix_already_optimized_[m1] nor matrix_already_optimized_[m2] is true
-  //   - m1 is not an output of the computation (or command command_index is an
-  //     assignment).
-  //   - m2 is not an input of the computation
-  //   - after command "command_index", no part of m1 is ever accessed [apart
-  //     from deallocating it] (or command "command_index" is an assignment and
-  //     no part of m1 is written to after command "command_index"
-  //   - before command C, no part of m2 is never accessed, apart from
-  //     initializing it and possibly zeroing it.
-  bool IsCandidate(int32 command_index, int32 s1, int32 s2) const;
 
-  // performs the merge.
-  // compute m1,m2 from s1,s2.
-  //  - All submatrices that reference m2, make them reference m1 instead.
-  //   [later we'll renumber so that there are no duplicates.]
-  //  - If m1 was an input, replace it as an input with m2 and remove
-  //    the command that initializes m2.
-  //  - If it was case (a), replace the assignment command with a no-op.
-  //  - If both m2 and m1 have commands that deallocate them, keep only the
-  //    later of the two and make it refer to m1 (otherwise delete any
-  //    deallocation command).
-  //  - Remove the original command that allocated m1, if it exists.
-  void DoMerge(int32 command_index, int32 s1, int32 s2);
+/// This wraps class VariableMergingOptimizer in a simplified interface.
+void VariableMergingOptimization(const NnetOptimizeOptions &config,
+                                 const Nnet &nnet,
+                                 NnetComputation *computation);
 
-  void Initialize();
-
-  const NnetOptimizeOptions &config_;
-  const Nnet &nnet_;
-  const ComputationRequest &request_;
-  NnetComputation *computation_;
-
-  Analyzer analyzer_;
-
-  // lists of submatrices that correspond to each matrix.
-  std::vector<std::vector<int32> > submatrix_lists_;
-
-  // true for each matrix that has already been part of
-  // an optimization (either as m1 or m2), so we can
-  // void potential
-  std::vector<bool> matrix_already_optimized_;
-};
 
 /// This optimization function changes, where possible, matrix initializations
 /// of type kAllocMatrixZeroed to kAllocMatrixUndefined.
@@ -212,117 +371,17 @@ void MoveSizingCommands(const Nnet &nnet, NnetComputation *computation);
 void RemoveUnnecessaryAllocation(const Nnet &nnet,
                                  NnetComputation *computation);
 
-/// This function detects matrices that have no submatrices corresponding to
-/// them (due, to changes made in other optimization code), and removes them
-/// from the computation.  It also renumbers the submatrix indexes to remove
-/// duplicates.
-void RemoveOrphanMatrices(NnetComputation *computation);
 
-/// Removes commands of type kNoOperation in the computation.
-void RemoveNoOps(NnetComputation *computation);
-
-/// Wherever matrix orig_matrix_index appears in the input of the network
-/// (i.e. in computation->input_output_info), replaces it with new_matrix_index.
-/// Returns true if it did replace it.
-bool ReplaceInInput(
-    const Nnet &nnet,
-    int32 orig_matrix_index, int32 new_matrix_index,
-    NnetComputation *computation);
-
-/// This function outputs to "submatrix_args" the addresses of a subset of
-/// arguments arg1 through arg6 in "command", that correspond to the indexes
-/// of submatrices.  This is useful in renumbering code.
-void IdentifySubmatrixArgs(NnetComputation::Command *command,
-                           std::vector<int32*> *submatrix_args);
-
-/// This function outputs to "matrix_args" the addresses of a subset of the
-/// arguments arg1 through arg6 in "command", that correspond to the indexes of
-/// matrices.  This is useful in renumbering code.  (Note: only a few types of
-/// command use matrix indexes).
-void IdentifyMatrixArgs(NnetComputation::Command *command,
-                        std::vector<int32*> *matrix_args);
-
-
-
-
-
-
-/*
-  Things we can do to optimize a computation...
-
-  (1) replacing un-needed inputs to Backprop functions (if used)
-      with the empty matrix
-
-  (2) sharing of matrices that would otherwise just be copied.
-
-    If the only input to a submatrix A (apart from zeroing) is copying or adding
-    from another sub-matrix B, then
-
-      - if A is a whole matrix we can remove submatrix A and let all references
-        to it point to B instead, and remove the copy/add commands.  Otherwise,
-      - if B is a whole matrix we can remove submatrix B and let all references
-        to it point to A instead, and remove the copy/add commands.
-
-  (3) sharing of matrices that are inputs and outputs of Propagate
-     or Backprop functions that support in-place computation.
-     If there are submatrices A and B that are also whole matrices,
-     then
-
-       - If there is a Propagate operation for which A is the input and B is the
-         output, and the component supports in-place propagate, and there is no
-         operation after that Propagate that reads A, and there is no operation
-         prior to the Propagate that sets B (apart from sizing it and zeroing
-         it) then make B point to A and replace all references to B with
-         references to A.
-
-       - If there is a Backprop operation for which A is the output-deriv and B
-         is the input-deriv (note: Backprop reads A and sets B), and the
-         component supports in-place backprop, and there is no operation prior
-         to the Backprop that writes to B apart from sizing and zeroing,
-         and there is no operation after the Backprop that reads A, then
-         make B point to A and replace all references to B with references to
-         A.
-
-  (4) optimizations w.r.t. Propagate and Backprop functions that add to (rather
-     than set) their output.
-       TBD, but the basic idea is that if the output of, say, a Propagate function
-      is added to another matrix, and that is the only time it is used,
-      then we could just set the output location to that other matrix.
-
-   (5) optimizations w.r.t. avoiding Backprop functions that are not needed.
-      Basically, we need to keep track of what the outputs of each Backprop
-      function are and whether they are used.  If we are are doing model
-      update and this component is updatable then the Backprop function is
-      considered to output to the model.  Also, it may output to the
-      input-derivative of that component.  We have to keep track of which of
-      these input-derivatives are actually used.
-
-   (6) optimizations w.r.t. zeroing matrices.
-      This optimization is to avoid unnecessarily zeroing matrices
-      when we initialize them.  If the first time a matrix (or all the sub-parts
-      thereof) is set, it is set in a copy operation, or in a Propagate or
-      Backprop operation that sets (rather than adds to) its output, then
-      we can initialize it with kUndefined rather than kZero.
-
-  (7) optimizations for memory consumption.
-      The idea here is to move the command to initialize a matrix to just
-      before its first use, and to move the command to deinitialize a matrix
-      to just after its last use.
-
-  (8) renumbering optimizations.
-       - renumber Matrices to get rid of zero-sized, un-needed ones, and a similar thing for Sub-matrices.
-       - renumber Computations to get rid of no-ops introduced by earlier optimizations
-         [also, modify forward_computation_end].
-       - maybe renumber Indexes to get rid of duplicates.
-
-  (9) optimizations to replace row-by-row copy and add commands with whole-matrix
-      commands on smaller sub-matrices (if the row-by-row copy commands have certain
-      regularities).  this is a minor issue, we can handle it later.  We have to be
-      careful if this causes sub-matrices to overlap.
-
- */
-
-
+/// This optimization puts the input operations (kAcceptInput) and output
+/// operations (kProvideOutput) at the very beginning or end of segments of
+/// computation, respectively.
+///
+/// This is actually necessary for computations to be run easily, because if these
+/// commands were interspersed with the regular commands, you'd have to
+/// call computer.Run() between the individual AcceptInput() and GetOutput()
+/// function calls.
+void ConsolidateIoOperations(const Nnet &nnet,
+                             NnetComputation *computation);
 
 
 
@@ -331,4 +390,3 @@ void IdentifyMatrixArgs(NnetComputation::Command *command,
 
 
 #endif
-

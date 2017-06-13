@@ -1,6 +1,13 @@
 #!/bin/bash
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+#
+# LDA+MLLT refers to the way we transform the features after computing
+# the MFCCs: we splice across several frames, reduce the dimension (to 40
+# by default) using Linear Discriminant Analysis), and then later estimate,
+# over multiple iterations, a diagonalizing transform known as MLLT or CTC.
+# See http://kaldi-asr.org/doc/transform.html for more explanation.
+#
 # Apache 2.0.
 
 # Begin configuration.
@@ -63,6 +70,10 @@ silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
 
 mkdir -p $dir/log
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 echo $nj >$dir/num_jobs
 echo "$splice_opts" >$dir/splice_opts # keep track of frame-splicing options
            # so that later stages of system building can know what they were.
@@ -84,8 +95,8 @@ feats="$splicedfeats transform-feats $dir/0.mat ark:- ark:- |"
 
 if [ $stage -le -5 ]; then
   if [ -z "$use_lda_mat" ]; then
-    echo "Accumulating LDA statistics."
-    rm $dir/lda.*.acc
+    echo "$0: Accumulating LDA statistics."
+    rm $dir/lda.*.acc 2>/dev/null
     $cmd JOB=1:$nj $dir/log/lda_acc.JOB.log \
     ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- \| \
@@ -95,11 +106,11 @@ if [ $stage -le -5 ]; then
       2>$dir/log/lda_est.log || exit 1;
     rm $dir/lda.*.acc
   else
-    echo "Using supplied LDA matrix $use_lda_mat"
+    echo "$0: Using supplied LDA matrix $use_lda_mat"
     cp $use_lda_mat $dir/0.mat || exit 1;
     [ ! -z "$mllt_iters" ] && \
-      echo "Warning: using supplied LDA matrix $use_lda_mat but we will do MLLT," && \
-      echo "which you might not want; to disable MLLT, specify --mllt-iters ''" && \
+      echo "$0: Warning: using supplied LDA matrix $use_lda_mat but we will do MLLT," && \
+      echo "     which you might not want; to disable MLLT, specify --mllt-iters ''" && \
       sleep 5
   fi
 fi
@@ -107,12 +118,12 @@ fi
 cur_lda_iter=0
 
 if [ $stage -le -4 ] && $train_tree; then
-  echo "Accumulating tree stats"
+  echo "$0: Accumulating tree stats"
   $cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
     acc-tree-stats $context_opts \
     --ci-phones=$ciphonelist $alidir/final.mdl "$feats" \
     "ark:gunzip -c $alidir/ali.JOB.gz|" $dir/JOB.treeacc || exit 1;
-  [ `ls $dir/*.treeacc | wc -w` -ne "$nj" ] && echo "Wrong #tree-accs" && exit 1;
+  [ `ls $dir/*.treeacc | wc -w` -ne "$nj" ] && echo "$0: Wrong #tree-accs" && exit 1;
   $cmd $dir/log/sum_tree_acc.log \
     sum-tree-stats $dir/treeacc $dir/*.treeacc || exit 1;
   rm $dir/*.treeacc
@@ -120,7 +131,7 @@ fi
 
 
 if [ $stage -le -3 ] && $train_tree; then
-  echo "Getting questions for tree clustering."
+  echo "$0: Getting questions for tree clustering."
   # preparing questions, roots file...
   cluster-phones $context_opts $dir/treeacc $lang/phones/sets.int \
     $dir/questions.int 2> $dir/log/questions.log || exit 1;
@@ -128,7 +139,7 @@ if [ $stage -le -3 ] && $train_tree; then
   compile-questions $context_opts $lang/topo $dir/questions.int \
     $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
 
-  echo "Building the tree"
+  echo "$0: Building the tree"
   $cmd $dir/log/build_tree.log \
     build-tree $context_opts --verbose=1 --max-leaves=$numleaves \
     --cluster-thresh=$cluster_thresh $dir/treeacc $lang/phones/roots.int \
@@ -153,16 +164,16 @@ fi
 
 if [ $stage -le -1 ]; then
   # Convert the alignments.
-  echo "Converting alignments from $alidir to use current tree"
+  echo "$0: Converting alignments from $alidir to use current tree"
   $cmd JOB=1:$nj $dir/log/convert.JOB.log \
     convert-ali $alidir/final.mdl $dir/1.mdl $dir/tree \
      "ark:gunzip -c $alidir/ali.JOB.gz|" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
 
 if [ $stage -le 0 ] && [ "$realign_iters" != "" ]; then
-  echo "Compiling graphs of transcripts"
+  echo "$0: Compiling graphs of transcripts"
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
-    compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst  \
+    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/1.mdl  $lang/L.fst  \
      "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $data/split$nj/JOB/text |" \
       "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 fi
@@ -181,7 +192,7 @@ while [ $x -lt $num_iters ]; do
   fi
   if echo $mllt_iters | grep -w $x >/dev/null; then
     if [ $stage -le $x ]; then
-      echo "Estimating MLLT"
+      echo "$0: Estimating MLLT"
       $cmd JOB=1:$nj $dir/log/macc.$x.JOB.log \
         ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:- \| \
         weight-silence-post 0.0 $silphonelist $dir/$x.mdl ark:- ark:- \| \
@@ -204,7 +215,7 @@ while [ $x -lt $num_iters ]; do
     $cmd $dir/log/update.$x.log \
       gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss --power=$power \
         $dir/$x.mdl "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;
-    rm $dir/$x.mdl $dir/$x.*.acc $dir/$x.occs 
+    rm $dir/$x.mdl $dir/$x.*.acc $dir/$x.occs
   fi
   [ $x -le $max_iter_inc ] && numgauss=$[$numgauss+$incgauss];
   x=$[$x+1];
@@ -215,8 +226,13 @@ ln -s $x.mdl $dir/final.mdl
 ln -s $x.occs $dir/final.occs
 ln -s $cur_lda_iter.mat $dir/final.mat
 
-# Summarize warning messages...
+steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 
+# Summarize warning messages...
 utils/summarize_warnings.pl $dir/log
 
-echo Done training system with LDA+MLLT features in $dir
+steps/info/gmm_dir_info.pl $dir
+
+echo "$0: Done training system with LDA+MLLT features in $dir"
+
+exit 0

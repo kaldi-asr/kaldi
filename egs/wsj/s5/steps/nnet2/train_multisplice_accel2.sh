@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey). 
+# Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey).
 #           2013  Xiaohui Zhang
 #           2013  Guoguo Chen
 #           2014  Vimal Manohar
@@ -21,13 +21,13 @@ num_epochs=15      # Number of epochs of training;
 initial_effective_lrate=0.01
 final_effective_lrate=0.001
 bias_stddev=0.5
-pnorm_input_dim=3000 
+pnorm_input_dim=3000
 pnorm_output_dim=300
 presoftmax_prior_scale_power=-0.25 # use the specified power value on the priors (inverse priors)
-                                   # to scale the pre-softmax outputs  
+                                   # to scale the pre-softmax outputs
 minibatch_size=128 # by default use a smallish minibatch size for neural net
                    # training; this controls instability which would otherwise
-                   # be a problem with multi-threaded update. 
+                   # be a problem with multi-threaded update.
 
 samples_per_iter=400000 # each iteration of training, see this many samples
                         # per job.  This option is passed to get_egs.sh
@@ -37,6 +37,9 @@ prior_subset_size=10000 # 10k samples per job, for computing priors.  Should be
                         # more than enough.
 num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0
+fix_nnet=false
+min_average=0.05
+max_average=0.95
 online_ivector_dir=
 remove_egs=true  # set to false to disable removing egs.
 
@@ -64,7 +67,7 @@ splice_indexes="layer0/-4:-3:-2:-1:0:1:2:3:4 layer2/-5:-1:3"
 # so hidden layer indexing is different from component count
 
 
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 randprune=4.0 # speeds up LDA.
 alpha=4.0 # relates to preconditioning.
 update_period=4 # relates to online preconditioning: says how often we update the subspace.
@@ -76,7 +79,7 @@ precondition_rank_out=80 # relates to online preconditioning
 mix_up=0 # Number of components to mix up to (should be > #tree leaves, if
         # specified.)
 num_threads=16
-parallel_opts="--num-threads 16 --mem 1G" 
+parallel_opts="--num-threads 16 --mem 1G"
   # by default we use 16 threads; this lets the queue know.
   # note: parallel_opts doesn't automatically get adjusted if you adjust num-threads.
 combine_num_threads=8
@@ -87,12 +90,12 @@ lda_opts=
 lda_dim=
 egs_opts=
 transform_dir=     # If supplied, overrides alidir
-cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.  
+cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
             # only relevant for "raw" features, not lda.
 feat_type=  # Can be used to force "raw" features.
 align_cmd=              # The cmd that is passed to steps/nnet2/align.sh
 align_use_gpu=          # Passed to use_gpu in steps/nnet2/align.sh [yes/no]
-realign_times=          # List of times on which we realign.  Each time is 
+realign_times=          # List of times on which we realign.  Each time is
                         # floating point number strictly between 0 and 1, which
                         # will be multiplied by the num-iters to get an iteration
                         # number.
@@ -133,7 +136,7 @@ if [ $# != 4 ]; then
   echo "                                                   # this, you may want to decrease the batch size."
   echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads... "
-  echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
+  echo "  --io-opts <opts|\"--max-jobs-run 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
@@ -143,15 +146,15 @@ if [ $# != 4 ]; then
   echo "                                                   # Format : layer<hidden_layer_index>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
   echo "  --lda-dim <dim|''>                               # Dimension to reduce spliced features to with LDA"
-  echo "  --realign-epochs <list-of-epochs|''>             # A list of space-separated epoch indices the beginning of which"
-  echo "                                                   # realignment is to be done"
+  echo "  --realign-times <list-of-times|\"\">             # A list of space-separated floating point numbers between 0.0 and"
+  echo "                                                   # 1.0 to specify how far through training realignment is to be done"
   echo "  --align-cmd (utils/run.pl|utils/queue.pl <queue opts>) # passed to align.sh"
   echo "  --align-use-gpu (yes/no)                         # specify is gpu is to be used for realignment"
   echo "  --num-jobs-align <#njobs|30>                     # Number of jobs to perform realignment"
   echo "  --stage <stage|-4>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
 
-  
+
   exit 1;
 fi
 
@@ -258,7 +261,7 @@ if [ $stage -le -2 ]; then
   online_preconditioning_opts="alpha=$alpha num-samples-history=$num_samples_history update-period=$update_period rank-in=$precondition_rank_in rank-out=$precondition_rank_out max-change-per-sample=$max_change_per_sample"
 
   initial_lrate=$(perl -e "print ($initial_effective_lrate*$num_jobs_initial);")
-  
+
   # create the config files for nnet initialization
   python steps/nnet2/make_multisplice_configs.py  \
     --splice-indexes "$splice_indexes"  \
@@ -279,7 +282,7 @@ if [ $stage -le -2 ]; then
     nnet-am-init $alidir/tree $lang/topo "nnet-init $dir/nnet.config -|" \
     $dir/0.mdl || exit 1;
 fi
-
+if [ $pnorm_input_dim -eq $pnorm_output_dim ] && [ $fix_nnet ]; then fix_nnet=true;fi
 if [ $stage -le -1 ]; then
   echo "Training transition probabilities and setting priors"
   $cmd $dir/log/train_trans.log \
@@ -290,16 +293,16 @@ if [ $stage -le -1 ]; then
     echo "prepare initial vector for FixedScaleComponent before softmax"
     echo "use priors^$presoftmax_prior_scale_power and rescale to average 1"
 
-    # obtains raw pdf count    
+    # obtains raw pdf count
     $cmd JOB=1:$nj $dir/log/acc_pdf.JOB.log \
       ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
       post-to-tacc --per-pdf=true --binary=false $alidir/final.mdl ark:- $dir/JOB.pacc || exit 1;
     cat $dir/*.pacc > $dir/pacc
     rm $dir/*.pacc
     awk -v power=$presoftmax_prior_scale_power \
-      '{ for(i=2; i<=NF-1; i++) {sum[i]+=$i} } 
+      '{ for(i=2; i<=NF-1; i++) {sum[i]+=$i} }
       END {
-        for (i=2; i<=NF-1; i++) {total+=sum[i]} 
+        for (i=2; i<=NF-1; i++) {total+=sum[i]}
         ave_pdf=int(total/(NF-2)); total+=0.01*ave_pdf*(NF-2)
         for (i=2; i<=NF-1; i++) {rescale+=((sum[i]+0.01*ave_pdf)/total)^power}
         rescale/=(NF-2)
@@ -310,7 +313,7 @@ if [ $stage -le -1 ]; then
     echo "insert an additional layer of FixedScaleComponent before softmax"
     inp=`nnet-am-info $dir/0.mdl | grep 'Softmax' | awk '{print $2}'`
     nnet-init $dir/per_element.config - | nnet-insert --insert-at=$inp --randomize-next-component=false $dir/0.mdl - $dir/0.mdl
-  fi  
+  fi
 fi
 
 # set num_iters so that as close as possible, we process the data $num_epochs
@@ -393,13 +396,13 @@ cur_egs_dir=$egs_dir
 
 while [ $x -lt $num_iters ]; do
   [ $x -eq $exit_stage ] && echo "$0: Exiting early due to --exit-stage $exit_stage" && exit 0;
-
+  if [ $x -gt $[$num_iters/2] ]; then fix_nnet=false; fi
   this_num_jobs=$(perl -e "print int(0.5+$num_jobs_initial+($num_jobs_final-$num_jobs_initial)*$x/$num_iters);")
 
   ilr=$initial_effective_lrate; flr=$final_effective_lrate; np=$num_archives_processed; nt=$num_archives_to_process;
   this_learning_rate=$(perl -e "print (($x + 1 >= $num_iters ? $flr : $ilr*exp($np*log($flr/$ilr)/$nt))*$this_num_jobs);");
 
-  echo "On iteration $x, learning rate is $this_learning_rate."    
+  echo "On iteration $x, learning rate is $this_learning_rate."
 
   if [ ! -z "${realign_this_iter[$x]}" ]; then
     prev_egs_dir=$cur_egs_dir
@@ -444,7 +447,7 @@ while [ $x -lt $num_iters ]; do
         steps/nnet2/remove_egs.sh $prev_egs_dir
       fi
     fi
-    
+
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
@@ -496,7 +499,7 @@ while [ $x -lt $num_iters ]; do
     ( # this sub-shell is so that when we "wait" below,
       # we only wait for the training jobs that we just spawned,
       # not the diagnostic jobs that we spawned above.
-      
+
       # We can't easily use a single parallel SGE job to do the main training,
       # because the computation of which archive and which --frame option
       # to use for each job is a little complex, so we spawn each one separately.
@@ -512,7 +515,7 @@ while [ $x -lt $num_iters ]; do
         $cmd $parallel_opts $dir/log/train.$x.$n.log \
           nnet-train$parallel_suffix $parallel_train_opts \
           --minibatch-size=$this_minibatch_size --srand=$x "$mdl" \
-          "ark:nnet-copy-egs --frame=$frame ark:$cur_egs_dir/egs.$archive.ark ark:-|nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-|" \
+          "ark,bg:nnet-copy-egs --frame=$frame ark:$cur_egs_dir/egs.$archive.ark ark:-|nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-|" \
           $dir/$[$x+1].$n.mdl || touch $dir/.error &
       done
       wait
@@ -535,10 +538,14 @@ while [ $x -lt $num_iters ]; do
       n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
           $fn = sprintf($pat,$n); open(F, "<$fn") || die "Error opening log file $fn";
           undef $logprob; while (<F>) { if (m/log-prob-per-frame=(\S+)/) { $logprob=$1; } }
-          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob; 
+          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob;
           $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
       cp $dir/$[$x+1].$n.mdl $dir/$[$x+1].mdl || exit 1;
+    fi
+    if $fix_nnet; then
+      # do nnet-am-fix to fix some pathology in the network
+      nnet-am-fix --max-average-deriv=$max_average --min-average-deriv=$min_average $dir/$[$x+1].mdl $dir/$[$x+1].mdl 2>$dir/log/fix.$x.log || exit;
     fi
 
     if [ "$mix_up" -gt 0 ] && [ $x -eq $mix_up_iter ]; then
@@ -569,7 +576,7 @@ if [ $stage -le $num_iters ]; then
     cur_offset=0 # current offset from first_model_combine.
     for n in $(seq $max_models_combine); do
       next_offset=$[($n*$num_models_combine)/$max_models_combine]
-      sub_list="" 
+      sub_list=""
       for o in $(seq $cur_offset $[$next_offset-1]); do
         iter=$[$first_model_combine+$o]
         mdl=$dir/$iter.mdl

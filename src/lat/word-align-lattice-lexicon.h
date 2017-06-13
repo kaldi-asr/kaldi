@@ -74,7 +74,7 @@ class WordAlignLatticeLexiconInfo {
   void UpdateEquivalenceMap(const std::vector<std::vector<int32> > &lexicon);
 
   void FinalizeViabilityMap(); // sorts the vectors.
-  
+
   /// The type ViabilityMap maps from sequences of phones (excluding the empty
   /// sequence), to the sets of all word-labels [on the input lattice] that
   /// could correspond to phone sequences that start with s [but are longer than
@@ -121,11 +121,13 @@ struct WordAlignLatticeLexiconOpts {
   int32 partial_word_label;
   bool reorder;
   bool test;
+  bool allow_duplicate_paths;
   BaseFloat max_expand;
-  
+
   WordAlignLatticeLexiconOpts(): partial_word_label(0), reorder(true),
-                                 test(false), max_expand(-1.0) { }
-  
+                                 test(false), allow_duplicate_paths(false),
+                                 max_expand(-1.0) { }
+
   void Register(OptionsItf *opts) {
     opts->Register("partial-word-label", &partial_word_label, "Numeric id of "
                    "word symbol that is to be used for arcs in the word-aligned "
@@ -136,6 +138,11 @@ struct WordAlignLatticeLexiconOpts {
                    "reordering self-loops (typically true)");
     opts->Register("test", &test, "If true, testing code will be activated "
                    "(the purpose of this is to validate the algorithm).");
+    opts->Register("allow-duplicate-paths", &allow_duplicate_paths, "Only "
+                   "has an effect if --test=true.  If true, does not die "
+                   "(only prints warnings) if duplicate paths are found. "
+                   "This should only happen with very pathological lexicons, "
+                   "e.g. as encountered in testing code.");
     opts->Register("max-expand", &max_expand, "If >0.0, the maximum ratio "
                    "by which we allow the lattice-alignment code to increase the #states"
                    "in a lattice (vs. the phone-aligned lattice) before we fail and "
@@ -153,13 +160,11 @@ struct WordAlignLatticeLexiconOpts {
 /// Returns true if everything was OK, false if there was any kind of
 /// error including when the the lattice seems to have been "forced out"
 /// (did not reach end state, resulting in partial word at end).
-
 bool WordAlignLatticeLexicon(const CompactLattice &lat,
                              const TransitionModel &tmodel,
                              const WordAlignLatticeLexiconInfo &lexicon_info,
                              const WordAlignLatticeLexiconOpts &opts,
                              CompactLattice *lat_out);
-
 
 
 /// This function is designed to crash if something went wrong with the
@@ -174,7 +179,8 @@ bool WordAlignLatticeLexicon(const CompactLattice &lat,
 void TestWordAlignedLatticeLexicon(const CompactLattice &lat,
                                    const TransitionModel &tmodel,
                                    const std::vector<std::vector<int32> > &lexicon,
-                                   const CompactLattice &aligned_lat);
+                                   const CompactLattice &aligned_lat,
+                                   bool allow_duplicate_paths);
 
 } // end namespace kaldi
 #endif

@@ -21,7 +21,7 @@
 
 #if HAVE_CUDA == 1
 #include <cuda_runtime_api.h>
-#include <cublas.h>
+#include <cublas_v2.h>
 #endif
 
 #include <utility>
@@ -33,7 +33,6 @@
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-kernels.h"
-#include "cudamatrix/cu-randkernels.h"
 #include "cudamatrix/cu-array.h"
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-sparse-matrix.h"
@@ -55,9 +54,12 @@ MatrixIndexT CuSparseMatrix<Real>::NumElements() const {
 
 template <typename Real>
 Real CuSparseMatrix<Real>::Sum() const {
+  if (NumElements() == 0)
+    return 0.0;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    CuVector<Real> sum_vec(*this);
+    CuVector<Real> sum_vec(this->NumElements(), kUndefined);
+    this->CopyElementsToVec(&sum_vec);
     return sum_vec.Sum();
   } else
 #endif
@@ -70,7 +72,8 @@ template <typename Real>
 Real CuSparseMatrix<Real>::FrobeniusNorm() const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    CuVector<Real> element_vec(*this);
+    CuVector<Real> element_vec(this->NumElements(), kUndefined);
+    this->CopyElementsToVec(&element_vec);
     return element_vec.Norm(2);
   } else
 #endif
@@ -202,6 +205,27 @@ void CuSparseMatrix<double>::CopyToSmat(SparseMatrix<float> *smat) const;
 template
 void CuSparseMatrix<double>::CopyToSmat(SparseMatrix<double> *smat) const;
 
+template <typename Real>
+void CuSparseMatrix<Real>::CopyElementsToVec(CuVectorBase<Real> *vec) const {
+  KALDI_ASSERT(vec != NULL);
+  KALDI_ASSERT(this->NumElements() == vec->Dim());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+    cublas_copy(GetCublasHandle(),
+                this->NumElements(),
+                &(this->elements_.Data()->weight),
+                static_cast<size_t>(sizeof(MatrixElement<Real>) / sizeof(Real)),
+                vec->Data(), 1);
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    Vector<Real> tmp(this->NumElements(), kUndefined);
+    Mat().CopyElementsToVec(&tmp);
+    vec->CopyFromVec(tmp);
+  }
+}
 
 template <typename Real>
 void CuSparseMatrix<Real>::Swap(SparseMatrix<Real> *smat) {
@@ -294,7 +318,7 @@ Real TraceMatSmat(const CuMatrixBase<Real> &A,
     // The Sum() method in CuVector handles a bunch of logic, we use that to
     // comptue the trace.
     CuVector<Real> sum_vec(B.NumElements());
-    Timer tim;
+    CuTimer tim;
     dim3 dimBlock(CU1DBLOCK, 1);
     dim3 dimGrid(n_blocks(B.NumElements(), CU1DBLOCK), 1);
     if (trans == kNoTrans) {
@@ -305,7 +329,7 @@ Real TraceMatSmat(const CuMatrixBase<Real> &A,
                                 A.Dim(), B.NumElements(), sum_vec.Data());
     }
     result = sum_vec.Sum();
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -341,6 +365,7 @@ void GeneralMatrix::CopyToMat(CuMatrixBase<BaseFloat> *cu_mat,
         Matrix<BaseFloat> mat(cmat_);
         if (trans == kNoTrans) {
           cu_mat->CopyFromMat(mat);
+          break;
         } else {
           CuMatrix<BaseFloat> temp_cu;
           temp_cu.Swap(&mat);
@@ -375,7 +400,7 @@ void CuSparseMatrix<Real>::CopyToMat(CuMatrixBase<OtherReal> *M,
   }
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     dim3 dimBlock(CU1DBLOCK, 1);
     dim3 dimGrid(n_blocks(this->NumElements(), CU1DBLOCK), 1);
     if (trans == kNoTrans) {
@@ -385,7 +410,7 @@ void CuSparseMatrix<Real>::CopyToMat(CuMatrixBase<OtherReal> *M,
       cuda_copy_from_smat_trans(dimGrid, dimBlock, M->Data(),
                                 this->Data(), M->Dim(), this->NumElements());
     }
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {

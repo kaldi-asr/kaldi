@@ -21,21 +21,10 @@
 
 #include "feat/online-feature.h"
 #include "feat/wave-reader.h"
+#include "matrix/kaldi-matrix.h"
 #include "transform/transform-common.h"
 
 namespace kaldi {
-
-
-template<class Real> static void AssertEqual(const Matrix<Real> &A,
-                                             const Matrix<Real> &B,
-                                             float tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows()&&A.NumCols() == B.NumCols());
-  for (MatrixIndexT i = 0;i < A.NumRows();i++)
-    for (MatrixIndexT j = 0;j < A.NumCols();j++) {
-      KALDI_ASSERT(std::abs(A(i, j)-B(i, j)) < tol * std::max(1.0,
-        static_cast<double>(std::abs(A(i, j))+std::abs(B(i, j)))));
-    }
-}
 
 void GetOutput(OnlineFeatureInterface *a,
                Matrix<BaseFloat> *output) {
@@ -172,6 +161,8 @@ void TestOnlineMfcc() {
   op.mel_opts.low_freq = 0.0;
   op.htk_compat = false;
   op.use_energy = false;  // C0 not energy.
+  if (RandInt(0, 1) == 0)
+    op.frame_opts.snip_edges = false;
   Mfcc mfcc(op);
 
   // compute mfcc offline

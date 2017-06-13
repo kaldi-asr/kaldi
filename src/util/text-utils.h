@@ -20,14 +20,15 @@
 #ifndef KALDI_UTIL_TEXT_UTILS_H_
 #define KALDI_UTIL_TEXT_UTILS_H_
 
+#include <errno.h>
+#include <string>
 #include <algorithm>
 #include <map>
 #include <set>
-#include <string>
 #include <vector>
-#include <errno.h>
-
+#include <limits>
 #include "base/kaldi-common.h"
+
 
 namespace kaldi {
 
@@ -50,15 +51,19 @@ void JoinVectorToString(const std::vector<std::string> &vec_in,
                         const char *delim, bool omit_empty_strings,
                         std::string *str_out);
 
+/**
+  \brief Split a string (e.g. 1:2:3) into a vector of integers.
 
-/// Split a string (e.g. 1:2:3) into a vector of integers.
-/// The delimiting char may be any character in "delim".
-/// returns true on success, false on failure.
-/// If omit_empty_strings == true, 1::2:3: will become
-/// { 1, 2, 3 }.  Otherwise it would be rejected.
-/// Regardless of the value of omit_empty_strings,
-/// the empty string is successfully parsed as an empty
-/// vector of integers
+  \param [in]  delim  String containing a list of characters, any of which
+                      is allowed as a delimiter.
+  \param [in] omit_empty_strings If true, empty strings between delimiters are
+                      allowed and will not produce an output integer; if false,
+                      instances of characters in 'delim' that are consecutive or
+                      at the start or end of the string would be an error.
+                      You'll normally want this to be true if 'delim' consists
+                      of spaces, and false otherwise.
+  \param [out] out   The output list of integers.
+*/
 template<class I>
 bool SplitStringToIntegers(const std::string &full,
                            const char *delim,
@@ -68,7 +73,7 @@ bool SplitStringToIntegers(const std::string &full,
                            std::vector<I> *out) {
   KALDI_ASSERT(out != NULL);
   KALDI_ASSERT_IS_INTEGER_TYPE(I);
-  if ( *(full.c_str()) == '\0') {
+  if (*(full.c_str()) == '\0') {
     out->clear();
     return true;
   }
@@ -78,14 +83,14 @@ bool SplitStringToIntegers(const std::string &full,
   for (size_t i = 0; i < split.size(); i++) {
     const char *this_str = split[i].c_str();
     char *end = NULL;
-    long long int j = 0;
+    int64 j = 0;
     j = KALDI_STRTOLL(this_str, &end);
     if (end == this_str || *end != '\0') {
       out->clear();
       return false;
     } else {
       I jI = static_cast<I>(j);
-      if (static_cast<long long int>(jI) != j) {
+      if (static_cast<int64>(jI) != j) {
         // output type cannot fit this integer.
         out->clear();
         return false;
@@ -100,7 +105,7 @@ bool SplitStringToIntegers(const std::string &full,
 template<class F>
 bool SplitStringToFloats(const std::string &full,
                          const char *delim,
-                         bool omit_empty_strings, // typically false
+                         bool omit_empty_strings,  // typically false
                          std::vector<F> *out);
 
 
@@ -116,13 +121,14 @@ bool ConvertStringToInteger(const std::string &str,
   const char *this_str = str.c_str();
   char *end = NULL;
   errno = 0;
-  long long int i = KALDI_STRTOLL(this_str, &end);
+  int64 i = KALDI_STRTOLL(this_str, &end);
   if (end != this_str)
     while (isspace(*end)) end++;
   if (end == this_str || *end != '\0' || errno != 0)
     return false;
   Int iInt = static_cast<Int>(i);
-  if (static_cast<long long int>(iInt) != i || (i<0 && !std::numeric_limits<Int>::is_signed)) {
+  if (static_cast<int64>(iInt) != i ||
+      (i < 0 && !std::numeric_limits<Int>::is_signed)) {
     return false;
   }
   *out = iInt;
@@ -130,15 +136,13 @@ bool ConvertStringToInteger(const std::string &str,
 }
 
 
-/// ConvertStringToReal converts a string into either float or double via strtod,
-/// and returns false if there was any kind of problem (i.e. the string was not a
-/// floating point number or contained extra non-whitespace junk.
+/// ConvertStringToReal converts a string into either float or double
+/// and returns false if there was any kind of problem (i.e. the string
+/// was not a floating point number or contained extra non-whitespace junk).
 /// Be careful- this function will successfully read inf's or nan's.
+template <typename T>
 bool ConvertStringToReal(const std::string &str,
-                         double *out);
-bool ConvertStringToReal(const std::string &str,
-                         float *out);
-
+                         T *out);
 
 /// Removes the beginning and trailing whitespaces from a string
 void Trim(std::string *str);
@@ -162,6 +166,22 @@ bool IsToken(const std::string &token);
 /// Returns true if "line" is free of \n characters and unprintable
 /// characters, and does not contain leading or trailing whitespace.
 bool IsLine(const std::string &line);
+
+
+
+/**
+   This function returns true when two text strings are approximately equal, and
+   false when they are not.  The definition of 'equal' is normal string
+   equality, except that two substrings like "0.31134" and "0.311341" would be
+   considered equal.  'decimal_places_tolerance' controls how many digits after
+   the '.' have to match up.
+   E.g. StringsApproxEqual("hello 0.23 there", "hello 0.24 there", 2) would
+   return false because there is a difference in the 2nd decimal, but with
+   an argument of 1 it would return true.
+ */
+bool StringsApproxEqual(const std::string &a,
+                        const std::string &b,
+                        int32 decimal_places_check = 2);
 
 
 }  // namespace kaldi

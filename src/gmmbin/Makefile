@@ -24,7 +24,7 @@ BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-scale-accs gmm-get-stats-deriv gmm-est-rescale gmm-boost-silence \
            gmm-diff-accs gmm-basis-fmllr-accs gmm-basis-fmllr-training gmm-est-basis-fmllr \
            gmm-est-map gmm-adapt-map gmm-latgen-map gmm-basis-fmllr-accs-gpost \
-           gmm-est-basis-fmllr-gpost gmm-latgen-tracking gmm-latgen-faster-parallel \
+           gmm-est-basis-fmllr-gpost gmm-latgen-faster-parallel \
            gmm-est-fmllr-raw gmm-est-fmllr-raw-gpost gmm-global-init-from-feats \
            gmm-global-info gmm-latgen-faster-regtree-fmllr gmm-est-fmllr-global \
            gmm-acc-mllt-global gmm-transform-means-global gmm-global-get-post \
@@ -36,11 +36,11 @@ OBJFILES =
 
 TESTFILES =
 
-ADDLIBS = ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../feat/kaldi-feat.a \
-	../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
-	../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  \
-	../thread/kaldi-thread.a ../fstext/kaldi-fstext.a \
-    ../util/kaldi-util.a ../base/kaldi-base.a 
+ADDLIBS = ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a \
+          ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a ../feat/kaldi-feat.a \
+          ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
+          ../tree/kaldi-tree.a ../util/kaldi-util.a \
+          ../matrix/kaldi-matrix.a ../base/kaldi-base.a
 
 
 include ../makefiles/default_rules.mk

@@ -101,13 +101,15 @@ int32 TypeOneUsage(const ParseOptions &po) {
 }
 
 int32 TypeTwoUsage(const ParseOptions &po,
-                   bool binary) {
+                   bool binary,
+                   bool average = false) {
   KALDI_ASSERT(po.NumArgs() == 2);
   KALDI_ASSERT(ClassifyRspecifier(po.GetArg(1), NULL, NULL) != kNoRspecifier &&
                "vector-sum: first argument must be an rspecifier");
   // if next assert fails it would be bug in the code as otherwise we shouldn't
   // be called.
-  KALDI_ASSERT(ClassifyRspecifier(po.GetArg(2), NULL, NULL) == kNoRspecifier);
+  KALDI_ASSERT(ClassifyWspecifier(po.GetArg(2), NULL, NULL, NULL) == 
+               kNoWspecifier);
 
   SequentialBaseFloatVectorReader vec_reader(po.GetArg(1));
 
@@ -132,6 +134,8 @@ int32 TypeTwoUsage(const ParseOptions &po,
       }
     }
   }
+  
+  if (num_done > 0 && average) sum.Scale(1.0 / num_done);
 
   Vector<BaseFloat> sum_float(sum);
   WriteKaldiObject(sum_float, po.GetArg(2), binary);
@@ -147,11 +151,16 @@ int32 TypeTwoUsage(const ParseOptions &po,
 int32 TypeThreeUsage(const ParseOptions &po,
                      bool binary) {
   KALDI_ASSERT(po.NumArgs() >= 2);
-  for (int32 i = 1; i <= po.NumArgs(); i++) {
-    if (ClassifyRspecifier(po.GetArg(1), NULL, NULL) != kNoRspecifier) {
+  for (int32 i = 1; i < po.NumArgs(); i++) {
+    if (ClassifyRspecifier(po.GetArg(i), NULL, NULL) != kNoRspecifier) {
       KALDI_ERR << "Wrong usage (type 3): if first and last arguments are not "
                 << "tables, the intermediate arguments must not be tables.";
     }
+  }
+  if (ClassifyWspecifier(po.GetArg(po.NumArgs()), NULL, NULL, NULL) != 
+      kNoWspecifier) {
+    KALDI_ERR << "Wrong usage (type 3): if first and last arguments are not "
+              << "tables, the intermediate arguments must not be tables.";
   }
 
   bool add = true;
@@ -193,30 +202,32 @@ int main(int argc, char *argv[]) {
         " e.g.: vector-sum --binary=false 1.vec 2.vec 3.vec sum.vec\n"
         "See also: copy-vector, dot-weights\n";
         
-    bool binary;
+    bool binary, average = false;
     
     ParseOptions po(usage);
 
     po.Register("binary", &binary, "If true, write output as binary (only "
                 "relevant for usage types two or three");
+    po.Register("average", &average, "Do average instead of sum");
     
     po.Read(argc, argv);
 
     int32 N = po.NumArgs(), exit_status;
 
     if (po.NumArgs() >= 2 &&
-        ClassifyRspecifier(po.GetArg(N), NULL, NULL) != kNoRspecifier) {
+        ClassifyWspecifier(po.GetArg(N), NULL, NULL, NULL) != kNoWspecifier) {
       // output to table.
       exit_status = TypeOneUsage(po);
     } else if (po.NumArgs() == 2 &&
                ClassifyRspecifier(po.GetArg(1), NULL, NULL) != kNoRspecifier &&
-               ClassifyRspecifier(po.GetArg(N), NULL, NULL) ==
-               kNoRspecifier) {
+               ClassifyWspecifier(po.GetArg(N), NULL, NULL, NULL) ==
+               kNoWspecifier) {
       // input from a single table, output not to table.
-      exit_status = TypeTwoUsage(po, binary);
+      exit_status = TypeTwoUsage(po, binary, average);
     } else if (po.NumArgs() >= 2 &&
                ClassifyRspecifier(po.GetArg(1), NULL, NULL) == kNoRspecifier &&
-               ClassifyRspecifier(po.GetArg(N), NULL, NULL) == kNoRspecifier) {
+               ClassifyWspecifier(po.GetArg(N), NULL, NULL, NULL) == 
+               kNoWspecifier) {
       // summing flat files.
       exit_status = TypeThreeUsage(po, binary);
     } else {      

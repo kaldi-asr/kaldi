@@ -39,7 +39,7 @@ void AmNnetSimple::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<LeftContext>");
   WriteBasicType(os, binary, left_context_);
   WriteToken(os, binary, "<RightContext>");
-  WriteBasicType(os, binary, right_context_);  
+  WriteBasicType(os, binary, right_context_);
   WriteToken(os, binary, "<Priors>");
   priors_.Write(os, binary);
 }
@@ -49,7 +49,9 @@ void AmNnetSimple::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<LeftContext>");
   ReadBasicType(is, binary, &left_context_);
   ExpectToken(is, binary, "<RightContext>");
-  ReadBasicType(is, binary, &right_context_);  
+  ReadBasicType(is, binary, &right_context_);
+  SetContext();  // temporarily, I'm not trusting the written ones (there was
+                 // briefly a bug)
   ExpectToken(is, binary, "<Priors>");
   priors_.Read(is, binary);
 }
@@ -67,7 +69,8 @@ void AmNnetSimple::SetNnet(const Nnet &nnet) {
 
 void AmNnetSimple::SetPriors(const VectorBase<BaseFloat> &priors) {
   priors_ = priors;
-  if (priors_.Dim() != nnet_.OutputDim("output")) {
+  if (priors_.Dim() != nnet_.OutputDim("output") &&
+      priors_.Dim() != 0) {
     KALDI_ERR << "Dimension mismatch when setting priors: priors have dim "
               << priors.Dim() << ", model expects "
               << nnet_.OutputDim("output");
@@ -76,8 +79,6 @@ void AmNnetSimple::SetPriors(const VectorBase<BaseFloat> &priors) {
 
 std::string AmNnetSimple::Info() const {
   std::ostringstream ostr;
-  ostr << "left-context: " << left_context_ << "\n";
-  ostr << "right-context: " << right_context_ << "\n";
   ostr << "input-dim: " << nnet_.InputDim("input") << "\n";
   ostr << "ivector-dim: " << nnet_.InputDim("ivector") << "\n";
   ostr << "num-pdfs: " << nnet_.OutputDim("output") << "\n";
@@ -87,7 +88,7 @@ std::string AmNnetSimple::Info() const {
     ostr << "prior-min: " << priors_.Min() << "\n";
     ostr << "prior-max: " << priors_.Max() << "\n";
   }
-  ostr << "# Nnet info follows.\n" << "\n";
+  ostr << "# Nnet info follows.\n";
   return ostr.str() + nnet_.Info();
 }
 

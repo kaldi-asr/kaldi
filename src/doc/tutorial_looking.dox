@@ -35,11 +35,8 @@
 
  The directory "tools/' is where we install things that Kaldi depends on in
  various ways.  Change directory to tools/ and list it.  You will see various
- files and subdirectories, mostly things that have been installed by the script
- install.sh.  Look very quickly at the files install.sh and INSTALL.  These files
- contain similar material since they cover the same steps, but INSTALL is the
- manual version of the instructions and install.sh is the automatic version.  The
- manual version may be helpful as a fall-back plan in case you have installation problems.
+ files and subdirectories, mostly things that have been installed by the make command. 
+ Look very quickly at the file INSTALL. This file gives instructions on how to install the tools.
 
  The most important subdirectory is the one for OpenFst.  cd to openfst/.  This is a soft link
  to the actual directory which has a version number.  List the openfst directory.
@@ -142,16 +139,16 @@ include ../kaldi.mk
  Look at the file ../kaldi.mk.  It will contain
  some rules related to valgrind (for memory debugging), and then some
  system-specific configuration in the form of variables such as CXXFLAGS.
- See if there are any -O options (e.g. -O0).  You might want to remove the flags
- -O0 and -DKALDI_PARANOID before running big experiments, as they slow things
- down (we enable them by default for better debugging).
+ See if there are any -O options (e.g. -O0).  The flags
+ -O0 and -DKALDI_PARANOID are disabled by default as they slow things
+ down (you might want to enable them for better debugging).
  Look again at base/Makefile.  The statement "all:" at the top tells Make
  that "all" is the top-level target (because there are targets in kaldi.mk
  and we don't want these to become the top-level target).  Because the
  dependencies of "all" depend on variables defined later, we have another
- statement down below in which we define what "all" depends on.  Look for
- it.  Several other targets are defined, starting with "clean".  Look for
- them in the Makefile.  To make "clean" you would type "make clean".
+ statement (the target is defined in default_rules.mk) in which we define what "all" depends on.
+ Look for it.  Several other targets are defined, starting with "clean".
+ Look for them.  To make "clean" you would type "make clean".
  The target .valgrind is not something you would invoke from the command line;
  you would type "make valgrind" (the target is defined in kaldi.mk).
  Invoke all of these targets, i.e. type "make clean" and the same for the others,

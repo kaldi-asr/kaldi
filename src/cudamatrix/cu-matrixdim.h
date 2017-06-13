@@ -57,7 +57,7 @@ extern "C" {
 
 // we define the following constants here because this file is included
 // both by the C++ code and also CUDA code.
-  
+
 
 // The size of a CUDA 1-d block, e.g. for vector operations..
 #define CU1DBLOCK 256

@@ -1,3 +1,5 @@
+// nnet3/nnet-compile-utils.cc
+
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 //                2015                           (author: Vijayaditya Peddinti)
 
@@ -70,9 +72,11 @@ struct PairIsEqualComparator  :
 };
 
 // this comparator will be used to sort pairs initially by second element in
-// descending order and then by first element in descending order
-bool SecondElementComparator(const std::pair<int32, int32>& first_pair,
-                             const std::pair<int32, int32>& second_pair) {
+// descending order and then by first element in descending order.
+// note, std::sort accepts an actual function as an alternative to a
+// function object.
+bool  SecondElementComparator(const std::pair<int32, int32>& first_pair,
+                              const std::pair<int32, int32>& second_pair) {
   if (first_pair.second == second_pair.second)
     return first_pair.first > second_pair.first;
   return first_pair.second > second_pair.second;
@@ -83,7 +87,7 @@ bool SecondElementComparator(const std::pair<int32, int32>& first_pair,
 void SortSubmatLists(
     // vector of list of location pairs
     const std::vector<std::vector<std::pair<int32, int32> > > submat_lists,
-    // a copy of the input submat_lists where the lists are sorted 
+    // a copy of the input submat_lists where the lists are sorted
     // (this will be used in the caller function for sort and find functions)
     std::vector<std::vector<std::pair<int32, int32> > > * sorted_submat_lists,
     // maximum size of the submat_lists
@@ -111,7 +115,7 @@ void ComputeSubmatIndexHistogram(
     // by submat_indexes (.first element)
     const std::vector<std::vector<std::pair<int32, int32> > >
     sorted_submat_lists,
-    // a histogram of submat_indexes where 
+    // a histogram of submat_indexes where
     // the keys are submat_indexes and values are a vector of frequencies
     // of first occurrence, second occurrence, etc. of a submat_index
     // in a submat_list
@@ -155,7 +159,7 @@ void ComputeSubmatIndexHistogram(
 }
 
 
-// Function to find the first occurrence of a submat_index in list of location 
+// Function to find the first occurrence of a submat_index in list of location
 // pairs from a vector of list of locations pairs.
 // The occurrences are returned as a list of vector iterators,
 // pointing to the position of the pair in the list or to the
@@ -164,7 +168,7 @@ void FindSubmatIndexInSubmatLists(
     // submat_index to search in the submat_lists
     int32 submat_index,
     // sorted_submat_lists is a pointer as we want non-const iterators in the
-    // output 
+    // output
     std::vector<std::vector<std::pair<int32, int32> > > *sorted_submat_lists,
     // a vector of iterators to store the location of the pairs
     std::vector<std::vector<std::pair<int32, int32> >::iterator>
@@ -217,7 +221,7 @@ void ExtractGivenPairsFromSubmatLists(
 
 // Function to extract the last pairs from a vector of list of pairs
 // a dummy is added when the list is empty
-void ExtractLastPairFromSubmatLists(
+static void ExtractLastPairFromSubmatLists(
     std::vector<std::vector<std::pair<int32, int32> > > *sorted_submat_lists,
     std::vector<std::pair<int32, int32> > *list_of_pairs) {
   list_of_pairs->reserve(sorted_submat_lists->size());
@@ -234,9 +238,9 @@ void ExtractLastPairFromSubmatLists(
 }
 
 // Function which does the actual splitting of submat_lists. But it operates on
-// sorted submat_lists and uses submat_histogram_vector. 
+// sorted submat_lists and uses submat_histogram_vector.
 // See SplitLocations, below for the algorithm
-void SplitLocationsUsingSubmatHistogram(
+static void SplitLocationsUsingSubmatHistogram(
     // maximum size of the lists in the sorted_submat_lists
     int32 max_submat_list_size,
     // a vector of list of pairs where each list is expected to be sorted
@@ -245,7 +249,7 @@ void SplitLocationsUsingSubmatHistogram(
     // a vector of pairs to represent a histogram
     // this is a pointer as the vector will be sorted
     std::vector<std::pair<int32, int32> > *submat_histogram_vector,
-    // a vector of lists of pairs with rearranged pairs 
+    // a vector of lists of pairs with rearranged pairs
     std::vector<std::vector<std::pair<int32, int32> > > *split_lists)  {
 
   // sort the submat_histogram_vector based on second element of pair
@@ -257,7 +261,7 @@ void SplitLocationsUsingSubmatHistogram(
   std::vector<std::pair<int32, int32> >::iterator iter;
   for (iter = submat_histogram_vector->begin();
        iter != submat_histogram_vector->end();
-       iter++)  {
+       ++iter)  {
     std::pair<int32, int32> submat_index_and_count = *iter;
     std::vector<std::vector<std::pair<int32, int32> >::iterator>
         output_iterator_list;
@@ -279,9 +283,9 @@ void SplitLocationsUsingSubmatHistogram(
       prev_max_remaining_submat_list_size = max_remaining_submat_list_size;
     }
   }
-  
+
   // rearrange the remaining pairs into lists where
-  // pairs with multiple first elements are allowed 
+  // pairs with multiple first elements are allowed
   // Note : we don't yet know if there is any advantage of having multiple
   // calls to the same submat in kAddRowsMulti. If this is actually helpful
   // then use the sorted_histogram_vector to first copy submat_indexes which
@@ -307,7 +311,7 @@ void SplitLocationsUsingSubmatHistogram(
 // In the current implementation we replace kAddRowsMulti calls with
 // kAddRows calls wherever possible, while not increasing the number of calls.
 //
-// Algorithm : 
+// Algorithm :
 // The function computes a histogram of submat_indexes and spans through the
 // submat_indexes in descending order of frequency. For each submat_index a
 // decision is made to copy it using a kAddRows call or not.
@@ -317,7 +321,7 @@ void SplitLocationsUsingSubmatHistogram(
 // submat_indexes which cannot be assigned to kAddRow calls are rearranged into
 // lists for kAddRowsMulti calls.
 //
-// Note : To decide splits we could have solved a combinatorial 
+// Note : To decide splits we could have solved a combinatorial
 // optimization problem where we find the best set of
 // kAddRows + kAddRowsMulti calls;
 // but given that both these calls have similar costs,
@@ -336,8 +340,8 @@ void SplitLocations(
 
   // a histogram of the submat_indexes in the submat_lists
   // each occurence in a given submat_list is considered unique so we maintain
-  // a vector to count each occurrence seperately.
-  // The i'th element in the vector corresponds to the count of 
+  // a vector to count each occurrence separately.
+  // The i'th element in the vector corresponds to the count of
   // the (i+1)'th occurrence of a submat_index in a submat_list
   unordered_map<int32, std::vector<int32> > submat_histogram;
 
@@ -350,7 +354,7 @@ void SplitLocations(
   ComputeSubmatIndexHistogram(sorted_submat_lists, &submat_histogram);
   // the vector has same information as the submat_histogram, but it is
   // suitable for sorting according to frequency. The first elements of pairs
-  // can be repeated, these correspond to different occurrences in the same list 
+  // can be repeated, these correspond to different occurrences in the same list
   std::vector<std::pair<int32, int32> > submat_histogram_vector;
   // copy the key, occurence_counts from submat_histogram to a vector
   unordered_map<int32, std::vector<int32> >::iterator hist_iter;
@@ -366,6 +370,10 @@ void SplitLocations(
                                      &submat_histogram_vector, split_lists);
 }
 
+/* If it is the case for some i >= 0 that all the .first elements of
+   "location_vector" are either i or -1, then output i to first_value and the
+   .second elements into "second_values", and return true.  Otherwise return
+   false and the outputs are don't-cares. */
 bool ConvertToIndexes(
     const std::vector<std::pair<int32, int32> > &location_vector,
     int32 *first_value,
@@ -374,7 +382,7 @@ bool ConvertToIndexes(
   second_values->clear();
   second_values->reserve(location_vector.size());
   std::vector<std::pair<int32, int32> >::const_iterator iter;
-  for (iter = location_vector.begin(); iter < location_vector.end(); iter++)  {
+  for (iter = location_vector.begin(); iter < location_vector.end(); ++iter)  {
     if (iter->first != -1) {
       if (*first_value == -1)
         *first_value = iter->first;
@@ -388,105 +396,104 @@ bool ConvertToIndexes(
   return true;
 }
 
-// Function to split a vector of values into contiguous segments where each
-// segment is represented by (value, (start_index, end_index))
-void ConvertVectorToContiguousSegments(std::vector<int32> values,
-      std::vector<std::pair< int32, std::pair<int32, int32> > > *
-      contiguous_segments)  {
-  int32 edge_start = 0;
-  for (int32 i = 0; i < values.size(); i++)  {
-    // check if this is an edge
-    if ((i > 0) && (values[i] != values[i-1]))  {
-      // create the edge
-      (*contiguous_segments).push_back(std::make_pair(
-          values[i-1], std::make_pair(edge_start, i-1)));
-      edge_start = i; 
-    }
-  }
-  (*contiguous_segments).push_back( 
-      std::make_pair( values.back(),  std::make_pair(edge_start,
-                                                     values.size() - 1)));
-}
 
-// Function to split list of segments into vector of list of segments with
-// unique values. Lists are always ensured to be of the same size as the input
-// list, dummy pair (-1, -1) is inserted where necessary.
-void SplitContiguousSegments(
-    std::vector<std::pair< int32, std::pair<int32, int32> > >
-    &contiguous_segments,
-    std::vector<std::vector<std::pair< int32, std::pair<int32, int32> > > > 
-    *contiguous_segments_list) {
-  // a vector of integer lists used for book-keeping;
-  // it stores the values of contiguous segments stored in each list of output
-  // vector
-  std::vector<std::vector<int32> > segment_values_vector;
-  for (int32 i = 0; i < contiguous_segments.size(); i++)  {
-    int32 segment_value = contiguous_segments[i].first;
-    if (segment_value == -1)
-      continue;  // this is a dummy segment so ignoring it
-    bool added_segment = false;
-    for (int32 j = 0; j < segment_values_vector.size(); j++) {
-      std::vector<int32>::iterator iter = std::find(
-          segment_values_vector[j].begin(),
-          segment_values_vector[j].end(),
-          segment_value);
-      if (iter == segment_values_vector[j].end()) {
-        // a segment with the current value does not exist in this list
-        // so adding the segment to this list
-        (*contiguous_segments_list)[j].push_back(contiguous_segments[i]);
-        // book-keeping 
-        segment_values_vector[j].push_back(segment_value);
-        added_segment = true;
-        break;
-      }
+// see declaration in header for documentation
+void EnsureContiguousProperty(
+    const std::vector<int32> &indexes,
+    std::vector<std::vector<int32> > *indexes_out) {
+  indexes_out->clear();
+  indexes_out->reserve(3);
+  if (indexes.empty()) return;
+  int32 max_value = *std::max_element(indexes.begin(), indexes.end());
+  if (max_value == -1) return;
+  std::vector<int32> num_segments_seen(max_value + 1, 0);
+  int32 dim = indexes.size(), num_output_vectors = 0;
+  for (int32 i = 0; i < dim;) {
+    // note, we increment i within the loop.
+    if (indexes[i] == -1) {
+      i++;
+      continue;
     }
-    if (!added_segment) {
-      // the segment was not added to any of existing segment lists
-      // creating a new list and adding the segment
-      std::vector<std::pair<int32, std::pair<int32, int32> > > list_of_pairs;
-      list_of_pairs.push_back(contiguous_segments[i]);
-      contiguous_segments_list->push_back(list_of_pairs);
-      // book-keeping for easier search  
-      std::vector<int32> list;
-      list.push_back(segment_value);
-      segment_values_vector.push_back(list);
+    int32 value = indexes[i], start_index = i;
+    for (; i < dim && indexes[i] == value; i++);
+    int32 end_index = i;  // one past the end.
+    // the input 'indexes' contains a sequence of possibly-repeated instances of
+    // the value 'value', starting at index 'start_index', with 'end_index' as
+    // one past the end.
+    int32 this_num_segments_seen = num_segments_seen[value]++;
+    if (this_num_segments_seen >= num_output_vectors) {  // we have nowhere to
+                                                         // put it.
+      indexes_out->resize(++num_output_vectors);
+      indexes_out->back().resize(dim, -1);  // fill newly added vector with -1's.
     }
+    std::vector<int32> &this_out_vec((*indexes_out)[this_num_segments_seen]);
+    std::vector<int32>::iterator iter = this_out_vec.begin() + start_index,
+        end = this_out_vec.begin() + end_index;
+    // Fill the appropriate range of the output vector with 'value'
+    for (; iter != end; ++iter) *iter = value;
   }
 }
 
-// Function to split a list of pairs into vector of lists of unique pairs
+
+
+/**
+   This function splits a vector of pairs into a list of vectors of pairs.
+   [note: by 'vector' we mean something that has a meaningful index that we care
+   about; by 'list' we mean a collection of elements to be iterated over, without
+   (in this case) meaningful indexes or even order.
+
+   @param [in] list   A vector of pairs; these pairs should be either (-1,-1)
+                      or (a,b) for a >= 0, b >= 0.  At least one element of 'list'
+                      must be different from (-1,-1).
+   @param [out] split_lists   A list, in arbitrary order, of vectors of pairs.
+                     It has the following relationship with 'list':
+                     - Size: for each j, split_lists[j].size() == list.size().
+                     - Contents must match input: For each i:
+                       -  If list[i] == (-1, -1), then
+                          split_lists[j][i] == (-1, -1) for all j.
+                       -  If list[i] != (-1, -1), then
+                         split_lists[j][i] == (-1, -1) for *all but one* j, and
+                         for the remaining j, split_lists[j][i] == list[i].
+                     - Uniqueness: for no j should split_lists[j] contain
+                       any duplicate elements (except the pair (-1,-1), which  is
+                       allowed to exist in duplicate form).
+                     To satisfy the above conditions, this function will create
+                     as many lists in split_lists (i.e. as many j values) as the
+                     number of times that the most frequent pair in 'list'
+                     repeats other than the pair (-1,-1), e.g. if the pair
+                     (10,11) appears 4 times in 'list' and that is the most,
+                     split_lists->size() == 4.
+*/
 void SplitPairList(std::vector<std::pair<int32, int32> >& list,
                    std::vector<std::vector<std::pair<int32, int32> > >* split_lists) {
   split_lists->clear();
+  typedef unordered_map<std::pair<int32, int32>,
+                        int32, PairHasher<int32> > MapType;
+  // this maps a pair not equal to -1,-1, to the number of times we've already seen it.
+  MapType pair_to_count;
+  int32 cur_num_lists = 0;
+
   for (int32 i = 0; i < list.size(); i++)  {
-    // searching for the new pair in the new_split_lists
-    bool added_pair = false;
-    if ( list[i].first == -1)
+    if (list[i].first == -1)
       continue;
-    for (int32 j = 0; j < split_lists->size(); j++)  {
-      std::vector<std::pair<int32, int32> >::const_iterator iter
-          = std::find_if((*split_lists)[j].begin(),
-                         (*split_lists)[j].end(),
-                         PairIsEqualComparator(list[i]));
-      if (iter == (*split_lists)[j].end()) {
-        // this pair is not in this list
-        (*split_lists)[j][i] = list[i];
-        added_pair = true;
-        break;
-      }
+    MapType::iterator iter = pair_to_count.find(list[i]);
+    int32 this_count;
+    if (iter == pair_to_count.end())
+      pair_to_count[list[i]] = this_count = 1;
+    else
+      this_count = (++iter->second);
+    if (this_count > cur_num_lists) {
+      KALDI_ASSERT(this_count == cur_num_lists + 1);
+      split_lists->resize(this_count);
+      split_lists->back().resize(list.size(),
+                                 std::pair<int32, int32>(-1, -1));
+      cur_num_lists++;
     }
-    if (!added_pair)  {
-      std::vector<std::pair<int32, int32> > list_of_pairs(list.size(),
-                                                          std::make_pair(-1, -1));
-      list_of_pairs[i] = list[i];
-      split_lists->push_back(list_of_pairs);
-    }
+    (*split_lists)[this_count-1][i] = list[i];
   }
   if (split_lists->size() == 0)
     KALDI_ERR << "Input list has just dummy pairs";
 }
-
-
 
 void SplitLocationsBackward(
     const std::vector<std::vector<std::pair<int32, int32> > > &submat_lists,
@@ -494,41 +501,37 @@ void SplitLocationsBackward(
   std::vector<std::vector<std::pair<int32, int32> > > split_lists_intermediate;
   // Split the submat_lists
   SplitLocations(submat_lists, &split_lists_intermediate);
-  for ( int32 i = 0; i < split_lists_intermediate.size(); i++) {
+  for (size_t i = 0; i < split_lists_intermediate.size(); i++) {
     int32 first_value;
     std::vector<int32> second_values;
     if (ConvertToIndexes(split_lists_intermediate[i],
                          &first_value, &second_values)) {
-      // the .first values are the same
-      // splitting this list of pairs to ensure that the second values
-      // have unique contiguous segments
-      std::vector<std::pair<int32, std::pair<int32, int32> > >
-          contiguous_segments;
-      std::vector<std::vector<std::pair<int32, std::pair<int32, int32> > > >
-          unique_contiguous_segments_list;
-      std::vector<std::vector<int32> > second_values_vector;
-      ConvertVectorToContiguousSegments(second_values, &contiguous_segments);
-      SplitContiguousSegments(contiguous_segments,
-                              &unique_contiguous_segments_list);
-      // making pairs from the unique_contiguous_segments
-      for (int32 j = 0; j < unique_contiguous_segments_list.size(); j++) {
-        std::vector<std::pair<int32, int32> > list_of_pairs(
-            split_lists_intermediate[0].size(), std::make_pair(-1, -1));
-        std::vector<std::pair<int32, std::pair<int32, int32> > > 
-            &current_contiguous_segments = unique_contiguous_segments_list[j];
-        // converting the contiguous_segment to a list of pairs
-        for (int32 k = 0; k < current_contiguous_segments.size(); k++) {
-          std::pair<int32, std::pair<int32, int32> > &segment =
-              current_contiguous_segments[k];
-          int32 segment_value = segment.first;
-          int32 segment_start = segment.second.first;
-          int32 segment_end = segment.second.second;
-          for (int32 l = segment_start; l <= segment_end; l++)  {
-            if (segment_value != -1)
-              list_of_pairs[l] = std::make_pair(first_value, segment_value);
+      // the .first values in split_lists_intermediate[i] are all the same (or
+      // equal to -1).
+      if (first_value == -1) {
+        // all the .first values were equal to -1.  this is like a NULL marker.
+        continue;
+      }
+      std::vector<std::vector<int32> > second_values_split;
+      EnsureContiguousProperty(second_values, &second_values_split);
+      if (second_values_split.size() == 1) {
+        // this branch is an optimization for speed.
+        split_lists->push_back(split_lists_intermediate[i]);
+      } else {
+        for (size_t j = 0; j < second_values_split.size(); j++) {
+          split_lists->resize(split_lists->size() + 1);
+          const std::vector<int32> &input_list = second_values_split[j];
+          std::vector<std::pair<int32, int32> > &output_list =
+              split_lists->back();
+          output_list.resize(input_list.size());
+          int32 size = input_list.size();
+          for (int32 k = 0; k < size; k++) {
+            int32 row = input_list[k];
+            if (row == -1) output_list[k].first = -1;
+            else output_list[k].first = first_value;
+            output_list[k].second = row;
           }
         }
-        split_lists->push_back(list_of_pairs);
       }
     } else {
       // the .first values are not the same
@@ -542,6 +545,57 @@ void SplitLocationsBackward(
       }
     }
   }
+}
+
+// This function returns true if for each integer i != -1, all the indexes j at
+// which indexes[j] == i are consecutive with no gaps (more formally: if j1 < j2
+// < j3 and indexes[j1] == indexes[j3], then indexes[j1] == indexes[j2]).  If
+// so, it also outputs to "reverse_indexes" the begin and end of these ranges,
+// so that indexes[j] == i for all j such that (*reverse_indexes)[i].first <= j
+// && j < (*reverse_indexes)[i].second.
+bool HasContiguousProperty(
+    const std::vector<int32> &indexes,
+    std::vector<std::pair<int32, int32> > *reverse_indexes) {
+  reverse_indexes->clear();
+  int32 num_indexes = indexes.size();
+  if (num_indexes == 0)
+    return true;
+  int32 num_input_indexes =
+      *std::max_element(indexes.begin(), indexes.end()) + 1;
+  KALDI_ASSERT(num_input_indexes >= 0);
+  if (num_input_indexes == 0) {
+    // we don't really expect this input, filled with -1's.
+    KALDI_WARN << "HasContiguousProperty called on vector of -1's.";
+    return true;
+  }
+  reverse_indexes->resize(num_input_indexes,
+                          std::pair<int32,int32>(-1, -1));
+  // set each pair's "first" to the min index of all elements
+  // of "indexes" with that value, and the "second" to the
+  // max plus one.
+  for (int32 i = 0; i < num_indexes; i++) {
+    int32 j = indexes[i];
+    if (j == -1) continue;
+    KALDI_ASSERT(j >= 0);
+    std::pair<int32, int32> &pair = (*reverse_indexes)[j];
+    if (pair.first == -1) {
+      pair.first = i;
+      pair.second = i + 1;
+    } else {
+      pair.first = std::min(pair.first, i);
+      pair.second = std::max(pair.second, i + 1);
+    }
+  }
+  // check that the contiguous property holds.
+  for (int32 i = 0; i < num_input_indexes; i++) {
+    std::pair<int32, int32> pair = (*reverse_indexes)[i];
+    if (pair.first != -1) {
+      for (int32 j = pair.first; j < pair.second; j++)
+        if (indexes[j] != i)
+          return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace nnet3

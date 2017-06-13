@@ -28,4 +28,4 @@
 #include "util/table-types.h"
 #include "util/text-utils.h"
 
-#endif
+#endif  // KALDI_UTIL_COMMON_UTILS_H_

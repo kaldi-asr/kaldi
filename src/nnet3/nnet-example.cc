@@ -26,6 +26,7 @@ namespace kaldi {
 namespace nnet3 {
 
 void NnetIo::Write(std::ostream &os, bool binary) const {
+  KALDI_ASSERT(features.NumRows() == static_cast<int32>(indexes.size()));
   WriteToken(os, binary, "<NnetIo>");
   WriteToken(os, binary, name);
   WriteIndexVector(os, binary, indexes);
@@ -39,7 +40,19 @@ void NnetIo::Read(std::istream &is, bool binary) {
   ReadToken(is, binary, &name);
   ReadIndexVector(is, binary, &indexes);
   features.Read(is, binary);
-  ExpectToken(is, binary, "</NnetIo>");    
+  ExpectToken(is, binary, "</NnetIo>");
+}
+
+bool NnetIo::operator == (const NnetIo &other) const {
+  if (name != other.name) return false;
+  if (indexes != other.indexes) return false;
+  if (features.NumRows() != other.features.NumRows() ||
+      features.NumCols() != other.features.NumCols())
+    return false;
+  Matrix<BaseFloat> this_mat, other_mat;
+  features.GetMatrix(&this_mat);
+  other.features.GetMatrix(&other_mat);
+  return ApproxEqual(this_mat, other_mat);
 }
 
 NnetIo::NnetIo(const std::string &name,
@@ -50,6 +63,22 @@ NnetIo::NnetIo(const std::string &name,
   indexes.resize(num_rows);  // sets all n,t,x to zeros.
   for (int32 i = 0; i < num_rows; i++)
     indexes[i].t = t_begin + i;
+}
+
+NnetIo::NnetIo(const std::string &name,
+               int32 t_begin, const GeneralMatrix &feats):
+    name(name), features(feats) {
+  int32 num_rows = feats.NumRows();
+  KALDI_ASSERT(num_rows > 0);
+  indexes.resize(num_rows);  // sets all n,t,x to zeros.
+  for (int32 i = 0; i < num_rows; i++)
+    indexes[i].t = t_begin + i;
+}
+
+void NnetIo::Swap(NnetIo *other) {
+  name.swap(other->name);
+  indexes.swap(other->indexes);
+  features.Swap(&(other->features));
 }
 
 NnetIo::NnetIo(const std::string &name,
@@ -74,6 +103,7 @@ void NnetExample::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<Nnet3Eg>");
   WriteToken(os, binary, "<NumIo>");
   int32 size = io.size();
+  KALDI_ASSERT(size > 0 && "Writing empty nnet example");
   WriteBasicType(os, binary, size);
   for (int32 i = 0; i < size; i++)
     io[i].Write(os, binary);
@@ -85,7 +115,7 @@ void NnetExample::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<NumIo>");
   int32 size;
   ReadBasicType(is, binary, &size);
-  if (size < 0 || size > 1000000)
+  if (size <= 0 || size > 1000000)
     KALDI_ERR << "Invalid size " << size;
   io.resize(size);
   for (int32 i = 0; i < size; i++)
@@ -101,6 +131,54 @@ void NnetExample::Compress() {
   for (; iter != end; ++iter)
     iter->features.Compress();
 }
+
+
+size_t NnetIoStructureHasher::operator () (
+    const NnetIo &io) const noexcept {
+  StringHasher string_hasher;
+  IndexVectorHasher indexes_hasher;
+
+  // numbers appearing here were taken at random from a list of primes.
+  size_t ans = string_hasher(io.name) +
+      indexes_hasher(io.indexes) +
+      19249  * io.features.NumRows() +
+      14731 * io.features.NumCols();
+  return ans;
+}
+
+
+bool NnetIoStructureCompare::operator () (
+    const NnetIo &a, const NnetIo &b) const {
+  return a.name == b.name &&
+      a.features.NumRows() == b.features.NumRows() &&
+      a.features.NumCols() == b.features.NumCols() &&
+      a.indexes == b.indexes;
+}
+
+
+size_t NnetExampleStructureHasher::operator () (
+    const NnetExample &eg) const noexcept {
+  // these numbers were chosen at random from a list of primes.
+  NnetIoStructureHasher io_hasher;
+  size_t size = eg.io.size(), ans = size * 35099;
+  for (size_t i = 0; i < size; i++)
+    ans = ans * 19157 + io_hasher(eg.io[i]);
+  return ans;
+}
+
+bool NnetExampleStructureCompare::operator () (const NnetExample &a,
+                                               const NnetExample &b) const {
+  NnetIoStructureCompare io_compare;
+  if (a.io.size() != b.io.size())
+    return false;
+  size_t size = a.io.size();
+  for (size_t i = 0; i < size; i++)
+    if (!io_compare(a.io[i], b.io[i]))
+      return false;
+  return true;
+}
+
+
 
 } // namespace nnet3
 } // namespace kaldi

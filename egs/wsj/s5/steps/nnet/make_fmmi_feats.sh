@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012-2013  Brno University of Technology (Author: Karel Vesely),
+# Copyright 2012-2015  Brno University of Technology (author: Karel Vesely),
 #
 # Apache 2.0
 #
@@ -19,6 +19,8 @@ echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
+
+set -euo pipefail
 
 if [ $# != 5 ]; then
    echo "Usage: $0 [options] <tgt-data-dir> <src-data-dir> <gmm-dir> <log-dir> <fea-dir>"
@@ -44,8 +46,11 @@ logdir=$4
 feadir=$5
 
 sdata=$srcdata/split$nj;
-splice_opts=`cat $gmmdir/splice_opts 2>/dev/null`
-cmvn_opts=`cat $gmmdir/cmvn_opts 2>/dev/null`
+
+# Get the config,
+D=$gmmdir
+[ -f $D/cmvn_opts ] && cmvn_opts=$(cat $D/cmvn_opts) || cmvn_opts=
+[ -f $D/splice_opts ] && splice_opts=$(cat $D/splice_opts) || splice_opts=
 
 mkdir -p $data $logdir $feadir
 [[ -d $sdata && $srcdata/feats.scp -ot $sdata ]] || split_data.sh $srcdata $nj || exit 1;

@@ -57,9 +57,11 @@ ForwardingDescriptor *GenRandForwardingDescriptor(int32 num_nodes) {
 SumDescriptor *GenRandSumDescriptor(
     int32 num_nodes) {
   if (Rand() % 3 != 0) {
-    bool required = (Rand() % 2 == 0);
-    return new UnarySumDescriptor(GenRandForwardingDescriptor(num_nodes),
-                                  required);
+    bool not_required = (Rand() % 5 == 0);
+    if (not_required)
+      return new OptionalSumDescriptor(GenRandSumDescriptor(num_nodes));
+    else
+      return new SimpleSumDescriptor(GenRandForwardingDescriptor(num_nodes));
   } else {
     return new BinarySumDescriptor((Rand() % 2 == 0 ? BinarySumDescriptor::kSum:
                                     BinarySumDescriptor::kFailover),
@@ -76,7 +78,7 @@ void GenRandDescriptor(int32 num_nodes,
   std::vector<SumDescriptor*> parts;
   for (int32 part = 0; part < num_parts; part++)
     parts.push_back(GenRandSumDescriptor(num_nodes));
-  *desc = Descriptor(parts);                    
+  *desc = Descriptor(parts);
 
 }
 
@@ -106,22 +108,114 @@ void UnitTestDescriptorIo() {
     const std::string *next_token = &(tokens[0]);
     bool ans = desc4.Parse(node_names, &next_token);
     KALDI_ASSERT(ans);
-    
+
     std::ostringstream ostr2;
     desc2.WriteConfig(ostr2, node_names);
     std::ostringstream ostr3;
     desc3.WriteConfig(ostr3, node_names);
     std::ostringstream ostr4;
-    desc4.WriteConfig(ostr4, node_names);    
+    desc4.WriteConfig(ostr4, node_names);
 
     KALDI_ASSERT(ostr.str() == ostr2.str());
     KALDI_ASSERT(ostr.str() == ostr3.str());
     KALDI_LOG << "x = " << ostr.str();
     KALDI_LOG << "y = " << ostr4.str();
-    KALDI_ASSERT(ostr.str() == ostr4.str());
+    if (ostr.str() != ostr4.str()) {
+      KALDI_WARN << "x and y differ: checking that it's due to Offset normalization.";
+      KALDI_ASSERT(ostr.str().find("Offset(Offset") != std::string::npos ||
+                   (ostr.str().find("Offset(") != std::string::npos &&
+                    ostr.str().find(", 0)") != std::string::npos));
+    }
   }
 }
 
+
+// This function tests GeneralDescriptor, but only for correctly-normalized input.
+void UnitTestGeneralDescriptor() {
+  for (int32 i = 0; i < 100; i++) {
+    int32 num_nodes = 1 + Rand() % 5;
+    std::vector<std::string> node_names(num_nodes);
+    for (int32 i = 0; i < node_names.size(); i++) {
+      std::ostringstream ostr;
+      ostr << "a" << (i+1);
+      node_names[i] = ostr.str();
+    }
+    Descriptor desc;
+    std::ostringstream ostr;
+    GenRandDescriptor(num_nodes, &desc);
+    desc.WriteConfig(ostr, node_names);
+
+    Descriptor desc2(desc), desc3;
+    desc3 = desc;
+    std::vector<std::string> tokens;
+    DescriptorTokenize(ostr.str(), &tokens);
+    tokens.push_back("end of input");
+    std::istringstream istr(ostr.str());
+    const std::string *next_token = &(tokens[0]);
+
+
+    GeneralDescriptor *gen_desc = GeneralDescriptor::Parse(node_names,
+                                                           &next_token);
+
+    if (*next_token != "end of input")
+      KALDI_ERR << "Parsing Descriptor, expected end of input but got "
+                << "'" <<  *next_token << "'";
+
+    Descriptor *desc4 = gen_desc->ConvertToDescriptor();
+    std::ostringstream ostr2;
+    desc4->WriteConfig(ostr2, node_names);
+    KALDI_LOG << "Original descriptor was: " << ostr.str();
+    KALDI_LOG << "Parsed descriptor was: " << ostr2.str();
+    if (ostr2.str() != ostr.str())
+      KALDI_WARN << "Strings differed.  Check manually.";
+
+    delete gen_desc;
+    delete desc4;
+  }
+}
+
+
+// normalizes the text form of a descriptor.
+std::string NormalizeTextDescriptor(const std::vector<std::string> &node_names,
+                                    const std::string &desc_str) {
+  std::vector<std::string> tokens;
+  DescriptorTokenize(desc_str, &tokens);
+  tokens.push_back("end of input");
+  const std::string *next_token = &(tokens[0]);
+  GeneralDescriptor *gen_desc = GeneralDescriptor::Parse(node_names,
+                                                         &next_token);
+  if (*next_token != "end of input")
+    KALDI_ERR << "Parsing Descriptor, expected end of input but got "
+              << "'" <<  *next_token << "'";
+  Descriptor *desc = gen_desc->ConvertToDescriptor();
+  std::ostringstream ostr;
+  desc->WriteConfig(ostr, node_names);
+  delete gen_desc;
+  delete desc;
+  KALDI_LOG << "Result of normalizing " << desc_str << " is: " << ostr.str();
+  return ostr.str();
+}
+
+void UnitTestGeneralDescriptorSpecial() {
+  std::vector<std::string> names;
+  names.push_back("a");
+  names.push_back("b");
+  names.push_back("c");
+  names.push_back("d");
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "a") == "a");
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "Offset(Offset(a, 3, 5), 2, 1)") == "Offset(a, 5, 6)");
+
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "Offset(Sum(a, b), 2, 1)") ==
+               "Sum(Offset(a, 2, 1), Offset(b, 2, 1))");
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "Sum(Append(a, b), Append(c, d))") ==
+               "Append(Sum(a, c), Sum(b, d))");
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "Append(Append(a, b), Append(c, d))") ==
+               "Append(a, b, c, d)");
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "Sum(a, b, c, d)") ==
+               "Sum(a, Sum(b, Sum(c, d)))");
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "Sum(a)") == "a");
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "Offset(a, 0)") == "a");
+}
 
 } // namespace nnet3
 } // namespace kaldi
@@ -130,7 +224,11 @@ int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
 
+
+  UnitTestGeneralDescriptorSpecial();
+  UnitTestGeneralDescriptor();
   UnitTestDescriptorIo();
+
 
   KALDI_LOG << "Nnet descriptor tests succeeded.";
 

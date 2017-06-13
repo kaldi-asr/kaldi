@@ -21,13 +21,13 @@ OBJFILES = nnet-component.o nnet-nnet.o train-nnet.o train-nnet-ensemble.o nnet-
      get-feature-transform.o widen-nnet.o nnet-precondition-online.o \
      nnet-example-functions.o nnet-compute-discriminative.o \
      nnet-compute-discriminative-parallel.o online-nnet2-decodable.o \
-     train-nnet-perturbed.o nnet-compute-online.o
+     nnet-compute-online.o
 
 LIBNAME = kaldi-nnet2
 
-ADDLIBS = ../thread/kaldi-thread.a ../lat/kaldi-lat.a ../gmm/kaldi-gmm.a \
-      ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../transform/kaldi-transform.a \
-      ../cudamatrix/kaldi-cudamatrix.a ../matrix/kaldi-matrix.a \
-      ../base/kaldi-base.a  ../util/kaldi-util.a 
+ADDLIBS = ../cudamatrix/kaldi-cudamatrix.a ../lat/kaldi-lat.a \
+          ../hmm/kaldi-hmm.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
+          ../tree/kaldi-tree.a ../util/kaldi-util.a \
+          ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk

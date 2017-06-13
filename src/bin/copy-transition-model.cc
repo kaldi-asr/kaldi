@@ -35,10 +35,10 @@ int main(int argc, char *argv[]) {
         " models from the acoustic models they are written with.\n"
         "Usage:  copy-transition-model [options] <transition-model or model file> <transition-model-out>\n"
         "e.g.: \n"
-        " copy-transition-model --binarhy=false 1.mdl 1.txt\n";
+        " copy-transition-model --binary=false 1.mdl 1.txt\n";
 
     bool binary;
-    
+
     ParseOptions po(usage);
 
     po.Register("binary", &binary, "Write output in binary mode.");

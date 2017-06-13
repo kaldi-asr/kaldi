@@ -55,22 +55,22 @@ ln -s mpg123-1.21.0  mpg123
 
 (
   set +u
-  [ ! -z ${MPG123} ] && \
+  [ ! -z "${MPG123}" ] && \
     echo >&2 "MPG123 variable is aleady defined. Undefining..." && \
     unset MPG123
 
   [ -f ./env.sh ] && . ./env.sh
 
-  [ ! -z ${MPG123} ] && \
+  [ ! -z "${MPG123}" ] && \
     echo >&2 "MPG123 config is already in env.sh" && exit
 
   wd=`pwd`
-  wd=`readlink -f $wd`
+  wd=`readlink -f $wd || pwd`
 
   echo "export MPG123=$wd/mpg123"
   echo "export PATH=\${PATH}:\${MPG123}/bin"
 ) >> env.sh
 
 echo >&2 "Installation of MPG123 finished successfully"
-echo >&2 "Please source the tools/env.sh in your path.sh to enable it"
+echo >&2 "Please source the tools/extras/env.sh in your path.sh to enable it"
 

@@ -18,52 +18,34 @@
 // limitations under the License.
 
 #include "hmm/transition-model.h"
+#include "hmm/hmm-test-utils.h"
 
 namespace kaldi {
 
 
 void TestTransitionModel() {
-  std::vector<int32> phones;
-  phones.push_back(1);
-  for (int32 i = 2; i < 20; i++)
-    if (rand() % 2 == 0)
-      phones.push_back(i);
-  int32 N = 2 + rand() % 2, // context-size N is 2 or 3.
-      P = rand() % N;  // Central-phone is random on [0, N)
 
-  std::vector<int32> num_pdf_classes;
-
-  ContextDependency *ctx_dep =
-      GenRandContextDependencyLarge(phones, N, P,
-                                    true, &num_pdf_classes);
-  
-  HmmTopology topo = GetDefaultTopology(phones);
-  
-  TransitionModel trans_model(*ctx_dep, topo);
-  
-  delete ctx_dep; // We won't need this further.
-  ctx_dep = NULL;
-
+  TransitionModel *trans_model = GenRandTransitionModel(NULL);
 
   bool binary = (rand() % 2 == 0);
-  
+
   std::ostringstream os;
-  trans_model.Write(os, binary);
+  trans_model->Write(os, binary);
 
   TransitionModel trans_model2;
-  std::istringstream is2(os.str());  
+  std::istringstream is2(os.str());
   trans_model2.Read(is2, binary);
 
   {
     std::ostringstream os1, os2;
-    trans_model.Write(os1, false);
+    trans_model->Write(os1, false);
     trans_model2.Write(os2, false);
     KALDI_ASSERT(os1.str() == os2.str());
-    KALDI_ASSERT(trans_model.Compatible(trans_model2));
+    KALDI_ASSERT(trans_model->Compatible(trans_model2));
   }
-
+  delete trans_model;
 }
-  
+
 }
 
 int main() {

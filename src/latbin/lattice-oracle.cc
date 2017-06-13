@@ -67,7 +67,7 @@ void MapWildCards(const LabelSet &wildcards, fst::StdVectorFst *ofst) {
       LabelSet::const_iterator it = wildcards.find(arc.ilabel);
       if (it != wildcards.end()) {
         KALDI_VLOG(4) << "MapWildCards: mapping symbol " << arc.ilabel
-                      << " to epsilon" << endl;
+                      << " to epsilon" << std::endl;
         arc.ilabel = 0;
       }
       it = wildcards.find(arc.olabel);
@@ -173,7 +173,7 @@ void CountErrors(const fst::StdVectorFst &fst,
 bool CheckFst(const fst::StdVectorFst &fst, string name, string key) {
 #ifdef DEBUG
   StateId numstates = fst.NumStates();
-  cerr << " " << name << " has " <<numstates << " states" <<endl;
+  std::cerr << " " << name << " has " << numstates << " states" << std::endl;
   std::stringstream ss;
   ss << name << key << ".fst";
   fst.Write(ss.str());
@@ -196,9 +196,8 @@ int main(int argc, char *argv[]) {
     typedef fst::StdArc::StateId StateId;
 
     const char *usage =
-        "Finds the path having the smallest edit-distance between two\n"
-        "lattices. For efficiency put the smallest lattices first (for\n"
-        "example reference strings).\n"
+        "Finds the path having the smallest edit-distance between a lattice\n"
+        "and a reference string.\n"
         "\n"
         "Usage: lattice-oracle [options] <test-lattice-rspecifier> \\\n"
         "                                <reference-rspecifier> \\\n"
@@ -207,6 +206,8 @@ int main(int argc, char *argv[]) {
         " e.g.: lattice-oracle ark:lat.1 'ark:sym2int.pl -f 2- \\\n"
         "                       data/lang/words.txt <data/test/text|' ark,t:-\n"
         "\n"
+        "Note the --write-lattices option by which you can write out the\n"
+        "optimal path as a lattice.\n"
         "Note: you can use this program to compute the n-best oracle WER by\n"
         "first piping the input lattices through lattice-to-nbest and then\n"
         "nbest-to-lattice.\n";
@@ -284,7 +285,7 @@ int main(int argc, char *argv[]) {
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
       const Lattice &lat = lattice_reader.Value();
-      cerr << "Lattice " << key << " read." << endl;
+      std::cerr << "Lattice " << key << " read." << std::endl;
 
       // remove all weights while creating a standard FST
       VectorFst<StdArc> lattice_fst;
@@ -395,7 +396,7 @@ int main(int argc, char *argv[]) {
       }
       n_done++;
     }
-    if (word_syms) delete word_syms;
+    delete word_syms;
     int32 tot_errs = tot_substitutions + tot_deletions + tot_insertions;
     // Warning: the script egs/s5/*/steps/oracle_wer.sh parses the next line.
     KALDI_LOG << "Overall %WER " << (100.*tot_errs)/tot_words << " [ "

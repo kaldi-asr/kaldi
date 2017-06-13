@@ -1,4 +1,4 @@
-// cudamatrix/cu-matrix-speed-test.cc
+// cudamatrix/cu-sp-matrix-speed-test.cc
 
 // Copyright 2013  Johns Hopkins University (author: Daniel Povey)
 
@@ -53,7 +53,7 @@ static void UnitTestCuSpMatrixInvert(int32 dim) {
     if (iter  > 0) {
       B.Invert();
     } else { // do some more testing...
-    
+
       CuMatrix<Real> D(A);
       A.AddMat2(1.0, D, kTrans, 1.0);
       A.AddToDiag(0.1 * dim);
@@ -61,10 +61,10 @@ static void UnitTestCuSpMatrixInvert(int32 dim) {
       CuMatrix<Real> C(B);
       B.AddMat2(1.0, C, kTrans, 1.0);
       B.AddToDiag(0.1 * dim);
-    
+
       A.Invert();
       B.Invert();
-    
+
       SpMatrix<Real> E(dim);
       B.CopyToSp(&E);
 
@@ -82,7 +82,7 @@ static void UnitTestCuSpMatrixInvert(int32 dim) {
 
 template<typename Real>
 static void UnitTestCuSpMatrixCopyFromMat(int32 dim, SpCopyType copy_type) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.01;
   int32 iter = 0;
   Timer tim;
   CuMatrix<Real> A(dim, dim);
@@ -128,12 +128,13 @@ template<typename Real> void CuSpMatrixSpeedTest() {
 
 
 int main() {
-    //Select the GPU
+  SetVerboseLevel(1);
+  //Select the GPU
 #if HAVE_CUDA == 1
-    CuDevice::Instantiate().SelectGpuId("yes"); //-2 .. automatic selection
+  CuDevice::Instantiate().SelectGpuId("yes"); //-2 .. automatic selection
 #endif
 
-    kaldi::CuSpMatrixSpeedTest<float>();
+  kaldi::CuSpMatrixSpeedTest<float>();
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().DoublePrecisionSupported()) {
     kaldi::CuSpMatrixSpeedTest<double>();
@@ -146,5 +147,5 @@ int main() {
 #if HAVE_CUDA == 1
   CuDevice::Instantiate().PrintProfile();
 #endif
-  std::cout << "Tests succeeded.\n";
+  KALDI_LOG << "Tests succeeded.";
 }

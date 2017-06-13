@@ -58,7 +58,8 @@ void HmmTopology::Read(std::istream &is, bool binary) {
           else {
             int32 phone;
             if (!ConvertStringToInteger(s, &phone))
-              KALDI_ERR << "Reading HmmTopology object, expected integer, got instead "<<s;
+              KALDI_ERR << "Reading HmmTopology object, expected "
+                        << "integer, got instead " << s;
             phones.push_back(phone);
           }
         }
@@ -75,18 +76,30 @@ void HmmTopology::Read(std::istream &is, bool binary) {
             KALDI_ERR << "States are expected to be in order from zero, expected "
                       << this_entry.size() <<  ", got " << state;
           ReadToken(is, binary, &token);
-          int32 pdf_class = kNoPdf;  // -1 by default, means no pdf.
+          int32 forward_pdf_class = kNoPdf;  // -1 by default, means no pdf.
           if (token == "<PdfClass>") {
-            ReadBasicType(is, binary, &pdf_class);
+            ReadBasicType(is, binary, &forward_pdf_class);
+            this_entry.push_back(HmmState(forward_pdf_class));
             ReadToken(is, binary, &token);
-          }
-          this_entry.push_back(HmmState(pdf_class));
+            if (token == "<SelfLoopPdfClass>")
+              KALDI_ERR << "pdf classes should be defined using <PdfClass> "
+                        << "or <ForwardPdfClass>/<SelfLoopPdfClass> pair";
+          } else if (token == "<ForwardPdfClass>") {
+            int32 self_loop_pdf_class = kNoPdf;
+            ReadBasicType(is, binary, &forward_pdf_class);
+            ReadToken(is, binary, &token);
+            KALDI_ASSERT(token == "<SelfLoopPdfClass>");
+            ReadBasicType(is, binary, &self_loop_pdf_class);
+            this_entry.push_back(HmmState(forward_pdf_class, self_loop_pdf_class));
+            ReadToken(is, binary, &token);
+          } else
+            this_entry.push_back(HmmState(forward_pdf_class));
           while (token == "<Transition>") {
             int32 dst_state;
             BaseFloat trans_prob;
             ReadBasicType(is, binary, &dst_state);
             ReadBasicType(is, binary, &trans_prob);
-            this_entry.back().transitions.push_back(std::make_pair(dst_state, trans_prob));  
+            this_entry.back().transitions.push_back(std::make_pair(dst_state, trans_prob));
             ReadToken(is, binary, &token);
           }
           if(token == "<Final>") // TODO: remove this clause after a while.
@@ -117,13 +130,22 @@ void HmmTopology::Read(std::istream &is, bool binary) {
     ReadIntegerVector(is, binary, &phone2idx_);
     int32 sz;
     ReadBasicType(is, binary, &sz);
+    bool is_hmm = true;
+    if (sz == -1) {
+      is_hmm = false;
+      ReadBasicType(is, binary, &sz);
+    }
     entries_.resize(sz);
     for (int32 i = 0; i < sz; i++) {
       int32 thist_sz;
       ReadBasicType(is, binary, &thist_sz);
       entries_[i].resize(thist_sz);
       for (int32 j = 0 ; j < thist_sz; j++) {
-        ReadBasicType(is, binary, &(entries_[i][j].pdf_class));
+        ReadBasicType(is, binary, &(entries_[i][j].forward_pdf_class));
+        if (is_hmm)
+          entries_[i][j].self_loop_pdf_class = entries_[i][j].forward_pdf_class;
+        else
+          ReadBasicType(is, binary, &(entries_[i][j].self_loop_pdf_class));
         int32 thiss_sz;
         ReadBasicType(is, binary, &thiss_sz);
         entries_[i][j].transitions.resize(thiss_sz);
@@ -140,6 +162,7 @@ void HmmTopology::Read(std::istream &is, bool binary) {
 
 
 void HmmTopology::Write(std::ostream &os, bool binary) const {
+  bool is_hmm = IsHmm();
   WriteToken(os, binary, "<Topology>");
   if (!binary) {  // Text-mode write.
     os << "\n";
@@ -158,9 +181,17 @@ void HmmTopology::Write(std::ostream &os, bool binary) const {
       for (size_t j = 0; j < entries_[i].size(); j++) {
         WriteToken(os, binary, "<State>");
         WriteBasicType(os, binary, static_cast<int32>(j));
-        if (entries_[i][j].pdf_class != kNoPdf) {
-          WriteToken(os, binary, "<PdfClass>");
-          WriteBasicType(os, binary, entries_[i][j].pdf_class);
+        if (entries_[i][j].forward_pdf_class != kNoPdf) {
+          if (is_hmm) {
+            WriteToken(os, binary, "<PdfClass>");
+            WriteBasicType(os, binary, entries_[i][j].forward_pdf_class);
+          } else {
+            WriteToken(os, binary, "<ForwardPdfClass>");
+            WriteBasicType(os, binary, entries_[i][j].forward_pdf_class);
+            KALDI_ASSERT(entries_[i][j].self_loop_pdf_class != kNoPdf);
+            WriteToken(os, binary, "<SelfLoopPdfClass>");
+            WriteBasicType(os, binary, entries_[i][j].self_loop_pdf_class);
+          }
         }
         for (size_t k = 0; k < entries_[i][j].transitions.size(); k++) {
           WriteToken(os, binary, "<Transition>");
@@ -176,11 +207,15 @@ void HmmTopology::Write(std::ostream &os, bool binary) const {
   } else {
     WriteIntegerVector(os, binary, phones_);
     WriteIntegerVector(os, binary, phone2idx_);
+    // -1 is put here as a signal that the object has the new,
+    // extended format with SelfLoopPdfClass
+    if (!is_hmm) WriteBasicType(os, binary, static_cast<int32>(-1));
     WriteBasicType(os, binary, static_cast<int32>(entries_.size()));
     for (size_t i = 0; i < entries_.size(); i++) {
       WriteBasicType(os, binary, static_cast<int32>(entries_[i].size()));
       for (size_t j = 0; j < entries_[i].size(); j++) {
-        WriteBasicType(os, binary, entries_[i][j].pdf_class);
+        WriteBasicType(os, binary, entries_[i][j].forward_pdf_class);
+        if (!is_hmm) WriteBasicType(os, binary, entries_[i][j].self_loop_pdf_class);
         WriteBasicType(os, binary, static_cast<int32>(entries_[i][j].transitions.size()));
         for (size_t k = 0; k < entries_[i][j].transitions.size(); k++) {
           WriteBasicType(os, binary, entries_[i][j].transitions[k].first);
@@ -214,7 +249,7 @@ void HmmTopology::Check() {
     if (!entries_[i][num_states-1].transitions.empty())
       KALDI_ERR << "HmmTopology::Check(), last state must have no transitions.";
     // not sure how necessary this next stipulation is.
-    if (entries_[i][num_states-1].pdf_class != kNoPdf) 
+    if (entries_[i][num_states-1].forward_pdf_class != kNoPdf)
       KALDI_ERR << "HmmTopology::Check(), last state must not be emitting.";
 
     std::vector<bool> has_trans_in(num_states, false);
@@ -222,8 +257,10 @@ void HmmTopology::Check() {
 
     for (int32 j = 0; j < num_states; j++) {  // j is the state-id.
       BaseFloat tot_prob = 0.0;
-      if (entries_[i][j].pdf_class != kNoPdf)
-        seen_pdf_classes.push_back(entries_[i][j].pdf_class);
+      if (entries_[i][j].forward_pdf_class != kNoPdf) {
+        seen_pdf_classes.push_back(entries_[i][j].forward_pdf_class);
+        seen_pdf_classes.push_back(entries_[i][j].self_loop_pdf_class);
+      }
       std::set<int32> seen_transition;
       for (int32 k = 0;
            static_cast<size_t>(k) < entries_[i][j].transitions.size();
@@ -237,7 +274,7 @@ void HmmTopology::Check() {
         // that are being built, which enable the creation of phone-level lattices
         // and rescoring these with a different lexicon and LM.
         if (dst_state == num_states-1 // && j != 0
-            && entries_[i][j].pdf_class == kNoPdf)
+            && entries_[i][j].forward_pdf_class == kNoPdf)
           KALDI_ERR << "We do not allow any state to be "
               "nonemitting and have a transition to the final-state (this would "
               "stop the SplitToPhones function from identifying the last state "
@@ -247,7 +284,8 @@ void HmmTopology::Check() {
         if (seen_transition.count(dst_state) != 0)
           KALDI_ERR << "HmmTopology::Check(), duplicate transition found.";
         if (dst_state == k) {  // self_loop...
-          KALDI_ASSERT(entries_[i][j].pdf_class != kNoPdf && "Nonemitting states cannot have self-loops.");
+          KALDI_ASSERT(entries_[i][j].self_loop_pdf_class != kNoPdf &&
+                       "Nonemitting states cannot have self-loops.");
         }
         seen_transition.insert(dst_state);
         has_trans_in[dst_state] = true;
@@ -262,7 +300,7 @@ void HmmTopology::Check() {
         KALDI_ASSERT(tot_prob == 0.0);
     }
     // make sure all but start state have input transitions.
-    for (int32 j = 1; j < num_states; j++) 
+    for (int32 j = 1; j < num_states; j++)
       if (!has_trans_in[j])
         KALDI_ERR << "HmmTopology::Check, state "<<(j)<<" has no input transitions.";
     SortAndUniq(&seen_pdf_classes);
@@ -272,6 +310,22 @@ void HmmTopology::Check() {
           "contiguous and start from zero.";
     }
   }
+}
+
+bool HmmTopology::IsHmm() const {
+  const std::vector<int32> &phones = GetPhones();
+  KALDI_ASSERT(!phones.empty());
+  for (size_t i = 0; i < phones.size(); i++) {
+    int32 phone = phones[i];
+    const TopologyEntry &entry = TopologyForPhone(phone);
+    for (int32 j = 0; j < static_cast<int32>(entry.size()); j++) {  // for each state...
+      int32 forward_pdf_class = entry[j].forward_pdf_class,
+            self_loop_pdf_class = entry[j].self_loop_pdf_class;
+      if (forward_pdf_class != self_loop_pdf_class)
+        return false;
+    }
+  }
+  return true;
 }
 
 const HmmTopology::TopologyEntry& HmmTopology::TopologyForPhone(int32 phone) const {  // Will throw if phone not covered.
@@ -285,46 +339,48 @@ int32 HmmTopology::NumPdfClasses(int32 phone) const {
   // will throw if phone not covered.
   const TopologyEntry &entry = TopologyForPhone(phone);
   int32 max_pdf_class = 0;
-  for (size_t i = 0; i < entry.size(); i++)
-    max_pdf_class = std::max(max_pdf_class, entry[i].pdf_class);
+  for (size_t i = 0; i < entry.size(); i++) {
+    max_pdf_class = std::max(max_pdf_class, entry[i].forward_pdf_class);
+    max_pdf_class = std::max(max_pdf_class, entry[i].self_loop_pdf_class);
+  }
   return max_pdf_class+1;
 }
 
-HmmTopology GetDefaultTopology(const std::vector<int32> &phones_in) {
-  std::vector<int32> phones(phones_in);
-  std::sort(phones.begin(), phones.end());
-  KALDI_ASSERT(IsSortedAndUniq(phones) && !phones.empty());
-  
-  std::ostringstream topo_string;
-  topo_string <<  "<Topology>\n"
-      "<TopologyEntry>\n"
-      "<ForPhones> ";
-  for (size_t i = 0; i < phones.size(); i++)
-    topo_string << phones[i] << " ";
-  
-  topo_string << "</ForPhones>\n"
-      "<State> 0 <PdfClass> 0\n"
-      "<Transition> 0 0.5\n"
-      "<Transition> 1 0.5\n"
-      "</State> \n"
-      "<State> 1 <PdfClass> 1 \n"
-      "<Transition> 1 0.5\n"
-      "<Transition> 2 0.5\n"
-      "</State>  \n"
-      " <State> 2 <PdfClass> 2\n"
-      " <Transition> 2 0.5\n"
-      " <Transition> 3 0.5\n"
-      " </State>   \n"
-      " <State> 3 </State>\n"
-      " </TopologyEntry>\n"
-      " </Topology>\n";
+int32 HmmTopology::MinLength(int32 phone) const {
+  const TopologyEntry &entry = TopologyForPhone(phone);
+  // min_length[state] gives the minimum length for sequences up to and
+  // including that state.
+  std::vector<int32> min_length(entry.size(),
+                                std::numeric_limits<int32>::max());
+  KALDI_ASSERT(!entry.empty());
 
-  HmmTopology topo;
-  std::istringstream iss(topo_string.str());
-  topo.Read(iss, false);  
-  return topo;
-  
+  min_length[0] = (entry[0].forward_pdf_class == -1 ? 0 : 1);
+  int32 num_states = min_length.size();
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (int32 s = 0; s < num_states; s++) {
+      const HmmState &this_state = entry[s];
+      std::vector<std::pair<int32, BaseFloat> >::const_iterator
+          iter = this_state.transitions.begin(),
+          end = this_state.transitions.end();
+      for (; iter != end; ++iter) {
+        int32 next_state = iter->first;
+        KALDI_ASSERT(next_state < num_states);
+        int32 next_state_min_length = min_length[s] +
+            (entry[next_state].forward_pdf_class == -1 ? 0 : 1);
+        if (next_state_min_length < min_length[next_state]) {
+          min_length[next_state] = next_state_min_length;
+          if (next_state < s)
+            changed = true;
+          // the test of 'next_state < s' is an optimization for speed.
+        }
+      }
+    }
+  }
+  KALDI_ASSERT(min_length.back() != std::numeric_limits<int32>::max());
+  // the last state is the final-state.
+  return min_length.back();
 }
-
 
 } // End namespace kaldi

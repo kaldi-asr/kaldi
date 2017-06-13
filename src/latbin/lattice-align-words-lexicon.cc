@@ -116,6 +116,7 @@ int main(int argc, char *argv[]) {
         else {
           if (aligned_clat.Start() != fst::kNoStateId) {
             KALDI_WARN << "Outputting partial lattice for " << key;
+            TopSortCompactLatticeIfNeeded(&aligned_clat);
             clat_writer.Write(key, aligned_clat);
           } else {
             KALDI_WARN << "Empty aligned lattice for " << key

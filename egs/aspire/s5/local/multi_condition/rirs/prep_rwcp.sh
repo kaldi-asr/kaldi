@@ -14,6 +14,7 @@
 
 download=true
 sampling_rate=8k
+output_bit=16
 DBname=RWCP
 file_splitter=  #script to generate job scripts given the command file
 
@@ -73,7 +74,7 @@ for base_dir_name in ${RWCP_dirs[@]}; do
     for i in `seq $first_channel $last_channel`; do
       channel_files="$channel_files -t raw -e float -b 32 -c 1 -r 48k  $leaf_dir_name/$file_base_name.$i ";
     done
-    echo "sox -M $channel_files -r $sampling_rate -e signed-integer -b 32 ${output_dir}/${output_file_name}" >> $command_file
+    echo "sox -M $channel_files -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}" >> $command_file
     echo ${output_dir}/${output_file_name} >>  $log_dir/RWCP_type$type_num.rir.list
     files_done=$((files_done + 1))
   done
@@ -105,7 +106,7 @@ for data_file in ${data_files[@]}; do
   temp_file=$tempdir_robo/$files_done.wav
   python $tempdir_robo/raw_read.py $data_file $temp_file 
   output_file_name=RWCP_type${type_num}_rir_`basename $data_file .dat | tr '[:upper:]' '[:lower:]'`.wav
-  echo "sox -t wav $temp_file -r $sampling_rate -e signed-integer -b 32 ${output_dir}/${output_file_name}"   >> $command_file
+  echo "sox -t wav $temp_file -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}"   >> $command_file
   echo ${output_dir}/${output_file_name} >>  $log_dir/RWCP_type$type_num.rir.list
   files_done=$((files_done + 1))
 done
@@ -128,7 +129,7 @@ for leaf_dir_name in  ${leaf_directories[@]}; do
   for i in `seq $first_channel $last_channel`; do
     channel_files="$channel_files -t raw -e signed-integer -b 16 -c 1 -r 48k  $leaf_dir_name/$file_base_name.$i ";
   done
-  echo "sox -M $channel_files -r $sampling_rate -e signed-integer -b 32 ${output_dir}/${output_file_name}" >> $command_file
+  echo "sox -M $channel_files -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}" >> $command_file
 
   echo ${output_dir}/${output_file_name} >>  $log_dir/RWCP_type$type_num.noise.list
   files_done=$((files_done + 1))

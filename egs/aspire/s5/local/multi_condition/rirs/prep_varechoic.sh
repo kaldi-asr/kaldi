@@ -7,6 +7,7 @@
 
 download=true
 sampling_rate=8k
+output_bit=16
 DBname=VARECHOIC
 file_splitter=  #script to generate job scripts given the command file
 
@@ -47,7 +48,7 @@ varechoic_home=$RIR_home/icsi_varechoic/varechoic
 for room_type in ir00 ir43 ir100 ; do
   for mike in m1 m2 m3 m4; do
     file_basename=${room_type}${mike}
-    echo "sox  -B -e float -b 32 -c 1 -r 8k -t raw $varechoic_home/${file_basename}.raw -t wav -b 32 $output_dir/${DBname}_${file_basename}.wav" >> $command_file
+    echo "sox  -B -e float -b 32 -c 1 -r 8k -t raw $varechoic_home/${file_basename}.raw -t wav -b $output_bit $output_dir/${DBname}_${file_basename}.wav" >> $command_file
     echo $output_dir/${DBname}_${file_basename}.wav >>  $log_dir/${DBname}_type$type_num.rir.list
   done
 done

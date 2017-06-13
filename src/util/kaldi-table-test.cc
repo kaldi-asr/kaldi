@@ -72,8 +72,8 @@ void UnitTestReadScriptFile() {
   }
 
   {
-    Output ko("| gzip -c > tmpf.gz", true);  // binary mode w/ header: should fail,
-    // because script files should not have binary header.
+    Output ko("| gzip -c > tmpf.gz", true);  // binary mode w/ header:
+    // should fail, because script files should not have binary header.
     ko.Stream() << "a b\n";
     bool ans = ko.Close();
     KALDI_ASSERT(ans);
@@ -89,38 +89,46 @@ void UnitTestReadScriptFile() {
 
 
 void UnitTestClassifyWspecifier() {
-
   {
     std::string a = "b,ark:foo|";
-    std::string ark = "x", scp = "y"; WspecifierOptions opts;
+    std::string ark = "x", scp = "y";
+    WspecifierOptions opts;
     WspecifierType ans = ClassifyWspecifier(a, &ark, &scp, &opts);
-    KALDI_ASSERT(ans == kArchiveWspecifier && ark == "foo|" && scp == "" && opts.binary == true);
+    KALDI_ASSERT(ans == kArchiveWspecifier && ark == "foo|" && scp == "" &&
+                 opts.binary == true);
   }
 
   {
     std::string a = "t,ark:foo|";
-    std::string ark = "x", scp = "y"; WspecifierOptions opts;
+    std::string ark = "x", scp = "y";
+    WspecifierOptions opts;
     WspecifierType ans = ClassifyWspecifier(a, &ark, &scp, &opts);
-    KALDI_ASSERT(ans == kArchiveWspecifier && ark == "foo|" && scp == "" && opts.binary == false);
+    KALDI_ASSERT(ans == kArchiveWspecifier && ark == "foo|" && scp == "" &&
+                 opts.binary == false);
   }
 
   {
     std::string a = "t,scp:a b c d";
-    std::string ark = "x", scp = "y"; WspecifierOptions opts;
+    std::string ark = "x", scp = "y";
+    WspecifierOptions opts;
     WspecifierType ans = ClassifyWspecifier(a, &ark, &scp, &opts);
-    KALDI_ASSERT(ans == kScriptWspecifier && ark == "" && scp == "a b c d" && opts.binary == false);
+    KALDI_ASSERT(ans == kScriptWspecifier && ark == "" && scp == "a b c d" &&
+                 opts.binary == false);
   }
 
   {
     std::string a = "t,ark,scp:a b,c,d";
-    std::string ark = "x", scp = "y"; WspecifierOptions opts;
+    std::string ark = "x", scp = "y";
+    WspecifierOptions opts;
     WspecifierType ans = ClassifyWspecifier(a, &ark, &scp, &opts);
-    KALDI_ASSERT(ans == kBothWspecifier && ark == "a b" && scp == "c,d" && opts.binary == false);
+    KALDI_ASSERT(ans == kBothWspecifier && ark == "a b" && scp == "c,d" &&
+                 opts.binary == false);
   }
 
   {
     std::string a = "";
-    std::string ark = "x", scp = "y"; WspecifierOptions opts;
+    std::string ark = "x", scp = "y";
+    WspecifierOptions opts;
     WspecifierType ans = ClassifyWspecifier(a, &ark, &scp, &opts);
     KALDI_ASSERT(ans == kNoWspecifier);
   }
@@ -145,31 +153,34 @@ void UnitTestClassifyWspecifier() {
 
   {
     std::string a = "b,ark,scp:,";  // empty ark, scp fnames valid.
-    std::string ark = "x", scp = "y"; WspecifierOptions opts;
+    std::string ark = "x", scp = "y";
+    WspecifierOptions opts;
     WspecifierType ans = ClassifyWspecifier(a, &ark, &scp, &opts);
-    KALDI_ASSERT(ans == kBothWspecifier && ark == "" && scp == "" && opts.binary == true);
+    KALDI_ASSERT(ans == kBothWspecifier && ark == "" && scp == "" &&
+                 opts.binary == true);
   }
 
   {
     std::string a = "f,b,ark,scp:,";  // empty ark, scp fnames valid.
-    std::string ark = "x", scp = "y"; WspecifierOptions opts;
+    std::string ark = "x", scp = "y";
+    WspecifierOptions opts;
     WspecifierType ans = ClassifyWspecifier(a, &ark, &scp, &opts);
-    KALDI_ASSERT(ans == kBothWspecifier && ark == "" && scp == "" && opts.binary == true && opts.flush == true);
+    KALDI_ASSERT(ans == kBothWspecifier && ark == "" && scp == "" &&
+                 opts.binary == true && opts.flush == true);
   }
 
   {
     std::string a = "nf,b,ark,scp:,";  // empty ark, scp fnames valid.
-    std::string ark = "x", scp = "y"; WspecifierOptions opts;
+    std::string ark = "x", scp = "y";
+    WspecifierOptions opts;
     WspecifierType ans = ClassifyWspecifier(a, &ark, &scp, &opts);
-    KALDI_ASSERT(ans == kBothWspecifier && ark == "" && scp == "" && opts.binary == true && opts.flush == false);
+    KALDI_ASSERT(ans == kBothWspecifier && ark == "" && scp == "" &&
+                 opts.binary == true && opts.flush == false);
   }
-
-
 }
 
 
 void UnitTestClassifyRspecifier() {
-
   {
     std::string a = "ark:foo|";
     std::string fname = "x";
@@ -313,8 +324,6 @@ void UnitTestClassifyRspecifier() {
     RspecifierType ans = ClassifyRspecifier(a, &b, NULL);
     KALDI_ASSERT(ans == kArchiveRspecifier && b == "a");
   }
-
-
 }
 
 void UnitTestTableSequentialInt32(bool binary) {
@@ -323,10 +332,11 @@ void UnitTestTableSequentialInt32(bool binary) {
   std::vector<int32> v;
 
   for (int32 i = 0; i < sz; i++) {
-    k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
+    k.push_back(CharToString('a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
-    if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    v.push_back( Rand() );
+    if (i%2 == 0) k.back() = k.back() +  CharToString('a' + i);  // make them
+                                                           // different lengths.
+    v.push_back(Rand());
   }
 
   bool ans;
@@ -337,7 +347,7 @@ void UnitTestTableSequentialInt32(bool binary) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialInt32Reader sbr("ark:tmpf");
+  SequentialInt32Reader sbr(RandInt(0, 1) == 0 ? "ark:tmpf" : "ark,bg:tmpf");
   std::vector<std::string> k2;
   std::vector<int32> v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -355,10 +365,11 @@ void UnitTestTableSequentialBool(bool binary) {
   std::vector<bool> v;
 
   for (int32 i = 0; i < sz; i++) {
-    k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
+    k.push_back(CharToString('a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
-    if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    v.push_back( (Rand()%2 == 0) );
+    if (i%2 == 0) k.back() = k.back() +  CharToString('a' + i);  // make them
+                                                           // different lengths.
+    v.push_back((Rand()%2 == 0));
   }
 
   bool ans;
@@ -369,7 +380,7 @@ void UnitTestTableSequentialBool(bool binary) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialBoolReader sbr("ark:tmpf");
+  SequentialBoolReader sbr(RandInt(0, 1) == 0 ? "ark:tmpf" : "ark,bg:tmpf");
   std::vector<std::string> k2;
   std::vector<bool> v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -388,10 +399,11 @@ void UnitTestTableSequentialDouble(bool binary) {
   std::vector<double> v;
 
   for (int32 i = 0; i < sz; i++) {
-    k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
+    k.push_back(CharToString('a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
-    if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    v.push_back( (Rand() / static_cast<double>(Rand()) ));
+    if (i%2 == 0) k.back() = k.back() +  CharToString('a' + i);  // make them
+                                                           // different lengths.
+    v.push_back((Rand() / static_cast<double>(Rand())));
   }
 
   bool ans;
@@ -402,7 +414,7 @@ void UnitTestTableSequentialDouble(bool binary) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialDoubleReader sbr("ark:tmpf");
+  SequentialDoubleReader sbr(RandInt(0, 1) == 0 ? "ark:tmpf" : "ark,bg:tmpf");
   std::vector<std::string> k2;
   std::vector<double> v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -428,21 +440,25 @@ void UnitTestTableSequentialDoubleBoth(bool binary, bool read_scp) {
   std::vector<double> v;
 
   for (int32 i = 0; i < sz; i++) {
-    k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
+    k.push_back(CharToString('a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
-    if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    v.push_back( (Rand() / static_cast<double>(Rand()) ));
+    if (i%2 == 0) k.back() = k.back() +  CharToString('a' + i);  // make them
+                                                           // different lengths.
+    v.push_back((Rand() / static_cast<double>(Rand())));
   }
 
   bool ans;
-  DoubleWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
+  DoubleWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" :
+                  "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
     bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialDoubleReader sbr(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
+  SequentialDoubleReader sbr(RandInt(0, 1) == 0 ?
+                             (read_scp ? "scp:tmpf.scp" : "ark:tmpf") :
+                             (read_scp ? "scp,bg:tmpf.scp" : "ark,bg:tmpf"));
   std::vector<std::string> k2;
   std::vector<double> v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -470,24 +486,28 @@ void UnitTestTableSequentialInt32VectorBoth(bool binary, bool read_scp) {
   std::vector<std::vector<int32> > v;
 
   for (int32 i = 0; i < sz; i++) {
-    k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
+    k.push_back(CharToString('a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
-    if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    v.push_back( std::vector<int32>() );
+    if (i%2 == 0) k.back() = k.back() +  CharToString('a' + i);  // make them
+                                                           // different lengths.
+    v.push_back(std::vector<int32>());
     int32 sz2 = Rand() % 5;
     for (int32 j = 0; j  < sz2; j++)
-      v.back().push_back( Rand() % 100);
+      v.back().push_back(Rand() % 100);
   }
 
   bool ans;
-  Int32VectorWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
+  Int32VectorWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" :
+                       "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
     bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialInt32VectorReader sbr(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
+  SequentialInt32VectorReader sbr(RandInt(0, 1) == 0 ?
+                                  (read_scp ? "scp:tmpf.scp" : "ark:tmpf") :
+                                  (read_scp ? "scp,bg:tmpf.scp" : "ark,bg:tmpf"));
   std::vector<std::string> k2;
   std::vector<std::vector<int32> > v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -507,23 +527,27 @@ void UnitTestTableSequentialInt32PairVectorBoth(bool binary, bool read_scp) {
   std::vector<std::vector<std::pair<int32, int32> > > v(sz);
 
   for (int32 i = 0; i < sz; i++) {
-    k[i] = CharToString( 'a' + static_cast<char>(i));  // This gives us
+    k[i] = CharToString('a' + static_cast<char>(i));  // This gives us
     // some single quotes too but it doesn't really matter.
-    if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
+    if (i%2 == 0) k.back() = k.back() +  CharToString('a' + i);  // make them
+                                                           // different lengths.
     int32 sz2 = Rand() % 5;
-    for (int32 j = 0; j < sz2; j++) 
+    for (int32 j = 0; j < sz2; j++)
       v[i].push_back(std::pair<int32, int32>(Rand() % 10, Rand() % 10));
   }
-  
+
   bool ans;
-  Int32PairVectorWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
+  Int32PairVectorWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" :
+                           "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
     bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialInt32PairVectorReader sbr(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
+  SequentialInt32PairVectorReader sbr(RandInt(0, 1) == 0 ?
+                                      (read_scp ? "scp:tmpf.scp" : "ark:tmpf") :
+                                      (read_scp ? "scp,bg:tmpf.scp" : "ark,bg:tmpf"));
   std::vector<std::string> k2;
   std::vector<std::vector<std::pair<int32, int32> > > v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -543,21 +567,23 @@ void UnitTestTableSequentialInt32VectorVectorBoth(bool binary, bool read_scp) {
   std::vector<std::vector<std::vector<int32> > > v;
 
   for (int32 i = 0; i < sz; i++) {
-    k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
+    k.push_back(CharToString('a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
-    if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    v.push_back( std::vector<std::vector<int32> >() );
+    if (i%2 == 0) k.back() = k.back() +  CharToString('a' + i);  // make them
+                                                           // different lengths.
+    v.push_back(std::vector<std::vector<int32> >());
     int32 sz2 = Rand() % 5;
     for (int32 j = 0; j  < sz2; j++) {
-      v.back().push_back(std::vector<int32>() );
+      v.back().push_back(std::vector<int32>());
       int32 sz3 = Rand() % 2;
       for (int32 k = 0; k  < sz3; k++)
-        v.back().back().push_back( Rand() % 100);
+        v.back().back().push_back(Rand() % 100);
     }
   }
 
   bool ans;
-  Int32VectorVectorWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
+  Int32VectorVectorWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" :
+                             "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
     bw.Write(k[i], v[i]);
   }
@@ -588,16 +614,18 @@ void UnitTestTableSequentialInt32Script(bool binary) {
     buf[0] = 'a' + static_cast<char>(i);
     buf[1] = (i%2 == 0 ? 'b'+static_cast<char>(i) : '\0');
     buf[2] = '\0';
-    k.push_back( std::string(buf));
-    script.push_back( std::make_pair(std::string(buf), std::string(buf) + ".tmp"));
-    v.push_back( Rand() );
+    k.push_back(std::string(buf));
+    script.push_back(std::make_pair(std::string(buf),
+                     std::string(buf) + ".tmp"));
+    v.push_back(Rand());
   }
 
   WriteScriptFile("tmp.scp", script);
   {
     std::vector<std::pair<std::string, std::string> > script2;
     ReadScriptFile("tmp.scp", true, &script2);
-    KALDI_ASSERT(script2 == script);  // This tests WriteScriptFile and ReadScriptFile.
+    KALDI_ASSERT(script2 == script);  // This tests WriteScriptFile and
+                                      // ReadScriptFile.
   }
 
   bool ans;
@@ -608,7 +636,8 @@ void UnitTestTableSequentialInt32Script(bool binary) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialInt32Reader sbr("scp:tmp.scp");
+  SequentialInt32Reader sbr(RandInt(0, 1) == 0 ?
+                            "scp:tmp.scp" : "scp,bg:tmp.scp");
   std::vector<std::string> k2;
   std::vector<int32> v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -632,17 +661,19 @@ void UnitTestTableSequentialDoubleMatrixBoth(bool binary, bool read_scp) {
   std::vector<Matrix<double>*> v;
 
   for (int32 i = 0; i < sz; i++) {
-    k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
+    k.push_back(CharToString('a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
-    if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    v.push_back( new Matrix<double>(1 + Rand()%4, 1 + Rand() % 4));
+    if (i%2 == 0) k.back() = k.back() +  CharToString('a' + i);  // make them
+                                                           // different lengths.
+    v.push_back(new Matrix<double>(1 + Rand()%4, 1 + Rand() % 4));
     for (int32 i = 0; i < v.back()->NumRows(); i++)
       for (int32 j = 0; j < v.back()->NumCols(); j++)
         (*(v.back()))(i, j) = RandGauss();
   }
 
   bool ans;
-  DoubleMatrixWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
+  DoubleMatrixWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" :
+                        "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
     bw.Write(k[i], *(v[i]));
   }
@@ -682,23 +713,28 @@ void UnitTestTableSequentialBaseFloatVectorBoth(bool binary, bool read_scp) {
   std::vector<Vector<BaseFloat>*> v;
 
   for (int32 i = 0; i < sz; i++) {
-    k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
+    k.push_back(CharToString('a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
-    if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    v.push_back( new Vector<BaseFloat>(1 + Rand()%4));
+    if (i%2 == 0) k.back() = k.back() +  CharToString('a' + i);  // make them
+                                                           // different lengths.
+    v.push_back(new Vector<BaseFloat>(1 + Rand()%4));
     for (int32 i = 0; i < v.back()->Dim(); i++)
       (*(v.back()))(i) = RandGauss();
   }
 
   bool ans;
-  BaseFloatVectorWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
+  BaseFloatVectorWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" :
+                           "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
     bw.Write(k[i], *(v[i]));
   }
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialBaseFloatVectorReader sbr(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
+  SequentialBaseFloatVectorReader sbr(
+      RandInt(0, 1) == 0 ?
+      (read_scp ? "scp:tmpf.scp" : "ark:tmpf") :
+      (read_scp ? "scp,bg:tmpf.scp" : "ark,bg:tmpf"));
   std::vector<std::string> k2;
   std::vector<Vector<BaseFloat>* > v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -743,10 +779,11 @@ void UnitTestTableRandomBothDouble(bool binary, bool read_scp,
   std::vector<double> v;
 
   for (int32 i = 0; i < sz; i++) {
-    k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
+    k.push_back(CharToString('a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
-    if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    v.push_back( (Rand() / static_cast<double>(Rand()) ));
+    if (i%2 == 0) k.back() = k.back() +  CharToString('a' + i);  // make them
+                                                           // different lengths.
+    v.push_back((Rand() / static_cast<double>(Rand())));
   }
 
   if (!sorted)
@@ -754,8 +791,9 @@ void UnitTestTableRandomBothDouble(bool binary, bool read_scp,
 
 
   bool ans;
-  DoubleWriter bw(binary ? "b,f,ark,scp:tmpf,tmpf.scp" : "t,f,ark,scp:tmpf,tmpf.scp");  // Putting the
-  // "flush" option in too, just for good measure..
+  DoubleWriter bw(binary ? "b,f,ark,scp:tmpf,tmpf.scp" :
+                  "t,f,ark,scp:tmpf,tmpf.scp");  // Putting the "flush" option
+                                            // in too, just for good measure..
   for (int32 i = 0; i < sz; i++)  {
     bw.Write(k[i], v[i]);
   }
@@ -804,6 +842,137 @@ void UnitTestTableRandomBothDouble(bool binary, bool read_scp,
 }
 
 
+
+void UnitTestRangesMatrix(bool binary) {
+  int32 archive_size = RandInt(1, 10);
+  std::vector<std::pair<std::string, Matrix<BaseFloat> > > archive_contents(
+      archive_size);
+  for (int32 i = 0; i < archive_size; i++) {
+    char key_buf[2];
+    key_buf[0] = 'A' + i;
+    key_buf[1] = '\0';
+    std::string key(key_buf);
+    archive_contents[i].first = key;
+    archive_contents[i].second.Resize(RandInt(1, 5), RandInt(1, 5));
+    archive_contents[i].second.SetRandn();
+  }
+  if (RandInt(0, 1) == 0)
+    std::random_shuffle(archive_contents.begin(), archive_contents.end());
+
+  std::ostringstream writer_name;
+  writer_name << "ark,scp";
+  if (binary) writer_name << ",b";
+  else writer_name << ",t";
+  writer_name << ":tmpf,tmpf.scp";
+
+  {
+    BaseFloatMatrixWriter writer(writer_name.str());
+    for (int32 i = 0; i < archive_size; i++)
+      writer.Write(archive_contents[i].first, archive_contents[i].second);
+  }
+
+  std::vector<std::string> scp_lines;
+  {
+    bool binary;
+    Input scp_input("tmpf.scp", &binary);
+    KALDI_ASSERT(!binary);
+    std::string line;
+    while (getline(scp_input.Stream(), line)) {
+      Trim(&line);  // remove trailing and beginning whitespace.
+      scp_lines.push_back(line);
+    }
+    KALDI_ASSERT(scp_lines.size() == archive_contents.size());
+  }
+
+  int32 scp_length = RandInt(0, 10);
+  std::vector<std::pair<std::string, Matrix<BaseFloat> > >
+      scp_intended_contents(scp_length);
+
+  {
+    Output output("tmpf_ranges.scp", false);
+
+    for (int32 i = 0; i < scp_length; i++) {
+      int32 src_i = RandInt(0, archive_size - 1);
+      std::string scp_line_str = scp_lines[src_i];  // a line like "A tmpf:1043", without newline.
+      scp_line_str[0] = 'a' + i;  // now scp_line_str looks like "a tmpf:1043".
+      std::string key("x");
+      key[0] = 'a' + i;
+      scp_intended_contents[i].first = key;
+      output.Stream() << scp_line_str;
+      const Matrix<BaseFloat> &src_mat = archive_contents[src_i].second;
+      if (RandInt(0, 1) == 0) {  // Use a range.
+        int32 tot_rows = src_mat.NumRows(), tot_cols = src_mat.NumCols();
+        int32 row_offset = RandInt(0, tot_rows - 1),
+            num_rows = RandInt(1, tot_rows - row_offset),
+            col_offset = RandInt(0, tot_cols - 1),
+            num_cols = RandInt(1, tot_cols - col_offset);
+        SubMatrix<BaseFloat> sub_mat(src_mat, row_offset, num_rows,
+                                     col_offset, num_cols);
+        scp_intended_contents[i].second = sub_mat;
+        output.Stream() << "[";
+        if (row_offset != 0 || num_rows != tot_rows)
+          output.Stream() << row_offset << ":"
+                          << (row_offset + num_rows - 1);
+        else
+          output.Stream() << ":";
+        if (col_offset != 0 || num_cols != tot_cols) {
+          output.Stream() << "," << col_offset
+                          << ":" << (col_offset + num_cols - 1);
+        } else {
+          if (RandInt(0, 1) == 0) {
+            output.Stream() << ",:";
+          }
+        }
+        output.Stream() << "]";
+      } else {  // no range.
+        scp_intended_contents[i].second = src_mat;
+      }
+      output.Stream() << "\n";
+    }
+  }
+
+  {  // test random-access reading.
+    bool permissive = (RandInt(0, 1) == 0);
+    RandomAccessDoubleMatrixReader reader(permissive ?
+                                          "scp,p:tmpf_ranges.scp" :
+                                          "scp:tmpf_ranges.scp");
+
+    int32 num_queries = RandInt(0, 10);
+    for (int32 n = 0; n < num_queries; n++) {
+      int32 i = RandInt(0, scp_length);
+      if (i == scp_length) { // fake "bad" query.
+        KALDI_ASSERT(!reader.HasKey("foobar"));
+      } else {
+        std::string key = scp_intended_contents[i].first;
+        if (RandInt(0, 1) == 0)
+          KALDI_ASSERT(reader.HasKey(key));
+        Matrix<BaseFloat> value (reader.Value(key));
+        KALDI_ASSERT(value.ApproxEqual(scp_intended_contents[i].second));
+      }
+    }
+  }
+
+
+  {  // test sequential reading.
+    bool permissive = (RandInt(0, 1) == 0);
+    SequentialBaseFloatMatrixReader reader(permissive ?
+                                           "scp,p:tmpf_ranges.scp" :
+                                           "scp:tmpf_ranges.scp");
+
+    int32 i = 0;
+    for (; !reader.Done(); reader.Next(), i++) {
+      KALDI_ASSERT(reader.Key() == scp_intended_contents[i].first);
+      KALDI_ASSERT(reader.Value().ApproxEqual(scp_intended_contents[i].second));
+    }
+    KALDI_ASSERT(i == scp_length);
+  }
+
+
+  unlink("tmpf");
+  unlink("tmpf.scp");
+  unlink("tmpf_ranges.scp");
+}
+
 void UnitTestTableRandomBothDoubleMatrix(bool binary, bool read_scp,
                                          bool sorted, bool called_sorted,
                                          bool once) {
@@ -812,9 +981,10 @@ void UnitTestTableRandomBothDoubleMatrix(bool binary, bool read_scp,
   std::vector<Matrix<double> > v;
 
   for (int32 i = 0; i < sz; i++) {
-    k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
+    k.push_back(CharToString('a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
-    if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
+    if (i%2 == 0) k.back() = k.back() +  CharToString('a' + i);  // make them
+                                                           // different lengths.
     v.resize(v.size()+1);
     v.back().Resize(1 + Rand()%3, 1 + Rand()%3);
     for (int32 j = 0; j < v.back().NumRows(); j++)
@@ -827,8 +997,9 @@ void UnitTestTableRandomBothDoubleMatrix(bool binary, bool read_scp,
 
 
   bool ans;
-  DoubleMatrixWriter bw(binary ? "b,f,ark,scp:tmpf,tmpf.scp" : "t,f,ark,scp:tmpf,tmpf.scp");  // Putting the
-  // "flush" option in too, just for good measure..
+  DoubleMatrixWriter bw(binary ? "b,f,ark,scp:tmpf,tmpf.scp" :
+                        "t,f,ark,scp:tmpf,tmpf.scp");  // Putting the "flush"
+  // option in too, just for good measure..
   for (int32 i = 0; i < sz; i++)  {
     bw.Write(k[i], v[i]);
   }
@@ -844,7 +1015,6 @@ void UnitTestTableRandomBothDoubleMatrix(bool binary, bool read_scp,
   if (once) name += "o,";
   else if (Rand()%2 == 0) name += "no,";
   name += std::string(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
-  
   RandomAccessDoubleMatrixReader sbr(name);
 
   if (sz != 0) {
@@ -893,6 +1063,7 @@ int main() {
     UnitTestTableSequentialInt32(b);
     UnitTestTableSequentialInt32Script(b);
     UnitTestTableSequentialDouble(b);
+    UnitTestRangesMatrix(b);
     for (int j = 0; j < 2; j++) {
       bool c = (j == 0);
       UnitTestTableSequentialDoubleBoth(b, c);
@@ -907,8 +1078,8 @@ int main() {
           bool e = (l == 0);
           for (int m = 0; m < 2; m++) {
             bool f = (m == 0);
-            UnitTestTableRandomBothDouble (b, c, d, e, f);
-            UnitTestTableRandomBothDoubleMatrix (b, c, d, e, f);
+            UnitTestTableRandomBothDouble(b, c, d, e, f);
+            UnitTestTableRandomBothDoubleMatrix(b, c, d, e, f);
           }
         }
       }

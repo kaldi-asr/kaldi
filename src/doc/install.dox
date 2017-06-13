@@ -29,8 +29,8 @@
   possibly including unfinished and experimental features, can
    be downloaded by typing into a shell:
   \verbatim
-    git clone https://github.com/kaldi-asr/kaldi.git kaldi-trunk --origin golden
-    cd kaldi-trunk
+    git clone https://github.com/kaldi-asr/kaldi.git kaldi --origin upstream
+    cd kaldi
   \endverbatim
  If you want to get updates and bug fixes you can go to some checked-out
  directory, and type

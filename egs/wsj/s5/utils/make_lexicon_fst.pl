@@ -21,28 +21,31 @@ use warnings; #sed replacement for -w perl parameter
 
 $pron_probs = 0;
 
-if ($ARGV[0] eq "--pron-probs") {
+if ((@ARGV > 0) && ($ARGV[0] eq "--pron-probs")) {
   $pron_probs = 1;
   shift @ARGV;
 }
 
 if (@ARGV != 1 && @ARGV != 3 && @ARGV != 4) {
-  print STDERR
-    "Usage: make_lexicon_fst.pl [--pron-probs] lexicon.txt [silprob silphone [sil_disambig_sym]] >lexiconfst.txt
-Creates a lexicon FST that transduces phones to words, and may allow optional silence. 
-Note: ordinarily, each line of lexicon.txt is: word phone1 phone2 ... phoneN; if the --pron-probs option is
-used, each line is: word pronunciation-probability phone1 phone2 ... phoneN.  The probability 'prob' will
-typically be between zero and one, and note that it's generally helpful to normalize so the largest one
-for each word is 1.0, but this is your responsibility.  The silence disambiguation symbol, e.g. something
-like #5, is used only when creating a lexicon with disambiguation symbols, e.g. L_disambig.fst, and was
-introduced to fix a particular case of non-determinism of decoding graphs.\n";
+  print STDERR "Usage: make_lexicon_fst.pl [--pron-probs] lexicon.txt [silprob silphone [sil_disambig_sym]] >lexiconfst.txt\n\n";
+  print STDERR "Creates a lexicon FST that transduces phones to words, and may allow optional silence.\n\n";
+  print STDERR "Note: ordinarily, each line of lexicon.txt is:\n";
+  print STDERR "  word phone1 phone2 ... phoneN;\n";
+  print STDERR "if the --pron-probs option is used, each line is:\n";
+  print STDERR "  word pronunciation-probability phone1 phone2 ... phoneN.\n\n";
+  print STDERR "The probability 'prob' will typically be between zero and one, and note that\n";
+  print STDERR "it's generally helpful to normalize so the largest one for each word is 1.0, but\n";
+  print STDERR "this is your responsibility.\n\n";
+  print STDERR "The silence disambiguation symbol, e.g. something like #5, is used only\n";
+  print STDERR "when creating a lexicon with disambiguation symbols, e.g. L_disambig.fst,\n";
+  print STDERR "and was introduced to fix a particular case of non-determinism of decoding graphs.\n\n";
   exit(1);
 }
 
 $lexfn = shift @ARGV;
 if (@ARGV == 0) {
   $silprob = 0.0;
-} elsif (@ARGV == 2) { 
+} elsif (@ARGV == 2) {
   ($silprob,$silphone) = @ARGV;
 } else {
   ($silprob,$silphone,$sildisambig) = @ARGV;
@@ -56,19 +59,6 @@ if ($silprob != 0.0) {
 
 open(L, "<$lexfn") || die "Error opening lexicon $lexfn";
 
-
-sub is_sil {
-  # Return true (1) if provided with a phone-sequence
-  # that means silence.
-  # @_ is the parameters of the function
-  # This function returns true if @_ equals ( $silphone )
-  # or something of the form ( "#0", $silphone, "#1" )
-  # where the "#0" and "#1" are disambiguation symbols.
-  return ( @_ == 1 && $_[0] eq $silphone ||
-           (@_ == 3 && $_[1] eq $silphone &&
-            $_[0] =~ m/^\#\d+$/ &&
-            $_[0] =~ m/^\#\d+$/));
-}
 
 if ( $silprob == 0.0 ) { # No optional silences: just have one (loop+final) state which is numbered zero.
   $loopstate = 0;
@@ -92,7 +82,7 @@ if ( $silprob == 0.0 ) { # No optional silences: just have one (loop+final) stat
       $pron_cost = -log($pron_prob);
     }
     if ($pron_cost != 0.0) { $pron_cost_string = "\t$pron_cost"; } else { $pron_cost_string = ""; }
-    
+
     $s = $loopstate;
     $word_or_eps = $w;
     while (@A > 0) {
@@ -148,18 +138,16 @@ if ( $silprob == 0.0 ) { # No optional silences: just have one (loop+final) stat
         $word_or_eps = "<eps>";
         $pron_cost_string = ""; $pron_cost = 0.0; # so we only print it the 1st time.
         $s = $ns;
+      } elsif (!defined($silphone) || $p ne $silphone) {
+        # This is non-deterministic but relatively compact,
+        # and avoids epsilons.
+        $local_nosilcost = $nosilcost + $pron_cost;
+        $local_silcost = $silcost + $pron_cost;
+        print "$s\t$loopstate\t$p\t$word_or_eps\t$local_nosilcost\n";
+        print "$s\t$silstate\t$p\t$word_or_eps\t$local_silcost\n";
       } else {
-        if (!is_sil($p)) {
-          # This is non-deterministic but relatively compact,
-          # and avoids epsilons.
-          $local_nosilcost = $nosilcost + $pron_cost;
-          $local_silcost = $silcost + $pron_cost;
-          print "$s\t$loopstate\t$p\t$word_or_eps\t$local_nosilcost\n";
-          print "$s\t$silstate\t$p\t$word_or_eps\t$local_silcost\n";
-        } else {
-          # no point putting opt-sil after silence word.
-          print "$s\t$loopstate\t$p\t$word_or_eps$pron_cost_string\n";
-        }
+        # no point putting opt-sil after silence word.
+        print "$s\t$loopstate\t$p\t$word_or_eps$pron_cost_string\n";
       }
     }
   }

@@ -47,7 +47,9 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: align-text [options] <text1-rspecifier> <text2-rspecifier> \\\n"
         "                              <alignment-wspecifier>\n"
-        " e.g.: align-text ark:text1.txt ark:text2.txt ark,t:alignment.txt\n";
+        " e.g.: align-text ark:text1.txt ark:text2.txt ark,t:alignment.txt\n"
+        "See also: compute-wer,\n"
+        "Example scoring script: egs/wsj/s5/steps/score_kaldi.sh\n";
 
     ParseOptions po(usage);
 
@@ -56,9 +58,11 @@ int main(int argc, char *argv[]) {
     po.Register("special-symbol", &special_symbol, "Special symbol to be "
                 "aligned with the inserted or deleted words. Your sentences "
                 "should not contain this symbol.");
-    po.Register("separator", &separator, "Separator for each aligned pairs in "
-                "the output alignment file. Your sentences should not contain "
-                "this symbol.");
+    po.Register("separator", &separator, "Separator for each aligned pair in "
+                "the output alignment file.  Note: it should not be necessary "
+                "to change this even if your sentences contain ';', because "
+                "to parse the output of this program you can just split on "
+                "space and then assert that every third token is ';'.");
 
     po.Read(argc, argv);
 
@@ -89,16 +93,12 @@ int main(int argc, char *argv[]) {
       const std::vector<std::string> &text1 = text1_reader.Value();
       const std::vector<std::string> &text2 = text2_reader.Value(key);
 
-      // Checks if the special symbol and separator is in the string.
+      // Checks if the special symbol is in the string.
       KALDI_ASSERT(std::find(text1.begin(),
                              text1.end(), special_symbol) == text1.end());
       KALDI_ASSERT(std::find(text2.begin(),
                              text2.end(), special_symbol) == text2.end());
-      KALDI_ASSERT(std::find(text1.begin(),
-                             text1.end(), separator) == text1.end());
-      KALDI_ASSERT(std::find(text2.begin(),
-                             text2.end(), separator) == text2.end());
-    
+
       if (std::find_if(text1.begin(), text1.end(), IsNotToken) != text1.end()) {
         KALDI_ERR << "In text1, the utterance " << key << " contains unprintable characters." \
           << "That means there is a problem with the text (such as incorrect encoding)." << std::endl;
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
           << "That means there is a problem with the text (such as incorrect encoding)." << std::endl;
         return  -1;
       }
-      
+
       std::vector<std::pair<std::string, std::string> > aligned;
       LevenshteinAlignment(text1, text2, special_symbol, &aligned);
 

@@ -33,7 +33,7 @@
 #include "gmm/full-gmm.h"
 #include "itf/options-itf.h"
 #include "util/table-types.h"
-#include "thread/kaldi-thread.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 /*
@@ -583,4 +583,4 @@ typedef TableWriter<Sgmm2GauPostHolder> Sgmm2GauPostWriter;
 }  // namespace kaldi
 
 
-#endif  // KALDI_SGMM_AM_SGMM_H_
+#endif  // KALDI_SGMM2_AM_SGMM2_H_

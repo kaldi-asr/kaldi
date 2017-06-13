@@ -1055,12 +1055,12 @@ class TreeClusterer {
 
   ~TreeClusterer() {
     for (int32 leaf = 0; leaf < static_cast<int32>(leaf_nodes_.size());leaf++) {
-      if (leaf_nodes_[leaf]->node_total) delete leaf_nodes_[leaf]->node_total;
+      delete leaf_nodes_[leaf]->node_total;
       DeletePointers(&(leaf_nodes_[leaf]->leaf.clusters));
       delete leaf_nodes_[leaf];
     }
     for (int32 nonleaf = 0; nonleaf < static_cast<int32>(nonleaf_nodes_.size()); nonleaf++) {
-      if (nonleaf_nodes_[nonleaf]->node_total) delete nonleaf_nodes_[nonleaf]->node_total;
+      delete nonleaf_nodes_[nonleaf]->node_total;
       delete nonleaf_nodes_[nonleaf];
     }
   }

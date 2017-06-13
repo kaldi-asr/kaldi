@@ -32,7 +32,7 @@ PdfPrior::PdfPrior(const PdfPriorOptions &opts)
   }
 
   KALDI_LOG << "Computing pdf-priors from : " << opts.class_frame_counts;
-  
+
   Vector<double> frame_counts, rel_freq, log_priors;
   {
     Input in;
@@ -44,24 +44,26 @@ PdfPrior::PdfPrior(const PdfPriorOptions &opts)
   // get relative frequencies,
   rel_freq = frame_counts;
   rel_freq.Scale(1.0/frame_counts.Sum());
-  
+
   // get the log-prior,
   log_priors = rel_freq;
   log_priors.Add(1e-20);
   log_priors.ApplyLog();
 
-  // Make the priors for classes with low counts +inf (i.e. -log(0)) such that
-  // the classes have 0 likelihood (i.e. -inf log-likelihood). We use sqrt(FLT_MAX)
-  // instead of -kLogZeroFloat to prevent NANs from appearing in computation.
+  // Make the priors for classes with low counts +inf (i.e. -log(0))
+  // such that the classes have 0 likelihood (i.e. -inf log-likelihood).
+  // We use sqrt(FLT_MAX) instead of -kLogZeroFloat to prevent NANs
+  // from appearing in computation.
   int32 num_floored = 0;
-  for (int32 i=0; i<log_priors.Dim(); i++) {
+  for (int32 i = 0; i < log_priors.Dim(); i++) {
     if (rel_freq(i) < opts.prior_floor) {
       log_priors(i) = sqrt(FLT_MAX);
       num_floored++;
     }
   }
-  KALDI_LOG << "Floored " << num_floored << " pdf-priors " 
-            << "(hard-set to " << sqrt(FLT_MAX) << ", which disables DNN output when decoding)";
+  KALDI_LOG << "Floored " << num_floored << " pdf-priors "
+            << "(hard-set to " << sqrt(FLT_MAX)
+            << ", which disables DNN output when decoding)";
 
   // sanity check,
   KALDI_ASSERT(KALDI_ISFINITE(log_priors.Sum()));
@@ -72,11 +74,11 @@ PdfPrior::PdfPrior(const PdfPriorOptions &opts)
 
 
 void PdfPrior::SubtractOnLogpost(CuMatrixBase<BaseFloat> *llk) {
-  if(log_priors_.Dim() == 0) {
+  if (log_priors_.Dim() == 0) {
     KALDI_ERR << "--class-frame-counts is empty: Cannot initialize priors "
               << "without the counts.";
   }
-  if(log_priors_.Dim() != llk->NumCols()) {
+  if (log_priors_.Dim() != llk->NumCols()) {
     KALDI_ERR << "Dimensionality mismatch,"
               << " class_frame_counts " << log_priors_.Dim()
               << " pdf_output_llk " << llk->NumCols();

@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+# Enhanced results format for easy readabiliy
+for x in exp/*/*/decode* exp/*/nnet3/*/decode*; do
+  multi=`expr "$x" : 'exp/\(\w*\)\/.*'`
+  stage=`expr "$x" : 'exp/\w*/\(.*\)/'`
+  test=`expr "$x" : 'exp/.*/decode_\(.*\)'`
+  if [ -d $x/scoring_kaldi ]; then
+    result=`grep WER $x/wer_* | utils/best_wer.sh`
+  else
+    result=`grep Sum $x/score_*/*.ctm.filt.sys | utils/best_wer.sh`
+  fi
+  echo "$multi@$stage@$test@||@$result"
+done | column -t -s '@'
+exit 0
+
+# Using the default LM (based on fisher_swbd)
+multi_a  tri4  tg_eval2000              ||  %WER 25.6 | 4459 42989 | 77.8 16.6 5.6 3.4 25.6 64.2 | exp/multi_a/tri4/decode_tg_eval2000/score_13_0.0/test.ctm.filt.sys
+multi_a  tri4  tg_eval2000.si           ||  %WER 32.3 | 4459 42989 | 72.0 21.7 6.3 4.3 32.3 68.2 | exp/multi_a/tri4/decode_tg_eval2000.si/score_12_0.0/test.ctm.filt.sys
+multi_a  tri4  tg_librispeech           ||  %WER 22.17 [ 11657 / 52576, 1525 ins, 1157 del, 8975 sub ] exp/multi_a/tri4/decode_tg_librispeech/wer_10_1.0
+multi_a  tri4  tg_librispeech.si        ||  %WER 27.34 [ 14375 / 52576, 1945 ins, 1401 del, 11029 sub ] exp/multi_a/tri4/decode_tg_librispeech.si/wer_10_1.0
+multi_a  tri4  tg_rt03                  ||  %WER 25.2 | 8420 76157 | 77.7 16.3 6.0 2.9 25.2 57.3 | exp/multi_a/tri4/decode_tg_rt03/score_14_1.0/test.ctm.filt.sys
+multi_a  tri4  tg_rt03.si               ||  %WER 32.6 | 8420 76157 | 71.1 21.5 7.3 3.8 32.6 63.1 | exp/multi_a/tri4/decode_tg_rt03.si/score_13_0.5/test.ctm.filt.sys
+multi_a  tri5  tg_eval2000              ||  %WER 24.9 | 4459 42989 | 78.6 16.2 5.2 3.5 24.9 63.5 | exp/multi_a/tri5/decode_tg_eval2000/score_12_0.0/test.ctm.filt.sys
+multi_a  tri5  tg_eval2000.si           ||  %WER 31.8 | 4459 42989 | 72.7 21.4 5.9 4.6 31.8 68.0 | exp/multi_a/tri5/decode_tg_eval2000.si/score_11_0.0/test.ctm.filt.sys
+multi_a  tri5  tg_librispeech           ||  %WER 19.87 [ 10447 / 52576, 1440 ins, 953 del, 8054 sub ] exp/multi_a/tri5/decode_tg_librispeech/wer_9_1.0
+multi_a  tri5  tg_librispeech.si        ||  %WER 24.87 [ 13078 / 52576, 1901 ins, 1206 del, 9971 sub ] exp/multi_a/tri5/decode_tg_librispeech.si/wer_9_1.0
+multi_a  tri5  tg_rt03                  ||  %WER 24.8 | 8420 76157 | 78.2 16.0 5.8 3.0 24.8 56.8 | exp/multi_a/tri5/decode_tg_rt03/score_14_0.0/test.ctm.filt.sys
+multi_a  tri5  tg_rt03.si               ||  %WER 31.8 | 8420 76157 | 72.0 20.9 7.1 3.8 31.8 62.6 | exp/multi_a/tri5/decode_tg_rt03.si/score_13_0.0/test.ctm.filt.sys
+
+# Using task-specific (non-mismatched) LMs
+multi_a  tri5  libri_tg_librispeech     ||  %WER 12.13 [ 6380 / 52576, 822 ins, 614 del, 4944 sub ] exp/multi_a/tri5/decode_libri_tg_librispeech/wer_14_0.0
+multi_a  tri5  libri_tg_librispeech.si  ||  %WER 14.89 [ 7829 / 52576, 921 ins, 855 del, 6053 sub ] exp/multi_a/tri5/decode_libri_tg_librispeech.si/wer_14_0.0
+multi_a  tri5  tedlium_tg_tedlium       ||  %WER 21.7 | 1155 27512 | 82.2 14.7 3.0 3.9 21.7 90.9 | exp/multi_a/tri5/decode_tedlium_tg_tedlium/score_11_1.0/test.ctm.filt.sys
+multi_a  tri5  tedlium_tg_tedlium.si    ||  %WER 29.0 | 1155 27512 | 75.8 20.3 3.9 4.8 29.0 93.3 | exp/multi_a/tri5/decode_tedlium_tg_tedlium.si/score_11_0.5/test.ctm.filt.sys

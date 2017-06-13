@@ -30,8 +30,8 @@ log_dir=$3
 if [ "$download" = true ]; then
   mkdir -p $RIR_home
   (cd $RIR_home;
-  rm -rf air_database_release_1_4.zip 
-  wget https://www2.ind.rwth-aachen.de/air/air_database_release_1_4.zip || exit 1;
+  rm -rf air_database_release_1_4.zip
+  wget http://www.openslr.org/resources/20/air_database_release_1_4.zip || exit 1;
   unzip air_database_release_1_4.zip > /dev/null
   )
 fi
@@ -51,7 +51,8 @@ command_file=$log_dir/${DBname}_read_rir_noise.sh
 echo "">$command_file
 file_count=1
 while read file_pattern output_file_name; do
-  output_file_name=`echo ${DBname}_type${type_num}_${file_count}_$output_file_name| tr '[:upper:]' '[:lower:]'`
+ # output_file_name=`echo ${DBname}_type${type_num}_${file_count}_$output_file_name| tr '[:upper:]' '[:lower:]'`
+  output_file_name=`echo ${DBname}_type${type_num}_$output_file_name| tr '[:upper:]' '[:lower:]'`
   echo "local/multi_condition/read_rir.py --output-sampling-rate $sampling_rate air '${file_pattern}' ${output_dir}/${output_file_name} || exit 1;" >> $command_file
   echo ${output_dir}/${output_file_name} >>  $log_dir/${DBname}_type$type_num.rir.list
   file_count=$((file_count + 1))

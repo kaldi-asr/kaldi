@@ -55,6 +55,6 @@ $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score_basic.LMWT.log \
     utils/int2sym.pl -f 2- $symtab \| \
     local/timit_norm_trans.pl -i - -m $phonemap -from 48 -to 39 \| \
     compute-wer --text --mode=all \
-     ark:$dir/scoring/test_filt.txt ark,p:- $dir/scoring/wer_stats_LMWT ">&" $dir/wer_LMWT || exit 1;
+     ark:$dir/scoring/test_filt.txt ark,p:- ">&" $dir/wer_LMWT || exit 1;
 
 exit 0;

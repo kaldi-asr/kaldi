@@ -148,7 +148,7 @@ Look at the files with suffix .csl (in data/lang/phones). These are colon-separa
 Look at phones.txt (in data/lang/).  This file is a phone symbol table that also 
 handles the "disambiguation symbols" used in the standard FST recipe.
 These symbols are conventionally called \#1, \#2 and so on;
- see the paper <a href=www.cs.nyu.edu/~mohri/pub/hbka.pdf> "Speech Recognition
+ see the paper <a href=http://www.cs.nyu.edu/~mohri/pub/hbka.pdf> "Speech Recognition
 with Weighted Finite State Transducers" </a>.  We also add a symbol \#0
 which replaces epsilon transitions in the language model; see
 \ref graph_disambig for more information.  How many disambiguation symbols
@@ -445,7 +445,7 @@ grep Overall exp/mono/log/acc.{?,??}.{?,??}.log
 You can see the acoustic likelihods on each iteration.  Next look at one of the files
 exp/mono/log/update.*.log to see what kind of information is in the update log.
 
-When the monophone training is finished, we can test the monophone decoding. Before decoding, we have to creat the decode graph. Type:
+When the monophone training is finished, we can test the monophone decoding. Before decoding, we have to create the decode graph. Type:
 \verbatim
 utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
 \endverbatim
@@ -510,7 +510,7 @@ to figure out what they mean.  Look at the rspecifier that corresponds to the fe
 try to understand it (this one has spaces inside, so Kaldi prints it out with single quotes
 around it so that you could paste it into the shell and the program would run as intended).
 
-The moniphone system is now finished and we will do triphone training and decoding in the 
+The monophone system is now finished and we will do triphone training and decoding in the 
 next step of tutorial.
 
   \ref tutorial "Up: Kaldi tutorial" <BR>

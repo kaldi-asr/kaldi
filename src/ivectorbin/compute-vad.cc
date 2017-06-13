@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: compute-vad [options] <feats-rspecifier> <vad-wspecifier>\n"
         "e.g.: compute-vad scp:feats.scp ark:vad.ark\n";
-    
+
     ParseOptions po(usage);
     bool omit_unvoiced_utts = false;
     po.Register("omit-unvoiced-utts", &omit_unvoiced_utts,
@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
     int32 num_done = 0, num_err = 0;
     int32 num_unvoiced = 0;
     double tot_length = 0.0, tot_decision = 0.0;
-    
+
     for (;!feat_reader.Done(); feat_reader.Next()) {
       std::string utt = feat_reader.Key();
       Matrix<BaseFloat> feat(feat_reader.Value());
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
       }
       tot_decision += vad_result.Sum();
       tot_length += vad_result.Dim();
-      
+
       if (!(omit_unvoiced_utts && sum == 0)) {
         vad_writer.Write(utt, vad_result);
       }

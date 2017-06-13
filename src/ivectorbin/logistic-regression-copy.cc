@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         "Usage: logistic-regression-copy [options] <model-in> <model-out>\n"
         "e.g.: echo '[ 2.6 1.7 3.9 1.24 7.5 ]' | logistic-regression-copy --scale-priors=- \\\n"
         "  1.model scaled_priors.mdl\n";
-    
+
     ParseOptions po(usage);
 
     bool binary = true;
@@ -45,9 +45,9 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("scale-priors", &scale_priors_rxfilename, "(extended) filename for file "
                 "containing a vector of prior-scales (e.g. inverses of training priors)");
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
 
     std::string model_rxfilename = po.GetArg(1),
         model_wxfilename = po.GetArg(2);
-    
+
 
     LogisticRegression model;
     ReadKaldiObject(model_rxfilename, &model);

@@ -18,7 +18,9 @@
 // limitations under the License.
 
 #include "hmm/transition-model.h"
+#include "hmm/hmm-test-utils.h"
 #include "nnet2/am-nnet.h"
+
 
 namespace kaldi {
 namespace nnet2 {
@@ -38,11 +40,11 @@ void UnitTestAmNnet() {
   ContextDependency *ctx_dep =
       GenRandContextDependencyLarge(phones, N, P,
                                     true, &num_pdf_classes);
-  
+
   HmmTopology topo = GetDefaultTopology(phones);
-  
+
   TransitionModel trans_model(*ctx_dep, topo);
-  
+
   delete ctx_dep; // We won't need this further.
   ctx_dep = NULL;
 
@@ -58,7 +60,7 @@ void UnitTestAmNnet() {
   priors.Scale(1.0 / priors.Sum());
 
   am_nnet.SetPriors(priors);
-  
+
   bool binary = (rand() % 2 == 0);
   std::ostringstream os;
   am_nnet.Write(os, binary);
@@ -83,4 +85,4 @@ int main() {
   UnitTestAmNnet();
   return 0;
 }
-  
+

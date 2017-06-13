@@ -22,9 +22,10 @@
 
 #include "nnet3/nnet-utils.h"
 #include "nnet3/nnet-compute.h"
-#include "nnet3/nnet-diagnostics.h"
 #include "util/parse-options.h"
 #include "itf/options-itf.h"
+#include "nnet3/nnet-diagnostics.h"
+
 
 namespace kaldi {
 namespace nnet3 {
@@ -47,6 +48,7 @@ struct NnetCombineConfig {
   bool test_gradient;
   bool enforce_positive_weights;
   bool enforce_sum_to_one;
+  BaseFloat sum_to_one_penalty;
   bool separate_weights_per_component;
   NnetCombineConfig(): num_iters(60),
                        initial_impr(0.01),
@@ -54,8 +56,9 @@ struct NnetCombineConfig {
                        test_gradient(false),
                        enforce_positive_weights(false),
                        enforce_sum_to_one(false),
+                       sum_to_one_penalty(0.0),
                        separate_weights_per_component(true) { }
-  
+
   void Register(OptionsItf *po) {
     po->Register("num-iters", &num_iters, "Maximum number of function "
                  "evaluations for BFGS to use when optimizing combination weights");
@@ -72,10 +75,15 @@ struct NnetCombineConfig {
                  "If true, enforce that all weights are positive.");
     po->Register("enforce-sum-to-one", &enforce_sum_to_one, "If true, enforce that "
                  "the model weights for each component should sum to one.");
+    po->Register("sum-to-one-penalty", &sum_to_one_penalty, "If >0, a penalty term "
+                 "on the squared difference between sum(weights) for one component,"
+                 " and 1.0. This is like --enforce-sum-to-one, but done in a 'soft' "
+                 "way (e.g. maybe useful with dropout).  We suggest small values "
+                 "like 10e-3 (for regular nnets) or 1.0e-04 (for chain models).");
     po->Register("separate-weights-per-component", &separate_weights_per_component,
                  "If true, have a separate weight for each updatable component in "
                  "the nnet.");
-  }  
+  }
 };
 
 
@@ -100,18 +108,22 @@ class NnetCombiner {
   void AcceptNnet(const Nnet &nnet);
   void Combine();
   const Nnet &GetNnet() const { return nnet_; }
+
+  ~NnetCombiner() { delete prob_computer_; }
  private:
-  const NnetCombineConfig &config_;
+  NnetCombineConfig config_;
 
   const std::vector<NnetExample> &egs_;
-  
+
   Nnet nnet_;  // The current neural network.
+
+  NnetComputeProb *prob_computer_;
 
   std::vector<int32> updatable_component_dims_;  // dimension of each updatable
                                                  // component.
 
   int32 num_real_input_nnets_;  // number of actual nnet inputs.
- 
+
   int32 num_nnets_provided_;  // keeps track of the number of calls to AcceptNnet().
 
   // nnet_params_ are the parameters of the "effective input"
@@ -121,10 +133,11 @@ class NnetCombiner {
   Matrix<BaseFloat> nnet_params_;
 
   // This vector has the same dimension as nnet_params_.NumRows(),
-  // and helps us normalize so each row of nnet_params correspondss to
-  // a weighted average of its inputs.
+  // and helps us normalize so each row of nnet_params corresponds to
+  // a weighted average of its inputs (will be all ones if
+  // config_.max_effective_inputs >= the number of nnets provided).
   Vector<BaseFloat> tot_input_weighting_;
-  
+
   // returns the parameter dimension, i.e. the dimension of the parameters that
   // we are optimizing.  This depends on the config, the number of updatable
   // components and nnet_params_.NumRows(); it will never exceed the number of
@@ -140,11 +153,11 @@ class NnetCombiner {
   }
 
   int32 NnetParameterDim() const { return nnet_params_.NumCols(); }
-  
+
   // Computes the initial parameters.  The parameters are the underlying thing
   // that we optimize; their dimension equals ParameterDim().  They are not the same
   // thing as the nnet parameters.
-  void GetInitialParameters(VectorBase<BaseFloat> *params) const;
+  void GetInitialParameters(VectorBase<double> *params) const;
 
   // Tests that derivatives are accurate.  Prints warning and returns false if not.
   bool SelfTestDerivatives();
@@ -152,35 +165,50 @@ class NnetCombiner {
   // Tests that model derivatives are accurate.  Just prints warning if not.
   void SelfTestModelDerivatives();
 
-  
+
   // prints the parameters via logging statements.
-  void PrintParams(const VectorBase<BaseFloat> &params) const;
-  
+  void PrintParams(const VectorBase<double> &params) const;
+
   // This function computes the objective function (and its derivative, if the objective
   // function is finite) at the given value of the parameters (the parameters we're optimizing,
   // i.e. the combination weights; not the nnet parameters.  This function calls most of the
   // functions below.
   double ComputeObjfAndDerivFromParameters(
-      VectorBase<BaseFloat> &params,
-      VectorBase<BaseFloat> *params_deriv);
+      VectorBase<double> &params,
+      VectorBase<double> *params_deriv);
 
-  
+
   // Computes the weights from the parameters in a config-dependent way.  The
   // weight dimension is always (the number of updatable components times
   // nnet_params_.NumRows()).
-  void GetWeights(const VectorBase<BaseFloat> &params,
-                  VectorBase<BaseFloat> *weights) const;
+  void GetWeights(const VectorBase<double> &params,
+                  VectorBase<double> *weights) const;
 
   // Given the raw weights: if config_.enforce_sum_to_one, then compute weights
   // with sum-to-one constrint per component included; else just copy input to
   // output.
-  void GetNormalizedWeights(const VectorBase<BaseFloat> &unnorm_weights,
-                            VectorBase<BaseFloat> *norm_weights) const;
+  void GetNormalizedWeights(const VectorBase<double> &unnorm_weights,
+                            VectorBase<double> *norm_weights) const;
+
+  // if config_.sum_to_one_penalty is 0.0, returns 0.0 and sets
+  // weights_penalty_deriv to 0.0; else it computes, for each
+  // updatable component u the total weight w_u, returns the value
+  // -0.5 * config_.sum_to_one_penalty * sum_u (w_u - 1.0)^2;
+  // and sets 'weights_penalty_deriv' to the derivative w.r.t.
+  // the result.
+  // Note: config_.sum_to_one_penalty is exclusive with
+  // config_.enforce_sum_to_one, so there is really no distinction between
+  // normalized and unnormalized weights here (since normalization would be a
+  // no-op).
+  double GetSumToOnePenalty(const VectorBase<double> &weights,
+                            VectorBase<double> *weights_penalty_deriv,
+                            bool print_weights = false) const;
+
 
   // Computes the nnet-parameter vector from the normalized weights and
   // nnet_params_, as a vector.  (See the functions Vectorize() and
   // UnVectorize() for how they relate to the nnet's components' parameters).
-  void GetNnetParameters(const Vector<BaseFloat> &normalized_weights,
+  void GetNnetParameters(const Vector<double> &normalized_weights,
                          VectorBase<BaseFloat> *nnet_params) const;
 
   // This function computes the objective function (and its derivative, if the objective
@@ -192,27 +220,27 @@ class NnetCombiner {
   // Given an objective-function derivative with respect to the nnet parameters,
   // computes the derivative with respect to the (normalized) weights.
   void GetWeightsDeriv(const VectorBase<BaseFloat> &nnet_params_deriv,
-                       VectorBase<BaseFloat> *normalized_weights_deriv);
+                       VectorBase<double> *normalized_weights_deriv);
 
 
   // Computes the derivative w.r.t. the unnormalized weights, by propagating
   // through the normalization operation.
   // If config_.enforce_sum_to_one == false, just copies norm_weights_deriv to
   // unnorm_weights_deriv.
-  void GetUnnormalizedWeightsDeriv(const VectorBase<BaseFloat> &unnorm_weights,
-                                   const VectorBase<BaseFloat> &norm_weights_deriv,
-                                   VectorBase<BaseFloat> *unnorm_weights_deriv);
-  
+  void GetUnnormalizedWeightsDeriv(const VectorBase<double> &unnorm_weights,
+                                   const VectorBase<double> &norm_weights_deriv,
+                                   VectorBase<double> *unnorm_weights_deriv);
+
 
   // Given a derivative w.r.t. the weights, outputs a derivative w.r.t.
   // the params
-  void GetParamsDeriv(const VectorBase<BaseFloat> &weights,
-                      const VectorBase<BaseFloat> &weight_deriv,
-                      VectorBase<BaseFloat> *param_deriv);
+  void GetParamsDeriv(const VectorBase<double> &weights,
+                      const VectorBase<double> &weight_deriv,
+                      VectorBase<double> *param_deriv);
 
   void ComputeUpdatableComponentDims();
   void FinishPreprocessingInput();
-  
+
 };
 
 

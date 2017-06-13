@@ -6,14 +6,13 @@
 # into the network. The temporal context used for training on reverberant data
 # is larger than that used for other LVCSR recipes.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=1
 train_stage=-10
 use_gpu=true
 dir=exp/nnet2_multicondition/nnet_ms_a
-dest_wav_dir=data/rvb_wavs # directory to store the reverberated wav files
 
 set -e
 . cmd.sh
@@ -23,13 +22,13 @@ set -e
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="-l gpu=1"
+  parallel_opts="--gpu 1"
   num_threads=1
   minibatch_size=512
 
@@ -48,11 +47,11 @@ else
   # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
-  parallel_opts="-pe smp $num_threads" 
+  parallel_opts="--num-threads $num_threads"
 fi
 
 # do the common parts of the script.
-local/multi_condition/run_nnet2_common.sh --dest-wav-dir $dest_wav_dir --stage $stage
+local/multi_condition/run_nnet2_common.sh --stage $stage
 
 
 if [ $stage -le 7 ]; then
@@ -114,7 +113,7 @@ if [ $stage -le 10 ]; then
 fi
 
 if [ $stage -le 11 ]; then
-  # do the actual online decoding with iVectors, carrying info forward from 
+  # do the actual online decoding with iVectors, carrying info forward from
   # previous utterances of the same speaker.
   for data_dir in dev_rvb test_rvb dev_aspire dev test; do
    ( steps/online/nnet2/decode.sh --nj 30 --cmd "$decode_cmd" \

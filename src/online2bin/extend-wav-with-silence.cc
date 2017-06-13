@@ -1,4 +1,4 @@
-// online2/extend-wav-with-silence.cc
+// online2bin/extend-wav-with-silence.cc
 
 // 2014  IMSL, PKU-HKUST (author: Wei Shi)
 // 2015  Tom Ko

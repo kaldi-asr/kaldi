@@ -47,7 +47,7 @@ int32 Nnet::LeftContext() const {
   }
   return -1*ans;
   // nnet-components return left context as a non-positive integer
-  // however the nnet-update, nnet-compute, train-nnet-perturbed expect a
+  // however the nnet-update, nnet-compute expect a
   // non-negative left context. In addition, the NnetExample also stores data
   // left context as positive integer. To be compatible with these other classes
   // Nnet::LeftContext() returns a non-negative left context.

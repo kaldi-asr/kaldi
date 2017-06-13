@@ -43,8 +43,8 @@ int main(int argc, char *argv[]) {
         "Usage: lattice-mbr-decode [options]  lattice-rspecifier "
         "transcriptions-wspecifier [ bayes-risk-wspecifier "
         "[ sausage-stats-wspecifier [ times-wspecifier] ] ] \n"
-        " e.g.: lattice-mbr-decode --acoustic-scale=0.1 ark:1.lats ark:1.tra "
-        "ark:/dev/null ark:1.sau\n";
+        " e.g.: lattice-mbr-decode --acoustic-scale=0.1 ark:1.lats "
+        "'ark,t:|int2sym.pl -f 2- words.txt > text' ark:/dev/null ark:1.sau\n";
     
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
               << (tot_bayes_risk / n_done) << " and per word, "
               << (tot_bayes_risk / n_words);
     
-    if (word_syms) delete word_syms;
+    delete word_syms;
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

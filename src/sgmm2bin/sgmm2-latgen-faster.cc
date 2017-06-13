@@ -52,7 +52,7 @@ bool ProcessUtterance(LatticeFasterDecoder &decoder,
                       CompactLatticeWriter *compact_lattice_writer,
                       LatticeWriter *lattice_writer,
                       double *like_ptr) { // puts utterance's like in like_ptr on success.
-  using fst::VectorFst;
+  using fst::Fst;
 
   Sgmm2PerSpkDerivedVars spk_vars;
   if (spkvecs_reader.IsOpen()) {
@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
     using fst::SymbolTable;
-    using fst::VectorFst;
+    using fst::Fst;
     using fst::StdArc;
 
     const char *usage =
@@ -182,7 +182,7 @@ int main(int argc, char *argv[]) {
       // It has to do with what happens on UNIX systems if you call fork() on a
       // large process: the page-table entries are duplicated, which requires a
       // lot of virtual memory.
-      VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_str);
+      Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
       timer.Reset(); // exclude graph loading time.
       
       {
@@ -257,7 +257,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Overall log-likelihood per frame = " << (tot_like/frame_count)
               << " over " << frame_count << " frames.";
 
-    if (word_syms) delete word_syms;
+    delete word_syms;
     return (num_success != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

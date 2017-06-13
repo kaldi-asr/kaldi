@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2012-2013 Karel Vesely, Daniel Povey
+# Copyright 2012-2013 Brno University of Technology (author: Karel Vesely), Daniel Povey
 # Apache 2.0.
 
 # Create denominator lattices for MMI/MPE/sMBR training.
@@ -22,11 +22,14 @@ max_mem=20000000 # This will stop the processes getting too large.
 # End configuration section.
 use_gpu=no # yes|no|optional
 parallel_opts="--num-threads 2"
+ivector=         # rx-specifier with i-vectors (ark-with-vectors),
 
 echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
+
+set -euo pipefail
 
 if [ $# != 4 ]; then
    echo "Usage: steps/$0 [options] <data-dir> <lang-dir> <src-dir> <exp-dir>"
@@ -56,6 +59,8 @@ echo $nj > $dir/num_jobs
 oov=`cat $lang/oov.int` || exit 1;
 
 mkdir -p $dir
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
 
 cp -r $lang $dir/
 
@@ -110,15 +115,35 @@ feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 [ ! -z "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp ark:- ark:- |"
 # add-deltas (optional),
 [ ! -z "$delta_opts" ] && feats="$feats add-deltas $delta_opts ark:- ark:- |"
+# add-pytel transform (optional),
+[ -e $D/pytel_transform.py ] && feats="$feats /bin/env python $D/pytel_transform.py |"
+
+# add-ivector (optional),
+if [ -e $D/ivector_dim ]; then
+  [ -z $ivector ] && echo "Missing --ivector, they were used in training!" && exit 1
+  # Get the tool,
+  ivector_append_tool=append-vector-to-feats # default,
+  [ -e $D/ivector_append_tool ] && ivector_append_tool=$(cat $D/ivector_append_tool)
+  # Check dims,
+  feats_job_1=$(sed 's:JOB:1:g' <(echo $feats))
+  dim_raw=$(feat-to-dim "$feats_job_1" -)
+  dim_raw_and_ivec=$(feat-to-dim "$feats_job_1 $ivector_append_tool ark:- '$ivector' ark:- |" -)
+  dim_ivec=$((dim_raw_and_ivec - dim_raw))
+  [ $dim_ivec != "$(cat $D/ivector_dim)" ] && \
+    echo "Error, i-vector dim. mismatch (expected $(cat $D/ivector_dim), got $dim_ivec in '$ivector')" && \
+    exit 1
+  # Append to feats,
+  feats="$feats $ivector_append_tool ark:- '$ivector' ark:- |"
+fi
+
 # nnet-forward,
 feats="$feats nnet-forward $nnet_forward_opts --feature-transform=$feature_transform --class-frame-counts=$class_frame_counts --use-gpu=$use_gpu $nnet ark:- ark:- |"
-#
 
 # if this job is interrupted by the user, we want any background jobs to be
 # killed too.
 cleanup() {
   local pids=$(jobs -pr)
-  [ -n "$pids" ] && kill $pids
+  [ -n "$pids" ] && kill $pids || true
 }
 trap "cleanup" INT QUIT TERM EXIT
 
@@ -129,7 +154,9 @@ if [ $sub_split -eq 1 ]; then
   # Prepare 'scp' for storing lattices separately and gzipped
   for n in `seq $nj`; do
     [ ! -d $dir/lat$n ] && mkdir $dir/lat$n;
-    cat $sdata/$n/feats.scp | awk '{ print $1" | gzip -c >'$dir'/lat'$n'/"$1".gz"; }' 
+    cat $sdata/$n/feats.scp | \
+    awk -v dir=$dir -v n=$n '{ utt=$1; utt_noslash=gensub("/","_","g",utt);
+                               printf("%s | gzip -c >%s/lat%d/%s.gz\n", utt, dir, n, utt_noslash); }'
   done >$dir/lat.store_separately_as_gz.scp
   # Generate the lattices
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode_den.JOB.log \
@@ -140,7 +167,7 @@ else
   # each job from 1 to $nj is split into multiple pieces (sub-split), and we aim
   # to have at most two jobs running at each time.  The idea is that if we have stragglers
   # from one job, we can be processing another one at the same time.
-  rm $dir/.error 2>/dev/null
+  rm -f $dir/.error
 
   prev_pid=
   for n in `seq $[nj+1]`; do
@@ -150,18 +177,18 @@ else
       echo "Not processing subset $n as already done (delete $dir/.done.$n if not)";
       this_pid=
     else
-      sdata2=$data/split$nj/$n/split$sub_split;
-      if [ ! -d $sdata2 ] || [ $sdata2 -ot $sdata/$n/feats.scp ]; then
-        split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
-      fi
+      sdata2=$data/split$nj/$n/split${sub_split}utt;
+      split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
-      feats_subset=$(echo $feats | sed s:JOB/:$n/split$sub_split/JOB/:g)
+      feats_subset=$(echo $feats | sed s:JOB/:$n/split${sub_split}utt/JOB/:g)
       # Prepare 'scp' for storing lattices separately and gzipped
       for k in `seq $sub_split`; do
         [ ! -d $dir/lat$n/$k ] && mkdir -p $dir/lat$n/$k;
-        cat $sdata2/$k/feats.scp | awk '{ print $1" | gzip -c >'$dir'/lat'$n'/'$k'/"$1".gz"; }' 
-      done >$dir/lat.$n.store_separately_as_gz.scp
+        cat $sdata2/$k/feats.scp | \
+        awk -v dir=$dir -v n=$n -v k=$k '{ utt=$1; utt_noslash=gensub("/","_","g",utt);
+                                           printf("%s | gzip -c >%s/lat%d/%d/%s.gz\n", utt, dir, n, k, utt_noslash); }'
+      done >$dir/lat.${n}.store_separately_as_gz.scp
       # Generate lattices
       $cmd $parallel_opts JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
         latgen-faster-mapped --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \

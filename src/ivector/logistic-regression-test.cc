@@ -41,7 +41,7 @@ void UnitTestPosteriors() {
     classes.push_back(i);
   }
   classifier.SetWeights(weights, classes);
-  
+
   // Get posteriors for the xs using batch and serial methods.
   Matrix<BaseFloat> batch_log_posteriors;
   classifier.GetLogPosteriors(xs, &batch_log_posteriors);
@@ -51,14 +51,14 @@ void UnitTestPosteriors() {
     x.CopyRowFromMat(xs, i);
     Vector<BaseFloat> log_post;
     classifier.GetLogPosteriors(x, &log_post);
-    
+
     // Verify that sum_y p(y|x) = 1.0.
     Vector<BaseFloat> post(log_post);
     post.ApplyExp();
     KALDI_ASSERT(ApproxEqual(post.Sum(), 1.0));
     log_posteriors.Row(i).CopyFromVec(log_post);
   }
-  
+
   // Verify equivalence of batch and serial methods.
   float tolerance = 0.01;
   KALDI_ASSERT(log_posteriors.ApproxEqual(batch_log_posteriors, tolerance));
@@ -89,32 +89,32 @@ void UnitTestTrain() {
   // the x vectors: a 1.0 which handles the prior.
   Matrix<BaseFloat> xs_with_prior(n_xs, n_features + 1);
   for (int32 i = 0; i < n_xs; i++) {
-    xs_with_prior(i, n_xs) = 1.0;
+    xs_with_prior(i, n_features) = 1.0;
   }
   SubMatrix<BaseFloat> sub_xs(xs_with_prior, 0, n_xs, 0, n_features);
   sub_xs.CopyFromMat(xs);
 
   Matrix<BaseFloat> xw(n_xs, n_labels);
-  xw.AddMatMat(1.0, xs_with_prior, kNoTrans, classifier.weights_, 
+  xw.AddMatMat(1.0, xs_with_prior, kNoTrans, classifier.weights_,
                kTrans, 0.0);
 
   Matrix<BaseFloat> grad(classifier.weights_.NumRows(),
                       classifier.weights_.NumCols());
 
-  double objf_trained = classifier.GetObjfAndGrad(xs_with_prior, 
+  double objf_trained = classifier.GetObjfAndGrad(xs_with_prior,
                                                   ys, xw, &grad, normalizer);
 
   // Calculate objective function using a random weight matrix.
   Matrix<BaseFloat> xw_rand(n_xs, n_labels);
-  
+
   Matrix<BaseFloat> weights_rand(classifier.weights_);
   weights_rand.SetRandn();
-  xw.AddMatMat(1.0, xs_with_prior, kNoTrans, weights_rand, 
+  xw.AddMatMat(1.0, xs_with_prior, kNoTrans, weights_rand,
                kTrans, 0.0);
 
   // Verify that the objective function after training is better
   // than the objective function with a random weight matrix.
-  double objf_rand_w = classifier.GetObjfAndGrad(xs_with_prior, ys, 
+  double objf_rand_w = classifier.GetObjfAndGrad(xs_with_prior, ys,
                                                  xw_rand, &grad, normalizer);
   KALDI_ASSERT(objf_trained > objf_rand_w);
   KALDI_ASSERT(objf_trained > Log(1.0 / n_xs));

@@ -61,7 +61,7 @@ namespace kaldi {
  <Final> 0.5
  </State>
  <State> 3
- </State> 
+ </State>
  </TopologyEntry>
  </Topology>
 */
@@ -95,23 +95,38 @@ class HmmTopology {
  public:
   /// A structure defined inside HmmTopology to represent a HMM state.
   struct HmmState {
-    /// The \ref pdf_class pdf-class, typically 0, 1 or 2 (the same as the HMM-state index),
+    /// The \ref pdf_class forward-pdf-class, typically 0, 1 or 2 (the same as the HMM-state index),
     /// but may be different to enable us to hardwire sharing of state, and may be
     /// equal to \ref kNoPdf == -1 in order to specify nonemitting states (unusual).
-    int32 pdf_class;
+    int32 forward_pdf_class;
 
-    /// A list of transitions.  The first member of each pair is the index of
-    /// the next HmmState, and the second is the default transition probability
-    /// (before training).
+    /// The \ref pdf_class self-loop pdf-class, similar to \ref pdf_class forward-pdf-class.
+    /// They will either both be \ref kNoPdf, or neither be \ref kNoPdf.
+    int32 self_loop_pdf_class;
+
+    /// A list of transitions, indexed by what we call a 'transition-index'.
+    /// The first member of each pair is the index of the next HmmState, and the
+    /// second is the default transition probability (before training).
     std::vector<std::pair<int32, BaseFloat> > transitions;
 
-    explicit HmmState(int32 p): pdf_class(p) { }
+    explicit HmmState(int32 pdf_class) {
+      this->forward_pdf_class = pdf_class;
+      this->self_loop_pdf_class = pdf_class;
+    }
+    explicit HmmState(int32 forward_pdf_class, int32 self_loop_pdf_class) {
+      KALDI_ASSERT((forward_pdf_class != kNoPdf && self_loop_pdf_class != kNoPdf) ||
+                   (forward_pdf_class == kNoPdf && self_loop_pdf_class == kNoPdf));
+      this->forward_pdf_class = forward_pdf_class;
+      this->self_loop_pdf_class = self_loop_pdf_class;
+    }
 
     bool operator == (const HmmState &other) const {
-      return (pdf_class == other.pdf_class && transitions == other.transitions);
+      return (forward_pdf_class == other.forward_pdf_class &&
+              self_loop_pdf_class == other.self_loop_pdf_class &&
+              transitions == other.transitions);
     }
-    
-    HmmState(): pdf_class(-1) { }
+
+    HmmState(): forward_pdf_class(-1), self_loop_pdf_class(-1) { }
   };
 
   /// TopologyEntry is a typedef that represents the topology of
@@ -124,6 +139,15 @@ class HmmTopology {
   // Checks that the object is valid, and throw exception otherwise.
   void Check();
 
+  /// Returns true if this HmmTopology is really 'hmm-like', i.e. the pdf-class on
+  /// the self-loops and forward transitions of all states are identical. [note: in HMMs,
+  /// the densities are associated with the states.] We have extended this to
+  /// support 'non-hmm-like' topologies (where those pdf-classes are different),
+  /// in order to make for more compact decoding graphs in our so-called 'chain models'
+  /// (AKA lattice-free MMI), where we use 1-state topologies that have different pdf-classes
+  /// for the self-loop and the forward transition. Note that we always use the 'reorder=true'
+  /// option so the 'forward transition' actually comes before the self-loop.
+  bool IsHmm() const;
 
   /// Returns the topology entry (i.e. vector of HmmState) for this phone;
   /// will throw exception if phone not covered by the topology.
@@ -144,6 +168,10 @@ class HmmTopology {
   /// used by tree-building code such as BuildTree().
   void GetPhoneToNumPdfClasses(std::vector<int32> *phone2num_pdf_classes) const;
 
+  // Returns the minimum number of frames it takes to traverse this model for
+  // this phone: e.g. 3 for the normal HMM topology.
+  int32 MinLength(int32 phone) const;
+
   HmmTopology() {}
 
   bool operator == (const HmmTopology &other) const {
@@ -157,11 +185,6 @@ class HmmTopology {
   std::vector<TopologyEntry> entries_;
 };
 
-
-/// This function returns a HmmTopology object giving a normal 3-state topology,
-/// covering all phones in the list "phones".  This is mainly of use in testing
-/// code.
-HmmTopology GetDefaultTopology(const std::vector<int32> &phones);
 
 /// @} end "addtogroup hmm_group"
 

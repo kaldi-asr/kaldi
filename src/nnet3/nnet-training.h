@@ -1,6 +1,7 @@
 // nnet3/nnet-training.h
 
 // Copyright    2015  Johns Hopkins University (author: Daniel Povey)
+//              2016  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -34,15 +35,22 @@ struct NnetTrainerOptions {
   bool store_component_stats;
   int32 print_interval;
   bool debug_computation;
-  bool update_per_minibatch;
+  BaseFloat momentum;
+  std::string read_cache;
+  std::string write_cache;
+  bool binary_write_cache;
+  BaseFloat max_param_change;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
+  CachingOptimizingCompilerOptions compiler_config;
   NnetTrainerOptions():
       zero_component_stats(true),
       store_component_stats(true),
       print_interval(100),
       debug_computation(false),
-      update_per_minibatch(false) { }
+      momentum(0.0),
+      binary_write_cache(true),
+      max_param_change(2.0) { }
   void Register(OptionsItf *opts) {
     opts->Register("store-component-stats", &store_component_stats,
                    "If true, store activations and derivatives for nonlinear "
@@ -53,16 +61,27 @@ struct NnetTrainerOptions {
     opts->Register("print-interval", &print_interval, "Interval (measured in "
                    "minibatches) after which we print out objective function "
                    "during training\n");
-    opts->Register("update-per-minibatch", &update_per_minibatch, "If true, "
-                   "wait to apply model changes until the whole minibatch has "
-                   "been processed (requires copying the model on each "
-                   "minibatch ");
+    opts->Register("max-param-change", &max_param_change, "The maximum change in "
+                   "parameters allowed per minibatch, measured in Euclidean norm "
+                   "over the entire model (change will be clipped to this value)");
+    opts->Register("momentum", &momentum, "momentum constant to apply during "
+                   "training (help stabilize update).  e.g. 0.9.  Note: we "
+                   "automatically multiply the learning rate by (1-momenum) "
+                   "so that the 'effective' learning rate is the same as "
+                   "before (because momentum would normally increase the "
+                   "effective learning rate by 1/(1-momentum))");
+    opts->Register("read-cache", &read_cache, "the location where we can read "
+                   "the cached computation from");
+    opts->Register("write-cache", &write_cache, "the location where we want to "
+                   "write the cached computation to");
+    opts->Register("binary-write-cache", &binary_write_cache, "Write "
+                   "computation cache in binary mode");
 
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
     optimize_config.Register(&optimization_opts);
-
-
+    ParseOptions compiler_opts("compiler", opts);
+    compiler_config.Register(&compiler_opts);
     // register the compute options with the prefix "computation".
     ParseOptions compute_opts("computation", opts);
     compute_config.Register(&compute_opts);
@@ -74,30 +93,44 @@ struct NnetTrainerOptions {
 // Also see struct AccuracyInfo, in nnet-diagnostics.h.
 struct ObjectiveFunctionInfo {
   int32 current_phase;
-
+  int32 minibatches_this_phase; // The number of minibatches' worth of stats that
+                                // we accumulated in the phase numbered
+                                // 'current_phase'.
   double tot_weight;
   double tot_objf;
+  double tot_aux_objf;  // An 'auxiliary' objective function that is optional-
+                        // may be used when things like regularization are being
+                        // used.
 
   double tot_weight_this_phase;
   double tot_objf_this_phase;
+  double tot_aux_objf_this_phase;
 
   ObjectiveFunctionInfo():
       current_phase(0),
-      tot_weight(0.0), tot_objf(0.0),
-      tot_weight_this_phase(0.0), tot_objf_this_phase(0.0) { }
+      minibatches_this_phase(0),
+      tot_weight(0.0), tot_objf(0.0), tot_aux_objf(0.0),
+      tot_weight_this_phase(0.0), tot_objf_this_phase(0.0),
+      tot_aux_objf_this_phase(0.0) { }
 
   // This function updates the stats and, if the phase has just changed,
   // prints a message indicating progress.  The phase equals
-  // minibatch_counter / minibatches_per_phase.
+  // minibatch_counter / minibatches_per_phase.  Its only function is to
+  // control how frequently we print logging messages.
   void UpdateStats(const std::string &output_name,
                    int32 minibatches_per_phase,
                    int32 minibatch_counter,
                    BaseFloat this_minibatch_weight,
-                   BaseFloat this_minibatch_tot_objf);
+                   BaseFloat this_minibatch_tot_objf,
+                   BaseFloat this_minibatch_tot_aux_objf = 0.0);
 
   // Prints stats for the current phase.
+  // Note: 'phase' will normally be this->current_phase + 1, but may under
+  // unusual circumstances (e.g. multilingual training, where not all outputs
+  // are seen on all minibatches) be larger than that.
   void PrintStatsForThisPhase(const std::string &output_name,
-                              int32 minibatches_per_phase) const;
+                              int32 minibatches_per_phase,
+                              int32 phase) const;
   // Prints total stats, and returns true if total stats' weight was nonzero.
   bool PrintTotalStats(const std::string &output_name) const;
 };
@@ -125,18 +158,38 @@ class NnetTrainer {
 
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
+
+  // Prints out the max-change stats (if nonzero): the percentage of time that
+  // per-component max-change and global max-change were enforced.
+  void PrintMaxChangeStats() const;
+
+  ~NnetTrainer();
  private:
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
 
+  // Applies per-component max-change and global max-change to all updatable
+  // components in *delta_nnet_, and use *delta_nnet_ to update parameters
+  // in *nnet_.
+  void UpdateParamsWithMaxChange();
+
   const NnetTrainerOptions config_;
   Nnet *nnet_;
+  Nnet *delta_nnet_;  // Only used if momentum != 0.0 or max-param-change !=
+                      // 0.0.  nnet representing accumulated parameter-change
+                      // (we'd call this gradient_nnet_, but due to
+                      // natural-gradient update, it's better to consider it as
+                      // a delta-parameter nnet.
   CachingOptimizingCompiler compiler_;
 
   // This code supports multiple output layers, even though in the
   // normal case there will be just one output layer named "output".
   // So we store the objective functions per output layer.
   int32 num_minibatches_processed_;
+
+  // stats for max-change.
+  std::vector<int32> num_max_change_per_component_applied_;
+  int32 num_max_change_global_applied_;
 
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
 };

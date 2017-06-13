@@ -27,8 +27,8 @@ namespace fst {
 
 // Arctic semiring: (max, +, inf, 0)
 // We define the Arctic semiring T' = (R \cup {-inf, +inf}, max, +, -inf, 0).
-// The term "Arctic" came from Keith Kintzley (kintzley@jhu.edu), as opposite 
-// to the Tropical semiring. 
+// The term "Arctic" came from Keith Kintzley (kintzley@jhu.edu), as opposite
+// to the Tropical semiring.
 template <class T>
 class ArcticWeightTpl : public FloatWeightTpl<T> {
  public:
@@ -49,7 +49,7 @@ class ArcticWeightTpl : public FloatWeightTpl<T> {
     return ArcticWeightTpl<T>(0.0F); }
 
   static const string &Type() {
-    static const string type = "arctic" +
+    static const string type = string("arctic") +
         FloatWeightTpl<T>::GetPrecisionString();
     return type;
   }
@@ -57,7 +57,7 @@ class ArcticWeightTpl : public FloatWeightTpl<T> {
   static ArcticWeightTpl<T> NoWeight() {
     return ArcticWeightTpl<T>(numeric_limits<T>::infinity());
   }
-  
+
   bool Member() const {
     // First part fails for IEEE NaN
     return Value() == Value() && Value() != numeric_limits<T>::infinity();

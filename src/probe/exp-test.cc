@@ -1,4 +1,4 @@
-// configuration/exp-test.cc
+// probe/exp-test.cc
 
 // Copyright 2014  Yandex LLC (Author: Ilya Edrenkin)
 

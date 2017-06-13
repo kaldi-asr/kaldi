@@ -30,7 +30,6 @@
 #include "fst/fstlib.h"
 
 using namespace kaldi;
-
 using std::vector;
 
 // Generate a string representation of the given EventType;  the symtable is
@@ -41,7 +40,7 @@ static std::string EventTypeToString(EventType &e,
                                      bool addpos) {
   // make sure it's sorted so that the kPdfClass is the first element!
   std::sort(e.begin(), e.end());
-  
+
   // first plot the pdf-class
   std::stringstream ss;
   ss << e[0].second;
@@ -49,7 +48,7 @@ static std::string EventTypeToString(EventType &e,
     ss << " ";
     if (addpos)
       ss << (i-1) << ":";
-    
+
     if (phones_symtab == NULL)
       ss << e[i].second;
     else {
@@ -69,6 +68,7 @@ static std::string EventTypeToString(EventType &e,
 int main(int argc, char *argv[]) {
   try {
     typedef kaldi::int32 int32;
+
     const char *usage =
       "Given the tree stats and the resulting tree, output a mapping of phones\n"
       "in context (and pdf-class) to the pdf-id.  This can be used to link the\n"
@@ -77,16 +77,16 @@ int main(int argc, char *argv[]) {
       "e.g.: \n"
       " extract-ctx treeacc tree\n"
       " extract-ctx --mono 48 tree\n";
-    
+
     ParseOptions po(usage);
-    
+
     std::string fsymboltab;
     bool addpos = false;
     bool mono = false;
     std::string silphones = "1,2,3";
     int32 silpdfclasses = 5;
     int32 nonsilpdfclasses = 3;
-    
+
     po.Register("mono", &mono,
                 "Assume mono-phone tree;  instead of tree stats, specify highest id");
     po.Register("sil-phones", &silphones,
@@ -100,12 +100,12 @@ int main(int argc, char *argv[]) {
     po.Register("add-position-indicators", &addpos,
                 "Add position indicators for phonemes");
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
-    
+
     // read symtab if available
     fst::SymbolTable *phones_symtab = NULL;
     if (fsymboltab.length() > 0) {
@@ -115,17 +115,17 @@ int main(int argc, char *argv[]) {
       if (!phones_symtab)
         KALDI_ERR << "Could not read phones symbol table file "<< fsymboltab;
     }
-    
+
     // read the tree, get all the leaves
     ContextDependency ctx_dep;
     ReadKaldiObject(po.GetArg(2), &ctx_dep);
     const EventMap &map = ctx_dep.ToPdfMap();
-    
+
     // here we have to do different things for mono and tri+ trees
     if (mono) {
       // A mono-phone tree is not actually a real tree.  We test for EventTypes
       // that have the central phone and the possible pdf-classes
-      
+
       int32 maxs = atoi(po.GetArg(1).c_str());
       if (phones_symtab != NULL) {
         size_t ns = phones_symtab->NumSymbols();
@@ -135,10 +135,10 @@ int main(int argc, char *argv[]) {
           maxs = (ns-1);
         }
       }
-      
+
       // parse silphones
       std::set<int32> silset;
-      
+
       std::string::size_type i1 = 0, i2;
       do {
         i2 = silphones.find(',', i1);
@@ -148,19 +148,19 @@ int main(int argc, char *argv[]) {
           break;
         i1 = i2 + 1;
       } while (true);
-                      
-      
+
+
       // now query each phone (ignore <eps> which is 0)
       for (int32 p = 1; p <= maxs; ++p) {
         int32 mpdf = (silset.find(p) == silset.end() ?
                         nonsilpdfclasses :
                         silpdfclasses);
-        
+
         for (int i = 0; i < mpdf; ++i) {
           EventType et;
           et.push_back(std::pair<EventKeyType, EventValueType>(kPdfClass, i));
           et.push_back(std::pair<EventKeyType, EventValueType>(0, p));
-          
+
           EventAnswerType ans;
           if (map.Map(et, &ans)) {
             std::cout << ans << " "
@@ -173,12 +173,12 @@ int main(int argc, char *argv[]) {
 
         }
       }
-      
+
     } else {
       // for tri+ trees, read the tree stats;  this gives us basically all
       // phones-in-context that may be linked to an individual model
       // (in practice, many of them will be shared, but we plot them anyways)
-      
+
       // build-tree-questions.h:typedef std::vector<std::pair<EventType, Clusterable*> > BuildTreeStatsType
       BuildTreeStatsType stats;
       {
@@ -188,9 +188,9 @@ int main(int argc, char *argv[]) {
         ReadBuildTreeStats(ki.Stream(), binary_in, gc, &stats);
       }
       KALDI_LOG << "Number of separate statistics is " << stats.size();
-      
+
       // typedef std::vector<std::pair<EventKeyType,EventValueType> > EventType
-      
+
       // now, for each tree stats element, query the tree to get the pdf-id
       for (size_t i = 0; i < stats.size(); ++i) {
         EventAnswerType ans;
@@ -204,7 +204,7 @@ int main(int argc, char *argv[]) {
         }
       }
     }
-    
+
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();

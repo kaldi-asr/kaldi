@@ -23,52 +23,48 @@
 
 namespace kaldi {
 
-static int32 MapPhone(const std::vector<int32> *phone_map,
+static int32 MapPhone(const std::vector<int32> &phone_map,
                       int32 phone) {
-  if (phone == 0 || phone_map == NULL) return phone;
-  else if (phone < 0 || phone >= phone_map->size()) {
+  if (phone == 0 || phone_map.empty()) return phone;
+  else if (phone < 0 || phone >= phone_map.size()) {
     KALDI_ERR << "Out-of-range phone " << phone << " bad --phone-map option?";
   }
-  return (*phone_map)[phone];
+  return phone_map[phone];
 }
 
 
 void AccumulateTreeStats(const TransitionModel &trans_model,
-                         BaseFloat var_floor,
-                         int N,  // context window size.
-                         int P,  // central position.
-                         const std::vector<int32> &ci_phones,
+                         const AccumulateTreeStatsInfo &info,
                          const std::vector<int32> &alignment,
                          const Matrix<BaseFloat> &features,
-                         const std::vector<int32> *phone_map,
                          std::map<EventType, GaussClusterable*> *stats) {
-
-  KALDI_ASSERT(IsSortedAndUniq(ci_phones));
   std::vector<std::vector<int32> > split_alignment;
   bool ans = SplitToPhones(trans_model, alignment, &split_alignment);
   if (!ans) {
     KALDI_WARN << "AccumulateTreeStats: alignment appears to be bad, not using it";
     return;
   }
-  int cur_pos = 0;
-  int dim = features.NumCols();
+  int32 cur_pos = 0;
+  int32 dim = features.NumCols();
   KALDI_ASSERT(features.NumRows() == static_cast<int32>(alignment.size()));
-  for (int i = -N; i < static_cast<int>(split_alignment.size()); i++) {
-    // consider window starting at i, only if i+P is within
+  for (int32 i = -info.context_width; i < static_cast<int32>(split_alignment.size()); i++) {
+    // consider window starting at i, only if i+info.central_position is within
     // list of phones.
-    if (i + P >= 0 && i + P < static_cast<int>(split_alignment.size())) {
+    if (i + info.central_position >= 0 &&
+        i + info.central_position < static_cast<int32>(split_alignment.size())) {
       int32 central_phone =
-          MapPhone(phone_map,
-                   trans_model.TransitionIdToPhone(split_alignment[i+P][0]));
-      bool is_ctx_dep = ! std::binary_search(ci_phones.begin(),
-                                             ci_phones.end(),
-                                             central_phone);
+          MapPhone(info.phone_map,
+                   trans_model.TransitionIdToPhone(
+                       split_alignment[i+info.central_position][0]));
+      bool is_ctx_dep = !std::binary_search(info.ci_phones.begin(),
+                                            info.ci_phones.end(),
+                                            central_phone);
       EventType evec;
-      for (int j = 0; j < N; j++) {
-        int phone;
-        if (i + j >= 0 && i + j < static_cast<int>(split_alignment.size()))
+      for (int32 j = 0; j < info.context_width; j++) {
+        int32 phone;
+        if (i + j >= 0 && i + j < static_cast<int32>(split_alignment.size()))
           phone =
-              MapPhone(phone_map,
+              MapPhone(info.phone_map,
                        trans_model.TransitionIdToPhone(split_alignment[i+j][0]));
         else
           phone = 0;  // ContextDependency class uses 0 to mean "out of window";
@@ -82,27 +78,28 @@ void AccumulateTreeStats(const TransitionModel &trans_model,
         // give an inconsistent answer in tree-training versus graph-building.
         // [setting it to zero would have the same effect given the "normal"
         // recipe but might be less robust to changes in tree-building recipe].
-        if (is_ctx_dep || j == P)
+        if (is_ctx_dep || j == info.central_position)
           evec.push_back(std::make_pair(static_cast<EventKeyType>(j), static_cast<EventValueType>(phone)));
       }
-      for (int j = 0; j < static_cast<int>(split_alignment[i+P].size());j++) {
+      for (int32 j = 0; j < static_cast<int32>(split_alignment[i+info.central_position].size());j++) {
         // for central phone of this window...
         EventType evec_more(evec);
-        int32 pdf_class = trans_model.TransitionIdToPdfClass(split_alignment[i+P][j]);
+        int32 pdf_class = trans_model.TransitionIdToPdfClass(
+            split_alignment[i+info.central_position][j]);
         // pdf_class will normally by 0, 1 or 2 for 3-state HMM.
         std::pair<EventKeyType, EventValueType> pr(kPdfClass, pdf_class);
         evec_more.push_back(pr);
         std::sort(evec_more.begin(), evec_more.end());  // these must be sorted!
         if (stats->count(evec_more) == 0)
-          (*stats)[evec_more] = new GaussClusterable(dim, var_floor);
-        
+          (*stats)[evec_more] = new GaussClusterable(dim, info.var_floor);
+
         BaseFloat weight = 1.0;
         (*stats)[evec_more]->AddStats(features.Row(cur_pos), weight);
         cur_pos++;
       }
     }
   }
-  KALDI_ASSERT(cur_pos == static_cast<int>(alignment.size()));
+  KALDI_ASSERT(cur_pos == static_cast<int32>(alignment.size()));
 }
 
 
@@ -124,8 +121,8 @@ void ReadPhoneMap(std::string phone_map_rxfilename,
        (vec[i][0]<static_cast<int32>(phone_map->size()) &&
         (*phone_map)[vec[i][0]] != -1))
       KALDI_ERR << "Error reading phone map from "
-                 <<   PrintableRxfilename(phone_map_rxfilename)
-                 << " (bad line " << i << ")";
+                <<   PrintableRxfilename(phone_map_rxfilename)
+                << " (bad line " << i << ")";
     if (vec[i][0]>=static_cast<int32>(phone_map->size()))
       phone_map->resize(vec[i][0]+1, -1);
     KALDI_ASSERT((*phone_map)[vec[i][0]] == -1);
@@ -137,6 +134,23 @@ void ReadPhoneMap(std::string phone_map_rxfilename,
   }
 }
 
+AccumulateTreeStatsInfo::AccumulateTreeStatsInfo(
+    const AccumulateTreeStatsOptions &opts):
+    var_floor(opts.var_floor),
+    context_width(opts.context_width),
+    central_position(opts.central_position) {
+  if (central_position < 0 || context_width <= central_position)
+    KALDI_ERR << "Invalid options: --central-position=" << central_position
+              << ", --context-width=" << context_width;
+  if (!opts.phone_map_rxfilename.empty())
+    ReadPhoneMap(opts.phone_map_rxfilename, &phone_map);
 
+  if (!opts.ci_phones_str.empty()) {
+    SplitStringToIntegers(opts.ci_phones_str, ":", false, &ci_phones);
+    std::sort(ci_phones.begin(), ci_phones.end());
+    if (!IsSortedAndUniq(ci_phones) || ci_phones.empty() || ci_phones[0] == 0)
+      KALDI_ERR << "Invalid --ci-phones option: " << opts.ci_phones_str;
+  }
+}
 
 }  // end namespace kaldi

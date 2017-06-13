@@ -60,11 +60,11 @@ class KwTermEqual {
 // This was an old definition of the criterion "the hyp is within
 // max_distance_ area from the ref". The positive thing about the
 // definition is, that it allows binary search through the collection
-//        ret &= abs(left.tbeg - right.tbeg) <= max_distance_;
-//        ret &= abs(left.tend - right.tend) <= max_distance_;
+//        ret &= fabs(left.tbeg - right.tbeg) <= max_distance_;
+//        ret &= fabs(left.tend - right.tend) <= max_distance_;
 
 // This is the newer definition -- should be equivalent to what F4DE uses
-    ret &= abs(center_left - center_right) <= max_distance_;
+    ret &= fabs(center_left - center_right) <= max_distance_;
 
     return ret;
   }
