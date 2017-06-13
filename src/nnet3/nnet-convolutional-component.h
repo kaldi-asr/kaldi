@@ -108,10 +108,6 @@ namespace nnet3 {
                       than zero; and this is handled while preparing the data
                       and not by the core components of the nnet3 framework.  So
                       for speech tasks we wouldn't normally set this value.
-     use-spatial-averages   Default false.  E.g. use-spatial-averages=true.  In
-                      this case, the convolution sees the input image patch plus
-                      one extra 'pixel' consisting of the average of the input
-                      channels over the entire input image.
      max-memory-mb    Maximum amount of temporary memory, in megabytes, that may
                       be used as temporary matrices in the convolution computation.
                       default=200.0.

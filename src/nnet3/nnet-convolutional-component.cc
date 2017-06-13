@@ -121,7 +121,6 @@ void TimeHeightConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
   model_.height_subsample_out = 1;  // default.
   max_memory_mb_ = 200.0;
   std::string height_offsets, time_offsets, required_time_offsets = "undef";
-  bool use_spatial_averages = false;
 
   bool ok = cfl->GetValue("num-filters-in", &model_.num_filters_in) &&
       cfl->GetValue("num-filters-out", &model_.num_filters_out) &&
@@ -136,7 +135,6 @@ void TimeHeightConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
               << cfl->WholeLine();
   }
   // some optional structural configs.
-  cfl->GetValue("use-spatial-averages", &use_spatial_averages);
   cfl->GetValue("required-time-offsets", &required_time_offsets);
   cfl->GetValue("height-subsample-out", &model_.height_subsample_out);
   cfl->GetValue("max-memory-mb", &max_memory_mb_);
@@ -169,12 +167,6 @@ void TimeHeightConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
       }
     }
     model_.offsets.clear();
-    if (use_spatial_averages) {
-      time_height_convolution::ConvolutionModel::Offset offset;
-      offset.time_offset = kNoTime;
-      offset.height_offset = kNoTime;
-      model_.offsets.push_back(offset);
-    }
     for (size_t i = 0; i < time_offsets_vec.size(); i++) {
       for (size_t j = 0; j < height_offsets_vec.size(); j++) {
         time_height_convolution::ConvolutionModel::Offset offset;

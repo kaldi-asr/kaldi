@@ -51,14 +51,6 @@ start:
     int32 max_offsets = RandInt(1, 10);
     model->offsets.clear();
     model->required_time_offsets.clear();
-    if (RandInt(0, 1) == 0) {
-      // Add the special offset that causes it to include the spatial average
-      // over the channels as an extra input feature.
-      ConvolutionModel::Offset o;
-      o.time_offset = kNoTime;
-      o.height_offset = kNoTime;
-      model->offsets.push_back(o);
-    }
     for (int32 i = 0; i < max_offsets; i++) {
       ConvolutionModel::Offset o;
       o.time_offset = RandInt(min_time_offset, max_time_offset);
@@ -78,8 +70,6 @@ start:
     KALDI_WARN << "Regenerating model because it didn't pass the check: "
                << model->Info();
     goto start;
-  } else {
-    KALDI_LOG << "Accepted model: " << model->Info();
   }
 }
 
@@ -223,63 +213,6 @@ void ZeroBlankRows(const std::vector<Index> &indexes,
   matrix->MulRowsVec(cu_mask);
 }
 
-
-// search for kNoTime in convolution.h for explanation.
-void ProcessChannelAverages(const MatrixBase<BaseFloat> &input,
-                            const MatrixBase<BaseFloat> &params,
-                            const std::vector<Index> &input_indexes,
-                            const std::vector<Index> &output_indexes,
-                            int32 num_filters_in,
-                            int32 num_filters_out,
-                            MatrixBase<BaseFloat> *output) {
-  // map (n,x) pairs to integer i = 0, 1, ...
-  std::unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > nx_to_i;
-  int32 num_images = 0;
-  for (std::vector<Index>::const_iterator iter = input_indexes.begin();
-       iter != input_indexes.end(); ++iter) {
-    std::pair<int32, int32> p(iter->n, iter->x);
-    if (nx_to_i.count(p) == 0) {
-      nx_to_i[p] = num_images++;
-    }
-  }
-  KALDI_ASSERT(input.NumRows() % num_images == 0 &&
-               output->NumRows() % num_images == 0);
-
-  Matrix<BaseFloat> input_channel_averages(num_images, num_filters_in);
-  // scale is the scale that will turn a sum into an average.
-  BaseFloat scale = num_filters_in * num_images * 1.0 /
-      (input.NumRows() * input.NumCols());
-  for (int32 r = 0; r < input.NumRows(); r++) {
-    std::pair<int32, int32> p(input_indexes[r].n, input_indexes[r].x);
-    KALDI_ASSERT(nx_to_i.count(p) == 1);
-    int32 i = nx_to_i[p];
-    SubVector<BaseFloat> this_image_average(input_channel_averages, i),
-        this_row(input, r);
-    for (int32 j = 0; j < this_row.Dim(); j++)
-      this_image_average(j % num_filters_in) += scale * this_row(j);
-  }
-
-
-  Matrix<BaseFloat> output_channel_offsets(num_images,
-                                           num_filters_out);
-  SubMatrix<BaseFloat> params_part(params, 0, num_filters_out,
-                                   0, num_filters_in);
-  output_channel_offsets.AddMatMat(1.0, input_channel_averages, kNoTrans,
-                                   params_part, kTrans, 0.0);
-
-  for (int32 r = 0; r < output->NumRows(); r++) {
-    std::pair<int32, int32> p(output_indexes[r].n, output_indexes[r].x);
-    KALDI_ASSERT(nx_to_i.count(p) == 1);
-    int32 i = nx_to_i[p];
-    SubVector<BaseFloat> this_offset(output_channel_offsets, i),
-        this_output_row(*output, r);
-    for (int32 j = 0; j < this_output_row.Dim(); j++)
-      this_output_row(j) += this_offset(j % num_filters_out);
-  }
-}
-
-
-
 // This is a 'dumb' implementation of convolution, created to compare
 // with ConvolveForward.
 void ConvolveForwardSimple(
@@ -306,14 +239,6 @@ void ConvolveForwardSimple(
       height_in = model.height_in,
       height_out = model.height_out,
       height_subsample_out = model.height_subsample_out;
-
-  if (model.offsets[0].time_offset == kNoTime) {
-    ProcessChannelAverages(input, params,
-                           input_indexes, output_indexes,
-                           num_filters_in, num_filters_out,
-                           &output);
-  }
-
   for (int32 r_out = 0; r_out < output_rows; r_out++) {
     Index index_out = output_indexes[r_out];
     if (index_out.t == kNoTime)
@@ -322,8 +247,6 @@ void ConvolveForwardSimple(
     for (int32 o = 0; o < num_offsets; o++) {
       int32 time_offset = model.offsets[o].time_offset,
           height_offset = model.offsets[o].height_offset;
-      if (time_offset == kNoTime)
-        continue;
       Index index_in(index_out);
       index_in.t += time_offset;
       std::unordered_map<Index, int32, IndexHasher>::const_iterator iter =
@@ -366,14 +289,12 @@ void TestRunningComputation(const ConvolutionModel &conv_model,
       params(conv_model.ParamRows(), conv_model.ParamCols());
   input.SetRandn();
   params.SetRandn();
-
   ZeroBlankRows(input_indexes, &input);
   ConvolveForward(computation, input, params, &output);
   ZeroBlankRows(output_indexes, &output);
 
   ConvolveForwardSimple(conv_model, input_indexes, output_indexes,
                         input, params, &output2);
-  ZeroBlankRows(output_indexes, &output2);
   KALDI_LOG << "Tested convolution for model: "
             << conv_model.Info();
   if (!output.ApproxEqual(output2, 0.001)) {
