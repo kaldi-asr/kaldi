@@ -83,12 +83,12 @@ int32 GetChunkSize(const Nnet &nnet,
    We normally train neural networks that expect to see an iVector at frame zero
    only; this is because we train on fixed-size chunks and the iVector doesn't
    change that much within each chunk.  However, expecting just one iVector
-   isn't that convenient for looped recognition because it changes with
-   time, so we modify the iVector input period in the network by replacing
-   expressions like ReplaceIndex(ivector, t, 0) or just "t", with
-   Round(ivector, 10) [assuming ivector_period == 10].  This won't work
-   in every conceivable network, but it does do what you want in the
-   cases of interest.
+   isn't that convenient for looped recognition because it changes with time, so
+   we modify the iVector input period in the network by replacing expressions
+   like ReplaceIndex(ivector, t, 0) with Round(ivector, 10) [assuming
+   ivector_period == 10].  The descriptor doesn't have to be named "ivector", it
+   would work for ReplaceIndex(foo, t, 0).  This won't work in every conceivable
+   network, but it does do what you want in the cases of interest.
 
    It does this in a rather simple way, by getting the config lines that
    correspond to descriptors, and doing a search-and-replace.  It's
