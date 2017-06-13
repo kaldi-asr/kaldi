@@ -19,3 +19,9 @@ if [ $stage -le 1 ]; then
   # egs preparation
   image/nnet3/get_egs.sh --egs-per-archive 50000 --cmd "$cmd" data/train_all data/test exp/egs
 fi
+
+if [ $stage -le 2 ]; then
+  # Making a version of the egs that have more archives with fewer egs each (this seems to
+  # slightly improve results).  Eventually we'll disable the creation of the egs above.
+  image/nnet3/get_egs.sh --egs-per-archive 35000 --cmd "$cmd" data/train_all data/test exp/egs2
+fi
