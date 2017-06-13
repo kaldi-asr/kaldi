@@ -403,7 +403,6 @@ class XconfigResBlock(XconfigLayerBase):
                        # the following are not really inspected by this level of
                        # code, just passed through (but not if left at '').
                        'param-stddev':'', 'bias-stddev':'',
-                       'use-spatial-averages':'',
                        'use-natural-gradient':'',
                        'rank-in':'', 'rank-out':'',
                        'num-minibatches-history':'',
@@ -540,7 +539,7 @@ class XconfigResBlock(XconfigLayerBase):
             for opt_name in [
                     'param-stddev', 'bias-stddev', 'use-natural-gradient',
                     'max-change', 'rank-in', 'rank-out', 'num-minibatches-history',
-                    'alpha-in', 'alpha-out', 'use-spatial-averages' ]:
+                    'alpha-in', 'alpha-out' ]:
                 value = self.config[opt_name]
                 if value != '':
                         a.append('{0}={1}'.format(opt_name, value))
@@ -633,7 +632,7 @@ class XconfigResBlock(XconfigLayerBase):
             for opt_name in [
                     'param-stddev', 'bias-stddev', 'use-natural-gradient',
                     'max-change', 'rank-in', 'rank-out', 'num-minibatches-history',
-                    'alpha-in', 'alpha-out', 'use-spatial-averages' ]:
+                    'alpha-in', 'alpha-out' ]:
                 value = self.config[opt_name]
                 if value != '':
                         a.append('{0}={1}'.format(opt_name, value))
