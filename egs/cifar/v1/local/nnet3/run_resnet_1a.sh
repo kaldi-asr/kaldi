@@ -101,6 +101,7 @@ if [ $stage -le 1 ]; then
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=96 name=input
+<<<<<<< HEAD
   conv-layer name=conv1 height-in=32 height-out=32 time-offsets=-1,0,1 required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=$nf1 use-spatial-averages=true
   res-block name=res2 num-filters=$nf1 height=32 time-period=1 $res_opts use-spatial-averages=true
   res-block name=res3 num-filters=$nf1 height=32 time-period=1 $res_opts use-spatial-averages=true
@@ -111,6 +112,18 @@ if [ $stage -le 1 ]; then
   res-block name=res8 num-filters=$nf3 num-bottleneck-filters=$nb3 height=8 time-period=4 $res_opts use-spatial-averages=true
   res-block name=res9 num-filters=$nf3 num-bottleneck-filters=$nb3 height=8 time-period=4 $res_opts use-spatial-averages=true
   res-block name=res10 num-filters=$nf3 num-bottleneck-filters=$nb3 height=8 time-period=4 $res_opts use-spatial-averages=true
+=======
+  conv-layer name=conv1 height-in=32 height-out=32 time-offsets=-1,0,1 required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=$nf1
+  res-block name=res2 num-filters=$nf1 height=32 time-period=1 $res_opts
+  res-block name=res3 num-filters=$nf1 height=32 time-period=1 $res_opts
+  conv-layer name=conv4 height-in=32 height-out=16 height-subsample-out=2 time-offsets=-1,0,1 $common num-filters-out=$nf2
+  res-block name=res5 num-filters=$nf2 height=16 time-period=2 $res_opts
+  res-block name=res6 num-filters=$nf2 height=16 time-period=2 $res_opts
+  conv-layer name=conv7 height-in=16 height-out=8 height-subsample-out=2 time-offsets=-2,0,2 $common num-filters-out=$nf3
+  res-block name=res8 num-filters=$nf3 num-bottleneck-filters=$nb3 height=8 time-period=4 $res_opts
+  res-block name=res9 num-filters=$nf3 num-bottleneck-filters=$nb3 height=8 time-period=4 $res_opts
+  res-block name=res10 num-filters=$nf3 num-bottleneck-filters=$nb3 height=8 time-period=4 $res_opts
+>>>>>>> parent of 3e4d6ea... local/nnet3/run_resnet_1a.sh and local/nnet3/run_resnet_1b.sh now use spatial averaging for conv-layer
   channel-average-layer name=channel-average input=Append(2,6,10,14,18,22,24,28) dim=$nf3
   output-layer name=output learning-rate-factor=0.1 dim=$num_targets
 EOF
