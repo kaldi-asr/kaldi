@@ -105,6 +105,7 @@ for lang_index in `seq 0 $[$num_langs-1]`; do
     if [ ! -f $ivec_featdir/.done ]; then
       steps/select_feats.sh --cmd "$train_cmd" --nj 70 0-$[$mfcc_only_dim-1] \
         $featdir ${ivec_featdir} || exit 1;
+      steps/compute_cmvn_stats.sh ${ivec_featdir} || exit 1;
       touch ${ivec_featdir}/.done || exit 1;
     fi
   fi
