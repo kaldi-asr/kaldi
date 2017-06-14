@@ -1,22 +1,31 @@
 #!/bin/bash
 
-# same as tdnn_lstm_1i but adding CNN and batchnorm also dropout
+# cnn_tdnn_lstm_1a is based on tdnn_lstm_1j, but adding the cnn front end, and
+# replacing all renorm in tdnn layers with batchnorm
 
-# ./local/chain/compare_wer_general.sh sdm1 tdnn_lstm1i_sp_bi_ihmali_ld5 cnn_tdnn_lstm1i_sp_bi_ihmali_ld5
-# System               tdnn_lstm1i_sp_bi_ihmali_ld5 cnn_tdnn_lstm1i_sp_bi_ihmali_ld5
-# WER on dev        37.4      34.6
-# WER on eval        40.8      38.1
-# Final train prob        -0.1102 -0.138371
-# Final valid prob      -0.260827 -0.240463
-# Final train prob (xent)      -1.46214  -1.59601
-# Final valid prob (xent)       -2.1447  -2.07422
+# SDM
+# Results with flags : --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned \
+# ./local/chain/compare_wer_general.sh sdm1 tdnn_lstm1j_sp_bi_ihmali_ld5 cnn_tdnn_lstm1a_sp_bi_ihmali_ld5 cnn_tdnn_lstm1a_sp_bi_ihmali_ld5_online
+# System            tdnn_lstm1j_sp_bi_ihmali_ld5  cnn_tdnn_lstm1a_sp_bi_ihmali_ld5 cnn_tdnn_lstm1a_sp_bi_ihmali_ld5_online
+# WER on dev        36.9  35.9  35.9
+# WER on eval        40.5  39.2  39.2
+# Final train prob      -0.108141  -0.0937906
+# Final valid prob      -0.257468  -0.263064
+# Final train prob (xent)      -1.38179  -1.24004
+# Final valid prob (xent)      -2.13095  -2.08523
 
-
-
-set -e -o pipefail
+# IHM
+# System            tdnn_lstm1j_sp_bi_ld5  cnn_tdnn_lstm1a_sp_bi_ld5 cnn_tdnn_lstm1a_sp_bi_ld5_online
+# WER on dev        20.8  20.4  20.3
+# WER on eval        20.3  19.9  19.9
+# Final train prob     -0.0439145  -0.0420102
+# Final valid prob       -0.10673  -0.104629
+# Final train prob (xent)     -0.683776  -0.640218
+# Final valid prob (xent)      -1.05254  -1.01591
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
+
 stage=15
 mic=ihm
 nj=30
@@ -32,22 +41,19 @@ num_epochs=4
 chunk_width=150
 chunk_left_context=40
 chunk_right_context=0
-dropout_schedule='0,0@0.20,0.3@0.50,0'
 label_delay=5
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tlstm_affix=1i  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
+tlstm_affix=1a  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 
 
 # decode options
 extra_left_context=50
 frames_per_chunk=
-#decode options
-test_online_decoding=true  # if true, it will run the last decoding stage.
-
+test_online_decoding=true
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -180,6 +186,8 @@ if [ $stage -le 15 ]; then
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
+  lstm_opts="decay-time=20"
+
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
@@ -190,27 +198,27 @@ if [ $stage -le 15 ]; then
   # the use of short notation for the descriptor
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
   idct-layer name=idct input=input dim=40 cepstral-lifter=22 affine-transform-file=$dir/configs/idct.mat
-      
+
   conv-relu-batchnorm-layer name=cnn1 input=idct height-in=40 height-out=20 height-subsample-out=2 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=256 learning-rate-factor=0.333 max-change=0.25
   conv-relu-batchnorm-layer name=cnn2 input=cnn1 height-in=20 height-out=20 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=128
 
   relu-batchnorm-layer name=affine1 input=lda dim=512
- 
+
   # the first splicing is moved before the lda layer, so no splicing here
   relu-batchnorm-layer name=tdnn1 input=cnn2 dim=1024
   relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1,affine1) dim=1024
   relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
-  lstmp-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 dropout-proportion=0.0 dropout-per-frame=true
+  fast-lstmp-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
   relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
   relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
   relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
-  lstmp-layer name=lstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 dropout-proportion=0.0 dropout-per-frame=true
+  fast-lstmp-layer name=lstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
   relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
   relu-batchnorm-layer name=tdnn8 input=Append(-3,0,3) dim=1024
   relu-batchnorm-layer name=tdnn9 input=Append(-3,0,3) dim=1024
-  lstmp-layer name=lstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 dropout-proportion=0.0 dropout-per-frame=true
+  fast-lstmp-layer name=lstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
 
   ## adding the layers for chain branch
   output-layer name=output input=lstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
@@ -251,8 +259,9 @@ if [ $stage -le 16 ]; then
     --egs.chunk-width $chunk_width \
     --egs.chunk-left-context $chunk_left_context \
     --egs.chunk-right-context $chunk_right_context \
-    --trainer.dropout-schedule $dropout_schedule \
-    --trainer.num-chunk-per-minibatch 64 \
+    --egs.chunk-left-context-initial 0 \
+    --egs.chunk-right-context-final 0 \
+    --trainer.num-chunk-per-minibatch 64,32 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \
     --trainer.optimization.shrink-value 0.99 \
@@ -290,6 +299,8 @@ if [ $stage -le 18 ]; then
           --nj $nj --cmd "$decode_cmd" \
           --extra-left-context $extra_left_context  \
           --frames-per-chunk "$frames_per_chunk" \
+          --extra-left-context-initial 0 \
+          --extra-right-context-final 0 \
           --online-ivector-dir exp/$mic/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
           --scoring-opts "--min-lmwt 5 " \
          $graph_dir data/$mic/${decode_set}_hires $dir/decode_${decode_set} || exit 1;
@@ -309,9 +320,6 @@ if $test_online_decoding && [ $stage -le 19 ]; then
 
   rm $dir/.error 2>/dev/null || true
 
-  [ -z $extra_left_context ] && extra_left_context=$chunk_left_context;
-  [ -z $frames_per_chunk ] && frames_per_chunk=$chunk_width;
-
   for decode_set in dev eval; do
     (
       nspk=$(wc -l <data/$mic/${decode_set}_hires/spk2utt)
@@ -321,8 +329,8 @@ if $test_online_decoding && [ $stage -le 19 ]; then
         --nj $nspk --cmd "$decode_cmd" \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --extra-left-context-initial 0 \
-        --frames-per-chunk "$frames_per_chunk" \
         --scoring-opts "--min-lmwt 5 " \
+        $graph_dir data/$mic/${decode_set}_hires ${dir}_online/decode_${decode_set}_online
     ) || touch ${dir}_online/.error &
   done
   wait
