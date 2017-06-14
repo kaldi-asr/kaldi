@@ -199,7 +199,8 @@ void NnetTrainer::PrintMaxChangeStats() const {
                   << ", per-component max-change was enforced "
                   << (100.0 * num_max_change_per_component_applied_[i]) /
                      (num_minibatches_processed_ *
-                     (config_.backstitch_training_scale > 0.0 ? 2.0 : 1.0))
+                     (config_.backstitch_training_scale == 0.0 ? 1.0 :
+                     1.0 + 1.0 / config_.backstitch_training_interval))
                   << " \% of the time.";
       i++;
     }
@@ -208,7 +209,8 @@ void NnetTrainer::PrintMaxChangeStats() const {
     KALDI_LOG << "The global max-change was enforced "
               << (100.0 * num_max_change_global_applied_) /
                  (num_minibatches_processed_ *
-                 (config_.backstitch_training_scale > 0.0 ? 2.0 : 1.0))
+                 (config_.backstitch_training_scale == 0.0 ? 1.0 :
+                 1.0 + 1.0 / config_.backstitch_training_interval))
               << " \% of the time.";
 }
 

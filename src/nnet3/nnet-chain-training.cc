@@ -236,6 +236,7 @@ bool NnetChainTrainer::PrintTotalStats() const {
 
 void NnetChainTrainer::PrintMaxChangeStats() const {
   KALDI_ASSERT(delta_nnet_ != NULL);
+  const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   int32 i = 0;
   for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
     Component *comp = delta_nnet_->GetComponent(c);
@@ -249,7 +250,8 @@ void NnetChainTrainer::PrintMaxChangeStats() const {
                   << ", per-component max-change was enforced "
                   << (100.0 * num_max_change_per_component_applied_[i]) /
                      (num_minibatches_processed_ *
-                     (opts_.nnet_config.backstitch_training_scale > 0.0 ? 2.0 : 1.0))
+                     (nnet_config.backstitch_training_scale == 0.0 ? 1.0 :
+                     1.0 + 1.0 / nnet_config.backstitch_training_interval))
                   << " \% of the time.";
       i++;
     }
@@ -258,7 +260,8 @@ void NnetChainTrainer::PrintMaxChangeStats() const {
     KALDI_LOG << "The global max-change was enforced "
               << (100.0 * num_max_change_global_applied_) /
                  (num_minibatches_processed_ *
-                 (opts_.nnet_config.backstitch_training_scale > 0.0 ? 2.0 : 1.0))
+                 (nnet_config.backstitch_training_scale == 0.0 ? 1.0 : 
+                 1.0 + 1.0 / nnet_config.backstitch_training_interval))
               << " \% of the time.";
 }
 
