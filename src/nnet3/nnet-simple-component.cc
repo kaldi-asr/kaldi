@@ -2670,8 +2670,8 @@ std::string NaturalGradientAffineComponent::Info() const {
   PrintParameterStats(stream, "bias", bias_params_, true);
   stream << ", rank-in=" << rank_in_
          << ", rank-out=" << rank_out_
-         << ", num_samples_history=" << num_samples_history_
-         << ", update_period=" << update_period_
+         << ", num-samples-history=" << num_samples_history_
+         << ", update-period=" << update_period_
          << ", alpha=" << alpha_;
   return stream.str();
 }
@@ -5375,7 +5375,8 @@ std::string BatchNormComponent::Info() const {
   std::ostringstream stream;
   stream << Type() << ", dim=" << dim_ << ", block-dim=" << block_dim_
          << ", epsilon=" << epsilon_ << ", target-rms=" << target_rms_
-         << ", count=" << count_;
+         << ", count=" << count_
+         << ", test-mode=" << (test_mode_ ? "true" : "false");
   if (count_ > 0) {
     Vector<BaseFloat> mean(stats_sum_), var(stats_sumsq_);
     mean.Scale(1.0 / count_);
