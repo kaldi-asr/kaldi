@@ -852,6 +852,7 @@ class NaturalGradientAffineComponent: public AffineComponent {
   virtual Component* Copy() const;
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void FreezeNaturalGradient(bool freeze);
   // copy constructor
   explicit NaturalGradientAffineComponent(
       const NaturalGradientAffineComponent &other);
@@ -1577,6 +1578,7 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
 
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
+  virtual void FreezeNaturalGradient(bool freeze);
 
   virtual Component* Copy() const;
 
@@ -1943,6 +1945,7 @@ class LstmNonlinearityComponent: public UpdatableComponent {
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
   virtual void ZeroStats();
+  virtual void FreezeNaturalGradient(bool freeze);
 
   // Some functions that are specific to this class:
   explicit LstmNonlinearityComponent(
@@ -2369,6 +2372,7 @@ class CompositeComponent: public UpdatableComponent {
   virtual int32 NumParameters() const;
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+  virtual void FreezeNaturalGradient(bool freeze);
 
   // note: we dont implement the StoreStats function as it would be quite
   // expensive; instead, by default we call StoreStats() for any components that

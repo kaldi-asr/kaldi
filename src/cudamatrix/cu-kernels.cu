@@ -3060,8 +3060,8 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int have_dropout_m
     const Real* sr_config = self_repair_config;
 #   pragma unroll
     for (int i = 0; i < 5; i++) {
-      update_sr[i] = deriv_sum_in[i * deriv_sum_in_stride + j] / count
-          < sr_config[i];
+      update_sr[i] =
+          deriv_sum_in[i * deriv_sum_in_stride + j] < sr_config[i] * count;
     }
     const Real i_t_self_repair = (update_sr[0] ? sr_config[5] : 0);
     const Real f_t_self_repair = (update_sr[1] ? sr_config[6] : 0);
