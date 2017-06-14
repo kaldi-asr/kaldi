@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 # Copyright 2013  Johns Hopkins University (author: Daniel Povey)
 #           2014  Tom Ko
@@ -36,8 +36,13 @@ which sox &>/dev/null
 ! [ $? -eq 0 ] && echo "sox: command not found" && exit 1;
 
 if [ ! -f $srcdir/utt2spk ]; then
-  echo "$0: no such file $srcdir/utt2spk" 
+  echo "$0: no such file $srcdir/utt2spk"
   exit 1;
+fi
+
+if [ "$destdir" == "$srcdir" ]; then
+  echo "$0: this script requires <srcdir> and <destdir> to be different."
+  exit 1
 fi
 
 set -e;
@@ -47,7 +52,12 @@ mkdir -p $destdir
 
 cat $srcdir/utt2spk | awk -v p=$utt_prefix '{printf("%s %s%s\n", $1, p, $1);}' > $destdir/utt_map
 cat $srcdir/spk2utt | awk -v p=$spk_prefix '{printf("%s %s%s\n", $1, p, $1);}' > $destdir/spk_map
-cat $srcdir/utt2spk | awk -v p=$utt_prefix '{printf("%s%s %s\n", p, $1, $1);}' > $destdir/utt2uniq
+if [ ! -f $srcdir/utt2uniq ]; then
+  cat $srcdir/utt2spk | awk -v p=$utt_prefix '{printf("%s%s %s\n", p, $1, $1);}' > $destdir/utt2uniq
+else
+  cat $srcdir/utt2uniq | awk -v p=$utt_prefix '{printf("%s%s %s\n", p, $1, $2);}' > $destdir/utt2uniq
+fi
+
 
 cat $srcdir/utt2spk | utils/apply_map.pl -f 1 $destdir/utt_map  | \
   utils/apply_map.pl -f 2 $destdir/spk_map >$destdir/utt2spk
@@ -64,19 +74,23 @@ if [ -f $srcdir/segments ]; then
         '{printf("%s %s %.2f %.2f\n", $1, $2, $3/factor, $4/factor);}' >$destdir/segments
 
   utils/apply_map.pl -f 1 $destdir/reco_map <$srcdir/wav.scp | sed 's/| *$/ |/' | \
+    # Handle three cases of rxfilenames appropriately; "input piped command", "file offset" and "filename" 
     awk -v factor=$factor \
-        '{wid=$1; $1=""; if ($NF=="|") {print wid $_ " sox -t wav - -t wav - speed " factor " |"} 
-          else {print wid " sox -t wav" $_ " -t wav - speed " factor " |"}}' > $destdir/wav.scp
+        '{wid=$1; $1=""; if ($NF=="|") {print wid $_ " sox -t wav - -t wav - speed " factor " |"}
+          else if (match($0, /:[0-9]+$/)) {print wid " wav-copy" $_ " - | sox -t wav - -t wav - speed " factor " |" } 
+          else  {print wid " sox -t wav" $_ " -t wav - speed " factor " |"}}' > $destdir/wav.scp
   if [ -f $srcdir/reco2file_and_channel ]; then
     utils/apply_map.pl -f 1 $destdir/reco_map <$srcdir/reco2file_and_channel >$destdir/reco2file_and_channel
   fi
-  
+
   rm $destdir/reco_map 2>/dev/null
 else # no segments->wav indexed by utterance.
   if [ -f $srcdir/wav.scp ]; then
     utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/wav.scp | sed 's/| *$/ |/' | \
+     # Handle three cases of rxfilenames appropriately; "input piped command", "file offset" and "filename" 
      awk -v factor=$factor \
-       '{wid=$1; $1=""; if ($NF=="|") {print wid $_ " sox -t wav - -t wav - speed " factor " |"} 
+       '{wid=$1; $1=""; if ($NF=="|") {print wid $_ " sox -t wav - -t wav - speed " factor " |"}
+         else if (match($0, /:[0-9]+$/)) {print wid " wav-copy" $_ " - | sox -t wav - -t wav - speed " factor " |" } 
          else {print wid " sox -t wav" $_ " -t wav - speed " factor " |"}}' > $destdir/wav.scp
   fi
 fi
@@ -88,7 +102,15 @@ if [ -f $srcdir/spk2gender ]; then
   utils/apply_map.pl -f 1 $destdir/spk_map <$srcdir/spk2gender >$destdir/spk2gender
 fi
 
+if [ ! -f $srcdir/utt2dur ]; then
+  # generate utt2dur if it does not exist in srcdir
+  utils/data/get_utt2dur.sh $srcdir
+fi
+
+cat $srcdir/utt2dur | utils/apply_map.pl -f 1 $destdir/utt_map  | \
+  awk -v factor=$factor '{print $1, $2/factor;}' >$destdir/utt2dur
 
 rm $destdir/spk_map $destdir/utt_map 2>/dev/null
 echo "$0: generated speed-perturbed version of data in $srcdir, in $destdir"
-utils/validate_data_dir.sh --no-feats $destdir
+
+utils/validate_data_dir.sh --no-feats --no-text $destdir

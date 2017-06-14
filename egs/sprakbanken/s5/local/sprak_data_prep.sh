@@ -2,6 +2,7 @@
 
 # Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
 # Copyright 2013-2014  Mirsk Digital Aps (Author: Andreas Kirkedal)
+# Copyright 2015-2016  Andreas Kirkedal
 # Apache 2.0.
 
 
@@ -17,33 +18,22 @@ utils=`pwd`/utils
 
 . ./path.sh
 
-# Checks if python3 is available on the system and install python3 in userspace if not
-# This recipe currently relies on version 3 because python3 uses utf8 as internal 
-# string representation
-
-if ! which python3 >&/dev/null; then
-  echo "Installing python3 since not on your path."
-  pushd $KALDI_ROOT/tools || exit 1;
-  extras/install_python3.sh || exit 1;
-  popd
-fi
-
 if [ ! -d $dir/download ]; then
     mkdir -p $dir/download/0565-1 $dir/download/0565-2
 fi 
 
-echo "Downloading and unpacking sprakbanken to $dir/corpus_processed. This will take a while."
+echo "Downloading and unpacking sprakbanken to $dir/corpus_processed. This will take a while. The connection closes every 50-60 seconds and the repo maintainers do not have othersuggestions than increasing the number of retries."
 
 if [ ! -f $dir/download/da.16kHz.0565-1.tar.gz ]; then 
-    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-1.tar.gz --directory-prefix=$dir/download ) &
+    ( wget --tries 100 http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-1.tar.gz --directory-prefix=$dir/download )
 fi
 
 if [ ! -f $dir/download/da.16kHz.0565-2.tar.gz ]; then 
-    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-2.tar.gz --directory-prefix=$dir/download ) &
+    ( wget --tries 100 http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-2.tar.gz --directory-prefix=$dir/download )
 fi
 
-if [ ! -f $dir/download/da.16kHz.0565-1.tar.gz ]; then 
-    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0611.tar.gz --directory-prefix=$dir/download ) &
+if [ ! -f $dir/download/da.16kHz.0611.tar.gz ]; then 
+    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0611.tar.gz --directory-prefix=$dir/download )
 fi    
 wait
 
@@ -51,8 +41,8 @@ echo "Corpus files downloaded."
 
 if [ ! -d $dir/download/0611 ]; then
     echo "Unpacking files."
-    tar -xzf $dir/download/da.16kHz.0565-1.tar.gz -C $dir/download/0565-1 &
-    tar -xzf $dir/download/da.16kHz.0565-2.tar.gz -C $dir/download/0565-2 &
+    tar -xzf $dir/download/da.16kHz.0565-1.tar.gz -C $dir/download/0565-1
+    tar -xzf $dir/download/da.16kHz.0565-2.tar.gz -C $dir/download/0565-2 
     tar -xzf $dir/download/da.16kHz.0611.tar.gz -C $dir/download    
 
     # Note: rename "da 0611 test" to "da_0611_test" for this to work
@@ -62,7 +52,7 @@ if [ ! -d $dir/download/0611 ]; then
 fi
 
 
-sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
+sph2pipe=$(which sph2pipe) || sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
 if [ ! -x $sph2pipe ]; then
    echo "Could not find (or execute) the sph2pipe program at $sph2pipe";
    exit 1;
@@ -78,27 +68,25 @@ mkdir -p $dir/corpus_processed/training/0565-1 $dir/corpus_processed/training/05
 # Create parallel file lists and text files, but keep sound files in the same location to save disk space
 # Writes the lists to data/local/data (~ 310h)
 echo "Creating parallel data for training data."
-python3 $local/sprak2kaldi.py $dir/download/0565-1 $dir/corpus_processed/training/0565-1 &  # ~130h
-python3 $local/sprak2kaldi.py $dir/download/0565-2 $dir/corpus_processed/training/0565-2 &  # ~115h
-python3 $local/sprak2kaldi.py $dir/download/0611/Stasjon05 $dir/corpus_processed/training/0611_Stasjon05 & # ~51h 
+python $local/sprak2kaldi.py $dir/download/0565-1 $dir/corpus_processed/training/0565-1   # ~130h
+python $local/sprak2kaldi.py $dir/download/0565-2 $dir/corpus_processed/training/0565-2   # ~115h
+python $local/sprak2kaldi.py $dir/download/0611/Stasjon05 $dir/corpus_processed/training/0611_Stasjon05  # ~51h 
 
 (
 # Ditto dev set (~ 16h)
     echo "Creating parallel data for test data."
     rm -rf $dir/corpus_processed/dev03 
     mkdir -p $dir/corpus_processed/dev03 
-    python3 $local/sprak2kaldi.py $dir/download/0611/Stasjon03 $dir/corpus_processed/dev03 &
-) &
+    python $local/sprak2kaldi.py $dir/download/0611/Stasjon03 $dir/corpus_processed/dev03 || exit 1;
+)
 
 (
 # Ditto test set (about 9 hours)
     echo "Creating parallel data for development data."
     rm -rf $dir/corpus_processed/test06 
     mkdir -p $dir/corpus_processed/test06 
-    python3 $local/sprak2kaldi.py $dir/download/0611/Stasjon06 $dir/corpus_processed/test06 || exit 1;
-) &
-
-wait
+    python $local/sprak2kaldi.py $dir/download/0611/Stasjon06 $dir/corpus_processed/test06 || exit 1;
+)
 
 # Create the LM training data 
 # Test and dev data is disjoint from training data, so we use those transcripts)
@@ -110,10 +98,10 @@ wait
 (
     echo "Writing the LM text to file and normalising."
     cat $dir/corpus_processed/training/0565-1/txtlist $dir/corpus_processed/training/0565-2/txtlist | while read l; do cat $l; done > $lmdir/lmsents
-    python3 local/normalize_transcript.py local/norm_dk/numbersUp.tbl $lmdir/lmsents $lmdir/lmsents.norm
+    python local/normalize_transcript.py local/norm_dk/numbersLow.tbl $lmdir/lmsents $lmdir/lmsents.norm
     local/norm_dk/format_text.sh lm $lmdir/lmsents.norm > $lmdir/transcripts.txt
     sort -u $lmdir/transcripts.txt > $lmdir/transcripts.uniq
-) &
+)
 
 # Combine training file lists
 echo "Combine file lists."
@@ -131,18 +119,15 @@ cp $dir/corpus_processed/test06/sndlist $dir/testsndfiles
 # Write wav.scp, utt2spk and text.unnormalised for train, test and dev sets with
 # Use sph2pipe because the wav files are actually sph files
 echo "Creating wav.scp, utt2spk and text.unnormalised for train, test and dev" 
-python3 $local/data_prep.py $dir/traintxtfiles $traindir $dir/trainsndfiles $sph2pipe &
-python3 $local/data_prep.py $dir/testtxtfiles $testdir $dir/testsndfiles $sph2pipe &
-python3 $local/data_prep.py $dir/devtxtfiles $devdir $dir/devsndfiles $sph2pipe &
+python $local/data_prep.py $dir/traintxtfiles $traindir $dir/trainsndfiles $sph2pipe 
+python $local/data_prep.py $dir/testtxtfiles $testdir $dir/testsndfiles $sph2pipe 
+python $local/data_prep.py $dir/devtxtfiles $devdir $dir/devsndfiles $sph2pipe 
 
-wait
 
 # Create the main data sets
-local/create_datasets.sh $testdir data/test &
-local/create_datasets.sh $devdir data/dev &
-local/create_datasets.sh $traindir data/train &
-
-wait
+local/create_datasets.sh $testdir data/test 
+local/create_datasets.sh $devdir data/dev 
+local/create_datasets.sh $traindir data/train 
 
 ## TODO
 

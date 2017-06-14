@@ -58,32 +58,32 @@ int main(int argc, char *argv[]) {
     std::string lats_rspecifier1 = po.GetArg(1),
         lats_rspecifier2 = po.GetArg(2),
         lats_wspecifier = po.GetArg(3);
-    
+
     SequentialLatticeReader lattice_reader1(lats_rspecifier1);
     RandomAccessCompactLatticeReader lattice_reader2(lats_rspecifier2);
 
     CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
 
     int32 n_processed = 0, n_empty = 0, n_success = 0, n_no_2ndlat=0;
-    
+
     for (; !lattice_reader1.Done(); lattice_reader1.Next()) {
       std::string key = lattice_reader1.Key();
       Lattice lat1 = lattice_reader1.Value();
       lattice_reader1.FreeCurrent();
       ScaleLattice(fst::LatticeScale(alpha, alpha), &lat1);
       ArcSort(&lat1, fst::OLabelCompare<LatticeArc>());
-      
+
       if (lattice_reader2.HasKey(key)) {
         n_processed++;
         CompactLattice clat2 = lattice_reader2.Value(key);
         RemoveAlignmentsFromCompactLattice(&clat2);
-        
+
         Lattice lat2;
         ConvertLattice(clat2, &lat2);
-        fst::Project(&lat2, fst::PROJECT_OUTPUT); // project on words.   
+        fst::Project(&lat2, fst::PROJECT_OUTPUT); // project on words.
         ScaleLattice(fst::LatticeScale(1.0-alpha, 1.0-alpha), &lat2);
         ArcSort(&lat2, fst::ILabelCompare<LatticeArc>());
-        
+
         Lattice lat3;
         Compose(lat1, lat2, &lat3);
         if (lat3.Start() == fst::kNoStateId) { // empty composition.
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
                    << lats_rspecifier2 << ". Not producing output";
         n_no_2ndlat++;
       }
-    }    
+    }
     KALDI_LOG << "Done " << n_processed << " lattices; "
               << n_success << " had nonempty result, " << n_empty
               << " had empty composition; in " << n_no_2ndlat

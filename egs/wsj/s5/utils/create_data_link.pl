@@ -33,6 +33,7 @@ sub GetGCD {
 }
 
 my $Usage = <<EOU;
+create_data_link.pl:
 This script distributes data onto different file systems by making symbolic
 links. It is supposed to use together with utils/create_split_dir.pl, which
 creates a "storage" directory that links to different file systems.

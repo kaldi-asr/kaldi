@@ -51,8 +51,8 @@ int main(int argc, char *argv[]) {
         " e.g.: lattice-to-ctm-conf --acoustic-scale=0.1 ark:1.lats 1.ctm\n"
         "   or: lattice-to-ctm-conf --acoustic-scale=0.1 --decode-mbr=false\\\n"
         "                                      ark:1.lats ark:1.1best 1.ctm\n"
-        "See also: lattice-mbr-decode, nbest-to-ctm, steps/get_ctm.sh,\n"
-        "          steps/get_train_ctm.sh and utils/convert_ctm.sh.\n";
+        "See also: lattice-mbr-decode, nbest-to-ctm, lattice-arc-post,\n"
+        " steps/get_ctm.sh, steps/get_train_ctm.sh and utils/convert_ctm.sh.\n";
 
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0, inv_acoustic_scale = 1.0, lm_scale = 1.0;
@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
     po.Register("decode-mbr", &decode_mbr, "If true, do Minimum Bayes Risk "
                 "decoding (else, Maximum a Posteriori)");
     po.Register("frame-shift", &frame_shift, "Time in seconds between frames.");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2 && po.NumArgs() != 3) {
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
     KALDI_ASSERT(acoustic_scale == 1.0 || inv_acoustic_scale == 1.0);
     if (inv_acoustic_scale != 1.0)
       acoustic_scale = 1.0 / inv_acoustic_scale;
-    
+
     std::string lats_rspecifier, one_best_rspecifier, ctm_wxfilename;
 
     if (po.NumArgs() == 2) {
@@ -92,9 +92,9 @@ int main(int argc, char *argv[]) {
       one_best_rspecifier = po.GetArg(2);
       ctm_wxfilename = po.GetArg(3);
     }
-    
+
     // Ensure the output ctm file is not a wspecifier
-    WspecifierType ctm_wx_type; 
+    WspecifierType ctm_wx_type;
     ctm_wx_type  = ClassifyWspecifier(ctm_wxfilename, NULL, NULL, NULL);
     if(ctm_wx_type != kNoWspecifier){
         KALDI_ERR << "The output ctm file should not be a wspecifier. "
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
 
     // Read as compact lattice.
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);
- 
+
     RandomAccessInt32VectorReader one_best_reader(one_best_rspecifier);
 
     Output ko(ctm_wxfilename, false); // false == non-binary writing mode.
@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
 
     int32 n_done = 0, n_words = 0;
     BaseFloat tot_bayes_risk = 0.0;
-    
+
     for (; !clat_reader.Done(); clat_reader.Next()) {
       std::string key = clat_reader.Key();
       CompactLattice clat = clat_reader.Value();
@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
         const std::vector<int32> &one_best = one_best_reader.Value(key);
         mbr = new MinimumBayesRisk(clat, one_best, decode_mbr);
       }
-      
+
       const std::vector<BaseFloat> &conf = mbr->GetOneBestConfidences();
       const std::vector<int32> &words = mbr->GetOneBest();
       const std::vector<std::pair<BaseFloat, BaseFloat> > &times =
@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
                     << words[i] << ' ' << conf[i] << '\n';
       }
       KALDI_LOG << "For utterance " << key << ", Bayes Risk "
-                << mbr->GetBayesRisk() << ", avg. confidence per-word " 
+                << mbr->GetBayesRisk() << ", avg. confidence per-word "
                 << std::accumulate(conf.begin(),conf.end(),0.0) / words.size();
       n_done++;
       n_words += mbr->GetOneBest().size();
@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Overall average Bayes Risk per sentence is "
               << (tot_bayes_risk / n_done) << " and per word, "
               << (tot_bayes_risk / n_words);
-    
+
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

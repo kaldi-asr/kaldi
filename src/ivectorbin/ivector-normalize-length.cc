@@ -22,7 +22,7 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "ivector/ivector-extractor.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 
 int main(int argc, char *argv[]) {
@@ -36,15 +36,19 @@ int main(int argc, char *argv[]) {
         "<ivector-wspecifier>\n"
         "e.g.: \n"
         " ivector-normalize-length ark:ivectors.ark ark:normalized_ivectors.ark\n";
-    
+
     ParseOptions po(usage);
     bool normalize = true;
 
     po.Register("normalize", &normalize,
                 "Set this to false to disable normalization");
-    
+
+    bool scaleup = true;
+    po.Register("scaleup", &scaleup,
+                "If 'true', the normalized iVector is scaled-up by 'sqrt(dim)'");
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
@@ -55,13 +59,13 @@ int main(int argc, char *argv[]) {
 
 
     int32 num_done = 0;
-    
+
     double tot_ratio = 0.0, tot_ratio2 = 0.0;
 
     SequentialBaseFloatVectorReader ivector_reader(ivector_rspecifier);
     BaseFloatVectorWriter ivector_writer(ivector_wspecifier);
 
-    
+
     for (; !ivector_reader.Done(); ivector_reader.Next()) {
       std::string key = ivector_reader.Key();
       Vector<BaseFloat> ivector = ivector_reader.Value();
@@ -69,7 +73,8 @@ int main(int argc, char *argv[]) {
       BaseFloat ratio = norm / sqrt(ivector.Dim()); // how much larger it is
                                                     // than it would be, in
                                                     // expectation, if normally
-                                                    // distributed.
+      if (!scaleup) ratio = norm;
+
       KALDI_VLOG(2) << "Ratio for key " << key << " is " << ratio;
       if (ratio == 0.0) {
         KALDI_WARN << "Zero iVector";
@@ -88,7 +93,7 @@ int main(int argc, char *argv[]) {
           ratio_stddev = sqrt(tot_ratio2 / num_done - avg_ratio * avg_ratio);
       KALDI_LOG << "Average ratio of iVector to expected length was "
                 << avg_ratio << ", standard deviation was " << ratio_stddev;
-    }      
+    }
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

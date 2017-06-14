@@ -20,7 +20,7 @@ for subdir, dirs, files in os.walk(wav_dir):
   for file in files:
     utt = str(file).replace(".sph", "")
     if file.endswith(".sph") and utt in utts:
-      wav = wav + utt + " sox " + wav_dir + "/" + utt + ".sph"  + " -c 1 -r 16000 -t wav - |\n"
+      wav = wav + utt + " sox " + subdir + "/" + utt + ".sph"  + " -c 1 -r 16000 -t wav - |\n"
 wav_fi = open(os.path.join(out_dir, "wav.scp"), 'w')
 wav_fi.write(wav)
 

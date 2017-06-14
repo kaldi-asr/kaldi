@@ -336,12 +336,12 @@ void PreDeterminize(MutableFst<Arc> *fst,
   }
 
   {  // (D)(i)(b): make single final state.
-    KALDI_VLOG(2) <<  "PreDeterminize: creating single final state\n";
+    KALDI_VLOG(2) <<  "PreDeterminize: creating single final state";
     CreateSuperFinal(fst);
   }
 
   {  // (D)(i)(c): sort arcs on input.
-    KALDI_VLOG(2) <<  "PreDeterminize: sorting arcs on input\n";
+    KALDI_VLOG(2) <<  "PreDeterminize: sorting arcs on input";
     ILabelCompare<Arc> icomp;
     ArcSort(fst, icomp);
   }
@@ -401,14 +401,10 @@ void PreDeterminize(MutableFst<Arc> *fst,
       // Closure in this case whis will usually not add anything, for typical topologies in speech
       vector<StateId> closure_s_vec;
       pre_determinize_helpers::CopySetToVector(closure_s, &closure_s_vec);
-      assert(closure_s_vec.size() != 0);
+      KALDI_ASSERT(closure_s_vec.size() != 0);
       vector<StateId> *ptr = pre_determinize_helpers::InsertMember(closure_s_vec, &S);
-      if (ptr != NULL) {  // was inserted.
-        Q.push_back(pair<vector<StateId>*, size_t>(ptr, 0));
-      } else {
-        assert(!"Error: PreDeterminize failed in initialization\n");  // conceptual bug or programming error.
-        exit(1);
-      }
+      KALDI_ASSERT(ptr != NULL);  // Or conceptual bug or programming error.
+      Q.push_back(pair<vector<StateId>*, size_t>(ptr, 0));
     }
   }
 
@@ -547,9 +543,8 @@ void PreDeterminize(MutableFst<Arc> *fst,
     for (typename map<pair<StateId, ArcId>, size_t>::iterator m_iter = m_map.begin();
         m_iter != m_map.end();
         ++m_iter) {
-      pair<StateId, ArcId> pr = m_iter->first;
-      StateId state = pr.first;
-      ArcId arcpos = pr.second;
+      StateId state = m_iter->first.first;
+      ArcId arcpos = m_iter->first.second;
       size_t m_a = m_iter->second;
 
       MutableArcIterator<MutableFst<Arc> > aiter(fst, state);
@@ -696,7 +691,7 @@ typename Arc::StateId CreateSuperFinal(MutableFst<Arc> *fst) {
   StateId num_states = fst->NumStates();
   StateId num_final = 0;
   vector<StateId> final_states;
-  for (StateId s = 0;s < num_states;s++) {
+  for (StateId s = 0; s < num_states; s++) {
     if (fst->Final(s) != Weight::Zero()) {
       num_final++;
       final_states.push_back(s);
@@ -705,7 +700,9 @@ typename Arc::StateId CreateSuperFinal(MutableFst<Arc> *fst) {
   if (final_states.size() == 1) {
     if (fst->Final(final_states[0]) == Weight::One()) {
       ArcIterator<MutableFst<Arc> > iter(*fst, final_states[0]);
-      if (iter.Done()) {  // already have a final state w/ no transitions out and unit weight.  So don.
+      if (iter.Done()) {
+        // We already have a final state w/ no transitions out and unit weight.
+        // So we're done.
         return final_states[0];
       }
     }
@@ -713,7 +710,7 @@ typename Arc::StateId CreateSuperFinal(MutableFst<Arc> *fst) {
 
   StateId final_state = fst->AddState();
   fst->SetFinal(final_state, Weight::One());
-  for (size_t idx = 0;idx < final_states.size();idx++) {
+  for (size_t idx = 0;idx < final_states.size(); idx++) {
     StateId s = final_states[idx];
     Weight weight = fst->Final(s);
     fst->SetFinal(s, Weight::Zero());
@@ -728,6 +725,6 @@ typename Arc::StateId CreateSuperFinal(MutableFst<Arc> *fst) {
 }
 
 
-} // end namespace fst.
+}  // namespace fst
 
-#endif
+#endif  // KALDI_FSTEXT_PRE_DETERMINIZE_INL_H_

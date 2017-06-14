@@ -63,11 +63,6 @@ void OnlineNaturalGradient::InitOrthonormalSpecial(CuMatrixBase<BaseFloat> *R) {
     }
   }
   R->AddElements(1.0, elems);
-  { // TODO: remove this testing code.
-    CuMatrix<BaseFloat> prod(num_rows, num_rows);
-    prod.AddMatMat(1.0, *R, kNoTrans, *R, kTrans, 0.0);
-    KALDI_ASSERT(prod.IsUnit());
-  }
 }
 
 
@@ -126,9 +121,22 @@ void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &R0) {
   this_copy.InitDefault(D);
 
   CuMatrix<BaseFloat> R0_copy(R0.NumRows(), R0.NumCols(), kUndefined);
-  // number of iterations with the same data from a pseudorandom start.
-  // this is a faster way of starting than doing eigenvalue decomposition.
-  int32 num_init_iters = 3;
+  // 'num_iters' is number of iterations with the same data from a pseudorandom
+  // start.  this is a faster way of starting than doing eigenvalue
+  // decomposition.
+  //
+  // Note: we only do three iterations of initialization if we have enough data
+  // that it's reasonably possible to estimate the subspace of dimension
+  // this_copy.rank_.  If we don't have more than that many rows in our initial
+  // minibatch R0, we just do one iteration... this gives us almost exactly
+  // (barring small effects due to epsilon_ > 0) the row subspace of R0 after
+  // one iteration anyway.
+  int32 num_init_iters;
+  if (R0.NumRows() <= this_copy.rank_)
+    num_init_iters = 1;
+  else
+    num_init_iters = 3;
+
   for (int32 i = 0; i < num_init_iters; i++) {
     BaseFloat scale;
     R0_copy.CopyFromMat(R0);
@@ -161,7 +169,7 @@ void OnlineNaturalGradient::PreconditionDirections(
     return;
   }
 
-  read_write_mutex_.Lock();
+  read_write_mutex_.lock();
   if (t_ == -1) // not initialized
     Init(*X_t);
 
@@ -176,7 +184,7 @@ void OnlineNaturalGradient::PreconditionDirections(
   WJKL_t.Range(0, R, 0, D).CopyFromMat(W_t_);
   BaseFloat rho_t(rho_t_);
   Vector<BaseFloat> d_t(d_t_);
-  read_write_mutex_.Unlock();
+  read_write_mutex_.unlock();
   PreconditionDirectionsInternal(t, rho_t, d_t, &WJKL_t, X_t, row_prod, scale);
 }
 
@@ -214,17 +222,24 @@ void OnlineNaturalGradient::ReorthogonalizeXt1(
     return;
   }
   TpMatrix<BaseFloat> C(R);
+  bool cholesky_ok = true;
   try {
+    // one of the following two calls may throw an exception.
     C.Cholesky(O);
     C.Invert();  // Now it's C^{-1}.
-    if (!(C.Max() < 100.0))
-      KALDI_ERR << "Cholesky out of expected range, "
+    if (!(C.Max() < 100.0)) {
+      KALDI_WARN << "Cholesky out of expected range, "
                 << "reorthogonalizing with Gram-Schmidt";
+      cholesky_ok = false;
+    }
   } catch (...) {
     // We do a Gram-Schmidt orthogonalization, which is a bit less efficient but
     // more robust than the method using Cholesky.
     KALDI_WARN << "Cholesky or Invert() failed while re-orthogonalizing R_t. "
                << "Re-orthogonalizing on CPU.";
+    cholesky_ok = false;
+  }
+  if (!cholesky_ok) {
     Matrix<BaseFloat> cpu_W_t1(*W_t1);
     cpu_W_t1.OrthogonalizeRows();
     W_t1->CopyFromMat(cpu_W_t1);
@@ -322,13 +337,13 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
 
   H_t.AddMatMat(1.0, *X_t, kNoTrans, W_t, kTrans, 0.0);  // H_t = X_t W_t^T
 
-  bool locked = update_mutex_.TryLock();
+  bool locked = update_mutex_.try_lock();
   if (locked) {
     // Just hard-code it here that we do 10 updates before skipping any.
     const int num_initial_updates = 10;
     if (t_ > t || (num_updates_skipped_ < update_period_ - 1 &&
                    t_ >= num_initial_updates)) {
-      update_mutex_.Unlock();
+      update_mutex_.unlock();
       // We got the lock but we were already beaten to it by another thread, or
       // we don't want to update yet due to update_period_ > 1 (this saves
       // compute), so release the lock.
@@ -472,7 +487,7 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
   }
 
   // Commit the new parameters.
-  read_write_mutex_.Lock();
+  read_write_mutex_.lock();
   KALDI_ASSERT(t_ == t);  // we already ensured this.
   t_ = t + 1;
   num_updates_skipped_ = 0;
@@ -483,8 +498,8 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
   if (self_debug_)
     SelfTest();
 
-  read_write_mutex_.Unlock();
-  update_mutex_.Unlock();
+  read_write_mutex_.unlock();
+  update_mutex_.unlock();
 }
 
 BaseFloat OnlineNaturalGradient::Eta(int32 N) const {

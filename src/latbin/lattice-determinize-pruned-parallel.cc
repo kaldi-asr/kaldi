@@ -23,7 +23,7 @@
 #include "lat/lattice-functions.h"
 #include "lat/push-lattice.h"
 #include "lat/minimize-lattice.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
         "for each input-symbol sequence.  This is a version of lattice-determnize-pruned\n"
         "that accepts the --num-threads option.  These programs do pruning as part of the\n"
         "determinization algorithm, which is more efficient and prevents blowup.\n"
-        "See http://kaldi.sourceforge.net/lattices.html for more information on lattices.\n"
+        "See http://kaldi-asr.org/doc/lattices.html for more information on lattices.\n"
         "\n"
         "Usage: lattice-determinize-pruned-parallel [options] lattice-rspecifier lattice-wspecifier\n"
         " e.g.: lattice-determinize-pruned-parallel --acoustic-scale=0.1 --beam=6.0 ark:in.lats ark:det.lats\n";

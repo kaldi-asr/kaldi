@@ -328,12 +328,13 @@ int main() {
   using namespace kaldi::nnet3;
   for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
+    CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no"); // -1 means no GPU
     else
       CuDevice::Instantiate().SelectGpuId("optional"); // -2 .. automatic selection
 #endif
-    for (int32 i = 0; i < 10; i++) {
+    for (int32 i = 0; i < 5; i++) {
       UnitTestPreconditionDirectionsOnline();
     }
   }

@@ -53,7 +53,7 @@ void GetBlockSizesForSimpleMatrixOperation(int32 num_rows,
   int32 col_blocksize = 64, row_blocksize = 4;
   while (col_blocksize > 1 &&
          (num_cols + (num_cols / 2) <= col_blocksize ||
-          num_rows > 65536 * row_blocksize)) {
+          num_rows > 65535 * row_blocksize)) {
     col_blocksize /= 2;
     row_blocksize *= 2;
   }
@@ -63,7 +63,7 @@ void GetBlockSizesForSimpleMatrixOperation(int32 num_rows,
   dimBlock->z = 1;
   dimGrid->x = n_blocks(num_cols, col_blocksize);
   dimGrid->y = n_blocks(num_rows, row_blocksize);
-  KALDI_ASSERT(dimGrid->y <= 65536 &&
+  KALDI_ASSERT(dimGrid->y <= 65535 &&
                "Matrix has too many rows to process");
   dimGrid->z = 1;
 }

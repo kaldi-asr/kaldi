@@ -66,7 +66,7 @@ if [ $stage -le 2 ]; then
   # Concat 'feature_transform' with convolutional layers,
   dir=exp/cnn4c
   nnet-concat $dir/final.feature_transform \
-    "nnet-copy --remove-last-layers=$(((hid_layers+1)*2)) $dir/final.nnet - |" \
+    "nnet-copy --remove-last-components=$(((hid_layers+1)*2)) $dir/final.nnet - |" \
     $dir/final.feature_transform_cnn
 fi
 
@@ -99,7 +99,7 @@ if [ $stage -le 5 ]; then
   cnn_dbn=$dir/cnn_dbn.nnet
   { # Concatenate CNN layers and DBN,
     num_components=$(nnet-info $feature_transform | grep -m1 num-components | awk '{print $2;}')
-    cnn="nnet-copy --remove-first-layers=$num_components $feature_transform_dbn - |"
+    cnn="nnet-copy --remove-first-components=$num_components $feature_transform_dbn - |"
     nnet-concat "$cnn" $dbn $cnn_dbn 2>$dir/log/concat_cnn_dbn.log || exit 1 
   }
   # Train

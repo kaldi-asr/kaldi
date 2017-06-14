@@ -67,9 +67,10 @@ int main(int argc, char *argv[]) {
         "<nbest-wspecifier>\n"
         "Note: if the rspecifiers for lm-cost or ac-cost are the empty string,\n"
         "these value will default to zero.\n"
-        " e.g.: linear-to-nbest ark:1.ali ark:1.tra ark:1.lmscore ark:1.acscore "
+        " e.g.: linear-to-nbest ark:1.ali 'ark:sym2int.pl -f 2- words.txt text|' "
+        "ark:1.lmscore ark:1.acscore "
         "ark:1.nbest\n";
-    
+
     ParseOptions po(usage);
 
     po.Read(argc, argv);
@@ -91,11 +92,11 @@ int main(int argc, char *argv[]) {
     RandomAccessInt32VectorReader trans_reader(trans_rspecifier);
     RandomAccessBaseFloatReader lm_cost_reader(lm_cost_rspecifier);
     RandomAccessBaseFloatReader ac_cost_reader(ac_cost_rspecifier);
-    
+
     CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
-    
+
     int32 n_done = 0, n_err = 0;
-    
+
     for (; !ali_reader.Done(); ali_reader.Next()) {
       std::string key = ali_reader.Key();
       if (!trans_reader.HasKey(key)) {
@@ -122,7 +123,7 @@ int main(int argc, char *argv[]) {
       MakeLatticeFromLinear(ali, words, lm_cost, ac_cost, &lat);
       CompactLattice clat;
       ConvertLattice(lat, &clat);
-      
+
       compact_lattice_writer.Write(key, clat);
       n_done++;
     }

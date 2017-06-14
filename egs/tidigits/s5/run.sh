@@ -42,7 +42,7 @@ utils/subset_data_dir.sh data/train 1000 data/train_1k
 steps/train_mono.sh  --nj 4 --cmd "$train_cmd" \
   data/train_1k data/lang exp/mono0a
 
- utils/mkgraph.sh --mono data/lang exp/mono0a exp/mono0a/graph && \
+ utils/mkgraph.sh data/lang exp/mono0a exp/mono0a/graph && \
  steps/decode.sh --nj 10 --cmd "$decode_cmd" \
       exp/mono0a/graph data/test exp/mono0a/decode
 

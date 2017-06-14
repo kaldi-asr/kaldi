@@ -1,37 +1,30 @@
-# "queue.pl" uses qsub.  The options to it are
-# options to qsub.  If you have GridEngine installed,
-# change this to a queue you have access to.
-# Otherwise, use "run.pl", which will run jobs locally
-# (make sure your --num-jobs options are no more than
-# the number of cpus on your machine.
+# you can change cmd.sh depending on what type of queue you are using.
+# If you have no queueing system and want to run on a local machine, you
+# can change all instances 'queue.pl' to run.pl (but be careful and run
+# commands one by one: most recipes will exhaust the memory on your
+# machine).  queue.pl works with GridEngine (qsub).  slurm.pl works
+# with slurm.  Different queues are configured differently, with different
+# queue names and different ways of specifying things like memory;
+# to account for these differences you can create and edit the file
+# conf/queue.conf to match your queue's configuration.  Search for
+# conf/queue.conf in http://kaldi-asr.org/doc/queue.html for more information,
+# or search for the string 'default_config' in utils/queue.pl or utils/slurm.pl.
+
+export train_cmd="queue.pl --mem 1G"
+export decode_cmd="queue.pl --mem 2G"
+# the use of cuda_cmd is deprecated, used only in 'nnet1',
+export cuda_cmd="queue.pl --gpu 1 --mem 20G"
+
+if [ "$(hostname -d)" == "fit.vutbr.cz" ]; then
+  queue_conf=$HOME/queue_conf/default.conf # see example /homes/kazi/iveselyk/queue_conf/default.conf,
+  export train_cmd="queue.pl --config $queue_conf --mem 2G --matylda 0.2"
+  export decode_cmd="queue.pl --config $queue_conf --mem 3G --matylda 0.1"
+  export cuda_cmd="queue.pl --config $queue_conf --gpu 1 --mem 10G --tmp 40G"
+fi
 
 # On Eddie use:
 #export train_cmd="queue.pl -P inf_hcrc_cstr_nst -l h_rt=08:00:00"
 #export decode_cmd="queue.pl -P inf_hcrc_cstr_nst  -l h_rt=05:00:00 -pe memory-2G 4"
 #export highmem_cmd="queue.pl -P inf_hcrc_cstr_nst -l h_rt=05:00:00 -pe memory-2G 4"
 #export scoring_cmd="queue.pl -P inf_hcrc_cstr_nst  -l h_rt=00:20:00"
-
-# JSALT2015 workshop, cluster AWS-EC2, (setup from Vijay)
-export train_cmd="queue.pl -l arch=*64* --mem 1G"
-export decode_cmd="queue.pl -l arch=*64* --mem 2G"
-export highmem_cmd="queue.pl -l arch=*64* --mem 4G"
-export scoring_cmd="queue.pl -l arch=*64*"
-export cuda_cmd="queue.pl --gpu 1 -l mem_free=20G,ram_free=20G"
-export cntk_decode_cmd="queue.pl -l arch=*64* --mem 1G -pe smp 2"
-
-# To run locally, use:
-#export train_cmd=run.pl
-#export decode_cmd=run.pl
-#export highmem_cmd=run.pl
-#export cuda_cmd=run.pl
-
-if [ "$(hostname -d)" == "fit.vutbr.cz" ]; then
-  # BUT cluster:
-  queue="all.q@@blade,all.q@@speech"
-  gpu_queue="long.q@supergpu*,long.q@dellgpu*,long.q@pcspeech-gpu,long.q@pcgpu*"
-  storage="matylda5"
-  export train_cmd="queue.pl -q $queue -l ram_free=1500M,mem_free=1500M,${storage}=1"
-  export decode_cmd="queue.pl -q $queue -l ram_free=2500M,mem_free=2500M,${storage}=0.5"
-  export cuda_cmd="queue.pl -q $gpu_queue -l gpu=1"
-fi 
 

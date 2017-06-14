@@ -59,3 +59,5 @@ awk '{if ($1 == "conversational") {$1="";print $0}}' all_1.tmp$$ | sed 's:^ ::' 
 #rm -fr $txtdir
 cd $top_pwd
 echo data prep text succeeded
+
+exit 0

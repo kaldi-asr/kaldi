@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
         "Note: if you want output as FSTs, use lattice-1best; if you want output\n"
         "with acoustic and LM scores, use lattice-1best | nbest-to-linear\n"
         "Usage: lattice-best-path [options]  <lattice-rspecifier> [ <transcriptions-wspecifier> [ <alignments-wspecifier>] ]\n"
-        " e.g.: lattice-best-path --acoustic-scale=0.1 ark:1.lats ark:1.tra ark:1.ali\n";
+        " e.g.: lattice-best-path --acoustic-scale=0.1 ark:1.lats 'ark,t:|int2sym.pl -f 2- words.txt > text' ark:1.ali\n";
 
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
     }
 
     BaseFloat tot_weight_float = tot_weight.Value1() + tot_weight.Value2();
-    KALDI_LOG << "Overall score per frame is " << (tot_weight_float/n_frame)
+    KALDI_LOG << "Overall cost per frame is " << (tot_weight_float/n_frame)
               << " = " << (tot_weight.Value1()/n_frame) << " [graph]"
               << " + " << (tot_weight.Value2()/n_frame) << " [acoustic]"
               << " over " << n_frame << " frames.";

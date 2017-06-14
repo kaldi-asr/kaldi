@@ -20,6 +20,7 @@
 
 #include "feat/wave-reader.h"
 #include "online2/online-nnet2-decoding.h"
+#include "online2/online-nnet2-feature-pipeline.h"
 #include "online2/onlinebin-util.h"
 
 int main(int argc, char *argv[]) {

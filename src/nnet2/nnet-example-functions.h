@@ -107,7 +107,7 @@ struct SplitDiscriminativeExampleConfig {
     // See "Sequence-discriminative training of deep neural networks", Vesely et al,
     // ICASSP 2013 for explanation of frame dropping.
     opts->Register("drop-frames", &drop_frames, "For MMI, if true we drop frames "
-                   "with no overlap of num and den frames");
+                   "with no overlap of num and den pdf-ids");
     opts->Register("split", &split, "Set to false to disable lattice-splitting.");
     opts->Register("excise", &excise, "Set to false to disable excising un-needed "
                    "frames (option included for debug purposes)");

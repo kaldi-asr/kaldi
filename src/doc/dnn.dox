@@ -76,6 +76,7 @@ namespace kaldi {
   - Documentation for Karel's version is available at \subpage dnn1 
   - Documentation for Dan's old version is available at \subpage dnn2.
   - Documentation for the nnet3 setup is available at \subpage dnn3.  
+  - Documentation for the 'nnet3+chain' setup is available at \subpage chain.
 
 */
 

@@ -347,7 +347,7 @@ void UnitTestTableSequentialInt32(bool binary) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialInt32Reader sbr("ark:tmpf");
+  SequentialInt32Reader sbr(RandInt(0, 1) == 0 ? "ark:tmpf" : "ark,bg:tmpf");
   std::vector<std::string> k2;
   std::vector<int32> v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -380,7 +380,7 @@ void UnitTestTableSequentialBool(bool binary) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialBoolReader sbr("ark:tmpf");
+  SequentialBoolReader sbr(RandInt(0, 1) == 0 ? "ark:tmpf" : "ark,bg:tmpf");
   std::vector<std::string> k2;
   std::vector<bool> v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -414,7 +414,7 @@ void UnitTestTableSequentialDouble(bool binary) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialDoubleReader sbr("ark:tmpf");
+  SequentialDoubleReader sbr(RandInt(0, 1) == 0 ? "ark:tmpf" : "ark,bg:tmpf");
   std::vector<std::string> k2;
   std::vector<double> v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -456,7 +456,9 @@ void UnitTestTableSequentialDoubleBoth(bool binary, bool read_scp) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialDoubleReader sbr(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
+  SequentialDoubleReader sbr(RandInt(0, 1) == 0 ?
+                             (read_scp ? "scp:tmpf.scp" : "ark:tmpf") :
+                             (read_scp ? "scp,bg:tmpf.scp" : "ark,bg:tmpf"));
   std::vector<std::string> k2;
   std::vector<double> v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -503,7 +505,9 @@ void UnitTestTableSequentialInt32VectorBoth(bool binary, bool read_scp) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialInt32VectorReader sbr(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
+  SequentialInt32VectorReader sbr(RandInt(0, 1) == 0 ?
+                                  (read_scp ? "scp:tmpf.scp" : "ark:tmpf") :
+                                  (read_scp ? "scp,bg:tmpf.scp" : "ark,bg:tmpf"));
   std::vector<std::string> k2;
   std::vector<std::vector<int32> > v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -541,7 +545,9 @@ void UnitTestTableSequentialInt32PairVectorBoth(bool binary, bool read_scp) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialInt32PairVectorReader sbr(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
+  SequentialInt32PairVectorReader sbr(RandInt(0, 1) == 0 ?
+                                      (read_scp ? "scp:tmpf.scp" : "ark:tmpf") :
+                                      (read_scp ? "scp,bg:tmpf.scp" : "ark,bg:tmpf"));
   std::vector<std::string> k2;
   std::vector<std::vector<std::pair<int32, int32> > > v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -630,7 +636,8 @@ void UnitTestTableSequentialInt32Script(bool binary) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialInt32Reader sbr("scp:tmp.scp");
+  SequentialInt32Reader sbr(RandInt(0, 1) == 0 ?
+                            "scp:tmp.scp" : "scp,bg:tmp.scp");
   std::vector<std::string> k2;
   std::vector<int32> v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -724,7 +731,10 @@ void UnitTestTableSequentialBaseFloatVectorBoth(bool binary, bool read_scp) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialBaseFloatVectorReader sbr(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
+  SequentialBaseFloatVectorReader sbr(
+      RandInt(0, 1) == 0 ?
+      (read_scp ? "scp:tmpf.scp" : "ark:tmpf") :
+      (read_scp ? "scp,bg:tmpf.scp" : "ark,bg:tmpf"));
   std::vector<std::string> k2;
   std::vector<Vector<BaseFloat>* > v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -832,6 +842,137 @@ void UnitTestTableRandomBothDouble(bool binary, bool read_scp,
 }
 
 
+
+void UnitTestRangesMatrix(bool binary) {
+  int32 archive_size = RandInt(1, 10);
+  std::vector<std::pair<std::string, Matrix<BaseFloat> > > archive_contents(
+      archive_size);
+  for (int32 i = 0; i < archive_size; i++) {
+    char key_buf[2];
+    key_buf[0] = 'A' + i;
+    key_buf[1] = '\0';
+    std::string key(key_buf);
+    archive_contents[i].first = key;
+    archive_contents[i].second.Resize(RandInt(1, 5), RandInt(1, 5));
+    archive_contents[i].second.SetRandn();
+  }
+  if (RandInt(0, 1) == 0)
+    std::random_shuffle(archive_contents.begin(), archive_contents.end());
+
+  std::ostringstream writer_name;
+  writer_name << "ark,scp";
+  if (binary) writer_name << ",b";
+  else writer_name << ",t";
+  writer_name << ":tmpf,tmpf.scp";
+
+  {
+    BaseFloatMatrixWriter writer(writer_name.str());
+    for (int32 i = 0; i < archive_size; i++)
+      writer.Write(archive_contents[i].first, archive_contents[i].second);
+  }
+
+  std::vector<std::string> scp_lines;
+  {
+    bool binary;
+    Input scp_input("tmpf.scp", &binary);
+    KALDI_ASSERT(!binary);
+    std::string line;
+    while (getline(scp_input.Stream(), line)) {
+      Trim(&line);  // remove trailing and beginning whitespace.
+      scp_lines.push_back(line);
+    }
+    KALDI_ASSERT(scp_lines.size() == archive_contents.size());
+  }
+
+  int32 scp_length = RandInt(0, 10);
+  std::vector<std::pair<std::string, Matrix<BaseFloat> > >
+      scp_intended_contents(scp_length);
+
+  {
+    Output output("tmpf_ranges.scp", false);
+
+    for (int32 i = 0; i < scp_length; i++) {
+      int32 src_i = RandInt(0, archive_size - 1);
+      std::string scp_line_str = scp_lines[src_i];  // a line like "A tmpf:1043", without newline.
+      scp_line_str[0] = 'a' + i;  // now scp_line_str looks like "a tmpf:1043".
+      std::string key("x");
+      key[0] = 'a' + i;
+      scp_intended_contents[i].first = key;
+      output.Stream() << scp_line_str;
+      const Matrix<BaseFloat> &src_mat = archive_contents[src_i].second;
+      if (RandInt(0, 1) == 0) {  // Use a range.
+        int32 tot_rows = src_mat.NumRows(), tot_cols = src_mat.NumCols();
+        int32 row_offset = RandInt(0, tot_rows - 1),
+            num_rows = RandInt(1, tot_rows - row_offset),
+            col_offset = RandInt(0, tot_cols - 1),
+            num_cols = RandInt(1, tot_cols - col_offset);
+        SubMatrix<BaseFloat> sub_mat(src_mat, row_offset, num_rows,
+                                     col_offset, num_cols);
+        scp_intended_contents[i].second = sub_mat;
+        output.Stream() << "[";
+        if (row_offset != 0 || num_rows != tot_rows)
+          output.Stream() << row_offset << ":"
+                          << (row_offset + num_rows - 1);
+        else
+          output.Stream() << ":";
+        if (col_offset != 0 || num_cols != tot_cols) {
+          output.Stream() << "," << col_offset
+                          << ":" << (col_offset + num_cols - 1);
+        } else {
+          if (RandInt(0, 1) == 0) {
+            output.Stream() << ",:";
+          }
+        }
+        output.Stream() << "]";
+      } else {  // no range.
+        scp_intended_contents[i].second = src_mat;
+      }
+      output.Stream() << "\n";
+    }
+  }
+
+  {  // test random-access reading.
+    bool permissive = (RandInt(0, 1) == 0);
+    RandomAccessDoubleMatrixReader reader(permissive ?
+                                          "scp,p:tmpf_ranges.scp" :
+                                          "scp:tmpf_ranges.scp");
+
+    int32 num_queries = RandInt(0, 10);
+    for (int32 n = 0; n < num_queries; n++) {
+      int32 i = RandInt(0, scp_length);
+      if (i == scp_length) { // fake "bad" query.
+        KALDI_ASSERT(!reader.HasKey("foobar"));
+      } else {
+        std::string key = scp_intended_contents[i].first;
+        if (RandInt(0, 1) == 0)
+          KALDI_ASSERT(reader.HasKey(key));
+        Matrix<BaseFloat> value (reader.Value(key));
+        KALDI_ASSERT(value.ApproxEqual(scp_intended_contents[i].second));
+      }
+    }
+  }
+
+
+  {  // test sequential reading.
+    bool permissive = (RandInt(0, 1) == 0);
+    SequentialBaseFloatMatrixReader reader(permissive ?
+                                           "scp,p:tmpf_ranges.scp" :
+                                           "scp:tmpf_ranges.scp");
+
+    int32 i = 0;
+    for (; !reader.Done(); reader.Next(), i++) {
+      KALDI_ASSERT(reader.Key() == scp_intended_contents[i].first);
+      KALDI_ASSERT(reader.Value().ApproxEqual(scp_intended_contents[i].second));
+    }
+    KALDI_ASSERT(i == scp_length);
+  }
+
+
+  unlink("tmpf");
+  unlink("tmpf.scp");
+  unlink("tmpf_ranges.scp");
+}
+
 void UnitTestTableRandomBothDoubleMatrix(bool binary, bool read_scp,
                                          bool sorted, bool called_sorted,
                                          bool once) {
@@ -922,6 +1063,7 @@ int main() {
     UnitTestTableSequentialInt32(b);
     UnitTestTableSequentialInt32Script(b);
     UnitTestTableSequentialDouble(b);
+    UnitTestRangesMatrix(b);
     for (int j = 0; j < 2; j++) {
       bool c = (j == 0);
       UnitTestTableSequentialDoubleBoth(b, c);

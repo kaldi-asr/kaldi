@@ -54,6 +54,9 @@ class SplitRadixComplexFft {
   // initialize the object once and do the computation many times.
   SplitRadixComplexFft(Integer N);
 
+  // Copy constructor
+  SplitRadixComplexFft(const SplitRadixComplexFft &other);
+
   // Does the FFT computation, given pointers to the real and
   // imaginary parts.  If "forward", do the forward FFT; else
   // do the inverse FFT (without the 1/N factor).
@@ -94,7 +97,8 @@ class SplitRadixComplexFft {
   // IEEE Trans. ASSP, Aug. 1987, pp. 1120-1125).
   Real **tab_;       // Tables of butterfly coefficients.
 
-  KALDI_DISALLOW_COPY_AND_ASSIGN(SplitRadixComplexFft);
+  // Disallow assignment.
+  SplitRadixComplexFft &operator =(const SplitRadixComplexFft<Real> &other);
 };
 
 template<typename Real>
@@ -102,7 +106,11 @@ class SplitRadixRealFft: private SplitRadixComplexFft<Real> {
  public:
   SplitRadixRealFft(MatrixIndexT N):  // will fail unless N>=4 and N is a power of 2.
       SplitRadixComplexFft<Real> (N/2), N_(N) { }
-  
+
+  // Copy constructor
+  SplitRadixRealFft(const SplitRadixRealFft<Real> &other):
+      SplitRadixComplexFft<Real>(other), N_(other.N_) { }
+
   /// If forward == true, this function transforms from a sequence of N real points to its complex fourier
   /// transform; otherwise it goes in the reverse direction.  If you call it
   /// in the forward and then reverse direction and multiply by 1.0/N, you
@@ -118,7 +126,8 @@ class SplitRadixRealFft: private SplitRadixComplexFft<Real> {
   void Compute(Real *x, bool forward, std::vector<Real> *temp_buffer) const;
 
  private:
-  KALDI_DISALLOW_COPY_AND_ASSIGN(SplitRadixRealFft);  
+  // Disallow assignment.
+  SplitRadixRealFft &operator =(const SplitRadixRealFft<Real> &other);
   int N_;
 };
 

@@ -10,14 +10,14 @@ mic=ihm
 stage=0
 . utils/parse_options.sh
 
-# Set bash to 'debug' mode, it prints the commands (option '-x') and exits on : 
+# Set bash to 'debug' mode, it prints the commands (option '-x') and exits on :
 # -e 'error', -u 'undefined variable', -o pipefail 'error in pipeline',
 set -euxo pipefail
 
 # Path where AMI gets downloaded (or where locally available):
-AMI_DIR=$PWD/wav_db # Default, 
-case $(hostname -d) in 
-  fit.vutbr.cz) AMI_DIR=/mnt/scratch05/iveselyk/KALDI_AMI_WAV ;; # BUT,
+AMI_DIR=$PWD/wav_db # Default,
+case $(hostname -d) in
+  fit.vutbr.cz) AMI_DIR=/mnt/matylda5/iveselyk/KALDI_AMI_WAV ;; # BUT,
   clsp.jhu.edu) AMI_DIR=/export/corpora4/ami/amicorpus ;; # JHU,
   cstr.ed.ac.uk) AMI_DIR= ;; # Edinburgh,
 esac
@@ -29,8 +29,8 @@ LM=$final_lm.pr1-7
 # Download AMI corpus, You need arount 130GB of free space to get whole data ihm+mdm,
 # Avoiding re-download, using 'wget --continue ...',
 if [ $stage -le 0 ]; then
-  [ -e data/local/downloads/wget_$mic.sh ] && \
-    echo "$data/local/downloads/wget_$mic.sh already exists, better quit than re-download... (use --stage N)" && \
+  [ -e data/local/downloads/wget_${mic}.sh ] && \
+    echo "data/local/downloads/wget_${mic}.sh already exists, better quit than re-download... (use --stage N)" && \
     exit 1
   local/ami_download.sh $mic $AMI_DIR
 fi
@@ -41,6 +41,8 @@ if [ $stage -le 1 ]; then
   local/ami_ihm_scoring_data_prep.sh $AMI_DIR dev
   local/ami_ihm_scoring_data_prep.sh $AMI_DIR eval
 fi
+
+exit 0
 
 # Here starts the normal recipe, which is mostly shared across mic scenarios,
 # - for ihm we adapt to speaker by fMLLR,
@@ -86,7 +88,7 @@ if [ $stage -le 5 ]; then
     data/$mic/train data/lang exp/$mic/tri2a exp/$mic/tri2_ali
   # Decode,
   graph_dir=exp/$mic/tri2a/graph_${LM}
-  $highmem_cmd $graph_dir/mkgraph.log \
+  $decode_cmd --mem 4G $graph_dir/mkgraph.log \
     utils/mkgraph.sh data/lang_${LM} exp/$mic/tri2a $graph_dir
   steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
     $graph_dir data/$mic/dev exp/$mic/tri2a/decode_dev_${LM}
@@ -104,26 +106,26 @@ if [ $stage -le 6 ]; then
     data/$mic/train data/lang exp/$mic/tri3a exp/$mic/tri3a_ali
   # Decode,
   graph_dir=exp/$mic/tri3a/graph_${LM}
-  $highmem_cmd $graph_dir/mkgraph.log \
+  $decode_cmd --mem 4G $graph_dir/mkgraph.log \
     utils/mkgraph.sh data/lang_${LM} exp/$mic/tri3a $graph_dir
   steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
-    $graph_dir data/$mic/dev exp/$mic/tri3a/decode_dev_${LM} 
+    $graph_dir data/$mic/dev exp/$mic/tri3a/decode_dev_${LM}
   steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
     $graph_dir data/$mic/eval exp/$mic/tri3a/decode_eval_${LM}
-fi 
+fi
 
 if [ $stage -le 7 ]; then
   # Train tri4a, which is LDA+MLLT+SAT,
   steps/train_sat.sh  --cmd "$train_cmd" \
     5000 80000 data/$mic/train data/lang exp/$mic/tri3a_ali exp/$mic/tri4a
-  # Decode,  
+  # Decode,
   graph_dir=exp/$mic/tri4a/graph_${LM}
-  $highmem_cmd $graph_dir/mkgraph.log \
+  $decode_cmd --mem 4G $graph_dir/mkgraph.log \
     utils/mkgraph.sh data/lang_${LM} exp/$mic/tri4a $graph_dir
   steps/decode_fmllr.sh --nj $nj --cmd "$decode_cmd"  --config conf/decode.conf \
-    $graph_dir data/$mic/dev exp/$mic/tri4a/decode_dev_${LM} 
+    $graph_dir data/$mic/dev exp/$mic/tri4a/decode_dev_${LM}
   steps/decode_fmllr.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
-    $graph_dir data/$mic/eval exp/$mic/tri4a/decode_eval_${LM} 
+    $graph_dir data/$mic/eval exp/$mic/tri4a/decode_eval_${LM}
 fi
 
 nj_mmi=80
@@ -160,11 +162,11 @@ if [ $stage -le 11 ]; then
     decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_dev_${i}.mdl_${LM}
     steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
       --transform-dir exp/$mic/tri4a/decode_dev_${LM} --iter $i \
-      $graph_dir data/$mic/dev $decode_dir 
+      $graph_dir data/$mic/dev $decode_dir
     decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_eval_${i}.mdl_${LM}
     steps/decode.sh --nj $nj --cmd "$decode_cmd"  --config conf/decode.conf \
       --transform-dir exp/$mic/tri4a/decode_eval_${LM} --iter $i \
-      $graph_dir data/$mic/eval $decode_dir 
+      $graph_dir data/$mic/eval $decode_dir
   done
 fi
 
@@ -174,18 +176,39 @@ if [ $stage -le 12 ]; then
   local/nnet/run_dnn.sh $mic
 fi
 
-# TDNN training.
+# nnet3 systems
 if [ $stage -le 13 ]; then
-  local/online/run_nnet2_ms_perturbed.sh \
-    --mic $mic \
-    --hidden-dim 950 \
-    --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer2/-3:3 layer3/-7:2 layer4/-3:3" \
-    --use-sat-alignments true
-  
-  local/online/run_nnet2_ms_sp_disc.sh  \
-    --mic $mic  \
-    --gmm-dir exp/$mic/tri4a \
-    --srcdir exp/$mic/nnet2_online/nnet_ms_sp
+
+  # tdnn model + xent training
+  local/nnet3/run_tdnn.sh --mic $mic
+
+  # lstm model + xent training
+  local/nnet3/run_lstm.sh --mic $mic \
+    --stage 10 --use-sat-alignments true
+
+  # blstm model + xent training
+  local/nnet3/run_blstm.sh --mic $mic \
+    --stage 10 --chunk-right-context 20
+
+  # tdnn model + chain training
+  local/chain/run_tdnn_ami_5.sh  --mic $mic --affix msl1.5_45wer
+
 fi
 
 echo "Done."
+exit 0;
+
+# Older nnet2 scripts. They are still kept here
+# as we have not yet committed sMBR training scripts for AMI in nnet3
+#if [ $stage -le 13 ]; then
+#  local/online/run_nnet2_ms_perturbed.sh \
+#    --mic $mic \
+#    --hidden-dim 950 \
+#    --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer2/-3:3 layer3/-7:2 layer4/-3:3" \
+#    --use-sat-alignments true
+#
+#  local/online/run_nnet2_ms_sp_disc.sh  \
+#    --mic $mic  \
+#    --gmm-dir exp/$mic/tri4a \
+#    --srcdir exp/$mic/nnet2_online/nnet_ms_sp
+#fi
