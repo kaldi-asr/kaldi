@@ -3,25 +3,37 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
-# Features configs
+# Features configs (Must match the features used to train the models
+# $sat_model_dir and $model_dir)
 feat_type=plp
 feat_config=conf/plp.conf
 add_pitch=true
 pitch_config=conf/pitch.conf
 
-# Uniform segmentation options
+lang=data/lang   # Must match the one used to train the models
+lang_test=data/lang  # Lang directory for decoding.
+
+data_dir=data/train 
+# Model directory used to align the $data_dir to get target labels for training
+# SAD. This should typically be a speaker-adapted system.
+sat_model_dir=/export/b17/jtrmal/babel/104-pashto-flp80-p-ext/exp/tri5_cleaned
+# Model direcotry used to decode the whole-recording version of the $data_dir to
+# get target labels for training SAD. This should typically be a 
+# speaker-independent system like LDA+MLLT system.
+model_dir=/export/b17/jtrmal/babel/104-pashto-flp80-p-ext/exp/tri4
+graph_dir=    # If not provided, a new one will be created using $lang_test
+
+# Uniform segmentation options for decoding whole recordings. All values are in
+# seconds.
 max_segment_duration=10
 overlap_duration=2.5
-max_remaining_duration=5
+max_remaining_duration=5  # If the last remaining piece when splitting uniformly
+                          # is smaller than this duration, then the last piece 
+                          # is  merged with the previous.
 
-# Decoding options
-lang=data/lang
-lang_test=data/lang
-
-data_dir=data/train
-sat_model_dir=/export/b17/jtrmal/babel/104-pashto-flp80-p-ext/exp/tri5_cleaned
-model_dir=/export/b17/jtrmal/babel/104-pashto-flp80-p-ext/exp/tri4
-graph_dir=
+# A pair corresponding to the weight on labels obtained from alignment
+# and weight on labels obtained from decoding.
+merge_weights=1.0,0.1
 
 affix=_1a
 stage=-1
@@ -40,12 +52,15 @@ fi
 dir=exp/segmentation${affix}
 mkdir -p $dir
 
+# See $lang/words.txt and decide which should be garbage
 cat <<EOF > $dir/garbage_words.txt
 <hes>
 <noise>
 <v-noise>
 EOF
 
+# See $lang/words.txt and decide which should be silence. <eps> is always added
+# as silence by the script.
 cat <<EOF > $dir/silence_words.txt
 <silence>
 EOF
@@ -300,7 +315,6 @@ if [ $stage -le 9 ]; then
     $dir/${model_id}_${whole_data_id}_targets_sub3
 fi
 
-merge_weights=1.0,0.1
 ###############################################################################
 # Merge targets for the same data from multiple sources (systems)
 ###############################################################################
@@ -313,22 +327,36 @@ if [ $stage -le 10 ]; then
     $dir/${model_id}_${whole_data_id}_combined_targets_sub3
 fi
 
+local/segmentation/tuning/train_lstm_asr_sad_1a.sh 
 
+# Create a classes_info file that will be converted to a graph for 
+# decoding. 
+# classes_info file has the format:
+# <class-id (1-based)> <initial-probabilitiy> <self-loop-probability> <min-number-of-states> <transition-1> <transition-2> ... <transition-N>
+# where <transition-N> is <destination-class>:<transition-probability> 
+# and a destination class of -1 is used to represent the final state.
+# Here 1 is for silence and 2 is for speech. We assign here a 0.8 initial
+# probability for silence. We add a 10 state minimum-duration constraint, 
+# which corresponds to 10 * 0.03 = 0.3s. There is a self-loop with
+# probability 0.99 after the minimum-duration and a transition to the other 
+# class with probability 0.009 and a final ending probability of 0.001.
 mkdir -p data/lang_asr_sad_fs3_simple
 cat <<EOF > data/lang_asr_sad_fs3_simple/classes_info.txt
 1 0.8 0.99 10 2:0.009 -1:0.001
 2 0.2 0.99 10 1:0.009 -1:0.001
 EOF
 
-local/segmentation/tuning/train_lstm_asr_sad_1a2.sh 
-
+# The options to this script must match the options used in the 
+# nnet training script. 
+# e.g. extra-left-context is 70, because the model is an LSTM trained with a 
+# chunk-left-context of 60. 
+# Note: frames-per-chunk is 150 even though the model was trained with 
+# chunk-width of 20. This is just for speed.
+# See the script for details of the options.
 steps/segmentation/do_asr_sad_data_dir.sh \
   --extra-left-context 70 --extra-right-context 0 --frames-per-chunk 150 \
   --nj 32 --subsampling-factor 1 \
   --transition-scale 1.0 --loopscale 0.3 --acwt 3 \
-  --garbage-in-sil-weight 0 \
-  --garbage-in-speech-weight 0.0 \
-  --sil-in-speech-weight 0 \
   data/dev10h.pem \
   exp/segmentation_1a/tdnn_lstm_asr_sad_1a2 \
   data/lang_asr_sad_fs3_simple/classes_info.txt \

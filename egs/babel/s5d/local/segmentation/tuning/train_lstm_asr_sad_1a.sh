@@ -1,8 +1,7 @@
 #!/bin/bash
 
-# This is a script to train a TDNN-LSTM for speech activity detection (SAD) and
-# music-id using LSTM for long-context information.
-# This is same as 1h, but has more layers.
+# This is a script to train a TDNN-LSTM for speech activity detection (SAD) 
+# using LSTM for long-context information.
 
 set -o pipefail
 set -u
@@ -134,6 +133,10 @@ if [ $stage -le 6 ]; then
     --targets-scp="$targets_dir/targets.scp" \
     --egs.opts="--scp2ark \"prob-to-post scp:- ark:- |\" --frame-subsampling-factor 3 --num-utts-subset $num_utts_subset" \
     --dir=$dir || exit 1
+
+  copy-feats scp:$targets_dir/targets.scp ark:- | \
+    matrix-sum-rows ark:- ark:- | vector-sum --binary=false ark:- - | \
+    awk '{print " [ "$2" "$3" ]"}' > $dir/post_output.vec
 
   echo 3 > $dir/frame_subsampling_factor
 fi

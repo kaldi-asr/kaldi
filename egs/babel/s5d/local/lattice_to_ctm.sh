@@ -10,6 +10,7 @@ word_ins_penalty=0.5
 min_lmwt=7
 max_lmwt=17
 model=
+resolve_overlaps=false
 
 #end configuration section.
 
@@ -56,6 +57,12 @@ name=`basename $data`; # e.g. eval2000
 
 mkdir -p $dir/scoring/log
 
+resolve_overlaps_cmd="cat -"
+
+if $resolve_overlaps; then
+  resolve_overlaps_cmd="steps/resolve_ctm_overlaps.py $data/segments - -"
+fi
+
 if [ $stage -le 0 ]; then
   if [ ! -f $lang/phones/word_boundary.int ] ; then
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
@@ -67,6 +74,7 @@ if [ $stage -le 0 ]; then
       lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
       lattice-to-ctm-conf $frame_shift_opt --decode-mbr=$decode_mbr ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt  \| tee $dir/score_LMWT/$name.utt.ctm \| \
+      $resolve_overlaps_cmd \| \
       utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
       '>' $dir/score_LMWT/$name.ctm || exit 1;
   else
@@ -79,6 +87,7 @@ if [ $stage -le 0 ]; then
       lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
       lattice-to-ctm-conf $frame_shift_opt --decode-mbr=$decode_mbr ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt  \| tee $dir/score_LMWT/$name.utt.ctm \| \
+      $resolve_overlaps_cmd \| \
       utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
       '>' $dir/score_LMWT/$name.ctm || exit 1;
   fi
