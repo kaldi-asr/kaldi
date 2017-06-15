@@ -309,30 +309,30 @@ void ScaleAndCropImage(const ImageAugmentationConfig &config,
   
   Matrix<BaseFloat> scale_mat(3, 3, kUndefined);
   scale_mat.SetUnit();
-  int32 scale = RandInt(config.crop_scale_min,config.crop_scale_max);
+  int32 scale = RandInt(config.crop_scale_min, config.crop_scale_max);
   //int32 scale = 256;
   if (width > height) {
-    scale_mat(0,0) = (scale * 1.0) / height;
-    scale_mat(1,1) = (scale * 1.0) / height;
+    scale_mat(0, 0) = (scale * 1.0) / height;
+    scale_mat(1, 1) = (scale * 1.0) / height;
   } else {
-    scale_mat(0,0) = (scale * 1.0) / width;
-    scale_mat(1,1) = (scale * 1.0) / width;
+    scale_mat(0, 0) = (scale * 1.0) / width;
+    scale_mat(1, 1) = (scale * 1.0) / width;
   }
 
-  int32 new_width = static_cast<int32>(width * scale_mat(0,0));
-  int32 new_height = static_cast<int32>(height * scale_mat(1,1));
-  int32 start_row = RandInt(0,new_width-crop_size);
-  int32 start_col = RandInt(0,new_height-crop_size);
+  int32 new_width = static_cast<int32>(width * scale_mat(0, 0));
+  int32 new_height = static_cast<int32>(height * scale_mat(1, 1));
+  int32 start_row = RandInt(0, new_width - crop_size);
+  int32 start_col = RandInt(0, new_height - crop_size);
 
-  Matrix<BaseFloat> temp_image(crop_size,crop_size*num_channels);
-  for (int32 r = start_row; r < start_row+crop_size; r++) {
-    for (int32 c = start_col; c < start_col+crop_size; c++) {
-      BaseFloat r_old = r / scale_mat(0,0);
-      BaseFloat c_old = c / scale_mat(1,1); 
+  Matrix<BaseFloat> temp_image(crop_size, crop_size * num_channels);
+  for (int32 r = start_row; r < start_row + crop_size; r++) {
+    for (int32 c = start_col; c < start_col + crop_size; c++) {
+      BaseFloat r_old = r / scale_mat(0, 0);
+      BaseFloat c_old = c / scale_mat(1, 1); 
       int32 r1 = static_cast<int32>(floor(r_old));
       int32 c1 = static_cast<int32>(floor(c_old));
-      int32 r2 = r1+1;
-      int32 c2 = c1+1;
+      int32 r2 = r1 + 1;
+      int32 c2 = c1 + 1;
 
       BaseFloat weight_11 = (r2 - r_old)*(c2 - c_old);
       BaseFloat weight_12 = (r2 - r_old)*(c_old - c1);
@@ -344,7 +344,7 @@ void ScaleAndCropImage(const ImageAugmentationConfig &config,
         BaseFloat p12 = (*image)(r1, num_channels * c2 + ch);
         BaseFloat p21 = (*image)(r2, num_channels * c1 + ch);
         BaseFloat p22 = (*image)(r2, num_channels * c2 + ch);
-        temp_image((r-start_row), num_channels * (c-start_col) + ch) = weight_11 * p11
+        temp_image((r - start_row), num_channels * (c - start_col) + ch) = weight_11 * p11
             + weight_12 * p12
             + weight_21 * p21
             + weight_22 * p22;
