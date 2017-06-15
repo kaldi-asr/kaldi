@@ -13,7 +13,7 @@
 # Path to imagenet directory
 # Requires the datasets for Task 1:
 # "development kit", "training images", "validation images", and "test images"
-dl_dir=$DATA_DOWNLOAD_PATH
+dl_dir=/export/b18/imagenet_2012/
 
 # Various other paths
 devkit_dir=$dl_dir/devkit_t3
@@ -61,7 +61,7 @@ else
     mkdir -p $train_dir
     tar -xvf $dl_dir/$train_tar -C $train_dir || exit 1
     find $train_dir -name "*.tar" | \
-    while read NAME; do mkdir -p "${NAME%.tar}"; tar -xvf "${NAME}" -C "${NAME%.tar}";done
+    while read name; do mkdir -p "${name%.tar}"; tar -xvf "${name}" -C "${name%.tar}";done
     # echo Missing train
     # exit 1
   fi
