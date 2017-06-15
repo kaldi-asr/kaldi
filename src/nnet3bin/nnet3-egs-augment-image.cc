@@ -339,43 +339,6 @@ void ScaleAndCropImage(const ImageAugmentationConfig &config,
       BaseFloat weight_21 = (r_old - r1)*(c2 - c_old);
       BaseFloat weight_22 = (r_old - r1)*(c_old - c1);
 
-      if (fill_mode == kNearest) {
-        if (r1 < 0) {
-          r1 = 0;
-          if (r2 < 0) r2 = 0;
-        }
-        if (r2 >= width) {
-          r2 = width - 1;
-          if (r1 >= width) r1 = width - 1;
-        }
-        if (c1 < 0) {
-          c1 = 0;
-          if (c2 < 0) c2 = 0;
-        }
-        if (c2 >= height) {
-          c2 = height - 1;
-          if (c1 >= height) c1 = height - 1;
-        }
-      } else {
-        KALDI_ASSERT(fill_mode == kReflect);
-        if (r1 < 0) {
-          r1 = - r1;
-          if (r2 < 0) r2 = - r2;
-        }
-        if (r2 >= width) {
-          r2 = 2 * width - 2 - r2;
-          if (r1 >= width) r1 = 2 * width - 2 - r1;
-        }
-        if (c1 < 0) {
-          c1 = - c1;
-          if (c2 < 0) c2 = -c2;
-        }
-        if (c2 >= height) {
-          c2 = 2 * height - 2 - c2;
-          if (c1 >= height) c1 = 2 * height - 2 - c1;
-        }
-      }
-
       for (int32 ch = 0; ch < num_channels; ch++) {
         BaseFloat p11 = (*image)(r1, num_channels * c1 + ch);
         BaseFloat p12 = (*image)(r1, num_channels * c2 + ch);
