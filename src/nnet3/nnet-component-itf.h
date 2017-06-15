@@ -471,6 +471,10 @@ class UpdatableComponent: public Component {
   /// learning_rate_factor_.
   virtual void SetAsGradient() { learning_rate_ = 1.0; is_gradient_ = true; }
 
+  /// freezes/unfreezes NaturalGradient updates, if applicable (to be overriden
+  /// by components that use Natural Gradient).
+  virtual void FreezeNaturalGradient(bool freeze) { }
+
   /// Gets the learning rate of gradient descent.  Note: if you call
   /// SetLearningRate(x), and learning_rate_factor_ != 1.0,
   /// a different value than x will returned.

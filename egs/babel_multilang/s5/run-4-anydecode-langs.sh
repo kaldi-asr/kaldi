@@ -320,6 +320,7 @@ if $use_ivector && [ ! -f $ivector_dir/.ivector.done ];then
     mfcc_only_dim=`feat-to-dim scp:$featdir/feats.scp - | awk '{print $1-3}'`
     steps/select_feats.sh --cmd "$train_cmd" --nj $my_nj 0-$[$mfcc_only_dim-1] \
       $featdir ${dataset_dir}${ivec_feat_suffix} || exit 1;
+    steps/compute_cmvn_stats.sh ${dataset_dir}${ivec_feat_suffix} || exit 1;
   fi
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $my_nj \
