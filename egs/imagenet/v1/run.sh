@@ -17,6 +17,6 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-  image/nnet3/get_egs.sh --cmd "$train_cmd" data/train data/test exp/egs
+  image/nnet3/get_egs.sh --egs-per-archive 5000 --cmd "$cmd" data/train data/test exp/egs
 fi
 
