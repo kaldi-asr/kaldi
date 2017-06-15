@@ -154,8 +154,10 @@ int main(int argc, char *argv[]) {
           delete loglikes;
           continue;
         }
+        fst::VectorFst<StdArc> *fst = 
+          new fst::VectorFst<StdArc>(fst_reader.Value());
         LatticeFasterDecoder *decoder =
-          new LatticeFasterDecoder(fst_reader.Value(), config);
+          new LatticeFasterDecoder(config, fst);
         DecodableMatrixScaledMapped *decodable = new
             DecodableMatrixScaledMapped(trans_model, acoustic_scale, loglikes);
         DecodeUtteranceLatticeFasterClass *task =
