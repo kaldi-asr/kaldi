@@ -42,26 +42,26 @@ if ! [[ $[$num_cols%$num_channels] == 0 ]]; then
   exit 1
 fi
 
-num_rows=$(head -n 1 $dir/images.scp | feat-to-len $paf scp:- ark,t:- | awk '{print $2}')
+#num_rows=$(head -n 1 $dir/images.scp | feat-to-len $paf scp:- ark,t:- | awk '{print $2}')
 
-height=$[$num_cols/$num_channels]
+#height=$[$num_cols/$num_channels]
 
-echo "$0: images are width=$num_rows by height=$height, with $num_channels channels (colors)."
+#echo "$0: images are width=$num_rows by height=$height, with $num_channels channels (colors)."
 
 if ! cmp <(awk '{print $1}' $dir/images.scp) <(awk '{print $1}' $dir/labels.txt); then
   echo "$0: expected the first fields of $dir/images.scp and $dir/labels.txt to match up."
   exit 1;
 fi
 
-if ! [[ $num_cols -eq $(tail -n 1 $dir/images.scp | feat-to-dim $paf scp:- -) ]]; then
-  echo "$0: the number of columns in the image matrices is not consistent."
-  exit 1
-fi
+#if ! [[ $num_cols -eq $(tail -n 1 $dir/images.scp | feat-to-dim $paf scp:- -) ]]; then
+#  echo "$0: the number of columns in the image matrices is not consistent."
+#  exit 1
+#fi
 
-if ! [[ $num_rows -eq $(tail -n 1 $dir/images.scp | feat-to-len $paf scp:- ark,t:- | awk '{print $2}') ]]; then
-  echo "$0: the number of rows in the image matrices is not consistent."
-  exit 1
-fi
+#if ! [[ $num_rows -eq $(tail -n 1 $dir/images.scp | feat-to-len $paf scp:- ark,t:- | awk '{print $2}') ]]; then
+#  echo "$0: the number of rows in the image matrices is not consistent."
+#  exit 1
+#fi
 
 # Note: we don't require images.scp and labels.txt to be sorted, but they
 # may not contain repeated keys.
