@@ -110,7 +110,7 @@ if ! [ "$num_classes" -eq "$num_classes_test" ]; then
 fi
 
 if [ $stage -le 0 ]; then
-  if ! [ $crop ]; then
+  if ! $crop; then
     $cmd $dir/log/get_train_diagnostic_egs.log \
          ali-to-post "ark:filter_scp.pl $dir/train_subset_ids.txt $train/labels.txt|" ark:- \| \
          post-to-smat --dim=$num_classes ark:- ark:- \| \
@@ -122,8 +122,7 @@ if [ $stage -le 0 ]; then
          post-to-smat --dim=$num_classes ark:- ark:- \| \
          nnet3-get-egs-simple input="scp:filter_scp.pl $dir/train_subset_ids.txt $train/images.scp|" \
            output=ark:- ark:- \| \
-         nnet3-egs-augment-image --horizontal-flip-prob=0.5 --horizontal-shift=0.1 --vertical-shift=0.1 \
-           --crop=true --crop-size=$crop_size \
+         nnet3-egs-augment-image --crop=true --crop-size=$crop_size \
            --crop-scale-min=$crop_scale_min \
            --crop-scale-max=$crop_scale_max \
            ark:- ark:$dir/train_diagnostic.egs
