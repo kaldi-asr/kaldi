@@ -13,9 +13,9 @@ import numpy as np
 from scipy import misc
 
 parser = argparse.ArgumentParser(description="""Converts the imagenet data into Kaldi feature format""")
-parser.add_argument('databasePath', type=str, help='path to downloaded imagenet training data')
-parser.add_argument('devkitPath', type=str, help='path to meta data')
-parser.add_argument('tarName', type=str, help='name of extracted tar file')
+parser.add_argument('database_path', type=str, help='path to downloaded imagenet training data')
+parser.add_argument('devkit_path', type=str, help='path to meta data')
+parser.add_argument('tar_name', type=str, help='name of extracted tar file. Used to find the folder extracted from the tar file.')
 parser.add_argument('dir', type=str, help='output dir')
 parser.add_argument('--dataset', type=str, default='train', choices=['train', 'test'])
 parser.add_argument('--out-ark', type=str, default='-', help='where to write the output feature file')
@@ -29,15 +29,15 @@ args = parser.parse_args()
 C = 3
 
 def parse_mat_path():
-    tarFolderVect = args.tarName.split('.')
-    tarFolder = tarFolderVect[0]
-    datasetYearVect = tarFolder.split('_')
-    datasetYear = datasetYearVect[0]
-    mat_seq = (args.devkitPath,tarFolder,"data/meta")
+    tar_folder_vect = args.tar_name.split('.')
+    tar_folder = tar_folder_vect[0]
+    dataset_year_vect = tar_folder.split('_')
+    dataset_year = dataset_year_vect[0]
+    mat_seq = (args.devkit_path,tar_folder,"data/meta")
     mat_path = "/".join(mat_seq)
-    val_ground_truth_seq = (args.devkitPath,
-                            tarFolder,"data",
-                            datasetYear + "_validation_ground_truth.txt")
+    val_ground_truth_seq = (args.devkit_path,
+                            tar_folder, "data",
+                            dataset_year + "_validation_ground_truth.txt")
     val_ground_truth_path = "/".join(val_ground_truth_seq)
     return mat_path, val_ground_truth_path
 
@@ -64,41 +64,41 @@ def zeropad(x, length):
         s = '0' + s
     return s
 
-def findIndex(listOfLists,wnid):
+def findIndex(list_of_lists,wnid):
     index = 0
-    for sublist in listOfLists:
+    for sublist in list_of_lists:
         if sublist[0] == wnid:
             return index
         index = index + 1
     return None
 
-def cropImage(im):
+def get_image_crops(im):
     crop_size = args.crop_size
     scale_size = float(args.scale_size)
     sx = im.shape[1]
     sy = im.shape[0]
     if sx > sy:
-        scale = scale_size/sy
+        scale = scale_size / sy
     else:
-        scale = scale_size/sx
-    im = misc.imresize(im,scale)
+        scale = scale_size / sx
+    im = misc.imresize(im, scale)
 
     W = im.shape[1]
     H = im.shape[0]
 
-    crop_topleft = im[0:crop_size,0:crop_size]
+    crop_topleft = im[0:crop_size, 0:crop_size]
     crop_topleft_fliplr = np.fliplr(crop_topleft)
-    crop_topright = im[0:crop_size,(W-crop_size):W]
+    crop_topright = im[0:crop_size, (W - crop_size):W]
     crop_topright_fliplr = np.fliplr(crop_topright)
-    crop_bottomleft = im[(H-crop_size):H,0:crop_size]
+    crop_bottomleft = im[(H - crop_size):H, 0:crop_size]
     crop_bottomleft_fliplr = np.fliplr(crop_bottomleft)
-    crop_bottomright = im[(H-crop_size):H,(W-crop_size):W]
+    crop_bottomright = im[(H - crop_size):H, (W - crop_size):W]
     crop_bottomright_fliplr = np.fliplr(crop_bottomright)
 
-    center_left = float(W)/2 - float(crop_size)/2
-    center_top = float(H)/2 - float(crop_size)/2
-    crop_center = im[center_top:(center_top+crop_size),
-                     center_left:(center_left+crop_size)]
+    center_left = float(W) / 2 - float(crop_size) / 2
+    center_top = float(H) / 2 - float(crop_size) / 2
+    crop_center = im[center_top:(center_top + crop_size),
+                     center_left:(center_left + crop_size)]
     crop_center_fliplr = np.fliplr(crop_center)
 
     tup1 = (crop_topleft, crop_topright,
@@ -122,22 +122,21 @@ else:
     out_fh = open(args.out_ark,'wb')
 
 labels_file = os.path.join(args.dir + '/', 'labels.txt')
-labels_fh = open(labels_file,'wb')
+labels_fh = open(labels_file, 'wb')
 
 database_contents = sorted(os.listdir(args.databasePath))
 
 if args.dataset == 'train':
     image_id = 1
     for dir_file in database_contents:
-        potential_path = args.databasePath + '/' + dir_file
+        potential_path = args.database_path + '/' + dir_file
         if os.path.isdir(potential_path):
-            index = findIndex(wnid_vect,dir_file)
+            index = findIndex(wnid_vect, dir_file)
             class_ID = synsets_struct[index][0][0][0][0]
             class_contents = sorted(os.listdir(potential_path))
-            for img_Name in class_contents:
+            for img_name in class_contents:
                 key = zeropad(image_id,8)
-                im = misc.imread(potential_path + '/' + img_Name)
-		im = np.divide(im,255.0)
+                im = misc.imread(potential_path + '/' + img_name)
                 W = im.shape[1]
                 H = im.shape[0]
                 if len(im.shape) == 3:
@@ -145,24 +144,24 @@ if args.dataset == 'train':
                 else:
                     im_three = np.dstack((im, im, im))
                     data = np.reshape(np.transpose(im_three, (1, 0, 2)), (W, H * C))
-                labels_fh.write(key + ' ' + str(int(class_ID)-1) + '\n')
+                data = np.divide(data, 255.0)
+                labels_fh.write(key + ' ' + str(int(class_ID) - 1) + '\n')
                 write_kaldi_matrix(out_fh, data, key)
                 image_id = image_id + 1
 else:
     image_id = 1
     image_num = 1
-    datasetYearVect = args.tarName.split('_')
+    dataset_year_vect = args.tar_name.split('_')
     with open(val_ground_truth_path) as f:
         for line in f:
             if int(line) > 0:
                 keyID = zeropad(image_id,8)
-                file_name = (args.databasePath + '/'
-                            + datasetYearVect[0] + '_val_' + keyID + '.JPEG')
+                file_name = (args.database_path + '/'
+                            + dataset_year_vect[0] + '_val_' + keyID + '.JPEG')
                 im_orig = misc.imread(file_name)
-		im_orig = np.divide(im_orig,255.0)
-		im_tup = cropImage(im_orig)
-		for im in im_tup:
-		    keyNum = zeropad(image_num,8)
+                im_crops = get_image_crops(im_orig)
+                for im in im_crops:
+                    keyNum = zeropad(image_num, 8)
                     W = im.shape[1]
                     H = im.shape[0]
                     if len(im.shape) == 3:
@@ -170,7 +169,8 @@ else:
                     else:
                         im_three = np.dstack((im, im, im))
                         data = np.reshape(np.transpose(im_three, (1, 0, 2)), (W, H * C))
-                    labels_fh.write(keyNum + ' ' + str(int(line)-1) + '\n')
+                    data = np.divide(data, 255.0)
+                    labels_fh.write(keyNum + ' ' + str(int(line) - 1) + '\n')
                     write_kaldi_matrix(out_fh, data, keyNum)
                     image_num = image_num + 1
             image_id = image_id + 1
