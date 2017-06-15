@@ -101,8 +101,6 @@ local/process_data.py $train_dir $devkit_dir $devkit_tar data/train --dataset tr
 
 # Process testing data
 # Using validation data instead because testing data does not include ground truth
-#local/process_data.py $val_dir $devkit_dir $devkit_tar data/test
-#  --dataset test --scale-size 256 --crop-size 224
 local/process_data.py $val_dir $devkit_dir $devkit_tar data/test \
   --dataset test --scale-size 256 --crop-size 224| \
   copy-feats --compress=true --compression-method=7 \

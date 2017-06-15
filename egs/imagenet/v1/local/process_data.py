@@ -156,8 +156,8 @@ else:
         for line in f:
             if int(line) > 0:
                 keyID = zeropad(image_id,8)
-                file_name = args.databasePath + '/'
-                            + datasetYearVect[0] + '_val_' + keyID + '.JPEG'
+                file_name = (args.databasePath + '/'
+                            + datasetYearVect[0] + '_val_' + keyID + '.JPEG')
                 im_orig = misc.imread(file_name)
 		im_orig = np.divide(im_orig,255.0)
 		im_tup = cropImage(im_orig)

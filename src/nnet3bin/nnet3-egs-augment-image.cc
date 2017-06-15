@@ -31,9 +31,9 @@ namespace nnet3 {
 enum FillMode { kNearest, kReflect };
 
 struct ImageAugmentationConfig {
-  bool is_square_image;
-  int32 side_min;
-  int32 side_max;
+  bool crop;
+  int32 crop_scale_min;
+  int32 crop_scale_max;
   int32 crop_size;
   int32 num_channels;
   BaseFloat horizontal_flip_prob;
@@ -42,10 +42,10 @@ struct ImageAugmentationConfig {
   std::string fill_mode_string;
 
   ImageAugmentationConfig():
-      is_square_image(true),
-      side_min(256),
-      side_max(512),
-      crop_size(224),
+      crop(false),
+      crop_scale_min(0),
+      crop_scale_max(0),
+      crop_size(0),
       num_channels(1),
       horizontal_flip_prob(0.0),
       horizontal_shift(0.0),
@@ -54,10 +54,14 @@ struct ImageAugmentationConfig {
 
 
   void Register(ParseOptions *po) {
-    po->Register("is-square-image", &is_square_image, "If input images are not square."
-                 "It becomes necessary to scale then crop the image");
-    po->Register("side-min", &side_min, "Scale the shortest side randomly from [min,max].");
-    po->Register("side-max", &side_max, "Scale the shortest side ramdomly from [min,max].");
+    po->Register("crop", &crop, "Option to set if the input images are not square."
+                 "If crop is set to true the image is randomly scaled then cropped."
+                 "The scaling is randomly so that the shortest side is"
+                 "[crop-scale-min,crop-scale-max]");
+    po->Register("crop-scale-min", &crop_scale_min, "Only used if crop is true."
+                 "Scale the shortest side randomly from [scale-min,scale-max].");
+    po->Register("crop-scale-max", &crop_scale_max, "Only used if crop."
+                 "Scale the shortest side ramdomly from [scale-min,scale-max].");
     po->Register("crop-size", &crop_size, "The size of the window to crop from image after scaling.");
     po->Register("num-channels", &num_channels, "Number of colors in the image."
                  "It is important to specify this (helps interpret the image "
@@ -71,8 +75,8 @@ struct ImageAugmentationConfig {
                  "Maximum allowed vertical shift as proportion of image "
                  "height.  Padding is with closest pixel.");
     po->Register("fill-mode", &fill_mode_string, "Mode for dealing with "
-		 "points outside the image boundary when applying transformation. "
-		 "Choices = {nearest, reflect}");
+                 "points outside the image boundary when applying transformation. "
+                 "Choices = {nearest, reflect}");
   }
 
   void Check() const {
@@ -90,10 +94,10 @@ struct ImageAugmentationConfig {
       fill_mode = kReflect;
     } else {
       if (fill_mode_string != "nearest") {
-	KALDI_ERR << "Choices for --fill-mode are 'nearest' or 'reflect', got: "
-		  << fill_mode_string;
+        KALDI_ERR << "Choices for --fill-mode are 'nearest' or 'reflect', got: "
+                  << fill_mode_string;
       } else {
-	fill_mode = kNearest;
+        fill_mode = kNearest;
       }
     }
     return fill_mode;
@@ -290,12 +294,14 @@ void PerturbImage(const ImageAugmentationConfig &config,
 
 /**
   This function scales the shortest size to a size determined by 'config'
+  It also crops the image to a determined size
 */
-void ScaleImage(const ImageAugmentationConfig &config,
+void ScaleAndCropImage(const ImageAugmentationConfig &config,
                 Matrix<BaseFloat> *image) {
   int32 width = image->NumRows(),
       num_channels = config.num_channels,
-      height = image->NumCols() / num_channels;
+      height = image->NumCols() / num_channels,
+      crop_size = config.crop_size;
   FillMode fill_mode = config.GetFillMode();
   if (image->NumCols() % num_channels != 0) {
     KALDI_ERR << "Number of Cols must be divisible by number of channels";
@@ -303,20 +309,24 @@ void ScaleImage(const ImageAugmentationConfig &config,
   
   Matrix<BaseFloat> scale_mat(3, 3, kUndefined);
   scale_mat.SetUnit();
-  int32 scale = RandInt(config.side_min,config.side_max);
+  int32 scale = RandInt(config.crop_scale_min,config.crop_scale_max);
   //int32 scale = 256;
   if (width > height) {
-    scale_mat(0,0) = (double)scale / height;
-    scale_mat(1,1) = (double)scale / height;
+    scale_mat(0,0) = (scale * 1.0) / height;
+    scale_mat(1,1) = (scale * 1.0) / height;
   } else {
-    scale_mat(0,0) = (double)scale / width;
-    scale_mat(1,1) = (double)scale / width;
+    scale_mat(0,0) = (scale * 1.0) / width;
+    scale_mat(1,1) = (scale * 1.0) / width;
   }
+
   int32 new_width = static_cast<int32>(width * scale_mat(0,0));
   int32 new_height = static_cast<int32>(height * scale_mat(1,1));
-  Matrix<BaseFloat> temp_image(new_width,new_height*num_channels);
-  for (int32 r = 0; r < new_width; r++) {
-    for (int32 c = 0; c < new_height; c++) {
+  int32 start_row = RandInt(0,new_width-crop_size);
+  int32 start_col = RandInt(0,new_height-crop_size);
+
+  Matrix<BaseFloat> temp_image(crop_size,crop_size*num_channels);
+  for (int32 r = start_row; r < start_row+crop_size; r++) {
+    for (int32 c = start_col; c < start_col+crop_size; c++) {
       BaseFloat r_old = r / scale_mat(0,0);
       BaseFloat c_old = c / scale_mat(1,1); 
       int32 r1 = static_cast<int32>(floor(r_old));
@@ -365,45 +375,20 @@ void ScaleImage(const ImageAugmentationConfig &config,
           if (c1 >= height) c1 = 2 * height - 2 - c1;
         }
       }
-      
+
       for (int32 ch = 0; ch < num_channels; ch++) {
         BaseFloat p11 = (*image)(r1, num_channels * c1 + ch);
-	BaseFloat p12 = (*image)(r1, num_channels * c2 + ch);
-	BaseFloat p21 = (*image)(r2, num_channels * c1 + ch);
-	BaseFloat p22 = (*image)(r2, num_channels * c2 + ch);
-	temp_image(r, num_channels * c + ch) = weight_11 * p11 + weight_12 * p12 +
-	    weight_21 * p21 + weight_22 * p22;
+        BaseFloat p12 = (*image)(r1, num_channels * c2 + ch);
+        BaseFloat p21 = (*image)(r2, num_channels * c1 + ch);
+        BaseFloat p22 = (*image)(r2, num_channels * c2 + ch);
+        temp_image((r-start_row), num_channels * (c-start_col) + ch) = weight_11 * p11
+            + weight_12 * p12
+            + weight_21 * p21
+            + weight_22 * p22;
       }
     }
   }
   
-  *image = temp_image;
-}
-
-/**
-   This function crops the image to become a SxS image as directed by 'config'
-   This is only done if the image is not square
-*/
-void CropImage(const ImageAugmentationConfig &config,
-               Matrix<BaseFloat> *image) {
-  int32 image_width = image->NumRows(),
-      num_channels = config.num_channels,
-      image_height = image->NumCols() / num_channels,
-      crop_size = config.crop_size;
-  if (image->NumCols() % num_channels != 0) {
-    KALDI_ERR << "Number of Cols must be divisible by number of channnels";
-  }
-
-  int32 start_row = RandInt(0,(image_width - crop_size));
-  int32 start_col = RandInt(0,(image_height - crop_size)) * num_channels;
-  Matrix<BaseFloat> temp_image(crop_size, crop_size*num_channels);
-  for (int32 i = 0; i < crop_size; i++) {
-    for (int32 j = 0; j < crop_size; j++) {
-      for (int32 ch = 0; ch < num_channels; ch++) {
-        temp_image(i, j*num_channels + ch) = (*image)(i + start_row, j*num_channels + start_col + ch);
-      }
-    }
-  }
   *image = temp_image;
 }
 
@@ -429,19 +414,21 @@ void PerturbImageInNnetExample(
       // likely won't be dumping the perturbed data to disk.
       PerturbImage(config, &image);
 
-      if (!config.is_square_image) {
-        ScaleImage(config, &image);
-	CropImage(config, &image);
-	//std::cout << image.NumRows() << " " << image.NumCols() << std::endl;
-	KALDI_ASSERT(image.NumRows() == config.crop_size);
-	KALDI_ASSERT(image.NumCols() == config.crop_size*config.num_channels);
+      if (config.crop) {
+        KALDI_ASSERT(config.crop_size > 0);
+        KALDI_ASSERT(config.crop_scale_min > 0 && config.crop_scale_max > config.crop_scale_min);
+
+        ScaleAndCropImage(config, &image);
+
+        KALDI_ASSERT(image.NumRows() == config.crop_size);
+        KALDI_ASSERT(image.NumCols() == config.crop_size*config.num_channels);
 
         // modify the indices
-	int32 num_rows = image.NumRows();
-	io.indexes.resize(num_rows);
-	for (int32 i = 0; i < num_rows; i++) {
-	  io.indexes[i].t = i;
-	}
+        int32 num_rows = image.NumRows();
+        io.indexes.resize(num_rows);
+        for (int32 i = 0; i < num_rows; i++) {
+          io.indexes[i].t = i;
+        }
       }
 
       // modify the 'io' object.
