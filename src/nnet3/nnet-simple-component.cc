@@ -2607,8 +2607,8 @@ std::string NaturalGradientAffineComponent::Info() const {
   PrintParameterStats(stream, "bias", bias_params_, true);
   stream << ", rank-in=" << rank_in_
          << ", rank-out=" << rank_out_
-         << ", num_samples_history=" << num_samples_history_
-         << ", update_period=" << update_period_
+         << ", num-samples-history=" << num_samples_history_
+         << ", update-period=" << update_period_
          << ", alpha=" << alpha_;
   return stream.str();
 }
@@ -2699,6 +2699,12 @@ void NaturalGradientAffineComponent::Add(BaseFloat alpha, const Component &other
   KALDI_ASSERT(other != NULL);
   linear_params_.AddMat(alpha, other->linear_params_);
   bias_params_.AddVec(alpha, other->bias_params_);
+}
+
+/// virtual
+void NaturalGradientAffineComponent::FreezeNaturalGradient(bool freeze) {
+  preconditioner_in_.Freeze(freeze);
+  preconditioner_out_.Freeze(freeze);
 }
 
 std::string FixedAffineComponent::Info() const {
@@ -3293,6 +3299,11 @@ void NaturalGradientPerElementScaleComponent::Update(
   CuVector<BaseFloat> delta_scales(scales_.Dim());
   delta_scales.AddRowSumMat(scale * learning_rate_, derivs_per_frame);
   scales_.AddVec(1.0, delta_scales);
+}
+
+/// virtual
+void NaturalGradientPerElementScaleComponent::FreezeNaturalGradient(bool freeze) {
+  preconditioner_.Freeze(freeze);
 }
 
 // Constructors for the convolution component
@@ -4815,6 +4826,18 @@ BaseFloat CompositeComponent::DotProduct(
   return ans;
 }
 
+/// virtual
+void CompositeComponent::FreezeNaturalGradient(bool freeze) {
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (components_[i]->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc =
+          dynamic_cast<UpdatableComponent*>(components_[i]);
+      KALDI_ASSERT(uc != NULL);
+      uc->FreezeNaturalGradient(freeze);
+    }
+  }
+}
+
 // virtual
 Component* CompositeComponent::Copy() const {
   std::vector<Component*> components(components_.size());
@@ -5208,6 +5231,10 @@ void LstmNonlinearityComponent::InitNaturalGradient() {
   preconditioner_.SetNumSamplesHistory(1000.0);
 }
 
+/// virtual
+void LstmNonlinearityComponent::FreezeNaturalGradient(bool freeze) {
+  preconditioner_.Freeze(freeze);
+}
 
 void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
   InitLearningRatesFromConfig(cfl);
@@ -5312,7 +5339,8 @@ std::string BatchNormComponent::Info() const {
   std::ostringstream stream;
   stream << Type() << ", dim=" << dim_ << ", block-dim=" << block_dim_
          << ", epsilon=" << epsilon_ << ", target-rms=" << target_rms_
-         << ", count=" << count_;
+         << ", count=" << count_
+         << ", test-mode=" << (test_mode_ ? "true" : "false");
   if (count_ > 0) {
     Vector<BaseFloat> mean(stats_sum_), var(stats_sumsq_);
     mean.Scale(1.0 / count_);

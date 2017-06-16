@@ -1,35 +1,21 @@
 #!/bin/bash
 
+# 1v is as 1t, but using backstitch training with scale=1.0,interval=4, and
+# num of epochs increased to 7
 
-# run_tdnn_1e.sh is like run_tdnn_1d.sh but batchnorm components instead of renorm
+# ./local/chain/compare_wer_general.sh --looped exp/chain_cleaned/tdnn_lstm1e_sp_bi exp/chain_cleaned/tdnn_lstm1t_sp_bi
+# System                tdnn_lstm1t_sp_bi tdnn_lstm1v_sp_bi
+# WER on dev(orig)            9.0       8.6
+#         [looped:]           9.0       8.7
+# WER on dev(rescored)        8.4       8.3
+#         [looped:]           8.4       8.2
+# WER on test(orig)           8.9       8.2
+#         [looped:]           8.9       8.3
+# WER on test(rescored)       8.4       7.8
+#         [looped:]           8.4       7.8
 
-# exp/chain_cleaned/tdnn1d_sp_bi: num-iters=253 nj=2..12 num-params=7.0M dim=40+100->3597 combine=-0.098->-0.097 xent:train/valid[167,252,final]=(-1.40,-1.34,-1.34/-1.50,-1.46,-1.46) logprob:train/valid[167,252,final]=(-0.091,-0.083,-0.083/-0.104,-0.101,-0.101)
-# exp/chain_cleaned/tdnn1e_sp_bi/: num-iters=253 nj=2..12 num-params=7.0M dim=40+100->3597 combine=-0.095->-0.095 xent:train/valid[167,252,final]=(-1.37,-1.31,-1.31/-1.47,-1.44,-1.44) logprob:train/valid[167,252,final]=(-0.087,-0.078,-0.078/-0.102,-0.099,-0.099)
-
-# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1d_sp_bi exp/chain_cleaned/tdnn1e_sp_bi
-# System                tdnn1d_sp_bi tdnn1e_sp_bi
-# WER on dev(orig)            9.4       9.2
-# WER on dev(rescored)        8.6       8.6
-# WER on test(orig)           9.7       9.4
-# WER on test(rescored)       9.1       8.9
-# Final train prob        -0.0827   -0.0776
-# Final valid prob        -0.1011   -0.0992
-# Final train prob (xent)   -1.3404   -1.3110
-# Final valid prob (xent)   -1.4575   -1.4353
-
-## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
-## otherwise call it directly in its location).
-# by default, with cleanup:
-# local/chain/run_tdnn.sh
-
-# without cleanup:
-# local/chain/run_tdnn.sh  --train-set train --gmm tri3 --nnet3-affix "" &
-
-# note, if you have already run the corresponding non-chain nnet3 system
-# (local/nnet3/run_tdnn.sh), you may want to run with --stage 14.
-
-# This script is like run_tdnn_1a.sh except it uses an xconfig-based mechanism
-# to get the configuration.
+# exp/chain_cleaned/tdnn_lstm1t_sp_bi: num-iters=253 nj=2..12 num-params=37.1M dim=40+100->3626 combine=-0.055->-0.055 xent:train/valid[167,252,final]=(-0.774,-0.655,-0.643/-0.928,-0.883,-0.873) logprob:train/valid[167,252,final]=(-0.063,-0.048,-0.046/-0.087,-0.089,-0.087)
+# exp/chain_cleaned/tdnn_lstm1v_sp_bi: num-iters=444 nj=2..12 num-params=33.9M dim=40+100->3608 combine=-0.05->-0.05 xent:train/valid[295,443,final]=(-0.771,-0.622,-0.623/-0.865,-0.769,-0.768) logprob:train/valid[295,443,final]=(-0.054,-0.037,-0.037/-0.074,-0.064,-0.064)
 
 set -e -o pipefail
 
@@ -39,18 +25,38 @@ stage=0
 nj=30
 decode_nj=30
 min_seg_len=1.55
+label_delay=5
 xent_regularize=0.1
 train_set=train_cleaned
 gmm=tri3_cleaned  # the gmm for the target data
 num_threads_ubm=32
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
+# training options
+chunk_left_context=40
+chunk_right_context=0
+chunk_left_context_initial=0
+chunk_right_context_final=0
+frames_per_chunk=140,100,160
+num_epochs=7
+alpha=1.0
+back_interval=4
+# decode options
+frames_per_chunk_primary=$(echo $frames_per_chunk | cut -d, -f1)
+extra_left_context=50
+extra_right_context=0
+extra_left_context_initial=0
+extra_right_context_final=0
+
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=1e  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
-common_egs_dir=  # you can set this to use previously dumped egs.
+tdnn_lstm_affix=1v  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
+common_egs_dir=    # you can set this to use previously dumped egs.
+remove_egs=true
+
+test_online_decoding=false  # if true, it will run the last decoding stage.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -74,14 +80,14 @@ local/nnet3/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
                                   --gmm $gmm \
                                   --num-threads-ubm $num_threads_ubm \
-                                  --nnet3-affix "$nnet3_affix"
+                             --nnet3-affix "$nnet3_affix"
 
 
 gmm_dir=exp/$gmm
 ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
 tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
-dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_bi
+dir=exp/chain${nnet3_affix}/tdnn_lstm${tdnn_lstm_affix}_sp_bi
 train_data_dir=data/${train_set}_sp_hires_comb
 lores_train_data_dir=data/${train_set}_sp_comb
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
@@ -137,9 +143,9 @@ if [ $stage -le 16 ]; then
       --cmd "$train_cmd" 4000 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
 fi
 
+
 if [ $stage -le 17 ]; then
   mkdir -p $dir
-
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
@@ -153,19 +159,21 @@ if [ $stage -le 17 ]; then
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 dim=450 self-repair-scale=1.0e-04
-  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=450
-  relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1,2) dim=450
-  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=450
-  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=450
-  relu-batchnorm-layer name=tdnn6 input=Append(-6,-3,0) dim=450
+  relu-renorm-layer name=tdnn1 dim=1024
+  relu-renorm-layer name=tdnn2 dim=1024 input=Append(-1,0,1)
+  fast-lstmp-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 decay-time=20 delay=-3
+  relu-renorm-layer name=tdnn3 dim=1024 input=Append(-3,0,3)
+  relu-renorm-layer name=tdnn4 dim=1024 input=Append(-3,0,3)
+  fast-lstmp-layer name=lstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 decay-time=20 delay=-3
+  relu-renorm-layer name=tdnn5 dim=1024 input=Append(-3,0,3)
+  relu-renorm-layer name=tdnn6 dim=1024 input=Append(-3,0,3)
+  fast-lstmp-layer name=lstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 decay-time=20 delay=-3
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain input=tdnn6 dim=450 target-rms=0.5
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+  output-layer name=output input=lstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -176,41 +184,49 @@ if [ $stage -le 17 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=450 target-rms=0.5
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  output-layer name=output-xent input=lstm3 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
-
 fi
+
 
 if [ $stage -le 18 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/tedlium-$(date +'%m_%d_%H_%M')/s5_r2/$dir/egs/storage $dir/egs/storage
   fi
 
  steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
-    --chain.xent-regularize 0.1 \
+    --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.dir "$common_egs_dir" \
     --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width 150 \
-    --trainer.num-chunk-per-minibatch 128 \
+    --egs.chunk-width "$frames_per_chunk" \
+    --egs.chunk-left-context "$chunk_left_context" \
+    --egs.chunk-right-context "$chunk_right_context" \
+    --egs.chunk-left-context-initial "$chunk_left_context_initial" \
+    --egs.chunk-right-context-final "$chunk_right_context_final" \
+    --trainer.num-chunk-per-minibatch 128,64 \
     --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs 4 \
+    --trainer.max-param-change 2.0 \
+    --trainer.num-epochs $num_epochs \
+    --trainer.deriv-truncate-margin 10 \
+    --trainer.optimization.shrink-value 0.99 \
     --trainer.optimization.num-jobs-initial 2 \
     --trainer.optimization.num-jobs-final 12 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
-    --trainer.max-param-change 2.0 \
-    --cleanup.remove-egs true \
+    --trainer.optimization.momentum 0.0 \
+    --trainer.optimization.backstitch-training-scale $alpha \
+    --trainer.optimization.backstitch-training-interval $back_interval \
+    --cleanup.remove-egs "$remove_egs" \
     --feat-dir $train_data_dir \
     --tree-dir $tree_dir \
     --lat-dir $lat_dir \
@@ -232,6 +248,11 @@ if [ $stage -le 20 ]; then
       (
       steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
           --acwt 1.0 --post-decode-acwt 10.0 \
+          --extra-left-context $extra_left_context  \
+          --extra-right-context $extra_right_context  \
+          --extra-left-context-initial $extra_left_context_initial \
+          --extra-right-context-final $extra_right_context_final \
+          --frames-per-chunk "$frames_per_chunk_primary" \
           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
           --scoring-opts "--min-lmwt 5 " \
          $dir/graph data/${dset}_hires $dir/decode_${dset} || exit 1;
@@ -245,4 +266,67 @@ if [ $stage -le 20 ]; then
     exit 1
   fi
 fi
+
+
+if [ $stage -le 21 ]; then
+  # 'looped' decoding.  we didn't write a -parallel version of this program yet,
+  # so it will take a bit longer as the --num-threads option is not supported.
+  # we just hardcode the --frames-per-chunk option as it doesn't have to
+  # match any value used in training, and it won't affect the results very much (unlike
+  # regular decoding)... [it will affect them slightly due to differences in the
+  # iVector extraction; probably smaller will be worse as it sees less of the future,
+  # but in a real scenario, long chunks will introduce excessive latency].
+  rm $dir/.error 2>/dev/null || true
+  for dset in dev test; do
+      (
+      steps/nnet3/decode_looped.sh --nj $decode_nj --cmd "$decode_cmd" \
+          --acwt 1.0 --post-decode-acwt 10.0 \
+          --extra-left-context-initial $extra_left_context_initial \
+          --frames-per-chunk 30 \
+          --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
+          --scoring-opts "--min-lmwt 5 " \
+         $dir/graph data/${dset}_hires $dir/decode_looped_${dset} || exit 1;
+      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
+        data/${dset}_hires ${dir}/decode_looped_${dset} ${dir}/decode_looped_${dset}_rescore || exit 1
+    ) || touch $dir/.error &
+  done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in decoding"
+    exit 1
+  fi
+fi
+
+
+if $test_online_decoding && [ $stage -le 22 ]; then
+  # note: if the features change (e.g. you add pitch features), you will have to
+  # change the options of the following command line.
+  steps/online/nnet3/prepare_online_decoding.sh \
+       --mfcc-config conf/mfcc_hires.conf \
+       data/lang_chain exp/nnet3${nnet3_affix}/extractor ${dir} ${dir}_online
+
+  rm $dir/.error 2>/dev/null || true
+  for dset in dev test; do
+    (
+      # note: we just give it "$dset" as it only uses the wav.scp, the
+      # feature type does not matter.
+
+      steps/online/nnet3/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
+          --extra-left-context-initial $extra_left_context_initial \
+          --acwt 1.0 --post-decode-acwt 10.0 \
+          --scoring-opts "--min-lmwt 5 " \
+         $dir/graph data/${dset} ${dir}_online/decode_${dset} || exit 1;
+      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
+        data/${dset}_hires ${dir}_online/decode_${dset} ${dir}_online/decode_${dset}_rescore || exit 1
+    ) || touch $dir/.error &
+  done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in decoding"
+    exit 1
+  fi
+fi
+
+
+
 exit 0

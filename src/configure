@@ -663,7 +663,7 @@ function linux_configure_static {
   done
   if [ "$ATLASLIBS" == "" ]; then
     echo Could not find any libraries $ATLASLIBDIR/{liblapack,liblapack_atlas,libclapack} that seem to be an ATLAS CLAPACK library.
-    return ;
+    return 1;
   fi
 
   for x in lib${pt}cblas.a libatlas.a lib${pt}f77blas.a; do

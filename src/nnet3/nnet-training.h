@@ -36,6 +36,8 @@ struct NnetTrainerOptions {
   int32 print_interval;
   bool debug_computation;
   BaseFloat momentum;
+  BaseFloat backstitch_training_scale;
+  int32 backstitch_training_interval;
   std::string read_cache;
   std::string write_cache;
   bool binary_write_cache;
@@ -49,6 +51,8 @@ struct NnetTrainerOptions {
       print_interval(100),
       debug_computation(false),
       momentum(0.0),
+      backstitch_training_scale(0.0),
+      backstitch_training_interval(1),
       binary_write_cache(true),
       max_param_change(2.0) { }
   void Register(OptionsItf *opts) {
@@ -70,6 +74,14 @@ struct NnetTrainerOptions {
                    "so that the 'effective' learning rate is the same as "
                    "before (because momentum would normally increase the "
                    "effective learning rate by 1/(1-momentum))");
+    opts->Register("backstitch-training-scale", &backstitch_training_scale,
+                   "backstitch training factor. "
+                   "if 0 then in the normal training mode. It is referred as "
+                   "'\\alpha' in our publications.");
+    opts->Register("backstitch-training-interval",
+                   &backstitch_training_interval,
+                   "do backstitch training with the specified interval of "
+                   "minibatches. It is referred as 'n' in our publications.");
     opts->Register("read-cache", &read_cache, "the location where we can read "
                    "the cached computation from");
     opts->Register("write-cache", &write_cache, "the location where we want to "
@@ -165,13 +177,19 @@ class NnetTrainer {
 
   ~NnetTrainer();
  private:
-  void ProcessOutputs(const NnetExample &eg,
-                      NnetComputer *computer);
+  // The internal function for doing one step of conventional SGD training.
+  void TrainInternal(const NnetExample &eg,
+                     const NnetComputation &computation);
 
-  // Applies per-component max-change and global max-change to all updatable
-  // components in *delta_nnet_, and use *delta_nnet_ to update parameters
-  // in *nnet_.
-  void UpdateParamsWithMaxChange();
+  // The internal function for doing one step of backstitch training. Depending
+  // on whether is_backstitch_step1 is true, It could be either the first
+  // (backward) step, or the second (forward) step of backstitch.
+  void TrainInternalBackstitch(const NnetExample &eg,
+                               const NnetComputation &computation,
+                               bool is_backstitch_step1);
+
+  void ProcessOutputs(bool is_backstitch_step2, const NnetExample &eg,
+                      NnetComputer *computer);
 
   const NnetTrainerOptions config_;
   Nnet *nnet_;
@@ -192,6 +210,11 @@ class NnetTrainer {
   int32 num_max_change_global_applied_;
 
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
+
+  // This value is used in backstitch training when we need to ensure
+  // consistent dropout masks.  It's set to a value derived from rand()
+  // when the class is initialized.
+  int32 srand_seed_;
 };
 
 /**

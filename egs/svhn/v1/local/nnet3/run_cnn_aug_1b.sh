@@ -1,15 +1,15 @@
 #!/bin/bash
 
-# exp/resnet1b: num-iters=130 nj=2..4 num-params=1.3M dim=96->10 combine=-0.04->-0.04 loglike:train/valid[85,129,final]=(-0.049,-0.044,-0.036/-0.098,-0.085,-0.076) accuracy:train/valid[85,129,final]=(0.9904,0.9908,0.9940/0.9764,0.9804,0.9831)
+# run_cnn_aug_1b.sh is like run_cnn_aug_1a.sh but setting
+# num-minibatches-history=40.0 (longer history for natural gradient),
+# and using the "egs2" examples with more archives, which necessitates
+# adjusting the proportional-shrink option (since it should be
+# proportional to archive size).
 
-# This setup is based on the one in cifar/v1/local/nnet3/run_resnet_1{a,b}.sh.
-# We are reducing the number of epochs quite a bit, since there is so much
-# more data here; and reducing the proportional-shrink value since there is
-# more data.
-# The augmentation options are changed, with no horizontal flip, less vertical
-# shift, and much less horizontal shift.
+# result improves 97.62 -> 97.71.
 
-
+# steps/info/nnet3_dir_info.pl exp/cnn_aug1b
+# exp/cnn_aug1b: num-iters=180 nj=2..4 num-params=2.8M dim=96->10 combine=-0.06->-0.06 loglike:train/valid[119,179,final]=(-0.066,-0.051,-0.049/-0.126,-0.103,-0.100) accuracy:train/valid[119,179,final]=(0.9846,0.9890,0.9900/0.970,0.9760,0.9771)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -21,7 +21,7 @@ stage=0
 train_stage=-10
 srand=0
 reporting_email=
-affix=1b
+affix=_aug1b
 
 
 # End configuration section.
@@ -41,9 +41,9 @@ fi
 
 
 
-dir=exp/resnet${affix}
+dir=exp/cnn${affix}
 
-egs=exp/egs
+egs=exp/egs2
 
 if [ ! -d $egs ]; then
   echo "$0: expected directory $egs to exist.  Run the get_egs.sh commands in the"
@@ -75,30 +75,20 @@ if [ $stage -le 1 ]; then
   # Note: we hardcode in the CNN config that we are dealing with 32x3x color
   # images.
 
-
-  nf1=48
-  nf2=96
-  nf3=256
-  nb3=128
-
-  common="required-time-offsets=0 height-offsets=-1,0,1"
-  res_opts="bypass-source=batchnorm"
+  a="num-minibatches-history=40.0"
+  common1="$a required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=40"
+  common2="$a required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=80"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=96 name=input
-  conv-layer name=conv1 height-in=32 height-out=32 time-offsets=-1,0,1 required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=$nf1
-  res-block name=res2 num-filters=$nf1 height=32 time-period=1 $res_opts
-  res-block name=res3 num-filters=$nf1 height=32 time-period=1 $res_opts
-  conv-layer name=conv4 height-in=32 height-out=16 height-subsample-out=2 time-offsets=-1,0,1 $common num-filters-out=$nf2
-  res-block name=res5 num-filters=$nf2 height=16 time-period=2 $res_opts
-  res-block name=res6 num-filters=$nf2 height=16 time-period=2 $res_opts
-  conv-layer name=conv7 height-in=16 height-out=8 height-subsample-out=2 time-offsets=-2,0,2 $common num-filters-out=$nf3
-  res-block name=res8 num-filters=$nf3 num-bottleneck-filters=$nb3 height=8 time-period=4 $res_opts
-  res-block name=res9 num-filters=$nf3 num-bottleneck-filters=$nb3 height=8 time-period=4 $res_opts
-  res-block name=res10 num-filters=$nf3 num-bottleneck-filters=$nb3 height=8 time-period=4 $res_opts
-  channel-average-layer name=channel-average input=Append(2,6,10,14,18,22,24,28) dim=$nf3
-  output-layer name=output learning-rate-factor=0.1 dim=$num_targets
+  conv-relu-batchnorm-layer name=cnn1 height-in=32 height-out=32 time-offsets=-1,0,1 $common1
+  conv-relu-batchnorm-dropout-layer name=cnn2 height-in=32 height-out=16 time-offsets=-1,0,1 dropout-proportion=0.25 $common1 height-subsample-out=2
+  conv-relu-batchnorm-layer name=cnn3 height-in=16 height-out=16 time-offsets=-2,0,2 $common2
+  conv-relu-batchnorm-dropout-layer name=cnn4 height-in=16 height-out=8 time-offsets=-2,0,2 dropout-proportion=0.25 $common2 height-subsample-out=2
+  conv-relu-batchnorm-layer name=cnn5 height-in=8 height-out=8 time-offsets=-4,0,4 $common2
+  relu-dropout-layer name=fully_connected1 input=Append(2,6,10,14,18,22,26,30) dropout-proportion=0.5 dim=512
+  output-layer name=output dim=$num_targets
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -118,7 +108,7 @@ if [ $stage -le 2 ]; then
     --trainer.optimization.initial-effective-lrate=0.003 \
     --trainer.optimization.final-effective-lrate=0.0003 \
     --trainer.optimization.minibatch-size=256,128,64 \
-    --trainer.optimization.proportional-shrink=25.0 \
+    --trainer.optimization.proportional-shrink=18.0 \
     --trainer.shuffle-buffer-size=2000 \
     --egs.dir="$egs" \
     --use-gpu=true \
