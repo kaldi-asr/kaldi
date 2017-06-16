@@ -22,7 +22,7 @@ args = parser.parse_args()
 def parse_mat_path():
     tar_folder_vect = args.tar_name.split('.')
     tar_folder = tar_folder_vect[0]
-    seq = (args.devkit_path, tarFolder, "data/meta")
+    seq = (args.devkit_path, tar_folder, "data/meta")
     path = "/".join(seq)
     return path
 
