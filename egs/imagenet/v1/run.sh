@@ -17,6 +17,10 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-  image/nnet3/get_egs.sh --egs-per-archive 5000 --cmd "$cmd" data/train data/test exp/egs
+  image/nnet3/get_egs.sh --egs-per-archive 5000 --cmd "$cmd" \
+    --crop true --crop-size 224 \
+    --crop-scale-min 256 \
+    --crop-scale-max 512 \
+    data/train data/test exp/egs
 fi
 
