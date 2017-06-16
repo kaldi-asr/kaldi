@@ -7,6 +7,7 @@
 if [ $# != 1 ]; then
   echo "Usage: $0 <image-dir-to-validate>"
   echo "e.g.: $0 data/cifar10_train"
+  echo "$0 data/train --is-square-image=false"
 fi
 
 [ -e ./path.sh ] && . ./path.sh
