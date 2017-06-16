@@ -12,7 +12,7 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  image/validate_image_dir.sh data/train
+  image/validate_image_dir.sh data/train --is-square-image false
   image/validate_image_dir.sh data/test
 fi
 

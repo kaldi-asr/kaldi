@@ -12,6 +12,9 @@ import scipy.io as sio
 import numpy as np
 from scipy import misc
 
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE,SIG_DFL) 
+
 parser = argparse.ArgumentParser(description="""Converts the imagenet data into Kaldi feature format""")
 parser.add_argument('database_path', type=str, help='path to downloaded imagenet training data')
 parser.add_argument('devkit_path', type=str, help='path to meta data')
@@ -42,6 +45,7 @@ def parse_mat_path():
     return mat_path, val_ground_truth_path
 
 def write_kaldi_matrix(file_handle, matrix, key):
+    #file_handle.write("[ ")
     file_handle.write(key + " [ ")
 
     num_rows = len(matrix)
