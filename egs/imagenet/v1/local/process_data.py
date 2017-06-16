@@ -124,7 +124,7 @@ else:
 labels_file = os.path.join(args.dir + '/', 'labels.txt')
 labels_fh = open(labels_file, 'wb')
 
-database_contents = sorted(os.listdir(args.databasePath))
+database_contents = sorted(os.listdir(args.database_path))
 
 if args.dataset == 'train':
     image_id = 1
