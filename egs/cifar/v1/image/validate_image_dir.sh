@@ -9,10 +9,12 @@ if [ $# != 1 ]; then
   echo "e.g.: $0 data/cifar10_train"
 fi
 
-dir=$1
-is_square_image=${2:-true}
-
 [ -e ./path.sh ] && . ./path.sh
+
+dir=$1
+is_square_image=true
+shift
+. parse_options.sh || exit 1
 
 if [ ! -d $dir ]; then
   echo "$0: directory $dir does not exist."
