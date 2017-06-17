@@ -114,6 +114,8 @@ void UnitTestSampleFromCdf() {
       }
       total += prob[i];
     }
+    if (total == 0.0)
+      continue;  // if all the probs are zero, we can't do the test; try again.
 
     std::vector<double> cdf(num_elements + 1);
     cdf[0] = RandUniform();
@@ -283,4 +285,3 @@ int main() {
   UnitTestSampleFromCdf();
   UnitTestSampleWords();
 }
-
