@@ -20,9 +20,9 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 
-if [ $# != 3 ]; then
-  echo "Usage: $0 [opts] <train-data-dir> <test-or-dev-data-dir> <egs-dir>"
-  echo " e.g.: $0 --egs-per-iter 25000 data/cifar10_train exp/cifar10_train_egs"
+if [ $# != 5 ]; then
+  echo "Usage: $0 [opts] <train-data-dir> <test-or-dev-data-dir> <egs-dir> <train-ivector-dir> <test-ivector-dir>"
+  echo " e.g.: $0 --egs-per-iter 25000 data/cifar10_train exp/cifar10_train_egs exp/ivectors_cifar10_train exp/ivector_cifar10_test"
   echo " or: $0 --test-mode true data/cifar10_test exp/cifar10_test_egs"
   echo "Options (with defaults):"
   echo "  --cmd 'run.pl'     How to run jobs (e.g. queue.pl)"
@@ -45,8 +45,11 @@ set -eu
 train=$1
 test=$2
 dir=$3
-
-for f in $train/images.scp $train/labels.txt $test/images.scp $test/labels.txt; do
+train_ivector=$4
+test_ivector=$5
+#echo $train_ivector
+#echo $test_ivector
+for f in $train/images.scp $train/labels.txt $test/images.scp $test/labels.txt $train_ivector/ivector.scp $test_ivector/ivector.scp; do
    if [ ! -f $f ]; then
      echo "$0: expected file $f to exist"
      exit 1
@@ -102,6 +105,7 @@ if [ $stage -le 0 ]; then
        ali-to-post "ark:filter_scp.pl $dir/train_subset_ids.txt $train/labels.txt|" ark:- \| \
        post-to-smat --dim=$num_classes ark:- ark:- \| \
        nnet3-get-egs-simple input="scp:filter_scp.pl $dir/train_subset_ids.txt $train/images.scp|" \
+       ivector="scp:filter_scp.pl $dir/train_subset_ids.txt $train_ivector/ivector.scp|" \
        output=ark:- ark:$dir/train_diagnostic.egs
 fi
 
@@ -115,6 +119,7 @@ if [ $stage -le 1 ]; then
        ali-to-post ark:$test/labels.txt ark:- \| \
        post-to-smat --dim=$num_classes ark:- ark:- \| \
        nnet3-get-egs-simple input=scp:$test/images.scp \
+       ivector=scp:$test_ivector/ivector.scp \
        output=ark:- ark:$dir/valid_diagnostic.egs
 fi
 
@@ -132,12 +137,13 @@ if [ $stage -le 2 ]; then
   image/split_image_dir.sh $train $num_archives
 
   sdata=$train/split$num_archives
-
+  sdata_ivector=$train/split40
   $cmd JOB=1:$num_archives $dir/log/get_egs.JOB.log \
        ali-to-post ark:$sdata/JOB/labels.txt ark:- \| \
        post-to-smat --dim=$num_classes ark:- ark:- \| \
        nnet3-get-egs-simple input=scp:$sdata/JOB/images.scp \
-        output=ark:- ark:$dir/egs.JOB.ark
+       ivector="scp:filter_scp.pl $sdata/JOB/labels.txt $train_ivector/ivector.scp|" \
+       output=ark:- ark:$dir/egs.JOB.ark
 fi
 
 rm $dir/train_subset_ids.txt 2>/dev/null || true
