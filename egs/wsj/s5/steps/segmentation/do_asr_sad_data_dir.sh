@@ -48,12 +48,9 @@ extra_left_context=0  # Set to some large value, typically 40 for LSTM (must mat
 extra_right_context=0  
 frames_per_chunk=150
 
-subsampling_factor=1  # Subsampling at the output relative to nnet-output
-
 # Decoding options
+graph_opts="--min-silence-duration=0.03 --min-speech-duration=0.3 --max-speech-duration=10.0"
 acwt=0.3
-transition_scale=1.0
-loopscale=0.3
 
 # These <from>_in_<to>_weight represent the fraction of <from> probability 
 # to transfer to <to> class.
@@ -68,13 +65,13 @@ echo $*
 
 . utils/parse_options.sh
 
-if [ $# -ne 6 ]; then
+if [ $# -ne 5 ]; then
   echo "This script does nnet3-based speech activity detection given an input kaldi "
   echo "directory and outputs an output kaldi directory."
   echo "See script for details of the options to be supplied."
-  echo "Usage: $0 <src-data-dir> <sad-nnet-dir> <classes-info> <mfcc-dir> <dir> <out-data-dir>"
+  echo "Usage: $0 <src-data-dir> <sad-nnet-dir> <mfcc-dir> <dir> <out-data-dir>"
   echo " e.g.: $0 ~/workspace/egs/ami/s5b/data/sdm1/dev exp/nnet3_sad_snr/nnet_tdnn_j_n4 \\"
-  echo "    conf/sad.classes_info mfcc_hires_bp exp/segmentation_sad_snr/nnet_tdnn_j_n4 data/ami_sdm1_dev"
+  echo "    mfcc_hires_bp exp/segmentation_sad_snr/nnet_tdnn_j_n4 data/ami_sdm1_dev"
   echo ""
   echo "Options: "
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
@@ -89,7 +86,6 @@ if [ $# -ne 6 ]; then
   echo "  --output-name <name>    # The output node in the network"
   echo "  --extra-left-context  <context|0>   # Set to some large value, typically 40 for LSTM (must match training)"
   echo "  --extra-right-context  <context|0>   # For BLSTM or statistics pooling"
-  echo "  --subsampling-factor  <int|3>   # Subsampling relative to the output of the nnet. Must match the classes-info."
   echo "  --transition-scale <float|3.0>    # LMWT for decoding"
   echo "  --loopscale <float|0.1>   # Scale on self-loop log-probabilities"
   exit 1
@@ -98,19 +94,9 @@ fi
 src_data_dir=$1   # The input data directory that needs to be segmented.
                   # If convert_data_dir_to_whole is true, any segments in that will be ignored.
 sad_nnet_dir=$2   # The SAD neural network
-classes_info=$3   # Information about the classes using which a graph is created
-
-# classes_info must have lines of the format:
-# <class-id (1-based)> <initial-probabilitiy> <self-loop-probability> <min-number-of-states> <transition-1> <transition-2> ... <transition-N>
-# where <transition-N> is <destination-class>:<transition-probability> 
-# and a destination class of -1 is used to represent the final state.
-# e.g.:
-# 1 0.8 0.99 10 2:0.009 -1:0.001
-# 2 0.2 0.99 10 1:0.009 -1:0.001
-
-mfcc_dir=$4       # The directory to store the features
-dir=$5            # Work directory
-data_dir=$6       # The output data directory will be ${data_dir}_seg
+mfcc_dir=$3       # The directory to store the features
+dir=$4            # Work directory
+data_dir=$5       # The output data directory will be ${data_dir}_seg
 
 affix=${affix:+_$affix}
 feat_affix=${feat_affix:+_$feat_affix}
@@ -184,11 +170,10 @@ if [ -f $sad_nnet_dir/frame_subsampling_factor ]; then
   frame_subsampling_factor=$(cat $sad_nnet_dir/frame_subsampling_factor)
 fi
 
-subsampling_factor=$[subsampling_factor * frame_subsampling_factor]
-
+mkdir -p $dir
 if [ $stage -le 4 ]; then
   if [ "$(readlink -f $sad_nnet_dir)" != "$(readlink -f $dir)" ]; then
-    cp $sad_nnet_dir/cmvn_opts $dir
+    cp $sad_nnet_dir/cmvn_opts $dir || exit 1
     cp $sad_nnet_dir/{final.mat,splice_opts} $dir || true
   fi
 
@@ -197,6 +182,8 @@ if [ $stage -le 4 ]; then
       nnet3-copy --edits="rename-node old-name=$output_name new-name=output" \
       $sad_nnet_dir/$iter.raw $dir/${iter}_${output_name}.raw || exit 1
     iter=${iter}_${output_name}
+  else 
+    cp $sad_nnet_dir/$iter.raw $dir/
   fi
 
   steps/nnet3/compute_output.sh --nj $nj --cmd "$cmd" \
@@ -204,7 +191,7 @@ if [ $stage -le 4 ]; then
     --extra-left-context $extra_left_context \
     --extra-right-context $extra_right_context \
     --frames-per-chunk $frames_per_chunk --apply-exp true \
-    --frame-subsampling-factor $subsampling_factor \
+    --frame-subsampling-factor $frame_subsampling_factor \
     ${test_data_dir} $dir $sad_dir || exit 1
 fi
 
@@ -212,26 +199,31 @@ fi
 ## Prepare HCLG graph for decoding
 ###############################################################################
 
-if [ ! -f $classes_info ]; then
-  echo "$0: Could not find $classes_info"
-  exit 1
-fi
+frame_shift=$(utils/data/get_frame_shift.sh $test_data_dir)
 
 graph_dir=${dir}/graph_${output_name}
 if [ $stage -le 5 ]; then
-  steps/segmentation/internal/prepare_sad_lang.py \
-    --transition-scale=$transition_scale --loopscale=$loopscale \
-    $classes_info $graph_dir || exit 1
-  fstcompile --isymbols=$graph_dir/words.txt --osymbols=$graph_dir/words.txt \
-    $graph_dir/HCLG.txt > $graph_dir/HCLG.fst
+  mkdir -p $graph_dir
+
+  # 1 for silence and 2 for speech
+  cat <<EOF > $graph_dir/words.txt
+1 1
+2 2
+EOF
+
+  $cmd $graph_dir/log/make_graph.log \
+    steps/segmentation/internal/prepare_sad_graph.py $graph_opts \
+      --frame-shift=$(perl -e "print $frame_shift * $frame_subsampling_factor") - \| \
+    fstcompile --isymbols=$graph_dir/words.txt --osymbols=$graph_dir/words.txt '>' \
+      $graph_dir/HCLG.fst
 fi
 
 ###############################################################################
 ## Do Viterbi decoding to create per-frame alignments.
 ###############################################################################
 
+mkdir -p $seg_dir
 if [ $stage -le 6 ]; then
-  mkdir -p $seg_dir
   python -c "
 print ('''[ {0} {1} {2}
 {3} {4} {5} ]'''.format(
@@ -249,11 +241,10 @@ fi
 ## Post-process segmentation to create kaldi data directory.
 ###############################################################################
 
-frame_shift=$(utils/data/get_frame_shift.sh $test_data_dir)
 if [ $stage -le 7 ]; then
   steps/segmentation/post_process_sad_to_datadir.sh \
     $post_processing_opts \
-    --cmd "$cmd" --frame-shift $(perl -e "print $subsampling_factor * $frame_shift") \
+    --cmd "$cmd" --frame-shift $(perl -e "print $frame_subsampling_factor * $frame_shift") \
     ${test_data_dir} ${seg_dir} ${seg_dir} ${data_dir}_seg
 
   cp $src_data_dir/wav.scp ${data_dir}_seg

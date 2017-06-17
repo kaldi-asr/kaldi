@@ -52,17 +52,33 @@ fi
 dir=exp/segmentation${affix}
 mkdir -p $dir
 
-# See $lang/words.txt and decide which should be garbage
-cat <<EOF > $dir/garbage_words.txt
-<hes>
-<noise>
-<v-noise>
+# See $lang/phones.txt and decide which should be garbage
+cat <<EOF > $dir/garbage_phones.txt
+<oov>
+<oov>_B
+<oov>_E
+<oov>_I
+<oov>_S
+<vns>
+<vns>_B
+<vns>_E
+<vns>_I
+<vns>_S
 EOF
 
-# See $lang/words.txt and decide which should be silence. <eps> is always added
-# as silence by the script.
-cat <<EOF > $dir/silence_words.txt
-<silence>
+# See $lang/phones.txt and decide which should be silence. 
+# Optional silence SIL is always added as silence by the script.
+cat <<EOF > $dir/silence_phones.txt
+<sss>
+<sss>_B
+<sss>_E
+<sss>_I
+<sss>_S
+SIL
+SIL_B
+SIL_E
+SIL_I
+SIL_S
 EOF
 
 function make_mfcc {
@@ -192,8 +208,14 @@ fi
 if [ $stage -le 2 ]; then
   utils/data/subsegment_data_dir.sh $whole_data_dir ${data_dir}/segments ${data_dir}/tmp
   cp $data_dir/tmp/feats.scp $data_dir
+  awk '{print $1" "$2}' $data_dir/segments > $data_dir/utt2spk
+  utils/utt2spk_to_spk2utt.pl $data_dir/utt2spk > $data_dir/spk2utt
+
   steps/compute_cmvn_stats.sh ${data_dir}
   utils/fix_data_dir.sh $data_dir
+
+  # Copy the CMVN stats to the whole directory
+  cp $data_dir/cmvn.scp $whole_data_dir   
 fi
 
 ###############################################################################
@@ -225,9 +247,11 @@ if [ $stage -le 3 ]; then
 
   utils/data/subsegment_data_dir.sh $whole_data_dir \
     $uniform_seg_data_dir/sub_segments $uniform_seg_data_dir
-  awk '{print $1" "$1}' $uniform_seg_data_dir/segments > $uniform_seg_data_dir/utt2spk
-  cp $uniform_seg_data_dir/utt2spk $uniform_seg_data_dir/spk2utt
-  steps/compute_cmvn_stats.sh $uniform_seg_data_dir
+  awk '{print $1" "$2}' $uniform_seg_data_dir/segments > \
+    $uniform_seg_data_dir/utt2spk
+  utils/utt2spk_to_spk2utt.pl $uniform_seg_data_dir/utt2spk > \
+    $uniform_seg_data_dir/spk2utt
+  cp $whole_data_dir/cmvn.scp $uniform_seg_data_dir/
 fi
 
 model_id=$(basename $model_dir)
@@ -262,12 +286,15 @@ if [ $stage -le 5 ]; then
 fi
 
 ###############################################################################
-# Get targets from lattices
+# Get frame-level targets from lattices for nnet training
+# Targets are matrices of 3 columns -- silence, speech and garbage
+# The target values are obtained by summing up posterior probabilites of 
+# arcs from lattice-arc-post over silence, speech and garbage phones. 
 ###############################################################################
 if [ $stage -le 6 ]; then
   steps/segmentation/lats_to_targets.sh --cmd "$train_cmd" \
-    --silence-words $dir/silence_words.txt \
-    --garbage-words $dir/garbage_words.txt \
+    --silence-phones $dir/silence_phones.txt \
+    --garbage-phones $dir/garbage_phones.txt \
     --max-phone-duration 0.5 \
     $data_dir $lang $sup_lats_dir \
     $dir/${model_id}_${data_id}_sup_targets
@@ -275,15 +302,20 @@ fi
 
 if [ $stage -le 7 ]; then
   steps/segmentation/lats_to_targets.sh --cmd "$train_cmd" \
-    --silence-words $dir/silence_words.txt \
-    --garbage-words $dir/garbage_words.txt \
+    --silence-phones $dir/silence_phones.txt \
+    --garbage-phones $dir/garbage_phones.txt \
     --max-phone-duration 0.5 \
     $uniform_seg_data_dir $lang $decode_dir \
     $dir/${model_id}_${uniform_seg_data_id}_targets
 fi
 
 ###############################################################################
-# Convert targets to be w.r.t. whole data directory
+# Convert targets to be w.r.t. whole data directory and subsample the 
+# targets by a factor of 3.
+# Since the targets from transcript-constrained lattices have only values 
+# for the manual segments, these are converted to whole recording-levels 
+# by inserting "default targets" values for the out-of-manual-segment regions.
+# We assume in this setup that this is silence i.e. [ 1 0 0 ].
 ###############################################################################
 if [ $stage -le 8 ]; then
   echo " [ 1 0 0 ]" > $dir/${model_id}_${whole_data_id}_sup_targets/default_targets.vec
@@ -301,7 +333,8 @@ if [ $stage -le 8 ]; then
 fi
 
 ###############################################################################
-# Resample targets to required output-subsampling rate
+# Convert the targets from decoding to whole recording. 
+# There is no need for "default targets" here.
 ###############################################################################
 if [ $stage -le 9 ]; then
   steps/segmentation/convert_targets_dir_to_whole.sh --cmd "$train_cmd" --nj 40 \
@@ -317,6 +350,11 @@ fi
 
 ###############################################################################
 # Merge targets for the same data from multiple sources (systems)
+# --weights is used to weight targets from alignment with a higher weight 
+# the targets from decoding. 
+# If --remove-mismatch-frames is true, then if alignment and decoding 
+# disagree (more than 0.5 probability on different classes), then those frames
+# are removed by setting targets to [ 0 0 0 ]. 
 ###############################################################################
 if [ $stage -le 10 ]; then
   steps/segmentation/merge_targets_dirs.py --cmd "$train_cmd" --nj 40 \
@@ -327,6 +365,7 @@ if [ $stage -le 10 ]; then
     $dir/${model_id}_${whole_data_id}_combined_targets_sub3
 fi
 
+# Train a TDNN-LSTM network for SAD
 local/segmentation/tuning/train_lstm_asr_sad_1a.sh 
 
 # Create a classes_info file that will be converted to a graph for 
@@ -358,7 +397,7 @@ steps/segmentation/do_asr_sad_data_dir.sh \
   --nj 32 --subsampling-factor 1 \
   --transition-scale 1.0 --loopscale 0.3 --acwt 3 \
   data/dev10h.pem \
-  exp/segmentation_1a/tdnn_lstm_asr_sad_1a2 \
+  exp/segmentation_1a/tdnn_lstm_asr_sad_1a \
   data/lang_asr_sad_fs3_simple/classes_info.txt \
   mfcc_hires_bp \
-  exp/segmentation_1a/tdnn_lstm_asr_sad_1a2/{,dev10h}
+  exp/segmentation_1a/tdnn_lstm_asr_sad_1a/{,dev10h}

@@ -9,6 +9,7 @@
 commonly used in many kaldi python scripts.
 """
 
+from __future__ import print_function
 import argparse
 import logging
 import math
@@ -375,7 +376,7 @@ def read_key(fd):
   str_ = str_.strip()
   if str_ == '':
       return None   # end of file,
-  assert re.match('^[\.a-zA-Z0-9_-]+$', str_) is not None) # check format,
+  assert (re.match('^[\.a-zA-Z0-9_-]+$', str_) is not None) # check format,
   return str_
 
 

@@ -35,7 +35,8 @@ graph_dir=$1
 log_likes_dir=$2
 dir=$3
 
-mkdir -p $dir
+mkdir -p $dir/log
+
 nj=`cat $log_likes_dir/num_jobs`
 echo $nj > $dir/num_jobs
 
@@ -66,7 +67,11 @@ if [ ! -z $priors ]; then
   printf ("[");
   for (i = 2; i < NF; i++) { printf " "log($i/sum); };
   print (" ]"); }' > $dir/log_priors.vec;
-  } 2> $dir/log/get_log_priors.log 
+  } 2> $dir/log/get_log_priors.log || exit 1
+  if [ ! -f $dir/log_priors.vec ]; then
+    echo "$0: Did not create $dir/log_priors.vec"
+    exit 1 
+  fi
 
   rspecifier="$rspecifier matrix-add-offset ark:- 'vector-scale --scale=-1.0 $dir/log_priors.vec - |' ark:- |"
 fi
