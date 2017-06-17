@@ -22,6 +22,7 @@
 #include "nnet3/nnet-compile.h"
 #include "nnet3/nnet-analyze.h"
 #include "nnet3/nnet-test-utils.h"
+#include "nnet3/nnet-utils.h"
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-compute.h"
 #include "nnet3/nnet-am-decodable-simple.h"
@@ -142,6 +143,7 @@ void TestNnetDecodable(Nnet *nnet) {
 void UnitTestNnetCompute() {
   for (int32 n = 0; n < 20; n++) {
     struct NnetGenerationOptions gen_config;
+    bool test_collapse_model = (RandInt(0, 1) == 0);
 
     std::vector<std::string> configs;
     GenerateConfigSequence(gen_config, &configs);
@@ -156,11 +158,32 @@ void UnitTestNnetCompute() {
     std::vector<Matrix<BaseFloat> > inputs;
     ComputeExampleComputationRequestSimple(nnet, &request, &inputs);
 
+    // Test CollapseModel().  Note: lines with 'collapse' in some part of them
+    // are not necessary for the rest of the test to run; they only test
+    // CollapseModel().
+    if (test_collapse_model) {
+      // this model collapsing code requires that test mode is set for batchnorm
+      // and dropout components.
+      SetBatchnormTestMode(true, &nnet);
+      SetDropoutTestMode(true, &nnet);
+    }
+
     NnetComputation computation;
     Compiler compiler(request, nnet);
-
     CompilerOptions opts;
     compiler.CreateComputation(opts, &computation);
+
+    Nnet nnet_collapsed(nnet);
+    CollapseModelConfig collapse_config;
+    CollapseModel(collapse_config, &nnet_collapsed);
+    NnetComputation computation_collapsed;
+    if (test_collapse_model) {
+      Compiler compiler_collapsed(request, nnet_collapsed);
+      compiler_collapsed.CreateComputation(opts, &computation_collapsed);
+      computation_collapsed.ComputeCudaIndexes();
+    }
+
+
     {
       std::ostringstream os;
       computation.Print(os, nnet);
@@ -201,11 +224,34 @@ void UnitTestNnetCompute() {
       CuMatrix<BaseFloat> temp(inputs[i]);
       KALDI_LOG << "Input sum is " << temp.Sum();
       computer.AcceptInput(request.inputs[i].name, &temp);
+
     }
     computer.Run();
+
+
     const CuMatrixBase<BaseFloat> &output(computer.GetOutput("output"));
 
     KALDI_LOG << "Output sum is " << output.Sum();
+
+    if (test_collapse_model) {
+      NnetComputer computer_collapsed(compute_opts,
+                                      computation_collapsed,
+                                      nnet_collapsed,
+                                      &nnet_collapsed);
+      for (size_t i = 0; i < request.inputs.size(); i++) {
+        CuMatrix<BaseFloat> temp(inputs[i]);
+        KALDI_LOG << "Input sum is " << temp.Sum();
+        computer_collapsed.AcceptInput(request.inputs[i].name, &temp);
+      }
+      computer_collapsed.Run();
+      const CuMatrixBase<BaseFloat> &output_collapsed(
+          computer_collapsed.GetOutput("output"));
+      KALDI_LOG << "Output sum [collapsed] is " << output_collapsed.Sum();
+      if (!ApproxEqual(output, output_collapsed)) {
+        KALDI_ERR << "Regular and collapsed computations' outputs differ";
+      }
+    }
+
     CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols());
     output_deriv.SetRandn();
     // output_deriv sum won't be informative so don't print it.

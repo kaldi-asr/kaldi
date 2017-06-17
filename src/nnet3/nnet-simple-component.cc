@@ -1140,8 +1140,8 @@ AffineComponent::AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
                bias_params.Dim() != 0);
 }
 
-void AffineComponent::SetParams(const VectorBase<BaseFloat> &bias,
-                                const MatrixBase<BaseFloat> &linear) {
+void AffineComponent::SetParams(const CuVectorBase<BaseFloat> &bias,
+                                const CuMatrixBase<BaseFloat> &linear) {
   bias_params_ = bias;
   linear_params_ = linear;
   KALDI_ASSERT(bias_params_.Dim() == linear_params_.NumRows());
@@ -1314,69 +1314,6 @@ void AffineComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
   linear_params_.CopyRowsFromVec(params.Range(0, InputDim() * OutputDim()));
   bias_params_.CopyFromVec(params.Range(InputDim() * OutputDim(),
                                         OutputDim()));
-}
-
-Component *AffineComponent::CollapseWithNext(
-    const AffineComponent &next_component) const {
-  AffineComponent *ans = dynamic_cast<AffineComponent*>(this->Copy());
-  KALDI_ASSERT(ans != NULL);
-  // Note: it's possible that "ans" is really of a derived type such
-  // as AffineComponentPreconditioned, but this will still work.
-  // the "copy" call will copy things like learning rates, "alpha" value
-  // for preconditioned component, etc.
-  ans->linear_params_.Resize(next_component.OutputDim(), InputDim());
-  ans->bias_params_ = next_component.bias_params_;
-
-  ans->linear_params_.AddMatMat(1.0, next_component.linear_params_, kNoTrans,
-                                this->linear_params_, kNoTrans, 0.0);
-  ans->bias_params_.AddMatVec(1.0, next_component.linear_params_, kNoTrans,
-                              this->bias_params_, 1.0);
-  return ans;
-}
-
-Component *AffineComponent::CollapseWithNext(
-    const FixedAffineComponent &next_component) const {
-  // If at least one was non-updatable, make the whole non-updatable.
-  FixedAffineComponent *ans =
-      dynamic_cast<FixedAffineComponent*>(next_component.Copy());
-  KALDI_ASSERT(ans != NULL);
-  ans->linear_params_.Resize(next_component.OutputDim(), InputDim());
-  ans->bias_params_ = next_component.bias_params_;
-
-  ans->linear_params_.AddMatMat(1.0, next_component.linear_params_, kNoTrans,
-                                this->linear_params_, kNoTrans, 0.0);
-  ans->bias_params_.AddMatVec(1.0, next_component.linear_params_, kNoTrans,
-                              this->bias_params_, 1.0);
-  return ans;
-}
-
-Component *AffineComponent::CollapseWithNext(
-    const FixedScaleComponent &next_component) const {
-  KALDI_ASSERT(this->OutputDim() == next_component.InputDim());
-  AffineComponent *ans =
-      dynamic_cast<AffineComponent*>(this->Copy());
-  KALDI_ASSERT(ans != NULL);
-  ans->linear_params_.MulRowsVec(next_component.scales_);
-  ans->bias_params_.MulElements(next_component.scales_);
-
-  return ans;
-}
-
-Component *AffineComponent::CollapseWithPrevious(
-    const FixedAffineComponent &prev_component) const {
-  // If at least one was non-updatable, make the whole non-updatable.
-  FixedAffineComponent *ans =
-      dynamic_cast<FixedAffineComponent*>(prev_component.Copy());
-  KALDI_ASSERT(ans != NULL);
-
-  ans->linear_params_.Resize(this->OutputDim(), prev_component.InputDim());
-  ans->bias_params_ = this->bias_params_;
-
-  ans->linear_params_.AddMatMat(1.0, this->linear_params_, kNoTrans,
-                                prev_component.linear_params_, kNoTrans, 0.0);
-  ans->bias_params_.AddMatVec(1.0, this->linear_params_, kNoTrans,
-                              prev_component.bias_params_, 1.0);
-  return ans;
 }
 
 RepeatedAffineComponent::RepeatedAffineComponent(const RepeatedAffineComponent & component) :

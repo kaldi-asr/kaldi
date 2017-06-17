@@ -136,6 +136,7 @@ class DropoutComponent : public RandomComponent {
     dropout_proportion_ = dropout_proportion;
   }
 
+  BaseFloat DropoutProportion() const { return dropout_proportion_; }
  private:
   int32 dim_;
   /// dropout-proportion is the proportion that is dropped out,
@@ -481,9 +482,8 @@ class AffineComponent: public UpdatableComponent {
 
   // Some functions that are specific to this class.
 
-  // This new function is used when mixing up:
-  virtual void SetParams(const VectorBase<BaseFloat> &bias,
-                         const MatrixBase<BaseFloat> &linear);
+  virtual void SetParams(const CuVectorBase<BaseFloat> &bias,
+                         const CuMatrixBase<BaseFloat> &linear);
   const CuVector<BaseFloat> &BiasParams() const { return bias_params_; }
   const CuMatrix<BaseFloat> &LinearParams() const { return linear_params_; }
   explicit AffineComponent(const AffineComponent &other);
@@ -498,15 +498,6 @@ class AffineComponent: public UpdatableComponent {
   // This function resizes the dimensions of the component, setting the
   // parameters to zero, while leaving any other configuration values the same.
   virtual void Resize(int32 input_dim, int32 output_dim);
-
-  // The following functions are used for collapsing multiple layers
-  // together.  They return a pointer to a new Component equivalent to
-  // the sequence of two components.  We haven't implemented this for
-  // FixedLinearComponent yet.
-  Component *CollapseWithNext(const AffineComponent &next) const ;
-  Component *CollapseWithNext(const FixedAffineComponent &next) const;
-  Component *CollapseWithNext(const FixedScaleComponent &next) const;
-  Component *CollapseWithPrevious(const FixedAffineComponent &prev) const;
 
  protected:
   friend class NaturalGradientAffineComponent;
@@ -925,8 +916,8 @@ class FixedAffineComponent: public Component {
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
-  // Function to provide access to linear_params_.
   const CuMatrix<BaseFloat> &LinearParams() const { return linear_params_; }
+  const CuVector<BaseFloat> &BiasParams() const { return bias_params_; }
  protected:
   friend class AffineComponent;
   CuMatrix<BaseFloat> linear_params_;
@@ -1024,8 +1015,8 @@ class FixedScaleComponent: public Component {
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
+  const CuVector<BaseFloat> &Scales() const { return scales_; }
  protected:
-  friend class AffineComponent;  // necessary for collapse
   CuVector<BaseFloat> scales_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedScaleComponent);
 };
@@ -1398,7 +1389,6 @@ class PerElementScaleComponent: public UpdatableComponent {
   void Init(std::string vector_filename);
 
  protected:
-  friend class AffineComponent;  // necessary for collapse
   // This function Update() is for extensibility; child classes may override
   // this, e.g. for natural gradient update.
   virtual void Update(
@@ -2214,6 +2204,12 @@ class BatchNormComponent: public Component {
   virtual void StoreStats(const CuMatrixBase<BaseFloat> &in_value,
                           const CuMatrixBase<BaseFloat> &out_value,
                           void *memo);
+
+  // Members specific to this component type.
+  // Note: the offset and scale will only be nonempty in 'test mode'.
+  const CuVector<BaseFloat> &Offset() const { return offset_; }
+  const CuVector<BaseFloat> &Scale() const { return scale_; }
+
  private:
 
   struct Memo {

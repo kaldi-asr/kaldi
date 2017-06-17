@@ -294,6 +294,7 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
     time_height_convolution::ConvolutionComputation computation;
   };
 
+  void ScaleLinearParams(BaseFloat alpha) { linear_params_.Scale(alpha); }
  private:
 
   void Check();
