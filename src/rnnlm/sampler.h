@@ -90,7 +90,7 @@ class Sampler {
   // of as the probability for each word if we don't know the history) are given.
   // each element of unigram_probs should be >= 0, and they should sum to
   // a value close to 1.
-  Sampler(const std::vector<BaseFloat> &unigram_probs);
+  explicit Sampler(const std::vector<BaseFloat> &unigram_probs);
 
 
   /// Sample words from the supplied distribution, appropriately scaled.
@@ -124,8 +124,8 @@ class Sampler {
   ///                            (i, p), where 0 <= i < unigram_probs.size() is
   ///                            the word index and 0 < p <= 1 is the probabilitity
   ///                            with which that word was included in the set.
-  ///                            The list will be sorted and unique on i, and its size
-  ///                            will equal num_words_to_sample.
+  ///                            The list will not be sorted, but it will be unique
+  ///                            on it.  Its size will equal num_words_to_sample.
   void SampleWords(int32 num_words_to_sample,
                    BaseFloat unigram_weight,
                    const std::vector<std::pair<int32, BaseFloat> > &higher_order_probs,
@@ -146,7 +146,7 @@ class Sampler {
                    BaseFloat unigram_weight,
                    const std::vector<std::pair<int32, BaseFloat> > &higher_order_probs,
                    const std::vector<int32> &words_we_must_sample,
-                   std::vector<int32> *sample) const;
+                   std::vector<std::pair<int32, BaseFloat> > *sample) const;
 
 
  private:
@@ -196,11 +196,20 @@ class Sampler {
                                  std::vector<Interval> *intervals);
 
   /// Sample from the distribution q(i) represented by 'intervals'.
-  /// The number of things to sample are given by the sum of intervals[i].prob,
-  /// and will equal the original 'num_words_to_sample' that was passed
-  /// into the function SampleWords().
+  ///  @param [in] intervals  The vector of Intervals to sample from.
+  ///                    The number of things to sample are given by the sum of
+  ///                    intervals[i].prob, and will equal the original
+  ///                    'num_words_to_sample' that was passed into the function
+  ///                    SampleWords().  Below, we refer to this number as
+  ///                    'num_words_to_sample', although it is not passed in
+  ///                    explicitly.
+  ///  @param [out] sample   The sampled words and the probabilities 0 < p <= 1
+  ///                    with which they were included in the sample, are written
+  ///                    to here.  The size of this vector will equal
+  ///                    'num_words_to_sample' at exit.  This vector will not
+  ///                    be sorted.
   void SampleFromIntervals(const std::vector<Interval> &intervals,
-                           std::vector<int32> *sample) const;
+                           std::vector<std::pair<int32, BaseFloat> > *sample) const;
 
   // This helper function, used inside SampleWords(), combines the unigram and
   // higher-order portions of the distribution into a single unified format

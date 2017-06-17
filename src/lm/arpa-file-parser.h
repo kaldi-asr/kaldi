@@ -67,9 +67,10 @@ struct ArpaParseOptions {
 */
 struct NGram {
   NGram() : logprob(0.0), backoff(0.0) { }
-  std::vector<int32> words;  ///< Symbols in LTR order.
+  std::vector<int32> words;  ///< Symbols in left to right order.
   float logprob;             ///< Log-prob of the n-gram.
   float backoff;             ///< log-backoff weight of the n-gram.
+                             ///< Defaults to zero if not specified.
 };
 
 /**

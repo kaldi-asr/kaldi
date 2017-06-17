@@ -102,7 +102,7 @@ void CheckDistribution(const Distribution &d) {
     return;
   for (; iter != endm1; ++iter) {
     KALDI_ASSERT(iter->second > 0.0 &&
-                 iter->first < (iter+1)->second);
+                 iter->first < (iter+1)->first);
   }
   KALDI_ASSERT(d.back().second > 0.0);
 }
@@ -184,7 +184,7 @@ void Sampler::SampleWords(
     BaseFloat unigram_weight,
     const std::vector<std::pair<int32, BaseFloat> > &higher_order_probs,
     const std::vector<int32> &words_we_must_sample,
-    std::vector<int32> *sample) const {
+    std::vector<std::pair<int32, BaseFloat> > *sample) const {
   CheckDistribution(higher_order_probs);  // TODO: delete this.
   int32 vocab_size = unigram_cdf_.size();
   KALDI_ASSERT(IsSortedAndUniq(words_we_must_sample) &&
@@ -238,11 +238,9 @@ void Sampler::SampleWords(
               merged_distribution,
               sample);
   if (GetVerboseLevel() >= 2) {
-    // Do an extra check.
-    std::vector<int32> merged_list(*sample);
-    merged_list.insert(merged_list.end(),
-                       words_we_must_sample.begin(),
-                       words_we_must_sample.end());
+    std::vector<int32> merged_list(words_we_must_sample);
+    for (size_t i = 0; i < sample->size(); i++)
+      merged_list.push_back((*sample)[i].first);
     SortAndUniq(&merged_list);
     // if the following assert fails, it means that one of the words
     // that we were required to sample, was not in fact sampled.
@@ -276,7 +274,7 @@ void Sampler::SampleWords(
     int32 num_words_to_sample,
     BaseFloat unigram_weight,
     const std::vector<std::pair<int32, BaseFloat> > &higher_order_probs,
-    std::vector<int32> *sample) const {
+    std::vector<std::pair<int32, BaseFloat> > *sample) const {
   int32 vocab_size = unigram_cdf_.size() - 1;
   KALDI_ASSERT(num_words_to_sample > 0 &&
                num_words_to_sample + 1 < unigram_cdf_.size() &&
@@ -285,7 +283,7 @@ void Sampler::SampleWords(
     KALDI_ASSERT(higher_order_probs.front().first >= 0 &&
                  higher_order_probs.back().first < vocab_size);
   }
-  if (GetVerboseLevel() >= 2.0) {
+  if (GetVerboseLevel() >= 2) {
     CheckDistribution(higher_order_probs);
   }
 
@@ -384,6 +382,7 @@ void Sampler::NormalizeIntervals(int32 num_words_to_sample,
   while (!queue.empty()) {
     Interval top = queue.top();
     top.prob *= current_alpha;
+    queue.pop();
     intervals->push_back(top);
   }
 
@@ -399,7 +398,7 @@ void Sampler::NormalizeIntervals(int32 num_words_to_sample,
 }
 
 void Sampler::SampleFromIntervals(const std::vector<Interval> &intervals,
-                                  std::vector<int32> *samples)  const {
+                                  std::vector<std::pair<int32, BaseFloat> > *samples)  const {
   size_t num_intervals = intervals.size();
   std::vector<double> probs(num_intervals);
   for (size_t i = 0; i < num_intervals; i++)
@@ -416,12 +415,27 @@ void Sampler::SampleFromIntervals(const std::vector<Interval> &intervals,
     const Interval &interval = intervals[j];
     if (interval.end == interval.start + 1) {
       // handle this simple case simply, even though
-      // the general case could handle it.
-      samples->push_back(interval.start - cdf_start);
+      // the general case on the other side of the if-statement
+      // would give the correct expression.
+      int32 word = interval.start - cdf_start;
+      (*samples)[i].first = word;
+      (*samples)[i].second = interval.prob;
     } else {
-      const double *p = SampleFromCdf(interval.start,
-                                      interval.end);
-      samples->push_back(p - cdf_start);
+      const double *word_ptr = SampleFromCdf(interval.start,
+                                             interval.end);
+      int32 word = word_ptr - cdf_start;
+      // the probability with which this word was sampled is: the probability of
+      // sampling from this interval of the unigram, times the probability of
+      // this word given the unigram distribution (which equals word[1] -
+      // word[0]), divided by the probability of this whole unigram interval.
+      // Actually we could more simply compute this, as unigram_weight * alpha *
+      // (word_ptr[1] - word_ptr[0]), but alpha and unigram_weight not passed
+      // into this function and I'd rather not make linkages between different
+      // parts of the code.
+      BaseFloat prob = interval.prob *
+          (word_ptr[1] - word_ptr[0]) / (*interval.end - *interval.start);
+      (*samples)[i].first = word;
+      (*samples)[i].second = prob;
     }
   }
 }
