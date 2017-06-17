@@ -318,21 +318,35 @@ void ArpaLmCompiler::ConsumeNGram(const NGram &ngram) {
 
 void ArpaLmCompiler::RemoveRedundantStates() {
   fst::StdArc::Label backoff_symbol = sub_eps_;
+  if (backoff_symbol == 0) {
+    // The method of removing redundant states implemented in this function
+    // leads to slow determinization of L o G when people use the older style of
+    // usage of arpa2fst where the --disambig-symbol option was not specified.
+    // The issue seems to be that it creates a non-deterministic FST, while G is
+    // supposed to be deterministic.  By 'return'ing below, we just disable this
+    // method if people were using an older script.  This method isn't really
+    // that consequential anyway, and people will move to the newer-style
+    // scripts (see current utils/format_lm.sh), so this isn't much of a
+    // problem.
+    return;
+  }
+
   fst::StdArc::StateId num_states = fst_.NumStates();
+
+
   // replace the #0 symbols on the input of arcs out of redundant states (states
   // that are not final and have only a backoff arc leaving them), with <eps>.
-  if (backoff_symbol != 0) {
-    for (fst::StdArc::StateId state = 0; state < num_states; state++) {
-      if (fst_.NumArcs(state) == 1 && fst_.Final(state) == fst::TropicalWeight::Zero()) {
-        fst::MutableArcIterator<fst::StdVectorFst> iter(&fst_, state);
-        fst::StdArc arc = iter.Value();
-        if (arc.ilabel == backoff_symbol) {
-          arc.ilabel = 0;
-          iter.SetValue(arc);
-        }
+  for (fst::StdArc::StateId state = 0; state < num_states; state++) {
+    if (fst_.NumArcs(state) == 1 && fst_.Final(state) == fst::TropicalWeight::Zero()) {
+      fst::MutableArcIterator<fst::StdVectorFst> iter(&fst_, state);
+      fst::StdArc arc = iter.Value();
+      if (arc.ilabel == backoff_symbol) {
+        arc.ilabel = 0;
+        iter.SetValue(arc);
       }
     }
   }
+
   // we could call fst::RemoveEps, and it would have the same effect in normal
   // cases, where backoff_symbol != 0 and there are no epsilons in unexpected
   // places, but RemoveEpsLocal is a bit safer in case something weird is going

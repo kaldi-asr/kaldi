@@ -119,7 +119,7 @@ if [[ ! -f data/srilm/lm.gz || data/srilm/lm.gz -ot data/train/text ]]; then
   echo ---------------------------------------------------------------------
   echo "Training SRILM language models on" `date`
   echo ---------------------------------------------------------------------
-  local/train_lms_srilm.sh --dev-text data/dev2h/text \
+  local/train_lms_srilm.sh --oov-symbol $oovSymbol --dev-text data/dev2h/text \
     --train-text data/train/text data data/srilm 
 fi
 

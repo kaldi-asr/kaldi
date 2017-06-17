@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# This script is deprecated, please use ../xconfig_to_configs.py
+
 from __future__ import print_function
 import os
 import argparse
@@ -9,8 +11,8 @@ import copy
 import imp
 
 nodes = imp.load_source('nodes', 'steps/nnet3/components.py')
-nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
-chain_lib = imp.load_source('ncl', 'steps/nnet3/chain/nnet3_chain_lib.py')
+sys.path.insert(0, 'steps')
+import libs.common as common_lib
 
 def GetArgs():
     # we add compulsary arguments as named arguments for readability
@@ -48,7 +50,7 @@ def GetArgs():
                         help="For chain models, if nonzero, add a separate output for cross-entropy "
                         "regularization (with learning-rate-factor equal to the inverse of this)",
                         default=0.0)
-    parser.add_argument("--include-log-softmax", type=str, action=nnet3_train_lib.StrToBoolAction,
+    parser.add_argument("--include-log-softmax", type=str, action=common_lib.StrToBoolAction,
                         help="add the final softmax layer ", default=True, choices = ["false", "true"])
     parser.add_argument("--max-change-per-component", type=float,
                         help="Enforces per-component max change (except for the final affine layer). "
@@ -76,14 +78,22 @@ def GetArgs():
                         help="options to be supplied to NaturalGradientAffineComponent", default="")
 
     # Gradient clipper options
-    parser.add_argument("--norm-based-clipping", type=str, action=nnet3_train_lib.StrToBoolAction,
-                        help="use norm based clipping in ClipGradient components ", default=True, choices = ["false", "true"])
+    parser.add_argument("--norm-based-clipping", type=str, action=common_lib.StrToBoolAction,
+                        help="Outdated option retained for back compatibility, has no effect.",
+                        default=True, choices = ["false", "true"])
     parser.add_argument("--clipping-threshold", type=float,
-                        help="clipping threshold used in ClipGradient components, if clipping-threshold=0 no clipping is done", default=30)
+                        help="clipping threshold used in BackpropTruncation components, "
+                        "if clipping-threshold=0 no clipping is done", default=30)
+    parser.add_argument("--zeroing-threshold", type=float,
+                        help="zeroing threshold used in BackpropTruncation components, "
+                        "if zeroing-threshold=0 no periodic zeroing is done", default=15.0)
+    parser.add_argument("--zeroing-interval", type=int,
+                        help="zeroing interval used in BackpropTruncation components", default=20)
     parser.add_argument("--self-repair-scale-nonlinearity", type=float,
                         help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=0.00001)
     parser.add_argument("--self-repair-scale-clipgradient", type=float,
-                        help="A non-zero value activates the self-repair mechanism in the ClipGradient component of the LSTM", default=1.0)
+                        help="Outdated option retained for back compatibility, has no effect.",
+                        default=1.0)
 
     # Delay options
     parser.add_argument("--label-delay", type=int, default=None,
@@ -108,15 +118,15 @@ def CheckArgs(args):
 
     ## Check arguments.
     if args.feat_dir is not None:
-        args.feat_dim = nnet3_train_lib.GetFeatDim(args.feat_dir)
+        args.feat_dim = common_lib.get_feat_dim(args.feat_dir)
 
     if args.ali_dir is not None:
-        args.num_targets = nnet3_train_lib.GetNumberOfLeaves(args.ali_dir)
+        args.num_targets = common_lib.get_number_of_leaves_from_tree(args.ali_dir)
     elif args.tree_dir is not None:
-        args.num_targets = chain_lib.GetNumberOfLeaves(args.tree_dir)
+        args.num_targets = common_lib.get_number_of_leaves_from_tree(args.tree_dir)
 
     if args.ivector_dir is not None:
-        args.ivector_dim = nnet3_train_lib.GetIvectorDim(args.ivector_dir)
+        args.ivector_dim = common_lib.get_ivector_dim(args.ivector_dir)
 
     if not args.feat_dim > 0:
         raise Exception("feat-dim has to be postive")
@@ -133,8 +143,10 @@ def CheckArgs(args):
 
     if (args.num_lstm_layers < 1):
         sys.exit("--num-lstm-layers has to be a positive integer")
-    if (args.clipping_threshold < 0):
-        sys.exit("--clipping-threshold has to be a non-negative")
+    if (args.clipping_threshold < 0 or args.zeroing_threshold < 0):
+        sys.exit("--clipping-threshold and --zeroing-threshold have to be non-negative")
+    if not args.zeroing_interval > 0:
+        raise Exception("--zeroing-interval has to be positive")
     if args.lstm_delay is None:
         args.lstm_delay = [[-1]] * args.num_lstm_layers
     else:
@@ -221,7 +233,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                 splice_indexes, lstm_delay, cell_dim, hidden_dim,
                 recurrent_projection_dim, non_recurrent_projection_dim,
                 num_lstm_layers, num_hidden_layers,
-                norm_based_clipping, clipping_threshold,
+                norm_based_clipping, clipping_threshold, zeroing_threshold, zeroing_interval,
                 ng_per_element_scale_options, ng_affine_options,
                 label_delay, include_log_softmax, xent_regularize,
                 self_repair_scale_nonlinearity, self_repair_scale_clipgradient,
@@ -243,22 +255,34 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
 
     for i in range(num_lstm_layers):
         if len(lstm_delay[i]) == 2: # add a bi-directional LSTM layer
-            prev_layer_output = nodes.AddBLstmLayer(config_lines, "BLstm{0}".format(i+1),
-                                                    prev_layer_output, cell_dim,
-                                                    recurrent_projection_dim, non_recurrent_projection_dim,
-                                                    clipping_threshold, norm_based_clipping,
-                                                    ng_per_element_scale_options, ng_affine_options,
+            prev_layer_output = nodes.AddBLstmLayer(config_lines = config_lines,
+                                                    name = "BLstm{0}".format(i+1),
+                                                    input = prev_layer_output,
+                                                    cell_dim = cell_dim,
+                                                    recurrent_projection_dim = recurrent_projection_dim,
+                                                    non_recurrent_projection_dim = non_recurrent_projection_dim,
+                                                    clipping_threshold = clipping_threshold,
+                                                    zeroing_threshold = zeroing_threshold,
+                                                    zeroing_interval = zeroing_interval,
+                                                    ng_per_element_scale_options = ng_per_element_scale_options,
+                                                    ng_affine_options = ng_affine_options,
                                                     lstm_delay = lstm_delay[i],
-                                                    self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient,
+                                                    self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
                                                     max_change_per_component = max_change_per_component)
         else: # add a uni-directional LSTM layer
-            prev_layer_output = nodes.AddLstmLayer(config_lines, "Lstm{0}".format(i+1),
-                                                   prev_layer_output, cell_dim,
-                                                   recurrent_projection_dim, non_recurrent_projection_dim,
-                                                   clipping_threshold, norm_based_clipping,
-                                                   ng_per_element_scale_options, ng_affine_options,
+            prev_layer_output = nodes.AddLstmLayer(config_lines = config_lines,
+                                                   name = "Lstm{0}".format(i+1),
+                                                   input = prev_layer_output,
+                                                   cell_dim = cell_dim,
+                                                   recurrent_projection_dim = recurrent_projection_dim,
+                                                   non_recurrent_projection_dim = non_recurrent_projection_dim,
+                                                   clipping_threshold = clipping_threshold,
+                                                   zeroing_threshold = zeroing_threshold,
+                                                   zeroing_interval = zeroing_interval,
+                                                   ng_per_element_scale_options = ng_per_element_scale_options,
+                                                   ng_affine_options = ng_affine_options,
                                                    lstm_delay = lstm_delay[i][0],
-                                                   self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient,
+                                                   self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
                                                    max_change_per_component = max_change_per_component)
         # make the intermediate config file for layerwise discriminative
         # training
@@ -336,6 +360,8 @@ def Main():
                 num_hidden_layers = num_hidden_layers,
                 norm_based_clipping = args.norm_based_clipping,
                 clipping_threshold = args.clipping_threshold,
+                zeroing_threshold = args.zeroing_threshold,
+                zeroing_interval = args.zeroing_interval,
                 ng_per_element_scale_options = args.ng_per_element_scale_options,
                 ng_affine_options = args.ng_affine_options,
                 label_delay = args.label_delay,

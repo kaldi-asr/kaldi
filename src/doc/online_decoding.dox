@@ -410,6 +410,36 @@ utils/mkgraph.sh $lang_own $model_dir $graph_own_dir || exit 1;
 where $model_dir is the model directory which contains the model "final.mdl"
 and the tree "tree". We now can use $graph_own_dir/HCLG.fst to replace the old
 HCLG.fst.
+
+
+\section online_decoding_nnet3 Online decoding with nnet3 models
+
+Online decoding with nnet3 models is basically the same as with nnet2
+models as described in \ref online_decoding_nnet2.  However, there are
+some limitations as to the model type you can use.  In Kaldi 5.0 and
+earlier, online nnet3 decoding does not support recurrent models.
+In Kaldi 5.1 and later, online nnet3 decoding supports "forward"
+recurrent models such as LSTMs, but not bidirectional ones like BLSTMs.
+In addition, online nnet3 decoding with recurrent
+models may not give optimal results unless
+you use "Kaldi-5.1-style" configuration, including the "decay-time"
+option and specifying --extra-left-context-initial 0; see
+\ref dnn3_scripts_context for more discussions of these issues.
+
+
+Many of the issues in online nnet3 decoding are the same as in nnet2
+decoding and the command lines are quite similar.  For online nnet3
+decoding with Kaldi 5.1 and later, the best example script for online
+decoding including model training is, at the
+time of writing, egs/tedlium/s5_r2/local/chain/tuning/run_tdnn_lstm_1e.sh
+(at the time of writing this is only available in the 'shortcut' branch,
+as Kaldi 5.1 has not yet been merged to master);
+and downloadable models that can be used with online nnet3 decoding, please
+see http://kaldi-asr.org/models.html (the first model there, the ASPIRE model,
+includes instructions in a README file).
+
+
+
 */
 
 

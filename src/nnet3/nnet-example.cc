@@ -65,6 +65,16 @@ NnetIo::NnetIo(const std::string &name,
     indexes[i].t = t_begin + i;
 }
 
+NnetIo::NnetIo(const std::string &name,
+               int32 t_begin, const GeneralMatrix &feats):
+    name(name), features(feats) {
+  int32 num_rows = feats.NumRows();
+  KALDI_ASSERT(num_rows > 0);
+  indexes.resize(num_rows);  // sets all n,t,x to zeros.
+  for (int32 i = 0; i < num_rows; i++)
+    indexes[i].t = t_begin + i;
+}
+
 void NnetIo::Swap(NnetIo *other) {
   name.swap(other->name);
   indexes.swap(other->indexes);
@@ -121,6 +131,54 @@ void NnetExample::Compress() {
   for (; iter != end; ++iter)
     iter->features.Compress();
 }
+
+
+size_t NnetIoStructureHasher::operator () (
+    const NnetIo &io) const noexcept {
+  StringHasher string_hasher;
+  IndexVectorHasher indexes_hasher;
+
+  // numbers appearing here were taken at random from a list of primes.
+  size_t ans = string_hasher(io.name) +
+      indexes_hasher(io.indexes) +
+      19249  * io.features.NumRows() +
+      14731 * io.features.NumCols();
+  return ans;
+}
+
+
+bool NnetIoStructureCompare::operator () (
+    const NnetIo &a, const NnetIo &b) const {
+  return a.name == b.name &&
+      a.features.NumRows() == b.features.NumRows() &&
+      a.features.NumCols() == b.features.NumCols() &&
+      a.indexes == b.indexes;
+}
+
+
+size_t NnetExampleStructureHasher::operator () (
+    const NnetExample &eg) const noexcept {
+  // these numbers were chosen at random from a list of primes.
+  NnetIoStructureHasher io_hasher;
+  size_t size = eg.io.size(), ans = size * 35099;
+  for (size_t i = 0; i < size; i++)
+    ans = ans * 19157 + io_hasher(eg.io[i]);
+  return ans;
+}
+
+bool NnetExampleStructureCompare::operator () (const NnetExample &a,
+                                               const NnetExample &b) const {
+  NnetIoStructureCompare io_compare;
+  if (a.io.size() != b.io.size())
+    return false;
+  size_t size = a.io.size();
+  for (size_t i = 0; i < size; i++)
+    if (!io_compare(a.io[i], b.io[i]))
+      return false;
+  return true;
+}
+
+
 
 } // namespace nnet3
 } // namespace kaldi

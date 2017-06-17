@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 # Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
@@ -25,7 +25,7 @@ num_iters_final=20 # Maximum number of final iterations to give to the
 initial_learning_rate=0.04
 final_learning_rate=0.004
 bias_stddev=0.5
-shrink_interval=5 # shrink every $shrink_interval iters except while we are 
+shrink_interval=5 # shrink every $shrink_interval iters except while we are
                   # still adding layers, when we do it every iter.
 shrink=true
 num_frames_shrink=2000 # note: must be <= --num-frames-diagnostic option to get_egs.sh, if
@@ -37,7 +37,7 @@ hidden_layer_dim=300 #  You may want this larger, e.g. 1024 or 2048.
 
 minibatch_size=128 # by default use a smallish minibatch size for neural net
                    # training; this controls instability which would otherwise
-                   # be a problem with multi-threaded update. 
+                   # be a problem with multi-threaded update.
 
 samples_per_iter=200000 # each iteration of training, see this many samples
                         # per job.  This option is passed to get_egs.sh.
@@ -57,7 +57,7 @@ num_hidden_layers=3 # This is an important configuration value that you might
                     # want to tune.
 stage=-5
 
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 randprune=4.0 # speeds up LDA.
 alpha=4.0 # relates to preconditioning.
@@ -80,7 +80,7 @@ egs_dir=
 lda_opts=
 egs_opts=
 transform_dir=
-cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.  
+cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
             # only relevant for "raw" features, not lda.
 feat_type=  # Can be used to force "raw" features.
 prior_subset_size=10000 # 10k samples per job, for computing priors.  Should be
@@ -124,7 +124,7 @@ if [ $# != 4 ]; then
   echo "                                                   # this, you may want to decrease the batch size."
   echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads... "
-  echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
+  echo "  --io-opts <opts|\"--max-jobs-run 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --samples-per-iter <#samples|200000>             # Number of samples of data to process per iteration, per"
@@ -136,7 +136,7 @@ if [ $# != 4 ]; then
   echo "                                                   # interpolate parameters (the weights are learned with a validation set)"
   echo "  --stage <stage|-9>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
-  
+
   exit 1;
 fi
 
@@ -153,7 +153,7 @@ done
 
 # Set some variables.
 num_leaves=`am-info $alidir/final.mdl 2>/dev/null | awk '/number of pdfs/{print $NF}'` || exit 1;
- 
+
 nj=`cat $alidir/num_jobs` || exit 1;  # number of jobs in alignment dir...
 # in this dir we'll have just one job.
 sdata=$data/split$nj
@@ -226,7 +226,7 @@ SoftmaxComponent dim=$num_leaves
 EOF
 
   # to hidden.config it will write the part of the config corresponding to a
-  # single hidden layer; we need this to add new layers. 
+  # single hidden layer; we need this to add new layers.
   cat >$dir/hidden.config <<EOF
 AffineComponentPreconditionedOnline input-dim=$hidden_layer_dim output-dim=$hidden_layer_dim $online_preconditioning_opts learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
 TanhComponent dim=$hidden_layer_dim
@@ -284,7 +284,7 @@ while [ $x -lt $num_iters ]; do
          ark:$egs_dir/train_diagnostic.egs '&&' \
          nnet-am-info $dir/$x.mdl &
     fi
-    
+
     echo "Training neural net (pass $x)"
     if [ $x -gt 0 ] && \
       [ $x -le $[($num_hidden_layers-1)*$add_layers_period] ] && \
@@ -324,18 +324,18 @@ while [ $x -lt $num_iters ]; do
     last_layer_learning_rate=`perl -e "print $learning_rate * $final_learning_rate_factor;"`;
     nnet-am-info $dir/$[$x+1].1.mdl > $dir/foo  2>/dev/null || exit 1
     nu=`cat $dir/foo | grep num-updatable-components | awk '{print $2}'`
-    na=`cat $dir/foo | grep -v Fixed | grep AffineComponent | wc -l` 
+    na=`cat $dir/foo | grep -v Fixed | grep AffineComponent | wc -l`
     # na is number of last updatable AffineComponent layer [one-based, counting only
     # updatable components.]
     # The last two layers will get this (usually lower) learning rate.
     lr_string="$learning_rate"
-    for n in `seq 2 $nu`; do 
+    for n in `seq 2 $nu`; do
       if [ $n -eq $na ] || [ $n -eq $[$na-1] ]; then lr=$last_layer_learning_rate;
       else lr=$learning_rate; fi
       lr_string="$lr_string:$lr"
     done
 
-    if $do_average; then    
+    if $do_average; then
       $cmd $dir/log/average.$x.log \
         nnet-am-average $nnets_list - \| \
         nnet-am-copy --learning-rates=$lr_string - $dir/$[$x+1].mdl || exit 1;
@@ -343,7 +343,7 @@ while [ $x -lt $num_iters ]; do
       n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
           $fn = sprintf($pat,$n); open(F, "<$fn") || die "Error opening log file $fn";
           undef $logprob; while (<F>) { if (m/log-prob-per-frame=(\S+)/) { $logprob=$1; } }
-          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob; 
+          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob;
           $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
       $cmd $dir/log/select.$x.log \
@@ -361,7 +361,7 @@ while [ $x -lt $num_iters ]; do
     else
       # On other iters, do nnet-am-fix which is much faster and has roughly
       # the same effect.
-      nnet-am-fix $dir/$[$x+1].mdl $dir/$[$x+1].mdl 2>$dir/log/fix.$x.log 
+      nnet-am-fix $dir/$[$x+1].mdl $dir/$[$x+1].mdl 2>$dir/log/fix.$x.log
     fi
 
     if [ "$mix_up" -gt 0 ] && [ $x -eq $mix_up_iter ]; then
@@ -444,7 +444,7 @@ if $cleanup; then
   fi
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do
-    if [ $[$x%100] -ne 0 ] && [ $x -lt $[$num_iters-$num_iters_final+1] ]; then 
+    if [ $[$x%100] -ne 0 ] && [ $x -lt $[$num_iters-$num_iters_final+1] ]; then
        # delete all but every 10th model; don't delete the ones which combine to form the final model.
       rm $dir/$x.mdl
     fi

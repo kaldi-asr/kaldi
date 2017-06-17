@@ -186,7 +186,7 @@ void MinimizeAcceptorNoPush(fst::StdVectorFst *fst) {
   fst::EncodeMapper<fst::StdArc> encoder(fst::kEncodeLabels | fst::kEncodeWeights,
                                          fst::ENCODE);
   fst::Encode(fst, &encoder);
-  fst::AcceptorMinimize(fst);
+  fst::internal::AcceptorMinimize(fst);
   fst::Decode(fst, encoder);
 }
 
@@ -220,17 +220,17 @@ static void SortOnTransitionCount(fst::StdVectorFst *fst) {
 
 void DenGraphMinimizeWrapper(fst::StdVectorFst *fst) {
   for (int32 i = 1; i <= 3; i++) {
-    fst::PushSpecial(fst, fst::kDelta * 0.01);
-    MinimizeAcceptorNoPush(fst);
-    KALDI_LOG << "Number of states and arcs in transition-id FST after regular "
-              << "minimization is " << fst->NumStates() << " and "
-              << NumArcs(*fst) << " (pass " << i << ")";
     fst::StdVectorFst fst_reversed;
     fst::Reverse(*fst, &fst_reversed);
     fst::PushSpecial(&fst_reversed, fst::kDelta * 0.01);
     MinimizeAcceptorNoPush(&fst_reversed);
     fst::Reverse(fst_reversed, fst);
     KALDI_LOG << "Number of states and arcs in transition-id FST after reversed "
+              << "minimization is " << fst->NumStates() << " and "
+              << NumArcs(*fst) << " (pass " << i << ")";
+    fst::PushSpecial(fst, fst::kDelta * 0.01);
+    MinimizeAcceptorNoPush(fst);
+    KALDI_LOG << "Number of states and arcs in transition-id FST after regular "
               << "minimization is " << fst->NumStates() << " and "
               << NumArcs(*fst) << " (pass " << i << ")";
   }
@@ -347,7 +347,7 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
 
   BaseFloat self_loop_scale = 1.0;  // We have to be careful to use the same
                                     // value in test time.
-  bool reorder = false;
+  bool reorder = true;
   // add self-loops to the FST with transition-ids as its labels.
   AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale, reorder,
                &transition_id_fst);

@@ -45,14 +45,15 @@ sub combine_ranges {
     # though they are supported at the C++ level.
     if ($start1 eq "" || $start2 eq "" || $end1 eq "" || $end2 == "") {
       chop $line;
-      print("normalize_data_range.pl: could not make sense of line $line\n");
+      print STDERR ("normalize_data_range.pl: could not make sense of line $line\n");
       exit(1)
     }
     if ($start1 + $end2 > $end1) {
       chop $line;
-      print("normalize_data_range.pl: could not make sense of line $line " .
+      print STDERR ("normalize_data_range.pl: could not make sense of line $line " .
             "[second $row_or_column range too large vs first range, $start1 + $end2 > $end1]\n");
-      exit(1);
+          # exit(1);
+      return ($start2+$start1, $end1);
     }
     return ($start2+$start1, $end2+$start1);
   }
@@ -72,11 +73,11 @@ while (<>) {
       # sometimes in scp files, we use the command concat-feats to splice together
       # two feature matrices.  Handling this correctly is complicated and we don't
       # anticipate needing it, so we just refuse to process this type of data.
-      print "normalize_data_range.pl: this script cannot [yet] normalize the data ranges " .
-        "if concat-feats was in the input data\n";
+      print STDERR ("normalize_data_range.pl: this script cannot [yet] normalize the data ranges " .
+        "if concat-feats was in the input data\n");
       exit(1);
     }
-    print STDERR "matched: $before_range $first_range $second_range\n";
+    # print STDERR "matched: $before_range $first_range $second_range\n";
     if ($first_range !~ m/^((\d*):(\d*)|)(,(\d*):(\d*)|)$/) {
       print STDERR "normalize_data_range.pl: could not make sense of input line $_";
       exit(1);

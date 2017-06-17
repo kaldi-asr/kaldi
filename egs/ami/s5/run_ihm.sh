@@ -30,7 +30,7 @@ LM=$final_lm.pr1-7
 # Avoiding re-download, using 'wget --continue ...',
 if [ $stage -le 0 ]; then
   [ -e data/local/downloads/wget_${mic}.sh ] && \
-    echo "$data/local/downloads/wget_${mic}.sh already exists, better quit than re-download... (use --stage N)" && \
+    echo "data/local/downloads/wget_${mic}.sh already exists, better quit than re-download... (use --stage N)" && \
     exit 1
   local/ami_download.sh $mic $AMI_DIR
 fi

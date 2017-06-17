@@ -14,19 +14,19 @@ make -i install
 cd ..
 
 (
-  [ ! -z ${LIBLBFGS} ] && \
+  [ ! -z "${LIBLBFGS}" ] && \
     echo >&2 "LIBLBFGS variable is aleady defined. Undefining..." && \
     unset LIBLBFGS
 
   [ -f ./env.sh ] && . ./env.sh
 
-  [ ! -z ${LIBLBFGS} ] && \
+  [ ! -z "${LIBLBFGS}" ] && \
     echo >&2 "libLBFGS config is already in env.sh" && exit
 
   wd=`pwd`
   wd=`readlink -f $wd || pwd`
 
   echo "export LIBLBFGS=$wd/liblbfgs-1.10"
-  echo export LD_LIBRARY_PATH='${LD_LIBRARY_PATH}':'${LIBLBFGS}'/lib/.libs
+  echo export LD_LIBRARY_PATH='${LD_LIBRARY_PATH:-}':'${LIBLBFGS}'/lib/.libs
 ) >> env.sh
 
