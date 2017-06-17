@@ -10,7 +10,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_7l  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_7m  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_nj=50
 
@@ -119,11 +119,11 @@ if [ $stage -le 12 ]; then
 
   # the first splicing is moved before the lda layer, so no splicing here
   relu-renorm-layer name=tdnn1 dim=625
-  relu-renorm-layer name=tdnn2 input=Append(-1,2) dim=625
-  relu-renorm-layer name=tdnn3 input=Append(-3,0,3) dim=625
+  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=625
+  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=625
   relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=625
-  relu-renorm-layer name=tdnn5 input=Append(-3,0) dim=625
-  relu-renorm-layer name=tdnn6 input=Append(0) dim=625
+  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=625
+  relu-renorm-layer name=tdnn6 input=Append(-3,0) dim=625
   relu-renorm-layer name=tdnn7 input=Append(0) dim=625
 
   ## adding the layers for chain branch

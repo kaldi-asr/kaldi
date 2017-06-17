@@ -1,0 +1,22 @@
+List of scripts relevant to the experiments detailed in the paper.
+
+SWBD : egs/swbd/s5c
+
+scripts :
+
+TDNN-A
+TDNN-B
+TDNN-C
+TDNN-D
+
+TDNN-LSTM-A
+TDNN-LSTM-B
+TDNN-LSTM-C
+TDNN-BLSTM-A
+TDNN-BLSTM-B
+
+LFR-LSTM
+LFR-BLSTM
+
+MFR-LSTM
+MFR-BLSTM
