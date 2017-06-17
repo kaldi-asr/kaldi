@@ -96,8 +96,7 @@ void SimpleForwardingDescriptor::GetNodeDependencies(
 void SimpleForwardingDescriptor::WriteConfig(
     std::ostream &os,
     const std::vector<std::string> &node_names) const {
-  KALDI_ASSERT(static_cast<size_t>(src_node_) < node_names.size() &&
-               IsValidName(node_names[src_node_]));
+  KALDI_ASSERT(static_cast<size_t>(src_node_) < node_names.size());
   os << node_names[src_node_];
 }
 
