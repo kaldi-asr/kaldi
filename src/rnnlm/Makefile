@@ -12,7 +12,7 @@ OBJFILES = sampler.o
 LIBNAME = kaldi-rnnlm
 
 ADDLIBS = ../nnet3/kaldi-nnet3.a ../cudamatrix/kaldi-cudamatrix.a \
-          ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a
+          ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a
 
 include ../makefiles/default_rules.mk
 
