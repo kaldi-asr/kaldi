@@ -345,7 +345,7 @@ rm $dir/final.mdl 2>/dev/null
 cp $dir/$x.mdl $dir/final.mdl
 
 # function to remove egs that might be soft links.
-remove () { for x in $*; do [ -L $x ] && rm $(readlink -f $x); rm $x; done }
+remove () { for x in $*; do [ -L $x ] && rm $(utils/make_absolute.sh $x); rm $x; done }
 
 if $cleanup && $remove_egs; then  # note: this is false by default.
   echo Removing training examples
