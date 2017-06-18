@@ -172,6 +172,10 @@ class CompressedMatrix {
 
   void Clear();
 
+  /// scales all elements of matrix by alpha.
+  /// It scales the floating point values in GlobalHeader by alpha.
+  void Scale(float alpha);
+
   friend class Matrix<float>;
   friend class Matrix<double>;
  private:

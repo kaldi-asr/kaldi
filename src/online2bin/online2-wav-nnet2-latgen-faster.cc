@@ -25,7 +25,7 @@
 #include "online2/online-endpoint.h"
 #include "fstext/fstext-lib.h"
 #include "lat/lattice-functions.h"
-#include "thread/kaldi-thread.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 
@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
       nnet.Read(ki.Stream(), binary);
     }
 
-    fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldi(fst_rxfilename);
+    fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldiGeneric(fst_rxfilename);
 
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_rxfilename != "")

@@ -1140,8 +1140,8 @@ AffineComponent::AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
                bias_params.Dim() != 0);
 }
 
-void AffineComponent::SetParams(const VectorBase<BaseFloat> &bias,
-                                const MatrixBase<BaseFloat> &linear) {
+void AffineComponent::SetParams(const CuVectorBase<BaseFloat> &bias,
+                                const CuMatrixBase<BaseFloat> &linear) {
   bias_params_ = bias;
   linear_params_ = linear;
   KALDI_ASSERT(bias_params_.Dim() == linear_params_.NumRows());
@@ -1314,69 +1314,6 @@ void AffineComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
   linear_params_.CopyRowsFromVec(params.Range(0, InputDim() * OutputDim()));
   bias_params_.CopyFromVec(params.Range(InputDim() * OutputDim(),
                                         OutputDim()));
-}
-
-Component *AffineComponent::CollapseWithNext(
-    const AffineComponent &next_component) const {
-  AffineComponent *ans = dynamic_cast<AffineComponent*>(this->Copy());
-  KALDI_ASSERT(ans != NULL);
-  // Note: it's possible that "ans" is really of a derived type such
-  // as AffineComponentPreconditioned, but this will still work.
-  // the "copy" call will copy things like learning rates, "alpha" value
-  // for preconditioned component, etc.
-  ans->linear_params_.Resize(next_component.OutputDim(), InputDim());
-  ans->bias_params_ = next_component.bias_params_;
-
-  ans->linear_params_.AddMatMat(1.0, next_component.linear_params_, kNoTrans,
-                                this->linear_params_, kNoTrans, 0.0);
-  ans->bias_params_.AddMatVec(1.0, next_component.linear_params_, kNoTrans,
-                              this->bias_params_, 1.0);
-  return ans;
-}
-
-Component *AffineComponent::CollapseWithNext(
-    const FixedAffineComponent &next_component) const {
-  // If at least one was non-updatable, make the whole non-updatable.
-  FixedAffineComponent *ans =
-      dynamic_cast<FixedAffineComponent*>(next_component.Copy());
-  KALDI_ASSERT(ans != NULL);
-  ans->linear_params_.Resize(next_component.OutputDim(), InputDim());
-  ans->bias_params_ = next_component.bias_params_;
-
-  ans->linear_params_.AddMatMat(1.0, next_component.linear_params_, kNoTrans,
-                                this->linear_params_, kNoTrans, 0.0);
-  ans->bias_params_.AddMatVec(1.0, next_component.linear_params_, kNoTrans,
-                              this->bias_params_, 1.0);
-  return ans;
-}
-
-Component *AffineComponent::CollapseWithNext(
-    const FixedScaleComponent &next_component) const {
-  KALDI_ASSERT(this->OutputDim() == next_component.InputDim());
-  AffineComponent *ans =
-      dynamic_cast<AffineComponent*>(this->Copy());
-  KALDI_ASSERT(ans != NULL);
-  ans->linear_params_.MulRowsVec(next_component.scales_);
-  ans->bias_params_.MulElements(next_component.scales_);
-
-  return ans;
-}
-
-Component *AffineComponent::CollapseWithPrevious(
-    const FixedAffineComponent &prev_component) const {
-  // If at least one was non-updatable, make the whole non-updatable.
-  FixedAffineComponent *ans =
-      dynamic_cast<FixedAffineComponent*>(prev_component.Copy());
-  KALDI_ASSERT(ans != NULL);
-
-  ans->linear_params_.Resize(this->OutputDim(), prev_component.InputDim());
-  ans->bias_params_ = this->bias_params_;
-
-  ans->linear_params_.AddMatMat(1.0, this->linear_params_, kNoTrans,
-                                prev_component.linear_params_, kNoTrans, 0.0);
-  ans->bias_params_.AddMatVec(1.0, this->linear_params_, kNoTrans,
-                              prev_component.bias_params_, 1.0);
-  return ans;
 }
 
 RepeatedAffineComponent::RepeatedAffineComponent(const RepeatedAffineComponent & component) :
@@ -2670,8 +2607,8 @@ std::string NaturalGradientAffineComponent::Info() const {
   PrintParameterStats(stream, "bias", bias_params_, true);
   stream << ", rank-in=" << rank_in_
          << ", rank-out=" << rank_out_
-         << ", num_samples_history=" << num_samples_history_
-         << ", update_period=" << update_period_
+         << ", num-samples-history=" << num_samples_history_
+         << ", update-period=" << update_period_
          << ", alpha=" << alpha_;
   return stream.str();
 }
@@ -2762,6 +2699,12 @@ void NaturalGradientAffineComponent::Add(BaseFloat alpha, const Component &other
   KALDI_ASSERT(other != NULL);
   linear_params_.AddMat(alpha, other->linear_params_);
   bias_params_.AddVec(alpha, other->bias_params_);
+}
+
+/// virtual
+void NaturalGradientAffineComponent::FreezeNaturalGradient(bool freeze) {
+  preconditioner_in_.Freeze(freeze);
+  preconditioner_out_.Freeze(freeze);
 }
 
 std::string FixedAffineComponent::Info() const {
@@ -3356,6 +3299,11 @@ void NaturalGradientPerElementScaleComponent::Update(
   CuVector<BaseFloat> delta_scales(scales_.Dim());
   delta_scales.AddRowSumMat(scale * learning_rate_, derivs_per_frame);
   scales_.AddVec(1.0, delta_scales);
+}
+
+/// virtual
+void NaturalGradientPerElementScaleComponent::FreezeNaturalGradient(bool freeze) {
+  preconditioner_.Freeze(freeze);
 }
 
 // Constructors for the convolution component
@@ -4878,6 +4826,18 @@ BaseFloat CompositeComponent::DotProduct(
   return ans;
 }
 
+/// virtual
+void CompositeComponent::FreezeNaturalGradient(bool freeze) {
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (components_[i]->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc =
+          dynamic_cast<UpdatableComponent*>(components_[i]);
+      KALDI_ASSERT(uc != NULL);
+      uc->FreezeNaturalGradient(freeze);
+    }
+  }
+}
+
 // virtual
 Component* CompositeComponent::Copy() const {
   std::vector<Component*> components(components_.size());
@@ -5271,6 +5231,10 @@ void LstmNonlinearityComponent::InitNaturalGradient() {
   preconditioner_.SetNumSamplesHistory(1000.0);
 }
 
+/// virtual
+void LstmNonlinearityComponent::FreezeNaturalGradient(bool freeze) {
+  preconditioner_.Freeze(freeze);
+}
 
 void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
   InitLearningRatesFromConfig(cfl);
@@ -5375,7 +5339,8 @@ std::string BatchNormComponent::Info() const {
   std::ostringstream stream;
   stream << Type() << ", dim=" << dim_ << ", block-dim=" << block_dim_
          << ", epsilon=" << epsilon_ << ", target-rms=" << target_rms_
-         << ", count=" << count_;
+         << ", count=" << count_
+         << ", test-mode=" << (test_mode_ ? "true" : "false");
   if (count_ > 0) {
     Vector<BaseFloat> mean(stats_sum_), var(stats_sumsq_);
     mean.Scale(1.0 / count_);

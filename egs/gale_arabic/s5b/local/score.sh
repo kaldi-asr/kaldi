@@ -11,7 +11,10 @@ decode_mbr=true
 word_ins_penalty=0.0
 min_lmwt=7
 max_lmwt=17
+iter=  #some of the scripts from steps/ seem to use it
 #end configuration section.
+
+echo "$0 $#"
 
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;

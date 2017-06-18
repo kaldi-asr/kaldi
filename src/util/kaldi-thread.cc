@@ -1,4 +1,4 @@
-// thread/kaldi-thread.cc
+// util/kaldi-thread.cc
 
 // Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 //                 Frantisek Skala
@@ -19,7 +19,7 @@
 // limitations under the License.
 
 #include "base/kaldi-common.h"
-#include "thread/kaldi-thread.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 int32 g_num_threads = 8;  // Initialize this global variable.

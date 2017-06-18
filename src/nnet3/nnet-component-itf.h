@@ -22,11 +22,11 @@
 #ifndef KALDI_NNET3_NNET_COMPONENT_ITF_H_
 #define KALDI_NNET3_NNET_COMPONENT_ITF_H_
 
+#include <iostream>
+#include <mutex>
 #include "nnet3/nnet-common.h"
 #include "nnet3/nnet-parse.h"
 #include "base/kaldi-error.h"
-#include "thread/kaldi-mutex.h"
-#include <iostream>
 
 namespace kaldi {
 namespace nnet3 {
@@ -471,6 +471,10 @@ class UpdatableComponent: public Component {
   /// learning_rate_factor_.
   virtual void SetAsGradient() { learning_rate_ = 1.0; is_gradient_ = true; }
 
+  /// freezes/unfreezes NaturalGradient updates, if applicable (to be overriden
+  /// by components that use Natural Gradient).
+  virtual void FreezeNaturalGradient(bool freeze) { }
+
   /// Gets the learning rate of gradient descent.  Note: if you call
   /// SetLearningRate(x), and learning_rate_factor_ != 1.0,
   /// a different value than x will returned.
@@ -618,7 +622,7 @@ class NonlinearComponent: public Component {
   BaseFloat self_repair_scale_;
 
   // The mutex is used in UpdateStats, only for resizing vectors.
-  Mutex mutex_;
+  std::mutex mutex_;
 };
 
 } // namespace nnet3

@@ -24,11 +24,11 @@
 #ifndef KALDI_NNET2_NNET_COMPONENT_H_
 #define KALDI_NNET2_NNET_COMPONENT_H_
 
+#include <mutex>
 #include "base/kaldi-common.h"
 #include "itf/options-itf.h"
 #include "matrix/matrix-lib.h"
 #include "cudamatrix/cu-matrix-lib.h"
-#include "thread/kaldi-mutex.h"
 #include "nnet2/nnet-precondition-online.h"
 
 #include <iostream>
@@ -405,7 +405,7 @@ class NonlinearComponent: public Component {
   // applicable to element-by-element nonlinearities, not Softmax.
   double count_;
   // The mutex is used in UpdateStats, only for resizing vectors.
-  Mutex mutex_;
+  std::mutex mutex_;
 };
 
 class MaxoutComponent: public Component {

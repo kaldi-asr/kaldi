@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
     using namespace kaldi::nnet3;
     typedef kaldi::int32 int32;
     using fst::SymbolTable;
-    using fst::VectorFst;
+    using fst::Fst;
     using fst::StdArc;
 
     const char *usage =
@@ -96,6 +96,7 @@ int main(int argc, char *argv[]) {
       am_nnet.Read(ki.Stream(), binary);
       SetBatchnormTestMode(true, &(am_nnet.GetNnet()));
       SetDropoutTestMode(true, &(am_nnet.GetNnet()));
+      CollapseModel(CollapseModelConfig(), &(am_nnet.GetNnet()));
     }
 
     bool determinize = config.determinize_lattice;
@@ -132,7 +133,7 @@ int main(int argc, char *argv[]) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
       // Input FST is just one FST, not a table of FSTs.
-      VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_str);
+      Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
       timer.Reset();
 
       {

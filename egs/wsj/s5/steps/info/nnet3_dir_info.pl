@@ -146,9 +146,9 @@ sub get_combine_info {
 sub number_to_string {
   my ($value, $name) = @_;
   my $precision;
-  if (abs($value) < 0.02 or ($name eq "accuracy" and abs($value) > 0.98)) {
+  if (abs($value) < 0.02 or ($name eq "accuracy" and abs($value) > 0.97)) {
     $precision = 4;
-  } elsif (abs($value) < 0.2 or ($name eq "accuracy" and abs($value) > 0.8)) {
+  } elsif (abs($value) < 0.2 or ($name eq "accuracy" and abs($value) > 0.7)) {
     $precision = 3;
   } else {
     $precision = 2;
