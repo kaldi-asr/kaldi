@@ -82,7 +82,7 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  ln -sf $(readlink -f $srcdir/conf) ${srcdir}_${criterion}_${learning_rate}/conf # so it acts like an online-decoding directory
+  ln -sf $(utils/make_absolute.sh $srcdir/conf) ${srcdir}_${criterion}_${learning_rate}/conf # so it acts like an online-decoding directory
 
   for epoch in 0 1 2 3 4 5 6; do
     steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
