@@ -63,9 +63,10 @@ def read_frame_subsampling_factor(dir_, expected_factor=None):
 
     if (expected_factor is not None
             and expected_factor != frame_subsampling_factor):
-        raise TypeError("frame_subsampling_factor in {dir} differs from "
-                        "expected value {v}".format(dir=dir_,
-                                                    v=expected_factor))
+        raise TypeError("frame_subsampling_factor in {dir} ({fsf}) differs from "
+                        "expected value {v}".format(
+                            dir=dir_, fsf=frame_subsampling_factor,
+                            v=expected_factor))
     return frame_subsampling_factor
 
 
@@ -75,9 +76,13 @@ def run(args):
     frame_subsampling_factor = read_frame_subsampling_factor(
         args.targets_dirs[0])
 
+    logger.info("Expected frame-subsampling-factor is {0}".format(
+        frame_subsampling_factor))
+
     targets_rspecifiers = []
     for targets_dir in args.targets_dirs:
-        read_frame_subsampling_factor(targets_dir, frame_subsampling_factor)
+        read_frame_subsampling_factor(targets_dir,
+                                      expected_factor=frame_subsampling_factor)
 
         targets_rspecifiers.append(
             '"ark,s,cs:utils/filter_scp.pl {sdata}/JOB/utt2spk '
@@ -116,8 +121,7 @@ def main():
     try:
         run(args)
     except Exception:
-        logger.error("Script failed; traceback = ", exc_info=True)
-        raise SystemExit(1)
+        raise
 
 
 if __name__ == '__main__':

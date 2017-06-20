@@ -31,9 +31,10 @@ max_remaining_duration=5  # If the last remaining piece when splitting uniformly
                           # is smaller than this duration, then the last piece 
                           # is  merged with the previous.
 
-# A pair corresponding to the weight on labels obtained from alignment
-# and weight on labels obtained from decoding.
-merge_weights=1.0,0.1
+out_of_sil_weight=1   # Weight for out-of-segment regions
+# List of weights on labels obtained from alignment, 
+# labels obtained from decoding and default labels in out-of-segment regions
+merge_weights=1.0,0.1,0.5
 
 affix=_1a
 stage=-1
@@ -168,15 +169,36 @@ function make_plp {
 
 # Create new data directory inside the segmentation directory
 data_id=$(basename $data_dir)
-data_dir=$dir/${data_id}
 
 whole_data_dir=${data_dir}_whole
 whole_data_id=${data_id}_whole
 
 if [ $stage -le 0 ]; then
-  utils/copy_data_dir.sh $data_dir $dir/${data_id}
+  rm -r $dir/$data_id
+  mkdir -p $dir/$data_id
+
+  # Copy the data directory, but treat the recording as the speaker. This
+  # is required to get matching speaker information in the whole 
+  # recording data directory.
+  cp $data_dir/wav.scp $dir/${data_id}/ || exit 1
+  cp $data_dir/reco2file_and_channel $dir/${data_id}/ || true
+  awk '{print $1" "$2"-"$1}' $data_dir/segments > $dir/${data_id}/old2new.uttmap || exit 1
+  utils/apply_map.pl -f 1 $dir/${data_id}/old2new.uttmap < $data_dir/segments > \
+    $dir/${data_id}/segments || exit 1
+  awk '{print $1" "$2}' $dir/${data_id}/segments > $dir/$data_id/utt2spk || exit 1
+  utils/utt2spk_to_spk2utt.pl $dir/$data_id/utt2spk > $dir/$data_id/spk2utt || exit 1
+  utils/apply_map.pl -f 1 $dir/${data_id}/old2new.uttmap < $data_dir/text > \
+    $dir/${data_id}/text || exit 1
+
+  utils/fix_data_dir.sh $dir/$data_id || exit 1
+
   utils/data/convert_data_dir_to_whole.sh ${data_dir} ${whole_data_dir}
+
+  utils/validate_data_dir.sh --no-feats $dir/$data_id || exit 1
+  utils/validate_data_dir.sh --no-text --no-feats $whole_data_dir || exit 1
 fi 
+
+data_dir=$dir/${data_id}
 
 ###############################################################################
 # Extract features for the whole data directory
@@ -196,10 +218,6 @@ if [ $stage -le 1 ]; then
     echo "$0: Unknown feat-type $feat_type. Must be mfcc or plp."
     exit 1
   fi
-  steps/compute_cmvn_stats.sh \
-    ${whole_data_dir} || exit 1
-      
-  utils/fix_data_dir.sh ${whole_data_dir}
 fi
 
 ###############################################################################
@@ -285,11 +303,12 @@ if [ $stage -le 5 ]; then
     $graph_dir $uniform_seg_data_dir $decode_dir
 fi
 
+sat_model_id=`basename $sat_model_dir`
 ###############################################################################
 # Get frame-level targets from lattices for nnet training
 # Targets are matrices of 3 columns -- silence, speech and garbage
 # The target values are obtained by summing up posterior probabilites of 
-# arcs from lattice-arc-post over silence, speech and garbage phones. 
+# arcs from lattice-arc-post over silence, speech and garbage phones.
 ###############################################################################
 if [ $stage -le 6 ]; then
   steps/segmentation/lats_to_targets.sh --cmd "$train_cmd" \
@@ -297,7 +316,7 @@ if [ $stage -le 6 ]; then
     --garbage-phones $dir/garbage_phones.txt \
     --max-phone-duration 0.5 \
     $data_dir $lang $sup_lats_dir \
-    $dir/${model_id}_${data_id}_sup_targets
+    $dir/${sat_model_id}_${data_id}_sup_targets
 fi
 
 if [ $stage -le 7 ]; then
@@ -314,27 +333,22 @@ fi
 # targets by a factor of 3.
 # Since the targets from transcript-constrained lattices have only values 
 # for the manual segments, these are converted to whole recording-levels 
-# by inserting "default targets" values for the out-of-manual-segment regions.
-# We assume in this setup that this is silence i.e. [ 1 0 0 ].
+# by inserting [ 0 0 0 ] for the out-of-manual segment regions.
 ###############################################################################
 if [ $stage -le 8 ]; then
-  echo " [ 1 0 0 ]" > $dir/${model_id}_${whole_data_id}_sup_targets/default_targets.vec
-  
   steps/segmentation/convert_targets_dir_to_whole.sh --cmd "$train_cmd" --nj 40 \
-    --default-targets $dir/${model_id}_${whole_data_id}_sup_targets/default_targets.vec \
     $data_dir $whole_data_dir \
-    $dir/${model_id}_${data_id}_sup_targets \
-    $dir/${model_id}_${whole_data_id}_sup_targets
+    $dir/${sat_model_id}_${data_id}_sup_targets \
+    $dir/${sat_model_id}_${whole_data_id}_sup_targets
   
   steps/segmentation/resample_targets_dir.sh --cmd "$train_cmd" --nj 40 3 \
     $whole_data_dir \
-    $dir/${model_id}_${whole_data_id}_sup_targets \
-    $dir/${model_id}_${whole_data_id}_sup_targets_sub3
+    $dir/${sat_model_id}_${whole_data_id}_sup_targets \
+    $dir/${sat_model_id}_${whole_data_id}_sup_targets_sub3
 fi
 
 ###############################################################################
 # Convert the targets from decoding to whole recording. 
-# There is no need for "default targets" here.
 ###############################################################################
 if [ $stage -le 9 ]; then
   steps/segmentation/convert_targets_dir_to_whole.sh --cmd "$train_cmd" --nj 40 \
@@ -349,6 +363,19 @@ if [ $stage -le 9 ]; then
 fi
 
 ###############################################################################
+# "default targets" values for the out-of-manual-segment regions.
+# We assume in this setup that this is silence i.e. [ $out_of_sil_weight 0 0 ].
+###############################################################################
+
+if [ $stage -le 10 ]; then
+  echo " [ $out_of_sil_weight 0 0 ]" > $dir/default_targets.vec
+  steps/segmentation/get_targets_for_out_of_segments.sh --cmd "$train_cmd" \
+    --nj 40 --frame-subsampling-factor 3 \
+    --default-targets $dir/default_targets.vec \
+    $data_dir $whole_data_dir $dir/out_of_seg_${whole_data_id}_default_targets_sub3
+fi
+
+###############################################################################
 # Merge targets for the same data from multiple sources (systems)
 # --weights is used to weight targets from alignment with a higher weight 
 # the targets from decoding. 
@@ -356,34 +383,18 @@ fi
 # disagree (more than 0.5 probability on different classes), then those frames
 # are removed by setting targets to [ 0 0 0 ]. 
 ###############################################################################
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
   steps/segmentation/merge_targets_dirs.py --cmd "$train_cmd" --nj 40 \
     --weights $merge_weights --remove-mismatch-frames=true \
     $whole_data_dir \
-    $dir/${model_id}_${whole_data_id}_sup_targets_sub3 \
+    $dir/${sat_model_id}_${whole_data_id}_sup_targets_sub3 \
     $dir/${model_id}_${whole_data_id}_targets_sub3 \
-    $dir/${model_id}_${whole_data_id}_combined_targets_sub3
+    $dir/out_of_seg_${whole_data_id}_default_targets_sub3 \
+    $dir/${whole_data_id}_combined_targets_sub3
 fi
 
 # Train a TDNN-LSTM network for SAD
-local/segmentation/tuning/train_lstm_asr_sad_1a.sh 
-
-# Create a classes_info file that will be converted to a graph for 
-# decoding. 
-# classes_info file has the format:
-# <class-id (1-based)> <initial-probabilitiy> <self-loop-probability> <min-number-of-states> <transition-1> <transition-2> ... <transition-N>
-# where <transition-N> is <destination-class>:<transition-probability> 
-# and a destination class of -1 is used to represent the final state.
-# Here 1 is for silence and 2 is for speech. We assign here a 0.8 initial
-# probability for silence. We add a 10 state minimum-duration constraint, 
-# which corresponds to 10 * 0.03 = 0.3s. There is a self-loop with
-# probability 0.99 after the minimum-duration and a transition to the other 
-# class with probability 0.009 and a final ending probability of 0.001.
-mkdir -p data/lang_asr_sad_fs3_simple
-cat <<EOF > data/lang_asr_sad_fs3_simple/classes_info.txt
-1 0.8 0.99 10 2:0.009 -1:0.001
-2 0.2 0.99 10 1:0.009 -1:0.001
-EOF
+local/segmentation/tuning/train_lstm_asr_sad_1a.sh --targets-dir $dir/${whole_data_id}_combined_targets_sub3
 
 # The options to this script must match the options used in the 
 # nnet training script. 
@@ -394,10 +405,8 @@ EOF
 # See the script for details of the options.
 steps/segmentation/do_asr_sad_data_dir.sh \
   --extra-left-context 70 --extra-right-context 0 --frames-per-chunk 150 \
-  --nj 32 --subsampling-factor 1 \
-  --transition-scale 1.0 --loopscale 0.3 --acwt 3 \
+  --nj 32 --acwt 0.3 \
   data/dev10h.pem \
   exp/segmentation_1a/tdnn_lstm_asr_sad_1a \
-  data/lang_asr_sad_fs3_simple/classes_info.txt \
   mfcc_hires_bp \
   exp/segmentation_1a/tdnn_lstm_asr_sad_1a/{,dev10h}

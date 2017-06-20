@@ -5,8 +5,8 @@
 
 set -o pipefail
 
-silence_words=
-garbage_words=
+silence_phones=
+garbage_phones=
 max_phone_duration=0.5
 acwt=0.1
 
@@ -17,19 +17,14 @@ cmd=run.pl
 
 if [ $# -ne 4 ]; then
   cat <<EOF
-  Usage: steps/segmentation/ali_to_targets.sh <data-dir> <lang> <lattice-dir> <targets-dir>"
+  Usage: steps/segmentation/ali_to_targets.sh <data-dir> <lang> <ali-dir> <targets-dir>"
   e.g.: steps/segmentation/ali_to_targets.sh \
-  --silence-words exp/segmentation1a/silence_words.txt \
-  --garbage-words exp/segmentation1a/garbage_words.txt \
+  --silence-phones data/lang/phones/optional_silence.txt \
+  --garbage-phones data/lang/phones/silence.txt \
   --max-phone-duration 0.5 \
   data/train_split10s data/lang \
   exp/segmentation1a/tri3b_train_split10s_ali \
   exp/segmentation1a/tri3b_train_split10s_targets
-
-  note: silence_words.txt might just contain <eps> (which is how lattice-arc-post will
-  print optional-silence) or might contain other stuff too; garbage_words.txt will
-  contain a list of words that we consider neither speech nor silence.  This is
-  quite setup dependent.  E.g. in aspire it would contain "mm".
 EOF
   exit 1
 fi
@@ -54,33 +49,28 @@ done
 
 mkdir -p $dir
 
-if [ -z "$garbage_words" ]; then
-  steps/cleanup/internal/get_non_scored_words.py $lang > \
-    $dir/nonscored_words.txt || exit 1
-  
-  oov_word=$(cat $lang/oov.txt) || exit 1
-  cat $dir/nonscored_words.txt | \
-    grep -v -w $oov_word > $dir/garbage_words.txt
+if [ -z "$garbage_phones" ]; then
+  oov_phone=$(steps/segmentation/internal/get_oov_phone.py $lang) || exit 1
+  echo $oov_phone | utils/int2sym.pl $lang/phones.txt > $dir/garbage_phones.txt || exit 1
 else 
-  cp $garbage_words $dir/garbage_words.txt || exit 1
+  cp $garbage_phones $dir/garbage_phones.txt || exit 1
 fi
 
-if [ ! -z "$silence_words" ]; then
-  cp $silence_words $dir/silence_words.txt
+if [ -z "$silence_phones" ]; then
+  cat $lang/silence_phones.txt | \
+    utils/filter_scp.pl --exclude $dir/garbage_phones.txt > \
+    $dir/silence_phones.txt
+else 
+  cp $silence_phones $dir/silence_phones.txt
 fi
-
-echo "<eps>" >> $dir/silence_words.txt
 
 nj=$(cat $ali_dir/num_jobs) || exit 1
 
 $cmd JOB=1:$nj $dir/log/get_arc_info.JOB.log \
-  lattice-align-words $lang/phones/word_boundary.int \
-    $srcdir/final.mdl \
-    "ark:gunzip -c $ali_dir/lat.JOB.gz |" ark:- \| \
-  lattice-arc-post --acoustic-scale=$acwt \
-    $srcdir/final.mdl ark:- - \| \
-  utils/int2sym.pl -f 5 $lang/words.txt \| \
-  utils/int2sym.pl -f 6- $lang/phones.txt '>' \
+  ali-to-phones --ctm-output --frame-shift=1 \
+    $srcdir/final.mdl "ark:gunzip -c $ali_dir/lat.JOB.gz |" - \| \
+  utils/int2sym.pl -f 5 $lang/phones.txt \| \
+  awk '{print $1" "int($3)" "int($4)" 1.0 "$5}' \| \
   $dir/arc_info_sym.JOB.txt || exit 1
 
 # make $dir an absolute pathname.
@@ -97,8 +87,8 @@ max_phone_len=$(perl -e "print int($max_phone_duration / $frame_shift)")
 
 $cmd JOB=1:$nj $dir/log/get_targets.JOB.log \
   steps/segmentation/internal/arc_info_to_targets.py \
-    --silence-words=$dir/silence_words.txt \
-    --garbage-words=$dir/garbage_words.txt \
+    --silence-phones=$dir/silence_phones.txt \
+    --garbage-phones=$dir/garbage_phones.txt \
     --max-phone-length=$max_phone_len \
     $dir/arc_info_sym.JOB.txt - \| \
   copy-feats ark,t:- \

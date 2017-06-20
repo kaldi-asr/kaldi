@@ -14,7 +14,9 @@ import argparse
 import logging
 import math
 import os
+import re
 import subprocess
+import sys
 import threading
 
 logger = logging.getLogger(__name__)
@@ -65,6 +67,20 @@ class NullstrToNoneAction(argparse.Action):
             setattr(namespace, self.dest, None)
         else:
             setattr(namespace, self.dest, values)
+
+import contextlib
+@contextlib.contextmanager
+def smart_open(filename, mode="r"):
+    if filename and filename != "-":
+        fh = open(filename, mode)
+    else:
+        fh = sys.stdout if mode[0] == 'w' else sys.stdin
+
+    try:
+        yield fh
+    finally:
+        if fh is not sys.stdin and fh is not sys.stdout:
+            fh.close()
 
 
 def check_if_cuda_compiled():
@@ -327,7 +343,7 @@ def write_matrix_ascii(file_or_fd, mat, key=None):
         if fd is not file_or_fd : fd.close()
 
 
-def read_matrix_ascci(file_or_fd):
+def read_matrix_ascii(file_or_fd):
     try:
         fd = open(file_or_fd, 'w')
         fname = file_or_fd

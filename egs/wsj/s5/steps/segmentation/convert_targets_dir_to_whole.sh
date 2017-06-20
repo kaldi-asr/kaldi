@@ -81,9 +81,8 @@ utils/filter_scps.pl JOB=1:$nj $dir/split${nj}reco/segments.JOB $targets_dir/tar
 # make $dir an absolute pathname.
 dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $dir ${PWD}`
 
-utils/data/get_utt2dur.sh $whole_data
-
-awk -v fs=$frame_shift '{print $1" "int($2 / fs + 0.5)}' $whole_data/utt2dur > $dir/reco2num_frames
+utils/data/get_utt2num_frames.sh --cmd "$cmd" --nj $nj $whole_data
+cp $whole_data/utt2num_frames $dir/reco2num_frames
 
 $cmd JOB=1:$nj $dir/log/merge_targets_to_reco.JOB.log \
   steps/segmentation/internal/merge_segment_targets_to_recording.py \

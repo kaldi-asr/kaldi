@@ -3,12 +3,18 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
+"""
+This script converts alignments into kaldi segments and utt2spk.
+The label 1 is for silence and label 2 is for speech.
+"""
+
 from __future__ import print_function
 import argparse
 import logging
 import sys
 
 sys.path.insert(0, 'steps')
+import libs.common as common_lib
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -67,6 +73,7 @@ def get_args():
 
     args = parser.parse_args()
 
+    global global_verbose
     global_verbose = args.verbose
 
     logger.info("Setting verbosity to {0}".format(global_verbose))
@@ -126,6 +133,14 @@ class SegmenterStats(object):
 
 
 def process_label(text_label, sad_map=None):
+    """Processes an input integer label and returns a 1 or 2,
+    where 1 is for silence and 2 is for speech.
+
+    Arguments:
+        text_label -- input label (must be integer)
+        sad_map -- if provided must be a dictionary mapping the input integer
+                   label to 1 or 2.
+    """
     prev_label = int(text_label)
     if sad_map is not None:
         try:
@@ -305,41 +320,44 @@ def run(args):
 
     sad_map = {}
     if args.sad_map is not None:
-        for line in args.sad_map:
-            parts = line.strip().split()
-            if len(parts) != 2:
-                raise RuntimeError("Unable to parse line '{0}' in {1}"
-                                   "".format(line.strip(), args.sad_map.name))
-            if int(parts[1]) not in [1, 2]:
-                raise ValueError("Expecting the second field in {0} to be "
-                                 "1 or 2".format(args.sad_map.name))
-            sad_map[parts[0]] = int(parts[1])
+        with common_lib.smart_open(args.sad_map) as sad_map_fh:
+            for line in sad_map_fh:
+                parts = line.strip().split()
+                if len(parts) != 2:
+                    raise RuntimeError("Unable to parse line '{0}' in {1}"
+                                       "".format(line.strip(), sad_map_fh.name))
+                if int(parts[1]) not in [1, 2]:
+                    raise ValueError("Expecting the second field in {0} to be "
+                                     "1 or 2".format(sad_map_fh.name))
+                sad_map[parts[0]] = int(parts[1])
 
     global_stats = SegmenterStats()
-    for line in args.in_alignments:
-        parts = line.strip().split()
-        utt_id = parts[0]
+    with common_lib.smart_open(args.in_alignments) as in_alignments_fh, \
+            common_lib.smart_open(args.out_segments, 'w') as out_segments_fh:
+        for line in in_alignments_fh:
+            parts = line.strip().split()
+            utt_id = parts[0]
 
-        if len(parts) < 2:
-            raise RuntimeError("Unable to parse line '{0}' in {1}"
-                               "".format(line.strip(), args.in_alignments.name))
+            if len(parts) < 2:
+                raise RuntimeError("Unable to parse line '{0}' in {1}"
+                                   "".format(line.strip(),
+                                             in_alignments_fh.name))
 
-        utt_stats = SegmenterStats()
-        segmentation = Segmentation(utt_stats)
-        segmentation.initialize_segments(parts[1:], args.frame_shift,
-                                         sad_map=sad_map)
-        segmentation.pad_speech_segments(args.segment_padding,
-                                         None if args.utt2dur is None
-                                         else utt2dur[utt_id])
-        segmentation.merge_adjacent_segments(args.max_intersegment_duration)
-        segmentation.remove_short_segments(args.min_segment_duration)
-        segmentation.split_long_segments(
-            args.max_segment_duration, args.overlap_duration,
-            args.max_remaining_duration)
-        segmentation.write(utt_id, args.out_segments)
-        global_stats.add(utt_stats)
-    args.in_alignments.close()
-    args.out_segments.close()
+            utt_stats = SegmenterStats()
+            segmentation = Segmentation(utt_stats)
+            segmentation.initialize_segments(
+                parts[1:], args.frame_shift,
+                sad_map=sad_map if args.sad_map is not None else None)
+            segmentation.pad_speech_segments(args.segment_padding,
+                                             None if args.utt2dur is None
+                                             else utt2dur[utt_id])
+            segmentation.merge_adjacent_segments(args.max_intersegment_duration)
+            segmentation.remove_short_segments(args.min_segment_duration)
+            segmentation.split_long_segments(
+                args.max_segment_duration, args.overlap_duration,
+                args.max_remaining_duration)
+            segmentation.write(utt_id, out_segments_fh)
+            global_stats.add(utt_stats)
     logger.info(global_stats)
 
 
@@ -349,12 +367,7 @@ def main():
     try:
         run(args)
     except Exception:
-        logger.error("Script failed; traceback = ", exc_info=True)
-        raise SystemExit(1)
-    finally:
-        for f in [args.in_alignments, args.out_segments]:
-            if f is not None:
-                f.close()
+        raise
 
 
 if __name__ == '__main__':

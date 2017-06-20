@@ -69,7 +69,7 @@ elif [ $subsampling_factor -gt 1 ]; then
     copy-feats ark,t:- ark,scp:$dir/targets.JOB.ark,$dir/targets.JOB.scp || exit 1
 
   perl -e "print $frame_subsampling_factor * $subsampling_factor" > \
-    $dir/frame_subsapling_factor || exit 1
+    $dir/frame_subsampling_factor || exit 1
 else
   $cmd JOB=1:$nj $dir/log/resample_targets.JOB.log \
     subsample-feats --n=$subsampling_factor \
@@ -77,7 +77,7 @@ else
       ark,scp:$dir/targets.JOB.ark,$dir/targets.JOB.scp || exit 1
 
   perl -e "print $frame_subsampling_factor * (-$subsampling_factor)" > \
-    $dir/frame_subsapling_factor || exit 1
+    $dir/frame_subsampling_factor || exit 1
 fi 
  
 for n in $(seq $nj); do

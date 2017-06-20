@@ -3,6 +3,14 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
+"""
+This script converts arc-info into targets for training
+speech activity detection network. The output is a matrix archive
+with each matrix having 3 columns -- silence, speech and garbage.
+The posterior probabilities of the phones of each of the classes are
+summed up to get the target matrix values.
+"""
+
 import argparse
 import logging
 import numpy as np
@@ -24,24 +32,29 @@ logger.addHandler(handler)
 def get_args():
     parser = argparse.ArgumentParser(
         description="""This script converts arc-info into targets for training
-        speech activity detection network.""")
+        speech activity detection network. The output is a matrix archive
+        with each matrix having 3 columns -- silence, speech and garbage.
+        The posterior probabilities of the phones of each of the classes are
+        summed up to get the target matrix values.
+        """)
 
-    parser.add_argument("--silence-words", type=argparse.FileType('r'),
+    parser.add_argument("--silence-phones", type=str,
                         required=True,
-                        help="File containing a list of words that will be "
+                        help="File containing a list of phones that will be "
                         "treated as silence")
-    parser.add_argument("--garbage-words", type=argparse.FileType('r'),
+    parser.add_argument("--garbage-phones", type=str,
                         required=True,
-                        help="File containing a list of words that will be "
+                        help="File containing a list of phones that will be "
                         "treated as garbage class")
     parser.add_argument("--max-phone-length", type=int, default=50,
                         help="""Maximum number of frames allowed for a
-                        word containing a single phone
-                        above which the arc is treated as garbage.""")
+                        phone above which the arc is treated as garbage.""")
 
-    parser.add_argument("arc_info", type=argparse.FileType('r'),
-                        help="Arc info file (output of lattice-arc-post")
-    parser.add_argument("targets_file", type=argparse.FileType('w'),
+    parser.add_argument("arc_info", type=str,
+                        help="Arc info file (output of lattice-arc-post). "
+                        "See the help for lattice-arc-post for information "
+                        "about the format of this input.")
+    parser.add_argument("targets_file", type=str,
                         help="File to write targets matrix archive in text "
                         "format")
     args = parser.parse_args()
@@ -49,80 +62,75 @@ def get_args():
 
 
 def run(args):
-    silence_words = {}
-    for line in args.silence_words:
-        silence_words[line.strip().split()[0]] = 1
-    args.silence_words.close()
+    silence_phones = {}
+    with common_lib.smart_open(args.silence_phones) as silence_phones_fh:
+        for line in silence_phones_fh:
+            silence_phones[line.strip().split()[0]] = 1
 
-    if len(silence_words) == 0:
-        raise RuntimeError("Could not find any words in {silence}"
-                           "".format(silence=args.silence_words.name))
+    if len(silence_phones) == 0:
+        raise RuntimeError("Could not find any phones in {silence}"
+                           "".format(silence=args.silence_phones))
 
-    garbage_words = {}
-    for line in args.garbage_words:
-        word = line.strip().split()[0]
-        if word in silence_words:
-            raise RuntimeError("Word '{word}' is in both {silence} "
-                               "and {garbage}".format(
-                                   word=word,
-                                   silence=args.silence_words.name,
-                                   garbage=args.garbage_words.name))
-        garbage_words[word] = 1
-    args.garbage_words.close()
+    garbage_phones = {}
+    with common_lib.smart_open(args.garbage_phones) as garbage_phones_fh:
+        for line in garbage_phones_fh:
+            word = line.strip().split()[0]
+            if word in silence_phones:
+                raise RuntimeError("Word '{word}' is in both {silence} "
+                                   "and {garbage}".format(
+                                       word=word,
+                                       silence=args.silence_phones,
+                                       garbage=args.garbage_phones))
+            garbage_phones[word] = 1
 
-    if len(garbage_words) == 0:
-        raise RuntimeError("Could not find any words in {garbage}"
-                           "".format(garbage=args.garbage_words.name))
+    if len(garbage_phones) == 0:
+        raise RuntimeError("Could not find any phones in {garbage}"
+                           "".format(garbage=args.garbage_phones))
 
     num_utts = 0
     num_err = 0
     targets = np.array([])
     prev_utt = ""
-    for line in args.arc_info:
-        try:
-            parts = line.strip().split()
-            utt = parts[0]
 
-            if utt != prev_utt:
-                if prev_utt != "":
-                    if targets.shape[0] > 0:
-                        num_utts += 1
-                        common_lib.write_matrix_ascii(args.targets_file, targets,
-                                                      key=prev_utt)
-                    else:
-                        num_err += 1
-                prev_utt = utt
-                targets = np.array([])
+    with common_lib.smart_open(args.arc_info) as arc_info_reader, \
+            common_lib.smart_open(args.targets_file, 'w') as targets_writer:
+        for line in arc_info_reader:
+            try:
+                parts = line.strip().split()
+                utt = parts[0]
 
-            start_frame = int(parts[1])
-            num_frames = int(parts[2])
-            post = float(parts[3])
-            word = parts[4]
+                if utt != prev_utt:
+                    if prev_utt != "":
+                        if targets.shape[0] > 0:
+                            num_utts += 1
+                            common_lib.write_matrix_ascii(
+                                targets_writer, targets, key=prev_utt)
+                        else:
+                            num_err += 1
+                    prev_utt = utt
+                    targets = np.array([])
 
-            num_phones = 0
-            if len(parts) > 5:
-                if "," in parts[5]:
-                    num_phones = len(parts) - 6
+                start_frame = int(parts[1])
+                num_frames = int(parts[2])
+                post = float(parts[3])
+                phone = parts[4]
+
+                if start_frame + num_frames > targets.shape[0]:
+                    targets.resize(start_frame + num_frames, 3)
+
+                if phone in silence_phones:
+                    targets[start_frame:(start_frame + num_frames), 0] += post
+                elif num_frames > args.max_phone_length:
+                    targets[start_frame:(start_frame + num_frames), 2] += post
+                elif phone in garbage_phones:
+                    targets[start_frame:(start_frame + num_frames), 2] += post
                 else:
-                    num_phones = len(parts) - 5
-
-            if start_frame + num_frames > targets.shape[0]:
-                targets.resize(start_frame + num_frames, 3)
-
-            if word in silence_words:
-                targets[start_frame:(start_frame + num_frames), 0] += post
-            elif word in garbage_words:
-                targets[start_frame:(start_frame + num_frames), 2] += post
-            else:
-                if num_phones == 1:
-                    if num_frames > args.max_phone_length:
-                        targets[start_frame:(start_frame + num_frames), 2] += post
-                targets[start_frame:(start_frame + num_frames), 1] += post
-        except Exception:
-            logger.error("Failed to process line {line} in {f}"
-                         "".format(line=line.strip(), f=args.arc_info.name))
-            logger.error("len(targets) = {l}".format(l=len(targets)))
-            raise
+                    targets[start_frame:(start_frame + num_frames), 1] += post
+            except Exception:
+                logger.error("Failed to process line {line} in {f}"
+                             "".format(line=line.strip(), f=args.arc_info.name))
+                logger.error("len(targets) = {l}".format(l=len(targets)))
+                raise
 
     if prev_utt != "":
         if len(targets) > 0:
@@ -146,13 +154,7 @@ def main():
     try:
         run(args)
     except Exception:
-        logger.error("Script failed; traceback = ", exc_info=True)
-        raise SystemExit(1)
-    finally:
-        for f in [args.arc_info, args.targets_file,
-                  args.silence_words, args.garbage_words]:
-            if f is not None:
-                f.close()
+        raise
 
 
 if __name__ == "__main__":
