@@ -99,6 +99,7 @@ int main(int argc, char *argv[]) {
       am_nnet.Read(ki.Stream(), binary);
       SetBatchnormTestMode(true, &(am_nnet.GetNnet()));
       SetDropoutTestMode(true, &(am_nnet.GetNnet()));
+      CollapseModel(CollapseModelConfig(), &(am_nnet.GetNnet()));
     }
 
     bool determinize = config.determinize_lattice;

@@ -39,6 +39,7 @@ if [ -d ./mmseg-1.3.0 ] ; then
   echo  >&2 "$0: Warning: old installation of mmseg found. You should manually"
   echo  >&2 "  delete the directory tools/mmseg and "
   echo  >&2 "  edit the file tools/env.sh and remove manually all references to it"
+  exit 1
 fi
 
 if [ ! -d ./mmseg-1.3.0 ] ; then
@@ -46,22 +47,39 @@ if [ ! -d ./mmseg-1.3.0 ] ; then
   tar xf mmseg-1.3.0.tar.gz
 fi
 
-pyver=`python --version 2>&1 | sed -e 's:.*\([2-3]\.[0-9]\+\).*:\1:g'`
-export PYTHONPATH=$PYTHONPATH:`pwd`/mmseg-1.3.0/lib/python${pyver}/site-packages
+(
 cd mmseg-1.3.0
-mkdir -p lib/python${pyver}/site-packages
+pyver=`python --version 2>&1 | sed -e 's:.*\([2-3]\.[0-9]\+\).*:\1:g'`
+export PYTHONPATH=$PYTHONPATH:$PWD/lib/python${pyver}/site-packages/:$PWD/lib64/python${pyver}/site-packages/
+# we have to create those dir, as the install target does not create it
+mkdir -p $PWD/lib/python${pyver}/site-packages/
+mkdir -p $PWD/lib64/python${pyver}/site-packages/
 python setup.py build
 python setup.py install --prefix `pwd`
-cd ../
+)
 
+## we first find the mmseg.py file (the module name which will be imported,
+## so that should be pretty reliable) and then we work out the location of
+## the site-packages directory (typically it would be one level up from
+## the location of the mmseg.py file but using find seems more reliable
+mmseg_file_lib=$(find ./mmseg-1.3.0/lib/ -type f -name mmseg.py | head -n1)
+mmseg_file_lib64=$(find ./mmseg-1.3.0/lib64/ -type f -name mmseg.py | head -n1)
+if [ ! -z ${mmseg_file_lib+x} ]; then
+  lib_dir=./lib/
+elif [ ! -z ${mmseg_file_lib64+x} ]; then
+  lib_dir=./lib64/
+else
+  echo >&2 "$0: ERROR: Didn't find ./mmseg-1.3.0/lib/ or ./mmseg-1.3.0/lib64/"
+  echo >&2 "  Perhaps your python or system installs python modules into"
+  echo >&2 "  a different dir or some other unknown issues arised. Review the output"
+  echo >&2 "  of the script and try to figure out what went wrong."
+  exit 1
+fi
+
+site_packages_dir=$(cd ./mmseg-1.3.0; find $lib_dir -name "site-packages" -type d | head -n1)
 (
-  set +u
-  pyver=`python --version 2>&1 | sed -e 's:.*\([2-3]\.[0-9]\+\).*:\1:g'`
-  wd=`pwd`
-
-  [ -f ./env.sh ] && . ./env.sh
-
-  echo "export PYTHONPATH=\$PYTHONPATH:$wd/mmseg-1.3.0/lib/python${pyver}/site-packages"
+  echo "export MMSEG=\"$PWD/mmseg-1.3.0\""
+  echo "export PYTHONPATH=\"\${PYTHONPATH:-}:\$MMSEG/${site_packages_dir}\""
 ) >> env.sh
 
 echo >&2 "Installation of mmseg finished successfully"

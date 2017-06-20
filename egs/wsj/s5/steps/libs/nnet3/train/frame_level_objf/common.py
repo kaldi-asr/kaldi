@@ -31,7 +31,8 @@ def train_new_models(dir, iter, srand, num_jobs,
                      image_augmentation_opts,
                      run_opts, frames_per_eg=-1,
                      min_deriv_time=None, max_deriv_time_relative=None,
-                     use_multitask_egs=False):
+                     use_multitask_egs=False,
+                     backstitch_training_scale=0.0, backstitch_training_interval=1):
     """ Called from train_one_iteration(), this model does one iteration of
     training with 'num_jobs' jobs, and writes files like
     exp/tdnn_a/24.{1,2,3,..<num_jobs>}.raw
@@ -130,17 +131,22 @@ def train_new_models(dir, iter, srand, num_jobs,
                      {verbose_opt} --print-interval=10 \
                     --momentum={momentum} \
                     --max-param-change={max_param_change} \
+                    --backstitch-training-scale={backstitch_training_scale} \
+                    --backstitch-training-interval={backstitch_training_interval} \
+                    --srand={srand} \
                     {deriv_time_opts} "{raw_model}" "{egs_rspecifier}" \
                     {dir}/{next_iter}.{job}.raw""".format(
                 command=run_opts.command,
                 train_queue_opt=run_opts.train_queue_opt,
                 dir=dir, iter=iter,
-                next_iter=iter + 1,
+                next_iter=iter + 1, srand=iter + srand,
                 job=job,
                 parallel_train_opts=run_opts.parallel_train_opts,
                 cache_io_opts=cache_io_opts,
                 verbose_opt=verbose_opt,
                 momentum=momentum, max_param_change=max_param_change,
+                backstitch_training_scale=backstitch_training_scale,
+                backstitch_training_interval=backstitch_training_interval,
                 deriv_time_opts=" ".join(deriv_time_opts),
                 raw_model=raw_model_string,
                 egs_rspecifier=egs_rspecifier),
@@ -161,7 +167,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         min_deriv_time=None, max_deriv_time_relative=None,
                         shrinkage_value=1.0, dropout_edit_string="",
                         get_raw_nnet_from_am=True,
-                        use_multitask_egs=False):
+                        use_multitask_egs=False,
+                        backstitch_training_scale=0.0, backstitch_training_interval=1):
     """ Called from steps/nnet3/train_*.py scripts for one iteration of neural
     network training
 
@@ -264,7 +271,9 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      min_deriv_time=min_deriv_time,
                      max_deriv_time_relative=max_deriv_time_relative,
                      image_augmentation_opts=image_augmentation_opts,
-                     use_multitask_egs=use_multitask_egs)
+                     use_multitask_egs=use_multitask_egs,
+                     backstitch_training_scale=backstitch_training_scale,
+                     backstitch_training_interval=backstitch_training_interval)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
          num_jobs, '{0}/log/train.{1}.%.log'.format(dir, iter))

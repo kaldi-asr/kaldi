@@ -413,6 +413,8 @@ def train(args, run_opts):
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
+                backstitch_training_scale=args.backstitch_training_scale,
+                backstitch_training_interval=args.backstitch_training_interval,
                 compute_per_dim_accuracy=args.compute_per_dim_accuracy)
 
             if args.cleanup:

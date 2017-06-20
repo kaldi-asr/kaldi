@@ -29,7 +29,8 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
     config_(config),
     nnet_(nnet),
     compiler_(*nnet, config_.optimize_config, config_.compiler_config),
-    num_minibatches_processed_(0) {
+    num_minibatches_processed_(0),
+    srand_seed_(RandInt(0, 100000)) {
   if (config.zero_component_stats)
     ZeroComponentStats(nnet);
   KALDI_ASSERT(config.momentum >= 0.0 &&
@@ -62,20 +63,92 @@ void NnetTrainer::Train(const NnetExample &eg) {
                         &request);
   const NnetComputation *computation = compiler_.Compile(request);
 
-  NnetComputer computer(config_.compute_config, *computation,
+  if (config_.backstitch_training_scale > 0.0 &&
+      num_minibatches_processed_ % config_.backstitch_training_interval ==
+      srand_seed_ % config_.backstitch_training_interval) {
+    // backstitch training is incompatible with momentum > 0
+    KALDI_ASSERT(config_.momentum == 0.0);
+    FreezeNaturalGradient(true, delta_nnet_);
+    bool is_backstitch_step1 = true;
+    srand(srand_seed_ + num_minibatches_processed_);
+    ResetGenerators(nnet_);
+    TrainInternalBackstitch(eg, *computation, is_backstitch_step1);
+    FreezeNaturalGradient(false, delta_nnet_); // un-freeze natural gradient
+    is_backstitch_step1 = false;
+    srand(srand_seed_ + num_minibatches_processed_);
+    ResetGenerators(nnet_);
+    TrainInternalBackstitch(eg, *computation, is_backstitch_step1);
+  } else { // conventional training
+    TrainInternal(eg, *computation);
+  }
+
+  num_minibatches_processed_++;
+}
+
+void NnetTrainer::TrainInternal(const NnetExample &eg,
+                                const NnetComputation &computation) {
+  NnetComputer computer(config_.compute_config, computation,
                         *nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
   computer.Run();
 
-  this->ProcessOutputs(eg, &computer);
+  this->ProcessOutputs(false, eg, &computer);
   computer.Run();
 
-  UpdateParamsWithMaxChange();
+  // Updates the parameters of nnet
+  bool success = UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
+      1.0, 1.0 - config_.momentum, nnet_,
+      &num_max_change_per_component_applied_, &num_max_change_global_applied_);
+  // Scales deta_nnet
+  if (success)
+    ScaleNnet(config_.momentum, delta_nnet_);
+  else
+    ScaleNnet(0.0, delta_nnet_);
 }
 
-void NnetTrainer::ProcessOutputs(const NnetExample &eg,
+void NnetTrainer::TrainInternalBackstitch(const NnetExample &eg,
+                                          const NnetComputation &computation,
+                                          bool is_backstitch_step1) {
+  NnetComputer computer(config_.compute_config, computation,
+                        *nnet_, delta_nnet_);
+  // give the inputs to the computer object.
+  computer.AcceptInputs(*nnet_, eg.io);
+  computer.Run();
+
+  bool is_backstitch_step2 = !is_backstitch_step1;
+  this->ProcessOutputs(is_backstitch_step2, eg, &computer);
+  computer.Run();
+
+  BaseFloat max_change_scale, scale_adding;
+  if (is_backstitch_step1) {
+    // max-change is scaled by backstitch_training_scale;
+    // delta_nnet is scaled by -backstitch_training_scale when added to nnet;
+    max_change_scale = config_.backstitch_training_scale;
+    scale_adding = -config_.backstitch_training_scale;
+  } else {
+    // max-change is scaled by 1 +  backstitch_training_scale;
+    // delta_nnet is scaled by 1 + backstitch_training_scale when added to nnet;
+    max_change_scale = 1.0 + config_.backstitch_training_scale;
+    scale_adding = 1.0 + config_.backstitch_training_scale;
+  }
+
+  // Updates the parameters of nnet
+  UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
+      max_change_scale, scale_adding, nnet_,
+      &num_max_change_per_component_applied_, &num_max_change_global_applied_);
+
+  ScaleNnet(0.0, delta_nnet_);
+}
+
+void NnetTrainer::ProcessOutputs(bool is_backstitch_step2,
+                                 const NnetExample &eg,
                                  NnetComputer *computer) {
+  // normally the eg will have just one output named 'output', but
+  // we don't assume this.
+  // In backstitch training, the output-name with the "_backstitch" suffix is
+  // the one computed after the first, backward step of backstitch.
+  const std::string suffix = (is_backstitch_step2 ? "_backstitch" : "");
   std::vector<NnetIo>::const_iterator iter = eg.io.begin(),
       end = eg.io.end();
   for (; iter != end; ++iter) {
@@ -89,95 +162,12 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
       ComputeObjectiveFunction(io.features, obj_type, io.name,
                                supply_deriv, computer,
                                &tot_weight, &tot_objf);
-      objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
+      objf_info_[io.name + suffix].UpdateStats(io.name + suffix,
+                                      config_.print_interval,
                                       num_minibatches_processed_,
                                       tot_weight, tot_objf);
     }
   }
-  num_minibatches_processed_++;
-}
-
-void NnetTrainer::UpdateParamsWithMaxChange() {
-  KALDI_ASSERT(delta_nnet_ != NULL);
-  // computes scaling factors for per-component max-change
-  const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
-  Vector<BaseFloat> scale_factors = Vector<BaseFloat>(num_updatable);
-  BaseFloat param_delta_squared = 0.0;
-  int32 num_max_change_per_component_applied_per_minibatch = 0;
-  BaseFloat min_scale = 1.0;
-  std::string component_name_with_min_scale;
-  BaseFloat max_change_with_min_scale;
-  int32 i = 0;
-  for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
-    Component *comp = delta_nnet_->GetComponent(c);
-    if (comp->Properties() & kUpdatableComponent) {
-      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
-      if (uc == NULL)
-        KALDI_ERR << "Updatable component does not inherit from class "
-                  << "UpdatableComponent; change this code.";
-      BaseFloat max_param_change_per_comp = uc->MaxChange();
-      KALDI_ASSERT(max_param_change_per_comp >= 0.0);
-      BaseFloat dot_prod = uc->DotProduct(*uc);
-      if (max_param_change_per_comp != 0.0 &&
-          std::sqrt(dot_prod) > max_param_change_per_comp) {
-        scale_factors(i) = max_param_change_per_comp / std::sqrt(dot_prod);
-        num_max_change_per_component_applied_[i]++;
-        num_max_change_per_component_applied_per_minibatch++;
-        KALDI_VLOG(2) << "Parameters in " << delta_nnet_->GetComponentName(c)
-                      << " change too big: " << std::sqrt(dot_prod) << " > "
-                      << "max-change=" << max_param_change_per_comp
-                      << ", scaling by " << scale_factors(i);
-      } else {
-        scale_factors(i) = 1.0;
-      }
-      if  (i == 0 || scale_factors(i) < min_scale) {
-        min_scale =  scale_factors(i);
-        component_name_with_min_scale = delta_nnet_->GetComponentName(c);
-        max_change_with_min_scale = max_param_change_per_comp;
-      }
-      param_delta_squared += std::pow(scale_factors(i),
-                                      static_cast<BaseFloat>(2.0)) * dot_prod;
-      i++;
-    }
-  }
-  KALDI_ASSERT(i == scale_factors.Dim());
-  BaseFloat param_delta = std::sqrt(param_delta_squared);
-  // computes the scale for global max-change (with momentum)
-  BaseFloat scale = (1.0 - config_.momentum);
-  if (config_.max_param_change != 0.0) {
-    param_delta *= scale;
-    if (param_delta > config_.max_param_change) {
-      if (param_delta - param_delta != 0.0) {
-        KALDI_WARN << "Infinite parameter change, will not apply.";
-        ScaleNnet(0.0, delta_nnet_);
-      } else {
-        scale *= config_.max_param_change / param_delta;
-        num_max_change_global_applied_++;
-      }
-    }
-  }
-  if ((config_.max_param_change != 0.0 &&
-      param_delta > config_.max_param_change &&
-      param_delta - param_delta == 0.0) || min_scale < 1.0) {
-    std::ostringstream ostr;
-    if (min_scale < 1.0)
-      ostr << "Per-component max-change active on "
-           << num_max_change_per_component_applied_per_minibatch
-           << " / " << num_updatable << " updatable Components; "
-           << "smallest factor=" << min_scale << " on "
-           << component_name_with_min_scale
-           << " with max-change=" << max_change_with_min_scale << '.';
-    if (param_delta > config_.max_param_change)
-      ostr << "Global max-change factor was "
-           << config_.max_param_change / param_delta
-           << " with max-change=" << config_.max_param_change << '.';
-    KALDI_LOG << ostr.str();
-  }
-  // applies both of the max-change scalings all at once, component by component
-  // and updates parameters
-  scale_factors.Scale(scale);
-  AddNnetComponents(*delta_nnet_, scale_factors, scale, nnet_);
-  ScaleNnet(config_.momentum, delta_nnet_);
 }
 
 bool NnetTrainer::PrintTotalStats() const {
@@ -208,14 +198,20 @@ void NnetTrainer::PrintMaxChangeStats() const {
         KALDI_LOG << "For " << delta_nnet_->GetComponentName(c)
                   << ", per-component max-change was enforced "
                   << (100.0 * num_max_change_per_component_applied_[i]) /
-                     num_minibatches_processed_ << " \% of the time.";
+                     (num_minibatches_processed_ *
+                     (config_.backstitch_training_scale == 0.0 ? 1.0 :
+                     1.0 + 1.0 / config_.backstitch_training_interval))
+                  << " \% of the time.";
       i++;
     }
   }
   if (num_max_change_global_applied_ > 0)
     KALDI_LOG << "The global max-change was enforced "
               << (100.0 * num_max_change_global_applied_) /
-                 num_minibatches_processed_ << " \% of the time.";
+                 (num_minibatches_processed_ *
+                 (config_.backstitch_training_scale == 0.0 ? 1.0 :
+                 1.0 + 1.0 / config_.backstitch_training_interval))
+              << " \% of the time.";
 }
 
 void ObjectiveFunctionInfo::UpdateStats(
