@@ -17,6 +17,9 @@
 
 [ -f ./path.sh ] && . ./path.sh
 
+uconv=`command -v uconv 2>/dev/null` \
+  || { echo  >&2 "uconv not found on PATH. You will have to install ICU4C"; exit 1; }
+
 sph2pipe=`command -v sph2pipe 2>/dev/null` \
   || { echo  >&2 "sph2pipe not found on PATH. Did you run make in the $KALDI_ROOT/tools directory?"; exit 1; }
 
