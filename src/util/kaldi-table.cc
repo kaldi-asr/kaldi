@@ -73,8 +73,6 @@ bool ReadScriptFile(std::istream &is,
                           <<":\"" << line << '"';
       return false;
     }
-    // Not using push_back because who knows how many temp. variables
-    // used there.
     script_out->resize(script_out->size()+1);
     script_out->back().first = key;
     script_out->back().second = rest;

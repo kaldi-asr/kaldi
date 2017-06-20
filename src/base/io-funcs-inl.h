@@ -127,7 +127,7 @@ inline void WriteIntegerPairVector(std::ostream &os, bool binary,
 }
 
 // Template that covers integers.
-template<class T> 
+template<class T>
 inline void ReadIntegerPairVector(std::istream &is, bool binary,
                                   std::vector<std::pair<T, T> > *v) {
   KALDI_ASSERT_IS_INTEGER_TYPE(T);
@@ -163,7 +163,7 @@ inline void ReadIntegerPairVector(std::istream &is, bool binary,
         int16 next_t1, next_t2;
         is >> next_t1;
         if (is.fail()) goto bad;
-        if (is.peek() != static_cast<int>(',')) 
+        if (is.peek() != static_cast<int>(','))
           KALDI_ERR << "ReadIntegerPairVector: expected to see ',', saw "
                     << is.peek() << ", at file position " << is.tellg();
         is.get();  // consume the ','.
@@ -175,14 +175,14 @@ inline void ReadIntegerPairVector(std::istream &is, bool binary,
         T next_t1, next_t2;
         is >> next_t1;
         if (is.fail()) goto bad;
-        if (is.peek() != static_cast<int>(',')) 
+        if (is.peek() != static_cast<int>(','))
           KALDI_ERR << "ReadIntegerPairVector: expected to see ',', saw "
                     << is.peek() << ", at file position " << is.tellg();
         is.get();  // consume the ','.
         is >> next_t2 >> std::ws;
         if (is.fail()) goto bad;
         else
-            tmp_v.push_back(std::make_pair<T, T>((T)next_t1, (T)next_t2));
+            tmp_v.push_back(std::pair<T, T>(next_t1, next_t2));
       }
     }
     is.get();  // get the final ']'.

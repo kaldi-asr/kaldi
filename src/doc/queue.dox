@@ -438,21 +438,23 @@ change <tt>root</tt> to an email address where you want to receive
 notifications if things go wrong.  Be advised that due to anti-spam measures,
 sending emails from the cloud is painful from EC2 and close to impossible
 from Google's cloud offering, so it may be best just to leave this field the
-way it is and make do without email notifications.  You could also edit the file so that it says
+way it is and make do without email notifications.
+You may also want to run <tt>qconf -msconf</tt> and edit it so that
+the schedule_interval is:
 \verbatim
-                      flush_time=00:00:10
+schedule_interval                 0:0:5
 \endverbatim (the default is <tt>00:00:15</tt>), which will
 give a slightly faster turnaround time for submitting jobs.
 
 GridEngine has the concept of "resources" which can be requested or specified by
 your jobs, and these can be viewed using <tt>qconf -sc</tt>.  Modify them
 using <tt>qconf -mc</tt>.  Modify the <tt>mem_free</tt> line to change the default
-memory requirement from 0 to 1G, i.e.:
+memory requirement from 0 to 1G, and to make it consumable, i.e.:
 \verbatim
 #name               shortcut    type        relop requestable consumable default  urgency
 #------------------------------------------------------------------------------------------
 <snip>
-mem_free            mf         MEMORY      <=    YES         NO         1G        0
+mem_free            mf         MEMORY      <=    YES         YES         1G        0
 \endverbatim
  and also add the following two new lines; it doesn't matter where in the file you add them.
 \verbatim
@@ -502,6 +504,7 @@ slots              9999
 pe_list               make smp
 \endverbatim
  This enables the <tt>smp</tt> parallelization method in the queue <tt>all.q</tt>.
+
 
  \subsection parallelization_gridengine_configuring_advanced Configuring GridEngine (advanced)
 
@@ -872,4 +875,3 @@ their home directories.  This is the most frequent cause of grid-wide problems.
 */
 
 }
-

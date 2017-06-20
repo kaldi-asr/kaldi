@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Karel Vesely;  Petr Motlicek;  Microsoft Corporation
 //                2014  IMSL, PKU-HKUST (author: Wei Shi)
+//                2016  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -28,139 +29,10 @@
 #include "matrix/matrix-lib.h"
 #include "util/common-utils.h"
 #include "base/kaldi-error.h"
-#include "feat/mel-computations.h"
 
 namespace kaldi {
 /// @addtogroup  feat FeatureExtraction
 /// @{
-
-
-struct MelBanksOptions {
-  int32 num_bins;  // e.g. 25; number of triangular bins
-  BaseFloat low_freq;  // e.g. 20; lower frequency cutoff
-  BaseFloat high_freq;  // an upper frequency cutoff; 0 -> no cutoff, negative
-  // ->added to the Nyquist frequency to get the cutoff.
-  BaseFloat vtln_low;  // vtln lower cutoff of warping function.
-  BaseFloat vtln_high;  // vtln upper cutoff of warping function: if negative, added
-                        // to the Nyquist frequency to get the cutoff.
-  bool debug_mel;
-  // htk_mode is a "hidden" config, it does not show up on command line.
-  // Enables more exact compatibibility with HTK, for testing purposes.  Affects
-  // mel-energy flooring and reproduces a bug in HTK.
-  bool htk_mode;
-  explicit MelBanksOptions(int num_bins = 25)
-      : num_bins(num_bins), low_freq(20), high_freq(0), vtln_low(100),
-        vtln_high(-500), debug_mel(false), htk_mode(false) {}
-
-  void Register(OptionsItf *opts) {
-    opts->Register("num-mel-bins", &num_bins,
-                   "Number of triangular mel-frequency bins");
-    opts->Register("low-freq", &low_freq,
-                   "Low cutoff frequency for mel bins");
-    opts->Register("high-freq", &high_freq,
-                   "High cutoff frequency for mel bins (if < 0, offset from Nyquist)");
-    opts->Register("vtln-low", &vtln_low,
-                   "Low inflection point in piecewise linear VTLN warping function");
-    opts->Register("vtln-high", &vtln_high,
-                   "High inflection point in piecewise linear VTLN warping function"
-                   " (if negative, offset from high-mel-freq");
-    opts->Register("debug-mel", &debug_mel,
-                   "Print out debugging information for mel bin computation");
-  }
-};
-
-
-struct FrameExtractionOptions {
-  BaseFloat samp_freq;
-  BaseFloat frame_shift_ms;  // in milliseconds.
-  BaseFloat frame_length_ms;  // in milliseconds.
-  BaseFloat dither;  // Amount of dithering, 0.0 means no dither.
-  BaseFloat preemph_coeff;  // Preemphasis coefficient.
-  bool remove_dc_offset;  // Subtract mean of wave before FFT.
-  std::string window_type;  // e.g. Hamming window
-  bool round_to_power_of_two;
-  bool snip_edges;
-  // Maybe "hamming", "rectangular", "povey", "hanning"
-  // "povey" is a window I made to be similar to Hamming but to go to zero at the
-  // edges, it's pow((0.5 - 0.5*cos(n/N*2*pi)), 0.85)
-  // I just don't think the Hamming window makes sense as a windowing function.
-  FrameExtractionOptions():
-      samp_freq(16000),
-      frame_shift_ms(10.0),
-      frame_length_ms(25.0),
-      dither(1.0),
-      preemph_coeff(0.97),
-      remove_dc_offset(true),
-      window_type("povey"),
-      round_to_power_of_two(true),
-      snip_edges(true){ }
-
-  void Register(OptionsItf *opts) {
-    opts->Register("sample-frequency", &samp_freq,
-                   "Waveform data sample frequency (must match the waveform file, "
-                   "if specified there)");
-    opts->Register("frame-length", &frame_length_ms, "Frame length in milliseconds");
-    opts->Register("frame-shift", &frame_shift_ms, "Frame shift in milliseconds");
-    opts->Register("preemphasis-coefficient", &preemph_coeff,
-                   "Coefficient for use in signal preemphasis");
-    opts->Register("remove-dc-offset", &remove_dc_offset,
-                   "Subtract mean from waveform on each frame");
-    opts->Register("dither", &dither, "Dithering constant (0.0 means no dither)");
-    opts->Register("window-type", &window_type, "Type of window "
-                   "(\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\")");
-    opts->Register("round-to-power-of-two", &round_to_power_of_two,
-                   "If true, round window size to power of two.");
-    opts->Register("snip-edges", &snip_edges,
-                   "If true, end effects will be handled by outputting only frames that "
-                   "completely fit in the file, and the number of frames depends on the "
-                   "frame-length.  If false, the number of frames depends only on the "
-                   "frame-shift, and we reflect the data at the ends.");
-  }
-  int32 WindowShift() const {
-    return static_cast<int32>(samp_freq * 0.001 * frame_shift_ms);
-  }
-  int32 WindowSize() const {
-    return static_cast<int32>(samp_freq * 0.001 * frame_length_ms);
-  }
-  int32 PaddedWindowSize() const {
-    return (round_to_power_of_two ? RoundUpToNearestPowerOfTwo(WindowSize()) :
-                                    WindowSize());
-  }
-};
-
-
-struct FeatureWindowFunction {
-  FeatureWindowFunction() {}
-  explicit FeatureWindowFunction(const FrameExtractionOptions &opts);
-  Vector<BaseFloat> window;
-};
-
-int32 NumFrames(int32 wave_length,
-                const FrameExtractionOptions &opts);
-
-void Dither(VectorBase<BaseFloat> *waveform, BaseFloat dither_value);
-
-void Preemphasize(VectorBase<BaseFloat> *waveform, BaseFloat preemph_coeff);
-
-
-// ExtractWindow extracts a windowed frame of waveform with a power-of-two,
-// padded size. If log_energy_pre_window != NULL, outputs the log of the
-// sum-of-squared samples before preemphasis and windowing
-void ExtractWindow(const VectorBase<BaseFloat> &wave,
-                   int32 f,  // with 0 <= f < NumFrames(wave.Dim(), opts)
-                   const FrameExtractionOptions &opts,
-                   const FeatureWindowFunction &window_function,
-                   Vector<BaseFloat> *window,
-                   BaseFloat *log_energy_pre_window = NULL);
-
-// ExtractWaveformRemainder is useful if the waveform is coming in segments.
-// It extracts the bit of the waveform at the end of this block that you
-// would have to append the next bit of waveform to, if you wanted to have
-// the same effect as everything being in one big block.
-void ExtractWaveformRemainder(const VectorBase<BaseFloat> &wave,
-                              const FrameExtractionOptions &opts,
-                              Vector<BaseFloat> *wave_remainder);
-
 
 
 // ComputePowerSpectrum converts a complex FFT (as produced by the FFT
@@ -171,22 +43,6 @@ void ExtractWaveformRemainder(const VectorBase<BaseFloat> &wave,
 // energies of the fft bins from zero to the Nyquist frequency.  Contents of the
 // remaining (n/2) - 1 elements are undefined at output.
 void ComputePowerSpectrum(VectorBase<BaseFloat> *complex_fft);
-
-
-
-inline void MaxNormalizeEnergy(Matrix<BaseFloat> *feats) {
-  // Just subtract the largest energy value... assume energy is the first
-  // column of the mfcc features.  Don't do the flooring of energy (dithering
-  // should prevent exact zeros).
-  // We didn't put this in the main MFCC computation as we wanted to make sure
-  // it is stateless (so we can do it bit by bit for large waveforms).
-  // not compatible with the order_as_htk_ option in MfccOptions.
-  SubMatrix<BaseFloat> energy(*feats, 0, feats->NumRows(), 0, 1);
-  energy.Add(-energy.Max());
-}
-
-
-
 
 
 struct DeltaFeaturesOptions {
@@ -293,18 +149,9 @@ void SpliceFrames(const MatrixBase<BaseFloat> &input_features,
 void ReverseFrames(const MatrixBase<BaseFloat> &input_features,
                   Matrix<BaseFloat> *output_features);
 
-class MelBanks;
-
-void GetEqualLoudnessVector(const MelBanks &mel_banks,
-                            Vector<BaseFloat> *ans);
-
 
 void InitIdftBases(int32 n_bases, int32 dimension, Matrix<BaseFloat> *mat_out);
 
-
-// Compute LP coefficients from autocorrelation coefficients.
-BaseFloat ComputeLpc(const VectorBase<BaseFloat> &autocorr_in,
-                     Vector<BaseFloat> *lpc_out);
 
 // This is used for speaker-id.  Also see OnlineCmnOptions in ../online2/, which
 // is online CMN with no latency, for online speech recognition.

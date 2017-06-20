@@ -49,7 +49,7 @@ fi
 tmpdir=$(mktemp -d /tmp/kaldi.XXXX);
 trap 'rm -rf "$tmpdir"' EXIT
 
-# Get the list of speakers. The list of speakers in the 24-speaker core test 
+# Get the list of speakers. The list of speakers in the 24-speaker core test
 # set and the 50-speaker development set must be supplied to the script. All
 # speakers in the 'train' directory are used for training.
 if $uppercased; then
@@ -65,7 +65,7 @@ fi
 cd $dir
 for x in train dev test; do
   # First, find the list of audio files (use only si & sx utterances).
-  # Note: train & test sets are under different directories, but doing find on 
+  # Note: train & test sets are under different directories, but doing find on
   # both and grepping for the speakers will work correctly.
   find $*/{$train_dir,$test_dir} -not \( -iname 'SA*' \) -iname '*.WAV' \
     | grep -f $tmpdir/${x}_spk > ${x}_sph.flist
@@ -78,7 +78,7 @@ for x in train dev test; do
   cat ${x}_sph.scp | awk '{print $1}' > ${x}.uttids
 
   # Now, Convert the transcripts into our format (no normalization yet)
-  # Get the transcripts: each line of the output contains an utterance 
+  # Get the transcripts: each line of the output contains an utterance
   # ID followed by the transcript.
   find $*/{$train_dir,$test_dir} -not \( -iname 'SA*' \) -iname '*.PHN' \
     | grep -f $tmpdir/${x}_spk > $tmpdir/${x}_phn.flist
@@ -91,28 +91,28 @@ for x in train dev test; do
   paste $tmpdir/${x}_phn.uttids $tmpdir/${x}_phn.trans \
     | sort -k1,1 > ${x}.trans
 
-  # Do normalization steps. 
+  # Do normalization steps.
   cat ${x}.trans | $local/timit_norm_trans.pl -i - -m $conf/phones.60-48-39.map -to 48 | sort > $x.text || exit 1;
 
   # Create wav.scp
   awk '{printf("%s '$sph2pipe' -f wav %s |\n", $1, $2);}' < ${x}_sph.scp > ${x}_wav.scp
 
   # Make the utt2spk and spk2utt files.
-  cut -f1 -d'_'  $x.uttids | paste -d' ' $x.uttids - > $x.utt2spk 
+  cut -f1 -d'_'  $x.uttids | paste -d' ' $x.uttids - > $x.utt2spk
   cat $x.utt2spk | $utils/utt2spk_to_spk2utt.pl > $x.spk2utt || exit 1;
 
   # Prepare gender mapping
   cat $x.spk2utt | awk '{print $1}' | perl -ane 'chop; m:^.:; $g = lc($&); print "$_ $g\n";' > $x.spk2gender
 
   # Prepare STM file for sclite:
-  wav-to-duration scp:${x}_wav.scp ark,t:${x}_dur.ark || exit 1
+  wav-to-duration --read-entire-file=true scp:${x}_wav.scp ark,t:${x}_dur.ark || exit 1
   awk -v dur=${x}_dur.ark \
-  'BEGIN{ 
-     while(getline < dur) { durH[$1]=$2; } 
+  'BEGIN{
+     while(getline < dur) { durH[$1]=$2; }
      print ";; LABEL \"O\" \"Overall\" \"Overall\"";
      print ";; LABEL \"F\" \"Female\" \"Female speakers\"";
-     print ";; LABEL \"M\" \"Male\" \"Male speakers\""; 
-   } 
+     print ";; LABEL \"M\" \"Male\" \"Male speakers\"";
+   }
    { wav=$1; spk=gensub(/_.*/,"",1,wav); $1=""; ref=$0;
      gender=(substr(spk,0,1) == "f" ? "F" : "M");
      printf("%s 1 %s 0.0 %f <O,%s> %s\n", wav, spk, durH[wav], gender, ref);

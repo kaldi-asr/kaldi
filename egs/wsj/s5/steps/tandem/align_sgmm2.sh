@@ -55,6 +55,9 @@ silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 sdata1=$data1/split$nj
 sdata2=$data2/split$nj
 [[ -d $sdata1 && $data1/feats.scp -ot $sdata1 ]] || split_data.sh $data1 $nj || exit 1;
@@ -145,7 +148,7 @@ else
     echo "$0: compiling training graphs"
     tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata1/JOB/text|";   
     $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log  \
-      compile-train-graphs $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
+      compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
         "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
   fi
 fi

@@ -89,7 +89,7 @@ if [ $stage -le 4 ]; then
   dir=exp/nnet5b_uc-part1
   feature_transform=$dir/final.feature_transform.part1
   nnet-concat $dir/final.feature_transform \
-    "nnet-copy --remove-last-layers=4 --binary=false $dir/final.nnet - |" \
+    "nnet-copy --remove-last-components=4 --binary=false $dir/final.nnet - |" \
     "utils/nnet/gen_splice.py --fea-dim=80 --splice=2 --splice-step=5 |" \
     $feature_transform || exit 1
   

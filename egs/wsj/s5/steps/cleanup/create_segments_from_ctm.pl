@@ -42,11 +42,11 @@ Allowed options:
                       (default = "<***>")
   --wer-cutoff      : Ignore segments with WER higher than the specified value.
                       -1 means no segment will be ignored. (default = -1)
-  --use-silence-midpoints : Set to 1 if you want to use silence midpoints 
+  --use-silence-midpoints : Set to 1 if you want to use silence midpoints
                       instead of min_sil_length for silence overhang.(default 0)
-  --force-correct-boundary-words : Set to zero if the segments will not be 
+  --force-correct-boundary-words : Set to zero if the segments will not be
                       required to have boundary words to be correct. Default 1
-  --aligned-ctm-filename : If set, the intermediate aligned ctm 
+  --aligned-ctm-filename : If set, the intermediate aligned ctm
                       is saved to this file
 EOU
 
@@ -56,7 +56,7 @@ my $min_sil_length = 0.5;
 my $separator = ";";
 my $special_symbol = "<***>";
 my $wer_cutoff = -1;
-my $use_silence_midpoints = 0; 
+my $use_silence_midpoints = 0;
 my $force_correct_boundary_words = 1;
 my $aligned_ctm_filename = "";
 GetOptions(
@@ -122,13 +122,13 @@ sub PrintSegment {
 
   # Works out the surrounding silence.
   my $index = $seg_start_index - 1;
-  while ($index >= 0 && $aligned_ctm->[$index]->[0] eq 
+  while ($index >= 0 && $aligned_ctm->[$index]->[0] eq
          "<eps>" && $aligned_ctm->[$index]->[3] == 0) {
     $index -= 1;
   }
-  my $left_of_segment_has_deletion = "false"; 
-  $left_of_segment_has_deletion = "true" 
-      if ($index > 0 && $aligned_ctm->[$index-1]->[0] ne "<eps>" 
+  my $left_of_segment_has_deletion = "false";
+  $left_of_segment_has_deletion = "true"
+      if ($index > 0 && $aligned_ctm->[$index-1]->[0] ne "<eps>"
           && $aligned_ctm->[$index-1]->[3] == 0);
 
   my $pad_start_sil = ($aligned_ctm->[$seg_start_index]->[1] -
@@ -141,11 +141,11 @@ sub PrintSegment {
   my $right_of_segment_has_deletion = "false";
   $index = $seg_end_index + 1;
   while ($index < scalar(@{$aligned_ctm}) &&
-         $aligned_ctm->[$index]->[0] eq "<eps>" && 
+         $aligned_ctm->[$index]->[0] eq "<eps>" &&
          $aligned_ctm->[$index]->[3] == 0) {
     $index += 1;
   }
-  $right_of_segment_has_deletion = "true" 
+  $right_of_segment_has_deletion = "true"
       if ($index < scalar(@{$aligned_ctm})-1 && $aligned_ctm->[$index+1]->[0] ne
           "<eps>" && $aligned_ctm->[$index - 1]->[3] > 0);
   my $pad_end_sil = ($aligned_ctm->[$index - 1]->[1] +
@@ -155,7 +155,7 @@ sub PrintSegment {
   if (($right_of_segment_has_deletion eq "true") || !$use_silence_midpoints) {
       if ($pad_end_sil > $min_sil_length / 2.0) {
           $pad_end_sil = $min_sil_length / 2.0;
-      } 
+      }
   }
 
   my $seg_start = $aligned_ctm->[$seg_start_index]->[1] - $pad_start_sil;
@@ -228,8 +228,8 @@ sub SplitLongSegment {
                            $aligned_ctm->[$seg_end_index]->[2] -
                            $aligned_ctm->[$seg_start_index]->[1];
   my $current_seg_index = $seg_start_index;
-  my $aligned_ctm_size = keys($aligned_ctm);
-  while ($current_seg_length > 1.5 * $max_seg_length && $current_seg_index < $aligned_ctm_size) {
+  my $aligned_ctm_size = scalar(@{$aligned_ctm});
+  while ($current_seg_length > 1.5 * $max_seg_length && $current_seg_index < $aligned_ctm_size-1) {
     my $split_point = GetSplitPoint($aligned_ctm, $current_seg_index,
                                     $seg_end_index, $max_seg_length);
     my $ans = PrintSegment($aligned_ctm, $wav_id, $min_sil_length,
@@ -240,6 +240,14 @@ sub SplitLongSegment {
     $current_seg_length = $aligned_ctm->[$seg_end_index]->[1] +
                           $aligned_ctm->[$seg_end_index]->[2] -
                           $aligned_ctm->[$current_seg_index]->[1];
+  }
+
+  if ($current_seg_index eq $aligned_ctm_size-1) {
+      my $ans = PrintSegment($aligned_ctm, $wav_id, $min_sil_length,
+                             $min_seg_length, $current_seg_index, $current_seg_index,
+                             $current_seg_count, $SO, $TO);
+      $current_seg_count += 1 if ($ans != -1);
+      return ($current_seg_count, $current_seg_index);
   }
 
   if ($current_seg_length > $max_seg_length) {
@@ -270,6 +278,7 @@ sub ProcessWav {
       $current_ctm, $current_align, $SO, $TO, $ACT) = @_;
 
   my $wav_id = $current_ctm->[0]->[0];
+  my $channel_id = $current_ctm->[0]->[1];
   defined($wav_id) || die "Error: empty wav section\n";
 
   # First, we have to align the ctm file to the Levenshtein alignment.
@@ -324,9 +333,9 @@ sub ProcessWav {
 
   # Save the aligned CTM if needed
   if(defined($ACT)){
-    for (my $i=0; $i<=$#aligned_ctm; $i++) {
-      print $ACT "$aligned_ctm[$i][0] $aligned_ctm[$i][1] ";
-      print $ACT "$aligned_ctm[$i][2] $aligned_ctm[$i][3]\n";
+    for (my $i = 0; $i <= $#aligned_ctm; $i++) {
+      print $ACT "$wav_id $channel_id $aligned_ctm[$i][1] $aligned_ctm[$i][2] ";
+      print $ACT "$aligned_ctm[$i][0] $aligned_ctm[$i][3]\n";
     }
   }
 
@@ -346,8 +355,8 @@ sub ProcessWav {
     # length, and if there are no alignment error around it. We also make sure
     # that segment contains actual words, instead of pure silence.
     if ($aligned_ctm[$x]->[0] eq "<eps>" &&
-        $aligned_ctm[$x]->[2] >= $min_sil_length 
-       && (($force_correct_boundary_words && $lcorrect eq "true" && 
+        $aligned_ctm[$x]->[2] >= $min_sil_length
+       && (($force_correct_boundary_words && $lcorrect eq "true" &&
             $rcorrect eq "true") || !$force_correct_boundary_words)) {
       if ($current_seg_length <= $max_seg_length &&
           $current_seg_length >= $min_seg_length) {
@@ -379,7 +388,7 @@ sub ProcessWav {
 # 011 A 3.39 0.23 SELL
 # 011 A 3.62 0.18 OFF
 # 011 A 3.83 0.45 ASSETS
-# 
+#
 # Output ctm:
 # 011 A 3.39 0.23 SELL
 # 011 A 3.62 0.18 OFF
@@ -392,7 +401,7 @@ sub InsertSilence {
 
     my $new_start = sprintf("%.2f",
                             $ctm_in->[$x - 1]->[2] + $ctm_in->[$x - 1]->[3]);
-    if ($new_start <= $ctm_in->[$x]->[2]) {
+    if ($new_start < $ctm_in->[$x]->[2]) {
       my $new_dur = sprintf("%.2f", $ctm_in->[$x]->[2] - $new_start);
       push(@{$ctm_out}, [$ctm_in->[$x - 1]->[0], $ctm_in->[$x - 1]->[1],
                          $new_start, $new_dur, "<eps>"]);
@@ -408,11 +417,21 @@ while (<AI>) {
   my @col = split;
   @col >= 2 || die "Error: bad line $_\n";
   my $wav = shift @col;
-  my @pairs = split(" $separator ", join(" ", @col));
-  for (my $x = 0; $x < @pairs; $x += 1) {
-    my @col1 = split(" ", $pairs[$x]);
-    @col1 == 2 || die "Error: bad pair $pairs[$x]\n";
-    $pairs[$x] = \@col1;
+  if ( (@col + 0) % 3 != 2) {
+    die "Bad line in align-text output (unexpected number of fields): $_";
+  }
+  my @pairs = ();
+
+  for (my $x = 0; $x * 3 + 2 < @col; $x++) {
+    my $first_word = $col[$x * 3];
+    my $second_word = $col[$x * 3 + 1];
+    if ($x * 3 + 2 < @col) {
+      if ($col[$x * 3 + 2] ne $separator) {
+        die "Bad line in align-text output (expected separator '$separator'): $_";
+      }
+    }
+    # the [ ] expression returns a reference to a new anonymous array.
+    push(@pairs, [ $first_word, $second_word ]);
   }
   ! defined($aligned{$wav}) || die "Error: $wav has already been processed\n";
   $aligned{$wav} = \@pairs;

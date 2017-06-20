@@ -29,7 +29,7 @@ if [ $# -ne 4 ] && [ $# -ne 3 ]; then
   echo "E.g.: utils/format_lm_sri.sh data/lang data/local/lm/foo.kn.gz data/local/dict/lexicon.txt data/lang_test"
   echo "Converts ARPA-format language models to FSTs. Change the LM vocabulary using SRILM."
   echo "Note: if you want to just convert ARPA LMs to FSTs, there is a simpler way to do this"
-  echo "that doesn't require SRILM: see examples in egs/wsj/s5/local/wsj_format_local_lms.sh"
+  echo "that doesn't require SRILM: see utils/format_lm.sh"
   echo "options:"
   echo " --help                 # print this message and exit"
   echo " --srilm-opts STRING      # options to pass to SRILM tools (default: '$srilm_opts')"
@@ -61,20 +61,9 @@ done
 
 loc=`which change-lm-vocab`
 if [ -z $loc ]; then
-  if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
-    sdir=`pwd`/../../../tools/srilm/bin/i686-m64
-  else
-    sdir=`pwd`/../../../tools/srilm/bin/i686
-  fi
-  if [ -f $sdir/../change-lm-vocab ]; then
-    echo Using SRILM tools from $sdir
-    export PATH=$PATH:$sdir:$sdir/..
-  else
-    echo You appear to not have SRILM tools installed, either on your path,
-    echo or installed in $sdir.  cd to ../../../tools and run
-    echo extras/install_srilm.sh.
-    exit 1
-  fi
+  echo You appear to not have SRILM tools installed.
+  echo cd to $KALDI_ROOT/tools and run extras/install_srilm.sh.
+  exit 1
 fi
 
 echo "Converting '$lm' to FST"
@@ -85,30 +74,15 @@ mkdir -p $out_dir
 cp -r $lang_dir/* $out_dir || exit 1;
 
 lm_base=$(basename $lm '.gz')
-gunzip -c $lm | utils/find_arpa_oovs.pl $out_dir/words.txt \
-  > $out_dir/oovs_${lm_base}.txt || exit 1;
-
-# Removing all "illegal" combinations of <s> and </s>, which are supposed to
-# occur only at being/end of utt.  These can cause determinization failures
-# of CLG [ends up being epsilon cycles].
-gunzip -c $lm \
-  | egrep -v '<s> <s>|</s> <s>|</s> </s>' \
-  | gzip -c > $tmpdir/lm.gz || exit 1;
-
 awk '{print $1}' $out_dir/words.txt > $tmpdir/voc || exit 1;
 
 # Change the LM vocabulary to be the intersection of the current LM vocabulary
 # and the set of words in the pronunciation lexicon. This also renormalizes the
 # LM by recomputing the backoff weights, and remove those ngrams whose
 # probabilities are lower than the backed-off estimates.
-change-lm-vocab -vocab $tmpdir/voc -lm $tmpdir/lm.gz -write-lm $tmpdir/out_lm \
-  $srilm_opts || exit 1;
-
-arpa2fst $tmpdir/out_lm | fstprint \
-  | utils/eps2disambig.pl | utils/s2eps.pl \
-  | fstcompile --isymbols=$out_dir/words.txt --osymbols=$out_dir/words.txt \
-    --keep_isymbols=false --keep_osymbols=false \
-  | fstrmepsilon | fstarcsort --sort_type=ilabel > $out_dir/G.fst || exit 1;
+change-lm-vocab -vocab $tmpdir/voc -lm $lm -write-lm - $srilm_opts | \
+  arpa2fst --disambig-symbol=#0 \
+           --read-symbol-table=$out_dir/words.txt - $out_dir/G.fst || exit 1
 
 fstisstochastic $out_dir/G.fst
 

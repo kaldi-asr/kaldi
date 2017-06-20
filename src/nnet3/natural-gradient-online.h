@@ -20,12 +20,11 @@
 #ifndef KALDI_NNET3_NATURAL_GRADIENT_ONLINE_H_
 #define KALDI_NNET3_NATURAL_GRADIENT_ONLINE_H_
 
+#include <iostream>
+#include <mutex>
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
 #include "cudamatrix/cu-matrix-lib.h"
-#include "thread/kaldi-mutex.h"
-
-#include <iostream>
 
 namespace kaldi {
 namespace nnet3 {
@@ -425,6 +424,9 @@ class OnlineNaturalGradient {
   int32 GetRank() const { return rank_; }
   int32 GetUpdatePeriod() const { return update_period_; }
 
+  // see comment where 'frozen_' is declared.
+  inline void Freeze(bool frozen) { frozen_ = frozen; }
+  
   // The "R" pointer is both the input (R in the comment) and the output (P in
   // the comment; equal to the preconditioned directions before scaling by
   // gamma).  If the pointer "row_prod" is supplied, it's set to the inner product
@@ -542,6 +544,14 @@ class OnlineNaturalGradient {
   // floor to the eigenvalues in D_t.
   BaseFloat delta_;
 
+  // this is set to true if the user has called the function Freeze(true), until
+  // they call  Freeze(false).  It's used to disable the natural gradient
+  // update (and stop incrementing t_).  However, if the object is uninitialized
+  // (t_ == 0) it doesn't prevent it from being initialized.  This is used
+  // in adversarial training to ensure that the Fisher matrix is updated only
+  // the *second* time we see the same data (to avoid biasing the update).
+  bool frozen_;
+
   // t is a counter that measures how many updates we've done.
   int32 t_;
 
@@ -560,11 +570,11 @@ class OnlineNaturalGradient {
 
 
   // Used to prevent parameters being read or written in an inconsistent state.
-  Mutex read_write_mutex_;
+  std::mutex read_write_mutex_;
 
   // This mutex is used to control which thread gets to update the
   // parameters, in multi-threaded code.
-  Mutex update_mutex_;
+  std::mutex update_mutex_;
 };
 
 } // namespace nnet3

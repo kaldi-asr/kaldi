@@ -31,6 +31,11 @@ if [ -f $destdir/feats.scp ]; then
   exit 1
 fi
 
+echo "$0: making sure the utt2dur file is present in ${srcdir}, because "
+echo "... obtaining it after speed-perturbing would be very slow, and"
+echo "... you might need it."
+utils/data/get_utt2dur.sh ${srcdir}
+
 utils/data/perturb_data_dir_speed.sh 0.9 ${srcdir} ${destdir}_speed0.9 || exit 1
 utils/data/perturb_data_dir_speed.sh 1.1 ${srcdir} ${destdir}_speed1.1 || exit 1
 utils/data/combine_data.sh $destdir ${srcdir} ${destdir}_speed0.9 ${destdir}_speed1.1 || exit 1
@@ -38,5 +43,4 @@ utils/data/combine_data.sh $destdir ${srcdir} ${destdir}_speed0.9 ${destdir}_spe
 rm -r ${destdir}_speed0.9 ${destdir}_speed1.1
 
 echo "$0: generated 3-way speed-perturbed version of data in $srcdir, in $destdir"
-utils/validate_data_dir.sh --no-feats $destdir
-
+utils/validate_data_dir.sh --no-feats --no-text $destdir

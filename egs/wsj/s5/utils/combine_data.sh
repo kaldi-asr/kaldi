@@ -2,12 +2,14 @@
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #           2014  David Snyder
 
-# This script operates on a data directory, such as in data/train/.
-# See http://kaldi.sourceforge.net/data_prep.html#data_prep_data
-# for what these directories contain.
+# This script combines the data from multiple source directories into
+# a single destination directory.
 
-# Begin configuration section. 
-extra_files= # specify addtional files in 'src-data-dir' to merge, ex. "file1 file2 ..."
+# See http://kaldi-asr.org/doc/data_prep.html#data_prep_data for information
+# about what these directories contain.
+
+# Begin configuration section.
+extra_files= # specify additional files in 'src-data-dir' to merge, ex. "file1 file2 ..."
 skip_fix=false # skip the fix_data_dir.sh in the end
 # End configuration section.
 
@@ -18,7 +20,8 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# -lt 2 ]; then
   echo "Usage: combine_data.sh [--extra-files 'file1 file2'] <dest-data-dir> <src-data-dir1> <src-data-dir2> ..."
-  echo "Note, files that don't appear in first source dir will not be added even if they appear in later ones."
+  echo "Note, files that don't appear in all source dirs will not be combined,"
+  echo "with the exception of utt2uniq and segments, which are created where necessary."
   exit 1
 fi
 
@@ -40,7 +43,7 @@ for dir in $*; do
 done
 
 # W.r.t. utt2uniq file the script has different behavior compared to other files
-# it is not compulsary for it to exist in src directories, but if it exists in 
+# it is not compulsary for it to exist in src directories, but if it exists in
 # even one it should exist in all. We will create the files where necessary
 has_utt2uniq=false
 for in_dir in $*; do
@@ -55,22 +58,64 @@ if $has_utt2uniq; then
   for in_dir in $*; do
     if [ ! -f $in_dir/utt2uniq ]; then
       # we assume that utt2uniq is a one to one mapping
-      cat $in_dir/utt2spk | awk '{printf("%s %s\n", $1, $1);}' 
+      cat $in_dir/utt2spk | awk '{printf("%s %s\n", $1, $1);}'
     else
       cat $in_dir/utt2uniq
     fi
   done | sort -k1 > $dest/utt2uniq
   echo "$0: combined utt2uniq"
+else
+  echo "$0 [info]: not combining utt2uniq as it does not exist"
 fi
 # some of the old scripts might provide utt2uniq as an extrafile, so just remove it
 extra_files=$(echo "$extra_files"|sed -e "s/utt2uniq//g")
 
-for file in utt2spk utt2lang feats.scp text cmvn.scp segments reco2file_and_channel wav.scp spk2gender $extra_files; do
-  if [ -f $first_src/$file ]; then
+# segments are treated similarly to utt2uniq. If it exists in some, but not all
+# src directories, then we generate segments where necessary.
+has_segments=false
+for in_dir in $*; do
+  if [ -f $in_dir/segments ]; then
+    has_segments=true
+    break
+  fi
+done
+
+if $has_segments; then
+  for in_dir in $*; do
+    if [ ! -f $in_dir/segments ]; then
+      echo "$0 [info]: will generate missing segments for $in_dir" 1>&2
+      utils/data/get_segments_for_data.sh $in_dir
+    else
+      cat $in_dir/segments
+    fi
+  done | sort -k1 > $dest/segments
+  echo "$0: combined segments"
+else
+  echo "$0 [info]: not combining segments as it does not exist"
+fi
+
+for file in utt2spk utt2lang utt2dur feats.scp text cmvn.scp reco2file_and_channel wav.scp spk2gender $extra_files; do
+  exists_somewhere=false
+  absent_somewhere=false
+  for d in $*; do
+    if [ -f $d/$file ]; then
+      exists_somewhere=true
+    else
+      absent_somewhere=true
+      fi
+  done
+
+  if ! $absent_somewhere; then
+    set -o pipefail
     ( for f in $*; do cat $f/$file; done ) | sort -k1 > $dest/$file || exit 1;
+    set +o pipefail
     echo "$0: combined $file"
   else
-    echo "$0 [info]: not combining $file as it does not exist"
+    if ! $exists_somewhere; then
+      echo "$0 [info]: not combining $file as it does not exist"
+    else
+      echo "$0 [info]: **not combining $file as it does not exist everywhere**"
+    fi
   fi
 done
 

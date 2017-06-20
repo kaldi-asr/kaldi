@@ -1,7 +1,7 @@
 // latbin/lattice-rescore-mapped.cc
 
 // Copyright 2009-2012   Saarland University (author: Arnab Ghoshal)
-//                       Johns Hopkins University (author: Daniel Povey)   
+//                       Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
         "Usage: lattice-rescore-mapped [options] <transition-model-in> <lattice-rspecifier> "
         "<loglikes-rspecifier> <lattice-wspecifier>\n"
         " e.g.: nnet-logprob [args] .. | lattice-rescore-mapped final.mdl ark:1.lats ark:- ark:2.lats\n";
-    
+
     kaldi::BaseFloat old_acoustic_scale = 0.0;
     kaldi::ParseOptions po(usage);
     po.Register("old-acoustic-scale", &old_acoustic_scale,
@@ -116,12 +116,12 @@ int main(int argc, char *argv[]) {
       trans_model.Read(ki.Stream(), binary);
       // Ignore what follows it in the model.
     }
-    
+
     RandomAccessBaseFloatMatrixReader loglike_reader(loglike_rspecifier);
     // Read as regular lattice
     SequentialLatticeReader lattice_reader(lats_rspecifier);
     // Write as compact lattice.
-    CompactLatticeWriter compact_lattice_writer(lats_wspecifier); 
+    CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
 
     int32 num_done = 0, num_err = 0;
     int64 num_frames = 0;
@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
           KALDI_ERR << "Cycles detected in lattice.";
       }
 
-      vector<int32> state_times;
+      std::vector<int32> state_times;
       int32 max_time = kaldi::LatticeStateTimes(lat, &state_times);
       const Matrix<BaseFloat> &log_likes = loglike_reader.Value(key);
       if (log_likes.NumRows() != max_time) {
@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
         num_err++;
         continue;
       }
-      
+
       kaldi::LatticeAcousticRescore(trans_model, log_likes, state_times,
                                     &lat);
       CompactLattice clat_out;

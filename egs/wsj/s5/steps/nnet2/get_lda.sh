@@ -83,6 +83,10 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 cp $alidir/tree $dir
 
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 [ -z "$transform_dir" ] && transform_dir=$alidir
 if [ -z "$cmvn_opts" ]; then
   cmvn_opts=`cat $alidir/cmvn_opts 2>/dev/null`

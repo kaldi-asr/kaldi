@@ -18,9 +18,9 @@
 // limitations under the License.
 
 #include "base/kaldi-common.h"
-#include "util/common-utils.h"
 #include "feat/feature-mfcc.h"
 #include "feat/wave-reader.h"
+#include "util/common-utils.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -34,7 +34,12 @@ int main(int argc, char *argv[]) {
         "Currently this program may output a lot of harmless warnings regarding\n"
         "nonzero exit status of pipes\n";
 
+    bool read_entire_file = false;
+
     ParseOptions po(usage);
+
+    po.Register("read-entire-file", &read_entire_file, "If true, use regular WaveHolder "
+                "instead of WaveInfoHolder to ensure the returned duration is correct.");
 
     po.Read(argc, argv);
 
@@ -50,21 +55,38 @@ int main(int argc, char *argv[]) {
     double sum_duration = 0.0,
         min_duration = std::numeric_limits<BaseFloat>::infinity(),
         max_duration = 0;
-
-    SequentialTableReader<WaveInfoHolder> wav_reader(wav_rspecifier);
-    BaseFloatWriter duration_writer(duration_wspecifier);
-
     int32 num_done = 0;
-    for (; !wav_reader.Done(); wav_reader.Next()) {
-      std::string key = wav_reader.Key();
-      const WaveData &wave_data = wav_reader.Value();
-      BaseFloat duration = wave_data.Duration();
-      duration_writer.Write(key, duration);
 
-      sum_duration += duration;
-      min_duration = std::min<double>(min_duration, duration);
-      max_duration = std::max<double>(max_duration, duration);
-      num_done++;
+    BaseFloatWriter duration_writer(duration_wspecifier);
+    if (read_entire_file) {
+      SequentialTableReader<WaveHolder> wav_reader(wav_rspecifier);
+      for (; !wav_reader.Done(); wav_reader.Next()) {
+        std::string key = wav_reader.Key();
+        const WaveData &wave_data = wav_reader.Value();
+        BaseFloat duration = wave_data.Duration();
+        duration_writer.Write(key, duration);
+
+        sum_duration += duration;
+        min_duration = std::min<double>(min_duration, duration);
+        max_duration = std::max<double>(max_duration, duration);
+        num_done++;
+      }
+    } else {
+      SequentialTableReader<WaveInfoHolder> wav_reader(wav_rspecifier);
+      for (; !wav_reader.Done(); wav_reader.Next()) {
+        std::string key = wav_reader.Key();
+        const WaveInfo &wave_info = wav_reader.Value();
+        if (wave_info.IsStreamed())
+          KALDI_ERR << "Error: member " << key << " has no duration in header. "
+                    << "Check the source, and/or try --read-entire-file.";
+        BaseFloat duration = wave_info.Duration();
+        duration_writer.Write(key, duration);
+
+        sum_duration += duration;
+        min_duration = std::min<double>(min_duration, duration);
+        max_duration = std::max<double>(max_duration, duration);
+        num_done++;
+      }
     }
 
     KALDI_LOG << "Printed duration for " << num_done << " audio files.";
@@ -79,4 +101,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

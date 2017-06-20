@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# THIS SCRIPT IS DEPRECATED, see ./train.py
+
 # note, TDNN is the same as what we used to call multisplice.
 # This version of the script, nnet3/chain/train_tdnn.sh, is for 'chain' systems.
 
@@ -18,8 +20,6 @@ num_epochs=10      # Number of epochs of training;
                    # Be careful with this: we actually go over the data
                    # num-epochs * frame-subsampling-factor times, due to
                    # using different data-shifts.
-truncate_deriv_weights=0  # can be used to set to zero the weights of derivs from frames
-                          # near the edges.  (counts subsampled frames).
 apply_deriv_weights=true
 initial_effective_lrate=0.0002
 final_effective_lrate=0.00002
@@ -78,9 +78,6 @@ exit_stage=-100 # you can set this to terminate the training early.  Exits befor
 
 # count space-separated fields in splice_indexes to get num-hidden-layers.
 splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
-pool_type='none'
-pool_window=
-pool_lpfilter_width=
 
 # Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
 # note: hidden layers which are composed of one or more components,
@@ -105,6 +102,8 @@ right_deriv_truncate=  # number of time-steps to avoid using the deriv of, on th
 
 trap 'for pid in $(jobs -pr); do kill -TERM $pid; done' INT QUIT TERM
 
+
+echo "$0: THIS SCRIPT IS DEPRECATED"
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -128,10 +127,10 @@ if [ $# != 4 ]; then
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job, for CPU-based training (will affect"
   echo "                                                   # results as well as speed; may interact with batch size; if you increase"
   echo "                                                   # this, you may want to decrease the batch size."
-  echo "  --parallel-opts <opts|\"-pe smp 16 -l ram_free=1G,mem_free=1G\">      # extra options to pass to e.g. queue.pl for processes that"
-  echo "                                                   # use multiple threads... note, you might have to reduce mem_free,ram_free"
-  echo "                                                   # versus your defaults, because it gets multiplied by the -pe smp argument."
-  echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
+  echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
+  echo "                                                   # use multiple threads... note, you might have to reduce --mem"
+  echo "                                                   # versus your defaults, because it gets multiplied by the --num-threads argument."
+  echo "  --io-opts <opts|\"--max-jobs-run 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --frames-per-iter <#frames|400000>               # Number of frames of data to process per iteration, per"
@@ -233,12 +232,6 @@ if [ $stage -le -5 ]; then
     else
       dim_opts="--pnorm-input-dim $pnorm_input_dim --pnorm-output-dim  $pnorm_output_dim"
     fi
-
-    # create the config files for nnet initialization
-    pool_opts=
-    pool_opts=$pool_opts${pool_type:+" --pool-type $pool_type "}
-    pool_opts=$pool_opts${pool_window:+" --pool-window $pool_window "}
-    pool_opts=$pool_opts${pool_lpfilter_width:+" --pool-lpfilter-width $pool_lpfilter_width "}
 
     python steps/nnet3/tdnn/make_configs.py $pool_opts \
       --include-log-softmax=false \
@@ -535,7 +528,7 @@ while [ $x -lt $num_iters ]; do
               $this_cache_io_opts $parallel_train_opts $deriv_time_opts \
              --max-param-change=$this_max_param_change \
             --print-interval=10 "$mdl" $dir/den.fst \
-          "ark,bg:nnet3-chain-copy-egs --truncate-deriv-weights=$truncate_deriv_weights --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-chain-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
+          "ark,bg:nnet3-chain-copy-egs --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-chain-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
@@ -643,3 +636,7 @@ if $cleanup; then
     fi
   done
 fi
+
+steps/info/chain_dir_info.pl $dir
+
+exit 0

@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
 
       if (feats.NumRows() != static_cast<int32>(post.size())) {
         KALDI_WARN << "Posterior vs. feats size mismatch "
-                   << feats.NumRows() << " vs. " <<post.size();
+                   << post.size() << " vs. " << feats.NumRows();
         num_fail++;
         continue;
       }

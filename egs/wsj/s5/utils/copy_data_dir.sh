@@ -50,6 +50,11 @@ if [ ! -f $srcdir/utt2spk ]; then
   exit 1;
 fi
 
+if [ "$destdir" == "$srcdir" ]; then
+  echo "$0: this script requires <srcdir> and <destdir> to be different."
+  exit 1
+fi
+
 set -e;
 
 mkdir -p $destdir
@@ -108,6 +113,16 @@ done
 rm $destdir/spk_map $destdir/utt_map
 
 echo "$0: copied data from $srcdir to $destdir"
+
+for f in feats.scp cmvn.scp vad.scp utt2lang utt2uniq utt2dur utt2num_frames text wav.scp reco2file_and_channel stm glm ctm; do
+  if [ -f $destdir/$f ] && [ ! -f $srcdir/$f ]; then
+    echo "$0: file $f exists in dest $destdir but not in src $srcdir.  Moving it to"
+    echo " ... $destdir/.backup/$f"
+    mkdir -p $destdir/.backup
+    mv $destdir/$f $destdir/.backup/
+  fi
+done
+
 
 [ ! -f $srcdir/feats.scp ] && validate_opts="$validate_opts --no-feats"
 [ ! -f $srcdir/text ] && validate_opts="$validate_opts --no-text"

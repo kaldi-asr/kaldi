@@ -356,7 +356,7 @@ of component affine1):
 dim-range-node name=dim-range-node1 input-node=affine1_node dim-offset=0 dim=50
 \endverbatim
 
- \subsection dnn3_dt_nnet_descriptor_code Descriptors in config files
+ \subsection dnn3_dt_nnet_descriptor_config Descriptors in config files
 
   A Descriptor is a very limited type of expression that refers to quantities defined
   in other nodes in the graph.   In this section we describe Descriptors from the perspective

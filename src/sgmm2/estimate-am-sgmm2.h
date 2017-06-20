@@ -30,7 +30,7 @@
 #include "sgmm2/am-sgmm2.h"
 #include "gmm/model-common.h"
 #include "itf/options-itf.h"
-#include "thread/kaldi-thread.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 
@@ -48,19 +48,12 @@ struct MleAmSgmm2Options {
   /// Should probably be related to numerical properties of machine
   /// or BaseFloat type.
   BaseFloat max_cond;
-  /// Set check_v to true if you want to use the "checking" version of the update
-  /// for the v's, in which it checks the "real" objective function value and
-  /// backtracks if necessary;
-  bool check_v;
 
   bool renormalize_V;  // Renormalize the phonetic space.
   bool renormalize_N;  // Renormalize the speaker space.
 
   /// Number of iters when re-estimating weight projections "w".
   int weight_projections_iters;
-  /// The "sequential" weight update that checks each i in turn.
-  /// (if false, uses the "parallel" one).
-  bool use_sequential_weight_update;
 
   BaseFloat epsilon;  ///< very small value used to prevent SVD crashing.
   BaseFloat max_impr_u; ///< max improvement per frame allowed in update of u.
@@ -149,7 +142,7 @@ class MleAmSgmm2Accs {
   void Check(const AmSgmm2 &model, bool show_properties = true) const;
 
   /// Resizes the accumulators to the correct sizes given the model. The flags
-  /// argument controls which accumulators to resize. 
+  /// argument controls which accumulators to resize.
   void ResizeAccumulators(const AmSgmm2 &model, SgmmUpdateFlagsType flags,
                           bool have_spk_vecs);
 
@@ -174,7 +167,7 @@ class MleAmSgmm2Accs {
   /// speaker's data.
   void CommitStatsForSpk(const AmSgmm2 &model,
                          const Sgmm2PerSpkDerivedVars &spk_vars);
-  
+
   /// Accessors
   void GetStateOccupancies(Vector<BaseFloat> *occs) const;
   int32 FeatureDim() const { return feature_dim_; }
@@ -218,17 +211,17 @@ class MleAmSgmm2Accs {
   /// which is the same thing but for purposes of computing
   /// the speaker-vector v^{(s)}.
   Vector<double> a_s_;
-  
+
   /// the U_i quantities from the less-exact version of the SSGMM update for the
   /// speaker weight projections.  Dimension is [I][T][T]
   std::vector<SpMatrix<double> > U_;
-  
+
   /// Sub-state occupancies gamma_{jm}^{(c)} for each sub-state.  In the
   /// SCTM version of the SGMM, for compactness we store two separate
   /// sets of gamma statistics, one to estimate the v_{jm} quantities
   /// and one to estimate the sub-state weights c_{jm}.
   std::vector< Vector<double> > gamma_c_;
-  
+
   /// gamma_{i}^{(s)}.  Per-speaker counts for each Gaussian. Dimension is [I]
   /// Needed for stats R_.  This can be viewed as a temporary variable; it
   /// does not form part of the stats that we eventually dump to disk.
@@ -261,7 +254,7 @@ class MleAmSgmm2Updater {
   void Update(const MleAmSgmm2Accs &accs,
               AmSgmm2 *model,
               SgmmUpdateFlagsType flags);
-  
+
  private:
   friend class UpdateWClass;
   friend class UpdatePhoneVectorsClass;
@@ -279,7 +272,7 @@ class MleAmSgmm2Updater {
   friend class EbwAmSgmm2Updater;
 
   MleAmSgmm2Options options_;
-  
+
   // Called from UpdatePhoneVectors; updates a subset of states
   // (relates to multi-threading).
   void UpdatePhoneVectorsInternal(const MleAmSgmm2Accs &accs,
@@ -289,7 +282,7 @@ class MleAmSgmm2Updater {
                                   double *auxf_impr,
                                   int32 num_threads,
                                   int32 thread_id) const;
-  
+
   double UpdatePhoneVectors(const MleAmSgmm2Accs &accs,
                             const std::vector<SpMatrix<double> > &H,
                             const std::vector<Matrix<double> > &log_a,
@@ -303,7 +296,7 @@ class MleAmSgmm2Updater {
   void RenormalizeV(const MleAmSgmm2Accs &accs, AmSgmm2 *model,
                     const Vector<double> &gamma_i,
                     const std::vector<SpMatrix<double> > &H);
-    
+
   double UpdateN(const MleAmSgmm2Accs &accs, const Vector<double> &gamma_i,
                  AmSgmm2 *model);
   void RenormalizeN(const MleAmSgmm2Accs &accs, const Vector<double> &gamma_i,
@@ -330,15 +323,15 @@ class MleAmSgmm2Updater {
                        Matrix<double> *F_i,
                        Matrix<double> *g_i,
                        double *tot_like,
-                       int32 num_threads, 
+                       int32 num_threads,
                        int32 thread_id);
-  
+
   double UpdateSubstateWeights(const MleAmSgmm2Accs &accs,
                                AmSgmm2 *model);
 
   static void ComputeLogA(const MleAmSgmm2Accs &accs,
                           std::vector<Matrix<double> > *log_a); // [SSGMM]
-  
+
   void ComputeMPrior(AmSgmm2 *model);  // TODO(arnab): Maybe make this static?
   double MapUpdateM(const MleAmSgmm2Accs &accs,
                     const std::vector< SpMatrix<double> > &Q,
@@ -373,7 +366,7 @@ class MleSgmm2SpeakerAccs {
                        int32 pdf_index,
                        BaseFloat weight,
                        Sgmm2PerSpkDerivedVars *spk_vars);
-  
+
   /// Accumulate statistics, given posteriors.  Returns total
   /// count accumulated, which may differ from posteriors.Sum()
   /// due to randomized pruning.
@@ -382,7 +375,7 @@ class MleSgmm2SpeakerAccs {
                                      const Matrix<BaseFloat> &posteriors,
                                      int32 pdf_index,
                                      Sgmm2PerSpkDerivedVars *spk_vars);
-  
+
   /// Update speaker vector.  If v_s was empty, will assume it started as zero
   /// and will resize it to the speaker-subspace size.
   void Update(const AmSgmm2 &model,
@@ -390,7 +383,7 @@ class MleSgmm2SpeakerAccs {
               Vector<BaseFloat> *v_s,
               BaseFloat *objf_impr_out,
               BaseFloat *count_out);
-  
+
  private:
   // Update without speaker-dependent weights (vectors u_i),
   // i.e. not symmetric SGMM (SSGMM)
@@ -402,8 +395,8 @@ class MleSgmm2SpeakerAccs {
                    Vector<BaseFloat> *v_s,
                    BaseFloat *objf_impr_out,
                    BaseFloat *count_out);
-  
-  
+
+
   /// Statistics for speaker adaptation (vectors), stored per-speaker.
   /// Per-speaker stats for vectors, y^{(s)}. Dimension [T].
   Vector<double> y_s_;
@@ -416,7 +409,7 @@ class MleSgmm2SpeakerAccs {
   /// relates to the speaker subspace.
   /// Eq. (82): H_{i}^{spk} = N_{i}^T \Sigma_{i}^{-1} N_{i}
   std::vector< SpMatrix<double> > H_spk_;
-  
+
   /// N_i^T \Sigma_{i}^{-1}. Needed for y^{(s)}
   std::vector< Matrix<double> > NtransSigmaInv_;
 
@@ -444,13 +437,20 @@ class UpdateWClass: public MultiThreadable {
     F_i_.Resize(F_i->NumRows(), F_i->NumCols());
     g_i_.Resize(g_i->NumRows(), g_i->NumCols());
   }
-    
+
+  UpdateWClass(const UpdateWClass &other) :
+      MultiThreadable(other),
+      accs_(other.accs_), model_(other.model_), w_(other.w_),
+      log_a_(other.log_a_), F_i_ptr_(other.F_i_ptr_), g_i_ptr_(other.g_i_ptr_),
+      F_i_(other.F_i_), g_i_(other.g_i_), tot_like_ptr_(other.tot_like_ptr_),
+      tot_like_(0.0) { }
+
   ~UpdateWClass() {
     F_i_ptr_->AddMat(1.0, F_i_, kNoTrans);
     g_i_ptr_->AddMat(1.0, g_i_, kNoTrans);
     *tot_like_ptr_ += tot_like_;
   }
-  
+
   inline void operator() () {
     // Note: give them local copy of the sums we're computing,
     // which will be propagated to the total sums in the destructor.

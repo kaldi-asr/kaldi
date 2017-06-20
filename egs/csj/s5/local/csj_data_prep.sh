@@ -6,46 +6,45 @@
 # Acknowledgement  This work was supported by JSPS KAKENHI Grant Number 26280055.
 
 # CSJ 291 hours training data preparation.
-# "Academic lecture" 270 hours (Exclude the speakers in the evaluation set from all speech data) 
-# + "Other" 21 hours 
+# "Academic lecture" 270 hours (Exclude the speakers in the evaluation set from all speech data)
+# + "Other" 21 hours
 # Actually, amount time of training data is 240 hours, this is excluding R-tag utterance and silence section.
 
 # To be run from one directory above this script.
 
 ## The input is a directory that contains the CSJ corpus.
-## Note: If necessary, rewrite the "cat" command used in the followings 
+## Note: If necessary, rewrite the "cat" command used in the followings
 ## to locate the .wav file path.
 
 . path.sh
+set -e # exit on error
 
 #check existing directories
-if [ $# != 1 -a $# != 2 ]; then
-  echo "Usage: csj_data_prep_edin.sh /path/to/CSJ [/path/to/CSJ]"
-  exit 1; 
-fi 
+if [ $# != 1 ]; then
+  echo "Usage: csj_data_prep.sh <csj-data dir>"
+  exit 1;
+fi
 
 CSJ=$1
 
 dir=data/local/train
 mkdir -p $dir
 
-
 # Audio data directory check
-if [ ! -d $CSJ ]; then    
+if [ ! -d $CSJ ]; then
  echo "Error: run.sh requires a directory argument"
-  exit 1; 
-fi  
+  exit 1;
+fi
 
 # CSJ dictionary file check
-[ ! -f $dir/lexicon.txt ] && \
-    echo  "CSJ dictionary file does not exist"
-cp $CSJ/lexicon/lexicon.txt $dir || exit 1;
+[ ! -f $dir/lexicon.txt ] && cp $CSJ/lexicon/lexicon.txt $dir || exit 1;
 
-### Config of using wav data ###
-#cat $CSJ/dvd*/*/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using All data
-#cat $CSJ/dvd*/{A*,M*,R*,S*}/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using All data except for "dialog" data
-cat $CSJ/dvd{3,5,6,7,8,9,10}/{A*,M*}/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using "Academic lecture" and "other" data 
-#cat $CSJ/dvd{3,5,6,7,8,9,10}/A*/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using "Academic lecture" data
+### Config of using wav data that relates with acoustic model training ###
+#cat $CSJ/*/*/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using All data
+#cat $CSJ/*/{A*,M*,R*,S*}/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using All data except for "dialog" data
+#cat $CSJ/*/{A*,M*}/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using "Academic lecture" and "other" data
+#cat $CSJ/*/A*/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using "Academic lecture" data
+cat $CSJ/*/{A,M}*/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using "Academic lecture" and "other" data
 
 n=`cat $dir/wav.flist | wc -l`
 
@@ -64,8 +63,8 @@ awk '{
       name=T[1]; stime=$2; etime=$3;
       printf("%s_%07.0f_%07.0f",name, int(1000*stime), int(1000*etime));
       for(i=4;i<=NF;i++) printf(" %s", tolower($i)); printf "\n"
-}' $CSJ/{dvd*,excluded}/*/*-trans.text |sort > $dir/transcripts1.txt # This data is for training language models
-# Except evaluation set (30 speakers) 
+}' $CSJ/*/*/*-trans.text |sort > $dir/transcripts1.txt # This data is for training language models
+# Except evaluation set (30 speakers)
 
 # test if trans. file is sorted
 export LC_ALL=C;
@@ -74,8 +73,8 @@ sort -c $dir/transcripts1.txt || exit 1; # check it's sorted.
 # Remove Option.
 # **NOTE: modified the pattern matches to make them case insensitive
 cat $dir/transcripts1.txt \
-  | perl -ane 's:\<s\>\s::gi;
-               s:\<\/s\>\s::gi;
+  | perl -ane 's:\<s\>::gi;
+               s:\<\/s\>::gi;
                print;' \
   | awk '{if(NF > 1) { print; } } ' |sort > $dir/text
 
@@ -90,11 +89,11 @@ awk '{
        print segment " " spkid " " startf/1000 " " endf/1000
    }' < $dir/text > $dir/segments
 
-sed -e 's?.*/??' -e 's?.wav??' $dir/wav.flist | paste - $dir/wav.flist \
+sed -e 's?.*/??' -e 's?.wav??' -e 's?\-[R,L]??' $dir/wav.flist | paste - $dir/wav.flist \
   > $dir/wavflist.scp
 
-awk '{              
- printf("%s cat %s |\n", $1, $2);                                                                                                                                          
+awk '{
+ printf("%s cat %s |\n", $1, $2);
 }' < $dir/wavflist.scp | sort > $dir/wav.scp || exit 1;
 
 
@@ -105,9 +104,9 @@ sort -k 2 $dir/utt2spk | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt || exit 1;
 # Copy stuff into its final locations [this has been moved from the format_data script]
 mkdir -p data/train
 for f in spk2utt utt2spk wav.scp text segments; do
-  cp data/local/train/$f data/train/$f || exit 1;
+  cp data/local/train/$f data/train/ || exit 1;
 done
 
-echo CSJ data preparation succeeded.
+echo "CSJ data preparation succeeded."
 
 utils/fix_data_dir.sh data/train

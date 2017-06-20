@@ -1,6 +1,7 @@
 // feat/feature-mfcc.cc
 
 // Copyright 2009-2011  Karel Vesely;  Petr Motlicek
+//                2016  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,8 +24,64 @@
 
 namespace kaldi {
 
-Mfcc::Mfcc(const MfccOptions &opts)
-    : opts_(opts), feature_window_function_(opts.frame_opts), srfft_(NULL) {
+
+void MfccComputer::Compute(BaseFloat signal_log_energy,
+                           BaseFloat vtln_warp,
+                           VectorBase<BaseFloat> *signal_frame,
+                           VectorBase<BaseFloat> *feature) {
+  KALDI_ASSERT(signal_frame->Dim() == opts_.frame_opts.PaddedWindowSize() &&
+               feature->Dim() == this->Dim());
+
+  const MelBanks &mel_banks = *(GetMelBanks(vtln_warp));
+
+  if (opts_.use_energy && !opts_.raw_energy)
+    signal_log_energy = Log(std::max(VecVec(*signal_frame, *signal_frame),
+                                     std::numeric_limits<BaseFloat>::min()));
+
+  if (srfft_ != NULL)  // Compute FFT using the split-radix algorithm.
+    srfft_->Compute(signal_frame->Data(), true);
+  else  // An alternative algorithm that works for non-powers-of-two.
+    RealFft(signal_frame, true);
+
+  // Convert the FFT into a power spectrum.
+  ComputePowerSpectrum(signal_frame);
+  SubVector<BaseFloat> power_spectrum(*signal_frame, 0,
+                                      signal_frame->Dim() / 2 + 1);
+
+  mel_banks.Compute(power_spectrum, &mel_energies_);
+
+  // avoid log of zero (which should be prevented anyway by dithering).
+  mel_energies_.ApplyFloor(std::numeric_limits<BaseFloat>::epsilon());
+  mel_energies_.ApplyLog();  // take the log.
+
+  feature->SetZero();  // in case there were NaNs.
+  // feature = dct_matrix_ * mel_energies [which now have log]
+  feature->AddMatVec(1.0, dct_matrix_, kNoTrans, mel_energies_, 0.0);
+
+  if (opts_.cepstral_lifter != 0.0)
+    feature->MulElements(lifter_coeffs_);
+
+  if (opts_.use_energy) {
+    if (opts_.energy_floor > 0.0 && signal_log_energy < log_energy_floor_)
+      signal_log_energy = log_energy_floor_;
+    (*feature)(0) = signal_log_energy;
+  }
+
+  if (opts_.htk_compat) {
+    BaseFloat energy = (*feature)(0);
+    for (int32 i = 0; i < opts_.num_ceps - 1; i++)
+      (*feature)(i) = (*feature)(i+1);
+    if (!opts_.use_energy)
+      energy *= M_SQRT2;  // scale on C0 (actually removing a scale
+    // we previously added that's part of one common definition of
+    // the cosine transform.)
+    (*feature)(opts_.num_ceps - 1)  = energy;
+  }
+}
+
+MfccComputer::MfccComputer(const MfccOptions &opts):
+    opts_(opts), srfft_(NULL),
+    mel_energies_(opts.mel_opts.num_bins) {
   int32 num_bins = opts.mel_opts.num_bins;
   Matrix<BaseFloat> dct_matrix(num_bins, num_bins);
   ComputeDctMatrix(&dct_matrix);
@@ -44,14 +101,29 @@ Mfcc::Mfcc(const MfccOptions &opts)
   int32 padded_window_size = opts.frame_opts.PaddedWindowSize();
   if ((padded_window_size & (padded_window_size-1)) == 0)  // Is a power of two...
     srfft_ = new SplitRadixRealFft<BaseFloat>(padded_window_size);
-  
+
   // We'll definitely need the filterbanks info for VTLN warping factor 1.0.
-  // [note: this call caches it.]  The reason we call this here is to
-  // improve the efficiency of the "const" version of Compute().
+  // [note: this call caches it.]
   GetMelBanks(1.0);
 }
 
-Mfcc::~Mfcc() {
+MfccComputer::MfccComputer(const MfccComputer &other):
+    opts_(other.opts_), lifter_coeffs_(other.lifter_coeffs_),
+    dct_matrix_(other.dct_matrix_),
+    log_energy_floor_(other.log_energy_floor_),
+    mel_banks_(other.mel_banks_),
+    srfft_(NULL),
+    mel_energies_(other.mel_energies_.Dim(), kUndefined) {
+  for (std::map<BaseFloat, MelBanks*>::iterator iter = mel_banks_.begin();
+       iter != mel_banks_.end(); ++iter)
+    iter->second = new MelBanks(*(iter->second));
+  if (other.srfft_ != NULL)
+    srfft_ = new SplitRadixRealFft<BaseFloat>(*(other.srfft_));
+}
+
+
+
+MfccComputer::~MfccComputer() {
   for (std::map<BaseFloat, MelBanks*>::iterator iter = mel_banks_.begin();
       iter != mel_banks_.end();
       ++iter)
@@ -59,7 +131,7 @@ Mfcc::~Mfcc() {
   delete srfft_;
 }
 
-const MelBanks *Mfcc::GetMelBanks(BaseFloat vtln_warp) {
+const MelBanks *MfccComputer::GetMelBanks(BaseFloat vtln_warp) {
   MelBanks *this_mel_banks = NULL;
   std::map<BaseFloat, MelBanks*>::iterator iter = mel_banks_.find(vtln_warp);
   if (iter == mel_banks_.end()) {
@@ -72,119 +144,6 @@ const MelBanks *Mfcc::GetMelBanks(BaseFloat vtln_warp) {
   }
   return this_mel_banks;
 }
-
-
-const MelBanks *Mfcc::GetMelBanks(BaseFloat vtln_warp, bool *must_delete) const {
-  MelBanks *this_mel_banks = NULL;
-  std::map<BaseFloat, MelBanks*>::const_iterator iter =
-      mel_banks_.find(vtln_warp);
-  if (iter == mel_banks_.end()) {
-    this_mel_banks = new MelBanks(opts_.mel_opts,
-                                  opts_.frame_opts,
-                                  vtln_warp);
-    *must_delete = true;
-  } else {
-    this_mel_banks = iter->second;
-    *must_delete = false;
-  }
-  return this_mel_banks;
-}
-
-
-void Mfcc::Compute(const VectorBase<BaseFloat> &wave,
-                   BaseFloat vtln_warp,
-                   Matrix<BaseFloat> *output,
-                   Vector<BaseFloat> *wave_remainder) {
-  const MelBanks *this_mel_banks = GetMelBanks(vtln_warp);
-  ComputeInternal(wave, *this_mel_banks, output, wave_remainder);  
-}
-
-void Mfcc::Compute(const VectorBase<BaseFloat> &wave,
-                   BaseFloat vtln_warp,
-                   Matrix<BaseFloat> *output,
-                   Vector<BaseFloat> *wave_remainder) const {
-  bool must_delete_mel_banks;
-  const MelBanks *mel_banks = GetMelBanks(vtln_warp,
-                                               &must_delete_mel_banks);
-  
-  ComputeInternal(wave, *mel_banks, output, wave_remainder);
-  
-  if (must_delete_mel_banks)
-    delete mel_banks;
-}
-
-void Mfcc::ComputeInternal(const VectorBase<BaseFloat> &wave,
-                           const MelBanks &mel_banks,
-                           Matrix<BaseFloat> *output,
-                           Vector<BaseFloat> *wave_remainder) const {
-  KALDI_ASSERT(output != NULL);
-  int32 rows_out = NumFrames(wave.Dim(), opts_.frame_opts),
-      cols_out = opts_.num_ceps;
-  if (rows_out == 0) {
-    output->Resize(0, 0);
-    if (wave_remainder != NULL)
-      *wave_remainder = wave;
-    return;
-  }
-  output->Resize(rows_out, cols_out);
-  if (wave_remainder != NULL)
-    ExtractWaveformRemainder(wave, opts_.frame_opts, wave_remainder);
-  Vector<BaseFloat> window;  // windowed waveform.
-  Vector<BaseFloat> mel_energies;
-  std::vector<BaseFloat> temp_buffer;  // used by srfft.
-  for (int32 r = 0; r < rows_out; r++) {  // r is frame index..
-    BaseFloat log_energy;
-    ExtractWindow(wave, r, opts_.frame_opts, feature_window_function_, &window,
-                  (opts_.use_energy && opts_.raw_energy ? &log_energy : NULL));
-
-    if (opts_.use_energy && !opts_.raw_energy)
-      log_energy = Log(std::max(VecVec(window, window),
-                                std::numeric_limits<BaseFloat>::min()));
-
-    if (srfft_ != NULL)  // Compute FFT using the split-radix algorithm.
-      srfft_->Compute(window.Data(), true, &temp_buffer);
-    else  // An alternative algorithm that works for non-powers-of-two.
-      RealFft(&window, true);
-
-    // Convert the FFT into a power spectrum.
-    ComputePowerSpectrum(&window);
-    SubVector<BaseFloat> power_spectrum(window, 0, window.Dim()/2 + 1);
-
-    mel_banks.Compute(power_spectrum, &mel_energies);
-
-    // avoid log of zero (which should be prevented anyway by dithering).
-    mel_energies.ApplyFloor(std::numeric_limits<BaseFloat>::min());
-    mel_energies.ApplyLog();  // take the log.
-
-    SubVector<BaseFloat> this_mfcc(output->Row(r));
-
-    // this_mfcc = dct_matrix_ * mel_energies [which now have log]
-    this_mfcc.AddMatVec(1.0, dct_matrix_, kNoTrans, mel_energies, 0.0);
-
-    if (opts_.cepstral_lifter != 0.0)
-      this_mfcc.MulElements(lifter_coeffs_);
-
-    if (opts_.use_energy) {
-      if (opts_.energy_floor > 0.0 && log_energy < log_energy_floor_)
-        log_energy = log_energy_floor_;
-      this_mfcc(0) = log_energy;
-    }
-
-    if (opts_.htk_compat) {
-      BaseFloat energy = this_mfcc(0);
-      for (int32 i = 0; i < opts_.num_ceps-1; i++)
-        this_mfcc(i) = this_mfcc(i+1);
-      if (!opts_.use_energy)
-        energy *= M_SQRT2;  // scale on C0 (actually removing scale
-      // we previously added that's part of one common definition of
-      // cosine transform.)
-      this_mfcc(opts_.num_ceps-1)  = energy;
-    }
-  }
-}
-
-
-
 
 
 

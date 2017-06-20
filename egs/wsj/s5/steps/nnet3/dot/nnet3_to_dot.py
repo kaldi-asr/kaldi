@@ -90,11 +90,12 @@ def GetDotNodeName(name_string, is_component = False):
     # this function is required as dot does not allow all the component names
     # allowed by nnet3.
     # Identified incompatibilities :
-    #   1. dot does not allow hyphen(-) in names
+    #   1. dot does not allow hyphen(-) and dot(.) in names
     #   2. Nnet3 names can be shared among components and component nodes
     #      dot does not allow common names
     #
     node_name_string = re.sub("-", "hyphen", name_string)
+    node_name_string = re.sub("\.", "_dot_", node_name_string)
     if is_component:
         node_name_string += node_name_string.strip() + "_component"
     return {"label":name_string, "node":node_name_string}

@@ -23,8 +23,8 @@ ivector_scale=1.0
 lattice_beam=8.0 # Beam we use in lattice generation.
 iter=final
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
-parallel_opts=  # ignored now.
 scoring_opts=
+skip_diagnostics=false
 skip_scoring=false
 extra_left_context=0
 extra_right_context=0
@@ -55,7 +55,6 @@ if [ $# -ne 3 ]; then
   echo "  --iter <iter>                            # Iteration of model to decode; default is final."
   echo "  --scoring-opts <string>                  # options to local/score.sh"
   echo "  --num-threads <n>                        # number of threads to use, default 1."
-  echo "  --parallel-opts <opts>                   # e.g. '--num-threads 4' if you supply --num-threads 4"
   exit 1;
 fi
 
@@ -66,8 +65,11 @@ srcdir=`dirname $dir`; # Assume model directory one level up from decoding direc
 model=$srcdir/$iter.mdl
 
 
-[ ! -z "$online_ivector_dir" ] && \
+extra_files=
+if [ ! -z "$online_ivector_dir" ]; then
+  steps/nnet2/check_ivectors_compatible.sh $srcdir $online_ivector_dir || exit 1
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
+fi
 
 for f in $graphdir/HCLG.fst $data/feats.scp $model $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
@@ -161,16 +163,24 @@ if [ $stage -le 1 ]; then
      $graphdir/HCLG.fst "$feats" "$lat_wspecifier" || exit 1;
 fi
 
-# The output of this script is the files "lat.*.gz"-- we'll rescore this at
-# different acoustic scales to get the final output.
-
 
 if [ $stage -le 2 ]; then
+  if ! $skip_diagnostics ; then
+    [ ! -z $iter ] && iter_opt="--iter $iter"
+    steps/diagnostic/analyze_lats.sh --cmd "$cmd" $iter_opt $graphdir $dir
+  fi
+fi
+
+
+# The output of this script is the files "lat.*.gz"-- we'll rescore this at
+# different acoustic scales to get the final output.
+if [ $stage -le 3 ]; then
   if ! $skip_scoring ; then
     [ ! -x local/score.sh ] && \
       echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
     echo "score best paths"
-    local/score.sh --iter $iter $scoring_opts --cmd "$cmd" $data $graphdir $dir
+    [ "$iter" != "final" ] && iter_opt="--iter $iter"
+    local/score.sh $iter_opt $scoring_opts --cmd "$cmd" $data $graphdir $dir
     echo "score confidence and timing with sclite"
   fi
 fi

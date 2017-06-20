@@ -4,8 +4,8 @@
 #
 # This script, called by ../run.sh, creates the HUB4 Broadcast News
 # data directory. The required datasets can be found at:
-#   https://catalog.ldc.upenn.edu/LDC98S71
-#   https://catalog.ldc.upenn.edu/LDC98T28
+#   https://catalog.ldc.upenn.edu/LDC97S44
+#   https://catalog.ldc.upenn.edu/LDC97T22
 
 set -e
 sph_dir=$1

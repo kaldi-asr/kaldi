@@ -230,8 +230,9 @@ for x in exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_*; do grep WER $x/
 %WER 7.36 [ 923 / 12533, 85 ins, 148 del, 690 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch4/wer_13
 
 ### chain results ###
-# current best chain result with TDNN (check local/chain/run_tdnn_5f.sh)
-%WER 2.94 [ 369 / 12533, 51 ins, 71 del, 247 sub ] exp/chain/tdnn_5f/decode/wer_3_0.5
+# current best chain result with TDNN (check local/chain/run_tdnn_5g.sh)
+%WER 2.86 [ 358 / 12533, 46 ins, 61 del, 251 sub ] exp/chain/tdnn_5g/decode/wer_5_0.0
+%WER 2.71 [ 340 / 12533, 58 ins, 59 del, 223 sub ] exp/chain/tdnn_5n/decode/wer_4_0.0
 
 ### nnet1 results ###
 
@@ -262,12 +263,26 @@ for x in exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_*; do grep WER $x/
 %WER 1.91 [ 239 / 12533, 19 ins, 60 del, 160 sub ] exp/dnn4d-fbank_pretrain-dbn_dnn_smbr/decode_it3/wer_5_0.5
 %WER 1.88 [ 236 / 12533, 17 ins, 61 del, 158 sub ] exp/dnn4d-fbank_pretrain-dbn_dnn_smbr/decode_it6/wer_6_0.5
 
+# Relu, FBANK+pitch, (Karel - 8.9.2016)
+# - no pre-train,
+# Xent,
+%WER 1.95 [ 245 / 12533, 15 ins, 77 del, 153 sub ] exp/dnn4d-6L1024-relu-fbank/decode/wer_7_0.5
+# ParametricRelu, FBANK+pitch, (Karel - 8.9.2016)
+# Xent,
+%WER 1.79 [ 224 / 12533, 27 ins, 47 del, 150 sub ] exp/dnn4d-6L1024-relu-fbank-alpha-beta/decode/wer_4_1.0
+# sMBR,
+%WER 1.74 [ 218 / 12533, 21 ins, 47 del, 150 sub ] exp/dnn4d-6L1024-relu-fbank-alpha-beta_smbr/decode_it1/wer_5_0.5
+%WER 1.74 [ 218 / 12533, 22 ins, 45 del, 151 sub ] exp/dnn4d-6L1024-relu-fbank-alpha-beta_smbr/decode_it3/wer_6_0.0
+%WER 1.76 [ 220 / 12533, 23 ins, 43 del, 154 sub ] exp/dnn4d-6L1024-relu-fbank-alpha-beta_smbr/decode_it6/wer_6_0.5
+# => Better than 'Sigmoid' with pre-training,
+
 # dnn4e, FBANK+pitch, 2 output layers: rm + wsj, (Karel - 10.7.2015)
 %WER 1.52 [ 191 / 12533, 17 ins, 52 del, 122 sub ] exp/dnn4e-fbank_blocksoftmax/decode/wer_4_0.5 <<<[BEST]
 %WER 7.86 [ 985 / 12533, 84 ins, 160 del, 741 sub ] exp/dnn4e-fbank_blocksoftmax/decode_ug/wer_8_0.0
 
-# lstm4f, FBANK+pitch, 2LSTMs, (Karel - 30.7.2015)
-%WER 2.15 [ 270 / 12533, 20 ins, 69 del, 181 sub ] exp/lstm4f/decode/wer_5_0.0
+# lstm4f, FBANK+pitch, 2LSTMs, (Karel - 11.8.2015)
+%WER 2.90 [ 364 / 12533, 28 ins, 96 del, 240 sub ] exp/lstm4f/decode/wer_4_1.0 # 'multistream-perutt'
+%WER 2.51 [ 315 / 12533, 43 ins, 63 del, 209 sub ] exp/lstm4f_truncated_BPTT/decode/wer_4_0.0 # 'multistream (minibatches)'
 
 # cnn4g-2D, FBANK+pitch, 2D-CNN system (from Harish Mallidi, run by Karel - 22.6.2015)
 %WER 2.07 [ 260 / 12533, 32 ins, 60 del, 168 sub ] exp/cnn2d4c/decode/wer_4_0.0
@@ -282,8 +297,8 @@ for x in exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_*; do grep WER $x/
 %WER 1.81 [ 227 / 12533, 29 ins, 49 del, 149 sub ] exp/dnn4h-dummy-ivec_pretrain-dbn_dnn_smbr/decode_it3/wer_3_1.0
 %WER 1.86 [ 233 / 12533, 34 ins, 46 del, 153 sub ] exp/dnn4h-dummy-ivec_pretrain-dbn_dnn_smbr/decode_it6/wer_3_0.5
 
-# blstm4i, FBANK+pitch, (Karel - ??.6.2015) 
-%WER 2.09 [ 262 / 12533, 25 ins, 69 del, 168 sub ] exp/blstm4g/decode/wer_4_0.0
+# blstm4i, FBANK+pitch, (Karel - 9.8.2016) 
+%WER 2.03 [ 254 / 12533, 21 ins, 63 del, 170 sub ] exp/blstm4i/decode/wer_4_0.5
 
 ### ^^^ nnet1 results ^^^ ###
 

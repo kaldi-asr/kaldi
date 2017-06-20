@@ -214,7 +214,7 @@ void ClusterGaussiansToUbm(const AmDiagGmm &am,
     ClusterGaussiansToUbm(tmp_am, state_occs, opts, ubm_out);
     return;
   }
-  
+
   int32 num_pdfs = static_cast<int32>(am.NumPdfs()),
       dim = am.Dim(),
       num_clust_states = static_cast<int32>(opts.reduce_state_factor*num_pdfs);
@@ -234,7 +234,10 @@ void ClusterGaussiansToUbm(const AmDiagGmm &am,
     tmp_gmm.GetComponentMean(0, &tmp_mean);
     tmp_gmm.GetComponentVariance(0, &tmp_var);
     tmp_var.AddVec2(1.0, tmp_mean);  // make it x^2 stats.
-    BaseFloat this_weight = state_occs(pdf_index);
+    // It may cause problems downstream if we add states with zero weights (see
+    // KALDI_ASSERT(weight > 0) below), so we put in a very small floor.
+    // These states with tiny weights will later get merged into other states.
+    BaseFloat this_weight = 1.0e-10 + state_occs(pdf_index);
     tmp_mean.Scale(this_weight);
     tmp_var.Scale(this_weight);
     states.push_back(new GaussClusterable(tmp_mean, tmp_var,
@@ -263,7 +266,9 @@ void ClusterGaussiansToUbm(const AmDiagGmm &am,
       am.GetGaussianMean(pdf_index, gauss_index, &tmp_mean);
       am.GetGaussianVariance(pdf_index, gauss_index, &tmp_var);
       tmp_var.AddVec2(1.0, tmp_mean);  // make it x^2 stats.
-      BaseFloat this_weight =  state_occs(pdf_index) *
+      // adding 1.0e-10 to the weight will prevent problems later on, see
+      // the line KALDI_ASSERT(weight > 0.0).
+      BaseFloat this_weight =  (1.0e-10 + state_occs(pdf_index)) *
           (am.GetPdf(pdf_index).weights())(gauss_index);
       tmp_mean.Scale(this_weight);
       tmp_var.Scale(this_weight);
@@ -288,7 +293,7 @@ void ClusterGaussiansToUbm(const AmDiagGmm &am,
                << ", increasing it to " << num_clust_states;
     opts.intermediate_num_gauss = num_clust_states;
   }
-    
+
   KALDI_VLOG(1) << "Merging from " << am.NumGauss() << " Gaussians in the "
                 << "acoustic model, down to " << opts.intermediate_num_gauss
                 << " Gaussians.";
@@ -312,13 +317,13 @@ void ClusterGaussiansToUbm(const AmDiagGmm &am,
       GaussClusterable *this_cluster = static_cast<GaussClusterable*>(
           gauss_clusters_out[clust_index][i]);
       BaseFloat weight = this_cluster->count();
-      KALDI_ASSERT(weight > 0);
+      KALDI_ASSERT(weight > 0.0);
       tmp_weights(gauss_index) = weight;
       tmp_vec.CopyFromVec(this_cluster->x_stats());
-      tmp_vec.Scale(1/weight);
+      tmp_vec.Scale(1.0 / weight);
       tmp_means.CopyRowFromVec(tmp_vec, gauss_index);
       tmp_vec.CopyFromVec(this_cluster->x2_stats());
-      tmp_vec.Scale(1/weight);
+      tmp_vec.Scale(1.0 / weight);
       tmp_vec.AddVec2(-1.0, tmp_means.Row(gauss_index));  // x^2 stats to var.
       tmp_vars.CopyRowFromVec(tmp_vec, gauss_index);
       gauss_index++;

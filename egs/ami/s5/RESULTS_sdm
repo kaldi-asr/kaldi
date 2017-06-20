@@ -110,11 +110,14 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
 
 ##################################
 # chain model results
-# local/chain/run_tdnn_6z.sh --mic sdm1 (3/12/2016)
-# Total training time is 4:21:29
-%WER 44.6 | 13985 94494 | 58.9 19.0 22.1 3.4 44.6 74.2 | 0.583 | exp/sdm1/chain/tdnn_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
-%WER 48.7 | 13870 89941 | 54.7 20.3 25.0 3.4 48.7 71.0 | 0.552 | exp/sdm1/chain/tdnn_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+  # local/chain/run_tdnn_ami_5.sh  --mic sdm1 --affix msl1.5_45wer
+  %WER 42.8 | 14391 94487 | 60.8 19.3 19.9 3.6 42.8 69.1 | 0.588 | exp/sdm1/chain/tdnn_ami4_msl1.5_45wer_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+  %WER 46.1 | 13754 89977 | 57.5 20.7 21.9 3.6 46.1 69.2 | 0.561 | exp/sdm1/chain/tdnn_ami4_msl1.5_45wer_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 
+
+  # local/chain/run_tdnn_ami_5.sh  --mic sdm1 --use-ihm-ali true --max-wer 50 --affix msl1.5_50wer
+  %WER 41.6 | 14793 94504 | 61.8 19.3 18.9 3.4 41.6 65.3 | 0.591 | exp/sdm1_cleanali/chain/tdnn_ami4_msl1.5_50wer_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+  %WER 45.4 | 14141 89972 | 57.9 20.7 21.4 3.3 45.4 64.8 | 0.567 | exp/sdm1_cleanali/chain/tdnn_ami4_msl1.5_50wer_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 
 #--------------------------------------------------------------------------------------------------------------------------------------------
 # Karel, JSALT 2015, (28.7.2015)

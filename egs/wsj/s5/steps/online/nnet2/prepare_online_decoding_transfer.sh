@@ -44,6 +44,8 @@ dir=$(readlink -f $dir) # Convert $dir to an absolute pathname, so that the
                         # pathnames.
 mkdir -p $dir/conf $dir/log
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $nnet_src/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 cp $nnet_src/tree $dir/ || exit 1;
 

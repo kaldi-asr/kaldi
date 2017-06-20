@@ -53,5 +53,5 @@ if __name__ == "__main__":
     data = data.transpose()
     assert(data.shape[1] == 2)
     if params.output_sampling_rate != sr:
-      data = signal.resample(data,  params.output_sampling_rate * float(data.shape[0]) / sr, axis = 0)
+      data = signal.resample(data,  int(params.output_sampling_rate * float(data.shape[0]) / sr), axis = 0)
   wav_write(output, params.output_sampling_rate, data)

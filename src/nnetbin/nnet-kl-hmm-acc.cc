@@ -31,10 +31,10 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int32 int32;
   try {
     const char *usage =
-        "Collect the statistics for the Kl-HMM trainign.\n"
-        "Usage:  nnet-kl-hmm-acc [options] <feature-rspecifier> <alignments-rspecifier> <kl-hmm-accumulator>\n"
-        "e.g.: \n"
-        " nnet-kl-hmm-acc scp:train.scp ark:train.ali kl-hmm.acc\n";
+      "Collect the statistics for the Kl-HMM training.\n"
+      "Usage: nnet-kl-hmm-acc [options] <feature-rspecifier> "
+      "<alignments-rspecifier> <kl-hmm-accumulator>\n"
+      "e.g.: nnet-kl-hmm-acc ark:feats.ark ark:ali.ark kl-hmm.acc\n";
 
     ParseOptions po(usage);
 
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("nkl-states", &n_kl_states, "Number of states in Kl-HMM");
 
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -64,43 +64,45 @@ int main(int argc, char *argv[]) {
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessInt32VectorReader alignments_reader(alignments_rspecifier);
     int32 posterior_dim = feature_reader.Value().NumCols();
-    KlHmm kl_hmm(posterior_dim,n_kl_states);
+    KlHmm kl_hmm(posterior_dim, n_kl_states);
 
-    int32 num_done = 0, num_no_alignment = 0, num_other_error = 0;
+    int32 num_done = 0,
+          num_no_alignment = 0,
+          num_other_error = 0;
+
+    // main loop,
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
-
       if (!alignments_reader.HasKey(utt)) {
         num_no_alignment++;
       } else {
-        
         const Matrix<BaseFloat> &mat = feature_reader.Value();
         const std::vector<int32> &alignment = alignments_reader.Value(utt);
-                 
-        if ((int32)alignment.size() != mat.NumRows()) {
-          KALDI_WARN << "Alignment has wrong size "<< (alignment.size()) << " vs. "<< (mat.NumRows());
+        // Check,
+        if (static_cast<int32>(alignment.size()) != mat.NumRows()) {
+          KALDI_WARN << "Length mismatch! alignment " << alignment.size()
+                     << ", feature-rows " << mat.NumRows()
+                     << ", " << utt;
           num_other_error++;
           continue;
         }
-
-        // Accumulate the statistics
-        kl_hmm.Accumulate(mat, alignment);  
-        // log
-    KALDI_VLOG(2) << "utt " << utt << ", frames " << alignment.size();
+        // Accumulate the statistics,
+        kl_hmm.Accumulate(mat, alignment);
+        KALDI_VLOG(2) << "utt " << utt << ", frames " << alignment.size();
         total_frames += mat.NumRows();
-      } 
-      num_done++;
+        num_done++;
+      }
     }
-    KALDI_WARN << "Before writing...";
+
+    // Store the accumulator,
+    {
+      Output out(kl_hmm_accumulator, binary);
+      kl_hmm.WriteData(out.Stream(), binary);
+    }
+
     KALDI_LOG << "Done " << num_done << " files, " << num_no_alignment
               << " with no alignments, " << num_other_error
               << " with other errors.";
-
-    //store the accumulator
-    {
-      Output out(kl_hmm_accumulator, binary); 
-      kl_hmm.WriteData(out.Stream(), binary);
-    }
 
     return 0;
   } catch(const std::exception &e) {

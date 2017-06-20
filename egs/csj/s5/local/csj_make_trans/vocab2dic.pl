@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+use warnings;
 
 # Copyright  2015 Tokyo Institute of Technology (Authors: Takafumi Moriya and Takahiro Shinozaki)
 #            2015 Mitsubishi Electric Research Laboratories (Author: Shinji Watanabe)
@@ -7,22 +8,15 @@
 
 # This script converts Katakana phonetic alphabet to phones.
 
-# usage: % perl vocab2dic.pl \
-#               [-o OUTFILE (default "htkprondic")] \
-#               [-e ERRORLIST (default "ERROR")] \
-#               [-p PHONELIST (default "kana2phone")] \
-#               VOCABFILE
-#
-
 use utf8;
 use open IO => ":utf8";
 use open ":std";
 
-require "getopts.pl";
-&Getopts('ho:e:p:');
+use Getopt::Std;
+getopt('o:e:p:');
 
-if ($opt_h) {
-    &usage();
+if (@ARGV != 1 ) {
+    die "Usage: vocab2dic.pl [-o OUTFILE (default htkprondic)] [-p PHONELIST (default kana2phone)] VOCABFILE\n";
 }
 
 if (!$opt_p) {
@@ -51,7 +45,7 @@ while(<PHONES>) {
     $kana2phone{$kana} = $phone;
 }
 
-# main function 
+# main function
 $line_num = 0;
 while (<>) {
     next if /^#/;

@@ -236,7 +236,7 @@ on the paths.
  the 1-best alignment and the lattice-producing alignment chose different
  pronunciations of a word.  These pieces of utterances are just discarded.
 
-  \subsubsection chain_training_numerator_normalization Format of the numerator FSTs
+  \subsubsection chain_training_numerator_format Format of the numerator FSTs
 
   The numerator FSTs are weighted acceptors where the labels correspond to
   pdf-ids plus one.  We can't use pdf-ids, because they could be zero; and zero

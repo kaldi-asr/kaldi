@@ -49,8 +49,8 @@ sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
 find $SWBD_DIR -iname '*.sph' | sort > $dir/sph.flist
 
 n=`cat $dir/sph.flist | wc -l`
-[ $n -ne 2435 ] && \
-  echo Warning: expected 2435 data data files, found $n
+[ $n -ne 2435 ] && [ $n -ne 2438 ] && \
+  echo Warning: expected 2435 or 2438 data data files, found $n
 
 
 # (1a) Transcriptions preparation

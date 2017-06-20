@@ -95,6 +95,13 @@ sub print_usage() {
   exit 1;
 }
 
+sub exec_command {
+  # Execute command and return a tuple of stdout and exit code
+  my $command = join ' ', @_;
+  # To get the actual exit value, shift right by eight bits.
+  ($_ = `$command 2>&1`, $? >> 8);
+}
+
 if (@ARGV < 2) {
   print_usage();
 }
@@ -390,9 +397,12 @@ print Q "  )>>$logfile\n";
 print Q "  unset CUDA_VISIBLE_DEVICES.\n";
 print Q "fi\n";
 print Q "time1=\`date +\"%s\"\`\n";
-print Q " ( $cmd ) 2>>$logfile >>$logfile\n";
+print Q " ( $cmd ) &>>$logfile\n";
 print Q "ret=\$?\n";
+print Q "sync || true";
 print Q "time2=\`date +\"%s\"\`\n";
+print Q "echo '#' Accounting: begin_time=\$time1 >>$logfile\n";
+print Q "echo '#' Accounting: end_time=\$time2 >>$logfile\n";
 print Q "echo '#' Accounting: time=\$((\$time2-\$time1)) threads=$num_threads >>$logfile\n";
 print Q "echo '#' Finished at \`date\` with status \$ret >>$logfile\n";
 print Q "[ \$ret -eq 137 ] && exit 100;\n"; # If process was killed (e.g. oom) it will exit with status 137;
@@ -486,13 +496,19 @@ if (! $sync) { # We're not submitting with -sync y, so we
       # exceeds some hard limit, or in case of a machine shutdown.
       if (($check_sge_job_ctr++ % 10) == 0) { # Don't run qstat too often, avoid stress on SGE.
         if ( -f $f ) { next; }; #syncfile appeared: OK.
-        $ret = system("squeue -j $sge_job_id >/dev/null 2>/dev/null");
         # system(...) : To get the actual exit value, shift $ret right by eight bits.
-        if ($ret>>8 == 1) {     # Job does not seem to exist
+        my ($squeue_output, $squeue_status) = exec_command("squeue -j $sge_job_id");
+        if ($squeue_status == 1) {
           # Don't consider immediately missing job as error, first wait some
+          sleep(4);
+          ($squeue_output, $squeue_status) = exec_command("squeue -j $sge_job_id");
+        }
+        if ($squeue_status == 1) {
           # time to make sure it is not just delayed creation of the syncfile.
 
-          sleep(3);
+          # Don't consider immediately missing job as error, first wait some  
+          # time to make sure it is not just delayed creation of the syncfile.
+          sleep(4);
           # Sometimes NFS gets confused and thinks it's transmitted the directory
           # but it hasn't, due to timestamp issues.  Changing something in the
           # directory will usually fix that.
@@ -527,11 +543,15 @@ if (! $sync) { # We're not submitting with -sync y, so we
             last;
           } else {
             chop $last_line;
-            print STDERR "$0: Error, unfinished job no " .
-              "longer exists, log is in $logfile, last line is '$last_line', " .
-              "syncfile is $f, return status of squeue was $ret\n" .
-              "Possible reasons: a) Exceeded time limit? -> Use more jobs!" .
-              " b) Shutdown/Frozen machine? -> Run again!\n";
+            print STDERR "$0: Error: Job $sge_job_id seems to no longer exists:\n" .
+              "'squeue -j $sge_job_id' returned error code $squeue_status and said:\n" .
+              "  $squeue_output\n" .
+              "Syncfile $f does not exist, meaning that the job did not finish.\n" .
+              "Log is in $logfile. Last line '$last_line' does not end in 'status 0'.\n" .
+              "Possible reasons:\n" .
+              "  a) Exceeded time limit? -> Use more jobs!\n" .
+              "  b) Shutdown/Frozen machine? -> Run again! squeue:\n";
+            system("squeue -j $sge_job_id");
             exit(1);
           }
         } elsif ($ret != 0) {

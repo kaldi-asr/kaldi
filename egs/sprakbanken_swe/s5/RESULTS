@@ -1,0 +1,19 @@
+%WER 48.86 [ 34040 / 69674, 3407 ins, 7500 del, 23133 sub ] exp/mono/decode_test120_p_spk/wer_9_0.0
+
+%WER 24.16 [ 16835 / 69674, 2620 ins, 2887 del, 11328 sub ] exp/tri1/decode_test120_p_spk/wer_13_0.5
+
+%WER 23.86 [ 16623 / 69674, 2793 ins, 2576 del, 11254 sub ] exp/tri2a/decode_test120_p_spk/wer_13_0.5
+
+%WER 22.66 [ 15791 / 69674, 3016 ins, 2196 del, 10579 sub ] exp/tri2b/decode_test120_p_spk/wer_16_0.0
+
+%WER 20.19 [ 14065 / 69674, 2899 ins, 1929 del, 9237 sub ] exp/tri3b/decode_test120_p_spk/wer_17_0.0
+
+%WER 19.06 [ 13279 / 69674, 2900 ins, 1673 del, 8706 sub ] exp/tri4a/decode_test120_p_spk/wer_18_0.0
+
+——————————————————————————————————————————————————————————————————————————————————
+#full test set 
+
+%WER 18.88 [ 111453 / 590285, 25457 ins, 13698 del, 72298 sub ] exp/tri4a/decode_4g_test/wer_17_0.0
+
+%WER 15.97 [ 94242 / 590285, 21022 ins, 12697 del, 60523 sub ] exp/nnet5c/decode_4g_test/wer_11
+

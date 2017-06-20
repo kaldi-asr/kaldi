@@ -78,7 +78,7 @@ if [ $stage -le 4 ]; then
   nnet-initialize <(echo "<Splice> <InputDim> 80 <OutputDim> 1040 <BuildVector> -10 -5:5 10 </BuildVector>") \
     $dir/splice_for_bottleneck.nnet 
   # Concatanate the input-transform, 1stage network, splicing,
-  nnet-concat $dir/final.feature_transform "nnet-copy --remove-last-layers=4 $dir/final.nnet - |" \
+  nnet-concat $dir/final.feature_transform "nnet-copy --remove-last-components=4 $dir/final.nnet - |" \
     $dir/splice_for_bottleneck.nnet $feature_transform
   
   # Train 2nd network, overall context +/-15 frames,

@@ -21,7 +21,7 @@
 # that has word-ids on the output, and pdf-ids on the input (these are indexes
 # that resolve to Gaussian Mixture Models).  
 # See
-#  http://kaldi.sourceforge.net/graph_recipe_test.html
+#  http://kaldi-asr.org/doc/graph_recipe_test.html
 # (this is compiled from this repository using Doxygen,
 # the source for this part is in src/doc/graph_recipe_test.dox)
 

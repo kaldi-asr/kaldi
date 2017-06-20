@@ -39,6 +39,7 @@ int main(int argc, char *argv[]) {
 
     int32 frame_subsampling_factor = 1;
     bool reorder = true;
+    bool repeat_frames = false;
 
     std::string phone_map_rxfilename;
     ParseOptions po(usage);
@@ -48,6 +49,11 @@ int main(int argc, char *argv[]) {
     po.Register("reorder", &reorder,
                 "True if you want the converted alignments to be 'reordered' "
                 "versus the way they appear in the HmmTopology object");
+    po.Register("repeat-frames", &repeat_frames,
+                "Only relevant when frame-subsampling-factor != 1.  If true, "
+                "repeat frames of alignment by 'frame-subsampling-factor' "
+                "after alignment conversion, to keep the alignment the same "
+                "length as the input alignment.");
     po.Register("frame-subsampling-factor", &frame_subsampling_factor,
                 "Can be used in converting alignments to reduced frame rates.");
 
@@ -98,6 +104,7 @@ int main(int argc, char *argv[]) {
                            new_ctx_dep,
                            old_alignment,
                            frame_subsampling_factor,
+                           repeat_frames,
                            reorder,
                            (phone_map_rxfilename != "" ? &phone_map : NULL),
                            &new_alignment)) {

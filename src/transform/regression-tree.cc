@@ -132,6 +132,16 @@ static bool GetActiveParents(int32 node, const vector<int32> &parents,
   KALDI_ASSERT(parents.size() == is_active.size());
   KALDI_ASSERT(static_cast<size_t>(node) < parents.size());
   active_parents_out->clear();
+
+  if (node == static_cast<int32> (parents.size() - 1)) {  // root node
+    if (is_active[node]) {
+      active_parents_out->push_back(node);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   bool ret_val = false;
   while (node < static_cast<int32> (parents.size() - 1)) {  // exclude the root
     node = parents[node];
@@ -141,15 +151,6 @@ static bool GetActiveParents(int32 node, const vector<int32> &parents,
     }
   }
   return ret_val;  // will return if not starting from root
-  if (node == static_cast<int32> (parents.size() - 1)) {  // root node
-    if (is_active[node]) {
-      active_parents_out->push_back(node);
-      return true;
-    } else {
-      return false;
-    }
-  }
-  KALDI_ASSERT(false);  // Never reached
 }
 
 /// Parses the regression tree and finds the nodes whose occupancies (read

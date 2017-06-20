@@ -15,13 +15,13 @@
 # limitations under the License.
 
 
-# These scripts are (or can be) used by scoring scripts to generate 
-# additional information (such as per-spk wer, per-sentence alignments and so on) 
-# during the scoring. See the wsj/local/score.sh script for example how 
+# These scripts are (or can be) used by scoring scripts to generate
+# additional information (such as per-spk wer, per-sentence alignments and so on)
+# during the scoring. See the wsj/local/score.sh script for example how
 # the scripts are used
-# For help and instructions about usage, see the bottom of this file, 
+# For help and instructions about usage, see the bottom of this file,
 # or call it with the parameter --help
- 
+
 use strict;
 use warnings;
 use utf8;
@@ -68,13 +68,13 @@ while (<STDIN>) {
   chomp;
   my @entries = split(" ", $_);
   next if  @entries < 2;
-  next if  ($entries[1] ne "hyp") and ($entries[1] ne "ref") ; 
+  next if  ($entries[1] ne "hyp") and ($entries[1] ne "ref") ;
   if (scalar @entries <= 2 ) {
-    print STDERR "Warning: skipping entry \"$_\", either an  empty phrase or incompatible format\n" ;
+    print STDERR "$0: Warning: skipping entry \"$_\", either an  empty phrase or incompatible format\n" ;
     next;
   }
 
-  die "The input stream contains duplicate entry $entries[0] $entries[1]\n" 
+  die "The input stream contains duplicate entry $entries[0] $entries[1]\n"
     if exists $UTT{$entries[0]}->{$entries[1]};
   push @{$UTT{$entries[0]}->{$entries[1]}}, @entries[2..$#entries];
   #print join(" ", @{$UTT{$entries[0]}->{$entries[1]}}) . "\n";
@@ -82,10 +82,10 @@ while (<STDIN>) {
 }
 
 for my $utterance( sort (keys %UTT) ) {
-  
-  die "The input stream does not contain entry \"hyp\" for utterance $utterance\n" 
+
+  die "The input stream does not contain entry \"hyp\" for utterance $utterance\n"
     unless exists $UTT{$utterance}->{"hyp"};
-  die "The input stream does not contain entry \"ref\" for utterance $utterance\n" 
+  die "The input stream does not contain entry \"ref\" for utterance $utterance\n"
     unless exists $UTT{$utterance}->{"ref"};
 
   my $hyp = $UTT{$utterance}->{"hyp"};
@@ -109,16 +109,15 @@ foreach my $refw ( sort (keys %EDIT_OPS) ) {
       ;
     }
     $word_len = $q > $word_len ? $q : $word_len ;
-    
+
     my $d = length(sprintf("%d", $EDIT_OPS{$refw}->{$hypw}));
     $ops_len =  $d > $ops_len ? $d: $ops_len ;
   }
 }
 
-print STDERR "Determined max length of string: $word_len\n";
-print STDERR "Determined max length of number: $ops_len\n";
 if ($word_len > $max_size) {
-  print STDERR "Warning: we are limiting the width to $max_size\n";
+  ## We used to warn about this, but it was just confusing-- dan.
+  ## print STDERR "wer_ops_details.pl [info; affects only whitespace]: we are limiting the width to $max_size, max word len was $word_len\n";
   $word_len = $max_size
 };
 
@@ -143,15 +142,15 @@ __END__
 
 =head1 SYNOPSIS
 
-  wer_per_spk_details.pl 
-  
+  wer_per_spk_details.pl
+
   Options:
-    --special-symbol        special symbol used in align-text to denote empty word 
+    --special-symbol        special symbol used in align-text to denote empty word
                             in case insertion or deletion ("<eps>" by default)
     --help                  Print this help
 
 ==head1 DESCRIPTION
-  The program generates global statistic on how many time was each word 
+  The program generates global statistic on how many time was each word
   recognized correctly, confused as another word, incorrectly deleted or inserted.
   The output will contain similar info as the sclite dtl file, the format is,
   however, completely different.
@@ -175,7 +174,7 @@ __END__
   Note:
     The input can contain other lines as well -- those will be ignored during
     reading the input. I.E. this is a completely legal input:
-      
+
       UTT-A ref  word-A   <eps>  word-B  word-C  word-D  word-E
       UTT-A hyp  word-A  word-A  word-B   <eps>  word-D  word-X
       UTT-A op      C       I       C       D       C       S

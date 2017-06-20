@@ -26,7 +26,7 @@
 
 #include "gmm/diag-gmm.h"
 #include "gmm/mle-diag-gmm.h"
-#include "thread/kaldi-thread.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 
@@ -293,7 +293,7 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
   double occ_sum = diag_gmm_acc.occupancy().Sum();
 
   int32 elements_floored = 0, gauss_floored = 0;
-  
+
   // remember old objective value
   gmm->ComputeGconsts();
   BaseFloat obj_old = MlObjective(*gmm, diag_gmm_acc);
@@ -313,27 +313,27 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
 
     if (occ > static_cast<double>(config.min_gaussian_occupancy)
         && prob > static_cast<double>(config.min_gaussian_weight)) {
-      
+
       ngmm.weights_(i) = prob;
-      
+
       // copy old mean for later normalizations
       Vector<double> old_mean(ngmm.means_.Row(i));
-      
-      // update mean, then variance, as far as there are accumulators 
+
+      // update mean, then variance, as far as there are accumulators
       if (diag_gmm_acc.Flags() & (kGmmMeans|kGmmVariances)) {
         Vector<double> mean(diag_gmm_acc.mean_accumulator().Row(i));
         mean.Scale(1.0 / occ);
         // transfer to estimate
         ngmm.means_.CopyRowFromVec(mean, i);
       }
-      
+
       if (diag_gmm_acc.Flags() & kGmmVariances) {
         KALDI_ASSERT(diag_gmm_acc.Flags() & kGmmMeans);
         Vector<double> var(diag_gmm_acc.variance_accumulator().Row(i));
         var.Scale(1.0 / occ);
         var.AddVec2(-1.0, ngmm.means_.Row(i));  // subtract squared means.
-        
-        // if we intend to only update the variances, we need to compensate by 
+
+        // if we intend to only update the variances, we need to compensate by
         // adding the difference between the new and old mean
         if (!(flags & kGmmMeans)) {
           old_mean.AddVec(-1.0, ngmm.means_.Row(i));
@@ -372,19 +372,19 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
       }
     }
   }
-  
+
   // copy to natural representation according to flags
   ngmm.CopyToDiagGmm(gmm, flags);
 
   gmm->ComputeGconsts();  // or MlObjective will fail.
   BaseFloat obj_new = MlObjective(*gmm, diag_gmm_acc);
-  
-  if (obj_change_out) 
+
+  if (obj_change_out)
     *obj_change_out = (obj_new - obj_old);
   if (count_out) *count_out = occ_sum;
   if (floored_elements_out) *floored_elements_out = elements_floored;
   if (floored_gaussians_out) *floored_gaussians_out = gauss_floored;
-  
+
   if (to_remove.size() > 0) {
     gmm->RemoveComponents(to_remove, true /*renormalize weights*/);
     gmm->ComputeGconsts();
@@ -417,18 +417,18 @@ void MapDiagGmmUpdate(const MapDiagGmmOptions &config,
 
   if (flags & ~diag_gmm_acc.Flags())
     KALDI_ERR << "Flags in argument do not match the active accumulators";
-  
+
   KALDI_ASSERT(diag_gmm_acc.NumGauss() == gmm->NumGauss() &&
                diag_gmm_acc.Dim() == gmm->Dim());
-  
+
   int32 num_gauss = gmm->NumGauss();
   double occ_sum = diag_gmm_acc.occupancy().Sum();
-  
+
   // remember the old objective function value
   gmm->ComputeGconsts();
   BaseFloat obj_old = MlObjective(*gmm, diag_gmm_acc);
 
-  // allocate the gmm in normal representation; all parameters of this will be 
+  // allocate the gmm in normal representation; all parameters of this will be
   // updated, but only the flagged ones will be transferred back to gmm
   DiagGmmNormal ngmm(*gmm);
 
@@ -449,7 +449,7 @@ void MapDiagGmmUpdate(const MapDiagGmmOptions &config,
       mean.AddVec(config.mean_tau / (occ + config.mean_tau), old_mean);
       ngmm.means_.CopyRowFromVec(mean, i);
     }
-    
+
     if (occ > 0.0 && (flags & kGmmVariances)) {
       // Computing the variance around the updated mean; this is:
       // E( (x - mu)^2 ) = E( x^2 - 2 x mu + mu^2 ) =
@@ -469,16 +469,16 @@ void MapDiagGmmUpdate(const MapDiagGmmOptions &config,
       ngmm.vars_.Row(i).CopyFromVec(var);
     }
   }
-  
+
   // Copy to natural/exponential representation.
   ngmm.CopyToDiagGmm(gmm, flags);
 
   gmm->ComputeGconsts();  // or MlObjective will fail.
   BaseFloat obj_new = MlObjective(*gmm, diag_gmm_acc);
-  
-  if (obj_change_out) 
+
+  if (obj_change_out)
     *obj_change_out = (obj_new - obj_old);
-  
+
   if (count_out) *count_out = occ_sum;
 }
 
@@ -494,6 +494,7 @@ class AccumulateMultiThreadedClass: public MultiThreadable {
       frame_weights_(frame_weights), dest_accum_(accum),
       tot_like_ptr_(tot_like), tot_like_(0.0) { }
   AccumulateMultiThreadedClass(const AccumulateMultiThreadedClass &other):
+    MultiThreadable(other),
     diag_gmm_(other.diag_gmm_), data_(other.data_),
     frame_weights_(other.frame_weights_), dest_accum_(other.dest_accum_),
     accum_(diag_gmm_, dest_accum_->Flags()), tot_like_ptr_(other.tot_like_ptr_),
@@ -532,7 +533,7 @@ class AccumulateMultiThreadedClass: public MultiThreadable {
   double *tot_like_ptr_;
   double tot_like_;
 };
-  
+
 
 BaseFloat AccumDiagGmm::AccumulateFromDiagMultiThreaded(
     const DiagGmm &gmm,

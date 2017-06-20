@@ -26,6 +26,7 @@
 #include "fstext/fstext-lib.h"
 #include "decoder/decoder-wrappers.h"
 #include "nnet3/nnet-am-decodable-simple.h"
+#include "nnet3/nnet-utils.h"
 #include "base/timer.h"
 
 
@@ -38,7 +39,7 @@ int main(int argc, char *argv[]) {
     using namespace kaldi::nnet3;
     typedef kaldi::int32 int32;
     using fst::SymbolTable;
-    using fst::VectorFst;
+    using fst::Fst;
     using fst::StdArc;
 
     const char *usage =
@@ -93,6 +94,9 @@ int main(int argc, char *argv[]) {
       Input ki(model_in_filename, &binary);
       trans_model.Read(ki.Stream(), binary);
       am_nnet.Read(ki.Stream(), binary);
+      SetBatchnormTestMode(true, &(am_nnet.GetNnet()));
+      SetDropoutTestMode(true, &(am_nnet.GetNnet()));
+      CollapseModel(CollapseModelConfig(), &(am_nnet.GetNnet()));
     }
 
     bool determinize = config.determinize_lattice;
@@ -120,12 +124,17 @@ int main(int argc, char *argv[]) {
     double tot_like = 0.0;
     kaldi::int64 frame_count = 0;
     int num_success = 0, num_fail = 0;
+    // this compiler object allows caching of computations across
+    // different utterances.
+    CachingOptimizingCompiler compiler(am_nnet.GetNnet(),
+                                       decodable_opts.optimize_config);
 
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
       // Input FST is just one FST, not a table of FSTs.
-      VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_str);
+      Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
+      timer.Reset();
 
       {
         LatticeFasterDecoder decoder(*decode_fst, config);
@@ -162,7 +171,7 @@ int main(int argc, char *argv[]) {
           DecodableAmNnetSimple nnet_decodable(
               decodable_opts, trans_model, am_nnet,
               features, ivector, online_ivectors,
-              online_ivector_period);
+              online_ivector_period, &compiler);
 
           double like;
           if (DecodeUtteranceLatticeFaster(
@@ -172,7 +181,7 @@ int main(int argc, char *argv[]) {
                   &lattice_writer,
                   &like)) {
             tot_like += like;
-            frame_count += features.NumRows();
+            frame_count += nnet_decodable.NumFramesReady();
             num_success++;
           } else num_fail++;
         }
@@ -222,7 +231,7 @@ int main(int argc, char *argv[]) {
         DecodableAmNnetSimple nnet_decodable(
             decodable_opts, trans_model, am_nnet,
             features, ivector, online_ivectors,
-            online_ivector_period);
+            online_ivector_period, &compiler);
 
         double like;
         if (DecodeUtteranceLatticeFaster(
@@ -231,20 +240,24 @@ int main(int argc, char *argv[]) {
                 &alignment_writer, &words_writer, &compact_lattice_writer,
                 &lattice_writer, &like)) {
           tot_like += like;
-          frame_count += features.NumRows();
+          frame_count += nnet_decodable.NumFramesReady();
           num_success++;
         } else num_fail++;
       }
     }
 
+    kaldi::int64 input_frame_count =
+        frame_count * decodable_opts.frame_subsampling_factor;
+
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "
-              << (elapsed*100.0/frame_count);
+              << (elapsed * 100.0 / input_frame_count);
     KALDI_LOG << "Done " << num_success << " utterances, failed for "
               << num_fail;
-    KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count) << " over "
-              << frame_count<<" frames.";
+    KALDI_LOG << "Overall log-likelihood per frame is "
+              << (tot_like / frame_count) << " over "
+              << frame_count << " frames.";
 
     delete word_syms;
     if (num_success != 0) return 0;

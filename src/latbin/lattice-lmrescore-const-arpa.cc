@@ -42,13 +42,13 @@ int main(int argc, char *argv[]) {
         "                                   const-arpa-in lattice-wspecifier\n"
         " e.g.: lattice-lmrescore-const-arpa --lm-scale=-1.0 ark:in.lats \\\n"
         "                                   const_arpa ark:out.lats\n";
-      
+
     ParseOptions po(usage);
     BaseFloat lm_scale = 1.0;
-    
+
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model "
                 "costs; frequently 1.0 or -1.0");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
 
     // Reads and writes as compact lattice.
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
-    CompactLatticeWriter compact_lattice_writer(lats_wspecifier); 
+    CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
 
     int32 n_done = 0, n_fail = 0;
     for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
         // for each lattice to prevent memory usage increasing with time.
         ConstArpaLmDeterministicFst const_arpa_fst(const_arpa);
 
-        // Composes lattice with language model.        
+        // Composes lattice with language model.
         CompactLattice composed_clat;
         ComposeCompactLatticeDeterministic(clat,
                                            &const_arpa_fst, &composed_clat);

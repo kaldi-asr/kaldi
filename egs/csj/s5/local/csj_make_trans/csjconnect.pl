@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-use warnings; #sed replacement for -w perl parameter
+use warnings;
 
 # Copyright  2015 Tokyo Institute of Technology (Authors: Takafumi Moriya and Takahiro Shinozaki)
 #            2015 Mitsubishi Electric Research Laboratories (Author: Shinji Watanabe)
@@ -12,16 +12,13 @@ use utf8;
 use open IO => ":utf8";
 use open ":std";
 
-require "getopts.pl";
-&Getopts('t');
-
 if (@ARGV != 4) {
     die "$0 gap maxlen file spk_id\n";
 }
 
 $gap = $ARGV[0];
 $maxlen = $ARGV[1];
-$file = $ARGV[2]; 
+$file = $ARGV[2];
 $spk = $ARGV[3];
 
 if ($file eq '-') {
@@ -32,6 +29,7 @@ if ($file eq '-') {
 $psgid = -1;
 $pspk_id = "";
 $pend = 0;
+$line = "";
 
 while (<$in>) {
     chomp;
@@ -56,7 +54,7 @@ while (<$in>) {
 	$osgid = $sgid;
 	$ospk_id = $spk_id;
 	$line = "$wpp ";
-    } elsif ($psgid == $sgid && $pspk_id == $spk_id) {
+    } elsif ($psgid eq $sgid && $pspk_id eq $spk_id) {
 	$line .= "$wpp ";
     } else {
 	if ($gap < $start - $pend || $maxlen < $pend - $ostart || $ospk_id ne $spk_id ) {
@@ -64,7 +62,7 @@ while (<$in>) {
 		print "$osgid $ostart $pend\n";
 	    } else {
 		unless($line=~ /\×/){
-		    print "$ospk_id\_$osgid $ostart $pend $line\n";
+		    print "$ospk_id\_$osgid $ostart $pend <s> $line</s>\n";
 		}
 	    }
 	    $ostart = $start;
@@ -86,8 +84,7 @@ if ($line ne "") {
 	print "$osgid $ostart $end\n";
     } else {
 	unless($line =~ /\×/){
-	    print "$ospk_id\_$osgid $ostart $end $line\n";
+	    print "$ospk_id\_$osgid $ostart $end <s> $line</s>\n";
 	}
     }
 }
-

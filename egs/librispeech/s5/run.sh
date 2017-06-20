@@ -52,7 +52,7 @@ local/prepare_dict.sh --stage 3 --nj 30 --cmd "$train_cmd" \
    data/local/lm data/local/lm data/local/dict_nosp
 
 utils/prepare_lang.sh data/local/dict_nosp \
-  "<SPOKEN_NOISE>" data/local/lang_tmp_nosp data/lang_nosp
+  "<UNK>" data/local/lang_tmp_nosp data/lang_nosp
 
 local/format_lms.sh --src-dir data/lang_nosp data/local/lm
 
@@ -91,7 +91,7 @@ steps/train_mono.sh --boost-silence 1.25 --nj 20 --cmd "$train_cmd" \
 
 # decode using the monophone model
 (
-  utils/mkgraph.sh --mono data/lang_nosp_test_tgsmall \
+  utils/mkgraph.sh data/lang_nosp_test_tgsmall \
     exp/mono exp/mono/graph_nosp_tgsmall
   for test in test_clean test_other dev_clean dev_other; do
     steps/decode.sh --nj 20 --cmd "$decode_cmd" exp/mono/graph_nosp_tgsmall \
@@ -208,7 +208,7 @@ utils/dict_dir_add_pronprobs.sh --max-normalize true \
   exp/tri4b/pron_bigram_counts_nowb.txt data/local/dict
 
 utils/prepare_lang.sh data/local/dict \
-  "<SPOKEN_NOISE>" data/local/lang_tmp data/lang
+  "<UNK>" data/local/lang_tmp data/lang
 local/format_lms.sh --src-dir data/lang data/local/lm
 
 utils/build_const_arpa_lm.sh \
@@ -327,6 +327,10 @@ steps/train_quick.sh --cmd "$train_cmd" \
   done
 )&
 
+# this does some data-cleaning. The cleaned data should be useful when we add
+# the neural net and chain systems.
+local/run_cleanup_segmentation.sh
+
 # steps/cleanup/debug_lexicon.sh --remove-stress true  --nj 200 --cmd "$train_cmd" data/train_clean_100 \
 #    data/lang exp/tri6b data/local/dict/lexicon.txt exp/debug_lexicon_100h
 
@@ -348,8 +352,11 @@ steps/train_quick.sh --cmd "$train_cmd" \
 #     --rnnlm-tag "h150-me3-400-nce20" $data data/local/lm
 
 
-# train NN models on the entire dataset
-local/nnet2/run_7a_960.sh
+# train nnet3 tdnn models on the entire data with data-cleaning (xent and chain)
+local/chain/run_tdnn.sh # set "--stage 11" if you have already run local/nnet3/run_tdnn.sh
+
+# The nnet3 TDNN recipe:
+# local/nnet3/run_tdnn.sh # set "--stage 11" if you have already run local/chain/run_tdnn.sh
 
 # # train models on cleaned-up data
 # # we've found that this isn't helpful-- see the comments in local/run_data_cleaning.sh

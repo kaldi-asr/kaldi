@@ -36,8 +36,7 @@ namespace kaldi {
 class DiagGmm;
 class FullGmmNormal;  // a simplified representation, see full-gmm-normal.h
 
-/** \class Definition for Gaussian Mixture Model with full covariances
-  */
+/// Definition for Gaussian Mixture Model with full covariances
 class FullGmm {
   /// this makes it a little easier to modify the internals
   friend class FullGmmNormal;
@@ -96,7 +95,7 @@ class FullGmm {
                                        const std::vector<int32> &preselect,
                                        int32 num_gselect,
                                        std::vector<int32> *output) const;
-  
+
   /// Computes the posterior probabilities of all Gaussian components given
   /// a data point. Returns the log-likehood of the data given the GMM.
   BaseFloat ComponentPosteriors(const VectorBase<BaseFloat> &data,

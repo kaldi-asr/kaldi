@@ -13,7 +13,7 @@ BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            nbest-to-linear nbest-to-lattice lattice-1best linear-to-nbest \
            lattice-mbr-decode lattice-align-words lattice-to-mpe-post \
            lattice-copy-backoff nbest-to-ctm lattice-determinize-pruned \
-           lattice-to-ctm-conf lattice-arcgraph lattice-combine lattice-reverse \
+           lattice-to-ctm-conf lattice-combine \
            lattice-rescore-mapped lattice-depth lattice-align-phones \
            lattice-to-smbr-post lattice-determinize-pruned-parallel \
            lattice-add-penalty lattice-align-words-lexicon lattice-push \
@@ -29,9 +29,9 @@ OBJFILES =
 
 TESTFILES =
 
-ADDLIBS = ../lat/kaldi-lat.a ../lm/kaldi-lm.a ../hmm/kaldi-hmm.a \
-          ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
-          ../thread/kaldi-thread.a ../fstext/kaldi-fstext.a ../base/kaldi-base.a
+ADDLIBS = ../lat/kaldi-lat.a ../lm/kaldi-lm.a ../fstext/kaldi-fstext.a \
+          ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../util/kaldi-util.a \
+          ../matrix/kaldi-matrix.a \
+          ../base/kaldi-base.a
 
 include ../makefiles/default_rules.mk
-

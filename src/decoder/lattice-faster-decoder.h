@@ -66,20 +66,22 @@ struct LatticeFasterDecoderConfig {
                                 prune_scale(0.1) { }
   void Register(OptionsItf *opts) {
     det_opts.Register(opts);
-    opts->Register("beam", &beam, "Decoding beam.");
-    opts->Register("max-active", &max_active, "Decoder max active states.");
+    opts->Register("beam", &beam, "Decoding beam.  Larger->slower, more accurate.");
+    opts->Register("max-active", &max_active, "Decoder max active states.  Larger->slower; "
+                   "more accurate");
     opts->Register("min-active", &min_active, "Decoder minimum #active states.");
-    opts->Register("lattice-beam", &lattice_beam, "Lattice generation beam");
+    opts->Register("lattice-beam", &lattice_beam, "Lattice generation beam.  Larger->slower, "
+                   "and deeper lattices");
     opts->Register("prune-interval", &prune_interval, "Interval (in frames) at "
                    "which to prune tokens");
     opts->Register("determinize-lattice", &determinize_lattice, "If true, "
-                   "determinize the lattice (in a special sense, keeping only "
+                   "determinize the lattice (lattice-determinization, keeping only "
                    "best pdf-sequence for each word-sequence).");
     opts->Register("beam-delta", &beam_delta, "Increment used in decoding-- this "
                    "parameter is obscure and relates to a speedup in the way the "
                    "max-active constraint is applied.  Larger is more accurate.");
-    opts->Register("hash-ratio", &hash_ratio, "Setting used in decoder to control"
-                   " hash behavior");
+    opts->Register("hash-ratio", &hash_ratio, "Setting used in decoder to "
+                   "control hash behavior");
   }
   void Check() const {
     KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0

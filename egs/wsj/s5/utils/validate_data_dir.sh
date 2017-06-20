@@ -22,7 +22,10 @@ done
 
 if [ $# -ne 1 ]; then
   echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] <data-dir>"
+  echo "The --no-xxx options mean that the script does not require "
+  echo "xxx.scp to be present, but it will check it if it is present."
   echo "e.g.: $0 data/train"
+  exit 1;
 fi
 
 data=$1
@@ -49,7 +52,7 @@ done
 ns=$(wc -l < $data/spk2utt)
 if [ "$ns" == 1 ]; then
   echo "$0: WARNING: you have only one speaker.  This probably a bad idea."
-  echo "   Search for the word 'bold' in http://kaldi.sourceforge.net/data_prep.html"
+  echo "   Search for the word 'bold' in http://kaldi-asr.org/doc/data_prep.html"
   echo "   for more information."
 fi
 
@@ -131,7 +134,7 @@ if [ -f $data/wav.scp ]; then
     check_sorted_and_uniq $data/segments
     # We have a segments file -> interpret wav file as "recording-ids" not utterance-ids.
     ! cat $data/segments | \
-      awk '{if (NF != 4 || ($4 <= $3 && $4 != -1)) { print "Bad line in segments file", $0; exit(1); }}' && \
+      awk '{if (NF != 4 || $4 <= $3) { print "Bad line in segments file", $0; exit(1); }}' && \
       echo "$0: badly formatted segments file" && exit 1;
 
     segments_len=`cat $data/segments | wc -l`
@@ -234,7 +237,7 @@ if [ -f $data/cmvn.scp ]; then
   cat $data/cmvn.scp | awk '{print $1}' > $tmpdir/speakers.cmvn
   cat $data/spk2utt | awk '{print $1}' > $tmpdir/speakers
   if ! cmp -s $tmpdir/speakers{,.cmvn}; then
-    echo "$0: Error: in $data, speaker lists extracted from spkutt and cmvn"
+    echo "$0: Error: in $data, speaker lists extracted from spk2utt and cmvn"
     echo "$0: differ, partial diff is:"
     partial_diff $tmpdir/speakers{,.cmvn}
     exit 1;
@@ -302,7 +305,7 @@ if [ -f $data/utt2dur ]; then
   if ! cmp -s $tmpdir/utts{,.utt2dur}; then
     echo "$0: Error: in $data, utterance-ids extracted from utt2spk and utt2dur file"
     echo "$0: differ, partial diff is:"
-    partial_diff $tmpdir/utts{,.feats}
+    partial_diff $tmpdir/utts{,.utt2dur}
     exit 1;
   fi
   cat $data/utt2dur | \

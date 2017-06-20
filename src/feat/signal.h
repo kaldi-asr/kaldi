@@ -25,6 +25,13 @@
 
 namespace kaldi {
 
+/* 
+   The following three functions are having the same functionality but
+   different implementations so as the efficiency. After the convolution,
+   the length of the signal will be extended to (original signal length +
+   filter length - 1).
+*/
+
 /*
    This function implements a simple non-FFT-based convolution of two signals.
    It is suggested to use the FFT-based convolution function which is more

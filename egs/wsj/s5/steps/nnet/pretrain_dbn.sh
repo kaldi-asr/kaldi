@@ -16,15 +16,15 @@
 
 # To be run from ../../
 #
-# Restricted Boltzman Machine (RBM) pre-training by Contrastive Divergence 
+# Restricted Boltzman Machine (RBM) pre-training by Contrastive Divergence
 # algorithm (CD-1). A stack of RBMs forms a Deep Belief Neetwork (DBN).
 #
-# This script by default pre-trains on plain features (ie. saved fMLLR features), 
+# This script by default pre-trains on plain features (ie. saved fMLLR features),
 # building a 'feature_transform' containing +/-5 frame splice and global CMVN.
 #
 # There is also a support for adding speaker-based CMVN, deltas, i-vectors,
 # or passing custom 'feature_transform' or its prototype.
-# 
+#
 
 # Begin configuration.
 
@@ -47,12 +47,14 @@ rbm_extra_opts=
 # data processing,
 copy_feats=true     # resave the features to tmpdir,
 copy_feats_tmproot=/tmp/kaldi.XXXX # sets tmproot for 'copy-feats',
+copy_feats_compress=true # compress feats while resaving
 
 # feature processing,
 splice=5            # (default) splice features both-ways along time axis,
 cmvn_opts=          # (optional) adds 'apply-cmvn' to input feature pipeline, see opts,
 delta_opts=         # (optional) adds 'add-deltas' to input feature pipeline, see opts,
-ivector=            # (optional) adds 'append-vector-to-feats', it's rx-filename,
+ivector=            # (optional) adds 'append-vector-to-feats', the option is rx-filename for the 2nd stream,
+ivector_append_tool=append-vector-to-feats # (optional) the tool for appending ivectors,
 
 feature_transform_proto= # (optional) use this prototype for 'feature_transform',
 feature_transform=  # (optional) directly use this 'feature_transform',
@@ -96,7 +98,6 @@ fi
 data=$1
 dir=$2
 
-
 for f in $data/feats.scp; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
@@ -120,8 +121,8 @@ echo "# PREPARING FEATURES"
 if [ "$copy_feats" == "true" ]; then
   # re-save the features to local disk into /tmp/,
   tmpdir=$(mktemp -d $copy_feats_tmproot)
-  copy-feats scp:$data/feats.scp ark,scp:$tmpdir/train.ark,$dir/train_sorted.scp || exit 1
-  trap "echo \"# Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
+  trap "echo \"# Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" INT QUIT TERM EXIT
+  copy-feats --compress=$copy_feats_compress scp:$data/feats.scp ark,scp:$tmpdir/train.ark,$dir/train_sorted.scp || exit 1
 else
   # or copy the list,
   cp $data/feats.scp $dir/train_sorted.scp
@@ -143,6 +144,7 @@ if [ ! -z $feature_transform ]; then
   [ -e $D/cmvn_opts ] && cmvn_opts=$(cat $D/cmvn_opts)
   [ -e $D/delta_opts ] && delta_opts=$(cat $D/delta_opts)
   [ -e $D/ivector_dim ] && ivector_dim=$(cat $D/ivector_dim)
+  [ -e $D/ivector_append_tool ] && ivector_append_tool=$(cat $D/ivector_append_tool)
   echo "# cmvn_opts='$cmvn_opts' delta_opts='$delta_opts' ivector_dim='$ivector_dim'"
 fi
 
@@ -167,7 +169,7 @@ if [ ! -z "$delta_opts" ]; then
 fi
 
 # keep track of the config,
-[ ! -z "$cmvn_opts" ] && echo "$cmvn_opts" >$dir/cmvn_opts 
+[ ! -z "$cmvn_opts" ] && echo "$cmvn_opts" >$dir/cmvn_opts
 [ ! -z "$delta_opts" ] && echo "$delta_opts" >$dir/delta_opts
 #
 
@@ -175,7 +177,7 @@ fi
 feat_dim=$(feat-to-dim "$feats_tr" -)
 echo "# feature dim : $feat_dim (input of 'feature_transform')"
 
-# Now we start building 'feature_transform' which goes right in front of a NN. 
+# Now we start building 'feature_transform' which goes right in front of a NN.
 # The forwarding is computed on a GPU before the frame shuffling is applied.
 #
 # Same GPU is used both for 'feature_transform' and the NN training.
@@ -184,7 +186,7 @@ echo "# feature dim : $feat_dim (input of 'feature_transform')"
 
 if [ ! -z "$feature_transform" ]; then
   echo "# importing 'feature_transform' from '$feature_transform'"
-  tmp=$dir/imported_$(basename $feature_transform) 
+  tmp=$dir/imported_$(basename $feature_transform)
   cp $feature_transform $tmp; feature_transform=$tmp
 else
   # Make default proto with splice,
@@ -218,33 +220,35 @@ if [ ! -z $ivector ]; then
   # The iVectors are concatenated 'as they are' directly to the input of the neural network,
   # To do this, we paste the features, and use <ParallelComponent> where the 1st component
   # contains the transform and 2nd network contains <Copy> component.
-  
+
   echo "# getting dims,"
   dim_raw=$(feat-to-dim "$feats_tr" -)
-  dim_ivec=$(copy-vector "$ivector" ark,t:- | head -n1 | awk '{ print NF-3 }') || true
+  dim_raw_and_ivec=$(feat-to-dim "$feats_tr $ivector_append_tool ark:- '$ivector' ark:- |" -)
+  dim_ivec=$((dim_raw_and_ivec - dim_raw))
   echo "# dims, feats-raw $dim_raw, ivectors $dim_ivec,"
 
   # Should we do something with 'feature_transform'?
-  if [ ! -z $ivector_dim ]; then 
+  if [ ! -z $ivector_dim ]; then
     # No, the 'ivector_dim' comes from dir with 'feature_transform' with iVec forwarding,
     echo "# assuming we got '$feature_transform' with ivector forwarding,"
     [ $ivector_dim != $dim_ivec ] && \
     echo -n "Error, i-vector dimensionality mismatch!" && \
     echo " (expected $ivector_dim, got $dim_ivec in $ivector)" && exit 1
-  else 
+  else
     # Yes, adjust the transform to do ``iVec forwarding'',
     feature_transform_old=$feature_transform
     feature_transform=${feature_transform%.nnet}_ivec_copy.nnet
     echo "# setting up ivector forwarding into '$feature_transform',"
     dim_transformed=$(feat-to-dim "$feats_tr nnet-forward $feature_transform_old ark:- ark:- |" -)
-    nnet-initialize --print-args=false <(echo "<Copy> <InputDim> $dim_ivec <OutputDim> $dim_ivec <BuildVector> 1:$dim_ivec </BuildVector>") $dir/tr_ivec_copy.nnet 
-    nnet-initialize --print-args=false <(echo "<ParallelComponent> <InputDim> $((dim_raw+dim_ivec)) <OutputDim> $((dim_transformed+dim_ivec)) <NestedNnetFilename> $feature_transform_old $dir/tr_ivec_copy.nnet </NestedNnetFilename>") $feature_transform 
+    nnet-initialize --print-args=false <(echo "<Copy> <InputDim> $dim_ivec <OutputDim> $dim_ivec <BuildVector> 1:$dim_ivec </BuildVector>") $dir/tr_ivec_copy.nnet
+    nnet-initialize --print-args=false <(echo "<ParallelComponent> <InputDim> $((dim_raw+dim_ivec)) <OutputDim> $((dim_transformed+dim_ivec)) <NestedNnetFilename> $feature_transform_old $dir/tr_ivec_copy.nnet </NestedNnetFilename>") $feature_transform
   fi
   echo $dim_ivec >$dir/ivector_dim # mark down the iVec dim!
+  echo $ivector_append_tool >$dir/ivector_append_tool
 
   # pasting the iVecs to the feaures,
   echo "# + ivector input '$ivector'"
-  feats_tr="$feats_tr append-vector-to-feats ark:- '$ivector' ark:- |"
+  feats_tr="$feats_tr $ivector_append_tool ark:- '$ivector' ark:- |"
 fi
 
 ###### Show the final 'feature_transform' in the log,
@@ -291,7 +295,7 @@ for depth in $(seq 1 $nn_depth); do
     # This is Bernoulli-Bernoulli RBM,
     # cmvn stats for init,
     echo "# computing cmvn stats '$dir/$depth.cmvn' for RBM initialization"
-    if [ ! -f $dir/$depth.cmvn ]; then 
+    if [ ! -f $dir/$depth.cmvn ]; then
       nnet-forward --print-args=false --use-gpu=yes \
         "nnet-concat $feature_transform $dir/$((depth-1)).dbn - |" \
         "$(echo $feats_tr | sed 's|train.scp|train.scp.10k|')" ark:- | \
@@ -317,7 +321,7 @@ for depth in $(seq 1 $nn_depth); do
   if [ "$depth" == "1" ]; then
     echo "# converting RBM to $dir/$depth.dbn"
     rbm-convert-to-nnet $RBM $dir/$depth.dbn
-  else 
+  else
     echo "# appending RBM to $dir/$depth.dbn"
     nnet-concat $dir/$((depth-1)).dbn "rbm-convert-to-nnet $RBM - |"  $dir/$depth.dbn
   fi
@@ -328,7 +332,7 @@ echo
 echo "# REPORT"
 echo "# RBM pre-training progress (line per-layer)"
 grep progress $dir/log/rbm.*.log
-echo 
+echo
 
 echo "Pre-training finished."
 

@@ -2,7 +2,7 @@
 # Copyright 2014  Johns Hopkins University (Author: Yenda Trmal)
 # Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 nj=4
 cmd=run.pl
 acwt=0.1
@@ -86,7 +86,7 @@ cat $confusion_files | cut -f 2- -d ' ' | sed 's/ *; */\n/g'| sort | uniq -c | \
   perl -ane '
     die unless scalar @F == 3;
     print "$F[1] $F[2] $F[0]\n";
-    ' > $wdir/confusions.txt 
+    ' > $wdir/confusions.txt
 
 exit 0
 #-echo "Converting alignments to phone sequences..."
