@@ -178,7 +178,7 @@ class NumberIstream{
   std::istream &in_;
 
   bool RemainderIsOnlySpaces() {
-    if (in_.tellg() != -1) {
+    if (in_.tellg() != std::istream::pos_type(-1)) {
       std::string rem;
       in_ >> rem;
 
