@@ -412,7 +412,9 @@ def train(args, run_opts):
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
-                run_opts=run_opts)
+                run_opts=run_opts,
+                backstitch_training_scale=args.backstitch_training_scale,
+                backstitch_training_interval=args.backstitch_training_interval)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
