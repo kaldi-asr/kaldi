@@ -319,12 +319,15 @@ void ScaleAndCropImage(const ImageAugmentationConfig &config,
     scale_mat(1, 1) = (scale * 1.0) / width;
   }
 
-  int32 new_width = static_cast<int32>(width * scale_mat(0, 0));
-  int32 new_height = static_cast<int32>(height * scale_mat(1, 1));
+  int32 new_width = static_cast<int32>(floor(width * scale_mat(0, 0)));
+  int32 new_height = static_cast<int32>(floor(height * scale_mat(1, 1)));
   int32 start_row = RandInt(0, new_width - crop_size);
   int32 start_col = RandInt(0, new_height - crop_size);
+  //int32 start_row = new_width - crop_size;
+  //int32 start_col = new_height - crop_size;
 
   Matrix<BaseFloat> temp_image(crop_size, crop_size * num_channels);
+  temp_image.SetZero();
   for (int32 r = start_row; r < start_row + crop_size; r++) {
     for (int32 c = start_col; c < start_col + crop_size; c++) {
       BaseFloat r_old = r / scale_mat(0, 0);
@@ -333,6 +336,16 @@ void ScaleAndCropImage(const ImageAugmentationConfig &config,
       int32 c1 = static_cast<int32>(floor(c_old));
       int32 r2 = r1 + 1;
       int32 c2 = c1 + 1;
+
+      if (r2 >= width) {
+        r2 = width - 1;
+        if (r1 >= width) r1 = width - 1;
+      }
+      if (c2 >= height) {
+        c2 = height - 1;
+        if (c1 >= height) c1 = height - 1;
+      }
+
 
       BaseFloat weight_11 = (r2 - r_old)*(c2 - c_old);
       BaseFloat weight_12 = (r2 - r_old)*(c_old - c1);
@@ -379,7 +392,7 @@ void PerturbImageInNnetExample(
 
       if (config.crop) {
         KALDI_ASSERT(config.crop_size > 0);
-        KALDI_ASSERT(config.crop_scale_min > 0 && config.crop_scale_max > config.crop_scale_min);
+        KALDI_ASSERT(config.crop_scale_min > 0 && config.crop_scale_max >= config.crop_scale_min);
 
         ScaleAndCropImage(config, &image);
 

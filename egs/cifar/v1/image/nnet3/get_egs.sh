@@ -125,6 +125,7 @@ if [ $stage -le 0 ]; then
          nnet3-egs-augment-image --crop=true --crop-size=$crop_size \
            --crop-scale-min=$crop_scale_min \
            --crop-scale-max=$crop_scale_max \
+           --num-channels=3 \
            ark:- ark:$dir/train_diagnostic.egs
 
   fi
