@@ -21,6 +21,8 @@
 
 
 segment_end_padding=0.0
+cmd=run.pl
+nj=1
 
 . utils/parse_options.sh
 
@@ -171,7 +173,11 @@ if [ -f $srcdir/feats.scp ]; then
   
   # Here, we computes the maximum 'end' frame allowed for each <new-utt-id>.
   # This is equal to the number of frames in the feature archive for <old-utt-id>.
-  utils/data/get_utt2num_frames.sh --cmd "run.pl" --nj 1 $srcdir
+  if [ ! -f $srcdir/utt2num_frames ]; then
+    echo "$0: WARNING: Could not find $srcdir/utt2num_frames. It might take a long time to run get_utt2num_frames.sh."
+    echo "Increase the number of jobs or write this file while extracting features by passing --write-utt2num-frames true to steps/make_mfcc.sh etc." 
+  fi
+  utils/data/get_utt2num_frames.sh --cmd "$cmd" --nj $nj $srcdir
   awk '{print $1" "$2}' $subsegments | \
     utils/apply_map.pl -f 2 $srcdir/utt2num_frames > \
     $dir/utt2max_frames
