@@ -29,8 +29,19 @@ my $time_width=1;
 binmode(STDOUT, ":utf8");
 binmode(STDERR, ":utf8");
 
-die "$0: Error: Unsupported number of arguments: " . scalar @ARGV . ", 3 supported " 
-  unless @ARGV == 3;
+if (@ARGV != 3) {
+  print STDERR "$0: Error: Unsupported number of arguments: " . scalar @ARGV ."\n";
+  print STDERR "  Usage: $0 <audio-files> <transripts> <destination>\n";
+  print STDERR "  where\n";
+  print STDERR "    <audio-files> is a file containing list of audio files\n";
+  print STDERR "      (single absolute path name per line)\n";
+  print STDERR "    <transcripts> is a file containing transcripts obtained\n";
+  print STDERR "      obtained by processing the official SGML format\n";
+  print STDERR "      transcripts. See parse_sgm.pl for further info.\n";
+  print STDERR "    <destination> target directory (should already exist)\n";
+  print STDERR "  See also: local/parse_sgm.pl\n";
+  die;
+}
 
 my $audio_files = $ARGV[0];
 my $transcripts = $ARGV[1];

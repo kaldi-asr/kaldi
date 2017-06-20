@@ -48,7 +48,15 @@ sub parse_sgml_tag {
 }
 
 if (@ARGV != 1) {
-  die "This script needs exactly one parameter (list of files)"
+  print STDERR "$0: This script needs exactly one parameter (list of SGML files)\n";
+  print STDERR "  Usage: $0 <transripts>\n";
+  print STDERR "  where\n";
+  print STDERR "    <transcripts> is a file containing the official SGML format\n";
+  print STDERR "      transcripts. The files are parsed and the parsed representation\n";
+  print STDERR "      is dumped to STDOUT (one utterance + the additional data fields\n";
+  print STDERR "      per line (we dump all the fields, but not all fields are used\n";
+  print STDERR "      in the recipe).\n";
+  die;
 }
 my $filelist=$ARGV[0];
 
