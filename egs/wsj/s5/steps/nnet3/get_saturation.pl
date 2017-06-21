@@ -80,7 +80,7 @@ while (<STDIN>) {
 
 if ($num_nonlinearities == 0) {
   print "0.0\n";
-  exit(1);
+  exit(0);
 } else {
   my $saturation = $total_saturation / $num_nonlinearities;
   if ($saturation < 0.0 || $saturation > 1.0) {

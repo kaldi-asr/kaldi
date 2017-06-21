@@ -140,8 +140,6 @@ def run(args):
         else:
             num_err += 1
 
-    args.targets_file.close()
-
     logger.info("Wrote {num_utts} targets; failed with {num_err}"
                 "".format(num_utts=num_utts, num_err=num_err))
     if num_utts == 0 or num_err >= num_utts / 2:
