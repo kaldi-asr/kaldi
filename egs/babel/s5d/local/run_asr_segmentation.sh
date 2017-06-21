@@ -16,11 +16,11 @@ lang_test=data/lang  # Lang directory for decoding.
 data_dir=data/train 
 # Model directory used to align the $data_dir to get target labels for training
 # SAD. This should typically be a speaker-adapted system.
-sat_model_dir=/export/b17/jtrmal/babel/104-pashto-flp80-p-ext/exp/tri5_cleaned
+sat_model_dir=exp/tri5_cleaned
 # Model direcotry used to decode the whole-recording version of the $data_dir to
 # get target labels for training SAD. This should typically be a 
 # speaker-independent system like LDA+MLLT system.
-model_dir=/export/b17/jtrmal/babel/104-pashto-flp80-p-ext/exp/tri4
+model_dir=exp/tri4
 graph_dir=    # If not provided, a new one will be created using $lang_test
 
 # Uniform segmentation options for decoding whole recordings. All values are in
@@ -54,33 +54,19 @@ dir=exp/segmentation${affix}
 mkdir -p $dir
 
 # See $lang/phones.txt and decide which should be garbage
-cat <<EOF > $dir/garbage_phones.txt
-<oov>
-<oov>_B
-<oov>_E
-<oov>_I
-<oov>_S
-<vns>
-<vns>_B
-<vns>_E
-<vns>_I
-<vns>_S
-EOF
+garbage_phones="<oov> <vns>"
+for p in $garbage_phones; do 
+  for affix in "" "_B" "_E" "_I" "_S"; do
+    echo "$p$affix"
+  done
+done > $dir/garbage_phones.txt
 
-# See $lang/phones.txt and decide which should be silence. 
-# Optional silence SIL is always added as silence by the script.
-cat <<EOF > $dir/silence_phones.txt
-<sss>
-<sss>_B
-<sss>_E
-<sss>_I
-<sss>_S
-SIL
-SIL_B
-SIL_E
-SIL_I
-SIL_S
-EOF
+silence_phones="<sss> <SIL>"
+for p in $silence_phones; do 
+  for affix in "" "_B" "_E" "_I" "_S"; do
+    echo "$p$affix"
+  done
+done > $dir/silence_phones.txt
 
 function make_mfcc {
   local nj=$nj

@@ -168,7 +168,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         shrinkage_value=1.0, dropout_edit_string="",
                         get_raw_nnet_from_am=True,
                         use_multitask_egs=False,
-                        backstitch_training_scale=0.0, backstitch_training_interval=1):
+                        backstitch_training_scale=0.0, backstitch_training_interval=1,
+                        compute_per_dim_accuracy=False):
     """ Called from steps/nnet3/train_*.py scripts for one iteration of neural
     network training
 

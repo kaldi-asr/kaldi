@@ -29,7 +29,7 @@ def get_args():
   Usage: steps/segmentation/merge_targets_dirs.py <data> <targets-1> <targets-2> ... <merged-targets>
    e.g.: steps/segmentation/merge_targets_dirs.py --weights 1.0,0.5 \
     data/train_whole \
-    exp/segmentation1a/tri3b_train_whole_sup_targets_sup3 \
+    exp/segmentation1a/tri3b_train_whole_sup_targets_sub3 \
     exp/segmentation1a/tri3b_train_whole_targets_sub3 \
     exp/segmentation1a/tri3b_train_whole_combined_targets_sub3""",
         formatter_class=argparse.RawTextHelpFormatter)

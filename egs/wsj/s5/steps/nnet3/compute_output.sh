@@ -68,8 +68,7 @@ else
 
   if [ ! -z "$output_name" ] && [ "$output_name" != "output" ]; then
     echo "$0: Using output-name $output_name"
-    model="$model nnet3-copy --edits-config=$dir/edits.config - - |"
-    echo "rename-node old-name=$output_name new-name=output" > $dir/edits.config
+    model="$model nnet3-copy --edits='remove-output-nodes name=output;rename-node old-name=$output_name new-name=output' - - |"
   else
     output_name=output
   fi
@@ -148,15 +147,15 @@ fi
 
 if ! $use_raw_nnet; then
   if $apply_exp; then
-    output_wspecifier="ark:| copy-matrix --apply-exp ark:- ark:- | gzip -c > $dir/likes.JOB.gz"
+    output_wspecifier="ark:| copy-matrix --apply-exp ark:- ark:$dir/likes.JOB.ark,$dir/likes.JOB.scp"
   else
-    output_wspecifier="ark:| copy-feats --compress=$compress ark:- ark:- | gzip -c > $dir/log_likes.JOB.gz"
+    output_wspecifier="ark:| copy-feats --compress=$compress ark:- ark:$dir/log_likes.JOB.ark,$dir/log_likes.JOB.scp"
   fi
 else 
   if $apply_exp; then
-    output_wspecifier="ark:| copy-matrix --apply-exp ark:- ark:- | gzip -c > $dir/nnet_output_exp.JOB.gz"
+    output_wspecifier="ark:| copy-matrix --apply-exp ark:- ark,scp:$dir/nnet_output_exp.JOB.ark,$dir/nnet_output_exp.JOB.scp"
   else
-    output_wspecifier="ark:| copy-feats --compress=$compress ark:- ark:- | gzip -c > $dir/nnet_output.JOB.gz"
+    output_wspecifier="ark:| copy-feats --compress=$compress ark:- ark,scp:$dir/nnet_output.JOB.ark,$dir/nnet_output.JOB.scp"
   fi
 
   if [ ! -z $priors ]; then
@@ -169,9 +168,9 @@ else
     fi
 
     if $apply_exp; then
-      output_wspecifier="ark:| matrix-add-offset ark:- 'vector-scale --scale=-1.0 $dir/log_priors.vec - |' ark:- | copy-matrix --apply-exp ark:- ark:- | gzip -c > $dir/likes.JOB.gz"
+      output_wspecifier="ark:| matrix-add-offset ark:- 'vector-scale --scale=-1.0 $dir/log_priors.vec - |' ark:- | copy-matrix --apply-exp ark:- ark,scp:$dir/likes.JOB.ark,$dir/likes.JOB.scp"
     else
-      output_wspecifier="ark:| matrix-add-offset ark:- 'vector-scale --scale=-1.0 $dir/log_priors.vec - |' ark:- | copy-feats --compress=$compress ark:- ark:- | gzip -c > $dir/log_likes.JOB.gz"
+      output_wspecifier="ark:| matrix-add-offset ark:- 'vector-scale --scale=-1.0 $dir/log_priors.vec - |' ark:- | copy-feats --compress=$compress ark:- ark,scp:$dir/log_likes.JOB.ark,$dir/log_likes.JOB.scp"
     fi
   fi
 fi

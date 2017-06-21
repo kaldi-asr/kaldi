@@ -460,9 +460,6 @@ def train(args, run_opts):
 
     if args.stage <= num_iters:
         logger.info("Doing final combination to produce final.raw")
-        common_lib.execute_command(
-            "cp {dir}/{num_iters}.raw {dir}/pre_combine.raw"
-            "".format(dir=args.dir, num_iters=num_iters))
         train_lib.common.combine_models(
             dir=args.dir, num_iters=num_iters,
             models_to_combine=models_to_combine, egs_dir=egs_dir,

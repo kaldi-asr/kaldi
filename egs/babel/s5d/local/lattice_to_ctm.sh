@@ -10,7 +10,13 @@ word_ins_penalty=0.5
 min_lmwt=7
 max_lmwt=17
 model=
-resolve_overlaps=false
+resolve_overlaps=false   # If true, the words decoded in the regions where
+                         # two segments A and B are overlapping are resolved 
+                         # such that only words before the mid-point of the
+                         # overlapping region are taken to be hypothesized for 
+                         # segment A, and only words after the mid-point of 
+                         # the overlapping region are taken to be 
+                         # hypothesized for segment B.
 
 #end configuration section.
 
@@ -57,7 +63,7 @@ name=`basename $data`; # e.g. eval2000
 
 mkdir -p $dir/scoring/log
 
-resolve_overlaps_cmd="cat -"
+resolve_overlaps_cmd="cat"
 
 if $resolve_overlaps; then
   resolve_overlaps_cmd="steps/resolve_ctm_overlaps.py $data/segments - -"

@@ -27,7 +27,18 @@ target_type=sparse  # dense to have dense targets,
                     # sparse to have posteriors targets
 num_targets=        # required for target-type=sparse with raw nnet
 frame_subsampling_factor=1
-scp2ark=
+scp2ark=          # This command is used to convert any scp to an archive of 
+                  # either a matrix or a posteriors depending on whether 
+                  # target-type is dense or sparse respectively.
+                  # e.g. 1) If you have matrix scp, then it can be converted 
+                  # to sparse targets in posterior archive format using 
+                  # prob-to-post.
+                  # 2) If you have an alignment scp, then it can be converted 
+                  # to sparse targets in posterior archive format using 
+                  # ali-to-post
+                  # 3) If you have an alignment scp, then it can be converted 
+                  # to dense targets in matrix archive format using 
+                  # ali-to-post | post-to-feats --dim=<dim>
 length_tolerance=2
 frames_per_eg=8   # number of frames of labels per example.  more->less disk space and
                   # less time preparing egs, but more I/O during training.
@@ -499,7 +510,7 @@ if [ $stage -le 5 ]; then
 fi
 
 if [ $frame_subsampling_factor -ne 1 ]; then
-  echo $frame_subsampling_factor > $dir/frame_subsampling_factor
+  echo $frame_subsampling_factor > $dir/info/frame_subsampling_factor
 fi
 
 wait
