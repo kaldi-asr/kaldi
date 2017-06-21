@@ -370,8 +370,8 @@ fi
 # are removed by setting targets to [ 0 0 0 ]. 
 ###############################################################################
 if [ $stage -le 11 ]; then
-  steps/segmentation/merge_targets_dirs.py --cmd "$train_cmd" --nj 40 \
-    --weights $merge_weights --remove-mismatch-frames=true \
+  steps/segmentation/merge_targets_dirs.sh --cmd "$train_cmd" --nj 40 \
+    --weights $merge_weights --remove-mismatch-frames true \
     $whole_data_dir \
     $dir/${sat_model_id}_${whole_data_id}_sup_targets_sub3 \
     $dir/${model_id}_${whole_data_id}_targets_sub3 \
