@@ -162,7 +162,7 @@ if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
 fi
 
 awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
-   utils/shuffle_list.pl | head -$num_utts_subset_train > $dir/train_subset_uttlist || exit 1;
+   utils/shuffle_list.pl | head -$num_utts_subset_train | sort > $dir/train_subset_uttlist || exit 1;
 
 if [ ! -z "$transform_dir" ] && [ -f $transform_dir/trans.1 ] && [ $feat_type != "raw" ]; then
   echo "$0: using transforms from $transform_dir"
@@ -179,33 +179,13 @@ if [ -f $transform_dir/raw_trans.1 ] && [ $feat_type == "raw" ]; then
   fi
 fi
 
-nj_subset=$nj
-
-if [ $nj_subset -gt `cat $dir/train_subset_uttlist | wc -l` ]; then
-  nj_subset=`cat $dir/train_subset_uttlist | wc -l`
-fi
-
-if [ $nj_subset -gt `cat $dir/valid_uttlist | wc -l` ]; then
-  nj_subset=`cat $dir/valid_uttlist | wc -l`
-fi
-
-valid_uttlist_all=
-train_subset_uttlist_all=
-for n in `seq $nj_subset`; do 
-  valid_uttlist_all="$valid_uttlist_all $dir/valid_uttlist.$n"
-  train_subset_uttlist_all="$train_subset_uttlist_all $dir/train_subset_uttlist.$n"
-done
-
-utils/split_scp.pl $dir/valid_uttlist $valid_uttlist_all
-utils/split_scp.pl $dir/train_subset_uttlist $train_subset_uttlist_all
-
 ## Set up features.
 echo "$0: feature type is $feat_type"
 
 case $feat_type in
   raw) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
-    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist.JOB $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
-    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist.JOB $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
     echo $cmvn_opts >$dir/cmvn_opts # caution: the top-level nnet training script should copy this to its own dir now.
    ;;
   lda)
@@ -216,8 +196,8 @@ case $feat_type in
        echo "You cannot supply --cmvn-opts option if feature type is LDA." && exit 1;
     cmvn_opts=$(cat $dir/cmvn_opts)
     feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist.JOB $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist.JOB $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     ;;
   *) echo "$0: invalid feature type --feat-type '$feat_type'" && exit 1;
 esac
@@ -345,8 +325,8 @@ case $target_type in
       scp2ark="copy-feats scp:- ark:- |"
     fi
     targets="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | $scp2ark"
-    valid_targets="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist.JOB $targets_scp |  $scp2ark"
-    train_subset_targets="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist.JOB $targets_scp | $scp2ark"
+    valid_targets="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $targets_scp |  $scp2ark"
+    train_subset_targets="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $targets_scp | $scp2ark"
     ;;
   "sparse")
     get_egs_program="nnet3-get-egs --num-pdfs=$num_targets"
@@ -354,8 +334,8 @@ case $target_type in
       scp2ark="ali-to-post scp:- ark:- |"
     fi
     targets="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | $scp2ark"
-    valid_targets="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist.JOB $targets_scp | $scp2ark" 
-    train_subset_targets="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist.JOB $targets_scp | $scp2ark"
+    valid_targets="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $targets_scp | $scp2ark" 
+    train_subset_targets="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $targets_scp | $scp2ark"
     ;;
   default)
     echo "$0: Unknown --target-type $target_type. Choices are dense and sparse"
@@ -365,26 +345,19 @@ esac
 if [ $stage -le 3 ]; then
   echo "$0: Getting validation and training subset examples."
   rm -f $dir/.error 2>/dev/null
-  $cmd JOB=1:$nj_subset $dir/log/create_valid_subset.JOB.log \
+  $cmd $dir/log/create_valid_subset.log \
     $get_egs_program --frame-subsampling-factor=$frame_subsampling_factor \
     --length-tolerance=$length_tolerance \
     $ivector_opts $egs_opts "$valid_feats" \
     "$valid_targets" \
-    "ark:$dir/valid_all.JOB.egs" || touch $dir/.error &
-  $cmd JOB=1:$nj_subset $dir/log/create_train_subset.JOB.log \
+    "ark:$dir/valid_all.egs" || touch $dir/.error &
+  $cmd $dir/log/create_train_subset.log \
     $get_egs_program --frame-subsampling-factor=$frame_subsampling_factor \
     --length-tolerance=$length_tolerance \
     $ivector_opts $egs_opts "$train_subset_feats" \
     "$train_subset_targets" \
-    "ark:$dir/train_subset_all.JOB.egs" || touch $dir/.error &
+    "ark:$dir/train_subset_all.egs" || touch $dir/.error &
   wait;
-
-  valid_egs_all=
-  train_subset_egs_all=
-  for n in `seq $nj_subset`; do
-    valid_egs_all="$valid_egs_all $dir/valid_all.$n.egs"
-    train_subset_egs_all="$train_subset_egs_all $dir/train_subset_all.$n.egs"
-  done
 
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."
@@ -396,21 +369,17 @@ if [ $stage -le 3 ]; then
     train_diagnostic_output="ark:$dir/train_diagnostic.egs"
   fi
   $cmd $dir/log/create_valid_subset_combine.log \
-    cat $valid_egs_all \| \
-    nnet3-subset-egs --n=$[$num_valid_frames_combine/$frames_per_eg_principal] ark:- \
+    nnet3-subset-egs --n=$[$num_valid_frames_combine/$frames_per_eg_principal] ark:$dir/valid_all.egs \
     ark:$dir/valid_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_valid_subset_diagnostic.log \
-    cat $valid_egs_all \| \
-    nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg_principal] ark:- \
+    nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg_principal] ark:$dir/valid_all.egs \
     $valid_diagnostic_output || touch $dir/.error &
 
   $cmd $dir/log/create_train_subset_combine.log \
-    cat $train_subset_egs_all \| \
-    nnet3-subset-egs --n=$[$num_train_frames_combine/$frames_per_eg_principal] ark:- \
+    nnet3-subset-egs --n=$[$num_train_frames_combine/$frames_per_eg_principal] ark:$dir/train_subset_all.egs \
     ark:$dir/train_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_train_subset_diagnostic.log \
-    cat $train_subset_egs_all \| \
-    nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg_principal] ark:- \
+    nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg_principal] ark:$dir/train_subset_all.egs \
     $train_diagnostic_output || touch $dir/.error &
   wait
   sleep 5  # wait for file system to sync.
@@ -425,7 +394,7 @@ if [ $stage -le 3 ]; then
   for f in $dir/{combine,train_diagnostic,valid_diagnostic}.egs; do
     [ ! -s $f ] && echo "No examples in file $f" && exit 1;
   done
-  rm $dir/valid_all.*.egs $dir/train_subset_all.*.egs $dir/{train,valid}_combine.egs
+  rm $dir/valid_all.egs $dir/train_subset_all.egs $dir/{train,valid}_combine.egs
 fi
 
 if [ $stage -le 4 ]; then

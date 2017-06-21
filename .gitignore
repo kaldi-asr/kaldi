@@ -133,5 +133,3 @@ GSYMS
 /tools/sequitur-g2p/
 
 /kaldiwin_vs*
-egs/babel/s5d/path.sh
-egs/babel/s5d/run-4-anydecode.sh

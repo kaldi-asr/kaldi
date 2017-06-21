@@ -11,11 +11,10 @@ set -e
 set -o pipefail
 
 cmd=run.pl
+nj=4
 acwt=0.1
 beam=8
 max_active=1000
-likes_prefix=log_likes    # prefix of the archives to read from.
-                          # e.g. read from log_likes.*.gz
 transform=   # Transformation matrix to apply on the input archives read from {likes_prefix}.*.gz 
 apply_log=false    # If true, the log is applied on the transformed input matrix. Applicable when input is probabilities.
 priors=   # A vector of counts, which will be used to subtract the log-priors 
@@ -26,29 +25,27 @@ priors=   # A vector of counts, which will be used to subtract the log-priors
 . utils/parse_options.sh
 
 if [ $# -ne 3 ]; then
-  echo "Usage: $0 <graph-dir> <log_likes_dir> <decode-dir>"
+  echo "Usage: $0 <graph-dir> <nnet_output_dir> <decode-dir>"
   echo " e.g.: $0 "
   exit 1 
 fi
 
 graph_dir=$1
-log_likes_dir=$2
+nnet_output_dir=$2
 dir=$3
 
 mkdir -p $dir/log
 
-nj=`cat $log_likes_dir/num_jobs`
 echo $nj > $dir/num_jobs
 
-extra_files=$log_likes_dir/$likes_prefix.1.gz
-for f in $graph_dir/HCLG.fst $extra_files; do
+for f in $graph_dir/HCLG.fst $nnet_output_dir/output.scp $extra_files; do
   if [ ! -f $f ]; then
     echo "$0: Could not find file $f"
     exit 1
   fi
 done
 
-rspecifier="ark:gunzip -c $log_likes_dir/$likes_prefix.JOB.gz |"
+rspecifier="ark:utils/split_scp.pl -j $nj \$[JOB-1] $nnet_output_dir/output.scp |"
 
 # Apply a transformation on the input matrix to combine scores from different columns
 if [ ! -z "$transform" ]; then
