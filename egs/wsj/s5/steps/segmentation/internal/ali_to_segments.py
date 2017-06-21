@@ -320,7 +320,7 @@ def run(args):
 
     sad_map = {}
     if args.sad_map is not None:
-        with common_lib.smart_open(args.sad_map) as sad_map_fh:
+        with common_lib.KaldiIo(args.sad_map) as sad_map_fh:
             for line in sad_map_fh:
                 parts = line.strip().split()
                 if len(parts) != 2:
@@ -332,8 +332,8 @@ def run(args):
                 sad_map[parts[0]] = int(parts[1])
 
     global_stats = SegmenterStats()
-    with common_lib.smart_open(args.in_alignments) as in_alignments_fh, \
-            common_lib.smart_open(args.out_segments, 'w') as out_segments_fh:
+    with common_lib.KaldiIo(args.in_alignments) as in_alignments_fh, \
+            common_lib.KaldiIo(args.out_segments, 'w') as out_segments_fh:
         for line in in_alignments_fh:
             parts = line.strip().split()
             utt_id = parts[0]

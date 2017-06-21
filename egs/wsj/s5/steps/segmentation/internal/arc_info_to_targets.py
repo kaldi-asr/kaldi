@@ -63,7 +63,7 @@ def get_args():
 
 def run(args):
     silence_phones = {}
-    with common_lib.smart_open(args.silence_phones) as silence_phones_fh:
+    with common_lib.KaldiIo(args.silence_phones) as silence_phones_fh:
         for line in silence_phones_fh:
             silence_phones[line.strip().split()[0]] = 1
 
@@ -72,7 +72,7 @@ def run(args):
                            "".format(silence=args.silence_phones))
 
     garbage_phones = {}
-    with common_lib.smart_open(args.garbage_phones) as garbage_phones_fh:
+    with common_lib.KaldiIo(args.garbage_phones) as garbage_phones_fh:
         for line in garbage_phones_fh:
             word = line.strip().split()[0]
             if word in silence_phones:
@@ -92,8 +92,8 @@ def run(args):
     targets = np.array([])
     prev_utt = ""
 
-    with common_lib.smart_open(args.arc_info) as arc_info_reader, \
-            common_lib.smart_open(args.targets_file, 'w') as targets_writer:
+    with common_lib.KaldiIo(args.arc_info) as arc_info_reader, \
+            common_lib.KaldiIo(args.targets_file, 'w') as targets_writer:
         for line in arc_info_reader:
             try:
                 parts = line.strip().split()

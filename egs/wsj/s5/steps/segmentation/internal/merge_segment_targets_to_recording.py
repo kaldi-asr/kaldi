@@ -78,7 +78,7 @@ def get_args():
 
 def run(args):
     reco2utt = {}
-    with common_lib.smart_open(args.reco2utt) as fh:
+    with common_lib.KaldiIo(args.reco2utt) as fh:
         for line in fh:
             parts = line.strip().split()
             if len(parts) < 2:
@@ -86,7 +86,7 @@ def run(args):
             reco2utt[parts[0]] = parts[1:]
 
     reco2num_frames = {}
-    with common_lib.smart_open(args.reco2num_frames) as fh:
+    with common_lib.KaldiIo(args.reco2num_frames) as fh:
         for line in fh:
             parts = line.strip().split()
             if len(parts) != 2:
@@ -96,7 +96,7 @@ def run(args):
             reco2num_frames[parts[0]] = int(parts[1])
 
     segments = {}
-    with common_lib.smart_open(args.segments) as fh:
+    with common_lib.KaldiIo(args.segments) as fh:
         for line in fh:
             parts = line.strip().split()
             if len(parts) not in [4, 5]:
@@ -114,7 +114,7 @@ def run(args):
     num_reco = 0
 
     targets = {}
-    with common_lib.smart_open(args.targets_scp) as fh:
+    with common_lib.KaldiIo(args.targets_scp) as fh:
         for line in fh:
             parts = line.strip().split()
             if len(parts) != 2:
@@ -130,7 +130,7 @@ def run(args):
         default_targets = np.zeros([1, 3])
     assert np.shape(default_targets)[0] == 1 and np.shape(default_targets)[1] == 3
 
-    with common_lib.smart_open(args.out_targets_ark, 'w') as fh:
+    with common_lib.KaldiIo(args.out_targets_ark, 'w') as fh:
         for reco, utts in reco2utt.iteritems():
             reco_mat = np.repeat(default_targets, reco2num_frames[reco],
                                  axis=0)

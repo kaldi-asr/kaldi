@@ -68,7 +68,7 @@ def get_args():
 
 def run(args):
     reco2utt = {}
-    with common_lib.smart_open(args.reco2utt) as f:
+    with common_lib.KaldiIo(args.reco2utt) as f:
         for line in f:
             parts = line.strip().split()
             if len(parts) < 2:
@@ -76,7 +76,7 @@ def run(args):
             reco2utt[parts[0]] = parts[1:]
 
     reco2num_frames = {}
-    with common_lib.smart_open(args.reco2num_frames) as f:
+    with common_lib.KaldiIo(args.reco2num_frames) as f:
         for line in f:
             parts = line.strip().split()
             if len(parts) != 2:
@@ -86,7 +86,7 @@ def run(args):
             reco2num_frames[parts[0]] = int(parts[1])
 
     segments = {}
-    with common_lib.smart_open(args.segments) as f:
+    with common_lib.KaldiIo(args.segments) as f:
         for line in f:
             parts = line.strip().split()
             if len(parts) not in [4, 5]:
@@ -110,7 +110,7 @@ def run(args):
     assert (np.shape(default_targets)[0] == 1
             and np.shape(default_targets)[1] == 3)
 
-    with common_lib.smart_open(args.out_targets_ark, 'w') as f:
+    with common_lib.KaldiIo(args.out_targets_ark, 'w') as f:
         for reco, utts in reco2utt.iteritems():
             reco_mat = (np.array([]) if args.reco2num_frames is None
                         else np.repeat(default_targets, reco2num_frames[reco],
