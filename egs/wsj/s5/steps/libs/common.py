@@ -69,7 +69,7 @@ class NullstrToNoneAction(argparse.Action):
             setattr(namespace, self.dest, values)
 
 
-class KaldiIo(object):
+class smart_open(object):
     def __init__(self, filename, mode="r"):
         self.filename = filename
         self.mode = mode

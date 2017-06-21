@@ -154,7 +154,7 @@ def print_states(args, file_handle):
 def main():
     try:
         args = get_args()
-        with common_lib.KaldiIo(args.output_graph, 'w') as f:
+        with common_lib.smart_open(args.output_graph, 'w') as f:
             print_states(args, f)
     except Exception:
         raise

@@ -86,8 +86,8 @@ def get_args():
 def run(args):
     num_done = 0
 
-    with common_lib.KaldiIo(args.pasted_targets) as targets_reader, \
-            common_lib.KaldiIo(args.out_targets, 'w') as targets_writer:
+    with common_lib.smart_open(args.pasted_targets) as targets_reader, \
+            common_lib.smart_open(args.out_targets, 'w') as targets_writer:
         for key, mat in common_lib.read_mat_ark(targets_reader):
             mat = np.matrix(mat)
             if mat.shape[1] % args.dim != 0:
