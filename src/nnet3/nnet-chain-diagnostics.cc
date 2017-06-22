@@ -137,11 +137,19 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
 
     BaseFloat tot_like, tot_l2_term, tot_weight;
 
-    ComputeChainObjfAndDeriv(chain_config_, den_graph_,
-                             sup.supervision, nnet_output,
-                             &tot_like, &tot_l2_term, &tot_weight,
-                             (nnet_config_.compute_deriv ? &nnet_output_deriv :
-                              NULL), (use_xent ? &xent_deriv : NULL));
+    if (chain_config_.use_smbr_objective)
+      ComputeChainSmbrObjfAndDeriv(
+          chain_config_, den_graph_,
+          sup.supervision, nnet_output,
+          &tot_like, &tot_l2_term, &tot_weight,
+          (nnet_config_.compute_deriv ? &nnet_output_deriv :
+           NULL), (use_xent ? &xent_deriv : NULL));
+    else
+      ComputeChainObjfAndDeriv(chain_config_, den_graph_,
+                               sup.supervision, nnet_output,
+                               &tot_like, &tot_l2_term, &tot_weight,
+                               (nnet_config_.compute_deriv ? &nnet_output_deriv :
+                                NULL), (use_xent ? &xent_deriv : NULL));
 
     // note: in this context we don't want to apply 'sup.deriv_weights' because
     // this code is used only in combination, where it's part of an L-BFGS

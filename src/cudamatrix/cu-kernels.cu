@@ -409,6 +409,14 @@ static void _vec_mul_elements(Real* v, const Real* a, int dim) {
 
 template<typename Real>
 __global__
+static void _vec_div_elements(Real* v, const Real* a, int dim) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < dim)
+    v[i] = v[i] / a[i];
+}
+
+template<typename Real>
+__global__
 static void _mul_cols_vec(Real* mat, const Real* scale, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -3674,6 +3682,10 @@ void cudaF_vec_mul_elements(int Gr, int Bl, float* v, const float* a, int dim) {
   _vec_mul_elements<<<Gr,Bl>>>(v, a, dim);
 }
 
+void cudaF_vec_div_elements(int Gr, int Bl, float* v, const float* a, int dim) {
+  _vec_div_elements<<<Gr,Bl>>>(v, a, dim);
+}
+
 void cudaF_vec_min(int Gr, int Bl, const float* v, float* value, int dim,
                    int inc) {
   _vec_transform_reduce<<<Gr,Bl>>>(v, value, dim, inc,
@@ -4329,6 +4341,11 @@ void cudaD_set_bias_params(int Gr, int Bl, double* v, const double* a,
 void cudaD_vec_mul_elements(int Gr, int Bl, double* v, const double* a,
                             int dim) {
   _vec_mul_elements<<<Gr,Bl>>>(v, a, dim);
+}
+
+void cudaD_vec_div_elements(int Gr, int Bl, double* v, const double* a,
+                            int dim) {
+  _vec_div_elements<<<Gr,Bl>>>(v, a, dim);
 }
 
 void cudaD_vec_min(int Gr, int Bl, const double* v, double* value, int dim,

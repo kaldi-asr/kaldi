@@ -1326,6 +1326,14 @@ inline void cuda_vec_mul_elements(int Gr, int Bl, float* v, const float* a,
                                   int dim) {
   cudaF_vec_mul_elements(Gr, Bl, v, a, dim);
 }
+inline void cuda_vec_div_elements(int Gr, int Bl, double* v, const double* a,
+                                  int dim) {
+  cudaD_vec_div_elements(Gr, Bl, v, a, dim);
+}
+inline void cuda_vec_div_elements(int Gr, int Bl, float* v, const float* a,
+                                  int dim) {
+  cudaF_vec_div_elements(Gr, Bl, v, a, dim);
+}
 inline void cuda_vec_soft_max(int Gr, int Bl, double* v, int dim) {
   cudaD_vec_soft_max(Gr, Bl, v, dim);
 }

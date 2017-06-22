@@ -305,8 +305,6 @@ class DenominatorComputation {
   CuVector<BaseFloat> log_correction_term_;
 
   bool ok_;
-
-  friend DenominatorSmbrComputation;
 };
 
 

@@ -180,11 +180,19 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
 
     BaseFloat tot_objf, tot_l2_term, tot_weight;
 
-    ComputeChainObjfAndDeriv(opts_.chain_config, den_graph_,
-                             sup.supervision, nnet_output,
-                             &tot_objf, &tot_l2_term, &tot_weight,
-                             &nnet_output_deriv,
-                             (use_xent ? &xent_deriv : NULL));
+    if (opts_.chain_config.use_smbr_objective) {
+      ComputeChainSmbrObjfAndDeriv(opts_.chain_config, den_graph_,
+                                   sup.supervision, nnet_output,
+                                   &tot_objf, &tot_l2_term, &tot_weight,
+                                   &nnet_output_deriv,
+                                   (use_xent ? &xent_deriv : NULL));
+    } else {
+      ComputeChainObjfAndDeriv(opts_.chain_config, den_graph_,
+                               sup.supervision, nnet_output,
+                               &tot_objf, &tot_l2_term, &tot_weight,
+                               &nnet_output_deriv,
+                               (use_xent ? &xent_deriv : NULL));
+    }
 
     if (use_xent) {
       // this block computes the cross-entropy objective.
