@@ -47,7 +47,7 @@
 
 # This script adds word-position-dependent phones and constructs a host of other
 # derived files, that go in data/lang/.
-set -x
+
 # Begin configuration section.
 num_sil_states=5
 num_nonsil_states=3
