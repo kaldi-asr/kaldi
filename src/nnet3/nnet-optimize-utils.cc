@@ -2839,9 +2839,7 @@ void ComputationExpander::ExpandRowRangesCommand(
       num_rows_new = expanded_computation_->submatrices[s1].num_rows;
   KALDI_ASSERT(static_cast<size_t>(c_in.arg3) <
                computation_.indexes_ranges.size());
-  KALDI_ASSERT(num_rows_old % 2 == 0);
   int32 num_n_values = num_n_values_;
-
 
   int32 old_arg3 = c_out->arg3;
   c_out->arg3 = expanded_computation_->indexes_ranges.size();
