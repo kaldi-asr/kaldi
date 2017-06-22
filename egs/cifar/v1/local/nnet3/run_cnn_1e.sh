@@ -81,19 +81,18 @@ if [ $stage -le 1 ]; then
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
-  input dim=96 name=input
   input dim=30 name=ivector
+  input dim=96 name=input
   conv-relu-batchnorm-layer name=cnn1 input=input height-in=32 height-out=32 time-offsets=-1,0,1 $common1
   conv-relu-batchnorm-dropout-layer name=cnn2 input=cnn1 height-in=32 height-out=16 time-offsets=-1,0,1 dropout-proportion=0.25 $common1 height-subsample-out=2
   conv-relu-batchnorm-layer name=cnn3 input=cnn2 height-in=16 height-out=16 time-offsets=-2,0,2 $common2
   conv-relu-batchnorm-dropout-layer name=cnn4 input=cnn3 height-in=16 height-out=8 time-offsets=-2,0,2 dropout-proportion=0.25 $common2 height-subsample-out=2
   conv-relu-batchnorm-layer name=cnn5 input=cnn4 height-in=8 height-out=8 time-offsets=-4,0,4 $common2
   relu-dropout-layer name=fully_connected1 input=Append(2,6,10,14,18,22,26,30,ReplaceIndex(ivector,t,0)) dropout-proportion=0.5 dim=512
-  output-layer name=output dim=$num_targets
+  output-layer name=output input=fully_connected1 dim=$num_targets
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
-
 
 if [ $stage -le 2 ]; then
 
