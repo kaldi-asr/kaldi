@@ -79,7 +79,7 @@ namespace chain {
            alpha_r(t, i) = 0
            for (j, p, n) in pred(i):  # note: j is preceding-state.
               alpha(t, i) += x(t-1, n) * alpha(t-1, j) * p
-              alpha_r(t, i) += alpha_r(t-1, j) * alpha(t-1, j) + x(t-1, n) * p * (ref_pdf == pdf ? 1.0 : 0.0)
+              alpha_r(t, i) += (alpha_r(t-1, j) + (ref_pdf == pdf ? 1.0 : 0.0)) * alpha(t-1, j) * x(t-1, n) * p
            alpha_r(t, i) /= alpha(t, i)
 
     - total-prob = \sum_i alpha(T, i).  # note, we take the final-probs of all states
@@ -109,7 +109,7 @@ namespace chain {
            beta_r(t, i) = 0
            for (j, p, n) in foll(i):  # note: j is following-state.
               beta(t, i) += x(t, n) * beta(t+1, j) * p.
-              beta_r(t, i) += beta(t+1, j) * beta_r(t+1, j) + x(t, n) * p * (ref_pdf == pdf ? 1.0 : 0)
+              beta_r(t, i) += (beta_r(t+1, j) + (ref_pdf == pdf ? 1.0 : 0)) * beta(t+1, j) * x(t, n) * p
               gamma(t, n) += alpha(t, i) * x(t, n) * beta(t+1, j) * p.
               gamma_r(t, n) += alpha(t, i) * x(t, n) * beta(t+1, j) * p * (alpha_r(t, i) + (ref_pdf == pdf ? 1.0 : 0) + beta_r(t+1, j) - tot_objf)
            beta_r(t, i) /= beta(t, i)
@@ -168,7 +168,7 @@ namespace chain {
            alpha_r(t, i) = 0
            for (j, p, n) in pred(i):  # note: j is preceding-state.
               alpha(t, i) += alpha'(t-1, j) * p * x(t-1, n) / tot-alpha(t-1)
-              alpha_r(t, i) += alpha_r(t-1, j) * alpha'(t-1, j) + x(t-1, n) / tot-alpha(t-1) * p * (ref_pdf == pdf ? 1.0 : 0.0)
+              alpha_r(t, i) += (alpha_r(t-1, j) + (ref_pdf == pdf ? 1.0 : 0.0)) * alpha'(t-1, j) * x(t-1, n) / tot-alpha(t-1) * p
            alpha_r(t, i) /= alpha(t,i)
 
   - total-prob = \sum_i alpha'(T, i)
@@ -196,7 +196,7 @@ namespace chain {
            beta'(t, i) = 0
            for (j, p, n) in foll(i):  # note: j is following-state.
               beta'(t, i) += beta(t+1, j) * p * x(t, n) / tot-alpha(t)
-              beta_r(t, i) += beta(t+1, j) * beta_r(t+1, j) + x(t, n) / tot-alpha(t) * p * (ref_pdf == pdf ? 1.0 : 0)
+              beta_r(t, i) += (beta_r(t+1, j) + (ref_pdf == pdf ? 1.0 : 0)) * beta(t+1, j) * x(t, n) / tot-alpha(t) * p
               gamma(t, n) += alpha'(t, i) * beta(t+1, j) * p *  x(t, n) / tot-alpha(t)
               gamma_r(t, n) += alpha'(t, i) * x(t, n)  / tot-alpha(t) * beta(t+1, j) * p * (alpha_r(t, i) + (ref_pdf == pdf ? 1.0 : 0.0) + beta_r(t+1, j) - tot_objf)
           beta_r(t, i) /= beta(t, i)

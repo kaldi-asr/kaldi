@@ -180,8 +180,8 @@ void DenominatorSmbrComputation::AlphaSmbrGeneralFrame(int32 t) {
           this_tot_alpha += this_prev_alpha * transition_prob * prob;
           KALDI_ASSERT(num_posteriors_(t, pdf_id) > -1e-20);
           this_tot_alpha_smbr += 
-            this_prev_alpha_smbr * this_prev_alpha / arbitrary_scale 
-            + transition_prob * prob * num_posteriors_(t, pdf_id);
+            (this_prev_alpha_smbr + num_posteriors_(t, pdf_id)) 
+            * this_prev_alpha * transition_prob * prob;
         }
         KALDI_ASSERT(this_tot_alpha - this_tot_alpha == 0);
         this_alpha[h * num_sequences + s] = this_tot_alpha * arbitrary_scale;
@@ -419,9 +419,9 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrame(int32 t) {
               next_beta_smbr_j = next_beta_smbr[next_hmm_state + num_sequences + s];
           BaseFloat variable_factor = transition_prob * next_beta_j *
               prob_data[pdf_id * prob_stride + s];
-          beta_smbr += next_beta_smbr_j * next_beta_j
-            + prob_data[pdf_id * prob_stride + s] / inv_arbitrary_scale 
-            * transition_prob * num_posteriors_(t, pdf_id);
+          beta_smbr += (next_beta_smbr_j + num_posteriors_(t, pdf_id)) 
+            * next_beta_j * prob_data[pdf_id * prob_stride + s] 
+            * transition_prob;
           tot_variable_factor += variable_factor;
           double this_gamma_r = occupation_factor * next_beta_j 
             * transition_prob * (this_alpha_smbr_i + num_posteriors_(t, pdf_id)
@@ -430,8 +430,7 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrame(int32 t) {
         }
         this_beta_dash[h * num_sequences + s] =
             tot_variable_factor / inv_arbitrary_scale;
-        this_beta_smbr[h * num_sequences + s] = beta_smbr / this_beta_dash[h * num_sequences + s]; 
-            
+        this_beta_smbr[h * num_sequences + s] = beta_smbr / tot_variable_factor;
       }
     }
   }
