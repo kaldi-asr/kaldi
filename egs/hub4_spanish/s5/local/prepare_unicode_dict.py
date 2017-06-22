@@ -4,19 +4,10 @@
 # Apache 2.0
 
 # ======= Prepare data/local directory for babel data with unicode tags ======
-# This script creates all files in the data/local directory for babel formats,
-# except for the filtered_lexicon.txt file which is created by the
-# make_lexicon_subset.sh script.
+# This script creates all files in the data/local directory needed to generate
+# the kaldi-lang directory. It does not generate the lexicon itself -- for that
+# see the script lexicon/make_unicode_lexicon.py. It expects 
 #
-# This script basically takes the place of the prepare_lexicon.pl script. It
-# creates the following files.
-#
-# 1. lexicon.txt (via local/lexicon/make_unicode_lexicon.py which happens prior
-#    to running this script.
-# 2. nonsilence_phones.txt
-# 3. silence_phones.txt
-# 4. optional_silence.txt
-# 5. extra_questions.txt
 # ============================================================================
 
 from __future__ import print_function
@@ -76,7 +67,7 @@ def extract_graphemes(table):
             graphemes_dict[base_graph] = []
 
         graphemes_dict[base_graph].append(g)
-    
+
     return unicode_graphemes, graphemes_dict
 
 
@@ -89,7 +80,7 @@ def write_nonsilence_phones(graphemes_dict, nonsilence_phones,
                     line_vals = line.strip().split()
                     fp.write("%s\n" % line_vals[1])
         except (IOError, TypeError):
-            pass 
+            pass
 
         # Write each base grapheme with all tags on the same line
         for base_grapheme in sorted(graphemes_dict.keys()):
@@ -104,7 +95,7 @@ def write_extra_questions(unicode_graphemes, graphemes_dict, tags,
     with codecs.open(extra_questions, "w", "utf-8") as fp:
         # Write all unique "phones" but graphemes in this case, plus <hes> to a
         # single line.
-        
+
         # Write the extraspeech
         try:
             with codecs.open(extraspeech, "r", "utf-8") as f:
@@ -113,11 +104,11 @@ def write_extra_questions(unicode_graphemes, graphemes_dict, tags,
                     fp.write("%s " % line_vals[1])
         except (IOError, TypeError):
             pass
-        
+
         for g in unicode_graphemes:
             fp.write("%s " % g)
         fp.write("\n")
-        
+
         # Write the nonspeech
         try:
             with codecs.open(nonspeech, "r", "utf-8") as f:
@@ -140,20 +131,21 @@ def write_extra_questions(unicode_graphemes, graphemes_dict, tags,
 def main():
     #  --------------- Extract unicode_graphemes from the table --------------
     if(len(sys.argv[1:]) == 0):
-        print("Usage: local/prepare_unicode_lexicon.txt <lex_table>"
-              " <lex_dir>" )
+        print("Usage: local/prepare_unicode_dict.pu <lex_table> <lex_dir>")
         sys.exit(1)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("table", help="Table containing all information about"
-                        " how to map unicode graphemes to unicode descriptors")
+                        " how to map unicode graphemes to unicode descriptors"
+                        " See local/lexicon/make_unicode_lexicon.py for"
+                        " description of the table format")
     parser.add_argument("lex_dir", help="Directory to which all files"
                         " should be written")
     parser.add_argument("--nonspeech", help="File with map of nonspeech words",
                         action="store", default=None)
     parser.add_argument("--extraspeech", help="File with map of extraspeech"
                         " words", action="store", default=None)
-    args = parser.parse_args() 
+    args = parser.parse_args()
     unicode_graphemes, graphemes_dict = extract_graphemes(args.table)
 
     # ---------------- Prepare the directory data/local and a few files ------
@@ -173,10 +165,10 @@ def main():
         fp.write("SIL\n")
 
     # --------------- Write the nonsilence_phones.txt file -------------------
-    write_nonsilence_phones(graphemes_dict, 
+    write_nonsilence_phones(graphemes_dict,
                             os.path.join(args.lex_dir, "nonsilence_phones.txt"),
                             extraspeech=args.extraspeech)
-                            
+
     # ------------------------- Extract tags ---------------------------------
     tags = []
     for g in unicode_graphemes:

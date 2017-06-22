@@ -29,7 +29,7 @@ local/lexicon/make_unicode_lexicon.py --tag_percentage $tag_percentage \
   --extraspeech $out/extraspeech.txt --verbose \
   $out/word_list.txt $out/lexicon.txt
 
-local/prepare_unicode_lexicon.py --nonspeech $out/nonspeech.txt \
+local/prepare_unicode_dict.py --nonspeech $out/nonspeech.txt \
   --extraspeech $out/extraspeech.txt $out/lexicon_table.txt $out/
 
 cp $out/lexicon.txt $out/filtered_lexicon.txt
