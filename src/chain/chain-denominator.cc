@@ -48,7 +48,7 @@ DenominatorComputation::DenominatorComputation(
     tot_log_prob_(num_sequences_, kUndefined),
     log_correction_term_(num_sequences_, kUndefined),
     ok_(true) {
-  KALDI_ASSERT(opts_.leaky_hmm_coefficient > 0.0 &&
+  KALDI_ASSERT(opts_.leaky_hmm_coefficient >= 0.0 &&
                opts_.leaky_hmm_coefficient < 1.0);
   // make sure the alpha sums and beta sums are zeroed.
   alpha_.ColRange(den_graph_.NumStates() * num_sequences_,
@@ -401,7 +401,7 @@ void DenominatorComputation::BetaGeneralFrameDebug(int32 t) {
   BaseFloat alpha_beta_product = VecVec(this_alpha_dash,
                                         this_beta_dash),
       this_log_prob_deriv_sum = this_log_prob_deriv.Sum();
-  if (!ApproxEqual(alpha_beta_product, num_sequences_)) {
+  if (true || GetVerboseLevel() > 1 || !ApproxEqual(alpha_beta_product, num_sequences_)) {
     KALDI_WARN << "On time " << t << ", alpha-beta product "
                << alpha_beta_product << " != " << num_sequences_
                << " alpha-dash-sum = " << this_alpha_dash.Sum()

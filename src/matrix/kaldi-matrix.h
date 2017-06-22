@@ -684,6 +684,8 @@ class MatrixBase {
   /// write to stream.
   void Write(std::ostream & out, bool binary) const;
 
+  std::string ToStr() const;
+
   // Below is internal methods for Svd, user does not have to know about this.
 #if !defined(HAVE_ATLAS) && !defined(USE_KALDI_SVD)
   // protected:

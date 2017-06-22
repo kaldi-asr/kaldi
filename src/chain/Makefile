@@ -11,7 +11,7 @@ OBJFILES = chain-supervision.o chain-numerator.o chain-den-graph.o \
           language-model.o chain-denominator.o chain-training.o \
 					chain-denominator-smbr.o
 ifeq ($(CUDA), true)
-  OBJFILES += chain-kernels.o
+  OBJFILES += chain-kernels.o chain-smbr-kernels.o
 endif
 
 LIBNAME = kaldi-chain

@@ -35,7 +35,7 @@ DenominatorSmbrComputation::DenominatorSmbrComputation(
     num_sequences_(num_sequences),
     frames_per_sequence_(nnet_output.NumRows() / num_sequences_),
     exp_nnet_output_transposed_(nnet_output, kTrans),
-    numerator_posteriors_transposed(numerator_posteriors, kTrans),
+    numerator_posteriors_transposed_(numerator_posteriors, kTrans),
     nnet_output_deriv_transposed_(
         exp_nnet_output_transposed_.NumRows(),
         std::min<int32>(exp_nnet_output_transposed_.NumCols(),
@@ -45,16 +45,14 @@ DenominatorSmbrComputation::DenominatorSmbrComputation(
            den_graph_.NumStates() * num_sequences_ + num_sequences_,
            kUndefined),
     alpha_smbr_(frames_per_sequence_ + 1,
-           den_graph_.NumStates() * num_sequences_ + num_sequences_,
-           kUndefined),
+           den_graph_.NumStates() * num_sequences_ + num_sequences_),
     beta_(2, den_graph_.NumStates() * num_sequences_ + num_sequences_,
           kUndefined),
-    beta_smbr_(2, den_graph_.NumStates() * num_sequences_ + num_sequences_,
-          kUndefined),
+    beta_smbr_(2, den_graph_.NumStates() * num_sequences_ + num_sequences_),
     tot_prob_(num_sequences_, kUndefined),
-    tot_smbr_(num_sequences_, kUndefined),
+    tot_smbr_(num_sequences_),
     ok_(true) {
-  KALDI_ASSERT(opts_.leaky_hmm_coefficient > 0.0 &&
+  KALDI_ASSERT(opts_.leaky_hmm_coefficient >= 0.0 &&
                opts_.leaky_hmm_coefficient < 1.0);
   // make sure the alpha sums and beta sums are zeroed.
   alpha_.ColRange(den_graph_.NumStates() * num_sequences_,
@@ -162,16 +160,6 @@ void DenominatorSmbrComputation::AlphaSmbrGeneralFrame(int32 t) {
         post_stride = numerator_post.Stride();
     for (int32 h = 0; h < num_hmm_states; h++) {
       for (int32 s = 0; s < num_sequences; s++) {
-        // Let arbitrary_scale be the inverse of the alpha-sum value that we
-        // store in the same place we'd store the alpha for the state numbered
-        // 'num_hmm_states'. We multiply this into all the
-        // transition-probabilities from the previous frame to this frame, in
-        // both the forward and backward passes, in order to keep the alphas in
-        // a good numeric range.  This won't affect the posteriors, but when
-        // computing the total likelihood we'll need to compensate for it later
-        // on.
-        BaseFloat arbitrary_scale =
-            1.0 / prev_alpha_dash[num_hmm_states * num_sequences + s];
         double this_tot_alpha = 0.0;
         double this_tot_alpha_smbr = 0.0;
         const DenominatorGraphTransition
@@ -190,24 +178,28 @@ void DenominatorSmbrComputation::AlphaSmbrGeneralFrame(int32 t) {
           this_tot_alpha_smbr += 
             (this_prev_alpha_smbr + post)
             * this_prev_alpha * transition_prob * prob;
-          KALDI_ASSERT(this_tot_alpha_smbr - this_tot_alpha_smbr == 0);
         }
+        // Let arbitrary_scale be the inverse of the alpha-sum value that we
+        // store in the same place we'd store the alpha for the state numbered
+        // 'num_hmm_states'. We multiply this into all the
+        // transition-probabilities from the previous frame to this frame, in
+        // both the forward and backward passes, in order to keep the alphas in
+        // a good numeric range.  This won't affect the posteriors, but when
+        // computing the total likelihood we'll need to compensate for it later
+        // on.
+        BaseFloat arbitrary_scale = 
+            1.0 / prev_alpha_dash[num_hmm_states * num_sequences + s];
         KALDI_ASSERT(this_tot_alpha - this_tot_alpha == 0);
         KALDI_ASSERT(this_tot_alpha_smbr - this_tot_alpha_smbr == 0);
         this_alpha[h * num_sequences + s] = this_tot_alpha * arbitrary_scale;
-        if (this_tot_alpha > 0.0) {
-          this_alpha_smbr[h * num_sequences + s] = 
-            this_tot_alpha_smbr / this_tot_alpha;
-        } else {
-          this_alpha_smbr[h * num_sequences + s] = 0.0;
-        }
+        this_alpha_smbr[h * num_sequences + s] = 
+          this_tot_alpha_smbr * arbitrary_scale;
       }
     }
   }
 }
 
-
-void DenominatorSmbrComputation::AlphaDash(int32 t) {
+void DenominatorSmbrComputation::AlphaSmbrDash(int32 t) {
   BaseFloat *this_alpha = alpha_.RowData(t);
 
   // create a 'fake matrix' for the regular alphas- view this row as a matrix.
@@ -217,20 +209,27 @@ void DenominatorSmbrComputation::AlphaDash(int32 t) {
                                    num_sequences_,
                                    num_sequences_);
 
-  // the alpha-dash is the sum of alpha over all states.
+  // Compute the sum of alpha over all states i for the current time. 
+  // This is done for each sequence and stored in the last 'num_sequences_'
+  // columns.
   CuSubVector<BaseFloat> alpha_sum_vec(this_alpha +
                                        den_graph_.NumStates() * num_sequences_,
                                        num_sequences_);
   alpha_sum_vec.AddRowSumMat(1.0, alpha_mat, 0.0);
 
+  BaseFloat alpha_sum = alpha_sum_vec.Sum();
+  KALDI_VLOG(2) << "alpha-sum for time " << t << " is " << alpha_sum;
+  KALDI_ASSERT(alpha_sum_vec.Min() > 0);
+
   alpha_mat.AddVecVec(opts_.leaky_hmm_coefficient,
                       den_graph_.InitialProbs(),
                       alpha_sum_vec);
   // it's now alpha-dash.
+  alpha_smbr_.Row(t).DivElements(alpha_.Row(t));
 }
 
 // compute beta from beta-dash.
-void DenominatorSmbrComputation::Beta(int32 t) {
+void DenominatorSmbrComputation::BetaSmbr(int32 t) {
   BaseFloat *this_beta_dash = beta_.RowData(t % 2);
   // create a 'fake matrix' for the regular beta-dash (which is
   // the counterpart of alpha-dash)- view this row as a matrix.
@@ -250,15 +249,16 @@ void DenominatorSmbrComputation::Beta(int32 t) {
   // will contain the actual beta (i.e. the counterpart of alpha),
   // not the beta-dash.
   beta_dash_mat.AddVecToRows(1.0, beta_dash_sum_vec);
+  beta_smbr_.Row(t % 2).DivElements(beta_.Row(t % 2));
 }
 
 BaseFloat DenominatorSmbrComputation::ForwardSmbr() {
   AlphaFirstFrame();
   AlphaSmbrFirstFrame();
-  AlphaDash(0);
+  AlphaSmbrDash(0);
   for (int32 t = 1; t <= frames_per_sequence_; t++) {
     AlphaSmbrGeneralFrame(t);
-    AlphaDash(t);
+    AlphaSmbrDash(t);
   }
   return ComputeTotObjf();
 }
@@ -272,14 +272,21 @@ BaseFloat DenominatorSmbrComputation::ComputeTotObjf() {
       den_graph_.NumStates(),
       num_sequences_,
       num_sequences_);
-  CuSubMatrix<BaseFloat> last_alpha_smbr(
+  CuMatrix<BaseFloat> last_alpha_smbr(CuSubMatrix<BaseFloat> (
       alpha_smbr_.RowData(frames_per_sequence_),
       den_graph_.NumStates(),
       num_sequences_,
-      num_sequences_);
+      num_sequences_));
   // TODO: Make this vector multiplication
 
+  // Sum over all the HMM states for each sequence.
   tot_prob_.AddRowSumMat(1.0, last_alpha_dash, 0.0);
+
+  BaseFloat prob_sum = tot_prob_.Sum();
+  KALDI_ASSERT(prob_sum == prob_sum);
+  
+  // Take weighted-average of the SMBR quantitites over all the 
+  // HMM states for each sequence.
   last_alpha_smbr.MulElements(last_alpha_dash);
   tot_smbr_.AddRowSumMat(1.0, last_alpha_smbr, 0.0);
   tot_smbr_.DivElements(tot_prob_);
@@ -293,12 +300,12 @@ bool DenominatorSmbrComputation::BackwardSmbr(
     BaseFloat deriv_weight,
     CuMatrixBase<BaseFloat> *nnet_output_deriv) {
   BetaDashLastFrame();
-  Beta(frames_per_sequence_);
+  BetaSmbr(frames_per_sequence_);
   for (int32 t = frames_per_sequence_ - 1; t >= 0; t--) {
     BetaSmbrGeneralFrame(t);
     if (GetVerboseLevel() >= 1 || t == 0)
       BetaSmbrGeneralFrameDebug(t);
-    Beta(t);
+    BetaSmbr(t);
     if (t % kMaxDerivTimeSteps == 0) {
       // commit the derivative stored in exp_nnet_output_transposed_ by adding
       // its transpose to the appropriate sub-matrix of 'nnet_output_deriv'.
@@ -425,9 +432,9 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrame(int32 t) {
       for (int32 s = 0; s < num_sequences; s++) {
         BaseFloat this_alpha_dash_prob = this_alpha_dash[h * num_sequences + s],
             this_alpha_smbr_i = this_alpha_smbr[h * num_sequences + s],
-            inv_arbitrary_scale =
+            inv_arbitrary_scale = 
             this_alpha_dash[num_hmm_states * num_sequences + s];
-        double tot_variable_factor = 0.0, beta_smbr = 0.0;
+        double tot_variable_factor = 0.0, tot_beta_smbr = 0.0;
         BaseFloat occupation_factor = this_alpha_dash_prob /
             inv_arbitrary_scale;
         const DenominatorGraphTransition
@@ -437,23 +444,21 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrame(int32 t) {
           BaseFloat transition_prob = trans_iter->transition_prob;
           int32 pdf_id = trans_iter->pdf_id,
               next_hmm_state = trans_iter->hmm_state;
-          BaseFloat next_beta_j = next_beta[next_hmm_state + num_sequences + s],
-              next_beta_smbr_j = next_beta_smbr[next_hmm_state + num_sequences + s];
+          BaseFloat next_beta_j = next_beta[next_hmm_state * num_sequences + s],
+              next_beta_smbr_j = next_beta_smbr[next_hmm_state * num_sequences + s];
           BaseFloat prob = prob_data[pdf_id * prob_stride + s],
               post = post_data[pdf_id * post_stride + s],
               variable_factor = transition_prob * next_beta_j * prob;
-          beta_smbr += (next_beta_smbr_j + post)
-            * next_beta_j * prob * transition_prob;
+          tot_beta_smbr += (next_beta_smbr_j + post) * variable_factor;
           tot_variable_factor += variable_factor;
-          double this_gamma_r = occupation_factor * next_beta_j 
-            * transition_prob * (this_alpha_smbr_i + post
-                                 + next_beta_smbr_j - tot_smbr_(s));
+          double this_gamma_r = occupation_factor * variable_factor * 
+            (this_alpha_smbr_i + post + next_beta_smbr_j - tot_smbr_(s));
           log_prob_deriv_data[pdf_id * deriv_stride + s] += this_gamma_r;
         }
         this_beta_dash[h * num_sequences + s] =
             tot_variable_factor / inv_arbitrary_scale;
-        if (tot_variable_factor > 0.0)
-        this_beta_smbr[h * num_sequences + s] = beta_smbr / tot_variable_factor;
+        this_beta_smbr[h * num_sequences + s] = 
+            tot_beta_smbr / inv_arbitrary_scale;
       }
     }
   }
@@ -471,9 +476,10 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrameDebug(int32 t) {
   CuSubMatrix<BaseFloat> this_log_prob_deriv(
       nnet_output_deriv_transposed_, 0, num_pdfs,
       t_wrapped * num_sequences_, num_sequences_);
-  BaseFloat alpha_beta_product = VecVec(this_alpha_dash, this_beta_dash),
+  BaseFloat alpha_beta_product = VecVec(this_alpha_dash,
+                                        this_beta_dash),
       this_log_prob_deriv_sum = this_log_prob_deriv.Sum();
-  if (!ApproxEqual(alpha_beta_product, num_sequences_)) {
+  if (GetVerboseLevel() > 1 || !ApproxEqual(alpha_beta_product, num_sequences_)) {
     KALDI_WARN << "On time " << t << ", alpha-beta product "
                << alpha_beta_product << " != " << num_sequences_
                << " alpha-dash-sum = " << this_alpha_dash.Sum()
@@ -484,19 +490,38 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrameDebug(int32 t) {
     }
   }
 
+  // alpha_smbr_vec is a vector of size 'num_hmm_states' * 'num_sequences_'
+  CuVector<BaseFloat> alpha_beta_smbr_vec(this_beta_smbr);
+  alpha_beta_smbr_vec.DivElements(this_beta_dash);
+  alpha_beta_smbr_vec.AddVec(1.0, this_beta_smbr, 1.0);
+
+  CuVector<BaseFloat> alpha_beta_vec(this_alpha_dash);
+  alpha_beta_vec.MulElements(this_beta_dash);
+  
+  alpha_beta_smbr_vec.MulElements(alpha_beta_vec);
+
+  BaseFloat alpha_beta_smbr_sum = alpha_beta_smbr_vec.Sum() 
+                                  / alpha_beta_product * num_sequences_,
+            tot_smbr_sum = tot_smbr_.Sum();
+  KALDI_ASSERT (alpha_beta_smbr_sum - alpha_beta_smbr_sum == 0.0);
+  if (GetVerboseLevel() > 1 || !ApproxEqual(tot_smbr_sum, alpha_beta_smbr_sum, 0.01)) {
+     KALDI_WARN << "On time " << t << ", alpha-beta-smbr "
+                << alpha_beta_smbr_sum << " != " << tot_smbr_sum;
+  }
+
   //BaseFloat acc = (VecVec(this_alpha_smbr, this_alpha_dash) 
   //                 + VecVec(this_beta_dash, this_beta_smbr)) 
   //                / alpha_beta_product;
   // use higher tolerance, since we are using randomized pruning for the
   // log-prob derivatives.
-   if (!ApproxEqual(this_log_prob_deriv_sum, 0, 0.01)) {
-     KALDI_WARN << "On time " << t << ", log-prob-deriv sum "
-                << this_log_prob_deriv_sum << " != " << 0;
-     if (fabs(this_log_prob_deriv_sum - 0) > 2.0) {
-       KALDI_WARN << "Excessive error detected, will abandon this minibatch";
-       ok_ = false;
-     }
-   }
+  ///if (!ApproxEqual(this_log_prob_deriv_sum, 0, 0.01)) {
+  ///  KALDI_WARN << "On time " << t << ", log-prob-deriv sum "
+  ///             << this_log_prob_deriv_sum << " != " << 0;
+  ///  if (fabs(this_log_prob_deriv_sum - 0) > 2.0) {
+  ///    KALDI_WARN << "Excessive error detected, will abandon this minibatch";
+  ///    ok_ = false;
+  ///  }
+  ///}
 }
 
 

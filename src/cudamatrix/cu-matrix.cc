@@ -3156,7 +3156,6 @@ std::ostream &operator << (std::ostream &out, const CuMatrixBase<float> &mat);
 template
 std::ostream &operator << (std::ostream &out, const CuMatrixBase<double> &mat);
 
-
 // Instantiate classes CuMatrix and CuMatrixBase for float and double.
 template class CuMatrix<float>;
 template class CuMatrix<double>;

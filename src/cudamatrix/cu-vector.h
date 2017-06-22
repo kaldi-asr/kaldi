@@ -282,6 +282,11 @@ class CuVector: public CuVectorBase<Real> {
   /// I/O
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &is, bool binary) const;
+  inline std::string ToStr() const { 
+    std::ostringstream oss;
+    oss << *this;
+    return oss.str();
+  }
 
   void Swap(Vector<Real> *vec);
 

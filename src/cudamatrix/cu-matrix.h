@@ -582,6 +582,11 @@ class CuMatrixBase {
   void SetRandUniform();
 
   void Write(std::ostream &os, bool binary) const;
+  inline std::string ToStr() const { 
+    std::ostringstream oss;
+    oss << *this;
+    return oss.str();
+  }
 
   // This function, adds a list of MatrixElements (scaled by alpha) to corresponding locations to
   // (*this).
@@ -835,6 +840,8 @@ bool SameDimAndStride(const CuMatrixBase<Real> &M, const CuMatrixBase<Real> &N) 
 template<typename Real>
 std::ostream &operator << (std::ostream &out, const CuMatrixBase<Real> &mat);
 
+template<typename Real>
+std::string ToStr(const CuMatrixBase<Real> &mat);
 
 template<typename Real>
 template<typename OtherReal>
