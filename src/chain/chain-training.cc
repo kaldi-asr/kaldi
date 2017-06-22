@@ -121,8 +121,7 @@ void ComputeChainSmbrObjfAndDeriv(const ChainTrainingOptions &opts,
                                   CuMatrixBase<BaseFloat> *nnet_output_deriv,
                                   CuMatrixBase<BaseFloat> *xent_output_deriv) {
   CuMatrix<BaseFloat> num_posteriors(nnet_output.NumRows(),
-                                     nnet_output.NumCols(),
-                                     kUndefined);
+                                     nnet_output.NumCols());
   {
     NumeratorComputation numerator(supervision, nnet_output);
     // note: supervision.weight is included as a factor in the derivative from

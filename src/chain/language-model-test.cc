@@ -86,7 +86,7 @@ void LanguageModelTest() {
   LanguageModelEstimator estimator(opts);
   for (size_t i = 0; i < data.size(); i++) {
     std::vector<int32> &sentence = data[i];
-    estimator.AddCounts(sentence);
+    estimator.AddCounts(sentence, 1);
   }
 
   fst::StdVectorFst fst;

@@ -131,7 +131,7 @@ void DenominatorSmbrComputation::AlphaSmbrGeneralFrame(int32 t) {
                                   backward_transitions, transitions,
                                   num_sequences, den_graph_.NumStates(),
                                   prob_data, probs.Stride(),
-                                  num_posteriors_.Row(t).Data(),
+                                  num_posteriors_.Row(t).Data(), 
                                   prev_alpha_dash, prev_alpha_smbr,
                                   this_alpha, this_alpha_smbr);
       CU_SAFE_CALL(cudaGetLastError());
@@ -184,8 +184,12 @@ void DenominatorSmbrComputation::AlphaSmbrGeneralFrame(int32 t) {
             * this_prev_alpha * transition_prob * prob;
         }
         KALDI_ASSERT(this_tot_alpha - this_tot_alpha == 0);
+        KALDI_ASSERT(this_tot_alpha_smbr - this_tot_alpha_smbr == 0);
         this_alpha[h * num_sequences + s] = this_tot_alpha * arbitrary_scale;
-        this_alpha_smbr[h * num_sequences + s] = this_tot_alpha_smbr / this_tot_alpha;
+        if (this_tot_alpha > 0.0) {
+          this_alpha_smbr[h * num_sequences + s] = 
+            this_tot_alpha_smbr / this_tot_alpha;
+        }
       }
     }
   }
@@ -372,6 +376,7 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrame(int32 t) {
           dimGrid, dimBlock, forward_transitions, transitions,
           num_sequences, num_hmm_states,
           probs.Data(), probs.Stride(),
+          num_posteriors_.Row(t).Data(), tot_smbr_.Data(),
           this_alpha_dash, this_alpha_smbr, 
           next_beta, next_beta_smbr,
           this_beta_dash, this_beta_smbr,
@@ -430,6 +435,7 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrame(int32 t) {
         }
         this_beta_dash[h * num_sequences + s] =
             tot_variable_factor / inv_arbitrary_scale;
+        if (tot_variable_factor > 0.0)
         this_beta_smbr[h * num_sequences + s] = beta_smbr / tot_variable_factor;
       }
     }
@@ -448,8 +454,9 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrameDebug(int32 t) {
   CuSubMatrix<BaseFloat> this_log_prob_deriv(
       nnet_output_deriv_transposed_, 0, num_pdfs,
       t_wrapped * num_sequences_, num_sequences_);
-  BaseFloat alpha_beta_product = VecVec(this_alpha_dash,
-                                        this_beta_dash),
+  BaseFloat alpha_beta_product = (VecVec(this_alpha_dash, this_beta_smbr) 
+                                 + VecVec(this_alpha_smbr, this_beta_dash)) 
+                                 / VecVec(this_alpha_dash, this_beta_dash),
       this_log_prob_deriv_sum = this_log_prob_deriv.Sum();
   if (!ApproxEqual(alpha_beta_product, num_sequences_)) {
     KALDI_WARN << "On time " << t << ", alpha-beta product "

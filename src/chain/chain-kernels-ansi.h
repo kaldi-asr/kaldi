@@ -56,6 +56,7 @@ extern "C" {
                                     const BaseFloat *probs,
                                     int32_cuda prob_stride,
                                     const BaseFloat *num_post,
+                                    const BaseFloat *tot_smbr,
                                     const BaseFloat *this_alpha,
                                     const BaseFloat *this_alpha_smbr,
                                     const BaseFloat *next_beta,

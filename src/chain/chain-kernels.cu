@@ -303,7 +303,7 @@ static void _cuda_chain_smbr_hmm_forward(
   BaseFloat arbitrary_scale =
       1.0 / prev_alpha[num_hmm_states * num_sequences + s];
 
-  double this_tot_alpha = 0.0, this_tot_alpha_smbr;
+  double this_tot_alpha = 0.0, this_tot_alpha_smbr = 0.0;
   const DenominatorGraphTransition
       *trans_iter = transitions + backward_transitions[h].first,
       *trans_end = transitions + backward_transitions[h].second;
@@ -333,7 +333,7 @@ static void _cuda_chain_smbr_hmm_forward(
     this_tot_alpha_smbr += 
       this_prev_alpha_smbr0 * this_prev_alpha0 / arbitrary_scale
       + transition_prob0 * pseudo_loglike0 * num_post[pdf_id0]
-      + this_prev_alpha_smbr0 * this_prev_alpha1 / arbitrary_scale 
+      + this_prev_alpha_smbr1 * this_prev_alpha1 / arbitrary_scale 
       + transition_prob1 * pseudo_loglike1 * num_post[pdf_id1];
   }
   if (trans_iter != trans_end) {
@@ -352,8 +352,11 @@ static void _cuda_chain_smbr_hmm_forward(
   }
 
   this_alpha[h * num_sequences + s] = this_tot_alpha * arbitrary_scale;
-  this_alpha_smbr[h * num_sequences + s] = 
-    this_tot_alpha_smbr / this_tot_alpha;
+
+  if (this_tot_alpha > 0.0) {
+    this_alpha_smbr[h * num_sequences + s] = 
+      this_tot_alpha_smbr / this_tot_alpha;
+  }
 }
 
 
@@ -362,7 +365,8 @@ static void _cuda_chain_smbr_hmm_backward(
     const Int32Pair *forward_transitions,
     const DenominatorGraphTransition *transitions,
     int32_cuda num_sequences, int32_cuda num_hmm_states,
-    const BaseFloat *probs, int32_cuda prob_stride, const BaseFloat *num_post,
+    const BaseFloat *probs, int32_cuda prob_stride, 
+    const BaseFloat *num_post, const BaseFloat *tot_smbr,
     const BaseFloat *this_alpha, const BaseFloat *this_alpha_smbr,
     const BaseFloat *next_beta, const BaseFloat *next_beta_smbr,
     BaseFloat *this_beta, BaseFloat *this_beta_smbr,
@@ -458,7 +462,9 @@ static void _cuda_chain_smbr_hmm_backward(
   }
   BaseFloat beta = tot_variable_factor / inv_arbitrary_scale;
   this_beta[h * num_sequences + s] = beta;
-  this_beta_smbr = beta_smbr / beta;
+
+  if (beta > 0.0)
+    this_beta_smbr[h * num_sequences + s] = beta_smbr / beta;
 }
 
 
@@ -519,7 +525,7 @@ void cuda_chain_smbr_hmm_backward(
     int32_cuda num_sequences,
     int32_cuda num_hmm_states,
     const BaseFloat *probs, int32_cuda prob_stride,
-    const BaseFloat *num_post,
+    const BaseFloat *num_post, const BaseFloat *tot_smbr,
     const BaseFloat *this_alpha, const BaseFloat *this_alpha_smbr,
     const BaseFloat *next_beta, const BaseFloat *next_beta_smbr,
     BaseFloat *this_beta, BaseFloat *this_beta_smbr,
@@ -528,7 +534,7 @@ void cuda_chain_smbr_hmm_backward(
   _cuda_chain_smbr_hmm_backward<<<Gr,Bl>>>(
       forward_transitions, transitions,
       num_sequences, num_hmm_states,
-      probs, prob_stride, num_post,
+      probs, prob_stride, num_post, tot_smbr,
       this_alpha, this_alpha_smbr, next_beta, next_beta_smbr,
       this_beta, this_beta_smbr, log_prob_deriv,
       log_prob_deriv_stride);

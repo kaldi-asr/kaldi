@@ -54,12 +54,14 @@ NnetChainComputeProb::NnetChainComputeProb(
     Nnet *nnet):
     nnet_config_(nnet_config),
     chain_config_(chain_config),
-    den_graph_(den_fst, nnet->OutputDim("output")),
     nnet_(*nnet),
     compiler_(*nnet, nnet_config_.optimize_config, nnet_config_.compiler_config),
     deriv_nnet_owned_(false),
     deriv_nnet_(nnet),
     num_minibatches_processed_(0) {
+  chain::DenominatorGraph den_graph(den_fst, nnet->OutputDim("output"));
+  KALDI_ASSERT(den_graph.NumPdfs() > 0);
+  den_graph_.insert(std::make_pair("output", den_graph));
   KALDI_ASSERT(nnet_config.store_component_stats && !nnet_config.compute_deriv);
 }
 
@@ -227,7 +229,8 @@ const ChainObjectiveInfo* NnetChainComputeProb::GetObjective(
 
 void RecomputeStats(const std::vector<NnetChainExample> &egs,
                     const chain::ChainTrainingOptions &chain_config_in,
-                    const fst::StdVectorFst &den_fst,
+                    const std::vector<fst::StdVectorFst> &den_fst,
+                    const std::vector<std::string> &den_to_output,
                     Nnet *nnet) {
   KALDI_LOG << "Recomputing stats on nnet (affects batch-norm)";
   chain::ChainTrainingOptions chain_config(chain_config_in);
@@ -242,7 +245,8 @@ void RecomputeStats(const std::vector<NnetChainExample> &egs,
   ZeroComponentStats(nnet);
   NnetComputeProbOptions nnet_config;
   nnet_config.store_component_stats = true;
-  NnetChainComputeProb prob_computer(nnet_config, chain_config, den_fst, nnet);
+  NnetChainComputeProb prob_computer(nnet_config, chain_config, den_fst, 
+                                     den_to_output, *nnet);
   for (size_t i = 0; i < egs.size(); i++)
     prob_computer.Compute(egs[i]);
   prob_computer.PrintTotalStats();
