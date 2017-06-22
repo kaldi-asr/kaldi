@@ -1147,7 +1147,8 @@ void TimeConvolutionComponent::CreateOperations(
       Operation operation;
       operation.output_start_col = sub_frame * num_filters_out_;
       operation.output_num_cols = num_filters_out_;
-      operation.input_start_row = frame_shift - (-frames_left_context_);
+      operation.input_start_row =
+          (frame_shift - (-frames_left_context_)) * io.num_images;
       operation.input_start_col =
           (first_used_sub_frame_offset - first_sub_frame_offset) *
           samples_per_sub_frame_;
@@ -1155,7 +1156,8 @@ void TimeConvolutionComponent::CreateOperations(
           (end_used_sub_frame_offset - first_used_sub_frame_offset) *
           samples_per_sub_frame_;
       operation.params_start_col =
-          (first_used_sub_frame_offset - (-sub_frames_left_context_));
+          (first_used_sub_frame_offset - (-sub_frames_left_context_)) *
+          samples_per_sub_frame_;
       operations->push_back(operation);
     }
   }

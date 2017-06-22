@@ -654,8 +654,9 @@ class TimeConvolutionComponent: public UpdatableComponent {
 
   // the linear parameters of the convolution.
   // dimension is num_filters_out_ by
-  // (samples_per_sub_frame_ * total_context),
+  // (total_context * samples_per_sub_frame_),
   // where total_context = (sub_frames_left_context_ + 1 + sub_frames_right_context_).
+  // (and 'total_context' has the higher stride).
   CuMatrix<BaseFloat> linear_params_;
   // the bias parameters of the convolution, dimension is
   // model_.num_filters_out.
