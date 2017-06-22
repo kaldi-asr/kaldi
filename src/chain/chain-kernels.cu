@@ -360,6 +360,8 @@ static void _cuda_chain_smbr_hmm_forward(
   if (this_tot_alpha > 0.0) {
     this_alpha_smbr[h * num_sequences + s] = 
       this_tot_alpha_smbr / this_tot_alpha;
+  } else {
+    this_alpha_smbr[h * num_sequences + s] = 0.0;
   }
 }
 
@@ -471,6 +473,8 @@ static void _cuda_chain_smbr_hmm_backward(
 
   if (beta > 0.0)
     this_beta_smbr[h * num_sequences + s] = beta_smbr / beta;
+  else 
+    this_beta_smbr[h * num_sequences + s] = 0.0;
 }
 
 

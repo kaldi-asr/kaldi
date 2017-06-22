@@ -190,6 +190,7 @@ void DenominatorSmbrComputation::AlphaSmbrGeneralFrame(int32 t) {
           this_tot_alpha_smbr += 
             (this_prev_alpha_smbr + post)
             * this_prev_alpha * transition_prob * prob;
+          KALDI_ASSERT(this_tot_alpha_smbr - this_tot_alpha_smbr == 0);
         }
         KALDI_ASSERT(this_tot_alpha - this_tot_alpha == 0);
         KALDI_ASSERT(this_tot_alpha_smbr - this_tot_alpha_smbr == 0);
@@ -197,6 +198,8 @@ void DenominatorSmbrComputation::AlphaSmbrGeneralFrame(int32 t) {
         if (this_tot_alpha > 0.0) {
           this_alpha_smbr[h * num_sequences + s] = 
             this_tot_alpha_smbr / this_tot_alpha;
+        } else {
+          this_alpha_smbr[h * num_sequences + s] = 0.0;
         }
       }
     }
@@ -468,9 +471,7 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrameDebug(int32 t) {
   CuSubMatrix<BaseFloat> this_log_prob_deriv(
       nnet_output_deriv_transposed_, 0, num_pdfs,
       t_wrapped * num_sequences_, num_sequences_);
-  BaseFloat alpha_beta_product = (VecVec(this_alpha_dash, this_beta_smbr) 
-                                 + VecVec(this_alpha_smbr, this_beta_dash)) 
-                                 / VecVec(this_alpha_dash, this_beta_dash),
+  BaseFloat alpha_beta_product = VecVec(this_alpha_dash, this_beta_dash),
       this_log_prob_deriv_sum = this_log_prob_deriv.Sum();
   if (!ApproxEqual(alpha_beta_product, num_sequences_)) {
     KALDI_WARN << "On time " << t << ", alpha-beta product "
@@ -482,17 +483,20 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrameDebug(int32 t) {
       ok_ = false;
     }
   }
+
+  //BaseFloat acc = (VecVec(this_alpha_smbr, this_alpha_dash) 
+  //                 + VecVec(this_beta_dash, this_beta_smbr)) 
+  //                / alpha_beta_product;
   // use higher tolerance, since we are using randomized pruning for the
   // log-prob derivatives.
-  if (!ApproxEqual(this_log_prob_deriv_sum,
-                   num_sequences_, 0.01)) {
-    KALDI_WARN << "On time " << t << ", log-prob-deriv sum "
-               << this_log_prob_deriv_sum << " != " << num_sequences_;
-    if (fabs(this_log_prob_deriv_sum - num_sequences_) > 2.0) {
-      KALDI_WARN << "Excessive error detected, will abandon this minibatch";
-      ok_ = false;
-    }
-  }
+   if (!ApproxEqual(this_log_prob_deriv_sum, 0, 0.01)) {
+     KALDI_WARN << "On time " << t << ", log-prob-deriv sum "
+                << this_log_prob_deriv_sum << " != " << 0;
+     if (fabs(this_log_prob_deriv_sum - 0) > 2.0) {
+       KALDI_WARN << "Excessive error detected, will abandon this minibatch";
+       ok_ = false;
+     }
+   }
 }
 
 
