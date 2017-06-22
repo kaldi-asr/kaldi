@@ -331,10 +331,10 @@ static void _cuda_chain_smbr_hmm_forward(
     this_tot_alpha += this_prev_alpha0 * transition_prob0 * pseudo_loglike0 +
                        this_prev_alpha1 * transition_prob1 * pseudo_loglike1;
     this_tot_alpha_smbr += 
-      this_prev_alpha_smbr0 * this_prev_alpha0 / arbitrary_scale
-      + transition_prob0 * pseudo_loglike0 * num_post[pdf_id0]
-      + this_prev_alpha_smbr1 * this_prev_alpha1 / arbitrary_scale 
-      + transition_prob1 * pseudo_loglike1 * num_post[pdf_id1];
+      (this_prev_alpha_smbr0 + num_post[pdf_id0]) * this_prev_alpha0 
+      * transition_prob0 * pseudo_loglike0
+      + (this_prev_alpha_smbr1 + num_post[pdf_id1] * this_prev_alpha1 
+      * transition_prob1 * pseudo_loglike1;
   }
   if (trans_iter != trans_end) {
     // mop up the odd transition.
@@ -347,8 +347,8 @@ static void _cuda_chain_smbr_hmm_forward(
          prev_alpha_smbr[prev_hmm_state0 * num_sequences + s];
     this_tot_alpha += this_prev_alpha0 * transition_prob0 * pseudo_loglike0;
     this_tot_alpha_smbr += 
-      this_prev_alpha_smbr0 * this_prev_alpha0 / arbitrary_scale 
-      + transition_prob0 * pseudo_loglike0 * num_post[pdf_id0];
+      (this_prev_alpha_smbr0 + num_post[pdf_id0]) * this_prev_alpha0 
+      * transition_prob0 * pseudo_loglike0;
   }
 
   this_alpha[h * num_sequences + s] = this_tot_alpha * arbitrary_scale;
@@ -425,10 +425,10 @@ static void _cuda_chain_smbr_hmm_backward(
 
     BaseFloat variable_factor0 = transition_prob0 * next_beta_j0 * prob0,
         variable_factor1 = transition_prob1 * next_beta_j1 * prob1;
-    beta_smbr += next_beta_smbr_j0 * next_beta_j0 
-      + prob0 / inv_arbitrary_scale * transition_prob0 * num_post0
-      + next_beta_smbr_j1 * next_beta_j1 
-      + prob1 / inv_arbitrary_scale * transition_prob1 * num_post1;
+    beta_smbr += (next_beta_smbr_j0 + num_post0) * next_beta_j0 
+      * prob0 * transition_prob0
+      + (next_beta_smbr_j1 + num_post1) * next_beta_j1 
+      * prob1 * transition_prob1;
     tot_variable_factor += variable_factor0 + variable_factor1;
     BaseFloat this_gamma_r0 = occupation_factor * next_beta_j0 
       * transition_prob0 * (this_alpha_smbr_i + num_post0
@@ -451,8 +451,8 @@ static void _cuda_chain_smbr_hmm_backward(
         prob0 = probs[pdf_id0 * prob_stride + s],
         num_post0 = num_post[pdf_id0];
     BaseFloat variable_factor0 = transition_prob0 * next_beta_j0 * prob0;
-    beta_smbr += next_beta_smbr_j0 * next_beta_j0 
-      + prob0 / inv_arbitrary_scale * transition_prob0 * num_post0;
+    beta_smbr += (next_beta_smbr_j0 + num_post0) * next_beta_j0 
+      * prob0 * transition_prob0;
     tot_variable_factor += variable_factor0;
     BaseFloat this_gamma_r0 = occupation_factor * next_beta_j0 
       * transition_prob0 * (this_alpha_smbr_i + num_post0
