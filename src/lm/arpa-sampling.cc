@@ -36,7 +36,7 @@ void ArpaSampling::HeaderAvailable() {
   probs_.resize(ngram_order_);
 }
 
-BaseFloat ArpaSampling::GetProb(int32 order, int32 word, const HistType& history) {
+BaseFloat ArpaSampling::GetProb(int32 order, int32 word, const HistType &history) {
   BaseFloat prob = 0.0;
   NgramType::const_iterator it = probs_[order - 1].find(history);
   if (it != probs_[order - 1].end() &&
@@ -58,7 +58,8 @@ BaseFloat ArpaSampling::GetProb(int32 order, int32 word, const HistType& history
   return prob;
 }
 
-BaseFloat ArpaSampling::GetBackoffWeight(int32 order, int32 word, const HistType& history) {
+BaseFloat ArpaSampling::GetBackoffWeight(int32 order, int32 word, 
+    const HistType &history) {
   BaseFloat bow = 0.0;
   KALDI_ASSERT(order >= 1);
   NgramType::const_iterator it = probs_[order - 1].find(history);
@@ -72,11 +73,11 @@ BaseFloat ArpaSampling::GetBackoffWeight(int32 order, int32 word, const HistType
 }
 
 void ArpaSampling::GetUnigramDistribution(std::vector<BaseFloat> *unigram_probs) {
-  for (int32 i = 0; i < num_words_; i++) {
+  for (int32 i = 0; i < num_words_; ++i) {
     HistType h; // empty history
     WordToProbsMap::const_iterator it = probs_[0][h].find(i);
     if (it != probs_[0][h].end()) {
-      (*unigram_probs)[i] = exp(it->second.first);
+      (*unigram_probs)[i] = Exp(it->second.first);
     }    
   }
 }
@@ -88,7 +89,7 @@ void ArpaSampling::ComputeHistoriesWeights(
       it = histories.begin(); it != histories.end(); ++it) {
     HistType history((*it).first);
     KALDI_ASSERT(history.size() <= ngram_order_);
-    for (int32 i = 0; i < history.size() + 1; i++) {
+    for (int32 i = 0; i < history.size() + 1; ++i) {
       HistType h_tmp = history;
       // (*it).second is the input weight of a history 
       BaseFloat prob = 1.0 / histories.size() * ((*it).second);
@@ -96,7 +97,7 @@ void ArpaSampling::ComputeHistoriesWeights(
         HistType::iterator last = h_tmp.end() - 1;
         HistType h(h_tmp.begin(), last);
         int32 word = h_tmp.back();
-        prob *= exp(GetBackoffWeight(h_tmp.size(), word, h));
+        prob *= Exp(GetBackoffWeight(h_tmp.size(), word, h));
         HistType h_up(h_tmp.begin() + 1, h_tmp.end());
         h_tmp = h_up;
       }
@@ -107,12 +108,13 @@ void ArpaSampling::ComputeHistoriesWeights(
   }
 }
 
-BaseFloat ArpaSampling::GetOutputWordsAndAlpha(const std::vector<std::pair<HistType, BaseFloat> > &histories,
-    unordered_map<int32, BaseFloat> *pdf_w) {
+BaseFloat ArpaSampling::GetOutputWordsAndAlpha(const std::vector<std::pair<HistType, 
+    BaseFloat> > &histories, std::unordered_map<int32, BaseFloat> *pdf_w) {
   HistWeightsType hists_weights;
   ComputeHistoriesWeights(histories, &hists_weights); 
   BaseFloat prob = 0;
-  for (HistWeightsType::const_iterator it = hists_weights.begin(); it != hists_weights.end(); ++it) {
+  for (HistWeightsType::const_iterator it = hists_weights.begin(); 
+      it != hists_weights.end(); ++it) {
     HistType h(it->first);
     int32 order = h.size();
     NgramType::const_iterator it_hist = probs_[order].find(h);
@@ -125,14 +127,10 @@ BaseFloat ArpaSampling::GetOutputWordsAndAlpha(const std::vector<std::pair<HistT
           HistType::iterator first = h.begin() + 1;
           HistType h1(h.begin(), last);
           HistType h2(first, h.end());
-          prob = it->second * (exp(probs_[order][h][word].first) - 
-                  exp(GetBackoffWeight(order, h.back(), h1) + GetProb(order, word, h2)));
-          unordered_map<int32, BaseFloat>::iterator map_it = (*pdf_w).find(word);
-          if (map_it != (*pdf_w).end()) {
-            (*pdf_w)[word] += prob;
-          } else {
-            (*pdf_w).insert({word, prob});
-          }
+          prob = it->second * (Exp(probs_[order][h][word].first) - 
+                  Exp(GetBackoffWeight(order, h.back(), h1) + GetProb(order, word, h2)));
+          
+          (*pdf_w)[word] += prob;
         }
       }
     }
@@ -141,29 +139,25 @@ BaseFloat ArpaSampling::GetOutputWordsAndAlpha(const std::vector<std::pair<HistT
   BaseFloat alpha = 0.0;
   BaseFloat total_weights = 0;
   std::vector<std::pair<HistType, BaseFloat> >::const_iterator it = histories.begin();
-  for(; it != histories.end(); it++) {
+  for(; it != histories.end(); ++it) {
     total_weights += (*it).second;
     HistType h = (*it).first;
-    int32 order = h.size();
     BaseFloat backoff_weights = 0.0;
-    while (order > 0) {
+    for (int32 order = h.size(); order > 0; --order) {
       HistType::iterator last = h.end() - 1;
       HistType h1(h.begin(), last);
       BaseFloat backoff_logprob = GetBackoffWeight(order, h.back(), h1);
       backoff_weights += backoff_logprob;
-      order -= 1;
       h = h1;
     }
-    alpha += (*it).second * exp(backoff_weights);
+    alpha += (*it).second * Exp(backoff_weights);
   }
+  // if total input weights equals 0, each input weight is zero. In this case
+  // the only output is the unigram distribution and alpha should be exactly 1
   if (total_weights == 0) {
-    KALDI_ASSERT(alpha == 1.0);
+    alpha = 1.0;
   }
   return alpha;
-}
-
-int32 ArpaSampling::GetNumWords() {
-  return num_words_;
 }
 
 } // end of kaldi

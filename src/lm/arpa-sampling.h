@@ -20,41 +20,42 @@
 #ifndef ARPA_SAMPLING_H_
 #define ARPA_SAMPLING_H_
 
-#include <sys/time.h>
-#include <unistd.h>
-#include "arpa-file-parser.h"
-#include "fst/fstlib.h"
-#include "util/common-utils.h"
-
-#include <stdlib.h>
-#include <math.h>
 #include <algorithm>
 #include <map>
+#include <iostream>
 #include <string>
 #include <sstream>
 #include <fstream>
 #include <vector>
-#include <iostream>
+
+#include <sys/time.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <math.h>
+#include "fst/fstlib.h"
+#include "util/common-utils.h"
+#include "arpa-file-parser.h"
 
 namespace kaldi {
 
 class ArpaSampling : public ArpaFileParser {
  public:
-  typedef int32_t int32;
+  friend class ArpaSamplingTest;
+
   // HistType represents a history
   typedef std::vector<int32> HistType;
   // WordToProbsMap represents the words and their probabilities given
   // an arbitrary history
-  typedef unordered_map<int32, std::pair<BaseFloat, BaseFloat> > WordToProbsMap; 
+  typedef std::unordered_map<int32, std::pair<BaseFloat, BaseFloat> > WordToProbsMap; 
   // NgramType represents the map between a history and the map of existing words
   // and their probabilities given this history
-  typedef unordered_map<HistType, WordToProbsMap, VectorHasher<int32> > NgramType;
+  typedef std::unordered_map<HistType, WordToProbsMap, VectorHasher<int32> > NgramType;
   // HistWeightsType represents the map between histories (with weights) and
   // their computed weights
-  typedef unordered_map<HistType, BaseFloat, VectorHasher<int32> > HistWeightsType;
+  typedef std::unordered_map<HistType, BaseFloat, VectorHasher<int32> > HistWeightsType;
 
   // constructor
-  explicit ArpaSampling(ArpaParseOptions options, fst::SymbolTable* symbols)
+  ArpaSampling(ArpaParseOptions options, fst::SymbolTable* symbols)
      : ArpaFileParser(options, symbols) { 
        ngram_order_ = 0;
        num_words_ = 0;
@@ -69,27 +70,13 @@ class ArpaSampling : public ArpaFileParser {
   // 0 has probability 0.0
   void GetUnigramDistribution(std::vector<BaseFloat> *unigram_probs);
 
-  // This function reads in a list of histories with input weiths and returns
+  // This function reads in a list of histories with input weights and returns
   // 1) the higher-than-unigram words and their corresponding probabilities 
   // given the list of histories and 
   // 2) a scalar alpha = sum of w_i * product of all backoff weights back to unigram 
   BaseFloat GetOutputWordsAndAlpha(const std::vector<std::pair<HistType, BaseFloat> > 
-      &histories, unordered_map<int32, BaseFloat> *non_unigram_probs);
+      &histories, std::unordered_map<int32, BaseFloat> *non_unigram_probs);
   
-  // This function reads in a list of histories and their weights from a file
-  // only text form is supported
-  void ReadHistories(std::istream &is, bool binary, 
-      std::vector<std::pair<HistType, BaseFloat> > *histories);
-  
-  // This function tests the correctness of the read-in ARPA LM 
-  void TestReadingModel();
-
-  // This function tests the generated unigram distribution 
-  void TestUnigramDistribution();
-
-  // This function returns the total number of words read from the ARPA LM
-  int32 GetNumWords();
-
  protected:
   // ArpaFileParser overrides.
   virtual void HeaderAvailable(); 
@@ -103,7 +90,8 @@ class ArpaSampling : public ArpaFileParser {
   // Note: a LM state is a ngram term in a ARPA language model
   BaseFloat GetProb(int32 order, int32 word, const HistType& history);
 
-  // This function returns the back-off weight of a LM state from the read-in ARPA file 
+  // This function returns the back-off log probability of a LM state
+  // from the read-in ARPA file 
   BaseFloat GetBackoffWeight(int32 order, int32 word, const HistType& history);
 
   // This function returns the computed weights of histories with input weights
@@ -136,5 +124,6 @@ class ArpaSampling : public ArpaFileParser {
   
 };
 
-} // end of namespace kaldi
-#endif
+}  // end of namespace kaldi
+
+#endif  // ARPA_SAMPLING_H_
