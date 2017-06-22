@@ -120,6 +120,11 @@ void ComputeChainSmbrObjfAndDeriv(const ChainTrainingOptions &opts,
                                   BaseFloat *weight,
                                   CuMatrixBase<BaseFloat> *nnet_output_deriv,
                                   CuMatrixBase<BaseFloat> *xent_output_deriv) {
+  // num_posteriors is a matrix of size 
+  // (num_sequences * frames_per_sequence) x num_pdfs and is ordered in the 
+  // same way as nnet_output is i.e.
+  // first the first frame of each sequence, then the second frame of 
+  // each sequence, and so on.
   CuMatrix<BaseFloat> num_posteriors(nnet_output.NumRows(),
                                      nnet_output.NumCols());
   {

@@ -29,13 +29,13 @@ DenominatorSmbrComputation::DenominatorSmbrComputation(
     const DenominatorGraph &den_graph,
     int32 num_sequences,
     const CuMatrixBase<BaseFloat> &nnet_output,
-    const CuMatrixBase<BaseFloat> &num_posteriors):
+    const CuMatrixBase<BaseFloat> &numerator_posteriors):
     opts_(opts),
     den_graph_(den_graph),
     num_sequences_(num_sequences),
     frames_per_sequence_(nnet_output.NumRows() / num_sequences_),
     exp_nnet_output_transposed_(nnet_output, kTrans),
-    num_posteriors_(num_posteriors),
+    numerator_posteriors_transposed(numerator_posteriors, kTrans),
     nnet_output_deriv_transposed_(
         exp_nnet_output_transposed_.NumRows(),
         std::min<int32>(exp_nnet_output_transposed_.NumCols(),
@@ -118,6 +118,12 @@ void DenominatorSmbrComputation::AlphaSmbrGeneralFrame(int32 t) {
                                (t-1) * num_sequences_, num_sequences_);
   const BaseFloat *prob_data = probs.Data();
 
+  // 'numerator_post' is the matrix of numerator posteriors for frame t - 1.
+  CuSubMatrix<BaseFloat> numerator_post(
+      numerator_posteriors_transposed_, 0, num_pdfs, 
+      (t-1) * num_sequences_, num_sequences_);
+  const BaseFloat *post_data = numerator_post.Data();
+
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
@@ -131,7 +137,7 @@ void DenominatorSmbrComputation::AlphaSmbrGeneralFrame(int32 t) {
                                   backward_transitions, transitions,
                                   num_sequences, den_graph_.NumStates(),
                                   prob_data, probs.Stride(),
-                                  num_posteriors_.Row(t).Data(), 
+                                  post_data, numerator_post.Stride(),
                                   prev_alpha_dash, prev_alpha_smbr,
                                   this_alpha, this_alpha_smbr);
       CU_SAFE_CALL(cudaGetLastError());
@@ -152,7 +158,8 @@ void DenominatorSmbrComputation::AlphaSmbrGeneralFrame(int32 t) {
   } else
 #endif
   {
-    int32 prob_stride = probs.Stride();
+    int32 prob_stride = probs.Stride(),
+        post_stride = numerator_post.Stride();
     for (int32 h = 0; h < num_hmm_states; h++) {
       for (int32 s = 0; s < num_sequences; s++) {
         // Let arbitrary_scale be the inverse of the alpha-sum value that we
@@ -175,12 +182,13 @@ void DenominatorSmbrComputation::AlphaSmbrGeneralFrame(int32 t) {
           int32 pdf_id = trans_iter->pdf_id,
               prev_hmm_state = trans_iter->hmm_state;
           BaseFloat prob = prob_data[pdf_id * prob_stride + s],
+              post = post_data[pdf_id * post_stride + s],
               this_prev_alpha = prev_alpha_dash[prev_hmm_state * num_sequences + s],
               this_prev_alpha_smbr = prev_alpha_smbr[prev_hmm_state * num_sequences + s];
           this_tot_alpha += this_prev_alpha * transition_prob * prob;
-          KALDI_ASSERT(num_posteriors_(t, pdf_id) > -1e-20);
+          KALDI_ASSERT(post > -1e-20);
           this_tot_alpha_smbr += 
-            (this_prev_alpha_smbr + num_posteriors_(t, pdf_id)) 
+            (this_prev_alpha_smbr + post)
             * this_prev_alpha * transition_prob * prob;
         }
         KALDI_ASSERT(this_tot_alpha - this_tot_alpha == 0);
@@ -356,8 +364,11 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrame(int32 t) {
   const Int32Pair *forward_transitions = den_graph_.ForwardTransitions();
   const DenominatorGraphTransition *transitions = den_graph_.Transitions();
   // 'probs' is the matrix of pseudo-likelihoods for frame t.
+  // 'numerator_post' is the matrix of numerator posteriors for frame t.
   CuSubMatrix<BaseFloat> probs(exp_nnet_output_transposed_, 0, num_pdfs,
                                t * num_sequences_, num_sequences_),
+      numerator_post(numerator_posteriors_transposed_, 0, num_pdfs,
+                     t * num_sequences_, num_sequences_),
       log_prob_deriv(nnet_output_deriv_transposed_, 0, num_pdfs,
                      t_wrapped * num_sequences_, num_sequences_);
 
@@ -376,7 +387,8 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrame(int32 t) {
           dimGrid, dimBlock, forward_transitions, transitions,
           num_sequences, num_hmm_states,
           probs.Data(), probs.Stride(),
-          num_posteriors_.Row(t).Data(), tot_smbr_.Data(),
+          numerator_post.Data(), numerator_post.Stride(),
+          tot_smbr_.Data(),
           this_alpha_dash, this_alpha_smbr, 
           next_beta, next_beta_smbr,
           this_beta_dash, this_beta_smbr,
@@ -401,8 +413,10 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrame(int32 t) {
 #endif
   {
     int32 prob_stride = probs.Stride(),
+         post_stride = numerator_post.Stride(),
          deriv_stride = log_prob_deriv.Stride();
     const BaseFloat *prob_data = probs.Data();
+    const BaseFloat *post_data = numerator_post.Data();
     BaseFloat *log_prob_deriv_data = log_prob_deriv.Data();
     for (int32 h = 0; h < num_hmm_states; h++) {
       for (int32 s = 0; s < num_sequences; s++) {
@@ -422,14 +436,14 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrame(int32 t) {
               next_hmm_state = trans_iter->hmm_state;
           BaseFloat next_beta_j = next_beta[next_hmm_state + num_sequences + s],
               next_beta_smbr_j = next_beta_smbr[next_hmm_state + num_sequences + s];
-          BaseFloat variable_factor = transition_prob * next_beta_j *
-              prob_data[pdf_id * prob_stride + s];
-          beta_smbr += (next_beta_smbr_j + num_posteriors_(t, pdf_id)) 
-            * next_beta_j * prob_data[pdf_id * prob_stride + s] 
-            * transition_prob;
+          BaseFloat prob = prob_data[pdf_id * prob_stride + s],
+              post = post_data[pdf_id * post_stride + s],
+              variable_factor = transition_prob * next_beta_j * prob;
+          beta_smbr += (next_beta_smbr_j + post)
+            * next_beta_j * prob * transition_prob;
           tot_variable_factor += variable_factor;
           double this_gamma_r = occupation_factor * next_beta_j 
-            * transition_prob * (this_alpha_smbr_i + num_posteriors_(t, pdf_id)
+            * transition_prob * (this_alpha_smbr_i + post
                                  + next_beta_smbr_j - tot_smbr_(s));
           log_prob_deriv_data[pdf_id * deriv_stride + s] += this_gamma_r;
         }

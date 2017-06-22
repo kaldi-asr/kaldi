@@ -265,13 +265,15 @@ static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
 // note that num_sequences == the number of elements in the minibatch, and we
 // insist they all have the same number of time steps.
 // note: 'probs' is indexed by sequence-index + (pdf-index * prob_stride).
+// note: 'num_post' is indexed by sequence-index + (pdf-index * post_stride).
 __global__
 static void _cuda_chain_smbr_hmm_forward(
     const Int32Pair *backward_transitions,
     const DenominatorGraphTransition *transitions,
     int32_cuda num_sequences,
     int32_cuda num_hmm_states,
-    const BaseFloat *probs, int32_cuda prob_stride, const BaseFloat *num_post,
+    const BaseFloat *probs, int32_cuda prob_stride, 
+    const BaseFloat *num_post, int32_cuda post_stride,
     const BaseFloat *prev_alpha, const BaseFloat *prev_alpha_smbr,
     BaseFloat *this_alpha, BaseFloat *this_alpha_smbr) {
   // 'backward_transitions', indexed by hmm-state, consists of [start, end]
@@ -321,19 +323,21 @@ static void _cuda_chain_smbr_hmm_forward(
     int32_cuda pdf_id1 = trans_iter[1].pdf_id,
         prev_hmm_state1 = trans_iter[1].hmm_state;
     BaseFloat pseudo_loglike0 = probs[pdf_id0 * prob_stride + s],
+        num_post0 = num_post[pdf_id0 * post_stride + s],
         this_prev_alpha0 = prev_alpha[prev_hmm_state0 * num_sequences + s],
         this_prev_alpha_smbr0 = 
                prev_alpha_smbr[prev_hmm_state0 * num_sequences + s],
         pseudo_loglike1 = probs[pdf_id1 * prob_stride + s],
+        num_post1 = num_post[pdf_id1 * post_stride + s],
         this_prev_alpha1 = prev_alpha[prev_hmm_state1 * num_sequences + s],
         this_prev_alpha_smbr1 = prev_alpha[prev_hmm_state1 * num_sequences + s];
 
     this_tot_alpha += this_prev_alpha0 * transition_prob0 * pseudo_loglike0 +
                        this_prev_alpha1 * transition_prob1 * pseudo_loglike1;
     this_tot_alpha_smbr += 
-      (this_prev_alpha_smbr0 + num_post[pdf_id0]) * this_prev_alpha0 
+      (this_prev_alpha_smbr0 + num_post0) * this_prev_alpha0 
       * transition_prob0 * pseudo_loglike0
-      + (this_prev_alpha_smbr1 + num_post[pdf_id1] * this_prev_alpha1 
+      + (this_prev_alpha_smbr1 + num_post1 * this_prev_alpha1 
       * transition_prob1 * pseudo_loglike1;
   }
   if (trans_iter != trans_end) {
@@ -347,7 +351,7 @@ static void _cuda_chain_smbr_hmm_forward(
          prev_alpha_smbr[prev_hmm_state0 * num_sequences + s];
     this_tot_alpha += this_prev_alpha0 * transition_prob0 * pseudo_loglike0;
     this_tot_alpha_smbr += 
-      (this_prev_alpha_smbr0 + num_post[pdf_id0]) * this_prev_alpha0 
+      (this_prev_alpha_smbr0 + num_post0) * this_prev_alpha0 
       * transition_prob0 * pseudo_loglike0;
   }
 
@@ -366,7 +370,8 @@ static void _cuda_chain_smbr_hmm_backward(
     const DenominatorGraphTransition *transitions,
     int32_cuda num_sequences, int32_cuda num_hmm_states,
     const BaseFloat *probs, int32_cuda prob_stride, 
-    const BaseFloat *num_post, const BaseFloat *tot_smbr,
+    const BaseFloat *num_post, int32_cuda post_stride,
+    const BaseFloat *tot_smbr,
     const BaseFloat *this_alpha, const BaseFloat *this_alpha_smbr,
     const BaseFloat *next_beta, const BaseFloat *next_beta_smbr,
     BaseFloat *this_beta, BaseFloat *this_beta_smbr,
@@ -421,7 +426,8 @@ static void _cuda_chain_smbr_hmm_backward(
         next_beta_smbr_j1 = next_beta_smbr[next_hmm_state1 * num_sequences + s],
         prob0 = probs[pdf_id0 * prob_stride + s],
         prob1 = probs[pdf_id1 * prob_stride + s],
-        num_post0 = num_post[pdf_id0], num_post1 = num_post[pdf_id1];
+        num_post0 = num_post[pdf_id0 * post_stride + s], 
+        num_post1 = num_post[pdf_id1 * post_stride + s];
 
     BaseFloat variable_factor0 = transition_prob0 * next_beta_j0 * prob0,
         variable_factor1 = transition_prob1 * next_beta_j1 * prob1;
@@ -449,7 +455,7 @@ static void _cuda_chain_smbr_hmm_backward(
     BaseFloat next_beta_j0 = next_beta[next_hmm_state0 * num_sequences + s],
         next_beta_smbr_j0 = next_beta_smbr[next_hmm_state0 * num_sequences + s],
         prob0 = probs[pdf_id0 * prob_stride + s],
-        num_post0 = num_post[pdf_id0];
+        num_post0 = num_post[pdf_id0 * post_stride + s];
     BaseFloat variable_factor0 = transition_prob0 * next_beta_j0 * prob0;
     beta_smbr += (next_beta_smbr_j0 + num_post0) * next_beta_j0 
       * prob0 * transition_prob0;
@@ -508,13 +514,13 @@ void cuda_chain_smbr_hmm_forward(
     int32_cuda num_sequences,
     int32_cuda num_hmm_states,
     const BaseFloat *probs, int32_cuda prob_stride,
-    const BaseFloat *num_post,
+    const BaseFloat *num_post, int32_cuda post_stride,
     const BaseFloat *prev_alpha, const BaseFloat *prev_alpha_smbr,
     BaseFloat *this_alpha, BaseFloat *this_alpha_smbr) {
   _cuda_chain_smbr_hmm_forward<<<Gr,Bl>>>(
       backward_transitions, transitions,
       num_sequences, num_hmm_states,
-      probs, prob_stride, num_post,
+      probs, prob_stride, num_post, post_stride,
       prev_alpha, prev_alpha_smbr, this_alpha, this_alpha_smbr);
 }
 
@@ -525,7 +531,8 @@ void cuda_chain_smbr_hmm_backward(
     int32_cuda num_sequences,
     int32_cuda num_hmm_states,
     const BaseFloat *probs, int32_cuda prob_stride,
-    const BaseFloat *num_post, const BaseFloat *tot_smbr,
+    const BaseFloat *num_post, int32_cuda post_stride,
+    const BaseFloat *tot_smbr,
     const BaseFloat *this_alpha, const BaseFloat *this_alpha_smbr,
     const BaseFloat *next_beta, const BaseFloat *next_beta_smbr,
     BaseFloat *this_beta, BaseFloat *this_beta_smbr,
@@ -534,7 +541,7 @@ void cuda_chain_smbr_hmm_backward(
   _cuda_chain_smbr_hmm_backward<<<Gr,Bl>>>(
       forward_transitions, transitions,
       num_sequences, num_hmm_states,
-      probs, prob_stride, num_post, tot_smbr,
+      probs, prob_stride, num_post, post_stride, tot_smbr,
       this_alpha, this_alpha_smbr, next_beta, next_beta_smbr,
       this_beta, this_beta_smbr, log_prob_deriv,
       log_prob_deriv_stride);
