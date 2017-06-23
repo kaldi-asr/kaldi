@@ -23,18 +23,18 @@
 #include <algorithm>
 #include <map>
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <sstream>
-#include <fstream>
 #include <vector>
 
-#include <sys/time.h>
-#include <unistd.h>
-#include <stdlib.h>
 #include <math.h>
+#include <sys/time.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include "fst/fstlib.h"
 #include "util/common-utils.h"
-#include "arpa-file-parser.h"
+#include "lm/arpa-file-parser.h"
 
 namespace kaldi {
 
@@ -65,18 +65,18 @@ class ArpaSampling : public ArpaFileParser {
   }
   
   // This function computes the unigram distribution of all vocab words which are
-  // represented by integers from 1 to num_words (0 is reserved for epsilon)
-  // Probabilities of integers are not represented by any valid word is 0, e.g.
+  // represented by integers from 1 to num_words_ (0 is reserved for epsilon)
+  // Probabilities of integers not represented by any valid word is 0, e.g.
   // 0 has probability 0.0
   void GetUnigramDistribution(std::vector<BaseFloat> *unigram_probs);
 
   // This function reads in a list of histories with input weights and returns
-  // 1) the higher-than-unigram words and their corresponding probabilities 
-  // given the list of histories and 
-  // 2) a scalar alpha = sum of w_i * product of all backoff weights back to unigram 
-  BaseFloat GetOutputWordsAndAlpha(const std::vector<std::pair<HistType, BaseFloat> > 
+  // 1) the non_unigram_probs (maps the higher-than-unigram words to their
+  // corresponding probabilities given the list of histories) and 
+  // 2) a scalar unigram_weight = sum of history_weight * backoff_weight of that history
+  BaseFloat GetDistribution(const std::vector<std::pair<HistType, BaseFloat> > 
       &histories, std::unordered_map<int32, BaseFloat> *non_unigram_probs);
-  
+ 
  protected:
   // ArpaFileParser overrides.
   virtual void HeaderAvailable(); 
@@ -98,10 +98,12 @@ class ArpaSampling : public ArpaFileParser {
   void ComputeHistoriesWeights(const std::vector<std::pair<HistType, BaseFloat> > 
       &histories, HistWeightsType *hists_weights);
 
-  // highest N-gram order of the read-in ARPA LM
+  // Highest N-gram order of the read-in ARPA LM
   int32 ngram_order_;
   
-  // total number of words of the read-in ARPA LM 
+  // Total number of words of the read-in ARPA LM
+  // note: the size of vector for the output unigram distribution should be
+  // num_words_ + 1 (1 is for epsilon)
   int32 num_words_;
 
   // Begining of sentence symbol

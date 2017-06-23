@@ -32,7 +32,7 @@ class ArpaSamplingTest {
 
   // Test non-unigram words and alpha
   // TODO: need to test alpha in a proper way 
-  void TestNonUnigramWordsAndAlpha(const
+  void TestGetDistribution(const
       std::vector<std::pair<HistType, BaseFloat> > &histories);
  private:
   // This ArpaSampling object is used to get accesses to private and protected
@@ -48,6 +48,7 @@ void ArpaSamplingTest::ReadHistories(std::istream &is, bool binary,
   const fst::SymbolTable* sym = arpa_->Symbols();
   std::string line;
   KALDI_LOG << "Start reading histories from file...";
+  // int32 ngram_order = arpa_->ngram_order_;
   int32 ngram_order = arpa_->ngram_order_;
   while (getline(is, line)) {
     std::istringstream is(line);
@@ -139,31 +140,38 @@ void ArpaSamplingTest::TestReadingModel() {
 // Test the generated unigram distribution
 void ArpaSamplingTest::TestUnigramDistribution() {
   KALDI_LOG << "Testing the generated unigram distribution";
-  int32 num_words = arpa_->num_words_;
-  std::vector<BaseFloat> unigram_probs(num_words, 0.0);
+  std::vector<BaseFloat> unigram_probs;
   arpa_->GetUnigramDistribution(&unigram_probs);
   // Check 0 (epsilon) has probability 0.0
   KALDI_ASSERT(unigram_probs[0] == 0.0);
   // Assert the sum of unigram probs of all words is 1.0
-  BaseFloat prob_sum = 0.0;
+  BaseFloat probsum = 0.0;
   for (int32 i = 0; i < unigram_probs.size(); ++i) {
-    prob_sum += unigram_probs[i];
+    probsum += unigram_probs[i];
   }
-  KALDI_ASSERT(ApproxEqual(prob_sum, 1.0));
+  KALDI_ASSERT(ApproxEqual(probsum, 1.0));
 }
 
-void ArpaSamplingTest::TestNonUnigramWordsAndAlpha(
+void ArpaSamplingTest::TestGetDistribution (
     const std::vector<std::pair<HistType, BaseFloat> > &histories) {
-  BaseFloat alpha = 0.0;
-  BaseFloat sum = 0.0;
+  // get total input weights of histories
+  BaseFloat total_weights = 0.0;
+  std::vector<std::pair<HistType, BaseFloat> >::const_iterator it = histories.begin();
+  for(; it != histories.end(); ++it) {
+    total_weights += (*it).second;
+  } 
+  BaseFloat unigram_weight = 0.0;
+  BaseFloat non_unigram_probsum = 0.0;
   std::unordered_map<int32, BaseFloat> pdf;
-  alpha = arpa_->GetOutputWordsAndAlpha(histories, &pdf);
+  unigram_weight = arpa_->GetDistribution(histories, &pdf);
+  KALDI_ASSERT(pdf.size() <= arpa_->num_words_);
   for (std::unordered_map<int32, BaseFloat>::const_iterator it = pdf.begin();
       it != pdf.end(); it++) {
-    sum += it->second;
+    non_unigram_probsum += it->second;
   }
-  KALDI_LOG << "alpha: " << alpha;
-  KALDI_LOG << "prob_sum of non-unigram words: " << sum;
+  // assert unigram weight plus non_unigram probs' sum equals 
+  // the total input histories' weights
+  KALDI_ASSERT(ApproxEqual(unigram_weight + non_unigram_probsum, total_weights));
 }
 
 }  // namespace kaldi
@@ -203,6 +211,6 @@ int main(int argc, char **argv) {
   Input k2(history_file, &binary);
   std::vector<std::pair<ArpaSamplingTest::HistType, BaseFloat> > histories;
   mdl.ReadHistories(k2.Stream(), binary, &histories);
-  mdl.TestNonUnigramWordsAndAlpha(histories);
+  mdl.TestGetDistribution(histories);
   return 0;
 }

@@ -1,11 +1,12 @@
 // arpa-sampling.cc
 
-#include "arpa-sampling.h"
-#include <iostream>
-#include <string>
-#include <iterator>
 #include <algorithm>
+#include <iostream>
+#include <iterator>
 #include <math.h>
+#include <string>
+
+#include "arpa-sampling.h"
 
 namespace kaldi {
 
@@ -73,7 +74,9 @@ BaseFloat ArpaSampling::GetBackoffWeight(int32 order, int32 word,
 }
 
 void ArpaSampling::GetUnigramDistribution(std::vector<BaseFloat> *unigram_probs) {
-  for (int32 i = 0; i < num_words_; ++i) {
+  (*unigram_probs).clear();
+  (*unigram_probs).resize(num_words_ + 1);
+  for (int32 i = 0; i < num_words_ + 1; ++i) {
     HistType h; // empty history
     WordToProbsMap::const_iterator it = probs_[0][h].find(i);
     if (it != probs_[0][h].end()) {
@@ -81,37 +84,27 @@ void ArpaSampling::GetUnigramDistribution(std::vector<BaseFloat> *unigram_probs)
     }    
   }
 }
- 
+
 void ArpaSampling::ComputeHistoriesWeights(
     const std::vector<std::pair<HistType, BaseFloat> > &histories,
     HistWeightsType *hists_weights) {
+  (*hists_weights).clear();
   for (std::vector<std::pair<HistType, BaseFloat> >::const_iterator
       it = histories.begin(); it != histories.end(); ++it) {
     HistType history((*it).first);
     KALDI_ASSERT(history.size() <= ngram_order_);
-    for (int32 i = 0; i < history.size() + 1; ++i) {
-      HistType h_tmp = history;
-      // (*it).second is the input weight of a history 
-      BaseFloat prob = 1.0 / histories.size() * ((*it).second);
-      while (h_tmp.size() > (history.size() - i)) {
-        HistType::iterator last = h_tmp.end() - 1;
-        HistType h(h_tmp.begin(), last);
-        int32 word = h_tmp.back();
-        prob *= Exp(GetBackoffWeight(h_tmp.size(), word, h));
-        HistType h_up(h_tmp.begin() + 1, h_tmp.end());
-        h_tmp = h_up;
-      }
-      HistType::iterator begin = history.begin() + i;
-      HistType h(begin, history.end());
-      (*hists_weights)[h] += prob;
-    }
+    (*hists_weights)[history] += (*it).second;
   }
 }
 
-BaseFloat ArpaSampling::GetOutputWordsAndAlpha(const std::vector<std::pair<HistType, 
+BaseFloat ArpaSampling::GetDistribution(const std::vector<std::pair<HistType, 
     BaseFloat> > &histories, std::unordered_map<int32, BaseFloat> *pdf_w) {
+  pdf_w->clear();
   HistWeightsType hists_weights;
   ComputeHistoriesWeights(histories, &hists_weights); 
+  BaseFloat unigram_weight = 0.0;
+  BaseFloat total_weights = 0;
+  BaseFloat probsum = 0;
   BaseFloat prob = 0;
   for (HistWeightsType::const_iterator it = hists_weights.begin(); 
       it != hists_weights.end(); ++it) {
@@ -128,36 +121,25 @@ BaseFloat ArpaSampling::GetOutputWordsAndAlpha(const std::vector<std::pair<HistT
           HistType h1(h.begin(), last);
           HistType h2(first, h.end());
           prob = it->second * (Exp(probs_[order][h][word].first) - 
-                  Exp(GetBackoffWeight(order, h.back(), h1) + GetProb(order, word, h2)));
-          
+                 Exp(GetBackoffWeight(order, h.back(), h1) + GetProb(order, word, h2)));
           (*pdf_w)[word] += prob;
+          probsum += prob;
         }
       }
     }
+    total_weights += it->second;
+    BaseFloat backoff = 0.0;
+    HistType::iterator last = h.end() - 1;
+    HistType h1(h.begin(), last);
+    backoff = GetBackoffWeight(order, h.back(), h1);
+    unigram_weight += it->second * Exp(backoff);
   }
-  // compute alpha
-  BaseFloat alpha = 0.0;
-  BaseFloat total_weights = 0;
-  std::vector<std::pair<HistType, BaseFloat> >::const_iterator it = histories.begin();
-  for(; it != histories.end(); ++it) {
-    total_weights += (*it).second;
-    HistType h = (*it).first;
-    BaseFloat backoff_weights = 0.0;
-    for (int32 order = h.size(); order > 0; --order) {
-      HistType::iterator last = h.end() - 1;
-      HistType h1(h.begin(), last);
-      BaseFloat backoff_logprob = GetBackoffWeight(order, h.back(), h1);
-      backoff_weights += backoff_logprob;
-      h = h1;
-    }
-    alpha += (*it).second * Exp(backoff_weights);
-  }
-  // if total input weights equals 0, each input weight is zero. In this case
-  // the only output is the unigram distribution and alpha should be exactly 1
+  // If total input weights is zero, then each input weight is zero. In this case
+  // the output is the unigram distribution and unigram weight should be 1 
   if (total_weights == 0) {
-    alpha = 1.0;
+    unigram_weight = 1.0;
   }
-  return alpha;
+  return unigram_weight;
 }
 
-} // end of kaldi
+}  // end of kaldi
