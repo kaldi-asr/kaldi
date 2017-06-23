@@ -53,8 +53,8 @@ for tuple in "5.0 5.0 c160a9883" "5.1 5.1 2145519961" "5.2 master 393ef73caa93";
   echo "$0: for version=$major_minor_number, writing git output to $tempfile"
 
   patch_number=0
-  # git rev-list --reverse $first_commit..$branch  lists the revisions from
-  # $first_commit to $branch... --boundary causes it to include $first_commit
+  # git rev-list --reverse $first_commit..upstream/$branch  lists the revisions from
+  # $first_commit to upstream/$branch... --boundary causes it to include $first_commit
   # in the range, but with a dash (-) included for the first commit, so we
   # use a sed command to get rid of that.
   for rev in $(git rev-list --reverse $first_commit..upstream/$branch --boundary | sed s/-//); do

@@ -77,7 +77,7 @@ for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector
 done
 
 # Please take this as a reference on how to specify all the options of
-# local/chain/run_chain_common.sh  
+# local/chain/run_chain_common.sh
 local/chain/run_chain_common.sh --stage $stage \
                                 --gmm-dir $gmm_dir \
                                 --ali-dir $ali_dir \
@@ -153,8 +153,10 @@ if [ $stage -le 16 ]; then
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
   utils/mkgraph.sh --self-loop-scale 1.0 --remove-oov data/lang_test_tgsmall $dir $graph_dir
-  # romove <UNK> from the graph
-  fstrmsymbols --apply-to-output=true --remove-arcs=true "echo 3|" $graph_dir/HCLG.fst $graph_dir/HCLG.fst
+  # remove <UNK> from the graph, and convert back to const-FST.
+  fstrmsymbols --apply-to-output=true --remove-arcs=true "echo 3|" $graph_dir/HCLG.fst - | \
+    fstconvert --fst_type=const > $graph_dir/temp.fst
+  mv $graph_dir/temp.fst graph_dir/HCLG.fst
 fi
 
 
