@@ -112,9 +112,8 @@ def run(args):
 
     with common_lib.smart_open(args.out_targets_ark, 'w') as f:
         for reco, utts in reco2utt.iteritems():
-            reco_mat = (np.array([]) if args.reco2num_frames is None
-                        else np.repeat(default_targets, reco2num_frames[reco],
-                                       axis=0))
+            reco_mat = np.repeat(default_targets, reco2num_frames[reco],
+                                 axis=0)
             utts.sort(key=lambda x: segments[x][1])   # sort on start time
             for i, utt in enumerate(utts):
                 if utt not in segments:
@@ -126,24 +125,15 @@ def run(args):
                 end_frame = int(segment[2] / args.frame_shift)
                 num_frames = end_frame - start_frame
 
-                if args.reco2num_frames is None:
-                    num_frames_to_add = end_frame - reco_mat.size[0]
-                    if num_frames_to_add > 0:
-                        np.append(
-                            reco_mat,
-                            np.repeat(default_targets, num_frames_to_add, axis=0),
-                            axis=0)
-                        assert len(reco_mat.shape) == 2
-                else:
-                    if end_frame > reco2num_frames[reco]:
-                        end_frame = reco2num_frames[reco]
-                        num_frames = end_frame - start_frame
+                if end_frame > reco2num_frames[reco]:
+                    end_frame = reco2num_frames[reco]
+                    num_frames = end_frame - start_frame
 
                 reco_mat[start_frame:end_frame] = np.zeros([num_frames, 3])
                 num_utt += 1
 
             if reco_mat.shape[0] > 0:
-                common_lib.write_matrix_ascii(f, reco_mat,
+                common_lib.write_matrix_ascii(f, reco_mat.tolist(),
                                               key=reco)
                 num_reco += 1
 
@@ -160,9 +150,8 @@ def main():
     args = get_args()
     try:
         run(args)
-    except Exception as e:
-        logger.error("Script failed; traceback = ", exc_info=True)
-        raise SystemExit(1)
+    except Exception:
+        raise
 
 
 if __name__ == "__main__":
