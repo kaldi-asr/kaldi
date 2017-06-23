@@ -24,8 +24,15 @@ logger.addHandler(handler)
 
 def get_args():
     parser = argparse.ArgumentParser(
-        description="""This script gets default targets for out-of-segments
-        regions.""")
+        description="""This script gets targets for the whole recording
+        by adding default_targets vector read from file specified by
+        --default-targets option for the out-of-segments regions and
+        zeros for all other frames.
+        Typically the default_targets would be [ 1 0 0 ], which means all
+        the out-of-segment regions are assumed as silence. But depending, on
+        the application and data, this could be [ 0 0 0 ] or [ 0 0 1 ] or
+        something with fraction weights.
+        """)
 
     parser.add_argument("--frame-shift", type=float, default=0.01,
                         help="Frame shift value in seconds")

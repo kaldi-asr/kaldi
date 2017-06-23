@@ -624,6 +624,9 @@ class XconfigOutputLayer(XconfigLayerBase):
 #   self-repair-scale=1.0e-05  [Affects relu, sigmoid and tanh layers.]
 #   learning-rate-factor=1.0   [This can be used to make the affine component
 #                               train faster or slower].
+#   add-log-stddev=False     [If true, the log of the stddev of the output of
+#                             renorm layer is appended as an
+#                             additional dimension of the layer's output]
 #
 class XconfigBasicLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
@@ -661,10 +664,11 @@ class XconfigBasicLayer(XconfigLayerBase):
             assert split_layer_name[-1] == 'layer'
             nonlinearities = split_layer_name[:-1]
 
+            intermediate_dim = self.config['dim']
             for nonlinearity in nonlinearities:
                 if nonlinearity == "renorm":
-                    output_dim += 1
-        self.config['output-dim'] = output_dim
+                    intermediate_dim -= 1
+        self.config['intermediate-dim'] = intermediate_dim
 
     def check_configs(self):
         if self.config['dim'] < 0:
@@ -691,7 +695,7 @@ class XconfigBasicLayer(XconfigLayerBase):
         return '{0}.{1}'.format(self.name, last_nonlinearity)
 
     def output_dim(self, auxiliary_output = None):
-        return self.config['output-dim']
+        return self.config['dim']
 
     def get_full_config(self):
         ans = []
@@ -721,7 +725,7 @@ class XconfigBasicLayer(XconfigLayerBase):
         return self._add_components(input_desc, input_dim, nonlinearities)
 
     def _add_components(self, input_desc, input_dim, nonlinearities):
-        output_dim = self.config['dim']
+        output_dim = self.config['intermediate-dim']
         self_repair_scale = self.config['self-repair-scale']
         target_rms = self.config['target-rms']
         max_change = self.config['max-change']

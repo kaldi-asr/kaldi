@@ -279,17 +279,6 @@ def get_feat_dim_from_scp(feat_scp):
     return feat_dim
 
 
-def split_data(data, num_jobs, per_utt=False):
-    if per_utt:
-        execute_command("utils/split_data.sh --per-utt {data} {num_jobs}"
-                          "".format(data=data, num_jobs=num_jobs))
-        return "{data}/split{num_jobs}utt".format(data=data, num_jobs=num_jobs)
-
-    execute_command("utils/split_data.sh {data} {num_jobs}"
-                      "".format(data=data, num_jobs=num_jobs))
-    return "{data}/split{num_jobs}".format(data=data, num_jobs=num_jobs)
-
-
 def read_kaldi_matrix(matrix_file):
     try:
         lines = map(lambda x: x.split(), open(matrix_file).readlines())

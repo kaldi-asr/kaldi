@@ -34,8 +34,6 @@ num_jobs_initial=3
 num_jobs_final=8
 remove_egs=false
 max_param_change=0.2  # Small max-param change for small network
-extra_egs_copy_cmd=   # Used if you want to do some weird stuff to egs
-                      # such as removing one of the targets
 dropout_schedule='0,0@0.20,0.1@0.50,0'
 
 egs_dir=
@@ -108,8 +106,6 @@ if [ $stage -le 6 ]; then
     --egs.dir="$egs_dir" --egs.stage=$get_egs_stage \
     --egs.chunk-left-context=$extra_left_context \
     --egs.chunk-right-context=$extra_right_context \
-    --egs.use-multitask-egs=true --egs.rename-multitask-outputs=false \
-    ${extra_egs_copy_cmd:+--egs.extra-copy-cmd="$extra_egs_copy_cmd"} \
     --trainer.num-epochs=$num_epochs \
     --trainer.samples-per-iter=20000 \
     --trainer.optimization.num-jobs-initial=$num_jobs_initial \

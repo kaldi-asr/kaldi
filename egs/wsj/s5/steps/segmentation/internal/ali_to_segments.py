@@ -132,23 +132,14 @@ class SegmenterStats(object):
                     final_duration=self.final_duration))
 
 
-def process_label(text_label, sad_map=None):
+def process_label(text_label):
     """Processes an input integer label and returns a 1 or 2,
     where 1 is for silence and 2 is for speech.
 
     Arguments:
         text_label -- input label (must be integer)
-        sad_map -- if provided must be a dictionary mapping the input integer
-                   label to 1 or 2.
     """
     prev_label = int(text_label)
-    if sad_map is not None:
-        try:
-            prev_label = sad_map[prev_label]
-        except KeyError as e:
-            logger.error("Label %d was not seen in --sad-map",
-                         prev_label)
-            raise e
     if prev_label not in [1, 2]:
         raise ValueError("Expecting label to 1 (non-speech) or 2 (speech); "
                          "got {0}".format(prev_label))
@@ -163,7 +154,7 @@ class Segmentation(object):
         self.stats = (segmenter_stats if segmenter_stats is None
                       else SegmenterStats())
 
-    def initialize_segments(self, alignment, frame_shift=0.01, sad_map=None):
+    def initialize_segments(self, alignment, frame_shift=0.01):
         """Initializes segments from input alignment."""
         self.segments = []
 
@@ -178,11 +169,11 @@ class Segmentation(object):
                         [float(i - prev_length) * frame_shift,
                          float(i) * frame_shift, prev_label])
 
-                prev_label = process_label(text_label, sad_map)
+                prev_label = process_label(text_label)
                 prev_length = 0
                 self.stats.initial_duration += (prev_length * frame_shift)
             elif prev_label is None:
-                prev_label = process_label(text_label, sad_map)
+                prev_label = process_label(text_label)
 
             prev_length += 1
 
@@ -319,19 +310,6 @@ def run(args):
                                        "".format(line.strip(), args.utt2dur))
                 utt2dur[parts[0]] = float(parts[1])
 
-    sad_map = {}
-    if args.sad_map is not None:
-        with common_lib.smart_open(args.sad_map) as sad_map_fh:
-            for line in sad_map_fh:
-                parts = line.strip().split()
-                if len(parts) != 2:
-                    raise RuntimeError("Unable to parse line '{0}' in {1}"
-                                       "".format(line.strip(), sad_map_fh))
-                if int(parts[1]) not in [1, 2]:
-                    raise ValueError("Expecting the second field in {0} to be "
-                                     "1 or 2".format(sad_map_fh))
-                sad_map[parts[0]] = int(parts[1])
-
     global_stats = SegmenterStats()
     with common_lib.smart_open(args.in_alignments) as in_alignments_fh, \
             common_lib.smart_open(args.out_segments, 'w') as out_segments_fh:
@@ -347,8 +325,7 @@ def run(args):
             utt_stats = SegmenterStats()
             segmentation = Segmentation(utt_stats)
             segmentation.initialize_segments(
-                parts[1:], args.frame_shift,
-                sad_map=sad_map if args.sad_map is not None else None)
+                parts[1:], args.frame_shift)
             segmentation.pad_speech_segments(args.segment_padding,
                                              None if args.utt2dur is None
                                              else utt2dur[utt_id])
