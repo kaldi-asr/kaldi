@@ -15,7 +15,7 @@ nj=4
 acwt=0.1
 beam=8
 max_active=1000
-transform=   # Transformation matrix to apply on the input archives read from {likes_prefix}.*.gz 
+transform=   # Transformation matrix to apply on the input archives read from output.scp
 apply_log=false    # If true, the log is applied on the transformed input matrix. Applicable when input is probabilities.
 priors=   # A vector of counts, which will be used to subtract the log-priors 
           # before passing to the decoder
@@ -45,7 +45,7 @@ for f in $graph_dir/HCLG.fst $nnet_output_dir/output.scp $extra_files; do
   fi
 done
 
-rspecifier="ark:utils/split_scp.pl -j $nj \$[JOB-1] $nnet_output_dir/output.scp |"
+rspecifier="ark:utils/split_scp.pl -j $nj \$[JOB-1] $nnet_output_dir/output.scp | copy-feats scp:- ark:- |"
 
 # Apply a transformation on the input matrix to combine scores from different columns
 if [ ! -z "$transform" ]; then

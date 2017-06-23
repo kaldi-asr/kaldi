@@ -37,11 +37,11 @@ def get_args():
     parser.add_argument("--verbose", type=int, choices=[0, 1, 2, 3],
                         default=0, help="Higher verbosity for more logging")
 
-    parser.add_argument("--sad-map", type=argparse.FileType('r'),
+    parser.add_argument("--sad-map", type=str,
                         help="File containing mapping from alignment labels "
                              "to SAD labels -- "
                              "1 for non-speech and 2 for speech")
-    parser.add_argument("--utt2dur", type=argparse.FileType('r'),
+    parser.add_argument("--utt2dur", type=str,
                         help="File containing durations of utterances.")
     parser.add_argument("--frame-shift", type=float, default=0.01,
                         help="Frame shift to convert frame indexes to time")
@@ -65,10 +65,10 @@ def get_args():
                         segment is not split.""")
 
 
-    parser.add_argument("in_alignments", type=argparse.FileType('r'),
+    parser.add_argument("in_alignments", type=str,
                         help="Input file containing alignments in "
                         "text archive format")
-    parser.add_argument("out_segments", type=argparse.FileType('w'),
+    parser.add_argument("out_segments", type=str,
                         help="Output kaldi segments file")
 
     args = parser.parse_args()
@@ -311,12 +311,13 @@ def run(args):
     """The main function that does everything."""
     utt2dur = {}
     if args.utt2dur is not None:
-        for line in args.utt2dur:
-            parts = line.strip().split()
-            if len(parts) != 2:
-                raise RuntimeError("Unable to parse line '{0}' in {1}"
-                                   "".format(line.strip(), args.utt2dur.name))
-            utt2dur[parts[0]] = float(parts[1])
+        with common_lib.smart_open(args.utt2dur) as utt2dur_fh:
+            for line in utt2dur_fh:
+                parts = line.strip().split()
+                if len(parts) != 2:
+                    raise RuntimeError("Unable to parse line '{0}' in {1}"
+                                       "".format(line.strip(), args.utt2dur))
+                utt2dur[parts[0]] = float(parts[1])
 
     sad_map = {}
     if args.sad_map is not None:
@@ -325,10 +326,10 @@ def run(args):
                 parts = line.strip().split()
                 if len(parts) != 2:
                     raise RuntimeError("Unable to parse line '{0}' in {1}"
-                                       "".format(line.strip(), sad_map_fh.name))
+                                       "".format(line.strip(), sad_map_fh))
                 if int(parts[1]) not in [1, 2]:
                     raise ValueError("Expecting the second field in {0} to be "
-                                     "1 or 2".format(sad_map_fh.name))
+                                     "1 or 2".format(sad_map_fh))
                 sad_map[parts[0]] = int(parts[1])
 
     global_stats = SegmenterStats()
@@ -341,7 +342,7 @@ def run(args):
             if len(parts) < 2:
                 raise RuntimeError("Unable to parse line '{0}' in {1}"
                                    "".format(line.strip(),
-                                             in_alignments_fh.name))
+                                             in_alignments_fh))
 
             utt_stats = SegmenterStats()
             segmentation = Segmentation(utt_stats)

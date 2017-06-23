@@ -70,6 +70,15 @@ class NullstrToNoneAction(argparse.Action):
 
 
 class smart_open(object):
+    """
+    This class is designed to be used with the "with" construct in python
+    to open files. It is similar to the python open() function, but
+    treats the input "-" specially to return either sys.stdout or sys.stdin
+    depending on whether the mode is "w" or "r".
+
+    e.g.: with smart_open(filename, 'w') as fh:
+            print ("foo", file=fh)
+    """
     def __init__(self, filename, mode="r"):
         self.filename = filename
         self.mode = mode
@@ -351,7 +360,7 @@ def write_matrix_ascii(file_or_fd, mat, key=None):
 
 def read_matrix_ascii(file_or_fd):
     try:
-        fd = open(file_or_fd, 'w')
+        fd = open(file_or_fd, 'r')
         fname = file_or_fd
     except TypeError:
         # 'file_or_fd' is opened file descriptor,
@@ -404,7 +413,7 @@ def read_key(fd):
 
 def read_mat_ark(file_or_fd):
     try:
-        fd = open(file_or_fd, 'w')
+        fd = open(file_or_fd, 'r')
         fname = file_or_fd
     except TypeError:
         # 'file_or_fd' is opened file descriptor,

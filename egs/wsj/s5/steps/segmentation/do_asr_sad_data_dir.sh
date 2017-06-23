@@ -174,7 +174,6 @@ mkdir -p $dir
 if [ $stage -le 4 ]; then
   if [ "$(readlink -f $sad_nnet_dir)" != "$(readlink -f $dir)" ]; then
     cp $sad_nnet_dir/cmvn_opts $dir || exit 1
-    cp $sad_nnet_dir/{final.mat,splice_opts} $dir || true
   fi
 
   if [ ! -z "$output_name" ] && [ "$output_name" != output ]; then
@@ -187,7 +186,7 @@ if [ $stage -le 4 ]; then
   fi
 
   steps/nnet3/compute_output.sh --nj $nj --cmd "$cmd" \
-    --iter ${iter} --use-raw-nnet true \
+    --iter ${iter} \
     --extra-left-context $extra_left_context \
     --extra-right-context $extra_right_context \
     --frames-per-chunk $frames_per_chunk --apply-exp true \
@@ -231,8 +230,8 @@ print ('''[ {0} {1} {2}
   $sil_in_speech_weight, 1.0-$speech_in_sil_weight, $garbage_in_speech_weight))""" > $seg_dir/garbage.mat
 
   # Here --apply-log is true since we read from nnet posteriors 'nnet_output_exp'
-  steps/segmentation/decode_sad.sh --acwt $acwt --cmd "$cmd" --apply-log true \
-    --transform "$seg_dir/garbage.mat" --likes-prefix nnet_output_exp \
+  steps/segmentation/decode_sad.sh --acwt $acwt --cmd "$cmd" --apply-log true --nj $nj \
+    --transform "$seg_dir/garbage.mat" \
     --priors "$post_vec" \
     $graph_dir $sad_dir $seg_dir
 fi
@@ -248,5 +247,6 @@ if [ $stage -le 7 ]; then
     ${test_data_dir} ${seg_dir} ${seg_dir} ${data_dir}_seg
 
   cp $src_data_dir/wav.scp ${data_dir}_seg
+  cp $src_data_dir/{stm,reco2file_and_channel,glm} ${data_dir}_seg/ || true
 fi
 

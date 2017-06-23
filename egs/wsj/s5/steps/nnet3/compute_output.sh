@@ -82,7 +82,7 @@ echo $nj > $dir/num_jobs
 if [ -f $srcdir/final.mat ]; then 
   echo "$0: ERROR: lda feature type is no longer supported." && exit 1
 fi
-feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |";;
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
 
 if grep 'transform-feats --utt2spk' $srcdir/log/train.1.log >&/dev/null; then
   echo "$0: **WARNING**: you seem to be using a neural net system trained with transforms,"
