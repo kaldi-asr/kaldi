@@ -3,8 +3,8 @@
 # Copyright 2016  Vimal Manohar
 # Apache 2.0.
 
-# This script does nnet3-based speech activity detection given an input kaldi
-# directory and outputs an output kaldi directory.
+# This script does nnet3-based speech activity detection given an input 
+# kaldi data directory and outputs a segmented kaldi data directory.
 # This script can also do music detection and other similar segmentation
 # using appropriate options such as --output-name output-music.
 
@@ -59,7 +59,7 @@ garbage_in_sil_weight=0.0
 sil_in_speech_weight=0.0
 garbage_in_speech_weight=0.0
 
-post_processing_opts=   # Options passed to steps/segmentation/post_process_segments_to_datadir.sh
+post_processing_opts="--segment-padding=0.2 --max-intersegment-duration=0.3 --min-segment-duration=0.3 --max-segment-duration=10.0 --overlap-duration=1.0 --max-remaining-duration=2.0"
 
 echo $* 
 
@@ -241,12 +241,17 @@ fi
 ###############################################################################
 
 if [ $stage -le 7 ]; then
-  steps/segmentation/post_process_sad_to_datadir.sh \
-    $post_processing_opts \
+  steps/segmentation/post_process_sad_to_segments.sh \
+    --post-processing-opts "$post_processing_opts" \
     --cmd "$cmd" --frame-shift $(perl -e "print $frame_subsampling_factor * $frame_shift") \
-    ${test_data_dir} ${seg_dir} ${seg_dir} ${data_dir}_seg
+    ${test_data_dir} ${seg_dir} ${seg_dir}
+fi
 
+if [ $stage -le 8 ]; then
+  utils/data/subsegment_data_dir.sh ${test_data_dir} ${seg_dir}/segments \
+    ${data_dir}_seg
   cp $src_data_dir/wav.scp ${data_dir}_seg
   cp $src_data_dir/{stm,reco2file_and_channel,glm} ${data_dir}_seg/ || true
+  utils/fix_data_dir.sh ${data_dir}_seg
 fi
 

@@ -12,7 +12,6 @@ set -e -o pipefail -u
 cmd=run.pl
 stage=-10
 
-sad_map=
 segment_padding=0.2
 max_intersegment_duration=0.3
 frame_shift=0.01
@@ -50,7 +49,6 @@ if [ $stage -le 0 ]; then
   $cmd JOB=1:$nj $dir/log/segmentation.JOB.log \
     copy-int-vector "ark:gunzip -c $vad_dir/ali.JOB.gz |" ark,t:- \| \
     steps/segmentation/internal/ali_to_segments.py \
-      ${sad_map:+--sad-map=$sad_map} \
       --frame-shift=$frame_shift --segment-padding=$segment_padding \
       --max-intersegment-duration=$max_intersegment_duration \
       --min-segment-duration=0.3 --max-segment-duration=10.0 \

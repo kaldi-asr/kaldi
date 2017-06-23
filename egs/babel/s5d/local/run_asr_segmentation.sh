@@ -379,20 +379,33 @@ if [ $stage -le 11 ]; then
     $dir/${whole_data_id}_combined_targets_sub3
 fi
 
-# Train a TDNN-LSTM network for SAD
-local/segmentation/tuning/train_lstm_asr_sad_1a.sh --targets-dir $dir/${whole_data_id}_combined_targets_sub3
+if [ $stage -le 12 ]; then
+  utils/copy_data_dir.sh ${whole_data_dir} ${whole_data_dir}_hires_bp
+  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires_bp.conf --nj 40 \
+    ${whole_data_dir}_hires_bp
+  steps/compute_cmvn_stats.sh ${whole_data_dir}_hires_bp
+fi
 
-# The options to this script must match the options used in the 
-# nnet training script. 
-# e.g. extra-left-context is 70, because the model is an LSTM trained with a 
-# chunk-left-context of 60. 
-# Note: frames-per-chunk is 150 even though the model was trained with 
-# chunk-width of 20. This is just for speed.
-# See the script for details of the options.
-steps/segmentation/do_asr_sad_data_dir.sh \
-  --extra-left-context 70 --extra-right-context 0 --frames-per-chunk 150 \
-  --nj 32 --acwt 0.3 \
-  data/dev10h.pem \
-  exp/segmentation_1a/tdnn_lstm_asr_sad_1a \
-  mfcc_hires_bp \
-  exp/segmentation_1a/tdnn_lstm_asr_sad_1a/{,dev10h}
+if [ $stage -le 13 ]; then
+  # Train a TDNN-LSTM network for SAD
+  local/segmentation/tuning/train_lstm_asr_sad_1a.sh \
+    --targets-dir $dir/${whole_data_id}_combined_targets_sub3 \
+    --data-dir ${whole_data_dir}_hires_bp
+fi
+
+if [ $stage -le 14 ]; then
+  # The options to this script must match the options used in the 
+  # nnet training script. 
+  # e.g. extra-left-context is 70, because the model is an LSTM trained with a 
+  # chunk-left-context of 60. 
+  # Note: frames-per-chunk is 150 even though the model was trained with 
+  # chunk-width of 20. This is just for speed.
+  # See the script for details of the options.
+  steps/segmentation/do_asr_sad_data_dir.sh \
+    --extra-left-context 70 --extra-right-context 0 --frames-per-chunk 150 \
+    --nj 32 --acwt 0.3 \
+    data/dev10h.pem \
+    exp/segmentation_1a/tdnn_lstm_asr_sad_1a \
+    mfcc_hires_bp \
+    exp/segmentation_1a/tdnn_lstm_asr_sad_1a/{,dev10h}
+fi
