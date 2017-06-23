@@ -137,7 +137,6 @@ if [ $stage -le 2 ]; then
   image/split_image_dir.sh $train $num_archives
 
   sdata=$train/split$num_archives
-  sdata_ivector=$train/split40
   $cmd JOB=1:$num_archives $dir/log/get_egs.JOB.log \
        ali-to-post ark:$sdata/JOB/labels.txt ark:- \| \
        post-to-smat --dim=$num_classes ark:- ark:- \| \
