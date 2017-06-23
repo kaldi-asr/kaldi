@@ -1,7 +1,10 @@
 #!/bin/bash
 # TODO: This is a demo of extracting ivectors for images.
 
+# Begin configuration section.
+ivector_dim=400 # dimension of the extracted i-vector
 stage=0
+# End configuration section.
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
@@ -43,12 +46,12 @@ fi
 
 if [ $stage -le 3 ]; then
 image/ivector/train_ivector_extractor.sh --cmd "$train_cmd --mem 35G" \
-  --ivector-dim 30 \
+  --ivector-dim ivector_dim \
   --num-iters 5 exp/full_ubm_cifar10/final.ubm data/cifar10_train \
   exp/extractor_cifar10
 
 image/ivector/train_ivector_extractor.sh --cmd "$train_cmd --mem 35G" \
-  --ivector-dim 30 \
+  --ivector-dim ivector_dim \
   --num-iters 5 exp/full_ubm_cifar100/final.ubm data/cifar100_train \
   exp/extractor_cifar100
 fi

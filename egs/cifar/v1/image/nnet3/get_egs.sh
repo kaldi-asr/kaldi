@@ -21,9 +21,10 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 
 if [ $# != 5 ]; then
-  echo "Usage: $0 [opts] <train-data-dir> <test-or-dev-data-dir> <egs-dir> <train-ivector-dir> <test-ivector-dir>"
-  echo " e.g.: $0 --egs-per-iter 25000 data/cifar10_train exp/cifar10_train_egs exp/ivectors_cifar10_train exp/ivector_cifar10_test"
-  echo " or: $0 --test-mode true data/cifar10_test exp/cifar10_test_egs"
+  echo "Usage: $0 [opts] <train-data-dir> <test-or-dev-data-dir> <egs-dir>"
+  echo " <train-ivector-dir> <test-ivector-dir> "
+  echo " e.g.: $0 --egs-per-iter 25000 data/cifar10_train exp/cifar10_train_egs" 
+  echo " exp/ivectors_cifar10_train exp/ivector_cifar10_test"
   echo "Options (with defaults):"
   echo "  --cmd 'run.pl'     How to run jobs (e.g. queue.pl)"
   echo "  --test-mode false  Set this to true if you just want a single archive"
@@ -47,9 +48,8 @@ test=$2
 dir=$3
 train_ivector=$4
 test_ivector=$5
-#echo $train_ivector
-#echo $test_ivector
-for f in $train/images.scp $train/labels.txt $test/images.scp $test/labels.txt $train_ivector/ivector.scp $test_ivector/ivector.scp; do
+for f in $train/images.scp $train/labels.txt $test/images.scp $test/labels.txt \
+         $train_ivector/ivector.scp $test_ivector/ivector.scp; do
    if [ ! -f $f ]; then
      echo "$0: expected file $f to exist"
      exit 1

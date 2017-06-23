@@ -63,8 +63,8 @@ int main(int argc, char *argv[]) {
     for (; !image_reader.Done(); image_reader.Next()) {
       const Matrix<BaseFloat> &image = image_reader.Value();
       std::string key = image_reader.Key();
-      if (image.NumRows() < patch_height
-          || image.NumCols() < num_channels * patch_width) {
+      if (image.NumRows() < patch_width
+          || image.NumCols() < num_channels * patch_height) {
         KALDI_ERR << "Image " << key
           << " is too small for the requested patch size.";
       }
@@ -76,8 +76,8 @@ int main(int argc, char *argv[]) {
 
       int32 num_cols = image.NumCols() / num_channels,
           num_rows = image.NumRows();
-      int32 patch_num_rows = (num_rows - patch_height + 1)
-          * (num_cols - patch_width + 1),
+      int32 patch_num_rows = (num_rows - patch_width + 1)
+          * (num_cols - patch_height + 1),
           patch_num_cols = patch_height * patch_width * num_channels;
 
 
@@ -93,13 +93,19 @@ int main(int argc, char *argv[]) {
 
         // Now iterate over the rows and columns of the part of the image
         // corresponding to channel c.
-        for (int32 i = 0; i < num_rows - patch_height + 1; i++) {
-          for (int32 j = 0; j < num_cols - patch_width + 1; j++) {
-            int32 dest_row = i * (num_cols - patch_width + 1) + j;
+        for (int32 i = 0; i < num_rows - patch_width + 1; i++) {
+          for (int32 j = 0; j < num_cols - patch_height + 1; j++) {
+            int32 dest_row = i * (num_cols - patch_height + 1) + j;
 
             // Select patch corresponding to channel c.
-            SubMatrix<BaseFloat> patch(image, i, patch_height, c * num_cols + j, patch_width);
-
+            //SubMatrix<BaseFloat> patch(image, i, patch_height, c * num_cols + j, patch_width);
+            Matrix<BaseFloat> patch(patch_width, patch_height);
+            patch.SetZero();
+            for(int32 prow = 0; prow < patch_width; prow++) {
+              for(int32 pcol = 0; pcol < patch_height; pcol++) {
+                patch(prow,pcol) = image(i+prow,(j+pcol)*num_channels + c);
+              }
+            }
             // Serialize the patch.
             Vector<BaseFloat> vec_patch(patch_height * patch_width);
             vec_patch.CopyRowsFromMat(patch);
@@ -118,4 +124,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
