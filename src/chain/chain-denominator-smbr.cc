@@ -192,8 +192,13 @@ void DenominatorSmbrComputation::AlphaSmbrGeneralFrame(int32 t) {
         KALDI_ASSERT(this_tot_alpha - this_tot_alpha == 0);
         KALDI_ASSERT(this_tot_alpha_smbr - this_tot_alpha_smbr == 0);
         this_alpha[h * num_sequences + s] = this_tot_alpha * arbitrary_scale;
-        this_alpha_smbr[h * num_sequences + s] = 
-          this_tot_alpha_smbr * arbitrary_scale;
+        //this_alpha_smbr[h * num_sequences + s] = 
+        //  this_tot_alpha_smbr * arbitrary_scale;
+        if (this_tot_alpha > 0.0) 
+          this_alpha_smbr[h * num_sequences + s] = 
+            this_tot_alpha_smbr / this_tot_alpha;
+        else
+          this_alpha_smbr[h * num_sequences + s] = 0.0;
       }
     }
   }
@@ -225,7 +230,7 @@ void DenominatorSmbrComputation::AlphaSmbrDash(int32 t) {
                       den_graph_.InitialProbs(),
                       alpha_sum_vec);
   // it's now alpha-dash.
-  alpha_smbr_.Row(t).DivElements(alpha_.Row(t));
+  //alpha_smbr_.Row(t).DivElements(alpha_.Row(t));
 }
 
 // compute beta from beta-dash.
@@ -249,7 +254,7 @@ void DenominatorSmbrComputation::BetaSmbr(int32 t) {
   // will contain the actual beta (i.e. the counterpart of alpha),
   // not the beta-dash.
   beta_dash_mat.AddVecToRows(1.0, beta_dash_sum_vec);
-  beta_smbr_.Row(t % 2).DivElements(beta_.Row(t % 2));
+  //beta_smbr_.Row(t % 2).DivElements(beta_.Row(t % 2));
 }
 
 BaseFloat DenominatorSmbrComputation::ForwardSmbr() {
@@ -457,8 +462,13 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrame(int32 t) {
         }
         this_beta_dash[h * num_sequences + s] =
             tot_variable_factor / inv_arbitrary_scale;
-        this_beta_smbr[h * num_sequences + s] = 
-            tot_beta_smbr / inv_arbitrary_scale;
+        //this_beta_smbr[h * num_sequences + s] = 
+        //    tot_beta_smbr / inv_arbitrary_scale;
+        if (tot_variable_factor > 0.0) 
+          this_beta_smbr[h * num_sequences + s] = 
+            tot_beta_smbr / tot_variable_factor;
+        else
+          this_beta_smbr[h * num_sequences + s] = 0.0;
       }
     }
   }
@@ -492,8 +502,8 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrameDebug(int32 t) {
 
   // alpha_smbr_vec is a vector of size 'num_hmm_states' * 'num_sequences_'
   CuVector<BaseFloat> alpha_beta_smbr_vec(this_beta_smbr);
-  alpha_beta_smbr_vec.DivElements(this_beta_dash);
-  alpha_beta_smbr_vec.AddVec(1.0, this_beta_smbr, 1.0);
+  //alpha_beta_smbr_vec.DivElements(this_beta_dash);
+  alpha_beta_smbr_vec.AddVec(1.0, this_alpha_smbr, 1.0);
 
   CuVector<BaseFloat> alpha_beta_vec(this_alpha_dash);
   alpha_beta_vec.MulElements(this_beta_dash);
