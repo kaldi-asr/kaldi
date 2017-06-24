@@ -70,7 +70,6 @@ egs_opts=
 transform_dir=     # If supplied, this dir used instead of alidir to find transforms.
 cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
             # only relevant for "raw" features, not lda.
-feat_type=raw  # or set to 'lda' to use LDA features.
 align_cmd=              # The cmd that is passed to steps/nnet2/align.sh
 align_use_gpu=          # Passed to use_gpu in steps/nnet2/align.sh [yes/no]
 realign_times=          # List of times on which we realign.  Each time is
@@ -167,17 +166,9 @@ utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exi
 cp $lang/phones.txt $dir || exit 1;
 
 # First work out the feature and iVector dimension, needed for tdnn config creation.
-case $feat_type in
-  raw) feat_dim=$(feat-to-dim --print-args=false scp:$data/feats.scp -) || \
-      { echo "$0: Error getting feature dim"; exit 1; }
-    ;;
-  lda)  [ ! -f $alidir/final.mat ] && echo "$0: With --feat-type lda option, expect $alidir/final.mat to exist."
-   # get num-rows in lda matrix, which is the lda feature dim.
-   feat_dim=$(matrix-dim --print-args=false $alidir/final.mat | cut -f 1)
-    ;;
-  *)
-   echo "$0: Bad --feat-type '$feat_type';"; exit 1;
-esac
+feat_dim=$(feat-to-dim --print-args=false scp:$data/feats.scp -) || \
+  { echo "$0: Error getting feature dim"; exit 1; }
+
 if [ -z "$online_ivector_dir" ]; then
   ivector_dim=0
 else
@@ -229,7 +220,6 @@ context_opts="--left-context=$left_context --right-context=$right_context"
 if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts=()
   [ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")
-  [ ! -z "$feat_type" ] && extra_opts+=(--feat-type $feat_type)
   [ ! -z "$online_ivector_dir" ] && extra_opts+=(--online-ivector-dir $online_ivector_dir)
   extra_opts+=(--transform-dir $transform_dir)
   extra_opts+=(--left-context $left_context)

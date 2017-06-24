@@ -34,8 +34,8 @@ extra_left_context=0
 extra_right_context=0
 extra_left_context_initial=-1
 extra_right_context_final=-1
-feat_type=  # you can set this in order to run on top of delta features, although we don't
-            # normally want to do this.
+feat_type=raw  # you can set this in order to run on top of delta features, although we don't
+               # normally want to do this.
 # End configuration section.
 
 
@@ -113,18 +113,11 @@ fi
 cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 cp $srcdir/cmvn_opts $dir 2>/dev/null
 
-if [ -z "$feat_type" ]; then
-  if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=raw; fi
-fi
 echo "$0: feature type is $feat_type"
 
 case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
+  delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
   raw) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
-   ;;
-  lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    cp $srcdir/final.mat $dir
-   ;;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
 
@@ -134,12 +127,7 @@ if [ ! -z "$transform_dir" ]; then
     echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
   nj_orig=$(cat $transform_dir/num_jobs)
 
-  if [ $feat_type == "raw" ]; then trans=raw_trans;
-  else trans=trans; fi
-  if [ $feat_type == "lda" ] && ! cmp $transform_dir/final.mat $srcdir/final.mat; then
-    echo "$0: LDA transforms differ between $srcdir and $transform_dir"
-    exit 1;
-  fi
+  trans=raw_trans;
   if [ ! -f $transform_dir/$trans.1 ]; then
     echo "$0: expected $transform_dir/$trans.1 to exist (--transform-dir option)"
     exit 1;
