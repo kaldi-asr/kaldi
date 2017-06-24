@@ -412,7 +412,7 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
                       num-filters-out, consisting of 'num-sub-frames' blocks
                       each of dimension 'num-filters-out'.
       sub-frames-left-context  Number of sub-frames of left context that the
-                      convolution sees as input.
+                      convolution sees as input, for each output sub-frame.
       sub-frames-right-context  Number of sub-frames of right context that the
                       convolution sees as input.  Suppose we define
                       num-filters-in=input-dim/num-sub-frames, then
