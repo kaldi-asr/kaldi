@@ -81,7 +81,30 @@ echo "$0: feature type is raw"
 
 cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 cp $srcdir/cmvn_opts $dir 2>/dev/null
+
 feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
+
+if [ ! -z "$transform_dir" ]; then
+  echo "$0: using transforms from $transform_dir"
+  [ ! -s $transform_dir/num_jobs ] && \
+    echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
+  nj_orig=$(cat $transform_dir/num_jobs)
+
+  trans=raw_trans;
+  if [ ! -f $transform_dir/$trans.1 ]; then
+    echo "$0: expected $transform_dir/$trans.1 to exist (--transform-dir option)"
+    exit 1;
+  fi
+  if [ $nj -ne $nj_orig ]; then
+    # Copy the transforms into an archive with an index.
+    for n in $(seq $nj_orig); do cat $transform_dir/$trans.$n; done | \
+       copy-feats ark:- ark,scp:$dir/$trans.ark,$dir/$trans.scp || exit 1;
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/$trans.scp ark:- ark:- |"
+  else
+    # number of jobs matches with alignment dir.
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/$trans.JOB ark:- ark:- |"
+  fi
+fi
 
 ivector_opts=
 if [ ! -z "$online_ivector_dir" ]; then
