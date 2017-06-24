@@ -5,7 +5,7 @@
 
 
 # run this from ../
-dir=$(readlink -f data/local/dict)
+dir=$(utils/make_absolute.sh data/local/dict)
 mkdir -p $dir
 
 

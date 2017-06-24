@@ -258,7 +258,7 @@ base_feat_dim=$(feat-to-dim scp:$data/feats.scp -) || exit 1;
 
 start_dim=$base_feat_dim
 end_dim=$[$base_feat_dim+$ivector_dim-1]
-absdir=$(readlink -f $dir)
+absdir=$(utils/make_absolute.sh $dir)
 
 if [ $stage -le 4 ]; then
   # here, we are just using the original features in $sdata/JOB/feats.scp for
