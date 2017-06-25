@@ -1,6 +1,6 @@
 // arpa_sampling.h
 
-// Copyright     2016  Ke Li
+// Copyright 2017  Ke Li
 
 // See ../COPYING for clarification regarding multiple authors
 //
@@ -17,21 +17,9 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ARPA_SAMPLING_H_
-#define ARPA_SAMPLING_H_
+#ifndef KALDI_RNNLM_ARPA_SAMPLING_H_
+#define KALDI_RNNLM_ARPA_SAMPLING_H_
 
-#include <algorithm>
-#include <map>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <sstream>
-#include <vector>
-
-#include <math.h>
-#include <sys/time.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include "fst/fstlib.h"
 #include "util/common-utils.h"
 #include "lm/arpa-file-parser.h"
@@ -44,88 +32,68 @@ class ArpaSampling : public ArpaFileParser {
 
   // HistType represents a history
   typedef std::vector<int32> HistType;
-  // WordToProbsMap represents the words and their probabilities given
-  // an arbitrary history
-  typedef std::unordered_map<int32, std::pair<BaseFloat, BaseFloat> > WordToProbsMap; 
-  // NgramType represents the map between a history and the map of existing words
-  // and their probabilities given this history
-  typedef std::unordered_map<HistType, WordToProbsMap, VectorHasher<int32> > NgramType;
-  // HistWeightsType represents the map between histories (with weights) and
-  // their computed weights
-  typedef std::unordered_map<HistType, BaseFloat, VectorHasher<int32> > HistWeightsType;
+  // WeightedHistType represents a vector of pairs of a history and
+  // its associated weight
+  typedef std::vector<std::pair<HistType, BaseFloat> > WeightedHistType;
 
-  // constructor
+  // ARPA LM file is read by function "void Read(std::istream &is, bool binary)"
+  // in ArpaFileParser. Only text mode is supported.
   ArpaSampling(ArpaParseOptions options, fst::SymbolTable* symbols)
-     : ArpaFileParser(options, symbols) { 
+     : ArpaFileParser(options, symbols) {
        ngram_order_ = 0;
        num_words_ = 0;
-       bos_symbol_ = "<s>";
-       eos_symbol_ = "</s>";
-       unk_symbol_ = "<unk>";
   }
-  
-  // This function computes the unigram distribution of all vocab words which are
-  // represented by integers from 1 to num_words_ (0 is reserved for epsilon)
-  // Probabilities of integers not represented by any valid word is 0, e.g.
-  // 0 has probability 0.0
-  void GetUnigramDistribution(std::vector<BaseFloat> *unigram_probs);
 
-  // This function reads in a list of histories with input weights and returns
+  // This function computes the unigram distribution of all words represented
+  // by integers from 0 to maximum symbol id
+  // Note: there can be gaps of integers for words in the ARPA LM, we set the
+  // probabilities of words that are not in the ARPA LM to be 0.0, e.g.,
+  // symbol id 0 which represents epsilon has probability 0.0
+  void GetUnigramDistribution(std::vector<BaseFloat> *unigram_probs) const;
+
+  // This function accepts a list of histories with associated weights and outputs
   // 1) the non_unigram_probs (maps the higher-than-unigram words to their
-  // corresponding probabilities given the list of histories) and 
-  // 2) a scalar unigram_weight = sum of history_weight * backoff_weight of that history
-  BaseFloat GetDistribution(const std::vector<std::pair<HistType, BaseFloat> > 
-      &histories, std::unordered_map<int32, BaseFloat> *non_unigram_probs);
- 
+  // corresponding probabilities given the list of histories) and
+  // 2) a scalar unigram_weight = sum of history_weight * backoff_weight of
+  // that history
+  BaseFloat GetDistribution(const WeightedHistType &histories,
+      std::unordered_map<int32, BaseFloat> *non_unigram_probs) const;
+
  protected:
   // ArpaFileParser overrides.
-  virtual void HeaderAvailable(); 
+  virtual void HeaderAvailable();
   virtual void ConsumeNGram(const NGram& ngram);
   virtual void ReadComplete() {}
 
  private:
-  // This function returns the log probability of a LM state, [history word],
-  // from the read-in ARPA file if it exists. If the LM state does not exist,
-  // it backs off to a lower order until the updated LM state found.
-  // Note: a LM state is a ngram term in a ARPA language model
-  BaseFloat GetProb(int32 order, int32 word, const HistType& history);
+  // MapType represents the words and their probabilities given
+  // an arbitrary history
+  typedef std::unordered_map<int32, std::pair<BaseFloat, BaseFloat> > MapType;
 
-  // This function returns the back-off log probability of a LM state
-  // from the read-in ARPA file 
-  BaseFloat GetBackoffWeight(int32 order, int32 word, const HistType& history);
+  // NgramType represents the map between a history and the map of
+  // existing words and the associated probabilities given this history
+  typedef std::unordered_map<HistType, MapType, VectorHasher<int32> > NgramType;
 
-  // This function returns the computed weights of histories with input weights
-  void ComputeHistoriesWeights(const std::vector<std::pair<HistType, BaseFloat> > 
-      &histories, HistWeightsType *hists_weights);
+  // This function returns the log probability of a ngram, [history word],
+  // from the read-in ARPA file if it exists. If the ngram does not exist,
+  // it backs off to a lower order until the update ngram is found.
+  BaseFloat GetLogprob(int32 word, const HistType& history) const;
+
+  // This function returns the back-off log probability of a ngram
+  // from the read-in ARPA file
+  BaseFloat GetBackoffLogprob(int32 word, const HistType& history) const;
 
   // Highest N-gram order of the read-in ARPA LM
   int32 ngram_order_;
-  
-  // Total number of words of the read-in ARPA LM
-  // note: the size of vector for the output unigram distribution should be
-  // num_words_ + 1 (1 is for epsilon)
+
+  // Highest symbol id present in the read-in ARPA LM puls one
   int32 num_words_;
 
-  // Begining of sentence symbol
-  std::string bos_symbol_;
-
-  // End of sentence symbol
-  std::string eos_symbol_;
-
-  // Unkown word symbol
-  std::string unk_symbol_;
-
-  // Counts of each LM state 
+  // Number of ngrams for each ngram order, indexed by ngram order minus one
   std::vector<int32> ngram_counts_;
 
-  // LM state probabilities
+  // Log probabilities of NgramType
   std::vector<NgramType> probs_;
-
-  // Histories' weights
-  HistWeightsType hists_weights_;
-  
 };
-
 }  // end of namespace kaldi
-
-#endif  // ARPA_SAMPLING_H_
+#endif  // KALDI_RNNLM_ARPA_SAMPLING_H_

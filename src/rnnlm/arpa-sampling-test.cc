@@ -1,39 +1,32 @@
 // lm/arpa-sampling-test.cc
 
-#include <math.h>
-#include <typeinfo>
-#include "base/kaldi-common.h"
-#include "util/common-utils.h"
-#include "fst/fstlib.h"
-#include "arpa-sampling.h"
+#include "rnnlm/arpa-sampling.h"
 
 namespace kaldi {
 
 class ArpaSamplingTest {
  public:
   typedef ArpaSampling::HistType HistType;
-  typedef ArpaSampling::WordToProbsMap WordToProbsMap;
+  typedef ArpaSampling::MapType MapType;
   typedef ArpaSampling::NgramType NgramType;
-  typedef ArpaSampling::HistWeightsType HistWeightsType;
-  
-  ArpaSamplingTest (ArpaSampling *arpa) {
+  typedef ArpaSampling::WeightedHistType WeightedHistType;
+
+  explicit ArpaSamplingTest(ArpaSampling *arpa) {
     arpa_ = arpa;
-  } 
+  }
   // This function reads in a list of histories and their weights from a file
   // only text form is supported
-  void ReadHistories(std::istream &is, bool binary, 
-      std::vector<std::pair<HistType, BaseFloat> > *histories);
-  
-  // This function tests the correctness of the read-in ARPA LM 
+  void ReadHistories(std::istream &is, bool binary,
+      WeightedHistType *histories);
+
+  // This function tests the correctness of the read-in ARPA LM
   void TestReadingModel();
 
-  // This function tests the generated unigram distribution 
+  // This function tests the generated unigram distribution
   void TestUnigramDistribution();
 
   // Test non-unigram words and alpha
-  // TODO: need to test alpha in a proper way 
-  void TestGetDistribution(const
-      std::vector<std::pair<HistType, BaseFloat> > &histories);
+  void TestGetDistribution(const WeightedHistType &histories);
  private:
   // This ArpaSampling object is used to get accesses to private and protected
   // members in ArpaSampling class
@@ -41,7 +34,7 @@ class ArpaSamplingTest {
 };
 
 void ArpaSamplingTest::ReadHistories(std::istream &is, bool binary,
-    std::vector<std::pair<HistType, BaseFloat> > *histories) {
+    WeightedHistType *histories) {
   if (binary) {
     KALDI_ERR << "binary-mode reading is not implemented for ArpaFileParser";
   }
@@ -60,7 +53,7 @@ void ArpaSamplingTest::ReadHistories(std::istream &is, bool binary,
     for (int32 i = 0; i < tokens.size() - 1; ++i) {
       word = sym->Find(tokens[i]);
       if (word == fst::SymbolTable::kNoSymbol) {
-        word = sym->Find(arpa_->unk_symbol_);
+        KALDI_ERR << "Found history contains word that is not in Arpa LM";
       }
       history.push_back(word);
     }
@@ -69,12 +62,11 @@ void ArpaSamplingTest::ReadHistories(std::istream &is, bool binary,
       HistType h(history.end() - ngram_order + 1, history.end());
       h1 = h;
     }
-    #define PARSE_ERR (KALDI_ERR << arpa_->LineReference() << ": ")
     if (!ConvertStringToReal(tokens.back(), &hist_weight)) {
-      PARSE_ERR << "invalid history weight '" << tokens.back() << "'";
+      KALDI_ERR << arpa_->LineReference() << ": invalid history weight '"
+        << tokens.back() << "'";
     }
-    #undef PARSE_ERR
-    KALDI_ASSERT(hist_weight >=0);
+    KALDI_ASSERT(hist_weight >= 0);
     std::pair<HistType, BaseFloat> hist_pair;
     if (history.size() >= ngram_order) {
       hist_pair = std::make_pair(h1, hist_weight);
@@ -86,52 +78,55 @@ void ArpaSamplingTest::ReadHistories(std::istream &is, bool binary,
   KALDI_LOG << "Successfully reading histories from file.";
 }
 
-// Test the read-in ARPA LM 
+// Test the read-in ARPA LM
 void ArpaSamplingTest::TestReadingModel() {
   KALDI_LOG << "Testing model reading part..."<< std::endl;
-  KALDI_LOG << "Vocab size is: " << arpa_->num_words_;
+  KALDI_LOG << "Maximum symbol index is: " << arpa_->num_words_ - 1;
   KALDI_LOG << "Ngram_order is: " << arpa_->ngram_order_;
   KALDI_ASSERT(arpa_->probs_.size() == arpa_->ngram_counts_.size());
   for (int32 i = 0; i < arpa_->ngram_order_; ++i) {
     int32 size_ngrams = 0;
     KALDI_LOG << "Test: for order " << (i + 1);
-    KALDI_LOG << "Expected number of " << (i + 1) << "-grams: " << arpa_->ngram_counts_[i];
-    for (NgramType::const_iterator it1 = arpa_->probs_[i].begin(); it1 != arpa_->probs_[i].end(); ++it1) {
+    KALDI_LOG << "Expected number of " << (i + 1) << "-grams: "
+              << arpa_->ngram_counts_[i];
+    NgramType::const_iterator it1 = arpa_->probs_[i].begin();
+    for (; it1 != arpa_->probs_[i].end(); ++it1) {
       HistType h(it1->first);
-      for (WordToProbsMap::const_iterator it2 = arpa_->probs_[i][h].begin(); 
+      for (MapType::const_iterator it2 = arpa_->probs_[i][h].begin();
           it2 != arpa_->probs_[i][h].end(); ++it2) {
-        size_ngrams++; // number of words given
+        size_ngrams++;
       }
     }
     KALDI_LOG << "Read in number of " << (i + 1) << "-grams: " << size_ngrams;
   }
   // Assert the sum of unigram probs is 1.0
   BaseFloat prob_sum = 0.0;
-  int32 count = 0;
-  for (NgramType::const_iterator it1 = arpa_->probs_[0].begin(); it1 != arpa_->probs_[0].end(); ++it1) {
+  int32 max_symbol_id = 0;
+  NgramType::const_iterator it1 = arpa_->probs_[0].begin();
+  for (; it1 != arpa_->probs_[0].end(); ++it1) {
     HistType h(it1->first);
-    for (WordToProbsMap::const_iterator it2 = arpa_->probs_[0][h].begin(); 
+    for (MapType::const_iterator it2 = arpa_->probs_[0][h].begin();
         it2 != arpa_->probs_[0][h].end(); ++it2) {
       prob_sum += 1.0 * Exp(it2->second.first);
-      count++;
+      max_symbol_id++;
     }
   }
-  KALDI_ASSERT(count == arpa_->num_words_);
+  KALDI_ASSERT(max_symbol_id + 1 == arpa_->num_words_);
   KALDI_ASSERT(ApproxEqual(prob_sum, 1.0));
-  
-  // Assert the sum of bigram probs of all words given an arbitrary history is 1.0
+
+  // Assert sum of bigram probs of all words given an arbitrary history is 1.0
   prob_sum = 0.0;
-  NgramType::const_iterator it1 = arpa_->probs_[1].begin();
+  it1 = arpa_->probs_[1].begin();
   HistType h(it1->first);
-  HistType h_empty; 
-  for (WordToProbsMap::const_iterator it = arpa_->probs_[0][h_empty].begin();
+  HistType h_empty;
+  for (MapType::const_iterator it = arpa_->probs_[0][h_empty].begin();
       it != arpa_->probs_[0][h_empty].end(); it++) {
     int32 word = it->first;
-    WordToProbsMap::const_iterator it2 = arpa_->probs_[1][h].find(word);
+    MapType::const_iterator it2 = arpa_->probs_[1][h].find(word);
     if (it2 != arpa_->probs_[1][h].end()) {
       prob_sum += 1.0 * Exp(it2->second.first);
     } else {
-      prob_sum += Exp(arpa_->GetProb(2, word, h));
+      prob_sum += Exp(arpa_->GetLogprob(word, h));
     }
   }
   KALDI_ASSERT(ApproxEqual(prob_sum, 1.0));
@@ -139,7 +134,6 @@ void ArpaSamplingTest::TestReadingModel() {
 
 // Test the generated unigram distribution
 void ArpaSamplingTest::TestUnigramDistribution() {
-  KALDI_LOG << "Testing the generated unigram distribution";
   std::vector<BaseFloat> unigram_probs;
   arpa_->GetUnigramDistribution(&unigram_probs);
   // Check 0 (epsilon) has probability 0.0
@@ -152,14 +146,13 @@ void ArpaSamplingTest::TestUnigramDistribution() {
   KALDI_ASSERT(ApproxEqual(probsum, 1.0));
 }
 
-void ArpaSamplingTest::TestGetDistribution (
-    const std::vector<std::pair<HistType, BaseFloat> > &histories) {
+void ArpaSamplingTest::TestGetDistribution(const WeightedHistType &histories) {
   // get total input weights of histories
   BaseFloat total_weights = 0.0;
-  std::vector<std::pair<HistType, BaseFloat> >::const_iterator it = histories.begin();
-  for(; it != histories.end(); ++it) {
-    total_weights += (*it).second;
-  } 
+  WeightedHistType::const_iterator it = histories.begin();
+  for (; it != histories.end(); ++it) {
+    total_weights += it->second;
+  }
   BaseFloat unigram_weight = 0.0;
   BaseFloat non_unigram_probsum = 0.0;
   std::unordered_map<int32, BaseFloat> pdf;
@@ -169,7 +162,7 @@ void ArpaSamplingTest::TestGetDistribution (
       it != pdf.end(); it++) {
     non_unigram_probsum += it->second;
   }
-  // assert unigram weight plus non_unigram probs' sum equals 
+  // assert unigram weight plus non_unigram probs' sum equals
   // the total input histories' weights
   KALDI_ASSERT(ApproxEqual(unigram_weight + non_unigram_probsum, total_weights));
 }
@@ -183,7 +176,7 @@ int main(int argc, char **argv) {
   ParseOptions po(usage);
   po.Read(argc, argv);
   std::string arpa_file = po.GetArg(1), history_file = po.GetArg(2);
-  
+
   ArpaParseOptions options;
   fst::SymbolTable symbols;
 
@@ -199,17 +192,17 @@ int main(int argc, char **argv) {
   options.unk_symbol = symbols.AddSymbol("<unk>", kUnk);
   options.oov_handling = ArpaParseOptions::kAddToSymbols;
   ArpaSampling arpa(options, &symbols);
-  
+
   bool binary;
   Input k1(arpa_file, &binary);
   arpa.Read(k1.Stream(), binary);
 
-  ArpaSamplingTest mdl(&arpa); 
+  ArpaSamplingTest mdl(&arpa);
   mdl.TestReadingModel();
   mdl.TestUnigramDistribution();
 
   Input k2(history_file, &binary);
-  std::vector<std::pair<ArpaSamplingTest::HistType, BaseFloat> > histories;
+  ArpaSamplingTest::WeightedHistType histories;
   mdl.ReadHistories(k2.Stream(), binary, &histories);
   mdl.TestGetDistribution(histories);
   return 0;
