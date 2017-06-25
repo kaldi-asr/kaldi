@@ -37,7 +37,7 @@ frames_per_eg=150
 frames_overlap_per_eg=30
 
 ## Nnet training options
-effective_learning_rate=0.000001
+effective_learning_rate=0.00001
 max_param_change=1
 num_jobs_nnet=4
 num_epochs=4
