@@ -92,20 +92,43 @@ if [ $stage -le 14 ]; then
 
   echo "$0: creating neural net configs";
   # create the config files for nnet initialization
-  repair_opts=${self_repair_scale:+" --self-repair-scale-nonlinearity $self_repair_scale "}
 
-  steps/nnet3/tdnn/make_configs.py $repair_opts \
-    --feat-dir $train_data_dir \
-    --ivector-dir $train_ivector_dir \
-    --tree-dir $tree_dir \
-    --relu-dim $relu_dim \
-    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0 0" \
-    --use-presoftmax-prior-scale false \
-    --xent-regularize $xent_regularize \
-    --xent-separate-forward-affine true \
-    --include-log-softmax false \
-    --final-layer-normalize-target 0.5 \
-    $dir/configs || exit 1;
+  num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
+  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+
+  mkdir -p $dir/configs
+  cat <<EOF > $dir/configs/network.xconfig
+  input dim=100 name=ivector
+  input dim=40 name=input
+  # please note that it is important to have input layer with the name=input
+  # as the layer immediately preceding the fixed-affine-layer to enable
+  # the use of short notation for the descriptor
+  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  # the first splicing is moved before the lda layer, so no splicing here
+  relu-batchnorm-layer name=tdnn1 dim=512
+  relu-batchnorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn3 dim=512 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn4 dim=512 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn5 dim=512 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn6 dim=512 input=Append(-6,-3,0)
+  ## adding the layers for chain branch
+  relu-batchnorm-layer name=prefinal-chain dim=512 target-rms=0.5
+  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+  # adding the layers for xent branch
+  # This block prints the configs for a separate output that will be
+  # trained with a cross-entropy objective in the 'chain' models... this
+  # has the effect of regularizing the hidden parts of the model.  we use
+  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
+  # 0.5 / args.xent_regularize is suitable as it means the xent
+  # final-layer learns at a rate independent of the regularization
+  # constant; and the 0.5 was tuned so as to make the relative progress
+  # similar in the xent and regular final layers.
+  relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=512 target-rms=0.5
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+EOF
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
+
+
 fi
 
 
@@ -156,7 +179,7 @@ if [ $stage -le 16 ]; then
   # remove <UNK> from the graph, and convert back to const-FST.
   fstrmsymbols --apply-to-output=true --remove-arcs=true "echo 3|" $graph_dir/HCLG.fst - | \
     fstconvert --fst_type=const > $graph_dir/temp.fst
-  mv $graph_dir/temp.fst graph_dir/HCLG.fst
+  mv $graph_dir/temp.fst $graph_dir/HCLG.fst
 fi
 
 
