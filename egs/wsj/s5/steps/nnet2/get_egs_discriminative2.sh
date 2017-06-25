@@ -335,13 +335,13 @@ if $cleanup; then
   for x in $(seq $nj); do
     for y in $(seq $num_archives_temp); do
       file=$dir/degs_orig.$x.$y.ark
-      [ -L $file ] && rm $(readlink -f $file); rm $file
+      [ -L $file ] && rm $(utils/make_absolute.sh $file); rm $file
     done
   done
   if [ $num_archives_temp -ne $num_archives ]; then
     for z in $(seq $num_archives); do
       file=$dir/degs_temp.$z.ark
-      [ -L $file ] && rm $(readlink -f $file); rm $file
+      [ -L $file ] && rm $(utils/make_absolute.sh $file); rm $file
     done
   fi
 fi

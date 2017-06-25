@@ -107,7 +107,7 @@ echo "--max-remembered-frames=1000" >>$ieconf # the default
 echo "--max-count=$max_count" >>$ieconf
 
 
-absdir=$(readlink -f $dir)
+absdir=$(utils/make_absolute.sh $dir)
 
 for n in $(seq $nj); do
   # This will do nothing unless the directory $dir/storage exists;

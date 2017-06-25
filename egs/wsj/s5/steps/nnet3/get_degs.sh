@@ -503,14 +503,14 @@ if [ $stage -le 10 ] && $cleanup; then
   echo "$0: cleaning up temporary files."
   for j in $(seq $nj); do
     for f in $dir/degs_orig.$j.{ark,scp} $dir/degs_orig_filtered.$j.scp; do
-      [ -L $f ] && rm $(readlink -f $f); rm $f
+      [ -L $f ] && rm $(utils/make_absolute.sh $f); rm $f
     done
   done
   rm $dir/degs_group.*.scp $dir/valid_diagnostic.scp $dir/train_diagnostic.scp 2>/dev/null
   rm $dir/ali.ark $dir/ali.scp 2>/dev/null
   for n in $(seq $num_archives); do
     for f in $dir/degs.$n.scp; do
-      [ -L $f ] && rm $(readlink -f $f); rm $f
+      [ -L $f ] && rm $(utils/make_absolute.sh $f); rm $f
     done
   done
 fi

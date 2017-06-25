@@ -59,7 +59,7 @@ total_files=$(echo ${data_files[@]}|wc -w)
 echo "" > $log_dir/${DBname}_type${type_num}.rir.list
 echo "Found $total_files impulse responses in ${RIR_home}/aalto_concert_hall_pori//"
 tmpdir=`mktemp -d $log_dir/aalto_XXXXXX`
-tmpdir=`readlink -e $tmpdir`
+tmpdir=`utils/make_absolute.sh $tmpdir`
 file_count=1
 for data_file in ${data_files[@]}; do
   # aalto has incompatible format of wav audio, which are not compatible with python's wav.read() function

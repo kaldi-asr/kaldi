@@ -185,7 +185,7 @@ for x in `seq 1 $num_jobs_nnet`; do
   done
 done
 
-remove () { for x in $*; do [ -L $x ] && rm $(readlink -f $x); rm $x; done }
+remove () { for x in $*; do [ -L $x ] && rm $(utils/make_absolute.sh $x); rm $x; done }
 
 nnet_context_opts="--left-context=$left_context --right-context=$right_context"
 mkdir -p $dir/egs

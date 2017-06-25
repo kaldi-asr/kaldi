@@ -402,7 +402,7 @@ if [ $stage -le 6 ]; then
   for x in $(seq $nj); do
     for y in $(seq $num_archives_intermediate); do
       file=$dir/egs_orig.$x.$y.ark
-      [ -L $file ] && rm $(readlink -f $file)
+      [ -L $file ] && rm $(utils/make_absolute.sh $file)
       rm $file
     done
   done

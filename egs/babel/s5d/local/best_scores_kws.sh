@@ -8,14 +8,14 @@ set -o nounset                              # Treat unset variables as an error
 
 
 if [ ! -x  results ] ; then
-  data=$(readlink -f ./local)
+  data=$(utils/make_absolute.sh ./local)
   data=$(dirname $data)
   mkdir -p $data/results
   ln -s $data/results results
 fi
 
 if [ ! -e ./RESULTS.kws ] ; then
-  p=$(basename `readlink -f lang.conf`)
+  p=$(basename `utils/make_absolute.sh lang.conf`)
   p=${p##.*}
   filename=kws_results.${p}.${USER}.$(date --iso-8601=seconds)
   echo "#Created on $(date --iso-8601=seconds) by $0" >> results/$filename
