@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_RNNLM_ARPA_SAMPLING_H_
-#define KALDI_RNNLM_ARPA_SAMPLING_H_
+#ifndef KALDI_RNNLM_ARPA_FOR_SAMPLINGH_
+#define KALDI_RNNLM_ARPA_FOR_SAMPLINGH_
 
 #include "fst/fstlib.h"
 #include "util/common-utils.h"
@@ -26,9 +26,9 @@
 
 namespace kaldi {
 
-class ArpaSampling : public ArpaFileParser {
+class ArpaForSampling : public ArpaFileParser {
  public:
-  friend class ArpaSamplingTest;
+  friend class ArpaForSamplingTest;
 
   // HistType represents a history
   typedef std::vector<int32> HistType;
@@ -38,7 +38,7 @@ class ArpaSampling : public ArpaFileParser {
 
   // ARPA LM file is read by function "void Read(std::istream &is, bool binary)"
   // in ArpaFileParser. Only text mode is supported.
-  ArpaSampling(ArpaParseOptions options, fst::SymbolTable* symbols)
+  ArpaForSampling(ArpaParseOptions options, fst::SymbolTable* symbols)
      : ArpaFileParser(options, symbols) {
        ngram_order_ = 0;
        num_words_ = 0;
@@ -96,4 +96,4 @@ class ArpaSampling : public ArpaFileParser {
   std::vector<NgramType> probs_;
 };
 }  // end of namespace kaldi
-#endif  // KALDI_RNNLM_ARPA_SAMPLING_H_
+#endif  // KALDI_RNNLM_ARPA_FOR_SAMPLINGH_
