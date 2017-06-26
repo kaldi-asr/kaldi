@@ -16,13 +16,13 @@ if [ $stage -le 0 ]; then
   done
 fi
 
-if [ $stage -le 1 ]; then
+if [ $stage -le 1 ] && [$if_use_ivect]; then
   #ivector generation 
   local/run_ivector.sh --ivector_dim $ivector_dimension
 fi
 
 if [ $stage -le 2 ] && [$append_ivector]; then
-  #append ivecotr after each image pixel 
+  #append ivector after each image pixel 
   local/append_ivector.sh data/cifar10_train exp/ivectors_cifar10_train 
   local/append_ivector.sh data/cifar10_test exp/ivectors_cifar10_test 
   local/append_ivector.sh data/cifar100_train exp/ivectors_cifar100_train
