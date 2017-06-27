@@ -47,3 +47,7 @@ EOF
 rnnlm/get_unigram_probs.py --vocab-file=$data_dir/vocab/words.txt \
                            --data-weights-file=$dir/data_weights.txt \
                            $data_dir/data > $dir/unigram_probs.txt
+
+# choose features
+rnnlm/choose_features.py $data_dir/vocab/words.txt \
+      --unigram-probs=$dir/unigram_probs.txt > $dir/features.txt
