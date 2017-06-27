@@ -99,6 +99,9 @@ def get_args():
                         dest='left_deriv_truncate',
                         default=None,
                         help="Deprecated. Kept for back compatibility")
+    parser.add_argument("--chain.smbr-start-fraction", type=float,
+                        dest='smbr_start_fraction', default=1.1,
+                        help="Fraction of training at which to start LF-SMBR")
 
     # trainer options
     parser.add_argument("--trainer.num-epochs", type=float, dest='num_epochs',
@@ -445,6 +448,11 @@ def train(args, run_opts):
                                         args.shrink_saturation_threshold)
                                    else shrinkage_value)
 
+            use_smbr=False
+            if (float(num_archives_processed) / num_archives_to_process
+                    > args.smbr_start_fraction):
+                use_smbr=True
+
             chain_lib.train_one_iteration(
                 dir=args.dir,
                 iter=iter,
@@ -472,7 +480,8 @@ def train(args, run_opts):
                 frame_subsampling_factor=args.frame_subsampling_factor,
                 run_opts=run_opts,
                 backstitch_training_scale=args.backstitch_training_scale,
-                backstitch_training_interval=args.backstitch_training_interval)
+                backstitch_training_interval=args.backstitch_training_interval,
+                use_smbr_objective=use_smbr)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
@@ -497,6 +506,11 @@ def train(args, run_opts):
 
     if args.stage <= num_iters:
         logger.info("Doing final combination to produce final.mdl")
+
+        use_smbr=False
+        if (float(num_archives_processed) / num_archives_to_process
+                > args.smbr_start_fraction):
+            use_smbr=True
         chain_lib.combine_models(
             dir=args.dir, num_iters=num_iters,
             models_to_combine=models_to_combine,
@@ -506,8 +520,8 @@ def train(args, run_opts):
             l2_regularize=args.l2_regularize,
             xent_regularize=args.xent_regularize,
             run_opts=run_opts,
-            sum_to_one_penalty=args.combine_sum_to_one_penalty)
-
+            sum_to_one_penalty=args.combine_sum_to_one_penalty,
+            use_smbr_objective=use_smbr)
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory "
