@@ -8,7 +8,7 @@ set -e
 # note: this relies on having a cluster that has plenty of CPUs as well as GPUs,
 # the lattice generation runs in about real-time
 
-stage=0
+stage=4
 train_stage=-10 # can be used to start training in the middle.
 get_egs_stage=-10
 use_gpu=true  # for training
@@ -170,7 +170,7 @@ fi
 if [ $stage -le 4 ]; then
   steps/nnet3/train_discriminative.sh --cmd "$decode_cmd" \
     --stage $train_stage \
-    --effectiv-lrate $effective_learning_rate --max-param-change $max_param_change \
+    --effective-lrate $effective_learning_rate --max-param-change $max_param_change \
     --criterion $criterion --drop-frames true --acoustic-scale 1.0 \
     --num-epochs $num_epochs --one-silence-class $one_silence_class --minibatch-size $minibatch_size \
     --num-jobs-nnet $num_jobs_nnet --num-threads $num_threads \
