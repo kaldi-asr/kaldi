@@ -98,7 +98,7 @@ def ReadFeatures(features_file):
                 ngram = fields[2]
                 feats[feat_type][ngram] = feat_id
                 if feat_type == 'word':
-                    order = len(ngram) + 2
+                    continue
                 elif feat_type in ['initial', 'final']:
                     order = len(ngram) + 1
                 else:
@@ -107,7 +107,6 @@ def ReadFeatures(features_file):
                     feats['max_ngram_order'] = order
                 if order < feats['min_ngram_order']:
                     feats['min_ngram_order'] = order
-                    feats['max_ngram_order'] = order
             else:
                 sys.exit(sys.argv[0] + ": error feature type: {0}".format(feat_type))
 
