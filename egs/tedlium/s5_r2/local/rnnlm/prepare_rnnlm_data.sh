@@ -49,8 +49,16 @@ rnnlm/get_unigram_probs.py --vocab-file=$data_dir/vocab/words.txt \
                            $data_dir/data > $dir/unigram_probs.txt
 
 # choose features
-rnnlm/choose_features.py $data_dir/vocab/words.txt \
-      --unigram-probs=$dir/unigram_probs.txt > $dir/features.txt
-
+rnnlm/choose_features.py --unigram-probs=$dir/unigram_probs.txt \
+                         $data_dir/vocab/words.txt > $dir/features.txt
 # validate features
 rnnlm/validate_features.py $dir/features.txt
+
+# make features for word
+rnnlm/make_word_features.py --unigram-probs=$dir/unigram_probs.txt \
+                         $data_dir/vocab/words.txt $dir/features.txt \
+                         > $dir/word_feats.txt
+
+# validate word features
+rnnlm/validate_word_features.py --features-file $dir/features.txt \
+                                $dir/word_feats.txt
