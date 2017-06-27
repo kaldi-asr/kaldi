@@ -86,7 +86,7 @@ if [ $frame_subsampling_factor -ne 1 ]; then
 
     data_dirs=
     for x in `seq -$[frame_subsampling_factor/2] $[frame_subsampling_factor/2]`; do
-      steps/shift_feats.sh --cmd "$train_cmd --max-jobs-run 40" --nj 350 \
+      steps/shift_feats.sh --cmd "$train_cmd --max-jobs-run 40" --nj 30 \
         $x $train_data_dir exp/shift_hires/ mfcc_hires
       utils/fix_data_dir.sh ${train_data_dir}_fs$x
       data_dirs="$data_dirs ${train_data_dir}_fs$x"
@@ -170,22 +170,22 @@ fi
 if [ $stage -le 4 ]; then
   steps/nnet3/train_discriminative.sh --cmd "$decode_cmd" \
     --stage $train_stage \
-    --effective-lrate $effective_learning_rate --max-param-change $max_param_change \
+    --effectiv-elrate $effective_learning_rate --max-param-change $max_param_change \
     --criterion $criterion --drop-frames true --acoustic-scale 1.0 \
     --num-epochs $num_epochs --one-silence-class $one_silence_class --minibatch-size $minibatch_size \
     --num-jobs-nnet $num_jobs_nnet --num-threads $num_threads \
     --regularization-opts "$regularization_opts" --use-frame-shift false \
-    --adjust-priors false \
-      ${degs_dir} $dir ;
+    ${degs_dir} $dir ;
 fi
 
+# decode the adjusted model
 if [ $stage -le 5 ]; then
   rm $dir/.error 2>/dev/null || true
 
   for x in `seq $decode_start_epoch $num_epochs`; do
     for data in dev_clean_2; do
         (
-        iter=epoch$x.adj
+        iter=epoch${x}_adj
         nspk=$(wc -l <data/${data}_hires/spk2utt)
 
         steps/nnet3/decode.sh \
@@ -209,13 +209,42 @@ if [ $stage -le 5 ]; then
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
 
+# decode the normal model
+if [ $stage -le 6 ]; then
+  rm $dir/.error 2>/dev/null || true
 
-if [ $stage -le 6 ] && $cleanup; then
+  for x in `seq $decode_start_epoch $num_epochs`; do
+    for data in dev_clean_2; do
+        (
+        iter=epoch${x}
+        nspk=$(wc -l <data/${data}_hires/spk2utt)
+
+        steps/nnet3/decode.sh \
+          --iter $iter \
+          --acwt 1.0 --post-decode-acwt 10.0 \
+          --extra-left-context 0 \
+          --extra-right-context 0 \
+          --extra-left-context-initial 0 \
+          --extra-right-context-final 0 \
+          --frames-per-chunk 140 \
+          --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
+          --online-ivector-dir exp/nnet3/ivectors_${data}_hires \
+          $tree_dir/graph_tgsmall data/${data}_hires ${dir}/decode_tgsmall_${data}_${iter} || exit 1
+        steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+            data/lang_test_{tgsmall,tglarge} \
+            data/${data}_hires ${dir}/decode_{tgsmall,tglarge}_${data}_${iter} || exit 1
+        ) || touch $dir/.error &
+    done
+  done
+  wait
+  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+fi
+
+if [ $stage -le 7 ] && $cleanup; then
   # if you run with "--cleanup true --stage 6" you can clean up.
   rm ${lats_dir}/lat.*.gz || true
   rm ${srcdir}_ali/ali.*.gz || true
   steps/nnet2/remove_egs.sh ${srcdir}_degs || true
 fi
-
 
 exit 0;
