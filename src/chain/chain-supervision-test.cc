@@ -367,9 +367,9 @@ void ChainSmbrTrainingTest(const DenominatorGraph &den_graph,
     nnet_output.SetRandn();
 
   ChainTrainingOptions opts;
-  opts.leaky_hmm_coefficient = 0.0;
-  //if (RandInt(0, 1) == 1)
-  //  opts.leaky_hmm_coefficient = 0.2;
+  if (RandInt(0, 1) == 1)
+    opts.leaky_hmm_coefficient = 0.2;
+  opts.leaky_hmm_coefficient = 0.1;
   
   {
     KALDI_LOG << "LF-MMI training";
@@ -806,7 +806,7 @@ int main() {
 #if HAVE_CUDA == 1
   for (loop = 0; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
-    if (false && loop == 0)
+    if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
     else
       CuDevice::Instantiate().SelectGpuId("yes");

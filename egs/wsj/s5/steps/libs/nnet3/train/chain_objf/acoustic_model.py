@@ -215,7 +215,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         buf_size=shuffle_buffer_size,
                         num_chunk_per_mb=num_chunk_per_minibatch_str,
                         smbr_opt="--use-smbr-objective"
-                                 if use_smbr_objective is not None else ""),
+                                 if use_smbr_objective else ""),
             require_zero_status=True)
 
         threads.append(thread)

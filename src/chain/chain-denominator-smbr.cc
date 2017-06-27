@@ -45,12 +45,14 @@ DenominatorSmbrComputation::DenominatorSmbrComputation(
            den_graph_.NumStates() * num_sequences_ + num_sequences_,
            kUndefined),
     alpha_smbr_(frames_per_sequence_ + 1,
-           den_graph_.NumStates() * num_sequences_ + num_sequences_),
+           den_graph_.NumStates() * num_sequences_ + num_sequences_,
+           kUndefined),
     beta_(2, den_graph_.NumStates() * num_sequences_ + num_sequences_,
           kUndefined),
-    beta_smbr_(2, den_graph_.NumStates() * num_sequences_ + num_sequences_),
+    beta_smbr_(2, den_graph_.NumStates() * num_sequences_ + num_sequences_,
+               kUndefined),
     tot_prob_(num_sequences_, kUndefined),
-    tot_smbr_(num_sequences_),
+    tot_smbr_(num_sequences_, kUndefined),
     ok_(true) {
   KALDI_ASSERT(opts_.leaky_hmm_coefficient >= 0.0 &&
                opts_.leaky_hmm_coefficient < 1.0);
@@ -69,7 +71,7 @@ DenominatorSmbrComputation::DenominatorSmbrComputation(
 }
 
 
-void DenominatorSmbrComputation::AlphaFirstFrame() {
+void DenominatorSmbrComputation::AlphaSmbrFirstFrame() {
   // dim == num_hmm_states_ * num_sequences_.
   BaseFloat *first_frame_alpha = alpha_.RowData(0);
   // create a 'fake matrix' - view this row as a matrix.
@@ -82,19 +84,14 @@ void DenominatorSmbrComputation::AlphaFirstFrame() {
   // CopyColsFromVec function in class CuMatrix.
   alpha_mat.SetZero();
   alpha_mat.AddVecToCols(1.0, den_graph_.InitialProbs(), 0.0);
-}
 
-
-void DenominatorSmbrComputation::AlphaSmbrFirstFrame() {
-  // dim == num_hmm_states_ * num_sequences_.
   BaseFloat *first_frame_alpha_smbr = alpha_smbr_.RowData(0);
   // create a 'fake matrix' - view this row as a matrix.
   // initializer takes [pointer, num-rows, num-cols, stride].
-  CuSubMatrix<BaseFloat> alpha_smbr_mat(first_frame_alpha_smbr,
-                                        den_graph_.NumStates(),
-                                        num_sequences_,
-                                        num_sequences_);
-  alpha_smbr_mat.SetZero();
+  CuSubVector<BaseFloat> alpha_smbr_vec(first_frame_alpha_smbr,
+                                        den_graph_.NumStates()
+                                        * num_sequences_);
+  alpha_smbr_vec.SetZero();
 }
 
 
@@ -187,13 +184,11 @@ void DenominatorSmbrComputation::AlphaSmbrGeneralFrame(int32 t) {
         // a good numeric range.  This won't affect the posteriors, but when
         // computing the total likelihood we'll need to compensate for it later
         // on.
-        BaseFloat arbitrary_scale = 
+        BaseFloat arbitrary_scale =
             1.0 / prev_alpha_dash[num_hmm_states * num_sequences + s];
         KALDI_ASSERT(this_tot_alpha - this_tot_alpha == 0);
         KALDI_ASSERT(this_tot_alpha_smbr - this_tot_alpha_smbr == 0);
         this_alpha[h * num_sequences + s] = this_tot_alpha * arbitrary_scale;
-        //this_alpha_smbr[h * num_sequences + s] = 
-        //  this_tot_alpha_smbr * arbitrary_scale;
         if (this_tot_alpha > 0.0) 
           this_alpha_smbr[h * num_sequences + s] = 
             this_tot_alpha_smbr / this_tot_alpha;
@@ -206,6 +201,7 @@ void DenominatorSmbrComputation::AlphaSmbrGeneralFrame(int32 t) {
 
 void DenominatorSmbrComputation::AlphaSmbrDash(int32 t) {
   BaseFloat *this_alpha = alpha_.RowData(t);
+  BaseFloat *this_alpha_smbr = alpha_smbr_.RowData(t);
 
   // create a 'fake matrix' for the regular alphas- view this row as a matrix.
   // initializer takes [pointer, num-rows, num-cols, stride].
@@ -214,6 +210,12 @@ void DenominatorSmbrComputation::AlphaSmbrDash(int32 t) {
                                    num_sequences_,
                                    num_sequences_);
 
+  CuSubMatrix<BaseFloat> alpha_smbr_mat(this_alpha_smbr,
+                                        den_graph_.NumStates(),
+                                        num_sequences_,
+                                        num_sequences_);
+  alpha_smbr_mat.MulElements(alpha_mat);
+
   // Compute the sum of alpha over all states i for the current time. 
   // This is done for each sequence and stored in the last 'num_sequences_'
   // columns.
@@ -221,21 +223,31 @@ void DenominatorSmbrComputation::AlphaSmbrDash(int32 t) {
                                        den_graph_.NumStates() * num_sequences_,
                                        num_sequences_);
   alpha_sum_vec.AddRowSumMat(1.0, alpha_mat, 0.0);
+  
+  CuSubVector<BaseFloat> alpha_smbr_sum_vec(
+      this_alpha_smbr + den_graph_.NumStates() * num_sequences_,
+      num_sequences_);
+  alpha_smbr_sum_vec.AddRowSumMat(1.0, alpha_smbr_mat, 0.0);
 
   BaseFloat alpha_sum = alpha_sum_vec.Sum();
   KALDI_VLOG(2) << "alpha-sum for time " << t << " is " << alpha_sum;
   KALDI_ASSERT(alpha_sum_vec.Min() > 0);
 
+  alpha_smbr_mat.AddVecVec(opts_.leaky_hmm_coefficient, 
+                           den_graph_.InitialProbs(),
+                           alpha_smbr_sum_vec);
   alpha_mat.AddVecVec(opts_.leaky_hmm_coefficient,
                       den_graph_.InitialProbs(),
                       alpha_sum_vec);
   // it's now alpha-dash.
-  //alpha_smbr_.Row(t).DivElements(alpha_.Row(t));
+  
+  alpha_smbr_mat.DivElements(alpha_mat);
 }
 
 // compute beta from beta-dash.
 void DenominatorSmbrComputation::BetaSmbr(int32 t) {
   BaseFloat *this_beta_dash = beta_.RowData(t % 2);
+  BaseFloat *this_beta_smbr_dash = beta_smbr_.RowData(t % 2);
   // create a 'fake matrix' for the regular beta-dash (which is
   // the counterpart of alpha-dash)- view this row as a matrix.
   // initializer takes [pointer, num-rows, num-cols, stride].
@@ -243,6 +255,13 @@ void DenominatorSmbrComputation::BetaSmbr(int32 t) {
                                        den_graph_.NumStates(),
                                        num_sequences_,
                                        num_sequences_);
+
+  CuSubMatrix<BaseFloat> beta_smbr_dash_mat(this_beta_smbr_dash,
+                                            den_graph_.NumStates(),
+                                            num_sequences_,
+                                            num_sequences_);
+  beta_smbr_dash_mat.MulElements(beta_dash_mat);
+
   // making the t index implicit, the beta-dash-sum for each sequence is the sum
   // over all states i of beta_i * opts_.leaky_hmm_coefficient * initial_prob_i.
   CuSubVector<BaseFloat> beta_dash_sum_vec(
@@ -250,15 +269,23 @@ void DenominatorSmbrComputation::BetaSmbr(int32 t) {
       num_sequences_);
   beta_dash_sum_vec.AddMatVec(opts_.leaky_hmm_coefficient, beta_dash_mat,
                               kTrans, den_graph_.InitialProbs(), 0.0);
+  CuSubVector<BaseFloat> beta_smbr_dash_sum_vec(
+      this_beta_smbr_dash + den_graph_.NumStates() * num_sequences_,
+      num_sequences_);
+  beta_smbr_dash_sum_vec.AddMatVec(opts_.leaky_hmm_coefficient, 
+                                   beta_smbr_dash_mat, kTrans,
+                                   den_graph_.InitialProbs(), 0.0);
+  
   // we are computing beta in place.  After the following, beta-dash-mat
   // will contain the actual beta (i.e. the counterpart of alpha),
   // not the beta-dash.
   beta_dash_mat.AddVecToRows(1.0, beta_dash_sum_vec);
-  //beta_smbr_.Row(t % 2).DivElements(beta_.Row(t % 2));
+
+  beta_smbr_dash_mat.AddVecToRows(1.0, beta_smbr_dash_sum_vec);
+  beta_smbr_dash_mat.DivElements(beta_dash_mat);
 }
 
 BaseFloat DenominatorSmbrComputation::ForwardSmbr() {
-  AlphaFirstFrame();
   AlphaSmbrFirstFrame();
   AlphaSmbrDash(0);
   for (int32 t = 1; t <= frames_per_sequence_; t++) {
@@ -304,7 +331,7 @@ BaseFloat DenominatorSmbrComputation::ComputeTotObjf() {
 bool DenominatorSmbrComputation::BackwardSmbr(
     BaseFloat deriv_weight,
     CuMatrixBase<BaseFloat> *nnet_output_deriv) {
-  BetaDashLastFrame();
+  BetaSmbrDashLastFrame();
   BetaSmbr(frames_per_sequence_);
   for (int32 t = frames_per_sequence_ - 1; t >= 0; t--) {
     BetaSmbrGeneralFrame(t);
@@ -333,7 +360,7 @@ bool DenominatorSmbrComputation::BackwardSmbr(
   return ok_;
 }
 
-void DenominatorSmbrComputation::BetaDashLastFrame() {
+void DenominatorSmbrComputation::BetaSmbrDashLastFrame() {
   // sets up the beta-dash quantity on the last frame (frame ==
   // frames_per_sequence_).  Note that the betas we use here contain a
   // 1/(tot-prob) factor in order to simplify the backprop.
@@ -351,15 +378,13 @@ void DenominatorSmbrComputation::BetaDashLastFrame() {
   // the beta values at the end of the file only vary with the sequence-index,
   // not with the HMM-index.  We treat all states as having a final-prob of one.
   beta_dash_mat.CopyRowsFromVec(inv_tot_prob);
-}
+  
+  BaseFloat *last_frame_beta_smbr_dash = beta_smbr_.RowData(t % 2);
 
-void DenominatorSmbrComputation::BetaSmbrLastFrame() {
-  // sets up the beta-dash quantity on the last frame (frame ==
-  // frames_per_sequence_).  Note that the betas we use here contain a
-  // 1/(tot-prob) factor in order to simplify the backprop.
-
-  int32 t = frames_per_sequence_;
-  beta_smbr_.Row(t % 2).SetZero();
+  CuSubVector<BaseFloat> beta_smbr_dash_vec(last_frame_beta_smbr_dash,
+                                            den_graph_.NumStates()
+                                            * num_sequences_);
+  beta_smbr_dash_vec.SetZero();
 }
 
 void DenominatorSmbrComputation::BetaSmbrGeneralFrame(int32 t) {
@@ -462,11 +487,9 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrame(int32 t) {
         }
         this_beta_dash[h * num_sequences + s] =
             tot_variable_factor / inv_arbitrary_scale;
-        //this_beta_smbr[h * num_sequences + s] = 
-        //    tot_beta_smbr / inv_arbitrary_scale;
-        if (tot_variable_factor > 0.0) 
+        if (tot_variable_factor > 0.0)
           this_beta_smbr[h * num_sequences + s] = 
-            tot_beta_smbr / tot_variable_factor;
+              tot_beta_smbr / tot_variable_factor;
         else
           this_beta_smbr[h * num_sequences + s] = 0.0;
       }
@@ -502,7 +525,6 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrameDebug(int32 t) {
 
   // alpha_smbr_vec is a vector of size 'num_hmm_states' * 'num_sequences_'
   CuVector<BaseFloat> alpha_beta_smbr_vec(this_beta_smbr);
-  //alpha_beta_smbr_vec.DivElements(this_beta_dash);
   alpha_beta_smbr_vec.AddVec(1.0, this_alpha_smbr, 1.0);
 
   CuVector<BaseFloat> alpha_beta_vec(this_alpha_dash);
@@ -524,14 +546,14 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrameDebug(int32 t) {
   //                / alpha_beta_product;
   // use higher tolerance, since we are using randomized pruning for the
   // log-prob derivatives.
-  ///if (!ApproxEqual(this_log_prob_deriv_sum, 0, 0.01)) {
-  ///  KALDI_WARN << "On time " << t << ", log-prob-deriv sum "
-  ///             << this_log_prob_deriv_sum << " != " << 0;
-  ///  if (fabs(this_log_prob_deriv_sum - 0) > 2.0) {
-  ///    KALDI_WARN << "Excessive error detected, will abandon this minibatch";
-  ///    ok_ = false;
-  ///  }
-  ///}
+  if (GetVerboseLevel() > 1 || !ApproxEqual(this_log_prob_deriv_sum, 0, 0.01)) {
+    KALDI_WARN << "On time " << t << ", log-prob-deriv sum "
+               << this_log_prob_deriv_sum << " != " << 0;
+    if (fabs(this_log_prob_deriv_sum - 0) > 2.0) {
+      KALDI_WARN << "Excessive error detected, will abandon this minibatch";
+      ok_ = false;
+    }
+  }
 }
 
 

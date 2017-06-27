@@ -248,8 +248,6 @@ class DenominatorSmbrComputation {
   enum { kMaxDerivTimeSteps = 8 };
 
   // sets up the alpha for frame t = 0.
-  void AlphaFirstFrame();
-  // sets up the alpha for frame t = 0.
   void AlphaSmbrFirstFrame();
   // the alpha computation for some 0 < t <= num_time_steps_.
   void AlphaSmbrGeneralFrame(int32 t);
@@ -264,8 +262,7 @@ class DenominatorSmbrComputation {
   // from the ForwardSmbr() computation).
   BaseFloat ComputeTotObjf();
 
-  void BetaDashLastFrame();
-  void BetaSmbrLastFrame();
+  void BetaSmbrDashLastFrame();
   // beta computation for 0 <= beta < num_time_steps_.
   void BetaSmbrGeneralFrame(int32 t);
   // compute the beta quantity from the beta-dash quantity (relates to leaky hmm).
