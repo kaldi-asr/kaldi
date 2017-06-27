@@ -20,8 +20,8 @@ parser.add_argument("data_dir",
 
 args = parser.parse_args()
 
-eos_symbol = '</s>'
-special_symbols = ['<s>', '<brk>', '<eps>']
+EOS_SYMBOL = '</s>'
+SPECIAL_SYMBOLS = ['<s>', '<brk>', '<eps>']
 
 if not os.path.exists(args.data_dir):
     sys.exit(sys.argv[0] + ": Expected directory {0} to exist".format(args.data_dir))
@@ -38,9 +38,9 @@ def CheckTextFile(text_file):
         found_nonempty_line = False
         lineno = 0
         if args.allow_internal_eos == 'true':
-            disallowed_symbols = special_symbols
+            disallowed_symbols = SPECIAL_SYMBOLS
         else:
-            disallowed_symbols = special_symbols + [eos_symbol]
+            disallowed_symbols = SPECIAL_SYMBOLS + [EOS_SYMBOL]
         for line in f:
             line = line.strip("\n")
             if line is None:
@@ -55,7 +55,7 @@ def CheckTextFile(text_file):
                     if word.lower() in disallowed_symbols:
                         sys.exit(sys.argv[0] + ": Found suspicious line '{0}' in file {1} at {2} ({3} "
                                  " symbol is disallowed!)".format(line, text_file, lineno, word))
-                if words[-1].lower() == eos_symbol:
+                if words[-1].lower() == EOS_SYMBOL:
                     sys.exit(sys.argv[0] + ": Found suspicious line '{0}' in file {1} at {2} (EOS symbol "
                              "at the end of a line is disallowed!)".format(line, text_file, lineno))
                 if len(words) >= 1000:

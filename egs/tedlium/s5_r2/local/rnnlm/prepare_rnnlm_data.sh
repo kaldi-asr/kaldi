@@ -12,16 +12,19 @@ export PYTHONIOENCODING='utf-8'
 # it should contain things like
 # foo.txt, bar.txt, and dev.txt (dev.txt is a special filename that's
 # obligatory).
-dir=data/rnnlm/
+data_dir=data/rnnlm
+dir=exp/rnnlm/
+mkdir -p $dir
 
 # validata data dir
-rnnlm/validate_data_dir.py $dir/data/
+rnnlm/validate_data_dir.py $data_dir/data/
 
 # get unigram counts
-rnnlm/get_unigram_counts.sh $dir/data/
+rnnlm/get_unigram_counts.sh $data_dir/data/
 
 # get vocab
-rnnlm/get_vocab.py $dir/data > $dir/vocab/words.txt
+mkdir -p $data_dir/vocab
+rnnlm/get_vocab.py $data_dir/data > $data_dir/vocab/words.txt
 
 # Choose weighting and multiplicity of data.
 # The following choices would mean that data-source 'foo'
@@ -36,7 +39,11 @@ rnnlm/get_vocab.py $dir/data > $dir/vocab/words.txt
 #bar 2   1.5
 #baz 0   0.0
 #EOF
-mkdir -p exp/rnnlm/
-cat > exp/rnnlm/data_weights.txt <<EOF
+cat > $dir/data_weights.txt <<EOF
 ted 1   1.0
 EOF
+
+# get unigram probs
+rnnlm/get_unigram_probs.py --vocab-file=$data_dir/vocab/words.txt \
+                           --data-weights-file=$dir/data_weights.txt \
+                           $data_dir/data > $dir/unigram_probs.txt
