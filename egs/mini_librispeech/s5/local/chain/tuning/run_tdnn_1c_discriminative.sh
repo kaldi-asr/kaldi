@@ -170,7 +170,7 @@ fi
 if [ $stage -le 4 ]; then
   steps/nnet3/train_discriminative.sh --cmd "$decode_cmd" \
     --stage $train_stage \
-    --effectiv-elrate $effective_learning_rate --max-param-change $max_param_change \
+    --effectiv-lrate $effective_learning_rate --max-param-change $max_param_change \
     --criterion $criterion --drop-frames true --acoustic-scale 1.0 \
     --num-epochs $num_epochs --one-silence-class $one_silence_class --minibatch-size $minibatch_size \
     --num-jobs-nnet $num_jobs_nnet --num-threads $num_threads \
