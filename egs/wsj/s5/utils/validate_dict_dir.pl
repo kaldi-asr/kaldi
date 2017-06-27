@@ -192,10 +192,7 @@ sub check_lexicon {
     }
     for ($n = 0; $n < $num_prob_cols; $n++) {
       $prob = shift @col;
-      if (!($prob <= 1.0)) {
-        print "--> WARNING: too large pron-prob in lexicon-line '$_', in $lex, ignore it if this is the boosted unknown word probability\n";
-      }
-      if (!($prob > 0.0)) {
+      if (!($prob > 0.0 && $prob <= 1.0)) {
         print "--> ERROR: bad pron-prob in lexicon-line '$_', in $lex\n";
         set_to_fail();
       }

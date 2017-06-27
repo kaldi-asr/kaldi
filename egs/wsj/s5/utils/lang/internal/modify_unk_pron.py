@@ -15,8 +15,7 @@ parser = argparse.ArgumentParser(description="""
 This script replaces the existing pronunciation of the
 unknown word in the provided lexicon, with a pronunciation
 consisting of three disambiguation symbols: #1 followed by #2
-followed by #3, and optionally boost the probability of the
-unknown word.
+followed by #3.
 The #2 will later be replaced by a phone-level LM by
 apply_unk_lm.sh (called later on by prepare_lang.sh).
 Caution: this script is sensitive to the basename of the
@@ -34,20 +33,12 @@ parser.add_argument('lexicon_file', type = str,
                     'both an input and output of this script).')
 parser.add_argument('unk_word', type = str,
                     help = "The printed form of the unknown/OOV word, normally '<unk>'.")
-parser.add_argument('--boost-unk', type = float, default = 1.0,
-                    help = "Factor by which to boost the unk probability in the lexion.")
 
 args = parser.parse_args()
 
 if len(args.unk_word.split()) != 1:
     sys.exit("{0}: invalid unknown-word '{1}'".format(
         sys.argv[0], args.unk_word))
-try:
-    boost_unk = float(args.boost_unk)
-    assert(boost_unk > 0.0)
-except:
-    sys.exit("{0}: invalid boost_unk factor:", args.boost_unk)
-
 
 basename = os.path.basename(args.lexicon_file)
 if basename != 'lexiconp.txt' and basename != 'lexiconp_silprob.txt':
@@ -96,9 +87,8 @@ if unk_index == -1:
 
 lexicon_in.close()
 
-# now modify the pronprob and the pron.
-unk_prob = float(split_lines[unk_index][1]) * boost_unk
-split_lines[unk_index] = [split_lines[unk_index][0], str(unk_prob)] + split_lines[unk_index][2:num_fields_before_pron] + [ '#1', '#2', '#3' ]
+# now modify the pron.
+split_lines[unk_index] = split_lines[unk_index][0:num_fields_before_pron] + [ '#1', '#2', '#3' ]
 
 
 try:

@@ -67,10 +67,6 @@ extra_word_disambig_syms=        # if set, add disambiguation symbols from this 
 num_extra_phone_disambig_syms=1 # Standard one phone disambiguation symbol is used for optional silence.
                                 # Increasing this number does not harm, but is only useful if you later
                                 # want to introduce this labels to L_disambig.fst
-boost_unk=1.0 # for unknown-word modeling, we provide this option to boost the unknown-word's probability
-              # in the lexicon, in case the unknown-words' LM probability is improper (e.g. in Switchboard 
-              # LM training text, there's no out-of-vocab word).
-
 # end configuration sections
 
 echo "$0 $@"  # Print the command line for logging
@@ -98,10 +94,6 @@ if [ $# -ne 4 ]; then
   echo "                                                     # This is for if you want to model the unknown word"
   echo "                                                     # via a phone-level LM rather than a special phone"
   echo "                                                     # (this should be more useful for test-time than train-time)."
-  echo "     --boost-unk <float>                             # default: 1.0 [must have boost-unk >= 0] "
-  echo "                                                     # for unknown-word modeling, we provide this option to boost"
-  echo "                                                     # the unknown-word's probability in the lexicon, in case the"
-  echo "                                                     # unknown-words' LM probability is improper. "
   echo "     --extra-word-disambig-syms <filename>           # default: \"\"; if not empty, add disambiguation symbols"
   echo "                                                     # from this file (one per line) to phones/disambig.txt,"
   echo "                                                     # phones/wdisambig.txt and words.txt"
@@ -281,9 +273,9 @@ fi
 # FST due to the optional-silence [the last phone of any word gets 2 arcs].
 if [ ! -z "$unk_fst" ]; then  # if the --unk-fst option was provided...
   if "$silprob"; then
-    utils/lang/internal/modify_unk_pron.py --boost-unk=$boost_unk $tmpdir/lexiconp_silprob.txt "$oov_word" || exit 1
+    utils/lang/internal/modify_unk_pron.py $tmpdir/lexiconp_silprob.txt "$oov_word" || exit 1
   else
-    utils/lang/internal/modify_unk_pron.py --boost-unk=$boost_unk $tmpdir/lexiconp.txt "$oov_word" || exit 1
+    utils/lang/internal/modify_unk_pron.py $tmpdir/lexiconp.txt "$oov_word" || exit 1
   fi
   unk_opt="--first-allowed-disambig 4"
 else

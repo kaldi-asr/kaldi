@@ -96,7 +96,7 @@ foreach $l (@L) {
     shift @A; # Remove word.
     if ($pron_probs) {
       $p = shift @A;
-      if (!($p > 0.0)) { die "Bad lexicon line $l (expecting pron-prob as second field)"; }
+      if (!($p > 0.0 && $p <= 1.0)) { die "Bad lexicon line $l (expecting pron-prob as second field)"; }
     }
     if ($sil_probs) {
       $silp = shift @A;

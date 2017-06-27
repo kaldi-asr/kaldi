@@ -94,7 +94,7 @@ while (<L>) {
   @A = split(" ", $_);
   $w = shift @A;
   $pron_prob = shift @A;
-  if (! defined $pron_prob || !($pron_prob > 0.0)) {
+  if (! defined $pron_prob || !($pron_prob > 0.0 && $pron_prob <= 1.0)) {
     die "Bad pronunciation probability in line $_";
   }
 

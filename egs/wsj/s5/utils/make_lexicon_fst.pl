@@ -76,7 +76,7 @@ if ( $silprob == 0.0 ) { # No optional silences: just have one (loop+final) stat
       $pron_cost = 0.0;
     } else {
       $pron_prob = shift @A;
-      if (! defined $pron_prob || !($pron_prob > 0.0)) {
+      if (! defined $pron_prob || !($pron_prob > 0.0 && $pron_prob <= 1.0)) {
         die "Bad pronunciation probability in line $_";
       }
       $pron_cost = -log($pron_prob);
@@ -122,7 +122,7 @@ if ( $silprob == 0.0 ) { # No optional silences: just have one (loop+final) stat
       $pron_cost = 0.0;
     } else {
       $pron_prob = shift @A;
-      if (! defined $pron_prob || !($pron_prob > 0.0)) {
+      if (! defined $pron_prob || !($pron_prob > 0.0 && $pron_prob <= 1.0)) {
         die "Bad pronunciation probability in line $_";
       }
       $pron_cost = -log($pron_prob);
