@@ -37,6 +37,10 @@ for f in os.listdir(args.data_dir):
     if f.endswith(".counts"):
         AddCounts(word_counts, full_path)
 
+if len(word_counts) == 0:
+    sys.exit(sys.argv[0] + ": Directory {0} should contain at least one .counts file "
+             .format(args.data_dir))
+
 print("<eps> 0")
 print("<s> 1")
 print("</s> 2")
@@ -48,3 +52,5 @@ for word, _ in sorted(word_counts.items(), key=lambda x: x[1], reverse=True):
         continue
     print("{0} {1}".format(word, idx))
     idx += 1
+
+print(sys.argv[0] + ": vocab is generated with {0} words.".format(idx), file=sys.stderr)
