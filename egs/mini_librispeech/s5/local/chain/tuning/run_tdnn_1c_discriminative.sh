@@ -8,7 +8,7 @@ set -e
 # note: this relies on having a cluster that has plenty of CPUs as well as GPUs,
 # the lattice generation runs in about real-time
 
-stage=4
+stage=0
 train_stage=-10 # can be used to start training in the middle.
 get_egs_stage=-10
 use_gpu=true  # for training
