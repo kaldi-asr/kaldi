@@ -63,13 +63,23 @@ def ReadUnigramProbs(unigram_probs_file):
 #   feats['special'] is a dict whose key is special words and value is the feat_id
 #   feats['unigram'] is a tuple with (feat_id, log_ppl)
 #   feats['length']  is a int represents feat_id
-#   feats['ngram']   is a list of tuple with (feat_id, feat_type, ngram),
-#                    where feat_type can be 'match', 'initial', 'final' or 'word',
-#                    ngram is the substr used to compare
+#
+#   feats['match']
+#   feats['initial']
+#   feats['final']
+#   feats['word']    is a dict with key is ngram, value is feat_id for each type
+#                    of ngram feature respectively.
+#   feats['min_ngram_order'] is a int represents min-ngram-order
+#   feats['max_ngram_order'] is a int represents max-ngram-order
 def ReadFeatures(features_file):
     feats = {}
     feats['special'] = {}
-    feats['ngram'] = []
+    feats['match'] = {}
+    feats['initial'] = {}
+    feats['final'] = {}
+    feats['word'] = {}
+    feats['min_ngram_order'] = 10000
+    feats['max_ngram_order'] = -1
 
     with open(features_file, 'r', encoding="utf-8") as f:
         for line in f:
@@ -85,7 +95,19 @@ def ReadFeatures(features_file):
             elif feat_type == 'length':
                 feats['length'] = feat_id
             elif feat_type in ['word', 'match', 'initial', 'final']:
-                feats['ngram'].append((feat_id, feat_type, fields[2]))
+                ngram = fields[2]
+                feats[feat_type][ngram] = feat_id
+                if feat_type == 'word':
+                    order = len(ngram) + 2
+                elif feat_type in ['initial', 'final']:
+                    order = len(ngram) + 1
+                else:
+                    order = len(ngram)
+                if order > feats['max_ngram_order']:
+                    feats['max_ngram_order'] = order
+                if order < feats['min_ngram_order']:
+                    feats['min_ngram_order'] = order
+                    feats['max_ngram_order'] = order
             else:
                 sys.exit(sys.argv[0] + ": error feature type: {0}".format(feat_type))
 
@@ -121,30 +143,38 @@ for word, idx in sorted(vocab.items(), key=lambda x:x[1]):
         print(prefix + "{0} {1}".format(feat_id, len(word)), end="")
         prefix = " "
 
-    for ngram_feat in feats['ngram']:
-        feat_id = ngram_feat[0]
-        feat_type = ngram_feat[1]
-        ngram = ngram_feat[2]
+    if word in feats['word']:
+        feat_id = feats['word'][word]
+        print(prefix + "{0} 1".format(feat_id), end="")
+        prefix = " "
 
-        active = False
-        if feat_type == "match":
-            if ngram in word:
-                active = True
-        elif feat_type == "initial":
-            if len(word) >= len(ngram) and word[:len(ngram)] == ngram:
-                active = True
-        elif feat_type == "final":
-            if len(word) >= len(ngram) and word[len(word)-len(ngram):] == ngram:
-                active = True
-        elif feat_type == "word":
-            if word == ngram:
-                active = True
-        else:
-            sys.exit(sys.argv[0] + ": error feature type: {0}".format(feat_type))
+    for pos in range(len(word) + 1): # +1 for EOW
+        for order in range(feats['min_ngram_order'], feats['max_ngram_order'] + 1):
+            start = pos - order + 1
+            end = pos + 1
 
-        if active:
-            print(prefix + "{0} 1".format(feat_id), end="")
-            prefix = " "
+            if start < -1:
+                continue
+
+            if start < 0 and end > len(word):
+                # 'word' feature, which we already match before
+                continue
+            elif start < 0:
+                ngram_feats = feats['initial']
+                start = 0
+            elif end > len(word):
+                ngram_feats = feats['final']
+                end = len(word)
+            else:
+                ngram_feats = feats['match']
+            if start >= end:
+                continue
+
+            feat = word[start:end]
+            if feat in ngram_feats:
+                feat_id = ngram_feats[feat]
+                print(prefix + "{0} 1".format(feat_id), end="")
+                prefix = " "
 
     print("")
 
