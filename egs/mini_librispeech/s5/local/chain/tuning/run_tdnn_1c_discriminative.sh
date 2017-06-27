@@ -151,7 +151,7 @@ if [ -z "$degs_dir" ]; then
   if [ $stage -le 3 ]; then
     if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d ${srcdir}_degs/storage ]; then
       utils/create_split_dir.pl \
-        /export/b0{1,2,12,13}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5/${srcdir}_degs/storage ${srcdir}_degs/storage
+        /export/b0{3,4,5,6}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5/${srcdir}_degs/storage ${srcdir}_degs/storage
     fi
     # have a higher maximum num-jobs if
     if [ -d ${srcdir}_degs/storage ]; then max_jobs=10; else max_jobs=5; fi
