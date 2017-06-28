@@ -37,23 +37,24 @@ dir=${@: -1}  # last argument to the script
 shift;
 
 targets_dirs=( $@ )  # read the remaining arguments into an array
-unset targets_dir[${#targets_dirs[@]}-1]  # 'pop' the last argument which is odir
+unset targets_dirs[${#targets_dirs[@]}-1]  # 'pop' the last argument which is odir
 num_sources=${#targets_dirs[@]}  # number of targets to combine
 
 utils/data/split_data.sh --per-utt $data $nj
+sdata=${data}/split${nj}utt
 
 frame_subsampling_factor=1
-if [ ! -f ${targets_dir[0]}/frame_subsampling_factor ]; then
-  frame_subsampling_factor=$(cat ${targets_dir[0]}/frame_subsampling_factor) || exit 1
+if [ -f ${targets_dir[0]}/frame_subsampling_factor ]; then
+  frame_subsampling_factor=$(cat ${targets_dirs[0]}/frame_subsampling_factor) || exit 1
 fi
 
 for t in ${targets_dirs[@]}; do
   this_frame_subsampling_factor=1
-  if [ ! -f $t/frame_subsampling_factor ]; then
+  if [ -f $t/frame_subsampling_factor ]; then
     this_frame_subsampling_factor=$(cat $t/frame_subsampling_factor) || exit 1
   fi
   if [ $this_frame_subsampling_factor -ne $frame_subsampling_factor ]; then
-    echo "$0: Mismatch in frame_subsampling_factor in $t and ${targets_dir[0]}; $this_frame_subsampling_factor vs $frame_subsampling_factor"
+    echo "$0: Mismatch in frame_subsampling_factor in $t and ${targets_dirs[0]}; $this_frame_subsampling_factor vs $frame_subsampling_factor"
     exit 1
   fi
   targets_rspecifiers+=("scp:utils/filter_scp.pl $sdata/JOB/utt2spk $t/targets.scp |")
@@ -63,7 +64,7 @@ done
 fdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $dir ${PWD}`
 
 $cmd JOB=1:$nj $dir/log/merge_targets.JOB.log \
-  paste-feats "${targets_rspecifier[@]}" ark,t:- \| \
+  paste-feats "${targets_rspecifiers[@]}" ark,t:- \| \
   steps/segmentation/internal/merge_targets.py --weights="$weights" \
     --remove-mismatch-frames=$remove_mismatch_frames - - \| \
   copy-feats ark,t:- ark,scp:$fdir/targets.JOB.ark,$fdir/targets.JOB.scp || exit 1

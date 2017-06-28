@@ -98,7 +98,7 @@ def run(args):
                               nc=mat.shape[1], dim=args.dim))
             num_sources = mat.shape[1] / args.dim
 
-            out_mat = np.zeros([mat.shape[0], args.dim])
+            out_mat = np.matrix(np.zeros([mat.shape[0], args.dim]))
 
             if args.remove_mismatch_frames:
                 for n in range(mat.shape[0]):
@@ -129,7 +129,8 @@ def run(args):
                         mat[:, (i * args.dim) : ((i+1) * args.dim)]
                         * (1.0 if args.weights is None else args.weights[i]))
 
-            common_lib.write_matrix_ascii(targets_writer, out_mat, key=key)
+            common_lib.write_matrix_ascii(targets_writer, out_mat.tolist(),
+                                          key=key)
             num_done += 1
 
     logger.info("Merged {num_done} target matrices"
