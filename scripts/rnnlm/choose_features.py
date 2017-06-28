@@ -42,7 +42,7 @@ parser.add_argument("--top-word-features", type=int, default=2000,
                          "that the word may naturally get.")
 parser.add_argument("--special-words", type=str, default='<s>,</s>,<brk>',
                     help="List of special words that get their own special "
-                        "features and do not get any other features.")
+                         "features and do not get any other features.")
 
 parser.add_argument("vocab_file",
                     help="Path for vocab file")
@@ -56,8 +56,9 @@ if args.max_ngram_order < args.min_ngram_order:
 
 SPECIAL_SYMBOLS = ["<eps>", "<s>", "<brk>"]
 
+
 # read the voab
-def ReadVocab(vocab_file):
+def read_vocab(vocab_file):
     vocab = {}
     with open(vocab_file, 'r', encoding="utf-8") as f:
         for line in f:
@@ -76,8 +77,9 @@ def ReadVocab(vocab_file):
 
     return vocab
 
+
 # read the unigram probs
-def ReadUnigramProbs(unigram_probs_file):
+def read_unigram_probs(unigram_probs_file):
     unigram_probs = []
     with open(unigram_probs_file, 'r', encoding="utf-8") as f:
         for line in f:
@@ -89,13 +91,13 @@ def ReadUnigramProbs(unigram_probs_file):
             unigram_probs[idx] = float(fields[1])
 
     for prob in unigram_probs:
-        assert not prob is None
+        assert prob is not None
 
     return unigram_probs
 
-vocab = ReadVocab(args.vocab_file)
-wordlist = [ x[0] for x in sorted(vocab.items(), key=lambda x:x[1]) ]
-unigram_probs = ReadUnigramProbs(args.unigram_probs)
+vocab = read_vocab(args.vocab_file)
+wordlist = [x[0] for x in sorted(vocab.items(), key=lambda x:x[1])]
+unigram_probs = read_unigram_probs(args.unigram_probs)
 assert len(unigram_probs) == len(wordlist)
 
 vocab_size = len(vocab) - len(SPECIAL_SYMBOLS)
@@ -128,7 +130,7 @@ if args.include_length_feature == 'true':
 # top words features
 top_words = {}
 if args.top_word_features > 0:
-    sorted_words = sorted(zip(wordlist, unigram_probs), key=lambda x:x[1], reverse=True)
+    sorted_words = sorted(zip(wordlist, unigram_probs), key=lambda x: x[1], reverse=True)
     num_words = 0
     for word, _ in sorted_words:
         if word in SPECIAL_SYMBOLS + ["</s>"]:
@@ -152,7 +154,7 @@ for word in wordlist:
         continue
 
     word_freq = unigram_probs[vocab[word]]
-    for pos in range(len(word) + 1): # +1 for EOW
+    for pos in range(len(word) + 1):  # +1 for EOW
         for order in range(args.min_ngram_order, args.max_ngram_order + 1):
             start = pos - order + 1
             end = pos + 1

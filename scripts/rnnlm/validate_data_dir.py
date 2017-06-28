@@ -33,7 +33,7 @@ if not os.path.exists("{0}/dev.txt".format(args.data_dir)):
 num_text_files = 0
 
 
-def CheckTextFile(text_file):
+def check_text_file(text_file):
     with open(text_file, 'r', encoding="utf-8") as f:
         found_nonempty_line = False
         lineno = 0
@@ -60,7 +60,7 @@ def CheckTextFile(text_file):
                              "at the end of a line is disallowed!)".format(line, text_file, lineno))
                 if len(words) >= 1000:
                     print(sys.argv[0] + ": Too long line with {0} words in file "
-                             "{1} at {2}".format(len(words), text_file, lineno), file=sys.stderr)
+                          "{1} at {2}".format(len(words), text_file, lineno), file=sys.stderr)
     if not found_nonempty_line:
         sys.exit(sys.argv[0] + ": Input file {0} doesn't look right.".format(text_file))
 
@@ -102,7 +102,7 @@ for f in os.listdir(args.data_dir):
                  "other than .txt: " + f)
     if not os.path.isfile(full_path):
         sys.exit(sys.argv[0] + ": Expected {0} to be a file.".format(full_path))
-    CheckTextFile(full_path)
+    check_text_file(full_path)
     num_text_files += 1
 
 if num_text_files < 2:

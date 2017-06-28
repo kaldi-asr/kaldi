@@ -21,8 +21,9 @@ parser.add_argument("features_file", help="Path for features file")
 
 args = parser.parse_args()
 
+
 # read the voab
-def ReadVocab(vocab_file):
+def read_vocab(vocab_file):
     vocab = {}
     with open(vocab_file, 'r', encoding="utf-8") as f:
         for line in f:
@@ -41,8 +42,9 @@ def ReadVocab(vocab_file):
 
     return vocab
 
+
 # read the unigram probs
-def ReadUnigramProbs(unigram_probs_file):
+def read_unigram_probs(unigram_probs_file):
     unigram_probs = []
     with open(unigram_probs_file, 'r', encoding="utf-8") as f:
         for line in f:
@@ -54,9 +56,10 @@ def ReadUnigramProbs(unigram_probs_file):
             unigram_probs[idx] = float(fields[1])
 
     for prob in unigram_probs:
-        assert not prob is None
+        assert prob is not None
 
     return unigram_probs
+
 
 # read the features
 # output is a dict with key can be 'special', 'unigram', 'length' and 'ngram',
@@ -71,7 +74,7 @@ def ReadUnigramProbs(unigram_probs_file):
 #                    of ngram feature respectively.
 #   feats['min_ngram_order'] is a int represents min-ngram-order
 #   feats['max_ngram_order'] is a int represents max-ngram-order
-def ReadFeatures(features_file):
+def read_features(features_file):
     feats = {}
     feats['special'] = {}
     feats['match'] = {}
@@ -112,11 +115,11 @@ def ReadFeatures(features_file):
 
     return feats
 
-vocab = ReadVocab(args.vocab_file)
-unigram_probs = ReadUnigramProbs(args.unigram_probs)
-feats = ReadFeatures(args.features_file)
+vocab = read_vocab(args.vocab_file)
+unigram_probs = read_unigram_probs(args.unigram_probs)
+feats = read_features(args.features_file)
 
-for word, idx in sorted(vocab.items(), key=lambda x:x[1]):
+for word, idx in sorted(vocab.items(), key=lambda x: x[1]):
     print("{0}".format(idx), end="")
 
     if idx == 0:
@@ -147,7 +150,7 @@ for word, idx in sorted(vocab.items(), key=lambda x:x[1]):
         print(prefix + "{0} 1".format(feat_id), end="")
         prefix = " "
 
-    for pos in range(len(word) + 1): # +1 for EOW
+    for pos in range(len(word) + 1):  # +1 for EOW
         for order in range(feats['min_ngram_order'], feats['max_ngram_order'] + 1):
             start = pos - order + 1
             end = pos + 1

@@ -17,7 +17,8 @@ args = parser.parse_args()
 eos_symbol = '</s>'
 special_symbols = ['<s>', '<brk>', '<eps>']
 
-def AddCounts(word_counts, text_file):
+
+def add_counts(word_counts, text_file):
     with open(text_file, 'r', encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -35,7 +36,7 @@ for f in os.listdir(args.data_dir):
     if os.path.isdir(full_path):
         continue
     if f.endswith(".counts"):
-        AddCounts(word_counts, full_path)
+        add_counts(word_counts, full_path)
 
 if len(word_counts) == 0:
     sys.exit(sys.argv[0] + ": Directory {0} should contain at least one .counts file "

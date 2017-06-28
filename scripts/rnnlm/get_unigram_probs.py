@@ -6,8 +6,8 @@ import sys
 
 parser = argparse.ArgumentParser(description="This script gets the unigram probabilities of words.",
                                  epilog="E.g. " + sys.argv[0] + " --vocab-file=data/rnnlm/vocab/words.txt "
-                                         "--data-weights-file=exp/rnnlm/data_weights.txt data/rnnlm/data "
-                                         "> exp/rnnlm/unigram_probs.txt",
+                                        "--data-weights-file=exp/rnnlm/data_weights.txt data/rnnlm/data "
+                                        "> exp/rnnlm/unigram_probs.txt",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 parser.add_argument("--vocab-file", type=str, default='', required=True,
@@ -25,8 +25,9 @@ args = parser.parse_args()
 
 SPECIAL_SYMBOLS = ["<eps>", "<s>", "<brk>"]
 
+
 # get the name with txt and counts file path for all data sorces
-def GetAllDataSources(data_dir):
+def get_all_data_sources(data_dir):
     data_sources = {}
     for f in os.listdir(data_dir):
         full_path = data_dir + "/" + f
@@ -54,8 +55,9 @@ def GetAllDataSources(data_dir):
 
     return data_sources
 
+
 # read the data-weights for data sorces
-def ReadDataWeights(weights_file, data_sources):
+def read_data_weights(weights_file, data_sources):
     data_weights = {}
     with open(weights_file, 'r', encoding="utf-8") as f:
         for line in f:
@@ -67,13 +69,14 @@ def ReadDataWeights(weights_file, data_sources):
             data_weights[fields[0]] = (int(fields[1]), float(fields[2]))
 
     for name in data_sources.keys():
-        if not name in data_weights:
+        if name not in data_weights:
             sys.exit(sys.argv[0] + ": Weight for data source '{0}' not set".format(name))
 
     return data_weights
 
+
 # read the voab
-def ReadVocab(vocab_file):
+def read_vocab(vocab_file):
     vocab = {}
     with open(vocab_file, 'r', encoding="utf-8") as f:
         for line in f:
@@ -92,8 +95,9 @@ def ReadVocab(vocab_file):
 
     return vocab
 
+
 # Get total (weighted) count for words from all data_sources
-def GetCounts(data_sources, data_weights, vocab):
+def get_counts(data_sources, data_weights, vocab):
     counts = [0.0] * len(vocab)
 
     for name, (_, counts_file) in data_sources.items():
@@ -110,13 +114,14 @@ def GetCounts(data_sources, data_weights, vocab):
 
     return counts
 
+
 # Smooth counts and get unigram probs for words
-def GetUnigramProb(vocab, counts, smooth_constant):
+def get_unigram_probs(vocab, counts, smooth_constant):
     special_symbol_ids = [vocab[x] for x in SPECIAL_SYMBOLS]
     vocab_size = len(vocab) - len(SPECIAL_SYMBOLS)
     num_words_with_non_zero_counts = 0
     for word_id, count in enumerate(counts):
-        if word_id in special_symbol_ids :
+        if word_id in special_symbol_ids:
             continue
         if counts[word_id] > 0:
             num_words_with_non_zero_counts += 1
@@ -141,12 +146,12 @@ def GetUnigramProb(vocab, counts, smooth_constant):
     return probs
 
 
-data_sources = GetAllDataSources(args.data_dir)
-data_weights = ReadDataWeights(args.data_weights_file, data_sources)
-vocab = ReadVocab(args.vocab_file)
+data_sources = get_all_data_sources(args.data_dir)
+data_weights = read_data_weights(args.data_weights_file, data_sources)
+vocab = read_vocab(args.vocab_file)
 
-counts = GetCounts(data_sources, data_weights, vocab)
-probs = GetUnigramProb(vocab, counts, args.smooth_unigram_counts)
+counts = get_counts(data_sources, data_weights, vocab)
+probs = get_unigram_probs(vocab, counts, args.smooth_unigram_counts)
 
 for idx, p in enumerate(probs):
     print(idx, p)

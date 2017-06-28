@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser(description="Validates features file, produced 
 
 parser.add_argument("--special-words", type=str, default='<s>,</s>,<brk>',
                     help="List of special words that get their own special "
-                        "features and do not get any other features.")
+                         "features and do not get any other features.")
 parser.add_argument("features_file",
                     help="File containing features")
 
@@ -48,7 +48,7 @@ with open(args.features_file, 'r', encoding="utf-8") as f:
                 sys.exit(sys.argv[0] + ": Too many 'length' features")
             has_length = True
         else:
-            if fields[1]  == "special":
+            if fields[1] == "special":
                 if not fields[2] in special_words:
                     sys.exit(sys.argv[0] + ": Not a special word: {0}".format(fields[2]))
             elif fields[1] == "unigram":
