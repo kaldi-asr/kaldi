@@ -70,7 +70,8 @@ egs_weight=1.0    # The weight which determines how much each training example
                            # contributes to gradients while training (can be used
                            # to down/up-weight a dataset)
 lattice_prune_beam=         # If supplied, the lattices will be pruned to this beam,
-                      # before being used to get supervisions.
+                            # before being used to get supervisions.
+phone_insertion_penalty=
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -318,6 +319,9 @@ chain_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$ali
 
 [ ! -z $lattice_lm_scale ] && \
   chain_supervision_all_opts="$chain_supervision_all_opts --lm-scale=$lattice_lm_scale"
+
+[ ! -z $phone_insertion_penalty ] && \
+  chain_supervision_all_opts="$chain_supervision_all_opts --phone-ins-penalty=$phone_insertion_penalty"
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context

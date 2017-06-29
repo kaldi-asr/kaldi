@@ -18,14 +18,15 @@ train_supervised_opts="--stage -10 --train-stage -10"
 decode_affix=
 egs_affix=  # affix for the egs that are generated from unsupervised data and for the comined egs dir
 comb_affix=_comb1a  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
-unsup_frames_per_eg=  # if empty will be equal to the supervised model's config
+unsup_frames_per_eg=  # if empty will be equal to the supervised model's config -- you will need to change minibatch_size for comb training accordingly
 unsup_egs_weight=1.0
 lattice_lm_scale=0.0  # lm-scale for using the weights from unsupervised lattices
 lattice_prune_beam=2.0  # If supplied will prune the lattices prior to getting egs for unsupervised data
 left_tolerance=2
 right_tolerance=2
 train_combined_opts="--num-epochs 4.5"
-
+graph_affix=   # can be used to decode the unsup data with another lm/graph
+phone_insertion_penalty=
 # to tune:
 # frames_per_eg for unsupervised
 
@@ -37,6 +38,7 @@ echo "$0 $@"  # Print the command line for logging
 . ./utils/parse_options.sh
 
 nnet3_affix=_semi${semi_affix}  # affix for nnet3 and chain dirs
+decode_affix=${decode_affix}${graph_affix}
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -72,11 +74,15 @@ cmvn_opts=`cat $chaindir/cmvn_opts`
 
 if [ $stage -le 0 ]; then
   echo "$0: getting the decoding lattices for the unsupervised subset using the chain model at: $chaindir"
+  graphdir=$chaindir/graph${graph_affix}
+  if [ ! -f $graphdir/HCLG.fst ]; then
+    utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test${graph_affix} $chaindir $graphdir
+  fi
   steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
             --acwt 1.0 --post-decode-acwt 10.0 \
             --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${unsupervised_set}_hires \
             --scoring-opts "--min-lmwt 5 " \
-            $chaindir/graph data/${unsupervised_set}_hires $chaindir/decode_${unsupervised_set}${decode_affix}
+            $chaindir/graph${graph_affix} data/${unsupervised_set}_hires $chaindir/decode_${unsupervised_set}${decode_affix}
   ln -s ../final.mdl $chaindir/decode_${unsupervised_set}${decode_affix}/final.mdl || true
 fi
 
@@ -91,6 +97,7 @@ if [ $stage -le 1 ]; then
              --cmvn-opts "$cmvn_opts" --lattice-lm-scale $lattice_lm_scale \
              --lattice-prune-beam "$lattice_prune_beam" \
              --egs-weight $unsup_egs_weight \
+             --phone-insertion-penalty "$phone_insertion_penalty" \
              --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${unsupervised_set}_hires \
              data/${unsupervised_set}_hires $chaindir \
              ${chaindir}/decode_${unsupervised_set}${decode_affix} $chaindir/unsup_egs${decode_affix}${egs_affix}
