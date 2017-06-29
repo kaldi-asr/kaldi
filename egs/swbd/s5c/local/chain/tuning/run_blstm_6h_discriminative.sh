@@ -191,8 +191,6 @@ if [ $stage -le 4 ]; then
     --num-epochs $num_epochs --one-silence-class $one_silence_class --minibatch-size $minibatch_size \
     --num-jobs-nnet $num_jobs_nnet --num-threads $num_threads \
     --regularization-opts "$regularization_opts" --use-frame-shift false \
-    --adjust-priors false \
-    --modify-learning-rates false \
       ${degs_dir} $dir ;
 fi
 
@@ -202,7 +200,7 @@ if [ $stage -le 5 ]; then
     for decode_set in train_dev eval2000 rt03; do
       (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      iter=epoch$x.adj
+      iter=epoch$x_adj
 
       steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
         --acwt 1.0 --post-decode-acwt 10.0 \
