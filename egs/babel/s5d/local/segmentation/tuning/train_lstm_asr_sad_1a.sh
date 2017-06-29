@@ -124,10 +124,10 @@ if [ $stage -le 6 ]; then
     --cleanup.remove-egs=$remove_egs \
     --cleanup.preserve-model-interval=10 \
     --use-gpu=true \
-    --use-dense-targets=false \
+    --use-dense-targets=true \
     --feat-dir=$data_dir \
     --targets-scp="$targets_dir/targets.scp" \
-    --egs.opts="--scp2ark \"prob-to-post scp:- ark:- |\" --frame-subsampling-factor 3 --num-utts-subset $num_utts_subset" \
+    --egs.opts="--frame-subsampling-factor 3 --num-utts-subset $num_utts_subset" \
     --dir=$dir || exit 1
 
   copy-feats scp:$targets_dir/targets.scp ark:- | \

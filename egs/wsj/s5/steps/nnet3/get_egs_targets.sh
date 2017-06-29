@@ -27,18 +27,6 @@ target_type=sparse  # dense to have dense targets,
                     # sparse to have posteriors targets
 num_targets=        # required for target-type=sparse with raw nnet
 frame_subsampling_factor=1
-scp2ark=          # This command is used to convert any scp to an archive of 
-                  # either a matrix or a posteriors depending on whether 
-                  # target-type is dense or sparse respectively.
-                  # e.g. 1) If you have matrix scp, then it can be converted 
-                  # to sparse targets in posterior archive format using 
-                  # prob-to-post.
-                  # 2) If you have an alignment scp, then it can be converted 
-                  # to sparse targets in posterior archive format using 
-                  # ali-to-post
-                  # 3) If you have an alignment scp, then it can be converted 
-                  # to dense targets in matrix archive format using 
-                  # ali-to-post | post-to-feats --dim=<dim>
 length_tolerance=2
 frames_per_eg=8   # number of frames of labels per example.  more->less disk space and
                   # less time preparing egs, but more I/O during training.
@@ -321,21 +309,15 @@ fi
 case $target_type in
   "dense")
     get_egs_program="nnet3-get-egs-dense-targets --num-targets=$num_targets"
-    if [ -z "$scp2ark" ]; then
-      scp2ark="copy-feats scp:- ark:- |"
-    fi
-    targets="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | $scp2ark"
-    valid_targets="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $targets_scp |  $scp2ark"
-    train_subset_targets="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $targets_scp | $scp2ark"
+    targets="scp,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split |"
+    valid_targets="scp,s,cs:utils/filter_scp.pl $dir/valid_uttlist $targets_scp |"
+    train_subset_targets="scp,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $targets_scp |"
     ;;
   "sparse")
     get_egs_program="nnet3-get-egs --num-pdfs=$num_targets"
-    if [ -z "$scp2ark" ]; then
-      scp2ark="ali-to-post scp:- ark:- |"
-    fi
-    targets="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | $scp2ark"
-    valid_targets="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $targets_scp | $scp2ark" 
-    train_subset_targets="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $targets_scp | $scp2ark"
+    targets="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | ali-to-post scp:- ark:- |"
+    valid_targets="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $targets_scp | ali-to-post scp:- ark:- |" 
+    train_subset_targets="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $targets_scp | ali-to-post scp:- ark:- |"
     ;;
   default)
     echo "$0: Unknown --target-type $target_type. Choices are dense and sparse"

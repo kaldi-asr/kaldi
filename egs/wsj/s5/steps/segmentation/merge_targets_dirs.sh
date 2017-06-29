@@ -44,7 +44,7 @@ utils/data/split_data.sh --per-utt $data $nj
 sdata=${data}/split${nj}utt
 
 frame_subsampling_factor=1
-if [ -f ${targets_dir[0]}/frame_subsampling_factor ]; then
+if [ -f ${targets_dirs[0]}/frame_subsampling_factor ]; then
   frame_subsampling_factor=$(cat ${targets_dirs[0]}/frame_subsampling_factor) || exit 1
 fi
 
