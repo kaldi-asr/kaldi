@@ -91,7 +91,7 @@ if [ ! -z "$transform_dir" ]; then
   nj_orig=$(cat $transform_dir/num_jobs)
 
   if [ ! -f $transform_dir/raw_trans.1 ]; then
-    echo "$0: expected $transform_dir/raw_trains.1 to exist (--transform-dir option)"
+    echo "$0: expected $transform_dir/raw_trans.1 to exist (--transform-dir option)"
     exit 1;
   fi
   if [ $nj -ne $nj_orig ]; then
