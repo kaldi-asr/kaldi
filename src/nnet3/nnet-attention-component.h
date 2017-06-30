@@ -83,12 +83,9 @@ namespace nnet3 {
                       However, be even more careful with the right-hand version;
                       if you set this, online (looped) decoding will not work
                       correctly.
-     alpha            Scale on the inputs to the softmax function.
-                      Defaults to 1.0 / sqrt(key-dim + 1 + num-left-inputs + num-right-inputs),
-                      which is 1 / sqrt of the real key/query dimension after taking
-                      into account the positional encoding.
-     beta             Defaults to 1.0.  Scale on the positional encoding as it is appended
-                      to the keys, and if output-context==true, to the output values.
+     key-scale        Scale on the keys (but not the added context).
+                      Defaults to 1.0 / sqrt(key-dim), like in the "Attention is all you need"
+                      paper.
      output-context  (Default: true).  If true, output the softmax that encodes which
                      positions we chose, in addition to the input values.
  */
@@ -120,7 +117,8 @@ class RestrictedAttentionComponent: public Component {
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Type() const { return "RestrictedAttentionComponent"; }
   virtual int32 Properties() const {
-    return kReordersIndexes|kBackpropNeedsInput|kPropagateAdds|kStoresStats|kUsesMemo;
+    return kReordersIndexes|kBackpropNeedsInput|kPropagateAdds|kBackpropAdds|
+        kStoresStats|kUsesMemo;
   }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -223,7 +221,7 @@ class RestrictedAttentionComponent: public Component {
   int32 num_left_inputs_required_;
   int32 num_right_inputs_required_;
   bool output_context_;
-
+  BaseFloat key_scale_;
 
   double stats_count_;  // Count of frames corresponding to the stats.
   Vector<double> entropy_stats_;  // entropy stats, indexed per head.

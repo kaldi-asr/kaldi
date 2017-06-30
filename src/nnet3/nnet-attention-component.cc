@@ -39,7 +39,19 @@ std::string RestrictedAttentionComponent::Info() const {
          << ", context-dim=" << context_dim_
          << ", num-left-inputs-required=" << num_left_inputs_required_
          << ", num-right-inputs-required=" << num_right_inputs_required_
-         << ", output-context=" << (output_context_ ? "true" : "false");
+         << ", output-context=" << (output_context_ ? "true" : "false")
+         << ", key-scale=" << key_scale_;
+  if (stats_count_ != 0.0) {
+    stream << ", entropy=";
+    for (int32 i = 0; i < entropy_stats_.Dim(); i++)
+      stream << (entropy_stats_(i) / stats_count_) << ',';
+    for (int32 i = 0; i < num_heads_ && i < 5; i++) {
+      stream << " posterior-stats[" << i <<"]=";
+      for (int32 j = 0; j < posterior_stats_.NumCols(); j++)
+        stream << (posterior_stats_(i,j) / stats_count_) << ',';
+    }
+    stream << " stats-count=" << stats_count_;
+  }
   return stream.str();
 }
 
@@ -53,6 +65,7 @@ void RestrictedAttentionComponent::InitFromConfig(ConfigLine *cfl) {
   time_stride_ = 1;
   num_left_inputs_required_ = -1;
   num_right_inputs_required_ = -1;
+  key_scale_ = -1.0;
   output_context_ = true;
 
   // mandatory arguments.
@@ -70,6 +83,9 @@ void RestrictedAttentionComponent::InitFromConfig(ConfigLine *cfl) {
   cfl->GetValue("num-left-inputs-required", &num_left_inputs_required_);
   cfl->GetValue("num-right-inputs-required", &num_right_inputs_required_);
   cfl->GetValue("output-context", &output_context_);
+  cfl->GetValue("key-scale", &key_scale_);
+
+  if (key_scale_ < 0.0) key_scale_ = 1.0 / sqrt(key_dim_);
 
   if (num_heads_ <= 0 || key_dim_ <= 0 && value_dim_ <= 0 ||
       num_left_inputs_ < 0 || num_right_inputs_ < 0 ||
@@ -86,9 +102,14 @@ void RestrictedAttentionComponent::InitFromConfig(ConfigLine *cfl) {
 
 
 virtual void*
-RestrictedAttentionComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+RestrictedAttentionComponent::Propagate(const ComponentPrecomputedIndexes *indexes_in,
                                         const CuMatrixBase<BaseFloat> &in,
                                         CuMatrixBase<BaseFloat> *out) const {
+  const PrecomputedIndexes *indexes = dynamic_cast<const PrecomputedIndexes*>(
+      indexes_in);
+  KALDI_ASSERT(indexes != NULL &&
+               in.NumRows() == indexes->io.num_t_in * indexes->io.num_images &&
+               out->NumRows() == indexes->io.num_t_out * indexes->io.num_images);
 
   // mostly a wrapper for PropagateOneHead.
 
@@ -132,8 +153,7 @@ void RestrictedAttentionComponent::PropagateOneHead(
   CuSubMatrix<BaseFloat> values(in, 0, in.NumRows(), key_dim_, value_dim_);
 
 
-
-
+  AttentionForward(key_scale_, keys, queries, values, c, out);
 }
 
 

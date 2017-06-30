@@ -84,12 +84,11 @@ namespace attention {
 //
 // Anyway, the output u_t (without positional encoding yet) is:
 //
-//  u_t := \sum_{s in input_indexes(t)}  Z_t exp(alpha q_t . k_s) v_s
+//  u_t := \sum_{s in input_indexes(t)}  Z_t exp(q_t . k_s) v_s
 //
-// where Z_t is chosen so that the sum over s of the exponential is 1.0
-// (note: we could write this as softmax), and alpha is a configurable
-// constant that affects the useful dynamic range of the inputs (in
-// the "attention is all you need" paper, this is 1/sqrt(d_k).
+// where Z_t is 1/(\sum_s exp(q_t . k_s)).  We'll handle scaling
+// issues (the 1/sqrt(dim) factor in the Google paper) later on,
+// by scaling the keys.
 //
 //
 // * Positional encoding
@@ -101,18 +100,16 @@ namespace attention {
 // 0 <= o < context_dim) extend v with extra dimensions
 // that encode the time-offset.  To be precise, we have
 //
-//  Extend(v, o) = Append(v, beta u_o)
+//  Extend(v, o) = Append(v, u_o)
 //
-// where beta is a specifiable constant that affects how big the
-// positional-encoding part of the vector is, u_o is a unit vector of dimension
-// context_dim that is nonzero in the o'th dimension (assuming zero-based
-// indexing).
+// where u_o is a unit vector of dimension context_dim that is nonzero in the
+// o'th dimension (assuming zero-based indexing).
 //
-// So when we add the positional encoding, we replace
+// So when we add the positional encoding (and the scale on the keys), we replace
 // the equation:
-//  u_t := \sum_{s in input_indexes(t)}  Z_t exp(alpha q_t . k_s) v_s
+//  u_t := \sum_{s in input_indexes(t)}  Z_t exp(q_t . k_s) v_s
 // with:
-//  u_t := \sum_{s in input_indexes(t)}  Z_t exp(alpha q_t . Extend(k_s, s - t + num_left_inputs)) Extend(v_s, s - t + num_left_inputs)
+//  u_t := \sum_{s in input_indexes(t)}  Z_t exp(alpha q_t . Extend(key-scale * k_s, s - t + num_left_inputs)) Extend(v_s, s - t + num_left_inputs)
 //
 // (we won't actually physically extend the vectors as we compute this,
 // we'll do it a different way, but it's equivalent to what we wrote
@@ -154,13 +151,13 @@ namespace attention {
 // as the input to softmax; the index 't' is the output time-index
 // index at the output, and o ranges from 0 to context_dim - 1.
 //
-//    b_{t,o} =  alpha q_t . Extend(k_{t + o - num_left_inputs}, o)
+//    b_{t,o} =  q_t . Extend(key-scale * k_{t + o - num_left_inputs}, o)
 //
 // To get rid of the Extend() expressions, define sub-ranges of q_t by
 // writing q_t = Append(r_t, s_t) where r_t is of dimension 'key_dim'
 // and s_t is of dimension context_dim.
 //
-//    b_{t,o} =  alpha beta s_{t,o}  +    alpha (r_t . k_{t+o-num_left_inputs})  [eqn:b]
+//    b_{t,o} =   s_{t,o}  +  key-scale (r_t . k_{t+o-num_left_inputs})  [eqn:b]
 //
 // The 'b' quantity is the input to the softmax.  Define
 //     c_t = Softmax(b_t)
@@ -170,7 +167,7 @@ namespace attention {
 //  The output can be written as:
 //        u_t :=  \sum_o c_{t,o} Extend(v_{t+o-num_left_inputs}, o)
 //  but we can write this in a form more suitable for computation as:
-//     u_t :=  Append(\sum_o c_{t,o} v_{t+o-num_left_inputs},  beta c_t)     [eqn:u]
+//     u_t :=  Append(\sum_o c_{t,o} v_{t+o-num_left_inputs},  c_t)     [eqn:u]
 //
 //
 //  * Implementation
@@ -191,25 +188,21 @@ namespace attention {
 
 
 /**
-   This function is a utility function that is at the core of how we
-   implement attention.  It may in future need to be renamed and possibly
-   moved into the cudamatrix directory and implemented in CUDA.
-   The current implementation is quite inefficient.  We can also
-   consider a complete redesign of how the implementation works, such
-   that this function doesn't exist at all; or we could have a
-   batched version of this function that would operate on a batch
-   of A, B and C at once (or a "strided, batched" version where the
-   difference between the members of the batch is expressed as a
-   stride).
+   This function is a utility function that is at the core of how we implement
+   attention.  It may in future need to be renamed and possibly moved into the
+   cudamatrix directory and implemented in CUDA.  The current implementation is
+   quite inefficient.  We can also consider doing a complete redesign of how the
+   implementation works, such that this function doesn't exist at all; or we
+   could have a batched version of this function that would operate on a batch
+   of A, B and C at once (or a "strided, batched" version where the difference
+   between the members of the batch is expressed as a stride).
 
-
-   This function implements a special operation that you could
-   view as some kind of matrix multiplication where only a band of the
-   product is retained.
+   This function implements a special operation that you could view as some kind
+   of matrix multiplication where only a band of the product is retained.
 
    The inputs A and B must have the same number of columns
    (A.NumCols() == B.NumCols()), and A and C must have the same
-   number of Rows (A.NumRows() == C->NumCols()).  The number of
+   number of rows (A.NumRows() == C->NumRows()).  The number of
    rows of B must exceed the number of rows of A.  Define
       num_extra_rows = B.NumRows() - A.NumRows().
    Then C.NumCols() - 1 must divide num_extra_rows.
@@ -217,41 +210,111 @@ namespace attention {
       row_shift = num_extra_rows / (C.NumCols() - 1).
 
    This function implements:
-      (*C)(i, j) = alpha * VecVec(A.Row(i), B.Row(i + j * row_shift)) + beta * (*C)(i, j)
+      (*C)(i, j) = alpha * VecVec(A.Row(i), B.Row(i + j * row_shift))
  */
-void AttentionCoreForward(Real alpha,
-                          const CuMatrix<BaseFloat> &A,
-                          const CuMatrix<BaseFloat> &B,
-                          CuMatrix<BaseFloat> *C,
-                          Real beta);
+void GetAttentionDotProducts(Real alpha,
+                             const CuMatrixBase<BaseFloat> &A,
+                             const CuMatrixBase<BaseFloat> &B,
+                             CuMatrixBase<BaseFloat> *C);
 
 
 /**
-   This function is the mirror of AttentionCoreForward, but used in the backward
-   pass.  A, B and C_deriv have the same constraints on their dimensions as A, B
-   and C in the function AttentionCoreForward.
+   This function is related to GetAttentionDotProducts(); it
+   is used in scaling the values by the softmax scales, and
+   in backprop.
 
-   A_deriv and B_deriv must have the same dimensions as A and B respectively.
-   This function implements: *A_deriv += (the derivative of the objective function
-      w.r.t. A, given that the derivative of the objective w.r.t. C is passed
-      in as C_deriv).  And likewise for B_deriv.
+   We have put the A, B and C in an unusual order here in order
+   to make clearer the relationship with GetAttentionDotProducts().
+   The matrices have the same relationship in terms of their
+   dimensions, as A, B and C do in GetAttentionDotProducts().
+
+   This function implements:
+
+     A->Row(i) += alpha * C(i, j) * B.Row(i + j * row_shift).
  */
-void AttentionCoreBackward(Real alpha,
-                           const CuMatrix<BaseFloat> &A,
-                           const CuMatrix<BaseFloat> &B,
-                           const CuMatrix<BaseFloat> &C_deriv,
-                           CuMatrix<BaseFloat> *A_deriv,
-                           CuMatrix<BaseFloat> *B_deriv,
-                           Real beta);
+void ApplyScalesToOutput(Real alpha,
+                         const CuMatrixBase<BaseFloat> &B,
+                         const CuMatrixBase<BaseFloat> &C,
+                         const CuMatrixBase<BaseFloat> *A);
+
+
+/**
+   This function is related to GetAttentionDotProducts(); it
+   is used in backprop.
+
+   We have put the A, B and C in an unusual order here in order
+   to make clearer the relationship with GetAttentionDotProducts().
+   The matrices have the same relationship in terms of their
+   dimensions, as A, B and C do in GetAttentionDotProducts().
+
+   This function implements:
+
+     B->Row(i + j * row_shift) += alpha * C(i, j) * A.Row(i).
+ */
+void ApplyScalesToInput(Real alpha,
+                         const CuMatrixBase<BaseFloat> &A,
+                         const CuMatrixBase<BaseFloat> &C,
+                         const CuMatrixBase<BaseFloat> *B);
 
 
 
-// TODO..
-void AttentionForward(Real alpha,
-                          const CuMatrix<BaseFloat> &A,
-                          const CuMatrix<BaseFloat> &B,
-                          CuMatrix<BaseFloat> *C,
-                          Real beta);
+/**
+   This is a higher-level interface to the attention code.
+   Read the extended comment in the file nnet3/attention.h for context.
+
+     @param [in] key_scale   Scale on the non-context part of the keys.
+     @param [in] keys       Matrix whose rows contains the keys, dimension is
+                            num-input-rows by key-dim.
+     @param [in] queries    Matrix whose rows contains the queries, dimension
+                            is num-output-rows by query-dim, where query-dim
+                            == key-dim + context-dim.
+                            num-output-rows - num-input-rows must be a multiple
+                            of context-dim - 1 (we'll 'shift' the keys by multiples
+                            of 0, n, 2n, ... (context-dim - 1) * n.
+     @param [in] values     Values to average at the output, of dimension
+                            num-input-rows by value-dim.  [we may add context
+                            information to these averages if required, see comment
+                            for 'output'].
+     @param [out] c         Expected to be finite at entry (no infs or nan's);
+                            at exit this will contain the output of the softmax.
+                            Must be of dimension num-output-rows by context-dim.
+     @param [out] output    The output of the attention mechanism will be *added*
+                            to this location.  Dimension must be num-output-rows
+                            by either value-dim, or value-dim + context-dim.  To
+                            the first 'value-dim' columns of this will be added
+                            the weighted combination of 'values', weighted by
+                            the corresponding weights of 'c' (e.g. the first
+                            column of 'c' scaling the first 'output-dim' rows of
+                            'values', then the next column of 'c' scaling the
+                            submatrix of 'values' shifted by 'n', and so on.
+                            If the output->NumCols() is value-dim + context-dim,
+                            'c' will be added to the remaining columns of
+                            'output'.
+ */
+void AttentionForward(Real key_scale,
+                      const CuMatrixBase<BaseFloat> &keys,
+                      const CuMatrixBase<BaseFloat> &queries,
+                      const CuMatrixBase<BaseFloat> &values,
+                      CuMatrixBase<BaseFloat> *c,
+                      CuMatrixBase<BaseFloat> *output);
+
+/** Performs the backward pass corresponding to 'AttentionForward',
+    propagating the derivative back to the keys, queries and values.
+
+    The interface should be easy to understand with reference
+    to AttentionForward(), so we won't document it, except to note
+    that 'keys_deriv', 'queries_deriv' and 'values_deriv' are
+    *added to*, not set, by this function.
+ */
+void AttentionBackward(Real key_scale,
+                       const CuMatrixBase<BaseFloat> &keys,
+                       const CuMatrixBase<BaseFloat> &queries,
+                       const CuMatrixBase<BaseFloat> &values,
+                       const CuMatrixBase<BaseFloat> &c,
+                       const CuMatrixBase<BaseFloat> &output_deriv,
+                       CuMatrixBase<BaseFloat> *keys_deriv,
+                       CuMatrixBase<BaseFloat> *queries_deriv,
+                       CuMatrixBase<BaseFloat> *values_deriv);
 
 
 
