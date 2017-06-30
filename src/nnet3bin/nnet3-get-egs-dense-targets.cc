@@ -38,17 +38,17 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const std::string &utt_id,
                         bool compress,
                         int32 num_targets,
+                        int32 length_tolerance,
                         UtteranceSplitter *utt_splitter,
                         NnetExampleWriter *example_writer) {
   int32 num_input_frames = feats.NumRows();
   if (!utt_splitter->LengthsMatch(utt_id, num_input_frames,
-                                  targets.NumRows())) {
-    if (targets.NumRows() == 0)
-      return false;
-    // normally we wouldn't process such an utterance but there may be
-    // situations when a small disagreement is acceptable.
-    KALDI_WARN << " .. processing this utterance anyway.";
+                                  targets.NumRows(),
+                                  length_tolerance)) {
+    return false;
   }
+  if (targets.NumRows() == 0)
+    return false;
   KALDI_ASSERT(num_targets < 0 || targets.NumCols() == num_targets);
 
   std::vector<ChunkTimeInfo> chunks;
@@ -259,7 +259,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (!ProcessFile(feats, online_ivector_feats, online_ivector_period,
-                    target_matrix, key, compress, num_targets,
+                    target_matrix, key, compress, num_targets, length_tolerance,
                     &utt_splitter, &example_writer))
           num_err++;
       }

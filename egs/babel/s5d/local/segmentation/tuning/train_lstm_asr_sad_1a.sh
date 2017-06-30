@@ -83,7 +83,6 @@ if [ $stage -le 5 ]; then
   relu-renorm-layer name=tdnn4 input=Append(-6,0,6,12) add-log-stddev=true dim=$relu_dim
   fast-lstmp-layer name=lstm2 cell-dim=$cell_dim recurrent-projection-dim=$projection_dim non-recurrent-projection-dim=$projection_dim decay-time=20 delay=-6 dropout-proportion=0.0
   relu-renorm-layer name=tdnn5 input=Append(-12,0,12,24) dim=$relu_dim
-  relu-renorm-layer name=tdnn5-snr input=Append(tdnn4@-6,tdnn4@0,tdnn4@6,tdnn5) dim=$relu_dim
 
   output-layer name=output include-log-softmax=true dim=3 learning-rate-factor=0.1 input=tdnn5
 EOF
