@@ -179,7 +179,7 @@ def train_new_models(dir, iter, srand, num_jobs,
         thread = common_lib.background_command(
             """{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
                     nnet3-chain-train {parallel_train_opts} {verbose_opt} \
-                    --apply-deriv-weights={app_deriv_wts} \
+                    --apply-deriv-weights={app_deriv_wts} {smbr_opt} \
                     --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
                     {cache_io_opts}  --xent-regularize={xent_reg} \
                     {deriv_time_opts} \
@@ -302,10 +302,11 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     if shrinkage_value != 1.0:
         shrink_info_str = ' and shrink value is {0}'.format(shrinkage_value)
 
+    objf_info = "" if not use_smbr_objective else "and objective is sMBR"
     logger.info("On iteration {0}, learning rate is {1}"
-                "{shrink_info}.".format(
+                "{shrink_info} {objf_info}.".format(
                     iter, learning_rate,
-                    shrink_info=shrink_info_str))
+                    shrink_info=shrink_info_str, objf_info=objf_info))
 
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,
                      num_archives_processed=num_archives_processed,
@@ -462,7 +463,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
 
     common_lib.background_command(
         """{command} {dir}/log/compute_prob_valid.{iter}.log \
-                nnet3-chain-compute-prob --l2-regularize={l2} \
+                nnet3-chain-compute-prob --l2-regularize={l2} {smbr_opt} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
                 "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
                 "ark,bg:nnet3-chain-copy-egs ark:{egs_dir}/valid_diagnostic.cegs \
@@ -477,7 +478,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
 
     common_lib.background_command(
         """{command} {dir}/log/compute_prob_train.{iter}.log \
-                nnet3-chain-compute-prob --l2-regularize={l2} \
+                nnet3-chain-compute-prob --l2-regularize={l2} {smbr_opt} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
                 "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
                 "ark,bg:nnet3-chain-copy-egs ark:{egs_dir}/train_diagnostic.cegs \
@@ -507,10 +508,11 @@ def compute_progress(dir, iter, run_opts):
                    model=model,
                    prev_model=prev_model))
 
+
 def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_str,
                    egs_dir, leaky_hmm_coefficient, l2_regularize,
                    xent_regularize, run_opts,
-                   sum_to_one_penalty=0.0):
+                   sum_to_one_penalty=0.0, use_smbr_objective=False):
     """ Function to do model combination
 
     In the nnet3 setup, the logic
@@ -546,7 +548,7 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
 
     common_lib.execute_command(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
-                nnet3-chain-combine --num-iters={opt_iters} \
+                nnet3-chain-combine --num-iters={opt_iters} {smbr_opt} \
                 --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
                 --separate-weights-per-component={separate_weights} \
                 --enforce-sum-to-one={hard_enforce} \
@@ -568,7 +570,9 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
                     penalty=sum_to_one_penalty,
                     num_chunk_per_mb=num_chunk_per_minibatch_str,
                     num_iters=num_iters,
-                    egs_dir=egs_dir))
+                    egs_dir=egs_dir,
+                    smbr_opts="--use-smbr-objective" if use_smbr_objective
+                              else ""))
 
     # Compute the probability of the final, combined model with
     # the same subset we used for the previous compute_probs, as the
