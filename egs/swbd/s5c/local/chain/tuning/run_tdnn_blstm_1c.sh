@@ -1,18 +1,19 @@
 #!/bin/bash
 
-# tdnn_blstm_1a is same as blstm_6k, but with the initial tdnn layers
-# blstm_6k : num-parameters: 41155430
-# tdnn_blstm_1a : num-parameters: 53688166
+# tdnn_blstm_1c is same as tdnn_blstm_6a,
+# but take :  egs/wsj/s5/local/chain/run_tdnn_lstm.sh as reference
+# 1. changing frames_per_chunk into a list
+# 3. setting chunk-{left,right}-context-initial to 0 in training and decoding
 
-# System                blstm_6k_sp tdnn_blstm_1a_sp
-# WER on train_dev(tg)      13.25     12.95
-# WER on train_dev(fg)      12.27     11.98
-# WER on eval2000(tg)        15.7      15.5
-# WER on eval2000(fg)        14.5      14.1
-# Final train prob         -0.052    -0.041
-# Final valid prob         -0.080    -0.072
-# Final train prob (xent)        -0.743    -0.629
-# Final valid prob (xent)       -0.8816   -0.8091
+# System                tdnn_blstm_1a_sp tdnn_blstm_1c_sp
+# WER on train_dev(tg)      12.95  12.88
+# WER on train_dev(fg)      11.98  12.01
+# WER on eval2000(tg)        15.5  15.6
+# WER on eval2000(fg)        14.1  14.2
+# Final train prob         -0.041  -0.060
+# Final valid prob         -0.072  -0.085
+# Final train prob (xent)    -0.629  -0.737
+# Final valid prob (xent)    -0.8091  -0.8558
 
 set -e
 
@@ -21,13 +22,13 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_blstm_1a  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_blstm_1c  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_dir_affix=
 
 # training options
 leftmost_questions_truncate=-1
-chunk_width=150
+chunk_width=140,100,160
 chunk_left_context=40
 chunk_right_context=40
 xent_regularize=0.025
@@ -35,10 +36,7 @@ self_repair_scale=0.00001
 label_delay=0
 
 # decode options
-extra_left_context=50
-extra_right_context=50
 frames_per_chunk=
-
 remove_egs=false
 common_egs_dir=
 
@@ -197,6 +195,8 @@ if [ $stage -le 13 ]; then
     --egs.chunk-width $chunk_width \
     --egs.chunk-left-context $chunk_left_context \
     --egs.chunk-right-context $chunk_right_context \
+    --egs.chunk-left-context-initial=0 \
+    --egs.chunk-right-context-final=0 \
     --egs.dir "$common_egs_dir" \
     --cleanup.remove-egs $remove_egs \
     --feat-dir data/${train_set}_hires \
@@ -215,19 +215,19 @@ fi
 decode_suff=sw1_tg
 graph_dir=$dir/graph_sw1_tg
 if [ $stage -le 15 ]; then
-  [ -z $extra_left_context ] && extra_left_context=$chunk_left_context;
-  [ -z $extra_right_context ] && extra_right_context=$chunk_right_context;
-  [ -z $frames_per_chunk ] && frames_per_chunk=$chunk_width;
   iter_opts=
   if [ ! -z $decode_iter ]; then
     iter_opts=" --iter $decode_iter "
   fi
+  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   for decode_set in train_dev eval2000; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj 50 --cmd "$decode_cmd" $iter_opts \
-          --extra-left-context $extra_left_context  \
-          --extra-right-context $extra_right_context  \
+          --extra-left-context $chunk_left_context  \
+          --extra-right-context $chunk_right_context  \
+          --extra-left-context-initial 0 \
+          --extra-right-context-final 0 \
           --frames-per-chunk "$frames_per_chunk" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires \
