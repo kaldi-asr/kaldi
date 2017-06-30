@@ -4,6 +4,7 @@
 # blstm_6k : num-parameters: 41155430
 # tdnn_blstm_1a : num-parameters: 53688166
 
+# local/chain/compare_wer_general.sh blstm_6k_sp tdnn_blstm_1a_sp
 # System                blstm_6k_sp tdnn_blstm_1a_sp
 # WER on train_dev(tg)      13.25     12.95
 # WER on train_dev(fg)      12.27     11.98

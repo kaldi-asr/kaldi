@@ -3,8 +3,10 @@
 # tdnn_blstm_1c is same as tdnn_blstm_6a,
 # but take :  egs/wsj/s5/local/chain/run_tdnn_lstm.sh as reference
 # 1. changing frames_per_chunk into a list
+# 2. Removing conditional shell statements in the decoding block about setting extra_{right,left}_context
 # 3. setting chunk-{left,right}-context-initial to 0 in training and decoding
 
+# local/chain/compare_wer_general.sh tdnn_blstm_1a_sp tdnn_blstm_1c_sp
 # System                tdnn_blstm_1a_sp tdnn_blstm_1c_sp
 # WER on train_dev(tg)      12.95  12.88
 # WER on train_dev(fg)      11.98  12.01
