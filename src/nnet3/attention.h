@@ -1,6 +1,7 @@
 // nnet3/attention.h
 
 // Copyright      2017  Johns Hopkins University (author: Daniel Povey)
+//                      Johns Hopkins University (author: Hossein Hadian)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -17,8 +18,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_NNET3_NNET_CONVOLUTION_H_
-#define KALDI_NNET3_NNET_CONVOLUTION_H_
+#ifndef KALDI_NNET3_NNET_ATTENTION_H_
+#define KALDI_NNET3_NNET_ATTENTION_H_
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
@@ -212,7 +213,7 @@ namespace attention {
    This function implements:
       (*C)(i, j) = alpha * VecVec(A.Row(i), B.Row(i + j * row_shift))
  */
-void GetAttentionDotProducts(Real alpha,
+void GetAttentionDotProducts(BaseFloat alpha,
                              const CuMatrixBase<BaseFloat> &A,
                              const CuMatrixBase<BaseFloat> &B,
                              CuMatrixBase<BaseFloat> *C);
@@ -230,12 +231,12 @@ void GetAttentionDotProducts(Real alpha,
 
    This function implements:
 
-     A->Row(i) += alpha * C(i, j) * B.Row(i + j * row_shift).
+     A->Row(i) += \sum_j alpha * C(i, j) * B.Row(i + j * row_shift).
  */
-void ApplyScalesToOutput(Real alpha,
+void ApplyScalesToOutput(BaseFloat alpha,
                          const CuMatrixBase<BaseFloat> &B,
                          const CuMatrixBase<BaseFloat> &C,
-                         const CuMatrixBase<BaseFloat> *A);
+                         CuMatrixBase<BaseFloat> *A);
 
 
 /**
@@ -251,10 +252,10 @@ void ApplyScalesToOutput(Real alpha,
 
      B->Row(i + j * row_shift) += alpha * C(i, j) * A.Row(i).
  */
-void ApplyScalesToInput(Real alpha,
+void ApplyScalesToInput(BaseFloat alpha,
                          const CuMatrixBase<BaseFloat> &A,
                          const CuMatrixBase<BaseFloat> &C,
-                         const CuMatrixBase<BaseFloat> *B);
+                         CuMatrixBase<BaseFloat> *B);
 
 
 
@@ -291,7 +292,7 @@ void ApplyScalesToInput(Real alpha,
                             'c' will be added to the remaining columns of
                             'output'.
  */
-void AttentionForward(Real key_scale,
+void AttentionForward(BaseFloat key_scale,
                       const CuMatrixBase<BaseFloat> &keys,
                       const CuMatrixBase<BaseFloat> &queries,
                       const CuMatrixBase<BaseFloat> &values,
@@ -306,7 +307,7 @@ void AttentionForward(Real key_scale,
     that 'keys_deriv', 'queries_deriv' and 'values_deriv' are
     *added to*, not set, by this function.
  */
-void AttentionBackward(Real key_scale,
+void AttentionBackward(BaseFloat key_scale,
                        const CuMatrixBase<BaseFloat> &keys,
                        const CuMatrixBase<BaseFloat> &queries,
                        const CuMatrixBase<BaseFloat> &values,

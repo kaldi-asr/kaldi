@@ -1,6 +1,7 @@
 // nnet3/attention.cc
 
 // Copyright      2017  Johns Hopkins University (author: Daniel Povey)
+//                      Johns Hopkins University (author: Hossein Hadian)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -28,11 +29,10 @@ namespace nnet3 {
 namespace attention {
 
 
-void AttentionCoreForward(Real alpha,
+void GetAttentionDotProducts(BaseFloat alpha,
                           const CuMatrixBase<BaseFloat> &A,
                           const CuMatrixBase<BaseFloat> &B,
-                          CuMatrixBase<BaseFloat> *C,
-                          Real beta) {
+                          CuMatrixBase<BaseFloat> *C) {
   KALDI_ASSERT(A.NumCols() == B.NumCols() &&
                A.NumRows() == C->NumRows());
   int32 num_output_rows = A.NumRows(),
@@ -47,13 +47,40 @@ void AttentionCoreForward(Real alpha,
     CuSubVector<BaseFloat> c_col(Ctrans, o);
     CuSubMatrix<BaseFloat> B_part(B, o * row_shift, num_output_rows,
                                   0, input_num_cols);
-    c_col.AddDiagMatMat(alpha, A, kNoTrans, B, kTrans, 0.0);
+    c_col.AddDiagMatMat(alpha, A, kNoTrans, B_part, kTrans, 0.0);
   }
   C->CopyFromMat(Ctrans, kTrans);
 }
 
 
-void AttentionForward(Real key_scale,
+void ApplyScalesToOutput(BaseFloat alpha,
+                         const CuMatrixBase<BaseFloat> &B,
+                         const CuMatrixBase<BaseFloat> &C,
+                         CuMatrixBase<BaseFloat> *A) {
+  KALDI_ASSERT(A->NumCols() == B.NumCols() &&
+               A->NumRows() == C.NumRows());
+  int32 num_output_rows = A->NumRows(),
+      input_num_cols = A->NumCols(),
+      num_extra_rows = B.NumRows() - A->NumRows(),
+      context_dim = C.NumCols();
+  KALDI_ASSERT(num_extra_rows > 0 && num_extra_rows % (context_dim - 1) == 0);
+  int32 row_shift = num_extra_rows / (context_dim - 1);
+  CuMatrix<BaseFloat> Ctrans(C, kTrans);
+  for (int32 o = 0; o < context_dim; o++) {
+    CuSubVector<BaseFloat> c_col(Ctrans, o);
+    CuSubMatrix<BaseFloat> B_part(B, o * row_shift, num_output_rows,
+                                  0, input_num_cols);
+    A->AddDiagVecMat(alpha, c_col, B_part, kNoTrans, 1.0);
+  }
+}
+
+void ApplyScalesToInput(BaseFloat alpha,
+                         const CuMatrixBase<BaseFloat> &A,
+                         const CuMatrixBase<BaseFloat> &C,
+                        CuMatrixBase<BaseFloat> *B) {
+}
+
+void AttentionForward(BaseFloat key_scale,
                       const CuMatrixBase<BaseFloat> &keys,
                       const CuMatrixBase<BaseFloat> &queries,
                       const CuMatrixBase<BaseFloat> &values,
@@ -70,7 +97,7 @@ void AttentionForward(Real key_scale,
                num_output_rows > num_input_rows &&
                context_dim > 0 &&
                (num_output_rows - num_input_rows) % (context_dim - 1) == 0 &&
-               values.NumRows() == num_output_rows);
+               values.NumRows() == num_input_rows);
   KALDI_ASSERT(c->NumRows() == num_output_rows &&
                c->NumCols() == context_dim);
   KALDI_ASSERT(output->NumRows() == num_output_rows &&
@@ -92,7 +119,7 @@ void AttentionForward(Real key_scale,
   // compute the soft-max function.  Up till this point, 'c'
   // actually contained what in attention.h we called 'b', which is
   // the input to the softmax.
-  c->SoftMaxPerRow(*c);
+  c->ApplySoftMaxPerRow(*c);
 
 
   // the part of the output that is weighted
@@ -112,7 +139,7 @@ void AttentionForward(Real key_scale,
 
 
 
-void AttentionBackward(Real key_scale,
+void AttentionBackward(BaseFloat key_scale,
                        const CuMatrixBase<BaseFloat> &keys,
                        const CuMatrixBase<BaseFloat> &queries,
                        const CuMatrixBase<BaseFloat> &values,
@@ -136,7 +163,7 @@ void AttentionBackward(Real key_scale,
                values.NumRows() == num_output_rows);
   KALDI_ASSERT(SameDim(keys, *keys_deriv) &&
                SameDim(queries, *queries_deriv) &&
-               SameDim(value, *values_deriv));
+               SameDim(values, *values_deriv));
 
   KALDI_ASSERT(c.NumRows() == num_output_rows &&
                c.NumCols() == context_dim);
@@ -174,10 +201,10 @@ void AttentionBackward(Real key_scale,
       queries, 0, num_output_rows,
       0, key_dim),
       queries_key_part_deriv(
-      *queries_deriv, 0, num_output_rows,
-      0, key_dim),
+          *queries_deriv, 0, num_output_rows,
+          0, key_dim),
       queries_context_part_deriv(
-          queries_deriv, 0, num_output_rows,
+          *queries_deriv, 0, num_output_rows,
           key_dim, context_dim);
 
   // Below is the backprop corresponding to the forward-propagation command:
@@ -195,7 +222,7 @@ void AttentionBackward(Real key_scale,
   // statement:
   // GetAttentionDotProducts(key_scale, queries_key_part, keys, c);
   // which propagates the derivative back to 'keys'.
-  ApplyScalesToInput(key_scale, queries_key_part, c, &keys_deriv);
+  ApplyScalesToInput(key_scale, queries_key_part, c, keys_deriv);
 }
 
 } // namespace attention
