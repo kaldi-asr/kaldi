@@ -4,28 +4,29 @@ set -e
 # run_tdnn_1c.sh is like run_tdnn_1b.sh but remove one layer[relu-batchnorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)].
 
 # chain_cleaned/tdnn_1b_sp/: num-iters=871 nj=3..16 num-params=9.9M dim=40+100->5151 combine=-0.083->-0.083 xent:train/valid[579,870,final]=(-1.08,-1.05,-1.05/-1.18,-1.15,-1.15) logprob:train/valid[579,870,final]=(-0.067,-0.063,-0.064/-0.077,-0.076,-0.076)
+# chain_cleaned/tdnn_1c_sp: num-iters=871 nj=3..16 num-params=9.1M dim=40+100->5151 combine=-0.088->-0.088 xent:train/valid[579,870,final]=(-1.16,-1.13,-1.13/-1.26,-1.23,-1.23) logprob:train/valid[579,870,final]=(-0.072,-0.069,-0.069/-0.079,-0.077,-0.077)
 
 # by default, with cleanup:
 # local/chain/run_tdnn.sh
 
-# for x in exp/chain_cleaned/tdnn_1c_sp/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
-#System                      tdnn_1b_sp      tdnn_1c_sp
-#WER on dev(fglarge)           3.84  
-#WER on dev(tglarge)           4.00
-#WER on dev(tgmed)             5.16
-#WER on dev(tgsmall)           5.80
-#WER on dev_other(fglarge)    10.15
-#WER on dev_other(tglarge)    10.78
-#WER on dev_other(tgmed)      13.09
-#WER on dev_other(tgsmall)    14.61
-#WER on test(fglarge)          4.38
-#WER on test(tglarge)          4.58
-#WER on test(tgmed)            5.54
-#WER on test(tgsmall)          6.15
-#WER on test_other(fglarge)   10.64
-#WER on test_other(tglarge)   11.13
-#WER on test_other(tgmed)     13.45
-#WER on test_other(tgsmall)   14.92
+# local/chain/compare_wer.sh exp/chain_cleaned/tdnn_1b_sp exp/chain_cleaned/tdnn_1c_sp
+# System                        tdnn_1b_sp tdnn_1c_sp
+# WER on dev(fglarge)              3.84      3.89
+# WER on dev(tglarge)              4.00      4.09
+# WER on dev(tgmed)                5.16      5.17
+# WER on dev(tgsmall)              5.80      5.81
+# WER on dev_other(fglarge)       10.15     10.24
+# WER on dev_other(tglarge)       10.78     10.87
+# WER on dev_other(tgmed)         13.09     13.23
+# WER on dev_other(tgsmall)       14.61     14.63
+# WER on test(fglarge)             4.38      4.41
+# WER on test(tglarge)             4.58      4.54
+# WER on test(tgmed)               5.54      5.56
+# WER on test(tgsmall)             6.15      6.21
+# Final train prob              -0.0635   -0.0688
+# Final valid prob              -0.0759   -0.0771
+# Final train prob (xent)       -1.0518   -1.1308
+# Final valid prob (xent)       -1.1495   -1.2324
 
 ## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
 ## otherwise call it directly in its location).
