@@ -18,8 +18,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_NNET3_NNET_ATTENTION_H_
-#define KALDI_NNET3_NNET_ATTENTION_H_
+#ifndef KALDI_NNET3_ATTENTION_H_
+#define KALDI_NNET3_ATTENTION_H_
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
@@ -253,9 +253,9 @@ void ApplyScalesToOutput(BaseFloat alpha,
      B->Row(i + j * row_shift) += alpha * C(i, j) * A.Row(i).
  */
 void ApplyScalesToInput(BaseFloat alpha,
-                         const CuMatrixBase<BaseFloat> &A,
-                         const CuMatrixBase<BaseFloat> &C,
-                         CuMatrixBase<BaseFloat> *B);
+                        const CuMatrixBase<BaseFloat> &A,
+                        const CuMatrixBase<BaseFloat> &C,
+                        CuMatrixBase<BaseFloat> *B);
 
 
 

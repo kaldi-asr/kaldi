@@ -30,9 +30,9 @@ namespace attention {
 
 
 void GetAttentionDotProducts(BaseFloat alpha,
-                          const CuMatrixBase<BaseFloat> &A,
-                          const CuMatrixBase<BaseFloat> &B,
-                          CuMatrixBase<BaseFloat> *C) {
+                             const CuMatrixBase<BaseFloat> &A,
+                             const CuMatrixBase<BaseFloat> &B,
+                             CuMatrixBase<BaseFloat> *C) {
   KALDI_ASSERT(A.NumCols() == B.NumCols() &&
                A.NumRows() == C->NumRows());
   int32 num_output_rows = A.NumRows(),
@@ -51,7 +51,6 @@ void GetAttentionDotProducts(BaseFloat alpha,
   }
   C->CopyFromMat(Ctrans, kTrans);
 }
-
 
 void ApplyScalesToOutput(BaseFloat alpha,
                          const CuMatrixBase<BaseFloat> &B,
@@ -75,9 +74,24 @@ void ApplyScalesToOutput(BaseFloat alpha,
 }
 
 void ApplyScalesToInput(BaseFloat alpha,
-                         const CuMatrixBase<BaseFloat> &A,
-                         const CuMatrixBase<BaseFloat> &C,
+                        const CuMatrixBase<BaseFloat> &A,
+                        const CuMatrixBase<BaseFloat> &C,
                         CuMatrixBase<BaseFloat> *B) {
+  KALDI_ASSERT(A.NumCols() == B->NumCols() &&
+               A.NumRows() == C.NumRows());
+  int32 num_output_rows = A.NumRows(),
+      input_num_cols = A.NumCols(),
+      num_extra_rows = B->NumRows() - A.NumRows(),
+      context_dim = C.NumCols();
+  KALDI_ASSERT(num_extra_rows > 0 && num_extra_rows % (context_dim - 1) == 0);
+  int32 row_shift = num_extra_rows / (context_dim - 1);
+  CuMatrix<BaseFloat> Ctrans(C, kTrans);
+  for (int32 o = 0; o < context_dim; o++) {
+    CuSubVector<BaseFloat> c_col(Ctrans, o);
+    CuSubMatrix<BaseFloat> B_part(*B, o * row_shift, num_output_rows,
+                                  0, input_num_cols);
+    B_part.AddDiagVecMat(alpha, c_col, A, kNoTrans, 1.0);
+  }
 }
 
 void AttentionForward(BaseFloat key_scale,
@@ -136,8 +150,6 @@ void AttentionForward(BaseFloat key_scale,
     output_context_part.CopyFromMat(*c);
   }
 }
-
-
 
 void AttentionBackward(BaseFloat key_scale,
                        const CuMatrixBase<BaseFloat> &keys,

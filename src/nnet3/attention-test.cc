@@ -27,9 +27,9 @@ namespace attention {
 
 // (*C)(i, j) = alpha * VecVec(A.Row(i), B.Row(i + j * row_shift))
 void GetAttentionDotProductsSimple(BaseFloat alpha,
-                          const CuMatrixBase<BaseFloat> &A,
-                          const CuMatrixBase<BaseFloat> &B,
-                          CuMatrixBase<BaseFloat> *C) {
+                                   const CuMatrixBase<BaseFloat> &A,
+                                   const CuMatrixBase<BaseFloat> &B,
+                                   CuMatrixBase<BaseFloat> *C) {
   KALDI_ASSERT(A.NumCols() == B.NumCols() &&
                A.NumRows() == C->NumRows());
   int32 input_num_cols = A.NumCols(),
@@ -49,9 +49,9 @@ void GetAttentionDotProductsSimple(BaseFloat alpha,
 
 //     A->Row(i) += \sum_k alpha * C(i, k) * B.Row(i + k * row_shift).
 void ApplyScalesToOutputSimple(BaseFloat alpha,
-                         const CuMatrixBase<BaseFloat> &B,
-                         const CuMatrixBase<BaseFloat> &C,
-                         CuMatrixBase<BaseFloat> *A) {
+                               const CuMatrixBase<BaseFloat> &B,
+                               const CuMatrixBase<BaseFloat> &C,
+                               CuMatrixBase<BaseFloat> *A) {
   KALDI_ASSERT(A->NumCols() == B.NumCols() &&
                A->NumRows() == C.NumRows());
   int32 num_extra_rows = B.NumRows() - A->NumRows(),
@@ -67,6 +67,25 @@ void ApplyScalesToOutputSimple(BaseFloat alpha,
   }
 }
 
+//     B->Row(i + j * row_shift) += alpha * C(i, j) * A.Row(i).
+void ApplyScalesToInputSimple(BaseFloat alpha,
+                              const CuMatrixBase<BaseFloat> &A,
+                              const CuMatrixBase<BaseFloat> &C,
+                              CuMatrixBase<BaseFloat> *B) {
+  KALDI_ASSERT(A.NumCols() == B->NumCols() &&
+               A.NumRows() == C.NumRows());
+  int32 num_extra_rows = B->NumRows() - A.NumRows(),
+      context_dim = C.NumCols();
+  KALDI_ASSERT(num_extra_rows > 0 && num_extra_rows % (context_dim - 1) == 0);
+  int32 row_shift = num_extra_rows / (context_dim - 1);
+  for (int32 i = 0; i < A.NumRows(); i++) {
+    for (int32 j = 0; j < A.NumCols(); j++) {
+      for (int32 k = 0; k < context_dim; k++) {
+        (*B)(i + (k * row_shift), j) += alpha * C(i, k) * A(i, j);
+      }
+    }
+  }
+}
 
 void UnitTestAttentionDotProductAndAddScales() {
   int32 output_num_rows = RandInt(1, 50), input_num_cols = RandInt(1, 10),
@@ -91,6 +110,10 @@ void UnitTestAttentionDotProductAndAddScales() {
   GetAttentionDotProducts(alpha, A, B, &C2);
   AssertEqual(C, C2);
 
+  CuMatrix<BaseFloat> B2(B);
+  ApplyScalesToInput(alpha, A, C, &B);
+  ApplyScalesToInputSimple(alpha, A, C, &B2);
+  AssertEqual(B, B2);
 }
 
 void UnitTestAttention() {
