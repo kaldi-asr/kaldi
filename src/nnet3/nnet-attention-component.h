@@ -151,7 +151,7 @@ class RestrictedAttentionComponent: public Component {
   virtual Component* Copy() const {
     return new RestrictedAttentionComponent(*this);
   }
-
+  virtual void DeleteMemo(void *memo) const { delete static_cast<Memo*>(memo); }
 
   // Some functions that are only to be reimplemented for GeneralComponents.
 

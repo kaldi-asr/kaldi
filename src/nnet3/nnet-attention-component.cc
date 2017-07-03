@@ -151,7 +151,7 @@ RestrictedAttentionComponent::Propagate(const ComponentPrecomputedIndexes *index
                h * context_dim_, context_dim_),
         out_part(*out, 0, out->NumRows(),
                  h * output_dim_per_head, output_dim_per_head);
-    PropagateOneHead(indexes->io, in, &c_part, &out_part);
+    PropagateOneHead(indexes->io, in_part, &c_part, &out_part);
   }
   return static_cast<void*>(memo);
 }
@@ -162,7 +162,7 @@ void RestrictedAttentionComponent::PropagateOneHead(
     CuMatrixBase<BaseFloat> *c,
     CuMatrixBase<BaseFloat> *out) const {
   int32 query_dim = key_dim_ + context_dim_,
-      full_value_dim = key_dim_ + (output_context_ ? context_dim_ : 0);
+      full_value_dim = value_dim_ + (output_context_ ? context_dim_ : 0);
   KALDI_ASSERT(in.NumRows() == io.num_images * io.num_t_in &&
                out->NumRows() == io.num_images * io.num_t_out &&
                out->NumCols() == full_value_dim &&
@@ -311,7 +311,7 @@ void RestrictedAttentionComponent::BackpropOneHead(
     CuMatrixBase<BaseFloat> *in_deriv) const {
   // the easiest way to understand this is to compare it with PropagateOneHead().
   int32 query_dim = key_dim_ + context_dim_,
-      full_value_dim = key_dim_ + (output_context_ ? context_dim_ : 0);
+      full_value_dim = value_dim_ + (output_context_ ? context_dim_ : 0);
   KALDI_ASSERT(in_value.NumRows() == io.num_images * io.num_t_in &&
                out_deriv.NumRows() == io.num_images * io.num_t_out &&
                out_deriv.NumCols() == full_value_dim &&

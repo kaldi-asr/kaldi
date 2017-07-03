@@ -108,9 +108,9 @@ void AttentionForward(BaseFloat key_scale,
       context_dim = queries.NumCols() - key_dim,
       value_dim = values.NumCols();
   KALDI_ASSERT(num_input_rows > 0 && key_dim > 0 &&
-               num_output_rows > num_input_rows &&
+               num_input_rows > num_output_rows &&
                context_dim > 0 &&
-               (num_output_rows - num_input_rows) % (context_dim - 1) == 0 &&
+               (num_input_rows - num_output_rows) % (context_dim - 1) == 0 &&
                values.NumRows() == num_input_rows);
   KALDI_ASSERT(c->NumRows() == num_output_rows &&
                c->NumCols() == context_dim);
@@ -169,10 +169,10 @@ void AttentionBackward(BaseFloat key_scale,
       context_dim = queries.NumCols() - key_dim,
       value_dim = values.NumCols();
   KALDI_ASSERT(num_input_rows > 0 && key_dim > 0 &&
-               num_output_rows > num_input_rows &&
+               num_input_rows > num_output_rows &&
                context_dim > 0 &&
-               (num_output_rows - num_input_rows) % (context_dim - 1) == 0 &&
-               values.NumRows() == num_output_rows);
+               (num_input_rows - num_output_rows) % (context_dim - 1) == 0 &&
+               values.NumRows() == num_input_rows);
   KALDI_ASSERT(SameDim(keys, *keys_deriv) &&
                SameDim(queries, *queries_deriv) &&
                SameDim(values, *values_deriv));
