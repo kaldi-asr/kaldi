@@ -90,6 +90,8 @@ class Sampler {
   // of as the probability for each word if we don't know the history) are given.
   // each element of unigram_probs should be >= 0, and they should sum to
   // a value close to 1.
+  // This class does not retain a reference to 'unigram_probs' after
+  // the constructor exits.
   explicit Sampler(const std::vector<BaseFloat> &unigram_probs);
 
 

@@ -1,0 +1,549 @@
+// rnnlm/rnnlm-egs.h
+
+// Copyright 2017  Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef KALDI_RNNLM_RNNLM_EGS_H_
+#define KALDI_RNNLM_RNNLM_EGS_H_
+
+#include "base/kaldi-common.h"
+#include "matrix/matrix-lib.h"
+#include "rnnlm/arpa-sampling.h"
+
+namespace kaldi {
+namespace rnnlm {
+
+
+// A single minibatch for training an RNNLM.
+class RnnlmMinibatch {
+  int32 num_sequences;  // The number of parallel word sequences.  [note:
+                        // some of the word sequences may actually  be made up of
+                        // smaller subsequences appended together.
+  int32 chunk_length;   // The length of each sequence in a minibatch,
+                        // including any terminating </s> symbols, which are
+                        // included explicitly in the sequences.  Note:
+                        // when </s> appears in the middle of sequences because
+                        // we splice shorter word-sequences together, we
+                        // will replace it with <s> on the input side of the network.
+
+  int32 sample_group_size;  // derived from the sample_group_size option; this
+                            // is the number of time-steps which form a single
+                            // unit for sampling.  Will always divide
+                            // num_sequences.
+
+  int32 num_samples;   // This is the number of words that we sample at the
+                       // output of the nnet for each position in the sequence
+                       // and for each of the 'num_sample_groups' groups.
+                       // If we didn't do sampling because the user didn't provide
+                       // the ARPA language model, this will be zero.
+
+
+  std::vector<int32> input_words;  // The input word symbols for each position
+                                   // in each sequence; dimension ==
+                                   // chunk_length * num_sequences, where
+                                   // 0 <= t < chunk_length has larger stride than
+                                   // 0 <= n < num_sequences.  In the
+                                   // common case these will be the same as the
+                                   // previous output symbol.
+  std::vector<int32> output_words;  // The output (predicted) word symbols for
+                                    // each position in each sequence; indexed
+                                    // the same as input_words.
+
+
+  // Weights for each of the output_words, indexed the same way as output_words.
+  // These reflect any data-weighting we had in the original data, plus some
+  // zeros that relate to padding sequences of uneven length.
+  CuVector<BaseFloat> output_weights;
+
+  // This vector contains the word-indexes that we sampled for each position in
+  // the sequence and for each group of sequences.  (It will be empty if the
+  // user didn't provide the ARPA language model).  Its dimension is
+  // (chunk_length / sample_group_size) * num_samples, where the sample-group
+  // index has the largest stride (you can think of the sample group index as
+  // the number i = t / sample_group_size, in integer division, where 0 <= t <
+  // chunk_length is the position in the sequence).  The sampled words within
+  // each block of size 'num_samples' are sorted and unique.
+  std::vector<int32> sampled_words;
+
+  // This vector has the same dimension as 'sampled_words', and contains
+  // the probability 0 < p <= 1 with which that word was sampled (i.e.
+  // when we sampled a set of words, the probability with which that word
+  // would be included in the set).
+  CuVector<BaseFloat> sample_probs;
+
+  RnnlmMinibatch(): num_sequences(0), chunk_length(0), sample_group_size(1),
+                    num_samples(0) { }
+
+  // TODO: Write and Read functions.
+};
+
+
+// The word symbols we train on are zero-based integers, and
+// we reserve 0 and 1 for the BOS symbol (usually <s>)
+// and the EOS symbol (usually </s>) respectively.
+// There are some subtleties regarding how we prepare the
+// sentences and arrange them into minibatches.
+//
+// Firstly, we prepare original data that looks like the following:
+//
+// 1.0  Hello there
+// 1.0  How are you
+//
+// [All of these words will be turned into integers by sym2int.pl before the C++
+// tools are run].
+//
+// We want the models to be able to take advantage of context from previous
+// sentences (say, in a dialogue or a series of sentences).  Therefore we allow
+// the data preparation to create include multiple successive sentences on one
+// line, as follows:
+//
+// 1.0  Hello there </s>  How are you
+//
+// The immedate left-context which the RNNLM sees when predicting "How" above
+// will be </s>, unlike the normal case at start-of-sentence where it would be
+// <s>.  So essentially </s>, when seen as left-context, means "we're beginning
+// a new sentence here but the prior words were part of the same dialogue."
+//
+//
+// We train on minibatches of a fixed size, so it may be necessary to split up
+// or combine sentences to a fixed length.  Internally (inside
+// rnnlm-create-egs), we read these variable-length sentences, randomize the
+// order using a buffer, and then split and combine them as necessary to
+// obtain a fixed length.
+//
+// The first stage in processing the sentences is to add an initial <s> and final
+// <s> and
+// to associate each word with a weight (which is just the sentence weight,
+// at this point (1.0 in the example), except for the initial <s> which has zero weight).
+//
+//
+// Next we split sentences that are longer than sequence_length + 1, into
+// multiple pieces.  [the + 1 is because the sequence length is of predicted words,
+// which doesn't count the <s>].  At the split points, to the RHS of each
+// split we will add some left-context words, up to max_split_left_context (e.g. 3),
+// and give those words zero weight so the RNNLM doesn't try to predict them, they
+// are just used as left-context to predict future words.
+//
+
+
+
+
+struct RnnlmEgsConfig {
+  int32 chunk_length;
+  int32 minibatch_size;
+  int32 min_split_context;
+  int32 sample_group_size;  // affects the sampling: if sample_group_size is 2,
+                            // then we'll sample words once for (t=0, t=1), then
+                            // again for (t=2, t=3), and so on.  We support
+                            // merging time-steps in this way (but not splitting
+                            // them smaller), due to considerations of computing
+                            // time if you assume we also have a network that
+                            // learns word representation from their
+                            // character-level features.
+  int32 num_samples;    // the number of words we choose each time we do the
+                        // sampling.
+  int32 chunk_buffer_size;
+  int32 bos_symbol;  // must be set.
+  int32 eos_symbol;  // must be set.
+  int32 brk_symbol;  // must be set.
+
+  BaseFloat special_symbol_prob;  // sampling probability at the output for
+                                  // words that aren't supposed to be predicted
+                                  // (<s>, <brk>)-- this ensures that the model
+                                  // makes their output probs small, which
+                                  // avoids hassle when computing the normalizer
+                                  // in test time (if we didn't sample them with
+                                  // some probability to ensure their probs are
+                                  // small, we'd have to exclude them from the
+                                  // denominator sum.
+
+  BaseFloat uniform_prob_mass;  // this value should be < 1.0; it takes
+                                // this proportion of the unigram distribution
+                                // used for sampling and assigns it to uniformly
+                                // predict all words.  This may avoid certain
+                                // pathologies during training, and ensuring
+                                // that all words' probs are bounded away from
+                                // zero is, I think, necessary for the theory
+                                // of importance sampling.
+  RnnlmEgsConfig(): chunk_length(32),
+                    minibatch_size(128),
+                    min_split_context(3),
+                    sample_group_size(4),
+                    num_samples(1024),
+                    chunk_buffer_size(20000),
+                    bos_symbol(-1),
+                    eos_symbol(-1),
+                    brk_symbol(-1),
+                    special_symbol_prob(1.0e-05),
+                    uniform_prob_mass(0.1) { }
+
+  void Register(OptionsItf *po) {
+    po->Register("chunk-length", &chunk_length,
+                 "Length of sequences that we train on (actual sentences will be "
+                 "split up and re-combined as necessary to achieve this legnth");
+    po->Register("minibatch-size", &minibatch_size,
+                 "Number of distinct sequences/chunks per minibatch.");
+    po->Register("min-split-context", &min_split_context,
+                 "Minimum left-context that we supply after breaking up "
+                 "a training sequence into pieces.");
+    po->Register("sample-group-size", &sample_group_size,
+                 "Number of time-steps for which we draw a single sample of words. "
+                 "Must divide chunk-length.");
+    po->Register("num-samples", &num_samples,
+                 "Number of words we sample, each time we sample (importance sampling). "
+                 "Must be at least minibatch-size * sample-group-size.  "
+                 "If you don't supply the ARPA LM to the program, or you set "
+                 "num-samples to zero, or num-samples exceeds the number of words "
+                 "with nonzero probability, the no sampling will be done.");
+    po->Register("chunk-buffer-size", &chunk_buffer_size,
+                 "Number of chunks of sentence that we buffer while "
+                 "processing the input.  Larger means more complete "
+                 "randomization but also more I/O before we produce any "
+                 "output, and more memory used.");
+    po->Register("bos-symbol", &bos_symbol,
+                 "Integer id of the beginning-of-sentence symbol <s>. "
+                 "Must be specified.");
+    po->Register("eos-symbol", &eos_symbol,
+                 "Integer id of the beginning-of-sentence symbol <s>. "
+                 "Must be specified.");
+    po->Register("brk-symbol", &brk_symbol,
+                 "Integer id of the 'break' symbol <brk> (only used "
+                 "during training, most likely); used to tell the network "
+                 "that the context is partial.  Must be specified.");
+    po->Register("special-symbol-prob", &special_symbol_prob,
+                 "Probability with which we sample the special symbols "
+                 "<s> and <brk> on each minibatch.  See code for reason.");
+    po->Register("uniform-prob-mass", &uniform_prob_mass,
+                 "We replace this proportion of the unigram distribution's "
+                 "probability mass with a uniform distribution over words. "
+                 "See code for reason.");
+  }
+  void Check() {
+    KALDI_ASSERT(chunk_length > min_split_context * 4 &&
+                 minibatch_size > 0 &&
+                 min_split_context >= 0 &&
+                 sample_group_size >= 1 &&
+                 sample_group_size % chunk_length == 0);
+    if (!bos_symbol > 0 && eos_symbol > 0 && brk_symbol > 0 &&
+        bos_symbol != eos_symbol && brk_symbol != eos_symbol &&
+        brk_symbol != bos_symbol) {
+      KALDI_ERR << "--bos-symbol, --eos-symbol and --brk-symbol "
+          "must be specified, >0, and all different.";
+    }
+    KALDI_ASSERT(num_samples == 0 ||
+                 num_samples >= minibatch_size * sample_group_size);
+    KALDI_ASSERT(special_symbol_prob >= 0.0 && special_symbol_prob <= 1.0);
+    KALDI_ASSERT(uniform_prob_mass >= 0.0 && uniform_prob_mass < 1.0);
+  }
+};
+
+
+
+/**
+   Class RnnlmMinibatchSampler encapsulates the logic for sampling words
+   for a minibatch.  (the words at the output of the RNNLM are sampled and
+   we train with an importance-sampling algorithm).
+ */
+class RnnlmMinibatchSampler {
+  RnnlmMinibatchSampler(const RnnlmEgsConfig &config,
+                        const ArpaSampling &arpa);
+
+
+  // Does the sampling for 'minibatch'.  'minibatch' is expected to already
+  // have all fields populated except for 'sampled_words' and 'sample_probs'.
+  // This function does the sampling and sets those fields.
+  void SampleForMinibatch(RnnlmMinibatch *minibatch) const;
+
+  ~RnnlmMinibatchSampler() { delete sampler_; }
+ private:
+  // does the part of the sampling for group 'g' (note: 'g' is the
+  // same as the position 0 <= t < chunk_length in the sequence if
+  // config_.sample_group_size == 1, and otherwise, each group
+  // encompasses several successive 't' values.
+  void SampleForGroup(int32 g, RnnlmMinibatch *minibatch) const;
+
+
+  // This function gets the combination of histories to be sampled from for the g'th
+  // group of 't' values, for this minibatch.
+  // It outputs to 'history_states' the the weighted
+  // combination of history-states, as a list of pair (history, weight)
+  // [with each history repeated only once], where for example
+  // history == [] is the unigram backoff state, history=[10] means
+  // we saw the word 10 as left-context, history[20, 10] means 10 is
+  // the immediate left-contxt and 20 is before that.  The weight
+  // 'weight' will be > 0 and will be a sum of the weights of the
+  // output words in the minibatch that have that history.
+  BaseFloat GetHistoriesForGroup(
+      int32 g, const RnnlmMinibatch &minibatch,
+      std::vector<std::pair<std::vector<int32>, BaseFloat> > *hist_weights) const;
+
+  // This function is used to obtain the history (of maximum length
+  // 'max_history_length') used when predicting the t'th output word in the n'th
+  // sequence of this minibatch.  The history is output to 'history'.  Note: the
+  // only situation where the history-length would be less than
+  // 'max_history_length' is due to edge effects.  As an example: if this is the
+  // first word of a chunk that's part of the sequence and max_history_length >
+  // 1; in this case the history would either be [<s>] or [<brk>].
+  void GetHistory(int32 t, int32 n,
+                  const RnnlmMinibatch &minibatch,
+                  int32 max_history_length,
+                  std::vector<int32> *history);
+
+
+
+  RnnlmEgsConfig config_;
+  // arpa_ stores the n-gram language model that we use for importance sampling.
+  const ArpaSampling &arpa_;
+  // class Sampler does some of the lower-level aspects of sampling.
+  Sampler *sampler_;
+};
+
+
+class RnnlmMinibatchCreator {
+ public:
+  // This constructor is for when you are using importance sampling from
+  // an ARPA language model (the normal case).
+  RnnlmMinibatchCreator(const RnnlmEgsConfig &config,
+                        const RnnlmMinibatchSampler &sampler,
+                        TableWriter<KaldiHolder<RnnlmMinibatch> > *writer);
+
+  // This constructor is for when you are not using importance sampling,
+  // so no samples will be stored in the minibatch and the training code
+  // will presumably evaluate all the words each time.  This is intended
+  // to be used for testing purposes.
+  RnnlmMinibatchCreator(const RnnlmEgsConfig &config,
+                        const RnnlmMinibatchSampler &sampler,
+                        TableWriter<KaldiHolder<RnnlmMinibatch> > *writer);
+
+
+  // The user calls this to provide a single sequence (a sentence, or multiple
+  // sentences that are part of a continuous stream or dialogue, separated
+  // by </s>), to this class.  This class will write out minibatches when
+  // it's ready.
+  // This will normally be the result of reading a line of text with the format:
+  //   <weight> <word1> <word2> ....
+  // e.g.:
+  //   1.0  Hello there
+  // [although the "hello there" would have been converted to integers
+  // by the time it was read in, via sym2int.pl.]
+  // We also allow:
+  //   1.0  Hello there </s> Hi </s> My name is Bob
+  // if you want to train the model to predict sentences given
+  // the history of the conversation.
+  void AcceptSequence(BaseFloat weight,
+                      const std::vector<int32> &words);
+
+  void Flush() { while (WriteMinibatch()); }  // Flush out any pending minibatches.
+
+  ~RnnlmMinibatchCreator();
+ private:
+
+  // Attempts to create and write out a minibatch of egs.  Returns true if it
+  // successfully did so, and false if it could not do so because there was
+  // insufficient data.
+  bool WriteMinibatch();
+
+  struct SequenceChunk {
+    // 'sequence' is a pointer to the word sequence (without initial <s>, but with
+    // final </s> added by us, and possibly with </s> in the middle to demarcate
+    // sentences that are part of a single conversation or piece of text.
+    std::shared_ptr<std::vector<int32> > sequence;
+    // 'weight' is the weight on this chunk of sequence, i.e. the
+    // corpus weighting the user chose to apply on the
+    // original sequences.
+    BaseFloat weight;
+
+
+    int32 begin;  // beginning position in the sequence, of the first predicted
+                  // word (begin >= 0).
+    int32 end;    // one past the end of the last predicted word; will be <= sequence->size().
+
+    int32 context_begin;  // context_begin <= begin is the first word in
+                          // the sequence that is seen as left-context.  This will
+                          // be the same as 'begin' if begin == 0, but will be less
+                          // by up to config_.min_split_context if begin > 0.
+                          // note: we actually see one more word of left-context, namely
+                          // <s> if context_begin==0 or <brk> otherwise, but this
+                          // doesn't affect how many 't' values this sequence uses
+                          // up because we get it 'for free' (since we see one word
+                          // of left-context even without recurrence).
+
+    SequenceChunk(const RnnlmEgsConfig &config,
+                  const std::shared_ptr<std::vector<int32> > &seq,
+                  BaseFloat w, int32 b, int32 e):
+        sequence(seq), weight(w), begin(b), end(e),
+        context_begin(std::max<int32>(0, b - config_.min_split_context)) { }
+
+
+    // This length (in 't' values) that this chunk of a sequence takes
+    // up.
+    int32 MinLength() const { return end - context_begin; }
+  };
+
+  class SingleMinibatchCreator {
+    SingleMinibatchCreator(const RnnlmEgsConfig &config);
+
+
+    // The user calls this to ask it to accept a chunk into this
+    // minibatch.  It returns true if it can do so, and false if it
+    // can't do so because it's too big for any space that remains
+    // in this minibatch.
+    bool AcceptChunk(SequenceChunk *chunk);
+
+
+    // Returns a number between 0.0 and 1.0 that's 1.0 if this minibatch
+    // is full to capacity and 0.0 if it's completely empty (it's used to
+    // decide whether to output the very last minibatch).
+    BaseFloat ProportionFull() const;
+
+    // You call this when you've provided all the data you're going to provide
+    // (usually because it already rejected a bunch of chunks due to no space left),
+    // and you want to create a minibatch.  You will let this object
+    // go out of scope or delete it right after this.
+    void CreateMinibatch(RnnlmMinibatch *minibatch);
+
+    ~SingleMinibatchCreator();
+   private:
+    // the sampling parts of creating a minibatch.
+    void CreateMinibatchSampling(RnnlmMinibatch *minibatch);
+    // called from CreateMinibatch, handles a single sequence
+    void CreateMinibatchOneSequence(int32 n, RnnlmMinibatch *minibatch);
+
+    // This function writes to the minibatch for the n'th sequence,
+    // (with 0 <= n < config_.minibatch_size), the t'th position
+    // (with 0 <= t < config_.chunk_length).
+    //   'input_word' is the word the RNNLM sees as its input;
+    //   'output_word' is the word the RNNLM predicts as its output
+    //     (and this will normally be the same as the 'input_word'
+    //     for t+1, except at chunk boundaries);
+    //   'weight' is the weight in the objective, for predicting the word
+    //     'output_word'.  This is normally the same as the corpus weight for
+    //     this data-source, but it could be zero for words that are only used
+    //     for context after a split, or for where we are padding a sequence.
+    void Set(int32 n, int32 t, int32 input_word, int32 output_word,
+             BaseFloat weight, RnnlmMinibatch *minibatch) const;
+
+    const RnnlmEgsConfig &config_;
+
+    // each chunk of the eg we write may actually contain more than
+    // one sequence, or fragment of a sequence.
+    // chunks.size() will be equal to config_.minibatch_size.
+    std::vector<std::vector<SequenceChunk*> > eg_chunks_;
+
+    // lists all eg_chunks 0 <= i < config_.minibatch_size that
+    // are completely empty (i.e. eg_chunks[i].empty()).
+    std::vector<int32> empty_eg_chunks_;
+
+    // Lists all eg_chunks that are not empty but completely full,
+    // giving the amount of space left in the eg_chunk, as an unordered list
+    // of pairs (i, space_left).
+    // What this means specifically is as follows:
+    // Let SpaceUsed(i) be equal to \sum_j eg_chunks[i][j]->MinLenght(config_).
+    // space_left for eg_chunk i equals config_.chunk_length - SpaceUsed(i).
+    // It represents the largest MinLength() of a SequenceChunk that we
+    // would be able to fit in this eg_chunk.
+    std::vector<std::pair<int32, int32> > partial_eg_chunks_;
+  };
+
+
+  // Checks an input sequence, as read directly from the user.
+  // Checks that weight > 0.0, that 'words' does not contain
+  // <s> or <brk> (see bos_symbol and brk_symbol in the config).
+  // Note: it may contain </s> internally to separate sentences
+  // that are part of a sequence of utterances, such as a conversation.
+  // It's not expected to contain </s> at the end, but this is
+  // not checked for, because it's not absolutely disallowed.
+  // (it would get processed into </s> </s> which would be an empty
+  // turn in a multi-sentence conversation).
+  // Also, while we don't expect to see empty 'words' often, it's
+  // not disallowed because you might legitimately want the LM
+  // to be able to generate the empty sequence in an ASR application.
+  void CheckSequence(BaseFloat weight,
+                     const std::vector<int32> &words);
+
+
+  // This function splits a sequence into one or more
+  // objects of type SequenceChunk, and appends them to 'chunks_'.j
+  void SplitSequenceIntoChunks(BaseFloat weight,
+                               const std::vector<int32> &words);
+
+  // for a provided sequence_length > config_.chunk_length,
+  // randomly chooses a list of chunk lengths with the following
+  // properties:
+  //  The chunk lengths sum to 'sequence_length'.
+  //  (*chunk_lengths)[0] <= config_.chunk_length
+  //  (*chunk_lengths)[i] <= config_.chunk_length - config_.min_split_context
+  //    for i > 0
+  // All but one of the chunk_lenghhs have the maximum possible
+  // value (depending on their position).
+  void ChooseChunkLengths(int32 sequence_length,
+                          std::vector<int32> *chunk_lengths);
+
+  // Removes, and returns, a randomly chosen SequenceChunk* from 'chunks_'.
+  // Transfers ownership to caller.
+  SequenceChunk *GetRandomChunk();
+
+  // This stores pending chunks that we have not yet processed
+  // into a minibatch.  The pointers are owned here.
+  std::vector<SequenceChunk*> chunks_;
+
+  RnnlmEgsConfig &config_;
+  const RnnlmMinibatchSampler *sampler_;
+  TableWriter<KaldiHolder<RnnlmMinibatch> > *writer_;
+};
+
+
+/**
+   This typedef represents a single sequence (e.g. part of a sentence, or
+   maybe parts of multiple sentences), for RNNLM training.
+   It's a list of pairs (word-index, weight).  The weight is the
+   weight in the objective function from predicting this word.
+   This will be zero for the initial <s>, and for other words it will
+   normally be a weight that we gave to the dataset it came from;
+   but we sometimes set the weight to zero for words other than <s>
+   at split points (so we can represent the history without having
+   to predict the same word twice).
+ */
+typedef std::vector<std::pair<int32, BaseFloat> > RnnlmEgSequence;
+
+
+/**
+   Given a raw word sequence, which should not contain an initial
+   <s> or final </s> (but which may contain </s> internally to demarcate
+   sentences that are part of some naturally continuous sequence),
+   this function splits it if necessary to form form a vector of
+   'RnnlmEgSequence', containing sub-parts of the sentence.
+
+
+*/
+void PrepareRnnlmEgSequences(const RnnlmEgsConfig &config,
+                             const std::vector<int32> &raw_word_sequence,
+                             BaseFloat weight,
+                             std::vector<RnnlmEgSequence> *sequence);
+
+
+void SplitRnnlmEgSequence(const std::vector<int32> raw_word_sequence,
+                          BaseFloat weight,
+                          const RnnlmEgsConfig,
+                          std::vector<RnnlmEgSequence> *sequences);
+
+
+
+} // namespace rnnlm
+} // namespace kaldi
+
+#endif // KALDI_RNNLM_RNNLM_EGS_H_

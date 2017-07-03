@@ -38,10 +38,10 @@ class ArpaSampling : public ArpaFileParser {
 
   // ARPA LM file is read by function "void Read(std::istream &is, bool binary)"
   // in ArpaFileParser. Only text mode is supported.
-  ArpaSampling(ArpaParseOptions options, fst::SymbolTable* symbols)
-     : ArpaFileParser(options, symbols) {
-       ngram_order_ = 0;
-       num_words_ = 0;
+  ArpaSampling(ArpaParseOptions options, fst::SymbolTable* symbols):
+      ArpaFileParser(options, symbols) {
+    ngram_order_ = 0;
+    num_words_ = 0;
   }
 
   // This function computes the unigram distribution of all words represented
@@ -58,6 +58,9 @@ class ArpaSampling : public ArpaFileParser {
   // that history
   BaseFloat GetDistribution(const WeightedHistType &histories,
       std::unordered_map<int32, BaseFloat> *non_unigram_probs) const;
+
+  // Return the n-gram order, e.g. 1 for a unigram LM, 2 for a bigram.
+  int32 Order() const { return ngram_order_; }
 
  protected:
   // ArpaFileParser overrides.

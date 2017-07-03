@@ -256,7 +256,7 @@ Sampler::Sampler(const std::vector<BaseFloat> &unigram_probs) {
                                  unigram_probs.end(),
                                  0.0);
   KALDI_ASSERT(std::abs(total - 1.0) < 1.0e-02);
-  double inv_total = total / 1.0;
+  double inv_total = 1.0 / total;
 
   double sum = 0.0;
   size_t n = unigram_probs.size();
