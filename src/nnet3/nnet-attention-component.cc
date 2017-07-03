@@ -168,8 +168,7 @@ void RestrictedAttentionComponent::PropagateOneHead(
                out->NumCols() == full_value_dim &&
                in.NumCols() == (key_dim_ + value_dim_ + query_dim) &&
                io.t_step_in == io.t_step_out &&
-               (io.start_t_out - io.start_t_in) % io.t_step_in == 0 &
-               (io.num_t_out - io.num_t_in) % io.t_step_in == 0);
+               (io.start_t_out - io.start_t_in) % io.t_step_in == 0);
 
   // 'steps_left_context' is the number of time-steps the input has on the left
   // that don't appear in the output.
@@ -317,8 +316,7 @@ void RestrictedAttentionComponent::BackpropOneHead(
                out_deriv.NumCols() == full_value_dim &&
                in_value.NumCols() == (key_dim_ + value_dim_ + query_dim) &&
                io.t_step_in == io.t_step_out &&
-               (io.start_t_out - io.start_t_in) % io.t_step_in == 0 &
-               (io.num_t_out - io.num_t_in) % io.t_step_in == 0 &&
+               (io.start_t_out - io.start_t_in) % io.t_step_in == 0 &&
                SameDim(in_value, *in_deriv) &&
                c.NumRows() == out_deriv.NumRows() &&
                c.NumCols() == context_dim_);
