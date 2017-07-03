@@ -42,9 +42,9 @@ struct ArpaParseOptions {
     kSkipNGram       ///< Skip n-gram with OOV word and continue.
   };
 
-  ArpaParseOptions()
-      : bos_symbol(-1), eos_symbol(-1), unk_symbol(-1),
-        oov_handling(kRaiseError), max_warnings(30) { }
+  ArpaParseOptions():
+      bos_symbol(-1), eos_symbol(-1), unk_symbol(-1),
+      oov_handling(kRaiseError), max_warnings(30) { }
 
   void Register(OptionsItf *opts) {
     // Registering only the max_warnings count, since other options are
