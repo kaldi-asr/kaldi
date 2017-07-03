@@ -33,6 +33,7 @@ std::string RestrictedAttentionComponent::Info() const {
   stream << Type() << ", input-dim=" << InputDim()
          << ", output-dim=" << OutputDim()
          << ", num-heads=" << num_heads_
+         << ", time-stride=" << time_stride_
          << ", key-dim=" << key_dim_
          << ", value-dim=" << value_dim_
          << ", num-left-inputs=" << num_left_inputs_
@@ -486,7 +487,7 @@ void RestrictedAttentionComponent::GetInputIndexes(
   desired_indexes->resize(context_dim_);
   int32 n = output_index.n, x = output_index.x,
       i = 0;
-  for (int32 t = first_time, i = 0; t <= last_time; t += time_stride_, i++) {
+  for (int32 t = first_time; t <= last_time; t += time_stride_, i++) {
     (*desired_indexes)[i].n = n;
     (*desired_indexes)[i].t = t;
     (*desired_indexes)[i].x = x;
