@@ -1,7 +1,7 @@
 // nnet3/attention.h
 
 // Copyright      2017  Johns Hopkins University (author: Daniel Povey)
-//                      Johns Hopkins University (author: Hossein Hadian)
+//                      Hossein Hadian
 
 // See ../../COPYING for clarification regarding multiple authors
 //
