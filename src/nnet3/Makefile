@@ -30,7 +30,8 @@ OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
   discriminative-training.o nnet-discriminative-training.o \
   nnet-compile-looped.o decodable-simple-looped.o \
   decodable-online-looped.o convolution.o \
-  nnet-convolutional-component.o attention.o
+  nnet-convolutional-component.o attention.o \
+  nnet-attention-component.o
 
 
 LIBNAME = kaldi-nnet3
