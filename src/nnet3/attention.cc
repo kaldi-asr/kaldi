@@ -223,18 +223,23 @@ void AttentionBackward(BaseFloat key_scale,
   // c->AddMat(1.0, queries_context_part)
   queries_context_part_deriv.AddMat(1.0, c_deriv);
 
-
   // The following statement is the part of the backprop w.r.t. the
   // statement:
   // GetAttentionDotProducts(key_scale, queries_key_part, keys, c);
   // which propagates the derivative back to 'queries_key_part'.
-  ApplyScalesToOutput(key_scale, keys, c, &queries_key_part_deriv);
+  ApplyScalesToOutput(key_scale, keys, c_deriv, &queries_key_part_deriv);
 
   // The following statement is the part of the backprop w.r.t. the
   // statement:
   // GetAttentionDotProducts(key_scale, queries_key_part, keys, c);
   // which propagates the derivative back to 'keys'.
-  ApplyScalesToInput(key_scale, queries_key_part, c, keys_deriv);
+  ApplyScalesToInput(key_scale, queries_key_part, c_deriv, keys_deriv);
+
+  // The followign statement is the part of the backprop w.r.t.
+  // the statement:
+  // ApplyScalesToOutput(1.0, values, *c, &output_values_part);
+  // which propagates the derivative back to 'values'.
+  ApplyScalesToInput(1.0, output_values_part_deriv, c,  values_deriv);
 }
 
 } // namespace attention
