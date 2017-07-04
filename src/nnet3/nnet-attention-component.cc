@@ -265,7 +265,7 @@ void RestrictedAttentionComponent::Add(BaseFloat alpha, const Component &other_i
   if (entropy_stats_.Dim() == 0 && other->entropy_stats_.Dim() != 0)
     entropy_stats_.Resize(other->entropy_stats_.Dim());
   if (posterior_stats_.NumRows() == 0 && other->posterior_stats_.NumRows() != 0)
-    posterior_stats_.Resize(other->posterior_stats_.NumRows(), posterior_stats_.NumCols());
+    posterior_stats_.Resize(other->posterior_stats_.NumRows(), other->posterior_stats_.NumCols());
   if (other->entropy_stats_.Dim() != 0)
     entropy_stats_.AddVec(alpha, other->entropy_stats_);
   if (other->posterior_stats_.NumRows() != 0)
