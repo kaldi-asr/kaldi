@@ -1,6 +1,7 @@
 // nnet3/nnet-attention-component.cc
 
 // Copyright      2017  Johns Hopkins University (author: Daniel Povey)
+//                2017  Hossein Hadian
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -244,6 +245,34 @@ void RestrictedAttentionComponent::StoreStats(
   }
   stats_count_ += c.NumRows();
 }
+
+void RestrictedAttentionComponent::ZeroStats() {
+  entropy_stats_.SetZero();
+  posterior_stats_.SetZero();
+  stats_count_ = 0.0;
+}
+
+void RestrictedAttentionComponent::Scale(BaseFloat scale) {
+  entropy_stats_.Scale(scale);
+  posterior_stats_.Scale(scale);
+  stats_count_ *= scale;
+}
+
+void RestrictedAttentionComponent::Add(BaseFloat alpha, const Component &other_in) {
+  const RestrictedAttentionComponent *other =
+      dynamic_cast<const RestrictedAttentionComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  if (entropy_stats_.Dim() == 0 && other->entropy_stats_.Dim() != 0)
+    entropy_stats_.Resize(other->entropy_stats_.Dim());
+  if (posterior_stats_.NumRows() == 0 && other->posterior_stats_.NumRows() != 0)
+    posterior_stats_.Resize(other->posterior_stats_.NumRows(), posterior_stats_.NumCols());
+  if (other->entropy_stats_.Dim() != 0)
+    entropy_stats_.AddVec(alpha, other->entropy_stats_);
+  if (other->posterior_stats_.NumRows() != 0)
+    posterior_stats_.AddMat(alpha, other->posterior_stats_);
+  stats_count_ += alpha * other->stats_count_;
+}
+
 
 void RestrictedAttentionComponent::Check() const {
   KALDI_ASSERT(num_heads_ > 0 && key_dim_ > 0 && value_dim_ > 0 &&
