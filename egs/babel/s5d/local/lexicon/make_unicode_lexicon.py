@@ -446,7 +446,6 @@ def encode(unicode_transcription, tag_percentage, log=False):
                     else:
                         sys.exit("Unknown rule for initial underscore")
                 elif(graph["SYMBOL"] == "-"):
-                    print("Dash")
                     graph["MAP0"] = "\t"
                 else:
                     sys.exit("Unknown linking symbol found.")

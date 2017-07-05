@@ -107,6 +107,6 @@ echo "--------------------------------------"
 lang_orig=data/lang
 utils/prepare_lang.sh  --phone-symbol-table $lang_orig/phones.txt \
   --share-silence-phones true \
-  data/dict_expanded/lexicon.txt "$unk" data/dict_expanded/lang.tmp data/lang_expanded
+  data/dict_expanded "$unk" data/dict_expanded/lang.tmp data/lang_expanded
 
 exit 0
