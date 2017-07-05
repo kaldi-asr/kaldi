@@ -37,7 +37,7 @@ with open(args.features_file, 'r', encoding="utf-8") as f:
     word_feats = {}
     for line in f:
         fields = line.split()
-        assert len(fields) == 2 or len(fields) == 3
+        assert(len(fields) in [2, 3, 4])
 
         assert idx == int(fields[0])
         idx += 1
