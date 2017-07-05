@@ -68,6 +68,8 @@ void NnetTrainer::Train(const NnetExample &eg) {
       srand_seed_ % config_.backstitch_training_interval) {
     // backstitch training is incompatible with momentum > 0
     KALDI_ASSERT(config_.momentum == 0.0);
+    Basefloat kept_dropout_proportion = ExtractDropoutProportion(nnet);
+    SetDropoutProportion(0.0, nnet);
     FreezeNaturalGradient(true, delta_nnet_);
     bool is_backstitch_step1 = true;
     srand(srand_seed_ + num_minibatches_processed_);
@@ -78,6 +80,7 @@ void NnetTrainer::Train(const NnetExample &eg) {
     srand(srand_seed_ + num_minibatches_processed_);
     ResetGenerators(nnet_);
     TrainInternalBackstitch(eg, *computation, is_backstitch_step1);
+    SetDropoutProportion(kept_dropout_proportion, nnet);
   } else { // conventional training
     TrainInternal(eg, *computation);
   }
