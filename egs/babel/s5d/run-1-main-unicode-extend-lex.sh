@@ -125,7 +125,7 @@ if [[ ! -f $lexicon || $lexicon -ot "$lexicon_file" ]]; then
   if $extend_lexicon; then
     # Extend the original lexicon.
     # Will creates the files data/local/extend/{lexiconp.txt,oov2prob}.
-    mv $lexicon  data/local/lexicon_orig.txt
+    mv $lexicon data/local/lexicon_orig.txt
     local/extend_lexicon.sh --cmd "$train_cmd" --cleanup false \
       --num-sent-gen $num_sent_gen --num-prons $num_prons \
       data/local/lexicon_orig.txt data/local/extend data/dev2h/text
