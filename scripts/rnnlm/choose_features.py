@@ -15,6 +15,8 @@ parser = argparse.ArgumentParser(description="This script chooses the sparse fea
 
 parser.add_argument("--unigram-probs", type=str, default='', required=True,
                     help="Specify the file containing unigram probs.")
+parser.add_argument("--unigram-scale", type=float, default=0.1,
+                    help="A scalar that scales the unigram features")
 parser.add_argument("--min-ngram-order", type=int, default=1,
                     help="minimum length of n-grams of characters to"
                          "make potential features.")
@@ -119,7 +121,7 @@ if args.include_unigram_feature == 'true':
         entropy += math.log(p)
     entropy /= -vocab_size
 
-    print("{0}\tunigram\t{1}".format(num_features, entropy))
+    print("{0}\tunigram\t{1}\t{2}".format(num_features, entropy, args.unigram_scale))
     num_features += 1
 
 # length features

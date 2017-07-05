@@ -7,7 +7,7 @@ import math
 
 
 parser = argparse.ArgumentParser(description="This script turns the words into the sparse feature representation, "
-                                             "using features from rnnlm/make_word_features.py.",
+                                             "using features from rnnlm/choose_features.py.",
                                  epilog="E.g. " + sys.argv[0] + " --unigram-probs=exp/rnnlm/unigram_probs.txt "
                                         "data/rnnlm/vocab/words.txt exp/rnnlm/features.txt "
                                         "> exp/rnnlm/word_feats.txt",
@@ -15,7 +15,6 @@ parser = argparse.ArgumentParser(description="This script turns the words into t
 
 parser.add_argument("--unigram-probs", type=str, default='', required=True,
                     help="Specify the file containing unigram probs.")
-
 parser.add_argument("vocab_file", help="Path for vocab file")
 parser.add_argument("features_file", help="Path for features file")
 
@@ -87,14 +86,14 @@ def read_features(features_file):
     with open(features_file, 'r', encoding="utf-8") as f:
         for line in f:
             fields = line.split()
-            assert len(fields) == 2 or len(fields) == 3
+            assert(len(fields) in [2, 3, 4])
 
             feat_id = int(fields[0])
             feat_type = fields[1]
             if feat_type == 'special':
                 feats['special'][fields[2]] = feat_id
             elif feat_type == 'unigram':
-                feats['unigram'] = (feat_id, float(fields[2]))
+                feats['unigram'] = (feat_id, float(fields[2]), float(fields[3]))
             elif feat_type == 'length':
                 feats['length'] = feat_id
             elif feat_type in ['word', 'match', 'initial', 'final']:
@@ -136,8 +135,9 @@ for word, idx in sorted(vocab.items(), key=lambda x: x[1]):
     if 'unigram' in feats:
         feat_id = feats['unigram'][0]
         log_ppl = feats['unigram'][1]
+        scale = feats['unigram'][2]
         logp = math.log(unigram_probs[idx])
-        print(prefix + "{0} {1}".format(feat_id, logp / log_ppl + 1), end="")
+        print(prefix + "{0} {1}".format(feat_id, (logp + log_ppl) * scale / log_ppl), end="")
         prefix = " "
 
     if 'length' in feats:

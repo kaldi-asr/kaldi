@@ -5,7 +5,7 @@
 namespace kaldi {
 
 // This function reads in each ngram line from an ARPA file
-void ArpaSampling::ConsumeNGram(const NGram& ngram) {
+void ArpaForSampling::ConsumeNGram(const NGram& ngram) {
   int32 cur_order = ngram.words.size();
   int32 word = ngram.words.back();  // word is the last word in a ngram term
   HistType history(ngram.words.begin(), ngram.words.end() - 1);
@@ -25,13 +25,13 @@ void ArpaSampling::ConsumeNGram(const NGram& ngram) {
   }
 }
 
-void ArpaSampling::HeaderAvailable() {
+void ArpaForSampling::HeaderAvailable() {
   ngram_counts_ = NgramCounts();
   ngram_order_ = NgramCounts().size();
   probs_.resize(ngram_order_);
 }
 
-BaseFloat ArpaSampling::GetLogprob(int32 word, const HistType &history) const {
+BaseFloat ArpaForSampling::GetLogprob(int32 word, const HistType &history) const {
   BaseFloat prob = 0.0;
   KALDI_ASSERT(history.size() < ngram_order_);
   // Ngram order should be history size plus one. Since here the ngram order is
@@ -57,7 +57,7 @@ BaseFloat ArpaSampling::GetLogprob(int32 word, const HistType &history) const {
   return prob;
 }
 
-BaseFloat ArpaSampling::GetBackoffLogprob(int32 word,
+BaseFloat ArpaForSampling::GetBackoffLogprob(int32 word,
                                           const HistType &history) const {
   BaseFloat bow = 0.0;
   KALDI_ASSERT(history.size() >= 0);
@@ -72,7 +72,7 @@ BaseFloat ArpaSampling::GetBackoffLogprob(int32 word,
   return bow;
 }
 
-void ArpaSampling::GetUnigramDistribution(
+void ArpaForSampling::GetUnigramDistribution(
                    std::vector<BaseFloat> *unigram_probs) const {
   unigram_probs->clear();
   unigram_probs->resize(num_words_);
@@ -89,7 +89,7 @@ void ArpaSampling::GetUnigramDistribution(
   }
 }
 
-BaseFloat ArpaSampling::GetDistribution(const WeightedHistType &histories,
+BaseFloat ArpaForSampling::GetDistribution(const WeightedHistType &histories,
                            std::unordered_map<int32, BaseFloat> *pdf_w) const {
   pdf_w->clear();
   BaseFloat unigram_weight = 0.0;
