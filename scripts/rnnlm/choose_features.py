@@ -10,11 +10,14 @@ parser = argparse.ArgumentParser(description="This script chooses the sparse fea
                                              "To be more specific, it chooses the set of features-- you compute "
                                              "them for the specific words by calling rnnlm/make_word_features.py.",
                                  epilog="E.g. " + sys.argv[0] + " --unigram-probs=exp/rnnlm/unigram_probs.txt "
+                                        "--unigram-scale=0.1 "
                                         "data/rnnlm/vocab/words.txt > exp/rnnlm/features.txt",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 parser.add_argument("--unigram-probs", type=str, default='', required=True,
                     help="Specify the file containing unigram probs.")
+parser.add_argument("--unigram-scale", type=float, default=0.1,
+                    help="A scalar that scales the unigram features")
 parser.add_argument("--min-ngram-order", type=int, default=1,
                     help="minimum length of n-grams of characters to"
                          "make potential features.")
@@ -119,7 +122,7 @@ if args.include_unigram_feature == 'true':
         entropy += math.log(p)
     entropy /= -vocab_size
 
-    print("{0}\tunigram\t{1}".format(num_features, entropy))
+    print("{0}\tunigram\t{1}\t{2}".format(num_features, entropy, args.unigram_scale))
     num_features += 1
 
 # length features
