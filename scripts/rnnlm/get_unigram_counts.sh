@@ -21,9 +21,8 @@ set -e -o pipefail -u
 export LC_ALL=C
 
 for f in `ls $data/*.txt`; do
-  cat $f | sed 's!</S>!</s>!g' | \
-      awk '{for(i = 1; i <= NF; i++) {print $i;} print "</s>"}' | sort | uniq -c | \
-      awk '{print $2,$1}' > ${f%.*}.counts
+  cat $f | awk '{for(i = 1; i <= NF; i++) {print $i;} print "</s>"}' | \
+      sort | uniq -c | awk '{print $2,$1}' > ${f%.*}.counts
 done
 
 echo "get_unigram_counts.sh: get counts in $data/*.counts"
