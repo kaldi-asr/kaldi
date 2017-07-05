@@ -20,8 +20,6 @@ from __future__ import print_function
 
 import sys
 
-sys.path.insert(0,"/home/hxu/.local/lib/python2.7/site-packages/")
-
 import inspect
 import time
 
@@ -59,6 +57,9 @@ def f(x):
   x2 = tf.maximum(0.0, x)
   return tf.exp(x1) + x2
 
+# this new "softmax" function we show can train a "self-normalized" RNNLM where
+# the sum of the output is automatically (close to) 1.0
+# which saves a lot of computation for lattice-rescoring
 def new_softmax(labels, logits):
   target = tf.reshape(labels, [-1])
   f_logits = tf.exp(logits)
@@ -71,7 +72,6 @@ def new_softmax(labels, logits):
   res = tf.gather_nd(logits, ind)
 
   return -res + row_sums - 1
-#  return -res + tf.log(row_sums) # this is the original softmax
 
 class RNNLMInput(object):
   """The input data."""
@@ -123,7 +123,6 @@ class RNNLMModel(object):
     self._initial_state_single = self.cell.zero_state(1, data_type())
 
     self.initial = tf.reshape(tf.stack(axis=0, values=self._initial_state_single), [config.num_layers, 2, 1, size], name="test_initial_state")
-
 
     # first implement the less efficient version
     test_word_in = tf.placeholder(tf.int32, [1, 1], name="test_word_in")

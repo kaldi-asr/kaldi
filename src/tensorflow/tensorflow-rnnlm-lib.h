@@ -39,14 +39,18 @@ namespace tf_rnnlm {
 struct KaldiTfRnnlmWrapperOpts {
   std::string unk_symbol;
   std::string eos_symbol;
+  int32 num_jobs;  // 0 means unlimited
 
-  KaldiTfRnnlmWrapperOpts() : unk_symbol("<oos>"), eos_symbol("</s>") {}
+  KaldiTfRnnlmWrapperOpts() : unk_symbol("<oos>"), eos_symbol("</s>"),
+                              num_jobs(1) {}
 
   void Register(OptionsItf *opts) {
     opts->Register("unk-symbol", &unk_symbol, "Symbol for out-of-vocabulary "
                    "words in rnnlm.");
     opts->Register("eos-symbol", &eos_symbol, "End of setence symbol in "
                    "rnnlm.");
+    opts->Register("num-jobs", &num_jobs, "Number of jobs for TF computation; "
+                   "0 means unlimited. (default = 1)");
   }
 };
 
@@ -90,7 +94,7 @@ class KaldiTfRnnlmWrapper {
   std::vector<std::string> rnn_label_to_word_;
   std::vector<std::string> fst_label_to_word_;
  private:
-  void ReadTfModel(const std::string &tf_model_path);
+  void ReadTfModel(const std::string &tf_model_path, int32 num_jobs);
 
   // do queries on the session to get the initial tensors (cell + context)
   void AcquireInitialTensors();

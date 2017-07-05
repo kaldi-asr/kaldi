@@ -61,10 +61,15 @@ void SetUnkPenalties(const string &filename,
 }
 
 // Read tensorflow checkpoint files
-void KaldiTfRnnlmWrapper::ReadTfModel(const std::string &tf_model_path) {
+void KaldiTfRnnlmWrapper::ReadTfModel(const std::string &tf_model_path,
+                                      int32 num_jobs) {
   string graph_path = tf_model_path + ".meta";
 
-  Status status = tensorflow::NewSession(tensorflow::SessionOptions(),
+  tensorflow::SessionOptions session_options;
+  session_options.config.set_intra_op_parallelism_threads(num_jobs); // limit parallelism within jobs
+  session_options.config.set_inter_op_parallelism_threads(num_jobs); // limit parallelism within jobs
+
+  Status status = tensorflow::NewSession(session_options,
                                          &session_);
   if (!status.ok()) {
     KALDI_ERR << status.ToString();
@@ -102,7 +107,7 @@ KaldiTfRnnlmWrapper::KaldiTfRnnlmWrapper(
     const std::string &word_symbol_table_rxfilename,
     const std::string &unk_prob_file,
     const std::string &tf_model_path): opts_(opts) {
-  ReadTfModel(tf_model_path);
+  ReadTfModel(tf_model_path, opts.num_jobs);
 
   fst::SymbolTable *fst_word_symbols = NULL;
   if (!(fst_word_symbols =
@@ -169,6 +174,7 @@ KaldiTfRnnlmWrapper::KaldiTfRnnlmWrapper(
 
   AcquireInitialTensors();
   SetUnkPenalties(unk_prob_file, *fst_word_symbols, &unk_costs_);
+  delete fst_word_symbols;
 }
 
 void KaldiTfRnnlmWrapper::AcquireInitialTensors() {

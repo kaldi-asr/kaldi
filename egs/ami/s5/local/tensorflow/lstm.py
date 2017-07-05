@@ -20,8 +20,6 @@ from __future__ import print_function
 
 import sys
 
-sys.path.insert(0,"/home/hxu/.local/lib/python2.7/site-packages/")
-
 import inspect
 import time
 

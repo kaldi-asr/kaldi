@@ -1,5 +1,5 @@
 # Copyright 2015 The TensorFlow Authors. All Rights Reserved.
-#           Modified by Hainan Xu to be used in Kaldi for lattice rescoring 2017
+#           2017 Hainan Xu, adapted to be used in Kaldi for lattice rescoring
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -182,9 +182,7 @@ class RNNLMModel(object):
     tvars = tf.trainable_variables()
     grads, _ = tf.clip_by_global_norm(tf.gradients(cost, tvars),
                                       config.max_grad_norm)
-#    optimizer = tf.train.AdamOptimizer()  # TODO
-    optimizer = tf.train.MomentumOptimizer(self._lr, 0.9)  # TODO
-#    optimizer = tf.train.GradientDescentOptimizer(self._lr)  # TODO
+    optimizer = tf.train.MomentumOptimizer(self._lr, 0.9)
     self._train_op = optimizer.apply_gradients(
         zip(grads, tvars),
         global_step=tf.contrib.framework.get_or_create_global_step())

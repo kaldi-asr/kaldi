@@ -87,6 +87,7 @@ acwt=`perl -e "print (1.0/$inv_acwt);"`
 
 mkdir -p $outdir/log
 nj=`cat $indir/num_jobs` || exit 1;
+nj=1 # TODO(hxu)
 cp $indir/num_jobs $outdir
 
 oldlm_weight=`perl -e "print -1.0 * $weight;"`
