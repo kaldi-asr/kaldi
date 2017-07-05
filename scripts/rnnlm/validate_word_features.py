@@ -23,7 +23,7 @@ max_feat_id = -1
 with open(args.features_file, 'r', encoding="utf-8") as f:
     for line in f:
         fields = line.split()
-        assert len(fields) == 2 or len(fields) == 3
+        assert(len(fields) in [2, 3, 4])
 
         feat_id = int(fields[0])
         if fields[1] == "special":
