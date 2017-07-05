@@ -52,10 +52,10 @@ def check_text_file(text_file):
             if len(words) != 0:
                 found_nonempty_line = True
                 for word in words:
-                    if word.lower() in disallowed_symbols:
+                    if word in disallowed_symbols:
                         sys.exit(sys.argv[0] + ": Found suspicious line '{0}' in file {1} at {2} ({3} "
                                  " symbol is disallowed!)".format(line, text_file, lineno, word))
-                if words[-1].lower() == EOS_SYMBOL:
+                if words[-1] == EOS_SYMBOL:
                     sys.exit(sys.argv[0] + ": Found suspicious line '{0}' in file {1} at {2} (EOS symbol "
                              "at the end of a line is disallowed!)".format(line, text_file, lineno))
                 if len(words) >= 1000:
