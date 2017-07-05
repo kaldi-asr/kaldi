@@ -3,10 +3,34 @@ set -e
 
 # run_tdnn_1e.sh is like run_tdnn_1c.sh but the relu-dim is 725 and frames_per_eg is "150,140,100"
 
+#exp/chain_cleaned/tdnn_1c_sp: num-iters=871 nj=3..16 num-params=9.1M dim=40+100->5151 combine=-0.088->-0.088 xent:train/valid[579,870,final]=(-1.16,-1.13,-1.13/-1.26,-1.23,-1.23) logprob:train/valid[579,870,final]=(-0.072,-0.069,-0.069/-0.079,-0.077,-0.077)
+#exp/chain_cleaned/tdnn_1e_sp: num-iters=871 nj=3..16 num-params=15.1M dim=40+100->5151 combine=-0.081->-0.081 xent:train/valid[579,870,final]=(-1.18,-1.14,-1.14/-1.11,-1.08,-1.08) logprob:train/valid[579,870,final]=(-0.072,-0.068,-0.068/-0.072,-0.069,-0.070)
+
 # by default, with cleanup:
 # local/chain/run_tdnn.sh
 
 # local/chain/compare_wer.sh exp/chain_cleaned/tdnn_1c_sp exp/chain_cleaned/tdnn_1e_sp
+# System                      tdnn_1c_sp tdnn_1e_sp
+# WER on dev(fglarge)              3.89      3.90
+# WER on dev(tglarge)              4.09      4.05
+# WER on dev(tgmed)                5.17      5.02
+# WER on dev(tgsmall)              5.81      5.64
+# WER on dev_other(fglarge)       10.24     10.29
+# WER on dev_other(tglarge)       10.87     10.88
+# WER on dev_other(tgmed)         13.23     13.30
+# WER on dev_other(tgsmall)       14.63     14.78
+# WER on test(fglarge)             4.41      4.28
+# WER on test(tglarge)             4.54      4.42
+# WER on test(tgmed)               5.56      5.46
+# WER on test(tgsmall)             6.21      6.05
+# WER on test_other(fglarge)      10.62     10.90
+# WER on test_other(tglarge)      11.20     11.45
+# WER on test_other(tgmed)        13.64     13.82
+# WER on test_other(tgsmall)      15.00     15.08
+# Final train prob              -0.0688   -0.0682
+# Final valid prob              -0.0771   -0.0698
+# Final train prob (xent)       -1.1308   -1.1444
+# Final valid prob (xent)       -1.2324   -1.0838
 
 ## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
 ## otherwise call it directly in its location).
@@ -14,7 +38,7 @@ set -e
 # local/chain/run_tdnn.sh  --train-set train_960 --gmm tri6b --nnet3-affix "" &
 
 # configs for 'chain'
-# this script is adapted from librispeech's 1b script.
+# this script is adapted from librispeech's 1c script.
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).

@@ -23,6 +23,10 @@ set -e
 # WER on test(tglarge)             4.58      4.54
 # WER on test(tgmed)               5.54      5.56
 # WER on test(tgsmall)             6.15      6.21
+# WER on test_other(fglarge)      10.64     10.62
+# WER on test_other(tglarge)      11.13     11.20
+# WER on test_other(tgmed)        13.45     13.64
+# WER on test_other(tgsmall)      14.92     15.00
 # Final train prob              -0.0635   -0.0688
 # Final valid prob              -0.0759   -0.0771
 # Final train prob (xent)       -1.0518   -1.1308
