@@ -31,9 +31,8 @@ import reader
 flags = tf.flags
 logging = tf.logging
 
-flags.DEFINE_string(
-    "model", "small",
-    "A type of model. Possible options are: small, medium, large.")
+flags.DEFINE_integer("hidden_size", 200, "hidden dim of RNN")
+
 flags.DEFINE_string("data_path", None,
                     "Where the training/test data is stored.")
 flags.DEFINE_string("vocab_path", None,
@@ -45,33 +44,22 @@ flags.DEFINE_bool("use_fp16", False,
 
 FLAGS = flags.FLAGS
 
+class Config(object):
+  init_scale = 0.1
+  learning_rate = 1.0
+  max_grad_norm = 5
+  num_layers = 2
+  num_steps = 20
+  hidden_size = 200
+  max_epoch = 4
+  max_max_epoch = 13
+  keep_prob = 1.0
+  lr_decay = 0.5
+  batch_size = 64
 
 def data_type():
   return tf.float16 if FLAGS.use_fp16 else tf.float32
 
-# this function does the following:
-# return exp(x) if x < 0
-#        x if x >= 0
-def f(x):
-  x1 = tf.minimum(0.0, x)
-  x2 = tf.maximum(0.0, x)
-  return tf.exp(x1) + x2
-
-# this new "softmax" function we show can train a "self-normalized" RNNLM where
-# the sum of the output is automatically (close to) 1.0
-# which saves a lot of computation for lattice-rescoring
-def new_softmax(labels, logits):
-  target = tf.reshape(labels, [-1])
-  f_logits = tf.exp(logits)
-#  f_logits = f(logits)
-  row_sums = tf.reduce_sum(f_logits, 1) # this is the negative part of the objf
-
-  t2 = tf.expand_dims(target, 1)
-  range = tf.expand_dims(tf.range(tf.shape(target)[0]), 1)
-  ind = tf.concat([range, t2], 1)
-  res = tf.gather_nd(logits, ind)
-
-  return -res + row_sums - 1
 
 class RNNLMInput(object):
   """The input data."""
@@ -124,6 +112,7 @@ class RNNLMModel(object):
 
     self.initial = tf.reshape(tf.stack(axis=0, values=self._initial_state_single), [config.num_layers, 2, 1, size], name="test_initial_state")
 
+
     # first implement the less efficient version
     test_word_in = tf.placeholder(tf.int32, [1, 1], name="test_word_in")
 
@@ -165,11 +154,11 @@ class RNNLMModel(object):
     softmax_w = tf.get_variable(
         "softmax_w", [size, vocab_size], dtype=data_type())
     softmax_b = tf.get_variable("softmax_b", [vocab_size], dtype=data_type())
-    softmax_b = softmax_b - 9.0
 
-    test_logits = tf.matmul(cellout_placeholder, tf.transpose(tf.nn.embedding_lookup(tf.transpose(softmax_w), test_word_out[0]))) + softmax_b[test_word_out[0,0]]
+    test_logits = tf.matmul(cellout_placeholder, softmax_w) + softmax_b
+    test_softmaxed = tf.nn.log_softmax(test_logits)
 
-    p_word = test_logits[0, 0]
+    p_word = test_softmaxed[0, test_word_out[0,0]]
     test_out = tf.identity(p_word, name="test_out")
 
     if is_training and config.keep_prob < 1:
@@ -197,8 +186,7 @@ class RNNLMModel(object):
     loss = tf.contrib.legacy_seq2seq.sequence_loss_by_example(
         [logits],
         [tf.reshape(input_.targets, [-1])],
-        [tf.ones([batch_size * num_steps], dtype=data_type())],
-        softmax_loss_function=new_softmax)
+        [tf.ones([batch_size * num_steps], dtype=data_type())])
     self._cost = cost = tf.reduce_sum(loss) / batch_size
     self._final_state = state
 
@@ -245,66 +233,6 @@ class RNNLMModel(object):
   def train_op(self):
     return self._train_op
 
-class TestConfig(object):
-  """Tiny config, for testing."""
-  init_scale = 0.1
-  learning_rate = 1.0
-  max_grad_norm = 1
-  num_layers = 1
-  num_steps = 2
-  hidden_size = 2
-  max_epoch = 1
-  max_max_epoch = 1
-  keep_prob = 1.0
-  lr_decay = 0.5
-  batch_size = 20
-
-class SmallConfig(object):
-  """Small config."""
-  init_scale = 0.1
-  learning_rate = 1
-  max_grad_norm = 5
-  num_layers = 2
-  num_steps = 20
-  hidden_size = 200
-  max_epoch = 4
-  max_max_epoch = 13
-  keep_prob = 1.0
-  lr_decay = 0.8
-  batch_size = 64
-
-
-class MediumConfig(object):
-  """Medium config."""
-  init_scale = 0.05
-  learning_rate = 1.0
-  max_grad_norm = 5
-  num_layers = 2
-  num_steps = 35
-  hidden_size = 650
-  max_epoch = 6
-  max_max_epoch = 39
-  keep_prob = 0.5
-  lr_decay = 0.8
-  batch_size = 20
-
-
-class LargeConfig(object):
-  """Large config."""
-  init_scale = 0.04
-  learning_rate = 1.0
-  max_grad_norm = 10
-  num_layers = 2
-  num_steps = 35
-  hidden_size = 1500
-  max_epoch = 14
-  max_max_epoch = 55
-  keep_prob = 0.35
-  lr_decay = 1 / 1.15
-  batch_size = 20
-
-
-
 def run_epoch(session, model, eval_op=None, verbose=False):
   """Runs the model on the given data."""
   start_time = time.time()
@@ -329,7 +257,6 @@ def run_epoch(session, model, eval_op=None, verbose=False):
     cost = vals["cost"]
     state = vals["final_state"]
 
-
     costs += cost
     iters += model.input.num_steps
 
@@ -342,17 +269,7 @@ def run_epoch(session, model, eval_op=None, verbose=False):
 
 
 def get_config():
-  if FLAGS.model == "small":
-    return SmallConfig()
-  elif FLAGS.model == "medium":
-    return MediumConfig()
-  elif FLAGS.model == "large":
-    return LargeConfig()
-  elif FLAGS.model == "test":
-    return TestConfig()
-  else:
-    raise ValueError("Invalid model: %s", FLAGS.model)
-
+  return Config()
 
 def main(_):
   if not FLAGS.data_path:
@@ -362,6 +279,7 @@ def main(_):
   train_data, valid_data, _, word_map = raw_data
 
   config = get_config()
+  config.hidden_size = FLAGS.hidden_size
   config.vocab_size = len(word_map)
   eval_config = get_config()
   eval_config.batch_size = 1

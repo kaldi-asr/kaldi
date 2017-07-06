@@ -20,8 +20,6 @@ from __future__ import print_function
 
 import sys
 
-sys.path.insert(0,"/home/hxu/.local/lib/python2.7/site-packages/")
-
 import inspect
 import time
 
@@ -33,9 +31,8 @@ import reader
 flags = tf.flags
 logging = tf.logging
 
-flags.DEFINE_string(
-    "model", "small",
-    "A type of model. Possible options are: small, medium, large.")
+flags.DEFINE_integer("hidden_size", 200, "hidden dim of RNN")
+
 flags.DEFINE_string("data_path", None,
                     "Where the training/test data is stored.")
 flags.DEFINE_string("vocab_path", None,
@@ -47,10 +44,46 @@ flags.DEFINE_bool("use_fp16", False,
 
 FLAGS = flags.FLAGS
 
+class Config(object):
+  """Small config."""
+  init_scale = 0.1
+  learning_rate = 1
+  max_grad_norm = 5
+  num_layers = 2
+  num_steps = 20
+  hidden_size = 200
+  max_epoch = 4
+  max_max_epoch = 13
+  keep_prob = 1.0
+  lr_decay = 0.8
+  batch_size = 64
 
 def data_type():
   return tf.float16 if FLAGS.use_fp16 else tf.float32
 
+# this function does the following:
+# return exp(x) if x < 0
+#        x if x >= 0
+def f(x):
+  x1 = tf.minimum(0.0, x)
+  x2 = tf.maximum(0.0, x)
+  return tf.exp(x1) + x2
+
+# this new "softmax" function we show can train a "self-normalized" RNNLM where
+# the sum of the output is automatically (close to) 1.0
+# which saves a lot of computation for lattice-rescoring
+def new_softmax(labels, logits):
+  target = tf.reshape(labels, [-1])
+  f_logits = tf.exp(logits)
+#  f_logits = f(logits)
+  row_sums = tf.reduce_sum(f_logits, 1) # this is the negative part of the objf
+
+  t2 = tf.expand_dims(target, 1)
+  range = tf.expand_dims(tf.range(tf.shape(target)[0]), 1)
+  ind = tf.concat([range, t2], 1)
+  res = tf.gather_nd(logits, ind)
+
+  return -res + row_sums - 1
 
 class RNNLMInput(object):
   """The input data."""
@@ -61,6 +94,7 @@ class RNNLMInput(object):
     self.epoch_size = ((len(data) // batch_size) - 1) // num_steps
     self.input_data, self.targets = reader.rnnlm_producer(
         data, batch_size, num_steps, name=name)
+
 
 class RNNLMModel(object):
   """The RNNLM model."""
@@ -73,40 +107,44 @@ class RNNLMModel(object):
     size = config.hidden_size
     vocab_size = config.vocab_size
 
-    def rnn_cell():
+    # Slightly better results can be obtained with forget gate biases
+    # initialized to 1 but the hyperparameters of the model would need to be
+    # different than reported in the paper.
+    def lstm_cell():
       # With the latest TensorFlow source code (as of Mar 27, 2017),
       # the BasicLSTMCell will need a reuse parameter which is unfortunately not
       # defined in TensorFlow 1.0. To maintain backwards compatibility, we add
       # an argument check here:
       if 'reuse' in inspect.getargspec(
-          tf.contrib.rnn.BasicRNNCell.__init__).args:
-        return tf.contrib.rnn.BasicRNNCell(size,
-                                           reuse=tf.get_variable_scope().reuse)
+          tf.contrib.rnn.BasicLSTMCell.__init__).args:
+        return tf.contrib.rnn.BasicLSTMCell(
+            size, forget_bias=0.0, state_is_tuple=True,
+            reuse=tf.get_variable_scope().reuse)
       else:
-        return tf.contrib.rnn.BasicRNNCell(size)
-    attn_cell = rnn_cell
-
+        return tf.contrib.rnn.BasicLSTMCell(
+            size, forget_bias=0.0, state_is_tuple=True)
+    attn_cell = lstm_cell
     if is_training and config.keep_prob < 1:
       def attn_cell():
         return tf.contrib.rnn.DropoutWrapper(
-            rnn_cell(), output_keep_prob=config.keep_prob)
-
+            lstm_cell(), output_keep_prob=config.keep_prob)
     self.cell = tf.contrib.rnn.MultiRNNCell(
         [attn_cell() for _ in range(config.num_layers)], state_is_tuple=True)
 
     self._initial_state = self.cell.zero_state(batch_size, data_type())
     self._initial_state_single = self.cell.zero_state(1, data_type())
 
-    self.initial = tf.reshape(tf.stack(axis=0, values=self._initial_state_single), [config.num_layers, 1, size], name="test_initial_state")
+    self.initial = tf.reshape(tf.stack(axis=0, values=self._initial_state_single), [config.num_layers, 2, 1, size], name="test_initial_state")
 
     # first implement the less efficient version
     test_word_in = tf.placeholder(tf.int32, [1, 1], name="test_word_in")
 
-    state_placeholder = tf.placeholder(tf.float32, [config.num_layers, 1, size], name="test_state_in")
+    state_placeholder = tf.placeholder(tf.float32, [config.num_layers, 2, 1, size], name="test_state_in")
     # unpacking the input state context 
     l = tf.unstack(state_placeholder, axis=0)
     test_input_state = tuple(
-               [l[idx] for idx in range(config.num_layers)]
+               [tf.contrib.rnn.LSTMStateTuple(l[idx][0],l[idx][1])
+                 for idx in range(config.num_layers)]
     )
 
     with tf.device("/cpu:0"):
@@ -120,7 +158,7 @@ class RNNLMModel(object):
     with tf.variable_scope("RNN"):
       (test_cell_output, test_output_state) = self.cell(test_inputs[:, 0, :], test_input_state)
 
-    test_state_out = tf.reshape(tf.stack(axis=0, values=test_output_state), [config.num_layers, 1, size], name="test_state_out")
+    test_state_out = tf.reshape(tf.stack(axis=0, values=test_output_state), [config.num_layers, 2, 1, size], name="test_state_out")
     test_cell_out = tf.reshape(test_cell_output, [1, size], name="test_cell_out")
     # above is the first part of the graph for test
     # test-word-in
@@ -139,11 +177,11 @@ class RNNLMModel(object):
     softmax_w = tf.get_variable(
         "softmax_w", [size, vocab_size], dtype=data_type())
     softmax_b = tf.get_variable("softmax_b", [vocab_size], dtype=data_type())
+    softmax_b = softmax_b - 9.0
 
-    test_logits = tf.matmul(cellout_placeholder, softmax_w) + softmax_b
-    test_softmaxed = tf.nn.log_softmax(test_logits)
+    test_logits = tf.matmul(cellout_placeholder, tf.transpose(tf.nn.embedding_lookup(tf.transpose(softmax_w), test_word_out[0]))) + softmax_b[test_word_out[0,0]]
 
-    p_word = test_softmaxed[0, test_word_out[0,0]]
+    p_word = test_logits[0, 0]
     test_out = tf.identity(p_word, name="test_out")
 
     if is_training and config.keep_prob < 1:
@@ -171,7 +209,8 @@ class RNNLMModel(object):
     loss = tf.contrib.legacy_seq2seq.sequence_loss_by_example(
         [logits],
         [tf.reshape(input_.targets, [-1])],
-        [tf.ones([batch_size * num_steps], dtype=data_type())])
+        [tf.ones([batch_size * num_steps], dtype=data_type())],
+        softmax_loss_function=new_softmax)
     self._cost = cost = tf.reduce_sum(loss) / batch_size
     self._final_state = state
 
@@ -182,7 +221,7 @@ class RNNLMModel(object):
     tvars = tf.trainable_variables()
     grads, _ = tf.clip_by_global_norm(tf.gradients(cost, tvars),
                                       config.max_grad_norm)
-    optimizer = tf.train.MomentumOptimizer(self._lr, 0.9)
+    optimizer = tf.train.GradientDescentOptimizer(self._lr)
     self._train_op = optimizer.apply_gradients(
         zip(grads, tvars),
         global_step=tf.contrib.framework.get_or_create_global_step())
@@ -218,62 +257,6 @@ class RNNLMModel(object):
   def train_op(self):
     return self._train_op
 
-class TestConfig(object):
-  """Tiny config, for testing."""
-  init_scale = 0.1
-  learning_rate = 1.0
-  max_grad_norm = 1
-  num_layers = 1
-  num_steps = 2
-  hidden_size = 2
-  max_epoch = 1
-  max_max_epoch = 1
-  keep_prob = 1.0
-  lr_decay = 0.5
-  batch_size = 20
-
-class SmallConfig(object):
-  """Small config."""
-  init_scale = 0.1
-  learning_rate = 0.2
-  max_grad_norm = 1
-  num_layers = 1
-  num_steps = 20
-  hidden_size = 200
-  max_epoch = 4
-  max_max_epoch = 20
-  keep_prob = 1
-  lr_decay = 0.95
-  batch_size = 64
-
-class MediumConfig(object):
-  """Medium config."""
-  init_scale = 0.05
-  learning_rate = 1.0
-  max_grad_norm = 5
-  num_layers = 2
-  num_steps = 35
-  hidden_size = 650
-  max_epoch = 6
-  max_max_epoch = 39
-  keep_prob = 0.5
-  lr_decay = 0.8
-  batch_size = 20
-
-class LargeConfig(object):
-  """Large config."""
-  init_scale = 0.04
-  learning_rate = 1.0
-  max_grad_norm = 10
-  num_layers = 2
-  num_steps = 35
-  hidden_size = 1500
-  max_epoch = 14
-  max_max_epoch = 55
-  keep_prob = 0.35
-  lr_decay = 1 / 1.15
-  batch_size = 20
-
 def run_epoch(session, model, eval_op=None, verbose=False):
   """Runs the model on the given data."""
   start_time = time.time()
@@ -290,12 +273,14 @@ def run_epoch(session, model, eval_op=None, verbose=False):
 
   for step in range(model.input.epoch_size):
     feed_dict = {}
-    for i, h in enumerate(model.initial_state):
-      feed_dict[h] = state[i]
+    for i, (c, h) in enumerate(model.initial_state):
+      feed_dict[c] = state[i].c
+      feed_dict[h] = state[i].h
 
     vals = session.run(fetches, feed_dict)
     cost = vals["cost"]
     state = vals["final_state"]
+
 
     costs += cost
     iters += model.input.num_steps
@@ -309,17 +294,7 @@ def run_epoch(session, model, eval_op=None, verbose=False):
 
 
 def get_config():
-  if FLAGS.model == "small":
-    return SmallConfig()
-  elif FLAGS.model == "medium":
-    return MediumConfig()
-  elif FLAGS.model == "large":
-    return LargeConfig()
-  elif FLAGS.model == "test":
-    return TestConfig()
-  else:
-    raise ValueError("Invalid model: %s", FLAGS.model)
-
+  return Config()
 
 def main(_):
   if not FLAGS.data_path:
@@ -329,6 +304,7 @@ def main(_):
   train_data, valid_data, _, word_map = raw_data
 
   config = get_config()
+  config.hidden_size = FLAGS.hidden_size
   config.vocab_size = len(word_map)
   eval_config = get_config()
   eval_config.batch_size = 1
@@ -355,7 +331,6 @@ def main(_):
     with sv.managed_session() as session:
       for i in range(config.max_max_epoch):
         lr_decay = config.lr_decay ** max(i + 1 - config.max_epoch, 0.0)
-
         m.assign_lr(session, config.learning_rate * lr_decay)
 
         print("Epoch: %d Learning rate: %.3f" % (i + 1, session.run(m.lr)))

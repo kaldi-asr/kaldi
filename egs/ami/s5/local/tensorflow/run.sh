@@ -1,7 +1,6 @@
 #!/bin/bash
 mic=ihm
 ngram_order=4
-model_type=small
 stage=1
 weight=0.5
 
@@ -11,7 +10,7 @@ weight=0.5
 
 set -e
 
-dir=data/tensorflow/$model_type
+dir=data/tensorflow_lstm/
 mkdir -p $dir
 
 if [ $stage -le 1 ]; then
@@ -20,7 +19,8 @@ fi
 
 mkdir -p $dir/
 if [ $stage -le 2 ]; then
-  $decode_cmd $dir/train.log python local/tensorflow/rnnlm.py --data_path=$dir --model=$model_type --save_path=$dir/rnnlm --vocab_path=$dir/wordlist.rnn.final
+  python steps/tensorflow/rnnlm.py --data_path=$dir --save_path=$dir/rnnlm --vocab_path=$dir/wordlist.rnn.final
+#  $decode_cmd $dir/train.log python local/tensorflow/rnnlm.py --data_path=$dir --save_path=$dir/rnnlm --vocab_path=$dir/wordlist.rnn.final
 fi
 
 final_lm=ami_fsh.o3g.kn

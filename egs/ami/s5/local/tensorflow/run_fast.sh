@@ -10,21 +10,23 @@ weight=0.5
 
 set -e
 
-dir=data/vannila_tensorflow/
+dir=data/tensorflow_fast_lstm/
 mkdir -p $dir
 
 if [ $stage -le 1 ]; then
   local/tensorflow/prep_data.sh $dir
 fi
 
+mkdir -p $dir/
 if [ $stage -le 2 ]; then
-  mkdir -p $dir/
-  python steps/tensorflow/vanilla_rnnlm.py --data_path=$dir --save_path=$dir/rnnlm --vocab_path=$dir/wordlist.rnn.final
+  python steps/tensorflow/lstm_fast.py --data_path=$dir --save_path=$dir/rnnlm --vocab_path=$dir/wordlist.rnn.final
+#  $decode_cmd $dir/train.log python local/tensorflow/lstm_fast.py --data_path=$dir --save_path=$dir/rnnlm --vocab_path=$dir/wordlist.rnn.final
 fi
 
 final_lm=ami_fsh.o3g.kn
 LM=$final_lm.pr1-7
 
+date
 if [ $stage -le 3 ]; then
 #  for decode_set in dev; do
   for decode_set in dev eval; do
@@ -37,9 +39,10 @@ if [ $stage -le 3 ]; then
       --rnnlm-ver tensorflow  --weight $weight --max-ngram-order $ngram_order \
       data/lang_$LM $dir \
       data/$mic/${decode_set}_hires ${decode_dir} \
-      ${decode_dir}.vanilla.tfrnnlm.lat.${ngram_order}gram.$weight  &
+      ${decode_dir}.unk.fast.tfrnnlm.lat.${ngram_order}gram.$weight  &
 
   done
 fi
 
 wait
+date
