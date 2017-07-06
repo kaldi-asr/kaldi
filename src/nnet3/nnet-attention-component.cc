@@ -492,7 +492,7 @@ void RestrictedAttentionComponent::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<KeyScale>");
   ReadBasicType(is, binary, &key_scale_);
   ExpectToken(is, binary, "<StatsCount>");
-  ReadBasicType(is, binary, & stats_count_);
+  ReadBasicType(is, binary, &stats_count_);
   ExpectToken(is, binary, "<EntropyStats>");
   entropy_stats_.Read(is, binary);
   ExpectToken(is, binary, "<PosteriorStats>");
