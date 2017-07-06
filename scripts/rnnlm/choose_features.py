@@ -61,6 +61,7 @@ SPECIAL_SYMBOLS = ["<eps>", "<s>", "<brk>"]
 
 
 # read the voab
+# return the vocab, which is a dict mapping the word to a integer id.
 def read_vocab(vocab_file):
     vocab = {}
     with open(vocab_file, 'r', encoding="utf-8") as f:
@@ -74,7 +75,6 @@ def read_vocab(vocab_file):
 
     # check there is no duplication and no gap among word ids
     sorted_ids = sorted(vocab.values())
-    assert len(sorted_ids) == len(vocab)
     for idx, id in enumerate(sorted_ids):
         assert idx == id
 
