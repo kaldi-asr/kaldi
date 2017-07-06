@@ -97,7 +97,6 @@ if [[ ! -f data/lang/L.fst || data/lang/L.fst -ot $lexicon ]]; then
     data/local $oovSymbol data/local/tmp.lang data/lang
 fi
 
-exit
 if [[ ! -f data/train/wav.scp || data/train/wav.scp -ot "$train_data_dir" ]]; then
   echo ---------------------------------------------------------------------
   echo "Preparing acoustic training lists in data/train on" `date`

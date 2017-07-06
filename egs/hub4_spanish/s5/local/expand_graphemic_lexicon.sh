@@ -4,16 +4,16 @@ unk="<unk>"
 
 . ./utils/parse_options.sh
 
-if [ $# -eq 0 ]; then
-  echo "Usage: ./local/expand_graphemic_lexicon.sh [--opts] <idict> <ilang> <old_word_list> <new_word_list> <odict> <olang>"
-  echo "  options: "
-  echo "      --unk \"<unk>\""
-  echo
-  echo
-  echo " Example: "
-  echo "   ./local/expand_graphemic_lexicon.sh --unk \"<unk>\" \\"
-  echo "      data/local data/lang data/local/word_list.txt data/dict_expand/new_words.txt \\"
-  echo "      data/dict_expand data/lang_expand"
+if [ $# -ne 6 ]; then
+  echo >&2 "Usage: ./local/expand_graphemic_lexicon.sh [--opts] <idict> <ilang> <old_word_list> <new_word_list> <odict> <olang>"
+  echo >&2 "  options: "
+  echo >&2 "      --unk \"<unk>\""
+  echo >&2
+  echo >&2
+  echo >&2 " Example: "
+  echo >&2 "   ./local/expand_graphemic_lexicon.sh --unk \"<unk>\" \\"
+  echo >&2 "      data/local data/lang data/local/word_list.txt data/dict_expand/new_words.txt \\"
+  echo >&2 "      data/dict_expand data/lang_expand"
   exit 1
 fi
 

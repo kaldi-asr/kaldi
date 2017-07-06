@@ -58,8 +58,8 @@ def process_transcripts(transcripts_dir, transcripts_list):
 
 def main():
     if len(sys.argv[1:]) == 0:
-        print("Usage: ./make_word_list.py"
-              " <transcripts_list> <transcripts_dir> <word_list>")
+        print("Usage: ./make_word_list.py "
+            "<transcripts_list> <transcripts_dir> <word_list>", file=sys.stderr)
         sys.exit(1)
     
     parser = argparse.ArgumentParser()

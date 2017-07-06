@@ -8,7 +8,7 @@ unk="<unk>"
 
 . ./utils/parse_options.sh
 
-train_data_dir=`readlink -f ./data/raw_train_data`
+train_data_dir=`utils/make_absolute.sh ./data/raw_train_data`
 
 # ----------- Collect all words and their counts from the transcripts ---------------------
 echo "-------------------------------"

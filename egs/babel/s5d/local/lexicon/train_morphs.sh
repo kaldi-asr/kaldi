@@ -9,8 +9,8 @@ encoding="utf_8"
 command -v morfessor-train >/dev/null 2>&1 || { echo >&2 "Morfessor seems to either not be installed or not on path."; exit 1; }
 
 if [ $# -ne 2 ]; then
-  echo "Usage: ./local/train_morphs.sh [opts] <path_to_wordcounts> <morphs_directory>" 
-  echo "  --encoding <encoding_type> # lexicon encoding" 
+  echo >&2 "Usage: ./local/train_morphs.sh [opts] <path_to_wordcounts> <morphs_directory>" 
+  echo >&2 "  --encoding <encoding_type> # lexicon encoding" 
   exit 1
 fi
 

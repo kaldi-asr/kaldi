@@ -5,12 +5,20 @@ General Description
 ----------------------------------------
 Given some form of word list in an unknown language, we must find pronunciations
 for each word. When the language is written alphabetically, the letters
-themselves can be used as word pronunciations. In English for instance there
-would be 26 phones, and possibly a few extra for the rarely occuring letters,
+themselves can be in place of phonemes for word pronunciations. In English for
+instance there would be 26 "phones", and possibly a few extra for the rarely
+occuring letters,
 
   "ö","é","è","â", ...
 
-which occur primarily in foreign loan words.
+which occur primarily in foreign loan words. When the "phones" are derived from
+the orthography of the word, we refer to them as graphemic-acoustic-units. They
+are different from phonemes in that they are a noisy approximation of the true
+phonemic pronunciation of a word. Traditionally these gold standard
+pronunciation dictionaries are what are used to link the acoustic and written
+forms of words and they are manually generated. Using the orthography of the
+word to derive approximate pronunciations in terms of (graphemic-acoustc-units)
+provides an alternative that requires only a word list.
 
 Some languages use syllabic systems or partially alphabetic scripts, for which
 nothing close to a 1-1 mapping from graphemes to phonemes exists. Examples of

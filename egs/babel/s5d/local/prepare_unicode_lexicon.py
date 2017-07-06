@@ -4,19 +4,63 @@
 # Apache 2.0
 
 # ======= Prepare dictionary directory (e.g. data/local) from lexicon.txt =====
-# This script creates all files in the dictionary directory.
+# This script takes a valid kaldi format lexicon (lexicon.txt) as input and
+# from it creates the rest of the files in the dictionary directory.
+# The lexicon.txt can be created from, 
+# 
+#    local/lexicon/make_unicode_lexicon.py <wordlist> <lexicon> <grapheme_map> 
 #
-# This script basically takes the place of the prepare_lexicon.pl script for
-# instance, in the BABEL setup.
-# It creates the following files:
+# using a list of words found in the training language(s) for example. But any
+# valid kaldi format lexicon should work.
+#
+# The files created are:
 #
 # 1. nonsilence_phones.txt
 # 2. silence_phones.txt
 # 3. optional_silence.txt
 # 4. extra_questions.txt
 #
-# It requires only a valid kaldi format lexicon (lexicon.txt) as input
-# ============================================================================
+# You should probably just create these files in the same directory as you
+# created lexicon.txt (via local/lexicon/make_unicode_lexicon.py), otherwise
+# you will have to copy lexicon.txt into the output directory of this script.
+#
+# Since silence and non-silence phonemes are treated separately, this script
+# requires that the list of words whose pronunciations contain silence phones,
+# (phones that should be in silence_phones.txt), be entered using the 
+# 
+#   --silence-lexicon <path-to-silence-lexicon.txt> 
+#
+# option. If the option is not provided, two dictionary entries are created 
+# automatically: 
+# 1. !SIL SIL
+# 2. <unk> <oov>
+#
+# corresponding to entries for silence and unknown words respectively.
+#
+#
+# Any tokens in lexicon.txt occurring in columns other than the first are
+# considered to represent an acoustic unit. The set of all such tokens, that
+# do not also occur in silence_lexicon.txt (or that are not SIL), are 
+# written to nonsilence_phones.txt. Each line in nonsilence_phones.txt
+# corresponds to an acoustic unit and its tagged versions seen in the lexicon.
+# A tagged acoustic unit is represented in lexicon.txt as a token followed by an
+# underscore and the name of the tag. 
+#
+# Example: a a_tag1 a_tag2 a_tag1_tag2
+# 
+# These tags determine the extra questions
+# to ask in a later tree-building stage and are written to extra_questions.txt.
+#
+# The set of all such tokens that occur in silence_lexicon.txt are written to
+# silence_phones.txt.
+#
+# The acoustic units used in the lexicon can be phonemes,
+# graphemic-acoustic-units (units derived from a word's orthography in segmental
+# writing systems), units discovered from an unsupervised clustering procedure,
+# or other. For the purposes of this script, however, they are all referred to
+# as phonemes.
+#
+# # ============================================================================
 
 from __future__ import print_function
 import codecs
@@ -108,7 +152,7 @@ def main():
     # ----------------- Parse input arguments ---------------------------
     if(len(sys.argv[1:]) == 0):
         print("Usage: local/prepare_unicode_lexicon.txt <lexicon>"
-              " <lexicon_dir>" )
+              " <lexicon_dir>", file=sys.sterr)
         sys.exit(1)
 
     parser = argparse.ArgumentParser()
@@ -134,7 +178,8 @@ def main():
                 sil_lexicon[sil_word] = sil_pron
     except TypeError:
         # Default silence token and pron (required for using optional silence)
-        sil_lexicon = {'!SIL': 'SIL'}
+        # Also default unk token and pron.
+        sil_lexicon = {'!SIL': 'SIL', '<unk>': '<oov>'}
     except IOError:
         print("Could not find file", args.silence_lexicon)
         sys.exit(1)
@@ -161,7 +206,7 @@ def main():
         print("Could not find file", args.lexicon)
 
     nonsil_phonemes, nonsil_phonemes_dict = extract_phonemes(nonsil_lexicon)
-
+    
     # Write silence_phones.txt
     write_phonemes(sil_phonemes_dict,
                    os.path.join(args.lexicon_dir, "silence_phones.txt"))

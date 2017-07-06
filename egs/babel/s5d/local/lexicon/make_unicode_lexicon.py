@@ -170,7 +170,8 @@ def parse_input():
         Parse commandline input.
     '''
     if len(sys.argv[1:]) == 0:
-        print("Usage: ./make_unicode_lexicon.py [opts] lex_in lex_out")
+        print("Usage: ./make_unicode_lexicon.py [opts] lex_in lex_out",
+              file=sys.stderr)
         sys.exit(1)
 
     parser = argparse.ArgumentParser()
