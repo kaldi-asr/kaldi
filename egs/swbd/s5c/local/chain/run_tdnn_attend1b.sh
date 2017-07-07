@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# run_tdnn_attend1a.sh is like run_tdnn_7k.sh but with some attention layers
+# _attend1b.sh is like _attend1a.sh but with 2x larger context
 
-# exp/chain/tdnn_attend1a_sp/: num-iters=262 nj=3..16 num-params=15.0M dim=40+100->6076 combine=-0.10->-0.10
+# exp/chain/tdnn_attend1b_sp/: num-iters=262 nj=3..16 num-params=15.4M dim=40+100->6076 combine=-0.10->-0.10
 
-# System                tdnn_7k_sp tdnn_attend1a_sp
-# WER on train_dev(tg)      13.93     14.17
-# WER on train_dev(fg)      12.85     13.16
-# WER on eval2000(tg)        16.7      16.8
-# WER on eval2000(fg)        15.0      15.0
-# Final train prob         -0.085    -0.080
-# Final valid prob         -0.106    -0.103
-# Final train prob (xent)        -1.260    -1.006
-# Final valid prob (xent)       -1.3193   -1.0923
+# System                tdnn_7k_sp tdnn_attend1a_sp tdnn_attend1b_sp
+# WER on train_dev(tg)      13.93     14.17     14.15
+# WER on train_dev(fg)      12.85     13.16     13.01
+# WER on eval2000(tg)        16.7      16.8      16.7
+# WER on eval2000(fg)        15.0      15.0      15.0
+# Final train prob         -0.085    -0.080    -0.075
+# Final valid prob         -0.106    -0.103    -0.100
+# Final train prob (xent)        -1.260    -1.006    -0.919
+# Final valid prob (xent)       -1.3193   -1.0923   -1.0370
 
 set -e
 
@@ -22,7 +22,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_attend1a  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_attend1b  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_nj=50
 
@@ -115,7 +115,7 @@ fi
 
 if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
-  attend_common="num-heads=10 value-dim=50 key-dim=50 time-stride=3 num-left-inputs=5 num-right-inputs=2"
+  attend_common="num-heads=10 value-dim=50 key-dim=50 time-stride=3 num-left-inputs=10 num-right-inputs=4"
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
