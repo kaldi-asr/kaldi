@@ -18,8 +18,10 @@ eos_symbol = '</s>'
 special_symbols = ['<s>', '<brk>', '<eps>']
 
 
-def add_counts(word_counts, text_file):
-    with open(text_file, 'r', encoding="utf-8") as f:
+# Add the count for every word in counts_file
+# the result is written into word_counts
+def add_counts(word_counts, counts_file):
+    with open(counts_file, 'r', encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             word_and_count = line.split()

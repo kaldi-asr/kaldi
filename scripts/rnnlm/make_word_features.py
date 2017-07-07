@@ -22,6 +22,7 @@ args = parser.parse_args()
 
 
 # read the voab
+# return the vocab, which is a dict mapping the word to a integer id.
 def read_vocab(vocab_file):
     vocab = {}
     with open(vocab_file, 'r', encoding="utf-8") as f:
@@ -35,7 +36,6 @@ def read_vocab(vocab_file):
 
     # check there is no duplication and no gap among word ids
     sorted_ids = sorted(vocab.values())
-    assert len(sorted_ids) == len(vocab)
     for idx, id in enumerate(sorted_ids):
         assert idx == id
 
@@ -43,6 +43,7 @@ def read_vocab(vocab_file):
 
 
 # read the unigram probs
+# return a list of unigram_probs, indexed by word id
 def read_unigram_probs(unigram_probs_file):
     unigram_probs = []
     with open(unigram_probs_file, 'r', encoding="utf-8") as f:
@@ -61,7 +62,7 @@ def read_unigram_probs(unigram_probs_file):
 
 
 # read the features
-# output is a dict with key can be 'special', 'unigram', 'length' and 'ngram',
+# return a dict with following items:
 #   feats['special'] is a dict whose key is special words and value is the feat_id
 #   feats['unigram'] is a tuple with (feat_id, entropy, scale)
 #   feats['length']  is a int represents feat_id

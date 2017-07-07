@@ -26,8 +26,10 @@ args = parser.parse_args()
 SPECIAL_SYMBOLS = ["<eps>", "<s>", "<brk>"]
 
 
-# get the name with txt and counts file path for all data sorces
-def get_all_data_sources(data_dir):
+# get the name with txt and counts file path for all data sources except dev
+# return a dict with key is the name of data_source,
+#                    value is a tuple (txt_file_path, counts_file_path)
+def get_all_data_sources_except_dev(data_dir):
     data_sources = {}
     for f in os.listdir(data_dir):
         full_path = data_dir + "/" + f
@@ -56,7 +58,9 @@ def get_all_data_sources(data_dir):
     return data_sources
 
 
-# read the data-weights for data sorces
+# read the data-weights for data_sources from weights_file
+# return a dict with key is name of a data source,
+#                    value is a tuple (repeated_times_per_epoch, weight)
 def read_data_weights(weights_file, data_sources):
     data_weights = {}
     with open(weights_file, 'r', encoding="utf-8") as f:
@@ -76,6 +80,7 @@ def read_data_weights(weights_file, data_sources):
 
 
 # read the voab
+# return the vocab, which is a dict mapping the word to a integer id.
 def read_vocab(vocab_file):
     vocab = {}
     with open(vocab_file, 'r', encoding="utf-8") as f:
@@ -89,7 +94,6 @@ def read_vocab(vocab_file):
 
     # check there is no duplication and no gap among word ids
     sorted_ids = sorted(vocab.values())
-    assert len(sorted_ids) == len(vocab)
     for idx, id in enumerate(sorted_ids):
         assert idx == id
 
@@ -97,6 +101,7 @@ def read_vocab(vocab_file):
 
 
 # Get total (weighted) count for words from all data_sources
+# return a list of counts indexed by word id.
 def get_counts(data_sources, data_weights, vocab):
     counts = [0.0] * len(vocab)
 
@@ -116,6 +121,7 @@ def get_counts(data_sources, data_weights, vocab):
 
 
 # Smooth counts and get unigram probs for words
+# return a list of probs indexed by word id.
 def get_unigram_probs(vocab, counts, smooth_constant):
     special_symbol_ids = [vocab[x] for x in SPECIAL_SYMBOLS]
     vocab_size = len(vocab) - len(SPECIAL_SYMBOLS)
@@ -146,7 +152,7 @@ def get_unigram_probs(vocab, counts, smooth_constant):
     return probs
 
 
-data_sources = get_all_data_sources(args.data_dir)
+data_sources = get_all_data_sources_except_dev(args.data_dir)
 data_weights = read_data_weights(args.data_weights_file, data_sources)
 vocab = read_vocab(args.vocab_file)
 
