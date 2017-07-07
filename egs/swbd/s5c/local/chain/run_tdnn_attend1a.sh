@@ -119,11 +119,11 @@ if [ $stage -le 12 ]; then
 
   # the first splicing is moved before the lda layer, so no splicing here
   relu-batchnorm-layer name=tdnn1 dim=625
-  attention-relu-renorm-layer name=tdnn2 input=Append(-1,0,1) $attend_common
+  attention-relu-renorm-layer name=attention2 $attend_common
   relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=625
   relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=625
   relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=625
-  attention-relu-renorm-layer name=tdnn6 input=Append(-3,0,3) $attend_common
+  attention-relu-renorm-layer name=attention6 $attend_common
   relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=625
 
   ## adding the layers for chain branch
