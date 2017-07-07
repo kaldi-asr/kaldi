@@ -130,12 +130,12 @@ class ArpaFileParser {
   /// printed or false if the count has exceeded the set maximum.
   bool ShouldWarn();
 
-  /// N-gram counts. Valid in and after a call to HeaderAvailable().
+  /// N-gram counts. Valid from the point when HeaderAvailable() is called.
   const std::vector<int32>& NgramCounts() const { return ngram_counts_; }
 
  private:
   ArpaParseOptions options_;
-  fst::SymbolTable* symbols_;  // Not owned.
+  fst::SymbolTable* symbols_;  // the pointer is not owned here.
   int32 line_number_;
   uint32 warning_count_;
   std::string current_line_;

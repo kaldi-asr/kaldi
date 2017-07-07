@@ -121,13 +121,15 @@ class Sampler {
   ///                            0 <= i < unigram_probs.size() (referring to the
   ///                            unigram_probs vector used in the constructor),
   ///                            and p > 0.0.  This vector must be sorted and
-  ///                            unique w.r.t. i.
+  ///                            unique w.r.t. i.  Note: the probabilities
+  ///                            here will be added to the unigram probabilities
+  ///                            of the words concerned.
   ///   @param [out] sample      The sampled list of words, represented as pairs
   ///                            (i, p), where 0 <= i < unigram_probs.size() is
   ///                            the word index and 0 < p <= 1 is the probabilitity
   ///                            with which that word was included in the set.
   ///                            The list will not be sorted, but it will be unique
-  ///                            on it.  Its size will equal num_words_to_sample.
+  ///                            on the int.  Its size will equal num_words_to_sample.
   void SampleWords(int32 num_words_to_sample,
                    BaseFloat unigram_weight,
                    const std::vector<std::pair<int32, BaseFloat> > &higher_order_probs,

@@ -25,22 +25,23 @@ namespace rnnlm {
 
 
 RnnlmMinibatchSampler::RnnlmMinibatchSampler(
-    const RnnlmEgsConfig &config, const ArpaForSampling &arpa):
-    config_(config), arpa_(arpa) {
+    const RnnlmEgsConfig &config, const ArpaSampling &arpa_sampling):
+    config_(config), arpa_sampling_(arpa_sampling) {
 
   // The unigram distribution from the LM, modified according to
   // config_.special_symbol_prob and config_.uniform_prob_mass...
-  std::vector<BaseFloat> unigram_distribution;
-  arpa.GetUnigramDistribution(&unigram_distribution);
+  std::vector<BaseFloat> unigram_distribution =
+      arpa_sampling.GetUnigramDistribution();
   double sum = std::accumulate(unigram_distribution.begin(),
                                   unigram_distribution.end(),
                                   0.0);
-  KALDI_ASSERT(abs(sum - 1.0) < 0.01 &&
+  KALDI_ASSERT(std::abs<BaseFloat>(sum - 1.0) < 0.01 &&
                "Unigram distribution from ARPA does not sum "
                "to (close to) 1");
   int32 num_words = unigram_distribution.size();
-  if (config_.unigram_prob_mass > 0.0) {
-    BaseFloat x = config_unigram_prob_mass / (num_words - 1);
+  if (config_.uniform_prob_mass > 0.0) {
+
+    BaseFloat x = config_.uniform_prob_mass / (num_words - 1);
     for (int32 i = 1; i < num_words; i++)
       unigram_distribution[i] += x;
   }
@@ -62,18 +63,15 @@ RnnlmMinibatchSampler::RnnlmMinibatchSampler(
 
   int32 num_words_nonzero_prob = 0;
   for (std::vector<BaseFloat>::iterator iter = unigram_distribution.begin(),
-           end = unigram_distriubution.end(); iter != end; ++iter) {
+           end = unigram_distribution.end(); iter != end; ++iter) {
     if (*iter != 0.0) num_words_nonzero_prob++;
     *iter *= scale;
   }
 
-  int32 min_num_samples = std::min<int32>(num_words,
-                                          config_.minibatch_size *
-                                          config_.sample_group_size);
   if (config_.num_samples > num_words_nonzero_prob) {
     KALDI_WARN << "The number of samples (--num-samples=" << config_.num_samples
                << ") exceeds the number of words with nonzero probability "
-               << num_words_nonzero << " -> not doing sampling.  You could "
+               << num_words_nonzero_prob << " -> not doing sampling.  You could "
                << "skip creating the ARPA file, and not provide it, which "
                << "might save some bother.";
     config_.num_samples = 0;
@@ -81,7 +79,7 @@ RnnlmMinibatchSampler::RnnlmMinibatchSampler(
   if (config_.num_samples == 0) {
     sampler_ = NULL;
   } else {
-    sampler_ = new Sampler(unigram_distribution_);
+    sampler_ = new Sampler(unigram_distribution);
   }
 }
 
@@ -89,10 +87,10 @@ RnnlmMinibatchSampler::RnnlmMinibatchSampler(
 void RnnlmMinibatchSampler::SampleForMinibatch(RnnlmMinibatch *minibatch) const {
   if (sampler_ == NULL) return;  // we're not actually sampling.
   KALDI_ASSERT(minibatch->chunk_length == config_.chunk_length &&
-               minibatch->num_sequences == config_.minibatch_size &&
+               minibatch->num_chunks == config_.num_chunks_per_minibatch &&
                config_.sample_group_size % config_.chunk_length == 0 &&
-               static_cast<int32>(minibatch->input_words.dim()) ==
-               config_.chunk_length * config_.minibatch_size);
+               static_cast<int32>(minibatch->input_words.size()) ==
+               config_.chunk_length * config_.num_chunks_per_minibatch);
   int32 num_samples = config_.num_samples,
       sample_group_size = config_.sample_group_size,
       chunk_length = config_.chunk_length,
@@ -100,7 +98,7 @@ void RnnlmMinibatchSampler::SampleForMinibatch(RnnlmMinibatch *minibatch) const 
   minibatch->num_samples = num_samples;
   minibatch->sample_group_size = sample_group_size;
   minibatch->sampled_words.resize(num_groups * num_samples);
-  minibatch->sample_probs.resize(num_groups * num_samples);
+  minibatch->sample_inv_probs.Resize(num_groups * num_samples);
 
   for (int32 g = 0; g < num_groups; g++) {
     SampleForGroup(g, minibatch);
@@ -113,46 +111,78 @@ void RnnlmMinibatchSampler::SampleForGroup(int32 g,
   // All words that appear on the output are required to appear in the sample.  we
   // need to figure what this set of words is.
   int32 sample_group_size = config_.sample_group_size,
-      chunk_length = config_.chunk_length,
-      minibatch_size = config_.minibatch_size;
-  std::unordered_map<int32> words_we_must_sample;
+      num_chunks_per_minibatch = config_.num_chunks_per_minibatch;
+  std::vector<int32> words_we_must_sample;
   for (int32 t = g * config_.sample_group_size;
        t < (g + 1) * config_.sample_group_size; t++) {
-    for (int32 n = 0; n < config_.minibatch_size; n++) {
-      int32 i = t * config_.minibatch_size + n;
+    for (int32 n = 0; n < num_chunks_per_minibatch; n++) {
+      int32 i = t * num_chunks_per_minibatch + n;
       int32 output_word = minibatch->output_words[i];
-      words_we_must_sample.insert(output_word);
+      words_we_must_sample.push_back(output_word);
     }
   }
+  SortAndUniq(&words_we_must_sample);
 
-  std::vector<std::pair<HistType, BaseFloat> > hist_weights;
+  // 'hist_weights' is a representation of a weighted set of histories.
+  std::vector<std::pair<std::vector<int32>, BaseFloat> > hist_weights;
   GetHistoriesForGroup(g, *minibatch, &hist_weights);
+  KALDI_ASSERT(!hist_weights.empty());  // we made sure of this.
+
+  // 'higher_order_probs' and 'unigram_weight' are a compact representation of
+  // an (unnormalized) distribution that is the suitably weighted sum of the
+  // distributions that the language model predicts given the history states
+  // present in 'hist_weights'.
+  // We represent the distribution in this way, instead of just as a vector,
+  // so that it is efficient even when the vocabulary size is very large.
+  std::vector<std::pair<int32, BaseFloat> > higher_order_probs;
+  BaseFloat unigram_weight = arpa_sampling_.GetDistribution(hist_weights,
+                                                            &higher_order_probs);
+
+  // 'sample' will be a list of pairs (integer word-id, inclusion probability).
+  std::vector<std::pair<int32, BaseFloat> > sample;
+
+  // the 'sampler_' object knows how to sample from an unnormalized distribution
+  // represented as unigram-weight and a list of higher-than-unigram (word-id,
+  // additional-weight) pairs.
+  sampler_->SampleWords(sample_group_size, unigram_weight,
+                        higher_order_probs, words_we_must_sample,
+                        &sample);
+  KALDI_ASSERT(sample.size() == static_cast<size_t>(sample_group_size));
+  std::sort(sample.begin(), sample.end());
+  for (int32 s = 0; s < sample_group_size; s++) {
+    int32 i = (g * sample_group_size) + s;
+    minibatch->sampled_words[i] = sample[s].first;
+    KALDI_ASSERT(sample[s].second > 0.0);
+    minibatch->sample_inv_probs(i) = 1.0 / sample[s].second;
+  }
 }
 
-BaseFloat RnnlmMinibatchSampler::GetHistoriesForGroup(
+void RnnlmMinibatchSampler::GetHistoriesForGroup(
     int32 g, const RnnlmMinibatch &minibatch,
     std::vector<std::pair<std::vector<int32>, BaseFloat> > *hist_weights) const {
   // initially store as an unordered_map so we can remove duplicates.
-  std::unordered_map<std::vector<int32>, BaseFloat, VectorHasher> hist_to_weight;
+  std::unordered_map<std::vector<int32>, BaseFloat, VectorHasher<int32> > hist_to_weight;
 
   hist_weights->clear();
-  KALDI_ASSERT(arpa_.Order() > 0);
-  int32 history_length = arpa.Order() - 1;
+  KALDI_ASSERT(arpa_sampling_.Order() > 0);
+  int32 max_history_length = arpa_sampling_.Order() - 1,
+      num_chunks_per_minibatch = config_.num_chunks_per_minibatch;
 
   for (int32 t = g * config_.sample_group_size;
        t < (g + 1) * config_.sample_group_size; t++) {
-    for (int32 n = 0; n < config_.minibatch_size; n++) {
-      BaseFloat this_weight = minibatch.output_weights[t * minibatch_size + n];
+    for (int32 n = 0; n < num_chunks_per_minibatch; n++) {
+      int32 i = t * num_chunks_per_minibatch + n;
+      BaseFloat this_weight = minibatch.output_weights(i);
       KALDI_ASSERT(this_weight >= 0);
       if (this_weight == 0.0)
         continue;
       std::vector<int32> history;
-      GetHistory(t, n, minibatch, &history);
-      // note: if the value did not exist in the map, it is as
-      // if it were zero, see here:
+      GetHistory(t, n, minibatch, max_history_length, &history);
+      // note: if the key did not exist in the map, it is as
+      // if the value were zero, see here:
       // https://stackoverflow.com/questions/8943261/stdunordered-map-initialization
       // .. this is at least since C++11, maybe since C++03.
-      hist_to_weight[history] += weight;
+      hist_to_weight[history] += this_weight;
     }
   }
   if (hist_to_weight.empty()) {
@@ -160,22 +190,22 @@ BaseFloat RnnlmMinibatchSampler::GetHistoriesForGroup(
     std::vector<int32> empty_history;
     hist_to_weight[empty_history] = 1.0;
   }
-  std::unordered_map<std::vector<int32>, BaseFloat, VectorHasher>::const_iterator
+  std::unordered_map<std::vector<int32>, BaseFloat, VectorHasher<int32> >::const_iterator
       iter = hist_to_weight.begin(), end = hist_to_weight.end();
   hist_weights->reserve(hist_to_weight.size());
   for (; iter != end; ++iter)
     hist_weights->push_back(std::pair<std::vector<int32>, BaseFloat>(
-        iter->first, iter->second);
+        iter->first, iter->second));
 }
 
 void RnnlmMinibatchSampler::GetHistory(
     int32 t, int32 n,
     const RnnlmMinibatch &minibatch,
     int32 max_history_length,
-    std::vector<int32> *history) {
+    std::vector<int32> *history) const {
   history->reserve(max_history_length);
   history->clear();
-  int32 minibatch_size = config_.minibatch_size;
+  int32 num_chunks_per_minibatch = config_.num_chunks_per_minibatch;
 
   // e.g. if 'max_history_length' is 2, we iterate over t_step = [0, -1].
   // you'll notice that the first history-position we look for when
@@ -190,7 +220,7 @@ void RnnlmMinibatchSampler::GetHistory(
                                 // this assert fails it means that a minibatch
                                 // doesn't start with input_word equal to
                                 // bos_symbol or brk_symbol, which is a bug.
-    int32 i = hist_t * minibatch_size + n,
+    int32 i = hist_t * num_chunks_per_minibatch + n,
         history_word = minibatch.input_words[i];
     history->push_back(history_word);
     if (history_word == config_.bos_symbol ||
@@ -204,9 +234,8 @@ void RnnlmMinibatchSampler::GetHistory(
 
 
 
-
 void RnnlmMinibatchCreator::AcceptSequence(
-    BaseFloat weight, std::vector<int32> &words) {
+    BaseFloat weight, const std::vector<int32> &words) {
   CheckSequence(weight, words);
   SplitSequenceIntoChunks(weight, words);
   while (chunks_.size() > static_cast<size_t>(config_.chunk_buffer_size)) {
@@ -216,15 +245,26 @@ void RnnlmMinibatchCreator::AcceptSequence(
 }
 
 RnnlmMinibatchCreator::~RnnlmMinibatchCreator() {
-  for (size_t i = 0; i < chunk_.size(); i++)
-    delete chunks_[i];
+  BaseFloat words_per_chunk = num_words_processed_ * 1.0 /
+      num_chunks_processed_,
+      chunks_per_minibatch = num_chunks_processed_ * 1.0 /
+      num_minibatches_written_;
+  KALDI_LOG << "Combined " << num_chunks_processed_
+            << " into " << num_minibatches_written_
+            << " minibatches (" << chunks_.size()
+            << " chunks left over)";
+ KALDI_LOG << "Overall there were "
+           << words_per_chunk << " words per chunk; "
+           << chunks_per_minibatch << " chunks per minibatch.";
+ for (size_t i = 0; i < chunks_.size(); i++)
+   delete chunks_[i];
 }
 
 RnnlmMinibatchCreator::SingleMinibatchCreator::SingleMinibatchCreator(
     const RnnlmEgsConfig &config):
     config_(config),
-    chunks_(config_.minibatch_size) {
-  for (int32 i = 0; i < config_.minibatch_size; i++)
+    eg_chunks_(config_.num_chunks_per_minibatch) {
+  for (int32 i = 0; i < config_.num_chunks_per_minibatch; i++)
     empty_eg_chunks_.push_back(i);
 }
 
@@ -236,7 +276,7 @@ bool RnnlmMinibatchCreator::SingleMinibatchCreator::AcceptChunk(
       return false;
     } else  {
       int32 i = empty_eg_chunks_.back();
-      KALDI_ASSERT(size_t(i) < egs_chunks_.size() && eg_chunks_[i].empty());
+      KALDI_ASSERT(size_t(i) < eg_chunks_.size() && eg_chunks_[i].empty());
       eg_chunks_[i].push_back(chunk);
       empty_eg_chunks_.pop_back();
       return true;
@@ -272,25 +312,16 @@ bool RnnlmMinibatchCreator::SingleMinibatchCreator::AcceptChunk(
       }
     }
     int32 new_space_left = best_space_left - chunk_len;
-    KALDI_ASSERT(new__space_left >= 0);
+    KALDI_ASSERT(new_space_left >= 0);
     if (new_space_left > 0) {
       partial_eg_chunks_.push_back(std::pair<int32, int32>(best_j,
-                                                           new_space_left_));
+                                                           new_space_left));
     }
     eg_chunks_[best_j].push_back(chunk);
     return true;
   }
 }
 
-BaseFloat RnnlmMinibatchCreator::SingleMinibatchCreator::ProportionFull() {
-  int32 den = config_.minibatch_size * config_.chunk_length;
-  int32 num = den -
-      config_.chunk_length * static_cast<int32>(empty_eg_chunks_.size());
-  for (size_t i = 0; i < partial_eg_chunks_.size(); i++)
-    num -= partial_eg_chunks_[i].second;
-  KALDI_ASSERT(num >= 0);
-  return num * 1.0 / den;
-}
 
 RnnlmMinibatchCreator::SingleMinibatchCreator::~SingleMinibatchCreator() {
   for (size_t i = 0; i < eg_chunks_.size(); i++)
@@ -371,10 +402,10 @@ void RnnlmMinibatchCreator::SingleMinibatchCreator::CreateMinibatchOneSequence(
     // fill the rest with <s> as input and </s> as output
     // and weight of 0.0.  The symbol-id doesn't really matter
     // so we pick ones that we know are valid inputs and outputs.
-    int32 input_word = config_.bos,
-        output_word = config_.eos;
+    int32 input_word = config_.bos_symbol,
+        output_word = config_.eos_symbol;
     BaseFloat weight = 0.0;
-    Set(n, pos, input_word_output_word, weight, minibatch);
+    Set(n, pos, input_word, output_word, weight, minibatch);
   }
 }
 
@@ -382,33 +413,28 @@ void RnnlmMinibatchCreator::SingleMinibatchCreator::CreateMinibatchOneSequence(
 void RnnlmMinibatchCreator::SingleMinibatchCreator::Set(
     int32 n, int32 t, int32 input_word, int32 output_word,
     BaseFloat weight, RnnlmMinibatch *minibatch) const {
-  KALDI_ASSERT(n >= 0 && n < config_.minibatch_size &&
+  KALDI_ASSERT(n >= 0 && n < config_.num_chunks_per_minibatch &&
                t >= 0 && t < config_.chunk_length &&
                weight >= 0.0);
 
-  int32 i = t * config_.minibatch_size + n;
+  int32 i = t * config_.num_chunks_per_minibatch + n;
   minibatch->input_words[i] = input_word;
   minibatch->output_words[i] = output_word;
-  minibatch->weights[i] = weight;
+  minibatch->output_weights(i) = weight;
 }
 
-
-void RnnlmMinibatchCreator::SingleMinibatchCreator::CreateMinibatchSampling(
-    RnnlmMinibatch *minibatch) {
-  // This does the sampling parts of creating a minibatch.
-}
 
 void RnnlmMinibatchCreator::SingleMinibatchCreator::CreateMinibatch(
     RnnlmMinibatch *minibatch) {
-  minibatch->num_sequences = config_.minibatch_size;
+  minibatch->num_chunks = config_.num_chunks_per_minibatch;
   minibatch->chunk_length = config_.chunk_length;
   minibatch->num_samples = config_.num_samples;
-  int32 num_words = config_.chunk_length * config_.minibatch_size;
+  int32 num_words = config_.chunk_length * config_.num_chunks_per_minibatch;
   minibatch->input_words.resize(num_words);
   minibatch->output_words.resize(num_words);
   minibatch->output_weights.Resize(num_words);
-  minibatch->sampled_words.Resize(chunk_length * config_.num_samples);
-  for (int32 n = 0; n < config_.minibatch_size; n++) {
+  minibatch->sampled_words.resize(config_.chunk_length * config_.num_samples);
+  for (int32 n = 0; n < config_.num_chunks_per_minibatch; n++) {
     CreateMinibatchOneSequence(n, minibatch);
   }
 }
@@ -423,22 +449,61 @@ RnnlmMinibatchCreator::SequenceChunk* RnnlmMinibatchCreator::GetRandomChunk() {
 }
 
 bool RnnlmMinibatchCreator::WriteMinibatch() {
+  // A couple of configuration values that are not important enough
+  // to go in the config...
+  // 'chunks_proportion' controls when we discard a small amount of
+  // chunks rather than form a new minibatch.
+  const BaseFloat chunks_proportion = 0.5;
+  // 'max_rejections' is the maximum number of successive chunks that
+  // can be rejected for being 'too big', before we give up an accept
+  // the minibatch as-is.
+  const int32 max_rejections = 5;
 
+  if (chunks_.size() <
+      std::max<size_t>(1,
+                       config_.num_chunks_per_minibatch * chunks_proportion)) {
+    // there's not enough data to form one minibatch.
+    return false;
+  }
+  SingleMinibatchCreator s(config_);
+  int32 cur_rejections = 0;
+  while (!chunks_.empty() && cur_rejections < max_rejections) {
+    int32 i = RandInt(0, chunks_.size() - 1);
+    if (s.AcceptChunk(chunks_[i])) {
+      num_chunks_processed_++;
+      num_words_processed_ += chunks_[i]->Length();
+      chunks_[i] = chunks_.back();
+      chunks_.pop_back();
+      cur_rejections = 0;
+    } else {
+      cur_rejections++;
+    }
+  }
+  RnnlmMinibatch minibatch;
+  s.CreateMinibatch(&minibatch);
+  if (minibatch_sampler_ != NULL)
+    minibatch_sampler_->SampleForMinibatch(&minibatch);
 
+  num_minibatches_written_++;
+  std::ostringstream os;
+  os << "minibatch-" << num_minibatches_written_;
+  std::string key = os.str();
+  writer_->Write(key, minibatch);
+  return true;
 }
 
 
 void RnnlmMinibatchCreator::SplitSequenceIntoChunks(
     BaseFloat weight, const std::vector<int32> &words) {
-  std::shared_ptr<std::vector<int32> > ptr = new std::vector<int32>();
+  std::shared_ptr<std::vector<int32> > ptr (new std::vector<int32>());
   ptr->reserve(words.size() + 1);
   ptr->insert(ptr->end(), words.begin(), words.end());
   ptr->push_back(config_.eos_symbol);  // add the terminating </s>.
 
   int32 sequence_length = ptr->size();  // == words.size() + 1
-  if (sequence_length <= config_.chunk_length)) {
-  chunks_.push_back(new SequenceChunk(config_, ptr, weight,
-                                      0, sequence_length));
+  if (sequence_length <= config_.chunk_length) {
+    chunks_.push_back(new SequenceChunk(config_, ptr, weight,
+                                        0, sequence_length));
   } else {
     std::vector<int32> chunk_lengths;
     ChooseChunkLengths(sequence_length, &chunk_lengths);
@@ -470,11 +535,11 @@ void RnnlmMinibatchCreator::ChooseChunkLengths(
   int32 remaining_size = tot % chunk_length_no_context;
   if (remaining_size != 0) {
     // put the smaller piece in a random location.
-    (*chunk_lengths)[RandInt(0, chunk_lengths.size() - 1)] = remaining_size;
+    (*chunk_lengths)[RandInt(0, chunk_lengths->size() - 1)] = remaining_size;
     chunk_lengths->push_back(chunk_length_no_context);
   }
   (*chunk_lengths)[0] += config_.min_split_context;
-  KALDI_ASSERT(std::accumulate(chunk_lengths->begin(), chunk_length->end(), 0)
+  KALDI_ASSERT(std::accumulate(chunk_lengths->begin(), chunk_lengths->end(), 0)
                == sequence_length);
 }
 
@@ -484,7 +549,7 @@ void RnnlmMinibatchCreator::CheckSequence(
   KALDI_ASSERT(weight > 0.0);
   int32 bos_symbol = config_.bos_symbol,
       brk_symbol = config_.brk_symbol,
-      eos_symbol = config_.eos_symbo;
+      eos_symbol = config_.eos_symbol;
   for (size_t i = 0; i < words.size(); i++) {
     KALDI_ASSERT(words[i] != bos_symbol && words[i] != brk_symbol);
   }
