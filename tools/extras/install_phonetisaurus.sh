@@ -45,7 +45,7 @@ if [ ! -d ./phonetisaurus-g2p ] ; then
     echo  >&2 "$0: Warning: git clone operation ended unsuccessfully"
     echo  >&2 "  I will assume this is because you don't have https support"
     echo  >&2 "  compiled into your git "
-    git clone https://github.com/AdolfVonKleist/Phonetisaurus.git phonetisaurus-g2p
+    git clone http://github.com/AdolfVonKleist/Phonetisaurus.git phonetisaurus-g2p
 
     if [ $? -ne 0 ]; then
       echo  >&2 "$0: Error git clone operation ended unsuccessfully"
