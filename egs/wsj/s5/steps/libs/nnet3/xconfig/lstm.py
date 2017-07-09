@@ -373,11 +373,11 @@ class XconfigGRULayer
         f.close()
 
         # formulation like:
-        # z = \sigmoid ( x_t * U^z + s_{t-1} * W^z ) // update gate
-        # r = \sigmoid ( x_t * U^r + s_{t-1} * W^r ) // reset gate
-        # h = \tanh ( x_t * U^h + s_{t-1} \dot r * W^h )
+        # z = \sigmoid ( U^z x_t + W^z s_{t-1} ) // update gate
+        # r = \sigmoid ( U^r x_t + W^r s_{t-1} ) // reset gate
+        # h = \tanh ( U^h x_t + W^h ( s_{t-1} \dot r ) )
         # y_t = ( 1 - z ) \dot h + z \dot y_{t-1}
-        # s_t = y_t * W^s
+        # s_t = W^s y_t
         
         configs = []
         configs.append("# Update gate control : W_z* matrics")
