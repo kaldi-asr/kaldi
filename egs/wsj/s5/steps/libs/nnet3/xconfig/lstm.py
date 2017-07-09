@@ -376,8 +376,10 @@ class XconfigGRULayer
         # z = \sigmoid ( U^z x_t + W^z s_{t-1} ) // update gate
         # r = \sigmoid ( U^r x_t + W^r s_{t-1} ) // reset gate
         # h = \tanh ( U^h x_t + W^h ( s_{t-1} \dot r ) )
-        # y_t = ( 1 - z ) \dot h + z \dot y_{t-1}
-        # s_t = W^s y_t
+        # y_t_ = ( 1 - z ) \dot h + z \dot y_{t-1}
+        # s_t_ = W^s y_t // projection is added, for example, W^s is a 1024*512 matrix
+        # s_t = offset(s_t_, s_t_dim) // recurrent part : s_t_dim out of s_t_ will be used as the recurrent of the PGRU
+        # y_t = s_t_ // output part
         
         configs = []
         configs.append("# Update gate control : W_z* matrics")
