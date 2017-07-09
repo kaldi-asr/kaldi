@@ -29,6 +29,7 @@ config_to_layer = {
         'fixed-affine-layer' : xlayers.XconfigFixedAffineLayer,
         'idct-layer' : xlayers.XconfigIdctLayer,
         'affine-layer' : xlayers.XconfigAffineLayer,
+        'gru-layer' : xlayers.XconfigGRULayer,
         'lstm-layer' : xlayers.XconfigLstmLayer,
         'lstmp-layer' : xlayers.XconfigLstmpLayer,
         'fast-lstm-layer' : xlayers.XconfigFastLstmLayer,

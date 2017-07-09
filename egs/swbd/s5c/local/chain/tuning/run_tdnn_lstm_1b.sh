@@ -12,6 +12,18 @@
 #Final train prob (xent)       -0.7603 -0.777787
 #Final valid prob (xent)     -0.949909 -0.939146
 
+# ./local/chain/compare_wer_general.sh tdnn_gru_1a_ld5_sp tdnn_lstm_1b_ld5_sp
+# System                tdnn_gru_1a_ld5_sp tdnn_lstm_1b_ld5_sp
+# WER on train_dev(tg)      12.52     12.88
+# WER on train_dev(fg)      11.55     11.96
+# WER on eval2000(tg)        14.7      15.5
+# WER on eval2000(fg)        13.3      14.0
+# Final train prob         -0.069    -0.049
+# Final valid prob         -0.096    -0.093
+# Final train prob (xent)        -0.854    -0.758
+# Final valid prob (xent)       -0.9986   -0.9662
+
+
 set -e
 
 # configs for 'chain'
@@ -133,13 +145,13 @@ if [ $stage -le 12 ]; then
   relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
-  lstmp-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  gru-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
   relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  lstmp-layer name=lstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  gru-layer name=lstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
   relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
-  lstmp-layer name=lstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  gru-layer name=lstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
 
   ## adding the layers for chain branch
   output-layer name=output input=lstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5

@@ -1,6 +1,7 @@
 # Copyright 2016    Johns Hopkins University (Dan Povey)
 #           2016    Vijayaditya Peddinti
 #           2016    Yiming Wang
+#           2017    Gaofeng Cheng
 # Apache 2.0.
 
 
@@ -226,7 +227,228 @@ class XconfigLstmLayer(XconfigLayerBase):
         configs.append("### End LTSM layer '{0}'".format(name))
         return configs
 
+# This calss is for lines like
+# 'gru-layer name=lstm1 input=[-1] delay=-3'
+class XconfigGRULayer
+    def __init__(self, first_token, key_to_value, prev_names = None):
+        assert first_token == "gru-layer"
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
+    def set_default_configs(self):
+        self.config = {'input' : '[-1]',
+                       'cell-dim' : -1,
+                       'recurrent-projection-dim' : -1,  # defaults to cell-dim / 4
+                       'non-recurrent-projection-dim' : -1, # defaults to
+                                                             # recurrent-projection-dim
+                       'clipping-threshold' : 30.0,
+                       'delay' : -1,
+                       'ng-per-element-scale-options' : 'max-change=0.75',
+                       'ng-affine-options' : 'max-change=0.75',
+                       'self-repair-scale-nonlinearity' : 0.00001,
+                       'zeroing-interval' : 20,
+                       'zeroing-threshold' : 15.0,
+                       'dropout-proportion' : -1.0, # If -1.0, no dropout components will be added
+                       'dropout-per-frame' : False,  # If false, regular dropout, not per frame.
+                       'decay-time':  -1.0,
+                       'vars_path': ""
+                      }
+
+    def set_derived_configs(self):
+        if self.config['recurrent-projection-dim'] <= 0:
+            self.config['recurrent-projection-dim'] = self.config['cell-dim'] / 4
+
+        if self.config['non-recurrent-projection-dim'] <= 0:
+            self.config['non-recurrent-projection-dim'] = \
+               self.config['recurrent-projection-dim']
+
+    def check_configs(self):
+        if self.config['cell-dim'] <= 0:
+            raise RuntimeError("{0} has invalid value {1}".format(key, self.config[key]))
+        if self.config['delay'] == 0:
+            raise RuntimeError("delay cannot be zero")
+
+        if (self.config['recurrent-projection-dim'] +
+            self.config['non-recurrent-projection-dim'] >
+            self.config['cell-dim']):
+            raise RuntimeError("recurrent+non-recurrent projection dim exceeds "
+                                "cell dim.")
+
+        for key in ['self-repair-scale-nonlinearity']:
+            if self.config[key] < 0.0 or self.config[key] > 1.0:
+                raise RuntimeError("{0} has invalid value {2}."
+                                   .format(self.layer_type, key,
+                                           self.config[key]))
+
+        if ((self.config['dropout-proportion'] > 1.0 or
+             self.config['dropout-proportion'] < 0.0) and
+             self.config['dropout-proportion'] != -1.0 ):
+             raise RuntimeError("dropout-proportion has invalid value {0}."
+                                .format(self.config['dropout-proportion']))
+    
+    def auxiliary_outputs(self):
+        return ['h_t']
+    
+    def output_name(self, auxiliary_output = None):
+        node_name = 'sn_t'
+        if auxiliary_output is not None:
+            if auxiliary_output in self.auxiliary_outputs():
+                node_name = auxiliary_output
+            else:
+                raise Exception("In {0} of type {1}, unknown auxiliary output name {1}".format(self.layer_type, auxiliary_output))
+
+        return '{0}.{1}'.format(self.name, node_name)
+
+    def output_dim(self, auxiliary_output = None):
+        if auxiliary_output is not None:
+            if auxiliary_output in self.auxiliary_outputs():
+                if node_name == 'c_t':
+                    return self.config['cell-dim']
+                # add code for other auxiliary_outputs here when we decide to expose them
+            else:
+                raise Exception("In {0} of type {1}, unknown auxiliary output name {1}".format(self.layer_type, auxiliary_output))
+
+        return self.config['recurrent-projection-dim'] + self.config['non-recurrent-projection-dim']
+
+    def get_full_config(self):
+        ans = []
+        config_lines = self.generate_lstm_config()
+
+        for line in config_lines:
+            for config_name in ['ref', 'final']:
+                # we do not support user specified matrices in LSTM initialization
+                # so 'ref' and 'final' configs are the same.
+                ans.append((config_name, line))
+        return ans
+
+    def generate_lstm_config(self):
+        # assign some variables to reduce verbosity
+        name = self.name
+        # in the below code we will just call descriptor_strings as descriptors for conciseness
+        input_dim = self.descriptors['input']['dim']
+        input_descriptor = self.descriptors['input']['final-string']
+        cell_dim = self.config['cell-dim']
+        rec_proj_dim = self.config['recurrent-projection-dim']
+        nonrec_proj_dim = self.config['non-recurrent-projection-dim']
+        delay = self.config['delay']
+        repair_nonlin = self.config['self-repair-scale-nonlinearity']
+        repair_nonlin_str = "self-repair-scale={0:.10f}".format(repair_nonlin) if repair_nonlin is not None else ''
+        decay_time = self.config['decay-time']
+        # we expect decay_time to be either -1, or large, like 10 or 50.
+        recurrence_scale = (1.0 if decay_time < 0 else
+                            1.0 - (abs(delay) / decay_time))
+        assert recurrence_scale > 0   # or user may have set decay-time much
+                                      # too small.
+        bptrunc_str = ("clipping-threshold={0}"
+                      " zeroing-threshold={1}"
+                      " zeroing-interval={2}"
+                      " recurrence-interval={3}"
+                      " scale={4}"
+                      "".format(self.config['clipping-threshold'],
+                                self.config['zeroing-threshold'],
+                                self.config['zeroing-interval'],
+                                abs(delay), recurrence_scale))
+        affine_str = self.config['ng-affine-options']
+        pes_str = self.config['ng-per-element-scale-options']
+        dropout_proportion = self.config['dropout-proportion']
+        dropout_per_frame = 'true' if self.config['dropout-per-frame'] else 'false' 
+
+        # Natural gradient per element scale parameters
+        # TODO: decide if we want to keep exposing these options
+        if re.search('param-mean', pes_str) is None and \
+           re.search('param-stddev', pes_str) is None:
+           pes_str += " param-mean=0.0 param-stddev=1.0 "
+
+        # write bias and minus-scale
+        f = open(self.config['vars_path']+"/minus_one", 'w')
+        f.write(" [ ")
+        for i in range(recurrent_projection_dim):
+            f.write("-1 ")
+        f.write("]\n")
+        f.close()
+
+        f = open(self.config['vars_path']+"/bias_one", 'w')
+        f.write(" [ ")
+        for i in range(recurrent_projection_dim):
+            f.write("1 ")
+        f.write("]\n")
+        f.close()
+        # Basic GRU formulation is like :
+        # reference paper : https://arxiv.org/pdf/1412.3555.pdf
+        # z = \sigmoid ( U^z x_t + W^z y_{t-1} ) // update gate
+        # r = \sigmoid ( U^r x_t + W^r y_{t-1} ) // reset gate
+        # h = \tanh ( U^h x_t + W^h ( y_{t-1} \dot r ) )
+        # y_t = ( 1 - z ) \dot h + z \dot y_{t-1} // output of GRU, i.e. the activations of GRU
+
+        # Our proposed PGRU under Kaldi, reference paper : blank for this stage
+        # we add projection ideas like : https://arxiv.org/pdf/1402.1128.pdf
+        # below show how we change the GRU
+        # z = \sigmoid ( U^z x_t + W^z s_{t-1} ) // update gate
+        # r = \sigmoid ( U^r x_t + W^r s_{t-1} ) // reset gate
+        # h = \tanh ( U^h x_t + W^h ( s_{t-1} \dot r ) )
+        # y_t = ( 1 - z ) \dot h + z \dot y_{t-1}
+        # rp_t = W^s y_t // GRU projection
+        # s_t =  rp_t[0:n-1] // recurrent of PGRU
+        # rp_t is the output of PGRU
+        
+        configs = []
+        configs.append("# Update gate control : W_z* matrics")
+        configs.append("component name={0}.W_z.xs_z type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + rec_proj_dim, cell_dim, affine_str))
+        
+        configs.append("# Reset gate control : W_r* matrics")
+        configs.append("component name={0}.W_z.xs_r type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + rec_proj_dim, rec_proj_dim, affine_str))
+
+        configs.append("# h related matrix : W_h* matrics")
+        configs.append("component name={0}.W_h.UW type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + rec_proj_dim, cell_dim , affine_str))
+        
+        configs.append("# Defining the non-linearities")
+        configs.append("component name={0}.z type=SigmoidComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
+        configs.append("component name={0}.r type=SigmoidComponent dim={1} {2}".format(name, rec_proj_dim, repair_nonlin_str))
+        configs.append("component name={0}.h type=TanhComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
+
+        configs.append("# Defining the components for other cell computations")
+        configs.append("component name={0}.h1 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * rec_proj_dim, rec_proj_dim))
+        configs.append("component name={0}.y1 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
+        configs.append("component name={0}.y2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
+        configs.append("component name={0}.y type=NoOpComponent dim={1}".format(name, cell_dim))
+
+        configs.append("# Defining fixed scale/bias component for (1 - z_t)")
+        configs.append("component name={0}.fixed_scale_minus_one type=FixedScaleComponent scales={1}".format(name, self.config['vars_path']+"/minus_one"))
+        configs.append("component name={0}.fixed_bias_one type=FixedBiasComponent bias={1}".format(name, self.config['vars_path']+"/bias_one"))
+
+        recurrent_connection = '{0}.s_t'.format(name)
+        recurrent_connection_y = '{0}.y_t'.format(name)
+
+        configs.append("# z_t")
+        configs.append("component-node name={0}.z_t_pre component={0}.W_z.xs_z input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.z_t component={0}.z input={0}.z_t_pre".format(name, input_descriptor, recurrent_connection, delay))
+
+        configs.append("# r_t")
+        configs.append("component-node name={0}.r_t_pre component={0}.W_z.xs_r input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.r_t component={0}.r input={0}.r_t_pre".format(name))
+        
+        configs.append("# h_t")
+        configs.append("component-node name={0}.h1_t component={0}.h1 input=Append({0}.r_t, IfDefined(Offset({1}, {2})))".format(name, recurrent_connection, delay))
+        configs.append("component-node name={0}.h_t_pre component={0}.W_h.UW input=Append({1}, {0}.h1_t)".format(name, input_descriptor))
+        configs.append("component-node name={0}.h_t component={0}.h input={0}.h_t_pre".format(name))
+        
+        configs.append("# y_t")
+        configs.append("# The following two lines are to implement (1 - z_t)")
+        configs.append("component-node name={0}.minus_z_t component={0}.fixed_scale_minus_one input={0}.z_t".format(name))
+        configs.append("component-node name={0}.one_minus_z_t component={0}.fixed_bias_one input={0}.minus_z_t".format(name))
+        configs.append("component-node name={0}.y1_t component={0}.y1 input=Append({0}.h_t, {0}.one_minus_z_t)".format(name, recurrent_connection, delay))
+        configs.append("component-node name={0}.y2_t component={0}.y2 input=Append(IfDefined(Offset({1}, {2})), {0}.z_t)".format(name, recurrent_connection_y, delay))
+        configs.append("component-node name={0}.y_t component={0}.y input=Sum({0}.y1_t, {0}.y2_t)".format(name))
+
+        configs.append("# s_t recurrent")
+        configs.append("component name={0}.W_s.ys type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, cell_dim, rec_proj_dim + nonrec_proj_dim, affine_str))
+        configs.append("component name={0}.s_r type=BackpropTruncationComponent dim={1} {2}".format(name, rec_proj_dim, bptrunc_str))
+
+        configs.append("# s_t and n_t : sn_t will be the output")
+        configs.append("component-node name={0}.sn_t component={0}.W_s.ys input={0}.y_t".format(name))
+        configs.append("dim-range-node name={0}.s_t_preclip input-node={0}.sn_t dim-offset=0 dim={1}".format(name, rec_proj_dim))
+        configs.append("component-node name={0}.s_t component={0}.s_r input={0}.s_t_preclip".format(name))
+
+        return configs
 # This class is for lines like
 #   'lstmp-layer name=lstm1 input=[-1] delay=-3'
 # It generates an LSTM sub-graph with output projections. It can also generate
