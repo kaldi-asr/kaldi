@@ -1,40 +1,43 @@
 #!/bin/bash
 set -e
 
-# run_tdnn_1b.sh is like run_tdnn_1a.sh but we used the xconfigs and the topo is a little different.
+# run_tdnn_1b.sh's topo is similiar with run_tdnn_1a.sh but we used the xconfigs. Otherwise "frames_per_eg=150,140,100".
 
-# chain_cleaned/tdnn_1a_sp: num_params=16.8M (12.7M after excluding the xent branch), average training time=71.8s per job(on Tesla K80), real-time factor=0.558894
-# chain_cleaned/tdnn_1b_sp/: num-iters=871 nj=3..16 num-params=9.9M dim=40+100->5151 combine=-0.083->-0.083 xent:train/valid[579,870,final]=(-1.08,-1.05,-1.05/-1.18,-1.15,-1.15) logprob:train/valid[579,870,final]=(-0.067,-0.063,-0.064/-0.077,-0.076,-0.076)
+#exp/chain_cleaned/tdnn_1b_sp: num-iters=871 nj=3..16 num-params=17.1M dim=40+100->5151 combine=-0.074->-0.074 xent:train/valid[579,870,final]=(-1.02,-0.986,-0.990/-0.985,-0.953,-0.957) logprob:train/valid[579,870,final]=(-0.066,-0.062,-0.063/-0.070,-0.069,-0.069)
 
-# for x in exp/chain_cleaned/tdnn_1b_sp/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
-#System                      tdnn_1a_sp    tdnn_1b_sp
-#WER on dev(fglarge)           3.87           3.84  
-#WER on dev(tglarge)           3.97           4.00
-#WER on dev(tgmed)             4.95           5.16
-#WER on dev(tgsmall)           5.57           5.80
-#WER on dev_other(fglarge)    10.22          10.15
-#WER on dev_other(tglarge)    10.79          10.78
-#WER on dev_other(tgmed)      13.01          13.09
-#WER on dev_other(tgsmall)    14.36          14.61
-#WER on test(fglarge)          4.17           4.38
-#WER on test(tglarge)          4.36           4.58
-#WER on test(tgmed)            5.33           5.54
-#WER on test(tgsmall)          5.93           6.15
-#WER on test_other(fglarge)   10.62          10.64
-#WER on test_other(tglarge)   10.96          11.13
-#WER on test_other(tgmed)     13.24          13.45
-#WER on test_other(tgsmall)   14.53          14.92
-
-## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
-## otherwise call it directly in its location).
 # by default, with cleanup:
 # local/chain/run_tdnn.sh
 
+# local/chain/compare_wer.sh exp/chain_cleaned/tdnn_1b_sp
+# System                      tdnn_1b_sp
+# WER on dev(fglarge)              3.87
+# WER on dev(tglarge)              3.99
+# WER on dev(tgmed)                4.96
+# WER on dev(tgsmall)              5.42
+# WER on dev_other(fglarge)       10.15
+# WER on dev_other(tglarge)       10.77
+# WER on dev_other(tgmed)         12.94
+# WER on dev_other(tgsmall)       14.39
+# WER on test(fglarge)             4.14
+# WER on test(tglarge)             4.32
+# WER on test(tgmed)               5.28
+# WER on test(tgsmall)             5.88
+# WER on test_other(fglarge)      10.80
+# WER on test_other(tglarge)      11.13
+# WER on test_other(tgmed)        13.37
+# WER on test_other(tgsmall)      14.92
+# Final train prob              -0.0626
+# Final valid prob              -0.0687
+# Final train prob (xent)       -0.9905
+# Final valid prob (xent)       -0.9566
+
+## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
+## otherwise call it directly in its location).
 # without cleanup:
 # local/chain/run_tdnn.sh  --train-set train_960 --gmm tri6b --nnet3-affix "" &
 
 # configs for 'chain'
-# this script is adapted from librispeech's 1a script.
+# this script is adapted from librispeech's 1c script.
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
@@ -56,9 +59,9 @@ decode_iter=
 # TDNN options
 # this script uses the new tdnn config generator so it needs a final 0 to reflect that the final layer input has no splicing
 # training options
-frames_per_eg=150
+frames_per_eg=150,140,100
 relu_dim=725
-remove_egs=false
+remove_egs=true
 common_egs_dir=
 xent_regularize=0.1
 self_repair_scale=0.00001
@@ -127,20 +130,24 @@ if [ $stage -le 14 ]; then
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
   input dim=40 name=input
+  
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 dim=512
-  relu-batchnorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn3 dim=512 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn4 dim=512 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn5 dim=512 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn6 dim=512 input=Append(-6,-3,0)
+  relu-batchnorm-layer name=tdnn1 dim=$relu_dim
+  relu-batchnorm-layer name=tdnn2 dim=$relu_dim input=Append(-1,0,1,2)
+  relu-batchnorm-layer name=tdnn3 dim=$relu_dim input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn4 dim=$relu_dim input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn5 dim=$relu_dim input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn6 dim=$relu_dim input=Append(-6,-3,0)
+
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain dim=512 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-chain dim=$relu_dim target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+  
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
   # trained with a cross-entropy objective in the 'chain' models... this
@@ -150,7 +157,7 @@ if [ $stage -le 14 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=512 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=$relu_dim target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
