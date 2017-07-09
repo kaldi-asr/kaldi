@@ -49,9 +49,14 @@ EOF
 fi
 
 if [ $stage -le -2 ]; then
+  ali_dir=exp/tri4a_ali_$supervised_set
+  if [ ! -f $ali_dir/ali.1.gz ]; then
+    steps/align_fmllr.sh --nj 30 --cmd "queue.pl" data/$supervised_set data/lang exp/tri4a $ali_dir
+  fi
   echo "$0: chain training on the supervised subset data/${supervised_set}"
   local/chain/run_tdnn.sh $train_supervised_opts --remove-egs false \
                           --train-set $supervised_set \
+                          --build-tree-ali-dir $ali_dir \
                           --nnet3-affix $nnet3_affix --tdnn-affix $tdnn_affix
 fi
 
@@ -115,7 +120,7 @@ if [ $stage -le 2 ]; then
   mkdir -p $comb_egs_dir/log
   cp {$sup_egs_dir,$comb_egs_dir}/train_diagnostic.cegs
   cp {$sup_egs_dir,$comb_egs_dir}/valid_diagnostic.cegs
-  cp {$sup_egs_dir,$comb_egs_dir}/combine.cegs
+  nnet3-chain-copy-egs "ark:cat $sup_egs_dir/combine.cegs $unsup_egs_dir/combine.cegs |" ark:$comb_egs_dir/combine.ceg
   cp {$sup_egs_dir,$comb_egs_dir}/cmvn_opts
   cp -r $sup_egs_dir/info $comb_egs_dir
   echo $num_archives > $comb_egs_dir/info/num_archives

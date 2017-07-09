@@ -12,16 +12,23 @@ decode_iter=
 train_set=train
 tree_affix=
 nnet3_affix=
-gmm=tri5a
 xent_regularize=0.1
 hidden_dim=725
+num_leaves=11000  # number of PdfIds in chain modeling
 
 # training options
 num_epochs=4
 remove_egs=false
 common_egs_dir=
 minibatch_size=128
+num_jobs_initial=3
+num_jobs_final=16
+initial_effective_lrate=0.001
+final_effective_lrate=0.0001
+frames_per_iter=1500000
 
+gmm=tri5a
+build_tree_ali_dir=exp/tri4a_ali  # used to make a new tree for chain topology, should match train data
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -39,7 +46,6 @@ fi
 
 
 gmm_dir=exp/$gmm   # used to get training lattices (for chain supervision)
-build_tree_ali_dir=exp/tri4a_ali  # used to make a new tree for chain topology
 treedir=exp/chain${nnet3_affix}/tree_${tree_affix}
 lat_dir=exp/chain${nnet3_affix}/tri5a_${train_set}_sp_lats  # training lattices directory
 dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp
@@ -85,7 +91,7 @@ if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate -1 \
-      --cmd "$train_cmd" 11000 $build_tree_train_data_dir $lang $build_tree_ali_dir $treedir || exit 1;
+      --cmd "$train_cmd" $num_leaves $build_tree_train_data_dir $lang $build_tree_ali_dir $treedir || exit 1;
 fi
 
 if [ $stage -le 12 ]; then
@@ -154,12 +160,12 @@ if [ $stage -le 13 ]; then
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width 150 \
     --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter 1500000 \
+    --trainer.frames-per-iter $frames_per_iter \
     --trainer.num-epochs $num_epochs \
-    --trainer.optimization.num-jobs-initial 3 \
-    --trainer.optimization.num-jobs-final 16 \
-    --trainer.optimization.initial-effective-lrate 0.001 \
-    --trainer.optimization.final-effective-lrate 0.0001 \
+    --trainer.optimization.num-jobs-initial $num_jobs_initial \
+    --trainer.optimization.num-jobs-final $num_jobs_final \
+    --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
+    --trainer.optimization.final-effective-lrate $final_effective_lrate \
     --trainer.max-param-change 2.0 \
     --cleanup.remove-egs $remove_egs \
     --feat-dir $train_data_dir \
