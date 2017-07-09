@@ -4,7 +4,7 @@ mic=$1;
 shift;
 
 echo -n "System               "
-for x in $*; do   printf "% 10s" $x;   done
+for x in $*; do   printf " % 10s" $x;   done
 echo
 
 #for d in exp/sdm1/chain_cleaned/tdnn*/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done|grep eval_hires
