@@ -20,6 +20,14 @@
 # exp/sdm1/chain_cleaned/tdnn_lstm1i_sp_bi_ihmali_ld5/: num-iters=87 nj=2..12 num-params=43.4M dim=40+100->3770 combine=-0.142->-0.131 xent:train/valid[57,86,final]=(-1.78,-1.48,-1.48/-2.22,-2.17,-2.16) logprob:train/valid[57,86,final]=(-0.157,-0.117,-0.114/-0.243,-0.249,-0.245)
 # exp/sdm1/chain_cleaned/tdnn_lstm1j_sp_bi_ihmali_ld5/: num-iters=87 nj=2..12 num-params=43.4M dim=40+100->3770 combine=-0.139->-0.130 xent:train/valid[57,86,final]=(-1.82,-1.50,-1.48/-2.18,-2.12,-2.11) logprob:train/valid[57,86,final]=(-0.165,-0.121,-0.119/-0.240,-0.247,-0.246)
 
+# System               tdnn_gru1a_sp_bi_ihmali_ld5tdnn_lstm1j_sp_bi_ihmali_ld5
+# WER on dev        35.9      37.2
+# WER on eval        39.0      40.4
+# Final train prob      -0.121248 -0.110953
+# Final valid prob      -0.252114 -0.257645
+# Final train prob (xent)      -1.39673  -1.38772
+# Final valid prob (xent)      -2.04627  -2.13139
+
 set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
@@ -202,15 +210,15 @@ if [ $stage -le 15 ]; then
   relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
-  fast-lstmp-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  gru-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
   relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
-  fast-lstmp-layer name=lstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  gru-layer name=lstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
   relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn8 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn9 input=Append(-3,0,3) dim=1024
-  fast-lstmp-layer name=lstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  gru-layer name=lstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
 
   ## adding the layers for chain branch
   output-layer name=output input=lstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
