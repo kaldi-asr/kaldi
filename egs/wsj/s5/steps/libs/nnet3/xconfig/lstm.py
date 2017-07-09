@@ -1,6 +1,7 @@
 # Copyright 2016    Johns Hopkins University (Dan Povey)
 #           2016    Vijayaditya Peddinti
 #           2016    Yiming Wang
+#           2017    Gaofeng Cheng
 # Apache 2.0.
 
 
@@ -371,15 +372,23 @@ class XconfigGRULayer
             f.write("1 ")
         f.write("]\n")
         f.close()
+        # Basic GRU formulation is like :
+        # reference paper : https://arxiv.org/pdf/1412.3555.pdf
+        # z = \sigmoid ( U^z x_t + W^z y_{t-1} ) // update gate
+        # r = \sigmoid ( U^r x_t + W^r y_{t-1} ) // reset gate
+        # h = \tanh ( U^h x_t + W^h ( y_{t-1} \dot r ) )
+        # y_t = ( 1 - z ) \dot h + z \dot y_{t-1} // output of GRU, i.e. the activations of GRU
 
-        # formulation like:
+        # Our proposed PGRU under Kaldi, reference paper : blank for this stage
+        # we add projection ideas like : https://arxiv.org/pdf/1402.1128.pdf
+        # below show how we change the GRU
         # z = \sigmoid ( U^z x_t + W^z s_{t-1} ) // update gate
         # r = \sigmoid ( U^r x_t + W^r s_{t-1} ) // reset gate
         # h = \tanh ( U^h x_t + W^h ( s_{t-1} \dot r ) )
-        # y_t_ = ( 1 - z ) \dot h + z \dot y_{t-1}
-        # s_t_ = W^s y_t // projection is added, for example, W^s is a 1024*512 matrix
-        # s_t = offset(s_t_, s_t_dim) // recurrent part : s_t_dim out of s_t_ will be used as the recurrent of the PGRU
-        # y_t = s_t_ // output part
+        # y_t = ( 1 - z ) \dot h + z \dot y_{t-1}
+        # rp_t = W^s y_t // GRU projection
+        # s_t =  rp_t[0:n-1] // recurrent of PGRU
+        # rp_t is the output of PGRU
         
         configs = []
         configs.append("# Update gate control : W_z* matrics")
@@ -393,31 +402,34 @@ class XconfigGRULayer
         
         configs.append("# Defining the non-linearities")
         configs.append("component name={0}.z type=SigmoidComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
-        configs.append("component name={0}.r type=SigmoidComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
+        configs.append("component name={0}.r type=SigmoidComponent dim={1} {2}".format(name, rec_proj_dim, repair_nonlin_str))
         configs.append("component name={0}.h type=TanhComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
 
         configs.append("# Defining the components for other cell computations")
         configs.append("component name={0}.h1 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * rec_proj_dim, rec_proj_dim))
         configs.append("component name={0}.y1 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
         configs.append("component name={0}.y2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
-        configs.append("component name={0}.y type=NoOpComponent dim={1} {2}".format(name, cell_dim))
+        configs.append("component name={0}.y type=NoOpComponent dim={1}".format(name, cell_dim))
 
-        components.append("# Defining fixed scale/bias component for (1 - z_t)")
-        components.append("component name={0}.fixed_scale_minus_one type=FixedScaleComponent scales={1}".format(name, self.config['vars_path']+"/minus_one"))
-        components.append("component name={0}.fixed_bias_one type=FixedBiasComponent bias={1}".format(name, self.config['vars_path']+"/bias_one"))
+        configs.append("# Defining fixed scale/bias component for (1 - z_t)")
+        configs.append("component name={0}.fixed_scale_minus_one type=FixedScaleComponent scales={1}".format(name, self.config['vars_path']+"/minus_one"))
+        configs.append("component name={0}.fixed_bias_one type=FixedBiasComponent bias={1}".format(name, self.config['vars_path']+"/bias_one"))
 
         recurrent_connection = '{0}.s_t'.format(name)
         recurrent_connection_y = '{0}.y_t'.format(name)
 
         configs.append("# z_t")
-        configs.append("component-node name={0}.z_t component={0}.W_z.xs_z input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
-        
+        configs.append("component-node name={0}.z_t_pre component={0}.W_z.xs_z input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.z_t component={0}.z input={0}.z_t_pre".format(name, input_descriptor, recurrent_connection, delay))
+
         configs.append("# r_t")
-        configs.append("component-node name={0}.r_t component={0}.W_z.xs_r input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.r_t_pre component={0}.W_z.xs_r input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.r_t component={0}.r input={0}.r_t_pre".format(name))
         
         configs.append("# h_t")
         configs.append("component-node name={0}.h1_t component={0}.h1 input=Append({0}.r_t, IfDefined(Offset({1}, {2})))".format(name, recurrent_connection, delay))
-        configs.append("component-node name={0}.h_t component={0}.W_h.UW input=Append({1}, {0}.h1_t)".format(name, input_descriptor))
+        configs.append("component-node name={0}.h_t_pre component={0}.W_h.UW input=Append({1}, {0}.h1_t)".format(name, input_descriptor))
+        configs.append("component-node name={0}.h_t component={0}.h input={0}.h_t_pre".format(name))
         
         configs.append("# y_t")
         configs.append("# The following two lines are to implement (1 - z_t)")
@@ -425,16 +437,16 @@ class XconfigGRULayer
         configs.append("component-node name={0}.one_minus_z_t component={0}.fixed_bias_one input={0}.minus_z_t".format(name))
         configs.append("component-node name={0}.y1_t component={0}.y1 input=Append({0}.h_t, {0}.one_minus_z_t)".format(name, recurrent_connection, delay))
         configs.append("component-node name={0}.y2_t component={0}.y2 input=Append(IfDefined(Offset({1}, {2})), {0}.z_t)".format(name, recurrent_connection_y, delay))
-        configs.append("component-node name={0}.y_t component={0}.y input=Sum({0}.y1_t, {0}.y2)".format(name))
+        configs.append("component-node name={0}.y_t component={0}.y input=Sum({0}.y1_t, {0}.y2_t)".format(name))
 
         configs.append("# s_t recurrent")
         configs.append("component name={0}.W_s.ys type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, cell_dim, rec_proj_dim + nonrec_proj_dim, affine_str))
-        configs.append("component name={0}.r type=BackpropTruncationComponent dim={1} {2}".format(name, rec_proj_dim, bptrunc_str))
+        configs.append("component name={0}.s_r type=BackpropTruncationComponent dim={1} {2}".format(name, rec_proj_dim, bptrunc_str))
 
         configs.append("# s_t and n_t : sn_t will be the output")
         configs.append("component-node name={0}.sn_t component={0}.W_s.ys input={0}.y_t".format(name))
         configs.append("dim-range-node name={0}.s_t_preclip input-node={0}.sn_t dim-offset=0 dim={1}".format(name, rec_proj_dim))
-        configs.append("component-node name={0}.s_t component={0}.r input={0}.s_t_preclip".format(name))
+        configs.append("component-node name={0}.s_t component={0}.s_r input={0}.s_t_preclip".format(name))
 
         return configs
 # This class is for lines like
