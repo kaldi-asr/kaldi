@@ -167,8 +167,6 @@ std::string NnetInfo(const Nnet &nnet);
 /// dropout_proportion value.
 void SetDropoutProportion(BaseFloat dropout_proportion, Nnet *nnet);
 
-Basefloat ExtractDropoutProportion(Nnet *nnet);
-
 
 /// Returns true if nnet has at least one component of type
 /// BatchNormComponent.

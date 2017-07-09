@@ -487,16 +487,6 @@ void SetDropoutProportion(BaseFloat dropout_proportion,
   }
 }
 
-Basefloat ExtractDropoutProportion(Nnet *nnet) {
-  for (int32 c = 0; c < nnet->NumComponents(); c++) {
-    Component *comp = nnet->GetComponent(c);
-    DropoutComponent *dc = dynamic_cast<DropoutComponent*>(comp);
-    if (dc != NULL) {
-      return dc->dropout_proportion_;
-    }
-  }
-}
-
 bool HasBatchnorm(const Nnet &nnet) {
   for (int32 c = 0; c < nnet.NumComponents(); c++) {
     const Component *comp = nnet.GetComponent(c);
