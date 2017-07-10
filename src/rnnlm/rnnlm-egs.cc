@@ -35,7 +35,7 @@ RnnlmMinibatchSampler::RnnlmMinibatchSampler(
   double sum = std::accumulate(unigram_distribution.begin(),
                                   unigram_distribution.end(),
                                   0.0);
-  KALDI_ASSERT(std::abs<BaseFloat>(sum - 1.0) < 0.01 &&
+  KALDI_ASSERT(std::fabs(sum - 1.0) < 0.01 &&
                "Unigram distribution from ARPA does not sum "
                "to (close to) 1");
   int32 num_words = unigram_distribution.size();
