@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
         "Add an offset vector to the rows of matrices in a table.\n"
         "\n"
         "Usage: matrix-add-offset [options] <matrix-rspecifier> "
-        "<vector-wxfilename> <matrix-wspecifier>\n"
+        "<vector-rxfilename> <matrix-wspecifier>\n"
         "e.g.: matrix-add-offset log_post.mat neg_priors.vec log_like.mat\n"
         "See also: matrix-sum-rows, matrix-sum, vector-sum\n";
 

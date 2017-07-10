@@ -25,6 +25,7 @@ is_rnn=false
 extra_left_context=40
 extra_right_context=40
 frames_per_chunk=20
+resolve_overlaps=false
 
 echo "$0 $@"
 
@@ -232,13 +233,17 @@ if [ ! -f  $dataset_dir/.done ] ; then
     elif [ "$dataset_segments" == "train" ] ||\
          [ "$dataset_segments" == "pem" ]; then
       . ./local/datasets/supervised_pem.sh || exit 1
+    elif [[ $dataset_segments =~ seg* ]]; then
+      echo "Using ${dataset_dir} directly"
     else
       echo "Unknown type of the dataset: \"$dataset_segments\"!";
       echo "Valid dataset types are: seg, uem, pem";
       exit 1
     fi
   elif [ "$dataset_kind" == "unsupervised" ] ; then
-    if [ "$dataset_segments" == "seg" ] ; then
+    if [ "$dataset_segments" == "seg" ]; then
+      . ./local/datasets/unsupervised_seg.sh
+    elif [[ $dataset_segments =~ *seg* ]]; then
       . ./local/datasets/unsupervised_seg.sh
     elif [ "$dataset_segments" == "uem" ] ; then
       . ./local/datasets/unsupervised_uem.sh
@@ -251,6 +256,8 @@ if [ ! -f  $dataset_dir/.done ] ; then
       echo "does not really make any sense!"
       exit 1
       #. ./local/datasets/unsupervised_pem.sh
+    elif [[ $dataset_segments =~ seg* ]]; then
+      echo "Using ${dataset_dir} directly"
     else
       echo "Unknown type of the dataset: \"$dataset_segments\"!";
       echo "Valid dataset types are: seg, uem, pem";
@@ -282,10 +289,18 @@ if  [ ! -f ${dataset_dir}_hires/.mfcc.done ]; then
   fi
 
   mfccdir=mfcc_hires
-  steps/make_mfcc.sh --nj $my_nj --mfcc-config conf/mfcc_hires.conf \
+  steps/make_mfcc_pitch_online.sh --nj $my_nj --mfcc-config conf/mfcc_hires.conf \
       --cmd "$train_cmd" ${dataset_dir}_hires exp/make_hires/$dataset $mfccdir;
-  steps/compute_cmvn_stats.sh data/${dataset}_hires exp/make_hires/${dataset} $mfccdir;
+  steps/compute_cmvn_stats.sh \
+    data/${dataset}_hires exp/make_hires/${dataset} $mfccdir;
+
+  utils/data/limit_feature_dim.sh 0:39 \
+    ${dataset_dir}_hires ${dataset_dir}_hires_nopitch
+  steps/compute_cmvn_stats.sh \
+    ${dataset_dir}_hires_nopitch exp/make_hires/${dataset}_nopitch $mfccdir
+
   utils/fix_data_dir.sh ${dataset_dir}_hires;
+  utils/fix_data_dir.sh ${dataset_dir}_hires_nopitch;
   touch ${dataset_dir}_hires/.mfcc.done
 
   touch ${dataset_dir}_hires/.done
@@ -296,7 +311,7 @@ if [ -f exp/nnet3/extractor/final.ie ] && \
   dataset=$(basename $dataset_dir)
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $my_nj \
-    ${dataset_dir}_hires exp/nnet3/extractor exp/nnet3/ivectors_$dataset || exit 1;
+    ${dataset_dir}_hires_nopitch exp/nnet3/extractor exp/nnet3/ivectors_$dataset || exit 1;
 
   touch exp/nnet3/ivectors_$dataset/.done
 fi
@@ -310,7 +325,7 @@ echo ---------------------------------------------------------------------
 echo "Preparing kws data files in ${dataset_dir} on" `date`
 echo ---------------------------------------------------------------------
 lang=data/lang
-if [ ! -f data/dev10h.pem/.done.kws.dev ] ; then
+if [ ! -f data/dev10h.pem/.done.kws.kwlist ] ; then
   if ! $skip_kws  ; then
     if  $extra_kws ; then
       L1_lex=data/local/lexiconp.txt
@@ -381,13 +396,13 @@ fi
 if ! $fast_path ; then
   local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --resolve-overlaps $resolve_overlaps \
     "${lmwt_plp_extra_opts[@]}" \
     ${dataset_dir} data/langp_test ${decode}
 
   local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --resolve-overlaps $resolve_overlaps \
     "${lmwt_plp_extra_opts[@]}" \
     ${dataset_dir} data/langp_test ${decode}.si
 fi
@@ -418,7 +433,7 @@ if [ -f exp/tri6_nnet/.done ]; then
   fi
   local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --resolve-overlaps $resolve_overlaps \
     "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/langp_test $decode
 fi
@@ -448,7 +463,7 @@ if [ -f exp/nnet3/lstm_bidirectional_sp/final.mdl ]; then
 
   local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --resolve-overlaps $resolve_overlaps \
     "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/langp_test $decode
 
@@ -472,7 +487,7 @@ if [ -f exp/nnet3/lstm_realigned_bidirectional_sp/final.mdl ]; then
 
   local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --resolve-overlaps $resolve_overlaps \
     "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/langp_test $decode
 fi
@@ -493,7 +508,7 @@ if [ -f exp/nnet3/lstm_sp/final.mdl ]; then
 
   local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --resolve-overlaps $resolve_overlaps \
     "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/langp_test $decode
 fi
@@ -507,10 +522,13 @@ if [ -f exp/$nnet3_model/final.mdl ]; then
   fi
   if [ ! -f $decode/.done ]; then
     mkdir -p $decode
+    ivec_param=
+    if [[ $nnet3_model !=  *noivec* ]] ; then
+        ivec_param="  --online-ivector-dir exp/nnet3/ivectors_${dataset_id} "
+    fi
     $decode_script --nj $my_nj --cmd "$decode_cmd" $rnn_opts \
           --beam $dnn_beam --lattice-beam $dnn_lat_beam \
-          --skip-scoring true  \
-          --online-ivector-dir exp/nnet3/ivectors_${dataset_id} \
+          $ivec_param --skip-scoring true  \
           exp/tri5/graph ${dataset_dir}_hires $decode | tee $decode/decode.log
 
     touch $decode/.done
@@ -518,7 +536,7 @@ if [ -f exp/$nnet3_model/final.mdl ]; then
 
   local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --resolve-overlaps $resolve_overlaps \
     "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/langp_test $decode
 fi
@@ -534,10 +552,14 @@ if [ -f exp/$chain_model/final.mdl ]; then
   decode=$dir/decode_${dataset_id}
   decode_script=steps/nnet3/decode.sh
 
-  if [ ! -f exp/nnet3$parent_dir_suffix/ivectors_${dataset_id}/.done ] ; then
-    steps/online/nnet2/extract_ivectors_online.sh --cmd "$decode_cmd" --nj $my_nj \
-      ${dataset_dir}_hires exp/nnet3$parent_dir_suffix/extractor exp/nnet3$parent_dir_suffix/ivectors_${dataset_id}/ || exit 1;
-    touch exp/nnet3$parent_dir_suffix/ivectors_${dataset_id}/.done
+  ivec_param=
+  if [[ $chain_model !=  *noivec* ]] ; then
+    if [ ! -f exp/nnet3$parent_dir_suffix/ivectors_${dataset_id}/.done ] ; then
+      steps/online/nnet2/extract_ivectors_online.sh --cmd "$decode_cmd" --nj $my_nj \
+        ${dataset_dir}_hires_nopitch exp/nnet3$parent_dir_suffix/extractor exp/nnet3$parent_dir_suffix/ivectors_${dataset_id}/ || exit 1;
+      touch exp/nnet3$parent_dir_suffix/ivectors_${dataset_id}/.done
+    fi
+    ivec_param="  --online-ivector-dir exp/nnet3$parent_dir_suffix/ivectors_${dataset_id}"
   fi
 
   my_nj_backup=$my_nj
@@ -554,8 +576,7 @@ if [ -f exp/$chain_model/final.mdl ]; then
     $decode_script --nj $my_nj --cmd "$decode_cmd" $rnn_opts \
           --acwt 1.0 --post-decode-acwt 10.0 \
           --beam $dnn_beam --lattice-beam $dnn_lat_beam \
-          --skip-scoring true  \
-          --online-ivector-dir exp/nnet3$parent_dir_suffix/ivectors_${dataset_id} \
+          --skip-scoring true $ivec_param \
           $dir/graph ${dataset_dir}_hires $decode | tee $decode/decode.log
 
     touch $decode/.done
@@ -563,7 +584,7 @@ if [ -f exp/$chain_model/final.mdl ]; then
 
   local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --resolve-overlaps $resolve_overlaps \
     "${lmwt_chain_extra_opts[@]}" \
     ${dataset_dir} data/langp_test $decode
   my_nj=$my_nj_backup
@@ -592,7 +613,7 @@ if [ -f exp/tri6a_nnet/.done ]; then
 
   local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --resolve-overlaps $resolve_overlaps \
     "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/langp_test $decode
 fi
@@ -619,7 +640,7 @@ if [ -f exp/tri6b_nnet/.done ]; then
 
   local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --resolve-overlaps $resolve_overlaps \
     "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/langp_test $decode
 fi
@@ -645,7 +666,7 @@ if [ -f exp/tri6_nnet_mpe/.done ]; then
 
     local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
       --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-      --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+      --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --resolve-overlaps $resolve_overlaps \
       "${lmwt_dnn_extra_opts[@]}" \
       ${dataset_dir} data/langp_test $decode
   done
@@ -674,7 +695,7 @@ for dnn in tri6_nnet_semi_supervised tri6_nnet_semi_supervised2 \
 
     local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
       --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-      --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+      --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --resolve-overlaps $resolve_overlaps \
       "${lmwt_dnn_extra_opts[@]}" \
       ${dataset_dir} data/langp_test $decode
   fi
@@ -703,7 +724,7 @@ if [ -f exp/sgmm5/.done ]; then
     if ! $fast_path ; then
       local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
         --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-        --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+        --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --resolve-overlaps $resolve_overlaps \
         "${lmwt_plp_extra_opts[@]}" \
         ${dataset_dir} data/langp_test  exp/sgmm5/decode_fmllr_${dataset_id}
     fi
@@ -738,7 +759,7 @@ if [ -f exp/sgmm5/.done ]; then
     if [ -f $decode/.done ]; then
       local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
         --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-        --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+        --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --resolve-overlaps $resolve_overlaps \
       "${lmwt_plp_extra_opts[@]}" \
       ${dataset_dir} data/langp_test $decode
     fi

@@ -35,7 +35,7 @@ class XconfigLayerBase(object):
         """
 
         self.layer_type = first_token
-        if not 'name' in key_to_value:
+        if 'name' not in key_to_value:
             raise RuntimeError("Expected 'name' to be specified.")
         self.name = key_to_value['name']
         if not xutils.is_valid_line_name(self.name):
@@ -75,7 +75,7 @@ class XconfigLayerBase(object):
         # informative message saying what configs are allowed.
         for key, value in key_to_value.items():
             if key != 'name':
-                if not key in self.config:
+                if key not in self.config:
                     configs = ' '.join([('{0}->"{1}"'.format(x, y) if isinstance(y, str)
                                          else '{0}->{1}'.format(x, y))
                                         for x, y in self.config.items()])
@@ -116,10 +116,10 @@ class XconfigLayerBase(object):
             # when auxiliary_output is not None.
             # That's up to the designer of the layer type.
             desc_output_str = self.get_string_for_descriptor(desc, all_layers)
-            self.descriptors[key] = {'string':desc,
-                                     'normalized-string':desc_norm_str,
-                                     'final-string':desc_output_str,
-                                     'dim':desc_dim}
+            self.descriptors[key] = {'string': desc,
+                                     'normalized-string': desc_norm_str,
+                                     'final-string': desc_output_str,
+                                     'dim': desc_dim}
 
             # the following helps to check the code by parsing it again.
             desc2 = self.convert_to_descriptor(desc_norm_str, all_layers)
@@ -311,7 +311,6 @@ class XconfigInputLayer(XconfigLayerBase):
         assert first_token == 'input'
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
-
     def set_default_configs(self):
 
         self.config = {'dim': -1}
@@ -404,7 +403,7 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
         # config-files, i.e. it contains the 'final' names of nodes.
         descriptor_final_str = self.descriptors['input']['final-string']
 
-        for config_name in ['init', 'ref', 'final' ]:
+        for config_name in ['init', 'ref', 'final']:
             ans.append((config_name,
                         'output-node name={0} input={1}'.format(
                             self.name, descriptor_final_str)))
@@ -458,41 +457,40 @@ class XconfigOutputLayer(XconfigLayerBase):
 
         # note: self.config['input'] is a descriptor, '[-1]' means output
         # the most recent layer.
-        self.config = {'input' : '[-1]',
-                       'dim' : -1,
-                       'include-log-softmax' : True,
+        self.config = {'input': '[-1]',
+                       'dim': -1,
+                       'include-log-softmax': True,
                             # this would be false for chain models
-                       'objective-type' : 'linear',
+                       'objective-type': 'linear',
                             # see Nnet::ProcessOutputNodeConfigLine in
                             # nnet-nnet.cc for other options
-                       'learning-rate-factor' : 1.0,
-                       'presoftmax-scale-file' : '',
+                       'learning-rate-factor': 1.0,
+                       'presoftmax-scale-file': '',
                             # used in DNN (not RNN) training when using
                             # frame-level objfns,
-                       'max-change' : 1.5,
-                       'param-stddev' : 0.0,
-                       'bias-stddev' : 0.0,
-                       'output-delay' : 0,
-                       'ng-affine-options' : ''
+                       'max-change': 1.5,
+                       'param-stddev': 0.0,
+                       'bias-stddev': 0.0,
+                       'output-delay': 0,
+                       'ng-affine-options': ''
                       }
 
     def check_configs(self):
 
         if self.config['dim'] <= -1:
             raise RuntimeError("In output-layer, dim has invalid value {0}"
-                                "".format(self.config['dim']))
+                               "".format(self.config['dim']))
 
         if self.config['objective-type'] != 'linear' and \
                 self.config['objective-type'] != 'quadratic':
             raise RuntimeError("In output-layer, objective-type has"
-                                " invalid value {0}"
-                                "".format(self.config['objective-type']))
+                               " invalid value {0}"
+                               "".format(self.config['objective-type']))
 
         if self.config['learning-rate-factor'] <= 0.0:
             raise RuntimeError("In output-layer, learning-rate-factor has"
-                                " invalid value {0}"
-                                "".format(self.config['learning-rate-factor']))
-
+                               " invalid value {0}"
+                               "".format(self.config['learning-rate-factor']))
 
     # you cannot access the output of this layer from other layers... see
     # comment in output_name for the reason why.
@@ -630,44 +628,26 @@ class XconfigBasicLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names=None):
         # Here we just list some likely combinations.. you can just add any
         # combinations you want to use, to this list.
-        assert first_token in [ 'relu-layer', 'relu-renorm-layer', 'sigmoid-layer',
-                                'tanh-layer', 'relu-batchnorm-layer', 'relu-dropout-layer',
-                                'relu-batchnorm-dropout-layer' ]
+        assert first_token in ['relu-layer', 'relu-renorm-layer', 'sigmoid-layer',
+                               'tanh-layer', 'relu-batchnorm-layer', 'relu-dropout-layer',
+                               'relu-batchnorm-dropout-layer']
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
 
         # note: self.config['input'] is a descriptor, '[-1]' means output
         # the most recent layer.
-        self.config = {'input':'[-1]',
-                       'dim':-1,
-                       'max-change' : 0.75,
-                       'self-repair-scale' : 1.0e-05,
-                       'target-rms' : 1.0,
-                       'learning-rate-factor' : 1.0,
-                       'ng-affine-options' : '',
+        self.config = {'input': '[-1]',
+                       'dim': -1,
+                       'max-change': 0.75,
+                       'self-repair-scale': 1.0e-05,
+                       'target-rms': 1.0,
+                       'learning-rate-factor': 1.0,
+                       'ng-affine-options': '',
                        'dropout-proportion': 0.5,  # dropout-proportion only
                                                    # affects layers with
                                                    # 'dropout' in the name.
-                       'add-log-stddev' : False}
-
-    def set_derived_configs(self):
-        output_dim = self.config['dim']
-        # If not set, the output-dim defaults to the input-dim.
-        if output_dim <= 0:
-            self.config['dim'] = self.descriptors['input']['dim']
-
-        self.config['intermediate-dim'] = self.config['dim']
-        if self.config['add-log-stddev']:
-            split_layer_name = self.layer_type.split('-')
-            assert split_layer_name[-1] == 'layer'
-            nonlinearities = split_layer_name[:-1]
-
-            intermediate_dim = self.config['dim']
-            for nonlinearity in nonlinearities:
-                if nonlinearity == "renorm":
-                    intermediate_dim -= 1
-            self.config['intermediate-dim'] = intermediate_dim
+                       'add-log-stddev': False}
 
     def check_configs(self):
         if self.config['dim'] < 0:
@@ -694,7 +674,12 @@ class XconfigBasicLayer(XconfigLayerBase):
         return '{0}.{1}'.format(self.name, last_nonlinearity)
 
     def output_dim(self, auxiliary_output=None):
-        return self.config['dim']
+        output_dim = self.config['dim']
+        # If not set, the output-dim defaults to the input-dim.
+        if output_dim <= 0:
+            self.config['dim'] = self.descriptors['input']['dim']
+
+        return output_dim
 
     def get_full_config(self):
         ans = []
@@ -723,16 +708,32 @@ class XconfigBasicLayer(XconfigLayerBase):
         return self._add_components(input_desc, input_dim, nonlinearities)
 
     def _add_components(self, input_desc, input_dim, nonlinearities):
-        output_dim = self.config['intermediate-dim']
+        output_dim = self.output_dim()
         self_repair_scale = self.config['self-repair-scale']
         target_rms = self.config['target-rms']
         max_change = self.config['max-change']
-        add_log_stddev = ("true" if self.config['add-log-stddev']
-                          else "false")
         ng_affine_options = self.config['ng-affine-options']
-        learning_rate_factor=self.config['learning-rate-factor']
-        learning_rate_option=('learning-rate-factor={0}'.format(learning_rate_factor)
-                              if learning_rate_factor != 1.0 else '')
+        learning_rate_factor = self.config['learning-rate-factor']
+        learning_rate_option = ('learning-rate-factor={0}'.format(learning_rate_factor)
+                                if learning_rate_factor != 1.0 else '')
+
+        # The output of the affine component needs to have one dimension fewer in order to
+        # get the required output dim, if the final 'renorm' component has 'add-log-stddev' set
+        # (since in that case it increases the dimension by one).
+        found_final_renorm = False
+        if self.config['add-log-stddev']:
+            output_dim -= 1
+
+            split_layer_name = self.layer_type.split('-')
+            assert split_layer_name[-1] == 'layer'
+            nonlinearities = split_layer_name[:-1]
+
+            for i, nonlinearity in enumerate(nonlinearities):
+                if nonlinearity == "renorm" and i == len(nonlinearities) - 1:
+                    found_final_renorm = True
+            if not found_final_renorm:
+                raise RuntimeError("add-log-stddev cannot be true unless "
+                                   "there is a final 'renorm' component.")
 
         configs = []
         # First the affine node.
@@ -753,50 +754,54 @@ class XconfigBasicLayer(XconfigLayerBase):
         configs.append(line)
         cur_node = '{0}.affine'.format(self.name)
 
-        for nonlinearity in nonlinearities:
+        for i, nonlinearity in enumerate(nonlinearities):
             if nonlinearity == 'relu':
                 line = ('component name={0}.{1}'
                         ' type=RectifiedLinearComponent dim={2}'
                         ' self-repair-scale={3}'
                         ''.format(self.name, nonlinearity, output_dim,
-                            self_repair_scale))
+                                  self_repair_scale))
 
             elif nonlinearity == 'sigmoid':
                 line = ('component name={0}.{1}'
                         ' type=SigmoidComponent dim={2}'
                         ' self-repair-scale={3}'
                         ''.format(self.name, nonlinearity, output_dim,
-                            self_repair_scale))
+                                  self_repair_scale))
 
             elif nonlinearity == 'tanh':
                 line = ('component name={0}.{1}'
                         ' type=TanhComponent dim={2}'
                         ' self-repair-scale={3}'
                         ''.format(self.name, nonlinearity, output_dim,
-                            self_repair_scale))
+                                  self_repair_scale))
 
             elif nonlinearity == 'renorm':
+                add_log_stddev = "false"
+                if i == len(nonlinearities) - 1:
+                    output_dim += 1
+                    add_log_stddev = ("true" if self.config['add-log-stddev']
+                                      else "false")
+
                 line = ('component name={0}.{1}'
                         ' type=NormalizeComponent dim={2}'
                         ' target-rms={3}'
                         ' add-log-stddev={4}'
                         ''.format(self.name, nonlinearity, output_dim,
                                   target_rms, add_log_stddev))
-                if self.config['add-log-stddev']:
-                    output_dim += 1
 
             elif nonlinearity == 'batchnorm':
                 line = ('component name={0}.{1}'
                         ' type=BatchNormComponent dim={2}'
                         ' target-rms={3}'
                         ''.format(self.name, nonlinearity, output_dim,
-                            target_rms))
+                                  target_rms))
 
             elif nonlinearity == 'dropout':
                 line = ('component name={0}.{1} type=DropoutComponent '
-                           'dim={2} dropout-proportion={3}'.format(
-                               self.name, nonlinearity, output_dim,
-                               self.config['dropout-proportion']))
+                        'dim={2} dropout-proportion={3}'.format(
+                            self.name, nonlinearity, output_dim,
+                            self.config['dropout-proportion']))
 
             else:
                 raise RuntimeError("Unknown nonlinearity type: {0}"
@@ -837,11 +842,11 @@ class XconfigFixedAffineLayer(XconfigLayerBase):
     def set_default_configs(self):
         # note: self.config['input'] is a descriptor, '[-1]' means output
         # the most recent layer.
-        self.config = {'input':'[-1]',
-                       'dim':-1,
-                       'affine-transform-file':'',
-                       'delay':0,
-                       'write-init-config':True}
+        self.config = {'input': '[-1]',
+                       'dim': -1,
+                       'affine-transform-file': '',
+                       'delay': 0,
+                       'write-init-config': True}
 
     def check_configs(self):
         if self.config['affine-transform-file'] is None:
@@ -931,14 +936,14 @@ class XconfigAffineLayer(XconfigLayerBase):
         # C++ component provides more options but I will just expose these for now
         # Note : The type of the parameter is determined based on the value assigned
         #        so please use decimal point if your parameter is a float
-        self.config = {'input' : '[-1]',
-                       'dim' : -1,
-                       'param-stddev' : -1.0, # this has to be initialized to 1/sqrt(input_dim)
-                       'bias-stddev' : 1.0,
-                       'bias-mean' : 0.0,
-                       'max-change' : 0.75,
-                       'learning-rate-factor' : 1.0,
-                       'ng-affine-options' : ''}
+        self.config = {'input': '[-1]',
+                       'dim': -1,
+                       'param-stddev': -1.0,  # this has to be initialized to 1/sqrt(input_dim)
+                       'bias-stddev': 1.0,
+                       'bias-mean': 0.0,
+                       'max-change': 0.75,
+                       'learning-rate-factor': 1.0,
+                       'ng-affine-options': ''}
 
     def set_derived_configs(self):
         super(XconfigAffineLayer, self).set_derived_configs()
@@ -974,7 +979,7 @@ class XconfigAffineLayer(XconfigLayerBase):
         input_dim = self.descriptors['input']['dim']
         output_dim = self.output_dim()
 
-        option_string=''
+        option_string = ''
         for key in ['param-stddev', 'bias-stddev', 'bias-mean', 'max-change']:
             option_string += ' {0}={1}'.format(key, self.config[key])
         option_string += self.config['ng-affine-options']

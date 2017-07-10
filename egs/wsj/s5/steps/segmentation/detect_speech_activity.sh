@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 # Copyright 2016  Vimal Manohar
 # Apache 2.0.
@@ -59,7 +59,7 @@ garbage_in_sil_weight=0.0
 sil_in_speech_weight=0.0
 garbage_in_speech_weight=0.0
 
-post_processing_opts="--segment-padding=0.2 --max-intersegment-duration=0.3 --min-segment-duration=0.3 --max-segment-duration=10.0 --overlap-duration=1.0 --max-remaining-duration=2.0"
+segment_padding=0.2   # Duration (in seconds) of padding added to segments 
 
 echo $* 
 
@@ -86,8 +86,6 @@ if [ $# -ne 5 ]; then
   echo "  --output-name <name>    # The output node in the network"
   echo "  --extra-left-context  <context|0>   # Set to some large value, typically 40 for LSTM (must match training)"
   echo "  --extra-right-context  <context|0>   # For BLSTM or statistics pooling"
-  echo "  --transition-scale <float|3.0>    # LMWT for decoding"
-  echo "  --loopscale <float|0.1>   # Scale on self-loop log-probabilities"
   exit 1
 fi
 
@@ -223,16 +221,13 @@ fi
 
 mkdir -p $seg_dir
 if [ $stage -le 6 ]; then
-  python -c "
-print ('''[ {0} {1} {2}
-{3} {4} {5} ]'''.format(
-  1.0-$sil_in_speech_weight, $speech_in_sil_weight, $garbage_in_sil_weight,
-  $sil_in_speech_weight, 1.0-$speech_in_sil_weight, $garbage_in_speech_weight))""" > $seg_dir/garbage.mat
+  steps/segmentation/internal/get_transform_probs_mat.py \
+    $transform_probs_opts > $seg_dir/transform_probs.mat
 
   # Here --apply-log is true since we read from nnet posteriors 'nnet_output_exp'
-  steps/segmentation/decode_sad.sh --acwt $acwt --cmd "$cmd" --apply-log true --nj $nj \
-    --transform "$seg_dir/garbage.mat" \
-    --priors "$post_vec" \
+  steps/segmentation/decode_sad.sh --acwt $acwt --cmd "$cmd" \
+    --nj $nj \
+    --transform "$seg_dir/transform_probs.mat" \
     $graph_dir $sad_dir $seg_dir
 fi
 

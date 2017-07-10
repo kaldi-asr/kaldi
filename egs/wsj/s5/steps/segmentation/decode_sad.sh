@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 # Copyright 2016  Vimal Manohar
 # Apache 2.0.
@@ -16,9 +16,6 @@ acwt=0.1
 beam=8
 max_active=1000
 transform=   # Transformation matrix to apply on the input archives read from output.scp
-apply_log=false    # If true, the log is applied on the transformed input matrix. Applicable when input is probabilities.
-priors=   # A vector of counts, which will be used to subtract the log-priors 
-          # before passing to the decoder
 
 . path.sh
 
@@ -47,31 +44,14 @@ done
 
 rspecifier="ark:utils/split_scp.pl -j $nj \$[JOB-1] $nnet_output_dir/output.scp | copy-feats scp:- ark:- |"
 
-# Apply a transformation on the input matrix to combine scores from different columns
+# Apply a transformation on the input matrix to combine 
+# probs from different columns to pseudo-likelihoods
 if [ ! -z "$transform" ]; then
   rspecifier="$rspecifier transform-feats $transform ark:- ark:- |"
 fi
 
-if $apply_log; then
-  rspecifier="$rspecifier copy-matrix --apply-log ark:- ark:- |"
-fi
-
-# Subtract log-priors to convert log-odds to pseudo log-likelihoods for decoding.
-if [ ! -z $priors ]; then
-  {
-  copy-vector --binary=false $priors - | \
-    awk '{ for (i = 2; i < NF; i++) { sum += $i; };
-  printf ("[");
-  for (i = 2; i < NF; i++) { printf " "log($i/sum); };
-  print (" ]"); }' > $dir/log_priors.vec;
-  } 2> $dir/log/get_log_priors.log || exit 1
-  if [ ! -f $dir/log_priors.vec ]; then
-    echo "$0: Did not create $dir/log_priors.vec"
-    exit 1 
-  fi
-
-  rspecifier="$rspecifier matrix-add-offset ark:- 'vector-scale --scale=-1.0 $dir/log_priors.vec - |' ark:- |"
-fi
+# Convert pseudo-likelihoods to pseudo log-likelihood
+rspecifier="$rspecifier copy-matrix --apply-log ark:- ark:- |"
 
 decoder_opts+=(--acoustic-scale=$acwt --beam=$beam --max-active=$max_active)
 

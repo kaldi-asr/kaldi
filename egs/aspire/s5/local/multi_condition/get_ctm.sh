@@ -60,17 +60,16 @@ lattice-align-words-lexicon --output-error-lats=true --output-if-empty=true --ma
  $lang/phones/align_lexicon.int $model ark:- ark:- | \
 lattice-to-ctm-conf $frame_shift_opt --decode-mbr=$decode_mbr ark:- $decode_dir/score_$LMWT/penalty_$wip/ctm.overlapping || exit 1;
 
+ctm=$decode_dir/score_$LMWT/penalty_$wip/ctm.overlapping
 # combine the segment-wise ctm files, while resolving overlaps
 if $resolve_overlaps; then
   steps/resolve_ctm_overlaps.py $data_dir/segments \
     $decode_dir/score_$LMWT/penalty_$wip/ctm.overlapping \
     $decode_dir/score_$LMWT/penalty_$wip/ctm.merged || exit 1;
-else
-  cp $decode_dir/score_$LMWT/penalty_$wip/ctm.overlapping $decode_dir/score_$LMWT/penalty_$wip/ctm.merged || exit 1;
+  ctm=$decode_dir/score_$LMWT/penalty_$wip/ctm.merged
 fi
-merged_ctm=$decode_dir/score_$LMWT/penalty_$wip/ctm.merged
 
-cat $merged_ctm | utils/int2sym.pl -f 5 $lang/words.txt | \
+cat $ctm | utils/int2sym.pl -f 5 $lang/words.txt | \
 utils/convert_ctm.pl $data_dir/segments $data_dir/reco2file_and_channel | \
 sort -k1,1 -k2,2 -k3,3nb > $decode_dir/score_$LMWT/penalty_$wip/ctm || exit 1;
 # Remove some stuff we don't want to score, from the ctm.

@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 # Copyright 2015-17  Vimal Manohar
 # Apache 2.0.
@@ -13,7 +13,7 @@ cmd=run.pl
 stage=-10
 
 frame_shift=0.01
-post_processing_opts="--segment-padding=0.2 --max-intersegment-duration=0.3 --min-segment-duration=0.3 --max-segment-duration=10.0 --overlap-duration=1.0 --max-remaining-duration=2.0"
+segment_padding=0.2
 nj=18
 
 . utils/parse_options.sh
@@ -47,7 +47,7 @@ if [ $stage -le 0 ]; then
   $cmd JOB=1:$nj $dir/log/segmentation.JOB.log \
     copy-int-vector "ark:gunzip -c $vad_dir/ali.JOB.gz |" ark,t:- \| \
     steps/segmentation/internal/ali_to_segments.py \
-      --frame-shift=$frame_shift $post_processing_opts \
+      --frame-shift=$frame_shift --segment-padding=$segment_padding \
       --utt2dur=$data_dir/utt2dur - $dir/segments.JOB
 fi
 

@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
@@ -37,10 +37,6 @@ def get_args():
     parser.add_argument("--verbose", type=int, choices=[0, 1, 2, 3],
                         default=0, help="Higher verbosity for more logging")
 
-    parser.add_argument("--sad-map", type=str,
-                        help="File containing mapping from alignment labels "
-                             "to SAD labels -- "
-                             "1 for non-speech and 2 for speech")
     parser.add_argument("--utt2dur", type=str,
                         help="File containing durations of utterances.")
     parser.add_argument("--frame-shift", type=float, default=0.01,
@@ -48,21 +44,6 @@ def get_args():
 
     parser.add_argument("--segment-padding", type=float, default=0.2,
                         help="Additional padding on speech segments")
-    parser.add_argument("--max-intersegment-duration", type=float, default=0.3,
-                        help="""Merge speech segments if the
-                        intersegment silence is less than this duration""")
-    parser.add_argument("--min-segment-duration", type=float, default=0.3,
-                        help="""Remove segments that are smaller than this
-                        duration.""")
-    parser.add_argument("--max-segment-duration", type=float, default=10.0,
-                        help="""If segment is longer than this duration, then
-                        split it into overlapping segments.""")
-    parser.add_argument("--overlap-duration", type=float, default=1.0,
-                        help="""Overlap duration when splitting segments.""")
-    parser.add_argument("--max-remaining-duration", type=float, default=2.0,
-                        help="""If the duration of segment remaining after
-                        splitting is smaller than this amount then the
-                        segment is not split.""")
 
 
     parser.add_argument("in_alignments", type=str,
@@ -212,79 +193,6 @@ class Segmentation(object):
                     segment[1] - self.segments[i+1][0])
                 segment[1] = self.segments[i+1][0]
 
-    def merge_adjacent_segments(self, max_intersegment_duration):
-        """Merges speech segments that are closer than
-        'max_intersegment_duration' apart.
-        """
-        new_segments = []
-
-        segment_start = -1
-        segment_end = -1
-
-        for i, segment in enumerate(self.segments):
-            if i == 0:
-                segment_start = segment[0]
-                segment_end = segment[1]
-            elif segment[0] - self.segments[i-1][1] < max_intersegment_duration:
-                logger.debug("Merging segment {0} and {1}"
-                             "".format(to_str(self.segments[i-1]),
-                                       to_str(segment)))
-                segment_end = segment[1]
-            else:
-                new_segments.append((segment_start, segment_end, 2))
-                segment_start = segment[0]
-                segment_end = segment[1]
-
-        if segment_start > -1:
-            new_segments.append((segment_start, segment_end, 2))
-
-        self.segments = new_segments
-        self.stats.num_segments_after_merging = len(self.segments)
-
-    def remove_short_segments(self, min_segment_duration):
-        """Removes short segments that are shorter than 'min_segment_duration'
-        long"""
-        new_segments = []
-
-        for segment in self.segments:
-            if segment[1] - segment[0] < min_segment_duration:
-                logger.debug("Removing segment {0}".format(to_str(segment)))
-            else:
-                new_segments.append(segment)
-
-        self.segments = new_segments
-        self.stats.num_segments_removed = (
-            self.stats.num_segments_after_merging - len(self.segments))
-
-    def split_long_segments(self, max_segment_duration, overlap_duration,
-                            max_remaining_duration):
-        """Splits segments that are longer than
-        'max_segment_duration + max_remaining_duration' seconds long and
-        creates overlapping segments of length 'max_segment_duration' and
-        overlap 'overlap_duration'.
-        Splitting is stopped if the final chunk created would be smaller than
-        'max_remaining_duration'.
-        """
-        new_segments = []
-
-        for segment in self.segments:
-            segment_start = segment[0]
-            dur = segment[1] - segment[0]
-            if dur > max_segment_duration + max_remaining_duration:
-                self.stats.num_segments_split += 1
-
-            while dur > max_segment_duration + max_remaining_duration:
-                new_segments.append(
-                    (segment_start,
-                     segment_start + max_segment_duration, 2))
-                segment_start += max_segment_duration - overlap_duration
-                dur -= (max_segment_duration - overlap_duration)
-            new_segments.append((segment_start, segment_start + dur))
-
-        self.segments = new_segments
-        self.stats.num_final_segments = len(self.segments)
-        self.stats.final_duration = sum([x[1] - x[0] for x in self.segments])
-
     def write(self, key, file_handle):
         """Write segments to file"""
         if global_verbose >= 2:
@@ -329,11 +237,6 @@ def run(args):
             segmentation.pad_speech_segments(args.segment_padding,
                                              None if args.utt2dur is None
                                              else utt2dur[utt_id])
-            segmentation.merge_adjacent_segments(args.max_intersegment_duration)
-            segmentation.remove_short_segments(args.min_segment_duration)
-            segmentation.split_long_segments(
-                args.max_segment_duration, args.overlap_duration,
-                args.max_remaining_duration)
             segmentation.write(utt_id, out_segments_fh)
             global_stats.add(utt_stats)
     logger.info(global_stats)

@@ -7,7 +7,14 @@
 # the wav.scp to perturb the volume (typically useful for training data when
 # using systems that don't have cepstral mean normalization).
 
-reco2vol=   # Use these volumes for the recording
+reco2vol=   # A file with the format <reco-id> <volume> that specifies the 
+            # factor by which the volume of the recording must be scaled.
+            # If not provided, then the volume will be chosen randomly to 
+            # be between --scale-low and --scale-high.
+write_reco2vol=     # File to write volume-scales applied to the recordings.
+                    # Can be passed to --reco2vol to use the same volumes for 
+                    # another data directory. 
+                    # e.g. the unperturbed data directory.
 scale_low=0.125
 scale_high=2
 
@@ -29,6 +36,13 @@ if [ ! -f $data/wav.scp ]; then
   exit 1
 fi
 
+# Check if volume perturbation is already this. We assume that the volume
+# perturbation is done if it has a line 'sox --vol' applied on the whole 
+# recording.
+# e.g. 
+# foo-1 cat foo.wav | sox --vol 1.6 -t wav - -t wav - |    # volume perturbation done
+# bar-1 sox --vol 1.2 bar.wav -t wav - |                   # volume perturbation done
+# foo-2 wav-reverberate --additive-signals="sox --vol=0.1 noise1.wav -t wav -|" foo.wav |   # volume perturbation not done
 volume_perturb_done=`head -n100 $data/wav.scp | python -c "
 import sys, re
 for line in sys.stdin.readlines():
@@ -54,61 +68,10 @@ if $volume_perturb_done; then
   exit 0
 fi
 
-if [ -z "$reco2vol" ]; then
-  cat $data/wav.scp | python -c "
-import sys, os, subprocess, re, random
-random.seed(0)
-scale_low = $scale_low
-scale_high = $scale_high
-volume_writer = open('$data/reco2vol', 'w')
-for line in sys.stdin.readlines():
-  if len(line.strip()) == 0:
-    continue
-  # Handle three cases of rxfilenames appropriately; 'input piped command', 'file offset' and 'filename'
-  vol = random.uniform(scale_low, scale_high)
-
-  parts = line.strip().split()
-  if line.strip()[-1] == '|':
-    print '{0} sox --vol {1} -t wav - -t wav - |'.format(line.strip(), vol)
-  elif re.search(':[0-9]+$', line.strip()) is not None:
-    print '{id} wav-copy {wav} - | sox --vol {vol} -t wav - -t wav - |'.format(id = parts[0], wav=' '.join(parts[1:]), vol = vol)
-  else:
-    print '{id} sox --vol {vol} -t wav {wav} -t wav - |'.format(id = parts[0], wav=' '.join(parts[1:]), vol = vol)
-  volume_writer.write('{id} {vol}\n'.format(id = parts[0], vol = vol))
-"  > $data/wav.scp_scaled || exit 1;
-else
-  cat $data/wav.scp | python -c "
-import sys, os, subprocess, re
-volumes = {}
-for line in open('$reco2vol'):
-  if len(line.strip()) == 0:
-    continue
-  parts = line.strip().split()
-  volumes[parts[0]] = float(parts[1])
-
-for line in sys.stdin.readlines():
-  if len(line.strip()) == 0:
-    continue
-  # Handle three cases of rxfilenames appropriately; 'input piped command', 'file offset' and 'filename'
-  
-  parts = line.strip().split()
-  id = parts[0]
-
-  if id not in volumes:
-    raise Exception('Could not find volume for id {id}'.format(id = id))
-
-  vol = volumes[id]
-
-  if line.strip()[-1] == '|':
-    print '{0} sox --vol {1} -t wav - -t wav - |'.format(line.strip(), vol)
-  elif re.search(':[0-9]+$', line.strip()) is not None:
-    print '{id} wav-copy {wav} - | sox --vol {vol} -t wav - -t wav - |'.format(id = parts[0], wav=' '.join(parts[1:]), vol = vol)
-  else:
-    print '{id} sox --vol {vol} -t wav {wav} -t wav - |'.format(id = parts[0], wav=' '.join(parts[1:]), vol = vol)
-"  > $data/wav.scp_scaled || exit 1;
-
-  cp $reco2vol $data/reco2vol
-fi
+cat $data/wav.scp | utils/data/internal/perturb_volume.py \
+  --reco2vol=$reco2vol ${write_reco2vol:+--write-reco2vol=$write_reco2vol} \
+  --scale-low=$scale_low --scale-high=$scale_high > \
+  $data/wav.scp_scaled || exit 1;
 
 len1=$(cat $data/wav.scp | wc -l)
 len2=$(cat $data/wav.scp_scaled | wc -l)

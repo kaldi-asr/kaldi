@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
@@ -42,7 +42,7 @@ def get_args():
                         "region")
     parser.add_argument("--length-tolerance", type=int, default=4,
                         help="Tolerate length mismatches of this many frames")
-    parser.add_argument("--verbose", type=int, default=0, choices=[0,1,2],
+    parser.add_argument("--verbose", type=int, default=0, choices=[0, 1, 2],
                         help="Verbose level")
 
     parser.add_argument("--reco2num-frames", type=str, required=True,
@@ -76,31 +76,42 @@ def get_args():
     return args
 
 
-def run(args):
+def read_reco2utt_file(reco2utt_file):
+    # Read reco2utt file
     reco2utt = {}
-    with common_lib.smart_open(args.reco2utt) as fh:
+    with common_lib.smart_open(reco2utt_file) as fh:
         for line in fh:
             parts = line.strip().split()
             if len(parts) < 2:
-                raise ValueError("Could not parse line {0}".format(line))
+                raise ValueError("Could not parse line {0} in reco2utt "
+                                 "file {1}".format(line, reco2utt_file))
             reco2utt[parts[0]] = parts[1:]
+    return reco2utt
 
+
+def read_reco2num_frames_file(reco2num_frames_file):
+    # Read reco2num_frames file
     reco2num_frames = {}
-    with common_lib.smart_open(args.reco2num_frames) as fh:
+    with common_lib.smart_open(reco2num_frames_file) as fh:
         for line in fh:
             parts = line.strip().split()
             if len(parts) != 2:
-                raise ValueError("Could not parse line {0}".format(line))
-            if parts[0] not in reco2utt:
-                continue
+                raise ValueError("Could not parse line {0} in "
+                                 "reco2num-frames file {1}".format(
+                                     line, reco2num_frames_file))
             reco2num_frames[parts[0]] = int(parts[1])
+    return reco2num_frames
 
+
+def read_segments_file(segments_file, reco2utt):
+    # Read segments from segments file
     segments = {}
-    with common_lib.smart_open(args.segments) as fh:
+    with common_lib.smart_open(segments_file) as fh:
         for line in fh:
             parts = line.strip().split()
             if len(parts) not in [4, 5]:
-                raise ValueError("Could not parse line {0}".format(line))
+                raise ValueError("Could not parse line {0} in "
+                                 "segments file {1}".format(line, segments))
             utt = parts[0]
             reco = parts[1]
             if reco not in reco2utt:
@@ -108,38 +119,59 @@ def run(args):
             start_time = float(parts[2])
             end_time = float(parts[3])
             segments[utt] = [reco, start_time, end_time]
+    return segments
+
+
+def read_targets_scp(targets_scp, segments):
+    # Read the SCP file containing targets
+    targets = {}
+    with common_lib.smart_open(targets_scp) as fh:
+        for line in fh:
+            parts = line.strip().split()
+            if len(parts) != 2:
+                raise ValueError("Could not parse line {0} in "
+                                 "targets scp file".format(line, targets_scp))
+            utt = parts[0]
+            if utt not in segments:
+                continue
+            targets[utt] = parts[1]
+    return targets
+
+
+def run(args):
+    reco2utt = read_reco2utt_file(args.reco2utt)
+    reco2num_frames = read_reco2num_frames_file(args.reco2num_frames)
+    segments = read_segments_file(args.segments, reco2utt)
+    targets = read_targets_scp(args.targets_scp, segments)
+
+    if args.default_targets is not None:
+        # Read the vector of default targets for out-of-segment regions
+        default_targets = np.matrix(
+            common_lib.read_matrix_ascii(args.default_targets))
+    else:
+        default_targets = np.zeros([1, 3])
+    assert (np.shape(default_targets)[0] == 1
+            and np.shape(default_targets)[1] == 3)
 
     num_utt_err = 0
     num_utt = 0
     num_reco = 0
 
-    targets = {}
-    with common_lib.smart_open(args.targets_scp) as fh:
-        for line in fh:
-            parts = line.strip().split()
-            if len(parts) != 2:
-                raise ValueError("Could not parse line {0}".format(line))
-            utt = parts[0]
-            if utt not in segments:
-                continue
-            targets[utt] = parts[1]
-
-    if args.default_targets is not None:
-        default_targets = np.matrix(common_lib.read_matrix_ascii(args.default_targets))
-    else:
-        default_targets = np.zeros([1, 3])
-    assert np.shape(default_targets)[0] == 1 and np.shape(default_targets)[1] == 3
-
     with common_lib.smart_open(args.out_targets_ark, 'w') as fh:
         for reco, utts in reco2utt.iteritems():
+            # Read a recording and the list of its utterances from the
+            # reco2utt dictionary
             reco_mat = np.repeat(default_targets, reco2num_frames[reco],
                                  axis=0)
             utts.sort(key=lambda x: segments[x][1])   # sort on start time
+
             for i, utt in enumerate(utts):
                 if utt not in segments or utt not in targets:
                     num_utt_err += 1
                     continue
                 segment = segments[utt]
+
+                # Read the targets corresponding to the segments
                 cmd = ("copy-feats --binary=false {mat_fn} -"
                        "".format(mat_fn=targets[utt]))
                 p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
@@ -192,6 +224,9 @@ def run(args):
                     if i > 0 else 0)
                 if start_frame < prev_utt_end_frame:
                     # Segment overlaps with the previous utterance
+                    # Combine targets using a weighted interpolation using a
+                    # triangular window with a weight of 1 at the start/end of
+                    # overlap and 0 at the end/start of the segment
                     for n in range(0, prev_utt_end_frame - start_frame):
                         w = float(n) / float(prev_utt_end_frame - start_frame)
                         reco_mat[n + start_frame, :] = (
@@ -201,9 +236,11 @@ def run(args):
                     num_frames = min(num_frames, mat.shape[0])
                     end_frame = start_frame + num_frames
                     reco_mat[prev_utt_end_frame:end_frame, :] = (
-                        mat[(prev_utt_end_frame-start_frame)
-                            :(end_frame-start_frame), :])
+                        mat[(prev_utt_end_frame-start_frame):
+                            (end_frame-start_frame), :])
                 else:
+                    # No overlap with the previous utterances.
+                    # So just add it to the output.
                     num_frames = min(num_frames, mat.shape[0])
                     reco_mat[start_frame:(start_frame + num_frames), :] = (
                         mat[0:num_frames, :])

@@ -19,8 +19,8 @@ egs_opts=
 
 chunk_width=20
 
-extra_left_context=60
-extra_right_context=0
+extra_left_context=79
+extra_right_context=21
 
 relu_dim=256
 cell_dim=256 
@@ -42,7 +42,7 @@ feat_type=raw
 config_dir=
 
 dir=
-affix=1a
+affix=1a2
 
 data_dir=exp/segmentation_1a/train_whole_hires_bp
 targets_dir=exp/segmentation_1a/tri4_train_whole_combined_targets_sub3
@@ -52,7 +52,7 @@ targets_dir=exp/segmentation_1a/tri4_train_whole_combined_targets_sub3
 . ./utils/parse_options.sh
 
 if [ -z "$dir" ]; then
-  dir=exp/segmentation_1a/tdnn_lstm_asr_sad
+  dir=exp/segmentation_1a/tdnn_stats_asr_sad
 fi
 dir=$dir${affix:+_$affix}
 
@@ -79,10 +79,10 @@ if [ $stage -le 5 ]; then
   relu-renorm-layer name=tdnn1 input=lda dim=$relu_dim add-log-stddev=true
   relu-renorm-layer name=tdnn2 input=Append(-1,0,1,2) dim=$relu_dim add-log-stddev=true
   relu-renorm-layer name=tdnn3 input=Append(-3,0,3,6) dim=$relu_dim add-log-stddev=true
-  fast-lstmp-layer name=lstm1 cell-dim=$cell_dim recurrent-projection-dim=$projection_dim non-recurrent-projection-dim=$projection_dim decay-time=20 delay=-3 dropout-proportion=0.0
-  relu-renorm-layer name=tdnn4 input=Append(-6,0,6,12) add-log-stddev=true dim=$relu_dim
-  fast-lstmp-layer name=lstm2 cell-dim=$cell_dim recurrent-projection-dim=$projection_dim non-recurrent-projection-dim=$projection_dim decay-time=20 delay=-6 dropout-proportion=0.0
-  relu-renorm-layer name=tdnn5 input=Append(-12,0,12,24) dim=$relu_dim
+  stats-layer name=tdnn3_stats config=mean+count(-99:3:9:99)
+  relu-renorm-layer name=tdnn4 input=Append(tdnn3@-6,tdnn3@0,tdnn3@6,tdnn3@12,tdnn3_stats) add-log-stddev=true dim=$relu_dim
+  stats-layer name=tdnn4_stats config=mean+count(-108:6:18:108)
+  relu-renorm-layer name=tdnn5 input=Append(tdnn4@-12,tdnn4@0,tdnn4@12,tdnn4@24,tdnn4_stats) dim=$relu_dim
 
   output-layer name=output include-log-softmax=true dim=3 learning-rate-factor=0.1 input=tdnn5
 EOF
