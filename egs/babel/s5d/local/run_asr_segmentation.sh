@@ -401,8 +401,9 @@ if [ $stage -le 14 ]; then
   # Note: frames-per-chunk is 150 even though the model was trained with 
   # chunk-width of 20. This is just for speed.
   # See the script for details of the options.
-  steps/segmentation/do_asr_sad_data_dir.sh \
+  steps/segmentation/detect_speech_activity.sh \
     --extra-left-context 70 --extra-right-context 0 --frames-per-chunk 150 \
+    --extra-left-context-initial 0 --extra-right-context-final 0 \
     --nj 32 --acwt 0.3 \
     data/dev10h.pem \
     exp/segmentation_1a/tdnn_lstm_asr_sad_1a \

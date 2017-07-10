@@ -54,10 +54,8 @@ acwt=0.3
 
 # These <from>_in_<to>_weight represent the fraction of <from> probability 
 # to transfer to <to> class.
-speech_in_sil_weight=0.0  
-garbage_in_sil_weight=0.0  
-sil_in_speech_weight=0.0
-garbage_in_speech_weight=0.0
+# e.g. --speech-in-sil-weight=0.0 --garbage-in-sil-weight=0.0 --sil-in-speech-weight=0.0 --garbage-in-speech-weight=0.3
+transform_probs_opts=""
 
 segment_padding=0.2   # Duration (in seconds) of padding added to segments 
 
@@ -222,7 +220,7 @@ fi
 mkdir -p $seg_dir
 if [ $stage -le 6 ]; then
   steps/segmentation/internal/get_transform_probs_mat.py \
-    $transform_probs_opts > $seg_dir/transform_probs.mat
+    --priors=$post_vec $transform_probs_opts > $seg_dir/transform_probs.mat
 
   # Here --apply-log is true since we read from nnet posteriors 'nnet_output_exp'
   steps/segmentation/decode_sad.sh --acwt $acwt --cmd "$cmd" \

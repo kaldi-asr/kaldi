@@ -50,10 +50,7 @@ for f in $lang/words.txt $model $data/segments $data/reco2file_and_channel $dir/
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
 
-if [ -f $dir/../frame_shift ]; then
-  frame_shift_opt="--frame-shift=$(cat $dir/../frame_shift)"
-  echo "$0: $dir/../frame_shift exists, using $frame_shift_opt"
-elif [ -f $dir/../frame_subsampling_factor ]; then
+if [ -f $dir/../frame_subsampling_factor ]; then
   factor=$(cat $dir/../frame_subsampling_factor) || exit 1
   frame_shift_opt="--frame-shift=0.0$factor"
   echo "$0: $dir/../frame_subsampling_factor exists, using $frame_shift_opt"

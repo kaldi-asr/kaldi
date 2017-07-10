@@ -48,6 +48,9 @@ if [ -f ${targets_dirs[0]}/frame_subsampling_factor ]; then
   frame_subsampling_factor=$(cat ${targets_dirs[0]}/frame_subsampling_factor) || exit 1
 fi
 
+mkdir -p $dir/split${nj}
+
+target_id=1
 for t in ${targets_dirs[@]}; do
   this_frame_subsampling_factor=1
   if [ -f $t/frame_subsampling_factor ]; then
@@ -57,7 +60,12 @@ for t in ${targets_dirs[@]}; do
     echo "$0: Mismatch in frame_subsampling_factor in $t and ${targets_dirs[0]}; $this_frame_subsampling_factor vs $frame_subsampling_factor"
     exit 1
   fi
-  targets_rspecifiers+=("scp:utils/filter_scp.pl $sdata/JOB/utt2spk $t/targets.scp |")
+
+  utils/filter_scps.pl JOB=1:$nj $sdata/JOB/utt2spk \
+    $t/targets.scp $dir/split${nj}/in_targets.$target_id.JOB.scp
+
+  targets_rspecifiers+=("scp:$dir/split${nj}/in_targets.$target_id.JOB.scp")
+  target_id=$[target_id+1]
 done
 
 # convert $dir to an absolute pathname.
@@ -72,6 +80,8 @@ $cmd JOB=1:$nj $dir/log/merge_targets.JOB.log \
 for n in `seq $nj`; do
   cat $dir/targets.$n.scp
 done > $dir/targets.scp
+
+rm $dir/targets.*.scp   # cleanup
 
 if [ $frame_subsampling_factor -ne 1 ]; then
   echo $frame_subsampling_factor > $dir/frame_subsampling_factor

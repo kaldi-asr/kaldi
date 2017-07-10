@@ -4,7 +4,8 @@
 # Apache 2.0
 
 """
-This script converts alignments into kaldi segments and utt2spk.
+This script converts frame-level speech activity detection marks (in kaldi
+integer vector text archive format) into kaldi segments and utt2spk.
 The label 1 is for silence and label 2 is for speech.
 """
 
@@ -30,8 +31,10 @@ global_verbose = 0
 def get_args():
     parser = argparse.ArgumentParser(
         description="""
-    This script converts alignments into kaldi segments and utt2spk.
-    The label 1 is for silence and label 2 is for speech.""",
+This script converts frame-level speech activity detection marks (in kaldi
+integer vector text archive format) into kaldi segments and utt2spk.
+The label 1 is for silence and label 2 is for speech.
+""",
         formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument("--verbose", type=int, choices=[0, 1, 2, 3],
@@ -46,7 +49,7 @@ def get_args():
                         help="Additional padding on speech segments")
 
 
-    parser.add_argument("in_alignments", type=str,
+    parser.add_argument("in_sad", type=str,
                         help="Input file containing alignments in "
                         "text archive format")
     parser.add_argument("out_segments", type=str,
@@ -74,42 +77,26 @@ def to_str(segment):
 class SegmenterStats(object):
     """Stores stats about the post-process stages"""
     def __init__(self):
-        self.num_initial_segments = 0
+        self.num_segments = 0
         self.initial_duration = 0.0
         self.padding_duration = 0.0
-        self.num_segments_after_merging = 0
-        self.num_segments_removed = 0
-        self.num_segments_split = 0
-        self.num_final_segments = 0
         self.final_duration = 0.0
 
     def add(self, other):
         """Adds stats from another object"""
-        self.num_initial_segments += other.num_initial_segments
+        self.num_segments += other.num_segments
         self.initial_duration += other.initial_duration
         self.padding_duration = other.padding_duration
-        self.num_segments_after_merging = other.num_segments_after_merging
-        self.num_segments_removed = other.num_segments_removed
-        self.num_segments_split = other.num_segments_split
-        self.num_final_segments = other.num_final_segments
         self.final_duration = other.final_duration
 
     def __str__(self):
-        return ("num-initial-segments={num_initial_segments}, "
+        return ("num-segments={num_segments}, "
                 "initial-duration={initial_duration}, "
                 "padding-duration={padding_duration}, "
-                "num-segments-after-merging={num_segments_after_merging}, "
-                "num-segments-removed={num_segments_removed}, "
-                "num-segments-split={num_segments_split}, "
-                "num-final-segments={num_final_segments}, "
                 "final-duration={final_duration}".format(
-                    num_initial_segments=self.num_initial_segments,
+                    num_segments=self.num_segments,
                     initial_duration=self.initial_duration,
                     padding_duration=self.padding_duration,
-                    num_segments_after_merging=self.num_segments_after_merging,
-                    num_segments_removed=self.num_segments_removed,
-                    num_segments_split=self.num_segments_split,
-                    num_final_segments=self.num_final_segments,
                     final_duration=self.final_duration))
 
 
@@ -130,13 +117,14 @@ def process_label(text_label):
 
 class Segmentation(object):
     """Stores segmentation for an utterances"""
-    def __init__(self, segmenter_stats=None):
+    def __init__(self):
         self.segments = None
-        self.stats = (segmenter_stats if segmenter_stats is None
-                      else SegmenterStats())
+        self.stats = SegmenterStats()
 
     def initialize_segments(self, alignment, frame_shift=0.01):
-        """Initializes segments from input alignment."""
+        """Initializes segments from input alignment.
+        The alignment is frame-level speech-activity detection marks,
+        each of which must be 1 or 2."""
         self.segments = []
 
         assert len(alignment) > 0
@@ -164,7 +152,7 @@ class Segmentation(object):
                  float(len(alignment)) * frame_shift, prev_label])
             self.stats.initial_duration += (prev_length * frame_shift)
 
-        self.stats.num_initial_segments = len(self.segments)
+        self.stats.num_segments = len(self.segments)
 
     def pad_speech_segments(self, segment_padding, max_duration=float("inf")):
         """Pads segments by duration 'segment_padding' on either sides, but
@@ -219,26 +207,25 @@ def run(args):
                 utt2dur[parts[0]] = float(parts[1])
 
     global_stats = SegmenterStats()
-    with common_lib.smart_open(args.in_alignments) as in_alignments_fh, \
+    with common_lib.smart_open(args.in_sad) as in_sad_fh, \
             common_lib.smart_open(args.out_segments, 'w') as out_segments_fh:
-        for line in in_alignments_fh:
+        for line in in_sad_fh:
             parts = line.strip().split()
             utt_id = parts[0]
 
             if len(parts) < 2:
                 raise RuntimeError("Unable to parse line '{0}' in {1}"
                                    "".format(line.strip(),
-                                             in_alignments_fh))
+                                             in_sad_fh))
 
-            utt_stats = SegmenterStats()
-            segmentation = Segmentation(utt_stats)
+            segmentation = Segmentation()
             segmentation.initialize_segments(
                 parts[1:], args.frame_shift)
             segmentation.pad_speech_segments(args.segment_padding,
                                              None if args.utt2dur is None
                                              else utt2dur[utt_id])
             segmentation.write(utt_id, out_segments_fh)
-            global_stats.add(utt_stats)
+            global_stats.add(segmentation.stats)
     logger.info(global_stats)
 
 

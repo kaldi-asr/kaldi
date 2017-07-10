@@ -11,19 +11,15 @@ import libs.common as common_lib
 
 def get_args():
     parser = argparse.ArgumentParser(
-        description="""This script gets a transformation matrix
+        description="""This script writes to stdout a transformation matrix
     to convert a 3x1 probability vector to a
-    2x1 pseudo-likelihood vector after dividing by priors""")
+    2x1 pseudo-likelihood vector by first dividing by 3x1 priors vector.""")
 
-    parser.add_argument("--sil-prior", type=str, default=1,
-                        help="Prior on the silence output as "
-                        "learned by the network")
-    parser.add_argument("--speech-prior", type=str, default=1,
-                        help="Prior on the speech output as "
-                        "learned by the network")
-    parser.add_argument("--garbage-prior", type=str, default=1,
-                        help="Prior on the garbage output as "
-                        "learned by the network")
+    parser.add_argument("--priors", type=str, default=None,
+                        action=common_lib.NullstrToNoneAction,
+                        help="Priors vector used to remove the priors from "
+                        "the neural network output posteriors to "
+                        "convert them to likelihoods")
 
     parser.add_argument("--sil-in-speech-weight", type=float,
                         default=0.0,
@@ -48,24 +44,23 @@ def get_args():
 
 
 def run(args):
-    priors = [[1, 1]]
+    priors = [[1, 1, 1]]
     if args.priors is not None:
         priors = common_lib.read_matrix_ascii(args.priors)
         if len(priors) != 0 and len(priors[0]) != 2:
             raise RuntimeError("Invalid dimension for priors {0}"
                                "".format(priors))
 
-    priors_sum = (args.sil_prior + args.speech_prior
-                 + args.garbage_prior)
-    garbage_prior = args.garbage_prior / priors_sum
+    priors_sum = sum(priors[0])
     sil_prior = args.sil_prior / priors_sum
     speech_prior = args.speech_prior / priors_sum
+    garbage_prior = args.garbage_prior / priors_sum
 
     transform_mat = [[1.0 / sil_prior,
                       args.speech_in_sil_weight / speech_prior,
                       args.garbage_in_sil_weight / garbage_prior],
-                     [1.0 / sil_prior,
-                      args.sil_in_speech_weight / speech_prior,
+                     [args.sil_in_speech_weight / sil_prior,
+                      1.0 / speech_prior,
                       args.garbage_in_speech_weight / garbage_prior]]
 
     common_lib.write_matrix_ascii(sys.stdout, transform_mat)

@@ -22,6 +22,15 @@
 #include "matrix/kaldi-matrix.h"
 #include "transform/transform-common.h"
 
+namespace kaldi {
+
+void ApplySoftMaxPerRow(MatrixBase<BaseFloat> *mat) {
+  for (int32 i = 0; i < mat->NumRows(); i++) {
+    mat->Row(i).ApplySoftMax();
+  }
+}
+
+}  // namespace kaldi
 
 int main(int argc, char *argv[]) {
   try {
@@ -96,7 +105,7 @@ int main(int argc, char *argv[]) {
         mat.ApplyLog();
       }
       if (apply_exp) mat.ApplyExp();
-      if (apply_softmax_per_row) mat.ApplySoftMaxPerRow();
+      if (apply_softmax_per_row) ApplySoftMaxPerRow(&mat);
       if (apply_power != 1.0) mat.ApplyPow(apply_power);
       Output ko(matrix_out_fn, binary);
       mat.Write(ko.Stream(), binary);
@@ -116,7 +125,7 @@ int main(int argc, char *argv[]) {
             mat.ApplyLog();
           }
           if (apply_exp) mat.ApplyExp();
-          if (apply_softmax_per_row) mat.ApplySoftMaxPerRow();
+          if (apply_softmax_per_row) ApplySoftMaxPerRow(&mat);
           if (apply_power != 1.0) mat.ApplyPow(apply_power);
           writer.Write(reader.Key(), mat);
         } else {

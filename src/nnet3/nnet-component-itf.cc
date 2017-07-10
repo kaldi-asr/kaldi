@@ -322,11 +322,6 @@ std::string NonlinearComponent::Info() const {
   std::stringstream stream;
   if (InputDim() == OutputDim()) {
     stream << Type() << ", dim=" << InputDim();
-  } else if (OutputDim() - InputDim() == 1) {
-    // Note: this is a very special case tailored for class NormalizeComponent.
-    stream << Type() << ", input-dim=" << InputDim()
-           << ", output-dim=" << OutputDim()
-           << ", add-log-stddev=true";
   } else {
     stream << Type() << ", input-dim=" << InputDim()
            << ", output-dim=" << OutputDim();

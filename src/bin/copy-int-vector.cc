@@ -24,6 +24,8 @@
 
 namespace kaldi {
 
+// Converts a integer vector into a list of (integer, length) pairs
+// e.g. 0 0 1 1 1 1 1 10 10 10 --> 0 2 ; 1 5 ; 10 3 ;
 void VectorToLengthsPair(const std::vector<int32> &vec, 
                          std::vector<std::pair<int32, int32> > *pairs) {
   int32 prev_val = -1, prev_count = 0;
@@ -62,7 +64,9 @@ int main(int argc, char *argv[]) {
 
     po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
     po.Register("write-lengths", &write_lengths,
-                "If true, write the #frames for each phone (different format)");
+                "If true, write the output containing contiguous values "
+                "in the format of value and the number of times it repeats. "
+                "e.g. 0 0 1 1 1 1 1 10 10 10 --> 0 2 ; 1 5 ; 10 3 ;");
 
     po.Read(argc, argv);
 

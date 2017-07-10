@@ -127,7 +127,7 @@ static void MergeIo(const std::vector<NnetExample> &src,
       int32 &this_offset = cur_size[f];
       KALDI_ASSERT(this_size + this_offset <= sizes[f]);
 
-      // Add f^th Io's features
+      // Add f'th Io's features
       output_lists[f].push_back(&(io.features));
 
       // Work on the Indexes for the f^th Io in merged_eg
