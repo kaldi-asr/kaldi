@@ -35,6 +35,9 @@ void ArpaSampling::ConsumeNGram(const NGram& ngram) {
       unigram_probs_.resize(static_cast<size_t>(word + 1), 0.0);
     KALDI_ASSERT(unigram_probs_[word] == 0.0);  // or repeated unigram.
     unigram_probs_[word] = Exp(ngram.logprob);
+    if (ngram.backoff != 0.0) 
+      higher_order_probs_[cur_order - 1][ngram.words].backoff_prob = 
+        Exp(ngram.backoff);
   } else {
     HistType history(ngram.words.begin(), ngram.words.end() - 1);
     // Note: we'll later on change the probability, subtracting the
@@ -104,7 +107,7 @@ void ArpaSampling::ReadComplete() {
       HistoryState &history_state = hist_iter->second;
       BaseFloat backoff_prob = history_state.backoff_prob;
       HistoryState *backoff_state;
-      HistType backoff_history(history.begin(), history.end() - 1);
+      HistType backoff_history(history.begin() + 1, history.end());
       if (order == 2) backoff_state = NULL;  // unigram has different format.
       else backoff_state = &(higher_order_probs_[order - 3][backoff_history]);
 
@@ -132,7 +135,7 @@ void ArpaSampling::ReadComplete() {
         total_prob_after_subtracting += new_prob;
       }
       BaseFloat new_total = total_prob_after_subtracting + backoff_prob;
-      if (fabs(new_total - 1.0) < 0.01)
+      if (fabs(new_total - 1.0) > 0.01)
         KALDI_WARN << "Expected LM-state to sum to one, got "
                    << new_total;
     }
@@ -157,7 +160,7 @@ void ArpaSampling::AddBackoffToHistoryStates(
     int32 cur_hist_len = history.size();
     BaseFloat weight = histories_iter->second;
     total_weight += weight;
-    KALDI_ASSERT(history.size() < max_order - 1 && weight > 0);
+    KALDI_ASSERT(history.size() <= max_order - 1 && weight > 0);
 
     // back off until the history exists or until we reached the unigram state.
     while (cur_hist_len > 0 &&
