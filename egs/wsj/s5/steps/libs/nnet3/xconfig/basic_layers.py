@@ -779,16 +779,17 @@ class XconfigBasicLayer(XconfigLayerBase):
             elif nonlinearity == 'renorm':
                 add_log_stddev = "false"
                 if i == len(nonlinearities) - 1:
-                    output_dim += 1
                     add_log_stddev = ("true" if self.config['add-log-stddev']
                                       else "false")
-
                 line = ('component name={0}.{1}'
                         ' type=NormalizeComponent dim={2}'
                         ' target-rms={3}'
                         ' add-log-stddev={4}'
                         ''.format(self.name, nonlinearity, output_dim,
                                   target_rms, add_log_stddev))
+                if i == len(nonlinearities) - 1:
+                    output_dim += 1
+
 
             elif nonlinearity == 'batchnorm':
                 line = ('component name={0}.{1}'
