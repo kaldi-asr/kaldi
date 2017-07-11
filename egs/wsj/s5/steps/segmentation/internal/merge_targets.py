@@ -47,7 +47,8 @@ def get_args():
 
     parser.add_argument("--weights", type=str, default="",
                         help="A comma-separated list of weights corresponding "
-                        "to each targets source being combined.")
+                        "to each targets source being combined. "
+                        "Weights will be normalized internally to sum-to-one.")
     parser.add_argument("--dim", type=int, default=3,
                         help="Number of columns corresponding to each "
                         "target matrix")
@@ -83,6 +84,80 @@ def get_args():
     return args
 
 
+def should_remove_frame(row, dim):
+    """Returns True if the frame needs to be removed.
+
+    Input:
+        row -- a list of values (of dimension num-sources x dim) corresponding
+               to the targets for one of the frames
+        dim -- Usually 3. The number of sources can be computed as the
+               len(row) / dim.
+
+    The frame is determined to be removed in the following cases:
+        1) None of the values > 0.5.
+        2) More than one source has best value >= 0.5, but at different
+           indexes in the source.
+    e.g. [ 1 0 0 0.6 0 0.4 0 0 0 ]   # kept because 1 and 0.6 are both > 0.5
+                                     # at the same class namely 0
+                                     # source[0] = [ 1 0 0 ]
+                                     # source[1] = [ 0.6 0 0.4 ]
+                                     # source[2] = [ 0 0 0 ]
+    e.g. [ 0 0 0 0.4 0 0.6 1 0 0 ]   # removed because source[1] has best value
+                                     # 0.6 > 0.5 at class 2 and source[2] has
+                                     # best value 1 > 0.5 at class 0.
+                                     # source[0] = [ 0 0 0 ]
+                                     # source[1] = [ 0.4 0 0.6 ]
+                                     # source[2] = [ 0 0 0 ]
+    """
+    assert len(row) % dim == 0
+    num_sources = len(row) / dim
+
+    max_idx = np.argmax(row)
+    max_val = row[max_idx]
+
+    if max_val < 0.5:
+        # All the values < 0.5. So we are not confident of any sources.
+        # Remove frame.
+        return True
+
+    best_source = max_idx / dim
+    best_class = max_idx % dim
+
+    confident_in_source = []  # List of length num_sources
+                              # Element 'i' is 1,
+                              # if the best value for the source 'i' is > 0.5
+    best_values_for_source = []  # Element 'i' is a pair (value, class),
+                                 # where 'class' is argmax over the scores
+                                 # corresponding to the source 'i' and
+                                 # 'value' is the corresponding score.
+    for source_idx in range(num_sources):
+        idx = np.argmax(row[(source_idx * dim):
+                            ((source_idx+1) * dim)])
+        val = row[source_idx * dim + idx]
+        confident_in_source.append(bool(val > 0.5))
+        best_values_for_source.append((val, idx))
+
+    if sum(confident_in_source) == 1:
+        # We are confident in only one source. Keep frame.
+        return False
+
+    for source_idx in range(num_sources):
+        if source_idx == best_source:
+            assert confident_in_source[source_idx]
+            continue
+        if not confident_in_source[source_idx]:
+            continue
+        else:
+            # We are confident in a source other than the 'best_source'.
+            # If it's index is different from the 'best_class', then it is
+            # a mismatch and the frame must be removed.
+            val, idx = best_values_for_source[source_idx]
+            assert val > 0.5
+            if idx != best_class:
+                return True
+    return False
+
+
 def run(args):
     num_done = 0
 
@@ -102,28 +177,16 @@ def run(args):
 
             if args.remove_mismatch_frames:
                 for n in range(mat.shape[0]):
-                    if np.amax(mat[n, :]) > 0.5:
-                        # We're confident of the one of the sources.
-                        max_idx = np.argmax(mat[n, :])
-                        max_val = mat[n, max_idx]
-
-                        best_class = max_idx % args.dim
-                        min_val = min([mat[n, i * args.dim + best_class]
-                                       for i in range(num_sources)])
-
-                        if min_val < 0.5:
-                            out_mat[n, :] = np.zeros([1, args.dim])
-                        else:
-                            for i in range(num_sources):
-                                out_mat[n, :] += (
-                                    mat[n, (i * args.dim) : ((i+1) * args.dim)]
-                                    * (1.0 if args.weights is None
-                                       else args.weights[i]))
-                    else:
-                        # We're not confident of an index from any of the
-                        # sources.
+                    if should_remove_frame(mat[n, :].getA()[0], args.dim):
                         out_mat[n, :] = np.zeros([1, args.dim])
+                    else:
+                        for i in range(num_sources):
+                            out_mat[n, :] += (
+                                mat[n, (i * args.dim) : ((i+1) * args.dim)]
+                                * (1.0 if args.weights is None
+                                   else args.weights[i]))
             else:
+                # Just interpolate the targets
                 for i in range(num_sources):
                     out_mat += (
                         mat[:, (i * args.dim) : ((i+1) * args.dim)]
