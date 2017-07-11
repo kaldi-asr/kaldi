@@ -818,6 +818,14 @@ class CommonParser(object):
                                  the final model combination stage.  These
                                  models will themselves be averages of
                                  iteration-number ranges""")
+        self.parser.add_argument("--trainer.optimization.do-final-combination",
+                                 dest='do_final_combination', type=str,
+                                 action=common_lib.StrToBoolAction,
+                                 choices=["true", "false"], default=True,
+                                 help="""Use this to specify conducting final
+                                 model combination or not. If the option is set
+                                 to false, for now just copy the last-numbered
+                                 model to final model.""")
         self.parser.add_argument("--trainer.optimization.combine-sum-to-one-penalty",
                                  type=float, dest='combine_sum_to_one_penalty', default=0.0,
                                  help="""If > 0, activates 'soft' enforcement of the

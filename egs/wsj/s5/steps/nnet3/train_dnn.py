@@ -281,10 +281,14 @@ def train(args, run_opts):
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
 
-    models_to_combine = common_train_lib.get_model_combine_iters(
-        num_iters, args.num_epochs,
-        num_archives_expanded, args.max_models_combine,
-        args.num_jobs_final)
+    # If do_final_combination is True, compute the set of models_to_combine.
+    # Otherwise, models_to_combine will be none.
+    models_to_combine = None
+    if args.do_final_combination:
+        models_to_combine = common_train_lib.get_model_combine_iters(
+            num_iters, args.num_epochs,
+            num_archives_expanded, args.max_models_combine,
+            args.num_jobs_final)
 
     logger.info("Training will run for {0} epochs = "
                 "{1} iterations".format(args.num_epochs, num_iters))
@@ -352,13 +356,22 @@ def train(args, run_opts):
         num_archives_processed = num_archives_processed + current_num_jobs
 
     if args.stage <= num_iters:
-        logger.info("Doing final combination to produce final.mdl")
-        train_lib.common.combine_models(
-            dir=args.dir, num_iters=num_iters,
-            models_to_combine=models_to_combine,
-            egs_dir=egs_dir,
-            minibatch_size_str=args.minibatch_size, run_opts=run_opts,
-            sum_to_one_penalty=args.combine_sum_to_one_penalty)
+        if args.do_final_combination:
+            logger.info("Doing final combination to produce final.mdl")
+            train_lib.common.combine_models(
+                dir=args.dir, num_iters=num_iters,
+                models_to_combine=models_to_combine,
+                egs_dir=egs_dir,
+                minibatch_size_str=args.minibatch_size, run_opts=run_opts,
+                sum_to_one_penalty=args.combine_sum_to_one_penalty)
+        else:
+            logger.info("""Producing final.mdl without doing final combination.
+                        Copying the last-numbered model to combined model so that
+                        it will be easy for adjust the priors.""")
+            last_numbered_model = "{dir}/{iter}.mdl".format(dir=args.dir
+                                                            iter=num_iters)
+            combined_model = "{dir}/combined.mdl".format(dir=args.dir)
+            shutil.copy(last_numbered_model, combined_model)
 
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
