@@ -822,10 +822,9 @@ class CommonParser(object):
                                  dest='do_final_combination', type=str,
                                  action=common_lib.StrToBoolAction,
                                  choices=["true", "false"], default=True,
-                                 help="""Use this to specify conducting final
-                                 model combination or not. If the option is set
-                                 to false, for now just copy the last-numbered
-                                 model to final model.""")
+                                 help="""Set this to false to disable the final
+                                 'combine' stage (in this case we just use the
+                                 last-numbered model as the final.mdl).""")
         self.parser.add_argument("--trainer.optimization.combine-sum-to-one-penalty",
                                  type=float, dest='combine_sum_to_one_penalty', default=0.0,
                                  help="""If > 0, activates 'soft' enforcement of the
