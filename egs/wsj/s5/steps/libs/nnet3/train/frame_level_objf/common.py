@@ -674,7 +674,6 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
                               prior_subset_size,
                               run_opts, get_raw_nnet_from_am=True):
     """ Computes the average posterior of the network
-    Note: this just uses CPUs, using a smallish subset of data.
     """
     for file in glob.glob('{0}/post.{1}.*.vec'.format(dir, iter)):
         os.remove(file)

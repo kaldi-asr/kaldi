@@ -52,7 +52,7 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
     } else {
       my $argument = shift @ARGV;
       if ($argument =~ m/^--/) {
-        print STDERR "WARNING: suspicious argument '$argument' to $switch; starts with '-'\n";
+        print STDERR "run.pl: WARNING: suspicious argument '$argument' to $switch; starts with '-'\n";
       }
       if ($switch eq "-sync" && $argument =~ m/^[yY]/) {
         $ignored_opts .= "-sync "; # Note: in the
@@ -60,11 +60,10 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
       } elsif ($switch eq "-pe") { # e.g. -pe smp 5
         my $argument2 = shift @ARGV;
         $ignored_opts .= "$switch $argument $argument2 ";
-      } elsif ($switch =~ m/^--/) { # Config options
-        # Convert CLI new-style options
-        # Ignore all options
-        $ignored_opts .= "$switch $argument ";
-      } else {  # Other qsub options - passed as is
+      } elsif ($switch eq "--gpu") {
+        $using_gpu = $argument;
+      } else {
+        # Ignore option.
         $ignored_opts .= "$switch $argument ";
       }
     }
@@ -99,7 +98,16 @@ if ($max_jobs_run == -1) { # If --max-jobs-run option not set,
                            # then work out the number of processors if possible,
                            # and set it based on that.
   $max_jobs_run = 0;
-  if (open(P, "</proc/cpuinfo")) {  # Linux
+  if ($using_gpu) {
+    if (open(P, "nvidia-smi -L |")) {
+      $max_jobs_run++ while (<P>);
+      close(P);
+    }
+    if ($max_jobs_run == 0) {
+      $max_jobs_run = 1;
+      print STDERR "run.pl: Warning: failed to detect number of GPUs from nvidia-smi, using ${max_jobs_run}\n";
+    }
+  } elsif (open(P, "</proc/cpuinfo")) {  # Linux
     while (<P>) { if (m/^processor/) { $max_jobs_run++; } }
     if ($max_jobs_run == 0) {
       print STDERR "run.pl: Warning: failed to detect any processors from /proc/cpuinfo\n";
@@ -129,7 +137,8 @@ if ($max_jobs_run == -1) { # If --max-jobs-run option not set,
   # $max_jobs_run to equal the number of jobs, so we don't have a small number
   # of leftover jobs.
   $num_jobs = $jobend - $jobstart + 1;
-  if ($num_jobs > $max_jobs_run && $num_jobs < 1.4 * $max_jobs_run) {
+  if (!$using_gpu &&
+      $num_jobs > $max_jobs_run && $num_jobs < 1.4 * $max_jobs_run) {
     $max_jobs_run = $num_jobs;
   }
 }

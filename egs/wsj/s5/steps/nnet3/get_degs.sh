@@ -13,7 +13,6 @@ cmd=run.pl
 max_copy_jobs=5  # Limit disk I/O
 
 # feature options
-feat_type=raw     # set it to 'lda' to use LDA features.
 transform_dir= # If this is a SAT system, directory for transforms
 online_ivector_dir=
 
@@ -117,8 +116,6 @@ dir=$5
 extra_files=
 [ ! -z $online_ivector_dir ] && \
   extra_files="$extra_files $online_ivector_dir/ivector_period $online_ivector_dir/ivector_online.scp"
-[ "$feat_type" = "lda" ] && \
-  extra_files="$extra_files $srcdir/final.mat"
 [ ! -z $transform_dir ] && \
   extra_files="$extra_files $transform_dir/trans.1 $transform_dir/num_jobs"
 
@@ -141,23 +138,12 @@ sdata=$data/split${nj}utt
 
 
 ## Set up features.
-if [ -z "$feat_type" ]; then
-  if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=raw; fi
-fi
-echo "$0: feature type is $feat_type"
+echo "$0: feature type is raw"
 
 
 cmvn_opts=$(cat $srcdir/cmvn_opts) || exit 1
 
-case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  raw) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
-   ;;
-  lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    cp $srcdir/final.mat $dir
-   ;;
-  *) echo "Invalid feature type $feat_type" && exit 1;
-esac
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
 
 cp $srcdir/{splice_opts,cmvn_opts} $dir 2>/dev/null || true
 
@@ -167,24 +153,18 @@ if [ ! -z "$transform_dir" ]; then
     echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
   nj_orig=$(cat $transform_dir/num_jobs)
 
-  if [ $feat_type == "raw" ]; then trans=raw_trans;
-  else trans=trans; fi
-  if [ $feat_type == "lda" ] && ! cmp $transform_dir/final.mat $srcdir/final.mat; then
-    echo "$0: LDA transforms differ between $srcdir and $transform_dir"
-    exit 1;
-  fi
-  if [ ! -f $transform_dir/$trans.1 ]; then
-    echo "$0: expected $transform_dir/$trans.1 to exist (--transform-dir option)"
+  if [ ! -f $transform_dir/raw_trans.1 ]; then
+    echo "$0: expected $transform_dir/raw_trans.1 to exist (--transform-dir option)"
     exit 1;
   fi
   if [ $nj -ne $nj_orig ]; then
     # Copy the transforms into an archive with an index.
-    for n in $(seq $nj_orig); do cat $transform_dir/$trans.$n; done | \
-       copy-feats ark:- ark,scp:$dir/$trans.ark,$dir/$trans.scp || exit 1;
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/$trans.scp ark:- ark:- |"
+    for n in $(seq $nj_orig); do cat $transform_dir/raw_trans.$n; done | \
+       copy-feats ark:- ark,scp:$dir/raw_trans.ark,$dir/raw_trans.scp || exit 1;
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/raw_trans.scp ark:- ark:- |"
   else
     # number of jobs matches with alignment dir.
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/$trans.JOB ark:- ark:- |"
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/raw_trans.JOB ark:- ark:- |"
   fi
 fi
 
@@ -503,14 +483,14 @@ if [ $stage -le 10 ] && $cleanup; then
   echo "$0: cleaning up temporary files."
   for j in $(seq $nj); do
     for f in $dir/degs_orig.$j.{ark,scp} $dir/degs_orig_filtered.$j.scp; do
-      [ -L $f ] && rm $(readlink -f $f); rm $f
+      [ -L $f ] && rm $(utils/make_absolute.sh $f); rm $f
     done
   done
   rm $dir/degs_group.*.scp $dir/valid_diagnostic.scp $dir/train_diagnostic.scp 2>/dev/null
   rm $dir/ali.ark $dir/ali.scp 2>/dev/null
   for n in $(seq $num_archives); do
     for f in $dir/degs.$n.scp; do
-      [ -L $f ] && rm $(readlink -f $f); rm $f
+      [ -L $f ] && rm $(utils/make_absolute.sh $f); rm $f
     done
   done
 fi

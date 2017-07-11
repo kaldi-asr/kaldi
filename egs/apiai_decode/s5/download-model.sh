@@ -1,7 +1,7 @@
 #!/bin/bash
 # Downlaods Api.ai chain model into exp/api.ai-model/ (will replace one if exists)
 
-DOWNLOAD_URL="https://api.ai/downloads/api.ai-kaldi-asr-model.zip"
+DOWNLOAD_URL="https://github.com/api-ai/api-ai-english-asr-model/releases/download/1.0/api.ai-kaldi-asr-model.zip"
 
 echo "Downloading model"
 wget -N $DOWNLOAD_URL || ( echo "Unable to download model: $DOWNLOAD_URL" && exit 1 );

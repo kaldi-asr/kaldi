@@ -1,0 +1,8 @@
+%WER 22.92 [ 2252 / 9827, 405 ins, 346 del, 1501 sub ] exp/tri5/decode_test/wer_14_0.5
+%WER 19.53 [ 1919 / 9827, 317 ins, 335 del, 1267 sub ] exp/sgmm5/decode_test/wer_12_0.5
+%WER 19.11 [ 1878 / 9827, 306 ins, 331 del, 1241 sub ] exp/sgmm5_mmi_b0.1/decode_test_it1/wer_12_0.5
+%WER 18.97 [ 1864 / 9827, 321 ins, 311 del, 1232 sub ] exp/sgmm5_mmi_b0.1/decode_test_it2/wer_10_1.0
+%WER 19.15 [ 1882 / 9827, 348 ins, 284 del, 1250 sub ] exp/sgmm5_mmi_b0.1/decode_test_it3/wer_11_0.5
+%WER 19.18 [ 1885 / 9827, 337 ins, 303 del, 1245 sub ] exp/sgmm5_mmi_b0.1/decode_test_it4/wer_12_0.5
+%WER 14.19 [ 1394 / 9827, 179 ins, 268 del, 947 sub ] exp/chain/tdnn1a_sp_online/decode_test/wer_13_0.5
+

@@ -56,7 +56,7 @@ num_pdfs=`gmm-info exp/tri5_ali/final.mdl | grep pdfs | awk '{print $NF}'` || ex
 
 # Now we copy conf/bnf/config_limited.py or conf/bnf/config_full.py, as appropriate,
 # to ptdnn/exp_bnf/config.py, replacing a couple of things as we copy it.
-WORK=`readlink -f $working_dir`
+WORK=`utils/make_absolute.sh $working_dir`
 config_in=conf/bnf/config_${babel_type}.py
 [ ! -f $config_in ] && echo "No such config file $config_in" && exit 1;
 ! cat $config_in | sed "s|CWD|$PWD|" | sed "s|WORK|$WORK|" | sed "s/N_OUTS/${num_pdfs}/" > ptdnn/exp_bnf/config.py && \

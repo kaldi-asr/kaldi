@@ -771,7 +771,7 @@ class CommonParser(object):
                                  dest='rand_prune', default=4.0,
                                  help="Value used in preconditioning "
                                  "matrix estimation")
-        self.parser.add_argument("--trainer.lda.max-lda-jobs", type=float,
+        self.parser.add_argument("--trainer.lda.max-lda-jobs", type=int,
                                  dest='max_lda_jobs', default=10,
                                  help="Max number of jobs used for "
                                  "LDA stats accumulation")

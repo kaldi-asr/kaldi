@@ -5295,8 +5295,8 @@ void BatchNormComponent::ComputeDerived() {
   if (count_ == 0.0) {
     KALDI_WARN << "Test-mode is set but there is no data count.  "
         "Creating random counts.  This only makes sense "
-        "in unit-tests.  If you see this in real life, "
-        "something is very wrong.";
+        "in unit-tests (or compute_prob_*.0.log).  If you see this "
+        "elsewhere, something is very wrong.";
     count_ = 1.0;
     stats_sum_.SetRandn();
     stats_sumsq_.SetRandn();

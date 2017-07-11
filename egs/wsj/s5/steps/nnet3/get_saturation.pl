@@ -54,7 +54,7 @@ while (<STDIN>) {
     # An example of a line like this is right at the bottom of this program, it's extremely long.
     my $ok = 1;
     foreach my $sigmoid_name ( ("i_t", "f_t", "o_t") ) {
-      if (m/${sigmoid_name}_sigmoid={[^}]+deriv-avg=[^}]+mean=([^,]+),/) {
+      if (m/${sigmoid_name}_sigmoid=[{][^}]+deriv-avg=[^}]+mean=([^,]+),/) {
         $num_nonlinearities += 1;
         my $this_saturation = 1.0 - ($1 / 0.25);
         $total_saturation += $this_saturation;
@@ -63,7 +63,7 @@ while (<STDIN>) {
       }
     }
     foreach my $tanh_name ( ("c_t", "m_t") ) {
-      if (m/${tanh_name}_tanh={[^}]+deriv-avg=[^}]+mean=([^,]+),/) {
+      if (m/${tanh_name}_tanh=[{][^}]+deriv-avg=[^}]+mean=([^,]+),/) {
         $num_nonlinearities += 1;
         my $this_saturation = 1.0 - ($1 / 1.0);
         $total_saturation += $this_saturation;

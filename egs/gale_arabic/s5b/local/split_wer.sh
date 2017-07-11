@@ -12,7 +12,7 @@ fi
 [ -f ./path.sh ] && . ./path.sh
 
 
-galeFolder=$(readlink -f $1)
+galeFolder=$(utils/make_absolute.sh $1)
 symtab=./data/lang/words.txt
 find exp/ -maxdepth 3 -type d -name decode\* > list_decode$$
 
