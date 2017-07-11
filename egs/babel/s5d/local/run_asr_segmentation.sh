@@ -5,10 +5,6 @@
 
 # Features configs (Must match the features used to train the models
 # $sat_model_dir and $model_dir)
-feat_type=plp
-feat_config=conf/plp.conf
-add_pitch=true
-pitch_config=conf/pitch.conf
 
 lang=data/lang   # Must match the one used to train the models
 lang_test=data/lang  # Lang directory for decoding.
@@ -31,7 +27,6 @@ max_remaining_duration=5  # If the last remaining piece when splitting uniformly
                           # is smaller than this duration, then the last piece 
                           # is  merged with the previous.
 
-out_of_sil_weight=1   # Weight for out-of-segment regions
 # List of weights on labels obtained from alignment, 
 # labels obtained from decoding and default labels in out-of-segment regions
 merge_weights=1.0,0.1,0.5
@@ -39,6 +34,9 @@ merge_weights=1.0,0.1,0.5
 affix=_1a
 stage=-1
 nj=80
+
+[ ! -f ./lang.conf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
+. ./lang.conf || exit 1;
 
 . path.sh
 . cmd.sh 
@@ -67,91 +65,6 @@ for p in $silence_phones; do
     echo "$p$affix"
   done
 done > $dir/silence_phones.txt
-
-function make_mfcc {
-  local nj=$nj
-  local mfcc_config=$feat_config
-  local add_pitch=$add_pitch
-  local cmd=$train_cmd
-  local pitch_config=$pitch_config
-
-  while [ $# -gt 0 ]; do 
-    if [ $1 == "--nj" ]; then
-      nj=$2
-      shift; shift;
-    elif [ $1 == "--mfcc-config" ]; then
-      mfcc_config=$2
-      shift; shift;
-    elif [ $1 == "--add-pitch" ]; then
-      add_pitch=$2
-      shift; shift;
-    elif [ $1 == "--cmd" ]; then
-      cmd=$2
-      shift; shift;
-    elif [ $1 == "--pitch-config" ]; then
-      pitch_config=$2
-      shift; shift;
-    else
-      break
-    fi
-  done
-
-  if [ $# -ne 3 ]; then
-    echo "Usage: make_mfcc <data-dir> <temp-dir> <feat-dir>"
-    exit 1
-  fi
-
-  if $add_pitch; then
-    steps/make_mfcc_pitch.sh --cmd "$cmd" --nj $nj --write-utt2num-frames true \
-      --mfcc-config $mfcc_config --pitch-config $pitch_config $* || exit 1
-  else
-    steps/make_mfcc.sh --cmd "$cmd" --nj $nj --write-utt2num-frames true \
-      --mfcc-config $mfcc_config $* || exit 1
-  fi
-
-}
-
-function make_plp {
-  local nj=$nj
-  local mfcc_config=$feat_config
-  local add_pitch=$add_pitch
-  local cmd=$train_cmd
-  local pitch_config=$pitch_config
-  
-  while [ $# -gt 0 ]; do 
-    if [ $1 == "--nj" ]; then
-      nj=$2
-      shift; shift;
-    elif [ $1 == "--plp-config" ]; then
-      plp_config=$2
-      shift; shift;
-    elif [ $1 == "--add-pitch" ]; then
-      add_pitch=$2
-      shift; shift;
-    elif [ $1 == "--cmd" ]; then
-      cmd=$2
-      shift; shift;
-    elif [ $1 == "--pitch-config" ]; then
-      pitch_config=$2
-      shift; shift;
-    else
-      break
-    fi
-  done
-
-  if [ $# -gt 3 ]; then
-    echo "Usage: make_plp <data-dir> <temp-dir> <feat-dir>"
-    exit 1
-  fi
-  
-  if $add_pitch; then
-    steps/make_plp_pitch.sh --cmd "$cmd" --nj $nj --write-utt2num-frames true \
-      --plp-config $plp_config --pitch-config $pitch_config $* || exit 1
-  else
-    steps/make_plp.sh --cmd "$cmd" --nj $nj --write-utt2num-frames true \
-      --plp-config $plp_config $1 $* || exit 1
-  fi
-}
 
 # Create new data directory inside the segmentation directory
 data_id=$(basename $data_dir)
@@ -190,19 +103,12 @@ data_dir=$dir/${data_id}
 # Extract features for the whole data directory
 ###############################################################################
 if [ $stage -le 1 ]; then
-  if [ $feat_type == "mfcc" ]; then
-    make_mfcc --cmd "$train_cmd --max-jobs-run 40" --nj $nj \
-      --mfcc-config $feat_config \
-      --add-pitch $add_pitch --pitch-config $pitch_config \
-      ${whole_data_dir} || exit 1
-  elif [ $feat_type == "plp" ]; then
-    make_plp --cmd "$train_cmd --max-jobs-run 40" --nj $nj \
-      --plp-config $feat_config \
-      --add-pitch $add_pitch --pitch-config $pitch_config \
+  if $use_pitch; then
+    steps/make_plp_pitch.sh --cmd "$cmd" --nj $nj --write-utt2num-frames true \
       ${whole_data_dir} || exit 1
   else
-    echo "$0: Unknown feat-type $feat_type. Must be mfcc or plp."
-    exit 1
+    steps/make_plp.sh --cmd "$cmd" --nj $nj --write-utt2num-frames true \
+      ${whole_data_dir} || exit 1
   fi
 fi
 
@@ -350,11 +256,11 @@ fi
 
 ###############################################################################
 # "default targets" values for the out-of-manual-segment regions.
-# We assume in this setup that this is silence i.e. [ $out_of_sil_weight 0 0 ].
+# We assume in this setup that this is silence i.e. [ 1 0 0 ].
 ###############################################################################
 
 if [ $stage -le 10 ]; then
-  echo " [ $out_of_sil_weight 0 0 ]" > $dir/default_targets.vec
+  echo " [ 1 0 0 ]" > $dir/default_targets.vec
   steps/segmentation/get_targets_for_out_of_segments.sh --cmd "$train_cmd" \
     --nj 40 --frame-subsampling-factor 3 \
     --default-targets $dir/default_targets.vec \
