@@ -369,31 +369,21 @@ def train(args, run_opts):
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
                     "adjusting the priors.")
-        if args.do_final_combination:
-            avg_post_vec_file = train_lib.common.compute_average_posterior(
-                dir=args.dir, iter='combined', egs_dir=egs_dir,
-                num_archives=num_archives,
-                prior_subset_size=args.prior_subset_size, run_opts=run_opts)
+        
+        # If args.do_fianl_combination is true, we will use the combined model.
+        # Otherwise, we will use the last_numbered model.
+        real_iter = 'combined' if args.do_final_combination else num_iters
+        avg_post_vec_file = train_lib.common.compute_average_posterior(
+            dir=args.dir, iter=real_iter, 
+            egs_dir=egs_dir, num_archives=num_archives,
+            prior_subset_size=args.prior_subset_size, run_opts=run_opts)
 
-            logger.info("Re-adjusting priors based on computed posteriors")
-            combined_model = "{dir}/combined.mdl".format(dir=args.dir)
-            final_model = "{dir}/final.mdl".format(dir=args.dir)
-            train_lib.common.adjust_am_priors(args.dir, combined_model,
-                                            avg_post_vec_file, final_model,
-                                            run_opts)
-        else:
-            avg_post_vec_file = train_lib.common.compute_average_posterior(
-                dir=args.dir, iter=num_iters, egs_dir=egs_dir,
-                num_archives=num_archives,
-                prior_subset_size=args.prior_subset_size, run_opts=run_opts)
-
-            logger.info("Re-adjusting priors based on computed posteriors")
-            last_numbered_model = "{dir}/{iter}.mdl".format(dir=args.dir,
-                                                            iter=num_iters)
-            final_model = "{dir}/final.mdl".format(dir=args.dir)
-            train_lib.common.adjust_am_priors(args.dir, last_numbered_model,
-                                            avg_post_vec_file, final_model,
-                                            run_opts)
+        logger.info("Re-adjusting priors based on computed posteriors")
+        combined_or_last_numbered_model = "{dir}/{iter}.mdl".format(dir=args.dir,
+                iter=real_iter)
+        final_model = "{dir}/final.mdl".format(dir=args.dir)
+        train_lib.common.adjust_am_priors(args.dir, combined_or_last_numbered_model,
+                avg_post_vec_file, final_model, run_opts)
 
 
     if args.cleanup:
