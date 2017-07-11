@@ -32,7 +32,10 @@ extra_kws=false
 cmd=run.pl
 max_states=150000
 wip=0.5 #Word insertion penalty
-resolve_overlaps=false
+resolve_overlaps=false   # Set this to true, if there are overlapping segments
+                         # as input and the words in the CTM in the 
+                         # overlapping regions must be resolved to one 
+                         # of the segments.
 #End of options
 
 if [ $(basename $0) == score.sh ]; then

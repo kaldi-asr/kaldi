@@ -21,6 +21,8 @@ chunk_width=20
 
 extra_left_context=60
 extra_right_context=0
+extra_left_context_initial=0
+extra_right_context_final=0
 
 relu_dim=256
 cell_dim=256 
@@ -45,7 +47,7 @@ dir=
 affix=1a
 
 data_dir=exp/segmentation_1a/train_whole_hires_bp
-targets_dir=exp/segmentation_1a/tri4_train_whole_combined_targets_sub3
+targets_dir=exp/segmentation_1a/train_whole_combined_targets_sub3
 
 . cmd.sh
 . ./path.sh
@@ -106,6 +108,8 @@ if [ $stage -le 6 ]; then
     --egs.dir="$egs_dir" --egs.stage=$get_egs_stage \
     --egs.chunk-left-context=$extra_left_context \
     --egs.chunk-right-context=$extra_right_context \
+    --egs.chunk-left-context-initial=$extra_left_context_initial \
+    --egs.chunk-right-context-final=$extra_right_context_final \
     --trainer.num-epochs=$num_epochs \
     --trainer.samples-per-iter=20000 \
     --trainer.optimization.num-jobs-initial=$num_jobs_initial \

@@ -29,10 +29,6 @@ convert_data_dir_to_whole=true    # If true, the input data directory is
                                   # If false, then the original segments are 
                                   # retained and they are split into sub-segments.
 
-# Set to true if the test data needs to be downsampled. 
-# The appropriate sample-frequency is read from the mfcc_config.
-do_resampling=false
-
 output_name=output   # The output node in the network
 sad_name=sad    # Base name for the directory storing the computed loglikes
                 # Can be music for music detection
@@ -46,6 +42,8 @@ iter=final  # Model iteration to use
 # may not necessarily for stats components
 extra_left_context=0  # Set to some large value, typically 40 for LSTM (must match training)
 extra_right_context=0  
+extra_left_context_initial=-1
+extra_right_context_final=-1
 frames_per_chunk=150
 
 # Decoding options
@@ -80,7 +78,6 @@ if [ $# -ne 5 ]; then
   echo "                                              # and segmentation is done on that."
   echo "                                              # If false, then the original segments are "
   echo "                                              # retained and they are split into sub-segments."
-  echo "  --do-resampling <true|false>     # Set to true if test data needs to be re-sampled"
   echo "  --output-name <name>    # The output node in the network"
   echo "  --extra-left-context  <context|0>   # Set to some large value, typically 40 for LSTM (must match training)"
   echo "  --extra-right-context  <context|0>   # For BLSTM or statistics pooling"
@@ -105,26 +102,13 @@ test_data_dir=data/${data_id}${feat_affix}_hires
 
 if $convert_data_dir_to_whole; then
   if [ $stage -le 0 ]; then
-    whole_data_dir=${sad_dir}/${data_id}_whole
-    utils/data/convert_data_dir_to_whole.sh $src_data_dir ${whole_data_dir}
-    
-    if $do_resampling; then
-      freq=`cat $mfcc_config | perl -pe 's/\s*#.*//g' | grep "sample-frequency=" | awk -F'=' '{if (NF == 0) print 16000; else print $2}'`
-      utils/data/resample_data_dir.sh $freq $whole_data_dir
-    fi
-
     rm -r ${test_data_dir} || true
-    utils/copy_data_dir.sh ${whole_data_dir} $test_data_dir
+    utils/data/convert_data_dir_to_whole.sh $src_data_dir ${test_data_dir}
   fi
 else
   if [ $stage -le 0 ]; then
     rm -r ${test_data_dir} || true
     utils/copy_data_dir.sh $src_data_dir $test_data_dir
-
-    if $do_resampling; then
-      freq=`cat $mfcc_config | perl -pe 's/\s*#.*//g' | grep "sample-frequency=" | awk -F'=' '{if (NF == 0) print 16000; else print $2}'`
-      utils/data/resample_data_dir.sh $freq $test_data_dir
-    fi
   fi
 fi
 
@@ -138,23 +122,6 @@ if [ $stage -le 1 ]; then
     ${test_data_dir} exp/make_hires/${data_id}${feat_affix} $mfcc_dir
   steps/compute_cmvn_stats.sh ${test_data_dir} exp/make_hires/${data_id}${feat_affix} $mfcc_dir
   utils/fix_data_dir.sh ${test_data_dir}
-fi
-
-###############################################################################
-## Initialize acoustic model for decoding using the output $output_name
-###############################################################################
-
-post_vec=$sad_nnet_dir/post_${output_name}.vec
-if [ ! -f $sad_nnet_dir/post_${output_name}.vec ]; then
-  if [ ! -f $sad_nnet_dir/post_${output_name}.txt ]; then
-    echo "$0: Could not find $sad_nnet_dir/post_${output_name}.vec. "
-    echo "Re-run the corresponding stage in the training script possibly "
-    echo "with --compute-average-posteriors=true or compute the priors "
-    echo "from the training labels"
-    exit 1
-  else
-    post_vec=$sad_nnet_dir/post_${output_name}.txt
-  fi
 fi
 
 ###############################################################################
@@ -172,6 +139,10 @@ if [ $stage -le 4 ]; then
     cp $sad_nnet_dir/cmvn_opts $dir || exit 1
   fi
 
+  ########################################################################
+  ## Initialize neural network for decoding using the output $output_name
+  ########################################################################
+
   if [ ! -z "$output_name" ] && [ "$output_name" != output ]; then
     $cmd $dir/log/get_nnet_${output_name}.log \
       nnet3-copy --edits="rename-node old-name=$output_name new-name=output" \
@@ -185,6 +156,8 @@ if [ $stage -le 4 ]; then
     --iter ${iter} \
     --extra-left-context $extra_left_context \
     --extra-right-context $extra_right_context \
+    --extra-left-context-initial $extra_left_context_initial \
+    --extra-right-context-final $extra_right_context_final \
     --frames-per-chunk $frames_per_chunk --apply-exp true \
     --frame-subsampling-factor $frame_subsampling_factor \
     ${test_data_dir} $dir $sad_dir || exit 1
@@ -217,12 +190,24 @@ fi
 ## Do Viterbi decoding to create per-frame alignments.
 ###############################################################################
 
+post_vec=$sad_nnet_dir/post_${output_name}.vec
+if [ ! -f $sad_nnet_dir/post_${output_name}.vec ]; then
+  if [ ! -f $sad_nnet_dir/post_${output_name}.txt ]; then
+    echo "$0: Could not find $sad_nnet_dir/post_${output_name}.vec. "
+    echo "Re-run the corresponding stage in the training script possibly "
+    echo "with --compute-average-posteriors=true or compute the priors "
+    echo "from the training labels"
+    exit 1
+  else
+    post_vec=$sad_nnet_dir/post_${output_name}.txt
+  fi
+fi
+
 mkdir -p $seg_dir
 if [ $stage -le 6 ]; then
   steps/segmentation/internal/get_transform_probs_mat.py \
-    --priors=$post_vec $transform_probs_opts > $seg_dir/transform_probs.mat
+    --priors="$post_vec" $transform_probs_opts > $seg_dir/transform_probs.mat
 
-  # Here --apply-log is true since we read from nnet posteriors 'nnet_output_exp'
   steps/segmentation/decode_sad.sh --acwt $acwt --cmd "$cmd" \
     --nj $nj \
     --transform "$seg_dir/transform_probs.mat" \
