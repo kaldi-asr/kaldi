@@ -86,6 +86,11 @@ def get_args():
                         action=common_lib.StrToBoolAction,
                         choices=["true", "false"],
                         help="")
+    parser.add_argument("--chain.truncate-deriv-weights", type=int,
+                        dest='truncate_deriv_weights', default=0,
+                        help="""Can be used to set to zero the weights of
+                        derivs from frames near the edges.  (counts subsampled
+                        frames)""")
     parser.add_argument("--chain.frame-subsampling-factor", type=int,
                         dest='frame_subsampling_factor', default=3,
                         help="ratio of frames-per-second of features we "
@@ -102,6 +107,15 @@ def get_args():
     parser.add_argument("--chain.smbr-start-fraction", type=float,
                         dest='smbr_start_fraction', default=1.1,
                         help="Fraction of training at which to start LF-SMBR")
+    parser.add_argument("--chain.smbr-learning-rate-factor", default=1.0,
+                        dest='smbr_learning_rate_factor', type=float,
+                        help="Learning rate factor used for sMBR training")
+    parser.add_argument("--chain.smbr-xent-regularize", default=None,
+                        dest='smbr_xent_regularize', type=float,
+                        help="Xent regularizer term used with sMBR training")
+    parser.add_argument("--chain.smbr-l2-regularize", default=None,
+                        dest='smbr_l2_regularize', type=float,
+                        help="L2 regularizer term used with sMBR training")
 
     # trainer options
     parser.add_argument("--trainer.num-epochs", type=float, dest='num_epochs',
@@ -312,7 +326,9 @@ def train(args, run_opts):
         logger.info("Creating denominator FST")
         chain_lib.create_denominator_fst(args.dir, args.tree_dir, run_opts)
 
-    if (args.stage <= -4) and os.path.exists(args.dir+"/configs/init.config"):
+    if (args.stage <= -4
+            and not os.path.exists(args.dir+"/init.raw")
+            and os.path.exists(args.dir+"/configs/init.config")):
         logger.info("Initializing a basic network for estimating "
                     "preconditioning matrix")
         common_lib.execute_command(
@@ -448,10 +464,19 @@ def train(args, run_opts):
                                         args.shrink_saturation_threshold)
                                    else shrinkage_value)
 
+            xent_regularize = args.xent_regularize
+            l2_regularize = args.l2_regularize
             use_smbr=False
             if (float(num_archives_processed) / num_archives_to_process
-                    > args.smbr_start_fraction):
+                    >= args.smbr_start_fraction):
                 use_smbr=True
+                lrate *= args.smbr_learning_rate_factor
+                xent_regularize = (args.smbr_xent_regularize
+                                   if args.smbr_xent_regularize is not None
+                                   else args.xent_regularize)
+                l2_regularize = (args.smbr_l2_regularize
+                                 if args.smbr_l2_regularize is not None
+                                 else args.l2_regularize)
 
             chain_lib.train_one_iteration(
                 dir=args.dir,
@@ -471,13 +496,14 @@ def train(args, run_opts):
                 apply_deriv_weights=args.apply_deriv_weights,
                 min_deriv_time=min_deriv_time,
                 max_deriv_time_relative=max_deriv_time_relative,
-                l2_regularize=args.l2_regularize,
-                xent_regularize=args.xent_regularize,
+                l2_regularize=l2_regularize,
+                xent_regularize=xent_regularize,
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 frame_subsampling_factor=args.frame_subsampling_factor,
+                truncate_deriv_weights=args.truncate_deriv_weights,
                 run_opts=run_opts,
                 backstitch_training_scale=args.backstitch_training_scale,
                 backstitch_training_interval=args.backstitch_training_interval,
@@ -507,18 +533,26 @@ def train(args, run_opts):
     if args.stage <= num_iters:
         logger.info("Doing final combination to produce final.mdl")
 
-        use_smbr=False
+        xent_regularize = args.xent_regularize
+        l2_regularize = args.l2_regularize
+        use_smbr = False
         if (float(num_archives_processed) / num_archives_to_process
-                > args.smbr_start_fraction):
+                >= args.smbr_start_fraction):
             use_smbr=True
+            xent_regularize = (args.smbr_xent_regularize
+                               if args.smbr_xent_regularize is not None
+                               else args.xent_regularize)
+            l2_regularize = (args.smbr_l2_regularize
+                             if args.smbr_l2_regularize is not None
+                             else args.l2_regularize)
         chain_lib.combine_models(
             dir=args.dir, num_iters=num_iters,
             models_to_combine=models_to_combine,
             num_chunk_per_minibatch_str=args.num_chunk_per_minibatch,
             egs_dir=egs_dir,
             leaky_hmm_coefficient=args.leaky_hmm_coefficient,
-            l2_regularize=args.l2_regularize,
-            xent_regularize=args.xent_regularize,
+            l2_regularize=l2_regularize,
+            xent_regularize=xent_regularize,
             run_opts=run_opts,
             sum_to_one_penalty=args.combine_sum_to_one_penalty,
             use_smbr_objective=use_smbr)

@@ -710,7 +710,7 @@ void ChainSupervisionSimpleTest() {
   supervision.Check(*trans_model);
   TestSupervisionIo(supervision);
   TestSupervisionSplitting(*ctx_dep, *trans_model, supervision);
-  //TestSupervisionAppend(*trans_model, supervision);
+  TestSupervisionAppend(*trans_model, supervision);
 
   {
     fst::StdVectorFst den_fst;
@@ -812,11 +812,11 @@ int main() {
       CuDevice::Instantiate().SelectGpuId("yes");
 #endif
     for (int32 i = 0; i < 3; i++) {
-      //kaldi::chain::ChainSupervisionTest();
+      kaldi::chain::ChainSupervisionTest();
       kaldi::chain::ChainSupervisionSimpleTest();
-      //kaldi::chain::BreadthFirstTest();
+      kaldi::chain::BreadthFirstTest();
     }
-    //kaldi::chain::TestRanges();
+    kaldi::chain::TestRanges();
 #if HAVE_CUDA == 1
   }
   CuDevice::Instantiate().PrintProfile();

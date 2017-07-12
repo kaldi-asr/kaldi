@@ -118,6 +118,8 @@ struct ObjectiveFunctionInfo {
   double tot_objf_this_phase;
   double tot_aux_objf_this_phase;
 
+  CuVector<BaseFloat> deriv_sum;
+
   ObjectiveFunctionInfo():
       current_phase(0),
       minibatches_this_phase(0),

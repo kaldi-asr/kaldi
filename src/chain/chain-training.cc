@@ -133,8 +133,9 @@ void ComputeChainSmbrObjfAndDeriv(const ChainTrainingOptions &opts,
     // the numerator object, and the logprob too.
     numerator.Forward();
     numerator.Backward(&num_posteriors);
-    if (xent_output_deriv)
+    if (xent_output_deriv) {
       xent_output_deriv->CopyFromMat(num_posteriors);
+    }
   }
   DenominatorSmbrComputation denominator(opts, den_graph,
                                          supervision.num_sequences,

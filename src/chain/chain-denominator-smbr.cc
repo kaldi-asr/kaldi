@@ -230,7 +230,6 @@ void DenominatorSmbrComputation::AlphaSmbrDash(int32 t) {
   alpha_smbr_sum_vec.AddRowSumMat(1.0, alpha_smbr_mat, 0.0);
 
   BaseFloat alpha_sum = alpha_sum_vec.Sum();
-  KALDI_VLOG(2) << "alpha-sum for time " << t << " is " << alpha_sum;
   KALDI_ASSERT(alpha_sum_vec.Min() > 0);
 
   alpha_smbr_mat.AddVecVec(opts_.leaky_hmm_coefficient, 

@@ -214,6 +214,14 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
         xent_deriv.MulRowsVec(cu_deriv_weights);
     }
 
+    if (opts_.accumulate_avg_deriv && 
+        objf_info_[sup.name + suffix].deriv_sum.Dim() == 0)
+      objf_info_[sup.name + suffix].deriv_sum.Resize(nnet_output.NumCols());
+
+    if (objf_info_[sup.name + suffix].deriv_sum.Dim() > 0)
+      objf_info_[sup.name + suffix].deriv_sum.AddRowSumMat(
+          1.0, nnet_output_deriv, 1.0);
+
     computer->AcceptInput(sup.name, &nnet_output_deriv);
 
     objf_info_[sup.name + suffix].UpdateStats(sup.name + suffix,
@@ -223,6 +231,12 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
 
     if (use_xent) {
       xent_deriv.Scale(opts_.chain_config.xent_regularize);
+      if (opts_.accumulate_avg_deriv && 
+          objf_info_[xent_name + suffix].deriv_sum.Dim() == 0)
+        objf_info_[xent_name + suffix].deriv_sum.Resize(nnet_output.NumCols());
+      if (objf_info_[xent_name + suffix].deriv_sum.Dim() > 0)
+        objf_info_[xent_name + suffix].deriv_sum.AddRowSumMat(
+            1.0, xent_deriv, 1.0);
       computer->AcceptInput(xent_name, &xent_deriv);
     }
   }
@@ -236,6 +250,7 @@ bool NnetChainTrainer::PrintTotalStats() const {
   for (; iter != end; ++iter) {
     const std::string &name = iter->first;
     const ObjectiveFunctionInfo &info = iter->second;
+    
     ans = info.PrintTotalStats(name) || ans;
   }
   PrintMaxChangeStats();

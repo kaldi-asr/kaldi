@@ -277,11 +277,11 @@ static void _cuda_chain_smbr_hmm_backward(
     tot_variable_factor += variable_factor0 + variable_factor1;
     BaseFloat this_gamma_r0 = occupation_factor * variable_factor0 
       * (this_alpha_smbr_i + num_post0 + next_beta_smbr_j0 - tot_smbr[s]);
-    atomic_add_thresholded(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s),
+    atomic_add(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s),
                            this_gamma_r0);
     BaseFloat this_gamma_r1 = occupation_factor * variable_factor1
       * (this_alpha_smbr_i + num_post1 + next_beta_smbr_j1 - tot_smbr[s]);
-    atomic_add_thresholded(log_prob_deriv + (pdf_id1 * log_prob_deriv_stride + s),
+    atomic_add(log_prob_deriv + (pdf_id1 * log_prob_deriv_stride + s),
                            this_gamma_r1);
   }
   if (trans_iter != trans_end) {
@@ -298,7 +298,7 @@ static void _cuda_chain_smbr_hmm_backward(
     tot_variable_factor += variable_factor0;
     BaseFloat this_gamma_r0 = occupation_factor * variable_factor0
       * (this_alpha_smbr_i + num_post0 + next_beta_smbr_j0 - tot_smbr[s]);
-    atomic_add_thresholded(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s),
+    atomic_add(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s),
                            this_gamma_r0);
   }
   BaseFloat beta = tot_variable_factor / inv_arbitrary_scale;

@@ -130,7 +130,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      l2_regularize, xent_regularize, leaky_hmm_coefficient,
                      momentum, max_param_change,
                      shuffle_buffer_size, num_chunk_per_minibatch_str,
-                     frame_subsampling_factor, run_opts,
+                     frame_subsampling_factor, truncate_deriv_weights, run_opts,
                      backstitch_training_scale=0.0, backstitch_training_interval=1,
                      use_smbr_objective=False):
     """
@@ -190,6 +190,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                     --srand={srand} \
                     "{raw_model}" {dir}/den.fst \
                     "ark,bg:nnet3-chain-copy-egs \
+                        --truncate-deriv-weights={trunc_deriv} \
                         --frame-shift={fr_shft} \
                         ark:{egs_dir}/cegs.{archive_index}.ark ark:- | \
                         nnet3-chain-shuffle-egs --buffer-size={buf_size} \
@@ -201,6 +202,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         dir=dir, iter=iter, srand=iter + srand,
                         next_iter=iter + 1, job=job,
                         deriv_time_opts=" ".join(deriv_time_opts),
+                        trunc_deriv=truncate_deriv_weights,
                         app_deriv_wts=apply_deriv_weights,
                         fr_shft=frame_shift, l2=l2_regularize,
                         xent_reg=xent_regularize, leaky=leaky_hmm_coefficient,
@@ -235,7 +237,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         l2_regularize, xent_regularize,
                         leaky_hmm_coefficient,
                         momentum, max_param_change, shuffle_buffer_size,
-                        frame_subsampling_factor,
+                        frame_subsampling_factor, truncate_deriv_weights,
                         run_opts, dropout_edit_string="",
                         backstitch_training_scale=0.0, backstitch_training_interval=1,
                         use_smbr_objective=False):
@@ -324,6 +326,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      shuffle_buffer_size=shuffle_buffer_size,
                      num_chunk_per_minibatch_str=cur_num_chunk_per_minibatch_str,
                      frame_subsampling_factor=frame_subsampling_factor,
+                     truncate_deriv_weights=truncate_deriv_weights,
                      run_opts=run_opts,
                      # linearly increase backstitch_training_scale during the
                      # first few iterations (hard-coded as 15)
@@ -571,8 +574,8 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
                     num_chunk_per_mb=num_chunk_per_minibatch_str,
                     num_iters=num_iters,
                     egs_dir=egs_dir,
-                    smbr_opts="--use-smbr-objective" if use_smbr_objective
-                              else ""))
+                    smbr_opt="--use-smbr-objective" if use_smbr_objective
+                             else ""))
 
     # Compute the probability of the final, combined model with
     # the same subset we used for the previous compute_probs, as the
