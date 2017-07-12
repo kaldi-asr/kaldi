@@ -346,11 +346,16 @@ def train(args, run_opts):
     num_archives_processed = 0
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
-
-    models_to_combine = common_train_lib.get_model_combine_iters(
-        num_iters, args.num_epochs,
-        num_archives, args.max_models_combine,
-        args.num_jobs_final)
+    
+    # If do_final_combination is True, compute the set of models_to_combine.
+    # Otherwise, models_to_combine will be none.
+    if args.do_final_combination:
+        models_to_combine = common_train_lib.get_model_combine_iters(
+            num_iters, args.num_epochs,
+            num_archives, args.max_models_combine,
+            args.num_jobs_final)
+    else:
+        models_to_combine = None
 
     min_deriv_time = None
     max_deriv_time_relative = None
@@ -437,27 +442,33 @@ def train(args, run_opts):
         num_archives_processed = num_archives_processed + current_num_jobs
 
     if args.stage <= num_iters:
-        logger.info("Doing final combination to produce final.mdl")
-        train_lib.common.combine_models(
-            dir=args.dir, num_iters=num_iters,
-            models_to_combine=models_to_combine, egs_dir=egs_dir,
-            run_opts=run_opts,
-            minibatch_size_str=args.num_chunk_per_minibatch,
-            chunk_width=args.chunk_width,
-            sum_to_one_penalty=args.combine_sum_to_one_penalty)
+        if args.do_final_combination:
+            logger.info("Doing final combination to produce final.mdl")
+            train_lib.common.combine_models(
+                dir=args.dir, num_iters=num_iters,
+                models_to_combine=models_to_combine, egs_dir=egs_dir,
+                run_opts=run_opts,
+                minibatch_size_str=args.num_chunk_per_minibatch,
+                chunk_width=args.chunk_width,
+                sum_to_one_penalty=args.combine_sum_to_one_penalty)
 
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
                     "adjusting the priors.")
+
+        # If args.do_fianl_combination is true, we will use the combined model.
+        # Otherwise, we will use the last_numbered model.
+        real_iter = 'combined' if args.do_final_combination else num_iters
         avg_post_vec_file = train_lib.common.compute_average_posterior(
-            dir=args.dir, iter='combined', egs_dir=egs_dir,
+            dir=args.dir, iter=real_iter, egs_dir=egs_dir,
             num_archives=num_archives,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts)
 
         logger.info("Re-adjusting priors based on computed posteriors")
-        combined_model = "{dir}/combined.mdl".format(dir=args.dir)
+        combined_or_last_numbered_model = "{dir}/{iter}.mdl".format(dir=args.dir,
+                iter=real_iter)
         final_model = "{dir}/final.mdl".format(dir=args.dir)
-        train_lib.common.adjust_am_priors(args.dir, combined_model,
+        train_lib.common.adjust_am_priors(args.dir, combined_or_last_numbered_model,
                                           avg_post_vec_file, final_model,
                                           run_opts)
 

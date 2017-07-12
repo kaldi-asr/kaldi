@@ -357,8 +357,8 @@ def train(args, run_opts):
         num_archives_processed = num_archives_processed + current_num_jobs
 
     if args.stage <= num_iters:
-        logger.info("Doing final combination to produce final.mdl")
         if args.do_final_combination:
+            logger.info("Doing final combination to produce final.mdl")
             train_lib.common.combine_models(
                 dir=args.dir, num_iters=num_iters,
                 models_to_combine=models_to_combine,
