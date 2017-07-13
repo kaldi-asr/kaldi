@@ -518,7 +518,7 @@ def train(args, run_opts):
             common_lib.force_symlink("{0}.mdl".format(num_iters),
                                      "{0}/final.mdl".format(args.dir))
             chain_lib.compute_train_cv_probabilities(
-                dir=dir, iter='final', egs_dir=egs_dir,
+                dir=args.dir, iter='final', egs_dir=egs_dir,
                 l2_regularize=args.l2_regularize,
                 xent_regularize=args.xent_regularize,
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,

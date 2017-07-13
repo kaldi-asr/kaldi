@@ -370,7 +370,7 @@ def train(args, run_opts):
         logger.info("Getting average posterior for purposes of "
                     "adjusting the priors.")
         
-        # If args.do_fianl_combination is true, we will use the combined model.
+        # If args.do_final_combination is true, we will use the combined model.
         # Otherwise, we will use the last_numbered model.
         real_iter = 'combined' if args.do_final_combination else num_iters
         avg_post_vec_file = train_lib.common.compute_average_posterior(
