@@ -65,7 +65,7 @@ if [ $# -ne 5 ]; then
   echo "This script does nnet3-based speech activity detection given an input kaldi "
   echo "directory and outputs an output kaldi directory."
   echo "See script for details of the options to be supplied."
-  echo "Usage: $0 <src-data-dir> <sad-nnet-dir> <mfcc-dir> <dir> <out-data-dir>"
+  echo "Usage: $0 <src-data-dir> <sad-nnet-dir> <mfcc-dir> <work-dir> <out-data-dir>"
   echo " e.g.: $0 ~/workspace/egs/ami/s5b/data/sdm1/dev exp/nnet3_sad_snr/nnet_tdnn_j_n4 \\"
   echo "    mfcc_hires_bp exp/segmentation_sad_snr/nnet_tdnn_j_n4 data/ami_sdm1_dev"
   echo ""

@@ -31,6 +31,9 @@ max_remaining_duration=5  # If the last remaining piece when splitting uniformly
 # labels obtained from decoding and default labels in out-of-segment regions
 merge_weights=1.0,0.1,0.5
 
+nstage=-10
+train_stage=-10
+
 affix=_1a
 stage=-1
 nj=80
@@ -73,7 +76,7 @@ whole_data_dir=${data_dir}_whole
 whole_data_id=${data_id}_whole
 
 if [ $stage -le 0 ]; then
-  rm -r $dir/$data_id
+  rm -r $dir/$data_id || true
   mkdir -p $dir/$data_id
 
   # Copy the data directory, but treat the recording as the speaker. This
@@ -104,10 +107,10 @@ data_dir=$dir/${data_id}
 ###############################################################################
 if [ $stage -le 1 ]; then
   if $use_pitch; then
-    steps/make_plp_pitch.sh --cmd "$cmd" --nj $nj --write-utt2num-frames true \
+    steps/make_plp_pitch.sh --cmd "$train_cmd" --nj $nj --write-utt2num-frames true \
       ${whole_data_dir} || exit 1
   else
-    steps/make_plp.sh --cmd "$cmd" --nj $nj --write-utt2num-frames true \
+    steps/make_plp.sh --cmd "$train_cmd" --nj $nj --write-utt2num-frames true \
       ${whole_data_dir} || exit 1
   fi
 fi
@@ -295,6 +298,7 @@ fi
 if [ $stage -le 13 ]; then
   # Train a TDNN-LSTM network for SAD
   local/segmentation/tuning/train_lstm_asr_sad_1a.sh \
+    --stage $nstage --train-stage $train_stage \
     --targets-dir $dir/${whole_data_id}_combined_targets_sub3 \
     --data-dir ${whole_data_dir}_hires_bp
 fi

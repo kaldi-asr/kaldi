@@ -314,7 +314,9 @@ def train(args, run_opts):
      frames_per_eg_str, num_archives] = (
          common_train_lib.verify_egs_dir(egs_dir, feat_dim,
                                          ivector_dim, ivector_id,
-                                         left_context, right_context))
+                                         left_context, right_context,
+                                         left_context_initial,
+                                         right_context_final))
     if args.chunk_width != frames_per_eg_str:
         raise Exception("mismatch between --egs.chunk-width and the frames_per_eg "
                         "in the egs dir {0} vs {1}".format(args.chunk_width,
