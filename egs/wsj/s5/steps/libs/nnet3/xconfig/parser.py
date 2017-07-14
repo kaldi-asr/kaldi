@@ -67,15 +67,15 @@ def xconfig_line_to_object(config_line, prev_layers = None):
             "*** {0}".format(config_line))
         raise
 
-# This reads raw existing model (*.raw) and returns array of
+# This function reads existing model (*.raw or *.mdl) and returns array of
 # XconfigInputLayer one per input-node or component-node with same 'name' used
-# in raw model and 'dim' equal to 'output-dim' for component-node and input-dim for
+# in raw model and 'dim' equal to 'output-dim' for component-node and 'dim' for
 # input-node.
 def get_model_component_info(model_filename):
     all_layers = []
     try:
         f = open(model_filename, 'r')
-    except Exeption as e:
+    except Exception as e:
         sys.exit("{0}: error reading model file '{1}'".format(sys.argv[0], model_filename, repr(e)))
 
     # use nnet3-info to get component names in the model.
