@@ -52,9 +52,9 @@ def run(args):
                                "".format(priors))
 
     priors_sum = sum(priors[0])
-    sil_prior = priors[0] / priors_sum
-    speech_prior = priors[1] / priors_sum
-    garbage_prior = priors[2] / priors_sum
+    sil_prior = priors[0][0] / priors_sum
+    speech_prior = priors[0][1] / priors_sum
+    garbage_prior = priors[0][2] / priors_sum
 
     transform_mat = [[1.0 / sil_prior,
                       args.speech_in_sil_weight / speech_prior,

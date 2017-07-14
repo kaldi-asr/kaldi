@@ -62,12 +62,18 @@ for p in $garbage_phones; do
   done
 done > $dir/garbage_phones.txt
 
-silence_phones="<sss> <SIL>"
+silence_phones="<sss> SIL"
 for p in $silence_phones; do 
   for affix in "" "_B" "_E" "_I" "_S"; do
     echo "$p$affix"
   done
 done > $dir/silence_phones.txt
+
+if ! cat $dir/garbage_phones.txt $dir/silence_phones.txt | \
+  steps/segmentation/internal/verify_phones_list.py $lang/phones.txt; then
+  echo "$0: Invalid $dir/{silence,garbage}_phones.txt"
+  exit 1
+fi
 
 # Create new data directory inside the segmentation directory
 data_id=$(basename $data_dir)

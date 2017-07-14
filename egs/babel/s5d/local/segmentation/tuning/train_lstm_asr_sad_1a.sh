@@ -133,10 +133,12 @@ if [ $stage -le 6 ]; then
     --targets-scp="$targets_dir/targets.scp" \
     --egs.opts="--frame-subsampling-factor 3 --num-utts-subset $num_utts_subset" \
     --dir=$dir || exit 1
+fi
 
+if [ $stage -le 7 ]; then
   copy-feats scp:$targets_dir/targets.scp ark:- | \
     matrix-sum-rows ark:- ark:- | vector-sum --binary=false ark:- - | \
-    awk '{print " [ "$2" "$3" ]"}' > $dir/post_output.vec
+    awk '{print " [ "$2" "$3" "$4" ]"}' > $dir/post_output.vec
 
   echo 3 > $dir/frame_subsampling_factor
 fi

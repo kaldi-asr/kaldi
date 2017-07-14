@@ -13,7 +13,6 @@ summed up to get the target matrix values.
 
 import argparse
 import logging
-import numpy as np
 import sys
 
 sys.path.insert(0, 'steps')
@@ -47,7 +46,7 @@ def get_args():
                         help="File containing a list of phones that will be "
                         "treated as garbage class")
     parser.add_argument("--max-phone-length", type=int, default=50,
-                        help="""Maximum number of frames allowed for a
+                        help="""Maximum number of frames allowed for a speech
                         phone above which the arc is treated as garbage.""")
 
     parser.add_argument("arc_info", type=str,
@@ -89,7 +88,7 @@ def run(args):
 
     num_utts = 0
     num_err = 0
-    targets = np.array([])
+    targets = []
     prev_utt = ""
 
     with common_lib.smart_open(args.arc_info) as arc_info_reader, \
@@ -101,34 +100,37 @@ def run(args):
 
                 if utt != prev_utt:
                     if prev_utt != "":
-                        if targets.shape[0] > 0:
+                        if len(targets) > 0:
                             num_utts += 1
                             common_lib.write_matrix_ascii(
                                 targets_writer, targets, key=prev_utt)
                         else:
                             num_err += 1
                     prev_utt = utt
-                    targets = np.array([])
+                    targets = []
 
                 start_frame = int(parts[1])
                 num_frames = int(parts[2])
                 post = float(parts[3])
                 phone = parts[4]
 
-                if start_frame + num_frames > targets.shape[0]:
-                    targets.resize(start_frame + num_frames, 3)
+                if start_frame + num_frames > len(targets):
+                    for t in range(len(targets), start_frame + num_frames):
+                        targets.append([0, 0, 0])
+                    assert start_frame + num_frames == len(targets)
 
-                if phone in silence_phones:
-                    targets[start_frame:(start_frame + num_frames), 0] += post
-                elif num_frames > args.max_phone_length:
-                    targets[start_frame:(start_frame + num_frames), 2] += post
-                elif phone in garbage_phones:
-                    targets[start_frame:(start_frame + num_frames), 2] += post
-                else:
-                    targets[start_frame:(start_frame + num_frames), 1] += post
+                for t in range(start_frame, start_frame + num_frames):
+                    if phone in silence_phones:
+                        targets[t][0] += post
+                    elif num_frames > args.max_phone_length:
+                        targets[t][2] += post
+                    elif phone in garbage_phones:
+                        targets[t][2] += post
+                    else:
+                        targets[t][1] += post
             except Exception:
                 logger.error("Failed to process line {line} in {f}"
-                             "".format(line=line.strip(), f=args.arc_info.name))
+                             "".format(line=line.strip(), f=args.arc_info))
                 logger.error("len(targets) = {l}".format(l=len(targets)))
                 raise
 
