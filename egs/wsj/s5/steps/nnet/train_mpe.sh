@@ -28,7 +28,7 @@ silphonelist=          # this overrides default silphone-list (for selecting a s
 unkphonelist=          # dummy deprecated option, for backward compatibility,
 exclude_silphones=     # dummy deprecated option, for backward compatibility,
 
-verbose=1
+verbose=0 # 0 No GPU time-stats, 1 with GPU time-stats (slower),
 ivector=
 nnet=  # For non-default location of nnet,
 

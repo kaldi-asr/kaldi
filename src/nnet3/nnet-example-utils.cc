@@ -816,7 +816,7 @@ void UtteranceSplitter::GetChunksForUtterance(
     info.num_frames = chunk_sizes[i];
     info.left_context = (i == 0 && config_.left_context_initial >= 0 ?
                          config_.left_context_initial : config_.left_context);
-    info.right_context = (i == 0 && config_.right_context_final >= 0 ?
+    info.right_context = (i == num_chunks - 1 && config_.right_context_final >= 0 ?
                           config_.right_context_final : config_.right_context);
     t += chunk_sizes[i];
   }

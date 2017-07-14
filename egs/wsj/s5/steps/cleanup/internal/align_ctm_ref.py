@@ -98,11 +98,6 @@ def get_args():
 
     args = parser.parse_args()
 
-    if args.hyp_format == "CTM" and args.reco2file_and_channel is None:
-        raise RuntimeError(
-            "--reco2file-and-channel must be provided for "
-            "hyp-format=CTM")
-
     args.debug_only = bool(args.debug_only == "true")
 
     global verbose_level
@@ -557,7 +552,7 @@ def run(args):
                 hyp_array = hyp_lines[reco]
 
             if args.reco2file_and_channel is None:
-                reco2file_and_channel[reco] = "1"
+                reco2file_and_channel[reco] = (reco, "1")
 
             logger.debug("Running Smith-Waterman alignment for %s", reco)
 

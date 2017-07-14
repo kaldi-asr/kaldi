@@ -47,7 +47,7 @@ steps/cleanup/segment_long_utterances.sh \
   --cmd "$train_cmd" --nj 80 \
   --stage $segment_stage \
   --max-bad-proportion 0.5 --align-full-hyp false \
-  exp/wsj_tri2b data/lang_nosp data/train_long data/train_long/text data/train_reseg${affix} \
+  exp/wsj_tri2b data/lang_nosp data/train_long data/train_reseg${affix} \
   exp/segment_wsj_long_utts${affix}_train
 
 steps/compute_cmvn_stats.sh \
@@ -82,7 +82,7 @@ steps/cleanup/segment_long_utterances.sh \
   --cmd "$train_cmd" --nj 80 \
   --stage $segment_stage \
   --max-bad-proportion 0.75 --align-full-hyp false \
-  exp/tri4${affix} data/lang_nosp data/train_long data/train_long/text data/train_reseg${new_affix} \
+  exp/tri4${affix} data/lang_nosp data/train_long data/train_reseg${new_affix} \
   exp/segment_long_utts${new_affix}_train
 
 steps/compute_cmvn_stats.sh data/train_reseg${new_affix}

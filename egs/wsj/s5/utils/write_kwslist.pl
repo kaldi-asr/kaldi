@@ -208,7 +208,9 @@ while (<$source>) {
     $start = sprintf("%.2f", $start+$tbeg{$utter});
   }
   if ($map_utter) {
-    $utter = $utter_mapper{$utter};
+    my $utter_x = $utter_mapper{$utter};
+    die "Unmapped utterance $utter\n" unless $utter_x;
+    $utter = $utter_x;
   }
 
   push(@KWS, [$kwid, $utter, 1, $start, $dur, $score, ""]);

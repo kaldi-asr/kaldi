@@ -23,7 +23,7 @@
 #include "nnet2/nnet-update-parallel.h"
 #include "nnet2/am-nnet.h"
 #include "nnet2/nnet-compute.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 namespace nnet2 {

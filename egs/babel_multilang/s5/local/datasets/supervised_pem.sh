@@ -1,1 +1,1 @@
-/export/a09/pegahgh/kaldi-xvector/egs/babel_multilang/s5/local/datasets/supervised_pem.sh
+../../../../babel/s5d/local/datasets/supervised_pem.sh

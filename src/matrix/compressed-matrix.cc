@@ -240,7 +240,6 @@ CompressedMatrix::CompressedMatrix(
   *(reinterpret_cast<GlobalHeader*>(data_)) = new_global_header;
 
 
-
   DataFormat format = static_cast<DataFormat>(old_global_header->format);
   if (format == kOneByteWithColHeaders) {
     PerColHeader *old_per_col_header =

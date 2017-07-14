@@ -163,7 +163,7 @@ fi
 
 if [ $stage -le 5 ]; then
   for x in `seq $decode_start_epoch $num_epochs`; do
-    iter=epoch$x.adj
+    iter=epoch${x}_adj
     for lm_suffix in tgpr bd_tgpr; do
       graph_dir=exp/tri4b/graph_${lm_suffix}
       # use already-built graphs.

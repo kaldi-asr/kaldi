@@ -108,13 +108,13 @@ def get_command_stdout(command, require_zero_status = True):
 
     stdout = p.communicate()[0]
     if p.returncode is not 0:
-        str = "Command exited with status {0}: {1}".format(
+        output = "Command exited with status {0}: {1}".format(
             p.returncode, command)
         if require_zero_status:
-            raise Exception(str)
+            raise Exception(output)
         else:
-            logger.warning(str)
-    return stdout
+            logger.warning(output)
+    return stdout if type(stdout) is str else stdout.decode()
 
 
 

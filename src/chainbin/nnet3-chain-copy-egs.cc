@@ -226,7 +226,7 @@ void ModifyChainExampleContext(const NnetChainExample &eg,
     if (right_context != -1) {
       if (!warned_right && observed_right_context < right_context) {
         warned_right = true;
-        KALDI_ERR << "You requested --right-context=" << right_context
+        KALDI_WARN << "You requested --right-context=" << right_context
                   << ", but example only has right-context of "
                   << observed_right_context
                  << " (will warn only once; this may be harmless if "

@@ -38,13 +38,25 @@ void ModifyNnetIvectorPeriod(int32 ivector_period,
     KALDI_ASSERT(b && "Could not parse config line.");
     if (config_line.FirstToken() == "component-node") {
       std::string whole_line = config_lines[i];
-      std::string to_search_for = "ReplaceIndex(ivector, t, 0)";
+      std::string to_search_for = "ReplaceIndex(";
+      std::string::size_type to_search_for_size = to_search_for.size();
       std::string::size_type pos = whole_line.find(to_search_for);
       if (pos != std::string::npos) {
-        std::ostringstream to_replace_with;
-        to_replace_with << "Round(ivector, " << ivector_period << ")";
-        whole_line.replace(pos, to_search_for.size(), to_replace_with.str());
-        config_to_read << whole_line << "\n";
+        std::string::size_type comma_pos = whole_line.find(',', pos);
+        if (comma_pos != std::string::npos) {
+          // if the line contained ReplaceIndex(ivector, t, 0),
+          // descriptor_name would now be 'ivector'.
+          std::string descriptor_name =
+              whole_line.substr(pos + to_search_for_size,
+                                comma_pos - (pos + to_search_for_size));
+          std::string::size_type end_pos = whole_line.find(')', pos);
+          std::string::size_type expr_size = end_pos + 1 - pos;
+          // e.g. expr_size would be strlen("ReplaceIndex(ivector, t, 0)").
+          std::ostringstream to_replace_with;
+          to_replace_with << "Round(" << descriptor_name << ", " << ivector_period << ")";
+          whole_line.replace(pos, expr_size, to_replace_with.str());
+          config_to_read << whole_line << "\n";
+        }
       }
     }
   }

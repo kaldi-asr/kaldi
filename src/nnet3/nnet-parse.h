@@ -144,7 +144,7 @@ bool DescriptorTokenize(const std::string &input,
 
 /// Returns true if 'name' would be a valid name for a component or node in a
 /// Nnet.  This is a nonempty string beginning with A-Za-z_, and containing only
-/// -_A-Za-z0-9.
+/// '-', '_', '.', A-Z, a-z, or 0-9.
 bool IsValidName(const std::string &name);
 
 

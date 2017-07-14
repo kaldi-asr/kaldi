@@ -3728,7 +3728,7 @@ void UnitTestNonsymmetricPower() {
   for (MatrixIndexT iter = 0; iter < 30; iter++) {
     MatrixIndexT dimM = 1 + Rand() % 20;
     Matrix<Real> M(dimM, dimM);
-    M.SetRandn();
+    InitRandNonsingular(&M);
 
     Matrix<Real> MM(dimM, dimM);
     MM.AddMatMat(1.0, M, kNoTrans, M, kNoTrans, 0.0);  // MM = M M.

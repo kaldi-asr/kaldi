@@ -12,8 +12,8 @@ stage=4
 suffix=_sp
 feat_suffix=_hires # feat_suffix used in train_set for lda_mllt training.
 nnet3_affix=
-numLeavesMLLT=5500
-numGaussMLLT=90000
+numLeavesMLLT=2500
+numGaussMLLT=36000
 boost_sil=1.0 # Factor by which to boost silence likelihoods in alignment
 ivector_transform_type=lda # transformation used for iVector extraction
 
@@ -34,7 +34,8 @@ multi_data_dir=$2
 global_extractor_dir=$3
 
 langconf=conf/$lda_mllt_lang/lang.conf
-[ ! -f $langconf ] && echo 'Language configuration lang.conf does not exist! Use the configurations in conf/$lda_mllt_lang/* as a startup' && exit 1
+[ ! -f $langconf ] && \
+   echo "Language configuration lang.conf does not exist.  Start with configurations in conf/${lda_mllt_lang}/*." && exit 1
 . $langconf || exit 1;
 
 if [ $stage -le 4 ]; then
@@ -66,7 +67,7 @@ fi
 
 if [ $stage -le 5 ]; then
   # To train a diagonal UBM we don't need very much data, so use the smallest subset.
-  steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 200 --num-frames 500000 \
+  steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 100 --num-frames 200000 \
     $multi_data_dir $numGaussUBM exp/$lda_mllt_lang/nnet3${nnet3_affix}/tri3b $global_extractor_dir/diag_ubm
 fi
 

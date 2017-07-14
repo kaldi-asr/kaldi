@@ -2839,9 +2839,7 @@ void ComputationExpander::ExpandRowRangesCommand(
       num_rows_new = expanded_computation_->submatrices[s1].num_rows;
   KALDI_ASSERT(static_cast<size_t>(c_in.arg3) <
                computation_.indexes_ranges.size());
-  KALDI_ASSERT(num_rows_old % 2 == 0);
   int32 num_n_values = num_n_values_;
-
 
   int32 old_arg3 = c_out->arg3;
   c_out->arg3 = expanded_computation_->indexes_ranges.size();
@@ -3339,7 +3337,7 @@ class ComputationLoopedOptimizer {
 
   // Given a vector of lists, one list for each segment, of the active matrices
   // at the end of that segment, this function converts those lists into a
-  // different representation where each matrix is reprented as a pair instead
+  // different representation where each matrix is represented as a pair instead
   // of as a single int32.  'active_pairs' will have the same dimensions as
   // 'active_matrices'.
   static void ConvertListsToPairLists(
@@ -3347,16 +3345,19 @@ class ComputationLoopedOptimizer {
       const std::vector<std::pair<int32, int32> > &matrix_to_pair,
       std::vector<std::vector<std::pair<int32, int32> > > *active_pairs);
 
-  // This function modifies the lists of active matrices per segment
-  // (represented as pairs) in 'active_pairs' by sorting them and
-  // then subtracting the time-offset of the first pair in each
-  // list ((*active_pair)[seg][0].second), from all elements in that list.
-  // It puts the subtracted offset in (*time_offsets)[seg].  This change
-  // of representation makes it easy to tell whether the sets of active
-  // matrices for different segments are identical up to a time-offset.
-  static void NormalizePairLists(
-      std::vector<std::vector<std::pair<int32, int32> > > *active_pairs,
-      std::vector<int32> *time_offsets);
+  // This function, used in FindFirstRepeat, tells us whether the two lists a
+  // and b are the same except for a possible time-shift.
+  // Each element of a or b is of the form (matrix-unique-index, time-offset).
+  // Let's suppose we have two pairs p1=(m1, o1) and p2=(m2, o2).
+  // For p2 to be equal to p1 except for a possible shift of value 'shift', we
+  // require m2 == m1 and either o2 == o1 + 'shift' or o2 == o1.
+  // This function returns true if a.size() == b.size() and for each
+  // i, b[i].first == a[i].first and b[i].second is either
+  // a[i].second or a[i].second + shift.
+  static bool ListsAreEqualExceptForPossibleShift(
+      const std::vector<std::pair<int32, int32> > &a,
+      const std::vector<std::pair<int32, int32> > &b,
+      int32 shift);
 
   // This function looks in the matrix 'active_pairs' for the first pair of
   // identical values, i.e. it is looking for i < j for which
@@ -3376,18 +3377,23 @@ class ComputationLoopedOptimizer {
   // each segment should be shifted relative to the previous segment, by
   // 'time_shift_per_segment'.
   static bool FindFirstRepeat(
-      const std::vector<std::vector<std::pair<int32, int32> > > &normalized_active_pairs,
-      const std::vector<int32> &time_offsets,
+      const std::vector<std::vector<std::pair<int32, int32> > > &active_pairs,
       int32 time_shift_per_segment,
       int32 *seg1, int32 *seg2);
 
-  // Converts a list of pairs (e.g. one of the elements of the output of
-  // 'ConvertListsToPairLists)', back into a list of matrix indexes, using the
-  // map 'pair_to_matrix'.
-  static void PairListToMatrixList(
-      const std::vector<std::pair<int32, int32> > &pair_list,
+
+  // 'pair_list1' is the list of active (unique-id, time-offset) pairs for one
+  // segment of the computation and 'pair_list2' is the same list for a later
+  // segment.  The map 'pair_to_matrix' can convert these back into matrix
+  // indexes.  This function will output two lists of matrices.  These will just
+  // be 'pair_list1' and 'pair_list2' converted back into matrix indexes,
+  // except we omit pairs which are identical (i.e. the time-offset was zero).
+  static void GetIdentifiedMatrices(
+      const std::vector<std::pair<int32, int32> > &pair_list1,
+      const std::vector<std::pair<int32, int32> > &pair_list2,
       const unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > &pair_to_matrix,
-      std::vector<int32> *matrix_list);
+      std::vector<int32> *matrix_list1,
+      std::vector<int32> *matrix_list2);
 
 
   // This function just does some checking (via asserts), that
@@ -3529,7 +3535,7 @@ int32 ComputationLoopedOptimizer::NormalizeCindexes(
   }
   if (iter == end) {
     // this should not happen.
-    KALDI_ERR << "All t value are kNoTime in matrix.";
+    KALDI_ERR << "All t values are kNoTime in matrix.";
   }
   iter = cindexes->begin();
   for (; iter != end; iter++)
@@ -3608,49 +3614,41 @@ void ComputationLoopedOptimizer::ConvertListsToPairLists(
 }
 
 // static
-void ComputationLoopedOptimizer::NormalizePairLists(
-    std::vector<std::vector<std::pair<int32, int32> > > *active_pairs,
-    std::vector<int32> *time_offsets) {
-  int32 num_segments = active_pairs->size();
-  time_offsets->resize(num_segments);
-  for (int32 seg = 0; seg < num_segments; seg++) {
-    std::vector<std::pair<int32, int32> > &this_pairs = (*active_pairs)[seg];
-    std::sort(this_pairs.begin(), this_pairs.end());
-    int32 this_offset;
-    if (!this_pairs.empty()) {
-      this_offset = this_pairs[0].second;
-    } else {
-      // if this_pairs is empty, produce arbitrary offsets that are increasing
-      // (this will keep some self-testing code happy).
-      if (seg == 0) { this_offset = 0; }
-      else { this_offset = (*time_offsets)[seg - 1] + 1; }
-    }
-    (*time_offsets)[seg] = this_offset;
-    std::vector<std::pair<int32, int32> >::iterator
-        iter = this_pairs.begin(), end = this_pairs.end();
-    for (; iter != end; ++iter)
-      iter->second -= this_offset;
+bool ComputationLoopedOptimizer::ListsAreEqualExceptForPossibleShift(
+    const std::vector<std::pair<int32, int32> > &a,
+    const std::vector<std::pair<int32, int32> > &b,
+    int32 shift) {
+  size_t size = a.size();
+  if (b.size() != size)
+    return false;
+  for (size_t i = 0; i < size; i++) {
+    const std::pair<int32, int32> &p1 = a[i],
+        &p2 = b[i];
+    if (p1.first != p2.first)
+      return false;
+    if (p2.second != p1.second + shift && p2.second != p1.second)
+      return false;
   }
+  return true;
 }
-
 
 // static
 bool ComputationLoopedOptimizer::FindFirstRepeat(
-    const std::vector<std::vector<std::pair<int32, int32> > > &normalized_active_pairs,
-    const std::vector<int32> &time_offsets,
+    const std::vector<std::vector<std::pair<int32, int32> > > &active_pairs,
     int32 time_shift_per_segment,
     int32 *seg1, int32 *seg2) {
-  int32 num_segments = normalized_active_pairs.size();
+  int32 num_segments = active_pairs.size();
   // This algorithm may seem like it would be very slow, but the number of
   // segments will normally be quite small (e.g. 10), and the comparison of
-  // elements of 'normalized_active_pairs' should be fast in cases where they
+  // elements of 'active_pairs' should be fast in cases where they
   // differ.
   KALDI_ASSERT(num_segments >= 2);
 
   for (int32 s = 0; s < num_segments; s++) {
     for (int32 t = s + 1; t < num_segments; t++) {
-      if ((time_offsets[t]-time_offsets[s] == (t-s) * time_shift_per_segment) &&
-          normalized_active_pairs[s] == normalized_active_pairs[t]) {
+      if (ListsAreEqualExceptForPossibleShift(active_pairs[s],
+                                              active_pairs[t],
+                                              (t - s) * time_shift_per_segment)) {
         *seg1 = s;
         *seg2 = t;
         return true;
@@ -3661,22 +3659,35 @@ bool ComputationLoopedOptimizer::FindFirstRepeat(
 }
 
 // static
-void ComputationLoopedOptimizer::PairListToMatrixList(
-    const std::vector<std::pair<int32, int32> > &pair_list,
+void ComputationLoopedOptimizer::GetIdentifiedMatrices(
+    const std::vector<std::pair<int32, int32> > &pair_list1,
+    const std::vector<std::pair<int32, int32> > &pair_list2,
     const unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > &pair_to_matrix,
-    std::vector<int32> *matrix_list) {
-  matrix_list->resize(pair_list.size());
+    std::vector<int32> *matrix_list1,
+    std::vector<int32> *matrix_list2) {
+  size_t size = pair_list1.size();
+  KALDI_ASSERT(pair_list2.size() == size);
+  matrix_list1->clear();
+  matrix_list2->clear();
+  matrix_list1->reserve(size);
+  matrix_list2->reserve(size);
   std::vector<std::pair<int32, int32> >::const_iterator
-      iter = pair_list.begin(), end = pair_list.end();
-  std::vector<int32>::iterator out_iter = matrix_list->begin();
-  for (; iter != end; ++iter, ++out_iter) {
+      iter1 = pair_list1.begin(), end1 = pair_list1.end(),
+      iter2 = pair_list2.begin();
+  for (; iter1 != end1; ++iter1, ++iter2) {
+    if (iter1->second == iter2->second)
+      continue;
+    // skip those that have no time shift, we won't have to do any swapping for
+    // those.
     unordered_map<std::pair<int32, int32>, int32,
                   PairHasher<int32> >::const_iterator
-        map_iter = pair_to_matrix.find(*iter);
-    if (map_iter == pair_to_matrix.end()) {
+        map_iter1 = pair_to_matrix.find(*iter1),
+        map_iter2 = pair_to_matrix.find(*iter2);
+    if (map_iter1 == pair_to_matrix.end() ||
+        map_iter2 == pair_to_matrix.end())
       KALDI_ERR << "Could not find pair in map (code error)";
-    }
-    *out_iter = map_iter->second;
+    matrix_list1->push_back(map_iter1->second);
+    matrix_list2->push_back(map_iter2->second);
   }
 }
 
@@ -3895,7 +3906,7 @@ bool ComputationLoopedOptimizer::Optimize() {
   std::vector<std::pair<int32, int32> > matrix_to_pair;
   CreateMatrixPairs(*computation_, &matrix_to_pair);
 
-  // Create the reverse map from pair to matrix index; we'll need it.
+  // Create the reverse map from pair to matrix index; we'll need it later.
   unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > pair_to_matrix;
   GetPairToMatrixMap(matrix_to_pair, &pair_to_matrix);
 
@@ -3904,33 +3915,24 @@ bool ComputationLoopedOptimizer::Optimize() {
   ConvertListsToPairLists(active_matrices, matrix_to_pair,
                           &pair_lists);
 
-  std::vector<int32> time_offsets;
-  NormalizePairLists(&pair_lists, &time_offsets);
-
   // Note: seg1 and seg2 are indexes into 'splice_points', representing
   // potential splice points (located near the beginnings of segments).
   int32 seg1, seg2;
   if (!FindFirstRepeat(pair_lists,
-                       time_offsets,
                        time_shift_per_segment,
                        &seg1, &seg2)) {
     KALDI_VLOG(2) << "Could not find repeats of variables.";
     return false;
   }
 
-  // reverse the normalization for segments seg1 and seg2.
-  for (size_t i = 0; i < pair_lists[seg1].size(); i++)
-    pair_lists[seg1][i].second += time_offsets[seg1];
-  for (size_t i = 0; i < pair_lists[seg2].size(); i++)
-    pair_lists[seg2][i].second += time_offsets[seg2];
   std::vector<int32> seg1_matrices, seg2_matrices;
-  PairListToMatrixList(pair_lists[seg1], pair_to_matrix, &seg1_matrices);
-  PairListToMatrixList(pair_lists[seg2], pair_to_matrix, &seg2_matrices);
+  GetIdentifiedMatrices(pair_lists[seg1], pair_lists[seg2],
+                        pair_to_matrix,
+                        &seg1_matrices, &seg2_matrices);
 
-  int32 time_difference = time_offsets[seg2] - time_offsets[seg1];
+  int32 time_difference = time_shift_per_segment * (seg2 - seg1);
   CheckIdentifiedMatrices(*computation_, seg1_matrices, seg2_matrices,
                           time_difference);
-
 
   FormInfiniteLoop(splice_points[seg1], splice_points[seg2], computation_);
 
