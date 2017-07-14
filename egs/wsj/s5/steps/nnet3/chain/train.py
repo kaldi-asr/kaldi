@@ -517,13 +517,10 @@ def train(args, run_opts):
             logger.info("Copying the last-numbered model to final.mdl")
             common_lib.force_symlink("{0}.mdl".format(num_iters),
                                      "{0}/final.mdl".format(args.dir))
-            chain_lib.compute_train_cv_probabilities(
-                dir=args.dir, iter='final', egs_dir=egs_dir,
-                l2_regularize=args.l2_regularize,
-                xent_regularize=args.xent_regularize,
-                leaky_hmm_coefficient=args.leaky_hmm_coefficient,
-                run_opts=run_opts)
-
+            common_lib.force_symlink("compute_prob_valid.{iter}.log".format(
+                                         iter=num_iters-1),
+                                     "{dir}/log/compute_prob_valid.final.log".format(
+                                         dir=args.dir))
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory "
