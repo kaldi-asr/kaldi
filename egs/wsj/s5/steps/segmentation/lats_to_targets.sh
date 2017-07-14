@@ -27,10 +27,12 @@ if [ $# -ne 4 ]; then
   exp/segmentation1a/tri3b_train_split10s_targets
 
   note: 
-  garbage_phones.txt can contain ambiguous items like OOV, laugh, spoken noise
-  etc.
-  silence_phones.txt might just contain data/lang/silence_phones.txt 
-  other than the garbage phones.
+  silence_phones.txt and garbage_phones.txt must list phones, one per line.
+  garbage_phones.txt can contain phones corresponding to ambiguous items like 
+  OOV, laugh and spoken noise that you want to map to "garbage class".
+  silence_phones.txt might just contain the phones from 
+  data/lang/phones/silence_phones.txt other than the garbage phones. These
+  are mapped to the "silence" class.
 EOF
   exit 1
 fi

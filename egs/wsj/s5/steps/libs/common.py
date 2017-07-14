@@ -396,7 +396,6 @@ def read_key(fd):
   str_ = str_.strip()
   if str_ == '':
       return None   # end of file,
-  assert (re.match('^[\.a-zA-Z0-9_-]+$', str_) is not None) # check format,
   return str_
 
 

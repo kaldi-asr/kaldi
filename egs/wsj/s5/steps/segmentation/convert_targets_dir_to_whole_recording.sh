@@ -14,8 +14,10 @@ set -o pipefail -u
 
 if [ $# -ne 4 ]; then
   cat <<EOF
-  Usage: steps/segmentation/convert_targets_to_whole.sh <data-dir> <whole-data-dir> <targets-dir> <whole-targets-dir>
-   e.g.: steps/segmentation/convert_targets_to_whole.sh \
+  This script converts targets at segments level to whole-recording level
+  and writes it into a new targets directory.
+  Usage: steps/segmentation/convert_targets_to_whole_recording.sh <data-dir> <whole-data-dir> <targets-dir> <whole-targets-dir>
+   e.g.: steps/segmentation/convert_targets_to_whole_recording.sh \
     data/train_split10s data/train_whole \
     exp/segmentation1a/tri3b_train_split10s_targets \
     exp/segmentation1a/tri3b_train_whole_targets

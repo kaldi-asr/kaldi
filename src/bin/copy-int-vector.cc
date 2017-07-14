@@ -22,28 +22,6 @@
 #include "matrix/kaldi-vector.h"
 #include "transform/transform-common.h"
 
-namespace kaldi {
-
-// Converts a integer vector into a list of (integer, length) pairs
-// e.g. 0 0 1 1 1 1 1 10 10 10 --> 0 2 ; 1 5 ; 10 3 ;
-void VectorToLengthsPair(const std::vector<int32> &vec, 
-                         std::vector<std::pair<int32, int32> > *pairs) {
-  int32 prev_val = -1, prev_count = 0;
-  for (size_t i = 0; i < vec.size(); i++) {
-    if (vec[i] != prev_val) {
-      if (i > 0)
-        pairs->push_back(std::make_pair(prev_val, prev_count));
-      prev_val = vec[i];
-      prev_count = 0;
-    }
-    prev_count++;
-  }
-  if (prev_count > 0) {
-      pairs->push_back(std::make_pair(prev_val, prev_count));
-  }
-}
-
-}  // end namespace kaldi
 
 int main(int argc, char *argv[]) {
   try {
@@ -58,15 +36,9 @@ int main(int argc, char *argv[]) {
         "   copy-int-vector ark:1.ali ark,t:-\n";
     
     bool binary = true;
-    bool write_lengths = false;
-
     ParseOptions po(usage);
 
     po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
-    po.Register("write-lengths", &write_lengths,
-                "If true, write the output containing contiguous values "
-                "in the format of value and the number of times it repeats. "
-                "e.g. 0 0 1 1 1 1 1 10 10 10 --> 0 2 ; 1 5 ; 10 3 ;");
 
     po.Read(argc, argv);
 
@@ -104,18 +76,10 @@ int main(int argc, char *argv[]) {
       return 0;
     } else {
       int num_done = 0;
-      Int32VectorWriter writer(write_lengths ? "" : vector_out_fn);
-      Int32PairVectorWriter pairs_writer(write_lengths ? vector_out_fn : "");
+      Int32VectorWriter writer(vector_out_fn);
       SequentialInt32VectorReader reader(vector_in_fn);
-      for (; !reader.Done(); reader.Next(), num_done++) {
-        if (write_lengths) {
-          std::vector<std::pair<int32, int32> > pairs;
-          VectorToLengthsPair(reader.Value(), &pairs);
-          pairs_writer.Write(reader.Key(), pairs);
-        } else {
-          writer.Write(reader.Key(), reader.Value());
-        }
-      }
+      for (; !reader.Done(); reader.Next(), num_done++)
+        writer.Write(reader.Key(), reader.Value());
       KALDI_LOG << "Copied " << num_done << " vectors of int32.";
       return (num_done != 0 ? 0 : 1);
     }

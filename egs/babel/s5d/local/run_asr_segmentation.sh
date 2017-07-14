@@ -231,7 +231,7 @@ fi
 # by inserting [ 0 0 0 ] for the out-of-manual segment regions.
 ###############################################################################
 if [ $stage -le 8 ]; then
-  steps/segmentation/convert_targets_dir_to_whole.sh --cmd "$train_cmd" --nj 40 \
+  steps/segmentation/convert_targets_dir_to_whole_recording.sh --cmd "$train_cmd" --nj 40 \
     $data_dir $whole_data_dir \
     $dir/${sat_model_id}_${data_id}_sup_targets \
     $dir/${sat_model_id}_${whole_data_id}_sup_targets
@@ -246,7 +246,7 @@ fi
 # Convert the targets from decoding to whole recording. 
 ###############################################################################
 if [ $stage -le 9 ]; then
-  steps/segmentation/convert_targets_dir_to_whole.sh --cmd "$train_cmd" --nj 40 \
+  steps/segmentation/convert_targets_dir_to_whole_recording.sh --cmd "$train_cmd" --nj 40 \
     $dir/${uniform_seg_data_id} $whole_data_dir \
     $dir/${model_id}_${uniform_seg_data_id}_targets \
     $dir/${model_id}_${whole_data_id}_targets

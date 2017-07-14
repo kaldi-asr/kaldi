@@ -175,8 +175,9 @@ if [ $stage -le 5 ]; then
 
   # 1 for silence and 2 for speech
   cat <<EOF > $graph_dir/words.txt
-1 1
-2 2
+<eps> 0
+silence 1
+speech 2
 EOF
 
   $cmd $graph_dir/log/make_graph.log \
