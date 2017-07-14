@@ -120,7 +120,7 @@ if [ $stage -le 2 ]; then
   mkdir -p $comb_egs_dir/log
   cp {$sup_egs_dir,$comb_egs_dir}/train_diagnostic.cegs
   cp {$sup_egs_dir,$comb_egs_dir}/valid_diagnostic.cegs
-  nnet3-chain-copy-egs "ark:cat $sup_egs_dir/combine.cegs $unsup_egs_dir/combine.cegs |" ark:$comb_egs_dir/combine.ceg
+  nnet3-chain-copy-egs "ark:cat $sup_egs_dir/combine.cegs $unsup_egs_dir/combine.cegs |" ark:$comb_egs_dir/combine.cegs
   cp {$sup_egs_dir,$comb_egs_dir}/cmvn_opts
   cp -r $sup_egs_dir/info $comb_egs_dir
   echo $num_archives > $comb_egs_dir/info/num_archives
