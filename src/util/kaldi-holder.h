@@ -251,9 +251,14 @@ bool ExtractObjectRange(const Vector<Real> &input, const std::string &range,
 /// GeneralMatrix is always of type BaseFloat
 bool ExtractObjectRange(const GeneralMatrix &input, const std::string &range,
                         GeneralMatrix *output);
+
+/// CompressedMatrix is always of the type BaseFloat but it is more
+/// efficient to provide template as it uses CompressedMatrix's own
+/// conversion to Matrix<Real>
 template <class Real>
 bool ExtractObjectRange(const CompressedMatrix &input, const std::string &range,
                         Matrix<Real> *output);
+
 // In SequentialTableReaderScriptImpl and RandomAccessTableReaderScriptImpl, for
 // cases where the scp contained 'range specifiers' (things in square brackets
 // identifying parts of objects like matrices), use this function to separate
