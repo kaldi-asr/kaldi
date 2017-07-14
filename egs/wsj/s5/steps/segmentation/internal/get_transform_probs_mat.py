@@ -47,14 +47,14 @@ def run(args):
     priors = [[1, 1, 1]]
     if args.priors is not None:
         priors = common_lib.read_matrix_ascii(args.priors)
-        if len(priors) != 0 and len(priors[0]) != 2:
+        if len(priors) != 0 and len(priors[0]) != 3:
             raise RuntimeError("Invalid dimension for priors {0}"
                                "".format(priors))
 
     priors_sum = sum(priors[0])
-    sil_prior = args.sil_prior / priors_sum
-    speech_prior = args.speech_prior / priors_sum
-    garbage_prior = args.garbage_prior / priors_sum
+    sil_prior = priors[0] / priors_sum
+    speech_prior = priors[1] / priors_sum
+    garbage_prior = priors[2] / priors_sum
 
     transform_mat = [[1.0 / sil_prior,
                       args.speech_in_sil_weight / speech_prior,

@@ -149,7 +149,9 @@ if [ $stage -le 4 ]; then
       $sad_nnet_dir/$iter.raw $dir/${iter}_${output_name}.raw || exit 1
     iter=${iter}_${output_name}
   else 
-    cp $sad_nnet_dir/$iter.raw $dir/
+    if ! diff $sad_nnet_dir/$iter.raw $dir/$iter.raw; then
+      cp $sad_nnet_dir/$iter.raw $dir/
+    fi
   fi
 
   steps/nnet3/compute_output.sh --nj $nj --cmd "$cmd" \
