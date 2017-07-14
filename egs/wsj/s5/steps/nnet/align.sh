@@ -19,7 +19,7 @@ text= # (optional) transcipts we align to,
 
 align_to_lats=false # optionally produce alignment in lattice format
  lats_decode_opts="--acoustic-scale=0.1 --beam=20 --lattice_beam=10"
- lats_graph_scales="--transition-scale=1.0 --self-loop-scale=0.1"
+ lats_graph_scale="--transition-scale=1.0 --self-loop-scale=0.1"
 
 use_gpu="no" # yes|no|optionaly
 # End configuration options.
@@ -130,7 +130,7 @@ fi
 if [ "$align_to_lats" == "true" ]; then
   echo "$0: aligning also to lattices '$dir/lat.*.gz'"
   $cmd JOB=1:$nj $dir/log/align_lat.JOB.log \
-    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $lat_graph_scale $dir/tree $dir/final.mdl  $lang/L.fst "$tra" ark:- \| \
+    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $lats_graph_scale $dir/tree $dir/final.mdl  $lang/L.fst "$tra" ark:- \| \
     latgen-faster-mapped $lat_decode_opts --word-symbol-table=$lang/words.txt $dir/final.mdl ark:- \
       "$feats" "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 fi
