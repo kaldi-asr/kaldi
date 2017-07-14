@@ -47,27 +47,28 @@ if [ $stage -le 0 ]; then
   done
 fi
 
+train_set=${train_set}_hires
 if [ ! -f $extractor/final.dubm ]; then
   if [ $stage -le 1 ]; then
     mkdir -p exp/nnet2${nnet_affix}
-    steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 10 --num-frames 200000 \
-      data/train 256 exp/tri3b exp/nnet2${nnet_affix}/diag_ubm
+    steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 40 --num-frames 200000 \
+      data/${train_set} 256 exp/tri3b exp/nnet2${nnet_affix}/diag_ubm
   fi
 
   if [ $stage -le 2 ]; then
     # use a smaller iVector dim (50) than the default (100) because RM has a very
     # small amount of data.
-    steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 4 \
+    steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 40 \
       --ivector-dim $ivector_dim \
-     data/train exp/nnet2${nnet_affix}/diag_ubm $extractor || exit 1;
+     data/${train_set} exp/nnet2${nnet_affix}/diag_ubm $extractor || exit 1;
   fi
 fi
 
 if [ $stage -le 3 ]; then
   # having a larger number of speakers is helpful for generalization, and to
   # handle per-utterance decoding well (iVector starts at zero).
-  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/train data/train_max2
+  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${train_set} data/${train_set}_max2
 
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
-    data/train_max2 $extractor exp/nnet2${nnet_affix}/ivectors || exit 1;
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 40 \
+    data/${train_set}_max2 $extractor exp/nnet2${nnet_affix}/ivectors || exit 1;
 fi

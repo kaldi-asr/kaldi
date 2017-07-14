@@ -63,6 +63,19 @@ def get_args():
     parser.add_argument("--chain.lm-opts", type=str, dest='lm_opts',
                         default=None, action=common_lib.NullstrToNoneAction,
                         help="options to be be passed to chain-est-phone-lm")
+    parser.add_argument("--chain.alignments-for-lm", type=str,
+                        dest='alignments_for_lm', default=None,
+                        action=common_lib.NullstrToNoneAction,
+                        help="""Comma-separated list of alignment Directories
+                             containing ali.*.gz and their integer-valued weights
+                             (separated with colon), used to
+                             generate weighted phone language model for
+                             denominator FST. The phone sets should be similar
+                             for all alignment dirs and tree-dir.
+                             If empty, alignments in tree-dir used for phone LM
+                             generation.
+                             e.g. "src1/ali_dir:10.0,src2/ali_dir:2.0"
+                             """)
     parser.add_argument("--chain.l2-regularize", type=float,
                         dest='l2_regularize', default=0.0,
                         help="""Weight of regularization function which is the
@@ -145,6 +158,19 @@ def get_args():
                         steps/nnet3/get_saturation.pl) exceeds this threshold
                         we scale the parameter matrices with the
                         shrink-value.""")
+    parser.add_argument("--trainer.optimization.proportional-shrink", type=float,
+                        dest='proportional_shrink', default=0.0,
+                        help="""If nonzero, this will set a shrinkage (scaling)
+                        factor for the parameters, whose value is set as:
+                        shrink-value=(1.0 - proportional-shrink * learning-rate), where
+                        'learning-rate' is the learning rate being applied
+                        on the current iteration, which will vary from
+                        initial-effective-lrate*num-jobs-initial to
+                        final-effective-lrate*num-jobs-final.
+                        Unlike for train_rnn.py, this is applied unconditionally,
+                        it does not depend on saturation of nonlinearities.
+                        Can be used to roughly approximate l2 regularization.""")
+
     # RNN-specific training options
     parser.add_argument("--trainer.deriv-truncate-margin", type=int,
                         dest='deriv_truncate_margin', default=None,
@@ -156,7 +182,6 @@ def get_args():
                         input data. E.g. 8 is a reasonable setting. Note: the
                         'required' part of the chunk is defined by the model's
                         {left,right}-context.""")
-
     # General options
     parser.add_argument("--feat-dir", type=str, required=True,
                         help="Directory with features used for training "
@@ -211,8 +236,7 @@ def process_args(args):
             or not os.path.exists(args.dir+"/configs")):
         raise Exception("This scripts expects {0} to exist and have a configs "
                         "directory which is the output of "
-                        "make_configs.py script".format(
-                        args.dir))
+                        "make_configs.py script")
 
     if args.transform_dir is None:
         args.transform_dir = args.lat_dir
@@ -263,7 +287,7 @@ def train(args, run_opts):
                                        args.lat_dir)
 
     # Set some variables.
-    num_jobs = common_lib.get_number_of_jobs(args.tree_dir)
+    num_jobs = 4 #common_lib.get_number_of_jobs(args.lat_dir)
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
     ivector_id = common_lib.get_ivector_extractor_id(args.online_ivector_dir)
@@ -301,9 +325,11 @@ def train(args, run_opts):
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
     if (args.stage <= -6):
-        logger.info("Creating phone language-model")
-        chain_lib.create_phone_lm(args.dir, args.tree_dir, run_opts,
-                                  lm_opts=args.lm_opts)
+            logger.info("Creating phone language-model")
+            chain_lib.create_phone_lm(args.dir,
+                                      (args.tree_dir if args.alignments_for_lm is None
+                                      else args.alignments_for_lm), run_opts,
+                                      lm_opts=args.lm_opts)
 
     if (args.stage <= -5):
         logger.info("Creating denominator FST")
@@ -365,6 +391,8 @@ def train(args, run_opts):
                                         egs_left_context, egs_right_context,
                                         egs_left_context_initial,
                                         egs_right_context_final))
+    assert(os.path.getctime('{0}/cegs.1.ark'.format(egs_dir)) >
+           os.path.getctime('{0}/phone_lm.fst'.format(args.dir)))
     assert(args.chunk_width == frames_per_eg_str)
     num_archives_expanded = num_archives * args.frame_subsampling_factor
 
@@ -406,6 +434,14 @@ def train(args, run_opts):
         num_archives_expanded, args.max_models_combine,
         args.num_jobs_final)
 
+    def learning_rate(iter, current_num_jobs, num_archives_processed):
+        return common_train_lib.get_learning_rate(iter, current_num_jobs,
+                                                  num_iters,
+                                                  num_archives_processed,
+                                                  num_archives_to_process,
+                                                  args.initial_effective_lrate,
+                                                  args.final_effective_lrate)
+
     min_deriv_time = None
     max_deriv_time_relative = None
     if args.deriv_truncate_margin is not None:
@@ -427,23 +463,22 @@ def train(args, run_opts):
         if args.stage <= iter:
             model_file = "{dir}/{iter}.mdl".format(dir=args.dir, iter=iter)
 
-            lrate = common_train_lib.get_learning_rate(iter, current_num_jobs,
-                                                       num_iters,
-                                                       num_archives_processed,
-                                                       num_archives_to_process,
-                                                       args.initial_effective_lrate,
-                                                       args.final_effective_lrate)
-            shrinkage_value = 1.0 - (args.proportional_shrink * lrate)
-            if shrinkage_value <= 0.5:
-                raise Exception("proportional-shrink={0} is too large, it gives "
-                                "shrink-value={1}".format(args.proportional_shrink,
-                                                          shrinkage_value))
-            if args.shrink_value < shrinkage_value:
-                shrinkage_value = (args.shrink_value
+            lrate = learning_rate(iter, current_num_jobs,
+                                  num_archives_processed)
+            shrink_value = 1.0
+            if args.proportional_shrink != 0.0:
+                shrink_value = 1.0 - (args.proportional_shrink * lrate)
+                if shrink_value <= 0.5:
+                    raise Exception("proportional-shrink={0} is too large, it gives "
+                                    "shrink-value={1}".format(args.proportional_shrink,
+                                                              shrink_value))
+
+            if args.shrink_value < shrink_value:
+                shrink_value = (args.shrink_value
                                    if common_train_lib.should_do_shrinkage(
                                         iter, model_file,
                                         args.shrink_saturation_threshold)
-                                   else shrinkage_value)
+                                   else shrink_value)
 
             chain_lib.train_one_iteration(
                 dir=args.dir,
@@ -458,7 +493,7 @@ def train(args, run_opts):
                     args.dropout_schedule,
                     float(num_archives_processed) / num_archives_to_process,
                     iter),
-                shrinkage_value=shrinkage_value,
+                shrinkage_value=shrink_value,
                 num_chunk_per_minibatch_str=args.num_chunk_per_minibatch,
                 apply_deriv_weights=args.apply_deriv_weights,
                 min_deriv_time=min_deriv_time,
@@ -470,9 +505,7 @@ def train(args, run_opts):
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 frame_subsampling_factor=args.frame_subsampling_factor,
-                run_opts=run_opts,
-                backstitch_training_scale=args.backstitch_training_scale,
-                backstitch_training_interval=args.backstitch_training_interval)
+                run_opts=run_opts)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
