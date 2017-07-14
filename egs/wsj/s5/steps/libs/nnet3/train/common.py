@@ -502,19 +502,41 @@ def smooth_presoftmax_prior_scale_vector(pdf_counts,
 
 
 def prepare_initial_network(dir, run_opts, srand=-3):
-    if os.path.exists(dir+"/init.raw"):
+    if not os.path.exists("{0}/configs/init.config".format(dir)):
+        edits_config_file = "{0}/configs/edits.config".format(dir)
         common_lib.execute_command(
             """{command} {dir}/log/add_first_layer.log \
                     nnet3-init --srand={srand} {dir}/init.raw \
-                    {dir}/configs/final.config {dir}/0.raw""".format(
+                    {dir}/configs/final.config {dir}/0{edit_suffix}.raw""".format(
                         command=run_opts.command, srand=srand,
-                        dir=dir))
+                        dir=dir,
+                        edit_suffix = ('.pre-edited' if os.path.exists(edits_config_file)
+                        else '')))
+        # Modify 0.pre-edited.raw using edits.config before adding transition model,
+        # that can be used in transfer learning.
+        # It is assumed that there is no init.config and 0.raw does not generated
+        # using init.config and it is copied from another setup.
+        # An example of edits.config is:
+        # i.e. remove-output-nodes name=output
+        #      rename-node old-name=<output-name-in-final-config> new-name=output
+        if os.path.exists(edits_config_file):
+            logger.info("edits 0.raw model using {0}/configs/edits.config."
+                        "".format(dir))
+            common_lib.execute_command(
+                """{command} {dir}/log/edit.log \
+                    nnet3-copy --edits-config={edits_config} {dir}/0.pre-edited.raw \
+                    {dir}/0.raw
+                """.format(command=run_opts.command,
+                           dir=dir,
+                           edits_config=edits_config_file))
+
     else:
         common_lib.execute_command(
             """{command} {dir}/log/init_model.log \
            nnet3-init --srand={srand} {dir}/configs/final.config {dir}/0.raw""".format(
                         command=run_opts.command, srand=srand,
                         dir=dir))
+
 
 
 def get_model_combine_iters(num_iters, num_epochs,
@@ -856,7 +878,7 @@ class CommonParser(object):
                                  sequentially.""")
         self.parser.add_argument("--trainer.optimization.backstitch-training-scale",
                                  type=float, dest='backstitch_training_scale',
-                                 default=0.0, help="""scale of parameters changes 
+                                 default=0.0, help="""scale of parameters changes
                                  used in backstitch training step.""")
         self.parser.add_argument("--trainer.optimization.backstitch-training-interval",
                                  type=int, dest='backstitch_training_interval',

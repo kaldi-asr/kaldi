@@ -31,7 +31,7 @@ def get_args():
     parser.add_argument('--existing-model',
                         help='Filename of previously trained neural net '
                              '(e.g. final.mdl) which is useful in case of '
-                             'using list of component-node in already trained model '
+                             'using list of component-nodes in already trained model '
                              'to generate new config file for new model.'
                              'e.g. In Transfer learning: generate new model using '
                              'nodes in existing model.')
@@ -235,9 +235,9 @@ def add_nnet_context_info(config_dir, existing_model=None,
         model = """ - | nnet3-copy --edits-config={0} - {1}""".format(edits_config,
                                                               model)
     common_lib.execute_command("""nnet3-init {0} {1}/ref.config """
-                                 """ {2} """.format(existing_model if
-                                 existing_model is not None else "",
-                                 config_dir, model))
+                               """ {2} """.format(existing_model if
+                               existing_model is not None else "",
+                               config_dir, model))
     out = common_lib.get_command_stdout("""nnet3-info {0}/ref.raw | """
                                         """head -4""".format(config_dir))
     # out looks like this

@@ -82,7 +82,10 @@ def get_model_component_info(model_filename):
     out = common_lib.get_command_stdout("""nnet3-info {0} | grep '\-node' """
                                         """ """.format(model_filename))
 
-    # out contains all component-nodes used in model_filename
+    # out contains all {input,component}-nodes used in model_filename
+    # It can parse lines in out like:
+    # i.e. input-node name=input dim=40
+    #      component-node name=tdnn1.affine component=tdnn1.affine input=lda input-dim=300 output-dim=512
     layer_names = []
     for line in out.split("\n"):
         parts = line.split(" ")
@@ -93,14 +96,15 @@ def get_model_component_info(model_filename):
             if len(key_value) == 2:
                 key = key_value[0]
                 value = key_value[1]
-                if key == "name":
+                if key == "name":           # name=**
                     layer_name = value
-                    #layer_name, auxiliary_output = xutils.split_layer_name(value)
-                elif key == "input-dim":
+                elif key == "dim":          # for input-node
                     input_dim = int(value)
-                elif key == "output-dim":
+                elif key == "input-dim":    # for component-node
+                    input_dim = int(value)
+                elif key == "output-dim":   # for component-node
                     output_dim = int(value)
-                elif key == "input":
+                elif key == "input":        # for component-node i.e. input=lda
                     input_str = value
 
         if layer_name is not None and layer_name not in layer_names:
@@ -109,9 +113,11 @@ def get_model_component_info(model_filename):
             key_to_value['name'] = layer_name
             if  input_dim != -1:
                 if output_dim == -1:
-                    # The layer is input layer type.
+                    # The layer type is input-node.
                     key_to_value['dim'] = input_dim
-                elif input_str is not None:
+                else:
+                    # The layer type is component-node
+                    assert(input_str is not None)
                     key_to_value['dim'] = output_dim
                 all_layers.append(xlayers.XconfigInputLayer('input', key_to_value, all_layers))
     if len(all_layers) == 0:

@@ -105,8 +105,22 @@ if [ $stage -le 5 ]; then
   rm $lat_dir/fsts.*.gz # save space
 fi
 
+converted_ali_dir=exp/converted_ali_wsj
+if [ $stage -le 6 ]; then
+  echo "$0: convert target alignment using tree in src-tree-dir"
+  mkdir -p $converted_ali_dir
+  mkdir -p $converted_ali_dir/log
+  num_ali_job=`cat $ali_dir/num_jobs`
+  cp $ali_dir/num_jobs $converted_ali_dir
+  cp $src_tree_dir/{tree,final.mdl} $converted_ali_dir
+  $decode_cmd JOB=1:$num_ali_job $converted_ali_dir/log/convert_ali.JOB.log \
+    convert-ali $ali_dir/final.mdl $src_tree_dir/final.mdl \
+    $src_tree_dir/tree "ark:gunzip -c $ali_dir/ali.JOB.gz |" \
+    "ark:| gzip -c > $converted_ali_dir/ali.JOB.gz"
+fi
 
-if [ $stage -le 8 ]; then
+
+if [ $stage -le 7 ]; then
   echo "$0: creating neural net configs using the xconfig parser for";
   echo "extra layers w.r.t source network.";
   num_targets=$(tree-info $src_tree_dir/tree |grep num-pdfs|awk '{print $2}')
@@ -129,21 +143,8 @@ EOF
     --config-dir $dir/configs/
 fi
 
-converted_ali_dir=exp/converted_ali_wsj
-if [ $stage -le 8 ]; then
-  echo "$0: convert target alignment using tree in src-tree-dir"
-  mkdir -p $converted_ali_dir
-  mkdir -p $converted_ali_dir/log
-  num_ali_job=`cat $ali_dir/num_jobs`
-  cp $ali_dir/num_jobs $converted_ali_dir
-  cp $src_tree_dir/{tree,final.mdl} $converted_ali_dir
-  $decode_cmd JOB=1:$num_ali_job $converted_ali_dir/log/convert_ali.JOB.log \
-    convert-ali $ali_dir/final.mdl $src_tree_dir/final.mdl \
-    $src_tree_dir/tree "ark:gunzip -c $ali_dir/ali.JOB.gz |" \
-    "ark:| gzip -c > $converted_ali_dir/ali.JOB.gz"
-fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 8 ]; then
   echo "$0: generate egs for chain to train new model on rm dataset."
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
@@ -183,12 +184,12 @@ if [ $stage -le 9 ]; then
     --dir $dir || exit 1;
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 9 ]; then
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
     data/test_hires $srcdir/exp/nnet3/extractor exp/nnet2${nnet_affix}/ivectors_test || exit 1;
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 10 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
@@ -200,7 +201,7 @@ if [ $stage -le 11 ]; then
     $dir/graph data/test_hires $dir/decode || exit 1;
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 11 ]; then
   utils/mkgraph.sh --self-loop-scale 1.0 $lang_ug_dir $dir $dir/graph_ug
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --nj 20 --cmd "$decode_cmd" \

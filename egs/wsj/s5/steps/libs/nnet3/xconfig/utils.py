@@ -60,7 +60,7 @@ def get_dim_from_layer_name(all_layers, current_layer, full_layer_name):
     for layer in all_layers:
         if layer is current_layer:
             break
-        # if "." used in layer name
+        # if "." used in layer name like tdnn.1
         if layer.get_name() == full_layer_name:
             return  layer.output_dim()
 
