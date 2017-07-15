@@ -537,40 +537,6 @@ class RnnlmMinibatchCreator {
 };
 
 
-/**
-   This typedef represents a single sequence (e.g. part of a sentence, or
-   maybe parts of multiple sentences), for RNNLM training.
-   It's a list of pairs (word-index, weight).  The weight is the
-   weight in the objective function from predicting this word.
-   This will be zero for the initial <s>, and for other words it will
-   normally be a weight that we gave to the dataset it came from;
-   but we sometimes set the weight to zero for words other than <s>
-   at split points (so we can represent the history without having
-   to predict the same word twice).
- */
-typedef std::vector<std::pair<int32, BaseFloat> > RnnlmEgSequence;
-
-
-/**
-   Given a raw word sequence, which should not contain an initial
-   <s> or final </s> (but which may contain </s> internally to demarcate
-   sentences that are part of some naturally continuous sequence),
-   this function splits it if necessary to form form a vector of
-   'RnnlmEgSequence', containing sub-parts of the sentence.
-
-
-*/
-void PrepareRnnlmEgSequences(const RnnlmEgsConfig &config,
-                             const std::vector<int32> &raw_word_sequence,
-                             BaseFloat weight,
-                             std::vector<RnnlmEgSequence> *sequence);
-
-
-void SplitRnnlmEgSequence(const std::vector<int32> raw_word_sequence,
-                          BaseFloat weight,
-                          const RnnlmEgsConfig,
-                          std::vector<RnnlmEgSequence> *sequences);
-
 
 
 } // namespace rnnlm
