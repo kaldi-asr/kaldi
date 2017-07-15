@@ -782,8 +782,8 @@ void CompressedMatrix::CopyToMat(int32 row_offset,
   KALDI_PARANOID_ASSERT(col_offset < this->NumCols());
   KALDI_PARANOID_ASSERT(row_offset >= 0);
   KALDI_PARANOID_ASSERT(col_offset >= 0);
-  KALDI_ASSERT(row_offset+dest->NumRows() < this->NumRows());
-  KALDI_ASSERT(col_offset+dest->NumCols() < this->NumCols());
+  KALDI_ASSERT(row_offset+dest->NumRows() <= this->NumRows());
+  KALDI_ASSERT(col_offset+dest->NumCols() <= this->NumCols());
   // everything is OK
   GlobalHeader *h = reinterpret_cast<GlobalHeader*>(data_);
   int32 num_rows = h->num_rows, num_cols = h->num_cols,
