@@ -1,19 +1,24 @@
 #!/bin/bash
 
-# tdnn_blstm_1a is same as blstm_6k, but with the initial tdnn layers
-# blstm_6k : num-parameters: 41155430
-# tdnn_blstm_1a : num-parameters: 53688166
+# Copyright 2015  Johns Hopkins University (Author: Daniel Povey).
+#           2015  Vijayaditya Peddinti
+#           2016  Yiming Wang
+#           2017  Google  Inc. (vpeddinti@google.com)
+# Apache 2.0.
 
-# local/chain/compare_wer_general.sh blstm_6k_sp tdnn_blstm_1a_sp
-# System                blstm_6k_sp tdnn_blstm_1a_sp
-# WER on train_dev(tg)      13.25     12.95
-# WER on train_dev(fg)      12.27     11.98
-# WER on eval2000(tg)        15.7      15.5
-# WER on eval2000(fg)        14.5      14.1
-# Final train prob         -0.052    -0.041
-# Final valid prob         -0.080    -0.072
-# Final train prob (xent)        -0.743    -0.629
-# Final valid prob (xent)       -0.8816   -0.8091
+
+# 6o is same as 6k, but with two additional BLSTM layers
+# and delay of -1 for the first blstm layer
+# local/chain/compare_wer_general.sh blstm_6k_sp blstm_6o_sp
+# System                blstm_6k_sp blstm_6o_sp
+# WER on train_dev(tg)      12.95     12.60
+# WER on train_dev(fg)      11.98     11.75
+# WER on eval2000(tg)        15.5      14.7
+# WER on eval2000(fg)        14.1      13.4
+# Final train prob         -0.041    -0.041
+# Final valid prob         -0.072    -0.069
+# Final train prob (xent)        -0.629    -0.636
+# Final valid prob (xent)       -0.8091   -0.7854
 
 set -e
 
@@ -22,7 +27,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_blstm_1a  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/blstm_6o  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_dir_affix=
 
@@ -135,13 +140,10 @@ if [ $stage -le 12 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=1024
-  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
-  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
-  fast-lstmp-layer name=blstm1-forward input=tdnn3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
-  fast-lstmp-layer name=blstm1-backward input=tdnn3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $lstm_opts
+  fast-lstmp-layer name=blstm1-forward input=lda cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-1 $lstm_opts
+  fast-lstmp-layer name=blstm1-backward input=lda cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=1 $lstm_opts
 
   fast-lstmp-layer name=blstm2-forward input=Append(blstm1-forward, blstm1-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
   fast-lstmp-layer name=blstm2-backward input=Append(blstm1-forward, blstm1-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $lstm_opts
@@ -149,8 +151,15 @@ if [ $stage -le 12 ]; then
   fast-lstmp-layer name=blstm3-forward input=Append(blstm2-forward, blstm2-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
   fast-lstmp-layer name=blstm3-backward input=Append(blstm2-forward, blstm2-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $lstm_opts
 
+
+  fast-lstmp-layer name=blstm4-forward input=Append(blstm3-forward, blstm3-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  fast-lstmp-layer name=blstm4-backward input=Append(blstm3-forward, blstm3-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $lstm_opts
+
+  fast-lstmp-layer name=blstm5-forward input=Append(blstm4-forward, blstm4-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  fast-lstmp-layer name=blstm5-backward input=Append(blstm4-forward, blstm4-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $lstm_opts
+
   ## adding the layers for chain branch
-  output-layer name=output input=Append(blstm3-forward, blstm3-backward) output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
+  output-layer name=output input=Append(blstm5-forward, blstm5-backward) output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -161,7 +170,7 @@ if [ $stage -le 12 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  output-layer name=output-xent input=Append(blstm3-forward, blstm3-backward) output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  output-layer name=output-xent input=Append(blstm5-forward, blstm5-backward) output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -182,7 +191,7 @@ if [ $stage -le 13 ]; then
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
-    --trainer.num-chunk-per-minibatch 64 \
+    --trainer.num-chunk-per-minibatch 32 \
     --trainer.frames-per-iter 1200000 \
     --trainer.max-param-change 2.0 \
     --trainer.num-epochs 4 \

@@ -1714,7 +1714,8 @@ template<typename Real>
 void CuMatrixBase<Real>::DiffSoftmaxPerRow(const CuMatrixBase<Real> &value,
                                            const CuMatrixBase<Real> &diff) {
 
-  KALDI_ASSERT(SameDim(value, diff) && SameDim(value, *this));
+  KALDI_ASSERT(SameDim(value, diff) && SameDim(value, *this) &&
+               this != &value);
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -1734,12 +1735,12 @@ void CuMatrixBase<Real>::DiffSoftmaxPerRow(const CuMatrixBase<Real> &value,
     const CuMatrixBase<Real> &P(value), &E(diff);
     CuMatrixBase<Real> &D(*this);
 
-    D.CopyFromMat(P);
-    D.MulElements(E);
-    // At this point, D = P .* E (in matlab notation)
     CuVector<Real> pe_vec(D.NumRows()); // For each row i, the dot product (p_t . e_t).
     pe_vec.AddDiagMatMat(1.0, P, kNoTrans, E, kTrans, 0.0);
 
+    D.CopyFromMat(E);
+    D.MulElements(P);
+    // At this point, D = P .* E (in matlab notation)
     D.AddDiagVecMat(-1.0, pe_vec, P, kNoTrans, 1.0); // does D -= diag(pe_vec) * P.
   }
 }
@@ -1748,7 +1749,8 @@ template<typename Real>
 void CuMatrixBase<Real>::DiffLogSoftmaxPerRow(
     const CuMatrixBase<Real> &out_value, const CuMatrixBase<Real> &out_deriv) {
 
-  KALDI_ASSERT(SameDim(out_value, out_deriv) && SameDim(out_value, *this));
+  KALDI_ASSERT(SameDim(out_value, out_deriv) && SameDim(out_value, *this) &&
+               this != &out_value);
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -1766,6 +1768,13 @@ void CuMatrixBase<Real>::DiffLogSoftmaxPerRow(
   } else
 #endif
   {
+    if (this == &out_deriv) {
+      // the code below doesn't work for in-place, so make a copy and recurse.
+      CuMatrix<Real> temp(NumRows(), NumCols(), kUndefined);
+      temp.DiffLogSoftmaxPerRow(out_value, out_deriv);
+      CopyFromMat(temp);
+      return;
+    }
     /*
      Let the output be y, then
      y_i = x_i - log(sum_i exp(x_i))

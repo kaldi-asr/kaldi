@@ -1,19 +1,17 @@
 #!/bin/bash
 
-# tdnn_blstm_1a is same as blstm_6k, but with the initial tdnn layers
-# blstm_6k : num-parameters: 41155430
-# tdnn_blstm_1a : num-parameters: 53688166
+# tdnn_blstm_1d is same as tdnn_blstm_1c, but with the perframe-dropout added
 
-# local/chain/compare_wer_general.sh blstm_6k_sp tdnn_blstm_1a_sp
-# System                blstm_6k_sp tdnn_blstm_1a_sp
-# WER on train_dev(tg)      13.25     12.95
-# WER on train_dev(fg)      12.27     11.98
-# WER on eval2000(tg)        15.7      15.5
-# WER on eval2000(fg)        14.5      14.1
-# Final train prob         -0.052    -0.041
-# Final valid prob         -0.080    -0.072
-# Final train prob (xent)        -0.743    -0.629
-# Final valid prob (xent)       -0.8816   -0.8091
+# ./local/chain/compare_wer_general.sh tdnn_blstm_1c_sp tdnn_blstm_1d_sp
+# System                tdnn_blstm_1c_sp tdnn_blstm_1d_sp
+# WER on train_dev(tg)      12.88     12.61
+# WER on train_dev(fg)      12.01     11.61
+# WER on eval2000(tg)        15.6      15.1
+# WER on eval2000(fg)        14.2      13.7
+# Final train prob         -0.060    -0.069
+# Final valid prob         -0.085    -0.090
+# Final train prob (xent)        -0.737    -0.806
+# Final valid prob (xent)       -0.8558   -0.8922
 
 set -e
 
@@ -22,24 +20,21 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_blstm_1a  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_blstm_1d  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_dir_affix=
 
 # training options
 leftmost_questions_truncate=-1
-chunk_width=150
+chunk_width=140,100,160
 chunk_left_context=40
 chunk_right_context=40
 xent_regularize=0.025
 self_repair_scale=0.00001
 label_delay=0
-
+dropout_schedule='0,0@0.20,0.1@0.50,0'
 # decode options
-extra_left_context=50
-extra_right_context=50
 frames_per_chunk=
-
 remove_egs=false
 common_egs_dir=
 
@@ -122,7 +117,7 @@ if [ $stage -le 12 ]; then
   [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
-  lstm_opts="decay-time=20"
+  lstm_opts="decay-time=20 dropout-proportion=0.0"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -198,6 +193,9 @@ if [ $stage -le 13 ]; then
     --egs.chunk-width $chunk_width \
     --egs.chunk-left-context $chunk_left_context \
     --egs.chunk-right-context $chunk_right_context \
+    --egs.chunk-left-context-initial=0 \
+    --egs.chunk-right-context-final=0 \
+    --trainer.dropout-schedule $dropout_schedule \
     --egs.dir "$common_egs_dir" \
     --cleanup.remove-egs $remove_egs \
     --feat-dir data/${train_set}_hires \
@@ -216,9 +214,6 @@ fi
 decode_suff=sw1_tg
 graph_dir=$dir/graph_sw1_tg
 if [ $stage -le 15 ]; then
-  [ -z $extra_left_context ] && extra_left_context=$chunk_left_context;
-  [ -z $extra_right_context ] && extra_right_context=$chunk_right_context;
-  [ -z $frames_per_chunk ] && frames_per_chunk=$chunk_width;
   iter_opts=
   if [ ! -z $decode_iter ]; then
     iter_opts=" --iter $decode_iter "
@@ -227,8 +222,10 @@ if [ $stage -le 15 ]; then
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj 50 --cmd "$decode_cmd" $iter_opts \
-          --extra-left-context $extra_left_context  \
-          --extra-right-context $extra_right_context  \
+          --extra-left-context $chunk_left_context  \
+          --extra-right-context $chunk_right_context  \
+          --extra-left-context-initial 0 \
+          --extra-right-context-final 0 \
           --frames-per-chunk "$frames_per_chunk" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires \

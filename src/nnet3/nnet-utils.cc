@@ -1288,7 +1288,7 @@ class ModelCollapser {
       return component_index;
     std::ostringstream os;
     os << nnet_->GetComponentName(component_index)
-       << ":scale" << std::setprecision(3) << scale;
+       << ".scale" << std::setprecision(3) << scale;
     std::string new_component_name = os.str();  // e.g. foo.s2.0
     int32 ans = nnet_->GetComponentIndex(new_component_name);
     if (ans >= 0)
