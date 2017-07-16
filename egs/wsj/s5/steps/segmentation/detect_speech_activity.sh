@@ -223,7 +223,7 @@ fi
 
 if [ $stage -le 7 ]; then
   steps/segmentation/post_process_sad_to_segments.sh \
-    --post-processing-opts "$post_processing_opts" \
+    --segment-padding $segment_padding \
     --cmd "$cmd" --frame-shift $(perl -e "print $frame_subsampling_factor * $frame_shift") \
     ${test_data_dir} ${seg_dir} ${seg_dir}
 fi
