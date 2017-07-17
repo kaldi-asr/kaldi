@@ -16,6 +16,9 @@
 #Final train prob (xent)      -0.913            -0.950
 #Final valid prob (xent)      -1.0820           -1.0341
 
+# exp/chain/tdnn_lstm_1l_ld5_sp: num-iters=327 nj=3..16 num-params=39.6M dim=40+100->6074 combine=-0.088->-0.084 xent:train/valid[217,326,final]=(-3.32,-0.961,-0.913/-3.40,-1.13,-1.08) logprob:train/valid[217,326,final]=(-0.176,-0.072,-0.069/-0.198,-0.097,-0.095)
+# exp/chain/tdnn_lstm_1m_ld5_sp: num-iters=262 nj=3..16 num-params=39.6M dim=40+100->6050 combine=-0.091->-0.088 xent:train/valid[173,261,final]=(-1.33,-0.947,-0.950/-1.39,-1.03,-1.03) logprob:train/valid[173,261,final]=(-0.112,-0.080,-0.081/-0.127,-0.100,-0.100)
+
 set -e
 
 # configs for 'chain'
