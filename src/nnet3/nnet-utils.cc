@@ -656,7 +656,7 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
       KALDI_LOG << "Set learning rates for " << num_learning_rates_set << " nodes.";
     } else if (directive == "set-learning-rate-factor") {
       std::string name_pattern = "*";
-      // name_pattern defaults to '*' if non is given.
+      // name_pattern defaults to '*' if none is given.
       config_line.GetValue("name", &name_pattern);
       BaseFloat learning_rate_factor = -1;
       if (!config_line.GetValue("learning-rate-factor", &learning_rate_factor)) {

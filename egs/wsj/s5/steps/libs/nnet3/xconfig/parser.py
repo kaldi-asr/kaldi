@@ -111,20 +111,21 @@ def get_model_component_info(model_filename):
             key_to_value = dict()
             layer_names.append(layer_name)
             key_to_value['name'] = layer_name
-            if  input_dim != -1:
-                if output_dim == -1:
-                    # The layer type is input-node.
-                    key_to_value['dim'] = input_dim
-                else:
-                    # The layer type is component-node
-                    assert(input_str is not None)
-                    key_to_value['dim'] = output_dim
-                all_layers.append(xlayers.XconfigInputLayer('input', key_to_value, all_layers))
+            assert(input_dim != -1)
+            if output_dim == -1:
+                # The layer type is input-node.
+                key_to_value['dim'] = input_dim
+            else:
+                # The layer type is component-node
+                assert(input_str is not None)
+                key_to_value['dim'] = output_dim
+            all_layers.append(xlayers.XconfigInputLayer('input', key_to_value, all_layers))
     if len(all_layers) == 0:
         raise RuntimeError("{0}: model filename '{1}' is empty.".format(
             sys.argv[0], model_filename))
     f.close()
     return all_layers
+
 
 # This function reads an xconfig file and returns it as a list of layers
 # (usually we use the variable name 'all_layers' elsewhere for this).

@@ -4,7 +4,8 @@
 #           2016    Vimal Manohar
 # Apache 2.0.
 
-""" This script is based on steps/nnet3/chain/train.sh
+""" This script is as steps/nnet3/chain/train.py but it is used for weight transfer
+    and generates weighted phone LM for chain model using multiple alignment sources.
 """
 
 import argparse
@@ -71,7 +72,7 @@ def get_args():
                              (separated with colon), used to
                              generate weighted phone language model for
                              denominator FST. The phone sets should be similar
-                             for all alignment dirs and tree-dir.
+                             for all alignment dirs.
                              If empty, alignments in tree-dir used for phone LM
                              generation.
                              e.g. "src1/ali_dir:10.0,src2/ali_dir:2.0"
@@ -287,7 +288,7 @@ def train(args, run_opts):
                                        args.lat_dir)
 
     # Set some variables.
-    num_jobs = 4 #common_lib.get_number_of_jobs(args.lat_dir)
+    num_jobs = common_lib.get_number_of_jobs(args.lat_dir)
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
     ivector_id = common_lib.get_ivector_extractor_id(args.online_ivector_dir)
@@ -326,9 +327,8 @@ def train(args, run_opts):
     # transform.
     if (args.stage <= -6):
             logger.info("Creating phone language-model")
-            chain_lib.create_phone_lm(args.dir,
-                                      (args.tree_dir if args.alignments_for_lm is None
-                                      else args.alignments_for_lm), run_opts,
+            chain_lib.create_phone_lm(args.dir, args.tree_dir, run_opts,
+                                      alignment_dirs=args.alignments_for_lm,
                                       lm_opts=args.lm_opts)
 
     if (args.stage <= -5):
@@ -391,6 +391,8 @@ def train(args, run_opts):
                                         egs_left_context, egs_right_context,
                                         egs_left_context_initial,
                                         egs_right_context_final))
+
+    # check the cegs.*.ark is newer than phone LM "phone_lm.fst".
     assert(os.path.getctime('{0}/cegs.1.ark'.format(egs_dir)) >
            os.path.getctime('{0}/phone_lm.fst'.format(args.dir)))
     assert(args.chunk_width == frames_per_eg_str)

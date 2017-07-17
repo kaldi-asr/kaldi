@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # This script uses weight transfer as a Transfer learning method
-# and use already trained model on wsj and remove the last layer and
-# add new randomly initialized layer and retrain the whole network.
+# and use already trained model on wsj and removes the last layer and
+# add new randomly initialized layer and retrain the whole network,
 # while training new added layer using rm data.
-# The chain config is as run_tdnn_5n.sh and the result is:
-#System tdnn_5n tdnn_wsj_rm
-#WER      2.71     2.21
+# The chain config is as in run_tdnn_5n.sh and the result is:
+#System tdnn_5n tdnn_wsj_rm_1a
+#WER      2.71     2.09
 set -e
 
 # configs for 'chain'
@@ -133,7 +133,7 @@ if [ $stage -le 8 ]; then
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/rm-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
   echo "$0: set the learning-rate-factor for initial network to be zero."
-  nnet3-am-copy --raw=true --edits="set-learning-rate-factor name=* learning-rate-factor=$primary_lr_factor" \
+  nnet3-copy --edits="set-learning-rate-factor name=* learning-rate-factor=$primary_lr_factor" \
     $src_mdl $dir/init.raw || exit 1;
 
   steps/nnet3/chain/train.py --stage $train_stage \

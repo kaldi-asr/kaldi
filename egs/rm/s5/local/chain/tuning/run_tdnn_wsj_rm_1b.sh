@@ -44,7 +44,7 @@ src_tree_dir=$srcdir/exp/chain/tree_a_sp # chain tree-dir for src data;
 primary_lr_factor=0.25 # learning-rate factor for all except last layer in transferring source model
 final_lr_factor=1.0   # learning-rate factor for final layer in transferring source model.
 nnet_affix=_online_wsj
-tg_lm_scale=10
+tgt_lm_scale=10
 src_lm_scale=1
 tdnn_affix=_1b
 # End configuration section.
@@ -76,7 +76,7 @@ dir=exp/chain/tdnn_wsj_rm${tdnn_affix}
 if [ $stage -le -1 ]; then
   echo "$0: prepare lexicon.txt for RM using WSJ lexicon."
   if ! cmp -s <(grep -v "^#" $src_lang/phones.txt) <(grep -v "^#" data/lang/phones.txt); then
-  local/prepare_wsj_rm_lang.sh  $srcdir/data/local/dict_nosp $srcdir/data/lang/phones.txt $lang_dir
+  local/prepare_wsj_rm_lang.sh  $srcdir/data/local/dict_nosp $srcdir/data/lang $lang_dir
   else
     rm -rf $lang_dir
     cp -r data/lang $lang_dir
@@ -105,38 +105,14 @@ if [ $stage -le 5 ]; then
   rm $lat_dir/fsts.*.gz # save space
 fi
 
-converted_ali_dir=exp/converted_ali_wsj
 if [ $stage -le 6 ]; then
-  echo "$0: convert target alignment using tree in src-tree-dir"
-  mkdir -p $converted_ali_dir
-  mkdir -p $converted_ali_dir/log
-  num_ali_job=`cat $ali_dir/num_jobs`
-  cp $ali_dir/num_jobs $converted_ali_dir
-  cp $src_tree_dir/{tree,final.mdl} $converted_ali_dir
-  $decode_cmd JOB=1:$num_ali_job $converted_ali_dir/log/convert_ali.JOB.log \
-    convert-ali $ali_dir/final.mdl $src_tree_dir/final.mdl \
-    $src_tree_dir/tree "ark:gunzip -c $ali_dir/ali.JOB.gz |" \
-    "ark:| gzip -c > $converted_ali_dir/ali.JOB.gz"
-fi
-
-
-if [ $stage -le 7 ]; then
   echo "$0: creating neural net configs using the xconfig parser for";
   echo "extra layers w.r.t source network.";
   num_targets=$(tree-info $src_tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   mkdir -p $dir
   mkdir -p $dir/configs
-  cat <<EOF > $dir/configs/network.xconfig
-  output-layer name=output-tmp input=tdnn6.renorm dim=$num_targets
-EOF
-  # edits.config contains edits required to train transferred model.
-  # e.g. substitute output-node of previous model with new output
-  # and removing orphan nodes and components.
-  cat <<EOF > $dir/configs/edits.config
-  remove-output-nodes name=output-tmp
-  remove-orphans
-EOF
+  touch $dir/configs/network.xconfig
   steps/nnet3/xconfig_to_configs.py --existing-model $src_mdl \
     --xconfig-file  $dir/configs/network.xconfig  \
     --edits-config $dir/configs/edits.config \
@@ -144,7 +120,7 @@ EOF
 fi
 
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 7 ]; then
   echo "$0: generate egs for chain to train new model on rm dataset."
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
@@ -159,7 +135,7 @@ if [ $stage -le 8 ]; then
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir exp/nnet2${nnet_affix}/ivectors \
     --chain.xent-regularize $xent_regularize \
-    --chain.alignments-for-lm="$converted_ali_dir:$tg_lm_scale,$src_tree_dir:$src_lm_scale" \
+    --chain.alignments-for-lm="$ali_dir:$tgt_lm_scale,$src_tree_dir:$src_lm_scale" \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize 0.1 \
     --chain.leaky-hmm-coefficient 0.1 \
@@ -184,12 +160,12 @@ if [ $stage -le 8 ]; then
     --dir $dir || exit 1;
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 8 ]; then
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
     data/test_hires $srcdir/exp/nnet3/extractor exp/nnet2${nnet_affix}/ivectors_test || exit 1;
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 9 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
@@ -201,7 +177,7 @@ if [ $stage -le 10 ]; then
     $dir/graph data/test_hires $dir/decode || exit 1;
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 10 ]; then
   utils/mkgraph.sh --self-loop-scale 1.0 $lang_ug_dir $dir $dir/graph_ug
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --nj 20 --cmd "$decode_cmd" \

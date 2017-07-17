@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
         "Initialize un-smoothed phone language model for 'chain' training\n"
         "Output in FST format (epsilon-free deterministic acceptor)\n"
         "\n"
-        "Usage:  chain-est-phone-lm [options] <phone-seqs-rspecifier-1> ... <phone-seqs-rspecifier-n> <phone-lm-fst-out>\n"
+        "Usage:  chain-est-phone-lm [options] <phone-seqs-rspecifier-1> [... <phone-seqs-rspecifier-n>] <phone-lm-fst-out>\n"
         "The phone-sequences are used to train a language model.\n"
         "e.g.:\n"
         "gunzip -c input_dir/ali.*.gz | ali-to-phones input_dir/final.mdl ark:- ark:- | \\\n"

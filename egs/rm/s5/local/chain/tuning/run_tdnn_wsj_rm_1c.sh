@@ -74,7 +74,7 @@ lat_dir=exp/chain_lats${src_tree_dir:+_wsj}
 if [ $stage -le -1 ]; then
   echo "$0: prepare lang for RM-WSJ using WSJ phone set and lexicon and RM word list."
   if ! cmp -s <(grep -v "^#" $src_lang/phones.txt) <(grep -v "^#" data/lang/phones.txt); then
-  local/prepare_wsj_rm_lang.sh  $srcdir/data/local/dict_nosp $src_lang/phones.txt $lang_dir
+  local/prepare_wsj_rm_lang.sh  $srcdir/data/local/dict_nosp $src_lang $lang_dir
   else
     rm -rf $lang_dir
     cp -r data/lang $lang_dir
@@ -119,14 +119,7 @@ if [ $stage -le 6 ]; then
   num_targets=$(tree-info $src_tree_dir/tree |grep num-pdfs|awk '{print $2}')
   mkdir -p $dir
   mkdir -p $dir/configs
-  cat <<EOF > $dir/configs/network.xconfig
-  output-layer name=output-tmp input=tdnn6.renorm dim=$num_targets
-EOF
-
-  cat <<EOF > $dir/configs/edits.config
-  remove-output-nodes name=output-tmp
-  remove-orphans
-EOF
+  touch $dir/configs/network.xconfig
   steps/nnet3/xconfig_to_configs.py --existing-model $src_mdl \
     --xconfig-file  $dir/configs/network.xconfig  \
     --edits-config $dir/configs/edits.config \

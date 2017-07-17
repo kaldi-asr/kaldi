@@ -228,7 +228,7 @@ def write_config_files(config_dir, all_layers):
 
 
 def add_nnet_context_info(config_dir, existing_model=None,
-                                edits_config=None):
+                          edits_config=None):
     """This will be removed when python script refactoring is done."""
     model = "{0}/ref.raw".format(config_dir)
     if edits_config is not None:

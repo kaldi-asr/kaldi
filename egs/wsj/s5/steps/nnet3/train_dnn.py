@@ -208,8 +208,7 @@ def train(args, run_opts):
                         nnet3-init --srand=-2 {dir}/configs/init.config \
                         {dir}/init.raw""".format(command=run_opts.command,
                                                  dir=args.dir))
-        else:
-            assert(os.path.exists(args.dir+"/init.raw"))
+        assert(os.path.exists(args.dir+"/init.raw"))
 
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -4) and args.egs_dir is None:
