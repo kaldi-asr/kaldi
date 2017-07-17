@@ -5,4 +5,4 @@
 %WER 13.64 [ 14294 / 104765, 669 ins, 736 del, 12889 sub ] exp/tri4a/decode_test/cer_14_0.5
 %WER 12.23 [ 12809 / 104765, 656 ins, 580 del, 11573 sub ] exp/tri5a/decode_test/cer_13_1.0
 %WER 8.45 [ 8849 / 104765, 312 ins, 538 del, 7999 sub ] exp/nnet3/tdnn_sp/decode_test/cer_13_1.0
-%WER 7.62 [ 7987 / 104765, 335 ins, 509 del, 7143 sub ] exp/chain/tdnn_7h_sp/decode_test/cer_11_0.5
+%WER 7.46 [ 7813 / 104765, 287 ins, 472 del, 7054 sub ] exp/chain/tdnn_1a_sp/decode_test/cer_10_1.0
