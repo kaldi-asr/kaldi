@@ -27,6 +27,7 @@
 #include "util/kaldi-io.h"
 #include "util/text-utils.h"
 #include "matrix/kaldi-vector.h"
+#include "matrix/sparse-matrix.h"
 
 namespace kaldi {
 
@@ -242,11 +243,21 @@ template <class Real>
 bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
                         Matrix<Real> *output);
 
-/// The template is specialized types Vector<float> and Vector<double>.  
+/// The template is specialized types Vector<float> and Vector<double>.
 template <class Real>
 bool ExtractObjectRange(const Vector<Real> &input, const std::string &range,
                         Vector<Real> *output);
 
+/// GeneralMatrix is always of type BaseFloat
+bool ExtractObjectRange(const GeneralMatrix &input, const std::string &range,
+                        GeneralMatrix *output);
+
+/// CompressedMatrix is always of the type BaseFloat but it is more
+/// efficient to provide template as it uses CompressedMatrix's own
+/// conversion to Matrix<Real>
+template <class Real>
+bool ExtractObjectRange(const CompressedMatrix &input, const std::string &range,
+                        Matrix<Real> *output);
 
 // In SequentialTableReaderScriptImpl and RandomAccessTableReaderScriptImpl, for
 // cases where the scp contained 'range specifiers' (things in square brackets
