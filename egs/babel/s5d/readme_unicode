@@ -78,8 +78,9 @@ local/lexicon/apply_morphs.sh
    in the language should do. The conversational transcriptions were used in
    this script however.
 
-3. Segment each word in the word list into its morphemes. Represent this as
-   a lexicon of sorts.
+3. Segment each word in the word list into its morphemes. The result of this
+   is a file with words one column and the morpheme-segmented words, using '.'
+   as the morpheme separator in the other column.
 
 local/lexicon/make_unicode_lexicon.py
 
@@ -96,7 +97,11 @@ local/prepare_unicode_lexicon.py
 
 
 local/lexicon/make_unicode_lexicon.py --apply-map data/local/grapheme_map.txt
-7. Apply the existing grapheme map to a new set of words. See 
+                                      --extra-lexicon data/local/lexicon.txt
+7. Apply the existing grapheme map to a new set of words. It takes the original
+   lexicon (data/local/lexicon.txt) and adds to it the entries derived from
+   a new wordlist. This is how to generate new entries in the lexicon without
+   retraining the acoustic models. 
 
 run-unicode-lexicon.sh
 
