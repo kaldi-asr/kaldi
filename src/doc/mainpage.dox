@@ -34,14 +34,15 @@
    location.  <a href=http://kaldi-asr.org>kaldi-asr.org/doc</a> is the
    definitive location of this documentation.  Kaldi's code repository is
    now located at <a href="http://github.com/kaldi-asr/kaldi">http://github.com/kaldi-asr/kaldi</a>
-    
-   See also the top level of <a href=http://kaldi-asr.org>kaldi-asr.org</a>, where 
+
+   See also the top level of <a href=http://kaldi-asr.org>kaldi-asr.org</a>, where
    you can download pre-built models.
 
   <p>
-   - \subpage about 
+   - \subpage about
    - \subpage other
-   - \subpage install 
+   - \subpage install
+   - \subpage versions
    - \subpage dependencies
    - \subpage legal
    - \subpage tutorial
@@ -49,26 +50,26 @@
    - \subpage examples
    - \subpage glossary
    - \subpage data_prep
-   - \subpage build_setup 
-   - \subpage style 
-   - \subpage history 
-   - \subpage matrix 
-   - \subpage matrixwrap 
+   - \subpage build_setup
+   - \subpage style
+   - \subpage history
+   - \subpage matrix
+   - \subpage matrixwrap
    - \subpage cudamatrix
-   - \subpage io 
+   - \subpage io
    - \subpage io_tut
-   - \subpage error 
-   - \subpage parse_options 
+   - \subpage error
+   - \subpage parse_options
    - \subpage util
    - \subpage clustering
    - \subpage hmm
    - \subpage tree_internals
    - \subpage tree_externals
-   - \subpage graph 
+   - \subpage graph
    - \subpage graph_recipe_test
    - \subpage graph_recipe_train
-   - \subpage fst_algo 
-   - \subpage decoders 
+   - \subpage fst_algo
+   - \subpage decoders
    - \subpage lattices
    - \subpage model
    - \subpage feat
@@ -76,7 +77,7 @@
    - \subpage dnn
      - \ref dnn1
      - \ref dnn2
-     - \ref dnn3     
+     - \ref dnn3
      - \ref chain
    - \subpage online_decoding
    - \subpage kws

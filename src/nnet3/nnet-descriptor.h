@@ -70,7 +70,7 @@ namespace nnet3 {
 ;; arguments
 <descriptor>  ::=   Switch(<descriptor>, <descriptor> [, <descriptor> ...])
 ;; For use in clockwork RNNs or similar, Round() rounds the time-index t of the
-;; requested Index to the next-lowest multiple of the integer <t-modulus>
+;; requested Index to the next-lowest multiple of the integer <t-modulus>,
 ;; and evaluates the input argument for the resulting Index.
 <descriptor>  ::=   Round(<descriptor>, <t-modulus>)  ;; <t-modulus> is an integer
 ;; ReplaceIndex replaces some <variable-name> (t or x) in the requested Index
@@ -166,6 +166,11 @@ class OffsetForwardingDescriptor: public ForwardingDescriptor {
                              Index offset): src_(src), offset_(offset) { }
 
   virtual ~OffsetForwardingDescriptor() { delete src_; }
+
+
+  // this function is not in the shared interface. it's used
+  // in class ModelCollapser.
+  const ForwardingDescriptor &Src() const { return *src_; }
  private:
   ForwardingDescriptor *src_;  // Owned here.
   Index offset_;  // The index-offset to be added to the index.
@@ -378,6 +383,10 @@ class SimpleSumDescriptor: public SumDescriptor {
 
   SimpleSumDescriptor(ForwardingDescriptor *src): src_(src) { }
   virtual ~SimpleSumDescriptor() { delete src_; }
+
+  // this function is not in the shared interface. it's used
+  // in class ModelCollapser.
+  const ForwardingDescriptor &Src() const { return *src_; }
  private:
   ForwardingDescriptor *src_;
 };

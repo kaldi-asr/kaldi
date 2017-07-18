@@ -69,6 +69,8 @@ def GetArgs():
     parser.add_argument('--source-sampling-rate', type=int, default=None,
                         help="Sampling rate of the source data. If a positive integer is specified with this option, "
                         "the RIRs/noises will be resampled to the rate of the source data.")
+    parser.add_argument("--include-original-data", type=str, help="If true, the output data includes one copy of the original data",
+                         choices=['true', 'false'], default = "false")
     parser.add_argument("input_dir",
                         help="Input data directory")
     parser.add_argument("output_dir",
@@ -85,11 +87,11 @@ def CheckArgs(args):
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    ## Check arguments.
-    
-    if args.num_replicas > 1 and args.prefix is None:
-        args.prefix = "rvb"
-        warnings.warn("--prefix is set to 'rvb' as --num-replications is larger than 1.")
+    ## Check arguments
+    if args.prefix is None:
+        if args.num_replicas > 1 or args.include_original_data == "true":
+            args.prefix = "rvb"
+            warnings.warn("--prefix is set to 'rvb' as more than one copy of data is generated")
 
     if not args.num_replicas > 0:
         raise Exception("--num-replications cannot be non-positive")
@@ -180,13 +182,18 @@ def WriteDictToFile(dict, file_name):
 
 
 # This function creates the utt2uniq file from the utterance id in utt2spk file
-def CreateCorruptedUtt2uniq(input_dir, output_dir, num_replicas, prefix):
+def CreateCorruptedUtt2uniq(input_dir, output_dir, num_replicas, include_original, prefix):
     corrupted_utt2uniq = {}
     # Parse the utt2spk to get the utterance id
     utt2spk = ParseFileToDict(input_dir + "/utt2spk", value_processor = lambda x: " ".join(x))
     keys = utt2spk.keys()
     keys.sort()
-    for i in range(1, num_replicas+1):
+    if include_original:
+        start_index = 0
+    else:
+        start_index = 1
+
+    for i in range(start_index, num_replicas+1):
         for utt_id in keys:
             new_utt_id = GetNewId(utt_id, prefix, i)
             corrupted_utt2uniq[new_utt_id] = utt_id
@@ -314,6 +321,7 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
                                foreground_snr_array, # the SNR for adding the foreground noises
                                background_snr_array, # the SNR for adding the background noises
                                num_replicas, # Number of replicate to generated for the data
+                               include_original, # include a copy of the original data
                                prefix, # prefix for the id of the corrupted utterances
                                speech_rvb_probability, # Probability of reverberating a speech signal
                                shift_output, # option whether to shift the output waveform
@@ -326,7 +334,12 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
     corrupted_wav_scp = {}
     keys = wav_scp.keys()
     keys.sort()
-    for i in range(1, num_replicas+1):
+    if include_original:
+        start_index = 0
+    else:
+        start_index = 1
+
+    for i in range(start_index, num_replicas+1):
         for recording_id in keys:
             wav_original_pipe = wav_scp[recording_id]
             # check if it is really a pipe
@@ -346,8 +359,9 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
                                                          speech_dur,  # duration of the recording
                                                          max_noises_recording  # Maximum number of point-source noises that can be added
                                                          )       
-            
-            if reverberate_opts == "":
+
+            # prefix using index 0 is reserved for original data e.g. rvb0_swb0035 corresponds to the swb0035 recording in original data
+            if reverberate_opts == "" or i == 0:
                 wav_corrupted_pipe = "{0}".format(wav_original_pipe) 
             else:
                 wav_corrupted_pipe = "{0} wav-reverberate --shift-output={1} {2} - - |".format(wav_original_pipe, shift_output, reverberate_opts)
@@ -359,10 +373,15 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
 
 
 # This function replicate the entries in files like segments, utt2spk, text
-def AddPrefixToFields(input_file, output_file, num_replicas, prefix, field = [0]):
+def AddPrefixToFields(input_file, output_file, num_replicas, include_original, prefix, field = [0]):
     list = map(lambda x: x.strip(), open(input_file))
     f = open(output_file, "w")
-    for i in range(1, num_replicas+1):
+    if include_original:
+        start_index = 0
+    else:
+        start_index = 1
+    
+    for i in range(start_index, num_replicas+1):
         for line in list:
             if len(line) > 0 and line[0] != ';':
                 split1 = line.split()
@@ -383,6 +402,7 @@ def CreateReverberatedCopy(input_dir,
                            foreground_snr_string, # the SNR for adding the foreground noises
                            background_snr_string, # the SNR for adding the background noises
                            num_replicas, # Number of replicate to generated for the data
+                           include_original, # include a copy of the original data
                            prefix, # prefix for the id of the corrupted utterances
                            speech_rvb_probability, # Probability of reverberating a speech signal
                            shift_output, # option whether to shift the output waveform
@@ -406,27 +426,26 @@ def CreateReverberatedCopy(input_dir,
     background_snr_array = map(lambda x: float(x), background_snr_string.split(':'))
 
     GenerateReverberatedWavScp(wav_scp, durations, output_dir, room_dict, pointsource_noise_list, iso_noise_dict,
-               foreground_snr_array, background_snr_array, num_replicas, prefix, 
+               foreground_snr_array, background_snr_array, num_replicas, include_original, prefix, 
                speech_rvb_probability, shift_output, isotropic_noise_addition_probability, 
                pointsource_noise_addition_probability, max_noises_per_minute)
 
-    AddPrefixToFields(input_dir + "/utt2spk", output_dir + "/utt2spk", num_replicas, prefix, field = [0,1])
+    AddPrefixToFields(input_dir + "/utt2spk", output_dir + "/utt2spk", num_replicas, include_original, prefix, field = [0,1])
     data_lib.RunKaldiCommand("utils/utt2spk_to_spk2utt.pl <{output_dir}/utt2spk >{output_dir}/spk2utt"
                     .format(output_dir = output_dir))
 
     if os.path.isfile(input_dir + "/utt2uniq"):
-        AddPrefixToFields(input_dir + "/utt2uniq", output_dir + "/utt2uniq", num_replicas, prefix, field =[0])
+        AddPrefixToFields(input_dir + "/utt2uniq", output_dir + "/utt2uniq", num_replicas, include_original, prefix, field =[0])
     else:
         # Create the utt2uniq file
-        CreateCorruptedUtt2uniq(input_dir, output_dir, num_replicas, prefix)
-
+        CreateCorruptedUtt2uniq(input_dir, output_dir, num_replicas, include_original, prefix)
 
     if os.path.isfile(input_dir + "/text"):
-        AddPrefixToFields(input_dir + "/text", output_dir + "/text", num_replicas, prefix, field =[0])
+        AddPrefixToFields(input_dir + "/text", output_dir + "/text", num_replicas, include_original, prefix, field =[0])
     if os.path.isfile(input_dir + "/segments"):
-        AddPrefixToFields(input_dir + "/segments", output_dir + "/segments", num_replicas, prefix, field = [0,1])
+        AddPrefixToFields(input_dir + "/segments", output_dir + "/segments", num_replicas, include_original, prefix, field = [0,1])
     if os.path.isfile(input_dir + "/reco2file_and_channel"):
-        AddPrefixToFields(input_dir + "/reco2file_and_channel", output_dir + "/reco2file_and_channel", num_replicas, prefix, field = [0,1])
+        AddPrefixToFields(input_dir + "/reco2file_and_channel", output_dir + "/reco2file_and_channel", num_replicas, include_original, prefix, field = [0,1])
 
     data_lib.RunKaldiCommand("utils/validate_data_dir.sh --no-feats {output_dir}"
                     .format(output_dir = output_dir))
@@ -597,6 +616,7 @@ def ParseNoiseList(noise_set_para_array, smoothing_weight, sampling_rate = None)
         pointsource_noise_list += SmoothProbabilityDistribution(current_pointsource_noise_list, smoothing_weight, noise_set.probability)
 
     # ensure the point-source noise probabilities sum to 1 
+    pointsource_noise_list = SmoothProbabilityDistribution(pointsource_noise_list, smoothing_weight, 1.0)
     if len(pointsource_noise_list) > 0:
         assert almost_equal(sum(noise.probability for noise in pointsource_noise_list), 1.0)
     
@@ -621,6 +641,11 @@ def Main():
         print("Number of isotropic noises is {0}".format(sum(len(iso_noise_dict[key]) for key in iso_noise_dict.keys())))
     room_dict = MakeRoomDict(rir_list)
 
+    if args.include_original_data == "true":
+        include_original = True
+    else:
+        include_original = False
+
     CreateReverberatedCopy(input_dir = args.input_dir,
                            output_dir = args.output_dir,
                            room_dict = room_dict,
@@ -629,6 +654,7 @@ def Main():
                            foreground_snr_string = args.foreground_snr_string,
                            background_snr_string = args.background_snr_string,
                            num_replicas = args.num_replicas,
+                           include_original = include_original,
                            prefix = args.prefix,
                            speech_rvb_probability = args.speech_rvb_probability,
                            shift_output = args.shift_output,

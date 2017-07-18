@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Copyright 2010-2012 Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
-# Copyright 2014 Mirsk Digital ApS  (Author: Andreas Kirkedal)
+# Copyright 2014-15 Mirsk Digital ApS  (Author: Andreas Kirkedal)
+# Copyright 2016 Andreas Kirkedal
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,9 +17,7 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-KALDI_ROOT=$(pwd)/../../..
-
-exproot=$(pwd)
+lex=lexicon-da-nonorm.tgz
 dir=data/local/dict
 mkdir -p $dir
 
@@ -31,22 +30,13 @@ cp local/dictsrc/complexphones.txt $dir/nonsilence_phones.txt
 cp local/dictsrc/extra_questions.txt $dir/extra_questions.txt
 
 # Copy pre-made lexicon
-wget http://www.openslr.org/resources/8/lexicon-da.tgz --directory-prefix=data/local/data/download
-tar -xzf data/local/data/download/lexicon-da.tgz -C $dir
+wget http://www.openslr.org/resources/8/$lex --directory-prefix=data/local/data/download
+tar -xzf data/local/data/download/$lex -C $dir
 
 
 # silence phones, one per line.
-echo SIL > $dir/silence_phones.txt
+echo -e "SIL\nSPN" > $dir/silence_phones.txt
 echo SIL > $dir/optional_silence.txt
-
-
-
-
-
-wait
-
-
-## TODO: add cleanup commands
 
 echo "Dictionary preparation succeeded"
 

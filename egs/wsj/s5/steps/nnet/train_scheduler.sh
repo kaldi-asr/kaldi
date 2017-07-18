@@ -28,7 +28,7 @@ end_halving_impr=0.001
 halving_factor=0.5
 
 # misc,
-verbose=1
+verbose=0 # 0 No GPU time-stats, 1 with GPU time-stats (slower),
 frame_weights=
 utt_weights=
 
@@ -136,7 +136,7 @@ for iter in $(seq -w $max_iters); do
 
   # accept or reject?
   loss_prev=$loss
-  if [ 1 == $(bc <<< "$loss_new < $loss") -o $iter -le $keep_lr_iters -o $iter -le $min_iters ]; then
+  if [ 1 == $(awk "BEGIN{print($loss_new < $loss ? 1:0);}") -o $iter -le $keep_lr_iters -o $iter -le $min_iters ]; then
     # accepting: the loss was better, or we had fixed learn-rate, or we had fixed epoch-number,
     loss=$loss_new
     mlp_best=$dir/nnet/${mlp_base}_iter${iter}_learnrate${learn_rate}_tr$(printf "%.4f" $tr_loss)_cv$(printf "%.4f" $loss_new)
@@ -159,8 +159,8 @@ for iter in $(seq -w $max_iters); do
   [ $iter -le $keep_lr_iters ] && continue
 
   # stopping criterion,
-  rel_impr=$(bc <<< "scale=10; ($loss_prev-$loss)/$loss_prev")
-  if [ 1 == $halving -a 1 == $(bc <<< "$rel_impr < $end_halving_impr") ]; then
+  rel_impr=$(awk "BEGIN{print(($loss_prev-$loss)/$loss_prev);}")
+  if [ 1 == $halving -a 1 == $(awk "BEGIN{print($rel_impr < $end_halving_impr ? 1:0);}") ]; then
     if [ $iter -le $min_iters ]; then
       echo we were supposed to finish, but we continue as min_iters : $min_iters
       continue
@@ -170,7 +170,7 @@ for iter in $(seq -w $max_iters); do
   fi
 
   # start learning-rate fade-out when improvement is low,
-  if [ 1 == $(bc <<< "$rel_impr < $start_halving_impr") ]; then
+  if [ 1 == $(awk "BEGIN{print($rel_impr < $start_halving_impr ? 1:0);}") ]; then
     halving=1
     echo $halving >$dir/.halving
   fi

@@ -47,13 +47,13 @@ int main(int argc, char *argv[]) {
     bool binary_write = true;
     BaseFloat stddev = 1.0;
     std::string reference_model_filename;
-    
+
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("stddev-from", &reference_model_filename, "Reference model");
     po.Register("stddev", &stddev, "Target standard deviation that we normalize "
                 "to (note: is overridden by --stddev-from option, if supplied)");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
 
     // Works out the layers that we would like to normalize: any affine or block
     // affine layers that are followed by pnorm and then renormalize layers.
-    vector<int32> identified_components;
+    std::vector<int32> identified_components;
     for (int32 c = 0; c < am_nnet.GetNnet().NumComponents() - 2; c++) {
       // Checks if the current layer is an affine layer or block affine layer.
       // Also includes PreconditionedAffineComponent and
@@ -89,13 +89,13 @@ int main(int argc, char *argv[]) {
         dynamic_cast<BlockAffineComponent*>(component);
       if (ac == NULL && bac == NULL)
         continue;
-      
+
       // Checks if the next layer is a pnorm layer.
       component = &(am_nnet.GetNnet().GetComponent(c + 1));
       PnormComponent *pc = dynamic_cast<PnormComponent*>(component);
       if (pc == NULL)
         continue;
-      
+
       // Checks if the layer after the pnorm layer is a NormalizeComponent
       // or a PowerComponent followed by a NormalizeComponent
       component = &(am_nnet.GetNnet().GetComponent(c + 2));
@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
     }
 
     BaseFloat ref_stddev = 0.0;
-    
+
     // Normalizes the identified layers.
     for (int32 c = 0; c < identified_components.size(); c++) {
       ref_stddev = stddev;
@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
       KALDI_ASSERT(uc != NULL);
       Vector<BaseFloat> params(uc->GetParameterDim());
       uc->Vectorize(&params);
-      BaseFloat params_average = params.Sum() 
+      BaseFloat params_average = params.Sum()
           / static_cast<BaseFloat>(params.Dim());
       params.Add(-1.0 * params_average);
       BaseFloat params_stddev = sqrt(VecVec(params, params)

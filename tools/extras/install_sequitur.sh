@@ -11,7 +11,6 @@ fi
 ! [ `basename $PWD` == tools ] && \
   echo "You must call this script from the tools/ directory" && exit 1;
 
-
 # Install python-devel package if not already available
 # first, makes sure distutils.sysconfig usable
 if ! $(python -c "import distutils.sysconfig" &> /dev/null); then
@@ -36,11 +35,17 @@ else
   fi
 fi
 
+command -v swig >/dev/null 2>&1 || {
+  echo >&2 "$0: Error: I require swig but it's not installed.";
+  echo >&2 "  Please install swig and run this script again. "
+  exit 1;
+}
 
 if [ -d ./g2p ] || [ -d sequitur ] ; then
   echo  >&2 "$0: Warning: old installation of Sequitur found. You should manually"
   echo  >&2 "  delete the directories tools/sequitur and/or tools/g2p and "
   echo  >&2 "  edit the file tools/env.sh and remove manually all references to it"
+  exit 1
 fi
 
 if [ ! -d ./sequitur-g2p ] ; then
@@ -59,36 +64,33 @@ if [ ! -d ./sequitur-g2p ] ; then
   }
 fi
 #just to retain backward compatibility for a while. Can be removed
-#in a couple of months. 
+#in a couple of months.
 ln -sf sequitur-g2p sequitur
 
-
+(
 cd sequitur-g2p
 make CXX=g++ CC=gcc
 python setup.py install --prefix `pwd`
-
-cd ../
-
+)
+site_packages_dir=$(cd sequitur-g2p; find ./lib{,64} -type d -name site-packages | head -n 1)
 (
   set +u
-  [ ! -z ${SEQUITUR} ] && \
+  [ ! -z "${SEQUITUR}" ] && \
     echo >&2 "SEQUITUR variable is aleady defined. Undefining..." && \
     unset SEQUITUR
 
   [ -f ./env.sh ] && . ./env.sh
 
-  [ ! -z ${SEQUITUR} ] && \
+  [ ! -z "${SEQUITUR}" ] && \
     echo >&2 "SEQUITUR config is already in env.sh" && exit
 
   wd=`pwd`
   wd=`readlink -f $wd || pwd`
 
-  echo "export SEQUITUR=$wd/sequitur-g2p"
-  echo "export PATH=\$PATH:\${SEQUITUR}/bin"
-  echo "_site_packages=\`find \${SEQUITUR}/lib -type d -regex '.*python.*/site-packages'\`"
-  echo "export PYTHONPATH=\$PYTHONPATH:\$_site_packages"
+  echo "export SEQUITUR=\"$wd/sequitur-g2p\""
+  echo "export PATH=\"\$PATH:\${SEQUITUR}/bin\""
+  echo "export PYTHONPATH=\"\${PYTHONPATH:-}:\$SEQUITUR/${site_packages_dir}\""
 ) >> env.sh
 
 echo >&2 "Installation of SEQUITUR finished successfully"
-echo >&2 "Please source the tools/extras/env.sh in your path.sh to enable it"
-
+echo >&2 "Please source tools/env.sh in your path.sh to enable it"

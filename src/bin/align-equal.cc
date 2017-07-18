@@ -36,10 +36,13 @@ int main(int argc, char *argv[]) {
     using fst::VectorFst;
     using fst::StdArc;
 
-    const char *usage =  "Write equally spaced alignments of utterances (to get training started)\n"
-        "Usage:  align-equal <tree-in> <model-in> <lexicon-fst-in> <features-rspecifier> <transcriptions-rspecifier> <alignments-wspecifier>\n"
+    const char *usage = "Write equally spaced alignments of utterances "
+        "(to get training started)\n"
+        "Usage:  align-equal <tree-in> <model-in> <lexicon-fst-in> "
+        "<features-rspecifier> <transcriptions-rspecifier> <alignments-wspecifier>\n"
         "e.g.: \n"
-        " align-equal 1.tree 1.mdl lex.fst scp:train.scp ark:train.tra ark:equal.ali\n";
+        " align-equal 1.tree 1.mdl lex.fst scp:train.scp "
+        "'ark:sym2int.pl -f 2- words.txt text|' ark:equal.ali\n";
 
     ParseOptions po(usage);
     std::string disambig_rxfilename;

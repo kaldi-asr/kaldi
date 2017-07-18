@@ -23,6 +23,8 @@
 #include "nnet3/nnet-parse.h"
 #include "nnet3/nnet-utils.h"
 #include "nnet3/nnet-simple-component.h"
+#include "nnet3/am-nnet-simple.h"
+#include "hmm/transition-model.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -154,6 +156,15 @@ void Nnet::SetComponent(int32 c, Component *component) {
   KALDI_ASSERT(static_cast<size_t>(c) < components_.size());
   delete components_[c];
   components_[c] = component;
+}
+
+int32 Nnet::AddComponent(const std::string &name,
+                         Component *component) {
+  int32 ans = components_.size();
+  KALDI_ASSERT(IsValidName(name) && component != NULL);
+  components_.push_back(component);
+  component_names_.push_back(name);
+  return ans;
 }
 
 /// Returns true if this is component-input node, i.e. a node of type kDescriptor
@@ -565,8 +576,28 @@ void Nnet::GetSomeNodeNames(
   }
 }
 
+void Nnet::Swap(Nnet *other) {
+  component_names_.swap(other->component_names_);
+  components_.swap(other->components_);
+  node_names_.swap(other->node_names_);
+  nodes_.swap(other->nodes_);
+}
+
 void Nnet::Read(std::istream &is, bool binary) {
   Destroy();
+  int first_char = PeekToken(is, binary);
+  if (first_char == 'T') {
+    // This branch is to allow '.mdl' files (containing a TransitionModel
+    // and then an AmNnetSimple) to be read where .raw files (containing
+    // just an Nnet) would be expected.  This is often convenient.
+    TransitionModel temp_trans_model;
+    temp_trans_model.Read(is, binary);
+    AmNnetSimple temp_am_nnet;
+    temp_am_nnet.Read(is, binary);
+    temp_am_nnet.GetNnet().Swap(this);
+    return;
+  }
+
   ExpectToken(is, binary, "<Nnet3>");
   std::ostringstream config_file_out;
   std::string cur_line;
@@ -744,7 +775,7 @@ void Nnet::Check(bool warn_for_orphans) const {
     }
     FindOrphanNodes(*this, &orphans);
     for (size_t i = 0; i < orphans.size(); i++) {
-      if (!IsComponentInputNode(i)) {
+      if (!IsComponentInputNode(orphans[i])) {
         // There is no point warning about component-input nodes, since the
         // warning will be printed for the corresponding component nodes..  a
         // duplicate warning might be confusing to the user, as the
@@ -783,6 +814,13 @@ Nnet& Nnet::operator =(const Nnet &nnet) {
 
 std::string Nnet::Info() const {
   std::ostringstream os;
+
+  if(IsSimpleNnet(*this))  {
+    int32 left_context, right_context;
+    ComputeSimpleNnetContext(*this, &left_context, &right_context);
+    os << "left-context: " << left_context << "\n";
+    os << "right-context: " << right_context << "\n";
+  }
   os << "num-parameters: " << NumParameters(*this) << "\n";
   os << "modulus: " << this->Modulus() << "\n";
   std::vector<std::string> config_lines;

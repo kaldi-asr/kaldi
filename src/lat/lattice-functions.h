@@ -36,6 +36,24 @@
 
 namespace kaldi {
 
+/**
+   This function extracts the per-frame log likelihoods from a linear
+   lattice (which we refer to as an 'nbest' lattice elsewhere in Kaldi code).
+   The dimension of *per_frame_loglikes will be set to the
+   number of input symbols in 'nbest'.  The elements of
+   '*per_frame_loglikes' will be set to the .Value2() elements of the lattice
+   weights, which represent the acoustic costs; you may want to scale this
+   vector afterward by -1/acoustic_scale to get the original loglikes.
+   If there are acoustic costs on input-epsilon arcs or the final-prob in 'nbest'
+   (and this should not normally be the case in situations where it makes
+   sense to call this function), they will be included to the cost of the
+   preceding input symbol, or the following input symbol for input-epsilons
+   encountered prior to any input symbol.  If 'nbest' has no input symbols,
+   'per_frame_loglikes' will be set to the empty vector.
+**/
+void GetPerFrameAcousticCosts(const Lattice &nbest,
+                              Vector<BaseFloat> *per_frame_loglikes);
+
 /// This function iterates over the states of a topologically sorted lattice and
 /// counts the time instance corresponding to each state. The times are returned
 /// in a vector of integers 'times' which is resized to have a size equal to the
@@ -67,12 +85,12 @@ BaseFloat LatticeForwardBackward(const Lattice &lat,
 // the CompactLattice lattice format. Also we only need the alpha in the forward
 // path, not the posteriors.
 bool ComputeCompactLatticeAlphas(const CompactLattice &lat,
-                                 vector<double> *alpha);
+                                 std::vector<double> *alpha);
 
 // A sibling of the function CompactLatticeAlphas()... We compute the beta from
 // the backward path here.
 bool ComputeCompactLatticeBetas(const CompactLattice &lat,
-                                vector<double> *beta);
+                                std::vector<double> *beta);
 
 
 // Computes (normal or Viterbi) alphas and betas; returns (total-prob, or
@@ -82,8 +100,8 @@ bool ComputeCompactLatticeBetas(const CompactLattice &lat,
 template<typename LatticeType>
 double ComputeLatticeAlphasAndBetas(const LatticeType &lat,
                                     bool viterbi,
-                                    vector<double> *alpha,
-                                    vector<double> *beta);
+                                    std::vector<double> *alpha,
+                                    std::vector<double> *beta);
 
 
 /// Topologically sort the compact lattice if not already topologically sorted.
@@ -321,4 +339,3 @@ void ComposeCompactLatticeDeterministic(
 }  // namespace kaldi
 
 #endif  // KALDI_LAT_LATTICE_FUNCTIONS_H_
-

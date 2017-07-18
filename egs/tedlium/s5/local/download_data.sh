@@ -4,6 +4,7 @@
 #            2014 Brno University of Technology (Author: Karel Vesely)
 # Apache 2.0
 
+mkdir -p db
 pushd db
 # TED-LIUM database:
 if [[ $(hostname -f) == *.clsp.jhu.edu ]] ; then

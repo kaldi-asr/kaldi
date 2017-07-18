@@ -15,6 +15,7 @@ beam=10
 retry_beam=40
 nnet_forward_opts="--no-softmax=true --prior-scale=1.0"
 ivector=            # rx-specifier with i-vectors (ark-with-vectors),
+text= # (optional) transcipts we align to,
 
 align_to_lats=false # optionally produce alignment in lattice format
  lats_decode_opts="--acoustic-scale=0.1 --beam=20 --lattice_beam=10"
@@ -62,9 +63,10 @@ feature_transform=$srcdir/final.feature_transform
 model=$dir/final.mdl
 
 # Check that files exist
-for f in $sdata/1/feats.scp $sdata/1/text $lang/L.fst $nnet $model $feature_transform $class_frame_counts; do
+for f in $sdata/1/feats.scp $lang/L.fst $nnet $model $feature_transform $class_frame_counts; do
   [ ! -f $f ] && echo "$0: missing file $f" && exit 1;
 done
+[ -z "$text" -a ! -f $sdata/1/text ] && echo "$0: missing file $f" && exit 1
 
 
 # PREPARE FEATURE EXTRACTION PIPELINE
@@ -113,11 +115,11 @@ echo "$0: aligning data '$data' using nnet/model '$srcdir', putting alignments i
 
 # Map oovs in reference transcription, 
 oov=`cat $lang/oov.int` || exit 1;
-tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
+[ -z "$text" ] && text=$sdata/JOB/text
+tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $text |";
 # We could just use align-mapped in the next line, but it's less efficient as it compiles the
 # training graphs one by one.
 if [ $stage -le 0 ]; then
-  train_graphs="ark:compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/final.mdl $lang/L.fst '$tra' ark:- |"
   $cmd JOB=1:$nj $dir/log/align.JOB.log \
     compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/final.mdl $lang/L.fst "$tra" ark:- \| \
     align-compiled-mapped $scale_opts --beam=$beam --retry-beam=$retry_beam $dir/final.mdl ark:- \
@@ -128,8 +130,8 @@ fi
 if [ "$align_to_lats" == "true" ]; then
   echo "$0: aligning also to lattices '$dir/lat.*.gz'"
   $cmd JOB=1:$nj $dir/log/align_lat.JOB.log \
-    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $lat_graph_scale $dir/tree $dir/final.mdl  $lang/L.fst "$tra" ark:- \| \
-    latgen-faster-mapped $lat_decode_opts --word-symbol-table=$lang/words.txt $dir/final.mdl ark:- \
+    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $lats_graph_scales $dir/tree $dir/final.mdl  $lang/L.fst "$tra" ark:- \| \
+    latgen-faster-mapped $lats_decode_opts --word-symbol-table=$lang/words.txt $dir/final.mdl ark:- \
       "$feats" "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 fi
 

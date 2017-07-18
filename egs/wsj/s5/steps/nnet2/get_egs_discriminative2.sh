@@ -43,7 +43,7 @@ if [ $# != 6 ]; then
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options"
-  echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs (probably would be good to add -tc 5 or so if using"
+  echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs (probably would be good to add --max-jobs-run 5 or so if using"
   echo "                                                   # GridEngine (to avoid excessive NFS traffic)."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
   echo "                                                   # process."
@@ -335,13 +335,13 @@ if $cleanup; then
   for x in $(seq $nj); do
     for y in $(seq $num_archives_temp); do
       file=$dir/degs_orig.$x.$y.ark
-      [ -L $file ] && rm $(readlink -f $file); rm $file
+      [ -L $file ] && rm $(utils/make_absolute.sh $file); rm $file
     done
   done
   if [ $num_archives_temp -ne $num_archives ]; then
     for z in $(seq $num_archives); do
       file=$dir/degs_temp.$z.ark
-      [ -L $file ] && rm $(readlink -f $file); rm $file
+      [ -L $file ] && rm $(utils/make_absolute.sh $file); rm $file
     done
   fi
 fi

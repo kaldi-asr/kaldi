@@ -31,6 +31,7 @@
 
 #include "base/kaldi-common.h"
 #include "base/kaldi-error.h"
+#include "base/version.h"
 
 namespace kaldi {
 
@@ -40,13 +41,12 @@ int32 g_kaldi_verbose_level = 0;
 const char *g_program_name = NULL;
 static LogHandler g_log_handler = NULL;
 
-// If the program name was set (g_program_name != ""), the function
-// GetProgramName returns the program name (without the path) followed by a
-// colon, e.g. "gmm-align:".  Otherwise it returns the empty string "".
+// If the program name was set (g_program_name != ""), GetProgramName
+// returns the program name (without the path), e.g. "gmm-align".
+// Otherwise it returns the empty string "".
 const char *GetProgramName() {
   return g_program_name == NULL ? "" : g_program_name;
 }
-
 
 /***** HELPER FUNCTIONS *****/
 
@@ -184,12 +184,13 @@ void MessageLogger::HandleMessage(const LogMessageEnvelope &envelope,
           header << "ASSERTION_FAILED (";
           break;
         default:
-          abort();  // coding errror (unknown 'severity'),
+          abort();  // coding error (unknown 'severity'),
       }
     }
     // fill the other info from the envelope,
-    header << GetProgramName() << envelope.func << "():"
-           << envelope.file << ':' << envelope.line << ")";
+    header << GetProgramName() << "[" KALDI_VERSION "]" << ':'
+           << envelope.func << "():" << envelope.file << ':' << envelope.line
+           << ")";
 
     // Printing the message,
     if (envelope.severity >= LogMessageEnvelope::kWarning) {

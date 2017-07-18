@@ -66,7 +66,7 @@ void TestAmDiagGmmIO(const AmDiagGmm &am_gmm) {
     loglike2 += am_gmm2->LogLikelihood(i, feat);
   kaldi::AssertEqual(loglike, loglike2, 1e-4);
   delete am_gmm2;
-  
+
   unlink("tmpf");
   unlink("tmpfb");
 }
@@ -122,7 +122,7 @@ void UnitTestAmDiagGmm() {
 }
 
 int main() {
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 5; i++)
     UnitTestAmDiagGmm();
   std::cout << "Test OK.\n";
   return 0;

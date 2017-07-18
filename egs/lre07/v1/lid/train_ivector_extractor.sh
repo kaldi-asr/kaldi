@@ -13,7 +13,7 @@
 #  - Set num_threads to the minimum of (4, or how many virtual cores your machine has).
 #    (because of needing to lock various global quantities, the program can't
 #    use many more than 4 threads with good CPU utilization).
-#  - Set num_processes to the number of virtual cores on each machine you have, divided by 
+#  - Set num_processes to the number of virtual cores on each machine you have, divided by
 #    num_threads.  E.g. 4, if you have 16 virtual cores.   If you're on a shared queue
 #    that's busy with other people's jobs, it may be wise to set it to rather less
 #    than this maximum though, or your jobs won't get scheduled.  And if memory is
@@ -24,8 +24,8 @@
 #    may want more jobs, though.
 
 # Begin configuration section.
-nj=10   # this is the number of separate queue jobs we run, but each one 
-        # contains num_processes sub-jobs.. the real number of threads we 
+nj=10   # this is the number of separate queue jobs we run, but each one
+        # contains num_processes sub-jobs.. the real number of threads we
         # run is nj * num_processes * num_threads, and the number of
         # separate pieces of data is nj * num_processes.
 num_threads=4
@@ -84,7 +84,7 @@ nj_full=$[$nj*$num_processes]
 sdata=$data/split$nj_full;
 utils/split_data.sh $data $nj_full || exit 1;
 
-parallel_opts="-pe smp $[$num_threads*$num_processes]"
+parallel_opts="--num-threads $[$num_threads*$num_processes]"
 ## Set up features.
 
 feats="ark,s,cs:apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 scp:$sdata/JOB/feats.scp ark:- | add-deltas-sdc ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
@@ -97,7 +97,7 @@ if [ $stage -le -2 ]; then
   $cmd $dir/log/init.log \
     ivector-extractor-init --ivector-dim=$ivector_dim --use-weights=$use_weights \
      $dir/final.ubm $dir/0.ie || exit 1
-fi 
+fi
 
 # Do Gaussian selection and posterior extracion
 
@@ -135,27 +135,25 @@ while [ $x -lt $num_iters ]; do
     done
     wait
     [ -f $dir/.error ] && echo "Error accumulating stats on iteration $x" && exit 1;
-	accs=""
-	for j in $(seq $nj); do
-	  accs+="$dir/acc.$x.$j "
-	done
-	echo "Summing accs (pass $x)"
-	$cmd $sum_accs_opt $dir/log/sum_acc.$x.log \
-	  ivector-extractor-sum-accs $accs $dir/acc.$x || exit 1;
+    accs=""
+    for j in $(seq $nj); do
+      accs+="$dir/acc.$x.$j "
+    done
+    echo "Summing accs (pass $x)"
+    $cmd $sum_accs_opt $dir/log/sum_acc.$x.log \
+      ivector-extractor-sum-accs $accs $dir/acc.$x || exit 1;
     echo "Updating model (pass $x)"
     nt=$[$num_threads*$num_processes] # use the same number of threads that
                                       # each accumulation process uses, since we
                                       # can be sure the queue will support this many.
-	$cmd -pe smp $nt $dir/log/update.$x.log \
-	  ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
-	rm $dir/acc.$x.*
-    if $cleanup; then
-      rm $dir/acc.$x
-      # rm $dir/$x.ie
-    fi
+    $cmd --num-threads $nt $dir/log/update.$x.log \
+      ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
+    rm $dir/acc.$x.*
+    $cleanup && rm $dir/acc.$x $dir/$x.ie
   fi
   x=$[$x+1]
 done
 
+$cleanup && rm $dir/post.*.gz
 rm $dir/final.ie 2>/dev/null
 ln -s $x.ie $dir/final.ie

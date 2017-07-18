@@ -442,8 +442,14 @@ class OnlineSilenceWeighting {
  public:
   // Note: you would initialize a new copy of this object for each new
   // utterance.
+  // The frame-subsampling-factor is used for newer nnet3 models, especially
+  // chain models, when the frame-rate of the decoder is different from the
+  // frame-rate of the input features.  E.g. you might set it to 3 for such
+  // models.
+
   OnlineSilenceWeighting(const TransitionModel &trans_model,
-                         const OnlineSilenceWeightingConfig &config);
+                         const OnlineSilenceWeightingConfig &config,
+			 int32 frame_subsampling_factor = 1);
   
   bool Active() const { return config_.Active(); }
 
@@ -456,7 +462,7 @@ class OnlineSilenceWeighting {
   // the stats... the output format is (frame-index, delta-weight).  The
   // num_frames_ready argument is the number of frames available at the input
   // (or equivalently, output) of the online iVector extractor class, which may
-  // be more than the currently availabl decoder traceback.  How many frames
+  // be more than the currently available decoder traceback.  How many frames
   // of weights it outputs depends on how much "num_frames_ready" increased
   // since last time we called this function, and whether the decoder traceback
   // changed.  Negative delta_weights might occur if frames previously
@@ -466,17 +472,19 @@ class OnlineSilenceWeighting {
   // this output to class OnlineIvectorFeature by calling its function
   // UpdateFrameWeights with the output.
   void GetDeltaWeights(
-      int32 num_frames_ready,
+      int32 num_frames_ready_in,
       std::vector<std::pair<int32, BaseFloat> > *delta_weights);
   
  private:
   const TransitionModel &trans_model_;
   const OnlineSilenceWeightingConfig &config_;
   
+  int32 frame_subsampling_factor_;
+
   unordered_set<int32> silence_phones_;
   
   struct FrameInfo {
-    //The only reason we need the token pointer is to know far back we have to
+    // The only reason we need the token pointer is to know far back we have to
     // trace before the traceback is the same as what we previously traced back.
     void *token;
     int32 transition_id;
@@ -494,6 +502,11 @@ class OnlineSilenceWeighting {
   // max_state_duration is relevant.
   int32 GetBeginFrame();
 
+  // This contains information about any previously computed traceback;
+  // when the traceback changes we use this variable to compare it with the
+  // previous traceback.
+  // It's indexed at the frame-rate of the decoder (may be different
+  // by 'frame_subsampling_factor_' from the frame-rate of the features.
   std::vector<FrameInfo> frame_info_;
 
   // This records how many frames have been output and that currently reflect

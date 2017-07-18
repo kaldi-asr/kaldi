@@ -38,7 +38,7 @@ outputname=$name
 
 while (( "$#" )); do
   resultdir=$1;shift
-  echo "Processing data directory $resultdir" 
+  echo "Processing data directory $resultdir"
 
   [ ! -d $resultdir ] && echo "Decode dir $resultdir does not exist!" && exit 1;
 

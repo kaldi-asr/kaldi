@@ -427,7 +427,7 @@ bool IsValidName(const std::string &name) {
   for (size_t i = 0; i < name.size(); i++) {
     if (i == 0 && !isalpha(name[i]) && name[i] != '_')
       return false;
-    if (!isalnum(name[i]) && name[i] != '_' && name[i] != '-')
+    if (!isalnum(name[i]) && name[i] != '_' && name[i] != '-' && name[i] != '.')
       return false;
   }
   return true;
@@ -519,7 +519,7 @@ std::string SummarizeVector(const Vector<BaseFloat> &vec) {
 
 void PrintParameterStats(std::ostringstream &os,
                          const std::string &name,
-                         const CuVector<BaseFloat> &params,
+                         const CuVectorBase<BaseFloat> &params,
                          bool include_mean) {
   os << std::setprecision(4);
   os << ", " << name << '-';

@@ -232,6 +232,8 @@ class MatrixBase {
 
   /// Set, element-by-element, *this = max(*this, A)
   void Max(const MatrixBase<Real> &A);
+  /// Set, element-by-element, *this = min(*this, A)
+  void Min(const MatrixBase<Real> &A);
 
   /// Equivalent to (*this) = (*this) * diag(scale).  Scaling
   /// each column by a scalar taken from that dimension of the vector.

@@ -29,7 +29,7 @@ cleanup=true
 min_gaussian_weight=0.0001
 remove_low_count_gaussians=true # set this to false if you need #gauss to stay fixed.
 num_threads=32
-parallel_opts="-pe smp 32"
+parallel_opts="--num-threads 32"
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -49,7 +49,7 @@ if [ $# != 3 ]; then
   echo "  --stage <stage|-2>                               # stage to do partial re-run from."
   echo "  --num-gselect <n|30>                             # Number of Gaussians per frame to"
   echo "                                                   # limit computation to, for speed"
-  echo " --subsample <n|5>                                 # In main E-M phase, use every n" 
+  echo " --subsample <n|5>                                 # In main E-M phase, use every n"
   echo "                                                   # frames (a speedup)"
   echo "  --num-frames <n|500000>                          # Maximum num-frames to keep in memory"
   echo "                                                   # for model initialization"
@@ -59,7 +59,7 @@ if [ $# != 3 ]; then
   echo "                                                   # in initialization phase (then split)"
   echo " --num-threads <n|32>                              # number of threads to use in initialization"
   echo "                                                   # phase (must match with parallel-opts option)"
-  echo " --parallel-opts <string|'-pe smp 32'>             # Option should match number of threads in"
+  echo " --parallel-opts <string|'--num-threads 32'>             # Option should match number of threads in"
   echo "                                                   # --num-threads option above"
   echo " --min-gaussian-weight <weight|0.0001>             # min Gaussian weight allowed in GMM"
   echo "                                                   # initialization (this relatively high"

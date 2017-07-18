@@ -32,8 +32,9 @@ Allowed options:
   --remove-NO                 : Remove the "NO" decision instances          (boolean, default = false)
   --segments                  : Segments file from Kaldi                    (string,  default = "")
   --system-id                 : System ID                                   (string,  default = "")
-  --verbose                   : Verbose level (higher --> more kws section) (integer, default 0)
-  --YES-cutoff                : Only keep "\$YES-cutoff" yeses for each kw   (int,     default = -1)
+  --verbose                   : Verbose level (higher --> more kws section) (integer, default = 0)
+  --YES-cutoff                : Only keep "\$YES-cutoff" yeses for each kw   (int,    default = -1)
+  --nbest                     | Output upto nbest hits into the kwlist      (int,     default = -1)
 
 EOU
 
@@ -55,6 +56,7 @@ my $duptime = 0.5;
 my $remove_dup = "false";
 my $remove_NO = "false";
 my $YES_cutoff = -1;
+my $nbest_max = -1;
 GetOptions('segments=s'     => \$segment,
   'flen=f'         => \$flen,
   'beta=f'         => \$beta,
@@ -72,7 +74,8 @@ GetOptions('segments=s'     => \$segment,
   'duptime=f'         => \$duptime,
   'remove-dup=s'      => \$remove_dup,
   'YES-cutoff=i'      => \$YES_cutoff,
-  'remove-NO=s'       => \$remove_NO);
+  'remove-NO=s'       => \$remove_NO,
+  'nbest=i'           => \$nbest_max) or die "Cannot continue\n";
 
 ($normalize eq "true" || $normalize eq "false") || die "$0: Bad value for option --normalize\n";
 ($remove_dup eq "true" || $remove_dup eq "false") || die "$0: Bad value for option --remove-dup\n";
@@ -134,12 +137,18 @@ sub PrintKwslist {
   # Start printing
   $kwslist .= "<kwslist kwlist_filename=\"$info->[0]\" language=\"$info->[1]\" system_id=\"$info->[2]\">\n";
   my $prev_kw = "";
+  my $nbest = $nbest_max;
   foreach my $kwentry (@{$KWS}) {
+    if (($prev_kw eq $kwentry->[0])  && ($nbest le 0) && ($nbest_max gt 0)) {
+      next;
+    }
     if ($prev_kw ne $kwentry->[0]) {
       if ($prev_kw ne "") {$kwslist .= "  </detected_kwlist>\n";}
       $kwslist .= "  <detected_kwlist kwid=\"$kwentry->[0]\" search_time=\"1\" oov_count=\"0\">\n";
       $prev_kw = $kwentry->[0];
+      $nbest = $nbest_max;
     }
+    $nbest -= 1 if $nbest_max gt 0;
     my $score = sprintf("%g", $kwentry->[5]);
     $kwslist .= "    <kw file=\"$kwentry->[1]\" channel=\"$kwentry->[2]\" tbeg=\"$kwentry->[3]\" dur=\"$kwentry->[4]\" score=\"$score\" decision=\"$kwentry->[6]\"";
     if (defined($kwentry->[7])) {$kwslist .= " threshold=\"$kwentry->[7]\"";}
@@ -199,7 +208,9 @@ while (<$source>) {
     $start = sprintf("%.2f", $start+$tbeg{$utter});
   }
   if ($map_utter) {
-    $utter = $utter_mapper{$utter};
+    my $utter_x = $utter_mapper{$utter};
+    die "Unmapped utterance $utter\n" unless $utter_x;
+    $utter = $utter_x;
   }
 
   push(@KWS, [$kwid, $utter, 1, $start, $dur, $score, ""]);

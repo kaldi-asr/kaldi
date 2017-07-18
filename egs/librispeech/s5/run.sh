@@ -91,7 +91,7 @@ steps/train_mono.sh --boost-silence 1.25 --nj 20 --cmd "$train_cmd" \
 
 # decode using the monophone model
 (
-  utils/mkgraph.sh --mono data/lang_nosp_test_tgsmall \
+  utils/mkgraph.sh data/lang_nosp_test_tgsmall \
     exp/mono exp/mono/graph_nosp_tgsmall
   for test in test_clean test_other dev_clean dev_other; do
     steps/decode.sh --nj 20 --cmd "$decode_cmd" exp/mono/graph_nosp_tgsmall \

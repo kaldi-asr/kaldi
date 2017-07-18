@@ -125,19 +125,31 @@ class Nnet {
 
   int32 NumNodes() const { return nodes_.size(); }
 
-  /// return component indexed c.  not a copy; not owned by caller.
+  /// Return component indexed c.  Not a copy; not owned by caller.
   Component *GetComponent(int32 c);
 
-  /// return component indexed c (const version).  not a copy; not owned by
+  /// Return component indexed c (const version).  Not a copy; not owned by
   /// caller.
   const Component *GetComponent(int32 c) const;
 
   /// Replace the component indexed by c with a new component.
-  /// Frees previous component indexed by c.
+  /// Frees previous component indexed by c.  Takes ownership of
+  /// the pointer 'component'.
   void SetComponent(int32 c, Component *component);
+
+  /// Adds a new component with the given name, which should not be the same as
+  /// any existing component name.  Returns the new component index.  Takes
+  /// ownership of the pointer 'component'.
+  int32 AddComponent(const std::string &name, Component *component);
 
   /// returns const reference to a particular numbered network node.
   const NetworkNode &GetNode(int32 node) const {
+    KALDI_ASSERT(node >= 0 && node < nodes_.size());
+    return nodes_[node];
+  }
+
+  /// Non-const accessor for the node... use with extreme caution.
+  NetworkNode &GetNode(int32 node) {
     KALDI_ASSERT(node >= 0 && node < nodes_.size());
     return nodes_[node];
   }
@@ -233,6 +245,8 @@ class Nnet {
 
   Nnet *Copy() const { return new Nnet(*this); }
 
+  void Swap(Nnet *other);
+
   // Assignment operator
   Nnet& operator =(const Nnet &nnet);
 
@@ -247,9 +261,19 @@ class Nnet {
   void RemoveSomeNodes(const std::vector<int32> &nodes_to_remove);
 
   void ResetGenerators(); // resets random-number generators for all
-  // random components.  You must also set srand() for this to be
-  // effective.
-  
+  // random components.  You must call srand() prior to this call, for this to
+  // be effective.
+
+
+  // This function outputs to "config_lines" the lines of a config file.  If you
+  // provide include_dim=false, this will enable you to reconstruct the nodes in
+  // the network (but not the components, which need to be written separately).
+  // If you provide include_dim=true, it also adds extra information about
+  // node dimensions which is useful for a human reader but won't be
+  // accepted as the config-file format.
+  void GetConfigLines(bool include_dim,
+                      std::vector<std::string> *config_lines) const;
+
  private:
 
   void Destroy();
@@ -261,14 +285,6 @@ class Nnet {
   // include dimension information that would not be provided in a config file.
   std::string GetAsConfigLine(int32 node_index, bool include_dim) const;
 
-  // This function outputs to "config_lines" the lines of a config file.  If you
-  // provide include_dim=false, this will enable you to reconstruct the nodes in
-  // the network (but not the components, which need to be written separately).
-  // If you provide include_dim=true, it also adds extra information about
-  // node dimensions which is useful for a human reader but won't be
-  // accepted as the config-file format.
-  void GetConfigLines(bool include_dim,
-                      std::vector<std::string> *config_lines) const;
 
   // This function is used when reading config files; it exists in order to
   // handle replacement of existing nodes.  The two input vectors have the same

@@ -65,8 +65,8 @@ my %cli_options = ();
 my $jobname;
 my $jobstart;
 my $jobend;
-
 my $array_job = 0;
+my $sge_job_id;
 
 sub print_usage() {
   print STDERR
@@ -88,6 +88,14 @@ sub print_usage() {
    "  --max-jobs-run <num-jobs>\n" .
    "  --gpu <0|1> (default: $gpu)\n";
   exit 1;
+}
+
+sub caught_signal {
+  if ( defined $sge_job_id ) { # Signal trapped after submitting jobs
+    my $signal = $!;
+    system ("qdel $sge_job_id");
+    die "Caught a signal: $signal , deleting SGE task: $sge_job_id and exiting\n";
+  }
 }
 
 if (@ARGV < 2) {
@@ -178,6 +186,9 @@ EOF
 # passed to queue system would be "-l ram_free=2G,mem_free=2G
 # A more detailed description of the ways the options would be handled is at
 # the top of this file.
+
+$SIG{INT} = \&caught_signal;
+$SIG{TERM} = \&caught_signal;
 
 my $opened_config_file = 1;
 
@@ -418,7 +429,6 @@ for (my $try = 1; $try < 5; $try++) {
   }
 }
 
-my $sge_job_id;
 if (! $sync) { # We're not submitting with -sync y, so we
   # need to wait for the jobs to finish.  We wait for the
   # sync-files we "touched" in the script to exist.

@@ -115,7 +115,7 @@
 #Combine results (what we call 4way-combo)
 #This is ugly, but effective
 systems=""; for sys in `ls -1 release/*dev*.ctm | grep -v RESCORED` ; do 
-  q=`readlink -f $sys`; 
+  q=`utils/make_absolute.sh $sys`; 
   decode=${q%%/dev10h.seg*}; 
   w=`dirname ${q##*score_}`; 
   echo $w; systems+=" ${decode}:$(($w - 10))";  

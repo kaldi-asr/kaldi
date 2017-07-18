@@ -111,6 +111,7 @@ if [ $stage -le 2 ]; then
     $cmd JOB=1:$nj $dir/log/get_ctm.JOB.log \
       set -o pipefail '&&' \
       lattice-align-words-lexicon $lang/phones/align_lexicon.int $model  "ark:gunzip -c $dir/lat.JOB.gz|" ark:- \| \
+      lattice-1best ark:- ark:- \| \
       nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt '>' $dir/ctm.JOB || exit 1;
   else
@@ -192,7 +193,7 @@ if [ $stage -le 5 ]; then
 
   $cmd $dir/log/get_ctm_edits.log \
     align-text ark:$dir/oracle_hyp.txt ark:$dir/text ark,t:-  \| \
-      steps/cleanup/get_ctm_edits.py --oov=$oov --symbol-table=$lang/words.txt \
+      steps/cleanup/internal/get_ctm_edits.py --oov=$oov --symbol-table=$lang/words.txt \
        /dev/stdin $dir/ctm $dir/ctm_edits || exit 1
 
   echo "$0: ctm with edits information appended is in $dir/ctm_edits"

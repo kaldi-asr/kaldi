@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
       exit(0);
     }
 
-    if (!examples_rspecifier.empty()) {
+    if (!examples_rspecifier.empty() && IsSimpleNnet(nnet1)) {
       std::vector<NnetExample> examples;
       SequentialNnetExampleReader example_reader(examples_rspecifier);
       for (; !example_reader.Done(); example_reader.Next())
@@ -140,6 +140,10 @@ int main(int argc, char *argv[]) {
       Vector<BaseFloat> baseline_prod(num_updatable);
       ComponentDotProducts(nnet1, nnet1, &baseline_prod);
       baseline_prod.ApplyPow(0.5);
+
+      KALDI_LOG << "Norms of parameter matrices are "
+                << PrintVectorPerUpdatableComponent(nnet1, baseline_prod);
+
       dot_prod.DivElements(baseline_prod);
       KALDI_LOG << "Relative parameter differences per layer are "
                 << PrintVectorPerUpdatableComponent(nnet1, dot_prod);
@@ -153,5 +157,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

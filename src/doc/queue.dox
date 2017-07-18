@@ -449,12 +449,12 @@ give a slightly faster turnaround time for submitting jobs.
 GridEngine has the concept of "resources" which can be requested or specified by
 your jobs, and these can be viewed using <tt>qconf -sc</tt>.  Modify them
 using <tt>qconf -mc</tt>.  Modify the <tt>mem_free</tt> line to change the default
-memory requirement from 0 to 1G, i.e.:
+memory requirement from 0 to 1G, and to make it consumable, i.e.:
 \verbatim
 #name               shortcut    type        relop requestable consumable default  urgency
 #------------------------------------------------------------------------------------------
 <snip>
-mem_free            mf         MEMORY      <=    YES         NO         1G        0
+mem_free            mf         MEMORY      <=    YES         YES         1G        0
 \endverbatim
  and also add the following two new lines; it doesn't matter where in the file you add them.
 \verbatim
@@ -875,4 +875,3 @@ their home directories.  This is the most frequent cause of grid-wide problems.
 */
 
 }
-

@@ -4,13 +4,13 @@
 # To be run from one directory above this script.
 
 
-lexicon=data/local/dict/lexicon.txt 
+lexicon=data/local/dict/lexicon.txt
 [ ! -f $lexicon ] && echo "$0: No such file $lexicon" && exit 1;
 
 # check if sri is installed or no
 sri_installed=false
 which ngram-count  &>/dev/null
-if [[ $? == 0 ]]; then 
+if [[ $? == 0 ]]; then
 sri_installed=true
 fi
 
@@ -23,9 +23,9 @@ fi
 
 export LC_ALL=C # You'll get errors about things being not sorted, if you
 # have a different locale.
-export PATH=$PATH:./../../../tools/kaldi_lm
+export PATH=$PATH:$KALDI_ROOT/tools/kaldi_lm
 ( # First make sure the kaldi_lm toolkit is installed.
- cd ../../../tools || exit 1;
+ cd $KALDI_ROOT/tools || exit 1;
  if [ -d kaldi_lm ]; then
    echo Not installing the kaldi_lm toolkit since it is already there.
  else
@@ -45,10 +45,10 @@ dir=data/local/lm
  mkdir -p $dir
  text=data/local/train/text
  [ ! -f $text ] && echo "$0: No such file $text" && exit 1;
- 
+
  cleantext=$dir/text.no_oov
 
- cat $text | awk -v lex=$lexicon 'BEGIN{while((getline<lex) >0){ seen[$1]=1; } } 
+ cat $text | awk -v lex=$lexicon 'BEGIN{while((getline<lex) >0){ seen[$1]=1; } }
    {for(n=1; n<=NF;n++) {  if (seen[$n]) { printf("%s ", $n); } else {printf("<UNK> ",$n);} } printf("\n");}' \
    > $cleantext || exit 1;
 
@@ -72,20 +72,20 @@ dir=data/local/lm
  cat $cleantext | awk -v wmap=$dir/word_map 'BEGIN{while((getline<wmap)>0)map[$1]=$2;}
    { for(n=2;n<=NF;n++) { printf map[$n]; if(n<NF){ printf " "; } else { print ""; }}}' | gzip -c >$dir/train.gz \
     || exit 1;
- 
+
  train_lm.sh --arpa --lmtype 3gram-mincount $dir || exit 1;
 
 # LM is small enough that we don't need to prune it (only about 0.7M N-grams).
 # Perplexity over 128254.000000 words is 90.446690
 
 # note: output is
-# data/local/lm/3gram-mincount/lm_unpruned.gz 
+# data/local/lm/3gram-mincount/lm_unpruned.gz
 
 
 # From here is some commands to do a baseline with SRILM (assuming
 # you have it installed).
 
-if $sri_installed; then 
+if $sri_installed; then
 
  heldout_sent=10000 # Don't change this if you want result to be comparable with
     # kaldi_lm results
@@ -101,12 +101,12 @@ if $sri_installed; then
 
  ngram-count -text $sdir/train -order 3 -limit-vocab -vocab $sdir/wordlist -unk \
    -map-unk "<UNK>" -kndiscount -interpolate -lm $sdir/srilm.o3g.kn.gz
- ngram -lm $sdir/srilm.o3g.kn.gz -ppl $sdir/heldout 
+ ngram -lm $sdir/srilm.o3g.kn.gz -ppl $sdir/heldout
 # 0 zeroprobs, logprob= -250954 ppl= 90.5091 ppl1= 132.482
 
 # Note: perplexity SRILM gives to Kaldi-LM model is same as kaldi-lm reports above.
 # Difference in WSJ must have been due to different treatment of <UNK>.
- ngram -lm $dir/3gram-mincount/lm_unpruned.gz  -ppl $sdir/heldout 
+ ngram -lm $dir/3gram-mincount/lm_unpruned.gz  -ppl $sdir/heldout
 # 0 zeroprobs, logprob= -250913 ppl= 90.4439 ppl1= 132.379
 fi
 
