@@ -9,7 +9,7 @@
 
 # SDM
 # Results with flags : --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned \
-# ./local/chain/compare_wer_general.sh sdm1 tdnn_lstm1b_sp_bi_ihmali_ld5 cnn_tdnn_lstm1c_sp_bi_ihmali_ld5
+# ./local/chain/compare_wer_general.sh sdm1 tdnn_lstm1b_sp_bi_ihmali_ld5 cnn_tdnn_lstm1b_sp_bi_ihmali_ld5_online cnn_tdnn_lstm1c_sp_bi_ihmali_ld5 cnn_tdnn_lstm1c_sp_bi_ihmali_ld5_online
 # System            cnn_tdnn_lstm1b_sp_bi_ihmali_ld5   online   cnn_tdnn_lstm1c_sp_bi_ihmali_ld5   online
 # WER on dev                   34.7                     34.8             34.1                       34.1
 # WER on eval                  38.1                     38.2             38.0                       37.9
@@ -334,7 +334,7 @@ if $test_online_decoding && [ $stage -le 19 ]; then
         --acwt 1.0 --post-decode-acwt 10.0 \
         --extra-left-context-initial 0 \
         --scoring-opts "--min-lmwt 5 " \
-        $graph_dir data/$mic/${decode_set}_hires ${dir}_online/decode_online_${decode_set} || exit 1
+        $graph_dir data/$mic/${decode_set}_hires ${dir}_online/decode_${decode_set}_online || exit 1
     ) || touch ${dir}_online/.error &
   done
   wait
