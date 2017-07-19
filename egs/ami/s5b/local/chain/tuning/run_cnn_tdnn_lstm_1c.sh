@@ -9,7 +9,7 @@
 
 # SDM
 # Results with flags : --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned \
-# ./local/chain/compare_wer_general.sh sdm1 tdnn_lstm1j_sp_bi_ihmali_ld5 cnn_tdnn_lstm1b_sp_bi_ihmali_ld5 cnn_tdnn_lstm1b_sp_bi_ihmali_ld5_online
+# ./local/chain/compare_wer_general.sh sdm1 tdnn_lstm1b_sp_bi_ihmali_ld5 cnn_tdnn_lstm1c_sp_bi_ihmali_ld5
 # System            cnn_tdnn_lstm1b_sp_bi_ihmali_ld5   online   cnn_tdnn_lstm1c_sp_bi_ihmali_ld5   online
 # WER on dev                   34.7                     34.8             34.1                       34.1
 # WER on eval                  38.1                     38.2             38.0                       37.9
