@@ -22,7 +22,13 @@ The RTTM format is
 
 """
 
+from __future__ import print_function
 import argparse
+import sys
+
+sys.path.insert(0, 'steps')
+import libs.common as common_lib
+
 
 def get_args():
     parser = argparse.ArgumentParser(
@@ -49,9 +55,9 @@ def get_args():
 def main():
     args = get_args()
 
-    reco2file_and_channel = {}
     if args.reco2file_and_channel is not None:
-        with common_lib.smart_open(args.reco2file_and_channel as fh):
+        reco2file_and_channel = {}
+        with common_lib.smart_open(args.reco2file_and_channel) as fh:
             for line in fh:
                 parts = line.strip().split()
                 reco2file_and_channel[parts[0]] = (parts[1], parts[2])
@@ -63,7 +69,7 @@ def main():
             utt2spk[parts[0]] = parts[1]
 
     with common_lib.smart_open(args.segments) as segments_reader, \
-            common_lib.smart_open(args.rttm_file) as rttm_writer:
+            common_lib.smart_open(args.rttm_file, 'w') as rttm_writer:
         for line in segments_reader:
             parts = line.strip().split()
 
@@ -71,11 +77,13 @@ def main():
             spkr = utt2spk[utt]
 
             reco = parts[1]
+            file_id = reco
+            channel = 1
 
             if args.reco2file_and_channel is not None:
                 try:
                     file_id, channel = reco2file_and_channel[reco]
-                except KeyError as e:
+                except KeyError:
                     raise RuntimeError(
                         "Could not find recording {0} in {1}".format(
                             reco, args.reco2file_and_channel))

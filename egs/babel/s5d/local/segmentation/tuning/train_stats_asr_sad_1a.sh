@@ -32,9 +32,8 @@ initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
 num_jobs_initial=3
 num_jobs_final=8
-remove_egs=false
+remove_egs=true
 max_param_change=0.2  # Small max-param change for small network
-dropout_schedule='0,0@0.20,0.1@0.50,0'
 
 egs_dir=
 nj=40
@@ -115,7 +114,6 @@ if [ $stage -le 6 ]; then
     --trainer.optimization.initial-effective-lrate=$initial_effective_lrate \
     --trainer.optimization.final-effective-lrate=$final_effective_lrate \
     --trainer.optimization.shrink-value=0.99 \
-    --trainer.dropout-schedule="$dropout_schedule" \
     --trainer.rnn.num-chunk-per-minibatch=128,64 \
     --trainer.optimization.momentum=0.5 \
     --trainer.deriv-truncate-margin=10 \

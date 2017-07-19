@@ -61,7 +61,7 @@ def main():
 
     file_and_channel2reco = {}
     if args.reco2file_and_channel is not None:
-        with common_lib.smart_open(args.reco2file_and_channel as fh):
+        with common_lib.smart_open(args.reco2file_and_channel) as fh:
             for line in fh:
                 parts = line.strip().split()
                 file_and_channel2reco[(parts[1], parts[2])] = parts[0]

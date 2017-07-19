@@ -32,7 +32,9 @@ max_remaining_duration=5  # If the last remaining piece when splitting uniformly
 merge_weights=1.0,0.1,0.5
 
 prepare_targets_stage=-10
+nstage=-10
 train_stage=-10
+test_stage=-10
 
 affix=_1a
 stage=-1
@@ -143,7 +145,7 @@ if [ $stage -le 6 ]; then
   steps/segmentation/detect_speech_activity.sh \
     --extra-left-context 70 --extra-right-context 0 --frames-per-chunk 150 \
     --extra-left-context-initial 0 --extra-right-context-final 0 \
-    --nj 32 --acwt 0.3 \
+    --nj 32 --acwt 0.3 --stage $test_stage \
     data/dev10h.pem \
     exp/segmentation_1a/tdnn_lstm_asr_sad_1a \
     mfcc_hires_bp \

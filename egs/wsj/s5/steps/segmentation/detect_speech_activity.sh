@@ -118,7 +118,7 @@ fi
 
 if [ $stage -le 1 ]; then
   utils/fix_data_dir.sh $test_data_dir
-  steps/make_mfcc.sh --mfcc-config $mfcc_config --nj $nj --cmd "$cmd" \
+  steps/make_mfcc.sh --mfcc-config $mfcc_config --nj $nj --cmd "$cmd" --write-utt2num-frames true \
     ${test_data_dir} exp/make_hires/${data_id}${feat_affix} $mfcc_dir
   steps/compute_cmvn_stats.sh ${test_data_dir} exp/make_hires/${data_id}${feat_affix} $mfcc_dir
   utils/fix_data_dir.sh ${test_data_dir}

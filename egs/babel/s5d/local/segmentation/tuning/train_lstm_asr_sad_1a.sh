@@ -34,7 +34,7 @@ initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
 num_jobs_initial=3
 num_jobs_final=8
-remove_egs=false
+remove_egs=true
 max_param_change=0.2  # Small max-param change for small network
 dropout_schedule='0,0@0.20,0.1@0.50,0'
 
