@@ -32,7 +32,7 @@ fi
 
 # find wav audio file for train, dev and test resp.
 find $aishell_audio_dir -iname "*.wav" > $tmp_dir/wav.flist
-n=`wc -l $tmp_dir/wav.flist`
+n=`cat $tmp_dir/wav.flist | wc -l`
 [ $n -ne 141925 ] && \
   echo Warning: expected 141925 data data files, found $n
 
@@ -45,10 +45,8 @@ rm -r $tmp_dir
 # Transcriptions preparation
 for dir in $train_dir $dev_dir $test_dir; do
   echo Preparing $dir transcriptions
-  sed -e 's/\.wav//' $dir/wav.flist | awk -F '/' '{print $NF}' |\
-    sort > $dir/utt.list
-  sed -e 's/\.wav//' $dir/wav.flist | awk -F '/' '{i=NF-1;printf("%s %s\n",$NF,$i)}' |\
-    sort > $dir/utt2spk_all
+  sed -e 's/\.wav//' $dir/wav.flist | awk -F '/' '{print $NF}' > $dir/utt.list
+  sed -e 's/\.wav//' $dir/wav.flist | awk -F '/' '{i=NF-1;printf("%s %s\n",$NF,$i)}' > $dir/utt2spk_all
   paste -d' ' $dir/utt.list $dir/wav.flist > $dir/wav.scp_all
   utils/filter_scp.pl -f 1 $dir/utt.list $aishell_text > $dir/transcripts.txt
   awk '{print $1}' $dir/transcripts.txt > $dir/utt.list
