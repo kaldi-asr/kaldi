@@ -27,7 +27,7 @@ max_remaining_duration=5  # If the last remaining piece when splitting uniformly
 # labels obtained from decoding and default labels in out-of-segment regions
 merge_weights=1.0,0.1,0.5
 
-[ -f . path.sh ] && . ./path.sh 
+[ -f ./path.sh ] && . ./path.sh 
 
 set -e -u -o pipefail
 . utils/parse_options.sh 
@@ -81,7 +81,7 @@ for f in $data_dir/feats.scp $whole_data_dir/feats.scp $data_dir/segments \
   fi
 done
 
-if ! cat "$garbage_phones_list $silence_phones_list" | \
+if ! cat $garbage_phones_list $silence_phones_list | \
   steps/segmentation/internal/verify_phones_list.py $lang/phones.txt; then
   echo "$0: Invalid $garbage_phones_list $silence_phones_list"
   exit 1
@@ -93,8 +93,6 @@ whole_data_id=$(basename $whole_data_dir)
 if [ $stage -le 0 ]; then
   rm -r $dir/$data_id || true
   mkdir -p $dir/$data_id
-
-  utils/copy_data_dir.sh $data_dir $dir/${data_id}
 
   # Copy the data directory, but treat the recording as the speaker. This
   # is required to get matching speaker information in the whole 

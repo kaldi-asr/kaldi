@@ -40,6 +40,7 @@ affix=_1a
 stage=-1
 nj=80
 
+# Babel specific configuration. These two lines can be removed when adapting to other corpora.
 [ ! -f ./lang.conf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
 . ./lang.conf || exit 1;
 
@@ -81,7 +82,7 @@ fi
 whole_data_dir=${data_dir}_whole
 
 if [ $stage -le 0 ]; then
-  utils/convert_data_dir_to_whole.sh $data_dir $whole_data_dir
+  utils/data/convert_data_dir_to_whole.sh $data_dir $whole_data_dir
 fi
 
 ###############################################################################
