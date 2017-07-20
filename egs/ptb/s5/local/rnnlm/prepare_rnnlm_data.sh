@@ -16,10 +16,10 @@ dir=exp/rnnlm/
 mkdir -p $dir
 
 # validata data dir
-rnnlm/validate_data_dir.py $data_dir/data/
+rnnlm/validate_data_dir.py $data_dir/data
 
 # get unigram counts
-rnnlm/get_unigram_counts.sh $data_dir/data/
+rnnlm/get_unigram_counts.sh $data_dir/data
 
 # get vocab
 mkdir -p $data_dir/vocab
