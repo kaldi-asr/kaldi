@@ -132,16 +132,11 @@ int main(int argc, char *argv[]) {
       } else {
         vtln_warp_local = vtln_warp;
       }
-      if (fbank_opts.frame_opts.samp_freq != wave_data.SampFreq())
-        KALDI_ERR << "Sample frequency mismatch: you specified "
-                  << fbank_opts.frame_opts.samp_freq << " but data has "
-                  << wave_data.SampFreq() << " (use --sample-frequency "
-                  << "option).  Utterance is " << utt;
 
       SubVector<BaseFloat> waveform(wave_data.Data(), this_chan);
       Matrix<BaseFloat> features;
       try {
-        fbank.Compute(waveform, vtln_warp_local, &features, NULL);
+        fbank.ComputeFeatures(waveform, wave_data.SampFreq(), vtln_warp_local, &features);
       } catch (...) {
         KALDI_WARN << "Failed to compute features for utterance "
                    << utt;
