@@ -140,11 +140,13 @@ class OfflineFeatureTpl {
        @param [in] wave   The input waveform
        @param [in] sample_freq  The sampling frequency with which
                                 'wave' was sampled.
+                                if sample_freq is higher than the frequency
+                                specified in the config, we will downsample
+                                the waveform, but if lower, it's an error.
      @param [in] vtln_warp  The VTLN warping factor (will normally
                             be 1.0)
      @param [out]  output  The matrix of features, where the row-index
                            is the frame index.
-
   */
   void ComputeFeatures(const VectorBase<BaseFloat> &wave,
                        BaseFloat sample_freq,

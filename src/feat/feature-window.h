@@ -59,7 +59,7 @@ struct FrameExtractionOptions {
       round_to_power_of_two(true),
       blackman_coeff(0.42),
       snip_edges(true),
-      allow_downsample(false){ }
+      allow_downsample(false) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("sample-frequency", &samp_freq,
