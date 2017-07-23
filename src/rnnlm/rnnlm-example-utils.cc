@@ -370,7 +370,7 @@ void ProcessRnnlmOutput(
 
 void GetRnnlmExampleDerived(const RnnlmExample &minibatch,
                             bool need_embedding_deriv,
-                            const RnnlmExampleDerived *derived) {
+                            RnnlmExampleDerived *derived) {
   derived->cu_input_words = minibatch.input_words;
 
   bool using_sampling = !(minibatch.sampled_words.empty());
@@ -379,15 +379,15 @@ void GetRnnlmExampleDerived(const RnnlmExample &minibatch,
     derived->cu_sampled_words = minibatch.output_words;
   } else {
     CuArray<int32> cu_output_words(minibatch.output_words);
-    CuSparseMatrix<BaseFloat> output_words_smat(minibatch.vocab_size,
-                                                cu_output_words,
-                                                minibatch.output_weights);
+    CuSparseMatrix<BaseFloat> output_words_smat(cu_output_words,
+                                                minibatch.output_weights,
+                                                minibatch.vocab_size);
     derived->output_words_smat.Swap(&output_words_smat);
   }
 
   if (need_embedding_deriv) {
     CuSparseMatrix<BaseFloat> input_words_smat(derived->cu_input_words,
-                                               vocab_size, kTrans);
+                                               minibatch.vocab_size, kTrans);
     derived->input_words_smat.Swap(&input_words_smat);
   }
 }

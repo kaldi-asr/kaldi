@@ -114,6 +114,10 @@ class CuSparseMatrix {
 
   void Read(std::istream &is, bool binary);
 
+
+  /// Default constructor
+  CuSparseMatrix(): num_rows_(0), num_cols_(0) { }
+
   /// Constructor from CPU-based sparse matrix.
   explicit CuSparseMatrix(const SparseMatrix<Real> &smat) {
     this->CopyFromSmat(smat);

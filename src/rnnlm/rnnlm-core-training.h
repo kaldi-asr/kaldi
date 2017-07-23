@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_RNNLM_RNNLM_CORE_TRAIN_H_
-#define KALDI_RNNLM_RNNLM_CORE_TRAIN_H_
+#ifndef KALDI_RNNLM_RNNLM_CORE_TRAINING_H_
+#define KALDI_RNNLM_RNNLM_CORE_TRAINING_H_
 
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
@@ -26,6 +26,7 @@
 #include "nnet3/nnet-nnet.h"
 #include "nnet3/nnet-compute.h"
 #include "nnet3/nnet-optimize.h"
+#include "rnnlm/rnnlm-example-utils.h"
 
 namespace kaldi {
 namespace rnnlm {
@@ -38,7 +39,7 @@ namespace rnnlm {
 // with the RNNLM the training code a few things are different,
 // so we're using a totally separate training class.
 // We'll add options as we need them.
-class RnnlmCoreTrainerOptions {
+struct RnnlmCoreTrainerOptions {
   int32 print_interval;
   BaseFloat momentum;
   BaseFloat max_param_change;
@@ -63,6 +64,7 @@ class RnnlmCoreTrainerOptions {
 
 
 class ObjectiveTracker {
+ public:
   ObjectiveTracker(int32 reporting_interval);
 
 
@@ -138,7 +140,7 @@ class RnnlmCoreTrainer {
    */
   void Train(const RnnlmExample &minibatch,
              const CuMatrixBase<BaseFloat> &word_embedding,
-             CuMatrix<BaseFloat> *word_embedding_deriv = NULL);
+             CuMatrixBase<BaseFloat> *word_embedding_deriv = NULL);
 
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
@@ -151,6 +153,7 @@ class RnnlmCoreTrainer {
  private:
 
   void ProvideInput(const RnnlmExample &minibatch,
+                    const RnnlmExampleDerived &derived,
                     const CuMatrixBase<BaseFloat> &word_embedding,
                     nnet3::NnetComputer *computer);
 
@@ -174,16 +177,13 @@ class RnnlmCoreTrainer {
                              // a delta-parameter nnet.
   nnet3::CachingOptimizingCompiler compiler_;
 
-  // This code supports multiple output layers, even though in the
-  // normal case there will be just one output layer named "output".
-  // So we store the objective functions per output layer.
   int32 num_minibatches_processed_;
 
   // stats for max-change.
   std::vector<int32> num_max_change_per_component_applied_;
   int32 num_max_change_global_applied_;
 
-  ObjectiveFunctionTracker objf_info_;
+  ObjectiveTracker objf_info_;
 };
 
 
@@ -194,4 +194,4 @@ class RnnlmCoreTrainer {
 } // namespace rnnlm
 } // namespace kaldi
 
-#endif //KALDI_RNNLM_RNNLM_CORE_H_
+#endif //KALDI_RNNLM_RNNLM_CORE_TRAINING_H_

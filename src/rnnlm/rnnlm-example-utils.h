@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_RNNLM_RNNLM_EGS_UTILS_H_
-#define KALDI_RNNLM_RNNLM_EGS_UTILS_H_
+#ifndef KALDI_RNNLM_RNNLM_EXAMPLE_UTILS_H_
+#define KALDI_RNNLM_RNNLM_EXAMPLE_UTILS_H_
 
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
@@ -138,7 +138,7 @@ struct RnnlmExampleDerived {
 */
 void GetRnnlmExampleDerived(const RnnlmExample &minibatch,
                             bool need_embedding_deriv,
-                            const RnnlmExampleDerived *derived);
+                            RnnlmExampleDerived *derived);
 
 /**
      This function processes the output of the RNNLM computation for a single
