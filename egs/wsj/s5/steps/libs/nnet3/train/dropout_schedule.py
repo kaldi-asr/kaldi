@@ -210,6 +210,17 @@ def _get_dropout_proportions(dropout_schedule, data_fraction):
     return dropout_proportions
 
 
+def get_schedule_value(schedule, data_fraction):
+    if schedule is None:
+        return 0
+    proportions = _get_dropout_proportions(
+        schedule, data_fraction)
+
+    assert len(proportions) == 1
+    assert len(proportions[0]) == 2 and proportions[0][0] == '*'
+    return proportions[0][1]
+
+
 def get_dropout_edit_string(dropout_schedule, data_fraction, iter_):
     """Return an nnet3-copy --edits line to modify raw_model_string to
     set dropout proportions according to dropout_proportions.

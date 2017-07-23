@@ -132,7 +132,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      shuffle_buffer_size, num_chunk_per_minibatch_str,
                      frame_subsampling_factor, truncate_deriv_weights, run_opts,
                      backstitch_training_scale=0.0, backstitch_training_interval=1,
-                     use_smbr_objective=False):
+                     smbr_opt=""):
     """
     Called from train_one_iteration(), this method trains new models
     with 'num_jobs' jobs, and
@@ -216,8 +216,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         egs_dir=egs_dir, archive_index=archive_index,
                         buf_size=shuffle_buffer_size,
                         num_chunk_per_mb=num_chunk_per_minibatch_str,
-                        smbr_opt="--use-smbr-objective"
-                                 if use_smbr_objective else ""),
+                        smbr_opt=smbr_opt),
             require_zero_status=True)
 
         threads.append(thread)
@@ -240,7 +239,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         frame_subsampling_factor, truncate_deriv_weights,
                         run_opts, dropout_edit_string="",
                         backstitch_training_scale=0.0, backstitch_training_interval=1,
-                        use_smbr_objective=False):
+                        smbr_opt=""):
     """ Called from steps/nnet3/chain/train.py for one iteration for
     neural network training with LF-MMI objective
 
@@ -273,7 +272,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         dir=dir, iter=iter, egs_dir=egs_dir,
         l2_regularize=l2_regularize, xent_regularize=xent_regularize,
         leaky_hmm_coefficient=leaky_hmm_coefficient, run_opts=run_opts,
-        use_smbr_objective=use_smbr_objective)
+        smbr_opt=smbr_opt)
 
     if iter > 0:
         # Runs in the background
@@ -304,7 +303,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     if shrinkage_value != 1.0:
         shrink_info_str = ' and shrink value is {0}'.format(shrinkage_value)
 
-    objf_info = "" if not use_smbr_objective else "and objective is sMBR"
+    objf_info = "" if smbr_opt != "" else "and objective is sMBR"
     logger.info("On iteration {0}, learning rate is {1}"
                 "{shrink_info} {objf_info}.".format(
                     iter, learning_rate,
@@ -333,7 +332,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      backstitch_training_scale=(backstitch_training_scale *
                          iter / 15 if iter < 15 else backstitch_training_scale),
                      backstitch_training_interval=backstitch_training_interval,
-                     use_smbr_objective=use_smbr_objective)
+                     smbr_opt=smbr_opt)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
          num_jobs, '{0}/log/train.{1}.%.log'.format(dir, iter))
@@ -460,8 +459,7 @@ def prepare_initial_acoustic_model(dir, run_opts, srand=-1):
 
 def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
                                    xent_regularize, leaky_hmm_coefficient,
-                                   run_opts,
-                                   use_smbr_objective=False):
+                                   run_opts, smbr_opt=""):
     model = '{0}/{1}.mdl'.format(dir, iter)
 
     common_lib.background_command(
@@ -475,8 +473,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
                    l2=l2_regularize, leaky=leaky_hmm_coefficient,
                    xent_reg=xent_regularize,
                    egs_dir=egs_dir,
-                   smbr_opt="--use-smbr-objective"
-                            if use_smbr_objective else ""))
+                   smbr_opt=smbr_opt))
 
 
     common_lib.background_command(
@@ -490,8 +487,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
                    l2=l2_regularize, leaky=leaky_hmm_coefficient,
                    xent_reg=xent_regularize,
                    egs_dir=egs_dir,
-                   smbr_opt="--use-smbr-objective"
-                            if use_smbr_objective else ""))
+                   smbr_opt=smbr_opt))
 
 
 def compute_progress(dir, iter, run_opts):
@@ -515,7 +511,7 @@ def compute_progress(dir, iter, run_opts):
 def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_str,
                    egs_dir, leaky_hmm_coefficient, l2_regularize,
                    xent_regularize, run_opts,
-                   sum_to_one_penalty=0.0, use_smbr_objective=False):
+                   sum_to_one_penalty=0.0, smbr_opt=""):
     """ Function to do model combination
 
     In the nnet3 setup, the logic
@@ -574,8 +570,7 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
                     num_chunk_per_mb=num_chunk_per_minibatch_str,
                     num_iters=num_iters,
                     egs_dir=egs_dir,
-                    smbr_opt="--use-smbr-objective" if use_smbr_objective
-                             else ""))
+                    smbr_opt=smbr_opt))
 
     # Compute the probability of the final, combined model with
     # the same subset we used for the previous compute_probs, as the
@@ -584,5 +579,4 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
         dir=dir, iter='final', egs_dir=egs_dir,
         l2_regularize=l2_regularize, xent_regularize=xent_regularize,
         leaky_hmm_coefficient=leaky_hmm_coefficient,
-        run_opts=run_opts,
-        use_smbr_objective=use_smbr_objective)
+        run_opts=run_opts, smbr_opt=smbr_opt)
