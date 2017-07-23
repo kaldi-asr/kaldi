@@ -141,7 +141,8 @@ int main(int argc, char **argv) {
   const char *usage = "";
   ParseOptions po(usage);
   po.Read(argc, argv);
-  std::string arpa_file = po.GetArg(1), history_file = po.GetArg(2);
+  std::string arpa_file = "test/0.1k_3gram_unpruned.arpa",
+    history_file = "test/hists";
 
   ArpaParseOptions options;
   fst::SymbolTable symbols;
