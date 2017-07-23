@@ -32,6 +32,7 @@ extra_kws=false
 cmd=run.pl
 max_states=150000
 wip=0.5 #Word insertion penalty
+iter=final
 #End of options
 
 if [ $(basename $0) == score.sh ]; then
@@ -53,15 +54,18 @@ decode_dir=$3;
 
 ##NB: The first ".done" files are used for backward compatibility only
 ##NB: should be removed in a near future...
+model=`dirname $decode_dir`/${iter}.mdl
 if ! $skip_stt ; then
   if  [ ! -f $decode_dir/.score.done ] && [ ! -f $decode_dir/.done.score ]; then
     local/lattice_to_ctm.sh --cmd "$cmd" --word-ins-penalty $wip \
       --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} \
+      --model $model \
       $data_dir $lang_dir $decode_dir
 
     if ! $skip_scoring ; then
       local/score_stm.sh --cmd "$cmd"  --cer $cer \
         --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt}\
+        --model $model \
         $data_dir $lang_dir $decode_dir
     fi
     touch $decode_dir/.done.score
@@ -76,6 +80,7 @@ if ! $skip_kws ; then
       local/kws_search.sh --cmd "$cmd" --extraid $extraid  \
         --max-states ${max_states} --min-lmwt ${min_lmwt} --skip-scoring true\
          --max-lmwt ${max_lmwt} --indices-dir $decode_dir/kws_indices \
+         --model $model \
         $lang_dir $data_dir $decode_dir
       touch $decode_dir/.done.kws.$extraid
     fi
@@ -83,6 +88,7 @@ if ! $skip_kws ; then
       local/search/search.sh --cmd "$decode_cmd"  --extraid ${extraid} \
         --max-states ${max_states} --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} \
         --indices-dir $decode_dir/kws_indices --skip-scoring $skip_scoring \
+        --model $model \
         $lang_dir $data_dir $decode_dir
       touch $decode_dir/.done.kwset.$extraid
     fi
@@ -92,6 +98,7 @@ if ! $skip_kws ; then
       local/kws_search.sh --cmd "$cmd" --extraid $extraid  --stage 4 \
         --max-states ${max_states} --min-lmwt ${min_lmwt} --skip-scoring false\
          --max-lmwt ${max_lmwt} --indices-dir $decode_dir/kws_indices \
+         --model $model \
         $lang_dir $data_dir $decode_dir
       touch $decode_dir/.done.kws.${extraid}.scored
     fi

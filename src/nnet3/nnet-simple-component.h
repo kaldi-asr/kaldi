@@ -703,7 +703,8 @@ class SoftmaxComponent: public NonlinearComponent {
   SoftmaxComponent() { }
   virtual std::string Type() const { return "SoftmaxComponent"; }
   virtual int32 Properties() const {
-    return kSimpleComponent|kBackpropNeedsOutput|kStoresStats;
+    return kSimpleComponent|kPropagateInPlace|kBackpropInPlace|
+        kBackpropNeedsOutput|kStoresStats;
   }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -1607,6 +1608,8 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
 };
 
 /**
+ * WARNING, this component is deprecated in favor of
+ *  TimeHeightConvolutionComponent, and will be deleted.
  * ConvolutionalComponent implements 2d-convolution.
  * It uses 3D filters on 3D inputs, but the 3D filters hop only over
  * 2 dimensions as it has same size as the input along the 3rd dimension.
@@ -2011,6 +2014,8 @@ class LstmNonlinearityComponent: public UpdatableComponent {
 
 
 /*
+ * WARNING, this component is deprecated as it's not compatible with
+ *   TimeHeightConvolutionComponent, and it will eventually be deleted.
  * MaxPoolingComponent :
  * Maxpooling component was firstly used in ConvNet for selecting an
  * representative activation in an area. It inspired Maxout nonlinearity.

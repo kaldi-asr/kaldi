@@ -772,7 +772,7 @@ class CommonParser(object):
                                  dest='rand_prune', default=4.0,
                                  help="Value used in preconditioning "
                                  "matrix estimation")
-        self.parser.add_argument("--trainer.lda.max-lda-jobs", type=float,
+        self.parser.add_argument("--trainer.lda.max-lda-jobs", type=int,
                                  dest='max_lda_jobs', default=10,
                                  help="Max number of jobs used for "
                                  "LDA stats accumulation")
@@ -819,6 +819,13 @@ class CommonParser(object):
                                  the final model combination stage.  These
                                  models will themselves be averages of
                                  iteration-number ranges""")
+        self.parser.add_argument("--trainer.optimization.do-final-combination",
+                                 dest='do_final_combination', type=str,
+                                 action=common_lib.StrToBoolAction,
+                                 choices=["true", "false"], default=True,
+                                 help="""Set this to false to disable the final
+                                 'combine' stage (in this case we just use the
+                                 last-numbered model as the final.mdl).""")
         self.parser.add_argument("--trainer.optimization.combine-sum-to-one-penalty",
                                  type=float, dest='combine_sum_to_one_penalty', default=0.0,
                                  help="""If > 0, activates 'soft' enforcement of the

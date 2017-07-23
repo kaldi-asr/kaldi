@@ -20,7 +20,6 @@
 
 # Begin configuration section.
 cmd=run.pl
-feat_type=raw       # set it to 'lda' to use LDA features.
 target_type=sparse  # dense to have dense targets,
                     # sparse to have posteriors targets
 num_targets=        # required for target-type=sparse with raw nnet
@@ -75,8 +74,6 @@ if [ $# != 3 ]; then
   echo "                                                   # network speed).  default=6"
   echo "  --cmd (utils/run.pl;utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --samples-per-iter <#samples;400000>             # Target number of egs per archive (option is badly named)"
-  echo "  --feat-type <lda|raw>                            # (raw is the default).  The feature type you want"
-  echo "                                                   # to use as input to the neural net."
   echo "  --frames-per-eg <frames;8>                       # number of frames per eg on disk"
   echo "                                                   # May be either a single number or a comma-separated list"
   echo "                                                   # of alternatives (useful when training LSTMs, where the"
@@ -132,14 +129,7 @@ fi
 awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
    utils/shuffle_list.pl | head -$num_utts_subset | sort > $dir/train_subset_uttlist || exit 1;
 
-if [ ! -z "$transform_dir" ] && [ -f $transform_dir/trans.1 ] && [ $feat_type != "raw" ]; then
-  echo "$0: using transforms from $transform_dir"
-  if [ $stage -le 0 ]; then
-    $cmd $dir/log/copy_transforms.log \
-      copy-feats "ark:cat $transform_dir/trans.* |" "ark,scp:$dir/trans.ark,$dir/trans.scp"
-  fi
-fi
-if [ -f $transform_dir/raw_trans.1 ] && [ $feat_type == "raw" ]; then
+if [ -f $transform_dir/raw_trans.1 ]; then
   echo "$0: using raw transforms from $transform_dir"
   if [ $stage -le 0 ]; then
     $cmd $dir/log/copy_transforms.log \
@@ -150,27 +140,12 @@ fi
 
 
 ## Set up features.
-echo "$0: feature type is $feat_type"
+echo "$0: feature type is raw"
 
-case $feat_type in
-  raw) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
-    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
-    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
-    echo $cmvn_opts >$dir/cmvn_opts # caution: the top-level nnet training script should copy this to its own dir now.
-   ;;
-  lda)
-    splice_opts=`cat $transform_dir/splice_opts 2>/dev/null`
-    # caution: the top-level nnet training script should copy these to its own dir now.
-    cp $transform_dir/{splice_opts,cmvn_opts,final.mat} $dir || exit 1;
-    [ ! -z "$cmvn_opts" ] && \
-       echo "You cannot supply --cmvn-opts option if feature type is LDA." && exit 1;
-    cmvn_opts=$(cat $dir/cmvn_opts)
-    feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    ;;
-  *) echo "$0: invalid feature type --feat-type '$feat_type'" && exit 1;
-esac
+feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
+valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+echo $cmvn_opts >$dir/cmvn_opts # caution: the top-level nnet training script should copy this to its own dir now.
 
 if [ -f $dir/trans.scp ]; then
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/trans.scp ark:- ark:- |"
@@ -402,7 +377,7 @@ if [ $stage -le 6 ]; then
   for x in $(seq $nj); do
     for y in $(seq $num_archives_intermediate); do
       file=$dir/egs_orig.$x.$y.ark
-      [ -L $file ] && rm $(readlink -f $file)
+      [ -L $file ] && rm $(utils/make_absolute.sh $file)
       rm $file
     done
   done

@@ -131,7 +131,7 @@ else
     
     local/make_corpus_subset.sh "$my_data_dir" "$my_data_list" ./data/raw_${type}_data
   fi
-  my_data_dir=`readlink -f ./data/raw_${type}_data`
+  my_data_dir=`utils/make_absolute.sh ./data/raw_${type}_data`
 
   nj_max=`cat $my_data_list | wc -l`
   if [[ "$nj_max" -lt "$my_nj" ]] ; then

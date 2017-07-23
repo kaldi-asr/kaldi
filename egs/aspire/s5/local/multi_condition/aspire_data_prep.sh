@@ -105,7 +105,7 @@ fi
 if [ $stage -le 3 ]; then
   for f in `cat $tmpdir/wav.flist`; do
     # convert to absolute path
-    readlink -e $f
+    utils/make_absolute.sh $f
   done > $tmpdir/wav_abs.flist
   
   cat $tmpdir/wav_abs.flist | python -c "
@@ -132,7 +132,7 @@ if [ $stage -le 4 ]; then
     mkdir -p $test
     for f in `cat $tmpdir/wav_${dataset}.flist`; do
       # convert to absolute path
-      readlink -e $f
+      utils/make_absolute.sh $f
     done > $tmpdir/wav_${dataset}_abs.flist
     cat $tmpdir/wav_${dataset}_abs.flist | \
     python -c "
