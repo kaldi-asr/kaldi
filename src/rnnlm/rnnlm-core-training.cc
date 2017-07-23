@@ -1,0 +1,214 @@
+// rnnlm/rnnlm-core-training.cc
+
+// Copyright 2017  Daniel Povey
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+#include <numeric>
+#include "rnnlm/rnnlm-core-training.h"
+#include "rnnlm/rnnlm-example-utils.h"
+
+namespace kaldi {
+namespace rnnlm {
+
+
+
+
+void RnnlmCoreTrainer::Train(
+    const RnnlmExample &minibatch,
+    const CuMatrixBase<BaseFloat> &word_embedding,
+    CuMatrixBase<BaseFloat> *word_embedding_deriv) {
+  using namespace nnet3;
+
+  bool need_model_derivative = true;
+  bool need_input_derivative = (word_embedding_deriv != NULL);
+  bool store_component_stats = true;
+
+  ComputationRequest request;
+  GetRnnlmComputationRequest(minibatch, need_model_derivative,
+                             need_input_derivative,
+                             store_component_stats,
+                             &request);
+
+  RnnlmExampleDerived derived;
+  GetRnnlmExampleDerived(minibatch, &derived);
+
+  const NnetComputation *computation = compiler_.Compile(request);
+
+  NnetComputeOptions compute_opts;
+
+  NnetComputer computer(compute_opts, *computation,
+                        *nnet_, delta_nnet_);
+
+  ProvideInput(minibatch, derived, word_embedding, &computer);
+  computer.Run();  // This is the forward pass.
+
+  ProcessOutput(minibatch, derived, word_embedding,
+                &computer, word_embedding_deriv);
+
+  computer.Run();  // This is the backward pass.
+
+  if (word_embedding_deriv != NULL) {
+    CuMatrix<BaseFloat> input_deriv;
+    computer->GetOutputDestructive("input", &input_deriv);
+    word_embedding_deriv->AddMatSmat(1.0, input_deriv,
+                                     derived.input_words_smat,
+                                     kTrans, 1.0);
+  }
+  UpdateParamsWithMaxChange();
+}
+
+
+void RnnlmCoreTrainer::ProvideInput(
+    const RnnlmExample &minibatch,
+    const RnnlmExampleDerived &derived,
+    const CuMatrixBase<BaseFloat> &word_embedding,
+    nnet3::NnetComputer *computer) {
+  int32 embedding_dim = word_embedding.NumCols();
+  CuMatrix<BaseFloat> input_embeddings(derived.cu_input_words.Dim(),
+                                       embedding_dim,
+                                       kUndefined);
+  input_embeddings.CopyRows(word_embedding,
+                            derived.cu_input_words);
+  computer->AcceptInput("input", &input_embeddings);
+}
+
+ObjectiveTracker::ObjectiveTracker(int32 reporting_interval):
+    reporting_interval_(reporting_interval),
+    num_egs_this_interval_(0),
+    tot_weight_this_interval_(0.0),
+    num_objf_this_interval_(0.0),
+    den_objf_this_interval_(0.0),
+    exact_den_objf_this_interval_(0.0),
+    num_egs_(0),
+    tot_weight_(0.0),
+    num_objf_(0.0),
+    den_objf_(0.0),
+    exact_den_objf_(0.0) {
+  KALDI_ASERT(reporting_interval > 0);
+}
+
+
+void ObjectiveTracker::AddStats(
+    BaseFloat weight, BaseFloat num_objf,
+    BaseFloat den_objf,
+    BaseFloat exact_den_objf) {
+  num_egs_this_interval_++;
+  tot_weight_this_interval_ += weight;
+  num_objf_this_interval_ += num_objf;
+  den_objf_this_interval_ += den_objf;
+  exact_den_objf_this_interval_ += exact_den_objf;
+  if (num_egs_this_interval_ >= reporting_interval_) {
+    PrintStatsThisInterval();
+    CommitIntervalStats();
+  }
+}
+
+ObjectiveTracker::~ObjectiveTracker() {
+  if (num_egs_this_interval_ != 0) {
+    PrintStatsThisInterval();
+    CommitIntervalStats();
+  }
+  PrintStatsOverall();
+}
+
+void ObjectiveTracker::CommitIntervalStats() {
+  num_egs_ += num_egs_this_interval_;
+  num_egs_this_interval_ = 0;
+  tot_weight_ += tot_weight_this_interval_;
+  tot_weight_this_interval_ = 0.0;
+  num_objf_ += num_objf_this_interval_;
+  num_objf_this_interval_ = 0.0;
+  den_objf_ += den_objf_this_interval_;
+  den_objf_this_interval_ = 0.0;
+  exact_den_objf_ += exact_den_objf_this_interval_;
+  exact_den_objf_this_interval_ = 0.0;
+}
+
+void ObjectiveTracker::PrintStatsThisInterval() const {
+  int32 interval_start = num_egs_,
+      interval_end = num_egs + num_egs_this_interval_ - 1;
+  double weight = tot_weight_this_interval_,
+      num_objf = num_objf_this_interval_ / weight,
+      den_objf = den_objf_this_interval_ / weight,
+      tot_objf = num_objf + den_objf,
+      exact_den_objf = exact_den_objf_this_interval_ / weight,
+      exact_tot_objf = num_objf + exact_den_objf;
+  std::ostringstream os;
+  os.precision(4);
+  os << "Objf for minibatches " << interval_start << " to "
+     << interval_end << " is (" << num_objf << " + "
+     << den_objf << ") = " << tot_objf << " over "
+     << weight << " words (weighted)";
+  if (exact_den_objf != 0.0) {
+    os << "; exact = (" << num_objf << " + " << exact_den_objf
+       << ") = " << exact_tot_objf ;
+  }
+  KALDI_LOG << os.str();
+}
+
+void ObjectiveTracker::PrintStatsOverall() const {
+  double weight = tot_weight_,
+      num_objf = num_objf_ / weight,
+      den_objf = den_objf_ / weight,
+      tot_objf = num_objf + den_objf,
+      exact_den_objf = exact_den_objf_ / weight,
+      exact_tot_objf = num_objf + exact_den_objf;
+  std::ostringstream os;
+  os.precision(4);
+  os << "Overall objf is (" << num_objf << " + " << den_objf
+     << ") = " << tot_objf << " over " << weight << " words (weighted) in "
+     << num_egs_ << "minibatches";
+  if (exact_den_objf != 0.0) {
+    os << "; exact = (" << num_objf << " + " << exact_den_objf
+       << ") = " << exact_tot_objf ;
+  }
+  KALDI_LOG << os.str();
+}
+
+
+void RnnlmCoreTrainer::ProcessOutput(
+    const RnnlmExample &minibatch,
+    const RnnlmExampleDerived &derived,
+    const CuMatrixBase<BaseFloat> &word_embedding,
+    nnet3::NnetComputer *computer,
+    CuMatrixBase<BaseFloat> *word_embedding_deriv) {
+  // 'output' is the output of the neural network.  The row-index
+  // combines the time (with higher stride) and the member 'n'
+  // of the minibatch (with stride 1); the number of columns is
+  // the word-embedding dimension.
+  CuMatrix<BaseFloat> output;
+  CuMatrix<BaseFloat> output_deriv;
+  computer->GetOutputDestructive("output", &output);
+  output_deriv.Resize(output.NumRows(), output.NumCols());
+
+  BaseFloat weight, objf_num, objf_den, objf_den_exact;
+  ProcessRnnlmOutput(minibatch, derived, word_embedding,
+                     output, word_embedding_deriv,
+                     &output_deriv, &objf_num, &objf_den,
+                     &objf_den_exact);
+
+  objf_info_.AddStats(weight, objf_num, objf_den, objf_den_exact);
+  computer->AcceptInput("output", &output_deriv);
+}
+
+
+
+
+}  // namespace rnnlm
+}  // namespace kaldi
+
+

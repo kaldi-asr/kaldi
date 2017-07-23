@@ -1,4 +1,4 @@
-// rnnlm/rnnlm-egs.cc
+// rnnlm/rnnlm-example.cc
 
 // Copyright 2017  Daniel Povey
 
@@ -18,13 +18,13 @@
 // limitations under the License.
 
 #include <numeric>
-#include "rnnlm/rnnlm-egs.h"
+#include "rnnlm/rnnlm-example.h"
 
 namespace kaldi {
 namespace rnnlm {
 
 
-RnnlmMinibatchSampler::RnnlmMinibatchSampler(
+RnnlmExampleSampler::RnnlmExampleSampler(
     const RnnlmEgsConfig &config, const ArpaSampling &arpa_sampling):
     config_(config), arpa_sampling_(arpa_sampling) {
 
@@ -84,7 +84,7 @@ RnnlmMinibatchSampler::RnnlmMinibatchSampler(
 }
 
 
-void RnnlmMinibatchSampler::SampleForMinibatch(RnnlmMinibatch *minibatch) const {
+void RnnlmExampleSampler::SampleForMinibatch(RnnlmExample *minibatch) const {
   if (sampler_ == NULL) return;  // we're not actually sampling.
   KALDI_ASSERT(minibatch->chunk_length == config_.chunk_length &&
                minibatch->num_chunks == config_.num_chunks_per_minibatch &&
@@ -106,8 +106,8 @@ void RnnlmMinibatchSampler::SampleForMinibatch(RnnlmMinibatch *minibatch) const 
 }
 
 
-void RnnlmMinibatchSampler::SampleForGroup(int32 g,
-                                           RnnlmMinibatch *minibatch) const {
+void RnnlmExampleSampler::SampleForGroup(int32 g,
+                                           RnnlmExample *minibatch) const {
   // All words that appear on the output are required to appear in the sample.  we
   // need to figure what this set of words is.
   int32 sample_group_size = config_.sample_group_size,
@@ -157,8 +157,8 @@ void RnnlmMinibatchSampler::SampleForGroup(int32 g,
   }
 }
 
-void RnnlmMinibatchSampler::GetHistoriesForGroup(
-    int32 g, const RnnlmMinibatch &minibatch,
+void RnnlmExampleSampler::GetHistoriesForGroup(
+    int32 g, const RnnlmExample &minibatch,
     std::vector<std::pair<std::vector<int32>, BaseFloat> > *hist_weights) const {
   // initially store as an unordered_map so we can remove duplicates.
   std::unordered_map<std::vector<int32>, BaseFloat, VectorHasher<int32> > hist_to_weight;
@@ -198,9 +198,9 @@ void RnnlmMinibatchSampler::GetHistoriesForGroup(
         iter->first, iter->second));
 }
 
-void RnnlmMinibatchSampler::GetHistory(
+void RnnlmExampleSampler::GetHistory(
     int32 t, int32 n,
-    const RnnlmMinibatch &minibatch,
+    const RnnlmExample &minibatch,
     int32 max_history_length,
     std::vector<int32> *history) const {
   history->reserve(max_history_length);
@@ -234,7 +234,7 @@ void RnnlmMinibatchSampler::GetHistory(
 
 
 
-void RnnlmMinibatchCreator::AcceptSequence(
+void RnnlmExampleCreator::AcceptSequence(
     BaseFloat weight, const std::vector<int32> &words) {
   CheckSequence(weight, words);
   SplitSequenceIntoChunks(weight, words);
@@ -244,7 +244,7 @@ void RnnlmMinibatchCreator::AcceptSequence(
   }
 }
 
-RnnlmMinibatchCreator::~RnnlmMinibatchCreator() {
+RnnlmExampleCreator::~RnnlmExampleCreator() {
   BaseFloat words_per_chunk = num_words_processed_ * 1.0 /
       num_chunks_processed_,
       chunks_per_minibatch = num_chunks_processed_ * 1.0 /
@@ -260,7 +260,7 @@ RnnlmMinibatchCreator::~RnnlmMinibatchCreator() {
    delete chunks_[i];
 }
 
-RnnlmMinibatchCreator::SingleMinibatchCreator::SingleMinibatchCreator(
+RnnlmExampleCreator::SingleMinibatchCreator::SingleMinibatchCreator(
     const RnnlmEgsConfig &config):
     config_(config),
     eg_chunks_(config_.num_chunks_per_minibatch) {
@@ -268,8 +268,8 @@ RnnlmMinibatchCreator::SingleMinibatchCreator::SingleMinibatchCreator(
     empty_eg_chunks_.push_back(i);
 }
 
-bool RnnlmMinibatchCreator::SingleMinibatchCreator::AcceptChunk(
-    RnnlmMinibatchCreator::SequenceChunk *chunk) {
+bool RnnlmExampleCreator::SingleMinibatchCreator::AcceptChunk(
+    RnnlmExampleCreator::SequenceChunk *chunk) {
   int32 chunk_len = chunk->Length();
   if (chunk_len == config_.chunk_length) {  // maximum-sized chunk.
     if (empty_eg_chunks_.empty()) {
@@ -323,15 +323,15 @@ bool RnnlmMinibatchCreator::SingleMinibatchCreator::AcceptChunk(
 }
 
 
-RnnlmMinibatchCreator::SingleMinibatchCreator::~SingleMinibatchCreator() {
+RnnlmExampleCreator::SingleMinibatchCreator::~SingleMinibatchCreator() {
   for (size_t i = 0; i < eg_chunks_.size(); i++)
     for (size_t j = 0; j < eg_chunks_[i].size(); j++)
       delete eg_chunks_[i][j];
 }
 
 
-void RnnlmMinibatchCreator::SingleMinibatchCreator::CreateMinibatchOneSequence(
-    int32 n, RnnlmMinibatch *minibatch) {
+void RnnlmExampleCreator::SingleMinibatchCreator::CreateMinibatchOneSequence(
+    int32 n, RnnlmExample *minibatch) {
   // Much of the code here is about figuring out what to do if we haven't
   // completely used up the potential length of the sequence.  We first try
   // giving extra left-context to any split-up pieces of sequence that could potentially
@@ -410,9 +410,9 @@ void RnnlmMinibatchCreator::SingleMinibatchCreator::CreateMinibatchOneSequence(
 }
 
 
-void RnnlmMinibatchCreator::SingleMinibatchCreator::Set(
+void RnnlmExampleCreator::SingleMinibatchCreator::Set(
     int32 n, int32 t, int32 input_word, int32 output_word,
-    BaseFloat weight, RnnlmMinibatch *minibatch) const {
+    BaseFloat weight, RnnlmExample *minibatch) const {
   KALDI_ASSERT(n >= 0 && n < config_.num_chunks_per_minibatch &&
                t >= 0 && t < config_.chunk_length &&
                weight >= 0.0);
@@ -424,8 +424,9 @@ void RnnlmMinibatchCreator::SingleMinibatchCreator::Set(
 }
 
 
-void RnnlmMinibatchCreator::SingleMinibatchCreator::CreateMinibatch(
-    RnnlmMinibatch *minibatch) {
+void RnnlmExampleCreator::SingleMinibatchCreator::CreateMinibatch(
+    RnnlmExample *minibatch) {
+  minibatch->vocab_size = config_.vocab_size;
   minibatch->num_chunks = config_.num_chunks_per_minibatch;
   minibatch->chunk_length = config_.chunk_length;
   minibatch->num_samples = config_.num_samples;
@@ -439,7 +440,7 @@ void RnnlmMinibatchCreator::SingleMinibatchCreator::CreateMinibatch(
   }
 }
 
-RnnlmMinibatchCreator::SequenceChunk* RnnlmMinibatchCreator::GetRandomChunk() {
+RnnlmExampleCreator::SequenceChunk* RnnlmExampleCreator::GetRandomChunk() {
   KALDI_ASSERT(!chunks_.empty());
   int32 pos = RandInt(0, chunks_.size() - 1);
   SequenceChunk *ans = chunks_[pos];
@@ -448,7 +449,7 @@ RnnlmMinibatchCreator::SequenceChunk* RnnlmMinibatchCreator::GetRandomChunk() {
   return ans;
 }
 
-bool RnnlmMinibatchCreator::WriteMinibatch() {
+bool RnnlmExampleCreator::WriteMinibatch() {
   // A couple of configuration values that are not important enough
   // to go in the config...
   // 'chunks_proportion' controls when we discard a small amount of
@@ -479,7 +480,7 @@ bool RnnlmMinibatchCreator::WriteMinibatch() {
       cur_rejections++;
     }
   }
-  RnnlmMinibatch minibatch;
+  RnnlmExample minibatch;
   s.CreateMinibatch(&minibatch);
   if (minibatch_sampler_ != NULL)
     minibatch_sampler_->SampleForMinibatch(&minibatch);
@@ -493,7 +494,7 @@ bool RnnlmMinibatchCreator::WriteMinibatch() {
 }
 
 
-void RnnlmMinibatchCreator::SplitSequenceIntoChunks(
+void RnnlmExampleCreator::SplitSequenceIntoChunks(
     BaseFloat weight, const std::vector<int32> &words) {
   std::shared_ptr<std::vector<int32> > ptr (new std::vector<int32>());
   ptr->reserve(words.size() + 1);
@@ -517,8 +518,8 @@ void RnnlmMinibatchCreator::SplitSequenceIntoChunks(
   }
 }
 
-// see comment in rnnlm-egs.h, by its declaration.
-void RnnlmMinibatchCreator::ChooseChunkLengths(
+// see comment in rnnlm-example.h, by its declaration.
+void RnnlmExampleCreator::ChooseChunkLengths(
     int32 sequence_length,
     std::vector<int32> *chunk_lengths) {
   KALDI_ASSERT(sequence_length > config_.chunk_length);
@@ -543,15 +544,20 @@ void RnnlmMinibatchCreator::ChooseChunkLengths(
                == sequence_length);
 }
 
-void RnnlmMinibatchCreator::CheckSequence(
+void RnnlmExampleCreator::CheckSequence(
     BaseFloat weight,
     const std::vector<int32> &words) {
   KALDI_ASSERT(weight > 0.0);
   int32 bos_symbol = config_.bos_symbol,
       brk_symbol = config_.brk_symbol,
-      eos_symbol = config_.eos_symbol;
+      eos_symbol = config_.eos_symbol,
+      vocab_size = config_.vocab_size;
   for (size_t i = 0; i < words.size(); i++) {
-    KALDI_ASSERT(words[i] != bos_symbol && words[i] != brk_symbol);
+    // note: eos_symbol within a sequence isn't disallowed; this
+    // is allowed as a way to encode multiple turns of a conversation,
+    // and similar scenarios.
+    KALDI_ASSERT(words[i] != bos_symbol && words[i] != brk_symbol &&
+                 words[i] > 0 && words[i] < vocab_size);
   }
   if (!words.empty() && words.back() == eos_symbol) {
     // we may rate-limit this warning eventually if people legitimately need to
@@ -561,7 +567,14 @@ void RnnlmMinibatchCreator::CheckSequence(
   }
 }
 
-
+void RnnlmExampleCreator::Check() const {
+  if (minibatch_sampler_ != NULL) {
+    if (minibatch_sampler_->VocabSize() > config_.vocab_size) {
+      KALDI_ERR << "Option --vocab-size=" << config_.vocab_size
+                << " is inconsistent with the language model.";
+    }
+  }
+}
 
 
 

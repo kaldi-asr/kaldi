@@ -114,10 +114,42 @@ class CuSparseMatrix {
 
   void Read(std::istream &is, bool binary);
 
-  // Constructor from CPU-based sparse matrix.
+  /// Constructor from CPU-based sparse matrix.
   explicit CuSparseMatrix(const SparseMatrix<Real> &smat) {
     this->CopyFromSmat(smat);
   }
+
+
+  /// Constructor from an array of indexes.
+  /// If trans == kNoTrans, construct a sparse matrix
+  /// with num-rows == indexes.Dim() and num-cols = 'dim'.
+  /// 'indexes' is expected to contain elements in the
+  /// range [-1, dim - 1].  Each row 'i' of *this after
+  /// calling the constructor will contain zero elements
+  /// if indexes[i] == -1, otherwise it will contain a single
+  /// element at column-index indexes[i] with value 1.0.
+  ///
+  /// If trans == kTrans, the result will be the transpose
+  /// of the sparse matrix described above.
+  ///  TODO: implement this.
+  CuSparseMatrix(const CuArray<int32> &indexes,
+                 int32 dim, MatrixTransposeType trans = kNoTrans);
+
+  /// Constructor from an array of indexes and an array of
+  /// weights; requires indexes.Dim() == weights.Dim().
+  /// If trans == kNoTrans, construct a sparse matrix
+  /// with num-rows == indexes.Dim() and num-cols = 'dim'.
+  /// 'indexes' is expected to contain elements in the
+  /// range [-1, dim - 1].  Each row 'i' of *this after
+  /// calling the constructor will contain zero elements
+  /// if indexes[i] == -1, otherwise it will contain a single
+  /// element at column-index indexes[i] with value weights[i].
+  /// If trans == kTrans, the result will be the transpose
+  /// of the sparse matrix described above.
+  ///  TODO: implement this.
+  CuSparseMatrix(const CuArray<int32> &indexes,
+                 const CuVector<Real> &weights,
+                 int32 dim, MatrixTransposeType trans = kNoTrans);
 
   ~CuSparseMatrix() { }
 

@@ -1,4 +1,4 @@
-// rnnlm/rnnlm-egs.h
+// rnnlm/rnnlm-example.h
 
 // Copyright 2017  Johns Hopkins University (author: Daniel Povey)
 
@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_RNNLM_RNNLM_EGS_H_
-#define KALDI_RNNLM_RNNLM_EGS_H_
+#ifndef KALDI_RNNLM_RNNLM_EXAMPLE_H_
+#define KALDI_RNNLM_RNNLM_EXAMPLE_H_
 
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
@@ -33,8 +33,11 @@ namespace rnnlm {
 
 
 // A single minibatch for training an RNNLM.
-struct RnnlmMinibatch {
-  int32 num_chunks;      // The number of parallel word sequences/chunks.  [note:
+struct RnnlmExample {
+  int32 vocab_size;     // The vocabulary size (defined as largest integer word-id
+                        // plus one) for which this example was obtained; mostly
+                        //  used in bounds checking.
+  int32 num_chunks;     // The number of parallel word sequences/chunks.  [note:
                         // some of the word sequences may actually be made up of
                         // smaller subsequences appended together.
   int32 chunk_length;   // The length of each sequence in a minibatch,
@@ -63,16 +66,26 @@ struct RnnlmMinibatch {
                        // words in the vocab).
 
 
-  std::vector<int32> input_words;  // The input word symbols for each position
-                                   // in each chunk; dimension ==
-                                   // chunk_length * num_chunks, where
-                                   // 0 <= t < chunk_length has larger stride than
-                                   // 0 <= n < num_chunks.  In the
-                                   // common case these will be the same as the
-                                   // previous output symbol.
+  std::vector<int32> input_words;  // Contains the input word symbols 0 <= i <
+                                   // vocab_size for each position in each
+                                   // chunk; dimension == chunk_length *
+                                   // num_chunks, where 0 <= t < chunk_length
+                                   // has larger stride than 0 <= n <
+                                   // num_chunks.  In the common case these will
+                                   // be the same as the previous output symbol.
   std::vector<int32> output_words;  // The output (predicted) word symbols for
                                     // each position in each chunk; indexed
                                     // in the same way as 'input_words'.
+                                    // What this *contains* is different from
+                                    // 'input_words' in the sampling case
+                                    // (i.e. if !sampled_words.empty()).
+                                    // In that case, instead of the word-index
+                                    // it contains the relative index
+                                    // 0 <= i < num_samples within
+                                    // the block of sampled words.  In the
+                                    // sampled case it contains some 0 <= i <
+                                    // vocab_size.  TODO: ensure this is true.
+
 
 
   // Weights for each of the output_words, indexed the same way as
@@ -98,7 +111,7 @@ struct RnnlmMinibatch {
   // sampling).
   CuVector<BaseFloat> sample_inv_probs;
 
-  RnnlmMinibatch(): num_chunks(0), chunk_length(0), sample_group_size(1),
+  RnnlmExample(): num_chunks(0), chunk_length(0), sample_group_size(1),
                     num_samples(0) { }
 
   // TODO: Write and Read functions.
@@ -157,6 +170,10 @@ struct RnnlmMinibatch {
 
 
 struct RnnlmEgsConfig {
+  int32 vocab_size;  // The vocabulary size: or more specifically, the largest
+                     // integer word-id plus one.  Must be provided, as it
+                     // gets included in each minibatch (mostly for checking
+                     // purposes).
   int32 num_chunks_per_minibatch;
   int32 chunk_length;
   int32 min_split_context;
@@ -193,7 +210,8 @@ struct RnnlmEgsConfig {
                                 // that all words' probs are bounded away from
                                 // zero is, I think, necessary for the theory
                                 // of importance sampling.
-  RnnlmEgsConfig(): num_chunks_per_minibatch(128),
+  RnnlmEgsConfig(): vocab_size(-1),
+                    num_chunks_per_minibatch(128),
                     chunk_length(32),
                     min_split_context(3),
                     sample_group_size(2),
@@ -206,6 +224,9 @@ struct RnnlmEgsConfig {
                     uniform_prob_mass(0.1) { }
 
   void Register(OptionsItf *po) {
+    po->Register("vocab-size", &vocab_size,
+                 "Size of the vocabulary (more specifically: the largest integer "
+                 "word-id plus one).");
     po->Register("chunk-length", &chunk_length,
                  "Length of sequences that we train on (actual sentences will be "
                  "split up and re-combined as necessary to achieve this legnth");
@@ -252,6 +273,9 @@ struct RnnlmEgsConfig {
                  min_split_context >= 0 &&
                  sample_group_size >= 1 &&
                  sample_group_size % chunk_length == 0);
+    if (vocab_size <= 0) {
+      KALDI_ERR << "The --vocab-size option must be provided.";
+    }
     if (!(bos_symbol > 0 && eos_symbol > 0 && brk_symbol > 0 &&
           bos_symbol != eos_symbol && brk_symbol != eos_symbol &&
           brk_symbol != bos_symbol)) {
@@ -268,28 +292,32 @@ struct RnnlmEgsConfig {
 
 
 /**
-   Class RnnlmMinibatchSampler encapsulates the logic for sampling words
+   Class RnnlmExampleSampler encapsulates the logic for sampling words
    for a minibatch.  (the words at the output of the RNNLM are sampled and
    we train with an importance-sampling algorithm).
  */
-class RnnlmMinibatchSampler {
+class RnnlmExampleSampler {
  public:
-  RnnlmMinibatchSampler(const RnnlmEgsConfig &config,
-                        const ArpaSampling &arpa_sampling);
+  RnnlmExampleSampler(const RnnlmEgsConfig &config,
+                      const ArpaSampling &arpa_sampling);
 
 
   // Does the sampling for 'minibatch'.  'minibatch' is expected to already
   // have all fields populated except for 'sampled_words' and 'sample_probs'.
   // This function does the sampling and sets those fields.
-  void SampleForMinibatch(RnnlmMinibatch *minibatch) const;
+  void SampleForMinibatch(RnnlmExample *minibatch) const;
 
-  ~RnnlmMinibatchSampler() { delete sampler_; }
+  ~RnnlmExampleSampler() { delete sampler_; }
+
+  int32 VocabSize() const {
+    return arpa_sampling_.GetUnigramDistribution().size();
+  }
  private:
   // does the part of the sampling for group 'g' (note: 'g' is the
   // same as the position 0 <= t < chunk_length in the sequence if
   // config_.sample_group_size == 1, and otherwise, each group
   // encompasses several successive 't' values.
-  void SampleForGroup(int32 g, RnnlmMinibatch *minibatch) const;
+  void SampleForGroup(int32 g, RnnlmExample *minibatch) const;
 
 
   // This function gets the combination of histories to be sampled from for the g'th
@@ -303,7 +331,7 @@ class RnnlmMinibatchSampler {
   // 'weight' will be > 0 and will be a sum of the weights of the
   // output words in the minibatch that have that history.
   void GetHistoriesForGroup(
-      int32 g, const RnnlmMinibatch &minibatch,
+      int32 g, const RnnlmExample &minibatch,
       std::vector<std::pair<std::vector<int32>, BaseFloat> > *hist_weights) const;
 
   // This function is used to obtain the history (of maximum length
@@ -321,7 +349,7 @@ class RnnlmMinibatchSampler {
   // first word of a chunk that's part of the sequence and max_history_length >
   // 1; in this case the history would either be [<s>] or [<brk>].
   void GetHistory(int32 t, int32 n,
-                  const RnnlmMinibatch &minibatch,
+                  const RnnlmExample &minibatch,
                   int32 max_history_length,
                   std::vector<int32> *history) const;
 
@@ -335,26 +363,26 @@ class RnnlmMinibatchSampler {
 };
 
 
-class RnnlmMinibatchCreator {
+class RnnlmExampleCreator {
  public:
   // This constructor is for when you are using importance sampling from
   // an ARPA language model (the normal case).
-  RnnlmMinibatchCreator(const RnnlmEgsConfig &config,
-                        const RnnlmMinibatchSampler &minibatch_sampler,
-                        TableWriter<KaldiObjectHolder<RnnlmMinibatch> > *writer):
+  RnnlmExampleCreator(const RnnlmEgsConfig &config,
+                      const RnnlmExampleSampler &minibatch_sampler,
+                      TableWriter<KaldiObjectHolder<RnnlmExample> > *writer):
       config_(config), minibatch_sampler_(&minibatch_sampler),
       writer_(writer), num_chunks_processed_(0), num_words_processed_(0),
-      num_minibatches_written_(0) { }
+      num_minibatches_written_(0) { Check(); }
 
   // This constructor is for when you are not using importance sampling,
   // so no samples will be stored in the minibatch and the training code
   // will presumably evaluate all the words each time.  This is intended
   // to be used for testing purposes.
-  RnnlmMinibatchCreator(const RnnlmEgsConfig &config,
-                        TableWriter<KaldiObjectHolder<RnnlmMinibatch> > *writer):
+  RnnlmExampleCreator(const RnnlmEgsConfig &config,
+                        TableWriter<KaldiObjectHolder<RnnlmExample> > *writer):
       config_(config), minibatch_sampler_(NULL), writer_(writer),
       num_chunks_processed_(0), num_words_processed_(0),
-      num_minibatches_written_(0) { }
+      num_minibatches_written_(0) { Check(); }
 
   // The user calls this to provide a single sequence (a sentence, or multiple
   // sentences that are part of a continuous stream or dialogue, separated
@@ -375,8 +403,10 @@ class RnnlmMinibatchCreator {
 
   void Flush() { while (WriteMinibatch()); }  // Flush out any pending minibatches.
 
-  ~RnnlmMinibatchCreator();
+  ~RnnlmExampleCreator();
  private:
+
+  void Check() const;
 
   // Attempts to create and write out a minibatch of egs.  Returns true if it
   // successfully did so, and false if it could not do so because there was
@@ -439,12 +469,12 @@ class RnnlmMinibatchCreator {
     // out of scope or delete it right after this.
     // This function does everything but the sampling aspect of creating
     // the object 'minibatch'; the caller is responsible for that.
-    void CreateMinibatch(RnnlmMinibatch *minibatch);
+    void CreateMinibatch(RnnlmExample *minibatch);
 
     ~SingleMinibatchCreator();
    private:
     // called from CreateMinibatch, handles a single sequence
-    void CreateMinibatchOneSequence(int32 n, RnnlmMinibatch *minibatch);
+    void CreateMinibatchOneSequence(int32 n, RnnlmExample *minibatch);
 
     // This function writes to the minibatch for the n'th sequence,
     // (with 0 <= n < config_.minibatch_size), the t'th position
@@ -458,7 +488,7 @@ class RnnlmMinibatchCreator {
     //     this data-source, but it could be zero for words that are only used
     //     for context after a split, or for where we are padding a sequence.
     void Set(int32 n, int32 t, int32 input_word, int32 output_word,
-             BaseFloat weight, RnnlmMinibatch *minibatch) const;
+             BaseFloat weight, RnnlmExample *minibatch) const;
 
     const RnnlmEgsConfig &config_;
 
@@ -528,8 +558,8 @@ class RnnlmMinibatchCreator {
   std::vector<SequenceChunk*> chunks_;
 
   const RnnlmEgsConfig &config_;
-  const RnnlmMinibatchSampler *minibatch_sampler_;
-  TableWriter<KaldiObjectHolder<RnnlmMinibatch> > *writer_;
+  const RnnlmExampleSampler *minibatch_sampler_;
+  TableWriter<KaldiObjectHolder<RnnlmExample> > *writer_;
 
   int32 num_chunks_processed_;
   int32 num_words_processed_;
@@ -538,8 +568,7 @@ class RnnlmMinibatchCreator {
 
 
 
-
 } // namespace rnnlm
 } // namespace kaldi
 
-#endif // KALDI_RNNLM_RNNLM_EGS_H_
+#endif // KALDI_RNNLM_RNNLM_EXAMPLE_H_

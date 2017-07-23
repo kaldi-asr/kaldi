@@ -64,15 +64,15 @@ struct NnetTrainerOptions {
     opts->Register("max-param-change", &max_param_change, "The maximum change in "
                    "parameters allowed per minibatch, measured in Euclidean norm "
                    "over the entire model (change will be clipped to this value)");
-    opts->Register("momentum", &momentum, "momentum constant to apply during "
+    opts->Register("momentum", &momentum, "Momentum constant to apply during "
                    "training (help stabilize update).  e.g. 0.9.  Note: we "
                    "automatically multiply the learning rate by (1-momenum) "
                    "so that the 'effective' learning rate is the same as "
                    "before (because momentum would normally increase the "
                    "effective learning rate by 1/(1-momentum))");
-    opts->Register("read-cache", &read_cache, "the location where we can read "
+    opts->Register("read-cache", &read_cache, "The location where we can read "
                    "the cached computation from");
-    opts->Register("write-cache", &write_cache, "the location where we want to "
+    opts->Register("write-cache", &write_cache, "The location where we want to "
                    "write the cached computation to");
     opts->Register("binary-write-cache", &binary_write_cache, "Write "
                    "computation cache in binary mode");

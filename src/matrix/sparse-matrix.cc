@@ -157,7 +157,7 @@ void SparseVector<Real>::Write(std::ostream &os, bool binary) const {
     }
   } else {
     // In text-mode, use a human-friendly, script-friendly format;
-    // format is "dim=5 [ dim=5 0 0.2 3 0.9 ] "
+    // format is "dim=5 [ 0 0.2 3 0.9 ] "
     os << "dim=" << dim_ << " [ ";
     typename std::vector<std::pair<MatrixIndexT, Real> >::const_iterator
         iter = pairs_.begin(), end = pairs_.end();

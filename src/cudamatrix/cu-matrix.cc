@@ -1791,7 +1791,7 @@ void CuMatrixBase<Real>::DiffLogSoftmaxPerRow(
 }
 
 template<typename Real>
-void CuMatrixBase<Real>::DiffXent(const CuArray<int32> &tgt,
+void CuMatrixBase<Real>::DiffXent(const CuArrayBase<int32> &tgt,
                                   CuVector<Real> *log_post_tgt) {
 
   KALDI_ASSERT(tgt.Dim() == num_rows_);
@@ -2351,6 +2351,19 @@ void CuMatrixBase<Real>::ApplyExp() {
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::ApplyExpSpecial() {
+  // TODO: make this efficient.
+  CuMatrix<Real> temp(*this);
+  temp.ApplyFloor(0.0);
+  // 'temp' is (x > 0 ? x : 0).
+  ApplyCeiling(0.0);
+  ApplyExp();
+  // at this point, 'this' is (x < 0 ? exp(x) : 1.0).
+  AddMat(1.0, temp);
+  // now 'this' is (x < 0 ? exp(x) : x + x.0).
+}
+
 
 template<typename Real>
 void CuMatrixBase<Real>::ApplyFloor(Real floor_val) {
@@ -2423,7 +2436,7 @@ void VectorBase<double>::CopyRowsFromMat(const CuMatrixBase<double> &mat);
 
 template<typename Real>
 void CuMatrixBase<Real>::CopyCols(const CuMatrixBase<Real> &src,
-                                  const CuArray<MatrixIndexT> &indices) {
+                                  const CuArrayBase<MatrixIndexT> &indices) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     KALDI_ASSERT(indices.Dim() == NumCols());
@@ -2445,7 +2458,7 @@ void CuMatrixBase<Real>::CopyCols(const CuMatrixBase<Real> &src,
 
 template<typename Real>
 void CuMatrixBase<Real>::CopyRows(const CuMatrixBase<Real> &src,
-                                  const CuArray<MatrixIndexT> &indices) {
+                                  const CuArrayBase<MatrixIndexT> &indices) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     KALDI_ASSERT(static_cast<MatrixIndexT>(indices.Dim()) == NumRows());
@@ -2468,7 +2481,7 @@ void CuMatrixBase<Real>::CopyRows(const CuMatrixBase<Real> &src,
 
 template<typename Real>
 void CuMatrixBase<Real>::AddCols(const CuMatrixBase<Real> &src,
-                                 const CuArray<MatrixIndexT> &indices) {
+                                 const CuArrayBase<MatrixIndexT> &indices) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     KALDI_ASSERT(indices.Dim() == NumCols());
@@ -2489,7 +2502,7 @@ void CuMatrixBase<Real>::AddCols(const CuMatrixBase<Real> &src,
 }
 
 template<typename Real>
-void CuMatrixBase<Real>::CopyRows(const CuArray<const Real*> &src) {
+void CuMatrixBase<Real>::CopyRows(const CuArrayBase<const Real*> &src) {
   if (NumRows() == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -2510,7 +2523,7 @@ void CuMatrixBase<Real>::CopyRows(const CuArray<const Real*> &src) {
 
 
 template<typename Real>
-void CuMatrixBase<Real>::CopyToRows(const CuArray<Real*> &dst) const {
+void CuMatrixBase<Real>::CopyToRows(const CuArrayBase<Real*> &dst) const {
   if (NumRows() == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -2534,7 +2547,7 @@ void CuMatrixBase<Real>::CopyToRows(const CuArray<Real*> &dst) const {
 template<typename Real>
 void CuMatrixBase<Real>::AddRows(Real alpha,
                                  const CuMatrixBase<Real> &src,
-                                 const CuArray<MatrixIndexT> &indexes) {
+                                 const CuArrayBase<MatrixIndexT> &indexes) {
   if (NumRows() == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -2557,7 +2570,7 @@ void CuMatrixBase<Real>::AddRows(Real alpha,
 
 
 template<typename Real>
-void CuMatrixBase<Real>::AddRows(Real alpha, const CuArray<const Real*> &src) {
+void CuMatrixBase<Real>::AddRows(Real alpha, const CuArrayBase<const Real*> &src) {
   if (NumRows() == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -2579,7 +2592,7 @@ void CuMatrixBase<Real>::AddRows(Real alpha, const CuArray<const Real*> &src) {
 
 template<typename Real>
 void CuMatrixBase<Real>::AddToRows(Real alpha,
-                                   const CuArray<Real*> &dst) const {
+                                   const CuArrayBase<Real*> &dst) const {
   if (NumRows() == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -2601,7 +2614,7 @@ void CuMatrixBase<Real>::AddToRows(Real alpha,
 
 template<typename Real>
 void CuMatrixBase<Real>::SumColumnRanges(const CuMatrixBase<Real> &src,
-                                         const CuArray<Int32Pair> &indices) {
+                                         const CuArrayBase<Int32Pair> &indices) {
   KALDI_ASSERT(static_cast<MatrixIndexT>(indices.Dim()) == NumCols());
   KALDI_ASSERT(NumRows() == src.NumRows());
   if (NumRows() == 0) return;
@@ -2639,7 +2652,7 @@ void CuMatrixBase<Real>::SumColumnRanges(const CuMatrixBase<Real> &src,
 
 template<typename Real>
 void CuMatrixBase<Real>::AddRowRanges(const CuMatrixBase<Real> &src,
-                                      const CuArray<Int32Pair> &indexes) {
+                                      const CuArrayBase<Int32Pair> &indexes) {
   KALDI_ASSERT(static_cast<MatrixIndexT>(indexes.Dim()) == NumRows());
   KALDI_ASSERT(src.NumCols() == NumCols());
   if (NumRows() == 0) return;
@@ -3018,7 +3031,7 @@ void CuMatrixBase<Real>::AddElements(Real alpha,
 }
 
 template<typename Real>
-void CuMatrixBase<Real>::AddElements(Real alpha, const CuArray<Int32Pair> &indexes,
+void CuMatrixBase<Real>::AddElements(Real alpha, const CuArrayBase<Int32Pair> &indexes,
                                      const Real *input) {
   if (indexes.Dim() == 0) return;
   KALDI_ASSERT(input != NULL);
@@ -3063,7 +3076,7 @@ void CuMatrixBase<Real>::Lookup(const std::vector<Int32Pair> &indices,
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    CuArray<Int32Pair> cuda_indices(indices);
+    CuArrayBase<Int32Pair> cuda_indices(indices);
     Lookup(cuda_indices, output);
   } else
 #endif
@@ -3075,7 +3088,7 @@ void CuMatrixBase<Real>::Lookup(const std::vector<Int32Pair> &indices,
 }
 
 template<typename Real>
-void CuMatrixBase<Real>::Lookup(const CuArray<Int32Pair> &indices,
+void CuMatrixBase<Real>::Lookup(const CuArrayBase<Int32Pair> &indices,
                                 Real *output) const {
   int32 num_elements = indices.Dim();
   if (num_elements == 0) return;
@@ -3083,7 +3096,7 @@ void CuMatrixBase<Real>::Lookup(const CuArray<Int32Pair> &indices,
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    CuArray<Real> cuda_output(num_elements);
+    CuArrayBase<Real> cuda_output(num_elements);
     CuTimer tim;
     dim3 dimBlock(CU1DBLOCK, 1);
     dim3 dimGrid(n_blocks(num_elements, CU1DBLOCK), 1);

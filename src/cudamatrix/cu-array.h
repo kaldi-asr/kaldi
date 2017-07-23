@@ -25,39 +25,25 @@
 
 #include "matrix/kaldi-vector.h"
 
+
 namespace kaldi {
+
+template <typename T> class CuArray;
+template <typename T> class CuSubArray;
 
 
 /**
- * std::vector equivalent for CUDA computing.  This class is mostly intended as
- * a CUDA-based mirror of a std::vector object that lives on the CPU.  We don't
- * call constructors, initializers, etc., on the GPU.
- */
+   Class CuArrayBase, CuSubArray and CuArray are analogues of classes
+   CuVectorBase, CuSubVector and CuVector, except that they are intended to
+   store things other than float/double: they are intended to store integers or
+   small structs.  Their CPU-based equivalents are std::vector, and we provide
+   ways to copy to/from a std::vector of the same type.
+*/
 template<typename T>
-class CuArray {
-  typedef CuArray<T> ThisType;
+class CuArrayBase {
+  friend class CuArray<T>;
+  friend class CuSubArray<T>;
  public:
-
-  /// Default Constructor
-  CuArray<T>() : dim_(0), data_(NULL) {  }
-
-  /// Constructor with memory initialisation.  resize_type may be kSetZero or
-  /// kUndefined.
-  explicit CuArray<T>(MatrixIndexT dim, MatrixResizeType resize_type = kSetZero):
-    dim_(0), data_(NULL) { Resize(dim, resize_type); }
-
-  /// Constructor from CPU-based int vector
-  explicit CuArray<T>(const std::vector<T> &src):
-    dim_(0), data_(NULL) { CopyFromVec(src); }
-
-  /// Copy constructor.  We don't make this explicit because we want to be able
-  /// to create a std::vector<CuArray>.
-  CuArray<T>(const CuArray<T> &src):
-   dim_(0), data_(NULL) { CopyFromArray(src); }
-
-  /// Destructor
-  ~CuArray() { Destroy(); }
-
   /// Return the vector dimension
   MatrixIndexT Dim() const { return dim_;  }
 
@@ -65,21 +51,10 @@ class CuArray {
   const T* Data() const { return data_; }
 
   T* Data() { return data_; }
- 
-  /// Allocate the memory.  resize_type may be kSetZero or kUndefined.
-  /// kCopyData not yet supported (can be implemented if needed).
-  void Resize(MatrixIndexT dim, MatrixResizeType resize_type = kSetZero);
-  
-  /// Deallocate the memory and set dim_ and data_ to zero.  Does not call any
-  /// destructors of the objects stored.
-  void Destroy();
-  
-  /// This function resizes if needed.  Note: copying to GPU is done via memcpy,
-  /// and any constructors or assignment operators are not called.
-  void CopyFromVec(const std::vector<T> &src);
 
-  /// This function resizes if needed.
-  void CopyFromArray(const CuArray<T> &src);
+  /// Sets the memory for the object to zero, via memset.  You should verify
+  /// that this makes sense for type T.
+  void SetZero();
 
   /// This function resizes *dst if needed.  On resize of "dst", the STL vector
   /// may call copy-constructors, initializers, and assignment operators for
@@ -88,21 +63,19 @@ class CuArray {
   /// objects are more than plain structs.
   void CopyToVec(std::vector<T> *dst) const;
 
-  /// Version of the above function that copies contents to a host array.
+  /// Version of the above function that copies contents to a host array
+  /// (i.e. to regular memory, not GPU memory, assuming we're using a GPU).
   /// This function requires *dst to be allocated before calling. The allocated
   /// size should be dim_ * sizeof(T)
   void CopyToHost(T *dst) const;
 
-  /// Sets the memory for the object to zero, via memset.  You should verify
-  /// that this makes sense for type T.
-  void SetZero();
-  
+
   /// Set to a constant value.  Note: any copying is done as if using memcpy, and
   /// assignment operators or destructors are not called.  This is NOT IMPLEMENTED
   /// YET except for T == int32 (the current implementation will just crash).
   void Set(const T &value);
-  
-  /// Add a constant value. This is NOT IMPLEMENTED YET except for T == int32 
+
+  /// Add a constant value. This is NOT IMPLEMENTED YET except for T == int32
   /// (the current implementation will just crash).
   void Add(const T &value);
 
@@ -113,6 +86,66 @@ class CuArray {
   /// Get minimum value (for now implemented on CPU, reimplement if slow).
   /// Asserts the vector is non-empty, otherwise crashes.
   T Max() const;
+
+ protected:
+  /// Default constructor: make it protected so the user cannot
+  /// instantiate this class.
+  CuArrayBase<T>(): data_(NULL), dim_(0) { }
+
+
+  T *data_;  ///< GPU data pointer (if GPU not available,
+             ///< will point to CPU memory).
+  MatrixIndexT dim_;     ///< dimension of the vector
+
+};
+
+/**
+   Class CuArray represents a vector of an integer or struct of type T.  If we
+   are using a GPU then the memory is on the GPU, otherwise it's on the CPU.
+   This class owns the data that it contains from a memory allocation
+   perspective; see also CuSubArrary which does not own the data it contains.
+ */
+template<typename T>
+class CuArray: public CuArrayBase<T> {
+ public:
+
+  /// Default constructor, initialized data_ to NULL and dim_ to 0 via
+  /// constructor of CuArrayBase.
+  CuArray<T>() { }
+
+  /// Constructor with memory initialisation.  resize_type may be kSetZero or
+  /// kUndefined.
+  explicit CuArray<T>(MatrixIndexT dim, MatrixResizeType resize_type = kSetZero)
+     { Resize(dim, resize_type); }
+
+  /// Constructor from CPU-based int vector
+  explicit CuArray<T>(const std::vector<T> &src) { CopyFromVec(src); }
+
+  /// Copy constructor.  We don't make this explicit because we want to be able
+  /// to create a std::vector<CuArray>.
+  CuArray<T>(const CuArray<T> &src):
+   dim_(0), data_(NULL) { CopyFromArray(src); }
+
+  /// Destructor
+  ~CuArray() { Destroy(); }
+
+  /// Allocate the memory.  resize_type may be kSetZero or kUndefined.
+  /// kCopyData not yet supported (can be implemented if needed).
+  void Resize(MatrixIndexT dim, MatrixResizeType resize_type = kSetZero);
+
+  /// Deallocate the memory and set dim_ and data_ to zero.  Does not call any
+  /// destructors of the objects stored.
+  void Destroy();
+
+  /// This function resizes if needed.  Note: copying to GPU is done via memcpy,
+  /// and any constructors or assignment operators are not called.  If necessary
+  /// we can later make a non-resizing version of this function in class
+  /// CuArrayBase.
+  void CopyFromVec(const std::vector<T> &src);
+
+  /// This function resizes if needed.  If necessary we can later make a
+  /// non-resizing version of this function in class CuArrayBase.
+  void CopyFromArray(const CuArrayBase<T> &src);
 
   CuArray<T> &operator= (const CuArray<T> &in) {
     this->CopyFromArray(in); return *this;
@@ -125,12 +158,24 @@ class CuArray {
   /// I/O
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &is, bool binary) const;
-  
+
  private:
   MatrixIndexT dim_;     ///< dimension of the vector
   T *data_;  ///< GPU data pointer (if GPU not available,
              ///< will point to CPU memory).
 };
+
+
+template<typename T>
+class CuSubArray: public CuArrayBase<T> {
+ public:
+  /// Constructor as a range of an existing CuArray or CuSubArray.  Note: like
+  /// similar constructors in class CuVector and others, it can be used to evade
+  /// 'const' constraints; don't do that.
+  explicit CuSubArray<T>(const CuArrayBase<T> &src,
+                         MatrixIndexT offset, MatrixIndexT dim);
+};
+
 
 
 /// I/O

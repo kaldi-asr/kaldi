@@ -7,7 +7,8 @@ LDLIBS += $(CUDA_LDLIBS)
 
 TESTFILES = sampler-test arpa-sampling-test
 
-OBJFILES = sampler.o arpa-sampling.o rnnlm-egs.o
+OBJFILES = sampler.o arpa-sampling.o rnnlm-example.o rnnlm-example-utils.o \
+           rnnlm-core-training.o
 
 LIBNAME = kaldi-rnnlm
 

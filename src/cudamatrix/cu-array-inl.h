@@ -42,7 +42,7 @@ void CuArray<T>::Resize(MatrixIndexT dim, MatrixResizeType resize_type) {
   KALDI_ASSERT((resize_type == kSetZero || resize_type == kUndefined) && dim >= 0);
   if (dim_ == dim) {
     if (resize_type == kSetZero)
-      SetZero();
+      this->SetZero();
     return;
   }
 
@@ -73,7 +73,7 @@ void CuArray<T>::Resize(MatrixIndexT dim, MatrixResizeType resize_type) {
 
   dim_ = dim;
   if (resize_type == kSetZero)
-    SetZero();
+    this->SetZero();
 }
 
 template<typename T>
@@ -112,7 +112,7 @@ void CuArray<T>::CopyFromVec(const std::vector<T> &src) {
 
 
 template<typename T>
-void CuArray<T>::CopyFromArray(const CuArray<T> &src) {
+void CuArray<T>::CopyFromArray(const CuArrayBase<T> &src) {
   this->Resize(src.Dim(), kUndefined);
   if (dim_ == 0) return;
 #if HAVE_CUDA == 1
@@ -130,7 +130,7 @@ void CuArray<T>::CopyFromArray(const CuArray<T> &src) {
 
 
 template<typename T>
-void CuArray<T>::CopyToVec(std::vector<T> *dst) const {
+void CuArrayBase<T>::CopyToVec(std::vector<T> *dst) const {
   if (static_cast<MatrixIndexT>(dst->size()) != dim_) {
     dst->resize(dim_);
   }
@@ -149,7 +149,7 @@ void CuArray<T>::CopyToVec(std::vector<T> *dst) const {
 
 
 template<typename T>
-void CuArray<T>::CopyToHost(T *dst) const {
+void CuArrayBase<T>::CopyToHost(T *dst) const {
   if (dim_ == 0) return;
   KALDI_ASSERT(dst != NULL);
 #if HAVE_CUDA == 1
@@ -166,7 +166,7 @@ void CuArray<T>::CopyToHost(T *dst) const {
 
 
 template<typename T>
-void CuArray<T>::SetZero() {
+void CuArrayBase<T>::SetZero() {
   if (dim_ == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -182,27 +182,27 @@ void CuArray<T>::SetZero() {
 
 
 template<class T>
-void CuArray<T>::Set(const T &value) {
+void CuArrayBase<T>::Set(const T &value) {
   // This is not implemented yet, we'll do so if it's needed.
   KALDI_ERR << "CuArray<T>::Set not implemented yet for this type.";
 }
 // int32 specialization implemented in 'cudamatrix/cu-array.cc',
 template<>
-void CuArray<int32>::Set(const int32 &value);
+void CuArrayBase<int32>::Set(const int32 &value);
 
 
 template<class T>
-void CuArray<T>::Add(const T &value) {
+void CuArrayBase<T>::Add(const T &value) {
   // This is not implemented yet, we'll do so if it's needed.
   KALDI_ERR << "CuArray<T>::Add not implemented yet for this type.";
 }
 // int32 specialization implemented in 'cudamatrix/cu-array.cc',
 template<>
-void CuArray<int32>::Add(const int32 &value);
+void CuArrayBase<int32>::Add(const int32 &value);
 
 
 template<class T>
-inline T CuArray<T>::Min() const {
+inline T CuArrayBase<T>::Min() const {
   KALDI_ASSERT(this->Dim() > 0);
 #if HAVE_CUDA == 1
   CuTimer tim;
@@ -220,7 +220,7 @@ inline T CuArray<T>::Min() const {
 
 
 template<class T>
-inline T CuArray<T>::Max() const {
+inline T CuArrayBase<T>::Max() const {
   KALDI_ASSERT(this->Dim() > 0);
 #if HAVE_CUDA == 1
   CuTimer tim;
@@ -244,12 +244,22 @@ void CuArray<T>::Read(std::istream& in, bool binary) {
   (*this) = tmp;
 }
 
-
 template<typename T>
 void CuArray<T>::Write(std::ostream& out, bool binary) const {
   std::vector<T> tmp(this->Dim());
   this->CopyToVec(&tmp);
   WriteIntegerVector(out, binary, tmp);
+}
+
+
+template<typename T>
+CuSubArray<T>::CuSubArray(const CuArrayBase<T> &src,
+                          MatrixIndexT offset,
+                          MatrixIndexT dim) {
+  KALDI_ASSERT(offset >= 0 && dim >= 0 &&
+               offset + dim <= src.Dim());
+  this->data_ = src.data_ + offset;
+  this->dim_ = dim;
 }
 
 
