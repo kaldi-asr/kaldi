@@ -60,11 +60,6 @@ def get_args():
                         help="Image augmentation options")
 
     # trainer options
-    parser.add_argument("--trainer.final-combination", type=str,
-                        action=common_lib.StrToBoolAction,
-                        default=True, choices=["true", "false"],
-                        dest='final_combination',
-                        help="If false, skip final combination step")
     parser.add_argument("--trainer.prior-subset-size", type=int,
                         dest='prior_subset_size', default=20000,
                         help="Number of samples for computing priors")
@@ -298,10 +293,15 @@ def train(args, run_opts):
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
 
-    models_to_combine = common_train_lib.get_model_combine_iters(
-        num_iters, args.num_epochs,
-        num_archives_expanded, args.max_models_combine,
-        args.num_jobs_final)
+    # If do_final_combination is True, compute the set of models_to_combine.
+    # Otherwise, models_to_combine will be none.
+    if args.do_final_combination:
+        models_to_combine = common_train_lib.get_model_combine_iters(
+            num_iters, args.num_epochs,
+            num_archives_expanded, args.max_models_combine,
+            args.num_jobs_final)
+    else:
+        models_to_combine = None
 
     if os.path.exists('{0}/valid_diagnostic.scp'.format(args.egs_dir)):
         if os.path.exists('{0}/valid_diagnostic.egs'.format(args.egs_dir)):
@@ -364,7 +364,9 @@ def train(args, run_opts):
                 run_opts=run_opts,
                 get_raw_nnet_from_am=False,
                 image_augmentation_opts=args.image_augmentation_opts,
-                use_multitask_egs=use_multitask_egs)
+                use_multitask_egs=use_multitask_egs,
+                backstitch_training_scale=args.backstitch_training_scale,
+                backstitch_training_interval=args.backstitch_training_interval)
 
             if args.cleanup:
                 # do a clean up everything but the last 2 models, under certain
@@ -388,7 +390,7 @@ def train(args, run_opts):
         num_archives_processed = num_archives_processed + current_num_jobs
 
     if args.stage <= num_iters:
-        if args.final_combination:
+        if args.do_final_combination:
             logger.info("Doing final combination to produce final.raw")
             train_lib.common.combine_models(
                 dir=args.dir, num_iters=num_iters,

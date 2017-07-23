@@ -29,7 +29,7 @@ log_dir=$3
 
 if [ "$download" = true ]; then
   mkdir -p $RIR_home
-  RIR_home_abs=`readlink -e $RIR_home`
+  RIR_home_abs=`utils/make_absolute.sh $RIR_home`
   #HamiltonMuseum 
   #http://www.openairlib.net/auralizationdb/content/hamilton-mausoleum 
   echo "">$log_dir/${DBname}_download_commands.sh

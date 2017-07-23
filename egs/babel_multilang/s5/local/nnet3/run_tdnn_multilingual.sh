@@ -100,11 +100,12 @@ for lang_index in `seq 0 $[$num_langs-1]`; do
   if $use_pitch && ! $use_pitch_ivector; then
     echo "$0: select MFCC features for ivector extraction."
     featdir=data/${lang_list[$lang_index]}/train${suffix}${feat_suffix}
-    ivec_featdir=data/${lang_list[$lang_index]}/train${suffix}_hires
+    ivec_featdir=data/${lang_list[$lang_index]}/train${suffix}${ivec_feat_suffix}
     mfcc_only_dim=`feat-to-dim scp:$featdir/feats.scp - | awk '{print $1-3}'`
     if [ ! -f $ivec_featdir/.done ]; then
       steps/select_feats.sh --cmd "$train_cmd" --nj 70 0-$[$mfcc_only_dim-1] \
         $featdir ${ivec_featdir} || exit 1;
+      steps/compute_cmvn_stats.sh ${ivec_featdir} || exit 1;
       touch ${ivec_featdir}/.done || exit 1;
     fi
   fi
@@ -114,8 +115,8 @@ if $use_ivector; then
   ivector_suffix=""
   if [ -z "$ivector_extractor" ]; then
     mkdir -p data/multi
-    mkdir -p exp/multi/nnet3
     global_extractor=exp/multi/nnet3${nnet3_affix}
+    mkdir -p $global_extractor
     ivector_extractor=$global_extractor/extractor
     multi_data_dir_for_ivec=data/multi/train${suffix}${ivec_feat_suffix}
     ivector_suffix=_gb
@@ -127,11 +128,11 @@ if $use_ivector; then
       mkdir -p $multi_data_dir_for_ivec
       combine_lang_list=""
       for lang_index in `seq 0 $[$num_langs-1]`;do
-        combine_lang_list="$combine_lang_list data/${lang_list[$lang_index]}/train${suffix}${feat_suffix}"
+        combine_lang_list="$combine_lang_list data/${lang_list[$lang_index]}/train${suffix}${ivec_feat_suffix}"
       done
-      utils/combine_data.sh data/multi/train${suffix}${feat_suffix} $combine_lang_list
-      utils/validate_data_dir.sh --no-feats data/multi/train${suffix}${feat_suffix}
-      touch data/multi/train${suffix}${feat_suffix}/.done
+      utils/combine_data.sh $multi_data_dir_for_ivec $combine_lang_list
+      utils/validate_data_dir.sh --no-feats $multi_data_dir_for_ivec
+      touch $multi_data_dir_for_ivec/.done
     fi
   fi
   if [ ! -f $global_extractor/extractor/.done ]; then
@@ -206,7 +207,7 @@ EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig \
     --config-dir $dir/configs/ \
     --nnet-edits="rename-node old-name=output-0 new-name=output"
-
+fi
 
 if [ $stage -le 9 ]; then
   echo "$0: Generates separate egs dir per language for multilingual training."
@@ -224,7 +225,6 @@ if [ $stage -le 9 ]; then
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --left-context $model_left_context --right-context $model_right_context \
     $num_langs ${multi_data_dirs[@]} ${multi_ali_dirs[@]} ${multi_egs_dirs[@]} || exit 1;
-
 fi
 
 if [ -z $megs_dir ];then

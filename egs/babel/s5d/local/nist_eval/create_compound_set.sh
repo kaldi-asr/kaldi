@@ -52,13 +52,13 @@ mkdir -p $tgtdir/compounds/$evlset
 echo "Creating compound $tgtdir/compounds/$devset"
 (
   echo "DEVSET file list: $devset_flist"
-  cat `readlink -f $devset_flist` > $tgtdir/compounds/$devset/files.list
+  cat `utils/make_absolute.sh $devset_flist` > $tgtdir/compounds/$devset/files.list
   echo "DEVSET ECF file : $devset_ecf"
-  cat `readlink -f $devset_ecf` > $tgtdir/compounds/$devset/ecf.xml
+  cat `utils/make_absolute.sh $devset_ecf` > $tgtdir/compounds/$devset/ecf.xml
   echo "DEVSET RTTM file: $devset_rttm"
-  cat `readlink -f $devset_rttm` > $tgtdir/compounds/$devset/rttm
+  cat `utils/make_absolute.sh $devset_rttm` > $tgtdir/compounds/$devset/rttm
   echo "DEVSET STM file : $devset_stm"
-  cat `readlink -f $devset_stm` | sed 's/ 1 / A /g' > $tgtdir/compounds/$devset/stm
+  cat `utils/make_absolute.sh $devset_stm` | sed 's/ 1 / A /g' > $tgtdir/compounds/$devset/stm
 
   cat $tgtdir/segments | grep -w -F -f $tgtdir/compounds/$devset/files.list > $tgtdir/compounds/$devset/segments
   awk '{print $1}' $tgtdir/compounds/$devset/segments > $tgtdir/compounds/$devset/utterances
@@ -103,16 +103,16 @@ echo "Creating compound $tgtdir/compounds/$devset"
 echo "Creating compound $tgtdir/compounds/$evlset"
 (
   echo "EVLSET file list: $evlset_flist"
-  cat `readlink -f $evlset_flist` > $tgtdir/compounds/$evlset/files.list
+  cat `utils/make_absolute.sh $evlset_flist` > $tgtdir/compounds/$evlset/files.list
   echo "EVLSET ECF file : $evlset_ecf"
-  cat `readlink -f $evlset_ecf` > $tgtdir/compounds/$evlset/ecf.xml
+  cat `utils/make_absolute.sh $evlset_ecf` > $tgtdir/compounds/$evlset/ecf.xml
   if [ ! -z "$evlset_rttm" ]; then
     echo "EVLSET RTTM file: $evlset_rttm"
-    cat `readlink -f $evlset_rttm` > $tgtdir/compounds/$evlset/rttm
+    cat `utils/make_absolute.sh $evlset_rttm` > $tgtdir/compounds/$evlset/rttm
   fi
   if [ ! -z "$evlset_stm" ]; then
     echo "EVLSET STM file : $evlset_stm"
-    cat `readlink -f $evlset_stm` | sed 's/ 1 / A /g' > $tgtdir/compounds/$evlset/stm
+    cat `utils/make_absolute.sh $evlset_stm` | sed 's/ 1 / A /g' > $tgtdir/compounds/$evlset/stm
   fi
 
   cat $tgtdir/segments | \

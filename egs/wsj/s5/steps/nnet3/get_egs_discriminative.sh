@@ -12,7 +12,6 @@
 
 # Begin configuration section.
 cmd=run.pl
-feat_type=raw     # set it to 'lda' to use LDA features.
 frames_per_eg=150 # number of frames of labels per example.  more->less disk space and
                   # less time preparing egs, but more I/O during training.
                   # Note: may in general be a comma-separated string of alternative
@@ -141,14 +140,7 @@ fi
 
 prior_ali_rspecifier="ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $dir/ali.scp | ali-to-pdf $alidir/final.mdl scp:- ark:- |"
 
-if [ -f $transform_dir/trans.1 ] && [ $feat_type != "raw" ]; then
-  echo "$0: using transforms from $transform_dir"
-  if [ $stage -le 0 ]; then
-    $cmd $dir/log/copy_transforms.log \
-      copy-feats "ark:cat $transform_dir/trans.* |" "ark,scp:$dir/trans.ark,$dir/trans.scp"
-  fi
-fi
-if [ -f $transform_dir/raw_trans.1 ] && [ $feat_type == "raw" ]; then
+if [ -f $transform_dir/raw_trans.1 ]; then
   echo "$0: using raw transforms from $transform_dir"
   if [ $stage -le 0 ]; then
     $cmd $dir/log/copy_transforms.log \
@@ -168,33 +160,13 @@ awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlis
 
 ## We don't support deltas here, only LDA or raw (mainly because deltas are less
 ## frequently used).
-if [ -z $feat_type ]; then
-  if [ -f $alidir/final.mat ] && [ ! -f $transform_dir/raw_trans.1 ]; then feat_type=lda; else feat_type=raw; fi
-fi
-echo "$0: feature type is $feat_type"
+echo "$0: feature type is raw"
 
-case $feat_type in
-  raw) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
-    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
-    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
-    priors_feats="ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
-    echo $cmvn_opts > $dir/cmvn_opts
-   ;;
-  lda)
-    splice_opts=`cat $alidir/splice_opts 2>/dev/null`
-    cp $alidir/splice_opts $dir 2>/dev/null
-    cp $alidir/final.mat $dir
-    [ ! -z "$cmvn_opts" ] && \
-       echo "You cannot supply --cmvn-opts option if feature type is LDA." && exit 1;
-    cmvn_opts=`cat $alidir/cmvn_opts 2>/dev/null`
-    cp $alidir/cmvn_opts $dir 2>/dev/null
-    feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    priors_feats="ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    ;;
-  *) echo "$0: invalid feature type $feat_type" && exit 1;
-esac
+feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
+valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+priors_feats="ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+echo $cmvn_opts > $dir/cmvn_opts
 
 if [ -f $dir/trans.scp ]; then
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/trans.scp ark:- ark:- |"
@@ -451,7 +423,7 @@ if [ $stage -le 7 ]; then
   for x in $(seq $nj); do
     for y in $(seq $num_archives_intermediate); do
       file=$dir/degs_orig.$x.$y.ark
-      [ -L $file ] && rm $(readlink -f $file)
+      [ -L $file ] && rm $(utils/make_absolute.sh $file)
       rm $file
     done
   done

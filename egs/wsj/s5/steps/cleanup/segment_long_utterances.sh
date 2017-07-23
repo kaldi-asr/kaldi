@@ -79,18 +79,19 @@ data=$3
 
 extra_files=
 utt2text=
+text=$data/text
 if [ $# -eq 7 ]; then
   text=$4
   utt2text=$5
   out_data=$6
   dir=$7
-  extra_files="$text $utt2text"
+  extra_files="$utt2text"
 else 
   out_data=$4
   dir=$5
 fi
 
-for f in $data/feats.scp $extra_files $srcdir/tree \
+for f in $data/feats.scp $text $extra_files $srcdir/tree \
   $srcdir/final.mdl $srcdir/cmvn_opts; do
   if [ ! -f $f ]; then
     echo "$0: Could not find file $f"
@@ -156,20 +157,18 @@ if [ $stage -le 3 ]; then
   cp $srcdir/phones.txt $dir 2>/dev/null || true
 
   mkdir -p $graph_dir
+  
+  # Make graphs w.r.t. to the original text (usually recording-level) 
+  steps/cleanup/make_biased_lm_graphs.sh $graph_opts \
+    --nj $nj --cmd "$cmd" $text \
+    $lang $dir $dir/graphs
   if [ -z "$utt2text" ]; then
-    steps/cleanup/make_biased_lm_graphs.sh $graph_opts \
-      --nj $nj --cmd "$cmd" $data/text \
-       $lang $dir $dir/graphs
     # and then copy it to the sub-segments. 
     cat $dir/uniform_sub_segments | awk '{print $1" "$2}' | \
       utils/apply_map.pl -f 2 $dir/graphs/HCLG.fsts.scp | \
       sort -k1,1 > \
       $graph_dir/HCLG.fsts.scp
   else
-    # Make graphs w.r.t. to the original text (usually recording-level) 
-    steps/cleanup/make_biased_lm_graphs.sh $graph_opts \
-      --nj $nj --cmd "$cmd" $text \
-       $lang $dir $dir/graphs
     # and then copy it to the sub-segments. 
     cat $dir/uniform_sub_segments | awk '{print $1" "$2}' | \
       utils/apply_map.pl -f 2 $utt2text | \

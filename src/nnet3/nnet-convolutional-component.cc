@@ -620,7 +620,10 @@ void TimeHeightConvolutionComponent::UnVectorize(
   bias_params_.CopyFromVec(params.Range(linear_size, bias_size));
 }
 
-
+void TimeHeightConvolutionComponent::FreezeNaturalGradient(bool freeze) {
+  preconditioner_in_.Freeze(freeze);
+  preconditioner_out_.Freeze(freeze);
+}
 
 TimeHeightConvolutionComponent::PrecomputedIndexes*
 TimeHeightConvolutionComponent::PrecomputedIndexes::Copy() const {

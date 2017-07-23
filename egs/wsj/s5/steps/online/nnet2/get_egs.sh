@@ -163,7 +163,7 @@ for x in `seq 1 $num_jobs_nnet`; do
   done
 done
 
-remove () { for x in $*; do [ -L $x ] && rm $(readlink -f $x); rm $x; done }
+remove () { for x in $*; do [ -L $x ] && rm $(utils/make_absolute.sh $x); rm $x; done }
 
 set -o pipefail
 left_context=$(nnet-am-info $mdl | grep '^left-context' | awk '{print $2}') || exit 1;

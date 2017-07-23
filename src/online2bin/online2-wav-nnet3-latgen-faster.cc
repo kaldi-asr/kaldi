@@ -163,6 +163,7 @@ int main(int argc, char *argv[]) {
       am_nnet.Read(ki.Stream(), binary);
       SetBatchnormTestMode(true, &(am_nnet.GetNnet()));
       SetDropoutTestMode(true, &(am_nnet.GetNnet()));
+      nnet3::CollapseModel(nnet3::CollapseModelConfig(), &(am_nnet.GetNnet()));
     }
 
     // this object contains precomputed stuff that is used by all decodable
