@@ -232,7 +232,9 @@ class DenominatorSmbrComputation {
   // Does the forward computation, and returns the total objective summed
   // over all sequences.  You will have to scale this by any supervision
   // weighting factor, manually.
-  BaseFloat ForwardSmbr();
+  // aux_objf stores the value of the auxiliary MMI objective scaled by
+  // opts.mmi_factor
+  BaseFloat ForwardSmbr(BaseFloat *aux_objf);
 
   // this adds deriv_weight times (the derivative of the objective w.r.t. the
   // nnet output), to 'nnet_output_deriv'.
@@ -260,11 +262,13 @@ class DenominatorSmbrComputation {
   // doing correction) log_correction_term_.  Note, this won't be scaled by
   // 'deriv_scale' (which of course we haven't seen by the time this is called,
   // from the ForwardSmbr() computation).
-  BaseFloat ComputeTotObjf();
+  // aux_objf stores the value of the auxiliary MMI objective scaled by
+  // opts.mmi_factor
+  BaseFloat ComputeTotObjf(BaseFloat *aux_objf);
 
   void BetaSmbrDashLastFrame();
   // beta computation for 0 <= beta < num_time_steps_.
-  void BetaSmbrGeneralFrame(int32 t);
+  void BetaSmbrDashGeneralFrame(int32 t);
   // compute the beta quantity from the beta-dash quantity (relates to leaky hmm).
   void BetaSmbr(int32 t);
 
@@ -326,9 +330,21 @@ class DenominatorSmbrComputation {
 
   // the total smbr for each sequence.
   CuVector<BaseFloat> tot_smbr_;
-  
+
+  // the log of tot_prob_.
+  CuVector<BaseFloat> tot_log_prob_;
+
+  // the log of the total correction term for each sequence, which is the
+  // product of the alpha-sums [used in the leaky-hmm computation] over all the
+  // frames.  The 'correction terms' are terms that we divide the alphas and
+  // betas by in order to keep them in a good dynamic range.  The product of
+  // them must be included in the total likelihood.
+  CuVector<BaseFloat> log_correction_term_;
+
   bool ok_;
 };
+
+
 
 }  // namespace chain
 }  // namespace kaldi

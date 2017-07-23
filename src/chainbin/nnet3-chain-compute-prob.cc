@@ -82,6 +82,9 @@ int main(int argc, char *argv[]) {
     fst::StdVectorFst den_fst;
     ReadFstKaldi(den_fst_rxfilename, &den_fst);
 
+    if (GetVerboseLevel() > 2) 
+      nnet_opts.compute_deriv = true;
+
     NnetChainComputeProb chain_prob_computer(nnet_opts, chain_opts, den_fst,
                                             nnet);
 

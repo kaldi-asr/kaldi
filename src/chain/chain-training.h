@@ -63,8 +63,14 @@ struct ChainTrainingOptions {
 
   bool use_smbr_objective;
 
+  std::string silence_pdfs_str;
+
+  BaseFloat mmi_factor;
+  BaseFloat smbr_factor;
+
   ChainTrainingOptions(): l2_regularize(0.0), leaky_hmm_coefficient(1.0e-05),
-                          xent_regularize(0.0), use_smbr_objective(false) { }
+                          xent_regularize(0.0), use_smbr_objective(false),
+                          mmi_factor(0.0), smbr_factor(1.0) { }
   
   void Register(OptionsItf *opts) {
     opts->Register("l2-regularize", &l2_regularize, "l2 regularization "
@@ -82,6 +88,16 @@ struct ChainTrainingOptions {
                    "its final nonlinearity.");
     opts->Register("use-smbr-objective", &use_smbr_objective, 
                    "Use SMBR objective instead of MMI");
+    opts->Register("silence-pdfs", &silence_pdfs_str,
+                   "A comma-separated list of silence pdfs. "
+                   "It makes sense only when the silence pdfs are "
+                   "context-independent.");
+    opts->Register("mmi-factor", &mmi_factor,
+                   "When using smbr objective, interpolate mmi objective "
+                   "with this weight");
+    opts->Register("smbr-factor", &smbr_factor,
+                   "When using smbr objective, interpolate smbr objective "
+                   "with this weight");
   }
 };
 
@@ -165,7 +181,8 @@ void ComputeChainSmbrObjfAndDeriv(
     BaseFloat *l2_term,
     BaseFloat *weight,
     CuMatrixBase<BaseFloat> *nnet_output_deriv,
-    CuMatrixBase<BaseFloat> *xent_output_deriv = NULL);
+    CuMatrixBase<BaseFloat> *xent_output_deriv = NULL,
+    const CuArray<MatrixIndexT> *sil_indices = NULL);
 
 
 }  // namespace chain

@@ -114,6 +114,8 @@ class NnetChainTrainer {
   // consistent dropout masks.  It's set to a value derived from rand()
   // when the class is initialized.
   int32 srand_seed_;
+
+  CuArray<int32> sil_indices_;
 };
 
 

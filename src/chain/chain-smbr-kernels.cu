@@ -216,7 +216,8 @@ static void _cuda_chain_smbr_hmm_backward(
     const BaseFloat *this_alpha, const BaseFloat *this_alpha_smbr,
     const BaseFloat *next_beta, const BaseFloat *next_beta_smbr,
     BaseFloat *this_beta, BaseFloat *this_beta_smbr,
-    BaseFloat *log_prob_deriv, int32_cuda log_prob_deriv_stride) {
+    BaseFloat *log_prob_deriv, int32_cuda log_prob_deriv_stride,
+    BaseFloat mmi_factor, BaseFloat smbr_factor) {
   // 'forward_transitions', indexed by hmm-state, consists of [start, end]
   // indexes into the 'transition_info' array.  This is about the transitions
   // *out of* this state.  'probs' contains the exponentiated neural net
@@ -275,14 +276,16 @@ static void _cuda_chain_smbr_hmm_backward(
     tot_beta_smbr += (next_beta_smbr_j0 + num_post0) * variable_factor0
       + (next_beta_smbr_j1 + num_post1) * variable_factor1;
     tot_variable_factor += variable_factor0 + variable_factor1;
-    BaseFloat this_gamma_r0 = occupation_factor * variable_factor0 
+    BaseFloat occupation_prob0 = variable_factor0 * occupation_factor;
+    BaseFloat this_gamma_r0 = occupation_prob0
       * (this_alpha_smbr_i + num_post0 + next_beta_smbr_j0 - tot_smbr[s]);
     atomic_add(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s),
-                           this_gamma_r0);
-    BaseFloat this_gamma_r1 = occupation_factor * variable_factor1
+               smbr_factor * this_gamma_r0 - mmi_factor * occupation_prob0);
+    BaseFloat occupation_prob1 = variable_factor1 * occupation_factor;
+    BaseFloat this_gamma_r1 = occupation_prob1
       * (this_alpha_smbr_i + num_post1 + next_beta_smbr_j1 - tot_smbr[s]);
     atomic_add(log_prob_deriv + (pdf_id1 * log_prob_deriv_stride + s),
-                           this_gamma_r1);
+               smbr_factor * this_gamma_r1 - mmi_factor * occupation_prob1);
   }
   if (trans_iter != trans_end) {
     // mop up the odd transition.
@@ -296,10 +299,11 @@ static void _cuda_chain_smbr_hmm_backward(
     BaseFloat variable_factor0 = transition_prob0 * next_beta_j0 * prob0;
     tot_beta_smbr += (next_beta_smbr_j0 + num_post0) * variable_factor0;
     tot_variable_factor += variable_factor0;
-    BaseFloat this_gamma_r0 = occupation_factor * variable_factor0
+    BaseFloat occupation_prob0 = variable_factor0 * occupation_factor;
+    BaseFloat this_gamma_r0 = occupation_prob0
       * (this_alpha_smbr_i + num_post0 + next_beta_smbr_j0 - tot_smbr[s]);
     atomic_add(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s),
-                           this_gamma_r0);
+               smbr_factor * this_gamma_r0 - mmi_factor * occupation_prob0);
   }
   BaseFloat beta = tot_variable_factor / inv_arbitrary_scale;
   this_beta[h * num_sequences + s] = beta;
@@ -342,12 +346,13 @@ void cuda_chain_smbr_hmm_backward(
     const BaseFloat *next_beta, const BaseFloat *next_beta_smbr,
     BaseFloat *this_beta, BaseFloat *this_beta_smbr,
     BaseFloat *log_prob_deriv,
-    int32_cuda log_prob_deriv_stride) {
+    int32_cuda log_prob_deriv_stride,
+    BaseFloat mmi_factor, BaseFloat smbr_factor) {
   _cuda_chain_smbr_hmm_backward<<<Gr,Bl>>>(
       forward_transitions, transitions,
       num_sequences, num_hmm_states,
       probs, prob_stride, num_post, post_stride, tot_smbr,
       this_alpha, this_alpha_smbr, next_beta, next_beta_smbr,
       this_beta, this_beta_smbr, log_prob_deriv,
-      log_prob_deriv_stride);
+      log_prob_deriv_stride, mmi_factor, smbr_factor);
 }

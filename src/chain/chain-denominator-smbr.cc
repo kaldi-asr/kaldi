@@ -53,6 +53,8 @@ DenominatorSmbrComputation::DenominatorSmbrComputation(
                kUndefined),
     tot_prob_(num_sequences_, kUndefined),
     tot_smbr_(num_sequences_, kUndefined),
+    tot_log_prob_(num_sequences_, kUndefined),
+    log_correction_term_(num_sequences_, kUndefined),
     ok_(true) {
   KALDI_ASSERT(opts_.leaky_hmm_coefficient >= 0.0 &&
                opts_.leaky_hmm_coefficient < 1.0);
@@ -229,7 +231,6 @@ void DenominatorSmbrComputation::AlphaSmbrDash(int32 t) {
       num_sequences_);
   alpha_smbr_sum_vec.AddRowSumMat(1.0, alpha_smbr_mat, 0.0);
 
-  BaseFloat alpha_sum = alpha_sum_vec.Sum();
   KALDI_ASSERT(alpha_sum_vec.Min() > 0);
 
   alpha_smbr_mat.AddVecVec(opts_.leaky_hmm_coefficient, 
@@ -284,17 +285,17 @@ void DenominatorSmbrComputation::BetaSmbr(int32 t) {
   beta_smbr_dash_mat.DivElements(beta_dash_mat);
 }
 
-BaseFloat DenominatorSmbrComputation::ForwardSmbr() {
+BaseFloat DenominatorSmbrComputation::ForwardSmbr(BaseFloat *aux_objf) {
   AlphaSmbrFirstFrame();
   AlphaSmbrDash(0);
   for (int32 t = 1; t <= frames_per_sequence_; t++) {
     AlphaSmbrGeneralFrame(t);
     AlphaSmbrDash(t);
   }
-  return ComputeTotObjf();
+  return ComputeTotObjf(aux_objf);
 }
 
-BaseFloat DenominatorSmbrComputation::ComputeTotObjf() {
+BaseFloat DenominatorSmbrComputation::ComputeTotObjf(BaseFloat *aux_objf) {
   tot_prob_.Resize(num_sequences_);
   tot_smbr_.Resize(num_sequences_);
   // View the last alpha-dash as a matrix of size num-hmm-states by num-sequences.
@@ -312,6 +313,29 @@ BaseFloat DenominatorSmbrComputation::ComputeTotObjf() {
 
   // Sum over all the HMM states for each sequence.
   tot_prob_.AddRowSumMat(1.0, last_alpha_dash, 0.0);
+  // we should probably add an ApplyLog() function that takes a vector argument.
+  tot_log_prob_ = tot_prob_;
+  tot_log_prob_.ApplyLog();
+  BaseFloat tot_log_prob = tot_log_prob_.Sum();
+
+  // We now have to add something for the arbitrary scaling factor.  [note: the
+  // purpose of the arbitrary scaling factors was to keep things in a good
+  // floating-point range]
+  // The inverses of all the tot-alpha quantities, for t = 0
+  // ... frames_per_sequence_ - 1, were included as the 'arbitrary factors' in
+  // the transition-probs, so we need to multiply them all together (not
+  // inversed) and add them as a correction term to the total log-likes.
+  // These tot-alpha quantities were stored in the same place that we would
+  // have stored the HMM-state numbered 'num_hmm_states'.
+  int32 num_hmm_states = den_graph_.NumStates();
+  CuSubMatrix<BaseFloat> inv_arbitrary_scales(
+      alpha_, 0, frames_per_sequence_,
+      num_sequences_ * num_hmm_states, num_sequences_);
+  CuMatrix<BaseFloat> log_inv_arbitrary_scales(
+      inv_arbitrary_scales);
+  log_inv_arbitrary_scales.ApplyLog();
+  BaseFloat log_inv_arbitrary_scales_product =
+      log_inv_arbitrary_scales.Sum();
 
   BaseFloat prob_sum = tot_prob_.Sum();
   KALDI_ASSERT(prob_sum == prob_sum);
@@ -321,8 +345,11 @@ BaseFloat DenominatorSmbrComputation::ComputeTotObjf() {
   last_alpha_smbr.MulElements(last_alpha_dash);
   tot_smbr_.AddRowSumMat(1.0, last_alpha_smbr, 0.0);
   tot_smbr_.DivElements(tot_prob_);
-
-  return tot_smbr_.Sum();
+  
+  if (aux_objf)
+    *aux_objf = -opts_.mmi_factor * (
+        tot_log_prob + log_inv_arbitrary_scales_product);
+  return opts_.smbr_factor * tot_smbr_.Sum();
 }
 
 
@@ -333,7 +360,7 @@ bool DenominatorSmbrComputation::BackwardSmbr(
   BetaSmbrDashLastFrame();
   BetaSmbr(frames_per_sequence_);
   for (int32 t = frames_per_sequence_ - 1; t >= 0; t--) {
-    BetaSmbrGeneralFrame(t);
+    BetaSmbrDashGeneralFrame(t);
     if (GetVerboseLevel() >= 1 || t == 0)
       BetaSmbrGeneralFrameDebug(t);
     BetaSmbr(t);
@@ -386,7 +413,7 @@ void DenominatorSmbrComputation::BetaSmbrDashLastFrame() {
   beta_smbr_dash_vec.SetZero();
 }
 
-void DenominatorSmbrComputation::BetaSmbrGeneralFrame(int32 t) {
+void DenominatorSmbrComputation::BetaSmbrDashGeneralFrame(int32 t) {
   KALDI_ASSERT(t >= 0 && t < frames_per_sequence_);
   int32 num_pdfs = exp_nnet_output_transposed_.NumRows();
   // t_wrapped gives us the time-index we use when indexing
@@ -431,7 +458,8 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrame(int32 t) {
           this_alpha_dash, this_alpha_smbr, 
           next_beta, next_beta_smbr,
           this_beta_dash, this_beta_smbr,
-          log_prob_deriv.Data(), log_prob_deriv.Stride());
+          log_prob_deriv.Data(), log_prob_deriv.Stride(),
+          opts_.mmi_factor, opts_.smbr_factor);
       CU_SAFE_CALL(cudaGetLastError());
       if (dimGrid.y == num_hmm_states) {
         break;  // this is the normal case.
@@ -482,7 +510,9 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrame(int32 t) {
           tot_variable_factor += variable_factor;
           double this_gamma_r = occupation_factor * variable_factor * 
             (this_alpha_smbr_i + post + next_beta_smbr_j - tot_smbr_(s));
-          log_prob_deriv_data[pdf_id * deriv_stride + s] += this_gamma_r;
+          log_prob_deriv_data[pdf_id * deriv_stride + s] += 
+            opts_.smbr_factor * this_gamma_r 
+            - opts_.mmi_factor * occupation_factor;
         }
         this_beta_dash[h * num_sequences + s] =
             tot_variable_factor / inv_arbitrary_scale;
@@ -540,15 +570,14 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrameDebug(int32 t) {
                 << alpha_beta_smbr_sum << " != " << tot_smbr_sum;
   }
 
-  //BaseFloat acc = (VecVec(this_alpha_smbr, this_alpha_dash) 
-  //                 + VecVec(this_beta_dash, this_beta_smbr)) 
-  //                / alpha_beta_product;
   // use higher tolerance, since we are using randomized pruning for the
   // log-prob derivatives.
-  if (GetVerboseLevel() > 1 || !ApproxEqual(this_log_prob_deriv_sum, 0, 0.01)) {
+  if (GetVerboseLevel() > 1 || !ApproxEqual(
+        this_log_prob_deriv_sum, -opts_.mmi_factor * num_sequences_, 0.01)) {
     KALDI_WARN << "On time " << t << ", log-prob-deriv sum "
-               << this_log_prob_deriv_sum << " != " << 0;
-    if (fabs(this_log_prob_deriv_sum - 0) > 2.0) {
+               << this_log_prob_deriv_sum << " != " 
+               << opts_.mmi_factor * num_sequences_;
+    if (fabs(this_log_prob_deriv_sum + opts_.mmi_factor * num_sequences_) > 2.0) {
       KALDI_WARN << "Excessive error detected, will abandon this minibatch";
       ok_ = false;
     }

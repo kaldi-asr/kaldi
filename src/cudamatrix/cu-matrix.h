@@ -100,13 +100,15 @@ class CuMatrixBase {
   void CopyCols(const CuMatrixBase<Real> &src,
                 const CuArray<MatrixIndexT> &indexes);
 
-
   /// Add column indices[r] of src to column r.
   /// As a special case, if indexes[i] == -1, skip column i
   /// indices.size() must equal this->NumCols(),
   /// and src.NumRows() must equal this.NumRows()
   void AddCols(const CuMatrixBase<Real> &src,
                const CuArray<MatrixIndexT> &indices);
+
+  /// Sets all elements in column indexes defined by 'ids' to 'value'
+  void SetCols(Real value, const CuArray<MatrixIndexT> &ids);
 
   /// Copies row r from row indexes[r] of src.
   /// As a special case, if indexes[i] < 0, sets row i to zero.
