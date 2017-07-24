@@ -5,8 +5,13 @@
 
 # This script loads the IAM handwritten dataset
 
-[ -f ./path.sh ] && . ./path.sh; # source the path.
+stage=0
 
+. ./cmd.sh
+if [ -f path.sh ]; then . ./path.sh; fi
+. parse_options.sh || exit 1;
+
+#download dir
 dl_dir=data/download
 lines=$dl_dir/lines
 xml=$dl_dir/xml
@@ -40,5 +45,26 @@ else
   echo Done downloading and extracting transcription
 fi
 
-local/process_data.py $dl_dir data/train || exit 1
+if [ $stage -le 0 ]; then
+  local/process_data.py $dl_dir data/train || exit 1
+fi
 
+
+numsplit=5
+mkdir -p data/{train,val_1,val_2,test}/data
+
+if [ $stage -le 1 ]; then
+  local/process_feature_vect.py data/train --scale-size 40 | \
+  copy-feats --compress=true --compression-method=7 \
+  ark:- ark,scp:data/train/data/images.ark,data/train/feats.scp || exit 1
+fi
+
+if [ $stage -le 2 ]; then
+  mkdir -p data/train/log
+  image/split_ocr_dir.sh data/train/ $numsplit
+  $cmd JOB=1:$numsplit data/train/log/make_feature_vect.JOB.log \
+    local/process_feature_vect.py data/train/split${numsplit}/JOB/ --scale-size 40 \| \
+    copy-feats --compress=true --compression-method=7 \
+    ark:- ark,scp:data/train/split${numsplit}/JOB/data/images.ark,data/train/split${numsplit}/JOB/feats.scp \
+    || exit 1
+fi

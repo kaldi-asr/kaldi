@@ -8,10 +8,7 @@ import numpy as np
 from scipy import misc
 
 parser = argparse.ArgumentParser(description="""Generates and saves the feature vectors""")
-parser.add_argument('database_path', type=str, help='path to downloaded data')
-parser.add_argument('dir', type=str, help='output directory')
-parser.add_argument('--dataset', type=str, default='trainset', 
-                    choices=['trainset', 'testset', 'validationset1', 'validationset2'])
+parser.add_argument('dir', type=str, help='directory of images.scp and is also output directory')
 parser.add_argument('--out-ark', type=str, default='-', help='where to write the output feature file')
 parser.add_argument('--scale-size', type=int, default=40, help='size to scale the height of all images')
 
@@ -38,12 +35,6 @@ def write_kaldi_matrix(file_handle, matrix, key):
             file_handle.write("\n")
     file_handle.write(" ]\n")
 
-def zeropad(x, length):
-    s = str(x)
-    while len(s) < length:
-        s = '0' + s
-    return s
-
 def get_scaled_image(im):
     scale_size = args.scale_size
     sx = im.shape[1]
@@ -54,9 +45,7 @@ def get_scaled_image(im):
     return im
 
 ### main ###
-data_list_path = os.path.join(args.database_path,
-                              'largeWriterIndependentTextLineRecognitionTask',
-                              args.dataset + '.txt')
+data_list_path = os.path.join(args.dir,'images.scp')
 
 if args.out_ark == '-':
     out_fh = sys.stdout
@@ -66,17 +55,13 @@ else:
 image_ID = 1
 with open(data_list_path) as f:
     for line in f:
-        key = zeropad(image_ID, 8)
-        line_vect = line.split('-')
-        file = os.path.join(args.database_path,
-                            'lines',
-                            line_vect[0],
-                            line_vect[0] + '-' + line_vect[1],
-                            line.strip() + '.png')
-        im = misc.imread(file)
+        line = line.strip()
+        line_vect = line.split(' ')
+        image_id = line_vect[0]
+        image_path = line_vect[1]
+        im = misc.imread(image_path)
         im_scale = get_scaled_image(im)
         data = np.transpose(im_scale, (1, 0))
         data = np.divide(data, 255.0)
-        write_kaldi_matrix(out_fh, data, key)
-        image_ID = image_ID + 1
+        write_kaldi_matrix(out_fh, data, image_id)
 

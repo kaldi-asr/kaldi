@@ -8,7 +8,7 @@ from scipy import misc
 import xml.dom.minidom as minidom
 
 parser = argparse.ArgumentParser(description="""Creates text utt2spk 
-                                                and wav file """)
+                                                and image file """)
 parser.add_argument('database_path', type=str,
                     default='data/download',
                     help='path to downloaded iam data')
@@ -22,8 +22,8 @@ text_fh = open(text_file, 'w+')
 utt2spk_file = os.path.join(args.out_dir + '/', 'utt2spk')
 utt2spk_fh = open(utt2spk_file, 'w+')
 
-wav_file = os.path.join(args.out_dir + '/', 'wav.scp')
-wav_fh = open(wav_file, 'w+')
+image_file = os.path.join(args.out_dir + '/', 'images.scp')
+image_fh = open(image_file, 'w+')
 
 xml_path = os.path.join(args.database_path, 'xml')
 xml_files = os.listdir(xml_path)
@@ -58,8 +58,8 @@ for first_file in xml_files:
     image_file_path_list += [image_file_path]
     text_fh.write(utt_id + ' ' + text + '\n')
     utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
-    wav_fh.write(utt_id + ' ' + image_file_path + '\n') 
+    image_fh.write(utt_id + ' ' + image_file_path + '\n') 
 
 #text_fh.write(utt_id + ' ' + text + '\n')
 #utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
-#wav_fh.write(utt_id + ' ' + image_file_path + '\n')
+#image_fh.write(utt_id + ' ' + image_file_path + '\n')
