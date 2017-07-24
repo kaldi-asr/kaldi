@@ -39,3 +39,6 @@ else
   tar -xvzf $dl_dir/xml.tgz -C $xml || exit 1;
   echo Done downloading and extracting transcription
 fi
+
+local/process_data.py $dl_dir data/train || exit 1
+
