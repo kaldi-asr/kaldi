@@ -12,7 +12,8 @@ BINFILES = nnet3-durmodel-init nnet3-durmodel-make-egs nnet3-durmodel-copy \
            nnet3-durmodel-rescore-lattice durmodel-info durmodel-init \
            nnet3-durmodel-info nnet3-durmodel-copy-egs \
            nnet3-durmodel-estimate-avg-logprobs durmodel-context-stats \
-           nnet3-durmodel-find-avg-objf-factor
+           nnet3-durmodel-find-avg-objf-factor nnet3-durmodel-plot-outputs \
+           nnet3-durmodel-investigate
 OBJFILES =
 
 

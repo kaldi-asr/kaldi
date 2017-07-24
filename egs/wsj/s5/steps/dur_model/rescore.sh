@@ -44,4 +44,4 @@ $cmd JOB=1:$nj $dir/log/rescore.JOB.log \
       nnet3-durmodel-rescore-lattice --duration-model-scale=$duration_model_scale \
       --avg-logprobs-file=$avg_logprobs_file \
       $nnet_durmodel $srcdir/final.mdl \
-      ark:- "ark,t:|gzip -c >$dir/lat.JOB.gz" || exit 1;
+      ark:- "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;

@@ -398,7 +398,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
         CuMatrix<BaseFloat> deriv(output.NumRows(), output.NumCols(), kUndefined);
         deriv.ColRange(0, 1).CopyFromMat(deriv_col1);
         deriv.ColRange(1, 1).CopyFromMat(deriv_col2);
-        computer->AcceptOutputDeriv(output_name, &deriv);
+        computer->AcceptInput(output_name, &deriv);
       }
       break;
     }

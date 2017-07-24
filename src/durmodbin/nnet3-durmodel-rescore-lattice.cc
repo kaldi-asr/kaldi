@@ -64,11 +64,17 @@ int main(int argc, char *argv[]) {
     NnetPhoneDurationModel nnet_durmodel;
     ReadKaldiObject(nnet_durmodel_filename, &nnet_durmodel);
     
-    AvgPhoneLogProbs avg_logprobs;
+    /*//tmp// AvgPhoneLogProbs avg_logprobs;
     if (!avg_logprobs_file.empty()) {
       ReadKaldiObject(avg_logprobs_file, &avg_logprobs);
+    }*/
+    Vector<BaseFloat> priors;
+    if (!avg_logprobs_file.empty()) {
+      bool binary_in;
+      Input ki(avg_logprobs_file, &binary_in);
+      priors.Read(ki.Stream(), binary_in, false);
     }
-    NnetPhoneDurationScoreComputer durmodel_scorer(nnet_durmodel, avg_logprobs);
+    NnetPhoneDurationScoreComputer durmodel_scorer(nnet_durmodel, priors);
 
     // Read and write as compact lattice.
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
@@ -103,7 +109,7 @@ int main(int argc, char *argv[]) {
                                            &on_demand_fst,
                                            &composed_clat);
         // Replace the labels back
-        DurationModelReplaceLabelsBackLattice(&clat);
+        DurationModelReplaceLabelsBackLattice(&composed_clat);
 
         // Determinizes the composed lattice.
         Lattice composed_lat;

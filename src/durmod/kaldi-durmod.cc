@@ -237,7 +237,7 @@ void NnetPhoneDurationScoreComputer::ComputeOutputForExample(
   //    options.debug = true;
   NnetComputer computer(options, computation, model_.GetNnet(), NULL);
   computer.AcceptInputs(model_.GetNnet(), eg.io);
-  computer.Forward();
+  computer.Run();
   const CuMatrixBase<BaseFloat> &nnet_output = computer.GetOutput("output");
   output->Resize(nnet_output.NumRows(), nnet_output.NumCols());
   nnet_output.CopyToMat(output);
@@ -295,7 +295,11 @@ BaseFloat NnetPhoneDurationScoreComputer::GetLogProb(
       logprob += (actual_duration_id - duration_id + 1) * Log(alpha) -
                                              Log(probability_normalization_sum);
   }
-
+  if (phone_duration - 1 < priors_.Dim()) {
+    //KALDI_LOG << "Using priors... priors.Dim() is " << priors_.Dim();
+    logprob -= Log(priors_(phone_duration - 1));
+  }
+/** //tmp//
   unordered_map<std::vector<int32>,
                       BaseFloat,
                       VectorHasher<int32> >& phonecontext_to_avglogprob_map =
@@ -320,7 +324,8 @@ BaseFloat NnetPhoneDurationScoreComputer::GetLogProb(
                 << phonecontext_to_avglogprob_map[single_phone_context] + 2;
       logprob -= phonecontext_to_avglogprob_map[single_phone_context] + 2;
     }
-  }
+  } */
+  
   return logprob;
 }
 

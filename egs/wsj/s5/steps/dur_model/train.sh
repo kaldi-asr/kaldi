@@ -71,6 +71,8 @@ noise_magnitude=0.05          # The relative magnitude of noise to be added
                               # generalization: duration
 estimate_logprob_num_examples=5000000       # Number of training examples to use for estimating
                                             # average logprobs to later subtract at test time
+scorenorm_leftcontext=1
+scorenorm_rightcontext=0
 extra_questions_file=         # Use this option to set an arbitrary extra_questions.int file
                               # other than the default at lang/phones
 roots_file=                   # Use this option to set an arbitrary roots_file.int
@@ -84,6 +86,7 @@ always_perturb=false          # If noise_magnitude is not 0, always_perturb=true
                               # means that even if the noise (i.e. noise_mag * duration)
                               # is zero (eg., for durations < 1/noise_mag) a
                               # minimum noise of +-1 is added to duration values.
+priors_k=1000
 
 echo "$0 $@"  # Print the command line for logging
 cmdline="$0 $@"
@@ -110,6 +113,7 @@ fi
 phones_dir=$1
 alidir=$2
 dir=$3
+transmodel=$alidir/final.mdl
 
 durmodel=$dir/durmodel.mdl
 mkdir -p $dir/log
@@ -124,7 +128,7 @@ if [ $stage -le -2 ]; then
   [ -z $roots_file ] && roots_file=$phones_dir/roots.int
   echo "$0: Roots-file used for phone-identity features: $roots_file"
 
-  transmodel=$alidir/final.mdl
+
   for f in $transmodel $roots_file $extra_questions_file; do
     [ ! -f $f ] && echo "$0: Required file for initializing not found: $f" && exit 1;
   done
@@ -322,10 +326,29 @@ elif [ ! -z $next_mdl ]; then
 fi
 
 echo "$0: Estimating average logprobs over training data..."
-$cmd $dir/log/estimate-avg-logprobs.log \
-     nnet3-durmodel-estimate-avg-logprobs --num-examples=$estimate_logprob_num_examples --binary=false \
-     $dir/final_nnet_dur_model.mdl $alidir/final.mdl \
-     "ark:gunzip -c $alidir/ali.*.gz |" $dir/avg_logprobs.data
-wait
+### tmp ##
+#$cmd $dir/log/estimate-avg-logprobs.log \
+#     nnet3-durmodel-estimate-avg-logprobs --num-examples=$estimate_logprob_num_examples --binary=false \
+#     --left-context=$scorenorm_leftcontext --right-context=$scorenorm_rightcontext \
+#     $dir/final_nnet_dur_model.mdl $alidir/final.mdl \
+#     "ark:gunzip -c $alidir/ali.*.gz |" $dir/avg_logprobs.data
+## tmp ###
+
+ali-to-phones --write-lengths $transmodel "ark:gunzip -c $alidir/ali.*.gz|" \
+              ark,t:- | awk -v K=$priors_k -F';' \
+              '{ for(i=1; i<=NF; i++){ \
+                   n=split($(i), a, " ");\
+                   duration=a[n];\
+                   counts[duration]++;\
+                   total_count++;\
+                   if(duration>max_duration) max_duration=duration; \
+               }} END { N = length(counts); \
+                        printf "[ "; \
+                        for(d=1; d<=max_duration; d++){ \
+                          counts[d] = (counts[d] + K) / (total_count + N*K); \
+                          printf counts[d]" "; \
+                        } \
+                        printf "]";}' >$dir/priors.vec || exit 1;
+
 echo "$0: Done"
 

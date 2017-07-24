@@ -257,11 +257,13 @@ class NnetPhoneDurationScoreComputer {
       feature_maker_(model.GetDurationModel()) {}
   explicit NnetPhoneDurationScoreComputer(
                                       const NnetPhoneDurationModel &model,
-                                      const AvgPhoneLogProbs &avg_logprobs):
+                                      const Vector<BaseFloat> &priors):
+                                      //tmp// const AvgPhoneLogProbs &avg_logprobs):
       model_(model),
       compiler_(model.GetNnet()),
       feature_maker_(model.GetDurationModel()),
-      avg_logprobs_(avg_logprobs) {}
+      priors_(priors) {}
+      //tmp// avg_logprobs_(avg_logprobs) {}
 
   void ComputeOutputForExample(const NnetExample &eg,
                                Matrix<BaseFloat> *output);
@@ -276,7 +278,8 @@ class NnetPhoneDurationScoreComputer {
   const NnetPhoneDurationModel &model_;
   CachingOptimizingCompiler compiler_;
   PhoneDurationFeatureMaker feature_maker_;
-  AvgPhoneLogProbs avg_logprobs_;
+  //tmp// AvgPhoneLogProbs avg_logprobs_;
+  Vector<BaseFloat> priors_;
 };
 
 class PhoneDurationModelDeterministicFst
