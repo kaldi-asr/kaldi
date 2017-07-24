@@ -1,4 +1,4 @@
-// rnnlm/rnnlm-core-training.h
+// rnnlm/rnnlm-embedding-training.h
 
 // Copyright 2017  Johns Hopkins University (author: Daniel Povey)
 
@@ -39,91 +39,81 @@ namespace rnnlm {
 // with the RNNLM the training code a few things are different,
 // so we're using a totally separate training class.
 // We'll add options as we need them.
-struct RnnlmCoreTrainerOptions {
+
+struct RnnlmEmbeddingTrainerOptions {
   int32 print_interval;
   BaseFloat momentum;
   BaseFloat max_param_change;
+  BaseFloat learning_rate;
 
-  RnnlmCoreTrainerOptions():
+  // Natural-gradient related options
+  bool use_natural_gradient;
+  BaseFloat natural_gradient_alpha;
+  int32 natural_gradient_rank;
+  int32 natural_gradient_update_period;
+
+  RnnlmEmbeddingTrainerOptions():
       print_interval(100),
       momentum(0.0),
-      max_param_change(2.0) { }
+      learning_rate(0.01),
+      max_param_change(1.0),
+      use_natural_gradient(true),
+      natural_gradient_alpha(4.0),
+      natural_gradient_rank(80),
+      natural_gradient_update_period(4) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("momentum", &momentum, "Momentum constant to apply during "
-                   "training (help stabilize update).  e.g. 0.9.  Note: we "
+                   "training of embedding (e.g. 0.5 or 0.9).  Note: we "
                    "automatically multiply the learning rate by (1-momenum) "
                    "so that the 'effective' learning rate is the same as "
                    "before (because momentum would normally increase the "
                    "effective learning rate by 1/(1-momentum))");
     opts->Register("max-param-change", &max_param_change, "The maximum change in "
-                   "parameters allowed per minibatch, measured in Euclidean norm "
-                   "over the entire model (change will be clipped to this value)");
+                   "parameters allowed per minibatch, measured in Euclidean norm, "
+                   "for the embedding matrix (the matrix of num-features by "
+                   "embedding-dim -- or num-words by embedding-dim, if we're not "
+                   "using a feature-based representation.");
+    opts->Register("learning-rate", &learning_rate, "The learning rate used in "
+                   "training the word-embedding matrix.");
+    opts->Register("use-natural-gradient", &use_natural_gradient,
+                   "True if you want to use natural gradient to update the "
+                   "embedding matrix");
+    opts->Register("natural-gradient-alpha", &natural_gradient_alpha,
+                   "Smoothing constant alpha to use for natural gradient when "
+                   "updating the embedding matrix");
+    opts->Register("natural-gradient-rank", &natural_gradient_rank,
+                   "Rank of the Fisher matrix in natural gradient as applied to "
+                   "learning the embedding matrix (this is in the embedding "
+                   "space, so the rank should probably be less than the "
+                   "embedding dimension");
+    opts->Register("natural-gradient-update-period",
+                   &natural_gradient_update_period,
+                   "Determines how often the Fisher matrix is updated for natural "
+                   "gradient as applied to the embedding matrix");
   }
 };
 
 
-class ObjectiveTracker {
- public:
-  ObjectiveTracker(int32 reporting_interval);
-
-
-  void AddStats(BaseFloat weight, BaseFloat num_objf,
-                BaseFloat den_objf,
-                BaseFloat exact_den_objf = 0.0);
-
-  ~ObjectiveTracker();  // Prints stats for the final interval, and the overall
-                        // stats.
-
-
- private:
-  // prints the stats for the current interval.
-  void PrintStatsThisInterval() const;
-  // zeroes the stats for the current interval and adds them to
-  // the global stats.
-  void CommitIntervalStats();
-  // prints the overall stats.
-  void PrintStatsOverall() const;
-
-  int32 reporting_interval_;
-  int32 num_egs_this_interval_;
-  double tot_weight_this_interval_;  // sum of weights of outputs-- the
-                                     // objective is to be divided by this.
-  double num_objf_this_interval_;  // numerator term in objective
-  double den_objf_this_interval_;  // denominator term in objective, to be
-                                  // added to numerator term.
-  // exact_den_objf_this_interval_ is the exact version of the denominator term,
-  // of the form log(sum(...)) instead of sum(...).  This is included for
-  // debugging and diagnostic purposes, and it will be zero if we're using
-  // sampling (which will be most of the time).
-  int32 exact_den_objf_this_interval_;
-
-  // the following versions of the variables are overall, not just for
-  // this interval: once we finish an interval (e.g. 100 examples), we
-  // add the '...this_interval_' versions of the variables to the
-  // variables below.
-  int32 num_egs_;
-  double tot_weight_;
-  double num_objf_;
-  double den_objf_;
-  double exact_den_objf_;
-};
-
-
-/** This class does the core part of the training of the RNNLM; the
-    word embeddings are supplied to this class for each minibatch and
-    while this class can compute objective function derivatives w.r.t.
-    these embeddings, it is not responsible for updating them.
+/** This class is responsible for training the word embedding matrix; it's to be
+    used when you have only a (dense) word embedding matrix and no sparse
+    feature representation of words.
  */
-class RnnlmCoreTrainer {
+class RnnlmWordEmbeddingTrainer {
  public:
-  /** Constructor.
+  /** Constructor: this version is to be used when we are training the
+      word embedding directly without a sparse feature representation.
+
        @param [in] config  Structure that holds configuration options
-       @param [in,out] nnet   The neural network that is to be trained.
+       @param [in,out] embedding_mat   The embedding matrix to be trained,
+                          of dimension num-words by embedding-dim.
+
+       neural network that is to be trained.
                               Will be modified each time you call Train().
    */
-  RnnlmCoreTrainer(RnnlmCoreTrainerOptions &config,
-                   nnet3::Nnet *nnet);
+
+  RnnlmEmbeddingTrainer(RnnlmCoreTrainerOptions &config,
+                        CuMatrix<BaseFloat> *embedding_mat);
 
   /* Train on one minibatch.
        @param [in] minibatch  The RNNLM minibatch to train on, containing
@@ -131,9 +121,10 @@ class RnnlmCoreTrainer {
                             necessarily contain words with the 'original'
                             numbering, it will in most circumstances contain
                             just the ones we used; see RenumberRnnlmMinibatch().
-       @param [in] word_embedding  The matrix giving the embedding of words, of
-                            dimension minibatch.vocab_size by the embedding dimension.
-                            The numbering of the words does not have to be the 'real'
+       @param [in] word_embedding  The matrix giving the embedding of words;
+                            the row index is the word-id and the number of columns
+                            is the word-embedding dimension.  The numbering
+                            of the words does not have to be the 'real'
                             numbering of words, it can consist of words renumbered
                             by RenumberRnnlmMinibatch(); it just has to be
                             consistent with the word-ids present in 'minibatch'.

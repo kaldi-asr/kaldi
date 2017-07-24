@@ -85,10 +85,36 @@ class CuSparseMatrix {
   /// Copy from possibly-GPU-based matrix.
   CuSparseMatrix<Real> &operator = (const CuSparseMatrix<Real> &smat);
 
-  /// Copy from CPU-based matrix. We will add the transpose option later when it
+  /// Copy from CPU-based matrix.  We will add the transpose option later when it
   /// is necessary.
   template <typename OtherReal>
   void CopyFromSmat(const SparseMatrix<OtherReal> &smat);
+
+  /// Copy from GPU-based matrix, supporting transposition.
+  /// TODO: implement this.
+  /// Note on implementation (delete when done): I believe the CuSparse
+  /// library has an option for csr to csc format conversion that can be used to
+  /// transpose a matrix.
+  void CopyFromSmat(const CuSparseMatrix<Real> &smat,
+                    MatrixTransposeType trans = kNoTrans);
+
+
+  /// Select a subset of the rows of a SparseMatrix.
+  /// Sets *this to only the rows of 'smat_other' that are listed
+  /// in 'row_indexes'.  'row_indexes' must be sorted and unique,
+  /// and satisfy 0 <= row_indexes[i] < smat_other.size().
+  /// TODO: implement this.  Implementation note (remove when done):
+  ///  you may find that it's easiest for you, rather than writing any custom
+  ///  CUDA kernels for this, to just do it by sparse-matrix multiplication.
+  ///  In that case it could be done by implementing a function as follows:
+  ///   // Set *this to alpha * op(A) * op(B), e.g. A * B if transA = kNoTrans
+  ///   // and transB = kNoTrans.
+  ///   SetSmatSmat(BaseFloat alpha,
+  ///            const CuSparseMatrix<Real> &A, MatrixTransposeType transA,
+  ///            const CuSparseMatrix<Real> &B, MatrixTransposeType transB);
+  ///    ... this would call cusparseScsrgemm/cusparseDcsrgemm, if using the GPU.
+  void SelectRows(const CuArray<int32> &row_indexes,
+                  const CuSparseMatrix<Real> &smat_other);
 
   /// Copy to CPU-based matrix. We will add the transpose option later when it
   /// is necessary.
@@ -121,6 +147,12 @@ class CuSparseMatrix {
   /// Constructor from CPU-based sparse matrix.
   explicit CuSparseMatrix(const SparseMatrix<Real> &smat) {
     this->CopyFromSmat(smat);
+  }
+
+  /// Constructor from GPU-based sparse matrix (supports transposition).
+  explicit CuSparseMatrix(const CuSparseMatrix<Real> &smat,
+                          MatrixTransposeType trans = kNoTrans) {
+    this->CopyFromSmat(smat, trans);
   }
 
 

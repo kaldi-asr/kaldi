@@ -1,4 +1,4 @@
-// rnnlm/rnnlm-train.h
+// rnnlm/rnnlm-training.h
 
 // Copyright 2017  Johns Hopkins University (author: Daniel Povey)
 
@@ -31,7 +31,8 @@ namespace rnnlm {
 class RnnlmTrainOptions {
   std::string rnnlm_rxfilename;
 
-  RnnlmCoreTrainOptions core_config;
+  RnnlmCoreTrainerOptions core_config;
+  RnnlmEmbeddingTrainerOptions embedding_config;
 
 
   void Register(OptionsItf *po) {
@@ -88,11 +89,11 @@ class RnnlmTrainOptions {
     // embedding, and it would have options that would have a name conflict with
     // some of these options.
     ParseOptions core_opts("rnnlm", core_config);
-    core_config.Register("core_opts");
+    core_config.Register(core_opts);
 
-
+    ParseOptions embedding_opts("embedding", embedding_config);
+    core_config.Register(embedding_opts);
   }
-
 };
 
 /*
