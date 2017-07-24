@@ -227,7 +227,7 @@ void ComputeAccuracy(const GeneralMatrix &supervision,
     case kSparseMatrix: {
       const SparseMatrix<BaseFloat> &smat = supervision.GetSparseMatrix();
       for (int32 r = 0; r < num_rows; r++) {
-        const SparseVector<BaseFloat> &row = smat.Row(r);
+        const SparseVector<BaseFloat> row = smat.Row(r);
         BaseFloat row_sum = row.Sum();
         int32 best_index;
         row.Max(&best_index);

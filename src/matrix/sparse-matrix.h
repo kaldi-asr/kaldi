@@ -119,49 +119,63 @@ Real VecSvec(const VectorBase<Real> &vec,
              const SparseVector<Real> &svec);
 
 
-
-template <typename Real>
+template<typename Real>
 class SparseMatrix {
- public:
+public:
   MatrixIndexT NumRows() const;
 
   MatrixIndexT NumCols() const;
 
   MatrixIndexT NumElements() const;
 
+  /// Returns pointer to the data array of lenght nnz_ that holds all nonzero
+  /// values in zero-based CSR format
+  const Real* CsrVal() const;
+  Real* CsrVal();
+
+  /// Returns pointer to the integer array of length NumRows()+1 that holds
+  /// indices of the first nonzero element in the i-th row, while the last entry
+  /// constans nnz_, as zero-based CSR format is used.
+  const int* CsrRowPtr() const;
+  int* CsrRowPtr();
+
+  /// Returns pointer to the integer array of length nnz_ that contains
+  /// the column indices of the corresponding elements in array CsrVal()
+  const int* CsrColIdx() const;
+  int* CsrColIdx();
+
   Real Sum() const;
 
   Real FrobeniusNorm() const;
 
-  template <class OtherReal>
+  template<class OtherReal>
   void CopyToMat(MatrixBase<OtherReal> *other,
                  MatrixTransposeType t = kNoTrans) const;
+
+  /// Copies data from another sparse matrix. We will add the transpose option
+  /// later when it is necessary.
+  template<class OtherReal>
+  void CopyFromSmat(const SparseMatrix<OtherReal> &other);
+
+  SparseMatrix<Real> &operator =(const SparseMatrix<Real> &other);
 
   /// Copies the values of all the elements in SparseMatrix into a VectorBase
   /// object.
   void CopyElementsToVec(VectorBase<Real> *other) const;
 
-  /// Copies data from another sparse matrix. We will add the transpose option
-  /// later when it is necessary.
-  template <class OtherReal>
-  void CopyFromSmat(const SparseMatrix<OtherReal> &other);
-
-  /// Does *other = *other + alpha * *this.
-  void AddToMat(BaseFloat alpha, MatrixBase<Real> *other,
-                MatrixTransposeType t = kNoTrans) const;
-
-  SparseMatrix<Real> &operator = (const SparseMatrix<Real> &other);
-
-  SparseMatrix(const SparseMatrix<Real> &other) { *this = other; }
-
   void Swap(SparseMatrix<Real> *other);
 
-  // returns pointer to element data, or NULL if empty (use with NumElements()).
-  SparseVector<Real> *Data();
+  /// Default constructor
+  SparseMatrix();
 
-  // returns pointer to element data, or NULL if empty (use with NumElements());
-  // const version
-  const SparseVector<Real> *Data() const;
+  SparseMatrix(MatrixIndexT rows, MatrixIndexT cols, int nnz = 0,
+               MatrixResizeType resize_type = kSetZero);
+
+  /// Resizes the matrix; analogous to Matrix::Resize().
+  void Resize(MatrixIndexT rows, MatrixIndexT cols, int nnz = 0,
+              MatrixResizeType resize_type = kSetZero);
+
+  SparseMatrix(const SparseMatrix<Real> &other);
 
   // initializer from the type that elsewhere in Kaldi is referred to as type
   // Posterior. indexed first by row-index; the pairs are (column-index, value),
@@ -170,16 +184,39 @@ class SparseMatrix {
       int32 dim,
       const std::vector<std::vector<std::pair<MatrixIndexT, Real> > > &pairs);
 
+  ~SparseMatrix();
+
   /// Sets up to a pseudo-randomly initialized matrix, with each element zero
   /// with probability zero_prob and else normally distributed- mostly for
   /// purposes of testing.
   void SetRandn(BaseFloat zero_prob);
 
+  /// Sets all nonzero values to val. The number of nonzeros remain unchanged.
+  void SetConstant(Real val);
+
+  /// Scale all elements in sparse matrix.
+  void Scale(Real alpha);
+
   void Write(std::ostream &os, bool binary) const;
 
   void Read(std::istream &os, bool binary);
 
-  const SparseVector<Real> &Row(MatrixIndexT r) const;
+  /////////////////
+  // APIs not in CuSparseMatrix
+  /////////////////
+
+//  // returns pointer to element data, or NULL if empty (use with NumElements()).
+//  SparseVector<Real> *Data();
+//
+//  // returns pointer to element data, or NULL if empty (use with NumElements());
+//  // const version
+//  const SparseVector<Real> *Data() const;
+
+  /// Does *other = *other + alpha * *this.
+  void AddToMat(BaseFloat alpha, MatrixBase<Real> *other,
+                MatrixTransposeType t = kNoTrans) const;
+
+  SparseVector<Real> Row(MatrixIndexT r) const;
 
   /// Sets row r to "vec"; makes sure it has the correct dimension.
   void SetRow(int32 r, const SparseVector<Real> &vec);
@@ -190,32 +227,34 @@ class SparseMatrix {
   /// empty).
   void AppendSparseMatrixRows(std::vector<SparseMatrix<Real> > *inputs);
 
-  SparseMatrix() { }
+private:
+  /// Init assumes the current class contents are invalid (i.e. junk or have
+  /// already been freed), and it sets the matrix to newly allocated memory with
+  /// the specified number of rows and columns.  r == c == 0 is acceptable.
+  /// The data memory contents will be undefined.
+  void Init(const MatrixIndexT num_rows, const MatrixIndexT num_cols,
+            const int nnz);
 
-  SparseMatrix(int32 num_rows, int32 num_cols) { Resize(num_rows, num_cols); }
+  /// Deallocates memory and sets to empty matrix (dimension 0, 0).
+  void Destroy();
 
-  /// Resizes the matrix; analogous to Matrix::Resize().  resize_type ==
-  /// kUndefined behaves the same as kSetZero.
-  void Resize(MatrixIndexT rows, MatrixIndexT cols,
-              MatrixResizeType resize_type = kSetZero);
+  // matrix size num_rows_ x num_cols_
+  MatrixIndexT num_rows_;
+  MatrixIndexT num_cols_;
 
-  /// Scale all elements in sparse matrix.
-  void Scale(Real alpha);
+  // number of non-zeros
+  MatrixIndexT nnz_;
 
-  // Use the Matrix::CopyFromSmat() function to copy from this to Matrix.  Also
-  // see Matrix::AddSmat().  There is not very extensive functionality for
-  // SparseMat just yet (e.g. no matrix multiply); we will add things as needed
-  // and as it seems necessary.
- private:
-  // vector of SparseVectors, all of same dime (use an stl vector for now; this
-  // could change).
-  std::vector<SparseVector<Real> > rows_;
+  // csr row ptrs and col indices in a single int array
+  // of the length (num_rows_ + 1 + nnz_)
+  int* csr_row_ptr_col_idx_;
+
+  // csr value array of the length nnz_
+  Real* csr_val_;
 };
 
-
 template<typename Real>
-Real TraceMatSmat(const MatrixBase<Real> &A,
-                  const SparseMatrix<Real> &B,
+Real TraceMatSmat(const MatrixBase<Real> &A, const SparseMatrix<Real> &B,
                   MatrixTransposeType trans = kNoTrans);
 
 

@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <map>
 #include <string>
 
 #include "matrix/sparse-matrix.h"
@@ -287,49 +288,57 @@ void SparseVector<Real>::Resize(MatrixIndexT dim,
   dim_ = dim;
 }
 
-template <typename Real>
+template<typename Real>
 MatrixIndexT SparseMatrix<Real>::NumRows() const {
-  return rows_.size();
+  return num_rows_;
 }
 
-template <typename Real>
+template<typename Real>
 MatrixIndexT SparseMatrix<Real>::NumCols() const {
-  if (rows_.empty())
-    return 0.0;
-  else
-    return rows_[0].Dim();
+  return num_cols_;
 }
 
-template <typename Real>
+template<typename Real>
 MatrixIndexT SparseMatrix<Real>::NumElements() const {
-  int32 num_elements = 0;
-  for (int32 i = 0; i < rows_.size(); ++i) {
-    num_elements += rows_[i].NumElements();
-  }
-  return num_elements;
+  return nnz_;
 }
 
-template <typename Real>
-SparseVector<Real>* SparseMatrix<Real>::Data() {
-  if (rows_.empty())
-    return NULL;
-  else
-    return rows_.data();
+template<typename Real>
+const Real* SparseMatrix<Real>::CsrVal() const {
+  return csr_val_;
 }
 
-template <typename Real>
-const SparseVector<Real>* SparseMatrix<Real>::Data() const {
-  if (rows_.empty())
-    return NULL;
-  else
-    return rows_.data();
+template<typename Real>
+Real* SparseMatrix<Real>::CsrVal() {
+  return csr_val_;
 }
 
-template <typename Real>
+template<typename Real>
+const int* SparseMatrix<Real>::CsrRowPtr() const {
+  return csr_row_ptr_col_idx_;
+}
+
+template<typename Real>
+int* SparseMatrix<Real>::CsrRowPtr() {
+  return csr_row_ptr_col_idx_;
+}
+
+template<typename Real>
+const int* SparseMatrix<Real>::CsrColIdx() const {
+  return csr_row_ptr_col_idx_ + num_rows_ + 1;
+}
+
+template<typename Real>
+int* SparseMatrix<Real>::CsrColIdx() {
+  return csr_row_ptr_col_idx_ + num_rows_ + 1;
+}
+
+template<typename Real>
 Real SparseMatrix<Real>::Sum() const {
   Real sum = 0;
-  for (int32 i = 0; i < rows_.size(); ++i) {
-    sum += rows_[i].Sum();
+  const Real* csr_val = CsrVal();
+  for (int i = 0; i < nnz_; ++i) {
+    sum += csr_val[i];
   }
   return sum;
 }
@@ -337,38 +346,45 @@ Real SparseMatrix<Real>::Sum() const {
 template<typename Real>
 Real SparseMatrix<Real>::FrobeniusNorm() const {
   Real squared_sum = 0;
-  for (int32 i = 0; i < rows_.size(); ++i) {
-    const std::pair<MatrixIndexT, Real> *row_data = rows_[i].Data();
-    for (int32 j = 0; j < rows_[i].NumElements(); ++j) {
-      squared_sum += row_data[j].second * row_data[j].second;
-    }
+  const Real *csr_val = CsrVal();
+  for (int i = 0; i < nnz_; ++i) {
+    squared_sum += csr_val[i] * csr_val[i];
   }
   return std::sqrt(squared_sum);
 }
 
-template <typename Real>
-template <typename OtherReal>
+template<typename Real>
+template<typename OtherReal>
 void SparseMatrix<Real>::CopyToMat(MatrixBase<OtherReal> *other,
                                    MatrixTransposeType trans) const {
   if (trans == kNoTrans) {
-    MatrixIndexT num_rows = rows_.size();
-    KALDI_ASSERT(other->NumRows() == num_rows);
-    for (MatrixIndexT i = 0; i < num_rows; i++) {
-      SubVector<OtherReal> vec(*other, i);
-      rows_[i].CopyElementsToVec(&vec);
+    KALDI_ASSERT(other->NumRows() == num_rows_);
+    KALDI_ASSERT(other->NumCols() == num_cols_);
+    other->SetZero();
+    const int* csr_row_ptr = CsrRowPtr();
+    const int* csr_col_idx = CsrColIdx();
+    const Real* csr_val = CsrVal();
+
+    int n = 0;
+    for (int i = 0; i < NumRows(); ++i) {
+      for (; n < csr_row_ptr[i + 1]; ++n) {
+        const int j = csr_col_idx[n];
+        (*other)(i, j) = static_cast<OtherReal>(csr_val[n]);
+      }
     }
   } else {
-    OtherReal *other_col_data = other->Data();
-    MatrixIndexT other_stride = other->Stride(),
-        num_rows = NumRows(), num_cols = NumCols();
-    KALDI_ASSERT(num_rows == other->NumCols() && num_cols == other->NumRows());
+    KALDI_ASSERT(other->NumRows() == num_cols_);
+    KALDI_ASSERT(other->NumCols() == num_rows_);
     other->SetZero();
-    for (MatrixIndexT row = 0; row < num_rows; row++, other_col_data++) {
-      const SparseVector<Real> &svec = rows_[row];
-      MatrixIndexT num_elems = svec.NumElements();
-      const std::pair<MatrixIndexT, Real> *sdata = svec.Data();
-      for (MatrixIndexT e = 0; e < num_elems; e++)
-        other_col_data[sdata[e].first * other_stride] = sdata[e].second;
+    const int* csr_row_ptr = CsrRowPtr();
+    const int* csr_col_idx = CsrColIdx();
+    const Real* csr_val = CsrVal();
+    int n = 0;
+    for (int i = 0; i < num_rows_; ++i) {
+      for (; n < csr_row_ptr[i + 1]; ++n) {
+        const int j = csr_col_idx[n];
+        (*other)(j, i) = static_cast<OtherReal>(csr_val[n]);
+      }
     }
   }
 }
@@ -381,44 +397,173 @@ void SparseMatrix<float>::CopyToMat(MatrixBase<double> *other,
                                     MatrixTransposeType trans) const;
 template
 void SparseMatrix<double>::CopyToMat(MatrixBase<float> *other,
-                                    MatrixTransposeType trans) const;
+                                     MatrixTransposeType trans) const;
 template
 void SparseMatrix<double>::CopyToMat(MatrixBase<double> *other,
-                                    MatrixTransposeType trans) const;
+                                     MatrixTransposeType trans) const;
 
-template <typename Real>
-void SparseMatrix<Real>::CopyElementsToVec(VectorBase<Real> *other) const {
-  KALDI_ASSERT(other->Dim() == NumElements());
-  Real *dst_data = other->Data();
-  int32 dst_index = 0;
-  for (int32 i = 0; i < rows_.size(); ++i) {
-    for (int32 j = 0; j < rows_[i].NumElements(); ++j) {
-      dst_data[dst_index] =
-          static_cast<Real>(rows_[i].GetElement(j).second);
-      dst_index++;
-    }
-  }
-}
-
-template <typename Real>
-template <typename OtherReal>
+template<typename Real>
+template<typename OtherReal>
 void SparseMatrix<Real>::CopyFromSmat(const SparseMatrix<OtherReal> &other) {
-  rows_.resize(other.NumRows());
-  if (rows_.size() == 0) return;
-  for (int32 r = 0; r < rows_.size(); ++r) {
-    rows_[r].CopyFromSvec(other.Row(r));
+  Resize(other.NumRows(), other.NumCols(), other.NumElements(), kUndefined);
+  for (int i = 0; i <= NumRows(); ++i) {
+    CsrRowPtr()[i] = other.CsrRowPtr()[i];
+  }
+  for (int i = 0; i < NumElements(); ++i) {
+    CsrColIdx()[i] = other.CsrColIdx()[i];
+    CsrVal()[i] = static_cast<Real>(other.CsrVal()[i]);
   }
 }
+
 template
 void SparseMatrix<float>::CopyFromSmat(const SparseMatrix<float> &other);
+
 template
 void SparseMatrix<float>::CopyFromSmat(const SparseMatrix<double> &other);
+
 template
 void SparseMatrix<double>::CopyFromSmat(const SparseMatrix<float> &other);
+
 template
 void SparseMatrix<double>::CopyFromSmat(const SparseMatrix<double> &other);
 
-template <typename Real>
+template<typename Real>
+SparseMatrix<Real>& SparseMatrix<Real>::operator =(
+    const SparseMatrix<Real> &other) {
+  CopyFromSmat<Real>(other);
+  return *this;
+}
+
+template<typename Real>
+void SparseMatrix<Real>::CopyElementsToVec(VectorBase<Real> *other) const {
+  KALDI_ASSERT(other->Dim() == NumElements());
+  Real *dst_data = other->Data();
+  for (int i = 0; i < NumElements(); ++i) {
+    dst_data[i] = CsrVal()[i];
+  }
+}
+
+template<typename Real>
+void SparseMatrix<Real>::Swap(SparseMatrix<Real> *other) {
+  std::swap(num_rows_, other->num_rows_);
+  std::swap(num_cols_, other->num_cols_);
+  std::swap(nnz_, other->nnz_);
+  std::swap(csr_row_ptr_col_idx_, other->csr_row_ptr_col_idx_);
+  std::swap(csr_val_, other->csr_val_);
+}
+
+template<typename Real>
+SparseMatrix<Real>::SparseMatrix() :
+    num_rows_(0), num_cols_(0), nnz_(0), csr_row_ptr_col_idx_(NULL), csr_val_(
+    NULL) {
+}
+
+template<typename Real>
+SparseMatrix<Real>::SparseMatrix(MatrixIndexT rows, MatrixIndexT cols, int nnz,
+                                 MatrixResizeType resize_type) {
+  Init(rows, cols, nnz);
+  KALDI_ASSERT(resize_type == kUndefined || resize_type == kSetZero);
+  if (resize_type == kSetZero) {
+    SetConstant(0);
+  }
+}
+
+template<typename Real>
+void SparseMatrix<Real>::Resize(MatrixIndexT rows, MatrixIndexT cols, int nnz,
+                                MatrixResizeType resize_type) {
+  KALDI_ASSERT(resize_type == kUndefined || resize_type == kSetZero);
+  SparseMatrix tmp(rows, cols, nnz, resize_type);
+  Swap(&tmp);
+}
+
+template<typename Real>
+SparseMatrix<Real>::SparseMatrix(const SparseMatrix<Real>& other) {
+  *this = other;
+}
+
+template<typename Real>
+SparseMatrix<Real>::SparseMatrix(
+    int32 dim,
+    const std::vector<std::vector<std::pair<MatrixIndexT, Real> > > &pairs) {
+  std::vector<int> row_ptr;
+  std::vector<int> col_idx;
+  std::vector<Real> val;
+
+  row_ptr.push_back(0);
+
+  for (auto && row_vec : pairs) {
+    std::map<int, Real> row_map;
+    for (auto && element : row_vec) {
+      row_map[element.first] += element.second;
+    }
+    for (auto && element : row_map) {
+      if (element.second != Real(0)) {
+        col_idx.push_back(element.first);
+        val.push_back(element.second);
+      }
+    }
+    row_ptr.push_back(val.size());
+  }
+
+  Init(pairs.size(), dim, val.size());
+  for (int i = 0; i <= num_rows_; ++i) {
+    CsrRowPtr()[i] = row_ptr[i];
+  }
+  for (int i = 0; i < nnz_; ++i) {
+    CsrColIdx()[i] = col_idx[i];
+    CsrVal()[i] = val[i];
+  }
+}
+
+template<typename Real>
+SparseMatrix<Real>::~SparseMatrix() {
+  Destroy();
+}
+
+template<typename Real>
+void SparseMatrix<Real>::SetRandn(BaseFloat zero_prob) {
+
+  KALDI_ASSERT(zero_prob >= 0 && zero_prob <= 1.0);
+  std::vector<int> row_ptr;
+  std::vector<int> col_idx;
+  std::vector<Real> val;
+
+  row_ptr.push_back(0);
+  for (int i = 0; i < NumRows(); ++i) {
+    for (int j = 0; j < NumCols(); ++j) {
+      if (WithProb(1 - zero_prob)) {
+        col_idx.push_back(j);
+        val.push_back(RandGauss());
+      }
+    }
+    row_ptr.push_back(val.size());
+  }
+
+  Resize(NumRows(), NumCols(), val.size(), kUndefined);
+  for (int i = 0; i <= num_rows_; ++i) {
+    CsrRowPtr()[i] = row_ptr[i];
+  }
+  for (int i = 0; i < nnz_; ++i) {
+    CsrColIdx()[i] = col_idx[i];
+    CsrVal()[i] = val[i];
+  }
+}
+
+template<typename Real>
+void SparseMatrix<Real>::SetConstant(Real val) {
+  for (int i = 0; i < NumElements(); ++i) {
+    CsrVal()[i] = val;
+  }
+}
+
+template<typename Real>
+void SparseMatrix<Real>::Scale(Real alpha) {
+  for (int i = 0; i < NumElements(); ++i) {
+    CsrVal()[i] *= alpha;
+  }
+}
+
+template<typename Real>
 void SparseMatrix<Real>::Write(std::ostream &os, bool binary) const {
   if (binary) {
     // Note: we can use the same marker for float and double SparseMatrix,
@@ -426,81 +571,371 @@ void SparseMatrix<Real>::Write(std::ostream &os, bool binary) const {
     // floats and doubles, and this will automatically take care of type
     // conversion.
     WriteToken(os, binary, "SM");
-    int32 num_rows = rows_.size();
-    WriteBasicType(os, binary, num_rows);
-    for (int32 row = 0; row < num_rows; row++)
-      rows_[row].Write(os, binary);
+    WriteBasicType(os, binary, num_rows_);
+    int32 n = 0;
+    for (int32 i = 0; i < num_rows_; ++i) {
+      WriteToken(os, binary, "SV");
+      WriteBasicType(os, binary, num_cols_);
+      MatrixIndexT num_elems = CsrRowPtr()[i + 1] - CsrRowPtr()[i];
+      WriteBasicType(os, binary, num_elems);
+      for (; n < CsrRowPtr()[i + 1]; ++n) {
+        WriteBasicType(os, binary, CsrColIdx()[n]);
+        WriteBasicType(os, binary, CsrVal()[n]);
+      }
+    }
   } else {
     // The format is "rows=10 dim=20 [ 1 0.4  9 1.2 ] dim=20 [ 3 1.7 19 0.6 ] ..
-    // not 100% efficient, but easy to work with, and we can re-use the
-    // read/write code from SparseVector.
-    int32 num_rows = rows_.size();
-    os << "rows=" << num_rows << " ";
-    for (int32 row = 0; row < num_rows; row++)
-      rows_[row].Write(os, binary);
+    os << "rows=" << num_rows_ << " ";
+    int32 n = 0;
+    for (int32 i = 0; i < num_rows_; ++i) {
+      os << "dim=" << num_cols_ << " [ ";
+      for (; n < CsrRowPtr()[i + 1]; ++n) {
+        os << CsrColIdx()[n] << ' ' << CsrVal()[n] << ' ';
+      }
+      os << "] ";
+    }
     os << "\n";  // Might make it a little more readable.
   }
 }
 
-template <typename Real>
+template<typename Real>
 void SparseMatrix<Real>::Read(std::istream &is, bool binary) {
+  int32 num_rows;
+  int32 num_cols, old_num_cols = -1;
+  std::vector<int> row_ptr;
+  std::vector<int> col_idx;
+  std::vector<Real> val;
+  row_ptr.push_back(0);
+
   if (binary) {
     ExpectToken(is, binary, "SM");
-    int32 num_rows;
     ReadBasicType(is, binary, &num_rows);
     KALDI_ASSERT(num_rows >= 0 && num_rows < 10000000);
-    rows_.resize(num_rows);
-    for (int32 row = 0; row < num_rows; row++)
-      rows_[row].Read(is, binary);
+    for (int32 i = 0; i < num_rows; ++i) {
+      ExpectToken(is, binary, "SV");
+      ReadBasicType(is, binary, &num_cols);
+      KALDI_ASSERT(num_cols >= 0);
+      if (old_num_cols >= 0) {
+        KALDI_ASSERT(old_num_cols == num_cols);
+      }
+      old_num_cols = num_cols;
+      int32 num_elems;
+      ReadBasicType(is, binary, &num_elems);
+      KALDI_ASSERT(num_elems >= 0 && num_elems <= num_cols);
+      for (int j = 0; j < num_elems; ++j) {
+        int32 cid;
+        Real v;
+        ReadBasicType(is, binary, &cid);
+        ReadBasicType(is, binary, &v);
+        KALDI_ASSERT(cid >= 0 && cid < num_cols);
+        col_idx.push_back(cid);
+        val.push_back(v);
+      }
+      row_ptr.push_back(val.size());
+    }
   } else {
     std::string str;
     is >> str;
     if (str.substr(0, 5) != "rows=")
-      KALDI_ERR << "Reading sparse matrix, expected 'rows=xxx', got " << str;
+      KALDI_ERR<< "Reading sparse matrix, expected 'rows=xxx', got " << str;
     std::string rows_str = str.substr(5, std::string::npos);
     std::istringstream rows_istr(rows_str);
     int32 num_rows = -1;
     rows_istr >> num_rows;
     if (num_rows < 0 || rows_istr.fail()) {
-      KALDI_ERR << "Reading sparse vector, expected 'rows=[int]', got " << str;
+      KALDI_ERR<< "Reading sparse vector, expected 'rows=[int]', got " << str;
     }
-    rows_.resize(num_rows);
-    for (int32 row = 0; row < num_rows; row++)
-      rows_[row].Read(is, binary);
+
+    for (int32 i = 0; i < num_rows; ++i) {
+      std::string str;
+      is >> str;
+      if (str.substr(0, 4) != "dim=")
+        KALDI_ERR<< "Reading sparse vector, expected 'dim=xxx', got " << str;
+      std::string dim_str = str.substr(4, std::string::npos);
+      std::istringstream dim_istr(dim_str);
+      int32 dim = -1;
+      dim_istr >> dim;
+      if (dim < 0 || dim_istr.fail()) {
+        KALDI_ERR<< "Reading sparse vector, expected 'dim=[int]', got " << str;
+      }
+      num_cols = dim;
+      KALDI_ASSERT(num_cols >= 0);
+      if (old_num_cols >= 0) {
+        KALDI_ASSERT(old_num_cols == num_cols);
+      }
+      old_num_cols = num_cols;
+
+      is >> std::ws;
+      is >> str;
+      if (str != "[")
+        KALDI_ERR<< "Reading sparse vector, expected '[', got " << str;
+      while (1) {
+        is >> std::ws;
+        if (is.peek() == ']') {
+          is.get();
+          break;
+        }
+        int32 cid;
+        Real v;
+        is >> cid >> v;
+        if (is.fail())
+          KALDI_ERR<< "Error reading sparse vector, expecting numbers.";
+        KALDI_ASSERT(cid >= 0 && cid < dim);
+
+        col_idx.push_back(cid);
+        val.push_back(v);
+      }
+      row_ptr.push_back(val.size());
+    }
+  }
+
+  Resize(num_rows, num_cols, val.size(), kUndefined);
+  for (int i = 0; i <= num_rows_; ++i) {
+    CsrRowPtr()[i] = row_ptr[i];
+  }
+  for (int i = 0; i < nnz_; ++i) {
+    CsrColIdx()[i] = col_idx[i];
+    CsrVal()[i] = val[i];
   }
 }
 
+//template <typename Real>
+//SparseVector<Real>* SparseMatrix<Real>::Data() {
+//  return NULL;
+//}
+//
+//template <typename Real>
+//const SparseVector<Real>* SparseMatrix<Real>::Data() const {
+//  return NULL;
+//}
 
-template <typename Real>
-void SparseMatrix<Real>::AddToMat(BaseFloat alpha,
-                                  MatrixBase<Real> *other,
+template<typename Real>
+void SparseMatrix<Real>::AddToMat(BaseFloat alpha, MatrixBase<Real> *other,
                                   MatrixTransposeType trans) const {
   if (trans == kNoTrans) {
-    MatrixIndexT num_rows = rows_.size();
-    KALDI_ASSERT(other->NumRows() == num_rows);
-    for (MatrixIndexT i = 0; i < num_rows; i++) {
-      SubVector<Real> vec(*other, i);
-      rows_[i].AddToVec(alpha, &vec);
+    KALDI_ASSERT(num_rows_ == other->NumRows());
+    KALDI_ASSERT(num_cols_ == other->NumCols());
+    const int* csr_row_ptr = CsrRowPtr();
+    const int* csr_col_idx = CsrColIdx();
+    int n = 0;
+    for (int i = 0; i < num_rows_; ++i) {
+      for (; n < csr_row_ptr[i + 1]; ++n) {
+        (*other)(i, csr_col_idx[n]) += alpha * csr_val_[n];
+      }
     }
   } else {
-    Real *other_col_data = other->Data();
-    MatrixIndexT other_stride = other->Stride(),
-        num_rows = NumRows(), num_cols = NumCols();
-    KALDI_ASSERT(num_rows == other->NumCols() && num_cols == other->NumRows());
-    for (MatrixIndexT row = 0; row < num_rows; row++, other_col_data++) {
-      const SparseVector<Real> &svec = rows_[row];
-      MatrixIndexT num_elems = svec.NumElements();
-      const std::pair<MatrixIndexT, Real> *sdata = svec.Data();
-      for (MatrixIndexT e = 0; e < num_elems; e++)
-        other_col_data[sdata[e].first * other_stride] +=
-            alpha * sdata[e].second;
+    KALDI_ASSERT(num_cols_ == other->NumRows());
+    KALDI_ASSERT(num_rows_ == other->NumCols());
+    const int* csr_row_ptr = CsrRowPtr();
+    const int* csr_col_idx = CsrColIdx();
+    const Real* csr_val = CsrVal();
+    int n = 0;
+    for (int i = 0; i < num_rows_; ++i) {
+      for (; n < csr_row_ptr[i + 1]; ++n) {
+        (*other)(csr_col_idx[n], i) += alpha * csr_val[n];
+      }
     }
   }
 }
 
-template <typename Real>
-Real VecSvec(const VectorBase<Real> &vec,
-             const SparseVector<Real> &svec) {
+template<typename Real>
+SparseVector<Real> SparseMatrix<Real>::Row(MatrixIndexT r) const {
+  KALDI_ASSERT(r >= 0 && static_cast<size_t>(r) < NumRows());
+
+  std::vector<std::pair<MatrixIndexT, Real> > pairs(
+      CsrRowPtr()[r + 1] - CsrRowPtr()[r]);
+  int i = 0;
+  for (int n = CsrRowPtr()[r]; n < CsrRowPtr()[r + 1]; ++n, ++i) {
+    pairs[i].first = CsrColIdx()[n];
+    pairs[i].second = CsrVal()[n];
+  }
+  SparseVector<Real> tmp(NumCols(), pairs);
+  return tmp;
+}
+
+template<typename Real>
+void SparseMatrix<Real>::SetRow(int32 r, const SparseVector<Real> &vec) {
+  KALDI_ASSERT(r < NumRows() && r >= 0);
+  KALDI_ASSERT(vec.Dim() == NumCols());
+  int nnz_r = CsrRowPtr()[r + 1] - CsrRowPtr()[r];
+
+  if (vec.NumElements() == nnz_r) {
+    // nnz not change
+    int i = 0;
+    for (int n = CsrRowPtr()[r]; n < CsrRowPtr()[r + 1]; ++i, ++n) {
+      CsrColIdx()[n] = vec.GetElement(i).first;
+      CsrVal()[n] = vec.GetElement(i).second;
+    }
+  } else {
+    // nnz changes, need to resize
+    SparseMatrix tmp(NumRows(), NumCols(),
+                     NumElements() + vec.NumElements() - nnz_r, kUndefined);
+
+    int n = 0;
+    tmp.CsrRowPtr()[0] = 0;
+    for (int i = 0; i < r; ++i) {
+      for (; n < CsrRowPtr()[i + 1]; ++n) {
+        tmp.CsrColIdx()[n] = CsrColIdx()[n];
+        tmp.CsrVal()[n] = CsrVal()[n];
+      }
+      tmp.CsrRowPtr()[i + 1] = n;
+    }
+
+    for (int j = 0; j < vec.NumElements(); ++j, ++n) {
+      tmp.CsrColIdx()[n] = vec.GetElement(j).first;
+      tmp.CsrVal()[n] = vec.GetElement(j).second;
+    }
+    tmp.CsrRowPtr()[r + 1] = n;
+
+    int n0 = CsrRowPtr()[r + 1];
+    for (int i = r + 1; i < NumRows(); ++i) {
+      for (; n0 < CsrRowPtr()[i + 1]; ++n0, ++n) {
+        tmp.CsrColIdx()[n] = CsrColIdx()[n0];
+        tmp.CsrVal()[n] = CsrVal()[n0];
+      }
+      tmp.CsrRowPtr()[i + 1] = n;
+    }
+
+    KALDI_ASSERT(n == tmp.NumElements());
+
+    this->Swap(&tmp);
+  }
+}
+
+template<typename Real>
+void SparseMatrix<Real>::AppendSparseMatrixRows(
+    std::vector<SparseMatrix<Real> > *inputs) {
+
+  int num_rows = 0;
+  int num_cols = inputs->front().NumCols();
+  int nnz = 0;
+  for (auto && in : *inputs) {
+    num_rows += in.NumRows();
+    nnz += in.NumElements();
+    KALDI_ASSERT(num_cols == in.NumCols());
+  }
+
+  SparseMatrix<Real> tmp(num_rows, num_cols, nnz, kUndefined);
+  int n = 0;
+  int row = 0;
+  for (auto && in : *inputs) {
+    int n_in = 0;
+    for (int i = 0; i < in.NumRows(); ++i, ++row) {
+      for (; n_in < in.CsrRowPtr()[i + 1]; ++n_in, ++n) {
+        tmp.CsrColIdx()[n] = in.CsrColIdx()[n_in];
+        tmp.CsrVal()[n] = in.CsrVal()[n_in];
+      }
+      tmp.CsrRowPtr()[row] = n;
+    }
+  }
+  KALDI_ASSERT(row == num_rows);
+  KALDI_ASSERT(nnz == n);
+
+  this->Swap(&tmp);
+
+  inputs->clear();
+}
+
+template<typename Real>
+void SparseMatrix<Real>::Init(const MatrixIndexT num_rows,
+                              const MatrixIndexT num_cols, const int nnz) {
+  num_rows_ = 0;
+  num_cols_ = 0;
+  nnz_ = 0;
+  csr_row_ptr_col_idx_ = NULL;
+  csr_val_ = NULL;
+  if (num_cols * num_rows == 0) {
+    KALDI_ASSERT(num_rows == 0);
+    KALDI_ASSERT(num_cols == 0);
+    KALDI_ASSERT(nnz == 0);
+    void* temp = NULL;
+    int* idx = (int*) KALDI_MEMALIGN(16, 1 * sizeof(int), &temp);
+    if (idx) {
+      csr_row_ptr_col_idx_ = idx;
+    } else {
+      throw std::bad_alloc();
+    }
+    return;
+  }
+
+  KALDI_ASSERT(num_rows > 0);
+  KALDI_ASSERT(num_cols > 0);
+  KALDI_ASSERT(nnz >= 0 && nnz <= num_rows * num_cols);
+
+  int* idx;
+  Real* val;
+  void* temp = NULL;
+  idx = (int*) KALDI_MEMALIGN(16, (num_rows + 1 + nnz) * sizeof(int), &temp);
+  val = (Real*) KALDI_MEMALIGN(16, nnz * sizeof(Real), &temp);
+  if (idx && val) {
+    num_rows_ = num_rows;
+    num_cols_ = num_cols;
+    nnz_ = nnz;
+    csr_row_ptr_col_idx_ = idx;
+    for (int i = 0; i <= num_rows_; ++i) {
+      CsrRowPtr()[i] = nnz;
+    }
+    csr_val_ = val;
+  } else {
+    throw std::bad_alloc();
+  }
+}
+
+template<typename Real>
+void SparseMatrix<Real>::Destroy() {
+  if (csr_row_ptr_col_idx_) {
+    KALDI_MEMALIGN_FREE(csr_row_ptr_col_idx_);
+    csr_row_ptr_col_idx_ = NULL;
+  }
+  if (csr_val_) {
+    KALDI_MEMALIGN_FREE(csr_val_);
+    csr_val_ = NULL;
+  }
+  num_rows_ = 0;
+  num_cols_ = 0;
+  nnz_ = 0;
+}
+
+template<typename Real>
+Real TraceMatSmat(const MatrixBase<Real> &A, const SparseMatrix<Real> &B,
+                  MatrixTransposeType trans) {
+  if (trans == kNoTrans) {
+    KALDI_ASSERT(A.NumRows() == B.NumCols());
+    KALDI_ASSERT(A.NumCols() == B.NumRows());
+
+    const int* csr_row_ptr = B.CsrRowPtr();
+    const int* csr_col_idx = B.CsrColIdx();
+    const Real* csr_val = B.CsrVal();
+    Real sum = 0;
+    int n = 0;
+    for (int i = 0; i < B.NumRows(); ++i) {
+      for (; n < csr_row_ptr[i + 1]; ++n) {
+        const int j = csr_col_idx[n];
+        sum += A(j, i) * csr_val[n];
+      }
+    }
+    return sum;
+  } else {
+    KALDI_ASSERT(A.NumRows() == B.NumRows());
+    KALDI_ASSERT(A.NumCols() == B.NumCols());
+
+    const int* csr_row_ptr = B.CsrRowPtr();
+    const int* csr_col_idx = B.CsrColIdx();
+    const Real* csr_val = B.CsrVal();
+    Real sum = 0;
+    int n = 0;
+    for (int i = 0; i < B.NumRows(); ++i) {
+      for (; n < csr_row_ptr[i + 1]; ++n) {
+        const int j = csr_col_idx[n];
+        sum += A(i, j) * csr_val[n];
+      }
+    }
+    return sum;
+  }
+}
+
+template<typename Real>
+Real VecSvec(const VectorBase<Real> &vec, const SparseVector<Real> &svec) {
   KALDI_ASSERT(vec.Dim() == svec.Dim());
   MatrixIndexT n = svec.NumElements();
   const std::pair<MatrixIndexT, Real> *sdata = svec.Data();
@@ -512,140 +947,9 @@ Real VecSvec(const VectorBase<Real> &vec,
 }
 
 template
-float VecSvec(const VectorBase<float> &vec,
-              const SparseVector<float> &svec);
+float VecSvec(const VectorBase<float> &vec, const SparseVector<float> &svec);
 template
-double VecSvec(const VectorBase<double> &vec,
-              const SparseVector<double> &svec);
-
-template <typename Real>
-const SparseVector<Real> &SparseMatrix<Real>::Row(MatrixIndexT r) const {
-  KALDI_ASSERT(static_cast<size_t>(r) < rows_.size());
-  return rows_[r];
-}
-
-template <typename Real>
-void SparseMatrix<Real>::SetRow(int32 r, const SparseVector<Real> &vec) {
-  KALDI_ASSERT(static_cast<size_t>(r) < rows_.size() &&
-               vec.Dim() == rows_[0].Dim());
-  rows_[r] = vec;
-}
-
-template <typename Real>
-SparseMatrix<Real>& SparseMatrix<Real>::operator = (
-    const SparseMatrix<Real> &other) {
-  rows_ = other.rows_;
-  return *this;
-}
-
-template <typename Real>
-void SparseMatrix<Real>::Swap(SparseMatrix<Real> *other) {
-  rows_.swap(other->rows_);
-}
-
-template<typename Real>
-SparseMatrix<Real>::SparseMatrix(
-    MatrixIndexT dim,
-    const std::vector<std::vector<std::pair<MatrixIndexT, Real> > > &pairs):
-    rows_(pairs.size()) {
-  MatrixIndexT num_rows = pairs.size();
-  for (MatrixIndexT row = 0; row < num_rows; row++) {
-    SparseVector<Real> svec(dim, pairs[row]);
-    rows_[row].Swap(&svec);
-  }
-}
-
-template <typename Real>
-void SparseMatrix<Real>::SetRandn(BaseFloat zero_prob) {
-  MatrixIndexT num_rows = rows_.size();
-  for (MatrixIndexT row = 0; row < num_rows; row++)
-    rows_[row].SetRandn(zero_prob);
-}
-
-template <typename Real>
-void SparseMatrix<Real>::Resize(MatrixIndexT num_rows,
-                                MatrixIndexT num_cols,
-                                MatrixResizeType resize_type) {
-  KALDI_ASSERT(num_rows >= 0 && num_cols >= 0);
-  if (resize_type == kSetZero || resize_type == kUndefined) {
-    rows_.clear();
-    Resize(num_rows, num_cols, kCopyData);
-  } else {
-    // Assume resize_type == kCopyData from here.
-    int32 old_num_rows = rows_.size(), old_num_cols = NumCols();
-    SparseVector<Real> initializer(num_cols);
-    rows_.resize(num_rows, initializer);
-    if (num_cols != old_num_cols)
-      for (int32 row = 0; row < old_num_rows; row++)
-        rows_[row].Resize(num_cols, kCopyData);
-  }
-}
-
-template <typename Real>
-void SparseMatrix<Real>::AppendSparseMatrixRows(
-    std::vector<SparseMatrix<Real> > *inputs) {
-  rows_.clear();
-  size_t num_rows = 0;
-  typename std::vector<SparseMatrix<Real> >::iterator
-      input_iter = inputs->begin(),
-      input_end = inputs->end();
-  for (; input_iter != input_end; ++input_iter)
-    num_rows += input_iter->rows_.size();
-  rows_.resize(num_rows);
-  typename std::vector<SparseVector<Real> >::iterator
-      row_iter = rows_.begin(),
-      row_end = rows_.end();
-  for (input_iter = inputs->begin(); input_iter != input_end; ++input_iter) {
-    typename std::vector<SparseVector<Real> >::iterator
-        input_row_iter = input_iter->rows_.begin(),
-        input_row_end = input_iter->rows_.end();
-    for (; input_row_iter != input_row_end; ++input_row_iter, ++row_iter)
-      row_iter->Swap(&(*input_row_iter));
-  }
-  KALDI_ASSERT(row_iter == row_end);
-  int32 num_cols = NumCols();
-  for (row_iter = rows_.begin(); row_iter != row_end; ++row_iter) {
-    if (row_iter->Dim() != num_cols)
-      KALDI_ERR << "Appending rows with inconsistent dimensions, "
-                << row_iter->Dim() << " vs. " << num_cols;
-  }
-  inputs->clear();
-}
-
-template<typename Real>
-void SparseMatrix<Real>::Scale(Real alpha) {
-  MatrixIndexT num_rows = rows_.size();
-  for (MatrixIndexT row = 0; row < num_rows; row++)
-    rows_[row].Scale(alpha);
-}
-
-template<typename Real>
-Real TraceMatSmat(const MatrixBase<Real> &A,
-                  const SparseMatrix<Real> &B,
-                  MatrixTransposeType trans) {
-  Real sum = 0.0;
-  if (trans == kTrans) {
-    MatrixIndexT num_rows = A.NumRows();
-    KALDI_ASSERT(B.NumRows() == num_rows);
-    for (MatrixIndexT r = 0; r < num_rows; r++)
-      sum += VecSvec(A.Row(r), B.Row(r));
-  } else {
-    const Real *A_col_data = A.Data();
-    MatrixIndexT Astride = A.Stride(), Acols = A.NumCols(), Arows = A.NumRows();
-    KALDI_ASSERT(Arows == B.NumCols() && Acols == B.NumRows());
-    sum = 0.0;
-    for (MatrixIndexT i = 0; i < Acols; i++, A_col_data++) {
-      Real col_sum = 0.0;
-      const SparseVector<Real> &svec = B.Row(i);
-      MatrixIndexT num_elems = svec.NumElements();
-      const std::pair<MatrixIndexT, Real> *sdata = svec.Data();
-      for (MatrixIndexT e = 0; e < num_elems; e++)
-        col_sum += A_col_data[Astride * sdata[e].first] * sdata[e].second;
-      sum += col_sum;
-    }
-  }
-  return sum;
-}
+double VecSvec(const VectorBase<double> &vec, const SparseVector<double> &svec);
 
 template
 float TraceMatSmat(const MatrixBase<float> &A,

@@ -87,7 +87,7 @@ class NnetLdaStatsAccumulator {
         // but we're about to do an outer product, so this doesn't dominate.
         Vector<BaseFloat> row(cu_row);
 
-        const SparseVector<BaseFloat> &post(smat.Row(r));
+        const SparseVector<BaseFloat> post(smat.Row(r));
         const std::pair<MatrixIndexT, BaseFloat> *post_data = post.Data(),
             *post_end = post_data + post.NumElements();
         for (; post_data != post_end; ++post_data) {
