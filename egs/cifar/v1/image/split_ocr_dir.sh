@@ -8,6 +8,7 @@ if [ ! -d $s1 ]; then
   need_to_split=true
 else
   need_to_split=false
+  #for f in images.scp text utt2spk spk2utt data/images.ark; do
   for f in images.scp text utt2spk data/images.ark; do
     if [[ -f $data/$f && ( ! -f $s1/$f || $s1/$f -ot $data/$f ) ]]; then
       need_to_split=true
@@ -22,6 +23,7 @@ fi
 images=$(for n in `seq $numsplit`; do echo $data/split${numsplit}${utt}/$n/images.scp; done)
 text=$(for n in `seq $numsplit`; do echo $data/split${numsplit}${utt}/$n/text; done)
 utt2spk=$(for n in `seq $numsplit`; do echo $data/split${numsplit}${utt}/$n/utt2spk; done)
+#spk2utt=$(for n in `seq $numsplit`; do echo $data/split${numsplit}${utt}/$n/spk2utt; done)
 directories=$(for n in `seq $numsplit`; do echo $data/split${numsplit}${utt}/$n/data; done)
 
 # if this mkdir fails due to argument-list being too long, iterate.
@@ -39,6 +41,8 @@ trap 'rm -f $data/.split_lock' EXIT HUP INT PIPE TERM
 utils/split_scp.pl $data/images.scp $images || exit 1
 utils/split_scp.pl $data/text $text || exit 1
 utils/split_scp.pl $data/utt2spk $utt2spk || exit 1
+#utils/split_scp.pl $data/spk2utt $spk2utt || exit 1
+
 
 exit 0
 
