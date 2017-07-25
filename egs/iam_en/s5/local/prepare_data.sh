@@ -15,9 +15,10 @@ if [ -f path.sh ]; then . ./path.sh; fi
 dl_dir=data/download
 lines=$dl_dir/lines
 xml=$dl_dir/xml
+dataSplitInfo=$dl_dir/dataSplit
 lines_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/lines/lines.tgz
 xml_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/xml/xml.tgz
-
+dataSplitInfo_url=http://www.fki.inf.unibe.ch/DBs/iamDB/tasks/largeWriterIndependentTextLineRecognitionTask.zip
 
 mkdir -p $dl_dir
 #download and extact images and transcription
@@ -45,10 +46,30 @@ else
   echo Done downloading and extracting transcription
 fi
 
-if [ $stage -le 0 ]; then
-  local/process_data.py $dl_dir data/train || exit 1
+if [ -d $dataSplitInfo ]; then
+  echo Not downloading data split, training and testing split, information as it is already there.
+else
+  if [ ! -f $dl_dir/largeWriterIndependentTextLineRecognitionTask.zip ]; then
+    echo Downloading training and testing data Split Information ...
+    wget -P $dl_dir --user userjh --password password $dataSplitInfo_url || exit 1;
+  fi
+  mkdir -p $dataSplitInfo
+  unzip $dl_dir/largeWriterIndependentTextLineRecognitionTask.zip -d $dataSplitInfo || exit 1;
+  echo Done downloading and extracting training and testing data Split Information
 fi
 
+mkdir -p data/{train,val_1,val_2,test}
+if [ $stage -le 0 ]; then
+  local/process_data.py $dl_dir $dataSplitInfo/trainset.txt data/train || exit 1
+  local/process_data.py $dl_dir $dataSplitInfo/validationset1.txt data/val_1 || exit 1
+  local/process_data.py $dl_dir $dataSplitInfo/validationset2.txt data/val_2 || exit 1
+  local/process_data.py $dl_dir $dataSplitInfo/testset.txt data/test || exit 1
+
+  utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
+  utils/utt2spk_to_spk2utt.pl data/val_1/utt2spk > data/val_1/spk2utt
+  utils/utt2spk_to_spk2utt.pl data/val_2/utt2spk > data/val_2/spk2utt
+  utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
+fi
 
 numsplit=5
 mkdir -p data/{train,val_1,val_2,test}/data
