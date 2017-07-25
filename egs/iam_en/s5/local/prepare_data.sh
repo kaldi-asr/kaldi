@@ -46,7 +46,7 @@ else
 fi
 
 if [ $stage -le 0 ]; then
-  local/process_data.py $dl_dir data/train || exit 1
+  local/process_data.py $dl_dir data/train --dataset trainset|| exit 1
 fi
 
 
