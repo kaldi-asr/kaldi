@@ -282,6 +282,9 @@ def run(args):
         for utt in sorted(utts, key=lambda x: segments[x][1]):
             if (reco, utt) in ctms:
                 ctms_for_reco.append(ctms[(reco, utt)])
+        if len(ctms_for_reco) == 0:
+            logger.info("CTM for recording {0} was empty".format(reco))
+            continue
         try:
             # Process CTMs in the recordings
             ctms_for_reco = resolve_overlaps(ctms_for_reco, segments)
