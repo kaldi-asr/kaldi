@@ -524,27 +524,32 @@ static void UnitTestCuMatrixAddToRows() {
     Real alpha =
         static_cast<Real>((Rand() % num_rows2)) / static_cast<Real>(num_rows1);
 
-    CuMatrix<Real> N(num_rows2, num_cols), O(num_rows2, num_cols);
+    CuMatrix<Real> N1(num_rows2, num_cols), N2(num_rows2, num_cols),
+        O(num_rows2, num_cols);
+    std::vector<int32> reorder(num_rows1);
     std::vector<Real*> reorder_dst(num_rows1, NULL);
     unordered_map<MatrixIndexT, bool> used_index;
     for (int32 i = 0; i < num_rows1; i++) {
       MatrixIndexT index = -1 + (Rand() % (num_rows2 + 1));
+      reorder[i] = index;
       if (used_index.find(index) == used_index.end()) {
         used_index[index] = true;
       } else {
         index = -1;
       }
       if (index != -1) {
-        reorder_dst[i] = N.RowData(index);
+        reorder_dst[i] = N1.RowData(index);
         for (int32 j = 0; j < num_cols; j++)
           O(index, j) += alpha * M(i, j);
       }
     }
 
+    CuArray<int32> reorder_cuda(reorder);
     CuArray<Real*> reorder_dst_cuda(reorder_dst);
     M.AddToRows(alpha, reorder_dst_cuda);
-
-    AssertEqual(N, O);
+    M.AddToRows(alpha, reorder_cuda, &N2);
+    AssertEqual(N1, O);
+    AssertEqual(N2, O);
   }
 }
 

@@ -244,6 +244,18 @@ inline void cuda_add_to_rows(dim3 Gr, dim3 Bl, float alpha, float* const * dst,
                              const float* src, MatrixDim src_dim) {
   cudaF_add_to_rows_direct(Gr, Bl, alpha, dst, src, src_dim);
 }
+inline void cuda_add_to_rows(dim3 Gr, dim3 Bl, double alpha,
+                             double* dst, const double* src,
+                             const MatrixIndexT_cuda* reorder,
+                             MatrixDim src_dim, int dst_stride) {
+  cudaD_add_to_rows(Gr, Bl, alpha, dst, src, reorder, src_dim, dst_stride);
+}
+inline void cuda_add_to_rows(dim3 Gr, dim3 Bl, float alpha,
+                             float* dst, const float* src,
+                             const MatrixIndexT_cuda* reorder,
+                             MatrixDim src_dim, int dst_stride) {
+  cudaF_add_to_rows(Gr, Bl, alpha, dst, src, reorder, src_dim, dst_stride);
+}
 inline void cuda_add_vec2(dim3 Gr, dim3 Bl, double *mat, const double *vec,
                           const double alpha, int dim) {
   cudaD_add_vec2(Gr, Bl, mat, vec, alpha, dim);

@@ -324,6 +324,14 @@ class MatrixBase {
   /// the same).
   void AddToRows(Real alpha, Real *const *dst) const;
 
+  /// For each row i of *this, adds this->Row(i) to
+  /// dst->Row(indexes(i)) if indexes(i) >= 0, else do nothing.
+  /// Requires that all the indexes[i] that are >= 0
+  /// be distinct, otherwise the behavior is undefined.
+  void AddToRows(Real alpha,
+                 const MatrixIndexT *indexes,
+                 MatrixBase<Real> *dst) const;
+
   /// Applies floor to all matrix elements
   void ApplyFloor(Real floor_val);
 

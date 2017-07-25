@@ -146,13 +146,12 @@ class CuMatrixBase {
 
 
   /// For each row i of *this, adds this->Row(i) to
-  /// src->Row(indexes(i)) if i >= 0, else do nothing.
+  /// dst->Row(indexes(i)) if indexes(i) >= 0, else do nothing.
   /// Requires that all the indexes[i] that are >= 0
   /// be distinct, otherwise the behavior is undefined.
-  /// TODO: implement this.
   void AddToRows(Real alpha,
                  const CuArrayBase<MatrixIndexT> &indexes,
-                 CuMatrixBase<Real> *src) const;
+                 CuMatrixBase<Real> *dst) const;
 
 
   /// For each row r of this matrix, adds it (times alpha) to the array of
