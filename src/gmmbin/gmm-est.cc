@@ -95,6 +95,15 @@ int main(int argc, char *argv[]) {
       transition_accs.Read(ki.Stream(), binary);
       gmm_accs.Read(ki.Stream(), binary, true);  // true == add; doesn't matter here.
     }
+    
+    if (gmm_opts.variance_floor_value !=0) { // create and set variance floor vector
+      int dim = gmm_accs.Dim();
+      Vector<BaseFloat>temp_variance_floor_vector(dim);
+      Vector<double> gmm_opts.variance_floor_vector(dim);
+      variance_floor_vector.Set(gmm_opts.variance_floor_value);
+      // temp_variance_floor_vector.Set(gmm_opts.variance_floor_value);
+      // gmm_opts.variance_floor_vector.CopyFromVec(temp_variance_floor_vector);
+    }
 
     if (update_flags & kGmmTransitions) {  // Update transition model.
       BaseFloat objf_impr, count;
