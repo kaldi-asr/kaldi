@@ -2622,6 +2622,30 @@ void CuMatrixBase<Real>::AddToRows(Real alpha,
 
 
 template<typename Real>
+void CuMatrixBase<Real>::AddToRows(Real alpha,
+                                   const CuArrayBase<MatrixIndexT> &indexes,
+                                   CuMatrixBase<Real> *dst) const {
+  if (NumRows() == 0) return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(static_cast<MatrixIndexT>(indexes.Dim()) == NumRows());
+    KALDI_ASSERT(dst->NumCols() == NumCols());
+    CuTimer tim;
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                          &dimGrid, &dimBlock);
+    cuda_add_to_rows(dimGrid, dimBlock, alpha, dst->Data(), data_, indexes.Data(), Dim(), dst->Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    Mat().AddToRows(alpha, indexes.Data(), &(dst->Mat()));
+  }
+}
+
+
+template<typename Real>
 void CuMatrixBase<Real>::SumColumnRanges(const CuMatrixBase<Real> &src,
                                          const CuArrayBase<Int32Pair> &indices) {
   KALDI_ASSERT(static_cast<MatrixIndexT>(indices.Dim()) == NumCols());
@@ -3085,7 +3109,7 @@ void CuMatrixBase<Real>::Lookup(const std::vector<Int32Pair> &indices,
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    CuArrayBase<Int32Pair> cuda_indices(indices);
+    CuArray<Int32Pair> cuda_indices(indices);
     Lookup(cuda_indices, output);
   } else
 #endif
@@ -3105,7 +3129,7 @@ void CuMatrixBase<Real>::Lookup(const CuArrayBase<Int32Pair> &indices,
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    CuArrayBase<Real> cuda_output(num_elements);
+    CuArray<Real> cuda_output(num_elements);
     CuTimer tim;
     dim3 dimBlock(CU1DBLOCK, 1);
     dim3 dimGrid(n_blocks(num_elements, CU1DBLOCK), 1);

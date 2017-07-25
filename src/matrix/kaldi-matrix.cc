@@ -2733,6 +2733,23 @@ void MatrixBase<Real>::AddRows(Real alpha, const Real *const *src) {
 }
 
 template<typename Real>
+void MatrixBase<Real>::AddToRows(Real alpha,
+                                 const MatrixIndexT *indexes,
+                                 MatrixBase<Real> *dst) const {
+  KALDI_ASSERT(NumCols() == dst->NumCols());
+  MatrixIndexT num_rows = num_rows_,
+      num_cols = num_cols_, this_stride = stride_;
+  Real *this_data = this->data_;
+
+  for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride) {
+    MatrixIndexT index = indexes[r];
+    KALDI_ASSERT(index >= -1 && index < dst->NumRows());
+    if (index != -1)
+      cblas_Xaxpy(num_cols, alpha, this_data, 1, dst->RowData(index), 1);
+  }
+}
+
+template<typename Real>
 void MatrixBase<Real>::AddToRows(Real alpha, Real *const *dst) const {
   MatrixIndexT num_rows = num_rows_,
       num_cols = num_cols_, this_stride = stride_;
