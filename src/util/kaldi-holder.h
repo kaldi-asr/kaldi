@@ -125,7 +125,7 @@ template<class SomeType> class GenericHolder {
   /// Returns the value of the object held here.  Will only
   /// ever be called if Read() has been previously called and it returned
   /// true (so OK to throw exception if no object was read).
-  const T &Value() const { return t_; }  // if t is a pointer, would return *t_;
+  T &Value() { return t_; }  // if t is a pointer, would return *t_;
 
   /// The Clear() function doesn't have to do anything.  Its purpose is to
   /// allow the object to free resources if they're no longer needed.
