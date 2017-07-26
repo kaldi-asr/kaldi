@@ -15,11 +15,12 @@ if [ -f path.sh ]; then . ./path.sh; fi
 dl_dir=data/download
 lines=$dl_dir/lines
 xml=$dl_dir/xml
+ascii=$dl_dir/ascii
 dataSplitInfo=$dl_dir/largeWriterIndependentTextLineRecognitionTask
 lines_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/lines/lines.tgz
 xml_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/xml/xml.tgz
 dataSplitInfo_url=http://www.fki.inf.unibe.ch/DBs/iamDB/tasks/largeWriterIndependentTextLineRecognitionTask.zip
-
+ascii_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/ascii/ascii.tgz
 mkdir -p $dl_dir
 #download and extact images and transcription
 if [ -d $lines ]; then
@@ -56,6 +57,18 @@ else
   mkdir -p $dataSplitInfo
   unzip $dl_dir/largeWriterIndependentTextLineRecognitionTask.zip -d $dataSplitInfo || exit 1;
   echo Done downloading and extracting training and testing data Split Information
+fi
+
+if [ -d $ascii ]; then
+  echo Not downloading ascii folder as it is already there.
+else
+  if [ ! -f $dl_dir/ascii.tgz ]; then
+    echo Downloading ascii folder ...
+    wget -P $dl_dir --user userjh --password password $ascii_url || exit 1;
+  fi
+  mkdir -p $ascii
+  tar -xvzf $dl_dir/ascii.tgz -C $ascii || exit 1;
+  echo Done downloading and extracting ascii folder
 fi
 
 mkdir -p data/{train,val_1,val_2,test}
