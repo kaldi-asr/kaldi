@@ -10,16 +10,17 @@ weight=0.5
 
 set -e
 
-dir=data/tensorflow_lstm/
+dir=data/tensorflow_lstm
 mkdir -p $dir
 
 if [ $stage -le 1 ]; then
-  local/tensorflow/rnnlm_data_prep.sh $dir
+  local/tfrnnlm/rnnlm_data_prep.sh $dir
 fi
 
-mkdir -p $dir/
+mkdir -p $dir
 if [ $stage -le 2 ]; then
-  python steps/tensorflow/rnnlm.py --data_path=$dir --save_path=$dir/rnnlm --vocab_path=$dir/wordlist.rnn.final
+# the following script uses TensorFlow. You could use tools/extras/install_tensorflow_py.sh to install it
+  python steps/tfrnnlm/rnnlm.py --data_path=$dir --save_path=$dir/rnnlm --vocab_path=$dir/wordlist.rnn.final
 fi
 
 final_lm=ami_fsh.o3g.kn

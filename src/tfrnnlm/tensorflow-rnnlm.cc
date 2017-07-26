@@ -61,12 +61,12 @@ void SetUnkPenalties(const string &filename,
 
 // Read tensorflow checkpoint files
 void KaldiTfRnnlmWrapper::ReadTfModel(const std::string &tf_model_path,
-                                      int32 num_jobs) {
+                                      int32 num_threads) {
   string graph_path = tf_model_path + ".meta";
 
   tensorflow::SessionOptions session_options;
-  session_options.config.set_intra_op_parallelism_threads(num_jobs); // limit parallelism within jobs
-  session_options.config.set_inter_op_parallelism_threads(num_jobs); // limit parallelism within jobs
+  session_options.config.set_intra_op_parallelism_threads(num_threads); // limit parallelism within jobs
+  session_options.config.set_inter_op_parallelism_threads(num_threads); // limit parallelism within jobs
 
   Status status = tensorflow::NewSession(session_options,
                                          &session_);
@@ -180,7 +180,7 @@ void KaldiTfRnnlmWrapper::AcquireInitialTensors() {
   // get the initial context; this is basically the all-0 tensor
   {
     std::vector<Tensor> state;
-    status = session_->Run(std::vector<std::pair<string, tensorflow::Tensor> >(),
+    status = session_->Run(std::vector<std::pair<string, Tensor> >(),
                            {"Train/Model/test_initial_state"}, {}, &state);
     if (!status.ok()) {
       KALDI_ERR << status.ToString();
@@ -299,6 +299,15 @@ TfRnnlmDeterministicFst::TfRnnlmDeterministicFst(int32 max_ngram_order,
   start_state_ = 0;
 }
 
+TfRnnlmDeterministicFst::~TfRnnlmDeterministicFst() {
+  for (int i = 0; i < state_to_context_.size(); i++) {
+    delete state_to_context_[i];
+  }
+  for (int i = 0; i < state_to_cell_.size(); i++) {
+    delete state_to_cell_[i];
+  }
+}
+
 fst::StdArc::Weight TfRnnlmDeterministicFst::Final(StateId s) {
   // At this point, we should have created the state.
   KALDI_ASSERT(static_cast<size_t>(s) < state_to_wseq_.size());
@@ -350,6 +359,9 @@ bool TfRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
     state_to_wseq_.push_back(wseq);
     state_to_context_.push_back(new_context);
     state_to_cell_.push_back(new_cell);
+  } else {
+    delete new_context;
+    delete new_cell;
   }
 
   // Creates the arc.

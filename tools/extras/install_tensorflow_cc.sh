@@ -2,7 +2,7 @@
 
 set -e
 
-export JAVA_HOME=/export/b02/hxu/TensorFlow/java/jdk1.8.0_121
+#export JAVA_HOME=/LOCATION_ON_YOUR_MACHINE/java/jdk1.8.0_121
 PATH=$PATH:$PWD/bazel/output
 export HOME=$PWD/tensorflow_build/
 mkdir -p $HOME
@@ -38,8 +38,8 @@ cd tensorflow
 ./configure
 
 tensorflow/contrib/makefile/download_dependencies.sh 
-bazel build -c opt --copt=-msse4.2 //tensorflow:libtensorflow.so
-bazel build -c opt --copt=-msse4.2 //tensorflow:libtensorflow_cc.so
+bazel build -c opt //tensorflow:libtensorflow.so
+bazel build -c opt //tensorflow:libtensorflow_cc.so
 
 echo Building tensorflow completed. You will need to go to kaldi/src/ and do
 echo \"make\" under tensorflow/ and tfbin/ to generate the binaries

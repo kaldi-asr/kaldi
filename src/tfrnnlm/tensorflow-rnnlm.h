@@ -43,7 +43,7 @@ struct KaldiTfRnnlmWrapperOpts {
   void Register(OptionsItf *opts) {
     opts->Register("unk-symbol", &unk_symbol, "Symbol for out-of-vocabulary "
                    "words in rnnlm. (default = <oos>)");
-    opts->Register("num-jobs", &num_threads, "Number of threads for TF computation; "
+    opts->Register("num-threads", &num_threads, "Number of threads for TF computation; "
                    "0 means unlimited. (default = 1)");
   }
 };
@@ -110,7 +110,7 @@ class KaldiTfRnnlmWrapper {
   int FstLabelToRnnLabel(int i) const;
 
  private:
-  void ReadTfModel(const std::string &tf_model_path, int32 num_jobs);
+  void ReadTfModel(const std::string &tf_model_path, int32 num_threads);
 
   // do queries on the session to get the initial tensors (cell + context)
   void AcquireInitialTensors();
@@ -148,6 +148,7 @@ class TfRnnlmDeterministicFst:
 
   // Does not take ownership.
   TfRnnlmDeterministicFst(int32 max_ngram_order, KaldiTfRnnlmWrapper *rnnlm);
+  ~TfRnnlmDeterministicFst();
 
   // We cannot use "const" because the pure virtual function in the interface is
   // not const.
