@@ -6,6 +6,7 @@
 //                2013  Hainan Xu
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
+//                2017  Hossein Hadian
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -3091,6 +3092,32 @@ void CuMatrixBase<Real>::AddElements(Real alpha, const CuArrayBase<Int32Pair> &i
       KALDI_ASSERT(index[i].first < num_rows && index[i].first >= 0 &&
                    index[i].second < num_cols && index[i].second >= 0);
       (*this)(index[i].first, index[i].second) += alpha * input[i];
+    }
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::AddToElements(Real alpha, const CuArrayBase<int32> &elements) {
+  KALDI_ASSERT(elements.Dim() == NumRows());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+
+    dim3 dimBlock(CU1DBLOCK);
+    dim3 dimGrid(n_blocks(NumRows(), CU1DBLOCK));
+
+    cuda_matrix_add_to_elements(dimGrid, dimBlock, alpha, data_, Dim(), elements.Data());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    MatrixBase<Real> &this_mat = this->Mat();
+    const int32* row_to_col = elements.Data();
+    for (int32 r = 0; r < this_mat.NumRows(); r++) {
+      KALDI_ASSERT(row_to_col[r] >= -1);
+      if (row_to_col[r] >= 0)
+        this_mat(r, row_to_col[r]) += alpha;
     }
   }
 }

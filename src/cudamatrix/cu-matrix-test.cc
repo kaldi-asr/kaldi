@@ -6,6 +6,7 @@
 //           2013  Hainan Xu
 //           2013  Xiaohui Zhang
 //           2013  Johns Hopkins University (author: Guoguo Chen)
+//           2017  Hossein Hadian
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -531,12 +532,12 @@ static void UnitTestCuMatrixAddToRows() {
     unordered_map<MatrixIndexT, bool> used_index;
     for (int32 i = 0; i < num_rows1; i++) {
       MatrixIndexT index = -1 + (Rand() % (num_rows2 + 1));
-      reorder[i] = index;
       if (used_index.find(index) == used_index.end()) {
         used_index[index] = true;
       } else {
         index = -1;
       }
+      reorder[i] = index;
       if (index != -1) {
         reorder_dst[i] = N1.RowData(index);
         for (int32 j = 0; j < num_cols; j++)
@@ -2654,6 +2655,28 @@ static void UnitTestCuMatrixAddElements() {
 }
 
 template<typename Real>
+static void UnitTestCuMatrixAddToElements() {
+  for (int32 i = 0; i < 2; i++) {
+    int32 NR = 100 + Rand() % 50, NC = 100 + Rand() % 50;
+    CuMatrix<Real> A(NR, NC);
+    A.SetRandn();
+    CuMatrix<Real> A_copy(A);
+    std::vector<int32> elements(NR, -1);
+    BaseFloat alpha = -1 + (0.33 * (Rand() % 5));
+    for (int32 r = 0; r < NR; r++) {
+      MatrixIndexT c = Rand() % NC;
+      if (WithProb(0.6)) {
+        elements[r] = c;
+        A(r, c) += alpha;
+      }
+    }
+    CuArray<int32> cu_elements(elements);
+    A_copy.AddToElements(alpha, cu_elements);
+    AssertEqual(A_copy, A);
+  }
+}
+
+template<typename Real>
 static void UnitTestCuMatrixLookup() {
   for (int32 i = 0; i < 2; i++) {
     int32 dimM = 100 + Rand() % 200, dimN = 100 + Rand() % 200;
@@ -2767,6 +2790,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixCopyLowerToUpper<Real>();
   UnitTestCuMatrixSetZeroAboveDiag<Real>();
   UnitTestCuMatrixAddElements<Real>();
+  UnitTestCuMatrixAddToElements<Real>();
   UnitTestCuMatrixLookup<Real>();
   UnitTestCuMatrixEqualElementMask<Real>();
   // test CuVector<Real> methods
