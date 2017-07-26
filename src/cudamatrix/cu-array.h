@@ -123,8 +123,7 @@ class CuArray: public CuArrayBase<T> {
 
   /// Copy constructor.  We don't make this explicit because we want to be able
   /// to create a std::vector<CuArray>.
-  CuArray<T>(const CuArray<T> &src):
-   dim_(0), data_(NULL) { CopyFromArray(src); }
+  CuArray<T>(const CuArray<T> &src) { CopyFromArray(src); }
 
   /// Destructor
   ~CuArray() { Destroy(); }
@@ -159,10 +158,6 @@ class CuArray: public CuArrayBase<T> {
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &is, bool binary) const;
 
- private:
-  MatrixIndexT dim_;     ///< dimension of the vector
-  T *data_;  ///< GPU data pointer (if GPU not available,
-             ///< will point to CPU memory).
 };
 
 
@@ -187,4 +182,3 @@ std::ostream &operator << (std::ostream &out, const CuArray<T> &vec);
 #include "cudamatrix/cu-array-inl.h"
 
 #endif
-
