@@ -33,7 +33,7 @@ dataset_path = os.path.join(args.database_path,
                             args.dataset + '.txt')
 
 text_file_path = os.path.join(args.database_path,
-                               'ascii',lines + '.txt')
+                               'ascii','lines.txt')
 
 
 text_dict = {}
@@ -41,8 +41,10 @@ with open (text_file_path, 'rt') as in_file:
   for line in in_file:
     if line[0]=='#':
       continue
+    line = line.strip()
     line_vect = line.split(' ')
     text = line.split(' ')[-1]
+    text = text.replace("|", " ") 
     text_dict[line_vect[0]] = text
 
 with open(dataset_path) as f:
@@ -62,9 +64,10 @@ with open(dataset_path) as f:
     image_file_path = lines_path + img_num + '.png'
 
     line_elements = doc.getElementsByTagName('line')
-    element = line_elements[int(line_vect[2])]
-    text = element.getAttribute('text')
+    #element = line_elements[int(line_vect[2])]
+    #text = element.getAttribute('text')
+    text1 =  text_dict[line]
     utt_id = writer_id + '_' + line
-    text_fh.write(utt_id + ' ' + text + '\n')
+    text_fh.write(utt_id + ' ' + text1 + '\n')
     utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
     image_fh.write(utt_id + ' ' + image_file_path + '\n')
