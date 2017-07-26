@@ -23,9 +23,7 @@
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
 #include "rnnlm/rnnlm-example.h"
-#include "nnet3/nnet-nnet.h"
-#include "nnet3/nnet-compute.h"
-#include "nnet3/nnet-optimize.h"
+#include "nnet3/natural-gradient-online.h"
 #include "rnnlm/rnnlm-example-utils.h"
 
 namespace kaldi {
@@ -44,23 +42,30 @@ struct RnnlmEmbeddingTrainerOptions {
   int32 print_interval;
   BaseFloat momentum;
   BaseFloat max_param_change;
-  BaseFloat learning_rate;
+  BaseFloat learning_rate;  // Note: don't set the learning rate to 0.0 if you
+                            // don't want to train this; instead, you can turn
+                            // off training of the embedding matrix by
+                            // controlling the command line options to the
+                            // training program (e.g. not providing a place to
+                            // write the embedding matrix).
 
   // Natural-gradient related options
   bool use_natural_gradient;
   BaseFloat natural_gradient_alpha;
   int32 natural_gradient_rank;
   int32 natural_gradient_update_period;
+  int32 natural_gradient_num_minibatches_history;
 
   RnnlmEmbeddingTrainerOptions():
       print_interval(100),
       momentum(0.0),
-      learning_rate(0.01),
       max_param_change(1.0),
+      learning_rate(0.01),
       use_natural_gradient(true),
       natural_gradient_alpha(4.0),
       natural_gradient_rank(80),
-      natural_gradient_update_period(4) { }
+      natural_gradient_update_period(4),
+      natural_gradient_num_minibatches_history(10) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("momentum", &momentum, "Momentum constant to apply during "
@@ -91,96 +96,108 @@ struct RnnlmEmbeddingTrainerOptions {
                    &natural_gradient_update_period,
                    "Determines how often the Fisher matrix is updated for natural "
                    "gradient as applied to the embedding matrix");
+    opts->Register("natural-gradient-num-minibatches-history",
+                   &natural_gradient_num_minibatches_history,
+                   "Determines how quickly the Fisher estimate for the natural gradient "
+                   "is updated, when training the word embedding.");
   }
+  void Check() const;
 };
 
 
-/** This class is responsible for training the word embedding matrix; it's to be
-    used when you have only a (dense) word embedding matrix and no sparse
-    feature representation of words.
+/** This class is responsible for training the word embedding matrix or
+    feature embedding matrix.
  */
-class RnnlmWordEmbeddingTrainer {
+class RnnlmEmbeddingTrainer {
  public:
-  /** Constructor: this version is to be used when we are training the
-      word embedding directly without a sparse feature representation.
-
-       @param [in] config  Structure that holds configuration options
-       @param [in,out] embedding_mat   The embedding matrix to be trained,
-                          of dimension num-words by embedding-dim.
-
-       neural network that is to be trained.
-                              Will be modified each time you call Train().
+  /** Constructor.
+       @param [in] config  Structure that holds configuration options;
+                          this class will keep a reference to it.
+       @param [in] embedding_mat   The embedding matrix to be trained,
+                          of dimension (num-words or num-features) by
+                          embedding-dim (depending whether we are using a
+                          feature representation of words, or not).  This class
+                          keeps the pointer and will modify that variable.
    */
-
-  RnnlmEmbeddingTrainer(RnnlmCoreTrainerOptions &config,
+  RnnlmEmbeddingTrainer(const RnnlmEmbeddingTrainerOptions &config,
                         CuMatrix<BaseFloat> *embedding_mat);
 
-  /* Train on one minibatch.
-       @param [in] minibatch  The RNNLM minibatch to train on, containing
-                            a number of parallel word sequences.  It will not
-                            necessarily contain words with the 'original'
-                            numbering, it will in most circumstances contain
-                            just the ones we used; see RenumberRnnlmMinibatch().
-       @param [in] word_embedding  The matrix giving the embedding of words;
-                            the row index is the word-id and the number of columns
-                            is the word-embedding dimension.  The numbering
-                            of the words does not have to be the 'real'
-                            numbering of words, it can consist of words renumbered
-                            by RenumberRnnlmMinibatch(); it just has to be
-                            consistent with the word-ids present in 'minibatch'.
-       @param [out] word_embedding_deriv  If supplied, the derivative of the
-                            objective function w.r.t. the word embedding will be
-                            *added* to this location; it must have the same
-                            dimension as 'word_embedding'.
-   */
-  void Train(const RnnlmExample &minibatch,
-             const CuMatrixBase<BaseFloat> &word_embedding,
-             CuMatrixBase<BaseFloat> *word_embedding_deriv = NULL);
+  /* Train on one minibatch-- this version is used either when there is no
+     subsampling, or when there is subsampling but we are using a feature
+     representation so the subsampling is handled outside of this code.
 
-  // Prints out the final stats, and return true if there was a nonzero count.
-  bool PrintTotalStats() const;
+      @param [in] embedding_deriv  The derivative w.r.t. the (word or feature)
+                     embedding matrix; it's provided as a non-const pointer for
+                     convenience so that we can modify it in-place if needed
+                     for the natural gradient update.
+  */
+  void Train(CuMatrixBase<BaseFloat> *embedding_deriv);
 
-  // Prints out the max-change stats (if nonzero): the percentage of time that
-  // per-component max-change and global max-change were enforced.
-  void PrintMaxChangeStats() const;
 
-  ~RnnlmCoreTrainer();
+  /* Train on one minibatch-- this version is for when there is subsampling, and
+     the user is providing the derivative w.r.t. just the word-indexes that were
+     used in this minibatch.  'words_used' is a sorted, unique list of the
+     word-indexes that were used in this minibatch, and 'word_embedding_deriv'
+     is the derivative w.r.t. the embedding of that list of words.
+
+      @param [in] words_used  A sorted, unique list of the word indexes
+                      used, with Dim() equal to word_embedding_deriv->NumRows();
+                      contains indexes 0 <= i < embedding_deriv_->NumRows().
+
+      @param [in] word_embedding_deriv   The derivative w.r.t. the
+                      word embedding matrix; it's provided as a non-const
+                      pointer for convenience so that we can modify
+                      it in-place if needed for the natural gradient
+                      update.
+  */
+  void Train(const CuArrayBase<int32> &words_used,
+             CuMatrixBase<BaseFloat> *word_embedding_deriv);
+
+
+  ~RnnlmEmbeddingTrainer();
+
+
  private:
 
-  void ProvideInput(const RnnlmExample &minibatch,
-                    const RnnlmExampleDerived &derived,
-                    const CuMatrixBase<BaseFloat> &word_embedding,
-                    nnet3::NnetComputer *computer);
+  // Sets options in the object 'preconditioner_', based on the config
+  // (but not SetNumSamplesHistory(), we do that in the Train() functions because
+  /// we don't have the right information at this point).
+  void SetNaturalGradientOptions();
 
-  void ProcessOutput(const RnnlmExample &minibatch,
-                     const RnnlmExampleDerived &derived,
-                     const CuMatrixBase<BaseFloat> &word_embedding,
-                     nnet3::NnetComputer *computer,
-                     CuMatrixBase<BaseFloat> *word_embedding_deriv = NULL);
+  // Called from the destructor, this prints some stats about how often the
+  // max-change constraint was applied, how much data we trained on, and how
+  // much the parameters changed during the lifetime of this object.
+  void PrintStats();
 
-  // Applies per-component max-change and global max-change to all updatable
-  // components in *delta_nnet_, and use *delta_nnet_ to update parameters
-  // in *nnet_.
-  void UpdateParamsWithMaxChange();
 
-  const RnnlmCoreTrainerOptions config_;
-  nnet3::Nnet *nnet_;
-  nnet3::Nnet *delta_nnet_;  // Only used if momentum != 0.0 or max-param-change !=
-                             // 0.0.  nnet representing accumulated parameter-change
-                             // (we'd call this gradient_nnet_, but due to
-                             // natural-gradient update, it's better to consider it as
-                             // a delta-parameter nnet.
-  nnet3::CachingOptimizingCompiler compiler_;
+  const RnnlmEmbeddingTrainerOptions &config_;
 
-  int32 num_minibatches_processed_;
+  // Object that takes care of the natural-gradient update (this is in the
+  // dimension of space equal to the embedding dim, which is the num-cols
+  // of embedding_mat_.
+  nnet3::OnlineNaturalGradient preconditioner_;
 
-  // stats for max-change.
-  std::vector<int32> num_max_change_per_component_applied_;
-  int32 num_max_change_global_applied_;
+  // The matrix we are updating
+  CuMatrix<BaseFloat> *embedding_mat_;
 
-  ObjectiveTracker objf_info_;
+
+  // If momentum is to be used, this is sized to the same size as
+  // *embedding_mat*, and used for the decaying sum of deltas.
+  CuMatrix<BaseFloat> embedding_mat_momentum_;
+
+  // This is a copy of the 'embedding_mat' that we were initialized with,
+  // which we keep around for purposes of printing stats at the end about how
+  // much the matrix changed; we keep it in CPU memory in case GPU memory is a
+  // limiting factor.
+  Matrix<BaseFloat> initial_embedding_mat_;
+
+  // A count of the number of times we have updated the matrix.
+  int32 num_minibatches_;
+
+  // A count of the number of times the max-change constraint was applied.
+  int32 max_change_count_;
+
 };
-
 
 
 

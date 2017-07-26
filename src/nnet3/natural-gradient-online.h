@@ -83,7 +83,10 @@ namespace nnet3 {
 
    T_t =(def) \eta S_t + (1-\eta) F_t
 
-  we'll use this in place of the observed scatter S_t, to slow down the update.
+  [note: F_{t+1} will be set to a low-rank approximation of T_t, which is where
+   the recursion comes in.]
+
+  We'll use this in place of the observed scatter S_t, to slow down the update.
   Defining
 
    Y_t =(def) R_t T_t
@@ -417,16 +420,23 @@ class OnlineNaturalGradient {
   void SetUpdatePeriod(int32 update_period);
   // num_samples_history is a time-constant (in samples) that determines eta.
   void SetNumSamplesHistory(BaseFloat num_samples_history);
+  // num_minibatches_history is a time-constant measured in minibatches that
+  // provides an alternative way to set eta (the constant that determines how
+  // fast we update the Fisher matrix).  If set to a value >0, it overrides any
+  // value of 'num_samples_history' that is present.
+  void SetNumMinibatchesHistory(BaseFloat num_minibatches_history);
+
   void SetAlpha(BaseFloat alpha);
   void TurnOnDebug() { self_debug_ = true; }
   BaseFloat GetNumSamplesHistory() const { return num_samples_history_; }
+  BaseFloat GetNumMinibatchesHistory() const { return num_minibatches_history_; }
   BaseFloat GetAlpha() const { return alpha_; }
   int32 GetRank() const { return rank_; }
   int32 GetUpdatePeriod() const { return update_period_; }
 
   // see comment where 'frozen_' is declared.
   inline void Freeze(bool frozen) { frozen_ = frozen; }
-  
+
   // The "R" pointer is both the input (R in the comment) and the output (P in
   // the comment; equal to the preconditioned directions before scaling by
   // gamma).  If the pointer "row_prod" is supplied, it's set to the inner product
@@ -522,11 +532,26 @@ class OnlineNaturalGradient {
   // this saves time.
   int32 update_period_;
 
+
   // num_samples_history_ determines the value of eta, which in turn affects how
   // fast we update our estimate of the covariance matrix.  We've done it this
   // way in order to make it easy to have a single configuration value that
   // doesn't have to be changed when we change the minibatch size.
+  // Note: if num_minibatches_history_ is >0.0, it overrides this.
   BaseFloat num_samples_history_;
+
+
+  // num_minibatches_history_ is simpler alternative to num_samples_history_ for
+  // determining the value of eta, which in turn affects how fast we update our
+  // estimate of the covariance matrix.  eta will be set to 1.0 /
+  // num_minibatches_history_.  We require that num_minibatches_history_ > 0.0;
+  // it will normally be something like 10.0, if set.  It makes sense to set
+  // 'num_minibatches_history_' when the rows of the matrix we are
+  // preconditioning can't be interpreted as independent samples, so the number
+  // of rows is not relevant to determining how fast to update the covariance
+  // matrix.
+  BaseFloat num_minibatches_history_;
+
 
   // alpha controls how much we smooth the Fisher matrix with the unit matrix.
   // e.g. alpha = 4.0.

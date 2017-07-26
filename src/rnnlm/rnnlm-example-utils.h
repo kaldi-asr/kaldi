@@ -69,10 +69,9 @@ namespace rnnlm {
                               were present in the fields 'input_words', 'out_words',
                               and 'sampled_words' in 'minibatch' on entry.  At
                               exit, this list will be sorted and unique.
-
  */
 void RenumberRnnlmExample(RnnlmExample *minibatch,
-                            std::vector<int32> *active_words);
+                          std::vector<int32> *active_words);
 
 
 /**  This function takes a NnetExample (which should already have been

@@ -354,11 +354,6 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
   // update that doesn't include natural gradient.
   bool use_natural_gradient_;
 
-  // Apart from use_natural_gradient_, this is the only natural-gradient
-  // config-line configuration variable that we store directly; the others are
-  // stored inside the preconditioner_in_ and preconditioner_out_ objects.
-  BaseFloat num_minibatches_history_;
-
   // Preconditioner for the input space, of dimension linear_params_.NumCols() +
   // 1 (the 1 is for the bias).  As with other natural-gradient objects, it's
   // not stored with the model on disk but is reinitialized each time we start
