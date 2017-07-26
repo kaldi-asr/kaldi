@@ -14,6 +14,13 @@
 # limitations under the License.
 # ==============================================================================
 
+# this script trains a vanilla RNNLM with TensorFlow. 
+# to call the script, do
+# python steps/tfrnnlm/lstm_fast.py --data_path=$datadir \
+#        --save_path=$savepath --vocab_path=$rnn.wordlist [--hidden_size=$size]
+#
+# One example recipe is at egs/ami/s5/local/tfrnnlm/run_vanilla_rnnlm.sh
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -61,21 +68,12 @@ class Config(object):
 def data_type():
   return tf.float16 if FLAGS.use_fp16 else tf.float32
 
-# this function does the following:
-# return exp(x) if x < 0
-#        x if x >= 0
-def f(x):
-  x1 = tf.minimum(0.0, x)
-  x2 = tf.maximum(0.0, x)
-  return tf.exp(x1) + x2
-
 # this new "softmax" function we show can train a "self-normalized" RNNLM where
 # the sum of the output is automatically (close to) 1.0
 # which saves a lot of computation for lattice-rescoring
 def new_softmax(labels, logits):
   target = tf.reshape(labels, [-1])
   f_logits = tf.exp(logits)
-#  f_logits = f(logits)
   row_sums = tf.reduce_sum(f_logits, 1) # this is the negative part of the objf
 
   t2 = tf.expand_dims(target, 1)
@@ -107,9 +105,6 @@ class RNNLMModel(object):
     size = config.hidden_size
     vocab_size = config.vocab_size
 
-    # Slightly better results can be obtained with forget gate biases
-    # initialized to 1 but the hyperparameters of the model would need to be
-    # different than reported in the paper.
     def lstm_cell():
       # With the latest TensorFlow source code (as of Mar 27, 2017),
       # the BasicLSTMCell will need a reuse parameter which is unfortunately not

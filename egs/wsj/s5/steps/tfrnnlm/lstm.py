@@ -14,6 +14,13 @@
 # limitations under the License.
 # ==============================================================================
 
+# this script trains a vanilla RNNLM with TensorFlow. 
+# to call the script, do
+# python steps/tfrnnlm/lstm.py --data_path=$datadir \
+#        --save_path=$savepath --vocab_path=$rnn.wordlist [--hidden_size=$size]
+#
+# One example recipe is at egs/ami/s5/local/tfrnnlm/run_lstm.sh
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -45,17 +52,16 @@ flags.DEFINE_bool("use_fp16", False,
 FLAGS = flags.FLAGS
 
 class Config(object):
-  """Small config."""
   init_scale = 0.1
-  learning_rate = 0.2
-  max_grad_norm = 1
-  num_layers = 1
+  learning_rate = 1.0
+  max_grad_norm = 5
+  num_layers = 2
   num_steps = 20
   hidden_size = 200
   max_epoch = 4
-  max_max_epoch = 20
-  keep_prob = 1
-  lr_decay = 0.95
+  max_max_epoch = 13
+  keep_prob = 1.0
+  lr_decay = 0.5
   batch_size = 64
 
 def data_type():
@@ -72,6 +78,7 @@ class RNNLMInput(object):
     self.input_data, self.targets = reader.rnnlm_producer(
         data, batch_size, num_steps, name=name)
 
+
 class RNNLMModel(object):
   """The RNNLM model."""
 
@@ -83,40 +90,42 @@ class RNNLMModel(object):
     size = config.hidden_size
     vocab_size = config.vocab_size
 
-    def rnn_cell():
+    def lstm_cell():
       # With the latest TensorFlow source code (as of Mar 27, 2017),
       # the BasicLSTMCell will need a reuse parameter which is unfortunately not
       # defined in TensorFlow 1.0. To maintain backwards compatibility, we add
       # an argument check here:
       if 'reuse' in inspect.getargspec(
-          tf.contrib.rnn.BasicRNNCell.__init__).args:
-        return tf.contrib.rnn.BasicRNNCell(size,
-                                           reuse=tf.get_variable_scope().reuse)
+          tf.contrib.rnn.BasicLSTMCell.__init__).args:
+        return tf.contrib.rnn.BasicLSTMCell(
+            size, forget_bias=0.0, state_is_tuple=True,
+            reuse=tf.get_variable_scope().reuse)
       else:
-        return tf.contrib.rnn.BasicRNNCell(size)
-    attn_cell = rnn_cell
-
+        return tf.contrib.rnn.BasicLSTMCell(
+            size, forget_bias=0.0, state_is_tuple=True)
+    attn_cell = lstm_cell
     if is_training and config.keep_prob < 1:
       def attn_cell():
         return tf.contrib.rnn.DropoutWrapper(
-            rnn_cell(), output_keep_prob=config.keep_prob)
-
+            lstm_cell(), output_keep_prob=config.keep_prob)
     self.cell = tf.contrib.rnn.MultiRNNCell(
         [attn_cell() for _ in range(config.num_layers)], state_is_tuple=True)
 
     self._initial_state = self.cell.zero_state(batch_size, data_type())
     self._initial_state_single = self.cell.zero_state(1, data_type())
 
-    self.initial = tf.reshape(tf.stack(axis=0, values=self._initial_state_single), [config.num_layers, 1, size], name="test_initial_state")
+    self.initial = tf.reshape(tf.stack(axis=0, values=self._initial_state_single), [config.num_layers, 2, 1, size], name="test_initial_state")
+
 
     # first implement the less efficient version
     test_word_in = tf.placeholder(tf.int32, [1, 1], name="test_word_in")
 
-    state_placeholder = tf.placeholder(tf.float32, [config.num_layers, 1, size], name="test_state_in")
+    state_placeholder = tf.placeholder(tf.float32, [config.num_layers, 2, 1, size], name="test_state_in")
     # unpacking the input state context 
     l = tf.unstack(state_placeholder, axis=0)
     test_input_state = tuple(
-               [l[idx] for idx in range(config.num_layers)]
+               [tf.contrib.rnn.LSTMStateTuple(l[idx][0],l[idx][1])
+                 for idx in range(config.num_layers)]
     )
 
     with tf.device("/cpu:0"):
@@ -130,7 +139,7 @@ class RNNLMModel(object):
     with tf.variable_scope("RNN"):
       (test_cell_output, test_output_state) = self.cell(test_inputs[:, 0, :], test_input_state)
 
-    test_state_out = tf.reshape(tf.stack(axis=0, values=test_output_state), [config.num_layers, 1, size], name="test_state_out")
+    test_state_out = tf.reshape(tf.stack(axis=0, values=test_output_state), [config.num_layers, 2, 1, size], name="test_state_out")
     test_cell_out = tf.reshape(test_cell_output, [1, size], name="test_cell_out")
     # above is the first part of the graph for test
     # test-word-in
@@ -192,7 +201,7 @@ class RNNLMModel(object):
     tvars = tf.trainable_variables()
     grads, _ = tf.clip_by_global_norm(tf.gradients(cost, tvars),
                                       config.max_grad_norm)
-    optimizer = tf.train.MomentumOptimizer(self._lr, 0.9)
+    optimizer = tf.train.GradientDescentOptimizer(self._lr)
     self._train_op = optimizer.apply_gradients(
         zip(grads, tvars),
         global_step=tf.contrib.framework.get_or_create_global_step())
@@ -244,8 +253,9 @@ def run_epoch(session, model, eval_op=None, verbose=False):
 
   for step in range(model.input.epoch_size):
     feed_dict = {}
-    for i, h in enumerate(model.initial_state):
-      feed_dict[h] = state[i]
+    for i, (c, h) in enumerate(model.initial_state):
+      feed_dict[c] = state[i].c
+      feed_dict[h] = state[i].h
 
     vals = session.run(fetches, feed_dict)
     cost = vals["cost"]
@@ -300,7 +310,6 @@ def main(_):
     with sv.managed_session() as session:
       for i in range(config.max_max_epoch):
         lr_decay = config.lr_decay ** max(i + 1 - config.max_epoch, 0.0)
-
         m.assign_lr(session, config.learning_rate * lr_decay)
 
         print("Epoch: %d Learning rate: %.3f" % (i + 1, session.run(m.lr)))

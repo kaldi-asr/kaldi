@@ -44,8 +44,6 @@ bazel build -c opt --copt=-msse4.2 //tensorflow:libtensorflow_cc.so
 echo Building tensorflow completed. You will need to go to kaldi/src/ and do
 echo \"make\" under tensorflow/ and tfbin/ to generate the binaries
 
-exit
-
 # the following would utilize the highest optimization but might not work in a
 # grid where each machine might have different configurations
 bazel build --config=opt //tensorflow:libtensorflow.so

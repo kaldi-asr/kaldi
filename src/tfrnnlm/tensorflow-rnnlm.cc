@@ -1,7 +1,6 @@
 // tensorflow-rnnlm-lib.cc
 
 // Copyright 2017           Hainan Xu
-// wrapper for tensorflow rnnlm
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -26,7 +25,7 @@
 #include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/protobuf/meta_graph.pb.h"
 
-#include "tensorflow/tensorflow-rnnlm-lib.h"
+#include "tfrnnlm/tensorflow-rnnlm.h"
 #include "util/stl-utils.h"
 #include "util/text-utils.h"
 
@@ -92,7 +91,7 @@ void KaldiTfRnnlmWrapper::ReadTfModel(const std::string &tf_model_path,
   checkpointPathTensor.scalar<std::string>()() = tf_model_path;
   
   status = session_->Run(
-      {{ graph_def.saver_def().filename_tensor_name(), checkpointPathTensor },},
+      {{graph_def.saver_def().filename_tensor_name(), checkpointPathTensor} },
       {},
       {graph_def.saver_def().restore_op_name()},
       nullptr);
@@ -107,7 +106,7 @@ KaldiTfRnnlmWrapper::KaldiTfRnnlmWrapper(
     const std::string &word_symbol_table_rxfilename,
     const std::string &unk_prob_file,
     const std::string &tf_model_path): opts_(opts) {
-  ReadTfModel(tf_model_path, opts.num_jobs);
+  ReadTfModel(tf_model_path, opts.num_threads);
 
   fst::SymbolTable *fst_word_symbols = NULL;
   if (!(fst_word_symbols =
@@ -145,7 +144,6 @@ KaldiTfRnnlmWrapper::KaldiTfRnnlmWrapper(
       int fst_label = fst_word_symbols->Find(word);
       if (fst::SymbolTable::kNoSymbol == fst_label) {
         if (id == eos_) {
-          KALDI_ASSERT(word == opts_.eos_symbol);
           continue;
         }
 
@@ -162,10 +160,10 @@ KaldiTfRnnlmWrapper::KaldiTfRnnlmWrapper(
   }
   num_rnn_words = rnn_label_to_word_.size();
   
-  // we must have a oos symbol in the wordlist
-  if (oos_ == -1) {
+  // we must have an oos symbol in the wordlist
+  if (oos_ == -1)
     return;
-  }
+
   for (int i = 0; i < fst_label_to_rnn_label_.size(); i++) {
     if (fst_label_to_rnn_label_[i] == -1) {
       fst_label_to_rnn_label_[i] = oos_;
@@ -182,7 +180,7 @@ void KaldiTfRnnlmWrapper::AcquireInitialTensors() {
   // get the initial context; this is basically the all-0 tensor
   {
     std::vector<Tensor> state;
-    status = session_->Run(std::vector<std::pair<string, tensorflow::Tensor>>(),
+    status = session_->Run(std::vector<std::pair<string, tensorflow::Tensor> >(),
                            {"Train/Model/test_initial_state"}, {}, &state);
     if (!status.ok()) {
       KALDI_ERR << status.ToString();
@@ -196,7 +194,7 @@ void KaldiTfRnnlmWrapper::AcquireInitialTensors() {
     Tensor bosword(tensorflow::DT_INT32, {1, 1});
     bosword.scalar<int32>()() = eos_; // eos_ is more like a sentence boundary
 
-    std::vector<std::pair<string, tensorflow::Tensor>> inputs = {
+    std::vector<std::pair<string, Tensor> > inputs = {
       {"Train/Model/test_word_in", bosword},
       {"Train/Model/test_state_in", initial_context_},
     };
@@ -216,12 +214,12 @@ BaseFloat KaldiTfRnnlmWrapper::GetLogProb(int32 word,
                                           Tensor *context_out,
                                           Tensor *new_cell) {
 
-  std::vector<std::pair<string, Tensor>> inputs;
+  std::vector<std::pair<string, Tensor> > inputs;
 
   Tensor thisword(tensorflow::DT_INT32, {1, 1});
 
   thisword.scalar<int32>()() = word;
-  std::vector<tensorflow::Tensor> outputs;
+  std::vector<Tensor> outputs;
 
   if (context_out != NULL) {
     inputs = {
@@ -279,6 +277,11 @@ const Tensor& KaldiTfRnnlmWrapper::GetInitialCell() const {
   return initial_cell_;
 }
 
+int KaldiTfRnnlmWrapper::FstLabelToRnnLabel(int i) const {
+  KALDI_ASSERT(i >= 0 && i < fst_label_to_rnn_label_.size());
+  return fst_label_to_rnn_label_[i];
+}
+
 TfRnnlmDeterministicFst::TfRnnlmDeterministicFst(int32 max_ngram_order,
                                              KaldiTfRnnlmWrapper *rnnlm) {
   KALDI_ASSERT(rnnlm != NULL);
@@ -290,8 +293,8 @@ TfRnnlmDeterministicFst::TfRnnlmDeterministicFst(int32 max_ngram_order,
   const Tensor& initial_cell = rnnlm_->GetInitialCell();
 
   state_to_wseq_.push_back(bos);
-  state_to_context_.push_back(initial_context);
-  state_to_cell_.push_back(initial_cell);
+  state_to_context_.push_back(new Tensor(initial_context));
+  state_to_cell_.push_back(new Tensor(initial_cell));
   wseq_to_state_[bos] = 0;
   start_state_ = 0;
 }
@@ -303,8 +306,8 @@ fst::StdArc::Weight TfRnnlmDeterministicFst::Final(StateId s) {
   std::vector<Label> wseq = state_to_wseq_[s];
   BaseFloat logprob = rnnlm_->GetLogProb(rnnlm_->GetEos(),
                                          -1, // only need type; this param will not be used
-                                         state_to_context_[s],
-                                         state_to_cell_[s], NULL, NULL);
+                                         *state_to_context_[s],
+                                         *state_to_cell_[s], NULL, NULL);
   return Weight(-logprob);
 }
 
@@ -313,17 +316,17 @@ bool TfRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
   KALDI_ASSERT(static_cast<size_t>(s) < state_to_wseq_.size());
 
   std::vector<Label> wseq = state_to_wseq_[s];
-  tensorflow::Tensor new_context;
-  tensorflow::Tensor new_cell;
+  Tensor *new_context = new Tensor();
+  Tensor *new_cell = new Tensor();
 
   // look-up the rnn label from the FST label
-  int32 rnn_word = rnnlm_->fst_label_to_rnn_label_[ilabel];
+  int32 rnn_word = rnnlm_->FstLabelToRnnLabel(ilabel);
   BaseFloat logprob = rnnlm_->GetLogProb(rnn_word,
                                          ilabel,
-                                         state_to_context_[s],
-                                         state_to_cell_[s],
-                                         &new_context,
-                                         &new_cell);
+                                         *state_to_context_[s],
+                                         *state_to_cell_[s],
+                                         new_context,
+                                         new_cell);
 
   wseq.push_back(rnn_word);
   if (max_ngram_order_ > 0) {

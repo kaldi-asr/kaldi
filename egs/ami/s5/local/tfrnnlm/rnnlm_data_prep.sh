@@ -1,6 +1,12 @@
 #!/bin/bash
 
-#set -v
+# This script prepares the data directory used for TensorFlow based RNNLM traiing
+# it prepares the following file in the output-directory
+# $dir/wordlist.rnn.final : wordlist for RNNLM
+# $dir/{train/valid} : the text files
+# $dir/unk.probs : this file is optional for rnnlm-rescoring.  If provided, the
+# probability for <OOS> would be porportionally distributed among all OOS words
+
 set -e
 
 train_text=data/ihm/train/text
@@ -12,8 +18,8 @@ nwords=9999
 . utils/parse_options.sh
 
 if [ $# != 1 ]; then
-   echo "Usage: $0 [options] <dest-dir>"
-   echo "For options, see top of script file"
+   echo "Usage: $0 <dest-dir>"
+   echo "For details of what the script does, see top of script file"
    exit 1;
 fi
 
@@ -44,26 +50,18 @@ cat $dir/train.in $dir/wordlist.all | \
 total_nwords=`wc -l $dir/unigram.counts | awk '{print $1}'`
 
 head -$nwords $dir/unigram.counts | awk '{print $2}' | tee $dir/wordlist.rnn | awk '{print NR-1, $1}' > $dir/wordlist.rnn.id
-
 tail -n +$nwords $dir/unigram.counts > $dir/unk_class.counts
 
 for type in train valid; do
   cat $dir/$type.in | awk -v w=$dir/wordlist.rnn 'BEGIN{while((getline<w)>0)d[$1]=1}{for(i=1;i<=NF;i++){if(d[$i]==1){s=$i}else{s="<oos>"} printf("%s ",s)} print""}' > $dir/$type
 done
 
-# OK we'll train the RNNLM on this data.
-
-cat $dir/unk_class.counts | awk '{print $2, $1}' > $dir/unk.probs  # dummy file, not used for cued-rnnlm
-
+cat $dir/unk_class.counts | awk '{print $2, $1}' > $dir/unk.probs
 cp $dir/wordlist.rnn $dir/wordlist.rnn.final
 
 has_oos=`grep "<oos>" $dir/wordlist.rnn.final | wc -l | awk '{print $1}'`
 if [ $has_oos == "0" ]; then
-#  n=`wc -l $dir/wordlist.rnn.final | awk '{print $1}'`
-#  echo n is $n
   echo "<oos>" >> $dir/wordlist.rnn.final
 fi
 
-
 echo "data preparation finished"
-

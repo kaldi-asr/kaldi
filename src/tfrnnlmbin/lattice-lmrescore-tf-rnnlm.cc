@@ -22,7 +22,7 @@
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
-#include "tensorflow/tensorflow-rnnlm-lib.h"
+#include "tfrnnlm/tensorflow-rnnlm.h"
 #include "util/common-utils.h"
 
 int main(int argc, char *argv[]) {
@@ -33,10 +33,9 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "Rescores lattice with rnnlm. The LM will be wrapped into the\n"
-        "DeterministicOnDemandFst interface and the rescoring is done by\n"
-        "composing with the wrapped LM using a special type of composition\n"
-        "algorithm. Determinization will be applied on the composed lattice.\n"
+        "Rescores lattice with rnnlm that is trained with TensorFlow.\n"
+        "An example script for training and rescoring with the TensorFlow\n"
+        "RNNLM is at egs/ami/s5/local/tfrnnlm/run_lstm.sh\n"
         "\n"
         "Usage: lattice-lmrescore-tf-rnnlm [options] [unk-file] <rnnlm-wordlist> \\\n"
         "             <word-symbol-table-rxfilename> <lattice-rspecifier> \\\n"
@@ -49,11 +48,11 @@ int main(int argc, char *argv[]) {
     BaseFloat lm_scale = 1.0;
 
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model "
-                "costs; frequently 1.0 or -1.0");
-    po.Register("max-ngram-order", &max_ngram_order, "If positive, limit the "
-                "rnnlm context to the given number, -1 means we are not going "
-                "to limit it.");
-
+                "costs");
+    po.Register("max-ngram-order", &max_ngram_order,
+        "If positive, allow RNNLM histories longer than this to be identified "
+        "with each other for rescoring purposes (an approximation that "
+        "saves time and reduces output lattice size).");
     KaldiTfRnnlmWrapperOpts opts;
     opts.Register(&po);
 

@@ -1,0 +1,33 @@
+# Tis directory is not compiled automatically when you do make under src/
+# to compile the TensorFlow related code, do the following:
+
+# cd ${KALDI_ROOT}/src
+# cd tfrnnlm
+# make
+# cd .../tfrnnlmbin/
+# make
+
+TENSORFLOW = $(shell pwd)/../../tools/tensorflow
+
+all:
+
+EXTRA_CXXFLAGS = -Wno-sign-compare -I$(TENSORFLOW)/bazel-tensorflow/external/protobuf/src -I$(TENSORFLOW)/bazel-genfiles -I$(TENSORFLOW) -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/eigen/ -Wl,-rpath=$(shell pwd)/../../tools/tensorflow/bazel-bin/tensorflow/
+include ../kaldi.mk
+
+BINFILES = lattice-lmrescore-tf-rnnlm
+
+OBJFILES =
+
+TESTFILES =
+
+ADDLIBS = ../lat/kaldi-lat.a ../lm/kaldi-lm.a ../fstext/kaldi-fstext.a \
+          ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../util/kaldi-util.a \
+          ../matrix/kaldi-matrix.a \
+          ../base/kaldi-base.a ../tfrnnlm/kaldi-tensorflow-rnnlm.a \
+          $(shell pwd)/../../tools/tensorflow/bazel-bin/tensorflow/libtensorflow_cc.so
+
+LDLIBS +=  -lz -ldl -fPIC -lrt
+#LDLIBS += -rpath,$(shell pwd)/../../tools/tensorflow/bazel-bin/tensorflow/
+LDLIBS += -L$(TENSORFLOW)/bazel-bin/tensorflow -ltensorflow_cc
+
+include ../makefiles/default_rules.mk

@@ -12,7 +12,7 @@
 
 export train_cmd="queue.pl --mem 1G"
 export decode_cmd="queue.pl --mem 2G"
-export tensorflow_cmd="queue.pl -l hostname=b*"
+export tfrnnlm_cmd="queue.pl -l hostname=b*"
 # the use of cuda_cmd is deprecated, used only in 'nnet1',
 export cuda_cmd="queue.pl --gpu 1 --mem 20G"
 
