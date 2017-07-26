@@ -31,6 +31,20 @@ image_fh = open(image_file, 'w+')
 dataset_path = os.path.join(args.database_path,
                             'largeWriterIndependentTextLineRecognitionTask',
                             args.dataset + '.txt')
+
+text_file_path = os.path.join(args.database_path,
+                               'ascii',lines + '.txt')
+
+
+text_dict = {}
+with open (text_file_path, 'rt') as in_file:
+  for line in in_file:
+    if line[0]=='#':
+      continue
+    line_vect = line.split(' ')
+    text = line.split(' ')[-1]
+    text_dict[line_vect[0]] = text
+
 with open(dataset_path) as f:
   for line in f:
     line = line.strip()
@@ -39,13 +53,14 @@ with open(dataset_path) as f:
     xml_path = os.path.join(args.database_path, 'xml', xml_file + '.xml')
     img_num = line[-3:] 
     doc = minidom.parse(xml_path)
+
     form_elements = doc.getElementsByTagName('form')[0]
     writer_id = form_elements.getAttribute('writer-id')
-
     outerfolder = form_elements.getAttribute('id')[0:3]
     innerfolder = form_elements.getAttribute('id')
     lines_path = os.path.join(args.database_path, 'lines', outerfolder, innerfolder, innerfolder)
     image_file_path = lines_path + img_num + '.png'
+
     line_elements = doc.getElementsByTagName('line')
     element = line_elements[int(line_vect[2])]
     text = element.getAttribute('text')
