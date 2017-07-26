@@ -7,6 +7,7 @@
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
 //                2016  Shiyin Kang
+//                2017  Hossein Hadian
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1206,6 +1207,21 @@ static void _cuda_matrix_add_indexed_values(MatrixDim dim, Real alpha,
     return;
   int data_i = indices[i].first * dim.stride + indices[i].second;
   data[data_i] += alpha * x[i];
+}
+
+template<typename Real>
+__global__
+static void _cuda_matrix_add_to_elements(Real alpha,
+                                         Real* mat, MatrixDim dim,
+                                         const MatrixIndexT_cuda* elements) {
+  int row = blockIdx.x * blockDim.x + threadIdx.x;
+  if (row < dim.rows) {
+    int col = elements[row];
+    if (col >= 0) {
+      int index = col + row * dim.stride;
+      mat[index] += alpha;
+    }
+  }
 }
 
 template<typename Real>
@@ -3769,6 +3785,12 @@ void cudaF_matrix_add_indexed_values(dim3 Gr, dim3 Bl, MatrixDim dim,
   _cuda_matrix_add_indexed_values<<<Gr, Bl>>>(dim, alpha, indices, x, s, data);
 }
 
+void cudaF_matrix_add_to_elements(dim3 Gr, dim3 Bl, float alpha,
+                                  float* mat, MatrixDim dim,
+                                  const MatrixIndexT_cuda* elements) {
+  _cuda_matrix_add_to_elements<<<Gr, Bl>>>(alpha, mat, dim, elements);
+}
+
 void cudaF_comp_obj_deriv(dim3 Gr, dim3 Bl, MatrixElement<float>* x, int s,
                           const float* z, MatrixDim d, float* z2, MatrixDim d2,
                           float* t) {
@@ -4441,6 +4463,12 @@ void cudaD_matrix_add_indexed_values(dim3 Gr, dim3 Bl, MatrixDim dim,
                                      double alpha, const Int32Pair* indices,
                                      const double* x, int s, double* data) {
   _cuda_matrix_add_indexed_values<<<Gr, Bl>>>(dim, alpha, indices, x, s, data);
+}
+
+void cudaD_matrix_add_to_elements(dim3 Gr, dim3 Bl, double alpha,
+                                  double* mat, MatrixDim dim,
+                                  const MatrixIndexT_cuda* elements) {
+  _cuda_matrix_add_to_elements<<<Gr, Bl>>>(alpha, mat, dim, elements);
 }
 
 void cudaD_vec_copy_diag_from_packed(int Gr, int Bl, double *dst,

@@ -490,6 +490,12 @@ void cudaD_matrix_add_indexed_values(dim3 Gr, dim3 Bl, MatrixDim dim,
 void cudaF_matrix_add_indexed_values(dim3 Gr, dim3 Bl, MatrixDim dim,
                                      float alpha, const Int32Pair* indices,
                                      const float* x, int s, float* data);
+void cudaD_matrix_add_to_elements(dim3 Gr, dim3 Bl, double alpha,
+                                  double* mat, MatrixDim dim,
+                                  const MatrixIndexT_cuda* elements);
+void cudaF_matrix_add_to_elements(dim3 Gr, dim3 Bl, float alpha,
+                                  float* mat, MatrixDim dim,
+                                  const MatrixIndexT_cuda* elements);
 void cudaD_matrix_lookup(dim3 Gr, dim3 Bl, const double *data, MatrixDim dim,
                          const Int32Pair *indices, int indices_size,
                          double *output);
