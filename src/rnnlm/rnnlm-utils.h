@@ -21,6 +21,8 @@
 #define KALDI_RNNLM_RNNLM_UTILS_H_
 
 #include "base/kaldi-common.h"
+#include "matrix/matrix-common.h"
+#include "matrix/sparse-matrix.h"
 
 // This file is for miscellaneous function declarations needed for the RNNLM
 // code.
