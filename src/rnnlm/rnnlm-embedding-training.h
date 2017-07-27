@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_RNNLM_RNNLM_CORE_TRAINING_H_
-#define KALDI_RNNLM_RNNLM_CORE_TRAINING_H_
+#ifndef KALDI_RNNLM_RNNLM_EMBEDDING_TRAINING_H_
+#define KALDI_RNNLM_RNNLM_EMBEDDING_TRAINING_H_
 
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
@@ -167,6 +167,7 @@ class RnnlmEmbeddingTrainer {
   // Called from the destructor, this prints some stats about how often the
   // max-change constraint was applied, how much data we trained on, and how
   // much the parameters changed during the lifetime of this object.
+  // TODO: implement this.
   void PrintStats();
 
 
@@ -206,4 +207,4 @@ class RnnlmEmbeddingTrainer {
 } // namespace rnnlm
 } // namespace kaldi
 
-#endif //KALDI_RNNLM_RNNLM_CORE_TRAINING_H_
+#endif //KALDI_RNNLM_RNNLM_EMBEDDING_TRAINING_H_

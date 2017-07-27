@@ -141,6 +141,11 @@ class RnnlmCoreTrainer {
                             objective function w.r.t. the word embedding will be
                             *added* to this location; it must have the same
                             dimension as 'word_embedding'.
+
+
+         TODO: move 'derived'  and make it an argument- will do this when
+         writing training code.
+
    */
   void Train(const RnnlmExample &minibatch,
              const CuMatrixBase<BaseFloat> &word_embedding,
@@ -161,6 +166,16 @@ class RnnlmCoreTrainer {
                     const CuMatrixBase<BaseFloat> &word_embedding,
                     nnet3::NnetComputer *computer);
 
+  /** Process the output of the neural net and record the objective function
+      in objf_info_.
+   @param [in] minibatch  The minibatch for which we're proessing the output.
+   @param [in] derived  Derived quantities from the minibatch.
+   @param [in] word_embedding  The word embedding, with the same numbering as
+                      used in the minibatch (may be subsampled at this point).
+   @param [out] word_embedding_deriv  If non-NULL, the part of the derivative
+                      w.r.t. the word-embedding that arises from the output
+                      computation will be *added* to here.
+  */
   void ProcessOutput(const RnnlmExample &minibatch,
                      const RnnlmExampleDerived &derived,
                      const CuMatrixBase<BaseFloat> &word_embedding,

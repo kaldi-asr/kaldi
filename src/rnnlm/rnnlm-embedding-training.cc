@@ -144,6 +144,9 @@ void RnnlmEmbeddingTrainer::Train(
   }
 }
 
+RnnlmEmbeddingTrainer::~RnnlmEmbeddingTrainer() {
+  PrintStats();
+}
 
 
 }  // namespace rnnlm

@@ -20,16 +20,19 @@
 #ifndef KALDI_RNNLM_RNNLM_TRAIN_H_
 #define KALDI_RNNLM_RNNLM_TRAIN_H_
 
-#include "base/kaldi-common.h"
-#include "matrix/matrix-lib.h"
-#include "nnet3/nnet-nnet.h"
+#include "rnnlm/rnnlm-core-training.h"
+#include "rnnlm/rnnlm-embedding-training.h"
+#include "rnnlm/rnnlm-utils.h"
+
 
 namespace kaldi {
 namespace rnnlm {
 
 
 class RnnlmTrainOptions {
+  // rnnlm_rxfilename must be supplied.
   std::string rnnlm_rxfilename;
+  std::string rnnlm_wxfilename;
 
   RnnlmCoreTrainerOptions core_config;
   RnnlmEmbeddingTrainerOptions embedding_config;
@@ -37,7 +40,7 @@ class RnnlmTrainOptions {
 
   void Register(OptionsItf *po) {
     po->Register("read-rnnlm", &rnnlm_rxfilename,
-                 "Read RNNLM from this location (e.g. 0.raw)");
+                 "Read RNNLM from this location (e.g. 0.raw).  Must be supplied.");
     po->Register("write-rnnlm", &rnnlm_wxfilename,
                  "Write RNNLM to this location (e.g. 1.raw)."
                  "If not supplied, the core RNNLM is not trained "
@@ -47,12 +50,11 @@ class RnnlmTrainOptions {
                  "(num-words, including epsilon) by (embedding-dim).  In this "
                  "case, the --read-sparse-word-features, "
                  "--read-feature-embedding and --write-feature-embedding "
-                 "options are not expected.");
+                 "options must not be given.");
     po->Register("write-dense-word-embedding", &word_embedding_wxfilename,
                  "Location to write the dense word-embedding matrix after "
-                 "training.  (Note: for most applications this won't be "
-                 "used because we recommend the combination of "
-                 "(sparse word-feature matrix) and (feature-embedding matrix)");
+                 "training, if training dense word embeddings directly "
+                 "(unlikely)");
     po->Register("read-sparse-word-features", &word_features_rxfilename,
                  "Location to read sparse word-feature matrix, e.g. "
                  "word_feats.txt.  Format is lines like: '1  30 1.0 516 1.0':"
@@ -68,18 +70,6 @@ class RnnlmTrainOptions {
     po->Register("write-feature-embedding", &feature_embedding_wxfilename,
                  "Location to write the feature-embedding matrix after training "
                  "it.");
-    po->Register("matrix-lrate", &matrix_lrate,
-                 "Learning rate for training the word-embedding or "
-                 "feature-embedding  matrix, as applicable "
-                 "(only matters if the --write-feature-embedding or "
-                 "--write-dense-word-embedding option is supplied.)");
-    po->Register("matrix-max-change", &matrix_max_change,
-                 "Maximum parameter-change per minibatch for training "
-                 "the word-embedding or feature-embedding  matrix, as "
-                 "applicable (only matters if the --write-feature-embedding or "
-                 "--write-dense-word-embedding option is supplied.)");
-
-
 
 
 
