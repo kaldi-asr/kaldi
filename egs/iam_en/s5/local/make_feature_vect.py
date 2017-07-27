@@ -7,6 +7,9 @@ import scipy.io as sio
 import numpy as np
 from scipy import misc
 
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE,SIG_DFL)
+
 parser = argparse.ArgumentParser(description="""Generates and saves the feature vectors""")
 parser.add_argument('dir', type=str, help='directory of images.scp and is also output directory')
 parser.add_argument('--out-ark', type=str, default='-', help='where to write the output feature file')
@@ -14,8 +17,6 @@ parser.add_argument('--scale-size', type=int, default=40, help='size to scale th
 
 args = parser.parse_args()
 
-#Image dimensions
-C = 1
 
 def write_kaldi_matrix(file_handle, matrix, key):
     #file_handle.write("[ ")
@@ -61,7 +62,16 @@ with open(data_list_path) as f:
         image_path = line_vect[1]
         im = misc.imread(image_path)
         im_scale = get_scaled_image(im)
-        data = np.transpose(im_scale, (1, 0))
+        
+        W = im_scale.shape[1]
+        H = im_scale.shape[0]
+        C = 3
+        im_three = np.dstack((im_scale, im_scale, im_scale))
+        data = np.reshape(np.transpose(im_three, (1, 0, 2)), (W, H * C))
+        
+        #data = np.transpose(im_scale, (1, 0))
+        #data = im_scale
+
         data = np.divide(data, 255.0)
         write_kaldi_matrix(out_fh, data, image_id)
 

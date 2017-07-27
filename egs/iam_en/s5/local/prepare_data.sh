@@ -6,6 +6,7 @@
 # This script loads the IAM handwritten dataset
 
 stage=0
+nj=20
 
 . ./cmd.sh
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -84,33 +85,3 @@ if [ $stage -le 0 ]; then
   utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
 fi
 
-numsplit=5
-mkdir -p data/{train,val_1,val_2,test}/data
-
-if [ $stage -le 1 ]; then
-  local/process_feature_vect.py data/train --scale-size 40 | \
-  copy-feats --compress=true --compression-method=7 \
-  ark:- ark,scp:data/train/data/images.ark,data/train/feats.scp || exit 1
-
-  local/process_feature_vect.py data/val_1 --scale-size 40 | \
-  copy-feats --compress=true --compression-method=7 \
-  ark:- ark,scp:data/val_1/data/images.ark,data/val_1/feats.scp || exit 1
-
-  local/process_feature_vect.py data/val_2 --scale-size 40 | \
-  copy-feats --compress=true --compression-method=7 \
-  ark:- ark,scp:data/val_2/data/images.ark,data/val_2/feats.scp || exit 1
-
-  local/process_feature_vect.py data/test --scale-size 40 | \
-  copy-feats --compress=true --compression-method=7 \
-  ark:- ark,scp:data/test/data/images.ark,data/test/feats.scp || exit 1
-fi
-
-if [ $stage -le 2 ]; then
-  mkdir -p data/train/log
-  image/split_ocr_dir.sh data/train/ $numsplit
-  $cmd JOB=1:$numsplit data/train/log/make_feature_vect.JOB.log \
-    local/process_feature_vect.py data/train/split${numsplit}/JOB/ --scale-size 40 \| \
-    copy-feats --compress=true --compression-method=7 \
-    ark:- ark,scp:data/train/split${numsplit}/JOB/data/images.ark,data/train/split${numsplit}/JOB/feats.scp \
-    || exit 1
-fi

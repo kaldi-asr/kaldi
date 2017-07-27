@@ -43,7 +43,8 @@ with open (text_file_path, 'rt') as in_file:
       continue
     line = line.strip()
     line_vect = line.split(' ')
-    text = line.split(' ')[-1]
+    text_vect = line.split(' ')[8:]
+    text = "".join(text_vect)
     text = text.replace("|", " ") 
     text_dict[line_vect[0]] = text
 
