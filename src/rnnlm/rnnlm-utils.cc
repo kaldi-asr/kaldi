@@ -1,7 +1,7 @@
 // rnnlm/rnnlm-utils.cc
 
 // Copyright 2017  Daniel Povey
-//                 Hossein Hadian
+//           2017  Hossein Hadian
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -21,7 +21,6 @@
 #include <numeric>
 #include "rnnlm/rnnlm-utils.h"
 
-
 namespace kaldi {
 namespace rnnlm {
 
@@ -38,19 +37,24 @@ void ReadSparseWordFeatures(std::istream &is,
     int32 word_id;
     line_is >> word_id;
     line_is >> std::ws;
-    KALDI_ASSERT(word_id == line_number++);
+    if (word_id != line_number++)
+      KALDI_ERR << "The word-indexes are expected to be in order 0, 1, 2, ...";
 
     int32 feature_index;
     BaseFloat feature_value;
     while (line_is >> feature_index)
     {
-      KALDI_ASSERT(feature_index >= 0 && feature_index < feature_dim);
+      if (!(feature_index >= 0 && feature_index < feature_dim))
+        KALDI_ERR << "Invalid feature index: " << feature_index
+                  << ". Feature indexes should be in the range [0, feature_dim)"
+                  << " where feature_dim is " << feature_dim;
       line_is >> std::ws;
       if (!(line_is >> feature_value))
         KALDI_ERR << "No value for feature-index " << feature_index;
       row.push_back(std::make_pair(feature_index, feature_value));
-      if (row.size() > 1)  // check the indexes are in increasing order
-        KALDI_ASSERT(row.back().first > row.rbegin()[1].first);
+      if (row.size() > 1 && row.back().first <= row.rbegin()[1].first)
+        KALDI_ERR << "feature indexes are expected to be in increasing order."
+                  << " Faulty line: " << line;
     }
     sparse_rows.push_back(row);
   }
