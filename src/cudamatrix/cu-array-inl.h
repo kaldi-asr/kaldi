@@ -2,6 +2,8 @@
 
 // Copyright 2009-2016  Karel Vesely
 //                2013  Johns Hopkins University (author: Daniel Povey)
+//                2017  Shiyin Kang
+
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -95,6 +97,25 @@ void CuArray<T>::Destroy() {
 
 
 template<typename T>
+void CuArrayBase<T>::CopyFromVec(const std::vector<T> &src) {
+  KALDI_ASSERT(dim_ == src.size());
+  if (src.empty())
+    return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+    CU_SAFE_CALL(
+        cudaMemcpy(data_, &src.front(), src.size() * sizeof(T),
+                   cudaMemcpyHostToDevice));
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    memcpy(data_, &src.front(), src.size() * sizeof(T));
+  }
+}
+
+template<typename T>
 void CuArray<T>::CopyFromVec(const std::vector<T> &src) {
   Resize(src.size(), kUndefined);
   if (src.empty()) return;
@@ -125,6 +146,25 @@ void CuArray<T>::CopyFromArray(const CuArrayBase<T> &src) {
 #endif
   {
     memcpy(this->data_, src.data_, this->dim_ * sizeof(T));
+  }
+}
+
+template<typename T>
+void CuArrayBase<T>::CopyFromArray(const CuArrayBase<T> &src) {
+  KALDI_ASSERT(src.Dim() == Dim());
+  if (dim_ == 0)
+    return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+    CU_SAFE_CALL(
+        cudaMemcpy(this->data_, src.data_, dim_ * sizeof(T),
+                   cudaMemcpyDeviceToDevice));
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    memcpy(this->data_, src.data_, dim_ * sizeof(T));
   }
 }
 
@@ -189,6 +229,16 @@ void CuArrayBase<T>::Set(const T &value) {
 // int32 specialization implemented in 'cudamatrix/cu-array.cc',
 template<>
 void CuArrayBase<int32>::Set(const int32 &value);
+
+
+template<class T>
+void CuArrayBase<T>::Sequence(const T base) {
+  // This is not implemented yet, we'll do so if it's needed.
+  KALDI_ERR << "CuArray<T>::Sequence not implemented yet for this type.";
+}
+// int32 specialization implemented in 'cudamatrix/cu-array.cc',
+template<>
+void CuArrayBase<int32>::Sequence(const int32 base);
 
 
 template<class T>

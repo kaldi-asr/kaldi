@@ -5,7 +5,7 @@
 //                2013  Hainan Xu
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
-//                2016  Shiyin Kang
+//           2016-2017  Shiyin Kang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -255,30 +255,34 @@ void cuda_copy_from_mat_ff(dim3 Gr, dim3 Bl, float* mat_out,
 void cuda_copy_from_mat_ff_trans(dim3 Gr, dim3 Bl, float* mat_out,
                                  const float* mat_in, MatrixDim d_out,
                                  MatrixDim d_in);
-void cuda_copy_from_smat_dd(dim3 Gr, dim3 Bl, double* mat_out,
-                            const MatrixElement<double>* smat_in,
-                            MatrixDim d_out, MatrixIndexT_cuda d_in);
-void cuda_copy_from_smat_dd_trans(dim3 Gr, dim3 Bl, double* mat_out,
-                                  const MatrixElement<double>* smat_in,
-                                  MatrixDim d_out, MatrixIndexT_cuda d_in);
-void cuda_copy_from_smat_df(dim3 Gr, dim3 Bl, double* mat_out,
-                            const MatrixElement<float>* smat_in,
-                            MatrixDim d_out, MatrixIndexT_cuda d_in);
-void cuda_copy_from_smat_df_trans(dim3 Gr, dim3 Bl, double* mat_out,
-                                  const MatrixElement<float>* smat_in,
-                                  MatrixDim d_out, MatrixIndexT_cuda d_in);
-void cuda_copy_from_smat_fd(dim3 Gr, dim3 Bl, float* mat_out,
-                            const MatrixElement<double>* smat_in,
-                            MatrixDim d_out, MatrixIndexT_cuda d_in);
-void cuda_copy_from_smat_fd_trans(dim3 Gr, dim3 Bl, float* mat_out,
-                                  const MatrixElement<double>* smat_in,
-                                  MatrixDim d_out, MatrixIndexT_cuda d_in);
-void cuda_copy_from_smat_ff(dim3 Gr, dim3 Bl, float* mat_out,
-                            const MatrixElement<float>* smat_in,
-                            MatrixDim d_out, MatrixIndexT_cuda d_in);
-void cuda_copy_from_smat_ff_trans(dim3 Gr, dim3 Bl, float* mat_out,
-                                  const MatrixElement<float>* smat_in,
-                                  MatrixDim d_out, MatrixIndexT_cuda d_in);
+void cuda_copy_from_smat_dd(dim3 Gr, dim3 Bl, double* mat, MatrixDim mat_dim,
+                            const int* smat_row_ptr, const int* smat_col_idx,
+                            const double* smat_val);
+void cuda_copy_from_smat_dd_trans(dim3 Gr, dim3 Bl, double* mat,
+                                  MatrixDim mat_dim, const int* smat_row_ptr,
+                                  const int* smat_col_idx,
+                                  const double* smat_val);
+void cuda_copy_from_smat_df(dim3 Gr, dim3 Bl, double* mat, MatrixDim mat_dim,
+                            const int* smat_row_ptr, const int* smat_col_idx,
+                            const float* smat_val);
+void cuda_copy_from_smat_df_trans(dim3 Gr, dim3 Bl, double* mat,
+                                  MatrixDim mat_dim, const int* smat_row_ptr,
+                                  const int* smat_col_idx,
+                                  const float* smat_val);
+void cuda_copy_from_smat_fd(dim3 Gr, dim3 Bl, float* mat, MatrixDim mat_dim,
+                            const int* smat_row_ptr, const int* smat_col_idx,
+                            const double* smat_val);
+void cuda_copy_from_smat_fd_trans(dim3 Gr, dim3 Bl, float* mat,
+                                  MatrixDim mat_dim, const int* smat_row_ptr,
+                                  const int* smat_col_idx,
+                                  const double* smat_val);
+void cuda_copy_from_smat_ff(dim3 Gr, dim3 Bl, float* mat, MatrixDim mat_dim,
+                            const int* smat_row_ptr, const int* smat_col_idx,
+                            const float* smat_val);
+void cuda_copy_from_smat_ff_trans(dim3 Gr, dim3 Bl, float* mat,
+                                  MatrixDim mat_dim, const int* smat_row_ptr,
+                                  const int* smat_col_idx,
+                                  const float* smat_val);
 void cudaD_copy_from_sp(dim3 Gr, dim3 Bl, const double* x, double* y,
                         MatrixDim d_out);
 void cudaF_copy_from_sp(dim3 Gr, dim3 Bl, const float* x, float* y,
@@ -460,6 +464,8 @@ void cuda_int32_add(dim3 Gr, dim3 Bl, int32_cuda *mat, int32_cuda value,
                     MatrixDim d);
 void cuda_int32_set_const(dim3 Gr, dim3 Bl, int32_cuda *mat, int32_cuda value,
                           MatrixDim d);
+void cuda_int32_sequence(dim3 Gr, dim3 Bl, int32_cuda* data, int length,
+                         int32_cuda base);
 void cudaD_invert_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim d);
 void cudaF_invert_elements(dim3 Gr, dim3 Bl, float *data, MatrixDim d);
 void cudaD_log_softmax_reduce(size_t Gr, size_t Bl, double *y, const double *x,
@@ -567,6 +573,15 @@ void cudaD_scale_diag_packed(int Gr, int Bl, double* mat, double value,
 void cudaF_scale_diag_packed(int Gr, int Bl, float* mat, float value, int dim);
 void cudaD_scale(dim3 Gr, dim3 Bl, double *mat, double value, MatrixDim d);
 void cudaF_scale(dim3 Gr, dim3 Bl, float *mat, float value, MatrixDim d);
+void cudaD_select_rows(dim3 Gr, dim3 Bl, const int* out_row_ptr,
+                       int* out_col_idx, double* out_val,
+                       const int* row_indexes, const int num_selected_rows,
+                       const int* in_row_ptr, const int* in_col_idx,
+                       const double* in_val);
+void cudaF_select_rows(dim3 Gr, dim3 Bl, const int* out_row_ptr,
+                       int* out_col_idx, float* out_val, const int* row_indexes,
+                       const int num_selected_rows, const int* in_row_ptr,
+                       const int* in_col_idx, const float* in_val);
 void cudaD_set_bias_params(int Gr, int Bl, double* v, const double* a,
                            double param_1, double param_2, double param_3,
                            int* flag, int dim);
@@ -646,22 +661,21 @@ void cudaD_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const double* A,
                                double* value);
 void cudaF_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const float* A, const float* B,
                                MatrixDim dA, int B_stride, float* value);
-void cudaD_trace_mat_smat(dim3 Gr, dim3 Bl, const double* mat_in,
-                          const MatrixElement<double>* smat_in,
-                          MatrixDim mat_d_in, MatrixIndexT_cuda smat_d_in,
-                          double* trace_vec_out);
-void cudaF_trace_mat_smat(dim3 Gr, dim3 Bl, const float* mat_in,
-                          const MatrixElement<float>* smat_in,
-                          MatrixDim mat_d_in, MatrixIndexT_cuda smat_d_in,
-                          float* trace_vec_out);
-void cudaD_trace_mat_smat_trans(dim3 Gr, dim3 Bl, const double* mat_in,
-                                const MatrixElement<double>* smat_in,
-                                MatrixDim mat_d_in, MatrixIndexT_cuda smat_d_in,
-                                double* trace_vec_out);
-void cudaF_trace_mat_smat_trans(dim3 Gr, dim3 Bl, const float* mat_in,
-                                const MatrixElement<float>* smat_in,
-                                MatrixDim mat_d_in, MatrixIndexT_cuda smat_d_in,
-                                float* trace_vec_out);
+void cudaD_trace_mat_smat(dim3 Gr, dim3 Bl, const double* mat,
+                          MatrixDim mat_dim, const int* smat_row_ptr,
+                          const int* smat_col_idx, const double* smat_val,
+                          double* trace_vec);
+void cudaF_trace_mat_smat(dim3 Gr, dim3 Bl, const float* mat, MatrixDim mat_dim,
+                          const int* smat_row_ptr, const int* smat_col_idx,
+                          const float* smat_val, float* trace_vec);
+void cudaD_trace_mat_smat_trans(dim3 Gr, dim3 Bl, const double* mat,
+                                MatrixDim mat_dim, const int* smat_row_ptr,
+                                const int* smat_col_idx, const double* smat_val,
+                                double* trace_vec);
+void cudaF_trace_mat_smat_trans(dim3 Gr, dim3 Bl, const float* mat,
+                                MatrixDim mat_dim, const int* smat_row_ptr,
+                                const int* smat_col_idx, const float* smat_val,
+                                float* trace_vec);
 void cudaD_vec_apply_ceiling(int Gr, int Bl, double* v, double ceiling_val,
                              float* num, int dim);
 void cudaF_vec_apply_ceiling(int Gr, int Bl, float* v, float ceiling_val,

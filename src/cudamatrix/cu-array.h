@@ -2,6 +2,7 @@
 
 // Copyright 2009-2012  Karel Vesely
 //                2013  Johns Hopkins University (author: Daniel Povey)
+//                2017  Shiyin Kang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -56,6 +57,16 @@ class CuArrayBase {
   /// that this makes sense for type T.
   void SetZero();
 
+  /// The caller is responsible to ensure dim is equal between *this and src.
+  /// Note: copying to GPU is done via memcpy,
+  /// and any constructors or assignment operators are not called.
+  void CopyFromArray(const CuArrayBase<T> &src);
+
+  /// The caller is responsible to ensure dim is equal between *this and src.
+  /// Note: copying to GPU is done via memcpy,
+  /// and any constructors or assignment operators are not called.
+  void CopyFromVec(const std::vector<T> &src);
+
   /// This function resizes *dst if needed.  On resize of "dst", the STL vector
   /// may call copy-constructors, initializers, and assignment operators for
   /// existing objects (which will be overwritten), but the copy from GPU to CPU
@@ -74,6 +85,10 @@ class CuArrayBase {
   /// assignment operators or destructors are not called.  This is NOT IMPLEMENTED
   /// YET except for T == int32 (the current implementation will just crash).
   void Set(const T &value);
+
+  /// Fill with the sequence [base ... base + Dim())
+  /// This is not implemented except for T=int32
+  void Sequence(const T base);
 
   /// Add a constant value. This is NOT IMPLEMENTED YET except for T == int32
   /// (the current implementation will just crash).
@@ -137,13 +152,10 @@ class CuArray: public CuArrayBase<T> {
   void Destroy();
 
   /// This function resizes if needed.  Note: copying to GPU is done via memcpy,
-  /// and any constructors or assignment operators are not called.  If necessary
-  /// we can later make a non-resizing version of this function in class
-  /// CuArrayBase.
+  /// and any constructors or assignment operators are not called.
   void CopyFromVec(const std::vector<T> &src);
 
-  /// This function resizes if needed.  If necessary we can later make a
-  /// non-resizing version of this function in class CuArrayBase.
+  /// This function resizes if needed.
   void CopyFromArray(const CuArrayBase<T> &src);
 
   CuArray<T> &operator= (const CuArray<T> &in) {
@@ -169,6 +181,14 @@ class CuSubArray: public CuArrayBase<T> {
   /// 'const' constraints; don't do that.
   explicit CuSubArray<T>(const CuArrayBase<T> &src,
                          MatrixIndexT offset, MatrixIndexT dim);
+
+  /// Construct from raw pointers
+  CuSubArray(const T* data, MatrixIndexT length) {
+    // Yes, we're evading C's restrictions on const here, and yes, it can be used
+    // to do wrong stuff; unfortunately the workaround would be very difficult.
+    CuArrayBase<T>::data_ = const_cast<T*>(data);
+    CuArrayBase<T>::dim_ = length;
+  }
 };
 
 
