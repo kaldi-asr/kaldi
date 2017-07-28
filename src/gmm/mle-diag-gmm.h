@@ -50,6 +50,7 @@ struct MleDiagGmmOptions {
   double min_variance;
   bool remove_low_count_gaussians;
   double variance_floor_value;
+  int VFV_dim;
   MleDiagGmmOptions() {
     // don't set var floor vector by default.
     min_gaussian_weight     = 1.0e-05;
@@ -57,6 +58,7 @@ struct MleDiagGmmOptions {
     min_variance            = 0.001;
     remove_low_count_gaussians = true;
     variance_floor_value = 0;
+    VFV_dim = 0;
   }
   void Register(OptionsItf *opts) {
     std::string module = "MleDiagGmmOptions: ";
@@ -70,6 +72,12 @@ struct MleDiagGmmOptions {
                  module+"If true, remove Gaussians that fall below the floors.");
     opts->Register("variance-floor-value", &variance_floor_value,
                  module+"Value assigned to all elements of variance_floor_vector.");
+    opts->Register("variance-floor-vector-dim", &VFV_dim,
+                 module+"dimension of variance_floor_vector.");
+  }
+  void create_VFV() {
+    variance_floor_vector.Resize(VFV_dim);
+    variance_floor_vector.Set(variance_floor_value);
   }
 };
 
