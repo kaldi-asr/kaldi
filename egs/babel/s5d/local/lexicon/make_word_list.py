@@ -6,7 +6,6 @@ import os
 import codecs
 import argparse
 import unicodedata
-import pdb
 
 
 def process_transcripts(transcripts_dir, transcripts_list):
@@ -59,8 +58,8 @@ def process_transcripts(transcripts_dir, transcripts_list):
 
 def main():
     if len(sys.argv[1:]) == 0:
-        print("Usage: ./make_word_list.py"
-              " <transcripts_list> <transcripts_dir> <word_list>")
+        print("Usage: ./make_word_list.py "
+            "<transcripts_list> <transcripts_dir> <word_list>", file=sys.stderr)
         sys.exit(1)
     
     parser = argparse.ArgumentParser()
@@ -79,13 +78,17 @@ def main():
     words, misprons = process_transcripts(args.transcripts_dir,
                                           args.transcripts_list)
 
+    # Create the output directory if it does not already exist
+    if not os.path.exists(os.path.dirname(args.word_list)):
+        os.makedirs(os.path.dirname(args.word_list))
+
     # Print the word list
-    with codecs.open(args.word_list, "w", "utf-8") as f:
+    with codecs.open(args.word_list, "w", encoding="utf-8") as f:
         for word, count in words:
             f.write("%d %s\n" % (count, unicode(word)))
 
     if args.misprons is not None:
-        with codecs.open(args.misprons, "w", "utf-8") as f:
+        with codecs.open(args.misprons, "w", encoding="utf-8") as f:
             for word, count in misprons:
                 f.write("%d %s\n" % (count, word))
 
