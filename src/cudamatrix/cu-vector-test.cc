@@ -2,6 +2,7 @@
 
 // Copyright 2013 Lucas Ondel
 //           2013 Johns Hopkins University (author: Daniel Povey)
+//           2017 Hossein Hadian
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -203,6 +204,47 @@ template<typename Real> void CuVectorUnitTestAddVecExtra() {
     AssertEqual(beta * vec1_orig(i) + alpha * vec2(i), vec1(i));
 }
 
+template<typename Real> void CuVectorUnitTestCopyElements() {
+  int32 dim = 10 + Rand() % 100, N = 20 + Rand() % 50;
+  CuVector<Real> V(dim);
+  V.SetRandn();
+  CuVector<Real> V_copy(V);
+  for (int n = 0; n < 2; n++) {
+    bool transpose = (n == 0);
+    CuMatrix<Real> M;
+    if (!transpose)
+      M.Resize(dim, N, kUndefined);
+    else
+      M.Resize(N, dim, kUndefined);
+    M.SetRandn();
+    std::vector<int32> elements(dim);
+    for (int32 i = 0; i < dim; i++) {
+      int32 j = elements[i] = Rand() % N;
+      if (!transpose)
+        V_copy(i) = M(i, j);
+      else
+        V_copy(i) = M(j, i);
+    }
+    CuArray<int32> cu_elements(elements);
+    V.CopyElements(M, transpose ? kTrans : kNoTrans, cu_elements);
+    AssertEqual(V, V_copy);
+  }
+}
+
+template<typename Real> void UnitTestVecMatVec() {
+  int32 NR = 10 + Rand() % 100, NC = 20 + Rand() % 100;
+  CuVector<Real> v1(NR), v2(NC);
+  v1.SetRandn();
+  v2.SetRandn();
+  CuMatrix<Real> M(NR, NC);
+  M.SetRandn();
+  Real sum = 0;
+  for (int32 i = 0; i < NR; i++)
+    for (int32 j = 0; j < NC; j++)
+      sum += v1(i) * M(i, j) * v2(j);
+  Real result = VecMatVec(v1, M, v2);
+  AssertEqual(sum, result);
+}
 
 template<typename Real> void CuVectorUnitTestAddRowSumMat() {
   int32 M = 10 + Rand() % 280, N = 10 + Rand() % 20;
@@ -735,6 +777,8 @@ template<typename Real> void CuVectorUnitTest() {
   CuVectorUnitTestAddVecVec<Real>();
   CuVectorUnitTestAddDiagMat2<Real>();
   CuVectorUnitTestAddDiagMatMat<Real>();
+  CuVectorUnitTestCopyElements<Real>();
+  UnitTestVecMatVec<Real>();
 }
 
 
