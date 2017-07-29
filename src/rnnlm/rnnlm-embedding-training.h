@@ -136,11 +136,11 @@ class RnnlmEmbeddingTrainer {
 
   /* Train on one minibatch-- this version is for when there is subsampling, and
      the user is providing the derivative w.r.t. just the word-indexes that were
-     used in this minibatch.  'words_used' is a sorted, unique list of the
+     used in this minibatch.  'active_words' is a sorted, unique list of the
      word-indexes that were used in this minibatch, and 'word_embedding_deriv'
      is the derivative w.r.t. the embedding of that list of words.
 
-      @param [in] words_used  A sorted, unique list of the word indexes
+      @param [in] active_words  A sorted, unique list of the word indexes
                       used, with Dim() equal to word_embedding_deriv->NumRows();
                       contains indexes 0 <= i < embedding_deriv_->NumRows().
 
@@ -150,7 +150,7 @@ class RnnlmEmbeddingTrainer {
                       it in-place if needed for the natural gradient
                       update.
   */
-  void Train(const CuArrayBase<int32> &words_used,
+  void Train(const CuArrayBase<int32> &active_words,
              CuMatrixBase<BaseFloat> *word_embedding_deriv);
 
 

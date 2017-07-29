@@ -82,5 +82,4 @@ void CuArrayBase<int32>::Add(const int32 &value) {
   }
 }
 
-
 }  // namespace kaldi

@@ -104,10 +104,10 @@ void RnnlmEmbeddingTrainer::Train(
 
 
 void RnnlmEmbeddingTrainer::Train(
-    const CuArrayBase<int32> &words_used,
+    const CuArrayBase<int32> &active_words,
     CuMatrixBase<BaseFloat> *embedding_deriv) {
 
-  KALDI_ASSERT(words_used.Dim() == embedding_deriv->NumRows());
+  KALDI_ASSERT(active_words.Dim() == embedding_deriv->NumRows());
 
   BaseFloat scale = 1.0;
   if (config_.use_natural_gradient) {
@@ -136,11 +136,11 @@ void RnnlmEmbeddingTrainer::Train(
     // effective learning rate due to the geometric sum of (1 + momentum +
     // momentum^2, ...).
     scale *= (1.0 - config_.momentum);
-    embedding_mat_momentum_.AddRows(scale, *embedding_deriv, words_used);
+    embedding_mat_momentum_.AddRows(scale, *embedding_deriv, active_words);
     embedding_mat_->AddMat(1.0, embedding_mat_momentum_);
     embedding_mat_momentum_.Scale(config_.momentum);
   } else {
-    embedding_mat_->AddRows(scale, *embedding_deriv, words_used);
+    embedding_mat_->AddRows(scale, *embedding_deriv, active_words);
   }
 }
 

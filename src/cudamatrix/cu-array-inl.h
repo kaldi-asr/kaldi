@@ -278,6 +278,13 @@ std::ostream &operator << (std::ostream &out, const CuArray<T> &vec) {
   return out;
 }
 
+template <typename T>
+void CuArray<T>::Swap(CuArray<T> *other) {
+  std::swap(this->dim_, other->dim_);
+  std::swap(this->data_, other->data_);
+}
+
+
 } // namespace kaldi
 
 #endif

@@ -122,7 +122,7 @@ class RnnlmCoreTrainer {
        @param [in,out] nnet   The neural network that is to be trained.
                               Will be modified each time you call Train().
    */
-  RnnlmCoreTrainer(RnnlmCoreTrainerOptions &config,
+  RnnlmCoreTrainer(const RnnlmCoreTrainerOptions &config,
                    nnet3::Nnet *nnet);
 
   /* Train on one minibatch.
@@ -131,6 +131,8 @@ class RnnlmCoreTrainer {
                             necessarily contain words with the 'original'
                             numbering, it will in most circumstances contain
                             just the ones we used; see RenumberRnnlmMinibatch().
+       @param [in] derived   Derived quantities of the minibatch, pre-computed by
+                            calling GetRnnlmExampleDerived() with suitable arguments.
        @param [in] word_embedding  The matrix giving the embedding of words, of
                             dimension minibatch.vocab_size by the embedding dimension.
                             The numbering of the words does not have to be the 'real'
@@ -141,13 +143,9 @@ class RnnlmCoreTrainer {
                             objective function w.r.t. the word embedding will be
                             *added* to this location; it must have the same
                             dimension as 'word_embedding'.
-
-
-         TODO: move 'derived'  and make it an argument- will do this when
-         writing training code.
-
    */
   void Train(const RnnlmExample &minibatch,
+             const RnnlmExampleDerived &derived,
              const CuMatrixBase<BaseFloat> &word_embedding,
              CuMatrixBase<BaseFloat> *word_embedding_deriv = NULL);
 

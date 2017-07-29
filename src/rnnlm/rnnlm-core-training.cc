@@ -122,6 +122,7 @@ void ObjectiveTracker::PrintStatsOverall() const {
 
 void RnnlmCoreTrainer::Train(
     const RnnlmExample &minibatch,
+    const RnnlmExampleDerived &derived,
     const CuMatrixBase<BaseFloat> &word_embedding,
     CuMatrixBase<BaseFloat> *word_embedding_deriv) {
   using namespace nnet3;
@@ -135,12 +136,6 @@ void RnnlmCoreTrainer::Train(
                              need_input_derivative,
                              store_component_stats,
                              &request);
-
-  RnnlmExampleDerived derived;
-  bool need_word_embedding_deriv = (word_embedding_deriv != NULL);
-  GetRnnlmExampleDerived(minibatch,
-                         need_word_embedding_deriv,
-                         &derived);
 
   const NnetComputation *computation = compiler_.Compile(request);
 

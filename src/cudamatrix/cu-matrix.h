@@ -463,18 +463,20 @@ class CuMatrixBase {
                   const CuMatrix<Real> &B,
                   Real beta);
 
-  /// (*this) = alpha * A * B + beta * (*this), where A is sparse.
-  /// Multiplication of dense by sparse matrix.  See also AddSmatMat.
-  /// Note: we recommend, for greatest efficiency, that transA be kTrans.
+  /// (*this) = alpha * A * op(B) + beta * (*this), where A is sparse
+  /// and op(B) is either B or trans(B) depending o the 'transB' pargument.
+  /// This is multiplication of a dense by a sparse matrix.  See also
+  /// AddSmatMat.  Note: we recommend, for greatest efficiency, that transB be
+  /// kTrans.
   ///
   /// TODO: implement this.
   /// Implementation notes (remove this comment when implemented): I believe
   /// this can be implemented using cusparseScsrmm/cusparseDcsrmm
   /// (remember the identity (A B)^T = A^T B^T.)
   void AddMatSmat(Real alpha,
-                  const CuMatrix<Real> &A,
+                  const CuMatrixBase<Real> &A,
                   const CuSparseMatrix<Real> &B,
-                  MatrixTransposeType transA,
+                  MatrixTransposeType transB,
                   Real beta);
 
 

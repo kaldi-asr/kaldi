@@ -121,6 +121,9 @@ struct RnnlmExampleDerived {
   // (minibatch.input_words[i],i).
   CuSparseMatrix<BaseFloat> input_words_smat;
 
+
+  // Shallow swap; calls Swap() on all elements.
+  void Swap(RnnlmExampleDerived *other);
 };
 
 /**
@@ -132,7 +135,7 @@ struct RnnlmExampleDerived {
                              computing derivatives w.r.t. the word embedding
                              (e.g., needed in a typical training configuration);
                              if this is true, it will compute
-                             'input_wordss_tranpose'.
+                             'input_words_tranpose'.
       @param [out] derived   The output structure that we are computing.
 */
 void GetRnnlmExampleDerived(const RnnlmExample &minibatch,

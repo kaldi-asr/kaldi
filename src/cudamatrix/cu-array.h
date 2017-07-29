@@ -154,6 +154,9 @@ class CuArray: public CuArrayBase<T> {
     this->CopyFromVec(in); return *this;
   }
 
+  /// Shallow swap with another CuArray<T>.
+  void Swap(CuArray<T> *other);
+
   /// I/O
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &is, bool binary) const;
