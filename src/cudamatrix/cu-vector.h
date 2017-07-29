@@ -126,9 +126,9 @@ class CuVectorBase {
   /// If trans == kTrans,
   /// expects mat.NumCols() to equal this.Dim(), and for each i,
   /// copies mat(elements[i], i) to (*this)(i).
-  /// TODO: implement this.
-  void CopyElements(const CuMatrix<BaseFloat> &mat, const MatrixTransposeType trans,
-                    CuArrayBase<int32> &elements);
+  void CopyElements(const CuMatrixBase<Real> &mat,
+                    const MatrixTransposeType trans,
+                    const CuArrayBase<int32> &elements);
 
   void ApplySoftMax();
   void ApplyExp();
@@ -379,7 +379,6 @@ Vector<Real>::Vector(const CuVectorBase<OtherReal> &cu) {
 }
 
 /// Returns \f$ v_1^T M v_2  \f$ .
-/// TODO:  implement this.
 template<typename Real>
 Real VecMatVec(const CuVectorBase<Real> &v1, const CuMatrixBase<Real> &M,
                const CuVectorBase<Real> &v2);

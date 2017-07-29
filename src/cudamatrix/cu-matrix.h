@@ -485,7 +485,6 @@ class CuMatrixBase {
   /// 0 <= element[i] < NumCols().
   /// It adds alpha to each element (*this)(i, elements[i])
   /// for 0 <= i < NumRows().
-  /// TODO: implement this.
   void AddToElements(Real alpha, const CuArrayBase<int32> &elements);
 
 

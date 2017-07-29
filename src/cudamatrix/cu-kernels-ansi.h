@@ -502,6 +502,14 @@ void cudaD_matrix_lookup(dim3 Gr, dim3 Bl, const double *data, MatrixDim dim,
 void cudaF_matrix_lookup(dim3 Gr, dim3 Bl, const float *data, MatrixDim dim,
                          const Int32Pair *indices, int indices_size,
                          float *output);
+void cudaD_vector_copy_elements(dim3 Gr, dim3 Bl, double *data, int dim,
+                                const double *src_mat, int mat_stride,
+                                bool transpose,
+                                const MatrixIndexT_cuda* elements);
+void cudaF_vector_copy_elements(dim3 Gr, dim3 Bl, float *data, int dim,
+                                const float *src_mat, int mat_stride,
+                                bool transpose,
+                                const MatrixIndexT_cuda* elements);
 void cudaD_max(dim3 Gr, dim3 Bl, double *mat, const double *A, MatrixDim dst_d,
                int src_stride);
 void cudaF_max(dim3 Gr, dim3 Bl, float *mat, const float *A, MatrixDim dst_d,

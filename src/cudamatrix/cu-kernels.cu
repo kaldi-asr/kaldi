@@ -1188,6 +1188,24 @@ static void _cuda_comp_obj_deriv(MatrixElement<Real> *x, int s, const Real* z,
 
 template<typename Real>
 __global__
+static void _cuda_vector_copy_elements(Real *data, int dim,
+                                       const Real *src_mat, int mat_stride,
+                                       bool transpose,
+                                       const MatrixIndexT_cuda* elements) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= dim)
+    return;
+  int j = elements[i];
+  int mat_index;
+  if (transpose)
+    mat_index = i + j * mat_stride;
+  else
+    mat_index = j + i * mat_stride;
+  data[i] = src_mat[mat_index];
+}
+
+template<typename Real>
+__global__
 static void _cuda_matrix_add_elements(Real *data, MatrixDim dim, Real alpha,
                                       MatrixElement<Real>* x,
                                       int num_elements) {
@@ -3791,6 +3809,14 @@ void cudaF_matrix_add_to_elements(dim3 Gr, dim3 Bl, float alpha,
   _cuda_matrix_add_to_elements<<<Gr, Bl>>>(alpha, mat, dim, elements);
 }
 
+void cudaF_vector_copy_elements(dim3 Gr, dim3 Bl, float *data, int dim,
+                                const float *src_mat, int mat_stride,
+                                bool transpose,
+                                const MatrixIndexT_cuda* elements) {
+  _cuda_vector_copy_elements<<<Gr, Bl>>>(data, dim, src_mat, mat_stride,
+                                         transpose, elements);
+}
+
 void cudaF_comp_obj_deriv(dim3 Gr, dim3 Bl, MatrixElement<float>* x, int s,
                           const float* z, MatrixDim d, float* z2, MatrixDim d2,
                           float* t) {
@@ -4457,6 +4483,14 @@ void cudaD_matrix_add_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
                                double alpha, MatrixElement<double>* x,
                                int num_elements) {
   _cuda_matrix_add_elements<<<Gr, Bl>>>(data, dim, alpha, x, num_elements);
+}
+
+void cudaD_vector_copy_elements(dim3 Gr, dim3 Bl, double *data, int dim,
+                                const double *src_mat, int mat_stride,
+                                bool transpose,
+                                const MatrixIndexT_cuda* elements) {
+  _cuda_vector_copy_elements<<<Gr, Bl>>>(data, dim, src_mat, mat_stride,
+                                         transpose, elements);
 }
 
 void cudaD_matrix_add_indexed_values(dim3 Gr, dim3 Bl, MatrixDim dim,
