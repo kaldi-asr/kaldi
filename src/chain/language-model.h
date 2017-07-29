@@ -91,7 +91,7 @@ class LanguageModelEstimator {
   // Adds counts for this sentence.  Basically does: for each n-gram in the
   // sentence, count[n-gram] += weight.  The only constraint on 'sentence' is that it
   // should contain no zeros.
-  void AddCounts(const std::vector<int32> &sentence, int32 weight);
+  void AddCounts(const std::vector<int32> &sentence, int32 weight = 1.0);
 
   // Estimates the LM and outputs it as an FST.  Note: there is
   // no concept here of backoff arcs.
