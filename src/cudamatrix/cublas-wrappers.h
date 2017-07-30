@@ -1,6 +1,7 @@
 // cudamatrix/cublas-wrappers.h
 
 // Copyright 2013  Johns Hopkins University (author: Daniel Povey);
+//           2017  Shiyin Kang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -198,6 +199,31 @@ inline cublasStatus_t cublas_spr(cublasHandle_t handle, cublasFillMode_t uplo,
                                  int n, double alpha, const double *x, int incx,
                                  double *AP) {
   return cublasDspr_v2(handle, uplo, n, &alpha, x, incx, AP);
+}
+
+//
+// cuSPARSE wrappers
+//
+
+inline cusparseStatus_t cusparse_csr2csc(cusparseHandle_t handle, int m, int n,
+                                         int nnz, const float *csrVal,
+                                         const int *csrRowPtr,
+                                         const int *csrColInd, float *cscVal,
+                                         int *cscRowInd, int *cscColPtr,
+                                         cusparseAction_t copyValues,
+                                         cusparseIndexBase_t idxBase) {
+  return cusparseScsr2csc(handle, m, n, nnz, csrVal, csrRowPtr, csrColInd,
+                          cscVal, cscRowInd, cscColPtr, copyValues, idxBase);
+}
+inline cusparseStatus_t cusparse_csr2csc(cusparseHandle_t handle, int m, int n,
+                                         int nnz, const double *csrVal,
+                                         const int *csrRowPtr,
+                                         const int *csrColInd, double *cscVal,
+                                         int *cscRowInd, int *cscColPtr,
+                                         cusparseAction_t copyValues,
+                                         cusparseIndexBase_t idxBase) {
+  return cusparseDcsr2csc(handle, m, n, nnz, csrVal, csrRowPtr, csrColInd,
+                          cscVal, cscRowInd, cscColPtr, copyValues, idxBase);
 }
 
 #endif
