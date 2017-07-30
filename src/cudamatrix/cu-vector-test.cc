@@ -142,7 +142,7 @@ static void UnitTestCuVectorAddTp() {
 }
 
 template<typename Real> void CuVectorUnitTestVecVec() {
-  int32 M = 10 % Rand() % 100;
+  int32 M = 10 + Rand() % 100;
   CuVector<Real> vec1(M), vec2(M);
   vec1.SetRandn();
   vec2.SetRandn();
@@ -153,7 +153,7 @@ template<typename Real> void CuVectorUnitTestVecVec() {
 }
 
 template<typename Real> void CuVectorUnitTestAddVec() {
-  int32 M = 10 % Rand() % 100;
+  int32 M = 10 + Rand() % 100;
   CuVector<Real> vec1(M);
   CuVector<Real> vec2(M);
   vec1.SetRandn();
@@ -168,7 +168,7 @@ template<typename Real> void CuVectorUnitTestAddVec() {
 
 template<typename Real> void CuVectorUnitTestAddVecCross() {
   for (int32 i = 0; i < 4; i++) {
-    int32 M = 10 % Rand() % 100;
+    int32 M = 10 + Rand() % 100;
     CuVector<float> vec1(M);
     CuVector<Real> vec2(M);
     vec1.SetRandn();
@@ -192,7 +192,7 @@ template<typename Real> void CuVectorUnitTestAddVecCross() {
 }
 
 template<typename Real> void CuVectorUnitTestAddVecExtra() {
-  int32 M = 10 % Rand() % 100;
+  int32 M = 10 + Rand() % 100;
   CuVector<Real> vec1(M), vec2(M);
   vec1.SetRandn();
   vec2.SetRandn();
@@ -351,7 +351,7 @@ template<typename Real> void CuVectorUnitTestSum() {
 
 template<typename Real> void CuVectorUnitTestScale() {
   for (int32 i = 0; i < 4; i++) {
-    int32 dim = 100 + 400 % Rand();
+    int32 dim = 100 + Rand() % 400;
     CuVector<Real> cu_vec(dim);
     cu_vec.SetRandn();
     Vector<Real> vec(cu_vec);
@@ -519,7 +519,7 @@ template<typename Real> void CuVectorUnitTestApplyExp() {
   vector.ApplyExp();
   for(int32 j = 0; j < dim; j++) {
     //std::cout<<"diff is "<<exp(vector2(j))-vector(j)<<std::endl;;
-    KALDI_ASSERT(std::abs(Exp(vector2(j))-vector(j)) < 0.000001 );
+    KALDI_ASSERT(std::abs(Exp(vector2(j))-vector(j)) < 0.00001);
   }
 
 }
