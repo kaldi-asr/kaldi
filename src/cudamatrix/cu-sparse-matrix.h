@@ -78,11 +78,6 @@ public:
   /// Copy from possibly-GPU-based matrix.
   CuSparseMatrix<Real> &operator =(const CuSparseMatrix<Real> &smat);
 
-  /// Users of this class won't normally have to use Resize.
-  /// 'nnz' should be determined beforehand when calling this API.
-  void Resize(const MatrixIndexT num_rows, const MatrixIndexT num_cols,
-              const MatrixIndexT nnz, MatrixResizeType resize_type = kSetZero);
-
   /// Copy from CPU-based matrix.  We will add the transpose option later when it
   /// is necessary.
   template<typename OtherReal>
@@ -185,6 +180,11 @@ protected:
   inline SparseMatrix<Real> &Mat() {
     return *(reinterpret_cast<SparseMatrix<Real>*>(this));
   }
+
+  /// Users of this class won't normally have to use Resize.
+  /// 'nnz' should be determined beforehand when calling this API.
+  void Resize(const MatrixIndexT num_rows, const MatrixIndexT num_cols,
+              const MatrixIndexT nnz, MatrixResizeType resize_type = kSetZero);
 
   /// Returns pointer to the data array of length nnz_ that holds all nonzero
   /// values in zero-based CSR format
