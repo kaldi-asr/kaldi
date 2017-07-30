@@ -293,7 +293,7 @@ void CuSparseMatrix<Real>::Resize(const MatrixIndexT num_rows,
   } else
 #endif
   {
-    Mat().Resize(num_rows, num_cols);
+    Mat().Resize(num_rows, num_cols, resize_type);
   }
 }
 

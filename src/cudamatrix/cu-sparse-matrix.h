@@ -78,9 +78,10 @@ public:
   /// Copy from possibly-GPU-based matrix.
   CuSparseMatrix<Real> &operator =(const CuSparseMatrix<Real> &smat);
 
+  /// Users of this class won't normally have to use Resize.
+  /// 'nnz' should be determined beforehand when calling this API.
   void Resize(const MatrixIndexT num_rows, const MatrixIndexT num_cols,
-              const MatrixIndexT nnz = 0, MatrixResizeType resize_type =
-                  kSetZero);
+              const MatrixIndexT nnz, MatrixResizeType resize_type = kSetZero);
 
   /// Copy from CPU-based matrix.  We will add the transpose option later when it
   /// is necessary.
@@ -185,7 +186,7 @@ protected:
     return *(reinterpret_cast<SparseMatrix<Real>*>(this));
   }
 
-  /// Returns pointer to the data array of lenght nnz_ that holds all nonzero
+  /// Returns pointer to the data array of length nnz_ that holds all nonzero
   /// values in zero-based CSR format
   const Real* CsrVal() const {
     return csr_val_;
@@ -196,7 +197,7 @@ protected:
 
   /// Returns pointer to the integer array of length NumRows()+1 that holds
   /// indices of the first nonzero element in the i-th row, while the last entry
-  /// constans nnz_, as zero-based CSR format is used.
+  /// contains nnz_, as zero-based CSR format is used.
   const int* CsrRowPtr() const {
     return csr_row_ptr_col_idx_;
   }
@@ -221,10 +222,13 @@ private:
   // is not enabled.  It needs to be first because we reinterpret_cast this
   std::vector<SparseVector<Real> > cpu_rows_;
 
-  // This is where the data lives if we are using a GPU.  Notice that the format
-  // is a little different from on CPU, as there is only one list, of matrix
-  // elements, instead of a list for each row.  This is better suited to
-  // CUDA code.
+  // This is where the data lives if we are using a GPU.
+  // The sparse matrix is stored in CSR format, as documented here.
+  // http://docs.nvidia.com/cuda/cusparse/index.html#compressed-sparse-row-format-csr
+  // The 3 arrays are stored in 2 allocated blocks of memory.
+  // Row ptr and col idx are both int arrays, thus stored in one block pointed
+  // 'by csr_row_ptr_col_idx_'
+  // Val are Real array, pointed by `csr_val_`
 
   // matrix size num_rows_ x num_cols_
   MatrixIndexT num_rows_;
