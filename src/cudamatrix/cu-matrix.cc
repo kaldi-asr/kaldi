@@ -6,6 +6,7 @@
 //                2013  Hainan Xu
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
+//           2016-2017  Shiyin Kang
 //                2017  Hossein Hadian
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -966,6 +967,46 @@ void CuMatrixBase<Real>::AddMat(Real alpha, const CuMatrixBase<Real>& A,
     Mat().AddMat(alpha, A.Mat(), transA);
   }
 }
+
+template<typename Real>
+void CuMatrixBase<Real>::AddSmat(Real alpha, const CuSparseMatrix<Real> &A,
+                                 MatrixTransposeType trans) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (trans == kNoTrans) {
+      KALDI_ASSERT(NumRows() == A.NumRows());
+      KALDI_ASSERT(NumCols() == A.NumCols());
+    } else {
+      KALDI_ASSERT(NumRows() == A.NumCols());
+      KALDI_ASSERT(NumCols() == A.NumRows());
+    }
+
+    CuTimer tim;
+
+    // We use warpSize threads per row to access only the nonzero elements.
+    // Every CU1DBLOCK/warpSize rows share one thread block.
+    // 1D grid to cover all rows of A.
+    const int warpSize = 32;
+    dim3 dimBlock(warpSize, CU1DBLOCK / warpSize);
+    dim3 dimGrid(n_blocks(A.NumRows(), dimBlock.y));
+
+    if (trans == kNoTrans) {
+      cuda_add_smat(dimGrid, dimBlock, Data(), Dim(), alpha, A.CsrRowPtr(),
+                    A.CsrColIdx(), A.CsrVal());
+    } else {
+      cuda_add_smat_trans(dimGrid, dimBlock, Data(), Dim(), alpha,
+      A.CsrRowPtr(), A.CsrColIdx(), A.CsrVal());
+    }
+
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    Mat().AddSmat(alpha, A.Mat(), trans);
+  }
+}
+
 
 template<typename Real>
 void CuMatrixBase<Real>::AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,

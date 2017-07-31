@@ -251,6 +251,48 @@ static void _select_rows(const int* out_row_ptr, int* out_col_idx,
   }
 }
 
+// mat += alpha * smat
+//
+// We use warpSize threads per row to access only the nonzero elements.
+// Every CU1DBLOCK/warpSize rows share one thread block.
+// 1D grid to cover all rows of smat.
+template<typename Real>
+__global__
+static void _add_smat(Real* mat, MatrixDim mat_dim, Real alpha,
+                      const int* smat_row_ptr, const int* smat_col_idx,
+                      const Real* smat_val) {
+  const int i = blockIdx.x * blockDim.y + threadIdx.y; // row idx
+  if (i < mat_dim.rows) {
+    const int row_start = smat_row_ptr[i];
+    const int row_end = smat_row_ptr[i + 1];
+    for (int n = row_start + threadIdx.x; n < row_end; n += warpSize) {
+      const int j = smat_col_idx[n]; // col idx of smat
+      mat[i * mat_dim.stride + j] += alpha * smat_val[n];
+    }
+  }
+}
+
+// mat += alpha * smat^T
+//
+// We use warpSize threads per row to access only the nonzero elements.
+// Every CU1DBLOCK/warpSize rows share one thread block.
+// 1D grid to cover all rows of smat.
+template<typename Real>
+__global__
+static void _add_smat_trans(Real* mat, MatrixDim mat_dim, Real alpha,
+                            const int* smat_row_ptr, const int* smat_col_idx,
+                            const Real* smat_val) {
+  const int i = blockIdx.x * blockDim.y + threadIdx.y; // row idx
+  if (i < mat_dim.cols) {
+    const int row_start = smat_row_ptr[i];
+    const int row_end = smat_row_ptr[i + 1];
+    for (int n = row_start + threadIdx.x; n < row_end; n += warpSize) {
+      const int j = smat_col_idx[n]; // col idx of smat
+      mat[j * mat_dim.stride + i] += alpha * smat_val[n];
+    }
+  }
+}
+
 /// Fill the array 'data' with the sequence [base ... base + length)
 /// Use 1D block and 1D grid
 template<typename T>
@@ -5080,5 +5122,29 @@ void cudaF_select_rows(dim3 Gr, dim3 Bl, const int* out_row_ptr,
                        const int* in_col_idx, const float* in_val) {
   _select_rows<<<Gr, Bl>>>(out_row_ptr, out_col_idx, out_val, row_indexes,
                            num_selected_rows, in_row_ptr, in_col_idx, in_val);
+}
+void cudaD_add_smat(dim3 Gr, dim3 Bl, double* mat, MatrixDim mat_dim,
+                    double alpha, const int* smat_row_ptr,
+                    const int* smat_col_idx, const double* smat_val) {
+  _add_smat<<<Gr, Bl>>>(mat, mat_dim, alpha, smat_row_ptr, smat_col_idx,
+                        smat_val);
+}
+void cudaF_add_smat(dim3 Gr, dim3 Bl, float* mat, MatrixDim mat_dim,
+                    float alpha, const int* smat_row_ptr,
+                    const int* smat_col_idx, const float* smat_val) {
+  _add_smat<<<Gr, Bl>>>(mat, mat_dim, alpha, smat_row_ptr, smat_col_idx,
+                        smat_val);
+}
+void cudaD_add_smat_trans(dim3 Gr, dim3 Bl, double* mat, MatrixDim mat_dim,
+                          double alpha, const int* smat_row_ptr,
+                          const int* smat_col_idx, const double* smat_val) {
+  _add_smat_trans<<<Gr, Bl>>>(mat, mat_dim, alpha, smat_row_ptr, smat_col_idx,
+                              smat_val);
+}
+void cudaF_add_smat_trans(dim3 Gr, dim3 Bl, float* mat, MatrixDim mat_dim,
+                          float alpha, const int* smat_row_ptr,
+                          const int* smat_col_idx, const float* smat_val) {
+  _add_smat_trans<<<Gr, Bl>>>(mat, mat_dim, alpha, smat_row_ptr, smat_col_idx,
+                              smat_val);
 }
 

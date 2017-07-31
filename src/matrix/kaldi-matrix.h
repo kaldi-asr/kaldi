@@ -3,6 +3,7 @@
 // Copyright 2009-2011  Ondrej Glembek;  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University;  Petr Schwarz;  Yanmin Qian;
 //                      Karel Vesely;  Go Vivace Inc.;  Haihua Xu
+//           2017       Shiyin Kang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -51,8 +52,10 @@ class MatrixBase {
   friend class CuMatrix<Real>;
   friend class CuSubMatrix<Real>;
   friend class CuPackedMatrix<Real>;
-
   friend class PackedMatrix<Real>;
+  friend class SparseMatrix<Real>;
+  friend class SparseMatrix<float>;
+  friend class SparseMatrix<double>;
 
   /// Returns number of rows (or zero for emtpy matrix).
   inline MatrixIndexT  NumRows() const { return num_rows_; }
@@ -553,6 +556,10 @@ class MatrixBase {
   /// *this += alpha * M [or M^T]
   void AddMat(const Real alpha, const MatrixBase<Real> &M,
               MatrixTransposeType transA = kNoTrans);
+
+  /// *this += alpha * A [or A^T].
+  void AddSmat(Real alpha, const SparseMatrix<Real> &A,
+               MatrixTransposeType trans = kNoTrans);
 
   /// *this = beta * *this + alpha * M M^T, for symmetric matrices.  It only
   /// updates the lower triangle of *this.  It will leave the matrix asymmetric;

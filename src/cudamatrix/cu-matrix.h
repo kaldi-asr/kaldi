@@ -5,6 +5,7 @@
 //                2013  Hainan Xu
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
+//                2017  Shiyin Kang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -442,7 +443,6 @@ class CuMatrixBase {
               MatrixTransposeType trans = kNoTrans);
 
   /// *this += alpha * A.
-  /// TODO: implement this.
   void AddSmat(Real alpha, const CuSparseMatrix<Real> &A,
               MatrixTransposeType trans = kNoTrans);
 
