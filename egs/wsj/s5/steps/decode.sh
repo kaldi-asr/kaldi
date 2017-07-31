@@ -18,7 +18,6 @@ acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 parallel_opts=  # ignored now.
 scoring_opts=
-decode_extra_opts=
 # note: there are no more min-lmwt and max-lmwt options, instead use
 # e.g. --scoring-opts "--min-lmwt 1 --max-lmwt 20"
 skip_scoring=false
@@ -123,7 +122,7 @@ if [ $stage -le 0 ]; then
   fi
   $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
     gmm-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
-    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt $decode_extra_opts \
+    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
 

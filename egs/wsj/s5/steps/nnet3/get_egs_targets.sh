@@ -394,7 +394,7 @@ if [ $stage -le 5 ]; then
 
     if $generate_egs_scp; then
       #concatenate egs.JOB.scp in single egs.scp
-      rm -rf $dir/egs.scp
+      rm $dir/egs.scp 2> /dev/null || true
       for j in $(seq $num_archives_intermediate); do
         cat $dir/egs.$j.scp || exit 1;
       done > $dir/egs.scp || exit 1;
@@ -424,7 +424,7 @@ if [ $stage -le 5 ]; then
 
     if $generate_egs_scp; then
       #concatenate egs.JOB.scp in single egs.scp
-      rm -rf $dir/egs.scp
+      rm $dir/egs.scp 2> /dev/null || true
       for j in $(seq $num_archives_intermediate); do
         for y in $(seq $num_archives_intermediate); do
           cat $dir/egs.$j.$y.scp || exit 1;

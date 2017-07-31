@@ -3,12 +3,17 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
+# This script converts alignments into targets for training neural network
+# for speech activity detection. The mapping from phones to speech / silence / garbage
+# is defined by the options --silence-phones and --garbage-phones.
+# This is similar to the script steps/segmentation/lats_to_targets.sh which 
+# converts lattices to targets.
+
 set -o pipefail
 
 silence_phones=
 garbage_phones=
 max_phone_duration=0.5
-acwt=0.1
 
 cmd=run.pl
 
@@ -17,6 +22,10 @@ cmd=run.pl
 
 if [ $# -ne 4 ]; then
   cat <<EOF
+  This script converts alignments into targets for training neural network
+  for speech activity detection. The mapping from phones to speech / silence / garbage
+  is defined by the options --silence-phones and --garbage-phones.
+
   Usage: steps/segmentation/ali_to_targets.sh <data-dir> <lang> <ali-dir> <targets-dir>"
   e.g.: steps/segmentation/ali_to_targets.sh \
   --silence-phones data/lang/phones/optional_silence.txt \

@@ -720,18 +720,9 @@ class XconfigBasicLayer(XconfigLayerBase):
         # The output of the affine component needs to have one dimension fewer in order to
         # get the required output dim, if the final 'renorm' component has 'add-log-stddev' set
         # (since in that case it increases the dimension by one).
-        found_final_renorm = False
         if self.config['add-log-stddev']:
             output_dim -= 1
-
-            split_layer_name = self.layer_type.split('-')
-            assert split_layer_name[-1] == 'layer'
-            nonlinearities = split_layer_name[:-1]
-
-            for i, nonlinearity in enumerate(nonlinearities):
-                if nonlinearity == "renorm" and i == len(nonlinearities) - 1:
-                    found_final_renorm = True
-            if not found_final_renorm:
+            if not self.layer_type.split('-')[-2] == "renorm":
                 raise RuntimeError("add-log-stddev cannot be true unless "
                                    "there is a final 'renorm' component.")
 
@@ -787,9 +778,6 @@ class XconfigBasicLayer(XconfigLayerBase):
                         ' add-log-stddev={4}'
                         ''.format(self.name, nonlinearity, output_dim,
                                   target_rms, add_log_stddev))
-                if i == len(nonlinearities) - 1:
-                    output_dim += 1
-
 
             elif nonlinearity == 'batchnorm':
                 line = ('component name={0}.{1}'

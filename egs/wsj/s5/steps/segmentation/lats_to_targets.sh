@@ -3,6 +3,10 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
+# This script converts lattices into targets for training neural network
+# for speech activity detection. The mapping from phones to speech / silence / garbage
+# is defined by the options --silence-phones and --garbage-phones.
+
 set -o pipefail
 
 silence_phones=
@@ -17,6 +21,10 @@ cmd=run.pl
 
 if [ $# -ne 4 ]; then
   cat <<EOF
+  This script converts lattices into targets for training neural network
+  for speech activity detection. The mapping from phones to speech / silence / garbage
+  is defined by the options --silence-phones and --garbage-phones.
+
   Usage: steps/segmentation/lats_to_targets.sh <data-dir> <lang> <lattice-dir> <targets-dir>"
   e.g.: steps/segmentation/lats_to_targets.sh \
   --silence-phones exp/segmentation1a/silence_phones.txt \

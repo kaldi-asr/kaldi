@@ -1,10 +1,11 @@
-#! /bin/bash
+#!/bin/bash
 
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
-# Features configs (Must match the features used to train the models
-# $sat_model_dir and $model_dir)
+# We assume the run-1-main.sh (because we are using model directories like
+# exp/tri4) and later we assumme run-4-anydecode.sh was run to prepare
+# data/dev10h.pem
 
 lang=data/lang   # Must match the one used to train the models
 lang_test=data/lang  # Lang directory for decoding.
@@ -152,3 +153,31 @@ if [ $stage -le 6 ]; then
     mfcc_hires_bp \
     exp/segmentation_1a/tdnn_lstm_asr_sad_1a/{,dev10h}
 fi
+
+if [ $stage -le 7 ]; then
+  # Do some diagnostics
+  steps/segmentation/evalute_segmentation.pl data/dev10h.pem/segments \
+    exp/segmentation_1a/tdnn_lstm_asr_sad_1a/dev10h_seg/segments &> \
+    exp/segmentation_1a/tdnn_lstm_asr_sad_1a/dev10h_seg/evalutate_segmentation.log
+  
+  steps/segmentation/convert_utt2spk_and_segments_to_rttm.py \
+    exp/segmentation_1a/tdnn_lstm_asr_sad_1a/dev10h_seg/utt2spk \
+    exp/segmentation_1a/tdnn_lstm_asr_sad_1a/dev10h_seg/segments \
+    exp/segmentation_1a/tdnn_lstm_asr_sad_1a/dev10h_seg/sys.rttm
+
+  export PATH=$PATH:$KALDI_ROOT/tools/sctk/bin
+  md-eval.pl -c 0.25 -r $dev10h_rttm_file \
+    -s exp/segmentation_1a/tdnn_lstm_asr_sad_1a/dev10h_seg/sys.rttm > \
+    exp/segmentation_1a/tdnn_lstm_asr_sad_1a/dev10h_seg/md_eval.log
+fi
+
+if [ $stage -le 8 ]; then
+  utils/copy_data_dir.sh exp/segmentation_1a/tdnn_lstm_asr_sad_1a/dev10h_seg \
+    data/dev10h.seg_asr_sad_1a
+fi
+  
+# run-4-anydecode.sh --dir dev10h.seg_tdnn_lstm_asr_sad_1a
+# %WER 40.6 | 21825 101803 | 63.6 26.3 10.1 4.1 40.6 29.8 | -0.469 | exp/chain_cleaned_pitch/tdnn_flstm_sp_bi/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+# %WER 41.1 | 21825 101803 | 63.5 26.1 10.4 4.5 41.1 31.8 | -0.523 | exp/chain_cleaned_pitch/tdnn_flstm_sp_bi/decode_dev10h.seg/score_11/dev10h.seg.ctm.sys
+# %WER 40.9 | 21825 101803 | 63.5 26.1 10.4 4.4 40.9 31.4 | -0.527 | exp/chain_cleaned_pitch/tdnn_flstm_sp_bi/decode_dev10h.seg_1a_tdnn_stats_asr_sad_1a_acwt0_3/score_11/dev10h.seg_1a_tdnn_stats_asr_sad_1a_acwt0_3.ctm.sys
+# %WER 41.0 | 21825 101803 | 63.5 26.1 10.4 4.5 41.0 31.5 | -0.522 | exp/chain_cleaned_pitch/tdnn_flstm_sp_bi/decode_dev10h.seg_asr_sad_1a/score_11/dev10h.seg_asr_sad_1a.ctm.sys

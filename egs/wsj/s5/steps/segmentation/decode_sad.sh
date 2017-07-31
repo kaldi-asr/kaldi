@@ -5,7 +5,7 @@
 
 # This script does Viterbi decoding using a matrix of frame log-likelihoods 
 # with the columns corresponding to the pdfs.
-# It is a wrapper around the binary decode-faster-mapped.
+# It is a wrapper around the binary decode-faster.
 
 set -e
 set -o pipefail

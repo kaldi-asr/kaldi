@@ -21,8 +21,6 @@ chunk_width=20
 
 extra_left_context=60
 extra_right_context=0
-extra_left_context_initial=0
-extra_right_context_final=0
 
 relu_dim=256
 cell_dim=256 
@@ -108,8 +106,8 @@ if [ $stage -le 6 ]; then
     --egs.dir="$egs_dir" --egs.stage=$get_egs_stage \
     --egs.chunk-left-context=$extra_left_context \
     --egs.chunk-right-context=$extra_right_context \
-    --egs.chunk-left-context-initial=$extra_left_context_initial \
-    --egs.chunk-right-context-final=$extra_right_context_final \
+    --egs.chunk-left-context-initial=0 \
+    --egs.chunk-right-context-final=0 \
     --trainer.num-epochs=$num_epochs \
     --trainer.samples-per-iter=20000 \
     --trainer.optimization.num-jobs-initial=$num_jobs_initial \

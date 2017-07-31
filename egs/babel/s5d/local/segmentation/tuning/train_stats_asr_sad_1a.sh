@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# This is a script to train a TDNN-LSTM for speech activity detection (SAD) 
-# using LSTM for long-context information.
+# This is a script to train a TDNN for speech activity detection (SAD) 
+# using statistics pooling for long-context information.
 
 set -o pipefail
 set -u
@@ -19,10 +19,10 @@ egs_opts=
 
 chunk_width=20
 
+# The context is chosen to be around 1 second long. The context at test time
+# is expected to be around the same.
 extra_left_context=79
 extra_right_context=21
-extra_left_context_initial=0
-extra_right_context_final=0
 
 relu_dim=256
 
@@ -105,8 +105,8 @@ if [ $stage -le 6 ]; then
     --egs.dir="$egs_dir" --egs.stage=$get_egs_stage \
     --egs.chunk-left-context=$extra_left_context \
     --egs.chunk-right-context=$extra_right_context \
-    --egs.chunk-left-context-initial=$extra_left_context_initial \
-    --egs.chunk-right-context-final=$extra_right_context_final \
+    --egs.chunk-left-context-initial=0 \
+    --egs.chunk-right-context-final=0 \
     --trainer.num-epochs=$num_epochs \
     --trainer.samples-per-iter=20000 \
     --trainer.optimization.num-jobs-initial=$num_jobs_initial \

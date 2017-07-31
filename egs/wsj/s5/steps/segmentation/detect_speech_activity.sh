@@ -166,7 +166,7 @@ if [ $stage -le 4 ]; then
 fi
 
 ###############################################################################
-## Prepare HCLG graph for decoding
+## Prepare FST we search to make speech/silence decisions.
 ###############################################################################
 
 frame_shift=$(utils/data/get_frame_shift.sh $test_data_dir)

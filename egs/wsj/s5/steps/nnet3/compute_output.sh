@@ -5,8 +5,6 @@
 # Apache 2.0.
 
 # This script does forward propagation through a neural network. 
-# LDA features and fMLLR are not supported by this script. Only raw features
-# and iVectors is supported.
 
 # Begin configuration section.
 stage=1

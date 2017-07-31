@@ -280,6 +280,9 @@ def get_feat_dim_from_scp(feat_scp):
 
 
 def read_kaldi_matrix(matrix_file):
+    """This function reads a kaldi matrix stored in text format from
+    'matrix_file' and stores it as a list of rows, where each row is a list.
+    """
     try:
         lines = map(lambda x: x.split(), open(matrix_file).readlines())
         first_field = lines[0][0]
@@ -299,7 +302,9 @@ def read_kaldi_matrix(matrix_file):
 
 
 def write_kaldi_matrix(output_file, matrix):
-    # matrix is a list of lists
+    """This function writes the matrix stored as a list of lists
+    into 'output_file' in kaldi matrix text format.
+    """
     with open(output_file, 'w') as f:
         f.write("[ ")
         num_rows = len(matrix)
@@ -318,6 +323,12 @@ def write_kaldi_matrix(output_file, matrix):
 
 
 def write_matrix_ascii(file_or_fd, mat, key=None):
+    """This function writes the matrix 'mat' stored as a list of lists
+    in kaldi matrix text format.
+    The destination can be a file or an opened file descriptor.
+    If key is provided, then matrix is written to an archive with the 'key'
+    as the index field.
+    """
     try:
         fd = open(file_or_fd, 'w')
     except TypeError:
@@ -348,6 +359,10 @@ def write_matrix_ascii(file_or_fd, mat, key=None):
 
 
 def read_matrix_ascii(file_or_fd):
+    """This function reads a matrix in kaldi matrix text format
+    and stores it as a list of lists.
+    The input can be a file or an opened file descriptor.
+    """
     try:
         fd = open(file_or_fd, 'r')
         fname = file_or_fd
@@ -400,6 +415,13 @@ def read_key(fd):
 
 
 def read_mat_ark(file_or_fd):
+    """This function reads a kaldi matrix archive in text format
+    and yields a dictionary output indexed by the key (utterance-id).
+    The input can be a file or an opened file descriptor.
+
+    Example usage:
+    mat_dict = { key: mat for key, mat in read_mat_ark(file) }
+    """
     try:
         fd = open(file_or_fd, 'r')
         fname = file_or_fd
