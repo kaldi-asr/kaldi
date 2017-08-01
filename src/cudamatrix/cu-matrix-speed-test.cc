@@ -988,8 +988,11 @@ template<typename Real> void TestCuSparseMatrixTraceMatSmat(int32 dim) {
     CuMatrix<Real> M(dim, dim);
     M.SetRandn();
 
-    SparseMatrix<Real> Ncpu(dim, dim);
-    Ncpu.SetRandn(0.8);
+    std::vector<std::vector<std::pair<MatrixIndexT, Real> > > pairs(dim);
+    for (auto && row : pairs) {
+      row.push_back( { MatrixIndexT(Rand() % dim), Real(Rand() % dim) });
+    }
+    SparseMatrix<Real> Ncpu(dim, pairs);
     CuSparseMatrix<Real> N(Ncpu);
 
     Timer tim;
