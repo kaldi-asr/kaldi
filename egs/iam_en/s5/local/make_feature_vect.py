@@ -66,13 +66,13 @@ with open(data_list_path) as f:
         im = misc.imread(image_path)
         im_scale = get_scaled_image(im)
         
-        W = im_scale.shape[1]
-        H = im_scale.shape[0]
-        C = 3
-        im_three = np.dstack((im_scale, im_scale, im_scale))
-        data = np.reshape(np.transpose(im_three, (1, 0, 2)), (W, H * C))
+        #W = im_scale.shape[1]
+        #H = im_scale.shape[0]
+        #C = 3
+        #im_three = np.dstack((im_scale, im_scale, im_scale))
+        #data = np.reshape(np.transpose(im_three, (1, 0, 2)), (W, H * C))
         
-        #data = np.transpose(im_scale, (1, 0))
+        data = np.transpose(im_scale, (1, 0))
         #data = im_scale
 
         data = np.divide(data, 255.0)

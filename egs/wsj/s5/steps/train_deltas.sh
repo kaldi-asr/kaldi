@@ -22,6 +22,7 @@ norm_vars=false # deprecated.  Prefer --cmvn-opts "--norm-vars=true"
 cmvn_opts=
 delta_opts=
 context_opts=   # use"--context-width=5 --central-position=2" for quinphone
+variance_floor_val=0
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging
@@ -148,6 +149,7 @@ while [ $x -lt $num_iters ]; do
        "ark,s,cs:gunzip -c $dir/ali.JOB.gz|" $dir/$x.JOB.acc || exit 1;
     $cmd $dir/log/update.$x.log \
       gmm-est --mix-up=$numgauss --power=$power \
+      --variance-floor-value=$variance_floor_val \
         --write-occs=$dir/$[$x+1].occs $dir/$x.mdl \
        "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;
     rm $dir/$x.mdl $dir/$x.*.acc
