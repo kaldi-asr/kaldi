@@ -106,7 +106,7 @@ def get_successful_models(num_models, log_file_pattern,
 
     parse_regex = re.compile(
         "LOG .* Overall average objective function for "
-        "'output' is ([0-9e.\-+]+) over ([0-9e.\-+]+) frames")
+        "'output' is ([0-9e.\-+= ]+) over ([0-9e.\-+]+) frames")
     objf = []
     for i in range(num_models):
         model_num = i + 1
@@ -118,7 +118,7 @@ def get_successful_models(num_models, log_file_pattern,
             # lesser number of regex searches. Python regex is slow !
             mat_obj = parse_regex.search(lines[-1 * line_num])
             if mat_obj is not None:
-                this_objf = float(mat_obj.groups()[0])
+                this_objf = float(mat_obj.groups()[0].split()[-1])
                 break
         objf.append(this_objf)
     max_index = objf.index(max(objf))
