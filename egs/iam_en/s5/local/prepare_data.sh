@@ -7,6 +7,7 @@
 
 stage=0
 nj=20
+dir=data
 
 . ./cmd.sh
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -72,16 +73,16 @@ else
   echo Done downloading and extracting ascii folder
 fi
 
-mkdir -p data/{train,val_1,val_2,test}
+mkdir -p $dir/{train,val_1,val_2,test}
 if [ $stage -le 0 ]; then
-  local/process_data.py $dl_dir data/train --dataset trainset || exit 1
-  local/process_data.py $dl_dir data/val_1 --dataset validationset1 || exit 1
-  local/process_data.py $dl_dir data/val_2 --dataset validationset2 || exit 1
-  local/process_data.py $dl_dir data/test --dataset testset || exit 1
+  local/process_data.py $dl_dir $dir/train --dataset trainset || exit 1
+  local/process_data.py $dl_dir $dir/val_1 --dataset validationset1 || exit 1
+  local/process_data.py $dl_dir $dir/val_2 --dataset validationset2 || exit 1
+  local/process_data.py $dl_dir $dir/test --dataset testset || exit 1
 
-  utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
-  utils/utt2spk_to_spk2utt.pl data/val_1/utt2spk > data/val_1/spk2utt
-  utils/utt2spk_to_spk2utt.pl data/val_2/utt2spk > data/val_2/spk2utt
-  utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
+  utils/utt2spk_to_spk2utt.pl $dir/train/utt2spk > $dir/train/spk2utt
+  utils/utt2spk_to_spk2utt.pl $dir/val_1/utt2spk > $dir/val_1/spk2utt
+  utils/utt2spk_to_spk2utt.pl $dir/val_2/utt2spk > $dir/val_2/spk2utt
+  utils/utt2spk_to_spk2utt.pl $dir/test/utt2spk > $dir/test/spk2utt
 fi
 
