@@ -936,6 +936,13 @@ void CuVector<Real>::Resize(MatrixIndexT dim, MatrixResizeType t) {
 }
 
 template<typename Real>
+void CuVector<Real>::Swap(CuVector<Real> *vec) {
+  std::swap(this->data_, vec->data_);
+  std::swap(this->dim_, vec->dim_);
+}
+
+
+template<typename Real>
 void CuVector<Real>::Swap(Vector<Real> *vec) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {

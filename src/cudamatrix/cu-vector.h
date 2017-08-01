@@ -287,12 +287,13 @@ class CuVector: public CuVectorBase<Real> {
     return *this;
   }
 
+  void Swap(CuVector<Real> *vec);
+  void Swap(Vector<Real> *vec);
 
   /// I/O
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &is, bool binary) const;
 
-  void Swap(Vector<Real> *vec);
 
  private:
   void Destroy();

@@ -120,6 +120,24 @@ void ObjectiveTracker::PrintStatsOverall() const {
 }
 
 
+RnnlmCoreTrainer::RnnlmCoreTrainer(const RnnlmCoreTrainerOptions &config,
+                                   nnet3::Nnet *nnet):
+    config_(config),
+    nnet_(nnet),
+    compiler_(*nnet),  // for now we don't make available other optiosn
+    num_minibatches_processed_(0),
+    objf_info_(10) {
+  ZeroComponentStats(nnet);
+  KALDI_ASSERT(config.momentum >= 0.0 &&
+               config.max_param_change >= 0.0);
+  delta_nnet_ = nnet_->Copy();
+  ScaleNnet(0.0, delta_nnet_);
+  const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
+  num_max_change_per_component_applied_.resize(num_updatable, 0);
+  num_max_change_global_applied_ = 0;
+}
+
+
 void RnnlmCoreTrainer::Train(
     const RnnlmExample &minibatch,
     const RnnlmExampleDerived &derived,

@@ -61,6 +61,14 @@ void GetRnnlmComputationRequest(
 }
 
 
+void RnnlmExampleDerived::Swap(RnnlmExampleDerived *other) {
+  cu_input_words.Swap(&other->cu_input_words);
+  cu_output_words.Swap(&other->cu_output_words);
+  cu_sampled_words.Swap(&other->cu_sampled_words);
+  output_words_smat.Swap(&other->output_words_smat);
+  input_words_smat.Swap(&other->input_words_smat);
+}
+
 // This is called from ProcessRnnlmOutput() when we are doing importance
 // sampling.
 static void ProcessRnnlmOutputSampling(

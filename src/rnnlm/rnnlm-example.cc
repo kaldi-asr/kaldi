@@ -577,6 +577,18 @@ void RnnlmExampleCreator::Check() const {
 }
 
 
+void RnnlmExample::Swap(RnnlmExample *other) {
+  std::swap(vocab_size, other->vocab_size);
+  std::swap(num_chunks, other->num_chunks);
+  std::swap(chunk_length, other->chunk_length);
+  std::swap(sample_group_size, other->sample_group_size);
+  std::swap(num_samples, other->num_samples);
+  input_words.swap(other->input_words);
+  output_words.swap(other->output_words);
+  output_weights.Swap(&(other->output_weights));
+  sampled_words.swap(other->sampled_words);
+  sample_inv_probs.Swap(&(other->sample_inv_probs));
+}
 
 }  // namespace rnnlm
 }  // namespace kaldi

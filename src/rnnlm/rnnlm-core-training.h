@@ -72,6 +72,7 @@ class ObjectiveTracker {
                 BaseFloat den_objf,
                 BaseFloat exact_den_objf = 0.0);
 
+
   ~ObjectiveTracker();  // Prints stats for the final interval, and the overall
                         // stats.
 
@@ -187,11 +188,9 @@ class RnnlmCoreTrainer {
 
   const RnnlmCoreTrainerOptions config_;
   nnet3::Nnet *nnet_;
-  nnet3::Nnet *delta_nnet_;  // Only used if momentum != 0.0 or max-param-change !=
-                             // 0.0.  nnet representing accumulated parameter-change
-                             // (we'd call this gradient_nnet_, but due to
-                             // natural-gradient update, it's better to consider it as
-                             // a delta-parameter nnet.
+  nnet3::Nnet *delta_nnet_;  // nnet representing parameter-change for this
+                             // minibatch (or, when using momentum, its moving
+                             // weighted average).
   nnet3::CachingOptimizingCompiler compiler_;
 
   int32 num_minibatches_processed_;
