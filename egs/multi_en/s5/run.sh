@@ -17,6 +17,12 @@ wsj1=
 eval2000=
 rt03=
 
+# check for kaldi_lm
+which get_word_map.pl > /dev/null
+if [ $? -ne 0 ]; then
+  echo "This recipe requires installation of tools/kaldi_lm. Please run extras/kaldi_lm.sh in tools/" && exit 1;
+fi
+
 # preset paths
 case $(hostname -d) in
   clsp.jhu.edu)
@@ -216,7 +222,7 @@ fi
 
 # reestimate LM with silprobs
 if [ $stage -le 15 ]; then
-#  steps/get_prons.sh --cmd "$train_cmd" data/$multi/tri3 data/lang_nosp exp/$multi/tri3
+  steps/get_prons.sh --cmd "$train_cmd" data/$multi/tri3 data/lang_nosp exp/$multi/tri3
   utils/dict_dir_add_pronprobs.sh --max-normalize true \
     data/local/dict_nosp exp/$multi/tri3/pron_counts_nowb.txt \
     exp/$multi/tri3/sil_counts_nowb.txt exp/$multi/tri3/pron_bigram_counts_nowb.txt data/local/dict
