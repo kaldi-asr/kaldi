@@ -24,6 +24,22 @@ namespace kaldi {
 namespace rnnlm {
 
 
+bool RnnlmTrainerOptions::HasRequiredArgs() {
+  bool ans = true;
+  if (rnnlm_rxfilename == "") {
+    KALDI_WARN << "--read-rnnlm option is required";
+    ans = false;
+  }
+  if (rnnlm_wxfilename == "") {
+    KALDI_WARN << "--write-rnnlm option is (currently) required";
+    ans = false;
+  }
+  if (embedding_rxfilename == "") {
+    KALDI_WARN << "--read-embedding option is required.";
+    ans = false;
+  }
+  return ans;
+}
 RnnlmTrainer::RnnlmTrainer(const RnnlmTrainerOptions &config):
     config_(config),
     num_minibatches_processed_(0),
@@ -231,6 +247,28 @@ void RnnlmTrainer::RunBackgroundThread() {
     current_minibatch_empty_.Signal();
   }
 }
+
+RnnlmTrainer::~RnnlmTrainer() {
+  // Note: the following delete statements may cause some diagnostics to be
+  // issued, from the destructors of those classes.
+  if (core_trainer_)
+    delete core_trainer_;
+  if (embedding_trainer_)
+    delete embedding_trainer_;
+  // Now write out the things we need to write out.
+  if (config_.rnnlm_wxfilename != "") {
+    WriteKaldiObject(rnnlm_, config_.rnnlm_wxfilename, config_.binary);
+    KALDI_LOG << "Wrote RNNLM to "
+              << PrintableWxfilename(config_.rnnlm_wxfilename);
+  }
+  if (config_.embedding_wxfilename != "") {
+    WriteKaldiObject(embedding_mat_, config_.embedding_wxfilename,
+                     config_.binary);
+    KALDI_LOG << "Wrote embedding matrix to "
+              << PrintableWxfilename(config_.embedding_wxfilename);
+  }
+}
+
 
 
 }  // namespace rnnlm

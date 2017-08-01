@@ -42,10 +42,14 @@ struct RnnlmTrainerOptions {
   std::string embedding_rxfilename;
   std::string embedding_wxfilename;
   std::string word_features_rxfilename;
+  // binary mode for writing output.
+  bool binary;
 
   RnnlmCoreTrainerOptions core_config;
   RnnlmEmbeddingTrainerOptions embedding_config;
 
+
+  RnnlmTrainerOptions(): binary(true) { }
 
   void Register(OptionsItf *po) {
     po->Register("read-rnnlm", &rnnlm_rxfilename,
@@ -69,6 +73,9 @@ struct RnnlmTrainerOptions {
                  "letters and other hand-built features; it's not trainable."
                  " If present, the embedding matrix read via --read-embedding "
                  "will be interpreted as a feature-embedding matrix.");
+    po->Register("binary", &binary,
+                 "If true, write outputs in binary form.");
+
 
     // register the core RNNLM training options options with the prefix "rnnlm",
     // so they will appear as --rnnlm.max-change and the like.  This is done
@@ -110,6 +117,7 @@ class RnnlmTrainer {
   void Train(RnnlmExample *minibatch);
 
 
+  // The destructor writes out any files that we need to write out.
   ~RnnlmTrainer();
 
  private:
