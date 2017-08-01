@@ -61,7 +61,7 @@ namespace kaldi {
    limited.]  In general we want to bandlimit to lower than S/2, because
    we don't have a perfect filter and also because if we want to resample
    at a lower frequency than S, we need to bandlimit to below half of that.
-   Anyway, suppose we want to bandlimit to C, with 0 < C < C/2.  The perfect
+   Anyway, suppose we want to bandlimit to C, with 0 < C < S/2.  The perfect
    rectangular filter with cutoff C is the sinc function,
    \f[         f(t) = 2C sinc(2Ct),                   \f]
    where sinc is the normalized sinc function \f$ sinc(t) = sin(pi t) / (pi t) \f$, with
@@ -248,7 +248,13 @@ class LinearResample {
                                        ///< previously seen input signal.
 };
 
-
+/// Downsample a waveform.  This is a convenience wrapper for the
+/// class 'LinearResample'
+/// The low-pass filter cutoff used in 'LinearResample' is 0.995 of half of the
+/// new_freq and num_zeros is 10.
+/// https://ccrma.stanford.edu/~jos/resample/Implementation.html
+void DownsampleWaveForm(BaseFloat orig_freq, const VectorBase<BaseFloat> &wave,
+                        BaseFloat new_freq, Vector<BaseFloat> *new_wave);
 
 /// @} End of "addtogroup feat"
 }  // namespace kaldi

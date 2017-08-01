@@ -20,6 +20,7 @@
 #ifndef KALDI_FEAT_FEATURE_COMMON_INL_H_
 #define KALDI_FEAT_FEATURE_COMMON_INL_H_
 
+#include "feat/resample.h"
 // Do not include this file directly.  It is included by feat/feature-common.h
 
 namespace kaldi {
@@ -44,6 +45,8 @@ void OfflineFeatureTpl<F>::ComputeFeatures(
 
       // Downsample the waveform.
       Vector<BaseFloat> downsampled_wave(wave);
+      DownsampleWaveForm(sample_freq, wave,
+                         new_sample_freq, &downsampled_wave);
       Compute(downsampled_wave, vtln_warp, output);
     } else
       KALDI_ERR << "The waveform is allowed to get downsampled."
