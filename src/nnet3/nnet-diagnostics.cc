@@ -121,25 +121,25 @@ void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
         totals.tot_weight += tot_weight;
         totals.tot_objective += tot_objf;
       }
-      // May not be meaningful if non-classification tasks
+      // May not be meaningful in non-classification tasks
       if (config_.compute_accuracy) {  
         BaseFloat tot_weight, tot_accuracy;
-        PerDimObjectiveInfo &totals = accuracy_info_[io.name];
+        PerDimObjectiveInfo &acc_totals = accuracy_info_[io.name];
 
         if (config_.compute_per_dim_accuracy && 
-            totals.tot_objective_vec.Dim() == 0) {
-          totals.tot_objective_vec.Resize(output.NumCols());
-          totals.tot_weight_vec.Resize(output.NumCols());
+            acc_totals.tot_objective_vec.Dim() == 0) {
+          acc_totals.tot_objective_vec.Resize(output.NumCols());
+          acc_totals.tot_weight_vec.Resize(output.NumCols());
         }
 
         ComputeAccuracy(io.features, output,
                         &tot_weight, &tot_accuracy,
                         config_.compute_per_dim_accuracy ? 
-                          &totals.tot_weight_vec : NULL,
+                          &acc_totals.tot_weight_vec : NULL,
                         config_.compute_per_dim_accuracy ? 
-                          &totals.tot_objective_vec : NULL);
-        totals.tot_weight += tot_weight;
-        totals.tot_objective += tot_accuracy;
+                          &acc_totals.tot_objective_vec : NULL);
+        acc_totals.tot_weight += tot_weight;
+        acc_totals.tot_objective += tot_accuracy;
       }
     }
   }

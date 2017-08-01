@@ -188,11 +188,11 @@ class NnetComputeProb {
                      indexes r such that the maximum column index of row r of
                      supervision and nnet_output is the same, of the sum of 
                      the r'th row of supervision (i.e. the row's weight).
-   @param [out] *tot_weight_vec  We write to this location
+   @param [out] tot_weight_vec  If non-NULL, we write to this location
                     the counts per-class in the supervision matrix.
                     This is expected to have the same dimension as the 
                     corresponding output in the network. 
-   @param [out] *tot_accuracy_vec  We write to this location 
+   @param [out] tot_accuracy_vec  If non-NULL, we write to this location 
                     the accuracy per-class. For index j, 
                     the value is equal to the sum 
                     over all row indexes r such that the maximum column index 

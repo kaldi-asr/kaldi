@@ -39,7 +39,8 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     po.Register("length-tolerance", &length_tolerance,
-                "Tolerate this many frames of length mismatch");
+                "Tolerate this many frames of length mismatch between "
+                "posteriors and weights");
 
     po.Read(argc, argv);
 

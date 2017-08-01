@@ -131,6 +131,8 @@ function do_filtering {
      awk '{print $1;}' $destdir/wav.scp | sort | uniq > $destdir/reco
      [ -f $srcdir/reco2file_and_channel ] && \
        utils/filter_scp.pl $destdir/reco <$srcdir/reco2file_and_channel >$destdir/reco2file_and_channel
+     
+     rm $destdir/reco
   fi
   srcutts=`cat $srcdir/utt2spk | wc -l`
   destutts=`cat $destdir/utt2spk | wc -l`

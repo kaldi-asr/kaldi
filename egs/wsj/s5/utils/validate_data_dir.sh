@@ -26,9 +26,13 @@ for x in `seq 4`; do
 done
 
 if [ $# -ne 1 ]; then
-  echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] <data-dir>"
+  echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] [--no-spk-sort] <data-dir>"
   echo "The --no-xxx options mean that the script does not require "
   echo "xxx.scp to be present, but it will check it if it is present."
+  echo "--no-spk-sort means that the script does not require the utt2spk to be "
+  echo "sorted by the speaker-id in addition to being sorted by utterance-id."
+  echo "By default, utt2spk is expected to be sorted by both, which can be "
+  echo "achieved by making the speaker-id prefixes of the utterance-ids"
   echo "e.g.: $0 data/train"
   exit 1;
 fi

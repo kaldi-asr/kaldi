@@ -35,7 +35,9 @@ class NnetComputerFromEg {
       nnet_(nnet), compiler_(nnet) { }
 
   // Compute the output (which will have the same number of rows as the number
-  // of Indexes in the output of the eg), and put it in "output".
+  // of Indexes in the output with the name 'output_name' of the eg), 
+  // and put it in "output".
+  // An output with the name 'output_name' is expected to exist in the network.
   void Compute(const NnetExample &eg, const std::string &output_name, 
                Matrix<BaseFloat> *output) {
     ComputationRequest request;

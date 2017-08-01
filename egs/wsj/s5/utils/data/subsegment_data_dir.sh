@@ -141,7 +141,7 @@ if [ -f $srcdir/feats.scp ]; then
   # We want to avoid recomputing the features.   We'll use sub-matrices of the
   # original feature matrices, using the [] notation that is available for
   # matrices in Kaldi.
-  frame_shift=$(utils/data/get_frame_shift.sh $srcdir)
+  frame_shift=$(utils/data/get_frame_shift.sh $srcdir) || exit 1
   echo "$0: note: frame shift is $frame_shift [affects feats.scp]"
   
   # The subsegments format is <new-utt-id> <old-utt-id> <start-time> <end-time>.
@@ -188,9 +188,12 @@ if [ -f $srcdir/feats.scp ]; then
     utils/data/fix_subsegment_feats.pl $dir/utt2max_frames | \
     utils/data/normalize_data_range.pl >$dir/feats.scp || { echo "Failed to create $dir/feats.scp" && exit; }
   
+  # Parse the frame ranges from feats.scp, which is in the form of [first-frame:last-frame]
+  # and write the number-of-frames = last-frame - first-frame + 1 for the utterance.
   cat $dir/feats.scp | perl -ne 'm/^(\S+) .+\[(\d+):(\d+)\]$/; print "$1 " . ($3-$2+1) . "\n"' > \
     $dir/utt2num_frames
 
+  # Here we add frame ranges to the elements of vad.scp, as we did for rows of feats.scp above.
   if [ -f $srcdir/vad.scp ]; then
     cat $subsegments | awk -v s=$frame_shift '{print $1, $2, int(($3/s)+0.5), int(($4/s)-0.5);}' | \
       utils/apply_map.pl -f 2 $srcdir/vad.scp | \

@@ -182,10 +182,10 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     po.Register("compress", &compress, "If true, write egs with input features "
-                "in compressed format (recommended).  Update: this is now "
+                "in compressed format (recommended).  Update: this is "
                 "only relevant if the features being read are un-compressed; "
                 "if already compressed, we keep we same compressed format when "
-                "dumping-egs.");
+                "dumping egs.");
     po.Register("num-targets", &num_targets, "Output dimension in egs, "
                 "only used to check targets have correct dim if supplied.");
     po.Register("ivectors", &online_ivector_rspecifier, "Alias for "
@@ -199,8 +199,8 @@ int main(int argc, char *argv[]) {
                 "difference in num-frames between feat and ivector matrices");
     po.Register("targets-length-tolerance", &targets_length_tolerance, 
                 "Tolerance for "
-                "difference in num-frames after subsampling between "
-                "feat and target matrices");
+                "difference in num-frames (after subsampling) between "
+                "feature and target matrices");
     eg_config.Register(&po);
 
     po.Read(argc, argv);

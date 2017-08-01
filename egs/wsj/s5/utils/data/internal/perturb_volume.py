@@ -21,8 +21,8 @@ def get_args():
         a new wav.scp file.
         If --reco2vol is provided, then for each recording, the volume factor
         specified in that file is applied.
-        Otherwise, a volume factor is chosen randomly between
-        --scale-low and --scale-high.
+        Otherwise, a volume factor is chosen randomly from a uniform
+        distribution between --scale-low and --scale-high.
         """)
 
     parser.add_argument("--scale-low", type=float, default=0.125,

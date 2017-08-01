@@ -7,6 +7,7 @@ if [ $# -ne 2 ]; then
   echo "This script adds a sox line in wav.scp to resample the audio at a "
   echo "different sampling-rate"
   echo "Usage: $0 <frequency> <data-dir>"
+  echo " e.g.: $0 8000 data/dev"
   exit 1
 fi
 

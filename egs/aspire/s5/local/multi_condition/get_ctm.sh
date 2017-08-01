@@ -63,7 +63,7 @@ lattice-to-ctm-conf $frame_shift_opt --decode-mbr=$decode_mbr ark:- $decode_dir/
 ctm=$decode_dir/score_$LMWT/penalty_$wip/ctm.overlapping
 # combine the segment-wise ctm files, while resolving overlaps
 if $resolve_overlaps; then
-  steps/resolve_ctm_overlaps.py $data_dir/segments \
+  utils/ctm/resolve_ctm_overlaps.py $data_dir/segments \
     $decode_dir/score_$LMWT/penalty_$wip/ctm.overlapping \
     $decode_dir/score_$LMWT/penalty_$wip/ctm.merged || exit 1;
   ctm=$decode_dir/score_$LMWT/penalty_$wip/ctm.merged

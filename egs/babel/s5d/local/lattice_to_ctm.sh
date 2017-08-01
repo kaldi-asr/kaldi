@@ -63,7 +63,7 @@ mkdir -p $dir/scoring/log
 resolve_overlaps_cmd="cat"
 
 if $resolve_overlaps; then
-  resolve_overlaps_cmd="steps/resolve_ctm_overlaps.py $data/segments - -"
+  resolve_overlaps_cmd="utils/ctm/resolve_ctm_overlaps.py $data/segments - -"
 fi
 
 if [ $stage -le 0 ]; then
