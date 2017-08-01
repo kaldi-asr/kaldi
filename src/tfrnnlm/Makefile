@@ -1,4 +1,4 @@
-# Tis directory is not compiled automatically when you do make under src/
+# This directory is not compiled automatically when you do make under src/
 # to compile the TensorFlow related code,
 
 # you would need to run tools/extras/install_tensorflow_cc.sh first to generate
@@ -16,7 +16,9 @@ TENSORFLOW = ../../tools/tensorflow
 
 all:
 
-EXTRA_CXXFLAGS = -Wno-sign-compare -I$(TENSORFLOW)/bazel-tensorflow/external/protobuf/src -I$(TENSORFLOW)/bazel-genfiles -I$(TENSORFLOW) -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/eigen/
+EXTRA_CXXFLAGS = -Wno-sign-compare -I$(TENSORFLOW)/bazel-tensorflow/external/protobuf/src \
+                 -I$(TENSORFLOW)/bazel-genfiles -I$(TENSORFLOW) \
+                 -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/eigen/
 
 OBJFILES = tensorflow-rnnlm.o
 

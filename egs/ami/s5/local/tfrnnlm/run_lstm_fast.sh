@@ -1,8 +1,12 @@
 #!/bin/bash
 mic=ihm
-ngram_order=3
+ngram_order=4 # this option when used, the rescoring binary makes an approximation
+    # to merge the states of the FST generated from RNNLM. e.g. if ngram-order = 4
+    # then any history that shares last 3 words would be merged into one state
 stage=1
-weight=0.5
+weight=0.5   # when we do lattice-rescoring, instead of replacing the lm-weights
+    # in the lattice with RNNLM weights, we usually do a linear combination of
+    # the 2 and the $weight variable indicates the weight for the RNNLM scores
 
 . ./utils/parse_options.sh
 . ./cmd.sh
@@ -13,6 +17,8 @@ set -e
 dir=data/tensorflow_fast_lstm
 mkdir -p $dir
 
+steps/tfrnnlm/check_tensorflow_installed.sh
+
 if [ $stage -le 1 ]; then
   local/tfrnnlm/rnnlm_data_prep.sh $dir
 fi
@@ -20,7 +26,7 @@ fi
 mkdir -p $dir
 if [ $stage -le 2 ]; then
 # the following script uses TensorFlow. You could use tools/extras/install_tensorflow_py.sh to install it
-  python steps/tfrnnlm/lstm_fast.py --data_path=$dir --save_path=$dir/rnnlm --vocab_path=$dir/wordlist.rnn.final
+  $tfrnnlm_py_cmd $dir/train_rnnlm.log python steps/tfrnnlm/lstm_fast.py --data-path=$dir --save-path=$dir/rnnlm --vocab-path=$dir/wordlist.rnn.final
 fi
 
 final_lm=ami_fsh.o3g.kn

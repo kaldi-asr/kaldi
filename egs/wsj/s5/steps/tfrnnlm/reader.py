@@ -1,5 +1,5 @@
 # Copyright 2015 The TensorFlow Authors. All Rights Reserved.
-#           2017 Hainan Xu, adapted to be used in Kaldi for lattice rescoring
+# Copyright (C) 2017 Intellisist, Inc. (Author: Hainan Xu)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

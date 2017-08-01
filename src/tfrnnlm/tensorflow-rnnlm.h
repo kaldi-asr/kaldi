@@ -1,6 +1,6 @@
 // tensorflow-rnnlm-lib.h
 
-// Copyright         2017 Hainan Xu
+// Copyright (C) 2017 Intellisist, Inc. (Author: Hainan Xu)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -17,11 +17,12 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_TENSORFLOW_RNNLM_H_
-#define KALDI_TENSORFLOW_RNNLM_H_
+#ifndef KALDI_TFRNNLM_TENSORFLOW_RNNLM_H_
+#define KALDI_TFRNNLM_TENSORFLOW_RNNLM_H_
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include "util/stl-utils.h"
 #include "base/kaldi-common.h"
 #include "fstext/deterministic-fst.h"
@@ -42,81 +43,80 @@ struct KaldiTfRnnlmWrapperOpts {
 
   void Register(OptionsItf *opts) {
     opts->Register("unk-symbol", &unk_symbol, "Symbol for out-of-vocabulary "
-                   "words in rnnlm. (default = <oos>)");
+                   "words in rnnlm.");
     opts->Register("num-threads", &num_threads, "Number of threads for TF computation; "
-                   "0 means unlimited. (default = 1)");
+                   "0 means unlimited.");
   }
 };
 
-// this class wrapps the tensorflow based RNNLM and provides a set of interfaces
-// used in an OnDemandFST class used in lattice-rescoring
-//
+/**
+This class wraps the TensorFlow based RNNLM, and provides a set of interfaces
+to be used for class TfRnnlmDeterministicFst, implemented later in this file
+*/
 class KaldiTfRnnlmWrapper {
  public:
-  // usually FSTs and the RNNLM would have different wordlists so we have 2
-  // wordlist files in the constructor, and also this requires an OOS symbol for
-  // RNNLM, which all words in the FST wordlist that are not present in the RNNLM
-  // wordlist would map to. 
+
+  /// constructor
+  /// opts specify symbol for <unk> and num-threads for computation
+  /// rnn_wordlist specifies a wordlist file with format
+  ///        [int-word-id] [word]
+  ///     the word <oos> must appear in this file
   //
-  // Even though FST wordlist we usually reserve 0 for the eps symbol, we don't
-  // need that for RNNLM. RNNLM word list is 0-based. Every word in the RNNLM
-  // wordlist must be in the FST wordlist, with the exception of the OOS symbol.
-  // (see above).
-  //
-  // The probabilities for FST words that map to OOS symbols is
-  // computed like the following:
-  // if unk_prop_file is not an empty string, it should provide unigram-count
-  // information of OOS words, and we will distribute the OOS word probability
-  // in proportional to the counts; if it's not specified we will distribute it
-  // uniformly
+  /// word_symbol_table_rxfilename points to a standard word-list file in OpenFST style
+  /// unk_prob_file has the format
+  ///        [word]  [prob or count]  (it auto-normalizes the probabilities)
+  /// tf_model_path is the location of the TensorFlow model
   KaldiTfRnnlmWrapper(const KaldiTfRnnlmWrapperOpts &opts,
                       const std::string &rnn_wordlist,
                       const std::string &word_symbol_table_rxfilename,
                       const std::string &unk_prob_file,
                       const std::string &tf_model_path);
-
   ~KaldiTfRnnlmWrapper() {
     session_->Close();
   }
 
   int32 GetEos() const { return eos_; }
 
-  // get an all-zero Tensor of the size that matches the hidden state of the TF model
+  /// get an all-zero Tensor of the size that matches the hidden state of the TF model
   const Tensor& GetInitialContext() const;
 
-  // get the 2nd-to-last layer of RNN when feeding input of
-  // (initial-context, sentence-boundary)
-  // "cell" is short for "(last)cell-output"; calling it "cell" here because in
-  // later functions we have function GetLogProb() where we need to pass in
-  // one "cell" as input and another as output; to avoid confusing we use a single
-  // word "cell" for that instead of things like cell_out_in and cell_out_out. 
+  /// get the 2nd-to-last layer of RNN when feeding input of
+  /// (initial-context, sentence-boundary)
+  /// "cell" is short for "(last)cell-output"; calling it "cell" here because in
+  /// later functions we have function GetLogProb() where we need to pass in
+  /// one "cell" as input and another as output; to avoid confusing we use a single
+  /// word "cell" for that instead of things like cell_out_in and cell_out_out.
   const Tensor& GetInitialCell() const;
 
-  // compute p(word | wseq) and return the log of that
-  // the computation used the input cell,
-  // which is the 2nd-to-last layer of the RNNLM associated with history wseq;
-  //
-  // and we generate (context_out, new_cell) by passing (context_in, word)
-  // into the TensorFlow session that manages the RNNLM
-  // if the last 2 pointers are NULL we don't query them in TF session
-  // e.g. in the case of computing p(</s>|some history)
-  BaseFloat GetLogProb(int32 word, // need the FST word label for computing OOS cost
-                       int32 fst_word,
-                       const Tensor &context_in,  // context to pass into RNN
+  /// compute p(word | wseq) and return the log of that
+  /// the computation used the input cell,
+  /// which is the 2nd-to-last layer of the RNNLM associated with history wseq;
+  ///
+  /// and we generate (context_out, new_cell) by passing (context_in, word)
+  /// into the TensorFlow session that manages the RNNLM
+  /// if the last 2 pointers are NULL we don't query them in TF session
+  /// e.g. in the case of computing p(</s>|some history)
+  BaseFloat GetLogProb(int32 word,      // word id in RNN wordlist
+                       int32 fst_word,  // FST word label, only for computing OOS cost
+                       const Tensor &context_in,
                        const Tensor &cell_in,
                        Tensor *context_out,
-                       Tensor *new_cell);
+                       Tensor *cell_out);
 
+  /// takes in a word-id for FST and return the word-id for RNNLM
+  /// return the word-id for <oos> if not found
   int FstLabelToRnnLabel(int i) const;
 
  private:
+  /// read the TensorFlow model and create the session for computation
+  /// num-threads need to be specified in creating the session
   void ReadTfModel(const std::string &tf_model_path, int32 num_threads);
 
-  // do queries on the session to get the initial tensors (cell + context)
+  /// do queries on the session to get the initial tensors (cell + context)
   void AcquireInitialTensors();
 
-  // since usually we have a smaller vocab in RNN than the whole vocab,
-  // we use this mapping during rescoring
+  /// since usually we have a smaller vocab in RNN than the whole vocab,
+  /// we use this mapping during rescoring
   std::vector<int> fst_label_to_rnn_label_;
   std::vector<std::string> rnn_label_to_word_;
   std::vector<std::string> fst_label_to_word_;
@@ -176,4 +176,4 @@ class TfRnnlmDeterministicFst:
 }  // namespace tf_rnnlm
 }  // namespace kaldi
 
-#endif  // KALDI_LM_TENSORFLOW_LIB_H_
+#endif  // KALDI_TFRNNLM_TENSORFLOW_RNNLM_H_

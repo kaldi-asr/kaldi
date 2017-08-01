@@ -1,6 +1,6 @@
-// tensorflow-rnnlm-lib.cc
+// tensorflow-rnnlm.cc
 
-// Copyright 2017           Hainan Xu
+// Copyright (C) 2017 Intellisist, Inc. (Author: Hainan Xu)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -65,8 +65,9 @@ void KaldiTfRnnlmWrapper::ReadTfModel(const std::string &tf_model_path,
   string graph_path = tf_model_path + ".meta";
 
   tensorflow::SessionOptions session_options;
-  session_options.config.set_intra_op_parallelism_threads(num_threads); // limit parallelism within jobs
-  session_options.config.set_inter_op_parallelism_threads(num_threads); // limit parallelism within jobs
+
+  session_options.config.set_intra_op_parallelism_threads(num_threads);
+  session_options.config.set_inter_op_parallelism_threads(num_threads);
 
   Status status = tensorflow::NewSession(session_options,
                                          &session_);
@@ -89,7 +90,7 @@ void KaldiTfRnnlmWrapper::ReadTfModel(const std::string &tf_model_path,
 
   Tensor checkpointPathTensor(tensorflow::DT_STRING, tensorflow::TensorShape());
   checkpointPathTensor.scalar<std::string>()() = tf_model_path;
-  
+
   status = session_->Run(
       {{graph_def.saver_def().filename_tensor_name(), checkpointPathTensor} },
       {},
@@ -120,7 +121,7 @@ KaldiTfRnnlmWrapper::KaldiTfRnnlmWrapper(
   for (int32 i = 0; i < fst_label_to_word_.size(); ++i) {
     fst_label_to_word_[i] = fst_word_symbols->Find(i);
     if (fst_label_to_word_[i] == "") {
-      KALDI_ERR << "Could not find word for integer " << i << "in the word "
+      KALDI_ERR << "Could not find word for integer " << i << " in the word "
           << "symbol table, mismatched symbol table or you have discoutinuous "
           << "integers in your symbol table?";
     }
@@ -139,13 +140,12 @@ KaldiTfRnnlmWrapper::KaldiTfRnnlmWrapper(
     eos_ = 0;
     while (ifile >> word) {
       id++;
-      rnn_label_to_word_.push_back(word); // vector[i] = word
+      rnn_label_to_word_.push_back(word);  // vector[i] = word
 
       int fst_label = fst_word_symbols->Find(word);
       if (fst::SymbolTable::kNoSymbol == fst_label) {
-        if (id == eos_) {
+        if (id == eos_)
           continue;
-        }
 
         KALDI_ASSERT(word == opts_.unk_symbol && oos_ == -1);
         oos_ = id;
@@ -159,7 +159,7 @@ KaldiTfRnnlmWrapper::KaldiTfRnnlmWrapper(
     KALDI_ASSERT(oos_ != -1);
   }
   num_rnn_words = rnn_label_to_word_.size();
-  
+
   // we must have an oos symbol in the wordlist
   if (oos_ == -1)
     return;
@@ -192,7 +192,7 @@ void KaldiTfRnnlmWrapper::AcquireInitialTensors() {
   {
     std::vector<Tensor> state;
     Tensor bosword(tensorflow::DT_INT32, {1, 1});
-    bosword.scalar<int32>()() = eos_; // eos_ is more like a sentence boundary
+    bosword.scalar<int32>()() = eos_;  // eos_ is more like a sentence boundary
 
     std::vector<std::pair<string, Tensor> > inputs = {
       {"Train/Model/test_word_in", bosword},
@@ -213,7 +213,6 @@ BaseFloat KaldiTfRnnlmWrapper::GetLogProb(int32 word,
                                           const Tensor &cell_in,
                                           Tensor *context_out,
                                           Tensor *new_cell) {
-
   std::vector<std::pair<string, Tensor> > inputs;
 
   Tensor thisword(tensorflow::DT_INT32, {1, 1});
@@ -260,10 +259,10 @@ BaseFloat KaldiTfRnnlmWrapper::GetLogProb(int32 word,
     ans = outputs[0].scalar<float>()();
   } else {
     if (unk_costs_.size() == 0) {
-      ans = outputs[0].scalar<float>()() - log (num_total_words - num_rnn_words);
+      ans = outputs[0].scalar<float>()() - log(num_total_words - num_rnn_words);
     } else {
       ans = outputs[0].scalar<float>()() + unk_costs_[fst_word];
-    } 
+    }
   }
 
   return ans;
@@ -314,9 +313,9 @@ fst::StdArc::Weight TfRnnlmDeterministicFst::Final(StateId s) {
 
   std::vector<Label> wseq = state_to_wseq_[s];
   BaseFloat logprob = rnnlm_->GetLogProb(rnnlm_->GetEos(),
-                                         -1, // only need type; this param will not be used
-                                         *state_to_context_[s],
-                                         *state_to_cell_[s], NULL, NULL);
+                         -1,  // only need type; this param will not be used
+                         *state_to_context_[s],
+                         *state_to_cell_[s], NULL, NULL);
   return Weight(-logprob);
 }
 

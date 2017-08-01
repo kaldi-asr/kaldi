@@ -1,4 +1,4 @@
-# Tis directory is not compiled automatically when you do make under src/
+# This directory is not compiled automatically when you do make under src/
 # to compile the TensorFlow related code, do the following:
 
 # you would need to run tools/extras/install_tensorflow_cc.sh first to generate
@@ -14,7 +14,9 @@ TENSORFLOW = $(shell pwd)/../../tools/tensorflow
 
 all:
 
-EXTRA_CXXFLAGS = -Wno-sign-compare -I$(TENSORFLOW)/bazel-tensorflow/external/protobuf/src -I$(TENSORFLOW)/bazel-genfiles -I$(TENSORFLOW) -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/eigen/ -Wl,-rpath=$(shell pwd)/../../tools/tensorflow/bazel-bin/tensorflow/
+EXTRA_CXXFLAGS = -Wno-sign-compare -I$(TENSORFLOW)/bazel-tensorflow/external/protobuf/src \
+                 -I$(TENSORFLOW)/bazel-genfiles -I$(TENSORFLOW) \
+                 -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/eigen/
 include ../kaldi.mk
 
 BINFILES = lattice-lmrescore-tf-rnnlm
@@ -30,7 +32,8 @@ ADDLIBS = ../lat/kaldi-lat.a ../lm/kaldi-lm.a ../fstext/kaldi-fstext.a \
           $(shell pwd)/../../tools/tensorflow/bazel-bin/tensorflow/libtensorflow_cc.so
 
 LDLIBS +=  -lz -ldl -fPIC -lrt
-#LDLIBS += -rpath,$(shell pwd)/../../tools/tensorflow/bazel-bin/tensorflow/
 LDLIBS += -L$(TENSORFLOW)/bazel-bin/tensorflow -ltensorflow_cc
+
+LDFLAGS += -Wl,-rpath=$(shell pwd)/../../tools/tensorflow/bazel-bin/tensorflow/
 
 include ../makefiles/default_rules.mk

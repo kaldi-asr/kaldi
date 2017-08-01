@@ -1,5 +1,5 @@
 # Copyright 2015 The TensorFlow Authors. All Rights Reserved.
-#           2017 Hainan Xu, adapted to be used in Kaldi for lattice rescoring
+# Copyright (C) 2017 Intellisist, Inc. (Author: Hainan Xu)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 
 # this script trains a vanilla RNNLM with TensorFlow. 
 # to call the script, do
-# python steps/tfrnnlm/vanilla_rnnlm.py --data_path=$datadir \
-#        --save_path=$savepath --vocab_path=$rnn.wordlist [--hidden_size=$size]
+# python steps/tfrnnlm/vanilla_rnnlm.py --data-path=$datadir \
+#        --save-path=$savepath --vocab-path=$rnn.wordlist [--hidden-size=$size]
 #
 # One example recipe is at egs/ami/s5/local/tfrnnlm/run_vanilla_rnnlm.sh
 
@@ -38,15 +38,15 @@ import reader
 flags = tf.flags
 logging = tf.logging
 
-flags.DEFINE_integer("hidden_size", 200, "hidden dim of RNN")
+flags.DEFINE_integer("hidden-size", 200, "hidden dim of RNN")
 
-flags.DEFINE_string("data_path", None,
+flags.DEFINE_string("data-path", None,
                     "Where the training/test data is stored.")
-flags.DEFINE_string("vocab_path", None,
+flags.DEFINE_string("vocab-path", None,
                     "Where the wordlist file is stored.")
-flags.DEFINE_string("save_path", None,
+flags.DEFINE_string("save-path", None,
                     "Model output directory.")
-flags.DEFINE_bool("use_fp16", False,
+flags.DEFINE_bool("use-fp16", False,
                   "Train using 16-bit floats instead of 32bit floats")
 
 FLAGS = flags.FLAGS
@@ -69,7 +69,7 @@ def data_type():
   return tf.float16 if FLAGS.use_fp16 else tf.float32
 
 
-class RNNLMInput(object):
+class RnnlmInput(object):
   """The input data."""
 
   def __init__(self, config, data, name=None):
@@ -79,7 +79,7 @@ class RNNLMInput(object):
     self.input_data, self.targets = reader.rnnlm_producer(
         data, batch_size, num_steps, name=name)
 
-class RNNLMModel(object):
+class RnnlmModel(object):
   """The RNNLM model."""
 
   def __init__(self, is_training, config, input_):
@@ -291,16 +291,16 @@ def main(_):
                                                 config.init_scale)
 
     with tf.name_scope("Train"):
-      train_input = RNNLMInput(config=config, data=train_data, name="TrainInput")
+      train_input = RnnlmInput(config=config, data=train_data, name="TrainInput")
       with tf.variable_scope("Model", reuse=None, initializer=initializer):
-        m = RNNLMModel(is_training=True, config=config, input_=train_input)
+        m = RnnlmModel(is_training=True, config=config, input_=train_input)
       tf.summary.scalar("Training Loss", m.cost)
       tf.summary.scalar("Learning Rate", m.lr)
 
     with tf.name_scope("Valid"):
-      valid_input = RNNLMInput(config=config, data=valid_data, name="ValidInput")
+      valid_input = RnnlmInput(config=config, data=valid_data, name="ValidInput")
       with tf.variable_scope("Model", reuse=True, initializer=initializer):
-        mvalid = RNNLMModel(is_training=False, config=config, input_=valid_input)
+        mvalid = RnnlmModel(is_training=False, config=config, input_=valid_input)
       tf.summary.scalar("Validation Loss", mvalid.cost)
 
     sv = tf.train.Supervisor(logdir=FLAGS.save_path)

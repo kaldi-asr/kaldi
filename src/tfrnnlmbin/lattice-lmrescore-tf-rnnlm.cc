@@ -1,6 +1,6 @@
-// latbin/lattice-lmrescore-tf-rnnlm.cc
+// tfrnnlmbin/lattice-lmrescore-tf-rnnlm.cc
 
-// Copyright 2017  Hainan Xu
+// Copyright (C) 2017 Intellisist, Inc. (Author: Hainan Xu)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 6 && po.NumArgs() != 5) {
+    if (po.NumArgs() != 5 && po.NumArgs() != 6) {
       po.PrintUsage();
       exit(1);
     }
