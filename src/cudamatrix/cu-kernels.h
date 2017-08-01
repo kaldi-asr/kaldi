@@ -235,6 +235,33 @@ inline void cuda_add_rows(dim3 Gr, dim3 Bl, float alpha, float* dst,
                           MatrixDim dst_dim, int src_stride) {
   cudaF_add_rows(Gr, Bl, alpha, dst, src, reorder, dst_dim, src_stride);
 }
+inline void cuda_add_smat(dim3 Gr, dim3 Bl, double* mat, MatrixDim mat_dim,
+                          double alpha, const int* smat_row_ptr,
+                          const int* smat_col_idx, const double* smat_val) {
+  cudaD_add_smat(Gr, Bl, mat, mat_dim, alpha, smat_row_ptr, smat_col_idx,
+                 smat_val);
+}
+inline void cuda_add_smat(dim3 Gr, dim3 Bl, float* mat, MatrixDim mat_dim,
+                          float alpha, const int* smat_row_ptr,
+                          const int* smat_col_idx, const float* smat_val) {
+  cudaF_add_smat(Gr, Bl, mat, mat_dim, alpha, smat_row_ptr, smat_col_idx,
+                 smat_val);
+}
+inline void cuda_add_smat_trans(dim3 Gr, dim3 Bl, double* mat,
+                                MatrixDim mat_dim, double alpha,
+                                const int* smat_row_ptr,
+                                const int* smat_col_idx,
+                                const double* smat_val) {
+  cudaD_add_smat_trans(Gr, Bl, mat, mat_dim, alpha, smat_row_ptr, smat_col_idx,
+                       smat_val);
+}
+inline void cuda_add_smat_trans(dim3 Gr, dim3 Bl, float* mat, MatrixDim mat_dim,
+                                float alpha, const int* smat_row_ptr,
+                                const int* smat_col_idx,
+                                const float* smat_val) {
+  cudaF_add_smat_trans(Gr, Bl, mat, mat_dim, alpha, smat_row_ptr, smat_col_idx,
+                       smat_val);
+}
 inline void cuda_add_to_rows(dim3 Gr, dim3 Bl, double alpha,
                              double* const * dst, const double* src,
                              MatrixDim src_dim) {

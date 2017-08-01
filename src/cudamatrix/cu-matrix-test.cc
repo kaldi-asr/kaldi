@@ -7,6 +7,7 @@
 //           2013  Xiaohui Zhang
 //           2013  Johns Hopkins University (author: Guoguo Chen)
 //           2017  Hossein Hadian
+//           2017  Shiyin Kang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -697,6 +698,37 @@ static void UnitTestCuMatrixCopyCols() {
   }
 }
 
+template<typename Real>
+static void UnitTextCuMatrixAddSmat() {
+  for (int i = 0; i < 2; ++i) {
+    int rows = 10 + Rand() % 40;
+    int cols = 10 + Rand() % 50;
+    int srows = rows;
+    int scols = cols;
+
+    MatrixTransposeType trans = (i % 2 == 0) ? kNoTrans : kTrans;
+    if (trans == kTrans) {
+      std::swap(srows, scols);
+    }
+
+    Real alpha = 1;
+
+    Matrix<Real> mat(rows, cols);
+    mat.SetRandn();
+    CuMatrix<Real> cumat(mat);
+
+    SparseMatrix<Real> smat(srows, scols);
+    smat.SetRandn(0.5);
+    CuSparseMatrix<Real> cusmat(smat);
+
+    mat.AddSmat(alpha, smat, trans);
+    cumat.AddSmat(alpha, cusmat, trans);
+
+    Matrix<Real> mat2(cumat);
+
+    AssertEqual(mat, mat2);
+  }
+}
 
 template<typename Real>
 static void UnitTestCuMatrixAddCols() {
@@ -2730,6 +2762,7 @@ static void UnitTestCuMatrixEqualElementMask() {
 }
 
 template<typename Real> void CudaMatrixUnitTest() {
+  UnitTextCuMatrixAddSmat<Real>();
   UnitTestCuMatrixTraceMatMat<Real>();
   UnitTestCuMatrixObjfDeriv<Real>();
   //test CuMatrix<Real> methods by cross-check with Matrix

@@ -4,6 +4,7 @@
 //                       Microsoft Corporation;  Saarland University;
 //                       Yanmin Qian;  Petr Schwarz;  Jan Silovsky;
 //                       Haihua Xu
+//           2017        Shiyin Kang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -395,6 +396,34 @@ void MatrixBase<Real>::AddMat(const Real alpha, const MatrixBase<Real>& A,
     }
   }
 }
+
+/// *this += alpha * A [or A^T].
+template<typename Real>
+void MatrixBase<Real>::AddSmat(Real alpha, const SparseMatrix<Real> &A,
+                               MatrixTransposeType trans) {
+  if (trans == kNoTrans) {
+    KALDI_ASSERT(NumRows() == A.NumRows());
+    KALDI_ASSERT(NumCols() == A.NumCols());
+    for (int i = 0; i < A.NumRows(); ++i) {
+      const auto & row = A.Row(i);
+      for (int id = 0; id < row.NumElements(); ++id) {
+        (*this)(i, row.GetElement(id).first) += alpha
+            * row.GetElement(id).second;
+      }
+    }
+  } else {
+    KALDI_ASSERT(NumRows() == A.NumCols());
+    KALDI_ASSERT(NumCols() == A.NumRows());
+    for (int i = 0; i < A.NumRows(); ++i) {
+      const auto & row = A.Row(i);
+      for (int id = 0; id < row.NumElements(); ++id) {
+        (*this)(row.GetElement(id).first, i) += alpha
+            * row.GetElement(id).second;
+      }
+    }
+  }
+}
+
 
 template<typename Real>
 template<typename OtherReal>
