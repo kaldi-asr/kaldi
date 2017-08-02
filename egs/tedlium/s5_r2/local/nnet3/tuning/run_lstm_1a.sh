@@ -50,7 +50,7 @@ final_effective_lrate=0.00003
 num_jobs_initial=3
 num_jobs_final=15
 momentum=0.5
-num_chunk_per_minibatch=100
+num_chunk_per_minibatch=128,64
 samples_per_iter=20000
 remove_egs=true
 
@@ -114,7 +114,7 @@ if [ $stage -le 12 ]; then
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  fixed-affine-layer name=lda delay=$label_delay input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
   fast-lstmp-layer name=fastlstm1 delay=-1 $lstm_opts
@@ -148,6 +148,8 @@ if [ $stage -le 13 ]; then
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=$chunk_left_context \
     --egs.chunk-right-context=$chunk_right_context \
+    --egs.chunk-left-context-initial=0 \
+    --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
     --cleanup.remove-egs=$remove_egs \
     --cleanup.preserve-model-interval=1 \
@@ -169,6 +171,8 @@ if [ $stage -le 14 ]; then
     steps/nnet3/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
         --extra-left-context $extra_left_context \
         --extra-right-context $extra_right_context \
+        --extra-left-context-initial 0 \
+        --extra-right-context-final 0 \
         --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
       ${graph_dir} data/${dset}_hires ${dir}/decode_${dset} || exit 1
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
