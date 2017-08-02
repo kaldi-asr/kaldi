@@ -99,7 +99,7 @@ done
 if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
-  num_targets=$(tree-info $treedir/tree | grep num-pdfs | awk '{print $2}')
+  num_targets=$(tree-info $gmm_dir/tree | grep num-pdfs | awk '{print $2}')
   [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
 
   lstm_opts="decay-time=20 cell-dim=$cell_dim"
