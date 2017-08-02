@@ -62,7 +62,7 @@ fi
 
 frame_shift=$(cat $dir/frame_shift)
 if [ -z "$frame_shift" ]; then
-  echo "$0: Could not read get frame shift from directory $dir"
+  echo "$0: Could not read get frame shift from directory $dir" 1>&2
   exit 1
 fi
 

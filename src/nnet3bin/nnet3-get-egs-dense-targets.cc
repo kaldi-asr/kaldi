@@ -182,7 +182,7 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     po.Register("compress", &compress, "If true, write egs with input features "
-                "in compressed format (recommended).  Update: this is "
+                "in compressed format (recommended).  This is "
                 "only relevant if the features being read are un-compressed; "
                 "if already compressed, we keep we same compressed format when "
                 "dumping egs.");

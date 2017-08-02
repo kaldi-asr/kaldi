@@ -36,7 +36,7 @@ class NnetComputerFromEg {
 
   // Compute the output (which will have the same number of rows as the number
   // of Indexes in the output with the name 'output_name' of the eg), 
-  // and put it in "output".
+  // and put it in "*output".
   // An output with the name 'output_name' is expected to exist in the network.
   void Compute(const NnetExample &eg, const std::string &output_name, 
                Matrix<BaseFloat> *output) {
@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
     po.Register("apply-exp", &apply_exp, "If true, apply exp function to "
                 "output");
     po.Register("output-name", &output_name, "Do computation for "
-                "specified output");
+                "specified output-node");
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
 
