@@ -120,8 +120,6 @@ if [ $stage -le 12 ]; then
   fast-lstmp-layer name=fastlstm1 delay=-1 $lstm_opts
   fast-lstmp-layer name=fastlstm2 delay=-2 $lstm_opts
   fast-lstmp-layer name=fastlstm3 delay=-3 $lstm_opts
-
-  ## adding the layers for chain branch
   output-layer name=output output-delay=$label_delay dim=$num_targets max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs || exit 1
