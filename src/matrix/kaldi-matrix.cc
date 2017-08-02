@@ -397,7 +397,6 @@ void MatrixBase<Real>::AddMat(const Real alpha, const MatrixBase<Real>& A,
   }
 }
 
-/// *this += alpha * A [or A^T].
 template<typename Real>
 void MatrixBase<Real>::AddSmat(Real alpha, const SparseMatrix<Real> &A,
                                MatrixTransposeType trans) {
@@ -424,6 +423,44 @@ void MatrixBase<Real>::AddSmat(Real alpha, const SparseMatrix<Real> &A,
   }
 }
 
+template<typename Real>
+void MatrixBase<Real>::AddMatSmat(Real alpha, const MatrixBase<Real> &A,
+                                  const SparseMatrix<Real> &B,
+                                  MatrixTransposeType transB, Real beta) {
+  if (transB == kNoTrans) {
+    KALDI_ASSERT(NumRows() == A.NumRows());
+    KALDI_ASSERT(NumCols() == B.NumCols());
+    KALDI_ASSERT(A.NumCols() == B.NumRows());
+
+    Matrix<Real> buf(NumRows(), NumCols(), kSetZero);
+    for (int i = 0; i < NumRows(); ++i) {
+      for (int k = 0; k < B.NumRows(); ++k) {
+        for (int e = 0; e < B.Row(k).NumElements(); ++e) {
+          int j = B.Row(k).GetElement(e).first;
+          buf(i, j) += A(i, k) * B.Row(k).GetElement(e).second;
+        }
+      }
+    }
+    this->Scale(beta);
+    this->AddMat(alpha, buf);
+  } else {
+    KALDI_ASSERT(NumRows() == A.NumRows());
+    KALDI_ASSERT(NumCols() == B.NumRows());
+    KALDI_ASSERT(A.NumCols() == B.NumCols());
+
+    Matrix<Real> buf(NumRows(), NumCols(), kSetZero);
+    for (int i = 0; i < NumRows(); ++i) {
+      for (int j = 0; j < B.NumRows(); ++j) {
+        for (int e = 0; e < B.Row(j).NumElements(); ++e) {
+          int k = B.Row(j).GetElement(e).first;
+          buf(i, j) += A(i, k) * B.Row(j).GetElement(e).second;
+        }
+      }
+    }
+    this->Scale(beta);
+    this->AddMat(alpha, buf);
+  }
+}
 
 template<typename Real>
 template<typename OtherReal>

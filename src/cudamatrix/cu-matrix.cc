@@ -1009,6 +1009,45 @@ void CuMatrixBase<Real>::AddSmat(Real alpha, const CuSparseMatrix<Real> &A,
 
 
 template<typename Real>
+void CuMatrixBase<Real>::AddMatSmat(Real alpha, const CuMatrixBase<Real> &A,
+                                    const CuSparseMatrix<Real> &B,
+                                    MatrixTransposeType transB, Real beta) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (transB == kNoTrans) {
+      KALDI_ASSERT(NumRows() == A.NumRows());
+      KALDI_ASSERT(NumCols() == B.NumCols());
+      KALDI_ASSERT(A.NumCols() == B.NumRows());
+    } else {
+      KALDI_ASSERT(NumRows() == A.NumRows());
+      KALDI_ASSERT(NumCols() == B.NumRows());
+      KALDI_ASSERT(A.NumCols() == B.NumCols());
+    }
+
+    CuTimer tim;
+
+    cusparseMatDescr_t descr;
+    CU_SAFE_CALL(cusparseCreateMatDescr(&descr));
+    CU_SAFE_CALL(
+        cusparse_csrmm(
+            GetCusparseHandle(),
+            transB == kNoTrans ?
+                CUSPARSE_OPERATION_TRANSPOSE : CUSPARSE_OPERATION_NON_TRANSPOSE,
+            B.NumRows(), NumRows(), B.NumCols(), B.NumElements(), &alpha, descr,
+            B.CsrVal(), B.CsrRowPtr(), B.CsrColIdx(), A.Data(), A.Stride(),
+            &beta, Data(), Stride()));
+    CU_SAFE_CALL(cusparseDestroyMatDescr(descr));
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    Mat().AddMatSmat(alpha, A.Mat(), B.Mat(), transB, beta);
+  }
+}
+
+
+template<typename Real>
 void CuMatrixBase<Real>::AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,
                                       MatrixTransposeType transA) {
   if (num_rows_ == 0 || num_cols_ == 0) return;
