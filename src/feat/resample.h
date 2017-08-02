@@ -248,11 +248,18 @@ class LinearResample {
                                        ///< previously seen input signal.
 };
 
-/// Downsample a waveform.  This is a convenience wrapper for the
-/// class 'LinearResample'
-/// The low-pass filter cutoff used in 'LinearResample' is 0.995 of half of the
-/// new_freq and num_zeros is 10.
+/// Downsample a waveform. This is a convenience wrapper for the
+/// class 'LinearResample'.
+/// The low-pass filter cutoff used in 'LinearResample' is 0.99 of half of the
+/// new_freq and num_zeros is 6.
+/// The downsampling results is also checked wit sox resampling toolkit.
+/// Sox design is inspired by Laurent De Soras' paper,
 /// https://ccrma.stanford.edu/~jos/resample/Implementation.html
+/// It designs low pass filter using pass-band, stop-band, Nyquist freq
+/// and stop-band attenuation.
+/// e.g. The mainlob for Hanning window is 4pi/M, where the main-lobe width is
+/// equal to (pass-band-freq - stop-band-freq).
+/// Also the cutoff frequency is equal to (pass-band-freq - stop-band-freq).
 void DownsampleWaveForm(BaseFloat orig_freq, const VectorBase<BaseFloat> &wave,
                         BaseFloat new_freq, Vector<BaseFloat> *new_wave);
 

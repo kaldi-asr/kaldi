@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
                    "needed if the vtln-map option is used.");
     RandomAccessBaseFloatReaderMapped vtln_map_reader(vtln_map_rspecifier,
                                                       utt2spk_rspecifier);
-    
+
     if (output_format == "kaldi") {
       if (!kaldi_writer.Open(output_wspecifier))
         KALDI_ERR << "Could not initialize output with wspecifier "

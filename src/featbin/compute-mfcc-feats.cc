@@ -135,13 +135,13 @@ int main(int argc, char *argv[]) {
       } else {
         vtln_warp_local = vtln_warp;
       }
-      /*
-      if (mfcc_opts.frame_opts.samp_freq != wave_data.SampFreq())
+
+      if (mfcc_opts.frame_opts.samp_freq > wave_data.SampFreq())
         KALDI_ERR << "Sample frequency mismatch: you specified "
-                  << mfcc_opts.frame_opts.samp_freq << " but data has "
-                  << wave_data.SampFreq() << " (use --sample-frequency "
-                  << "option).  Utterance is " << utt;
-      */
+                  << mfcc_opts.frame_opts.samp_freq << " larger than data sample freq "
+                  << wave_data.SampFreq() << ". It is allowed downsample the data "
+                  << "using --allow-downsample option).  Utterance is " << utt;
+
       SubVector<BaseFloat> waveform(wave_data.Data(), this_chan);
       Matrix<BaseFloat> features;
       try {

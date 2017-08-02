@@ -40,8 +40,8 @@ void OfflineFeatureTpl<F>::ComputeFeatures(
       if (! computer_.GetFrameOptions().allow_downsample)
         KALDI_ERR << "Waveform and config sample Frequency mismatch: "
                   << sample_freq << " .vs " << new_sample_freq
-                  << "--allow_downsample should be true to allow "
-                  << " downsampling the waveform.";
+                  << " ( use --allow_downsample=true option to allow "
+                  << " downsampling the waveform).";
 
       // Downsample the waveform.
       Vector<BaseFloat> downsampled_wave(wave);

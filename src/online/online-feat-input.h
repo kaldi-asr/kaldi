@@ -311,8 +311,6 @@ OnlineFeInput<E>::Compute(Matrix<BaseFloat> *output) {
 
   bool ans = source_->Read(&read_samples);
 
-  Vector<BaseFloat> all_samples(read_samples);
-
   // Extract the features
   if (read_samples.Dim() >= frame_size_) {
     extractor_->Compute(read_samples, 1.0, output);
