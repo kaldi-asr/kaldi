@@ -711,7 +711,7 @@ static void UnitTextCuMatrixAddSmat() {
       std::swap(srows, scols);
     }
 
-    Real alpha = 1;
+    Real alpha = 0.345;
 
     Matrix<Real> mat(rows, cols);
     mat.SetRandn();
@@ -727,6 +727,44 @@ static void UnitTextCuMatrixAddSmat() {
     Matrix<Real> mat2(cumat);
 
     AssertEqual(mat, mat2);
+  }
+}
+
+template<typename Real>
+static void UnitTextCuMatrixAddMatSmat() {
+  for (int i = 0; i < 2; ++i) {
+    int m = 10 + Rand() % 40;
+    int k = 10 + Rand() % 60;
+    int n = 10 + Rand() % 50;
+    int srows = k;
+    int scols = n;
+
+    MatrixTransposeType trans = (i % 2 == 0) ? kNoTrans : kTrans;
+    if (trans == kTrans) {
+      std::swap(srows, scols);
+    }
+
+    Real alpha = 0.345;
+    Real beta = 0.567;
+
+    Matrix<Real> mat(m, k);
+    mat.SetRandn();
+    CuMatrix<Real> cumat(mat);
+
+    Matrix<Real> result(m, n);
+    result.SetRandn();
+    CuMatrix<Real> curesult(result);
+
+    SparseMatrix<Real> smat(srows, scols);
+    smat.SetRandn(0.8);
+    CuSparseMatrix<Real> cusmat(smat);
+
+    result.AddMatSmat(alpha, mat, smat, trans, beta);
+    curesult.AddMatSmat(alpha, cumat, cusmat, trans, beta);
+
+    Matrix<Real> result2(curesult);
+
+    AssertEqual(result, result2);
   }
 }
 
@@ -2762,6 +2800,7 @@ static void UnitTestCuMatrixEqualElementMask() {
 }
 
 template<typename Real> void CudaMatrixUnitTest() {
+  UnitTextCuMatrixAddMatSmat<Real>();
   UnitTextCuMatrixAddSmat<Real>();
   UnitTestCuMatrixTraceMatMat<Real>();
   UnitTestCuMatrixObjfDeriv<Real>();

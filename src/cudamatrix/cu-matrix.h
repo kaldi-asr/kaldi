@@ -457,26 +457,16 @@ class CuMatrixBase {
   /// doing the operation:  C = alpha * op(A) * B^T + beta * C.
   /// [note: Kaldi views dense matrices, but not sparse matrices, in a way
   /// that is transposed w.r.t. CuBLAS].
-  void AddSmatMat(Real alpha,
-                  const CuSparseMatrix<Real> &A,
-                  MatrixTransposeType transA,
-                  const CuMatrix<Real> &B,
+  void AddSmatMat(Real alpha, const CuSparseMatrix<Real> &A,
+                  MatrixTransposeType transA, const CuMatrix<Real> &B,
                   Real beta);
 
-  /// (*this) = alpha * A * op(B) + beta * (*this), where A is sparse
-  /// and op(B) is either B or trans(B) depending o the 'transB' pargument.
+  /// (*this) = alpha * A * op(B) + beta * (*this), where B is sparse
+  /// and op(B) is either B or trans(B) depending on the 'transB' argument.
   /// This is multiplication of a dense by a sparse matrix.  See also
-  /// AddSmatMat.  Note: we recommend, for greatest efficiency, that transB be
-  /// kTrans.
-  ///
-  /// TODO: implement this.
-  /// Implementation notes (remove this comment when implemented): I believe
-  /// this can be implemented using cusparseScsrmm/cusparseDcsrmm
-  /// (remember the identity (A B)^T = A^T B^T.)
-  void AddMatSmat(Real alpha,
-                  const CuMatrixBase<Real> &A,
-                  const CuSparseMatrix<Real> &B,
-                  MatrixTransposeType transB,
+  /// AddSmatMat.
+  void AddMatSmat(Real alpha, const CuMatrixBase<Real> &A,
+                  const CuSparseMatrix<Real> &B, MatrixTransposeType transB,
                   Real beta);
 
 

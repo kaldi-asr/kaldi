@@ -561,6 +561,14 @@ class MatrixBase {
   void AddSmat(Real alpha, const SparseMatrix<Real> &A,
                MatrixTransposeType trans = kNoTrans);
 
+  /// (*this) = alpha * A * op(B) + beta * (*this), where B is sparse
+  /// and op(B) is either B or trans(B) depending on the 'transB' argument.
+  /// This is multiplication of a dense by a sparse matrix.  See also
+  /// AddSmatMat.
+  void AddMatSmat(Real alpha, const MatrixBase<Real> &A,
+                  const SparseMatrix<Real> &B, MatrixTransposeType transB,
+                  Real beta);
+
   /// *this = beta * *this + alpha * M M^T, for symmetric matrices.  It only
   /// updates the lower triangle of *this.  It will leave the matrix asymmetric;
   /// if you need it symmetric as a regular matrix, do CopyLowerToUpper().
