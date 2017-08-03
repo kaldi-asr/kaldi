@@ -561,6 +561,12 @@ class MatrixBase {
   void AddSmat(Real alpha, const SparseMatrix<Real> &A,
                MatrixTransposeType trans = kNoTrans);
 
+  /// (*this) = alpha * op(A) * B + beta * (*this), where A is sparse.
+  /// Multiplication of sparse with dense matrix.  See also AddMatSmat.
+  void AddSmatMat(Real alpha, const SparseMatrix<Real> &A,
+                  MatrixTransposeType transA, const MatrixBase<Real> &B,
+                  Real beta);
+
   /// (*this) = alpha * A * op(B) + beta * (*this), where B is sparse
   /// and op(B) is either B or trans(B) depending on the 'transB' argument.
   /// This is multiplication of a dense by a sparse matrix.  See also
