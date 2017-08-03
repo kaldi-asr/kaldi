@@ -1007,6 +1007,61 @@ void CuMatrixBase<Real>::AddSmat(Real alpha, const CuSparseMatrix<Real> &A,
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::AddSmatMat(Real alpha, const CuSparseMatrix<Real> &A,
+                                    MatrixTransposeType transA,
+                                    const CuMatrixBase<Real> &B, Real beta) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (transA == kNoTrans) {
+      KALDI_ASSERT(NumRows() == A.NumRows());
+      KALDI_ASSERT(NumCols() == B.NumCols());
+      KALDI_ASSERT(A.NumCols() == B.NumRows());
+    } else {
+      KALDI_ASSERT(NumRows() == A.NumCols());
+      KALDI_ASSERT(NumCols() == B.NumCols());
+      KALDI_ASSERT(A.NumRows() == B.NumRows());
+    }
+
+    CuTimer tim;
+
+    // We have op(A) and BT in col-major (B in row-major).
+    // We first compute C in col-major (CT in row-major)
+    // with C = op(A) * BT^T by cusparse_csrmm2,
+    // then transpose CT to get C in row-major
+    CuMatrix<Real> CT(*this, kTrans);
+
+    cusparseMatDescr_t descr;
+    CU_SAFE_CALL(cusparseCreateMatDescr(&descr));
+    if (transA == kTrans) {
+      // Note: only op(A)=A is supported if op(B)=B^T according to cusparse doc
+      // http://docs.nvidia.com/cuda/cusparse/index.html#cusparse-lt-t-gt-csrmm2
+      CuSparseMatrix<Real> AT(A, kTrans);
+      CU_SAFE_CALL(
+          cusparse_csrmm2(GetCusparseHandle(), CUSPARSE_OPERATION_NON_TRANSPOSE,
+                          CUSPARSE_OPERATION_TRANSPOSE, AT.NumRows(),
+                          CT.NumRows(), AT.NumCols(), AT.NumElements(), &alpha,
+                          descr, AT.CsrVal(), AT.CsrRowPtr(), AT.CsrColIdx(),
+                          B.Data(), B.Stride(), &beta, CT.Data(), CT.Stride()));
+    } else {
+      CU_SAFE_CALL(
+          cusparse_csrmm2(GetCusparseHandle(), CUSPARSE_OPERATION_NON_TRANSPOSE,
+                          CUSPARSE_OPERATION_TRANSPOSE, A.NumRows(),
+                          CT.NumRows(), A.NumCols(), A.NumElements(), &alpha,
+                          descr, A.CsrVal(), A.CsrRowPtr(), A.CsrColIdx(),
+                          B.Data(), B.Stride(), &beta, CT.Data(), CT.Stride()));
+    }
+    CU_SAFE_CALL(cusparseDestroyMatDescr(descr));
+
+    this->CopyFromMat(CT, kTrans);
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    Mat().AddSmatMat(alpha, A.Mat(), transA, B.Mat(), beta);
+  }
+}
 
 template<typename Real>
 void CuMatrixBase<Real>::AddMatSmat(Real alpha, const CuMatrixBase<Real> &A,

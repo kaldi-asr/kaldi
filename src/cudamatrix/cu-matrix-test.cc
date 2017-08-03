@@ -769,6 +769,44 @@ static void UnitTextCuMatrixAddMatSmat() {
 }
 
 template<typename Real>
+static void UnitTextCuMatrixAddSmatMat() {
+  for (int i = 0; i < 2; ++i) {
+    int m = 10 + Rand() % 40;
+    int k = 10 + Rand() % 60;
+    int n = 10 + Rand() % 50;
+    int srows = m;
+    int scols = k;
+
+    MatrixTransposeType trans = (i % 2 == 0) ? kNoTrans : kTrans;
+    if (trans == kTrans) {
+      std::swap(srows, scols);
+    }
+
+    Real alpha = 0.345;
+    Real beta = 0.567;
+
+    SparseMatrix<Real> smat(srows, scols);
+    smat.SetRandn(0.8);
+    CuSparseMatrix<Real> cusmat(smat);
+
+    Matrix<Real> mat(k, n);
+    mat.SetRandn();
+    CuMatrix<Real> cumat(mat);
+
+    Matrix<Real> result(m, n);
+    result.SetRandn();
+    CuMatrix<Real> curesult(result);
+
+    result.AddSmatMat(alpha, smat, trans, mat, beta);
+    curesult.AddSmatMat(alpha, cusmat, trans, cumat, beta);
+
+    Matrix<Real> result2(curesult);
+
+    AssertEqual(result, result2);
+  }
+}
+
+template<typename Real>
 static void UnitTestCuMatrixAddCols() {
   for (int32 p = 0; p < 2; p++) {
     MatrixIndexT num_cols1 = 10 + Rand() % 10,
@@ -2800,6 +2838,7 @@ static void UnitTestCuMatrixEqualElementMask() {
 }
 
 template<typename Real> void CudaMatrixUnitTest() {
+  UnitTextCuMatrixAddSmatMat<Real>();
   UnitTextCuMatrixAddMatSmat<Real>();
   UnitTextCuMatrixAddSmat<Real>();
   UnitTestCuMatrixTraceMatMat<Real>();
@@ -2916,6 +2955,7 @@ template<typename Real> void CudaMatrixUnitTest() {
 
 
 int main() {
+  SetVerboseLevel(1);
   int32 loop = 0;
 #if HAVE_CUDA == 1
   for (loop = 0; loop < 2; loop++) {
@@ -2944,7 +2984,6 @@ int main() {
       KALDI_LOG << "Tests with GPU use (if available) succeeded.";
 #if HAVE_CUDA == 1
   } // No for loop if 'HAVE_CUDA != 1',
-  SetVerboseLevel(4);
   CuDevice::Instantiate().PrintProfile();
 #endif
   return 0;
