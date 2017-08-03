@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# Copyright 2015  Minhua Wu
+# Apache 2.0
+
 ###########################################################################################
 # This script was copied from egs/fisher_swbd/s5/local/map_acronyms_transcripts.py
 # The source commit was e69198c3dc5633f98eb88e1cdf20b2521a598f21

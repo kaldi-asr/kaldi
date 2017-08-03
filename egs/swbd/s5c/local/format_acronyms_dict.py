@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+
+# Copyright 2015  Minhua Wu
+# Apache 2.0
+
 # convert acronyms in swbd dict to fisher convention
 # IBM to i._b._m.
 # BBC to b._b._c.
