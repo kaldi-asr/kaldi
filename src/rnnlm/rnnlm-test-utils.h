@@ -87,6 +87,8 @@ void ConvertToInteger(const std::vector<std::vector<std::string> > &string_sente
                               bos_symbol and eos_symbol.  It's needed.
                               because the ARPA file we write out
                               is in text form.
+     @param [in] sentences   The sentences of input data.  These will contain
+                             just the actual words, not the BOS or EOS symbols.
      @param [in] bos_symbol  The integer id of the beginning-of-sentence
                              symbol
      @param [in] eos_symbol  The integer id of the end-of-sentence
