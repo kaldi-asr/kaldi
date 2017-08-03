@@ -148,8 +148,24 @@ RnnlmEmbeddingTrainer::~RnnlmEmbeddingTrainer() {
   PrintStats();
 }
 
+void RnnlmEmbeddingTrainer::PrintStats() {
+  KALDI_LOG << "Processed a total of " << num_minibatches_ << " minibatches."
+            << "max-change was enforced "
+            << (100.0 * max_change_count_) / num_minibatches_
+            << " \% of the time.";
+
+  Matrix<BaseFloat> delta_embedding_mat(*embedding_mat_);
+  delta_embedding_mat.AddMat(-1.0, initial_embedding_mat_);
+
+  BaseFloat param_change_2norm = delta_embedding_mat.FrobeniusNorm(),
+      baseline_params_2norm = initial_embedding_mat_.FrobeniusNorm(),
+      relative_param_change = param_change_2norm / baseline_params_2norm;
+
+  KALDI_LOG << "Norm of parameter differences is " << param_change_2norm;
+  KALDI_LOG << "Norm of parameter matrix is " << baseline_params_2norm;
+  KALDI_LOG << "Relative norm of parameter difference is "
+            << relative_param_change;
+}
 
 }  // namespace rnnlm
 }  // namespace kaldi
-
-
