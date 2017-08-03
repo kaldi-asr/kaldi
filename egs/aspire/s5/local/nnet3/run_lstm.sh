@@ -15,10 +15,7 @@ common_egs_dir=
 reporting_email=
 
 # LSTM options
-splice_indexes="-2,-1,0,1,2 0 0"
-lstm_delay=" -1 -2 -3 "
 label_delay=5
-num_lstm_layers=3
 cell_dim=1024
 hidden_dim=1024
 recurrent_projection_dim=256
@@ -73,24 +70,30 @@ ali_dir=exp/tri5a_rvb_ali
 local/nnet3/run_ivector_common.sh --stage $stage || exit 1;
 
 if [ $stage -le 7 ]; then
-  echo "$0: creating neural net configs";
-  config_extra_opts=()
-  [ ! -z "$lstm_delay" ] && config_extra_opts+=(--lstm-delay "$lstm_delay")
-  steps/nnet3/lstm/make_configs.py  "${config_extra_opts[@]}" \
-    --feat-dir data/train_rvb_hires \
-    --ivector-dir exp/nnet3/ivectors_train \
-    --ali-dir $ali_dir \
-    --num-lstm-layers $num_lstm_layers \
-    --splice-indexes "$splice_indexes " \
-    --cell-dim $cell_dim \
-    --hidden-dim $hidden_dim \
-    --recurrent-projection-dim $recurrent_projection_dim \
-    --non-recurrent-projection-dim $non_recurrent_projection_dim \
-    --label-delay $label_delay \
-    --self-repair-scale-nonlinearity 0.00001 \
-    --self-repair-scale-clipgradient 1.0 \
-   $dir/configs || exit 1;
+  num_targets=$(tree-info $ali_dir/tree | grep num-pdfs | awk '{print $2}')
+  [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
 
+  lstm_opts="decay-time=20 cell-dim=$cell_dim"
+  lstm_opts+=" recurrent-projection-dim=$recurrent_projection_dim"
+  lstm_opts+=" non-recurrent-projection-dim=$non_recurrent_projection_dim"
+
+  mkdir -p $dir/configs
+  cat <<EOF > $dir/configs/network.xconfig
+  input dim=100 name=ivector
+  input dim=40 name=input
+
+  # please note that it is important to have input layer with the name=input
+  # as the layer immediately preceding the fixed-affine-layer to enable
+  # the use of short notation for the descriptor
+  fixed-affine-layer name=lda delay=$label_delay input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+
+  # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
+  fast-lstmp-layer name=fastlstm1 delay=-1 $lstm_opts
+  fast-lstmp-layer name=fastlstm2 delay=-2 $lstm_opts
+  fast-lstmp-layer name=fastlstm3 delay=-3 $lstm_opts
+  output-layer name=output output-delay=$label_delay dim=$num_targets max-change=1.5
+EOF
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs || exit 1
 fi
 
 if [ $stage -le 8 ]; then
@@ -116,6 +119,8 @@ if [ $stage -le 8 ]; then
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=$chunk_left_context \
     --egs.chunk-right-context=$chunk_right_context \
+    --egs.chunk-left-context-initial=0 \
+    --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
     --egs.stage "$egs_stage" \
     --cleanup.remove-egs=$remove_egs \
