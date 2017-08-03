@@ -107,7 +107,7 @@ void RnnlmExampleSampler::SampleForMinibatch(RnnlmExample *minibatch) const {
 
 
 void RnnlmExampleSampler::SampleForGroup(int32 g,
-                                           RnnlmExample *minibatch) const {
+                                         RnnlmExample *minibatch) const {
   // All words that appear on the output are required to appear in the sample.  we
   // need to figure what this set of words is.
   int32 sample_group_size = config_.sample_group_size,
@@ -149,18 +149,56 @@ void RnnlmExampleSampler::SampleForGroup(int32 g,
                         &sample);
   KALDI_ASSERT(sample.size() == static_cast<size_t>(sample_group_size));
   std::sort(sample.begin(), sample.end());
+  // set up the 'sampled_
   for (int32 s = 0; s < sample_group_size; s++) {
     int32 i = (g * sample_group_size) + s;
     minibatch->sampled_words[i] = sample[s].first;
     KALDI_ASSERT(sample[s].second > 0.0);
     minibatch->sample_inv_probs(i) = 1.0 / sample[s].second;
   }
+  RenumberOutputWordsForGroup(g, minibatch);
 }
+
+void RnnlmExampleSampler::RenumberOutputWordsForGroup(
+    int32 g, RnnlmExample *minibatch) const {
+  int32 sample_group_size = config_.sample_group_size,
+      num_chunks_per_minibatch = config_.num_chunks_per_minibatch,
+      num_outputs_per_group = sample_group_size * num_chunks_per_minibatch,
+      vocab_size = minibatch->vocab_size;
+
+  // get the range of 'sampled_words' that covers this group.
+  const int32 *sampled_words_ptr = &(minibatch->sampled_words[0]),
+      *sampled_words_begin = sampled_words_ptr + (g * sample_group_size),
+      *sampled_words_end = sampled_words_begin + sample_group_size;
+
+  int32 *output_words_ptr = &(minibatch->output_words[0]),
+      *output_words_iter = output_words_ptr + (g * num_outputs_per_group),
+      *output_words_end = output_words_iter + num_outputs_per_group;
+  for (; output_words_iter != output_words_end; ++output_words_iter) {
+    int32 output_word = *output_words_iter;
+    // note: output_word is > 0 because epsilon won't ever occur there,
+    // although in a sense 0 is a valid output-word id.
+    KALDI_ASSERT(output_word > 0 && output_word < vocab_size);
+    const int32 *sampled_words_ptr = std::lower_bound(sampled_words_begin,
+                                                      sampled_words_end,
+                                                      output_word);
+    if (*sampled_words_ptr != output_word) {
+      KALDI_ERR << "Output word not found in samples (indicates code error)";
+    }
+    int32 renumbered_output_word = sampled_words_ptr - sampled_words_begin;
+    *output_words_iter = renumbered_output_word;
+  }
+}
+
 
 void RnnlmExampleSampler::GetHistoriesForGroup(
     int32 g, const RnnlmExample &minibatch,
     std::vector<std::pair<std::vector<int32>, BaseFloat> > *hist_weights) const {
   // initially store as an unordered_map so we can remove duplicates.
+
+  // hist_to_weight maps from the history to the (unnormalized) weight for that
+  // history.  It represents a weighted combination of history-states that we
+  // will get a distribution for (from the ARPA LM) and sample from.
   std::unordered_map<std::vector<int32>, BaseFloat, VectorHasher<int32> > hist_to_weight;
 
   hist_weights->clear();
@@ -168,6 +206,8 @@ void RnnlmExampleSampler::GetHistoriesForGroup(
   int32 max_history_length = arpa_sampling_.Order() - 1,
       num_chunks_per_minibatch = config_.num_chunks_per_minibatch;
 
+  // This block sets up the 'hist_to_weight' map.  Note: sample_group_size
+  // will normally be small, like 1, 2 or 4.
   for (int32 t = g * config_.sample_group_size;
        t < (g + 1) * config_.sample_group_size; t++) {
     for (int32 n = 0; n < num_chunks_per_minibatch; n++) {
@@ -245,6 +285,7 @@ void RnnlmExampleCreator::AcceptSequence(
 }
 
 RnnlmExampleCreator::~RnnlmExampleCreator() {
+  Flush();
   BaseFloat words_per_chunk = num_words_processed_ * 1.0 /
       num_chunks_processed_,
       chunks_per_minibatch = num_chunks_processed_ * 1.0 /

@@ -27,6 +27,14 @@
 
 namespace kaldi {
 
+/**
+   This class allows you to read an ARPA file and access it in a way that's
+   specialized for some sampling algorithms we use during RNNLM training
+   (we have to sample from a distribution that comes from an ARPA file).
+
+   You'll normally construct this object using an 'options' object
+   and a symbol table, and then call Read() to read from the file.
+*/
 class ArpaSampling : public ArpaFileParser {
  public:
   friend class ArpaSamplingTest;

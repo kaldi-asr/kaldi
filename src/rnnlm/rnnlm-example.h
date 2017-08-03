@@ -76,14 +76,14 @@ struct RnnlmExample {
   std::vector<int32> output_words;  // The output (predicted) word symbols for
                                     // each position in each chunk; indexed
                                     // in the same way as 'input_words'.
-                                    // What this *contains* is different from
+                                    // What this contains is different from
                                     // 'input_words' in the sampling case
                                     // (i.e. if !sampled_words.empty()).
-                                    // In that case, instead of the word-index
+                                    // In this case, instead of the word-index
                                     // it contains the relative index
                                     // 0 <= i < num_samples within
                                     // the block of sampled words.  In the
-                                    // sampled case it contains some 0 <= i <
+                                    // not-sampled case it contains some 0 <= i <
                                     // vocab_size.  TODO: ensure this is true.
 
 
@@ -118,8 +118,11 @@ struct RnnlmExample {
   // Shallow swap.
   void Swap(RnnlmExample *other);
 
-  // TODO: Write and Read functions.
+  // TODO: implement this.
+  void Write(std::ostream &os, bool binary) const;
 
+  // TODO: implement this.
+  void Read(std::istream &is, bool binary);
 };
 
 
@@ -175,7 +178,7 @@ struct RnnlmExample {
 
 
 struct RnnlmEgsConfig {
-  int32 vocab_size;  // The vocabulary size: or more specifically, the largest
+ int32 vocab_size;  // The vocabulary size: or more specifically, the largest
                      // integer word-id plus one.  Must be provided, as it
                      // gets included in each minibatch (mostly for checking
                      // purposes).
@@ -207,14 +210,14 @@ struct RnnlmEgsConfig {
                                   // small, we'd have to exclude them from the
                                   // denominator sum.
 
-  BaseFloat uniform_prob_mass;  // this value should be < 1.0; it takes
-                                // this proportion of the unigram distribution
-                                // used for sampling and assigns it to uniformly
+  BaseFloat uniform_prob_mass;  // this value should be < 1.0; it takes this
+                                // proportion of the unigram distribution used
+                                // for sampling and assigns it to uniformly
                                 // predict all words.  This may avoid certain
                                 // pathologies during training, and ensuring
                                 // that all words' probs are bounded away from
-                                // zero is, I think, necessary for the theory
-                                // of importance sampling.
+                                // zero might be necessary for the theory of
+                                // importance sampling.
   RnnlmEgsConfig(): vocab_size(-1),
                     num_chunks_per_minibatch(128),
                     chunk_length(32),
@@ -339,6 +342,13 @@ class RnnlmExampleSampler {
       int32 g, const RnnlmExample &minibatch,
       std::vector<std::pair<std::vector<int32>, BaseFloat> > *hist_weights) const;
 
+  // This function renumbers 'output_words' so that instead of being
+  // numbers 0 <= i < vocab_size, they are numbered as indexes into the
+  // relevant block of the vector 'output_words'.
+  void RenumberOutputWordsForGroup(
+      int32 g, RnnlmExample *minibatch) const;
+
+
   // This function is used to obtain the history (of maximum length
   // 'max_history_length') used when predicting the t'th output word in the n'th
   // sequence of this minibatch.  The history is output to 'history'.  Note: the
@@ -368,6 +378,9 @@ class RnnlmExampleSampler {
 };
 
 
+/// This class takes care of all of the logic of creating minibatches for RNNLM
+/// training, including the sampling aspect.  It implements the bulk of the
+/// functionality of the binary rnnlm-get-egs.
 class RnnlmExampleCreator {
  public:
   // This constructor is for when you are using importance sampling from
@@ -389,7 +402,7 @@ class RnnlmExampleCreator {
       num_chunks_processed_(0), num_words_processed_(0),
       num_minibatches_written_(0) { Check(); }
 
-  // The user calls this to provide a single sequence (a sentence, or multiple
+  // The user calls this to provide a single sequence (a sentence; or multiple
   // sentences that are part of a continuous stream or dialogue, separated
   // by </s>), to this class.  This class will write out minibatches when
   // it's ready.
@@ -571,6 +584,10 @@ class RnnlmExampleCreator {
   int32 num_minibatches_written_;
 };
 
+
+typedef TableWriter<KaldiObjectHolder<RnnlmExample> > RnnlmExampleWriter;
+
+typedef SequentialTableReader<KaldiObjectHolder<RnnlmExample> > SequentialRnnlmExampleReader;
 
 
 } // namespace rnnlm

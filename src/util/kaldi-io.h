@@ -240,7 +240,7 @@ template <class C> void ReadKaldiObject(const std::string &filename,
                                         C *c) {
   bool binary_in;
   Input ki(filename, &binary_in);
-  c->Read(ki.Stream(), binary_in);
+  c->Read(ki.Stream());
 }
 
 // Specialize the template for reading matrices, because we want to be able to

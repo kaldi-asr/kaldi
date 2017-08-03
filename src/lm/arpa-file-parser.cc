@@ -42,11 +42,7 @@ void TrimTrailingWhitespace(std::string *str) {
   str->erase(str->find_last_not_of(" \n\r\t") + 1);
 }
 
-void ArpaFileParser::Read(std::istream &is, bool binary) {
-  if (binary) {
-    KALDI_ERR << "binary-mode reading is not implemented for ArpaFileParser";
-  }
-
+void ArpaFileParser::Read(std::istream &is) {
   // Argument sanity checks.
   if (options_.bos_symbol <= 0 || options_.eos_symbol <= 0 ||
       options_.bos_symbol == options_.eos_symbol)

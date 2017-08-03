@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_RNNLM_RNNLM_TRAIN_H_
-#define KALDI_RNNLM_RNNLM_TRAIN_H_
+#ifndef KALDI_RNNLM_RNNLM_TRAINING_H_
+#define KALDI_RNNLM_RNNLM_TRAINING_H_
 
 #include <thread>
 #include "rnnlm/rnnlm-core-training.h"
@@ -91,7 +91,7 @@ struct RnnlmTrainerOptions {
 
   // returns true if the combination of arguments makes sense, otherwise prints
   // a warning and returns false (the user can then call PrintUsage()).
-  bool HasRequiredArgs();
+  bool HasRequiredOptions() const;
 };
 
 /*
@@ -119,6 +119,8 @@ class RnnlmTrainer {
 
   // The destructor writes out any files that we need to write out.
   ~RnnlmTrainer();
+
+  int32 NumMinibatchesProcessed() { return num_minibatches_processed_; }
 
  private:
 
@@ -276,4 +278,4 @@ class RnnlmTrainer {
 } // namespace rnnlm
 } // namespace kaldi
 
-#endif //KALDI_RNNLM_RNNLM_H_
+#endif //KALDI_RNNLM_RNNLM_TRAINING_H_

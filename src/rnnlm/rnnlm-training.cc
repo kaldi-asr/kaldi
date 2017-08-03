@@ -24,7 +24,7 @@ namespace kaldi {
 namespace rnnlm {
 
 
-bool RnnlmTrainerOptions::HasRequiredArgs() {
+bool RnnlmTrainerOptions::HasRequiredOptions() const {
   bool ans = true;
   if (rnnlm_rxfilename == "") {
     KALDI_WARN << "--read-rnnlm option is required";
@@ -103,7 +103,8 @@ void RnnlmTrainer::Train(RnnlmExample *minibatch) {
   current_minibatch_full_.Signal();
   num_minibatches_processed_++;
   if (num_minibatches_processed_ == 1) {
-    return;  // The first time this function is called, return immediately.
+    return;  // The first time this function is called, return immediately
+             // because there is no previous minibatch to train on.
   }
   previous_minibatch_full_.Wait();
   TrainInternal();
@@ -249,12 +250,25 @@ void RnnlmTrainer::RunBackgroundThread() {
 }
 
 RnnlmTrainer::~RnnlmTrainer() {
+  // Train on the last minibatch, because Train() always trains on the previously
+  // provided one (for threading reasons).
+  if (num_minibatches_processed_ > 0) {
+    previous_minibatch_full_.Wait();
+    TrainInternal();
+  }
+  end_of_input_ = true;
+  current_minibatch_full_.Signal();
+  background_thread_.join();
+
   // Note: the following delete statements may cause some diagnostics to be
   // issued, from the destructors of those classes.
   if (core_trainer_)
     delete core_trainer_;
   if (embedding_trainer_)
     delete embedding_trainer_;
+
+  KALDI_LOG << "Trained on " << num_minibatches_processed_
+            << " minibatches.\n";
   // Now write out the things we need to write out.
   if (config_.rnnlm_wxfilename != "") {
     WriteKaldiObject(rnnlm_, config_.rnnlm_wxfilename, config_.binary);

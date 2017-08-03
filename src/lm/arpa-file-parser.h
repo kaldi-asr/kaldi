@@ -92,9 +92,8 @@ class ArpaFileParser {
   ArpaFileParser(ArpaParseOptions options, fst::SymbolTable* symbols);
   virtual ~ArpaFileParser();
 
-  /// Read ARPA LM file through Kaldi I/O functions. Only text mode is
-  /// supported.
-  void Read(std::istream &is, bool binary);
+  /// Read ARPA LM file from a stream.
+  void Read(std::istream &is);
 
   /// Parser options.
   const ArpaParseOptions& Options() const { return options_; }
