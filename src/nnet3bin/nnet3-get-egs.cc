@@ -37,11 +37,13 @@ static bool ProcessFile(const GeneralMatrix &feats,
                         const std::string &utt_id,
                         bool compress,
                         int32 num_pdfs,
+                        int32 length_tolerance,
                         UtteranceSplitter *utt_splitter,
                         NnetExampleWriter *example_writer) {
   int32 num_input_frames = feats.NumRows();
   if (!utt_splitter->LengthsMatch(utt_id, num_input_frames,
-                             static_cast<int32>(pdf_post.size())))
+                                  static_cast<int32>(pdf_post.size()),
+                                  length_tolerance))
     return false;  // LengthsMatch() will have printed a warning.
 
   std::vector<ChunkTimeInfo> chunks;
@@ -101,12 +103,6 @@ static bool ProcessFile(const GeneralMatrix &feats,
     int32 start_frame_subsampled = chunk.first_frame / frame_subsampling_factor,
         num_frames_subsampled = chunk.num_frames / frame_subsampling_factor;
 
-    KALDI_ASSERT(start_frame_subsampled + num_frames_subsampled - 1 <
-                 static_cast<int32>(pdf_post.size()));
-
-    // Note: in all current cases there is no subsampling of output-frames going
-    // on (--frame-subsampling-factor=1), so you could read
-    // 'num_frames_subsampled' as just 'num_frames'.
     Posterior labels(num_frames_subsampled);
 
     // TODO: it may be that using these weights is not actually helpful (with
@@ -116,7 +112,8 @@ static bool ProcessFile(const GeneralMatrix &feats,
     // helpful.
     for (int32 i = 0; i < num_frames_subsampled; i++) {
       int32 t = i + start_frame_subsampled;
-      labels[i] = pdf_post[t];
+      if (t < pdf_post.size())
+        labels[i] = pdf_post[t];
       for (std::vector<std::pair<int32, BaseFloat> >::iterator
                iter = labels[i].begin(); iter != labels[i].end(); ++iter)
         iter->second *= chunk.output_weights[i];
@@ -169,6 +166,7 @@ int main(int argc, char *argv[]) {
 
     bool compress = true;
     int32 num_pdfs = -1, length_tolerance = 100,
+        targets_length_tolerance = 2,  
         online_ivector_period = 1;
 
     ExampleGenerationConfig eg_config;  // controls num-frames,
@@ -179,10 +177,10 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     po.Register("compress", &compress, "If true, write egs with input features "
-                "in compressed format (recommended).  Update: this is now "
+                "in compressed format (recommended).  This is "
                 "only relevant if the features being read are un-compressed; "
                 "if already compressed, we keep we same compressed format when "
-                "dumping-egs.");
+                "dumping egs.");
     po.Register("num-pdfs", &num_pdfs, "Number of pdfs in the acoustic "
                 "model");
     po.Register("ivectors", &online_ivector_rspecifier, "Alias for "
@@ -194,6 +192,10 @@ int main(int argc, char *argv[]) {
                 "--online-ivectors option");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
+    po.Register("targets-length-tolerance", &targets_length_tolerance, 
+                "Tolerance for "
+                "difference in num-frames (after subsampling) between "
+                "feature matrix and posterior");
     eg_config.Register(&po);
 
     po.Read(argc, argv);
@@ -233,12 +235,6 @@ int main(int argc, char *argv[]) {
         num_err++;
       } else {
         const Posterior &pdf_post = pdf_post_reader.Value(key);
-        if (pdf_post.size() != feats.NumRows()) {
-          KALDI_WARN << "Posterior has wrong size " << pdf_post.size()
-                     << " versus " << feats.NumRows();
-          num_err++;
-          continue;
-        }
         const Matrix<BaseFloat> *online_ivector_feats = NULL;
         if (!online_ivector_rspecifier.empty()) {
           if (!online_ivector_reader.HasKey(key)) {
@@ -264,9 +260,10 @@ int main(int argc, char *argv[]) {
         }
 
         if (!ProcessFile(feats, online_ivector_feats, online_ivector_period,
-                         pdf_post, key, compress, num_pdfs,
+                         pdf_post, key, compress, num_pdfs, 
+                         targets_length_tolerance,
                          &utt_splitter, &example_writer))
-            num_err++;
+          num_err++;
       }
     }
     if (num_err > 0)

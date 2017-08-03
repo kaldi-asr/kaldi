@@ -314,7 +314,8 @@ def train(args, run_opts):
         if not os.path.exists('{0}/valid_diagnostic.egs'.format(args.egs_dir)):
             raise Exception('neither {0}/valid_diagnostic.egs nor '
                             '{0}/valid_diagnostic.scp exist.'
-                            'This script expects one of them.'.format(args.egs_dir))
+                            'This script expects one of them.'
+                            ''.format(args.egs_dir))
         use_multitask_egs = False
 
     logger.info("Training will run for {0} epochs = "
@@ -430,10 +431,12 @@ def train(args, run_opts):
     outputs_list = common_train_lib.get_outputs_list("{0}/final.raw".format(
         args.dir), get_raw_nnet_from_am=False)
     if 'output' in outputs_list:
-        [report, times, data] = nnet3_log_parse.generate_acc_logprob_report(args.dir)
+        [report, times, data] = nnet3_log_parse.generate_acc_logprob_report(
+            args.dir)
         if args.email is not None:
             common_lib.send_mail(report, "Update : Expt {0} : "
-                                         "complete".format(args.dir), args.email)
+                                         "complete".format(args.dir),
+                                 args.email)
 
         with open("{dir}/accuracy.{output_name}.report".format(dir=args.dir,
                                                                output_name="output"),

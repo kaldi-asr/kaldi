@@ -863,12 +863,19 @@ class CommonParser(object):
                                  sequentially.""")
         self.parser.add_argument("--trainer.optimization.backstitch-training-scale",
                                  type=float, dest='backstitch_training_scale',
-                                 default=0.0, help="""scale of parameters changes 
+                                 default=0.0, help="""scale of parameters changes
                                  used in backstitch training step.""")
         self.parser.add_argument("--trainer.optimization.backstitch-training-interval",
                                  type=int, dest='backstitch_training_interval',
                                  default=1, help="""the interval of minibatches
                                  that backstitch training is applied on.""")
+        self.parser.add_argument("--trainer.compute-per-dim-accuracy",
+                                 dest='compute_per_dim_accuracy',
+                                 type=str, choices=['true', 'false'],
+                                 default=False,
+                                 action=common_lib.StrToBoolAction,
+                                 help="Compute train and validation "
+                                 "accuracy per-dim")
 
         # General options
         self.parser.add_argument("--stage", type=int, default=-4,
@@ -929,4 +936,4 @@ class CommonParser(object):
 
 
 if __name__ == '__main__':
-    self_test()
+    _self_test()
