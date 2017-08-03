@@ -12,6 +12,7 @@ egs_per_archive=25000
 train_subset_egs=5000
 test_mode=false
 stage=0
+if_use_ivector=false
 # end configuration section
 
 echo "$0 $@"  # Print the command line for logging
@@ -20,10 +21,11 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 
-if [ $# != 3 ]; then
+if [ $# != 5 ]; then
   echo "Usage: $0 [opts] <train-data-dir> <test-or-dev-data-dir> <egs-dir>"
-  echo " e.g.: $0 --egs-per-iter 25000 data/cifar10_train exp/cifar10_train_egs"
-  echo " or: $0 --test-mode true data/cifar10_test exp/cifar10_test_egs"
+  echo " <train-ivector-dir> <test-ivector-dir> "
+  echo " e.g.: $0 --if_use_ivector true data/cifar10_train data/cifar10_test" 
+  echo " exp/cifar10_egs exp/ivectors_cifar10_train exp/ivector_cifar10_test"
   echo "Options (with defaults):"
   echo "  --cmd 'run.pl'     How to run jobs (e.g. queue.pl)"
   echo "  --test-mode false  Set this to true if you just want a single archive"
@@ -45,8 +47,11 @@ set -eu
 train=$1
 test=$2
 dir=$3
+train_ivector=$4
+test_ivector=$5
 
-for f in $train/images.scp $train/labels.txt $test/images.scp $test/labels.txt; do
+for f in $train/images.scp $train/labels.txt $test/images.scp $test/labels.txt \
+         $train_ivector/ivector.scp $test_ivector/ivector.scp; do
    if [ ! -f $f ]; then
      echo "$0: expected file $f to exist"
      exit 1
@@ -98,46 +103,66 @@ if ! [ "$num_classes" -eq "$num_classes_test" ]; then
 fi
 
 if [ $stage -le 0 ]; then
-  $cmd $dir/log/get_train_diagnostic_egs.log \
-       ali-to-post "ark:filter_scp.pl $dir/train_subset_ids.txt $train/labels.txt|" ark:- \| \
-       post-to-smat --dim=$num_classes ark:- ark:- \| \
-       nnet3-get-egs-simple input="scp:filter_scp.pl $dir/train_subset_ids.txt $train/images.scp|" \
-       output=ark:- ark:$dir/train_diagnostic.egs
+  if $if_use_ivector; then
+    $cmd $dir/log/get_train_diagnostic_egs.log \
+         ali-to-post "ark:filter_scp.pl $dir/train_subset_ids.txt $train/labels.txt|" ark:- \| \
+         post-to-smat --dim=$num_classes ark:- ark:- \| \
+         nnet3-get-egs-simple input="scp:filter_scp.pl $dir/train_subset_ids.txt $train/images.scp|" \
+         ivector="scp:filter_scp.pl $dir/train_subset_ids.txt $train_ivector/ivector.scp|" \
+         output=ark:- ark:$dir/train_diagnostic.egs
+  else
+    $cmd $dir/log/get_train_diagnostic_egs.log \
+         ali-to-post "ark:filter_scp.pl $dir/train_subset_ids.txt $train/labels.txt|" ark:- \| \
+         post-to-smat --dim=$num_classes ark:- ark:- \| \
+         nnet3-get-egs-simple input="scp:filter_scp.pl $dir/train_subset_ids.txt $train/images.scp|" \
+         output=ark:- ark:$dir/train_diagnostic.egs
+  fi
 fi
 
-
-
 if [ $stage -le 1 ]; then
-  # we use the same filenames as the regular training script, but
-  # the 'valid_diagnostic' egs are actually used as the test or dev
-  # set.
-  $cmd $dir/log/get_test_or_dev_egs.log \
+  if $if_use_ivector; then
+    $cmd $dir/log/get_test_or_dev_egs.log \
        ali-to-post ark:$test/labels.txt ark:- \| \
        post-to-smat --dim=$num_classes ark:- ark:- \| \
        nnet3-get-egs-simple input=scp:$test/images.scp \
+       ivector=scp:$test_ivector/ivector.scp \
        output=ark:- ark:$dir/valid_diagnostic.egs
+  else
+    $cmd $dir/log/get_test_or_dev_egs.log \
+         ali-to-post ark:$test/labels.txt ark:- \| \
+         post-to-smat --dim=$num_classes ark:- ark:- \| \
+         nnet3-get-egs-simple input=scp:$test/images.scp \
+         output=ark:- ark:$dir/valid_diagnostic.egs
+  fi
 fi
-
 # Now work out the split of the training data.
 
 num_train_images=$(wc -l <$train/labels.txt)
 
 # the + 1 is to round up, not down... we assume it doesn't divide exactly.
+
 num_archives=$[num_train_images/egs_per_archive+1]
 
+image/split_image_dir.sh $train $num_archives
+sdata=$train/split$num_archives
 
+
+echo "$0: creating $num_archives archives of egs"
 if [ $stage -le 2 ]; then
-  echo "$0: creating $num_archives archives of egs"
-
-  image/split_image_dir.sh $train $num_archives
-
-  sdata=$train/split$num_archives
-
-  $cmd JOB=1:$num_archives $dir/log/get_egs.JOB.log \
+  if $if_use_ivector; then
+    $cmd JOB=1:$num_archives $dir/log/get_egs.JOB.log \
        ali-to-post ark:$sdata/JOB/labels.txt ark:- \| \
        post-to-smat --dim=$num_classes ark:- ark:- \| \
        nnet3-get-egs-simple input=scp:$sdata/JOB/images.scp \
-        output=ark:- ark:$dir/egs.JOB.ark
+       ivector="scp:filter_scp.pl $sdata/JOB/labels.txt $train_ivector/ivector.scp|" \
+       output=ark:- ark:$dir/egs.JOB.ark
+  else
+    $cmd JOB=1:$num_archives $dir/log/get_egs.JOB.log \
+         ali-to-post ark:$sdata/JOB/labels.txt ark:- \| \
+         post-to-smat --dim=$num_classes ark:- ark:- \| \
+         nnet3-get-egs-simple input=scp:$sdata/JOB/images.scp \
+         output=ark:- ark:$dir/egs.JOB.ark
+  fi
 fi
 
 rm $dir/train_subset_ids.txt 2>/dev/null || true

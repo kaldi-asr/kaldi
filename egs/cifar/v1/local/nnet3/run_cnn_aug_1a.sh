@@ -76,6 +76,7 @@ if [ $stage -le 1 ]; then
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
+  input dim=30 name=ivector
   input dim=96 name=input
   conv-relu-batchnorm-layer name=cnn1 height-in=32 height-out=32 time-offsets=-1,0,1 $common
   conv-relu-batchnorm-layer name=cnn2 height-in=32 height-out=32 time-offsets=-1,0,1 $common
@@ -89,7 +90,7 @@ if [ $stage -le 1 ]; then
   conv-relu-batchnorm-layer name=cnn10 height-in=8 height-out=4   time-offsets=-4,0,4 $common height-subsample-out=2
   conv-relu-batchnorm-layer name=cnn11 height-in=4 height-out=4   time-offsets=-8,0,8 $common
   conv-relu-batchnorm-layer name=cnn12 height-in=4 height-out=4   time-offsets=-8,0,8 $common
-  relu-batchnorm-layer name=fully_connected1 input=Append(0,8,16,24) dim=128
+  relu-batchnorm-layer name=fully_connected1 input=Append(0,8,16,24,ReplaceIndex(ivector,t,0)) dim=128
   relu-batchnorm-layer name=fully_connected2 dim=256
   output-layer name=output dim=$num_targets
 EOF
