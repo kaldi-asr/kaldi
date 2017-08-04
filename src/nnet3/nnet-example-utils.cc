@@ -534,10 +534,12 @@ void UtteranceSplitter::InitSplitForLength() {
 
 bool UtteranceSplitter::LengthsMatch(const std::string &utt,
                                      int32 utterance_length,
-                                     int32 supervision_length) const {
+                                     int32 supervision_length,
+                                     int32 length_tolerance) const {
   int32 sf = config_.frame_subsampling_factor,
       expected_supervision_length = (utterance_length + sf - 1) / sf;
-  if (supervision_length == expected_supervision_length) {
+  if (std::abs(supervision_length - expected_supervision_length) 
+      <= length_tolerance) {
     return true;
   } else {
     if (sf == 1) {
@@ -1251,6 +1253,21 @@ void ExampleMerger::Finish() {
   stats_.PrintStats();
 }
 
+void ScaleFst(BaseFloat scale, fst::StdVectorFst *fst) {
+  typedef fst::StdArc Arc;
+  typedef Arc::StateId StateId;
+  typedef Arc::Weight Weight;
+  
+  for (StateId s = 0; s < fst->NumStates(); s++) {
+    for (fst::MutableArcIterator<fst::StdVectorFst> aiter(fst, s);
+         !aiter.Done(); aiter.Next()) {
+      Arc arc = aiter.Value();
+      Weight weight(arc.weight.Value() * scale);
+      arc.weight = weight;
+      aiter.SetValue(arc);
+    }
+  }
+}
 
 } // namespace nnet3
 } // namespace kaldi

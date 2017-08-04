@@ -12,7 +12,7 @@
 # (- categorical distribution of 'lang/words.txt', DISABLED)
 
 # begin configuration section.
-cmd=
+cmd=run.pl
 lmwt=12
 decode_mbr=true
 word_min_count=10 # Minimum word-count for single-word category,
@@ -43,6 +43,7 @@ latdir=$4
 dir=$5
 
 model=$latdir/../final.mdl # assume model one level up from decoding dir.
+model_dir=$latdir/..
 
 for f in $data/text $lang/words.txt $word_feats $latdir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: Missing file $f" && exit 1
@@ -57,6 +58,12 @@ echo $lmwt >$dir/lmwt
 echo $decode_mbr >$dir/decode_mbr
 cp $word_feats $dir/word_feats
 
+frame_shift_opt=
+if [ -f $model_dir/frame_subsampling_factor ]; then
+  frame_subsampling_factor=$(cat $model_dir/frame_subsampling_factor)
+  frame_shift_opt="--frame-shift=0.0$frame_subsampling_factor"
+fi
+
 # Create the ctm with raw confidences,
 # - we keep the timing relative to the utterance,
 if [ $stage -le 0 ]; then
@@ -66,7 +73,7 @@ if [ $stage -le 0 ]; then
     lattice-push --push-strings=false ark:- ark:- \| \
     lattice-align-words-lexicon --max-expand=10.0 \
      $lang/phones/align_lexicon.int $model ark:- ark:- \| \
-    lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- - \| \
+    lattice-to-ctm-conf --decode-mbr=$decode_mbr $frame_shift_opt ark:- - \| \
     utils/int2sym.pl -f 5 $lang/words.txt \
     '>' $dir/JOB.ctm
   # Merge and clean,
@@ -104,7 +111,7 @@ fi
 if [ $stage -le 3 ]; then
   steps/conf/prepare_calibration_data.py \
     --conf-targets $dir/train_targets.ark --conf-feats $dir/train_feats.ark \
-    --lattice-depth $latdepth $dir/ctm_aligned_int $word_feats $dir/word_categories
+    --lattice-depth $latdepth $frame_shift_opt $dir/ctm_aligned_int $word_feats $dir/word_categories
 fi
 
 # Train the logistic regression,

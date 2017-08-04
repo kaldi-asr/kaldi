@@ -209,6 +209,8 @@ if ($opened_config_file == 0 && exists($cli_options{"config"})) {
 my $qsub_cmd = "";
 my $read_command = 0;
 
+my $check_gpu_job = "false";
+
 while(<CONFIG>) {
   chomp;
   my $line = $_;
@@ -237,6 +239,9 @@ while(<CONFIG>) {
     my $option = $1;      # gpu
     my $value = $2;       # 0
     my $arg = $3;         # -q all.q
+    if ($option eq "gpu" && $value == 1) {
+      $check_gpu_job = "true";
+    }
     if (exists $cli_options{$option}) {
       $cli_default_options{($option,$value)} = $arg;
     }
@@ -381,6 +386,9 @@ print Q "ret=\$?\n";
 print Q "time2=\`date +\"%s\"\`\n";
 print Q "echo '#' Accounting: time=\$((\$time2-\$time1)) threads=$num_threads >>$logfile\n";
 print Q "echo '#' Finished at \`date\` with status \$ret >>$logfile\n";
+print Q "if [ \$ret -ne 0 && $check_gpu_job ]; then\n";
+print Q "  ps aux\n";
+print Q "fi\n";
 print Q "[ \$ret -eq 137 ] && exit 100;\n"; # If process was killed (e.g. oom) it will exit with status 137;
   # let the script return with status 100 which will put it to E state; more easily rerunnable.
 if ($array_job == 0) { # not an array job

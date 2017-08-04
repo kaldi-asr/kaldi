@@ -178,8 +178,9 @@ bool PhoneLatticeToProtoSupervisionInternal(const SupervisionOptions &opts,
       }
       proto_supervision->fst.AddArc(state,
         fst::StdArc(phone, phone,
-                    fst::TropicalWeight(lat_arc.weight.Weight().Value1()
-                                      * opts.lm_scale + opts.phone_ins_penalty),
+                    fst::TropicalWeight(
+                      lat_arc.weight.Weight().Value1()
+                      * opts.lm_scale + opts.phone_ins_penalty),
                     lat_arc.nextstate));
       int32 t_begin = std::max<int32>(0, (state_time - opts.left_tolerance)),
               t_end = std::min<int32>(num_frames,
@@ -192,7 +193,7 @@ bool PhoneLatticeToProtoSupervisionInternal(const SupervisionOptions &opts,
     }
     if (lat.Final(state) != CompactLatticeWeight::Zero()) {
       proto_supervision->fst.SetFinal(state, fst::TropicalWeight(
-                           lat.Final(state).Weight().Value1() * opts.lm_scale));
+            lat.Final(state).Weight().Value1() * opts.lm_scale));
       if (state_times[state] != num_frames) {
         KALDI_WARN << "Time of final state " << state << " in lattice is "
                    << "not equal to number of frames " << num_frames

@@ -28,6 +28,7 @@ caldir=$4
 dir=$5
 
 model=$latdir/../final.mdl # assume model one level up from decoding dir.
+model_dir=$latdir/..
 calibration=$caldir/calibration.mdl
 word_feats=$caldir/word_feats
 word_categories=$caldir/word_categories
@@ -49,6 +50,12 @@ cp $calibration $dir/calibration.mdl
 cp $word_feats $dir/word_feats
 cp $word_categories $dir/word_categories
 
+frame_shift_opt=
+if [ -f $model_dir/frame_subsampling_factor ]; then
+  frame_subsampling_factor=$(cat $model_dir/frame_subsampling_factor)
+  frame_shift_opt="--frame-shift=0.0$frame_subsampling_factor"
+fi
+
 # Create the ctm with raw confidences,
 # - we keep the timing relative to the utterance,
 if [ $stage -le 0 ]; then
@@ -58,7 +65,7 @@ if [ $stage -le 0 ]; then
     lattice-push --push-strings=false ark:- ark:- \| \
     lattice-align-words-lexicon --max-expand=10.0 \
      $lang/phones/align_lexicon.int $model ark:- ark:- \| \
-    lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- - \| \
+    lattice-to-ctm-conf --decode-mbr=$decode_mbr $frame_shift_opt ark:- - \| \
     utils/int2sym.pl -f 5 $lang/words.txt \
     '>' $dir/JOB.ctm
   # Merge and clean,
@@ -76,7 +83,7 @@ fi
 # Create the forwarding data for logistic regression,
 if [ $stage -le 2 ]; then
   steps/conf/prepare_calibration_data.py --conf-feats $dir/forward_feats.ark \
-    --lattice-depth $latdepth $dir/ctm_int $word_feats $word_categories
+    --lattice-depth $latdepth $frame_shift_opt $dir/ctm_int $word_feats $word_categories
 fi
 
 # Apply calibration model to dev,

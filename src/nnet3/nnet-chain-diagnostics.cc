@@ -207,6 +207,26 @@ bool NnetChainComputeProb::PrintTotalStats() const {
 }
 
 
+std::pair<BaseFloat, BaseFloat> NnetChainComputeProb::GetTotalObjective() const {
+  unordered_map<std::string, ChainObjectiveInfo, StringHasher>::const_iterator
+      iter, end;
+  iter = objf_info_.begin();
+  end = objf_info_.end();
+  BaseFloat tot_objf = 0.0, tot_weight = 0.0;
+  for (; iter != end; ++iter) {
+    const std::string &name = iter->first;
+    int32 node_index = nnet_.GetNodeIndex(name);
+    KALDI_ASSERT(node_index >= 0);
+    const ChainObjectiveInfo &info = iter->second;
+    BaseFloat like = (info.tot_like / info.tot_weight),
+        l2_term = (info.tot_l2_term / info.tot_weight);
+    tot_objf += like + l2_term;
+    tot_weight += info.tot_weight;
+  }
+  return std::make_pair(tot_objf, tot_weight);
+}
+
+
 const ChainObjectiveInfo* NnetChainComputeProb::GetObjective(
     const std::string &output_name) const {
   unordered_map<std::string, ChainObjectiveInfo, StringHasher>::const_iterator
@@ -217,15 +237,29 @@ const ChainObjectiveInfo* NnetChainComputeProb::GetObjective(
     return NULL;
 }
 
+static bool HasXentOutputs(const Nnet &nnet) {
+  const std::vector<std::string> node_names = nnet.GetNodeNames();
+  for (std::vector<std::string>::const_iterator it = node_names.begin();
+        it != node_names.end(); ++it) {
+    int32 node_index = nnet.GetNodeIndex(*it);
+    if (nnet.IsOutputNode(node_index) && 
+        it->find("-xent") != std::string::npos) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void RecomputeStats(const std::vector<NnetChainExample> &egs,
                     const chain::ChainTrainingOptions &chain_config_in,
                     const fst::StdVectorFst &den_fst,
                     Nnet *nnet) {
   KALDI_LOG << "Recomputing stats on nnet (affects batch-norm)";
   chain::ChainTrainingOptions chain_config(chain_config_in);
-  if (nnet->GetNodeIndex("output-xent") != -1 &&
+  if (HasXentOutputs(*nnet) &&
       chain_config.xent_regularize == 0) {
-    // this forces it to compute the output for 'output-xent', which
+    // this forces it to compute the output for xent outputs, 
+    // usually 'output-xent', which
     // means that we'll be computing batch-norm stats for any
     // components in that branch that have batch-norm.
     chain_config.xent_regularize = 0.1;

@@ -399,7 +399,7 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
         if (feat_dim != 0 and feat_dim != egs_feat_dim) or (ivector_dim != egs_ivector_dim):
             raise Exception("There is mismatch between featdim/ivector_dim of "
                             "the current experiment and the provided "
-                            "egs directory")
+                            "egs directory: egs_dim: {0} vs {1} and ivector_dim {2} vs {3}".format(feat_dim, egs_feat_dim, ivector_dim, egs_ivector_dim))
 
         if (((egs_ivector_id is None) and (ivector_extractor_id is not None)) or
             ((egs_ivector_id is not None) and (ivector_extractor_id is None))):
