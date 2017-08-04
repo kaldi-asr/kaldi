@@ -190,7 +190,8 @@ class UtteranceSplitter {
   // supervision_length = (utterance_length + sf - 1) / sf.
   bool LengthsMatch(const std::string &utt,
                     int32 utterance_length,
-                    int32 supervision_length) const;
+                    int32 supervision_length,
+                    int32 length_tolerance = 0) const;
 
   ~UtteranceSplitter();
 

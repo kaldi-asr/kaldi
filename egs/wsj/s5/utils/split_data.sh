@@ -122,7 +122,7 @@ if [ ! -f $data/segments ]; then
 fi
 
 # split some things that are indexed by utterance.
-for f in feats.scp text vad.scp utt2lang $maybe_wav_scp; do
+for f in feats.scp text vad.scp utt2lang $maybe_wav_scp utt2dur utt2num_frames; do
   if [ -f $data/$f ]; then
     utils/filter_scps.pl JOB=1:$numsplit \
       $data/split${numsplit}${utt}/JOB/utt2spk $data/$f $data/split${numsplit}${utt}/JOB/$f || exit 1;
