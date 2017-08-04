@@ -180,7 +180,7 @@ class IvectorExtractorComputeDerivedVarsClass {
 };
 
 void IvectorExtractor::ComputeDerivedVars() {
-  KALDI_LOG << "Computing derived variables for iVector extractor";
+  KALDI_VLOG(1) << "Computing derived variables for iVector extractor";
   gconsts_.Resize(NumGauss());
   for (int32 i = 0; i < NumGauss(); i++) {
     double var_logdet = -Sigma_inv_[i].LogPosDefDet();
@@ -201,7 +201,7 @@ void IvectorExtractor::ComputeDerivedVars() {
     for (int32 i = 0; i < NumGauss(); i++)
       sequencer.Run(new IvectorExtractorComputeDerivedVarsClass(this, i));
   }
-  KALDI_LOG << "Done.";
+  KALDI_VLOG(1) << "Done.";
 }
 
 
