@@ -244,6 +244,8 @@ if [ $stage -le 14 ]; then
   local/nnet3/prep_test_aspire.sh --stage 4 --decode-num-jobs 30  --affix "v7" \
    --extra-left-context $extra_left_context \
    --extra-right-context $extra_right_context \
+   --extra-left-context-initial 0 \
+   --extra-right-context-final 0 \
    --frames-per-chunk $chunk_width \
    --acwt 1.0 --post-decode-acwt 10.0 \
    --window 10 --overlap 5 \
