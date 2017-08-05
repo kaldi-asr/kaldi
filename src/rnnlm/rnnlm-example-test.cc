@@ -21,13 +21,14 @@
 #include "rnnlm/rnnlm-example.h"
 #include "rnnlm/rnnlm-test-utils.h"
 #include "rnnlm/rnnlm-example-utils.h"
+#include "rnnlm/rnnlm-training.h"
 
 namespace kaldi {
 namespace rnnlm {
 
 
 // Gets a neural net that has no dependency on t greater than the current t.
-Nnet *GetTestingNnet(int32 embedding_dim) {
+nnet3::Nnet *GetTestingNnet(int32 embedding_dim) {
   std::ostringstream config_os;
   config_os << "input-node name=input dim=" << embedding_dim << std::endl;
   config_os << "component name=affine1 type=NaturalGradientAffineComponent input-dim="
@@ -35,7 +36,7 @@ Nnet *GetTestingNnet(int32 embedding_dim) {
   config_os << "component-node input=input name=affine1 component=affine1\n";
   config_os << "output-node input=affine1 name=output\n";
   std::istringstream config_is(config_os.str());
-  nnet *ans  new nnet3::Nnet();
+  nnet3::Nnet *ans = new nnet3::Nnet();
   ans->ReadConfig(config_is);
   return ans;
 }
@@ -44,11 +45,11 @@ Nnet *GetTestingNnet(int32 embedding_dim) {
 // test training (no sparse embedding).
 void TestRnnlmTraining(const std::string &archive_rxfilename,
                        int32 vocab_size) {
-  RnnlmExampleReader reader(archive_rxfilename);
+  SequentialRnnlmExampleReader reader(archive_rxfilename);
   int32 embedding_dim = RandInt(10, 30);
 
-  Nnet *rnnlm = GetTestingNnet(embedding_dim);
-  CuVector<BaseFloat> embedding_mat(vocab_size, embedding_dim);
+  nnet3::Nnet *rnnlm = GetTestingNnet(embedding_dim);
+  CuMatrix<BaseFloat> embedding_mat(vocab_size, embedding_dim);
   embedding_mat.SetRandn();
 
 
@@ -60,7 +61,7 @@ void TestRnnlmTraining(const std::string &archive_rxfilename,
   {
     RnnlmTrainer trainer(train_embedding, core_config, embedding_config,
                          NULL, &embedding_mat, rnnlm);
-    for (; reader.Next(); !reader.Done()) {
+    for (; !reader.Done(); reader.Next()) {
       trainer.Train(&reader.Value());
     }
   }

@@ -150,8 +150,8 @@ class RnnlmCoreTrainer {
              const CuMatrixBase<BaseFloat> &word_embedding,
              CuMatrixBase<BaseFloat> *word_embedding_deriv = NULL);
 
-  // Prints out the final stats, and return true if there was a nonzero count.
-  bool PrintTotalStats() const;
+  // Prints out the final stats.
+  void PrintTotalStats() const;
 
   // Prints out the max-change stats (if nonzero): the percentage of time that
   // per-component max-change and global max-change were enforced.
