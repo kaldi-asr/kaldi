@@ -69,7 +69,107 @@ void TestRnnlmTraining(const std::string &archive_rxfilename,
   delete rnnlm;
 }
 
+void TestRnnlmOutput(const std::string &archive_rxfilename) {
+  SequentialRnnlmExampleReader reader(archive_rxfilename);
+  int32 num_test = 10;
+  for (int32 n = 0; !reader.Done() && n < num_test; reader.Next(), n++) {
+    RnnlmExample &example(reader.Value());
+    bool train_embedding = (RandInt(0, 1) == 0),
+        train_nnet = (RandInt(0, 1) == 0);
 
+    RnnlmExampleDerived derived;
+    GetRnnlmExampleDerived(example, train_embedding, &derived);
+
+    int32 embedding_dim = RandInt(10, 40),
+        vocab_size = example.vocab_size,
+        num_output_rows = example.chunk_length * example.num_chunks;
+
+
+
+    CuMatrix<BaseFloat> embedding(vocab_size, embedding_dim),
+        embedding_deriv(vocab_size, embedding_dim),
+        nnet_output(num_output_rows, embedding_dim),
+        nnet_output_deriv(num_output_rows, embedding_dim);
+
+    embedding.SetRandn();
+    nnet_output.SetRandn();
+
+    BaseFloat weight, objf_num, objf_den, objf_den_exact;
+
+    ProcessRnnlmOutput(example, derived, embedding, nnet_output,
+                       train_embedding ? &embedding_deriv : NULL,
+                       train_nnet ? &nnet_output_deriv : NULL,
+                       &weight, &objf_num, &objf_den, &objf_den_exact);
+
+    KALDI_LOG << "Weight=" << weight
+              << ", objf-num=" << objf_num
+              << ", objf-den=" << objf_den
+              << ", objf=" << (objf_num + objf_den)
+              << ", objf-den-exact is " << objf_den_exact;
+
+    if (train_embedding) {
+      BaseFloat delta = 1.0e-04;
+      // test the embedding derivatives
+      KALDI_LOG << "Testing the derivatives w.r.t. "
+          "the embedding [testing ProcessOutput()].";
+      // num_tries is the number of times we perturb the embedding matrix;
+      // making this >1 makes the test more robust.
+      int32 num_tries = 3;
+      Vector<BaseFloat> objf_change_predicted(num_tries),
+          objf_change_observed(num_tries);
+      for (int32 i = 0; i < num_tries; i++) {
+        CuMatrix<BaseFloat> embedding2(vocab_size, embedding_dim);
+        embedding2.SetRandn();
+        embedding2.Scale(delta);
+        objf_change_predicted(i) = TraceMatMat(embedding2, embedding, kTrans);
+        embedding2.AddMat(1.0, embedding);
+
+        BaseFloat weight2, objf_num2, objf_den2;
+        ProcessRnnlmOutput(example, derived, embedding2, nnet_output,
+                           NULL, NULL,
+                           &weight2, &objf_num2, &objf_den2, NULL);
+        objf_change_observed(i) = (objf_num2 + objf_den2) -
+            (objf_num + objf_den);
+      }
+      if (!objf_change_predicted.ApproxEqual(objf_change_observed, 0.01)) {
+        KALDI_ERR << "Embedding-deriv test failed: objf-change-predicted="
+                  << objf_change_predicted << " differs too much from "
+                  << " objf-change-observed=" << objf_change_observed;
+      }
+    }
+    if (train_nnet) {
+      BaseFloat delta = 1.0e-04;
+      // test the nnet-output derivatives
+      KALDI_LOG << "Testing the derivatives w.r.t. "
+          "the nnet output [testing ProcessOutput()].";
+      // num_tries is the number of times we perturb the embedding matrix;
+      // making this >1 makes the test more robust.
+      int32 num_tries = 3;
+      Vector<BaseFloat> objf_change_predicted(num_tries),
+          objf_change_observed(num_tries);
+      for (int32 i = 0; i < num_tries; i++) {
+        CuMatrix<BaseFloat> nnet_output2(num_output_rows, embedding_dim);
+        nnet_output2.SetRandn();
+        nnet_output2.Scale(delta);
+        objf_change_predicted(i) = TraceMatMat(nnet_output2, nnet_output,
+                                               kTrans);
+        nnet_output2.AddMat(1.0, nnet_output);
+
+        BaseFloat weight2, objf_num2, objf_den2;
+        ProcessRnnlmOutput(example, derived, embedding, nnet_output2,
+                           NULL, NULL,
+                           &weight2, &objf_num2, &objf_den2, NULL);
+        objf_change_observed(i) = (objf_num2 + objf_den2) -
+            (objf_num + objf_den);
+      }
+      if (!objf_change_predicted.ApproxEqual(objf_change_observed, 0.01)) {
+        KALDI_ERR << "Nnet-output-deriv test failed: objf-change-predicted="
+                  << objf_change_predicted << " differs too much from "
+                  << " objf-change-observed=" << objf_change_observed;
+      }
+    }
+  }
+}
 
 void TestRnnlmExample() {
 
@@ -131,14 +231,8 @@ void TestRnnlmExample() {
     }
   }
 
+  TestRnnlmOutput("ark:tmp.ark");
   TestRnnlmTraining("ark:tmp.ark", egs_config.vocab_size);
-
-
-    // TODO: read the archive and actually train.
-
-
-
-
 
 }
 

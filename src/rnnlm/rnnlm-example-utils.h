@@ -199,10 +199,11 @@ void GetRnnlmExampleDerived(const RnnlmExample &minibatch,
                          renumbered to include only the required words if
                          sampling is done; c.f. RenumberRnnlmExample().
        @param [in] nnet_output  The neural net output.  Num-rows is
-                         minibatch.chunk_length by minibatch.num_chunks,
+                         minibatch.chunk_length * minibatch.num_chunks,
                          where the stride for the time 0 <= t < chunk_length
                          is larger, so there are a block of rows for t=0,
-                         a block for t=1, and so on.
+                         a block for t=1, and so on.  Num-columns is
+                         embedding-dimension.
        @param [out] word_embedding_deriv  If non-NULL, the derivative of the
                          objective function w.r.t. 'word_embedding' is *added*
                          to this location.
@@ -219,14 +220,18 @@ void GetRnnlmExampleDerived(const RnnlmExample &minibatch,
        @param [out] objf_den  If non-NULL, the total denominator part of
                          the objective function will be written here, i.e.
                          the sum over i of weight(i) * den_term(i); see above
-                         for details.
+                         for details.  You add this to 'objf_num' to get the
+                         total objective function.
        @param [out] objf_den_exact  If non-NULL, then if we're not
                          doing sampling (minibatch.sampled_words.empty()),
                          the 'exact' denominator part of the objective function
                          will be written here, i.e. the weighted sum of
                            exact_den_term(i) = -log(\sum_w p(i,w)).
                          If we are sampling, then there is no exact denominator
-                         part, and this will be set to zero.
+                         part, and this will be set to zero.  This is provided
+                         for diagnostic purposes.  Derivatives will be computed
+                         w.r.t. the objective consisting of
+                         'objf_num + objf_den'.
  */
 void ProcessRnnlmOutput(
     const RnnlmExample &minibatch,
