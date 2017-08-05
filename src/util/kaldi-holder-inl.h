@@ -314,7 +314,7 @@ template<class BasicType> class BasicVectorHolder {
   // open in binary mode for reading.
   static bool IsReadInBinary() { return true; }
 
-  T &Value() {  t_; }
+  T &Value() { return t_; }
 
   void Swap(BasicVectorHolder<BasicType> *other) {
     t_.swap(other->t_);

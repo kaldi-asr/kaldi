@@ -44,29 +44,35 @@ namespace rnnlm {
 
 
 /**
-   This function renumbers the word-ids referred to in a minibatch,
-   creating a numbering that covers exactly the words referred to
-   in this minibatch.
+   This function renumbers the word-ids referred to in a minibatch, creating a
+   numbering that covers exactly the words referred to in this minibatch.   It
+   is only to be called when sampling is used, i.e. when minibatch->samples
+   is not empty.
 
       @param [in,out] minibatch  The minibatch to be modified.
-                             At entry the words-indexes in fields 'input_words',
-                             'output_words' and 'sampled_words' will be in their
-                             canonical numbering.  At exit the numbers present in
-                             those arrays will be indexes into the 'active_words'
-                             vector that this function outputs.  For instance,
-                             suppose minibatch->input_words[9] == 1034 at
-                             entry; at exit we might have minibatch->input_words[9]
-                             == 94, with (*active_words)[94] == 1034.
-                             This function requires that minibatch->sampled_words
-                             must be nonempty.  If minibatch->sampled_words is
-                             empty, it means that sampling has not been done, so
-                             the negative part of the objf will use all the words.
-                             In this case the minibatch implicitly uses all words,
-                             so there is no use in renumbering.
-                             At exit, 'minibatch->vocab_size' will have been set to
-                             the same value as active_words->size().
+                              At entry the words-indexes in fields
+                             'input_words', and 'sampled_words' will be in their
+                             canonical numbering.  At exit the numbers present
+                             in those arrays will be indexes into the
+                             'active_words' vector that this function outputs.
+                             For instance, suppose minibatch->input_words[9] ==
+                             1034 at entry; at exit we might have
+                             minibatch->input_words[9] == 94, with
+                             (*active_words)[94] == 1034.  This function
+                             requires that minibatch->sampled_words must be
+                             nonempty.  If minibatch->sampled_words is empty, it
+                             means that sampling has not been done, so the
+                             negative part of the objf will use all the words.
+                             In this case the minibatch implicitly uses all
+                             words, so there is no use in renumbering.  At exit,
+                             'minibatch->vocab_size' will have been set to the
+                             same value as active_words->size().  Note: it is not
+                             necessary for this function to renumber 'output_words'
+                             because in the sampling case they are indexes into
+                             blocks of 'sampled_words' (see documentation for
+                             RnnlmExample).
       @param [out] active_words  The list of active words, i.e. the words that
-                              were present in the fields 'input_words', 'out_words',
+                              were present in the fields 'input_words',
                               and 'sampled_words' in 'minibatch' on entry.  At
                               exit, this list will be sorted and unique.
  */

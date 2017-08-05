@@ -26,6 +26,50 @@ namespace kaldi {
 namespace rnnlm {
 
 
+// Gets a neural net that has no dependency on t greater than the current t.
+Nnet *GetTestingNnet(int32 embedding_dim) {
+  std::ostringstream config_os;
+  config_os << "input-node name=input dim=" << embedding_dim << std::endl;
+  config_os << "component name=affine1 type=NaturalGradientAffineComponent input-dim="
+            << embedding_dim << " output-dim=" << embedding_dim << std::endl;
+  config_os << "component-node input=input name=affine1 component=affine1\n";
+  config_os << "output-node input=affine1 name=output\n";
+  std::istringstream config_is(config_os.str());
+  nnet *ans  new nnet3::Nnet();
+  ans->ReadConfig(config_is);
+  return ans;
+}
+
+
+// test training (no sparse embedding).
+void TestRnnlmTraining(const std::string &archive_rxfilename,
+                       int32 vocab_size) {
+  RnnlmExampleReader reader(archive_rxfilename);
+  int32 embedding_dim = RandInt(10, 30);
+
+  Nnet *rnnlm = GetTestingNnet(embedding_dim);
+  CuVector<BaseFloat> embedding_mat(vocab_size, embedding_dim);
+  embedding_mat.SetRandn();
+
+
+  RnnlmCoreTrainerOptions core_config;
+  RnnlmEmbeddingTrainerOptions embedding_config;
+
+  bool train_embedding = (RandInt(0, 1) == 0);
+
+  {
+    RnnlmTrainer trainer(train_embedding, core_config, embedding_config,
+                         NULL, &embedding_mat, rnnlm);
+    for (; reader.Next(); !reader.Done()) {
+      trainer.Train(&reader.Value());
+    }
+  }
+
+  delete rnnlm;
+}
+
+
+
 void TestRnnlmExample() {
 
   std::set<std::string> forbidden_symbols;
@@ -67,24 +111,32 @@ void TestRnnlmExample() {
 
   RnnlmExampleSampler sampler(egs_config, arpa);
 
-  RnnlmExampleWriter writer("ark:tmp.ark");
-
   {
-    RnnlmExampleCreator *creator = NULL;
-    if (RandInt(0, 1) == 0) {
-      // use sampling to create the egs.
-      creator = new RnnlmExampleCreator(egs_config, sampler, &writer);
-    } else {
-      creator = new RnnlmExampleCreator(egs_config, &writer);
+    RnnlmExampleWriter writer("ark:tmp.ark");
+
+    {
+      RnnlmExampleCreator *creator = NULL;
+      if (RandInt(0, 1) == 0) {
+        // use sampling to create the egs.
+        creator = new RnnlmExampleCreator(egs_config, sampler, &writer);
+      } else {
+        creator = new RnnlmExampleCreator(egs_config, &writer);
+      }
+      for (size_t i = 0; i < int_sentences_test.size(); i++) {
+        BaseFloat weight = 0.5 * RandInt(1, 3);
+        creator->AcceptSequence(weight, int_sentences_test[i]);
+      }
+      delete creator;
     }
-    for (size_t i = 0; i < int_sentences_test.size(); i++) {
-      BaseFloat weight = 0.5 * RandInt(1, 2);
-      creator->AcceptSequence(weight, int_sentences_test[i]);
-    }
-    delete creator;
   }
 
-  // TODO: read the archive and actually train.
+  TestRnnlmTraining("ark:tmp.ark", egs_config.vocab_size);
+
+
+    // TODO: read the archive and actually train.
+
+
+
 
 
 }

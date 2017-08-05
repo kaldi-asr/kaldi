@@ -30,70 +30,6 @@
 namespace kaldi {
 namespace rnnlm {
 
-
-struct RnnlmTrainerOptions {
-  // rnnlm_rxfilename must be supplied, via --read-rnnlm option.
-  std::string rnnlm_rxfilename;
-  // For now, rnnlm_wxfilename must be supplied (later we could make it possible
-  // to train the embedding matrix without training the RNNLM itself, if there
-  // is a need).
-  std::string rnnlm_wxfilename;
-  // embedding_rxfilename must be supplied, via --read-embedding option.
-  std::string embedding_rxfilename;
-  std::string embedding_wxfilename;
-  std::string word_features_rxfilename;
-  // binary mode for writing output.
-  bool binary;
-
-  RnnlmCoreTrainerOptions core_config;
-  RnnlmEmbeddingTrainerOptions embedding_config;
-
-
-  RnnlmTrainerOptions(): binary(true) { }
-
-  void Register(OptionsItf *po) {
-    po->Register("read-rnnlm", &rnnlm_rxfilename,
-                 "Read RNNLM from this location (e.g. 0.raw).  Must be supplied.");
-    po->Register("write-rnnlm", &rnnlm_wxfilename,
-                 "Write RNNLM to this location (e.g. 1.raw)."
-                 "If not supplied, the core RNNLM is not trained "
-                 "(but other parts of the model might be.");
-    po->Register("read-embedding", &embedding_rxfilename,
-                 "Location to read dense (feature or word) embedding matrix, "
-                 "of dimension (num-words or num-features) by (embedding-dim).");
-    po->Register("write-embedding", &embedding_wxfilename,
-                 "Location to write embedding matrix (c.f. --read-embedding). "
-                 "If not provided, the embedding will not be trained.");
-    po->Register("read-sparse-word-features", &word_features_rxfilename,
-                 "Location to read sparse word-feature matrix, e.g. "
-                 "word_feats.txt.  Format is lines like: '1  30 1.0 516 1.0':"
-                 "starting with word-index, then a list of pairs "
-                 "(feature-index, value) only including nonzero features. "
-                 "This will usually be determined in an ad-hoc way based on "
-                 "letters and other hand-built features; it's not trainable."
-                 " If present, the embedding matrix read via --read-embedding "
-                 "will be interpreted as a feature-embedding matrix.");
-    po->Register("binary", &binary,
-                 "If true, write outputs in binary form.");
-
-
-    // register the core RNNLM training options options with the prefix "rnnlm",
-    // so they will appear as --rnnlm.max-change and the like.  This is done
-    // with a prefix because later we may add a neural net to transform the word
-    // embedding, and it would have options that would have a name conflict with
-    // some of these options.
-    ParseOptions core_opts("rnnlm", po);
-    core_config.Register(&core_opts);
-
-    ParseOptions embedding_opts("embedding", po);
-    core_config.Register(&embedding_opts);
-  }
-
-  // returns true if the combination of arguments makes sense, otherwise prints
-  // a warning and returns false (the user can then call PrintUsage()).
-  bool HasRequiredOptions() const;
-};
-
 /*
   The class RnnlmTrainer is for training an RNNLM (one individual training job, not
   the top-level logic about learning rate schedules, parameter averaging, and the
@@ -103,11 +39,40 @@ struct RnnlmTrainerOptions {
 
 class RnnlmTrainer {
  public:
-  // The constructor reads in any files we need to read in, initializes members,
-  // and starts the background thread that computes the 'derived' parameters of
-  // an eg.
-  // It retains a reference to 'config'.
-  RnnlmTrainer(const RnnlmTrainerOptions &config);
+  /**
+     Constructor
+      @param [in] train_embedding  True if the user wants us to
+                             train the embedding matrix
+      @param [in] core_config  Options for training the core
+                              RNNLM
+      @param [in] embedding_config  Options for training the
+                              embedding matrix (only relevant
+                              if train_embedding is true).
+      @param [in] word_feature_mat Either NULL, or a pointer to a sparse
+                             word-feature matrix of dimension vocab-size by
+                             feature-dim, where vocab-size is the
+                             highest-numbered word plus one.
+      @param [in,out] embedding_mat  Pointer to the embedding
+                             matrix; this is trained if train_embedding is true,
+                             and in either case this class retains the pointer
+                             to 'embedding_mat' during its livetime.
+                             If word_feature_mat is NULL, this
+                             is the word-embedding matrix of dimension
+                             vocab-size by embedding-dim; otherwise it is the
+                             feature-embedding matrix of dimension feature-dim by
+                             by embedding-dim, and we have to multiply it by
+                             word_feature_mat to get the word embedding matrix.
+      @param [in,out] rnnlm  The RNNLM to be trained.  The class will retain
+                             this pointer and modify the neural net in-place.
+  */
+  RnnlmTrainer(bool train_embedding,
+               const RnnlmCoreTrainerOptions &core_config,
+               const RnnlmEmbeddingTrainerOptions &embedding_config,
+               const CuSparseMatrix<BaseFloat> *word_feature_mat,
+               CuMatrix<BaseFloat> *embedding_mat,
+               nnet3::Nnet *rnnlm_);
+
+
 
   // Train on one example.  The example is provided as a pointer because we
   // acquire it destructively, via Swap().  Note: this function doesn't
@@ -164,36 +129,39 @@ class RnnlmTrainer {
     trainer->RunBackgroundThread();
   }
 
-  const RnnlmTrainerOptions &config_;
 
-  // The neural net we are training.
-  nnet3::Nnet rnnlm_;
+  bool train_embedding_;  // true if we are training the embedding.
+  const RnnlmCoreTrainerOptions &core_config_;
+  const RnnlmEmbeddingTrainerOptions &embedding_config_;
 
-  // Pointer to the object that trains 'rnnlm_'.
+  // The neural net we are training (not owned here)
+  nnet3::Nnet *rnnlm_;
+
+  // Pointer to the object that trains 'rnnlm_' (owned here).
   RnnlmCoreTrainer *core_trainer_;
 
   // The (word or feature) embedding matrix; it's the word embedding matrix if
   // word_feature_mat_.NumRows() == 0, else it's the feature embedding matrix.
   // The dimension is (num-words or num-features) by embedding-dim.
-  CuMatrix<BaseFloat> embedding_mat_;
+  // It's owned outside this class.
+  CuMatrix<BaseFloat> *embedding_mat_;
 
 
   // Pointer to the object that trains 'embedding_mat_', or NULL if we are not
-  // training it.
+  // training it.  Owned here.
   RnnlmEmbeddingTrainer *embedding_trainer_;
 
   // If the --read-sparse-word-features options is provided, then
   // word_feature_mat_ will contain the matrix of sparse word features, of
   // dimension num-words by num-features.  In this case, the word embedding
   // matrix is the product of this matrix times 'embedding_mat_'.
-  CuSparseMatrix<BaseFloat> word_feature_mat_;
+  // It's owned outside this class.
+  const CuSparseMatrix<BaseFloat> *word_feature_mat_;
 
   // This is the transpose of word_feature_mat_, which is needed only if we
   // train on egs without sampling.  This is only computed once, if and when
   // it's needed.
   CuSparseMatrix<BaseFloat> word_feature_mat_transpose_;
-
-
 
 
   // num_minibatches_processed_ starts at zero is incremented each time we

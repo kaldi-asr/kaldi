@@ -74,17 +74,16 @@ struct RnnlmExample {
                                    // num_chunks.  In the common case these will
                                    // be the same as the previous output symbol.
   std::vector<int32> output_words;  // The output (predicted) word symbols for
-                                    // each position in each chunk; indexed
-                                    // in the same way as 'input_words'.
-                                    // What this contains is different from
-                                    // 'input_words' in the sampling case
-                                    // (i.e. if !sampled_words.empty()).
-                                    // In this case, instead of the word-index
-                                    // it contains the relative index
-                                    // 0 <= i < num_samples within
-                                    // the block of sampled words.  In the
-                                    // not-sampled case it contains some 0 <= i <
-                                    // vocab_size.  TODO: ensure this is true.
+                                    // each position in each chunk; indexed in
+                                    // the same way as 'input_words'.  What this
+                                    // contains is different from 'input_words'
+                                    // in the sampling case (i.e. if
+                                    // !sampled_words.empty()).  In this case,
+                                    // instead of the word-index it contains the
+                                    // relative index 0 <= i < num_samples
+                                    // within the block of sampled words.  In
+                                    // the not-sampled case it contains actual
+                                    // word indexes 0 <= i < vocab_size.
 
 
 

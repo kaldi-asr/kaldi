@@ -24,60 +24,53 @@ namespace kaldi {
 namespace rnnlm {
 
 
-bool RnnlmTrainerOptions::HasRequiredOptions() const {
-  bool ans = true;
-  if (rnnlm_rxfilename == "") {
-    KALDI_WARN << "--read-rnnlm option is required";
-    ans = false;
-  }
-  if (rnnlm_wxfilename == "") {
-    KALDI_WARN << "--write-rnnlm option is (currently) required";
-    ans = false;
-  }
-  if (embedding_rxfilename == "") {
-    KALDI_WARN << "--read-embedding option is required.";
-    ans = false;
-  }
-  return ans;
-}
-RnnlmTrainer::RnnlmTrainer(const RnnlmTrainerOptions &config):
-    config_(config),
+
+RnnlmTrainer::RnnlmTrainer(bool train_embedding,
+                           const RnnlmCoreTrainerOptions &core_config,
+                           const RnnlmEmbeddingTrainerOptions &embedding_config,
+                           const CuSparseMatrix<BaseFloat> *word_feature_mat,
+                           CuMatrix<BaseFloat> *embedding_mat,
+                           nnet3::Nnet *rnnlm):
+    train_embedding_(train_embedding),
+    core_config_(core_config),
+    embedding_config_(embedding_config),
+    rnnlm_(rnnlm),
+    core_trainer_(NULL),
+    embedding_mat_(embedding_mat),
+    embedding_trainer_(NULL),
+    word_feature_mat_(word_feature_mat),
     num_minibatches_processed_(0),
     end_of_input_(false),
     previous_minibatch_empty_(1),
     current_minibatch_empty_(1) {
-  ReadKaldiObject(config_.rnnlm_rxfilename, &rnnlm_);
-  if (!IsSimpleNnet(rnnlm_))
-    KALDI_ERR << "Input RNNLM in " << config_.rnnlm_rxfilename
-             << " is not the type of neural net we were looking for; "
-                "failed IsSimpleNnet().";
-  ReadKaldiObject(config_.embedding_rxfilename, &embedding_mat_);
-  int32 rnnlm_input_dim = rnnlm_.InputDim("input"),
-      rnnlm_output_dim = rnnlm_.OutputDim("output"),
-      embedding_dim = embedding_mat_.NumCols();
+
+
+  int32 rnnlm_input_dim = rnnlm_->InputDim("input"),
+      rnnlm_output_dim = rnnlm_->OutputDim("output"),
+      embedding_dim = embedding_mat->NumCols();
   if (rnnlm_input_dim != embedding_dim ||
       rnnlm_output_dim != embedding_dim)
     KALDI_ERR << "Expected RNNLM to have input-dim and output-dim "
               << "equal to embedding dimension " << embedding_dim
               << " but got " << rnnlm_input_dim << " and "
               << rnnlm_output_dim;
-  core_trainer_ = new RnnlmCoreTrainer(config_.core_config, &rnnlm_);
+  core_trainer_ = new RnnlmCoreTrainer(core_config, rnnlm_);
 
-  if (config_.embedding_wxfilename != "") {
-    embedding_trainer_ = new RnnlmEmbeddingTrainer(config_.embedding_config,
-                                                   &embedding_mat_);
+  if (train_embedding) {
+    embedding_trainer_ = new RnnlmEmbeddingTrainer(embedding_config,
+                                                   embedding_mat_);
   } else {
     embedding_trainer_ = NULL;
   }
 
-  if (config_.word_features_rxfilename != "") {
-    // binary mode is not supported here; it's a text format.
-    Input input(config_.word_features_rxfilename);
-    int32 feature_dim = embedding_mat_.NumRows();
-    SparseMatrix<BaseFloat> word_feature_mat;
-    ReadSparseWordFeatures(input.Stream(), feature_dim,
-                           &word_feature_mat);
-    word_feature_mat_.Swap(&word_feature_mat);  // copy to GPU
+  if (word_feature_mat_ != NULL) {
+    int32 feature_dim = word_feature_mat_->NumCols();
+    if (feature_dim != embedding_mat_->NumRows()) {
+      KALDI_ERR << "Word-feature mat (e.g. from --read-sparse-word-features) "
+          "has num-cols/feature-dim=" << word_feature_mat_->NumCols()
+              << " but embedding matrix has num-rows/feature-dim="
+                << embedding_mat_->NumRows() << " (mismatch).";
+    }
   }
 
   // Start a thread that calls run_background_thread(this).
@@ -117,33 +110,33 @@ void RnnlmTrainer::GetWordEmbedding(CuMatrix<BaseFloat> *word_embedding_storage,
   RnnlmExample &minibatch = previous_minibatch_;
   bool sampling = !minibatch.sampled_words.empty();
 
-  if (word_feature_mat_.NumRows() == 0) {
+  if (word_feature_mat_ == NULL) {
     // There is no sparse word-feature matrix.
     if (!sampling) {
       KALDI_ASSERT(active_words_.Dim() == 0);
       // There is no sparse word-feature matrix, so the embedding matrix is just
       // embedding_mat_ (the embedding matrix for all words).
-      *word_embedding = &embedding_mat_;
-      KALDI_ASSERT(minibatch.vocab_size == embedding_mat_.NumRows());
+      *word_embedding = embedding_mat_;
+      KALDI_ASSERT(minibatch.vocab_size == embedding_mat_->NumRows());
     } else {
       // There is sampling-- we're using a subset of the words so the user wants
       // an embedding matrix for just those rows.
       KALDI_ASSERT(active_words_.Dim() != 0);
       word_embedding_storage->Resize(active_words_.Dim(),
-                                     embedding_mat_.NumCols(),
+                                     embedding_mat_->NumCols(),
                                      kUndefined);
-      word_embedding_storage->CopyRows(embedding_mat_, active_words_);
+      word_embedding_storage->CopyRows(*embedding_mat_, active_words_);
       *word_embedding = word_embedding_storage;
     }
   } else {
     // There is a sparse word-feature matrix, so we need to multiply it by the
     // feature-embedding matrix in order to get the word-embedding matrix.
     const CuSparseMatrix<BaseFloat> &word_feature_mat =
-        sampling ? active_word_features_ : word_feature_mat_;
+        sampling ? active_word_features_ : *word_feature_mat_;
     word_embedding_storage->Resize(word_feature_mat.NumRows(),
-                                   embedding_mat_.NumCols());
+                                   embedding_mat_->NumCols());
     word_embedding_storage->AddSmatMat(1.0, word_feature_mat, kNoTrans,
-                                       embedding_mat_, 0.0);
+                                       *embedding_mat_, 0.0);
     *word_embedding = word_embedding_storage;
   }
 }
@@ -155,7 +148,7 @@ void RnnlmTrainer::TrainWordEmbedding(
   RnnlmExample &minibatch = previous_minibatch_;
   bool sampling = !minibatch.sampled_words.empty();
 
-  if (word_feature_mat_.NumRows() == 0) {
+  if (word_feature_mat_ == NULL) {
     // There is no sparse word-feature matrix.
     if (!sampling) {
       embedding_trainer_->Train(word_embedding_deriv);
@@ -166,8 +159,8 @@ void RnnlmTrainer::TrainWordEmbedding(
   } else {
     // There is a sparse word-feature matrix, so we need to multiply by it
     // to get the derivative w.r.t. the feature-embedding matrix.
-    CuMatrix<BaseFloat> feature_embedding_deriv(embedding_mat_.NumRows(),
-                                                embedding_mat_.NumCols());
+    CuMatrix<BaseFloat> feature_embedding_deriv(embedding_mat_->NumRows(),
+                                                embedding_mat_->NumCols());
     const CuSparseMatrix<BaseFloat> &word_features_trans =
         (sampling ? active_word_features_trans_ : word_feature_mat_transpose_);
     feature_embedding_deriv.AddMatSmat(1.0, *word_embedding_deriv,
@@ -184,24 +177,21 @@ void RnnlmTrainer::TrainInternal() {
   CuMatrix<BaseFloat> word_embedding_storage;
   CuMatrix<BaseFloat> *word_embedding;
   GetWordEmbedding(&word_embedding_storage, &word_embedding);
-  // 'training_embedding' is true if we are training the embedding matrix
-  bool training_embedding =  (config_.embedding_wxfilename != "");
-
 
   CuMatrix<BaseFloat> word_embedding_deriv;
-  if (training_embedding)
+  if (train_embedding_)
     word_embedding_deriv.Resize(word_embedding->NumRows(),
                                 word_embedding->NumCols());
 
   core_trainer_->Train(previous_minibatch_, derived_, *word_embedding,
-                       (training_embedding ? &word_embedding_deriv : NULL));
-  if (training_embedding)
+                       (train_embedding_ ? &word_embedding_deriv : NULL));
+  if (train_embedding_)
     TrainWordEmbedding(&word_embedding_deriv);
 }
 
 int32 RnnlmTrainer::VocabSize() {
-  if (word_feature_mat_.NumRows() > 0) return word_feature_mat_.NumRows();
-  else return embedding_mat_.NumRows();
+  if (word_feature_mat_ != NULL) return word_feature_mat_->NumRows();
+  else return embedding_mat_->NumRows();
 }
 
 void RnnlmTrainer::RunBackgroundThread() {
@@ -219,15 +209,14 @@ void RnnlmTrainer::RunBackgroundThread() {
       RenumberRnnlmExample(&current_minibatch_, &active_words);
       active_words_cuda.CopyFromVec(active_words);
 
-      if (word_feature_mat_.NumRows() > 0) {
+      if (word_feature_mat_ != NULL) {
         active_word_features.SelectRows(active_words_cuda,
-                                        word_feature_mat_);
+                                        *word_feature_mat_);
         active_word_features_trans.CopyFromSmat(active_word_features,
                                                 kTrans);
       }
     }
-    bool need_embedding_deriv = (config_.embedding_wxfilename != "");
-    GetRnnlmExampleDerived(current_minibatch_, need_embedding_deriv,
+    GetRnnlmExampleDerived(current_minibatch_, train_embedding_,
                            &derived);
 
     // Wait until the main thread is not currently processing
@@ -269,18 +258,6 @@ RnnlmTrainer::~RnnlmTrainer() {
 
   KALDI_LOG << "Trained on " << num_minibatches_processed_
             << " minibatches.\n";
-  // Now write out the things we need to write out.
-  if (config_.rnnlm_wxfilename != "") {
-    WriteKaldiObject(rnnlm_, config_.rnnlm_wxfilename, config_.binary);
-    KALDI_LOG << "Wrote RNNLM to "
-              << PrintableWxfilename(config_.rnnlm_wxfilename);
-  }
-  if (config_.embedding_wxfilename != "") {
-    WriteKaldiObject(embedding_mat_, config_.embedding_wxfilename,
-                     config_.binary);
-    KALDI_LOG << "Wrote embedding matrix to "
-              << PrintableWxfilename(config_.embedding_wxfilename);
-  }
 }
 
 

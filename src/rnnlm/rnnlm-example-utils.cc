@@ -400,6 +400,38 @@ void GetRnnlmExampleDerived(const RnnlmExample &minibatch,
   }
 }
 
+void RenumberRnnlmExample(RnnlmExample *minibatch,
+                          std::vector<int32> *active_words) {
+  KALDI_ASSERT(!minibatch->sampled_words.empty());
+  unordered_set<int32> active_words_set;
+  active_words_set.insert(minibatch->input_words.begin(),
+                          minibatch->input_words.end());
+  active_words_set.insert(minibatch->sampled_words.begin(),
+                          minibatch->sampled_words.end());
+
+  active_words->clear();
+  active_words->insert(active_words->end(),
+                       active_words_set.begin(),
+                       active_words_set.end());
+  std::sort(active_words->begin(),
+            active_words->end());
+  unordered_map<int32, int32> active_words_map;
+  size_t n = active_words->size();
+  for (size_t i = 0; i < n; i++)
+    active_words_map[(*active_words)[i]] = i;
+
+  // Now remap 'input_words' and 'sampled_words'
+
+  std::vector<int32>::iterator iter = minibatch->input_words.begin(),
+      end = minibatch->input_words.end();
+  for (; iter != end; ++iter)
+    *iter = active_words_map[*iter];
+  iter = minibatch->sampled_words.begin();
+  end = minibatch->sampled_words.end();
+  for (; iter != end; ++iter)
+    *iter = active_words_map[*iter];
+  minibatch->vocab_size = static_cast<int32>(n);
+}
 
 }  // namespace rnnlm
 }  // namespace kaldi
