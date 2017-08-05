@@ -82,6 +82,36 @@ void ConvertToInteger(
   }
 }
 
+void EstimateAndWriteLanguageModel(
+    int32 ngram_order,
+    const fst::SymbolTable &symbol_table,
+    const std::vector<std::vector<int32> > &sentences,
+    int32 bos_symbol, int32 eos_symbol,
+    std::ostream &os) {
+
+  std::vector<int32> counts(symbol_table.NumSymbols(), 0);
+  int32 tot_count = 0;
+  for (int i = 0; i < sentences.size(); i++) {
+    tot_count += 2 + sentences[i].size();
+    counts[bos_symbol]++;
+    counts[eos_symbol]++;
+    for (int j = 0; j < sentences[i].size(); j++) {
+      counts[sentences[i][j]]++;
+    }
+  }
+
+  os << "\\data\\\n";
+  os << "ngram 1=" << counts.size() - 1 << "\n";  // not including <eps>
+  os << "\n";
+  os << "\1-grams:\n";
+
+  for (int32 i = 1; i < counts.size(); i++)
+    os << Log(1.0f * counts[i] / tot_count) << " "
+       << symbol_table.Find(i) << "\n";
+
+  os << "\\end\\";
+}
+
 
 }  // namespace rnnlm
 }  // namespace kaldi

@@ -22,6 +22,9 @@
 #include "rnnlm/rnnlm-test-utils.h"
 #include "rnnlm/rnnlm-example-utils.h"
 #include "rnnlm/rnnlm-training.h"
+#include "base/kaldi-common.h"
+#include "util/common-utils.h"
+#include "cudamatrix/cu-device.h"
 
 namespace kaldi {
 namespace rnnlm {
@@ -242,6 +245,8 @@ void TestRnnlmExample() {
 }
 
 int main() {
+  using namespace kaldi;
+  using namespace kaldi::nnet3;
   int32 loop = 0;
 
   // SetVerboseLevel(2);
@@ -268,6 +273,3 @@ int main() {
 #endif
   return 0;
 }
-
-
-
