@@ -25,12 +25,11 @@
 #include "lm/arpa-file-parser.h"
 
 namespace kaldi {
-
+namespace rnnlm {
 
 
 /// Creates a set of std::string containing
 /// the forbidden symbols "<eps>", "<s>", "<brk>", "</s>"
-/// TODO: implement this.
 void GetForbiddenSymbols(std::set<std::string> *forbidden_symbols);
 
 
@@ -40,21 +39,12 @@ void GetForbiddenSymbols(std::set<std::string> *forbidden_symbols);
 ///                     with backslash whenever they appear as symbols in
 ///                     'sentences', to avoid creating sequences which contain
 ///                     special values such as <s> and </s>.
-///   @param [out] sentences  At exit, will contain a list of sentences; each
+///  @param [out] sentences  At exit, will contain a list of sentences; each
 ///                      sentence is a sequence (possibly empty) of words,
 ///                      and each word is nonempty and free of whitespace,
 ///                      and different from the symbols listed in
 ///                      'forbidden_symbols'.
-
-///  TODO [implementation notes].  Please just read a bunch of files in this
-///  directory (you can have a list of named files in the source, rather than
-///  implementing 'find'-type functionality.  Maybe read 5 files.  Each line
-///  will be read with getline() or whatever it is in C++ (c.f. the LM-reading
-///  code), and will be split using something like SplitStringToVector(line, "
-///  \t\r\n", true, &split_line); You may need to declare a static function in
-///  the .cc file to open a file, read the lines, and append it to the provided
-///  std::vector<std::vector<std::string> >*.
-void GetTestSentences(const std::set<std::string> &forbidden_sybols,
+void GetTestSentences(const std::set<std::string> &forbidden_symbols,
                       std::vector<std::vector<std::string> > *sentences);
 
 
@@ -69,9 +59,10 @@ fst::SymbolTable *GetSymbolTable(
 /// Converts the data in 'string_sentences' into integers via the
 /// symbol table 'symbol_table', and writes to 'int_sentences'.
 /// All words must be covered in the symbol table.a
-void ConvertToInteger(const std::vector<std::vector<std::string> > &string_sentences,
-                      const fst::SymbolTable &symbol_table,
-                      std::vector<std::vector<int32> > *int_sentences);
+void ConvertToInteger(
+    const std::vector<std::vector<std::string> > &string_sentences,
+    const fst::SymbolTable &symbol_table,
+    std::vector<std::vector<int32> > *int_sentences);
 
 /**
    This function estimates a backoff n-gram language model from the data in
@@ -107,6 +98,6 @@ void EstimateAndWriteLanguageModel(
 
 
 
-
-}  // end of namespace kaldi
+}  // namespace rnnlm
+}  // namespace kaldi
 #endif  // KALDI_RNNLM_ARPA_SAMPLING_H_
