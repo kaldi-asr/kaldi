@@ -23,6 +23,55 @@
 namespace kaldi {
 namespace rnnlm {
 
+void RnnlmExample::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<RnnlmExample>");
+  WriteToken(os, binary, "<VocabSize>");
+  WriteBasicType(os, binary, vocab_size);
+  WriteToken(os, binary, "<NumChunks>");
+  WriteBasicType(os, binary, num_chunks);
+  WriteToken(os, binary, "<ChunkLength>");
+  WriteBasicType(os, binary, chunk_length);
+  WriteToken(os, binary, "<SampleGroupSize>");
+  WriteBasicType(os, binary, sample_group_size);
+  WriteToken(os, binary, "<NumSamples>");
+  WriteBasicType(os, binary, num_samples);
+  WriteToken(os, binary, "<InputWords>");
+  WriteIntegerVector(os, binary, input_words);
+  WriteToken(os, binary, "<OutputWords>");
+  WriteIntegerVector(os, binary, output_words);
+  WriteToken(os, binary, "<OutputWeights>");
+  output_weights.Write(os, binary);
+  WriteToken(os, binary, "<SampledWords>");
+  WriteIntegerVector(os, binary, sampled_words);
+  WriteToken(os, binary, "<SampleInvProbs>");
+  sample_inv_probs.Write(os, binary);
+  WriteToken(os, binary, "</RnnlmExample>");
+}
+
+void RnnlmExample::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<RnnlmExample>");
+  ExpectToken(is, binary, "<VocabSize>");
+  ReadBasicType(is, binary, &vocab_size);
+  ExpectToken(is, binary, "<NumChunks>");
+  ReadBasicType(is, binary, &num_chunks);
+  ExpectToken(is, binary, "<ChunkLength>");
+  ReadBasicType(is, binary, &chunk_length);
+  ExpectToken(is, binary, "<SampleGroupSize>");
+  ReadBasicType(is, binary, &sample_group_size);
+  ExpectToken(is, binary, "<NumSamples>");
+  ReadBasicType(is, binary, &num_samples);
+  ExpectToken(is, binary, "<InputWords>");
+  ReadIntegerVector(is, binary, &input_words);
+  ExpectToken(is, binary, "<OutputWords>");
+  ReadIntegerVector(is, binary, &output_words);
+  ExpectToken(is, binary, "<OutputWeights>");
+  output_weights.Read(is, binary);
+  ExpectToken(is, binary, "<SampledWords>");
+  ReadIntegerVector(is, binary, &sampled_words);
+  ExpectToken(is, binary, "<SampleInvProbs>");
+  sample_inv_probs.Read(is, binary);
+  ExpectToken(is, binary, "</RnnlmExample>");
+}
 
 RnnlmExampleSampler::RnnlmExampleSampler(
     const RnnlmEgsConfig &config, const ArpaSampling &arpa_sampling):
@@ -633,5 +682,3 @@ void RnnlmExample::Swap(RnnlmExample *other) {
 
 }  // namespace rnnlm
 }  // namespace kaldi
-
-
