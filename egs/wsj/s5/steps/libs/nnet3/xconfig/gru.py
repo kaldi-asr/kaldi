@@ -46,7 +46,7 @@ class XconfigGruLayer(XconfigLayerBase):
                         'self-repair-scale-nonlinearity' : 0.00001,
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,
-                        'decay-time':  -1.0
+                        'vars_path': ""
                         }
 
     def set_derived_configs(self):
@@ -65,11 +65,11 @@ class XconfigGruLayer(XconfigLayerBase):
             if self.config[key] < 0.0 or self.config[key] > 1.0:
                 raise RuntimeError("{0} has invalid value {1}.".format(key, self.config[key]))
 
-    def output_name(self):
-        node_name = 'h_t'
+    def output_name(self, auxiliary_output = None):
+        node_name = 's_t'
         return '{0}.{1}'.format(self.name, node_name)
 
-    def output_dim(self):
+    def output_dim(self, auxiliary_output = None):
         return self.config['cell-dim']
 
     def get_full_config(self):
@@ -112,10 +112,10 @@ class XconfigGruLayer(XconfigLayerBase):
         pes_str = ng_per_element_scale_options
 
         # formulation like:
-        # z = \sigmoid ( x_t * U^z + y_{t-1} * W^z ) // update gate
-        # r = \sigmoid ( x_t * U^r + y_{t-1} * W^r ) // reset gate
-        # h = \tanh ( x_t * U^h + y_{t-1} \dot r * W^h )
-        # y_t = ( 1 - z ) \dot h + z \dot y_{t-1}
+        # z = \sigmoid ( x_t * U^z + s_{t-1} * W^z ) // update gate
+        # r = \sigmoid ( x_t * U^r + s_{t-1} * W^r ) // reset gate
+        # h = \tanh ( x_t * U^h + s_{t-1} \dot r * W^h )
+        # s_t = ( 1 - z ) \dot h + z \dot s_{t-1}
 
         # write bias and minus-scale
         f = open(self.config['vars_path']+"/minus_one", 'w')
@@ -181,10 +181,10 @@ class XconfigGruLayer(XconfigLayerBase):
         configs.append("component-node name={0}.y2_t component={0}.y2 input=Append(IfDefined(Offset({1}, {2})), {0}.z_t)".format(name, recurrent_connection, delay))
         configs.append("component-node name={0}.y_t component={0}.y input=Sum({0}.y1_t, {0}.y2_t)".format(name))
 
-        configs.append("# s_t recurrent")
+        configs.append("# s_t : recurrence")
         configs.append("component name={0}.s_r type=BackpropTruncationComponent dim={1} {2}".format(name, cell_dim, bptrunc_str))
 
-        configs.append("# s_t and n_t : sn_t will be the output")
+        configs.append("# s_t will be output and recurrence")
         configs.append("component-node name={0}.s_t component={0}.s_r input={0}.y_t".format(name))
         return configs
 
@@ -231,7 +231,8 @@ class XconfigPgruLayer(XconfigLayerBase):
                         'ng-affine-options' : ' max-change=0.75 ',
                         'self-repair-scale-nonlinearity' : 0.00001,
                         'zeroing-interval' : 20,
-                        'zeroing-threshold' : 15.0
+                        'zeroing-threshold' : 15.0,
+                        'vars_path': ""
                        }
 
     def set_derived_configs(self):
@@ -267,7 +268,7 @@ class XconfigPgruLayer(XconfigLayerBase):
         return ['h_t']
 
     def output_name(self, auxiliary_output = None):
-        node_name = 'sn5_t'
+        node_name = 'sn_t'
         if auxiliary_output is not None:
             if auxiliary_output in self.auxiliary_outputs():
                 node_name = auxiliary_output
