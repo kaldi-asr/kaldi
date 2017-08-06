@@ -690,21 +690,12 @@ void GeneralMatrix::AddToMat(BaseFloat alpha,
     case kSparseMatrix: {
 #if HAVE_CUDA == 1
       if (CuDevice::Instantiate().Enabled()) {
-        // TODO: we could make this more efficient by
-        // implementing an AddSmat function in class CuMatrixBase.
-        CuSparseMatrix<BaseFloat> sparse_cu_mat(smat_);
-        CuMatrix<BaseFloat> cu_temp(
-            trans == kNoTrans ? sparse_cu_mat.NumRows() :
-                                sparse_cu_mat.NumCols(),
-            trans == kNoTrans ? sparse_cu_mat.NumCols() :
-                                sparse_cu_mat.NumRows(),
-            kUndefined);
-        sparse_cu_mat.CopyToMat(&cu_temp, trans);
-        cu_mat->AddMat(alpha, cu_temp, kNoTrans);
+        CuSparseMatrix<BaseFloat> cu_smat(smat_);
+        cu_mat->AddSmat(alpha, cu_smat, trans);
         break;
       }
 #endif
-      smat_.AddToMat(alpha, &(cu_mat->Mat()), trans);
+      cu_mat->Mat().AddSmat(alpha, smat_, trans);
       break;
     }
     case kCompressedMatrix: {
