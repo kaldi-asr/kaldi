@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet3-subset-egs [options] <egs-rspecifier> [<egs-wspecifier2> ...]\n"
         "\n"
         "e.g.\n"
-        "nnet3-subset-egs [args] ark:- | nnet-subset-egs --n=1000 ark:- ark:subset.egs\n";
+        "nnet3-copy-egs [args] ark:egs.1.ark ark:- | nnet-subset-egs --n=1000 ark:- ark:subset.egs\n";
     
     int32 srand_seed = 0;
     int32 n = 1000;

@@ -23,38 +23,29 @@
 
 namespace kaldi {
 namespace nnet3 {
+// Reset seeds for test time for RandomComponent
+static void ResetSeed(int32 rand_seed, const Component &c) {
+  RandomComponent *rand_component =
+    const_cast<RandomComponent*>(dynamic_cast<const RandomComponent*>(&c));
 
-// returns true if two are string are equal except for what looks like it might
-// be a difference last digit of a floating point number, e.g. accept
-// 1.234 to be the same as 1.235.  Not very rigorous.
-static bool StringsApproxEqual(const std::string &a,
-                               const std::string &b) {
-  if (a == b || a.size() != b.size())
-    return true;
-  size_t size = a.size();
-  for (size_t pos = 0; pos < size; pos++) {
-    if (a[pos] != b[pos]) {
-      if (!isdigit(a[pos]) || !isdigit(b[pos]))
-        goto fail;
-      // if it's not the last digit in the string, goto fail
-      if (pos + 1 != size && isdigit(a[pos+1]))
-        goto fail;
-      size_t pos2;
-      for (pos2 = pos - 1; pos2 > 0; pos2--) {
-        if (a[pos2] == '.') break;  // we accept this difference: we went backwards and found a '.'
-        if (!isdigit(a[pos2]))  // we reject this difference: we went back and
-                                // found non-digit before '.' -> not floating
-                                // point.
-          goto fail;
-      }
-      if (pos2 == 0)
-        goto fail;
-    }
+  if (rand_component != NULL) {
+    srand(rand_seed);
+    rand_component->ResetGenerator();
   }
-  return true;
-fail:
-  KALDI_WARN << "Info strings differ: '" << a << "' vs. '" << b << "'.";
-  return false;
+}
+
+// this is the same as calling StringsApproxEqual(), except it prints
+// a warning if it fails.
+bool CheckStringsApproxEqual(const std::string &a,
+                             const std::string &b,
+                             int32 tolerance = 3) {
+  if (!StringsApproxEqual(a, b, tolerance)) {
+    KALDI_WARN << "Strings differ: " << a
+               << "\vs.\n" << b;
+    return false;
+  } else {
+    return true;
+  }
 }
 
 
@@ -67,7 +58,8 @@ void TestNnetComponentIo(Component *c) {
   std::ostringstream os2;
   c2->Write(os2, binary);
   if (!binary) {
-    KALDI_ASSERT(os2.str() == os1.str());
+    std::string s1 = os1.str(), s2 = os2.str();
+    KALDI_ASSERT(CheckStringsApproxEqual(s1, s2));
   }
   delete c2;
 }
@@ -86,7 +78,7 @@ void TestNnetComponentAddScale(Component *c) {
   Component *c3 = c2->Copy();
   c3->Add(0.5, *c2);
   c2->Scale(1.5);
-  KALDI_ASSERT(StringsApproxEqual(c2->Info(), c3->Info()));
+  KALDI_ASSERT(CheckStringsApproxEqual(c2->Info(), c3->Info()));
   delete c2;
   delete c3;
 }
@@ -97,13 +89,13 @@ void TestNnetComponentVectorizeUnVectorize(Component *c) {
   UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(c);
   KALDI_ASSERT(uc != NULL);
   UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
-  uc2->SetZero(false);
+  uc2->Scale(0.0);
   Vector<BaseFloat> params(uc2->NumParameters());
   uc2->Vectorize(&params);
   KALDI_ASSERT(params.Min()==0.0 && params.Sum()==0.0);
   uc->Vectorize(&params);
   uc2->UnVectorize(params);
-  KALDI_ASSERT(StringsApproxEqual(uc2->Info(), uc->Info()));
+  KALDI_ASSERT(CheckStringsApproxEqual(uc2->Info(), uc->Info()));
   BaseFloat x = uc2->DotProduct(*uc2), y = uc->DotProduct(*uc),
       z = uc2->DotProduct(*uc);
   KALDI_ASSERT(ApproxEqual(x, y) && ApproxEqual(y, z));
@@ -112,15 +104,6 @@ void TestNnetComponentVectorizeUnVectorize(Component *c) {
   for(int i = 0; i < params.Dim(); i++)
     KALDI_ASSERT(params(i) == params2(i));
   delete uc2;
-}
-
-void TestStringsApproxEqual() {
-  // we must test the test.
-  KALDI_ASSERT(!StringsApproxEqual("a", "b"));
-  KALDI_ASSERT(!StringsApproxEqual("1", "2"));
-  KALDI_ASSERT(StringsApproxEqual("1.234", "1.235"));
-  KALDI_ASSERT(StringsApproxEqual("x 1.234 y", "x 1.235 y"));
-  KALDI_ASSERT(StringsApproxEqual("x 1.234 y 6.41", "x 1.235 y 6.49"));
 }
 
 void TestNnetComponentUpdatable(Component *c) {
@@ -135,15 +118,15 @@ void TestNnetComponentUpdatable(Component *c) {
   }
   if(!(uc->Properties() & kUpdatableComponent)){
     // testing that if it declares itself as non-updatable,
-    // Scale() and Add() and SetZero() have no effect.
+    // Scale() and Add() have no effect.
     KALDI_ASSERT(uc->NumParameters() == 0);
     KALDI_ASSERT(uc->DotProduct(*uc) == 0);
     UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
     uc2->Scale(7.0);
     uc2->Add(3.0, *uc);
-    KALDI_ASSERT(StringsApproxEqual(uc2->Info(), uc->Info()));
-    uc->SetZero(false);
-    KALDI_ASSERT(StringsApproxEqual(uc2->Info(), uc->Info()));
+    KALDI_ASSERT(CheckStringsApproxEqual(uc2->Info(), uc->Info()));
+    uc->Scale(0.0);
+    KALDI_ASSERT(CheckStringsApproxEqual(uc2->Info(), uc->Info()));
     delete uc2;
   } else {
     KALDI_ASSERT(uc->NumParameters() != 0);
@@ -166,15 +149,15 @@ void TestNnetComponentUpdatable(Component *c) {
     vec2.Scale(0.5);
     uc2->UnVectorize(vec2);
     uc3->Scale(0.5);
-    KALDI_ASSERT(uc2->Info() == uc3->Info());
+    KALDI_ASSERT(CheckStringsApproxEqual(uc2->Info(), uc3->Info()));
 
-    // testing that SetZero() works the same whether done on the vectorized
+    // testing that Scale(0.0) works the same whether done on the vectorized
     // paramters or via SetZero(), and that unvectorizing something that's been
     // zeroed gives us zero parameters.
     uc2->Vectorize(&vec2);
     vec2.SetZero();
     uc2->UnVectorize(vec2);
-    uc3->SetZero(false);
+    uc3->Scale(0.0);
     uc3->Vectorize(&vec2);
     KALDI_ASSERT(uc2->Info() == uc3->Info() && VecVec(vec2, vec2) == 0.0);
 
@@ -188,6 +171,8 @@ void TestNnetComponentUpdatable(Component *c) {
 void TestSimpleComponentPropagateProperties(const Component &c) {
   int32 properties = c.Properties();
   Component *c_copy = NULL, *c_copy_scaled = NULL;
+  int32 rand_seed = Rand();
+
   if (RandInt(0, 1) == 0)
     c_copy = c.Copy();  // This will test backprop with an updatable component.
   if (RandInt(0, 1) == 0 &&
@@ -195,18 +180,28 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
     c_copy_scaled = c.Copy();  // This will test backprop with an updatable component.
     c_copy_scaled->Scale(0.5);
   }
+  MatrixStrideType input_stride_type = (c.Properties()&kInputContiguous) ?
+      kStrideEqualNumCols : kDefaultStride;
+  MatrixStrideType output_stride_type = (c.Properties()&kOutputContiguous) ?
+      kStrideEqualNumCols : kDefaultStride;
+
   int32 input_dim = c.InputDim(),
       output_dim = c.OutputDim(),
       num_rows = RandInt(1, 100);
-  CuMatrix<BaseFloat> input_data(num_rows, input_dim);
+  CuMatrix<BaseFloat> input_data(num_rows, input_dim, kUndefined,
+                                 input_stride_type);
   input_data.SetRandn();
+  CuMatrix<BaseFloat> input_data_scaled(num_rows, input_dim, kUndefined,
+                                        input_stride_type),
+      output_data3(num_rows, input_dim, kSetZero,
+                   output_stride_type);
+  input_data_scaled.CopyFromMat(input_data);
+  output_data3.CopyFromMat(input_data);
   CuMatrix<BaseFloat>
-      input_data_scaled(input_data),
-      output_data1(num_rows, output_dim),
-      output_data2(num_rows, output_dim),
-      output_data3(input_data),
-      output_data4(num_rows, output_dim),
-      output_data5(num_rows, output_dim);
+      output_data1(num_rows, output_dim, kSetZero, output_stride_type),
+      output_data2(num_rows, output_dim, kSetZero, output_stride_type),
+      output_data4(num_rows, output_dim, kSetZero, output_stride_type),
+      output_data5(num_rows, output_dim, kSetZero, output_stride_type);
   output_data2.Add(1.0);
   input_data_scaled.Scale(2.0);
 
@@ -214,10 +209,14 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
     KALDI_ERR << "kPropagateAdds and kPropagateInPlace flags are incompatible.";
   }
 
-  c.Propagate(NULL, input_data, &output_data1);
-  c.Propagate(NULL, input_data, &output_data2);
+  ResetSeed(rand_seed, c);
+  void *memo = c.Propagate(NULL, input_data, &output_data1);
+
+  ResetSeed(rand_seed, c);
+  c.DeleteMemo(c.Propagate(NULL, input_data, &output_data2));
   if (properties & kPropagateInPlace) {
-    c.Propagate(NULL, output_data3, &output_data3);
+    ResetSeed(rand_seed, c);
+    c.DeleteMemo(c.Propagate(NULL, output_data3, &output_data3));
     if (!output_data1.ApproxEqual(output_data3)) {
       KALDI_ERR << "Test of kPropagateInPlace flag for component of type "
                 << c.Type() << " failed.";
@@ -228,23 +227,27 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
   AssertEqual(output_data1, output_data2);
 
   if (c_copy_scaled) {
+    ResetSeed(rand_seed, *c_copy_scaled);
     c_copy_scaled->Propagate(NULL, input_data, &output_data4);
     output_data4.Scale(2.0);  // we scaled the parameters by 0.5 above, and the
     // output is supposed to be linear in the parameter value.
     AssertEqual(output_data1, output_data4);
   }
   if (properties & kLinearInInput) {
-    c.Propagate(NULL, input_data_scaled, &output_data5);
+    ResetSeed(rand_seed, c);
+    c.DeleteMemo(c.Propagate(NULL, input_data_scaled, &output_data5));
     output_data5.Scale(0.5);
     AssertEqual(output_data1, output_data5);
   }
 
 
-  CuMatrix<BaseFloat> output_deriv(num_rows, output_dim);
+  CuMatrix<BaseFloat> output_deriv(num_rows, output_dim, kSetZero, output_stride_type);
   output_deriv.SetRandn();
-  CuMatrix<BaseFloat> input_deriv1(num_rows, input_dim),
-      input_deriv2(num_rows, input_dim),
-      input_deriv3(output_deriv);
+  CuMatrix<BaseFloat> input_deriv1(num_rows, input_dim, kSetZero, input_stride_type),
+      input_deriv2(num_rows, input_dim, kSetZero, input_stride_type);
+  CuMatrix<BaseFloat> input_deriv3(num_rows, output_dim, kSetZero, input_stride_type);
+  input_deriv3.CopyFromMat(output_deriv);
+
   input_deriv2.Add(1.0);
   CuMatrix<BaseFloat> empty_mat;
 
@@ -253,6 +256,7 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
              ((properties & kBackpropNeedsInput) ? input_data : empty_mat),
              ((properties & kBackpropNeedsOutput) ? output_data1 : empty_mat),
              output_deriv,
+             memo,
              c_copy,
              &input_deriv1);
   // test with input_deriv2 that's all ones.
@@ -260,6 +264,7 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
              ((properties & kBackpropNeedsInput) ? input_data : empty_mat),
              ((properties & kBackpropNeedsOutput) ? output_data1 : empty_mat),
              output_deriv,
+             memo,
              c_copy,
              &input_deriv2);
   // test backprop in place, if supported.
@@ -268,9 +273,11 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
                ((properties & kBackpropNeedsInput) ? input_data : empty_mat),
                ((properties & kBackpropNeedsOutput) ? output_data1 : empty_mat),
                input_deriv3,
+               memo,
                c_copy,
                &input_deriv3);
   }
+  c.DeleteMemo(memo);
 
   if (properties & kBackpropAdds)
     input_deriv2.Add(-1.0);  // subtract the offset.
@@ -283,38 +290,51 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
 
 bool TestSimpleComponentDataDerivative(const Component &c,
                                        BaseFloat perturb_delta) {
+  MatrixStrideType input_stride_type = (c.Properties()&kInputContiguous) ?
+      kStrideEqualNumCols : kDefaultStride;
+  MatrixStrideType output_stride_type = (c.Properties()&kOutputContiguous) ?
+      kStrideEqualNumCols : kDefaultStride;
+
   int32 input_dim = c.InputDim(),
       output_dim = c.OutputDim(),
-      num_rows = RandInt(1, 100);
+      num_rows = RandInt(1, 100),
+      rand_seed = Rand();
   int32 properties = c.Properties();
-  CuMatrix<BaseFloat> input_data(num_rows, input_dim),
-      output_data(num_rows, output_dim),
-      output_deriv(num_rows, output_dim);
+  CuMatrix<BaseFloat> input_data(num_rows, input_dim, kSetZero, input_stride_type),
+      output_data(num_rows, output_dim, kSetZero, output_stride_type),
+      output_deriv(num_rows, output_dim, kSetZero, output_stride_type);
   input_data.SetRandn();
   output_deriv.SetRandn();
 
-  c.Propagate(NULL, input_data, &output_data);
+  ResetSeed(rand_seed, c);
+  void *memo = c.Propagate(NULL, input_data, &output_data);
 
-  CuMatrix<BaseFloat> input_deriv(num_rows, input_dim), empty_mat;
+  CuMatrix<BaseFloat> input_deriv(num_rows, input_dim, kSetZero, input_stride_type),
+      empty_mat;
   c.Backprop("foobar", NULL,
              ((properties & kBackpropNeedsInput) ? input_data : empty_mat),
              ((properties & kBackpropNeedsOutput) ? output_data : empty_mat),
-             output_deriv, NULL, &input_deriv);
+             output_deriv, memo, NULL, &input_deriv);
+  c.DeleteMemo(memo);
 
   int32 test_dim = 3;
   BaseFloat original_objf = TraceMatMat(output_deriv, output_data, kTrans);
   Vector<BaseFloat> measured_objf_change(test_dim),
       predicted_objf_change(test_dim);
   for (int32 i = 0; i < test_dim; i++) {
-    CuMatrix<BaseFloat> perturbed_input_data(num_rows, input_dim),
-        perturbed_output_data(num_rows, output_dim);
+    CuMatrix<BaseFloat> perturbed_input_data(num_rows, input_dim,
+                                             kSetZero, input_stride_type),
+        perturbed_output_data(num_rows, output_dim,
+                              kSetZero, output_stride_type);
     perturbed_input_data.SetRandn();
     perturbed_input_data.Scale(perturb_delta);
     // at this point, perturbed_input_data contains the offset at the input data.
     predicted_objf_change(i) = TraceMatMat(perturbed_input_data, input_deriv,
                                            kTrans);
     perturbed_input_data.AddMat(1.0, input_data);
-    c.Propagate(NULL, perturbed_input_data, &perturbed_output_data);
+
+    ResetSeed(rand_seed, c);
+    c.DeleteMemo(c.Propagate(NULL, perturbed_input_data, &perturbed_output_data));
     measured_objf_change(i) = TraceMatMat(output_deriv, perturbed_output_data,
                                           kTrans) - original_objf;
   }
@@ -332,6 +352,11 @@ bool TestSimpleComponentDataDerivative(const Component &c,
     // this is not unexpected.
     KALDI_LOG << "Accepting deriv differences since it is NormalizeComponent "
               << "with dim=1.";
+    return true;
+  }
+  else if (c.Type() == "ClipGradientComponent") {
+    KALDI_LOG << "Accepting deriv differences since "
+              << "it is ClipGradientComponent.";
     return true;
   }
   return ans;
@@ -353,14 +378,18 @@ bool TestSimpleComponentModelDerivative(const Component &c,
     // nothing to test.
     return true;
   }
+  MatrixStrideType input_stride_type = (c.Properties()&kInputContiguous) ?
+      kStrideEqualNumCols : kDefaultStride;
+  MatrixStrideType output_stride_type = (c.Properties()&kOutputContiguous) ?
+      kStrideEqualNumCols : kDefaultStride;
 
-  CuMatrix<BaseFloat> input_data(num_rows, input_dim),
-      output_data(num_rows, output_dim),
-      output_deriv(num_rows, output_dim);
+  CuMatrix<BaseFloat> input_data(num_rows, input_dim, kSetZero, input_stride_type),
+      output_data(num_rows, output_dim, kSetZero, output_stride_type),
+      output_deriv(num_rows, output_dim, kSetZero, output_stride_type);
   input_data.SetRandn();
   output_deriv.SetRandn();
 
-  c.Propagate(NULL, input_data, &output_data);
+  void *memo = c.Propagate(NULL, input_data, &output_data);
 
   BaseFloat original_objf = TraceMatMat(output_deriv, output_data, kTrans);
 
@@ -370,20 +399,24 @@ bool TestSimpleComponentModelDerivative(const Component &c,
   UpdatableComponent *uc_copy = dynamic_cast<UpdatableComponent*>(c_copy);
   KALDI_ASSERT(uc != NULL && uc_copy != NULL);
   if (test_derivative) {
-    bool is_gradient = true;
-    uc_copy->SetZero(is_gradient);
+    uc_copy->Scale(0.0);
+    uc_copy->SetAsGradient();
   }
 
-  CuMatrix<BaseFloat> input_deriv(num_rows, input_dim), empty_mat;
+  CuMatrix<BaseFloat> input_deriv(num_rows, input_dim,
+                                  kSetZero, input_stride_type),
+      empty_mat;
   c.Backprop("foobar", NULL,
              ((properties & kBackpropNeedsInput) ? input_data : empty_mat),
              ((properties & kBackpropNeedsOutput) ? output_data : empty_mat),
-             output_deriv, c_copy,
+             output_deriv, memo, c_copy,
              (RandInt(0, 1) == 0 ? &input_deriv : NULL));
+  c.DeleteMemo(memo);
 
   if (!test_derivative) { // Just testing that the model update is downhill.
-    CuMatrix<BaseFloat> new_output_data(num_rows, output_dim);
-    c_copy->Propagate(NULL, input_data, &new_output_data);
+    CuMatrix<BaseFloat> new_output_data(num_rows, output_dim,
+                                        kSetZero, output_stride_type);
+    c.DeleteMemo(c_copy->Propagate(NULL, input_data, &new_output_data));
 
     BaseFloat new_objf = TraceMatMat(output_deriv, new_output_data, kTrans);
     bool ans = (new_objf > original_objf);
@@ -400,7 +433,8 @@ bool TestSimpleComponentModelDerivative(const Component &c,
     Vector<BaseFloat> measured_objf_change(test_dim),
         predicted_objf_change(test_dim);
     for (int32 i = 0; i < test_dim; i++) {
-      CuMatrix<BaseFloat> perturbed_output_data(num_rows, output_dim);
+      CuMatrix<BaseFloat> perturbed_output_data(num_rows, output_dim,
+                                                kSetZero, output_stride_type);
       Component *c_perturbed = c.Copy();
       UpdatableComponent *uc_perturbed =
           dynamic_cast<UpdatableComponent*>(c_perturbed);
@@ -467,18 +501,21 @@ void UnitTestNnetComponent() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-  TestStringsApproxEqual();
-  for (kaldi::int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
+  kaldi::int32 loop = 0;
+  for (loop = 0; loop < 2; loop++) {
+    //CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
     else
       CuDevice::Instantiate().SelectGpuId("yes");
 #endif
     UnitTestNnetComponent();
-  }
-
-  KALDI_LOG << "Nnet component ntests succeeded.";
+#if HAVE_CUDA == 1
+  } // No for loop if 'HAVE_CUDA != 1',
+  CuDevice::Instantiate().PrintProfile();
+#endif
+  KALDI_LOG << "Nnet component tests succeeded.";
 
   return 0;
 }

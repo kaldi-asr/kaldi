@@ -23,6 +23,8 @@
 #ifndef KALDI_NNET_NNET_CONVOLUTIONAL_2D_COMPONENT_H_
 #define KALDI_NNET_NNET_CONVOLUTIONAL_2D_COMPONENT_H_
 
+#include <string>
+#include <vector>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-various.h"
@@ -33,25 +35,25 @@ namespace nnet1 {
 
 /**
  * Convolutional2DComponent implements convolution over 2-axis (frequency and temporal)
- * (i.e. frequency axis in case we are the 1st component in NN). 
- * // We don't do convolution along temporal axis, which simplifies the 
+ * (i.e. frequency axis in case we are the 1st component in NN).
+ * // We don't do convolution along temporal axis, which simplifies the
  * // implementation (and was not helpful for Tara).
  *
  * We assume the input featrues are spliced, i.e. each frame
  * is in fact a set of stacked frames, where we can form patches
  * which span over several frequency bands and time axes.
  *
- * The convolution is done over whole axis with same filters, 
- * i.e. we don't use separate filters for different 'regions' 
+ * The convolution is done over whole axis with same filters,
+ * i.e. we don't use separate filters for different 'regions'
  * of frequency axis.
  *
- * In order to have a fast implementations, the filters 
+ * In order to have a fast implementations, the filters
  * are represented in vectorized form, where each rectangular
- * filter corresponds to a row in a matrix, where all filters 
- * are stored. The features are then re-shaped to a set of matrices, 
- * where one matrix corresponds to single patch-position, 
+ * filter corresponds to a row in a matrix, where all filters
+ * are stored. The features are then re-shaped to a set of matrices,
+ * where one matrix corresponds to single patch-position,
  * where the filters get applied.
- * 
+ *
  * The type of convolution is controled by hyperparameters:
  * x_patch_dim_,y_patch_dim_     ... temporal and frequency axes sizes of the patch (e.g. (9,9) for 9x9 2D filter)
  * x_patch_step_,y_patch_step_    ... temporal and frequencey sizes of shifts in the convolution (e.g. (1,1) 2D filter with 1 step shift in both axes)
@@ -60,22 +62,23 @@ namespace nnet1 {
  * fmap_x_len_, fmap_y_len_ ... dimension of the feature (maps if inside convolutional layer) (e.g. (11,32) for 32-band 11 frame spliced spectrogram patch)
  * filt_x_len_, filt_y_len_ ... temporal and frequency sizes of the filters (e.g. (9,9) for 9x9 2D filter)
  * filt_x_step_, filt_y_step_ ... temporal and frequency sizes of the filters (e.g. (1,1) for 2D-filter, with 1 step shift in both axes)
- * 
  *
- * Due to convolution same weights are used repeateadly, 
- * the final gradient is average of all position-specific 
+ *
+ * Due to convolution same weights are used repeateadly,
+ * the final gradient is average of all position-specific
  * gradients.
  *
  */
 class Convolutional2DComponent : public UpdatableComponent {
  public:
-  Convolutional2DComponent(int32 dim_in, int32 dim_out)
-    : UpdatableComponent(dim_in, dim_out),
-      fmap_x_len_(0), fmap_y_len_(0),
-      filt_x_len_(0), filt_y_len_(0),
-      filt_x_step_(0), filt_y_step_(0),
-      connect_fmap_(0), learn_rate_coef_(1.0), bias_learn_rate_coef_(1.0)
+  Convolutional2DComponent(int32 dim_in, int32 dim_out):
+    UpdatableComponent(dim_in, dim_out),
+    fmap_x_len_(0), fmap_y_len_(0),
+    filt_x_len_(0), filt_y_len_(0),
+    filt_x_step_(0), filt_y_step_(0),
+    connect_fmap_(0)
   { }
+
   ~Convolutional2DComponent()
   { }
 
@@ -85,10 +88,9 @@ class Convolutional2DComponent : public UpdatableComponent {
   void InitData(std::istream &is) {
     // define options
     BaseFloat bias_mean = -2.0, bias_range = 2.0, param_stddev = 0.1;
-    BaseFloat learn_rate_coef = 1.0, bias_learn_rate_coef = 1.0;
     // parse config
     std::string token;
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
       else if (token == "<BiasMean>")    ReadBasicType(is, false, &bias_mean);
@@ -100,11 +102,12 @@ class Convolutional2DComponent : public UpdatableComponent {
       else if (token == "<FiltXStep>")   ReadBasicType(is, false, &filt_x_step_);
       else if (token == "<FiltYStep>")   ReadBasicType(is, false, &filt_y_step_);
       else if (token == "<ConnectFmap>") ReadBasicType(is, false, &connect_fmap_);
-      else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
-      else if (token == "<BiasLearnRateCoef>") ReadBasicType(is, false, &bias_learn_rate_coef);
-      else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
-                     << " (ParamStddev|BiasMean|BiasRange|FmapXLen|FmapYLen|FiltXLen|FiltYLen|FiltXStep|FiltYStep|ConnectFmap|LearnRateCoef|BiasLearnRateCoef)";
-      is >> std::ws;  // eat-up whitespace
+      else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
+      else if (token == "<BiasLearnRateCoef>") ReadBasicType(is, false, &bias_learn_rate_coef_);
+      else KALDI_ERR << "Unknown token " << token << ", a typo in config? "
+                     << "(ParamStddev|BiasMean|BiasRange|FmapXLen|FmapYLen|"
+                        "FiltXLen|FiltYLen|FiltXStep|FiltYStep|ConnectFmap|"
+                        "LearnRateCoef|BiasLearnRateCoef)";
     }
 
     //
@@ -120,7 +123,6 @@ class Convolutional2DComponent : public UpdatableComponent {
     KALDI_ASSERT((fmap_y_len_ - filt_y_len_) % (filt_y_step_) == 0);
     int32 out_fmap_x_len = (fmap_x_len_ - filt_x_len_)/filt_x_step_ + 1;
     int32 out_fmap_y_len = (fmap_y_len_ - filt_y_len_)/filt_y_step_ + 1;
-    //    int32 out_fmap_size = out_fmap_x_len*out_fmap_y_len;
     // output sanity checks
     KALDI_ASSERT(output_dim_ % (out_fmap_x_len * out_fmap_y_len)  == 0);
     int32 num_output_fmaps = output_dim_ / (out_fmap_x_len * out_fmap_y_len);
@@ -129,27 +131,13 @@ class Convolutional2DComponent : public UpdatableComponent {
     KALDI_LOG << "num_filters " << num_filters;
 
     //
-    // Initialize parameters
+    // Initialize trainable parameters,
     //
-    Matrix<BaseFloat> mat(num_filters, num_input_fmaps*filt_x_len_*filt_y_len_);
-    for (int32 r = 0; r < num_filters; r++) {
-      for (int32 c = 0; c < num_input_fmaps*filt_x_len_*filt_y_len_; c++) {
-        // 0-mean Gauss with given std_dev
-        mat(r, c) = param_stddev * RandGauss();
-      }
-    }
-    filters_ = mat;
+    filters_.Resize(num_filters, num_input_fmaps*filt_x_len_*filt_y_len_);
+    RandGauss(0.0, param_stddev, &filters_);
     //
-    Vector<BaseFloat> vec(num_filters);
-    for (int32 i = 0; i < num_filters; i++) {
-      // +/- 1/2*bias_range from bias_mean:
-      vec(i) = bias_mean + (RandUniform() - 0.5) * bias_range;
-    }
-    bias_ = vec;
-    //
-    learn_rate_coef_ = learn_rate_coef;
-    bias_learn_rate_coef_ = bias_learn_rate_coef;
-    //
+    bias_.Resize(num_filters);
+    RandUniform(bias_mean, bias_range, &bias_);
   }
 
   void ReadData(std::istream &is, bool binary) {
@@ -202,6 +190,8 @@ class Convolutional2DComponent : public UpdatableComponent {
     WriteBasicType(os, binary, learn_rate_coef_);
     WriteToken(os, binary, "<BiasLearnRateCoef>");
     WriteBasicType(os, binary, bias_learn_rate_coef_);
+    if (!binary) os << "\n";
+
     // convolution hyperparameters
     WriteToken(os, binary, "<FmapXLen>");
     WriteBasicType(os, binary, fmap_x_len_);
@@ -217,11 +207,14 @@ class Convolutional2DComponent : public UpdatableComponent {
     WriteBasicType(os, binary, filt_y_step_);
     WriteToken(os, binary, "<ConnectFmap>");
     WriteBasicType(os, binary, connect_fmap_);
+    if (!binary) os << "\n";
 
     // trainable parameters
     WriteToken(os, binary, "<Filters>");
+    if (!binary) os << "\n";
     filters_.Write(os, binary);
     WriteToken(os, binary, "<Bias>");
+    if (!binary) os << "\n";
     bias_.Write(os, binary);
   }
 
@@ -229,16 +222,32 @@ class Convolutional2DComponent : public UpdatableComponent {
     return filters_.NumRows()*filters_.NumCols() + bias_.Dim();
   }
 
-  void GetParams(Vector<BaseFloat>* wei_copy) const {
-    wei_copy->Resize(NumParams());
+  void GetGradient(VectorBase<BaseFloat>* gradient) const {
+    KALDI_ASSERT(gradient->Dim() == NumParams());
     int32 filters_num_elem = filters_.NumRows() * filters_.NumCols();
-    wei_copy->Range(0, filters_num_elem).CopyRowsFromMat(Matrix<BaseFloat>(filters_));
-    wei_copy->Range(filters_num_elem, bias_.Dim()).CopyFromVec(Vector<BaseFloat>(bias_));
+    gradient->Range(0, filters_num_elem).CopyRowsFromMat(filters_);
+    gradient->Range(filters_num_elem, bias_.Dim()).CopyFromVec(bias_);
+  }
+
+  void GetParams(VectorBase<BaseFloat>* params) const {
+    KALDI_ASSERT(params->Dim() == NumParams());
+    int32 filters_num_elem = filters_.NumRows() * filters_.NumCols();
+    params->Range(0, filters_num_elem).CopyRowsFromMat(filters_);
+    params->Range(filters_num_elem, bias_.Dim()).CopyFromVec(bias_);
+  }
+
+  void SetParams(const VectorBase<BaseFloat>& params) {
+    KALDI_ASSERT(params.Dim() == NumParams());
+    int32 filters_num_elem = filters_.NumRows() * filters_.NumCols();
+    filters_.CopyRowsFromVec(params.Range(0, filters_num_elem));
+    bias_.CopyFromVec(params.Range(filters_num_elem, bias_.Dim()));
   }
 
   std::string Info() const {
     return std::string("\n  filters") + MomentStatistics(filters_) +
-           "\n  bias" + MomentStatistics(bias_);
+           ", lr-coef " + ToString(learn_rate_coef_) +
+           "\n  bias" + MomentStatistics(bias_) +
+           ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
   std::string InfoGradient() const {
     return std::string("\n  filters_grad") + MomentStatistics(filters_grad_) +
@@ -247,7 +256,8 @@ class Convolutional2DComponent : public UpdatableComponent {
            ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                    CuMatrixBase<BaseFloat> *out) {
     // useful dims
     int32 num_input_fmaps = input_dim_ / (fmap_x_len_ * fmap_y_len_);
     // int32 inp_fmap_size = fmap_x_len_ * fmap_y_len_;
@@ -311,8 +321,10 @@ class Convolutional2DComponent : public UpdatableComponent {
   }
 
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff,
+                        CuMatrixBase<BaseFloat> *in_diff) {
     // useful dims
     int32 num_input_fmaps = input_dim_ / (fmap_x_len_ * fmap_y_len_);
 
@@ -384,8 +396,11 @@ class Convolutional2DComponent : public UpdatableComponent {
                      + (j / num_input_fmaps)
                      + (j % num_input_fmaps) * fmap_y_len_;
             }
-            CuSubMatrix<BaseFloat> src(feature_patch_diffs_[out_fmap_cnt].ColRange(i*filt_y_len_*num_input_fmaps+j, 1));  // from which col
-            CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(c, 1));  // to which col?
+            // from which col?
+            CuMatrix<BaseFloat>& diff_mat = feature_patch_diffs_[out_fmap_cnt];
+            CuSubMatrix<BaseFloat> src(diff_mat.ColRange(i*filt_y_len_*num_input_fmaps+j, 1));
+            // to which col?
+            CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(c, 1));
             tgt.AddMat(1.0, src);
           }
         }
@@ -397,56 +412,57 @@ class Convolutional2DComponent : public UpdatableComponent {
   }
 
 
-  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
-    // useful dims
+  void Update(const CuMatrixBase<BaseFloat> &input,
+              const CuMatrixBase<BaseFloat> &diff) {
+    // useful dims,
     int32 out_fmap_x_len = (fmap_x_len_ - filt_x_len_)/filt_x_step_ + 1;
     int32 out_fmap_y_len = (fmap_y_len_ - filt_y_len_)/filt_y_step_ + 1;
-    int32 out_fmap_size = out_fmap_x_len*out_fmap_y_len;
+    int32 out_fmap_size = out_fmap_x_len * out_fmap_y_len;
     int32 num_output_fmaps = output_dim_ / (out_fmap_x_len * out_fmap_y_len);
-    int32 num_filters = filters_.NumRows();  // this is total num_filters, so each input_fmap has num_filters/num_input_fmaps
+
+    // This is total num_filters,
+    // each input_fmap has num_filters / num_input_fmaps:
+    int32 num_filters = filters_.NumRows();
     KALDI_ASSERT(num_filters == num_output_fmaps);
 
-    // we use following hyperparameters from the option class
+    // we use following hyperparameters from the option class,
     const BaseFloat lr = opts_.learn_rate;
-    /* NOT NOW:
-    const BaseFloat mmt = opts_.momentum;
-    const BaseFloat l2 = opts_.l2_penalty;
-    const BaseFloat l1 = opts_.l1_penalty;
-    */
-
 
     //
     // calculate the gradient
     //
     filters_grad_.Resize(filters_.NumRows(), filters_.NumCols(), kSetZero);
-    bias_grad_.Resize(filters_.NumRows());
-
+    bias_grad_.Resize(filters_.NumRows(), kSetZero);
+    //
     for (int32 p = 0; p < out_fmap_size; p++) {
-      CuSubMatrix<BaseFloat> diff_patch(diff.ColRange(p*num_filters, num_filters));
+      CuSubMatrix<BaseFloat> diff_patch(diff.ColRange(p * num_filters, num_filters));
       filters_grad_.AddMatMat(1.0, diff_patch, kTrans, vectorized_feature_patches_[p], kNoTrans, 1.0);
       bias_grad_.AddRowSumMat(1.0, diff_patch, 1.0);
     }
-
     // scale
-    filters_grad_.Scale(1.0/out_fmap_size);
-    bias_grad_.Scale(1.0/out_fmap_size);
+    filters_grad_.Scale(1.0/num_output_fmaps);
+    bias_grad_.Scale(1.0/num_output_fmaps);
 
     //
     // update
     //
-    filters_.AddMat(-lr*learn_rate_coef_, filters_grad_);
-    bias_.AddVec(-lr*bias_learn_rate_coef_, bias_grad_);
-    //
+    filters_.AddMat(-lr * learn_rate_coef_, filters_grad_);
+    bias_.AddVec(-lr * bias_learn_rate_coef_, bias_grad_);
   }
 
  private:
-  int32 fmap_x_len_, fmap_y_len_,  ///< feature maps dimensions (for input x_ is usually splice and y_ is num of fbanks) shift for 2nd dim of a patch (i.e. frame length before splicing)
-    filt_x_len_, filt_y_len_,  ///< 2D filter dimensions, x_ temporal, y_ spectral
-    filt_x_step_, filt_y_step_,  ///< 2D shifts along temporal and spectral
-    connect_fmap_;  ///< if connect_fmap_ = 1, then each fmap has num_filt
+  /// feature maps dimensions (for input x_ is usually splice
+  /// and y_ is num of fbanks) shift for 2nd dim of a patch
+  /// (i.e. frame length before splicing),
+  int32 fmap_x_len_, fmap_y_len_;
 
-  BaseFloat learn_rate_coef_;
-  BaseFloat bias_learn_rate_coef_;
+  /// 2D filter dimensions, x_ temporal, y_ spectral,
+  int32 filt_x_len_, filt_y_len_;
+
+  /// 2D shifts along temporal and spectral axis,
+  int32 filt_x_step_, filt_y_step_;
+
+  int32 connect_fmap_;  ///< if connect_fmap_ = 1, then each fmap has num_filt
 
   CuMatrix<BaseFloat> filters_;  ///< row = vectorized rectangular filter
   CuVector<BaseFloat> bias_;  ///< bias for each filter
@@ -476,4 +492,4 @@ class Convolutional2DComponent : public UpdatableComponent {
 }  // namespace nnet1
 }  // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_CONVOLUTIONAL_2D_COMPONENT_H_

@@ -19,8 +19,9 @@
 set -o errexit
 
 if [ $# -ne 4 ]; then
-  printf "Usage: %s lang_dir LM lexicon out_dir\n" `basename $0`
-  echo "  Convert ARPA-format language models to FSTs.";
+  echo "Usage: $0 <lang_dir> <arpa-LM> <lexicon> <out_dir>"
+  echo "E.g.: $0 data/lang data/local/lm/foo.kn.gz data/local/dict/lexicon.txt data/lang_test"
+  echo "Convert ARPA-format language models to FSTs.";
   exit 1;
 fi
 
@@ -34,25 +35,14 @@ mkdir -p $out_dir
 
 echo "Converting '$lm' to FST"
 
-for f in phones.txt words.txt L.fst L_disambig.fst phones/; do
+for f in phones.txt words.txt topo L.fst L_disambig.fst phones/ oov.int oov.txt; do
   cp -r $lang_dir/$f $out_dir
 done
 
 lm_base=$(basename $lm '.gz')
-gunzip -c $lm | utils/find_arpa_oovs.pl $out_dir/words.txt \
-  > $out_dir/oovs_${lm_base}.txt
-
-# Removing all "illegal" combinations of <s> and </s>, which are supposed to 
-# occur only at being/end of utt.  These can cause determinization failures 
-# of CLG [ends up being epsilon cycles].
 gunzip -c $lm \
-  | egrep -v '<s> <s>|</s> <s>|</s> </s>' \
-  | arpa2fst - | fstprint \
-  | utils/remove_oovs.pl $out_dir/oovs_${lm_base}.txt \
-  | utils/eps2disambig.pl | utils/s2eps.pl \
-  | fstcompile --isymbols=$out_dir/words.txt --osymbols=$out_dir/words.txt \
-    --keep_isymbols=false --keep_osymbols=false \
-  | fstrmepsilon | fstarcsort --sort_type=ilabel > $out_dir/G.fst
+  | arpa2fst --disambig-symbol=#0 \
+             --read-symbol-table=$out_dir/words.txt - $out_dir/G.fst
 set +e
 fstisstochastic $out_dir/G.fst
 set -e
@@ -66,7 +56,7 @@ set -e
 # this might cause determinization failure of CLG.
 # #0 is treated as an empty word.
 mkdir -p $out_dir/tmpdir.g
-awk '{if(NF==1){ printf("0 0 %s %s\n", $1,$1); }} 
+awk '{if(NF==1){ printf("0 0 %s %s\n", $1,$1); }}
      END{print "0 0 #0 #0"; print "0";}' \
      < "$lexicon" > $out_dir/tmpdir.g/select_empty.fst.txt
 

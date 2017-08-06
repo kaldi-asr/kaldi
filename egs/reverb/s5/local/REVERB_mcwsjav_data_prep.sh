@@ -65,8 +65,8 @@ if [ ! -z "$3" ]; then
    dt_or_x=$3
 fi
 
-# unfortunately, we need a pointer to HTK baseline 
-# since the corpus does NOT contain the data set descriptions 
+# unfortunately, we need a pointer to HTK baseline
+# since the corpus does NOT contain the data set descriptions
 # for the REVERB Challenge
 
 taskFileDir=$dir/../reverb_tools/ReleasePackage/reverb_tools_for_asr_ver2.0/taskFiles/1ch
@@ -97,11 +97,11 @@ s/\x0D$//' \
             # e.g. yield' --> yield
             # reason: YIELD' is not in dict, while YIELD is
             s/YIELD'/YIELD/g
-            s/'ROOTS'/ROOTS/g 
-            s/'WHERE/WHERE/g 
+            s/'ROOTS'/ROOTS/g
+            s/'WHERE/WHERE/g
             s/PEOPLE'/PEOPLE/g
             s/SIT'/SIT/g
-            s/'DOMINEE/DOMINEE/g 
+            s/'DOMINEE/DOMINEE/g
             s/CHURCH'/CHURCH/g" \
 -e '
               # fix the single missing double full stop issue at the end of an utterance
@@ -110,9 +110,9 @@ s/\x0D$//' \
               /^[A-Z]$/ {
               # append a line
                       N
-              # search for single dot on the second line        
+              # search for single dot on the second line
                       /\n\./ {
-              # found it - now replace the 
+              # found it - now replace the
                               s/\([A-Z]\)\n\./\1\.\n\./
                       }
               }' \
@@ -156,9 +156,9 @@ echo "Data preparation for $set succeeded"
 
 
 mfccdir=mfcc/$dataset
-#for x in test_eval92_clean test_eval92_5k_clean dev_dt_05_clean dev_dt_20_clean train_si84_clean; do 
-#for x in si_tr; do 
-steps/make_mfcc.sh --nj 10 \
+#for x in test_eval92_clean test_eval92_5k_clean dev_dt_05_clean dev_dt_20_clean train_si84_clean; do
+#for x in si_tr; do
+steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 \
   data/$dataset/$set exp/make_mfcc/$dataset/$set $mfccdir || exit 1;
 steps/compute_cmvn_stats.sh data/$dataset/$set exp/make_mfcc/$dataset/$set $mfccdir || exit 1;
 

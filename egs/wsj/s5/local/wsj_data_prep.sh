@@ -48,6 +48,8 @@ if [ ! -d links/11-13.1 -o ! -d links/13-34.1 -o ! -d links/11-2.1 ]; then
   echo "wsj_data_prep.sh: Spot check of command line arguments failed"
   echo "Command line arguments must be absolute pathnames to WSJ directories"
   echo "with names like 11-13.1."
+  echo "Note: if you have old-style WSJ distribution,"
+  echo "local/cstr_wsj_data_prep.sh may work instead, see run.sh for example."
   exit 1;
 fi
 
@@ -70,14 +72,14 @@ nl=`cat train_si284.flist | wc -l`
 [ "$nl" -eq 37416 ] || echo "Warning: expected 37416 lines in train_si284.flist, got $nl"
 
 # Now for the test sets.
-# links/13-34.1/wsj1/doc/indices/readme.doc 
+# links/13-34.1/wsj1/doc/indices/readme.doc
 # describes all the different test sets.
 # Note: each test-set seems to come in multiple versions depending
 # on different vocabulary sizes, verbalized vs. non-verbalized
 # pronunciations, etc.  We use the largest vocab and non-verbalized
 # pronunciations.
 # The most normal one seems to be the "baseline 60k test set", which
-# is h1_p0. 
+# is h1_p0.
 
 # Nov'92 (333 utts)
 # These index files have a slightly different format;
@@ -113,8 +115,8 @@ cat links/13-34.1/wsj1/doc/indices/h2_p0.ndx | \
 
 # Dev-set Hub 1,2 (503, 913 utterances)
 
-# Note: the ???'s below match WSJ and SI_DT, or wsj and si_dt.  
-# Sometimes this gets copied from the CD's with upcasing, don't know 
+# Note: the ???'s below match WSJ and SI_DT, or wsj and si_dt.
+# Sometimes this gets copied from the CD's with upcasing, don't know
 # why (could be older versions of the disks).
 find `readlink links/13-16.1`/???1/??_??_20 -print | grep -i ".wv1" | sort > dev_dt_20.flist
 find `readlink links/13-16.1`/???1/??_??_05 -print | grep -i ".wv1" | sort > dev_dt_05.flist
@@ -136,7 +138,7 @@ noiseword="<NOISE>";
 for x in train_si84 train_si284 test_eval92 test_eval93 test_dev93 test_eval92_5k test_eval93_5k test_dev93_5k dev_dt_05 dev_dt_20; do
    cat $x.trans1 | $local/normalize_transcript.pl $noiseword | sort > $x.txt || exit 1;
 done
- 
+
 # Create scp's with wav's. (the wv1 in the distribution is not really wav, it is sph.)
 for x in train_si84 train_si284 test_eval92 test_eval93 test_dev93 test_eval92_5k test_eval93_5k test_dev93_5k dev_dt_05 dev_dt_20; do
   awk '{printf("%s '$sph2pipe' -f wav %s |\n", $1, $2);}' < ${x}_sph.scp > ${x}_wav.scp
@@ -184,21 +186,21 @@ gzip -f $lmdir/lm_tgpr_5k.arpa || exit 1;
 
 if [ ! -f wsj0-train-spkrinfo.txt ] || [ `cat wsj0-train-spkrinfo.txt | wc -l` -ne 134 ]; then
   rm wsj0-train-spkrinfo.txt
-  ! wget http://www.ldc.upenn.edu/Catalog/docs/LDC93S6A/wsj0-train-spkrinfo.txt && \
+  ! wget https://catalog.ldc.upenn.edu/docs/LDC93S6A/wsj0-train-spkrinfo.txt && \
     echo "Getting wsj0-train-spkrinfo.txt from backup location" && \
-    wget --no-check-certificate https://sourceforge.net/projects/kaldi/files/wsj0-train-spkrinfo.txt 
+    wget --no-check-certificate https://sourceforge.net/projects/kaldi/files/wsj0-train-spkrinfo.txt
 fi
 
 if [ ! -f wsj0-train-spkrinfo.txt ]; then
   echo "Could not get the spkrinfo.txt file from LDC website (moved)?"
-  echo "This is possibly omitted from the training disks; couldn't find it." 
+  echo "This is possibly omitted from the training disks; couldn't find it."
   echo "Everything else may have worked; we just may be missing gender info"
   echo "which is only needed for VTLN-related diagnostics anyway."
   exit 1
 fi
 # Note: wsj0-train-spkrinfo.txt doesn't seem to be on the disks but the
 # LDC put it on the web.  Perhaps it was accidentally omitted from the
-# disks.  
+# disks.
 
 cat links/11-13.1/wsj0/doc/spkrinfo.txt \
     links/13-32.1/wsj1/doc/evl_spok/spkrinfo.txt \

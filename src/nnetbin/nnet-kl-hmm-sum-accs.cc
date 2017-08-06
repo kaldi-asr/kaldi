@@ -32,8 +32,8 @@ int main(int argc, char *argv[]) {
   try {
     typedef int32 int32;
     const char *usage =
-        "Sum multiple accumulated stats files for KL-HMM training.\n"
-        "Usage: nnet-kl-hmm-sum-accs [options] nnet-component stats-in1 stats-in2 ...\n";
+      "Sum multiple accumulated stats files for KL-HMM training.\n"
+      "Usage: nnet-kl-hmm-sum-accs [options] nnet-component stats-in1 .. stats-inN\n";
 
     bool binary = true;
     int32 n_kl_states = 0;
@@ -41,7 +41,10 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("nkl-states", &n_kl_states, "Number of states in Kl-HMM");
-    po.Register("posterior-dim", &n_posterior_dim, "Dimensionality of posterior features");
+
+    po.Register("posterior-dim", &n_posterior_dim,
+        "Dimensionality of posterior features");
+
     po.Read(argc, argv);
 
     if (po.NumArgs() < 2) {
@@ -68,7 +71,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Summed " << num_accs << " stats ";
     KALDI_LOG << "Written nnet component to " << nnet_component_filename;
   } catch(const std::exception &e) {
-    std::cerr << e.what() << '\n';
+    std::cerr << e.what();
     return -1;
   }
 }

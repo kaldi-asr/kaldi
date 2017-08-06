@@ -40,20 +40,10 @@ function format_lms () {
     cp $work_dir/lang_test/$f $test
   done
 
+  # kkm: I am removing fstdeterminizelog from the following pipe, no point.
   gunzip -c $work_dir/local/lm_${lm_suffix}.arpa.gz \
-    | find_arpa_oovs.pl $test/words.txt > $test/oovs_${lm_suffix}.txt
-
-  # Removing all "illegal" combinations of <s> and </s>, which are supposed to 
-  # occur only at being/end of utt.  These can cause determinization failures 
-  # of CLG [ends up being epsilon cycles].
-  gunzip -c $work_dir/local/lm_${lm_suffix}.arpa.gz \
-    | egrep -v '<s> <s>|</s> <s>|</s> </s>' \
-    | arpa2fst - | fstprint \
-    | remove_oovs.pl $test/oovs_${lm_suffix}.txt \
-    | eps2disambig.pl | s2eps.pl \
-    | fstcompile --isymbols=$test/words.txt --osymbols=$test/words.txt \
-      --keep_isymbols=false --keep_osymbols=false \
-    | fstrmepsilon | fstdeterminizelog > $test/G.fst
+    arpa2fst --disambig-symbol=#0 \
+             --read-symbol-table=$test/words.txt - $test/G.fst
   set +e
   fstisstochastic $test/G.fst
   set -e
@@ -73,7 +63,7 @@ function format_lms () {
     < $work_dir/local/lexicon_??.txt  >tmpdir.g/select_empty.fst.txt
   fstcompile --isymbols=$test/words.txt --osymbols=$test/words.txt tmpdir.g/select_empty.fst.txt | \
    fstarcsort --sort_type=olabel | fstcompose - $test/G.fst > tmpdir.g/empty_words.fst
-  fstinfo tmpdir.g/empty_words.fst | grep cyclic | grep -w 'y' && 
+  fstinfo tmpdir.g/empty_words.fst | grep cyclic | grep -w 'y' &&
     echo "Language model has cycles with empty words" && exit 1
   rm -r tmpdir.g
 
@@ -99,7 +89,7 @@ echo "Preparing language models for test"
   format_lms GE17k_tg $WDIR/GE;
   format_lms GE17k_tg_pr $WDIR/GE; } >& $WDIR/GE/format_lms.log
 
-# German - 60K 
+# German - 60K
 { format_lms GE60k_bg $WDIR/GE;
   format_lms GE60k_tg $WDIR/GE;
   format_lms GE60k_tg_pr $WDIR/GE; } >> $WDIR/GE/format_lms.log 2>&1
@@ -115,7 +105,7 @@ echo "Preparing language models for test"
   format_lms SP23k_tg_pr $WDIR/SP; } >& $WDIR/SP/format_lms.log
 
 # Swedish - 24K
-# TODO(arnab): Something going wrong with the Swedish trigram LM. 
+# TODO(arnab): Something going wrong with the Swedish trigram LM.
 { # format_lms SW24k_tg $WDIR/SW;
   # format_lms SW24k_tg_pr $WDIR/SW;
   format_lms SW24k_bg $WDIR/SW; } >& $WDIR/SW/format_lms.log

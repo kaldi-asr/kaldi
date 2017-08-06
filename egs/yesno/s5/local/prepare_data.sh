@@ -12,9 +12,10 @@ train_base_name=train_yesno
 test_base_name=test_yesno
 waves_dir=$1
 
+ls -1 $waves_dir > data/local/waves_all.list
+
 cd data/local
 
-ls -1 ../../$waves_dir > waves_all.list
 ../../local/create_yesno_waves_test_train.pl waves_all.list waves.test waves.train
 
 ../../local/create_yesno_wav_scp.pl ${waves_dir} waves.test > ${test_base_name}_wav.scp

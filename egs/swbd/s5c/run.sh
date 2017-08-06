@@ -72,11 +72,16 @@ fi
 # local/eval2000_data_prep.sh /home/dpovey/data/LDC2002S09/hub5e_00 /home/dpovey/data/LDC2002T43
 local/eval2000_data_prep.sh /export/corpora2/LDC/LDC2002S09/hub5e_00 /export/corpora2/LDC/LDC2002T43
 
+# prepare the rt03 data.  Note: this isn't 100% necessary for this
+# recipe, not all parts actually test using rt03.
+local/rt03_data_prep.sh /export/corpora/LDC/LDC2007S10
+
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
+if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
 mfccdir=mfcc
-for x in train eval2000; do
+for x in train eval2000 $maybe_rt03; do
   steps/make_mfcc.sh --nj 50 --cmd "$train_cmd" \
     data/$x exp/make_mfcc/$x $mfccdir
   steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
@@ -93,19 +98,18 @@ utils/subset_data_dir.sh --last data/train $n data/train_nodev
 
 # Now-- there are 260k utterances (313hr 23min), and we want to start the
 # monophone training on relatively short utterances (easier to align), but not
-# only the shortest ones (mostly uh-huh).  So take the 100k shortest ones;
-# remove most of the repeated utterances (these are the uh-huh type ones), and
-# then take 10k random utterances from those (about 4hr 40mins)
+# only the shortest ones (mostly uh-huh).  So take the 100k shortest ones, and
+# then take 30k random utterances from those (about 12hr)
 utils/subset_data_dir.sh --shortest data/train_nodev 100000 data/train_100kshort
 utils/subset_data_dir.sh data/train_100kshort 30000 data/train_30kshort
 
 # Take the first 100k utterances (just under half the data); we'll use
 # this for later stages of training.
 utils/subset_data_dir.sh --first data/train_nodev 100000 data/train_100k
-local/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup  # 110hr
+utils/data/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup  # 110hr
 
 # Finally, the full training set:
-local/remove_dup_utts.sh 300 data/train_nodev data/train_nodup  # 286hr
+utils/data/remove_dup_utts.sh 300 data/train_nodev data/train_nodup  # 286hr
 ## Starting basic training on MFCC features
 steps/train_mono.sh --nj 30 --cmd "$train_cmd" \
   data/train_30kshort data/lang_nosp exp/mono

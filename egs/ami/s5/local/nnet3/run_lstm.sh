@@ -18,7 +18,7 @@
 stage=0
 train_stage=-10
 mic=ihm
-use_ihm_ali=false 
+use_ihm_ali=false
 use_sat_alignments=false # if true, use tri4a alignments are used
                          # by default GMM-HMM systems are not built to this stage
                          # in SDM and MDM systems. So run the tri4a stage if you
@@ -66,7 +66,7 @@ decode_iter=
 
 echo "$0 $@"  # Print the command line for logging
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -178,7 +178,7 @@ if [ $stage -le 11 ]; then
       else
         ivector_opts=
       fi
-      steps/nnet3/lstm/decode.sh --nj 250 --cmd "$decode_cmd" \
+      steps/nnet3/decode.sh --nj 250 --cmd "$decode_cmd" \
           $ivector_opts $model_opts \
           --extra-left-context $extra_left_context  \
 	        --extra-right-context $extra_right_context  \

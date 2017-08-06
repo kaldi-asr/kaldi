@@ -50,6 +50,8 @@ void AmNnetSimple::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &left_context_);
   ExpectToken(is, binary, "<RightContext>");
   ReadBasicType(is, binary, &right_context_);
+  SetContext();  // temporarily, I'm not trusting the written ones (there was
+                 // briefly a bug)
   ExpectToken(is, binary, "<Priors>");
   priors_.Read(is, binary);
 }
@@ -77,8 +79,6 @@ void AmNnetSimple::SetPriors(const VectorBase<BaseFloat> &priors) {
 
 std::string AmNnetSimple::Info() const {
   std::ostringstream ostr;
-  ostr << "left-context: " << left_context_ << "\n";
-  ostr << "right-context: " << right_context_ << "\n";
   ostr << "input-dim: " << nnet_.InputDim("input") << "\n";
   ostr << "ivector-dim: " << nnet_.InputDim("ivector") << "\n";
   ostr << "num-pdfs: " << nnet_.OutputDim("output") << "\n";

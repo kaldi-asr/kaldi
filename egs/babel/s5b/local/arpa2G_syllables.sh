@@ -22,7 +22,7 @@ silence_id=`grep -w SIL $langdir/words.txt | awk '{print $2}'` || exit 1;
 [ -z $silence_id ] && echo Error getting silence-id from $langdir/words.txt && exit 1;
 rho=$[$last_id+1]
 
-# state 0 is start-state.  state 1 is state after we saw silence.  state 2 is 
+# state 0 is start-state.  state 1 is state after we saw silence.  state 2 is
 # "dead state/failure state" that is not coaccessible.
 cat <<EOF | fstcompile > $destdir/rho.fst
 0 1 $silence_id $silence_id
@@ -35,16 +35,11 @@ EOF
 
 
 gunzip -c $lmfile | \
-    grep -v '<s> <s>' | grep -v '</s> <s>' |  grep -v '</s> </s>' | \
     sed 's/<unk>/<oov>/g' | \
-    arpa2fst - | \
-    fstprint | \
-    utils/eps2disambig.pl | \
-    utils/s2eps.pl | \
-    fstcompile --isymbols=$langdir/words.txt \
-    --osymbols=$langdir/words.txt  --keep_isymbols=false --keep_osymbols=false | \
+    arpa2fst --disambig-symbol=#0 --ilabel-sort=false \
+             --read-symbol-table=$langdir/words.txt - | \
     fstrhocompose "$rho" - $destdir/rho.fst | \
-    fstrmepsilon > $destdir/G.fst || exit 1
+    fstarcsort --sort_type=ilabel > $destdir/G.fst || exit 1
 
 fstisstochastic $destdir/G.fst || true
 

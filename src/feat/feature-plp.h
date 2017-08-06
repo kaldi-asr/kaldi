@@ -23,9 +23,11 @@
 #include <map>
 #include <string>
 
+#include "feat/feature-common.h"
 #include "feat/feature-functions.h"
+#include "feat/feature-window.h"
+#include "feat/mel-computations.h"
 #include "itf/options-itf.h"
-#include "matrix/kaldi-matrix-inl.h"
 
 namespace kaldi {
 /// @addtogroup  feat FeatureExtraction
@@ -86,67 +88,83 @@ struct PlpOptions {
     opts->Register("cepstral-scale", &cepstral_scale,
                    "Scaling constant in PLP computation");
     opts->Register("htk-compat", &htk_compat,
-                   "If true, put energy or C0 last and put factor of sqrt(2) on "
-                   "C0.  Warning: not sufficient to get HTK compatible features "
-                   "(need to change other parameters).");
+                   "If true, put energy or C0 last.  Warning: not sufficient "
+                   "to get HTK compatible features (need to change other "
+                   "parameters).");
   }
 };
 
 
-/// Class for computing PLP features.  See \ref feat_plp where
-/// documentation will eventually be added.
-class Plp {
+/// This is the new-style interface to the PLP computation.
+class PlpComputer {
  public:
-  explicit Plp(const PlpOptions &opts);
-  ~Plp();
+  typedef PlpOptions Options;
+  explicit PlpComputer(const PlpOptions &opts);
+  PlpComputer(const PlpComputer &other);
+
+  const FrameExtractionOptions &GetFrameOptions() const {
+    return opts_.frame_opts;
+  }
 
   int32 Dim() const { return opts_.num_ceps; }
 
-  /// Will throw exception on failure (e.g. if file too short for even one
-  /// frame).  The output "wave_remainder" is the last frame or two of the
-  /// waveform that it would be necessary to include in the next call to Compute
-  /// for the same utterance.  It is not exactly the un-processed part (it may
-  /// have been partly processed), it's the start of the next window that we
-  /// have not already processed.  Will throw exception on failure (e.g. if file
-  /// too short for even one frame).
-  void Compute(const VectorBase<BaseFloat> &wave,
-               BaseFloat vtln_warp,
-               Matrix<BaseFloat> *output,
-               Vector<BaseFloat> *wave_remainder = NULL);
+  bool NeedRawLogEnergy() { return opts_.use_energy && opts_.raw_energy; }
 
-  typedef PlpOptions Options;
-  /// Const version of Compute()
-  void Compute(const VectorBase<BaseFloat> &wave,
+  /**
+     Function that computes one frame of features from
+     one frame of signal.
+
+     @param [in] signal_raw_log_energy The log-energy of the frame of the signal
+         prior to windowing and pre-emphasis, or
+         log(numeric_limits<float>::min()), whichever is greater.  Must be
+         ignored by this function if this class returns false from
+         this->NeedsRawLogEnergy().
+     @param [in] vtln_warp  The VTLN warping factor that the user wants
+         to be applied when computing features for this utterance.  Will
+         normally be 1.0, meaning no warping is to be done.  The value will
+         be ignored for feature types that don't support VLTN, such as
+         spectrogram features.
+     @param [in] signal_frame  One frame of the signal,
+       as extracted using the function ExtractWindow() using the options
+       returned by this->GetFrameOptions().  The function will use the
+       vector as a workspace, which is why it's a non-const pointer.
+     @param [out] feature  Pointer to a vector of size this->Dim(), to which
+         the computed feature will be written.
+  */
+  void Compute(BaseFloat signal_log_energy,
                BaseFloat vtln_warp,
-               Matrix<BaseFloat> *output,
-               Vector<BaseFloat> *wave_remainder = NULL) const;
+               VectorBase<BaseFloat> *signal_frame,
+               VectorBase<BaseFloat> *feature);
+
+  ~PlpComputer();
  private:
-  void ComputeInternal(const VectorBase<BaseFloat> &wave,
-                       const MelBanks &mel_banks,
-                       const Vector<BaseFloat> &equal_loudness,
-                       Matrix<BaseFloat> *output,
-                       Vector<BaseFloat> *wave_remainder = NULL) const;
 
   const MelBanks *GetMelBanks(BaseFloat vtln_warp);
 
-  const MelBanks *GetMelBanks(BaseFloat vtln_warp, bool *must_delete) const;
-
   const Vector<BaseFloat> *GetEqualLoudness(BaseFloat vtln_warp);
 
-  const Vector<BaseFloat> *GetEqualLoudness(BaseFloat vtln_warp,
-                                            const MelBanks &mel_banks,
-                                            bool *must_delete) const;
-  
   PlpOptions opts_;
   Vector<BaseFloat> lifter_coeffs_;
   Matrix<BaseFloat> idft_bases_;
   BaseFloat log_energy_floor_;
   std::map<BaseFloat, MelBanks*> mel_banks_;  // BaseFloat is VTLN coefficient.
   std::map<BaseFloat, Vector<BaseFloat>* > equal_loudness_;
-  FeatureWindowFunction feature_window_function_;
   SplitRadixRealFft<BaseFloat> *srfft_;
-  KALDI_DISALLOW_COPY_AND_ASSIGN(Plp);
+
+  // temporary vector used inside Compute; size is opts_.mel_opts.num_bins + 2
+  Vector<BaseFloat> mel_energies_duplicated_;
+  // temporary vector used inside Compute; size is opts_.lpc_order + 1
+  Vector<BaseFloat> autocorr_coeffs_;
+  // temporary vector used inside Compute; size is opts_.lpc_order
+  Vector<BaseFloat> lpc_coeffs_;
+  // temporary vector used inside Compute; size is opts_.lpc_order
+  Vector<BaseFloat> raw_cepstrum_;
+
+  // Disallow assignment.
+  PlpComputer &operator =(const PlpComputer &other);
 };
+
+typedef OfflineFeatureTpl<PlpComputer> Plp;
 
 /// @} End of "addtogroup feat"
 

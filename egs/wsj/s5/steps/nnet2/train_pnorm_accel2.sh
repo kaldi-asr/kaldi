@@ -87,7 +87,7 @@ egs_dir=
 lda_opts=
 lda_dim=
 egs_opts=
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time.
 transform_dir=     # If supplied, overrides alidir
 postdir=
 cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
@@ -131,7 +131,7 @@ if [ $# != 4 ]; then
   echo "                                                   # this, you may want to decrease the batch size."
   echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads... "
-  echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
+  echo "  --io-opts <opts|\"--max-jobs-run 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
@@ -183,6 +183,9 @@ utils/split_data.sh $data $nj
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 cp $alidir/tree $dir
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 extra_opts=()
 [ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")
@@ -461,7 +464,7 @@ while [ $x -lt $num_iters ]; do
         $cmd $parallel_opts $dir/log/train.$x.$n.log \
           nnet-train$parallel_suffix $parallel_train_opts \
           --minibatch-size=$this_minibatch_size --srand=$x "$mdl" \
-          "ark:nnet-copy-egs --frame=$frame ark:$cur_egs_dir/egs.$archive.ark ark:-|nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-|" \
+          "ark,bg:nnet-copy-egs --frame=$frame ark:$cur_egs_dir/egs.$archive.ark ark:-|nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-|" \
           $dir/$[$x+1].$n.mdl || touch $dir/.error &
       done
       wait

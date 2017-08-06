@@ -1,5 +1,8 @@
-for x in exp/{mono,tri,sgmm,nnet}*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+for x in exp/{mono,tri,sgmm,nnet,dnn}*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
 
 %WER 19.61 [ 14698 / 74942, 1233 ins, 3759 del, 9706 sub ] exp/tri2b_multi/decode_tgpr_5k_eval92/wer_13
 %WER 13.93 [ 10437 / 74942, 732 ins, 2695 del, 7010 sub ] exp/tri3a_dnn/decode_tgpr_5k_eval92/wer_10
 %WER 13.61 [ 10202 / 74942, 660 ins, 2987 del, 6555 sub ] exp/tri4a_dnn/decode_tgpr_5k_eval92/wer_11
+
+
+for x in /mnt/matylda3/qmallidi/Karels_New-Parametric-ReLU/kaldi/egs/aurora4/s5_PReLU/exp/{mono,tri,sgmm,nnet,dnn}*/decode*; do [ -d $x ] && grep WER $x/wer_* | /mnt/matylda5/iveselyk/DEVEL/kaldi-official/egs/aurora4/s5/utils/best_wer.sh; done

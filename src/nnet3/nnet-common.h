@@ -1,7 +1,7 @@
 // nnet3/nnet-common.h
 
-// Copyright      2015  Johns Hopkins University (author: Daniel Povey)
-
+// Copyright      2015  Johns Hopkins University (author: Daniel Pove
+//                2016  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -52,21 +52,51 @@ struct Index {
   bool operator == (const Index &a) const {
     return n == a.n && t == a.t && x == a.x;
   }
+  bool operator != (const Index &a) const {
+    return n != a.n || t != a.t || x != a.x;
+  }
   bool operator < (const Index &a) const {
     if (t < a.t) { return true; }
     else if (t > a.t) { return false; }
-    else if (n < a.n) { return true; }
-    else if (n > a.n) { return false; }
-    else return (x < a.x);
+    else if (x < a.x) { return true; }
+    else if (x > a.x) { return false; }
+    else return (n < a.n);
   }
   Index operator + (const Index &other) const {
     return Index(n+other.n, t+other.t, x+other.x);
+  }
+  Index &operator += (const Index &other) {
+    n += other.n;
+    t += other.t;
+    x += other.x;
+    return *this;
   }
 
   void Write(std::ostream &os, bool binary) const;
 
   void Read(std::istream &os, bool binary);
 };
+
+
+// this will be the most negative number representable as int32.  It is used as
+// the 't' value when we need to mark an 'invalid' index.  This can happen with
+// certain non-simple components whose ReorderIndexes() function need to insert
+// spaces into their inputs or outputs.
+extern const int kNoTime;
+
+// This struct can be used as a comparison object when you want to
+// sort the indexes first on n, then x, then t (Index's own comparison
+// object will sort first on t, then n, then x)
+struct IndexLessNxt {
+  inline bool operator ()(const Index &a, const Index &b) const {
+    if (a.n < b.n) { return true; }
+    else if (a.n > b.n) { return false; }
+    else if (a.x < b.x) { return true; }
+    else if (a.x > b.x) { return false; }
+    else return (a.t < b.t);
+  }
+};
+
 
 // this will be used only for debugging output.
 std::ostream &operator << (std::ostream &ostream, const Index &index);
@@ -75,7 +105,7 @@ std::ostream &operator << (std::ostream &ostream, const Index &index);
 void WriteIndexVector(std::ostream &os, bool binary,
                       const std::vector<Index> &vec);
 
-void ReadIndexVector(std::istream &os, bool binary,
+void ReadIndexVector(std::istream &is, bool binary,
                      std::vector<Index> *vec);
 
 
@@ -85,11 +115,21 @@ void ReadIndexVector(std::istream &os, bool binary,
 typedef std::pair<int32, Index> Cindex;
 
 struct IndexHasher {
-  size_t operator () (const Index &cindex) const;
+  size_t operator () (const Index &cindex) const noexcept;
 };
 
 struct CindexHasher {
-  size_t operator () (const Cindex &cindex) const;
+  size_t operator () (const Cindex &cindex) const noexcept;
+};
+
+struct CindexVectorHasher {
+  size_t operator () (const std::vector<Cindex> &cindex_vector) const noexcept;
+};
+
+// Note: because IndexVectorHasher is used in some things where we really need
+// it to be fast, it doesn't look at all the indexes, just most of them.
+struct IndexVectorHasher {
+  size_t operator () (const std::vector<Index> &index_vector) const noexcept;
 };
 
 
@@ -123,6 +163,11 @@ void PrintCindexes(std::ostream &ostream,
 void AppendCindexes(int32 node, const std::vector<Index> &indexes,
                     std::vector<Cindex> *out);
 
+void WriteCindexVector(std::ostream &os, bool binary,
+                       const std::vector<Cindex> &vec);
+
+void ReadCindexVector(std::istream &is, bool binary,
+                      std::vector<Cindex> *vec);
 
 // this function prints a vector of integers in a human-readable
 // way, for pretty-printing; it outputs ranges and repeats in

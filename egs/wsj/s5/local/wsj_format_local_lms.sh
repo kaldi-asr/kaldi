@@ -45,17 +45,13 @@ fi
 # Be careful: this time we dispense with the grep -v '<s> <s>' so this might
 # not work for LMs generated from all toolkits.
 gunzip -c $lm_srcdir_3g/lm_pr6.0.gz | \
-  arpa2fst - | fstprint | \
-    utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$lang/words.txt \
-      --osymbols=$lang/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-     fstrmepsilon | fstarcsort --sort_type=ilabel > data/lang${lang_suffix}_test_bd_tgpr/G.fst || exit 1;
+  arpa2fst --disambig-symbol=#0 \
+           --read-symbol-table=$lang/words.txt - data/lang${lang_suffix}_test_bd_tgpr/G.fst || exit 1;
   fstisstochastic data/lang${lang_suffix}_test_bd_tgpr/G.fst
 
 gunzip -c $lm_srcdir_3g/lm_unpruned.gz | \
-  arpa2fst - | fstprint | \
-    utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$lang/words.txt \
-      --osymbols=$lang/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-     fstrmepsilon | fstarcsort --sort_type=ilabel > data/lang${lang_suffix}_test_bd_tg/G.fst || exit 1;
+  arpa2fst --disambig-symbol=#0 \
+           --read-symbol-table=$lang/words.txt - data/lang${lang_suffix}_test_bd_tg/G.fst || exit 1;
   fstisstochastic data/lang${lang_suffix}_test_bd_tg/G.fst
 
 # Build ConstArpaLm for the unpruned language model.
@@ -65,10 +61,8 @@ gunzip -c $lm_srcdir_3g/lm_unpruned.gz | \
   --unk-symbol=$unk - data/lang${lang_suffix}_test_bd_tgconst/G.carpa || exit 1
 
 gunzip -c $lm_srcdir_4g/lm_unpruned.gz | \
-  arpa2fst - | fstprint | \
-    utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$lang/words.txt \
-      --osymbols=$lang/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-     fstrmepsilon | fstarcsort --sort_type=ilabel > data/lang${lang_suffix}_test_bd_fg/G.fst || exit 1;
+  arpa2fst --disambig-symbol=#0 \
+           --read-symbol-table=$lang/words.txt - data/lang${lang_suffix}_test_bd_fg/G.fst || exit 1;
   fstisstochastic data/lang${lang_suffix}_test_bd_fg/G.fst
 
 # Build ConstArpaLm for the unpruned language model.
@@ -78,10 +72,8 @@ gunzip -c $lm_srcdir_4g/lm_unpruned.gz | \
   --unk-symbol=$unk - data/lang${lang_suffix}_test_bd_fgconst/G.carpa || exit 1
 
 gunzip -c $lm_srcdir_4g/lm_pr7.0.gz | \
-  arpa2fst - | fstprint | \
-    utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$lang/words.txt \
-      --osymbols=$lang/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-     fstrmepsilon | fstarcsort --sort_type=ilabel > data/lang${lang_suffix}_test_bd_fgpr/G.fst || exit 1;
+  arpa2fst --disambig-symbol=#0 \
+           --read-symbol-table=$lang/words.txt - data/lang${lang_suffix}_test_bd_fgpr/G.fst || exit 1;
   fstisstochastic data/lang${lang_suffix}_test_bd_fgpr/G.fst
 
 exit 0;

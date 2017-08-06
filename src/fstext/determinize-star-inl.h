@@ -24,16 +24,8 @@
 
 #include "base/kaldi-error.h"
 
-#ifdef _MSC_VER
 #include <unordered_map>
 using std::unordered_map;
-#elif __cplusplus > 199711L || defined(__GXX_EXPERIMENTAL_CXX0X__)
-#include <unordered_map>
-using std::unordered_map;
-#else
-#include <tr1/unordered_map>
-using std::tr1::unordered_map;
-#endif
 
 #include <vector>
 #include <climits>
@@ -55,8 +47,11 @@ template<class Label, class StringId> class StringRepository {
     size_t operator()(const vector<Label> *vec) const {
       assert(vec != NULL);
       size_t hash = 0, factor = 1;
-      for (typename vector<Label>::const_iterator it = vec->begin(); it != vec->end(); it++)
-        hash += factor*(*it); factor*=103333;  // just an arbitrary prime number.
+      for (typename vector<Label>::const_iterator it = vec->begin();
+           it != vec->end(); it++) {
+        hash += factor*(*it);
+        factor *= 103333;  // just an arbitrary prime number.
+      }
       return hash;
     }
   };
@@ -134,7 +129,7 @@ template<class Label, class StringId> class StringRepository {
   }
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(StringRepository);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(StringRepository);
 
   StringId IdOfSeqInternal(const vector<Label> &v) {
     typename MapType::iterator iter = map_.find(&v);
@@ -212,12 +207,11 @@ template<class F> class DeterminizerStar {
       if (debug_ptr && *debug_ptr) Debug();  // will exit.
       if (max_states_ > 0 && output_arcs_.size() > max_states_) {
         if (allow_partial_ == false) {
-          std::cerr << "Determinization aborted since passed " << max_states_
-                    << " states.\n";
-          throw std::runtime_error("max-states reached in determinization");
+          KALDI_ERR << "Determinization aborted since passed " << max_states_
+                    << " states";
         } else {
           KALDI_WARN << "Determinization terminated since passed " << max_states_
-                     << " states, partial results will be generated.";
+                     << " states, partial results will be generated";
           is_partial_ = true;
           break;
         }
@@ -298,7 +292,7 @@ template<class F> class DeterminizerStar {
       for (typename vector<Element>::const_iterator iter = subset->begin();
            iter != subset->end(); ++iter) {
         hash *= factor;
-        hash += iter->state + 103333*iter->string;
+        hash += iter->state + 103333 * iter->string;
         factor *= 23531;  // these numbers are primes.
       }
       return hash;
@@ -383,12 +377,12 @@ template<class F> class DeterminizerStar {
     };
 
     // to further speed up EpsilonClosure() computation, we have 2 queues
-    // the 2nd queue is used when we first iterate over the input set - 
+    // the 2nd queue is used when we first iterate over the input set -
     // if queue_2_.empty() then we directly set output_set equal to input_set
     // and return immediately
     // Since Epsilon arcs are relatively rare, this way we could efficiently
     // detect the epsilon-free case, without having to waste our computation e.g.
-    // allocating the EpsilonClosureInfo structure; this also lets us do a 
+    // allocating the EpsilonClosureInfo structure; this also lets us do a
     // level-by-level traversal, which could avoid some (unfortunately not all)
     // duplicate computation if epsilons form a DAG that is not a tree
     //
@@ -405,9 +399,9 @@ template<class F> class DeterminizerStar {
     // Yet this is still faster than using a std::map<StateId, EpsilonClosureInfo>
     vector<int> id_to_index_;
     // unlike id_to_index_, we clear the content of ecinfo_ each time we call
-    // EpsilonClosure(). This needed because we need an efficient way to 
-    // traverse the virtual map - it is just too costly to traverse the 
-    // id_to_index_ vector. 
+    // EpsilonClosure(). This needed because we need an efficient way to
+    // traverse the virtual map - it is just too costly to traverse the
+    // id_to_index_ vector.
     vector<EpsilonClosureInfo> ecinfo_;
 
     // Add one element (elem) into cur_subset
@@ -415,7 +409,7 @@ template<class F> class DeterminizerStar {
     void AddOneElement(const Element &elem, const Weight &unprocessed_weight);
 
     // Sub-routine that we call in EpsilonClosure()
-    // It takes the current "unprocessed_weight" and propagate it to the 
+    // It takes the current "unprocessed_weight" and propagate it to the
     // states accessible from elem.state by an epsilon arc
     // and add the results to cur_subset.
     // save_to_queue_2 is set true when we iterate over the initial subset
@@ -458,8 +452,7 @@ template<class F> class DeterminizerStar {
           is_final = true;
         } else {  // already have one.
           if (final_string != elem.string) {
-            std::cerr << "DeterminizerStar: FST was not functional -> not determinizable\n";
-            throw std::runtime_error("Non-functional FST: cannot determinize.\n");
+            KALDI_ERR << "FST was not functional -> not determinizable";
           }
           final_weight = Plus(final_weight, Times(elem.weight, this_final_weight));
         }
@@ -608,7 +601,7 @@ template<class F> class DeterminizerStar {
 
   void Debug();
 
-  DISALLOW_COPY_AND_ASSIGN(DeterminizerStar);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(DeterminizerStar);
   deque<pair<vector<Element>*, OutputStateId> > Q_;  // queue of subsets to be processed.
 
   vector<vector<TempArc> > output_arcs_;  // essentially an FST in our format.
@@ -719,10 +712,8 @@ void DeterminizerStar<F>::EpsilonClosure::
     queue_.pop_front();
 
     if (max_states_ > 0 && counter++ > max_states_) {
-      std::cerr << "Determinization aborted since looped more than "
-                << max_states_ << " times during epsilon closure.\n";
-      throw std::runtime_error("looped more than max-states times"
-         " in determinization");
+      KALDI_ERR << "Determinization aborted since looped more than "
+                << max_states_ << " times during epsilon closure";
     }
 
     // generally we need to be careful about iterator-invalidation problem
@@ -782,29 +773,29 @@ void DeterminizerStar<F>::EpsilonClosure::
   } else {  // one is already there.  Add weights.
     EpsilonClosureInfo &info = ecinfo_[index];
     if (info.element.string != elem.string) {
-      std::cerr << "DeterminizerStar: FST was not functional "
-        "-> not determinizable\n";
+      // Non-functional FST.
+      std::ostringstream ss;
+      ss << "FST was not functional -> not determinizable.";
       { // Print some debugging information.  Can be helpful to debug
         // the inputs when FSTs are mysteriously non-functional.
         vector<Label> tmp_seq;
         repository_->SeqOfId(info.element.string, &tmp_seq);
-        std::cerr << "First string: ";
+        ss << "\nFirst string:";
         for (size_t i = 0; i < tmp_seq.size(); i++)
-          std::cerr << tmp_seq[i] << " ";
-        std::cerr << "\nSecond string: ";
+          ss << ' ' << tmp_seq[i];
+        ss << "\nSecond string:";
         repository_->SeqOfId(elem.string, &tmp_seq);
         for (size_t i = 0; i < tmp_seq.size(); i++)
-          std::cerr << tmp_seq[i] << " ";
-        std::cerr << "\n";
+          ss << ' ' << tmp_seq[i];
       }
-      throw std::runtime_error("Non-functional FST: cannot determinize.\n");
+      KALDI_ERR << ss.str();
     }
 
     info.weight_to_process =
           Plus(info.weight_to_process, unprocessed_weight);
 
     if (!info.in_queue) {
-      // this is because the code in "else" below: the 
+      // this is because the code in "else" below: the
       // iter->second.weight_to_process might not be Zero()
       Weight weight = Plus(info.element.weight, info.weight_to_process);
 
@@ -1013,8 +1004,7 @@ ProcessTransition(OutputStateId state, Label ilabel, vector<Element> *subset) {
       cur_in++;
       while (cur_in != end && cur_in->state == cur_out->state) {  // merge elements.
         if (cur_in->string != cur_out->string) {
-          std::cerr << "DeterminizerStar: FST was not functional -> not determinizable\n";
-          throw std::runtime_error("Non-functional FST: cannot determinize.\n");
+          KALDI_ERR << "FST was not functional -> not determinizable";
         }
         cur_out->weight = Plus(cur_out->weight, cur_in->weight);
         cur_in++;
@@ -1081,13 +1071,12 @@ void DeterminizerStar<F>::Debug() {
   // fstdeterminizestar).  It prints out some traceback
   // info and exits.
 
-  std::cerr << "Debug function called (probably SIGUSR1 caught).\n";
+  KALDI_WARN << "Debug function called (probably SIGUSR1 caught)";
   // free up memory from the hash as we need a little memory
   { SubsetHash hash_tmp; std::swap(hash_tmp, hash_); }
 
   if (output_arcs_.size() <= 2) {
-    std::cerr << "Nothing to trace back";
-    exit(1);
+    KALDI_ERR << "Nothing to trace back";
   }
   size_t max_state = output_arcs_.size() - 2;  // don't take the last
   // one as we might be halfway into constructing it.
@@ -1096,7 +1085,7 @@ void DeterminizerStar<F>::Debug() {
   for (size_t i = 0; i < max_state; i++) {
     for (size_t j = 0; j < output_arcs_[i].size(); j++) {
       OutputStateId nextstate = output_arcs_[i][j].nextstate;
-      // always find an earlier-numbered prececessor; this
+      // Always find an earlier-numbered predecessor; this
       // is always possible because of the way the algorithm
       // works.
       if (nextstate <= max_state && nextstate > i)
@@ -1104,8 +1093,8 @@ void DeterminizerStar<F>::Debug() {
     }
   }
   vector<pair<Label, StringId> > traceback;
-  // traceback is a pair of (ilabel, olabel-seq).
-  OutputStateId cur_state = max_state;  // a recently constructed state.
+  // 'traceback' is a pair of (ilabel, olabel-seq).
+  OutputStateId cur_state = max_state;  // A recently constructed state.
 
   while (cur_state != 0 && cur_state != kNoStateId) {
     OutputStateId last_state = predecessor[cur_state];
@@ -1119,27 +1108,27 @@ void DeterminizerStar<F>::Debug() {
         break;
       }
     }
-    assert(i != output_arcs_[last_state].size());  // or fell off loop.
+    KALDI_ASSERT(i != output_arcs_[last_state].size());  // Or fell off loop.
     cur_state = last_state;
   }
   if (cur_state == kNoStateId)
-    std::cerr << "Traceback did not reach start state (possibly debug-code error)";
+    KALDI_WARN << "Traceback did not reach start state "
+    << "(possibly debug-code error)";
 
-  std::cerr << "Traceback below (or on standard error) in format ilabel (olabel olabel) ilabel (olabel) ...\n";
+  std::stringstream ss;
+  ss << "Traceback follows in format "
+    << "ilabel (olabel olabel) ilabel (olabel) ... :";
   for (ssize_t i = traceback.size() - 1; i >= 0; i--) {
-    std::cerr << traceback[i].first << ' ' << "( ";
+    ss << ' ' << traceback[i].first << " ( ";
     vector<Label> seq;
     repository_.SeqOfId(traceback[i].second, &seq);
     for (size_t j = 0; j < seq.size(); j++)
-      std::cerr << seq[j] << ' ';
-    std::cerr << ") ";
+      ss << seq[j] << ' ';
+    ss << ')';
   }
-  std::cerr << '\n';
-  exit(1);
+  KALDI_ERR << ss.str();
 }
 
+}  // namespace fst
 
-}
-
-
-#endif
+#endif  // KALDI_FSTEXT_DETERMINIZE_STAR_INL_H_

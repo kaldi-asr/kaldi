@@ -124,7 +124,7 @@ void CuBlockMatrix<Real>::SetCudaData() {
   KALDI_ASSERT(cu_data_ == NULL);
   if (block_data_.size() == 0) return; // Nothing to do.
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     std::vector<CuBlockMatrixData> tmp_cu_data(NumBlocks());
     int32 row_offset = 0, col_offset = 0;
     for (size_t b = 0; b < NumBlocks(); b++) {
@@ -141,7 +141,7 @@ void CuBlockMatrix<Real>::SetCudaData() {
     cu_data_ = static_cast<CuBlockMatrixData*>(
         CuDevice::Instantiate().Malloc(size));
     CU_SAFE_CALL(cudaMemcpy(cu_data_, &(tmp_cu_data[0]), size, cudaMemcpyHostToDevice));
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
+    CuDevice::Instantiate().AccuProfile(__func__, tim);    
   }
 #endif
 }
@@ -230,7 +230,7 @@ void CuBlockMatrix<Real>::AddMatMat(
   if (NumBlocks() == 0) return; // empty matrix.
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
 
     // (x,y,z) dimensions are (block-id, row-of-block, col-of-block)
     // First some logic to choose block dims...
@@ -252,7 +252,7 @@ void CuBlockMatrix<Real>::AddMatMat(
                            A.Data(), A_num_cols, A_row_stride, A_col_stride,
                            B.Data(), B_row_stride, B_col_stride, alpha, beta);
     CU_SAFE_CALL(cudaGetLastError());    
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
+    CuDevice::Instantiate().AccuProfile(__func__, tim);    
   } else
 #endif
   {

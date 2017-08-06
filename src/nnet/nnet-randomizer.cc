@@ -19,8 +19,9 @@
 
 #include "nnet/nnet-randomizer.h"
 
-#include <algorithm>
 #include <vector>
+#include <algorithm>
+#include <utility>
 
 namespace kaldi {
 namespace nnet1 {
@@ -34,8 +35,9 @@ void RandomizerMask::Init(const NnetDataRandomizerOptions& conf) {
 
 const std::vector<int32>& RandomizerMask::Generate(int32 mask_size) {
   mask_.resize(mask_size);
-  for (int32 i=0; i<mask_size; i++) mask_[i]=i;
-  std::random_shuffle(mask_.begin(), mask_.end()); //with built-in random generator
+  for (int32 i = 0; i < mask_size; i++) mask_[i] = i;
+  // shuffle using built-in random generator:
+  std::random_shuffle(mask_.begin(), mask_.end());
   return mask_;
 }
 
@@ -44,28 +46,31 @@ const std::vector<int32>& RandomizerMask::Generate(int32 mask_size) {
 
 void MatrixRandomizer::AddData(const CuMatrixBase<BaseFloat>& m) {
   // pre-allocate before 1st use
-  if(data_.NumCols() == 0) {
-    data_.Resize(conf_.randomizer_size,m.NumCols());
+  if (data_.NumCols() == 0) {
+    data_.Resize(conf_.randomizer_size, m.NumCols());
   }
   // optionally put previous left-over to front
   if (data_begin_ > 0) {
-    KALDI_ASSERT(data_begin_ <= data_end_); // sanity check
+    KALDI_ASSERT(data_begin_ <= data_end_);  // sanity check,
     int32 leftover = data_end_ - data_begin_;
-    KALDI_ASSERT(leftover < data_begin_); // no overlap
-    if(leftover > 0) {
-      data_.RowRange(0,leftover).CopyFromMat(data_.RowRange(data_begin_,leftover));
+    KALDI_ASSERT(leftover < data_begin_);  // no overlap,
+    if (leftover > 0) {
+      data_.RowRange(0, leftover).CopyFromMat(data_.RowRange(data_begin_, leftover));
     }
-    data_begin_ = 0; data_end_ = leftover;
-    data_.RowRange(leftover,data_.NumRows()-leftover).SetZero(); // zeroing the rest 
+    data_begin_ = 0;
+    data_end_ = leftover;
+    // set zero to the rest of the buffer,
+    data_.RowRange(leftover, data_.NumRows() - leftover).SetZero();
   }
-  // extend the buffer if necessary
-  if(data_.NumRows() < data_end_ + m.NumRows()) {
+  // extend the buffer if necessary,
+  if (data_.NumRows() < data_end_ + m.NumRows()) {
     CuMatrix<BaseFloat> data_aux(data_);
-    data_.Resize(data_end_ + m.NumRows() + 1000, data_.NumCols()); // +1000 row extra
-    data_.RowRange(0,data_aux.NumRows()).CopyFromMat(data_aux);
+    // Add extra 1000 rows, so we don't reallocate soon:
+    data_.Resize(data_end_ + m.NumRows() + 1000, data_.NumCols());
+    data_.RowRange(0, data_aux.NumRows()).CopyFromMat(data_aux);
   }
   // copy the data
-  data_.RowRange(data_end_,m.NumRows()).CopyFromMat(m);
+  data_.RowRange(data_end_, m.NumRows()).CopyFromMat(m);
   data_end_ += m.NumRows();
 }
 
@@ -75,14 +80,16 @@ void MatrixRandomizer::Randomize(const std::vector<int32>& mask) {
   KALDI_ASSERT(data_end_ == mask.size());
   // Copy to auxiliary buffer for unshuffled data
   data_aux_ = data_;
-  // Put the mask to GPU 
+  // Put the mask to GPU
   CuArray<int32> mask_in_gpu(mask.size());
   mask_in_gpu.CopyFromVec(mask);
   // Randomize the data, mask is used to index rows in source matrix:
-  // (Here the vector 'mask_in_gpu' is typically shorter than number of rows in 'data_aux_',
-  //  because the the buffer 'data_aux_' is larger than capacity 'randomizer_size'.
-  //  The extra rows in 'data_aux_' do not contain speech frames and are not copied
-  //  from 'data_aux_', the extra rows in 'data_' are unchanged by cu::Randomize.)
+  // (Here the vector 'mask_in_gpu' is typically shorter than number
+  //  of rows in 'data_aux_', because the buffer 'data_aux_'
+  //  is larger than capacity 'randomizer_size'.
+  //  The extra rows in 'data_aux_' do not contain speech frames and
+  //  are not copied from 'data_aux_', the extra rows in 'data_' are
+  //  unchanged by cu::Randomize.)
   cu::Randomize(data_aux_, mask_in_gpu, &data_);
 }
 
@@ -91,9 +98,11 @@ void MatrixRandomizer::Next() {
 }
 
 const CuMatrixBase<BaseFloat>& MatrixRandomizer::Value() {
-  KALDI_ASSERT(data_end_ - data_begin_ >= conf_.minibatch_size); // have data for minibatch
-  minibatch_.Resize(conf_.minibatch_size, data_.NumCols(),kUndefined);
-  minibatch_.CopyFromMat(data_.RowRange(data_begin_,conf_.minibatch_size));
+  // make sure we have data for next minibatch,
+  KALDI_ASSERT(data_end_ - data_begin_ >= conf_.minibatch_size);
+  // prepare the mini-batch buffer,
+  minibatch_.Resize(conf_.minibatch_size, data_.NumCols(), kUndefined);
+  minibatch_.CopyFromMat(data_.RowRange(data_begin_, conf_.minibatch_size));
   return minibatch_;
 }
 
@@ -102,28 +111,29 @@ const CuMatrixBase<BaseFloat>& MatrixRandomizer::Value() {
 
 void VectorRandomizer::AddData(const Vector<BaseFloat>& v) {
   // pre-allocate before 1st use
-  if(data_.Dim() == 0) {
+  if (data_.Dim() == 0) {
     data_.Resize(conf_.randomizer_size);
   }
   // optionally put previous left-over to front
   if (data_begin_ > 0) {
-    KALDI_ASSERT(data_begin_ <= data_end_); // sanity check
+    KALDI_ASSERT(data_begin_ <= data_end_);  // sanity check
     int32 leftover = data_end_ - data_begin_;
-    KALDI_ASSERT(leftover < data_begin_); // no overlap
-    if(leftover > 0) {
-      data_.Range(0,leftover).CopyFromVec(data_.Range(data_begin_,leftover));
+    KALDI_ASSERT(leftover < data_begin_);  // no overlap
+    if (leftover > 0) {
+      data_.Range(0, leftover).CopyFromVec(data_.Range(data_begin_, leftover));
     }
-    data_begin_ = 0; data_end_ = leftover;
-    data_.Range(leftover,data_.Dim()-leftover).SetZero(); // zeroing the rest 
+    data_begin_ = 0;
+    data_end_ = leftover;
+    data_.Range(leftover, data_.Dim()-leftover).SetZero();  // zeroing the rest
   }
   // extend the buffer if necessary
-  if(data_.Dim() < data_end_ + v.Dim()) {
+  if (data_.Dim() < data_end_ + v.Dim()) {
     Vector<BaseFloat> data_aux(data_);
-    data_.Resize(data_end_ + v.Dim() + 1000); // +1000 row surplus
-    data_.Range(0,data_aux.Dim()).CopyFromVec(data_aux);
+    data_.Resize(data_end_ + v.Dim() + 1000);  // +1000 row surplus
+    data_.Range(0, data_aux.Dim()).CopyFromVec(data_aux);
   }
   // copy the data
-  data_.Range(data_end_,v.Dim()).CopyFromVec(v);
+  data_.Range(data_end_, v.Dim()).CopyFromVec(v);
   data_end_ += v.Dim();
 }
 
@@ -134,7 +144,7 @@ void VectorRandomizer::Randomize(const std::vector<int32>& mask) {
   // Use auxiliary buffer for unshuffled data
   Vector<BaseFloat> data_aux(data_);
   // randomize the data, mask is used to index elements in source vector
-  for(int32 i = 0; i<mask.size(); i++) {
+  for (int32 i = 0; i < mask.size(); i++) {
     data_(i) = data_aux(mask.at(i));
   }
 }
@@ -144,9 +154,11 @@ void VectorRandomizer::Next() {
 }
 
 const Vector<BaseFloat>& VectorRandomizer::Value() {
-  KALDI_ASSERT(data_end_ - data_begin_ >= conf_.minibatch_size); // have data for minibatch
-  minibatch_.Resize(conf_.minibatch_size,kUndefined);
-  minibatch_.CopyFromVec(data_.Range(data_begin_,conf_.minibatch_size));
+  // make sure we have data for next minibatch,
+  KALDI_ASSERT(data_end_ - data_begin_ >= conf_.minibatch_size);
+  // prepare the mini-batch buffer,
+  minibatch_.Resize(conf_.minibatch_size, kUndefined);
+  minibatch_.CopyFromVec(data_.Range(data_begin_, conf_.minibatch_size));
   return minibatch_;
 }
 
@@ -156,24 +168,24 @@ const Vector<BaseFloat>& VectorRandomizer::Value() {
 template<typename T>
 void StdVectorRandomizer<T>::AddData(const std::vector<T>& v) {
   // pre-allocate before 1st use
-  if(data_.size() == 0) {
+  if (data_.size() == 0) {
     data_.resize(conf_.randomizer_size);
   }
   // optionally put previous left-over to front
   if (data_begin_ > 0) {
-    KALDI_ASSERT(data_begin_ <= data_end_); // sanity check
+    KALDI_ASSERT(data_begin_ <= data_end_);  // sanity check
     int32 leftover = data_end_ - data_begin_;
-    KALDI_ASSERT(leftover < data_begin_); // no overlap
-    if(leftover > 0) {
-      std::copy(data_.begin()+data_begin_, data_.begin()+data_begin_+leftover, data_.begin());
+    KALDI_ASSERT(leftover < data_begin_);  // no overlap
+    if (leftover > 0) {
+      typename std::vector<T>::iterator leftover_begin = data_.begin() + data_begin_;
+      std::copy(leftover_begin, leftover_begin + leftover, data_.begin());
     }
-    data_begin_ = 0; data_end_ = leftover;
-    // cannot do this, we don't know default value of arbitrary type!
-    // data_.RowRange(leftover,data_.NumRows()-leftover).SetZero(); // zeroing the rest 
+    data_begin_ = 0;
+    data_end_ = leftover;
   }
   // extend the buffer if necessary
-  if(data_.size() < data_end_ + v.size()) {
-    data_.resize(data_end_ + v.size() + 1000); // +1000 row surplus
+  if (data_.size() < data_end_ + v.size()) {
+    data_.resize(data_end_ + v.size() + 1000);  // +1000 row surplus
   }
   // copy the data
   std::copy(v.begin(), v.end(), data_.begin()+data_end_);
@@ -188,7 +200,7 @@ void StdVectorRandomizer<T>::Randomize(const std::vector<int32>& mask) {
   // Use auxiliary buffer for unshuffled data
   std::vector<T> data_aux(data_);
   // randomize the data, mask is used to index elements in source vector
-  for(int32 i = 0; i<mask.size(); i++) {
+  for (int32 i = 0; i < mask.size(); i++) {
     data_.at(i) = data_aux.at(mask.at(i));
   }
 }
@@ -200,18 +212,21 @@ void StdVectorRandomizer<T>::Next() {
 
 template<typename T>
 const std::vector<T>& StdVectorRandomizer<T>::Value() {
-  KALDI_ASSERT(data_end_ - data_begin_ >= conf_.minibatch_size); // have data for minibatch
+  // make sure we have enough data for minibatch,
+  KALDI_ASSERT(data_end_ - data_begin_ >= conf_.minibatch_size);
+  // prepare the mini-batch buffer,
   minibatch_.resize(conf_.minibatch_size);
-
   typename std::vector<T>::iterator first = data_.begin() + data_begin_;
-  typename std::vector<T>::iterator last  = data_.begin() + data_begin_ + conf_.minibatch_size; //not-copied
+  typename std::vector<T>::iterator last  = first + conf_.minibatch_size;
   std::copy(first, last, minibatch_.begin());
   return minibatch_;
 }
 
-// Instantiate template StdVectorRandomizer with types we expect to operate on
+// Instantiate template StdVectorRandomizer with types we expect to operate on,
+// - Int32VectorRandomizer:
 template class StdVectorRandomizer<int32>;
-template class StdVectorRandomizer<std::vector<std::pair<int32, BaseFloat> > >; //PosteriorRandomizer
+// - PosteriorRandomizer:
+template class StdVectorRandomizer<std::vector<std::pair<int32, BaseFloat> > >;
 
-}
-}
+}  // namespace nnet1
+}  // namespace kaldi

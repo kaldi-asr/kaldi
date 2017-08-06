@@ -27,7 +27,7 @@ tmpdir=data/local/lm_tmp
 lexicon=data/local/lang${lang_suffix}_tmp/lexiconp.txt
 mkdir -p $tmpdir
 
-for x in train_si284 test_eval92 test_eval93 test_dev93 test_eval92_5k test_eval93_5k test_dev93_5k dev_dt_05 dev_dt_20; do 
+for x in train_si284 test_eval92 test_eval93 test_dev93 test_eval92_5k test_eval93_5k test_dev93_5k dev_dt_05 dev_dt_20; do
   mkdir -p data/$x
   cp $srcdir/${x}_wav.scp data/$x/wav.scp || exit 1;
   cp $srcdir/$x.txt data/$x/text || exit 1;
@@ -49,22 +49,8 @@ for lm_suffix in bg tgpr tg bg_5k tgpr_5k tg_5k; do
   cp -r data/lang${lang_suffix}/* $test || exit 1;
 
   gunzip -c $lmdir/lm_${lm_suffix}.arpa.gz | \
-   utils/find_arpa_oovs.pl $test/words.txt  > $tmpdir/oovs_${lm_suffix}.txt
-
-  # grep -v '<s> <s>' because the LM seems to have some strange and useless
-  # stuff in it with multiple <s>'s in the history.  Encountered some other similar
-  # things in a LM from Geoff.  Removing all "illegal" combinations of <s> and </s>,
-  # which are supposed to occur only at being/end of utt.  These can cause 
-  # determinization failures of CLG [ends up being epsilon cycles].
-  gunzip -c $lmdir/lm_${lm_suffix}.arpa.gz | \
-    grep -v '<s> <s>' | \
-    grep -v '</s> <s>' | \
-    grep -v '</s> </s>' | \
-    arpa2fst - | fstprint | \
-    utils/remove_oovs.pl $tmpdir/oovs_${lm_suffix}.txt | \
-    utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt \
-      --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-     fstrmepsilon | fstarcsort --sort_type=ilabel > $test/G.fst
+    arpa2fst --disambig-symbol=#0 \
+             --read-symbol-table=$test/words.txt - $test/G.fst
 
   utils/validate_lang.pl --skip-determinization-check $test || exit 1;
 done

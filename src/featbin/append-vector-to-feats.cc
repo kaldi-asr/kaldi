@@ -29,16 +29,15 @@ namespace kaldi {
 void AppendVectorToFeats(const Matrix<BaseFloat> &in,
                          const Vector<BaseFloat> &vec,
                          Matrix<BaseFloat> *out) {
+  // Check inputs,
   KALDI_ASSERT(in.NumRows() != 0);
+  // Build the output matrix,
   out->Resize(in.NumRows(), in.NumCols() + vec.Dim());
-  out->Range(0, in.NumRows(),
-             0, in.NumCols()).CopyFromMat(in);
-  out->Range(0, in.NumRows(),
-             in.NumCols(), vec.Dim()).CopyRowsFromVec(vec);
+  out->ColRange(0, in.NumCols()).CopyFromMat(in);
+  out->ColRange(in.NumCols(), vec.Dim()).CopyRowsFromVec(vec);
 }
 
-
-}
+}  // namespace kaldi,
 
 int main(int argc, char *argv[]) {
   try {

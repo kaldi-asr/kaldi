@@ -30,8 +30,8 @@
 #include <fst/fst-decl.h>
 #include "fstext/determinize-star.h"
 #include "fstext/remove-eps-local.h"
-#include "../base/kaldi-common.h" // for error reporting macros.
-#include "../util/text-utils.h" // for SplitStringToVector
+#include "base/kaldi-common.h" // for error reporting macros.
+#include "util/text-utils.h" // for SplitStringToVector
 #include "fst/script/print-impl.h"
 
 namespace fst {
@@ -116,7 +116,7 @@ void MinimizeEncoded(VectorFst<Arc> *fst, float delta = kDelta) {
   Map(fst, QuantizeMapper<Arc>(delta));
   EncodeMapper<Arc> encoder(kEncodeLabels | kEncodeWeights, ENCODE);
   Encode(fst, &encoder);
-  AcceptorMinimize(fst);
+  internal::AcceptorMinimize(fst);
   Decode(fst, encoder);
 }
 
@@ -135,27 +135,6 @@ bool GetLinearSymbolSequence(const Fst<Arc> &fst,
                              vector<I> *osymbols_out,
                              typename Arc::Weight *tot_weight_out);
 
-/// GetLinearSymbolSequence gets the symbol sequences and weights
-/// from an FST as output by the ShortestPath algorithm (called with
-/// some parameter n), which has up to n arcs out from the start state,
-/// and if you follow one of the arcs you enter a linear sequence of
-/// states.  This function outputs the info in a more N-best-list-like
-/// format.  It returns true if the FST had the expected structure,
-/// and false otherwise (note: an empty FST counts as having this
-/// structure).  We don't accept an FST that has a final-prob on the start
-/// state, as it wouldn't be clear whether to put it as the first or
-/// last path (this function is used in an N-best context where the
-/// paths' ordering is somewhat meaningful.)
-/// This function will set the output vectors to the appropriate
-/// size, and for each path will output the input and output symbols as
-/// vectors (not including epsilons).  It outputs the total weight
-/// for each path.
-template<class Arc, class I>
-bool GetLinearSymbolSequences(const Fst<Arc> &fst,
-                              vector<vector<I> > *isymbols_out,
-                              vector<vector<I> > *osymbols_out,
-                              vector<typename Arc::Weight> *tot_weight_out);
-
 
 /// This function converts an FST with a special structure, which is
 /// output by the OpenFst functions ShortestPath and RandGen, and converts
@@ -165,7 +144,7 @@ bool GetLinearSymbolSequences(const Fst<Arc> &fst,
 template<class Arc>
 void ConvertNbestToVector(const Fst<Arc> &fst,
                           vector<VectorFst<Arc> > *fsts_out);
-  
+
 
 /// Takes the n-shortest-paths (using ShortestPath), but outputs
 /// the result as a vector of up to n fsts.  This function will
@@ -436,7 +415,7 @@ bool IsStochasticFst(const Fst<Arc> &fst,
 
 
 // IsStochasticFstInLog makes sure it's stochastic after casting to log.
-inline bool IsStochasticFstInLog(const VectorFst<StdArc> &fst,
+inline bool IsStochasticFstInLog(const Fst<StdArc> &fst,
                                  float delta = kDelta,  // kDelta = 1.0/1024.0 by default.
                                  StdArc::Weight *min_sum = NULL,
                                  StdArc::Weight *max_sum = NULL);

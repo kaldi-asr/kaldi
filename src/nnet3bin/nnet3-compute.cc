@@ -92,11 +92,16 @@ int main(int argc, char *argv[]) {
 
     Nnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
+    SetBatchnormTestMode(true, &nnet);
+    SetDropoutTestMode(true, &nnet);
+    CollapseModel(CollapseModelConfig(), &nnet);
 
     RandomAccessBaseFloatMatrixReader online_ivector_reader(
         online_ivector_rspecifier);
     RandomAccessBaseFloatVectorReaderMapped ivector_reader(
         ivector_rspecifier, utt2spk_rspecifier);
+
+    CachingOptimizingCompiler compiler(nnet, opts.optimize_config);
 
     BaseFloatMatrixWriter matrix_writer(matrix_wspecifier);
 
@@ -135,9 +140,9 @@ int main(int argc, char *argv[]) {
       }
 
       Vector<BaseFloat> priors;
-      NnetDecodableBase nnet_computer(
+      DecodableNnetSimple nnet_computer(
           opts, nnet, priors,
-          features,
+          features, &compiler,
           ivector, online_ivectors,
           online_ivector_period);
 
@@ -157,6 +162,9 @@ int main(int argc, char *argv[]) {
       num_success++;
     }
 
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().PrintProfile();
+#endif
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "

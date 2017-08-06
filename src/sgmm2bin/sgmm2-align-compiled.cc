@@ -40,8 +40,8 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Align features given [SGMM-based] models.\n"
-        "Usage: sgmm2-align-compiled [options] model-in graphs-rspecifier "
-        "feature-rspecifier alignments-wspecifier\n"
+        "Usage: sgmm2-align-compiled [options] <model-in> <graphs-rspecifier> "
+        "<feature-rspecifier> <alignments-wspecifier>\n"
         "e.g.: sgmm2-align-compiled 1.mdl ark:graphs.fsts scp:train.scp ark:1.ali\n";
 
     ParseOptions po(usage);
@@ -52,8 +52,9 @@ int main(int argc, char *argv[]) {
     BaseFloat self_loop_scale = 1.0;
     BaseFloat log_prune = 5.0;
     std::string gselect_rspecifier, spkvecs_rspecifier, utt2spk_rspecifier;
+    std::string per_frame_acwt_wspecifier;
 
-    align_config.Register(&po);    
+    align_config.Register(&po);
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("log-prune", &log_prune, "Pruning beam used to reduce number "
                 "of exp() evaluations.");
@@ -67,6 +68,9 @@ int main(int argc, char *argv[]) {
     po.Register("self-loop-scale", &self_loop_scale, "Scaling factor for "
                 "self-loop versus non-self-loop probability mass [controls "
                 "most transition probabilities.]");
+    po.Register("write-per-frame-acoustic-loglikes", &per_frame_acwt_wspecifier,
+                "Wspecifier for table of vectors containing the acoustic log-likelihoods "
+                "per frame for each utterance. E.g. ark:foo/per_frame_logprobs.1.ark");
     po.Register("gselect", &gselect_rspecifier, "Precomputed Gaussian indices "
                 "(rspecifier)");
 
@@ -79,7 +83,7 @@ int main(int argc, char *argv[]) {
 
     if (gselect_rspecifier == "")
       KALDI_ERR << "--gselect option is mandatory.";
-    
+
     std::string model_in_filename = po.GetArg(1),
         fst_rspecifier = po.GetArg(2),
         feature_rspecifier = po.GetArg(3),
@@ -93,7 +97,7 @@ int main(int argc, char *argv[]) {
       trans_model.Read(ki.Stream(), binary);
       am_sgmm.Read(ki.Stream(), binary);
     }
-    
+
     SequentialTableReader<fst::VectorFstHolder> fst_reader(fst_rspecifier);
     RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
@@ -102,6 +106,7 @@ int main(int argc, char *argv[]) {
                                                            utt2spk_rspecifier);
 
     Int32VectorWriter alignment_writer(alignment_wspecifier);
+    BaseFloatVectorWriter per_frame_acwt_writer(per_frame_acwt_wspecifier);
 
     int num_done = 0, num_err = 0, num_retry = 0;
     double tot_like = 0.0;
@@ -118,7 +123,7 @@ int main(int argc, char *argv[]) {
       // stops copy-on-write of the fst by deleting the fst inside the reader,
       // since we're about to mutate the fst by adding transition probs.
       fst_reader.FreeCurrent();
-      
+
       const Matrix<BaseFloat> &features = feature_reader.Value(utt);
       if (features.NumRows() == 0) {
         KALDI_WARN << "Zero-length utterance: " << utt;
@@ -161,8 +166,8 @@ int main(int argc, char *argv[]) {
                             acoustic_scale, &decode_fst, &sgmm_decodable,
                             &alignment_writer, NULL,
                             &num_done, &num_err, &num_retry,
-                            &tot_like, &frame_count);
-      
+                            &tot_like, &frame_count, &per_frame_acwt_writer);
+
     }
 
     KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count)
@@ -176,5 +181,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

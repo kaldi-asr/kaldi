@@ -47,7 +47,7 @@ struct VadEnergyOptions {
   
   VadEnergyOptions(): vad_energy_threshold(5.0),
                       vad_energy_mean_scale(0.5),
-                      vad_frames_context(5),
+                      vad_frames_context(0),
                       vad_proportion_threshold(0.6) { }
   void Register(OptionsItf *opts) {
     opts->Register("vad-energy-threshold", &vad_energy_threshold,

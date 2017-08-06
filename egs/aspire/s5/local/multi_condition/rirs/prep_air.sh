@@ -30,8 +30,8 @@ log_dir=$3
 if [ "$download" = true ]; then
   mkdir -p $RIR_home
   (cd $RIR_home;
-  rm -rf air_database_release_1_4.zip 
-  wget https://www2.ind.rwth-aachen.de/air/air_database_release_1_4.zip || exit 1;
+  rm -rf air_database_release_1_4.zip
+  wget http://www.openslr.org/resources/20/air_database_release_1_4.zip || exit 1;
   unzip air_database_release_1_4.zip > /dev/null
   )
 fi

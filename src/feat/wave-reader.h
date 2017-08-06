@@ -37,6 +37,11 @@
 //  each WAVE chunk has header sub-chunk 'fmt_'
 //  and one or more data sub-chunks 'data'
 //
+//  [Note from Dan: to say that the wave format was ever "specified" anywhere is
+//   not quite right.  The guy who invented the wave format attempted to create
+//   a formal specification but it did not completely make sense.  And there
+//   doesn't seem to be a consensus on what makes a valid wave file,
+//   particularly where the accuracy of header information is concerned.]
 */
 
 
@@ -55,6 +60,47 @@ namespace kaldi {
 /// For historical reasons, we scale waveforms to the range
 /// (2^15-1)*[-1, 1], not the usual default DSP range [-1, 1].
 const BaseFloat kWaveSampleMax = 32768.0;
+
+/// This class reads and hold wave file header information.
+class WaveInfo {
+ public:
+  WaveInfo() : samp_freq_(0), samp_count_(0),
+               num_channels_(0), reverse_bytes_(0) {}
+
+  /// Is stream size unknown? Duration and SampleCount not valid if true.
+  bool IsStreamed() const { return samp_count_ < 0; }
+
+  /// Sample frequency, Hz.
+  BaseFloat SampFreq() const { return samp_freq_; }
+
+  /// Number of samples in stream. Invalid if IsStreamed() is true.
+  uint32 SampleCount() const { return samp_count_; }
+
+  /// Approximate duration, seconds. Invalid if IsStreamed() is true.
+  BaseFloat Duration() const { return samp_count_ / samp_freq_; }
+
+  /// Number of channels, 1 to 16.
+  int32 NumChannels() const { return num_channels_; }
+
+  /// Bytes per sample.
+  size_t BlockAlign() const { return 2 * num_channels_; }
+
+  /// Wave data bytes. Invalid if IsStreamed() is true.
+  size_t DataBytes() const { return samp_count_ * BlockAlign(); }
+
+  /// Is data file byte order different from machine byte order?
+  bool ReverseBytes() const { return reverse_bytes_; }
+
+  /// 'is' should be opened in binary mode. Read() will throw on error.
+  /// On success 'is' will be positioned at the beginning of wave data.
+  void Read(std::istream &is);
+
+ private:
+  BaseFloat samp_freq_;
+  int32 samp_count_;     // 0 if empty, -1 if undefined length.
+  uint8 num_channels_;
+  bool reverse_bytes_;   // File endianness differs from host.
+};
 
 /// This class's purpose is to read in Wave files.
 class WaveData {
@@ -92,22 +138,23 @@ class WaveData {
     samp_freq_ = 0.0;
   }
 
+  void Swap(WaveData *other) {
+    data_.Swap(&(other->data_));
+    std::swap(samp_freq_, other->samp_freq_);
+  }
+
  private:
   static const uint32 kBlockSize = 1024 * 1024;  // Use 1M bytes.
   Matrix<BaseFloat> data_;
   BaseFloat samp_freq_;
-  static void Expect4ByteTag(std::istream &is, const char *expected);
-  uint32 ReadUint32(std::istream &is, bool swap);
-  uint16 ReadUint16(std::istream &is, bool swap);
-  static void Read4ByteTag(std::istream &is, char *dest);
-
-  static void WriteUint32(std::ostream &os, int32 i);
-  static void WriteUint16(std::ostream &os, int16 i);
 };
 
 
-// Holder class for .wav files that enables us to read (but not write)
-// .wav files. c.f. util/kaldi-holder.h
+// Holder class for .wav files that enables us to read (but not write) .wav
+// files. c.f. util/kaldi-holder.h we don't use the KaldiObjectHolder template
+// because we don't want to check for the \0B binary header. We could have faked
+// it by pretending to read in the wave data in text mode after failing to find
+// the \0B header, but that would have been a little ugly.
 class WaveHolder {
  public:
   typedef WaveData T;
@@ -120,8 +167,8 @@ class WaveHolder {
       t.Write(os);  // throws exception on failure.
       return true;
     } catch (const std::exception &e) {
-      KALDI_WARN << "Exception caught in WaveHolder object (writing).";
-      if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+      KALDI_WARN << "Exception caught in WaveHolder object (writing). "
+                 << e.what();
       return false;  // write failure.
     }
   }
@@ -144,17 +191,55 @@ class WaveHolder {
   bool Read(std::istream &is) {
     // We don't look for the binary-mode header here [always binary]
     try {
-      t_.Read(is);  // throws exception on failure.
+      t_.Read(is);  // Throws exception on failure.
       return true;
     } catch (const std::exception &e) {
-      KALDI_WARN << "Exception caught in WaveHolder object (reading).";
-      if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
-      return false;  // write failure.
+      KALDI_WARN << "Exception caught in WaveHolder::Read(). " << e.what();
+      return false;
     }
+  }
+
+  void Swap(WaveHolder *other) {
+    t_.Swap(&(other->t_));
+  }
+
+  bool ExtractRange(const WaveHolder &other, const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
   }
 
  private:
   T t_;
+};
+
+// This is like WaveHolder but when you just want the metadata-
+// it leaves the actual data undefined, it doesn't read it.
+class WaveInfoHolder {
+ public:
+  typedef WaveInfo T;
+
+  void Clear() { info_ = WaveInfo(); }
+  void Swap(WaveInfoHolder *other) { std::swap(info_, other->info_); }
+  const T &Value() { return info_; }
+  static bool IsReadInBinary() { return true; }
+
+  bool Read(std::istream &is) {
+    try {
+      info_.Read(is);  // Throws exception on failure.
+      return true;
+    } catch (const std::exception &e) {
+      KALDI_WARN << "Exception caught in WaveInfoHolder::Read(). " << e.what();
+      return false;
+    }
+  }
+
+  bool ExtractRange(const WaveInfoHolder &other, const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
+
+ private:
+  WaveInfo info_;
 };
 
 

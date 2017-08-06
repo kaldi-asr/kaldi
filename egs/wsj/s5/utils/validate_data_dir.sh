@@ -4,8 +4,9 @@
 no_feats=false
 no_wav=false
 no_text=false
+no_spk_sort=false
 
-for x in `seq 3`; do
+for x in `seq 4`; do
   if [ "$1" == "--no-feats" ]; then
     no_feats=true
     shift;
@@ -18,11 +19,22 @@ for x in `seq 3`; do
     no_wav=true
     shift;
   fi
+  if [ "$1" == "--no-spk-sort" ]; then
+    no_spk_sort=true
+    shift;
+  fi
 done
 
 if [ $# -ne 1 ]; then
-  echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] <data-dir>"
+  echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] [--no-spk-sort] <data-dir>"
+  echo "The --no-xxx options mean that the script does not require "
+  echo "xxx.scp to be present, but it will check it if it is present."
+  echo "--no-spk-sort means that the script does not require the utt2spk to be "
+  echo "sorted by the speaker-id in addition to being sorted by utterance-id."
+  echo "By default, utt2spk is expected to be sorted by both, which can be "
+  echo "achieved by making the speaker-id prefixes of the utterance-ids"
   echo "e.g.: $0 data/train"
+  exit 1;
 fi
 
 data=$1
@@ -49,7 +61,7 @@ done
 ns=$(wc -l < $data/spk2utt)
 if [ "$ns" == 1 ]; then
   echo "$0: WARNING: you have only one speaker.  This probably a bad idea."
-  echo "   Search for the word 'bold' in http://kaldi.sourceforge.net/data_prep.html"
+  echo "   Search for the word 'bold' in http://kaldi-asr.org/doc/data_prep.html"
   echo "   for more information."
 fi
 
@@ -75,9 +87,11 @@ function partial_diff {
 
 check_sorted_and_uniq $data/utt2spk
 
-! cat $data/utt2spk | sort -k2 | cmp -s - $data/utt2spk && \
-   echo "$0: utt2spk is not in sorted order when sorted first on speaker-id " && \
-   echo "(fix this by making speaker-ids prefixes of utt-ids)" && exit 1;
+if ! $no_spk_sort; then
+  ! cat $data/utt2spk | sort -k2 | cmp -s - $data/utt2spk && \
+     echo "$0: utt2spk is not in sorted order when sorted first on speaker-id " && \
+     echo "(fix this by making speaker-ids prefixes of utt-ids)" && exit 1;
+fi
 
 check_sorted_and_uniq $data/spk2utt
 
@@ -131,9 +145,9 @@ if [ -f $data/wav.scp ]; then
     check_sorted_and_uniq $data/segments
     # We have a segments file -> interpret wav file as "recording-ids" not utterance-ids.
     ! cat $data/segments | \
-      awk '{if (NF != 4 || ($4 <= $3 && $4 != -1)) { print "Bad line in segments file", $0; exit(1); }}' && \
+      awk '{if (NF != 4 || $4 <= $3) { print "Bad line in segments file", $0; exit(1); }}' && \
       echo "$0: badly formatted segments file" && exit 1;
-    
+
     segments_len=`cat $data/segments | wc -l`
     if [ -f $data/text ]; then
       ! cmp -s $tmpdir/utts <(awk '{print $1}' <$data/text) && \
@@ -153,14 +167,14 @@ if [ -f $data/wav.scp ]; then
       # this file is needed only for ctm scoring; it's indexed by recording-id.
       check_sorted_and_uniq $data/reco2file_and_channel
       ! cat $data/reco2file_and_channel | \
-        awk '{if (NF != 3 || ($3 != "A" && $3 != "B" )) { 
+        awk '{if (NF != 3 || ($3 != "A" && $3 != "B" )) {
                 if ( NF == 3 && $3 == "1" ) {
                   warning_issued = 1;
                 } else {
-                  print "Bad line ", $0; exit 1; 
+                  print "Bad line ", $0; exit 1;
                 }
               }
-            } 
+            }
             END {
               if (warning_issued == 1) {
                 print "The channel should be marked as A or B, not 1! You should change it ASAP! "
@@ -188,14 +202,14 @@ if [ -f $data/wav.scp ]; then
       # this file is needed only for ctm scoring; it's indexed by recording-id.
       check_sorted_and_uniq $data/reco2file_and_channel
       ! cat $data/reco2file_and_channel | \
-        awk '{if (NF != 3 || ($3 != "A" && $3 != "B" )) { 
+        awk '{if (NF != 3 || ($3 != "A" && $3 != "B" )) {
                 if ( NF == 3 && $3 == "1" ) {
                   warning_issued = 1;
                 } else {
-                  print "Bad line ", $0; exit 1; 
+                  print "Bad line ", $0; exit 1;
                 }
               }
-            } 
+            }
             END {
               if (warning_issued == 1) {
                 print "The channel should be marked as A or B, not 1! You should change it ASAP! "
@@ -228,12 +242,13 @@ if [ -f $data/feats.scp ]; then
   fi
 fi
 
+
 if [ -f $data/cmvn.scp ]; then
   check_sorted_and_uniq $data/cmvn.scp
   cat $data/cmvn.scp | awk '{print $1}' > $tmpdir/speakers.cmvn
   cat $data/spk2utt | awk '{print $1}' > $tmpdir/speakers
   if ! cmp -s $tmpdir/speakers{,.cmvn}; then
-    echo "$0: Error: in $data, speaker lists extracted from spkutt and cmvn"
+    echo "$0: Error: in $data, speaker lists extracted from spk2utt and cmvn"
     echo "$0: differ, partial diff is:"
     partial_diff $tmpdir/speakers{,.cmvn}
     exit 1;
@@ -293,5 +308,20 @@ for f in vad.scp utt2lang utt2uniq; do
     fi
   fi
 done
+
+
+if [ -f $data/utt2dur ]; then
+  check_sorted_and_uniq $data/utt2dur
+  cat $data/utt2dur | awk '{print $1}' > $tmpdir/utts.utt2dur
+  if ! cmp -s $tmpdir/utts{,.utt2dur}; then
+    echo "$0: Error: in $data, utterance-ids extracted from utt2spk and utt2dur file"
+    echo "$0: differ, partial diff is:"
+    partial_diff $tmpdir/utts{,.utt2dur}
+    exit 1;
+  fi
+  cat $data/utt2dur | \
+    awk '{ if (NF != 2 || !($2 > 0)) { print "Bad line : " $0; exit(1) }}' || exit 1
+fi
+
 
 echo "$0: Successfully validated data-directory $data"

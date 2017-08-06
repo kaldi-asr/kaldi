@@ -55,13 +55,13 @@
  and documentation); we were visited by Michael Riley (who helped us to understand
  OpenFst and gave some lectures on FSTs), and would like to acknowledge the help of
  Honza Cernocky (for allowing us to have the workshop and helping to organize it),
- Renata Kohlova (administration), and Tomas Kasparek (system administration).  
+ Renata Kohlova (administration), and Tomas Kasparek (system administration).
  It is possible that this list of contributors contains
  oversights; any important omissions are unlikely to be intentional.
 
  A lot of code was written during the summer of 2010 but we still did not have a
  complete working system.  Some of the participants of the 2010 workshop
- continued working to complete the toolkit and get a working set of training scripts.  
+ continued working to complete the toolkit and get a working set of training scripts.
  The code was released on May 14th, 2011.
 
  Since the initial release, Kaldi has been maintained and developed to a large
@@ -95,8 +95,14 @@
  for his help in organizing the JHU'09 workshop and with the Wall Street
  Journal recipe.  We would also like to acknowledge the help
  of faculty and staff at Johns Hopkins University's Center for Language and
- Speech Processing during the JHU'09 workshop: particularly 
+ Speech Processing during the JHU'09 workshop: particularly
  Sanjeev Khudanpur, Desiree Cleves and the late Fred Jelinek.
+
+ Since 2012, Kaldi development has received significant support from IARPA's
+ BABEL program (IARPA-BAA-11-02) and from the Human Language Technology
+ Center of Excellence (HLTCOE); and since 2015, from the NSF computing
+ research infrastructure (CRI) award ``CI-EN: Enhancements for the Kaldi Speech
+ Recognition Toolkit''.
 
  Sanjeev Khudanpur deserves special mention for creating the conditions for the
  Kaldi project to succeed, first at the JHU'09 workshop where in his role as
