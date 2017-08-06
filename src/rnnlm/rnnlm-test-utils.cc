@@ -85,38 +85,122 @@ void ConvertToInteger(
   }
 }
 
+/** Simple implementation of Interpolated Kneser-Ney smoothing,
+    see the formulas in "A Bit of Progress in Language Modeling"
+*/
+class InterpolatedKneserNeyLM {
+ public:
+  struct LMState {
+    int32 count;
+    BaseFloat prob;
+    BaseFloat bow;
+  };
+  typedef unordered_map<std::vector<int32>, LMState, VectorHasher<int32> > Ngrams;
+
+  /** Constructor.
+       @param [in] ngram_order  The n-gram order of the language model to
+                                be estimated.
+       @param [in] discount   Fixed value of discount, i.e. the D in formula.
+   */
+  InterpolatedKneserNeyLM(int32 ngram_order, double discount) {
+    ngram_order_ = ngram_order;
+    discount_ = discount;
+    ngrams_.resize(ngram_order);
+  }
+
+  /* Collect the ngram counts from corpus. */
+  void CollectCounts(const std::vector<std::vector<int32> > &sentences,
+                int32 bos_symbol, int32 eos_symbol) {
+    std::vector<int32> ngram(ngram_order_);
+
+    for (int32 i = 0; i < sentences.size(); i++) {
+      for (int32 j = 0; j < sentences[i].size() + 1; j++) {
+        int32 max_order = j - ngram_order_ + 1;
+        if (max_order < -1) {
+          max_order = -max_order;
+        } else {
+          max_order = ngram_order_;
+        }
+
+        for (int32 order = 1; order <= max_order; order++) {
+          for (int32 k = 1; k <= order; k++) {
+            int32 pos = j - order + k;
+            if (pos < 0) {
+              ngram[k - 1] = bos_symbol;
+            } else if (pos >= sentences[i].size()) {
+              ngram[k - 1] = eos_symbol;
+            } else {
+              ngram[k - 1] = sentences[i][pos];
+            }
+          }
+
+          Ngrams::iterator it = ngrams_[order].find(ngram);
+          if (it == ngrams_[order].end()) {
+            ngrams_[order].insert(make_pair(ngram, LMState{1, 0.0, 0.0}));
+          } else {
+            ++(it->second.count);
+          }
+        }
+      }
+    }
+  }
+
+  /* Modify the ngram counts with Kneser-Ney smoothing. */
+  void EstimateProbAndBow() {
+  }
+
+  /** Estimate the language model with corpus in sentences.
+      We won't follow the procedure of SRILM implementation(collect counts,
+      then modeify counts, and then discount and get probs). Instead,
+      we translate the perl code in the appendix of the paper. Also, we don't
+      treat the ngram starting with non-events(<s>) as a special case.
+
+      @param [in] sentences   The sentences of input data.  These will contain
+                              just the actual words, not the BOS or EOS symbols.
+      @param [in] bos_symbol  The integer id of the beginning-of-sentence
+                              symbol
+      @param [in] eos_symbol  The integer id of the end-of-sentence
+                             symbol
+   */
+  void Estimate(const std::vector<std::vector<int32> > &sentences,
+                int32 bos_symbol, int32 eos_symbol) {
+    CollectCounts(sentences, bos_symbol, eos_symbol);
+    EstimateProbAndBow();
+  }
+
+  /** Write to the ostream with ARPA format. Throws on error.
+       @param [in] symbol_table  The OpenFst symbol table. It's needed.
+                                 because the ARPA file we write out
+                                 is in text form.
+       @param [out] os       The stream to which this function will write
+                             the language model in ARPA format.
+   */
+
+  void WriteToARPA(const fst::SymbolTable &symbol_table,
+                   std::ostream &os) const;
+
+ private:
+
+  // Ngram order
+  int32 ngram_order_;
+
+  // Fix value of discount
+  double discount_;
+
+  // ngrams for each order
+  std::vector<Ngrams> ngrams_;
+};
+
 void EstimateAndWriteLanguageModel(
     int32 ngram_order,
     const fst::SymbolTable &symbol_table,
     const std::vector<std::vector<int32> > &sentences,
     int32 bos_symbol, int32 eos_symbol,
     std::ostream &os) {
-
-  std::vector<int32> counts(symbol_table.AvailableKey(), 0);
-  int32 tot_count = 0;
-  for (int i = 0; i < sentences.size(); i++) {
-    tot_count += sentences[i].size();
-    for (int j = 0; j < sentences[i].size(); j++) {
-      counts[sentences[i][j]]++;
-    }
-  }
-
-  os << "\\data\\\n";
-  os << "ngram 1=" << counts.size() - 1 << "\n";  // not including <eps>
-  os << "\n";
-  os << "\\1-grams:\n";
-
-  for (int32 i = 1; i < counts.size(); i++) {
-    BaseFloat logprob = Log(1.0f * counts[i] / tot_count) / Log(10.0);
-    if (counts[i] == 0)
-      logprob = -99.0;
-    os << logprob << " "
-       << symbol_table.Find(i) << "\n";
-  }
-
-  os << "\\end\\";
+  InterpolatedKneserNeyLM lm(ngram_order, 0.6);
+  lm.Estimate(sentences, bos_symbol, eos_symbol);
+  lm.WriteToARPA(symbol_table, os);
 }
-
 
 }  // namespace rnnlm
 }  // namespace kaldi
