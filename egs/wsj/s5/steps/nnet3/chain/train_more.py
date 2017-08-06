@@ -115,6 +115,11 @@ def get_args():
                         help="Deprecated. Kept for back compatibility")
 
     # trainer options
+    parser.add_argument("--trainer.input-model", type=str,
+                        dest='input_mdl', default=None,
+                        action=common_lib.NullstrToNoneAction,
+                        help="If specified, this model is used as 0.raw model "
+                             " and no LDA matrix or init.raw initialzed.")
     parser.add_argument("--trainer.num-epochs", type=float, dest='num_epochs',
                         default=10.0,
                         help="Number of epochs to train the model")

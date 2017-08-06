@@ -1,12 +1,22 @@
 #!/bin/bash
-# _1b is as _1a but uses a src-tree-dir to generate new target alignment and lattices
-# using source model. It also combines
-# alignemts from source and target to train phone LM for den.fst in chain denominator graph.
+# _1b is as _1a, but different as follows
+# 1) uses src phone set phones.txt and new lexicon generated using word pronunciation
+#    in src lexincon.txt and target word not presented in src are added as oov
+#    in lexicon.txt.
+# 2) It uses src tree-dir and generates new target alignment and lattices using
+#    src gmm model.
+# 3) It also train phone LM using weighted combination of alignemts from source
+#    and target, which is used in chain denominator graph.
+#    Since we use phone.txt from source dataset, this can be helpful in cases
+#    where there is few training data in target and some 4-gram phone sequences
+#    have no count in target.
+# 4) It does not replace the output layer from already-trained model with new
+#    randomely initialized output layer and and re-train it using target dataset.
+
 
 # This script uses weight transfer as Transfer learning method
-# and use already trained model on wsj and remove the last layer and
-# add new randomly initialized layer and retrain the whole network.
-# while training new added layer using rm data.
+# and use already trained model on wsj and fine-tune the whole network using rm data
+# while training the last layer with higher learning-rate.
 # The chain config is as run_tdnn_5n.sh and the result is:
 # System tdnn_5n tdnn_wsj_rm_1a tdnn_wsj_rm_1b tdnn_wsj_rm_1c
 # WER      2.71     2.09            3.45          3.38
@@ -33,11 +43,10 @@ xent_regularize=0.1
 
 # configs for transfer learning
 common_egs_dir=
-#srcdir=../../wsj/s5/
-srcdir=/export/a09/pegahgh/kaldi-transfer-learning/egs/wsj/s5-sp
+srcdir=../../wsj/s5/
 src_mdl=$srcdir/exp/chain/tdnn1d_sp/final.mdl
 src_lang=$srcdir/data/lang
-src_gmm_mdl=$srcdir/exp/tri4b
+src_gmm_dir=$srcdir/exp/tri4b
 src_tree_dir=$srcdir/exp/chain/tree_a_sp # chain tree-dir for src data;
                                          # the alignment in target domain is
                                          # converted using src-tree
@@ -73,10 +82,18 @@ ali_dir=exp/tri4b${src_tree_dir:+_wsj}_ali
 lat_dir=exp/tri3b_lats${src_tree_dir:+_wsj}
 dir=exp/chain/tdnn_wsj_rm${tdnn_affix}
 
+required_files="$src_mdl $src_lang/lexicon.txt $src_gmm_dir/final.mdl $srd_tree_dir/tree"
+
+for f in $required_files; do
+  if [ ! -f $f ]; then
+    echo "$0: no such file $f"
+  fi
+done
+
 if [ $stage -le -1 ]; then
   echo "$0: prepare lexicon.txt for RM using WSJ lexicon."
   if ! cmp -s <(grep -v "^#" $src_lang/phones.txt) <(grep -v "^#" data/lang/phones.txt); then
-  local/prepare_wsj_rm_lang.sh  $srcdir/data/local/dict_nosp $srcdir/data/lang $lang_dir
+    local/prepare_wsj_rm_lang.sh  $srcdir/data/local/dict_nosp $srcdir/data/lang $lang_dir
   else
     rm -rf $lang_dir
     cp -r data/lang $lang_dir
@@ -92,7 +109,7 @@ local/online/run_nnet2_common.sh  --stage $stage \
 if [ $stage -le 4 ]; then
   echo "$0: Generate alignment using source model."
   steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
-  data/train $lang_dir $src_gmm_mdl $ali_dir || exit 1;
+  data/train $lang_dir $src_gmm_dir $ali_dir || exit 1;
 fi
 
 
@@ -101,7 +118,7 @@ if [ $stage -le 5 ]; then
   # use the same num-jobs as the alignments
   nj=$(cat exp/tri3b_ali/num_jobs) || exit 1;
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/train \
-    $lang_dir $src_gmm_mdl $lat_dir || exit 1;
+    $lang_dir $src_gmm_dir $lat_dir || exit 1;
   rm $lat_dir/fsts.*.gz # save space
 fi
 
@@ -126,7 +143,7 @@ if [ $stage -le 7 ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/rm-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
-  echo "$0: set the learning-rate-factor for initial network to be zero."
+  # set the learning-rate-factor for initial network to be zero."
   $decode_cmd $dir/log/copy_mdl.log \
   nnet3-am-copy --raw=true --edits="set-learning-rate-factor name=* learning-rate-factor=$primary_lr_factor; set-learning-rate-factor name=output* learning-rate-factor=$final_lr_factor" \
     $src_mdl $dir/init.raw || exit 1;

@@ -1,15 +1,28 @@
 #!/bin/bash
-# _1c is as _1b but it uses chain model to generate alignment for RM using SWJ model.
-# _1b is as _1a but uses a src-tree-dir to convert target alignment and combine
-# alignemts from source and target to train phone LM for den.fst in chain denominator graph.
+# _1c is as _1b but it uses src chain model instead of GMM model to generate alignment for RM using SWJ model.
+
+# _1b is as _1a, but different as follows
+# 1) uses src phone set phones.txt and new lexicon generated using word pronunciation
+#    in src lexincon.txt and target word not presented in src are added as oov
+#    in lexicon.txt.
+# 2) It uses src tree-dir and generates new target alignment and lattices using
+#    src gmm model.
+# 3) It also train phone LM using weighted combination of alignemts from source
+#    and target, which is used in chain denominator graph.
+#    Since we use phone.txt from source dataset, this can be helpful in cases
+#    where there is few training data in target and some 4-gram phone sequences
+#    have no count in target.
+# 4) It does not replace the output layer from already-trained model with new
+#    randomely initialized output layer and and re-train it using target dataset.
+
 
 # This script uses weight transfer as Transfer learning method
-# and use already trained model on wsj and remove the last layer and
-# add new randomly initialized layer and retrain the whole network.
-# while training new added layer using rm data.
+# and use already trained model on wsj and fine-tune the whole network using rm data
+# while training the last layer with higher learning-rate.
 # The chain config is as run_tdnn_5n.sh and the result is:
-#System tdnn_5n tdnn_wsj_rm
-#WER      2.71     2.21
+# System tdnn_5n tdnn_wsj_rm_1a tdnn_wsj_rm_1b tdnn_wsj_rm_1c
+# WER      2.71     2.09            3.45          3.38
+
 set -e
 
 # configs for 'chain'

@@ -119,7 +119,7 @@ def get_model_component_info(model_filename):
                 # The layer type is component-node
                 assert(input_str is not None)
                 key_to_value['dim'] = output_dim
-            all_layers.append(xlayers.XconfigInputLayer('input', key_to_value, all_layers))
+            all_layers.append(xlayers.XconfigAuxiliaryLayer('auxiliary', key_to_value, all_layers))
     if len(all_layers) == 0:
         raise RuntimeError("{0}: model filename '{1}' is empty.".format(
             sys.argv[0], model_filename))

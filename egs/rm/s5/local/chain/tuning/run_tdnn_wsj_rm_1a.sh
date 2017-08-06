@@ -31,7 +31,8 @@ xent_regularize=0.1
 
 # configs for transfer learning
 srcdir=../../wsj/s5/
-common_egs_dir=exp/chain/tdnn_wsj_rm_1c_fixed_ac_scale/egs
+common_egs_dir=
+#common_egs_dir=exp/chain/tdnn_wsj_rm_1c_fixed_ac_scale/egs
 src_mdl=$srcdir/exp/chain/tdnn1d_sp/final.mdl
 primary_lr_factor=0.25
 dim=450
@@ -51,6 +52,14 @@ If you want to use GPUs (and have them), go to src/, and configure and make on a
 where "nvcc" is installed.
 EOF
 fi
+
+required_files="$src_mdl $srcdir/exp/nnet3/extractor/final.mdl"
+
+for f in $required_files; do
+  if [ ! -f $f ]; then
+    echo "$0: no such file $f"
+  fi
+done
 
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
@@ -105,25 +114,19 @@ if [ $stage -le 7 ]; then
   cat <<EOF > $dir/configs/network.xconfig
   relu-renorm-layer name=tdnn7-target input=Append(tdnn6.renorm@-3,tdnn6.renorm@0) dim=$dim
   ## adding the layers for chain branch
-  relu-renorm-layer name=prefinal-chain-target input=tdnn7-target dim=$dim target-rms=0.5
-  output-layer name=output-target include-log-softmax=false dim=$num_targets max-change=1.5
-  relu-renorm-layer name=prefinal-xent-target input=tdnn7-target dim=$dim target-rms=0.5
-  output-layer name=output-xent-target dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
-EOF
-  # edits.config contains edits required to train transferred model.
-  # e.g. substitute output-node of previous model with new output
-  # and removing orphan nodes and components.
-  cat <<EOF > $dir/configs/edits.config
-  remove-output-nodes name=output
-  remove-output-nodes name=output-xent
-  rename-node old-name=output-target new-name=output
-  rename-node old-name=output-xent-target new-name=output-xent
-  remove-orphans
+  relu-renorm-layer name=prefinal-chain input=tdnn7-target dim=$dim target-rms=0.5
+  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+  relu-renorm-layer name=prefinal-xent input=tdnn7-target dim=$dim target-rms=0.5
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --existing-model $src_mdl \
     --xconfig-file  $dir/configs/network.xconfig  \
-    --edits-config $dir/configs/edits.config \
     --config-dir $dir/configs/
+
+  # Set the learning-rate-factor to be primary_lr_factor for initial network."
+  # and add new layer to initial model
+  nnet3-copy --edits="set-learning-rate-factor name=* learning-rate-factor=$primary_lr_factor" $src_mdl - | \
+  nnet3-init --srand=1 - $dir/configs/final.config $dir/input.raw  || exit 1;
 fi
 
 if [ $stage -le 8 ]; then
@@ -132,12 +135,10 @@ if [ $stage -le 8 ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/rm-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
-  echo "$0: set the learning-rate-factor for initial network to be zero."
-  nnet3-copy --edits="set-learning-rate-factor name=* learning-rate-factor=$primary_lr_factor" \
-    $src_mdl $dir/init.raw || exit 1;
 
   steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
+    --trainer.input-model $dir/input.raw \
     --feat.online-ivector-dir exp/nnet2${nnet_affix}/ivectors \
     --chain.xent-regularize $xent_regularize \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \

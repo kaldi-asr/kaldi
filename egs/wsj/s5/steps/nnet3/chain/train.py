@@ -101,6 +101,11 @@ def get_args():
                         help="Deprecated. Kept for back compatibility")
 
     # trainer options
+    parser.add_argument("--trainer.input-model", type=str,
+                        dest='input_model', default=None,
+                        action=common_lib.NullstrToNoneAction,
+                        help="If specified, this model is used as 0.raw model "
+                             " and no LDA matrix or init.raw initialzed.")
     parser.add_argument("--trainer.num-epochs", type=float, dest='num_epochs',
                         default=10.0,
                         help="Number of epochs to train the model")
@@ -309,7 +314,7 @@ def train(args, run_opts):
         logger.info("Creating denominator FST")
         chain_lib.create_denominator_fst(args.dir, args.tree_dir, run_opts)
 
-    if (args.stage <= -4) and os.path.exists(args.dir+"/configs/init.config"):
+    if (args.stage <= -4) and os.path.exists(args.dir+"/configs/init.config") and args.input_model is None:
         logger.info("Initializing a basic network for estimating "
                     "preconditioning matrix")
         common_lib.execute_command(
@@ -377,7 +382,7 @@ def train(args, run_opts):
     logger.info("Copying the properties from {0} to {1}".format(egs_dir, args.dir))
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (args.stage <= -2) and os.path.exists(args.dir+"/configs/init.config"):
+    if (args.stage <= -2) and os.path.exists(args.dir+"/configs/init.config") and args.input_model is None:
         logger.info('Computing the preconditioning matrix for input features')
 
         chain_lib.compute_preconditioning_matrix(
@@ -387,7 +392,7 @@ def train(args, run_opts):
 
     if (args.stage <= -1):
         logger.info("Preparing the initial acoustic model.")
-        chain_lib.prepare_initial_acoustic_model(args.dir, run_opts)
+        chain_lib.prepare_initial_acoustic_model(args.dir, run_opts,input_mdl=args.input_model)
 
     with open("{0}/frame_subsampling_factor".format(args.dir), "w") as f:
         f.write(str(args.frame_subsampling_factor))
