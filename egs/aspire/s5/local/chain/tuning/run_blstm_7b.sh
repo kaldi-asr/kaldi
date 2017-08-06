@@ -20,6 +20,7 @@ num_data_reps=3
 
 
 min_seg_len=
+xent_regularize=0.1
 chunk_width=150
 chunk_left_context=40
 chunk_right_context=40
@@ -197,7 +198,7 @@ if [ $stage -le 12 ]; then
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir exp/nnet3/ivectors_train_min${min_seg_len} \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
-    --chain.xent-regularize 0.1 \
+    --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
