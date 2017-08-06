@@ -195,7 +195,7 @@ void TestRnnlmExample() {
   }
 
 
-  std::ostringstream os;
+  std::stringstream os;
   int32 ngram_order = 3;
   int32 bos = 1, eos = 2, brk = 3;
   EstimateAndWriteLanguageModel(ngram_order, *symbol_table,
@@ -205,6 +205,8 @@ void TestRnnlmExample() {
   arpa_options.bos_symbol = bos;
   arpa_options.eos_symbol = eos;
   ArpaSampling arpa(arpa_options, symbol_table);
+  os.seekg(0, std::ios::beg);
+  arpa.Read(os);
 
   // TODO: we'll add more tests from this point.
   RnnlmEgsConfig egs_config;
