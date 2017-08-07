@@ -89,10 +89,10 @@ RnnlmExampleSampler::RnnlmExampleSampler(
                "to (close to) 1");
   int32 num_words = unigram_distribution.size();
   if (config_.uniform_prob_mass > 0.0) {
-
     BaseFloat x = config_.uniform_prob_mass / (num_words - 1);
     for (int32 i = 1; i < num_words; i++)
-      unigram_distribution[i] += x;
+      if (i != config_.bos_symbol && i != config_.brk_symbol)
+        unigram_distribution[i] += x;
   }
   // If these are not zero, either something is wrong with your language model
   // or you supplied the wrong --bos-symbol or --brk-symbol options.  We allow

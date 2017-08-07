@@ -22,6 +22,9 @@
 #include "rnnlm/rnnlm-test-utils.h"
 #include "rnnlm/rnnlm-example-utils.h"
 #include "rnnlm/rnnlm-training.h"
+#include "base/kaldi-common.h"
+#include "util/common-utils.h"
+#include "cudamatrix/cu-device.h"
 
 namespace kaldi {
 namespace rnnlm {
@@ -192,7 +195,7 @@ void TestRnnlmExample() {
   }
 
 
-  std::ostringstream os;
+  std::stringstream os;
   int32 ngram_order = 3;
   int32 bos = 1, eos = 2, brk = 3;
   EstimateAndWriteLanguageModel(ngram_order, *symbol_table,
@@ -202,6 +205,8 @@ void TestRnnlmExample() {
   arpa_options.bos_symbol = bos;
   arpa_options.eos_symbol = eos;
   ArpaSampling arpa(arpa_options, symbol_table);
+  os.seekg(0, std::ios::beg);
+  arpa.Read(os);
 
   // TODO: we'll add more tests from this point.
   RnnlmEgsConfig egs_config;
@@ -242,6 +247,8 @@ void TestRnnlmExample() {
 }
 
 int main() {
+  using namespace kaldi;
+  using namespace kaldi::nnet3;
   int32 loop = 0;
 
   // SetVerboseLevel(2);
@@ -268,6 +275,3 @@ int main() {
 #endif
   return 0;
 }
-
-
-
