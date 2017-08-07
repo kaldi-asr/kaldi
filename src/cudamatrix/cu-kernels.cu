@@ -293,6 +293,25 @@ static void _add_smat_trans(Real* mat, MatrixDim mat_dim, Real alpha,
   }
 }
 
+/// For each element x of the matrix, set it to
+/// (x < 0 ? exp(x) : x + 1).
+/// Use block/grid sizes for simple matrix ops
+template<typename T>
+__global__
+static void _apply_exp_special(T* out, MatrixDim out_dim, const T* in,
+                               int in_stride) {
+  const int i = blockIdx.x * blockDim.x + threadIdx.x;
+  const int j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (i < out_dim.rows && j < out_dim.cols) {
+    T x = in[i * in_stride + j];
+    if (x < T(0)) {
+      out[i * out_dim.stride + j] = exp(x);
+    } else {
+      out[i * out_dim.stride + j] = x + T(1);
+    }
+  }
+}
+
 /// Fill the array 'data' with the sequence [base ... base + length)
 /// Use 1D block and 1D grid
 template<typename T>
@@ -5146,5 +5165,13 @@ void cudaF_add_smat_trans(dim3 Gr, dim3 Bl, float* mat, MatrixDim mat_dim,
                           const int* smat_col_idx, const float* smat_val) {
   _add_smat_trans<<<Gr, Bl>>>(mat, mat_dim, alpha, smat_row_ptr, smat_col_idx,
                               smat_val);
+}
+void cudaD_apply_exp_special(dim3 Gr, dim3 Bl, double* out, MatrixDim out_dim,
+                             const double* in, int in_stride) {
+  _apply_exp_special<<<Gr, Bl>>>(out, out_dim, in, in_stride);
+}
+void cudaF_apply_exp_special(dim3 Gr, dim3 Bl, float* out, MatrixDim out_dim,
+                             const float* in, int in_stride) {
+  _apply_exp_special<<<Gr, Bl>>>(out, out_dim, in, in_stride);
 }
 

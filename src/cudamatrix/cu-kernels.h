@@ -335,6 +335,16 @@ inline void cuda_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
 inline void cuda_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
   cudaF_apply_exp(Gr, Bl, mat, d);
 }
+inline void cuda_apply_exp_special(dim3 Gr, dim3 Bl, double* out,
+                                   MatrixDim out_dim, const double* in,
+                                   int in_stride) {
+  cudaD_apply_exp_special(Gr, Bl, out, out_dim, in, in_stride);
+}
+inline void cuda_apply_exp_special(dim3 Gr, dim3 Bl, float* out,
+                                   MatrixDim out_dim, const float* in,
+                                   int in_stride) {
+  cudaF_apply_exp_special(Gr, Bl, out, out_dim, in, in_stride);
+}
 inline void cuda_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val,
                              MatrixDim dim) {
   cudaD_apply_floor(Gr, Bl, mat, floor_val, dim);

@@ -2498,17 +2498,24 @@ void CuMatrixBase<Real>::ApplyExp() {
 
 template<typename Real>
 void CuMatrixBase<Real>::ApplyExpSpecial() {
-  // TODO: make this efficient.
-  CuMatrix<Real> temp(*this);
-  temp.ApplyFloor(0.0);
-  // 'temp' is (x > 0 ? x : 0).
-  ApplyCeiling(0.0);
-  ApplyExp();
-  // at this point, 'this' is (x < 0 ? exp(x) : 1.0).
-  AddMat(1.0, temp);
-  // now 'this' is (x < 0 ? exp(x) : x + x.0).
-}
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
 
+    const int warpSize = 32;
+    dim3 dimBlock(CU1DBLOCK / warpSize, warpSize);
+    dim3 dimGrid(n_blocks(NumRows(), dimBlock.x),
+                 n_blocks(NumCols(), dimBlock.y));
+
+    cuda_apply_exp_special(dimGrid, dimBlock, Data(), Dim(), Data(), Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    Mat().ApplyExpSpecial();
+  }
+}
 
 template<typename Real>
 void CuMatrixBase<Real>::ApplyFloor(Real floor_val) {

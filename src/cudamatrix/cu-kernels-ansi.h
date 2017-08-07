@@ -185,6 +185,10 @@ void cudaF_apply_ceiling(dim3 Gr, dim3 Bl, float* mat, float ceiling_val,
                          MatrixDim d);
 void cudaD_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);
 void cudaF_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);
+void cudaD_apply_exp_special(dim3 Gr, dim3 Bl, double* out, MatrixDim out_dim,
+                             const double* in, int in_stride);
+void cudaF_apply_exp_special(dim3 Gr, dim3 Bl, float* out, MatrixDim out_dim,
+                             const float* in, int in_stride);
 void cudaD_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val,
                        MatrixDim d);
 void cudaF_apply_floor(dim3 Gr, dim3 Bl, float* mat, float floor_val,
