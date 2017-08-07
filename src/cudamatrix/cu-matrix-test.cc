@@ -78,9 +78,13 @@ static void UnitTestCuMatrixTraceMatMat() {
     int32 M = 100 + Rand() % 200, N = 100 + Rand() % 200;
     CuMatrix<Real> A(M, N);
     A.SetRandn();
+    // add a bias to avoid numerical failure when comparing r2 and r3
+    A.Add(0.1);
     if (i % 2 == 1) {
       CuMatrix<Real> B(M, N);
       B.SetRandn();
+      // add a bias to avoid numerical failure when comparing r2 and r3
+      B.Add(0.1);
       Real r1 = TraceMatMat(A, B, kTrans),
           r2 = TraceMatMat(Matrix<Real>(A), Matrix<Real>(B), kTrans),
           r3 = TraceMatMat(Matrix<Real>(A), Matrix<Real>(B, kTrans), kNoTrans);
@@ -157,11 +161,27 @@ static void UnitTestCuMatrixApplyLog() {
  * CuMatrix
  */
 template<typename Real>
+static void UnitTestCuMatrixApplyExpSpecial() {
+  int32 M = 10 + Rand() % 20;
+  int32 N = 10 + Rand() % 20;
+  Matrix<Real> H(M, N);
+  H.SetRandn();
+
+  CuMatrix<Real> D(H);
+
+  D.ApplyExpSpecial();
+  H.ApplyExpSpecial();
+
+  Matrix<Real> H2(D);
+
+  AssertEqual(H,H2);
+}
+
+template<typename Real>
 static void UnitTestCuMatrixApplyExp() {
   int32 M = 10 + Rand() % 20, N = 10 + Rand() % 20;
   Matrix<Real> H(M, N);
   H.SetRandn();
-  H.MulElements(H); // make numbers positive
 
   CuMatrix<Real> D(H);
 
@@ -2838,6 +2858,7 @@ static void UnitTestCuMatrixEqualElementMask() {
 }
 
 template<typename Real> void CudaMatrixUnitTest() {
+  UnitTestCuMatrixApplyExpSpecial<Real>();
   UnitTextCuMatrixAddSmatMat<Real>();
   UnitTextCuMatrixAddMatSmat<Real>();
   UnitTextCuMatrixAddSmat<Real>();

@@ -2086,6 +2086,16 @@ void MatrixBase<Real>::ApplyExp() {
 }
 
 template<typename Real>
+void MatrixBase<Real>::ApplyExpSpecial() {
+  for (MatrixIndexT i = 0; i < num_rows_; ++i) {
+    for (MatrixIndexT j = 0; j < num_cols_; ++j) {
+      Real& x = (*this)(i, j);
+      x = x < Real(0) ? exp(x) : x + Real(1);
+    }
+  }
+}
+
+template<typename Real>
 void MatrixBase<Real>::ApplyPow(Real power) {
   for (MatrixIndexT i = 0; i < num_rows_; i++) {
     Row(i).ApplyPow(power);

@@ -347,6 +347,11 @@ class MatrixBase {
   /// Exponentiate each of the elements.
   void ApplyExp();
 
+  /// For each element x of the matrix, set it to
+  /// (x < 0 ? exp(x) : x + 1).  This function is used
+  /// in our RNNLM training.
+  void ApplyExpSpecial();
+
   /// Applies power to all matrix elements
   void ApplyPow(Real power);
 
