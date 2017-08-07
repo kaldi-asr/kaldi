@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Copyright  2017  Jian Wang
+# License: Apache 2.0.
+
 import os
 import argparse
 import sys

@@ -2,28 +2,31 @@
 
 # To be run from the egs/ directory.
 
-. path.sh
-
-set -eou pipefail
-
-export LC_ALL=C
-export PYTHONIOENCODING='utf-8'
+# . path.sh
+set -e
+# export LC_ALL=C
+# export PYTHONIOENCODING='utf-8'
 
 # it should contain things like
 # foo.txt, bar.txt, and dev.txt (dev.txt is a special filename that's obligatory).
-data_dir=data/rnnlm
-dir=exp/rnnlm/
-mkdir -p $dir
+mkdir -p data/text
+cp data/ptb/ptb.txt  data/text/
+cp data/ptb/dev.txt  data/text/
+
 
 # validata data dir
-rnnlm/validate_data_dir.py $data_dir/data
+rnnlm/validate_data_dir.py data/text
 
 # get unigram counts
-rnnlm/get_unigram_counts.sh $data_dir/data
+rnnlm/get_unigram_counts.sh data/text
 
 # get vocab
-mkdir -p $data_dir/vocab
-rnnlm/get_vocab.py $data_dir/data > $data_dir/vocab/words.txt
+mkdir -p data/vocab
+rnnlm/get_vocab.py data/text > data/vocab/words.txt
+
+
+dir=exp/rnnlm_data_prep
+mkdir -p $dir
 
 # Choose weighting and multiplicity of data.
 # The following choices would mean that data-source 'foo'
@@ -43,22 +46,33 @@ ptb 1   1.0
 EOF
 
 # get unigram probs
-rnnlm/get_unigram_probs.py --vocab-file=$data_dir/vocab/words.txt \
+rnnlm/get_unigram_probs.py --vocab-file=data/vocab/words.txt \
                            --data-weights-file=$dir/data_weights.txt \
-                           $data_dir/data > $dir/unigram_probs.txt
+                           data/text >$dir/unigram_probs.txt
 
 # choose features
 rnnlm/choose_features.py --unigram-probs=$dir/unigram_probs.txt \
                          --unigram-scale=0.1 \
-                         $data_dir/vocab/words.txt > $dir/features.txt
+                         data/vocab/words.txt > $dir/features.txt
 # validate features
 rnnlm/validate_features.py $dir/features.txt
 
 # make features for word
 rnnlm/make_word_features.py --unigram-probs=$dir/unigram_probs.txt \
-                         $data_dir/vocab/words.txt $dir/features.txt \
+                        data/vocab/words.txt $dir/features.txt \
                          > $dir/word_feats.txt
 
 # validate word features
 rnnlm/validate_word_features.py --features-file $dir/features.txt \
                                 $dir/word_feats.txt
+
+
+# work out the number of splits.
+ns=$(rnnlm/get_num_splits.sh 200000 data/text)
+
+# split the data into pieces that individual jobs will train on.
+rnnlm/split_data.sh data/text $ns
+
+
+
+

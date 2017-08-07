@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright  2017  Jian Wang
+# License: Apache 2.0.
+
 # The script creates text files containing the unigram counts of words.
 # things like dev.counts, foo.counts, bar.counts,
 # with lines like:
@@ -25,4 +28,4 @@ for f in `ls $data/*.txt`; do
       sort | uniq -c | awk '{print $2,$1}' > ${f%.*}.counts
 done
 
-echo "get_unigram_counts.sh: get counts in $data/*.counts"
+echo "get_unigram_counts.sh: wrote counts in $data/*.counts"

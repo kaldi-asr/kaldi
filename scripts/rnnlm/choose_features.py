@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Copyright  2017  Jian Wang
+# License: Apache 2.0.
+
 import os
 import argparse
 import sys
@@ -18,13 +21,13 @@ parser.add_argument("--unigram-probs", type=str, default='', required=True,
                     help="Specify the file containing unigram probs.")
 parser.add_argument("--unigram-scale", type=float, default=0.1,
                     help="A scalar that scales the unigram features")
-parser.add_argument("--min-ngram-order", type=int, default=1,
+parser.add_argument("--min-ngram-order", type=int, default=2,
                     help="minimum length of n-grams of characters to"
                          "make potential features.")
 parser.add_argument("--max-ngram-order", type=int, default=3,
                     help="maximum length of n-grams of characters to"
                          "make potential features.")
-parser.add_argument("--min-frequency", type=float, default=1.0e-06,
+parser.add_argument("--min-frequency", type=float, default=1.0e-05,
                     help="minimum frequency with which an n-gram character "
                          "feature is encountered (counted as binary presence in a word times unigram "
                          "probs of words), for it to be used as a feature. e.g. "
@@ -116,11 +119,14 @@ if args.special_words != '':
 # unigram features
 if args.include_unigram_feature == 'true':
     entropy = 0.0
+    entropy_total = 0.0
     for idx, p in enumerate(unigram_probs):
         if wordlist[idx] in SPECIAL_SYMBOLS:
             continue
-        entropy += math.log(p)
-    entropy /= -vocab_size
+        if p > 0.0:
+            entropy += math.log(p) * p;
+            entropy_total += p
+    entropy /= -entropy_total
 
     print("{0}\tunigram\t{1}\t{2}".format(num_features, entropy, args.unigram_scale))
     num_features += 1
@@ -210,4 +216,4 @@ for feat, freq in word_feats.items():
     print("{0}\tword\t{1}".format(num_features, feat))
     num_features += 1
 
-print(sys.argv[0] + ": chosen {0} features.".format(num_features), file=sys.stderr)
+print(sys.argv[0] + ": chose {0} features.".format(num_features), file=sys.stderr)

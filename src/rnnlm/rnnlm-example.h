@@ -224,9 +224,9 @@ struct RnnlmEgsConfig {
                     sample_group_size(2),
                     num_samples(512),
                     chunk_buffer_size(20000),
-                    bos_symbol(-1),
-                    eos_symbol(-1),
-                    brk_symbol(-1),
+                    bos_symbol(1),  // we use standardized values in the scripts,
+                    eos_symbol(2),  // so these are sensible defaults.
+                    brk_symbol(3),
                     special_symbol_prob(1.0e-05),
                     uniform_prob_mass(0.1) { }
 
@@ -274,12 +274,13 @@ struct RnnlmEgsConfig {
                  "probability mass with a uniform distribution over words. "
                  "See code for reason.");
   }
+  // Checks that the config makes sense, and dies if not.
   void Check() {
     KALDI_ASSERT(chunk_length > min_split_context * 4 &&
                  num_chunks_per_minibatch > 0 &&
                  min_split_context >= 0 &&
                  sample_group_size >= 1 &&
-                 sample_group_size % chunk_length == 0);
+                 chunk_length % sample_group_size == 0);
     if (vocab_size <= 0) {
       KALDI_ERR << "The --vocab-size option must be provided.";
     }
@@ -396,7 +397,7 @@ class RnnlmExampleCreator {
   // will presumably evaluate all the words each time.  This is intended
   // to be used for testing purposes.
   RnnlmExampleCreator(const RnnlmEgsConfig &config,
-                        TableWriter<KaldiObjectHolder<RnnlmExample> > *writer):
+                      TableWriter<KaldiObjectHolder<RnnlmExample> > *writer):
       config_(config), minibatch_sampler_(NULL), writer_(writer),
       num_chunks_processed_(0), num_words_processed_(0),
       num_minibatches_written_(0) { Check(); }
@@ -410,13 +411,22 @@ class RnnlmExampleCreator {
   // e.g.:
   //   1.0  Hello there
   // [although the "hello there" would have been converted to integers
-  // by the time it was read in, via sym2int.pl.]
+  // by the time it was read in, via sym2int.pl, so it would look like:
+  //   1.0  7620  12309
   // We also allow:
   //   1.0  Hello there </s> Hi </s> My name is Bob
   // if you want to train the model to predict sentences given
   // the history of the conversation.
   void AcceptSequence(BaseFloat weight,
                       const std::vector<int32> &words);
+
+
+  // Reads the lines from this input stream, calling AcceptSequence() on each
+  // one.  Lines will be of the format:
+  // <weight> <possibly-empty-sequence-of-integers>
+  // e.g.:
+  // 1.0  2560 8991
+  void Process(std::istream &is);
 
   void Flush() { while (WriteMinibatch()); }  // Flush out any pending minibatches.
 

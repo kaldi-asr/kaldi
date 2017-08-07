@@ -507,6 +507,7 @@ void RnnlmExampleCreator::SingleMinibatchCreator::Set(
                t >= 0 && t < config_.chunk_length &&
                weight >= 0.0);
 
+  KALDI_ASSERT(weight < 3.0); // TESTING.
   int32 i = t * config_.num_chunks_per_minibatch + n;
   minibatch->input_words[i] = input_word;
   minibatch->output_words[i] = output_word;
@@ -524,7 +525,7 @@ void RnnlmExampleCreator::SingleMinibatchCreator::CreateMinibatch(
   minibatch->input_words.resize(num_words);
   minibatch->output_words.resize(num_words);
   minibatch->output_weights.Resize(num_words);
-  minibatch->sampled_words.resize(config_.chunk_length * config_.num_samples);
+  minibatch->sampled_words.clear();
   for (int32 n = 0; n < config_.num_chunks_per_minibatch; n++) {
     CreateMinibatchOneSequence(n, minibatch);
   }
@@ -542,9 +543,10 @@ RnnlmExampleCreator::SequenceChunk* RnnlmExampleCreator::GetRandomChunk() {
 bool RnnlmExampleCreator::WriteMinibatch() {
   // A couple of configuration values that are not important enough
   // to go in the config...
-  // 'chunks_proportion' controls when we discard a small amount of
-  // chunks rather than form a new minibatch.
-  const BaseFloat chunks_proportion = 0.5;
+  // 'chunks_proportion' controls when we discard a small number of
+  // chunks rather than form a new minibatch, after we've finished
+  // reading the data and have a small bit left over.
+  const BaseFloat chunks_proportion = 0.0;  // TODO: revert to 0.5.
   // 'max_rejections' is the maximum number of successive chunks that
   // can be rejected for being 'too big', before we give up an accept
   // the minibatch as-is.
@@ -666,6 +668,27 @@ void RnnlmExampleCreator::Check() const {
   }
 }
 
+void RnnlmExampleCreator::Process(std::istream &is) {
+  int32 num_lines = 0;
+  std::vector<int32> words;
+  std::string line;
+  while (getline(is, line)) {
+    num_lines++;
+    std::istringstream line_is(line);
+    BaseFloat weight;
+    line_is >> weight;
+    words.clear();
+    int32 word;
+    while (line_is >> word) {
+      words.push_back(word);
+    }
+    if (!line_is.eof()) {
+      KALDI_ERR << "Could not interpret input: " << line;
+    }
+    this->AcceptSequence(weight, words);
+  }
+  KALDI_LOG << "Processed " << num_lines << " lines of input.";
+}
 
 void RnnlmExample::Swap(RnnlmExample *other) {
   std::swap(vocab_size, other->vocab_size);

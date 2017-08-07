@@ -15,7 +15,7 @@ cuda-compiled.o: ../kaldi.mk
 
 TESTFILES =
 
-ADDLIBS = ../rnnlm/kaldi-rnnlm.a ../nnet3/kaldi-nnet3.a \
+ADDLIBS = ../rnnlm/kaldi-rnnlm.a ../lm/kaldi-lm.a ../nnet3/kaldi-nnet3.a \
           ../cudamatrix/kaldi-cudamatrix.a ../decoder/kaldi-decoder.a \
           ../lat/kaldi-lat.a ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
