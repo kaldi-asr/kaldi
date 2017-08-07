@@ -39,13 +39,13 @@ def create_phone_lm(dir, tree_dir, run_opts, lm_opts=None):
 
     common_lib.execute_command(
         """{command} {dir}/log/make_phone_lm.log \
-    gunzip -c {alignments} \| \
-    ali-to-phones {tree_dir}/final.mdl ark:- ark:- \| \
-    chain-est-phone-lm {lm_opts} ark:- {dir}/phone_lm.fst""".format(
-        command=run_opts.command, dir=dir,
-        alignments=alignments,
-        lm_opts=lm_opts if lm_opts is not None else '',
-        tree_dir=tree_dir))
+            gunzip -c {alignments} \| \
+            ali-to-phones {tree_dir}/final.mdl ark:- ark:- \| \
+            chain-est-phone-lm {lm_opts} ark:- {dir}/phone_lm.fst""".format(
+                command=run_opts.command, dir=dir,
+                alignments=alignments,
+                lm_opts=lm_opts if lm_opts is not None else '',
+                tree_dir=tree_dir))
 
 
 def create_denominator_fst(dir, tree_dir, run_opts):
