@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
         "   or: lattice-to-ctm-conf --acoustic-scale=0.1 --decode-mbr=false\\\n"
         "                                      ark:1.lats ark:1.1best 1.ctm\n"
         "See also: lattice-mbr-decode, nbest-to-ctm, lattice-arc-post,\n"
-        " steps/get_ctm.sh, steps/get_train_ctm.sh and utils/convert_ctm.sh.\n";
+        " steps/get_ctm.sh, steps/get_train_ctm.sh and utils/convert_ctm.pl.\n";
 
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0, inv_acoustic_scale = 1.0, lm_scale = 1.0;
