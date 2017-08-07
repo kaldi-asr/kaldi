@@ -87,13 +87,25 @@ void ConvertToInteger(
 
 /** Simple implementation of Interpolated Kneser-Ney smoothing,
     see the formulas in "A Bit of Progress in Language Modeling"
+
+    Note that we won't follow the procedure of SRILM implementation(collect
+    counts, then modeify counts, and then discount to get probs). Instead,
+    we use the "store-only-what-you-need" policy described in the paper,
+    translate the perl code in the appendix of the paper and extend it
+    to arbitrary ngram order. Also, as in SRILM, we use the
+    original(unmodified) count for the ngrams starting with <s>.
 */
 class InterpolatedKneserNeyLM {
  public:
   struct LMState {
-    int32 count;
+    int32 numerator;
+    int32 denominator;
+    int32 non_zero_count;
     BaseFloat prob;
     BaseFloat bow;
+
+    LMState() : numerator(0), denominator(0), non_zero_count(0),
+                prob(0.0), bow(0.0) {};
   };
   typedef unordered_map<std::vector<int32>, LMState, VectorHasher<int32> > Ngrams;
 
@@ -108,10 +120,28 @@ class InterpolatedKneserNeyLM {
     ngrams_.resize(ngram_order);
   }
 
+  void FillWords(const std::vector<int32> &sentence,
+                 int32 pos, int32 order,
+                 int32 bos_symbol, int32 eos_symbol,
+                 std::vector<int32> *words) {
+    KALDI_ASSERT(pos >= -1 && pos <= sentence.size());
+
+    words->resize(order);
+    for (int32 k = 0; k < order; k++, pos++) {
+      if (pos < 0) {
+        (*words)[k] = bos_symbol;
+      } else if (pos >= sentence.size()) {
+        (*words)[k] = eos_symbol;
+      } else {
+        (*words)[k] = sentence[pos];
+      }
+    }
+  }
   /* Collect the ngram counts from corpus. */
   void CollectCounts(const std::vector<std::vector<int32> > &sentences,
-                int32 bos_symbol, int32 eos_symbol) {
-    std::vector<int32> ngram(ngram_order_);
+                     int32 bos_symbol, int32 eos_symbol) {
+    std::vector<int32> words;
+    std::vector<int32> subwords;
 
     for (int32 i = 0; i < sentences.size(); i++) {
       for (int32 j = 0; j < sentences[i].size() + 1; j++) {
@@ -122,38 +152,44 @@ class InterpolatedKneserNeyLM {
           max_order = ngram_order_;
         }
 
-        for (int32 order = 1; order <= max_order; order++) {
-          for (int32 k = 1; k <= order; k++) {
-            int32 pos = j - order + k;
-            if (pos < 0) {
-              ngram[k - 1] = bos_symbol;
-            } else if (pos >= sentences[i].size()) {
-              ngram[k - 1] = eos_symbol;
-            } else {
-              ngram[k - 1] = sentences[i][pos];
-            }
-          }
+        for (int32 order = max_order; order >= 1; order--) {
+          FillWords(sentences[i], j - order + 1, order,
+                    bos_symbol, eos_symbol, &words);
+          // accumulate numerator
+          LMState& state = ngrams_[order][words];
+          state.numerator++;
 
-          Ngrams::iterator it = ngrams_[order].find(ngram);
-          if (it == ngrams_[order].end()) {
-            ngrams_[order].insert(make_pair(ngram, LMState{1, 0.0, 0.0}));
+          if (order == 1) {
+            unigram_denominator_++;
           } else {
-            ++(it->second.count);
+            // accumulate denominator for context
+            subwords.assign(words.begin(), words.end() - 1);
+            state = ngrams_[order - 1][subwords];
+            state.denominator++;
+            if (state.numerator > 1) { // not first insertion
+              // accumulate for context
+              state.non_zero_count++;
+
+              // accumulate numerator for low order gram
+              subwords.assign(words.begin() + 1, words.end());
+              state = ngrams_[order - 1][subwords];
+              state.numerator++;
+
+              // for lower order ngram, we only need occurrence, so if it is
+              // already in the map, we skip it
+              break;
+            }
           }
         }
       }
     }
   }
 
-  /* Modify the ngram counts with Kneser-Ney smoothing. */
+  /* Compute ngram probs and bows with the counts. */
   void EstimateProbAndBow() {
   }
 
   /** Estimate the language model with corpus in sentences.
-      We won't follow the procedure of SRILM implementation(collect counts,
-      then modeify counts, and then discount and get probs). Instead,
-      we translate the perl code in the appendix of the paper. Also, we don't
-      treat the ngram starting with non-events(<s>) as a special case.
 
       @param [in] sentences   The sentences of input data.  These will contain
                               just the actual words, not the BOS or EOS symbols.
@@ -189,6 +225,9 @@ class InterpolatedKneserNeyLM {
 
   // ngrams for each order
   std::vector<Ngrams> ngrams_;
+
+  // denominator for uningrams
+  int32 unigram_denominator_;
 };
 
 void EstimateAndWriteLanguageModel(
