@@ -10,6 +10,12 @@ stage=0
 if [ $stage -le 0 ]; then
   # download ptb data
   local/rnnlm/download_ptb.sh || exit 1;
+fi
+if [ $stage -le 1 ]; then
   # prepare ptb data
   local/rnnlm/prepare_rnnlm_data.sh || exit 1;
+fi
+
+if [ $stage -le 2 ]; then
+  local/rnnlm/train_rnnlm.sh || exit 1
 fi

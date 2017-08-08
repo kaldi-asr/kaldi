@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
         " rnnlm-train [options] <egs-rspecifier>\n"
         "e.g.:\n"
         " rnnlm-get-egs ... ark:- | \\\n"
-        " rnnlm-train --read-rnnlm=foo/0.raw --write-rnnlm=foo/1.raw --read-embedding=foo/0.embedding\\\n"
+        " rnnlm-train --read-rnnlm=foo/0.raw --write-rnnlm=foo/1.raw --read-embedding=foo/0.embedding \\\n"
         "       --write-embedding=foo/1.embedding --read-sparse-word-features=foo/word_feats.txt ark:-\n"
         "See also: rnnlm-get-egs\n";
 
@@ -186,5 +186,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

@@ -507,7 +507,6 @@ void RnnlmExampleCreator::SingleMinibatchCreator::Set(
                t >= 0 && t < config_.chunk_length &&
                weight >= 0.0);
 
-  KALDI_ASSERT(weight < 3.0); // TESTING.
   int32 i = t * config_.num_chunks_per_minibatch + n;
   minibatch->input_words[i] = input_word;
   minibatch->output_words[i] = output_word;

@@ -16,7 +16,10 @@ parser = argparse.ArgumentParser(description="This script gets the unigram proba
 parser.add_argument("--vocab-file", type=str, default='', required=True,
                     help="Specify the vocab file.")
 parser.add_argument("--data-weights-file", type=str, default='', required=True,
-                    help="Specify the data-weights file.")
+                    help="File that specifies multiplicities and weights for each data source: "
+                    "e.g. if <data_dir> contains foo.txt and bar.txt, then should have lines "
+                    "like 'foo 1 0.5' and 'bar 5 1.5'.  These "
+                    "don't have to sum to on.")
 parser.add_argument("--smooth-unigram-counts", type=float, default=1.0,
                     help="Specify the constant for smoothing. We will add "
                          "(smooth_unigram_counts * num_words_with_non_zero_counts / vocab_size) "
@@ -68,12 +71,17 @@ def read_data_weights(weights_file, data_sources):
     data_weights = {}
     with open(weights_file, 'r', encoding="utf-8") as f:
         for line in f:
-            fields = line.split()
-            assert len(fields) == 3
-            if fields[0] in data_weights:
-                sys.exit(sys.argv[0] + ": duplicated data source({0}) specified in "
-                                       "data-weights: {1}".format(fields[0], weights_file))
-            data_weights[fields[0]] = (int(fields[1]), float(fields[2]))
+            try:
+                fields = line.split()
+                assert len(fields) == 3
+                if fields[0] in data_weights:
+                    raise Exception("duplicated data source({0}) specified in "
+                                    "data-weights: {1}".format(fields[0], weights_file))
+                data_weights[fields[0]] = (int(fields[1]), float(fields[2]))
+            except Exception as e:
+                sys.exit(sys.argv[0] + ": bad data-weights line: '" +
+                         line.rstrip("\n") + "': " + str(e))
+
 
     for name in data_sources.keys():
         if name not in data_weights:

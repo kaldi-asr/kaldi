@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# To be run from the egs/ directory.
+# To be run from the directory egs/ptb/s5.
 
 # . path.sh
 set -e
@@ -42,10 +42,10 @@ mkdir -p $dir
 #baz 0   0.0
 #EOF
 cat > $dir/data_weights.txt <<EOF
-ptb 1   1.0
+ptb   1   1.0
 EOF
 
-# get unigram probs
+# get unigram probs; this also validates the 'data-weights' file.
 rnnlm/get_unigram_probs.py --vocab-file=data/vocab/words.txt \
                            --data-weights-file=$dir/data_weights.txt \
                            data/text >$dir/unigram_probs.txt
@@ -65,14 +65,3 @@ rnnlm/make_word_features.py --unigram-probs=$dir/unigram_probs.txt \
 # validate word features
 rnnlm/validate_word_features.py --features-file $dir/features.txt \
                                 $dir/word_feats.txt
-
-
-# work out the number of splits.
-ns=$(rnnlm/get_num_splits.sh 200000 data/text)
-
-# split the data into pieces that individual jobs will train on.
-rnnlm/split_data.sh data/text $ns
-
-
-
-
