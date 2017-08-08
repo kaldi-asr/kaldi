@@ -4,6 +4,7 @@ set -e
 # Based on run_tdnn_7b.sh in the fisher swbd recipe
 
 # Results on a 350hr random subset of fisher english:
+# local/chain/compare_wer_general.sh exp/chain_350k/tdnn7b_sp
 # System                tdnn7b_sp
 # WER on dev         17.74
 # WER on test         17.57
@@ -12,8 +13,9 @@ set -e
 # Final train prob (xent)   -1.7908
 # Final valid prob (xent)   -1.7712
 
-# steps/info/nnet3_dir_info.pl exp/chain_350k/tdnn7b_xconf_sp
-# exp/chain_350k/tdnn7b_xconf_sp: num-iters=319 nj=3..16 num-params=22.1M dim=40+100->8617 combine=-0.14->-0.13
+# steps/info/nnet3_dir_info.pl exp/chain_350k/tdnn7b_sp
+# exp/chain_350k/tdnn7b_sp: num-iters=319 nj=3..16 num-params=22.1M dim=40+100->8617 combine=-0.14->-0.13
+
 
 
 # configs for 'chain'
