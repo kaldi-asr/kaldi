@@ -31,9 +31,9 @@ void GetRnnlmComputationRequest(
     nnet3::ComputationRequest *request) {
 
   request->inputs.clear();
-  request->inputs.reserve(1);
+  request->inputs.resize(1);
   request->outputs.clear();
-  request->outputs.reserve(1);
+  request->outputs.resize(1);
   request->need_model_derivative = need_model_derivative;
   request->store_component_stats = store_component_stats;
 
@@ -250,7 +250,7 @@ static void ProcessRnnlmOutputNoSampling(
   }
   if (objf_num) {
     *objf_num = TraceMatSmat(word_logprobs,
-                             derived.output_words_smat);
+                             derived.output_words_smat, kTrans);
   }
   if (objf_den_exact) {
     // This code is not as optimized as it could be, but we don't take this
@@ -435,5 +435,3 @@ void RenumberRnnlmExample(RnnlmExample *minibatch,
 
 }  // namespace rnnlm
 }  // namespace kaldi
-
-

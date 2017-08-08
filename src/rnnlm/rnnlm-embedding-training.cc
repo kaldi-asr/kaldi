@@ -39,6 +39,7 @@ RnnlmEmbeddingTrainer::RnnlmEmbeddingTrainer(
     const RnnlmEmbeddingTrainerOptions &config,
     CuMatrix<BaseFloat> *embedding_mat):
     config_(config),
+    embedding_mat_(embedding_mat),
     num_minibatches_(0),
     max_change_count_(0) {
   KALDI_ASSERT(embedding_mat->NumRows() > 0);

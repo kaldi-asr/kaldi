@@ -174,10 +174,10 @@ protected:
   // The following two functions should only be called if we did not compile
   // with CUDA or could not get a CUDA card; in that case the contents are
   // interpreted the same as a regular sparse matrix.
-  inline const SparseMatrix<Real> &Mat() const {
+  inline const SparseMatrix<Real> &Smat() const {
     return *(reinterpret_cast<const SparseMatrix<Real>*>(this));
   }
-  inline SparseMatrix<Real> &Mat() {
+  inline SparseMatrix<Real> &Smat() {
     return *(reinterpret_cast<SparseMatrix<Real>*>(this));
   }
 

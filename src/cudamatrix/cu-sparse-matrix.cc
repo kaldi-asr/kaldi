@@ -50,7 +50,7 @@ MatrixIndexT CuSparseMatrix<Real>::NumRows() const {
   } else
 #endif
   {
-    return Mat().NumRows();
+    return Smat().NumRows();
   }
 }
 
@@ -62,7 +62,7 @@ MatrixIndexT CuSparseMatrix<Real>::NumCols() const {
   } else
 #endif
   {
-    return Mat().NumCols();
+    return Smat().NumCols();
   }
 }
 
@@ -74,7 +74,7 @@ MatrixIndexT CuSparseMatrix<Real>::NumElements() const {
   } else
 #endif
   {
-    return Mat().NumElements();
+    return Smat().NumElements();
   }
 }
 
@@ -89,7 +89,7 @@ Real CuSparseMatrix<Real>::Sum() const {
   } else
 #endif
   {
-    return Mat().Sum();
+    return Smat().Sum();
   }
 }
 
@@ -102,7 +102,7 @@ Real CuSparseMatrix<Real>::FrobeniusNorm() const {
   } else
 #endif
   {
-    return Mat().FrobeniusNorm();
+    return Smat().FrobeniusNorm();
   }
 }
 
@@ -154,7 +154,7 @@ void CuSparseMatrix<Real>::SelectRows(const CuArray<int32> &row_indexes,
   {
     std::vector<int32> row_indexes_cpu(row_indexes.Dim());
     row_indexes.CopyToVec(&row_indexes_cpu);
-    Mat().SelectRows(row_indexes_cpu, smat_other.Mat());
+    Smat().SelectRows(row_indexes_cpu, smat_other.Smat());
   }
 }
 
@@ -186,7 +186,7 @@ CuSparseMatrix<Real>::CuSparseMatrix(const CuArray<int32> &indexes, int32 dim,
     std::vector<int32> idx(indexes.Dim());
     indexes.CopyToVec(&idx);
     SparseMatrix<Real> tmp(idx, dim, trans);
-    Mat().Swap(&tmp);
+    Smat().Swap(&tmp);
   }
 }
 
@@ -219,7 +219,7 @@ CuSparseMatrix<Real>::CuSparseMatrix(const CuArray<int32> &indexes,
     std::vector<int32> idx(indexes.Dim());
     indexes.CopyToVec(&idx);
     SparseMatrix<Real> tmp(idx, weights.Vec(), dim, trans);
-    Mat().Swap(&tmp);
+    Smat().Swap(&tmp);
   }
 }
 
@@ -293,7 +293,7 @@ void CuSparseMatrix<Real>::Resize(const MatrixIndexT num_rows,
   } else
 #endif
   {
-    Mat().Resize(num_rows, num_cols, resize_type);
+    Smat().Resize(num_rows, num_cols, resize_type);
   }
 }
 
@@ -317,7 +317,7 @@ void CuSparseMatrix<Real>::Destroy() {
   } else
 #endif
   {
-    Mat().Resize(0, 0);
+    Smat().Resize(0, 0);
   }
 }
 
@@ -354,7 +354,7 @@ void CuSparseMatrix<Real>::CopyFromSmat(const SparseMatrix<OtherReal> &smat) {
   } else
 #endif
   {
-    this->Mat().CopyFromSmat(smat);
+    this->Smat().CopyFromSmat(smat);
   }
 }
 template
@@ -399,7 +399,7 @@ void CuSparseMatrix<Real>::CopyFromSmat(const CuSparseMatrix<Real>& smat,
   } else
 #endif
   {
-    Mat().CopyFromSmat(smat.Mat(), trans);
+    Smat().CopyFromSmat(smat.Smat(), trans);
   }
 }
 
@@ -432,7 +432,7 @@ void CuSparseMatrix<Real>::CopyToSmat(SparseMatrix<OtherReal> *smat) const {
   } else
 #endif
   {
-    smat->CopyFromSmat(this->Mat());
+    smat->CopyFromSmat(this->Smat());
   }
 }
 template
@@ -455,7 +455,7 @@ void CuSparseMatrix<Real>::CopyElementsToVec(CuVectorBase<Real> *vec) const {
   } else
 #endif
   {
-    Mat().CopyElementsToVec(&(vec->Vec()));
+    Smat().CopyElementsToVec(&(vec->Vec()));
   }
 }
 
@@ -469,7 +469,7 @@ void CuSparseMatrix<Real>::Swap(SparseMatrix<Real> *smat) {
   } else
 #endif
   {
-    Mat().Swap(smat);
+    Smat().Swap(smat);
   }
 }
 
@@ -485,7 +485,7 @@ void CuSparseMatrix<Real>::Swap(CuSparseMatrix<Real> *smat) {
   } else
 #endif
   {
-    Mat().Swap(&(smat->Mat()));
+    Smat().Swap(&(smat->Smat()));
   }
 }
 
@@ -561,7 +561,7 @@ Real TraceMatSmat(const CuMatrixBase<Real> &A,
   } else
 #endif
   {
-    result = TraceMatSmat(A.Mat(), B.Mat(), trans);
+    result = TraceMatSmat(A.Mat(), B.Smat(), trans);
   }
   return result;
 }
@@ -650,7 +650,7 @@ void CuSparseMatrix<Real>::CopyToMat(CuMatrixBase<OtherReal> *M,
   } else
 #endif
   {
-    Mat().CopyToMat(&(M->Mat()), trans);
+    Smat().CopyToMat(&(M->Mat()), trans);
   }
 }
 

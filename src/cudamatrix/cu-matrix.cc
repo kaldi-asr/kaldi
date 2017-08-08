@@ -1003,7 +1003,7 @@ void CuMatrixBase<Real>::AddSmat(Real alpha, const CuSparseMatrix<Real> &A,
   } else
 #endif
   {
-    Mat().AddSmat(alpha, A.Mat(), trans);
+    Mat().AddSmat(alpha, A.Smat(), trans);
   }
 }
 
@@ -1059,7 +1059,7 @@ void CuMatrixBase<Real>::AddSmatMat(Real alpha, const CuSparseMatrix<Real> &A,
   } else
 #endif
   {
-    Mat().AddSmatMat(alpha, A.Mat(), transA, B.Mat(), beta);
+    Mat().AddSmatMat(alpha, A.Smat(), transA, B.Mat(), beta);
   }
 }
 
@@ -1097,7 +1097,7 @@ void CuMatrixBase<Real>::AddMatSmat(Real alpha, const CuMatrixBase<Real> &A,
   } else
 #endif
   {
-    Mat().AddMatSmat(alpha, A.Mat(), B.Mat(), transB, beta);
+    Mat().AddMatSmat(alpha, A.Mat(), B.Smat(), transB, beta);
   }
 }
 

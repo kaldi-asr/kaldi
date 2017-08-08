@@ -173,9 +173,8 @@ void RnnlmCoreTrainer::Train(
   if (word_embedding_deriv != NULL) {
     CuMatrix<BaseFloat> input_deriv;
     computer.GetOutputDestructive("input", &input_deriv);
-    word_embedding_deriv->AddMatSmat(1.0, input_deriv,
-                                     derived.input_words_smat,
-                                     kTrans, 1.0);
+    word_embedding_deriv->AddSmatMat(1.0, derived.input_words_smat, kNoTrans,
+                                     input_deriv, 1.0);
   }
 
   bool success = UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
@@ -267,5 +266,3 @@ RnnlmCoreTrainer::~RnnlmCoreTrainer() {
 
 }  // namespace rnnlm
 }  // namespace kaldi
-
-

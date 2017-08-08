@@ -250,6 +250,7 @@ int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
   int32 loop = 0;
+  using namespace kaldi;
 
   // SetVerboseLevel(2);
 #if HAVE_CUDA == 1
