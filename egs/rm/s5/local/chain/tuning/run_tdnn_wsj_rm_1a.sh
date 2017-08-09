@@ -34,7 +34,8 @@ srcdir=../../wsj/s5/
 common_egs_dir=
 #common_egs_dir=exp/chain/tdnn_wsj_rm_1c_fixed_ac_scale/egs
 src_mdl=$srcdir/exp/chain/tdnn1d_sp/final.mdl
-primary_lr_factor=0.25
+primary_lr_factor=0.25 # The learning-rate factor for transferred layers from source
+                       # model.
 dim=450
 nnet_affix=_online
 # End configuration section.
@@ -125,7 +126,8 @@ EOF
 
   # Set the learning-rate-factor to be primary_lr_factor for initial network."
   # and add new layer to initial model
-  nnet3-copy --edits="set-learning-rate-factor name=* learning-rate-factor=$primary_lr_factor" $src_mdl - | \
+  $train_cmd $dir/log/generate_input_mdl.log \
+  nnet3-copy --edits="set-learning-rate-factor name=* learning-rate-factor=$primary_lr_factor" $src_mdl - \| \
   nnet3-init --srand=1 - $dir/configs/final.config $dir/input.raw  || exit 1;
 fi
 

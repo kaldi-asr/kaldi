@@ -131,7 +131,7 @@ def get_model_component_info(model_filename):
 # (usually we use the variable name 'all_layers' elsewhere for this).
 # It will die if the xconfig file is empty or if there was
 # some error parsing it.
-# aux_layers is a list of auxilary layers(component-nodes or input-node) that
+# aux_layers is a list of auxilary layers({component,input,output}-node)
 # can be used as input to component-nodes used in xconfig_file.
 def read_xconfig_file(xconfig_filename, aux_layers=[]):
     try:

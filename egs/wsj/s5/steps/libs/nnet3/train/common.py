@@ -357,6 +357,30 @@ def parse_generic_config_vars_file(var_file):
     raise Exception('Error while parsing the file {0}'.format(var_file))
 
 
+def parse_input_model(input_model):
+    variables = {}
+    try:
+        assert(os.path.exists(input_model))
+        out = common_lib.get_command_stdout("""nnet3-info {0} | """
+                                            """head -4 """.format(input_model))
+        # out looks like this
+        # left-context: 7
+        # right-context: 0
+        # num-parameters: 90543902
+        # modulus: 1
+        for line in out.split("\n"):
+            parts = line.split(":")
+            if len(parts) != 2:
+                continue
+            if parts[0].strip() ==  'left-context':
+                variables['model_left_context'] = int(parts[1].strip())
+            elif parts[0].strip() ==  'right-context':
+                variables['model_right_context'] = int(parts[1].strip())
+
+    except ValueError:
+        pass
+    return variables
+
 def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
                    left_context, right_context,
                    left_context_initial=-1, right_context_final=-1):
@@ -856,7 +880,7 @@ class CommonParser(object):
                                  sequentially.""")
         self.parser.add_argument("--trainer.optimization.backstitch-training-scale",
                                  type=float, dest='backstitch_training_scale',
-                                 default=0.0, help="""scale of parameters changes 
+                                 default=0.0, help="""scale of parameters changes
                                  used in backstitch training step.""")
         self.parser.add_argument("--trainer.optimization.backstitch-training-interval",
                                  type=int, dest='backstitch_training_interval',

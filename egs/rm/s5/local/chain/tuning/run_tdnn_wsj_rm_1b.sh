@@ -1,12 +1,12 @@
 #!/bin/bash
 # _1b is as _1a, but different as follows
-# 1) uses src phone set phones.txt and new lexicon generated using word pronunciation
-#    in src lexincon.txt and target word not presented in src are added as oov
-#    in lexicon.txt.
-# 2) It uses src tree-dir and generates new target alignment and lattices using
-#    src gmm model.
-# 3) It also train phone LM using weighted combination of alignemts from source
-#    and target, which is used in chain denominator graph.
+# 1) uses wsj phone set phones.txt and new lexicon generated using word pronunciation
+#    in swj lexincon.txt and rm words not presented in wsj are added as oov
+#    in new lexicon.txt.
+# 2) It uses wsj tree-dir and generates new rm alignments and lattices using
+#    wsj gmm model.
+# 3) It also train phone LM using weighted combination of alignemts from wsj
+#    and rm, which is used in chain denominator graph.
 #    Since we use phone.txt from source dataset, this can be helpful in cases
 #    where there is few training data in target and some 4-gram phone sequences
 #    have no count in target.
@@ -24,7 +24,7 @@ set -e
 
 # configs for 'chain'
 stage=7
-train_stage=-10
+train_stage=-4
 get_egs_stage=-10
 
 # training options
@@ -43,7 +43,8 @@ xent_regularize=0.1
 
 # configs for transfer learning
 common_egs_dir=
-srcdir=../../wsj/s5/
+#srcdir=../../wsj/s5/
+srcdir=/export/a09/pegahgh/kaldi-transfer-learning/egs/wsj/s5-sp
 src_mdl=$srcdir/exp/chain/tdnn1d_sp/final.mdl
 src_lang=$srcdir/data/lang
 src_gmm_dir=$srcdir/exp/tri4b
@@ -55,6 +56,9 @@ final_lr_factor=1.0   # learning-rate factor for final layer in transferring sou
 nnet_affix=_online_wsj
 tgt_lm_scale=10
 src_lm_scale=1
+phone_lm_scales="1,10" #  comma-separated list of integer valued scale weights
+                       #  to scale different phone sequences for different alignments
+                       #  e.g. (src-weight,target-weight)=(10,1)
 tdnn_affix=_1b
 # End configuration section.
 
@@ -82,7 +86,7 @@ ali_dir=exp/tri4b${src_tree_dir:+_wsj}_ali
 lat_dir=exp/tri3b_lats${src_tree_dir:+_wsj}
 dir=exp/chain/tdnn_wsj_rm${tdnn_affix}
 
-required_files="$src_mdl $src_lang/lexicon.txt $src_gmm_dir/final.mdl $srd_tree_dir/tree"
+required_files="$src_mdl $src_lang/phones.txt $srcdir/data/local/dict_nosp/lexicon.txt $src_gmm_dir/final.mdl $src_tree_dir/tree"
 
 for f in $required_files; do
   if [ ! -f $f ]; then
@@ -123,42 +127,41 @@ if [ $stage -le 5 ]; then
 fi
 
 if [ $stage -le 6 ]; then
-  echo "$0: creating neural net configs using the xconfig parser for";
-  echo "extra layers w.r.t source network.";
-  num_targets=$(tree-info $src_tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  mkdir -p $dir
-  mkdir -p $dir/configs
-  touch $dir/configs/network.xconfig
-  steps/nnet3/xconfig_to_configs.py --existing-model $src_mdl \
-    --xconfig-file  $dir/configs/network.xconfig  \
-    --edits-config $dir/configs/edits.config \
-    --config-dir $dir/configs/
+  # set the learning-rate-factor for initial network to be primary_lr_factor."
+  $train_cmd $dir/log/generate_input_mdl.log \
+  nnet3-am-copy --raw=true --edits="set-learning-rate-factor name=* learning-rate-factor=$primary_lr_factor; set-learning-rate-factor name=output* learning-rate-factor=1.0" \
+    $src_mdl $dir/input.raw || exit 1;
 fi
 
-
 if [ $stage -le 7 ]; then
+  echo "$0: compute {den,normalization}.fst using weighted phone LM with wsj and rm weight $phone_lm_scales."
+  $train_cmd $dir/log/make_weighted_den_fst.log \
+  steps/nnet3/chain/make_weighted_den_fst.sh --weights $phone_lm_scales \
+  --lm-opts '--num-extra-lm-states=200' \
+  $src_tree_dir $ali_dir $dir || exit 1;
+fi
+
+if [ $stage -le 8 ]; then
   echo "$0: generate egs for chain to train new model on rm dataset."
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/rm-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
-  # set the learning-rate-factor for initial network to be zero."
-  $decode_cmd $dir/log/copy_mdl.log \
-  nnet3-am-copy --raw=true --edits="set-learning-rate-factor name=* learning-rate-factor=$primary_lr_factor; set-learning-rate-factor name=output* learning-rate-factor=$final_lr_factor" \
-    $src_mdl $dir/init.raw || exit 1;
+  # exclude phone_LM and den.fst generation training stage
+  if [ $train_stage -lt -4 ]; then
+    train_stage=-4
+  fi
 
-  steps/nnet3/chain/train_more.py --stage $train_stage \
+  steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
+    --trainer.input-model $dir/input.raw \
     --feat.online-ivector-dir exp/nnet2${nnet_affix}/ivectors \
     --chain.xent-regularize $xent_regularize \
-    --chain.alignments-for-lm="$ali_dir:$tgt_lm_scale,$src_tree_dir:$src_lm_scale" \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize 0.1 \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
-    --chain.lm-opts="--num-extra-lm-states=200" \
     --egs.dir "$common_egs_dir" \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $frames_per_eg \
@@ -177,12 +180,12 @@ if [ $stage -le 7 ]; then
     --dir $dir || exit 1;
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
     data/test_hires $srcdir/exp/nnet3/extractor exp/nnet2${nnet_affix}/ivectors_test || exit 1;
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 10 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
@@ -194,7 +197,7 @@ if [ $stage -le 9 ]; then
     $dir/graph data/test_hires $dir/decode || exit 1;
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
   utils/mkgraph.sh --self-loop-scale 1.0 $lang_ug_dir $dir $dir/graph_ug
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --nj 20 --cmd "$decode_cmd" \
