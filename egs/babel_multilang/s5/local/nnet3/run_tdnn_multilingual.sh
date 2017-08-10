@@ -204,16 +204,9 @@ EOF
     echo " output-layer name=output-${lang_index} dim=$num_targets max-change=1.5"
   done >> $dir/configs/network.xconfig
 
-  cat <<EOF > $dir/configs/edits.config
-  rename-node old-name=output-0 new-name=output
-EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig \
     --config-dir $dir/configs/ \
-    --edits-config=$dir/configs/edits.config
-
-  cat <<EOF >> $dir/configs/vars
-include_log_softmax=false
-EOF
+    --nnet-edits="rename-node old-name=output-0 new-name=output"
 fi
 
 if [ $stage -le 9 ]; then

@@ -87,6 +87,14 @@ ali_dir=exp/chain/chain_ali_wsj
 treedir=exp/chain/tri4_5n_tree_wsj
 lat_dir=exp/chain_lats${src_tree_dir:+_wsj}
 
+required_files="$src_mdl $src_lang/phones.txt $srcdir/data/local/dict_nosp/lexicon.txt $src_tree_dir/tree"
+
+for f in $required_files; do
+  if [ ! -f $f ]; then
+    echo "$0: no such file $f"
+  fi
+done
+
 if [ $stage -le -1 ]; then
   echo "$0: prepare lang for RM-WSJ using WSJ phone set and lexicon and RM word list."
   if ! cmp -s <(grep -v "^#" $src_lang/phones.txt) <(grep -v "^#" data/lang/phones.txt); then

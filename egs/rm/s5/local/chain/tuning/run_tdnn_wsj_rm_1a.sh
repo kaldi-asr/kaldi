@@ -32,7 +32,6 @@ xent_regularize=0.1
 # configs for transfer learning
 srcdir=../../wsj/s5/
 common_egs_dir=
-#common_egs_dir=exp/chain/tdnn_wsj_rm_1c_fixed_ac_scale/egs
 src_mdl=$srcdir/exp/chain/tdnn1d_sp/final.mdl
 primary_lr_factor=0.25 # The learning-rate factor for transferred layers from source
                        # model.
@@ -55,7 +54,6 @@ EOF
 fi
 
 required_files="$src_mdl $srcdir/exp/nnet3/extractor/final.mdl"
-
 for f in $required_files; do
   if [ ! -f $f ]; then
     echo "$0: no such file $f"

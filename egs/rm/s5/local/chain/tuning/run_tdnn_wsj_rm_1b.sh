@@ -43,8 +43,7 @@ xent_regularize=0.1
 
 # configs for transfer learning
 common_egs_dir=
-#srcdir=../../wsj/s5/
-srcdir=/export/a09/pegahgh/kaldi-transfer-learning/egs/wsj/s5-sp
+srcdir=../../wsj/s5/
 src_mdl=$srcdir/exp/chain/tdnn1d_sp/final.mdl
 src_lang=$srcdir/data/lang
 src_gmm_dir=$srcdir/exp/tri4b
