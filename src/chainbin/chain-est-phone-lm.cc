@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
         "Initialize un-smoothed phone language model for 'chain' training\n"
         "Output in FST format (epsilon-free deterministic acceptor)\n"
         "\n"
-        "Usage:  chain-est-phone-lm [options] <phone-seqs-rspecifier-1> [... <phone-seqs-rspecifier-n>] <phone-lm-fst-out>\n"
+        "Usage:  chain-est-phone-lm [options] <phone-seqs-rspecifier> <phone-lm-fst-out>\n"
         "The phone-sequences are used to train a language model.\n"
         "e.g.:\n"
         "gunzip -c input_dir/ali.*.gz | ali-to-phones input_dir/final.mdl ark:- ark:- | \\\n"
@@ -40,43 +40,29 @@ int main(int argc, char *argv[]) {
 
     bool binary_write = true;
     LanguageModelOptions lm_opts;
-    std::string scales_str;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("scales", &scales_str, "comma-separated list of integer valued scale weights used to scale different phone sequences.");
     lm_opts.Register(&po);
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 2) {
+    if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
 
-    int32 num_seqs = po.NumArgs() - 1;
-    std::vector<int32> scales(num_seqs, 1);
-    if (!scales_str.empty()) {
-      SplitStringToIntegers(scales_str, ",", false, &scales);
-      if (scales.size() != num_seqs)
-        KALDI_ERR << "--scales should have exactly "
-                  << num_seqs << " scales.";
-    }
-    std::string lm_fst_wxfilename = po.GetArg(po.NumArgs());
+    std::string phone_seqs_rspecifier = po.GetArg(1),
+        lm_fst_wxfilename = po.GetArg(2);
 
 
     LanguageModelEstimator lm_estimator(lm_opts);
 
-    for (int i = 1; i <= num_seqs; i++) {
-      std::string phone_seqs_rspecifier = po.GetArg(i);
-      SequentialInt32VectorReader phones_reader(phone_seqs_rspecifier);
-      KALDI_LOG << "Reading phone sequences";
-      for (; !phones_reader.Done(); phones_reader.Next()) {
-        if (scales[i-1] != 0) {
-          const std::vector<int32> &phone_seq = phones_reader.Value();
-          lm_estimator.AddCounts(phone_seq, scales[i-1]);
-        }
-      }
+    SequentialInt32VectorReader phones_reader(phone_seqs_rspecifier);
+    KALDI_LOG << "Reading phone sequences";
+    for (; !phones_reader.Done(); phones_reader.Next()) {
+      const std::vector<int32> &phone_seq = phones_reader.Value();
+      lm_estimator.AddCounts(phone_seq);
     }
     KALDI_LOG << "Estimating phone LM";
     fst::StdVectorFst fst;

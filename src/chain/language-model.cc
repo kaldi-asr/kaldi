@@ -26,8 +26,7 @@
 namespace kaldi {
 namespace chain {
 
-void LanguageModelEstimator::AddCounts(const std::vector<int32> &sentence,
-                                      int32 weight) {
+void LanguageModelEstimator::AddCounts(const std::vector<int32> &sentence) {
   KALDI_ASSERT(opts_.ngram_order >= 2 && "--ngram-order must be >= 2");
   KALDI_ASSERT(opts_.ngram_order >= opts_.no_prune_ngram_order);
   int32 order = opts_.ngram_order;
@@ -37,23 +36,23 @@ void LanguageModelEstimator::AddCounts(const std::vector<int32> &sentence,
       end = sentence.end();
   for (; iter != end; ++iter) {
     KALDI_ASSERT(*iter != 0);
-    IncrementCount(history, *iter, weight);
+    IncrementCount(history, *iter);
     history.push_back(*iter);
     if (history.size() >= order)
       history.erase(history.begin());
   }
   // Probability of end of sentence.  This will end up getting ignored later, but
   // it still makes a difference for probability-normalization reasons.
-  IncrementCount(history, 0, weight);
+  IncrementCount(history, 0);
 }
 
 void LanguageModelEstimator::IncrementCount(const std::vector<int32> &history,
-                                            int32 next_phone, int32 weight) {
+                                            int32 next_phone) {
   int32 lm_state_index = FindOrCreateLmStateIndexForHistory(history);
   if (lm_states_[lm_state_index].tot_count == 0) {
     num_active_lm_states_++;
   }
-  lm_states_[lm_state_index].AddCount(next_phone, weight);
+  lm_states_[lm_state_index].AddCount(next_phone, 1);
 }
 
 void LanguageModelEstimator::SetParentCounts() {

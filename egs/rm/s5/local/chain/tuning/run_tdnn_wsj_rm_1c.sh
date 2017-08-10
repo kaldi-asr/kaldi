@@ -199,13 +199,5 @@ if [ $stage -le 10 ]; then
     --online-ivector-dir exp/nnet2${nnet_affix}/ivectors_test \
     $dir/graph data/test_hires $dir/decode || exit 1;
 fi
-
-if [ $stage -le 11 ]; then
-  utils/mkgraph.sh --self-loop-scale 1.0 ${lang_src_tgt}_ug $dir $dir/graph_ug
-  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --nj 20 --cmd "$decode_cmd" \
-    --online-ivector-dir exp/nnet2${nnet_affix}/ivectors_test \
-    $dir/graph_ug data/test_hires $dir/decode_ug || exit 1;
-fi
 wait;
 exit 0;

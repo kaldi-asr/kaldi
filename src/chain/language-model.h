@@ -89,9 +89,9 @@ class LanguageModelEstimator {
   }
 
   // Adds counts for this sentence.  Basically does: for each n-gram in the
-  // sentence, count[n-gram] += weight.  The only constraint on 'sentence' is that it
+  // sentence, count[n-gram] += 1.  The only constraint on 'sentence' is that it
   // should contain no zeros.
-  void AddCounts(const std::vector<int32> &sentence, int32 weight = 1.0);
+  void AddCounts(const std::vector<int32> &sentence);
 
   // Estimates the LM and outputs it as an FST.  Note: there is
   // no concept here of backoff arcs.
@@ -188,7 +188,7 @@ class LanguageModelEstimator {
 
   // adds the counts for this ngram (called from AddCounts()).
   inline void IncrementCount(const std::vector<int32> &history,
-                             int32 next_phone, int32 weight);
+                             int32 next_phone);
 
 
   // Computes whether backoff should be allowed for this lm_state.  (the caller

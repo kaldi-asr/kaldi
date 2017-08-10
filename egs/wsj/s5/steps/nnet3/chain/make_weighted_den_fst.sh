@@ -66,14 +66,23 @@ done
 
 cp ${ali_dirs[0]}/tree $dir/ || exit 1
 
+
 for n in `seq 0 $[num_alignments-1]`; do
   adir=${ali_dirs[$n]}
-  alignments+=("ark:gunzip -c $adir/ali.*.gz | ali-to-phones $adir/final.mdl ark:- ark:- |")
+  w=`echo $weights | cut -d, -f$[$n+1]`
+  if ! [[ $w =~ ^[+]?[0-9]+$ ]]; then
+    echo "no positive integer weight specified for alignment $adir" && exit 1;
+  fi
+  repeated_ali_to_process=""
+  for x in `seq $w`;do
+    repeated_ali_to_process="ark:gunzip -c $adir/ali.*.gz $repeated_ali_to_process"
+  done
+  alignments+=("$repeated_ali_to_process | ali-to-phones $adir/final.mdl ark:- ark:- |")
 done
 
 if [ $stage -le 1 ]; then
   $cmd $dir/log/make_phone_lm.log \
-    chain-est-phone-lm $lm_opts --scales="$weights" \
+    chain-est-phone-lm $lm_opts \
     "${alignments[@]}" $dir/phone_lm.fst || exit 1
 fi
 
