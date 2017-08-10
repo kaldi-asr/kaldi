@@ -14,7 +14,7 @@ set -o pipefail -u
 if [ $# -ne 4 ]; then
   cat <<EOF
   This script resamples a targets directory by the specified subsampling factor.
-  If <subsampling-factor> if negative, then the targets will be upsampled 
+  If <subsampling-factor> is negative, then the targets will be upsampled 
   by -<subsampling-factor>.
 
   Usage: steps/segmentation/resample_targets.sh <subsampling-factor> <data-dir> <targets-dir> <resampled-targets-dir>

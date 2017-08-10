@@ -48,8 +48,8 @@ EOF
 fi
 
 lang=$1   # Must match the one used to train the models
-data_dir=$2
-whole_data_dir=$3
+in_data_dir=$2
+in_whole_data_dir=$3
 ali_model_dir=$4  # Model directory used to align the $data_dir to get target 
                   # labels for training SAD. This should typically be a
                   # speaker-adapted system.
@@ -72,7 +72,8 @@ else
   extra_files="$extra_files $graph_dir/HCLG.fst $graph_dir/phones.txt"
 fi
 
-for f in $data_dir/feats.scp $whole_data_dir/feats.scp $data_dir/segments \
+for f in $in_data_dir/feats.scp $in_whole_data_dir/feats.scp 
+  $in_data_dir/segments \
   $lang/phones.txt $garbage_phones_list $silence_phones_list \
   $ali_model_dir/final.mdl $model_dir/final.mdl $extra_files; do
   if [ ! -f $f ]; then
@@ -81,52 +82,45 @@ for f in $data_dir/feats.scp $whole_data_dir/feats.scp $data_dir/segments \
   fi
 done
 
+utils/validate_data_dir.sh $in_data_dir || exit 1
+utils/validate_data_dir.sh --no-text $in_whole_data_dir || exit 1
+
 if ! cat $garbage_phones_list $silence_phones_list | \
   steps/segmentation/internal/verify_phones_list.py $lang/phones.txt; then
   echo "$0: Invalid $garbage_phones_list $silence_phones_list"
   exit 1
 fi
 
-data_id=$(basename $data_dir)
-whole_data_id=$(basename $whole_data_dir)
+data_id=$(basename $in_data_dir)
+whole_data_id=$(basename $in_whole_data_dir)
 
 if [ $stage -le 0 ]; then
-  rm -r $dir/$data_id || true
+  rm -r $dir/$data_id 2>/dev/null || true
   mkdir -p $dir/$data_id
 
-  # Copy the data directory, but treat the recording as the speaker. This
-  # is required to get matching speaker information in the whole 
-  # recording data directory.
-  cp $data_dir/wav.scp $dir/${data_id}/ || exit 1
-  cp $data_dir/reco2file_and_channel $dir/${data_id}/ || true
-  awk '{print $1" "$2"-"$1}' $data_dir/segments > $dir/${data_id}/old2new.uttmap || exit 1
-  utils/apply_map.pl -f 1 $dir/${data_id}/old2new.uttmap < $data_dir/segments > \
-    $dir/${data_id}/segments || exit 1
-  awk '{print $1" "$2}' $dir/${data_id}/segments > $dir/$data_id/utt2spk || exit 1
-  utils/utt2spk_to_spk2utt.pl $dir/$data_id/utt2spk > $dir/$data_id/spk2utt || exit 1
-  utils/apply_map.pl -f 1 $dir/${data_id}/old2new.uttmap < $data_dir/text > \
-    $dir/${data_id}/text || exit 1
-  utils/apply_map.pl -f 1 $dir/${data_id}/old2new.uttmap < $data_dir/feats.scp > \
-    $dir/${data_id}/feats.scp || exit 1
-
-  utils/fix_data_dir.sh $dir/$data_id || exit 1
-  utils/validate_data_dir.sh $dir/$data_id || exit 1
-
-  steps/compute_cmvn_stats.sh $dir/$data_id
+  utils/data/modify_speaker_info_to_recording.sh \
+    $in_data_dir $dir/$data_id || exit 1
+  steps/compute_cmvn_stats.sh $dir/$data_id || exit 1
+  utils/validate_data.sh $dir/$data_id || exit 1
 fi 
+
+# Work with a temporary data directory with recording-id as the speaker labels.
 data_dir=$dir/${data_id}
 
 ###############################################################################
 # Get feats for the manual segments
 ###############################################################################
 if [ $stage -le 2 ]; then
-  utils/copy_data_dir.sh $whole_data_dir $dir/$whole_data_id
+  utils/copy_data_dir.sh $in_whole_data_dir $dir/$whole_data_id
 
   utils/fix_data_dir.sh $dir/$whole_data_id
 
   # Copy the CMVN stats to the whole directory
   cp $data_dir/cmvn.scp $dir/$whole_data_id
 fi
+
+# Work with a temporary data directory with CMVN stats computed using 
+# only the segments from the original data directory.
 whole_data_dir=$dir/$whole_data_id
 
 ###############################################################################
@@ -158,10 +152,6 @@ if [ $stage -le 3 ]; then
 
   utils/data/subsegment_data_dir.sh $whole_data_dir \
     $uniform_seg_data_dir/sub_segments $uniform_seg_data_dir
-  awk '{print $1" "$2}' $uniform_seg_data_dir/segments > \
-    $uniform_seg_data_dir/utt2spk
-  utils/utt2spk_to_spk2utt.pl $uniform_seg_data_dir/utt2spk > \
-    $uniform_seg_data_dir/spk2utt
   cp $whole_data_dir/cmvn.scp $uniform_seg_data_dir/
 fi
 
@@ -173,7 +163,8 @@ if [ -z "$graph_dir" ]; then
   graph_dir=$dir/$model_id/graph
   if [ $stage -le 4 ]; then
     if [ ! -f $graph_dir/HCLG.fst ]; then
-      cp -rT $lang_test/ $dir/lang_test
+      rm -r $dir/lang_test 2>/dev/null || true
+      cp -r $lang_test/ $dir/lang_test
       utils/mkgraph.sh $dir/lang_test $model_dir $graph_dir || exit 1
     fi
   fi
@@ -190,6 +181,8 @@ if [ $stage -le 5 ]; then
   cp $model_dir/{final.mdl,final.mat,*_opts,tree} $dir/${model_id}
   cp $model_dir/phones.txt $dir/$model_id
 
+  # We use a small beam and max-active since we are only interested in 
+  # the speech / silence decisions, not the exact word sequences.
   steps/decode.sh --cmd "$decode_cmd --mem 2G" --nj $nj \
     --max-active 1000 --beam 10.0 \
     --decode-extra-opts "--word-determinize=false" --skip-scoring true \

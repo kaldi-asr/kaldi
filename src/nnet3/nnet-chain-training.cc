@@ -87,8 +87,6 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   } else { // conventional training
     TrainInternal(chain_eg, *computation);
   }
-
-  num_minibatches_processed_++;
 }
 
 void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,

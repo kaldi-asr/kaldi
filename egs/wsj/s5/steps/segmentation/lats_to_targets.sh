@@ -4,8 +4,17 @@
 # Apache 2.0
 
 # This script converts lattices into targets for training neural network
-# for speech activity detection. The mapping from phones to speech / silence / garbage
+# for speech activity detection. The targets is a matrix of size 
+# (num-frames-subsampled x 3)
+# with each row representing probabilities for speech, silence and 
+# garbage classes for the corresponding frame (after subsampling). The 
+# probability values are lattice posteriors for the 3 classes and are
+# obtained by summing up phone arc posteriors for the phones
+# corresponding to each class.
+# The mapping from phones to speech / silence / garbage classes
 # is defined by the options --silence-phones and --garbage-phones.
+# Also "speech" phones longer than --max-phone-duration seconds are 
+# treated as "garbage".
 
 set -o pipefail
 
@@ -22,8 +31,17 @@ cmd=run.pl
 if [ $# -ne 4 ]; then
   cat <<EOF
   This script converts lattices into targets for training neural network
-  for speech activity detection. The mapping from phones to speech / silence / garbage
+  for speech activity detection. The targets is a matrix of size 
+  (num-frames-subsampled x 3)
+  with each row representing probabilities for speech, silence and 
+  garbage classes for the corresponding frame (after subsampling). The 
+  probability values are lattice posteriors for the 3 classes and are
+  obtained by summing up phone arc posteriors for the phones
+  corresponding to each class.
+  The mapping from phones to speech / silence / garbage classes
   is defined by the options --silence-phones and --garbage-phones.
+  Also "speech" phones longer than --max-phone-duration seconds are 
+  treated as "garbage".
 
   Usage: steps/segmentation/lats_to_targets.sh <data-dir> <lang> <lattice-dir> <targets-dir>"
   e.g.: steps/segmentation/lats_to_targets.sh \

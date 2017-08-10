@@ -3,9 +3,10 @@
 # Copyright 2016  Vimal Manohar
 # Apache 2.0
 
-"""Prepares a graph directory with a simple HMM topology for segmentation
+"""Prepares a graph with a simple HMM topology for segmentation
 with minimum and maximum speech duration constraints and minimum silence
-duration constraint.
+duration constraint. The graph is written to the 'output_graph', which
+can be file or "-" for stdout.
 """
 
 from __future__ import print_function
@@ -32,14 +33,12 @@ logger.addHandler(handler)
 
 def get_args():
     parser = argparse.ArgumentParser(
-        description="This script generates a graph directory for decoding with "
-        "a simple HMM model.\n"
-        "It needs as an input classes_info file with the format:\n"
-        "<class-id (1-indexed)> <initial-probability> <self-loop-probability> "
-        "<min-duration> <list-of-pairs>,\n"
-        "where each pair is <destination-class>:<transition-probability>.\n"
-        "destination-class -1 is used to represent final probability.",
-        formatter_class=argparse.RawTextHelpFormatter)
+        description="""This script prepares a graph with a simple HMM topology
+        for segmentation with minimum and maximum speech duration constraints
+        and minimum silence duration constraint. The graph is written to the
+        'output_graph', which can be file or "-" for stdout.  for segmentation
+        with minimum and maximum speech duration constraints and minimum silence
+        duration constraint.""")
 
     parser.add_argument("--transition-scale", type=float, default=1.0,
                         help="""Scale on transition probabilities relative to

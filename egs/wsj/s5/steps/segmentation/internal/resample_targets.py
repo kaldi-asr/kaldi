@@ -3,6 +3,17 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
+"""
+This script reads a Kaldi text archive of matrices from 'targets_in_ark' (e.g.
+'-' for standard input), modifies them by subsampling them, and writes the
+modified archive to 'targets_out_ark'.
+This form of 'subsampling' is similar to taking every n'th frame (specifically:
+every n'th row), except that we average over blocks of size 'n' instead of
+taking every n'th element.
+Thus, this script is similar to the binary 'subsample-feats' except that
+it subsamples by averaging.
+"""
+
 import argparse
 import logging
 import numpy as np
@@ -23,8 +34,15 @@ logger.addHandler(handler)
 
 def get_args():
     parser = argparse.ArgumentParser(
-        description="""This script resamples target matrices at a different
-        sampling rate.""")
+        description="""
+This script reads a Kaldi text archive of matrices from 'targets_in_ark' (e.g.
+'-' for standard input), modifies them by subsampling them, and writes the
+modified archive to 'targets_out_ark'.
+This form of 'subsampling' is similar to taking every n'th frame (specifically:
+every n'th row), except that we average over blocks of size 'n' instead of
+taking every n'th element.
+Thus, this script is similar to the binary 'subsample-feats' except that
+it subsamples by averaging.""")
 
     parser.add_argument("--subsampling-factor", type=int, default=1,
                         help="The sampling rate is scaled by this factor")

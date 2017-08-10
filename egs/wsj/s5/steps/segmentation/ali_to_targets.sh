@@ -7,7 +7,8 @@
 # for speech activity detection. The mapping from phones to speech / silence / garbage
 # is defined by the options --silence-phones and --garbage-phones.
 # This is similar to the script steps/segmentation/lats_to_targets.sh which 
-# converts lattices to targets.
+# converts lattices to targets. See that script for details about the 
+# targets matrix.
 
 set -o pipefail
 
@@ -25,6 +26,10 @@ if [ $# -ne 4 ]; then
   This script converts alignments into targets for training neural network
   for speech activity detection. The mapping from phones to speech / silence / garbage
   is defined by the options --silence-phones and --garbage-phones.
+
+  This is similar to the script steps/segmentation/lats_to_targets.sh which 
+  converts lattices to targets. See that script for details about the 
+  targets matrix.
 
   Usage: steps/segmentation/ali_to_targets.sh <data-dir> <lang> <ali-dir> <targets-dir>"
   e.g.: steps/segmentation/ali_to_targets.sh \

@@ -4,7 +4,7 @@
 # Apache 2.0.
 
 # This script post-processes the output of steps/segmentation/decode_sad.sh,
-# which is in the form of frame-level alignments, into kaldi segments.
+# which is in the form of frame-level alignments, into a 'segments' file.
 # The alignments must be speech activity detection marks i.e. 1 for silence 
 # and 2 for speech.
 

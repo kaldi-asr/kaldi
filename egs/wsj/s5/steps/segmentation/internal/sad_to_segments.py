@@ -6,7 +6,8 @@
 """
 This script converts frame-level speech activity detection marks (in kaldi
 integer vector text archive format) into kaldi segments and utt2spk.
-The label 1 is for silence and label 2 is for speech.
+The input integer vectors are expected to contain 1 for silence frames
+and 2 for speech frames.
 """
 
 from __future__ import print_function
@@ -33,7 +34,8 @@ def get_args():
         description="""
 This script converts frame-level speech activity detection marks (in kaldi
 integer vector text archive format) into kaldi segments and utt2spk.
-The label 1 is for silence and label 2 is for speech.
+The input integer vectors are expected to contain 1 for silence frames
+and 2 for speech frames.
 """,
         formatter_class=argparse.RawTextHelpFormatter)
 
