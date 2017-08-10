@@ -16,6 +16,9 @@ parser.add_argument('out_dir', type=str,
 parser.add_argument('--dataset', type=str, default='trainset',
                     choices=['trainset', 'testset', 'validationset1', 'validationset2'],
                     help='choose trainset, testset, validationset1, or validationset2')
+parser.add_argument('--model_type', type=str,default='word',
+                    choices=['word', 'character'],
+                    help='word model or character model')
 args = parser.parse_args()
 
 ### main ###
@@ -34,19 +37,42 @@ dataset_path = os.path.join(args.database_path,
 
 text_file_path = os.path.join(args.database_path,
                                'ascii','lines.txt')
-
-
 text_dict = {}
-with open (text_file_path, 'rt') as in_file:
-  for line in in_file:
-    if line[0]=='#':
-      continue
-    line = line.strip()
-    line_vect = line.split(' ')
-    text_vect = line.split(' ')[8:]
-    text = "".join(text_vect)
-    text = text.replace("|", " ") 
-    text_dict[line_vect[0]] = text
+def process_text_file_for_word_model():
+  with open (text_file_path, 'rt') as in_file:
+    for line in in_file:
+      if line[0]=='#':
+        continue
+      line = line.strip()
+      line_vect = line.split(' ')
+      text_vect = line.split(' ')[8:]
+      text = "".join(text_vect)
+      text = text.replace("|", " ") 
+      text_dict[line_vect[0]] = text
+
+def process_text_file_for_char_model():
+  with open (text_file_path, 'rt') as in_file:
+    for line in in_file:
+      if line[0]=='#':
+        continue
+      line = line.strip()
+      line_vect = line.split(' ')
+      text_vect = line.split(' ')[8:]
+      text = "".join(text_vect)
+      characters = list(text)
+      spaced_characters = " ".join(characters)
+      spaced_characters = spaced_characters.replace("|", "SIL")
+      spaced_characters = "SIL " + spaced_characters
+      spaced_characters = spaced_characters + " SIL"
+      text_dict[line_vect[0]] = spaced_characters
+
+
+if args.model_type=='word':
+  print 'processing word model'
+  process_text_file_for_word_model()
+else:
+  print 'processing char model'
+  process_text_file_for_char_model()
 
 with open(dataset_path) as f:
   for line in f:
@@ -64,11 +90,23 @@ with open(dataset_path) as f:
     lines_path = os.path.join(args.database_path, 'lines', outerfolder, innerfolder, innerfolder)
     image_file_path = lines_path + img_num + '.png'
 
-    line_elements = doc.getElementsByTagName('line')
-    #element = line_elements[int(line_vect[2])]
-    #text = element.getAttribute('text')
-    text1 =  text_dict[line]
+    #handwritten_elements = form_elements.getElementsByTagName('handwritten-part')[0]
+    #line_elements = handwritten_elements.getElementsByTagName('line')
+    #for line_element in line_elements:
+    #  if line_element.getAttribute('id') == line:
+    #    word_elements = line_element.getElementsByTagName('word')
+    #    for word_element in word_elements:
+    #      image_name = word_element.getAttribute('id')
+    #      image_path = os.path.join(args.database_path, 'words', outerfolder, innerfolder, image_name + '.png')
+    #      
+    #      text =  text_dict[image_name]
+    #      utt_id = writer_id + '_' + image_name
+    #      text_fh.write(utt_id + ' ' + text + '\n')
+    #      utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
+    #      image_fh.write(utt_id + ' ' + image_path + '\n')
+
+    text =  text_dict[line]
     utt_id = writer_id + '_' + line
-    text_fh.write(utt_id + ' ' + text1 + '\n')
+    text_fh.write(utt_id + ' ' + text + '\n')
     utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
     image_fh.write(utt_id + ' ' + image_file_path + '\n')
