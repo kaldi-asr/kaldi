@@ -16,7 +16,6 @@ export tfrnnlm_cmd="queue.pl -l hostname=b*"  # this is specific to the CLSP gri
 # we limit to certain machines because TF binaries compiled from C++ take advantage
 # of machine architectures for optimization
 
-export tfrnnlm_py_cmd="queue.pl --gpu 1 CUDA_VISIBLE_DEVICES=\`/home/gkumar/scripts/free-gpu\`"
 # this is the cmd we use for, specifically on the CLSP grid,
 # training RNNLM with tensorflow. I have gpu here but it actually depends on the versions
 # installed - in tools/extras/install_tensorflow_py.sh we could install either

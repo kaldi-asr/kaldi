@@ -1,4 +1,8 @@
-Here are some numbers comparing rescoring performances of different RNNLM toolkits
+Here are some numbers comparing lattice-rescoring performances of different RNNLM toolkits
+
+For TensorFlow LSTM we are including rescoring results of both 3-gram and 4-gram
+because it seems the 3-gram with LSTM is very comparable to 4-gram with vanilla
+RNNLMs.
 
 Un-rescored baseline:
 %WER 24.2 | 13098 94476 | 79.2 12.0 8.8 3.4 24.2 57.4 | -0.157 | exp/ihm/nnet3/tdnn_sp/decode_dev/ascore_12/dev_hires.ctm.filt.sys
@@ -17,9 +21,10 @@ Tensorflow-RNNLM:
 %WER 23.4 | 13098 94468 | 79.8 11.7 8.5 3.2 23.4 56.9 | -0.231 | exp/ihm/nnet3/tdnn_sp/decode_dev.vanilla.tfrnnlm.lat.4gram.0.5/ascore_11/dev_hires.ctm.filt.sys
 %WER 24.5 | 12643 89964 | 78.3 13.1 8.7 2.7 24.5 55.6 | -0.135 | exp/ihm/nnet3/tdnn_sp/decode_eval.vanilla.tfrnnlm.lat.4gram.0.5/ascore_12/eval_hires.ctm.filt.sys
 
-LSTM-RNNLM (local/tfrnnlm/run-lstm-fast.sh):
+LSTM-RNNLM (local/tfrnnlm/run-lstm-fast.sh, ngram-order=3):
 %WER 23.4 | 13098 94466 | 79.7 11.6 8.7 3.1 23.4 56.8 | -0.213 | exp/ihm/nnet3/tdnn_sp/decode_dev.unk.fast.tfrnnlm.lat.3gram.0.5/ascore_11/dev_hires.ctm.filt.sys
 %WER 24.6 | 12643 89965 | 78.2 13.3 8.6 2.8 24.6 55.6 | -0.148 | exp/ihm/nnet3/tdnn_sp/decode_eval.unk.fast.tfrnnlm.lat.3gram.0.5/ascore_11/eval_hires.ctm.filt.sys
 
+LSTM-RNNLM (local/tfrnnlm/run-lstm-fast.sh, ngram-order=4):
 %WER 23.1 | 13098 94461 | 79.9 11.5 8.6 3.0 23.1 56.5 | -0.212 | exp/ihm/nnet3/tdnn_sp/decode_dev.unk.fast.tfrnnlm.lat.4gram.0.5/ascore_11/dev_hires.ctm.filt.sys
 %WER 24.3 | 12643 89965 | 78.4 13.1 8.5 2.7 24.3 55.3 | -0.164 | exp/ihm/nnet3/tdnn_sp/decode_eval.unk.fast.tfrnnlm.lat.4gram.0.5/ascore_11/eval_hires.ctm.filt.sys

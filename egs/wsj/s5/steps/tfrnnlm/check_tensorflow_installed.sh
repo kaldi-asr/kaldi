@@ -9,7 +9,7 @@ if which lattice-lmrescore-tf-rnnlm 2>&1>/dev/null; then
 else
   echo TF related binaries not compiled.
   echo You would need to run tools/extras/install_tensorflow_cc.sh first
-  echo and then do \"make\" under src/tfrnnlm and src/tfrnnlmbin
+  echo and then do \"make\" under both src/tfrnnlm and src/tfrnnlmbin
   exit 1
 fi
 

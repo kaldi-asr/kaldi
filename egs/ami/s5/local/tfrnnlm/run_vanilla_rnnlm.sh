@@ -26,7 +26,8 @@ fi
 mkdir -p $dir
 if [ $stage -le 2 ]; then
 # the following script uses TensorFlow. You could use tools/extras/install_tensorflow_py.sh to install it
-  $tfrnnlm_py_cmd $dir/train_rnnlm.log python steps/tfrnnlm/vanilla_rnnlm.py --data-path=$dir --save-path=$dir/rnnlm --vocab-path=$dir/wordlist.rnn.final
+  $cuda_cmd $dir/train_rnnlm.log steps/limit_num_gpus.sh \
+    python steps/tfrnnlm/vanilla_rnnlm.py --data-path=$dir --save-path=$dir/rnnlm --vocab-path=$dir/wordlist.rnn.final
 fi
 
 final_lm=ami_fsh.o3g.kn
