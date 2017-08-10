@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
     core_config.Register(&core_opts);
     // ... and register the embedding options with the prefix "embedding".
     ParseOptions embedding_opts("embedding", &po);
-    core_config.Register(&embedding_opts);
+    embedding_config.Register(&embedding_opts);
 
 
     po.Read(argc, argv);
