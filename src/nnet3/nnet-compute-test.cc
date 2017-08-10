@@ -175,9 +175,10 @@ void UnitTestNnetCompute() {
 
     Nnet nnet_collapsed(nnet);
     CollapseModelConfig collapse_config;
-    CollapseModel(collapse_config, &nnet_collapsed);
     NnetComputation computation_collapsed;
+
     if (test_collapse_model) {
+      CollapseModel(collapse_config, &nnet_collapsed);
       Compiler compiler_collapsed(request, nnet_collapsed);
       compiler_collapsed.CreateComputation(opts, &computation_collapsed);
       computation_collapsed.ComputeCudaIndexes();

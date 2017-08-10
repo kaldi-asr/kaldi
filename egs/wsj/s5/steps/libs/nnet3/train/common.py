@@ -106,7 +106,7 @@ def get_successful_models(num_models, log_file_pattern,
 
     parse_regex = re.compile(
         "LOG .* Overall average objective function for "
-        "'output' is ([0-9e.\-+]+) over ([0-9e.\-+]+) frames")
+        "'output' is ([0-9e.\-+= ]+) over ([0-9e.\-+]+) frames")
     objf = []
     for i in range(num_models):
         model_num = i + 1
@@ -118,7 +118,7 @@ def get_successful_models(num_models, log_file_pattern,
             # lesser number of regex searches. Python regex is slow !
             mat_obj = parse_regex.search(lines[-1 * line_num])
             if mat_obj is not None:
-                this_objf = float(mat_obj.groups()[0])
+                this_objf = float(mat_obj.groups()[0].split()[-1])
                 break
         objf.append(this_objf)
     max_index = objf.index(max(objf))
@@ -842,6 +842,13 @@ class CommonParser(object):
                                  the final model combination stage.  These
                                  models will themselves be averages of
                                  iteration-number ranges""")
+        self.parser.add_argument("--trainer.optimization.do-final-combination",
+                                 dest='do_final_combination', type=str,
+                                 action=common_lib.StrToBoolAction,
+                                 choices=["true", "false"], default=True,
+                                 help="""Set this to false to disable the final
+                                 'combine' stage (in this case we just use the
+                                 last-numbered model as the final.mdl).""")
         self.parser.add_argument("--trainer.optimization.combine-sum-to-one-penalty",
                                  type=float, dest='combine_sum_to_one_penalty', default=0.0,
                                  help="""If > 0, activates 'soft' enforcement of the
@@ -886,6 +893,13 @@ class CommonParser(object):
                                  type=int, dest='backstitch_training_interval',
                                  default=1, help="""the interval of minibatches
                                  that backstitch training is applied on.""")
+        self.parser.add_argument("--trainer.compute-per-dim-accuracy",
+                                 dest='compute_per_dim_accuracy',
+                                 type=str, choices=['true', 'false'],
+                                 default=False,
+                                 action=common_lib.StrToBoolAction,
+                                 help="Compute train and validation "
+                                 "accuracy per-dim")
 
         # General options
         self.parser.add_argument("--stage", type=int, default=-4,
@@ -946,4 +960,4 @@ class CommonParser(object):
 
 
 if __name__ == '__main__':
-    self_test()
+    _self_test()

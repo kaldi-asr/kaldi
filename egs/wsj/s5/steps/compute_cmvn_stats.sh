@@ -91,18 +91,18 @@ if $fake; then
   ! cat $data/spk2utt | awk -v dim=$dim '{print $1, "["; for (n=0; n < dim; n++) { printf("0 "); } print "1";
                                                         for (n=0; n < dim; n++) { printf("1 "); } print "0 ]";}' | \
     copy-matrix ark:- ark,scp:$cmvndir/cmvn_$name.ark,$cmvndir/cmvn_$name.scp && \
-     echo "Error creating fake CMVN stats" && exit 1;
+     echo "Error creating fake CMVN stats.  See $logdir/cmvn_$name.log." && exit 1;
 elif $two_channel; then
   ! compute-cmvn-stats-two-channel $data/reco2file_and_channel scp:$data/feats.scp \
        ark,scp:$cmvndir/cmvn_$name.ark,$cmvndir/cmvn_$name.scp \
-    2> $logdir/cmvn_$name.log && echo "Error computing CMVN stats (using two-channel method)" && exit 1;
+    2> $logdir/cmvn_$name.log && echo "Error computing CMVN stats (using two-channel method). See $logdir/cmvn_$name.log." && exit 1;
 elif [ ! -z "$fake_dims" ]; then
   ! compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark:- | \
     modify-cmvn-stats "$fake_dims" ark:- ark,scp:$cmvndir/cmvn_$name.ark,$cmvndir/cmvn_$name.scp && \
-    echo "Error computing (partially fake) CMVN stats" && exit 1;
+    echo "Error computing (partially fake) CMVN stats.  See $logdir/cmvn_$name.log" && exit 1;
 else
   ! compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark,scp:$cmvndir/cmvn_$name.ark,$cmvndir/cmvn_$name.scp \
-    2> $logdir/cmvn_$name.log && echo "Error computing CMVN stats" && exit 1;
+    2> $logdir/cmvn_$name.log && echo "Error computing CMVN stats. See $logdir/cmvn_$name.log" && exit 1;
 fi
 
 cp $cmvndir/cmvn_$name.scp $data/cmvn.scp || exit 1;

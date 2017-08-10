@@ -264,7 +264,7 @@ int main(int argc, char *argv[]) {
       StateId state_id = siter.Value();
       for (MutableArcIterator<KwsLexicographicFst>
            aiter(&index, state_id); !aiter.Done(); aiter.Next()) {
-        Arc arc = aiter.Value();
+        KwsLexicographicArc arc = aiter.Value();
         // Skip the non-final arcs
         if (index.Final(arc.nextstate) == Weight::Zero())
           continue;
@@ -329,7 +329,7 @@ int main(int argc, char *argv[]) {
       int32 tbeg, tend, uid;
       for (ArcIterator<KwsLexicographicFst>
            aiter(result_fst, result_fst.Start()); !aiter.Done(); aiter.Next()) {
-        const Arc &arc = aiter.Value();
+        const KwsLexicographicArc &arc = aiter.Value();
 
         // We're expecting a two-state FST
         if (result_fst.Final(arc.nextstate) != Weight::One()) {
