@@ -137,7 +137,7 @@ void RnnlmExampleSampler::SampleForMinibatch(RnnlmExample *minibatch) const {
   if (sampler_ == NULL) return;  // we're not actually sampling.
   KALDI_ASSERT(minibatch->chunk_length == config_.chunk_length &&
                minibatch->num_chunks == config_.num_chunks_per_minibatch &&
-               config_.sample_group_size % config_.chunk_length == 0 &&
+               config_.chunk_length % config_.sample_group_size == 0 &&
                static_cast<int32>(minibatch->input_words.size()) ==
                config_.chunk_length * config_.num_chunks_per_minibatch);
   int32 num_samples = config_.num_samples,
@@ -159,8 +159,7 @@ void RnnlmExampleSampler::SampleForGroup(int32 g,
                                          RnnlmExample *minibatch) const {
   // All words that appear on the output are required to appear in the sample.  we
   // need to figure what this set of words is.
-  int32 sample_group_size = config_.sample_group_size,
-      num_chunks_per_minibatch = config_.num_chunks_per_minibatch;
+  int32 num_chunks_per_minibatch = config_.num_chunks_per_minibatch;
   std::vector<int32> words_we_must_sample;
   for (int32 t = g * config_.sample_group_size;
        t < (g + 1) * config_.sample_group_size; t++) {
@@ -193,14 +192,15 @@ void RnnlmExampleSampler::SampleForGroup(int32 g,
   // the 'sampler_' object knows how to sample from an unnormalized distribution
   // represented as unigram-weight and a list of higher-than-unigram (word-id,
   // additional-weight) pairs.
-  sampler_->SampleWords(sample_group_size, unigram_weight,
+  int32 num_samples = config_.num_samples;
+  sampler_->SampleWords(num_samples, unigram_weight,
                         higher_order_probs, words_we_must_sample,
                         &sample);
-  KALDI_ASSERT(sample.size() == static_cast<size_t>(sample_group_size));
+  KALDI_ASSERT(sample.size() == static_cast<size_t>(num_samples));
   std::sort(sample.begin(), sample.end());
-  // set up the 'sampled_
-  for (int32 s = 0; s < sample_group_size; s++) {
-    int32 i = (g * sample_group_size) + s;
+  // write to the 'sampled_words' and 'sample_inv_probs' arrays.
+  for (int32 s = 0; s < num_samples; s++) {
+    int32 i = (g * num_samples) + s;
     minibatch->sampled_words[i] = sample[s].first;
     KALDI_ASSERT(sample[s].second > 0.0);
     minibatch->sample_inv_probs(i) = 1.0 / sample[s].second;
@@ -211,14 +211,15 @@ void RnnlmExampleSampler::SampleForGroup(int32 g,
 void RnnlmExampleSampler::RenumberOutputWordsForGroup(
     int32 g, RnnlmExample *minibatch) const {
   int32 sample_group_size = config_.sample_group_size,
+      num_samples = config_.num_samples,
       num_chunks_per_minibatch = config_.num_chunks_per_minibatch,
       num_outputs_per_group = sample_group_size * num_chunks_per_minibatch,
       vocab_size = minibatch->vocab_size;
 
   // get the range of 'sampled_words' that covers this group.
   const int32 *sampled_words_ptr = &(minibatch->sampled_words[0]),
-      *sampled_words_begin = sampled_words_ptr + (g * sample_group_size),
-      *sampled_words_end = sampled_words_begin + sample_group_size;
+      *sampled_words_begin = sampled_words_ptr + (g * num_samples),
+      *sampled_words_end = sampled_words_begin + num_samples;
 
   int32 *output_words_ptr = &(minibatch->output_words[0]),
       *output_words_iter = output_words_ptr + (g * num_outputs_per_group),

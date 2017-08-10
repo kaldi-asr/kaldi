@@ -8,6 +8,7 @@ vocab=data/vocab/words.txt
 embedding_dim=200
 # work out the number of splits.
 ns=$(rnnlm/get_num_splits.sh 200000 data/text $dir/data_weights.txt)
+vocab_size=$(tail -n 1 $vocab |awk '{print $NF + 1}')
 
 # split the data into pieces that individual jobs will train on.
 # rnnlm/split_data.sh data/text $ns
@@ -31,9 +32,9 @@ EOF
 
 
 
-vocab_size=$(tail -n 1 $vocab |awk '{print $NF + 1}')
 
-rnnlm/initialize_matrix.py --num-rows=$vocab_size --num-cols=$embedding_dim > $dir/embedding.0.mat
+rnnlm/initialize_matrix.py --num-rows=$vocab_size --num-cols=$embedding_dim \
+                           --first-column=1.0 > $dir/embedding.0.mat
 
 nnet3-init $dir/config $dir/0.rnnlm
 
@@ -50,4 +51,4 @@ data/text/split5
 
 
 rnnlm-train --use-gpu=no --read-rnnlm=$dir/0.rnnlm --write-rnnlm=/dev/null --read-embedding=$dir/embedding.0.mat \
-  'ark:rnnlm-get-egs --vocab-size=$vocab_size $dir/text/1.txt ark,t:- |'
+  "ark:rnnlm-get-egs --vocab-size=$vocab_size $dir/text/1.txt ark,t:- |"

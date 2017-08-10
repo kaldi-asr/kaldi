@@ -137,11 +137,11 @@ void RnnlmEmbeddingTrainer::Train(
     // effective learning rate due to the geometric sum of (1 + momentum +
     // momentum^2, ...).
     scale *= (1.0 - config_.momentum);
-    embedding_mat_momentum_.AddRows(scale, *embedding_deriv, active_words);
+    embedding_deriv->AddToRows(scale, active_words, &embedding_mat_momentum_);
     embedding_mat_->AddMat(1.0, embedding_mat_momentum_);
     embedding_mat_momentum_.Scale(config_.momentum);
   } else {
-    embedding_mat_->AddRows(scale, *embedding_deriv, active_words);
+    embedding_deriv->AddToRows(scale, active_words, embedding_mat_);
   }
 }
 

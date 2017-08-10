@@ -83,8 +83,8 @@ void SampleWithoutReplacement(const std::vector<double> &probs,
       // and c < -0.9999, or r > 0.9999 and c >= -0.0001.
 
       // give it a bit of extra space in the assertion.
-      KALDI_ASSERT(r < 0.00011 && c < -0.99985 ||
-                   r > 0.99985 && c > -0.00011);
+      KALDI_ASSERT((r < 0.00011 && c < -0.99985) ||
+                   (r > 0.99985 && c > -0.00011));
 
       // .. and continue around the loop.
       // Having 'r' take these values is extremely improbable, so
@@ -490,5 +490,3 @@ double Sampler::GetInitialIntervals(
 
 }  // namespace rnnlm
 }  // namespace kaldi
-
-

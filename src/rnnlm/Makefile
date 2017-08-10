@@ -15,7 +15,6 @@ LIBNAME = kaldi-rnnlm
 
 ADDLIBS = ../nnet3/kaldi-nnet3.a ../cudamatrix/kaldi-cudamatrix.a \
           ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a \
-          ../lm/kaldi-lm.a
+          ../lm/kaldi-lm.a ../hmm/kaldi-hmm.a
 
 include ../makefiles/default_rules.mk
-

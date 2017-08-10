@@ -111,7 +111,7 @@ void ObjectiveTracker::PrintStatsOverall() const {
   os.precision(4);
   os << "Overall objf is (" << num_objf << " + " << den_objf
      << ") = " << tot_objf << " over " << weight << " words (weighted) in "
-     << num_egs_ << "minibatches";
+     << num_egs_ << " minibatches";
   if (exact_den_objf != 0.0) {
     os << "; exact = (" << num_objf << " + " << exact_den_objf
        << ") = " << exact_tot_objf ;

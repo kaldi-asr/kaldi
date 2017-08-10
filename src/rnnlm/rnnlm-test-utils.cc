@@ -45,8 +45,11 @@ void ReadAllLines(const std::string &filename,
 void GetTestSentences(const std::set<std::string> &forbidden_symbols,
                       std::vector<std::vector<std::string> > *sentences) {
   sentences->clear();
-  for (char i = '1'; i <= '5'; i++)
-    ReadAllLines(i + std::string(".txt"), sentences);
+  ReadAllLines("arpa-sampling-test.cc", sentences);
+  ReadAllLines("rnnlm-example-test.cc", sentences);
+  ReadAllLines("rnnlm-example.cc", sentences);
+  ReadAllLines("rnnlm-example-utils.cc", sentences);
+
   // find and escape forbidden symbols
   for (int i = 0; i < sentences->size(); i++)
     for (int j = 0; j < (*sentences)[i].size(); j++)

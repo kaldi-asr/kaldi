@@ -633,6 +633,7 @@ void OnlineNaturalGradient::ComputeEt(const VectorBase<BaseFloat> &d_t,
 OnlineNaturalGradient::OnlineNaturalGradient(const OnlineNaturalGradient &other):
     rank_(other.rank_), update_period_(other.update_period_),
     num_samples_history_(other.num_samples_history_),
+    num_minibatches_history_(other.num_minibatches_history_),
     alpha_(other.alpha_), epsilon_(other.epsilon_), delta_(other.delta_),
     frozen_(other.frozen_),
     t_(other.t_), num_updates_skipped_(other.num_updates_skipped_),

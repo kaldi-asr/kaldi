@@ -2087,10 +2087,13 @@ void MatrixBase<Real>::ApplyExp() {
 
 template<typename Real>
 void MatrixBase<Real>::ApplyExpSpecial() {
-  for (MatrixIndexT i = 0; i < num_rows_; ++i) {
-    for (MatrixIndexT j = 0; j < num_cols_; ++j) {
-      Real& x = (*this)(i, j);
-      x = x < Real(0) ? exp(x) : x + Real(1);
+  int32 num_rows = num_rows_, num_cols = num_cols_,
+      stride = stride_;
+  Real *data = data_;
+  for (MatrixIndexT i = 0; i < num_rows; ++i) {
+    for (MatrixIndexT j = 0; j < num_cols; ++j) {
+      Real &x = *(data + j + stride * i);
+      x = x < Real(0) ? Exp(x) : x + Real(1);
     }
   }
 }

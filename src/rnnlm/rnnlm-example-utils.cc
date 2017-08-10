@@ -165,7 +165,7 @@ static void ProcessRnnlmOutputSampling(
     if (objf_den) {
       *objf_den +=
           -VecMatVec(output_weights_part, word_logprobs,
-                     minibatch.sample_inv_probs);
+                     sample_inv_probs_part);
     }
 
 
@@ -177,7 +177,7 @@ static void ProcessRnnlmOutputSampling(
     // the inverses of the sampling probabilities appear as a factor
     // in the deriviative of the objf w.r.t. the words' logprobs
     // (which is what we're computing now).
-    word_logprobs.MulColsVec(minibatch.sample_inv_probs);
+    word_logprobs.MulColsVec(sample_inv_probs_part);
 
 
     // This adds -1.0 to the elements of 'word_logprobs' corresponding
@@ -236,15 +236,17 @@ static void ProcessRnnlmOutputNoSampling(
     BaseFloat *objf_den,
     BaseFloat *objf_den_exact) {
 
-
   int32 embedding_dim = word_embedding.NumCols();
   int32 num_words = word_embedding.NumRows();
+
+
 
   // 'word_logprobs' contains the unnormalized logprobs of the words.
   CuMatrix<BaseFloat> word_logprobs(nnet_output.NumRows(),
                                     num_words);
   word_logprobs.AddMatMat(1.0, nnet_output, kNoTrans,
                           word_embedding, kTrans, 0.0);
+
   if (weight) {
     *weight = minibatch.output_weights.Sum();
   }
@@ -282,8 +284,9 @@ static void ProcessRnnlmOutputNoSampling(
 
   if (objf_den) {
     // we call this variable 'q_noeps' because in the math described in
-    // rnnlm-example-utils.h it is described as q(i,w), and because
-    // we're skipping over epsilon by missing the first row.
+    // rnnlm-example-utils.h it is described as q(i,w), and because we're
+    // skipping over the epsilon symbol (which we don't want to include in the
+    // sum because it can never be output) by removing the first row.
     CuSubMatrix<BaseFloat> q_noeps(word_logprobs,
                                    0, word_logprobs.NumRows(),
                                    1, num_words - 1);
@@ -304,41 +307,46 @@ static void ProcessRnnlmOutputNoSampling(
   // To avoid one CUDA operation, we're going to make 'word_logprobs'
   // the *negative* of the derivative of the objf w.r.t.
   // the original 'word_logprobs'  Note: don't worry about the
-  // fact that we're including the epsilon word at this point,
+  // fact that we're including the epsilon word at this point;
   // later on we'll ignore the value of the first column.
 
   // The derivative of the function q(l) = (l < 0 ? exp(l) : l + 1.0)
   // equals (l < 0 ? exp(l) : 1.0), which we can compute by
   // applying a ceiling to q at 1.0.
   word_logprobs.ApplyCeiling(1.0);
+
+
   // Include the factor 'minibatch.output_weights'.
   word_logprobs.MulRowsVec(minibatch.output_weights);
-  // After the following statement, word_logprobs will contains the negative of
-  // the derivative of the objective function w.r.t. l(i, x), except that
-  // the first column (for epsilon) should be ignored.
+  // After the following statement, 'word_logprobs' will contains the negative
+  // of the derivative of the objective function w.r.t. l(i, x), except that the
+  // first column (for epsilon) should be ignored.
+
   word_logprobs.AddSmat(-1.0, derived.output_words_smat);
 
-  // l_deriv_noeps is the derivative of the objective function
-  // w.r.t. the unnormalized log-likelihoods 'l' (with the 0th
-  // row, for epsilon, not included).
+  // l_deriv_noeps is the negative of the derivative of the objective function
+  // w.r.t. the unnormalized log-likelihoods 'l' (with the 0th row, for epsilon,
+  // not included).
   CuSubMatrix<BaseFloat> l_deriv_noeps(word_logprobs,
                                        0, word_logprobs.NumRows(),
-                                       0, num_words - 1);
+                                       1, num_words - 1);
 
   // The following statements are doing the backprop w.r.t. the statement:
   //  word_logprobs.AddMatMat(1.0, nnet_output, kNoTrans,
   //                          word_embedding, kTrans, 0.0);
-  // (note: 'word_logprobs' corresponds to 'l'.
+  // (note: 'word_logprobs' in the code corresponds to 'l' in the formulas).
+  // The -1.0's are because we have at this point the negative of the
+  // derivative w.r.t the unnormalized log-likelihoods.
   if (word_embedding_deriv) {
     CuSubMatrix<BaseFloat> word_embedding_deriv_noeps(
         *word_embedding_deriv, 1, num_words - 1, 0, embedding_dim);
-    word_embedding_deriv_noeps.AddMatMat(1.0, l_deriv_noeps, kTrans,
+    word_embedding_deriv_noeps.AddMatMat(-1.0, l_deriv_noeps, kTrans,
                                          nnet_output, kNoTrans, 1.0);
   }
   if (nnet_output_deriv) {
     CuSubMatrix<BaseFloat> word_embedding_noeps(
         word_embedding, 1, num_words - 1, 0, embedding_dim);
-    nnet_output_deriv->AddMatMat(1.0, l_deriv_noeps, kNoTrans,
+    nnet_output_deriv->AddMatMat(-1.0, l_deriv_noeps, kNoTrans,
                                  word_embedding_noeps, kNoTrans, 1.0);
   }
 }
@@ -384,7 +392,7 @@ void GetRnnlmExampleDerived(const RnnlmExample &minibatch,
   bool using_sampling = !(minibatch.sampled_words.empty());
   if (using_sampling) {
     derived->cu_output_words = minibatch.output_words;
-    derived->cu_sampled_words = minibatch.output_words;
+    derived->cu_sampled_words = minibatch.sampled_words;
   } else {
     CuArray<int32> cu_output_words(minibatch.output_words);
     CuSparseMatrix<BaseFloat> output_words_smat(cu_output_words,
