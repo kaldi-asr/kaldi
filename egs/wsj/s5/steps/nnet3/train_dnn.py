@@ -199,16 +199,14 @@ def train(args, run_opts):
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
 
-    if (args.stage <= -5):
-        if os.path.exists(args.dir+"/configs/init.config"):
-            logger.info("Initializing a basic network for estimating "
-                        "preconditioning matrix")
-            common_lib.run_job(
-                """{command} {dir}/log/nnet_init.log \
-                        nnet3-init --srand=-2 {dir}/configs/init.config \
-                        {dir}/init.raw""".format(command=run_opts.command,
-                                                 dir=args.dir))
-        assert(os.path.exists(args.dir+"/init.raw"))
+    if (args.stage <= -5) and os.path.exists(args.dir+"/configs/init.config"):
+        logger.info("Initializing a basic network for estimating "
+                    "preconditioning matrix")
+        common_lib.execute_command(
+            """{command} {dir}/log/nnet_init.log \
+                    nnet3-init --srand=-2 {dir}/configs/init.config \
+                    {dir}/init.raw""".format(command=run_opts.command,
+                                             dir=args.dir))
 
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -4) and args.egs_dir is None:
@@ -283,10 +281,15 @@ def train(args, run_opts):
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
 
-    models_to_combine = common_train_lib.get_model_combine_iters(
-        num_iters, args.num_epochs,
-        num_archives_expanded, args.max_models_combine,
-        args.num_jobs_final)
+    # If do_final_combination is True, compute the set of models_to_combine.
+    # Otherwise, models_to_combine will be none.
+    if args.do_final_combination:
+        models_to_combine = common_train_lib.get_model_combine_iters(
+            num_iters, args.num_epochs,
+            num_archives_expanded, args.max_models_combine,
+            args.num_jobs_final)
+    else:
+        models_to_combine = None
 
     logger.info("Training will run for {0} epochs = "
                 "{1} iterations".format(args.num_epochs, num_iters))
@@ -354,28 +357,34 @@ def train(args, run_opts):
         num_archives_processed = num_archives_processed + current_num_jobs
 
     if args.stage <= num_iters:
-        logger.info("Doing final combination to produce final.mdl")
-        train_lib.common.combine_models(
-            dir=args.dir, num_iters=num_iters,
-            models_to_combine=models_to_combine,
-            egs_dir=egs_dir,
-            minibatch_size_str=args.minibatch_size, run_opts=run_opts,
-            sum_to_one_penalty=args.combine_sum_to_one_penalty)
-
+        if args.do_final_combination:
+            logger.info("Doing final combination to produce final.mdl")
+            train_lib.common.combine_models(
+                dir=args.dir, num_iters=num_iters,
+                models_to_combine=models_to_combine,
+                egs_dir=egs_dir,
+                minibatch_size_str=args.minibatch_size, run_opts=run_opts,
+                sum_to_one_penalty=args.combine_sum_to_one_penalty)
+    
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
                     "adjusting the priors.")
+        
+        # If args.do_final_combination is true, we will use the combined model.
+        # Otherwise, we will use the last_numbered model.
+        real_iter = 'combined' if args.do_final_combination else num_iters
         avg_post_vec_file = train_lib.common.compute_average_posterior(
-            dir=args.dir, iter='combined', egs_dir=egs_dir,
-            num_archives=num_archives,
+            dir=args.dir, iter=real_iter, 
+            egs_dir=egs_dir, num_archives=num_archives,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts)
 
         logger.info("Re-adjusting priors based on computed posteriors")
-        combined_model = "{dir}/combined.mdl".format(dir=args.dir)
+        combined_or_last_numbered_model = "{dir}/{iter}.mdl".format(dir=args.dir,
+                iter=real_iter)
         final_model = "{dir}/final.mdl".format(dir=args.dir)
-        train_lib.common.adjust_am_priors(args.dir, combined_model,
-                                          avg_post_vec_file, final_model,
-                                          run_opts)
+        train_lib.common.adjust_am_priors(args.dir, combined_or_last_numbered_model,
+                avg_post_vec_file, final_model, run_opts)
+
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory "
