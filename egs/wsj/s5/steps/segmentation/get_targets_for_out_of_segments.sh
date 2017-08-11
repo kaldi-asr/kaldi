@@ -3,6 +3,22 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
+# This script prepares targets for whole recordings for training 
+# speech activity detection system on the out-of-segment regions. 
+# See the script steps/segmentation/lats_to_targets.sh for details about the 
+# targets matrix.
+# The out-of-segment regions are assigned the target values in the 
+# file specified (in kaldi vector text format) by --default-targets option. 
+# The in-segment regions are all assigned [ 0 0 0 ], 
+# which means they don't contribute to the training. We will later be 
+# combining these targets with other targets obtained from 
+# supervision-constrained lattices and decoded lattices using the 
+# script steps/segmentation/merge_targets.sh.
+# By default, the 'default_targets' would be [ 1 0 0 ], which means all
+# the out-of-segment regions are assumed as silence. But depending, on
+# the application and data, this could be [ 0 0 0 ] or [ 0 0 1 ] or
+# something with fractional weights.
+
 nj=4
 cmd=run.pl
 default_targets=   # vector of default targets in text format
@@ -15,6 +31,9 @@ set -o pipefail -u
 
 if [ $# -ne 3 ]; then
   cat <<EOF
+  This script prepares targets for whole recordings for training 
+  speech activity detection system on the out-of-segment regions. 
+  See the top of the script for details.
   Usage: steps/segmentation/get_targets_for_out_of_segments.sh <data-dir> <whole-data-dir> <targets-dir>
    e.g.: steps/segmentation/get_targets_for_out_of_segments.sh \
     data/train_split10s data/train_whole \
@@ -78,4 +97,3 @@ steps/segmentation/validate_targets_dir.sh $dir $whole_data || exit 1
 echo "$0: Got default targets for out-of-segments regions in $whole_data corresponding to segments in $data"
 
 exit 0
-

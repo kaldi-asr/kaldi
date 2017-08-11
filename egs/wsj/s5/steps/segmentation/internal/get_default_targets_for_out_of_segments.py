@@ -3,6 +3,18 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
+"""
+This script gets targets for the whole recording
+by adding 'default_targets' vector read from file specified by
+--default-targets option for the out-of-segments regions and
+zeros for all other frames. See steps/segmentation/lats_to_targets.sh
+for details about the targets matrix.
+By default, the 'default_targets' would be [ 1 0 0 ], which means all
+the out-of-segment regions are assumed as silence. But depending, on
+the application and data, this could be [ 0 0 0 ] or [ 0 0 1 ] or
+something with fractional weights.
+"""
+
 import argparse
 import logging
 import numpy as np
@@ -25,13 +37,14 @@ logger.addHandler(handler)
 def get_args():
     parser = argparse.ArgumentParser(
         description="""This script gets targets for the whole recording
-        by adding default_targets vector read from file specified by
+        by adding 'default_targets' vector read from file specified by
         --default-targets option for the out-of-segments regions and
-        zeros for all other frames.
-        Typically the default_targets would be [ 1 0 0 ], which means all
+        zeros for all other frames. See steps/segmentation/lats_to_targets.sh
+        for details about the targets matrix.
+        By default, the 'default_targets' would be [ 1 0 0 ], which means all
         the out-of-segment regions are assumed as silence. But depending, on
         the application and data, this could be [ 0 0 0 ] or [ 0 0 1 ] or
-        something with fraction weights.
+        something with fractional weights.
         """)
 
     parser.add_argument("--frame-shift", type=float, default=0.01,
@@ -113,7 +126,7 @@ def run(args):
     if args.default_targets is not None:
         default_targets = np.matrix(common_lib.read_matrix_ascii(args.default_targets))
     else:
-        default_targets = np.zeros([1, 3])
+        default_targets = np.matrix([[1, 0, 0]])
     assert (np.shape(default_targets)[0] == 1
             and np.shape(default_targets)[1] == 3)
 
@@ -144,9 +157,10 @@ def run(args):
                                               key=reco)
                 num_reco += 1
 
-    logger.info("Merged {num_utt} segment targets from {num_reco} recordings; "
-                "failed with {num_utt_err} utterances"
-                "".format(num_utt=num_utt, num_reco=num_reco,
+    logger.info("Got default out-of-segment targets for {num_reco} recordings "
+                "containing {num_utt} in-segment regions; "
+                "failed to account {num_utt_err} utterances"
+                "".format(num_reco=num_reco, num_utt=num_utt,
                           num_utt_err=num_utt_err))
 
     if num_utt == 0 or num_utt_err > num_utt / 2 or num_reco == 0:
@@ -163,4 +177,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
