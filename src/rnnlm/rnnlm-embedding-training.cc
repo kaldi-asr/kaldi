@@ -162,9 +162,9 @@ void RnnlmEmbeddingTrainer::PrintStats() {
       baseline_params_2norm = initial_embedding_mat_.FrobeniusNorm(),
       relative_param_change = param_change_2norm / baseline_params_2norm;
 
-  KALDI_LOG << "Norm of parameter differences is " << param_change_2norm;
-  KALDI_LOG << "Norm of parameter matrix is " << baseline_params_2norm;
-  KALDI_LOG << "Relative norm of parameter difference is "
+  KALDI_LOG << "Norm of embedding-matrix differences is " << param_change_2norm;
+  KALDI_LOG << "Norm of embedding matrix is " << baseline_params_2norm;
+  KALDI_LOG << "Relative change in embedding matrix is "
             << relative_param_change;
 }
 

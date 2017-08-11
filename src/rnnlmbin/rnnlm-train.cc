@@ -122,6 +122,7 @@ int main(int argc, char *argv[]) {
 
 #if HAVE_CUDA==1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
+    CuDevice::Instantiate().AllowMultithreading();
 #endif
 
     kaldi::nnet3::Nnet rnnlm;

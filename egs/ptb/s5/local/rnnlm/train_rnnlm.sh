@@ -22,7 +22,7 @@ rnnlm/prepare_split_data.py --vocab-file=$vocab --data-weights-file=$dir/data_we
 # make config file.
 # for now it's not even recurrent, it's just a feedforward network.
 
-embedding_dim=200
+embedding_dim=600
 cat >$dir/config <<EOF
 input-node name=input dim=$embedding_dim
 component name=affine1 type=NaturalGradientAffineComponent input-dim=$embedding_dim output-dim=$embedding_dim
@@ -32,23 +32,19 @@ EOF
 
 
 
-
+# note: this is way too slow, we need to speed it up somehow.
+# I'm not sure if I want to have a dependency on numpy just for this though.
+# maybe we can rewrite in perl.
 rnnlm/initialize_matrix.py --num-rows=$vocab_size --num-cols=$embedding_dim \
                            --first-column=1.0 > $dir/embedding.0.mat
 
 nnet3-init $dir/config $dir/0.rnnlm
 
 
-
-utils/sym2int.pl  -f 2-  $vocab <data/text/split5/1.txt | utils/apply_map.pl -f 1 $dir/data_weights.txt | head
-
-data/text/split5/1.txt
-
-data/text/split5
+rnnlm-train --use-gpu=no --read-rnnlm=$dir/0.rnnlm --write-rnnlm=$dir/1.rnnlm --read-embedding=$dir/embedding.0.mat \
+  --write-embedding=/$dir/embedding.1.mat "ark:rnnlm-get-egs --vocab-size=$vocab_size $dir/text/1.txt ark,t:- |"
 
 
-/export/a09/dpovey/kaldi-chain/src/rnnlmbin/
-
-
-rnnlm-train --use-gpu=no --read-rnnlm=$dir/0.rnnlm --write-rnnlm=/dev/null --read-embedding=$dir/embedding.0.mat \
-  "ark:rnnlm-get-egs --vocab-size=$vocab_size $dir/text/1.txt ark,t:- |"
+# just a note on the unigram entropy of PTB:
+# awk '{for (n=1;n<=NF;n++) { count[$n]++; } count["</s>"]++; } END{ tot_count=0; tot_entropy=0.0; for(k in count) tot_count += count[k];  for (k in count) { p = count[k]*1.0/tot_count; tot_entropy += p*log(p); }  print "entropy is " -tot_entropy; }' <data/text/ptb.txt
+# 6.52933

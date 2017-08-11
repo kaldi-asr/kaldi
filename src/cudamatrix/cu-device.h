@@ -57,10 +57,15 @@ class CuDevice {
   // cudaMallocPitch and cudaFree.  Their function is to cache the results of
   // previous allocations to avoid the very large overhead that CUDA's
   // allocation seems to give for some setups.
-  inline void* Malloc(size_t size) { return allocator_.Malloc(size); }
+  inline void* Malloc(size_t size) {
+    return multi_threaded_ ? allocator_.MallocLocking(size) :
+        allocator_.Malloc(size);
+  }
 
   inline void* MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch) {
-    if (debug_stride_mode_) {
+    if (multi_threaded_) {
+      return allocator_.MallocPitchLocking(row_bytes, num_rows, pitch);
+    } else if (debug_stride_mode_) {
       // The pitch bucket size is hardware dependent.
       // It is 512 on K40c with CUDA 7.5
       // "% 8" ensures that any 8 adjacent allocations have different pitches
@@ -72,7 +77,10 @@ class CuDevice {
       return allocator_.MallocPitch(row_bytes, num_rows, pitch);
     }
   }
-  inline void Free(void *ptr) { allocator_.Free(ptr); }
+  inline void Free(void *ptr) {
+    if (multi_threaded_) allocator_.FreeLocking(ptr);
+    else allocator_.Free(ptr);
+  }
 
   /// Select a GPU for computation, the 'use_gpu' modes are:
   ///  "yes"      -- Select GPU automatically and die if this fails.
@@ -102,6 +110,11 @@ class CuDevice {
   void PrintProfile();
 
   void PrintMemoryUsage() const;
+
+  /// The user should call this if the program plans to access the GPU (e.g. via
+  /// using class CuMatrix) from more than one thread.  If you fail to call this
+  /// for a multi-threaded program, it will occasionally segfault.
+  inline void AllowMultithreading() { multi_threaded_ = true; }
 
   void ResetProfile() {
     profile_map_.clear();
@@ -187,7 +200,7 @@ class CuDevice {
   uint32 num_debug_stride_allocations_;
 
   CuMemoryAllocator allocator_;
-
+  bool multi_threaded_;   // true if user called AllowMultiThreadedOperation().
 }; // class CuDevice
 
 

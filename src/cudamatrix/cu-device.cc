@@ -541,40 +541,10 @@ void CuDevice::CheckGpuHealth() {
   AccuProfile(__func__, t);
 }
 
-
-/*
-  void CuDevice::Free(void *ptr) {
-  CU_SAFE_CALL(cudaFree(ptr));
-  }
-
-  void* CuDevice::MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch) {
-  void *ans = NULL;
-  cudaError_t e = cudaMallocPitch(&ans, pitch, row_bytes, num_rows);
-  if (e != cudaSuccess) {
-  PrintMemoryUsage();
-  KALDI_ERR << "CuDevice::MallocPitch: cannot allocate the requested memory ("
-  << row_bytes << " x " << num_rows << " = "
-  << row_bytes * num_rows << " bytes )";
-  }
-  return ans;
-  }
-
-  void* CuDevice::Malloc(size_t size) {
-  void *ans = NULL;
-  cudaError_t e = cudaMalloc(&ans, size);
-  if (e != cudaSuccess) {
-  PrintMemoryUsage();
-  KALDI_ERR << "CuDevice::Malloc: cannot allocate the requested memory"
-  << " (" << size << " bytes )";
-  }
-  return ans;
-  }
-*/
-
 CuDevice::CuDevice() :
     active_gpu_id_(-1), debug_stride_mode_(false),
-    num_debug_stride_allocations_(0), allocator_(CuAllocatorOptions()) {
-}
+    num_debug_stride_allocations_(0), allocator_(CuAllocatorOptions()),
+    multi_threaded_(false) { }
 
 
 CuDevice::~CuDevice() {
