@@ -38,10 +38,9 @@ utils/data/get_utt2dur.sh ${srcdir}
 
 utils/data/perturb_data_dir_speed.sh 0.9 ${srcdir} ${destdir}_speed0.9 || exit 1
 utils/data/perturb_data_dir_speed.sh 1.1 ${srcdir} ${destdir}_speed1.1 || exit 1
-utils/copy_data_dir.sh --spk-prefix sp1.0- --utt-prefix sp1.0- ${srcdir} ${destdir}_speed1.0
-utils/data/combine_data.sh $destdir ${destdir}_speed0.9 ${destdir}_speed1.0 ${destdir}_speed1.1 || exit 1
+utils/data/combine_data.sh $destdir ${srcdir} ${destdir}_speed0.9 ${destdir}_speed1.1 || exit 1
 
-rm -r ${destdir}_speed0.9 ${destdir}_speed1.0 ${destdir}_speed1.1
+rm -r ${destdir}_speed0.9 ${destdir}_speed1.1
 
 echo "$0: generated 3-way speed-perturbed version of data in $srcdir, in $destdir"
 utils/validate_data_dir.sh --no-feats --no-text $destdir
