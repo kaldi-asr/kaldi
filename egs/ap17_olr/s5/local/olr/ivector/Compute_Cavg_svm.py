@@ -9,11 +9,8 @@ from math import *
 
 
 # Load the result file in the following format
-# <lang-id> ct-cn     id-id     ja-jf     ko-kr     ru-ru     vi-vn     zh-cn
-# <utt-id>  <score1>  <score2>  <score3>  <score4>  <score5>  <score6>  <scorelangnum>
-
-# The language identity is defined as: 
-# 1: ct-cn, 2: id-id, 3: ja-jf, 4: ko-kr, 5: ru-ru, 6: vi-vn, langnum: zh-cn
+# <lang-id> ct-cn     id-id     ja-jf     ko-kr     ru-ru     vi-vn     zh-cn ...
+# <utt-id>  <score1>  <score2>  <score3>  <score4>  <score5>  <score6>  <scorelangnum> ...
 
 langnum = 10
 dictl = {'0':1, '1':2, '2':3, '3':4, '4':5, '5':6, '6':7, '7':8, '8':9, '9':10}

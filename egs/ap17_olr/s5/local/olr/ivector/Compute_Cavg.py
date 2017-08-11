@@ -9,14 +9,11 @@ from math import *
 
 
 # Load the result file in the following format
-# <lang-id> ct-cn     id-id     ja-jf     ko-kr     ru-ru     vi-vn     zh-cn
-# <utt-id>  <score1>  <score2>  <score3>  <score4>  <score5>  <score6>  <scorelangnum>
-
-# The language identity is defined as: 
-# 1: ct-cn, 2: id-id, 3: ja-jf, 4: ko-kr, 5: ru-ru, 6: vi-vn, langnum: zh-cn
+# <lang-id> ct-cn     id-id     ja-jf     ko-kr     ru-ru     vi-vn     zh-cn ...
+# <utt-id>  <score1>  <score2>  <score3>  <score4>  <score5>  <score6>  <scorelangnum> ...
 
 langnum = 10
-dictl = {'ct':1, 'id':2, 'ja':3, 'kazak':4, 'ko':5, 'ru':6, 'tibetan':7, 'uyghur':8, 'vi':9, 'zh':10}
+dictl = {'ct':1, 'id':2, 'ja':3, 'Kazak':4, 'ko':5, 'ru':6, 'Tibet':7, 'Uyghu':8, 'vi':9, 'zh':10}
 
 # Load scoring file and label.scp.
 def Loaddata(fin, landictfin, langnum):

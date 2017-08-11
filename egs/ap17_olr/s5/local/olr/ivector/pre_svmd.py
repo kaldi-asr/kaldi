@@ -2,7 +2,7 @@
 
 import sys
 
-ldt = {'ct':0, 'id':1, 'ja':2, 'kazak':3, 'ko':4, 'ru':5, 'tibetan':6, 'uyghur':7, 'vi':8, 'zh':9}
+ldt = {'ct':0, 'id':1, 'ja':2, 'Kazak':3, 'ko':4, 'ru':5, 'Tibet':6, 'Uyghu':7, 'vi':8, 'zh':9}
 
 def fun7(fin, lan, fout):
         fin = open(fin, 'r')
@@ -27,15 +27,15 @@ def fun7(fin, lan, fout):
                         k=1
                 elif landict[pt[0]] == 'ja':
                         k=2
-                elif landict[pt[0]] == 'kazak':
+                elif landict[pt[0]] == 'Kazak':
                         k=3
                 elif landict[pt[0]] == 'ko':
                         k=4
                 elif landict[pt[0]] == 'ru':
                         k=5
-                elif landict[pt[0]] == 'tibetan':
+                elif landict[pt[0]] == 'Tibet':
                         k=6
-		elif landict[pt[0]] == 'uyghur':
+		elif landict[pt[0]] == 'Uyghu':
                         k=7
 		elif landict[pt[0]] == 'vi':
                         k=8
