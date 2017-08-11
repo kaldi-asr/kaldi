@@ -45,7 +45,7 @@ if [ $stage -le 3 ]; then
       --rnnlm-ver tensorflow  --weight $weight --max-ngram-order $ngram_order \
       data/lang_$LM $dir \
       data/$mic/${decode_set}_hires ${decode_dir} \
-      ${decode_dir}.unk.fast.tfrnnlm.lat.${ngram_order}gram.$weight.gpu  &
+      ${decode_dir}.unk.fast.tfrnnlm.lat.${ngram_order}gram.$weight  &
 
   done
 fi
