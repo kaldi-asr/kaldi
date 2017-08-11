@@ -28,6 +28,15 @@ exp=exp/ivector
 
 set -e
 
+# When doing i-vector LID, the two files ('spk2utt' and 'utt2spk') in data/{train,dev_1s,dev_3s,dev_all},
+# should be replaced with those in local/olr/ivector/lan2utt, 
+# after then, each 'spk' actually indicates one language of the ten.
+for subpath in {train,dev_1s,dev_3s,dev_all}/utt2spk; do
+  if ! cmp data/$subpath local/olr/ivector/lan2utt/$subpath &> /dev/null; then
+    echo "data/$subpath should be replaced with local/olr/ivector/lan2utt/$subpath and so is spk2utt" && exit 1;
+  fi
+done
+
 if (( 1 == 1 ));then
   # Feature extraction
   mfccdir=`pwd`/_mfcc
