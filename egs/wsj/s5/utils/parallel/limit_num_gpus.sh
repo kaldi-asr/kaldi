@@ -12,7 +12,7 @@ num_gpus=1 # this variable indicates how many GPUs we will allow the command
            # CUDA_VISIBLE_DEVICES variable
 set -e
 
-if [ "$1" == "--num-gpus" ] || [ "$1" == "--num_gpus" ]; then
+if [ "$1" == "--num-gpus" ]; then
   num_gpus=$2
   shift
   shift
@@ -21,13 +21,14 @@ fi
 if ! printf "%d" "$num_gpus" >/dev/null || [ $num_gpus -le 0 ]; then
   echo $0: Must pass a positive interger after --num-gpus
   echo e.g. $0 --num-gpus 2 local/tfrnnlm/run_lstm.sh
-  exit -1
+  exit 1
 fi
 
 if [ $# -eq 0 ]; then
-  echo $0: Missing commands
-  echo e.g. $0 --num-gpus 2 local/tfrnnlm/run_lstm.sh
-  exit -1
+  echo "Usage:  $0 [--num-gpus <num-gpus>] <command> [<arg1>...]"
+  echo "Runs <command> with args after setting CUDA_VISIBLE_DEVICES to "
+  echo "make sure exactly <num-gpus> GPUs are visible (default: 1)."
+  exit 1
 fi
 
 CUDA_VISIBLE_DEVICES=
@@ -43,7 +44,7 @@ for i in `seq 0 $[$num_total_gpus-1]`; do
   [ $num_gpus_assigned -eq $num_gpus ] && break
 done
 
-[ $num_gpus_assigned -ne $num_gpus ] && echo Could not find enough idle GPUs && exit -1
+[ $num_gpus_assigned -ne $num_gpus ] && echo Could not find enough idle GPUs && exit 1
 
 export CUDA_VISIBLE_DEVICES=$(echo $CUDA_VISIBLE_DEVICES | sed "s=,$==g")
 
