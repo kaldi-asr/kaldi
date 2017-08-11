@@ -346,7 +346,7 @@ def train(args, run_opts):
     num_archives_processed = 0
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
-    
+
     # If do_final_combination is True, compute the set of models_to_combine.
     # Otherwise, models_to_combine will be none.
     if args.do_final_combination:
@@ -419,7 +419,8 @@ def train(args, run_opts):
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
                 backstitch_training_scale=args.backstitch_training_scale,
-                backstitch_training_interval=args.backstitch_training_interval)
+                backstitch_training_interval=args.backstitch_training_interval,
+                compute_per_dim_accuracy=args.compute_per_dim_accuracy)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
@@ -450,7 +451,8 @@ def train(args, run_opts):
                 run_opts=run_opts,
                 minibatch_size_str=args.num_chunk_per_minibatch,
                 chunk_width=args.chunk_width,
-                sum_to_one_penalty=args.combine_sum_to_one_penalty)
+                sum_to_one_penalty=args.combine_sum_to_one_penalty,
+                compute_per_dim_accuracy=args.compute_per_dim_accuracy)
 
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "

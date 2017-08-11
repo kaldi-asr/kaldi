@@ -12,9 +12,12 @@
 # right, and this ends up getting shared.  This is at the expense of slightly
 # higher disk I/O while training.
 
+set -o pipefail
+trap "" PIPE
 
 # Begin configuration section.
 cmd=run.pl
+frame_subsampling_factor=1
 frames_per_eg=8   # number of frames of labels per example.  more->less disk space and
                   # less time preparing egs, but more I/O during training.
                   # Note: may in general be a comma-separated string of alternative
@@ -275,13 +278,15 @@ if [ $stage -le 3 ]; then
     utils/filter_scp.pl $dir/valid_uttlist $dir/ali_special.scp \| \
     ali-to-pdf $alidir/final.mdl scp:- ark:- \| \
     ali-to-post ark:- ark:- \| \
-    nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opts $egs_opts "$valid_feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs --frame-subsampling-factor=$frame_subsampling_factor \
+      $ivector_opts $egs_opts "$valid_feats" \
       ark,s,cs:- "ark:$dir/valid_all.egs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
     utils/filter_scp.pl $dir/train_subset_uttlist $dir/ali_special.scp \| \
     ali-to-pdf $alidir/final.mdl scp:- ark:- \| \
     ali-to-post ark:- ark:- \| \
-    nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opts $egs_opts "$train_subset_feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs --frame-subsampling-factor=$frame_subsampling_factor \
+      $ivector_opts $egs_opts "$train_subset_feats" \
       ark,s,cs:- "ark:$dir/train_subset_all.egs" || touch $dir/.error &
   wait;
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
@@ -333,7 +338,8 @@ if [ $stage -le 4 ]; then
   echo "$0: Generating training examples on disk"
   # The examples will go round-robin to egs_list.
   $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
-    nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opts $egs_opts "$feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs --frame-subsampling-factor=$frame_subsampling_factor \
+    $ivector_opts $egs_opts "$feats" \
     "ark,s,cs:filter_scp.pl $sdata/JOB/utt2spk $dir/ali.scp | ali-to-pdf $alidir/final.mdl scp:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
     nnet3-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi
@@ -360,7 +366,7 @@ if [ $stage -le 5 ]; then
 
     if $generate_egs_scp; then
       #concatenate egs.JOB.scp in single egs.scp
-      rm -rf $dir/egs.scp
+      rm $dir/egs.scp 2> /dev/null || true
       for j in $(seq $num_archives_intermediate); do
         cat $dir/egs.$j.scp || exit 1;
       done > $dir/egs.scp || exit 1;
@@ -390,7 +396,7 @@ if [ $stage -le 5 ]; then
 
     if $generate_egs_scp; then
       #concatenate egs.JOB.scp in single egs.scp
-      rm -rf $dir/egs.scp
+      rm $dir/egs.scp 2> /dev/null || true
       for j in $(seq $num_archives_intermediate); do
         for y in $(seq $num_archives_intermediate); do
           cat $dir/egs.$j.$y.scp || exit 1;
@@ -399,6 +405,10 @@ if [ $stage -le 5 ]; then
       for f in $dir/egs.*.*.scp; do rm $f; done
     fi
   fi
+fi
+
+if [ $frame_subsampling_factor -ne 1 ]; then
+  echo $frame_subsampling_factor > $dir/info/frame_subsampling_factor
 fi
 
 if [ $stage -le 6 ]; then
