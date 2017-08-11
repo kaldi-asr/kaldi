@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 
-database_path=$1
-dir=$2
+train_text=$1
+test_text=$2
+dir=$3
 
 mkdir -p $dir
 
-local/prepare_lexicon.py $database_path $dir
+local/prepare_lexicon.py $train_text $test_text $dir
 
 cut -d' ' -f2- $dir/lexicon.txt | tr ' ' '\n' | sort -u >$dir/nonsilence_phones.txt || exit 1;
 
-( echo '<sil> SIL'; ) | cat - $lex >> $dir/lexicon.txt || exit 1;
+( echo '<sil> SIL'; ) >> $dir/lexicon.txt || exit 1;
 
 printf "SIL\n" >$dir/silence_phones.txt
 

@@ -5,7 +5,8 @@ import os
 import sys
 
 parser = argparse.ArgumentParser(description="""Creates the list of characters and words in lexicon""")
-parser.add_argument('database_path', type=str, help='path to text file')
+parser.add_argument('database_path', type=str, help='path to train text file')
+parser.add_argument('test_text', type=str, help='path to test text file to include it in lexicon')
 parser.add_argument('dir', type=str, help='output path')
 args = parser.parse_args()
 
@@ -27,6 +28,22 @@ with open(text_path) as f:
       lex[line_vect[i]] = entry
 #      for c in characters:
 #        char[c] = " "
+
+if args.test_text > 1:
+  text_path = os.path.join(args.test_text,'text')
+  with open(text_path) as f:
+    for line in f:
+      line = line.strip()
+      line_vect = line.split(' ')
+      for i in range(1,len(line_vect)):
+        characters = list(line_vect[i])
+        entry = " ".join(characters)
+
+        entry = entry.replace("#", "<HASH>")
+
+        lex[line_vect[i]] = entry
+#        for c in characters:
+#          char[c] = " "
 
 #char_file = os.path.join(args.dir, 'nonsilence_phones.txt')
 #char_fh = open(char_file, 'w+')
