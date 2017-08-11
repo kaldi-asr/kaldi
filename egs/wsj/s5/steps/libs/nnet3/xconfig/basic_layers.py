@@ -1074,6 +1074,7 @@ class XconfigIdctLayer(XconfigLayerBase):
         ans.append(('ref', line))
         return ans
 
+
 class XconfigAuxiliaryLayer(XconfigLayerBase):
     """This class is for lines like
     'auxiliary name=aux dim=40'
@@ -1084,7 +1085,7 @@ class XconfigAuxiliaryLayer(XconfigLayerBase):
     of that model as input to new layers.
     """
 
-    def __init__(self, first_token, key_to_value, prev_names = None):
+    def __init__(self, first_token, key_to_value, prev_names=None):
 
         assert first_token == 'auxiliary'
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
@@ -1104,13 +1105,13 @@ class XconfigAuxiliaryLayer(XconfigLayerBase):
 
         return []  # there is no 'input' field in self.config.
 
-    def output_name(self, auxiliary_outputs = None):
+    def output_name(self, auxiliary_outputs=None):
 
         # there are no auxiliary outputs as this layer will just pass the input
         assert auxiliary_outputs is None
         return self.name
 
-    def output_dim(self, auxiliary_outputs = None):
+    def output_dim(self, auxiliary_outputs=None):
 
         # there are no auxiliary outputs as this layer will just pass the input
         assert auxiliary_outputs is None
@@ -1118,13 +1119,9 @@ class XconfigAuxiliaryLayer(XconfigLayerBase):
 
     def get_full_config(self):
 
-        # unlike other layers the input layers need to be printed in
-        # 'init.config' (which initializes the neural network prior to the LDA)
+        # unlike other layers the auxiliary layers should not to be printed in
+        # any '*.config'
         ans = []
-        for config_name in [ 'init', 'ref', 'final' ]:
-            ans.append( (config_name,
-                         'auxiliary-node name={0} dim={1}'.format(self.name,
-                                                              self.config['dim'])))
         return ans
 
 

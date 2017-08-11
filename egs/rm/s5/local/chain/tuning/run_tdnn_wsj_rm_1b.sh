@@ -43,21 +43,27 @@ xent_regularize=0.1
 
 # configs for transfer learning
 common_egs_dir=
-srcdir=../../wsj/s5/
-src_mdl=$srcdir/exp/chain/tdnn1d_sp/final.mdl
-src_lang=$srcdir/data/lang
-src_gmm_dir=$srcdir/exp/tri4b
+srcdir=../../wsj/s5   # base directory for source data
+src_mdl=$srcdir/exp/chain/tdnn1d_sp/final.mdl # input dnn model for source data 
+                                              # that is used in transfer learning.
+
+src_lang=$srcdir/data/lang    # source lang directory used to generate source model.
+                              # new new lang dir for transfer learning prepared
+                              # using source phone set, lexicon in src_lang and 
+                              # target word list.
+
+src_gmm_dir=$srcdir/exp/tri4b # source gmm dir used to generate alignments
+                              # for target data.
+
 src_tree_dir=$srcdir/exp/chain/tree_a_sp # chain tree-dir for src data;
                                          # the alignment in target domain is
                                          # converted using src-tree
 primary_lr_factor=0.25 # learning-rate factor for all except last layer in transferring source model
 final_lr_factor=1.0   # learning-rate factor for final layer in transferring source model.
 nnet_affix=_online_wsj
-tgt_lm_scale=10
-src_lm_scale=1
 phone_lm_scales="1,10" #  comma-separated list of integer valued scale weights
                        #  to scale different phone sequences for different alignments
-                       #  e.g. (src-weight,target-weight)=(10,1)
+                       #  e.g. (src-weight,target-weight)=(1,10)
 tdnn_affix=_1b
 # End configuration section.
 
@@ -80,12 +86,13 @@ fi
 # run those things.
 
 
-lang_dir=data/lang_wsj_rm
+lang_src_tgt=data/lang_wsj_rm # This dir is prepared using phones.txt and lexicon from
+                          # WSJ and wordlist and G.fst from RM.
 ali_dir=exp/tri4b${src_tree_dir:+_wsj}_ali
 lat_dir=exp/tri3b_lats${src_tree_dir:+_wsj}
 dir=exp/chain/tdnn_wsj_rm${tdnn_affix}
 
-required_files="$src_mdl $src_lang/phones.txt $srcdir/data/local/dict_nosp/lexicon.txt $src_gmm_dir/final.mdl $src_tree_dir/tree"
+required_files="$src_mdl $srcdir/exp/nnet3/extractor/final.mdl $src_lang/phones.txt $srcdir/data/local/dict_nosp/lexicon.txt $src_gmm_dir/final.mdl $src_tree_dir/tree"
 
 for f in $required_files; do
   if [ ! -f $f ]; then
@@ -96,10 +103,10 @@ done
 if [ $stage -le -1 ]; then
   echo "$0: prepare lexicon.txt for RM using WSJ lexicon."
   if ! cmp -s <(grep -v "^#" $src_lang/phones.txt) <(grep -v "^#" data/lang/phones.txt); then
-    local/prepare_wsj_rm_lang.sh  $srcdir/data/local/dict_nosp $srcdir/data/lang $lang_dir
+    local/prepare_wsj_rm_lang.sh  $srcdir/data/local/dict_nosp $srcdir/data/lang $lang_src_tgt
   else
-    rm -rf $lang_dir
-    cp -r data/lang $lang_dir
+    rm -rf $lang_src_tgt 2>/dev/null || true
+    cp -r data/lang $lang_src_tgt
   fi
 fi
 
@@ -112,7 +119,7 @@ local/online/run_nnet2_common.sh  --stage $stage \
 if [ $stage -le 4 ]; then
   echo "$0: Generate alignment using source model."
   steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
-  data/train $lang_dir $src_gmm_dir $ali_dir || exit 1;
+    data/train $lang_src_tgt $src_gmm_dir $ali_dir || exit 1;
 fi
 
 
@@ -121,32 +128,31 @@ if [ $stage -le 5 ]; then
   # use the same num-jobs as the alignments
   nj=$(cat exp/tri3b_ali/num_jobs) || exit 1;
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/train \
-    $lang_dir $src_gmm_dir $lat_dir || exit 1;
+    $lang_src_tgt $src_gmm_dir $lat_dir || exit 1;
   rm $lat_dir/fsts.*.gz # save space
 fi
 
 if [ $stage -le 6 ]; then
   # set the learning-rate-factor for initial network to be primary_lr_factor."
   $train_cmd $dir/log/generate_input_mdl.log \
-  nnet3-am-copy --raw=true --edits="set-learning-rate-factor name=* learning-rate-factor=$primary_lr_factor; set-learning-rate-factor name=output* learning-rate-factor=1.0" \
-    $src_mdl $dir/input.raw || exit 1;
+    nnet3-am-copy --raw=true --edits="set-learning-rate-factor name=* learning-rate-factor=$primary_lr_factor; set-learning-rate-factor name=output* learning-rate-factor=1.0" \
+      $src_mdl $dir/input.raw || exit 1;
 fi
 
 if [ $stage -le 7 ]; then
   echo "$0: compute {den,normalization}.fst using weighted phone LM with wsj and rm weight $phone_lm_scales."
-  $train_cmd $dir/log/make_weighted_den_fst.log \
-  steps/nnet3/chain/make_weighted_den_fst.sh --weights $phone_lm_scales \
-  --lm-opts '--num-extra-lm-states=200' \
-  $src_tree_dir $ali_dir $dir || exit 1;
+  steps/nnet3/chain/make_weighted_den_fst.sh --cmd "$train_cmd" \
+    --weights $phone_lm_scales \
+    --lm-opts '--num-extra-lm-states=200' \
+    $src_tree_dir $ali_dir $dir || exit 1;
 fi
 
 if [ $stage -le 8 ]; then
-  echo "$0: generate egs for chain to train new model on rm dataset."
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/rm-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
-  # exclude phone_LM and den.fst generation training stage
+  # exclude phone_LM and den.fst generation training stages
   if [ $train_stage -lt -4 ]; then
     train_stage=-4
   fi
@@ -188,7 +194,7 @@ if [ $stage -le 10 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 $lang_dir $dir $dir/graph
+  utils/mkgraph.sh --self-loop-scale 1.0 $lang_src_tgt $dir $dir/graph
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --scoring-opts "--min-lmwt 1" \
     --nj 20 --cmd "$decode_cmd" \

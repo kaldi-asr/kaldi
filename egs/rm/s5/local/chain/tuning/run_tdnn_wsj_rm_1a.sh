@@ -30,9 +30,11 @@ remove_egs=false
 xent_regularize=0.1
 
 # configs for transfer learning
-srcdir=../../wsj/s5/
+srcdir=../../wsj/s5   # base dir for source dataset.
+src_mdl=$srcdir/exp/chain/tdnn1d_sp/final.mdl # input dnn model for source data 
+                                              # that is used in transfer learning.
+
 common_egs_dir=
-src_mdl=$srcdir/exp/chain/tdnn1d_sp/final.mdl
 primary_lr_factor=0.25 # The learning-rate factor for transferred layers from source
                        # model.
 dim=450
@@ -87,7 +89,7 @@ if [ $stage -le 5 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
-  rm -rf $lang
+  rm -r $lang 2>/dev/null || true
   cp -r data/lang $lang
   silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
   nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
@@ -125,8 +127,8 @@ EOF
   # Set the learning-rate-factor to be primary_lr_factor for initial network."
   # and add new layer to initial model
   $train_cmd $dir/log/generate_input_mdl.log \
-  nnet3-copy --edits="set-learning-rate-factor name=* learning-rate-factor=$primary_lr_factor" $src_mdl - \| \
-  nnet3-init --srand=1 - $dir/configs/final.config $dir/input.raw  || exit 1;
+    nnet3-copy --edits="set-learning-rate-factor name=* learning-rate-factor=$primary_lr_factor" $src_mdl - \| \
+      nnet3-init --srand=1 - $dir/configs/final.config $dir/input.raw  || exit 1;
 fi
 
 if [ $stage -le 8 ]; then

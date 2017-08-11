@@ -14,7 +14,7 @@ import sys
 # Given a list of objects of type XconfigLayerBase ('all_layers'),
 # including at least the layers preceding 'current_layer' (and maybe
 # more layers), return the names of layers preceding 'current_layer'
-# regardless of layers type 'auxiliary'.
+# other than layers of type 'auxiliary'.
 # This will be used in parsing expressions like [-1] in descriptors
 # (which is an alias for the previous layer).
 def get_prev_names(all_layers, current_layer):

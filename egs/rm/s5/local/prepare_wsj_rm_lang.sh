@@ -29,7 +29,7 @@ for f in $required_dict_files; do
   fi
 done
 
-rm -r $output_dir 2>/dev/null
+rm -r $output_dir 2>/dev/null || true
 mkdir -p $output_dir
 mkdir -p $output_dir/local
 # copy *phones.txt from source to target.

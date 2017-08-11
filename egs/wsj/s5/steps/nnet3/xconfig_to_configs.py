@@ -233,9 +233,10 @@ def add_nnet_context_info(config_dir, nnet_edits=None,
     """Create the 'vars' file that specifies model_left_context, etc."""
 
     common_lib.execute_command("nnet3-init {0} {1}/ref.config "
-                               "{1}/ref.raw".format(existing_model if
-                               existing_model is not None else "",
-                               config_dir))
+                               "{1}/ref.raw".format(
+                                    existing_model if
+                                    existing_model is not None else "",
+                                    config_dir))
     model = "{0}/ref.raw".format(config_dir)
     if nnet_edits is not None:
         model = "nnet3-copy --edits='{0}' {1} - |".format(nnet_edits,
@@ -268,9 +269,10 @@ def check_model_contexts(config_dir, nnet_edits=None, existing_model=None):
         if os.path.exists('{0}/{1}.config'.format(config_dir, file_name)):
             contexts[file_name] = {}
             common_lib.execute_command("nnet3-init {0} {1}/{2}.config "
-                                       "{1}/{2}.raw".format(existing_model if
-                        existing_model is not None else '',
-                        config_dir, file_name))
+                                       "{1}/{2}.raw".format(
+                                            existing_model if
+                                            existing_model is not None else '',
+                                            config_dir, file_name))
             model = "{0}/{1}.raw".format(config_dir, file_name)
             if nnet_edits is not None:
                 model = "nnet3-copy --edits='{0}' {1} - |".format(nnet_edits,

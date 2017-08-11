@@ -358,9 +358,15 @@ def parse_generic_config_vars_file(var_file):
 
 
 def parse_input_model(input_model):
+    """ This function parses input_model and outputs left and right contexts
+        for input_mdl. This function is an alternative to configs/vars,
+        if this file is not available.
+            e.g. input_mdl is not generated using
+                 configs and directly passed to train.py
+                 using --trainer.input-model.
+    """
     variables = {}
     try:
-        assert(os.path.exists(input_model))
         out = common_lib.get_command_stdout("""nnet3-info {0} | """
                                             """head -4 """.format(input_model))
         # out looks like this
@@ -380,6 +386,7 @@ def parse_input_model(input_model):
     except ValueError:
         pass
     return variables
+
 
 def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
                    left_context, right_context,

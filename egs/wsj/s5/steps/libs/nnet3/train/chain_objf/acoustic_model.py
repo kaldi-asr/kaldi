@@ -427,9 +427,12 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
 
 
 def prepare_initial_acoustic_model(dir, run_opts, srand=-1, input_mdl=None):
-    """ Adds the first layer; this will also add in the lda.mat and
-        presoftmax_prior_scale.vec. It will also prepare the acoustic model
-        with the transition model."""
+    """ Adds the first layer; It will also prepare the acoustic model
+        with the transition model.
+        If input_mdl is specified, no initial network preparation(adding
+        first layer) is done on that and this model is prepared instead of
+        '0.raw' acoustice model with the transition model.
+    """
     if input_mdl is None:
         common_train_lib.prepare_initial_network(dir, run_opts,
                                                  srand=srand)

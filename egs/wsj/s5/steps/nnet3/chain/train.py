@@ -323,7 +323,8 @@ def train(args, run_opts):
         shutil.copy('{0}/tree'.format(args.tree_dir), args.dir)
         chain_lib.create_denominator_fst(args.dir, args.tree_dir, run_opts)
 
-    if (args.stage <= -4) and os.path.exists(args.dir+"/configs/init.config") and args.input_model is None:
+    if (args.stage <= -4) and os.path.exists(args.dir+"/configs/init.config")
+       and args.input_model is None:
         logger.info("Initializing a basic network for estimating "
                     "preconditioning matrix")
         common_lib.execute_command(
@@ -345,9 +346,12 @@ def train(args, run_opts):
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -3) and args.egs_dir is None:
         logger.info("Generating egs")
-        assert(os.path.exists("{0}/den.fst".format(args.dir)) and
-               os.path.exists("{0}/normalization.fst".format(args.dir)) and
-               os.path.exists("{0}/tree".format(args.dir)))
+        if (not os.path.exists("{0}/den.fst".format(args.dir)) or
+                not os.path.exists("{0}/normalization.fst".format(args.dir)) or
+                not os.path.exists("{0}/tree".format(args.dir))):
+            raise Exception("Chain egs generation expects {0}/den.fst, "
+                             "{0}/normalization.fst and {0}/tree "
+                             "to exist.".format(args.dir))
         # this is where get_egs.sh is called.
         chain_lib.generate_chain_egs(
             dir=args.dir, data=args.feat_dir,
@@ -404,7 +408,7 @@ def train(args, run_opts):
 
     if (args.stage <= -1):
         logger.info("Preparing the initial acoustic model.")
-        chain_lib.prepare_initial_acoustic_model(args.dir, run_opts,input_mdl=args.input_model)
+        chain_lib.prepare_initial_acoustic_model(args.dir, run_opts, input_mdl=args.input_model)
 
     with open("{0}/frame_subsampling_factor".format(args.dir), "w") as f:
         f.write(str(args.frame_subsampling_factor))
