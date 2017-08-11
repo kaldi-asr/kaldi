@@ -87,6 +87,8 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   } else { // conventional training
     TrainInternal(chain_eg, *computation);
   }
+
+  num_minibatches_processed_++;
 }
 
 void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
@@ -216,7 +218,6 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
       computer->AcceptInput(xent_name, &xent_deriv);
     }
   }
-  num_minibatches_processed_++;
 }
 
 bool NnetChainTrainer::PrintTotalStats() const {
