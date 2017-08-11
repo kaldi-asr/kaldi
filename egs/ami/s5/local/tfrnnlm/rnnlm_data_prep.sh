@@ -80,7 +80,7 @@ done
 cat $dir/unk_class.counts | awk '{print $2, $1}' > $dir/unk.probs
 cp $dir/wordlist.rnn $dir/wordlist.rnn.final
 
-if grep -w '<oos>' $dir/wordlist.rnn.final >/dev/null; then
+if ! grep -w '<oos>' $dir/wordlist.rnn.final >/dev/null; then
   echo "<oos>" >> $dir/wordlist.rnn.final
 fi
 
