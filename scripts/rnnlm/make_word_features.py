@@ -66,6 +66,9 @@ def read_unigram_probs(unigram_probs_file):
 
 # read the features
 # return a dict with following items:
+
+#   feats['constant'] is None if there is no constant feature used, else
+#                     a 2-tuple (feat_id, value), e.g. (1, 1.0).
 #   feats['special'] is a dict whose key is special words and value is the feat_id
 #   feats['unigram'] is a tuple with (feat_id, entropy, scale)
 #   feats['length']  is a int represents feat_id
@@ -79,6 +82,7 @@ def read_unigram_probs(unigram_probs_file):
 #   feats['max_ngram_order'] is a int represents max-ngram-order
 def read_features(features_file):
     feats = {}
+    feats['constant'] = None
     feats['special'] = {}
     feats['match'] = {}
     feats['initial'] = {}
@@ -94,7 +98,10 @@ def read_features(features_file):
 
             feat_id = int(fields[0])
             feat_type = fields[1]
-            if feat_type == 'special':
+            if feat_type == 'constant':
+                value = float(fields[2])
+                feats['constant'] = (feat_id, value)
+            elif feat_type == 'special':
                 feats['special'][fields[2]] = feat_id
             elif feat_type == 'unigram':
                 feats['unigram'] = (feat_id, float(fields[2]), float(fields[3]))
@@ -130,11 +137,18 @@ for word, idx in sorted(vocab.items(), key=lambda x: x[1]):
         continue
 
     prefix = "\t"
+
+    if feats['constant'] is not None:
+        (feat_id, value) = feats['constant']
+        print(prefix + "{0} {1}".format(feat_id, value), end="")
+        prefix = " "
+
     if word in feats['special']:
         feat_id = feats['special'][word]
         print(prefix + "{0} 1".format(feat_id), end="")
         print("")
-        continue
+        continue  # 'continue' because words with the 'special' feature do
+                  # not get any other features (except the constant feature).
 
     if 'unigram' in feats:
         feat_id = feats['unigram'][0]

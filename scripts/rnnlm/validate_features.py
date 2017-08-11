@@ -11,24 +11,15 @@ parser = argparse.ArgumentParser(description="Validates features file, produced 
                                  epilog="E.g. " + sys.argv[0] + " exp/rnnlm/features.txt",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-parser.add_argument("--special-words", type=str, default='<s>,</s>,<brk>',
-                    help="List of special words that get their own special "
-                         "features and do not get any other features.")
 parser.add_argument("features_file",
                     help="File containing features")
 
 args = parser.parse_args()
 
 EOS_SYMBOL = '</s>'
-SPECIAL_SYMBOLS = ['<s>', '<brk>', '<eps>']
 
 if not os.path.isfile(args.features_file):
     sys.exit(sys.argv[0] + ": Expected file {0} to exist".format(args.features_file))
-
-if args.special_words != '':
-    special_words = {}
-    for word in args.special_words.split(','):
-        special_words[word] = 1
 
 with open(args.features_file, 'r', encoding="utf-8") as f:
     has_unigram = False
@@ -51,9 +42,16 @@ with open(args.features_file, 'r', encoding="utf-8") as f:
                 sys.exit(sys.argv[0] + ": Too many 'length' features")
             has_length = True
         else:
-            if fields[1] == "special":
-                if not fields[2] in special_words:
-                    sys.exit(sys.argv[0] + ": Not a special word: {0}".format(fields[2]))
+            if fields[1] == "constant":
+                try:
+                    assert len(fields) == 3
+                    value = float(fields[2])
+                    assert value > 0.0
+                except:
+                    sys.exit(sys.argv[0] + ": bad line: {0}".format(line))
+            elif fields[1] == "special":
+                if len(fields) != 3:
+                    sys.exit(sys.argv[0] + ": bad line: {0}".format(line))
             elif fields[1] == "unigram":
                 if float(fields[2]) <= 0.0:
                     sys.exit(sys.argv[0] + ": log-unigram-ppl should be a positive value: {0}".format(fields[2]))

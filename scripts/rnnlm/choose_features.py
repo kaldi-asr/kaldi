@@ -49,6 +49,9 @@ parser.add_argument("--top-word-features", type=int, default=2000,
 parser.add_argument("--special-words", type=str, default='<s>,</s>,<brk>',
                     help="List of special words that get their own special "
                          "features and do not get any other features.")
+parser.add_argument("--constant-feature", type=float,
+                    help="If supplied, the value of a feature that all words "
+                    "are given.  Helps model offsets.  E.g. 1.0.")
 
 parser.add_argument("vocab_file",
                     help="Path for vocab file")
@@ -109,6 +112,10 @@ assert len(unigram_probs) == len(wordlist)
 vocab_size = len(vocab) - len(SPECIAL_SYMBOLS)
 
 num_features = 0
+
+if args.constant_feature is not None:
+    print("{0}\tconstant\t{1}".format(num_features, args.constant_feature))
+    num_features += 1
 
 # special words features
 if args.special_words != '':
