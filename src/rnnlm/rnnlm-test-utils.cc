@@ -89,11 +89,11 @@ void ConvertToInteger(
     see the formulas in "A Bit of Progress in Language Modeling"
 
     Note that we won't follow the procedure of SRILM implementation(collect
-    counts, then modeify counts, and then discount to get probs). Instead,
-    we use the "store-only-what-you-need" policy described in the paper,
-    translate the perl code in the appendix of the paper and extend it
-    to arbitrary ngram order. Also, as in SRILM, we use the
-    original(unmodified) count for the ngrams starting with <s>.
+    counts, then modify counts, and then discount to get probs). Instead,
+    we accumulate the number of context occurrences directly during we pass
+    through the training text. We translate the perl code in the appendix of
+    the paper and extend it to arbitrary ngram order. Also, as in SRILM,
+    we use the original(unmodified) count for the ngrams starting with <s>.
 */
 class InterpolatedKneserNeyLM {
  public:
@@ -117,7 +117,7 @@ class InterpolatedKneserNeyLM {
   InterpolatedKneserNeyLM(int32 ngram_order, double discount) {
     ngram_order_ = ngram_order;
     discount_ = discount;
-    ngrams_.resize(ngram_order);
+    ngrams_.resize(ngram_order + 1); // ngrams_[0] unused
   }
 
   void FillWords(const std::vector<int32> &sentence,
@@ -152,6 +152,9 @@ class InterpolatedKneserNeyLM {
           max_order = ngram_order_;
         }
 
+        // in the following for-loop, only the max_order ngrams will
+        // get their actual counts. And the max_order ngrams are the
+        // ngram with ngram_order_ or the ngrams starting with <s>.
         for (int32 order = max_order; order >= 1; order--) {
           FillWords(sentences[i], j - order + 1, order,
                     bos_symbol, eos_symbol, &words);
@@ -187,6 +190,43 @@ class InterpolatedKneserNeyLM {
 
   /* Compute ngram probs and bows with the counts. */
   void EstimateProbAndBow() {
+    for (int32 order = 1; order <= ngram_order_; order++) {
+      Ngrams::iterator it = ngrams_[order].begin();
+      for (; it != ngrams_[order].end(); it++) {
+        LMState& state = it->second;
+        if (order == 1) {
+          // here, we assume all words in the vocabulary are appeared in the
+          // training text, or we have to do discount. Since we won't get
+          // the symbol table until WriteToARPA(), we don't know the size
+          // of vocabulary and can't work out the discount.
+          state.prob = 1.0 * state.numerator / unigram_denominator_;
+        } else {
+          std::vector<int32> subwords;
+          Ngrams::const_iterator context, lower_order;
+
+          subwords.assign(it->first.begin(), it->first.end() - 1);
+          context = ngrams_[order - 1].find(subwords);
+          KALDI_ASSERT(context != ngrams_[order - 1].end());
+          state.prob = (state.numerator - discount_)
+                       / context->second.denominator;
+
+          // interpolate lower orders
+          for (int32 o = 1; o < order; o++) {
+            subwords.assign(it->first.begin() + o - 1, it->first.end() - 1);
+            context = ngrams_[order - o].find(subwords);
+            KALDI_ASSERT(context != ngrams_[order - o].end());
+
+            subwords.assign(it->first.begin() + o, it->first.end());
+            lower_order = ngrams_[order - o].find(subwords);
+            KALDI_ASSERT(lower_order != ngrams_[order - o].end());
+
+            state.prob += context->second.bow * lower_order->second.prob;
+          }
+        }
+
+        state.bow = state.non_zero_count * discount_ / state.denominator;
+      }
+    }
   }
 
   /** Estimate the language model with corpus in sentences.
@@ -204,16 +244,54 @@ class InterpolatedKneserNeyLM {
     EstimateProbAndBow();
   }
 
+  static BaseFloat ProbToLobProb(BaseFloat prob) {
+    if (prob == 0.0) {
+      return -99.0;
+    } else {
+      return log10(prob);
+    }
+  }
+
+  static void WriteNgram(const std::vector<int32> words,
+                  BaseFloat prob, BaseFloat bow,
+                  const fst::SymbolTable &symbol_table, std::ostream &os) {
+    os << ProbToLobProb(prob) << "\t";
+    for (int32 i = 0; i < words.size() - 1; i++) {
+      os << symbol_table.Find(words[i]) << " ";
+    }
+    os << symbol_table.Find(words[words.size() - 1]);
+    os << ProbToLobProb(bow) << "\n";
+  }
+
   /** Write to the ostream with ARPA format. Throws on error.
-       @param [in] symbol_table  The OpenFst symbol table. It's needed.
+       @param [in] symbol_table  The OpenFst symbol table. It's needed
                                  because the ARPA file we write out
                                  is in text form.
        @param [out] os       The stream to which this function will write
                              the language model in ARPA format.
    */
-
   void WriteToARPA(const fst::SymbolTable &symbol_table,
-                   std::ostream &os) const;
+                   std::ostream &os) const {
+    // we write out only the words appeared in training text, instead of all
+    // words in symbol_table, since there would be some special symbols in
+    // symbol_table and our unigram distribution are calculated without
+    // considering the (maybe exist) extra words.
+    os << "\\\\data\\\\\n";
+    for (int32 order = 1; order <= ngram_order_; order++) {
+      os << "ngram " << order << "=" << ngrams_[order].size();
+    }
+
+    for (int32 order = 1; order <= ngram_order_; order++) {
+      os << "\n\\" << order << "-grams:\n";
+      Ngrams::const_iterator it = ngrams_[order].begin();
+      for (; it != ngrams_[order].end(); it++) {
+        WriteNgram(it->first, it->second.prob, it->second.bow,
+                   symbol_table, os);
+      }
+    }
+
+    os << "\n\\\\end\\\\\n";
+  }
 
  private:
 
@@ -226,7 +304,7 @@ class InterpolatedKneserNeyLM {
   // ngrams for each order
   std::vector<Ngrams> ngrams_;
 
-  // denominator for uningrams
+  // denominator for unigrams
   int32 unigram_denominator_;
 };
 
