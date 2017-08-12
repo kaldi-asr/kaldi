@@ -6,6 +6,9 @@
 dir=exp/rnnlm_data_prep
 vocab=data/vocab/words.txt
 embedding_dim=600
+
+ns=$(rnnlm/get_num_splits.sh 200000 data/text $dir/data_weights.txt)
+
 # work out the number of splits.
 ns=$(rnnlm/get_num_splits.sh 200000 data/text $dir/data_weights.txt)
 vocab_size=$(tail -n 1 $vocab |awk '{print $NF + 1}')

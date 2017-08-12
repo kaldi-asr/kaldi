@@ -79,11 +79,12 @@ public:
   CuSparseMatrix<Real> &operator =(const CuSparseMatrix<Real> &smat);
 
   /// Copy from CPU-based matrix.  We will add the transpose option later when it
-  /// is necessary.
+  /// is necessary.  Resizes *this as needed.
   template<typename OtherReal>
   void CopyFromSmat(const SparseMatrix<OtherReal> &smat);
 
-  /// Copy from GPU-based matrix, supporting transposition.
+  /// Copy from GPU-based matrix, supporting transposition.  Resizes *this
+  /// as needed.
   void CopyFromSmat(const CuSparseMatrix<Real> &smat,
                     MatrixTransposeType trans = kNoTrans);
 

@@ -7,7 +7,7 @@ import os
 import argparse
 import sys
 import math
-
+from collections import defaultdict
 
 parser = argparse.ArgumentParser(description="This script turns the words into the sparse feature representation, "
                                              "using features from rnnlm/choose_features.py.",
@@ -129,44 +129,40 @@ vocab = read_vocab(args.vocab_file)
 unigram_probs = read_unigram_probs(args.unigram_probs)
 feats = read_features(args.features_file)
 
-for word, idx in sorted(vocab.items(), key=lambda x: x[1]):
-    print("{0}".format(idx), end="")
 
+def get_feature_list(word, idx):
+    """Return a dict from feat_id to value (as int or float), e.g.
+      { 0 -> 1.0, 100 -> 1 }
+    """
+    ans = defaultdict(int)  # the default is only used for character-ngram features.
     if idx == 0:
-        print("")
-        continue
-
-    prefix = "\t"
+        return ans
 
     if feats['constant'] is not None:
         (feat_id, value) = feats['constant']
-        print(prefix + "{0} {1}".format(feat_id, value), end="")
-        prefix = " "
+        ans[feat_id] = value
 
     if word in feats['special']:
         feat_id = feats['special'][word]
-        print(prefix + "{0} 1".format(feat_id), end="")
-        print("")
-        continue  # 'continue' because words with the 'special' feature do
-                  # not get any other features (except the constant feature).
+        ans[feat_id] = 1
+        return ans   # return because words with the 'special' feature do
+                     # not get any other features (except the constant
+                     # feature).
 
     if 'unigram' in feats:
         feat_id = feats['unigram'][0]
         entropy = feats['unigram'][1]
         scale = feats['unigram'][2]
         logp = math.log(unigram_probs[idx])
-        print(prefix + "{0} {1}".format(feat_id, (logp + entropy) * scale / entropy), end="")
-        prefix = " "
+        ans[feat_id] = (logp + entropy) * scale / entropy
 
     if 'length' in feats:
         feat_id = feats['length']
-        print(prefix + "{0} {1}".format(feat_id, len(word)), end="")
-        prefix = " "
+        ans[feat_id] = len(word)
 
     if word in feats['word']:
         feat_id = feats['word'][word]
-        print(prefix + "{0} 1".format(feat_id), end="")
-        prefix = " "
+        ans[feat_id] = 1
 
     for pos in range(len(word) + 1):  # +1 for EOW
         for order in range(feats['min_ngram_order'], feats['max_ngram_order'] + 1):
@@ -193,9 +189,13 @@ for word, idx in sorted(vocab.items(), key=lambda x: x[1]):
             feat = word[start:end]
             if feat in ngram_feats:
                 feat_id = ngram_feats[feat]
-                print(prefix + "{0} 1".format(feat_id), end="")
-                prefix = " "
+                ans[feat_id] += 1
+    return ans
 
-    print("")
+for word, idx in sorted(vocab.items(), key=lambda x: x[1]):
+    feature_list = get_feature_list(word, idx)
+    print("{0}\t{1}".format(idx,
+                            " ".join(["{0} {1}".format(f, v) for f, v in sorted(feature_list.items())])))
 
-print(sys.argv[0] + ": make features for {0} words.".format(len(vocab)), file=sys.stderr)
+
+print(sys.argv[0] + ": made features for {0} words.".format(len(vocab)), file=sys.stderr)

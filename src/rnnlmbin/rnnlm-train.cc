@@ -143,10 +143,11 @@ int main(int argc, char *argv[]) {
       // binary mode is not supported here; it's a text format.
       Input input(word_features_rxfilename);
       int32 feature_dim = embedding_mat.NumRows();
-      SparseMatrix<BaseFloat> word_feature_mat;
+      SparseMatrix<BaseFloat> cpu_word_feature_mat;
       ReadSparseWordFeatures(input.Stream(), feature_dim,
-                             &word_feature_mat);
-      word_feature_mat.Swap(&word_feature_mat);  // copy to GPU
+                             &cpu_word_feature_mat);
+      word_feature_mat.Swap(&cpu_word_feature_mat);  // copy to GPU, if we have
+                                                     // one.
     }
 
 

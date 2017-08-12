@@ -54,9 +54,14 @@ with open(args.word_features_file, 'r', encoding="utf-8") as f:
             if word_id != 0:
                 sys.exit(sys.argv[0] + ": Only <eps> can have no feature: {0}.".format(line))
         i = 1
+        last_feat_id = -1
         while i < len(fields):
             feat_id = int(fields[i])
             feat_value = fields[i + 1]
+            if feat_id <= last_feat_id:
+                sys.exit(sys.argv[0] + ": features must be listed in increasing order: {0} <= {1} in {2}.".format(feat_id, last_feat_id, line))
+            last_feat_id = feat_id
+
             if feat_id in special_feat_ids:
                 if len(fields) != 3 and len(fields) != 5:
                     sys.exit(sys.argv[0] + ": Special word can only have one or 2 features: {0}.".format(line))
@@ -78,6 +83,6 @@ with open(args.word_features_file, 'r', encoding="utf-8") as f:
             else:
                 if feat_id > max_feat_id:
                     sys.exit(sys.argv[0] + ": Wrong feat_id: {0}.".format(line))
-                if int(feat_value) != 1:
-                    sys.exit(sys.argv[0] + ": Value of ngram feature must be 1: {0}.".format(line))
+                if int(feat_value) < 1:
+                    sys.exit(sys.argv[0] + ": Value of ngram feature must be >= 1: {0}.".format(line))
             i += 2

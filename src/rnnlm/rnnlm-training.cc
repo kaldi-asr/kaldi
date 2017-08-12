@@ -159,6 +159,10 @@ void RnnlmTrainer::TrainWordEmbedding(
   } else {
     // There is a sparse word-feature matrix, so we need to multiply by it
     // to get the derivative w.r.t. the feature-embedding matrix.
+
+    if (!sampling && word_feature_mat_transpose_.NumRows() == 0)
+      word_feature_mat_transpose_.CopyFromSmat(*word_feature_mat_, kTrans);
+
     CuMatrix<BaseFloat> feature_embedding_deriv(embedding_mat_->NumRows(),
                                                 embedding_mat_->NumCols());
     const CuSparseMatrix<BaseFloat> &word_features_trans =
@@ -264,5 +268,3 @@ RnnlmTrainer::~RnnlmTrainer() {
 
 }  // namespace rnnlm
 }  // namespace kaldi
-
-

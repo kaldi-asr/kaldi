@@ -432,35 +432,48 @@ void MatrixBase<Real>::AddSmatMat(Real alpha, const SparseMatrix<Real> &A,
     KALDI_ASSERT(NumCols() == B.NumCols());
     KALDI_ASSERT(A.NumCols() == B.NumRows());
 
-    Matrix<Real> buf(NumRows(), NumCols(), kSetZero);
-    for (int i = 0; i < A.NumRows(); ++i) {
-      for (int e = 0; e < A.Row(i).NumElements(); ++e) {
-        int k = A.Row(i).GetElement(e).first;
-        Real A_ik = A.Row(i).GetElement(e).second;
-        for (int j = 0; j < NumCols(); ++j) {
-          buf(i, j) += A_ik * B(k, j);
-        }
+    this->Scale(beta);
+    MatrixIndexT a_num_rows = A.NumRows(),
+        this_num_cols = this->NumCols();
+    for (MatrixIndexT i = 0; i < a_num_rows; ++i) {
+      Real *this_row_i = this->RowData(i);
+      const SparseVector<Real> &A_row_i = A.Row(i);
+      MatrixIndexT num_elems = A_row_i.NumElements();
+      for (MatrixIndexT e = 0; e < num_elems; ++e) {
+        const std::pair<MatrixIndexT, Real> &p = A_row_i.GetElement(e);
+        MatrixIndexT k = p.first;
+        Real alpha_A_ik = alpha * p.second;
+        const Real *b_row_k = B.RowData(k);
+        cblas_Xaxpy(this_num_cols, alpha_A_ik, b_row_k, 1,
+                    this_row_i, 1);
+        //for (MatrixIndexT j = 0; j < this_num_cols; ++j)
+        //  this_row_i[j] += alpha_A_ik * b_row_k[j];
       }
     }
-    this->Scale(beta);
-    this->AddMat(alpha, buf);
   } else {
     KALDI_ASSERT(NumRows() == A.NumCols());
     KALDI_ASSERT(NumCols() == B.NumCols());
     KALDI_ASSERT(A.NumRows() == B.NumRows());
 
+    this->Scale(beta);
     Matrix<Real> buf(NumRows(), NumCols(), kSetZero);
-    for (int k = 0; k < A.NumRows(); ++k) {
-      for (int e = 0; e < A.Row(k).NumElements(); ++e) {
-        int i = A.Row(k).GetElement(e).first;
-        Real A_ki = A.Row(k).GetElement(e).second;
-        for (int j = 0; j < NumCols(); ++j) {
-          buf(i, j) += A_ki * B(k, j);
-        }
+    MatrixIndexT a_num_rows = A.NumRows(),
+        this_num_cols = this->NumCols();
+    for (int k = 0; k < a_num_rows; ++k) {
+      const Real *b_row_k = B.RowData(k);
+      const SparseVector<Real> &A_row_k = A.Row(k);
+      MatrixIndexT num_elems = A_row_k.NumElements();
+      for (MatrixIndexT e = 0; e < num_elems; ++e) {
+        const std::pair<MatrixIndexT, Real> &p = A_row_k.GetElement(e);
+        MatrixIndexT i = p.first;
+        Real alpha_A_ki = alpha * p.second;
+        Real *this_row_i = this->RowData(i);
+        cblas_Xaxpy(this_num_cols, alpha_A_ki, b_row_k, 1,
+                    this_row_i, 1);
+        //for (MatrixIndexT j = 0; j < this_num_cols; ++j)
+        // this_row_i[j] += alpha_A_ki * b_row_k[j];
       }
     }
-    this->Scale(beta);
-    this->AddMat(alpha, buf);
   }
 }
 
