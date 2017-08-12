@@ -239,7 +239,19 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
     int32 command_type_int;
     ReadBasicType(is, binary, &command_type_int);
     command_type = static_cast<CommandType>(command_type_int);
+    std::vector<int32> args;
+    ReadIntegerVector(is, binary, &args);
+    args.resize(7, -1);  // extend with -1's.
+    arg1 = args[0];
+    arg2 = args[1];
+    arg3 = args[2];
+    arg4 = args[3];
+    arg5 = args[4];
+    arg6 = args[5];
+    arg7 = args[6];
   } else {
+    // this branch is slow but we don't care much, as we'd normally write in
+    // binary format.
     std::string command_type_str;
     getline(is, command_type_str);
     if (command_type_str == "kAllocMatrixZeroed") {
@@ -254,8 +266,6 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
       command_type = kAllocMatrixFromOtherZeroed;
     } else if (command_type_str == "kPropagate") {
       command_type = kPropagate;
-    } else if (command_type_str == "kStoreStats") {
-      command_type = kStoreStats;
     } else if (command_type_str == "kBackprop") {
       command_type = kBackprop;
     } else if (command_type_str == "kBackpropNoModelUpdate") {
@@ -284,6 +294,8 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
       command_type = kProvideOutput;
     } else if (command_type_str == "kNoOperation") {
       command_type = kNoOperation;
+    } else if (command_type_str == "kNoOperationPermanent") {
+      command_type = kNoOperationPermanent;
     } else if (command_type_str == "kNoOperationMarker") {
       command_type = kNoOperationMarker;
     } else if (command_type_str == "kNoOperationLabel") {
@@ -293,19 +305,15 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
     } else {
       KALDI_ERR << "Un-handled command type.";
     }
+    ExpectToken(is, binary, "<Args>");
+    ReadBasicType(is, binary, &arg1);
+    ReadBasicType(is, binary, &arg2);
+    ReadBasicType(is, binary, &arg3);
+    ReadBasicType(is, binary, &arg4);
+    ReadBasicType(is, binary, &arg5);
+    ReadBasicType(is, binary, &arg6);
+    ReadBasicType(is, binary, &arg7);
   }
-  ExpectToken(is, binary, "<Arg1>");
-  ReadBasicType(is, binary, &arg1);
-  ExpectToken(is, binary, "<Arg2>");
-  ReadBasicType(is, binary, &arg2);
-  ExpectToken(is, binary, "<Arg3>");
-  ReadBasicType(is, binary, &arg3);
-  ExpectToken(is, binary, "<Arg4>");
-  ReadBasicType(is, binary, &arg4);
-  ExpectToken(is, binary, "<Arg5>");
-  ReadBasicType(is, binary, &arg5);
-  ExpectToken(is, binary, "<Arg6>");
-  ReadBasicType(is, binary, &arg6);
   ExpectToken(is, binary, "</Command>");
 }
 
@@ -314,6 +322,17 @@ void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<CommandType>");
   if (binary) {
     WriteBasicType(os, binary, static_cast<int32>(command_type));
+    std::vector<int32> args(7);
+    args[0] = arg1;
+    args[1] = arg2;
+    args[2] = arg3;
+    args[3] = arg4;
+    args[4] = arg5;
+    args[5] = arg6;
+    args[6] = arg7;
+    while (!args.empty() && args.back() == -1)
+      args.pop_back();
+    WriteIntegerVector(os, binary, args);
   } else {
     std::string command_type_str;
     switch (command_type) {
@@ -334,9 +353,6 @@ void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
         break;
       case kPropagate:
         os << "kPropagate\n";
-        break;
-      case kStoreStats:
-        os << "kStoreStats\n";
         break;
       case kBackprop:
         os << "kBackprop\n";
@@ -380,6 +396,9 @@ void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
       case kNoOperation:
         os << "kNoOperation\n";
         break;
+      case kNoOperationPermanent:
+        os << "kNoOperationPermanent\n";
+        break;
       case kNoOperationMarker:
         os << "kNoOperationMarker\n";
         break;
@@ -392,19 +411,10 @@ void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
       default:
         KALDI_ERR << "Un-handled command type.";
     }
+    os << "<Args> " << arg1 << ' ' << arg2 << ' '
+       << arg3 << ' ' << arg4 << ' ' << arg5 << ' '
+       << arg6 << ' ' << arg7 << ' ';
   }
-  WriteToken(os, binary, "<Arg1>");
-  WriteBasicType(os, binary, arg1);
-  WriteToken(os, binary, "<Arg2>");
-  WriteBasicType(os, binary, arg2);
-  WriteToken(os, binary, "<Arg3>");
-  WriteBasicType(os, binary, arg3);
-  WriteToken(os, binary, "<Arg4>");
-  WriteBasicType(os, binary, arg4);
-  WriteToken(os, binary, "<Arg5>");
-  WriteBasicType(os, binary, arg5);
-  WriteToken(os, binary, "<Arg6>");
-  WriteBasicType(os, binary, arg6);
   WriteToken(os, binary, "</Command>");
 }
 
@@ -545,10 +555,6 @@ static void PrintCommand(std::ostream &os,
       os << submatrix_strings[c.arg3] << ", &" << submatrix_strings[c.arg4]
          << ")\n";
       break;
-    case kStoreStats:
-      os << nnet.GetComponentName(c.arg1) << ".StoreStats("
-         << submatrix_strings[c.arg2] << ")\n";
-      break;
     case kBackprop:
     case kBackpropNoModelUpdate: {
       int32 component_index = c.arg1;
@@ -599,7 +605,11 @@ static void PrintCommand(std::ostream &os,
       const std::vector<std::pair<int32, int32> > &pairs =
            computation.indexes_ranges[c.arg3];
       for (size_t i = 0; i < pairs.size(); i++) {
-        os << pairs[i].first << ":" << (pairs[i].second - 1);
+        if (pairs[i].first == -1) {
+          os << "null";
+        } else {
+          os << pairs[i].first << ":" << (pairs[i].second - 1);
+        }
         if (i + 1 < pairs.size()) os << ",";
       }
       os << "])\n";
@@ -615,6 +625,9 @@ static void PrintCommand(std::ostream &os,
       break;
     case kNoOperation:
       os << "[no-op]\n";
+      break;
+    case kNoOperationPermanent:
+      os << "[no-op-permanent]\n";
       break;
     case kNoOperationMarker:
       os << "# computation segment separator [e.g., begin backward commands]\n";
@@ -680,7 +693,7 @@ void NnetComputation::Print(std::ostream &os, const Nnet &nnet) const {
 }
 
 void NnetComputation::Read(std::istream &is, bool binary) {
-  int32 version = 2,  // must be in sync with 'version' in Write.
+  int32 version = 3,  // must be in sync with 'version' in Write.
       version_in = 1;  // defaults to 1 if no version specified.
 
   ExpectToken(is, binary, "<NnetComputation>");
@@ -814,7 +827,7 @@ void NnetComputation::Read(std::istream &is, bool binary) {
 }
 
 void NnetComputation::Write(std::ostream &os, bool binary) const {
-  int32 version = 2;  // Must be in sync with version in Read.
+  int32 version = 3;  // Must be in sync with version in Read.
   WriteToken(os, binary, "<NnetComputation>");
   WriteToken(os, binary, "<Version>");
   WriteBasicType(os, binary, version);

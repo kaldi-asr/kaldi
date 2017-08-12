@@ -32,12 +32,12 @@ bool PrintProxyFstPath(const VectorFst<StdArc> &proxy,
                        StdArc::StateId cur_state,
                        vector<StdArc::Label> cur_path,
                        StdArc::Weight cur_cost) {
+
   if (proxy.Final(cur_state) != StdArc::Weight::Zero()) {
-    // Assume only final state has non-zero cost.
     cur_cost = Times(proxy.Final(cur_state), cur_cost);
     path->push_back(cur_path);
     cost->push_back(cur_cost);
-    return true;
+    // even final state can have outgoing args, so no return here
   }
 
   for (ArcIterator<StdFst> aiter(proxy, cur_state);

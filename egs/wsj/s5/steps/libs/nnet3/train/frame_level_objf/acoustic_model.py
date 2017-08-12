@@ -22,7 +22,7 @@ def generate_egs(data, alidir, egs_dir,
                  left_context, right_context,
                  run_opts, stage=0,
                  left_context_initial=-1, right_context_final=-1,
-                 feat_type='raw', online_ivector_dir=None,
+                 online_ivector_dir=None,
                  samples_per_iter=20000, frames_per_eg_str="20", srand=0,
                  egs_opts=None, cmvn_opts=None, transform_dir=None):
 
@@ -32,11 +32,10 @@ def generate_egs(data, alidir, egs_dir,
     the model final.mdl and alignments.
     """
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """steps/nnet3/get_egs.sh {egs_opts} \
                 --cmd "{command}" \
                 --cmvn-opts "{cmvn_opts}" \
-                --feat-type {feat_type} \
                 --transform-dir "{transform_dir}" \
                 --online-ivector-dir "{ivector_dir}" \
                 --left-context {left_context} \
@@ -50,7 +49,6 @@ def generate_egs(data, alidir, egs_dir,
                 {data} {alidir} {egs_dir}
         """.format(command=run_opts.command,
                    cmvn_opts=cmvn_opts if cmvn_opts is not None else '',
-                   feat_type=feat_type,
                    transform_dir=(transform_dir
                                   if transform_dir is not None else
                                   ''),
@@ -77,7 +75,7 @@ def prepare_initial_acoustic_model(dir, alidir, run_opts,
                                              srand=srand)
 
     # Convert to .mdl, train the transitions, set the priors.
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/init_mdl.log \
                 nnet3-am-init {alidir}/final.mdl {dir}/0.raw - \| \
                 nnet3-am-train-transitions - \

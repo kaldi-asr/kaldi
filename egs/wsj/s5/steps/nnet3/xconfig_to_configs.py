@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+# Copyright 2016    Johns Hopkins University (Dan Povey)
+#           2016    Vijayaditya Peddinti
+#           2017    Google Inc. (vpeddinti@google.com)
+# Apache 2.0.
+
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
 import argparse
@@ -25,8 +30,17 @@ def get_args():
                         help='Filename of input xconfig file')
     parser.add_argument('--config-dir', required=True,
                         help='Directory to write config files and variables')
+    parser.add_argument('--nnet-edits', type=str, default=None,
+                        action=common_lib.NullstrToNoneAction,
+                        help="""This option is useful in case the network you
+                        are creating does not have an output node called
+                        'output' (e.g. for multilingual setups).  You can set
+                        this to an edit-string like: 'rename-node old-name=xxx
+                        new-name=output' if node xxx plays the role of the
+                        output node in this network.  This is only used for
+                        computing the left/right context.""")
 
-    print(' '.join(sys.argv))
+    print(' '.join(sys.argv), file=sys.stderr)
 
     args = parser.parse_args()
     args = check_args(args)
@@ -204,13 +218,17 @@ def write_config_files(config_dir, all_layers):
             raise
 
 
-def add_back_compatibility_info(config_dir):
-    """This will be removed when python script refactoring is done."""
+def add_nnet_context_info(config_dir, nnet_edits=None):
+    """Create the 'vars' file that specifies model_left_context, etc."""
 
-    common_lib.run_kaldi_command("nnet3-init {0}/ref.config "
-                                 "{0}/ref.raw".format(config_dir))
-    out, err = common_lib.run_kaldi_command("nnet3-info {0}/ref.raw | "
-                                            "head -4".format(config_dir))
+    common_lib.execute_command("nnet3-init {0}/ref.config "
+                               "{0}/ref.raw".format(config_dir))
+    model = "{0}/ref.raw".format(config_dir)
+    if nnet_edits is not None:
+        model = "nnet3-copy --edits='{0}' {1} - |".format(nnet_edits,
+                                                          model)
+    out = common_lib.get_command_stdout('nnet3-info "{0}" | head -n 4 '
+                                        .format(model))
     # out looks like this
     # left-context: 7
     # right-context: 0
@@ -223,18 +241,57 @@ def add_back_compatibility_info(config_dir):
             continue
         info[parts[0].strip()] = int(parts[1].strip())
 
-    # Writing the back-compatible vars file
+    # Writing the 'vars' file:
     #   model_left_context=0
     #   model_right_context=7
-    #   num_hidden_layers=3
     vf = open('{0}/vars'.format(config_dir), 'w')
     vf.write('model_left_context={0}\n'.format(info['left-context']))
     vf.write('model_right_context={0}\n'.format(info['right-context']))
-    vf.write('num_hidden_layers=1\n')
     vf.close()
 
-    common_lib.force_symlink("final.config".format(config_dir),
-                             "{0}/layer1.config".format(config_dir))
+def check_model_contexts(config_dir, nnet_edits=None):
+    contexts = {}
+    for file_name in ['init', 'ref']:
+        if os.path.exists('{0}/{1}.config'.format(config_dir, file_name)):
+            contexts[file_name] = {}
+            common_lib.execute_command("nnet3-init {0}/{1}.config "
+                                       "{0}/{1}.raw".format(config_dir, file_name))
+            model = "{0}/{1}.raw".format(config_dir, file_name)
+            if nnet_edits is not None:
+                model = "nnet3-copy --edits='{0}' {1} - |".format(nnet_edits,
+                                                                  model)
+            out = common_lib.get_command_stdout('nnet3-info "{0}" | head -n 4 '
+                                                .format(model))
+            # out looks like this
+            # left-context: 7
+            # right-context: 0
+            # num-parameters: 90543902
+            # modulus: 1
+            for line in out.split("\n"):
+                parts = line.split(":")
+                if len(parts) != 2:
+                    continue
+                key = parts[0].strip()
+                value = int(parts[1].strip())
+                if key in ['left-context', 'right-context']:
+                    contexts[file_name][key] = value
+
+    if contexts.has_key('init'):
+        assert(contexts.has_key('ref'))
+        if (contexts['init'].has_key('left-context') and
+            contexts['ref'].has_key('left-context')):
+            if ((contexts['init']['left-context']
+                 > contexts['ref']['left-context'])
+                or (contexts['init']['right-context']
+                    > contexts['ref']['right-context'])):
+               raise Exception(
+                    "Model specified in {0}/init.config requires greater"
+                    " context than the model specified in {0}/ref.config."
+                    " This might be due to use of label-delay at the output"
+                    " in ref.config. Please use delay=$label_delay in the"
+                    " initial fixed-affine-layer of the network, to avoid"
+                    " this issue.")
+
 
 
 def main():
@@ -243,7 +300,8 @@ def main():
     all_layers = xparser.read_xconfig_file(args.xconfig_file)
     write_expanded_xconfig_files(args.config_dir, all_layers)
     write_config_files(args.config_dir, all_layers)
-    add_back_compatibility_info(args.config_dir)
+    check_model_contexts(args.config_dir, args.nnet_edits)
+    add_nnet_context_info(args.config_dir, args.nnet_edits)
 
 
 if __name__ == '__main__':

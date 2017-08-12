@@ -38,7 +38,6 @@ NnetChainCombiner::NnetChainCombiner(const NnetCombineConfig &combine_config,
     nnet_params_(std::min(num_nnets, combine_config_.max_effective_inputs),
                  NumParameters(first_nnet)),
     tot_input_weighting_(nnet_params_.NumRows()) {
-  SetDropoutProportion(0, &nnet_);
 
   if (combine_config_.sum_to_one_penalty != 0.0 &&
       combine_config_.enforce_sum_to_one) {

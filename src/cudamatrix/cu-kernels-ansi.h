@@ -30,6 +30,12 @@
 #if HAVE_CUDA == 1
 extern "C" {
 
+void cudaD_add_col_sum_mat(int Gr, int Bl, double* result, const double* mat,
+                           const MatrixDim d, const double alpha,
+                           const double beta);
+void cudaF_add_col_sum_mat(int Gr, int Bl, float* result, const float* mat,
+                           const MatrixDim d, const float alpha,
+                           const float beta);
 void cudaD_add_cols(dim3 Gr, dim3 Bl, double* dst, const double* src,
                     const MatrixIndexT_cuda* reorder, MatrixDim dst_dim,
                     int src_stride);
@@ -91,6 +97,10 @@ void cudaD_add_mat_blocks(dim3 Gr, dim3 Bl, double alpha, const double *src,
 void cudaF_add_mat_blocks(dim3 Gr, dim3 Bl, float alpha, const float *src,
                           int32_cuda num_row_blocks, int32_cuda num_col_blocks,
                           float *dst, MatrixDim d, int src_stride, int A_trans);
+void cudaD_add_mat_repeated(dim3 Gr, dim3 Bl, double alpha, const double *src,
+                            MatrixDim src_dim, double *dst, MatrixDim dst_dim);
+void cudaF_add_mat_repeated(dim3 Gr, dim3 Bl, float alpha, const float *src,
+                            MatrixDim src_dim, float *dst, MatrixDim dst_dim);
 void cudaD_add_mat_diag_vec(dim3 Gr, dim3 Bl, double alpha, double *mat,
                             MatrixDim mat_dim, const double *mat2,
                             int mat2_row_stride, int mat2_col_stride,
@@ -324,6 +334,7 @@ void cudaF_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
                             const float* out_deriv, const int out_deriv_stride,
                             float* in_deriv);
 void cudaD_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
+                                  const int have_dropout_mask,
                                   const int num_rows, const double* input,
                                   const int in_stride, const double* params,
                                   const int params_stride,
@@ -343,6 +354,7 @@ void cudaD_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
                                   double* self_repair_sum_out,
                                   const int self_repair_sum_out_stride);
 void cudaF_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
+                                  const int have_dropout_mask,
                                   const int num_rows, const float* input,
                                   const int in_stride, const float* params,
                                   const int params_stride,
@@ -449,12 +461,14 @@ void cudaF_log_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x,
 void cudaD_lstm_nonlinearity(dim3 Gr, dim3 Bl, const double* in,
                              const int in_stride, const double* params,
                              const int params_stride, const int out_stride,
-                             const int cell_dim, const int num_rows,
+                             const int cell_dim, const int have_dropout_mask,
+                             const int num_rows,
                              double* out);
 void cudaF_lstm_nonlinearity(dim3 Gr, dim3 Bl, const float* in,
                              const int in_stride, const float* params,
                              const int params_stride, const int out_stride,
-                             const int cell_dim, const int num_rows,
+                             const int cell_dim, const int have_dropout_mask,
+                             const int num_rows,
                              float* out);
 void cudaD_matrix_add_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
                                double alpha, MatrixElement<double>* x,

@@ -138,7 +138,7 @@ for lang in $(seq 0 $[$num_lang-1]); do
     fi
   done
   if [ -f $this_degs_dir/conf ]; then
-    ln -sf $(readlink -f $this_degs_dir/conf) $dir/ || exit 1; 
+    ln -sf $(utils/make_absolute.sh $this_degs_dir/conf) $dir/ || exit 1; 
   fi
 done
 

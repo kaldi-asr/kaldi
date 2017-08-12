@@ -26,14 +26,14 @@
 
 namespace kaldi {
 namespace nnet3 {
-// returns the number of indexes/frames in the NnetIo named "output" in the eg,
-// or crashes if it is not there.
+// returns the number of indexes/frames in the NnetIo with output name
+// including string "output" as part of its name in the eg.
+// e.g. output-0, output-xent
 int32 NumOutputIndexes(const NnetExample &eg) {
   for (size_t i = 0; i < eg.io.size(); i++)
-    if (eg.io[i].name == "output")
+    if (eg.io[i].name.find("output") != std::string::npos)
       return eg.io[i].indexes.size();
-  KALDI_ERR << "No output named 'output' in the eg.";
-  return 0;  // Suppress compiler warning.
+  return 1;  // Suppress compiler warning.
 }
 
 }
@@ -49,10 +49,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "This copies nnet training examples from input to output, but while doing so it\n"
         "merges many NnetExample objects into one, forming a minibatch consisting of a\n"
-        "single NnetExample.  Note: if --measure-output-frames=true, which it is by default,\n"
-        "the --minibatch-size option will be interpreted as a target number of output frames;\n"
-        "otherwise as a number of input examples to combine.  This makes a difference\n"
-        "if the input examples have multiple supervised frames in them.\n"
+        "single NnetExample.\n"
         "\n"
         "Usage:  nnet3-merge-egs [options] <egs-rspecifier> <egs-wspecifier>\n"
         "e.g.\n"

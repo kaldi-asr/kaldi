@@ -332,7 +332,7 @@ void NonlinearComponent::UpdateStats(const CuMatrixBase<BaseFloat> &out_value,
   // Check we have the correct dimensions.
   if (value_sum_.Dim() != InputDim() ||
       (deriv != NULL && deriv_sum_.Dim() != InputDim())) {
-    mutex_.Lock();
+    std::lock_guard<std::mutex> lock(mutex_);
     if (value_sum_.Dim() != InputDim()) {
       value_sum_.Resize(InputDim());
       count_ = 0.0;
@@ -342,7 +342,6 @@ void NonlinearComponent::UpdateStats(const CuMatrixBase<BaseFloat> &out_value,
       count_ = 0.0;
       value_sum_.SetZero();
     }
-    mutex_.Unlock();
   }
   count_ += out_value.NumRows();
   CuVector<BaseFloat> temp(InputDim());

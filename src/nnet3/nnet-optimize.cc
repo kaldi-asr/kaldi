@@ -123,6 +123,8 @@ bool NnetOptimizeOptions::operator == (const NnetOptimizeOptions &other) const {
 }
 
 // move commands that resize matrices to as late/early as possible.
+// (however, keep input and output commands where they were; it
+// creates other headaches if we move those).
 void MoveSizingCommands(const Nnet &nnet, NnetComputation *computation) {
   ComputationVariables variables;
   variables.Init(*computation);
@@ -163,15 +165,20 @@ void MoveSizingCommands(const Nnet &nnet, NnetComputation *computation) {
       }
       if (first_access_command != -1) {
         KALDI_ASSERT(first_access_command > ma.allocate_command);
-        // move the initialization command to just before the first access.
-        commands[ma.allocate_command].first = first_access_command * 3 - 1;
+        // move the initialization command to just before the first access,
+        // it wasn't a kAcceptInput command.
+        if (commands[ma.allocate_command].second->command_type != kAcceptInput)
+          commands[ma.allocate_command].first = first_access_command * 3 - 1;
       }
     }
     if (ma.deallocate_command != -1) {
       if (!ma.accesses.empty()) {
         int32 last_access_command = ma.accesses.back().command_index;
-        // move the destruction command to just after the last access.
-        commands[ma.deallocate_command].first = last_access_command * 3 + 1;
+        // move the destruction command to just after the last access, if it
+        // wasn't a kProvideOutput command.
+        if (commands[ma.deallocate_command].second->command_type !=
+            kProvideOutput)
+          commands[ma.deallocate_command].first = last_access_command * 3 + 1;
       }
     }
   }
@@ -446,8 +453,10 @@ void Optimize(const NnetOptimizeOptions &config,
     if (config.max_deriv_time_relative != std::numeric_limits<int32>::max())
       max_deriv_time = config.max_deriv_time_relative +
           max_output_time_in_request;
-    LimitDerivativeTimes(nnet, config.min_deriv_time,
-                         max_deriv_time, computation);
+    if (config.min_deriv_time != std::numeric_limits<int32>::min() ||
+        max_deriv_time != std::numeric_limits<int32>::max())
+      LimitDerivativeTimes(nnet, config.min_deriv_time,
+                           max_deriv_time, computation);
   }
 
   if (GetVerboseLevel() >= 3)
@@ -575,9 +584,11 @@ void CachingOptimizingCompiler::UpdateCache(const ComputationRequest *request,
         computation_cache_.find(access_queue_.front());
     KALDI_ASSERT(it != computation_cache_.end());
     // purge the least-recently-accessed request
-    delete it->first;
-    delete it->second.first;
+    const ComputationRequest *r = it->first;
+    const NnetComputation *c = it->second.first;
     computation_cache_.erase(it);
+    delete r;
+    delete c;
     access_queue_.pop_front();
   }
   AqType::iterator ait = access_queue_.insert(access_queue_.end(), request);
@@ -826,98 +837,9 @@ static void SplitComputationIntoSegments(
   segments->push_back(std::pair<int32, int32>(cur_start, num_commands));
 }
 
-// This is a helper function used in ConsolidateIoOperations().
-//
-// Suppose we had something like this before ConsolidateIoOperations() (as would
-// be printed by Print()
-
-//  c90: output m50 to user [for node: 'output']
-//  ...
-//  c100: [label for goto statement]
-//  c101: # computation segment separator [e.g., begin backward commands]
-//  ...
-//  c105: m62 = user input [for node: 'input']
-//  ...
-//  c190: output m79 to user [for node: 'output']
-//  ...
-//  c200: goto c100
-//
-//  this would get reordered to the following by ConsolidateIoOperations
-//  (the bulk of the code, before this function is called):
-//
-//  c99: [label for goto statement]
-//  c100: output m50 to user [for node: 'output']
-//  c101: # computation segment separator [e.g., begin backward commands]
-//  c102: m62 = user input [for node: 'input']
-//  ...
-//  c199: goto c199
-//  c200: output m79 to user [for node: 'output']
-//
-// Now command c200 is unreachable, but there is a similar command at c100
-// (after the goto) that will substitute.  However, the matrix indexes are different.
-// So we need to change the above so that the last two commands read:
-//  c199: m50.swap(m79}
-//  c200: goto c199
-void FixGotoOutputReordering(const Nnet &nnet,
-                             NnetComputation *computation) {
-  FixGotoLabel(computation);  // make sure the destination label of the goto statement was
-                              // correct.
-  int32 goto_command_index = -1;
-  for (int32 c = computation->commands.size() - 1; c >= 0; c--)
-    if (computation->commands[c].command_type == kGotoLabel)
-      goto_command_index = c;
-  KALDI_ASSERT(goto_command_index > 0);
-  int32 goto_label_index = computation->commands[goto_command_index].arg1;
-
-  std::vector<int32> output_commands_after_goto,
-      output_commands_after_label;
-  for (int32 c = goto_command_index + 1;
-       c < static_cast<int32>(computation->commands.size()); c++) {
-    KALDI_ASSERT(computation->commands[c].command_type == kProvideOutput);
-    output_commands_after_goto.push_back(c);
-  }
-  for (int32 c = goto_label_index + 1;
-       c < goto_command_index; c++) {  // note: we break from this loop.
-    CommandType t = computation->commands[c].command_type;
-    if (t == kProvideOutput)
-      output_commands_after_label.push_back(c);
-    else if (t != kNoOperationMarker && t != kAcceptInput)
-      break;
-  }
-  if (output_commands_after_goto.size() != output_commands_after_label.size()) {
-    computation->Print(std::cerr, nnet);
-    KALDI_ERR << "Could not fix goto/output reordering, size mismatch.";
-  }
-  NnetComputation::Command goto_command = computation->commands[goto_command_index];
-  // be we'll be replacing the final kProvideOutput commands with
-  // kAllocMatrixFromOther [i.e. swap commands], and moving them one command
-  // backward; later we'll put the goto command at the end.
-  for (size_t i = 0; i < output_commands_after_goto.size(); i++) {
-    int32 c1 = output_commands_after_label[i],
-        c2 = output_commands_after_goto[i],
-        new_c2 = c2 - 1;
-    int32 s1 = computation->commands[c1].arg1,
-        s2 = computation->commands[c2].arg1;
-    // The following assert checks that the network node-index is the same...
-    // the idea is that the outputs should have been provided in the same order.
-    // I can think of no reason why the order might be different.
-    KALDI_ASSERT(computation->commands[c1].arg2 ==
-                 computation->commands[c1].arg2);
-    computation->commands[new_c2].command_type = kAllocMatrixFromOther;
-    computation->commands[new_c2].arg1 = s1;
-    computation->commands[new_c2].arg2 = s2;
-  }
-  // ... and move the goto command to the end.
-  computation->commands.back() = goto_command;
-}
-
 
 void ConsolidateIoOperations(const Nnet &nnet,
                              NnetComputation *computation) {
-  bool ends_with_goto =
-      (!computation->commands.empty() &&
-       computation->commands.back().command_type == kGotoLabel);
-
   // These segments, represented as (start-index, end-index),
   // are segments of the computation separated by kNoOperationMarker.
   std::vector<std::pair<int32, int32> > segments;
@@ -966,9 +888,6 @@ void ConsolidateIoOperations(const Nnet &nnet,
     KALDI_ASSERT(c == segment_end);
   }
   computation->commands.swap(reordered_commands);
-
-  if (ends_with_goto)
-    FixGotoOutputReordering(nnet, computation);
 }
 
 

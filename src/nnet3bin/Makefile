@@ -16,8 +16,9 @@ BINFILES = nnet3-init nnet3-info nnet3-get-egs nnet3-copy-egs nnet3-subset-egs \
    nnet3-discriminative-get-egs nnet3-discriminative-copy-egs \
    nnet3-discriminative-merge-egs nnet3-discriminative-shuffle-egs \
    nnet3-discriminative-compute-objf nnet3-discriminative-train \
-   nnet3-discriminative-subset-egs \
-   nnet3-discriminative-compute-from-egs nnet3-latgen-faster-looped
+   nnet3-discriminative-subset-egs nnet3-get-egs-simple \
+   nnet3-discriminative-compute-from-egs nnet3-latgen-faster-looped \
+   nnet3-egs-augment-image
 
 OBJFILES =
 
@@ -30,7 +31,7 @@ ADDLIBS = ../nnet3/kaldi-nnet3.a ../chain/kaldi-chain.a \
           ../cudamatrix/kaldi-cudamatrix.a ../decoder/kaldi-decoder.a \
           ../lat/kaldi-lat.a ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
-          ../tree/kaldi-tree.a ../util/kaldi-util.a ../thread/kaldi-thread.a \
+          ../tree/kaldi-tree.a ../util/kaldi-util.a \
           ../matrix/kaldi-matrix.a ../base/kaldi-base.a
 
 include ../makefiles/default_rules.mk

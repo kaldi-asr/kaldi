@@ -135,7 +135,7 @@ fi
 
 if [ $stage -le 5 ]; then
   dir=${srcdir}_${criterion}_${learning_rate}_nj${num_jobs_nnet}
-  #ln -sf $(readlink -f ${srcdir}_multicondition/conf) $dir/conf # so it acts like an online-decoding directory
+  #ln -sf $(utils/make_absolute.sh ${srcdir}_multicondition/conf) $dir/conf # so it acts like an online-decoding directory
   graph_dir=exp/tri5a/graph
   for epoch in $(seq $decode_start_epoch $num_epochs); do
     for data_dir in dev_rvb test_rvb dev_aspire dev test; do

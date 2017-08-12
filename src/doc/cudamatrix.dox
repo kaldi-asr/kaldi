@@ -50,7 +50,7 @@ namespace kaldi {
  the CUDA toolkit but you want to use it, you can use an option like
  <tt>--cudatk-dir=/opt/cuda-4.2</tt>.
  If you want to tell whether Kaldi has been configured to use CUDA, you can
- grep for <tt>nvcc</tt> in <tt>kaldi.mk</tt>; if the string appears, then it has
+ grep for <tt>CUDATKDIR</tt> in <tt>kaldi.mk</tt>; if the string appears, then it has
  been configured to use CUDA.  In scripts, you can check the return status of
  the program <tt>cuda-compiled</tt>: it returns success (0) if you compiled for CUDA.
 

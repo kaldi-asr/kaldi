@@ -12,7 +12,7 @@ OBJFILES = arpa-file-parser.o arpa-lm-compiler.o const-arpa-lm.o \
 LIBNAME = kaldi-lm
 
 ADDLIBS = ../fstext/kaldi-fstext.a ../util/kaldi-util.a \
-          ../thread/kaldi-thread.a ../matrix/kaldi-matrix.a \
+          ../matrix/kaldi-matrix.a \
           ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk

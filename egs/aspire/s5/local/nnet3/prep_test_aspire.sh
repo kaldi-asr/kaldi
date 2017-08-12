@@ -34,6 +34,8 @@ extra_right_context=0 # change for BLSTM
 frames_per_chunk=50 # change for (B)LSTM
 acwt=0.1 # important to change this when using chain models
 post_decode_acwt=1.0 # important to change this when using chain models
+extra_left_context_initial=-1
+extra_right_context_final=-1
 
 . ./cmd.sh
 [ -f ./path.sh ] && . ./path.sh
@@ -112,6 +114,8 @@ if [ $stage -le 3 ]; then
     --acwt $acwt --post-decode-acwt $post_decode_acwt \
     --extra-left-context $extra_left_context  \
     --extra-right-context $extra_right_context  \
+    --extra-left-context-initial $extra_left_context_initial \
+    --extra-right-context-final $extra_right_context_final \
     --frames-per-chunk "$frames_per_chunk" \
     --online-ivector-dir $ivector_dir/ivectors_${segmented_data_set}${ivector_affix}${ivector_scale_affix}_stage1 \
     --skip-scoring true --iter $iter \

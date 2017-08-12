@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         "Usage:  ali-to-phones  [options] <model> <alignments-rspecifier> "
         "<phone-transcript-wspecifier|ctm-wxfilename>\n"
         "e.g.: \n"
-        " ali-to-phones 1.mdl ark:1.ali ark:phones.tra\n"
+        " ali-to-phones 1.mdl ark:1.ali ark:-\n"
         "or:\n"
         " ali-to-phones --ctm-output 1.mdl ark:1.ali 1.ctm\n"
         "See also: show-alignments lattice-align-phones\n";

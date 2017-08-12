@@ -40,14 +40,73 @@ class RunOpts(object):
         self.prior_queue_opt = None
         self.parallel_train_opts = None
 
+def get_outputs_list(model_file, get_raw_nnet_from_am=True):
+    """ Generates list of output-node-names used in nnet3 model configuration.
+        It will normally return 'output'.
+    """
+    if get_raw_nnet_from_am:
+        outputs_list = common_lib.get_command_stdout(
+            "nnet3-am-info --print-args=false {0} | "
+            "grep -e 'output-node' | cut -f2 -d' ' | cut -f2 -d'=' ".format(model_file))
+    else:
+        outputs_list = common_lib.get_command_stdout(
+            "nnet3-info --print-args=false {0} | "
+            "grep -e 'output-node' | cut -f2 -d' ' | cut -f2 -d'=' ".format(model_file))
+
+    return outputs_list.split()
+
+
+def get_multitask_egs_opts(egs_dir, egs_prefix="",
+                           archive_index=-1,
+                           use_multitask_egs=False):
+    """ Generates egs option for multitask(or multilingual) training setup,
+        if {egs_prefix}output.*.ark or {egs_prefix}weight.*.ark files exists in egs_dir.
+        Each line in {egs_prefix}*.scp has a corresponding line containing
+        name of the output-node in the network and language-dependent weight in
+        {egs_prefix}output.*.ark or {egs_prefix}weight.*.ark respectively.
+        e.g. Returns the empty string ('') if use_multitask_egs == False,
+        otherwise something like:
+        '--output=ark:foo/egs/output.3.ark --weight=ark:foo/egs/weights.3.ark'
+        i.e. egs_prefix is "" for train and
+        "valid_diagnostic." for validation.
+    """
+    multitask_egs_opts = ""
+    egs_suffix = ".{0}".format(archive_index) if archive_index > -1 else ""
+
+    if use_multitask_egs:
+        output_file_name = ("{egs_dir}/{egs_prefix}output{egs_suffix}.ark"
+                            "".format(egs_dir=egs_dir,
+                                      egs_prefix=egs_prefix,
+                                      egs_suffix=egs_suffix))
+        output_rename_opt = ""
+        if os.path.isfile(output_file_name):
+            output_rename_opt = ("--outputs=ark:{output_file_name}".format(
+                output_file_name=output_file_name))
+
+        weight_file_name = ("{egs_dir}/{egs_prefix}weight{egs_suffix}.ark"
+                            "".format(egs_dir=egs_dir,
+                                      egs_prefix=egs_prefix,
+                                      egs_suffix=egs_suffix))
+        weight_opt = ""
+        if os.path.isfile(weight_file_name):
+            weight_opt = ("--weights=ark:{weight_file_name}"
+                          "".format(weight_file_name=weight_file_name))
+
+        multitask_egs_opts = (
+            "{output_rename_opt} {weight_opt}".format(
+                output_rename_opt=output_rename_opt,
+                weight_opt=weight_opt))
+
+    return multitask_egs_opts
+
 
 def get_successful_models(num_models, log_file_pattern,
                           difference_threshold=1.0):
-    assert(num_models > 0)
+    assert num_models > 0
 
     parse_regex = re.compile(
         "LOG .* Overall average objective function for "
-        "'output' is ([0-9e.\-+]+) over ([0-9e.\-+]+) frames")
+        "'output' is ([0-9e.\-+= ]+) over ([0-9e.\-+]+) frames")
     objf = []
     for i in range(num_models):
         model_num = i + 1
@@ -59,7 +118,7 @@ def get_successful_models(num_models, log_file_pattern,
             # lesser number of regex searches. Python regex is slow !
             mat_obj = parse_regex.search(lines[-1 * line_num])
             if mat_obj is not None:
-                this_objf = float(mat_obj.groups()[0])
+                this_objf = float(mat_obj.groups()[0].split()[-1])
                 break
         objf.append(this_objf)
     max_index = objf.index(max(objf))
@@ -78,28 +137,19 @@ def get_successful_models(num_models, log_file_pattern,
 
 
 def get_average_nnet_model(dir, iter, nnets_list, run_opts,
-                           get_raw_nnet_from_am=True, shrink=None):
-    scale = 1.0
-    if shrink is not None:
-        scale = shrink
+                           get_raw_nnet_from_am=True):
 
     next_iter = iter + 1
     if get_raw_nnet_from_am:
-        out_model = ("""- \| nnet3-am-copy --set-raw-nnet=- --scale={scale} \
+        out_model = ("""- \| nnet3-am-copy --set-raw-nnet=-  \
                         {dir}/{iter}.mdl {dir}/{next_iter}.mdl""".format(
                             dir=dir, iter=iter,
-                            next_iter=next_iter,
-                            scale=scale))
+                            next_iter=next_iter))
     else:
-        if shrink is not None:
-            out_model = """- \| nnet3-copy --scale={scale} \
-                           - {dir}/{next_iter}.raw""".format(
-                                   dir=dir, next_iter=next_iter, scale=scale)
-        else:
-            out_model = "{dir}/{next_iter}.raw".format(dir=dir,
-                                                       next_iter=next_iter)
+        out_model = "{dir}/{next_iter}.raw".format(
+            dir=dir, next_iter=next_iter)
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/average.{iter}.log \
                 nnet3-average {nnets_list} \
                 {out_model}""".format(command=run_opts.command,
@@ -110,15 +160,12 @@ def get_average_nnet_model(dir, iter, nnets_list, run_opts,
 
 
 def get_best_nnet_model(dir, iter, best_model_index, run_opts,
-                        get_raw_nnet_from_am=True, shrink=None):
-    scale = 1.0
-    if shrink is not None:
-        scale = shrink
+                        get_raw_nnet_from_am=True):
 
     best_model = "{dir}/{next_iter}.{best_model_index}.raw".format(
-            dir=dir,
-            next_iter=iter + 1,
-            best_model_index=best_model_index)
+        dir=dir,
+        next_iter=iter + 1,
+        best_model_index=best_model_index)
 
     if get_raw_nnet_from_am:
         out_model = ("""- \| nnet3-am-copy --set-raw-nnet=- \
@@ -128,13 +175,13 @@ def get_best_nnet_model(dir, iter, best_model_index, run_opts,
         out_model = "{dir}/{next_iter}.raw".format(dir=dir,
                                                    next_iter=iter + 1)
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/select.{iter}.log \
-                nnet3-copy --scale={scale} {best_model} \
+                nnet3-copy {best_model} \
                 {out_model}""".format(command=run_opts.command,
                                       dir=dir, iter=iter,
                                       best_model=best_model,
-                                      out_model=out_model, scale=scale))
+                                      out_model=out_model))
 
 
 def validate_chunk_width(chunk_width):
@@ -293,9 +340,15 @@ def parse_generic_config_vars_file(var_file):
             elif field_name in ['model_right_context', 'right_context']:
                 variables['model_right_context'] = int(field_value)
             elif field_name == 'num_hidden_layers':
-                variables['num_hidden_layers'] = int(field_value)
+                if int(field_value) > 1:
+                    raise Exception(
+                        "You have num_hidden_layers={0} (real meaning: your config files "
+                        "are intended to do discriminative pretraining).  Since Kaldi 5.2, "
+                        "this is no longer supported --> use newer config-creation scripts, "
+                        "i.e. xconfig_to_configs.py.".format(field_value))
             else:
                 variables[field_name] = field_value
+
         return variables
     except ValueError:
         # we will throw an error at the end of the function so I will just pass
@@ -321,8 +374,11 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
             # an older version of the script
             pass
 
-        egs_ivector_dim = int(open('{0}/info/ivector_dim'.format(
-                                    egs_dir)).readline())
+        try:
+            egs_ivector_dim = int(open('{0}/info/ivector_dim'.format(
+                egs_dir)).readline())
+        except:
+            egs_ivector_dim = 0
         egs_left_context = int(open('{0}/info/left_context'.format(
                                     egs_dir)).readline())
         egs_right_context = int(open('{0}/info/right_context'.format(
@@ -338,7 +394,9 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
         except:  # older scripts didn't write this, treat it as -1 in that case.
             egs_right_context_final = -1
 
-        if (feat_dim != egs_feat_dim) or (ivector_dim != egs_ivector_dim):
+        # if feat_dim was supplied as 0, it means the --feat-dir option was not
+        # supplied to the script, so we simply don't know what the feature dim is.
+        if (feat_dim != 0 and feat_dim != egs_feat_dim) or (ivector_dim != egs_ivector_dim):
             raise Exception("There is mismatch between featdim/ivector_dim of "
                             "the current experiment and the provided "
                             "egs directory")
@@ -348,21 +406,21 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
             logger.warning("The ivector ids are inconsistently used. It's your "
                           "responsibility to make sure the ivector extractor "
                           "has been used consistently")
-        elif (((egs_ivector_id is None) and (ivector_extractor_id is None))):
+        elif ((egs_ivector_id is None) and (ivector_extractor_id is None)):
             logger.warning("The ivector ids are not used. It's your "
                           "responsibility to make sure the ivector extractor "
                           "has been used consistently")
-        elif (ivector_extractor_id != egs_ivector_id):
+        elif ivector_extractor_id != egs_ivector_id:
             raise Exception("The egs were generated using a different ivector "
                             "extractor. id1 = {0}, id2={1}".format(
                                 ivector_extractor_id, egs_ivector_id));
 
         if (egs_left_context < left_context or
-                egs_right_context < right_context):
+            egs_right_context < right_context):
             raise Exception('The egs have insufficient (l,r) context ({0},{1}) '
                             'versus expected ({2},{3})'.format(
-                            egs_left_context, egs_right_context,
-                            left_context, right_context))
+                                egs_left_context, egs_right_context,
+                                left_context, right_context))
 
         # the condition on the initial/final context is an equality condition,
         # not an inequality condition, as there is no mechanism to 'correct' the
@@ -377,8 +435,8 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
             raise Exception('The egs have incorrect initial/final (l,r) context '
                             '({0},{1}) versus expected ({2},{3}).  See code from '
                             'where this exception was raised for more info'.format(
-                    egs_left_context_initial, egs_right_context_final,
-                    left_context_initial, right_context_final))
+                                egs_left_context_initial, egs_right_context_final,
+                                left_context_initial, right_context_final))
 
         frames_per_eg_str = open('{0}/info/frames_per_eg'.format(
                              egs_dir)).readline().rstrip()
@@ -400,7 +458,7 @@ def compute_presoftmax_prior_scale(dir, alidir, num_jobs, run_opts,
                                    presoftmax_prior_scale_power=-0.25):
 
     # getting the raw pdf count
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} JOB=1:{num_jobs} {dir}/log/acc_pdf.JOB.log \
                 ali-to-post "ark:gunzip -c {alidir}/ali.JOB.gz|" ark:- \| \
                 post-to-tacc --per-pdf=true  {alidir}/final.mdl ark:- \
@@ -409,7 +467,7 @@ def compute_presoftmax_prior_scale(dir, alidir, num_jobs, run_opts,
                                                dir=dir,
                                                alidir=alidir))
 
-    common_lib.run_job(
+    common_lib.execute_command(
         """{command} {dir}/log/sum_pdf_counts.log \
                 vector-sum --binary=false {dir}/pdf_counts.* {dir}/pdf_counts \
         """.format(command=run_opts.command, dir=dir))
@@ -418,9 +476,9 @@ def compute_presoftmax_prior_scale(dir, alidir, num_jobs, run_opts,
         os.remove(file)
     pdf_counts = common_lib.read_kaldi_matrix('{0}/pdf_counts'.format(dir))[0]
     scaled_counts = smooth_presoftmax_prior_scale_vector(
-            pdf_counts,
-            presoftmax_prior_scale_power=presoftmax_prior_scale_power,
-            smooth=0.01)
+        pdf_counts,
+        presoftmax_prior_scale_power=presoftmax_prior_scale_power,
+        smooth=0.01)
 
     output_file = "{0}/presoftmax_prior_scale.vec".format(dir)
     common_lib.write_kaldi_matrix(output_file, [scaled_counts])
@@ -445,33 +503,26 @@ def smooth_presoftmax_prior_scale_vector(pdf_counts,
 
 def prepare_initial_network(dir, run_opts, srand=-3):
     if os.path.exists(dir+"/configs/init.config"):
-        common_lib.run_job(
+        common_lib.execute_command(
             """{command} {dir}/log/add_first_layer.log \
                     nnet3-init --srand={srand} {dir}/init.raw \
-                    {dir}/configs/layer1.config {dir}/0.raw""".format(
+                    {dir}/configs/final.config {dir}/0.raw""".format(
                         command=run_opts.command, srand=srand,
                         dir=dir))
     else:
-        common_lib.run_job(
-            """{command} {dir}/log/add_first_layer.log \
-                    nnet3-init --srand={srand} \
-                    {dir}/configs/layer1.config {dir}/0.raw""".format(
+        common_lib.execute_command(
+            """{command} {dir}/log/init_model.log \
+           nnet3-init --srand={srand} {dir}/configs/final.config {dir}/0.raw""".format(
                         command=run_opts.command, srand=srand,
                         dir=dir))
 
 
-def verify_iterations(num_iters, num_epochs, num_hidden_layers,
+def get_model_combine_iters(num_iters, num_epochs,
                       num_archives, max_models_combine,
-                      add_layers_period, num_jobs_final):
-    """ Verifies that number of iterations are sufficient for various
-        phases of training."""
-
-    finish_add_layers_iter = num_hidden_layers * add_layers_period
-
-    if num_iters <= (finish_add_layers_iter + 2):
-        raise Exception("There are insufficient number of epochs. "
-                        "These are not even sufficient for "
-                        "layer-wise discriminatory training.")
+                      num_jobs_final):
+    """ Figures out the list of iterations for which we'll use those models
+        in the final model-averaging phase.  (note: it's a weighted average
+        where the weights are worked out from a subset of training data.)"""
 
     approx_iters_per_epoch_final = num_archives/num_jobs_final
     # Note: it used to be that we would combine over an entire epoch,
@@ -486,13 +537,12 @@ def verify_iterations(num_iters, num_epochs, num_hidden_layers,
     # nnet3-combine-fast invocation.
     # The number we use is:
     # min(max(max_models_combine, approx_iters_per_epoch_final/2+1),
-    #     1/2 * iters_after_last_layer_added)
+    #     iters/2)
     # But if this value is > max_models_combine, then the models
     # are subsampled to get these many models to combine.
-    half_iters_after_add_layers = (num_iters - finish_add_layers_iter)/2
 
     num_iters_combine_initial = min(approx_iters_per_epoch_final/2 + 1,
-                                    half_iters_after_add_layers)
+                                    num_iters/2)
 
     if num_iters_combine_initial > max_models_combine:
         subsample_model_factor = int(
@@ -504,8 +554,7 @@ def verify_iterations(num_iters, num_epochs, num_hidden_layers,
         models_to_combine.add(num_iters)
     else:
         subsample_model_factor = 1
-        num_iters_combine = min(max_models_combine,
-                                half_iters_after_add_layers)
+        num_iters_combine = min(max_models_combine, num_iters/2)
         models_to_combine = set(range(num_iters - num_iters_combine + 1,
                                       num_iters + 1))
 
@@ -528,19 +577,19 @@ def get_learning_rate(iter, num_jobs, num_iters, num_archives_processed,
     return num_jobs * effective_learning_rate
 
 
-def do_shrinkage(iter, model_file, shrink_saturation_threshold,
-                 get_raw_nnet_from_am=True):
+def should_do_shrinkage(iter, model_file, shrink_saturation_threshold,
+                        get_raw_nnet_from_am=True):
 
     if iter == 0:
         return True
 
     if get_raw_nnet_from_am:
-        output, error = common_lib.run_kaldi_command(
-            "nnet3-am-info --print-args=false {0} | "
+        output = common_lib.get_command_stdout(
+            "nnet3-am-info {0} 2>/dev/null | "
             "steps/nnet3/get_saturation.pl".format(model_file))
     else:
-        output, error = common_lib.run_kaldi_command(
-            "nnet3-info --print-args=false {0} | "
+        output = common_lib.get_command_stdout(
+            "nnet3-info 2>/dev/null {0} | "
             "steps/nnet3/get_saturation.pl".format(model_file))
     output = output.strip().split("\n")
     try:
@@ -552,12 +601,12 @@ def do_shrinkage(iter, model_file, shrink_saturation_threshold,
                         "saturation from the output '{0}' of "
                         "get_saturation.pl on the info of "
                         "model {1}".format(output, model_file))
-    return (saturation > shrink_saturation_threshold)
+    return saturation > shrink_saturation_threshold
 
 
 def remove_nnet_egs(egs_dir):
-    common_lib.run_job("steps/nnet2/remove_egs.sh {egs_dir}".format(
-                            egs_dir=egs_dir))
+    common_lib.execute_command("steps/nnet2/remove_egs.sh {egs_dir}".format(
+            egs_dir=egs_dir))
 
 
 def clean_nnet_dir(nnet_dir, num_iters, egs_dir,
@@ -602,7 +651,7 @@ def self_test():
     assert validate_chunk_width('64,25,128')
 
 
-class CommonParser:
+class CommonParser(object):
     """Parser for parsing common options related to nnet3 training.
 
     This argument parser adds common options related to nnet3 training
@@ -614,7 +663,7 @@ class CommonParser:
     parser = argparse.ArgumentParser(add_help=False)
 
     def __init__(self,
-                 include_chunk_context = True,
+                 include_chunk_context=True,
                  default_chunk_left_context=0):
         # feat options
         self.parser.add_argument("--feat.online-ivector-dir", type=str,
@@ -643,11 +692,11 @@ class CommonParser:
                                  the case of FF-DNN this extra context will be
                                  used to allow for frame-shifts""")
             self.parser.add_argument("--egs.chunk-right-context", type=int,
-                                 dest='chunk_right_context', default=0,
-                                 help="""Number of additional frames of input
-                                 to the right of the input chunk. This extra
-                                 context will be used in the estimation of
-                                 bidirectional RNN state before prediction of
+                                     dest='chunk_right_context', default=0,
+                                     help="""Number of additional frames of input
+                                     to the right of the input chunk. This extra
+                                     context will be used in the estimation of
+                                     bidirectional RNN state before prediction of
                                  the first label.""")
             self.parser.add_argument("--egs.chunk-left-context-initial", type=int,
                                      dest='chunk_left_context_initial', default=-1,
@@ -709,11 +758,6 @@ class CommonParser:
                                  since in the preconditioning method, 2 samples
                                  in the same minibatch can affect each others'
                                  gradients.""")
-        self.parser.add_argument("--trainer.add-layers-period", type=int,
-                                 dest='add_layers_period', default=2,
-                                 help="""The number of iterations between
-                                 adding layers during layer-wise discriminative
-                                 training.""")
         self.parser.add_argument("--trainer.max-param-change", type=float,
                                  dest='max_param_change', default=2.0,
                                  help="""The maximum change in parameters
@@ -727,7 +771,7 @@ class CommonParser:
                                  dest='rand_prune', default=4.0,
                                  help="Value used in preconditioning "
                                  "matrix estimation")
-        self.parser.add_argument("--trainer.lda.max-lda-jobs", type=float,
+        self.parser.add_argument("--trainer.lda.max-lda-jobs", type=int,
                                  dest='max_lda_jobs', default=10,
                                  help="Max number of jobs used for "
                                  "LDA stats accumulation")
@@ -736,6 +780,18 @@ class CommonParser:
                                  dest='presoftmax_prior_scale_power',
                                  default=-0.25,
                                  help="Scale on presofmax prior")
+        self.parser.add_argument("--trainer.optimization.proportional-shrink", type=float,
+                                 dest='proportional_shrink', default=0.0,
+                                 help="""If nonzero, this will set a shrinkage (scaling)
+                        factor for the parameters, whose value is set as:
+                        shrink-value=(1.0 - proportional-shrink * learning-rate), where
+                        'learning-rate' is the learning rate being applied
+                        on the current iteration, which will vary from
+                        initial-effective-lrate*num-jobs-initial to
+                        final-effective-lrate*num-jobs-final.
+                        Unlike for train_rnn.py, this is applied unconditionally,
+                        it does not depend on saturation of nonlinearities.
+                        Can be used to roughly approximate l2 regularization.""")
 
         # Parameters for the optimization
         self.parser.add_argument(
@@ -762,6 +818,13 @@ class CommonParser:
                                  the final model combination stage.  These
                                  models will themselves be averages of
                                  iteration-number ranges""")
+        self.parser.add_argument("--trainer.optimization.do-final-combination",
+                                 dest='do_final_combination', type=str,
+                                 action=common_lib.StrToBoolAction,
+                                 choices=["true", "false"], default=True,
+                                 help="""Set this to false to disable the final
+                                 'combine' stage (in this case we just use the
+                                 last-numbered model as the final.mdl).""")
         self.parser.add_argument("--trainer.optimization.combine-sum-to-one-penalty",
                                  type=float, dest='combine_sum_to_one_penalty', default=0.0,
                                  help="""If > 0, activates 'soft' enforcement of the
@@ -798,6 +861,21 @@ class CommonParser:
                                  lstm*=0,0.2,0'.  More general should precede
                                  less general patterns, as they are applied
                                  sequentially.""")
+        self.parser.add_argument("--trainer.optimization.backstitch-training-scale",
+                                 type=float, dest='backstitch_training_scale',
+                                 default=0.0, help="""scale of parameters changes
+                                 used in backstitch training step.""")
+        self.parser.add_argument("--trainer.optimization.backstitch-training-interval",
+                                 type=int, dest='backstitch_training_interval',
+                                 default=1, help="""the interval of minibatches
+                                 that backstitch training is applied on.""")
+        self.parser.add_argument("--trainer.compute-per-dim-accuracy",
+                                 dest='compute_per_dim_accuracy',
+                                 type=str, choices=['true', 'false'],
+                                 default=False,
+                                 action=common_lib.StrToBoolAction,
+                                 help="Compute train and validation "
+                                 "accuracy per-dim")
 
         # General options
         self.parser.add_argument("--stage", type=int, default=-4,
@@ -849,19 +927,13 @@ class CommonParser:
                                  expertise to setup. """)
         self.parser.add_argument("--reporting.interval",
                                  dest="reporting_interval",
-                                 type=int, default=0.1,
+                                 type=float, default=0.1,
                                  help="""Frequency with which reports have to
                                  be sent, measured in terms of fraction of
                                  iterations.
                                  If 0 and reporting mail has been specified
                                  then only failure notifications are sent""")
-        self.parser.add_argument("--background-polling-time",
-                                 dest="background_polling_time",
-                                 type=float, default=60,
-                                 help="""Polling frequency in seconds at which
-                                 the background process handler checks for
-                                 errors in the processes.""")
 
 
 if __name__ == '__main__':
-    self_test()
+    _self_test()

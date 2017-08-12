@@ -84,7 +84,7 @@ fi
 
 if which python >&/dev/null ; then
   version=`python 2>&1 --version | awk '{print $2}' `
-  if [[ $version != "2."* ]] ; then
+  if [[ $version != "2.7"* ]] ; then
     if which python2.7 >&/dev/null  || which python2 >&/dev/null ; then
       echo "$0: python 2.7 is not the default python. You should either make it"
       echo "$0: default or create an bash alias for kaldi scripts to run correctly"
@@ -122,17 +122,7 @@ if which apt-get >&/dev/null && ! which zypper >/dev/null; then
     echo " sudo apt-get install libatlas3-base"
     printed=true
   fi
-  # Debian systems generally link /bin/sh to dash, which doesn't work
-  # with some scripts as it doesn't expand x.{1,2}.y to x.1.y x.2.y
-  if [ "$(readlink /bin/sh)" == "dash" ]; then
-    echo "/bin/sh is linked to dash, and currently some of the scripts will not run"
-    echo "properly.  We recommend to run:"
-    echo " sudo ln -s -f bash /bin/sh"
-    printed=true
-  fi
-fi
-
-if which yum >&/dev/null; then
+elif which yum >&/dev/null; then
   if [ ! -z "$redhat_packages" ]; then
     echo "$0: we recommend that you run (our best guess):"
     echo " sudo yum install $redhat_packages"
@@ -144,9 +134,7 @@ if which yum >&/dev/null; then
     echo "sudo yum install atlas.x86_64"
     printed=true
   fi
-fi
-
-if which zypper >&/dev/null; then
+elif which zypper >&/dev/null; then
   if [ ! -z "$opensuse_packages" ]; then
     echo "$0: we recommend that you run (our best guess):"
     echo " sudo zypper install $opensuse_packages"
@@ -179,14 +167,6 @@ if which grep >&/dev/null && pwd | grep -E 'JOB|LMWT' >/dev/null; then
   echo "*** $0: Kaldi scripts will fail if the directory name contains"
   echo "***  either of the strings 'JOB' or 'LMWT'."
   status=1;
-fi
-
-if [ -f /usr/lib64/libfst.so.1 ] || [ -f /usr/local/include/fst.h ] || \
-   [ -f /usr/include/fst/fst.h ] || [ -f /usr/local/bin/fstinfo ]; then
-  echo "*** $0: Kaldi cannot be installed (for now) if you have OpenFst"
-  echo "***   installed in system space (version mismatches, etc.)"
-  echo "***   Please try to uninstall it."
-  status=1
 fi
 
 if ! $printed && [ $status -eq 0 ]; then

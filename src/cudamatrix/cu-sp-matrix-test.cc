@@ -41,7 +41,7 @@ namespace kaldi {
  * Unit Tests
  */
 template<typename Real>
-static void UnitTestCuSpMatrixConstructor() { 
+static void UnitTestCuSpMatrixConstructor() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 10 * i;
 
@@ -56,7 +56,7 @@ static void UnitTestCuSpMatrixConstructor() {
     D.CopyToSp(&E);
 
     SpMatrix<Real> F(D);
-    
+
     AssertEqual(F, B);
      //added by hxu, to test copy from SpMatrix to CuSpMatrix
 
@@ -87,7 +87,7 @@ static void UnitTestCuSpMatrixApproxEqual() {
       KALDI_ASSERT(b1 == b2);
     }
   }
-  
+
 }
 
 
@@ -113,17 +113,17 @@ static void UnitTestCuSpMatrixAddToDiag() {
     SpMatrix<Real> A(dim);
     A.SetRandn();
     CuSpMatrix<Real> B(A);
-    
+
     Matrix<Real> D(A);
     A.AddToDiag(i);
 
     CuMatrix<Real> C(B);
     B.AddToDiag(i);
-    
+
     SpMatrix<Real> E(dim);
     B.CopyToSp(&E);
-    
-    AssertEqual(A, E);    
+
+    AssertEqual(A, E);
   }
 }
 
@@ -137,7 +137,7 @@ static void UnitTestCuSpMatrixCopyFromMat() {
     CuMatrix<Real> A(dim, dim);
     A.SetRandn();
     Matrix<Real> A2(A);
-    
+
     CuSpMatrix<Real> B(A, copy_type);
     SpMatrix<Real> B2(A2, copy_type);
     SpMatrix<Real> B3(B);
@@ -156,7 +156,7 @@ static void UnitTestCuSpMatrixInvert() {
     A.SetRandn();
     KALDI_ASSERT(A.Trace() != 0.0); // true with probability 1...
     SpMatrix<Real> B(A);
-    
+
     CuMatrix<Real> D(A);
     A.AddMat2(1.0, D, kTrans, 1.0);
     A.AddToDiag(i);
@@ -168,7 +168,7 @@ static void UnitTestCuSpMatrixInvert() {
     CuSpMatrix<Real> Acopy(A);
     A.Invert();
     B.Invert();
-    
+
     SpMatrix<Real> A2(A);
     AssertEqual(A2, B);
 
@@ -178,7 +178,7 @@ static void UnitTestCuSpMatrixInvert() {
   }
 }
 
-// TODO (variani) : fails for dim = 0 
+// TODO (variani) : fails for dim = 0
 template<typename Real>
 static void UnitTestCuSpMatrixAddVec2() {
   for (int32 i = 0; i < 50; i++) {
@@ -186,7 +186,7 @@ static void UnitTestCuSpMatrixAddVec2() {
     SpMatrix<Real> A(dim);
     A.SetRandn();
     CuSpMatrix<Real> B(A);
-    
+
     Vector<Real> C(dim);
     C.SetRandn();
     CuVector<Real> D(C);
@@ -232,7 +232,7 @@ template<typename Real>
 static void UnitTestCuSpMatrixAddSp() {
   for (MatrixIndexT i = 1; i < 50; i++) {
     MatrixIndexT dim = 7 * i + Rand() % 10;
-    
+
     SpMatrix<Real> A(dim);
     A.SetRandn();
     CuSpMatrix<Real> B(A);
@@ -242,7 +242,7 @@ static void UnitTestCuSpMatrixAddSp() {
     const CuSpMatrix<Real> D(C);
 
     const Real alpha = 2.0;
-    
+
     A.AddSp(alpha, C);
     B.AddSp(alpha, D);
 
@@ -257,7 +257,7 @@ template<typename Real, typename OtherReal>
 static void UnitTestCuSpMatrixTraceSpSp() {
   for (MatrixIndexT i = 1; i < 2; i++) {
     MatrixIndexT dim = 100 + Rand() % 255;
-    
+
     SpMatrix<Real> A(dim);
     A.SetRandn();
     const CuSpMatrix<Real> B(A);
@@ -297,7 +297,7 @@ void UnitTestCuSpMatrixSetUnit() {
     AssertEqual(S4, cu_S3);
   }
 }
-   
+
 template<class Real>
 static void UnitTestCuSpMatrixIO() {
   for (int32 i = 0; i < 10; i++) {
@@ -323,17 +323,17 @@ template<typename Real, typename OtherReal>
 static void UnitTestCuSpMatrixAddSp() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 100 * i + Rand() % 255;
-    
+
     SpMatrix<Real> A(dim);
     A.SetRandn();
     const CuSpMatrix<Real> B(A);
     SpMatrix<OtherReal> C(dim);
     C.SetRandn();
     const CuSpMatrix<OtherReal> D(C);
-    
+
     A.AddSp(1.0, C);
     B.AddSp(1.0, D);
-    
+
     AssertEqual(A, B);
 
   }
@@ -363,6 +363,7 @@ template<typename Real, typename OtherReal> void CudaSpMatrixUnitTest() {
 
 int main() {
   using namespace kaldi;
+  SetVerboseLevel(1);
   int32 loop = 0;
 #if HAVE_CUDA == 1
   for (; loop < 2; loop++) {

@@ -1,8 +1,8 @@
 // fgmmbin/fgmm-global-init-from-accs.cc
 
-// Copyright 2015 David Snyder
-//           2015 Johns Hopkins University (Author: Daniel Povey)
-//           2015 Johns Hopkins University (Author: Daniel Garcia-Romero)
+// Copyright 2015-2017 David Snyder
+//                2015 Johns Hopkins University (Author: Daniel Povey)
+//                2015 Johns Hopkins University (Author: Daniel Garcia-Romero)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
     }
 
     int32 num_gauss = gmm_accs.NumGauss(), dim = gmm_accs.Dim(),
-          tot_floored = 0, gauss_floored = 0;
+          tot_floored = 0, gauss_floored = 0, tot_low_occ = 0;
 
     FullGmm fgmm(num_components, dim);
 
@@ -69,23 +69,30 @@ int main(int argc, char *argv[]) {
     Matrix<BaseFloat> means(num_gauss, dim);
     std::vector<SpMatrix<BaseFloat> > invcovars;
 
-    BaseFloat occ_sum = gmm_accs.occupancy().Sum();
     for (int32 i = 0; i < num_components; i++) {
-      BaseFloat occ = gmm_accs.occupancy()(i),
-                prob;
-      if (occ_sum > 0.0)
-        prob = occ / occ_sum;
-      else
-        prob = 1.0 / num_gauss;
-      weights(i) = prob;
+      BaseFloat occ = gmm_accs.occupancy()(i);
+      weights(i) = occ;
+      Vector<BaseFloat> mean(dim, kSetZero);
+      SpMatrix<BaseFloat> covar(dim, kSetZero);
 
-      Vector<BaseFloat> mean(gmm_accs.mean_accumulator().Row(i));
-      mean.Scale(1.0 / occ);
+      // If the occupancy for a Gaussian is very low, set it to a small value.
+      if (occ < 1e-10) {
+        weights(i) = 1e-10;
+        mean.SetRandn();
+        Vector<BaseFloat> diag(mean.Dim());
+        diag.Set(1.0);
+        covar.AddDiagVec(1.0, diag);
+        tot_low_occ++;
+      // This is the typical case.
+      } else {
+        mean.CopyRowFromMat(gmm_accs.mean_accumulator(), i);
+        mean.Scale(1.0 / occ);
+        covar.CopyFromSp(gmm_accs.covariance_accumulator()[i]);
+        covar.Scale(1.0 / occ);
+        covar.AddVec2(-1.0, mean);  // subtract squared means.
+      }
       means.CopyRowFromVec(mean, i);
 
-      SpMatrix<BaseFloat> covar(gmm_accs.covariance_accumulator()[i]);
-      covar.Scale(1.0 / occ);
-      covar.AddVec2(-1.0, means.Row(i));  // subtract squared means.
       // Floor variance Eigenvalues.
       BaseFloat floor = std::max(
           static_cast<BaseFloat>(gmm_opts.variance_floor),
@@ -98,14 +105,21 @@ int main(int argc, char *argv[]) {
       covar.InvertDouble();
       invcovars.push_back(covar);
     }
+    weights.Scale(1.0 / weights.Sum());
     fgmm.SetWeights(weights);
     fgmm.SetInvCovarsAndMeans(invcovars, means);
     int32 num_bad = fgmm.ComputeGconsts();
     KALDI_LOG << "FullGmm has " << num_bad << " bad GConsts";
+
     if (tot_floored > 0) {
       KALDI_WARN << tot_floored << " variances floored in " << gauss_floored
                  << " Gaussians.";
     }
+    if (tot_low_occ > 0) {
+      KALDI_WARN << tot_low_occ << " out of " << num_gauss
+                 << " Gaussians had very low occupancy.";
+    }
+
     WriteKaldiObject(fgmm, model_out_filename, binary_write);
 
     KALDI_LOG << "Written model to " << model_out_filename;
