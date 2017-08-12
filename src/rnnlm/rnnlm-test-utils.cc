@@ -114,33 +114,40 @@ class InterpolatedKneserNeyLM {
        @param [in] ngram_order  The n-gram order of the language model to
                                 be estimated.
        @param [in] discount   Fixed value of discount, i.e. the D in formula.
+       @param [in] bos_symbol  The integer id of the beginning-of-sentence
+                               symbol
+       @param [in] eos_symbol  The integer id of the end-of-sentence
+                              symbol
    */
-  InterpolatedKneserNeyLM(int32 ngram_order, double discount) {
+  InterpolatedKneserNeyLM(int32 ngram_order, int32 bos_symbol,
+                          int32 eos_symbol, double discount) :
+      unigram_denominator_(0) {
     ngram_order_ = ngram_order;
     discount_ = discount;
+    bos_symbol_ = bos_symbol;
+    eos_symbol_ = eos_symbol;
     ngrams_.resize(ngram_order + 1); // ngrams_[0] unused
   }
 
   void FillWords(const std::vector<int32> &sentence,
                  int32 pos, int32 order,
-                 int32 bos_symbol, int32 eos_symbol,
                  std::vector<int32> *words) {
-    KALDI_ASSERT(pos >= -1 && pos <= sentence.size());
+    KALDI_ASSERT(pos >= -1 && pos <= static_cast<int32>(sentence.size()));
 
     words->resize(order);
     for (int32 k = 0; k < order; k++, pos++) {
       if (pos < 0) {
-        (*words)[k] = bos_symbol;
+        (*words)[k] = bos_symbol_;
       } else if (pos >= sentence.size()) {
-        (*words)[k] = eos_symbol;
+        (*words)[k] = eos_symbol_;
       } else {
         (*words)[k] = sentence[pos];
       }
     }
   }
+
   /* Collect the ngram counts from corpus. */
-  void CollectCounts(const std::vector<std::vector<int32> > &sentences,
-                     int32 bos_symbol, int32 eos_symbol) {
+  void CollectCounts(const std::vector<std::vector<int32> > &sentences) {
     std::vector<int32> words;
     std::vector<int32> subwords;
 
@@ -157,28 +164,22 @@ class InterpolatedKneserNeyLM {
         // get their actual counts. And the max_order ngrams are the
         // ngram with ngram_order_ or the ngrams starting with <s>.
         for (int32 order = max_order; order >= 1; order--) {
-          FillWords(sentences[i], j - order + 1, order,
-                    bos_symbol, eos_symbol, &words);
+          FillWords(sentences[i], j - order + 1, order, &words);
           // accumulate numerator
-          LMState& state = ngrams_[order][words];
-          state.numerator++;
+          LMState& this_ngram = ngrams_[order][words];
+          this_ngram.numerator++;
 
           if (order == 1) {
             unigram_denominator_++;
           } else {
             // accumulate denominator for context
             subwords.assign(words.begin(), words.end() - 1);
-            state = ngrams_[order - 1][subwords];
-            state.denominator++;
-            if (state.numerator > 1) { // not first insertion
+            LMState &context = ngrams_[order - 1][subwords];
+            context.denominator++;
+            if (this_ngram.numerator <= 1) { // first insertion
               // accumulate for context
-              state.non_zero_count++;
-
-              // accumulate numerator for low order gram
-              subwords.assign(words.begin() + 1, words.end());
-              state = ngrams_[order - 1][subwords];
-              state.numerator++;
-
+              context.non_zero_count++;
+            } else {
               // for lower order ngram, we only need occurrence, so if it is
               // already in the map, we skip it
               break;
@@ -211,21 +212,21 @@ class InterpolatedKneserNeyLM {
           state.prob = (state.numerator - discount_)
                        / context->second.denominator;
 
-          // interpolate lower orders
-          for (int32 o = 1; o < order; o++) {
-            subwords.assign(it->first.begin() + o - 1, it->first.end() - 1);
-            context = ngrams_[order - o].find(subwords);
-            KALDI_ASSERT(context != ngrams_[order - o].end());
+          // interpolate lower order
+          subwords.assign(it->first.begin(), it->first.end() - 1);
+          context = ngrams_[order - 1].find(subwords);
+          KALDI_ASSERT(context != ngrams_[order - 1].end());
 
-            subwords.assign(it->first.begin() + o, it->first.end());
-            lower_order = ngrams_[order - o].find(subwords);
-            KALDI_ASSERT(lower_order != ngrams_[order - o].end());
+          subwords.assign(it->first.begin() + 1, it->first.end());
+          lower_order = ngrams_[order - 1].find(subwords);
+          KALDI_ASSERT(lower_order != ngrams_[order - 1].end());
 
-            state.prob += context->second.bow * lower_order->second.prob;
-          }
+          state.prob += context->second.bow * lower_order->second.prob;
         }
 
-        state.bow = state.non_zero_count * discount_ / state.denominator;
+        if (state.denominator > 0) {
+          state.bow = state.non_zero_count * discount_ / state.denominator;
+        }
       }
     }
   }
@@ -234,14 +235,9 @@ class InterpolatedKneserNeyLM {
 
       @param [in] sentences   The sentences of input data.  These will contain
                               just the actual words, not the BOS or EOS symbols.
-      @param [in] bos_symbol  The integer id of the beginning-of-sentence
-                              symbol
-      @param [in] eos_symbol  The integer id of the end-of-sentence
-                             symbol
    */
-  void Estimate(const std::vector<std::vector<int32> > &sentences,
-                int32 bos_symbol, int32 eos_symbol) {
-    CollectCounts(sentences, bos_symbol, eos_symbol);
+  void Estimate(const std::vector<std::vector<int32> > &sentences) {
+    CollectCounts(sentences);
     EstimateProbAndBow();
   }
 
@@ -261,7 +257,10 @@ class InterpolatedKneserNeyLM {
       os << symbol_table.Find(words[i]) << " ";
     }
     os << symbol_table.Find(words[words.size() - 1]);
-    os << ProbToLobProb(bow) << "\n";
+    if (bow != 0.0) {
+      os << "\t" << ProbToLobProb(bow);
+    }
+    os << "\n";
   }
 
   /** Write to the ostream with ARPA format. Throws on error.
@@ -277,9 +276,9 @@ class InterpolatedKneserNeyLM {
     // words in symbol_table, since there would be some special symbols in
     // symbol_table and our unigram distribution are calculated without
     // considering the (maybe exist) extra words.
-    os << "\\\\data\\\\\n";
+    os << "\\data\\\n";
     for (int32 order = 1; order <= ngram_order_; order++) {
-      os << "ngram " << order << "=" << ngrams_[order].size();
+      os << "ngram " << order << "=" << ngrams_[order].size() << "\n";
     }
 
     for (int32 order = 1; order <= ngram_order_; order++) {
@@ -291,7 +290,7 @@ class InterpolatedKneserNeyLM {
       }
     }
 
-    os << "\n\\\\end\\\\\n";
+    os << "\n\\end\\\n";
   }
 
   // the context ngram must be exist in the LM.
@@ -332,7 +331,7 @@ class InterpolatedKneserNeyLM {
   bool Check(BaseFloat spot_check_prob) {
     KALDI_ASSERT (spot_check_prob > 0.0 && spot_check_prob <= 1.0);
 
-    std::vector<int32> all_words(ngrams_[1].size());
+    std::vector<int32> all_words;
 
     double total_prob = 0.0;
     Ngrams::const_iterator it = ngrams_[1].begin();
@@ -340,35 +339,33 @@ class InterpolatedKneserNeyLM {
       total_prob += it->second.prob;
       all_words.push_back(it->first[0]);
     }
-    if (fabs(total_prob - 1.0) > 1e-6) {
-      KALDI_WARN << "total probability of unigram is not 1.0.";
+    if (std::fabs(total_prob - 1.0) > 1e-6) {
+      KALDI_WARN << "total probability of unigram is not 1.0: " << total_prob;
       return false;
     }
 
     for (int32 order = 1; order <= ngram_order_; order++) {
-      if (RandUniform() > spot_check_prob) {
-        continue;
-      }
-
       it = ngrams_[order].begin();
       for (; it != ngrams_[order].end(); it++) {
         if (RandUniform() > spot_check_prob) {
           continue;
         }
 
-        if (order < ngram_order_) {
+        if (order < ngram_order_ && it->first[order - 1] != eos_symbol_) {
           // check it is normalized with current ngram as context
           total_prob = 0.0;
           for (int32 i = 0; i < all_words.size(); i++) {
             total_prob += GetNgramProb(it->first, all_words[i]);
           }
-          if (fabs(total_prob - 1.0) > 1e-6) {
+          if (std::fabs(total_prob - 1.0) > 1e-6) {
             std::string str;
-            for (int32 i = 0; i < it->first.size(); i++) {
+            for (int32 i = 0; i < it->first.size() - 1; i++) {
               str.append(std::to_string(it->first[i]));
+              str.append(" ");
             }
+            str.append(std::to_string(it->first[it->first.size() - 1]));
             KALDI_WARN << "total probability of context [" << str
-                       << "] is not 1.0.";
+                       << "] is not 1.0: " << total_prob;
             return false;
           }
         }
@@ -386,9 +383,11 @@ class InterpolatedKneserNeyLM {
 
           if (context->second.bow * lower_order->second.prob >= it->second.prob) {
             std::string str;
-            for (int32 i = 0; i < it->first.size(); i++) {
+            for (int32 i = 0; i < it->first.size() - 1; i++) {
               str.append(std::to_string(it->first[i]));
+              str.append(" ");
             }
+            str.append(std::to_string(it->first[it->first.size() - 1]));
             KALDI_WARN << "backoff probability of ngram [" << str
                        << "] is larger than explicitly probability.";
             return false;
@@ -413,6 +412,12 @@ class InterpolatedKneserNeyLM {
 
   // denominator for unigrams
   int32 unigram_denominator_;
+
+  // The integer id of the beginning-of-sentence symbol
+  int32 bos_symbol_;
+
+  // The integer id of the end-of-sentence symbol
+  int32 eos_symbol_;
 };
 
 void EstimateAndWriteLanguageModel(
@@ -421,9 +426,11 @@ void EstimateAndWriteLanguageModel(
     const std::vector<std::vector<int32> > &sentences,
     int32 bos_symbol, int32 eos_symbol,
     std::ostream &os) {
-  InterpolatedKneserNeyLM lm(ngram_order, 0.6);
-  lm.Estimate(sentences, bos_symbol, eos_symbol);
-  lm.Check(1.0);
+  InterpolatedKneserNeyLM lm(ngram_order, bos_symbol, eos_symbol, 0.6);
+  lm.Estimate(sentences);
+#ifdef _KALDI_RNNLM_TEST_CHECK_LM_
+  KALDI_ASSERT(lm.Check(1.0));
+#endif
   lm.WriteToARPA(symbol_table, os);
 }
 
