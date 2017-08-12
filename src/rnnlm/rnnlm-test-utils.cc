@@ -94,6 +94,7 @@ void ConvertToInteger(
     through the training text. We translate the perl code in the appendix of
     the paper and extend it to arbitrary ngram order. Also, as in SRILM,
     we use the original(unmodified) count for the ngrams starting with <s>.
+    We don't do any min-count prune for ngrams;
 */
 class InterpolatedKneserNeyLM {
  public:
@@ -252,7 +253,7 @@ class InterpolatedKneserNeyLM {
     }
   }
 
-  static void WriteNgram(const std::vector<int32> words,
+  static void WriteNgram(const std::vector<int32> &words,
                   BaseFloat prob, BaseFloat bow,
                   const fst::SymbolTable &symbol_table, std::ostream &os) {
     os << ProbToLobProb(prob) << "\t";
@@ -293,6 +294,112 @@ class InterpolatedKneserNeyLM {
     os << "\n\\\\end\\\\\n";
   }
 
+  // the context ngram must be exist in the LM.
+  double GetNgramProb(const std::vector<int32> &context, int32 word) {
+    KALDI_ASSERT(context.size() < ngrams_.size() - 1);
+
+    std::vector<int32> words(context);
+    words.push_back(word);
+    Ngrams::const_iterator it = ngrams_[words.size()].find(words);
+    if (it != ngrams_[words.size()].end()) {
+      return it->second.prob;
+    }
+
+    double prob = 1.0;
+    for (int32 o = 1; o < words.size(); o++) {
+      std::vector<int32> subwords;
+
+      subwords.assign(words.begin() + o - 1, words.end() - 1);
+      it = ngrams_[words.size() - o].find(subwords);
+      prob *= it->second.bow;
+
+      subwords.assign(words.begin() + o, words.end());
+      it = ngrams_[words.size() - o].find(subwords);
+      if (it != ngrams_[words.size() - o].end()) {
+        prob *= it->second.prob;
+        break;
+      }
+    }
+
+    return prob;
+  }
+
+  /** Check the property of LM for two points:
+      1. it is properly normalized
+      2. the probability getting from backoff from any n-gram is always
+         less than probability explicitly computed from that n-gram
+   */
+  bool Check(BaseFloat spot_check_prob) {
+    KALDI_ASSERT (spot_check_prob > 0.0 && spot_check_prob <= 1.0);
+
+    std::vector<int32> all_words(ngrams_[1].size());
+
+    double total_prob = 0.0;
+    Ngrams::const_iterator it = ngrams_[1].begin();
+    for (; it != ngrams_[1].end(); it++) {
+      total_prob += it->second.prob;
+      all_words.push_back(it->first[0]);
+    }
+    if (fabs(total_prob - 1.0) > 1e-6) {
+      KALDI_WARN << "total probability of unigram is not 1.0.";
+      return false;
+    }
+
+    for (int32 order = 1; order <= ngram_order_; order++) {
+      if (RandUniform() > spot_check_prob) {
+        continue;
+      }
+
+      it = ngrams_[order].begin();
+      for (; it != ngrams_[order].end(); it++) {
+        if (RandUniform() > spot_check_prob) {
+          continue;
+        }
+
+        if (order < ngram_order_) {
+          // check it is normalized with current ngram as context
+          total_prob = 0.0;
+          for (int32 i = 0; i < all_words.size(); i++) {
+            total_prob += GetNgramProb(it->first, all_words[i]);
+          }
+          if (fabs(total_prob - 1.0) > 1e-6) {
+            std::string str;
+            for (int32 i = 0; i < it->first.size(); i++) {
+              str.append(std::to_string(it->first[i]));
+            }
+            KALDI_WARN << "total probability of context [" << str
+                       << "] is not 1.0.";
+            return false;
+          }
+        }
+
+        if (order > 1) {
+          // check that the explicitly prob is larger than backoff prob
+          std::vector<int32> subwords;
+          subwords.assign(it->first.begin(), it->first.end() - 1);
+          Ngrams::const_iterator context = ngrams_[order - 1].find(subwords);
+          KALDI_ASSERT(context != ngrams_[order - 1].end());
+
+          subwords.assign(it->first.begin() + 1, it->first.end());
+          Ngrams::const_iterator lower_order = ngrams_[order - 1].find(subwords);
+          KALDI_ASSERT(lower_order != ngrams_[order - 1].end());
+
+          if (context->second.bow * lower_order->second.prob >= it->second.prob) {
+            std::string str;
+            for (int32 i = 0; i < it->first.size(); i++) {
+              str.append(std::to_string(it->first[i]));
+            }
+            KALDI_WARN << "backoff probability of ngram [" << str
+                       << "] is larger than explicitly probability.";
+            return false;
+          }
+        }
+      }
+    }
+
+    return true;
+  }
+
  private:
 
   // Ngram order
@@ -316,6 +423,7 @@ void EstimateAndWriteLanguageModel(
     std::ostream &os) {
   InterpolatedKneserNeyLM lm(ngram_order, 0.6);
   lm.Estimate(sentences, bos_symbol, eos_symbol);
+  lm.Check(1.0);
   lm.WriteToARPA(symbol_table, os);
 }
 
