@@ -20,6 +20,8 @@ args = parser.parse_args()
 
 # we only need to know the feat_id for 'special', 'unigram' and 'length'
 special_feat_ids = []
+constant_feat_id = -1
+constant_feat_value = None
 unigram_feat_id = -1
 length_feat_id = -1
 max_feat_id = -1
@@ -31,6 +33,9 @@ with open(args.features_file, 'r', encoding="utf-8") as f:
         feat_id = int(fields[0])
         if fields[1] == "special":
             special_feat_ids.append(feat_id)
+        elif fields[1] == "constant":
+            constant_feat_id = feat_id
+            constant_feat_value = float(fields[2])
         elif fields[1] == "unigram":
             unigram_feat_id = feat_id
         elif fields[1] == "length":
@@ -53,8 +58,8 @@ with open(args.word_features_file, 'r', encoding="utf-8") as f:
             feat_id = int(fields[i])
             feat_value = fields[i + 1]
             if feat_id in special_feat_ids:
-                if len(fields) != 3:
-                    sys.exit(sys.argv[0] + ": Special word can only have one feature: {0}.".format(line))
+                if len(fields) != 3 and len(fields) != 5:
+                    sys.exit(sys.argv[0] + ": Special word can only have one or 2 features: {0}.".format(line))
                 if int(feat_value) != 1:
                     sys.exit(sys.argv[0] + ": Value of special word feature must be 1: {0}.".format(line))
             elif feat_id == unigram_feat_id:
@@ -67,6 +72,9 @@ with open(args.word_features_file, 'r', encoding="utf-8") as f:
                     int(feat_value)
                 except ValueError:
                     sys.exit(sys.argv[0] + ": Value of length feature should be a integer number: {0}.".format(line))
+            elif feat_id == constant_feat_id:
+                if float(feat_value) != constant_feat_value:
+                    sys.exit(sys.argv[0] + ": Value of constant feature is not right: {0}".format(line))
             else:
                 if feat_id > max_feat_id:
                     sys.exit(sys.argv[0] + ": Wrong feat_id: {0}.".format(line))
