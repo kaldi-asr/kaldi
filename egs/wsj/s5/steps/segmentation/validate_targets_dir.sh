@@ -3,11 +3,16 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
+# This script validates a 'targets_dir' as created by lats_to_targets.sh.
+# See that script for details about the format of the targets.
+
 [ -f ./path.sh ] && . ./path.sh
 
 if [ $# -ne 2 ]; then
   cat <<EOF
-  This script validates a 'targets dir' as created by lats_to_targets.sh.
+  This script validates a 'targets_dir' as created by lats_to_targets.sh.
+  See that script for details about the format of the targets.
+
   Usage: steps/segmentation/validate_targets_dir.sh <targets-dir> <data-dir>
   e.g.: steps/segmentation/validate_targets_dir.sh \
     exp/segmentation1a/tri3b_train_split10s_targets \

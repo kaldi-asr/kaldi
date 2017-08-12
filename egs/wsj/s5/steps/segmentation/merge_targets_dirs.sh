@@ -3,10 +3,21 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
+# This script merges targets dirs created from multiple sources (systems) into
+# single targets matrices. See steps/segmentation/lats_to_targets.sh for 
+# details about the format of the targets.
+
+# This script merges targets from multiple sources using weights supplied 
+# by --weights option. Also the option --remove-mismatch-frames can be 
+# used to remove frames different sources have mismatched labels.
+# e.g. We can check if the labels from supervision-constrained lattices 
+# and those from decoding match.
+
 cmd=run.pl 
 nj=4
 weights=        # A comma-separated list of weights corresponding to each
-                # target source being combined.
+                # target source being combined. Must match the number of 
+                # source target directories.
 remove_mismatch_frames=true     # If true, the mismatch frames are removed by 
                                 # setting targets to 0 in the following cases:
                                 # a) If none of the sources have a column with value > 0.5
@@ -22,6 +33,8 @@ if [ $# -lt 3 ]; then
   cat <<EOF
   This script merges targets dirs created from multiple sources (systems) into
   single targets matrices.
+  See top of the script for more details.
+
   Usage: steps/segmentation/merge_targets_dirs.py <data> <targets-1> <targets-2> ... <merged-targets>
   e.g.: steps/segmentation/merge_targets_dirs.py --weights 1.0,0.5 \
       data/train_whole \

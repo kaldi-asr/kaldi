@@ -3,6 +3,16 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
+# This script resamples the targets matrix by the specified <subsampling-factor>.
+# If <subsampling-factor> is negative, then the targets will be upsampled 
+# by -<subsampling-factor>.
+# This script is a wrapper to steps/segmentation/interal/resample_targets.py,
+# which works very similar to the binary subsample-feats. See that script
+# for details about how the resampling is done.
+
+# See the script steps/segmentation/lats_to_targets.sh for details about 
+# the format of the targets.
+
 nj=4
 cmd=run.pl
 
@@ -13,9 +23,10 @@ set -o pipefail -u
 
 if [ $# -ne 4 ]; then
   cat <<EOF
-  This script resamples a targets directory by the specified subsampling factor.
+  This script resamples the targets matrix by the specified subsampling factor.
   If <subsampling-factor> is negative, then the targets will be upsampled 
   by -<subsampling-factor>.
+  See top of the script for more details.
 
   Usage: steps/segmentation/resample_targets.sh <subsampling-factor> <data-dir> <targets-dir> <resampled-targets-dir>
    e.g.: steps/segmentation/resample_targets.sh 3 \

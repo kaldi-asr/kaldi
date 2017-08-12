@@ -3,6 +3,22 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
+# This script converts targets corresponding to 'data' at segments level 
+# in 'targets_dir' to whole-recording level corresponding to the 
+# whole-recording data directory 'whole_data'.
+
+# The targets for the whole-recording are created by simply copying the targets 
+# for the in-segment region, while setting the out-of-segment region targets
+# to the target values contained in the file specified 
+# (in kaldi vector text format) by --default-targets option.
+# By default, the 'default_targets' would be [ 0 0 0 ].
+# Note that the script steps/segmentation/get_targets_for_out_of_segments.sh 
+# can be used to get targets only for the out-of-segment regions. It is 
+# better to use that when you need specific target values like all silence 
+# ([ 1 0 0 ]) or all garbage ([ 0 0 1 ]) for the out-of-segment regions. 
+# That way you can control how the out-of-segment target values are 
+# combined using the weights in steps/segmentation/merge_targets_dirs.sh
+
 nj=4
 cmd=run.pl
 default_targets=   # vector of default targets in text format
@@ -14,8 +30,11 @@ set -o pipefail -u
 
 if [ $# -ne 4 ]; then
   cat <<EOF
-  This script converts targets at segments level to whole-recording level
-  and writes it into a new targets directory.
+  This script converts targets corresponding to 'data' at segments level 
+  in 'targets_dir' to whole-recording level corresponding to the 
+  whole-recording data directory 'whole_data'.
+  See top of the script for more details.
+
   Usage: steps/segmentation/convert_targets_to_whole_recording.sh <data-dir> <whole-data-dir> <targets-dir> <whole-targets-dir>
    e.g.: steps/segmentation/convert_targets_to_whole_recording.sh \
     data/train_split10s data/train_whole \

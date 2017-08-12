@@ -2,6 +2,30 @@
 
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
+  
+# This script prepares targets for training neural network for 
+# speech activity detction. 
+# See steps/segmentation/lats_to_targets.sh for details about the 
+# format of the targets.
+
+# The targets are obtained from a combination
+# of supervision-constrained lattices and lattices obtained by decoding. 
+# Also, we assume that the out-of-segment regions are all silence (target 
+# values of [ 1 0 0 ]. We merge the targets from the multiple sources 
+# by a weighted average using weights specified by --weights. Also, 
+# the frames where the labels from multiple sources do not match are 
+# removed in the script steps/segmentation/merge_targets_dirs.sh.
+
+# In this script, we use GMMs trained for ASR on in-domain data 
+# to generate the lattices required for creating the targets. To generate
+# supervision-constrained lattices, we use speaker-adapted GMM models. To 
+# generate lattices without supervision, we use speaker-independent GMM models
+# from the LDA+MLLT stage, but apply per-recording cepstral mean subtraction.
+# The phones in the lattices are mapped deterministically to 
+# 0, 1, and 2 representing respectively silence, speech and garbage classes.
+# The mapping is defined by --garbage-phones-list and --silence-phones-list
+# options. But when these are unspecified, the silence phones other than
+# oov are mapped to silence class and the oov is mapped to garbage class.
 
 stage=-1
 train_cmd=run.pl
@@ -37,6 +61,7 @@ if [ $# -ne 6 ]; then
   This script prepares targets for training neural network for 
   speech activity detction. The targets are obtained from a combination
   of supervision-constrained lattices and lattices obtained by decoding. 
+  See comments in the script for more details.
 
   Usage: $0 <lang> <data> <whole-recording-data> <ali-model-dir> <model-dir> <dir>
    e.g.: $0 data/lang data/train data/train_whole exp/tri5 exp/tri4 exp/segmentation_1a

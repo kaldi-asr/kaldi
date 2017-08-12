@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2016  Vimal Manohar
+# Copyright 2016-17  Vimal Manohar
 # Apache 2.0.
 
 # This script does nnet3-based speech activity detection given an input 
@@ -236,3 +236,5 @@ if [ $stage -le 8 ]; then
   utils/fix_data_dir.sh ${data_dir}_seg
 fi
 
+echo "$0: Created output segmented kaldi data directory in ${data_dir}_seg"
+exit 0

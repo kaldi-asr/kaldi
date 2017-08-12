@@ -13,10 +13,11 @@ set -e -o pipefail -u
 
 cmd=run.pl
 stage=-10
+nj=18
 
+# The values below are in seconds
 frame_shift=0.01
 segment_padding=0.2
-nj=18
 
 . utils/parse_options.sh
 
