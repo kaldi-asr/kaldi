@@ -86,14 +86,14 @@ if (( 31 == 31 ));then
   printf '% 5.2f' $eer
   echo
   
-  python local/olr/ivector/Compute_Cavg.py  exp/ivecotr/score/total/foo_cosine data/${testdir}/lan2utt/utt2spk
+  python local/olr/ivector/Compute_Cavg.py  exp/ivecotr/score/total/foo_cosine data/${testdir}/utt2spk
 fi
 
 
 ### Demonstrate what happens if we reduce the dimension with LDA
 if (( 4 == 4 ));then
   ivector-compute-lda --dim=$clda  --total-covariance-factor=0.1 \
-    "ark:ivector-normalize-length scp:$exp/ivectors_train_${cnum}_${civ}/ivector.scp  ark:- |" ark:data/train/lan2utt/utt2spk \
+    "ark:ivector-normalize-length scp:$exp/ivectors_train_${cnum}_${civ}/ivector.scp  ark:- |" ark:data/train/utt2spk \
       $exp/ivectors_train_${cnum}_${civ}/transform_${clda}.mat
   
   ivector-transform $exp/ivectors_train_${cnum}_${civ}/transform_${clda}.mat scp:$exp/ivectors_train_${cnum}_${civ}/ivector.scp ark:- | \
@@ -106,7 +106,7 @@ fi
 if (( 51 == 51 ));then
   dir=${exp}/ivectors_train_${cnum}_${civ}
   
-  ivector-mean ark:data/train/lan2utt/spk2utt ark:${exp}/ivectors_train_${cnum}_${civ}/lda_${clda}.ark ark:- ark,t:$dir/num_utts.ark | \
+  ivector-mean ark:data/train/spk2utt ark:${exp}/ivectors_train_${cnum}_${civ}/lda_${clda}.ark ark:- ark,t:$dir/num_utts.ark | \
   ivector-normalize-length ark:- ark,scp:$dir/lda_ivector.ark,$dir/lda_ivector.scp
   
   trials=local/olr/ivector/trials.trl
@@ -122,7 +122,7 @@ if (( 51 == 51 ));then
   eer=$(awk '{print $3}' exp/ivecotr/score/total/foo_lda | paste - $trials | awk '{print $1, $4}' | compute-eer - 2>/dev/null)
   printf '% 5.2f' $eer
   
-  python local/olr/ivector/Compute_Cavg.py  exp/ivecotr/score/total/foo_lda data/${testdir}/lan2utt/utt2spk
+  python local/olr/ivector/Compute_Cavg.py  exp/ivecotr/score/total/foo_lda data/${testdir}/utt2spk
   rm $trials
 fi
 
@@ -146,8 +146,8 @@ if (( 1 == 0 ));then
 fi
 
 if (( 2 == 2 ));then
-  python local/olr/ivector/pre_svmd.py exp/ivector_svm/$curve/train.dat data/train/lan2utt/utt2spk exp/ivector_svm/$curve/svmtrain.dat
-  python local/olr/ivector/pre_svmd.py exp/ivector_svm/$curve/test.dat data/${testdir}/lan2utt/utt2spk exp/ivector_svm/$curve/svmtest.dat
+  python local/olr/ivector/pre_svmd.py exp/ivector_svm/$curve/train.dat data/train/utt2spk exp/ivector_svm/$curve/svmtrain.dat
+  python local/olr/ivector/pre_svmd.py exp/ivector_svm/$curve/test.dat data/${testdir}/utt2spk exp/ivector_svm/$curve/svmtest.dat
   
   python local/olr/ivector/svm_ratelimit.py exp/ivector_svm/$curve/svmtrain.dat exp/ivector_svm/$curve/svmtest.dat exp/ivector_svm/score/foo_${curve}_${maxit}.log $maxit $curve
   
