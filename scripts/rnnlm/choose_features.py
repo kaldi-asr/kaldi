@@ -7,6 +7,7 @@ import os
 import argparse
 import sys
 import math
+sys.stdout = open(1, 'w', encoding='utf-8', closefd=False)
 
 
 parser = argparse.ArgumentParser(description="This script chooses the sparse feature representation of words. "
