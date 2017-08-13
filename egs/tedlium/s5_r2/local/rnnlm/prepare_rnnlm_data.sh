@@ -50,7 +50,6 @@ rnnlm/get_unigram_probs.py --vocab-file=$data_dir/vocab/words.txt \
 
 # choose features
 rnnlm/choose_features.py --unigram-probs=$dir/unigram_probs.txt \
-                         --unigram-scale=0.1 \
                          $data_dir/vocab/words.txt > $dir/features.txt
 # validate features
 rnnlm/validate_features.py $dir/features.txt

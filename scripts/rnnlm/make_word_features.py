@@ -68,16 +68,15 @@ def read_unigram_probs(unigram_probs_file):
 # return a dict with following items:
 
 #   feats['constant'] is None if there is no constant feature used, else
-#                     a 2-tuple (feat_id, value), e.g. (1, 1.0).
-#   feats['special'] is a dict whose key is special words and value is the feat_id
+#                     a 3-tuple (feat_id, value, scale), e.g. (1, 1.0, 0.01).
+#   feats['special'] is a dict whose key is special words and value is a tuple (feat_id, scale)
 #   feats['unigram'] is a tuple with (feat_id, entropy, scale)
-#   feats['length']  is a int represents feat_id
+#   feats['length']  is a tuple with (feat_id, scale)
 #
 #   feats['match']
 #   feats['initial']
 #   feats['final']
-#   feats['word']    is a dict with key is ngram, value is feat_id for each type
-#                    of ngram feature respectively.
+#   feats['word']    is a dict with key is ngram, value is a tuple (feat_id, scale)
 #   feats['min_ngram_order'] is a int represents min-ngram-order
 #   feats['max_ngram_order'] is a int represents max-ngram-order
 def read_features(features_file):
@@ -94,22 +93,23 @@ def read_features(features_file):
     with open(features_file, 'r', encoding="utf-8") as f:
         for line in f:
             fields = line.split()
-            assert(len(fields) in [2, 3, 4])
+            assert(len(fields) in [3, 4, 5])
 
             feat_id = int(fields[0])
             feat_type = fields[1]
+            scale = float(fields[-1])
             if feat_type == 'constant':
                 value = float(fields[2])
-                feats['constant'] = (feat_id, value)
+                feats['constant'] = (feat_id, value, scale)
             elif feat_type == 'special':
-                feats['special'][fields[2]] = feat_id
+                feats['special'][fields[2]] = (feat_id, scale)
             elif feat_type == 'unigram':
-                feats['unigram'] = (feat_id, float(fields[2]), float(fields[3]))
+                feats['unigram'] = (feat_id, float(fields[2]), scale)
             elif feat_type == 'length':
-                feats['length'] = feat_id
+                feats['length'] = (feat_id, scale)
             elif feat_type in ['word', 'match', 'initial', 'final']:
                 ngram = fields[2]
-                feats[feat_type][ngram] = feat_id
+                feats[feat_type][ngram] = (feat_id, scale)
                 if feat_type == 'word':
                     continue
                 elif feat_type in ['initial', 'final']:
@@ -139,12 +139,12 @@ def get_feature_list(word, idx):
         return ans
 
     if feats['constant'] is not None:
-        (feat_id, value) = feats['constant']
-        ans[feat_id] = value
+        (feat_id, value, scale) = feats['constant']
+        ans[feat_id] = value * scale
 
     if word in feats['special']:
-        feat_id = feats['special'][word]
-        ans[feat_id] = 1
+        (feat_id, scale) = feats['special'][word]
+        ans[feat_id] = 1 * scale
         return ans   # return because words with the 'special' feature do
                      # not get any other features (except the constant
                      # feature).
@@ -157,12 +157,12 @@ def get_feature_list(word, idx):
         ans[feat_id] = (logp + entropy) * scale / entropy
 
     if 'length' in feats:
-        feat_id = feats['length']
-        ans[feat_id] = len(word)
+        (feat_id, scale) = feats['length']
+        ans[feat_id] = len(word) * scale
 
     if word in feats['word']:
-        feat_id = feats['word'][word]
-        ans[feat_id] = 1
+        (feat_id, scale) = feats['word'][word]
+        ans[feat_id] = 1 * scale
 
     for pos in range(len(word) + 1):  # +1 for EOW
         for order in range(feats['min_ngram_order'], feats['max_ngram_order'] + 1):
@@ -188,8 +188,8 @@ def get_feature_list(word, idx):
 
             feat = word[start:end]
             if feat in ngram_feats:
-                feat_id = ngram_feats[feat]
-                ans[feat_id] += 1
+                (feat_id, scale) = ngram_feats[feat]
+                ans[feat_id] += 1 * scale
     return ans
 
 for word, idx in sorted(vocab.items(), key=lambda x: x[1]):

@@ -19,8 +19,6 @@ parser = argparse.ArgumentParser(description="This script chooses the sparse fea
 
 parser.add_argument("--unigram-probs", type=str, default='', required=True,
                     help="Specify the file containing unigram probs.")
-parser.add_argument("--unigram-scale", type=float, default=0.1,
-                    help="A scalar that scales the unigram features")
 parser.add_argument("--min-ngram-order", type=int, default=2,
                     help="minimum length of n-grams of characters to"
                          "make potential features.")
@@ -52,6 +50,8 @@ parser.add_argument("--special-words", type=str, default='<s>,</s>,<brk>',
 parser.add_argument("--constant-feature", type=float,
                     help="If supplied, the value of a feature that all words "
                     "are given.  Helps model offsets.  E.g. 1.0.")
+parser.add_argument("--max-feature-rms", type=float, default=0.01,
+                    help="maximum allowed root-mean-square value for any feature.")
 
 parser.add_argument("vocab_file",
                     help="Path for vocab file")
@@ -104,23 +104,33 @@ def read_unigram_probs(unigram_probs_file):
 
     return unigram_probs
 
+def get_feature_scale(rms):
+    if rms > args.max_feature_rms:
+        return args.max_feature_rms / rms
+    else:
+        return 1.0
+
 vocab = read_vocab(args.vocab_file)
 wordlist = [x[0] for x in sorted(vocab.items(), key=lambda x:x[1])]
 unigram_probs = read_unigram_probs(args.unigram_probs)
 assert len(unigram_probs) == len(wordlist)
 
-vocab_size = len(vocab) - len(SPECIAL_SYMBOLS)
+vocab_size = len(vocab)
+if '<eps>' in vocab:
+    vocab_size -= 1
 
 num_features = 0
 
 if args.constant_feature is not None:
-    print("{0}\tconstant\t{1}".format(num_features, args.constant_feature))
+    print("{0}\tconstant\t{1}\t{2}".format(num_features, args.constant_feature,
+          get_feature_scale(arsg.constant_feature)))
     num_features += 1
 
 # special words features
 if args.special_words != '':
     for word in args.special_words.split(','):
-        print("{0}\tspecial\t{1}".format(num_features, word))
+        rms = math.sqrt(1.0 / vocab_size)
+        print("{0}\tspecial\t{1}\t{2}".format(num_features, word, get_feature_scale(rms)))
         num_features += 1
 
 # unigram features
@@ -131,16 +141,30 @@ if args.include_unigram_feature == 'true':
         if wordlist[idx] in SPECIAL_SYMBOLS:
             continue
         if p > 0.0:
-            entropy += math.log(p) * p;
+            entropy += math.log(p) * p
             entropy_total += p
     entropy /= -entropy_total
 
-    print("{0}\tunigram\t{1}\t{2}".format(num_features, entropy, args.unigram_scale))
+    rms = 0.0
+    for idx, p in enumerate(unigram_probs):
+        if wordlist[idx] in SPECIAL_SYMBOLS:
+            continue
+        if p > 0.0:
+            rms += (p - entropy) ** 2
+    rms = math.sqrt(rms / vocab_size)
+
+    print("{0}\tunigram\t{1}\t{2}".format(num_features, entropy, get_feature_scale(rms)))
     num_features += 1
 
 # length features
 if args.include_length_feature == 'true':
-    print("{0}\tlength".format(num_features))
+    rms = 0.0
+    for word in wordlist:
+        if word in SPECIAL_SYMBOLS + ["</s>"]:
+            continue
+        rms += len(word) ** 2
+    rms = math.sqrt(rms / vocab_size)
+    print("{0}\tlength\t{1}".format(num_features, get_feature_scale(rms)))
     num_features += 1
 
 # top words features
@@ -152,7 +176,8 @@ if args.top_word_features > 0:
         if word in SPECIAL_SYMBOLS + ["</s>"]:
             continue
 
-        print("{0}\tword\t{1}".format(num_features, word))
+        rms = math.sqrt(1.0 / vocab_size)
+        print("{0}\tword\t{1}\t{2}".format(num_features, word, get_feature_scale(rms)))
         num_features += 1
 
         top_words[word] = 1
@@ -161,6 +186,7 @@ if args.top_word_features > 0:
             break
 
 # n-gram features
+# these dict mapping a ngram to a tuple (word_freq_sum, word_count_sum)
 initial_feats = {}
 final_feats = {}
 match_feats = {}
@@ -195,32 +221,37 @@ for word in wordlist:
 
             feat = word[start:end]
             if feat in feats:
-                feats[feat] += word_freq
+                feats[feat] = (feats[feat][0] + word_freq,
+                               feats[feat][1] + 1)
             else:
-                feats[feat] = word_freq
+                feats[feat] = (word_freq, 1)
 
-for feat, freq in initial_feats.items():
+for feat, (freq, square_freq) in initial_feats.items():
     if freq < args.min_frequency:
         continue
-    print("{0}\tinitial\t{1}".format(num_features, feat))
+    rms = math.sqrt(1.0 * square_freq / vocab_size)
+    print("{0}\tinitial\t{1}\t{2}".format(num_features, feat, get_feature_scale(rms)))
     num_features += 1
 
-for feat, freq in final_feats.items():
+for feat, (freq, count) in final_feats.items():
     if freq < args.min_frequency:
         continue
-    print("{0}\tfinal\t{1}".format(num_features, feat))
+    rms = math.sqrt(1.0 * count / vocab_size)
+    print("{0}\tfinal\t{1}\t{2}".format(num_features, feat, get_feature_scale(rms)))
     num_features += 1
 
-for feat, freq in match_feats.items():
+for feat, (freq, count) in match_feats.items():
     if freq < args.min_frequency:
         continue
-    print("{0}\tmatch\t{1}".format(num_features, feat))
+    rms = math.sqrt(1.0 * count / vocab_size)
+    print("{0}\tmatch\t{1}\t{2}".format(num_features, feat, get_feature_scale(rms)))
     num_features += 1
 
-for feat, freq in word_feats.items():
+for feat, (freq, count) in word_feats.items():
     if freq < args.min_frequency or feat in top_words:
         continue
-    print("{0}\tword\t{1}".format(num_features, feat))
+    rms = math.sqrt(1.0 * count / vocab_size)
+    print("{0}\tword\t{1}\t{2}".format(num_features, feat, get_feature_scale(rms)))
     num_features += 1
 
 print(sys.argv[0] + ": chose {0} features.".format(num_features), file=sys.stderr)
