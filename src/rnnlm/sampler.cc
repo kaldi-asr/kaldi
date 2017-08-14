@@ -300,6 +300,27 @@ void Sampler::SampleWords(
   SampleFromIntervals(intervals, sample);
 }
 
+
+
+// This hacked version of std::priority_queue allows us to extract all elements
+// of the priority queue to a supplied vector, in an efficient way.  It relies
+// on the fact that std::priority<queue> stores the underlying container as a
+// protected member 'c'.  The only way to do this using the supplied interface
+// of std::priority_queue is to repeatedly pop() the element from the queue, but
+// that is too slow, and it actually had an impact on the speed of the
+// application.
+template <typename T>
+class hacked_priority_queue: public std::priority_queue<T> {
+ public:
+  void append_all_elements(std::vector<T> *output) const {
+    output->insert(output->end(), this->c.begin(), this->c.end());
+  }
+  // we have to redeclare the constructor.
+  template <typename InputIter> hacked_priority_queue(
+      InputIter begin, const InputIter end): std::priority_queue<T>(begin, end) { }
+};
+
+
 // static
 void Sampler::NormalizeIntervals(int32 num_words_to_sample,
                                  double total_p,
@@ -324,7 +345,7 @@ void Sampler::NormalizeIntervals(int32 num_words_to_sample,
   //  current_alpha = (num_words_to_sample - num_ones) / total_remaining_p.
   // As we update 'num_ones' and 'total_remaining_p', we will continue
   // to update current_alpha, and it will keep getting larger.
-  std::priority_queue<Interval> queue(intervals->begin(), intervals->end());
+  hacked_priority_queue<Interval> queue(intervals->begin(), intervals->end());
 
   // clear 'intervals'; we'll use the space to store the intervals that will
   // have a prob of exactly 1.0, and eventually we'll add the rest.
@@ -376,15 +397,27 @@ void Sampler::NormalizeIntervals(int32 num_words_to_sample,
       }
     }
   }
-  // it's not that efficient to use the top() function of the queue to remove
-  // elements, but there doesn't seem to be an efficient way to get
-  // all the elements at once without nasty hacks.  Hopefully this won't dominate.
+#if 0
+  // The following code is a bit slow but has the advantage of not assuming
+  // anything about the internals of class std::priority_queue.
   while (!queue.empty()) {
     Interval top = queue.top();
     top.prob *= current_alpha;
     queue.pop();
     intervals->push_back(top);
   }
+#else
+  { // This code is faster but relies on the fact that priority_queue
+    // has a protected member 'c' which is the underlying container.
+    size_t cur_size = intervals->size();
+    queue.append_all_elements(intervals);
+    // the next loop scales the 'prob' members of the elements we just
+    // added to 'intervals', by current_alpha.
+    std::vector<Interval>::iterator iter = intervals->begin() + cur_size,
+        end = intervals->end();
+    for (; iter != end; ++iter) iter->prob *= current_alpha;
+  }
+#endif
 
   if (GetVerboseLevel() >= 2) {
     double tot_prob = 0.0;
