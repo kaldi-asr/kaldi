@@ -58,12 +58,13 @@ void TestRnnlmTraining(const std::string &archive_rxfilename,
 
   RnnlmCoreTrainerOptions core_config;
   RnnlmEmbeddingTrainerOptions embedding_config;
+  RnnlmObjectiveOptions objective_config;
 
   bool train_embedding = (RandInt(0, 1) == 0);
 
   {
     RnnlmTrainer trainer(train_embedding, core_config, embedding_config,
-                         NULL, &embedding_mat, rnnlm);
+                         objective_config, NULL, &embedding_mat, rnnlm);
     for (; !reader.Done(); reader.Next()) {
       trainer.Train(&reader.Value());
     }
@@ -108,7 +109,9 @@ void TestRnnlmOutput(const std::string &archive_rxfilename) {
 
     BaseFloat weight, objf_num, objf_den, objf_den_exact;
 
-    ProcessRnnlmOutput(example, derived, embedding, nnet_output,
+    RnnlmObjectiveOptions objective_config;
+    ProcessRnnlmOutput(objective_config,
+                       example, derived, embedding, nnet_output,
                        train_embedding ? &embedding_deriv : NULL,
                        train_nnet ? &nnet_output_deriv : NULL,
                        &weight, &objf_num, &objf_den, &objf_den_exact);
@@ -141,7 +144,9 @@ void TestRnnlmOutput(const std::string &archive_rxfilename) {
                   << ", smat sum is " << derived.output_words_smat.Sum();
 
         BaseFloat weight2, objf_num2, objf_den2;
-        ProcessRnnlmOutput(example, derived, embedding2, nnet_output,
+        RnnlmObjectiveOptions objective_config;
+        ProcessRnnlmOutput(objective_config,
+                           example, derived, embedding2, nnet_output,
                            NULL, NULL,
                            &weight2, &objf_num2, &objf_den2, NULL);
         objf_change_observed(i) = (objf_num2 + objf_den2) -
@@ -178,7 +183,9 @@ void TestRnnlmOutput(const std::string &archive_rxfilename) {
                   << ", smat sum is " << derived.output_words_smat.Sum();
 
         BaseFloat weight2, objf_num2, objf_den2;
-        ProcessRnnlmOutput(example, derived, embedding, nnet_output2,
+        RnnlmObjectiveOptions objective_config;
+        ProcessRnnlmOutput(objective_config,
+                           example, derived, embedding, nnet_output2,
                            NULL, NULL,
                            &weight2, &objf_num2, &objf_den2, NULL);
         objf_change_observed(i) = (objf_num2 + objf_den2) -

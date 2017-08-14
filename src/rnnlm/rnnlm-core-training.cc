@@ -121,8 +121,10 @@ void ObjectiveTracker::PrintStatsOverall() const {
 
 
 RnnlmCoreTrainer::RnnlmCoreTrainer(const RnnlmCoreTrainerOptions &config,
+                                   const RnnlmObjectiveOptions &objective_config,
                                    nnet3::Nnet *nnet):
     config_(config),
+    objective_config_(objective_config),
     nnet_(nnet),
     compiler_(*nnet),  // for now we don't make available other optiosn
     num_minibatches_processed_(0),
@@ -245,7 +247,8 @@ void RnnlmCoreTrainer::ProcessOutput(
   output_deriv.Resize(output.NumRows(), output.NumCols());
 
   BaseFloat weight, objf_num, objf_den, objf_den_exact;
-  ProcessRnnlmOutput(minibatch, derived, word_embedding,
+  ProcessRnnlmOutput(objective_config_,
+                     minibatch, derived, word_embedding,
                      output, word_embedding_deriv, &output_deriv,
                      &weight, &objf_num, &objf_den,
                      &objf_den_exact);

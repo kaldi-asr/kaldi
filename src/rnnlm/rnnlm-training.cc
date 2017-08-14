@@ -28,12 +28,14 @@ namespace rnnlm {
 RnnlmTrainer::RnnlmTrainer(bool train_embedding,
                            const RnnlmCoreTrainerOptions &core_config,
                            const RnnlmEmbeddingTrainerOptions &embedding_config,
+                           const RnnlmObjectiveOptions &objective_config,
                            const CuSparseMatrix<BaseFloat> *word_feature_mat,
                            CuMatrix<BaseFloat> *embedding_mat,
                            nnet3::Nnet *rnnlm):
     train_embedding_(train_embedding),
     core_config_(core_config),
     embedding_config_(embedding_config),
+    objective_config_(objective_config),
     rnnlm_(rnnlm),
     core_trainer_(NULL),
     embedding_mat_(embedding_mat),
@@ -54,7 +56,7 @@ RnnlmTrainer::RnnlmTrainer(bool train_embedding,
               << "equal to embedding dimension " << embedding_dim
               << " but got " << rnnlm_input_dim << " and "
               << rnnlm_output_dim;
-  core_trainer_ = new RnnlmCoreTrainer(core_config, rnnlm_);
+  core_trainer_ = new RnnlmCoreTrainer(core_config_, objective_config_, rnnlm_);
 
   if (train_embedding) {
     embedding_trainer_ = new RnnlmEmbeddingTrainer(embedding_config,
@@ -167,9 +169,15 @@ void RnnlmTrainer::TrainWordEmbedding(
                                                 embedding_mat_->NumCols());
     const CuSparseMatrix<BaseFloat> &word_features_trans =
         (sampling ? active_word_features_trans_ : word_feature_mat_transpose_);
-    feature_embedding_deriv.AddMatSmat(1.0, *word_embedding_deriv,
-                                       word_features_trans, kTrans,
-                                       0.0);
+
+    feature_embedding_deriv.AddSmatMat(1.0, word_features_trans, kNoTrans,
+                                       *word_embedding_deriv, 0.0);
+
+    // TODO: eventually remove these lines.
+    KALDI_VLOG(3) << "word-features-trans sum is " << word_features_trans.Sum()
+                  << ", word-embedding-deriv-sum is " << word_embedding_deriv->Sum()
+                  << ", feature-embedding-deriv-sum is " << feature_embedding_deriv.Sum();
+
     embedding_trainer_->Train(&feature_embedding_deriv);
   }
 }

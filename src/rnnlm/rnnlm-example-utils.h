@@ -149,6 +149,26 @@ void GetRnnlmExampleDerived(const RnnlmExample &minibatch,
                             RnnlmExampleDerived *derived);
 
 /**
+   Configuration class relating to the objective function used for RNNLM
+   training, more specifically for use by the function ProcessRnnlmOutputs().
+ */
+struct RnnlmObjectiveOptions {
+  BaseFloat den_term_limit;
+
+  RnnlmObjectiveOptions(): den_term_limit(-10.0) { }
+
+  void Register(OptionsItf *po) {
+    po->Register("den-term-limit", &den_term_limit,
+                 "Modification to the with-sampling objective, that prevents "
+                 "instability early in training, but in the end makes no difference. "
+                 "We scale down the denominator part of the objective when the "
+                 "average denominator part of the objective, for this minibatch, "
+                 "is more negative than this value.  Set this to 0.0 to use "
+                 "unmodified objective function.");
+  }
+};
+
+/**
      This function processes the output of the RNNLM computation for a single
      minibatch; it outputs the objective-function contributions from the
      'numerator' and 'denominator' terms, and [if requested] the derivatives of
@@ -177,7 +197,6 @@ void GetRnnlmExampleDerived(const RnnlmExample &minibatch,
      [the reason we use q(i, w) instead of p(i, w) is that it gives a
       closer bound to the natural normalizer term and helps avoid
       instability in early phases of training.]
-
 
       With importance sampling (if minibatch.sampled_words.size() > 0):
       'den_term' equals
@@ -210,20 +229,20 @@ void GetRnnlmExampleDerived(const RnnlmExample &minibatch,
        @param [out] nnet_output_dirv  If non-NULL, the derivative of the
                          objective function w.r.t. 'nnet_output' is *added*
                          to this location.
-       @param [out] weight  If non-NULL, the total weight over this
+       @param [out] weight  Must be non-NULL.  The total weight over this
                          minibatch will be *written to* here (will equal
                          minibatch.output_weights.Sum()).
        @param [out] objf_num  If non-NULL, the total numerator part of
                          the objective function will be written here, i.e.
                          the sum over i of weight(i) * num_term(i); see above
                          for details.
-       @param [out] objf_den  If non-NULL, the total denominator part of
+       @param [out] objf_den  Must be non-NULL.  The total denominator part of
                          the objective function will be written here, i.e.
                          the sum over i of weight(i) * den_term(i); see above
                          for details.  You add this to 'objf_num' to get the
                          total objective function.
-       @param [out] objf_den_exact  If non-NULL, then if we're not
-                         doing sampling (minibatch.sampled_words.empty()),
+       @param [out] objf_den_exact  If non-NULL, and if we're not
+                         doing sampling (i.e. if minibatch.sampled_words.empty()),
                          the 'exact' denominator part of the objective function
                          will be written here, i.e. the weighted sum of
                            exact_den_term(i) = -log(\sum_w p(i,w)).
@@ -231,9 +250,12 @@ void GetRnnlmExampleDerived(const RnnlmExample &minibatch,
                          part, and this will be set to zero.  This is provided
                          for diagnostic purposes.  Derivatives will be computed
                          w.r.t. the objective consisting of
-                         'objf_num + objf_den'.
+                         'objf_num + objf_den', i.e. ignoring the 'exact' one.
+                         For greatest efficiency you should probably not provide
+                         this pointer.
  */
 void ProcessRnnlmOutput(
+    const RnnlmObjectiveOptions &objective_opts,
     const RnnlmExample &minibatch,
     const RnnlmExampleDerived &derived,
     const CuMatrixBase<BaseFloat> &word_embedding,

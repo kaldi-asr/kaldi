@@ -24,6 +24,7 @@
 #include "rnnlm/rnnlm-core-training.h"
 #include "rnnlm/rnnlm-embedding-training.h"
 #include "rnnlm/rnnlm-utils.h"
+#include "rnnlm/rnnlm-example-utils.h"
 #include "util/kaldi-semaphore.h"
 
 
@@ -48,6 +49,8 @@ class RnnlmTrainer {
       @param [in] embedding_config  Options for training the
                               embedding matrix (only relevant
                               if train_embedding is true).
+      @param [in] objective_config  Options relating to the objective
+                              function used for training.
       @param [in] word_feature_mat Either NULL, or a pointer to a sparse
                              word-feature matrix of dimension vocab-size by
                              feature-dim, where vocab-size is the
@@ -68,6 +71,7 @@ class RnnlmTrainer {
   RnnlmTrainer(bool train_embedding,
                const RnnlmCoreTrainerOptions &core_config,
                const RnnlmEmbeddingTrainerOptions &embedding_config,
+               const RnnlmObjectiveOptions &objective_config,
                const CuSparseMatrix<BaseFloat> *word_feature_mat,
                CuMatrix<BaseFloat> *embedding_mat,
                nnet3::Nnet *rnnlm_);
@@ -133,6 +137,7 @@ class RnnlmTrainer {
   bool train_embedding_;  // true if we are training the embedding.
   const RnnlmCoreTrainerOptions &core_config_;
   const RnnlmEmbeddingTrainerOptions &embedding_config_;
+  const RnnlmObjectiveOptions &objective_config_;
 
   // The neural net we are training (not owned here)
   nnet3::Nnet *rnnlm_;

@@ -72,6 +72,7 @@ void RnnlmExampleDerived::Swap(RnnlmExampleDerived *other) {
 // This is called from ProcessRnnlmOutput() when we are doing importance
 // sampling.
 static void ProcessRnnlmOutputSampling(
+    const RnnlmObjectiveOptions &objective_config,
     const RnnlmExample &minibatch,
     const RnnlmExampleDerived &derived,
     const CuMatrixBase<BaseFloat> &word_embedding,
@@ -82,6 +83,7 @@ static void ProcessRnnlmOutputSampling(
     BaseFloat *objf_num,
     BaseFloat *objf_den,
     BaseFloat *objf_den_exact) {
+  KALDI_ASSERT(weight != NULL && objf_den != NULL);  // Others are optional.
 
   // In the case where minibatch.sample_group_size == 1, meaning for each 't' value we
   // sample separately, num_sample_groups would equal the chunk_length and
@@ -162,11 +164,8 @@ static void ProcessRnnlmOutputSampling(
 
     // The denominator part of this objective is something like:
     // - \sum_i \sum_w output_weight(i) * q(i, w) * sample_inv_prob(w).
-    if (objf_den) {
-      *objf_den +=
-          -VecMatVec(output_weights_part, word_logprobs,
-                     sample_inv_probs_part);
-    }
+    *objf_den +=  -VecMatVec(output_weights_part, word_logprobs,
+                             sample_inv_probs_part);
 
 
     // The derivative of the function q(l) = (l < 0 ? exp(l) : l + 1.0)
@@ -178,6 +177,26 @@ static void ProcessRnnlmOutputSampling(
     // in the deriviative of the objf w.r.t. the words' logprobs
     // (which is what we're computing now).
     word_logprobs.MulColsVec(sample_inv_probs_part);
+
+    if (objective_config.den_term_limit != 0.0) {
+      // If it's nonzero then check that it's negative, and not too close to zero,
+      // which would likely cause failure to converge.  The default is 10.0.
+      KALDI_ASSERT(objective_config.den_term_limit < -0.5);
+      BaseFloat limit = objective_config.den_term_limit;
+      if (weight != NULL && objf_den != NULL && *weight > 0 &&
+          (*objf_den / *weight) < limit) {
+        // note: both things being divided below are negative, and
+        // 'scale' will be between zero and one.
+        BaseFloat scale = limit / (*objf_den / *weight);
+        // We scale the denominator part of the objective down by the inverse of
+        // the factor by which the denominator part of the objective exceeds the
+        // limit.  This point in the code should only be reached on the first few
+        // iterations of training, or if there is some kind of instability,
+        // because the (*objf_den / *weight) will usually be close to zero,
+        // e.g. -0.01, while 'limit' is expected to be larger, like -10.0.
+        word_logprobs.Scale(scale);
+      }
+    }
 
 
     // This adds -1.0 to the elements of 'word_logprobs' corresponding
@@ -225,6 +244,7 @@ static void ProcessRnnlmOutputSampling(
 // This is called from ProcessRnnlmOutput() when we are not doing importance
 // sampling.
 static void ProcessRnnlmOutputNoSampling(
+    const RnnlmObjectiveOptions &objective_config,
     const RnnlmExample &minibatch,
     const RnnlmExampleDerived &derived,
     const CuMatrixBase<BaseFloat> &word_embedding,
@@ -235,6 +255,7 @@ static void ProcessRnnlmOutputNoSampling(
     BaseFloat *objf_num,
     BaseFloat *objf_den,
     BaseFloat *objf_den_exact) {
+  KALDI_ASSERT(weight != NULL && objf_den != NULL);  // Others are optional.
 
   int32 embedding_dim = word_embedding.NumCols();
   int32 num_words = word_embedding.NumRows();
@@ -247,9 +268,8 @@ static void ProcessRnnlmOutputNoSampling(
   word_logprobs.AddMatMat(1.0, nnet_output, kNoTrans,
                           word_embedding, kTrans, 0.0);
 
-  if (weight) {
-    *weight = minibatch.output_weights.Sum();
-  }
+  *weight = minibatch.output_weights.Sum();
+
   if (objf_num) {
     *objf_num = TraceMatSmat(word_logprobs,
                              derived.output_words_smat, kTrans);
@@ -282,7 +302,8 @@ static void ProcessRnnlmOutputNoSampling(
   // and some of these code paths will only be used in test code.
   word_logprobs.ApplyExpSpecial();
 
-  if (objf_den) {
+  { // This block computes *objf_den.
+
     // we call this variable 'q_noeps' because in the math described in
     // rnnlm-example-utils.h it is described as q(i,w), and because we're
     // skipping over the epsilon symbol (which we don't want to include in the
@@ -318,6 +339,29 @@ static void ProcessRnnlmOutputNoSampling(
 
   // Include the factor 'minibatch.output_weights'.
   word_logprobs.MulRowsVec(minibatch.output_weights);
+
+
+
+  if (objective_config.den_term_limit != 0.0) {
+    // If it's nonzero then check that it's negative, and not too close to zero,
+    // which would likely cause failure to converge.  The default is 10.0.
+    KALDI_ASSERT(objective_config.den_term_limit < -0.5);
+    BaseFloat limit = objective_config.den_term_limit;
+    if (weight != NULL && objf_den != NULL && *weight > 0 &&
+        (*objf_den / *weight) < limit) {
+      // note: both things being divided below are negative, and
+      // 'scale' will be between zero and one.
+      BaseFloat scale = limit / (*objf_den / *weight);
+      // We scale the denominator part of the objective down by the inverse of
+      // the factor by which the denominator part of the objective exceeds the
+      // limit.  This point in the code should only be reached on the first few
+      // iterations of training, or if there is some kind of instability,
+      // because the (*objf_den / *weight) will usually be close to zero,
+      // e.g. -0.01, while 'limit' is expected to be larger, like -10.0.
+      word_logprobs.Scale(scale);
+    }
+  }
+
   // After the following statement, 'word_logprobs' will contains the negative
   // of the derivative of the objective function w.r.t. l(i, x), except that the
   // first column (for epsilon) should be ignored.
@@ -353,6 +397,7 @@ static void ProcessRnnlmOutputNoSampling(
 
 
 void ProcessRnnlmOutput(
+    const RnnlmObjectiveOptions &objective_config,
     const RnnlmExample &minibatch,
     const RnnlmExampleDerived &derived,
     const CuMatrixBase<BaseFloat> &word_embedding,
@@ -371,12 +416,14 @@ void ProcessRnnlmOutput(
 
   bool using_sampling = !(minibatch.sampled_words.empty());
   if (using_sampling) {
-    ProcessRnnlmOutputSampling(minibatch, derived, word_embedding,
+    ProcessRnnlmOutputSampling(objective_config,
+                               minibatch, derived, word_embedding,
                                nnet_output, word_embedding_deriv,
                                nnet_output_deriv, weight, objf_num,
                                objf_den, objf_den_exact);
   } else {
-    ProcessRnnlmOutputNoSampling(minibatch, derived, word_embedding,
+    ProcessRnnlmOutputNoSampling(objective_config,
+                                 minibatch, derived, word_embedding,
                                  nnet_output, word_embedding_deriv,
                                  nnet_output_deriv, weight, objf_num,
                                  objf_den, objf_den_exact);

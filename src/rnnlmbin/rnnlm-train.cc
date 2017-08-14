@@ -47,6 +47,7 @@ int main(int argc, char *argv[]) {
 
     RnnlmCoreTrainerOptions core_config;
     RnnlmEmbeddingTrainerOptions embedding_config;
+    RnnlmObjectiveOptions objective_config;
 
     const char *usage =
         "Train nnet3-based RNNLM language model (reads minibatches prepared\n"
@@ -91,6 +92,8 @@ int main(int argc, char *argv[]) {
                 "If true, write outputs in binary form.");
 
 
+    objective_config.Register(&po);
+
     // register the core RNNLM training options options with the prefix "rnnlm",
     // so they will appear as --rnnlm.max-change and the like.  This is done
     // with a prefix because later we may add a neural net to transform the word
@@ -101,6 +104,8 @@ int main(int argc, char *argv[]) {
     // ... and register the embedding options with the prefix "embedding".
     ParseOptions embedding_opts("embedding", &po);
     embedding_config.Register(&embedding_opts);
+
+
 
 
     po.Read(argc, argv);
@@ -155,7 +160,7 @@ int main(int argc, char *argv[]) {
       bool train_embedding = (embedding_wxfilename != "");
 
       RnnlmTrainer trainer(
-          train_embedding, core_config, embedding_config,
+          train_embedding, core_config, embedding_config, objective_config,
           (word_features_rxfilename != "" ? &word_feature_mat : NULL),
           &embedding_mat, &rnnlm);
 

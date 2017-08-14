@@ -35,8 +35,8 @@ void ArpaSampling::ConsumeNGram(const NGram& ngram) {
       unigram_probs_.resize(static_cast<size_t>(word + 1), 0.0);
     KALDI_ASSERT(unigram_probs_[word] == 0.0);  // or repeated unigram.
     unigram_probs_[word] = Exp(ngram.logprob);
-    if (ngram.backoff != 0.0) 
-      higher_order_probs_[cur_order - 1][ngram.words].backoff_prob = 
+    if (ngram.backoff != 0.0)
+      higher_order_probs_[cur_order - 1][ngram.words].backoff_prob =
         Exp(ngram.backoff);
   } else {
     HistType history(ngram.words.begin(), ngram.words.end() - 1);
@@ -210,6 +210,8 @@ BaseFloat ArpaSampling::GetDistribution(
   non_unigram_probs_out->insert(non_unigram_probs_out->end(),
                                 non_unigram_probs_temp.begin(),
                                 non_unigram_probs_temp.end());
+  std::sort(non_unigram_probs_out->begin(),
+            non_unigram_probs_out->end());
   return ans;
 }
 

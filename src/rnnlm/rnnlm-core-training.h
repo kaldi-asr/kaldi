@@ -124,6 +124,7 @@ class RnnlmCoreTrainer {
                               Will be modified each time you call Train().
    */
   RnnlmCoreTrainer(const RnnlmCoreTrainerOptions &config,
+                   const RnnlmObjectiveOptions &objective_config,
                    nnet3::Nnet *nnet);
 
   /* Train on one minibatch.
@@ -187,6 +188,7 @@ class RnnlmCoreTrainer {
   void UpdateParamsWithMaxChange();
 
   const RnnlmCoreTrainerOptions config_;
+  const RnnlmObjectiveOptions objective_config_;
   nnet3::Nnet *nnet_;
   nnet3::Nnet *delta_nnet_;  // nnet representing parameter-change for this
                              // minibatch (or, when using momentum, its moving

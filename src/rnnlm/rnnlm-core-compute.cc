@@ -103,7 +103,11 @@ BaseFloat RnnlmCoreComputer::ProcessOutput(
   output_deriv.Resize(output.NumRows(), output.NumCols());
 
   BaseFloat weight, objf_num, objf_den, objf_den_exact;
-  ProcessRnnlmOutput(minibatch, derived, word_embedding,
+
+
+  RnnlmObjectiveOptions objective_opts;  // Use the defaults; we're not training
+                                         // so they won't matter.
+  ProcessRnnlmOutput(objective_opts, minibatch, derived, word_embedding,
                      output, word_embedding_deriv, &output_deriv,
                      &weight, &objf_num, &objf_den,
                      &objf_den_exact);
@@ -120,5 +124,3 @@ BaseFloat RnnlmCoreComputer::ProcessOutput(
 
 }  // namespace rnnlm
 }  // namespace kaldi
-
-
