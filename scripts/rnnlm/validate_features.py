@@ -31,12 +31,16 @@ with open(args.features_file, 'r', encoding="utf-8") as f:
     word_feats = {}
     for line in f:
         fields = line.split()
-        assert(len(fields) in [2, 3, 4])
+        assert(len(fields) in [3, 4, 5])
 
         assert idx == int(fields[0])
         idx += 1
 
-        if len(fields) == 2:
+        # every feature should contain a scale
+        scale = float(fields[-1])
+        assert scale > 0.0 and scale <= 1.0
+
+        if len(fields) == 3:
             assert fields[1] == "length"
             if has_length:
                 sys.exit(sys.argv[0] + ": Too many 'length' features")
@@ -44,13 +48,13 @@ with open(args.features_file, 'r', encoding="utf-8") as f:
         else:
             if fields[1] == "constant":
                 try:
-                    assert len(fields) == 3
+                    assert len(fields) == 4
                     value = float(fields[2])
                     assert value > 0.0
                 except:
                     sys.exit(sys.argv[0] + ": bad line: {0}".format(line))
             elif fields[1] == "special":
-                if len(fields) != 3:
+                if len(fields) != 4:
                     sys.exit(sys.argv[0] + ": bad line: {0}".format(line))
             elif fields[1] == "unigram":
                 if float(fields[2]) <= 0.0:
