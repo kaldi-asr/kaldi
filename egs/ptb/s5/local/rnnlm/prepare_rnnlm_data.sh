@@ -50,10 +50,13 @@ rnnlm/get_unigram_probs.py --vocab-file=data/vocab/words.txt \
                            --data-weights-file=$dir/data_weights.txt \
                            data/text >$dir/unigram_probs.txt
 
+
+# TODO: make sure the features format is documented somewhere.
+
 # choose features
 rnnlm/choose_features.py --unigram-probs=$dir/unigram_probs.txt \
-                         --unigram-scale=0.1 \
-                         --constant-feature=1.0 \
+                         --constant-feature=0.01 \
+                         --special-words='<s>,</s>,<brk>,<unk>' \
                          data/vocab/words.txt > $dir/features.txt
 # validate features
 rnnlm/validate_features.py $dir/features.txt
@@ -66,3 +69,7 @@ rnnlm/make_word_features.py --unigram-probs=$dir/unigram_probs.txt \
 # validate word features
 rnnlm/validate_word_features.py --features-file $dir/features.txt \
                                 $dir/word_feats.txt
+
+
+# you can look at the features like this:
+# rnnlm/show_word_features.py exp/rnnlm_data_prep/word_feats.txt exp/rnnlm_data_prep/features.txt  | head

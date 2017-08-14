@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(description="This script is used to randomly in
                                  "Kaldi-format matrices, with supplied dimensions and "
                                  "standard deviation.",
                                  epilog="E.g. " + sys.argv[0] + " --num-rows=10 --num-cols=20 "
-                                 "--param-stddev=0.05 > exp/rnnlm1/embedding.mat",
+                                 "--stddev=0.05 > exp/rnnlm1/embedding.mat",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 parser.add_argument("--num-rows", type=int, required=True,
@@ -22,6 +22,9 @@ parser.add_argument("--num-cols", type=int, required=True,
                     help="Number of columns for the matrix ")
 parser.add_argument("--first-column", type=float,
                     help="If specified, all elements of the first column "
+                    "will be set to this value");
+parser.add_argument("--first-element", type=float,
+                    help="If specified, the (0, 0) element of the matrix "
                     "will be set to this value");
 parser.add_argument("--stddev", type=float, default=-1.0,
                     help="Standard deviation of individual parameters.  If not "
@@ -49,6 +52,8 @@ for i in range (args.num_rows):
     for j in range(args.num_cols):
         if j == 0 and args.first_column is not None:
             r = args.first_column
+        elif j == 0 and i == 0 and args.first_element is not None:
+            r = args.first_element
         elif args.stddev == 0.0:
             r = 0.0
         else:

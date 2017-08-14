@@ -77,7 +77,7 @@ with open(args.word_features_file, 'r', encoding="utf-8") as f:
                 except ValueError:
                     sys.exit(sys.argv[0] + ": Value of special word feature should be a float number: {0}.".format(line))
             elif feat_id == constant_feat_id:
-                if math.abs(float(feat_value) - constant_feat_value) > 1e-6:
+                if abs(float(feat_value) - constant_feat_value) > 1e-6:
                     sys.exit(sys.argv[0] + ": Value of constant feature is not right: {0}".format(line))
             else: # all feat_value would be float
                 try:

@@ -124,7 +124,7 @@ num_features = 0
 
 if args.constant_feature is not None:
     print("{0}\tconstant\t{1}\t{2}".format(num_features, args.constant_feature,
-          get_feature_scale(arsg.constant_feature)))
+          get_feature_scale(args.constant_feature)))
     num_features += 1
 
 # special words features
