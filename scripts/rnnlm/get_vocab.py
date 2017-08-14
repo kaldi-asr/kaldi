@@ -6,6 +6,7 @@
 import os
 import argparse
 import sys
+sys.stdout = open(1, 'w', encoding='utf-8', closefd=False)
 
 parser = argparse.ArgumentParser(description="This script get a vocab from unigram counts "
                                  "of words produced by get_unigram_counts.sh",

@@ -6,9 +6,6 @@
 
 set -e -o pipefail -u
 
-export LC_ALL=C
-export PYTHONIOENCODING='utf-8'
-
 # it should contain things like
 # foo.txt, bar.txt, and dev.txt (dev.txt is a special filename that's
 # obligatory).
