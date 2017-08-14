@@ -8,7 +8,7 @@ export HOME=$PWD/tensorflow_build/
 mkdir -p $HOME
 
 java=`which java`
-if [ $JAVA_HOME != "" ]; then
+if [ "$JAVA_HOME" != "" ]; then
   java=$JAVA_HOME/bin/java
 fi
 
