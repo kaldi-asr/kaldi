@@ -139,7 +139,8 @@ static void UnitTestCuSparseMatrixTraceMatSmat() {
     SparseMatrix<Real> smat2(col, row);
     smat1.SetRandn(0.8);
     smat2.SetRandn(0.8);
-    CuSparseMatrix<Real> cu_smat1(smat1);
+    CuSparseMatrix<Real> cu_smat1x(smat1);
+    CuSparseMatrix<Real> cu_smat1(cu_smat1x);  // Test constructor.
     CuSparseMatrix<Real> cu_smat2(smat2);
 
     cu_smat1.CopyToMat(&mat1);

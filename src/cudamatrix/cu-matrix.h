@@ -449,7 +449,7 @@ class CuMatrixBase {
   /// (*this) = alpha * op(A) * B + beta * (*this), where A is sparse.
   /// Multiplication of sparse with dense matrix.  See also AddMatSmat.
   /// Note: we recommend, for greatest efficiency, that transA be kNoTrans.
-  /// Use AddmatSmat() for better efficiency, as 2 dense mat transpose ops
+  /// Use AddMatSmat() for better efficiency, as 2 dense mat transpose ops
   /// are called in this API.
   void AddSmatMat(Real alpha, const CuSparseMatrix<Real> &A,
                   MatrixTransposeType transA, const CuMatrixBase<Real> &B,

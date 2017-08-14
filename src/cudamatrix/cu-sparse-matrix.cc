@@ -409,6 +409,10 @@ void CuSparseMatrix<Real>::CopyToSmat(SparseMatrix<OtherReal> *smat) const {
   KALDI_ASSERT(smat != NULL);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (NumRows() == 0) {
+      smat->Resize(0, 0);
+      return;
+    }
     CuSubArray<int> idx(csr_row_ptr_col_idx_, NumRows() + 1 + NumElements());
     std::vector<int> idx_cpu;
     idx.CopyToVec(&idx_cpu);
