@@ -88,7 +88,10 @@ ArpaLmCompiler* Compile(bool seps, const string &infile) {
       new ArpaLmCompiler(options,
                          seps ? kDisambig : 0,
                          &symbols);
-  ReadKaldiObject(infile, lm_compiler);
+  {
+    Input ki(infile);
+    lm_compiler->Read(ki.Stream());
+  }
   return lm_compiler;
 }
 
