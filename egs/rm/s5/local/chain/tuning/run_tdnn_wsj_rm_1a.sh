@@ -31,9 +31,7 @@ xent_regularize=0.1
 
 # configs for transfer learning
 srcdir=../../wsj/s5   # base dir for source dataset.
-src_mdl=$srcdir/exp/chain/tdnn1d_sp/final.mdl # input dnn model for source data 
-                                              # that is used in transfer learning.
-
+src_tdnn_affix=1d
 common_egs_dir=
 primary_lr_factor=0.25 # The learning-rate factor for transferred layers from source
                        # model.
@@ -54,8 +52,12 @@ If you want to use GPUs (and have them), go to src/, and configure and make on a
 where "nvcc" is installed.
 EOF
 fi
+src_mdl=$srcdir/exp/chain/tdnn${src_tdnn_affix}_sp/final.mdl # input dnn model for source data
+                                              # that is used in transfer learning.
+src_extractor_dir=$srcdir/exp/nnet3/extractor # source extractor dir used to extract
+                                              # ivector for target data.
 
-required_files="$src_mdl $srcdir/exp/nnet3/extractor/final.mdl"
+required_files="$src_mdl $src_extractor_dir/final.dubm $src_extractor_dir/final.mat $src_extractor_dir/final.ie"
 for f in $required_files; do
   if [ ! -f $f ]; then
     echo "$0: no such file $f"

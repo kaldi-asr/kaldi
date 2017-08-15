@@ -23,7 +23,6 @@ extra_right_context=0
 extra_left_context_initial=-1
 extra_right_context_final=-1
 online_ivector_dir=
-feat_type=  # you can set this to force it to use delta features.
 graphs_scp=
 # End configuration options.
 
@@ -71,25 +70,12 @@ cp $lang/phones.txt $dir || exit 1;
 ## Set up features.  Note: these are different from the normal features
 ## because we have one rspecifier that has the features for the entire
 ## training set, not separate ones for each batch.
-if [ -z "$feat_type" ]; then
-  if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=raw; fi
-fi
-echo "$0: feature type is $feat_type"
+echo "$0: feature type is raw"
 
 cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 cp $srcdir/cmvn_opts $dir 2>/dev/null
 
-case $feat_type in
-  raw) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
-   ;;
-  lda)
-    splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
-    cp $srcdir/splice_opts $dir 2>/dev/null
-    cp $srcdir/final.mat $dir || exit 1;
-    feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    ;;
-  *) echo "$0: invalid feature type $feat_type" && exit 1;
-esac
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
 
 if [ ! -z "$transform_dir" ]; then
   echo "$0: using transforms from $transform_dir"
@@ -97,24 +83,18 @@ if [ ! -z "$transform_dir" ]; then
     echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
   nj_orig=$(cat $transform_dir/num_jobs)
 
-  if [ $feat_type == "raw" ]; then trans=raw_trans;
-  else trans=trans; fi
-  if [ $feat_type == "lda" ] && ! cmp $transform_dir/final.mat $srcdir/final.mat; then
-    echo "$0: LDA transforms differ between $srcdir and $transform_dir"
-    exit 1;
-  fi
-  if [ ! -f $transform_dir/$trans.1 ]; then
-    echo "$0: expected $transform_dir/$trans.1 to exist (--transform-dir option)"
+  if [ ! -f $transform_dir/raw_trans.1 ]; then
+    echo "$0: expected $transform_dir/raw_trans.1 to exist (--transform-dir option)"
     exit 1;
   fi
   if [ $nj -ne $nj_orig ]; then
     # Copy the transforms into an archive with an index.
-    for n in $(seq $nj_orig); do cat $transform_dir/$trans.$n; done | \
-       copy-feats ark:- ark,scp:$dir/$trans.ark,$dir/$trans.scp || exit 1;
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/$trans.scp ark:- ark:- |"
+    for n in $(seq $nj_orig); do cat $transform_dir/raw_trans.$n; done | \
+       copy-feats ark:- ark,scp:$dir/raw_trans.ark,$dir/raw_trans.scp || exit 1;
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/raw_trans.scp ark:- ark:- |"
   else
     # number of jobs matches with alignment dir.
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/$trans.JOB ark:- ark:- |"
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/raw_trans.JOB ark:- ark:- |"
   fi
 fi
 
@@ -167,7 +147,7 @@ if [ $stage -le 1 ]; then
   # Warning: nnet3-latgen-faster doesn't support a retry-beam so you may get more
   # alignment errors (however, it does have a default min-active=200 so this
   # will tend to reduce alignment errors).
-  # --allow_partial=false makes sure we reach the end of the decoding graph.  
+  # --allow_partial=false makes sure we reach the end of the decoding graph.
   # --word-determinize=false makes sure we retain the alternative pronunciations of
   #   words (including alternatives regarding optional silences).
   #  --lattice-beam=$beam keeps all the alternatives that were within the beam,
@@ -187,4 +167,3 @@ if [ $stage -le 1 ]; then
 fi
 
 echo "$0: done aligning data."
-

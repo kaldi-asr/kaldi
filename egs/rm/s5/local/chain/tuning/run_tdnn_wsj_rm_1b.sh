@@ -44,20 +44,7 @@ xent_regularize=0.1
 # configs for transfer learning
 common_egs_dir=
 srcdir=../../wsj/s5   # base directory for source data
-src_mdl=$srcdir/exp/chain/tdnn1d_sp/final.mdl # input dnn model for source data 
-                                              # that is used in transfer learning.
-
-src_lang=$srcdir/data/lang    # source lang directory used to generate source model.
-                              # new new lang dir for transfer learning prepared
-                              # using source phone set, lexicon in src_lang and 
-                              # target word list.
-
-src_gmm_dir=$srcdir/exp/tri4b # source gmm dir used to generate alignments
-                              # for target data.
-
-src_tree_dir=$srcdir/exp/chain/tree_a_sp # chain tree-dir for src data;
-                                         # the alignment in target domain is
-                                         # converted using src-tree
+src_tdnn_affix=1d
 primary_lr_factor=0.25 # learning-rate factor for all except last layer in transferring source model
 final_lr_factor=1.0   # learning-rate factor for final layer in transferring source model.
 nnet_affix=_online_wsj
@@ -92,11 +79,27 @@ ali_dir=exp/tri4b${src_tree_dir:+_wsj}_ali
 lat_dir=exp/tri3b_lats${src_tree_dir:+_wsj}
 dir=exp/chain/tdnn_wsj_rm${tdnn_affix}
 
-required_files="$src_mdl $srcdir/exp/nnet3/extractor/final.mdl $src_lang/phones.txt $srcdir/data/local/dict_nosp/lexicon.txt $src_gmm_dir/final.mdl $src_tree_dir/tree"
+# src directories
+src_extractor_dir=$srcdir/exp/nnet3/extractor
+src_mdl=$srcdir/exp/chain/tdnn${src_tdnn_affix}_sp/final.mdl # input dnn model for source data
+                                              # that is used in transfer learning.
+
+src_lang=$srcdir/data/lang    # source lang directory used to generate source model.
+                              # new new lang dir for transfer learning prepared
+                              # using source phone set, lexicon in src_lang and 
+                              # target word list.
+
+src_gmm_dir=$srcdir/exp/tri4b # source gmm dir used to generate alignments
+                              # for target data.
+
+src_tree_dir=$srcdir/exp/chain/tree_a_sp # chain tree-dir for src data;
+                                         # the alignment in target domain is
+                                         # converted using src-tree
+required_files="$src_mdl $src_extractor_dir/final.dubm $src_extractor_dir/final.mat $src_extractor_dir/final.ie $src_lang/phones.txt $srcdir/data/local/dict_nosp/lexicon.txt $src_gmm_dir/final.mdl $src_tree_dir/tree"
 
 for f in $required_files; do
   if [ ! -f $f ]; then
-    echo "$0: no such file $f"
+    echo "$0: no such file $f" && exit 1;
   fi
 done
 

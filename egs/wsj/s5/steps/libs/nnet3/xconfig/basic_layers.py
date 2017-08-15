@@ -1092,33 +1092,27 @@ class XconfigAuxiliaryLayer(XconfigLayerBase):
 
 
     def set_default_configs(self):
-
         self.config = { 'dim': -1}
 
     def check_configs(self):
-
         if self.config['dim'] <= 0:
             raise RuntimeError("Dimension of auxiliary-layer '{0}'"
                                 "should be positive.".format(self.name))
 
     def get_input_descriptor_names(self):
-
         return []  # there is no 'input' field in self.config.
 
     def output_name(self, auxiliary_outputs=None):
-
         # there are no auxiliary outputs as this layer will just pass the input
         assert auxiliary_outputs is None
         return self.name
 
     def output_dim(self, auxiliary_outputs=None):
-
         # there are no auxiliary outputs as this layer will just pass the input
         assert auxiliary_outputs is None
         return self.config['dim']
 
     def get_full_config(self):
-
         # unlike other layers the auxiliary layers should not to be printed in
         # any '*.config'
         ans = []

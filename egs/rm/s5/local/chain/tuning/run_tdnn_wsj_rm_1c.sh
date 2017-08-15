@@ -50,17 +50,7 @@ xent_regularize=0.1
 # configs for transfer learning
 common_egs_dir=
 srcdir=../../wsj/s5   # base directory for source data
-src_mdl=$srcdir/exp/chain/tdnn1d_sp/final.mdl # input dnn model for source data 
-                                              # that is used in transfer learning.
-
-src_lang=$srcdir/data/lang    # source lang directory used to generate source model.
-                              # new new lang dir for transfer learning prepared
-                              # using source phone set, lexicon in src_lang and 
-                              # target word list.
-
-src_tree_dir=$srcdir/exp/chain/tree_a_sp # chain tree-dir for source dataset;
-                                         # the alignment in target domain is
-                                         # converted using src-tree
+src_tdnn_affix=1d
 
 primary_lr_factor=0.25 # learning-rate factor for all except last layer in transferred source model
 nnet_affix=_online_wsj
@@ -95,11 +85,25 @@ ali_dir=exp/chain/chain_ali_wsj
 treedir=exp/chain/tri4_5n_tree_wsj
 lat_dir=exp/chain_lats${src_tree_dir:+_wsj}
 
-required_files="$src_mdl $srcdir/exp/nnet3/extractor/final.md $src_lang/phones.txt $srcdir/data/local/dict_nosp/lexicon.txt $src_tree_dir/tree"
+# src directories
+src_extractor_dir=$srcdir/exp/nnet3/extractor
+src_mdl=$srcdir/exp/chain/tdnn${src_tdnn_affix}_sp/final.mdl # input dnn model for source data
+                                              # that is used in transfer learning.
+
+src_lang=$srcdir/data/lang    # source lang directory used to generate source model.
+                              # new new lang dir for transfer learning prepared
+                              # using source phone set, lexicon in src_lang and 
+                              # target word list.
+
+src_tree_dir=$srcdir/exp/chain/tree_a_sp # chain tree-dir for source dataset;
+                                         # the alignment in target domain is
+                                         # converted using src-tree
+
+required_files="$src_mdl $src_extractor_dir/final.dubm $src_extractor_dir/final.mat $src_extractor_dir/final.ie $src_lang/phones.txt $srcdir/data/local/dict_nosp/lexicon.txt $src_tree_dir/tree"
 
 for f in $required_files; do
   if [ ! -f $f ]; then
-    echo "$0: no such file $f"
+    echo "$0: no such file $f" && exit 1;
   fi
 done
 
@@ -121,11 +125,10 @@ local/online/run_nnet2_common.sh  --stage $stage \
 src_mdl_dir=`dirname $src_mdl`
 if [ $stage -le 4 ]; then
   echo "$0: Generate alignment using source chain model."
-  scale_opts="--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0"
   steps/nnet3/align.sh --nj 100 --cmd "$train_cmd" \
   --online-ivector-dir exp/nnet2${nnet_affix}/ivectors \
   --extra-left-context-initial 0 --extra-right-context-final 0 \
-  --scale-opts "$scale_opts" \
+  --scale-opts "--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1." \
   --frames-per-chunk $frames_per_chunk \
   data/train_hires $lang_src_tgt $src_mdl_dir $ali_dir || exit 1;
 fi
@@ -133,13 +136,12 @@ fi
 if [ $stage -le 5 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  scale_opts="--transition-scale=1.0 --self-loop-scale=1.0"
   steps/nnet3/align_lats.sh --nj 100 --cmd "$train_cmd" \
     --acoustic-scale 1.0 --extra-left-context-initial 0 --extra-right-context-final 0 \
     --frames-per-chunk $frames_per_chunk \
-    --scale-opts "$scale_opts" \
+    --scale-opts "--transition-scale=1.0 --self-loop-scale=1." \
     --online-ivector-dir exp/nnet2${nnet_affix}/ivectors data/train_hires \
-    $lang_src_tgt $ali_dir $lat_dir || exit 1;
+    $lang_src_tgt $src_mdl_dir $lat_dir || exit 1;
   rm $lat_dir/fsts.*.gz # save space
 fi
 
@@ -166,9 +168,10 @@ if [ $stage -le 8 ]; then
   if [ $train_stage -lt -4 ]; then
     train_stage=-4
   fi
-  # we used chain model from source to generate lats for target and the
+  # we use chain model from source to generate lats for target and the
   # tolerance used in chain egs generation using this lats should be 1 or 2 which is
   # (source_egs_tolerance/frame_subsampling_factor)
+  # source_egs_tolerance = 5
   chain_opts=(--chain.alignment-subsampling-factor=1 --chain.left-tolerance=1 --chain.right-tolerance=1)
   steps/nnet3/chain/train.py --stage $train_stage ${chain_opts[@]} \
     --cmd "$decode_cmd" \

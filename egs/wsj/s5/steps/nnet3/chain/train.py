@@ -323,8 +323,8 @@ def train(args, run_opts):
         shutil.copy('{0}/tree'.format(args.tree_dir), args.dir)
         chain_lib.create_denominator_fst(args.dir, args.tree_dir, run_opts)
 
-    if (args.stage <= -4) and os.path.exists(args.dir+"/configs/init.config")
-       and args.input_model is None:
+    if ((args.stage <= -4) and (os.path.exists("{0}/configs/init.config".format(args.dir)))
+            and (args.input_model is None)):
         logger.info("Initializing a basic network for estimating "
                     "preconditioning matrix")
         common_lib.execute_command(
