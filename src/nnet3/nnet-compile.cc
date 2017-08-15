@@ -320,9 +320,6 @@ void Compiler::CreateStepInfo(
       if (deriv_needed[step])
         this_info.deriv = computation->NewMatrix(num_rows, num_cols,
                                                  stride_type);
-      if (node.node_type == kComponent)
-        KALDI_PARANOID_ASSERT(step > 0 &&  steps_[step-1].output_indexes ==
-                              this_info.output_indexes);
     } else {
       // kDimRange.  Will just be a sub-matrix of a Component or Input node.
       int32 cindex_id = this_info.output_cindex_ids.front(),
