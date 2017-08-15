@@ -4,19 +4,34 @@
 # Copyright 2015 Sharif University of Technology (Author: Hossein Hadian)
 # Apache 2.0
 
+grammar_words=false
+
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
 # this is only called for decoding purposes. This is not necessary for training.
 lmsrc=$1  # Can be either a text file in the format of train/text or arpa file
-lang=$2     # output dir for e.g. data/test/lang
+lang=$2   # output dir for e.g. data/test/lang
 ngram=$3
 [ -z $ngram ] && ngram=2
 tmpdir=$lang/temp
+test=$lang
 
 
 mkdir -p $tmpdir
-if [ $lmsrc == *".arpa" ]; then
+
+if $grammar_words; then
+  echo "-------------------- GRAMMAR LM -----------------------"
+  echo "-------------------- GRAMMAR LM -----------------------"
+  
+  sed "s| [[:digit:]]\+||g" $test/words.txt | grep -v "[<&(#s]"  >$tmpdir/just_words.txt
+  #python local/lex2G.py $tmpdir/just_words.txt >$tmpdir/pG.txt
+  awk '{print $2}' $lmsrc | python local/make_isolated_word_grammar.py >$tmpdir/pG.txt
+  fstcompile --isymbols=$test/words.txt --osymbols=$test/words.txt $tmpdir/pG.txt >$test/G.fst
+elif [[ $lmsrc == *".arpa" ]]; then
+  echo "-------------------- ARPA LM -----------------------"
+  echo "-------------------- ARPA LM -----------------------"
+
   echo "$0: Using arpa LM: "$lmsrc
   arpa=$lmsrc
 else
