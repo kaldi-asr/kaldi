@@ -11,6 +11,11 @@ do {
     shift @ARGV; shift @ARGV;
     $shifted = 1;
   }
+  if ($ARGV[0] eq "--first-element") {
+    $first_element = $ARGV[1];
+    shift @ARGV; shift @ARGV;
+    $shifted = 1;
+  }
   if ($ARGV[0] eq "--srand") {
     $randseed = $ARGV[1];
     shift @ARGV; shift @ARGV;
@@ -24,7 +29,7 @@ do {
 } while ($shifted);
 
 if(@ARGV != 2) {
-  die "Usage: $0 [--srand <int>] [--first-column <float>]" .
+  die "Usage: $0 [--srand <int>] [--first-column <float>] [--first-element <float>]" .
     "[--stddev <float>] <num-rows> <num-cols> > matrix.txt\n" .
     "This script is used to randomly initialize \n" .
     "Kaldi-format matrices, with supplied dimensions and \n" .
@@ -40,9 +45,13 @@ my $pi2 = 6.2831853;
 print "[ ";
 for ($i = 0; $i < $num_rows; $i++) {
   for ($j = 0; $j < $num_cols; $j++) {
+    $flag = 0;
     if ($j == 0 && defined $first_column) {
       $element1 = $first_column;
-      $element2 = $first_column;
+      $flag = 1;
+    } elsif ($i == 0 && $j == 0 && defined $first_element) {
+      $element1 = $first_element;
+      $flag = 1;
     } elsif ($stddev == 0) {
       $element1 = 0;
       $element2 = 0;
@@ -57,7 +66,7 @@ for ($i = 0; $i < $num_rows; $i++) {
       $element2 = $element2 * $stddev;
     }
     printf "%0.2f ", $element1;
-    if ($j != $num_cols - 1) {
+    if ($j != $num_cols - 1 && $flag != 1) {
       printf "%0.2f ", $element2;
       $j = $j + 1;
     }
