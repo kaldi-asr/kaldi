@@ -35,8 +35,11 @@ dataset_path = os.path.join(args.database_path,
                             'largeWriterIndependentTextLineRecognitionTask',
                             args.dataset + '.txt')
 
+#text_file_path = os.path.join(args.database_path,
+#                              'ascii','lines.txt')
 text_file_path = os.path.join(args.database_path,
-                               'ascii','lines.txt')
+                              'ascii','words.txt')
+
 text_dict = {}
 def process_text_file_for_word_model():
   with open (text_file_path, 'rt') as in_file:
@@ -49,6 +52,7 @@ def process_text_file_for_word_model():
       text = "".join(text_vect)
       text = text.replace("|", " ") 
       text_dict[line_vect[0]] = text
+      #text_dict[line_vect[0]] = ' ' + text + ' '
 
 def process_text_file_for_char_model():
   with open (text_file_path, 'rt') as in_file:
@@ -87,26 +91,26 @@ with open(dataset_path) as f:
     writer_id = form_elements.getAttribute('writer-id')
     outerfolder = form_elements.getAttribute('id')[0:3]
     innerfolder = form_elements.getAttribute('id')
-    lines_path = os.path.join(args.database_path, 'lines', outerfolder, innerfolder, innerfolder)
-    image_file_path = lines_path + img_num + '.png'
+    #lines_path = os.path.join(args.database_path, 'lines', outerfolder, innerfolder, innerfolder)
+    #image_file_path = lines_path + img_num + '.png'
 
-    #handwritten_elements = form_elements.getElementsByTagName('handwritten-part')[0]
-    #line_elements = handwritten_elements.getElementsByTagName('line')
-    #for line_element in line_elements:
-    #  if line_element.getAttribute('id') == line:
-    #    word_elements = line_element.getElementsByTagName('word')
-    #    for word_element in word_elements:
-    #      image_name = word_element.getAttribute('id')
-    #      image_path = os.path.join(args.database_path, 'words', outerfolder, innerfolder, image_name + '.png')
-    #      
-    #      text =  text_dict[image_name]
-    #      utt_id = writer_id + '_' + image_name
-    #      text_fh.write(utt_id + ' ' + text + '\n')
-    #      utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
-    #      image_fh.write(utt_id + ' ' + image_path + '\n')
+    handwritten_elements = form_elements.getElementsByTagName('handwritten-part')[0]
+    line_elements = handwritten_elements.getElementsByTagName('line')
+    for line_element in line_elements:
+      if line_element.getAttribute('id') == line:
+        word_elements = line_element.getElementsByTagName('word')
+        for word_element in word_elements:
+          image_name = word_element.getAttribute('id')
+          image_path = os.path.join(args.database_path, 'words', outerfolder, innerfolder, image_name + '.png')
+          
+          text =  text_dict[image_name]
+          utt_id = writer_id + '_' + image_name
+          text_fh.write(utt_id + ' ' + text + '\n')
+          utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
+          image_fh.write(utt_id + ' ' + image_path + '\n')
 
-    text =  text_dict[line]
-    utt_id = writer_id + '_' + line
-    text_fh.write(utt_id + ' ' + text + '\n')
-    utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
-    image_fh.write(utt_id + ' ' + image_file_path + '\n')
+    #text =  text_dict[line]
+    #utt_id = writer_id + '_' + line
+    #text_fh.write(utt_id + ' ' + text + '\n')
+    #utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
+    #image_fh.write(utt_id + ' ' + image_file_path + '\n')
