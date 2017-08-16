@@ -40,12 +40,7 @@ EOF
 
 steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 
-
-# note: this is way too slow, we need to speed it up somehow.
-# I'm not sure if I want to have a dependency on numpy just for this though.
-# maybe we can rewrite in perl.
-rnnlm/initialize_matrix.py --num-rows=$vocab_size --num-cols=$embedding_dim \
-                           --first-column=1.0 > $dir/embedding.0.mat
+rnnlm/initialize_matrix.pl --first-column 1.0 $vocab_size $embedding_dim > $dir/embedding.0.mat
 
 nnet3-init $dir/configs/final.config - | nnet3-copy --learning-rate=0.0001 - $dir/0.rnnlm
 

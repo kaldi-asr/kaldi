@@ -39,19 +39,11 @@ EOF
 steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 nnet3-init $dir/configs/final.config - | nnet3-copy --learning-rate=0.0001 - $dir/0.rnnlm
 
-# note: this is way too slow, we need to speed it up somehow.
-# I'm not sure if I want to have a dependency on numpy just for this though.
-# maybe we can rewrite in perl.
 # we may later initialize this to identity for the first block.
-rnnlm/initialize_matrix.py --num-rows=$feat_dim --num-cols=$embedding_dim \
-                           --first-element=1.0 --stddev=0.001 > $dir/embedding.0.mat
+rnnlm/initialize_matrix.pl --first-element 1.0 --stddev 0.001 $feat_dim $embedding_dim > $dir/embedding.0.mat
 
 # alternative path:
-rnnlm/initialize_matrix.py --num-rows=$vocab_size --num-cols=$embedding_dim \
-                           --first-column=1.0 > $dir/word_embedding.0.mat
-
-
-
+rnnlm/initialize_matrix.pl --first-column 1.0 $vocab_size $embedding_dim > $dir/word_embedding.0.mat
 
 
 rnnlm-train --use-gpu=no --read-rnnlm=$dir/0.rnnlm --write-rnnlm=$dir/1.rnnlm --read-embedding=$dir/embedding.0.mat \
