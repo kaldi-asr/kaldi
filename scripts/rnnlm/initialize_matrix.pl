@@ -1,5 +1,6 @@
 #!/usr/bin/env perl
 # Copyright 2017     Hossein Hadian
+#           2017     Aswin Shanmugam Subramanian
 
 $randseed = 0;
 $shifted = 0;

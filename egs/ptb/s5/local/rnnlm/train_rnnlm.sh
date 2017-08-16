@@ -40,7 +40,7 @@ EOF
 
 steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 
-perl rnnlm/initialize_matrix.pl --first-column 1.0 $vocab_size $embedding_dim > $dir/embedding.0.mat
+rnnlm/initialize_matrix.pl --first-column 1.0 $vocab_size $embedding_dim > $dir/embedding.0.mat
 
 nnet3-init $dir/configs/final.config - | nnet3-copy --learning-rate=0.0001 - $dir/0.rnnlm
 

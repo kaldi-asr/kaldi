@@ -40,10 +40,10 @@ steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --
 nnet3-init $dir/configs/final.config - | nnet3-copy --learning-rate=0.0001 - $dir/0.rnnlm
 
 # we may later initialize this to identity for the first block.
-perl rnnlm/initialize_matrix.pl --first-element 1.0 --stddev 0.001 $feat_dim $embedding_dim > $dir/embedding.0.mat
+rnnlm/initialize_matrix.pl --first-element 1.0 --stddev 0.001 $feat_dim $embedding_dim > $dir/embedding.0.mat
 
 # alternative path:
-perl rnnlm/initialize_matrix.pl --first-column 1.0 $vocab_size $embedding_dim > $dir/word_embedding.0.mat
+rnnlm/initialize_matrix.pl --first-column 1.0 $vocab_size $embedding_dim > $dir/word_embedding.0.mat
 
 
 rnnlm-train --use-gpu=no --read-rnnlm=$dir/0.rnnlm --write-rnnlm=$dir/1.rnnlm --read-embedding=$dir/embedding.0.mat \
