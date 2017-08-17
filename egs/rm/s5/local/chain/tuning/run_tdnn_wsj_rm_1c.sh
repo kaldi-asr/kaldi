@@ -37,20 +37,20 @@ frames_per_chunk=150
 num_epochs=2
 initial_effective_lrate=0.005
 final_effective_lrate=0.0005
-leftmost_questions_truncate=-1
 max_param_change=2.0
-final_layer_normalize_target=0.5
 num_jobs_initial=2
 num_jobs_final=4
-minibatch_size=32
+minibatch_size=128
 frames_per_eg=150
 remove_egs=false
 xent_regularize=0.1
 
 # configs for transfer learning
 common_egs_dir=
-srcdir=../../wsj/s5   # base directory for source data
-src_tdnn_affix=1d
+srcdir=../../wsj/s5   # base directory for source data which is the base dir
+                      # for source ivector extractor, scr chain model and
+                      # lang dir.
+src_tdnn_affix=1d     # tdnn affix used for src chain model.
 
 primary_lr_factor=0.25 # learning-rate factor for all except last layer in transferred source model
 nnet_affix=_online_wsj
@@ -78,13 +78,6 @@ fi
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
 
-lang=data/lang_chain_5n_wsj
-lang_src_tgt=data/lang_wsj_rm # This dir is prepared using phones.txt and lexicon from
-                              # source(WSJ) and and wordlist and G.fst from target(RM)
-ali_dir=exp/chain/chain_ali_wsj
-treedir=exp/chain/tri4_5n_tree_wsj
-lat_dir=exp/chain_lats${src_tree_dir:+_wsj}
-
 # src directories
 src_extractor_dir=$srcdir/exp/nnet3/extractor
 src_mdl=$srcdir/exp/chain/tdnn${src_tdnn_affix}_sp/final.mdl # input dnn model for source data
@@ -98,6 +91,13 @@ src_lang=$srcdir/data/lang    # source lang directory used to generate source mo
 src_tree_dir=$srcdir/exp/chain/tree_a_sp # chain tree-dir for source dataset;
                                          # the alignment in target domain is
                                          # converted using src-tree
+
+# dirs for src-to-tgt transfer experiment
+lang=data/lang_chain_5n_wsj
+lang_src_tgt=data/lang_wsj_rm # This dir is prepared using phones.txt and lexicon from
+                              # source(WSJ) and and wordlist and G.fst from target(RM)
+ali_dir=exp/chain/chain_ali_wsj
+lat_dir=exp/chain_lats${src_tree_dir:+_wsj}
 
 required_files="$src_mdl $src_extractor_dir/final.dubm $src_extractor_dir/final.mat $src_extractor_dir/final.ie $src_lang/phones.txt $srcdir/data/local/dict_nosp/lexicon.txt $src_tree_dir/tree"
 
@@ -121,14 +121,14 @@ local/online/run_nnet2_common.sh  --stage $stage \
                                   --ivector-dim 100 \
                                   --nnet-affix "$nnet_affix" \
                                   --mfcc-config $srcdir/conf/mfcc_hires.conf \
-                                  --extractor $srcdir/exp/nnet3/extractor || exit 1;
+                                  --extractor $src_extractor_dir || exit 1;
 src_mdl_dir=`dirname $src_mdl`
 if [ $stage -le 4 ]; then
   echo "$0: Generate alignment using source chain model."
   steps/nnet3/align.sh --nj 100 --cmd "$train_cmd" \
   --online-ivector-dir exp/nnet2${nnet_affix}/ivectors \
   --extra-left-context-initial 0 --extra-right-context-final 0 \
-  --scale-opts "--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1." \
+  --scale-opts "--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0" \
   --frames-per-chunk $frames_per_chunk \
   data/train_hires $lang_src_tgt $src_mdl_dir $ali_dir || exit 1;
 fi
@@ -139,7 +139,7 @@ if [ $stage -le 5 ]; then
   steps/nnet3/align_lats.sh --nj 100 --cmd "$train_cmd" \
     --acoustic-scale 1.0 --extra-left-context-initial 0 --extra-right-context-final 0 \
     --frames-per-chunk $frames_per_chunk \
-    --scale-opts "--transition-scale=1.0 --self-loop-scale=1." \
+    --scale-opts "--transition-scale=1.0 --self-loop-scale=1.0" \
     --online-ivector-dir exp/nnet2${nnet_affix}/ivectors data/train_hires \
     $lang_src_tgt $src_mdl_dir $lat_dir || exit 1;
   rm $lat_dir/fsts.*.gz # save space

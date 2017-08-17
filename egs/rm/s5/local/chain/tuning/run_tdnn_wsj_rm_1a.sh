@@ -19,9 +19,7 @@ dir=exp/chain/tdnn_wsj_rm_1a
 num_epochs=2
 initial_effective_lrate=0.005
 final_effective_lrate=0.0005
-leftmost_questions_truncate=-1
 max_param_change=2.0
-final_layer_normalize_target=0.5
 num_jobs_initial=2
 num_jobs_final=4
 minibatch_size=128
@@ -36,7 +34,7 @@ common_egs_dir=
 primary_lr_factor=0.25 # The learning-rate factor for transferred layers from source
                        # model.
 dim=450
-nnet_affix=_online
+nnet_affix=_online_wsj
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -76,7 +74,7 @@ local/online/run_nnet2_common.sh  --stage $stage \
                                   --ivector-dim 100 \
                                   --nnet-affix "$nnet_affix" \
                                   --mfcc-config $srcdir/conf/mfcc_hires.conf \
-                                  --extractor $srcdir/exp/nnet3/extractor || exit 1;
+                                  --extractor $src_extractor_dir || exit 1;
 
 if [ $stage -le 4 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).

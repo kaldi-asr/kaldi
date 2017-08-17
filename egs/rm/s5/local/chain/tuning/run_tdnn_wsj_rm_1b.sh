@@ -31,15 +31,12 @@ get_egs_stage=-10
 num_epochs=2
 initial_effective_lrate=0.005
 final_effective_lrate=0.0005
-leftmost_questions_truncate=-1
 max_param_change=2.0
-final_layer_normalize_target=0.5
 num_jobs_initial=2
 num_jobs_final=4
-minibatch_size=32
+minibatch_size=128
 frames_per_eg=150
 remove_egs=false
-xent_regularize=0.1
 
 # configs for transfer learning
 common_egs_dir=
@@ -73,12 +70,6 @@ fi
 # run those things.
 
 
-lang_src_tgt=data/lang_wsj_rm # This dir is prepared using phones.txt and lexicon from
-                          # WSJ and wordlist and G.fst from RM.
-ali_dir=exp/tri4b${src_tree_dir:+_wsj}_ali
-lat_dir=exp/tri3b_lats${src_tree_dir:+_wsj}
-dir=exp/chain/tdnn_wsj_rm${tdnn_affix}
-
 # src directories
 src_extractor_dir=$srcdir/exp/nnet3/extractor
 src_mdl=$srcdir/exp/chain/tdnn${src_tdnn_affix}_sp/final.mdl # input dnn model for source data
@@ -95,6 +86,15 @@ src_gmm_dir=$srcdir/exp/tri4b # source gmm dir used to generate alignments
 src_tree_dir=$srcdir/exp/chain/tree_a_sp # chain tree-dir for src data;
                                          # the alignment in target domain is
                                          # converted using src-tree
+
+# dirs for src-to-tgt transfer learning experiment
+lang_src_tgt=data/lang_wsj_rm # This dir is prepared using phones.txt and lexicon from
+                          # WSJ and wordlist and G.fst from RM.
+ali_dir=exp/tri4b${src_tree_dir:+_wsj}_ali
+lat_dir=exp/tri3b_lats${src_tree_dir:+_wsj}
+dir=exp/chain/tdnn_wsj_rm${tdnn_affix}
+
+
 required_files="$src_mdl $src_extractor_dir/final.dubm $src_extractor_dir/final.mat $src_extractor_dir/final.ie $src_lang/phones.txt $srcdir/data/local/dict_nosp/lexicon.txt $src_gmm_dir/final.mdl $src_tree_dir/tree"
 
 for f in $required_files; do
@@ -117,7 +117,7 @@ local/online/run_nnet2_common.sh  --stage $stage \
                                   --ivector-dim 100 \
                                   --nnet-affix "$nnet_affix" \
                                   --mfcc-config $srcdir/conf/mfcc_hires.conf \
-                                  --extractor $srcdir/exp/nnet3/extractor || exit 1;
+                                  --extractor $src_extractor_dir || exit 1;
 
 if [ $stage -le 4 ]; then
   echo "$0: Generate alignment using source model."
@@ -164,7 +164,7 @@ if [ $stage -le 8 ]; then
     --cmd "$decode_cmd" \
     --trainer.input-model $dir/input.raw \
     --feat.online-ivector-dir exp/nnet2${nnet_affix}/ivectors \
-    --chain.xent-regularize $xent_regularize \
+    --chain.xent-regularize 0.1 \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize 0.1 \
     --chain.leaky-hmm-coefficient 0.1 \
