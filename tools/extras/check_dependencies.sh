@@ -15,52 +15,57 @@ function add_packages {
   opensuse_packages="$opensuse_packages $3";
 }
 
-status=0
-
 if ! which which >&/dev/null; then
   echo "$0: which is not installed."
   add_packages which debianutils which
 fi
 
-if ! which $CXX >&/dev/null; then
-  echo "$0: $CXX is not installed."
-  echo "$0: You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
-  status=1
-else
-  COMPILER_VER_INFO=$($CXX --version 2>/dev/null)
-  if [[ $COMPILER_VER_INFO == *"g++"* ]]; then
+COMPILER_VER_INFO=$($CXX --version 2>/dev/null)
+case $COMPILER_VER_INFO in
+  "")
+    echo "$0: $CXX is not installed."
+    echo "$0: You need g++ >= 4.7, Apple Xcode >= 5.0 or clang >= 3.3."
+    status=1
+    ;;
+  "g++ "* )
     GCC_VER=$($CXX -dumpversion)
     GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
     if [ $GCC_VER_NUM -lt 40700 ]; then
-      echo "$0: $CXX (g++-$GCC_VER) is not supported."
-      echo "$0: You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
-      status=1
+        echo "$0: $CXX (g++-$GCC_VER) is not supported."
+        echo "$0: You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
+        status=1
     fi
-  elif [[ $COMPILER_VER_INFO == *"Apple"* ]]; then
+    ;;
+  "Apple LLVM "* )
+    # See https://gist.github.com/yamaya/2924292
     CLANG_VER=$(echo $COMPILER_VER_INFO | grep version | sed "s/.*version \([0-9\.]*\).*/\1/")
     CLANG_VER_NUM=$(echo $COMPILER_VER_INFO | grep version | sed "s/.*clang-\([0-9]*\).*/\1/")
     if [ $CLANG_VER_NUM -lt 500 ]; then
-      echo "$0: $CXX (Apple clang-$CLANG_VER) is not supported."
-      echo "$0: You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
-      status=1
+        echo "$0: $CXX (Apple clang-$CLANG_VER) is not supported."
+        echo "$0: You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
+        status=1
     fi
-  elif [[ $COMPILER_VER_INFO == *"LLVM"* ]]; then
+    ;;
+  "clang "* )
     CLANG_VER=$(echo $COMPILER_VER_INFO | grep version | sed "s/.*version \([0-9\.]*\).*/\1/")
     CLANG_VER_NUM=$(echo $CLANG_VER | sed 's/\./ /g' | xargs printf "%d%02d")
     if [ $CLANG_VER_NUM -lt 303 ]; then
-      echo "$0: $CXX (LLVM clang-$CLANG_VER) is not supported."
-      echo "$0: You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
-      status=1
+        echo "$0: $CXX (LLVM clang-$CLANG_VER) is not supported."
+        echo "$0: You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
+        status=1
     fi
-  fi
-fi
+    ;;
+  *)
+    echo "$0: WARNING: unknown compiler $CXX."
+    ;;
+esac
 
-if ! echo "#include <zlib.h>" | gcc -E - >&/dev/null; then
+if ! echo "#include <zlib.h>" | $CXX -E - >&/dev/null; then
   echo "$0: zlib is not installed."
   add_packages zlib-devel zlib1g-dev zlib-devel
 fi
 
-for f in make gcc automake autoconf patch grep bzip2 gzip wget git; do
+for f in make automake autoconf patch grep bzip2 gzip wget git; do
   if ! which $f >&/dev/null; then
     echo "$0: $f is not installed."
     add_packages $f $f $f

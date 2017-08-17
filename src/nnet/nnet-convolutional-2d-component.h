@@ -417,6 +417,7 @@ class Convolutional2DComponent : public UpdatableComponent {
     // useful dims,
     int32 out_fmap_x_len = (fmap_x_len_ - filt_x_len_)/filt_x_step_ + 1;
     int32 out_fmap_y_len = (fmap_y_len_ - filt_y_len_)/filt_y_step_ + 1;
+    int32 out_fmap_size = out_fmap_x_len * out_fmap_y_len;
     int32 num_output_fmaps = output_dim_ / (out_fmap_x_len * out_fmap_y_len);
 
     // This is total num_filters,
@@ -433,7 +434,7 @@ class Convolutional2DComponent : public UpdatableComponent {
     filters_grad_.Resize(filters_.NumRows(), filters_.NumCols(), kSetZero);
     bias_grad_.Resize(filters_.NumRows(), kSetZero);
     //
-    for (int32 p = 0; p < num_output_fmaps; p++) {
+    for (int32 p = 0; p < out_fmap_size; p++) {
       CuSubMatrix<BaseFloat> diff_patch(diff.ColRange(p * num_filters, num_filters));
       filters_grad_.AddMatMat(1.0, diff_patch, kTrans, vectorized_feature_patches_[p], kNoTrans, 1.0);
       bias_grad_.AddRowSumMat(1.0, diff_patch, 1.0);

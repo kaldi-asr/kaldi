@@ -31,24 +31,24 @@ namespace kaldi {
 namespace nnet3 {
 
 
-static void ProcessFile(const MatrixBase<BaseFloat> &feats,
+static bool ProcessFile(const GeneralMatrix &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
                         int32 ivector_period,
                         const MatrixBase<BaseFloat> &targets,
                         const std::string &utt_id,
                         bool compress,
                         int32 num_targets,
+                        int32 length_tolerance,
                         UtteranceSplitter *utt_splitter,
                         NnetExampleWriter *example_writer) {
   int32 num_input_frames = feats.NumRows();
   if (!utt_splitter->LengthsMatch(utt_id, num_input_frames,
-                                  targets.NumRows())) {
-    if (targets.NumRows() == 0)
-      return;
-    // normally we wouldn't process such an utterance but there may be
-    // situations when a small disagreement is acceptable.
-    KALDI_WARN << " .. processing this utterance anyway.";
+                                  targets.NumRows(),
+                                  length_tolerance)) {
+    return false;
   }
+  if (targets.NumRows() == 0)
+    return false;
   KALDI_ASSERT(num_targets < 0 || targets.NumCols() == num_targets);
 
   std::vector<ChunkTimeInfo> chunks;
@@ -59,7 +59,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     KALDI_WARN << "Not producing egs for utterance " << utt_id
                << " because it is too short: "
                << num_input_frames << " frames.";
-    return;
+    return false;
   }
 
   // 'frame_subsampling_factor' is not used in any recipes at the time of
@@ -74,22 +74,18 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     int32 tot_input_frames = chunk.left_context + chunk.num_frames +
         chunk.right_context;
 
-    Matrix<BaseFloat> input_frames(tot_input_frames, feats.NumCols(),
-                                   kUndefined);
-
     int32 start_frame = chunk.first_frame - chunk.left_context;
-    for (int32 t = start_frame; t < start_frame + tot_input_frames; t++) {
-      int32 t2 = t;
-      if (t2 < 0) t2 = 0;
-      if (t2 >= num_input_frames) t2 = num_input_frames - 1;
-      int32 j = t - start_frame;
-      SubVector<BaseFloat> src(feats, t2),
-          dest(input_frames, j);
-      dest.CopyFromVec(src);
-    }
+
+    GeneralMatrix input_frames;
+    ExtractRowRangeWithPadding(feats, start_frame, tot_input_frames,
+                               &input_frames);
+
+    // 'input_frames' now stores the relevant rows (maybe with padding) from the
+    // original Matrix or (more likely) CompressedMatrix.  If a CompressedMatrix,
+    // it does this without un-compressing and re-compressing, so there is no loss
+    // of accuracy.
 
     NnetExample eg;
-
     // call the regular input "input".
     eg.io.push_back(NnetIo("input", -chunk.left_context, input_frames));
 
@@ -110,7 +106,6 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
 
     // Note: chunk.first_frame and chunk.num_frames will both be
     // multiples of frame_subsampling_factor.
-    // We expect frame_subsampling_factor to usually be 1 for now.
     int32 start_frame_subsampled = chunk.first_frame / frame_subsampling_factor,
         num_frames_subsampled = chunk.num_frames / frame_subsampling_factor;
 
@@ -144,11 +139,10 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
 
     example_writer->Write(key, eg);
   }
+  return true;
 }
 
-
-
-} // namespace nnet2
+} // namespace nnet3
 } // namespace kaldi
 
 int main(int argc, char *argv[]) {
@@ -176,16 +170,22 @@ int main(int argc, char *argv[]) {
 
 
     bool compress = true;
-    int32 num_targets = -1, length_tolerance = 100, online_ivector_period = 1;
+    int32 num_targets = -1, length_tolerance = 100,
+        targets_length_tolerance = 2,  
+        online_ivector_period = 1;
+
     ExampleGenerationConfig eg_config;  // controls num-frames,
                                         // left/right-context, etc.
 
     std::string online_ivector_rspecifier;
+
     ParseOptions po(usage);
 
-    eg_config.Register(&po);
-    po.Register("compress", &compress, "If true, write egs in "
-                "compressed format.");
+    po.Register("compress", &compress, "If true, write egs with input features "
+                "in compressed format (recommended).  This is "
+                "only relevant if the features being read are un-compressed; "
+                "if already compressed, we keep we same compressed format when "
+                "dumping egs.");
     po.Register("num-targets", &num_targets, "Output dimension in egs, "
                 "only used to check targets have correct dim if supplied.");
     po.Register("ivectors", &online_ivector_rspecifier, "Alias for "
@@ -197,6 +197,11 @@ int main(int argc, char *argv[]) {
                 "--online-ivectors option");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
+    po.Register("targets-length-tolerance", &targets_length_tolerance, 
+                "Tolerance for "
+                "difference in num-frames (after subsampling) between "
+                "feature and target matrices");
+    eg_config.Register(&po);
 
     po.Read(argc, argv);
 
@@ -212,29 +217,26 @@ int main(int argc, char *argv[]) {
         matrix_rspecifier = po.GetArg(2),
         examples_wspecifier = po.GetArg(3);
 
-    // Read in all the training files.
-    SequentialBaseFloatMatrixReader feat_reader(feature_rspecifier);
+    // SequentialGeneralMatrixReader can read either a Matrix or
+    // CompressedMatrix (or SparseMatrix, but not as relevant here),
+    // and it retains the type.  This way, we can generate parts of
+    // the feature matrices without uncompressing and re-compressing.
+    SequentialGeneralMatrixReader feat_reader(feature_rspecifier);
     RandomAccessBaseFloatMatrixReader matrix_reader(matrix_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
-    RandomAccessBaseFloatMatrixReader online_ivector_reader(online_ivector_rspecifier);
+    RandomAccessBaseFloatMatrixReader online_ivector_reader(
+        online_ivector_rspecifier);
 
     int32 num_err = 0;
 
     for (; !feat_reader.Done(); feat_reader.Next()) {
       std::string key = feat_reader.Key();
-      const Matrix<BaseFloat> &feats = feat_reader.Value();
+      const GeneralMatrix &feats = feat_reader.Value();
       if (!matrix_reader.HasKey(key)) {
         KALDI_WARN << "No target matrix for key " << key;
         num_err++;
       } else {
         const Matrix<BaseFloat> &target_matrix = matrix_reader.Value(key);
-        if (target_matrix.NumRows() != feats.NumRows()) {
-          KALDI_WARN << "Target matrix has wrong size "
-                     << target_matrix.NumRows()
-                     << " versus " << feats.NumRows();
-          num_err++;
-          continue;
-        }
         const Matrix<BaseFloat> *online_ivector_feats = NULL;
         if (!online_ivector_rspecifier.empty()) {
           if (!online_ivector_reader.HasKey(key)) {
@@ -249,7 +251,8 @@ int main(int argc, char *argv[]) {
         }
 
         if (online_ivector_feats != NULL &&
-            (abs(feats.NumRows() - online_ivector_feats->NumRows()) > length_tolerance
+            (abs(feats.NumRows() - (online_ivector_feats->NumRows() *
+                                    online_ivector_period)) > length_tolerance
              || online_ivector_feats->NumRows() == 0)) {
           KALDI_WARN << "Length difference between feats " << feats.NumRows()
                      << " and iVectors " << online_ivector_feats->NumRows()
@@ -258,9 +261,11 @@ int main(int argc, char *argv[]) {
           continue;
         }
 
-        ProcessFile(feats, online_ivector_feats, online_ivector_period,
-                    target_matrix, key, compress, num_targets,
-                    &utt_splitter, &example_writer);
+        if (!ProcessFile(feats, online_ivector_feats, online_ivector_period,
+                         target_matrix, key, compress, num_targets, 
+                         targets_length_tolerance,
+                         &utt_splitter, &example_writer))
+          num_err++;
       }
     }
     if (num_err > 0)

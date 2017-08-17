@@ -3012,12 +3012,18 @@ void FixedScaleComponent::InitFromConfig(ConfigLine *cfl) {
     Init(vec);
   } else {
     int32 dim;
+    BaseFloat scale = 1.0;
+    bool scale_is_set = cfl->GetValue("scale", &scale);
     if (!cfl->GetValue("dim", &dim) || cfl->HasUnusedValues())
       KALDI_ERR << "Invalid initializer for layer of type "
                 << Type() << ": \"" << cfl->WholeLine() << "\"";
     KALDI_ASSERT(dim > 0);
     CuVector<BaseFloat> vec(dim);
-    vec.SetRandn();
+    if (scale_is_set) {
+      vec.Set(scale);
+    } else {
+      vec.SetRandn();
+    }
     Init(vec);
   }
 }
@@ -5289,8 +5295,8 @@ void BatchNormComponent::ComputeDerived() {
   if (count_ == 0.0) {
     KALDI_WARN << "Test-mode is set but there is no data count.  "
         "Creating random counts.  This only makes sense "
-        "in unit-tests.  If you see this in real life, "
-        "something is very wrong.";
+        "in unit-tests (or compute_prob_*.0.log).  If you see this "
+        "elsewhere, something is very wrong.";
     count_ = 1.0;
     stats_sum_.SetRandn();
     stats_sumsq_.SetRandn();

@@ -46,26 +46,32 @@ struct NnetIo {
   GeneralMatrix features;
 
   /// This constructor creates NnetIo with name "name", indexes with n=0, x=0,
-  /// and t values ranging from t_begin to t_begin + feats.NumRows() - 1, and
+  /// and t values ranging from t_begin to 
+  /// (t_begin + t_stride * feats.NumRows() - 1) with a stride t_stride, and
   /// the provided features.  t_begin should be the frame that feats.Row(0)
   /// represents.
   NnetIo(const std::string &name,
-         int32 t_begin, const MatrixBase<BaseFloat> &feats);
+         int32 t_begin, const MatrixBase<BaseFloat> &feats,
+         int32 t_stride = 1);
 
   /// This constructor creates NnetIo with name "name", indexes with n=0, x=0,
-  /// and t values ranging from t_begin to t_begin + feats.NumRows() - 1, and
+  /// and t values ranging from t_begin to 
+  /// (t_begin + t_stride * feats.NumRows() - 1) with a stride t_stride, and
   /// the provided features.  t_begin should be the frame that the first row
   /// of 'feats' represents.
   NnetIo(const std::string &name,
-         int32 t_begin, const GeneralMatrix &feats);
+         int32 t_begin, const GeneralMatrix &feats,
+         int32 t_stride = 1);
 
   /// This constructor sets "name" to the provided string, sets "indexes" with
-  /// n=0, x=0, and t from t_begin to t_begin + labels.size() - 1, and the labels
+  /// n=0, x=0, and t from t_begin to (t_begin + t_stride * labels.size() - 1)
+  /// with a stride t_stride, and the labels
   /// as provided.  t_begin should be the frame to which labels[0] corresponds.
   NnetIo(const std::string &name,
          int32 dim,
          int32 t_begin,
-         const Posterior &labels);
+         const Posterior &labels,
+         int32 t_stride = 1);
 
   void Swap(NnetIo *other);
 

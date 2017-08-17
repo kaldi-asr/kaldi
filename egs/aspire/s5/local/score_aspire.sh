@@ -14,10 +14,9 @@ word_ins_penalties=0.0,0.25,0.5,0.75,1.0
 default_wip=0.0
 ctm_beam=6
 decode_mbr=true
-window=30
-overlap=5
 cmd=run.pl
 stage=1
+resolve_overlaps=true
 tune_hyper=true # if true:
                 #    if the data set is "dev_aspire" we check for the
                 #       best lmwt and word_insertion_penalty,
@@ -89,7 +88,7 @@ if  $tune_hyper ; then
   # or use the default values
 
   if [ $stage -le 1 ]; then
-    if [ "$act_data_set" == "dev_aspire" ]; then
+    if [[ "$act_data_set" =~ "dev_aspire" ]]; then
       wip_string=$(echo $word_ins_penalties | sed 's/,/ /g')
       temp_wips=($wip_string)
       $cmd WIP=1:${#temp_wips[@]} $decode_dir/scoring/log/score.wip.WIP.log \
@@ -98,8 +97,8 @@ if  $tune_hyper ; then
         echo \$wip \&\& \
         $cmd LMWT=$min_lmwt:$max_lmwt $decode_dir/scoring/log/score.LMWT.\$wip.log \
           local/multi_condition/get_ctm.sh --filter-ctm-command "$filter_ctm_command" \
-            --window $window --overlap $overlap \
             --beam $ctm_beam --decode-mbr $decode_mbr \
+            --resolve-overlaps $resolve_overlaps \
             --glm data/${act_data_set}/glm --stm data/${act_data_set}/stm \
           LMWT \$wip $lang data/${segmented_data_set}_hires $model $decode_dir || exit 1;
 
@@ -124,7 +123,7 @@ wipfile.close()
   fi
 
 
-  if [ "$act_data_set" == "test_aspire" ] || [ "$act_data_set" == "eval_aspire" ]; then
+  if [[ "$act_data_set" =~ "test_aspire" ]] || [[ "$act_data_set" =~ "eval_aspire" ]]; then
     # check for the best values from dev_aspire decodes
     dev_decode_dir=$(echo $decode_dir|sed "s/test_aspire/dev_aspire_whole/g; s/eval_aspire/dev_aspire_whole/g")
     if [ -f $dev_decode_dir/scoring/bestLMWT ]; then

@@ -374,8 +374,10 @@ void SingleUtteranceNnet2DecoderThreaded::RunDecoderSearch(
 
 
 void SingleUtteranceNnet2DecoderThreaded::WaitForAllThreads() {
-  for (int32 i = 0; i < 2; i++)  // there are 2 spawned threads.
-    threads_[i].join();
+  for (int32 i = 0; i < 2; i++) {  // there are 2 spawned threads.
+    if (threads_[i].joinable())
+      threads_[i].join();
+  }
   if (error_)
     KALDI_ERR << "Error encountered during decoding.  See above.";
 }

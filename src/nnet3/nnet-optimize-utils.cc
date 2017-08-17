@@ -1235,7 +1235,8 @@ void ModelUpdateConsolidator::ConsolidateModelUpdate() {
   int32 num_components = nnet_.NumComponents(),
       num_commands = computation_->commands.size();
   // 'backprop_commands' is a list, for each component (but nonempty only for
-  // updatable components), of the command indexes for the backprop commands.
+  // updatable simple components), of the command indexes for the backprop
+  // commands.
   std::vector<std::vector<int32> > backprop_commands(num_components);
   for (int32 command_index = 0;
        command_index < num_commands; command_index++) {
@@ -1244,7 +1245,9 @@ void ModelUpdateConsolidator::ConsolidateModelUpdate() {
       int32 component_index = c.arg1;
       const Component *component = nnet_.GetComponent(component_index);
       int32 properties = component->Properties();
-      if ((properties & kUpdatableComponent) && !(properties & kUsesMemo))
+      if ((properties & kUpdatableComponent) &&
+          (properties & kSimpleComponent) &&
+          !(properties & kUsesMemo))
         backprop_commands[component_index].push_back(command_index);
     }
   }
