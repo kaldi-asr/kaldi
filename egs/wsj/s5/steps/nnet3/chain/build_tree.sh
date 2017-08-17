@@ -36,8 +36,10 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# != 5 ]; then
-  echo "Usage: steps/train_sat.sh <#leaves> <data> <lang> <ali-dir> <exp-dir>"
-  echo " e.g.: steps/train_sat.sh 2500 15000 data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri3b"
+  echo "Usage: $0 <#leaves> <data> <lang> <ali-dir> <exp-dir>"
+  echo " e.g.: $0 --frame-subsampling-factor 3 \\"
+  echo "   --context-opts '--context-width=2 --central-position=1'  \\"
+  echo "    3500 data/train_si84 data/lang_chain exp/tri3b_ali_si284_sp exp/chain/tree_a_sp"
   echo "Main options (for others, see top of script file)"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --config <config-file>                           # config containing options"
@@ -51,6 +53,12 @@ if [ $# != 5 ]; then
   echo "                                                   # length as the original alignment "
   echo "                                                   # (useful for cross-entropy training "
   echo "                                                   # of reduced frame rate systems)."
+  echo "  --context-opts <option-string>                   # Options controlling phonetic context;"
+  echo "                                                   # we suggest '--context-width=2 --central-position=1',"
+  echo "                                                   # which is left bigram."
+  echo "  --frame-subsampling-factor <factor>              # Factor (e.g. 3) controlling frame subsampling"
+  echo "                                                   # at the neural net output, so the frame rate at"
+  echo "                                                   # the output is less than at the input."
   exit 1;
 fi
 
