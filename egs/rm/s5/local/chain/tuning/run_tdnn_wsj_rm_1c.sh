@@ -32,32 +32,41 @@ train_stage=-4
 get_egs_stage=-10
 dir=exp/chain/tdnn_wsj_rm_1c
 
-# training options
-frames_per_chunk=150
-num_epochs=2
-initial_effective_lrate=0.005
-final_effective_lrate=0.0005
-max_param_change=2.0
-num_jobs_initial=2
-num_jobs_final=4
-minibatch_size=128
-frames_per_eg=150
-remove_egs=false
-xent_regularize=0.1
-
 # configs for transfer learning
-common_egs_dir=
-srcdir=../../wsj/s5   # base directory for source data which is the base dir
-                      # for source ivector extractor, scr chain model and
-                      # lang dir.
-src_tdnn_affix=1d     # tdnn affix used for src chain model.
 
+common_egs_dir=
 primary_lr_factor=0.25 # learning-rate factor for all except last layer in transferred source model
 nnet_affix=_online_wsj
 
 phone_lm_scales="1,10" #  comma-separated list of integer valued scale weights
                        #  to scale different phone sequences for different alignments
                        #  e.g. (src-weight,target-weight)=(10,1)
+
+# model and dirs for source model used for transfer learning
+src_mdl=../../wsj/s5/exp/chain/tdnn1d_sp/final.mdl # input chain model
+                                                    # trained on source dataset (wsj).
+                                                    # This model is transfered to the target domain.
+
+src_mfcc_config=../../wsj/s5/conf/mfcc_hires.conf # mfcc config used to extract higher dim
+                                                  # mfcc features used for ivector training
+                                                  # in source domain.
+src_ivec_extractor_dir=  # source ivector extractor dir used to extract ivector for
+                         # source data and the ivector for target data is extracted using this extractor.
+                         # It should be nonempty, if ivector is used in source model training.
+
+src_lang=../../wsj/s5/data/lang    # source lang directory used to train source model.
+                              # new new lang dir for transfer learning experiment is prepared
+                              # using source phone set and lexicon in src_lang and
+                              # word.txt target lang dir.
+src_dict=../../wsj/s5/data/local/dict_nosp  # dictionary for source dataset containing lexicon.txt,
+                                            # nonsilence_phones.txt,...
+                                            # lexicon.txt used to generate lexicon.txt for
+                                            # src-to-tgt transfer.
+
+src_tree_dir=../../wsj/s5/exp/chain/tree_a_sp # chain tree-dir for src data;
+                                         # the alignment in target domain is
+                                         # converted using src-tree
+
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -78,28 +87,32 @@ fi
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
 
-# src directories
-src_extractor_dir=$srcdir/exp/nnet3/extractor
-src_mdl=$srcdir/exp/chain/tdnn${src_tdnn_affix}_sp/final.mdl # input dnn model for source data
-                                              # that is used in transfer learning.
-
-src_lang=$srcdir/data/lang    # source lang directory used to generate source model.
-                              # new new lang dir for transfer learning prepared
-                              # using source phone set, lexicon in src_lang and 
-                              # target word list.
-
-src_tree_dir=$srcdir/exp/chain/tree_a_sp # chain tree-dir for source dataset;
-                                         # the alignment in target domain is
-                                         # converted using src-tree
-
 # dirs for src-to-tgt transfer experiment
-lang=data/lang_chain_5n_wsj
+lang_dir=data/lang_chain_5n   # lang dir for target data.
 lang_src_tgt=data/lang_wsj_rm # This dir is prepared using phones.txt and lexicon from
                               # source(WSJ) and and wordlist and G.fst from target(RM)
 ali_dir=exp/chain/chain_ali_wsj
-lat_dir=exp/chain_lats${src_tree_dir:+_wsj}
+lat_dir=exp/chain_lats_wsj
 
-required_files="$src_mdl $src_extractor_dir/final.dubm $src_extractor_dir/final.mat $src_extractor_dir/final.ie $src_lang/phones.txt $srcdir/data/local/dict_nosp/lexicon.txt $src_tree_dir/tree"
+required_files="$src_mfcc_config $src_mdl $src_lang/phones.txt $src_dict/lexicon.txt $src_tree_dir/tree"
+
+use_ivector=false
+ivector_dim=$(nnet3-am-info --print-args=false $src_mdl | grep "ivector-dim" | cut -d" " -f2)
+if [ "$ivector_dim" == "" ]; then ivector_dim=0 ; fi
+
+if [ ! -z $src_ivec_extractor_dir ]; then
+  if [ $ivector_dim -eq 0 ]; then
+    echo "source ivector extractor dir '$src_ivec_extractor_dir' is specified but ivector is not used in training the source model '$src_mdl'."
+  else
+    required_files="$required_files $src_ivec_extractor_dir/final.dubm $src_ivec_extractor_dir/final.mat $src_ivec_extractor_dir/final.ie"
+    use_ivector=true
+  fi
+else
+  if [ $ivector_dim -gt 0 ]; then
+    echo "ivector is used in training the source model '$src_mdl' but no ivector extractor dir for source model specified." && exit 1;
+  fi
+fi
+
 
 for f in $required_files; do
   if [ ! -f $f ]; then
@@ -109,39 +122,40 @@ done
 
 if [ $stage -le -1 ]; then
   echo "$0: prepare lang for RM-WSJ using WSJ phone set and lexicon and RM word list."
-  if ! cmp -s <(grep -v "^#" $src_lang/phones.txt) <(grep -v "^#" data/lang/phones.txt); then
-  local/prepare_wsj_rm_lang.sh  $srcdir/data/local/dict_nosp $src_lang $lang_dir
+  if ! cmp -s <(grep -v "^#" $src_lang/phones.txt) <(grep -v "^#" $lang_dir/phones.txt); then
+    local/prepare_wsj_rm_lang.sh  $src_dict $src_lang $lang_src_tgt || exit 1;
   else
-    rm -rf $lang_dir 2>/dev/null || true
-    cp -r data/lang $lang_dir
+    rm -rf $lang_src_tgt 2>/dev/null || true
+    cp -r $lang_dir $lang_src_tgt
   fi
 fi
 
 local/online/run_nnet2_common.sh  --stage $stage \
-                                  --ivector-dim 100 \
+                                  --ivector-dim $ivector_dim \
                                   --nnet-affix "$nnet_affix" \
-                                  --mfcc-config $srcdir/conf/mfcc_hires.conf \
-                                  --extractor $src_extractor_dir || exit 1;
+                                  --mfcc-config $src_mfcc_config \
+                                  --extractor $src_ivec_extractor_dir || exit 1;
 src_mdl_dir=`dirname $src_mdl`
+ivec_opt=""
+if $use_ivector;then ivec_opt="--online-ivector-dir exp/nnet2${nnet_affix}/ivectors" ; fi
+
 if [ $stage -le 4 ]; then
   echo "$0: Generate alignment using source chain model."
-  steps/nnet3/align.sh --nj 100 --cmd "$train_cmd" \
-  --online-ivector-dir exp/nnet2${nnet_affix}/ivectors \
+  steps/nnet3/align.sh --nj 100 --cmd "$train_cmd" $ivec_opt \
   --extra-left-context-initial 0 --extra-right-context-final 0 \
   --scale-opts "--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0" \
-  --frames-per-chunk $frames_per_chunk \
+  --frames-per-chunk 150 \
   data/train_hires $lang_src_tgt $src_mdl_dir $ali_dir || exit 1;
 fi
 
 if [ $stage -le 5 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  steps/nnet3/align_lats.sh --nj 100 --cmd "$train_cmd" \
+  steps/nnet3/align_lats.sh --nj 100 --cmd "$train_cmd" $ivec_opt \
     --acoustic-scale 1.0 --extra-left-context-initial 0 --extra-right-context-final 0 \
-    --frames-per-chunk $frames_per_chunk \
+    --frames-per-chunk 150 \
     --scale-opts "--transition-scale=1.0 --self-loop-scale=1.0" \
-    --online-ivector-dir exp/nnet2${nnet_affix}/ivectors data/train_hires \
-    $lang_src_tgt $src_mdl_dir $lat_dir || exit 1;
+    data/train_hires $lang_src_tgt $src_mdl_dir $lat_dir || exit 1;
   rm $lat_dir/fsts.*.gz # save space
 fi
 
@@ -165,9 +179,11 @@ if [ $stage -le 8 ]; then
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/rm-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
   # exclude phone_LM and den.fst generation training stage
-  if [ $train_stage -lt -4 ]; then
-    train_stage=-4
-  fi
+  if [ $train_stage -lt -4 ]; then train_stage=-4 ; fi
+
+  ivector_dir=
+  if $use_ivector; then ivector_dir="exp/nnet2${nnet_affix}/ivectors" ; fi
+
   # we use chain model from source to generate lats for target and the
   # tolerance used in chain egs generation using this lats should be 1 or 2 which is
   # (source_egs_tolerance/frame_subsampling_factor)
@@ -176,8 +192,8 @@ if [ $stage -le 8 ]; then
   steps/nnet3/chain/train.py --stage $train_stage ${chain_opts[@]} \
     --cmd "$decode_cmd" \
     --trainer.input-model $dir/input.raw \
-    --feat.online-ivector-dir exp/nnet2${nnet_affix}/ivectors \
-    --chain.xent-regularize $xent_regularize \
+    --feat.online-ivector-dir "$ivector_dir" \
+    --chain.xent-regularize 0.1 \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize 0.1 \
     --chain.leaky-hmm-coefficient 0.1 \
@@ -185,36 +201,38 @@ if [ $stage -le 8 ]; then
     --chain.apply-deriv-weights false \
     --egs.dir "$common_egs_dir" \
     --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width $frames_per_eg \
-    --trainer.num-chunk-per-minibatch=$minibatch_size \
+    --egs.chunk-width 150 \
+    --trainer.num-chunk-per-minibatch=128 \
     --trainer.frames-per-iter 1000000 \
-    --trainer.num-epochs $num_epochs \
-    --trainer.optimization.num-jobs-initial=$num_jobs_initial \
-    --trainer.optimization.num-jobs-final=$num_jobs_final \
-    --trainer.optimization.initial-effective-lrate=$initial_effective_lrate \
-    --trainer.optimization.final-effective-lrate=$final_effective_lrate \
-    --trainer.max-param-change $max_param_change \
-    --cleanup.remove-egs false \
+    --trainer.num-epochs 2 \
+    --trainer.optimization.num-jobs-initial=2 \
+    --trainer.optimization.num-jobs-final=4 \
+    --trainer.optimization.initial-effective-lrate=0.005 \
+    --trainer.optimization.final-effective-lrate=0.0005 \
+    --trainer.max-param-change 2.0 \
+    --cleanup.remove-egs true \
     --feat-dir data/train_hires \
     --tree-dir $src_tree_dir \
     --lat-dir $lat_dir \
     --dir $dir || exit 1;
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 9 ] && $use_ivector; then
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
-    data/test_hires $srcdir/exp/nnet3/extractor exp/nnet2${nnet_affix}/ivectors_test || exit 1;
+    data/test_hires $src_ivec_extractor_dir exp/nnet2${nnet_affix}/ivectors_test || exit 1;
 fi
 
 if [ $stage -le 10 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
+  tes_ivec_opt=""
+  if $use_ivector;then test_ivec_opt="--online-ivector-dir exp/nnet2${nnet_affix}/ivectors_test" ; fi
+
   utils/mkgraph.sh --self-loop-scale 1.0 $lang_src_tgt $dir $dir/graph
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --scoring-opts "--min-lmwt 1" \
-    --nj 20 --cmd "$decode_cmd" \
-    --online-ivector-dir exp/nnet2${nnet_affix}/ivectors_test \
+    --nj 20 --cmd "$decode_cmd" $test_ivec_opt \
     $dir/graph data/test_hires $dir/decode || exit 1;
 fi
 wait;

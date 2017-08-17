@@ -8,6 +8,8 @@ nnet_affix=_online
 extractor=exp/nnet2${nnet_affix}/extractor
 ivector_dim=50
 mfcc_config=conf/mfcc_hires.conf
+use_ivector=true # If false, it skips training ivector extractor and
+                 # ivector extraction stages.
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
@@ -48,7 +50,7 @@ if [ $stage -le 0 ]; then
 fi
 
 train_set=${train_set}_hires
-if [ ! -f $extractor/final.dubm ]; then
+if [ ! -f $extractor/final.ie ] && [ $ivector_dim -gt 0 ]; then
   if [ $stage -le 1 ]; then
     mkdir -p exp/nnet2${nnet_affix}
     steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 40 --num-frames 200000 \
@@ -64,7 +66,7 @@ if [ ! -f $extractor/final.dubm ]; then
   fi
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 3 ] && [ $ivector_dim -gt 0 ]; then
   # having a larger number of speakers is helpful for generalization, and to
   # handle per-utterance decoding well (iVector starts at zero).
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${train_set} data/${train_set}_max2
