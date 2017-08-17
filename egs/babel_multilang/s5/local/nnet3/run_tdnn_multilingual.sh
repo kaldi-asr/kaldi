@@ -183,11 +183,11 @@ if [ $stage -le 8 ]; then
   ivector_node_xconfig=""
   ivector_to_append=""
   if $use_ivector; then
-    ivector_node_xconfig="input dim=$ivector_dim name=ivecto"
+    ivector_node_xconfig="input dim=$ivector_dim name=ivector"
     ivector_to_append=", ReplaceIndex(ivector, t, 0)"
   fi
   cat <<EOF > $dir/configs/network.xconfig
-  $ivector_xconfig
+  $ivector_node_xconfig
   input dim=$feat_dim name=input
 
   # please note that it is important to have input layer with the name=input
