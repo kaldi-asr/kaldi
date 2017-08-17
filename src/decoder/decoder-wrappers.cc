@@ -44,7 +44,9 @@ DecodeUtteranceLatticeFasterClass::DecodeUtteranceLatticeFasterClass(
     int64 *frame_sum, // on success, adds #frames to this.
     int32 *num_done, // on success (including partial decode), increments this.
     int32 *num_err,  // on failure, increments this.
-    int32 *num_partial):  // If partial decode (final-state not reached), increments this.
+    int32 *num_partial ,  // If partial decode (final-state not reached), increments this.
+    CompactLattice* lat_out, // for storing decoded features. 
+    bool write):    // dumping option.
     decoder_(decoder), decodable_(decodable), trans_model_(&trans_model),
     word_syms_(word_syms), utt_(utt), acoustic_scale_(acoustic_scale),
     determinize_(determinize), allow_partial_(allow_partial),
@@ -56,7 +58,7 @@ DecodeUtteranceLatticeFasterClass::DecodeUtteranceLatticeFasterClass(
     num_done_(num_done), num_err_(num_err),
     num_partial_(num_partial),
     computed_(false), success_(false), partial_(false),
-    clat_(NULL), lat_(NULL) { }
+    clat_(NULL), lat_(NULL) , lat_out_(lat_out), write_(write){ }
 
 
 void DecodeUtteranceLatticeFasterClass::operator () () {
@@ -104,6 +106,8 @@ void DecodeUtteranceLatticeFasterClass::operator () () {
     // We'll write the lattice without acoustic scaling.
     if (acoustic_scale_ != 0.0)
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale_), clat_);
+      if (!write_)
+		*lat_out_ = *clat_;
   } else {
     // We'll write the lattice without acoustic scaling.
     if (acoustic_scale_ != 0.0)
@@ -158,7 +162,7 @@ DecodeUtteranceLatticeFasterClass::~DecodeUtteranceLatticeFasterClass() {
       KALDI_ASSERT(compact_lattice_writer_ != NULL && clat_ != NULL);
       if (clat_->NumStates() == 0) {
         KALDI_WARN << "Empty lattice for utterance " << utt_;
-      } else {
+      } else if(write_) {
         compact_lattice_writer_->Write(utt_, *clat_);
       }
       delete clat_;
