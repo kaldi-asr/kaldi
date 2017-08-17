@@ -69,7 +69,19 @@ ln -sf sequitur-g2p sequitur
 
 (
 cd sequitur-g2p
-make CXX=g++ CC=gcc
+
+#we had some reports that the CPPFLAGS is needed under MacOS X but we could not
+#reproduce it, actually, this, however, seems to work just fine for us
+#the primary issue is that real GNU GCC does not accept that switch
+#in addition, Apple fake g++ based on LLVM version 8.1 prints warning about
+#the libstdc++ should no longer be used.
+if (g++ --version 2>/dev/null | grep -s  "LLVM version 8.0" >/dev/null) ; then 
+  #Apple fake-g++
+  make CXX=g++ CC=gcc CPPFLAGS="-stdlib=libstdc++"
+else
+  make CXX=g++ CC=gcc
+fi
+
 python setup.py install --prefix `pwd`
 )
 site_packages_dir=$(cd sequitur-g2p; find ./lib{,64} -type d -name site-packages | head -n 1)
