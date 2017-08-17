@@ -29,12 +29,12 @@ graph_affix=_ex250k   # can be used to decode the unsup data with another lm/gra
 phone_insertion_penalty=
 
 # Semi-supervised options
-comb_affix=comb1a  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
-supervision_weights=1.0,0.3
+comb_affix=comb1e  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
+supervision_weights=1.0,1.0
 lm_weights=5,2
 sup_egs_dir=   
 unsup_egs_dir=
-tree_affix=
+tree_affix=fg
 
 extra_left_context=0
 extra_right_context=0
@@ -101,16 +101,26 @@ for dset in $unsupervised_set; do
       data/${base_train_set}_sp_hires data/${dset}_sp_hires
   fi
 
-  if [ $stage -le 5 ] && [ ! -f $chaindir/decode_${dset}_sp${decode_affix}/lat.1.gz ]; then
+  if [ $stage -le 4 ] && [ ! -f $chaindir/decode_${dset}_sp${decode_affix}/lat.1.gz ]; then
     echo "$0: getting the decoding lattices for the unsupervised subset using the chain model at: $chaindir"
     steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
               --acwt 1.0 --post-decode-acwt 10.0 \
               --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${base_train_set}_sp_hires \
               --scoring-opts "--min-lmwt 10 --max-lmwt 10" \
               $graphdir data/${dset}_sp_hires $chaindir/decode_${dset}_sp${decode_affix}
-    ln -s ../final.mdl $chaindir/decode_${dset}_sp${decode_affix}/final.mdl || true
+  fi
+
+  if [ $stage -le 5 ]; then
+    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang_test${graph_affix} \
+      data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
+      $chaindir/decode_${dset}_sp${decode_affix} \
+      $chaindir/decode_${dset}_sp${decode_affix}_fg
+
+    ln -s ../final.mdl $chaindir/decode_${dset}_sp${decode_affix}_fg/final.mdl || true
   fi
 done
+
+decode_affix=${decode_affix}_fg
 
 if [ $stage -le 8 ]; then
   steps/best_path_weights.sh --cmd "${train_cmd}" --acwt 0.1 \
@@ -129,6 +139,11 @@ sup_ali_dir=$exp/tri3
 
 treedir=$exp/chain${nnet3_affix}/tree_${tree_affix}
 if [ $stage -le 9 ]; then
+  if [ -f $treedir/final.mdl ]; then
+    echo "$0: $treedir/final.mdl already exists. Remove it and try again."
+    exit 1
+  fi
+  
   steps/subset_ali_dir.sh --cmd "$train_cmd" \
     data/${unsupervised_set} data/${unsupervised_set}_sp_hires \
     $chaindir/best_path_${unsupervised_set}_sp${decode_affix} \

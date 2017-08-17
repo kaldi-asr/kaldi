@@ -5,9 +5,11 @@ set -e
 stage=1
 speed_perturb=true
 train_set=train
-ivector_train_set=train
+ivector_train_set=  # data set for training i-vector extractor. 
+                    # If not provided, train_set will be used.
 
 nnet3_affix=
+exp=exp
 
 . ./path.sh
 . ./utils/parse_options.sh
@@ -31,6 +33,9 @@ if [ "$speed_perturb" == "true" ]; then
     done
   fi
   train_set=${train_set}_sp
+  if ! [ -z "$ivector_train_set" ]; then
+    ivector_train_set=${ivector_train_set}_sp
+  fi
 fi
 
 if [ $stage -le 3 ]; then
@@ -63,6 +68,10 @@ if [ $stage -le 3 ]; then
   done
 fi
 
+if [ -z "$ivector_train_set" ]; then
+  ivector_train_set=$train_set
+fi
+
 # ivector extractor training
 if [ $stage -le 4 ]; then
   steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
@@ -92,7 +101,9 @@ if [ $stage -le 7 ]; then
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
     data/${ivector_train_set}_max2_hires $exp/nnet3${nnet3_affix}/extractor $exp/nnet3${nnet3_affix}/ivectors_${ivector_train_set}_hires || exit 1;
+fi
 
+if [ $stage -le 8 ]; then
   for dataset in test dev; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
       data/${dataset}_hires $exp/nnet3${nnet3_affix}/extractor $exp/nnet3${nnet3_affix}/ivectors_${dataset}_hires || exit 1;

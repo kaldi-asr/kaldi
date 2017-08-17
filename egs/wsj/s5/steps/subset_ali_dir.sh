@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright 2017  Vimal Manohar
+# Apache 2.0.
+
 cmd=run.pl
 
 . path.sh
@@ -24,6 +27,10 @@ dir=$4
 nj=$(cat $ali_dir/num_jobs) || exit 1
 utils/split_data.sh $data $nj
 
+mkdir -p $dir
+cp $ali_dir/{final.mdl,*.mat,*_opts,tree} $dir/ || true
+cp -r $ali_dir/phones $dir 2>/dev/null || true
+
 $cmd JOB=1:$nj $dir/log/copy_alignments.JOB.log \
   copy-int-vector "ark:gunzip -c $ali_dir/ali.JOB.gz |" \
   ark,scp:$dir/ali_tmp.JOB.ark,$dir/ali_tmp.JOB.scp || exit 1
@@ -42,6 +49,8 @@ $cmd JOB=1:$nj $dir/log/filter_alignments.JOB.log \
   copy-int-vector \
   "scp:utils/filter_scp.pl $subset_data/split${nj}/JOB/utt2spk $dir/ali_tmp.scp |" \
   "ark:| gzip -c > $dir/ali.JOB.gz" || exit 1
+
+echo $nj > $dir/num_jobs
 
 rm $dir/ali_tmp.*.{ark,scp} $dir/ali_tmp.scp
 

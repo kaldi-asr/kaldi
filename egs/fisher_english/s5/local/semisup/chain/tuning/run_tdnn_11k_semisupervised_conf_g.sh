@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script is same as _f, but fixes the bug about acwt for best path.
+# This script is same as _e, but is run for 3 epochs instead of 4.
 
 set -u -e -o pipefail
 
@@ -21,7 +21,7 @@ train_supervised_opts="--stage -10 --train-stage -10"
 # Unsupervised options
 decode_affix=
 egs_affix=  # affix for the egs that are generated from unsupervised data and for the comined egs dir
-unsup_frames_per_eg=  # if empty will be equal to the supervised model's config -- you will need to change minibatch_size for comb training accordingly
+unsup_frames_per_eg=300  # if empty will be equal to the supervised model's config -- you will need to change minibatch_size for comb training accordingly
 lattice_lm_scale=0.0  # lm-scale for using the weights from unsupervised lattices
 lattice_prune_beam=2.0  # If supplied will prune the lattices prior to getting egs for unsupervised data
 tolerance=2
@@ -29,12 +29,12 @@ graph_affix=_ex250k   # can be used to decode the unsup data with another lm/gra
 phone_insertion_penalty=
 
 # Semi-supervised options
-comb_affix=comb1a  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
-supervision_weights=1.0,0.3
+comb_affix=comb1g  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
+supervision_weights=1.0,1.0
 lm_weights=5,2
 sup_egs_dir=   
 unsup_egs_dir=
-tree_affix=
+tree_affix=fg
 
 extra_left_context=0
 extra_right_context=0
@@ -101,16 +101,26 @@ for dset in $unsupervised_set; do
       data/${base_train_set}_sp_hires data/${dset}_sp_hires
   fi
 
-  if [ $stage -le 5 ] && [ ! -f $chaindir/decode_${dset}_sp${decode_affix}/lat.1.gz ]; then
+  if [ $stage -le 4 ] && [ ! -f $chaindir/decode_${dset}_sp${decode_affix}/lat.1.gz ]; then
     echo "$0: getting the decoding lattices for the unsupervised subset using the chain model at: $chaindir"
     steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
               --acwt 1.0 --post-decode-acwt 10.0 \
               --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${base_train_set}_sp_hires \
               --scoring-opts "--min-lmwt 10 --max-lmwt 10" \
               $graphdir data/${dset}_sp_hires $chaindir/decode_${dset}_sp${decode_affix}
-    ln -s ../final.mdl $chaindir/decode_${dset}_sp${decode_affix}/final.mdl || true
+  fi
+
+  if [ $stage -le 5 ]; then
+    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang_test${graph_affix} \
+      data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
+      $chaindir/decode_${dset}_sp${decode_affix} \
+      $chaindir/decode_${dset}_sp${decode_affix}_fg
+
+    ln -s ../final.mdl $chaindir/decode_${dset}_sp${decode_affix}_fg/final.mdl || true
   fi
 done
+
+decode_affix=${decode_affix}_fg
 
 if [ $stage -le 8 ]; then
   steps/best_path_weights.sh --cmd "${train_cmd}" --acwt 0.1 \
@@ -129,6 +139,11 @@ sup_ali_dir=$exp/tri3
 
 treedir=$exp/chain${nnet3_affix}/tree_${tree_affix}
 if [ $stage -le 9 ]; then
+  if [ -f $treedir/final.mdl ]; then
+    echo "$0: $treedir/final.mdl already exists. Remove it and try again."
+    exit 1
+  fi
+  
   steps/subset_ali_dir.sh --cmd "$train_cmd" \
     data/${unsupervised_set} data/${unsupervised_set}_sp_hires \
     $chaindir/best_path_${unsupervised_set}_sp${decode_affix} \
@@ -311,7 +326,7 @@ if [ $stage -le 15 ]; then
     --egs.chunk-width 150 \
     --trainer.num-chunk-per-minibatch "150=128/300=64" \
     --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs 4 \
+    --trainer.num-epochs 3 \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.001 \

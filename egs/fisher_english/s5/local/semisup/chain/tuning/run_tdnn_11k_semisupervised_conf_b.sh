@@ -29,7 +29,7 @@ graph_affix=_ex250k   # can be used to decode the unsup data with another lm/gra
 phone_insertion_penalty=
 
 # Semi-supervised options
-comb_affix=comb1a  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
+comb_affix=comb1b  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
 supervision_weights=1.0,0.3
 lm_weights=5,2
 sup_egs_dir=   
@@ -273,7 +273,6 @@ if [ -z "$unsup_egs_dir" ]; then
                --cmvn-opts "$cmvn_opts" --lattice-lm-scale $lattice_lm_scale \
                --lattice-prune-beam "$lattice_prune_beam" \
                --phone-insertion-penalty "$phone_insertion_penalty" \
-               --deriv-weights-scp $chaindir/best_path_${unsupervised_set}${decode_affix}/weights.scp \
                --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${base_train_set}_sp_hires \
                --generate-egs-scp true \
                data/${unsupervised_set}_hires $dir \

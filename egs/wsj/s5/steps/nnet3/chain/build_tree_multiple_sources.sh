@@ -1,16 +1,10 @@
 #!/bin/bash
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
+#           2017  Vimal Manohar
 #  Apache 2.0.
 
-
-# This script builds a tree for use in the 'chain' systems (although the script
-# itself is pretty generic and doesn't use any 'chain' binaries).  This is just
-# like the first stages of a standard system, like 'train_sat.sh', except it
-# does 'convert-ali' to convert alignments to a monophone topology just created
-# from the 'lang' directory (in case the topology is different from where you
-# got the system's alignments from), and it stops after the tree-building and
-# model-initialization stage, without re-estimating the Gaussians or training
-# the transitions.
+# This script is similar to steps/nnet3/chain/build_tree.sh but supports 
+# getting statistics from multiple alignment sources.
 
 
 # Begin configuration section.
@@ -19,13 +13,11 @@ exit_stage=-100 # you can use this to require it to exit at the
                 # beginning of a specific stage.  Not all values are
                 # supported.
 cmd=run.pl
-use_fmllr=true
+use_fmllr=true  # If true, fmllr transforms will be applied from the alignment directories.
+                # Otherwise, no fmllr will be applied even if alignment directory contains trans.*
 context_opts=  # e.g. set this to "--context-width 5 --central-position 2" for quinphone.
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
-frame_subsampling_factor=1
-leftmost_questions_truncate=-1  # note: this used to default to 10, but we never
-                                # use this option now with value != -1, and
-                                # we're changing the default
+frame_subsampling_factor=1  # frame subsampling factor of output w.r.t. to the input features
 tree_stats_opts=
 cluster_phones_opts=
 repeat_frames=false
@@ -38,7 +30,7 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# -lt 5 ]; then
   echo "Usage: steps/nnet3/chain/build_tree_multiple_sources.sh <#leaves> <lang> <data1> <ali-dir1> [<data2> <ali-dir2> ... <data> <ali-dirN>] <exp-dir>"
-  echo " e.g.: steps/nnet3/chain/build_tree_multiple_sources.sh 15000 data/train_semi data/lang data/train_sup:exp/tri3_ali data/train_unsup:exp/tri3/best_path_train_unsup exp/tree_semi"
+  echo " e.g.: steps/nnet3/chain/build_tree_multiple_sources.sh 15000 data/lang data/train_sup exp/tri3_ali data/train_unsup exp/tri3/best_path_train_unsup exp/tree_semi"
   echo "Main options (for others, see top of script file)"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --config <config-file>                           # config containing options"
@@ -68,13 +60,13 @@ if (( $num_sys % 2 != 0 )); then
   exit 1
 fi
 
-num_sys=$((num_sys % 2))
+num_sys=$((num_sys / 2))
 
 data=$dir/data_tmp
 mkdir -p $data
 
 mkdir -p $dir
-alidir=`echo ${data_and_alidirs[0]} | cut -d: -s -f2`
+alidir=`echo ${data_and_alidirs[1]}`
 
 datadirs=()
 alidirs=()
@@ -115,14 +107,17 @@ if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "$0: feature type is $feat_type"
 
 feats=()
+feats_one=()
 for n in `seq 0 $[num_sys-1]`; do
   this_nj=$(cat ${alidirs[$n]}/num_jobs) || exit 1
   this_sdata=${datadirs[$n]}/split$this_nj
   [[ -d $this_sdata && ${datadirs[$n]}/feats.scp -ot $this_sdata ]] || split_data.sh ${datadirs[$n]} $this_nj || exit 1;
   ## Set up speaker-independent features.
   case $feat_type in
-    delta) feats[$n]="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$this_sdata/JOB/utt2spk scp:$this_sdata/JOB/cmvn.scp scp:$this_sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
+    delta) feats[$n]="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$this_sdata/JOB/utt2spk scp:$this_sdata/JOB/cmvn.scp scp:$this_sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |"
+      feats_one[$n]="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$this_sdata/1/utt2spk scp:$this_sdata/1/cmvn.scp scp:$this_sdata/1/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
     lda) feats[$n]="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$this_sdata/JOB/utt2spk scp:$this_sdata/JOB/cmvn.scp scp:$this_sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
+      feats_one[$n]="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$this_sdata/1/utt2spk scp:$this_sdata/1/cmvn.scp scp:$this_sdata/1/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
       cp $alidir/final.mat $dir
       cp $alidir/full.mat $dir 2>/dev/null
       ;;
@@ -130,18 +125,20 @@ for n in `seq 0 $[num_sys-1]`; do
   esac
   
   if $use_fmllr; then
-    if [ ! -f $this_alidir/trans.1 ]; then
-      echo "$0: Could not find fMLLR transforms in $this_alidir"
+    if [ ! -f ${alidirs[$n]}/trans.1 ]; then
+      echo "$0: Could not find fMLLR transforms in ${alidirs[$n]}"
       exit 1
     fi
 
-    echo "$0: Using transforms from $this_alidir"
-    feats[i]="${feats[i]} transform-feats --utt2spk=ark:$this_sdata/JOB/utt2spk ark,s,cs:$this_alidir/trans.JOB ark:- ark:- |"
+    echo "$0: Using transforms from ${alidirs[$n]}"
+    feats[i]="${feats[i]} transform-feats --utt2spk=ark:$this_sdata/JOB/utt2spk ark,s,cs:${alidirs[$n]}/trans.JOB ark:- ark:- |"
+    feats_one[i]="${feats_one[i]} transform-feats --utt2spk=ark:$this_sdata/1/utt2spk ark,s,cs:${alidirs[$n]}/trans.1 ark:- ark:- |"
   fi
 
   # Do subsampling of feats, if needed
   if [ $frame_subsampling_factor -gt 1 ]; then
     feats[$n]="${feats[$n]} subsample-feats --n=$frame_subsampling_factor ark:- ark:- |"
+    feats_one[$n]="${feats_one[$n]} subsample-feats --n=$frame_subsampling_factor ark:- ark:- |"
   fi
 done
 
@@ -159,11 +156,13 @@ if [ $stage -le -5 ]; then
   fi
 
   for n in `seq 0 $[num_sys-1]`; do
-    copy-feats ${feats[$n]} ark:- 
-  done | \
+    copy-feats "${feats_one[$n]}" ark:-
+  done | copy-feats ark:- ark:$dir/tmp.ark
+  
+  $cmd $dir/log/init_mono.log \
     gmm-init-mono $shared_phones_opt \
-    "--train-feats=subset-feats --n=10 ark:- ark:-|" $lang/topo $feat_dim \
-    $dir/mono.mdl $dir/mono.tree 2> $dir/log/init_mono.log || exit 1;
+      "--train-feats=ark:subset-feats --n=10 ark:$dir/tmp.ark ark:- |" $lang/topo $feat_dim \
+    $dir/mono.mdl $dir/mono.tree || exit 1
 fi
 
 
@@ -208,17 +207,8 @@ if [ $stage -le -3 ] && $train_tree; then
      $lang/phones/sets.int $dir/questions.int || exit 1;
   cat $lang/phones/extra_questions.int >> $dir/questions.int
   $cmd $dir/log/compile_questions.log \
-    compile-questions --leftmost-questions-truncate=$leftmost_questions_truncate \
+    compile-questions \
       $context_opts $lang/topo $dir/questions.int $dir/questions.qst || exit 1;
-
-  # questions_truncated.int will be needed later on when we build the phone
-  # language model for 'chain' training.  It's a mechanism of keeping the graph
-  # small.
-  if [ $leftmost_questions_truncate -gt 0 ]; then
-     head -n $leftmost_questions_truncate $dir/questions.int > $dir/questions_truncated.int
-  else
-    cp $dir/questions.int $dir/questions_truncated.int
-  fi
 
   echo "$0: Building the tree"
   $cmd $dir/log/build_tree.log \
@@ -255,22 +245,24 @@ if [ $stage -le -1 ]; then
       exit 1
     fi
 
+    echo "$0: frame-subsampling-factor for $this_alidir is $this_frame_subsampling_factor"
+
     this_frame_subsampling_factor=$((frame_subsampling_factor / this_frame_subsampling_factor))
-    echo "$0: Converting alignments from $alidir to use current tree"
+    echo "$0: Converting alignments from $this_alidir to use current tree"
     $cmd JOB=1:$this_nj $dir/log/convert.$n.JOB.log \
       convert-ali --repeat-frames=$repeat_frames \
         --frame-subsampling-factor=$this_frame_subsampling_factor \
-        $alidir/final.mdl $dir/1.mdl $dir/tree \
-        ark,scp:$dir/ali.$n.JOB.ark,$dir/ali.$n.JOB.scp
+        $this_alidir/final.mdl $dir/1.mdl $dir/tree "ark:gunzip -c $this_alidir/ali.JOB.gz |" \
+        ark,scp:$dir/ali.$n.JOB.ark,$dir/ali.$n.JOB.scp || exit 1
 
     for i in `seq $this_nj`; do 
-      cat $dir/ali.$n.$i.scp
-    done > $dir/ali.$n.scp
+      cat $dir/ali.$n.$i.scp 
+    done > $dir/ali.$n.scp || exit 1
   done
 
   for n in `seq 0 $[num_sys-1]`; do
     cat $dir/ali.$n.scp
-  done | sort -k1,1 > $dir/ali.scp
+  done | sort -k1,1 > $dir/ali.scp || exit 1
 
   utils/split_data.sh $data $nj
   $cmd JOB=1:$nj $dir/log/copy_alignments.JOB.log \

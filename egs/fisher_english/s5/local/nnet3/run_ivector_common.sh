@@ -6,8 +6,9 @@ stage=1
 generate_alignments=true  # false if doing chain training
 speed_perturb=true
 train_set=train
-
 lda_train_set=train_100k
+extractor=  # ivector-extractor. 
+            # If provided, will be used instead of training a new one.
 nnet3_affix=
 gmm=tri2_ali   # should also contain alignments for $lda_train_set
 
@@ -94,37 +95,42 @@ for line in sys.stdin.readlines():
     steps/compute_cmvn_stats.sh data/${dataset}_hires exp/make_hires/$dataset $mfccdir;
     utils/fix_data_dir.sh data/${dataset}_hires  # remove segments with problems
   done
-
-  # Take the first 30k utterances (about 1/8th of the data) this will be used
-  # for the diagubm training
-  utils/subset_data_dir.sh --first data/${train_set}_hires 30000 data/${train_set}_30k_hires
-  utils/data/remove_dup_utts.sh 200 data/${train_set}_30k_hires data/${train_set}_30k_nodup_hires  # 33hr
 fi
 
-# ivector extractor training
-if [ $stage -le 4 ]; then
-  # We need to build a small system just because we need the LDA+MLLT transform
-  # to train the diag-UBM on top of.  We use --num-iters 13 because after we get
-  # the transform (12th iter is the last), any further training is pointless.
-  # this decision is based on fisher_english
-  steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
-    --splice-opts "--left-context=3 --right-context=3" \
-    5500 90000 data/${lda_train_set}_hires \
-    data/lang $gmm_dir exp/nnet3${nnet3_affix}/tri3a
-fi
+if [ -z "$extractor" ]; then
+  if [ $stage -le 3 ]; then
+    # Take the first 30k utterances (about 1/8th of the data) this will be used
+    # for the diagubm training
+    utils/subset_data_dir.sh --first data/${train_set}_hires 30000 data/${train_set}_30k_hires
+    utils/data/remove_dup_utts.sh 200 data/${train_set}_30k_hires data/${train_set}_30k_nodup_hires  # 33hr
+  fi
 
-if [ $stage -le 5 ]; then
-  # To train a diagonal UBM we don't need very much data, so use the smallest subset.
-  steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 200000 \
-    data/${train_set}_30k_nodup_hires 512 exp/nnet3${nnet3_affix}/tri3a exp/nnet3${nnet3_affix}/diag_ubm
-fi
+  # ivector extractor training
+  if [ $stage -le 4 ]; then
+    # We need to build a small system just because we need the LDA+MLLT transform
+    # to train the diag-UBM on top of.  We use --num-iters 13 because after we get
+    # the transform (12th iter is the last), any further training is pointless.
+    # this decision is based on fisher_english
+    steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
+      --splice-opts "--left-context=3 --right-context=3" \
+      5500 90000 data/${lda_train_set}_hires \
+      data/lang $gmm_dir exp/nnet3${nnet3_affix}/tri3a
+  fi
 
-if [ $stage -le 6 ]; then
-  # iVector extractors can be sensitive to the amount of data, but this one has a
-  # fairly small dim (defaults to 100) so we don't use all of it, we use just the
-  # 100k subset (just under half the data).
-  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
-    data/${lda_train_set}_hires exp/nnet3${nnet3_affix}/diag_ubm exp/nnet3${nnet3_affix}/extractor || exit 1;
+  if [ $stage -le 5 ]; then
+    # To train a diagonal UBM we don't need very much data, so use the smallest subset.
+    steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 200000 \
+      data/${train_set}_30k_nodup_hires 512 exp/nnet3${nnet3_affix}/tri3a exp/nnet3${nnet3_affix}/diag_ubm
+  fi
+
+  if [ $stage -le 6 ]; then
+    # iVector extractors can be sensitive to the amount of data, but this one has a
+    # fairly small dim (defaults to 100) so we don't use all of it, we use just the
+    # 100k subset (just under half the data).
+    steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
+      data/${lda_train_set}_hires exp/nnet3${nnet3_affix}/diag_ubm exp/nnet3${nnet3_affix}/extractor || exit 1;
+  fi
+  extractor=exp/nnet3${nnet3_affix}/extractor
 fi
 
 if [ $stage -le 7 ]; then
@@ -136,11 +142,11 @@ if [ $stage -le 7 ]; then
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${train_set}_hires data/${train_set}_max2_hires
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-    data/${train_set}_max2_hires exp/nnet3${nnet3_affix}/extractor exp/nnet3${nnet3_affix}/ivectors_${train_set}_hires || exit 1;
+    data/${train_set}_max2_hires $extractor `basename $extractor`/ivectors_${train_set}_hires || exit 1;
 
   for dataset in test dev; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-      data/${dataset}_hires exp/nnet3${nnet3_affix}/extractor exp/nnet3${nnet3_affix}/ivectors_${dataset}_hires || exit 1;
+      data/${dataset}_hires $extractor `basename $extractor`/ivectors_${dataset}_hires || exit 1;
   done
 fi
 

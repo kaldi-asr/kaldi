@@ -1,11 +1,11 @@
 #!/bin/bash
 set -e
 
-# This is fisher chain recipe for training a model on a subset of around 10 hours.
+# Based on run_tdnn_7b.sh in the fisher swbd recipe
 
 # configs for 'chain'
 stage=0
-tdnn_affix=7b
+tdnn_affix=7b_oracle
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
@@ -17,10 +17,10 @@ chain_affix=_semi11k_250k
 exp=exp/semisup_11k
 gmm=tri3
 xent_regularize=0.1
-hidden_dim=500
+hidden_dim=725
 
 # training options
-num_epochs=10
+num_epochs=4
 remove_egs=false
 common_egs_dir=
 minibatch_size=128
@@ -79,11 +79,15 @@ if [ $stage -le 10 ]; then
   steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
 fi
 
+ali_dir=${gmm_dir}_ali_${train_set}
 if [ $stage -le 11 ]; then
+  steps/align_fmllr.sh --cmd "$train_cmd" --nj 40 \
+    data/${train_set} data/lang $gmm_dir $ali_dir || exit 1
+
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate -1 \
-      --cmd "$train_cmd" 4000 data/${train_set} $lang $gmm_dir $treedir || exit 1
+      --cmd "$train_cmd" 11000 data/${train_set} $lang $ali_dir $treedir || exit 1
 fi
 
 if [ $stage -le 12 ]; then
@@ -107,10 +111,11 @@ if [ $stage -le 12 ]; then
   relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1,2) dim=$hidden_dim
   relu-batchnorm-layer name=tdnn3 input=Append(-3,0,3) dim=$hidden_dim
   relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=$hidden_dim
-  relu-batchnorm-layer name=tdnn5 input=Append(-6,-3,0) dim=$hidden_dim
+  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=$hidden_dim
+  relu-batchnorm-layer name=tdnn6 input=Append(-6,-3,0) dim=$hidden_dim
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain input=tdnn5 dim=$hidden_dim target-rms=0.5
+  relu-batchnorm-layer name=prefinal-chain input=tdnn6 dim=$hidden_dim target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
@@ -122,7 +127,7 @@ if [ $stage -le 12 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn5 dim=$hidden_dim target-rms=0.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=$hidden_dim target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF
@@ -148,7 +153,7 @@ if [ $stage -le 13 ]; then
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.stage $get_egs_stage \
-    --egs.opts "--frames-overlap-per-eg 0 --generate-egs-scp true" \
+    --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width 150 \
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.frames-per-iter 1500000 \

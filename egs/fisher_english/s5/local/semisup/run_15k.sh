@@ -55,12 +55,20 @@ steps/train_sat.sh --cmd "$train_cmd" \
 )&
 
 utils/combine_data.sh data/semisup15k_250k data/train_sup15k data/train_unsup250k || exit 1
-}
 
 local/semisup/chain/tuning/run_tdnn_11k.sh \
   --train-set train_sup15k \
   --nnet3-affix _semi15k_250k \
   --chain-affix _semi15k_250k \
   --stage $stage --train-stage $train_stage \
+  --exp $exp \
+  --ivector-train-set semisup15k_250k || exit 1
+}
+
+local/semisup/chain/tuning/run_tdnn_oracle.sh \
+  --train-set semisup15k_250k \
+  --nnet3-affix _semi15k_250k \
+  --chain-affix _semi15k_250k_oracle \
+  --stage 9 --train-stage $train_stage \
   --exp $exp \
   --ivector-train-set semisup15k_250k || exit 1

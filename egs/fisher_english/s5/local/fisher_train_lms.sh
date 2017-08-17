@@ -70,6 +70,8 @@ cat $cleantext | awk -v wmap=$dir/word_map 'BEGIN{while((getline<wmap)>0)map[$1]
 
 train_lm.sh --arpa --lmtype 3gram-mincount $dir || exit 1;
 
+train_lm.sh --arpa --lmtype 4gram-mincount $dir || exit 1;
+
 # Perplexity over 88307.000000 words (excluding 691.000000 OOVs) is 71.241332
 
 # note: output is
