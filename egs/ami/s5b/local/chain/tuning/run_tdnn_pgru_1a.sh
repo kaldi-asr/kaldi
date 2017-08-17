@@ -6,8 +6,8 @@
 # This is based on the run_tdnn_lstm_1j.sh, replacing the LSTM with proposed PGRU
 # also, decay-time is deprecated in all PGRU scripts
 
-# ./local/chain/compare_wer_general.sh sdm1 tdnn_lstm1j_sp_bi_ihmali_ld5 tdnn_gru1a_nodecay_sp_bi_ihmali_ld5 tdnn_gru1a_nodecay_sp_bi_ihmali_ld5_online
-# System                tdnn_lstm1j_sp_bi_ihmali_ld5 tdnn_gru1a_nodecay_sp_bi_ihmali_ld5 tdnn_gru1a_nodecay_sp_bi_ihmali_ld5_online
+# ./local/chain/compare_wer_general.sh sdm1 tdnn_lstm1j_sp_bi_ihmali_ld5 tdnn_pgru1a_sp_bi_ihmali_ld5 tdnn_pgru1a_sp_bi_ihmali_ld5_online
+# System                tdnn_lstm1j_sp_bi_ihmali_ld5 tdnn_pgru1a_sp_bi_ihmali_ld5 tdnn_pgru1a_sp_bi_ihmali_ld5_online
 # WER on dev        37.2      35.8      35.9
 # WER on eval        40.4      38.8      38.9
 # Final train prob      -0.110953 -0.121403

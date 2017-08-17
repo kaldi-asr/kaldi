@@ -6,8 +6,8 @@
 # This is based on the TDNN_LSTM_1b, but using the PGRU to replace the LSTM,
 # and adding chunk-{left,right}-context-initial=0 
                                                 
-# ./local/chain/compare_wer_general.sh --looped tdnn_gru_1a_like_1e_adding_initial0_ld5_sp
-# System                tdnn_gru_1a_like_1e_adding_initial0_ld5_sp
+# ./local/chain/compare_wer_general.sh --looped tdnn_pgru_1a_ld5_sp
+# System                tdnn_pgru_1a_ld5_sp
 # WER on train_dev(tg)      12.82
 #           [looped:]       12.60
 # WER on train_dev(fg)      11.89
@@ -21,8 +21,8 @@
 # Final train prob (xent)        -0.929
 # Final valid prob (xent)       -0.9934
 
-# ./local/chain/compare_wer_general.sh tdnn_gru_1a_like_1e_adding_initial0_ld5_sp_online
-# System                tdnn_gru_1a_like_1e_adding_initial0_ld5_sp_online
+# ./local/chain/compare_wer_general.sh tdnn_pgru_1a_ld5_sp_online
+# System                tdnn_pgru_1a_ld5_sp_online
 # WER on train_dev(tg)      12.68
 # WER on train_dev(fg)      11.68
 # WER on eval2000(tg)        14.8
@@ -52,6 +52,7 @@ label_delay=5
 extra_left_context=50
 extra_right_context=0
 frames_per_chunk=
+test_online_decoding=
 
 remove_egs=false
 common_egs_dir=
