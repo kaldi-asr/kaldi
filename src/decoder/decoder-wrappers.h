@@ -137,7 +137,9 @@ class DecodeUtteranceLatticeFasterClass {
       int64 *frame_sum, // on success, adds #frames to this.
       int32 *num_done, // on success (including partial decode), increments this.
       int32 *num_err,  // on failure, increments this.
-      int32 *num_partial);  // If partial decode (final-state not reached), increments this.
+      int32 *num_partial,  // If partial decode (final-state not reached), increments this.
+      CompactLattice* lat_out = NULL,  // pointer passed by user to copy stored output on it.
+	  bool write = true);  // stored output dumping option.
   void operator () (); // The decoding happens here.
   ~DecodeUtteranceLatticeFasterClass(); // Output happens here.
  private:
@@ -159,7 +161,8 @@ class DecodeUtteranceLatticeFasterClass {
   int32 *num_done_;
   int32 *num_err_;
   int32 *num_partial_;
-
+  bool write_;
+  CompactLattice* lat_out_;
   // The following variables are stored by the computation.
   bool computed_; // operator ()  was called.
   bool success_; // decoding succeeded (possibly partial)
