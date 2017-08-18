@@ -6,8 +6,8 @@
 """
 This script converts frame-level speech activity detection marks (in kaldi
 integer vector text archive format) into kaldi segments and utt2spk.
-The input integer vectors are expected to contain 1 for silence frames
-and 2 for speech frames.
+The input integer vectors are expected to contain '1' for silence frames
+and '2' for speech frames.
 """
 
 from __future__ import print_function
@@ -48,7 +48,9 @@ and 2 for speech frames.
                         help="Frame shift to convert frame indexes to time")
 
     parser.add_argument("--segment-padding", type=float, default=0.2,
-                        help="Additional padding on speech segments")
+                        help="Additional padding on speech segments. But we "
+                        "ensure that the padding does not go beyond the "
+                        "adjacent segment.")
 
 
     parser.add_argument("in_sad", type=str,
@@ -162,12 +164,16 @@ class Segmentation(object):
         or the duration of the utterance 'max_duration'."""
         for i, segment in enumerate(self.segments):
             assert segment[2] == 2, segment
-            segment[0] -= segment_padding
+            segment[0] -= segment_padding   # try adding padding on the left side
             self.stats.padding_duration += segment_padding
             if segment[0] < 0.0:
+                # Padding takes the segment start to before the beginning of the utterance.
+                # Reduce padding.
                 self.stats.padding_duration += segment[0]
                 segment[0] = 0.0
-            if i > 1 and self.segments[i-1][1] > segment[0]:
+            if i >= 1 and self.segments[i-1][1] > segment[0]:
+                # Padding takes the segment start to before the end the previous segment.
+                # Reduce padding.
                 self.stats.padding_duration -= (
                     self.segments[i-1][1] - segment[0])
                 segment[0] = self.segments[i-1][1]
@@ -175,10 +181,14 @@ class Segmentation(object):
             segment[1] += segment_padding
             self.stats.padding_duration += segment_padding
             if segment[1] >= max_duration:
+                # Padding takes the segment end beyond the max duration of the utterance.
+                # Reduce padding.
                 self.stats.padding_duration -= (segment[1] - max_duration)
                 segment[1] = max_duration
             if (i + 1 < len(self.segments)
                     and segment[1] > self.segments[i+1][0]):
+                # Padding takes the segment end beyond the start of the next segment.
+                # Reduce padding.
                 self.stats.padding_duration -= (
                     segment[1] - self.segments[i+1][0])
                 segment[1] = self.segments[i+1][0]
