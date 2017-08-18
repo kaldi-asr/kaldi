@@ -10,7 +10,7 @@ desc = """
 Prepare input features and training targets for logistic regression,
 which calibrates the Minimum Bayes Risk posterior confidences.
 
-The logisitc-regression input features are: 
+The logisitc-regression input features are:
 - posteriors from 'ctm' transformed by logit,
 - logarithm of word-length in letters,
 - 10base logarithm of unigram probability of a word from language model,
@@ -34,6 +34,8 @@ parser = OptionParser(usage=usage, description=desc)
 parser.add_option("--conf-targets", help="Targets file for logistic regression (no targets generated if '') [default %default]", default='')
 parser.add_option("--conf-feats", help="Feature file for logistic regression. [default %default]", default='')
 parser.add_option("--lattice-depth", help="Per-frame lattice depths, ascii-ark (optional). [default %default]", default='')
+parser.add_option("--frame-shift", type=float, default=0.01,
+                  help="Frame shift value in seconds [default %default]")
 (o, args) = parser.parse_args()
 
 if len(args) != 3:
@@ -63,11 +65,11 @@ other_feats = { wrd_id:other_feats.strip() for (wrd,wrd_id,filter,length,other_f
 if o.conf_targets != '':
   with open(o.conf_targets,'w') as f:
     for (utt, chan, beg, dur, wrd_id, conf, score_tag) in ctm:
-      # Skip the words we don't know if being correct, 
-      if score_tag == 'U': continue 
+      # Skip the words we don't know if being correct,
+      if score_tag == 'U': continue
       # Some words are excluded from training (partial words, hesitations, etc.),
       # (Value: 1 == keep word, 0 == exclude word from the targets),
-      if not word_filter[wrd_id]: continue 
+      if not word_filter[wrd_id]: continue
       # Build the key,
       key = "%s^%s^%s^%s^%s,%s,%s" % (utt, chan, beg, dur, wrd_id, conf, score_tag)
       # Build the target,
@@ -102,7 +104,7 @@ with open(o.conf_feats,'w') as f:
     # - log of word-length,
     log_word_length = math.log(word_length[wrd_id]) # i.e. number of phones in a word,
     # - categorical distribution of words (with frequency higher than min-count),
-    wrd_1_of_k = [0]*wrd_cat_num; 
+    wrd_1_of_k = [0]*wrd_cat_num;
     wrd_1_of_k[wrd_to_cat[wrd_id]] = 1;
 
     # Compose the input feature vector,
@@ -110,10 +112,10 @@ with open(o.conf_feats,'w') as f:
 
     # Optionally add average-depth of lattice at the word position,
     if o.lattice_depth != '':
-      depth_slice = depths[utt][int(round(100.0*float(beg))):int(round(100.0*(float(beg)+float(dur))))]
+      depth_slice = depths[utt][int(float(beg) / o.frame_shift + 0.5):int((float(beg) + max(o.frame_shift, float(dur))) / o.frame_shift + 0.5)]
       log_avg_depth = math.log(float(sum(depth_slice))/len(depth_slice))
       feats += [ log_avg_depth ]
 
-    # Store the input features, 
+    # Store the input features,
     f.write(key + ' [ ' + ' '.join(map(str,feats)) + ' ]\n')
 

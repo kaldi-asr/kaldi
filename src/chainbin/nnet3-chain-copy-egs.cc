@@ -25,6 +25,40 @@
 
 namespace kaldi {
 namespace nnet3 {
+// rename name of NnetIo with old_name to new_name.
+void RenameIoNames(const std::string &old_name,
+                   const std::string &new_name,
+                   NnetChainExample *eg_modified) {
+  // list of io-names in eg_modified.
+  std::vector<std::string> orig_output_names;
+  int32 output_size = eg_modified->outputs.size();
+  for (int32 output_ind = 0; output_ind < output_size; output_ind++)
+    orig_output_names.push_back(eg_modified->outputs[output_ind].name);
+
+  // find the io in eg with name 'old_name'.
+  int32 rename_output_ind =
+     std::find(orig_output_names.begin(), orig_output_names.end(), old_name) -
+      orig_output_names.begin();
+
+  if (rename_output_ind >= output_size)
+    KALDI_ERR << "No io-node with name " << old_name
+              << "exists in eg.";
+  eg_modified->outputs[rename_output_ind].name = new_name;
+}
+
+// ranames NnetIo name with name 'output' to new_output_name
+// and scales the supervision for 'output' using weight.
+void SetWeightAndRenameOutput(BaseFloat weight,
+                              const std::string &new_output_name,
+                              NnetChainExample *eg) {
+  // scale the supervision weight for egs
+  for (int32 i = 0; i < eg->outputs.size(); i++)
+    if (eg->outputs[i].name == "output")
+      if (weight != 0.0 && weight != 1.0)
+        eg->outputs[i].supervision.weight *= weight;
+  // rename output io name to 'new_output_name'.
+  RenameIoNames("output", new_output_name, eg);
+}
 
 // returns an integer randomly drawn with expected value "expected_count"
 // (will be either floor(expected_count) or ceil(expected_count)).
@@ -268,6 +302,8 @@ int main(int argc, char *argv[]) {
     int32 frame_subsampling_factor = -1;
     BaseFloat keep_proportion = 1.0;
     int32 left_context = -1, right_context = -1;
+    std::string eg_weight_rspecifier, eg_output_rspecifier;
+
     ParseOptions po(usage);
     po.Register("random", &random, "If true, will write frames to output "
                 "archives randomly, not round-robin.");
@@ -285,6 +321,15 @@ int main(int argc, char *argv[]) {
                 "feature left-context that we output.");
     po.Register("right-context", &right_context, "Can be used to truncate the "
                 "feature right-context that we output.");
+    po.Register("weights", &eg_weight_rspecifier,
+                "Rspecifier indexed by the key of egs, providing a weight by "
+                "which we will scale the supervision matrix for that eg. "
+                "Used in multilingual training.");
+    po.Register("outputs", &eg_output_rspecifier,
+                "Rspecifier indexed by the key of egs, providing a string-valued "
+                "output name, e.g. 'output-0'.  If provided, the NnetIo with "
+                "name 'output' will be renamed to the provided name. Used in "
+                "multilingual training.");
     po.Read(argc, argv);
 
     srand(srand_seed);
@@ -297,6 +342,8 @@ int main(int argc, char *argv[]) {
     std::string examples_rspecifier = po.GetArg(1);
 
     SequentialNnetChainExampleReader example_reader(examples_rspecifier);
+    RandomAccessTokenReader output_reader(eg_output_rspecifier);
+    RandomAccessBaseFloatReader egs_weight_reader(eg_weight_rspecifier);
 
     int32 num_outputs = po.NumArgs() - 1;
     std::vector<NnetChainExampleWriter*> example_writers(num_outputs);
@@ -307,8 +354,9 @@ int main(int argc, char *argv[]) {
                                             // not configurable for now.
     exclude_names.push_back(std::string("ivector"));
 
-    int64 num_read = 0, num_written = 0;
-
+    int64 num_read = 0, num_written = 0, num_err = 0;
+    bool modify_eg_output = !(eg_output_rspecifier.empty() &&
+                              eg_weight_rspecifier.empty());
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
       if (frame_subsampling_factor == -1)
         CalculateFrameSubsamplingFactor(example_reader.Value(),
@@ -316,11 +364,41 @@ int main(int argc, char *argv[]) {
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
+      NnetChainExample eg_modified_output;
+      const NnetChainExample &eg_orig = example_reader.Value(),
+        &eg = (modify_eg_output ? eg_modified_output : eg_orig);
+      // Note: in the normal case we just use 'eg'; eg_modified_output is
+      // for the case when the --outputs or --weights option is specified
+      // (only for multilingual training).
+      BaseFloat weight = 1.0;
+      std::string new_output_name;
+      if (modify_eg_output) { // This branch is only taken for multilingual training.
+        eg_modified_output = eg_orig;
+        if (!eg_weight_rspecifier.empty()) {
+          if (!egs_weight_reader.HasKey(key)) {
+            KALDI_WARN << "No weight for example key " << key;
+            num_err++;
+            continue;
+          }
+          weight = egs_weight_reader.Value(key);
+        }
+        if (!eg_output_rspecifier.empty()) {
+          if (!output_reader.HasKey(key)) {
+            KALDI_WARN << "No new output-name for example key " << key;
+            num_err++;
+            continue;
+          }
+          new_output_name = output_reader.Value(key);
+        }
+      }
       if (frame_shift == 0 &&
           left_context == -1 && right_context == -1) {
-        const NnetChainExample &eg = example_reader.Value();
         for (int32 c = 0; c < count; c++) {
           int32 index = (random ? Rand() : num_written) % num_outputs;
+          if (modify_eg_output) // Only for multilingual training
+            SetWeightAndRenameOutput(weight, new_output_name, 
+                                     &eg_modified_output);
+
           example_writers[index]->Write(key, eg);
           num_written++;
         }
@@ -336,6 +414,8 @@ int main(int argc, char *argv[]) {
           eg_out.Swap(&eg);
         for (int32 c = 0; c < count; c++) {
           int32 index = (random ? Rand() : num_written) % num_outputs;
+          if (modify_eg_output)
+            SetWeightAndRenameOutput(weight, new_output_name, &eg_out);
           example_writers[index]->Write(key, eg_out);
           num_written++;
         }

@@ -322,21 +322,32 @@ def train_one_iteration(dir, iter, srand, egs_dir,
 
 def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
                                    max_lda_jobs=None, rand_prune=4.0,
-                                   lda_opts=None):
+                                   lda_opts=None, use_multitask_egs=False):
     if max_lda_jobs is not None:
         if num_lda_jobs > max_lda_jobs:
             num_lda_jobs = max_lda_jobs
+    multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
+        egs_dir,
+        egs_prefix="egs.",
+        archive_index="JOB",
+        use_multitask_egs=use_multitask_egs)
+    scp_or_ark = "scp" if use_multitask_egs else "ark"
+    egs_rspecifier = (
+        "ark:nnet3-copy-egs {multitask_egs_opts} "
+        "{scp_or_ark}:{egs_dir}/egs.JOB.{scp_or_ark} ark:- |"
+        "".format(egs_dir=egs_dir, scp_or_ark=scp_or_ark,
+                  multitask_egs_opts=multitask_egs_opts))
 
     # Write stats with the same format as stats for LDA.
     common_lib.execute_command(
         """{command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
                 nnet3-acc-lda-stats --rand-prune={rand_prune} \
-                {dir}/init.raw "ark:{egs_dir}/egs.JOB.ark" \
+                {dir}/init.raw "{egs_rspecifier}" \
                 {dir}/JOB.lda_stats""".format(
                     command=run_opts.command,
                     num_lda_jobs=num_lda_jobs,
                     dir=dir,
-                    egs_dir=egs_dir,
+                    egs_rspecifier=egs_rspecifier,
                     rand_prune=rand_prune))
 
     # the above command would have generated dir/{1..num_lda_jobs}.lda_stats

@@ -358,6 +358,33 @@ def write_matrix_ascii(file_or_fd, mat, key=None):
         if fd is not file_or_fd : fd.close()
 
 
+def write_vector_ascii(file_or_fd, vec, key=None):
+    """This function writes the vector 'vec' stored as a list
+    in kaldi vector text format.
+    The destination can be a file or an opened file descriptor.
+    If key is provided, then vector is written to an archive with the 'key'
+    as the index field.
+    """
+    try:
+        fd = open(file_or_fd, 'w')
+    except TypeError:
+        # 'file_or_fd' is opened file descriptor,
+        fd = file_or_fd
+
+    try:
+        if key is not None:
+            print ("{0} [".format(key),
+                   file=fd, end=' ')  # ark-files have keys (utterance-id)
+        else:
+            print (" [", file=fd, end=' ')
+
+        line = ' '.join(["{0:f}".format(x) for x in vec])
+        line += " ]"
+        print (line, file=fd)
+    finally:
+        if fd is not file_or_fd : fd.close()
+
+
 def read_matrix_ascii(file_or_fd):
     """This function reads a matrix in kaldi matrix text format
     and stores it as a list of lists.

@@ -19,6 +19,7 @@
 
 #include "chain/chain-supervision.h"
 #include "lat/lattice-functions.h"
+#include "lat/push-lattice.h"
 #include "util/text-utils.h"
 #include "hmm/hmm-utils.h"
 #include <numeric>
@@ -142,9 +143,9 @@ bool ProtoSupervision::operator == (const ProtoSupervision &other) const {
           fst::Equal(fst, other.fst));
 }
 
-bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
-                                    const CompactLattice &lat,
-                                    ProtoSupervision *proto_supervision) {
+bool PhoneLatticeToProtoSupervisionInternal(const SupervisionOptions &opts,
+                                            const CompactLattice &lat,
+                                          ProtoSupervision *proto_supervision) {
   opts.Check();
   if (lat.NumStates() == 0) {
     KALDI_WARN << "Empty lattice provided";
@@ -176,9 +177,11 @@ bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
         return false;
       }
       proto_supervision->fst.AddArc(state,
-                                    fst::StdArc(phone, phone,
-                                                fst::TropicalWeight::One(),
-                                                lat_arc.nextstate));
+        fst::StdArc(phone, phone,
+                    fst::TropicalWeight(
+                      lat_arc.weight.Weight().Value1()
+                      * opts.lm_scale + opts.phone_ins_penalty),
+                    lat_arc.nextstate));
       int32 t_begin = std::max<int32>(0, (state_time - opts.left_tolerance)),
               t_end = std::min<int32>(num_frames,
                                       (next_state_time + opts.right_tolerance)),
@@ -189,7 +192,8 @@ bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
       proto_supervision->allowed_phones[t_subsampled].push_back(phone);
     }
     if (lat.Final(state) != CompactLatticeWeight::Zero()) {
-      proto_supervision->fst.SetFinal(state, fst::TropicalWeight::One());
+      proto_supervision->fst.SetFinal(state, fst::TropicalWeight(
+            lat.Final(state).Weight().Value1() * opts.lm_scale));
       if (state_times[state] != num_frames) {
         KALDI_WARN << "Time of final state " << state << " in lattice is "
                    << "not equal to number of frames " << num_frames
@@ -207,6 +211,16 @@ bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
   return true;
 }
 
+bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
+                                    const CompactLattice &lat,
+                                    ProtoSupervision *proto_supervision) {
+  if (!PhoneLatticeToProtoSupervisionInternal(opts, lat, proto_supervision))
+    return false;
+  if (opts.lm_scale != 0.0)
+    fst::Push(&(proto_supervision->fst),
+              fst::REWEIGHT_TO_INITIAL, fst::kDelta, true);
+  return true;
+}
 
 bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
   // the following call will do the range-check on 'ilabel'.

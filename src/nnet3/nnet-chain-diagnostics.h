@@ -83,6 +83,9 @@ class NnetChainComputeProb {
   // or NULL if there is no such info.
   const ChainObjectiveInfo *GetObjective(const std::string &output_name) const;
 
+  // returns the total objective summed over all the outputs
+  std::pair<BaseFloat, BaseFloat> GetTotalObjective() const;
+
   // if config.compute_deriv == true, returns a reference to the
   // computed derivative.  Otherwise crashes.
   const Nnet &GetDeriv() const;

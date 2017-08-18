@@ -516,7 +516,7 @@ class ExampleMerger {
    MapType eg_to_egs_;
 };
 
-
+void ScaleFst(BaseFloat scale, fst::StdVectorFst *fst);
 
 } // namespace nnet3
 } // namespace kaldi

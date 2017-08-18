@@ -503,18 +503,18 @@ double NnetChainCombiner::ComputeObjfAndDerivFromNnet(
   prob_computer_->Reset();
   std::vector<NnetChainExample>::const_iterator iter = egs_.begin(),
                                                 end = egs_.end();
-  for (; iter != end; ++iter)
+  for (; iter != end; ++iter) {
     prob_computer_->Compute(*iter);
-  const ChainObjectiveInfo *objf_info =
-      prob_computer_->GetObjective("output");
-  if (objf_info == NULL)
-    KALDI_ERR << "Error getting objective info (unsuitable egs?)";
-  KALDI_ASSERT(objf_info->tot_weight > 0.0);
+  }
+
+  std::pair<BaseFloat, BaseFloat> p = prob_computer_->GetTotalObjective();
+  BaseFloat tot_objf = p.first, tot_weight = p.second;
+  KALDI_ASSERT(tot_weight > 0.0);
   const Nnet &deriv = prob_computer_->GetDeriv();
   VectorizeNnet(deriv, nnet_params_deriv);
   // we prefer to deal with normalized objective functions.
-  nnet_params_deriv->Scale(1.0 / objf_info->tot_weight);
-  return (objf_info->tot_like + objf_info->tot_l2_term) / objf_info->tot_weight;
+  nnet_params_deriv->Scale(1.0 / tot_weight);
+  return tot_objf / tot_weight;
 }
 
 
