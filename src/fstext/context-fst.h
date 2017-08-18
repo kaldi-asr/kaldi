@@ -309,9 +309,9 @@ class ArcIterator< ContextFst<A> >
   }
 };
 
-template <class A, class I> inline
-void ContextFst<A, I>::InitStateIterator(StateIteratorData<A> *data) const {
-  data->base = new StateIterator< ContextFst<A> >(*this);
+template <class Arc, class I> inline
+void ContextFst<Arc, I>::InitStateIterator(StateIteratorData<Arc> *data) const {
+  data->base = new StateIterator< ContextFst<Arc> >(*this);
 }
 
 

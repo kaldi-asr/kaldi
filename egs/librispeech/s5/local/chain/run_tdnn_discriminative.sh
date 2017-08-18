@@ -184,7 +184,6 @@ if [ $stage -le 4 ]; then
     --num-epochs $num_epochs --one-silence-class $one_silence_class --minibatch-size $minibatch_size \
     --num-jobs-nnet $num_jobs_nnet --num-threads $num_threads \
     --regularization-opts "$regularization_opts" --use-frame-shift false \
-    --adjust-priors false \
       ${degs_dir} $dir ;
 fi
 

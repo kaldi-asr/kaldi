@@ -3,6 +3,21 @@ set -e
 
 # Based on run_tdnn_7b.sh in the fisher swbd recipe
 
+# Results on a 350hr random subset of fisher english:
+# local/chain/compare_wer_general.sh exp/chain_350k/tdnn7b_sp
+# System                tdnn7b_sp
+# WER on dev         17.74
+# WER on test         17.57
+# Final train prob        -0.1128
+# Final valid prob        -0.1251
+# Final train prob (xent)   -1.7908
+# Final valid prob (xent)   -1.7712
+
+# steps/info/nnet3_dir_info.pl exp/chain_350k/tdnn7b_sp
+# exp/chain_350k/tdnn7b_sp: num-iters=319 nj=3..16 num-params=22.1M dim=40+100->8617 combine=-0.14->-0.13
+
+
+
 # configs for 'chain'
 stage=0
 tdnn_affix=7b
@@ -12,7 +27,6 @@ decode_iter=
 train_set=train
 tree_affix=
 nnet3_affix=
-gmm=tri5a
 xent_regularize=0.1
 hidden_dim=725
 
@@ -22,6 +36,8 @@ remove_egs=false
 common_egs_dir=
 minibatch_size=128
 
+gmm=tri5a
+build_tree_ali_dir=exp/tri4a_ali  # used to make a new tree for chain topology, should match train data
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -39,7 +55,6 @@ fi
 
 
 gmm_dir=exp/$gmm   # used to get training lattices (for chain supervision)
-build_tree_ali_dir=exp/tri4a_ali  # used to make a new tree for chain topology
 treedir=exp/chain${nnet3_affix}/tree_${tree_affix}
 lat_dir=exp/chain${nnet3_affix}/tri5a_${train_set}_sp_lats  # training lattices directory
 dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp

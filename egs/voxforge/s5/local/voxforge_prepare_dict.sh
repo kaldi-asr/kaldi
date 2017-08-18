@@ -51,7 +51,7 @@ fi
 
 sequitur=$KALDI_ROOT/tools/sequitur
 export PATH=$PATH:$sequitur/bin
-export PYTHONPATH=$PYTHONPATH:`readlink -f $sequitur/lib/python*/site-packages`
+export PYTHONPATH=$PYTHONPATH:`utils/make_absolute.sh $sequitur/lib/python*/site-packages`
 
 if ! g2p=`which g2p.py` ; then
   echo "The Sequitur was not found !"

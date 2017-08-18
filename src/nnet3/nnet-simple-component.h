@@ -136,6 +136,7 @@ class DropoutComponent : public RandomComponent {
     dropout_proportion_ = dropout_proportion;
   }
 
+  BaseFloat DropoutProportion() const { return dropout_proportion_; }
  private:
   int32 dim_;
   /// dropout-proportion is the proportion that is dropped out,
@@ -481,9 +482,8 @@ class AffineComponent: public UpdatableComponent {
 
   // Some functions that are specific to this class.
 
-  // This new function is used when mixing up:
-  virtual void SetParams(const VectorBase<BaseFloat> &bias,
-                         const MatrixBase<BaseFloat> &linear);
+  virtual void SetParams(const CuVectorBase<BaseFloat> &bias,
+                         const CuMatrixBase<BaseFloat> &linear);
   const CuVector<BaseFloat> &BiasParams() const { return bias_params_; }
   const CuMatrix<BaseFloat> &LinearParams() const { return linear_params_; }
   explicit AffineComponent(const AffineComponent &other);
@@ -498,15 +498,6 @@ class AffineComponent: public UpdatableComponent {
   // This function resizes the dimensions of the component, setting the
   // parameters to zero, while leaving any other configuration values the same.
   virtual void Resize(int32 input_dim, int32 output_dim);
-
-  // The following functions are used for collapsing multiple layers
-  // together.  They return a pointer to a new Component equivalent to
-  // the sequence of two components.  We haven't implemented this for
-  // FixedLinearComponent yet.
-  Component *CollapseWithNext(const AffineComponent &next) const ;
-  Component *CollapseWithNext(const FixedAffineComponent &next) const;
-  Component *CollapseWithNext(const FixedScaleComponent &next) const;
-  Component *CollapseWithPrevious(const FixedAffineComponent &prev) const;
 
  protected:
   friend class NaturalGradientAffineComponent;
@@ -712,7 +703,8 @@ class SoftmaxComponent: public NonlinearComponent {
   SoftmaxComponent() { }
   virtual std::string Type() const { return "SoftmaxComponent"; }
   virtual int32 Properties() const {
-    return kSimpleComponent|kBackpropNeedsOutput|kStoresStats;
+    return kSimpleComponent|kPropagateInPlace|kBackpropInPlace|
+        kBackpropNeedsOutput|kStoresStats;
   }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -852,6 +844,7 @@ class NaturalGradientAffineComponent: public AffineComponent {
   virtual Component* Copy() const;
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void FreezeNaturalGradient(bool freeze);
   // copy constructor
   explicit NaturalGradientAffineComponent(
       const NaturalGradientAffineComponent &other);
@@ -924,8 +917,8 @@ class FixedAffineComponent: public Component {
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
-  // Function to provide access to linear_params_.
   const CuMatrix<BaseFloat> &LinearParams() const { return linear_params_; }
+  const CuVector<BaseFloat> &BiasParams() const { return bias_params_; }
  protected:
   friend class AffineComponent;
   CuMatrix<BaseFloat> linear_params_;
@@ -1023,8 +1016,8 @@ class FixedScaleComponent: public Component {
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
+  const CuVector<BaseFloat> &Scales() const { return scales_; }
  protected:
-  friend class AffineComponent;  // necessary for collapse
   CuVector<BaseFloat> scales_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedScaleComponent);
 };
@@ -1397,7 +1390,6 @@ class PerElementScaleComponent: public UpdatableComponent {
   void Init(std::string vector_filename);
 
  protected:
-  friend class AffineComponent;  // necessary for collapse
   // This function Update() is for extensibility; child classes may override
   // this, e.g. for natural gradient update.
   virtual void Update(
@@ -1577,6 +1569,7 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
 
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
+  virtual void FreezeNaturalGradient(bool freeze);
 
   virtual Component* Copy() const;
 
@@ -1612,6 +1605,8 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
 };
 
 /**
+ * WARNING, this component is deprecated in favor of
+ *  TimeHeightConvolutionComponent, and will be deleted.
  * ConvolutionalComponent implements 2d-convolution.
  * It uses 3D filters on 3D inputs, but the 3D filters hop only over
  * 2 dimensions as it has same size as the input along the 3rd dimension.
@@ -1943,6 +1938,7 @@ class LstmNonlinearityComponent: public UpdatableComponent {
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
   virtual void ZeroStats();
+  virtual void FreezeNaturalGradient(bool freeze);
 
   // Some functions that are specific to this class:
   explicit LstmNonlinearityComponent(
@@ -2015,6 +2011,8 @@ class LstmNonlinearityComponent: public UpdatableComponent {
 
 
 /*
+ * WARNING, this component is deprecated as it's not compatible with
+ *   TimeHeightConvolutionComponent, and it will eventually be deleted.
  * MaxPoolingComponent :
  * Maxpooling component was firstly used in ConvNet for selecting an
  * representative activation in an area. It inspired Maxout nonlinearity.
@@ -2211,6 +2209,12 @@ class BatchNormComponent: public Component {
   virtual void StoreStats(const CuMatrixBase<BaseFloat> &in_value,
                           const CuMatrixBase<BaseFloat> &out_value,
                           void *memo);
+
+  // Members specific to this component type.
+  // Note: the offset and scale will only be nonempty in 'test mode'.
+  const CuVector<BaseFloat> &Offset() const { return offset_; }
+  const CuVector<BaseFloat> &Scale() const { return scale_; }
+
  private:
 
   struct Memo {
@@ -2369,6 +2373,7 @@ class CompositeComponent: public UpdatableComponent {
   virtual int32 NumParameters() const;
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+  virtual void FreezeNaturalGradient(bool freeze);
 
   // note: we dont implement the StoreStats function as it would be quite
   // expensive; instead, by default we call StoreStats() for any components that

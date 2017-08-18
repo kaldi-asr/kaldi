@@ -32,17 +32,29 @@ dir=exp/nnet3/tdnn
 dir=$dir${affix:+_$affix}
 
 if [ $stage -le 7 ]; then
-  echo "$0: creating neural net configs";
+  echo "$0: creating neural net configs using the xconfig parser";
+  num_targets=$(tree-info $ali_dir/tree | grep num-pdfs | awk '{print $2}')
 
-  # create the config files for nnet initialization
-  python steps/nnet3/tdnn/make_configs.py  \
-    --feat-dir data/train_rvb_hires \
-    --ivector-dir exp/nnet3/ivectors_train \
-    --ali-dir $ali_dir \
-    --relu-dim 1248 \
-    --splice-indexes "-2,-1,0,1,2 -1,2 -3,3 -3,3 -7,2 0"  \
-    --use-presoftmax-prior-scale true \
-   $dir/configs || exit 1;
+  mkdir -p $dir/configs
+  cat <<EOF > $dir/configs/network.xconfig
+  input dim=100 name=ivector
+  input dim=40 name=input
+
+  # please note that it is important to have input layer with the name=input
+  # as the layer immediately preceding the fixed-affine-layer to enable
+  # the use of short notation for the descriptor
+  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+
+  # the first splicing is moved before the lda layer, so no splicing here
+  relu-renorm-layer name=tdnn1 dim=1248
+  relu-renorm-layer name=tdnn2 dim=1248 input=Append(-1,2)
+  relu-renorm-layer name=tdnn3 dim=1248 input=Append(-3,3)
+  relu-renorm-layer name=tdnn4 dim=1248 input=Append(-3,3)
+  relu-renorm-layer name=tdnn5 dim=1248 input=Append(-7,2)
+  relu-renorm-layer name=tdnn6 dim=1248
+  output-layer name=output dim=$num_targets max-change=1.5 presoftmax-scale-file=$dir/configs/presoftmax_prior_scale.vec
+EOF
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
 if [ $stage -le 8 ]; then

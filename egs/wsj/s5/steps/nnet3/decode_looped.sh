@@ -44,7 +44,6 @@ scoring_opts=
 skip_diagnostics=false
 skip_scoring=false
 extra_left_context_initial=0
-feat_type=
 online_ivector_dir=
 minimize=false
 # End configuration section.
@@ -94,45 +93,29 @@ echo $nj > $dir/num_jobs
 
 
 ## Set up features.
-if [ -z "$feat_type" ]; then
-  if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=raw; fi
-  echo "$0: feature type is $feat_type"
-fi
+echo "$0: feature type is raw"
 
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
 
-case $feat_type in
-  raw) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    ;;
-  *) echo "$0: invalid feature type $feat_type" && exit 1;
-esac
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
 if [ ! -z "$transform_dir" ]; then
   echo "$0: using transforms from $transform_dir"
   [ ! -s $transform_dir/num_jobs ] && \
     echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
   nj_orig=$(cat $transform_dir/num_jobs)
 
-  if [ $feat_type == "raw" ]; then trans=raw_trans;
-  else trans=trans; fi
-  if [ $feat_type == "lda" ] && \
-    ! cmp $transform_dir/../final.mat $srcdir/final.mat && \
-    ! cmp $transform_dir/final.mat $srcdir/final.mat; then
-    echo "$0: LDA transforms differ between $srcdir and $transform_dir"
-    exit 1;
-  fi
-  if [ ! -f $transform_dir/$trans.1 ]; then
-    echo "$0: expected $transform_dir/$trans.1 to exist (--transform-dir option)"
+  if [ ! -f $transform_dir/raw_trans.1 ]; then
+    echo "$0: expected $transform_dir/raw_trans.1 to exist (--transform-dir option)"
     exit 1;
   fi
   if [ $nj -ne $nj_orig ]; then
     # Copy the transforms into an archive with an index.
-    for n in $(seq $nj_orig); do cat $transform_dir/$trans.$n; done | \
-       copy-feats ark:- ark,scp:$dir/$trans.ark,$dir/$trans.scp || exit 1;
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/$trans.scp ark:- ark:- |"
+    for n in $(seq $nj_orig); do cat $transform_dir/raw_trans.$n; done | \
+       copy-feats ark:- ark,scp:$dir/raw_trans.ark,$dir/raw_trans.scp || exit 1;
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/raw_trans.scp ark:- ark:- |"
   else
     # number of jobs matches with alignment dir.
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/$trans.JOB ark:- ark:- |"
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/raw_trans.JOB ark:- ark:- |"
   fi
 elif grep 'transform-feats --utt2spk' $srcdir/log/train.1.log >&/dev/null; then
   echo "$0: **WARNING**: you seem to be using a neural net system trained with transforms,"

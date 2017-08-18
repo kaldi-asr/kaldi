@@ -29,7 +29,10 @@ def main():
     with open(sys.argv[1], 'r') as f:
         for line in f.readlines():
             chunks = line.split(' ')
-            sys.stdout.write(chunks[0] + ' ' + normalize(' '.join(chunks[1:])))
+            if len(chunks) > 1:
+                sys.stdout.write(chunks[0].strip() + ' ' + normalize(' '.join(chunks[1:])))
+            else:
+                sys.stdout.write(chunks[0].strip() + '\n')
 
 if __name__ == '__main__':
     main()

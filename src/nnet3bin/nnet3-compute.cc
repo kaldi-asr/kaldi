@@ -94,6 +94,7 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(nnet_rxfilename, &nnet);
     SetBatchnormTestMode(true, &nnet);
     SetDropoutTestMode(true, &nnet);
+    CollapseModel(CollapseModelConfig(), &nnet);
 
     RandomAccessBaseFloatMatrixReader online_ivector_reader(
         online_ivector_rspecifier);
@@ -161,6 +162,9 @@ int main(int argc, char *argv[]) {
       num_success++;
     }
 
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().PrintProfile();
+#endif
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "

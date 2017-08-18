@@ -39,13 +39,13 @@ def create_phone_lm(dir, tree_dir, run_opts, lm_opts=None):
 
     common_lib.execute_command(
         """{command} {dir}/log/make_phone_lm.log \
-    gunzip -c {alignments} \| \
-    ali-to-phones {tree_dir}/final.mdl ark:- ark:- \| \
-    chain-est-phone-lm {lm_opts} ark:- {dir}/phone_lm.fst""".format(
-        command=run_opts.command, dir=dir,
-        alignments=alignments,
-        lm_opts=lm_opts if lm_opts is not None else '',
-        tree_dir=tree_dir))
+            gunzip -c {alignments} \| \
+            ali-to-phones {tree_dir}/final.mdl ark:- ark:- \| \
+            chain-est-phone-lm {lm_opts} ark:- {dir}/phone_lm.fst""".format(
+                command=run_opts.command, dir=dir,
+                alignments=alignments,
+                lm_opts=lm_opts if lm_opts is not None else '',
+                tree_dir=tree_dir))
 
 
 def create_denominator_fst(dir, tree_dir, run_opts):
@@ -67,7 +67,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                        left_context_initial=-1, right_context_final=-1,
                        frame_subsampling_factor=3,
                        alignment_subsampling_factor=3,
-                       feat_type='raw', online_ivector_dir=None,
+                       online_ivector_dir=None,
                        frames_per_iter=20000, frames_per_eg_str="20", srand=0,
                        egs_opts=None, cmvn_opts=None, transform_dir=None):
     """Wrapper for steps/nnet3/chain/get_egs.sh
@@ -79,7 +79,6 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
         """steps/nnet3/chain/get_egs.sh {egs_opts} \
                 --cmd "{command}" \
                 --cmvn-opts "{cmvn_opts}" \
-                --feat-type {feat_type} \
                 --transform-dir "{transform_dir}" \
                 --online-ivector-dir "{ivector_dir}" \
                 --left-context {left_context} \
@@ -97,7 +96,6 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                 {data} {dir} {lat_dir} {egs_dir}""".format(
                     command=run_opts.command,
                     cmvn_opts=cmvn_opts if cmvn_opts is not None else '',
-                    feat_type=feat_type,
                     transform_dir=(transform_dir
                                    if transform_dir is not None
                                    else ''),
@@ -131,6 +129,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      momentum, max_param_change,
                      shuffle_buffer_size, num_chunk_per_minibatch_str,
                      frame_subsampling_factor, run_opts,
+                     backstitch_training_scale=0.0, backstitch_training_interval=1,
                      use_multitask_egs=False):
     """
     Called from train_one_iteration(), this method trains new models
@@ -196,6 +195,9 @@ def train_new_models(dir, iter, srand, num_jobs,
                     {deriv_time_opts} \
                     --print-interval=10 --momentum={momentum} \
                     --max-param-change={max_param_change} \
+                    --backstitch-training-scale={backstitch_training_scale} \
+                    --backstitch-training-interval={backstitch_training_interval} \
+                    --srand={srand} \
                     "{raw_model}" {dir}/den.fst \
                     "ark,bg:nnet3-chain-copy-egs {multitask_egs_opts} \
                         --frame-shift={fr_shft} \
@@ -216,6 +218,8 @@ def train_new_models(dir, iter, srand, num_jobs,
                         parallel_train_opts=run_opts.parallel_train_opts,
                         verbose_opt=verbose_opt,
                         momentum=momentum, max_param_change=max_param_change,
+                        backstitch_training_scale=backstitch_training_scale,
+                        backstitch_training_interval=backstitch_training_interval,
                         raw_model=raw_model_string,
                         egs_dir=egs_dir, archive_index=archive_index,
                         buf_size=shuffle_buffer_size,
@@ -241,6 +245,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         momentum, max_param_change, shuffle_buffer_size,
                         frame_subsampling_factor,
                         run_opts, dropout_edit_string="",
+                        backstitch_training_scale=0.0, backstitch_training_interval=1,
                         use_multitask_egs=False):
     """ Called from steps/nnet3/chain/train.py for one iteration for
     neural network training with LF-MMI objective
@@ -327,6 +332,11 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      num_chunk_per_minibatch_str=cur_num_chunk_per_minibatch_str,
                      frame_subsampling_factor=frame_subsampling_factor,
                      run_opts=run_opts,
+                     # linearly increase backstitch_training_scale during the
+                     # first few iterations (hard-coded as 15)
+                     backstitch_training_scale=(backstitch_training_scale *
+                         iter / 15 if iter < 15 else backstitch_training_scale),
+                     backstitch_training_interval=backstitch_training_interval,
                      use_multitask_egs=use_multitask_egs)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(

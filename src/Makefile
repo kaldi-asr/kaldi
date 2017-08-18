@@ -108,9 +108,9 @@ clean: rmlibdir
 distclean: clean
 	-for x in $(SUBDIRS) $(EXT_SUBDIRS); do $(MAKE) -C $$x distclean; done
 
-test: $(addsuffix /test, $(SUBDIRS))
+test: $(addsuffix /test, $(SUBDIRS_LIB))
 
-ext_test: $(addsuffix /test, $(EXT_SUBDIRS))
+ext_test: $(addsuffix /test, $(EXT_SUBDIRS_LIB))
 
 # Define an implicit rule, expands to e.g.:
 #  base/test: base
@@ -149,7 +149,6 @@ $(EXT_SUBDIRS) : mklibdir ext_depend
 ### Dependency list ###
 # this is necessary for correct parallel compilation
 #1)The tools depend on all the libraries
-
 bin fstbin gmmbin fgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin: \
  base matrix util feat tree gmm transform sgmm2 fstext hmm \
  lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain kws online2

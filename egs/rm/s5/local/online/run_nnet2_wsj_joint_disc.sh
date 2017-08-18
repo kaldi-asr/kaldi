@@ -112,7 +112,7 @@ fi
 
 if [ $stage -le 8 ]; then
   discdir=${dir}_${criterion}_${learning_rate}/1 # RM is directory number 1.
-  ln -sf $(readlink -f ${dir}_rm_online/conf) $discdir/conf
+  ln -sf $(utils/make_absolute.sh ${dir}_rm_online/conf) $discdir/conf
   # ... so it acts like an online-decoding directory.
 
   for epoch in $(seq 0 $num_epochs); do
