@@ -53,7 +53,6 @@ script:
     LIBDIRS="$XROOT/usr/lib"
       tools/extras/travis_script.sh
 #   To troubleshoot cache, add to above: CI_TARGETS=util CCACHE_LOGFILE=~/ccache.log
-  - cat src/base/version.h
 
 before_cache:
   - ccache --show-stats
