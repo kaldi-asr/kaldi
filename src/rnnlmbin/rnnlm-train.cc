@@ -1,6 +1,6 @@
 // rnnlmbin/rnnlm-train.cc
 
-// Copyright 2015  Johns Hopkins University (author: Daniel Povey)
+// Copyright 2015-2017  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -188,6 +188,7 @@ int main(int argc, char *argv[]) {
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();
 #endif
+    return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;

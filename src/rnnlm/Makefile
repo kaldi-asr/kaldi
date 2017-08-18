@@ -9,7 +9,7 @@ TESTFILES = sampler-test arpa-sampling-test rnnlm-example-test
 
 OBJFILES = sampler.o arpa-sampling.o rnnlm-example.o rnnlm-example-utils.o \
            rnnlm-core-training.o rnnlm-embedding-training.o rnnlm-core-compute.o \
-           rnnlm-utils.o rnnlm-training.o rnnlm-test-utils.o
+           rnnlm-utils.o rnnlm-training.o rnnlm-test-utils.o sampling-lm.o
 
 LIBNAME = kaldi-rnnlm
 

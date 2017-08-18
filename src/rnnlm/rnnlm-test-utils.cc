@@ -241,7 +241,7 @@ class InterpolatedKneserNeyLM {
     EstimateProbAndBow();
   }
 
-  static BaseFloat ProbToLobProb(BaseFloat prob) {
+  static BaseFloat ProbToLogProb(BaseFloat prob) {
     if (prob == 0.0) {
       return -99.0;
     } else {
@@ -252,13 +252,13 @@ class InterpolatedKneserNeyLM {
   static void WriteNgram(const std::vector<int32> &words,
                   BaseFloat prob, BaseFloat bow,
                   const fst::SymbolTable &symbol_table, std::ostream &os) {
-    os << ProbToLobProb(prob) << "\t";
+    os << ProbToLogProb(prob) << "\t";
     for (int32 i = 0; i < words.size() - 1; i++) {
       os << symbol_table.Find(words[i]) << " ";
     }
     os << symbol_table.Find(words[words.size() - 1]);
     if (bow != 0.0) {
-      os << "\t" << ProbToLobProb(bow);
+      os << "\t" << ProbToLogProb(bow);
     }
     os << "\n";
   }
