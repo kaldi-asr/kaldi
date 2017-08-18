@@ -39,9 +39,9 @@ echo "$0 $@"  # Print the command line for logging
 [ -f path.sh ] && . ./path.sh # source the path.
 . parse_options.sh || exit 1;
 
-if [ $# != 3 ]; then
-   echo "usage: $0 <data-dir> <lang-dir> <dir>"
-   echo "e.g.:  $0 data/train data/lang exp/tri3_cleanup"
+if [ $# != 4 ]; then
+   echo "usage: $0 <data-dir|text> <lang-dir> <dir> <graph-dir>"
+   echo "e.g.:  $0 data/train data/lang exp/tri3_cleanup exp/tri3_cleanup/graphs"
    echo "  This script creates biased decoding graphs per utterance (or possibly"
    echo "  groups of utterances, depending on --min-words-per-graph).  Its output"
    echo "  goes to <dir>/HCLG.fsts.scp, indexed by utterance.  Directory <dir> is"
@@ -72,33 +72,44 @@ if [ $# != 3 ]; then
    exit 1;
 fi
 
-data=$1
+data_or_text=$1
 lang=$2
 dir=$3
+graph_dir=$4
 
+if [ -d $data_or_text ]; then
+  text=$data_or_text/text
+else
+  text=$data_or_text
+fi
 
-for f in $lang/oov.int $dir/tree $dir/final.mdl \
+mkdir -p $graph_dir
+
+for f in $text $lang/oov.int $dir/tree $dir/final.mdl \
     $lang/L_disambig.fst $lang/phones/disambig.int; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1;
 done
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $dir/phones.txt
+cp $lang/phones.txt $graph_dir
+
 oov=`cat $lang/oov.int` || exit 1;
-mkdir -p $dir/log
+mkdir -p $graph_dir/log
 
 # create top_words.{int,txt}
 if [ $stage -le 0 ]; then
   export LC_ALL=C
   # the following pipe will be broken due to the 'head'; don't fail.
   set +o pipefail
-  utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt <$data/text | \
+  utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $text | \
     awk '{for(x=2;x<=NF;x++) print $x;}' | sort | uniq -c | \
-     sort -nr | head -n $top_n_words > $dir/word_counts.int
+     sort -nr | head -n $top_n_words > $graph_dir/word_counts.int
   set -o pipefail
-  total_count=$(awk '{x+=$1} END{print x}' < $dir/word_counts.int)
+  total_count=$(awk '{x+=$1} END{print x}' < $graph_dir/word_counts.int)
   # print top-n words with their unigram probabilities.
-  awk -v tot=$total_count -v weight=$top_n_words_weight '{print ($1*weight)/tot, $2;}' \
-     <$dir/word_counts.int >$dir/top_words.int
-  utils/int2sym.pl -f 2 $lang/words.txt <$dir/top_words.int >$dir/top_words.txt
+  awk -v tot=$total_count -v weight=$top_n_words_weight '{print $2, ($1*weight)/tot;}' \
+     <$graph_dir/word_counts.int >$graph_dir/top_words.int
+  utils/int2sym.pl -f 1 $lang/words.txt <$graph_dir/top_words.int >$graph_dir/top_words.txt
 fi
 
 word_disambig_symbol=$(cat $lang/words.txt | grep -w "#0" | awk '{print $2}')
@@ -107,40 +118,46 @@ if [ -z "$word_disambig_symbol" ]; then
   exit 1
 fi
 
-utils/split_data.sh --per-utt $data $nj
+mkdir -p $graph_dir/texts
+split_text=
+for n in `seq $nj`; do
+  split_text="$split_text $graph_dir/texts/text.$n"
+done
 
-sdata=$data/split${nj}utt
+utils/split_scp.pl $text $split_text
 
+mkdir -p $graph_dir/log $graph_dir/fsts
 
-mkdir -p $dir/log $dir/fsts
+# Make $dir an absolute pathname
+dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $dir ${PWD}`
 
 if [ $stage -le 1 ]; then
   echo "$0: creating utterance-group-specific decoding graphs with biased LMs"
 
   # These options are passed through directly to make_one_biased_lm.py.
-  lm_opts="--word-disambig-symbol=$word_disambig_symbol --ngram-order=$ngram_order --min-lm-state-count=$min_lm_state_count --discounting-constant=$discounting_constant"
+  lm_opts="--word-disambig-symbol=$word_disambig_symbol --ngram-order=$ngram_order --min-lm-state-count=$min_lm_state_count --discounting-constant=$discounting_constant --top-words=$graph_dir/top_words.int"
 
-  $cmd JOB=1:$nj $dir/log/compile_decoding_graphs.JOB.log \
-    utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text \| \
+  $cmd JOB=1:$nj $graph_dir/log/compile_decoding_graphs.JOB.log \
+    utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $graph_dir/texts/text.JOB \| \
     steps/cleanup/make_biased_lms.py --min-words-per-graph=$min_words_per_graph \
-      --lm-opts="$lm_opts" $dir/fsts/utt2group.JOB \| \
+      --lm-opts="$lm_opts" $graph_dir/fsts/utt2group.JOB \| \
     compile-train-graphs-fsts $scale_opts --read-disambig-syms=$lang/phones/disambig.int \
       $dir/tree $dir/final.mdl $lang/L_disambig.fst ark:- \
-    ark,scp:$dir/fsts/HCLG.fsts.JOB.ark,$dir/fsts/HCLG.fsts.JOB.scp || exit 1
+    ark,scp:$graph_dir/fsts/HCLG.fsts.JOB.ark,$graph_dir/fsts/HCLG.fsts.JOB.scp || exit 1
 fi
 
-for j in $(seq $nj); do cat $dir/fsts/HCLG.fsts.$j.scp; done > $dir/fsts/HCLG.fsts.per_utt.scp
-for j in $(seq $nj); do cat $dir/fsts/utt2group.$j; done > $dir/fsts/utt2group
+for j in $(seq $nj); do cat $graph_dir/fsts/HCLG.fsts.$j.scp; done > $graph_dir/fsts/HCLG.fsts.per_utt.scp
+for j in $(seq $nj); do cat $graph_dir/fsts/utt2group.$j; done > $graph_dir/fsts/utt2group
 
 
-cp $lang/words.txt $dir/
+cp $lang/words.txt $graph_dir/
+cp -r $lang/phones $graph_dir/
 
 # The following command gives us an scp file relative to utterance-id.
-utils/apply_map.pl -f 2 $dir/fsts/HCLG.fsts.per_utt.scp <$dir/fsts/utt2group > $dir/HCLG.fsts.scp
+utils/apply_map.pl -f 2 $graph_dir/fsts/HCLG.fsts.per_utt.scp <$graph_dir/fsts/utt2group > $graph_dir/HCLG.fsts.scp
 
-n1=$(cat $data/utt2spk | wc -l)
-n2=$(cat $dir/HCLG.fsts.scp | wc -l)
-
+n1=$(cat $text | wc -l)
+n2=$(cat $graph_dir/HCLG.fsts.scp | wc -l)
 
 if [ $[$n1*9] -gt $[$n2*10] ]; then
   echo "$0: too many utterances have no scp, something seems to have gone wrong."

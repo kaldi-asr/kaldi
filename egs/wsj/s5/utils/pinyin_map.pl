@@ -10,7 +10,7 @@ if ($num_args != 1) {
 open(MAPS, $ARGV[0]) or die("Could not open pinyin map file.");
 my %py2ph; foreach $line (<MAPS>) { @A = split(" ", $line);
   $py = shift(@A);
-  $py2ph{$py} = [@A]; 
+  $py2ph{$py} = [@A];
 }
 
 #foreach $word ( keys %py2ph ) {
@@ -25,14 +25,14 @@ my @entry;
 
 while (<STDIN>) {
   @A = split(" ", $_);
-  @entry = (); 
+  @entry = ();
   $W = shift(@A);
   push(@entry, $W);
   for($i = 0; $i < @A; $i++) {
     $initial= $A[$i]; $final = $A[$i];
     #print $initial, " ", $final, "\n";
     if ($A[$i] =~ /^CH[A-Z0-9]+$/) {$initial =~ s:(CH)[A-Z0-9]+:$1:; $final =~ s:CH([A-Z0-9]+):$1:;}
-    elsif ($A[$i] =~ /^SH[A-Z0-9]+$/) {$initial =~ s:(SH)[A-Z0-9]+:$1:; $final =~ s:SH([A-Z0-9]+):$1:;} 
+    elsif ($A[$i] =~ /^SH[A-Z0-9]+$/) {$initial =~ s:(SH)[A-Z0-9]+:$1:; $final =~ s:SH([A-Z0-9]+):$1:;}
     elsif ($A[$i] =~ /^ZH[A-Z0-9]+$/) {$initial =~ s:(ZH)[A-Z0-9]+:$1:; $final =~ s:ZH([A-Z0-9]+):$1:;}
     elsif ($A[$i] =~ /^B[A-Z0-9]+$/) {$initial =~ s:(B)[A-Z0-9]+:$1:; $final =~ s:B([A-Z0-9]+):$1:;}
     elsif ($A[$i] =~ /^C[A-Z0-9]+$/) {$initial =~ s:(C)[A-Z0-9]+:$1:; $final =~ s:C([A-Z0-9]+):$1:;}
@@ -58,22 +58,22 @@ while (<STDIN>) {
       $tone = $final;
       $final =~ s:([A-Z]+)[0-9]:$1:;
       $tone =~ s:[A-Z]+([0-9]):$1:;
-      if (!(exists $py2ph{$initial}) or !(exists $py2ph{$final})) { print "1: no entry find for ", $A[$i], " ", $initial, " ", $final;  exit;}
-      push(@entry, @{$py2ph{$initial}}); 
+      if (!(exists $py2ph{$initial}) or !(exists $py2ph{$final})) { die "$0: no entry find for ", $A[$i], " ", $initial, " ", $final;}
+      push(@entry, @{$py2ph{$initial}});
       @tmp = @{$py2ph{$final}};
       for($j = 0; $j < @tmp ; $j++) {$tmp[$j] = $tmp[$j].$tone;}
-      push(@entry, @tmp); 
+      push(@entry, @tmp);
     }
     else {
       $tone = $A[$i];
-      $A[$i] =~ s:([A-Z]+)[0-9]:$1:;   
+      $A[$i] =~ s:([A-Z]+)[0-9]:$1:;
       $tone =~ s:[A-Z]+([0-9]):$1:;
-      if (!(exists $py2ph{$A[$i]})) { print "2: no entry find for ", $A[$i];  exit;}
+      if (!(exists $py2ph{$A[$i]})) { die "$0: no entry find for ", $A[$i];}
       @tmp = @{$py2ph{$A[$i]}};
       for($j = 0; $j < @tmp ; $j++) {$tmp[$j] = $tmp[$j].$tone;}
-      push(@entry, @tmp); 
+      push(@entry, @tmp);
     }
-  } 
+  }
   print "@entry";
   print "\n";
 }

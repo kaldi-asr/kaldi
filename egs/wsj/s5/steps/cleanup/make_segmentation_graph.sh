@@ -54,6 +54,8 @@ for f in $data/text.orig $data/orig2utt $lang/L_disambig.fst \
   fi
 done
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $model_dir/phones.txt
+
 # If --ngram-order is larger than 1, we will have to use SRILM
 if [ $ngram_order -gt 1 ]; then
   ngram_count=`which ngram-count` || true

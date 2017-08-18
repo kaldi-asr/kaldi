@@ -96,14 +96,14 @@ struct LogMessageEnvelope {
 // throws an std::runtime_exception, in case of failed KALDI_ASSERT calls abort().
 //
 // Note: we avoid using std::cerr for thread safety issues.
-// fprintf(stderr,...) is guaranteed thread-safe, and outputs 
+// fprintf(stderr,...) is guaranteed thread-safe, and outputs
 // its formatted string atomically.
 class MessageLogger {
 public:
   /// Constructor stores the info,
-  MessageLogger(LogMessageEnvelope::Severity severity, 
+  MessageLogger(LogMessageEnvelope::Severity severity,
                 const char *func,
-                const char *file, 
+                const char *file,
                 int32 line);
 
   /// Destructor, calls 'HandleMessage' which prints the message,
@@ -194,19 +194,6 @@ typedef void (*LogHandler)(const LogMessageEnvelope &envelope,
 /// log. If called with NULL pointer, restores default Kaldi error logging to
 /// stderr.  SetLogHandler is obviously not thread safe.
 LogHandler SetLogHandler(LogHandler);
-
-
-/***** WRITING 'std::vector<T>' TO LOGPRINT *****/
-template<typename T>
-std::ostream& operator<< (std::ostream& os, const std::vector<T>& v) {
-  os << "[ ";
-  typename std::vector<T>::const_iterator it;
-  for (it = v.begin(); it != v.end(); ++it) {
-    os << *it << " ";
-  }
-  os << "]";
-  return os;
-}
 
 /// @} end "addtogroup error_group"
 

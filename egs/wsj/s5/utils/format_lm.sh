@@ -19,8 +19,9 @@
 set -o errexit
 
 if [ $# -ne 4 ]; then
-  printf "Usage: %s lang_dir LM lexicon out_dir\n" `basename $0`
-  echo "  Convert ARPA-format language models to FSTs.";
+  echo "Usage: $0 <lang_dir> <arpa-LM> <lexicon> <out_dir>"
+  echo "E.g.: $0 data/lang data/local/lm/foo.kn.gz data/local/dict/lexicon.txt data/lang_test"
+  echo "Convert ARPA-format language models to FSTs.";
   exit 1;
 fi
 
@@ -34,7 +35,7 @@ mkdir -p $out_dir
 
 echo "Converting '$lm' to FST"
 
-for f in phones.txt words.txt L.fst L_disambig.fst phones/ oov.int oov.txt; do
+for f in phones.txt words.txt topo L.fst L_disambig.fst phones/ oov.int oov.txt; do
   cp -r $lang_dir/$f $out_dir
 done
 

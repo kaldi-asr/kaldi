@@ -74,9 +74,11 @@ if [ -f $srcdir/segments ]; then
         '{printf("%s %s %.2f %.2f\n", $1, $2, $3/factor, $4/factor);}' >$destdir/segments
 
   utils/apply_map.pl -f 1 $destdir/reco_map <$srcdir/wav.scp | sed 's/| *$/ |/' | \
+    # Handle three cases of rxfilenames appropriately; "input piped command", "file offset" and "filename" 
     awk -v factor=$factor \
         '{wid=$1; $1=""; if ($NF=="|") {print wid $_ " sox -t wav - -t wav - speed " factor " |"}
-          else {print wid " sox -t wav" $_ " -t wav - speed " factor " |"}}' > $destdir/wav.scp
+          else if (match($0, /:[0-9]+$/)) {print wid " wav-copy" $_ " - | sox -t wav - -t wav - speed " factor " |" } 
+          else  {print wid " sox -t wav" $_ " -t wav - speed " factor " |"}}' > $destdir/wav.scp
   if [ -f $srcdir/reco2file_and_channel ]; then
     utils/apply_map.pl -f 1 $destdir/reco_map <$srcdir/reco2file_and_channel >$destdir/reco2file_and_channel
   fi
@@ -85,8 +87,10 @@ if [ -f $srcdir/segments ]; then
 else # no segments->wav indexed by utterance.
   if [ -f $srcdir/wav.scp ]; then
     utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/wav.scp | sed 's/| *$/ |/' | \
+     # Handle three cases of rxfilenames appropriately; "input piped command", "file offset" and "filename" 
      awk -v factor=$factor \
        '{wid=$1; $1=""; if ($NF=="|") {print wid $_ " sox -t wav - -t wav - speed " factor " |"}
+         else if (match($0, /:[0-9]+$/)) {print wid " wav-copy" $_ " - | sox -t wav - -t wav - speed " factor " |" } 
          else {print wid " sox -t wav" $_ " -t wav - speed " factor " |"}}' > $destdir/wav.scp
   fi
 fi
@@ -108,4 +112,5 @@ cat $srcdir/utt2dur | utils/apply_map.pl -f 1 $destdir/utt_map  | \
 
 rm $destdir/spk_map $destdir/utt_map 2>/dev/null
 echo "$0: generated speed-perturbed version of data in $srcdir, in $destdir"
-utils/validate_data_dir.sh --no-feats $destdir
+
+utils/validate_data_dir.sh --no-feats --no-text $destdir

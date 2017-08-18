@@ -32,9 +32,12 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include "base/kaldi-common.h"
+#include "base/timer.h"
 #include "cudamatrix/cu-allocator.h"
 
 namespace kaldi {
+
+class CuTimer;
 
 /**
  * Singleton object which represents the CUDA device
@@ -55,9 +58,14 @@ class CuDevice {
   inline void* Malloc(size_t size) { return allocator_.Malloc(size); }
 
   inline void* MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch) {
-    if (random_stride_mode_) {
-      return allocator_.MallocPitch(row_bytes + 128 * (rand() & 1), num_rows,
-                                    pitch);
+    if (debug_stride_mode_) {
+      // The pitch bucket size is hardware dependent.
+      // It is 512 on K40c with CUDA 7.5
+      // "% 8" ensures that any 8 adjacent allocations have different pitches
+      // if their original pitches are same in the normal mode.
+      return allocator_.MallocPitch(
+          row_bytes + 512 * ((num_debug_stride_allocations_++) % 8), num_rows,
+          pitch);
     } else {
       return allocator_.MallocPitch(row_bytes, num_rows, pitch);
     }
@@ -85,10 +93,10 @@ class CuDevice {
   /// and it supports double precision.
   bool DoublePrecisionSupported();
 
-  void SetVerbose(bool verbose) {  verbose_ = verbose; }
-
-  /// Sum the IO time
-  void AccuProfile(const std::string &key, double time);
+  /// This function accumulates stats on timing that
+  /// are printed out when you call PrintProfile().  However,
+  /// it only does something if VerboseLevel() >= 1.
+  void AccuProfile(const char *function_name, const CuTimer &timer);
   void PrintProfile();
 
   void PrintMemoryUsage() const;
@@ -111,16 +119,16 @@ class CuDevice {
   /// Otherwise, return 16, which is the stride used for CPU matrices.
   int32 GetMatrixAlignment() const;
 
-  /// Call SetRandomStrideMode(true) to activate a mode where calls
-  /// to MallocPitch will purposely allocate arrays with randomized pitch
-  /// (inconsistent between calls).  This is only useful testing code.
-  /// This function returns the previous mode, where true means randomized
+  /// Call SetDebugStrideMode(true) to activate a mode where calls
+  /// to MallocPitch will purposely allocate arrays with different pitch
+  /// (inconsistent between calls).  This is only useful for testing code.
+  /// This function returns the previous mode, where true means inconsistent
   /// pitch.  Note that you cannot ever rely on the strides from MallocPitch()
   /// being consistent for the same request, but in practice they tend to be
   /// consistent unless you are close to running out of memory.
-  bool SetRandomStrideMode(bool mode) {
-    bool old_mode = random_stride_mode_;
-    random_stride_mode_ = mode;
+  bool SetDebugStrideMode(bool mode) {
+    bool old_mode = debug_stride_mode_;
+    debug_stride_mode_ = mode;
     return old_mode;
   }
 
@@ -167,13 +175,27 @@ class CuDevice {
 
   cudaDeviceProp properties_;
 
-  bool verbose_;
-
-  bool random_stride_mode_;
+  // there used to be a 'bool verbose_' here.  I'm leaving a placeholder here
+  // instead of removing it because it causes particularly hard-to-debug errors
+  // if compilation is not done right (e.g. make depend was not done), and this
+  // class's members move about.
+  bool unused_;
+  bool debug_stride_mode_;
+  uint32 num_debug_stride_allocations_;
 
   CuMemoryAllocator allocator_;
 
 }; // class CuDevice
+
+
+// Class CuTimer is a convenience wrapper for class Timer which only
+// sets the time if the verbose level is >= 1.  This helps avoid
+// an unnecessary system call if the verbose level is 0 and you
+// won't be accumulating the timing stats.
+class CuTimer: public Timer {
+ public:
+  CuTimer(): Timer(GetVerboseLevel() >= 1) { }
+};
 
 // This function is declared as a more convenient way to get the CUDA device handle for use
 // in the CUBLAS v2 API, since we so frequently need to access it.

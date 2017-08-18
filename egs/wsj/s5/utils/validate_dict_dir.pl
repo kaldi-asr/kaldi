@@ -8,7 +8,8 @@
 
 
 if(@ARGV != 1) {
-  die "Usage: validate_dict_dir.pl dict_directory\n";
+  die "Usage: validate_dict_dir.pl <dict-dir>\n" .
+      "e.g.: validate_dict_dir.pl data/local/dict\n";
 }
 
 $dict = shift @ARGV;
@@ -45,12 +46,17 @@ while(<S>) {
   }
   foreach(0 .. @col-1) {
     my $p = $col[$_];
-    if($silence{$p}) {set_to_fail(); print "--> ERROR: phone \"$p\" duplicates in $dict/silence_phones.txt (line $idx)\n"; }
-    else {$silence{$p} = 1;}
-    if ($p =~ m/#(\d)+/ || $p =~ m/_[BESI]$/){
+    if($silence{$p}) {
+      set_to_fail(); print "--> ERROR: phone \"$p\" duplicates in $dict/silence_phones.txt (line $idx)\n";
+    } else {
+      $silence{$p} = 1;
+    }
+    # disambiguation symbols; phones ending in _B, _E, _S or _I will cause
+    # problems with word-position-dependent systems, and <eps> is obviously
+    # confusable with epsilon.
+    if ($p =~ m/^#/ || $p =~ m/_[BESI]$/ || $p eq "<eps>"){
       set_to_fail();
       print "--> ERROR: phone \"$p\" has disallowed written form\n";
-
     }
   }
   $idx ++;
@@ -112,12 +118,18 @@ while(<NS>) {
   }
   foreach(0 .. @col-1) {
     my $p = $col[$_];
-    if($nonsilence{$p}) {set_to_fail(); print "--> ERROR: phone \"$p\" duplicates in $dict/nonsilence_phones.txt (line $idx)\n"; }
-    else {$nonsilence{$p} = 1;}
-    if ($p =~ m/#(\d)+/ || $p =~ m/_[BESI]$/){
+    if($nonsilence{$p}) {
+      set_to_fail(); print "--> ERROR: phone \"$p\" duplicates in $dict/nonsilence_phones.txt (line $idx)\n";
+    } else {
+      $nonsilence{$p} = 1;
+    }
+    # phones that start with the pound sign/hash may be mistaken for
+    # disambiguation symbols; phones ending in _B, _E, _S or _I will cause
+    # problems with word-position-dependent systems, and <eps> is obviously
+    # confusable with epsilon.
+    if ($p =~ m/^#/ || $p =~ m/_[BESI]$/ || $p eq "<eps>"){
       set_to_fail();
       print "--> ERROR: phone \"$p\" has disallowed written form\n";
-
     }
   }
   $idx ++;
@@ -174,7 +186,7 @@ sub check_lexicon {
     if (!defined $word) {
       print "--> ERROR: empty lexicon line in $lex\n"; set_to_fail();
     }
-    if ($word eq "<s>" || $word eq "</s>") {
+    if ($word eq "<s>" || $word eq "</s>" || $word eq "<eps>" || $word eq "#0") {
       print "--> ERROR: lexicon.txt contains forbidden word $word\n";
       set_to_fail();
     }

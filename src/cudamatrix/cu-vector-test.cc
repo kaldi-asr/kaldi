@@ -742,8 +742,8 @@ template<typename Real> void CuVectorUnitTest() {
 
 
 int main(int argc, char *argv[]) {
-  //Select the GPU
   using namespace kaldi;
+  SetVerboseLevel(1);
   const char *usage = "Usage: cu-vector-test [options]";
 
   ParseOptions po(usage);
@@ -756,15 +756,15 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  for (int32 loop = 0; loop < 2; loop++) {
+  int32 loop = 0;
 #if HAVE_CUDA == 1
-    CuDevice::Instantiate().SetRandomStrideMode(true);
+  for (; loop < 2; loop++) {
+    CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no"); // -1 means no GPU
     else
       CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
-
 
     kaldi::CuVectorUnitTest<float>();
 #if HAVE_CUDA == 1
@@ -781,8 +781,8 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "Tests without GPU use succeeded.";
     else
       KALDI_LOG << "Tests with GPU use (if available) succeeded.";
-  }
 #if HAVE_CUDA == 1
+  }
   CuDevice::Instantiate().PrintProfile();
 #endif
   return 0;

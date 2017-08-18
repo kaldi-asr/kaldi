@@ -3,7 +3,7 @@
 #Simple script to create compound set info that will allow for more automatized
 #work with the shadow set.
 #
-#The notion of shadow data set came from the need to be able to verify 
+#The notion of shadow data set came from the need to be able to verify
 #the output of the recognizer during decoding the evaluation data.
 #The idea is simple -- instead of decoding just the eval data, decode both
 #eval data plus the dev data (or at least some portion of it) interleved
@@ -49,22 +49,22 @@ echo "Creating compound $tgtdir/compounds/$devset"
 (
   cd $tgtdir/compounds/$devset
   echo "DEVSET file list: $devset_flist"
-  ln -s `readlink -f $devset_flist` files.list
+  ln -s `utils/make_absolute.sh $devset_flist` files.list
   echo "DEVSET ECF file : $devset_ecf"
-  ln -s `readlink -f $devset_ecf` ecf.xml
+  ln -s `utils/make_absolute.sh $devset_ecf` ecf.xml
   echo "DEVSET RTTM file: $devset_rttm"
-  ln -s `readlink -f $devset_rttm` rttm
+  ln -s `utils/make_absolute.sh $devset_rttm` rttm
   echo "DEVSET STM file : $devset_stm"
-  ln -s `readlink -f $devset_stm` stm
+  ln -s `utils/make_absolute.sh $devset_stm` stm
 )
 
 echo "Creating compound $tgtdir/compounds/$evlset"
 (
   cd $tgtdir/compounds/$evlset
   echo "EVLSET file list: $evlset_flist"
-  ln -s `readlink -f $evlset_flist` files.list
+  ln -s `utils/make_absolute.sh $evlset_flist` files.list
   echo "EVLSET ECF file : $evlset_ecf"
-  ln -s `readlink -f $evlset_ecf` ecf.xml
+  ln -s `utils/make_absolute.sh $evlset_ecf` ecf.xml
 )
 
 echo "Compound creation OK."

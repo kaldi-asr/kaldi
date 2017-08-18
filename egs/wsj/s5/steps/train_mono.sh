@@ -50,6 +50,7 @@ echo $nj > $dir/num_jobs
 sdata=$data/split$nj;
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
+cp $lang/phones.txt $dir || exit 1;
 
 $norm_vars && cmvn_opts="--norm-vars=true $cmvn_opts"
 echo $cmvn_opts  > $dir/cmvn_opts # keep track of options to CMVN.
@@ -80,7 +81,7 @@ incgauss=$[($totgauss-$numgauss)/$max_iter_inc] # per-iter increment for #Gauss
 if [ $stage -le -2 ]; then
   echo "$0: Compiling training graphs"
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
-    compile-train-graphs $dir/tree $dir/0.mdl  $lang/L.fst \
+    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/0.mdl  $lang/L.fst \
     "ark:sym2int.pl --map-oov $oov_sym -f 2- $lang/words.txt < $sdata/JOB/text|" \
     "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 fi

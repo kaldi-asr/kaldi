@@ -390,6 +390,28 @@ namespace nnet1 {
     delete c;
   }
 
+  void UnitTestDropoutComponent() {
+    Component* c = ReadComponentFromString("<Dropout> 100 100 <DropoutRetention> 0.7");
+    // buffers,
+    CuMatrix<BaseFloat> in(777, 100),
+                        out,
+                        out_diff,
+                        in_diff;
+    // init,
+    in.Set(2.0);
+
+    // propagate,
+    c->Propagate(in, &out);
+    AssertEqual(in.Sum(), out.Sum(), 0.01);
+
+    // backprop,
+    out_diff = in;
+    c->Backpropagate(in, out, out_diff, &in_diff);
+    AssertEqual(in_diff, out);
+
+    delete c;
+  }
+
 }  // namespace nnet1
 }  // namespace kaldi
 
@@ -415,6 +437,7 @@ int main() {
     UnitTestConvolutional2DComponent();
     UnitTestMaxPooling2DComponent();
     UnitTestAveragePooling2DComponent();
+    UnitTestDropoutComponent();
     // end of unit-tests,
     if (loop == 0)
         KALDI_LOG << "Tests without GPU use succeeded.";

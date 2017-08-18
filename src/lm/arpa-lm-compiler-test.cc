@@ -33,7 +33,7 @@ namespace kaldi {
 enum {
   kEps = 0,
   kDisambig,
-  kBos,kEos,
+  kBos, kEos,
 };
 
 // Number of random sentences for coverage test.
@@ -130,6 +130,8 @@ bool CoverageTest(bool seps, const string &infile) {
     if (seps)
       AddSelfLoops(&sentence);
 
+    fst::ArcSort(lm_compiler->MutableFst(), fst::StdOLabelCompare());
+
     // The past must successfullycompose with the LM FST.
     fst::StdVectorFst composition;
     Compose(sentence, lm_compiler->Fst(), &composition);
@@ -225,8 +227,7 @@ int main(int argc, char *argv[]) {
   if (ok) {
     KALDI_LOG << "All tests passed";
     return 0;
-  }
-  else {
+  } else {
     KALDI_WARN << "Test FAILED";
     return 1;
   }

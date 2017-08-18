@@ -123,7 +123,7 @@ class Nnet {
   void SetParams(const VectorBase<BaseFloat>& params);
 
   /// Set the dropout rate
-  void SetDropoutRetention(BaseFloat r);
+  void SetDropoutRate(BaseFloat r);
 
   /// Reset streams in multi-stream training,
   void ResetStreams(const std::vector<int32> &stream_reset_flag);

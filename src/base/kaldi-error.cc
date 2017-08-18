@@ -21,7 +21,7 @@
 #ifdef HAVE_EXECINFO_H
 #include <execinfo.h>  // To get stack trace in error messages.
 // If this #include fails there is an error in the Makefile, it does not
-// support your platform well. Make sure HAVE_EXECINFO_H is undefined, 
+// support your platform well. Make sure HAVE_EXECINFO_H is undefined,
 // and the code will compile.
 #ifdef HAVE_CXXABI_H
 #include <cxxabi.h>  // For name demangling.
@@ -31,6 +31,7 @@
 
 #include "base/kaldi-common.h"
 #include "base/kaldi-error.h"
+#include "base/version.h"
 
 namespace kaldi {
 
@@ -40,13 +41,12 @@ int32 g_kaldi_verbose_level = 0;
 const char *g_program_name = NULL;
 static LogHandler g_log_handler = NULL;
 
-// If the program name was set (g_program_name != ""), the function
-// GetProgramName returns the program name (without the path) followed by a
-// colon, e.g. "gmm-align:".  Otherwise it returns the empty string "".
+// If the program name was set (g_program_name != ""), GetProgramName
+// returns the program name (without the path), e.g. "gmm-align".
+// Otherwise it returns the empty string "".
 const char *GetProgramName() {
   return g_program_name == NULL ? "" : g_program_name;
 }
-
 
 /***** HELPER FUNCTIONS *****/
 
@@ -73,7 +73,7 @@ static std::string Demangle(std::string trace_name) {
   //   ./kaldi-error-test(_ZN5kaldi13UnitTestErrorEv+0xb) [0x804965d]
   // We want to extract the name e.g. '_ZN5kaldi13UnitTestErrorEv",
   // demangle it and return it.
-  
+
   // try to locate '(' and '+', take the string in between,
   size_t begin(trace_name.find("(")),
          end(trace_name.rfind("+"));
@@ -135,7 +135,7 @@ static std::string KaldiGetStackTrace() {
 }
 
 
-/***** KALDI LOGIGNG *****/
+/***** KALDI LOGGING *****/
 
 MessageLogger::MessageLogger(LogMessageEnvelope::Severity severity,
                              const char *func, const char *file, int32 line) {
@@ -184,20 +184,21 @@ void MessageLogger::HandleMessage(const LogMessageEnvelope &envelope,
           header << "ASSERTION_FAILED (";
           break;
         default:
-          abort();  // coding errror (unknown 'severity'),
+          abort();  // coding error (unknown 'severity'),
       }
     }
     // fill the other info from the envelope,
-    header << GetProgramName() << envelope.func << "():"
-           << envelope.file << ':' << envelope.line << ")";
+    header << GetProgramName() << "[" KALDI_VERSION "]" << ':'
+           << envelope.func << "():" << envelope.file << ':' << envelope.line
+           << ")";
 
     // Printing the message,
     if (envelope.severity >= LogMessageEnvelope::kWarning) {
-      // VLOG, LOG, WARNING: 
+      // VLOG, LOG, WARNING:
       fprintf(stderr, "%s %s\n", header.str().c_str(), message);
     } else {
       // ERROR, ASSERT_FAILED (print with stack-trace):
-      fprintf(stderr, "%s %s\n\n%s\n", header.str().c_str(), message, 
+      fprintf(stderr, "%s %s\n\n%s\n", header.str().c_str(), message,
               KaldiGetStackTrace().c_str());
     }
   }
@@ -215,7 +216,7 @@ void MessageLogger::HandleMessage(const LogMessageEnvelope &envelope,
         // If we got here, this thread has already thrown exception,
         // and this exception has not yet arrived to its 'catch' clause...
         // Throwing a new exception would be unsafe!
-        // (can happen during 'stack unwinding', if we have 'KALDI_ERR << msg' 
+        // (can happen during 'stack unwinding', if we have 'KALDI_ERR << msg'
         // in a destructor of some local object).
         abort();
       }

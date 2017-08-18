@@ -63,6 +63,9 @@ cp $srcdir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
 
 cp $srcdir/{tree,final.mdl} $dir || exit 1;
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 #checking type of nnet
 if nnet-info 1>/dev/null 2>/dev/null $srcdir/final.mdl; then 
   nnet_type="nnet";

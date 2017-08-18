@@ -50,6 +50,8 @@ dir=$5
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+
 sdata1=$data1/split$nj
 sdata2=$data2/split$nj
 [[ -d $sdata1 && $data1/feats.scp -ot $sdata1 ]] || split_data.sh $data1 $nj || exit 1;

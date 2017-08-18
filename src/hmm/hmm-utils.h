@@ -39,40 +39,12 @@ struct HTransducerConfig {
   /// not include self-loops.
   BaseFloat transition_scale;
 
-  /// if true, we are constructing time-reversed FST: phone-seqs in ilabel_info
-  /// are backwards, and we want to output a backwards version of the HMM
-  /// corresponding to each phone.  If reverse == true,
-  bool reverse;
-
-  /// This variable is only looked at if reverse == true.  If reverse == true
-  /// and push_weights == true, then we push the weights in the reversed FSTs we create for each
-  /// phone HMM.  This is only safe if the HMMs are probabilistic (i.e. not discriminatively
-  bool push_weights;
-
-  /// delta used if we do push_weights [only relevant if reverse == true
-  /// and push_weights == true].
-  BaseFloat push_delta;
-
   HTransducerConfig():
-      transition_scale(1.0),
-      reverse(false),
-      push_weights(true),
-      push_delta(0.001)
-  { }
+      transition_scale(1.0) { }
 
-  // Note-- this Register registers the easy-to-register options
-  // but not the "sym_type" which is an enum and should be handled
-  // separately in main().
   void Register (OptionsItf *opts) {
     opts->Register("transition-scale", &transition_scale,
                    "Scale of transition probs (relative to LM)");
-    opts->Register("reverse", &reverse,
-                   "Set true to build time-reversed FST.");
-    opts->Register("push-weights", &push_weights,
-                   "Push weights (only applicable if reverse == true)");
-    opts->Register("push-delta", &push_delta,
-                   "Delta used in pushing weights (only applicable if "
-                   "reverse && push-weights");
   }
 };
 
@@ -273,6 +245,15 @@ bool SplitToPhones(const TransitionModel &trans_model,
    @param subsample_factor [in] The frame subsampling factor... normally 1, but
                                 might be > 1 if we're converting to a reduced-frame-rate
                                 system.
+   @param repeat_frames [in]    Only relevant when subsample_factor != 1
+                                If true, repeat frames of alignment by
+                                'subsample_factor' after alignment
+                                conversion, to keep the alignment the same
+                                length as the input alignment.
+                                [note: we actually do this by interpolating
+                                'subsample_factor' separately generated
+                                alignments, to keep the phone boundaries
+                                the same as the input where possible.]
    @param reorder [in]          True if you want the pdf-ids on the new alignment to
                                 be 'reordered'. (vs. the way they appear in
                                 the HmmTopology object)
@@ -285,6 +266,7 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
                       const ContextDependencyInterface &new_ctx_dep,
                       const std::vector<int32> &old_alignment,
                       int32 subsample_factor,  // 1 in the normal case -> no subsampling.
+                      bool repeat_frames,
                       bool reorder,
                       const std::vector<int32> *phone_map,  // may be NULL
                       std::vector<int32> *new_alignment);

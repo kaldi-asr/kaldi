@@ -77,11 +77,13 @@ if [ ! -z "$iedir" ]; then
 fi
 
 
-dir=$(readlink -f $dir) # Convert $dir to an absolute pathname, so that the
+dir=$(utils/make_absolute.sh $dir) # Convert $dir to an absolute pathname, so that the
                         # configuration files we write will contain absolute
                         # pathnames.
 mkdir -p $dir/conf
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 cp $srcdir/${iter}.mdl $dir/final.mdl || exit 1;
 cp $srcdir/tree $dir/ || exit 1;

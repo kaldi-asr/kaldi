@@ -137,10 +137,23 @@ void MatrixBuffer::Next() {
   KALDI_ASSERT(!buffer_.empty());
 
   // randomly select 'length' present in the 'map',
+  // (weighted by total #frames in the bin),
   if (preferred_length_ == 0) {
-    BufferType::iterator it = buffer_.begin();
-    std::advance(it, rand() % buffer_.size());
-    preferred_length_ = it->first;  // NumRows(), key of the 'map',
+    int32 longest = (--buffer_.end())->first;
+    // pre-fill the vector of 'keys',
+    std::vector<int32> keys;
+    BufferType::iterator it;
+    for (it = buffer_.begin(); it != buffer_.end(); ++it) {
+      int32 key = it->first; // i.e. NumRows() of matrices in the bin,
+      int32 frames_in_bin = it->second.size() * key;
+      for (int32 i = 0; i < frames_in_bin; i += longest) {
+        keys.push_back(key); // keys are repeated,
+      }
+    }
+    // choose the key,
+    std::vector<int32>::iterator it2 = keys.begin();
+    std::advance(it2, rand() % keys.size());
+    preferred_length_ = (*it2);  // NumRows(), key of the 'map',
   }
 
   // select list by 'preferred_length_',

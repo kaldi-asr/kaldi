@@ -86,9 +86,10 @@ int main(int argc, char *argv[]) {
         PropagateFinal(phi_label, fst2);
 
       fst::CacheOptions cache_opts(true, num_states_cache);
+      fst::MapFstOptions mapfst_opts(cache_opts);
       fst::StdToLatticeMapper<BaseFloat> mapper;
       fst::MapFst<StdArc, LatticeArc, fst::StdToLatticeMapper<BaseFloat> >
-          mapped_fst2(*fst2, mapper, cache_opts);
+          mapped_fst2(*fst2, mapper, mapfst_opts);
       for (; !lattice_reader1.Done(); lattice_reader1.Next()) {
         std::string key = lattice_reader1.Key();
         KALDI_VLOG(1) << "Processing lattice for key " << key;

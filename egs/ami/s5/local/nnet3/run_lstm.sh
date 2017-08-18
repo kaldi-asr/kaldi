@@ -178,7 +178,7 @@ if [ $stage -le 11 ]; then
       else
         ivector_opts=
       fi
-      steps/nnet3/lstm/decode.sh --nj 250 --cmd "$decode_cmd" \
+      steps/nnet3/decode.sh --nj 250 --cmd "$decode_cmd" \
           $ivector_opts $model_opts \
           --extra-left-context $extra_left_context  \
 	        --extra-right-context $extra_right_context  \

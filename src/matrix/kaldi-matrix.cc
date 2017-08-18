@@ -179,9 +179,9 @@ void MatrixBase<Real>::AddMatMat(const Real alpha,
 }
 
 template<typename Real>
-void MatrixBase<Real>::AddMatMatDivMat(const MatrixBase<Real>& A,
-                                     const MatrixBase<Real>& B,
-                                   const MatrixBase<Real>& C) {
+void MatrixBase<Real>::SetMatMatDivMat(const MatrixBase<Real>& A,
+                                       const MatrixBase<Real>& B,
+                                       const MatrixBase<Real>& C) {
   KALDI_ASSERT(A.NumRows() == B.NumRows() && A.NumCols() == B.NumCols());
   KALDI_ASSERT(A.NumRows() == C.NumRows() && A.NumCols() == C.NumCols());
   for (int32 r = 0; r < A.NumRows(); r++) { // each frame...
@@ -1041,6 +1041,19 @@ template<typename Real> void MatrixBase<Real>::Max(const MatrixBase<Real> &A) {
   }
 }
 
+template<typename Real> void MatrixBase<Real>::Min(const MatrixBase<Real> &A) {
+  KALDI_ASSERT(A.NumRows() == NumRows() && A.NumCols() == NumCols());
+  for (MatrixIndexT row = 0; row < num_rows_; row++) {
+    Real *row_data = RowData(row);
+    const Real *other_row_data = A.RowData(row);
+    MatrixIndexT num_cols = num_cols_;
+    for (MatrixIndexT col = 0; col < num_cols; col++) {
+      row_data[col] = std::min(row_data[col],
+                               other_row_data[col]);
+    }
+  }
+}
+
 
 template<typename Real> void MatrixBase<Real>::Scale(Real alpha) {
   if (alpha == 1.0) return;
@@ -1383,6 +1396,7 @@ void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
         // Now process the data.
         if (!cur_row->empty()) data.push_back(cur_row);
         else delete(cur_row);
+        cur_row = NULL;
         if (data.empty()) { this->Resize(0, 0); return; }
         else {
           int32 num_rows = data.size(), num_cols = data[0]->size();
@@ -1391,12 +1405,13 @@ void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
             if (static_cast<int32>(data[i]->size()) != num_cols) {
               specific_error << "Matrix has inconsistent #cols: " << num_cols
                              << " vs." << data[i]->size() << " (processing row"
-                             << i;
+                             << i << ")";
               goto cleanup;
             }
             for (int32 j = 0; j < num_cols; j++)
               (*this)(i, j) = (*(data[i]))[j];
             delete data[i];
+            data[i] = NULL;
           }
         }
         return;
@@ -1437,9 +1452,11 @@ void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
     // Note, we never leave the while () loop before this
     // line (we return from it.)
  cleanup: // We only reach here in case of error in the while loop above.
-    delete cur_row;
+    if(cur_row != NULL)
+      delete cur_row;
     for (size_t i = 0; i < data.size(); i++)
-      delete data[i];
+      if(data[i] != NULL)
+        delete data[i];
     // and then go on to "bad" below, where we print error.
   }
 bad:
@@ -2639,7 +2656,7 @@ void MatrixBase<Real>::AddCols(const MatrixBase<Real> &src,
     const MatrixIndexT *index_ptr = &(indices[0]);
     for (MatrixIndexT c = 0; c < num_cols; c++, index_ptr++) {
       if (*index_ptr >= 0)
-	this_data[c] += src_data[*index_ptr];
+        this_data[c] += src_data[*index_ptr];
     }
   }
 }
@@ -2727,7 +2744,6 @@ void MatrixBase<Real>::AddToRows(Real alpha, Real *const *dst) const {
       cblas_Xaxpy(num_cols, alpha, this_data, 1, dst_data, 1);
   }
 }
-
 
 template<typename Real>
 void MatrixBase<Real>::Sigmoid(const MatrixBase<Real> &src) {
@@ -2856,4 +2872,3 @@ template class SubMatrix<float>;
 template class SubMatrix<double>;
 
 } // namespace kaldi
-

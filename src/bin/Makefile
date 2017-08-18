@@ -21,10 +21,10 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         align-mapped align-compiled-mapped latgen-faster-mapped latgen-faster-mapped-parallel \
         hmm-info pdf-to-counts analyze-counts extract-ctx post-to-phone-post \
         post-to-pdf-post duplicate-matrix logprob-to-post prob-to-post copy-post \
-        matrix-logprob matrix-sum latgen-tracking-mapped \
+        matrix-logprob matrix-sum \
         build-pfile-from-ali get-post-on-ali tree-info am-info \
         vector-sum matrix-sum-rows est-pca sum-lda-accs sum-mllt-accs \
-        transform-vec align-text matrix-dim
+        transform-vec align-text matrix-dim post-to-smat
 
 
 OBJFILES =
@@ -32,8 +32,8 @@ OBJFILES =
 ADDLIBS = ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../lm/kaldi-lm.a \
           ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
-          ../tree/kaldi-tree.a ../util/kaldi-util.a ../thread/kaldi-thread.a \
-          ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
+          ../tree/kaldi-tree.a ../util/kaldi-util.a \
+          ../matrix/kaldi-matrix.a ../base/kaldi-base.a
 
 
 TESTFILES =

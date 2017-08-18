@@ -63,6 +63,9 @@ cp $srcdir/splice_opts $dir 2>/dev/null # frame-splicing options.
 cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 cp $srcdir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
 cp $srcdir/{tree,final.mdl} $dir || exit 1;

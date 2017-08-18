@@ -5,12 +5,14 @@
 
 stage=1
 snrs="20:10:15:5:0"
+foreground_snrs="20:10:15:5:0"
+background_snrs="20:10:15:5:0"
 num_data_reps=3
-ali_dir=exp/
 db_string="'air' 'rwcp' 'rvb2014'" # RIR dbs to be used in the experiment
                                       # only dbs used for ASpIRE submission system have been used here
 RIR_home=db/RIR_databases/ # parent directory of the RIR databases files
 download_rirs=true # download the RIR databases from the urls or assume they are present in the RIR_home directory
+base_rirs="simulated"
 
 set -e
 . ./cmd.sh
@@ -22,12 +24,21 @@ local/multi_condition/check_version.sh || exit 1;
 
 mkdir -p exp/nnet3
 if [ $stage -le 1 ]; then
-  # prepare the impulse responses
-  local/multi_condition/prepare_impulses_noises.sh --log-dir exp/make_reverb/log \
-    --db-string "$db_string" \
-    --download-rirs $download_rirs \
-    --RIR-home $RIR_home \
-    data/impulses_noises || exit 1;
+  # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
+  wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
+  unzip rirs_noises.zip
+
+  rvb_opts=()
+  if [ "$base_rirs" == "simulated" ]; then
+    # This is the config for the system using simulated RIRs and point-source noises
+    rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/smallroom/rir_list")
+    rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/mediumroom/rir_list")
+    rvb_opts+=(--noise-set-parameters RIRS_NOISES/pointsource_noises/noise_list)
+  else
+    # This is the config for the JHU ASpIRE submission system
+    rvb_opts+=(--rir-set-parameters "1.0, RIRS_NOISES/real_rirs_isotropic_noises/rir_list")
+    rvb_opts+=(--noise-set-parameters RIRS_NOISES/real_rirs_isotropic_noises/noise_list)
+  fi
 
   # corrupt the fisher data to generate multi-condition data
   # for data_dir in train dev test; do
@@ -37,16 +48,18 @@ if [ $stage -le 1 ]; then
     else
       num_reps=1
     fi
-    reverb_data_dirs=
-    for i in `seq 1 $num_reps`; do
-      cur_dest_dir=" data/temp_${data_dir}_${i}"
-      local/multi_condition/reverberate_data_dir.sh --random-seed $i \
-        --snrs "$snrs" --log-dir exp/make_corrupted_wav \
-        data/${data_dir}  data/impulses_noises $cur_dest_dir
-      reverb_data_dirs+=" $cur_dest_dir"
-    done
-    utils/combine_data.sh --extra-files utt2uniq data/${data_dir}_rvb $reverb_data_dirs
-    rm -rf $reverb_data_dirs
+    python steps/data/reverberate_data_dir.py \
+      "${rvb_opts[@]}" \
+      --prefix "rev" \
+      --foreground-snrs $foreground_snrs \
+      --background-snrs $background_snrs \
+      --speech-rvb-probability 1 \
+      --pointsource-noise-addition-probability 1 \
+      --isotropic-noise-addition-probability 1 \
+      --num-replications $num_reps \
+      --max-noises-per-minute 1 \
+      --source-sampling-rate 8000 \
+      data/${data_dir} data/${data_dir}_rvb
   done
   # create the dev, test and eval sets from the aspire recipe
   local/multi_condition/aspire_data_prep.sh

@@ -32,17 +32,29 @@ dir=exp/nnet3/tdnn
 dir=$dir${affix:+_$affix}
 
 if [ $stage -le 7 ]; then
-  echo "$0: creating neural net configs";
+  echo "$0: creating neural net configs using the xconfig parser";
+  num_targets=$(tree-info $ali_dir/tree | grep num-pdfs | awk '{print $2}')
 
-  # create the config files for nnet initialization
-  python steps/nnet3/tdnn/make_configs.py  \
-    --feat-dir data/train_rvb_hires \
-    --ivector-dir exp/nnet3/ivectors_train \
-    --ali-dir $ali_dir \
-    --relu-dim 1248 \
-    --splice-indexes "-2,-1,0,1,2 -1,2 -3,3 -3,3 -7,2 0"  \
-    --use-presoftmax-prior-scale true \
-   $dir/configs || exit 1;
+  mkdir -p $dir/configs
+  cat <<EOF > $dir/configs/network.xconfig
+  input dim=100 name=ivector
+  input dim=40 name=input
+
+  # please note that it is important to have input layer with the name=input
+  # as the layer immediately preceding the fixed-affine-layer to enable
+  # the use of short notation for the descriptor
+  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+
+  # the first splicing is moved before the lda layer, so no splicing here
+  relu-renorm-layer name=tdnn1 dim=1248
+  relu-renorm-layer name=tdnn2 dim=1248 input=Append(-1,2)
+  relu-renorm-layer name=tdnn3 dim=1248 input=Append(-3,3)
+  relu-renorm-layer name=tdnn4 dim=1248 input=Append(-3,3)
+  relu-renorm-layer name=tdnn5 dim=1248 input=Append(-7,2)
+  relu-renorm-layer name=tdnn6 dim=1248
+  output-layer name=output dim=$num_targets max-change=1.5 presoftmax-scale-file=$dir/configs/presoftmax_prior_scale.vec
+EOF
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
 if [ $stage -le 8 ]; then
@@ -72,62 +84,39 @@ if [ $stage -le 8 ]; then
 
 fi
 
-exit 0;
 
 #ASpIRE decodes
+if [ $stage -le 9 ]; then
+  local/nnet3/prep_test_aspire.sh --stage 1 --decode-num-jobs 30  --affix "v7" \
+   --window 10 --overlap 5 \
+   --sub-speaker-frames 6000 --max-count 75 --ivector-scale 0.75  \
+   --pass2-decode-opts "--min-active 1000" \
+   dev_aspire data/lang exp/tri5a/graph_pp $dir
+fi
 
-# final result
-local/nnet3/prep_test_aspire.sh --stage 4 --decode-num-jobs 200  \
- --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
- --ivector-scale 0.75  --tune-hyper true dev_aspire data/lang exp/nnet3/tdnn
-# %WER 31.0 | 2120 27217 | 74.8 16.1 9.1 5.9 31.0 77.9 | -0.707 | exp/nnet3/tdnn/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iterfinal_pp_fg/score_14/penalty_0.0/ctm.filt.filt.sys
 
 exit 0;
 
+# final result
+# %WER 31.0 | 2120 27217 | 74.8 16.1 9.1 5.9 31.0 77.9 | -0.707 | exp/nnet3/tdnn/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iterfinal_pp_fg/score_14/penalty_0.0/ctm.filt.filt.sys
+
 # intermediate results
-local/nnet3/prep_test_aspire.sh --stage 4 --decode-num-jobs 200 --iter 100  \
-   --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75  --tune-hyper true dev_aspire data/lang exp/nnet3/tdnn
 #%WER 34.2 | 2120 27212 | 71.6 18.3 10.2 5.8 34.2 80.2 | -0.613 | exp/nnet3/tdnn/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iter100_pp_fg/score_14/penalty_0.0/ctm.filt.filt.sys
 
-  local/nnet3/prep_test_aspire.sh --stage 4 --decode-num-jobs 200 --iter 200  \
-   --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75  --tune-hyper true dev_aspire data/lang exp/nnet3/tdnn
 #%WER 32.8 | 2120 27212 | 73.2 17.3 9.4 6.0 32.8 79.3 | -0.657 | exp/nnet3/tdnn/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iter200_pp_fg/score_13/penalty_0.0/ctm.filt.filt.sys
 
-  local/nnet3/prep_test_aspire.sh --stage 4 --decode-num-jobs 200 --iter 300  \
-   --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75  --tune-hyper true dev_aspire data/lang exp/nnet3/tdnn
 #%WER 32.3 | 2120 27215 | 73.7 17.1 9.2 6.0 32.3 79.7 | -0.676 | exp/nnet3/tdnn/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iter300_pp_fg/score_13/penalty_0.0/ctm.filt.filt.sys
 
-  local/nnet3/prep_test_aspire.sh --stage 4 --decode-num-jobs 200 --iter 400  \
-   --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75  --tune-hyper true dev_aspire data/lang exp/nnet3/tdnn
 #%WER 31.7 | 2120 27215 | 74.3 16.8 8.9 6.0 31.7 78.9 | -0.690 | exp/nnet3/tdnn/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iter400_pp_fg/score_13/penalty_0.0/ctm.filt.filt.sys
 
-  local/nnet3/prep_test_aspire.sh --stage 4 --decode-num-jobs 200 --iter 500  \
-   --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75  --tune-hyper true dev_aspire data/lang exp/nnet3/tdnn
 #%WER 31.6 | 2120 27216 | 74.5 16.6 8.8 6.1 31.6 79.7 | -0.723 | exp/nnet3/tdnn/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iter500_pp_fg/score_13/penalty_0.0/ctm.filt.filt.sys
 
-  local/nnet3/prep_test_aspire.sh --stage 4 --decode-num-jobs 200 --iter 600  \
-   --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75  --tune-hyper true dev_aspire data/lang exp/nnet3/tdnn
 #%WER 31.3 | 2120 27216 | 74.9 16.6 8.5 6.2 31.3 78.4 | -0.737 | exp/nnet3/tdnn/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iter600_pp_fg/score_12/penalty_0.0/ctm.filt.filt.sys
 
-  local/nnet3/prep_test_aspire.sh --stage 4 --decode-num-jobs 200 --iter 700  \
-   --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75  --tune-hyper true dev_aspire data/lang exp/nnet3/tdnn
 #%WER 31.2 | 2120 27216 | 74.7 16.2 9.1 5.9 31.2 79.0 | -0.708 | exp/nnet3/tdnn/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iter700_pp_fg/score_14/penalty_0.0/ctm.filt.filt.sys
 
-  local/nnet3/prep_test_aspire.sh --stage 4 --decode-num-jobs 200 --iter 800  \
-   --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75  --tune-hyper true dev_aspire data/lang exp/nnet3/tdnn
 #%WER 31.1 | 2120 27219 | 74.7 16.4 8.9 5.9 31.1 78.4 | -0.732 | exp/nnet3/tdnn/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iter800_pp_fg/score_12/penalty_0.25/ctm.filt.filt.sys
 
-  local/nnet3/prep_test_aspire.sh --stage 4 --decode-num-jobs 200 --iter 1000  \
-   --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75  --tune-hyper true dev_aspire data/lang exp/nnet3/tdnn
 #%WER 31.1 | 2120 27220 | 74.9 16.3 8.8 6.0 31.1 78.1 | -0.719 | exp/nnet3/tdnn/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iter1000_pp_fg/score_13/penalty_0.0/ctm.filt.filt.sys
 
 exit 0;

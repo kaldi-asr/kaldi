@@ -29,7 +29,7 @@ using std::string;
 #include "fstext/fstext-lib.h"
 #include "decoder/decoder-wrappers.h"
 #include "sgmm2/decodable-am-sgmm2.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 #include "base/timer.h"
 
 namespace kaldi {
@@ -57,7 +57,7 @@ void ProcessUtterance(const AmSgmm2 &am_sgmm,
                       int32 *num_done,
                       int32 *num_err,
                       TaskSequencer<DecodeUtteranceLatticeFasterClass> *sequencer) {
-  using fst::VectorFst;
+  using fst::Fst;
   using std::vector;
 
   Sgmm2PerSpkDerivedVars *spk_vars = new Sgmm2PerSpkDerivedVars; // decodable
@@ -109,6 +109,7 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
     using fst::SymbolTable;
+    using fst::Fst;
     using fst::VectorFst;
     using fst::StdArc;
 
@@ -164,7 +165,7 @@ int main(int argc, char *argv[]) {
     kaldi::int64 frame_count = 0;    
     int num_done = 0, num_err = 0;
     Timer timer;
-    VectorFst<StdArc> *decode_fst = NULL;
+    Fst<StdArc> *decode_fst = NULL;
     fst::SymbolTable *word_syms = NULL;
     
     TaskSequencer<DecodeUtteranceLatticeFasterClass> sequencer(
@@ -206,7 +207,7 @@ int main(int argc, char *argv[]) {
       // It has to do with what happens on UNIX systems if you call fork() on a
       // large process: the page-table entries are duplicated, which requires a
       // lot of virtual memory.
-      decode_fst = fst::ReadFstKaldi(fst_in_str);
+      decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
       timer.Reset(); // exclude graph loading time.
       
       {

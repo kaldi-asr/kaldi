@@ -114,6 +114,11 @@ int main(int argc, char *argv[]) {
     nnet.Read(model_filename);
     nnet.SetTrainOptions(trn_opts);
 
+    if (crossvalidate) {
+      nnet_transf.SetDropoutRate(0.0);
+      nnet.SetDropoutRate(0.0);
+    }
+
     kaldi::int64 total_frames = 0;
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);

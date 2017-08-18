@@ -71,9 +71,11 @@ for f in $rnndir/rnnlm $data/feats.scp $indir/lat.1.gz; do
 done
 
 nj=`cat $indir/num_jobs` || exit 1;
+mkdir -p $dir;
+cp $indir/num_jobs $dir/num_jobs
+
 adir=$dir/archives
 
-mkdir -p $dir;
 phi=`grep -w '#0' $oldlang/words.txt | awk '{print $2}'`
 
 rm $dir/.error 2>/dev/null

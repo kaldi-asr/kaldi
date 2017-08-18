@@ -215,76 +215,6 @@ bool GetLinearSymbolSequence(const Fst<Arc> &fst,
   }
 }
 
-// see fstext-utils.h for comment.
-template<class Arc, class I>
-bool GetLinearSymbolSequences(const Fst<Arc> &fst,
-                              vector<vector<I> > *isymbols_out,
-                              vector<vector<I> > *osymbols_out,
-                              vector<typename Arc::Weight> *weights_out) {
-  typedef typename Arc::StateId StateId;
-  typedef typename Arc::Weight Weight;
-
-  if (isymbols_out) isymbols_out->clear();
-  if (osymbols_out) osymbols_out->clear();
-  if (weights_out) weights_out->clear();
-
-  StateId start_state = fst.Start();
-  if (start_state == kNoStateId) {  // no paths.
-    return true; // empty FST counts as having this structure.
-  }
-
-  if (fst.Final(start_state) != Weight::Zero())
-    return false; // We don't allow final-prob on the start state.
-
-  size_t N = fst.NumArcs(start_state), n = 0;
-  if (isymbols_out) isymbols_out->resize(N);
-  if (osymbols_out) osymbols_out->resize(N);
-  if (weights_out) weights_out->resize(N);
-
-  bool error = false;
-
-  for (ArcIterator<Fst<Arc> > aiter(fst, start_state);
-       !aiter.Done();
-       aiter.Next(), n++) {
-    StateId cur_state = start_state;
-    if (isymbols_out) (*isymbols_out)[n].clear();
-    if (osymbols_out) (*osymbols_out)[n].clear();
-    if (weights_out) (*weights_out)[n] = Weight::One();
-
-    while (1) {
-      if (fst.Final(cur_state) != Weight::Zero()) {
-        (*weights_out)[n] = Times((*weights_out)[n],
-                                  fst.Final(cur_state));
-        if (fst.NumArcs(cur_state) != 0)
-          error = true;
-        break;
-      } else {
-        if (fst.NumArcs(cur_state) != 1) {
-          error = true;
-          break;
-        }
-        ArcIterator<Fst<Arc> > aiter(fst, cur_state);
-        const Arc &arc = aiter.Value();
-        if (isymbols_out && arc.ilabel != 0)
-          (*isymbols_out)[n].push_back(arc.ilabel);
-        if (osymbols_out && arc.ilabel != 0)
-          (*osymbols_out)[n].push_back(arc.olabel);
-        if (weights_out)
-          (*weights_out)[n] = Times((*weights_out)[n], arc.weight);
-        cur_state = arc.nextstate;
-      }
-    }
-    if (error) break;
-  }
-  if (error) {
-    if (isymbols_out) isymbols_out->clear();
-    if (osymbols_out) osymbols_out->clear();
-    if (weights_out) weights_out->clear();
-    return false;
-  } else {
-    return true;
-  }
-}
 
 // see fstext-utils.sh for comment.
 template<class Arc>
@@ -1273,16 +1203,29 @@ bool IsStochasticFst(const Fst<LogArc> &fst,
   return ans;
 }
 
-/// Tests whether a tropical FST is stochastic in the log
-/// semiring (casts it and does the check.)
-bool IsStochasticFstInLog(const VectorFst<StdArc> &fst,
+// Tests whether a tropical FST is stochastic in the log
+// semiring. (casts it and does the check.)
+// This function deals with the generic fst.
+// This version currently supports ConstFst<StdArc> or VectorFst<StdArc>.
+// Otherwise, it will be died with an error.
+bool IsStochasticFstInLog(const Fst<StdArc> &fst,
                           float delta,
                           StdArc::Weight *min_sum,
                           StdArc::Weight *max_sum) {
-  VectorFst<LogArc> logfst;
-  Cast(fst, &logfst);
+  bool ans = false;
   LogArc::Weight log_min, log_max;
-  bool ans = IsStochasticFst(logfst, delta, &log_min, &log_max);
+  if (fst.Type() == "const") {
+    ConstFst<LogArc> logfst;
+    Cast(dynamic_cast<const ConstFst<StdArc>&>(fst), &logfst);
+    ans = IsStochasticFst(logfst, delta, &log_min, &log_max);
+  } else if (fst.Type() == "vector") {
+    VectorFst<LogArc> logfst;
+    Cast(dynamic_cast<const VectorFst<StdArc>&>(fst), &logfst);
+    ans = IsStochasticFst(logfst, delta, &log_min, &log_max);
+  } else {
+    KALDI_ERR << "This version currently supports ConstFst<StdArc> "
+              << "or VectorFst<StdArc>";
+  }
   if (min_sum) *min_sum = StdArc::Weight(log_min.Value());
   if (max_sum) *max_sum = StdArc::Weight(log_max.Value());
   return ans;

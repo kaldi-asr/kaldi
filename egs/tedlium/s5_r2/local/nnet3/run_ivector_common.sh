@@ -21,9 +21,9 @@ num_threads_ubm=32
 nnet3_affix=_cleaned     # affix for exp/nnet3 directory to put iVector stuff in, so it
                          # becomes exp/nnet3_cleaned or whatever.
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
-. ./utils/parse_options.sh
+. utils/parse_options.sh
 
 
 gmm_dir=exp/${gmm}

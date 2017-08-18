@@ -74,6 +74,10 @@ int main(int argc, char *argv[]) {
 
     int32 n_done = 0, n_warn = 0;
 
+    // depth stats (for diagnostics).
+    double sum_depth_in = 0.0,
+          sum_depth_out = 0.0, sum_t = 0.0;
+
     if (acoustic_scale == 0.0)
       KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
 
@@ -98,19 +102,39 @@ int main(int argc, char *argv[]) {
             "(partial output will be pruned tighter than the specified beam.)";
         n_warn++;
       }
+      fst::Connect(&det_clat);
+      if (det_clat.NumStates() == 0) {
+        KALDI_WARN << "For key " << key << ", determinized and trimmed lattice "
+            "was empty.";
+        n_warn++;
+      }
       if (minimize) {
         PushCompactLatticeStrings(&det_clat);
         PushCompactLatticeWeights(&det_clat);
         MinimizeCompactLattice(&det_clat);
       }
+
+      int32 t;
+      TopSortCompactLatticeIfNeeded(&det_clat);
+      double depth = CompactLatticeDepth(det_clat, &t);
+      sum_depth_in += lat.NumStates();
+      sum_depth_out += depth * t;
+      sum_t += t;
+
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &det_clat);
       compact_lat_writer.Write(key, det_clat);
       n_done++;
     }
 
+    if (sum_t != 0.0) {
+      KALDI_LOG << "Average input-lattice depth (measured at at state level) is "
+                << (sum_depth_in / sum_t) << ", output depth is "
+                << (sum_depth_out / sum_t) << ", over " << sum_t << " frames "
+                << " (average num-frames = " << (sum_t / n_done) << ").";
+    }
     KALDI_LOG << "Done " << n_done << " lattices, determinization finished "
-              << "earlier than specified by the beam on " << n_warn
-              << " of these.";
+              << "earlier than specified by the beam (or output was empty) on "
+              << n_warn << " of these.";
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

@@ -92,7 +92,7 @@ for line in sys.stdin.readlines():
   # Take the first 30k utterances (about 1/8th of the data) this will be used
   # for the diagubm training
   utils/subset_data_dir.sh --first data/${train_set}_hires 30000 data/${train_set}_30k_hires
-  local/remove_dup_utts.sh 200 data/${train_set}_30k_hires data/${train_set}_30k_nodup_hires  # 33hr
+  utils/data/remove_dup_utts.sh 200 data/${train_set}_30k_hires data/${train_set}_30k_nodup_hires  # 33hr
 fi
 
 # ivector extractor training

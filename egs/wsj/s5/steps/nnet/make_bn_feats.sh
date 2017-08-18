@@ -44,7 +44,7 @@ bnfeadir=$5
 
 # copy the dataset metadata from srcdata.
 mkdir -p $data $logdir $bnfeadir || exit 1;
-utils/copy_data_dir.sh $srcdata $data; rm $data/{feats,cmvn}.scp 2>/dev/null
+utils/copy_data_dir.sh $srcdata $data; rm -f $data/{feats,cmvn}.scp 2>/dev/null
 
 # make $bnfeadir an absolute pathname.
 [ '/' != ${bnfeadir:0:1} ] && bnfeadir=$PWD/$bnfeadir

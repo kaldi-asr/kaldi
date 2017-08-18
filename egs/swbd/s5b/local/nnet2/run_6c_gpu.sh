@@ -7,7 +7,7 @@
 # directory name.
 
 
-gpu_opts="-l gpu=1"                   # This is suitable for the CLSP network,
+gpu_opts="--gpu 1"                   # This is suitable for the CLSP network,
                                       # you'll likely have to change it.  we'll
                                       # use it later on, in the training (it's
                                       # not used in denlat creation)
@@ -18,8 +18,8 @@ set -e # exit on error.
 
 . ./cmd.sh
 . ./path.sh
-! cuda-compiled && cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+! cuda-compiled && cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
@@ -28,15 +28,15 @@ EOF
 
 # The denominator lattice creation currently doesn't use GPUs.
 
-# Note: we specify 1G each for the mem_free and ram_free which, is per
+# Note: we specify 1G for --mem, which is per
 # thread... it will likely be less than the default.  Increase the beam relative
 # to the defaults; this is just for this RM setup, where the default beams will
 # likely generate very thin lattices.  Note: the transform-dir is important to
 # specify, since this system is on top of fMLLR features.
 
 if [ $stage -le 0 ]; then
-  steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
-    --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "-pe smp 6" \
+  steps/nnet2/make_denlats.sh --cmd "$decode_cmd --mem 1G" \
+    --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "--num-threads 6" \
     --transform-dir exp/tri4b \
     data/train_nodup data/lang exp/nnet5c_gpu exp/nnet5c_gpu_denlats
 fi
@@ -59,7 +59,7 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  for epoch in 1 2 3 4; do 
+  for epoch in 1 2 3 4; do
     for lm_suffix in tg fsh_tgpr; do
       steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 30 --iter epoch$epoch \
         --config conf/decode.config --transform-dir exp/tri4b/decode_eval2000_sw1_${lm_suffix} \

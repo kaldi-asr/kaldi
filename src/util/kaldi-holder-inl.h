@@ -97,6 +97,7 @@ template<class KaldiType> class KaldiObjectHolder {
   }
 
   void Swap(KaldiObjectHolder<T> *other) {
+    // the t_ values are pointers so this is a shallow swap.
     std::swap(t_, other->t_);
   }
 
