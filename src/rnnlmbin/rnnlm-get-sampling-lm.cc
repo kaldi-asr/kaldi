@@ -64,8 +64,6 @@ int main(int argc, char *argv[]) {
         arpa_wxfilename = po.GetArg(3);
 
 
-    BackoffLmForSampling estimator(config);
-
     fst::SymbolTable *symtab;
     {
       Input symtab_input(symbol_table_rxfilename);
@@ -76,6 +74,8 @@ int main(int argc, char *argv[]) {
     }
     if (config.vocab_size <= 0)
       config.vocab_size = symtab->AvailableKey();
+
+    BackoffLmForSampling estimator(config);
 
     Input ki(input_text_rxfilename);
     estimator.Process(ki.Stream());

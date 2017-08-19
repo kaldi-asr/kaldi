@@ -43,8 +43,10 @@ void ArpaSampling::ConsumeNGram(const NGram& ngram) {
     // Note: we'll later on change the probability, subtracting the
     // part that is due to backoff.  This change of format is
     // convenient for our application.
-    higher_order_probs_[cur_order - 2][history].word_to_prob[word] =
-        Exp(ngram.logprob);
+    // ngram.logprob has already been converted to log-base e at
+    // this point.
+    higher_order_probs_[cur_order - 2][history].words_and_probs.push_back(
+        std::pair<int32, BaseFloat>(word, Exp(ngram.logprob)));
     if (ngram.backoff != 0.0) {
       KALDI_ASSERT(cur_order != max_order);
       higher_order_probs_[cur_order - 1][ngram.words].backoff_prob =
@@ -80,21 +82,39 @@ BaseFloat ArpaSampling::GetProbWithBackoff(
       return GetProbWithBackoff(history, &(hist_iter->second), word);
     }
   } else {
-    std::unordered_map<int32, BaseFloat>::const_iterator iter =
-        state->word_to_prob.find(word);
-    if (iter == state->word_to_prob.end()) {
+    std::pair<int32, BaseFloat> p(word, 0.0);
+    std::vector<std::pair<int32, BaseFloat> >::const_iterator iter =
+        std::lower_bound(state->words_and_probs.begin(),
+                         state->words_and_probs.end(), p);
+    if (iter != state->words_and_probs.end() && iter->first == word) {
+      // the probability for this word was given in this history state.  (note:
+      // we assume that at the time this function is called, the entire
+      // probability is present here, as it is in the ARPA format LM.  See
+      // documentation for this function for more explanation.
+      return iter->second;
+    } else {
+      // we have to back off.
       std::vector<int32> backoff_history(history.begin() + 1,
                                          history.end());
       return state->backoff_prob *
           GetProbWithBackoff(backoff_history, NULL, word);
-    } else {
-      return iter->second;
     }
   }
 }
 
+void ArpaSampling::EnsureHistoryStatesSorted() {
+  for (size_t i = 0; i < higher_order_probs_.size(); i++) {
+    std::unordered_map<HistType, HistoryState, VectorHasher<int32> >::iterator
+        iter = higher_order_probs_[i].begin(),
+        end = higher_order_probs_[i].end();
+    for (; iter != end; ++iter)
+      std::sort(iter->second.words_and_probs.begin(),
+                iter->second.words_and_probs.end());
+  }
+}
 
 void ArpaSampling::ReadComplete() {
+  EnsureHistoryStatesSorted();
   int32 max_order = Order();
   for (int32 order = max_order; order >= 2; order--) {
     std::unordered_map<HistType, HistoryState, VectorHasher<int32> >
@@ -111,9 +131,9 @@ void ArpaSampling::ReadComplete() {
       if (order == 2) backoff_state = NULL;  // unigram has different format.
       else backoff_state = &(higher_order_probs_[order - 3][backoff_history]);
 
-      std::unordered_map<int32, BaseFloat>::iterator
-          word_iter = history_state.word_to_prob.begin(),
-          word_end = history_state.word_to_prob.end();
+      std::vector<std::pair<int32, BaseFloat> >::iterator
+          word_iter = history_state.words_and_probs.begin(),
+          word_end = history_state.words_and_probs.end();
       double total_prob_after_subtracting = 0.0;
       for (; word_iter != word_end; ++word_iter) {
         int32 word = word_iter->first;
@@ -165,7 +185,7 @@ void ArpaSampling::AddBackoffToHistoryStates(
     // back off until the history exists or until we reached the unigram state.
     while (cur_hist_len > 0 &&
            higher_order_probs_[cur_hist_len - 1].count(history) == 0) {
-      history.erase(history.begin(), history.begin() + 1);
+      history.erase(history.begin());
       cur_hist_len--;
     }
     // OK, the history-state exists.
@@ -175,7 +195,7 @@ void ArpaSampling::AddBackoffToHistoryStates(
           iter = higher_order_probs_[cur_hist_len - 1].find(history);
       KALDI_ASSERT(iter != higher_order_probs_[cur_hist_len - 1].end());
       weight *= iter->second.backoff_prob;
-      history.erase(history.begin(), history.begin() + 1);
+      history.erase(history.begin());
       cur_hist_len--;
     }
     // at this point, 'history' is empty and 'weight' is the unigram
@@ -235,9 +255,9 @@ BaseFloat ArpaSampling::GetDistribution(
         VectorHasher<int32> >::const_iterator it_hist =
            higher_order_probs_[order - 2].find(history);
     KALDI_ASSERT(it_hist != higher_order_probs_[order - 2].end());
-    std::unordered_map<int32, BaseFloat>::const_iterator
-        word_iter = it_hist->second.word_to_prob.begin(),
-        word_end = it_hist->second.word_to_prob.end();
+    std::vector<std::pair<int32, BaseFloat> >::const_iterator
+        word_iter = it_hist->second.words_and_probs.begin(),
+        word_end = it_hist->second.words_and_probs.end();
     for (; word_iter != word_end; ++word_iter) {
       int32 word = word_iter->first;
       BaseFloat prob = word_iter->second;

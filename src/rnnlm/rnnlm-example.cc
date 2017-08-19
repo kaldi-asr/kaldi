@@ -98,8 +98,10 @@ RnnlmExampleSampler::RnnlmExampleSampler(
   // or you supplied the wrong --bos-symbol or --brk-symbol options.  We allow
   // tiny values because the ARPA files sometimes give -99 as the unigram prob
   // for <s>.
-  KALDI_ASSERT(unigram_distribution[config_.bos_symbol] < 1.0e-10 &&
-               unigram_distribution[config_.brk_symbol] < 1.0e-10);
+  KALDI_ASSERT(unigram_distribution[config_.bos_symbol] < 1.0e-10);
+  // we don't check that the <brk> symbol has very tiny prob because
+  // it could have accumulated some probability mass via smoothing;
+  // this is harmless.
 
   unigram_distribution[config_.bos_symbol] = config_.special_symbol_prob;
   unigram_distribution[config_.brk_symbol] = config_.special_symbol_prob;

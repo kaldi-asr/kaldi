@@ -45,7 +45,7 @@ struct BackoffLmForSamplingOptions {
                                  ngram_order(3),
                                  discounting_constant(0.9),
                                  unigram_factor(50.0),
-                                 backoff_factor(1.5),
+                                 backoff_factor(2.0),
                                  bos_factor(5.0),
                                  unigram_power(1.0),
                                  bos_symbol(1),
@@ -322,12 +322,20 @@ class BackoffLmForSampling {
   // subtracted quantities to the backoff_count elements of struct HistoryState.
   void SmoothDistributionForOrder(int32 o);
 
-  // for 2 <= o <= ngram_order, prunes the distribution.  This consists of
+  // for 2 <= o <= ngram_order, prunes n-grams from the model.  This consists of
   // removing some of the Counts from the history states' count vectors,
   // according to some criteria that are described in the comment at the top of
   // this class.  The 'count' elements of the removed Counts are added to the
   // 'backoff_count' of the states.
-  void PruneDistributionForOrder(int32 o);
+  void PruneNgramsForOrder(int32 o);
+
+  // This prunes away states with zero counts for order 'o' (e.g. if o == 3 we
+  // mean trigram states, with history-length of 2.  But we preserve states that
+  // have zero counts ("protected" states) if there exist other states that back
+  // off to them.  For o > 2 this function also adds back n-grams of the
+  // one-lower orer which are required in the ARPA file because they lead to this
+  // state.
+  void PruneStatesForOrder(int32 o);
 
 
   /**

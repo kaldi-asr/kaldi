@@ -129,6 +129,12 @@ class ArpaSampling : public ArpaFileParser {
       BaseFloat *total_weight,
       BaseFloat *unigram_weight) const;
 
+
+  // Called from ReadComplete(), this function ensures that the
+  // 'words_and_probs' vectors in the history states are all sorted, which will
+  // be required when subtracting the backoff part from the LM probabilities.
+  void EnsureHistoryStatesSorted();
+
   /**  For each history (except the empty, unigram history) there is a
        HistoryState that you can look up.  It stores actual probabilities,
        between 0 and 1, not log-probs.  The language model is stored in memory
@@ -143,14 +149,15 @@ class ArpaSampling : public ArpaFileParser {
     // x
     BaseFloat backoff_prob;
 
-    // 'word_to_prob' is a map from word to probability of that word.  It
-    // doesn't contain the total probability: unlike for the on-disk ARPA
-    // format, to get the probability of the word you have to add the
-    // contributions from all backoff orders.
-    // the BaseFloat should normally be positive, but if you are using
-    // the 'wrong' type of LM, there is a possibility it will be negative;
-    // warnings will be printed in this case.
-    std::unordered_map<int32, BaseFloat> word_to_prob;
+    // 'words_and_probs' is a vector of pairs (word, probability of this word),
+    // sorted on word.
+    // For convenience of the sampling algorithm it doesn't contain the total
+    // probability: unlike for the on-disk ARPA format, to get the probability
+    // of the word you have to add the contributions from all backoff orders.
+    // the BaseFloat should normally be positive, but if you are using the
+    // 'wrong' type of LM, there is a possibility it will be negative; warnings
+    // will be printed in this case.
+    std::vector<std::pair<int32, BaseFloat> > words_and_probs;
     HistoryState(): backoff_prob(1.0) { }
   };
 
@@ -163,8 +170,8 @@ class ArpaSampling : public ArpaFileParser {
   // history 'history', e.g. if 'word' is c and 'history' is [a, b]
   // it gives you the probability of a b -> c.
   // 'state' is the history state corresponding to 'history', if
-  // history.size() > 0; it is only provided as an efficiency thing, to
-  // avoid an unnecessary map lookup, and the function does not require
+  // history.size() > 0; 'state' is only provided as an optimization, to
+  // avoid an unnecessary map lookup.
 
   //  @param [in] history      History in which to get the probability
   //                           of 'word'.  This history state is required
