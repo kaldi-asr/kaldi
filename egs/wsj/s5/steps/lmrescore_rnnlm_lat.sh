@@ -101,7 +101,7 @@ if [ "$oldlm" == "$oldlang/G.fst" ]; then
 else
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore-const-arpa --lm-scale=$oldlm_weight \
-    "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm_command" ark:-  \| \
+    "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm" ark:-  \| \
     $rescoring_binary $extra_arg --lm-scale=$weight \
     --max-ngram-order=$max_ngram_order \
     $first_arg $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
