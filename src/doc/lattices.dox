@@ -357,7 +357,7 @@ lattice-determinize program, before storing the lattices on disk for an extended
 Let's assume instead that we're outputting
 the determinized lattice (the second option).  The determinized lattice is supposed to have only one
 path through it for every word sequence that is allowed in the original raw
-lattice.  We can acheive this by creating a CompactLattice, removing epsilons and
+lattice.  We can achieve this by creating a CompactLattice, removing epsilons and
 determinizing, but this would be very inefficient.  Instead, we run a special
 determinization algorithm called \ref fst::DeterminizeLattice()
 "DeterminizeLattice()".  This algorithm does epsilon removal and
@@ -477,7 +477,7 @@ programs.
 Note that there are other ways to do this; see
 the documentation for lattice-compose below.
 What the program \ref lattice-lmrescore.cc "lattice-lmrescore" does is this...
-actually, we will first first escribe the simple version that is not exactly what
+actually, we will first first describe the simple version that is not exactly what
 happens.  Suppose that we are given an LM-scale S and a LM G.fst.
 We first multiply all the costs in G.fst by S.  Then for each lattice,
 we compose it on the right with G, lattice-determinize it (to keep only the
