@@ -357,7 +357,7 @@ lattice-determinize program, before storing the lattices on disk for an extended
 Let's assume instead that we're outputting
 the determinized lattice (the second option).  The determinized lattice is supposed to have only one
 path through it for every word sequence that is allowed in the original raw
-lattice.  We can acheive this by creating a CompactLattice, removing epsilons and
+lattice.  We can achieve this by creating a CompactLattice, removing epsilons and
 determinizing, but this would be very inefficient.  Instead, we run a special
 determinization algorithm called \ref fst::DeterminizeLattice()
 "DeterminizeLattice()".  This algorithm does epsilon removal and
