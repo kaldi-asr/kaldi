@@ -231,7 +231,7 @@ void TestRnnlmExample() {
   ArpaParseOptions arpa_options;
   arpa_options.bos_symbol = bos;
   arpa_options.eos_symbol = eos;
-  ArpaSampling arpa(arpa_options, symbol_table);
+  SamplingLm arpa(arpa_options, symbol_table);
   os.seekg(0, std::ios::beg);
   arpa.Read(os);
 

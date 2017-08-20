@@ -74,8 +74,9 @@ void RnnlmExample::Read(std::istream &is, bool binary) {
 }
 
 RnnlmExampleSampler::RnnlmExampleSampler(
-    const RnnlmEgsConfig &config, const ArpaSampling &arpa_sampling):
+    const RnnlmEgsConfig &config, const SamplingLm &arpa_sampling):
     config_(config), arpa_sampling_(arpa_sampling) {
+  config_.Check();
 
   // The unigram distribution from the LM, modified according to
   // config_.special_symbol_prob and config_.uniform_prob_mass...
@@ -669,6 +670,7 @@ void RnnlmExampleCreator::CheckSequence(
 }
 
 void RnnlmExampleCreator::Check() const {
+  config_.Check();
   if (minibatch_sampler_ != NULL) {
     if (minibatch_sampler_->VocabSize() > config_.vocab_size) {
       KALDI_ERR << "Option --vocab-size=" << config_.vocab_size

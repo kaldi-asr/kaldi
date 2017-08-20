@@ -1,6 +1,7 @@
-// rnnlm/arpa-sampling-test.cc
+// rnnlm/sampling-lm-test.cc
 
 // Copyright 2017  Ke Li
+//           2017  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -17,16 +18,16 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "rnnlm/arpa-sampling.h"
+#include "rnnlm/sampling-lm.h"
 
 namespace kaldi {
 
-class ArpaSamplingTest {
+class SamplingLmTest {
  public:
-  typedef ArpaSampling::HistType HistType;
-  typedef ArpaSampling::WeightedHistType WeightedHistType;
+  typedef SamplingLm::HistType HistType;
+  typedef SamplingLm::WeightedHistType WeightedHistType;
 
-  explicit ArpaSamplingTest(ArpaSampling *arpa) {
+  explicit SamplingLmTest(SamplingLm *arpa) {
     arpa_ = arpa;
   }
   // This function reads in a list of histories and their weights from a file
@@ -40,12 +41,12 @@ class ArpaSamplingTest {
 
   void TestGetDistribution(const WeightedHistType &histories);
  private:
-  // This ArpaSampling object is used to get accesses to private and protected
-  // members in ArpaSampling class
-  ArpaSampling *arpa_;
+  // This SamplingLm object is used to get accesses to private and protected
+  // members in SamplingLm class
+  SamplingLm *arpa_;
 };
 
-void ArpaSamplingTest::ReadHistories(std::istream &is, bool binary,
+void SamplingLmTest::ReadHistories(std::istream &is, bool binary,
     WeightedHistType *histories) {
   if (binary) {
     KALDI_ERR << "binary-mode reading is not implemented for ArpaFileParser";
@@ -90,7 +91,7 @@ void ArpaSamplingTest::ReadHistories(std::istream &is, bool binary,
   KALDI_LOG << "Successfully reading histories from file.";
 }
 
-void ArpaSamplingTest::TestUnigramDistribution() {
+void SamplingLmTest::TestUnigramDistribution() {
   std::vector<BaseFloat> unigram_probs;
   unigram_probs = arpa_->GetUnigramDistribution();
   // Check 0 (epsilon) has probability 0.0
@@ -103,7 +104,7 @@ void ArpaSamplingTest::TestUnigramDistribution() {
   KALDI_ASSERT(ApproxEqual(probsum, 1.0));
 }
 
-void ArpaSamplingTest::TestGetDistribution(const WeightedHistType &histories) {
+void SamplingLmTest::TestGetDistribution(const WeightedHistType &histories) {
   // get total input weights of histories
   BaseFloat total_weights = 0.0;
   WeightedHistType::const_iterator it = histories.begin();
@@ -122,13 +123,13 @@ void ArpaSamplingTest::TestGetDistribution(const WeightedHistType &histories) {
   KALDI_ASSERT(ApproxEqual(unigram_weight + non_unigram_probsum, total_weights));
 }
 
-void ArpaSamplingTest::TestHigherOrderProbs() {
+void SamplingLmTest::TestHigherOrderProbs() {
   int32 size = arpa_->higher_order_probs_.size();
   KALDI_ASSERT(size == arpa_->Order() - 1);
 
   // Assert sum of bigram probs of all words given an arbitrary history is 1.0
   BaseFloat prob_sum = 0.0;
-  std::unordered_map<HistType, ArpaSampling::HistoryState,
+  std::unordered_map<HistType, SamplingLm::HistoryState,
                                  VectorHasher<int32> >::const_iterator it1;
   it1 = arpa_->higher_order_probs_[0].begin();
   HistType h(it1->first);
@@ -175,20 +176,20 @@ int main(int argc, char **argv) {
   options.eos_symbol = symbols.AddSymbol("</s>", kEos);
   options.unk_symbol = symbols.AddSymbol("<unk>", kUnk);
   options.oov_handling = ArpaParseOptions::kAddToSymbols;
-  ArpaSampling arpa(options, &symbols);
+  SamplingLm arpa(options, &symbols);
 
   bool binary;
   Input k1(arpa_file);
   arpa.Read(k1.Stream());
 
-  ArpaSamplingTest mdl(&arpa);
+  SamplingLmTest mdl(&arpa);
   mdl.TestUnigramDistribution();
   mdl.TestHigherOrderProbs();
 
   Input k2(history_file, &binary);
-  ArpaSamplingTest::WeightedHistType histories;
+  SamplingLmTest::WeightedHistType histories;
   mdl.ReadHistories(k2.Stream(), binary, &histories);
   mdl.TestGetDistribution(histories);
-  KALDI_LOG << "Tests for ArpaSampling class succeed.";
+  KALDI_LOG << "Tests for SamplingLm class succeed.";
   return 0;
 }

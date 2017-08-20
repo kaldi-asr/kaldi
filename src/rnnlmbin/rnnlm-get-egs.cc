@@ -20,7 +20,7 @@
 #include <sstream>
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "rnnlm/arpa-sampling.h"
+#include "rnnlm/sampling-lm.h"
 #include "rnnlm/rnnlm-example.h"
 
 int main(int argc, char *argv[]) {
@@ -38,13 +38,21 @@ int main(int argc, char *argv[]) {
         "This involves splitting up the sentences to a maximum length,\n"
         "importance sampling and other procedures.\n"
         "\n"
-        "Usage:  rnnlm-get-egs [options] [<symbol-table> <ARPA-rxfilename>] <sentences-rxfilename> "
-        "<rnnlm-egs-wspecifier>\n"
-        "\n"
+        "Usage:\n"
+        "(1) no sampling:\n"
+        " rnnlm-get-egs [options] <sentences-rxfilename> <rnnlm-egs-wspecifier>\n"
+        "(2) sampling, ARPA LM read:\n"
+        " rnnlm-get-egs [options] <symbol-table> <ARPA-rxfilename> \\\n"
+        "                         <sentences-rxfilename>  <rnnlm-egs-wspecifier>\n"
+        "(3) sampling, non-ARPA LM read:\n"
+        "    rnnlm-get-egs [options] <LM-rxfilename> <sentences-rxfilename>\\\n"
+        "                            <rnnlm-egs-wspecifier>\n"
         "E.g.:\n"
         " ... | rnnlm-get-egs --vocab-size=20002 - ark:- | rnnlm-train ...\n"
-        "or (with sampling):\n"
-        " ... | rnnlm-get-egs --vocab-size=20002 words.txt foo.arpa - ark:- | rnnlm-train ...\n"
+        "or (with sampling, reading LM as ARPA):\n"
+        " ... | rnnlm-get-egs words.txt foo.arpa - ark:- | rnnlm-train ...\n"
+        "or (with sampling, reading LM natively):\n"
+        " ... | rnnlm-get-egs sampling.lm - ark:- | rnnlm-train ...\n"
         "\n"
         "See also: rnnlm-train\n";
 
@@ -59,18 +67,14 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 2 && po.NumArgs() != 4) {
+    if (po.NumArgs() < 2 && po.NumArgs() > 4) {
       po.PrintUsage();
       exit(1);
     }
 
-    egs_config.Check();
-
-
-
-
     if (po.NumArgs() == 4) {
-      // the ARPA language model is provided, so we are doing sampling.
+      // the language model is provided (as an ARPA file), and we are doing
+      // sampling.
       std::string symbol_table_rxfilename = po.GetArg(1),
           arpa_rxfilename = po.GetArg(2),
           sentences_rxfilename = po.GetArg(3),
@@ -89,17 +93,36 @@ int main(int argc, char *argv[]) {
       ArpaParseOptions arpa_options;
       arpa_options.bos_symbol = egs_config.bos_symbol;
       arpa_options.eos_symbol = egs_config.eos_symbol;
-      ArpaSampling arpa(arpa_options, symtab);
+      SamplingLm lm(arpa_options, symtab);
       {
         Input arpa_input(arpa_rxfilename);
-        arpa.Read(arpa_input.Stream());
+        lm.Read(arpa_input.Stream());
       }
-      RnnlmExampleSampler sampler(egs_config, arpa);
+      if (egs_config.vocab_size <= 0)
+        egs_config.vocab_size = lm.VocabSize();
+      RnnlmExampleSampler sampler(egs_config, lm);
       RnnlmExampleCreator creator(egs_config, sequencer_config,
                                   sampler, &writer);
       Input ki(sentences_rxfilename);
       creator.Process(ki.Stream());
       delete symtab;
+    } else if (po.NumArgs() == 3) {
+      // the language model is provided (in its native format, not as an ARPA
+      // file), and we are doing sampling.
+      std::string lm_rxfilename = po.GetArg(1),
+          sentences_rxfilename = po.GetArg(2),
+          egs_wspecifier = po.GetArg(3);
+
+      RnnlmExampleWriter writer(egs_wspecifier);
+      SamplingLm lm;
+      ReadKaldiObject(lm_rxfilename, &lm);
+      if (egs_config.vocab_size <= 0)
+        egs_config.vocab_size = lm.VocabSize();
+      RnnlmExampleSampler sampler(egs_config, lm);
+      RnnlmExampleCreator creator(egs_config, sequencer_config,
+                                  sampler, &writer);
+      Input ki(sentences_rxfilename);
+      creator.Process(ki.Stream());
     } else {
       std::string sentences_rxfilename = po.GetArg(1),
           egs_wspecifier = po.GetArg(2);

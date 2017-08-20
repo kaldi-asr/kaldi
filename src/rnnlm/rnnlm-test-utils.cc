@@ -45,7 +45,7 @@ void ReadAllLines(const std::string &filename,
 void GetTestSentences(const std::set<std::string> &forbidden_symbols,
                       std::vector<std::vector<std::string> > *sentences) {
   sentences->clear();
-  ReadAllLines("arpa-sampling-test.cc", sentences);
+  ReadAllLines("sampling-lm-test.cc", sentences);
   ReadAllLines("rnnlm-example-test.cc", sentences);
   ReadAllLines("rnnlm-example.cc", sentences);
   ReadAllLines("rnnlm-example-utils.cc", sentences);

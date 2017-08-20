@@ -1,6 +1,7 @@
 // sampling-lm.cc
 
-// Copyright 2017  Johns Hopkins University (author: Daniel Povey)
+// Copyright 2017  Ke Li
+//           2017  Johns Hopkins University (author: Daniel Povey)
 
 // See ../COPYING for clarification regarding multiple authors
 //
@@ -17,774 +18,399 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include <iomanip>
 #include "rnnlm/sampling-lm.h"
 
 namespace kaldi {
 namespace rnnlm {
 
+// This function reads in each ngram line from an ARPA file
+void SamplingLm::ConsumeNGram(const NGram& ngram) {
+  int32 cur_order = ngram.words.size(),
+      max_order = Order();
+  int32 word = ngram.words.back();  // word is the last word in a ngram term
+  KALDI_ASSERT(cur_order > 0 && word > 0);
 
-void BackoffLmForSamplingOptions::Check() const {
-  KALDI_ASSERT(vocab_size > 2);
-  KALDI_ASSERT(bos_symbol > 0 && bos_symbol < vocab_size);
-  KALDI_ASSERT(eos_symbol > 0 && eos_symbol < vocab_size);
-  KALDI_ASSERT(eos_symbol != bos_symbol);
-  KALDI_ASSERT(ngram_order >= 1 &&
-               discounting_constant > 0 && discounting_constant <= 1.0 &&
-               unigram_factor > 0.0 && backoff_factor > 0.0 &&
-               unigram_factor > backoff_factor &&
-               bos_factor > 0.0 && bos_factor <= unigram_factor);
-  KALDI_ASSERT(unigram_power > 0.2 && unigram_power <= 1.0);
-}
-
-BackoffLmForSampling::BackoffLmForSampling(
-    const BackoffLmForSamplingOptions &config):
-    config_(config) {
-  config_.Check();
-  history_states_.resize(config.ngram_order);
-}
-
-
-void BackoffLmForSampling::ProcessLine(BaseFloat corpus_weight,
-                                       const std::vector<int32> &sentence) {
-  KALDI_ASSERT(corpus_weight >= 0.0);
-  int32 ngram_order = config_.ngram_order,
-      sentence_length = sentence.size(),
-      vocab_size = config_.vocab_size;
-  std::vector<int32> history;
-  history.push_back(config_.bos_symbol);
-  int32 i;
-  for (i = 0; i < sentence_length && i + 1 < ngram_order; i++) {
-    int32 this_word = sentence[i];
-    // note: 0 is reserved for <eps>.
-    KALDI_ASSERT(this_word > 0 && this_word < vocab_size);
-    AddCount(history, this_word, corpus_weight);
-    history.push_back(this_word);
-  }
-  for (; i < sentence_length; i++) {
-    history.erase(history.begin());
-    int32 this_word = sentence[i];
-    AddCount(history, this_word, corpus_weight);
-    history.push_back(this_word);
-  }
-  if (history.size() >= static_cast<size_t>(ngram_order))
-    history.erase(history.begin());
-  AddCount(history, config_.eos_symbol, corpus_weight);
-
-  // TODO: remove the following.
-  KALDI_ASSERT(history.size() == std::min(ngram_order - 1,
-                                          sentence_length + 1));
-}
-
-
-void BackoffLmForSampling::Process(std::istream &is) {
-  int32 num_lines = 0;
-  std::vector<int32> words;
-  std::string line;
-  while (getline(is, line)) {
-    num_lines++;
-    std::istringstream line_is(line);
-    BaseFloat weight;
-    line_is >> weight;
-    words.clear();
-    int32 word;
-    while (line_is >> word) {
-      words.push_back(word);
-    }
-    if (!line_is.eof()) {
-      KALDI_ERR << "Could not interpret input: " << line;
-    }
-    this->ProcessLine(weight, words);
-  }
-  KALDI_LOG << "Processed " << num_lines << " lines of input.";
-}
-
-
-void BackoffLmForSampling::HistoryState::AddCount(int32 word,
-                                                  BaseFloat corpus_weight) {
-  new_counts.push_back(std::pair<int32, BaseFloat>(word, corpus_weight));
-  if (new_counts.size() == new_counts.capacity() &&
-      new_counts.size() >= counts.size()) {
-    bool release_memory = false;
-    ProcessNewCounts(release_memory);
-  }
-}
-
-void BackoffLmForSampling::HistoryState::ComputeTotalCount() {
-  double tmp_total_count = 0.0;
-  std::vector<Count>::const_iterator iter = counts.begin(),
-      end = counts.end();
-  for (; iter != end; ++iter)
-    tmp_total_count += iter->count;
-  total_count = tmp_total_count;
-}
-
-// static
-void BackoffLmForSampling::SortAndUniqCounts(std::vector<Count> *counts) {
-  // sort the vector<Count> in counts; they get sorted on 'word'
-  // so that Counts with the same word are next to each other.
-  std::sort(counts->begin(), counts->end());
-
-  {
-    // This block merges counts in '*counts' that have the same word.
-    // It is adapted from MergePairVectorSumming().  This code is quite
-    // optimized and not easy to read but MergePairVectorSumming() is well
-    // tested and the changes in the code are small.
-    std::vector<Count>::iterator out_iter = counts->begin(),
-        in_iter = counts->begin(), end_iter = counts->end();
-    // special case: while there is nothing to be changed, skip over
-    // initial input (avoids unnecessary copying).
-    while (in_iter + 1 < end_iter && in_iter[0].word != in_iter[1].word) {
-      in_iter++;
-      out_iter++;
-    }
-    while (in_iter < end_iter) {
-      // We reach this point only at the first element of
-      // each stretch of identical words
-      *out_iter = *in_iter;
-      ++in_iter;
-      while (in_iter < end_iter && in_iter->word == out_iter->word) {
-        if (in_iter->highest_count > out_iter->highest_count)
-          out_iter->highest_count = in_iter->highest_count;
-        out_iter->count += in_iter->count;
-        ++in_iter;
-      }
-      out_iter++;
-    }
-    counts->erase(out_iter, end_iter);
-  }
-}
-
-
-// see header for what this does.
-void BackoffLmForSampling::HistoryState::ProcessNewCounts(bool release_memory) {
-  if (!new_counts.empty()) {
-    // Merge all counts in 'new_counts' into 'counts'.
-    // We could do what we're doing with 'merged_counts' below, with 'counts'
-    // directly, but that might increase the memory held in this HistoryState so
-    // we use a temporary vector in some cases.
-    std::vector<Count> tmp;
-    size_t orig_counts_size = counts.size(),
-        merge_size = orig_counts_size + new_counts.size();
-    // 'merge_location' is the vector we use to merge and sort the Counts, it
-    // either points to 'tmp' or to 'this->counts'.
-    std::vector<Count> *merge_location;
-    if (merge_size > counts.capacity()) {
-      merge_location = &tmp;
-      tmp.reserve(merge_size);
-      tmp.insert(tmp.end(), counts.begin(), counts.end());
-    } else {
-      merge_location = &counts;
-    }
-
-    { // this block converts each member of 'new_counts' into a single Count,
-      // appending it to the vector pointed to by 'merge_location'.
-      merge_location->resize(merge_size);
-      std::vector<std::pair<int32, BaseFloat> >::const_iterator
-          in_iter = new_counts.begin();
-      std::vector<Count>::iterator out_iter =
-          merge_location->begin() + orig_counts_size,
-          out_end = merge_location->end();
-      for (; out_iter != out_end; ++in_iter, ++out_iter) {
-        int32 word = in_iter->first;
-        BaseFloat count = in_iter->second;
-        out_iter->word = word;
-        out_iter->highest_count = count;
-        out_iter->count = count;
-      }
-    }
-    SortAndUniqCounts(merge_location);
-    if (merge_location != &counts) // copy to 'counts' if we were using a temporary.
-      counts = *merge_location;
-  }
-
-  if (release_memory) {
-    // shallow swapping with a new temporary is a trick to release memory from a
-    // std::vector.
-    std::vector<std::pair<int32, BaseFloat> > new_counts_temp;
-    new_counts.swap(new_counts_temp);
+  if (cur_order == 1) {
+    // unigram
+    if (unigram_probs_.size() <= static_cast<size_t>(word))
+      unigram_probs_.resize(static_cast<size_t>(word + 1), 0.0);
+    KALDI_ASSERT(unigram_probs_[word] == 0.0);  // or repeated unigram.
+    unigram_probs_[word] = Exp(ngram.logprob);
+    if (ngram.backoff != 0.0)
+      higher_order_probs_[cur_order - 1][ngram.words].backoff_prob =
+        Exp(ngram.backoff);
   } else {
-    new_counts.clear();
+    HistType history(ngram.words.begin(), ngram.words.end() - 1);
+    // Note: we'll later on change the probability, subtracting the
+    // part that is due to backoff.  This change of format is
+    // convenient for our application.
+    // ngram.logprob has already been converted to log-base e at
+    // this point.
+    higher_order_probs_[cur_order - 2][history].words_and_probs.push_back(
+        std::pair<int32, BaseFloat>(word, Exp(ngram.logprob)));
+    if (ngram.backoff != 0.0) {
+      KALDI_ASSERT(cur_order != max_order);
+      higher_order_probs_[cur_order - 1][ngram.words].backoff_prob =
+          Exp(ngram.backoff);
+    }
   }
 }
 
-void BackoffLmForSampling::ComputeRawCountsForOrder(int32 o) {
-  KALDI_ASSERT(o >= 1 && o < config_.ngram_order);
-
-  // We first make a map from the backed-off history to a list of the
-  // history-states that back off to it.  This will help us to do the backoff in
-  // a relatively memory-efficient way.
-  unordered_map<std::vector<int32>,
-      std::vector<const HistoryState*>, VectorHasher<int32> > lower_to_higher_order;
-
-
-  // Normally we'd iterate over history_states_[o-1] to access counts of order
-  // o, but we are iterating over history-states for the order one higher than
-  // o.
-  unordered_map<std::vector<int32>,
-      HistoryState*, VectorHasher<int32> >::iterator
-    iter = history_states_[o].begin(),
-    end = history_states_[o].end();
-  for (; iter != end; ++iter) {
-    const std::vector<int32> &history = iter->first;
-    // remove the left-most (most distant) word from the history to back off.
-    std::vector<int32> backed_off_history(history.begin() + 1,
-                                          history.end());
-    const HistoryState *higher_order_state = iter->second;
-    lower_to_higher_order[backed_off_history].push_back(higher_order_state);
-  }
-
-  unordered_map<std::vector<int32>, std::vector<const HistoryState*>,
-      VectorHasher<int32> >::const_iterator
-      state_list_iter = lower_to_higher_order.begin(),
-      state_list_end= lower_to_higher_order.end();
-  for (; state_list_iter != state_list_end; ++state_list_iter) {
-    const std::vector<int32> &history = state_list_iter->first;
-    const std::vector<const HistoryState*> &higher_order_states =
-        state_list_iter->second;
-    HistoryState *this_state = GetHistoryState(history, true);
-    std::vector<Count> merged_counts;
-    size_t merged_counts_size = 0;
-    for (size_t i = 0; i < higher_order_states.size(); i++)
-      merged_counts_size += higher_order_states[i]->counts.size();
-    merged_counts.reserve(merged_counts_size);
-    for (size_t i = 0; i < higher_order_states.size(); i++)
-      merged_counts.insert(merged_counts.end(),
-                           higher_order_states[i]->counts.begin(),
-                           higher_order_states[i]->counts.end());
-    SortAndUniqCounts(&merged_counts);
-    this_state->counts = merged_counts;
-  }
+void SamplingLm::HeaderAvailable() {
+  unigram_probs_.reserve(NgramCounts()[0] + 100);
+  // e.g. for a trigram LM we store bigram and trigram
+  // history states in probs_, while unigram_probs_ stores
+  // the unigram probabilities.
+  int32 ngram_order = NgramCounts().size();
+  higher_order_probs_.resize(ngram_order - 1);
 }
 
-
-BackoffLmForSampling::HistoryState*
-BackoffLmForSampling::GetHistoryState(const std::vector<int32> &history,
-                                      bool add_if_absent) {
-  KALDI_ASSERT(static_cast<int32>(history.size()) < config_.ngram_order);
-  // 'values' is a reference to a pointer to a HistoryState.
-  // If 'history' did not previously exist as a key in the map, this will
-  // be NULL.  This is a feature of the stl that's valid at least as of C++11,
-  // whereby POD types that are the values in maps will be set to zero
-  // if newly created.
-  /// https://stackoverflow.com/questions/8943261/stdunordered-map-initialization
-  // or search for unordered_map value-initialized
-  HistoryState *&value = history_states_[history.size()][history];
-  if (value == NULL) {
-    if (add_if_absent) {
-      value = new HistoryState();
+BaseFloat SamplingLm::GetProbWithBackoff(
+    const std::vector<int32> &history,
+    const HistoryState *state,
+    int32 word) const {
+  if (state == NULL) {
+    int32 order = history.size() + 1;
+    if (order == 1) {
+      KALDI_ASSERT(static_cast<size_t>(word) < unigram_probs_.size());
+      return unigram_probs_[word];
     } else {
-      KALDI_ERR << "Expected history-state to exist (code error).";
+      std::unordered_map<HistType, HistoryState, VectorHasher<int32> >::const_iterator
+          hist_iter = higher_order_probs_[order - 2].find(history);
+      KALDI_ASSERT(hist_iter != higher_order_probs_[order - 2].end());
+      // it's not optimally efficient to recurse here, but this is on a code
+      // path that will rarely be taken in practice.
+      return GetProbWithBackoff(history, &(hist_iter->second), word);
     }
-  }
-  return value;
-}
-
-void BackoffLmForSampling::FinalizeRawCountsForOrder(int32 o) {
-  KALDI_ASSERT(o >= 1 && o <= config_.ngram_order &&
-               static_cast<int32>(history_states_.size()) ==
-               config_.ngram_order);
-  unordered_map<std::vector<int32>,
-      HistoryState*, VectorHasher<int32> >::iterator
-    iter = history_states_[o - 1].begin(),
-    end = history_states_[o - 1].end();
-  for (; iter != end; ++iter) {
-    if (o == config_.ngram_order) {
-      bool release_memory = true;
-      iter->second->ProcessNewCounts(release_memory);
-    }
-    iter->second->ComputeTotalCount();
-  }
-}
-
-void BackoffLmForSampling::Estimate() {
-  for (int32 o = config_.ngram_order; o >= 1; o--) {
-    if (o < config_.ngram_order)
-      ComputeRawCountsForOrder(o);
-    FinalizeRawCountsForOrder(o);
-  }
-  // Now we have the raw counts of orders but we have not yet done backoff or
-  // pruning.
-  ComputeUnigramDistribution();
-
-  for (int32 o = 2; o <= config_.ngram_order; o++) {
-    SmoothDistributionForOrder(o);
-    PruneNgramsForOrder(o);
-  }
-  for (int32 o = config_.ngram_order; o >= 2; o--)
-    PruneStatesForOrder(o);
-
-  TakeUnigramCountsToPower(config_.unigram_power);
-}
-
-void BackoffLmForSampling::SmoothDistributionForOrder(int32 o) {
-  KALDI_ASSERT(o >= 2 && o <= config_.ngram_order);
-  unordered_map<std::vector<int32>, HistoryState*,
-      VectorHasher<int32> >::iterator
-    iter = history_states_[o-1].begin(), end = history_states_[o-1].end();
-  BaseFloat D = config_.discounting_constant;  // 0 < D < 1.
-  for (; iter != end; ++iter) {
-    HistoryState *state = iter->second;
-    KALDI_ASSERT(state->total_count > 0.0 && state->backoff_count == 0.0);
-    std::vector<Count>::iterator counts_iter = state->counts.begin(),
-        counts_end = state->counts.end();
-    double backoff_count_tot = 0.0;
-    for (; counts_iter != counts_end; ++counts_iter) {
-      // note: in the case without data weightings, 'highest_count' will always be
-      // 1 and so removed_count will equal D.
-      BaseFloat removed_count = D * counts_iter->highest_count;
-      counts_iter->count -= removed_count;
-      backoff_count_tot += removed_count;
-    }
-    state->backoff_count = backoff_count_tot;
-  }
-}
-
-
-void BackoffLmForSampling::PruneNgramsForOrder(int32 o) {
-  KALDI_ASSERT(o >= 2 && o <= config_.ngram_order);
-  unordered_map<std::vector<int32>, HistoryState*,
-      VectorHasher<int32> >::iterator
-    iter = history_states_[o-1].begin(), end = history_states_[o-1].end();
-  size_t orig_num_ngrams = 0, cur_num_ngrams = 0;
-
-  for (; iter != end; ++iter) {
-    HistoryState *state = iter->second;
-    orig_num_ngrams += state->counts.size();
-    const std::vector<int32> &history = iter->first;
-    KALDI_ASSERT(history.size() == o - 1);
-    if (o > 2) {
-      std::vector<int32> backoff_history(history);
-      std::vector<const HistoryState*> backoff_states;
-      while (backoff_history.size() > 1) {
-        backoff_history.erase(backoff_history.begin());
-        const HistoryState *backoff_state = GetHistoryState(backoff_history,
-                                                            false);
-        backoff_states.push_back(backoff_state);
-      }
-      PruneHistoryStateAboveBigram(history, backoff_states, state);
-    } else { // o == 2
-      PruneHistoryStateBigram(history, state);
-    }
-    cur_num_ngrams += state->counts.size();
-  }
-  KALDI_LOG << "For n-gram order " << o << ", pruned from "
-            << orig_num_ngrams << " to " << cur_num_ngrams << " ngrams.";
-}
-
-
-void BackoffLmForSampling::PruneStatesForOrder(int32 o) {
-  KALDI_ASSERT(o >= 2 && o <= config_.ngram_order);
-  unordered_map<std::vector<int32>, HistoryState*,
-      VectorHasher<int32> >::iterator
-    iter = history_states_[o-1].begin(), end = history_states_[o-1].end();
-  size_t orig_num_states = history_states_[o-1].size(),
-      num_restored_ngrams = 0;
-
-  // 'states_to_delete' will contain histories whose states we want to delete
-  // from history_states_ because all their words have been pruned away (and they
-  // are not protected.
-  std::unordered_set<std::vector<int32>, VectorHasher<int32> > states_to_delete;
-  for (; iter != end; ++iter) {
-    const std::vector<int32> &history = iter->first;
-    HistoryState *state = iter->second;
-
-    if (state->counts.empty() && !state->is_protected) {
-      // we'll delete this history state.
-      states_to_delete.insert(history);
+  } else {
+    std::pair<int32, BaseFloat> p(word, 0.0);
+    std::vector<std::pair<int32, BaseFloat> >::const_iterator iter =
+        std::lower_bound(state->words_and_probs.begin(),
+                         state->words_and_probs.end(), p);
+    if (iter != state->words_and_probs.end() && iter->first == word) {
+      // the probability for this word was given in this history state.  (note:
+      // we assume that at the time this function is called, the entire
+      // probability is present here, as it is in the ARPA format LM.  See
+      // documentation for this function for more explanation.
+      return iter->second;
     } else {
-      // we'll keep this history state; mark any state that it backs off
-      // to as protected from being deleted, or we'll have problems later on.
-      if (history.size() > 1) {
-        std::vector<int32> backoff_history(history.begin() + 1, history.end());
-        // mark the state this state backs off to, as protected.
-        GetHistoryState(backoff_history, false)->is_protected = true;
+      // we have to back off.
+      std::vector<int32> backoff_history(history.begin() + 1,
+                                         history.end());
+      return state->backoff_prob *
+          GetProbWithBackoff(backoff_history, NULL, word);
+    }
+  }
+}
 
-        // Make sure that the n-gram corresponding to this history state
-        // was not deleted; if it was, we have to put it back into the
-        // model because it's required to exist in the ARPA model.
-        std::vector<int32> prev_history(history.begin(), history.end() - 1);
-        int32 last_word = history.back();
-        // we're checking that the n-gram 'prev_history -> last_word' exists.
-        HistoryState *prev_state = GetHistoryState(prev_history, false);
-        Count c;
-        c.word = last_word;
-        std::vector<Count>::const_iterator
-            iter = std::lower_bound(prev_state->counts.begin(),
-                                    prev_state->counts.end(),
-                                    c);
-        if (iter == prev_state->counts.end() || iter->word != last_word) {
-          // The n-gram leading to this state had been pruned away, which will give
-          // us problems when writing the ARPA model (there would be nowhere to
-          // write the backoff probability for this state).  We insert it back.
-          //
-          // To compute how much of the total count would have been backed off
-          // in the deleted ngram, We guess at the highest_count, assuming it's
-          // probably close to 1.0.  This will make almost no difference to
-          // anything, these ngrams will be quite rare.
-          BaseFloat backoff_count = std::min<BaseFloat>(config_.discounting_constant,
-                                                        0.5 * state->total_count);
-          // because of how we store the stats, the count for that (now-lost)
-          // ngram would have been equal to state->total_count before pruning.
-          // Assuming we pruned 'backoff_count' from it, its value after pruning
-          // would have been roughly as follows:
-          c.count = state->total_count - backoff_count;
-          c.highest_count = -123.4;  // convenient for future debugging.
-          prev_state->backoff_count -= c.count;  // claw it back.
-          KALDI_ASSERT(prev_state->backoff_count > 0.0);
-          prev_state->counts.insert(iter, c);
-          num_restored_ngrams++;
+void SamplingLm::EnsureHistoryStatesSorted() {
+  for (size_t i = 0; i < higher_order_probs_.size(); i++) {
+    std::unordered_map<HistType, HistoryState, VectorHasher<int32> >::iterator
+        iter = higher_order_probs_[i].begin(),
+        end = higher_order_probs_[i].end();
+    for (; iter != end; ++iter)
+      std::sort(iter->second.words_and_probs.begin(),
+                iter->second.words_and_probs.end());
+  }
+}
+
+void SamplingLm::ReadComplete() {
+  EnsureHistoryStatesSorted();
+  int32 max_order = Order();
+  for (int32 order = max_order; order >= 2; order--) {
+    std::unordered_map<HistType, HistoryState, VectorHasher<int32> >
+        &this_map = higher_order_probs_[order - 2];
+    std::unordered_map<HistType, HistoryState,
+        VectorHasher<int32> >::iterator
+        hist_iter = this_map.begin(), hist_end = this_map.end();
+    for (; hist_iter != hist_end; ++hist_iter) {
+      const HistType &history = hist_iter->first;
+      HistoryState &history_state = hist_iter->second;
+      BaseFloat backoff_prob = history_state.backoff_prob;
+      HistoryState *backoff_state;
+      HistType backoff_history(history.begin() + 1, history.end());
+      if (order == 2) backoff_state = NULL;  // unigram has different format.
+      else backoff_state = &(higher_order_probs_[order - 3][backoff_history]);
+
+      std::vector<std::pair<int32, BaseFloat> >::iterator
+          word_iter = history_state.words_and_probs.begin(),
+          word_end = history_state.words_and_probs.end();
+      double total_prob_after_subtracting = 0.0;
+      for (; word_iter != word_end; ++word_iter) {
+        int32 word = word_iter->first;
+        BaseFloat prob = word_iter->second;
+        // OK, we want to subtract the backoff part.
+        BaseFloat backoff_part_of_prob = backoff_prob *
+            GetProbWithBackoff(backoff_history, backoff_state, word);
+        if (backoff_part_of_prob > 1.01 * prob) {
+          KALDI_WARN << "Backoff part of prob is larger than prob itself: "
+                     << backoff_part_of_prob << " > " << prob
+                     << ".  This may mean your language model was not "
+                     << "Kneser-Ney 'with addition'.  We advise to use "
+                     << "Kneser-Ney with addition or some other type of "
+                     << "LM 'with addition'.";
         }
+        // OK, this could now be negative.  This shouldn't matter
+        BaseFloat new_prob = prob - backoff_part_of_prob;
+        word_iter->second = new_prob;
+        total_prob_after_subtracting += new_prob;
       }
+      BaseFloat new_total = total_prob_after_subtracting + backoff_prob;
+      if (fabs(new_total - 1.0) > 0.01)
+        KALDI_WARN << "Expected LM-state to sum to one, got "
+                   << new_total;
     }
   }
+}
 
-  { // remove from the map history states that we marked for deletion.
-    std::unordered_set<std::vector<int32>, VectorHasher<int32> >::const_iterator
-        iter = states_to_delete.begin(), end = states_to_delete.end();
-    for (; iter != end; ++iter) {
-      const std::vector<int32> &history = *iter;
-      delete history_states_[o-1][history];
-      history_states_[o-1].erase(history);
+void SamplingLm::AddBackoffToHistoryStates(
+    const WeightedHistType &histories,
+    WeightedHistType *histories_closure,
+    BaseFloat *total_weight_out,
+    BaseFloat *unigram_weight_out) const {
+  // the implementation of this function is not as efficient as it could be,
+  // but it should not dominate.
+  std::vector<std::pair<HistType, BaseFloat> >::const_iterator
+      histories_iter = histories.begin(), histories_end = histories.end();
+  int32 max_order = Order();
+  std::unordered_map<HistType, BaseFloat,
+      VectorHasher<int32> > hist_to_weight_map;
+  double total_weight = 0.0, total_unigram_weight = 0.0;
+  for (; histories_iter != histories_end; ++histories_iter) {
+    std::vector<int32> history = histories_iter->first;
+    int32 cur_hist_len = history.size();
+    BaseFloat weight = histories_iter->second;
+    total_weight += weight;
+    KALDI_ASSERT(history.size() <= max_order - 1 && weight > 0);
+
+    // back off until the history exists or until we reached the unigram state.
+    while (cur_hist_len > 0 &&
+           higher_order_probs_[cur_hist_len - 1].count(history) == 0) {
+      history.erase(history.begin());
+      cur_hist_len--;
     }
+    // OK, the history-state exists.
+    while (cur_hist_len > 0) {
+      hist_to_weight_map[history] += weight;
+      std::unordered_map<HistType, HistoryState, VectorHasher<int32> >::const_iterator
+          iter = higher_order_probs_[cur_hist_len - 1].find(history);
+      KALDI_ASSERT(iter != higher_order_probs_[cur_hist_len - 1].end());
+      weight *= iter->second.backoff_prob;
+      history.erase(history.begin());
+      cur_hist_len--;
+    }
+    // at this point, 'history' is empty and 'weight' is the unigram
+    // backoff weight for this history state.
+    total_unigram_weight += weight;
   }
-  size_t cur_num_states = history_states_[o-1].size();
-  KALDI_LOG << "For n-gram order " << o << ", pruned from "
-            << orig_num_states << " to " << cur_num_states << " states, "
-            << " and restored "  << num_restored_ngrams << " required n-grams.";
+  histories_closure->clear();
+  histories_closure->resize(hist_to_weight_map.size());
+  std::unordered_map<HistType, BaseFloat, VectorHasher<int32> >::iterator
+      hist_to_weight_iter = hist_to_weight_map.begin(),
+      hist_to_weight_end = hist_to_weight_map.end();
+  size_t pos = 0;
+  for (; hist_to_weight_iter != hist_to_weight_end; ++hist_to_weight_iter) {
+    (*histories_closure)[pos].first = hist_to_weight_iter->first;
+    (*histories_closure)[pos].second = hist_to_weight_iter->second;
+    pos++;
+  }
+  *total_weight_out = total_weight;
+  *unigram_weight_out = total_unigram_weight;
+  KALDI_ASSERT(pos == hist_to_weight_map.size());
 }
 
 
-// Prunes a history-state; this version is for the bigram state
-// whose left-context is the BOS symbol.
-void BackoffLmForSampling::PruneHistoryStateBigram(
-    const std::vector<int32> &history, HistoryState *state) {
-  KALDI_ASSERT(history.size() == 1);
-  BaseFloat total_count = state->total_count;
-  bool is_bos_state = (history[0] == config_.bos_symbol);
-  // e.g. factor = is_bos ? 5.0 : 50.0 by default, meaning we keep
-  // more n-grams for the BOS state than for a typical bigram state;
-  // this is because the BOS state tends to be seen non-independently
-  // within the minibatch.
-  BaseFloat factor = is_bos_state ? config_.bos_factor : config_.unigram_factor;
-  KALDI_ASSERT(factor > 0.0);
-  // 'factor' is the factor by which the probability given this
-  // history state must be greater than the probability given the
-  // unigram state.
-
-  std::vector<Count>::iterator iter = state->counts.begin(),
-      end = state->counts.end();
-  double backoff_count = state->backoff_count;  // accumulate in double
-  for (; iter != end; ++iter) {
-    Count &count = *iter;
-    BaseFloat unigram_prob = unigram_probs_[count.word],
-        bigram_prob_no_backoff = count.count / total_count;
-    // note: when computing bigram_prob_no_backoff when deciding which thing to
-    // prune, we ignore the backoff term 'state->backoff_count * unigram_prob /
-    // total_count'.  This prevents the need for iteration and keeps things
-    // simple.
-    if (bigram_prob_no_backoff <= unigram_prob * factor) {
-      // Completely prune this count away.
-      backoff_count += count.count;
-      count.count = 0.0;
-    }
-  }
-  state->backoff_count = backoff_count;
-  RemoveZeroCounts(&(state->counts));
-}
-
-
-void BackoffLmForSampling::PruneHistoryStateAboveBigram(
-      const std::vector<int32> &history,
-      const std::vector<const HistoryState*> &backoff_states,
-      HistoryState *state) {
-  BaseFloat unigram_factor = config_.unigram_factor,
-      backoff_factor = config_.backoff_factor;
-  BaseFloat total_count = state->total_count;
-  KALDI_ASSERT(unigram_factor > 0.0 && backoff_factor >  0.0 &&
-               unigram_factor > backoff_factor);
-  std::vector<Count>::iterator iter = state->counts.begin(),
-      end = state->counts.end();
-  double backoff_count = state->backoff_count;  // accumulate in double
-  for (; iter != end; ++iter) {
-    Count &count = *iter;
-    BaseFloat current_prob_no_backoff = count.count / total_count,
-        prob_given_backoff_state = GetProbForWord(count.word,
-                                                  backoff_states),
-        unigram_prob = unigram_probs_[count.word];
-    if (!(current_prob_no_backoff > unigram_factor * unigram_prob &&
-          current_prob_no_backoff > backoff_factor * prob_given_backoff_state)) {
-      // Remove this word.  It's not probable enough to keep according to our
-      // rules.
-      backoff_count += count.count;
-      count.count = 0.0;
-    }
-  }
-  state->backoff_count = backoff_count;
-  RemoveZeroCounts(&(state->counts));
-}
-
-
-BaseFloat BackoffLmForSampling::GetProbForWord(
-    int32 word, const std::vector<const HistoryState*> &states) const {
-  // compute the probability from lowest to highest order.
-  KALDI_ASSERT(word > 0 && word < static_cast<int32>(unigram_probs_.size()));
-  BaseFloat ans = unigram_probs_[word];
-  for (size_t i = 0; i < states.size(); i++) {
-    const HistoryState *state = states[i];
-    ans *= state->backoff_count / state->total_count;
-    Count c;
-    c.word = word;
-    // look up word in the state's counts.
-    std::vector<Count>::const_iterator
-        iter = std::lower_bound(state->counts.begin(),
-                                state->counts.end(),
-                                c);
-    if (iter != state->counts.end() && iter->word == word) {
-      // we found the word
-      ans += iter->count / state->total_count;
-    }
-  }
+BaseFloat SamplingLm::GetDistribution(
+    const WeightedHistType &histories,
+    std::vector<std::pair<int32, BaseFloat> > *non_unigram_probs_out) const {
+  std::unordered_map<int32, BaseFloat> non_unigram_probs_temp;
+  // Call the other version of GetDistribution().
+  BaseFloat ans = GetDistribution(histories, &non_unigram_probs_temp);
+  non_unigram_probs_out->clear();
+  non_unigram_probs_out->reserve(non_unigram_probs_temp.size());
+  non_unigram_probs_out->insert(non_unigram_probs_out->end(),
+                                non_unigram_probs_temp.begin(),
+                                non_unigram_probs_temp.end());
+  std::sort(non_unigram_probs_out->begin(),
+            non_unigram_probs_out->end());
   return ans;
 }
 
-bool BackoffLmForSampling::IsProtected(const std::vector<int32> &history,
-                                       int32 word) const {
-  // n-grams of the highest order can't be protected because there
-  // would be no higher-order state.
-  if (static_cast<int32>(history.size()) + 1 == config_.ngram_order)
-    return false;
-  std::vector<int32> new_history;
-  new_history.reserve(history.size() + 1);
-  new_history.insert(new_history.end(), history.begin(), history.end());
-  new_history.push_back(word);
-  return (history_states_[new_history.size()].count(new_history) != 0);
-}
-
-BaseFloat BackoffLmForSampling::BackoffProb(
-    const std::vector<int32> &history, int32 word) const {
-  // n-grams of the highest order won't have their own history state.
-  if (static_cast<int32>(history.size()) + 1 == config_.ngram_order)
-    return 0.0;
-  std::vector<int32> new_history;
-  new_history.reserve(history.size() + 1);
-  new_history.insert(new_history.end(), history.begin(), history.end());
-  new_history.push_back(word);
-
-  unordered_map<std::vector<int32>, HistoryState*,
-      VectorHasher<int32>>::const_iterator iter =
-      history_states_[new_history.size()].find(new_history);
-  if (iter != history_states_[new_history.size()].end()) {
-    HistoryState *state = iter->second;
-    return state->backoff_count / state->total_count;
-  } else {
-    return 0.0;
-  }
-}
-
-
-// static
-void BackoffLmForSampling::RemoveZeroCounts(
-    std::vector<BackoffLmForSampling::Count> *counts) {
-  std::vector<Count>::const_iterator input_iter = counts->begin(),
-      end = counts->end();
-  std::vector<Count>::iterator output_iter = counts->begin();
-  // this while loop is an optimization to avoid copying where
-  // source and destination are the same; it could be removed.
-  while (input_iter != end && input_iter->count != 0.0) {
-    ++input_iter;
-    ++output_iter;
-  }
-  for (; input_iter != end; ++input_iter) {
-    if (input_iter->count != 0.0) {
-      *output_iter = *input_iter;
-      ++output_iter;
+BaseFloat SamplingLm::GetDistribution(
+    const WeightedHistType &histories,
+    std::unordered_map<int32, BaseFloat> *non_unigram_probs) const {
+  WeightedHistType histories_closure;
+  BaseFloat total_weight, total_unigram_weight;
+  AddBackoffToHistoryStates(histories, &histories_closure,
+                            &total_weight, &total_unigram_weight);
+  non_unigram_probs->clear();
+  double total_weight_check = total_unigram_weight;
+  WeightedHistType::const_iterator iter = histories_closure.begin(),
+      end = histories_closure.end();
+  for (; iter != end; ++iter) {
+    const HistType &history = iter->first;
+    BaseFloat hist_weight = iter->second;
+    int32 order = history.size() + 1;
+    KALDI_ASSERT(order > 1);  // unigram history is not included at this point.
+    std::unordered_map<HistType, HistoryState,
+        VectorHasher<int32> >::const_iterator it_hist =
+           higher_order_probs_[order - 2].find(history);
+    KALDI_ASSERT(it_hist != higher_order_probs_[order - 2].end());
+    std::vector<std::pair<int32, BaseFloat> >::const_iterator
+        word_iter = it_hist->second.words_and_probs.begin(),
+        word_end = it_hist->second.words_and_probs.end();
+    for (; word_iter != word_end; ++word_iter) {
+      int32 word = word_iter->first;
+      BaseFloat prob = word_iter->second;
+      // note: if 'word' was not in the map, it's as if it were zero, for C++
+      // version >= C++11; search for unordered_map value initialization for
+      // explanation
+      (*non_unigram_probs)[word] += prob * hist_weight;
+      total_weight_check += prob * hist_weight;
     }
   }
-  counts->resize(output_iter - counts->begin());
-}
-
-
-void BackoffLmForSampling::ComputeUnigramDistribution() {
-  int32 vocab_size = config_.vocab_size;
-  if (history_states_[0].size() != 1) {
-    KALDI_ERR << "There are no counts (no data processed?)";
-  }
-  HistoryState *unigram_state = history_states_[0].begin()->second;
-  KALDI_ASSERT(unigram_state->backoff_count == 0.0);
-
-  double discounted_count = 0.0;
-  { // this block works out 'unigram_state->backoff_count' which is the same as
-    // 'discounted_count', and discounts the counts in 'unigram_state->counts'.
-    BaseFloat D = config_.discounting_constant;
-    std::vector<Count>::iterator iter = unigram_state->counts.begin(),
-        end = unigram_state->counts.end();
-    for(; iter != end; ++iter) {
-      BaseFloat count_to_discount = D * iter->highest_count;
-      iter->count -= count_to_discount;
-      discounted_count += count_to_discount;
+  // Check that 'total_weight' and 'total_weight_check' are
+  // the same.  'total_weight' is the total of the of the .second
+  // member of the input 'histories', and 'total_weight_check' is the
+  // total weight of 'non_unigrm_probs' plus 'total_unigram_weight'.
+  // Essentially this is a check that the distribution given
+  // by the ARPA file (and as processed by us) sums to one for each
+  // history state.  If this check fails, it could either be
+  // a problem with this code, or an issue with the software that
+  // created the ARPA file.
+  if (fabs(total_weight - total_weight_check) >
+      0.01 * total_weight) {
+    static int32 num_times_warned = 0;
+    if (num_times_warned < 10) {
+      KALDI_WARN << "Total weight does not have expected value (problem in "
+          "your ARPA file, or this code).  Won't warn >10 times.";
+      num_times_warned++;
     }
-    unigram_state->backoff_count = discounted_count;
   }
-
-  BaseFloat total_count = unigram_state->total_count;
-  // 'uniform_prob' is the probability that we add to each word in the vocabulary
-  // even if it was not seen.  We divide discounted_count equally among all
-  // words; the - 2 is to exclude <eps> and <s>, which are never predicted.
-  BaseFloat uniform_prob = (discounted_count / total_count) / (vocab_size - 2);
-  KALDI_ASSERT(total_count > 0.0 && uniform_prob > 0.0);
-  unigram_probs_.clear();
-  unigram_probs_.resize(vocab_size, uniform_prob);
-  unigram_probs_[0] = 0.0;
-  unigram_probs_[config_.bos_symbol] = 0.0;
-
-  std::vector<Count>::iterator iter = unigram_state->counts.begin(),
-      end = unigram_state->counts.end();
-  for(; iter != end; ++iter) {
-    BaseFloat this_prob = iter->count / total_count;
-    // 'this_prob' is the non-smoothed part of the unigram probability.
-    unigram_probs_[iter->word] += this_prob;
-  }
-
-  double sum = std::accumulate(unigram_probs_.begin(),
-                               unigram_probs_.end(), 0.0);
-  KALDI_ASSERT(fabs(sum - 1.0) < 0.01);
+  KALDI_ASSERT(total_unigram_weight > 0.0);
+  return total_unigram_weight;
 }
 
-BackoffLmForSampling::~BackoffLmForSampling() {
-  for (size_t i = 0; i < history_states_.size(); i++) {
-    for (auto iter = history_states_[i].begin(), end = history_states_[i].end();
-         iter != end; ++iter)
-      delete iter->second;
-  }
-}
-
-
-void BackoffLmForSampling::TakeUnigramCountsToPower(BaseFloat power) {
-  if (power == 1.0) return;
-  double sum = 0.0;
-  for (std::vector<BaseFloat>::iterator iter = unigram_probs_.begin(),
-           end = unigram_probs_.end(); iter != end; ++iter) {
-    *iter = std::pow(*iter, power);
-    sum += *iter;
-  }
-  BaseFloat scale = 1.0 / sum;
-  for (std::vector<BaseFloat>::iterator iter = unigram_probs_.begin(),
-           end = unigram_probs_.end(); iter != end; ++iter)
-    *iter = *iter * scale;
-}
-
-
-int32 BackoffLmForSampling::NumNgrams(int32 o) const {
-  KALDI_ASSERT(o >= 1 && o <= config_.ngram_order);
-  if (o == 1) {
-    // - 1 is for <eps>.  <s> does get printed in the ARPA file, with a
-    // probability of -99.
-    return config_.vocab_size - 1;
-  } else {
-    int32 ans = 0;
-    unordered_map<std::vector<int32>, HistoryState*,
-        VectorHasher<int32> >::const_iterator
-        iter = history_states_[o-1].begin(),
-        end =  history_states_[o-1].end();
+SamplingLm::SamplingLm(const SamplingLmEstimator &estimator):
+    ArpaFileParser(ArpaParseOptions(), NULL),
+    unigram_probs_(estimator.unigram_probs_),
+    higher_order_probs_(estimator.history_states_.size() - 1) {
+  for (int32 o = 2;
+       o <= static_cast<int32>(estimator.history_states_.size()); o++) {
+    higher_order_probs_[o-2].reserve(estimator.history_states_[o-1].size());
+    unordered_map<std::vector<int32>, SamplingLmEstimator::HistoryState*,
+                  VectorHasher<int32> >::const_iterator
+        iter = estimator.history_states_[o-1].begin(),
+        end =  estimator.history_states_[o-1].end();
     for (; iter != end; ++iter) {
-      HistoryState *state = iter->second;
-      ans += static_cast<int32>(state->counts.size());
-    }
-    return ans;
-  }
-}
-
-void BackoffLmForSampling::PrintNgramsUnigram(
-    std::ostream &os, const fst::SymbolTable &symbols) const {
-  int32 vocab_size = config_.vocab_size,
-      bos_symbol = config_.bos_symbol;
-  std::vector<int32> unigram_history;
-  for (int32 word = 1; word < vocab_size; word++) {
-    std::string printed_word = symbols.Find(word);
-    KALDI_ASSERT(!printed_word.empty() && "Mismatching symbol-table?");
-    BaseFloat word_logprob = (word == bos_symbol ? -99.0 :
-                              log10(unigram_probs_[word]));
-    BaseFloat backoff_prob = BackoffProb(unigram_history, word);
-    os << word_logprob << '\t' << printed_word;
-    if (backoff_prob != 0.0)  os << '\t' << log10(backoff_prob) << '\n';
-    else os << '\n';
-  }
-}
-
-
-void BackoffLmForSampling::PrintNgramsAboveUnigram(
-    std::ostream &os, int32 o, const fst::SymbolTable &symbols) {
-  unordered_map<std::vector<int32>, HistoryState*,
-      VectorHasher<int32> >::const_iterator
-      hist_iter = history_states_[o-1].begin(),
-      hist_end =  history_states_[o-1].end();
-  for (; hist_iter != hist_end; ++hist_iter) {
-    const std::vector<int32> &history = hist_iter->first;
-    const HistoryState *state = hist_iter->second;
-
-    // 'backoff_states' will list states that 'state' backs off to down to and
-    // including bigram.  it's used when computing probabilities.  It will be
-    // empty if o == 2.
-    std::vector<const HistoryState*> backoff_states;
-    { // this block sets up 'states'
-      std::vector<int32> backoff_history(history);
-      while (backoff_history.size() > 1) {
-        backoff_history.erase(backoff_history.begin());
-        const HistoryState *backoff_state = GetHistoryState(backoff_history,
-                                                            false);
-        backoff_states.push_back(backoff_state);
+      const std::vector<int32> &history = iter->first;
+      const SamplingLmEstimator::HistoryState &src_state = *(iter->second);
+      // the next statement adds a history state to the map.
+      HistoryState &dest_state = higher_order_probs_[o-2][history];
+      BaseFloat inv_total_count = BaseFloat(1.0) / src_state.total_count;
+      dest_state.backoff_prob = src_state.backoff_count * inv_total_count;
+      dest_state.words_and_probs.resize(src_state.counts.size());
+      std::vector<SamplingLmEstimator::Count>::const_iterator
+          src_iter = src_state.counts.begin(),
+          src_end = src_state.counts.end();
+      std::vector<std::pair<int32, BaseFloat> >::iterator
+          dest_iter = dest_state.words_and_probs.begin();
+      for (; src_iter != src_end; ++src_iter, ++dest_iter) {
+        dest_iter->first = src_iter->word;
+        dest_iter->second = inv_total_count * src_iter->count;
       }
     }
+  }
+}
 
-    std::string history_str;
-    { // This block will set history_str to the sequence of history words for
-      // this history state, separated by space; e.g. "on Tuesdays".
-      std::ostringstream history_os;
-      for (size_t i = 0; i < history.size(); i++) {
-        std::string printed_word = symbols.Find(history[i]);
-        KALDI_ASSERT(printed_word != "" && "mismatched symbol table?");
-        history_os << printed_word;
-        if (i + 1 < history.size()) history_os << ' ';
+void SamplingLm::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<SamplingLm>");
+  WriteToken(os, binary, "<Order>");
+  int32 order = higher_order_probs_.size() + 1;
+  WriteBasicType(os, binary, order);
+  WriteToken(os, binary, "<VocabSize>");
+  int32 vocab_size = unigram_probs_.size();
+  WriteBasicType(os, binary, vocab_size);
+  KALDI_ASSERT(!unigram_probs_.empty());
+  // we have read and write functions in class Vector, so use that.
+  SubVector<BaseFloat> probs(const_cast<BaseFloat*>(&(unigram_probs_[0])),
+                             static_cast<int32>(unigram_probs_.size()));
+  probs.Write(os, binary);
+  for (int32 o = 2; o <= order; o++) {
+    WriteToken(os, binary, "<StatesOfOrder>");
+    WriteBasicType(os, binary, o);
+    WriteToken(os, binary, "<NumStates>");
+    int32 num_states = higher_order_probs_[o-2].size();
+    WriteBasicType(os, binary, num_states);
+
+    unordered_map<std::vector<int32>, HistoryState,
+                  VectorHasher<int32> >::const_iterator
+        iter = higher_order_probs_[o-2].begin(),
+        end = higher_order_probs_[o-2].end();
+    for (; iter != end; ++iter ){
+      const std::vector<int32> &history = iter->first;
+      const HistoryState &state = iter->second;
+      WriteIntegerVector(os, binary, history);
+      WriteBasicType(os, binary, state.backoff_prob);
+      int32 num_words = state.words_and_probs.size();
+      WriteBasicType(os, binary, num_words);
+      for (int32 i = 0; i < num_words; i++) {
+        WriteBasicType(os, binary, state.words_and_probs[i].first);
+        WriteBasicType(os, binary, state.words_and_probs[i].second);
       }
-      history_str = history_os.str();
-    }
-    std::vector<Count>::const_iterator count_iter = state->counts.begin(),
-        count_end = state->counts.end();
-    BaseFloat total_count = state->total_count,
-        backoff_count = state->backoff_count;
-    for (; count_iter != count_end; ++count_iter) {
-      const Count &count = *count_iter;
-      std::string printed_word = symbols.Find(count.word);
-      KALDI_ASSERT(printed_word != "" && "mismatched symbol table?");
-      BaseFloat word_prob =
-          (count.count + backoff_count * GetProbForWord(count.word,
-                                                        backoff_states)) /
-          total_count,
-          backoff_prob = BackoffProb(history, count.word);
-      os << log10(word_prob) << '\t' << history_str << ' ' << printed_word;
-      if (backoff_prob != 0.0)  os << '\t' << log10(backoff_prob) << '\n';
-      else os << '\n';
+      if (!binary) os << std::endl;
     }
   }
+  WriteToken(os, binary, "</SamplingLm>");
 }
 
 
-void BackoffLmForSampling::PrintAsArpa(std::ostream &os,
-                                       const fst::SymbolTable &symbols) {
-  os << std::fixed << std::setprecision(3);  // print log-probs as -a.bcd
-  os << "\\data\\\n";
-  for (int32 o = 1; o <= config_.ngram_order; o++)
-    os << "ngram " << o << "=" << NumNgrams(o) << "\n";
-
-  for (int32 o = 1; o <= config_.ngram_order; o++) {
-    os << '\n' << '\\' << o << "-grams:\n";
-    if (o == 1) PrintNgramsUnigram(os, symbols);
-    else PrintNgramsAboveUnigram(os, o, symbols);
+void SamplingLm::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<SamplingLm>");
+  ExpectToken(is, binary, "<Order>");
+  int32 order;
+  ReadBasicType(is, binary, &order);
+  KALDI_ASSERT(order >= 1 && order < 100);
+  higher_order_probs_.resize(order - 1);
+  ExpectToken(is, binary, "<VocabSize>");
+  int32 vocab_size;
+  ReadBasicType(is, binary, &vocab_size);
+  unigram_probs_.resize(vocab_size);
+  // we have read and write functions in class Vector, so use that.
+  SubVector<BaseFloat> probs(&(unigram_probs_[0]), vocab_size);
+  probs.Read(is, binary);
+  for (int32 o = 2; o <= order; o++) {
+    ExpectToken(is, binary, "<StatesOfOrder>");
+    int32 o2;
+    ReadBasicType(is, binary, &o2);
+    KALDI_ASSERT(o2 == o);
+    int32 num_states;
+    ExpectToken(is, binary, "<NumStates>");
+    ReadBasicType(is, binary, &num_states);
+    higher_order_probs_[o-2].reserve(num_states);
+    for  (int32 s = 0; s < num_states; s++) {
+      std::vector<int32> history;
+      ReadIntegerVector(is, binary, &history);
+      HistoryState &state = higher_order_probs_[o-2][history];
+      ReadBasicType(is, binary, &(state.backoff_prob));
+      int32 num_words;
+      ReadBasicType(is, binary, &num_words);
+      KALDI_ASSERT(num_words >= 0);
+      state.words_and_probs.resize(num_words);
+      for (int32 i = 0; i < num_words; i++) {
+        ReadBasicType(is, binary, &(state.words_and_probs[i].first));
+        ReadBasicType(is, binary, &(state.words_and_probs[i].second));
+      }
+    }
   }
-  os << "\n\\end\\\n";
+  ExpectToken(is, binary, "</SamplingLm>");
 }
 
+// TODO: delete if unused.
+void SamplingLm::Swap(SamplingLm *other) {
+  unigram_probs_.swap(other->unigram_probs_);
+  higher_order_probs_.swap(other->higher_order_probs_);
+}
 
 }  // namespace rnnlm
 }  // namespace kaldi

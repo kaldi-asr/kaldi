@@ -11,7 +11,8 @@
 #lm=data/pocolm/trigram_100k.arpa.gz
 vocab=data/vocab/words.txt
 dir=exp/rnnlm_data_prep
-lm=$dir/lm.arpa.gz
+#lm=$dir/lm.arpa.gz
+lm=$dir/sampling.lm
 vocab=data/vocab/words.txt
 embedding_dim=600
 ns=$(rnnlm/get_num_splits.sh 200000 data/text $dir/data_weights.txt)
@@ -50,12 +51,12 @@ nnet3-init $dir/configs/final.config - | nnet3-copy --learning-rate=0.0001 - $di
 
 
 rnnlm-train --use-gpu=no --read-rnnlm=$dir/0.rnnlm --write-rnnlm=$dir/1.rnnlm --read-embedding=$dir/word_embedding.0.mat \
-            --write-embedding=/$dir/word_embedding.1.mat "ark:rnnlm-get-egs --vocab-size=$vocab_size $vocab 'gunzip -c $lm|' $dir/text/1.txt ark:- |"
+            --write-embedding=/$dir/word_embedding.1.mat "ark:rnnlm-get-egs $lm $dir/text/1.txt ark:- |"
 
 # or with GPU:
 rnnlm-train --rnnlm.max-param-change=0.5 --embedding.max-param-change=0.5 \
              --use-gpu=yes --read-rnnlm=$dir/0.rnnlm --write-rnnlm=$dir/1.rnnlm --read-embedding=$dir/word_embedding.0.mat \
-            --write-embedding=$dir/word_embedding.1.mat "ark:for n in 1 2 3 4 5 6; do cat exp/rnnlm_data_prep/text/*.txt; done | rnnlm-get-egs --num-threads=4 --vocab-size=10003 $vocab 'gunzip -c $lm|' - ark:- |"
+            --write-embedding=$dir/word_embedding.1.mat "ark:for n in 1 2 3 4 5 6; do cat exp/rnnlm_data_prep/text/*.txt; done | rnnlm-get-egs --num-threads=4 $lm - ark:- |"
 
 
 # just a note on the unigram entropy of PTB training set:

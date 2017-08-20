@@ -25,7 +25,7 @@
 #include "matrix/matrix-lib.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
-#include "rnnlm/arpa-sampling.h"
+#include "rnnlm/sampling-lm.h"
 #include "rnnlm/sampler.h"
 
 
@@ -229,7 +229,7 @@ struct RnnlmEgsConfig {
                     eos_symbol(2),  // so these are sensible defaults.
                     brk_symbol(3),
                     special_symbol_prob(1.0e-05),
-                    uniform_prob_mass(0.1) { }
+                    uniform_prob_mass(0.05) { }
 
   void Register(OptionsItf *po) {
     po->Register("vocab-size", &vocab_size,
@@ -273,10 +273,10 @@ struct RnnlmEgsConfig {
     po->Register("uniform-prob-mass", &uniform_prob_mass,
                  "We replace this proportion of the unigram distribution's "
                  "probability mass with a uniform distribution over words. "
-                 "See code for reason.");
+                 "Probably not necessary or important.");
   }
   // Checks that the config makes sense, and dies if not.
-  void Check() {
+  void Check() const {
     KALDI_ASSERT(chunk_length > min_split_context * 4 &&
                  num_chunks_per_minibatch > 0 &&
                  min_split_context >= 0 &&
@@ -308,7 +308,7 @@ struct RnnlmEgsConfig {
 class RnnlmExampleSampler {
  public:
   RnnlmExampleSampler(const RnnlmEgsConfig &config,
-                      const ArpaSampling &arpa_sampling);
+                      const SamplingLm &arpa_sampling);
 
 
   // Does the sampling for 'minibatch'.  'minibatch' is expected to already
@@ -373,7 +373,7 @@ class RnnlmExampleSampler {
 
   RnnlmEgsConfig config_;
   // arpa_ stores the n-gram language model that we use for importance sampling.
-  const ArpaSampling &arpa_sampling_;
+  const SamplingLm &arpa_sampling_;
   // class Sampler does some of the lower-level aspects of sampling.
   Sampler *sampler_;
 };

@@ -5,11 +5,12 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-TESTFILES = sampler-test arpa-sampling-test rnnlm-example-test
+TESTFILES = sampler-test sampling-lm-test rnnlm-example-test
 
-OBJFILES = sampler.o arpa-sampling.o rnnlm-example.o rnnlm-example-utils.o \
+OBJFILES = sampler.o rnnlm-example.o rnnlm-example-utils.o \
            rnnlm-core-training.o rnnlm-embedding-training.o rnnlm-core-compute.o \
-           rnnlm-utils.o rnnlm-training.o rnnlm-test-utils.o sampling-lm.o
+           rnnlm-utils.o rnnlm-training.o rnnlm-test-utils.o sampling-lm-estimate.o \
+           sampling-lm.o
 
 LIBNAME = kaldi-rnnlm
 

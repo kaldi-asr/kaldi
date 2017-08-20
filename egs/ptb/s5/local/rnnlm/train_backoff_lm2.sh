@@ -19,10 +19,21 @@ set -e
 
 
 
+# old version that writes the ARPA file:
+#rnnlm-get-sampling-lm --discounting-constant=1.0 \
+#  --unigram-factor=200.0 --backoff-factor=2.0 \
+#   "cat data/text/ptb.txt | utils/sym2int.pl data/vocab/words.txt | awk '{print 1.0, \$0}' |" \
+#   data/vocab/words.txt "| gzip -c > $dir/lm.arpa.gz"
+
+
+
+vocab_size=$(tail -n 1 data/vocab/words.txt |awk '{print $NF + 1}')
+
 rnnlm-get-sampling-lm --discounting-constant=1.0 \
-  --unigram-factor=200.0 --backoff-factor=2.0 \
+                      --unigram-factor=200.0 --backoff-factor=2.0 \
+                      --vocab-size=$vocab_size \
    "cat data/text/ptb.txt | utils/sym2int.pl data/vocab/words.txt | awk '{print 1.0, \$0}' |" \
-   data/vocab/words.txt "| gzip -c > $dir/lm.arpa.gz"
+  $dir/sampling.lm
 
 
 exit 0

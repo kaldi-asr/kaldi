@@ -25,7 +25,7 @@
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
 #include "nnet3/nnet-computation.h"
-#include "rnnlm/arpa-sampling.h"
+#include "rnnlm/sampling-lm.h"
 #include "rnnlm/sampler.h"
 #include "rnnlm/rnnlm-example.h"
 
