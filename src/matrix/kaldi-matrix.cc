@@ -403,9 +403,11 @@ void MatrixBase<Real>::AddSmat(Real alpha, const SparseMatrix<Real> &A,
   if (trans == kNoTrans) {
     KALDI_ASSERT(NumRows() == A.NumRows());
     KALDI_ASSERT(NumCols() == A.NumCols());
-    for (int i = 0; i < A.NumRows(); ++i) {
+    MatrixIndexT a_num_rows = A.NumRows();
+    for (int i = 0; i < a_num_rows; ++i) {
       const auto & row = A.Row(i);
-      for (int id = 0; id < row.NumElements(); ++id) {
+      MatrixIndexT num_elems = row.NumElements();
+      for (int id = 0; id < num_elems; ++id) {
         (*this)(i, row.GetElement(id).first) += alpha
             * row.GetElement(id).second;
       }
@@ -413,9 +415,11 @@ void MatrixBase<Real>::AddSmat(Real alpha, const SparseMatrix<Real> &A,
   } else {
     KALDI_ASSERT(NumRows() == A.NumCols());
     KALDI_ASSERT(NumCols() == A.NumRows());
-    for (int i = 0; i < A.NumRows(); ++i) {
+    MatrixIndexT a_num_rows = A.NumRows();
+    for (int i = 0; i < a_num_rows; ++i) {
       const auto & row = A.Row(i);
-      for (int id = 0; id < row.NumElements(); ++id) {
+      MatrixIndexT num_elems = row.NumElements();
+      for (int id = 0; id < num_elems; ++id) {
         (*this)(row.GetElement(id).first, i) += alpha
             * row.GetElement(id).second;
       }
@@ -487,11 +491,16 @@ void MatrixBase<Real>::AddMatSmat(Real alpha, const MatrixBase<Real> &A,
     KALDI_ASSERT(A.NumCols() == B.NumRows());
 
     Matrix<Real> buf(NumRows(), NumCols(), kSetZero);
-    for (int i = 0; i < NumRows(); ++i) {
-      for (int k = 0; k < B.NumRows(); ++k) {
-        for (int e = 0; e < B.Row(k).NumElements(); ++e) {
-          int j = B.Row(k).GetElement(e).first;
-          buf(i, j) += A(i, k) * B.Row(k).GetElement(e).second;
+    MatrixIndexT a_num_rows = A.NumRows();
+    MatrixIndexT b_num_rows = B.NumRows();
+    for (int i = 0; i < a_num_rows; ++i) {
+      for (int k = 0; k < b_num_rows; ++k) {
+        const SparseVector<Real> &B_row_k = B.Row(k);
+        MatrixIndexT num_elems = B_row_k.NumElements();
+        for (int e = 0; e < num_elems; ++e) {
+          const std::pair<MatrixIndexT, Real> &p = B_row_k.GetElement(e);
+          int j = p.first;
+          buf(i, j) += A(i, k) * p.second;
         }
       }
     }
@@ -503,11 +512,16 @@ void MatrixBase<Real>::AddMatSmat(Real alpha, const MatrixBase<Real> &A,
     KALDI_ASSERT(A.NumCols() == B.NumCols());
 
     Matrix<Real> buf(NumRows(), NumCols(), kSetZero);
-    for (int i = 0; i < NumRows(); ++i) {
-      for (int j = 0; j < B.NumRows(); ++j) {
-        for (int e = 0; e < B.Row(j).NumElements(); ++e) {
-          int k = B.Row(j).GetElement(e).first;
-          buf(i, j) += A(i, k) * B.Row(j).GetElement(e).second;
+    MatrixIndexT a_num_rows = A.NumRows();
+    MatrixIndexT b_num_rows = B.NumRows();
+    for (int i = 0; i < a_num_rows; ++i) {
+      for (int j = 0; j < b_num_rows; ++j) {
+        const SparseVector<Real> &B_row_j = B.Row(j);
+        MatrixIndexT num_elems = B_row_j.NumElements();
+        for (int e = 0; e < num_elems; ++e) {
+          const std::pair<MatrixIndexT, Real> &p = B_row_j.GetElement(e);
+          int k = p.first;
+          buf(i, j) += A(i, k) * p.second;
         }
       }
     }
