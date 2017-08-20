@@ -160,10 +160,12 @@ void RnnlmEmbeddingTrainer::PrintStats() {
 
   BaseFloat param_change_2norm = delta_embedding_mat.FrobeniusNorm(),
       baseline_params_2norm = initial_embedding_mat_.FrobeniusNorm(),
+      final_params_2norm = embedding_mat_->FrobeniusNorm(),
       relative_param_change = param_change_2norm / baseline_params_2norm;
 
-  KALDI_LOG << "Norm of embedding-matrix differences is " << param_change_2norm;
-  KALDI_LOG << "Norm of embedding matrix is " << baseline_params_2norm;
+  KALDI_LOG << "Norm of embedding-matrix differences is " << param_change_2norm
+            << " (initial norm of matrix was " << baseline_params_2norm
+            << "; now it is " << final_params_2norm << ")";
   KALDI_LOG << "Relative change in embedding matrix is "
             << relative_param_change;
 }

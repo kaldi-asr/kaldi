@@ -331,7 +331,7 @@ void RnnlmExampleCreator::AcceptSequence(
   CheckSequence(weight, words);
   SplitSequenceIntoChunks(weight, words);
   while (chunks_.size() > static_cast<size_t>(config_.chunk_buffer_size)) {
-    if (!WriteMinibatch())
+    if (!ProcessOneMinibatch())
       break;
   }
 }
@@ -542,7 +542,7 @@ RnnlmExampleCreator::SequenceChunk* RnnlmExampleCreator::GetRandomChunk() {
   return ans;
 }
 
-bool RnnlmExampleCreator::WriteMinibatch() {
+bool RnnlmExampleCreator::ProcessOneMinibatch() {
   // A couple of configuration values that are not important enough
   // to go in the config...
   // 'chunks_proportion' controls when we discard a small number of
@@ -574,16 +574,23 @@ bool RnnlmExampleCreator::WriteMinibatch() {
       cur_rejections++;
     }
   }
-  RnnlmExample minibatch;
-  s.CreateMinibatch(&minibatch);
-  if (minibatch_sampler_ != NULL)
-    minibatch_sampler_->SampleForMinibatch(&minibatch);
-
-  num_minibatches_written_++;
+  RnnlmExample *minibatch = new RnnlmExample();
+  s.CreateMinibatch(minibatch);
   std::ostringstream os;
   os << "minibatch-" << num_minibatches_written_;
   std::string key = os.str();
-  writer_->Write(key, minibatch);
+  num_minibatches_written_++;
+  if (minibatch_sampler_ == NULL) {
+    // write it directly from this function.
+    writer_->Write(key, *minibatch);
+    delete minibatch;
+  } else {
+    // the sampling, since it can be slow, will be done in parallel by as many
+    // background threads as the user specified via the --num-threads option.
+    // SamplerTask will also write it out.
+    sampling_sequencer_.Run(new SamplerTask(*minibatch_sampler_,
+                                            key, writer_, minibatch));
+  }
   return true;
 }
 

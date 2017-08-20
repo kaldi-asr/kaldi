@@ -49,10 +49,13 @@ int main(int argc, char *argv[]) {
         "See also: rnnlm-train\n";
 
     RnnlmEgsConfig egs_config;
+    TaskSequencerConfig sequencer_config;  // has --num-threads option; only
+                                           // relevant if we are using sampling
 
     ParseOptions po(usage);
 
     egs_config.Register(&po);
+    sequencer_config.Register(&po);
 
     po.Read(argc, argv);
 
@@ -92,7 +95,8 @@ int main(int argc, char *argv[]) {
         arpa.Read(arpa_input.Stream());
       }
       RnnlmExampleSampler sampler(egs_config, arpa);
-      RnnlmExampleCreator creator(egs_config, sampler, &writer);
+      RnnlmExampleCreator creator(egs_config, sequencer_config,
+                                  sampler, &writer);
       Input ki(sentences_rxfilename);
       creator.Process(ki.Stream());
       delete symtab;

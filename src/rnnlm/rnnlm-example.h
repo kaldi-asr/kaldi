@@ -21,6 +21,7 @@
 #define KALDI_RNNLM_RNNLM_EXAMPLE_H_
 
 #include "base/kaldi-common.h"
+#include "util/kaldi-thread.h"
 #include "matrix/matrix-lib.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
@@ -386,9 +387,11 @@ class RnnlmExampleCreator {
   // This constructor is for when you are using importance sampling from
   // an ARPA language model (the normal case).
   RnnlmExampleCreator(const RnnlmEgsConfig &config,
+                      const TaskSequencerConfig &sequencer_config,
                       const RnnlmExampleSampler &minibatch_sampler,
                       TableWriter<KaldiObjectHolder<RnnlmExample> > *writer):
       config_(config), minibatch_sampler_(&minibatch_sampler),
+      sampling_sequencer_(sequencer_config),
       writer_(writer), num_chunks_processed_(0), num_words_processed_(0),
       num_minibatches_written_(0) { Check(); }
 
@@ -398,7 +401,9 @@ class RnnlmExampleCreator {
   // to be used for testing purposes.
   RnnlmExampleCreator(const RnnlmEgsConfig &config,
                       TableWriter<KaldiObjectHolder<RnnlmExample> > *writer):
-      config_(config), minibatch_sampler_(NULL), writer_(writer),
+      config_(config), minibatch_sampler_(NULL),
+      sampling_sequencer_(TaskSequencerConfig()),
+      writer_(writer),
       num_chunks_processed_(0), num_words_processed_(0),
       num_minibatches_written_(0) { Check(); }
 
@@ -428,17 +433,20 @@ class RnnlmExampleCreator {
   // 1.0  2560 8991
   void Process(std::istream &is);
 
-  void Flush() { while (WriteMinibatch()); }  // Flush out any pending minibatches.
+  // Flush out any pending minibatches.
+  void Flush() { while (ProcessOneMinibatch()); sampling_sequencer_.Wait();  }
 
   ~RnnlmExampleCreator();
  private:
 
   void Check() const;
 
-  // Attempts to create and write out a minibatch of egs.  Returns true if it
-  // successfully did so, and false if it could not do so because there was
-  // insufficient data.
-  bool WriteMinibatch();
+  // Attempts to create a minibatch.  Returns true if it successfully did so,
+  // and false if it could not do so because there was insufficient data.
+  // If we are not doing sampling, this function will write
+  // the minibatch to 'writer_' directly; if we are doing sampling, it will
+  // give it to a background thread to be processed and written.
+  bool ProcessOneMinibatch();
 
   struct SequenceChunk {
     // 'sequence' is a pointer to the word sequence (without initial <s>, but with
@@ -543,6 +551,32 @@ class RnnlmExampleCreator {
   };
 
 
+  // This class is a wrapper class that, when provided to class TaskSequencer, allows us to
+  // run the call 'sampler.SampleForMinibatch(minibatch)' in multiple threads, followed by
+  // sequentially calling writer->Write(key, *minibatch) and deleting minibatch.
+  class SamplerTask {
+   public:
+    SamplerTask(const RnnlmExampleSampler &sampler,
+                const std::string &key,
+                TableWriter<KaldiObjectHolder<RnnlmExample> > *writer,
+                RnnlmExample *minibatch):
+        sampler_(sampler), key_(key), writer_(writer), minibatch_(minibatch) { }
+
+    void operator () () {
+      sampler_.SampleForMinibatch(minibatch_);
+    }
+    ~SamplerTask() {
+      writer_->Write(key_, *minibatch_);
+      delete minibatch_;
+    }
+   private:
+    const RnnlmExampleSampler &sampler_;
+    std::string key_;
+    TableWriter<KaldiObjectHolder<RnnlmExample> > *writer_;
+    RnnlmExample *minibatch_; // owned here.
+  };
+
+
   // Checks an input sequence, as read directly from the user.
   // Checks that weight > 0.0, that 'words' does not contain
   // <s> or <brk> (see bos_symbol and brk_symbol in the config).
@@ -586,6 +620,7 @@ class RnnlmExampleCreator {
 
   const RnnlmEgsConfig &config_;
   const RnnlmExampleSampler *minibatch_sampler_;
+  TaskSequencer<SamplerTask> sampling_sequencer_;
   TableWriter<KaldiObjectHolder<RnnlmExample> > *writer_;
 
   int32 num_chunks_processed_;
