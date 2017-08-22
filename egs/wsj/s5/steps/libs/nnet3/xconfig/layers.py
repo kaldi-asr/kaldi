@@ -6,3 +6,4 @@
 from basic_layers import *
 from convolution import *
 from lstm import *
+from stats_layer import *
