@@ -260,9 +260,15 @@ void ChainTrainingTest(const DenominatorGraph &den_graph,
 
   BaseFloat objf, l2_term, weight;
 
-  ComputeChainObjfAndDeriv(opts, den_graph, supervision,
-                           nnet_output, &objf, &l2_term, &weight,
-                           &nnet_output_deriv);
+  if (RandInt(0, 1) == 1) {
+    ComputeChainObjfAndDeriv(opts, den_graph, supervision,
+                             nnet_output, &objf, &l2_term, &weight,
+                             &nnet_output_deriv);
+  } else {
+    ComputeChainSmbrObjfAndDeriv(opts, den_graph, supervision,
+                                 nnet_output, &objf, &l2_term, &weight,
+                                 &nnet_output_deriv);
+  }
 
   {
     // make sure each row of nnet_output_deriv sums to one (shift invariance of

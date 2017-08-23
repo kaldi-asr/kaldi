@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
 
     nnet = combiner.GetNnet();
     if (HasBatchnorm(nnet))
-      RecomputeStats(egs, chain_config, den_fst, &nnet);
+      RecomputeStats(egs, chain_config, den_fst, den_fst_to_output, &nnet);
 
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();

@@ -114,7 +114,8 @@ class NnetChainComputeProb {
 /// declared in nnet-utils.h.
 void RecomputeStats(const std::vector<NnetChainExample> &egs,
                     const chain::ChainTrainingOptions &chain_config,
-                    const fst::StdVectorFst &den_fst,
+                    const std::vector<fst::StdVectorFst> &den_fst,
+                    const std::vector<std::string> &den_to_output,
                     Nnet *nnet);
 
 

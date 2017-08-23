@@ -48,6 +48,39 @@ extern "C" {
                               const BaseFloat *prev_alpha,
                               BaseFloat *this_alpha);
 
+  void cuda_chain_smbr_hmm_backward(dim3 Gr, dim3 Bl,
+                                    const Int32Pair *forward_transitions,
+                                    const DenominatorGraphTransition *transitions,
+                                    int32_cuda num_sequences,
+                                    int32_cuda num_hmm_states,
+                                    const BaseFloat *probs,
+                                    int32_cuda prob_stride,
+                                    const BaseFloat *num_post,
+                                    int32_cuda post_stride,
+                                    const BaseFloat *tot_smbr,
+                                    const BaseFloat *this_alpha,
+                                    const BaseFloat *this_alpha_smbr,
+                                    const BaseFloat *next_beta,
+                                    const BaseFloat *next_beta_smbr,
+                                    BaseFloat *this_beta,
+                                    BaseFloat *this_beta_smbr,
+                                    BaseFloat *log_prob_deriv,
+                                    int32_cuda log_prob_deriv_stride);
+
+  void cuda_chain_smbr_hmm_forward(dim3 Gr, dim3 Bl,
+                                   const Int32Pair *backward_transitions,
+                                   const DenominatorGraphTransition *transitions,
+                                   int32_cuda num_sequences,
+                                   int32_cuda num_hmm_states,
+                                   const BaseFloat *probs,
+                                   int32_cuda prob_stride,
+                                   const BaseFloat *num_post,
+                                   int32_cuda post_stride,
+                                   const BaseFloat *prev_alpha,
+                                   const BaseFloat *prev_alpha_smbr,
+                                   BaseFloat *this_alpha,
+                                   BaseFloat *this_alpha_smbr);
+
 } // extern "C"
 
 #endif  // HAVE_CUDA
