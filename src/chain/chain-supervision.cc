@@ -76,6 +76,11 @@ void SupervisionOptions::Check() const {
   KALDI_ASSERT(left_tolerance >= 0 && right_tolerance >= 0 &&
                frame_subsampling_factor > 0 &&
                left_tolerance + right_tolerance >= frame_subsampling_factor);
+
+  if (!silence_phones_str.empty()) {
+    KALDI_ASSERT(left_tolerance_silence >= 0 && right_tolerance_silence >= 0 &&
+                 left_tolerance_silence + right_tolerance_silence >= frame_subsampling_factor);
+  }
 }
 
 bool AlignmentToProtoSupervision(const SupervisionOptions &opts,
@@ -145,8 +150,18 @@ bool ProtoSupervision::operator == (const ProtoSupervision &other) const {
 
 bool PhoneLatticeToProtoSupervisionInternal(const SupervisionOptions &opts,
                                             const CompactLattice &lat,
-                                          ProtoSupervision *proto_supervision) {
+                                            ProtoSupervision *proto_supervision) {
   opts.Check();
+
+  ConstIntegerSet<int32> silence_set;
+  if (!opts.silence_phones_str.empty()) {
+    std::vector<int32> silence_phones;
+    if (!SplitStringToIntegers(opts.silence_phones_str, ":,", false, 
+                               &silence_phones))
+      KALDI_ERR << "Invalid silence-phones string " << opts.silence_phones_str;
+    silence_set.Init(silence_phones);
+  }
+
   if (lat.NumStates() == 0) {
     KALDI_WARN << "Empty lattice provided";
     return false;
@@ -182,9 +197,19 @@ bool PhoneLatticeToProtoSupervisionInternal(const SupervisionOptions &opts,
                       lat_arc.weight.Weight().Value1()
                       * opts.lm_scale + opts.phone_ins_penalty),
                     lat_arc.nextstate));
-      int32 t_begin = std::max<int32>(0, (state_time - opts.left_tolerance)),
+
+      int32 left_tolerance = opts.left_tolerance;
+      int32 right_tolerance = opts.right_tolerance;
+      if (!opts.silence_phones_str.empty()) {
+        if (silence_set.count(phone) > 0) {
+          left_tolerance = opts.left_tolerance_silence;
+          right_tolerance = opts.right_tolerance_silence;
+        }
+      }
+
+      int32 t_begin = std::max<int32>(0, (state_time - left_tolerance)),
               t_end = std::min<int32>(num_frames,
-                                      (next_state_time + opts.right_tolerance)),
+                                      (next_state_time + right_tolerance)),
  t_begin_subsampled = (t_begin + factor - 1)/ factor,
    t_end_subsampled = (t_end + factor - 1)/ factor;
     for (int32 t_subsampled = t_begin_subsampled;

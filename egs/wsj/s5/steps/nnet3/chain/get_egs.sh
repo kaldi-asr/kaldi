@@ -49,6 +49,9 @@ frames_per_iter=400000 # each iteration of training, see this many frames per
 right_tolerance=  #CTC right tolerance == max label delay.
 left_tolerance=
 
+right_tolerance_silence=  # Tolerances for silence phones
+left_tolerance_silence=
+
 transform_dir=     # If supplied, overrides latdir as the place to find fMLLR transforms
 
 stage=0
@@ -308,6 +311,16 @@ fi
 
 [ ! -z $phone_insertion_penalty ] && \
   chain_supervision_all_opts="$chain_supervision_all_opts --phone-ins-penalty=$phone_insertion_penalty"
+
+[ ! -z $right_tolerance_silence ] && \
+  chain_supervision_all_opts="$chain_supervision_all_opts --right-tolerance-silence=$right_tolerance_silence"
+
+[ ! -z $left_tolerance_silence ] && \
+  chain_supervision_all_opts="$chain_supervision_all_opts --left-tolerance-silence=$left_tolerance_silence"
+
+if [ ! -z $left_tolerance_silence ] && [ ! -z $right_tolerance_silence ]; then
+  chain_supervision_all_opts="$chain_supervision_all_opts --silence-phones=$(cat $lang/phones/silence_phones.csl)"
+fi
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context

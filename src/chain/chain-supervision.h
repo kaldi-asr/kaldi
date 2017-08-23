@@ -53,13 +53,18 @@ struct SupervisionOptions {
   BaseFloat weight;
   BaseFloat lm_scale;
   BaseFloat phone_ins_penalty;
+  int32 left_tolerance_silence;
+  int32 right_tolerance_silence;
+  std::string silence_phones_str;
 
   SupervisionOptions(): left_tolerance(5),
                         right_tolerance(5),
                         frame_subsampling_factor(1),
                         weight(1.0),
                         lm_scale(0.0),
-                        phone_ins_penalty(0.0) { }
+                        phone_ins_penalty(0.0),
+                        left_tolerance_silence(0),
+                        right_tolerance_silence(0) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("left-tolerance", &left_tolerance, "Left tolerance for "
@@ -78,6 +83,12 @@ struct SupervisionOptions {
                     "supervision fst.");
     opts->Register("phone-ins-penalty", &phone_ins_penalty,
                    "The penalty to penalize longer paths");
+    opts->Register("left-tolerance-silence", &left_tolerance_silence, "Left tolerance for "
+                   "shift in silence phone position relative to the alignment");
+    opts->Register("right-tolerance-silence", &right_tolerance_silence, "Right tolerance for "
+                   "shift in silence phone position relative to the alignment");
+    opts->Register("silence-phones", &silence_phones_str,
+                   "A comma separated list of silence phones");
   }
   void Check() const;
 };
