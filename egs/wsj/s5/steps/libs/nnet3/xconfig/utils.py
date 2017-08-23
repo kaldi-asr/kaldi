@@ -14,6 +14,7 @@ import sys
 # Given a list of objects of type XconfigLayerBase ('all_layers'),
 # including at least the layers preceding 'current_layer' (and maybe
 # more layers), return the names of layers preceding 'current_layer'
+# other than layers of type 'auxiliary'.
 # This will be used in parsing expressions like [-1] in descriptors
 # (which is an alias for the previous layer).
 def get_prev_names(all_layers, current_layer):
@@ -21,7 +22,8 @@ def get_prev_names(all_layers, current_layer):
     for layer in all_layers:
         if layer is current_layer:
             break
-        prev_names.append(layer.get_name())
+        if layer.layer_type is not 'auxiliary':
+            prev_names.append(layer.get_name())
     prev_names_set = set()
     for name in prev_names:
         if name in prev_names_set:
@@ -60,6 +62,10 @@ def get_dim_from_layer_name(all_layers, current_layer, full_layer_name):
     for layer in all_layers:
         if layer is current_layer:
             break
+        # if "." used in layer name like tdnn.1
+        if layer.get_name() == full_layer_name:
+            return  layer.output_dim()
+
         if layer.get_name() == layer_name:
             if not auxiliary_output in layer.auxiliary_outputs() and auxiliary_output is not None:
                 raise RuntimeError("Layer '{0}' has no such auxiliary output: '{1}' ({0}.{1})".format(layer_name, auxiliary_output))
@@ -85,6 +91,10 @@ def get_string_from_layer_name(all_layers, current_layer, full_layer_name):
     for layer in all_layers:
         if layer is current_layer:
             break
+        # full_layer_name with "."
+        if layer.get_name() == full_layer_name:
+            return layer.output_name()
+
         if layer.get_name() == layer_name:
             if not auxiliary_output in layer.auxiliary_outputs() and auxiliary_output is not None:
                 raise RuntimeError("Layer '{0}' has no such auxiliary output: '{1}' ({0}.{1})".format(

@@ -453,13 +453,16 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     common_lib.force_symlink("../lda.mat", "{0}/configs/lda.mat".format(dir))
 
 
-def prepare_initial_acoustic_model(dir, run_opts, srand=-1):
-    """ Adds the first layer; this will also add in the lda.mat and
-        presoftmax_prior_scale.vec. It will also prepare the acoustic model
-        with the transition model."""
-
-    common_train_lib.prepare_initial_network(dir, run_opts,
-                                             srand=srand)
+def prepare_initial_acoustic_model(dir, run_opts, srand=-1, input_mdl=None):
+    """ Adds the first layer; It will also prepare the acoustic model
+        with the transition model.
+        If input_mdl is specified, no initial network preparation(adding
+        first layer) is done on that and this model is prepared instead of
+        '0.raw' acoustice model with the transition model.
+    """
+    if input_mdl is None:
+        common_train_lib.prepare_initial_network(dir, run_opts,
+                                                 srand=srand)
 
     # The model-format for a 'chain' acoustic model is just the transition
     # model and then the raw nnet, so we can use 'cat' to create this, as
@@ -469,8 +472,10 @@ def prepare_initial_acoustic_model(dir, run_opts, srand=-1):
     # before concatenating them.
     common_lib.execute_command(
         """{command} {dir}/log/init_mdl.log \
-                nnet3-am-init {dir}/0.trans_mdl {dir}/0.raw \
-                {dir}/0.mdl""".format(command=run_opts.command, dir=dir))
+                nnet3-am-init {dir}/0.trans_mdl {raw_mdl} \
+                {dir}/0.mdl""".format(command=run_opts.command, dir=dir,
+                                      raw_mdl=(input_mdl if input_mdl is not None
+                                      else '{0}/0.raw'.format(dir))))
 
 
 def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,

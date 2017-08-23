@@ -99,7 +99,6 @@ def train_new_models(dir, iter, srand, num_jobs,
         else:
             image_augmentation_cmd = ''
 
-
         multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
             egs_dir,
             egs_prefix="egs.",

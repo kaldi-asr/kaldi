@@ -42,7 +42,7 @@ class XconfigLayerBase(object):
             raise RuntimeError("Invalid value: name={0}".format(
                 key_to_value['name']))
         for prev_layer in all_layers:
-            if self.name == prev_layer.name:
+            if self.name == prev_layer.name and prev_layer.layer_type is not 'auxiliary':
                 raise RuntimeError("Name '{0}' is used for more than one "
                                    "layer.".format(self.name))
 
@@ -1076,6 +1076,51 @@ class XconfigIdctLayer(XconfigLayerBase):
         ans.append(('final', line))
         ans.append(('ref', line))
         return ans
+
+
+class XconfigAuxiliaryLayer(XconfigLayerBase):
+    """This class is for lines like
+    'auxiliary name=aux dim=40'
+    in the config file.
+    This layer contains dim and name.
+    This class is useful in cases like transferring
+    existing models and using {input,output,component}-nodes
+    of that model as input to new layers.
+    """
+
+    def __init__(self, first_token, key_to_value, prev_names=None):
+
+        assert first_token == 'auxiliary'
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+
+    def set_default_configs(self):
+        self.config = { 'dim': -1}
+
+    def check_configs(self):
+        if self.config['dim'] <= 0:
+            raise RuntimeError("Dimension of auxiliary-layer '{0}'"
+                                "should be positive.".format(self.name))
+
+    def get_input_descriptor_names(self):
+        return []  # there is no 'input' field in self.config.
+
+    def output_name(self, auxiliary_outputs=None):
+        # there are no auxiliary outputs as this layer will just pass the input
+        assert auxiliary_outputs is None
+        return self.name
+
+    def output_dim(self, auxiliary_outputs=None):
+        # there are no auxiliary outputs as this layer will just pass the input
+        assert auxiliary_outputs is None
+        return self.config['dim']
+
+    def get_full_config(self):
+        # unlike other layers the auxiliary layers should not to be printed in
+        # any '*.config'
+        ans = []
+        return ans
+
 
 
 def test_layers():

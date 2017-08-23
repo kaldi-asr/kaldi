@@ -471,6 +471,11 @@ class UpdatableComponent: public Component {
   /// learning_rate_factor_.
   virtual void SetAsGradient() { learning_rate_ = 1.0; is_gradient_ = true; }
 
+  // Sets the learning rate factors to set to this value.
+  virtual void SetLearningRateFactor(BaseFloat lrate_factor) {
+    learning_rate_factor_ = lrate_factor;
+  }
+
   /// freezes/unfreezes NaturalGradient updates, if applicable (to be overriden
   /// by components that use Natural Gradient).
   virtual void FreezeNaturalGradient(bool freeze) { }

@@ -28,6 +28,16 @@ def get_args():
         epilog='Search egs/*/*/local/{nnet3,chain}/*sh for examples')
     parser.add_argument('--xconfig-file', required=True,
                         help='Filename of input xconfig file')
+    parser.add_argument('--existing-model',
+                        help='Filename of previously trained neural net '
+                             '(e.g. final.mdl) which is useful in case of '
+                             'using nodes from list of component-nodes in '
+                             'already trained model '
+                             'to generate new config file for new model.'
+                             'The context info is also generated using '
+                             'final.config added to existing model.'
+                             'e.g. In Transfer learning: generate new model using '
+                             'nodes in existing model.')
     parser.add_argument('--config-dir', required=True,
                         help='Directory to write config files and variables')
     parser.add_argument('--nnet-edits', type=str, default=None,
@@ -218,11 +228,15 @@ def write_config_files(config_dir, all_layers):
             raise
 
 
-def add_nnet_context_info(config_dir, nnet_edits=None):
+def add_nnet_context_info(config_dir, nnet_edits=None,
+                          existing_model=None):
     """Create the 'vars' file that specifies model_left_context, etc."""
 
-    common_lib.execute_command("nnet3-init {0}/ref.config "
-                               "{0}/ref.raw".format(config_dir))
+    common_lib.execute_command("nnet3-init {0} {1}/ref.config "
+                               "{1}/ref.raw".format(
+                                    existing_model if
+                                    existing_model is not None else "",
+                                    config_dir))
     model = "{0}/ref.raw".format(config_dir)
     if nnet_edits is not None:
         model = "nnet3-copy --edits='{0}' {1} - |".format(nnet_edits,
@@ -249,13 +263,16 @@ def add_nnet_context_info(config_dir, nnet_edits=None):
     vf.write('model_right_context={0}\n'.format(info['right-context']))
     vf.close()
 
-def check_model_contexts(config_dir, nnet_edits=None):
+def check_model_contexts(config_dir, nnet_edits=None, existing_model=None):
     contexts = {}
     for file_name in ['init', 'ref']:
         if os.path.exists('{0}/{1}.config'.format(config_dir, file_name)):
             contexts[file_name] = {}
-            common_lib.execute_command("nnet3-init {0}/{1}.config "
-                                       "{0}/{1}.raw".format(config_dir, file_name))
+            common_lib.execute_command("nnet3-init {0} {1}/{2}.config "
+                                       "{1}/{2}.raw".format(
+                                            existing_model if
+                                            existing_model is not None else '',
+                                            config_dir, file_name))
             model = "{0}/{1}.raw".format(config_dir, file_name)
             if nnet_edits is not None:
                 model = "nnet3-copy --edits='{0}' {1} - |".format(nnet_edits,
@@ -297,11 +314,16 @@ def check_model_contexts(config_dir, nnet_edits=None):
 def main():
     args = get_args()
     backup_xconfig_file(args.xconfig_file, args.config_dir)
-    all_layers = xparser.read_xconfig_file(args.xconfig_file)
+    aux_layers = []
+    if args.existing_model is not None:
+        aux_layers = xparser.get_model_component_info(args.existing_model)
+        all_layers = xparser.read_xconfig_file(args.xconfig_file, aux_layers)
     write_expanded_xconfig_files(args.config_dir, all_layers)
     write_config_files(args.config_dir, all_layers)
-    check_model_contexts(args.config_dir, args.nnet_edits)
-    add_nnet_context_info(args.config_dir, args.nnet_edits)
+    check_model_contexts(args.config_dir, args.nnet_edits,
+                         existing_model=args.existing_model)
+    add_nnet_context_info(args.config_dir, args.nnet_edits,
+                          existing_model=args.existing_model)
 
 
 if __name__ == '__main__':
