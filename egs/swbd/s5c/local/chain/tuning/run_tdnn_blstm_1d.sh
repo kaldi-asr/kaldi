@@ -25,7 +25,6 @@ decode_iter=
 decode_dir_affix=
 
 # training options
-leftmost_questions_truncate=-1
 chunk_width=140,100,160
 chunk_left_context=40
 chunk_right_context=40
@@ -105,7 +104,6 @@ fi
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate $leftmost_questions_truncate \
       --context-opts "--context-width=2 --central-position=1" \
       --cmd "$train_cmd" 7000 data/$train_set $lang $ali_dir $treedir
 fi
