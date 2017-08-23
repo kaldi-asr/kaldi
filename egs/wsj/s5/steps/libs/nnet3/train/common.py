@@ -422,6 +422,11 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
                                 egs_left_context, egs_right_context,
                                 left_context, right_context))
 
+        if left_context_initial == -1:
+            left_context_initial = left_context
+        if right_context_final == -1:
+            right_context_final = right_context
+
         # the condition on the initial/final context is an equality condition,
         # not an inequality condition, as there is no mechanism to 'correct' the
         # context (by subtracting context) while copying the egs, like there is
