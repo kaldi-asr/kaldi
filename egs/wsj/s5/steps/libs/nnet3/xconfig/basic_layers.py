@@ -41,6 +41,17 @@ class XconfigLayerBase(object):
         if not xutils.is_valid_line_name(self.name):
             raise RuntimeError("Invalid value: name={0}".format(
                 key_to_value['name']))
+
+        # It is possible to have two layers with same name if one of them
+        # is 'existing' layer type.
+        # Layers of type 'existing' correspond to component-node names
+        # from existing model that we are adding layers to them.
+        # These layers are not presented in any config file and new layer
+        # with same name as these layers can exist in all_layers.
+        # i.e. output-node with name 'output' in the existing model is added to
+        # all_layers using layer type 'existing' and it is possible to have
+        # 'output-node' of type 'output-layer' with same name 'output' in
+        # all_layers.
         for prev_layer in all_layers:
             if (self.name == prev_layer.name and
                 prev_layer.layer_type is not 'existing'):
@@ -1083,7 +1094,7 @@ class XconfigExistingLayer(XconfigLayerBase):
     config files.
     Layers of this type are created internally for all component nodes in
     an existing neural net model for use as input to other layers.
-    (i.e. get_model_component_info, which is called in
+    (i.e. get_model_component_info function, which is called in
      steps/nnet3/xconfig_to_configs.py, returns a list of 'existing'
      layers for component nodes used in 'existing_model')
     This class is useful in cases like transferring existing model
@@ -1119,7 +1130,7 @@ class XconfigExistingLayer(XconfigLayerBase):
         return self.config['dim']
 
     def get_full_config(self):
-        # unlike other layers the auxiliary layers should not to be printed in
+        # unlike other layers the existing layers should not to be printed in
         # any '*.config'
         ans = []
         return ans

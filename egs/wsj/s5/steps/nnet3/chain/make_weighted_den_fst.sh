@@ -20,6 +20,8 @@
 # first alignment directory to the chain directory.
 # This script can accept multiple sources of alignments with same phone sets
 # that can be weighted to estimate phone LM.
+# 'weights' is comma-separated list of positive int values used
+# to scale different phone sequences for different alignments.
 # Each alignment directory should contain tree, final.mdl and ali.*.gz.
 
 set -o pipefail
@@ -27,10 +29,11 @@ set -o pipefail
 # begin configuration section.
 cmd=run.pl
 stage=-10
-weights= # comma-separated list of integer valued scale weights used
+weights= # comma-separated list of positive int valued scale weights used
          # to scale different phone sequences for different alignments.
          # Scaling the count with i^th int weight 'w' is done by repeating
          # the i^th phone sequence 'w' times.
+         # i.e. "1,10"
          # If not specified, weight '1' is used for all phone sequences.
 
 lm_opts='num_extra_lm_state=2000'
@@ -71,8 +74,15 @@ cp ${ali_dirs[0]}/tree $dir/ || exit 1
 
 if [ -z $weights ]; then
   # If 'weights' is not specified, comma-separated array '1' with dim
-  #'num_alignments' is specified as 'weights'.
+  #'num_alignments' is defined as 'weights'.
   for n in `seq 1 $num_alignments`;do weights="$weights,1"; done
+else
+  w_arr=(${weights//,/ })
+  num_weights=${#w_arr[@]}
+  if [ $num_alignments -ne $num_weights ]; then
+    echo "$0: number of weights in $weight, $num_weights, should be equal to the "
+    echo "number of alignment directories, $num_alignments." && exit 1;
+  fi
 fi
 
 if [ $stage -le 1 ]; then

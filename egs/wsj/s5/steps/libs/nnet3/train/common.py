@@ -358,10 +358,11 @@ def parse_generic_config_vars_file(var_file):
 
 
 def get_input_model_info(input_model):
-    """ This function returns a dictionary with keys "model_{left/right}_context"
-        and values equal to the left/right model contexts for input_model.
+    """ This function returns a dictionary with keys "model_left_context" and
+        "model_right_context" and values equal to the left/right model contexts
+        for input_model.
         This function is useful when using the --trainer.input-model option
-        instead of initializing model using configs.
+        instead of initializing the model using configs.
     """
     variables = {}
     try:

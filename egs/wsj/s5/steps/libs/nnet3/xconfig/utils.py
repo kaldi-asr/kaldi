@@ -62,6 +62,7 @@ def get_dim_from_layer_name(all_layers, current_layer, full_layer_name):
     for layer in all_layers:
         if layer is current_layer:
             break
+
         # If 'all_layers' contains some 'existing' layers, i.e. layers which
         # are not really layers but are actual component names from an existing
         # neural net that we are adding components to, they may already be
@@ -104,6 +105,7 @@ def get_string_from_layer_name(all_layers, current_layer, full_layer_name):
     for layer in all_layers:
         if layer is current_layer:
             break
+
         # The following if-statement is needed to handle the case where the
         # layer is an 'existing' layer, derived from an existing trained
         # neural network supplied via the --existing-model option, that we are

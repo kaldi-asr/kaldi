@@ -11,6 +11,7 @@ import logging
 import sys
 import libs.nnet3.xconfig.layers as xlayers
 import libs.nnet3.xconfig.utils as xutils
+
 import libs.common as common_lib
 
 
@@ -67,10 +68,16 @@ def xconfig_line_to_object(config_line, prev_layers = None):
             "*** {0}".format(config_line))
         raise
 
+
 # This function reads existing model (*.raw or *.mdl) and returns array of
 # XconfigExistingLayer one per {input,output}-node or component-node with same
-# 'name' used in raw model and 'dim' equal to 'output-dim' for component-node
+# 'name' used in the raw model and 'dim' equal to 'output-dim' for component-node
 # and 'dim' for {input,output}-node.
+# i.e. layer in *.mdl -> corresponding 'XconfigExistingLayer' layer
+#      'input-node name=ivector dim=100' ->
+#      'existing name=ivector dim=100'
+#     'component-node name=tdnn1.affine ** input-node=1000 output-node=500' ->
+#     'existing name=tdnn1.affine dim=500'
 def get_model_component_info(model_filename):
     all_layers = []
     try:
@@ -84,12 +91,13 @@ def get_model_component_info(model_filename):
     out = common_lib.get_command_stdout("""nnet3-info {0} | grep '\-node' """
                                         """ """.format(model_filename))
 
-    # out contains all {input,component}-nodes used in model_filename
+    # out contains all {output, input, component}-nodes used in model_filename
     # It can parse lines in out like:
     # i.e. input-node name=input dim=40
     #   component-node name=tdnn1.affine component=tdnn1.affine input=lda
     #   input-dim=300 output-dim=512
     layer_names = []
+    key_to_value = dict()
     for line in out.split("\n"):
         parts = line.split(" ")
         dim = -1
@@ -106,7 +114,6 @@ def get_model_component_info(model_filename):
                     dim = int(value)
 
         if layer_name is not None and layer_name not in layer_names:
-            key_to_value = dict()
             layer_names.append(layer_name)
             key_to_value['name'] = layer_name
             assert(dim != -1)

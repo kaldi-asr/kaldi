@@ -104,7 +104,7 @@ def get_args():
     parser.add_argument("--trainer.input-model", type=str,
                         dest='input_model', default=None,
                         action=common_lib.NullstrToNoneAction,
-                        help="If specified, this model is used as the initial "
+                        help="If specified, this model is used as initial "
                              "'raw' model (0.raw in the script) instead of "
                              "initializing the model from the xconfig. "
                              "Also configs dir is not expected to exist "
@@ -325,15 +325,16 @@ def train(args, run_opts):
         shutil.copy('{0}/tree'.format(args.tree_dir), args.dir)
         chain_lib.create_denominator_fst(args.dir, args.tree_dir, run_opts)
 
-    if ((args.stage <= -4) and (os.path.exists("{0}/configs/init.config".format(args.dir)))
-            and (args.input_model is None)):
+    if ((args.stage <= -4) and
+           (os.path.exists("{0}/configs/init.config".format(args.dir)))
+           and (args.input_model is None)):
         logger.info("Initializing a basic network for estimating "
                     "preconditioning matrix")
         common_lib.execute_command(
             """{command} {dir}/log/nnet_init.log \
-                    nnet3-init --srand=-2 {dir}/configs/init.config \
-                    {dir}/init.raw""".format(command=run_opts.command,
-                                             dir=args.dir))
+            nnet3-init --srand=-2 {dir}/configs/init.config \
+            {dir}/init.raw""".format(command=run_opts.command,
+                                     dir=args.dir))
 
     egs_left_context = left_context + args.frame_subsampling_factor / 2
     egs_right_context = right_context + args.frame_subsampling_factor / 2
@@ -346,7 +347,7 @@ def train(args, run_opts):
                                right_context_final >= 0 else -1)
 
     default_egs_dir = '{0}/egs'.format(args.dir)
-    if (args.stage <= -3) and args.egs_dir is None:
+    if ((args.stage <= -3) and args.egs_dir is None):
         logger.info("Generating egs")
         if (not os.path.exists("{0}/den.fst".format(args.dir)) or
                 not os.path.exists("{0}/normalization.fst".format(args.dir)) or
@@ -401,7 +402,7 @@ def train(args, run_opts):
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
     if ((args.stage <= -2) and (os.path.exists(args.dir+"/configs/init.config"))
-       and (args.input_model is None)):
+            and (args.input_model is None)):
         logger.info('Computing the preconditioning matrix for input features')
 
         chain_lib.compute_preconditioning_matrix(

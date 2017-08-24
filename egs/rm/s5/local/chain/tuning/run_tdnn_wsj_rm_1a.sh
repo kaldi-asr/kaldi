@@ -1,10 +1,14 @@
 #!/bin/bash
 
-# This script uses weight transfer as a Transfer learning method to transfer
-# model trained on wsj to rm dataset.
-# It uses already trained model on wsj and removes its last layer and
-# adds new randomly initialized layer and retrains the whole network with
-# smaller learning-rate, while training new added layer using rm data.
+# This script uses weight transfer as a transfer learning method to transfer
+# already trained neural net model on wsj to rm.
+#
+# Model preparation: The last layer (prefinal and output layer) from
+# already-trained wsj model is removed and 3 randomly initialized layer
+# (new tdnn layer, prefinal, and output) are added to the model.
+#
+# Training: The transferred layers are retrained with smaller learning-rate,
+# while new added layers are trained with larger learning rate using rm data.
 # The chain config is as in run_tdnn_5n.sh and the result is:
 #System tdnn_5n tdnn_wsj_rm_1a
 #WER      2.71     1.68
@@ -18,20 +22,21 @@ dir=exp/chain/tdnn_wsj_rm_1a
 xent_regularize=0.1
 
 # configs for transfer learning
-src_mdl=../../wsj/s5/exp/chain/tdnn1d_sp/final.mdl # input chain model
-                                                    # trained on source dataset (wsj).
-                                                    # This model is transfered to the target domain.
+src_mdl=../../wsj/s5/exp/chain/tdnn1d_sp/final.mdl # Input chain model
+                                                   # trained on source dataset (wsj).
+                                                   # This model is transfered to the target domain.
 
 src_mfcc_config=../../wsj/s5/conf/mfcc_hires.conf # mfcc config used to extract higher dim
-                                                  # mfcc features for ivector training
-                                                  # in source domain.
-src_ivec_extractor_dir=  # source ivector extractor dir used to extract ivector for
-                         # source data and the ivector for target data is extracted using this extractor.
-                         # It should be nonempty, if ivector is used in source model training.
+                                                  # mfcc features for ivector and DNN training
+                                                  # in the source domain.
+src_ivec_extractor_dir=  # Source ivector extractor dir used to extract ivector for
+                         # source data. The ivector for target data is extracted using this extractor.
+                         # It should be nonempty, if ivector is used in the source model training.
 
 common_egs_dir=
 primary_lr_factor=0.25 # The learning-rate factor for transferred layers from source
-                       # model. e.g. if 0, it fixed the paramters transferred from source.
+                       # model. e.g. if 0, the paramters transferred from source model
+                       # are fixed.
                        # The learning-rate factor for new added layers is 1.0.
 
 nnet_affix=_online_wsj
@@ -50,6 +55,7 @@ If you want to use GPUs (and have them), go to src/, and configure and make on a
 where "nvcc" is installed.
 EOF
 fi
+
 required_files="$src_mfcc_config $src_mdl"
 use_ivector=false
 ivector_dim=$(nnet3-am-info --print-args=false $src_mdl | grep "ivector-dim" | cut -d" " -f2)
@@ -57,20 +63,22 @@ if [ "$ivector_dim" == "" ]; then ivector_dim=0 ; fi
 
 if [ ! -z $src_ivec_extractor_dir ]; then
   if [ $ivector_dim -eq 0 ]; then
-    echo "source ivector extractor dir '$src_ivec_extractor_dir' is specified but ivector is not used in training the source model '$src_mdl'."
+    echo "$0: Source ivector extractor dir '$src_ivec_extractor_dir' is specified "
+    echo "but ivector is not used in training the source model '$src_mdl'."
   else
     required_files="$required_files $src_ivec_extractor_dir/final.dubm $src_ivec_extractor_dir/final.mat $src_ivec_extractor_dir/final.ie"
     use_ivector=true
   fi
 else
   if [ $ivector_dim -gt 0 ]; then
-    echo "ivector is used in training the source model '$src_mdl' but no ivector extractor dir for source model specified." && exit 1;
+    echo "$0: ivector is used in training the source model '$src_mdl' but no "
+    echo "ivector extractor dir for source model is specified." && exit 1;
   fi
 fi
 
 for f in $required_files; do
   if [ ! -f $f ]; then
-    echo "$0: no such file $f"
+    echo "$0: no such file $f."
   fi
 done
 
@@ -91,10 +99,10 @@ local/online/run_nnet2_common.sh  --stage $stage \
 if [ $stage -le 4 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  nj=$(cat exp/tri3b_ali/num_jobs) || exit 1;
+  nj=$(cat $ali_dir/num_jobs) || exit 1;
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/train \
-    data/lang exp/tri3b exp/tri3b_lats
-  rm exp/tri3b_lats/fsts.*.gz # save space
+    data/lang exp/tri3b exp/tri3b_lats || exit 1;
+  rm exp/tri3b_lats/fsts.*.gz 2>/dev/null || true # save space
 fi
 
 if [ $stage -le 5 ]; then
@@ -114,7 +122,7 @@ if [ $stage -le 6 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
     --leftmost-questions-truncate -1 \
-    --cmd "$train_cmd" 1200 data/train $lang $ali_dir $treedir
+    --cmd "$train_cmd" 1200 data/train $lang $ali_dir $treedir || exit 1;
 fi
 
 if [ $stage -le 7 ]; then
@@ -125,19 +133,19 @@ if [ $stage -le 7 ]; then
   mkdir -p $dir
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
-  relu-renorm-layer name=tdnn7-target input=Append(tdnn6.renorm@-3,tdnn6.renorm@0) dim=450
+  relu-renorm-layer name=tdnn-target input=Append(tdnn6.renorm@-3,tdnn6.renorm) dim=450
   ## adding the layers for chain branch
-  relu-renorm-layer name=prefinal-chain input=tdnn7-target dim=450 target-rms=0.5
+  relu-renorm-layer name=prefinal-chain input=tdnn-target dim=450 target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
-  relu-renorm-layer name=prefinal-xent input=tdnn7-target dim=450 target-rms=0.5
+  relu-renorm-layer name=prefinal-xent input=tdnn-target dim=450 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --existing-model $src_mdl \
     --xconfig-file  $dir/configs/network.xconfig  \
     --config-dir $dir/configs/
 
-  # Set the learning-rate-factor to be primary_lr_factor for initial network."
-  # and add new layer to initial model
+  # Set the learning-rate-factor to be primary_lr_factor for transferred layers "
+  # and adding new layers to them.
   $train_cmd $dir/log/generate_input_mdl.log \
     nnet3-copy --edits="set-learning-rate-factor name=* learning-rate-factor=$primary_lr_factor" $src_mdl - \| \
       nnet3-init --srand=1 - $dir/configs/final.config $dir/input.raw  || exit 1;

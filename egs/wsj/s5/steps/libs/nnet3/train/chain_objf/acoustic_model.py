@@ -430,8 +430,8 @@ def prepare_initial_acoustic_model(dir, run_opts, srand=-1, input_model=None):
     """ This function adds the first layer; It will also prepare the acoustic
         model with the transition model.
         If 'input_model' is specified, no initial network preparation(adding
-        first layer) is done and this model is used initial 'raw' model
-        instead of '0.raw' model to prepare '0.mdl' acoustic model by adding the
+        the first layer) is done and this model is used as initial 'raw' model
+        instead of '0.raw' model to prepare '0.mdl' as acoustic model by adding the
         transition model.
     """
     if input_model is None:
