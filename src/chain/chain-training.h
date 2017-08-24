@@ -177,7 +177,7 @@ void ComputeChainSmbrObjfAndDeriv(
     const DenominatorGraph &den_graph,
     const Supervision &supervision,
     const CuMatrixBase<BaseFloat> &nnet_output,
-    BaseFloat *objf,
+    BaseFloat *objf, BaseFloat *mmi_objf,
     BaseFloat *l2_term,
     BaseFloat *weight,
     CuMatrixBase<BaseFloat> *nnet_output_deriv,

@@ -387,6 +387,8 @@ void ChainSmbrTrainingTest(const DenominatorGraph &den_graph,
                                         kUndefined);
   KALDI_LOG << "LF-SMBR training";
   opts.use_smbr_objective = true;
+  opts.mmi_factor = 0.0;
+  opts.smbr_factor = 1.0;
   BaseFloat objf, l2_term, weight;
   ComputeChainSmbrObjfAndDeriv(opts, den_graph, supervision,
                                nnet_output, &objf, &l2_term, &weight,

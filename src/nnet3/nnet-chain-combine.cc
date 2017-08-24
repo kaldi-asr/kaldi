@@ -52,7 +52,8 @@ NnetChainCombiner::NnetChainCombiner(const NnetCombineConfig &combine_config,
   ComputeUpdatableComponentDims();
   NnetComputeProbOptions compute_prob_opts;
   compute_prob_opts.compute_deriv = true;
-  prob_computer_ = new NnetChainComputeProb(compute_prob_opts, chain_config_, den_fst_, nnet_);
+  prob_computer_ = new NnetChainComputeProb(compute_prob_opts, chain_config_, 
+                                            den_fst_, nnet_);
 }
 
 void NnetChainCombiner::ComputeUpdatableComponentDims(){
@@ -513,8 +514,8 @@ double NnetChainCombiner::ComputeObjfAndDerivFromNnet(
   const Nnet &deriv = prob_computer_->GetDeriv();
   VectorizeNnet(deriv, nnet_params_deriv);
   // we prefer to deal with normalized objective functions.
-  nnet_params_deriv->Scale(1.0 / tot_weight);
-  return tot_objf / tot_weight;
+  nnet_params_deriv->Scale(1.0 / objf_info->tot_weight);
+  return (objf_info->tot_like + objf_info->tot_aux_objfs.Sum()) / objf_info->tot_weight;
 }
 
 

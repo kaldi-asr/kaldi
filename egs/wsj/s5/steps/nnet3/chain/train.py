@@ -556,7 +556,7 @@ def train(args, run_opts):
                 l2_regularize = (args.smbr_l2_regularize
                                  if args.smbr_l2_regularize is not None
                                  else args.l2_regularize)
-                smbr_opt = "--use-smbr-objective"
+                smbr_opt += " --use-smbr-objective"
                 if silence_pdfs is not None:
                     smbr_opt += " --silence-pdfs=" + silence_pdfs
 

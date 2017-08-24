@@ -570,18 +570,18 @@ void DenominatorSmbrComputation::BetaSmbrGeneralFrameDebug(int32 t) {
                 << alpha_beta_smbr_sum << " != " << tot_smbr_sum;
   }
 
-  // use higher tolerance, since we are using randomized pruning for the
-  // log-prob derivatives.
-  if (GetVerboseLevel() > 1 || !ApproxEqual(
-        this_log_prob_deriv_sum, -opts_.mmi_factor * num_sequences_, 0.01)) {
-    KALDI_WARN << "On time " << t << ", log-prob-deriv sum "
-               << this_log_prob_deriv_sum << " != " 
-               << opts_.mmi_factor * num_sequences_;
-    if (fabs(this_log_prob_deriv_sum + opts_.mmi_factor * num_sequences_) > 2.0) {
-      KALDI_WARN << "Excessive error detected, will abandon this minibatch";
-      ok_ = false;
-    }
-  }
+  //// use higher tolerance, since we are using randomized pruning for the
+  //// log-prob derivatives.
+  //if (GetVerboseLevel() > 1 || !ApproxEqual(
+  //      this_log_prob_deriv_sum, -opts_.mmi_factor * num_sequences_, 0.01)) {
+  //  KALDI_WARN << "On time " << t << ", log-prob-deriv sum "
+  //             << this_log_prob_deriv_sum << " != " 
+  //             << -opts_.mmi_factor * num_sequences_;
+  //  if (fabs(this_log_prob_deriv_sum + opts_.mmi_factor * num_sequences_) > 2.0) {
+  //    KALDI_WARN << "Excessive error detected, will abandon this minibatch";
+  //    ok_ = false;
+  //  }
+  //}
 }
 
 

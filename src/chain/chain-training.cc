@@ -116,6 +116,7 @@ void ComputeChainSmbrObjfAndDeriv(const ChainTrainingOptions &opts,
                                   const Supervision &supervision,
                                   const CuMatrixBase<BaseFloat> &nnet_output,
                                   BaseFloat *objf,
+                                  BaseFloat *mmi_objf,
                                   BaseFloat *l2_term,
                                   BaseFloat *weight,
                                   CuMatrixBase<BaseFloat> *nnet_output_deriv,
@@ -154,15 +155,15 @@ void ComputeChainSmbrObjfAndDeriv(const ChainTrainingOptions &opts,
                                          supervision.num_sequences,
                                          nnet_output, num_posteriors);
           
-  BaseFloat mmi_objf;
-  BaseFloat smbr_objf = denominator.ForwardSmbr(&mmi_objf);
+  BaseFloat den_logprob_negated;
+  BaseFloat smbr_objf = denominator.ForwardSmbr(&den_logprob_negated);
 
-  if (opts.mmi_factor != 0.0) {
-    DenominatorComputation denominator_mmi(opts, den_graph,
-                                           supervision.num_sequences,
-                                           nnet_output);
-    KALDI_ASSERT(kaldi::ApproxEqual(-mmi_objf, opts.mmi_factor * denominator_mmi.Forward()));
-  }
+  //if (opts.mmi_factor != 0.0) {
+  //  DenominatorComputation denominator_mmi(opts, den_graph,
+  //                                         supervision.num_sequences,
+  //                                         nnet_output);
+  //  KALDI_ASSERT(kaldi::ApproxEqual(-den_logprob_negated, opts.mmi_factor * denominator_mmi.Forward()));
+  //}
 
   bool ok = true;
   if (nnet_output_deriv) {
@@ -170,22 +171,26 @@ void ComputeChainSmbrObjfAndDeriv(const ChainTrainingOptions &opts,
     ok = denominator.BackwardSmbr(supervision.weight, nnet_output_deriv);
   }
 
-  *objf = supervision.weight * (smbr_objf + mmi_objf) + num_logprob_weighted;
+  *objf = supervision.weight * smbr_objf;
+  *mmi_objf = supervision.weight * den_logprob_negated + num_logprob_weighted;
   *weight = supervision.weight * supervision.num_sequences *
       supervision.frames_per_sequence;
-  if (!((*objf) - (*objf) == 0) || !ok) {
+  
+  BaseFloat total_objf = *objf + *mmi_objf;
+  if (!((total_objf) - (total_objf) == 0) || !ok) {
     // inf or NaN detected, or denominator computation returned false.
     if (nnet_output_deriv)
       nnet_output_deriv->SetZero();
     if (xent_output_deriv)
       xent_output_deriv->SetZero();
     BaseFloat default_objf = -opts.mmi_factor * 10;
-    KALDI_WARN << "Objective function is " << (*objf)
+    KALDI_WARN << "Objective function is " << (total_objf)
                << " and denominator computation (if done) returned "
                << std::boolalpha << ok
                << ", setting objective function to " << default_objf
                << " per frame.";
-    *objf  = default_objf * *weight;
+    *mmi_objf  = default_objf * *weight;
+    *objf = 0.0;
   }
 
   // This code helps us see how big the derivatives are, on average,
