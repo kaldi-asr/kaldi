@@ -69,16 +69,20 @@ def xconfig_line_to_object(config_line, prev_layers = None):
         raise
 
 
-# This function reads existing model (*.raw or *.mdl) and returns array of
-# XconfigExistingLayer one per {input,output}-node or component-node with same
-# 'name' used in the raw model and 'dim' equal to 'output-dim' for component-node
-# and 'dim' for {input,output}-node.
-# i.e. layer in *.mdl -> corresponding 'XconfigExistingLayer' layer
-#      'input-node name=ivector dim=100' ->
-#      'existing name=ivector dim=100'
-#     'component-node name=tdnn1.affine ** input-node=1000 output-node=500' ->
-#     'existing name=tdnn1.affine dim=500'
 def get_model_component_info(model_filename):
+    """ This function reads existing model (*.raw or *.mdl) and returns array
+        of XconfigExistingLayer one per {input,output}-node or component-node
+        with same 'name' used in the raw model and 'dim' equal to 'output-dim'
+        for component-node and 'dim' for {input,output}-node.
+
+        i.e. layer in *.mdl -> corresponding 'XconfigExistingLayer' layer
+             'input-node name=ivector dim=100' ->
+             'existing name=ivector dim=100'
+             'component-node name=tdnn1.affine ** input-node=1000 '
+             'output-node=500' ->
+             'existing name=tdnn1.affine dim=500'
+    """
+
     all_layers = []
     try:
         f = open(model_filename, 'r')
