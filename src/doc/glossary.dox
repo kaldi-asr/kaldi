@@ -50,10 +50,40 @@ contain alignment information as sequences of transition-ids for each word
 sequence in the lattice.  The program \ref bin/show-alignments.cc "show-alignments" shows
 alignments in a human-readable format.
 
+
+<b>:cost:</b>  Any quantity which is used as a 'cost' in a weighted FST
+   algorithm (e.g. acoustic cost, language model cost; see \ref lattices
+   for more details).  Costs are, generally speaking, interpretable
+   as a negative log of a likelihood or probability, but there may
+   be scaling factors involved.
+
 <b>:forced alignment:</b> see <b>alignment</b>.
 
 <b>:lattice:</b>  A representation of alternative likely transcriptions of an utterance, together
  with associated alignment and cost information.  See \ref lattices.
+
+
+<b>:likelihood:</b>  A mathematical concept meaning the value of a function representing
+  the distribution of a continuous value.  These can be more than one.  Often represented
+  in log space (as log-likelihood) because likelihood values of multi-dimensional
+  features can often be too small or large to fit in standard floating-point precision.
+  With standard cross-entropy trained neural net systems we obtain "pseudo-likelihoods"
+  by dividing log-probabilities by the priors of context-dependent states.
+
+<b>:posterior:</b>  "Posterior" is shorthand for "posterior probability" which is a very
+  general mathematical concept, generally meaning "the probability of some random
+  variable after seeing the relevant data".  In general, posteriors will sum to one.
+  In Kaldi terminology, if you encounter the term "posterior", abbreviated to "post",
+  without further expanation it generally means the per-frame posterior probability of
+  transition-ids.  However these posteriors may be very peaky (i.e. mostly ones and zeros)
+  depending how you obtained them, e.g. from a lattice or from an alignment.
+  Alignments and lattices can be converted to posteriors over transition-ids (see \ref lattice-to-post.cc),
+  or over lattice arcs (see \ref ali-to-post.cc and \ref lattice-arc-post.cc).
+  Posteriors over transition-ids can be converted to posteriors over pdf-ids or over phones;
+  see the tools \ref ali-to-post.cc, \ref post-to-pdf-post.cc and \ref post-to-phone-post.cc.
+
+<b>:pdf-id:</b>  The zero-based integer index of a clustered context-dependent HMM state; see
+  \ref transition_model_identifiers for more information.
 
 <b>:transition-id:</b> a one-based index that encodes the pdf-id (i.e. the clustered context-dependent HMM state),
 the phone identity, and information about whether we took the self-loop or forward transition in the HMM.
