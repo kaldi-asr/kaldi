@@ -178,13 +178,17 @@ for f in temp_filehandles:
 
 print(sys.argv[0] + ": converting from text to integer form.")
 
+if args.unk_word != None and args.unk_word != '':
+    unk_opt = "--map-oov '{0}'".format(args.unk_word)
+else:
+    unk_opt = ""
+
 # Convert from text to integer form using the vocabulary file,
 # moving data from *.tmp to *.txt.
 for n in range(1, args.num_splits + 1):
     command = "utils/sym2int.pl {unk_opt} -f 2- {vocab_file} <{input_file} >{output_file}".format(
         vocab_file=args.vocab_file,
-        unk_opt=("--map-oov '{0}'".format(args.unk_word)
-                 if args.unk_word != None and args.unk_word != '' else ''),
+        unk_opt=unk_opt,
         input_file="{0}/{1}.tmp".format(args.split_dir, n),
         output_file="{0}/{1}.txt".format(args.split_dir, n))
     ret = os.system(command)
@@ -194,4 +198,20 @@ for n in range(1, args.num_splits + 1):
     os.remove("{0}/{1}.tmp".format(args.split_dir, n))
 
 
+print(sys.argv[0] + ": converting dev data from text to integer form.")
+
+
+command = "utils/sym2int.pl {unk_opt} -f 2- {vocab_file} <{input_file} >{output_file}".format(
+    vocab_file=args.vocab_file,
+    unk_opt=unk_opt,
+    input_file="{0}/dev.txt".format(args.text_dir),
+        output_file="{0}/dev.txt".format(args.split_dir))
+ret = os.system(command)
+if ret != 0:
+    sys.exit(sys.argv[0] + ": command '{0}' returned with status {1}".format(
+            command, ret))
+
+
 print(sys.argv[0] + ": created split data in {0}".format(args.split_dir))
+
+
