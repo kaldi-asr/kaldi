@@ -17,18 +17,23 @@ parser = argparse.ArgumentParser(description="This script prepares files contain
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 parser.add_argument("--vocab-file", type=str, default='', required=True,
-                    help="The vocabulary file (used to convert symbols to integers)");
+                    help="The vocabulary file (used to convert symbols to integers)")
+parser.add_argument("--unk-word", type=str,
+                    help="The unknown word; if supplied, words out of this vocabulary "
+                    "will be mapped to this word while dumping the data (if not, it is "
+                    "an error).  If you supply the empty string, it is as if you did "
+                    "not supply this option.")
 parser.add_argument("--data-weights-file", type=str, default='', required=True,
                     help="File that specifies multiplicities and weights for each data source: "
                     "e.g. if <data_dir> contains foo.txt and bar.txt, then should have lines "
-                    "like 'foo 1 0.5' and 'bar 2 1.5'.  These don't have to sum to one.");
+                    "like 'foo 1 0.5' and 'bar 2 1.5'.  These don't have to sum to one.")
 parser.add_argument("--num-splits", type=int, required=True,
                     help="The number of pieces to split up the data into.")
-parser.add_argument("data_dir",
-                    help="Directory in which to look for data, as validated by validate_data_dir.py")
+parser.add_argument("text_dir",
+                    help="Directory in which to look for source data, as validated by validate_text_dir.py")
 parser.add_argument("split_dir",
                     help="Directory in which the split-up data will be written.  Will be created "
-                    "if it does not exist.");
+                    "if it does not exist.")
 
 
 args = parser.parse_args()
@@ -37,10 +42,10 @@ args = parser.parse_args()
 
 # get the name with txt and counts file path for all data sources except dev
 # return a dict with key is the name of data_source, value is txt_file_path.
-def get_all_data_sources_except_dev(data_dir):
+def get_all_data_sources_except_dev(text_dir):
     data_sources = {}
-    for f in os.listdir(data_dir):
-        full_path = data_dir + "/" + f
+    for f in os.listdir(text_dir):
+        full_path = text_dir + "/" + f
         if f == 'dev.txt' or os.path.isdir(full_path):
             continue
         if f.endswith(".txt"):
@@ -49,7 +54,7 @@ def get_all_data_sources_except_dev(data_dir):
 
     if data_sources == {}:
         sys.exit(sys.argv[0] + ": data directory {0} contains no .txt files "
-                 "(possibly excepting dev.txt).".format(data_dir))
+                 "(possibly excepting dev.txt).".format(text_dir))
     return data_sources
 
 
@@ -109,7 +114,7 @@ def distribute_to_outputs(source_filename, weight, output_filehandles):
 
 
 
-data_sources = get_all_data_sources_except_dev(args.data_dir)
+data_sources = get_all_data_sources_except_dev(args.text_dir)
 data_weights = read_data_weights(args.data_weights_file, data_sources)
 
 if not os.path.exists(args.split_dir):
@@ -176,8 +181,10 @@ print(sys.argv[0] + ": converting from text to integer form.")
 # Convert from text to integer form using the vocabulary file,
 # moving data from *.tmp to *.txt.
 for n in range(1, args.num_splits + 1):
-    command = "utils/sym2int.pl -f 2- {vocab_file} <{input_file} >{output_file}".format(
+    command = "utils/sym2int.pl {unk_opt} -f 2- {vocab_file} <{input_file} >{output_file}".format(
         vocab_file=args.vocab_file,
+        unk_opt=("--map-oov '{0}'".format(args.unk_word)
+                 if args.unk_word != None and args.unk_word != '' else ''),
         input_file="{0}/{1}.tmp".format(args.split_dir, n),
         output_file="{0}/{1}.txt".format(args.split_dir, n))
     ret = os.system(command)

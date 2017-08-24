@@ -74,7 +74,7 @@ class RnnlmTrainer {
                const RnnlmObjectiveOptions &objective_config,
                const CuSparseMatrix<BaseFloat> *word_feature_mat,
                CuMatrix<BaseFloat> *embedding_mat,
-               nnet3::Nnet *rnnlm_);
+               nnet3::Nnet *rnnlm);
 
 
 

@@ -15,10 +15,10 @@ cp data/ptb/dev.txt  data/text/
 
 
 # validata data dir
-rnnlm/validate_data_dir.py data/text
+rnnlm/validate_text_dir.py data/text
 
 # get unigram counts
-rnnlm/get_unigram_counts.sh data/text
+rnnlm/ensure_counts_present.sh data/text
 
 # get vocab
 mkdir -p data/vocab

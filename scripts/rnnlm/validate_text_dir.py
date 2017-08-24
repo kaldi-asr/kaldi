@@ -18,7 +18,7 @@ parser.add_argument("--spot-check", type=str, default='true',
 parser.add_argument("--allow-internal-eos", type=str, default='true',
                     choices=['true', 'false'],
                     help="If true, allow internal </s> in lines of the text.")
-parser.add_argument("data_dir",
+parser.add_argument("text_dir",
                     help="Directory in which to look for text data")
 
 args = parser.parse_args()
@@ -26,11 +26,11 @@ args = parser.parse_args()
 EOS_SYMBOL = '</s>'
 SPECIAL_SYMBOLS = ['<s>', '<brk>', '<eps>']
 
-if not os.path.exists(args.data_dir):
-    sys.exit(sys.argv[0] + ": Expected directory {0} to exist".format(args.data_dir))
+if not os.path.exists(args.text_dir):
+    sys.exit(sys.argv[0] + ": Expected directory {0} to exist".format(args.text_dir))
 
-if not os.path.exists("{0}/dev.txt".format(args.data_dir)):
-    sys.exit(sys.argv[0] + ": Expected file {0}/dev.txt to exist".format(args.data_dir))
+if not os.path.exists("{0}/dev.txt".format(args.text_dir)):
+    sys.exit(sys.argv[0] + ": Expected file {0}/dev.txt to exist".format(args.text_dir))
 
 
 num_text_files = 0
@@ -96,13 +96,13 @@ def check_text_file(text_file):
           "if you don't have that problem.".format(text_file), file=sys.stderr)
 
 
-for f in os.listdir(args.data_dir):
-    full_path = args.data_dir + "/" + f
-    if os.path.isdir(full_path):
+for f in os.listdir(args.text_dir):
+    full_path = args.text_dir + "/" + f
+    if os.path.isdir(full_path) or f.endswith(".counts"):
         continue
     if not f.endswith(".txt"):
         sys.exit(sys.argv[0] + ": Text directory should not contain files with suffixes "
-                 "other than .txt: " + f)
+                 "other than .txt and .counts: " + f)
     if not os.path.isfile(full_path):
         sys.exit(sys.argv[0] + ": Expected {0} to be a file.".format(full_path))
     check_text_file(full_path)
@@ -110,4 +110,4 @@ for f in os.listdir(args.data_dir):
 
 if num_text_files < 2:
     sys.exit(sys.argv[0] + ": Directory {0} should contain at least one .txt file "
-             "other than dev.txt.".format(args.data_dir))
+             "other than dev.txt.".format(args.text_dir))

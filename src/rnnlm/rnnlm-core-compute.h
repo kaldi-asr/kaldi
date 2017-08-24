@@ -65,6 +65,9 @@ class RnnlmCoreComputer {
                             objective function w.r.t. the word embedding will be
                             *added* to this location; it must have the same
                             dimension as 'word_embedding'.
+       @return objf      The total objective function for this minibatch; divide
+                         this by '*weight' to normalize it (i.e. get the average
+                         log-prob per word).
    */
   BaseFloat Compute(const RnnlmExample &minibatch,
                     const RnnlmExampleDerived &derived,
@@ -72,11 +75,6 @@ class RnnlmCoreComputer {
                     BaseFloat *weight = NULL,
                     CuMatrixBase<BaseFloat> *word_embedding_deriv = NULL);
 
-  // Prints out the final stats, and return true if there was a nonzero count.
-  // TODO: implement this.
-  bool PrintTotalStats() const;
-
-  ~RnnlmCoreComputer();  // TODO: implement this.
  private:
 
   void ProvideInput(const RnnlmExample &minibatch,

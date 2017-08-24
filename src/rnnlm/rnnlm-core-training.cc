@@ -126,7 +126,7 @@ RnnlmCoreTrainer::RnnlmCoreTrainer(const RnnlmCoreTrainerOptions &config,
     config_(config),
     objective_config_(objective_config),
     nnet_(nnet),
-    compiler_(*nnet),  // for now we don't make available other optiosn
+    compiler_(*nnet),  // for now we don't make available other options
     num_minibatches_processed_(0),
     objf_info_(10) {
   ZeroComponentStats(nnet);

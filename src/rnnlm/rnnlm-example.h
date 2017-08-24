@@ -434,7 +434,10 @@ class RnnlmExampleCreator {
   void Process(std::istream &is);
 
   // Flush out any pending minibatches.
-  void Flush() { while (ProcessOneMinibatch()); sampling_sequencer_.Wait();  }
+  void Flush() {
+    while (ProcessOneMinibatch());
+    sampling_sequencer_.Wait();
+  }
 
   ~RnnlmExampleCreator();
  private:

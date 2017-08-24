@@ -86,6 +86,12 @@ void RnnlmCoreComputer::ProvideInput(
 }
 
 
+RnnlmCoreComputer::RnnlmCoreComputer(const nnet3::Nnet &nnet):
+    nnet_(nnet),
+    compiler_(nnet),  // for now we don't make available other options
+    num_minibatches_processed_(0),
+    objf_info_(10) { }
+
 BaseFloat RnnlmCoreComputer::ProcessOutput(
     const RnnlmExample &minibatch,
     const RnnlmExampleDerived &derived,
