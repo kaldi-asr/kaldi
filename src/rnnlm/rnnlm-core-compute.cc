@@ -119,7 +119,6 @@ BaseFloat RnnlmCoreComputer::ProcessOutput(
                      &objf_den_exact);
 
   objf_info_.AddStats(weight, objf_num, objf_den, objf_den_exact);
-  computer->AcceptInput("output", &output_deriv);
   if (weight_out)
     *weight_out = weight;
   return objf_num + objf_den;

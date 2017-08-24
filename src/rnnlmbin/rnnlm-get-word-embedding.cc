@@ -48,13 +48,16 @@ int main(int argc, char *argv[]) {
 
     po.Register("binary", &binary, "If true, write output in binary format");
 
+    po.Read(argc, argv);
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
-    std::string word_features_rxfilename,
-        feature_embedding_rxfilename,
-        word_embedding_wxfilename;
+
+    std::string word_features_rxfilename = po.GetArg(1),
+        feature_embedding_rxfilename = po.GetArg(2),
+        word_embedding_wxfilename = po.GetArg(3);
 
 
     Matrix<BaseFloat> feature_embedding_mat;
