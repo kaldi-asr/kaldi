@@ -22,6 +22,7 @@ cmd=run.pl
 context_opts=  # e.g. set this to "--context-width 5 --central-position 2" for quinphone.
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
 frame_subsampling_factor=1
+leftmost_questions_truncate=-1  # note: this option is deprecated and has no effect
 tree_stats_opts=
 cluster_phones_opts=
 repeat_frames=false
