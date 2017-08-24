@@ -36,10 +36,9 @@ namespace nnet3 {
 struct ChainObjectiveInfo {
   double tot_weight;
   double tot_like;
-  double tot_l2_term;
+  ObjectiveValues tot_aux_objfs;
   ChainObjectiveInfo(): tot_weight(0.0),
-                        tot_like(0.0),
-                        tot_l2_term(0.0) { }
+                        tot_like(0.0) { }
 };
 
 
@@ -103,6 +102,7 @@ class NnetChainComputeProb {
 
   unordered_map<std::string, ChainObjectiveInfo, StringHasher> objf_info_;
 
+  CuArray<int32> sil_indices_;
 };
 
 /// This function zeros the stored component-level stats in the nnet using

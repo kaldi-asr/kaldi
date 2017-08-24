@@ -214,13 +214,62 @@ void NnetTrainer::PrintMaxChangeStats() const {
               << " \% of the time.";
 }
 
+ObjectiveValues::ObjectiveValues(const std::vector<BaseFloat> &values) {
+  for (std::vector<BaseFloat>::const_iterator it = values.begin();
+       it != values.end(); ++it) {
+    objective_values.push_back(*it);
+  }
+}
+
+void ObjectiveValues::Add(const ObjectiveValues &other) {
+  if (Size() != other.Size()) {
+    KALDI_ERR << "objective values must have same size.";
+  }
+  
+  for (size_t i = 0; i < Size(); i++) {
+    objective_values[i] += other.objective_values[i];
+  }
+}
+
+void ObjectiveValues::Scale(BaseFloat scale) {
+  for (std::vector<double>::iterator it = objective_values.begin();
+       it != objective_values.end(); ++it) {
+    *it *= scale;
+  }
+}
+
+bool ObjectiveValues::IsZero() const {
+  for (std::vector<double>::const_iterator it = objective_values.begin();
+       it != objective_values.end(); ++it) {
+    if (*it != 0.0) return false;
+  }
+  return true;
+}
+
+double ObjectiveValues::Sum() const {
+  double sum = 0.0;
+  for (std::vector<double>::const_iterator it = objective_values.begin();
+       it != objective_values.end(); ++it) {
+    sum += *it;
+  }
+  return sum;
+}
+
+std::string ObjectiveValues::Str() const {
+  std::ostringstream oss;
+  for (size_t i = 0; i < Size(); i++) {
+    oss << objective_values[i] << (i < Size() - 1 ? " + " : "");
+  }
+  return oss.str();
+}
+
 void ObjectiveFunctionInfo::UpdateStats(
     const std::string &output_name,
     int32 minibatches_per_phase,
     int32 minibatch_counter,
     BaseFloat this_minibatch_weight,
     BaseFloat this_minibatch_tot_objf,
-    BaseFloat this_minibatch_tot_aux_objf) {
+    const ObjectiveValues &this_minibatch_tot_aux_objfs) {
   int32 phase = minibatch_counter / minibatches_per_phase;
   if (phase != current_phase) {
     KALDI_ASSERT(phase > current_phase);
@@ -229,16 +278,16 @@ void ObjectiveFunctionInfo::UpdateStats(
     current_phase = phase;
     tot_weight_this_phase = 0.0;
     tot_objf_this_phase = 0.0;
-    tot_aux_objf_this_phase = 0.0;
+    tot_aux_objfs_this_phase.Reset();
     minibatches_this_phase = 0;
   }
   minibatches_this_phase++;
   tot_weight_this_phase += this_minibatch_weight;
   tot_objf_this_phase += this_minibatch_tot_objf;
-  tot_aux_objf_this_phase += this_minibatch_tot_aux_objf;
+  tot_aux_objfs_this_phase.Add(this_minibatch_tot_aux_objfs);
   tot_weight += this_minibatch_weight;
   tot_objf += this_minibatch_tot_objf;
-  tot_aux_objf += this_minibatch_tot_aux_objf;
+  tot_aux_objfs.Add(this_minibatch_tot_aux_objfs);
 }
 
 void ObjectiveFunctionInfo::PrintStatsForThisPhase(
@@ -248,7 +297,7 @@ void ObjectiveFunctionInfo::PrintStatsForThisPhase(
   int32 start_minibatch = current_phase * minibatches_per_phase,
       end_minibatch = phase * minibatches_per_phase - 1;
 
-  if (tot_aux_objf_this_phase == 0.0) {
+  if (tot_aux_objfs_this_phase.IsZero()) {
     if (minibatches_per_phase == minibatches_this_phase) {
       KALDI_LOG << "Average objective function for '" << output_name
                 << "' for minibatches " << start_minibatch
@@ -264,36 +313,38 @@ void ObjectiveFunctionInfo::PrintStatsForThisPhase(
                 << tot_weight_this_phase << " frames.";
     }
   } else {
-    BaseFloat objf = (tot_objf_this_phase / tot_weight_this_phase),
-        aux_objf = (tot_aux_objf_this_phase / tot_weight_this_phase),
-        sum_objf = objf + aux_objf;
+    BaseFloat objf = (tot_objf_this_phase / tot_weight_this_phase);
+    ObjectiveValues aux_objfs(tot_aux_objfs_this_phase);
+    aux_objfs.Scale(1.0 / tot_weight_this_phase);
+    BaseFloat sum_objf = objf + aux_objfs.Sum();
     if (minibatches_per_phase == minibatches_this_phase) {
       KALDI_LOG << "Average objective function for '" << output_name
                 << "' for minibatches " << start_minibatch
                 << '-' << end_minibatch << " is "
-                << objf << " + " << aux_objf << " = " << sum_objf
+                << objf << " + " << aux_objfs.Str() << " = " << sum_objf
                 << " over " << tot_weight_this_phase << " frames.";
     } else {
       KALDI_LOG << "Average objective function for '" << output_name
                 << "' using " << minibatches_this_phase
                 << " minibatches in  minibatch range " << start_minibatch
                 << '-' << end_minibatch << " is "
-                << objf << " + " << aux_objf << " = " << sum_objf
+                << objf << " + " << aux_objfs.Str() << " = " << sum_objf
                 << " over " << tot_weight_this_phase << " frames.";
     }
   }
 }
 
 bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
-  BaseFloat objf = (tot_objf / tot_weight),
-        aux_objf = (tot_aux_objf / tot_weight),
-        sum_objf = objf + aux_objf;
-  if (tot_aux_objf == 0.0) {
+  BaseFloat objf = (tot_objf / tot_weight);
+  ObjectiveValues aux_objfs(tot_aux_objfs);
+  aux_objfs.Scale(1.0 / tot_weight);
+  BaseFloat sum_objf = objf + aux_objfs.Sum();
+  if (tot_aux_objfs.IsZero()) {
     KALDI_LOG << "Overall average objective function for '" << name << "' is "
               << (tot_objf / tot_weight) << " over " << tot_weight << " frames.";
   } else {
     KALDI_LOG << "Overall average objective function for '" << name << "' is "
-              << objf << " + " << aux_objf << " = " << sum_objf
+              << objf << " + " << aux_objfs.Str() << " = " << sum_objf
               << " over " << tot_weight << " frames.";
   }
     

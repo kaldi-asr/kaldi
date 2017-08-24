@@ -202,12 +202,13 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
       xent_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
                         kUndefined);
 
-    BaseFloat tot_objf, tot_l2_term, tot_weight;
+    BaseFloat tot_objf, tot_mmi_objf, tot_l2_term, tot_weight;
 
     if (opts_.chain_config.use_smbr_objective) {
       ComputeChainSmbrObjfAndDeriv(opts_.chain_config, den_graph_,
                                    sup.supervision, nnet_output,
-                                   &tot_objf, &tot_l2_term, &tot_weight,
+                                   &tot_objf, &tot_mmi_objf, 
+                                   &tot_l2_term, &tot_weight,
                                    &nnet_output_deriv,
                                    (use_xent ? &xent_deriv : NULL),
                                    sil_indices_.Dim() ? &sil_indices_ : NULL);
@@ -249,10 +250,15 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
 
     computer->AcceptInput(sup.name, &nnet_output_deriv);
 
+    std::vector<double> objective_values;
+    objective_values.push_back(tot_l2_term);
+    if (opts_.chain_config.use_smbr_objective)
+      objective_values.push_back(tot_mmi_objf);
+
     objf_info_[sup.name + suffix].UpdateStats(sup.name + suffix,
                                      opts_.nnet_config.print_interval,
                                      num_minibatches_processed_,
-                                     tot_weight, tot_objf, tot_l2_term);
+                                     tot_weight, tot_objf, objective_values);
 
     if (use_xent) {
       xent_deriv.Scale(opts_.chain_config.xent_regularize);

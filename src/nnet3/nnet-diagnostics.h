@@ -39,7 +39,6 @@ struct SimpleObjectiveInfo {
 
 };
 
-
 struct NnetComputeProbOptions {
   bool debug_computation;
   bool compute_deriv;

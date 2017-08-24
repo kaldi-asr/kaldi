@@ -301,7 +301,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     if shrinkage_value != 1.0:
         shrink_info_str = ' and shrink value is {0}'.format(shrinkage_value)
 
-    objf_info = "" if smbr_opt != "" else "and objective is sMBR"
+    objf_info = "" if smbr_opt != "" else (
+        "and objective is sMBR and smbr_opt=" + smbr_opt)
     logger.info("On iteration {0}, learning rate is {1}"
                 "{shrink_info} {objf_info}.".format(
                     iter, learning_rate,
