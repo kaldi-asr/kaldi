@@ -2993,6 +2993,15 @@ void LogSoftmaxComponent::Backprop(const std::string &debug_info,
   in_deriv->DiffLogSoftmaxPerRow(out_value, out_deriv);
 }
 
+void LogSoftmaxComponent::StoreStats(const CuMatrixBase<BaseFloat> &in_value,
+                                     const CuMatrixBase<BaseFloat> &out_value,
+                                     void *memo) {
+  // We don't store derivative stats for this component type, just activation
+  // stats.
+  CuMatrix<BaseFloat> out_exp(out_value);
+  out_exp.ApplyExp();
+  StoreStatsInternal(out_exp, NULL);
+}
 
 void FixedScaleComponent::Init(const CuVectorBase<BaseFloat> &scales) {
   KALDI_ASSERT(scales.Dim() != 0);

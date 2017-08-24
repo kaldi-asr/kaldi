@@ -36,7 +36,8 @@ struct NnetChainTrainingOptions {
   NnetTrainerOptions nnet_config;
   chain::ChainTrainingOptions chain_config;
   bool apply_deriv_weights;
-  NnetChainTrainingOptions(): apply_deriv_weights(true) { }
+  bool accumulate_avg_deriv;
+  NnetChainTrainingOptions(): apply_deriv_weights(true), accumulate_avg_deriv(true) { }
 
   void Register(OptionsItf *opts) {
     nnet_config.Register(opts);
@@ -44,6 +45,9 @@ struct NnetChainTrainingOptions {
     opts->Register("apply-deriv-weights", &apply_deriv_weights,
                    "If true, apply the per-frame derivative weights stored with "
                    "the example");
+    opts->Register("accumulate-avg-deriv", &accumulate_avg_deriv,
+                   "If true, the average derivative will be accumulated and "
+                   "printed");
   }
 };
 
@@ -110,6 +114,8 @@ class NnetChainTrainer {
   // consistent dropout masks.  It's set to a value derived from rand()
   // when the class is initialized.
   int32 srand_seed_;
+
+  CuArray<int32> sil_indices_;
 };
 
 

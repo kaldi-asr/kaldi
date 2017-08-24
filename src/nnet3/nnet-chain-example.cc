@@ -292,6 +292,28 @@ void MergeChainExamples(bool compress,
   }
 }
 
+void TruncateDerivWeights(int32 truncate,
+                          NnetChainExample *eg) {
+  for (size_t i = 0; i < eg->outputs.size(); i++) {
+    NnetChainSupervision &supervision = eg->outputs[i];
+    Vector<BaseFloat> &deriv_weights = supervision.deriv_weights;
+    if (deriv_weights.Dim() == 0) {
+      deriv_weights.Resize(supervision.indexes.size());
+      deriv_weights.Set(1.0);
+    }
+    int32 num_sequences = supervision.supervision.num_sequences,
+        frames_per_sequence = supervision.supervision.frames_per_sequence;
+    KALDI_ASSERT(2 * truncate  < frames_per_sequence);
+    for (int32 t = 0; t < truncate; t++)
+      for (int32 s = 0; s < num_sequences; s++)
+        deriv_weights(t * num_sequences + s) = 0.0;
+    for (int32 t = frames_per_sequence - truncate;
+         t < frames_per_sequence; t++)
+      for (int32 s = 0; s < num_sequences; s++)
+        deriv_weights(t * num_sequences + s) = 0.0;
+  }
+}
+
 void GetChainComputationRequest(const Nnet &nnet,
                                 const NnetChainExample &eg,
                                 bool need_model_derivative,

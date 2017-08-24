@@ -732,6 +732,7 @@ def main():
             output_nodes.append(tuple(parts))
     elif args.is_chain:
         output_nodes.append(('output', 'chain'))
+        output_nodes.append(('output-xent', 'chain'))
     else:
         output_nodes.append(('output', 'linear'))
 

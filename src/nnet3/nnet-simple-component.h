@@ -758,6 +758,9 @@ class LogSoftmaxComponent: public NonlinearComponent {
                         void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &in_value,
+                          const CuMatrixBase<BaseFloat> &out_value,
+                          void *memo);
 
   virtual Component* Copy() const { return new LogSoftmaxComponent(*this); }
  private:

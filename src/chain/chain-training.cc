@@ -119,7 +119,8 @@ void ComputeChainSmbrObjfAndDeriv(const ChainTrainingOptions &opts,
                                   BaseFloat *l2_term,
                                   BaseFloat *weight,
                                   CuMatrixBase<BaseFloat> *nnet_output_deriv,
-                                  CuMatrixBase<BaseFloat> *xent_output_deriv) {
+                                  CuMatrixBase<BaseFloat> *xent_output_deriv,
+                                  const CuArray<int32> *sil_indices) {
   // num_posteriors is a matrix of size 
   // (num_sequences * frames_per_sequence) x num_pdfs and is ordered in the 
   // same way as nnet_output is i.e.
@@ -127,26 +128,49 @@ void ComputeChainSmbrObjfAndDeriv(const ChainTrainingOptions &opts,
   // each sequence, and so on.
   CuMatrix<BaseFloat> num_posteriors(nnet_output.NumRows(),
                                      nnet_output.NumCols());
+
+  BaseFloat num_logprob_weighted;
   {
     NumeratorComputation numerator(supervision, nnet_output);
     // note: supervision.weight is included as a factor in the derivative from
     // the numerator object, and the logprob too.
-    numerator.Forward();
+    num_logprob_weighted = opts.mmi_factor * numerator.Forward();
     numerator.Backward(&num_posteriors);
-    if (xent_output_deriv)
+
+    if (nnet_output_deriv && opts.mmi_factor != 0.0) {
+      nnet_output_deriv->CopyFromMat(num_posteriors);
+      nnet_output_deriv->Scale(opts.mmi_factor);
+    }
+
+    if (xent_output_deriv) {
       xent_output_deriv->CopyFromMat(num_posteriors);
+    }
   }
+
+  if (sil_indices)
+    num_posteriors.CopyCols(num_posteriors, *sil_indices);
+
   DenominatorSmbrComputation denominator(opts, den_graph,
                                          supervision.num_sequences,
                                          nnet_output, num_posteriors);
-  BaseFloat smbr_objf = denominator.ForwardSmbr();
+          
+  BaseFloat mmi_objf;
+  BaseFloat smbr_objf = denominator.ForwardSmbr(&mmi_objf);
+
+  if (opts.mmi_factor != 0.0) {
+    DenominatorComputation denominator_mmi(opts, den_graph,
+                                           supervision.num_sequences,
+                                           nnet_output);
+    KALDI_ASSERT(kaldi::ApproxEqual(-mmi_objf, opts.mmi_factor * denominator_mmi.Forward()));
+  }
+
   bool ok = true;
   if (nnet_output_deriv) {
-    nnet_output_deriv->SetZero();
+    if (opts.mmi_factor == 0.0) nnet_output_deriv->SetZero();
     ok = denominator.BackwardSmbr(supervision.weight, nnet_output_deriv);
   }
 
-  *objf = supervision.weight * smbr_objf;
+  *objf = supervision.weight * (smbr_objf + mmi_objf) + num_logprob_weighted;
   *weight = supervision.weight * supervision.num_sequences *
       supervision.frames_per_sequence;
   if (!((*objf) - (*objf) == 0) || !ok) {
@@ -155,7 +179,7 @@ void ComputeChainSmbrObjfAndDeriv(const ChainTrainingOptions &opts,
       nnet_output_deriv->SetZero();
     if (xent_output_deriv)
       xent_output_deriv->SetZero();
-    BaseFloat default_objf = 0;
+    BaseFloat default_objf = -opts.mmi_factor * 10;
     KALDI_WARN << "Objective function is " << (*objf)
                << " and denominator computation (if done) returned "
                << std::boolalpha << ok

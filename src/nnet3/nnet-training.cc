@@ -296,6 +296,13 @@ bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
               << objf << " + " << aux_objf << " = " << sum_objf
               << " over " << tot_weight << " frames.";
   }
+    
+  if (deriv_sum.Dim() > 0) {
+    Vector<BaseFloat> deriv_avg(deriv_sum);
+    deriv_avg.Scale(1.0 / tot_weight);
+    KALDI_LOG << "Overall avg deriv for " << name << " is " << deriv_avg;
+  }
+
   KALDI_LOG << "[this line is to be parsed by a script:] "
             << "log-prob-per-frame="
             << objf;

@@ -67,12 +67,14 @@ namespace chain {
 
   * Forward computation (version 1)
 
-  In the forward computation we're computing alpha(i, t) for 0 <= t <= T):
+  In the forward computation we're computing alpha(i, t) and alpha_r(i, t) 
+  for 0 <= t <= T):
     - For the first frame, set alpha(0, i) = init(i), where init(i) is the
       initial-probabilitiy from state i.  # in our framework these are obtained
       #  by running the HMM for a while and getting an averaged occupation
       # probability, and using this as an initial-prob, since the boundaries of
       # chunks don't really correspond to utterance boundaries in general.]
+      Also set alpha_r(0, i) = 0.
     - For t = 1 ... T:
         for i = 0 ... I-1:
            alpha(t, i) = 0
@@ -158,7 +160,7 @@ namespace chain {
   Let leaky-hmm-prob be a constant defined by the user, with 0.1 being a typical
   value.  It defines how much probability we give to the 'leaky' transitions.
 
-  - For frame 0, set alpha(0, i) = init(i).
+  - For frame 0, set alpha(0, i) = init(i), alpha_r(0, i) = 0
   - For 0 <= t <= T, define tot-alpha(t) = \sum_i alpha(t, i).
   - For 0 <= t <= T, define alpha'(t, i) = alpha(t, i) + tot-alpha(t) * leaky-hmm-prob * init(i).
 
@@ -168,7 +170,7 @@ namespace chain {
            alpha_r(t, i) = 0
            for (j, p, n) in pred(i):  # note: j is preceding-state.
               alpha(t, i) += alpha'(t-1, j) * p * x(t-1, n) / tot-alpha(t-1)
-              alpha_r(t, i) += (alpha_r(t-1, j) + (ref_pdf == pdf ? 1.0 : 0.0)) * alpha'(t-1, j) * x(t-1, n) / tot-alpha(t-1) * p
+              alpha_r(t, i) += (alpha_r(t-1, j) + (ref_pdf == pdf ? 1.0 : 0.0)) * alpha'(t-1, j) * p  * x(t-1, n) / tot-alpha(t-1)
            alpha_r(t, i) /= alpha(t,i)
 
   - total-prob = \sum_i alpha'(T, i)
@@ -230,7 +232,9 @@ class DenominatorSmbrComputation {
   // Does the forward computation, and returns the total objective summed
   // over all sequences.  You will have to scale this by any supervision
   // weighting factor, manually.
-  BaseFloat ForwardSmbr();
+  // aux_objf stores the value of the auxiliary MMI objective scaled by
+  // opts.mmi_factor
+  BaseFloat ForwardSmbr(BaseFloat *aux_objf);
 
   // this adds deriv_weight times (the derivative of the objective w.r.t. the
   // nnet output), to 'nnet_output_deriv'.
@@ -246,28 +250,27 @@ class DenominatorSmbrComputation {
   enum { kMaxDerivTimeSteps = 8 };
 
   // sets up the alpha for frame t = 0.
-  void AlphaFirstFrame();
-  // sets up the alpha for frame t = 0.
   void AlphaSmbrFirstFrame();
   // the alpha computation for some 0 < t <= num_time_steps_.
   void AlphaSmbrGeneralFrame(int32 t);
   // does the 'alpha-dash' computation for time t.  this relates to
   // 'leaky hmm'.
-  void AlphaDash(int32 t);
+  void AlphaSmbrDash(int32 t);
 
   // done after all the alphas, this function computes and returns the total
   // smbr objective summed over all the sequences, and sets tot_prob_ (if we're
   // doing correction) log_correction_term_.  Note, this won't be scaled by
   // 'deriv_scale' (which of course we haven't seen by the time this is called,
   // from the ForwardSmbr() computation).
-  BaseFloat ComputeTotObjf();
+  // aux_objf stores the value of the auxiliary MMI objective scaled by
+  // opts.mmi_factor
+  BaseFloat ComputeTotObjf(BaseFloat *aux_objf);
 
-  void BetaDashLastFrame();
-  void BetaSmbrLastFrame();
+  void BetaSmbrDashLastFrame();
   // beta computation for 0 <= beta < num_time_steps_.
-  void BetaSmbrGeneralFrame(int32 t);
+  void BetaSmbrDashGeneralFrame(int32 t);
   // compute the beta quantity from the beta-dash quantity (relates to leaky hmm).
-  void Beta(int32 t);
+  void BetaSmbr(int32 t);
 
   // some checking that we can do if debug mode is activated, or on frame zero.
   // Sets ok_ to false if a bad problem is detected.
@@ -290,9 +293,10 @@ class DenominatorSmbrComputation {
   // num_sequences + sequence_index).
   CuMatrix<BaseFloat> exp_nnet_output_transposed_;
 
-  // the numberator posterior probabilities 
-  // This is a matrix of size num_sequences x num_pdfs
-  CuMatrix<BaseFloat> num_posteriors_;
+  // the numerator posterior probabilities 
+  // The row-index is the pdf-id; and the column index equals (frame_index *
+  // num_sequences + sequence_index).
+  CuMatrix<BaseFloat> numerator_posteriors_transposed_;
 
   // the derivs w.r.t. the nnet outputs (transposed)
   CuMatrix<BaseFloat> nnet_output_deriv_transposed_;
@@ -326,9 +330,21 @@ class DenominatorSmbrComputation {
 
   // the total smbr for each sequence.
   CuVector<BaseFloat> tot_smbr_;
-  
+
+  // the log of tot_prob_.
+  CuVector<BaseFloat> tot_log_prob_;
+
+  // the log of the total correction term for each sequence, which is the
+  // product of the alpha-sums [used in the leaky-hmm computation] over all the
+  // frames.  The 'correction terms' are terms that we divide the alphas and
+  // betas by in order to keep them in a good dynamic range.  The product of
+  // them must be included in the total likelihood.
+  CuVector<BaseFloat> log_correction_term_;
+
   bool ok_;
 };
+
+
 
 }  // namespace chain
 }  // namespace kaldi
