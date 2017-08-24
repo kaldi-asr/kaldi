@@ -142,7 +142,7 @@ if [ $stage -le 4 ]; then
   # use the same num-jobs as the alignments
   nj=$(cat exp/tri3b_ali/num_jobs) || exit 1;
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" \
-    --generate-ali-from-lats true --stage 4 \
+    --generate-ali-from-lats true \
     data/train $lang_src_tgt $src_gmm_dir $lat_dir || exit 1;
   rm $lat_dir/fsts.*.gz 2>/dev/null || true # save space
 fi
