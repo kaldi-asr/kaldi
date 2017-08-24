@@ -5,7 +5,7 @@
 #           2016  Vimal Manohar
 # Apache 2.0
 
-# Computes training alignments using nnet3 DNN
+# Computes training alignments using nnet3 DNN, with output to lattices.
 
 # Begin configuration section.
 nj=4
@@ -24,6 +24,7 @@ extra_left_context_initial=-1
 extra_right_context_final=-1
 online_ivector_dir=
 graphs_scp=
+generate_ali_from_lats=false # If true, alingments generated from lattices.
 # End configuration options.
 
 echo "$0 $@"  # Print the command line for logging
@@ -166,4 +167,10 @@ if [ $stage -le 1 ]; then
     "$feats" "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 fi
 
-echo "$0: done aligning data."
+if [ $stage -le 2 ] && $generate_ali_from_lats; then
+  # If generate_alignments is true, ali.*.gz is generated in lats dir
+  $cmd JOB=1:$nj $dir/log/generate_alignments.JOB.log \
+    lattice-best-path --acoustic-scale=$acoustic_scale "ark:gunzip -c $dir/lat.JOB.gz |" \
+    ark:/dev/null "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
+fi
+echo "$0: done generating lattices from training transcripts."

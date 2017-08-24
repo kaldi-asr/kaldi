@@ -104,10 +104,11 @@ def get_args():
     parser.add_argument("--trainer.input-model", type=str,
                         dest='input_model', default=None,
                         action=common_lib.NullstrToNoneAction,
-                        help="If specified, this model is used as 0.raw model "
-                             "and no LDA matrix or init.raw initialzed."
+                        help="If specified, this model is used as the initial "
+                             "'raw' model (0.raw in the script) instead of "
+                             "initializing the model from the xconfig. "
                              "Also configs dir is not expected to exist "
-                             "and context is generated using this model.")
+                             "and left/right context is computed from this model.")
     parser.add_argument("--trainer.num-epochs", type=float, dest='num_epochs',
                         default=10.0,
                         help="Number of epochs to train the model")
@@ -217,11 +218,12 @@ def process_args(args):
     if (not os.path.exists(args.dir)
             or (not os.path.exists(args.dir+"/configs") and
                 not os.path.exists(args.input_model))):
-        raise Exception("This scripts expects {0} to exist. Also either of --trainer.input-model "
-                        " as '0.raw' model should exist or {0} should have a configs "
-                        "directory which is the output of "
-                        "make_configs.py script.".format(
-                        args.dir, args.input_model))
+        raise Exception("This script expects {0} to exist. Also either "
+                        "--trainer.input-model option as initial 'raw' model "
+                        "(used as 0.raw in the script) should be supplied or "
+                        "{0}/configs directory which is the output of "
+                        "make_configs.py script should be provided.".format(
+                        args.dir))
 
     if args.transform_dir is None:
         args.transform_dir = args.lat_dir
@@ -290,9 +292,9 @@ def train(args, run_opts):
 
         variables = common_train_lib.parse_generic_config_vars_file(var_file)
     else:
-        # if args.input_model specified, the model left and right context
-        # computed using input_model.
-        variables = common_train_lib.parse_input_model(args.input_model)
+        # If args.input_model is specified, the model left and right contexts
+        # are computed using input_model.
+        variables = common_train_lib.get_input_model_info(args.input_model)
 
     # Set some variables.
     try:
@@ -398,7 +400,8 @@ def train(args, run_opts):
     logger.info("Copying the properties from {0} to {1}".format(egs_dir, args.dir))
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (args.stage <= -2) and os.path.exists(args.dir+"/configs/init.config") and args.input_model is None:
+    if ((args.stage <= -2) and (os.path.exists(args.dir+"/configs/init.config"))
+       and (args.input_model is None)):
         logger.info('Computing the preconditioning matrix for input features')
 
         chain_lib.compute_preconditioning_matrix(
@@ -408,7 +411,8 @@ def train(args, run_opts):
 
     if (args.stage <= -1):
         logger.info("Preparing the initial acoustic model.")
-        chain_lib.prepare_initial_acoustic_model(args.dir, run_opts, input_mdl=args.input_model)
+        chain_lib.prepare_initial_acoustic_model(args.dir, run_opts,
+                                                 input_model=args.input_model)
 
     with open("{0}/frame_subsampling_factor".format(args.dir), "w") as f:
         f.write(str(args.frame_subsampling_factor))

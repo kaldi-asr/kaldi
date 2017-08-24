@@ -357,13 +357,11 @@ def parse_generic_config_vars_file(var_file):
     raise Exception('Error while parsing the file {0}'.format(var_file))
 
 
-def parse_input_model(input_model):
-    """ This function parses input_model and outputs left and right contexts
-        for input_mdl. This function is an alternative to configs/vars,
-        if this file is not available.
-            e.g. input_mdl is not generated using
-                 configs and directly passed to train.py
-                 using --trainer.input-model.
+def get_input_model_info(input_model):
+    """ This function returns a dictionary with keys "model_{left/right}_context"
+        and values equal to the left/right model contexts for input_model.
+        This function is useful when using the --trainer.input-model option
+        instead of initializing model using configs.
     """
     variables = {}
     try:

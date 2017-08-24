@@ -1,12 +1,13 @@
 #!/bin/bash
 
-# This script uses weight transfer as a Transfer learning method
-# and use already trained model on wsj and removes the last layer and
-# add new randomly initialized layer and retrain the whole network,
-# while training new added layer using rm data.
+# This script uses weight transfer as a Transfer learning method to transfer
+# model trained on wsj to rm dataset.
+# It uses already trained model on wsj and removes its last layer and
+# adds new randomly initialized layer and retrains the whole network with
+# smaller learning-rate, while training new added layer using rm data.
 # The chain config is as in run_tdnn_5n.sh and the result is:
 #System tdnn_5n tdnn_wsj_rm_1a
-#WER      2.71     2.09
+#WER      2.71     1.68
 set -e
 
 # configs for 'chain'
@@ -14,6 +15,7 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 dir=exp/chain/tdnn_wsj_rm_1a
+xent_regularize=0.1
 
 # configs for transfer learning
 src_mdl=../../wsj/s5/exp/chain/tdnn1d_sp/final.mdl # input chain model
@@ -21,7 +23,7 @@ src_mdl=../../wsj/s5/exp/chain/tdnn1d_sp/final.mdl # input chain model
                                                     # This model is transfered to the target domain.
 
 src_mfcc_config=../../wsj/s5/conf/mfcc_hires.conf # mfcc config used to extract higher dim
-                                                  # mfcc features used for ivector training
+                                                  # mfcc features for ivector training
                                                   # in source domain.
 src_ivec_extractor_dir=  # source ivector extractor dir used to extract ivector for
                          # source data and the ivector for target data is extracted using this extractor.
@@ -118,7 +120,7 @@ fi
 if [ $stage -le 7 ]; then
   echo "$0: creating neural net configs using the xconfig parser for";
   echo "extra layers w.r.t source network.";
-  num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
+  num_targets=$(tree-info --print-args=false $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   mkdir -p $dir
   mkdir -p $dir/configs
@@ -145,7 +147,7 @@ if [ $stage -le 8 ]; then
   echo "$0: generate egs for chain to train new model on rm dataset."
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/rm-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/rm-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
   ivector_dir=
   if $use_ivector; then ivector_dir="exp/nnet2${nnet_affix}/ivectors" ; fi
@@ -179,12 +181,7 @@ if [ $stage -le 8 ]; then
     --dir $dir || exit 1;
 fi
 
-if [ $stage -le 9 ] && $use_ivector; then
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
-    data/test $src_ivec_extractor_dir exp/nnet2${nnet_affix}/ivectors_test || exit 1;
-fi
-
-if [ $stage -le 10 ]; then
+if [ $stage -le 9 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.

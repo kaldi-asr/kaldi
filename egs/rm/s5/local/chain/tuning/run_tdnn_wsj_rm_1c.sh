@@ -1,6 +1,6 @@
 #!/bin/bash
-# _1c is as _1b but it uses src chain model instead of GMM model to generate
-# alignments for RM using SWJ model.
+# _1c is as _1b but it uses source chain-trained DNN model instead of GMM model
+# to generate alignments for RM using SWJ model.
 
 # _1b is as _1a, but different as follows
 # 1) uses src phone set phones.txt and new lexicon generated using word pronunciation
@@ -18,11 +18,11 @@
 
 
 # This script uses weight transfer as Transfer learning method
-# and use already trained model on wsj and fine-tune the whole network using rm data
-# while training the last layer with higher learning-rate.
+# and use already trained model on wsj and fine-tune the whole network using
+# rm data while training the last layer with higher learning-rate.
 # The chain config is as run_tdnn_5n.sh and the result is:
 # System tdnn_5n tdnn_wsj_rm_1a tdnn_wsj_rm_1b tdnn_wsj_rm_1c
-# WER      2.71     2.09            3.45          3.38
+# WER      2.71     1.68            3.45          3.38
 
 set -e
 
@@ -44,8 +44,8 @@ phone_lm_scales="1,10" #  comma-separated list of integer valued scale weights
 
 # model and dirs for source model used for transfer learning
 src_mdl=../../wsj/s5/exp/chain/tdnn1d_sp/final.mdl # input chain model
-                                                    # trained on source dataset (wsj).
-                                                    # This model is transfered to the target domain.
+                                                    # trained on source dataset (wsj) and
+                                                    # this model is transfered to the target domain.
 
 src_mfcc_config=../../wsj/s5/conf/mfcc_hires.conf # mfcc config used to extract higher dim
                                                   # mfcc features used for ivector training
@@ -54,10 +54,10 @@ src_ivec_extractor_dir=  # source ivector extractor dir used to extract ivector 
                          # source data and the ivector for target data is extracted using this extractor.
                          # It should be nonempty, if ivector is used in source model training.
 
-src_lang=../../wsj/s5/data/lang    # source lang directory used to train source model.
-                              # new new lang dir for transfer learning experiment is prepared
-                              # using source phone set and lexicon in src_lang and
-                              # word.txt target lang dir.
+src_lang=../../wsj/s5/data/lang # source lang directory used to train source model.
+                                # new lang dir for transfer learning experiment is prepared
+                                # using source phone set phone.txt and lexicon.txt in src lang dir and
+                                # word.txt target lang dir.
 src_dict=../../wsj/s5/data/local/dict_nosp  # dictionary for source dataset containing lexicon.txt,
                                             # nonsilence_phones.txt,...
                                             # lexicon.txt used to generate lexicon.txt for
@@ -91,7 +91,6 @@ fi
 lang_dir=data/lang_chain_5n   # lang dir for target data.
 lang_src_tgt=data/lang_wsj_rm # This dir is prepared using phones.txt and lexicon from
                               # source(WSJ) and and wordlist and G.fst from target(RM)
-ali_dir=exp/chain/chain_ali_wsj
 lat_dir=exp/chain_lats_wsj
 
 required_files="$src_mfcc_config $src_mdl $src_lang/phones.txt $src_dict/lexicon.txt $src_tree_dir/tree"
@@ -140,18 +139,10 @@ ivec_opt=""
 if $use_ivector;then ivec_opt="--online-ivector-dir exp/nnet2${nnet_affix}/ivectors" ; fi
 
 if [ $stage -le 4 ]; then
-  echo "$0: Generate alignment using source chain model."
-  steps/nnet3/align.sh --nj 100 --cmd "$train_cmd" $ivec_opt \
-  --extra-left-context-initial 0 --extra-right-context-final 0 \
-  --scale-opts "--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0" \
-  --frames-per-chunk 150 \
-  data/train_hires $lang_src_tgt $src_mdl_dir $ali_dir || exit 1;
-fi
-
-if [ $stage -le 5 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/nnet3/align_lats.sh --nj 100 --cmd "$train_cmd" $ivec_opt \
+    --generate-ali-from-lats true \
     --acoustic-scale 1.0 --extra-left-context-initial 0 --extra-right-context-final 0 \
     --frames-per-chunk 150 \
     --scale-opts "--transition-scale=1.0 --self-loop-scale=1.0" \
@@ -159,24 +150,24 @@ if [ $stage -le 5 ]; then
   rm $lat_dir/fsts.*.gz # save space
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 5 ]; then
   # set the learning-rate-factor for initial network to be primary_lr_factor."
   $train_cmd $dir/log/generate_input_mdl.log \
     nnet3-am-copy --raw=true --edits="set-learning-rate-factor name=* learning-rate-factor=$primary_lr_factor; set-learning-rate-factor name=output* learning-rate-factor=1.0" \
       $src_mdl $dir/input.raw || exit 1;
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 6 ]; then
   echo "$0: compute {den,normalization}.fst using weighted phone LM."
   steps/nnet3/chain/make_weighted_den_fst.sh --weights $phone_lm_scales \
     --lm-opts '--num-extra-lm-states=200' \
-    $src_tree_dir $ali_dir $dir || exit 1;
+    $src_tree_dir $lat_dir $dir || exit 1;
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 7 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/rm-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/rm-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
   # exclude phone_LM and den.fst generation training stage
   if [ $train_stage -lt -4 ]; then train_stage=-4 ; fi
@@ -217,12 +208,7 @@ if [ $stage -le 8 ]; then
     --dir $dir || exit 1;
 fi
 
-if [ $stage -le 9 ] && $use_ivector; then
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
-    data/test_hires $src_ivec_extractor_dir exp/nnet2${nnet_affix}/ivectors_test || exit 1;
-fi
-
-if [ $stage -le 10 ]; then
+if [ $stage -le 8 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.

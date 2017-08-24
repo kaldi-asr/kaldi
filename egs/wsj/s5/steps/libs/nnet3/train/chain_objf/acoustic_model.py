@@ -426,14 +426,15 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     common_lib.force_symlink("../lda.mat", "{0}/configs/lda.mat".format(dir))
 
 
-def prepare_initial_acoustic_model(dir, run_opts, srand=-1, input_mdl=None):
-    """ Adds the first layer; It will also prepare the acoustic model
-        with the transition model.
-        If input_mdl is specified, no initial network preparation(adding
-        first layer) is done on that and this model is prepared instead of
-        '0.raw' acoustice model with the transition model.
+def prepare_initial_acoustic_model(dir, run_opts, srand=-1, input_model=None):
+    """ This function adds the first layer; It will also prepare the acoustic
+        model with the transition model.
+        If 'input_model' is specified, no initial network preparation(adding
+        first layer) is done and this model is used initial 'raw' model
+        instead of '0.raw' model to prepare '0.mdl' acoustic model by adding the
+        transition model.
     """
-    if input_mdl is None:
+    if input_model is None:
         common_train_lib.prepare_initial_network(dir, run_opts,
                                                  srand=srand)
 
@@ -447,7 +448,7 @@ def prepare_initial_acoustic_model(dir, run_opts, srand=-1, input_mdl=None):
         """{command} {dir}/log/init_mdl.log \
                 nnet3-am-init {dir}/0.trans_mdl {raw_mdl} \
                 {dir}/0.mdl""".format(command=run_opts.command, dir=dir,
-                                      raw_mdl=(input_mdl if input_mdl is not None
+                                      raw_mdl=(input_model if input_model is not None
                                       else '{0}/0.raw'.format(dir))))
 
 

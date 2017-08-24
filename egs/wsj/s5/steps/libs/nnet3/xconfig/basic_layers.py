@@ -42,7 +42,8 @@ class XconfigLayerBase(object):
             raise RuntimeError("Invalid value: name={0}".format(
                 key_to_value['name']))
         for prev_layer in all_layers:
-            if self.name == prev_layer.name and prev_layer.layer_type is not 'auxiliary':
+            if (self.name == prev_layer.name and
+                prev_layer.layer_type is not 'existing'):
                 raise RuntimeError("Name '{0}' is used for more than one "
                                    "layer.".format(self.name))
 
@@ -1075,19 +1076,24 @@ class XconfigIdctLayer(XconfigLayerBase):
         return ans
 
 
-class XconfigAuxiliaryLayer(XconfigLayerBase):
+class XconfigExistingLayer(XconfigLayerBase):
     """This class is for lines like
-    'auxiliary name=aux dim=40'
-    in the config file.
-    This layer contains dim and name.
-    This class is useful in cases like transferring
-    existing models and using {input,output,component}-nodes
-    of that model as input to new layers.
+    'existing name=tdnn1.affine dim=40'
+    This layer contains 'dim' and 'name' and it is not presented in any actual
+    config files.
+    Layers of this type are created internally for all component nodes in
+    an existing neural net model for use as input to other layers.
+    (i.e. get_model_component_info, which is called in
+     steps/nnet3/xconfig_to_configs.py, returns a list of 'existing'
+     layers for component nodes used in 'existing_model')
+    This class is useful in cases like transferring existing model
+    and using {input, output, component}-nodes
+    in the model as input to new layers.
     """
 
     def __init__(self, first_token, key_to_value, prev_names=None):
 
-        assert first_token == 'auxiliary'
+        assert first_token == 'existing'
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
 
@@ -1096,7 +1102,7 @@ class XconfigAuxiliaryLayer(XconfigLayerBase):
 
     def check_configs(self):
         if self.config['dim'] <= 0:
-            raise RuntimeError("Dimension of auxiliary-layer '{0}'"
+            raise RuntimeError("Dimension of existing-layer '{0}'"
                                 "should be positive.".format(self.name))
 
     def get_input_descriptor_names(self):
