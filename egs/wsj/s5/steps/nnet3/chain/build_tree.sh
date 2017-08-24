@@ -133,7 +133,6 @@ if [ $stage -le -5 ]; then
       $dir/mono.mdl $dir/mono.tree || exit 1;
 fi
 
-
 if [ $stage -le -4 ]; then
   # Get tree stats.
   echo "$0: Accumulating tree stats"
@@ -158,11 +157,6 @@ if [ $stage -le -3 ] && $train_tree; then
   $cmd $dir/log/compile_questions.log \
     compile-questions $context_opts $lang/topo \
       $dir/questions.int $dir/questions.qst || exit 1;
-
-  # questions_truncated.int will be needed later on when we build the phone
-  # language model for 'chain' training.  It's a mechanism of keeping the graph
-  # small.
-  cp $dir/questions.int $dir/questions_truncated.int
 
   echo "$0: Building the tree"
   $cmd $dir/log/build_tree.log \
