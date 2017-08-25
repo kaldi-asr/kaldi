@@ -46,5 +46,5 @@ if [ -f $in_data/feats.scp ]; then
     $out_data/feats.scp || exit 1
 fi
 
-utils/fix_data.sh $out_data || exit 1
-utils/validate_data.sh --no-text --no-feats $out_data || exit 1
+utils/fix_data_dir.sh $out_data || exit 1
+utils/validate_data_dir.sh --no-text --no-feats $out_data || exit 1
