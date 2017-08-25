@@ -67,7 +67,6 @@ if [ $stage -le 8 ]; then
   # the augmented features (data/train_rvb) to get better alignments
 
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate -1 \
       --cmd "$train_cmd" 11000 data/train $lang exp/tri5a $treedir
 fi
 
