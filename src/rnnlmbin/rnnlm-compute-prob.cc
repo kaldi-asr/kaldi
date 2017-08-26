@@ -110,7 +110,6 @@ int main(int argc, char *argv[]) {
 
 
     std::cout << (tot_objf / tot_weight) << std::endl;
-    return 0;
 
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();

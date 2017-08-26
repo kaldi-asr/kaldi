@@ -1,5 +1,7 @@
 #!/usr/bin/bash
 
+# DEPRECATED.  See local/rnnlm/run_tdnn.sh.
+
 # version that makes use of sparse features.
 # this will eventually be totally refactored and moved into steps/.
 
@@ -59,9 +61,9 @@ rnnlm-train --rnnlm.max-param-change=0.5 --embedding.max-param-change=0.5 \
 # and evaluate on dev ata:
 rnnlm-get-word-embedding $dir/word_feats.txt $dir/embedding.1.mat $dir/word_embedding.1.mat
 
-# get the dev-xata proability
-utils/sym2int.pl data/vocab/words.txt <data/text/dev.txt  | awk '{print 1.0, $0}' | rnnlm-get-egs --vocab-size=10003 - ark:- | \
- rnnlm-compute-prob $dir/1.rnnlm $dir/word_embedding.1.mat ark:-
+# get the dev-data proability
+rnnlm-get-egs --vocab-size=10003 $dir/text/dev.txt ark:- | \
+ rnnlm-compute-prob --use-gpu=yes $dir/1.rnnlm $dir/word_embedding.1.mat ark:-
 
 # with GPU, no sparse features.
 rnnlm-train --rnnlm.max-param-change=0.5 --embedding.max-param-change=0.5 \

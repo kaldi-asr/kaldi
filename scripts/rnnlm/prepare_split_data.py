@@ -117,13 +117,12 @@ def distribute_to_outputs(source_filename, weight, output_filehandles):
 data_sources = get_all_data_sources_except_dev(args.text_dir)
 data_weights = read_data_weights(args.data_weights_file, data_sources)
 
-if not os.path.exists(args.split_dir):
-    os.makedirs(args.split_dir)
+if not os.path.exists(args.split_dir + "/info"):
+    os.makedirs(args.split_dir +  "/info")
 
 # set up the 'num_splits' file, which contains an integer.
-with open("{0}/num_splits".format(args.split_dir), 'w') as f:
+with open("{0}/info/num_splits".format(args.split_dir), 'w') as f:
     print(args.num_splits, file=f)
-
 
 # e.g. set temp_files = [ 'foo/1.tmp', 'foo/2.tmp', ..., 'foo/5.tmp' ]
 # we write the text data to here, later we convert to integer
@@ -201,9 +200,12 @@ for n in range(1, args.num_splits + 1):
 print(sys.argv[0] + ": converting dev data from text to integer form.")
 
 
-command = "utils/sym2int.pl {unk_opt} -f 2- {vocab_file} <{input_file} >{output_file}".format(
+command = "utils/sym2int.pl {unk_opt} {vocab_file} <{input_file} | {awk_command} >{output_file}".format(
     vocab_file=args.vocab_file,
     unk_opt=unk_opt,
+    awk_command="awk '{print 1.0, $0;}'",  # this is passed as a variable
+                                           # because it has {}'s awhich would
+                                           # otherwise be interpreted.
     input_file="{0}/dev.txt".format(args.text_dir),
         output_file="{0}/dev.txt".format(args.split_dir))
 ret = os.system(command)
@@ -213,5 +215,3 @@ if ret != 0:
 
 
 print(sys.argv[0] + ": created split data in {0}".format(args.split_dir))
-
-

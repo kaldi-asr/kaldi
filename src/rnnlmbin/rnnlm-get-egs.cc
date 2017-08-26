@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
         "\n"
         "See also: rnnlm-train\n";
 
+    int32 srand_seed = 0;
     RnnlmEgsConfig egs_config;
     TaskSequencerConfig sequencer_config;  // has --num-threads option; only
                                            // relevant if we are using sampling
@@ -64,13 +65,18 @@ int main(int argc, char *argv[]) {
 
     egs_config.Register(&po);
     sequencer_config.Register(&po);
+    po.Register("srand", &srand_seed, "Seed for random number generator; "
+                "affects splitting of utterances and arrangement into "
+                "minibatches.");
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 2 && po.NumArgs() > 4) {
+    if (po.NumArgs() < 2 || po.NumArgs() > 4) {
       po.PrintUsage();
       exit(1);
     }
+
+    srand(srand_seed);
 
     if (po.NumArgs() == 4) {
       // the language model is provided (as an ARPA file), and we are doing

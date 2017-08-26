@@ -1,5 +1,6 @@
 #!/usr/bin/bash
 
+# DEPRECATED.  See local/rnnlm/run_tdnn.sh.
 
 # version of training with sampling, but no sparse word embedding.
 # assumes you have run train_backoff_lm2.sh and $dir/arpa.lm.gz

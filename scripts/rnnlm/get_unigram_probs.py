@@ -17,14 +17,14 @@ parser.add_argument("--vocab-file", type=str, default='', required=True,
                     help="Specify the vocab file.")
 parser.add_argument("--data-weights-file", type=str, default='', required=True,
                     help="File that specifies multiplicities and weights for each data source: "
-                    "e.g. if <data_dir> contains foo.txt and bar.txt, then should have lines "
+                    "e.g. if <text_dir> contains foo.txt and bar.txt, then should have lines "
                     "like 'foo 1 0.5' and 'bar 5 1.5'.  These "
                     "don't have to sum to on.")
 parser.add_argument("--smooth-unigram-counts", type=float, default=1.0,
                     help="Specify the constant for smoothing. We will add "
                          "(smooth_unigram_counts * num_words_with_non_zero_counts / vocab_size) "
                          "to every unigram counts.")
-parser.add_argument("data_dir",
+parser.add_argument("text_dir",
                     help="Directory in which to look for data")
 
 args = parser.parse_args()
@@ -35,10 +35,10 @@ SPECIAL_SYMBOLS = ["<eps>", "<s>", "<brk>"]
 # get the name with txt and counts file path for all data sources except dev
 # return a dict with key is the name of data_source,
 #                    value is a tuple (txt_file_path, counts_file_path)
-def get_all_data_sources_except_dev(data_dir):
+def get_all_data_sources_except_dev(text_dir):
     data_sources = {}
-    for f in os.listdir(data_dir):
-        full_path = data_dir + "/" + f
+    for f in os.listdir(text_dir):
+        full_path = text_dir + "/" + f
         if f == 'dev.txt' or f == 'dev.counts' or os.path.isdir(full_path):
             continue
         if f.endswith(".txt"):
@@ -163,7 +163,7 @@ def get_unigram_probs(vocab, counts, smooth_constant):
     return probs
 
 
-data_sources = get_all_data_sources_except_dev(args.data_dir)
+data_sources = get_all_data_sources_except_dev(args.text_dir)
 data_weights = read_data_weights(args.data_weights_file, data_sources)
 vocab = read_vocab(args.vocab_file)
 

@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description="This script turns the words into t
                                         "> exp/rnnlm/word_feats.txt",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-parser.add_argument("--unigram-probs", type=str, default='', required=True,
+parser.add_argument("--unigram-probs", type=str, default='',
                     help="Specify the file containing unigram probs.")
 parser.add_argument("vocab_file", help="Path for vocab file")
 parser.add_argument("features_file", help="Path for features file")
@@ -68,7 +68,7 @@ def read_unigram_probs(unigram_probs_file):
 # return a dict with following items:
 
 #   feats['constant'] is None if there is no constant feature used, else
-#                     a 3-tuple (feat_id, value, scale), e.g. (1, 1.0, 0.01).
+#                     a 2-tuple (feat_id, value), e.g. (1, 0.01)
 #   feats['special'] is a dict whose key is special words and value is a tuple (feat_id, scale)
 #   feats['unigram'] is a tuple with (feat_id, entropy, scale)
 #   feats['length']  is a tuple with (feat_id, scale)
@@ -100,7 +100,7 @@ def read_features(features_file):
             scale = float(fields[-1])
             if feat_type == 'constant':
                 value = float(fields[2])
-                feats['constant'] = (feat_id, value, scale)
+                feats['constant'] = (feat_id, value)
             elif feat_type == 'special':
                 feats['special'][fields[2]] = (feat_id, scale)
             elif feat_type == 'unigram':
@@ -126,7 +126,10 @@ def read_features(features_file):
     return feats
 
 vocab = read_vocab(args.vocab_file)
-unigram_probs = read_unigram_probs(args.unigram_probs)
+if args.unigram_probs != '':
+    unigram_probs = read_unigram_probs(args.unigram_probs)
+else:
+    unigram_probs = None
 feats = read_features(args.features_file)
 
 
@@ -139,8 +142,8 @@ def get_feature_list(word, idx):
         return ans
 
     if feats['constant'] is not None:
-        (feat_id, value, scale) = feats['constant']
-        ans[feat_id] = value * scale
+        (feat_id, value) = feats['constant']
+        ans[feat_id] = value
 
     if word in feats['special']:
         (feat_id, scale) = feats['special'][word]
@@ -150,6 +153,9 @@ def get_feature_list(word, idx):
                      # feature).
 
     if 'unigram' in feats:
+        if unigram_probs is None:
+            sys.exit(sys.argv[0] + ": if unigram feature is present, you must specify the "
+                     "--unigram-probs option.");
         feat_id = feats['unigram'][0]
         entropy = feats['unigram'][1]
         scale = feats['unigram'][2]

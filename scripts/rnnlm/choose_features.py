@@ -48,9 +48,10 @@ parser.add_argument("--top-word-features", type=int, default=2000,
 parser.add_argument("--special-words", type=str, default='<s>,</s>,<brk>',
                     help="List of special words that get their own special "
                          "features and do not get any other features.")
-parser.add_argument("--constant-feature", type=float,
-                    help="If supplied, the value of a feature that all words "
-                    "are given.  Helps model offsets.  E.g. 1.0.")
+parser.add_argument("--use-constant-feature", type=str, default="false",
+                    help="If set to true, we give a constant feature to all "
+                    "words (to help model offsets).  The value will equal "
+                    "the --max-feature-rms option.");
 parser.add_argument("--max-feature-rms", type=float, default=0.01,
                     help="maximum allowed root-mean-square value for any feature.")
 
@@ -59,6 +60,9 @@ parser.add_argument("vocab_file",
 
 args = parser.parse_args()
 
+if args.use_constant_feature != "false" and args.use_constant_feature != "true":
+    sys.exit(sys.argv[0] + ": --use-constant-feature must be true or false: {0}".format(
+        args.use_constant_feature))
 if args.min_ngram_order < 1:
     sys.exit(sys.argv[0] + ": --min-ngram-order must be at least 1.")
 if args.max_ngram_order < args.min_ngram_order:
@@ -122,9 +126,9 @@ if '<eps>' in vocab:
 
 num_features = 0
 
-if args.constant_feature is not None:
-    print("{0}\tconstant\t{1}\t{2}".format(num_features, args.constant_feature,
-          get_feature_scale(args.constant_feature)))
+if args.use_constant_feature == "true":
+    print("{0}\tconstant\t{1}".format(num_features,
+                                      args.max_feature_rms))
     num_features += 1
 
 # special words features

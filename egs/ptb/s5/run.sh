@@ -12,10 +12,10 @@ if [ $stage -le 0 ]; then
   local/rnnlm/download_ptb.sh || exit 1;
 fi
 if [ $stage -le 1 ]; then
-  # prepare ptb data
+  # format ptb data
   local/rnnlm/prepare_rnnlm_data.sh || exit 1;
 fi
 
 if [ $stage -le 2 ]; then
-  local/rnnlm/train_rnnlm.sh || exit 1
+  local/rnnlm/run_tdnn.sh || exit 1;
 fi

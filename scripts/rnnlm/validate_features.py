@@ -40,15 +40,14 @@ with open(args.features_file, 'r', encoding="utf-8") as f:
         scale = float(fields[-1])
         assert scale > 0.0 and scale <= 1.0
 
-        if len(fields) == 3:
-            assert fields[1] == "length"
+        if len(fields) == 3 and fields[1] == "length":
             if has_length:
                 sys.exit(sys.argv[0] + ": Too many 'length' features")
             has_length = True
         else:
             if fields[1] == "constant":
                 try:
-                    assert len(fields) == 4
+                    assert len(fields) == 3
                     value = float(fields[2])
                     assert value > 0.0
                 except:

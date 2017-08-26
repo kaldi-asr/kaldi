@@ -1,5 +1,7 @@
 #!/usr/bin/bash
 
+# DEPRECATED.  See local/rnnlm/run_tdnn.sh.
+
 
 # this will eventually be totally refactored and moved into steps/.
 

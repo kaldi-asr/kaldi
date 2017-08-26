@@ -331,6 +331,7 @@ void RnnlmExampleCreator::AcceptSequence(
     BaseFloat weight, const std::vector<int32> &words) {
   CheckSequence(weight, words);
   SplitSequenceIntoChunks(weight, words);
+  num_sequences_processed_++;
   while (chunks_.size() > static_cast<size_t>(config_.chunk_buffer_size)) {
     if (!ProcessOneMinibatch())
       break;
@@ -343,8 +344,9 @@ RnnlmExampleCreator::~RnnlmExampleCreator() {
       num_chunks_processed_,
       chunks_per_minibatch = num_chunks_processed_ * 1.0 /
       num_minibatches_written_;
-  KALDI_LOG << "Combined " << num_chunks_processed_
-            << " into " << num_minibatches_written_
+  KALDI_LOG << "Combined " << num_sequences_processed_ << "/"
+            << num_chunks_processed_
+            << " chunks/sequences into " << num_minibatches_written_
             << " minibatches (" << chunks_.size()
             << " chunks left over)";
  KALDI_LOG << "Overall there were "

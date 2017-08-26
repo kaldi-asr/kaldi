@@ -44,10 +44,10 @@ struct SamplingLmEstimatorOptions {
   SamplingLmEstimatorOptions(): vocab_size(-1),
                                 ngram_order(3),
                                 discounting_constant(1.0),
-                                unigram_factor(50.0),
+                                unigram_factor(100.0),
                                 backoff_factor(2.0),
                                 bos_factor(5.0),
-                                unigram_power(1.0),
+                                unigram_power(0.8),
                                 bos_symbol(1),
                                 eos_symbol(2) { }
 

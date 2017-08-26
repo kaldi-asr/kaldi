@@ -220,7 +220,7 @@ void RnnlmCoreTrainer::PrintMaxChangeStats() const {
                   << ", per-component max-change was enforced "
                   << ((100.0 * num_max_change_per_component_applied_[i]) /
                       num_minibatches_processed_)
-                  << " \% of the time.";
+                  << "\% of the time.";
       i++;
     }
   }
@@ -228,7 +228,7 @@ void RnnlmCoreTrainer::PrintMaxChangeStats() const {
     KALDI_LOG << "The global max-change was enforced "
               << ((100.0 * num_max_change_global_applied_) /
                   num_minibatches_processed_)
-              << " \% of the time.";
+              << "\% of the time.";
 }
 
 void RnnlmCoreTrainer::ProcessOutput(

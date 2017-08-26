@@ -392,8 +392,8 @@ class RnnlmExampleCreator {
                       TableWriter<KaldiObjectHolder<RnnlmExample> > *writer):
       config_(config), minibatch_sampler_(&minibatch_sampler),
       sampling_sequencer_(sequencer_config),
-      writer_(writer), num_chunks_processed_(0), num_words_processed_(0),
-      num_minibatches_written_(0) { Check(); }
+      writer_(writer), num_sequences_processed_(0), num_chunks_processed_(0),
+      num_words_processed_(0), num_minibatches_written_(0) { Check(); }
 
   // This constructor is for when you are not using importance sampling,
   // so no samples will be stored in the minibatch and the training code
@@ -625,7 +625,7 @@ class RnnlmExampleCreator {
   const RnnlmExampleSampler *minibatch_sampler_;
   TaskSequencer<SamplerTask> sampling_sequencer_;
   TableWriter<KaldiObjectHolder<RnnlmExample> > *writer_;
-
+  int32 num_sequences_processed_;
   int32 num_chunks_processed_;
   int32 num_words_processed_;
   int32 num_minibatches_written_;

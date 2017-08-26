@@ -37,19 +37,20 @@ config_dir=$2
 set -e
 
 
-for f in words.txt data_weights.txt oov.txt xconfig; do
-  if [ ! -f $f ]; then
-    echo "$0: file $f is not present."
+for f in words.txt features.txt data_weights.txt oov.txt xconfig; do
+  if [ ! -f $config_dir/$f ]; then
+    echo "$0: file $config_dir/$f is not present."
+    exit 1
   fi
 done
 
-rnnlm/validate_data_dir.py --spot-check=true $text_dir
+rnnlm/validate_text_dir.py --spot-check=true $text_dir
 
+rnnlm/validate_features.py $config_dir/features.txt
 
 # basic check of words.txt
-
-if ! echo 0 | utils/sym2int.pl $dir/words.txt; then
-  echo "$0: detected a problem in $dir/words.txt"
+if ! echo 0 | utils/int2sym.pl $config_dir/words.txt >/dev/null; then
+  echo "$0: detected a problem in $config_dir/words.txt"
   exit 1
 fi
 
@@ -59,10 +60,10 @@ rnnlm/ensure_counts_present.sh $text_dir
 
 # rnnlm/get_unigram_probs.py validates the data-weights file, so we're
 # relying on that check rather than writing a special one.
-if ! rnnlm/get_unigram_probs.py --vocab-file=$dir/words.txt \
-                           --data-weights-file=$dir/data_weights.txt \
+if ! rnnlm/get_unigram_probs.py --vocab-file=$config_dir/words.txt \
+                           --data-weights-file=$config_dir/data_weights.txt \
                            $text_dir >/dev/null; then
-  echo "$0: detected problem, most likely with data-weights file $dir/data_weights.txt"
+  echo "$0: detected problem, most likely with data-weights file $config_dir/data_weights.txt"
   echo " ... see errors above."
 fi
 
@@ -70,24 +71,24 @@ fi
 # second is an integer; check that bos, eos and brk are in the
 # expected positions.
 
-if [ -s $dir/oov.txt ]; then
+if [ -s $config_dir/oov.txt ]; then
   # if oov.txt is nonempty...
-  if ! awk '{if (NF==1){ exit (1) }} END{if(NR != 1) exit(1)}' <$dir/oov.txt; then
-    echo "$0: $dir/oov.txt does not look right."
+  if ! awk '{if (NF!=1){ exit (1) }} END{if(NR != 1) exit(1)}' <$config_dir/oov.txt; then
+    echo "$0: $config_dir/oov.txt does not look right."
     exit 1
   fi
-  if ! utils/sym2int.pl $dir/words.txt <$dir/oov.txt >/dev/null; then
-    echo "$0: the word in $dir/oov.txt does not exist in $dir/words.txt: '$(cat $dir/oov.txt)'"
+  if ! utils/sym2int.pl $config_dir/words.txt <$config_dir/oov.txt >/dev/null; then
+    echo "$0: the word in $config_dir/oov.txt does not exist in $config_dir/words.txt: '$(cat $config_dir/oov.txt)'"
     exit 1
   fi
 fi
 
 
-if grep '^\s*fixed-affine-layer' $dir/xconfig; then
-  echo "$0: $dir/xconfig cannot contain a layer of type fixed-affine-layer."
+if grep '^\s*fixed-affine-layer' $config_dir/xconfig; then
+  echo "$0: $config_dir/xconfig cannot contain a layer of type fixed-affine-layer."
   exit 1
 fi
 
 
-echo "$0: validated config dir $dir"
+echo "$0: validated config dir $config_dir"
 exit 0;

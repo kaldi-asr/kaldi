@@ -43,8 +43,6 @@ int main(int argc, char *argv[]) {
         " (this form writes a non-human-readable format that can be read by\n"
         " rnnlm-get-egs).\n"
         " e.g.:\n"
-        "  ... | rnnlm-get-sampling-lm - words.txt - | gzip -c >arpa.gz\n"
-        " or:\n"
         "  ... | rnnlm-get-sampling-lm --vocab-size=10002 - sampling.lm\n"
         "The word symbol table is used to write the ARPA file, but is expected\n"
         "to already have been used to convert the words into integer form.\n"
