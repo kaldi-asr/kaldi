@@ -3,10 +3,11 @@
 # To be run from the directory egs/ptb/s5.
 # This is to be done after local/prepare_rnnlm_data.sh.
 
-# some of the output follows.  This is overfitting badly; model probably too big.
-# rnnlm/train_rnnlm.sh: best iteration (out of 20) was 5, linking it to final iteration.
-# Train objf: -99.92 -5.64 -5.11 -4.80 -4.57 -4.36 -4.17 -3.99 -3.82 -3.67 -3.53 -3.40 -3.28 -3.17 -3.07 -2.98 -2.89 -2.81 -2.74 -2.60
-# Dev objf:   -9.21 -5.94 -5.32 -5.06 -4.98 -4.97 -4.99 -5.07 -5.15 -5.28 -5.41 -5.52 -5.67 -5.80 -5.92 -6.05 -6.17 -6.30 -6.43 -6.55
+# some of the output follows.
+
+# rnnlm/train_rnnlm.sh: best iteration (out of 8) was 5, linking it to final iteration.
+# Train objf: -104.80 -5.58 -5.20 -4.95 -4.74 -4.58 -4.43 -4.20
+# Dev objf:   -9.21 -5.69 -5.40 -5.13 -5.04 -4.96 -4.97 -4.97
 
 
 
@@ -65,12 +66,3 @@ fi
 if [ $stage -le 2 ]; then
   rnnlm/train_rnnlm.sh --num-epochs 40 --cmd "queue.pl" $dir
 fi
-
-
-
-# valid objf.
-# grep 'Overall objf' exp/rnnlm_a/log/train.{?,??}.1.log | awk '{printf("%s ", $NF)} END{print "";}'
-# -7.198 -5.653 -5.133 -4.82 -4.572 -4.349 -4.137 -3.929 -3.727 -3.531 -3.344 -3.167 -3.001 -2.846 -2.701 -2.568 -2.445 -2.331 -2.226 -2.205
-
-# grep 'Overall objf' exp/rnnlm_a/log/compute_prob.?.log   | awk '{printf("%s ", $NF)} END{print "";}'
-# -9.21 -6.185 -5.369 -5.126 -4.993 -4.967 -4.998 -5.092 -5.208 -5.356
