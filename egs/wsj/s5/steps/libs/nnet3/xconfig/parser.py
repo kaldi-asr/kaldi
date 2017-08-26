@@ -78,8 +78,8 @@ def get_model_component_info(model_filename):
         i.e. layer in *.mdl -> corresponding 'XconfigExistingLayer' layer
              'input-node name=ivector dim=100' ->
              'existing name=ivector dim=100'
-             'component-node name=tdnn1.affine ** input-node=1000 '
-             'output-node=500' ->
+             'component-node name=tdnn1.affine ** input-dim=1000 '
+             'output-dim=500' ->
              'existing name=tdnn1.affine dim=500'
     """
 
