@@ -88,6 +88,16 @@ void PnormComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</PnormComponent>");
 }
 
+DropoutComponent::DropoutComponent(const DropoutComponent &other):
+    RandomComponent(other),
+    dim_(other.dim_),
+    dropout_proportion_(other.dropout_proportion_),
+    dropout_per_frame_(other.dropout_per_frame_) { }
+
+Component* DropoutComponent::Copy() const {
+  DropoutComponent *ans = new DropoutComponent(*this);
+  return ans;
+}
 
 void DropoutComponent::Init(int32 dim, BaseFloat dropout_proportion,
                             bool dropout_per_frame) {

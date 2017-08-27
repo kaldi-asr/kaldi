@@ -3,6 +3,10 @@ notifications:
 
 language: cpp
 
+cache:
+  directories:
+  - $HOME/.ccache
+
 os:
   - linux
 
@@ -13,7 +17,6 @@ addons:
       - llvm-toolchain-precise-3.8
     packages:
       - gdb
-      - gcc-4.9
       - g++-4.9
       - gfortran-4.9
       - liblapack-dev
@@ -22,20 +25,37 @@ addons:
 branches:
   only:
     - master
-    - kaldi_52
 
 before_install:
   - cat /proc/sys/kernel/core_pattern
   - export XROOT=~/xroot
   - tools/extras/travis_install_bindeps.sh $XROOT
+  - export PATH=$XROOT/usr/bin:$PATH
+
+before_script:
+  - which ccache
+  - ccache --version
+  - ccache --show-stats
+  - ccache --zero-stats --max-size=3G
+
+env:
+  - CI_TARGETS="all ext"        # Job1: Build everything.
+  - CI_TARGETS="test"           # Job2: Test libraries. #### ext_test? adds 5min compile, runs 1 test.
 
 script:
-  - CXX=clang++-3.8
+  # See http://petereisentraut.blogspot.com/2011/05/ccache-and-clang.html and
+  # http://peter.eisentraut.org/blog/2014/12/01/ccache-and-clang-part-3/
+  # for the explanation why extra switches needed for clang with ccache.
+  - CXX="ccache clang++-3.8 -Qunused-arguments -fcolor-diagnostics -Wno-tautological-compare"
     CFLAGS="-march=native"
     LDFLAGS="-llapack"
     INCDIRS="$XROOT/usr/include"
     LIBDIRS="$XROOT/usr/lib"
       tools/extras/travis_script.sh
+#   To troubleshoot cache, add to above: CI_TARGETS=util CCACHE_LOGFILE=~/ccache.log
+
+before_cache:
+  - ccache --show-stats
 
 after_failure:
   - tools/extras/travis_show_failures.sh

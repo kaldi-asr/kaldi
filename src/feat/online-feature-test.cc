@@ -167,7 +167,7 @@ void TestOnlineMfcc() {
 
   // compute mfcc offline
   Matrix<BaseFloat> mfcc_feats;
-  mfcc.Compute(waveform, 1.0, &mfcc_feats, NULL);  // vtln not supported
+  mfcc.Compute(waveform, 1.0, &mfcc_feats);  // vtln not supported
 
   // compare
   // The test waveform is about 1.44s long, so
@@ -217,7 +217,7 @@ void TestOnlinePlp() {
 
   // compute plp offline
   Matrix<BaseFloat> plp_feats;
-  plp.Compute(waveform, 1.0, &plp_feats, NULL);  // vtln not supported
+  plp.Compute(waveform, 1.0, &plp_feats);  // vtln not supported
 
   // compare
   // The test waveform is about 1.44s long, so
@@ -309,7 +309,7 @@ void TestOnlineAppendFeature() {
 
   // compute mfcc offline
   Matrix<BaseFloat> mfcc_feats;
-  mfcc.Compute(waveform, 1.0, &mfcc_feats, NULL);  // vtln not supported
+  mfcc.Compute(waveform, 1.0, &mfcc_feats);  // vtln not supported
 
   // the parametrization object for 2nd stream plp feature
   PlpOptions plp_op;
@@ -326,7 +326,7 @@ void TestOnlineAppendFeature() {
 
   // compute plp offline
   Matrix<BaseFloat> plp_feats;
-  plp.Compute(waveform, 1.0, &plp_feats, NULL);  // vtln not supported
+  plp.Compute(waveform, 1.0, &plp_feats);  // vtln not supported
 
   // compare
   // The test waveform is about 1.44s long, so

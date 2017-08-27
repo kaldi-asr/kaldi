@@ -29,7 +29,6 @@ decode_nj=50
 num_epochs=4
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
-leftmost_questions_truncate=-1
 max_param_change=2.0
 final_layer_normalize_target=0.5
 num_jobs_initial=3
@@ -107,7 +106,6 @@ if [ $stage -le 11 ]; then
   # Build a tree using our new topology. This is the critically different
   # step compared with other recipes.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate $leftmost_questions_truncate \
       --context-opts "--context-width=2 --central-position=1" \
       --cmd "$train_cmd" 7000 data/$train_set $lang $ali_dir $treedir
 fi

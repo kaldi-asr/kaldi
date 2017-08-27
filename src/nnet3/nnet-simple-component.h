@@ -102,6 +102,8 @@ class DropoutComponent : public RandomComponent {
   DropoutComponent(): dim_(0), dropout_proportion_(0.0),
                       dropout_per_frame_(false) { }
 
+  DropoutComponent(const DropoutComponent &other);
+
   virtual int32 Properties() const {
     return kLinearInInput|kBackpropInPlace|kSimpleComponent|kBackpropNeedsInput|
         kBackpropNeedsOutput|kRandomComponent;
@@ -130,9 +132,9 @@ class DropoutComponent : public RandomComponent {
                         void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
-  virtual Component* Copy() const { return new DropoutComponent(dim_,
-                                               dropout_proportion_,
-                                               dropout_per_frame_); }
+
+  virtual Component* Copy() const;
+
   virtual std::string Info() const;
 
   void SetDropoutProportion(BaseFloat dropout_proportion) {
