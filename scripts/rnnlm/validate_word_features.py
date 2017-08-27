@@ -7,7 +7,7 @@ import os
 import argparse
 import sys
 
-parser = argparse.ArgumentParser(description="Validates word features file, produced by rnnlm/make_word_features.py.",
+parser = argparse.ArgumentParser(description="Validates word features file, produced by rnnlm/get_word_features.py.",
                                  epilog="E.g. " + sys.argv[0] + " --features-file=exp/rnnlm/features.txt "
                                         "exp/rnnlm/word_feats.txt",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -40,7 +40,7 @@ with open(args.features_file, 'r', encoding="utf-8") as f:
             special_feat_ids.append(feat_id)
         elif fields[1] == "constant":
             constant_feat_id = feat_id
-            constant_feat_value = float(fields[2]) * scale
+            constant_feat_value = scale
         elif fields[1] == "unigram":
             unigram_feat_id = feat_id
         elif fields[1] == "length":

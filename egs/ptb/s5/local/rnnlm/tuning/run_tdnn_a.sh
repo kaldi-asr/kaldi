@@ -5,10 +5,9 @@
 
 # some of the output follows.
 
-# rnnlm/train_rnnlm.sh: best iteration (out of 8) was 5, linking it to final iteration.
-# Train objf: -104.80 -5.58 -5.20 -4.95 -4.74 -4.58 -4.43 -4.20
-# Dev objf:   -9.21 -5.69 -5.40 -5.13 -5.04 -4.96 -4.97 -4.97
-
+# rnnlm/train_rnnlm.sh: best iteration (out of 8) was 3, linking it to final iteration.
+# Train objf: -92.38 -5.01 -4.70 -4.48 -4.30 -4.14 -4.01 -3.81
+# Dev objf:   -9.21 -5.29 -5.05 -4.96 -4.97 -5.02 -5.09 -5.16
 
 
 set -e

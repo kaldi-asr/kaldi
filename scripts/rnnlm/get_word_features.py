@@ -156,11 +156,9 @@ def get_feature_list(word, idx):
         if unigram_probs is None:
             sys.exit(sys.argv[0] + ": if unigram feature is present, you must specify the "
                      "--unigram-probs option.");
-        feat_id = feats['unigram'][0]
-        entropy = feats['unigram'][1]
-        scale = feats['unigram'][2]
+        (feat_id, offset, scale) = feats['unigram']
         logp = math.log(unigram_probs[idx])
-        ans[feat_id] = (logp + entropy) * scale / entropy
+        ans[feat_id] = offset + logp * scale
 
     if 'length' in feats:
         (feat_id, scale) = feats['length']
@@ -201,7 +199,6 @@ def get_feature_list(word, idx):
 for word, idx in sorted(vocab.items(), key=lambda x: x[1]):
     feature_list = get_feature_list(word, idx)
     print("{0}\t{1}".format(idx,
-                            " ".join(["{0} {1}".format(f, v) for f, v in sorted(feature_list.items())])))
-
+                            " ".join(["%s %.3g" % (f, v) for f, v in sorted(feature_list.items())])))
 
 print(sys.argv[0] + ": made features for {0} words.".format(len(vocab)), file=sys.stderr)

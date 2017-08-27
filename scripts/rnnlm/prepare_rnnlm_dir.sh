@@ -79,7 +79,7 @@ if [ $stage -le 3 ]; then
     else
       unigram_opt=
     fi
-    rnnlm/make_word_features.py $unigram_opt \
+    rnnlm/get_word_features.py $unigram_opt \
       $dir/config/words.txt $dir/config/features.txt >$dir/word_feats.txt
   else
     [ -f $dir/word_feats.txt ] && rm $dir/word_feats.txt
