@@ -38,7 +38,7 @@ if [ -e data/train_dev ] ;then
 fi
 
 local/nnet3/run_ivector_common.sh --stage $stage || exit 1;
-local/chain/run_tdnn_swbd_mod4csj.sh || exit 1; 
+local/chain/run_tdnn.sh || exit 1; 
 
 ./utils/mkgraph.sh --self-loop-scale 1.0 data/lang_csj_tg exp/chain/tdnn_csj exp/chain/tdnn_csj/graph_csj_tg
 
