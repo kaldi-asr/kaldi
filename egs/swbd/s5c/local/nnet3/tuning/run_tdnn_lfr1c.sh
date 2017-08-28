@@ -25,7 +25,6 @@ common_egs_dir=
 #exp/nnet3/tdnn_lfr1b_sp/egs
 reporting_email=
 remove_egs=true
-leftmost_questions_truncate=-1
 
 . ./cmd.sh
 . ./path.sh
@@ -73,7 +72,6 @@ if [ $stage -le 10 ]; then
   # Build a tree using our new topology. This is the critically different
   # step compared with other recipes.
   steps/nnet3/chain/build_tree.sh --repeat-frames true --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate $leftmost_questions_truncate \
       --cmd "$train_cmd" 8400 data/$train_set $lang $ali_dir $treedir
 fi
 
