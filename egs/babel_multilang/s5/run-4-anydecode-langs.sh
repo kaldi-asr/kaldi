@@ -14,7 +14,6 @@ tri5_only=false
 use_pitch=true
 use_pitch_ivector=false # if true, pitch feature used in ivector extraction.
 use_ivector=false
-use_bnf=false
 pitch_conf=conf/pitch.conf
 wip=0.5
 decode_stage=-1
@@ -29,10 +28,11 @@ ivector_suffix=
 iter=final
 
 # params for extracting bn features
-multidir=exp/nnet3/multi_bnf_sp
+use_bnf=false # If true, bottleneck feature is extracted and appended as input
+              # for nnet3 model.
+bnf_nnet_dir=exp/nnet3/multi_bnf_sp
+use_ivector_bnf=false # If true, ivector used in extracting bottleneck features.
 dump_bnf_dir=bnf
-bnf_layer=5
-
 
 . conf/common_vars.sh || exit 1;
 
@@ -49,7 +49,10 @@ lang=$1
 
 langconf=conf/$lang/lang.conf
 
-[ ! -f $langconf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
+if [ ! -f $langconf ]; then
+  echo "$0: Language configuration $langconf does not exist! Use the "
+  echo "configurations in ../../babel/s5d/conf/lang/$lang-* as a startup." && exit 1
+fi
 . $langconf || exit 1;
 [ -f local.conf ] && . local.conf;
 
@@ -332,15 +335,21 @@ if $use_bnf; then
   # put the archives in ${dump_bnf_dir}/.
   dataset=$(basename $dataset_dir)
   multi_ivector_dir=exp/$lang/nnet3${nnet3_affix}/ivectors_${dataset}${ivec_feat_suffix}${ivector_suffix}
+
+  ivector_for_bnf_opt=
+  if $use_ivector_bnf;then ivector_for_bnf_opt="--ivector-dir $multi_ivector_dir"; fi
+
   bnf_data_dir=${dataset_dir}_bnf/$lang
   if [ ! -f $bnf_data_dir/.done ]; then
-  steps/nnet3/dump_bottleneck_features.sh --use-gpu true --nj 100 --cmd "$train_cmd" \
-    --ivector-dir $multi_ivector_dir \
-    --feat-type raw \
-    ${dataset_dir}${feat_suffix} $bnf_data_dir \
-    $multidir $dump_bnf_dir/$lang exp/$lang/make_${dataset}_bnf || exit 1;
-  touch $bnf_data_dir/.done
+    steps/nnet3/make_bottleneck_features.sh --use-gpu true --nj 100 --cmd "$train_cmd" \
+      $ivector_for_bnf_opt tdnn_bn.renorm \
+      ${dataset_dir}${feat_suffix} $bnf_data_dir \
+      $bnf_nnet_dir $dump_bnf_dir/$lang exp/$lang/make_${dataset}_bnf || exit 1;
+    touch $bnf_data_dir/.done
+  else
+    echo "$0: Skip Bottleneck feature extraction; You can force to run this step deleting $bnf_data_dir/.done."
   fi
+
   appended_bnf=${dataset_dir}${feat_suffix}_bnf
   if [ ! -f $appended_bnf/.done ]; then
     steps/append_feats.sh  --nj 16 --cmd "$train_cmd" \
