@@ -137,8 +137,6 @@ class DecodableNnetSimple {
                         object.
      @param [in] ivector If you are using iVectors estimated in batch mode,
                          a pointer to the iVector, else NULL.
-     @param [in] ivector If you are using iVectors estimated in batch mode,
-                         a pointer to the iVector, else NULL.
      @param [in] online_ivectors
                         If you are using iVectors estimated 'online'
                         a pointer to the iVectors, else NULL.
