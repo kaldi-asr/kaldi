@@ -21,7 +21,7 @@
 #ifndef KALDI_MATRIX_COMPRESSED_MATRIX_H_
 #define KALDI_MATRIX_COMPRESSED_MATRIX_H_ 1
 
-#include "kaldi-matrix.h"
+#include "matrix/kaldi-matrix.h"
 
 namespace kaldi {
 
