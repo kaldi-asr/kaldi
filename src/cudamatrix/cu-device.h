@@ -147,6 +147,13 @@ class CuDevice {
     return old_mode;
   }
 
+  /// Check if the GPU is set to compute exclusive mode (you can set this mode,
+  /// if you are root, by doing: `nvidia-smi -c 3`).  Returns true if we have a
+  /// GPU and it is running in compute exclusive mode.  Returns false otherwise.
+  /// WILL CRASH if we are not using a GPU at all.  If calling this as a user
+  /// (i.e. from outside the class), call this only if Enabled() returns true.
+  bool IsComputeExclusive();
+
  private:
   CuDevice();
   CuDevice(CuDevice&); // Disallow.
@@ -156,13 +163,6 @@ class CuDevice {
   static CuDevice global_device_;
   cublasHandle_t handle_;
   cusparseHandle_t cusparse_handle_;
-
-  /// Check if the GPU run in compute exclusive mode Returns true if it is
-  /// running in compute exclusive mode and we have a GPU.  Returns false
-  /// otherwise.  Sets error to true if there was some error, such as that we
-  /// were running in compute exclusive modes but no GPUs available; otherwise
-  /// sets it to false.
-  bool IsComputeExclusive();
 
   /// Automatically select GPU and get CUDA context.  Returns true on success.
   bool SelectGpuIdAuto();

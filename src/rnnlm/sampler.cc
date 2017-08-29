@@ -37,12 +37,23 @@ void SampleWithoutReplacement(const std::vector<double> &probs,
     sample->clear();
     int32 n = probs.size();
 
+#define DO_SHUFFLE 0
+
+#if DO_SHUFFLE
+    // Removing the random shuffling for now because it turns out that
+    // with multiple threads, it has to do locking inside the call to rand(),
+    // which is quite slow; and using re-entrant random number generators with
+    // this is quite complicated.  Anyway this wasn't necessary.
+    // Maybe at some later point we can redo the data structures.
+
+
     // We randomize the order in which we process the indexes,
     // in order to reduce correlations.. not that this will
     // matter for most applications.
     std::vector<int32> order(n);
     for (int32 i = 0; i < n; i++) order[i] = i;
     std::random_shuffle(order.begin(), order.end());
+#endif
 
     double r = RandUniform();  // r <= 0 <= 1.
 
@@ -50,7 +61,11 @@ void SampleWithoutReplacement(const std::vector<double> &probs,
                     // we we process them..  Whenever it becomes >= 0, we add something
                     // to the sample and subtract 1 from c.
     for (int32 i = 0; i < n; i++) {
+#if DO_SHUFFLE
       int32 j = order[i];
+#else
+      int32 j = i;
+#endif
       double p = probs[j];
       c += p;
       if (c >= 0) {

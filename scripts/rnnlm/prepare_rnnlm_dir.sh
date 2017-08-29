@@ -12,6 +12,10 @@ words_per_split=5000000  # aim for training on 5 million words per job.  the
                          # minutes.  If this leads to having just one job,
                          # we repeat the archive as many times as needed to
                          # get the target length.
+unigram_factor=100.0     # Option used when pruning the LM used for sampling.
+                         # You can increase this, e.g. to 200 or 400, if the LM used
+                         # for sampling is too big, causing rnnlm-get-egs to
+                         # take up too many CPUs worth of compute.
 
 . utils/parse_options.sh
 
@@ -157,7 +161,8 @@ if [ $stage -le 7 ]; then
     # ***NOTE*** we will likely later have to pass in options to this program to control
     # the size of the sampling LM.
     $cmd $dir/log/prepare_sampling_lm.log \
-         rnnlm-get-sampling-lm --vocab-size=$vocab_size  "cat $text_files|" $dir/sampling.lm
+         rnnlm-get-sampling-lm --unigram-factor=$unigram_factor \
+              --vocab-size=$vocab_size  "cat $text_files|" $dir/sampling.lm
     echo "$0: done estimating LM for sampling."
   else
     [ -f $dir/sampling.lm ] && rm $dir/sampling.lm

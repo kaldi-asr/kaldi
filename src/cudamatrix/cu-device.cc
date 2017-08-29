@@ -175,11 +175,18 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
 
   // Check if the machine use compute exclusive mode
   if (IsComputeExclusive()) {
+    KALDI_LOG << "CUDA setup operating under Compute Exclusive Mode.";
     FinalizeActiveGpu();
     return;
   } else {
-    // Or suggest to use compute exclusive mode
-    KALDI_WARN << "Suggestion: use 'nvidia-smi -c 3' to set compute exclusive mode";
+    // Suggest to use compute exclusive mode
+    KALDI_WARN << "Not in compute-exclusive mode.  Suggestion: use "
+        "'nvidia-smi -c 3' to set compute exclusive mode";
+    // We want to choose the device more carefully, so release the CUDA context.
+    e = cudaThreadExit(); // deprecated, but for legacy reason not cudaDeviceReset
+    if (e != cudaSuccess) {
+      KALDI_CUDA_ERR(e, "Failed to release CUDA context on a GPU");
+    }
 
     // And select the GPU according to proportion of free memory
     if (SelectGpuIdAuto()) {
@@ -257,22 +264,15 @@ bool CuDevice::IsComputeExclusive() {
   // find out whether compute exclusive mode is used
   switch (gpu_prop.computeMode) {
     case cudaComputeModeExclusive :
-      KALDI_LOG << "CUDA setup operating under Compute Exclusive Mode.";
       return true;
       break;
 #if (CUDA_VERSION >= 4000)
     case cudaComputeModeExclusiveProcess :
-      KALDI_LOG << "CUDA setup operating under Compute Exclusive Process Mode.";
       return true;
       break;
 #endif
     default :
-      // The computation mode is not compute-exclusive,
       // in this case we release the GPU context...
-      e = cudaThreadExit(); // deprecated, but for legacy reason not cudaDeviceReset
-      if (e != cudaSuccess) {
-        KALDI_CUDA_ERR(e, "Failed to release CUDA context on a GPU");
-      }
       return false;
   }
 }
