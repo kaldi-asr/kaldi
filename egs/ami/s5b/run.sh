@@ -78,6 +78,11 @@ if [ $stage -le 3 ]; then
     seconds_per_spk_max=30
     [ "$mic" == "ihm" ] && seconds_per_spk_max=120  # speaker info for ihm is real,
                                                     # so organize into much bigger chunks.
+
+    # Note: the 30 on the next line should have been $seconds_per_spk_max
+    # (thanks: Pavel Denisov.  This is a bug but before fixing it we'd have to
+    # test the WER impact.  I suspect it will be quite small and maybe hard to
+    # measure consistently.
     utils/data/modify_speaker_info.sh --seconds-per-spk-max 30 \
       data/$mic/${dset}_orig data/$mic/$dset
   done

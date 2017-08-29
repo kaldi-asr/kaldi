@@ -97,7 +97,7 @@ else
   extra_files="$extra_files $graph_dir/HCLG.fst $graph_dir/phones.txt"
 fi
 
-for f in $in_data_dir/feats.scp $in_whole_data_dir/feats.scp 
+for f in $in_data_dir/feats.scp $in_whole_data_dir/feats.scp \
   $in_data_dir/segments \
   $lang/phones.txt $garbage_phones_list $silence_phones_list \
   $ali_model_dir/final.mdl $model_dir/final.mdl $extra_files; do
@@ -126,7 +126,7 @@ if [ $stage -le 0 ]; then
   utils/data/modify_speaker_info_to_recording.sh \
     $in_data_dir $dir/$data_id || exit 1
   steps/compute_cmvn_stats.sh $dir/$data_id || exit 1
-  utils/validate_data.sh $dir/$data_id || exit 1
+  utils/validate_data_dir.sh $dir/$data_id || exit 1
 fi 
 
 # Work with a temporary data directory with recording-id as the speaker labels.
