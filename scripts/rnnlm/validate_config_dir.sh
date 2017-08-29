@@ -37,7 +37,7 @@ config_dir=$2
 set -e
 
 
-for f in words.txt features.txt data_weights.txt oov.txt xconfig; do
+for f in words.txt data_weights.txt oov.txt xconfig; do
   if [ ! -f $config_dir/$f ]; then
     echo "$0: file $config_dir/$f is not present."
     exit 1
@@ -46,7 +46,10 @@ done
 
 rnnlm/validate_text_dir.py --spot-check=true $text_dir
 
-rnnlm/validate_features.py $config_dir/features.txt
+if [ -f $config_dir/features.txt ]; then
+  # features.txt is optional.
+  rnnlm/validate_features.py $config_dir/features.txt
+fi
 
 # basic check of words.txt
 if ! echo 0 | utils/int2sym.pl $config_dir/words.txt >/dev/null; then
@@ -61,6 +64,7 @@ rnnlm/ensure_counts_present.sh $text_dir
 # rnnlm/get_unigram_probs.py validates the data-weights file, so we're
 # relying on that check rather than writing a special one.
 if ! rnnlm/get_unigram_probs.py --vocab-file=$config_dir/words.txt \
+                           --unk-word=$(cat $config_dir/oov.txt) \
                            --data-weights-file=$config_dir/data_weights.txt \
                            $text_dir >/dev/null; then
   echo "$0: detected problem, most likely with data-weights file $config_dir/data_weights.txt"

@@ -90,7 +90,7 @@ def read_data_weights(weights_file, data_sources):
 # to the filehandles in the array 'output_filehandles',
 # each prepended by the weights in 'weight'.
 def distribute_to_outputs(source_filename, weight, output_filehandles):
-    weight_str = ' ' + str(weight)
+    weight_str = str(weight) + ' '
     num_outputs = len(output_filehandles)
     n = 0
     try:

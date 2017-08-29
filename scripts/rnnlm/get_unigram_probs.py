@@ -15,6 +15,11 @@ parser = argparse.ArgumentParser(description="This script gets the unigram proba
 
 parser.add_argument("--vocab-file", type=str, default='', required=True,
                     help="Specify the vocab file.")
+parser.add_argument("--unk-word", type=str, default='',
+                    help="String form of unknown word, e.g. <unk>.  Words in the counts "
+                    "but not present in the vocabulary will be mapped to this word. "
+                    "If the empty string, we act as if there is no unknown-word, and "
+                    "OOV words are treated as an error.")
 parser.add_argument("--data-weights-file", type=str, default='', required=True,
                     help="File that specifies multiplicities and weights for each data source: "
                     "e.g. if <text_dir> contains foo.txt and bar.txt, then should have lines "
@@ -29,8 +34,8 @@ parser.add_argument("text_dir",
 
 args = parser.parse_args()
 
-SPECIAL_SYMBOLS = ["<eps>", "<s>", "<brk>"]
 
+SPECIAL_SYMBOLS = ["<eps>", "<s>", "<brk>"]
 
 # get the name with txt and counts file path for all data sources except dev
 # return a dict with key is the name of data_source,
@@ -107,7 +112,9 @@ def read_vocab(vocab_file):
     sorted_ids = sorted(vocab.values())
     for idx, id in enumerate(sorted_ids):
         assert idx == id
-
+    if args.unk_word != '' and args.unk_word not in vocab:
+        sys.exit(sys.argv[0] + "--unk-word={0} does not appear in vocab file {1}".format(
+            args.unk_word, vocab_file))
     return vocab
 
 
@@ -125,8 +132,16 @@ def get_counts(data_sources, data_weights, vocab):
             for line in f:
                 fields = line.split()
                 assert len(fields) == 2
-
-                counts[vocab[fields[0]]] += weight * int(fields[1])
+                word = fields[0]
+                count = fields[1]
+                if word not in vocab:
+                    if args.unk_word == '':
+                        sys.exit(sys.argv[0] + ": error: an OOV word {0} is present in the "
+                                 "counts file {1} but you have not specified an unknown word to "
+                                 "map it to (--unk-word option).".format(word, counts_file))
+                    else:
+                        word = args.unk_word
+                counts[vocab[word]] += weight * int(fields[1])
 
     return counts
 
@@ -162,6 +177,9 @@ def get_unigram_probs(vocab, counts, smooth_constant):
 
     return probs
 
+if os.system("rnnlm/ensure_counts_present.sh {0}".format(args.text_dir)) != 0:
+    print(sys.argv[0] + ": command 'rnnlm/ensure_counts_present.sh {0}' failed.".format(
+        args.text_dir))
 
 data_sources = get_all_data_sources_except_dev(args.text_dir)
 data_weights = read_data_weights(args.data_weights_file, data_sources)

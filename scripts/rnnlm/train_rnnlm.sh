@@ -27,7 +27,11 @@ cmd=run.pl  # you might want to set this to queue.pl
 # some options passed into nnet3-get-egs, relating to sampling.
 num_samples=512
 sample_group_size=2  # see rnnlm-get-egs
-num_egs_threads=4  # number of threads used for sampling, if we're using sampling.
+num_egs_threads=10  # number of threads used for sampling, if we're using
+                    # sampling.  the actual number of threads that runs at one
+                    # time, will be however many is needed to balance the
+                    # sampling and the actual training, this is just the maximum
+                    # possible number that are allowed to run
 use_gpu=true  # use GPU for training
 use_gpu_for_diagnostics=false  # set true to use GPU for compute_prob_*.log
 
@@ -49,7 +53,7 @@ set -e
 . ./path.sh
 
 
-for f in $dir/config/{words,features,data_weights,oov}.txt \
+for f in $dir/config/{words,data_weights,oov}.txt \
               $dir/text/1.txt $dir/text/dev.txt $dir/0.raw \
               $dir/text/info/num_splits $dir/text/info/num_repeats; do
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1
@@ -182,7 +186,7 @@ while [ $x -lt $num_iters ]; do
              --read-rnnlm="$src_rnnlm" --write-rnnlm=$dir/$dest_number.raw \
              --read-embedding=$dir/$embedding_type.$x.mat \
              --write-embedding=$dir/$embedding_type.$dest_number.mat \
-             "ark:cat $repeated_data | rnnlm-get-egs --srand=$num_splits_processed $train_egs_args - ark:- |" || touch $dir/.train_error &
+             "ark,bg:cat $repeated_data | rnnlm-get-egs --srand=$num_splits_processed $train_egs_args - ark:- |" || touch $dir/.train_error &
       done
       wait # wait for just the training jobs.
       [ -f $dir/.train_error ] && \

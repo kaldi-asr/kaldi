@@ -56,6 +56,12 @@ parser.add_argument("--use-constant-feature", type=str, default="false",
 parser.add_argument("--max-feature-rms", type=float, default=0.01,
                     help="maximum allowed root-mean-square value for any feature.")
 
+# dir=exp/rnnlm_tdnn_d
+# paste <(awk '{print $2}' $dir/config/unigram_probs.txt) <(awk '{$1="";print;}' $dir/word_feats.txt ) | awk '{freq=$1; num_feats=(NF-1)/2; for (n=1;n<=num_feats;n++) { a=n*2; b=n*2+1; rms[$a] += freq * $b*$b; }} END{for(k in rms) { print k, rms[k];}}' | sort -k2 -nr | head
+# 7180 9.99985e-05
+# 7019 9.99947e-05
+# ..
+
 parser.add_argument("vocab_file",
                     help="Path for vocab file")
 

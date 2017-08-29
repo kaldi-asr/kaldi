@@ -73,6 +73,7 @@ if [ $stage -le 3 ]; then
       rnnlm/ensure_counts_present.sh $text_dir
 
       rnnlm/get_unigram_probs.py --vocab-file=$dir/config/words.txt \
+        --unk-word=$(cat $dir/config/oov.txt) \
         --data-weights-file=$dir/config/data_weights.txt $text_dir \
         >$dir/unigram_probs.txt
       unigram_opt="--unigram-probs=$dir/unigram_probs.txt"
@@ -148,7 +149,7 @@ if [ $stage -le 7 ]; then
   if $sampling; then
     echo "$0: preparing language model for sampling"
     num_splits=$(cat $dir/text/info/num_splits)
-    text_files=$(for n in $(seq $num_splits); do echo $dir/text/$n.txt; done)
+    text_files=$(for n in $(seq $num_splits); do echo -n $dir/text/$n.txt ''; done)
     vocab_size=$(tail -n 1 $dir/config/words.txt | awk '{print $NF + 1}')
 
     # this prints some nontrivial log information, so run using '$cmd' to ensure
