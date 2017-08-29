@@ -45,7 +45,8 @@ wait
 
 # Prepare Corpus of Spontaneous Japanese (CSJ) data.
 # Processing CSJ data to KALDI format based on switchboard recipe.
-# local/csj_data_prep.sh <SPEECH_and_TRANSCRIPTION_DATA_DIRECTORY>
+# local/csj_data_prep.sh <SPEECH_and_TRANSCRIPTION_DATA_DIRECTORY> [ mode_number ]
+# mode_number can be 0, 1, 2, 3 (0=default using "Academic lecture" and "other" data, 1=using "Academic lecture" data, 2=using All data except for "dialog" data, 3=using All data )
 local/csj_data_prep.sh data/csj-data
 
 local/csj_prepare_dict.sh
