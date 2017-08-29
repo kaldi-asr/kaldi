@@ -9,6 +9,11 @@
 # plus any OOVs and possible acronyms that we could easily
 # derive pronunciations for.
 
+# rnnlm/train_rnnlm.sh: best iteration (out of 40) was 39, linking it to final iteration.
+# Train objf: -1225.00 -5.50 -5.29 -5.17 -5.09 -5.02 -4.97 -4.92 -4.88 -4.84 -4.79 -4.78 -4.76 -4.74 -4.73 -4.72 -4.71 -4.70 -4.68 -4.67 -4.66 -4.65 -4.64 -4.63 -4.62 -4.61 -4.60 -4.59 -4.58 -4.58 -4.57 -4.56 -4.56 -4.56 -4.56 -4.55 -4.55 -4.55 -4.54 -4.50
+# Dev objf:   -11.89 -5.69 -5.40 -5.26 -5.19 -5.14 -5.10 -5.08 -5.06 -5.04 -4.95 -5.03 -4.93 -4.91 -4.90 -4.89 -4.88 -4.88 -4.87 -4.86 -4.85 -4.85 -4.84 -4.84 -4.84 -4.83 -4.83 -4.83 -4.83 -4.83 -4.83 -4.83 -4.79 -4.78 -4.78 -4.77 -4.76 -4.76 -4.76 -4.76 -4.75
+
+
 # This script takes no command-line arguments but takes the --cmd option.
 
 # Begin configuration section.
