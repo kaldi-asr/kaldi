@@ -194,11 +194,11 @@ while [ $x -lt $num_iters ]; do
       if [ $this_num_jobs -gt 1 ]; then
         # average the models and the embedding matrces.  Use run.pl as we don't
         # want this to wait on the queue (if there is a queue).
-        src_models=$(for n in $(seq $this_num_jobs); do echo $dir/$x.$n.raw; done)
-        src_matrices=$(for n in $(seq $this_num_jobs); do echo $dir/${embedding_type}.$x.$n.mat; done)
-        run.pl $dir/log/average.$x.log \
-          nnet3-average $src_models $dir/$x.raw '&&' \
-          matrix-sum --average=true $src_matrices $dir/$embedding_type.$x.mat
+        src_models=$(for n in $(seq $this_num_jobs); do echo $dir/$[x+1].$n.raw; done)
+        src_matrices=$(for n in $(seq $this_num_jobs); do echo $dir/${embedding_type}.$[x+1].$n.mat; done)
+        run.pl $dir/log/average.$[x+1].log \
+          nnet3-average $src_models $dir/$[x+1].raw '&&' \
+          matrix-sum --average=true $src_matrices $dir/$embedding_type.$[x+1].mat
       fi
     )
 
