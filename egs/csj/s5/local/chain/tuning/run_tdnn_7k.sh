@@ -45,9 +45,8 @@ where "nvcc" is installed.
 EOF
 fi
 
-# The iVector-extraction and feature-dumping parts are the same as the standard
-# nnet3 setup, and you can skip them by setting "--stage 8" if you have already
-# run those things.
+# The iVector-extraction and feature-dumping parts are the same as the standard nnet3 setup, 
+# which is run with: "local/nnet3/run_ivector_common.sh --stage $stage" , within the script local/run_tdnn_chain.sh
 
 suffix=
 if [ "$speed_perturb" == "true" ]; then

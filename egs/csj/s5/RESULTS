@@ -67,6 +67,11 @@ for eval_num in `seq 3`; do echo "=== evaluation set $eval_num ===" ; for x in e
 %WER 10.67 [ 1834 / 17189, 185 ins, 411 del, 1238 sub ] exp/chain/tdnn_csj/decode_eval3/wer_14_1.0
 %WER 10.63 [ 1827 / 17189, 210 ins, 361 del, 1256 sub ] exp/chain/tdnn_csj_online/decode_eval3/wer_12_1.0
 
+# nnet3 TDNN  (former tdnn results)
+%WER 11.34 [ 2952 / 26028, 286 ins, 750 del, 1916 sub ] exp/nnet3/nnet_tdnn/decode_eval1_csj/wer_12_0.5
+%WER 9.07 [ 2417 / 26661, 276 ins, 414 del, 1727 sub ] exp/nnet3/nnet_tdnn/decode_eval2_csj/wer_12_0.0
+%WER 11.46 [ 1970 / 17189, 233 ins, 400 del, 1337 sub ] exp/nnet3/nnet_tdnn/decode_eval3_csj/wer_14_0.5
+
 
 
 ##### These experiments use the below line in csj_data_prep.sh
@@ -128,6 +133,11 @@ for eval_num in `seq 3`; do echo "=== evaluation set $eval_num ===" ; for x in e
 %WER 12.36 [ 2124 / 17189, 270 ins, 430 del, 1424 sub ] exp/tri4_mmi_b0.1/decode_eval3_4.mdl_csj/wer_13_1.0
 %WER 8.41 [ 1446 / 17189, 191 ins, 219 del, 1036 sub ] exp/chain/tdnn_csj/decode_eval3/wer_11_0.5
 %WER 8.38 [ 1440 / 17189, 177 ins, 224 del, 1039 sub ] exp/chain/tdnn_csj_online/decode_eval3/wer_10_1.0
+
+# nnet3 TDNN (former tdnn results)
+%WER 11.15 [ 2901 / 26028, 297 ins, 697 del, 1907 sub ] exp/nnet3/nnet_tdnn/decode_eval1_csj/wer_15_0.0
+%WER 8.47 [ 2259 / 26661, 289 ins, 381 del, 1589 sub ] exp/nnet3/nnet_tdnn/decode_eval2_csj/wer_12_0.0
+%WER 9.21 [ 1583 / 17189, 240 ins, 258 del, 1085 sub ] exp/nnet3/nnet_tdnn/decode_eval3_csj/wer_12_0.0
 
 
 

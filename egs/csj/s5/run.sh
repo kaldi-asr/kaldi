@@ -277,6 +277,9 @@ wait
 # Karel's DNN recipe on top of fMLLR features
 local/nnet/run_dnn.sh
 
+# nnet3 TDNN+Chain 
+local/run_tdnn_chain.sh
+
 # nnet3 TDNN recipe
 # local/nnet3/run_tdnn.sh
 
