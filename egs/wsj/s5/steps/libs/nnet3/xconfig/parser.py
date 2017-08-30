@@ -70,17 +70,18 @@ def xconfig_line_to_object(config_line, prev_layers = None):
 
 
 def get_model_component_info(model_filename):
-    """ This function reads existing model (*.raw or *.mdl) and returns array
-        of XconfigExistingLayer one per {input,output}-node or component-node
-        with same 'name' used in the raw model and 'dim' equal to 'output-dim'
-        for component-node and 'dim' for {input,output}-node.
+    """ 
+    This function reads existing model (*.raw or *.mdl) and returns array
+    of XconfigExistingLayer one per {input,output}-node or component-node
+    with same 'name' used in the raw model and 'dim' equal to 'output-dim'
+    for component-node and 'dim' for {input,output}-node.
 
-        i.e. layer in *.mdl -> corresponding 'XconfigExistingLayer' layer
-             'input-node name=ivector dim=100' ->
-             'existing name=ivector dim=100'
-             'component-node name=tdnn1.affine ** input-dim=1000 '
-             'output-dim=500' ->
-             'existing name=tdnn1.affine dim=500'
+    e.g. layer in *.mdl -> corresponding 'XconfigExistingLayer' layer
+         'input-node name=ivector dim=100' ->
+         'existing name=ivector dim=100'
+         'component-node name=tdnn1.affine ... input-dim=1000 '
+         'output-dim=500' ->
+         'existing name=tdnn1.affine dim=500'
     """
 
     all_layers = []
@@ -134,10 +135,10 @@ def get_model_component_info(model_filename):
 # (usually we use the variable name 'all_layers' elsewhere for this).
 # It will die if the xconfig file is empty or if there was
 # some error parsing it.
-# 'existing_layers' contains some 'existing' layers (layers which are not really
+# 'existing_layers' contains some layers of type 'existing' (layers which are not really
 # layers but are actual component node names from an existing neural net model
-# and created using get_model_component_info function.)
-# that can be used as input to component-nodes in layers xconfig file.
+# and created using get_model_component_info function).
+# 'existing' layers can be used as input to component-nodes in layers of xconfig file.
 def read_xconfig_file(xconfig_filename, existing_layers=[]):
     try:
         f = open(xconfig_filename, 'r')
