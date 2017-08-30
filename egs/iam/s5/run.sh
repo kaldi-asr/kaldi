@@ -40,11 +40,10 @@ numLeavesSAT=500
 numGaussSAT=20000
 
 boost_sil=1
-variance_floor_val=0.001
 beam=20
 
 lang_other=${num_states}
-mono_other=${lang_other}_${num_gauss}_var${variance_floor_val}_beam${beam}_boost${boost_sil}
+mono_other=${lang_other}_${num_gauss}_var_beam${beam}_boost${boost_sil}
 tri_other=${mono_other}_${numLeavesTri}_${numGaussTri}
 tri2_other=${tri_other}_${numLeavesMLLT}_${numGaussMLLT}
 tri3_other=${tri2_other}_${numLeavesSAT}_${numGaussSAT}
@@ -63,9 +62,7 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  ## Starting basic training on features
-  ## passing value for variance floor
-  steps/train_mono.sh --nj $nj --variance_floor_val $variance_floor_val \
+  steps/train_mono.sh --nj $nj \
     --boost-silence $boost_sil \
     $data_dir/train \
     $data_dir/lang_${lang_other} \
