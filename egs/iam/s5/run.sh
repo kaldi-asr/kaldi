@@ -44,10 +44,10 @@ variance_floor_val=0.001
 beam=20
 
 lang_other=${num_states}
-mono_other=OOV_pad_${lang_other}_${num_gauss}_var${variance_floor_val}_beam${beam}_boost${boost_sil}
-tri_other=pad_${mono_other}_${numLeavesTri}_${numGaussTri}
-tri2_other=pad_${tri_other}_${numLeavesMLLT}_${numGaussMLLT}
-tri3_other=pad_${tri2_other}_${numLeavesSAT}_${numGaussSAT}
+mono_other=${lang_other}_${num_gauss}_var${variance_floor_val}_beam${beam}_boost${boost_sil}
+tri_other=${mono_other}_${numLeavesTri}_${numGaussTri}
+tri2_other=${tri_other}_${numLeavesMLLT}_${numGaussMLLT}
+tri3_other=${tri2_other}_${numLeavesSAT}_${numGaussSAT}
 
 if [ $stage -le 2 ]; then
   local/prepare_dict.sh $data_dir/train/ $data_dir/test/ $data_dir/train/dict
