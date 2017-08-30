@@ -63,14 +63,12 @@ int main(int argc, char *argv[]) {
                 "occupation counts to.");
     tcfg.Register(&po);
     gmm_opts.Register(&po);
-
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
-
     kaldi::GmmFlagsType update_flags =
         StringToGmmFlags(update_flags_str);
 
@@ -96,6 +94,11 @@ int main(int argc, char *argv[]) {
       gmm_accs.Read(ki.Stream(), binary, true);  // true == add; doesn't matter here.
     }
 
+    if (gmm_opts.variance_floor_value !=0){
+        gmm_opts.VFV_dim = gmm_accs.Dim();
+        gmm_opts.create_VFV();
+    }
+     
     if (update_flags & kGmmTransitions) {  // Update transition model.
       BaseFloat objf_impr, count;
       trans_model.MleUpdate(transition_accs, tcfg, &objf_impr, &count);
