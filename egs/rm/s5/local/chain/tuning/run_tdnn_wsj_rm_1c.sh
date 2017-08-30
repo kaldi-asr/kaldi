@@ -1,21 +1,21 @@
 #!/bin/bash
 # _1c is as _1b but it uses source chain-trained DNN model instead of GMM model
-# to generate alignments for RM using SWJ model.
+# to generate alignments for RM using WSJ model.
 
 # _1b is as _1a, but different as follows
 # 1) It uses wsj phone set phones.txt and new lexicon generated using word pronunciation
-#    in swj lexincon.txt. rm words, that are not presented in wsj, are added as oov
+#    in wsj lexicon.txt. rm words, that are not presented in wsj, are added as oov
 #    in new lexicon.txt.
 # 2) It uses wsj tree-dir and generates new alignments and lattices for rm using
 #    wsj gmm model.
 # 3) It also trains phone LM using weighted combination of alignemts from wsj
 #    and rm, which is used in chain denominator graph.
 #    Since we use phone.txt from source dataset, this can be helpful in cases
-#    where there is few training data in the target domain and some 4-gram phone
+#    where there is a few training data in the target domain and some 4-gram phone
 #    sequences have no count in the target domain.
-# 4) It uses whole already-trained model and  does not replace the output layer 
-#    from already-trained model with new randomely initialized output layer and
-#    re-train it using target dataset.
+# 4) It transfers all layers in already-trained model and 
+#    re-train the last layer using target dataset, instead of replacing it 
+#    with new randomely initialized output layer.
 
 # This script uses weight transfer as Transfer learning method
 # and use already trained model on wsj and fine-tune the whole network using
@@ -38,7 +38,7 @@ common_egs_dir=
 primary_lr_factor=0.25 # learning-rate factor for all except last layer in transferred source model
 nnet_affix=_online_wsj
 
-phone_lm_scales="1,10" #  comma-separated list of integer valued scale weights
+phone_lm_scales="1,10" #  comma-separated list of int valued scale weights
                        #  to scale different phone sequences for different alignments
                        #  e.g. (src-weight,target-weight)=(10,1)
 
