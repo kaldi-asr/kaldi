@@ -2,13 +2,13 @@
 
 # Copyright 2016 Pegah Ghahremani
 
-# This script is used for decoding multilingual model, that is called in
+# This script is used for decoding multilingual model and it is called in
 # local/nnet3/run_tdnn_multilingual.sh script.
-# This script expects you to provide decoding data dir, that is prepared using
+# This script needs decoding data dir, which is prepared using
 # eg/babel/s5d scripts (i.e. run-4-anydecode.sh).
 # If --use-pitch is true, pitch feature is added to high-resolution MFCC features.
-# If --use-bnf option is true, the --bnf-nnet-dir option as nnet3 model for
-# bottleneck feature extraction should be provided.
+# If --use-bnf option is true, the --bnf-nnet-dir option, nnet3 model for
+# bottleneck feature extraction, should be provided.
 
 set -e
 set -o pipefail
@@ -38,7 +38,7 @@ use_ivector_bnf=false # If true, ivector used in extracting bottleneck features.
 . utils/parse_options.sh
 
 if [ $# -ne 2 ]; then
-  echo "Usage: $(basename $0) --dir <dir-type> <lang> <nnet3-dir>"
+  echo "Usage: $(basename $0) --dir <dir-type> <lang> <multilingual-nnet3-dir>"
   echo " e.g.: $(basename $0) --dir dev2h.pem ASM exp/nnet3/tdnn_multi_sp"
   exit 1
 fi
@@ -97,11 +97,6 @@ if $use_pitch; then
   log_dir=exp/$lang/make_hires_pitch/$dataset
 fi
 
-set -e
-set -o pipefail
-set -u
-unset dir
-unset kind
 
 ####################################################################
 ##
