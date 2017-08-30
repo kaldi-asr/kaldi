@@ -42,16 +42,16 @@ class XconfigLayerBase(object):
             raise RuntimeError("Invalid value: name={0}".format(
                 key_to_value['name']))
 
-        # It is possible to have two layers with same name if one of them
-        # is 'existing' layer type.
-        # Layers of type 'existing' correspond to component-node names
-        # from existing model that we are adding layers to them.
-        # These layers are not presented in any config file and new layer
-        # with same name as these layers can exist in all_layers.
-        # i.e. output-node with name 'output' in the existing model is added to
-        # all_layers using layer type 'existing' and it is possible to have
-        # 'output-node' of type 'output-layer' with same name 'output' in
-        # all_layers.
+        # It is possible to have two layers with a same name in 'all_layer', if 
+        # the layer type for one of them is 'existing'.
+        # Layers of type 'existing' are corresponding to the component-node names
+        # in the existing model, which we are adding layers to them.
+        # 'existing' layers are not presented in any config file, and new layer
+        # with the same name can exist in 'all_layers'.
+        # e.g. It is possible to have 'output-node' with name 'output' in the 
+        # existing model, which is added to all_layers using layer type 'existing',
+        # and 'output-node' of type 'output-layer' with the same name 'output' in
+        # 'all_layers'.
         for prev_layer in all_layers:
             if (self.name == prev_layer.name and
                 prev_layer.layer_type is not 'existing'):
@@ -1088,18 +1088,21 @@ class XconfigIdctLayer(XconfigLayerBase):
 
 
 class XconfigExistingLayer(XconfigLayerBase):
-    """This class is for lines like
-    'existing name=tdnn1.affine dim=40'
-    This layer contains 'dim' and 'name' and it is not presented in any actual
-    config files.
-    Layers of this type are created internally for all component nodes in
-    an existing neural net model for use as input to other layers.
+    """
+    This class is for lines like 
+    'existing name=tdnn1.affine dim=40'.
+    
+    This layer contains 'dim' and 'name' and it is not presented in 
+    any actual config files.
+    Layers of this type are created internally for all component nodes
+    in an existing neural net model to use as input to other layers.
     (i.e. get_model_component_info function, which is called in
      steps/nnet3/xconfig_to_configs.py, returns a list of 'existing'
      layers for component nodes used in 'existing_model')
+    
     This class is useful in cases like transferring existing model
-    and using {input, output, component}-nodes
-    in the model as input to new layers.
+    and using {input, output, component}-nodes in this model as 
+    input to new layers.
     """
 
     def __init__(self, first_token, key_to_value, prev_names=None):
