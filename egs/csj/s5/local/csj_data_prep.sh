@@ -21,8 +21,9 @@ set -e # exit on error
 
 #check existing directories
 if [ $# -ne 1 ] && [ $# -ne 2 ]; then
-  echo "Usage: csj_data_prep.sh <csj-data dir> [mode_number]"
-  echo " mode_number can be 0, 1, 2, 3, (0=default using academic lecture and other data, 1=using academic lecture data, 2=using all data except for dialog data, 3=using all data)"
+  echo "Usage: csj_data_prep.sh <csj-data dir> [<mode_number>]"
+  echo " mode_number can be 0, 1, 2, 3, (0=default using academic lecture and other data, 1=using academic lecture data,"
+  echo "                                 2=using all data except for dialog data, 3=using all data)"
   exit 1;
 fi
 

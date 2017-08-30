@@ -1,5 +1,5 @@
-##### These experiments use the below line in csj_data_prep.sh
-## cat $CSJ/*/{A,M}*/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using "Academic lecture" and "other" data
+##### These experiments use default <number_mode> in run.sh "local/csj_data_prep.sh data/csj-data"
+#i.e. Using "Academic lecture" and "other" data
  
 for eval_num in `seq 3`; do echo "=== evaluation set $eval_num ===" ; for x in exp/{tri,dnn}*/decode_eval${eval_num}*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done ; for x in exp/chain*/tdnn*/decode_eval${eval_num}*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done ; done > RESULTS.ricky
 
@@ -74,8 +74,8 @@ for eval_num in `seq 3`; do echo "=== evaluation set $eval_num ===" ; for x in e
 
 
 
-##### These experiments use the below line in csj_data_prep.sh
-## cat $CSJ/*/{A*,M*,R*,S*}/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using All data except for "dialog" data
+##### These experiments use <number_mode> 2 in run.sh "local/csj_data_prep.sh data/csj-data 2"
+#i.e. Using All data except for "dialog" data
 
 for eval_num in `seq 3`; do echo "=== evaluation set $eval_num ===" ; for x in exp/{tri,dnn}*/decode_eval${eval_num}*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done ; for x in exp/chain*/tdnn*/decode_eval${eval_num}*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done ; done > RESULTS.ricky
 
@@ -141,8 +141,8 @@ for eval_num in `seq 3`; do echo "=== evaluation set $eval_num ===" ; for x in e
 
 
 
-##### These experiments use the below line in csj_data_prep.sh
-## cat $CSJ/*/*/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using All data
+##### These experiments use <number_mode> 3 in run.sh "local/csj_data_prep.sh data/csj-data 3"
+#i.e. Using All data
 
 for eval_num in `seq 3`; do echo "=== evaluation set $eval_num ===" ; for x in exp/{tri,dnn}*/decode_eval${eval_num}*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done ; for x in exp/chain*/tdnn*/decode_eval${eval_num}*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done ; done > RESULTS.ricky_exp
 
