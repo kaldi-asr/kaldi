@@ -113,7 +113,7 @@ fi
 
 if [ $stage -le 4 ]; then
   utils/copy_data_dir.sh ${whole_data_dir} ${whole_data_dir}_hires_bp
-  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires_bp.conf --nj 40 \
+  steps/make_mfcc.sh --cmd "$train_cmd" --mfcc-config conf/mfcc_hires_bp.conf --nj 40 \
     ${whole_data_dir}_hires_bp
   steps/compute_cmvn_stats.sh ${whole_data_dir}_hires_bp
 fi
@@ -135,6 +135,7 @@ if [ $stage -le 6 ]; then
   # chunk-width of 20. This is just for speed.
   # See the script for details of the options.
   steps/segmentation/detect_speech_activity.sh \
+    --cmd "$train_cmd" \
     --extra-left-context 70 --extra-right-context 0 --frames-per-chunk 150 \
     --extra-left-context-initial 0 --extra-right-context-final 0 \
     --nj 32 --acwt 0.3 --stage $test_stage \

@@ -121,7 +121,7 @@ if [ $stage -le 6 ]; then
     --trainer.deriv-truncate-margin=10 \
     --trainer.max-param-change=$max_param_change \
     --trainer.compute-per-dim-accuracy=true \
-    --cmd="$decode_cmd" --nj 40 \
+    --cmd="$train_cmd" --egs.cmd="$train_cmd" --nj 40 \
     --cleanup=true \
     --cleanup.remove-egs=$remove_egs \
     --cleanup.preserve-model-interval=10 \
