@@ -356,6 +356,14 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
     This is for outputs that are not really output "layers"
     (there is no affine transform or nonlinearity), they just directly map to an
     output-node in nnet3.
+
+    Parameters of the class, and their defaults:
+        input='[-1]'    :   Descriptor giving the input of the layer.
+        objective-type=linear   :   the only other choice currently is
+            'quadratic', for use in regression problems
+        output-delay=0    :  Can be used to shift the frames on the output, equivalent
+             to delaying labels by this many frames (positive value increases latency
+             in online decoding but may help if you're using unidirectional LSTMs.
     """
 
     def __init__(self, first_token, key_to_value, prev_names=None):
@@ -367,11 +375,17 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
 
         # note: self.config['input'] is a descriptor, '[-1]' means output
         # the most recent layer.
-        self.config = {'input': '[-1]', 'dim': -1}
+        self.config = {'input': '[-1]', 'dim': -1,
+                       'objective-type': 'linear',
+                       'output-delay': 0}
 
     def check_configs(self):
 
-        pass  # nothing to check; descriptor-parsing can't happen in this function.
+        if self.config['objective-type'] != 'linear' and \
+                self.config['objective-type'] != 'quadratic':
+            raise RuntimeError("In output, objective-type has"
+                               " invalid value {0}"
+                               "".format(self.config['objective-type']))
 
     def output_name(self, auxiliary_outputs=None):
 
@@ -402,11 +416,19 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
         # by 'output-string' we mean a string that can appear in
         # config-files, i.e. it contains the 'final' names of nodes.
         descriptor_final_str = self.descriptors['input']['final-string']
+        objective_type = self.config['objective-type']
+        output_delay = self.config['output-delay']
+
+        if output_delay != 0:
+            descriptor_final_str = (
+                'Offset({0}, {1})'.format(descriptor_final_str, output_delay))
 
         for config_name in ['init', 'ref', 'final']:
             ans.append((config_name,
-                        'output-node name={0} input={1}'.format(
-                            self.name, descriptor_final_str)))
+                        'output-node name={0} input={1} '
+                        'objective={2}'.format(
+                            self.name, descriptor_final_str,
+                            objective_type)))
         return ans
 
 

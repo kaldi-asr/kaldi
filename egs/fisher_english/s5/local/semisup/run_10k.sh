@@ -13,7 +13,7 @@ train_stage=-10
 
 set -o pipefail
 exp=exp/semisup_11k
-false && {
+
 utils/subset_data_dir.sh --speakers data/train_sup 11000 data/train_sup11k || exit 1
 utils/subset_data_dir.sh --shortest data/train_sup11k 5000 data/train_sup11k_short || exit 1
 utils/subset_data_dir.sh data/train_sup11k 5500 data/train_sup11k_half || exit 1
@@ -54,7 +54,19 @@ steps/train_sat.sh --cmd "$train_cmd" \
 )&
 
 utils/combine_data.sh data/semisup11k_250k data/train_sup11k data/train_unsup250k || exit 1
-}
 
 local/semisup/chain/tuning/run_tdnn_11k.sh \
-  --ivector-train-set semisup11k_250k --train-set train_sup11k --stage $stage --train-stage $train_stage || exit 1
+  --train-set train_sup11k \
+  --nnet3-affix _semi11k_250k \
+  --chain-affix _semi11k_250k \
+  --stage $stage --train-stage $train_stage \
+  --exp $exp \
+  --ivector-train-set semisup11k_250k || exit 1
+
+local/semisup/chain/tuning/run_tdnn_oracle.sh \
+  --train-set semisup11k_250k \
+  --nnet3-affix _semi11k_250k \
+  --chain-affix _semi11k_250k_oracle \
+  --stage 9 --train-stage $train_stage \
+  --exp $exp \
+  --ivector-train-set semisup11k_250k || exit 1

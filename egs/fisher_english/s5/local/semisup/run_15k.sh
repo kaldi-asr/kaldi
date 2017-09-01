@@ -14,7 +14,6 @@ train_stage=-10
 set -o pipefail
 exp=exp/semisup_15k
 
-false && {
 utils/subset_data_dir.sh --speakers data/train_sup 15000 data/train_sup15k || exit 1
 utils/subset_data_dir.sh --shortest data/train_sup15k 5000 data/train_sup15k_short || exit 1
 utils/subset_data_dir.sh data/train_sup15k 7500 data/train_sup15k_half || exit 1
@@ -63,7 +62,6 @@ local/semisup/chain/tuning/run_tdnn_11k.sh \
   --stage $stage --train-stage $train_stage \
   --exp $exp \
   --ivector-train-set semisup15k_250k || exit 1
-}
 
 local/semisup/chain/tuning/run_tdnn_oracle.sh \
   --train-set semisup15k_250k \
