@@ -54,6 +54,7 @@ cleanup=true
 keep_model_iters=100
 remove_egs=false
 src_model=  # will default to $degs_dir/final.mdl
+adjust_priors=true  # Set it to false for 'chain' models
 
 num_jobs_compute_prior=10
 
@@ -330,18 +331,19 @@ while [ $x -lt $num_iters ]; do
     e=${iter_to_epoch[$x]}
     ln -sf $x.mdl $dir/epoch$e.mdl
 
-    (
-      rm $dir/.error 2> /dev/null
+    if $adjust_priors; then
+      (
+        rm $dir/.error 2> /dev/null
 
-      steps/nnet3/adjust_priors.sh --egs-type degs \
-        --num-jobs-compute-prior $num_jobs_compute_prior \
-        --cmd "$cmd" --use-gpu false \
-        --minibatch-size $minibatch_size \
-        --use-raw-nnet false --iter epoch$e $dir $degs_dir \
-        || { touch $dir/.error; echo "Error in adjusting priors. See errors above."; exit 1; }
-    ) &
+        steps/nnet3/adjust_priors.sh --egs-type degs \
+          --num-jobs-compute-prior $num_jobs_compute_prior \
+          --cmd "$cmd" --use-gpu false \
+          --minibatch-size $minibatch_size \
+          --use-raw-nnet false --iter epoch$e $dir $degs_dir \
+          || { touch $dir/.error; echo "Error in adjusting priors. See errors above."; exit 1; }
+      ) &
+    fi
   fi
-
 done
 
 rm $dir/final.mdl 2>/dev/null

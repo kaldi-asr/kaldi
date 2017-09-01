@@ -317,7 +317,7 @@ def main():
     aux_layers = []
     if args.existing_model is not None:
         aux_layers = xparser.get_model_component_info(args.existing_model)
-        all_layers = xparser.read_xconfig_file(args.xconfig_file, aux_layers)
+    all_layers = xparser.read_xconfig_file(args.xconfig_file, aux_layers)
     write_expanded_xconfig_files(args.config_dir, all_layers)
     write_config_files(args.config_dir, all_layers)
     check_model_contexts(args.config_dir, args.nnet_edits,

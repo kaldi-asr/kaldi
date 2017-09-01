@@ -24,6 +24,7 @@ extra_left_context_initial=-1
 extra_right_context_final=-1
 online_ivector_dir=
 graphs_scp=
+write_best_path_alignments=false
 # End configuration options.
 
 echo "$0 $@"  # Print the command line for logging
@@ -164,6 +165,13 @@ if [ $stage -le 1 ]; then
     --allow-partial=false --word-determinize=false \
     $srcdir/${iter}.mdl "ark:gunzip -c $dir/fsts.JOB.gz |" \
     "$feats" "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
+fi
+
+if [ $stage -le 2 ] && $write_best_path_alignments; then
+  $cmd JOB=1:$nj $dir/log/best_path.JOB.log \
+    lattice-best-path --acoustic-scale=$acoustic_scale \
+    "ark:gunzip -c $dir/lat.JOB.gz |" ark:/dev/null \
+    "ark:|gzip -c > $dir/ali.JOB.gz" || exit 1;
 fi
 
 echo "$0: done aligning data."

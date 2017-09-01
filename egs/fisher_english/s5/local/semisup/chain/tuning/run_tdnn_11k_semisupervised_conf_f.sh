@@ -1,6 +1,11 @@
 #!/bin/bash
 
 # This script is same as _e, but is run for 3 epochs instead of 4.
+# unsup_frames_per_eg=150
+# Deriv weights: Lattice posterior of best path pdf
+# Unsupervised weight: 1.0
+# Weights for phone LM (supervised, unsupervises): 5,2
+# LM for decoding unsupervised data: 4gram
 
 set -u -e -o pipefail
 

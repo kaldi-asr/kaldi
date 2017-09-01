@@ -1,6 +1,10 @@
 #!/bin/bash
 
-# This script is same as _f, but fixes the bug about acwt for best path.
+# This script is same as _a, but uses no deriv weights.
+# unsup_frames_per_eg=150
+# Deriv weights: None
+# Unsupervised weight: 0.3
+# Weights for phone LM (supervised, unsupervises): 5,2
 
 set -u -e -o pipefail
 

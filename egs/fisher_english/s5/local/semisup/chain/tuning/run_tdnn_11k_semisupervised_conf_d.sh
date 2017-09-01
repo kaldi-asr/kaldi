@@ -1,6 +1,11 @@
 #!/bin/bash
 
-# This script is same as _f, but fixes the bug about acwt for best path.
+# This script is same as _a, but uses 4gram LM for generating unsupervised data lattices.
+# unsup_frames_per_eg=150
+# Deriv weights: Lattice posterior of best path pdf
+# Unsupervised weight: 0.3
+# Weights for phone LM (supervised, unsupervises): 5,2
+# LM for decoding unsupervised data: 4gram
 
 set -u -e -o pipefail
 
