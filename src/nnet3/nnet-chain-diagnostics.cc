@@ -263,7 +263,7 @@ bool NnetChainComputeProb::PrintTotalStats() const {
     } else {
       KALDI_LOG << "Overall log-probability for '"
                 << name << "' is "
-                << like << " + " << info.tot_aux_objfs.Str() 
+                << like << " + " << aux_objfs.Str() 
                 << " = " << tot_objf << " per frame"
                 << ", over " << info.tot_weight << " frames.";
     }
@@ -285,9 +285,10 @@ std::pair<BaseFloat, BaseFloat> NnetChainComputeProb::GetTotalObjective() const 
     int32 node_index = nnet_.GetNodeIndex(name);
     KALDI_ASSERT(node_index >= 0);
     const ChainObjectiveInfo &info = iter->second;
-    BaseFloat like = (info.tot_like / info.tot_weight),
-        l2_term = (info.tot_l2_term / info.tot_weight);
-    tot_objf += like + l2_term;
+    BaseFloat like = (info.tot_like / info.tot_weight);
+    ObjectiveValues aux_objfs(info.tot_aux_objfs);
+    aux_objfs.Scale(info.tot_weight);
+    tot_objf += like + aux_objfs.Sum();
     tot_weight += info.tot_weight;
   }
   return std::make_pair(tot_objf, tot_weight);

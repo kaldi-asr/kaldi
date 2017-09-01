@@ -221,7 +221,16 @@ ObjectiveValues::ObjectiveValues(const std::vector<BaseFloat> &values) {
   }
 }
 
+void ObjectiveValues::Resize(int32 size) {
+  objective_values.clear();
+  objective_values.resize(size); 
+}
+
 void ObjectiveValues::Add(const ObjectiveValues &other) {
+  if (Size() == 0) {
+    Resize(other.Size());
+  }
+
   if (Size() != other.Size()) {
     KALDI_ERR << "objective values must have same size.";
   }

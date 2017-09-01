@@ -113,6 +113,7 @@ struct ObjectiveValues {
   ObjectiveValues(const std::vector<BaseFloat> &values);
   
   int32 Size() const { return objective_values.size(); }
+  void Resize(int32 size);
 
   void Add(const ObjectiveValues &other); 
 
