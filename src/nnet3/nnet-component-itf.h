@@ -403,6 +403,9 @@ class RandomComponent: public Component {
   void SetTestMode(bool test_mode) { test_mode_ = test_mode; }
 
   RandomComponent(): test_mode_(false) { }
+
+  RandomComponent(const RandomComponent &other):
+      test_mode_(other.test_mode_) {}
  protected:
   CuRand<BaseFloat> random_generator_;
 
