@@ -1,13 +1,14 @@
 #!/bin/bash
 # Copyright 2017 Pegah Ghahremani
 
-# This script prepares a dictionary for wsj to rm transfer learning experiment
-# which uses wsj phone set, lexicon and dict and
-# the lexicon for rm words.txt are copied from wsj lexicon for common words in wsj
-# and rm. words in rm that are not in the wsj lexicon are added
-# as oov in lexicon.txt.
-# The oov word "<SPOKEN_NOISE>" in wsj is also added to words.txt and G.fst is recompiled using
-# updated word list.
+# This script prepares a dictionary for wsj-to-rm transfer learning experiment,
+# which uses wsj phone set phones.txt, lexicon lexicon.txt and dict.
+# The new lexicon.txt are created for words in rm words.txt as follows:
+#   1) The lexicon are copied from wsj lexicon.txt for common words in wsj and rm.
+#   2) Words in rm that are not in the wsj lexicon are added
+#      as oov to new lexicon.txt.
+# The oov word "<SPOKEN_NOISE>" in wsj is also added to words.txt and G.fst is
+# recompiled using updated word list.
 
 if [ -f path.sh ]; then . ./path.sh; fi
 . utils/parse_options.sh
@@ -25,7 +26,7 @@ output_dir=$3
 required_dict_files="$src_dict/lexicon.txt $src_dict/nonsilence_phones.txt $src_dict/silence_phones.txt $src_dict/optional_silence.txt $src_lang/oov.txt $src_lang/phones.txt"
 for f in $required_dict_files; do
   if [ ! -f $f ]; then
-    echo "file $f that is required for preparing lang does not exists." && exit 1;
+    echo "$0: file $f that is required for preparing lang does not exist." && exit 1;
   fi
 done
 

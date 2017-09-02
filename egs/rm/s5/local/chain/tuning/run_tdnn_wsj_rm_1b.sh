@@ -1,25 +1,26 @@
 #!/bin/bash
 # _1b is as _1a, but different as follows
-# 1) uses wsj phone set phones.txt and new lexicon generated using word pronunciation
-#    in swj lexincon.txt and rm words not presented in wsj are added as oov
+# 1) It uses wsj phone set phones.txt and new lexicon generated using word pronunciation
+#    in swj lexincon.txt. rm words, that are not presented in wsj, are added as oov
 #    in new lexicon.txt.
-# 2) It uses wsj tree-dir and generates new rm alignments and lattices using
+# 2) It uses wsj tree-dir and generates new alignments and lattices for rm using
 #    wsj gmm model.
-# 3) It also train phone LM using weighted combination of alignemts from wsj
+# 3) It also trains phone LM using weighted combination of alignemts from wsj
 #    and rm, which is used in chain denominator graph.
 #    Since we use phone.txt from source dataset, this can be helpful in cases
-#    where there is few training data in target and some 4-gram phone sequences
-#    have no count in target.
-# 4) It does not replace the output layer from already-trained model with new
-#    randomely initialized output layer and and re-train it using target dataset.
+#    where there is few training data in the target domain and some 4-gram phone
+#    sequences have no count in the target domain.
+# 4) It uses whole already-trained model and  does not replace the output layer 
+#    from already-trained model with new randomely initialized output layer and
+#    re-train it using target dataset.
 
 
-# This script uses weight transfer as Transfer learning method
+# This script uses weight transfer as a transfer learning method
 # and use already trained model on wsj and fine-tune the whole network using rm data
-# while training the last layer with higher learning-rate.
+# while training the last layer (output layer) with higher learning-rate.
 # The chain config is as run_tdnn_5n.sh and the result is:
 # System tdnn_5n tdnn_wsj_rm_1a tdnn_wsj_rm_1b tdnn_wsj_rm_1c
-# WER      2.71     2.09            3.45          3.38
+# WER      2.71     1.68            3.56          3.54
 set -e
 
 # configs for 'chain'
@@ -34,34 +35,34 @@ primary_lr_factor=0.25 # The learning-rate factor for transferred layers from so
                        # model. e.g. if 0, it fixed the paramters transferred from source.
                        # The learning-rate factor for new added layers is 1.0.
 nnet_affix=_online_wsj
-phone_lm_scales="1,10" #  comma-separated list of integer valued scale weights
+phone_lm_scales="1,10" #  comma-separated list of positive int valued scale weights
                        #  to scale different phone sequences for different alignments
                        #  e.g. (src-weight,target-weight)=(1,10)
 
 # model and dirs for source model used for transfer learning
-src_mdl=../../wsj/s5/exp/chain/tdnn1d_sp/final.mdl # input chain model
+src_mdl=../../wsj/s5/exp/chain/tdnn1d_sp/final.mdl # Input chain model
                                                     # trained on source dataset (wsj).
                                                     # This model is transfered to the target domain.
 
 src_mfcc_config=../../wsj/s5/conf/mfcc_hires.conf # mfcc config used to extract higher dim
-                                                  # mfcc features used for ivector training
-                                                  # in source domain.
-src_ivec_extractor_dir=  # source ivector extractor dir used to extract ivector for
+                                                  # mfcc features for ivector and DNN training
+                                                  # in the source domain.
+src_ivec_extractor_dir=  # Source ivector extractor dir used to extract ivector for
                          # source data and the ivector for target data is extracted using this extractor.
                          # It should be nonempty, if ivector is used in source model training.
 
-src_lang=../../wsj/s5/data/lang    # source lang directory used to train source model.
-                              # new new lang dir for transfer learning experiment is prepared
-                              # using source phone set and lexicon in src_lang and
-                              # word.txt target lang dir.
+src_lang=../../wsj/s5/data/lang # Source lang directory used to train source model.
+                                # new lang dir for transfer learning experiment is prepared
+                                # using source phone set phones.txt and lexicon.txt
+                                # in src lang and dict dirs and words.txt in target lang dir.
 
 src_dict=../../wsj/s5/data/local/dict_nosp  # dictionary for source dataset containing lexicon.txt,
-                                                                                         # nonsilence_phones.txt,...
-                                                                                         # lexicon.txt used to generate lexicon.txt for
-                                                                                         # src-to-tgt transfer.
+                                            # nonsilence_phones.txt,...
+                                            # lexicon.txt used to generate lexicon.txt for
+                                            # src-to-tgt transfer.
 
 src_gmm_dir=../../wsj/s5/exp/tri4b # source gmm dir used to generate alignments
-                              # for target data.
+                                   # for target data.
 
 src_tree_dir=../../wsj/s5/exp/chain/tree_a_sp # chain tree-dir for src data;
                                          # the alignment in target domain is
@@ -90,8 +91,7 @@ fi
 # dirs for src-to-tgt transfer learning experiment
 lang_src_tgt=data/lang_wsj_rm # This dir is prepared using phones.txt and lexicon from
                           # WSJ and wordlist and G.fst from RM.
-ali_dir=exp/tri4b${src_tree_dir:+_wsj}_ali
-lat_dir=exp/tri3b_lats${src_tree_dir:+_wsj}
+lat_dir=exp/tri3b_lats_wsj
 dir=exp/chain/tdnn_wsj_rm${tdnn_affix}
 
 
@@ -104,14 +104,16 @@ if [ "$ivector_dim" == "" ]; then ivector_dim=0 ; fi
 
 if [ ! -z $src_ivec_extractor_dir ]; then
   if [ $ivector_dim -eq 0 ]; then
-    echo "source ivector extractor dir '$src_ivec_extractor_dir' is specified but ivector is not used in training the source model '$src_mdl'."
+    echo "$0: Source ivector extractor dir '$src_ivec_extractor_dir' is specified "
+    echo "but ivector is not used in training the source model '$src_mdl'."
   else
     required_files="$required_files $src_ivec_extractor_dir/final.dubm $src_ivec_extractor_dir/final.mat $src_ivec_extractor_dir/final.ie"
     use_ivector=true
   fi
 else
   if [ $ivector_dim -gt 0 ]; then
-    echo "ivector is used in training the source model '$src_mdl' but no ivector extractor dir for source model specified." && exit 1;
+    echo "$0: ivector is used in training the source model '$src_mdl' but no "
+    echo " ivector extractor dir for source model is specified." && exit 1;
   fi
 fi
 
@@ -139,40 +141,35 @@ local/online/run_nnet2_common.sh  --stage $stage \
                                   --extractor $src_ivec_extractor_dir || exit 1;
 
 if [ $stage -le 4 ]; then
-  echo "$0: Generate alignment using source model."
-  steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
-    data/train $lang_src_tgt $src_gmm_dir $ali_dir || exit 1;
-fi
-
-
-if [ $stage -le 5 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat exp/tri3b_ali/num_jobs) || exit 1;
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/train \
-    $lang_src_tgt $src_gmm_dir $lat_dir || exit 1;
-  rm $lat_dir/fsts.*.gz # save space
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" \
+    --generate-ali-from-lats true \
+    data/train $lang_src_tgt $src_gmm_dir $lat_dir || exit 1;
+  rm $lat_dir/fsts.*.gz 2>/dev/null || true # save space
 fi
 
-if [ $stage -le 6 ]; then
-  # set the learning-rate-factor for initial network to be primary_lr_factor."
+if [ $stage -le 5 ]; then
+  # Set the learning-rate-factor for all transferred layers but the last output
+  # layer to primary_lr_factor.
   $train_cmd $dir/log/generate_input_mdl.log \
     nnet3-am-copy --raw=true --edits="set-learning-rate-factor name=* learning-rate-factor=$primary_lr_factor; set-learning-rate-factor name=output* learning-rate-factor=1.0" \
       $src_mdl $dir/input.raw || exit 1;
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 6 ]; then
   echo "$0: compute {den,normalization}.fst using weighted phone LM with wsj and rm weight $phone_lm_scales."
   steps/nnet3/chain/make_weighted_den_fst.sh --cmd "$train_cmd" \
     --weights $phone_lm_scales \
     --lm-opts '--num-extra-lm-states=200' \
-    $src_tree_dir $ali_dir $dir || exit 1;
+    $src_tree_dir $lat_dir $dir || exit 1;
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 7 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/rm-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/rm-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
   # exclude phone_LM and den.fst generation training stages
   if [ $train_stage -lt -4 ]; then train_stage=-4 ; fi
@@ -208,12 +205,7 @@ if [ $stage -le 8 ]; then
     --dir $dir || exit 1;
 fi
 
-if [ $stage -le 9 ] && $use_ivector; then
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
-    data/test_hires $src_ivec_extractor_dir exp/nnet2${nnet_affix}/ivectors_test || exit 1;
-fi
-
-if [ $stage -le 10 ]; then
+if [ $stage -le 8 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.

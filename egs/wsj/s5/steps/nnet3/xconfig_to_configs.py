@@ -77,8 +77,8 @@ def backup_xconfig_file(xconfig_file, config_dir):
     try:
         xconfig_file_in = open(xconfig_file)
     except:
-        raise Exception('{0}: error opening file {1} for input'.format(
-                            sys.argv[0], config_dir))
+        raise Exception('{0}: error opening file {1} for input'
+                        ''.format(sys.argv[0], config_dir))
 
     print("# This file was created by the command:\n"
           "# {0}\n"
@@ -208,8 +208,9 @@ def write_config_files(config_dir, all_layers):
             if basename == 'init':
                 continue # do not write the init.config
             else:
-                print('{0}: error in xconfig file {1}: may be lack of a output layer'.format(
-                    sys.argv[0], sys.argv[2]), file=sys.stderr)
+                print('{0}: error in xconfig file {1}: may be lack of a '
+                      'output layer'.format(sys.argv[0], sys.argv[2]),
+                                            file=sys.stderr)
                 raise
 
         header = config_basename_to_header[basename]
@@ -221,8 +222,8 @@ def write_config_files(config_dir, all_layers):
                 print(line, file=f)
             f.close()
         except Exception as e:
-            print('{0}: error writing to config file {1}: error is {2}'.format(
-                    sys.argv[0], filename, repr(e)), file=sys.stderr)
+            print('{0}: error writing to config file {1}: error is {2}'
+                  ''.format(sys.argv[0], filename, repr(e)), file=sys.stderr)
             # we use raise rather than raise(e) as using a blank raise
             # preserves the backtrace
             raise
@@ -233,10 +234,10 @@ def add_nnet_context_info(config_dir, nnet_edits=None,
     """Create the 'vars' file that specifies model_left_context, etc."""
 
     common_lib.execute_command("nnet3-init {0} {1}/ref.config "
-                               "{1}/ref.raw".format(
-                                    existing_model if
-                                    existing_model is not None else "",
-                                    config_dir))
+                               "{1}/ref.raw"
+                               "".format(existing_model if
+                                         existing_model is not None else "",
+                                         config_dir))
     model = "{0}/ref.raw".format(config_dir)
     if nnet_edits is not None:
         model = "nnet3-copy --edits='{0}' {1} - |".format(nnet_edits,
@@ -269,10 +270,11 @@ def check_model_contexts(config_dir, nnet_edits=None, existing_model=None):
         if os.path.exists('{0}/{1}.config'.format(config_dir, file_name)):
             contexts[file_name] = {}
             common_lib.execute_command("nnet3-init {0} {1}/{2}.config "
-                                       "{1}/{2}.raw".format(
-                                            existing_model if
-                                            existing_model is not None else '',
-                                            config_dir, file_name))
+                                       "{1}/{2}.raw"
+                                       "".format(existing_model if
+                                                 existing_model is not
+                                                 None else '',
+                                                 config_dir, file_name))
             model = "{0}/{1}.raw".format(config_dir, file_name)
             if nnet_edits is not None:
                 model = "nnet3-copy --edits='{0}' {1} - |".format(nnet_edits,
@@ -314,10 +316,10 @@ def check_model_contexts(config_dir, nnet_edits=None, existing_model=None):
 def main():
     args = get_args()
     backup_xconfig_file(args.xconfig_file, args.config_dir)
-    aux_layers = []
+    existing_layers = []
     if args.existing_model is not None:
-        aux_layers = xparser.get_model_component_info(args.existing_model)
-    all_layers = xparser.read_xconfig_file(args.xconfig_file, aux_layers)
+        existing_layers = xparser.get_model_component_info(args.existing_model)
+    all_layers = xparser.read_xconfig_file(args.xconfig_file, existing_layers)
     write_expanded_xconfig_files(args.config_dir, all_layers)
     write_config_files(args.config_dir, all_layers)
     check_model_contexts(args.config_dir, args.nnet_edits,
