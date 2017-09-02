@@ -123,10 +123,12 @@ def get_args():
     parser.add_argument("--trainer.input-model", type=str,
                         dest='input_model', default=None,
                         action=common_lib.NullstrToNoneAction,
-                        help="If specified, this model is used as 0.raw model "
-                             "and no LDA matrix or init.raw initialzed."
+                        help="If specified, this model is used as initial "
+                             "'raw' model (0.raw in the script) instead of "
+                             "initializing the model from the xconfig. "
                              "Also configs dir is not expected to exist "
-                             "and context is generated using this model.")
+                             "and left/right context is computed from this "
+                             "model.")
     parser.add_argument("--trainer.num-epochs", type=float, dest='num_epochs',
                         default=10.0,
                         help="Number of epochs to train the model")
@@ -216,10 +218,10 @@ def process_args(args):
     """
 
     if not common_train_lib.validate_chunk_width(args.chunk_width):
-        raise Exception("--egs.chunk-width has an invalid value");
+        raise Exception("--egs.chunk-width has an invalid value")
 
     if not common_train_lib.validate_minibatch_size_str(args.num_chunk_per_minibatch):
-        raise Exception("--trainer.num-chunk-per-minibatch has an invalid value");
+        raise Exception("--trainer.num-chunk-per-minibatch has an invalid value")
 
     if args.chunk_left_context < 0:
         raise Exception("--egs.chunk-left-context should be non-negative")
@@ -239,11 +241,12 @@ def process_args(args):
     if (not os.path.exists(args.dir)
             or (not os.path.exists(args.dir+"/configs") and
                 not os.path.exists(args.input_model))):
-        raise Exception("This scripts expects {0} to exist. Also either of --trainer.input-model "
-                        " as '0.raw' model should exist or {0} should have a configs "
-                        "directory which is the output of "
-                        "make_configs.py script.".format(
-                        args.dir, args.input_model))
+        raise Exception("This script expects {0} to exist. Also either "
+                        "--trainer.input-model option as initial 'raw' model "
+                        "(used as 0.raw in the script) should be supplied or "
+                        "{0}/configs directory which is the output of "
+                        "make_configs.py script should be provided."
+                        "".format(args.dir))
 
     if args.transform_dir is None:
         args.transform_dir = args.lat_dir
@@ -331,8 +334,8 @@ def train(args, run_opts):
 
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
-    common_lib.execute_command("utils/split_data.sh {0} {1}".format(
-            args.feat_dir, num_jobs))
+    common_lib.execute_command("utils/split_data.sh {0} {1}"
+                               "".format(args.feat_dir, num_jobs))
     with open('{0}/num_jobs'.format(args.dir), 'w') as f:
         f.write(str(num_jobs))
 
@@ -342,9 +345,9 @@ def train(args, run_opts):
 
         variables = common_train_lib.parse_generic_config_vars_file(var_file)
     else:
-        # if args.input_model specified, the model left and right context
-        # computed using input_model.
-        variables = common_train_lib.parse_input_model(args.input_model)
+        # If args.input_model is specified, the model left and right contexts
+        # are computed using input_model.
+        variables = common_train_lib.get_input_model_info(args.input_model)
 
     # Set some variables.
     try:
@@ -375,35 +378,38 @@ def train(args, run_opts):
         shutil.copy('{0}/tree'.format(args.tree_dir), args.dir)
         chain_lib.create_denominator_fst(args.dir, args.tree_dir, run_opts)
 
-    if ((args.stage <= -4) and (os.path.exists("{0}/configs/init.config".format(args.dir)))
+    if ((args.stage <= -4) and
+            os.path.exists("{0}/configs/init.config".format(args.dir))
             and (args.input_model is None)):
         logger.info("Initializing a basic network for estimating "
                     "preconditioning matrix")
         common_lib.execute_command(
             """{command} {dir}/log/nnet_init.log \
-                    nnet3-init --srand=-2 {dir}/configs/init.config \
-                    {dir}/init.raw""".format(command=run_opts.command,
-                                             dir=args.dir))
+            nnet3-init --srand=-2 {dir}/configs/init.config \
+            {dir}/init.raw""".format(command=run_opts.command,
+                                     dir=args.dir))
 
     egs_left_context = left_context + args.frame_subsampling_factor / 2
     egs_right_context = right_context + args.frame_subsampling_factor / 2
     # note: the '+ args.frame_subsampling_factor / 2' is to allow for the
     # fact that we'll be shifting the data slightly during training to give
     # variety to the training data.
-    egs_left_context_initial = (left_context_initial + args.frame_subsampling_factor / 2 if
+    egs_left_context_initial = (left_context_initial +
+                                args.frame_subsampling_factor / 2 if
                                 left_context_initial >= 0 else -1)
-    egs_right_context_final = (right_context_final + args.frame_subsampling_factor / 2 if
+    egs_right_context_final = (right_context_final +
+                               args.frame_subsampling_factor / 2 if
                                right_context_final >= 0 else -1)
 
     default_egs_dir = '{0}/egs'.format(args.dir)
-    if (args.stage <= -3) and args.egs_dir is None:
+    if ((args.stage <= -3) and args.egs_dir is None):
         logger.info("Generating egs")
         if (not os.path.exists("{0}/den.fst".format(args.dir)) or
                 not os.path.exists("{0}/normalization.fst".format(args.dir)) or
                 not os.path.exists("{0}/tree".format(args.dir))):
             raise Exception("Chain egs generation expects {0}/den.fst, "
-                             "{0}/normalization.fst and {0}/tree "
-                             "to exist.".format(args.dir))
+                            "{0}/normalization.fst and {0}/tree "
+                            "to exist.".format(args.dir))
         # this is where get_egs.sh is called.
         chain_lib.generate_chain_egs(
             dir=args.dir, data=args.feat_dir,
@@ -433,11 +439,11 @@ def train(args, run_opts):
 
     [egs_left_context, egs_right_context,
      frames_per_eg_str, num_archives] = (
-        common_train_lib.verify_egs_dir(egs_dir, feat_dim,
-                                        ivector_dim, ivector_id,
-                                        egs_left_context, egs_right_context,
-                                        egs_left_context_initial,
-                                        egs_right_context_final))
+         common_train_lib.verify_egs_dir(egs_dir, feat_dim,
+                                         ivector_dim, ivector_id,
+                                         egs_left_context, egs_right_context,
+                                         egs_left_context_initial,
+                                         egs_right_context_final))
     assert(args.chunk_width == frames_per_eg_str)
     num_archives_expanded = num_archives * args.frame_subsampling_factor
 
@@ -459,8 +465,8 @@ def train(args, run_opts):
     else:
         use_multitask_egs = False
 
-    if (args.stage <= -2 and os.path.exists(args.dir+"/configs/init.config")
-            and args.input_model is None):
+    if ((args.stage <= -2) and (os.path.exists(args.dir+"/configs/init.config"))
+            and (args.input_model is None)):
         logger.info('Computing the preconditioning matrix for input features')
 
         chain_lib.compute_preconditioning_matrix(
@@ -472,7 +478,7 @@ def train(args, run_opts):
     if (args.stage <= -1):
         logger.info("Preparing the initial acoustic model.")
         chain_lib.prepare_initial_acoustic_model(args.dir, run_opts,
-                                                 input_mdl=args.input_model)
+                                                 input_model=args.input_model)
 
     with open("{0}/frame_subsampling_factor".format(args.dir), "w") as f:
         f.write(str(args.frame_subsampling_factor))
@@ -533,8 +539,8 @@ def train(args, run_opts):
             if args.shrink_value < shrinkage_value:
                 shrinkage_value = (args.shrink_value
                                    if common_train_lib.should_do_shrinkage(
-                                        iter, model_file,
-                                        args.shrink_saturation_threshold)
+                                       iter, model_file,
+                                       args.shrink_saturation_threshold)
                                    else shrinkage_value)
 
             xent_regularize = args.xent_regularize

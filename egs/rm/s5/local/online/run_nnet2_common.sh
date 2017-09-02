@@ -1,5 +1,6 @@
 #!/bin/bash
-
+# This script extracts mfcc features using mfcc_config and train ubm model and
+# ivector extractor and extract ivector for train and test.
 . cmd.sh
 
 
@@ -73,4 +74,7 @@ if [ $stage -le 3 ] && [ $ivector_dim -gt 0 ]; then
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 40 \
     data/${train_set}_max2 $extractor exp/nnet2${nnet_affix}/ivectors || exit 1;
+
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 10 \
+    data/test_hires $extractor exp/nnet2${nnet_affix}/ivectors_test || exit 1;
 fi
