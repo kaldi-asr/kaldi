@@ -541,7 +541,7 @@ class XconfigFastGruLayer(XconfigLayerBase):
 
         configs.append("# z_t and r_t")
         configs.append("component-node name={0}.zr_t_pre component={0}.W_zr input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
-        configs.append("component-node name={0}.zr_t component={0}.zr input={0}.zr_t_pre".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.zr_t component={0}.zr input={0}.zr_t_pre".format(name))
 
         configs.append("# hpart_t")
         configs.append("component-node name={0}.hpart_t component={0}.W_hpart input={1}".format(name, input_descriptor))
@@ -734,15 +734,19 @@ class XconfigFastPgruLayer(XconfigLayerBase):
 
         configs.append("# z_t and r_t")
         configs.append("component-node name={0}.zr_t_pre component={0}.W_zr input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
-        configs.append("component-node name={0}.zr_t component={0}.zr input={0}.zr_t_pre".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.zr_t component={0}.zr input={0}.zr_t_pre".format(name))
 
         configs.append("# hpart_t")
         configs.append("component-node name={0}.hpart_t component={0}.W_hpart input={1}".format(name, input_descriptor))
         
         configs.append("# c_t and h_t")
         configs.append("component name={0}.gru_nonlin type=GruNonlinearityComponent cell-dim={1} recurrent-dim={2} {3}".format(name, cell_dim, rec_proj_dim, gru_nonlin_str))
-        configs.append("component-node name={0}.gru_nonlin_t component={0}.gru_nonlin input=Append({0}.zr_t, {0}.hpart_t, IfDefined(Offset({0}.c_t, {2})), IfDefined(Offset({1}, {2})))".format(name, recurrent_connection, delay))
+        configs.append("component-node name={0}.gru_nonlin_t component={0}.gru_nonlin input=Append({0}.zr_t, {0}.hpart_t, IfDefined(Offset({0}.c_trunc, {2})), IfDefined(Offset({1}, {2})))".format(name, recurrent_connection, delay))
         configs.append("dim-range-node name={0}.c_t input-node={0}.gru_nonlin_t dim-offset={1} dim={1}".format(name, cell_dim))
+
+        configs.append("c_trunc")
+        configs.append("component name={0}.c_trunc type=BackpropTruncationComponent dim={1} {2}".format(name, cell_dim, bptrunc_str))
+        configs.append("component-node name={0}.c_trunc component={0}.c_trunc input={0}.c_t".format(name))
 
         configs.append("# the projected matrix W_y and y_t")
         configs.append("component name={0}.W_y type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, cell_dim, rec_proj_dim + nonrec_proj_dim, affine_str))
