@@ -744,7 +744,7 @@ class XconfigFastPgruLayer(XconfigLayerBase):
         configs.append("component-node name={0}.gru_nonlin_t component={0}.gru_nonlin input=Append({0}.zr_t, {0}.hpart_t, IfDefined(Offset({0}.c_trunc, {2})), IfDefined(Offset({1}, {2})))".format(name, recurrent_connection, delay))
         configs.append("dim-range-node name={0}.c_t input-node={0}.gru_nonlin_t dim-offset={1} dim={1}".format(name, cell_dim))
 
-        configs.append("c_trunc")
+        configs.append("# c_trunc")
         configs.append("component name={0}.c_trunc type=BackpropTruncationComponent dim={1} {2}".format(name, cell_dim, bptrunc_str))
         configs.append("component-node name={0}.c_trunc component={0}.c_trunc input={0}.c_t".format(name))
 
