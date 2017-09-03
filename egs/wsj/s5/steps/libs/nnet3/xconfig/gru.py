@@ -1,5 +1,6 @@
 # Copyright 2016    Johns Hopkins University (Dan Povey)
 #           2017    Gaofeng Cheng (UCAS)
+#           2017    Lu Huang (THU)
 # Apache 2.0.
 
 
@@ -411,4 +412,344 @@ class XconfigPgruLayer(XconfigLayerBase):
         configs.append("dim-range-node name={0}.s_t_preclip input-node={0}.sn_t dim-offset=0 dim={1}".format(name, rec_proj_dim))
         configs.append("component-node name={0}.s_t component={0}.s_r input={0}.s_t_preclip".format(name))
 
+        return configs
+
+# This class is for lines like
+#   'fast-gru-layer name=gru1 input=[-1] delay=-3'
+# It generates an GRU sub-graph without output projections.
+# The output dimension of the layer may be specified via 'cell-dim=xxx', but if not specified,
+# the dimension defaults to the same as the input.
+# See other configuration values below.
+# decay-time is deprecated under GRU or PGRU, as I found the PGRUs do not need the decay-time option to get generalized to unseen sequence length
+#
+# Parameters of the class, and their defaults:
+#   input='[-1]'             [Descriptor giving the input of the layer.]
+#   cell-dim=-1              [Dimension of the cell]
+#   delay=-1                 [Delay in the recurrent connections of the GRU/LSTM ]
+#   clipping-threshold=30    [similar to LSTMs ,nnet3 GRUs use a gradient clipping component at the recurrent connections.
+#                             This is the threshold used to decide if clipping has to be activated ]
+#   zeroing-interval=20      [interval at which we (possibly) zero out the recurrent derivatives.]
+#   zeroing-threshold=15     [We only zero out the derivs every zeroing-interval, if derivs exceed this value.]
+#   self-repair-scale-nonlinearity=1e-5      [It is a constant scaling the self-repair vector computed in derived classes of NonlinearComponent]
+#                                       i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent ]
+#   ng-per-element-scale-options=''     [Additional options used for the diagonal matrices in the GRU/LSTM ]
+#   param-stddev-nonlinearity=-1          [param-stddev for GruNonlinearityComponent]
+#   self-repair-threshold-nonlinearity=0.2  [self-repair-threshold for GruNonlinearityComponent]
+#   ng-affine-options=''                [Additional options used for the full matrices in the GRU/LSTM, can be used to do things like set biases to initialize to 1]
+class XconfigFastGruLayer(XconfigLayerBase):
+    def __init__(self, first_token, key_to_value, prev_names = None):
+        assert first_token == "fast-gru-layer"
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def set_default_configs(self):
+        self.config = {'input':'[-1]',
+                        'cell-dim' : -1, # this is a compulsory argument
+                        'clipping-threshold' : 30.0,
+                        'delay' : -1,
+                        'ng-per-element-scale-options' : ' max-change=0.75',
+                        'ng-affine-options' : ' max-change=0.75 ',
+                        'self-repair-scale-nonlinearity' : 0.00001,
+                        'zeroing-interval' : 20,
+                        'zeroing-threshold' : 15.0,
+                        'param-stddev-nonlinearity': -1,
+                        'self-repair-threshold-nonlinearity': 0.2
+                        }
+
+    def set_derived_configs(self):
+        if self.config['cell-dim'] <= 0:
+            self.config['cell-dim'] = self.descriptors['input']['dim']
+
+    def check_configs(self):
+        key = 'cell-dim'
+        if self.config['cell-dim'] <= 0:
+            raise RuntimeError("cell-dim has invalid value {0}.".format(self.config[key]))
+
+        if self.config['delay'] == 0:
+            raise RuntimeError("delay cannot be zero")
+
+        for key in ['self-repair-scale-nonlinearity']:
+            if self.config[key] < 0.0 or self.config[key] > 1.0:
+                raise RuntimeError("{0} has invalid value {1}.".format(key, self.config[key]))
+
+    def output_name(self, auxiliary_output = None):
+        node_name = 'y_t'
+        return '{0}.{1}'.format(self.name, node_name)
+
+    def output_dim(self, auxiliary_output = None):
+        return self.config['cell-dim']
+
+    def get_full_config(self):
+        ans = []
+        config_lines = self.generate_gru_config()
+
+        for line in config_lines:
+            for config_name in ['ref', 'final']:
+                # we do not support user specified matrices in LSTM initialization
+                # so 'ref' and 'final' configs are the same.
+                ans.append((config_name, line))
+        return ans
+
+    # convenience function to generate the LSTM config
+    def generate_gru_config(self):
+
+        # assign some variables to reduce verbosity
+        name = self.name
+        # in the below code we will just call descriptor_strings as descriptors for conciseness
+        input_dim = self.descriptors['input']['dim']
+        input_descriptor = self.descriptors['input']['final-string']
+        cell_dim = self.config['cell-dim']
+        delay = self.config['delay']
+        bptrunc_str = ("clipping-threshold={0}"
+                      " zeroing-threshold={1}"
+                      " zeroing-interval={2}"
+                      " recurrence-interval={3}"
+                      "".format(self.config['clipping-threshold'],
+                                self.config['zeroing-threshold'],
+                                self.config['zeroing-interval'], abs(delay)))
+        repair_nonlin = self.config['self-repair-scale-nonlinearity']
+        repair_nonlin_str = "self-repair-scale={0:.10f}".format(repair_nonlin) if repair_nonlin is not None else ''
+        affine_str = self.config['ng-affine-options']
+
+        # string for GruNonlinearityComponent
+        gru_nonlin_str = ""
+        if self.config['param-stddev-nonlinearity'] != -1:
+            gru_nonlin_str += "param-stddev={0}".format(self.config['param-stddev-nonlinearity'])
+        if self.config['self-repair-threshold-nonlinearity'] != 0.2:
+            gru_nonlin_str += " self-repair-threshold={0}".format(self.config['self-repair-threshold-nonlinearity'])
+        if self.config['self-repair-scale-nonlinearity'] != 0.00001:
+            gru_nonlin_str += " self-repair-scale={0}".format(self.config['self-repair-scale-nonlinearity'])
+        
+        # formulation like:
+        # z = \sigmoid ( x_t * U^z + s_{t-1} * W^z ) // update gate
+        # r = \sigmoid ( x_t * U^r + s_{t-1} * W^r ) // reset gate
+        # h = \tanh ( x_t * U^h + s_{t-1} \dot r * W^h )
+        # y_t(s_t) = ( 1 - z ) \dot h + z \dot s_{t-1}
+
+        # write bias and minus-scale
+
+        configs = []
+        configs.append("# W_zr matrics for z_t and r_t")
+        configs.append("component name={0}.W_zr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + cell_dim, 2*cell_dim, affine_str))
+
+        configs.append("# hpart_t related matrix : W_hpart matrics")
+        configs.append("component name={0}.W_hpart type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim, cell_dim , affine_str))
+        
+        configs.append("# Defining the non-linearities for z_t and r_t")
+        configs.append("component name={0}.zr type=SigmoidComponent dim={1} {2}".format(name, 2*cell_dim, repair_nonlin_str))
+        
+        recurrent_connection = '{0}.s_t'.format(name)
+
+        configs.append("# z_t and r_t")
+        configs.append("component-node name={0}.zr_t_pre component={0}.W_zr input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.zr_t component={0}.zr input={0}.zr_t_pre".format(name, input_descriptor, recurrent_connection, delay))
+
+        configs.append("# hpart_t")
+        configs.append("component-node name={0}.hpart_t component={0}.W_hpart input={1}".format(name, input_descriptor))
+        
+        configs.append("# y_t and h_t")
+        configs.append("component name={0}.gru_nonlin type=GruNonlinearityComponent cell-dim={1} {2}".format(name, cell_dim, gru_nonlin_str))
+        configs.append("component-node name={0}.gru_nonlin_t component={0}.gru_nonlin input=Append({0}.zr_t, {0}.hpart_t, IfDefined(Offset({1}, {2})))".format(name, recurrent_connection, delay))
+        configs.append("dim-range-node name={0}.y_t input-node={0}.gru_nonlin_t dim-offset={1} dim={1}".format(name, cell_dim))
+
+        configs.append("# s_t : recurrence")
+        configs.append("component name={0}.s_r type=BackpropTruncationComponent dim={1} {2}".format(name, cell_dim, bptrunc_str))
+        configs.append("component-node name={0}.s_t component={0}.s_r input={0}.y_t".format(name))
+        return configs
+
+
+# This class is for lines like
+#   'fast-pgru-layer name=pgru1 input=[-1] delay=-3'
+# It generates an PGRU sub-graph with output projections. It can also generate
+# outputs without projection, but you could use the XconfigGruLayer for this
+# simple RNN.
+# The output dimension of the layer may be specified via 'cell-dim=xxx', but if not specified,
+# the dimension defaults to the same as the input.
+# See other configuration values below.
+#
+# Parameters of the class, and their defaults:
+#   input='[-1]'             [Descriptor giving the input of the layer.]
+#   cell-dim=-1            [Dimension of the cell]
+#   recurrent-projection_dim [Dimension of the projection used in recurrent connections, e.g. cell-dim/4]
+#   non-recurrent-projection-dim   [Dimension of the projection in non-recurrent connections,
+#                                   in addition to recurrent-projection-dim, e.g. cell-dim/4]
+#   delay=-1                 [Delay in the recurrent connections of the GRU ]
+#   clipping-threshold=30    [nnet3 GRU use a gradient clipping component at the recurrent connections.
+#                             This is the threshold used to decide if clipping has to be activated ]
+#   zeroing-interval=20      [interval at which we (possibly) zero out the recurrent derivatives.]
+#   zeroing-threshold=15     [We only zero out the derivs every zeroing-interval, if derivs exceed this value.]
+#   self_repair_scale_nonlinearity=1e-5      [It is a constant scaling the self-repair vector computed in derived classes of NonlinearComponent]
+#                                       i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent ]
+#   ng-per-element-scale-options=''   [Additional options used for the diagonal matrices in the GRU ]
+#   param-stddev-nonlinearity=-1          [param-stddev for GruNonlinearityComponent]
+#   self-repair-threshold-nonlinearity=0.2  [self-repair-threshold for GruNonlinearityComponent]
+#   ng-affine-options=''              [Additional options used for the full matrices in the GRU, can be used to do things like set biases to initialize to 1]
+class XconfigFastPgruLayer(XconfigLayerBase):
+    def __init__(self, first_token, key_to_value, prev_names = None):
+        assert first_token == "fast-pgru-layer"
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def set_default_configs(self):
+        self.config = {'input' : '[-1]',
+                        'cell-dim' : -1, # this is a compulsory argument
+                        'recurrent-projection-dim' : -1,  # defaults to cell-dim / 4
+                        'non-recurrent-projection-dim' : -1, # defaults to
+                                                             # recurrent-projection-dim
+                        'clipping-threshold' : 30.0,
+                        'delay' : -1,
+                        'ng-per-element-scale-options' : ' max-change=0.75 ',
+                        'ng-affine-options' : ' max-change=0.75 ',
+                        'self-repair-scale-nonlinearity' : 0.00001,
+                        'zeroing-interval' : 20,
+                        'zeroing-threshold' : 15.0,
+                        'param-stddev-nonlinearity': -1,
+                        'self-repair-threshold-nonlinearity': 0.2
+                       }
+
+    def set_derived_configs(self):
+        if self.config['recurrent-projection-dim'] <= 0:
+            self.config['recurrent-projection-dim'] = self.config['cell-dim'] / 4
+
+        if self.config['non-recurrent-projection-dim'] <= 0:
+            self.config['non-recurrent-projection-dim'] = \
+               self.config['recurrent-projection-dim']
+
+    def check_configs(self):
+        for key in ['cell-dim', 'recurrent-projection-dim',
+                    'non-recurrent-projection-dim']:
+            if self.config[key] <= 0:
+                raise RuntimeError("{0} has invalid value {1}.".format(
+                    key, self.config[key]))
+
+        if self.config['delay'] == 0:
+            raise RuntimeError("delay cannot be zero")
+
+        if (self.config['recurrent-projection-dim'] +
+            self.config['non-recurrent-projection-dim'] >
+            self.config['cell-dim']):
+            raise RuntimeError("recurrent+non-recurrent projection dim exceeds "
+                                "cell dim.")
+        for key in ['self-repair-scale-nonlinearity']:
+            if self.config[key] < 0.0 or self.config[key] > 1.0:
+                raise RuntimeError("{0} has invalid value {2}."
+                                   .format(self.layer_type, key,
+                                           self.config[key]))
+
+    def auxiliary_outputs(self):
+        return ['h_t']
+
+    def output_name(self, auxiliary_output = None):
+        node_name = 'y_t'
+        if auxiliary_output is not None:
+            if auxiliary_output in self.auxiliary_outputs():
+                node_name = auxiliary_output
+            else:
+                raise Exception("In {0} of type {1}, unknown auxiliary output name {1}".format(self.layer_type, auxiliary_output))
+
+        return '{0}.{1}'.format(self.name, node_name)
+
+    def output_dim(self, auxiliary_output = None):
+        if auxiliary_output is not None:
+            if auxiliary_output in self.auxiliary_outputs():
+                if node_name == 'c_t':
+                    return self.config['cell-dim']
+                # add code for other auxiliary_outputs here when we decide to expose them
+            else:
+                raise Exception("In {0} of type {1}, unknown auxiliary output name {1}".format(self.layer_type, auxiliary_output))
+
+        return self.config['recurrent-projection-dim'] + self.config['non-recurrent-projection-dim']
+
+    def get_full_config(self):
+        ans = []
+        config_lines = self.generate_pgru_config()
+
+        for line in config_lines:
+            for config_name in ['ref', 'final']:
+                # we do not support user specified matrices in LSTM initialization
+                # so 'ref' and 'final' configs are the same.
+                ans.append((config_name, line))
+        return ans
+
+    # convenience function to generate the PGRU config
+    def generate_pgru_config(self):
+
+        # assign some variables to reduce verbosity
+        name = self.name
+        # in the below code we will just call descriptor_strings as descriptors for conciseness
+        input_dim = self.descriptors['input']['dim']
+        input_descriptor = self.descriptors['input']['final-string']
+        cell_dim = self.config['cell-dim']
+        rec_proj_dim = self.config['recurrent-projection-dim']
+        nonrec_proj_dim = self.config['non-recurrent-projection-dim']
+        delay = self.config['delay']
+        repair_nonlin = self.config['self-repair-scale-nonlinearity']
+        repair_nonlin_str = "self-repair-scale={0:.10f}".format(repair_nonlin) if repair_nonlin is not None else ''
+        bptrunc_str = ("clipping-threshold={0}"
+                      " zeroing-threshold={1}"
+                      " zeroing-interval={2}"
+                      " recurrence-interval={3}"
+                      "".format(self.config['clipping-threshold'],
+                                self.config['zeroing-threshold'],
+                                self.config['zeroing-interval'],
+                                abs(delay)))
+        affine_str = self.config['ng-affine-options']
+        pes_str = self.config['ng-per-element-scale-options']
+
+        # Natural gradient per element scale parameters
+        # TODO: decide if we want to keep exposing these options
+        if re.search('param-mean', pes_str) is None and \
+           re.search('param-stddev', pes_str) is None:
+           pes_str += " param-mean=0.0 param-stddev=1.0 "
+
+        # string for GruNonlinearityComponent
+        gru_nonlin_str = ""
+        if self.config['param-stddev-nonlinearity'] != -1:
+            gru_nonlin_str += "param-stddev={0}".format(self.config['param-stddev-nonlinearity'])
+        if self.config['self-repair-threshold-nonlinearity'] != 0.2:
+            gru_nonlin_str += " self-repair-threshold={0}".format(self.config['self-repair-threshold-nonlinearity'])
+        if self.config['self-repair-scale-nonlinearity'] != 0.00001:
+            gru_nonlin_str += " self-repair-scale={0}".format(self.config['self-repair-scale-nonlinearity'])
+        
+        
+        # formulation like:
+        # z = \sigmoid ( x_t * U^z + s_{t-1} * W^z ) // update gate
+        # r = \sigmoid ( x_t * U^r + s_{t-1} * W^r ) // reset gate
+        # h = \tanh ( x_t * U^h + s_{t-1} \dot r * W^h )
+        # c_t = ( 1 - z ) \dot h + z \dot y_{t-1}
+        # y_t = c_t * W^s
+        # s_t = y_t(0:rec_proj_dim-1)
+        
+        
+
+        configs = []
+        configs.append("# W_zr matrics for z_t and r_t")
+        configs.append("component name={0}.W_zr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + rec_proj_dim, cell_dim + rec_proj_dim, affine_str))
+
+        configs.append("# hpart_t related matrix : W_hpart matrics")
+        configs.append("component name={0}.W_hpart type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim, cell_dim , affine_str))
+        
+        configs.append("# Defining the non-linearities for z_t and r_t")
+        configs.append("component name={0}.zr type=SigmoidComponent dim={1} {2}".format(name, cell_dim + rec_proj_dim, repair_nonlin_str))
+        
+        recurrent_connection = '{0}.s_t'.format(name)
+
+        configs.append("# z_t and r_t")
+        configs.append("component-node name={0}.zr_t_pre component={0}.W_zr input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.zr_t component={0}.zr input={0}.zr_t_pre".format(name, input_descriptor, recurrent_connection, delay))
+
+        configs.append("# hpart_t")
+        configs.append("component-node name={0}.hpart_t component={0}.W_hpart input={1}".format(name, input_descriptor))
+        
+        configs.append("# c_t and h_t")
+        configs.append("component name={0}.gru_nonlin type=GruNonlinearityComponent cell-dim={1} recurrent-dim={2} {3}".format(name, cell_dim, rec_proj_dim, gru_nonlin_str))
+        configs.append("component-node name={0}.gru_nonlin_t component={0}.gru_nonlin input=Append({0}.zr_t, {0}.hpart_t, IfDefined(Offset({0}.c_t, {2})), IfDefined(Offset({1}, {2})))".format(name, recurrent_connection, delay))
+        configs.append("dim-range-node name={0}.c_t input-node={0}.gru_nonlin_t dim-offset={1} dim={1}".format(name, cell_dim))
+
+        configs.append("# the projected matrix W_y and y_t")
+        configs.append("component name={0}.W_y type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, cell_dim, rec_proj_dim + nonrec_proj_dim, affine_str))
+        configs.append("component-node name={0}.y_t component={0}.W_y input={0}.c_t".format(name))
+
+        configs.append("# s_t : recurrence")
+        configs.append("component name={0}.s_r type=BackpropTruncationComponent dim={1} {2}".format(name, rec_proj_dim, bptrunc_str))
+        configs.append("dim-range-node name={0}.s_t_pre input-node={0}.y_t dim-offset=0 dim={1}".format(name, rec_proj_dim))
+        configs.append("component-node name={0}.s_t component={0}.s_r input={0}.s_t_pre".format(name))
         return configs
