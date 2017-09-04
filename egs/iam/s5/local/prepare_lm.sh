@@ -10,7 +10,7 @@ ngram=2
 . parse_options.sh || exit 1
 
 # This is only called for decoding purposes. This is not necessary for training.
-if [ $# != 3 ]; then
+if [ $# != 2 ]; then
   echo "Usage: $0 [--ngram <n-gram-order>] <lm-src> <out-lang-dir>"
   echo "<lm-src> can either be an ARPA file or transcriptions file, e.g. train/text"
   exit 1;

@@ -11,7 +11,7 @@ gmm=tri2_8states_4sil_10000_500_20000_500_20000        # this is the source gmm-
                 # should have alignments for the specified training data.
 nnet3_affix=_cleaned    # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
-affix=1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=1b_chainali  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 common_egs_dir=
 reporting_email=
 
@@ -50,7 +50,7 @@ fi
 
 gmm_dir=exp/${gmm}
 ali_dir=exp/tri2_ali_8states_4sil_10000_500_20000_500_20000
-lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats
+lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats_chain
 dir=exp/chain${nnet3_affix}/cnn${affix}
 train_data_dir=data/${train_set}
 lores_train_data_dir=$train_data_dir  # for the start, use the same data for gmm and chain
@@ -75,7 +75,7 @@ if [ $stage -le 1 ]; then
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
   if [ -d $lang ]; then
-    if [ $lang/L.fst -nt data/lang_test/L.fst ]; then
+    if [ $lang/L.fst -nt data/lang_test_8states_4sil/L.fst ]; then
       echo "$0: $lang already exists, not overwriting it; continuing"
     else
       echo "$0: $lang already exists and seems to be older than data/lang..."
@@ -83,7 +83,7 @@ if [ $stage -le 1 ]; then
       exit 1;
     fi
   else
-    cp -r data/lang_test $lang
+    cp -r data/lang_test_8states_4sil $lang
     silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
     nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
     # Use our special topology... note that later on may have to tune this
@@ -95,26 +95,25 @@ fi
 if [ $stage -le 2 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" ${lores_train_data_dir} \
-    data/lang_test $gmm_dir $lat_dir
-  rm $lat_dir/fsts.*.gz # save space
+  local/chain/align_nnet3_lats.sh --nj $nj --cmd "$train_cmd" ${lores_train_data_dir} \
+    data/lang_test_8states_4sil $chain_model_dir $lat_dir
 fi
 
-if [ $stage -le 3 ]; then
-  # Build a tree using our new topology.  We know we have alignments for the
-  # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
-  # those.  The num-leaves is always somewhat less than the num-leaves from
-  # the GMM baseline.
-   if [ -f $tree_dir/final.mdl ]; then
-     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
-     exit 1;
-  fi
-  steps/nnet3/chain/build_tree.sh \
-    --frame-subsampling-factor $frame_subsampling_factor \
-    --context-opts "--context-width=2 --central-position=1" \
-    --cmd "$train_cmd" $num_leaves ${lores_train_data_dir} \
-    $lang $ali_dir $tree_dir
-fi
+#if [ $stage -le 3 ]; then
+#  # Build a tree using our new topology.  We know we have alignments for the
+#  # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
+#  # those.  The num-leaves is always somewhat less than the num-leaves from
+#  # the GMM baseline.
+#   if [ -f $tree_dir/final.mdl ]; then
+#     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
+#     exit 1;
+#  fi
+#  steps/nnet3/chain/build_tree.sh \
+#    --frame-subsampling-factor $frame_subsampling_factor \
+#    --context-opts "--context-width=2 --central-position=1" \
+#    --cmd "$train_cmd" $num_leaves ${lores_train_data_dir} \
+#    $lang $ali_dir $tree_dir
+#fi
 
 
 if [ $stage -le 4 ]; then
@@ -177,7 +176,7 @@ if [ $stage -le 5 ]; then
     --chain.apply-deriv-weights=false \
     --chain.lm-opts="--num-extra-lm-states=500" \
     --chain.frame-subsampling-factor=$frame_subsampling_factor \
-    --chain.alignment-subsampling-factor=$frame_subsampling_factor \
+    --chain.alignment-subsampling-factor=$alignment_subsampling_factor \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=4 \
@@ -214,7 +213,7 @@ if [ $stage -le 6 ]; then
   # as long as phones.txt was compatible.
 
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_test \
+    --self-loop-scale 1.0 data/lang_test_8states_4sil \
     $dir $dir/graph || exit 1;
 fi
 

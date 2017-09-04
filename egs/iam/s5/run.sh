@@ -39,116 +39,111 @@ numGaussMLLT=20000
 numLeavesSAT=500
 numGaussSAT=20000
 
-boost_sil=1
-beam=20
-
-lang_other=${num_states}
-mono_other=${lang_other}_${num_gauss}_var_beam${beam}_boost${boost_sil}
-tri_other=${mono_other}_${numLeavesTri}_${numGaussTri}
-tri2_other=${tri_other}_${numLeavesMLLT}_${numGaussMLLT}
-tri3_other=${tri2_other}_${numLeavesSAT}_${numGaussSAT}
+lang_affix=${num_states}
+mono_affix=${lang_affix}_${num_gauss}
+tri_affix=${mono_affix}_${numLeavesTri}_${numGaussTri}
+tri2_affix=${tri_affix}_${numLeavesMLLT}_${numGaussMLLT}
+tri3_affix=${tri2_affix}_${numLeavesSAT}_${numGaussSAT}
 
 if [ $stage -le 2 ]; then
   local/prepare_dict.sh $data_dir/train/ $data_dir/test/ $data_dir/train/dict
   utils/prepare_lang.sh --num-sil-states $numSilStates --num-nonsil-states $numStates --position-dependent-phones false \
-    $data_dir/train/dict "<sil>" $data_dir/lang_${lang_other}/temp $data_dir/lang_${lang_other}
+    $data_dir/train/dict "<sil>" $data_dir/lang/temp $data_dir/lang
 fi
 
 if [ $stage -le 3 ]; then
-  cp -R $data_dir/lang_${lang_other} -T $data_dir/lang_test_${lang_other}
+  cp -R $data_dir/lang -T $data_dir/lang_test
 
   local/add_test_data_to_train.py $data_dir/train/ $data_dir/test/ $data_dir/train/
-  local/prepare_lm.sh --grammar-words false $data_dir/train/train_test $data_dir/lang_test_${lang_other} --ngram 2 || exit 1;
+  local/prepare_lm.sh $data_dir/train/train_test $data_dir/lang_test || exit 1;
 fi
 
 if [ $stage -le 4 ]; then
   steps/train_mono.sh --nj $nj \
-    --boost-silence $boost_sil \
     $data_dir/train \
-    $data_dir/lang_${lang_other} \
-    $exp_dir/mono_${mono_other}
+    $data_dir/lang \
+    $exp_dir/mono_${mono_affix}
 fi
 
 if [ $stage -le 5 ]; then
-  utils/mkgraph.sh --mono $data_dir/lang_test_${lang_other} \
-    $exp_dir/mono_${mono_other} \
-    $exp_dir/mono_${mono_other}/graph
+  utils/mkgraph.sh --mono $data_dir/lang_test \
+    $exp_dir/mono_${mono_affix} \
+    $exp_dir/mono_${mono_affix}/graph
   steps/decode.sh --nj $nj --cmd $cmd \
-    $exp_dir/mono_${mono_other}/graph \
+    $exp_dir/mono_${mono_affix}/graph \
     $data_dir/test \
-    $exp_dir/mono_${mono_other}/decode_test
+    $exp_dir/mono_${mono_affix}/decode_test
 fi
 
 if [ $stage -le 6 ]; then
   steps/align_si.sh --nj $nj \
-    $data_dir/train $data_dir/lang_${lang_other} \
-    $exp_dir/mono_${mono_other} \
-    $exp_dir/mono_ali_${mono_other}
+    $data_dir/train $data_dir/lang \
+    $exp_dir/mono_${mono_affix} \
+    $exp_dir/mono_ali_${mono_affix}
   steps/train_deltas.sh \
-    --boost-silence $boost_sil \
-    $numLeavesTri $numGaussTri $data_dir/train $data_dir/lang_${lang_other} \
-    $exp_dir/mono_ali_${mono_other} \
-    $exp_dir/tri_${tri_other}
+    $numLeavesTri $numGaussTri $data_dir/train $data_dir/lang \
+    $exp_dir/mono_ali_${mono_affix} \
+    $exp_dir/tri_${tri_affix}
 fi
 
 if [ $stage -le 7 ]; then
-  utils/mkgraph.sh $data_dir/lang_test_${lang_other} \
-    $exp_dir/tri_${tri_other} \
-    $exp_dir/tri_${tri_other}/graph
+  utils/mkgraph.sh $data_dir/lang_test \
+    $exp_dir/tri_${tri_affix} \
+    $exp_dir/tri_${tri_affix}/graph
   steps/decode.sh --nj $nj --cmd $cmd \
-    $exp_dir/tri_${tri_other}/graph \
+    $exp_dir/tri_${tri_affix}/graph \
     $data_dir/test \
-    $exp_dir/tri_${tri_other}/decode_test
+    $exp_dir/tri_${tri_affix}/decode_test
 fi
 
 if [ $stage -le 8 ]; then
   steps/align_si.sh --nj $nj --cmd $cmd \
-    $data_dir/train $data_dir/lang_${lang_other} \
-    $exp_dir/mono_${mono_other} \
-    $exp_dir/mono_ali_${mono_other}
+    $data_dir/train $data_dir/lang \
+    $exp_dir/mono_${mono_affix} \
+    $exp_dir/mono_ali_${mono_affix}
   steps/train_lda_mllt.sh --cmd $cmd \
     --splice-opts "--left-context=3 --right-context=3" \
     $numLeavesMLLT $numGaussMLLT \
-    $data_dir/train $data_dir/lang_${lang_other} \
-    $exp_dir/mono_ali_${mono_other} $exp_dir/tri2_${tri2_other}
+    $data_dir/train $data_dir/lang \
+    $exp_dir/mono_ali_${mono_affix} $exp_dir/tri2_${tri2_affix}
 fi
 
-if [ $stage -le 0 ]; then
-  utils/mkgraph.sh $data_dir/lang_test_${lang_other} \
-    $exp_dir/tri2_${tri2_other} \
-    $exp_dir/tri2_${tri2_other}/graph
+if [ $stage -le 9 ]; then
+  utils/mkgraph.sh $data_dir/lang_test \
+    $exp_dir/tri2_${tri2_affix} \
+    $exp_dir/tri2_${tri2_affix}/graph
   steps/decode.sh --nj $nj --cmd $cmd \
-    $exp_dir/tri2_${tri2_other}/graph \
+    $exp_dir/tri2_${tri2_affix}/graph \
     $data_dir/test \
-    $exp_dir/tri2_${tri2_other}/decode_test
+    $exp_dir/tri2_${tri2_affix}/decode_test
 fi
 
 if [ $stage -le 10 ]; then
   steps/align_fmllr.sh --nj $nj --cmd $cmd \
     --use-graphs true \
-    $data_dir/train $data_dir/lang_${lang_other} \
-    $exp_dir/tri2_${tri2_other} \
-    $exp_dir/tri2_ali_${tri2_other}
+    $data_dir/train $data_dir/lang \
+    $exp_dir/tri2_${tri2_affix} \
+    $exp_dir/tri2_ali_${tri2_affix}
   steps/train_sat.sh --cmd $cmd \
     $numLeavesSAT $numGaussSAT \
-    $data_dir/train $data_dir/lang_${lang_other} \
-    $exp_dir/tri2_ali_${tri2_other} $exp_dir/tri3_${tri3_other}
+    $data_dir/train $data_dir/lang \
+    $exp_dir/tri2_ali_${tri2_affix} $exp_dir/tri3_${tri3_affix}
 fi
 
 if [ $stage -le 11 ]; then
-  utils/mkgraph.sh $data_dir/lang_test_${lang_other} \
-    $exp_dir/tri3_${tri3_other} \
-    $exp_dir/tri3_${tri3_other}/graph
+  utils/mkgraph.sh $data_dir/lang_test \
+    $exp_dir/tri3_${tri3_affix} \
+    $exp_dir/tri3_${tri3_affix}/graph
   steps/decode_fmllr.sh --nj $nj --cmd $cmd \
-    $exp_dir/tri3_${tri3_other}/graph \
+    $exp_dir/tri3_${tri3_affix}/graph \
     $data_dir/test \
-    $exp_dir/tri3_${tri3_other}/decode_test
+    $exp_dir/tri3_${tri3_affix}/decode_test
 fi
 
 if [ $stage -le 12 ]; then
-  steps/align_si.sh --nj $nj --cmd $cmd \
+  steps/align_fmllr.sh --nj $nj --cmd $cmd \
     --use-graphs true \
-    $data_dir/train $data_dir/lang_${lang_other} \
-    $exp_dir/tri2_${tri2_other} \
-    $exp_dir/tri2_ali_${tri2_other}
+    $data_dir/train $data_dir/lang \
+    $exp_dir/tri3_${tri2_affix} \
+    $exp_dir/tri3_ali_${tri2_affix}
 fi

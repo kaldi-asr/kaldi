@@ -1,8 +1,4 @@
 #!/bin/bash
-
-# copyright 2017 Johns Hopkins University (Ashish Arora)
-# Apache 2.0
-
 # This script loads the IAM handwritten dataset
 
 stage=0
@@ -16,14 +12,12 @@ if [ -f path.sh ]; then . ./path.sh; fi
 #download dir
 dl_dir=data/download
 lines=$dl_dir/lines
-#lines=$dl_dir/words
 xml=$dl_dir/xml
 ascii=$dl_dir/ascii
-dataSplitInfo=$dl_dir/largeWriterIndependentTextLineRecognitionTask
+data_split_info=$dl_dir/largeWriterIndependentTextLineRecognitionTask
 lines_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/lines/lines.tgz
-#lines_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/words/words.tgz
 xml_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/xml/xml.tgz
-dataSplitInfo_url=http://www.fki.inf.unibe.ch/DBs/iamDB/tasks/largeWriterIndependentTextLineRecognitionTask.zip
+data_split_info_url=http://www.fki.inf.unibe.ch/DBs/iamDB/tasks/largeWriterIndependentTextLineRecognitionTask.zip
 ascii_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/ascii/ascii.tgz
 mkdir -p $dl_dir
 #download and extact images and transcription
@@ -51,15 +45,15 @@ else
   echo Done downloading and extracting transcription
 fi
 
-if [ -d $dataSplitInfo ]; then
+if [ -d $data_split_info ]; then
   echo Not downloading data split, training and testing split, information as it is already there.
 else
   if [ ! -f $dl_dir/largeWriterIndependentTextLineRecognitionTask.zip ]; then
     echo Downloading training and testing data Split Information ...
-    wget -P $dl_dir --user userjh --password password $dataSplitInfo_url || exit 1;
+    wget -P $dl_dir --user userjh --password password $data_split_info_url || exit 1;
   fi
-  mkdir -p $dataSplitInfo
-  unzip $dl_dir/largeWriterIndependentTextLineRecognitionTask.zip -d $dataSplitInfo || exit 1;
+  mkdir -p $data_split_info
+  unzip $dl_dir/largeWriterIndependentTextLineRecognitionTask.zip -d $data_split_info || exit 1;
   echo Done downloading and extracting training and testing data Split Information
 fi
 

@@ -47,10 +47,6 @@ def process_text_file_for_word_model():
       line_vect = line.split(' ')
       text_vect = line.split(' ')[8:]
       text = "".join(text_vect)
-      #text = text.replace("|", " ")
-      #spaced_text = " " + text
-      #spaced_text = spaced_text + " " 
-      #text_dict[line_vect[0]] = spaced_text
       text = text.replace("|", " ")
       text_dict[line_vect[0]] = text
 
