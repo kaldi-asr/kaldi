@@ -433,8 +433,7 @@ class XconfigPgruLayer(XconfigLayerBase):
 #   self-repair-scale-nonlinearity=1e-5      [It is a constant scaling the self-repair vector computed in derived classes of NonlinearComponent]
 #                                       i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent ]
 #   ng-per-element-scale-options=''     [Additional options used for the diagonal matrices in the GRU/LSTM ]
-#   param-stddev-nonlinearity=-1          [param-stddev for GruNonlinearityComponent]
-#   self-repair-threshold-nonlinearity=0.2  [self-repair-threshold for GruNonlinearityComponent]
+#   gru-nonlinearity-options=' max-change=0.75' [options for GruNonlinearityComponent, see below for detail]
 #   ng-affine-options=''                [Additional options used for the full matrices in the GRU/LSTM, can be used to do things like set biases to initialize to 1]
 class XconfigFastGruLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
@@ -447,12 +446,16 @@ class XconfigFastGruLayer(XconfigLayerBase):
                         'clipping-threshold' : 30.0,
                         'delay' : -1,
                         'ng-per-element-scale-options' : ' max-change=0.75',
-                        'ng-affine-options' : ' max-change=0.75 ',
+                        'ng-affine-options' : ' max-change=1.0 ',
                         'self-repair-scale-nonlinearity' : 0.00001,
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,
-                        'param-stddev-nonlinearity': -1,
-                        'self-repair-threshold-nonlinearity': 0.2
+                        # if you want to set 'self-repair-scale', ' self-repair-threshold'
+                        # or 'param-stddev' for GruNonlinearityComponent
+                        # For default, they are 1.0e-05, 0.2 and  1.0 / sqrt(d) where d is cell-dim.
+                        # you can add somethig like 'self-repair-scale=xxx' to gru-nonlinearity-options.
+                        # you can also see src/nnet3/nnet-special-component.h for detail
+                        'gru-nonlinearity-options' : ' max-change=0.75'
                         }
 
     def set_derived_configs(self):
@@ -511,13 +514,7 @@ class XconfigFastGruLayer(XconfigLayerBase):
         affine_str = self.config['ng-affine-options']
 
         # string for GruNonlinearityComponent
-        gru_nonlin_str = ""
-        if self.config['param-stddev-nonlinearity'] != -1:
-            gru_nonlin_str += "param-stddev={0}".format(self.config['param-stddev-nonlinearity'])
-        if self.config['self-repair-threshold-nonlinearity'] != 0.2:
-            gru_nonlin_str += " self-repair-threshold={0}".format(self.config['self-repair-threshold-nonlinearity'])
-        if self.config['self-repair-scale-nonlinearity'] != 0.00001:
-            gru_nonlin_str += " self-repair-scale={0}".format(self.config['self-repair-scale-nonlinearity'])
+        gru_nonlin_str = self.config['gru-nonlinearity-options']
         
         # formulation like:
         # z = \sigmoid ( x_t * U^z + s_{t-1} * W^z ) // update gate
@@ -580,8 +577,7 @@ class XconfigFastGruLayer(XconfigLayerBase):
 #   self_repair_scale_nonlinearity=1e-5      [It is a constant scaling the self-repair vector computed in derived classes of NonlinearComponent]
 #                                       i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent ]
 #   ng-per-element-scale-options=''   [Additional options used for the diagonal matrices in the GRU ]
-#   param-stddev-nonlinearity=-1          [param-stddev for GruNonlinearityComponent]
-#   self-repair-threshold-nonlinearity=0.2  [self-repair-threshold for GruNonlinearityComponent]
+#   gru-nonlinearity-options=' max-change=0.75' [options for GruNonlinearityComponent, see below for detail]
 #   ng-affine-options=''              [Additional options used for the full matrices in the GRU, can be used to do things like set biases to initialize to 1]
 class XconfigFastPgruLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
@@ -597,12 +593,16 @@ class XconfigFastPgruLayer(XconfigLayerBase):
                         'clipping-threshold' : 30.0,
                         'delay' : -1,
                         'ng-per-element-scale-options' : ' max-change=0.75 ',
-                        'ng-affine-options' : ' max-change=0.75 ',
+                        'ng-affine-options' : ' max-change=1.0 ',
                         'self-repair-scale-nonlinearity' : 0.00001,
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,
-                        'param-stddev-nonlinearity': -1,
-                        'self-repair-threshold-nonlinearity': 0.2
+                        # if you want to set 'self-repair-scale', ' self-repair-threshold'
+                        # or 'param-stddev' for GruNonlinearityComponent
+                        # For default, they are 1.0e-05, 0.2 and  1.0 / sqrt(d) where d is cell-dim.
+                        # you can add somethig like 'self-repair-scale=xxx' to gru-nonlinearity-options.
+                        # you can also see src/nnet3/nnet-special-component.h for detail
+                        'gru-nonlinearity-options' : ' max-change=0.75'
                        }
 
     def set_derived_configs(self):
@@ -701,14 +701,7 @@ class XconfigFastPgruLayer(XconfigLayerBase):
            pes_str += " param-mean=0.0 param-stddev=1.0 "
 
         # string for GruNonlinearityComponent
-        gru_nonlin_str = ""
-        if self.config['param-stddev-nonlinearity'] != -1:
-            gru_nonlin_str += "param-stddev={0}".format(self.config['param-stddev-nonlinearity'])
-        if self.config['self-repair-threshold-nonlinearity'] != 0.2:
-            gru_nonlin_str += " self-repair-threshold={0}".format(self.config['self-repair-threshold-nonlinearity'])
-        if self.config['self-repair-scale-nonlinearity'] != 0.00001:
-            gru_nonlin_str += " self-repair-scale={0}".format(self.config['self-repair-scale-nonlinearity'])
-        
+        gru_nonlin_str = self.config['gru-nonlinearity-options']
         
         # formulation like:
         # z = \sigmoid ( x_t * U^z + s_{t-1} * W^z ) // update gate
@@ -718,8 +711,6 @@ class XconfigFastPgruLayer(XconfigLayerBase):
         # y_t = c_t * W^s
         # s_t = y_t(0:rec_proj_dim-1)
         
-        
-
         configs = []
         configs.append("# W_zr matrics for z_t and r_t")
         configs.append("component name={0}.W_zr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + rec_proj_dim, cell_dim + rec_proj_dim, affine_str))
@@ -741,12 +732,8 @@ class XconfigFastPgruLayer(XconfigLayerBase):
         
         configs.append("# c_t and h_t")
         configs.append("component name={0}.gru_nonlin type=GruNonlinearityComponent cell-dim={1} recurrent-dim={2} {3}".format(name, cell_dim, rec_proj_dim, gru_nonlin_str))
-        configs.append("component-node name={0}.gru_nonlin_t component={0}.gru_nonlin input=Append({0}.zr_t, {0}.hpart_t, IfDefined(Offset({0}.c_trunc, {2})), IfDefined(Offset({1}, {2})))".format(name, recurrent_connection, delay))
+        configs.append("component-node name={0}.gru_nonlin_t component={0}.gru_nonlin input=Append({0}.zr_t, {0}.hpart_t, IfDefined(Offset({0}.c_t, {2})), IfDefined(Offset({1}, {2})))".format(name, recurrent_connection, delay))
         configs.append("dim-range-node name={0}.c_t input-node={0}.gru_nonlin_t dim-offset={1} dim={1}".format(name, cell_dim))
-
-        configs.append("# c_trunc")
-        configs.append("component name={0}.c_trunc type=BackpropTruncationComponent dim={1} {2}".format(name, cell_dim, bptrunc_str))
-        configs.append("component-node name={0}.c_trunc component={0}.c_trunc input={0}.c_t".format(name))
 
         configs.append("# the projected matrix W_y and y_t")
         configs.append("component name={0}.W_y type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, cell_dim, rec_proj_dim + nonrec_proj_dim, affine_str))
