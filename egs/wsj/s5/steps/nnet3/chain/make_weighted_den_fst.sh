@@ -36,7 +36,7 @@ weights= # comma-separated list of positive int valued scale weights used
          # i.e. "1,10"
          # If not specified, weight '1' is used for all phone sequences.
 
-lm_opts='num_extra_lm_state=2000'
+lm_opts='--num-extra-lm-states=2000'
 #end configuration section.
 
 
