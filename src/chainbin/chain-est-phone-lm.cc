@@ -39,52 +39,31 @@ int main(int argc, char *argv[]) {
         " chain-est-phone-lm --leftmost-context-questions=dir/leftmost_questions.txt ark:- dir/phone_G.fst\n";
 
     bool binary_write = true;
-    std::string scales_str;
-
     LanguageModelOptions lm_opts;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("scales", &scales_str, "Comma-separated list of scales "
-                "for the different sources of phone sequences");
     lm_opts.Register(&po);
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 2) {
+    if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
 
-    int32 num_sources = po.NumArgs() - 1;
+    std::string phone_seqs_rspecifier = po.GetArg(1),
+        lm_fst_wxfilename = po.GetArg(2);
 
-    std::string lm_fst_wxfilename = po.GetArg(po.NumArgs());
-
-    std::vector<int32> scales(num_sources, 1);
-    if (!scales_str.empty()) {
-      std::vector<std::string> parts;
-      SplitStringToVector(scales_str, ":,", false, &parts);
-      if (parts.size() != num_sources) {
-        KALDI_ERR << "--scales must have exactly num-sources = " 
-                  << num_sources << " scales.";
-      }
-      for (size_t i = 0; i < parts.size(); i++) {
-        scales[i] = std::atoi(parts[i].c_str());
-      }
-    }
 
     LanguageModelEstimator lm_estimator(lm_opts);
 
-    for (int32 n = 1; n <= num_sources; n++) {
-      std::string phone_seqs_rspecifier = po.GetArg(n);
-      SequentialInt32VectorReader phones_reader(phone_seqs_rspecifier);
-      KALDI_LOG << "Reading phone sequences";
-      for (; !phones_reader.Done(); phones_reader.Next()) {
-        const std::vector<int32> &phone_seq = phones_reader.Value();
-        lm_estimator.AddCounts(phone_seq, scales[n-1]);
-      }
+    SequentialInt32VectorReader phones_reader(phone_seqs_rspecifier);
+    KALDI_LOG << "Reading phone sequences";
+    for (; !phones_reader.Done(); phones_reader.Next()) {
+      const std::vector<int32> &phone_seq = phones_reader.Value();
+      lm_estimator.AddCounts(phone_seq);
     }
-
     KALDI_LOG << "Estimating phone LM";
     fst::StdVectorFst fst;
     lm_estimator.Estimate(&fst);

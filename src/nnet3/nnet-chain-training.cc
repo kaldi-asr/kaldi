@@ -55,30 +55,6 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
                     "Probably this is the first training iteration.";
     }
   }
-
-  if (!opts.chain_config.silence_pdfs_str.empty()) {
-    std::vector<std::string> silence_pdfs;
-    SplitStringToVector(opts.chain_config.silence_pdfs_str, ":,", false, 
-                        &silence_pdfs);
-
-    int32 num_pdfs = nnet->OutputDim("output");
-    std::vector<int32> indices(num_pdfs);
-    for (size_t i = 0; i < num_pdfs; i++) {
-      indices[i] = i;
-    }
-    
-    for (std::vector<std::string>::iterator it = silence_pdfs.begin();
-         it != silence_pdfs.end(); ++it) {
-      int32 pdf = std::atoi(it->c_str());
-      if (pdf > num_pdfs) 
-        KALDI_ERR << "Invalid pdf " << pdf << " in silence-pdfs "
-                  << opts.chain_config.silence_pdfs_str;
-      indices[pdf] = -1;
-    }
-
-    sil_indices_.Resize(num_pdfs);
-    sil_indices_.CopyFromVec(indices);
-  }
 }
 
 
@@ -202,23 +178,13 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
       xent_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
                         kUndefined);
 
-    BaseFloat tot_objf, tot_mmi_objf, tot_l2_term, tot_weight;
+    BaseFloat tot_objf, tot_l2_term, tot_weight;
 
-    if (opts_.chain_config.use_smbr_objective) {
-      ComputeChainSmbrObjfAndDeriv(opts_.chain_config, den_graph_,
-                                   sup.supervision, nnet_output,
-                                   &tot_objf, &tot_mmi_objf, 
-                                   &tot_l2_term, &tot_weight,
-                                   &nnet_output_deriv,
-                                   (use_xent ? &xent_deriv : NULL),
-                                   sil_indices_.Dim() ? &sil_indices_ : NULL);
-    } else {
-      ComputeChainObjfAndDeriv(opts_.chain_config, den_graph_,
-                               sup.supervision, nnet_output,
-                               &tot_objf, &tot_l2_term, &tot_weight,
-                               &nnet_output_deriv,
-                               (use_xent ? &xent_deriv : NULL));
-    }
+    ComputeChainObjfAndDeriv(opts_.chain_config, den_graph_,
+                             sup.supervision, nnet_output,
+                             &tot_objf, &tot_l2_term, &tot_weight,
+                             &nnet_output_deriv,
+                             (use_xent ? &xent_deriv : NULL));
 
     if (use_xent) {
       // this block computes the cross-entropy objective.
@@ -240,34 +206,15 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
         xent_deriv.MulRowsVec(cu_deriv_weights);
     }
 
-    if (opts_.accumulate_avg_deriv && 
-        objf_info_[sup.name + suffix].deriv_sum.Dim() == 0)
-      objf_info_[sup.name + suffix].deriv_sum.Resize(nnet_output.NumCols());
-
-    if (objf_info_[sup.name + suffix].deriv_sum.Dim() > 0)
-      objf_info_[sup.name + suffix].deriv_sum.AddRowSumMat(
-          1.0, nnet_output_deriv, 1.0);
-
     computer->AcceptInput(sup.name, &nnet_output_deriv);
-
-    std::vector<double> objective_values;
-    objective_values.push_back(tot_l2_term);
-    if (opts_.chain_config.use_smbr_objective)
-      objective_values.push_back(tot_mmi_objf);
 
     objf_info_[sup.name + suffix].UpdateStats(sup.name + suffix,
                                      opts_.nnet_config.print_interval,
                                      num_minibatches_processed_,
-                                     tot_weight, tot_objf, objective_values);
+                                     tot_weight, tot_objf, tot_l2_term);
 
     if (use_xent) {
       xent_deriv.Scale(opts_.chain_config.xent_regularize);
-      if (opts_.accumulate_avg_deriv && 
-          objf_info_[xent_name + suffix].deriv_sum.Dim() == 0)
-        objf_info_[xent_name + suffix].deriv_sum.Resize(nnet_output.NumCols());
-      if (objf_info_[xent_name + suffix].deriv_sum.Dim() > 0)
-        objf_info_[xent_name + suffix].deriv_sum.AddRowSumMat(
-            1.0, xent_deriv, 1.0);
       computer->AcceptInput(xent_name, &xent_deriv);
     }
   }
@@ -281,7 +228,6 @@ bool NnetChainTrainer::PrintTotalStats() const {
   for (; iter != end; ++iter) {
     const std::string &name = iter->first;
     const ObjectiveFunctionInfo &info = iter->second;
-    
     ans = info.PrintTotalStats(name) || ans;
   }
   PrintMaxChangeStats();

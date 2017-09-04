@@ -675,9 +675,6 @@ void cudaF_vec_min(int Gr, int Bl, const float* v, float* value, int dim,
 void cudaD_vec_mul_elements(int Gr, int Bl, double* v, const double* a,
                             int dim);
 void cudaF_vec_mul_elements(int Gr, int Bl, float* v, const float* a, int dim);
-void cudaD_vec_div_elements(int Gr, int Bl, double* v, const double* a,
-                            int dim);
-void cudaF_vec_div_elements(int Gr, int Bl, float* v, const float* a, int dim);
 void cudaD_vec_soft_max(int Gr, int Bl, double* v, int dim);
 void cudaF_vec_soft_max(int Gr, int Bl, float* v, int dim);
 void cudaD_vec_sum(int Gr, int Bl, double* v, double* value, int dim, int inc);

@@ -8,10 +8,9 @@ LDLIBS += $(CUDA_LDLIBS)
 TESTFILES = chain-supervision-test language-model-test
 
 OBJFILES = chain-supervision.o chain-numerator.o chain-den-graph.o \
-          language-model.o chain-denominator.o chain-training.o \
-					chain-denominator-smbr.o
+          language-model.o chain-denominator.o chain-training.o
 ifeq ($(CUDA), true)
-  OBJFILES += chain-kernels.o chain-smbr-kernels.o
+  OBJFILES += chain-kernels.o
 endif
 
 LIBNAME = kaldi-chain

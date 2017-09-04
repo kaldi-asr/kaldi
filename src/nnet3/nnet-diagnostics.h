@@ -51,6 +51,7 @@ struct PerDimObjectiveInfo: public SimpleObjectiveInfo {
   Vector<BaseFloat> tot_objective_vec;
 };
 
+
 struct NnetComputeProbOptions {
   bool debug_computation;
   bool compute_deriv;

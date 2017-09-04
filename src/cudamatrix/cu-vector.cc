@@ -767,25 +767,6 @@ void CuVectorBase<Real>::MulElements(const CuVectorBase<Real> &v) {
   }
 }
 
-template<typename Real>
-void CuVectorBase<Real>::DivElements(const CuVectorBase<Real> &v) {
-  KALDI_ASSERT(dim_ == v.dim_);
-#if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
-    if (dim_ == 0) return;
-    CuTimer tim;
-    int dimBlock(CU1DBLOCK);
-    int dimGrid(n_blocks(dim_, CU1DBLOCK));
-    cuda_vec_div_elements(dimGrid, dimBlock, data_, v.Data(), dim_);
-    CU_SAFE_CALL(cudaGetLastError());
-    CuDevice::Instantiate().AccuProfile("CuVectorBase::DivElements", tim);
-  } else
-#endif
-  {
-    Vec().DivElements(v.Vec());
-  }
-}
-
 template<>
 template<>
 void CuVectorBase<double>::CopyFromVec(const CuVectorBase<float> &src) {

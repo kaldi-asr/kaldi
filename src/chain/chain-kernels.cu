@@ -169,7 +169,7 @@ static void _cuda_chain_hmm_forward(const Int32Pair *backward_transitions,
   // range.  This won't affect the posteriors, as it's just a constant factor
   // for each frame, but when computing the total likelihood we'll need to
   // compensate for it later on.
-  BaseFloat arbitrary_scale = 
+  BaseFloat arbitrary_scale =
       1.0 / prev_alpha[num_hmm_states * num_sequences + s];
   this_alpha[h * num_sequences + s] = this_tot_alpha * arbitrary_scale;
 }
@@ -256,7 +256,6 @@ static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
 }
 
 
-
 void cuda_chain_hmm_forward(dim3 Gr, dim3 Bl,
                             const Int32Pair *backward_transitions,
                             const DenominatorGraphTransition *transitions,
@@ -288,4 +287,3 @@ void cuda_chain_hmm_backward(dim3 Gr, dim3 Bl,
                                       this_beta, log_prob_deriv,
                                       log_prob_deriv_stride);
 }
-

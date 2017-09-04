@@ -504,9 +504,8 @@ double NnetChainCombiner::ComputeObjfAndDerivFromNnet(
   prob_computer_->Reset();
   std::vector<NnetChainExample>::const_iterator iter = egs_.begin(),
                                                 end = egs_.end();
-  for (; iter != end; ++iter) {
+  for (; iter != end; ++iter)
     prob_computer_->Compute(*iter);
-  }
 
   std::pair<BaseFloat, BaseFloat> p = prob_computer_->GetTotalObjective();
   BaseFloat tot_objf = p.first, tot_weight = p.second;

@@ -44,30 +44,6 @@ NnetChainComputeProb::NnetChainComputeProb(
     KALDI_ERR << "If you set store_component_stats == true and "
               << "compute_deriv == false, use the other constructor.";
   }
-
-  if (!chain_config.silence_pdfs_str.empty()) {
-    std::vector<std::string> silence_pdfs;
-    SplitStringToVector(chain_config.silence_pdfs_str, ":,", false, 
-                        &silence_pdfs);
-
-    int32 num_pdfs = nnet.OutputDim("output");
-    std::vector<int32> indices(num_pdfs);
-    for (size_t i = 0; i < num_pdfs; i++) {
-      indices[i] = i;
-    }
-    
-    for (std::vector<std::string>::iterator it = silence_pdfs.begin();
-         it != silence_pdfs.end(); ++it) {
-      int32 pdf = std::atoi(it->c_str());
-      if (pdf > num_pdfs) 
-        KALDI_ERR << "Invalid pdf " << pdf << " in silence-pdfs "
-                  << chain_config.silence_pdfs_str;
-      indices[pdf] = -1;
-    }
-
-    sil_indices_.Resize(num_pdfs);
-    sil_indices_.CopyFromVec(indices);
-  }
 }
 
 
@@ -86,30 +62,6 @@ NnetChainComputeProb::NnetChainComputeProb(
     num_minibatches_processed_(0) {
   KALDI_ASSERT(den_graph_.NumPdfs() > 0);
   KALDI_ASSERT(nnet_config.store_component_stats && !nnet_config.compute_deriv);
-
-  if (!chain_config.silence_pdfs_str.empty()) {
-    std::vector<std::string> silence_pdfs;
-    SplitStringToVector(chain_config.silence_pdfs_str, ":,", false, 
-                        &silence_pdfs);
-
-    int32 num_pdfs = nnet->OutputDim("output");
-    std::vector<int32> indices(num_pdfs);
-    for (size_t i = 0; i < num_pdfs; i++) {
-      indices[i] = i;
-    }
-    
-    for (std::vector<std::string>::iterator it = silence_pdfs.begin();
-         it != silence_pdfs.end(); ++it) {
-      int32 pdf = std::atoi(it->c_str());
-      if (pdf > num_pdfs) 
-        KALDI_ERR << "Invalid pdf " << pdf << " in silence-pdfs "
-                  << chain_config.silence_pdfs_str;
-      indices[pdf] = -1;
-    }
-
-    sil_indices_.Resize(num_pdfs);
-    sil_indices_.CopyFromVec(indices);
-  }
 }
 
 
@@ -184,22 +136,13 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
       xent_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
                         kUndefined);
 
-    BaseFloat tot_like, tot_mmi_objf, tot_l2_term, tot_weight;
+    BaseFloat tot_like, tot_l2_term, tot_weight;
 
-    if (chain_config_.use_smbr_objective)
-      ComputeChainSmbrObjfAndDeriv(
-          chain_config_, den_graph_,
-          sup.supervision, nnet_output,
-          &tot_like, &tot_mmi_objf, &tot_l2_term, &tot_weight,
-          (nnet_config_.compute_deriv ? &nnet_output_deriv :
-           NULL), (use_xent ? &xent_deriv : NULL),
-          sil_indices_.Dim() ? &sil_indices_ : NULL);
-    else
-      ComputeChainObjfAndDeriv(chain_config_, den_graph_,
-                               sup.supervision, nnet_output,
-                               &tot_like, &tot_l2_term, &tot_weight,
-                               (nnet_config_.compute_deriv ? &nnet_output_deriv :
-                                NULL), (use_xent ? &xent_deriv : NULL));
+    ComputeChainObjfAndDeriv(chain_config_, den_graph_,
+                             sup.supervision, nnet_output,
+                             &tot_like, &tot_l2_term, &tot_weight,
+                             (nnet_config_.compute_deriv ? &nnet_output_deriv :
+                              NULL), (use_xent ? &xent_deriv : NULL));
 
     // note: in this context we don't want to apply 'sup.deriv_weights' because
     // this code is used only in combination, where it's part of an L-BFGS
@@ -209,15 +152,10 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
     // and conjugate gradient descent both rely on the derivatives being
     // accurate, and don't fail gracefully if the derivatives are not accurate).
 
-    std::vector<double> aux_objfs;
-    aux_objfs.push_back(tot_l2_term);
-    if (chain_config_.use_smbr_objective)
-      aux_objfs.push_back(tot_mmi_objf);
-    
     ChainObjectiveInfo &totals = objf_info_[sup.name];
     totals.tot_weight += tot_weight;
     totals.tot_like += tot_like;
-    totals.tot_aux_objfs.Add(aux_objfs);
+    totals.tot_l2_term += tot_l2_term;
 
     if (nnet_config_.compute_deriv)
       computer->AcceptInput(sup.name, &nnet_output_deriv);
@@ -249,13 +187,10 @@ bool NnetChainComputeProb::PrintTotalStats() const {
     int32 node_index = nnet_.GetNodeIndex(name);
     KALDI_ASSERT(node_index >= 0);
     const ChainObjectiveInfo &info = iter->second;
-    BaseFloat like = (info.tot_like / info.tot_weight);
-
-    ObjectiveValues aux_objfs(info.tot_aux_objfs);
-    aux_objfs.Scale(1.0 / info.tot_weight);
-    BaseFloat tot_objf = like + aux_objfs.Sum();
-        
-    if (info.tot_aux_objfs.IsZero()) {
+    BaseFloat like = (info.tot_like / info.tot_weight),
+        l2_term = (info.tot_l2_term / info.tot_weight),
+        tot_objf = like + l2_term;
+    if (info.tot_l2_term == 0.0) {
       KALDI_LOG << "Overall log-probability for '"
                 << name << "' is "
                 << like << " per frame"
@@ -263,8 +198,7 @@ bool NnetChainComputeProb::PrintTotalStats() const {
     } else {
       KALDI_LOG << "Overall log-probability for '"
                 << name << "' is "
-                << like << " + " << aux_objfs.Str() 
-                << " = " << tot_objf << " per frame"
+                << like << " + " << l2_term << " = " << tot_objf << " per frame"
                 << ", over " << info.tot_weight << " frames.";
     }
     if (info.tot_weight > 0)

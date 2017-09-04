@@ -195,9 +195,6 @@ class CuVectorBase {
   void ReplaceValue(Real orig, Real changed);
 
   void MulElements(const CuVectorBase<Real> &v);
-  
-  void DivElements(const CuVectorBase<Real> &v);
-
   // The following two functions should only be called if we did not compile
   // with CUDA or could not get a CUDA card; in that case the contents are
   // interpreted the same as a regular vector.
@@ -282,11 +279,6 @@ class CuVector: public CuVectorBase<Real> {
   /// I/O
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &is, bool binary) const;
-  inline std::string ToStr() const { 
-    std::ostringstream oss;
-    oss << *this;
-    return oss.str();
-  }
 
   void Swap(Vector<Real> *vec);
 

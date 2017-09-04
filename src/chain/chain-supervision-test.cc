@@ -26,7 +26,7 @@
 #include "chain/chain-den-graph.h"
 #include "chain/chain-denominator.h"
 #include "hmm/hmm-utils.h"
-#include <iostream>
+
 
 
 namespace kaldi {
@@ -340,134 +340,6 @@ void ChainTrainingTest(const DenominatorGraph &den_graph,
   }
 }
 
-void PrintMatrix(const CuMatrixBase<BaseFloat> &mat) {
-  std::cerr << " [ ";
-  for (int32 i = 0; i < mat.NumRows(); i++) {
-    for (int32 j = 0; j < mat.NumCols(); j++) {
-      std::cerr << mat(i, j) << " ";
-    } 
-    std::cerr << "\n";
-  } 
-  std::cerr << " ] ";
-}
-
-
-void ChainSmbrTrainingTest(const DenominatorGraph &den_graph,
-                           const Supervision &supervision) {
-  int32 num_sequences = supervision.num_sequences,
-      frames_per_sequence = supervision.frames_per_sequence;
-  if (frames_per_sequence == 1)  // this will break some code.
-    return;
-
-  CuMatrix<BaseFloat> nnet_output(num_sequences * frames_per_sequence,
-                                  den_graph.NumPdfs());
-
-  bool zero_output = (RandInt(0, 3) == 0);
-  if (!zero_output)
-    nnet_output.SetRandn();
-
-  ChainTrainingOptions opts;
-  if (RandInt(0, 1) == 1)
-    opts.leaky_hmm_coefficient = 0.2;
-  opts.leaky_hmm_coefficient = 0.1;
-  
-  {
-    KALDI_LOG << "LF-MMI training";
-    BaseFloat objf, l2_term, weight;
-    CuMatrix<BaseFloat> nnet_output_deriv(nnet_output.NumRows(),
-                                          nnet_output.NumCols(),
-                                          kUndefined);
-    ComputeChainObjfAndDeriv(opts, den_graph, supervision,
-                             nnet_output, &objf, &l2_term, &weight,
-                             &nnet_output_deriv);
-  }
-  
-  CuMatrix<BaseFloat> nnet_output_deriv(nnet_output.NumRows(),
-                                        nnet_output.NumCols(),
-                                        kUndefined);
-  KALDI_LOG << "LF-SMBR training";
-  opts.use_smbr_objective = true;
-  opts.mmi_factor = 0.0;
-  opts.smbr_factor = 1.0;
-  BaseFloat objf, l2_term, weight;
-  ComputeChainSmbrObjfAndDeriv(opts, den_graph, supervision,
-                               nnet_output, &objf, &l2_term, &weight,
-                               &nnet_output_deriv);
-
-  {
-    // make sure each row of nnet_output_deriv sums to one (shift invariance of
-    // the nnet output).
-    CuVector<BaseFloat> nnet_output_deriv_row_sums(nnet_output_deriv.NumRows());
-    nnet_output_deriv_row_sums.AddColSumMat(1.0, nnet_output_deriv, 0.0);
-    KALDI_ASSERT(nnet_output_deriv_row_sums.Norm(2.0) < 0.1);
-  }
-
-  KALDI_LOG << "Chain objf per frame is " << (objf / weight)
-            << " over " << weight << " frames (weighted)";
-
-  { // a check
-    BaseFloat output_deriv_sum = nnet_output_deriv.Sum();
-    KALDI_LOG << "Sum of nnet-output-deriv is " << output_deriv_sum
-              << " vs. expected 0.";
-    KALDI_ASSERT(output_deriv_sum < 0.2);
-  }
-
-  int32 num_tries = 5;
-  BaseFloat epsilon = 1.0e-04;
-  Vector<BaseFloat> predicted_objf_changes(num_tries),
-      observed_objf_changes(num_tries);
-  for (int32 p = 0; p < num_tries; p++) {
-    CuMatrix<BaseFloat> nnet_delta_output(nnet_output.NumRows(),
-                                          nnet_output.NumCols());
-    nnet_delta_output.SetRandn();
-    nnet_delta_output.Scale(epsilon);
-    predicted_objf_changes(p) = TraceMatMat(nnet_output_deriv,
-                                            nnet_delta_output, kTrans);
-    CuMatrix<BaseFloat> nnet_output_perturbed(nnet_delta_output);
-    nnet_output_perturbed.AddMat(1.0, nnet_output);
-
-    BaseFloat objf_modified, l2_term_modified, weight_modified;
-
-    ComputeChainSmbrObjfAndDeriv(opts, den_graph, supervision,
-                             nnet_output_perturbed,
-                             &objf_modified, &l2_term_modified,
-                             &weight_modified,
-                             NULL);
-
-    observed_objf_changes(p) = objf_modified - objf;
-  }
-  KALDI_LOG << "Predicted objf changes are " << predicted_objf_changes;
-  KALDI_LOG << "Observed objf changes are " << observed_objf_changes;
-  {
-    Vector<BaseFloat> error(predicted_objf_changes);
-    error.AddVec(-1.0, observed_objf_changes);
-    KALDI_LOG << "num-sequences = " << num_sequences << ", frames-per-sequence = "
-              << frames_per_sequence << ", relative accuracy is "
-              << (error.Norm(2.0) / predicted_objf_changes.Norm(2.0));
-  }
-
-  {
-    // we get inaccuracy for long segments, I think because there is a bias when we
-    // add random noise for it to increase the likelihood (for winner-take-all reasons)
-    // and for long utterances this bias adds up over the frames and tends to
-    // outweigh the random component that the gradient predicts (which will tend to
-    // cancel).  Try to correct for this...
-    BaseFloat correction = (predicted_objf_changes.Sum() - observed_objf_changes.Sum()) /
-        predicted_objf_changes.Dim();
-    observed_objf_changes.Add(correction);
-    KALDI_LOG << "Correcting observed objf changes for statistical effects, to "
-              << observed_objf_changes;
-    if (frames_per_sequence > 2 &&
-        predicted_objf_changes.Norm(2.0) > 0.1 * epsilon) {
-      // if we only have the initial and final frames, due to the scaling-down
-      // of pdfs not in the numerator sequence the derivative might be zero,
-      // which would cause problems doing the comparison.
-      // note, epsilon = 1.0e-04.
-      KALDI_ASSERT(predicted_objf_changes.ApproxEqual(observed_objf_changes, 0.25));
-    }
-  }
-}
-
 void TestSupervisionSplitting(const ContextDependency &ctx_dep,
                               const TransitionModel &trans_model,
                               const Supervision &supervision) {
@@ -663,75 +535,6 @@ void ChainSupervisionTest() {
   delete trans_model;
 }
 
-void ChainSupervisionSimpleTest() {
-  ContextDependency *ctx_dep;
-  TransitionModel *trans_model = GenRandTransitionModel(&ctx_dep);
-  const std::vector<int32> &phones = trans_model->GetPhones();
-
-  int32 subsample_factor = 3;
-
-  int32 phone_sequence_length = 2;
-  std::vector<std::pair<int32, int32> > phones_durations(phone_sequence_length);
-
-  CompactLattice clat;
-  int32 cur_state = clat.AddState();
-  clat.SetStart(cur_state);
-
-  for (int32 i = 0; i < phone_sequence_length; i++) {
-    int32 phone = phones[RandInt(0, phones.size() - 1)];
-    int32 min_length = trans_model->GetTopo().MinLength(phone),
-        headroom = 5,
-        duration = RandInt(subsample_factor * min_length,
-                           subsample_factor * min_length + headroom);
-    phones_durations[i].first = phone;
-    phones_durations[i].second = duration;
-    int32 next_state = clat.AddState();
-    std::vector<int32> ones(duration, 1);
-    clat.AddArc(cur_state,
-                CompactLatticeArc(phone, phone,
-                                  CompactLatticeWeight(LatticeWeight::One(),
-                                                       ones), next_state));
-    cur_state = next_state;
-  }
-  clat.SetFinal(cur_state, CompactLatticeWeight::One());
-  ProtoSupervision proto_sup1, proto_sup2;
-  SupervisionOptions opts;
-  opts.frame_subsampling_factor = subsample_factor;
-  bool ans1 = AlignmentToProtoSupervision(opts, phones_durations, &proto_sup1),
-      ans2 = PhoneLatticeToProtoSupervision(opts, clat, &proto_sup2);
-  KALDI_ASSERT(ans1 && ans2);
-  KALDI_ASSERT(proto_sup1 == proto_sup2);
-
-  Supervision supervision;
-  if (!ProtoSupervisionToSupervision(*ctx_dep, *trans_model,
-                                     proto_sup1, &supervision)) {
-    // we shouldn't fail because we multiplied by
-    // 'subsample_factor' when creating the duration.
-    KALDI_ERR << "Failed creating supervision.";
-  }
-  supervision.Check(*trans_model);
-  TestSupervisionIo(supervision);
-  TestSupervisionSplitting(*ctx_dep, *trans_model, supervision);
-  TestSupervisionAppend(*trans_model, supervision);
-
-  {
-    fst::StdVectorFst den_fst;
-    ComputeExampleDenFst(*ctx_dep, *trans_model, &den_fst);
-    DenominatorGraph den_graph(den_fst, trans_model->NumPdfs());
-    ChainDenominatorTest(den_graph);
-    fst::StdVectorFst normalization_fst;
-    den_graph.GetNormalizationFst(den_fst, &normalization_fst);
-    // add the weight to the numerator FST so we can assert objf <= 0.
-    bool ans = AddWeightToSupervisionFst(normalization_fst, &supervision);
-    KALDI_ASSERT(ans);
-    // TODO: still have to test for appended sequences.
-    ChainSmbrTrainingTest(den_graph, supervision);
-  }
-
-  delete ctx_dep;
-  delete trans_model;
-}
-
 void AddArc(int32 from, int32 to,
             fst::StdVectorFst *fst) {
   fst->AddArc(from, fst::StdArc(0, 0, fst::TropicalWeight::One(), to));
@@ -803,7 +606,7 @@ void TestRanges() {
 
 int main() {
   using namespace kaldi;
-  SetVerboseLevel(2);
+  SetVerboseLevel(1);
   int32 loop = 0;
 #if HAVE_CUDA == 1
   for (loop = 0; loop < 2; loop++) {
@@ -815,7 +618,6 @@ int main() {
 #endif
     for (int32 i = 0; i < 3; i++) {
       kaldi::chain::ChainSupervisionTest();
-      kaldi::chain::ChainSupervisionSimpleTest();
       kaldi::chain::BreadthFirstTest();
     }
     kaldi::chain::TestRanges();

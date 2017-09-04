@@ -79,8 +79,8 @@ struct SupervisionOptions {
     opts->Register("weight", &weight,
                    "Use this to set the supervision weight for training");
     opts->Register("lm-scale", &lm_scale, "The scale with which the graph/lm "
-                    "weights from the phone lattice are included in the "
-                    "supervision fst.");
+                   "weights from the phone lattice are included in the "
+                   "supervision fst.");
     opts->Register("phone-ins-penalty", &phone_ins_penalty,
                    "The penalty to penalize longer paths");
     opts->Register("left-tolerance-silence", &left_tolerance_silence, "Left tolerance for "
