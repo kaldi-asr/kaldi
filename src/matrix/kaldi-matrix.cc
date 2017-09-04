@@ -1269,23 +1269,6 @@ void MatrixBase<Real>::Write(std::ostream &os, bool binary) const {
   }
 }
 
-template<typename Real>
-std::string MatrixBase<Real>::ToStr() const {
-  std::ostringstream oss;
-  if (num_cols_ == 0) {
-    oss << " [ ]\n";
-  } else {
-    oss << " [";
-    for (MatrixIndexT i = 0; i < num_rows_; i++) {
-      oss << "\n  ";
-      for (MatrixIndexT j = 0; j < num_cols_; j++)
-        oss << (*this)(i, j) << " ";
-    }
-    oss << "]\n";
-  }
-  return oss.str();
-}
-
 
 template<typename Real>
 void MatrixBase<Real>::Read(std::istream & is, bool binary, bool add) {
