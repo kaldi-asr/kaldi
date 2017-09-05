@@ -275,6 +275,7 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
   virtual int32 NumParameters() const;
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+  virtual void FreezeNaturalGradient(bool freeze);
 
 
   class PrecomputedIndexes: public ComponentPrecomputedIndexes {
@@ -293,6 +294,7 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
     time_height_convolution::ConvolutionComputation computation;
   };
 
+  void ScaleLinearParams(BaseFloat alpha) { linear_params_.Scale(alpha); }
  private:
 
   void Check();

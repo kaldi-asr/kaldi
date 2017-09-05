@@ -70,13 +70,19 @@ class NnetChainTrainer {
 
   ~NnetChainTrainer();
  private:
-  void ProcessOutputs(const NnetChainExample &eg,
-                      NnetComputer *computer);
+  // The internal function for doing one step of conventional SGD training.
+  void TrainInternal(const NnetChainExample &eg,
+                     const NnetComputation &computation);
 
-  // Applies per-component max-change and global max-change to all updatable
-  // components in *delta_nnet_, and use *delta_nnet_ to update parameters
-  // in *nnet_.
-  void UpdateParamsWithMaxChange();
+  // The internal function for doing one step of backstitch training. Depending
+  // on whether is_backstitch_step1 is true, It could be either the first
+  // (backward) step, or the second (forward) step of backstitch.
+  void TrainInternalBackstitch(const NnetChainExample &eg,
+                               const NnetComputation &computation,
+                               bool is_backstitch_step1);
+
+  void ProcessOutputs(bool is_backstitch_step2, const NnetChainExample &eg,
+                      NnetComputer *computer);
 
   const NnetChainTrainingOptions opts_;
 
@@ -99,6 +105,11 @@ class NnetChainTrainer {
   int32 num_max_change_global_applied_;
 
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
+
+  // This value is used in backstitch training when we need to ensure
+  // consistent dropout masks.  It's set to a value derived from rand()
+  // when the class is initialized.
+  int32 srand_seed_;
 };
 
 

@@ -5,7 +5,7 @@
 
 echo $0 "$@"
 
-galeData=$(readlink -f "${@: -1}" ); 
+galeData=$(utils/make_absolute.sh "${@: -1}" ); 
 
 length=$(($#-1))
 args=${@:1:$length}

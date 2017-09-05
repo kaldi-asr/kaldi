@@ -2084,81 +2084,97 @@ static void UnitTestCuDiffSigmoid() {
 
 template<typename Real>
 static void UnitTestCuDiffSoftmax() {
-  int m = 100, n = 111;
-  Matrix<Real> Hi(m, n);
-  Matrix<Real> Ho(m, n);
-  Matrix<Real> Hy(m, n);
-  Hi.SetRandn();
-  RandZeroToOneMatrix(&Hy);
+  for (int32 i = 0; i < 4; i++) {
+    int m = RandInt(10, 280), n = RandInt(10, 280);
+    Matrix<Real> Hi(m, n);
+    Matrix<Real> Ho(m, n);
+    Matrix<Real> Hy(m, n);
+    Hi.SetRandn();
+    RandZeroToOneMatrix(&Hy);
 
-  CuMatrix<Real> Di(m, n);
-  CuMatrix<Real> Do(m, n);
-  CuMatrix<Real> Dy(m, n);
-  Di.CopyFromMat(Hi);
-  Dy.CopyFromMat(Hy);
+    CuMatrix<Real> Di(m, n);
+    CuMatrix<Real> Do(m, n);
+    CuMatrix<Real> Dy(m, n);
+    Di.CopyFromMat(Hi);
+    Dy.CopyFromMat(Hy);
 
-  //gpu
-  Do.DiffSoftmaxPerRow(Dy, Di);
-  //cpu
-  {
-    const MatrixBase<Real> &P(Hy), &E(Hi);
-    MatrixBase<Real> &D(Ho);
-    D.CopyFromMat(P);
-    D.MulElements(E);
-    // At this point, D = P .* E (in matlab notation)
-    Vector<Real> pe_vec(D.NumRows()); // For each row i, the dot product (p_t . e_t).
-    pe_vec.AddDiagMatMat(1.0, P, kNoTrans, E, kTrans, 0.0);
-    D.AddDiagVecMat(-1.0, pe_vec, P, kNoTrans, 1.0); // does D -= diag(pe_vec) * P.
+    //gpu
+    if (i % 2 == 0) {
+      Do.DiffSoftmaxPerRow(Dy, Di);
+    } else {
+      // in-place.
+      Do.CopyFromMat(Di);
+      Do.DiffSoftmaxPerRow(Dy, Do);
+    }
+    //cpu
+    {
+      const MatrixBase<Real> &P(Hy), &E(Hi);
+      MatrixBase<Real> &D(Ho);
+      D.CopyFromMat(P);
+      D.MulElements(E);
+      // At this point, D = P .* E (in matlab notation)
+      Vector<Real> pe_vec(D.NumRows()); // For each row i, the dot product (p_t . e_t).
+      pe_vec.AddDiagMatMat(1.0, P, kNoTrans, E, kTrans, 0.0);
+      D.AddDiagVecMat(-1.0, pe_vec, P, kNoTrans, 1.0); // does D -= diag(pe_vec) * P.
+    }
+
+    Matrix<Real> Ho2(m, n);
+    Do.CopyToMat(&Ho2);
+
+    AssertEqual(Ho, Ho2);
   }
-
-  Matrix<Real> Ho2(m, n);
-  Do.CopyToMat(&Ho2);
-
-  AssertEqual(Ho, Ho2);
 }
 
 
 template<typename Real>
 static void UnitTestCuDiffLogSoftmax() {
-  int m = 100, n = 111;
-  Matrix<Real> Hi(m, n);
-  Matrix<Real> Ho(m, n);
-  Matrix<Real> Hy(m, n);
-  Hi.SetRandn();
-  RandZeroToOneMatrix(&Hy);
+  for (int32 i = 0; i < 4; i++) {
+    int m = RandInt(10, 280), n = RandInt(10, 280);
+    Matrix<Real> Hi(m, n);
+    Matrix<Real> Ho(m, n);
+    Matrix<Real> Hy(m, n);
+    Hi.SetRandn();
+    RandZeroToOneMatrix(&Hy);
 
-  CuMatrix<Real> Di(m, n);
-  CuMatrix<Real> Do(m, n);
-  CuMatrix<Real> Dy(m, n);
-  Di.CopyFromMat(Hi);
-  Dy.CopyFromMat(Hy);
+    CuMatrix<Real> Di(m, n);
+    CuMatrix<Real> Do(m, n);
+    CuMatrix<Real> Dy(m, n);
+    Di.CopyFromMat(Hi);
+    Dy.CopyFromMat(Hy);
 
-  //gpu
-  Do.DiffLogSoftmaxPerRow(Dy, Di);
-  //cpu
-  {
-    const MatrixBase<Real> &Y(Hy), &E(Hi);
-    MatrixBase<Real> &D(Ho);
-    D.CopyFromMat(Y);
-    D.ApplyExp();                           // exp(y)
-    Vector<Real> E_sum(D.NumRows());        // Initializes to zero
-    E_sum.AddColSumMat(1.0, E);             // Sum(e)
-    D.MulRowsVec(E_sum);                    // exp(y) Sum(e)
-    D.Scale(-1.0);                          // - exp(y) Sum(e)
-    D.AddMat(1.0, E, kNoTrans);             // e - exp(y_i) Sum(e)
-  }
+    //gpu
+    if (i % 2 == 0) {
+      Do.DiffLogSoftmaxPerRow(Dy, Di);
+    } else {
+      // in-place.
+      Do.CopyFromMat(Di);
+      Do.DiffLogSoftmaxPerRow(Dy, Do);
+    }
+    //cpu
+    {
+      const MatrixBase<Real> &Y(Hy), &E(Hi);
+      MatrixBase<Real> &D(Ho);
+      D.CopyFromMat(Y);
+      D.ApplyExp();                           // exp(y)
+      Vector<Real> E_sum(D.NumRows());        // Initializes to zero
+      E_sum.AddColSumMat(1.0, E);             // Sum(e)
+      D.MulRowsVec(E_sum);                    // exp(y) Sum(e)
+      D.Scale(-1.0);                          // - exp(y) Sum(e)
+      D.AddMat(1.0, E, kNoTrans);             // e - exp(y_i) Sum(e)
+    }
 
-  Matrix<Real> Ho2(m, n);
-  Do.CopyToMat(&Ho2);
+    Matrix<Real> Ho2(m, n);
+    Do.CopyToMat(&Ho2);
 
-  AssertEqual(Ho, Ho2);
+    AssertEqual(Ho, Ho2);
+ }
 }
 
 
 template<typename Real>
 static void UnitTestCuSoftmax() {
 
-  for (int32 i = 0; i < 2; i++) {
+  for (int32 i = 0; i < 4; i++) {
     int row = 10 + Rand() % 40;
     int col = 10 + Rand() % 50;
 
@@ -2172,7 +2188,13 @@ static void UnitTestCuSoftmax() {
     Di.CopyFromMat(Hi);
 
     //gpu
-    Do.ApplySoftMaxPerRow(Di);
+    if (i % 2 == 0) {
+      Do.ApplySoftMaxPerRow(Di);
+    } else {
+      // in-place
+      Do.CopyFromMat(Di);
+      Do.ApplySoftMaxPerRow(Do);
+    }
     //cpu
     Ho.CopyFromMat(Hi);
     for(MatrixIndexT r=0; r<Ho.NumRows(); r++) {
@@ -2203,7 +2225,13 @@ static void UnitTestCuLogSoftmax() {
     Di.CopyFromMat(Hi);
 
     //gpu
-    Do.ApplyLogSoftMaxPerRow(Di);
+    if (i % 2 == 0) {
+      Do.ApplyLogSoftMaxPerRow(Di);
+    } else {
+      // in-place.
+      Do.CopyFromMat(Di);
+      Do.ApplyLogSoftMaxPerRow(Do);
+    }
     //cpu
     Ho.CopyFromMat(Hi);
     for(MatrixIndexT r=0; r<Ho.NumRows(); r++) {

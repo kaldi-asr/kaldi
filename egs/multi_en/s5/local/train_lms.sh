@@ -28,28 +28,12 @@ done
 
 dir=data/local/lm
 mkdir -p $dir
-export LC_ALL=C # You'll get errors about things being not sorted, if you
-# have a different locale.
-export PATH=$PATH:`pwd`/../../../tools/kaldi_lm
-( # First make sure the kaldi_lm toolkit is installed.
- cd ../../../tools || exit 1;
- if [ -d kaldi_lm ]; then
-   echo Not installing the kaldi_lm toolkit since it is already there.
- else
-   echo Downloading and installing the kaldi_lm tools
-   if [ ! -f kaldi_lm.tar.gz ]; then
-     wget http://www.danielpovey.com/files/kaldi/kaldi_lm.tar.gz ||
-     wget http://merlin.fit.vutbr.cz/kaldi/kaldi_lm.tar.gz || exit 1;
-   fi
-   tar -xvzf kaldi_lm.tar.gz || exit 1;
-   cd kaldi_lm
-   make || exit 1;
-   echo Done making the kaldi_lm tools
- fi
-) || exit 1;
 
-mkdir -p $dir
-
+kaldi_lm=`which train_lm.sh`
+if [ ! -x $kaldi_lm ]; then
+  echo "train_lm.sh is not found. Look at tools/extra/install_kaldi_lm.sh"
+  exit 1
+fi
 
 cleantext=$dir/text.no_oov
 

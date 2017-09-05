@@ -60,7 +60,6 @@ dir=exp/nnet3/multi_bnf
 [ ! -f local.conf ] && echo 'the file local.conf does not exist! Read README.txt for more details.' && exit 1;
 . local.conf || exit 1;
 
-
 num_langs=${#lang_list[@]}
 feat_suffix=_hires      # The feature suffix describing features used in
                         # multilingual training
@@ -100,11 +99,12 @@ for lang_index in `seq 0 $[$num_langs-1]`; do
   if $use_pitch && ! $use_pitch_ivector; then
     echo "$0: select MFCC features for ivector extraction."
     featdir=data/${lang_list[$lang_index]}/train${suffix}${feat_suffix}
-    ivec_featdir=data/${lang_list[$lang_index]}/train${suffix}_hires
+    ivec_featdir=data/${lang_list[$lang_index]}/train${suffix}${ivec_feat_suffix}
     mfcc_only_dim=`feat-to-dim scp:$featdir/feats.scp - | awk '{print $1-3}'`
     if [ ! -f $ivec_featdir/.done ]; then
       steps/select_feats.sh --cmd "$train_cmd" --nj 70 0-$[$mfcc_only_dim-1] \
         $featdir ${ivec_featdir} || exit 1;
+      steps/compute_cmvn_stats.sh ${ivec_featdir} || exit 1;
       touch ${ivec_featdir}/.done || exit 1;
     fi
   fi
@@ -114,8 +114,8 @@ if $use_ivector; then
   ivector_suffix=""
   if [ -z "$ivector_extractor" ]; then
     mkdir -p data/multi
-    mkdir -p exp/multi/nnet3
     global_extractor=exp/multi/nnet3${nnet3_affix}
+    mkdir -p $global_extractor
     ivector_extractor=$global_extractor/extractor
     multi_data_dir_for_ivec=data/multi/train${suffix}${ivec_feat_suffix}
     ivector_suffix=_gb
@@ -127,11 +127,11 @@ if $use_ivector; then
       mkdir -p $multi_data_dir_for_ivec
       combine_lang_list=""
       for lang_index in `seq 0 $[$num_langs-1]`;do
-        combine_lang_list="$combine_lang_list data/${lang_list[$lang_index]}/train${suffix}${feat_suffix}"
+        combine_lang_list="$combine_lang_list data/${lang_list[$lang_index]}/train${suffix}${ivec_feat_suffix}"
       done
-      utils/combine_data.sh data/multi/train${suffix}${feat_suffix} $combine_lang_list
-      utils/validate_data_dir.sh --no-feats data/multi/train${suffix}${feat_suffix}
-      touch data/multi/train${suffix}${feat_suffix}/.done
+      utils/combine_data.sh $multi_data_dir_for_ivec $combine_lang_list
+      utils/validate_data_dir.sh --no-feats $multi_data_dir_for_ivec
+      touch $multi_data_dir_for_ivec/.done
     fi
   fi
   if [ ! -f $global_extractor/extractor/.done ]; then
@@ -157,12 +157,14 @@ if $use_ivector; then
   done
 fi
 
+
 for lang_index in `seq 0 $[$num_langs-1]`; do
   multi_data_dirs[$lang_index]=data/${lang_list[$lang_index]}/train${suffix}${feat_suffix}
   multi_egs_dirs[$lang_index]=exp/${lang_list[$lang_index]}/nnet3${nnet3_affix}/egs${feat_suffix}${ivector_suffix}
   multi_ali_dirs[$lang_index]=exp/${lang_list[$lang_index]}/${alidir}${suffix}
   multi_ivector_dirs[$lang_index]=exp/${lang_list[$lang_index]}/nnet3${nnet3_affix}/ivectors_train${suffix}${ivec_feat_suffix}${ivector_suffix}
 done
+
 
 if $use_ivector; then
   ivector_dim=$(feat-to-dim scp:${multi_ivector_dirs[0]}/ivector_online.scp -) || exit 1;
@@ -178,15 +180,21 @@ if [ $stage -le 8 ]; then
     bnf_dim=1024
   fi
   mkdir -p $dir/configs
+  ivector_node_xconfig=""
+  ivector_to_append=""
+  if $use_ivector; then
+    ivector_node_xconfig="input dim=$ivector_dim name=ivector"
+    ivector_to_append=", ReplaceIndex(ivector, t, 0)"
+  fi
   cat <<EOF > $dir/configs/network.xconfig
-  input dim=$ivector_dim name=ivector
+  $ivector_node_xconfig
   input dim=$feat_dim name=input
 
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 input=Append(input@-2,input@-1,input,input@1,input@2,ReplaceIndex(ivector, t, 0)) dim=1024
+  relu-renorm-layer name=tdnn1 input=Append(input@-2,input@-1,input,input@1,input@2$ivector_to_append) dim=1024
   relu-renorm-layer name=tdnn2 dim=1024
   relu-renorm-layer name=tdnn3 input=Append(-1,2) dim=1024
   relu-renorm-layer name=tdnn4 input=Append(-3,3) dim=1024
@@ -206,7 +214,7 @@ EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig \
     --config-dir $dir/configs/ \
     --nnet-edits="rename-node old-name=output-0 new-name=output"
-
+fi
 
 if [ $stage -le 9 ]; then
   echo "$0: Generates separate egs dir per language for multilingual training."
@@ -224,7 +232,6 @@ if [ $stage -le 9 ]; then
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --left-context $model_left_context --right-context $model_right_context \
     $num_langs ${multi_data_dirs[@]} ${multi_ali_dirs[@]} ${multi_egs_dirs[@]} || exit 1;
-
 fi
 
 if [ -z $megs_dir ];then
@@ -245,6 +252,10 @@ if [ $stage -le 10 ] && [ ! -z $megs_dir ]; then
 fi
 
 if [ $stage -le 11 ]; then
+  common_ivec_dir=
+  if $use_ivector;then
+    common_ivec_dir=${multi_ivector_dirs[0]}
+  fi
   steps/nnet3/train_raw_dnn.py --stage=$train_stage \
     --cmd="$decode_cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
@@ -258,7 +269,7 @@ if [ $stage -le 11 ]; then
     --trainer.max-param-change=2.0 \
     --trainer.srand=$srand \
     --feat-dir ${multi_data_dirs[0]} \
-    --feat.online-ivector-dir ${multi_ivector_dirs[0]} \
+    --feat.online-ivector-dir "$common_ivec_dir" \
     --egs.dir $megs_dir \
     --use-dense-targets false \
     --targets-scp ${multi_ali_dirs[0]} \

@@ -163,7 +163,7 @@ fi
 if [ $stage -le 3 ]; then
   for f in `cat $tmpdir/sph.flist`; do
     # convert to absolute path
-    readlink -e $f
+    utils/make_absolute.sh $f
   done > $tmpdir/sph_abs.flist
   
   cat $tmpdir/sph_abs.flist | perl -ane 'm:/([^/]+)\.sph$: || die "bad line $_; ";  print "$1 $_"; ' > $tmpdir/sph.scp

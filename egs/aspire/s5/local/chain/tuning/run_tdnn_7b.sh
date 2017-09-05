@@ -20,6 +20,7 @@ num_data_reps=3
 
 
 min_seg_len=
+xent_regularize=0.1
 frames_per_eg=150
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -66,7 +67,6 @@ if [ $stage -le 8 ]; then
   # the augmented features (data/train_rvb) to get better alignments
 
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate -1 \
       --cmd "$train_cmd" 11000 data/train $lang exp/tri5a $treedir
 fi
 
@@ -135,22 +135,47 @@ if [ $stage -le 10 ]; then
 fi
 
 if [ $stage -le 11 ]; then
-  echo "$0: creating neural net configs";
+  echo "$0: creating neural net configs using the xconfig parser";
 
-  # create the config files for nnet initialization
-  steps/nnet3/tdnn/make_configs.py \
-    --self-repair-scale-nonlinearity 0.00001 \
-    --feat-dir data/train_rvb_hires \
-    --ivector-dir exp/nnet3/ivectors_train_min${min_seg_len} \
-    --tree-dir $treedir \
-    --relu-dim 1024 \
-    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0 0" \
-    --use-presoftmax-prior-scale false \
-    --xent-regularize 0.1 \
-    --xent-separate-forward-affine true \
-    --include-log-softmax false \
-    --final-layer-normalize-target 0.5 \
-    $dir/configs || exit 1;
+  num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
+  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+
+  mkdir -p $dir/configs
+  cat <<EOF > $dir/configs/network.xconfig
+  input dim=100 name=ivector
+  input dim=40 name=input
+
+  # please note that it is important to have input layer with the name=input
+  # as the layer immediately preceding the fixed-affine-layer to enable
+  # the use of short notation for the descriptor
+  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+
+  # the first splicing is moved before the lda layer, so no splicing here
+  relu-batchnorm-layer name=tdnn1 dim=1024
+  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1,2) dim=1024
+  relu-batchnorm-layer name=tdnn3 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn6 input=Append(-6,-3,0) dim=1024
+
+  ## adding the layers for chain branch
+  relu-batchnorm-layer name=prefinal-chain input=tdnn6 dim=1024 target-rms=0.5
+  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+
+  # adding the layers for xent branch
+  # This block prints the configs for a separate output that will be
+  # trained with a cross-entropy objective in the 'chain' models... this
+  # has the effect of regularizing the hidden parts of the model.  we use
+  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
+  # 0.5 / args.xent_regularize is suitable as it means the xent
+  # final-layer learns at a rate independent of the regularization
+  # constant; and the 0.5 was tuned so as to make the relative progress
+  # similar in the xent and regular final layers.
+  relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=1024 target-rms=0.5
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+
+EOF
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
 if [ $stage -le 12 ]; then
@@ -166,7 +191,7 @@ if [ $stage -le 12 ]; then
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir exp/nnet3/ivectors_train_min${min_seg_len} \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
-    --chain.xent-regularize 0.1 \
+    --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \

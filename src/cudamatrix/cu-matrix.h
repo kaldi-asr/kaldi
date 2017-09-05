@@ -329,6 +329,7 @@ class CuMatrixBase {
   /// softmax output. Does, for each row i,
   /// *this(i) =  diff(i) * diag(value(i)) - diff(i) * (value(i)^T * value(i))
   /// xxxx(i) is row-vector; '*' and '-' are matrix operations.
+  /// Supports in-place operation, this  == &diff.
   void DiffSoftmaxPerRow(const CuMatrixBase<Real> &value,
                          const CuMatrixBase<Real> &diff);
 
@@ -336,6 +337,7 @@ class CuMatrixBase {
   /// Here, "out_value" is the log softmax output. Does, for each row i,
   /// *this(i) =  out_deriv(i) - sum(out_deriv(i)) .* exp(out_value(i))
   /// xxxx(i) is row-vector.
+  /// Supports in-place operation, this == &out_deriv.
   void DiffLogSoftmaxPerRow(const CuMatrixBase<Real> &out_value,
                             const CuMatrixBase<Real> &out_deriv);
 
@@ -378,13 +380,15 @@ class CuMatrixBase {
   void ApplyCeiling(Real ceiling_val);
   void ApplyExp();
   /// Softmax nonlinearity
-  /// Y = Softmax(X) : Yij = e^Xij / sum_k(e^Xik), done to each row
-  /// for each row, the max value is first subtracted for good numerical stability
+  /// Y = Softmax(X) : Yij = e^Xij / sum_k(e^Xik), done to each row,
+  /// with attention to avoiding  overflow or underflow.
+  /// Supports in-place operation (i.e. this == &src).
   void ApplySoftMaxPerRow(const CuMatrixBase<Real> &src);
 
   /// LogSoftmax nonlinearity
-  /// Y = LogSoftmax(X) : Yij = Xij - log(sum_k(e^Xik)), done to each row
-  /// for each row, the max value is first subtracted for good numerical stability
+  /// Y = LogSoftmax(X) : Yij = Xij - log(sum_k(e^Xik)), done to each row,
+  /// with attention to avoiding  overflow or underflow.
+  /// Supports in-place operation (i.e. this == &src).
   void ApplyLogSoftMaxPerRow(const CuMatrixBase<Real> &src);
 
   /// Find the id of the maximal element for each row

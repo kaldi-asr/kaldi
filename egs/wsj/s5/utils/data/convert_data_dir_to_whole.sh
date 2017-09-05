@@ -1,5 +1,8 @@
 #! /bin/bash
 
+# Copyright 2016  Vimal Manohar
+# Apache 2.0
+
 # This scripts converts a data directory into a "whole" data directory
 # by removing the segments and using the recordings themselves as 
 # utterances
@@ -9,7 +12,6 @@ set -o pipefail
 . path.sh
 
 cmd=run.pl
-stage=-1
 
 . parse_options.sh
 
@@ -23,7 +25,7 @@ data=$1
 dir=$2
 
 if [ ! -f $data/segments ]; then
-  # Data directory already does not contain segments. So just copy it.
+  echo "$0: Data directory already does not contain segments. So just copying it."
   utils/copy_data_dir.sh $data $dir
   exit 0
 fi
@@ -41,11 +43,11 @@ text_files=
 
 # Combine utt2spk and text from the segments into utt2spk and text for the whole
 # recording.
-cat $data/segments | sort -k2,2 -k3,4n | perl -e '
-if (scalar @ARGV == 4) {
-  ($utt2spk_in, $utt2spk_out, $text_in, $text_out) = @ARGV;
-} elsif (scalar @ARGV == 2) {
-  ($utt2spk_in, $utt2spk_out) = @ARGV;
+cat $data/segments | perl -e '
+if (scalar @ARGV == 3) {
+  ($utt2spk_in, $text_in, $text_out) = @ARGV;
+} elsif (scalar @ARGV == 1) {
+  $utt2spk_in = $ARGV[0];
 } else {
   die "Unexpected number of arguments";
 }
@@ -55,7 +57,6 @@ if (defined $text_in) {
   open(TO, ">$text_out") || die "Error: fail to open $text_out\n";
 }
 open(UI, "<$utt2spk_in") || die "Error: fail to open $utt2spk_in\n";
-open(UO, ">$utt2spk_out") || die "Error: fail to open $utt2spk_out\n";
 
 my %file2utt = ();
 while (<STDIN>) {
@@ -91,21 +92,15 @@ if (defined $text_in) {
 
 foreach $file (keys %file2utt) {
   my @utts = @{$file2utt{$file}};
-  #print STDERR $file . " " . join(" ", @utts) . "\n";
-  print UO "$file $file\n";
+  print "$file $file\n";
 
   if (defined $text_in) {
     $text_line = "";
-    foreach $utt (@utts) {
-      $text_line = "$text_line " . $text{$utt}  
-    }
     print TO "$file $text_line\n";
   }
 }
-' $data/utt2spk $dir/utt2spk $text_files
+' $data/utt2spk $text_files > $dir/utt2spk
 
-sort -u $dir/utt2spk > $dir/utt2spk.tmp
-mv $dir/utt2spk.tmp $dir/utt2spk
-utils/utt2spk_to_spk2utt.pl $dir/utt2spk > $dir/spk2utt
+utils/spk2utt_to_utt2spk.pl $dir/utt2spk > $dir/spk2utt
 
 utils/fix_data_dir.sh $dir

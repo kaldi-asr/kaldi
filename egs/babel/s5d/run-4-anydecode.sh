@@ -205,7 +205,7 @@ if [ ! -f data/raw_${dataset_type}_data/.done ]; then
   local/make_corpus_subset.sh $resource_string ./data/raw_${dataset_type}_data
   touch data/raw_${dataset_type}_data/.done
 fi
-my_data_dir=`readlink -f ./data/raw_${dataset_type}_data`
+my_data_dir=`utils/make_absolute.sh ./data/raw_${dataset_type}_data`
 [ -f $my_data_dir/filelist.list ] && my_data_list=$my_data_dir/filelist.list
 nj_max=`cat $my_data_list | wc -l` || nj_max=`ls $my_data_dir/audio | wc -l`
 
@@ -232,13 +232,17 @@ if [ ! -f  $dataset_dir/.done ] ; then
     elif [ "$dataset_segments" == "train" ] ||\
          [ "$dataset_segments" == "pem" ]; then
       . ./local/datasets/supervised_pem.sh || exit 1
+    elif [[ $dataset_segments =~ seg* ]]; then
+      echo "Using ${dataset_dir} directly"
     else
       echo "Unknown type of the dataset: \"$dataset_segments\"!";
       echo "Valid dataset types are: seg, uem, pem";
       exit 1
     fi
   elif [ "$dataset_kind" == "unsupervised" ] ; then
-    if [ "$dataset_segments" == "seg" ] ; then
+    if [ "$dataset_segments" == "seg" ]; then
+      . ./local/datasets/unsupervised_seg.sh
+    elif [[ $dataset_segments =~ *seg* ]]; then
       . ./local/datasets/unsupervised_seg.sh
     elif [ "$dataset_segments" == "uem" ] ; then
       . ./local/datasets/unsupervised_uem.sh
@@ -251,6 +255,8 @@ if [ ! -f  $dataset_dir/.done ] ; then
       echo "does not really make any sense!"
       exit 1
       #. ./local/datasets/unsupervised_pem.sh
+    elif [[ $dataset_segments =~ seg* ]]; then
+      echo "Using ${dataset_dir} directly"
     else
       echo "Unknown type of the dataset: \"$dataset_segments\"!";
       echo "Valid dataset types are: seg, uem, pem";

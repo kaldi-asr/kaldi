@@ -637,11 +637,15 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         configs.append("# See cu-math.h:ComputeLstmNonlinearity() for details.")
         configs.append("component name={0}.lstm_nonlin type=LstmNonlinearityComponent cell-dim={1} {2}".format(name, cell_dim, lstm_str))
         configs.append("# Component for backprop truncation, to avoid gradient blowup in long training examples.")
+        # Note from Dan: I don't remember why we are applying the backprop
+        # truncation on both c and m appended together, instead of just on c.
+        # Possibly there was some memory or speed or WER reason for it which I
+        # have forgotten about now.
         configs.append("component name={0}.cm_trunc type=BackpropTruncationComponent dim={1} {2}".format(name, 2 * cell_dim, bptrunc_str))
 
         configs.append("###  Nodes for the components above.")
         configs.append("component-node name={0}.four_parts component={0}.W_all input=Append({1}, "
-                       "IfDefined(Offset({0}.r_trunc, {2})))".format(name, input_descriptor, delay))
+                       "IfDefined(Offset({0}.c_trunc, {2})))".format(name, input_descriptor, delay))
         configs.append("component-node name={0}.lstm_nonlin component={0}.lstm_nonlin "
                        "input=Append({0}.four_parts, IfDefined(Offset({0}.c_trunc, {1})))".format(name, delay))
         # we can print .c later if needed, but it generates a warning since it's not used.  could use c_trunc instead
@@ -649,7 +653,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         configs.append("dim-range-node name={0}.m input-node={0}.lstm_nonlin dim-offset={1} dim={1}".format(name, cell_dim))
         configs.append("component-node name={0}.cm_trunc component={0}.cm_trunc input={0}.lstm_nonlin".format(name))
         configs.append("dim-range-node name={0}.c_trunc input-node={0}.cm_trunc dim-offset=0 dim={1}".format(name, cell_dim))
-        configs.append("dim-range-node name={0}.m_trunc input-node={0}.cm_trunc dim-offset={1} dim={1}".format(name, cell_dim))
+        # configs.append("dim-range-node name={0}.m_trunc input-node={0}.cm_trunc dim-offset={1} dim={1}".format(name, cell_dim))
         configs.append("### End LTSM layer '{0}'".format(name))
         return configs
 

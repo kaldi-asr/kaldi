@@ -3,8 +3,8 @@
 
 # run_tdnn_1e.sh is like run_tdnn_1d.sh but batchnorm components instead of renorm
 
-exp/chain_cleaned/tdnn1d_sp_bi: num-iters=253 nj=2..12 num-params=7.0M dim=40+100->3597 combine=-0.098->-0.097 xent:train/valid[167,252,final]=(-1.40,-1.34,-1.34/-1.50,-1.46,-1.46) logprob:train/valid[167,252,final]=(-0.091,-0.083,-0.083/-0.104,-0.101,-0.101)
-exp/chain_cleaned/tdnn1e_sp_bi/: num-iters=253 nj=2..12 num-params=7.0M dim=40+100->3597 combine=-0.095->-0.095 xent:train/valid[167,252,final]=(-1.37,-1.31,-1.31/-1.47,-1.44,-1.44) logprob:train/valid[167,252,final]=(-0.087,-0.078,-0.078/-0.102,-0.099,-0.099)
+# exp/chain_cleaned/tdnn1d_sp_bi: num-iters=253 nj=2..12 num-params=7.0M dim=40+100->3597 combine=-0.098->-0.097 xent:train/valid[167,252,final]=(-1.40,-1.34,-1.34/-1.50,-1.46,-1.46) logprob:train/valid[167,252,final]=(-0.091,-0.083,-0.083/-0.104,-0.101,-0.101)
+# exp/chain_cleaned/tdnn1e_sp_bi/: num-iters=253 nj=2..12 num-params=7.0M dim=40+100->3597 combine=-0.095->-0.095 xent:train/valid[167,252,final]=(-1.37,-1.31,-1.31/-1.47,-1.44,-1.44) logprob:train/valid[167,252,final]=(-0.087,-0.078,-0.078/-0.102,-0.099,-0.099)
 
 # local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1d_sp_bi exp/chain_cleaned/tdnn1e_sp_bi
 # System                tdnn1d_sp_bi tdnn1e_sp_bi
@@ -49,7 +49,7 @@ nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=1d  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+tdnn_affix=1e  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 
 # End configuration section.

@@ -314,7 +314,9 @@ def train(args, run_opts):
      frames_per_eg_str, num_archives] = (
          common_train_lib.verify_egs_dir(egs_dir, feat_dim,
                                          ivector_dim, ivector_id,
-                                         left_context, right_context))
+                                         left_context, right_context,
+                                         left_context_initial,
+                                         right_context_final))
     if args.chunk_width != frames_per_eg_str:
         raise Exception("mismatch between --egs.chunk-width and the frames_per_eg "
                         "in the egs dir {0} vs {1}".format(args.chunk_width,
@@ -349,11 +351,31 @@ def train(args, run_opts):
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
 
-    models_to_combine = common_train_lib.get_model_combine_iters(
-        num_iters, args.num_epochs,
-        num_archives, args.max_models_combine,
-        args.num_jobs_final)
+    # If do_final_combination is True, compute the set of models_to_combine.
+    # Otherwise, models_to_combine will be none.
+    if args.do_final_combination:
+        models_to_combine = common_train_lib.get_model_combine_iters(
+            num_iters, args.num_epochs,
+            num_archives, args.max_models_combine,
+            args.num_jobs_final)
+    else:
+        models_to_combine = None
 
+    if (os.path.exists('{0}/valid_diagnostic.scp'.format(egs_dir))):
+        if (os.path.exists('{0}/valid_diagnostic.egs'.format(egs_dir))):
+            raise Exception('both {0}/valid_diagnostic.egs and '
+                            '{0}/valid_diagnostic.scp exist.'
+                            'This script expects only one of them to exist.'
+                            ''.format(egs_dir))
+        use_multitask_egs = True
+    else:
+        if (not os.path.exists('{0}/valid_diagnostic.egs'
+                               ''.format(egs_dir))):
+            raise Exception('neither {0}/valid_diagnostic.egs nor '
+                            '{0}/valid_diagnostic.scp exist.'
+                            'This script expects one of them.'
+                            ''.format(egs_dir))
+        use_multitask_egs = False
 
     min_deriv_time = None
     max_deriv_time_relative = None
@@ -418,7 +440,9 @@ def train(args, run_opts):
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
-                get_raw_nnet_from_am=False)
+                get_raw_nnet_from_am=False,
+                use_multitask_egs=use_multitask_egs,
+                compute_per_dim_accuracy=args.compute_per_dim_accuracy)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
@@ -442,14 +466,19 @@ def train(args, run_opts):
         num_archives_processed = num_archives_processed + current_num_jobs
 
     if args.stage <= num_iters:
-        logger.info("Doing final combination to produce final.raw")
-        train_lib.common.combine_models(
-            dir=args.dir, num_iters=num_iters,
-            models_to_combine=models_to_combine, egs_dir=egs_dir,
-            minibatch_size_str=args.num_chunk_per_minibatch,
-            run_opts=run_opts, chunk_width=args.chunk_width,
-            get_raw_nnet_from_am=False,
-            sum_to_one_penalty=args.combine_sum_to_one_penalty)
+        if args.do_final_combination:
+            logger.info("Doing final combination to produce final.raw")
+            train_lib.common.combine_models(
+                dir=args.dir, num_iters=num_iters,
+                models_to_combine=models_to_combine, egs_dir=egs_dir,
+                minibatch_size_str=args.num_chunk_per_minibatch,
+                run_opts=run_opts, chunk_width=args.chunk_width,
+                get_raw_nnet_from_am=False,
+                compute_per_dim_accuracy=args.compute_per_dim_accuracy,
+                sum_to_one_penalty=args.combine_sum_to_one_penalty)
+        else:
+            common_lib.force_symlink("{0}.raw".format(num_iters),
+                                     "{0}/final.raw".format(args.dir))
 
     if args.compute_average_posteriors and args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
