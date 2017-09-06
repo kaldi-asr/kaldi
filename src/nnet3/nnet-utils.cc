@@ -653,7 +653,7 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
           num_learning_rates_set++;
         }
       }
-      KALDI_LOG << "Set learning rates for " << num_learning_rates_set << " nodes.";
+      KALDI_LOG << "Set learning rates for " << num_learning_rates_set << " components.";
     } else if (directive == "set-learning-rate-factor") {
       std::string name_pattern = "*";
       // name_pattern defaults to '*' if none is given.
@@ -679,7 +679,7 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
         }
       }
       KALDI_LOG << "Set learning rate factors for " << num_learning_rate_factors_set
-                << " nodes.";
+                << " components.";
     } else if (directive == "rename-node") {
       // this is a shallow renaming of a node, and it requires that the name used is
       // not the name of another node.

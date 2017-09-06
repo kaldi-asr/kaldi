@@ -110,7 +110,7 @@ if [ ! -z $src_ivec_extractor_dir ]; then
 else
   if [ $ivector_dim -gt 0 ]; then
     echo "$0: ivector is used in training the source model '$src_mdl' but no "
-    echo " ivector extractor dir for source model is specified." && exit 1;
+    echo " --src-ivec-extractor-dir option as ivector dir for source model is specified." && exit 1;
   fi
 fi
 
