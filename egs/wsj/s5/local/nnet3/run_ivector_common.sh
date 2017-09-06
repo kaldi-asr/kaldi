@@ -77,42 +77,6 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  echo "$0: selecting segments of hires training data that were also present in the"
-  echo " ... original training data."
-
-  # note, these data-dirs are temporary; we put them in a sub-directory
-  # of the place where we'll make the alignments.
-  temp_data_root=exp/nnet3${nnet3_affix}/tri5
-  mkdir -p $temp_data_root
-
-  utils/data/subset_data_dir.sh --utt-list data/${train_set}/feats.scp \
-    data/${train_set}_sp_hires $temp_data_root/${train_set}_hires
-
-  # note: essentially all the original segments should be in the hires data.
-  n1=$(wc -l <data/${train_set}/feats.scp)
-  n2=$(wc -l <$temp_data_root/${train_set}_hires/feats.scp)
-  if [ $n1 != $n1 ]; then
-    echo "$0: warning: number of feats $n1 != $n2, if these are very different it could be bad."
-    sleep 5
-  fi
-
-  echo "$0: training a system on the hires data for its LDA+MLLT transform, in order to produce the diagonal GMM."
-  if [ -e exp/nnet3${nnet3_affix}/tri5/final.mdl ]; then
-    # we don't want to overwrite old stuff, ask the user to delete it.
-    echo "$0: exp/nnet3${nnet3_affix}/tri5/final.mdl already exists: "
-    echo " ... please delete and then rerun, or use a later --stage option."
-    exit 1;
-  fi
-  # we limit the number of iterations because it's only the LDA+MLLT transform
-  # that we need.
-  steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 7 --mllt-iters "2 4 6" \
-     --splice-opts "--left-context=3 --right-context=3" \
-     3000 10000 $temp_data_root/${train_set}_hires data/lang \
-      $gmm_dir exp/nnet3${nnet3_affix}/tri5
-fi
-
-
-if [ $stage -le 4 ]; then
   echo "$0: computing a subset of data to train the diagonal UBM."
 
   mkdir -p exp/nnet3${nnet3_affix}/diag_ubm
@@ -124,16 +88,24 @@ if [ $stage -le 4 ]; then
   utils/data/subset_data_dir.sh data/${train_set}_sp_hires \
       $num_utts ${temp_data_root}/${train_set}_sp_hires_subset
 
+  echo "$0: computing a PCA transform from the hires data."
+  steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
+      --splice-opts "--left-context=3 --right-context=3" \
+      --max-utts 10000 --subsample 2 \
+       ${temp_data_root}/${train_set}_sp_hires_subset \
+       exp/nnet3${nnet3_affix}/pca_transform
+
   echo "$0: training the diagonal UBM."
   # Use 512 Gaussians in the UBM.
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 \
     --num-frames 700000 \
     --num-threads $num_threads_ubm \
     ${temp_data_root}/${train_set}_sp_hires_subset 512 \
-    exp/nnet3${nnet3_affix}/tri5 exp/nnet3${nnet3_affix}/diag_ubm
+    exp/nnet3${nnet3_affix}/pca_transform exp/nnet3${nnet3_affix}/diag_ubm
+
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   # Train the iVector extractor.  Use all of the speed-perturbed data since iVector extractors
   # can be sensitive to the amount of data.  The script defaults to an iVector dimension of
   # 100.
@@ -142,7 +114,7 @@ if [ $stage -le 5 ]; then
     data/${train_set}_sp_hires exp/nnet3${nnet3_affix}/diag_ubm exp/nnet3${nnet3_affix}/extractor || exit 1;
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 5 ]; then
   # note, we don't encode the 'max2' in the name of the ivectordir even though
   # that's the data we extract the ivectors from, as it's still going to be
   # valid for the non-'max2' data; the utterance list is the same.
@@ -184,13 +156,13 @@ if [ -f data/${train_set}_sp/feats.scp ] && [ $stage -le 8 ]; then
 fi
 
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 6 ]; then
   echo "$0: preparing directory for low-resolution speed-perturbed data (for alignment)"
   utils/data/perturb_data_dir_speed_3way.sh \
     data/${train_set} data/${train_set}_sp
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 7 ]; then
   echo "$0: making MFCC features for low-resolution speed-perturbed data (needed for alignments)"
   steps/make_mfcc.sh --nj $nj \
     --cmd "$train_cmd" data/${train_set}_sp
@@ -200,7 +172,7 @@ if [ $stage -le 8 ]; then
   utils/fix_data_dir.sh data/${train_set}_sp
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 8 ]; then
   if [ -f $ali_dir/ali.1.gz ]; then
     echo "$0: alignments in $ali_dir appear to already exist.  Please either remove them "
     echo " ... or use a later --stage option."

@@ -66,6 +66,8 @@ int main(int argc, char *argv[]) {
     po.Register("ivectors", &ivector_rspecifier, "Rspecifier for "
                 "iVectors as vectors (i.e. not estimated online); per utterance "
                 "by default, or per speaker if you provide the --utt2spk option.");
+    po.Register("utt2spk", &utt2spk_rspecifier, "Rspecifier for "
+                "utt2spk option used to get ivectors per speaker");
     po.Register("online-ivectors", &online_ivector_rspecifier, "Rspecifier for "
                 "iVectors estimated online, as matrices.  If you supply this,"
                 " you must set the --online-ivector-period option.");

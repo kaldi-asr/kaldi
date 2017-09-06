@@ -47,7 +47,7 @@ if [ $stage -le 2 ]; then
     data/train data/langp/tri5_ali exp/sgmm5 exp/sgmm5_ali
 fi
 
-if [ $stage -le 3]; then
+if [ $stage -le 3 ]; then
   echo ---------------------------------------------------------------------
   echo "Stage 3: Starting exp/sgmm5_denlats/ on" `date`
   echo ---------------------------------------------------------------------
@@ -72,7 +72,7 @@ if [ $stage -le 5 ]; then
   echo "Stage 5: Running decoding with SGMM2 models  on" `date`
   echo ---------------------------------------------------------------------
   utils/mkgraph.sh \
-    data/langp_test exp/sgmm5 exp/tri5/graph |tee exp/sgmm5/mkgraph.log
+    data/langp_test exp/sgmm5 exp/sgmm5/graph |tee exp/sgmm5/mkgraph.log
 
   decode=exp/sgmm5/decode_test/
   mkdir -p $decode
@@ -94,6 +94,4 @@ if [ $stage -le 6 ]; then
       data/langp_test data/eval/  exp/sgmm5/decode_test $decode
   done
 fi
-
-
 

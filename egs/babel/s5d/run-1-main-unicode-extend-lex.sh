@@ -96,32 +96,36 @@ if [[ ! -f $lexicon || $lexicon -ot "$lexicon_file" ]]; then
   echo "Preparing lexicon in data/local on" `date`
   echo ---------------------------------------------------------------------
 
-  local/lexicon/make_word_list.py $train_data_dir/filelist.list $train_data_dir/transcription data/local/word_list.txt
-  echo -e "<silence> SIL\n<unk> <oov>\n<noise> <sss>\n<v-noise> <vns>" > data/local/nonspeech.txt
-  echo -e "<hes> <hes>" > data/local/extraspeech.txt
-
-  fmt="word_list"
+  lexicon_dir=`dirname $lexicon`
+  word2baseform=${lexicon_dir}/wordlist.txt 
+  local/lexicon/make_word_list.py $train_data_dir/filelist.list $train_data_dir/transcription ${lexicon_dir}/wordcounts.txt 
+  echo -e "<silence> SIL\n<unk> <oov>\n<noise> <sss>\n<v-noise> <vns>" > ${lexicon_dir}/silence_lexicon.txt
+  echo -e "<hes> <hes>" > ${lexicon_dir}/extra_lexicon.txt
+  
+  awk '{print $2}' ${lexicon_dir}/wordcounts.txt > $word2baseform
   if $morfessor; then
-    fmt="morfessor"
-    morfessor-train --encoding=utf_8 --traindata-list -f"-_" -s data/local/morfessor.bin \
-      data/local/word_list.txt
-    morfessor-segment --encoding=utf_8 --output-format-separator '.' --viterbi-maxlen 3 \
-      -l data/local/morfessor.bin <(cut -d' ' -f2 data/local/word_list.txt) \
-      | sed 's/\.[\_\-]\././g' > data/local/segments
-    cut -d' ' data/local/word_list.txt -f2 | paste -d' ' - data/local/segments > data/local/word_list_tmp.txt
-    mv data/local/word_list_tmp.txt data/local/word_list.txt
+    local/lexicon/train_morphs.sh ${lexicon_dir}/wordcounts.txt ${lexicon_dir}/morphs
+    local/lexicon/apply_morphs.sh ${lexicon_dir}/morphs ${lexicon_dir}/wordlist.txt \
+       ${lexicon_dir}/morphs/word2baseform.txt
+
+    word2baseform=${lexicon_dir}/morphs/word2baseform.txt
   fi
 
-  local/lexicon/make_unicode_lexicon.py --tag_percentage $tag_percentage --fmt $fmt \
-    --nonspeech data/local/nonspeech.txt --extraspeech data/local/extraspeech.txt \
-    --verbose data/local/word_list.txt data/local/lexicon.txt data/local/
-  local/prepare_unicode_lexicon.py --nonspeech data/local/nonspeech.txt \
-    --extraspeech data/local/extraspeech.txt data/local/lexicon_table.txt data/local
-  cp data/local/lexicon.txt data/local/filtered_lexicon.txt
+  local/lexicon/make_unicode_lexicon.py --tag-percentage $tag_percentage \
+    --silence-lexicon ${lexicon_dir}/silence_lexicon.txt \
+    --extra-lexicon ${lexicon_dir}/extra_lexicon.txt \
+    --verbose ${lexicon_dir}/log.lexicon \
+    $word2baseform $lexicon ${lexicon_dir}/grapheme_map.txt
+
+  local/prepare_unicode_lexicon.py --silence-lexicon ${lexicon_dir}/silence_lexicon.txt \
+    $lexicon $lexicon_dir 
+  
+  cp $lexicon ${lexicon_dir}/filtered_lexicon.txt
+
   if $extend_lexicon; then
     # Extend the original lexicon.
     # Will creates the files data/local/extend/{lexiconp.txt,oov2prob}.
-    mv data/local/lexicon.txt  data/local/lexicon_orig.txt
+    mv $lexicon data/local/lexicon_orig.txt
     local/extend_lexicon.sh --cmd "$train_cmd" --cleanup false \
       --num-sent-gen $num_sent_gen --num-prons $num_prons \
       data/local/lexicon_orig.txt data/local/extend data/dev2h/text

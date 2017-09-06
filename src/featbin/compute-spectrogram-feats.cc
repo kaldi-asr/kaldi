@@ -109,16 +109,10 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      if (spec_opts.frame_opts.samp_freq != wave_data.SampFreq())
-        KALDI_ERR << "Sample frequency mismatch: you specified "
-                  << spec_opts.frame_opts.samp_freq << " but data has "
-                  << wave_data.SampFreq() << " (use --sample-frequency "
-                  << "option).  Utterance is " << utt;
-
       SubVector<BaseFloat> waveform(wave_data.Data(), this_chan);
       Matrix<BaseFloat> features;
       try {
-        spec.Compute(waveform, 1.0, &features, NULL);
+        spec.ComputeFeatures(waveform, wave_data.SampFreq(), 1.0, &features);
       } catch (...) {
         KALDI_WARN << "Failed to compute features for utterance "
                    << utt;

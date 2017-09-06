@@ -124,7 +124,7 @@ awk '{print $1}' $dir/wav.scp \
                print "$1-$2 $1 $2\n"; ' \
   > $dir/reco2file_and_channel || exit 1;
 
-awk '{spk=substr($1,4,6); print $1 " " spk}' $dir/segments > $dir/utt2spk \
+awk '{spk=substr($1,1,9); print $1 " " spk}' $dir/segments > $dir/utt2spk \
   || exit 1;
 sort -k 2 $dir/utt2spk | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt || exit 1;
 
