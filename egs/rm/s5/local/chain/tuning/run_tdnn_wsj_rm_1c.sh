@@ -162,7 +162,8 @@ fi
 
 if [ $stage -le 6 ]; then
   echo "$0: compute {den,normalization}.fst using weighted phone LM."
-  steps/nnet3/chain/make_weighted_den_fst.sh --weights $phone_lm_scales \
+  steps/nnet3/chain/make_weighted_den_fst.sh --cmd "$train_cmd" \
+    --weights $phone_lm_scales \
     --lm-opts '--num-extra-lm-states=200' \
     $src_tree_dir $lat_dir $dir || exit 1;
 fi
