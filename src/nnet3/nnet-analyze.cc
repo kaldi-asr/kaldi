@@ -276,13 +276,12 @@ void ComputeCommandAttributes(
     const NnetComputation::Command &c = computation.commands[command_index];
     CommandAttributes &attr = (*attributes)[command_index];
     switch (c.command_type) {
-      case kAllocMatrixZeroed:
-      case kAllocMatrixFromOtherZeroed:
+      case kAllocMatrix:
+      case kDeallocMatrix:
+      case kSwapMatrix:
+        break;  // the commands above leave the matrix undefined.
+      case kSetConst:
         vars.RecordAccessForSubmatrix(c.arg1, kWriteAccess, &attr);
-        break;
-      case kAllocMatrixUndefined: // nothing is written here.
-      case kDeallocMatrix: // ditto.
-      case kAllocMatrixFromOther: // ditto.
         break;
       case kPropagate:
         vars.RecordAccessForSubmatrix(c.arg3, kReadAccess, &attr);
@@ -490,10 +489,8 @@ void ComputeMatrixAccesses(
     const NnetComputation::Command &command = computation.commands[c];
     int32 matrix_index1, matrix_index2;
 
-
     switch (command.command_type) {
-      case kAllocMatrixZeroed:
-      case kAllocMatrixUndefined:
+      case kAllocMatrix:
         if (!computation.IsWholeMatrix(command.arg1))
           KALDI_ERR << "Command does not operate on whole matrix";
         matrix_index1 = computation.submatrices[command.arg1].matrix_index;
@@ -501,8 +498,7 @@ void ComputeMatrixAccesses(
           KALDI_ERR << "Matrix " << matrix_index1 << " initialized twice.";
         (*matrix_accesses)[matrix_index1].allocate_command = c;
         break;
-      case kAllocMatrixFromOther:
-      case kAllocMatrixFromOtherZeroed:
+      case kSwapMatrix:
         if (!computation.IsWholeMatrix(command.arg1))
           KALDI_ERR << "Command does not operate on whole matrix";
         matrix_index1 = computation.submatrices[command.arg1].matrix_index;
@@ -563,7 +559,6 @@ void ComputationChecker::Check() {
   CheckComputationDebugInfo();
   if (config_.check_rewrite)
     CheckComputationRewrite();
-
 }
 
 
@@ -695,15 +690,13 @@ void ComputationChecker::CheckComputationIndexes() const {
   for (int32 command_index = 0; command_index < num_commands; command_index++) {
     const NnetComputation::Command &c = computation_.commands[command_index];
     switch (c.command_type) {
-      case kAllocMatrixZeroed:
-      case kAllocMatrixUndefined:
+      case kAllocMatrix:
       case kDeallocMatrix:
         if (c.arg1 < 1 || c.arg1 >= num_submatrices ||
             !computation_.IsWholeMatrix(c.arg1))
           KALDI_ERR << "submatrix index out of range or invalid";
         break;
-      case kAllocMatrixFromOther:
-      case kAllocMatrixFromOtherZeroed:
+      case kSwapMatrix:
         if (c.arg1 < 1 || c.arg1 >= num_submatrices ||
             !computation_.IsWholeMatrix(c.arg1) ||
             c.arg2 < 1 || c.arg2 >= num_submatrices ||
@@ -713,7 +706,7 @@ void ComputationChecker::CheckComputationIndexes() const {
             computation_.submatrices[c.arg2].num_rows ||
             computation_.submatrices[c.arg1].num_cols !=
             computation_.submatrices[c.arg2].num_cols)
-          KALDI_ERR << "Dimension mismatch in kAllocMatrixFromOther* command";
+          KALDI_ERR << "Dimension mismatch in kSwapMatrix command";
         break;
       case kPropagate: {
         if (c.arg1 < 0 || c.arg1 >= nnet_.NumComponents())
@@ -987,7 +980,7 @@ static void CheckComputationOnline(const Nnet &nnet,
   int32 num_commands = computation.commands.size();
   KALDI_ASSERT(computation.commands[num_commands-1].command_type == kGotoLabel);
   for (int32 c = num_commands - 2;
-       c >= 0 && computation.commands[c].command_type == kAllocMatrixFromOther;
+       c >= 0 && computation.commands[c].command_type == kSwapMatrix;
        c--) {
     // this command can be interpreted as "initialize matrix referred to by
     // c.arg2 with the matrix referred to by c.arg2".
@@ -1045,7 +1038,7 @@ void ComputeMatrixToSubmatrix(
   }
 }
 
-int32 ComputationAnalysis::FirstAccess(int32 s) const {
+int32 ComputationAnalysis::FirstNontrivialAccess(int32 s) const {
   KALDI_ASSERT(static_cast<size_t>(s) < computation_.submatrices.size() && s>0);
   int32 ans = computation_.commands.size();
   std::vector<int32> variable_indexes;
@@ -1059,14 +1052,10 @@ int32 ComputationAnalysis::FirstAccess(int32 s) const {
         access_end = accesses.end();
     for (; access_iter != access_end; ++access_iter) {
       int32 command_index = access_iter->command_index;
-      CommandType command_type =
-          computation_.commands[command_index].command_type;
-      // The following two command types are not considered writes or reads,
-      // so they should not even appear in this list.
-      KALDI_ASSERT(command_type != kAllocMatrixUndefined &&
-                   command_type != kAllocMatrixFromOther);
-      if (command_type != kAllocMatrixZeroed &&
-          command_type != kAllocMatrixFromOtherZeroed) {
+      const NnetComputation::Command &command = computation_.commands[
+          command_index];
+      if (!(command.command_type == kSetConst &&
+            command.alpha == 0.0)) {  // if it's not a zeroing command..
         ans = std::min(ans, command_index);
         break;  // break from access_iter loop (an optimization)
       }
@@ -1076,7 +1065,7 @@ int32 ComputationAnalysis::FirstAccess(int32 s) const {
 }
 
 
-int32 ComputationAnalysis::FirstMatrixAccess(int32 m) const {
+int32 ComputationAnalysis::FirstNontrivialMatrixAccess(int32 m) const {
   KALDI_ASSERT(static_cast<size_t>(m) < computation_.matrices.size() && m > 0);
   int32 ans = computation_.commands.size();
   const std::vector<Access> &accesses =
@@ -1085,14 +1074,13 @@ int32 ComputationAnalysis::FirstMatrixAccess(int32 m) const {
       access_end = accesses.end();
   for (; access_iter != access_end; ++access_iter) {
     int32 command_index = access_iter->command_index;
-    CommandType command_type =
-        computation_.commands[command_index].command_type;
-    if (command_type != kAllocMatrixUndefined &&
-        command_type != kAllocMatrixZeroed &&
-        command_type != kAllocMatrixFromOther &&
-        command_type != kAllocMatrixFromOtherZeroed) {
+    const NnetComputation::Command command =
+        computation_.commands[command_index];
+    if (!(command.command_type != kSetConst &&
+          command.alpha == 0.0)) {  // except for zeroing commands..
       ans = std::min(ans, command_index);
-      break;  // break from access_iter loop (an optimization)
+      break;  // break from access_iter loop (an optimization; note, the
+              // list 'accesses' is sorted.)
     }
   }
   return ans;

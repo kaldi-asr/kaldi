@@ -189,8 +189,8 @@ void MoveSizingCommands(const Nnet &nnet, NnetComputation *computation) {
   computation->commands = reordered_commands;
 }
 
-// This command replaces commands of type kAllocMatrixZeroed with commands of
-// type kAllocMatrixUndefined, where possible.
+// This function removes commands of type kSetConst (with alpha=0.0), where
+// possible.
 void RemoveUnnecessaryZeroing(const Nnet &nnet,
                               NnetComputation *computation) {
   Analyzer a;
@@ -200,18 +200,20 @@ void RemoveUnnecessaryZeroing(const Nnet &nnet,
   // variables belonging to that matrix) written to as the first instruction
   // apart from the initial zeroing.  These matrices can have the initial
   // zeroing replaced by a sizing operation that leaves the data undefined.
-
   int32 num_matrices = a.matrix_accesses.size();
   for (int32 matrix_index = 0; matrix_index < num_matrices; matrix_index++) {
     const MatrixAccesses &accesses = a.matrix_accesses[matrix_index];
-    int32 allocate_command = accesses.allocate_command;
-    if (allocate_command == -1)  // an input
-      continue;  // nothing to do.
-    if (computation->commands[allocate_command].command_type !=
-        kAllocMatrixZeroed) {
-      continue;  // already leaving it undefined, or it's an input, so nothing
-                 // to do.
+    if (accesses.accesses.empty())
+      continue;
+    int32 zeroing_command_index = accesses.accesses[0].command_index;
+    NnetComputation::Command *command =
+        &(computation->commands[zeroing_command_index]);
+    if (!(command->command_type == kSetConst &&
+          command->alpha == 0.0)) {
+      continue;  // First command is not a zeroing command
     }
+    // OK, the first command that accesses this matrix is a zeroing command;
+    // we're going to figure out whether it was necessary.
     std::vector<int32> variables_for_matrix;
     a.variables.AppendVariablesForMatrix(matrix_index, &variables_for_matrix);
     bool all_variables_ok = true;  // if this stays true, it means we don't need
@@ -220,9 +222,6 @@ void RemoveUnnecessaryZeroing(const Nnet &nnet,
       int32 variable_index = variables_for_matrix[i];
       const std::vector<Access> &v_accesses =
           a.variable_accesses[variable_index];
-      KALDI_ASSERT(v_accesses.size() > 0 &&
-                   v_accesses[0].command_index == allocate_command &&
-                   v_accesses[0].access_type == kWriteAccess);
       if (v_accesses.size() > 1 &&
           v_accesses[1].access_type != kWriteAccess) {
         all_variables_ok = false;  // first access after zeroing was not a write
@@ -240,8 +239,8 @@ void RemoveUnnecessaryZeroing(const Nnet &nnet,
     }
     if (all_variables_ok) {
       // Here is where the change actually happens.
-      computation->commands[allocate_command].command_type =
-          kAllocMatrixUndefined;
+      // Remove the zeroing command.
+      command->command_type = kNoOperation;
     }
   }
 }
@@ -306,8 +305,7 @@ void RemoveUnnecessaryAllocation(const Nnet &nnet,
   int32 num_commands = computation->commands.size();
   for (int32 command_index = 0; command_index < num_commands; command_index++) {
     NnetComputation::Command &command = computation->commands[command_index];
-    if (command.command_type == kAllocMatrixZeroed ||
-        command.command_type == kAllocMatrixUndefined ||
+    if (command.command_type == kAllocMatrix ||
         command.command_type == kDeallocMatrix) {
       int32 s = command.arg1, m = computation->submatrices[s].matrix_index,
           num_rows = computation->matrices[m].num_rows,
@@ -337,19 +335,11 @@ void RemoveUnnecessaryAllocation(const Nnet &nnet,
     KALDI_ASSERT(dealloc_command.command_type ==
                  kDeallocMatrix);
     KALDI_ASSERT(alloc_command.command_type ==
-                 kAllocMatrixUndefined ||
-                 alloc_command.command_type==
-                 kAllocMatrixZeroed);
+                 kAllocMatrix);
     // remove the deallocation command.
     dealloc_command.command_type =  kNoOperation;
     alloc_command.arg2 = dealloc_command.arg1;
-    if (alloc_command.command_type ==
-        kAllocMatrixUndefined)
-      alloc_command.command_type =
-          kAllocMatrixFromOther;
-    else
-      alloc_command.command_type =
-          kAllocMatrixFromOtherZeroed;
+    alloc_command.command_type = kSwapMatrix;
   }
   RemoveNoOps(computation);
   FixGotoLabel(computation);
@@ -378,9 +368,6 @@ void ConvertAdditionToAssignment(const Nnet &nnet,
   for (int32 command = 0; command < num_commands; command++) {
     NnetComputation::Command &c = computation->commands[command];
     switch (c.command_type) {
-      case kAllocMatrixUndefined: case kAllocMatrixFromOther:
-        KALDI_ERR << "Cannot call ConvertAdditionToAssignment after "
-                  << "allowing undefined initialization.";
       case kMatrixAdd: case kAddRows: case kAddRowsMulti:
       case kAddToRowsMulti: {
         const std::vector<int32> &submatrices_written =
@@ -391,12 +378,13 @@ void ConvertAdditionToAssignment(const Nnet &nnet,
         bool can_convert = true;
         for (; iter != end; ++iter) {
           int32 submatrix_written = *iter;
-          int32 first_access_command = analysis.FirstAccess(submatrix_written);
-          // first_access_command is first non-initialization command that
-          // accesses this submatrix.  It can be assumed to be a write command,
-          // since it makes no sense to read a variable before it's written to.
-          // If it's before this command then we need to add rather than copy,
-          // we can't do the conversion to a copy command.
+          int32 first_access_command = analysis.FirstNontrivialAccess(
+              submatrix_written);
+          // first_access_command is first command other than zeroing and
+          // allocation that accesses this submatrix.  It can be assumed to be a
+          // write command, since it makes no sense to read a variable before
+          // it's written to.  If it's before this command then we need to add
+          // rather than copy; we can't do the conversion to a copy command.
           if (first_access_command != command) {
             can_convert = false;
             break;

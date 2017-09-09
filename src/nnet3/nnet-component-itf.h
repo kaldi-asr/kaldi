@@ -61,7 +61,8 @@ enum ComponentProperties {
   kPropagateAdds = 0x020,  // true if the Propagate function adds to, rather
                            // than setting, its output.  The Component chooses
                            // whether to add or set, and the calling code has to
-                           // accommodate it.
+                           // accommodate it.  This flag is incompatible with
+                           // the kPropagateInPlace flag.
   kReordersIndexes = 0x040,  // true if the ReorderIndexes function might reorder
                              // the indexes (otherwise we can skip calling it).
                              // Must not be set for simple components.
@@ -69,7 +70,7 @@ enum ComponentProperties {
                            // setting, the "in_deriv" output.  The Component
                            // chooses whether to add or set, and the calling
                            // code has to accommodate it.  Note: in the case of
-                           // in-place backprop, this flag has no effect.
+                           // in-place backprop, this flag is
   kBackpropNeedsInput = 0x100,  // true if backprop operation needs access to
                                 // forward-pass input.
   kBackpropNeedsOutput = 0x200,  // true if backprop operation needs access to

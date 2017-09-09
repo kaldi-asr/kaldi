@@ -80,6 +80,11 @@ int32 SimpleForwardingDescriptor::Dim(const Nnet &nnet) const {
   return nnet.GetNode(src_node_).Dim(nnet);
 }
 
+BaseFloat SimpleForwardingDescriptor::GetScaleForNode(int32 node_index) const {
+  if (node_index == src_node_) return scale_;
+  else return std::numeric_limits<BaseFloat>::infinity();
+}
+
 Cindex SimpleForwardingDescriptor::MapToInput(const Index &index) const {
   return Cindex(src_node_, index);
 }
@@ -104,6 +109,11 @@ void OffsetForwardingDescriptor::GetNodeDependencies(
     std::vector<int32> *node_indexes) const {
   src_->GetNodeDependencies(node_indexes);
 }
+
+BaseFloat OffsetForwardingDescriptor::GetScaleForNode(int32 node_index) const {
+  return src_->GetScaleForNode(node_index);
+}
+
 
 Cindex OffsetForwardingDescriptor::MapToInput(const Index &ind) const {
   Index ind_mod(ind);
@@ -170,6 +180,11 @@ void RoundingForwardingDescriptor::GetNodeDependencies(
   src_->GetNodeDependencies(node_indexes);
 }
 
+BaseFloat RoundingForwardingDescriptor::GetScaleForNode(
+    int32 node_index) const {
+  return src_->GetScaleForNode(node_index);
+}
+
 Cindex RoundingForwardingDescriptor::MapToInput(const Index &ind) const {
   KALDI_ASSERT(t_modulus_ >= 1);
   Index ind_mod(ind);
@@ -196,6 +211,11 @@ void RoundingForwardingDescriptor::WriteConfig(
 void ReplaceIndexForwardingDescriptor::GetNodeDependencies(
     std::vector<int32> *node_indexes) const {
   src_->GetNodeDependencies(node_indexes);
+}
+
+BaseFloat ReplaceIndexForwardingDescriptor::GetScaleForNode(
+    int32 node_index) const {
+  return src_->GetScaleForNode(node_index);
 }
 
 Cindex ReplaceIndexForwardingDescriptor::MapToInput(const Index &ind) const {
@@ -248,6 +268,10 @@ int32 OptionalSumDescriptor::Dim(const Nnet &nnet) const {
   return src_->Dim(nnet);
 }
 
+BaseFloat OptionalSumDescriptor::GetScaleForNode(int32 node_index) const {
+  return src_->GetScaleForNode(node_index);
+}
+
 void OptionalSumDescriptor::GetNodeDependencies(
     std::vector<int32> *node_indexes) const {
   src_->GetNodeDependencies(node_indexes);
@@ -283,9 +307,35 @@ int32 SimpleSumDescriptor::Dim(const Nnet &nnet) const {
   return src_->Dim(nnet);
 }
 
+BaseFloat SimpleSumDescriptor::GetScaleForNode(int32 node_index) const {
+  if (node_index >= 0) return src_->GetScaleForNode(node_index);
+  else return 0.0;  // scale of constant term, which does not appear in
+                    // ForwardingDescriptors, hence 0.0.
+}
+
 void SimpleSumDescriptor::GetNodeDependencies(
     std::vector<int32> *node_indexes) const {
   src_->GetNodeDependencies(node_indexes);
+}
+
+BaseFloat ConstantSumDescriptor::GetScaleForNode(int32 node_index) const {
+  if (node_index < 0) return value_;
+  else return std::numeric_limits<BaseFloat>::infinity();
+}
+
+void ConstantSumDescriptor::WriteConfig(
+    std::ostream &os, const std::vector<std::string> &node_names) const {
+  os << "Const(" << value_ << ',' << dim_ << ')';
+}
+
+SumDescriptor* ConstantSumDescriptor::Copy() const {
+  return new ConstantSumDescriptor(value_, dim_);
+}
+
+ConstantSumDescriptor::ConstantSumDescriptor(BaseFloat value,
+                                             int32 dim):
+    value_(value), dim_(dim) {
+  KALDI_ASSERT(dim > 0 && (value - value == 0.0));
 }
 
 void BinarySumDescriptor::GetDependencies(
@@ -344,6 +394,28 @@ int32 BinarySumDescriptor::Dim(const Nnet &nnet) const {
   return dim1;
 }
 
+BaseFloat BinarySumDescriptor::GetScaleForNode(int32 node_index) const {
+  BaseFloat ans1 = src1_->GetScaleForNode(node_index),
+      ans2 = src2_->GetScaleForNode(node_index);
+  bool ans1_valid = (ans1 - ans1 == 0),
+      ans2_valid = (ans2 - ans2 == 0);  // Test for infinity.
+  if (node_index < 0) {
+    KALDI_ASSERT(ans1_valid && ans2_valid);
+    // if there were more than one Const(..) expression, they would logically
+    // add together (even though it would be redundant to write such a thing).
+    return ans1 + ans2;
+  }
+  if (ans1_valid && ans2_valid && ans1 != ans2) {
+    // this would be a code error so don't print a very informative message.
+    KALDI_ERR << "Inconsistent value for sum descriptor: for node "
+              << node_index << ", it can have scales "
+              << ans1 << " vs. " << ans2 << " (you have used unsupported "
+      "combinations of descriptors).";
+  }
+  if (!ans2_valid) return ans1;
+  else return ans2;
+}
+
 void BinarySumDescriptor::GetNodeDependencies(
     std::vector<int32> *node_indexes) const {
   src1_->GetNodeDependencies(node_indexes);
@@ -372,10 +444,28 @@ void BinarySumDescriptor::WriteConfig(
 
 int32 SwitchingForwardingDescriptor::Modulus() const {
   int32 ans = src_.size();;
-  for (int32 i = 0; i < src_.size(); i++)
+  for (size_t i = 0; i < src_.size(); i++)
     ans = Lcm(ans, src_[i]->Modulus());
   return ans;
 }
+
+BaseFloat SwitchingForwardingDescriptor::GetScaleForNode(
+    int32 node_index) const {
+  BaseFloat inf = std::numeric_limits<BaseFloat>::infinity(),
+      ans = inf;
+  for (size_t i = 0; i < src_.size(); i++) {
+    BaseFloat this_ans = src_[i]->GetScaleForNode(node_index);
+    if (this_ans != inf) {
+      if (ans != inf && ans != this_ans)
+        KALDI_ERR << "Invalid Descriptor encountered: for node-index "
+                  << node_index << ", got two different scales "
+                  << this_ans << " vs. " << ans;
+      ans = this_ans;
+    }
+  }
+  return ans;
+}
+
 
 bool Descriptor::Parse(const std::vector<std::string> &node_names,
                        const std::string **next_token) {

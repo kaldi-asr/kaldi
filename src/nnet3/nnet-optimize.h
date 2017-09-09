@@ -344,8 +344,8 @@ void ConsolidateModelUpdate(const Nnet &nnet,
                             NnetComputation *computation);
 
 /// This converts addition operations (things with Add in their names) to
-/// copy operations (things with Copy in their names).  This is both slightly
-/// more efficient,
+/// copy operations (things with Copy in their names).  This is slightly
+/// more efficient, and it may later allow us to remove unnecessary zeroing.
 void ConvertAdditionToAssignment(const Nnet &nnet,
                                  NnetComputation *computation);
 
@@ -356,8 +356,9 @@ void VariableMergingOptimization(const NnetOptimizeOptions &config,
                                  NnetComputation *computation);
 
 
-/// This optimization function changes, where possible, matrix initializations
-/// of type kAllocMatrixZeroed to kAllocMatrixUndefined.
+/// This optimization function removes, where possible, commands of type
+/// type kSetConst.  (It can remove them where subsequent commands are
+/// going to set the matrix without reading its previous value).
 void RemoveUnnecessaryZeroing(const Nnet &nnet, NnetComputation *computation);
 
 

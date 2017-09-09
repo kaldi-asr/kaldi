@@ -200,7 +200,7 @@ class CuDevice {
   uint32 num_debug_stride_allocations_;
 
   CuMemoryAllocator allocator_;
-  bool multi_threaded_;   // true if user called AllowMultiThreadedOperation().
+  bool multi_threaded_;   // true if user called AllowMultithreading().
 }; // class CuDevice
 
 

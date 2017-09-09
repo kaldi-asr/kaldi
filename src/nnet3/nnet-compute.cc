@@ -178,14 +178,7 @@ void NnetComputer::ExecuteCommand() {
   int32 m1, m2;
   try {
     switch (c.command_type) {
-      case kAllocMatrixZeroed:
-        m1 = computation_.submatrices[c.arg1].matrix_index;
-        matrices_[m1].Resize(computation_.matrices[m1].num_rows,
-                             computation_.matrices[m1].num_cols,
-                             kSetZero,
-                             computation_.matrices[m1].stride_type);
-        break;
-      case kAllocMatrixUndefined:
+      case kAllocMatrix:
         m1 = computation_.submatrices[c.arg1].matrix_index;
         matrices_[m1].Resize(computation_.matrices[m1].num_rows,
                              computation_.matrices[m1].num_cols,
@@ -196,17 +189,17 @@ void NnetComputer::ExecuteCommand() {
         m1 = computation_.submatrices[c.arg1].matrix_index;
         matrices_[m1].Resize(0, 0);
         break;
-      case kAllocMatrixFromOther:
+      case kSwapMatrix:
         m1 = computation_.submatrices[c.arg1].matrix_index;
         m2 = computation_.submatrices[c.arg2].matrix_index;
         matrices_[m1].Swap(&(matrices_[m2]));
         break;
-      case kAllocMatrixFromOtherZeroed:
-        m1 = computation_.submatrices[c.arg1].matrix_index;
-        m2 = computation_.submatrices[c.arg2].matrix_index;
-        matrices_[m1].Swap(&(matrices_[m2]));
-        matrices_[m1].SetZero();
+      case kSetConst: {
+        CuSubMatrix<BaseFloat> s(GetSubMatrix(c.arg1));
+        if (c.alpha == 0.0) s.SetZero();
+        else s.Set(c.alpha);
         break;
+      }
       case kPropagate: {
         const Component *component = nnet_.GetComponent(c.arg1);
         ComponentPrecomputedIndexes *indexes =

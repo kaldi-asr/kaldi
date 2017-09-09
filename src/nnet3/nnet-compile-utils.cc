@@ -1,6 +1,6 @@
 // nnet3/nnet-compile-utils.cc
 
-// Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+// Copyright      2015-2017  Johns Hopkins University (author: Daniel Povey)
 //                2015                           (author: Vijayaditya Peddinti)
 
 // See ../../COPYING for clarification regarding multiple authors
