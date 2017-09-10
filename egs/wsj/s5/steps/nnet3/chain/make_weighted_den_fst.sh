@@ -98,21 +98,17 @@ if [ $stage -le 1 ]; then
     if ! [[ $w =~ ^[+]?[0-9]+$ ]] ; then
       echo "no positive int weight specified for alignment ${ali_dirs[$n]}" && exit 1;
     fi
-    rm $adir/alignment_files.txt 2>/dev/null || true
     for x in `seq $w`;do
-      for j in `seq $num_jobs`;do
-        echo $adir/ali.$j.gz >> $dir/alignment_files.${n}.txt
-      done
-    done
+      for j in `seq $num_jobs`;do gunzip -c $adir/ali.$j.gz; done
+    done | ali-to-phones $adir/final.mdl ark:- "ark:|gzip -c >$dir/phones.$n.gz"
   done
+
   $cmd $dir/log/make_phone_lm_fst.log \
-    ali_dirs=\(${ali_dirs[@]}\) \; \
     for n in `seq 0 $[num_alignments-1]`\; do \
-      adir=\${ali_dirs[\$n]} \; \
-      cat $dir/alignment_files.\$n.txt \| while read f\; do gunzip -c \$f \; done \| \
-        ali-to-phones \$adir/final.mdl ark:- ark:- \; \
+      gunzip -c $dir/phones.\$n.gz \; \
     done \| \
-      chain-est-phone-lm $lm_opts ark:- $dir/phone_lm.fst || exit 1;
+    chain-est-phone-lm $lm_opts ark:- $dir/phon_lm.fst || exit 1;
+  rm $dir/phones.*.gz 2>/dev/null || true
 fi
 
 if [ $stage -le 2 ]; then
@@ -125,5 +121,7 @@ if [ $stage -le 3 ]; then
     $dir/phone_lm.fst \
     $dir/den.fst $dir/normalization.fst || exit 1
 fi
+
+echo "Successfully created {den,normalization}.fst"
 
 exit 0
