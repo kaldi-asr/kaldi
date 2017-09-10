@@ -437,6 +437,16 @@ void CheckComputation(const Nnet &nnet,
                       const NnetComputation &computation,
                       bool check_rewrite = false);
 
+// This function returns the maximum amount of memory (in bytes) that the
+// computation uses at any point (this would be GPU memory if the computation
+// were using a GPU).  This is based on allocations and deallocations of
+// matrices, and input commands; it ignores any temporary allocation done inside
+// Propagate() and Backprop() or other similar functions; it ignores precomputed
+// indexes and other things residing in the computation; and of course it
+// ignores things you might do with the output, such as the forward-backward
+// code for chain computation.
+int64 GetMaxMemoryUse(const NnetComputation &computation);
+
 
 } // namespace nnet3
 } // namespace kaldi
