@@ -453,6 +453,7 @@ bool SnipRowOps(NnetComputation *computation);
 /// computation->commands_; to do that, call RemoveNoOps(computation).
 void RenumberComputation(NnetComputation *computation);
 
+
 /// Removes commands of type kNoOperation in the computation.
 void RemoveNoOps(NnetComputation *computation);
 

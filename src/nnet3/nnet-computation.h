@@ -175,7 +175,9 @@ struct ComputationRequest {
    - kDeallocMatrix: Deallocate a matrix.  arg1 = submatrix index.
    - kSwapMatrix: initialize matrix with submatrix index arg1 using memory
       from matrix with submatrix index arg2 (using shallow swap).  Both
-      submatrices must refer to whole matrices.
+      submatrices must refer to whole matrices.  The expectation is that
+      prior to the swap, arg1 was empty and arg2 was nonempty, but the
+      execution code does not enforce this.
    - kSetConst: set all elements of submatrix index 'arg1' to the value 'alpha'.
    - kPropagate: Forward computation of neural net, see Component::Propagate()
      - arg1 is is component-index in neural net

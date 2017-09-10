@@ -362,8 +362,8 @@ void VariableMergingOptimization(const NnetOptimizeOptions &config,
 void RemoveUnnecessaryZeroing(const Nnet &nnet, NnetComputation *computation);
 
 
-/// This optimization moves commands that initialize matrices to as late as
-/// possible, and commands that empty matrices to as early as possible.
+/// This optimization moves commands that allocate and zero matrices to as late as
+/// possible, and moves commands that deallocate matrices to as early as possible.
 void MoveSizingCommands(const Nnet &nnet, NnetComputation *computation);
 
 /// This optimization detects cases where we deallocate a matrix, and then

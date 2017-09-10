@@ -246,11 +246,13 @@ void ComputeVariableAccesses(
 
 
 struct MatrixAccesses {
-  /// Index of the command that allocates the matrix, or -1 if the command
-  /// doesn't exist (e.g. it is an input).
+  /// Index of the command that allocates the matrix (which will be of type
+  /// kAllocMatrix or kSwapMatrix), or -1 if the command doesn't exist (e.g. it
+  /// is an input).
   int32 allocate_command;
-  /// Index of the command that deallocates the matrix, or -1 if never gets
-  /// deallocated (e.g. it is an output).
+  /// Index of the command that deallocates the matrix (which will be of type
+  /// kDeallocMatrix or kSwapMatrix), or -1 if never gets deallocated (e.g. it
+  /// is an output).
   int32 deallocate_command;
   /// Records the indexes of commands that access the matrix, and the type
   /// (read, read/write, write).  It will be sorted on command index with only

@@ -122,9 +122,9 @@ bool NnetOptimizeOptions::operator == (const NnetOptimizeOptions &other) const {
           other.max_deriv_time_relative == max_deriv_time_relative);
 }
 
-// move commands that resize matrices to as late/early as possible.
-// (however, keep input and output commands where they were; it
-// creates other headaches if we move those).
+// move commands that resize and zero matrices to as late/early as possible.
+// (however, keep input and output commands where they were; it creates other
+// headaches if we move those).
 void MoveSizingCommands(const Nnet &nnet, NnetComputation *computation) {
   ComputationVariables variables;
   variables.Init(*computation);
@@ -143,20 +143,45 @@ void MoveSizingCommands(const Nnet &nnet, NnetComputation *computation) {
   // existing indexes (by adding 1) and "just-before" (by subtracting 1).
   int32 num_commands = computation->commands.size(),
       num_matrices = matrix_accesses.size();
-  std::vector<std::pair<int32,NnetComputation::Command*> >
-      commands(num_commands);
+
+  // Matrix allocation commands tend to be followed by a command that zeroes the
+  // matrix.  We want to treat the two commands as a single unit for purposes of
+  // reordering.  is_command_pair[c] will be true if command c is the first
+  // element of such a pair.
+  std::vector<bool> is_command_pair(num_commands, false);
+  for (int32 c = 0; c + 1 < num_commands; c++) {
+    if (computation->commands[c].command_type == kAllocMatrix &&
+        computation->commands[c+1].command_type == kSetConst &&
+        computation->commands[c].arg1 == computation->commands[c+1].arg1 &&
+        computation->commands[c+1].alpha == 0.0) {
+      is_command_pair[c] = true;
+    }
+  }
+
+  // 'command_reordering' contains (new-number, old-number) of commands.
+  // the new-number is multiplied by 3 for reasons explained above.
+  std::vector<std::pair<int32,int32> >
+      command_reordering(num_commands);
+  // Note: for now we include the second-elements-of-pairs (i.e.  the zeroing
+  // commands that follow allocation commands) here; we'll ignore them later.
   for (int32 c = 0; c < num_commands; c++) {
-    commands[c].first = c * 3;
-    commands[c].second = &(computation->commands[c]);
+    command_reordering[c].first = c * 3;
+    command_reordering[c].second = c;
   }
   for (int32 m = 1; m < num_matrices; m++) {
     const MatrixAccesses &ma = matrix_accesses[m];
-    if (ma.allocate_command != -1) {
-      // first_access_command will be index of first non-initializing access.
+    // The following if-block relates to reordering of allocation (and,
+    // implicitly, zeroing) commands.
+    if (ma.allocate_command != -1 &&
+        computation->commands[ma.allocate_command].command_type == kAllocMatrix) {
+      // first_access_command will be index of first access, except for the
+      // zeroing command that immediately follows the initialization command.
       int32 first_access_command = -1;
+      // this block sets 'first_access_command'.
       if (!ma.accesses.empty()) {
         first_access_command = ma.accesses[0].command_index;
-        if (first_access_command == ma.allocate_command) {
+        if (first_access_command == ma.allocate_command + 1 &&
+            is_command_pair[ma.allocate_command]) {
           if (ma.accesses.size() > 1)
             first_access_command = ma.accesses[1].command_index;
           else
@@ -165,27 +190,46 @@ void MoveSizingCommands(const Nnet &nnet, NnetComputation *computation) {
       }
       if (first_access_command != -1) {
         KALDI_ASSERT(first_access_command > ma.allocate_command);
-        // move the initialization command to just before the first access,
-        // it wasn't a kAcceptInput command.
-        if (commands[ma.allocate_command].second->command_type != kAcceptInput)
-          commands[ma.allocate_command].first = first_access_command * 3 - 1;
+        // move the initialization command to just before the first access.
+        command_reordering[ma.allocate_command].first =
+            first_access_command * 3 - 1;
       }
     }
-    if (ma.deallocate_command != -1) {
-      if (!ma.accesses.empty()) {
-        int32 last_access_command = ma.accesses.back().command_index;
-        // move the destruction command to just after the last access, if it
-        // wasn't a kProvideOutput command.
-        if (commands[ma.deallocate_command].second->command_type !=
-            kProvideOutput)
-          commands[ma.deallocate_command].first = last_access_command * 3 + 1;
+    // The following if-block relates to reordering of deallocation
+    // commands.
+    if (ma.deallocate_command != -1 && !ma.accesses.empty() &&
+        computation->commands[ma.deallocate_command].command_type ==
+        kDeallocMatrix) {
+      int32 last_access_command = ma.accesses.back().command_index;
+      // move the deallocation command to just after the last access.
+      command_reordering[ma.deallocate_command].first =
+          last_access_command * 3 + 1;
+    }
+  }
+  std::sort(command_reordering.begin(), command_reordering.end());
+  std::vector<NnetComputation::Command> reordered_commands;
+  reordered_commands.reserve(num_commands);
+  for (int32 c = 0; c < num_commands; c++) {
+    int32 old_index = command_reordering[c].second;
+    NnetComputation::Command &old_command = computation->commands[old_index];
+    // the following assert is because this optimization is not allowed
+    // after looped optimization.
+    KALDI_ASSERT(old_command.command_type != kGotoLabel);
+    if (old_index > 0 && is_command_pair[old_index - 1]) {
+      // If the old command-index was a zeroing command that follows
+      // an allocation command, ignore it; it will be reordered to
+      // right after wherever the allocation command went, and we'll
+      // deal with it when we deal with the first element of the pair.
+      continue;
+    } else {
+      reordered_commands.push_back(computation->commands[old_index]);
+      if (is_command_pair[old_index]) {
+        // if this command is the first member of an (allocation, zeroing)
+        // pair then we need to deal with the zeroing command as well.
+        reordered_commands.push_back(computation->commands[old_index + 1]);
       }
     }
   }
-  std::sort(commands.begin(), commands.end());
-  std::vector<NnetComputation::Command> reordered_commands(num_commands);
-  for (int32 c = 0; c < num_commands; c++)
-    reordered_commands[c] = *(commands[c].second);
   computation->commands = reordered_commands;
 }
 
@@ -488,7 +532,7 @@ void Optimize(const NnetOptimizeOptions &config,
   if (config.optimize && config.initialize_undefined) {
     RemoveUnnecessaryZeroing(nnet, computation);
     if (GetVerboseLevel() >= 3)
-    CheckComputation(nnet, *computation, false);
+      CheckComputation(nnet, *computation, false);
   }
 
   if (config.optimize && config.move_sizing_commands) {
