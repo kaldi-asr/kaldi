@@ -221,7 +221,9 @@ struct ComputationRequest {
       before being given as the argument to the function.
       In the 'Add' functions 'alpha' is provided as an argument; for
       the 'Copy' functions, we scale the destination by 'alpha' after
-      the copy, if alpha != 1.0.
+      the copy, if alpha != 1.0.  (However, for implementation reasons,
+      kCopyToRowsMulti does not currently support alpha != 1.0 and will
+      crash, so we avoid generating this code).
    - kAddRowRanges: call \ref CuMatrix::AddRowRanges() "AddRowRanges()"
      on sub-matrix arg1, with arg2 as source sub-matrix, and indexes given
      indexes_ranges[arg3].  We use the "alpha" as if AddRowRanges()

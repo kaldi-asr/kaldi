@@ -251,36 +251,57 @@ void NnetComputer::ExecuteCommand() {
         CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
         const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
         dest.CopyFromMat(src);
+        if (c.alpha != 1.0)
+          dest.Scale(c.alpha);  // note: in principle in future we could write a
+                                // kernel which would do this in one operation.
         break;
       }
       case kMatrixAdd: {
         CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
         const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
-        dest.AddMat(1.0, src);
+        dest.AddMat(c.alpha, src);
         break;
       }
       case kAddRows: {
         CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
         const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
         const CuArray<int32> &indexes = computation_.indexes_cuda[c.arg3];
-        dest.AddRows(1.0, src, indexes);
+        dest.AddRows(c.alpha, src, indexes);
         break;
       }
       case kCopyRows: {
         CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
         const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
         const CuArray<int32> &indexes = computation_.indexes_cuda[c.arg3];
-        dest.CopyRows(src, indexes);
+        BaseFloat alpha = c.alpha;
+        if (alpha != 1.0) {            // for now we're faking the 'alpha' thing because the CopyRows
+          if (alpha == 0.0) break;     // command doesn't take that argument.
+          dest.Scale(1.0 / alpha);
+          dest.CopyRows(src, indexes);
+          dest.Scale(c.alpha);
+        } else {
+          dest.CopyRows(src, indexes);
+        }
         break;
       }
       case kCopyRowsMulti: {
         CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
         CuArray<const BaseFloat*> pointers;
         GetPointers(c.arg2, dest.NumCols(), &pointers);
-        dest.CopyRows(pointers);
+        BaseFloat alpha = c.alpha;
+        if (alpha != 1.0) {            // for now we're faking the 'alpha' thing because the CopyRows
+          if (alpha == 0.0) break;     // command doesn't take that argument.
+          dest.Scale(1.0 / alpha);
+          dest.CopyRows(pointers);
+          dest.Scale(c.alpha);
+        } else {
+          dest.CopyRows(pointers);
+        }
         break;
       }
       case kCopyToRowsMulti: {
+        // If c.alpha is not 1.0, this command is not supported.
+        KALDI_ASSERT(c.alpha == 1.0);
         CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg1));
         CuArray<BaseFloat*> pointers;
         GetPointers(c.arg2, src.NumCols(), &pointers);
@@ -291,21 +312,30 @@ void NnetComputer::ExecuteCommand() {
         CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
         CuArray<const BaseFloat*> pointers;
         GetPointers(c.arg2, dest.NumCols(), &pointers);
-        dest.AddRows(1.0, pointers);
+        dest.AddRows(c.alpha, pointers);
         break;
       }
       case kAddToRowsMulti: {
         CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg1));
         CuArray<BaseFloat*> pointers;
         GetPointers(c.arg2, src.NumCols(), &pointers);
-        src.AddToRows(1.0, pointers);
+        src.AddToRows(c.alpha, pointers);
         break;
       }
       case kAddRowRanges: {
         CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
         const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
         const CuArray<Int32Pair> &pairs = computation_.indexes_ranges_cuda[c.arg3];
-        dest.AddRowRanges(src, pairs);
+        BaseFloat alpha = c.alpha;
+        if (alpha != 1.0) {            // for now we're faking the 'alpha' thing
+                                       // because the AddRowRanges
+          if (alpha == 0.0) break;     // command doesn't take that argument.
+          dest.Scale(1.0 / alpha);
+          dest.AddRowRanges(src, pairs);
+          dest.Scale(c.alpha);
+        } else {
+          dest.AddRowRanges(src, pairs);
+        }
         break;
       }
       case kNoOperation: case kNoOperationPermanent: case kNoOperationMarker:

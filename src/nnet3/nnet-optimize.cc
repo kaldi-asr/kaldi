@@ -395,7 +395,8 @@ void ConvertAdditionToAssignment(const Nnet &nnet,
             case kMatrixAdd: c.command_type = kMatrixCopy; break;
             case kAddRows: c.command_type = kCopyRows; break;
             case kAddRowsMulti: c.command_type = kCopyRowsMulti; break;
-            case kAddToRowsMulti: c.command_type = kCopyToRowsMulti; break;
+            // note: kCopyToRowsMulti does not currently support alpha != 1.0.
+            case kAddToRowsMulti: if (c.alpha == 1.0) c.command_type = kCopyToRowsMulti; break;
             default: KALDI_ERR << "Unexpected command type.";
           }
         }

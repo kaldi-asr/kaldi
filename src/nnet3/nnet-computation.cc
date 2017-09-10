@@ -299,6 +299,8 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
     } else {
       KALDI_ERR << "Un-handled command type.";
     }
+    ExpectToken(is, binary, "<Alpha>");
+    ReadBasicType(is, binary, &alpha);
     ExpectToken(is, binary, "<Args>");
     ReadBasicType(is, binary, &arg1);
     ReadBasicType(is, binary, &arg2);
@@ -312,11 +314,7 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
 }
 
 void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<Command>");
-  // It used to be "CommandType".  "CmdType" is a variant introduced after some
-  // code refactoring, to distinguish the new format.  Read() can still (at the
-  // time of writing) read the old version.
-  WriteToken(os, binary, "<CmdType>");
+  WriteToken(os, binary, "<Cmd>");
   if (binary) {
     WriteBasicType(os, binary, static_cast<int32>(command_type));
     WriteBasicType(os, binary, alpha);
@@ -406,7 +404,7 @@ void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
        << arg3 << ' ' << arg4 << ' ' << arg5 << ' '
        << arg6 << ' ' << arg7 << ' ';
   }
-  WriteToken(os, binary, "</Command>");
+  WriteToken(os, binary, "</Cmd>");
 }
 
 
@@ -530,7 +528,7 @@ static void PrintCommand(std::ostream &os,
     case kSetConst:
       os << submatrix_strings[c.arg1] << ".set(" << c.alpha << ") [dim = "
          << computation.submatrices[c.arg1].num_rows << " x "
-         << computation.submatrices[c.arg1].num_cols << "]; ";
+         << computation.submatrices[c.arg1].num_cols << "];\n";
       break;
     case kPropagate:
       os << nnet.GetComponentName(c.arg1) << ".Propagate(";

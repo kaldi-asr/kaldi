@@ -696,6 +696,10 @@ void ComputationChecker::CheckComputationIndexes() const {
             !computation_.IsWholeMatrix(c.arg1))
           KALDI_ERR << "submatrix index out of range or invalid";
         break;
+      case kSetConst:
+        if (c.arg1 < 1 || c.arg1 >= num_submatrices)
+          KALDI_ERR << "submatrix index out of range or invalid";
+        break;
       case kSwapMatrix:
         if (c.arg1 < 1 || c.arg1 >= num_submatrices ||
             !computation_.IsWholeMatrix(c.arg1) ||
@@ -1076,7 +1080,7 @@ int32 ComputationAnalysis::FirstNontrivialMatrixAccess(int32 m) const {
     int32 command_index = access_iter->command_index;
     const NnetComputation::Command command =
         computation_.commands[command_index];
-    if (!(command.command_type != kSetConst &&
+    if (!(command.command_type == kSetConst &&
           command.alpha == 0.0)) {  // except for zeroing commands..
       ans = std::min(ans, command_index);
       break;  // break from access_iter loop (an optimization; note, the
