@@ -13,8 +13,8 @@
 #    Since we use phone.txt from source dataset, this can be helpful in cases
 #    where there is a few training data in the target domain and some 4-gram phone
 #    sequences have no count in the target domain.
-# 4) It transfers all layers in already-trained model and 
-#    re-train the last layer using target dataset, instead of replacing it 
+# 4) It transfers all layers in already-trained model and
+#    re-train the last layer using target dataset, instead of replacing it
 #    with new randomely initialized output layer.
 
 # This script uses weight transfer as Transfer learning method
