@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011 Gilles Boulianne
 // Copyright 2016 Smart Action LLC (kkm)
+// Copyright 2017 Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -194,6 +195,9 @@ void ArpaLmCompilerImpl<HistKey>::ConsumeNGram(const NGram &ngram,
   StateId dest;
   Symbol sym = ngram.words.back();
   float weight = -ngram.logprob;
+  if (sym == sub_eps_ || sym == 0) {
+    KALDI_ERR << " <eps> or disambiguation symbol " << sym << "found in the ARPA file. ";
+  }
   if (sym == eos_symbol_) {
     if (sub_eps_ == 0) {
       // Keep </s> as a real symbol when not substituting.

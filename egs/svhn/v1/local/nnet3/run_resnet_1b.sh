@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# exp/resnet1b: num-iters=130 nj=2..4 num-params=1.3M dim=96->10 combine=-0.04->-0.04 loglike:train/valid[85,129,final]=(-0.055,-0.041,-0.035/-0.097,-0.079,-0.074) accuracy:train/valid[85,129,final]=(0.9882,0.9924,0.9946/0.977,0.9817,0.9840)
+# exp/resnet1b: num-iters=130 nj=2..4 num-params=1.3M dim=96->10 combine=-0.04->-0.04 loglike:train/valid[85,129,final]=(-0.049,-0.044,-0.036/-0.098,-0.085,-0.076) accuracy:train/valid[85,129,final]=(0.9904,0.9908,0.9940/0.9764,0.9804,0.9831)
 
 # This setup is based on the one in cifar/v1/local/nnet3/run_resnet_1{a,b}.sh.
 # We are reducing the number of epochs quite a bit, since there is so much
@@ -107,7 +107,7 @@ fi
 if [ $stage -le 2 ]; then
 
   steps/nnet3/train_raw_dnn.py --stage=$train_stage \
-    --cmd="$train_cmd" \
+    --cmd="$cmd" \
     --image.augmentation-opts="--horizontal-shift=0.04 --vertical-shift=0.08 --num-channels=3" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \

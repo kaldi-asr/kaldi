@@ -250,8 +250,10 @@ void SpMatrix<Real>::Invert(Real *logdet, Real *det_sign, bool need_inverse) {
   Real *p_work;  // workspace for the lapack function
   void *temp;
   if ((p_work = static_cast<Real*>(
-          KALDI_MEMALIGN(16, sizeof(Real) * rows, &temp))) == NULL)
+          KALDI_MEMALIGN(16, sizeof(Real) * rows, &temp))) == NULL) {
+    delete[] p_ipiv;
     throw std::bad_alloc();
+  }
 #ifdef HAVE_OPENBLAS
   memset(p_work, 0, sizeof(Real) * rows); // gets rid of a probably
   // spurious Valgrind warning about jumps depending upon uninitialized values.

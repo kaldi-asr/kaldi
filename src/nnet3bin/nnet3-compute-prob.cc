@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "Computes and prints to in logging messages the average log-prob per frame of\n"
+        "Computes and prints in logging messages the average log-prob per frame of\n"
         "the given data with an nnet3 neural net.  The input of this is the output of\n"
         "e.g. nnet3-get-egs | nnet3-merge-egs.\n"
         "\n"
@@ -75,6 +75,8 @@ int main(int argc, char *argv[]) {
 
     if (dropout_test_mode)
       SetDropoutTestMode(true, &nnet);
+
+    CollapseModel(CollapseModelConfig(), &nnet);
 
     NnetComputeProb prob_computer(opts, nnet);
 

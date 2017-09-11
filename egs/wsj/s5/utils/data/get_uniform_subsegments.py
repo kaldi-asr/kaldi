@@ -57,18 +57,23 @@ def run(args):
         while (dur > args.max_segment_duration
                      + args.max_remaining_duration):
             end = start + args.max_segment_duration
+            start_relative = start - start_time
+            end_relative = end - start_time
             new_utt = "{utt_id}-{s:06d}-{e:06d}".format(
-                utt_id=utt_id, s=int(100 * start), e=int(100 * end))
+                utt_id=utt_id, s=int(100 * start_relative),
+                e=int(100 * end_relative))
             print ("{new_utt} {utt_id} {s} {e}".format(
-                new_utt=new_utt, utt_id=utt_id, s=start,
-                e=start + args.max_segment_duration))
+                new_utt=new_utt, utt_id=utt_id, s=start_relative,
+                e=start_relative + args.max_segment_duration))
             start += args.max_segment_duration - args.overlap_duration
             dur -= args.max_segment_duration - args.overlap_duration
 
         new_utt = "{utt_id}-{s:06d}-{e:06d}".format(
-            utt_id=utt_id, s=int(100 * start), e=int(100 * end_time))
+            utt_id=utt_id, s=int(100 * (start - start_time)),
+            e=int(100 * (end_time - start_time)))
         print ("{new_utt} {utt_id} {s} {e}".format(
-            new_utt=new_utt, utt_id=utt_id, s=start, e=end_time))
+            new_utt=new_utt, utt_id=utt_id, s=start - start_time,
+            e=end_time - start_time))
 
 
 def main():

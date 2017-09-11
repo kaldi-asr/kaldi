@@ -484,7 +484,7 @@ def parse_config_line(orig_config_line):
     # treats splitting on space as a special case that may give zero fields.
     config_line = orig_config_line.split('#')[0]
     # Note: this set of allowed characters may have to be expanded in future.
-    x = re.search('[^a-zA-Z0-9\.\-\(\)@_=,/\s"]', config_line)
+    x = re.search('[^a-zA-Z0-9\.\-\(\)@_=,/+:\s"]', config_line)
     if x is not None:
         bad_char = x.group(0)
         if bad_char == "'":

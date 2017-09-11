@@ -133,11 +133,23 @@ class Nnet {
   const Component *GetComponent(int32 c) const;
 
   /// Replace the component indexed by c with a new component.
-  /// Frees previous component indexed by c.
+  /// Frees previous component indexed by c.  Takes ownership of
+  /// the pointer 'component'.
   void SetComponent(int32 c, Component *component);
+
+  /// Adds a new component with the given name, which should not be the same as
+  /// any existing component name.  Returns the new component index.  Takes
+  /// ownership of the pointer 'component'.
+  int32 AddComponent(const std::string &name, Component *component);
 
   /// returns const reference to a particular numbered network node.
   const NetworkNode &GetNode(int32 node) const {
+    KALDI_ASSERT(node >= 0 && node < nodes_.size());
+    return nodes_[node];
+  }
+
+  /// Non-const accessor for the node... use with extreme caution.
+  NetworkNode &GetNode(int32 node) {
     KALDI_ASSERT(node >= 0 && node < nodes_.size());
     return nodes_[node];
   }

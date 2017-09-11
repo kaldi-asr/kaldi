@@ -20,6 +20,7 @@ num_data_reps=3
 
 
 min_seg_len=
+xent_regularize=0.1
 chunk_width=150
 chunk_left_context=40
 chunk_right_context=40
@@ -68,7 +69,6 @@ if [ $stage -le 8 ]; then
   # the augmented features (data/train_rvb) to get better alignments
 
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate -1 \
       --cmd "$train_cmd" 11000 data/train $lang exp/tri5a $treedir
 fi
 
@@ -136,26 +136,52 @@ if [ $stage -le 10 ]; then
 fi
 
 if [ $stage -le 11 ]; then
-  echo "$0: creating neural net configs";
+  echo "$0: creating neural net configs using the xconfig parser";
 
-  steps/nnet3/lstm/make_configs.py  \
-    --feat-dir data/train_rvb_hires \
-    --ivector-dir exp/nnet3/ivectors_train_min${min_seg_len} \
-    --tree-dir $treedir \
-    --splice-indexes="-2,-1,0,1,2 0 0" \
-    --lstm-delay=" [-3,3] [-3,3] [-3,3] " \
-    --xent-regularize 0.1 \
-    --include-log-softmax false \
-    --num-lstm-layers 3 \
-    --cell-dim 1024 \
-    --hidden-dim 1024 \
-    --recurrent-projection-dim 256 \
-    --non-recurrent-projection-dim 256 \
-    --label-delay 0 \
-    --self-repair-scale-nonlinearity 0.00001 \
-    --self-repair-scale-clipgradient 1.0 \
-   $dir/configs || exit 1;
+  num_targets=$(tree-info $treedir/tree | grep num-pdfs | awk '{print $2}')
+  [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
+  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
+  lstm_opts="decay-time=20"
+
+  mkdir -p $dir/configs
+  cat <<EOF > $dir/configs/network.xconfig
+  input dim=100 name=ivector
+  input dim=40 name=input
+
+  # please note that it is important to have input layer with the name=input
+  # as the layer immediately preceding the fixed-affine-layer to enable
+  # the use of short notation for the descriptor
+  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+
+  # the first splicing is moved before the lda layer, so no splicing here
+
+  # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
+  fast-lstmp-layer name=blstm1-forward input=lda cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  fast-lstmp-layer name=blstm1-backward input=lda cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $lstm_opts
+
+  fast-lstmp-layer name=blstm2-forward input=Append(blstm1-forward, blstm1-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  fast-lstmp-layer name=blstm2-backward input=Append(blstm1-forward, blstm1-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $lstm_opts
+
+  fast-lstmp-layer name=blstm3-forward input=Append(blstm2-forward, blstm2-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  fast-lstmp-layer name=blstm3-backward input=Append(blstm2-forward, blstm2-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $lstm_opts
+
+  ## adding the layers for chain branch
+  output-layer name=output input=Append(blstm3-forward, blstm3-backward) output-delay=0 include-log-softmax=false dim=$num_targets max-change=1.5
+
+  # adding the layers for xent branch
+  # This block prints the configs for a separate output that will be
+  # trained with a cross-entropy objective in the 'chain' models... this
+  # has the effect of regularizing the hidden parts of the model.  we use
+  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
+  # 0.5 / args.xent_regularize is suitable as it means the xent
+  # final-layer learns at a rate independent of the regularization
+  # constant; and the 0.5 was tuned so as to make the relative progress
+  # similar in the xent and regular final layers.
+  output-layer name=output-xent input=Append(blstm3-forward, blstm3-backward) output-delay=0 dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+
+EOF
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
 if [ $stage -le 12 ]; then
@@ -171,7 +197,7 @@ if [ $stage -le 12 ]; then
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir exp/nnet3/ivectors_train_min${min_seg_len} \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
-    --chain.xent-regularize 0.1 \
+    --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
@@ -183,6 +209,8 @@ if [ $stage -le 12 ]; then
     --egs.chunk-width $chunk_width \
     --egs.chunk-left-context $chunk_left_context \
     --egs.chunk-right-context $chunk_right_context \
+    --egs.chunk-left-context-initial=0 \
+    --egs.chunk-right-context-final=0 \
     --egs.dir "$common_egs_dir" \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \
@@ -216,6 +244,8 @@ if [ $stage -le 14 ]; then
   local/nnet3/prep_test_aspire.sh --stage 4 --decode-num-jobs 30  --affix "v7" \
    --extra-left-context $extra_left_context \
    --extra-right-context $extra_right_context \
+   --extra-left-context-initial 0 \
+   --extra-right-context-final 0 \
    --frames-per-chunk $chunk_width \
    --acwt 1.0 --post-decode-acwt 10.0 \
    --window 10 --overlap 5 \

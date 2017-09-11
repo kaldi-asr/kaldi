@@ -98,11 +98,6 @@ def get_args():
 
     args = parser.parse_args()
 
-    if args.hyp_format == "CTM" and args.reco2file_and_channel is None:
-        raise RuntimeError(
-            "--reco2file-and-channel must be provided for "
-            "hyp-format=CTM")
-
     args.debug_only = bool(args.debug_only == "true")
 
     global verbose_level
@@ -127,11 +122,16 @@ def read_text(text_file):
     """
     for line in text_file:
         parts = line.strip().split()
-        if len(parts) <= 2:
+        if len(parts) < 1:
             raise RuntimeError(
                 "Did not get enough columns; line {0} in {1}"
                 "".format(line, text_file.name))
-        yield parts[0], parts[1:]
+        elif len(parts) == 1:
+            logger.warn("Empty transcript for utterance %s in %s", 
+                        parts[0], text_file.name)
+            yield parts[0], []
+        else:
+            yield parts[0], parts[1:]
     text_file.close()
 
 
@@ -557,7 +557,7 @@ def run(args):
                 hyp_array = hyp_lines[reco]
 
             if args.reco2file_and_channel is None:
-                reco2file_and_channel[reco] = "1"
+                reco2file_and_channel[reco] = (reco, "1")
 
             logger.debug("Running Smith-Waterman alignment for %s", reco)
 

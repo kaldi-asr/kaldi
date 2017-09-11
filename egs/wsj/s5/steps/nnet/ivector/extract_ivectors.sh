@@ -190,7 +190,7 @@ if [ $stage -le 3 ]; then
   fi
 fi
 
-absdir=$(readlink -f $dir)
+absdir=$(utils/make_absolute.sh $dir)
 if [ $stage -le 4 ]; then
   echo "$0: merging iVectors across jobs"
   copy-vector "ark:cat $dir/ivectors_spk.*.ark |" ark,scp:$absdir/ivectors_spk.ark,$dir/ivectors_spk.scp

@@ -45,13 +45,13 @@ def get_outputs_list(model_file, get_raw_nnet_from_am=True):
         It will normally return 'output'.
     """
     if get_raw_nnet_from_am:
-      outputs_list = common_lib.get_command_stdout(
-          "nnet3-am-info --print-args=false {0} | "
-          "grep -e 'output-node' | cut -f2 -d' ' | cut -f2 -d'=' ".format(model_file))
+        outputs_list = common_lib.get_command_stdout(
+            "nnet3-am-info --print-args=false {0} | "
+            "grep -e 'output-node' | cut -f2 -d' ' | cut -f2 -d'=' ".format(model_file))
     else:
-      outputs_list = common_lib.get_command_stdout(
-          "nnet3-info --print-args=false {0} | "
-          "grep -e 'output-node' | cut -f2 -d' ' | cut -f2 -d'=' ".format(model_file))
+        outputs_list = common_lib.get_command_stdout(
+            "nnet3-info --print-args=false {0} | "
+            "grep -e 'output-node' | cut -f2 -d' ' | cut -f2 -d'=' ".format(model_file))
 
     return outputs_list.split()
 
@@ -71,13 +71,13 @@ def get_multitask_egs_opts(egs_dir, egs_prefix="",
         "valid_diagnostic." for validation.
     """
     multitask_egs_opts = ""
-    egs_suffix =  ".{0}".format(archive_index) if archive_index > -1 else ""
+    egs_suffix = ".{0}".format(archive_index) if archive_index > -1 else ""
 
     if use_multitask_egs:
         output_file_name = ("{egs_dir}/{egs_prefix}output{egs_suffix}.ark"
                             "".format(egs_dir=egs_dir,
-                                     egs_prefix=egs_prefix,
-                                     egs_suffix=egs_suffix))
+                                      egs_prefix=egs_prefix,
+                                      egs_suffix=egs_suffix))
         output_rename_opt = ""
         if os.path.isfile(output_file_name):
             output_rename_opt = ("--outputs=ark:{output_file_name}".format(
@@ -102,11 +102,11 @@ def get_multitask_egs_opts(egs_dir, egs_prefix="",
 
 def get_successful_models(num_models, log_file_pattern,
                           difference_threshold=1.0):
-    assert(num_models > 0)
+    assert num_models > 0
 
     parse_regex = re.compile(
         "LOG .* Overall average objective function for "
-        "'output' is ([0-9e.\-+]+) over ([0-9e.\-+]+) frames")
+        "'output' is ([0-9e.\-+= ]+) over ([0-9e.\-+]+) frames")
     objf = []
     for i in range(num_models):
         model_num = i + 1
@@ -118,7 +118,7 @@ def get_successful_models(num_models, log_file_pattern,
             # lesser number of regex searches. Python regex is slow !
             mat_obj = parse_regex.search(lines[-1 * line_num])
             if mat_obj is not None:
-                this_objf = float(mat_obj.groups()[0])
+                this_objf = float(mat_obj.groups()[0].split()[-1])
                 break
         objf.append(this_objf)
     max_index = objf.index(max(objf))
@@ -163,9 +163,9 @@ def get_best_nnet_model(dir, iter, best_model_index, run_opts,
                         get_raw_nnet_from_am=True):
 
     best_model = "{dir}/{next_iter}.{best_model_index}.raw".format(
-            dir=dir,
-            next_iter=iter + 1,
-            best_model_index=best_model_index)
+        dir=dir,
+        next_iter=iter + 1,
+        best_model_index=best_model_index)
 
     if get_raw_nnet_from_am:
         out_model = ("""- \| nnet3-am-copy --set-raw-nnet=- \
@@ -406,21 +406,21 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
             logger.warning("The ivector ids are inconsistently used. It's your "
                           "responsibility to make sure the ivector extractor "
                           "has been used consistently")
-        elif (((egs_ivector_id is None) and (ivector_extractor_id is None))):
+        elif ((egs_ivector_id is None) and (ivector_extractor_id is None)):
             logger.warning("The ivector ids are not used. It's your "
                           "responsibility to make sure the ivector extractor "
                           "has been used consistently")
-        elif (ivector_extractor_id != egs_ivector_id):
+        elif ivector_extractor_id != egs_ivector_id:
             raise Exception("The egs were generated using a different ivector "
                             "extractor. id1 = {0}, id2={1}".format(
                                 ivector_extractor_id, egs_ivector_id));
 
         if (egs_left_context < left_context or
-                egs_right_context < right_context):
+            egs_right_context < right_context):
             raise Exception('The egs have insufficient (l,r) context ({0},{1}) '
                             'versus expected ({2},{3})'.format(
-                            egs_left_context, egs_right_context,
-                            left_context, right_context))
+                                egs_left_context, egs_right_context,
+                                left_context, right_context))
 
         # the condition on the initial/final context is an equality condition,
         # not an inequality condition, as there is no mechanism to 'correct' the
@@ -435,8 +435,8 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
             raise Exception('The egs have incorrect initial/final (l,r) context '
                             '({0},{1}) versus expected ({2},{3}).  See code from '
                             'where this exception was raised for more info'.format(
-                    egs_left_context_initial, egs_right_context_final,
-                    left_context_initial, right_context_final))
+                                egs_left_context_initial, egs_right_context_final,
+                                left_context_initial, right_context_final))
 
         frames_per_eg_str = open('{0}/info/frames_per_eg'.format(
                              egs_dir)).readline().rstrip()
@@ -476,9 +476,9 @@ def compute_presoftmax_prior_scale(dir, alidir, num_jobs, run_opts,
         os.remove(file)
     pdf_counts = common_lib.read_kaldi_matrix('{0}/pdf_counts'.format(dir))[0]
     scaled_counts = smooth_presoftmax_prior_scale_vector(
-            pdf_counts,
-            presoftmax_prior_scale_power=presoftmax_prior_scale_power,
-            smooth=0.01)
+        pdf_counts,
+        presoftmax_prior_scale_power=presoftmax_prior_scale_power,
+        smooth=0.01)
 
     output_file = "{0}/presoftmax_prior_scale.vec".format(dir)
     common_lib.write_kaldi_matrix(output_file, [scaled_counts])
@@ -601,7 +601,7 @@ def should_do_shrinkage(iter, model_file, shrink_saturation_threshold,
                         "saturation from the output '{0}' of "
                         "get_saturation.pl on the info of "
                         "model {1}".format(output, model_file))
-    return (saturation > shrink_saturation_threshold)
+    return saturation > shrink_saturation_threshold
 
 
 def remove_nnet_egs(egs_dir):
@@ -651,7 +651,7 @@ def self_test():
     assert validate_chunk_width('64,25,128')
 
 
-class CommonParser:
+class CommonParser(object):
     """Parser for parsing common options related to nnet3 training.
 
     This argument parser adds common options related to nnet3 training
@@ -663,7 +663,7 @@ class CommonParser:
     parser = argparse.ArgumentParser(add_help=False)
 
     def __init__(self,
-                 include_chunk_context = True,
+                 include_chunk_context=True,
                  default_chunk_left_context=0):
         # feat options
         self.parser.add_argument("--feat.online-ivector-dir", type=str,
@@ -692,11 +692,11 @@ class CommonParser:
                                  the case of FF-DNN this extra context will be
                                  used to allow for frame-shifts""")
             self.parser.add_argument("--egs.chunk-right-context", type=int,
-                                 dest='chunk_right_context', default=0,
-                                 help="""Number of additional frames of input
-                                 to the right of the input chunk. This extra
-                                 context will be used in the estimation of
-                                 bidirectional RNN state before prediction of
+                                     dest='chunk_right_context', default=0,
+                                     help="""Number of additional frames of input
+                                     to the right of the input chunk. This extra
+                                     context will be used in the estimation of
+                                     bidirectional RNN state before prediction of
                                  the first label.""")
             self.parser.add_argument("--egs.chunk-left-context-initial", type=int,
                                      dest='chunk_left_context_initial', default=-1,
@@ -771,7 +771,7 @@ class CommonParser:
                                  dest='rand_prune', default=4.0,
                                  help="Value used in preconditioning "
                                  "matrix estimation")
-        self.parser.add_argument("--trainer.lda.max-lda-jobs", type=float,
+        self.parser.add_argument("--trainer.lda.max-lda-jobs", type=int,
                                  dest='max_lda_jobs', default=10,
                                  help="Max number of jobs used for "
                                  "LDA stats accumulation")
@@ -780,6 +780,18 @@ class CommonParser:
                                  dest='presoftmax_prior_scale_power',
                                  default=-0.25,
                                  help="Scale on presofmax prior")
+        self.parser.add_argument("--trainer.optimization.proportional-shrink", type=float,
+                                 dest='proportional_shrink', default=0.0,
+                                 help="""If nonzero, this will set a shrinkage (scaling)
+                        factor for the parameters, whose value is set as:
+                        shrink-value=(1.0 - proportional-shrink * learning-rate), where
+                        'learning-rate' is the learning rate being applied
+                        on the current iteration, which will vary from
+                        initial-effective-lrate*num-jobs-initial to
+                        final-effective-lrate*num-jobs-final.
+                        Unlike for train_rnn.py, this is applied unconditionally,
+                        it does not depend on saturation of nonlinearities.
+                        Can be used to roughly approximate l2 regularization.""")
 
         # Parameters for the optimization
         self.parser.add_argument(
@@ -806,6 +818,13 @@ class CommonParser:
                                  the final model combination stage.  These
                                  models will themselves be averages of
                                  iteration-number ranges""")
+        self.parser.add_argument("--trainer.optimization.do-final-combination",
+                                 dest='do_final_combination', type=str,
+                                 action=common_lib.StrToBoolAction,
+                                 choices=["true", "false"], default=True,
+                                 help="""Set this to false to disable the final
+                                 'combine' stage (in this case we just use the
+                                 last-numbered model as the final.mdl).""")
         self.parser.add_argument("--trainer.optimization.combine-sum-to-one-penalty",
                                  type=float, dest='combine_sum_to_one_penalty', default=0.0,
                                  help="""If > 0, activates 'soft' enforcement of the
@@ -842,6 +861,21 @@ class CommonParser:
                                  lstm*=0,0.2,0'.  More general should precede
                                  less general patterns, as they are applied
                                  sequentially.""")
+        self.parser.add_argument("--trainer.optimization.backstitch-training-scale",
+                                 type=float, dest='backstitch_training_scale',
+                                 default=0.0, help="""scale of parameters changes
+                                 used in backstitch training step.""")
+        self.parser.add_argument("--trainer.optimization.backstitch-training-interval",
+                                 type=int, dest='backstitch_training_interval',
+                                 default=1, help="""the interval of minibatches
+                                 that backstitch training is applied on.""")
+        self.parser.add_argument("--trainer.compute-per-dim-accuracy",
+                                 dest='compute_per_dim_accuracy',
+                                 type=str, choices=['true', 'false'],
+                                 default=False,
+                                 action=common_lib.StrToBoolAction,
+                                 help="Compute train and validation "
+                                 "accuracy per-dim")
 
         # General options
         self.parser.add_argument("--stage", type=int, default=-4,
@@ -858,7 +892,6 @@ class CommonParser:
                                  """, default="queue.pl")
         self.parser.add_argument("--egs.cmd", type=str, dest="egs_command",
                                  action=common_lib.NullstrToNoneAction,
-                                 default="queue.pl",
                                  help="Script to launch egs jobs")
         self.parser.add_argument("--use-gpu", type=str,
                                  action=common_lib.StrToBoolAction,
@@ -893,7 +926,7 @@ class CommonParser:
                                  expertise to setup. """)
         self.parser.add_argument("--reporting.interval",
                                  dest="reporting_interval",
-                                 type=int, default=0.1,
+                                 type=float, default=0.1,
                                  help="""Frequency with which reports have to
                                  be sent, measured in terms of fraction of
                                  iterations.
@@ -902,4 +935,4 @@ class CommonParser:
 
 
 if __name__ == '__main__':
-    self_test()
+    _self_test()

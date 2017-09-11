@@ -39,7 +39,7 @@ if [ $# -gt 4 ]; then
 else
   logdir=$bnf_data/log
 fi
-if [ $# -gt 5]; then
+if [ $# -gt 5 ]; then
   bnfdir=$6
 else
   bnfdir=$bnf_data/data
@@ -76,7 +76,7 @@ mkdir -p $logdir
 mkdir -p $bnf_data
 mkdir -p $bnfdir
 echo $nj > $nnetdir/num_jobs
-splice_opts=`cat $nnetdir/splice_opts 2>/dev/null`
+
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
 use_ivector=false

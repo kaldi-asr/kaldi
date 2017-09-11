@@ -2,8 +2,9 @@
 
 # nnet topology similar to 1a but bigger and with more epochs and data augmentation (improved 95 --> 97)
 
-# steps/info/nnet3_dir_info.pl exp/cnn_aug1a:
-# exp/cnn_aug1a: num-iters=300 nj=1..2 num-params=2.8M dim=96->10 combine=-0.02->-0.02 loglike:train/valid[199,299,final]=(-0.01,-0.00,-0.00/-0.17,-0.17,-0.17) accuracy:train/valid[199,299,final]=(1.00,1.00,1.00/0.97,0.97,0.97)
+
+# steps/info/nnet3_dir_info.pl exp/cnn_aug1a
+# exp/cnn_aug1a: num-iters=130 nj=2..4 num-params=2.8M dim=96->10 combine=-0.07->-0.06 loglike:train/valid[85,129,final]=(-0.090,-0.060,-0.054/-0.163,-0.110,-0.102) accuracy:train/valid[85,129,final]=(0.9764,0.9868,0.9886/0.958,0.9731,0.9762)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail

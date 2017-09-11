@@ -129,7 +129,7 @@ fi
 
 if [ $stage -le 5 ]; then
   dir=${srcdir}_${criterion}_${learning_rate}
-  ln -sf $(readlink -f ${srcdir}_online/conf) $dir/conf # so it acts like an online-decoding directory
+  ln -sf $(utils/make_absolute.sh ${srcdir}_online/conf) $dir/conf # so it acts like an online-decoding directory
 
   for epoch in $(seq $decode_start_epoch $num_epochs); do
     for test in test_clean test_other dev_clean dev_other; do

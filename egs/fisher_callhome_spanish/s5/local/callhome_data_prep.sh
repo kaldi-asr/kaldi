@@ -159,7 +159,7 @@ fi
 if [ $stage -le 3 ]; then
   for f in `cat $tmpdir/callhome_train_sph.flist`; do
     # convert to absolute path
-    readlink -e $f 
+    utils/make_absolute.sh $f 
   done > $tmpdir/callhome_train_sph_abs.flist
 
   cat $tmpdir/callhome_train_sph_abs.flist | perl -ane 'm:/([^/]+)\.SPH$: || die "bad line $_; ";  print lc($1)," $_"; ' > $tmpdir/callhome_sph.scp

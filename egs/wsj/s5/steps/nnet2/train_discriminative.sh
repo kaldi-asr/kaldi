@@ -129,7 +129,7 @@ sdata=$data/split$nj
 utils/split_data.sh $data $nj
 
 # function to remove egs that might be soft links.
-remove () { for x in $*; do [ -L $x ] && rm $(readlink -f $x); rm $x; done }
+remove () { for x in $*; do [ -L $x ] && rm $(utils/make_absolute.sh $x); rm $x; done }
 
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;

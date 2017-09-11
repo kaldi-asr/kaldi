@@ -4,7 +4,7 @@
 # Apache 2.0
 
 
-galeData=$(readlink -f "${@: -1}" );  # last argumnet; the local folder
+galeData=$(utils/make_absolute.sh "${@: -1}" );  # last argumnet; the local folder
 audio_dvds=${@:1:${#}-1} # all the audio dvds for GALE corpus; ; check audio=( in ../run.sh
 
 mkdir -p $galeData 
@@ -16,7 +16,7 @@ if [[ $? != 0 ]]; then
 fi
 
 for dvd in $audio_dvds; do
-  dvd_full_path=$(readlink -f $dvd)
+  dvd_full_path=$(utils/make_absolute.sh $dvd)
   if [[ ! -e $dvd_full_path ]]; then 
     echo missing $dvd_full_path; exit 1;
   fi

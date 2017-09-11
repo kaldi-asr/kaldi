@@ -293,7 +293,7 @@ void NonlinearComponent::StoreStatsInternal(
   // Check we have the correct dimensions.
   if (value_sum_.Dim() != InputDim() ||
       (deriv != NULL && deriv_sum_.Dim() != InputDim())) {
-    mutex_.Lock();
+    std::lock_guard<std::mutex> lock(mutex_);
     if (value_sum_.Dim() != InputDim()) {
       value_sum_.Resize(InputDim());
       count_ = 0.0;
@@ -303,7 +303,6 @@ void NonlinearComponent::StoreStatsInternal(
       count_ = 0.0;
       value_sum_.SetZero();
     }
-    mutex_.Unlock();
   }
   count_ += out_value.NumRows();
   CuVector<BaseFloat> temp(InputDim());
@@ -328,10 +327,8 @@ std::string NonlinearComponent::Info() const {
   if (InputDim() == OutputDim()) {
     stream << Type() << ", dim=" << InputDim();
   } else {
-    // Note: this is a very special case tailored for class NormalizeComponent.
     stream << Type() << ", input-dim=" << InputDim()
-           << ", output-dim=" << OutputDim()
-           << ", add-log-stddev=true";
+           << ", output-dim=" << OutputDim();
   }
 
   if (self_repair_lower_threshold_ != BaseFloat(kUnsetThreshold))
@@ -340,7 +337,7 @@ std::string NonlinearComponent::Info() const {
     stream << ", self-repair-upper-threshold=" << self_repair_upper_threshold_;
   if (self_repair_scale_ != 0.0)
     stream << ", self-repair-scale=" << self_repair_scale_;
-  if (count_ > 0 && value_sum_.Dim() == dim_ &&  deriv_sum_.Dim() == dim_) {
+  if (count_ > 0 && value_sum_.Dim() == dim_) {
     stream << ", count=" << std::setprecision(3) << count_
            << std::setprecision(6);
     stream << ", self-repaired-proportion="
@@ -350,10 +347,12 @@ std::string NonlinearComponent::Info() const {
     Vector<BaseFloat> value_avg(value_avg_dbl);
     value_avg.Scale(1.0 / count_);
     stream << ", value-avg=" << SummarizeVector(value_avg);
-    Vector<double> deriv_avg_dbl(deriv_sum_);
-    Vector<BaseFloat> deriv_avg(deriv_avg_dbl);
-    deriv_avg.Scale(1.0 / count_);
-    stream << ", deriv-avg=" << SummarizeVector(deriv_avg);
+    if (deriv_sum_.Dim() == dim_) {
+      Vector<double> deriv_avg_dbl(deriv_sum_);
+      Vector<BaseFloat> deriv_avg(deriv_avg_dbl);
+      deriv_avg.Scale(1.0 / count_);
+      stream << ", deriv-avg=" << SummarizeVector(deriv_avg);
+    }
   }
   return stream.str();
 }

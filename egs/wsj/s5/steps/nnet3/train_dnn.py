@@ -49,7 +49,7 @@ def get_args():
         cross-entropy objective.  DNNs include simple DNNs, TDNNs and CNNs.""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         conflict_handler='resolve',
-        parents=[common_train_lib.CommonParser(include_chunk_context = False).parser])
+        parents=[common_train_lib.CommonParser(include_chunk_context=False).parser])
 
     # egs extraction options
     parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
@@ -105,7 +105,7 @@ def process_args(args):
         raise Exception("--egs.frames-per-eg should have a minimum value of 1")
 
     if not common_train_lib.validate_minibatch_size_str(args.minibatch_size):
-        raise Exception("--trainer.rnn.num-chunk-per-minibatch has an invalid value");
+        raise Exception("--trainer.rnn.num-chunk-per-minibatch has an invalid value")
 
     if (not os.path.exists(args.dir)
             or not os.path.exists(args.dir+"/configs")):
@@ -172,7 +172,7 @@ def train(args, run_opts):
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
     common_lib.execute_command("utils/split_data.sh {0} {1}".format(
-            args.feat_dir, num_jobs))
+        args.feat_dir, num_jobs))
     shutil.copy('{0}/tree'.format(args.ali_dir), args.dir)
 
     with open('{0}/num_jobs'.format(args.dir), 'w') as f:
@@ -235,12 +235,12 @@ def train(args, run_opts):
 
     [egs_left_context, egs_right_context,
      frames_per_eg_str, num_archives] = (
-        common_train_lib.verify_egs_dir(egs_dir, feat_dim,
-                                        ivector_dim, ivector_id,
-                                        left_context, right_context))
-    assert(str(args.frames_per_eg) == frames_per_eg_str)
+         common_train_lib.verify_egs_dir(egs_dir, feat_dim,
+                                         ivector_dim, ivector_id,
+                                         left_context, right_context))
+    assert str(args.frames_per_eg) == frames_per_eg_str
 
-    if (args.num_jobs_final > num_archives):
+    if args.num_jobs_final > num_archives:
         raise Exception('num_jobs_final cannot exceed the number of archives '
                         'in the egs directory')
 
@@ -248,7 +248,7 @@ def train(args, run_opts):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (args.stage <= -3) and os.path.exists(args.dir+"/configs/init.config"):
+    if args.stage <= -3 and os.path.exists(args.dir+"/configs/init.config"):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
@@ -256,17 +256,17 @@ def train(args, run_opts):
             max_lda_jobs=args.max_lda_jobs,
             rand_prune=args.rand_prune)
 
-    if (args.stage <= -2):
+    if args.stage <= -2:
         logger.info("Computing initial vector for FixedScaleComponent before"
                     " softmax, using priors^{prior_scale} and rescaling to"
                     " average 1".format(
                         prior_scale=args.presoftmax_prior_scale_power))
 
         common_train_lib.compute_presoftmax_prior_scale(
-                args.dir, args.ali_dir, num_jobs, run_opts,
-                presoftmax_prior_scale_power=args.presoftmax_prior_scale_power)
+            args.dir, args.ali_dir, num_jobs, run_opts,
+            presoftmax_prior_scale_power=args.presoftmax_prior_scale_power)
 
-    if (args.stage <= -1):
+    if args.stage <= -1:
         logger.info("Preparing the initial acoustic model.")
         train_lib.acoustic_model.prepare_initial_acoustic_model(
             args.dir, args.ali_dir, run_opts)
@@ -281,18 +281,15 @@ def train(args, run_opts):
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
 
-    models_to_combine = common_train_lib.get_model_combine_iters(
-        num_iters, args.num_epochs,
-        num_archives_expanded, args.max_models_combine,
-        args.num_jobs_final)
-
-    def learning_rate(iter, current_num_jobs, num_archives_processed):
-        return common_train_lib.get_learning_rate(iter, current_num_jobs,
-                                                  num_iters,
-                                                  num_archives_processed,
-                                                  num_archives_to_process,
-                                                  args.initial_effective_lrate,
-                                                  args.final_effective_lrate)
+    # If do_final_combination is True, compute the set of models_to_combine.
+    # Otherwise, models_to_combine will be none.
+    if args.do_final_combination:
+        models_to_combine = common_train_lib.get_model_combine_iters(
+            num_iters, args.num_epochs,
+            num_archives_expanded, args.max_models_combine,
+            args.num_jobs_final)
+    else:
+        models_to_combine = None
 
     logger.info("Training will run for {0} epochs = "
                 "{1} iterations".format(args.num_epochs, num_iters))
@@ -306,6 +303,18 @@ def train(args, run_opts):
                                * float(iter) / num_iters)
 
         if args.stage <= iter:
+            lrate = common_train_lib.get_learning_rate(iter, current_num_jobs,
+                                                       num_iters,
+                                                       num_archives_processed,
+                                                       num_archives_to_process,
+                                                       args.initial_effective_lrate,
+                                                       args.final_effective_lrate)
+            shrinkage_value = 1.0 - (args.proportional_shrink * lrate)
+            if shrinkage_value <= 0.5:
+                raise Exception("proportional-shrink={0} is too large, it gives "
+                                "shrink-value={1}".format(args.proportional_shrink,
+                                                          shrinkage_value))
+
             train_lib.common.train_one_iteration(
                 dir=args.dir,
                 iter=iter,
@@ -314,8 +323,7 @@ def train(args, run_opts):
                 num_jobs=current_num_jobs,
                 num_archives_processed=num_archives_processed,
                 num_archives=num_archives,
-                learning_rate=learning_rate(iter, current_num_jobs,
-                                            num_archives_processed),
+                learning_rate=lrate,
                 dropout_edit_string=common_train_lib.get_dropout_edit_string(
                     args.dropout_schedule,
                     float(num_archives_processed) / num_archives_to_process,
@@ -324,6 +332,7 @@ def train(args, run_opts):
                 frames_per_eg=args.frames_per_eg,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
+                shrinkage_value=shrinkage_value,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts)
 
@@ -348,28 +357,34 @@ def train(args, run_opts):
         num_archives_processed = num_archives_processed + current_num_jobs
 
     if args.stage <= num_iters:
-        logger.info("Doing final combination to produce final.mdl")
-        train_lib.common.combine_models(
-            dir=args.dir, num_iters=num_iters,
-            models_to_combine=models_to_combine,
-            egs_dir=egs_dir,
-            minibatch_size_str=args.minibatch_size, run_opts=run_opts,
-            sum_to_one_penalty=args.combine_sum_to_one_penalty)
-
+        if args.do_final_combination:
+            logger.info("Doing final combination to produce final.mdl")
+            train_lib.common.combine_models(
+                dir=args.dir, num_iters=num_iters,
+                models_to_combine=models_to_combine,
+                egs_dir=egs_dir,
+                minibatch_size_str=args.minibatch_size, run_opts=run_opts,
+                sum_to_one_penalty=args.combine_sum_to_one_penalty)
+    
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
                     "adjusting the priors.")
+        
+        # If args.do_final_combination is true, we will use the combined model.
+        # Otherwise, we will use the last_numbered model.
+        real_iter = 'combined' if args.do_final_combination else num_iters
         avg_post_vec_file = train_lib.common.compute_average_posterior(
-            dir=args.dir, iter='combined', egs_dir=egs_dir,
-            num_archives=num_archives,
+            dir=args.dir, iter=real_iter, 
+            egs_dir=egs_dir, num_archives=num_archives,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts)
 
         logger.info("Re-adjusting priors based on computed posteriors")
-        combined_model = "{dir}/combined.mdl".format(dir=args.dir)
+        combined_or_last_numbered_model = "{dir}/{iter}.mdl".format(dir=args.dir,
+                iter=real_iter)
         final_model = "{dir}/final.mdl".format(dir=args.dir)
-        train_lib.common.adjust_am_priors(args.dir, combined_model,
-                                          avg_post_vec_file, final_model,
-                                          run_opts)
+        train_lib.common.adjust_am_priors(args.dir, combined_or_last_numbered_model,
+                avg_post_vec_file, final_model, run_opts)
+
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory "

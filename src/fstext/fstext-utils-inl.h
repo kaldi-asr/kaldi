@@ -1203,16 +1203,29 @@ bool IsStochasticFst(const Fst<LogArc> &fst,
   return ans;
 }
 
-/// Tests whether a tropical FST is stochastic in the log
-/// semiring (casts it and does the check.)
-bool IsStochasticFstInLog(const VectorFst<StdArc> &fst,
+// Tests whether a tropical FST is stochastic in the log
+// semiring. (casts it and does the check.)
+// This function deals with the generic fst.
+// This version currently supports ConstFst<StdArc> or VectorFst<StdArc>.
+// Otherwise, it will be died with an error.
+bool IsStochasticFstInLog(const Fst<StdArc> &fst,
                           float delta,
                           StdArc::Weight *min_sum,
                           StdArc::Weight *max_sum) {
-  VectorFst<LogArc> logfst;
-  Cast(fst, &logfst);
+  bool ans = false;
   LogArc::Weight log_min, log_max;
-  bool ans = IsStochasticFst(logfst, delta, &log_min, &log_max);
+  if (fst.Type() == "const") {
+    ConstFst<LogArc> logfst;
+    Cast(dynamic_cast<const ConstFst<StdArc>&>(fst), &logfst);
+    ans = IsStochasticFst(logfst, delta, &log_min, &log_max);
+  } else if (fst.Type() == "vector") {
+    VectorFst<LogArc> logfst;
+    Cast(dynamic_cast<const VectorFst<StdArc>&>(fst), &logfst);
+    ans = IsStochasticFst(logfst, delta, &log_min, &log_max);
+  } else {
+    KALDI_ERR << "This version currently supports ConstFst<StdArc> "
+              << "or VectorFst<StdArc>";
+  }
   if (min_sum) *min_sum = StdArc::Weight(log_min.Value());
   if (max_sum) *max_sum = StdArc::Weight(log_max.Value());
   return ans;
