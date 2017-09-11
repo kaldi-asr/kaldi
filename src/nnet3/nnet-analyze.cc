@@ -1289,5 +1289,38 @@ void GetCommandsOfType(const NnetComputation &computation,
       command_indexes->push_back(c);
 }
 
+int64 GetMaxMemoryUse(const NnetComputation &computation) {
+  int64 cur_memory_use = 0,
+      max_memory_use = 0;
+  int32 num_commands = computation.commands.size(),
+      num_submatrices = computation.submatrices.size();
+  for (int32 command_index = 0; command_index < num_commands; ++command_index) {
+    const NnetComputation::Command &c = computation.commands[command_index];
+    int64 this_num_bytes = -100000000;
+    if (c.arg1 >= 0 && c.arg1 < num_submatrices) {
+      // if arg1 could plausibly be a sub-matrix index...
+      const NnetComputation::SubMatrixInfo &submat_info =
+          computation.submatrices[c.arg1];
+      this_num_bytes = static_cast<int64>(sizeof(BaseFloat)) *
+          submat_info.num_rows * submat_info.num_cols;
+    }
+    switch (c.command_type) {
+      case kAllocMatrix:
+      case kAcceptInput:
+        cur_memory_use += this_num_bytes;
+        break;
+      case kDeallocMatrix:
+        cur_memory_use -= this_num_bytes;
+        break;
+      default:
+        break;
+    }
+    KALDI_ASSERT(cur_memory_use >= 0);
+    if (cur_memory_use > max_memory_use)
+      max_memory_use = cur_memory_use;
+  }
+  return max_memory_use;
+}
+
 } // namespace nnet3
 } // namespace kaldi
