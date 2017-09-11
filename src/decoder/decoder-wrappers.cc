@@ -21,6 +21,8 @@
 #include "decoder/faster-decoder.h"
 #include "lat/lattice-functions.h"
 
+using namespace std;
+
 namespace kaldi {
 
 
@@ -55,8 +57,7 @@ DecodeUtteranceLatticeFasterClass::DecodeUtteranceLatticeFasterClass(
     like_sum_(like_sum), frame_sum_(frame_sum),
     num_done_(num_done), num_err_(num_err),
     num_partial_(num_partial),
-    computed_(false), success_(false), partial_(false),
-    clat_(NULL), lat_(NULL) { }
+	computed_(false), success_(false), partial_(false) { }
 
 
 void DecodeUtteranceLatticeFasterClass::operator () () {
@@ -65,7 +66,7 @@ void DecodeUtteranceLatticeFasterClass::operator () () {
   // calling code.
   success_ = true;
   using fst::VectorFst;
-  if (!decoder_->Decode(decodable_)) {
+  if (!decoder_->Decode(decodable_.get())) {
     KALDI_WARN << "Failed to decode file " << utt_;
     success_ = false;
   }
@@ -84,30 +85,29 @@ void DecodeUtteranceLatticeFasterClass::operator () () {
   if (!success_) return;
 
   // Get lattice, and do determinization if requested.
-  lat_ = new Lattice;
-  decoder_->GetRawLattice(lat_);
+  lat_ = unique_ptr<Lattice>(new Lattice);
+  decoder_->GetRawLattice(lat_.get());
   if (lat_->NumStates() == 0)
     KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt_;
-  fst::Connect(lat_);
+  fst::Connect(lat_.get());
   if (determinize_) {
-    clat_ = new CompactLattice;
+	clat_ = unique_ptr<CompactLattice>( new CompactLattice );
     if (!DeterminizeLatticePhonePrunedWrapper(
             *trans_model_,
-            lat_,
+			lat_.get(),
             decoder_->GetOptions().lattice_beam,
-            clat_,
+			clat_.get(),
             decoder_->GetOptions().det_opts))
       KALDI_WARN << "Determinization finished earlier than the beam for "
                  << "utterance " << utt_;
-    delete lat_;
-    lat_ = NULL;
+
     // We'll write the lattice without acoustic scaling.
     if (acoustic_scale_ != 0.0)
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale_), clat_);
+	  fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale_), clat_.get());
   } else {
     // We'll write the lattice without acoustic scaling.
     if (acoustic_scale_ != 0.0)
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale_), lat_);
+	  fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale_), lat_.get());
   }
 }
 
@@ -155,23 +155,19 @@ DecodeUtteranceLatticeFasterClass::~DecodeUtteranceLatticeFasterClass() {
 
     // Ouptut the lattices.
     if (determinize_) { // CompactLattice output.
-      KALDI_ASSERT(compact_lattice_writer_ != NULL && clat_ != NULL);
+	  KALDI_ASSERT(compact_lattice_writer_ != NULL && clat_);
       if (clat_->NumStates() == 0) {
         KALDI_WARN << "Empty lattice for utterance " << utt_;
       } else {
         compact_lattice_writer_->Write(utt_, *clat_);
       }
-      delete clat_;
-      clat_ = NULL;
     } else {
-      KALDI_ASSERT(lattice_writer_ != NULL && lat_ != NULL);
+	  KALDI_ASSERT(lattice_writer_ != NULL && lat_);
       if (lat_->NumStates() == 0) {
         KALDI_WARN << "Empty lattice for utterance " << utt_;
       } else {
         lattice_writer_->Write(utt_, *lat_);
       }
-      delete lat_;
-      lat_ = NULL;
     }
 
     // Print out logging information.
@@ -187,10 +183,6 @@ DecodeUtteranceLatticeFasterClass::~DecodeUtteranceLatticeFasterClass() {
     if (num_done_ != NULL) (*num_done_)++;
     if (partial_ && num_partial_ != NULL) (*num_partial_)++;
   }
-  // We were given ownership of these two objects that were passed in in
-  // the initializer.
-  delete decoder_;
-  delete decodable_;
 }
 
 
