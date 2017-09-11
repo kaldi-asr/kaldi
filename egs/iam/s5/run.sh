@@ -158,11 +158,12 @@ affix_chain=1b_chainali
 nnet3_affix=fsf4
 common_egs_dir=$exp_dir/chainfsf4/cnn1a_1/egs
 
-if [ $stage -le 130 ]; then
-  local/chain/run_cnn_1a.sh --stage 4 \
+if [ $stage -le 13 ]; then
+  local/chain/run_cnn_1a.sh --stage 0 \
    --gmm tri3_${tri3_affix} \
    --ali tri3_ali_${tri3_affix} \
    --nnet3_affix $nnet3_affix \
+   --common_egs_dir $common_egs_dir \
    --affix $affix \
    --lang_test lang_test
 fi
