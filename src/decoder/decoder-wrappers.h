@@ -123,14 +123,14 @@ class DecodeUtteranceLatticeFasterClass {
   // NOTE: we "take ownership" of "decoder" and "decodable".  These
   // are deleted by the destructor.  On error, "num_err" is incremented.
   DecodeUtteranceLatticeFasterClass(
-	  LatticeFasterDecoder *decoder,
-	  DecodableInterface *decodable,
+      LatticeFasterDecoder *decoder,
+      DecodableInterface *decodable,
       const TransitionModel &trans_model,
       const fst::SymbolTable *word_syms,
       std::string utt,
       BaseFloat acoustic_scale,
       bool determinize,
-	  bool allow_partial,
+      bool allow_partial,
       Int32VectorWriter *alignments_writer,
       Int32VectorWriter *words_writer,
       CompactLatticeWriter *compact_lattice_writer,
@@ -167,7 +167,7 @@ class DecodeUtteranceLatticeFasterClass {
   bool success_; // decoding succeeded (possibly partial)
   bool partial_; // decoding was partial.
   std::unique_ptr<CompactLattice> clat_; // Stored output, if determinize_ == true.
-  std::unique_ptr<Lattice> lat_;		 // Stored output, if determinize_ == false.
+  std::unique_ptr<Lattice> lat_;         // Stored output, if determinize_ == false.
 };
 
 // This function DecodeUtteranceLatticeSimple is used in several decoders, and

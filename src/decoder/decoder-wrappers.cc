@@ -21,7 +21,7 @@
 #include "decoder/faster-decoder.h"
 #include "lat/lattice-functions.h"
 
-using namespace std;
+using std::unique_ptr;
 
 namespace kaldi {
 
@@ -57,7 +57,7 @@ DecodeUtteranceLatticeFasterClass::DecodeUtteranceLatticeFasterClass(
     like_sum_(like_sum), frame_sum_(frame_sum),
     num_done_(num_done), num_err_(num_err),
     num_partial_(num_partial),
-	computed_(false), success_(false), partial_(false) { }
+    computed_(false), success_(false), partial_(false) { }
 
 
 void DecodeUtteranceLatticeFasterClass::operator () () {
@@ -91,23 +91,23 @@ void DecodeUtteranceLatticeFasterClass::operator () () {
     KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt_;
   fst::Connect(lat_.get());
   if (determinize_) {
-	clat_ = unique_ptr<CompactLattice>( new CompactLattice );
+    clat_ = unique_ptr<CompactLattice>( new CompactLattice );
     if (!DeterminizeLatticePhonePrunedWrapper(
             *trans_model_,
-			lat_.get(),
+            lat_.get(),
             decoder_->GetOptions().lattice_beam,
-			clat_.get(),
+            clat_.get(),
             decoder_->GetOptions().det_opts))
       KALDI_WARN << "Determinization finished earlier than the beam for "
                  << "utterance " << utt_;
 
     // We'll write the lattice without acoustic scaling.
     if (acoustic_scale_ != 0.0)
-	  fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale_), clat_.get());
+      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale_), clat_.get());
   } else {
     // We'll write the lattice without acoustic scaling.
     if (acoustic_scale_ != 0.0)
-	  fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale_), lat_.get());
+      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale_), lat_.get());
   }
 }
 
@@ -155,14 +155,14 @@ DecodeUtteranceLatticeFasterClass::~DecodeUtteranceLatticeFasterClass() {
 
     // Ouptut the lattices.
     if (determinize_) { // CompactLattice output.
-	  KALDI_ASSERT(compact_lattice_writer_ != NULL && clat_);
+      KALDI_ASSERT(compact_lattice_writer_ != NULL && clat_);
       if (clat_->NumStates() == 0) {
         KALDI_WARN << "Empty lattice for utterance " << utt_;
       } else {
         compact_lattice_writer_->Write(utt_, *clat_);
       }
     } else {
-	  KALDI_ASSERT(lattice_writer_ != NULL && lat_);
+      KALDI_ASSERT(lattice_writer_ != NULL && lat_);
       if (lat_->NumStates() == 0) {
         KALDI_WARN << "Empty lattice for utterance " << utt_;
       } else {
