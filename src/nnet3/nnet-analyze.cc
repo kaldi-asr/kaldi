@@ -642,17 +642,17 @@ void ComputationChecker::CheckComputationMatrixAccesses() const {
       KALDI_ERR << "Matrix m" << matrix_index << " is not initialized.";
     if (accesses.accesses.empty()) {
       KALDI_ERR << "Matrix m" << matrix_index << " is never accessed.";
-      if (accesses.accesses.size() == 1) {
-        int32 first_access_command = accesses.accesses[0].command_index;
-        if (computation_.commands[first_access_command].command_type == kSetConst) {
-          KALDI_ERR << "Matrix m" << matrix_index << " is only set to a constant "
-                    << "value, but then never accessed.";
-        }
-      }
     } else if (accesses.accesses.front().command_index <
                accesses.allocate_command) {
       KALDI_ERR << "Matrix m" << matrix_index << " is accessed before "
           "it is initialized";
+    }
+    if (accesses.accesses.size() == 1) {
+      int32 first_access_command = accesses.accesses[0].command_index;
+      if (computation_.commands[first_access_command].command_type == kSetConst) {
+        KALDI_ERR << "Matrix m" << matrix_index << " is only set to a constant "
+                  << "value, but then never accessed.";
+      }
     }
 
     if (accesses.accesses.empty()) {

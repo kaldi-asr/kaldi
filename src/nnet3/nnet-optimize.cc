@@ -495,11 +495,12 @@ void Optimize(const NnetOptimizeOptions &config,
   if (GetVerboseLevel() >= 3)
     CheckComputation(nnet, *computation, true);
 
-  if (config.optimize && config.consolidate_model_update)
+  if (config.optimize && config.consolidate_model_update) {
     ConsolidateModelUpdate(nnet, computation);
 
-   if (GetVerboseLevel() >= 3)
-    CheckComputation(nnet, *computation, true);
+    if (GetVerboseLevel() >= 3)
+      CheckComputation(nnet, *computation, true);
+  }
 
   if (config.optimize && config.convert_addition) {
     ConvertAdditionToAssignment(nnet, computation);

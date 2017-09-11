@@ -1929,20 +1929,8 @@ void DerivativeTimeLimiter::PruneMatrices() {
     if (!matrix_prune_info.partly_inside_range) {
       // completely outside time range.  we can prune the matrix if it is not an
       // input or output, and is never accessed apart from allocation.
-      if (accesses.accesses.empty() ||
-          (accesses.accesses.size() == 1 &&
-           accesses.accesses[0].command_index == accesses.allocate_command)) {
-        // we prune the matrix away.  the only thing we need to do here is
-        // to remove the allocation and deallocation commands.
-        // they should exist, because we just checked that it's not an input
-        // or an output.
-        KALDI_ASSERT(accesses.allocate_command >= 0 &&
-                     accesses.deallocate_command >= 0);
-        computation_->commands[accesses.allocate_command].command_type =
-            kNoOperation;
-        computation_->commands[accesses.deallocate_command].command_type =
-            kNoOperation;
-      }
+      if (MatrixIsUnused(analyzer, *computation_, m))
+          RemoveCommandsForUnusedMatrix(analyzer, m, computation_);
     } else {
       // the matrix is partly inside the time range, it's a derivative, and not
       // an input or an output.
@@ -4000,6 +3988,50 @@ void FixGotoLabel(NnetComputation *computation) {
   }
 }
 
+bool MatrixIsUnused(const Analyzer &analyzer,
+                    const NnetComputation &computation,
+                    int32 m) {
+  const MatrixAccesses &accesses = analyzer.matrix_accesses[m];
+  if (accesses.is_input || accesses.is_output)
+    return false;
+  for (size_t i = 0; i < accesses.accesses.size(); i++) {
+    int32 command_index = accesses.accesses[i].command_index;
+    const NnetComputation::Command &command =
+        computation.commands[command_index];
+    if (command.command_type != kNoOperation &&
+        command.command_type != kSetConst) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void RemoveCommandsForUnusedMatrix(const Analyzer &analyzer,
+                                   int32 m,
+                                   NnetComputation *computation) {
+  const MatrixAccesses &accesses = analyzer.matrix_accesses[m];
+  if (accesses.allocate_command >= 0) {
+    NnetComputation::Command &command = computation->commands[
+        accesses.allocate_command];
+    KALDI_ASSERT(command.command_type == kNoOperation ||
+                 command.command_type == kAllocMatrix);
+    command.command_type = kNoOperation;
+  }
+  if (accesses.deallocate_command >= 0) {
+    NnetComputation::Command &command = computation->commands[
+        accesses.deallocate_command];
+    KALDI_ASSERT(command.command_type == kNoOperation ||
+                 command.command_type == kDeallocMatrix);
+    command.command_type = kNoOperation;
+  }
+  for (size_t i = 0; i < accesses.accesses.size(); i++) {
+    int32 command_index = accesses.accesses[i].command_index;
+    NnetComputation::Command &command = computation->commands[command_index];
+    KALDI_ASSERT(command.command_type == kNoOperation ||
+                 command.command_type == kSetConst);
+    command.command_type = kNoOperation;
+  }
+}
 
 } // namespace nnet3
 } // namespace kaldi

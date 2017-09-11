@@ -464,6 +464,24 @@ void RemoveNoOps(NnetComputation *computation);
 void IdentifySubmatrixArgs(NnetComputation::Command *command,
                            std::vector<int32*> *submatrix_args);
 
+/// This function returns true if matrix 1 <= m < computation->matrices.size()
+/// is unused, defined as: it is not an input or an output, and is not
+/// accessed other than via commands of type kAllocMatrix, kDeallocMatrix, and
+/// kSetConst.
+bool MatrixIsUnused(const Analyzer &analyzer,
+                    const NnetComputation &computation,
+                    int32 m);
+
+/// This function removes from 'computation' the commands accessing matrix 'm',
+/// which is assumed to be unused according to the MatrixIsUnused() command
+/// above.  Specifically, it changes the types of the relevant commands in
+/// 'computation' to kNoOperation.  (The commands changed in this way will be of
+/// type kAllocMatrix, kDeallocMatrix and kSetConst).  The index for the matrix
+/// may later be removed entirely by RenumberComputation().
+void RemoveCommandsForUnusedMatrix(const Analyzer &analyzer,
+                                   int32 m,
+                                   NnetComputation *computation);
+
 
 /// This function outputs to "submatrix_args" the addresses of the args
 /// (arguments arg1 through arg6) in the vector "commands", that correspond to
