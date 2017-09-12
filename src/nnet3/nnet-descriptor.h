@@ -58,10 +58,10 @@ namespace nnet3 {
    descriptors: not all combinations are allowed.
 \verbatim
 <descriptor>  ::=   <node-name>      ;; node name of kInput or kComponent node.
-<descriptor>  ::=   Const(<dimension>, <value>)    ;; e.g. Const(1.0, 512)
-<descriptor>  ::=   Scale(<descriptor>, scale)   ;; e.g. Scale(tdnn2, -1.0)
 <descriptor>  ::=   Append(<descriptor>, <descriptor> [, <descriptor> ... ] )
 <descriptor>  ::=   Sum(<descriptor>, <descriptor>)
+<descriptor>  ::=   Const(<dimension>, <value>)    ;; e.g. Const(1.0, 512)
+<descriptor>  ::=   Scale(<descriptor>, scale)   ;; e.g. Scale(tdnn2, -1.0)
 ;; Failover or IfDefined might be useful for time t=-1 in a RNN, for instance.
 <descriptor>  ::=   Failover(<descriptor>, <descriptor>)   ;; 1st arg if computable, else 2nd
 <descriptor>  ::=   IfDefined(<descriptor>)     ;; the arg if defined, else zero.
@@ -474,7 +474,6 @@ class ConstantSumDescriptor: public SumDescriptor {
 
   ConstantSumDescriptor(BaseFloat value, int32 dim);
   virtual ~ConstantSumDescriptor() {}
-
  private:
   BaseFloat value_;
   int32 dim_;
@@ -488,8 +487,8 @@ class ConstantSumDescriptor: public SumDescriptor {
 class BinarySumDescriptor: public SumDescriptor {
  public:
   enum Operation {
-    kSum,  // A + B
-    kFailover, // A if defined, else B.
+    kSumOperation,  // A + B
+    kFailoverOperation, // A if defined, else B.
   };
   virtual void GetDependencies(const Index &ind,
                                std::vector<Cindex> *dependencies) const;
@@ -609,7 +608,7 @@ class Descriptor {
  */
 struct GeneralDescriptor {
   enum DescriptorType { kAppend, kSum, kFailover, kIfDefined, kOffset, kSwitch,
-                        kRound, kReplaceIndex, kNodeName };
+                        kRound, kReplaceIndex, kScale, kConst, kNodeName };
 
   // The Parse method is used for reading a config-file-style represenation.
   // Assumes the input has already been tokenized into an array of strings, and
@@ -622,8 +621,10 @@ struct GeneralDescriptor {
                                   const std::string **next_token);
 
   explicit GeneralDescriptor(DescriptorType t, int32 value1 = -1,
-                             int32 value2 = -1):
-      descriptor_type_(t), value1_(value1), value2_(value2) { }
+                             int32 value2 = -1, BaseFloat alpha = 0.0):
+      descriptor_type_(t), value1_(value1), value2_(value2),
+      alpha_(alpha) { }
+
 
   ~GeneralDescriptor() { DeletePointers(&descriptors_); }
 
@@ -640,12 +641,24 @@ struct GeneralDescriptor {
 
   DescriptorType descriptor_type_;
 
-  // the following is only relevant if descriptor_type == kReplaceIndex [1 for t, 2 for ]
-  // or kNodeName (the index of the node), or kOffset [the t offset].
+  // value1_ is only relevant if:
+  //    (a) descriptor_type_ == kReplaceIndex (value1_ is 1 for t, 2 for x)
+  //    (b) descriptor_type_ == kNodeName (value1_ is the index of the node)
+  //    (c) descriptor_type_ == kOffset (value1_ is the t offset).
+  //    (d) descriptor_type_ == kConst (value1_ is the dimension and alpha_
+  //                                   is the value).
   int32 value1_;
-  // the following is only relevant if descriptor_type == kReplaceIndex [the value
-  // we replace the index with], or kOffset [the x offset]
+  // value2_ is only relevant if
+  //    (a) descriptor_type == kReplaceIndex (value2_ is the value
+  //                                          we replace the index with).
+  //    (b) descriptor_type_ == kOffset (value2_ is the x offset)
   int32 value2_;
+
+  // alpha is only relevant if
+  //  (a) descriptor_type == kScale, and this will be the scaling factor.
+  //  (b) descriptor_type == kConst; this is the value, and value1_ is set to the
+  //          dimension.
+  BaseFloat alpha_;
 
   // For any descriptor types that take args of type kDescriptor, a list of those
   // args.  Pointers owned here.
@@ -667,6 +680,10 @@ struct GeneralDescriptor {
   void ParseFailover(const std::vector<std::string> &node_names,
                      const std::string **next_token);
   void ParseRound(const std::vector<std::string> &node_names,
+                  const std::string **next_token);
+  void ParseScale(const std::vector<std::string> &node_names,
+                  const std::string **next_token);
+  void ParseConst(const std::vector<std::string> &node_names,
                   const std::string **next_token);
   void ParseReplaceIndex(const std::vector<std::string> &node_names,
                          const std::string **next_token);

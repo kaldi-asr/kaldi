@@ -147,7 +147,12 @@ void GenerateConfigSequenceSimple(
     os << "ReplaceIndex(ivector, t, 0), ";
   for (size_t i = 0; i < splice_context.size(); i++) {
     int32 offset = splice_context[i];
-    os << "Offset(input, " << offset << ")";
+    if (RandInt(0, 1) == 0) {
+      os << "Offset(input, " << offset << ")";
+    } else {
+      // testing the Scale() expression.
+      os << "Scale(-1, Offset(input, " << offset << "))";
+    }
     if (i + 1 < splice_context.size())
       os << ", ";
   }
