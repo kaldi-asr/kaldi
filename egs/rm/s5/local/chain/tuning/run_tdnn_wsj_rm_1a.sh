@@ -59,7 +59,7 @@ fi
 required_files="$src_mfcc_config $src_mdl"
 use_ivector=false
 ivector_dim=$(nnet3-am-info --print-args=false $src_mdl | grep "ivector-dim" | cut -d" " -f2)
-if [ "$ivector_dim" == "" ]; then ivector_dim=0 ; fi
+if [ -z $ivector_dim ]; then ivector_dim=0 ; fi
 
 if [ ! -z $src_ivec_extractor_dir ]; then
   if [ $ivector_dim -eq 0 ]; then
@@ -72,13 +72,13 @@ if [ ! -z $src_ivec_extractor_dir ]; then
 else
   if [ $ivector_dim -gt 0 ]; then
     echo "$0: ivector is used in training the source model '$src_mdl' but no "
-    echo "ivector extractor dir for source model is specified." && exit 1;
+    echo " --src-ivec-extractor-dir option as ivector dir for source model is specified." && exit 1;
   fi
 fi
 
 for f in $required_files; do
   if [ ! -f $f ]; then
-    echo "$0: no such file $f."
+    echo "$0: no such file $f." && exit 1;
   fi
 done
 

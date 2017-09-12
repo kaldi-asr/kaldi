@@ -24,7 +24,7 @@
 set -e
 
 # configs for 'chain'
-stage=7
+stage=0
 train_stage=-4
 get_egs_stage=-10
 tdnn_affix=_1b
@@ -100,7 +100,7 @@ required_files="$src_mfcc_config $src_mdl $src_lang/phones.txt $src_dict/lexicon
 
 use_ivector=false
 ivector_dim=$(nnet3-am-info --print-args=false $src_mdl | grep "ivector-dim" | cut -d" " -f2)
-if [ "$ivector_dim" == "" ]; then ivector_dim=0 ; fi
+if [ -z $ivector_dim ]; then ivector_dim=0 ; fi
 
 if [ ! -z $src_ivec_extractor_dir ]; then
   if [ $ivector_dim -eq 0 ]; then
@@ -125,7 +125,7 @@ for f in $required_files; do
 done
 
 if [ $stage -le -1 ]; then
-  echo "$0: prepare lexicon.txt for RM using WSJ lexicon."
+  echo "$0: Prepare lang for RM-WSJ using WSJ phone set and lexicon and RM word list."
   if ! cmp -s <(grep -v "^#" $src_lang/phones.txt) <(grep -v "^#" data/lang/phones.txt); then
     local/prepare_wsj_rm_lang.sh  $src_dict $src_lang $lang_src_tgt
   else
