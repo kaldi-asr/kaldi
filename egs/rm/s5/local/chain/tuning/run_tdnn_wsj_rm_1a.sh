@@ -126,8 +126,9 @@ if [ $stage -le 6 ]; then
 fi
 
 if [ $stage -le 7 ]; then
-  echo "$0: creating neural net configs using the xconfig parser for";
-  echo "extra layers w.r.t source network.";
+  echo "$0: Create neural net configs using the xconfig parser for";
+  echo " generating new layers, that are specific to rm. These layers ";
+  echo " are added to the transferred part of the wsj network.";
   num_targets=$(tree-info --print-args=false $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   mkdir -p $dir
