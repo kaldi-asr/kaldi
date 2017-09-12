@@ -35,7 +35,7 @@ fi
 
 if [ "$speed_perturb" == "true" ]; then
   if [ $stage -le 1 ]; then
-    #Although the nnet will be trained by high resolution data, we still have to perturbe the normal data to get the alignment
+    #Although the nnet model will be trained by high resolution data, we still have to perturbe the normal data to get the alignment
     # _sp stands for speed-perturbed
     for datadir in train; do
       if [ ! -d data/$lang/${datadir}_sp ]; then

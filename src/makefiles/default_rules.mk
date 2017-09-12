@@ -58,8 +58,8 @@ endif
 
 # Rule below would expand to, e.g.:
 # ../base/kaldi-base.a:
-# 	make -c ../base kaldi-base.a
-# -c option to make is same as changing directory.
+# 	make -C ../base kaldi-base.a
+# -C option to make is same as changing directory.
 %.a:
 	$(MAKE) -C ${@D} ${@F}
 

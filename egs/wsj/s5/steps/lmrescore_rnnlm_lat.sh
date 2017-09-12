@@ -58,7 +58,7 @@ fi
 
 if [ "$rnnlm_ver" == "tensorflow" ]; then
   rescoring_binary="lattice-lmrescore-tf-rnnlm"
-  first_arg="$first_arg $rnnlm_dir/wordlist.rnn.final"
+  first_arg="$rnnlm_dir/unk.probs $rnnlm_dir/wordlist.rnn.final"
 fi
 
 oldlm=$oldlang/G.fst
