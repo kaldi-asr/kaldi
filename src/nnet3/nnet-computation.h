@@ -204,7 +204,9 @@ struct ComputationRequest {
      'to_update' argument to the Backprop call, even if the model  is updatable,
      so it skips the model-update phase of backprop.
    - kMatrixCopy: Copy (alpha times contents of sub-matrix arg2)
-                  to sub-matrix arg1
+                  to sub-matrix arg1, currently implemented as copy then scale.
+                  Note: to implement scaling a matrix, you can use kMatrixCopy
+                  with arg1 == arg2 and it won't do any redundant copying.
    - kMatrixAdd: Add (alpha times contents of sub-matrix arg2)
                  to sub-matrix arg1
    - kCopyRows: call \ref CuMatrix::CopyRows() "CopyRows()" on sub-matrix arg1

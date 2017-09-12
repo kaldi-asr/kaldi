@@ -737,7 +737,9 @@ bool VariableMergingOptimizer::MergeVariables() {
     // potentially merge into a single variable.
     const NnetComputation::Command &c = computation_->commands[command_index];
     int32 s1 = -1, s2 = -1;
+    // TODO: add kScale command and remove the check for 1.0
     if (c.command_type == kMatrixCopy &&
+        //        c.alpha == 1.0 &&
         config_.remove_assignments) {
       s2 = c.arg1;  // s2 is the written-to matrix.
       s1 = c.arg2;
@@ -852,8 +854,12 @@ void VariableMergingOptimizer::DoMerge(int32 command_index,
   const std::vector<MatrixAccesses> &matrix_accesses =
       analyzer_.matrix_accesses;
 
-  //  - If it was case (a), replace the assignment command with a no-op.
-  if (c.command_type == kMatrixCopy) {
+  //  - If it was a matrix-copy (assignment) with scale 1.0, replace the
+  //    assignment command with a no-op.
+  //    If it was matrix-copy with a scale, leave the command there;
+  //    it will have the effect of scaling the matrix (it will be
+  //    mapped so that arg1 == arg2, but that is OK).
+  if (c.command_type == kMatrixCopy && c.alpha == 1.0) {
     // remove the command.
     c.command_type = kNoOperation;
     c.arg1 = -1;
@@ -1807,8 +1813,10 @@ void DerivativeTimeLimiter::ModifyCommands() {
 bool DerivativeTimeLimiter::CanLimitMatrix(const Analyzer &analyzer,
                                            int32 m) const {
   int32 s_whole = whole_submatrices_[m];  // submatrix consisting of
-                                                     // all of the matrix.
-  int32 s_mapped = submatrix_map_[s_whole];  // the matrix limited in time.
+                                          // all of the matrix m
+  int32 s_mapped = submatrix_map_[s_whole];  // submatrix consisting of the time
+                                             // range of the matrix m that we
+                                             // plan to limit it to.
   KALDI_ASSERT(s_mapped != 0 && s_mapped != s_whole);
   std::vector<int32> whole_variables, mapped_variables;
   analyzer.variables.AppendVariablesForSubmatrix(s_whole,
@@ -1823,9 +1831,9 @@ bool DerivativeTimeLimiter::CanLimitMatrix(const Analyzer &analyzer,
                           mapped_variables.begin(), mapped_variables.end(),
                           excluded_variables.begin());
   KALDI_ASSERT(end_iter == excluded_variables.end());
-  // We want to make sure that none of the excluded variables are
-  // ever accessed.  If they are, we cannot prune the matrix.
-  int32 allocate_command = analyzer.matrix_accesses[m].allocate_command;
+  // We want to make sure that none of the excluded variables are ever accessed,
+  // except possibly for zeroing or setting to other constant value.  If they
+  // are, we cannot prune the matrix.
   for (std::vector<int32>::iterator iter = excluded_variables.begin();
        iter != end_iter; ++iter) {
     int32 variable_index = *iter;
@@ -1836,9 +1844,11 @@ bool DerivativeTimeLimiter::CanLimitMatrix(const Analyzer &analyzer,
     for (; viter != vend; ++viter) {
       // if a variable outside the pruned range of the matrix is ever accessed
       // apart from on allocation, we cannot prune.
-      if (viter->command_index != allocate_command) {
+      int32 command_index = viter->command_index;
+      NnetComputation::Command &command = computation_->commands[command_index];
+      if (command.command_type != kSetConst) {
         // we may one day want to look at this.. it's not really expected.
-        KALDI_VLOG(4) << "Cannot prune matrix " << m;
+        KALDI_VLOG(3) << "Cannot prune matrix " << m;
         return false;
       }
     }

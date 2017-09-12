@@ -614,7 +614,7 @@ void ComputationChecker::CheckComputationUndefined() const {
     if (accesses.empty()) {
       if (config_.check_unused_variables) {
         KALDI_ERR << "Variable " << v << " == "
-                  << a_.variables.DescribeVariable(v) << "is never used.";
+                  << a_.variables.DescribeVariable(v) << " is never used.";
       }
     } else {
       if (accesses[0].access_type != kWriteAccess)
@@ -826,8 +826,13 @@ void ComputationChecker::CheckComputationIndexes() const {
         if (submatrices[c.arg1].num_rows != submatrices[c.arg2].num_rows ||
             submatrices[c.arg1].num_cols != submatrices[c.arg2].num_cols)
           KALDI_ERR << "Submatrix indexes out of range in matrix copy/add";
-        if (c.arg1 == c.arg2)
-          KALDI_ERR << "Adding/copying to self";
+        if (c.arg1 == c.arg2) {
+          // we allow copying to itself if alpha != 1.0; this is how we
+          // implement scaling.
+          if (!(c.command_type == kMatrixCopy && c.alpha != 1.0)) {
+            KALDI_ERR << "Adding/copying to self";
+          }
+        }
         break;
       case kAddRows:
       case kCopyRows: {
