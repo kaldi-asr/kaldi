@@ -122,11 +122,16 @@ def read_text(text_file):
     """
     for line in text_file:
         parts = line.strip().split()
-        if len(parts) <= 2:
+        if len(parts) < 1:
             raise RuntimeError(
                 "Did not get enough columns; line {0} in {1}"
                 "".format(line, text_file.name))
-        yield parts[0], parts[1:]
+        elif len(parts) == 1:
+            logger.warn("Empty transcript for utterance %s in %s", 
+                        parts[0], text_file.name)
+            yield parts[0], []
+        else:
+            yield parts[0], parts[1:]
     text_file.close()
 
 

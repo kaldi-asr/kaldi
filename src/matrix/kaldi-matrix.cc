@@ -49,8 +49,10 @@ void MatrixBase<Real>::Invert(Real *log_det, Real *det_sign,
   Real *p_work;
   void *temp;
   if ((p_work = static_cast<Real*>(
-          KALDI_MEMALIGN(16, sizeof(Real)*l_work, &temp))) == NULL)
+          KALDI_MEMALIGN(16, sizeof(Real)*l_work, &temp))) == NULL) {
+    delete[] pivot;
     throw std::bad_alloc();
+  }
 
   clapack_Xgetrf2(&M, &N, data_, &LDA, pivot, &result);
   const int pivot_offset = 1;
