@@ -42,13 +42,13 @@ class XconfigLayerBase(object):
             raise RuntimeError("Invalid value: name={0}".format(
                 key_to_value['name']))
 
-        # It is possible to have two layers with a same name in 'all_layer', if 
+        # It is possible to have two layers with a same name in 'all_layer', if
         # the layer type for one of them is 'existing'.
         # Layers of type 'existing' are corresponding to the component-node names
         # in the existing model, which we are adding layers to them.
         # 'existing' layers are not presented in any config file, and new layer
         # with the same name can exist in 'all_layers'.
-        # e.g. It is possible to have 'output-node' with name 'output' in the 
+        # e.g. It is possible to have 'output-node' with name 'output' in the
         # existing model, which is added to all_layers using layer type 'existing',
         # and 'output-node' of type 'output-layer' with the same name 'output' in
         # 'all_layers'.
@@ -379,7 +379,7 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
 
         # note: self.config['input'] is a descriptor, '[-1]' means output
         # the most recent layer.
-        self.config = {'input': '[-1]', 'dim': -1}
+        self.config = {'input': '[-1]', 'dim': -1, 'skip-in-init': False}
 
     def check_configs(self):
 
@@ -416,6 +416,8 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
         descriptor_final_str = self.descriptors['input']['final-string']
 
         for config_name in ['init', 'ref', 'final']:
+            if config_name == 'init' and self.config['skip-in-init']:
+                continue
             ans.append((config_name,
                         'output-node name={0} input={1}'.format(
                             self.name, descriptor_final_str)))
@@ -507,28 +509,38 @@ class XconfigOutputLayer(XconfigLayerBase):
                                " invalid value {0}"
                                "".format(self.config['learning-rate-factor']))
 
-    # you cannot access the output of this layer from other layers... see
-    # comment in output_name for the reason why.
     def auxiliary_outputs(self):
 
-        return []
+        auxiliary_outputs = ['affine']
+        if self.config['include-log-softmax']:
+            auxiliary_outputs.append('log-softmax')
 
-    def output_name(self, auxiliary_outputs=None):
+        return auxiliary_outputs
 
-        # Note: nodes of type output-node in nnet3 may not be accessed in
-        # Descriptors, so calling this with auxiliary_outputs=None doesn't
-        # make sense.  But it might make sense to make the output of the softmax
-        # layer and/or the output of the affine layer available as inputs to
-        # other layers, in some circumstances.
-        # we'll implement that when it's needed.
-        raise RuntimeError("Outputs of output-layer may not be used by other"
-                           " layers")
+    def output_name(self, auxiliary_output=None):
+
+        if auxiliary_output is None:
+            # Note: nodes of type output-node in nnet3 may not be accessed in
+            # Descriptors, so calling this with auxiliary_outputs=None doesn't
+            # make sense.
+            raise RuntimeError("Outputs of output-layer may not be used by other"
+                               " layers")
+
+        if auxiliary_output in self.auxiliary_outputs():
+            return '{0}.{1}'.format(self.name, auxiliary_output)
+        else:
+            raise RuntimeError("Unknown auxiliary output name {0}"
+                               "".format(auxiliary_output))
 
     def output_dim(self, auxiliary_output=None):
 
-        # see comment in output_name().
-        raise RuntimeError("Outputs of output-layer may not be used by other"
-                           " layers")
+        if auxiliary_output is None:
+            # Note: nodes of type output-node in nnet3 may not be accessed in
+            # Descriptors, so calling this with auxiliary_outputs=None doesn't
+            # make sense.
+            raise RuntimeError("Outputs of output-layer may not be used by other"
+                               " layers")
+        return self.config['dim']
 
     def get_full_config(self):
 
@@ -1092,19 +1104,19 @@ class XconfigIdctLayer(XconfigLayerBase):
 
 class XconfigExistingLayer(XconfigLayerBase):
     """
-    This class is for lines like 
+    This class is for lines like
     'existing name=tdnn1.affine dim=40'.
-    
-    This layer contains 'dim' and 'name' and it is not presented in 
+
+    This layer contains 'dim' and 'name' and it is not presented in
     any actual config files.
     Layers of this type are created internally for all component nodes
     in an existing neural net model to use as input to other layers.
     (i.e. get_model_component_info function, which is called in
      steps/nnet3/xconfig_to_configs.py, returns a list of 'existing'
      layers for component nodes used in 'existing_model')
-    
+
     This class is useful in cases like transferring existing model
-    and using {input, output, component}-nodes in this model as 
+    and using {input, output, component}-nodes in this model as
     input to new layers.
     """
 
