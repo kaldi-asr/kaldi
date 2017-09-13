@@ -10,7 +10,7 @@
 #    Since we use phone.txt from source dataset, this can be helpful in cases
 #    where there is few training data in the target domain and some 4-gram phone
 #    sequences have no count in the target domain.
-# 4) It uses whole already-trained model and  does not replace the output layer 
+# 4) It uses whole already-trained model and  does not replace the output layer
 #    from already-trained model with new randomely initialized output layer and
 #    re-train it using target dataset.
 
@@ -35,9 +35,9 @@ primary_lr_factor=0.25 # The learning-rate factor for transferred layers from so
                        # model. e.g. if 0, it fixed the paramters transferred from source.
                        # The learning-rate factor for new added layers is 1.0.
 nnet_affix=_online_wsj
-phone_lm_scales="1,10" #  comma-separated list of positive int valued scale weights
-                       #  to scale different phone sequences for different alignments
-                       #  e.g. (src-weight,target-weight)=(1,10)
+phone_lm_scales="1,10" # comma-separated list of positive integer multiplicities
+                       # to apply to the different source data directories (used
+                       # to give the RM data a higher weight).
 
 # model and dirs for source model used for transfer learning
 src_mdl=../../wsj/s5/exp/chain/tdnn1d_sp/final.mdl # Input chain model
@@ -161,7 +161,7 @@ fi
 if [ $stage -le 6 ]; then
   echo "$0: compute {den,normalization}.fst using weighted phone LM with wsj and rm weight $phone_lm_scales."
   steps/nnet3/chain/make_weighted_den_fst.sh --cmd "$train_cmd" \
-    --weights $phone_lm_scales \
+    --num-repeats $phone_lm_scales \
     --lm-opts '--num-extra-lm-states=200' \
     $src_tree_dir $lat_dir $dir || exit 1;
 fi
