@@ -426,7 +426,7 @@ class XconfigOutputLayer(XconfigLayerBase):
     """This class is for lines like
     'output-layer name=output dim=4257 input=Append(input@-1, input@0, input@1, ReplaceIndex(ivector, t, 0))'
     By default this includes a log-softmax component.  The parameters are
-    initialized to zero, asthis is best for output layers.
+    initialized to zero, as this empirically tends to be the best approach for output layers.
 
     Parameters of the class, and their defaults:
         input='[-1]'    :   Descriptor giving the input of the layer.
@@ -452,6 +452,9 @@ class XconfigOutputLayer(XconfigLayerBase):
             -0.25 is referred to as presoftmax_prior_scale_power in scripts. In
             the scripts this would normally be set to
             config_dir/presoftmax_prior_scale.vec
+        max-change=1.5 :  Can be used to change the max-change parameter in the
+            affine component; this affects how much the matrix can change on each
+            iteration.
         output-delay=0    :  Can be used to shift the frames on the output, equivalent
              to delaying labels by this many frames (positive value increases latency
              in online decoding but may help if you're using unidirectional LSTMs.
