@@ -4,6 +4,20 @@ set -o errexit
 
 [ -f path.sh ] && . path.sh  # Sets the PATH to contain necessary executables
 
+wget http://www.openslr.org/resources/34/santiago.tar.gz
+
+mkdir -p local/src/dict
+
+mv santiago.tar.gz local/src/dict/
+
+gunzip local/src/dict/santiago.tar.gz
+
+cd local/src/dict
+
+tar -xvf santiago.tar
+
+cd ../../..
+
 if [ ! -d data/local/dict ]; then
     mkdir -p data/local/dict
 fi
@@ -51,7 +65,9 @@ cut \
 	> \
 	data/local/dict/nonsilence_phones_with_empty_line.txt
 
-tac \
+sed \
+    "1d" \
+    < \
     data/local/dict/nonsilence_phones_with_empty_line.txt \
     | \
     tr -s "\n" \
