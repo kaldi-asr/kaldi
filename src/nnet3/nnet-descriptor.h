@@ -60,8 +60,8 @@ namespace nnet3 {
 <descriptor>  ::=   <node-name>      ;; node name of kInput or kComponent node.
 <descriptor>  ::=   Append(<descriptor>, <descriptor> [, <descriptor> ... ] )
 <descriptor>  ::=   Sum(<descriptor>, <descriptor>)
-<descriptor>  ::=   Const(<dimension>, <value>)    ;; e.g. Const(1.0, 512)
-<descriptor>  ::=   Scale(<descriptor>, scale)   ;; e.g. Scale(tdnn2, -1.0)
+<descriptor>  ::=   Const(<value>, <dimension>)    ;; e.g. Const(1.0, 512)
+<descriptor>  ::=   Scale(<scale>, <descriptor>)   ;; e.g. Scale(-1.0, tdnn2)
 ;; Failover or IfDefined might be useful for time t=-1 in a RNN, for instance.
 <descriptor>  ::=   Failover(<descriptor>, <descriptor>)   ;; 1st arg if computable, else 2nd
 <descriptor>  ::=   IfDefined(<descriptor>)     ;; the arg if defined, else zero.
