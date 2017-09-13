@@ -38,9 +38,9 @@ common_egs_dir=
 primary_lr_factor=0.25 # learning-rate factor for all except last layer in transferred source model
 nnet_affix=_online_wsj
 
-phone_lm_scales="1,10" #  comma-separated list of int valued scale weights
-                       #  to scale different phone sequences for different alignments
-                       #  e.g. (src-weight,target-weight)=(10,1)
+phone_lm_scales="1,10" # comma-separated list of positive integer multiplicities
+                       # to apply to the different source data directories (used
+                       # to give the RM data a higher weight).
 
 # model and dirs for source model used for transfer learning
 src_mdl=../../wsj/s5/exp/chain/tdnn1d_sp/final.mdl # input chain model
@@ -163,7 +163,7 @@ fi
 if [ $stage -le 6 ]; then
   echo "$0: compute {den,normalization}.fst using weighted phone LM."
   steps/nnet3/chain/make_weighted_den_fst.sh --cmd "$train_cmd" \
-    --weights $phone_lm_scales \
+    --num-repeats $phone_lm_scales \
     --lm-opts '--num-extra-lm-states=200' \
     $src_tree_dir $lat_dir $dir || exit 1;
 fi
