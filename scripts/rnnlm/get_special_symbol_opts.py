@@ -8,7 +8,9 @@ import argparse
 import sys
 
 parser = argparse.ArgumentParser(description="This script checks whether the special symbols "
-                                 "appear in words.txt with expected values.",
+                                 "appear in words.txt with expected values, if not, it will "
+                                 "print out the options with correct value to stdout, which may look like "
+                                 "'--bos-symbol=14312 --eos-symbol=14313 --brk-symbol=14320'.",
                                  epilog="E.g. " + sys.argv[0] + " < exp/rnnlm/config/words.txt > exp/rnnlm/special_symbol_opts.txt",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
