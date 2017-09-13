@@ -258,8 +258,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
 
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
-    logger.info("Training neural net (pass {0})".format(iter))
-
     # check if different iterations use the same random seed
     if os.path.exists('{0}/srand'.format(dir)):
         try:

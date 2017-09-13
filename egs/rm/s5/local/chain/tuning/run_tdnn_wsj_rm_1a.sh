@@ -59,7 +59,7 @@ fi
 required_files="$src_mfcc_config $src_mdl"
 use_ivector=false
 ivector_dim=$(nnet3-am-info --print-args=false $src_mdl | grep "ivector-dim" | cut -d" " -f2)
-if [ "$ivector_dim" == "" ]; then ivector_dim=0 ; fi
+if [ -z $ivector_dim ]; then ivector_dim=0 ; fi
 
 if [ ! -z $src_ivec_extractor_dir ]; then
   if [ $ivector_dim -eq 0 ]; then
@@ -72,13 +72,13 @@ if [ ! -z $src_ivec_extractor_dir ]; then
 else
   if [ $ivector_dim -gt 0 ]; then
     echo "$0: ivector is used in training the source model '$src_mdl' but no "
-    echo "ivector extractor dir for source model is specified." && exit 1;
+    echo " --src-ivec-extractor-dir option as ivector dir for source model is specified." && exit 1;
   fi
 fi
 
 for f in $required_files; do
   if [ ! -f $f ]; then
-    echo "$0: no such file $f."
+    echo "$0: no such file $f." && exit 1;
   fi
 done
 
@@ -126,8 +126,9 @@ if [ $stage -le 6 ]; then
 fi
 
 if [ $stage -le 7 ]; then
-  echo "$0: creating neural net configs using the xconfig parser for";
-  echo "extra layers w.r.t source network.";
+  echo "$0: Create neural net configs using the xconfig parser for";
+  echo " generating new layers, that are specific to rm. These layers ";
+  echo " are added to the transferred part of the wsj network.";
   num_targets=$(tree-info --print-args=false $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   mkdir -p $dir

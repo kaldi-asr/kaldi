@@ -17,7 +17,6 @@ dir=exp/chain/tdnn_5n
 num_epochs=12
 initial_effective_lrate=0.005
 final_effective_lrate=0.0005
-leftmost_questions_truncate=-1
 max_param_change=2.0
 final_layer_normalize_target=0.5
 num_jobs_initial=2
@@ -77,7 +76,6 @@ fi
 if [ $stage -le 6 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-    --leftmost-questions-truncate $leftmost_questions_truncate \
     --cmd "$train_cmd" 1200 data/train $lang $ali_dir $treedir
 fi
 

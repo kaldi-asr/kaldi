@@ -195,7 +195,7 @@ template<class BasicType> class BasicVectorHolder;
 template<class BasicType> class BasicVectorVectorHolder;
 
 // A holder for vectors of pairsof basic types, e.g.
-// std::vector<std::vector<int32> >, and so on.
+// std::vector<std::pair<int32, int32> >, and so on.
 // Note: a basic type is defined as a type for which ReadBasicType
 // and WriteBasicType are implemented, i.e. integer and floating
 // types, and bool.  Text format is (e.g. for integers),

@@ -31,8 +31,8 @@ cmd=run.pl
 stage=-10
 weights= # comma-separated list of positive int valued scale weights used
          # to scale different phone sequences for different alignments.
-         # Scaling the count with i^th int weight 'w' is done by repeating
-         # the i^th phone sequence 'w' times.
+         # Scaling the n-gram count with i_th weight 'w' is equivalent to repeating
+         # the i_th phone sequence 'w' times in phone lm generation.
          # i.e. "1,10"
          # If not specified, weight '1' is used for all phone sequences.
 
@@ -49,6 +49,10 @@ if [ $# -lt 2 ]; then
   echo "Options: "
   echo " --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes.";
   echo "--lm-opts                        # options for phone LM generation";
+  echo "--weights                        # comma-separated list of positive int "
+  echo "                                 # weights used to scale phone sequences"
+  echo "                                 # corresponding to input alignments "
+  echo "                                 # used in phone LM generation.";
   exit 1;
 fi
 
@@ -75,7 +79,8 @@ cp ${ali_dirs[0]}/tree $dir/ || exit 1
 if [ -z $weights ]; then
   # If 'weights' is not specified, comma-separated array '1' with dim
   #'num_alignments' is defined as 'weights'.
-  for n in `seq 1 $num_alignments`;do weights="$weights,1"; done
+  w_arr=()
+  for n in `seq 1 $num_alignments`;do w_arr+=(1); done
 else
   w_arr=(${weights//,/ })
   num_weights=${#w_arr[@]}
@@ -86,28 +91,26 @@ else
 fi
 
 if [ $stage -le 1 ]; then
+  rm $dir/all_phones.txt 2>/dev/null || true
   for n in `seq 0 $[num_alignments-1]`; do
-    w=$(echo $weights | cut -d, -f$[$n+1])
+    w=${w_arr[$n]}
     adir=${ali_dirs[$n]}
     num_jobs=$(cat $adir/num_jobs)
     if ! [[ $w =~ ^[+]?[0-9]+$ ]] ; then
       echo "no positive int weight specified for alignment ${ali_dirs[$n]}" && exit 1;
     fi
-    rm $adir/alignment_files.txt 2>/dev/null || true
+
+    for j in `seq $num_jobs`;do gunzip -c $adir/ali.$j.gz; done \
+        | ali-to-phones $adir/final.mdl ark:- "ark:|gzip -c >$dir/phones.$n.gz" || exit 1;
     for x in `seq $w`;do
-      for j in `seq $num_jobs`;do
-        echo $adir/ali.$j.gz >> $adir/alignment_files.txt
-      done
+      echo $dir/phones.$n.gz >> $dir/all_phones.txt
     done
   done
+
   $cmd $dir/log/make_phone_lm_fst.log \
-    ali_dirs=\(${ali_dirs[@]}\) \; \
-    for n in `seq 0 $[num_alignments-1]`\; do \
-      adir=\${ali_dirs[\$n]} \; \
-      cat \$adir/alignment_files.txt \| while read f\; do gunzip -c \$f \; done \| \
-        ali-to-phones \$adir/final.mdl ark:- ark:- \; \
-    done \| \
-      chain-est-phone-lm $lm_opts ark:- $dir/phone_lm.fst || exit 1;
+    cat $dir/all_phones.txt \| while read f \; do gunzip -c \$f \; done \| \
+    chain-est-phone-lm $lm_opts ark:- $dir/phone_lm.fst || exit 1;
+  rm $dir/phones.*.gz 2>/dev/null || true
 fi
 
 if [ $stage -le 2 ]; then
@@ -120,5 +123,7 @@ if [ $stage -le 3 ]; then
     $dir/phone_lm.fst \
     $dir/den.fst $dir/normalization.fst || exit 1
 fi
+
+echo "Successfully created {den,normalization}.fst"
 
 exit 0

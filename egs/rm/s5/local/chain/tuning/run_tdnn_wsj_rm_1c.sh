@@ -13,8 +13,8 @@
 #    Since we use phone.txt from source dataset, this can be helpful in cases
 #    where there is a few training data in the target domain and some 4-gram phone
 #    sequences have no count in the target domain.
-# 4) It transfers all layers in already-trained model and 
-#    re-train the last layer using target dataset, instead of replacing it 
+# 4) It transfers all layers in already-trained model and
+#    re-train the last layer using target dataset, instead of replacing it
 #    with new randomely initialized output layer.
 
 # This script uses weight transfer as Transfer learning method
@@ -27,7 +27,7 @@
 set -e
 
 # configs for 'chain'
-stage=8
+stage=0
 train_stage=-4
 get_egs_stage=-10
 dir=exp/chain/tdnn_wsj_rm_1c
@@ -97,7 +97,7 @@ required_files="$src_mfcc_config $src_mdl $src_lang/phones.txt $src_dict/lexicon
 
 use_ivector=false
 ivector_dim=$(nnet3-am-info --print-args=false $src_mdl | grep "ivector-dim" | cut -d" " -f2)
-if [ "$ivector_dim" == "" ]; then ivector_dim=0 ; fi
+if [ -z $ivector_dim ]; then ivector_dim=0 ; fi
 
 if [ ! -z $src_ivec_extractor_dir ]; then
   if [ $ivector_dim -eq 0 ]; then
@@ -110,7 +110,7 @@ if [ ! -z $src_ivec_extractor_dir ]; then
 else
   if [ $ivector_dim -gt 0 ]; then
     echo "$0: ivector is used in training the source model '$src_mdl' but no "
-    echo " ivector extractor dir for source model is specified." && exit 1;
+    echo " --src-ivec-extractor-dir option as ivector dir for source model is specified." && exit 1;
   fi
 fi
 
@@ -122,7 +122,7 @@ for f in $required_files; do
 done
 
 if [ $stage -le -1 ]; then
-  echo "$0: prepare lang for RM-WSJ using WSJ phone set and lexicon and RM word list."
+  echo "$0: Prepare lang for RM-WSJ using WSJ phone set and lexicon and RM word list."
   if ! cmp -s <(grep -v "^#" $src_lang/phones.txt) <(grep -v "^#" $lang_dir/phones.txt); then
     local/prepare_wsj_rm_lang.sh  $src_dict $src_lang $lang_src_tgt || exit 1;
   else
@@ -162,7 +162,8 @@ fi
 
 if [ $stage -le 6 ]; then
   echo "$0: compute {den,normalization}.fst using weighted phone LM."
-  steps/nnet3/chain/make_weighted_den_fst.sh --weights $phone_lm_scales \
+  steps/nnet3/chain/make_weighted_den_fst.sh --cmd "$train_cmd" \
+    --weights $phone_lm_scales \
     --lm-opts '--num-extra-lm-states=200' \
     $src_tree_dir $lat_dir $dir || exit 1;
 fi
