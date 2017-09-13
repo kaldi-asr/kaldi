@@ -22,7 +22,7 @@ lang=$2
 tmpdir=$lang/temp
 mkdir -p $tmpdir
 
-if [ $lmsrc == *".arpa" ]; then
+if [[ $lmsrc == *.arpa ]]; then
   echo "$0: Using arpa LM: "$lmsrc
   arpa=$lmsrc
 else

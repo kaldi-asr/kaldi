@@ -47,6 +47,7 @@ tri3_affix=${tri2_affix}_${numLeavesSAT}_${numGaussSAT}
 
 if [ $stage -le 2 ]; then
   local/prepare_dict.sh $data_dir/train/ $data_dir/test/ $data_dir/train/dict
+  local/prepare_dict.sh $data_dir/val_1/ $data_dir/val_2/ $data_dir/val_1/dict
   utils/prepare_lang.sh --num-sil-states $numSilStates --num-nonsil-states $numStates --position-dependent-phones false \
     $data_dir/train/dict "<sil>" $data_dir/lang/temp $data_dir/lang
 fi
@@ -61,6 +62,10 @@ if [ $stage -le 3 ]; then
   cat diff.txt | awk '{ print "id " $1 }' >> $data_dir/train/text_copy
 
   local/prepare_lm.sh $data_dir/train/text_copy $data_dir/lang_test || exit 1;
+  
+  # cp -R $data_dir/lang -T $data_dir/lang_test_corpus
+  # gunzip -k data/local/local_lm/data/arpa/3gram_big.arpa.gz
+  # local/prepare_lm.sh data/local/local_lm/data/arpa/3gram_big.arpa $data_dir/lang_test_corpus || exit 1;
 fi
 
 if [ $stage -le 4 ]; then
@@ -163,7 +168,6 @@ if [ $stage -le 13 ]; then
    --gmm tri3_${tri3_affix} \
    --ali tri3_ali_${tri3_affix} \
    --nnet3_affix $nnet3_affix \
-   --common_egs_dir $common_egs_dir \
    --affix $affix \
    --lang_test lang_test
 fi
