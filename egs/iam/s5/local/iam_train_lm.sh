@@ -57,8 +57,7 @@ if [ $stage -le 0 ]; then
 
   rm ${dir}/data/text/* 2>/dev/null || true
   
-  # Unzip TEDLIUM 6 data sources, normalize apostrophe+suffix to previous word, gzip the result.
-  # gunzip -c db/TEDLIUM_release2/LM/*.en.gz | sed 's/ <\/s>//g' | local/join_suffix.py | gzip -c  > ${dir}/data/text/train.txt.gz
+  # Using LOB and brown corpus.
   cat data/download/lobcorpus/0167/download/LOB_COCOA/lob.txt > ${dir}/data/text/text.txt
   cat data/download/browncorpus/brown.txt >> ${dir}/data/text/text.txt
 
@@ -68,11 +67,9 @@ if [ $stage -le 0 ]; then
   cat data/val_1/text > data/val_1/text_copy
   cat data/val_2/text >> data/val_1/text_copy
   cut -d " " -f 2-  < data/val_1/text_copy  > ${dir}/data/text/dev.txt
-  #head -n $num_dev_sentences < data/train/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
 
   # .. and the rest of the training data as an additional data source.
   # we can later fold the dev data into this.
-  #tail -n +$[$num_dev_sentences+1] < data/train/text | cut -d " " -f 2- >  ${dir}/data/text/ted.txt
   cut -d " " -f 2-  < data/train/text  > ${dir}/data/text/ted.txt
 
   # for reporting perplexities, we'll use the "real" dev set.
@@ -80,14 +77,12 @@ if [ $stage -le 0 ]; then
   # out interpolation weights.
   # note, we can't put it in ${dir}/data/text/, because then pocolm would use
   # it as one of the data sources.
-  #cut -d " " -f 2-  < data/dev/text  > ${dir}/data/real_dev_set.txt
   cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
 
   # get wordlist
   cat data/train/dict/lexicon.txt > data/val_1/dict/lexicon_copy.txt
   cat data/val_1/dict/lexicon.txt >> data/val_1/dict/lexicon_copy.txt
   awk '{print $1}' data/val_1/dict/lexicon_copy.txt | sort | uniq > ${dir}/data/wordlist
-  #awk '{print $1}' db/TEDLIUM_release2/TEDLIUM.152k.dic | sed 's:([0-9])::g' | sort | uniq > ${dir}/data/wordlist
 fi
 
 order=3
@@ -113,19 +108,18 @@ if [ $stage -le 1 ]; then
                ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'
-  #[perplexity = 157.87] over 18290.0 words
+  #log-prob: -5.05603614242 [perplexity = 156.967086371] over 19477.0 words
 fi
 
 if [ $stage -le 2 ]; then
   echo "$0: pruning the LM (to larger size)"
-  # Using 10 million n-grams for a big LM for rescoring purposes.
+  # Using 1 million n-grams for a big LM for rescoring purposes.
   size=1000000
   prune_lm_dir.py --target-num-ngrams=$size --initial-threshold=0.02 ${unpruned_lm_dir} ${dir}/data/lm_${order}_prune_big
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_big 2>&1 | grep -F '[perplexity'
-
+  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_3_prune_big was -5.06654404785 per word [perplexity = 158.625177948] over 19477.0 words
   # current results, after adding --limit-unk-history=true:
-  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4_prune_big was -5.16562818753 per word [perplexity = 175.147449465] over 18290.0 words.
 
 
   mkdir -p ${dir}/data/arpa
@@ -134,15 +128,14 @@ fi
 
 if [ $stage -le 3 ]; then
   echo "$0: pruning the LM (to smaller size)"
-  # Using 2 million n-grams for a smaller LM for graph building.  Prune from the
+  # Using 500,000 n-grams for a smaller LM for graph building.  Prune from the
   # bigger-pruned LM, it'll be faster.
   size=500000
   prune_lm_dir.py --target-num-ngrams=$size ${dir}/data/lm_${order}_prune_big ${dir}/data/lm_${order}_prune_small
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_small 2>&1 | grep -F '[perplexity'
-
+  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_3_prune_small was -5.24719139498 per word [perplexity = 190.031793995] over 19477.0 words
   # current results, after adding --limit-unk-history=true (needed for modeling OOVs and not blowing up LG.fst):
-  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4_prune_small was -5.29432352378 per word [perplexity = 199.202824404 over 18290.0 words.
 
 
   format_arpa_lm.py ${dir}/data/lm_${order}_prune_small | gzip -c > ${dir}/data/arpa/${order}gram_small.arpa.gz
