@@ -47,7 +47,7 @@ shift 3
 fisher_dirs=( $@ )
 
 for f in "$text" "$lexicon"; do
-  [ ! -f $x ] && echo "$0: No such file $f" && exit 1;
+  [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
 done
 
 loc=`which ngram-count`;
