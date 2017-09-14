@@ -20,6 +20,8 @@
 #ifndef KALDI_DECODER_DECODER_WRAPPERS_H_
 #define KALDI_DECODER_DECODER_WRAPPERS_H_
 
+#include <memory>
+
 #include "itf/options-itf.h"
 #include "decoder/lattice-faster-decoder.h"
 #include "decoder/lattice-simple-decoder.h"
@@ -142,8 +144,8 @@ class DecodeUtteranceLatticeFasterClass {
   ~DecodeUtteranceLatticeFasterClass(); // Output happens here.
  private:
   // The following variables correspond to inputs:
-  LatticeFasterDecoder *decoder_;
-  DecodableInterface *decodable_;
+  std::unique_ptr<LatticeFasterDecoder> decoder_;
+  std::unique_ptr<DecodableInterface> decodable_;
   const TransitionModel *trans_model_;
   const fst::SymbolTable *word_syms_;
   std::string utt_;
@@ -164,8 +166,8 @@ class DecodeUtteranceLatticeFasterClass {
   bool computed_; // operator ()  was called.
   bool success_; // decoding succeeded (possibly partial)
   bool partial_; // decoding was partial.
-  CompactLattice *clat_; // Stored output, if determinize_ == true.
-  Lattice *lat_; // Stored output, if determinize_ == false.
+  std::unique_ptr<CompactLattice> clat_; // Stored output, if determinize_ == true.
+  std::unique_ptr<Lattice> lat_;         // Stored output, if determinize_ == false.
 };
 
 // This function DecodeUtteranceLatticeSimple is used in several decoders, and
