@@ -106,7 +106,7 @@ sdata=$data/split$nj_full;
 utils/split_data.sh $data $nj_full || exit 1;
 
 cp $srcdir/final.dubm $srcdir/final.mat $srcdir/global_cmvn.stats $srcdir/splice_opts \
-      $srcdir/online_cmvn.conf $dir || exit 1;
+  $srcdir/online_cmvn.conf $dir || exit 1;
 
 splice_opts=$(cat $srcdir/splice_opts)
 
@@ -124,7 +124,7 @@ feats="ark,s,cs:splice-feats $splice_opts scp:$sdata/JOB/feats.scp ark:- | trans
 if [ $stage -le -2 ]; then
   $cmd $dir/log/init.log \
     ivector-extractor-init --ivector-dim=$ivector_dim --use-weights=false \
-     "gmm-global-to-fgmm $dir/final.dubm -|" $dir/0.ie || exit 1
+      "gmm-global-to-fgmm $dir/final.dubm -|" $dir/0.ie || exit 1
 fi
 
 # Do Gaussian selection and posterior extracion
@@ -165,25 +165,28 @@ while [ $x -lt $num_iters ]; do
           $dir/acc.$x.$g || touch $dir/.error &
     done
     wait
+
     [ -f $dir/.error ] && echo "Error accumulating stats on iteration $x" && exit 1;
-	accs=""
-	for j in $(seq $nj); do
-	  accs+="$dir/acc.$x.$j "
-	done
-	echo "Summing accs (pass $x)"
-	$cmd $dir/log/sum_acc.$x.log \
-	  ivector-extractor-sum-accs $accs $dir/acc.$x || exit 1;
-    echo "Updating model (pass $x)"
-    nt=$[$num_threads*$num_processes] # use the same number of threads that
-                                      # each accumulation process uses, since we
-                                      # can be sure the queue will support this many.
-                                      #
-                                      # The parallel-opts was either specified by
-                                      # the user or we computed it correctly in
-                                      # tge previous stages
-	$cmd --num-threads $[$num_threads*$num_processes] $dir/log/update.$x.log \
-	  ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
-	rm $dir/acc.$x.*
+    accs=""
+    for j in $(seq $nj); do
+      accs+="$dir/acc.$x.$j "
+    done
+
+    echo "Summing accs (pass $x)"
+    $cmd $dir/log/sum_acc.$x.log \
+      ivector-extractor-sum-accs $accs $dir/acc.$x || exit 1;
+      echo "Updating model (pass $x)"
+      nt=$[$num_threads*$num_processes] # use the same number of threads that
+                                        # each accumulation process uses, since we
+                                        # can be sure the queue will support this many.
+                                        #
+                                        # The parallel-opts was either specified by
+                                        # the user or we computed it correctly in
+                                        # tge previous stages
+    $cmd --num-threads $[$num_threads*$num_processes] $dir/log/update.$x.log \
+      ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
+
+    rm $dir/acc.$x.*
     if $cleanup; then
       rm $dir/acc.$x $dir/$x.ie
     fi
@@ -201,4 +204,3 @@ ln -s $x.ie $dir/final.ie
 # assign a unique id to this extractor
 # we are not interested in the id itself, just pre-caching ...
 steps/nnet2/get_ivector_id.sh $dir > /dev/null || exit 1
-
