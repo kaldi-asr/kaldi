@@ -127,7 +127,7 @@ if [ $stage -le 17 ]; then
   mkdir -p $dir
   echo "$0: creating neural net configs using the xconfig parser";
   
-  pgru_opts="vars_path=$dir/configs"
+  pgru_opts=""
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
