@@ -142,12 +142,12 @@ if [ $stage -le 17 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # check steps/libs/nnet3/xconfig/gru.py for the other options and defaults
-  pgru-layer name=bpgru1-forward input=lda cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $pgru_opts
-  pgru-layer name=bpgru1-backward input=lda cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $pgru_opts
-  pgru-layer name=bpgru2-forward input=Append(bpgru1-forward, bpgru1-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $pgru_opts
-  pgru-layer name=bpgru2-backward input=Append(bpgru1-forward, bpgru1-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $pgru_opts
-  pgru-layer name=bpgru3-forward input=Append(bpgru2-forward, bpgru2-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $pgru_opts
-  pgru-layer name=bpgru3-backward input=Append(bpgru2-forward, bpgru2-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $pgru_opts
+  fast-pgru-layer name=bpgru1-forward input=lda cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $pgru_opts
+  fast-pgru-layer name=bpgru1-backward input=lda cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $pgru_opts
+  fast-pgru-layer name=bpgru2-forward input=Append(bpgru1-forward, bpgru1-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $pgru_opts
+  fast-pgru-layer name=bpgru2-backward input=Append(bpgru1-forward, bpgru1-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $pgru_opts
+  fast-pgru-layer name=bpgru3-forward input=Append(bpgru2-forward, bpgru2-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $pgru_opts
+  fast-pgru-layer name=bpgru3-backward input=Append(bpgru2-forward, bpgru2-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3 $pgru_opts
   
   ## adding the layers for chain branch
   output-layer name=output input=Append(bpgru3-forward, bpgru3-backward) output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
