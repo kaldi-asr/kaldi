@@ -40,6 +40,7 @@ num_threads=4
 num_processes=4 # each job runs this many processes, each with --num-threads threads
 cmd="run.pl"
 stage=-4
+train_stage=0
 ivector_dim=100 # dimension of the extracted i-vector
 num_iters=10
 num_gselect=5 # Gaussian-selection using diagonal model: number of Gaussians to select
@@ -74,6 +75,7 @@ if [ $# != 3 ]; then
   echo "  --num-threads <n|4>                              # Number of threads for each process (can't be usefully"
   echo "                                                   # increased much above 4)"
   echo "  --stage <stage|-4>                               # To control partial reruns"
+  echo "  --train-stage <train-stage|0>                    # To control partial reruns"
   echo "  --num-gselect <n|5>                              # Number of Gaussians to select using"
   echo "                                                   # diagonal model."
   exit 1;
@@ -88,15 +90,16 @@ for f in $srcdir/final.dubm $srcdir/final.mat $srcdir/global_cmvn.stats $srcdir/
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
 
-
-if [ -d "$dir" ]; then
-  bak_dir=$(mktemp -d ${dir}/backup.XXX);
-  echo "$0: Directory $dir already exists. Backing up iVector extractor in ${bak_dir}";
-  for f in $dir/final.ie $dir/*.ie $dir/final.mat $dir/final.dubm \
-        $dir/online_cmvn.conf $dir/global_cmvn.stats; do
-    [ -f "$f" ] &&  mv $f ${bak_dir}/
-  done
-  [ -d "$dir/log" ] && mv $dir/log ${bak_dir}/
+if [ $stage -le -3 ]; then
+  if [ -d "$dir" ]; then
+    bak_dir=$(mktemp -d ${dir}/backup.XXX);
+    echo "$0: Directory $dir already exists. Backing up iVector extractor in ${bak_dir}";
+    for f in $dir/final.ie $dir/*.ie $dir/final.mat $dir/final.dubm \
+          $dir/online_cmvn.conf $dir/global_cmvn.stats; do
+      [ -f "$f" ] &&  mv $f ${bak_dir}/
+    done
+    [ -d "$dir/log" ] && mv $dir/log ${bak_dir}/
+  fi
 fi
 
 # Set various variables.
@@ -147,7 +150,7 @@ else
   fi
 fi
 
-x=0
+x=$train_stage
 while [ $x -lt $num_iters ]; do
   if [ $stage -le $x ]; then
     rm $dir/.error 2>/dev/null
