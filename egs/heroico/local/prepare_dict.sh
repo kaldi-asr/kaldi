@@ -28,6 +28,8 @@ sort \
     local/src/dict/santiago.txt \
     | \
     uniq \
+    | \
+    sed "1d" \
 	> \
 	data/local/dict/lexicon.txt
 
