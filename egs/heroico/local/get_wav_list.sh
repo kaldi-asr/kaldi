@@ -4,7 +4,7 @@ dir=$1
 
 # heroico
 find \
-    $dir/speech/heroico \
+    "$dir/speech/heroico" \
     -type f \
     -name "*.wav" \
     | \
@@ -18,7 +18,7 @@ if [ ! -d data/local/tmp/usma/nonnative ]; then
 fi
 
 find \
-    $dir/speech/usma \
+    "$dir/speech/usma" \
     -type f \
     -name "*.wav" \
     | \
@@ -36,7 +36,7 @@ if [ ! -d data/local/tmp/usma/native ]; then
 fi
 
 find \
-    $dir/speech/usma \
+    "$dir/speech/usma" \
     -type f \
     -name "*.wav" \
     | \
