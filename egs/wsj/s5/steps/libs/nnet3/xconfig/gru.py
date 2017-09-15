@@ -446,7 +446,7 @@ class XconfigFastGruLayer(XconfigLayerBase):
                         'clipping-threshold' : 30.0,
                         'delay' : -1,
                         'ng-per-element-scale-options' : ' max-change=0.75',
-                        'ng-affine-options' : ' max-change=1.0 ',
+                        'ng-affine-options' : ' max-change=0.75 ',
                         'self-repair-scale-nonlinearity' : 0.00001,
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,
@@ -525,27 +525,31 @@ class XconfigFastGruLayer(XconfigLayerBase):
         # write bias and minus-scale
 
         configs = []
-        configs.append("# W_zr matrics for z_t and r_t")
-        configs.append("component name={0}.W_zr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + cell_dim, 2*cell_dim, affine_str))
+        configs.append("# W_z and W_rr matrics for z_t and r_t")
+        configs.append("component name={0}.W_z type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + cell_dim, cell_dim, affine_str))
+        configs.append("component name={0}.W_r type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + cell_dim, cell_dim, affine_str))
 
         configs.append("# hpart_t related matrix : W_hpart matrics")
         configs.append("component name={0}.W_hpart type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim, cell_dim , affine_str))
         
         configs.append("# Defining the non-linearities for z_t and r_t")
-        configs.append("component name={0}.zr type=SigmoidComponent dim={1} {2}".format(name, 2*cell_dim, repair_nonlin_str))
+        configs.append("component name={0}.z type=SigmoidComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
+        configs.append("component name={0}.r type=SigmoidComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
         
         recurrent_connection = '{0}.s_t'.format(name)
 
         configs.append("# z_t and r_t")
-        configs.append("component-node name={0}.zr_t_pre component={0}.W_zr input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
-        configs.append("component-node name={0}.zr_t component={0}.zr input={0}.zr_t_pre".format(name))
+        configs.append("component-node name={0}.z_t_pre component={0}.W_z input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.z_t component={0}.z input={0}.z_t_pre".format(name))
+        configs.append("component-node name={0}.r_t_pre component={0}.W_r input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.r_t component={0}.r input={0}.r_t_pre".format(name))
 
         configs.append("# hpart_t")
         configs.append("component-node name={0}.hpart_t component={0}.W_hpart input={1}".format(name, input_descriptor))
         
         configs.append("# y_t and h_t")
         configs.append("component name={0}.gru_nonlin type=GruNonlinearityComponent cell-dim={1} {2}".format(name, cell_dim, gru_nonlin_str))
-        configs.append("component-node name={0}.gru_nonlin_t component={0}.gru_nonlin input=Append({0}.zr_t, {0}.hpart_t, IfDefined(Offset({1}, {2})))".format(name, recurrent_connection, delay))
+        configs.append("component-node name={0}.gru_nonlin_t component={0}.gru_nonlin input=Append({0}.z_t, {0}.r_t, {0}.hpart_t, IfDefined(Offset({1}, {2})))".format(name, recurrent_connection, delay))
         configs.append("dim-range-node name={0}.y_t input-node={0}.gru_nonlin_t dim-offset={1} dim={1}".format(name, cell_dim))
 
         configs.append("# s_t : recurrence")
@@ -593,7 +597,7 @@ class XconfigFastPgruLayer(XconfigLayerBase):
                         'clipping-threshold' : 30.0,
                         'delay' : -1,
                         'ng-per-element-scale-options' : ' max-change=0.75 ',
-                        'ng-affine-options' : ' max-change=1.0 ',
+                        'ng-affine-options' : ' max-change=0.75 ',
                         'self-repair-scale-nonlinearity' : 0.00001,
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,
@@ -707,32 +711,37 @@ class XconfigFastPgruLayer(XconfigLayerBase):
         # z = \sigmoid ( x_t * U^z + s_{t-1} * W^z ) // update gate
         # r = \sigmoid ( x_t * U^r + s_{t-1} * W^r ) // reset gate
         # h = \tanh ( x_t * U^h + s_{t-1} \dot r * W^h )
-        # c_t = ( 1 - z ) \dot h + z \dot y_{t-1}
+        # c_t = ( 1 - z ) \dot h + z \dot c_{t-1}
         # y_t = c_t * W^s
         # s_t = y_t(0:rec_proj_dim-1)
         
         configs = []
-        configs.append("# W_zr matrics for z_t and r_t")
-        configs.append("component name={0}.W_zr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + rec_proj_dim, cell_dim + rec_proj_dim, affine_str))
+        configs.append("# W_z and W_r matrics for z_t and r_t")
+        configs.append("component name={0}.W_z type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + rec_proj_dim, cell_dim, affine_str))
+        configs.append("component name={0}.W_r type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + rec_proj_dim, rec_proj_dim, affine_str))
+
 
         configs.append("# hpart_t related matrix : W_hpart matrics")
         configs.append("component name={0}.W_hpart type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim, cell_dim , affine_str))
         
         configs.append("# Defining the non-linearities for z_t and r_t")
-        configs.append("component name={0}.zr type=SigmoidComponent dim={1} {2}".format(name, cell_dim + rec_proj_dim, repair_nonlin_str))
+        configs.append("component name={0}.z type=SigmoidComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
+        configs.append("component name={0}.r type=SigmoidComponent dim={1} {2}".format(name, rec_proj_dim, repair_nonlin_str))
         
         recurrent_connection = '{0}.s_t'.format(name)
 
         configs.append("# z_t and r_t")
-        configs.append("component-node name={0}.zr_t_pre component={0}.W_zr input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
-        configs.append("component-node name={0}.zr_t component={0}.zr input={0}.zr_t_pre".format(name))
+        configs.append("component-node name={0}.z_t_pre component={0}.W_z input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.z_t component={0}.z input={0}.z_t_pre".format(name))
+        configs.append("component-node name={0}.r_t_pre component={0}.W_r input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.r_t component={0}.r input={0}.r_t_pre".format(name))
 
         configs.append("# hpart_t")
         configs.append("component-node name={0}.hpart_t component={0}.W_hpart input={1}".format(name, input_descriptor))
         
         configs.append("# c_t and h_t")
         configs.append("component name={0}.gru_nonlin type=GruNonlinearityComponent cell-dim={1} recurrent-dim={2} {3}".format(name, cell_dim, rec_proj_dim, gru_nonlin_str))
-        configs.append("component-node name={0}.gru_nonlin_t component={0}.gru_nonlin input=Append({0}.zr_t, {0}.hpart_t, IfDefined(Offset({0}.c_t, {2})), IfDefined(Offset({1}, {2})))".format(name, recurrent_connection, delay))
+        configs.append("component-node name={0}.gru_nonlin_t component={0}.gru_nonlin input=Append({0}.z_t, {0}.r_t, {0}.hpart_t, IfDefined(Offset({0}.c_t, {2})), IfDefined(Offset({1}, {2})))".format(name, recurrent_connection, delay))
         configs.append("dim-range-node name={0}.c_t input-node={0}.gru_nonlin_t dim-offset={1} dim={1}".format(name, cell_dim))
 
         configs.append("# the projected matrix W_y and y_t")
