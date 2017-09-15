@@ -10,6 +10,10 @@ mkdir -p local/src/dict
 
 mv santiago.tar.gz local/src/dict/
 
+if [ -e local/src/dict/santiago.tar ]; then
+    rm local/src/dict/santiago.tar
+fi
+
 gunzip local/src/dict/santiago.tar.gz
 
 cd local/src/dict
@@ -65,21 +69,7 @@ cut \
     | \
     uniq \
 	> \
-	data/local/dict/nonsilence_phones_with_empty_line.txt
-
-sed \
-    "1d" \
-    < \
-    data/local/dict/nonsilence_phones_with_empty_line.txt \
-    | \
-    tr -s "\n" \
-    | \
-    sort \
-	-u \
-	> \
-	data/local/dict/nonsilence_phones.txt 
-
-rm data/local/dict/nonsilence_phones_with_empty_line.txt
+	data/local/dict/nonsilence_phones.txt
 
 (
     tr '\n' ' ' < data/local/dict/silence_phones.txt;
