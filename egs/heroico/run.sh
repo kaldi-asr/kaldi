@@ -263,7 +263,7 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-        echo "Starting  monophone training in exp/mono on" `date`
+        echo "monophone training"
     steps/train_mono.sh \
 	--nj 4 \
 	--cmd run.pl \
@@ -282,7 +282,7 @@ if [ $stage -le 5 ]; then
 fi
 
 if [ $stage -le 6 ]; then
-    echo "Starting  triphone training in exp/tri1 on" `date`
+    echo "Starting  triphone training in exp/tri1"
     steps/train_deltas.sh \
 	--cmd run.pl \
 	--cluster-thresh 100 \
@@ -304,7 +304,7 @@ if [ $stage -le 6 ]; then
 fi
 
 if [ $stage -le 7 ]; then
-    echo "Starting (lda_mllt) triphone training in exp/tri2b on" `date`
+    echo "Starting (lda_mllt) triphone training in exp/tri2b"
     steps/train_lda_mllt.sh \
 	--splice-opts "--left-context=3 --right-context=3" \
 	2000 \
@@ -324,7 +324,7 @@ if [ $stage -le 7 ]; then
 	exp/tri2b \
 	exp/tri2b_ali
 
-    echo "Starting (SAT) triphone training in exp/tri3b on" `date`
+    echo "Starting (SAT) triphone training in exp/tri3b"
     steps/train_sat.sh \
 	--cmd run.pl \
 	3100 \
@@ -335,7 +335,7 @@ if [ $stage -le 7 ]; then
 	exp/tri3b
 
     # align with tri3b models
-    echo "Starting exp/tri3b_ali on" `date`
+    echo "Starting exp/tri3b_ali"
     steps/align_fmllr.sh \
 	--nj 8 \
 	--cmd run.pl \
