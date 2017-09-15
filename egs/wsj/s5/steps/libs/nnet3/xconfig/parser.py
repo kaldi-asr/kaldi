@@ -46,7 +46,8 @@ config_to_layer = {
         'res-block': xlayers.XconfigResBlock,
         'channel-average-layer': xlayers.ChannelAverageLayer,
         'attention-renorm-layer': xlayers.XconfigAttentionLayer,
-        'attention-relu-renorm-layer': xlayers.XconfigAttentionLayer
+        'attention-relu-renorm-layer': xlayers.XconfigAttentionLayer,
+        'relu-renorm-attention-layer': xlayers.XconfigAttentionLayer
 }
 
 # Turn a config line and a list of previous layers into

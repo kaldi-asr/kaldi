@@ -1,28 +1,34 @@
 #!/bin/bash
 
-# _attend1b.sh is like _attend1a.sh but with 2x larger context
+# In this recipe everything is the same as tdnn_7k, except the
+# 7th TDNN layer has been replaced with an attention layer
 
-# exp/chain/tdnn_attend1b_sp/: num-iters=262 nj=3..16 num-params=15.4M dim=40+100->6076 combine=-0.10->-0.10
+# local/chain/compare_wer_general.sh exp/chain/tdnn_7k_sp exp/chain/tdnn_attend_1a_sp
+# System                tdnn_7k_sp tdnn_attend_1a_sp
+# WER on train_dev(tg)      13.93     13.76
+# WER on train_dev(fg)      12.85     12.62
+# WER on eval2000(tg)        16.7      16.2
+# WER on eval2000(fg)        15.0      14.5
+# Final train prob         -0.085    -0.076
+# Final valid prob         -0.106    -0.098
+# Final train prob (xent)        -1.260    -0.997
+# Final valid prob (xent)       -1.3193   -1.0887
 
-# System                tdnn_7k_sp tdnn_attend1a_sp tdnn_attend1b_sp
-# WER on train_dev(tg)      13.93     14.17     14.15
-# WER on train_dev(fg)      12.85     13.16     13.01
-# WER on eval2000(tg)        16.7      16.8      16.7
-# WER on eval2000(fg)        15.0      15.0      15.0
-# Final train prob         -0.085    -0.080    -0.075
-# Final valid prob         -0.106    -0.103    -0.100
-# Final train prob (xent)        -1.260    -1.006    -0.919
-# Final valid prob (xent)       -1.3193   -1.0923   -1.0370
+# steps/info/chain_dir_info.pl exp/chain/tdnn_attend_1a_sp
+# exp/chain/tdnn_attend_1a_sp/: num-iters=262 nj=3..16 num-params=16.8M dim=40+100->6076 combine=-0.095->-0.095 xent:train/valid[173,261,final]=(-1.06,-0.993,-0.997/-1.14,-1.09,-1.09) logprob:train/valid[173,261,final]=(-0.084,-0.076,-0.076/-0.104,-0.099,-0.098)
+
+# steps/info/chain_dir_info.pl exp/chain/tdnn_7k_sp
+# exp/chain/tdnn_7k_sp: num-iters=262 nj=3..16 num-params=15.6M dim=40+100->6076 combine=-0.106->-0.106 xent:train/valid[173,261,final]=(-1.32,-1.25,-1.26/-1.36,-1.31,-1.32) logprob:train/valid[173,261,final]=(-0.093,-0.085,-0.085/-0.110,-0.106,-0.106)
 
 set -e
 
 # configs for 'chain'
-affix=
+affix=1a
 stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_attend1b  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_attend  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_nj=50
 
@@ -115,7 +121,6 @@ fi
 
 if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
-  attend_common="num-heads=10 value-dim=50 key-dim=50 time-stride=3 num-left-inputs=10 num-right-inputs=4"
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
@@ -131,15 +136,15 @@ if [ $stage -le 12 ]; then
 
   # the first splicing is moved before the lda layer, so no splicing here
   relu-batchnorm-layer name=tdnn1 dim=625
-  attention-relu-renorm-layer name=attention2 $attend_common
+  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=625
   relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=625
   relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=625
   relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=625
-  attention-relu-renorm-layer name=attention6 $attend_common
-  relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=625
+  relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=625
+  attention-relu-renorm-layer name=attention1 num-heads=15 value-dim=80 key-dim=40 num-left-inputs=5 num-right-inputs=2 time-stride=3
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain input=tdnn7 dim=625 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-chain input=attention1 dim=625 target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
@@ -151,7 +156,7 @@ if [ $stage -le 12 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn7 dim=625 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-xent input=attention1 dim=625 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF
