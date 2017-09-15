@@ -155,7 +155,8 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
 
   // This will crash if the total context (left + right) is greater
   // than window_size.
-  int32 window_size = 150;
+  int32 window_size = 200;
+
   // by going "<= modulus" instead of "< modulus" we do one more computation
   // than we really need; it becomes a sanity check.
   for (int32 input_start = 0; input_start <= modulus; input_start++)
@@ -653,7 +654,7 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
           num_learning_rates_set++;
         }
       }
-      KALDI_LOG << "Set learning rates for " << num_learning_rates_set << " nodes.";
+      KALDI_LOG << "Set learning rates for " << num_learning_rates_set << " components.";
     } else if (directive == "set-learning-rate-factor") {
       std::string name_pattern = "*";
       // name_pattern defaults to '*' if none is given.
@@ -679,7 +680,7 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
         }
       }
       KALDI_LOG << "Set learning rate factors for " << num_learning_rate_factors_set
-                << " nodes.";
+                << " components.";
     } else if (directive == "rename-node") {
       // this is a shallow renaming of a node, and it requires that the name used is
       // not the name of another node.

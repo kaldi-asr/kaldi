@@ -1076,6 +1076,63 @@ void GenerateConfigSequenceCnnNew(
 }
 
 
+
+void GenerateConfigSequenceRestrictedAttention(
+    const NnetGenerationOptions &opts,
+    std::vector<std::string> *configs) {
+  std::ostringstream ss;
+
+
+  int32 input_dim = RandInt(100, 150),
+      num_heads = RandInt(1, 2),
+      key_dim = RandInt(20, 40),
+      value_dim = RandInt(20, 40),
+      time_stride = RandInt(1, 3),
+      num_left_inputs = RandInt(1, 4),
+      num_right_inputs = RandInt(0, 2),
+      num_left_inputs_required = RandInt(0, num_left_inputs),
+      num_right_inputs_required = RandInt(0, num_right_inputs);
+  bool output_context = (RandInt(0, 1) == 0);
+  int32 context_dim = (num_left_inputs + 1 + num_right_inputs),
+      query_dim = key_dim + context_dim;
+  int32 attention_input_dim = num_heads * (key_dim + value_dim + query_dim);
+
+  std::string cur_layer_descriptor = "input";
+
+  { // input layer.
+    ss << "input-node name=input dim=" << input_dim
+       << std::endl;
+  }
+
+  { // affine component
+    ss << "component name=affine type=NaturalGradientAffineComponent input-dim="
+       << input_dim << " output-dim=" << attention_input_dim << std::endl;
+    ss << "component-node name=affine component=affine input=input"
+       << std::endl;
+  }
+
+  { // attention component
+    ss << "component-node name=attention component=attention input=affine"
+       << std::endl;
+    ss << "component name=attention type=RestrictedAttentionComponent"
+       << " num-heads=" << num_heads << " key-dim=" << key_dim
+       << " value-dim=" << value_dim << " time-stride=" << time_stride
+       << " num-left-inputs=" << num_left_inputs << " num-right-inputs="
+       << num_right_inputs << " num-left-inputs-required="
+       << num_left_inputs_required << " num-right-inputs-required="
+       << num_right_inputs_required
+       << " output-context=" << (output_context ? "true" : "false")
+       << (RandInt(0, 1) == 0 ? " key-scale=1.0" : "")
+       << std::endl;
+  }
+
+  { // output
+    ss << "output-node name=output input=attention" << std::endl;
+  }
+  configs->push_back(ss.str());
+}
+
+
 // generates a config sequence involving DistributeComponent.
 void GenerateConfigSequenceDistribute(
     const NnetGenerationOptions &opts,
@@ -1212,10 +1269,15 @@ start:
       // We're allocating more case statements to the most recently
       // added type of model, to give more thorough testing where
       // it's needed most.
-    case 12: case 13: case 14:
+    case 12:
       if (!opts.allow_nonlinearity || !opts.allow_context)
         goto start;
       GenerateConfigSequenceCnnNew(opts, configs);
+      break;
+    case 13: case 14:
+      if (!opts.allow_nonlinearity || !opts.allow_context)
+        goto start;
+      GenerateConfigSequenceRestrictedAttention(opts, configs);
       break;
     default:
       KALDI_ERR << "Error generating config sequence.";

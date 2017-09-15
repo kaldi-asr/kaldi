@@ -25,8 +25,10 @@
 #include "nnet3/nnet-simple-component.h"
 #include "nnet3/nnet-general-component.h"
 #include "nnet3/nnet-convolutional-component.h"
+#include "nnet3/nnet-attention-component.h"
 #include "nnet3/nnet-parse.h"
 #include "nnet3/nnet-computation-graph.h"
+
 
 
 // \file This file contains some more-generic component code: things in base classes.
@@ -61,6 +63,8 @@ ComponentPrecomputedIndexes* ComponentPrecomputedIndexes::NewComponentPrecompute
     ans = new BackpropTruncationComponentPrecomputedIndexes();
   } else if (cpi_type == "TimeHeightConvolutionComponentPrecomputedIndexes") {
     ans = new TimeHeightConvolutionComponent::PrecomputedIndexes();
+  } else if (cpi_type == "RestrictedAttentionComponentPrecomputedIndexes") {
+    ans = new RestrictedAttentionComponent::PrecomputedIndexes();
   }
   if (ans != NULL) {
     KALDI_ASSERT(cpi_type == ans->Type());
@@ -159,6 +163,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new BatchNormComponent();
   } else if (component_type == "TimeHeightConvolutionComponent") {
     ans = new TimeHeightConvolutionComponent();
+  } else if (component_type == "RestrictedAttentionComponent") {
+    ans = new RestrictedAttentionComponent();
   } else if (component_type == "SumBlockComponent") {
     ans = new SumBlockComponent();
   }

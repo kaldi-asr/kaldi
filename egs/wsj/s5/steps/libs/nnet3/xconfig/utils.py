@@ -14,7 +14,7 @@ import sys
 # Given a list of objects of type XconfigLayerBase ('all_layers'),
 # including at least the layers preceding 'current_layer' (and maybe
 # more layers), return the names of layers preceding 'current_layer'
-# other than layers of type 'existing', which correspond to component-node
+# other than layers of type 'existing', which corresponds to component-node
 # names from an existing model that we are adding layers to them.
 # This will be used in parsing expressions like [-1] in descriptors
 # (which is an alias for the previous layer).
@@ -23,6 +23,12 @@ def get_prev_names(all_layers, current_layer):
     for layer in all_layers:
         if layer is current_layer:
             break
+
+        # The following if-statement is needed to handle the case where the
+        # the layer is an 'existing' layer, derived from an existing trained
+        # neural network supplied via the existing-model option, that we are
+        # adding layers to. In this case, these layers are not considered as
+        # layers preceding 'current_layer'.
         if layer.layer_type is not 'existing':
             prev_names.append(layer.get_name())
     prev_names_set = set()

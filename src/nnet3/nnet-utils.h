@@ -279,9 +279,12 @@ void CollapseModel(const CollapseModelConfig &config,
       The same as calling remove-orphan-nodes and then remove-orphan-components.
 
     set-learning-rate [name=<name-pattern>] learning-rate=<learning-rate>
-       Sets the learning rate for any updatable nodes matching the name pattern.
+       Sets the learning rate for any updatable components matching the name pattern.
        Note: this sets the 'underlying' learning rate, i.e. it will get
-       multiplied by any 'learning-rate-factor' set in the nodes.
+       multiplied by any 'learning-rate-factor' set in the components.
+
+    set-learning-rate-factor [name=<name-pattern>] learning-rate-factor=<learning-rate-factor>
+       Sets the learning rate factor for any updatable components matching the name pattern.
 
     set-learning-rate-factor [name=<name-pattern>] learning-rate-factor=<learning-rate-factor>
        Sets the learning rate factor for any updatable nodes matching the name pattern.

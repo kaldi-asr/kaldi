@@ -573,6 +573,29 @@ def train(args, run_opts):
 
                 smbr_opt += " --mmi-factor={0}".format(mmi_factor)
 
+            percent = num_archives_processed * 100.0 / num_archives_to_process
+            epoch = (num_archives_processed * args.num_epochs
+                     / num_archives_to_process)
+            shrink_info_str = ''
+            if shrinkage_value != 1.0:
+                shrink_info_str = 'shrink: {0:0.5f}'.format(shrinkage_value)
+
+            objf_info = ("xent-reg: {0} l2-reg: {1}"
+                         "".format(xent_regularize, l2_regularize)
+
+            if smbr_opt != '':
+                objf_info = ("smbr: {0} mmi: {1} {2}"
+                             "".format(smbr_factor, mmi_factor, objf_info))
+
+            logger.info("Iter: {0}/{1}    "
+                        "Epoch: {2:0.2f}/{3:0.1f} ({4:0.1f}% complete)    "
+                        "lr: {5:0.6f}    {6} {7} ".format(
+                            iter, num_iters - 1,
+                            epoch, args.num_epochs,
+                            percent,
+                            lrate, shrink_info_str,
+                            objf_info))
+
             chain_lib.train_one_iteration(
                 dir=args.dir,
                 iter=iter,

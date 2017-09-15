@@ -10,7 +10,7 @@
 #    Since we use phone.txt from source dataset, this can be helpful in cases
 #    where there is few training data in the target domain and some 4-gram phone
 #    sequences have no count in the target domain.
-# 4) It uses whole already-trained model and  does not replace the output layer 
+# 4) It uses whole already-trained model and  does not replace the output layer
 #    from already-trained model with new randomely initialized output layer and
 #    re-train it using target dataset.
 
@@ -24,7 +24,7 @@
 set -e
 
 # configs for 'chain'
-stage=7
+stage=0
 train_stage=-4
 get_egs_stage=-10
 tdnn_affix=_1b
@@ -35,9 +35,9 @@ primary_lr_factor=0.25 # The learning-rate factor for transferred layers from so
                        # model. e.g. if 0, it fixed the paramters transferred from source.
                        # The learning-rate factor for new added layers is 1.0.
 nnet_affix=_online_wsj
-phone_lm_scales="1,10" #  comma-separated list of positive int valued scale weights
-                       #  to scale different phone sequences for different alignments
-                       #  e.g. (src-weight,target-weight)=(1,10)
+phone_lm_scales="1,10" # comma-separated list of positive integer multiplicities
+                       # to apply to the different source data directories (used
+                       # to give the RM data a higher weight).
 
 # model and dirs for source model used for transfer learning
 src_mdl=../../wsj/s5/exp/chain/tdnn1d_sp/final.mdl # Input chain model
@@ -100,7 +100,7 @@ required_files="$src_mfcc_config $src_mdl $src_lang/phones.txt $src_dict/lexicon
 
 use_ivector=false
 ivector_dim=$(nnet3-am-info --print-args=false $src_mdl | grep "ivector-dim" | cut -d" " -f2)
-if [ "$ivector_dim" == "" ]; then ivector_dim=0 ; fi
+if [ -z $ivector_dim ]; then ivector_dim=0 ; fi
 
 if [ ! -z $src_ivec_extractor_dir ]; then
   if [ $ivector_dim -eq 0 ]; then
@@ -113,7 +113,7 @@ if [ ! -z $src_ivec_extractor_dir ]; then
 else
   if [ $ivector_dim -gt 0 ]; then
     echo "$0: ivector is used in training the source model '$src_mdl' but no "
-    echo " ivector extractor dir for source model is specified." && exit 1;
+    echo " --src-ivec-extractor-dir option as ivector dir for source model is specified." && exit 1;
   fi
 fi
 
@@ -125,7 +125,7 @@ for f in $required_files; do
 done
 
 if [ $stage -le -1 ]; then
-  echo "$0: prepare lexicon.txt for RM using WSJ lexicon."
+  echo "$0: Prepare lang for RM-WSJ using WSJ phone set and lexicon and RM word list."
   if ! cmp -s <(grep -v "^#" $src_lang/phones.txt) <(grep -v "^#" data/lang/phones.txt); then
     local/prepare_wsj_rm_lang.sh  $src_dict $src_lang $lang_src_tgt
   else
@@ -161,7 +161,7 @@ fi
 if [ $stage -le 6 ]; then
   echo "$0: compute {den,normalization}.fst using weighted phone LM with wsj and rm weight $phone_lm_scales."
   steps/nnet3/chain/make_weighted_den_fst.sh --cmd "$train_cmd" \
-    --weights $phone_lm_scales \
+    --num-repeats $phone_lm_scales \
     --lm-opts '--num-extra-lm-states=200' \
     $src_tree_dir $lat_dir $dir || exit 1;
 fi

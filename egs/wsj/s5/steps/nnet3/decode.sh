@@ -87,8 +87,6 @@ echo $nj > $dir/num_jobs
 ## Set up features.
 echo "$0: feature type is raw"
 
-splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
-
 feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
 if [ ! -z "$transform_dir" ]; then
   echo "$0: using transforms from $transform_dir"

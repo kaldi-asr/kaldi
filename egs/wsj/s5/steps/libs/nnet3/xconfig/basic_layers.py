@@ -42,13 +42,13 @@ class XconfigLayerBase(object):
             raise RuntimeError("Invalid value: name={0}".format(
                 key_to_value['name']))
 
-        # It is possible to have two layers with a same name in 'all_layer', if 
+        # It is possible to have two layers with a same name in 'all_layer', if
         # the layer type for one of them is 'existing'.
         # Layers of type 'existing' are corresponding to the component-node names
         # in the existing model, which we are adding layers to them.
         # 'existing' layers are not presented in any config file, and new layer
         # with the same name can exist in 'all_layers'.
-        # e.g. It is possible to have 'output-node' with name 'output' in the 
+        # e.g. It is possible to have 'output-node' with name 'output' in the
         # existing model, which is added to all_layers using layer type 'existing',
         # and 'output-node' of type 'output-layer' with the same name 'output' in
         # 'all_layers'.
@@ -1114,19 +1114,20 @@ class XconfigIdctLayer(XconfigLayerBase):
 
 class XconfigExistingLayer(XconfigLayerBase):
     """
-    This class is for lines like 
+    This class is used to internally convert component-nodes in an existing
+    model into lines like
     'existing name=tdnn1.affine dim=40'.
-    
-    This layer contains 'dim' and 'name' and it is not presented in 
-    any actual config files.
-    Layers of this type are created internally for all component nodes
-    in an existing neural net model to use as input to other layers.
+
+    Layers of this type are not presented in any actual xconfig or config
+    files, but are created internally for all component nodes
+    in an existing neural net model to use as input to other layers in xconfig.
     (i.e. get_model_component_info function, which is called in
-     steps/nnet3/xconfig_to_configs.py, returns a list of 'existing'
-     layers for component nodes used in 'existing_model')
-    
+     steps/nnet3/xconfig_to_configs.py, parses the name and
+     dimension of component-nodes used in the existing model
+     using the nnet3-info and returns a list of 'existing' layers.)
+
     This class is useful in cases like transferring existing model
-    and using {input, output, component}-nodes in this model as 
+    and using {input, output, component}-nodes in this model as
     input to new layers.
     """
 

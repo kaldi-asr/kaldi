@@ -49,7 +49,7 @@ TimeHeightConvolutionComponent::TimeHeightConvolutionComponent(
 }
 
 
-void TimeHeightConvolutionComponent::Check() {
+void TimeHeightConvolutionComponent::Check() const {
   model_.Check();
   KALDI_ASSERT(bias_params_.Dim() == model_.num_filters_out &&
                linear_params_.NumRows() == model_.ParamRows() &&
