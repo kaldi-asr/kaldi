@@ -7,3 +7,4 @@ from basic_layers import *
 from convolution import *
 from attention import *
 from lstm import *
+from stats_layer import *

@@ -971,7 +971,8 @@ void CuMatrixBase<Real>::AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,
                                       MatrixTransposeType transA) {
   if (num_rows_ == 0 || num_cols_ == 0) return;
 
-  if (A.NumRows() >= num_rows_ && A.NumCols() >= num_cols_) {
+  if (A.NumRows() >= (transA == kNoTrans ? num_rows_ : num_cols_) &&
+      A.NumCols() >= (transA == kNoTrans ? num_cols_ : num_rows_)) {
     // This is the "summing", not broadcasting, version of AddMatBlocks.
     // It supports both regular and transposed operation.
     int32 num_row_blocks, num_col_blocks;
@@ -1017,10 +1018,10 @@ void CuMatrixBase<Real>::AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,
   } else {
     // This is the "broadcasting" version of AddMatBlocks, where
     // *this is larger than src.
-    if (!(num_rows_ % A.NumRows() == 0 && num_cols_ % A.NumCols() == 0))
-      KALDI_ERR << "Invalid sizes of arguments";
     if (transA != kNoTrans)
       KALDI_ERR << "Transposed operation not supported currently.";
+    if (!(num_rows_ % A.NumRows() == 0 && num_cols_ % A.NumCols() == 0))
+      KALDI_ERR << "Invalid sizes of arguments";
 #if HAVE_CUDA == 1
     if (CuDevice::Instantiate().Enabled()) {
       CuTimer tim;

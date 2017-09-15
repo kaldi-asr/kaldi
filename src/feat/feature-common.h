@@ -118,25 +118,50 @@ class OfflineFeatureTpl {
       computer_(opts),
       feature_window_function_(computer_.GetFrameOptions()) { }
 
-  // Computes the features for one file (one sequence of features).
-  // Use of the 'deprecatd_wave_remainder' argument is highly deprecated; it is
-  // only provided for back-compatibility for code that may have
-  // relied on the older interface.  It's deprecated because it
-  // doesn't support the --snip-edges=false option, and because
-  // we plan to eventually remove this argument so that there
-  // will be only one way to do online feature extraction.
+  // Internal (and back-compatibility) interface for computing features, which
+  // requires that the user has already checked that the sampling frequency
+  // of the waveform is equal to the sampling frequency specified in
+  // the frame-extraction options.
   void Compute(const VectorBase<BaseFloat> &wave,
                BaseFloat vtln_warp,
-               Matrix<BaseFloat> *output,
-               Vector<BaseFloat> *deprecated_wave_remainder = NULL);
+               Matrix<BaseFloat> *output);
 
   // This const version of Compute() is a wrapper that
   // calls the non-const version on a temporary object.
   // It's less efficient than the non-const version.
   void Compute(const VectorBase<BaseFloat> &wave,
                BaseFloat vtln_warp,
-               Matrix<BaseFloat> *output,
-               Vector<BaseFloat> *deprecated_wave_remainder = NULL) const;
+               Matrix<BaseFloat> *output) const;
+
+  /**
+     Computes the features for one file (one sequence of features).
+     This is the newer interface where you specify the sample frequency
+     of the input waveform.
+       @param [in] wave   The input waveform
+       @param [in] sample_freq  The sampling frequency with which
+                                'wave' was sampled.
+                                if sample_freq is higher than the frequency
+                                specified in the config, we will downsample
+                                the waveform, but if lower, it's an error.
+     @param [in] vtln_warp  The VTLN warping factor (will normally
+                            be 1.0)
+     @param [out]  output  The matrix of features, where the row-index
+                           is the frame index.
+  */
+  void ComputeFeatures(const VectorBase<BaseFloat> &wave,
+                       BaseFloat sample_freq,
+                       BaseFloat vtln_warp,
+                       Matrix<BaseFloat> *output);
+  /**
+     This const version of ComputeFeatures() is a wrapper that
+     calls the non-const ComputeFeatures() on a temporary object
+     that is a copy of *this.  It is not as efficient because of the
+     overhead of copying *this.
+  */
+  void ComputeFeatures(const VectorBase<BaseFloat> &wave,
+                       BaseFloat sample_freq,
+                       BaseFloat vtln_warp,
+                       Matrix<BaseFloat> *output) const;
 
   int32 Dim() const { return computer_.Dim(); }
 

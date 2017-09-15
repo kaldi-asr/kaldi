@@ -10,6 +10,13 @@ word_ins_penalty=0.5
 min_lmwt=7
 max_lmwt=17
 model=
+resolve_overlaps=false   # If true, the words decoded in the regions where
+                         # two segments A and B are overlapping are resolved 
+                         # such that only words before the mid-point of the
+                         # overlapping region are taken to be hypothesized for 
+                         # segment A, and only words after the mid-point of 
+                         # the overlapping region are taken to be 
+                         # hypothesized for segment B.
 
 #end configuration section.
 
@@ -43,9 +50,21 @@ for f in $lang/words.txt $model $data/segments $data/reco2file_and_channel $dir/
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
 
+if [ -f $dir/../frame_subsampling_factor ]; then
+  factor=$(cat $dir/../frame_subsampling_factor) || exit 1
+  frame_shift_opt="--frame-shift=0.0$factor"
+  echo "$0: $dir/../frame_subsampling_factor exists, using $frame_shift_opt"
+fi
+
 name=`basename $data`; # e.g. eval2000
 
 mkdir -p $dir/scoring/log
+
+resolve_overlaps_cmd="cat"
+
+if $resolve_overlaps; then
+  resolve_overlaps_cmd="utils/ctm/resolve_ctm_overlaps.py $data/segments - -"
+fi
 
 if [ $stage -le 0 ]; then
   if [ ! -f $lang/phones/word_boundary.int ] ; then
@@ -56,8 +75,9 @@ if [ $stage -le 0 ]; then
       lattice-add-penalty --word-ins-penalty=$word_ins_penalty ark:- ark:- \| \
       lattice-prune --beam=$beam ark:- ark:- \| \
       lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
-      lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- - \| \
+      lattice-to-ctm-conf $frame_shift_opt --decode-mbr=$decode_mbr ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt  \| tee $dir/score_LMWT/$name.utt.ctm \| \
+      $resolve_overlaps_cmd \| \
       utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
       '>' $dir/score_LMWT/$name.ctm || exit 1;
   else
@@ -68,8 +88,9 @@ if [ $stage -le 0 ]; then
       lattice-add-penalty --word-ins-penalty=$word_ins_penalty ark:- ark:- \| \
       lattice-prune --beam=$beam ark:- ark:- \| \
       lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
-      lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- - \| \
+      lattice-to-ctm-conf $frame_shift_opt --decode-mbr=$decode_mbr ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt  \| tee $dir/score_LMWT/$name.utt.ctm \| \
+      $resolve_overlaps_cmd \| \
       utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
       '>' $dir/score_LMWT/$name.ctm || exit 1;
   fi

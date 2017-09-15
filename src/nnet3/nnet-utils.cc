@@ -156,6 +156,7 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
   // This will crash if the total context (left + right) is greater
   // than window_size.
   int32 window_size = 200;
+
   // by going "<= modulus" instead of "< modulus" we do one more computation
   // than we really need; it becomes a sanity check.
   for (int32 input_start = 0; input_start <= modulus; input_start++)
@@ -1288,7 +1289,7 @@ class ModelCollapser {
       return component_index;
     std::ostringstream os;
     os << nnet_->GetComponentName(component_index)
-       << ":scale" << std::setprecision(3) << scale;
+       << ".scale" << std::setprecision(3) << scale;
     std::string new_component_name = os.str();  // e.g. foo.s2.0
     int32 ans = nnet_->GetComponentIndex(new_component_name);
     if (ans >= 0)

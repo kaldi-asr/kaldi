@@ -46,7 +46,9 @@ for f in $data/stm $data/glm $lang/words.txt $lang/phones/word_boundary.int \
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
 
-name=`basename $data`; # e.g. eval2000
+# the structure of data dirs in this recipe is like data/eval2000/test
+data_dir=`dirname $data`;
+name=`basename $data_dir`; # e.g. eval2000
 
 mkdir -p $dir/scoring/log
 

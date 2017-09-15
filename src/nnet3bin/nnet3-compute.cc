@@ -162,6 +162,9 @@ int main(int argc, char *argv[]) {
       num_success++;
     }
 
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().PrintProfile();
+#endif
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "

@@ -13,6 +13,8 @@ stage=0
 min_lmwt=5
 max_lmwt=17
 word_ins_penalty=0.0,0.5,1.0
+iter=final # The iteration of model to use (this is ignored but the
+# option is passed in by some decoding scripts).
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
