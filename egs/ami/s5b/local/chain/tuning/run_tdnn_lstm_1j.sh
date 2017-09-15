@@ -172,7 +172,6 @@ if [ $stage -le 14 ]; then
   fi
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
-      --leftmost-questions-truncate -1 \
       --cmd "$train_cmd" 4200 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
 fi
 

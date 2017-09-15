@@ -81,7 +81,6 @@ fi
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate -1 \
       --cmd "$train_cmd" 11000 data/$train_set $lang $ali_dir $treedir
 fi
 

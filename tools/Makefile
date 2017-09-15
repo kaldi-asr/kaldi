@@ -7,7 +7,10 @@ CC = gcc         # used for sph2pipe
 
 # Note: OpenFst requires a relatively recent C++ compiler with C++11 support,
 # e.g. g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3.
-OPENFST_VERSION = 1.6.2
+OPENFST_VERSION ?= 1.6.2
+
+# Default features configured for OpenFST; can be overridden in the make command line.
+OPENFST_CONFIGURE ?= --enable-static --enable-shared --enable-far --enable-ngram-fsts
 
 OPENFST_VER_NUM := $(shell echo $(OPENFST_VERSION) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
 ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10600)","1")
@@ -64,16 +67,20 @@ openfst-$(OPENFST_VERSION)/lib: | openfst-$(OPENFST_VERSION)/Makefile
 
 # Add the -O flag to CXXFLAGS on cygwin as it can fix the compilation error
 # "file too big".
-openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION) | check_required_programs
-# Note: OSTYPE path is probably dead for latest cygwin64 (installed on 2016/11/11).
 ifeq ($(OSTYPE),cygwin)
-	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS) -O -Wa,-mbig-obj" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
-# This new OS path is confirmed working on Windows 10 / Cygwin64
+  # Note: OSTYPE path is probably dead for latest cygwin64 (installed on 2016/11/11).
+  openfst_add_CXXFLAGS = -O -Wa,-mbig-obj
 else ifeq ($(OS),Windows_NT)
-	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS) -O -Wa,-mbig-obj" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
+  # This new OS path is confirmed working on Windows 10 / Cygwin64.
+  openfst_add_CXXFLAGS = -O -Wa,-mbig-obj
 else
-	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
+  openfst_add_CXXFLAGS =
 endif
+
+openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION) | check_required_programs
+	cd openfst-$(OPENFST_VERSION)/ && \
+	./configure --prefix=`pwd` $(OPENFST_CONFIGURE) CXX="$(CXX)" CXXFLAGS="$(CXXFLAGS) $(openfst_add_CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
+
 
 openfst-$(OPENFST_VERSION): openfst-$(OPENFST_VERSION).tar.gz
 	tar xozf openfst-$(OPENFST_VERSION).tar.gz
@@ -87,7 +94,7 @@ sclite: sclite_compiled
 .PHONY: sclite_compiled
 sclite_compiled: sctk sctk_configured
 	cd sctk; \
-	$(MAKE) CC=$(CC) CXX=$(CXX) all && $(MAKE) install && $(MAKE) doc
+	$(MAKE) CC="$(CC)" CXX="$(CXX)" all && $(MAKE) install && $(MAKE) doc
 
 sctk_configured: sctk sctk/.configured
 
