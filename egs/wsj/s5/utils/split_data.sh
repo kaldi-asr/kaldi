@@ -50,10 +50,6 @@ else
 fi
 
 n=0;
-feats=""
-wavs=""
-utt2spks=""
-texts=""
 
 nu=`cat $data/utt2spk | wc -l`
 nf=`cat $data/feats.scp 2>/dev/null | wc -l`

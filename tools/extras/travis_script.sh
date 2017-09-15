@@ -66,16 +66,24 @@ CCC=$(mtoken CXX "$CXX")
 #fi
 
 echo "Building tools..." [Time: $(date)]
-runvx cd tools
-runvx make -j$MAXPAR openfst "$CCC" CXXFLAGS="$CF" \
-      OPENFST_CONFIGURE="--disable-static --enable-shared --disable-bin --disable-dependency-tracking"
-cd ..
+# runvx cd tools
+# runvx make -j$MAXPAR openfst "$CCC" CXXFLAGS="$CF" \
+#       OPENFST_CONFIGURE="--disable-static --enable-shared --disable-bin --disable-dependency-tracking"
+# runvx cd ..
 
 runvx cd src
-runvx touch base/.depend.mk  # Fool make depend into skipping the dependency step.
-runvx touch .short_version   # Make version short, or else ccache will miss everything.
-runvx "$CCC" CXXFLAGS="$CF" LDFLAGS="$LDF" ./configure --shared --use-cuda=no "$DPF" --mathlib=OPENBLAS --openblas-root="$XROOT/usr"
-runvx make -j$MAXPAR $CI_TARGETS CI_NOLINKBINARIES=1
+# runvx touch base/.depend.mk  # Fool make depend into skipping the dependency step.
+# runvx touch .short_version   # Make version short, or else ccache will miss everything.
+# runvx "$CCC" CXXFLAGS="$CF" LDFLAGS="$LDF" ./configure --shared --use-cuda=no "$DPF" --mathlib=OPENBLAS --openblas-root="$XROOT/usr"
+# runvx make -j$MAXPAR $CI_TARGETS CI_NOLINKBINARIES=1
+
+runvx cd ../egs/wsj/s5
+#runvx find ./ -mindepth 1 -name "*.sh" -exec shellcheck --exclude=SC1090,SC2002,SC2006, --shell=bash --external-sources '{}' ';'
+runvx find ./utils ./steps -name "*.sh" -exec shellcheck --exclude=SC1090,SC2002,SC2006 --shell=bash --external-sources '{}' ';'
+# for bash_file in $(find ../egs -name "*.sh"); do
+#   runvx shellcheck -s bas $perl_file
+# done
+
 
 # Travis has a 10k line log limit, so use smaller CI_TARGETS when logging.
 if [ -r "$CCACHE_LOGFILE" ]; then

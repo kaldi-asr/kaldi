@@ -13,6 +13,8 @@
 # (this is compiled from this repository using Doxygen,
 # the source for this part is in src/doc/graph_recipe_test.dox)
 
+# shellcheck disable=2064
+
 set -o pipefail
 
 tscale=1.0
@@ -20,8 +22,8 @@ loopscale=0.1
 
 remove_oov=false
 
-for x in `seq 4`; do
-  [ "$1" == "--mono" -o "$1" == "--left-biphone" -o "$1" == "--quinphone" ] && shift && \
+for _ in `seq 4`; do
+  [ "$1" == "--mono" ] || [ "$1" == "--left-biphone" ] || [ "$1" == "--quinphone" ] && shift && \
     echo "WARNING: the --mono, --left-biphone and --quinphone options are now deprecated and ignored."
   [ "$1" == "--remove-oov" ] && remove_oov=true && shift;
   [ "$1" == "--transition-scale" ] && tscale=$2 && shift 2;
@@ -137,7 +139,7 @@ if [[ ! -s $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
   add-self-loops --self-loop-scale=$loopscale --reorder=true \
     $model < $dir/HCLGa.fst | fstconvert --fst_type=const > $dir/HCLG.fst.$$ || exit 1;
   mv $dir/HCLG.fst.$$ $dir/HCLG.fst
-  if [ $tscale == 1.0 -a $loopscale == 1.0 ]; then
+  if [ $tscale == 1.0 ] && [ $loopscale == 1.0 ]; then
     # No point doing this test if transition-scale not 1, as it is bound to fail.
     fstisstochastic $dir/HCLG.fst || echo "[info]: final HCLG is not stochastic."
   fi

@@ -14,7 +14,7 @@ word_to_node=false # Words in arcs or nodes? [default:arcs]
 echo "$0 $@"
 
 [ -f ./path.sh ] && . ./path.sh
-. parse_options.sh || exit 1;
+. utils/parse_options.sh || exit 1;
 
 if [ $# -ne 3 ]; then
   echo "Usage: $0 [options] <data-dir> <lang-dir|graph-dir> <decode-dir>"
@@ -42,7 +42,6 @@ done
 echo "$0: Converting lattices into '$dir/$dirname'"
 
 # Words in arcs or nodes? [default:nodes]
-word_to_link_arg=
 $word_to_node && word_to_node_arg="--word-to-node"
 
 nj=$(cat $dir/num_jobs)
@@ -56,7 +55,7 @@ $cmd $parallel_opts JOB=1:$nj $dir/$dirname/log/lat_convert.JOB.log \
   utils/convert_slf.pl $word_to_node_arg - $dir/$dirname/JOB/ || exit 1
 
 # make list of lattices
-find -L $PWD/$dir/$dirname -name *.lat.gz > $dir/$dirname/lat_htk.scp || exit 1
+find -L $PWD/$dir/$dirname -name "*.lat.gz" > $dir/$dirname/lat_htk.scp || exit 1
 
 # check number of lattices:
 nseg=$(cat $data/segments | wc -l)

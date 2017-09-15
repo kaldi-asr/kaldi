@@ -27,7 +27,7 @@ if [ $# == 0 ]; then
   echo " With --dry-run, just prints what it would do."
 fi
 
-for dir in $*; do
+for dir in "$@"; do
   if [ ! -d $dir ]; then
     echo "$0: not a directory: $dir"
     ret=1

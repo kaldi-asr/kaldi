@@ -46,11 +46,12 @@ done
 ###
 while true; do
   [ -z "${1:-}" ] && break;  # break if there are no arguments
+  # shellcheck disable=2154
   case "$1" in
     # If the enclosing script is called with --help option, print the help 
     # message and exit.  Scripts should put help messages in $help_message
   --help|-h) if [ -z "$help_message" ]; then echo "No help found." 1>&2;
-	  else printf "$help_message\n" 1>&2 ; fi; 
+	  else printf "%s\n" "$help_message" 1>&2 ; fi; 
 	  exit 0 ;; 
   --*=*) echo "$0: options to scripts must be of the form --name value, got '$1'"
        exit 1 ;;
@@ -63,6 +64,7 @@ while true; do
     # The test [ -z ${foo_bar+xxx} ] will return true if the variable foo_bar
     # is undefined.  We then have to wrap this test inside "eval" because 
     # foo_bar is itself inside a variable ($name).
+      # shellcheck disable=2016
       eval '[ -z "${'$name'+xxx}" ]' && echo "$0: invalid option $1" 1>&2 && exit 1;
       
       oldval="`eval echo \\$$name`";

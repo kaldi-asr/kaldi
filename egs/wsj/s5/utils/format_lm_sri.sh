@@ -40,6 +40,8 @@ fi
 if [ $# -eq 4 ] ; then
   lang_dir=$1
   lm=$2
+  # shellcheck disable=2034
+  # This unused variable is here for backwards compatibility reasons
   lexicon=$3
   out_dir=$4
 else
@@ -73,7 +75,6 @@ trap 'rm -rf "$tmpdir"' EXIT
 mkdir -p $out_dir
 cp -r $lang_dir/* $out_dir || exit 1;
 
-lm_base=$(basename $lm '.gz')
 awk '{print $1}' $out_dir/words.txt > $tmpdir/voc || exit 1;
 
 # Change the LM vocabulary to be the intersection of the current LM vocabulary

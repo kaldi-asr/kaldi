@@ -39,7 +39,6 @@ for f in phones.txt words.txt topo L.fst L_disambig.fst phones/ oov.int oov.txt;
   cp -r $lang_dir/$f $out_dir
 done
 
-lm_base=$(basename $lm '.gz')
 gunzip -c $lm \
   | arpa2fst --disambig-symbol=#0 \
              --read-symbol-table=$out_dir/words.txt - $out_dir/G.fst

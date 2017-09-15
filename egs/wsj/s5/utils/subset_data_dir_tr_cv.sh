@@ -32,12 +32,13 @@ uttbase=true; # by default, we choose last 10% utterances for CV
 
 if [ "$1" == "--cv-spk-percent" ]; then
   uttbase=false;
-  spkbase=true;
+  # Otherwise, do splitting based on speakers, such that the same
+  # speaker won't be in both train and cross validation sets.
 fi
 
 [ -f path.sh ] && . ./path.sh; 
 
-. parse_options.sh || exit 1;
+. utils/parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
   echo "Usage: $0 [--cv-spk-percent P|--cv-utt-percent P] <srcdir> <traindir> <crossvaldir>"
