@@ -19,13 +19,16 @@ from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 #   self-repair-scale=1.0e-05  [Affects relu, sigmoid and tanh layers.]
 #   learning-rate-factor=1.0   [This can be used to make the affine component
 #                               train faster or slower].
-#
+#   Documentation for the rest of the parameters (related to the
+#   attention component) can be found in nnet-attention-component.h
+
 class XconfigAttentionLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         # Here we just list some likely combinations.. you can just add any
         # combinations you want to use, to this list.
         assert first_token in ['attention-renorm-layer',
-                               'attention-relu-renorm-layer']
+                               'attention-relu-renorm-layer',
+                               'relu-renorm-attention-layer']
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -44,6 +47,7 @@ class XconfigAttentionLayer(XconfigLayerBase):
                         'time-stride': 1,
                         'num-heads': 1,
                         'key-dim': -1,
+                        'key-scale': 0.0,
                         'value-dim': -1,
                         'num-left-inputs': -1,
                         'num-right-inputs': -1,
@@ -61,10 +65,13 @@ class XconfigAttentionLayer(XconfigLayerBase):
         if self.config['learning-rate-factor'] <= 0.0:
             raise RuntimeError("learning-rate-factor has invalid value {0}"
                                .format(self.config['learning-rate-factor']))
-        for conf in ['value-dim', 'key-dim', 'num-left-inputs', 'num-right-inputs']:
+        for conf in ['value-dim', 'key-dim',
+                     'num-left-inputs', 'num-right-inputs']:
             if self.config[conf] < 0:
                 raise RuntimeError("{0} has invalid value {1}"
                                    .format(conf, self.config[conf]))
+        if self.config['key-scale'] == 0.0:
+            self.config['key-scale'] = 1.0 / math.sqrt(self.config['key-dim'])
 
     def output_name(self, auxiliary_output=None):
         # at a later stage we might want to expose even the pre-nonlinearity
@@ -78,17 +85,22 @@ class XconfigAttentionLayer(XconfigLayerBase):
         return '{0}.{1}'.format(self.name, last_nonlinearity)
 
     def attention_input_dim(self):
-        context_dim = self.config['num-left-inputs'] + self.config['num-right-inputs'] + 1
-        query_dim = self.config['key-dim'] + context_dim;
-        return (self.config['num-heads'] * (self.config['key-dim'] +
-                                            self.config['value-dim'] + query_dim));
+        context_dim = (self.config['num-left-inputs'] +
+                       self.config['num-right-inputs'] + 1)
+        num_heads = self.config['num-heads']
+        key_dim = self.config['key-dim']
+        value_dim = self.config['value-dim']
+        query_dim = key_dim + context_dim;
+        return num_heads * (key_dim + value_dim + query_dim)
 
     def attention_output_dim(self):
-        context_dim = self.config['num-left-inputs'] + self.config['num-right-inputs'] + 1
+        context_dim = (self.config['num-left-inputs'] +
+                       self.config['num-right-inputs'] + 1)
         num_heads = self.config['num-heads']
         value_dim = self.config['value-dim']
         return (num_heads *
-                (value_dim + (context_dim if self.config['output-context'] else 0)));
+                (value_dim +
+                 (context_dim if self.config['output-context'] else 0)))
 
     def output_dim(self, auxiliary_output = None):
       return self.attention_output_dim()
@@ -227,4 +239,3 @@ class XconfigAttentionLayer(XconfigLayerBase):
             configs.append(line)
             cur_node = '{0}.{1}'.format(self.name, nonlinearity)
         return configs
-
