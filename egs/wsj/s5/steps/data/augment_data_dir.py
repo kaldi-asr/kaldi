@@ -50,150 +50,147 @@ def GetArgs():
     return args
 
 def CheckArgs(args):
-  if not os.path.exists(args.output_dir):
-    os.makedirs(args.output_dir)
-
-  if not args.fg_interval >= 0:
-    raise Exception("--fg-interval must be 0 or greater")
-
-  if args.bg_noise_dir is None and args.fg_noise_dir is None:
-    raise Exception("Either --fg-noise-dir or --bg-noise-dir must be specified")
-
-  return args
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
+    if not args.fg_interval >= 0:
+        raise Exception("--fg-interval must be 0 or greater")
+    if args.bg_noise_dir is None and args.fg_noise_dir is None:
+        raise Exception("Either --fg-noise-dir or --bg-noise-dir must be specified")
+    return args
 
 def get_noise_list(noise_wav_scp_filename):
-  noise_wav_scp_file = open(noise_wav_scp_filename, 'r').readlines()
-  noise_wavs = {}
-  noise_utts = []
-  for line in noise_wav_scp_file:
-    toks=line.split(" ")
-    wav = " ".join(toks[1:])
-    noise_utts.append(toks[0])
-    noise_wavs[toks[0]] = wav.rstrip()
-  return noise_utts, noise_wavs
+    noise_wav_scp_file = open(noise_wav_scp_filename, 'r').readlines()
+    noise_wavs = {}
+    noise_utts = []
+    for line in noise_wav_scp_file:
+        toks=line.split(" ")
+        wav = " ".join(toks[1:])
+        noise_utts.append(toks[0])
+        noise_wavs[toks[0]] = wav.rstrip()
+    return noise_utts, noise_wavs
 
 def augment_wav(utt, wav, dur, fg_snr_opts, bg_snr_opts, fg_noise_utts, \
     bg_noise_utts, noise_wavs, noise2dur, interval, num_opts):
-  # This section is common to both foreground and background noises
-  new_wav = ""
-  dur_str = str(dur)
-  noise_dur = 0
-  tot_noise_dur = 0
-  snrs=[]
-  noises=[]
-  start_times=[]
+    # This section is common to both foreground and background noises
+    new_wav = ""
+    dur_str = str(dur)
+    noise_dur = 0
+    tot_noise_dur = 0
+    snrs=[]
+    noises=[]
+    start_times=[]
 
-  # Now handle the background noises
-  if len(bg_noise_utts) > 0:
-    num = random.choice(num_opts)
-    for i in range(0, num):
-      noise_utt = random.choice(bg_noise_utts)
-      noise = noise_wavs[noise_utt] + " wav-reverberate --duration=" \
-          + dur_str + " - - |"
-      snr = random.choice(bg_snr_opts)
-      snrs.append(snr)
-      start_times.append(0)
-      noises.append(noise)
+    # Now handle the background noises
+    if len(bg_noise_utts) > 0:
+        num = random.choice(num_opts)
+        for i in range(0, num):
+            noise_utt = random.choice(bg_noise_utts)
+            noise = noise_wavs[noise_utt] + " wav-reverberate --duration=" \
+            + dur_str + " - - |"
+            snr = random.choice(bg_snr_opts)
+            snrs.append(snr)
+            start_times.append(0)
+            noises.append(noise)
 
-  # Now handle the foreground noises
-  if len(fg_noise_utts) > 0:
-    while tot_noise_dur < dur:
-      noise_utt = random.choice(fg_noise_utts)
-      noise = noise_wavs[noise_utt]
-      snr = random.choice(fg_snr_opts)
-      snrs.append(snr)
-      noise_dur = noise2dur[noise_utt]
-      start_times.append(tot_noise_dur)
-      tot_noise_dur += noise_dur + interval
-      noises.append(noise)
+    # Now handle the foreground noises
+    if len(fg_noise_utts) > 0:
+        while tot_noise_dur < dur:
+            noise_utt = random.choice(fg_noise_utts)
+            noise = noise_wavs[noise_utt]
+            snr = random.choice(fg_snr_opts)
+            snrs.append(snr)
+            noise_dur = noise2dur[noise_utt]
+            start_times.append(tot_noise_dur)
+            tot_noise_dur += noise_dur + interval
+            noises.append(noise)
 
-  start_times_str = "--start-times='" + ",".join(map(str,start_times)) + "'"
-  snrs_str = "--snrs='" + ",".join(map(str,snrs)) + "'"
-  noises_str = "--additive-signals='" + ",".join(noises) + "'"
+    start_times_str = "--start-times='" + ",".join(map(str,start_times)) + "'"
+    snrs_str = "--snrs='" + ",".join(map(str,snrs)) + "'"
+    noises_str = "--additive-signals='" + ",".join(noises) + "'"
 
-  # If the wav is just a file
-  if len(wav.split()) == 1:
-    new_wav = "wav-reverberate --shift-output=true " + noises_str + " " \
-        + start_times_str + " " + snrs_str + " " + wav + " - |"
-  # Else if the wav is in a pipe
-  else:
-    new_wav = wav + "wav-reverberate --shift-output=true " + noises_str + " " \
-        + start_times_str + " " + snrs_str + " - - |"
-  return new_wav
+    # If the wav is just a file
+    if len(wav.split()) == 1:
+        new_wav = "wav-reverberate --shift-output=true " + noises_str + " " \
+            + start_times_str + " " + snrs_str + " " + wav + " - |"
+    # Else if the wav is in a pipe
+    else:
+        new_wav = wav + "wav-reverberate --shift-output=true " + noises_str + " " \
+            + start_times_str + " " + snrs_str + " - - |"
+    return new_wav
 
 def CopyFileIfExists(utt_suffix, filename, input_dir, output_dir):
-  if os.path.isfile(input_dir + "/" + filename):
-    dict = ParseFileToDict(input_dir + "/" + filename,
-        value_processor = lambda x: " ".join(x))
-    if len(utt_suffix) > 0:
-      new_dict = {}
-      for key in dict.keys():
-        new_dict[key + "-" + utt_suffix] = dict[key]
-      dict = new_dict
-    WriteDictToFile(dict, output_dir + "/" + filename)
+    if os.path.isfile(input_dir + "/" + filename):
+        dict = ParseFileToDict(input_dir + "/" + filename,
+            value_processor = lambda x: " ".join(x))
+        if len(utt_suffix) > 0:
+            new_dict = {}
+            for key in dict.keys():
+                new_dict[key + "-" + utt_suffix] = dict[key]
+            dict = new_dict
+        WriteDictToFile(dict, output_dir + "/" + filename)
 
 def main():
-  args = GetArgs()
-  fg_snrs = map(int, args.fg_snr_str.split(":"))
-  bg_snrs = map(int, args.bg_snr_str.split(":"))
-  input_dir = args.input_dir
-  output_dir = args.output_dir
-  num_bg_noises = map(int, args.num_bg_noises.split(":"))
-  utt2dur = ParseFileToDict(input_dir + "/reco2dur",
-      value_processor = lambda x: float(x[0]))
-  wav_scp_file = open(input_dir + "/wav.scp", 'r').readlines()
-
-  noise_wavs = {}
-  noise_utt2dur = {}
-  bg_noise_utts = []
-  fg_noise_utts = []
-
-  # Load background noises
-  if args.bg_noise_dir:
-    bg_noise_wav_filename = args.bg_noise_dir + "/wav.scp"
-    bg_noise_utts, bg_noise_wavs = get_noise_list(bg_noise_wav_filename)
-    bg_noise_utt2dur = ParseFileToDict(args.bg_noise_dir + "/reco2dur",
+    args = GetArgs()
+    fg_snrs = map(int, args.fg_snr_str.split(":"))
+    bg_snrs = map(int, args.bg_snr_str.split(":"))
+    input_dir = args.input_dir
+    output_dir = args.output_dir
+    num_bg_noises = map(int, args.num_bg_noises.split(":"))
+    utt2dur = ParseFileToDict(input_dir + "/reco2dur",
         value_processor = lambda x: float(x[0]))
-    noise_wavs.update(bg_noise_wavs)
-    noise_utt2dur.update(bg_noise_utt2dur)
+    wav_scp_file = open(input_dir + "/wav.scp", 'r').readlines()
 
-  # Load background noises
-  if args.fg_noise_dir:
-    fg_noise_wav_filename = args.fg_noise_dir + "/wav.scp"
-    fg_noise_reco2dur_filename = args.fg_noise_dir + "/reco2dur"
-    fg_noise_utts, fg_noise_wavs = get_noise_list(fg_noise_wav_filename)
-    fg_noise_utt2dur = ParseFileToDict(args.fg_noise_dir + "/reco2dur",
-        value_processor = lambda x: float(x[0]))
-    noise_wavs.update(fg_noise_wavs)
-    noise_utt2dur.update(fg_noise_utt2dur)
+    noise_wavs = {}
+    noise_utt2dur = {}
+    bg_noise_utts = []
+    fg_noise_utts = []
 
-  random.seed(args.random_seed)
-  new_utt2wav = {}
-  new_utt2spk = {}
+    # Load background noises
+    if args.bg_noise_dir:
+        bg_noise_wav_filename = args.bg_noise_dir + "/wav.scp"
+        bg_noise_utts, bg_noise_wavs = get_noise_list(bg_noise_wav_filename)
+        bg_noise_utt2dur = ParseFileToDict(args.bg_noise_dir + "/reco2dur",
+            value_processor = lambda x: float(x[0]))
+        noise_wavs.update(bg_noise_wavs)
+        noise_utt2dur.update(bg_noise_utt2dur)
 
-  # Augment each line in the wav file
-  for line in wav_scp_file:
-    toks = line.rstrip().split(" ")
-    utt = toks[0]
-    wav = " ".join(toks[1:])
-    dur = utt2dur[utt]
-    new_wav = augment_wav(utt, wav, dur, fg_snrs, bg_snrs, fg_noise_utts,
-        bg_noise_utts, noise_wavs, noise_utt2dur, args.fg_interval,
-        num_bg_noises)
-    new_utt = utt + "-" + args.utt_suffix
-    new_utt2wav[new_utt] = new_wav
+    # Load background noises
+    if args.fg_noise_dir:
+        fg_noise_wav_filename = args.fg_noise_dir + "/wav.scp"
+        fg_noise_reco2dur_filename = args.fg_noise_dir + "/reco2dur"
+        fg_noise_utts, fg_noise_wavs = get_noise_list(fg_noise_wav_filename)
+        fg_noise_utt2dur = ParseFileToDict(args.fg_noise_dir + "/reco2dur",
+            value_processor = lambda x: float(x[0]))
+        noise_wavs.update(fg_noise_wavs)
+        noise_utt2dur.update(fg_noise_utt2dur)
 
-  if not os.path.exists(output_dir):
-      os.makedirs(output_dir)
+    random.seed(args.random_seed)
+    new_utt2wav = {}
+    new_utt2spk = {}
 
-  WriteDictToFile(new_utt2wav, output_dir + "/wav.scp")
-  CopyFileIfExists(args.utt_suffix, "utt2spk", input_dir, output_dir)
-  CopyFileIfExists(args.utt_suffix, "utt2lang", input_dir, output_dir)
-  CopyFileIfExists(args.utt_suffix, "text", input_dir, output_dir)
-  CopyFileIfExists(args.utt_suffix, "utt2spk", input_dir, output_dir)
-  CopyFileIfExists(args.utt_suffix, "vad.scp", input_dir, output_dir)
-  CopyFileIfExists("", "spk2gender", input_dir, output_dir)
-  data_lib.RunKaldiCommand("utils/fix_data_dir.sh {output_dir}".format(output_dir = output_dir))
+    # Augment each line in the wav file
+    for line in wav_scp_file:
+        toks = line.rstrip().split(" ")
+        utt = toks[0]
+        wav = " ".join(toks[1:])
+        dur = utt2dur[utt]
+        new_wav = augment_wav(utt, wav, dur, fg_snrs, bg_snrs, fg_noise_utts,
+            bg_noise_utts, noise_wavs, noise_utt2dur, args.fg_interval,
+            num_bg_noises)
+        new_utt = utt + "-" + args.utt_suffix
+        new_utt2wav[new_utt] = new_wav
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    WriteDictToFile(new_utt2wav, output_dir + "/wav.scp")
+    CopyFileIfExists(args.utt_suffix, "utt2spk", input_dir, output_dir)
+    CopyFileIfExists(args.utt_suffix, "utt2lang", input_dir, output_dir)
+    CopyFileIfExists(args.utt_suffix, "text", input_dir, output_dir)
+    CopyFileIfExists(args.utt_suffix, "utt2spk", input_dir, output_dir)
+    CopyFileIfExists(args.utt_suffix, "vad.scp", input_dir, output_dir)
+    CopyFileIfExists("", "spk2gender", input_dir, output_dir)
+    data_lib.RunKaldiCommand("utils/fix_data_dir.sh {output_dir}".format(output_dir = output_dir))
 
 if __name__ == "__main__":
-  main()
+    main()
