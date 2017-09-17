@@ -95,7 +95,7 @@
         those that have to be customized.
    - We prefer provably correct algorithms
       - The recipes have been designed in such a way that in principle they
-        should never fail in a catastophic way.  There has been an effort to avoid recipes and
+        should never fail in a catastrophic way.  There has been an effort to avoid recipes and
         algorithms that could possibly fail, even if they don't fail in the
         "normal case" (one example: FST weight-pushing, which normally helps but
         can crash or make things much worse in certain cases).
