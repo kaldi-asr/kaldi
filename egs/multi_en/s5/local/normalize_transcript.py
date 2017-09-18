@@ -14,6 +14,7 @@ def normalize(utt):
              .replace('[uh]', 'uh') \
              .replace('[um]', 'um') \
              .replace('<noise>', '[noise]') \
+             .replace('<spoken_noise>', '[vocalized-noise]') \
              .replace('.period', 'period') \
              .replace('.dot', 'dot') \
              .replace('-hyphen', 'hyphen') \
