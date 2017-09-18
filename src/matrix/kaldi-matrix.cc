@@ -48,8 +48,10 @@ void MatrixBase<Real>::Invert(Real *log_det, Real *det_sign,
   Real *p_work;
   void *temp;
   if ((p_work = static_cast<Real*>(
-          KALDI_MEMALIGN(16, sizeof(Real)*l_work, &temp))) == NULL)
+          KALDI_MEMALIGN(16, sizeof(Real)*l_work, &temp))) == NULL) {
+    delete[] pivot;
     throw std::bad_alloc();
+  }
 
   clapack_Xgetrf2(&M, &N, data_, &LDA, pivot, &result);
   const int pivot_offset = 1;
@@ -1036,6 +1038,19 @@ template<typename Real> void MatrixBase<Real>::Max(const MatrixBase<Real> &A) {
     MatrixIndexT num_cols = num_cols_;
     for (MatrixIndexT col = 0; col < num_cols; col++) {
       row_data[col] = std::max(row_data[col],
+                               other_row_data[col]);
+    }
+  }
+}
+
+template<typename Real> void MatrixBase<Real>::Min(const MatrixBase<Real> &A) {
+  KALDI_ASSERT(A.NumRows() == NumRows() && A.NumCols() == NumCols());
+  for (MatrixIndexT row = 0; row < num_rows_; row++) {
+    Real *row_data = RowData(row);
+    const Real *other_row_data = A.RowData(row);
+    MatrixIndexT num_cols = num_cols_;
+    for (MatrixIndexT col = 0; col < num_cols; col++) {
+      row_data[col] = std::min(row_data[col],
                                other_row_data[col]);
     }
   }

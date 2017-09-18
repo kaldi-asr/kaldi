@@ -5,15 +5,19 @@
 # it's faster.  See PR #1243 on github, and issue #1237.
 # This used to be called run_tdnn_fastlstm_1b.sh.
 
-#System               tdnn_lstm_1a_ld5 tdnn_lstm_1b_ld5 tdnn_lstm_1c_ld5
-#WER on train_dev(tg)      13.42           13.00             12.91
-#WER on train_dev(fg)      12.42           12.03             11.98
-#WER on eval2000(tg)        15.7           15.3              15.2
-#WER on eval2000(fg)        14.2           13.9              13.8
-#Final train prob     -0.0538088      -0.056294            -0.050
-#Final valid prob     -0.0800484      -0.0813322           -0.092
-#Final train prob (xent)   -0.7603    -0.777787            -0.756
-#Final valid prob (xent)   -0.949909  -0.939146            -0.983
+## note: the last column below was this run on Feb 1 2017, in the
+## shortcut branch.  Results are a bit worse, but I believe this is just
+## random noise or a little bit of mean-regression.
+
+#System               tdnn_lstm_1a_ld5_sp tdnn_lstm_1b_ld5_sp tdnn_lstm_1c_ld5_sp tdnn_lstm_1c_ld5_sp
+#WER on train_dev(tg)      13.42           13.00             12.91         13.17
+#WER on train_dev(fg)      12.42           12.03             11.98         12.25
+#WER on eval2000(tg)        15.7           15.3              15.2          15.4
+#WER on eval2000(fg)        14.2           13.9              13.8          14.1
+#Final train prob     -0.0538088      -0.056294            -0.050          -0.046
+#Final valid prob     -0.0800484      -0.0813322           -0.092          -0.073
+#Final train prob (xent)   -0.7603    -0.777787            -0.756          -0.749
+#Final valid prob (xent)   -0.949909  -0.939146            -0.983          -0.980
 
 set -e
 
@@ -117,7 +121,7 @@ fi
 if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
-  num_targets=$(tree-info exp/chain/tri5_7d_tree_sp/tree |grep num-pdfs|awk '{print $2}')
+  num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
   mkdir -p $dir/configs

@@ -9,7 +9,14 @@
 #Final valid prob      -0.110475 -0.113102
 #Final train prob (xent)      -1.20065   -1.2533
 #Final valid prob (xent)       -1.3313  -1.36743
-#
+
+# Online decoding
+# System                tdnn_7h_sp tdnn_7h_sp_online
+# WER on train_dev(tg)      13.96     13.95
+# WER on train_dev(fg)      12.86     12.82
+# WER on eval2000(tg)        16.5      16.5
+# WER on eval2000(fg)        14.8      14.8
+
 set -e
 
 # configs for 'chain'
@@ -20,6 +27,7 @@ get_egs_stage=-10
 speed_perturb=true
 dir=exp/chain/tdnn_7h  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
+decode_nj=50
 
 # training options
 num_epochs=4
@@ -35,6 +43,8 @@ frames_per_eg=150
 remove_egs=false
 common_egs_dir=
 xent_regularize=0.1
+
+test_online_decoding=false  # if true, it will run the last decoding stage.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -109,7 +119,7 @@ fi
 if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
-  num_targets=$(tree-info exp/chain/tri5_7d_tree_sp/tree |grep num-pdfs|awk '{print $2}')
+  num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
   mkdir -p $dir/configs
@@ -193,26 +203,65 @@ if [ $stage -le 14 ]; then
   utils/mkgraph.sh --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
 fi
 
-decode_suff=sw1_tg
+
 graph_dir=$dir/graph_sw1_tg
+iter_opts=
+if [ ! -z $decode_iter ]; then
+  iter_opts=" --iter $decode_iter "
+fi
 if [ $stage -le 15 ]; then
-  iter_opts=
-  if [ ! -z $decode_iter ]; then
-    iter_opts=" --iter $decode_iter "
-  fi
+  rm $dir/.error 2>/dev/null || true
   for decode_set in train_dev eval2000; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-          --nj 50 --cmd "$decode_cmd" $iter_opts \
+          --nj $decode_nj --cmd "$decode_cmd" $iter_opts \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_${decode_suff} || exit 1;
+          $graph_dir data/${decode_set}_hires \
+          $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_tg || exit 1;
       if $has_fisher; then
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
             data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
             $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_{tg,fsh_fg} || exit 1;
       fi
-      ) &
+      ) || touch $dir/.error &
   done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in decoding"
+    exit 1
+  fi
 fi
-wait;
+
+if $test_online_decoding && [ $stage -le 16 ]; then
+  # note: if the features change (e.g. you add pitch features), you will have to
+  # change the options of the following command line.
+  steps/online/nnet3/prepare_online_decoding.sh \
+       --mfcc-config conf/mfcc_hires.conf \
+       $lang exp/nnet3/extractor $dir ${dir}_online
+
+  rm $dir/.error 2>/dev/null || true
+  for decode_set in train_dev eval2000; do
+    (
+      # note: we just give it "$decode_set" as it only uses the wav.scp, the
+      # feature type does not matter.
+
+      steps/online/nnet3/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
+          --acwt 1.0 --post-decode-acwt 10.0 \
+         $graph_dir data/${decode_set}_hires \
+         ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_tg || exit 1;
+      if $has_fisher; then
+          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
+            ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_{tg,fsh_fg} || exit 1;
+      fi
+    ) || touch $dir/.error &
+  done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in decoding"
+    exit 1
+  fi
+fi
+
+
 exit 0;

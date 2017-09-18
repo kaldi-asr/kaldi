@@ -58,7 +58,6 @@ int main(int argc, char *argv[]) {
     bool random = false;
     int32 srand_seed = 0;
     int32 frame_shift = 0;
-    int32 truncate_deriv_weights = 0;
     BaseFloat keep_proportion = 1.0;
 
     ParseOptions po(usage);
@@ -74,9 +73,6 @@ int main(int argc, char *argv[]) {
                 "in the supervision data (excluding iVector data) - useful in "
                 "augmenting data.  Note, the outputs will remain at the closest "
                 "exact multiples of the frame subsampling factor");
-    po.Register("truncate-deriv-weights", &truncate_deriv_weights,
-                "If nonzero, the number of initial/final subsample frames that "
-                "will have their derivatives' weights set to zero.");
 
     po.Read(argc, argv);
 
@@ -106,7 +102,7 @@ int main(int argc, char *argv[]) {
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
-      if (frame_shift == 0 && truncate_deriv_weights == 0) {
+      if (frame_shift == 0) {
         const NnetDiscriminativeExample &eg = example_reader.Value();
         for (int32 c = 0; c < count; c++) {
           int32 index = (random ? Rand() : num_written) % num_outputs;
@@ -117,8 +113,6 @@ int main(int argc, char *argv[]) {
         NnetDiscriminativeExample eg = example_reader.Value();
         if (frame_shift != 0)
           ShiftDiscriminativeExampleTimes(frame_shift, exclude_names, &eg);
-        if (truncate_deriv_weights != 0)
-          TruncateDerivWeights(truncate_deriv_weights, &eg);
         for (int32 c = 0; c < count; c++) {
           int32 index = (random ? Rand() : num_written) % num_outputs;
           example_writers[index]->Write(key, eg);
@@ -136,4 +130,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

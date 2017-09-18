@@ -33,7 +33,7 @@ shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of
 
 stage=-8
 
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 
 num_threads=16  # this is the default but you may want to change it, e.g. to 1 if
                 # using GPUs.
@@ -74,7 +74,7 @@ if [ $# != 6 ]; then
   echo "                                                   # this, you may want to decrease the batch size."
   echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads... "
-  echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
+  echo "  --io-opts <opts|\"--max-jobs-run 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
   echo "                                                   # process."
   echo "  --stage <stage|-8>                               # Used to run a partially-completed training process from somewhere in"
@@ -129,7 +129,7 @@ sdata=$data/split$nj
 utils/split_data.sh $data $nj
 
 # function to remove egs that might be soft links.
-remove () { for x in $*; do [ -L $x ] && rm $(readlink -f $x); rm $x; done }
+remove () { for x in $*; do [ -L $x ] && rm $(utils/make_absolute.sh $x); rm $x; done }
 
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;

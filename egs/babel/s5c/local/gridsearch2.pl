@@ -91,17 +91,17 @@ my %found_switches = ();
 
 for (my $i=0; $i < scalar(@ARGV); $i++) {
   if ($ARGV[$i] eq "-var") {
-     
+
     $i++;
     (my $name, my @range) = gen_sequence(split('=', $ARGV[$i]));
     $VARIABLES{$name}=\@range
-  
+
   } elsif (grep {$_ eq $ARGV[$i]} @known_switches) {
 
     if ($cmdid) {
       print "CMD: $cmdid\n";
       my @tmp = @cmd;
-      $found_switches{$cmdid} = \@tmp;      
+      $found_switches{$cmdid} = \@tmp;
       pp(%found_switches);
     }
 
@@ -120,7 +120,7 @@ for (my $i=0; $i < scalar(@ARGV); $i++) {
 if ($cmdid) {
   print "CMD: $cmdid\n";
   my @tmp = @cmd;
-  $found_switches{$cmdid} = \@tmp;      
+  $found_switches{$cmdid} = \@tmp;
 }
 
 pp(%VARIABLES);
@@ -136,11 +136,11 @@ foreach my $comb (@combs) {
   my @out;
   @out = substitute(\@traincmd, \%params);
   system(@out) == 0 or die "system @out failed: exit code $?";
-  
+
 
   @out = substitute(\@evalcmd, \%params);
   system(@out) == 0 or die "system @out failed: exit code $?";
-  
+
 }
 
 

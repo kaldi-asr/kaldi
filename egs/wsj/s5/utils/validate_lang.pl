@@ -718,6 +718,13 @@ if (-s "$lang/phones/word_boundary.int") {
     $is_disambig{$A[0]} = 1;
   }
 
+  $text = `. ./path.sh`;
+  if ($text ne "") {
+    print "*** This script cannot continue because your path.sh or bash profile prints something: $text" .
+      "*** Please fix that and try again.\n";
+    exit(1);
+  }
+
   foreach $fst ("L.fst", "L_disambig.fst") {
     $wlen = int(rand(100)) + 1;
     print "--> generating a $wlen word sequence\n";
@@ -758,8 +765,10 @@ if (-s "$lang/phones/word_boundary.int") {
       # prepare_lang.sh), the regular L.fst may contain some disambiguation
       # symbols.
       if (! defined $is_disambig{$phone}) {
-        if ($phone == "<<eos>>") {
+        if ($phone eq "<<eos>>") {
           $state = "eos";
+        } elsif ($phone == 0) {
+          $exit = 1; print "--> ERROR: unexpected phone sequence=$phoneseq, wordseq=$wordseq\n"; last;
         } else {
           $state = $wbtype{$phone};
         }

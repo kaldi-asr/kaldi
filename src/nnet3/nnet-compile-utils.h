@@ -131,6 +131,31 @@ void EnsureContiguousProperty(
     const std::vector<int32> &indexes,
     std::vector<std::vector<int32> > *indexes_out);
 
+/**
+   This function outputs a sorted, unique list of the 't' values that are
+   encountered in the provided list of Indexes
+   If 't' values equal to kNoTime are encountered, they are ignored and
+   are not output.
+*/
+void GetTList(const std::vector<Index> &indexes,
+              std::vector<int32> *t_values);
+
+
+/**
+   This function outputs a sorted, unique list of the 't' values that are
+   encountered in the provided list of Indexes
+   If 't' values equal to kNoTime are encountered, they are ignored and
+   are not output.
+*/
+void GetTList(const std::vector<Index> &indexes,
+              std::vector<int32> *t_values);
+
+/**
+   This function outputs a unique, lexicographically sorted list of the pairs of
+   (n, x) values that are encountered in the provided list of Indexes.
+*/
+void GetNxList(const std::vector<Index> &indexes,
+               std::vector<std::pair<int32, int32> > *pairs);
 
 
 } // namespace nnet3

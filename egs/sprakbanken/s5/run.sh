@@ -5,7 +5,6 @@
 . ./path.sh # so python3 is on the path if not on the system (we made a link to utils/).a
 
 nj=12
-
 stage=0
 . utils/parse_options.sh
 
@@ -125,12 +124,11 @@ if [ $stage -le 9 ]; then
 fi
 
 if [ $stage -le 10 ]; then
-# Alignment used to train nnets and sgmms
-steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-  data/train data/lang exp/tri3b exp/tri3b_ali || exit 1;
+  # Alignment used to train nnets and sgmms
+  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
+    data/train data/lang exp/tri3b exp/tri3b_ali || exit 1;
 fi
 
-##TODO: Add nnet3 and chain setups
 
 ## Works
 #local/sprak_run_nnet_cpu.sh tg dev 
@@ -139,5 +137,30 @@ fi
 #local/sprak_run_sgmm2.sh dev
 
 
+# Run neural network setups based in the TEDLIUM recipe
+
+# Running the nnet3-tdnn setup will train an ivector extractor that
+# is used by the subsequent nnet3 and chain systems (why --stage is
+# specified)
+#local/nnet3/run_tdnn.sh --tdnn-affix "0" --nnet3-affix ""
+
+# nnet3 LSTM
+#local/nnet3/run_lstm.sh --stage 13 --affix "0"
+
+# nnet3 bLSTM
+#local/nnet3/run_blstm.sh --stage 12
+
+
+
+# chain TDNN
+# This setup creates a new lang directory that is also used by the
+# TDNN-LSTM system
+#local/chain/run_tdnn.sh --stage 14
+
+# chain TDNN-LSTM
+local/chain/run_tdnn_lstm.sh --stage 17
+
+
 # Getting results [see RESULTS file]
-for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+local/generate_results_file.sh 2> /dev/null > RESULTS
+

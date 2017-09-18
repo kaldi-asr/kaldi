@@ -39,7 +39,6 @@ self_repair_scale=0.00001
 num_epochs=4
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
-leftmost_questions_truncate=-1
 max_param_change=2.0
 final_layer_normalize_target=0.5
 num_jobs_initial=3
@@ -109,7 +108,6 @@ fi
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate $leftmost_questions_truncate \
       --cmd "$train_cmd" 4000 data/train_sp $lang $ali_dir $treedir
 fi
 

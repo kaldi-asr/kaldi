@@ -191,17 +191,29 @@ exit 0
 %WER 24.3 | 2628 21594 | 78.6 15.0 6.4 2.9 24.3 60.0 | exp/nnet3/tdnn_cnn_sp/decode_eval2000_hires_sw1_tg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
 
 
-# current best 'chain' models with TDNNs (see local/chain/run_tdnn_7g.sh)
+# current best 'chain' models with TDNNs (see local/chain/tuning/run_tdnn_7k.sh)
+# (4 epoch training on data being speed-perturbed, volume-perturbed)
+%WER 14.7 | 4459 42989 | 87.0 8.7 4.4 1.7 14.7 50.1 | exp/chain/tdnn_7k_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+%WER 9.8 | 1831 21395 | 91.3 5.8 3.0 1.1 9.8 43.7 | exp/chain/tdnn_7k_sp/decode_eval2000_sw1_fsh_fg/score_11_0.5/eval2000_hires.ctm.swbd.filt.sys
+%WER 19.4 | 2628 21594 | 82.8 11.3 6.0 2.1 19.4 54.5 | exp/chain/tdnn_7k_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+
+#(see local/chain/multi_condition/run_tdnn_7k.sh)
 # (2 epoch training on data being speed-perturbed, volume-perturbed and reverberated with room impulse responses)
-%WER 14.6 | 4459 42989 | 87.1 8.7 4.2 1.7 14.6 50.7 | exp/chain/tdnn_7g_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
-%WER 9.8 | 1831 21395 | 91.2 5.7 3.1 1.1 9.8 43.4 | exp/chain/tdnn_7g_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
-%WER 19.3 | 2628 21594 | 83.0 11.5 5.5 2.3 19.3 55.8 | exp/chain/tdnn_7g_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 14.3 | 4459 42989 | 87.3 8.5 4.1 1.6 14.3 49.1 | exp/chain/tdnn_7k_sp_rvb1/decode_eval2000_sw1_fsh_fg/score_9_0.0/eval2000_hires.ctm.filt.sys
+%WER 9.3 | 1831 21395 | 91.7 5.5 2.8 1.0 9.3 41.9 | exp/chain/tdnn_7k_sp_rvb1/decode_eval2000_sw1_fsh_fg/score_9_1.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 19.2 | 2628 21594 | 83.0 11.4 5.5 2.2 19.2 54.2 | exp/chain/tdnn_7k_sp_rvb1/decode_eval2000_sw1_fsh_fg/score_9_0.0/eval2000_hires.ctm.callhm.filt.sys
 
 # current best 'chain' models with LSTM (see local/chain/run_lstm_d.sh)
 %WER 15.9 | 4459 42989 | 86.0 9.6 4.3 2.0 15.9 51.7 | exp/chain/lstm_d_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
 %WER 10.5 | 1831 21395 | 90.8 6.4 2.9 1.3 10.5 44.3 | exp/chain/lstm_d_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_1.0/eval2000_hires.ctm.swbd.filt.sys
 %WER 21.2 | 2628 21594 | 81.4 12.8 5.9 2.6 21.2 56.7 | exp/chain/lstm_d_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
 %WER 13.88 [ 6829 / 49204, 935 ins, 1690 del, 4204 sub ] exp/chain/lstm_d_ld5_sp/decode_train_dev_sw1_fsh_fg/wer_9_0.0
+
+# current best 'chain' models with TDNN + LSTM + dropout (see local/chain/run_tdnn_lstm_1l.sh)
+%WER 13.5 | 4459 42989 | 88.2 8.0 3.8 1.7 13.5 48.2 | exp/chain/tdnn_lstm_1b_dropout_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+%WER 8.8 | 1831 21395 | 92.3 5.2 2.5 1.1 8.8 41.9 | exp/chain/tdnn_lstm_1b_dropout_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 18.1 | 2628 21594 | 84.0 10.8 5.2 2.2 18.1 52.6 | exp/chain/tdnn_lstm_1b_dropout_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_1.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 11.59 [ 5615 / 48460, 708 ins, 1450 del, 3457 sub ] exp/chain/tdnn_lstm_1b_dropout_ld5_sp/decode_train_dev_sw1_fsh_fg/wer_9_0.0
 
 # these are results with nnet3 LSTMs with CTC training : local/ctc/run_lstm.sh
 %WER 17.4 | 1831 21395 | 85.3 10.1 4.6 2.7 17.4 57.8 | exp/ctc/lstm_sp/decode_eval2000_sw1_fsh_fg_0.15/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys

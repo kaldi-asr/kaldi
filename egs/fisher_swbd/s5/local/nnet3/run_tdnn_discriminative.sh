@@ -8,7 +8,7 @@ set -o pipefail
 # note: this relies on having a cluster that has plenty of CPUs as well as GPUs,
 # since the lattice generation runs in about real-time, so takes of the order of
 # 1000 hours of CPU time.
-# 
+#
 . ./cmd.sh
 
 
@@ -38,27 +38,21 @@ dir=${srcdir}_${criterion}
 ## Egs options
 frames_per_eg=150
 frames_overlap_per_eg=30
-truncate_deriv_weights=10
 
 ## Nnet training options
 effective_learning_rate=0.00000125
 max_param_change=1
 num_jobs_nnet=4
 num_epochs=2
-regularization_opts=          # Applicable for providing --xent-regularize and --l2-regularize options 
+regularization_opts=          # Applicable for providing --xent-regularize and --l2-regularize options
 minibatch_size=64
-adjust_priors=true            # May need to be set to false 
-                              # because it does not help in some setups
-modify_learning_rates=true
-last_layer_factor=0.1
-
 ## Decode options
 decode_start_epoch=1 # can be used to avoid decoding all epochs, e.g. if we decided to run more.
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
@@ -89,7 +83,7 @@ fi
 if [ -z "$lats_dir" ]; then
   lats_dir=${srcdir}_denlats
   if [ $stage -le 2 ]; then
-    nj=100  
+    nj=100
     # this doesn't really affect anything strongly, except the num-jobs for one of
     # the phases of get_egs_discriminative.sh below.
     num_threads_denlats=6
@@ -102,8 +96,8 @@ if [ -z "$lats_dir" ]; then
   fi
 fi
 
-model_left_context=`nnet3-am-info $srcdir/final.mdl | grep "left-context:" | awk '{print $2}'` 
-model_right_context=`nnet3-am-info $srcdir/final.mdl | grep "right-context:" | awk '{print $2}'` 
+model_left_context=$(nnet3-am-info $srcdir/final.mdl | grep "^left-context:" | awk '{print $2}')
+model_right_context=$(nnet3-am-info $srcdir/final.mdl | grep "^right-context:" | awk '{print $2}')
 
 left_context=$[model_left_context + extra_left_context]
 right_context=$[model_right_context + extra_right_context]
@@ -113,7 +107,7 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
   frame_subsampling_opt="--frame-subsampling-factor $(cat $srcdir/frame_subsampling_factor)"
 fi
 
-cmvn_opts=`cat $srcdir/cmvn_opts` 
+cmvn_opts=`cat $srcdir/cmvn_opts`
 
 if [ -z "$degs_dir" ]; then
   degs_dir=${srcdir}_degs
@@ -126,15 +120,12 @@ if [ -z "$degs_dir" ]; then
     # have a higher maximum num-jobs if
     if [ -d ${srcdir}_degs/storage ]; then max_jobs=10; else max_jobs=5; fi
 
-    degs_opts="--determinize true --minimize true --remove-output-symbols true --remove-epsilons true --collapse-transition-ids true"
-
     steps/nnet3/get_egs_discriminative.sh \
       --cmd "$decode_cmd --max-jobs-run $max_jobs --mem 20G" --stage $get_egs_stage --cmvn-opts "$cmvn_opts" \
-      --adjust-priors $adjust_priors \
       --online-ivector-dir $online_ivector_dir \
       --left-context $left_context --right-context $right_context \
       $frame_subsampling_opt \
-      --frames-per-eg $frames_per_eg --frames-overlap-per-eg $frames_overlap_per_eg ${degs_opts} \
+      --frames-per-eg $frames_per_eg --frames-overlap-per-eg $frames_overlap_per_eg \
       $train_data_dir data/lang ${srcdir}_ali $lats_dir $srcdir/final.mdl $degs_dir ;
   fi
 fi
@@ -147,9 +138,7 @@ if [ $stage -le 4 ]; then
     --num-epochs $num_epochs --one-silence-class $one_silence_class --minibatch-size $minibatch_size \
     --num-jobs-nnet $num_jobs_nnet --num-threads $num_threads \
     --regularization-opts "$regularization_opts" \
-    --truncate-deriv-weights $truncate_deriv_weights --adjust-priors $adjust_priors \
-    --modify-learning-rates $modify_learning_rates --last-layer-factor $last_layer_factor \
-    ${degs_dir} $dir 
+    ${degs_dir} $dir
 fi
 
 graph_dir=exp/tri5a/graph_fsh_sw1_tg
@@ -158,8 +147,8 @@ if [ $stage -le 5 ]; then
     for decode_set in eval2000 rt03; do
       (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      iter=epoch$x.adj
-      
+      iter=epoch${x}_adj
+
       steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
         --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_fsh_sw1_tg_$iter ;
@@ -181,4 +170,3 @@ fi
 
 
 exit 0;
-

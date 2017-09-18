@@ -312,5 +312,4 @@ cat $dict_dir/nonsilence_phones.txt | perl -e 'while(<>){ foreach $p (split(" ",
  cat - $dict_dir/lexicon1.txt  > $dict_dir/lexicon.txt || exit 1;
 
 echo "$0: HKUST dict preparation succeeded"
-
-exit;
+exit 0;

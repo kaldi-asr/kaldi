@@ -5,7 +5,7 @@ many components removed.
  Before running run.sh, please run run_prepare_shared.sh.
 
  Afterwards, you can run:
-    run.sh --mic ihm    #  builds system for independent headset microphone
+    run.sh --mic ihm    # builds system for independent headset microphone
     run.sh --mic sdm1   # single distant micropophone
     run.sh --mic mdm8   # multiple distant microphones + beamforming.
 
