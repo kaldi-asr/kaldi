@@ -1,6 +1,6 @@
 // xvectorbin/nnet3-xvector-get-egs.cc
 
-// Copyright 2012-2017  Johns Hopkins University (author:  Daniel Povey)
+// Copyright 2016-2017  Johns Hopkins University (author:  Daniel Povey)
 //           2016-2017  Johns Hopkins University (author:  Daniel Garcia-Romero)
 //           2016-2017  David Snyder
 
@@ -40,8 +40,7 @@ struct ChunkInfo {
 // Process the range input file and store it as a map from utterance
 // name to vector of ChunkInfo structs.
 static void ProcessRangeFile(const std::string &range_rxfilename,
-                             unordered_map<std::string,
-                             std::vector<ChunkInfo *> > *utt_to_chunks) {
+    unordered_map<std::string, std::vector<ChunkInfo *> > *utt_to_chunks) {
   Input range_input(range_rxfilename);
   if (!range_rxfilename.empty()) {
     std::string line;
@@ -80,12 +79,9 @@ static void ProcessRangeFile(const std::string &range_rxfilename,
 }
 
 static void WriteExamples(const MatrixBase<BaseFloat> &feats,
-                          const std::vector<ChunkInfo *> &chunks,
-                          const std::string &utt,
-                          bool compress,
-                          int32 num_pdfs,
-                          int32 *num_egs_written,
-                          std::vector<NnetExampleWriter *> *example_writers) {
+    const std::vector<ChunkInfo *> &chunks, const std::string &utt,
+    bool compress, int32 num_pdfs, int32 *num_egs_written,
+    std::vector<NnetExampleWriter *> *example_writers) {
   for (std::vector<ChunkInfo *>::const_iterator it = chunks.begin();
       it != chunks.end(); ++it) {
     ChunkInfo *chunk = *it;
@@ -132,8 +128,8 @@ static void WriteExamples(const MatrixBase<BaseFloat> &feats,
 
 // Delete the dynamically allocated memory.
 static void Cleanup(unordered_map<std::string,
-                    std::vector<ChunkInfo *> > *utt_to_chunks,
-                    std::vector<NnetExampleWriter *> *writers) {
+    std::vector<ChunkInfo *> > *utt_to_chunks,
+    std::vector<NnetExampleWriter *> *writers) {
   for (unordered_map<std::string, std::vector<ChunkInfo*> >::iterator
       map_it = utt_to_chunks->begin();
       map_it != utt_to_chunks->end(); ++map_it)
@@ -167,8 +163,8 @@ int main(int argc, char *argv[]) {
         "index into the wspecifiers specified on the command line (<egs-0-out>\n"
         "and so on), and <absolute-archive-index> is ignored by this program.\n"
         "For example:\n"
-        "  utt1  3  13  0   65\n"
-        "  utt1  0  10  160 50\n"
+        "  utt1  3  13  65\n"
+        "  utt1  0  10  50\n"
         "  utt2  ...\n"
         "\n"
         "Usage:  nnet3-xvector-get-egs [options] <ranges-filename> "

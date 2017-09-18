@@ -1,8 +1,8 @@
 // nnet3bin/nnet3-xvector-compute.cc
 
-// Copyright 2012-2017   Johns Hopkins University (author: Daniel Povey)
-//           2016-2017   Johns Hopkins University (author: Daniel Garcia-Romero)
-//           2016-2017   David Snyder
+// Copyright 2017   Johns Hopkins University (author: Daniel Povey)
+//           2017   Johns Hopkins University (author: Daniel Garcia-Romero)
+//           2017   David Snyder
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -26,6 +26,38 @@
 #include "base/timer.h"
 #include "nnet3/nnet-utils.h"
 
+namespace kaldi {
+namespace nnet3 {
+
+static void RunNnetComputation(const MatrixBase<BaseFloat> &features,
+    const Nnet &nnet, CachingOptimizingCompiler *compiler,
+    Vector<BaseFloat> *xvector) {
+  ComputationRequest request;
+  request.need_model_derivative = false;
+  request.store_component_stats = false;
+  request.inputs.push_back(
+    IoSpecification("input", 0, features.NumRows()));
+  IoSpecification output_spec;
+  output_spec.name = "output";
+  output_spec.has_deriv = false;
+  output_spec.indexes.resize(1);
+  request.outputs.resize(1);
+  request.outputs[0].Swap(&output_spec);
+  const NnetComputation *computation = compiler->Compile(request);
+  Nnet *nnet_to_update = NULL;  // we're not doing any update.
+  NnetComputer computer(NnetComputeOptions(), *computation,
+                  nnet, nnet_to_update);
+  CuMatrix<BaseFloat> input_feats_cu(features);
+  computer.AcceptInput("input", &input_feats_cu);
+  computer.Run();
+  CuMatrix<BaseFloat> cu_output;
+  computer.GetOutputDestructive("output", &cu_output);
+  xvector->Resize(cu_output.NumCols());
+  xvector->CopyFromVec(cu_output.Row(0));
+}
+
+} // namespace nnet3
+} // namespace kaldi
 
 int main(int argc, char *argv[]) {
   try {
@@ -35,14 +67,24 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "TODO Propagate the features through raw neural network model "
-        "and write the output.\n"
-        "If --apply-exp=true, apply the Exp() function to the output "
-        "before writing it out.\n"
+        "Propagate features through an xvector neural network model and write\n"
+        "the output vectors.  \"Xvector\" is our term for a vector or\n"
+        "embedding which is the output of a particular type of neural network\n"
+        "architecture found in speaker recognition.  This architecture\n"
+        "consists of several layers that operate on frames, a statistics\n"
+        "pooling layer that aggregates over the frame-level representations\n"
+        "and possibly additional layers that operate on segment-level\n"
+        "representations.  The xvectors, are generally extracted from an\n"
+        "output layer after the statistics pooling layer.  By default, one\n"
+        "xvector is extracted directly from the set of features for each\n"
+        "utterance.  Optionally, xvectors are extracted from chunks of input\n"
+        "features and averaged, to produce a single vector.\n"
         "\n"
-        "Usage: nnet3-compute [options] <raw-nnet-in> <features-rspecifier> <vector-wspecifier>\n"
-        " e.g.: nnet3-compute final.raw scp:feats.scp ark:nnet_prediction.ark\n"
-        "See also: nnet3-compute-from-egs\n";
+        "Usage: nnet3-xvector-compute [options] <raw-nnet-in> "
+        "<features-rspecifier> <vector-wspecifier>\n"
+        "e.g.: nnet3-xvector-compute final.raw scp:feats.scp "
+        "ark:nnet_prediction.ark\n"
+        "See also: nnet3-compute\n";
 
     ParseOptions po(usage);
     Timer timer;
@@ -58,8 +100,8 @@ int main(int argc, char *argv[]) {
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Register("chunk-size", &chunk_size,
-      "Feature chunk size over which the xvector is computed.  "
-      "If not set, defaults to xvector-period.");
+      "If set, extracts xectors from specified chunk-size, and averages.  "
+      "If not set, extracts an xvector from all available features.");
 
     po.Read(argc, argv);
 
@@ -124,7 +166,6 @@ int main(int argc, char *argv[]) {
       Vector<BaseFloat> xvector_avg(xvector_dim, kSetZero);
       BaseFloat tot_weight = 0.0;
 
-      //Vector<BaseFloat> priors;
       // Iterate over the feature chunks.
       for (int32 chunk_indx = 0; chunk_indx < num_chunks; chunk_indx++) {
         // If we're nearing the end of the input, we may need to shift the
@@ -135,38 +176,9 @@ int main(int argc, char *argv[]) {
           continue;
         SubMatrix<BaseFloat> sub_features(features, chunk_indx * this_chunk_size, offset,
                                        0, feat_dim);
-        Vector<BaseFloat> xvector(xvector_dim);
+        Vector<BaseFloat> xvector;
         tot_weight += offset;
-
-        //DecodableNnetSimple nnet_computer(
-        //    opts, nnet, priors,
-        //    sub_features, &compiler,
-        //    NULL, NULL, 0);
-
-        // *****
-        ComputationRequest request;
-        request.need_model_derivative = false;
-        request.store_component_stats = false;
-        request.inputs.push_back(
-          IoSpecification("input", 0, sub_features.NumRows()));
-        IoSpecification output_spec;
-        output_spec.name = "output";
-        output_spec.has_deriv = false;
-        output_spec.indexes.resize(1);
-        request.outputs.resize(1);
-        request.outputs[0].Swap(&output_spec);
-        const NnetComputation *computation = compiler.Compile(request);
-        Nnet *nnet_to_update = NULL;  // we're not doing any update.
-        NnetComputer computer(NnetComputeOptions(), *computation,
-                        nnet, nnet_to_update);
-        CuMatrix<BaseFloat> input_feats_cu(sub_features);
-        computer.AcceptInput("input", &input_feats_cu);
-        computer.Run();
-        CuMatrix<BaseFloat> cu_output;
-        computer.GetOutputDestructive("output", &cu_output);
-        xvector.CopyFromVec(cu_output.Row(0));
-        // *****
-        //nnet_computer.GetOutputForFrame(0, &xvector);
+        RunNnetComputation(sub_features, nnet, &compiler, &xvector);
         xvector_avg.AddVec(offset, xvector);
       }
       xvector_avg.Scale(1.0 / tot_weight);
