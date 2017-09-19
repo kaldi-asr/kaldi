@@ -75,7 +75,12 @@ class Plda {
  public:
   Plda() { }
 
-
+  explicit Plda(const Plda &other):
+    mean_(other.mean_),
+    transform_(other.transform_),
+    psi_(other.psi_),
+    offset_(other.offset_) {
+  };
   /// Transforms an iVector into a space where the within-class variance
   /// is unit and between-class variance is diagonalized.  The only
   /// anticipated use of this function is to pre-transform iVectors
@@ -126,6 +131,11 @@ class Plda {
   /// psi_ were as a result very large.
   void SmoothWithinClassCovariance(double smoothing_factor);
 
+  /// Apply a transform to the PLDA model.  This is mostly used for
+  /// projecting the parameters of the model into a lower dimensional space,
+  /// typically for speaker diarization.
+  void ApplyTransform(const Matrix<double> &transform);
+
   int32 Dim() const { return mean_.Dim(); }
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
@@ -144,7 +154,7 @@ class Plda {
   Vector<double> offset_;  // derived variable: -1.0 * transform_ * mean_
 
  private:
-  KALDI_DISALLOW_COPY_AND_ASSIGN(Plda);
+  Plda &operator = (const Plda &other);
   /// This returns a normalization factor, which is a quantity we
   /// must multiply "transformed_ivector" by so that it has the length
   /// that it "should" have.  We assume "transformed_ivector" is an

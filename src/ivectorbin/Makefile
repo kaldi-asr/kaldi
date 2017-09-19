@@ -11,11 +11,13 @@ BINFILES = ivector-extractor-init ivector-extractor-acc-stats \
            ivector-normalize-length \
            ivector-transform ivector-compute-dot-products ivector-mean \
            ivector-compute-lda ivector-compute-plda \
-	   ivector-copy-plda compute-eer \
+           ivector-copy-plda compute-eer \
            ivector-subtract-global-mean ivector-plda-scoring \
            logistic-regression-train logistic-regression-eval \
            logistic-regression-copy create-split-from-vad \
-           ivector-extract-online ivector-adapt-plda
+           ivector-extract-online ivector-adapt-plda \
+           ivector-extract-dense ivector-plda-scoring-dense \
+           compute-calibration agglomerative-cluster
 
 OBJFILES =
 
