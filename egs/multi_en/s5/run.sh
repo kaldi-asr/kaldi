@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Copyright 2016  Allen Guo
-# Copyright 2017  Xiaohui Zhang
+#           2017  Xiaohui Zhang
 # Apache 2.0
 
 . ./cmd.sh
@@ -99,15 +99,15 @@ if [ $stage -le 3 ]; then
 fi
 
 # Prepare the dictionary and train G2P model using the combined (CMUDict+Tedlium+swbd) lexicon
-# in data/local/dict_combined, and then synthesize pronounciations for all words 
-# (that do not include special characters) across all training transcripts
-# that are not in the combind lexicon.
+# in data/local/dict_combined, and then synthesize pronounciations for all OOV words 
+# across all training transcripts.
 if [ $stage -le 4 ]; then
   # We prepare the dictionary in data/local/dict_combined.
   local/prepare_dict.sh
   local/g2p/train_g2p.sh --stage 0 --silence-phones "data/local/dict_combined/silence_phones.txt" data/local/dict_combined exp/g2p
   dict_dir=data/local/dict_nosp
-  cp -r data/local/dict_combined $dict_dir
+  mkdir -p $dict_dir
+  cp data/local/dict_combined/{extra_questions,nonsilence_phones,silence_phones,optional_silence}.txt $dict_dir
   local/g2p/apply_g2p.sh --var-counts 1 exp/g2p/model.fst data/local/g2p_phonetisarus data/local/dict_combined/lexicon.txt $dict_dir/lexicon.txt
 fi
 
@@ -119,7 +119,6 @@ lang_root=data/lang
 
 # prepare (and validate) lang directory
 if [ $stage -le 5 ]; then
-  rm -f ${dict_root}_nosp/lexiconp.txt  # will be created
   utils/prepare_lang.sh ${dict_root}_nosp "<unk>" data/local/tmp/lang_nosp ${lang_root}_nosp
 fi
 
@@ -131,6 +130,70 @@ if [ $stage -le 6 ]; then
   utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
     ${lang_root}_nosp data/local/lm/3gram-mincount/lm_unpruned.gz \
     ${dict_root}_nosp/lexicon.txt ${lang_root}_nosp_fsh_sw1_tg
+fi
+
+# make training features
+if [ $stage -le 7 ]; then
+  mfccdir=mfcc
+  corpora="hub4 fisher librispeech_100 librispeech_360 librispeech_500 swbd tedlium wsj"
+  for c in $corpora; do
+    data=data/$c/train
+    steps/make_mfcc.sh --mfcc-config conf/mfcc.conf \
+      --cmd "$train_cmd" --nj 40 \
+      $data exp/make_mfcc/$c/train || exit 1;
+    steps/compute_cmvn_stats.sh \
+      $data exp/make_mfcc/$c/train || exit 1;
+  done
+fi
+
+# fix and validate training data directories
+if [ $stage -le 8 ]; then
+  # create segments file for wsj
+  awk '{print $1, $1, 0, -1}' data/wsj/train/utt2spk > data/wsj/train/segments
+  for f in `awk '{print $5}' data/wsj/train/wav.scp`; do
+    head -c 1024 $f | grep sample_count | awk '{print $3/16000}'
+  done > wsj_durations
+  paste -d' ' <(cut -d' ' -f1-3 data/wsj/train/segments) wsj_durations > wsj_segments
+  mv data/wsj/train/segments{,.bkp}
+  mv wsj_segments data/wsj/train/segments
+  rm -f wsj_segments wsj_durations
+  # create segments files for librispeech
+  for c in librispeech_100 librispeech_360 librispeech_500; do
+    awk '{print $1, $1, 0, $2}' data/$c/train/utt2dur > data/$c/train/segments;
+  done
+  # get rid of spk2gender files because not all corpora have them
+  rm -f data/*/train/spk2gender
+  # create reco2channel_and_file files for wsj and librispeech
+  for c in wsj librispeech_100 librispeech_360 librispeech_500; do
+    awk '{print $1, $1, "A"}' data/$c/train/wav.scp > data/$c/train/reco2file_and_channel;
+  done
+  # apply standard fixes, then validate
+  for f in data/*/train; do
+    utils/fix_data_dir.sh $f
+    utils/validate_data_dir.sh $f
+  done
+fi
+
+# make test features
+if [ $stage -le 9 ]; then
+  mfccdir=mfcc
+  corpora="tedlium eval2000 rt03 librispeech"
+  for c in $corpora; do
+    data=data/$c/test
+    steps/make_mfcc.sh --mfcc-config conf/mfcc.conf \
+      --cmd "$train_cmd" --nj 20 \
+      $data exp/make_mfcc/$c/test || exit 1;
+    steps/compute_cmvn_stats.sh \
+      $data exp/make_mfcc/$c/test || exit 1;
+  done
+fi
+
+# fix and validate test data directories
+if [ $stage -le 10 ]; then
+  for f in data/*/test; do
+    utils/fix_data_dir.sh $f
+    utils/validate_data_dir.sh $f
+  done
 fi
 
 # train mono on swbd 10k short (nodup)
@@ -379,6 +442,7 @@ if [ $stage -le 23 ]; then
   )&
 fi
 
+# Re-train with the updated lexicon using the same data.
 lang=${lang_root}_${dict_affix}
 if [ $stage -le 24 ]; then
   steps/align_fmllr.sh --cmd "$train_cmd" --nj 100 \

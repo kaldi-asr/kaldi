@@ -1,6 +1,11 @@
 #!/bin/bash
 
-## This script trains a g2p model using Phonetisaurus
+# Copyright 2017  Intellisist, Inc. (Author: Navneeth K)
+#           2017  Xiaohui Zhang
+# Apache License 2.0
+
+# This script trains a g2p model using Phonetisaurus and SRILM.
+
 stage=0
 silence_phones=
 

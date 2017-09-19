@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # Copyright 2016  Allen Guo
+#           2017  Xiaohui Zhang
 # Apache License 2.0
 
 # This script normalizes the given "text" (transcript) file. The normalized result

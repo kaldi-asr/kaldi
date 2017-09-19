@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright 2016  Allen Guo
+#           2017  Xiaohui Zhang
 # Apache License 2.0
 
 # This script creates the data directories that will be used during training.

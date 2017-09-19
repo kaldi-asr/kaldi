@@ -1,12 +1,11 @@
 #!/bin/bash
-#
 
 # Copyright 2016  Allen Guo
-# Copyright 2017  Xiaohui Zhang
-
+#           2017  Xiaohui Zhang
+#           2017  Intellisist, Inc. (Author: Navneeth K)
 # Apache License 2.0
 
-# This script prepares data/local/dict_cmu_tedlium.
+# This script prepares data/local/dict_cmu_tedlium (combination of CMUDict and the TEDLIUM (Cantab) lexicon).
 # The top part of this file (up to lexicon1.txt) is based on egs/fisher_swbd/s5/local/fisher_swbd_prepare_dict.sh.
 # But we use cmudict-0.7b rather than cmudict.0.7a
 
@@ -51,7 +50,7 @@ patch -o $dir/lexicon2.txt $dir/lexicon1.txt local/dict.patch
 
 # Add prons for silence phones, and noise
 (echo "[sil] sil"; echo "[laughter] laughter"; echo "[noise] noise"; \
-  echo "<unk> oov"; echo "[vocalized-noise] oov";) | cat - $dir/lexicon2   .txt > $dir/lexicon3.txt
+  echo "<unk> oov"; echo "[vocalized-noise] oov";) | cat - $dir/lexicon2.txt > $dir/lexicon3.txt
 
 # Add in tedlium dict, if available
 if [ $# == 1 ]; then

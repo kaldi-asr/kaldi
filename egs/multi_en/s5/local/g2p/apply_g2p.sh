@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # Copyright 2016  Allen Guo
-# Copyright 2017  Xiaohui Zhang
-
+#           2017  Xiaohui Zhang
 # Apache License 2.0
 
 # This script applies a trained Phonetisarus G2P model to

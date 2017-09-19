@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Copyright 2017  Intellisist, Inc. (Author: Navneeth K)
+#           2017  Xiaohui Zhang
+# Apache License 2.0
+
 # This script first prepares switchboard lexicon and CMUDict + tedlium combined lexicon (refered as cmudict later on for simplicity).
 # Then it maps phones in switchboard lexicon to cmudict and merge these two lexicons to produce the final lexicon data/local/dict_combined.
 # After phone mapping, all alternative pronunciations from switchboard lexicon are included.
@@ -23,14 +27,14 @@ function filter_different {
 num_syms=0
 substitute_arg=""
 for i in "${replace_swbd_symbols[@]}"; do
- 	replace_symbol=${replace_cmudict_symbols[${num_syms}]}
-	if [ $num_syms -eq 0 ]; then
-                # ax appears twice together in "personably p er s ax ax n b l iy"
-        	substitute_arg=" sed 's: ${i} : ${replace_symbol} :g' |  sed 's: ${i} : ${replace_symbol} :g' | sed 's:${i}$:${replace_symbol}:g'" 
-   	else	
-        	substitute_arg=$substitute_arg" | sed 's: ${i} : ${replace_symbol} :g' | sed 's:${i}$:${replace_symbol}:g'"
-   	fi	
-        num_syms=$((num_syms+1))
+  replace_symbol=${replace_cmudict_symbols[${num_syms}]}
+  if [ $num_syms -eq 0 ]; then
+    # ax appears twice together in "personably p er s ax ax n b l iy"
+    substitute_arg=" sed 's: ${i} : ${replace_symbol} :g' |  sed 's: ${i} : ${replace_symbol} :g' | sed 's:${i}$:${replace_symbol}:g'" 
+  else	
+    substitute_arg=$substitute_arg" | sed 's: ${i} : ${replace_symbol} :g' | sed 's:${i}$:${replace_symbol}:g'"
+  fi	
+  num_syms=$((num_syms+1))
 done
 
 # Prepare switchboard lexicon
@@ -61,11 +65,11 @@ utils/filter_scp.pl --exclude ${dir}/lexicon_swbd_unique.txt \
 
 # Find words that have same pronounciation in both dictionaries - common lines
 filter_common ${cmudict_dir}/lexicon.txt \
-	${dir}/lexicon_swbd1.txt > ${dir}/lexicon_re_match_pron.txt || exit 1;
+  ${dir}/lexicon_swbd1.txt > ${dir}/lexicon_re_match_pron.txt || exit 1;
 
 # Find words in swbd lexicon that have different pronounciation from cmudict - different lines
 filter_different ${dir}/lexicon_re_match_pron.txt \
-	${dir}/lexicon_swbd1.txt > ${dir}/lexicon_swbd2.txt || exit 1;
+  ${dir}/lexicon_swbd1.txt > ${dir}/lexicon_swbd2.txt || exit 1;
 
 # Mapping phones from swbd phones to cmu phones for words above.
 echo "cat ${dir}/lexicon_swbd2.txt | $substitute_arg" > ${dir}/substitute.sh
@@ -73,15 +77,14 @@ bash ${dir}/substitute.sh > ${dir}/lexicon_swbd3.txt || exit 1;
 
 # lexicon_re_swbd4.txt contains lines that match after phone mapping
 filter_common ${cmudict_dir}/lexicon.txt \
-        ${dir}/lexicon_swbd3.txt > ${dir}/lexicon_re_swbd4.txt || exit 1;
+  ${dir}/lexicon_swbd3.txt > ${dir}/lexicon_re_swbd4.txt || exit 1;
 
 # lexicon_swbd4.txt contains lines that do not match after phone mapping (alternative pronunciations).
 filter_different ${cmudict_dir}/lexicon.txt \
-        ${dir}/lexicon_swbd3.txt > ${dir}/lexicon_swbd4.txt || exit 1;
+  ${dir}/lexicon_swbd3.txt > ${dir}/lexicon_swbd4.txt || exit 1;
 
 # Extract lines from cmudict that has the above words
-utils/filter_scp.pl ${dir}/lexicon_swbd4.txt \
-	${cmudict_dir}/lexicon.txt > ${dir}/lexicon_cmudict4.txt || exit 1; 
+utils/filter_scp.pl ${dir}/lexicon_swbd4.txt ${cmudict_dir}/lexicon.txt > ${dir}/lexicon_cmudict4.txt || exit 1; 
 
 # Writing to lexicon.txt
 cat ${dir}/lexicon_swbd4.txt ${dir}/lexicon_swbd_unique_cmuphones.txt ${cmudict_dir}/lexicon.txt | sort -u > ${dir}/lexicon.txt

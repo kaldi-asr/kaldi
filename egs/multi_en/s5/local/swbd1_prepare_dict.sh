@@ -86,7 +86,7 @@ cp conf/MSU_single_letter.txt $dir/
 local/swbd1_map_words.pl -f 1 $dir/lexicon2.txt | sort -u \
   > $dir/lexicon3.txt || exit 1;
 
-python local/format_acronyms_dict.py -i $dir/lexicon3.txt -o $dir/lexicon4.txt \
+python local/swbd_format_acronyms_dict.py -i $dir/lexicon3.txt -o $dir/lexicon4.txt \
   -L $dir/MSU_single_letter.txt -M $dir/acronyms_raw.map
 cat $dir/acronyms_raw.map | sort -u > $dir/acronyms.map
 
