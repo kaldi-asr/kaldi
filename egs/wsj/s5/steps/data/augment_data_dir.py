@@ -136,7 +136,7 @@ def main():
     input_dir = args.input_dir
     output_dir = args.output_dir
     num_bg_noises = map(int, args.num_bg_noises.split(":"))
-    utt2dur = ParseFileToDict(input_dir + "/reco2dur",
+    utt2dur = ParseFileToDict(input_dir + "/utt2dur",
         value_processor = lambda x: float(x[0]))
     wav_scp_file = open(input_dir + "/wav.scp", 'r').readlines()
 
@@ -149,7 +149,7 @@ def main():
     if args.bg_noise_dir:
         bg_noise_wav_filename = args.bg_noise_dir + "/wav.scp"
         bg_noise_utts, bg_noise_wavs = get_noise_list(bg_noise_wav_filename)
-        bg_noise_utt2dur = ParseFileToDict(args.bg_noise_dir + "/reco2dur",
+        bg_noise_utt2dur = ParseFileToDict(args.bg_noise_dir + "/utt2dur",
             value_processor = lambda x: float(x[0]))
         noise_wavs.update(bg_noise_wavs)
         noise_utt2dur.update(bg_noise_utt2dur)
@@ -157,9 +157,9 @@ def main():
     # Load background noises
     if args.fg_noise_dir:
         fg_noise_wav_filename = args.fg_noise_dir + "/wav.scp"
-        fg_noise_reco2dur_filename = args.fg_noise_dir + "/reco2dur"
+        fg_noise_utt2dur_filename = args.fg_noise_dir + "/utt2dur"
         fg_noise_utts, fg_noise_wavs = get_noise_list(fg_noise_wav_filename)
-        fg_noise_utt2dur = ParseFileToDict(args.fg_noise_dir + "/reco2dur",
+        fg_noise_utt2dur = ParseFileToDict(args.fg_noise_dir + "/utt2dur",
             value_processor = lambda x: float(x[0]))
         noise_wavs.update(fg_noise_wavs)
         noise_utt2dur.update(fg_noise_utt2dur)
