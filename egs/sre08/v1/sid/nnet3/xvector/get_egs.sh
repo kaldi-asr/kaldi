@@ -44,7 +44,6 @@ stage=0
 nj=6         # This should be set to the maximum number of jobs you are
              # comfortable to run in parallel; you can increase it if your disk
              # speed is greater and you have more machines.
-stage=0
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -86,8 +85,8 @@ if [ ! -f $data/feats.scp ]; then
   exit 1
 fi
 
-if [ ! -f $data/utt2len ]; then
-  feat-to-len scp:$data/feats.scp ark,t:$data/utt2len || exit 1;
+if [ ! -f $data/utt2num_frames ]; then
+  feat-to-len scp:$data/feats.scp ark,t:$data/utt2num_frames || exit 1;
 fi
 
 feat_dim=$(feat-to-dim scp:$data/feats.scp -) || exit 1
@@ -102,10 +101,10 @@ echo $min_frames_per_chunk > $dir/info/right_context
 echo '1' > $dir/info/frames_per_eg
 
 if [ $stage -le 0 ]; then
-  echo "$0: getting utt2len file"
-  # note: this utt2len file is only an approximation of the number of
+  echo "$0: getting utt2num_frames file"
+  # note: this utt2num_frames file is only an approximation of the number of
   # frames in each file.
-  cp $data/utt2len $dir/temp/utt2len
+  cp $data/utt2num_frames $dir/temp/utt2num_frames
 fi
 
 if [ $stage -le 1 ]; then
@@ -113,17 +112,17 @@ if [ $stage -le 1 ]; then
   # Pick a list of heldout utterances for validation egs
   awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_heldout_utts > $temp/valid_uttlist || exit 1;
   # The remaining utterances are used for training egs
-  utils/filter_scp.pl --exclude $temp/valid_uttlist $temp/utt2len > $temp/utt2len.train
-  utils/filter_scp.pl $temp/valid_uttlist $temp/utt2len > $temp/utt2len.valid
+  utils/filter_scp.pl --exclude $temp/valid_uttlist $temp/utt2num_frames > $temp/utt2num_frames.train
+  utils/filter_scp.pl $temp/valid_uttlist $temp/utt2num_frames > $temp/utt2num_frames.valid
   # Pick a subset of the training list for diagnostics
-  awk '{print $1}' $temp/utt2len.train | utils/shuffle_list.pl | head -$num_heldout_utts > $temp/train_subset_uttlist || exit 1;
-  utils/filter_scp.pl $temp/train_subset_uttlist <$temp/utt2len.train > $temp/utt2len.train_subset
+  awk '{print $1}' $temp/utt2num_frames.train | utils/shuffle_list.pl | head -$num_heldout_utts > $temp/train_subset_uttlist || exit 1;
+  utils/filter_scp.pl $temp/train_subset_uttlist <$temp/utt2num_frames.train > $temp/utt2num_frames.train_subset
   # Create a mapping from utterance to speaker ID (an integer)
   awk -v id=0 '{print $1, id++}' $data/spk2utt > $temp/spk2int
   utils/sym2int.pl -f 2 $temp/spk2int $data/utt2spk > $temp/utt2int
-  utils/filter_scp.pl $temp/utt2len.train $temp/utt2int > $temp/utt2int.train
-  utils/filter_scp.pl $temp/utt2len.valid $temp/utt2int > $temp/utt2int.valid
-  utils/filter_scp.pl $temp/utt2len.train_subset $temp/utt2int > $temp/utt2int.train_subset
+  utils/filter_scp.pl $temp/utt2num_frames.train $temp/utt2int > $temp/utt2int.train
+  utils/filter_scp.pl $temp/utt2num_frames.valid $temp/utt2int > $temp/utt2int.valid
+  utils/filter_scp.pl $temp/utt2num_frames.train_subset $temp/utt2int > $temp/utt2int.train_subset
 fi
 
 num_pdfs=$(awk '{print $2}' $temp/utt2int | sort | uniq -c | wc -l)
@@ -133,8 +132,8 @@ train_subset_feats="scp,s,cs:utils/filter_scp.pl $temp/train_subset_ranges.1 $da
 valid_feats="scp,s,cs:utils/filter_scp.pl $temp/valid_ranges.1 $data/feats.scp |"
 
 # first for the training data... work out how many archives.
-num_train_frames=$(awk '{n += $2} END{print n}' <$temp/utt2len.train)
-num_train_subset_frames=$(awk '{n += $2} END{print n}' <$temp/utt2len.train_subset)
+num_train_frames=$(awk '{n += $2} END{print n}' <$temp/utt2num_frames.train)
+num_train_subset_frames=$(awk '{n += $2} END{print n}' <$temp/utt2num_frames.train_subset)
 
 echo $num_train_frames >$dir/info/num_frames
 num_train_archives=$[($num_train_frames*$num_repeats)/$frames_per_iter + 1]
@@ -166,7 +165,7 @@ if [ $stage -le 3 ]; then
       --max-frames-per-chunk=$max_frames_per_chunk \
       --frames-per-iter=$frames_per_iter \
       --num-archives=$num_train_archives --num-jobs=$nj \
-      --utt2len-filename=$dir/temp/utt2len.train \
+      --utt2len-filename=$dir/temp/utt2num_frames.train \
       --utt2int-filename=$dir/temp/utt2int.train --egs-dir=$dir  || exit 1
 
   echo "$0: allocating training subset examples"
@@ -179,7 +178,7 @@ if [ $stage -le 3 ]; then
       --randomize-chunk-length false \
       --frames-per-iter=$frames_per_iter_diagnostic \
       --num-archives=$num_diagnostic_archives --num-jobs=1 \
-      --utt2len-filename=$dir/temp/utt2len.train_subset \
+      --utt2len-filename=$dir/temp/utt2num_frames.train_subset \
       --utt2int-filename=$dir/temp/utt2int.train_subset --egs-dir=$dir  || exit 1
 
   echo "$0: allocating validation examples"
@@ -192,11 +191,12 @@ if [ $stage -le 3 ]; then
       --randomize-chunk-length false \
       --frames-per-iter=$frames_per_iter_diagnostic \
       --num-archives=$num_diagnostic_archives --num-jobs=1 \
-      --utt2len-filename=$dir/temp/utt2len.valid \
+      --utt2len-filename=$dir/temp/utt2num_frames.valid \
       --utt2int-filename=$dir/temp/utt2int.valid --egs-dir=$dir  || exit 1
 fi
 
-# Might want to put an exit 1 command here and look at exp/$dir/temp/ranges.* before deciding if you want to continue to the next stage.
+# You want to put an exit 1 command here and look at exp/$dir/temp/ranges.*
+# before deciding if you want to continue to the next stage.
 if [ $stage -le 4 ]; then
   echo "$0: Generating training examples on disk"
   rm $dir/.error 2>/dev/null
