@@ -18,7 +18,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "rnnlm/kaldi-rnnlm-decodable-simple-looped.h"
+#include "rnnlm/rnnlm-decodable-simple-looped.h"
 #include "nnet3/nnet-utils.h"
 #include "nnet3/nnet-compile-looped.h"
 
@@ -79,7 +79,7 @@ DecodableRnnlmSimpleLooped::DecodableRnnlmSimpleLooped(
     // since everytime we provide one chunk to the decodable object, the size of
     // feats_ == frames_per_chunk
     feats_(info_.frames_per_chunk,
-           info_.word_embedding_mat.NumRows()), // or Cols()? TODO(hxu)
+           info_.word_embedding_mat.NumRows()), // or Cols()? TODO(hxu), should be vocab size
     current_log_post_offset_(-1)
 {
   num_frames_ = feats_.NumRows();

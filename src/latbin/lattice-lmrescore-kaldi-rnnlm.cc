@@ -23,8 +23,9 @@
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
-#include "rnnlm/kaldi-rnnlm-rescoring.h"
+#include "rnnlm/rnnlm-lattice-rescoring.h"
 #include "util/common-utils.h"
+#include "nnet3/nnet-utils.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -61,15 +62,16 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string lats_rspecifier, rnn_wordlist,
+    std::string lats_rspecifier, rnn_wordlist, word_embedding_rxfilename,
         word_symbols_rxfilename, rnnlm_rxfilename, lats_wspecifier;
-    KALDI_ASSERT (po.NumArgs() == 5);
+    KALDI_ASSERT (po.NumArgs() == 6);
 
     rnn_wordlist = po.GetArg(1);
     word_symbols_rxfilename = po.GetArg(2);
     lats_rspecifier = po.GetArg(3);
     rnnlm_rxfilename = po.GetArg(4);
-    lats_wspecifier = po.GetArg(5);
+    word_embedding_rxfilename = po.GetArg(5);
+    lats_wspecifier = po.GetArg(6);
 
     // Reads the language model.
     kaldi::nnet3::Nnet rnnlm;
