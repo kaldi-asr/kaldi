@@ -1,4 +1,8 @@
 #!/usr/bin/perl -w
+
+# Copyright 2017 John Morgan
+# Apache 2.0.
+
 # heroico_recordings_copy_wav_files.pl - copy and convert   wav files to 16000hz 
 # writes files under data/local/tmp/heroico/wavs
 

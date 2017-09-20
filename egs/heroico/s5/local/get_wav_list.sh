@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright 2017 John Morgan
+# Apache 2.0.
+
 dir=$1
 
 # heroico
