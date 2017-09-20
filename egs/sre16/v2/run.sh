@@ -4,6 +4,8 @@
 #
 # See README.txt for more info on data required.
 # Results (EERs) are inline in comments below.
+# 
+# NOTE! This script is still unfinished
 
 . cmd.sh
 . path.sh
