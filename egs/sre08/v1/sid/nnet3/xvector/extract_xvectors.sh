@@ -16,6 +16,7 @@ chunk_size=-1 # If the chunk size over which the embedding is extracted.
               # frames and average to get a single embedding.  By default,
               # this is -1, which means that we use the entire utterance
               # to extract the embedding.
+stage=0
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -70,10 +71,9 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-  # Be careful here: the speaker-level iVectors are now length-normalized,
-  # even if they are otherwise the same as the utterance-level ones.
+  # Average the utterance-level xvectors to get speaker-level xvectors.
   echo "$0: computing mean of xvectors for each speaker"
   $cmd $dir/log/speaker_mean.log \
-    ivector-mean ark:$data/spk2utt scp:$dir/xvector.scp ark:- ark,t:$dir/num_utts.ark \| \
-    ark,scp:$dir/spk_xvector.ark,$dir/spk_xvector.scp || exit 1;
+    ivector-mean ark:$data/spk2utt scp:$dir/xvector.scp \
+    ark,scp:$dir/spk_xvector.ark,$dir/spk_xvector.scp ark,t:$dir/num_utts.ark || exit 1;
 fi
