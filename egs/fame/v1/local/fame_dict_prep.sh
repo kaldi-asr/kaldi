@@ -7,7 +7,7 @@
 
 corpus=$1
 if [ -z "$corpus" ] ; then
-    echo >&2 "The script $0 expects one parameter -- the location of the FAME! speech corpus"
+    echo >&2 "The script $0 expects one parameter -- the location of the FAME speech corpus"
     exit 1
 fi
 if [ ! -d "$corpus" ] ; then
@@ -15,7 +15,6 @@ if [ ! -d "$corpus" ] ; then
 fi
 
 mkdir -p data/lang data/local/dict
-
 
 cat $corpus/lexicon/lex.asr $corpus/lexicon/lex.oov > data/local/dict/lexicon.txt
 echo "!SIL	SIL" >> data/local/dict/lexicon.txt
