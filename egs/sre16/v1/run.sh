@@ -107,8 +107,9 @@ fi
 # noise, music, and babble, and combined it with the clean SRE
 # data.  The combined list will be used to train the PLDA model.
 if [ $stage -le 4 ]; then
-  local/get_dur.sh --nj 40 --cmd "$train_cmd" \
-    data/sre exp/make_aug
+  utils/data/get_utt2num_frames.sh --nj 40 --cmd "$train_cmd" data/sre
+  frame_shift=0.01
+  awk -v frame_shift=$frame_shift '{print $1, $2*frame_shift;}' data/sre/utt2num_frames > data/sre/reco2dur
 
   if [ ! -d "RIRS_NOISES" ]; then
     # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
@@ -142,12 +143,10 @@ if [ $stage -le 4 ]; then
 
   # Get the duration of the MUSAN recordings.  This will be used by the
   # script augment_data_dir.py.
-  local/get_dur.sh --nj 40 --cmd "$train_cmd" \
-    data/musan_speech exp/make_aug
-  local/get_dur.sh --nj 40 --cmd "$train_cmd" \
-    data/musan_noise exp/make_aug
-  local/get_dur.sh --nj 40 --cmd "$train_cmd" \
-    data/musan_music exp/make_aug
+  for name in speech noise music; do
+    utils/data/get_utt2dur.sh data/musan_${name}
+    mv data/musan_${name}/utt2dur data/musan_${name}/reco2dur
+  done
 
   # Augment with musan_noise
   python steps/data/augment_data_dir.py --utt-suffix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/sre data/sre_noise
