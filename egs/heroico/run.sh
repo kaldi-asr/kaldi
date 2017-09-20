@@ -185,7 +185,7 @@ if [ $stage -le 3 ]; then
 	fi
 
 	steps/make_mfcc.sh \
-	    --cmd run.pl \
+	    --cmd "$train_cmd" \
 	    --nj 4 \
 	    data/$fld \
 	    exp/make_mfcc/$fld \
@@ -266,7 +266,7 @@ if [ $stage -le 5 ]; then
         echo "monophone training"
     steps/train_mono.sh \
 	--nj 4 \
-	--cmd run.pl \
+	--cmd "$train_cmd" \
 	data/train \
 	data/lang \
 	exp/mono || exit 1;
@@ -274,7 +274,7 @@ if [ $stage -le 5 ]; then
     # align with monophones
     steps/align_si.sh \
 	--nj 8 \
-	--cmd run.pl \
+	--cmd "$train_cmd" \
 	data/train \
 	data/lang \
 	exp/mono \
@@ -284,7 +284,7 @@ fi
 if [ $stage -le 6 ]; then
     echo "Starting  triphone training in exp/tri1"
     steps/train_deltas.sh \
-	--cmd run.pl \
+	--cmd "$train_cmd" \
 	--cluster-thresh 100 \
 	1500 \
 	25000 \
@@ -296,7 +296,7 @@ if [ $stage -le 6 ]; then
     # align with triphones
     steps/align_si.sh \
 	--nj 8 \
-	--cmd run.pl \
+	--cmd "$train_cmd" \
 	data/train \
 	data/lang \
 	exp/tri1 \
@@ -318,7 +318,7 @@ if [ $stage -le 7 ]; then
     steps/align_si.sh \
 	--use-graphs true \
 	--nj 8 \
-	--cmd run.pl \
+	--cmd "$train_cmd" \
 	data/train \
 	data/lang \
 	exp/tri2b \
@@ -326,7 +326,7 @@ if [ $stage -le 7 ]; then
 
     echo "Starting (SAT) triphone training in exp/tri3b"
     steps/train_sat.sh \
-	--cmd run.pl \
+	--cmd "$train_cmd" \
 	3100 \
 	50000 \
 	data/train \
@@ -338,7 +338,7 @@ if [ $stage -le 7 ]; then
     echo "Starting exp/tri3b_ali"
     steps/align_fmllr.sh \
 	--nj 8 \
-	--cmd run.pl \
+	--cmd "$train_cmd" \
 	data/train \
 	data/lang \
 	exp/tri3b \
@@ -412,7 +412,7 @@ if [ $stage -le 9 ]; then
     for x in native nonnative test; do
 	steps/decode_fmllr.sh \
 	--nj 8 \
-	--cmd run.pl \
+	--cmd "$decode_cmd" \
         exp/tri3b/graph \
 	data/$x \
         exp/tri3b/decode_${x}
