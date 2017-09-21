@@ -226,9 +226,11 @@ if [ $stage -le 7 ]; then
     "ark:ivector-subtract-global-mean exp/ivectors_sre16_major/mean.vec scp:exp/ivectors_sre16_eval_test/ivector.scp ark:- | transform-vec exp/ivectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
     "cat '$sre16_trials' | cut -d\  --fields=1,2 |" exp/scores/sre16_eval_scores || exit 1;
 
-  pooled_eer=`compute-eer <(python local/prepare_for_eer.py $sre16_trials exp/scores/sre16_eval_scores)  2> /dev/null`
-  tgl_eer=`compute-eer <(python local/prepare_for_eer.py $sre16_trials_tgl exp/scores/sre16_eval_scores)  2> /dev/null`
-  yue_eer=`compute-eer <(python local/prepare_for_eer.py $sre16_trials_yue exp/scores/sre16_eval_scores)  2> /dev/null`
+  utils/filter_scp.pl $sre16_trials_tgl exp/scores/sre16_eval_scores > exp/scores/sre16_eval_tgl_scores
+  utils/filter_scp.pl $sre16_trials_yue exp/scores/sre16_eval_scores > exp/scores/sre16_eval_yue_scores
+  pooled_eer=$(paste $sre16_trials exp/scores/sre16_eval_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
+  tgl_eer=$(paste $sre16_trials_tgl exp/scores/sre16_eval_tgl_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
+  yue_eer=$(paste $sre16_trials_yue exp/scores/sre16_eval_yue_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   echo "EER: Pooled ${pooled_eer}%, Tagalog ${tgl_eer}%, Cantonese ${yue_eer}%"
   # EER: Pooled 13.65%, Tagalog 17.73%, Cantonese 9.612%
 fi

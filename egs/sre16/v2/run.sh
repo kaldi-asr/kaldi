@@ -209,7 +209,7 @@ if [ $stage -le 7 ]; then
     $nnet_dir data/sre16_major \
     exp/xvectors_sre16_major
 
-  # Extract i-vectors for SRE data (includes Mixer 6). We'll use this for
+  # Extract xvectors for SRE data (includes Mixer 6). We'll use this for
   # things like LDA or PLDA.
   sid/nnet3/xvector/extract_xvectors.sh --cmd "$train_cmd --mem 12G" --nj 40 \
     $nnet_dir data/sre_combined \
@@ -227,7 +227,7 @@ if [ $stage -le 7 ]; then
 fi
 
 if [ $stage -le 8 ]; then
-  # Compute the mean vector for centering the evaluation i-vectors.
+  # Compute the mean vector for centering the evaluation xvectors.
   $train_cmd exp/xvectors_sre16_major/log/compute_mean.log \
     ivector-mean scp:exp/xvectors_sre16_major/ivector.scp \
     exp/xvectors_sre16_major/mean.vec || exit 1;
@@ -255,9 +255,11 @@ if [ $stage -le 9 ]; then
     "ark:ivector-subtract-global-mean exp/xvectors_sre16_major/mean.vec scp:exp/xvectors_sre16_eval_test/ivector.scp ark:- | transform-vec exp/xvectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
     "cat '$sre16_trials' | cut -d\  --fields=1,2 |" exp/scores/sre16_eval_scores || exit 1;
 
-  pooled_eer=`compute-eer <(python local/prepare_for_eer.py $sre16_trials exp/scores/sre16_eval_scores)  2> /dev/null`
-  tgl_eer=`compute-eer <(python local/prepare_for_eer.py $sre16_trials_tgl exp/scores/sre16_eval_scores)  2> /dev/null`
-  yue_eer=`compute-eer <(python local/prepare_for_eer.py $sre16_trials_yue exp/scores/sre16_eval_scores)  2> /dev/null`
+  utils/filter_scp.pl $sre16_trials_tgl exp/scores/sre16_eval_scores > exp/scores/sre16_eval_tgl_scores
+  utils/filter_scp.pl $sre16_trials_yue exp/scores/sre16_eval_scores > exp/scores/sre16_eval_yue_scores
+  pooled_eer=$(paste $sre16_trials exp/scores/sre16_eval_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
+  tgl_eer=$(paste $sre16_trials_tgl exp/scores/sre16_eval_tgl_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
+  yue_eer=$(paste $sre16_trials_yue exp/scores/sre16_eval_yue_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   echo "EER: Pooled ${pooled_eer}%, Tagalog ${tgl_eer}%, Cantonese ${yue_eer}%"
   # EER: Pooled x.xx%, Tagalog x.xx%, Cantonese x.xx%
   # For reference, here's the ivector system from ../v1:
