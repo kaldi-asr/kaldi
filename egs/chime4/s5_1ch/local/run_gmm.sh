@@ -98,7 +98,7 @@ if [ $stage -le 4 ]; then
   steps/align_si.sh --boost-silence 1.25 --nj $nj2 --cmd "$train_cmd" \
     data/tr05_multi_${train} data/lang exp/mono0a_tr05_multi_${train} exp/mono0a_ali_tr05_multi_${train}
 
-  # training triphone model with lad mllt features
+  # training triphone model with lda mllt features
   steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
     2000 10000 data/tr05_multi_${train} data/lang exp/mono0a_ali_tr05_multi_${train} exp/tri1_tr05_multi_${train}
   steps/align_si.sh --nj $nj2 --cmd "$train_cmd" \

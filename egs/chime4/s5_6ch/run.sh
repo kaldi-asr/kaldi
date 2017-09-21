@@ -28,6 +28,11 @@ set -o pipefail
 chime4_data=`pwd`/../..
 # Otherwise, please specify it, e.g.,
 chime4_data=/db/laputa1/data/processed/public/CHiME4
+
+case $(hostname -d) in
+  clsp.jhu.edu) chime4_data=/export/corpora4/CHiME4/CHiME3 ;; # JHU,
+esac 
+
 if [ ! -d $chime4_data ]; then
   echo "$chime4_data does not exist. Please specify chime4 data root correctly" && exit 1
 fi
