@@ -58,7 +58,7 @@ if [ $stage -le 0 ]; then
   rm ${dir}/data/text/* 2>/dev/null || true
   
   # Using LOB and brown corpus.
-  cat data/download/lobcorpus/0167/download/LOB_COCOA/lob.txt > ${dir}/data/text/text.txt
+  cat data/download/lobcorpus/0167/download/LOB_COCOA/output > ${dir}/data/text/text.txt
   cat data/download/browncorpus/brown.txt >> ${dir}/data/text/text.txt
 
   # use a subset of the annotated training data as the dev set .
@@ -80,9 +80,11 @@ if [ $stage -le 0 ]; then
   cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
 
   # get wordlist
-  cat data/train/dict/lexicon.txt > data/val_1/dict/lexicon_copy.txt
-  cat data/val_1/dict/lexicon.txt >> data/val_1/dict/lexicon_copy.txt
-  awk '{print $1}' data/val_1/dict/lexicon_copy.txt | sort | uniq > ${dir}/data/wordlist
+  # cat data/train/dict/lexicon.txt > data/val_1/dict/lexicon_copy.txt
+  # cat data/val_1/dict/lexicon.txt >> data/val_1/dict/lexicon_copy.txt
+  # awk '{print $1}' data/val_1/dict/lexicon_copy.txt | sort | uniq > ${dir}/data/wordlist
+  cat ${dir}/data/text/text.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+  awk '{print $2}' ${dir}/data/word_count > ${dir}/data/wordlist
 fi
 
 order=3
