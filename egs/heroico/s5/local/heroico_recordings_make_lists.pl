@@ -3,7 +3,7 @@
 # Copyright 2017 John Morgan
 # Apache 2.0.
 
-# heroico_recordings_make_lists.pl - copy make acoustic model training lists
+# heroico_recordings_make_lists.pl - make acoustic model training lists
 
 use strict;
 use warnings;
@@ -71,7 +71,7 @@ open my $T, '+>', $t or croak "problem with $t $!";
 	 croak "$line";
      }
 
-     print $O "$rid /$s/$rid sox -r 22050 -e signed -b 16 $line -r 16000 -t wav - |\n";
+     print $O "$rid sox -r 22050 -e signed -b 16 $line -r 16000 -t wav - |\n";
 	print $U "$rid\t${s}_r\n";
 }
 close $T;
