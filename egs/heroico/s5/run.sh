@@ -1,7 +1,7 @@
 #!/bin/bash 
 
 . ./cmd.sh
-. ./path.sh
+#. ./path.sh
 stage=0
 
 . ./utils/parse_options.sh
@@ -11,7 +11,7 @@ set -o pipefail
 set u
 
 # the location of the LDC corpus
-datadir=/mnt/corpora/LDC2006S37/data
+datadir=/Users/jjm/work/kaldi/egs/heroico/LDC2006S37/data
 
 # acoustic models are trained on the heroico corpus
 # testing is done on the usma corpus
@@ -35,14 +35,14 @@ if [ $stage -le 0 ]; then
     local/get_wav_list.sh \
 	$datadir
 
-    # copy waveform data and make separate lists for heroico answers and recordings 
-    local/heroico_answers_copy_wav_files.pl \
+    # make separate lists for heroico answers and recordings 
+    local/heroico_answers_make_lists.pl \
 	$answers_transcripts
 
     utils/fix_data_dir.sh \
 	$tmpdir/heroico/answers
 
-    local/heroico_recordings_copy_wav_files.pl \
+    local/heroico_recordings_make_lists.pl \
     	$recordings_transcripts
 
     utils/fix_data_dir.sh \
@@ -65,6 +65,9 @@ if [ $stage -le 0 ]; then
 
     utils/fix_data_dir.sh \
 	$tmpdir/heroico/lists
+fi
+exit
+if [ $stage -le 1 ]; then
 
     # copy waveform data and make separate lists for usma native and nonnative
     local/usma_native_copy_wav_files.pl \
@@ -157,9 +160,7 @@ if [ $stage -le 0 ]; then
 	utils/fix_data_dir.sh \
 	    data/$n
     done
-fi
 
-if [ $stage -le 1 ]; then
     # prepare a dictionary
     mkdir -p data/local/dict
 
