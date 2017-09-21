@@ -66,18 +66,20 @@ if [ $stage -le 0 ]; then
     utils/fix_data_dir.sh \
 	$tmpdir/heroico/lists
 fi
-exit
+
 if [ $stage -le 1 ]; then
-
-    # copy waveform data and make separate lists for usma native and nonnative
-    local/usma_native_copy_wav_files.pl \
+    #  make separate lists for usma native and nonnative
+    local/usma_native_make_lists.pl \
 	$usma_transcripts
 
-    local/usma_nonnative_copy_wav_files.pl \
+    local/usma_nonnative_make_lists.pl \
 	$usma_transcripts
+
     for n in native nonnative; do
 	mkdir -p $tmpdir/usma/$n/lists
 
+	export LC_ALL=C
+	
 	for x in wav.scp utt2spk text; do
 	    sort \
 		$tmpdir/usma/$n/$x \
@@ -115,7 +117,6 @@ if [ $stage -le 1 ]; then
 
     utils/fix_data_dir.sh \
 	data/train
-
 
 # make testing  lists
 
@@ -160,14 +161,14 @@ if [ $stage -le 1 ]; then
 	utils/fix_data_dir.sh \
 	    data/$n
     done
-
+fi
+exit
+if [ $stage -le 2 ]; then
     # prepare a dictionary
     mkdir -p data/local/dict
 
     local/prepare_dict.sh
-fi
 
-if [ $stage -le 2 ]; then
     # prepare the lang directory
     utils/prepare_lang.sh \
 	data/local/dict \
