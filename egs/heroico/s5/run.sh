@@ -1,7 +1,8 @@
 #!/bin/bash 
 
 . ./cmd.sh
-#. ./path.sh
+
+. ./path.sh
 stage=0
 
 . ./utils/parse_options.sh
@@ -79,7 +80,7 @@ if [ $stage -le 1 ]; then
 	mkdir -p $tmpdir/usma/$n/lists
 
 	export LC_ALL=C
-	
+
 	for x in wav.scp utt2spk text; do
 	    sort \
 		$tmpdir/usma/$n/$x \
@@ -162,7 +163,7 @@ if [ $stage -le 1 ]; then
 	    data/$n
     done
 fi
-exit
+
 if [ $stage -le 2 ]; then
     # prepare a dictionary
     mkdir -p data/local/dict
