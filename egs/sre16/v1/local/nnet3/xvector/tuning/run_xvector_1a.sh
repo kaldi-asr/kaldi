@@ -101,6 +101,9 @@ EOF
       --xconfig-file $nnet_dir/configs/network.xconfig \
       --config-dir $nnet_dir/configs/
   cp $nnet_dir/configs/final.config $nnet_dir/nnet.config
+
+  # This is where the xvectors will be extracted from
+  echo "output-node name=output input=tdnn6.affine" > $nnet_dir/extract.config
 fi
 
 dropout_schedule='0,0@0.20,0.1@0.50,0'

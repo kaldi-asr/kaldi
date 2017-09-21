@@ -1,5 +1,7 @@
 #!/bin/bash
-#
+# Copyright      2017   David Snyder
+#                2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
+#                2017   Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0.
 #
 # See README.txt for more info on data required.
@@ -11,13 +13,13 @@ set -e
 fbankdir=`pwd`/fbank
 vaddir=`pwd`/fbank
 
-# SRE16 trials
+# SRE1 trials
 sre16_trials=data/sre16_eval_test/trials
 sre16_trials_tgl=data/sre16_eval_test/trials_tgl
 sre16_trials_yue=data/sre16_eval_test/trials_yue
 nnet_dir=exp/xvector_nnet_1a
 
-stage=6
+stage=0
 if [ $stage -le 0 ]; then
   # Path to some, but not all of the training corpora
   data_root=/export/corpora/LDC
@@ -153,6 +155,12 @@ if [ $stage -le 2 ]; then
   # Combine the clean and augmented SWBD+SRE list.  This is now roughly
   # double the size of the original clean list.
   utils/combine_data.sh data/swbd_sre_combined data/swbd_sre_aug_128k data/swbd_sre
+
+  # Filter out the clean + augmented portion of the SRE list.  This will be used to
+  # train the PLDA model later in the script.
+  cp -r data/swbd_sre_combined data/sre_combined
+  utils/filter_scp.pl data/sre/spk2utt data/swbd_sre_combined/spk2utt | utils/spk2utt_to_utt2spk.pl > data/sre_combined/utt2spk
+  utils/fix_data_dir.sh data/sre_combined
 fi
 
 # Now we compute the features needed for xvector training.  This consists of
@@ -187,6 +195,69 @@ if [ $stage -le 3 ]; then
   utils/fix_data_dir.sh data/swbd_sre_combined_no_sil
 fi
 
-local/nnet3/xvector/run_xvector.sh --stage $stage --train-stage 16 \
+local/nnet3/xvector/run_xvector.sh --stage $stage --train-stage -1 \
   --data data/swbd_sre_combined_no_sil --nnet-dir $nnet_dir \
   --egs-dir $nnet_dir/egs
+
+if [ $stage -le 7 ]; then
+  # The SRE16 major is an unlabeled dataset consisting of Cantonese and
+  # and Tagalog.  This is useful for things like centering, whitening and
+  # score normalization.
+  sid/nnet3/xvector/extract_xvectors.sh --cmd "$train_cmd --mem 6G" --nj 40 \
+    $nnet_dir data/sre16_major \
+    exp/xvectors_sre16_major
+
+  # Extract i-vectors for SRE data (includes Mixer 6). We'll use this for
+  # things like LDA or PLDA.
+  sid/nnet3/xvector/extract_xvectors.sh --cmd "$train_cmd --mem 12G" --nj 40 \
+    $nnet_dir data/sre_combined \
+    exp/xvectors_sre_combined
+
+  # The SRE16 test data
+  sid/nnet3/xvector/extract_xvectors.sh --cmd "$train_cmd --mem 6G" --nj 40 \
+    $nnet_dir data/sre16_eval_test \
+    exp/xvectors_sre16_eval_test
+
+  # The SRE16 enroll data
+  sid/nnet3/xvector/extract_xvectors.sh --cmd "$train_cmd --mem 6G" --nj 40 \
+    $nnet_dir data/sre16_eval_enroll \
+    exp/xvectors_sre16_eval_enroll
+fi
+
+if [ $stage -le 8 ]; then
+  # Compute the mean vector for centering the evaluation i-vectors.
+  $train_cmd exp/xvectors_sre16_major/log/compute_mean.log \
+    ivector-mean scp:exp/xvectors_sre16_major/ivector.scp \
+    exp/xvectors_sre16_major/mean.vec || exit 1;
+
+  # This script uses LDA to decrease the dimensionality prior to PLDA.
+  lda_dim=150
+  $train_cmd exp/xvectors_sre_combined/log/lda.log \
+    ivector-compute-lda --total-covariance-factor=0.0 --dim=$lda_dim \
+    "ark:ivector-subtract-global-mean scp:exp/xvectors_sre_combined/ivector.scp ark:- |" \
+    ark:data/sre_combined/utt2spk exp/xvectors_sre_combined/transform.mat || exit 1;
+
+  #  Train the PLDA model.
+  $train_cmd exp/xvectors_sre_combined/log/plda.log \
+    ivector-compute-plda ark:data/sre_combined/spk2utt \
+    "ark:ivector-subtract-global-mean scp:exp/xvectors_sre_combined/ivector.scp ark:- | transform-vec exp/xvectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:-  ark:- |" \
+    exp/xvectors_sre_combined/plda || exit 1;
+fi
+
+if [ $stage -le 9 ]; then
+  $train_cmd exp/scores/log/sre16_eval_scoring.log \
+    ivector-plda-scoring --normalize-length=true \
+    --num-utts=ark:exp/xvectors_sre16_eval_enroll/num_utts.ark \
+    "ivector-copy-plda --smoothing=0.0 exp/xvectors_sre_combined/plda - |" \
+    "ark:ivector-mean ark:data/sre16_eval_enroll/spk2utt scp:exp/xvectors_sre16_eval_enroll/ivector.scp ark:- | ivector-subtract-global-mean exp/xvectors_sre16_major/mean.vec ark:- ark:- | transform-vec exp/xvectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-subtract-global-mean exp/xvectors_sre16_major/mean.vec scp:exp/xvectors_sre16_eval_test/ivector.scp ark:- | transform-vec exp/xvectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "cat '$sre16_trials' | cut -d\  --fields=1,2 |" exp/scores/sre16_eval_scores || exit 1;
+
+  pooled_eer=`compute-eer <(python local/prepare_for_eer.py $sre16_trials exp/scores/sre16_eval_scores)  2> /dev/null`
+  tgl_eer=`compute-eer <(python local/prepare_for_eer.py $sre16_trials_tgl exp/scores/sre16_eval_scores)  2> /dev/null`
+  yue_eer=`compute-eer <(python local/prepare_for_eer.py $sre16_trials_yue exp/scores/sre16_eval_scores)  2> /dev/null`
+  echo "EER: Pooled ${pooled_eer}%, Tagalog ${tgl_eer}%, Cantonese ${yue_eer}%"
+  # EER: Pooled x.xx%, Tagalog x.xx%, Cantonese x.xx%
+  # For reference, here's the ivector system from ../v1:
+  # EER: Pooled 13.65%, Tagalog 17.73%, Cantonese 9.612%
+fi
