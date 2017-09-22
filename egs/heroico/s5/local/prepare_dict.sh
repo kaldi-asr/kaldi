@@ -5,7 +5,7 @@
 
 set -o errexit
 
-[ -f path.sh ] && . path.sh  # Sets the PATH to contain necessary executables
+[ -f ./path.sh ] && . ./path.sh
 
 wget http://www.openslr.org/resources/34/santiago.tar.gz
 
