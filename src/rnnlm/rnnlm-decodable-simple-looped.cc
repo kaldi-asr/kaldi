@@ -156,8 +156,8 @@ void DecodableRnnlmSimpleLooped::AdvanceChunk() {
 //  CuMatrix<BaseFloat> new_input(feats_chunk.NumRows(), input_layer->OutputDim());
 //  input_layer->Propagate(feats_chunk, &new_input);
 
-  CuMatrix<BaseFloat> input_embeddings(1, info_.word_embedding_mat.NumRows(), kUndefined);
-  input_embeddings.Row(0).CopyFromVec(info_.word_embedding_mat.Row(feats_chunk.Row(0).Sum()));
+  CuMatrix<BaseFloat> input_embeddings(1, info_.word_embedding_mat.NumCols());
+  input_embeddings.RowRange(0, 1).AddMat(1.0, info_.word_embedding_mat.RowRange(feats_chunk.Row(0).Sum(), 1), kNoTrans);
   computer_.AcceptInput("input", &input_embeddings);
 
   computer_.Run();

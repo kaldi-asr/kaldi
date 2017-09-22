@@ -1,6 +1,7 @@
-// latbin/lattice-lmrescore-nnet3-rnnlm.cc
+// latbin/lattice-lmrescore-kaldi-rnnlm.cc
 
 // Copyright 2017 Johns Hopkins University (author: Daniel Povey)
+//                Hainan Xu
 //                Yiming Wang
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -57,20 +58,19 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4 && po.NumArgs() != 5) {
+    if (po.NumArgs() != 6) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string lats_rspecifier, rnn_wordlist, word_embedding_rxfilename,
         word_symbols_rxfilename, rnnlm_rxfilename, lats_wspecifier;
-    KALDI_ASSERT (po.NumArgs() == 6);
 
-    rnn_wordlist = po.GetArg(1);
-    word_symbols_rxfilename = po.GetArg(2);
-    lats_rspecifier = po.GetArg(3);
-    rnnlm_rxfilename = po.GetArg(4);
-    word_embedding_rxfilename = po.GetArg(5);
+    word_embedding_rxfilename = po.GetArg(1);
+    rnn_wordlist = po.GetArg(2);
+    word_symbols_rxfilename = po.GetArg(3);
+    lats_rspecifier = po.GetArg(4);
+    rnnlm_rxfilename = po.GetArg(5);
     lats_wspecifier = po.GetArg(6);
 
     // Reads the language model.

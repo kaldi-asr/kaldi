@@ -53,6 +53,7 @@ void KaldiRnnlmDeterministicFst::ReadFstWordSymbolTableAndRnnWordlist(
   }
 
 //  fst_label_to_rnn_out_label_.resize(fst_word_symbols->NumSymbols(), -1);
+  KALDI_LOG << "resize to " << fst_word_symbols->NumSymbols();
   fst_label_to_rnn_label_.resize(fst_word_symbols->NumSymbols(), -1);
 
   out_OOS_index_ = 1;
@@ -69,9 +70,13 @@ void KaldiRnnlmDeterministicFst::ReadFstWordSymbolTableAndRnnWordlist(
       i++;
       rnn_label_to_word_.push_back(word);
 
+//      if (word == "<brk>") {
+//        continue;
+//      }
+
       int fst_label = fst_word_symbols->Find(rnn_label_to_word_[id]);
-      KALDI_ASSERT(fst::SymbolTable::kNoSymbol != fst_label || id == out_OOS_index_ || id == 0);
-      if (id != out_OOS_index_ && out_OOS_index_ != 0) {
+      KALDI_ASSERT(fst::SymbolTable::kNoSymbol != fst_label || id == out_OOS_index_ || id == 0 || word == "<brk>");
+      if (id != out_OOS_index_ && out_OOS_index_ != 0 && fst_label != -1) {
         fst_label_to_rnn_label_[fst_label] = id;
       }
     }
