@@ -3,11 +3,11 @@
 # Copyright 2015   David Snyder
 #           2017   Radboud University (Author: Emre Yilmaz) 
 # Apache 2.0.
-# Usage: make_sre_2010_train.pl /export/corpora5/SRE/SRE2010/eval/ data/.
+# Usage: make_fame_train.pl corpus/SV/ data/ complete 3sec eval.
 
 if (@ARGV != 5) {
-  print STDERR "Usage: $0 <path-to-SRE2010-eval> <path-to-output> <task-name> <subtask-name>\n";
-  print STDERR "e.g. $0 /export/corpora5/SRE/SRE2010/eval/ data single 3sec\n";
+  print STDERR "Usage: $0 <path-to-FAME corpus> <path-to-output> <task-name> <subtask-name> <dataset-name>\n";
+  print STDERR "e.g. $0 corpus/SV/ data/ complete 3sec eval\n";
   exit(1);
 }
 
