@@ -5,6 +5,10 @@
 
 dir=$1
 
+tmpdir=data/local/tmp/heroico
+
+mkdir -p $tmpdir
+
 # heroico
 find \
     "$dir/speech/heroico" \
