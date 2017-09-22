@@ -12,4 +12,4 @@ Speaker clustering and verification corpus details are provided in:
 
 E. Yılmaz, J. Dijkstra, H. Van de Velde, F. Kampstra, J. Algra, H. van den Heuvel and D. van Leeuwen, "Longitudinal Speaker Clustering and Verification Corpus with Code-switching Frisian-Dutch Speech," in Proc. INTERSPEECH, pp. 37-41 Stockholm, Sweden, August 2017.
 
-Please check http://www.ru.nl/clst/datasets/ to get the FAME! Speech Corpus.
+Please check http://www.ru.nl/clst/datasets/ to get the FAME! Speech Corpus. The ASR scripts are in ./s5. The GMM-UBM and DNN-UBM SV scripts are in ./v1 and ./v2 respectively. 

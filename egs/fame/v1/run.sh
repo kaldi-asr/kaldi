@@ -52,12 +52,12 @@ for task in ageing; do
     for sets in eval; do
       for year in _1t3 _4t10 _mt10; do
 
-      echo "Preparing data/fame_${task}_${subtask}_${sets}${year}.."
-      trials_female=data/fame_${task}_${subtask}_${sets}${year}_female/trials
-      trials_male=data/fame_${task}_${subtask}_${sets}${year}_male/trials
-      trials=data/fame_${task}_${subtask}_${sets}${year}/trials
-      local/make_fame_test_year.pl $famecorpus/SV data $task $subtask $sets $year
-      local/make_fame_train_year.pl $famecorpus/SV data $task $subtask $sets $year 
+        echo "Preparing data/fame_${task}_${subtask}_${sets}${year}.."
+        trials_female=data/fame_${task}_${subtask}_${sets}${year}_female/trials
+        trials_male=data/fame_${task}_${subtask}_${sets}${year}_male/trials
+        trials=data/fame_${task}_${subtask}_${sets}${year}/trials
+        local/make_fame_test_year.pl $famecorpus/SV data $task $subtask $sets $year
+        local/make_fame_train_year.pl $famecorpus/SV data $task $subtask $sets $year 
 
       done
     done
@@ -93,13 +93,13 @@ for task in ageing; do
     for sets in eval; do
       for year in _1t3 _4t10 _mt10; do
 
-      echo "Extracting MFCC features for data/fame_${task}_${subtask}_${sets}${year}.."
-      steps/make_mfcc.sh --mfcc-config conf/mfcc_16k.conf --nj 100 --cmd "$train_cmd" \
-          data/fame_${task}_${subtask}_${sets}${year}_enroll exp/make_mfcc $mfccdir
-      utils/fix_data_dir.sh data/fame_${task}_${subtask}_${sets}${year}_enroll
-      steps/make_mfcc.sh --mfcc-config conf/mfcc_16k.conf --nj 100 --cmd "$train_cmd" \
-          data/fame_${task}_${subtask}_${sets}${year}_test exp/make_mfcc $mfccdir
-      utils/fix_data_dir.sh data/fame_${task}_${subtask}_${sets}${year}_test
+        echo "Extracting MFCC features for data/fame_${task}_${subtask}_${sets}${year}.."
+        steps/make_mfcc.sh --mfcc-config conf/mfcc_16k.conf --nj 100 --cmd "$train_cmd" \
+            data/fame_${task}_${subtask}_${sets}${year}_enroll exp/make_mfcc $mfccdir
+        utils/fix_data_dir.sh data/fame_${task}_${subtask}_${sets}${year}_enroll
+        steps/make_mfcc.sh --mfcc-config conf/mfcc_16k.conf --nj 100 --cmd "$train_cmd" \
+            data/fame_${task}_${subtask}_${sets}${year}_test exp/make_mfcc $mfccdir
+        utils/fix_data_dir.sh data/fame_${task}_${subtask}_${sets}${year}_test
 
       done
     done
@@ -132,11 +132,11 @@ for task in ageing; do
     for sets in eval; do
       for year in _1t3 _4t10 _mt10; do
 
-      echo "Computing VAD for data/fame_${task}_${subtask}_${sets}${year}.."
-      sid/compute_vad_decision.sh --nj 100 --cmd "$train_cmd" \
-          data/fame_${task}_${subtask}_${sets}${year}_enroll exp/make_vad $vaddir
-      sid/compute_vad_decision.sh --nj 100 --cmd "$train_cmd" \
-          data/fame_${task}_${subtask}_${sets}${year}_test exp/make_vad $vaddir
+        echo "Computing VAD for data/fame_${task}_${subtask}_${sets}${year}.."
+        sid/compute_vad_decision.sh --nj 100 --cmd "$train_cmd" \
+            data/fame_${task}_${subtask}_${sets}${year}_enroll exp/make_vad $vaddir
+        sid/compute_vad_decision.sh --nj 100 --cmd "$train_cmd" \
+            data/fame_${task}_${subtask}_${sets}${year}_test exp/make_vad $vaddir
       
       done
     done
@@ -190,13 +190,13 @@ for task in ageing; do
     for sets in eval; do
       for year in _1t3 _4t10 _mt10; do
 
-      echo "Extracting i-vectors for data/fame_${task}_${subtask}_${sets}${year}"
-      sid/extract_ivectors.sh --cmd "$train_cmd" --nj 100 \
-         exp/extractor data/fame_${task}_${subtask}_${sets}${year}_enroll \
-         exp/ivectors_fame_${task}_${subtask}_${sets}${year}_enroll
-      sid/extract_ivectors.sh --cmd "$train_cmd" --nj 100 \
-         exp/extractor data/fame_${task}_${subtask}_${sets}${year}_test \
-         exp/ivectors_fame_${task}_${subtask}_${sets}${year}_test 
+        echo "Extracting i-vectors for data/fame_${task}_${subtask}_${sets}${year}"
+        sid/extract_ivectors.sh --cmd "$train_cmd" --nj 100 \
+           exp/extractor data/fame_${task}_${subtask}_${sets}${year}_enroll \
+           exp/ivectors_fame_${task}_${subtask}_${sets}${year}_enroll
+        sid/extract_ivectors.sh --cmd "$train_cmd" --nj 100 \
+           exp/extractor data/fame_${task}_${subtask}_${sets}${year}_test \
+           exp/ivectors_fame_${task}_${subtask}_${sets}${year}_test 
 
       done  
     done
@@ -211,21 +211,21 @@ for task in complete ageing; do
   for subtask in 3sec 10sec 30sec; do
     for sets in eval; do
 
-        local/scoring_common.sh data/train data/fame_${task}_${subtask}_${sets}_enroll data/fame_${task}_${subtask}_${sets}_test \
-          exp/ivectors_train exp/ivectors_fame_${task}_${subtask}_${sets}_enroll exp/ivectors_fame_${task}_${subtask}_${sets}_test
+      local/scoring_common.sh data/train data/fame_${task}_${subtask}_${sets}_enroll data/fame_${task}_${subtask}_${sets}_test \
+        exp/ivectors_train exp/ivectors_fame_${task}_${subtask}_${sets}_enroll exp/ivectors_fame_${task}_${subtask}_${sets}_test
 
-        trials_female=data/fame_${task}_${subtask}_${sets}_test_female/trials
-        trials_male=data/fame_${task}_${subtask}_${sets}_test_male/trials
-        trials=data/fame_${task}_${subtask}_${sets}_test/trials
+      trials_female=data/fame_${task}_${subtask}_${sets}_test_female/trials
+      trials_male=data/fame_${task}_${subtask}_${sets}_test_male/trials
+      trials=data/fame_${task}_${subtask}_${sets}_test/trials
 
-        local/plda_scoring.sh data/train data/fame_${task}_${subtask}_${sets}_enroll data/fame_${task}_${subtask}_${sets}_test \
-          exp/ivectors_train exp/ivectors_fame_${task}_${subtask}_${sets}_enroll exp/ivectors_fame_${task}_${subtask}_${sets}_test $trials local/scores_gmm_2048_ind_pooled_${task}_${subtask}_${sets}
+      local/plda_scoring.sh data/train data/fame_${task}_${subtask}_${sets}_enroll data/fame_${task}_${subtask}_${sets}_test \
+        exp/ivectors_train exp/ivectors_fame_${task}_${subtask}_${sets}_enroll exp/ivectors_fame_${task}_${subtask}_${sets}_test $trials local/scores_gmm_2048_ind_pooled_${task}_${subtask}_${sets}
 
-        local/plda_scoring.sh --use-existing-models true data/train data/fame_${task}_${subtask}_${sets}_enroll_female data/fame_${task}_${subtask}_${sets}_test_female \
-          exp/ivectors_train exp/ivectors_fame_${task}_${subtask}_${sets}_enroll_female exp/ivectors_fame_${task}_${subtask}_${sets}_test_female $trials_female local/scores_gmm_2048_ind_female_${task}_${subtask}_${sets}
+      local/plda_scoring.sh --use-existing-models true data/train data/fame_${task}_${subtask}_${sets}_enroll_female data/fame_${task}_${subtask}_${sets}_test_female \
+        exp/ivectors_train exp/ivectors_fame_${task}_${subtask}_${sets}_enroll_female exp/ivectors_fame_${task}_${subtask}_${sets}_test_female $trials_female local/scores_gmm_2048_ind_female_${task}_${subtask}_${sets}
 
-        local/plda_scoring.sh --use-existing-models true data/train data/fame_${task}_${subtask}_${sets}_enroll_male data/fame_${task}_${subtask}_${sets}_test_male \
-          exp/ivectors_train exp/ivectors_fame_${task}_${subtask}_${sets}_enroll_male exp/ivectors_fame_${task}_${subtask}_${sets}_test_male $trials_male local/scores_gmm_2048_ind_male_${task}_${subtask}_${sets}
+      local/plda_scoring.sh --use-existing-models true data/train data/fame_${task}_${subtask}_${sets}_enroll_male data/fame_${task}_${subtask}_${sets}_test_male \
+        exp/ivectors_train exp/ivectors_fame_${task}_${subtask}_${sets}_enroll_male exp/ivectors_fame_${task}_${subtask}_${sets}_test_male $trials_male local/scores_gmm_2048_ind_male_${task}_${subtask}_${sets}
               
     done
   done
@@ -265,15 +265,15 @@ for task in complete ageing; do
   for subtask in 3sec 10sec 30sec; do
     for sets in eval; do
 
-        trials=data/fame_${task}_${subtask}_${sets}_test/trials
-        echo "GMM-$num_components EER for fame_${task}_${subtask}_${sets}"
-        for x in ind; do
-          for y in female male pooled; do
-            echo "python local/prepare_for_eer.py $trials local/scores_gmm_${num_components}_${x}_${y}_${task}_${subtask}_${sets}/plda_scores"
-            eer=`compute-eer <(python local/prepare_for_eer.py $trials local/scores_gmm_${num_components}_${x}_${y}_${task}_${subtask}_${sets}/plda_scores) 2> /dev/null`
-            echo "${x} ${y}: $eer"
-          done
+      trials=data/fame_${task}_${subtask}_${sets}_test/trials
+      echo "GMM-$num_components EER for fame_${task}_${subtask}_${sets}"
+      for x in ind; do
+        for y in female male pooled; do
+          echo "python local/prepare_for_eer.py $trials local/scores_gmm_${num_components}_${x}_${y}_${task}_${subtask}_${sets}/plda_scores"
+          eer=`compute-eer <(python local/prepare_for_eer.py $trials local/scores_gmm_${num_components}_${x}_${y}_${task}_${subtask}_${sets}/plda_scores) 2> /dev/null`
+          echo "${x} ${y}: $eer"
         done
+      done
 
     done
   done
