@@ -68,10 +68,8 @@ void GetBlockSizesForSimpleMatrixOperation(int32 num_rows,
   dimGrid->z = 1;
 }
 
-const char* cublasGetStatusString(cublasStatus_t status)
-{
-  switch(status)
-  {
+const char* cublasGetStatusString(cublasStatus_t status) {
+  switch(status) {
     case CUBLAS_STATUS_SUCCESS:           return "CUBLAS_STATUS_SUCCESS";
     case CUBLAS_STATUS_NOT_INITIALIZED:   return "CUBLAS_STATUS_NOT_INITIALIZED";
     case CUBLAS_STATUS_ALLOC_FAILED:      return "CUBLAS_STATUS_ALLOC_FAILED";

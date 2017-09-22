@@ -81,7 +81,7 @@ void GetBlockSizesForSimpleMatrixOperation(int32 num_rows,
                                            dim3 *dimGrid,
                                            dim3 *dimBlock);
 
-
+/** This is analogous to the CUDA function cudaGetErrorString(). **/
 const char* cublasGetStatusString(cublasStatus_t status);
 
 }
