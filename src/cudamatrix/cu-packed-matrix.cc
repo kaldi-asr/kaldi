@@ -298,7 +298,7 @@ void CuPackedMatrix<Real>::Scale(Real alpha) {
     CuTimer tim;
     size_t nr = static_cast<size_t>(num_rows_),
         num_elements = ((nr * (nr+1)) / 2);
-    CU_SAFE_CALL(cublas_scal(GetCublasHandle(), num_elements, alpha, data_, 1));
+    CUBLAS_SAFE_CALL(cublas_scal(GetCublasHandle(), num_elements, alpha, data_, 1));
 
     CuDevice::Instantiate().AccuProfile("CuPackedMatrix::Scale", tim);
   } else
