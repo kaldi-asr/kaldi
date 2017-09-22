@@ -1,5 +1,8 @@
 #!/bin/bash -u
 
+# Copyright 2017 John Morgan
+# Apache 2.0.
+
 set -o errexit
 
 [ -f path.sh ] && . path.sh  # Sets the PATH to contain necessary executables
