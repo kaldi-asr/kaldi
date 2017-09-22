@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 # Copyright 2017 John Morgan
 # Apache 2.0.
