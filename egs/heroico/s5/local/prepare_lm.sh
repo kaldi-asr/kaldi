@@ -3,7 +3,7 @@
 # Copyright 2017 John Morgan
 # Apache 2.0.
 
-. cmd.sh
+. ./cmd.sh
 set -e
 . ./path.sh
 stage=0
