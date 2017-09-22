@@ -49,7 +49,7 @@ LINEA: while ( my $line = <$P> ) {
     # get the speaker number
     my $s = $dirs[-1];
     # the utterance name
-    my $i = $s . '_' . $file . '_a';
+    my $i = $s . '_' . 'a' . '_' . $file;
     $p{$i} = $sent;
 }
 close $P;
@@ -67,7 +67,7 @@ open my $T, '+>', $t or croak "problem with $t $!";
      my @dirs = split /\//, $directories;
      my $r = basename $line, ".wav";
      my $s = $dirs[-1];
-     my $rid = $s . '_' . $r . '_a';
+     my $rid = $s . '_' . 'a' . '_' . $r;
      if ( exists $p{$rid} ) {
 	 print $T "$rid\t$p{$rid}\n";
      } elsif ( defined $rid ) {
@@ -77,8 +77,8 @@ open my $T, '+>', $t or croak "problem with $t $!";
 	 croak "$line";
      }
 
-	print $O "$rid\tsox -r 22050 -e signed -b 16 $line -r 16000 |\n";
-     print $U "$rid\t$s\n";
+	print $O "$rid sox -r 22050 -e signed -b 16 $line -r 16000 -t wav - |\n";
+     print $U "$rid ${s}_a\n";
 }
 close $T;
 close $O;
