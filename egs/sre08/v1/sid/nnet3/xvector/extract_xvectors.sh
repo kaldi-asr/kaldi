@@ -11,11 +11,10 @@
 # Begin configuration section.
 nj=30
 cmd="run.pl"
-chunk_size=-1 # If the chunk size over which the embedding is extracted.
-              # For example, 6000 means we extract an embedding every 6000
-              # frames and average to get a single embedding.  By default,
-              # this is -1, which means that we use the entire utterance
-              # to extract the embedding.
+chunk_size=-1 # The chunk size over which the embedding is extracted.
+              # If left unspecified, it uses the max_chunk_size in the nnet
+              # directory.
+use_gpu=false
 stage=0
 
 echo "$0 $@"  # Print the command line for logging
@@ -29,6 +28,7 @@ if [ $# != 3 ]; then
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+  echo "  --use-gpu <bool|false>                           # If true, use GPU."
   echo "  --nj <n|30>                                      # Number of jobs"
   echo "  --stage <stage|0>                                # To control partial reruns"
   echo "  --chunk-size <n|-1>                              # If provided, extracts embeddings with specified"
@@ -39,14 +39,25 @@ srcdir=$1
 data=$2
 dir=$3
 
-for f in $srcdir/final.raw $data/feats.scp $data/vad.scp ; do
+for f in $srcdir/final.raw $srcdir/min_chunk_size $srcdir/max_chunk_size $data/feats.scp $data/vad.scp ; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
+
+min_chunk_size=`cat $srcdir/min_chunk_size 2>/dev/null`
+max_chunk_size=`cat $srcdir/max_chunk_size 2>/dev/null`
 
 nnet=$srcdir/final.raw
 if [ -f $srcdir/extract.config ] ; then
   echo "$0: using $srcdir/extract.config to extract xvectors"
   nnet="nnet3-copy --nnet-config=$srcdir/extract.config $srcdir/final.raw - |"
+fi
+
+if [ $chunk_size -le 0 ]; then
+  chunk_size=$max_chunk_size
+fi
+
+if [ $max_chunk_size -lt $chunk_size ]; then
+  echo "$0: specified chunk size of $chunk_size is larger than the maximum chunk size, $max_chunk_size"
 fi
 
 mkdir -p $dir/log
@@ -60,9 +71,18 @@ feat="ark:apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 sc
 
 if [ $stage -le 0 ]; then
   echo "$0: extracting xvectors from nnet"
-  $cmd JOB=1:$nj ${dir}/log/extract.JOB.log \
-    nnet3-xvector-compute --chunk-size=$chunk_size --use-gpu=no \
-    "$nnet" "$feat" ark,scp:${dir}/xvector.JOB.ark,${dir}/xvector.JOB.scp || exit 1;
+  if $use_gpu; then
+    for g in $(seq $nj); do
+      $cmd --gpu 1 ${dir}/log/extract.$g.log \
+        nnet3-xvector-compute --use-gpu=yes --min-chunk-size=$min_chunk_size --chunk-size=$chunk_size \
+        "$nnet" "`echo $feat | sed s/JOB/$g/g`" ark,scp:${dir}/xvector.$g.ark,${dir}/xvector.$g.scp || exit 1 &
+    done
+    wait
+  else
+    $cmd JOB=1:$nj ${dir}/log/extract.JOB.log \
+      nnet3-xvector-compute --use-gpu=no --min-chunk-size=$min_chunk_size --chunk-size=$chunk_size \
+      "$nnet" "$feat" ark,scp:${dir}/xvector.JOB.ark,${dir}/xvector.JOB.scp || exit 1;
+  fi
 fi
 
 if [ $stage -le 1 ]; then

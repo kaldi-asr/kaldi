@@ -6,7 +6,6 @@
 
 import os, sys
 
-
 def process_music_annotations(path):
   utt2spk = {}
   utt2vocals = {}

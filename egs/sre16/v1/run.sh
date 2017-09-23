@@ -1,9 +1,14 @@
 #!/bin/bash
-#
+# Copyright      2017   David Snyder
+#                2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
+#                2017   Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0.
 #
 # See README.txt for more info on data required.
 # Results (EERs) are inline in comments below.
+#
+# This script demonstrates a bare bones NIST SRE 2016 recipe.
+# It's based on the recipe in ../../sre10/v1/run.sh .
 
 . cmd.sh
 . path.sh

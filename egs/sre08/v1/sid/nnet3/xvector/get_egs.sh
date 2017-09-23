@@ -11,7 +11,7 @@
 # lengths in the same archive, because it would require us to repeatedly run
 # the compilation process within the same training job.
 #
-# This script, which will generally be called from other neural-net training
+# This script, which will generally be called from other neural net training
 # scripts, extracts the training examples used to train the neural net (and
 # also the validation examples used for diagnostics), and puts them in
 # separate archives.
@@ -80,14 +80,9 @@ fi
 data=$1
 dir=$2
 
-if [ ! -f $data/feats.scp ]; then
-  echo "$0: expected $data/feats.scp to exist"
-  exit 1
-fi
-
-if [ ! -f $data/utt2num_frames ]; then
-  feat-to-len scp:$data/feats.scp ark,t:$data/utt2num_frames || exit 1;
-fi
+for f in $data/utt2num_frames $data/feats.scp ; do
+  [ ! -f $f ] && echo "$0: expected file $f" && exit 1;
+done
 
 feat_dim=$(feat-to-dim scp:$data/feats.scp -) || exit 1
 
@@ -99,16 +94,10 @@ echo '0' > $dir/info/left_context
 # The examples have at least min_frames_per_chunk right context.
 echo $min_frames_per_chunk > $dir/info/right_context
 echo '1' > $dir/info/frames_per_eg
+cp $data/utt2num_frames $dir/temp/utt2num_frames
 
 if [ $stage -le 0 ]; then
-  echo "$0: getting utt2num_frames file"
-  # note: this utt2num_frames file is only an approximation of the number of
-  # frames in each file.
-  cp $data/utt2num_frames $dir/temp/utt2num_frames
-fi
-
-if [ $stage -le 1 ]; then
-  echo "$0: preparing train and validation lists"
+  echo "$0: Preparing train and validation lists"
   # Pick a list of heldout utterances for validation egs
   awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_heldout_utts > $temp/valid_uttlist || exit 1;
   # The remaining utterances are used for training egs
@@ -137,16 +126,16 @@ num_train_subset_frames=$(awk '{n += $2} END{print n}' <$temp/utt2num_frames.tra
 
 echo $num_train_frames >$dir/info/num_frames
 num_train_archives=$[($num_train_frames*$num_repeats)/$frames_per_iter + 1]
-echo "$0: producing $num_train_archives archives for training"
+echo "$0: Producing $num_train_archives archives for training"
 echo $num_train_archives > $dir/info/num_archives
 echo $num_diagnostic_archives > $dir/info/num_diagnostic_archives
 
 if [ $nj -gt $num_train_archives ]; then
-  echo "$0: reducing num-jobs $nj to number of training archives $num_train_archives"
+  echo "$0: Reducing num-jobs $nj to number of training archives $num_train_archives"
   nj=$num_train_archives
 fi
 
-if [ $stage -le 2 ]; then
+if [ $stage -le 1 ]; then
   if [ -e $dir/storage ]; then
     # Make soft links to storage directories, if distributing this way..  See
     # utils/create_split_dir.pl.
@@ -156,8 +145,8 @@ if [ $stage -le 2 ]; then
   fi
 fi
 
-if [ $stage -le 3 ]; then
-  echo "$0: allocating training examples"
+if [ $stage -le 2 ]; then
+  echo "$0: Allocating training examples"
   $cmd $dir/log/allocate_examples_train.log \
     sid/nnet3/xvector/allocate_egs.py \
       --num-repeats=$num_repeats \
@@ -168,7 +157,7 @@ if [ $stage -le 3 ]; then
       --utt2len-filename=$dir/temp/utt2num_frames.train \
       --utt2int-filename=$dir/temp/utt2int.train --egs-dir=$dir  || exit 1
 
-  echo "$0: allocating training subset examples"
+  echo "$0: Allocating training subset examples"
   $cmd $dir/log/allocate_examples_train_subset.log \
     sid/nnet3/xvector/allocate_egs.py \
       --prefix train_subset \
@@ -181,7 +170,7 @@ if [ $stage -le 3 ]; then
       --utt2len-filename=$dir/temp/utt2num_frames.train_subset \
       --utt2int-filename=$dir/temp/utt2int.train_subset --egs-dir=$dir  || exit 1
 
-  echo "$0: allocating validation examples"
+  echo "$0: Allocating validation examples"
   $cmd $dir/log/allocate_examples_valid.log \
     sid/nnet3/xvector/allocate_egs.py \
       --prefix valid \
@@ -197,34 +186,34 @@ fi
 
 # You want to put an exit 1 command here and look at exp/$dir/temp/ranges.*
 # before deciding if you want to continue to the next stage.
-if [ $stage -le 4 ]; then
+if [ $stage -le 3 ]; then
   echo "$0: Generating training examples on disk"
   rm $dir/.error 2>/dev/null
   for g in $(seq $nj); do
     outputs=`awk '{for(i=1;i<=NF;i++)printf("ark:%s ",$i);}' $temp/outputs.$g`
     $cmd $dir/log/train_create_examples.$g.log \
-      nnet3-xvector-get-egs --num-pdfs=$num_pdfs $temp/ranges.$g \
+      nnet3-xvector-get-egs --compress=$compress --num-pdfs=$num_pdfs $temp/ranges.$g \
       "`echo $feats | sed s/JOB/$g/g`" $outputs || touch $dir/.error &
   done
   train_subset_outputs=`awk '{for(i=1;i<=NF;i++)printf("ark:%s ",$i);}' $temp/train_subset_outputs.1`
   echo "$0: Generating training subset examples on disk"
   $cmd $dir/log/train_subset_create_examples.1.log \
-    nnet3-xvector-get-egs --num-pdfs=$num_pdfs $temp/train_subset_ranges.1 \
+    nnet3-xvector-get-egs --compress=$compress --num-pdfs=$num_pdfs $temp/train_subset_ranges.1 \
     "$train_subset_feats" $train_subset_outputs || touch $dir/.error &
   wait
   valid_outputs=`awk '{for(i=1;i<=NF;i++)printf("ark:%s ",$i);}' $temp/valid_outputs.1`
   echo "$0: Generating validation examples on disk"
   $cmd $dir/log/valid_create_examples.1.log \
-    nnet3-xvector-get-egs --num-pdfs=$num_pdfs $temp/valid_ranges.1 \
+    nnet3-xvector-get-egs --compress=$compress --num-pdfs=$num_pdfs $temp/valid_ranges.1 \
     "$valid_feats" $valid_outputs || touch $dir/.error &
   wait
   if [ -f $dir/.error ]; then
-    echo "$0: problem detected while dumping examples"
+    echo "$0: Problem detected while dumping examples"
     exit 1
   fi
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   echo "$0: Shuffling order of archives on disk"
   $cmd --max-jobs-run $nj JOB=1:$num_train_archives $dir/log/shuffle.JOB.log \
     nnet3-shuffle-egs --srand=JOB ark:$dir/egs_temp.JOB.ark ark,scp:$dir/egs.JOB.ark,$dir/egs.JOB.scp || exit 1;
@@ -234,14 +223,13 @@ if [ $stage -le 5 ]; then
     nnet3-shuffle-egs --srand=JOB ark:$dir/valid_egs_temp.JOB.ark ark,scp:$dir/valid_egs.JOB.ark,$dir/valid_egs.JOB.scp || exit 1;
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 5 ]; then
   for file in $(for x in $(seq $num_diagnostic_archives); do echo $dir/train_subset_egs_temp.$x.ark; done) \
     $(for x in $(seq $num_diagnostic_archives); do echo $dir/valid_egs_temp.$x.ark; done) \
     $(for x in $(seq $num_train_archives); do echo $dir/egs_temp.$x.ark; done); do
     [ -L $file ] && rm $(readlink -f $file)
     rm $file
   done
-
   rm -rf $dir/valid_diagnostic.scp $dir/train_diagnostic.scp
   for x in $(seq $num_diagnostic_archives); do
     cat $dir/train_diagnostic_egs.$x.scp >> $dir/train_diagnostic.scp

@@ -29,6 +29,7 @@
 namespace kaldi {
 namespace nnet3 {
 
+// Computes an xvector from a chunk of speech features.
 static void RunNnetComputation(const MatrixBase<BaseFloat> &features,
     const Nnet &nnet, CachingOptimizingCompiler *compiler,
     Vector<BaseFloat> *xvector) {
@@ -74,7 +75,7 @@ int main(int argc, char *argv[]) {
         "consists of several layers that operate on frames, a statistics\n"
         "pooling layer that aggregates over the frame-level representations\n"
         "and possibly additional layers that operate on segment-level\n"
-        "representations.  The xvectors, are generally extracted from an\n"
+        "representations.  The xvectors are generally extracted from an\n"
         "output layer after the statistics pooling layer.  By default, one\n"
         "xvector is extracted directly from the set of features for each\n"
         "utterance.  Optionally, xvectors are extracted from chunks of input\n"
@@ -93,15 +94,17 @@ int main(int argc, char *argv[]) {
     opts.acoustic_scale = 1.0; // by default do no scaling in this recipe.
 
     std::string use_gpu = "no";
-    int32 chunk_size = -1;
+    int32 chunk_size = -1,
+      min_chunk_size = 100;
 
     opts.Register(&po);
-
     po.Register("use-gpu", &use_gpu,
-                "yes|no|optional|wait, only has effect if compiled with CUDA");
+      "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Register("chunk-size", &chunk_size,
       "If set, extracts xectors from specified chunk-size, and averages.  "
       "If not set, extracts an xvector from all available features.");
+    po.Register("min-chunk-size", &min_chunk_size,
+      "Minimum chunk-size allowed when extracting xvectors.");
 
     po.Read(argc, argv);
 
@@ -130,8 +133,7 @@ int main(int argc, char *argv[]) {
 
     int32 num_success = 0, num_fail = 0;
     int64 frame_count = 0;
-    int32 xvector_dim = nnet.OutputDim("output"),
-          min_chunk_size = 100; // TODO need to handle this properly!
+    int32 xvector_dim = nnet.OutputDim("output");
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
@@ -162,7 +164,8 @@ int main(int argc, char *argv[]) {
         this_chunk_size = num_rows;
       }
 
-      int32 num_chunks = ceil(num_rows / static_cast<BaseFloat>(this_chunk_size));
+      int32 num_chunks = ceil(
+        num_rows / static_cast<BaseFloat>(this_chunk_size));
       Vector<BaseFloat> xvector_avg(xvector_dim, kSetZero);
       BaseFloat tot_weight = 0.0;
 
@@ -171,11 +174,12 @@ int main(int argc, char *argv[]) {
         // If we're nearing the end of the input, we may need to shift the
         // offset back so that we can get this_chunk_size frames of input to
         // the nnet.
-        int32 offset = std::min(this_chunk_size, num_rows - chunk_indx * this_chunk_size);
+        int32 offset = std::min(
+          this_chunk_size, num_rows - chunk_indx * this_chunk_size);
         if (offset < min_chunk_size)
           continue;
-        SubMatrix<BaseFloat> sub_features(features, chunk_indx * this_chunk_size, offset,
-                                       0, feat_dim);
+        SubMatrix<BaseFloat> sub_features(
+          features, chunk_indx * this_chunk_size, offset, 0, feat_dim);
         Vector<BaseFloat> xvector;
         tot_weight += offset;
         RunNnetComputation(sub_features, nnet, &compiler, &xvector);
@@ -188,6 +192,9 @@ int main(int argc, char *argv[]) {
       num_success++;
     }
 
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().PrintProfile();
+#endif
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "

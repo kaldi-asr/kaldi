@@ -1,4 +1,8 @@
 #!/bin/bash
+# Copyright      2017   David Snyder
+#                2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
+#                2017   Johns Hopkins University (Author: Daniel Povey)
+# Apache 2.0.
 
 # This script trains a DNN similar to the recipe described in
 # http://www.danielpovey.com/files/2017_interspeech_embeddings.pdf .
@@ -69,6 +73,18 @@ if [ $stage -le 5 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
   num_targets=$(wc -w $egs_dir/pdf2num | awk '{print $1}')
   feat_dim=$(cat $egs_dir/info/feat_dim)
+
+  # This chunk-size corresponds to the maximum number of frames the
+  # stats layer is able to pool over.  In this script, it corresponds
+  # to 100 seconds.  If the input recording is greater than 100 seconds,
+  # we will compute multiple xvectors from the same recording and average
+  # to produce the final xvector.
+  max_chunk_size=10000
+
+  # The smallest number of frames we're comfortable computing an xvector from.
+  # Note that the hard minimum is given by the left and right context of the
+  # frame-level layers.
+  min_chunk_size=25
   mkdir -p $nnet_dir/configs
   cat <<EOF > $nnet_dir/configs/network.xconfig
   # please note that it is important to have input layer with the name=input
@@ -82,11 +98,11 @@ if [ $stage -le 5 ]; then
   relu-batchnorm-layer name=tdnn5 dim=1500
 
   # The stats pooling layer. Layers after this are segment-level.
-  # In the config below, the first and last argument (0, and 100000)
+  # In the config below, the first and last argument (0, and ${max_chunk_size})
   # means that we pool over an input segment starting at frame 0
-  # and ending at frame 100000 or earlier.  The other arguments (1:1)
+  # and ending at frame ${max_chunk_size} or earlier.  The other arguments (1:1)
   # mean that no subsampling is performed.
-  stats-layer name=stats config=mean+stddev(0:1:1:100000)
+  stats-layer name=stats config=mean+stddev(0:1:1:{$max_chunk_size})
 
   # This is where we usually extract the embedding (aka xvector) from.
   relu-batchnorm-layer name=tdnn6 dim=512 input=stats
@@ -102,8 +118,10 @@ EOF
       --config-dir $nnet_dir/configs/
   cp $nnet_dir/configs/final.config $nnet_dir/nnet.config
 
-  # This is where the xvectors will be extracted from
+  # These three files will be used by sid/nnet3/xvector/extract_xvectors.sh
   echo "output-node name=output input=tdnn6.affine" > $nnet_dir/extract.config
+  echo "$max_chunk_size" > $nnet_dir/max_chunk_size
+  echo "$min_chunk_size" > $nnet_dir/min_chunk_size
 fi
 
 dropout_schedule='0,0@0.20,0.1@0.50,0'

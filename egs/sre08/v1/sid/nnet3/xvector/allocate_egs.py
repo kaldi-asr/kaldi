@@ -5,8 +5,9 @@
 #                2017 David Snyder
 # Apache 2.0
 
-# This script, which is used in getting training examples, decides which
-# examples will come from which examples, and at what point during  training.
+# This script, which is used in getting training examples, decides
+# which examples will come from which recordings, and at what point
+# during the training.
 
 # You call it as (e.g.)
 #
@@ -65,7 +66,6 @@
 # We're using python 3.x style print but want it to work in python 2.x.
 from __future__ import print_function
 import re, os, argparse, sys, math, warnings, random
-
 
 def get_args():
     parser = argparse.ArgumentParser(description="Writes ranges.*, outputs.* and archive_chunk_lengths files "

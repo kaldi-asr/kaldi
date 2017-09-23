@@ -6,8 +6,6 @@
 #
 # See README.txt for more info on data required.
 # Results (EERs) are inline in comments below.
-#
-# NOTE! This script is still unfinished
 
 . cmd.sh
 . path.sh
@@ -229,20 +227,20 @@ fi
 if [ $stage -le 8 ]; then
   # Compute the mean vector for centering the evaluation xvectors.
   $train_cmd exp/xvectors_sre16_major/log/compute_mean.log \
-    ivector-mean scp:exp/xvectors_sre16_major/ivector.scp \
+    ivector-mean scp:exp/xvectors_sre16_major/xvector.scp \
     exp/xvectors_sre16_major/mean.vec || exit 1;
 
   # This script uses LDA to decrease the dimensionality prior to PLDA.
-  lda_dim=150
+  lda_dim=128
   $train_cmd exp/xvectors_sre_combined/log/lda.log \
     ivector-compute-lda --total-covariance-factor=0.0 --dim=$lda_dim \
-    "ark:ivector-subtract-global-mean scp:exp/xvectors_sre_combined/ivector.scp ark:- |" \
+    "ark:ivector-subtract-global-mean scp:exp/xvectors_sre_combined/xvector.scp ark:- |" \
     ark:data/sre_combined/utt2spk exp/xvectors_sre_combined/transform.mat || exit 1;
 
   #  Train the PLDA model.
   $train_cmd exp/xvectors_sre_combined/log/plda.log \
     ivector-compute-plda ark:data/sre_combined/spk2utt \
-    "ark:ivector-subtract-global-mean scp:exp/xvectors_sre_combined/ivector.scp ark:- | transform-vec exp/xvectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:-  ark:- |" \
+    "ark:ivector-subtract-global-mean scp:exp/xvectors_sre_combined/xvector.scp ark:- | transform-vec exp/xvectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:-  ark:- |" \
     exp/xvectors_sre_combined/plda || exit 1;
 fi
 
@@ -251,8 +249,8 @@ if [ $stage -le 9 ]; then
     ivector-plda-scoring --normalize-length=true \
     --num-utts=ark:exp/xvectors_sre16_eval_enroll/num_utts.ark \
     "ivector-copy-plda --smoothing=0.0 exp/xvectors_sre_combined/plda - |" \
-    "ark:ivector-mean ark:data/sre16_eval_enroll/spk2utt scp:exp/xvectors_sre16_eval_enroll/ivector.scp ark:- | ivector-subtract-global-mean exp/xvectors_sre16_major/mean.vec ark:- ark:- | transform-vec exp/xvectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
-    "ark:ivector-subtract-global-mean exp/xvectors_sre16_major/mean.vec scp:exp/xvectors_sre16_eval_test/ivector.scp ark:- | transform-vec exp/xvectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-mean ark:data/sre16_eval_enroll/spk2utt scp:exp/xvectors_sre16_eval_enroll/xvector.scp ark:- | ivector-subtract-global-mean exp/xvectors_sre16_major/mean.vec ark:- ark:- | transform-vec exp/xvectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-subtract-global-mean exp/xvectors_sre16_major/mean.vec scp:exp/xvectors_sre16_eval_test/xvector.scp ark:- | transform-vec exp/xvectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
     "cat '$sre16_trials' | cut -d\  --fields=1,2 |" exp/scores/sre16_eval_scores || exit 1;
 
   utils/filter_scp.pl $sre16_trials_tgl exp/scores/sre16_eval_scores > exp/scores/sre16_eval_tgl_scores
@@ -261,7 +259,7 @@ if [ $stage -le 9 ]; then
   tgl_eer=$(paste $sre16_trials_tgl exp/scores/sre16_eval_tgl_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   yue_eer=$(paste $sre16_trials_yue exp/scores/sre16_eval_yue_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   echo "EER: Pooled ${pooled_eer}%, Tagalog ${tgl_eer}%, Cantonese ${yue_eer}%"
-  # EER: Pooled x.xx%, Tagalog x.xx%, Cantonese x.xx%
+  # EER: Pooled 11.23%, Tagalog 15.54%, Cantonese 7.02%
   # For reference, here's the ivector system from ../v1:
-  # EER: Pooled 13.65%, Tagalog 17.73%, Cantonese 9.612%
+  # EER: Pooled 13.65%, Tagalog 17.73%, Cantonese 9.61%
 fi
