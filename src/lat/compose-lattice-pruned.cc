@@ -596,6 +596,7 @@ PrunedCompactLatticeComposer::PrunedCompactLatticeComposer(
 
 void PrunedCompactLatticeComposer::AddFirstState() {
   int32 state_id = clat_out_->AddState();
+  clat_out_->SetStart(state_id);
   KALDI_ASSERT(state_id == 0);
   composed_state_info_.resize(1);
   ComposedStateInfo &composed_state = composed_state_info_[0];
@@ -658,7 +659,11 @@ void PrunedCompactLatticeComposer::ProcessQueueElement(
            src_composed_state_info.delta_backward_cost +
            src_composed_state_info.arc_delta_cost - lat_best_cost_);
     }
-    if (expected_cost_offset <= current_cutoff_) {
+    // We do '<' here rather than '<=', so that if current_cutoff_ is infinity
+    // and expected_cost_offset is infinity (because we've exhausted all the
+    // transitions from this state, and sorted_arc_index is now -1), we don't
+    // add this element to the queue.
+    if (expected_cost_offset < current_cutoff_) {
       // this state has another exit arc (or final prob) that is good
       // enough to re-enter into the queue.  Note: if we are processing
       // an arc out of this state and the destination state is new,
@@ -681,8 +686,7 @@ void PrunedCompactLatticeComposer::ProcessQueueElement(
       // If there is a final-prob on this LM state (note: there always will be
       // for conventional language models), then add the final-prob of this
       // state...
-      CompactLattice::Weight final_weight =
-          clat_in_.Final(lat_state);
+      CompactLattice::Weight final_weight = clat_in_.Final(lat_state);
       // assume 'final_weight' is not Zero(); otherwise the final-prob should
       // not have been present in 'arc_delta_costs'.
       Lattice::Weight final_lat_weight = final_weight.Weight();
@@ -806,6 +810,7 @@ void PrunedCompactLatticeComposer::ProcessTransition(int32 src_composed_state,
   LatticeArc::Weight weight = new_arc.weight.Weight();
   // include the LM-arc's weight in the weight of the new arc.
   weight.SetValue1(fst::Times(weight.Value1(), lm_arc.weight).Value());
+  new_arc.weight.SetWeight(weight);
   clat_out_->AddArc(src_composed_state, new_arc);
   num_arcs_out_++;
 }
@@ -856,7 +861,7 @@ void PrunedCompactLatticeComposer::Compose() {
     os << "Input lattice had " << num_arcs_in << '/' << num_states_in
        << " arcs/states; output lattice has " << num_arcs_out << '/'
        << num_states_out;
-    if (num_arcs_out != num_arcs_in) {
+    if (num_arcs_out != orig_num_arcs_out) {
       os << " (before pruning: " << orig_num_arcs_out << '/'
          << orig_num_states_out << ")";
     }

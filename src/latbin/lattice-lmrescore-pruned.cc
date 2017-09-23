@@ -109,6 +109,7 @@ int main(int argc, char *argv[]) {
         lats_rspecifier = po.GetArg(3),
         lats_wspecifier = po.GetArg(4);
 
+    KALDI_LOG << "Reading LMs...";
     VectorFst<StdArc> *lm_to_subtract_fst = ReadAndPrepareLmFst(
         lm_to_subtract_rxfilename);
     VectorFst<StdArc> *lm_to_add_fst = NULL;
@@ -138,6 +139,7 @@ int main(int argc, char *argv[]) {
                                                          lm_to_add_orig);
     }
 
+    KALDI_LOG << "Done.";
 
     // We read and write as CompactLattice.
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);
@@ -177,7 +179,8 @@ int main(int argc, char *argv[]) {
         if (acoustic_scale != 1.0) {
           if (acoustic_scale == 0.0)
             KALDI_ERR << "Acoustic scale cannot be zero.";
-          fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &clat);
+          fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale),
+                            &composed_clat);
         }
         compact_lattice_writer.Write(key, composed_clat);
         num_done++;

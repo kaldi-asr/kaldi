@@ -143,7 +143,7 @@ class ScaleDeterministicOnDemandFst:  public DeterministicOnDemandFst<StdArc> {
     // Note: Weight is indirectly a typedef to TropicalWeight.
     Weight final = det_fst_.Final(s);
     if (final == Weight::Zero()) return Weight::Zero();
-    else return TropicalWeight(det_fst_.Final(s).Value() * scale_);
+    else return TropicalWeight(final.Value() * scale_);
   }
 
   inline bool GetArc(StateId s, Label ilabel, StdArc *oarc) {
