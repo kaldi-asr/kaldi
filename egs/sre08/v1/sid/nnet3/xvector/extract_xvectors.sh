@@ -57,7 +57,7 @@ if [ $chunk_size -le 0 ]; then
 fi
 
 if [ $max_chunk_size -lt $chunk_size ]; then
-  echo "$0: specified chunk size of $chunk_size is larger than the maximum chunk size, $max_chunk_size"
+  echo "$0: specified chunk size of $chunk_size is larger than the maximum chunk size, $max_chunk_size" && exit 1;
 fi
 
 mkdir -p $dir/log
