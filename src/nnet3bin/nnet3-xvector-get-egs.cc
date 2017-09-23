@@ -27,8 +27,8 @@
 namespace kaldi {
 namespace nnet3 {
 
-// A struct for holding information about the psition and
-// duration of each pair of chunks.
+// A struct for holding information about the position and
+// duration of each chunk.
 struct ChunkInfo {
   std::string name;
   int32 output_archive_id;

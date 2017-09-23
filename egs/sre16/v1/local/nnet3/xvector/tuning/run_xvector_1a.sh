@@ -90,7 +90,7 @@ if [ $stage -le 5 ]; then
   # please note that it is important to have input layer with the name=input
 
   # The frame-level layers
-  input dim=$feat_dim name=input
+  input dim=${feat_dim} name=input
   relu-batchnorm-layer name=tdnn1 input=Append(-2,-1,0,1,2) dim=512
   relu-batchnorm-layer name=tdnn2 input=Append(-2,0,2) dim=512
   relu-batchnorm-layer name=tdnn3 input=Append(-3,0,3) dim=512
@@ -102,7 +102,7 @@ if [ $stage -le 5 ]; then
   # means that we pool over an input segment starting at frame 0
   # and ending at frame ${max_chunk_size} or earlier.  The other arguments (1:1)
   # mean that no subsampling is performed.
-  stats-layer name=stats config=mean+stddev(0:1:1:{$max_chunk_size})
+  stats-layer name=stats config=mean+stddev(0:1:1:${max_chunk_size})
 
   # This is where we usually extract the embedding (aka xvector) from.
   relu-batchnorm-layer name=tdnn6 dim=512 input=stats
@@ -110,7 +110,7 @@ if [ $stage -le 5 ]; then
   # This is where another layer the embedding could be extracted
   # from, but usually the previous one works better.
   relu-batchnorm-layer name=tdnn7 dim=512
-  output-layer name=output include-log-softmax=true dim=$num_targets
+  output-layer name=output include-log-softmax=true dim=${num_targets}
 EOF
 
   steps/nnet3/xconfig_to_configs.py \

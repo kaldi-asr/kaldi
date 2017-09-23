@@ -163,14 +163,17 @@ if [ $stage -le 2 ]; then
   utils/fix_data_dir.sh data/sre_combined
 fi
 
-# Now we compute the features needed for xvector training.  This consists of
-# applying sliding window CMN and removing silence frames.
+# Now we prepare the features to generate examples for xvector training.
 if [ $stage -le 3 ]; then
-  local/nnet3/xvector/prepare_xvector_feats_cmvn_remove_sil.sh --nj 40 --cmd "$train_cmd" \
+  # This script applies CMVN and removes nonspeech frames.  Note that this is somewhat
+  # wasteful, as it roughly doubles the amount of training data on disk.  After
+  # creating training examples, this can be removed.
+  local/nnet3/xvector/prepare_feats_for_egs.sh --nj 40 --cmd "$train_cmd" \
     data/swbd_sre_combined data/swbd_sre_combined_no_sil exp/swbd_sre_combined_no_sil
   utils/fix_data_dir.sh data/swbd_sre_combined_no_sil
   utils/data/get_utt2num_frames.sh --nj 40 --cmd "$train_cmd" data/swbd_sre_combined_no_sil
   utils/fix_data_dir.sh data/swbd_sre_combined_no_sil
+
   # Now, we need to remove features that are too short after removing silence
   # frames.  We want atleast 5s (500 frames) per utterance.
   min_len=500
