@@ -33,13 +33,19 @@
 #include <cublas_v2.h>
 #include <cuda_runtime_api.h>
 
-
-
 #define CU_SAFE_CALL(fun) \
 { \
   int32 ret; \
   if ((ret = (fun)) != 0) { \
     KALDI_ERR << "cudaError_t " << ret << " : \"" << cudaGetErrorString((cudaError_t)ret) << "\" returned from '" << #fun << "'"; \
+  } \
+}
+
+#define CUBLAS_SAFE_CALL(fun) \
+{ \
+  int32 ret; \
+  if ((ret = (fun)) != 0) { \
+    KALDI_ERR << "cublasStatus_t " << ret << " : \"" << cublasGetStatusString((cublasStatus_t)ret) << "\" returned from '" << #fun << "'"; \
   } \
 }
 
@@ -75,6 +81,8 @@ void GetBlockSizesForSimpleMatrixOperation(int32 num_rows,
                                            dim3 *dimGrid,
                                            dim3 *dimBlock);
 
+/** This is analogous to the CUDA function cudaGetErrorString(). **/
+const char* cublasGetStatusString(cublasStatus_t status);
 
 }
 

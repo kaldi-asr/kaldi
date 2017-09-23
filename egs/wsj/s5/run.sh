@@ -366,10 +366,6 @@ local/nnet/run_dnn.sh
 #local/run_bnf.sh
 #local/run_bnf_sgmm.sh
 
-
-# You probably want to try KL-HMM
-#local/run_kl_hmm.sh
-
 # Getting results [see RESULTS file]
 # for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
 
