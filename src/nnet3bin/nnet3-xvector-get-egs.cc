@@ -58,19 +58,21 @@ static void ProcessRangeFile(const std::string &range_rxfilename,
                   label_str = fields[5];
 
       if (!ConvertStringToInteger(fields[1], &(chunk_info->output_archive_id))
-          || !ConvertStringToInteger(start_frame_str, &(chunk_info->start_frame))
-          || !ConvertStringToInteger(num_frames_str, &(chunk_info->num_frames))
-          || !ConvertStringToInteger(label_str, &(chunk_info->label)))
+        || !ConvertStringToInteger(start_frame_str, &(chunk_info->start_frame))
+        || !ConvertStringToInteger(num_frames_str, &(chunk_info->num_frames))
+        || !ConvertStringToInteger(label_str, &(chunk_info->label)))
         KALDI_ERR << "Expected integer for output archive in range file.";
+
       chunk_info->name = utt + "-" + start_frame_str + "-" + num_frames_str
-                      + "-" + label_str;
+        + "-" + label_str;
       unordered_map<std::string, std::vector<ChunkInfo*> >::iterator
         got = utt_to_chunks->find(utt);
+
       if (got == utt_to_chunks->end()) {
         std::vector<ChunkInfo* > chunk_infos;
         chunk_infos.push_back(chunk_info);
         utt_to_chunks->insert(std::pair<std::string,
-                             std::vector<ChunkInfo* > > (utt, chunk_infos));
+          std::vector<ChunkInfo* > > (utt, chunk_infos));
       } else {
         got->second.push_back(chunk_info);
       }
@@ -153,18 +155,19 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Get examples for training an nnet3 neural network for the xvector\n"
-        "system.  Each output example contains a chunk of features from\n"
-        "some utterance.  The location and length of the feature chunks\n"
-        "are specified in the 'ranges' file.  Each line is interpreted as\n"
-        "follows:\n"
+        "system.  Each output example contains a chunk of features from some\n"
+        "utterance along with a speaker label.  The location and length of\n"
+        "the feature chunks are specified in the 'ranges' file.  Each line\n"
+        "is interpreted as follows:\n"
         "  <source-utterance> <relative-output-archive-index> "
-        "<absolute-archive-index>  <start-frame-index> <num-frames>\n"
+        "<absolute-archive-index> <start-frame-index> <num-frames> "
+        "<speaker-label>\n"
         "where <relative-output-archive-index> is interpreted as a zero-based\n"
-        "index into the wspecifiers specified on the command line (<egs-0-out>\n"
+        "index into the wspecifiers provided on the command line (<egs-0-out>\n"
         "and so on), and <absolute-archive-index> is ignored by this program.\n"
         "For example:\n"
-        "  utt1  3  13  65\n"
-        "  utt1  0  10  50\n"
+        "  utt1  3  13  65  300  3\n"
+        "  utt1  0  10  50  400  3\n"
         "  utt2  ...\n"
         "\n"
         "Usage:  nnet3-xvector-get-egs [options] <ranges-filename> "
