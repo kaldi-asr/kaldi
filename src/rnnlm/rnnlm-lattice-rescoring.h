@@ -66,6 +66,7 @@ class KaldiRnnlmDeterministicFst
   std::vector<std::string> fst_label_to_word_;
   int32 full_voc_size_;
   int32 out_OOS_index_;
+  int32 final_word_index_;
 
   typedef unordered_map
       <std::vector<Label>, StateId, VectorHasher<Label> > MapType;

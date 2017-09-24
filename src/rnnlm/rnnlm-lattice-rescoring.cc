@@ -63,8 +63,8 @@ void KaldiRnnlmDeterministicFst::ReadFstWordSymbolTableAndRnnWordlist(
     string word;
     int32 i = 0;
     while (ifile >> word >> id) {
-      if (word == "<oos>") {
-        KALDI_ASSERT(id == out_OOS_index_);
+      if (word == "</s>") {
+        final_word_index_ = id;
       }
       KALDI_ASSERT(i == id);
       i++;
@@ -75,7 +75,10 @@ void KaldiRnnlmDeterministicFst::ReadFstWordSymbolTableAndRnnWordlist(
 //      }
 
       int fst_label = fst_word_symbols->Find(rnn_label_to_word_[id]);
-      KALDI_ASSERT(fst::SymbolTable::kNoSymbol != fst_label || id == out_OOS_index_ || id == 0 || word == "<brk>");
+      if (fst::SymbolTable::kNoSymbol != fst_label || id == out_OOS_index_ || id == 0 || word == "<brk>") {}
+      else {
+        KALDI_LOG << "warning: word " << word << " in RNNLM wordlist but not in FST wordlist";
+      }
       if (id != out_OOS_index_ && out_OOS_index_ != 0 && fst_label != -1) {
         fst_label_to_rnn_label_[fst_label] = id;
       }
@@ -112,7 +115,7 @@ fst::StdArc::Weight KaldiRnnlmDeterministicFst::Final(StateId s) {
   KALDI_ASSERT(static_cast<size_t>(s) < state_to_wseq_.size());
 
   // log prob of end of sentence
-  BaseFloat logprob = state_to_decodable_rnnlm_[s].GetOutput(0, 0);
+  BaseFloat logprob = state_to_decodable_rnnlm_[s].GetOutput(0, final_word_index_);
   return Weight(-logprob);
 }
 

@@ -79,7 +79,7 @@ DecodableRnnlmSimpleLooped::DecodableRnnlmSimpleLooped(
     // since everytime we provide one chunk to the decodable object, the size of
     // feats_ == frames_per_chunk
     feats_(info_.frames_per_chunk,
-           info_.word_embedding_mat.NumRows()), // or Cols()? TODO(hxu), should be vocab size
+           info_.word_embedding_mat.NumRows()),
     current_log_post_offset_(-1)
 {
   num_frames_ = feats_.NumRows();
@@ -157,7 +157,8 @@ void DecodableRnnlmSimpleLooped::AdvanceChunk() {
 //  input_layer->Propagate(feats_chunk, &new_input);
 
   CuMatrix<BaseFloat> input_embeddings(1, info_.word_embedding_mat.NumCols());
-  input_embeddings.RowRange(0, 1).AddMat(1.0, info_.word_embedding_mat.RowRange(feats_chunk.Row(0).Sum(), 1), kNoTrans);
+  int32 word_index = feats_chunk.Row(0).GetElement(0).first;
+  input_embeddings.RowRange(0, 1).AddMat(1.0, info_.word_embedding_mat.RowRange(word_index, 1), kNoTrans);
   computer_.AcceptInput("input", &input_embeddings);
 
   computer_.Run();
