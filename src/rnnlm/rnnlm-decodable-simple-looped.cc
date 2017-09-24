@@ -2,6 +2,7 @@
 
 // Copyright      2017  Johns Hopkins University (author: Daniel Povey)
 //                2017  Yiming Wang
+//                2017  Hainan Xu
 
 // See ../../COPYING for clarification regarding multiple authors
 //

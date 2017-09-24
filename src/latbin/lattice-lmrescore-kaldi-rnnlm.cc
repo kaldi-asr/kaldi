@@ -40,11 +40,11 @@ int main(int argc, char *argv[]) {
         "composing with the wrapped LM using a special type of composition\n"
         "algorithm. Determinization will be applied on the composed lattice.\n"
         "\n"
-        "Usage: lattice-lmrescore-nnet3-rnnlm [options] <rnnlm-wordlist> \\\n"
+        "Usage: lattice-lmrescore-kaldi-rnnlm [options] <embedding-file> <rnnlm-wordlist> \\\n"
         "             <word-symbol-table-rxfilename> <lattice-rspecifier> \\\n"
-        "             <rnnlm-rxfilename> <lattice-wspecifier>\n"
-        " e.g.: lattice-lmrescore-nnet3-rnnlm --lm-scale=-1.0 words.txt \\\n"
-        "                     ark:in.lats rnnlm ark:out.lats\n";
+        "             <raw-rnnlm-rxfilename> <lattice-wspecifier>\n"
+        " e.g.: lattice-lmrescore-kaldi-rnnlm --lm-scale=-1.0 word_embedding.mat \\\n"
+        "       rnn_words.txt fst_words.txt ark:in.lats rnnlm ark:out.lats\n";
 
     ParseOptions po(usage);
     int32 max_ngram_order = 3;

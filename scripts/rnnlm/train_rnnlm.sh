@@ -64,9 +64,11 @@ num_splits=$(cat $dir/text/info/num_splits)
 num_repeats=$(cat $dir/text/info/num_repeats)
 text_files=$(for n in $(seq $num_splits); do echo $dir/text/$n.txt; done)
 vocab_size=$(tail -n 1 $dir/config/words.txt | awk '{print $NF + 1}')
+embedding_type=
 
 if [ -f $dir/feat_embedding.0.mat ]; then
   sparse_features=true
+  embedding_type=feat_embedding
   if [ -f $dir/word_embedding.0.mat ]; then
     echo "$0: error: $dir/feat_embedding.0.mat and $dir/word_embedding.0.mat both exist."
     exit 1;
@@ -74,6 +76,7 @@ if [ -f $dir/feat_embedding.0.mat ]; then
   ! [ -f $dir/word_feats.txt ] && echo "$0: expected $0/word_feats.txt to exist" && exit 1;
 else
   sparse_features=false
+  embedding_type=word_embedding
   ! [ -f $dir/word_embedding.0.mat ] && \
     echo "$0: expected $dir/word_embedding.0.mat to exist" && exit 1
 fi
@@ -192,7 +195,7 @@ while [ $x -lt $num_iters ]; do
       [ -f $dir/.train_error ] && \
         echo "$0: failure on iteration $x of training, see $dir/log/train.$x.*.log for details." && exit 1
       if [ $this_num_jobs -gt 1 ]; then
-        # average the models and the embedding matrces.  Use run.pl as we don't
+        # average the models and the embedding matrces.  Use run.pl as we don\'t
         # want this to wait on the queue (if there is a queue).
         src_models=$(for n in $(seq $this_num_jobs); do echo $dir/$[x+1].$n.raw; done)
         src_matrices=$(for n in $(seq $this_num_jobs); do echo $dir/${embedding_type}.$[x+1].$n.mat; done)
@@ -218,7 +221,10 @@ if [ $stage -le $num_iters ]; then
   echo "$0: best iteration (out of $num_iters) was $best_iter, linking it to final iteration."
   ln -sf $embedding_type.$best_iter.mat $dir/$embedding_type.final.mat
   ln -sf $best_iter.raw $dir/final.raw
+  ln -sf $best_iter.raw $dir/rnnlm  # to make it consistent with other RNNLMs
 fi
+
+touch $dir/unk.probs
 
 # Now get some diagnostics about the evolution of the objective function.
 if [ $stage -le $[num_iters+1] ]; then
