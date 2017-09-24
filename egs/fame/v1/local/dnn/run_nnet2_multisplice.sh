@@ -49,7 +49,7 @@ if [ $stage -le 6 ]; then
     --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer3/-3:3 layer4/-7:2" \
     --num-epochs 10 \
     --num-hidden-layers 6 \
-    --num-jobs-initial 1 --num-jobs-final 1 \
+    --num-jobs-initial 3 --num-jobs-final 8 \
     --num-threads "$num_threads" \
     --minibatch-size "$minibatch_size" \
     --parallel-opts "$parallel_opts" \
