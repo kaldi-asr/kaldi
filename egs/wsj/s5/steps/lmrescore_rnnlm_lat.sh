@@ -61,6 +61,11 @@ if [ "$rnnlm_ver" == "tensorflow" ]; then
   first_arg="$first_arg $rnnlm_dir/wordlist.rnn.final"
 fi
 
+if [ "$rnnlm_ver" == "kaldirnnlm" ]; then
+  rescoring_binary="lattice-lmrescore-kaldi-rnnlm"
+  first_arg="\"rnnlm-get-word-embedding $rnnlm_dir/word_feats.txt $rnnlm_dir/feat_embedding.final.mat -|\" $rnnlm_dir/config/words.txt "
+fi
+
 oldlm=$oldlang/G.fst
 if [ -f $oldlang/G.carpa ]; then
   oldlm=$oldlang/G.carpa
