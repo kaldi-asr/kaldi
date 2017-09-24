@@ -24,7 +24,7 @@ embedding_lrate_factor=0.1  # the embedding learning rate is the
                             # nnet learning rate times this factor.
 cmd=run.pl  # you might want to set this to queue.pl
 
-# some options passed into nnet3-get-egs, relating to sampling.
+# some options passed into rnnlm-get-egs, relating to sampling.
 num_samples=512
 sample_group_size=2  # see rnnlm-get-egs
 num_egs_threads=10  # number of threads used for sampling, if we're using
@@ -55,7 +55,8 @@ set -e
 
 for f in $dir/config/{words,data_weights,oov}.txt \
               $dir/text/1.txt $dir/text/dev.txt $dir/0.raw \
-              $dir/text/info/num_splits $dir/text/info/num_repeats; do
+              $dir/text/info/num_splits $dir/text/info/num_repeats \
+              $dir/special_symbol_opts.txt; do
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1
 done
 
@@ -93,7 +94,7 @@ num_iters=$[($num_splits_to_process*2)/($num_jobs_initial+$num_jobs_final)]
 
 
 # this string will combine options and arguments.
-train_egs_args="--vocab-size=$vocab_size"
+train_egs_args="--vocab-size=$vocab_size $(cat $dir/special_symbol_opts.txt)"
 if [ -f $dir/sampling.lm ]; then
   # we are doing sampling.
   train_egs_args="$train_egs_args --num-samples=$num_samples --sample-group-size=$sample_group_size --num-threads=$num_egs_threads $dir/sampling.lm"
@@ -139,7 +140,7 @@ while [ $x -lt $num_iters ]; do
     else gpu_opt=''; queue_gpu_opt=''; fi
     [ -f $dir/.error ] && rm $dir/.error
     $cmd $queue_gpu_opt $dir/log/compute_prob.$x.log \
-       rnnlm-get-egs --vocab-size=$vocab_size $dir/text/dev.txt ark:- \| \
+       rnnlm-get-egs $(cat $dir/special_symbol_opts.txt) --vocab-size=$vocab_size $dir/text/dev.txt ark:- \| \
        rnnlm-compute-prob $gpu_opt $dir/$x.raw "$word_embedding" ark:- || touch $dir/.error &
 
     if [ $x -gt 0 ]; then

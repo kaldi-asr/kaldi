@@ -441,8 +441,11 @@ void Optimize(const NnetOptimizeOptions &config,
               const Nnet &nnet,
               int32 max_output_time_in_request,
               NnetComputation *computation) {
-  if (GetVerboseLevel() >= 4)
+  if (GetVerboseLevel() >= 3) {
     CheckComputation(nnet, *computation, true);
+    KALDI_LOG << "Before optimization, max memory use (bytes) = "
+              << GetMaxMemoryUse(*computation);
+  }
 
   { // Call LimitDerivativeTimes(); it's important that this
     // should come before other optimizations (search for "insist" in
@@ -536,8 +539,11 @@ void Optimize(const NnetOptimizeOptions &config,
   if (config.optimize_looped_computation)
     FixGotoLabel(computation);
 
-  if (GetVerboseLevel() >= 3)
+  if (GetVerboseLevel() >= 3) {
     CheckComputation(nnet, *computation, false);
+    KALDI_LOG << "After optimization, max memory use (bytes) = "
+              << GetMaxMemoryUse(*computation);
+  }
 }
 
 // ComputationRequests are distinguished by the names and indexes
@@ -735,6 +741,7 @@ const NnetComputation* CachingOptimizingCompiler::CompileNoShortcut(
     computation->Print(os2, nnet_);
     KALDI_LOG << "Generated computation is: " << os2.str();
   }
+
   { // some checking.  Note: there may come a time when we might
     // prefer to disable this checking.
     Timer timer;

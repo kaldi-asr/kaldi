@@ -1,6 +1,6 @@
 // fstext/deterministic-fst-inl.h
 
-// Copyright 2011-2012 Gilles Boulianne 
+// Copyright 2011-2012 Gilles Boulianne
 //                2014 Telepoint Global Hosting Service, LLC. (Author: David Snyder)
 //           2012-2015 Johns Hopkins University (author: Daniel Povey)
 
@@ -99,8 +99,8 @@ bool UnweightedNgramFst<Arc>::GetArc(
   StateId s, Label ilabel, Arc *oarc) {
 
   // The state ids increment with each state we encounter.
-  // if the assert fails, then we are trying to access 
-  // unseen states that are not immediately traversable. 
+  // if the assert fails, then we are trying to access
+  // unseen states that are not immediately traversable.
   KALDI_ASSERT(static_cast<size_t>(s) < state_vec_.size());
   std::vector<Label> seq = state_vec_[s];
   // Update state info.
@@ -113,7 +113,7 @@ bool UnweightedNgramFst<Arc>::GetArc(
     seq,
     static_cast<Label>(state_vec_.size()));
   // Now get state id for destination state.
-  typedef typename MapType::iterator IterType;  
+  typedef typename MapType::iterator IterType;
   std::pair<IterType, bool> result = state_map_.insert(new_state);
   if (result.second == true) {
     state_vec_.push_back(seq);
@@ -163,7 +163,7 @@ bool ComposeDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
   KALDI_ASSERT(ilabel != 0);
   KALDI_ASSERT(s < static_cast<StateId>(state_vec_.size()));
   const std::pair<StateId, StateId> pr (state_vec_[s]);
-  
+
   Arc arc1;
   if (!fst1_->GetArc(pr.first, ilabel, &arc1)) return false;
   if (arc1.olabel == 0) { // There is no output label on the
@@ -171,7 +171,7 @@ bool ComposeDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
     std::pair<const std::pair<StateId, StateId>, StateId> new_value(
         std::pair<StateId, StateId>(arc1.nextstate, pr.second),
         next_state_);
-    
+
     std::pair<IterType, bool> result = state_map_.insert(new_value);
     oarc->ilabel = ilabel;
     oarc->olabel = 0;
@@ -228,7 +228,7 @@ CacheDeterministicOnDemandFst<Arc>::CacheDeterministicOnDemandFst(
   for (StateId i = 0; i < num_cached_arcs; i++)
     cached_arcs_[i].first = kNoStateId; // Invalidate all elements of the cache.
 }
-      
+
 template<class Arc>
 bool CacheDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
                                                 Arc *oarc) {
@@ -251,7 +251,7 @@ bool CacheDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
     } else {
       return false;
     }
-  }  
+  }
 }
 
 template<class Arc>
@@ -289,7 +289,7 @@ bool LmExampleDeterministicOnDemandFst<Arc>::GetArc(
   while (0) { // e.g. while !lm->HistoryStateExists(wseq)
     wseq.erase(wseq.begin(), wseq.begin() + 1); // remove most distant element of history.
     // note: if your histories are the other way round, you might just do
-    // wseq.pop() here.  
+    // wseq.pop() here.
   }
   if (log_prob == -numeric_limits<float>::infinity()) { // assume this
     // is what happens if prob of the word is zero.  Some LMs will never
@@ -299,9 +299,9 @@ bool LmExampleDeterministicOnDemandFst<Arc>::GetArc(
   std::pair<const std::vector<Label>, StateId> new_value(
       wseq,
       static_cast<Label>(state_vec_.size()));
-  
+
   // Now get state id for destination state.
-  typedef typename MapType::iterator IterType;  
+  typedef typename MapType::iterator IterType;
   std::pair<IterType, bool> result = state_map_.insert(new_value);
   if (result.second == true) // was inserted
     state_vec_.push_back(wseq);

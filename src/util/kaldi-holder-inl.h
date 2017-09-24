@@ -485,7 +485,7 @@ template<class BasicType> class BasicVectorVectorHolder {
 
 
 /// BasicPairVectorHolder is a Holder for a vector of pairs of
-/// a basic type, e.g. std::vector<std::pair<int32> >.
+/// a basic type, e.g. std::vector<std::pair<int32, int32> >.
 /// Note: a basic type is defined as a type for which ReadBasicType
 /// and WriteBasicType are implemented, i.e. integer and floating
 /// types, and bool.

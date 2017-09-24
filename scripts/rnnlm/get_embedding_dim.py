@@ -43,6 +43,7 @@ if proc.returncode != 0:
 input_dim=-1
 output_dim=-1
 left_context=0
+right_context=0
 for line in out_lines:
     line = line.decode('utf-8')
     m = re.search(r'input-node name=input dim=(\d+)', line)
@@ -62,6 +63,9 @@ for line in out_lines:
     m = re.match(r'left-context: (\d+)', line)
     if m is not None:
         left_context = int(m.group(1))
+    m = re.match(r'right-context: (\d+)', line)
+    if m is not None:
+        right_context = int(m.group(1))
 
 if input_dim == -1:
     sys.exit(sys.argv[0] + ": could not get input dim from output "
@@ -75,10 +79,22 @@ if left_context == -1:
     sys.exit(sys.argv[0] + ": could not get left context output "
              "of 'nnet3-info {0}'".format(args.nnet))
 
-if left_context > 0:
-    sys.exit(sys.argv[0] + ": left-context of model {0} is >0: (it's {1}). "
+if right_context == -1:
+    sys.exit(sys.argv[0] + ": could not get right context output "
+             "of 'nnet3-info {0}'".format(args.nnet))
+
+if right_context > 0:
+    sys.exit(sys.argv[0] + ": right-context of model {0} is >0: (it's {1}). "
              "This model cannot be used as an RNNLM because it sees the "
              "future.".format(args.nnet, left_context))
+
+if left_context > 0:
+    sys.exit(sys.argv[0] + ": left-context of model {0} is >0: (it's {1}). "
+             "This model cannot be used as an RNNLM because it requires left "
+             "context and the code does not support this.  You can generally use "
+             "IfDefined() in descriptors, and set configs of layers, in such "
+             "a way that left-context is not required"
+             "".format(args.nnet, left_context))
 
 if input_dim != output_dim:
     sys.exit(sys.argv[0] + ": input and output dims differ for "

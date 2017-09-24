@@ -2,18 +2,16 @@
 
 # this is an example to show a "tdnn" system in raw nnet configuration
 # i.e. without a transition model
+# It uses corrupted (reverberation + noise) speech as input and clean speech 
+# as output.
 
 . cmd.sh
-
-
-# At this script level we don't support not running on GPU, as it would be painfully slow.
-# If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
-# --num-threads 16 and --minibatch-size 128.
 
 stage=0
 affix=
 train_stage=-10
 common_egs_dir=
+egs_opts=
 num_data_reps=10
 
 remove_egs=true
@@ -48,21 +46,21 @@ done
 
 if [ $stage -le 9 ]; then
   echo "$0: creating neural net configs";
-  
   num_targets=`feat-to-dim scp:$targets_scp - 2>/dev/null` || exit 1
+  feat_dim=`feat-to-dim scp:$data_dir/feats.scp - 2>/dev/null` || exit 1
 
-  # create the config files for nnet initialization
-  python steps/nnet3/tdnn/make_configs.py  \
-     --splice-indexes "-2,-1,0,1,2 -1,2 -3,3 -7,2 0"  \
-     --feat-dir ${data_dir} \
-     --relu-dim=1024 \
-     --add-lda=false \
-     --objective-type=quadratic \
-     --add-final-sigmoid=false \
-     --include-log-softmax=false \
-     --use-presoftmax-prior-scale=false \
-     --num-targets=$num_targets \
-     $dir/configs || exit 1;
+  mkdir -p $dir/configs
+  cat <<EOF > $dir/configs/network.xconfig
+  input dim=$feat_dim name=input
+
+  relu-renorm-layer name=tdnn1 dim=1024 input=Append(-2,-1,0,1,2)
+  relu-renorm-layer name=tdnn2 dim=1024 input=Append(-1,2)
+  relu-renorm-layer name=tdnn3 dim=1024 input=Append(-3,3)
+  relu-renorm-layer name=tdnn4 dim=1024 input=Append(-7,2)
+  relu-renorm-layer name=tdnn5 dim=1024
+  output-layer name=output dim=$num_targets max-change=1.5 objective-type=quadratic include-log-softmax=false
+EOF
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
 if [ $stage -le 10 ]; then
@@ -71,18 +69,21 @@ if [ $stage -le 10 ]; then
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/aspire-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
-  steps/nnet3/tdnn/train_raw_nnet.sh --stage $train_stage \
-    --cmd "$decode_cmd" \
-    --cmvn-opts "--norm-means=false --norm-vars=false" \
-    --num-epochs 2 \
-    --num-jobs-initial 3 \
-    --num-jobs-final 16 \
-    --initial-effective-lrate 0.0017 \
-    --final-effective-lrate 0.00017 \
-    --egs-dir "$common_egs_dir" \
-    --remove-egs $remove_egs \
-    --use-gpu true \
-    --dense-targets true \
-    ${data_dir} $targets_scp $dir || exit 1
+  steps/nnet3/train_raw_dnn.py --stage=$train_stage \
+    --cmd="$decode_cmd" \
+    --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
+    --trainer.num-epochs 2 \
+    --trainer.optimization.num-jobs-initial 3 \
+    --trainer.optimization.num-jobs-final 16 \
+    --trainer.optimization.initial-effective-lrate 0.0017 \
+    --trainer.optimization.final-effective-lrate 0.00017 \
+    --trainer.optimization.minibatch-size 512 \
+    --egs.dir "$common_egs_dir" --egs.opts "$egs_opts" \
+    --cleanup.remove-egs $remove_egs \
+    --cleanup.preserve-model-interval 50 \
+    --nj=30 \
+    --use-dense-targets=true \
+    --feat-dir=${data_dir} \
+    --targets-scp=$targets_scp \
+    --dir=$dir || exit 1;
 fi
-

@@ -32,6 +32,7 @@ doc/get_version_info.sh
 echo "$0: done"
 
 
+rm -r html
 doxygen
 cp doc/*.pptx html/;
 # get the style sheet in the html/ directory.

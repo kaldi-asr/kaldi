@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# This script prepares some things needed by ./train.sh, e.g. it initializes
+# This script prepares some things needed by rnnlm/train_rnnlm.sh, e.g. it initializes
 # the model and ensures we have the split-up integerized data on disk.
 
 cmd=run.pl
@@ -22,7 +22,7 @@ unigram_factor=100.0     # Option used when pruning the LM used for sampling.
 if [ $# != 3 ]; then
   echo "Usage: $0 [options] <text-dir> <rnnlm-config-dir> <rnnlm-dir>"
   echo "Sets up the directory <rnnlm-dir> for RNNLM training as done by"
-  echo "rnnlm/train.sh, and initializes the model."
+  echo "rnnlm/train_rnnlm.sh, and initializes the model."
   echo " <text-dir> is as validated by rnnlm/validate_data_dir.py"
   echo " <rnnlm-config-dir> is as validated by rnnlm/validate_config_dir.sh."
   exit 1
@@ -57,6 +57,8 @@ if [ $stage -le 1 ]; then
       cp $config_dir/$f $dir/config
     done
   fi
+
+  rnnlm/get_special_symbol_opts.py < $dir/config/words.txt > $dir/special_symbol_opts.txt
 fi
 
 if [ $stage -le 2 ]; then
