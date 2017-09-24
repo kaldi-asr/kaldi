@@ -13,7 +13,7 @@ set -e
 fbankdir=`pwd`/fbank
 vaddir=`pwd`/fbank
 
-# SRE1 trials
+# SRE16 trials
 sre16_trials=data/sre16_eval_test/trials
 sre16_trials_tgl=data/sre16_eval_test/trials_tgl
 sre16_trials_yue=data/sre16_eval_test/trials_yue
@@ -72,7 +72,7 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  # Make MFCCs and compute the energy-based VAD for each dataset
+  # Make filterbanks and compute the energy-based VAD for each dataset
   for name in sre swbd sre16_eval_enroll sre16_eval_test sre16_major; do
     steps/make_fbank.sh --fbank-config conf/fbank.conf --nj 40 --cmd "$train_cmd" \
       data/${name} exp/make_fbank $fbankdir

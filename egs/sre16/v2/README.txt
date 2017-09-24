@@ -2,7 +2,7 @@
  from a deep neural network.  In the scripts, we refer to these embeddings as
  "xvectors."  The recipe is based on 
  http://www.danielpovey.com/files/2017_interspeech_embeddings.pdf but with
- improvements due to DNN training data augmentation.
+ improvements due to augmentation in the DNN training data.
 
  The recipe uses the following data for system development.  This is in
  addition to the NIST SRE 2016 dataset used for evaluation (see ../README.txt).

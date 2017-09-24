@@ -6,7 +6,7 @@
    NIST SRE 2016 test set
  
  More details on NIST SRE 2016 can be found at the url
- https://www.nist.gov/itl/iad/mig/speaker-recognition-evaluation-2016
+ https://www.nist.gov/itl/iad/mig/speaker-recognition-evaluation-2016.
  Additional data sources are used in the subdirectories. See the
  corresponding README.txt files in the subdirectories for more details.
 
