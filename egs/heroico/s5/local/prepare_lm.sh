@@ -10,10 +10,12 @@ stage=0
 
 . ./utils/parse_options.sh
 
-if [ $stage -le 0 ]; then
-    mkdir -p language_models \
-	data/local/lm
 
+if [ ! -d data/local/lm ]; then
+    mkdir -p data/local/lm
+fi
+
+if [ $stage -le 0 ]; then
     # use only training prompts
     (cut -f 2 data/train/text > data/local/lm/training_text.txt)
     corpus=data/local/lm/training_text.txt
@@ -25,12 +27,12 @@ if [ $stage -le 0 ]; then
 	-map-unk "<UNK>" \
 	-limit-vocab \
 	-text $corpus \
-	-lm language_models/lm_threegram.arpa || exit 1;
+	-lm data/local/lm/lm_threegram.arpa || exit 1;
 
-    if [ -e "language_models/lm_threegram.arpa.gz" ]; then
-	rm language_models/lm_threegram.arpa.gz
+    if [ -e "data/local/lm/lm_threegram.arpa.gz" ]; then
+	rm data/local/lm/lm_threegram.arpa.gz
     fi
 
     gzip \
-	language_models/lm_threegram.arpa
+	data/local/lm/lm_threegram.arpa
 fi
