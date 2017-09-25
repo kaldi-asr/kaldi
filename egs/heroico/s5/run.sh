@@ -12,7 +12,7 @@ set -o pipefail
 set u
 
 # the location of the LDC corpus
-datadir=/Users/jjm/work/kaldi/egs/heroico/LDC2006S37/data
+datadir=/mnt/corpora/LDC2006S37/data
 
 # acoustic models are trained on the heroico corpus
 # testing is done on the usma corpus
@@ -36,15 +36,28 @@ if [ $stage -le 0 ]; then
     local/get_wav_list.sh \
 	$datadir
 
-    # make separate lists for heroico answers and recordings 
-    local/heroico_answers_make_lists.pl \
-	$answers_transcripts
+    # make separate lists for heroico answers and recordings
+    export LC_ALL=en_US.UTF-8
+    cat \
+	$answers_transcripts \
+	| \
+	iconv -f ISO-8859-1 -t UTF-8 \
+	| \
+	sed -e s/// \
+	| \
+	local/heroico_answers_make_lists.pl
 
     utils/fix_data_dir.sh \
 	$tmpdir/heroico/answers
 
-    local/heroico_recordings_make_lists.pl \
-    	$recordings_transcripts
+    cat \
+	$recordings_transcripts \
+	| \
+	iconv -f ISO-8859-1 -t UTF-8 \
+	| \
+	sed -e s/// \
+	    | \
+	local/heroico_recordings_make_lists.pl
 
     utils/fix_data_dir.sh \
 	$tmpdir/heroico/recordings
@@ -57,6 +70,8 @@ if [ $stage -le 0 ]; then
 	    $tmpdir/heroico/answers/$x \
 	    $tmpdir/heroico/recordings/$x \
 	    | \
+	    sed -e s/// \
+		| \
 	    sort \
 		-k1,1 \
 		-u \
@@ -70,16 +85,27 @@ fi
 
 if [ $stage -le 1 ]; then
     #  make separate lists for usma native and nonnative
-    local/usma_native_make_lists.pl \
-	$usma_transcripts
+    cat \
+	$usma_transcripts \
+	| \
+	iconv -f ISO-8859-1 -t UTF-8 \
+	| \
+	sed -e s/// \
+	    | \
+	    local/usma_native_make_lists.pl
 
-    local/usma_nonnative_make_lists.pl \
-	$usma_transcripts
+    cat \
+	$usma_transcripts \
+	| \
+	iconv -f ISO-8859-1 -t UTF-8 \
+	| \
+	sed -e s/// \
+	    | \
+	local/usma_nonnative_make_lists.pl
 
     for n in native nonnative; do
 	mkdir -p $tmpdir/usma/$n/lists
 
-	export LC_ALL=C
 
 	for x in wav.scp utt2spk text; do
 	    sort \
@@ -100,6 +126,8 @@ if [ $stage -le 1 ]; then
 	cat \
 	    $tmpdir/heroico/answers/${x} \
 	    $tmpdir/heroico/recordings/${x} \
+	    | \
+	    sed -e s/// \
 	    > \
 	    $tmpdir/lists/$x
 
@@ -163,7 +191,7 @@ if [ $stage -le 1 ]; then
 	    data/$n
     done
 fi
-
+exit
 if [ $stage -le 2 ]; then
     # prepare a dictionary
     mkdir -p data/local/dict
