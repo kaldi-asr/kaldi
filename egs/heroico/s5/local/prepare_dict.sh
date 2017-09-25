@@ -9,21 +9,21 @@ set -o errexit
 
 wget http://www.openslr.org/resources/34/santiago.tar.gz
 
-mkdir -p local/src/dict
+mkdir -p data/local/tmp/dict
 
-mv santiago.tar.gz local/src/dict/
+mv santiago.tar.gz data/local/tmp/dict/
 
-if [ -e local/src/dict/santiago.tar ]; then
-    rm local/src/dict/santiago.tar
+if [ -e data/local/tmp/dict/santiago.tar ]; then
+    rm data/local/tmp/dict/santiago.tar
 fi
 
-gunzip local/src/dict/santiago.tar.gz
+gunzip data/local/tmp/dict/santiago.tar.gz
 
-cd local/src/dict
+cd data/local/tmp/dict
 
 tar -xvf santiago.tar
 
-cd ../../..
+cd ../../../..
 
 if [ ! -d data/local/dict ]; then
     mkdir -p data/local/dict
@@ -32,7 +32,7 @@ fi
 export LC_ALL=C
 
 sort \
-    local/src/dict/santiago.txt \
+    data/local/tmp/dict/santiago.txt \
     | \
     uniq \
     | \
