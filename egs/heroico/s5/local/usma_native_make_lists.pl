@@ -13,12 +13,6 @@ use File::Spec;
 use File::Copy;
 use File::Basename;
 
-BEGIN {
-    @ARGV == 1 or croak "USAGE: $0 <PROMPTSLIST>";
-}
-
-my ($p) = @ARGV;
-
 my $tmpdir = "data/local/tmp/usma/native";
 
 # input wav file list
@@ -36,15 +30,12 @@ my $t = "$tmpdir/text";
 # initialize hash for prompts
 my %p = ();
 
-open my $P, '<', $p or croak "problem with $p $!";
-
 # store prompts in hash
-LINEA: while ( my $line = <$P> ) {
+LINEA: while ( my $line = <> ) {
     chomp $line;
     my ($num,$sent) = split /\t/, $line, 2;
     $p{$num} = $sent;
 }
-close $P;
 
 open my $W, '<', $w or croak "problem with $w $!";
 open my $O, '+>', $o or croak "problem with $o $!";

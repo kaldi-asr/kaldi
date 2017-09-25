@@ -13,12 +13,6 @@ use File::Spec;
 use File::Copy;
 use File::Basename;
 
-BEGIN {
-    @ARGV == 1 or croak "USAGE: $0 <PROMPTSLIST>";
-}
-
-my ($p) = @ARGV;
-
 my $tmpdir = "data/local/tmp/heroico";
 
 system "mkdir -p $tmpdir/answers";
@@ -38,10 +32,8 @@ my $t = "$tmpdir/answers/text";
 # initialize hash for prompts
 my %p = ();
 
-open my $P, '<', $p or croak "problem with $p $!";
-
 # store prompts in hash
-LINEA: while ( my $line = <$P> ) {
+LINEA: while ( my $line = <> ) {
     chomp $line;
     my ($num,$sent) = split /\t/, $line, 2;
     my ($volume,$directories,$file) = File::Spec->splitpath( $num );
@@ -52,7 +44,6 @@ LINEA: while ( my $line = <$P> ) {
     my $i = $s . '_' . 'a' . '_' . $file;
     $p{$i} = $sent;
 }
-close $P;
 
 open my $W, '<', $w or croak "problem with $w $!";
 open my $O, '+>', $o or croak "problem with $o $!";
