@@ -350,9 +350,6 @@ if [ $stage -le 7 ]; then
 fi
 
 if [ $stage -le 8 ]; then
-    # i-vector  extractor training
-    local/nnet3/run_ivector_common.sh
-
     # train and test chain models
     local/chain/run_tdnn.sh
 fi
