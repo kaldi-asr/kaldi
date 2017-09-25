@@ -230,58 +230,11 @@ if [ $stage -le 3 ]; then
     # prepare lm on training transcripts
     local/prepare_lm.sh
 
-    # make lm fst
-    mkdir -p data/local/lm
-
-    gunzip language_models/lm_threegram.arpa.gz 
-
-    # find out of vocabulary words
-    utils/find_arpa_oovs.pl \
-	data/lang/words.txt \
-	language_models/lm_threegram.arpa \
-	> \
-	data/lang/oovs_3g.txt || exit 1;
-
-    # make an fst out of the lm
-    arpa2fst \
-	language_models/lm_threegram.arpa \
-	> \
-	data/lang/lm_3g.fst || exit 1;
-
-    # remove out of vocabulary arcs
-    fstprint 	\
-	data/lang/lm_3g.fst \
-	| \
-	utils/remove_oovs.pl 	    \
-	    data/lang/oovs_3g.txt \
-	    > \
-	    data/lang/lm_3g_no_oovs.txt
-
-    # replace epsilon symbol with \#0
-    utils/eps2disambig.pl \
-	< \
-	data/lang/lm_3g_no_oovs.txt \
-	| \
-	utils/s2eps.pl \
-	    > \
-	    data/lang/lm_3g_with_disambig_symbols_without_s.txt
-
-    # binarize the fst
-    fstcompile \
-	--isymbols=data/lang/words.txt \
-	--osymbols=data/lang/words.txt \
-	--keep_isymbols=false \
-	--keep_osymbols=false \
-	data/lang/lm_3g_with_disambig_symbols_without_s.txt \
-	data/lang/lm_3g_with_disambig_symbols_without_s.fst
-
-    # make the G.fst
-    fstarcsort \
-	data/lang/lm_3g_with_disambig_symbols_without_s.fst \
-	data/lang/G.fst
-
-    gzip \
-	language_models/lm_threegram.arpa
+    utils/format_lm.sh \
+	data/lang \
+	data/local/lm/lm_threegram.arpa.gz \
+	data/local/dict/lexicon.txt \
+	data/lang_test
 fi
 
 if [ $stage -le 4 ]; then
