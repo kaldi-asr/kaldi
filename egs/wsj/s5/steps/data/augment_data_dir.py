@@ -58,7 +58,7 @@ def CheckArgs(args):
         raise Exception("Either --fg-noise-dir or --bg-noise-dir must be specified")
     return args
 
-def get_noise_list(noise_wav_scp_filename):
+def GetNoiseList(noise_wav_scp_filename):
     noise_wav_scp_file = open(noise_wav_scp_filename, 'r').readlines()
     noise_wavs = {}
     noise_utts = []
@@ -69,7 +69,7 @@ def get_noise_list(noise_wav_scp_filename):
         noise_wavs[toks[0]] = wav.rstrip()
     return noise_utts, noise_wavs
 
-def augment_wav(utt, wav, dur, fg_snr_opts, bg_snr_opts, fg_noise_utts, \
+def AugmentWav(utt, wav, dur, fg_snr_opts, bg_snr_opts, fg_noise_utts, \
     bg_noise_utts, noise_wavs, noise2dur, interval, num_opts):
     # This section is common to both foreground and background noises
     new_wav = ""
@@ -148,7 +148,7 @@ def main():
     # Load background noises
     if args.bg_noise_dir:
         bg_noise_wav_filename = args.bg_noise_dir + "/wav.scp"
-        bg_noise_utts, bg_noise_wavs = get_noise_list(bg_noise_wav_filename)
+        bg_noise_utts, bg_noise_wavs = GetNoiseList(bg_noise_wav_filename)
         bg_noise_reco2dur = ParseFileToDict(args.bg_noise_dir + "/reco2dur",
             value_processor = lambda x: float(x[0]))
         noise_wavs.update(bg_noise_wavs)
@@ -158,7 +158,7 @@ def main():
     if args.fg_noise_dir:
         fg_noise_wav_filename = args.fg_noise_dir + "/wav.scp"
         fg_noise_reco2dur_filename = args.fg_noise_dir + "/reco2dur"
-        fg_noise_utts, fg_noise_wavs = get_noise_list(fg_noise_wav_filename)
+        fg_noise_utts, fg_noise_wavs = GetNoiseList(fg_noise_wav_filename)
         fg_noise_reco2dur = ParseFileToDict(args.fg_noise_dir + "/reco2dur",
             value_processor = lambda x: float(x[0]))
         noise_wavs.update(fg_noise_wavs)
@@ -174,7 +174,7 @@ def main():
         utt = toks[0]
         wav = " ".join(toks[1:])
         dur = reco2dur[utt]
-        new_wav = augment_wav(utt, wav, dur, fg_snrs, bg_snrs, fg_noise_utts,
+        new_wav = AugmentWav(utt, wav, dur, fg_snrs, bg_snrs, fg_noise_utts,
             bg_noise_utts, noise_wavs, noise_reco2dur, args.fg_interval,
             num_bg_noises)
         new_utt = utt + "-" + args.utt_suffix
