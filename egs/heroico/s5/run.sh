@@ -191,7 +191,7 @@ if [ $stage -le 1 ]; then
 	    data/$n
     done
 fi
-exit
+
 if [ $stage -le 2 ]; then
     # prepare a dictionary
     mkdir -p data/local/dict
@@ -207,35 +207,6 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-    # extract acoustic features
-    mkdir -p exp
-
-    for fld in native nonnative test train; do
-	if [ -e data/$fld/cmvn.scp ]; then
-	    rm data/$fld/cmvn.scp
-	fi
-
-	steps/make_mfcc.sh \
-	    --cmd "$train_cmd" \
-	    --nj 4 \
-	    data/$fld \
-	    exp/make_mfcc/$fld \
-	    mfcc || exit 1;
-
-	utils/fix_data_dir.sh \
-	    data/$fld || exit 1;
-
-	steps/compute_cmvn_stats.sh \
-	    data/$fld \
-	    exp/make_mfcc\
-	    mfcc || exit 1;
-
-	utils/fix_data_dir.sh \
-	    data/$fld || exit 1;
-	done
-fi
-
-if [ $stage -le 4 ]; then
     # prepare lm on training transcripts
     local/prepare_lm.sh
 
@@ -291,6 +262,35 @@ if [ $stage -le 4 ]; then
 
     gzip \
 	language_models/lm_threegram.arpa
+fi
+
+if [ $stage -le 4 ]; then
+    # extract acoustic features
+    mkdir -p exp
+
+    for fld in native nonnative test train; do
+	if [ -e data/$fld/cmvn.scp ]; then
+	    rm data/$fld/cmvn.scp
+	fi
+
+	steps/make_mfcc.sh \
+	    --cmd "$train_cmd" \
+	    --nj 4 \
+	    data/$fld \
+	    exp/make_mfcc/$fld \
+	    mfcc || exit 1;
+
+	utils/fix_data_dir.sh \
+	    data/$fld || exit 1;
+
+	steps/compute_cmvn_stats.sh \
+	    data/$fld \
+	    exp/make_mfcc\
+	    mfcc || exit 1;
+
+	utils/fix_data_dir.sh \
+	    data/$fld || exit 1;
+	done
 fi
 
 if [ $stage -le 5 ]; then
