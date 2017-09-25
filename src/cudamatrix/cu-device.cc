@@ -56,7 +56,6 @@ namespace kaldi {
    initialization).  But regardless, changing to this new mechanism should be
    harmless even if the problem was specific to the CLSP grid.
 */
-
 static bool GetCudaContext(int32 num_gpus, std::string *debug_str) {
   std::ostringstream debug_stream;
   debug_stream << "num-gpus=" << num_gpus << ". ";
@@ -71,6 +70,32 @@ static bool GetCudaContext(int32 num_gpus, std::string *debug_str) {
     cudaGetLastError();  // Make sure the error state doesn't get returned in
                          // the next cudaGetLastError().
   }
+  *debug_str = debug_stream.str();
+  return false;
+}
+
+/**
+ * Similar as GetCudaContext(num_gpus, debug_str). But only run on given GPU.
+ */
+static bool GetCudaContextById(int32 gpu_id, std::string *debug_str) {
+  std::ostringstream debug_stream;
+  cudaSetDevice(gpu_id);
+  cudaError_t e = cudaDeviceSynchronize(); // << CUDA context gets created here.
+  if (e == cudaSuccess) {
+    int32 act_gpu_id;
+    e = cudaGetDevice(&act_gpu_id);
+    if (e == cudaSuccess) {
+      if (act_gpu_id == gpu_id) {
+        *debug_str = debug_stream.str();
+        return true;
+      }
+      debug_stream << "Trty to set GPU#" << gpu_id << ", but get GPU#" << act_gpu_id;
+    }
+    debug_stream << "Device " << gpu_id << ": " << cudaGetErrorString(e) << ". ";
+  }
+  debug_stream << "Device " << gpu_id << ": " << cudaGetErrorString(e) << ".  ";
+  cudaGetLastError();  // Make sure the error state doesn't get returned in
+  // the next cudaGetLastError().
   *debug_str = debug_stream.str();
   return false;
 }
@@ -180,6 +205,11 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
   } else {
     // Or suggest to use compute exclusive mode
     KALDI_WARN << "Suggestion: use 'nvidia-smi -c 3' to set compute exclusive mode";
+    // in this case we release the GPU context...
+    e = cudaThreadExit(); // deprecated, but for legacy reason not cudaDeviceReset
+    if (e != cudaSuccess) {
+      KALDI_CUDA_ERR(e, "Failed to release CUDA context on a GPU");
+    }
 
     // And select the GPU according to proportion of free memory
     if (SelectGpuIdAuto()) {
@@ -199,6 +229,103 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
   }
 }
 
+void CuDevice::SelectGpuId(std::string use_gpu, int32 forced_gpu_id) {
+  // Possible modes
+  if (use_gpu != "yes" && use_gpu != "no" && use_gpu != "optional" && use_gpu != "wait") {
+    KALDI_ERR << "Please choose : --use-gpu=yes|no|optional|wait, passed '" << use_gpu << "'";
+  }
+
+  // Make sure this function is not called twice!
+  if (Enabled()) {
+    KALDI_ERR << "There is already an active GPU " << active_gpu_id_
+              << ", cannot change it on the fly!";
+  }
+  // Allow the GPU to stay disabled
+  if (!Enabled() && use_gpu == "no") {
+    KALDI_LOG << "Manually selected to compute on CPU.";
+    return;
+  }
+
+  // Check that we have a gpu available
+  int32 num_gpus = 0;
+
+  cudaError_t e = cudaGetDeviceCount(&num_gpus);
+
+  if (num_gpus == 0) {
+    if (use_gpu == "yes" || use_gpu == "wait") {
+      KALDI_CUDA_ERR(e, "No CUDA GPU detected!");
+    }
+    if (use_gpu == "optional") {
+      KALDI_WARN << "Running on CPU!!! No CUDA GPU detected...";
+      return;
+    }
+  }
+
+  if (forced_gpu_id >= num_gpus) {
+    if (use_gpu == "yes" || use_gpu == "wait") {
+      KALDI_CUDA_ERR(e, "Specified GPU is not available");
+    }
+    if (use_gpu == "optional") {
+      KALDI_WARN << "Running on CPU!!! Specified CPU is not available...";
+      return;
+    }
+  }
+
+  // Create a CUDA context.
+  std::string debug_str;
+  bool got_context = GetCudaContextById(forced_gpu_id, &debug_str);
+
+  if (use_gpu != "wait") {
+    if (!got_context) {
+      // So far no we don't have context, sleep a bit and retry.
+      int32 sec_sleep = (use_gpu == "yes" ? 20 : 2);
+      KALDI_WARN << "Will try again to get a GPU after " << sec_sleep
+                 << " seconds.";
+      Sleep(sec_sleep);
+      if (!GetCudaContextById(forced_gpu_id, &debug_str)) {
+        if (use_gpu == "yes") {
+          {
+            Input input;
+            input.Open("nvidia-smi 1>&2 |");
+          }
+          KALDI_LOG << debug_str;
+          KALDI_ERR << "Failed to create CUDA context, no more unused GPUs? ";
+        }
+        if (use_gpu == "optional") {
+          KALDI_WARN << "Running on CPU!!! No more unused CUDA GPUs?";
+          return;
+        }
+      }
+    }
+  } else {
+    int32 num_times = 0;
+    BaseFloat wait_time = 0.0;
+    while (! got_context) {
+      int32 sec_sleep = 5;
+      if (num_times == 0)
+        KALDI_WARN << "Will try again indefinitely every " << sec_sleep
+                   << " seconds to get a GPU.";
+      num_times++;
+      wait_time += sec_sleep;
+      Sleep(sec_sleep);
+      got_context = GetCudaContextById(forced_gpu_id, &debug_str);
+    }
+
+    KALDI_WARN << "Waited " << wait_time
+               << " seconds before creating CUDA context";
+  }
+
+  // Re-assure we have the context
+  KALDI_ASSERT(cudaSuccess == cudaDeviceSynchronize());
+
+  // Check if the machine use compute exclusive mode
+  if (!IsComputeExclusive()) {
+    // In force mode, will not reset device
+    KALDI_WARN << "Suggestion: use 'nvidia-smi -c 3' to set compute exclusive mode";
+  }
+  FinalizeActiveGpu();
+  return;
+}
 
 void CuDevice::FinalizeActiveGpu() {
   // The device at this point should have active GPU, so we can query its name
@@ -266,11 +393,6 @@ bool CuDevice::IsComputeExclusive() {
 #endif
     default :
       // The computation mode is not compute-exclusive,
-      // in this case we release the GPU context...
-      e = cudaThreadExit(); // deprecated, but for legacy reason not cudaDeviceReset
-      if (e != cudaSuccess) {
-        KALDI_CUDA_ERR(e, "Failed to release CUDA context on a GPU");
-      }
       return false;
   }
 }
@@ -583,7 +705,7 @@ CuDevice::~CuDevice() {
 }
 
 // The instance of the static singleton
-CuDevice CuDevice::global_device_;
+thread_local CuDevice CuDevice::global_device_;
 }
 
 

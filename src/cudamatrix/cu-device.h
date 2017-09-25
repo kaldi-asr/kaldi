@@ -79,6 +79,12 @@ class CuDevice {
   ///  (more comments in cu-device.cc)
   void SelectGpuId(std::string use_gpu);
 
+  /// Similar as SelectGpuId(use_gpu), but forcibly use specified GPU.
+  ///  "yes"      -- Use specified GPU and die if this fails.
+  ///  "optional" -- Do as above, but if it fails, back off to CPU.
+  ///  "no"       -- Run on CPU.
+  void SelectGpuId(std::string use_gpu, int32 forced_gpu_id);
+
   /// Check if the CUDA GPU is selected for use
   bool Enabled() const {
     return (active_gpu_id_ > -1);
@@ -138,7 +144,7 @@ class CuDevice {
   CuDevice &operator=(CuDevice&);  // Disallow.
 
 
-  static CuDevice global_device_;
+  static thread_local CuDevice global_device_;
   cublasHandle_t handle_;
 
   /// Check if the GPU run in compute exclusive mode Returns true if it is
