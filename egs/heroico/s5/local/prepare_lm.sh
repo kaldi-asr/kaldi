@@ -15,8 +15,8 @@ if [ $stage -le 0 ]; then
 	data/local/lm
 
     # use only training prompts
-    (cut -f 2 data/train/text > data/local/tmp/lm_training_text.txt)
-    corpus=data/local/tmp/lm_training_text.txt
+    (cut -f 2 data/train/text > data/local/lm/training_text.txt)
+    corpus=data/local/lm/training_text.txt
 
     ngram-count \
 	-order 3 \
