@@ -1,8 +1,8 @@
 // rnnlm/rnnlm-lattice-rescoring.h
 //
 // Copyright 2017 Johns Hopkins University (author: Daniel Povey) 
-//                Yiming Wang
-//                Hainan Xu
+//           2017 Yiming Wang
+//           2017 Hainan Xu
 //
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -27,7 +27,7 @@
 
 #include "base/kaldi-common.h"
 #include "fstext/deterministic-fst.h"
-#include "rnnlm/rnnlm-decodable-simple-looped.h"
+#include "rnnlm/rnnlm-simple-looped.h"
 #include "util/common-utils.h"
 
 namespace kaldi {
@@ -44,7 +44,7 @@ class KaldiRnnlmDeterministicFst
   KaldiRnnlmDeterministicFst(int32 max_ngram_order,
       const std::string &rnn_wordlist,
       const std::string &word_symbol_table_rxfilename,
-      const DecodableRnnlmSimpleLoopedInfo &info);
+      const RnnlmSimpleLoopedInfo &info);
 
   // We cannot use "const" because the pure virtual function in the interface is
   // not const.
@@ -66,7 +66,8 @@ class KaldiRnnlmDeterministicFst
   std::vector<std::string> fst_label_to_word_;
   int32 full_voc_size_;
   int32 out_OOS_index_;
-  int32 final_word_index_;
+  int32 bos_index_;
+  int32 eos_index_;
 
   typedef unordered_map
       <std::vector<Label>, StateId, VectorHasher<Label> > MapType;
@@ -75,7 +76,7 @@ class KaldiRnnlmDeterministicFst
   std::vector<std::vector<Label> > state_to_wseq_;
 
   int32 max_ngram_order_;
-  std::vector<DecodableRnnlmSimpleLooped> state_to_decodable_rnnlm_;
+  std::vector<RnnlmSimpleLooped> state_to_decodable_rnnlm_;
 
   void ReadFstWordSymbolTableAndRnnWordlist(const std::string &rnn_in_wordlist,
 //      const std::string &rnn_out_wordlist,

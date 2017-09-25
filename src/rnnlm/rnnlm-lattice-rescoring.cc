@@ -1,8 +1,8 @@
 // rnnlm/rnnlm-lattice-rescoring.cc
 
-// Copyright 2017 Johns Hopkins University (author: Daniel Povey)
-//                Yiming Wang
-//                Hainan Xu
+// Copyright 2017 Johns Hopkins University (author: Daniel Povey) 
+//           2017 Yiming Wang
+//           2017 Hainan Xu
 //
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -64,7 +64,9 @@ void KaldiRnnlmDeterministicFst::ReadFstWordSymbolTableAndRnnWordlist(
     int32 i = 0;
     while (ifile >> word >> id) {
       if (word == "</s>") {
-        final_word_index_ = id;
+        eos_index_ = id;
+      } else if (word == "<s>") {
+        bos_index_ = id;
       }
       KALDI_ASSERT(i == id);
       i++;
@@ -95,18 +97,18 @@ void KaldiRnnlmDeterministicFst::ReadFstWordSymbolTableAndRnnWordlist(
 KaldiRnnlmDeterministicFst::KaldiRnnlmDeterministicFst(int32 max_ngram_order,
     const std::string &rnn_wordlist,
     const std::string &word_symbol_table_rxfilename,
-    const DecodableRnnlmSimpleLoopedInfo &info) {
+    const RnnlmSimpleLoopedInfo &info) {
   max_ngram_order_ = max_ngram_order;
   ReadFstWordSymbolTableAndRnnWordlist(rnn_wordlist,
                                        word_symbol_table_rxfilename);
 
-  std::vector<Label> bos;
-  bos.push_back(0); // 0 for <s>
-  state_to_wseq_.push_back(bos);
-  DecodableRnnlmSimpleLooped decodable_rnnlm(info);
-  decodable_rnnlm.TakeFeatures(std::vector<Label>(1, bos[0]));
+  std::vector<Label> bos_seq;
+  bos_seq.push_back(bos_index_);
+  state_to_wseq_.push_back(bos_seq);
+  RnnlmSimpleLooped decodable_rnnlm(info);
+  decodable_rnnlm.TakeFeatures(bos_seq);
   state_to_decodable_rnnlm_.push_back(decodable_rnnlm);
-  wseq_to_state_[bos] = 0;
+  wseq_to_state_[bos_seq] = 0;
   start_state_ = 0;
 }
 
@@ -115,7 +117,7 @@ fst::StdArc::Weight KaldiRnnlmDeterministicFst::Final(StateId s) {
   KALDI_ASSERT(static_cast<size_t>(s) < state_to_wseq_.size());
 
   // log prob of end of sentence
-  BaseFloat logprob = state_to_decodable_rnnlm_[s].GetOutput(0, final_word_index_);
+  BaseFloat logprob = state_to_decodable_rnnlm_[s].GetOutput(0, eos_index_);
   return Weight(-logprob);
 }
 
@@ -125,7 +127,7 @@ bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
   KALDI_ASSERT(static_cast<size_t>(s) < state_to_wseq_.size());
 
   std::vector<Label> wseq = state_to_wseq_[s];
-  DecodableRnnlmSimpleLooped decodable_rnnlm = state_to_decodable_rnnlm_[s];
+  RnnlmSimpleLooped decodable_rnnlm = state_to_decodable_rnnlm_[s];
   int32 rnn_word = fst_label_to_rnn_label_[ilabel];
 
   BaseFloat logprob = decodable_rnnlm.GetOutput(0, rnn_word);

@@ -1,4 +1,4 @@
-// rnnlm/kaldi-rnnlm-decodable-simple-looped.cc
+// rnnlm/kaldi-rnnlm-simple-looped.cc
 
 // Copyright      2017  Johns Hopkins University (author: Daniel Povey)
 //                2017  Yiming Wang
@@ -19,7 +19,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "rnnlm/rnnlm-decodable-simple-looped.h"
+#include "rnnlm/rnnlm-simple-looped.h"
 #include "nnet3/nnet-utils.h"
 #include "nnet3/nnet-compile-looped.h"
 
@@ -27,23 +27,23 @@ namespace kaldi {
 namespace nnet3 {
 
 
-DecodableRnnlmSimpleLoopedInfo::DecodableRnnlmSimpleLoopedInfo(
-    const DecodableRnnlmSimpleLoopedComputationOptions &opts,
+RnnlmSimpleLoopedInfo::RnnlmSimpleLoopedInfo(
+    const RnnlmSimpleLoopedComputationOptions &opts,
     const kaldi::nnet3::Nnet &rnnlm,
     const CuMatrix<BaseFloat> &word_embedding_mat):
     opts(opts), rnnlm(rnnlm), word_embedding_mat(word_embedding_mat) {
   Init(opts, rnnlm, word_embedding_mat);
 }
 
-void DecodableRnnlmSimpleLoopedInfo::Init(
-    const DecodableRnnlmSimpleLoopedComputationOptions &opts,
+void RnnlmSimpleLoopedInfo::Init(
+    const RnnlmSimpleLoopedComputationOptions &opts,
     const kaldi::nnet3::Nnet &rnnlm,
     const CuMatrix<BaseFloat> &word_embedding_mat) {
   opts.Check();
   KALDI_ASSERT(IsSimpleNnet(rnnlm));
   int32 left_context, right_context;
   ComputeSimpleNnetContext(rnnlm, &left_context, &right_context);
-  frames_left_context = opts.extra_left_context_initial + left_context;
+  frames_left_context = left_context;
   frames_right_context = right_context;
   int32 frame_subsampling_factor = 1;
   frames_per_chunk = GetChunkSize(rnnlm, frame_subsampling_factor,
@@ -54,11 +54,11 @@ void DecodableRnnlmSimpleLoopedInfo::Init(
 
   int32 ivector_period = frames_per_chunk;
   int32 extra_right_context = 0;
-  int32 num_sequences = 1;  // we're processing one utterance at a time.
+  int32 num_sequences = 1;  // we're processing one word sequence at a time.
   CreateLoopedComputationRequestSimple(rnnlm, frames_per_chunk,
                                        frame_subsampling_factor,
                                        ivector_period,
-                                       opts.extra_left_context_initial,
+                                       0, // extra_left_context_initial == 0
                                        extra_right_context,
                                        num_sequences,
                                        &request1, &request2, &request3);
@@ -72,23 +72,21 @@ void DecodableRnnlmSimpleLoopedInfo::Init(
   }
 }
 
-DecodableRnnlmSimpleLooped::DecodableRnnlmSimpleLooped(
-    const DecodableRnnlmSimpleLoopedInfo &info) :
+RnnlmSimpleLooped::RnnlmSimpleLooped(
+    const RnnlmSimpleLoopedInfo &info) :
     info_(info),
     computer_(info_.opts.compute_config, info_.computation,
               info_.rnnlm, NULL),  // NULL is 'nnet_to_update'
-    // since everytime we provide one chunk to the decodable object, the size of
+    // since everytime we provide one chunk to the object, the size of
     // feats_ == frames_per_chunk
     feats_(info_.frames_per_chunk,
            info_.word_embedding_mat.NumRows()),
     current_log_post_offset_(-1)
-{
-  num_frames_ = feats_.NumRows();
-}
+{}
 
-void DecodableRnnlmSimpleLooped::TakeFeatures(
+void RnnlmSimpleLooped::TakeFeatures(
     const std::vector<int32> &word_indexes) {
-  KALDI_ASSERT(word_indexes.size() == num_frames_);
+  KALDI_ASSERT(word_indexes.size() == feats_.NumRows());
   std::vector<std::vector<std::pair<MatrixIndexT, BaseFloat> > >
       pairs(word_indexes.size());
   for (int32 i = 0; i < word_indexes.size(); i++) {
@@ -103,7 +101,7 @@ void DecodableRnnlmSimpleLooped::TakeFeatures(
   current_log_post_offset_ = -1;
 }
 
-void DecodableRnnlmSimpleLooped::GetNnetOutputForFrame(
+void RnnlmSimpleLooped::GetNnetOutputForFrame(
     int32 frame, VectorBase<BaseFloat> *output) {
   KALDI_ASSERT(frame >= 0 && frame < feats_.NumRows());
   if (frame >= current_log_post_offset_ + current_nnet_output_.NumRows())
@@ -112,7 +110,7 @@ void DecodableRnnlmSimpleLooped::GetNnetOutputForFrame(
                                                current_log_post_offset_));
 }
 
-BaseFloat DecodableRnnlmSimpleLooped::GetOutput(int32 frame, int32 word_index) {
+BaseFloat RnnlmSimpleLooped::GetOutput(int32 frame, int32 word_index) {
   KALDI_ASSERT(frame >= 0 && frame < feats_.NumRows());
   if (frame >= current_log_post_offset_ + current_nnet_output_.NumRows())
     AdvanceChunk();
@@ -126,16 +124,26 @@ BaseFloat DecodableRnnlmSimpleLooped::GetOutput(int32 frame, int32 word_index) {
   current_nnet_output_gpu.Swap(&current_nnet_output_);
   const CuSubVector<BaseFloat> hidden(current_nnet_output_gpu,
                                       frame - current_log_post_offset_);
-  BaseFloat log_prob =
-    VecVec(hidden, word_embedding_mat.Row(word_index));
-//      output_layer->ComputeLogprobOfWordGivenHistory(hidden, word_index);
+  BaseFloat log_prob;
+
+  if (info_.opts.force_normalize) {
+    CuVector<BaseFloat> log_probs(word_embedding_mat.NumRows());
+
+    log_probs.AddMatVec(1.0, word_embedding_mat, kTrans, hidden, 0.0);
+    log_probs.ApplySoftMax();
+    log_probs.ApplyLog();
+    log_prob = log_probs(word_index);
+  } else {
+    log_prob = VecVec(hidden, word_embedding_mat.Row(word_index));
+  }
+
   // swap the pointer back so that this function can be called multiple times
   // with the same returned value before taking next new feats
   current_nnet_output_.Swap(&current_nnet_output_gpu);
   return log_prob;
 }
 
-void DecodableRnnlmSimpleLooped::AdvanceChunk() {
+void RnnlmSimpleLooped::AdvanceChunk() {
   int32 begin_input_frame, end_input_frame;
   begin_input_frame = -info_.frames_left_context;
   // note: end is last plus one.
@@ -152,10 +160,6 @@ void DecodableRnnlmSimpleLooped::AdvanceChunk() {
     if (input_frame >= num_features) input_frame = num_features - 1;
     feats_chunk.SetRow(r - begin_input_frame, feats_.Row(input_frame));
   }
-
-//  const rnnlm::LmInputComponent* input_layer = info_.lm_nnet.InputLayer();
-//  CuMatrix<BaseFloat> new_input(feats_chunk.NumRows(), input_layer->OutputDim());
-//  input_layer->Propagate(feats_chunk, &new_input);
 
   CuMatrix<BaseFloat> input_embeddings(1, info_.word_embedding_mat.NumCols());
   int32 word_index = feats_chunk.Row(0).GetElement(0).first;
