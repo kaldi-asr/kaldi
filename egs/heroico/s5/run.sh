@@ -263,11 +263,11 @@ if [ $stage -le 4 ]; then
 
 	utils/fix_data_dir.sh \
 	    data/$fld || exit 1;
-	done
+    done
 fi
 
 if [ $stage -le 5 ]; then
-        echo "monophone training"
+    echo "monophone training"
     steps/train_mono.sh \
 	--nj 4 \
 	--cmd "$train_cmd" \
