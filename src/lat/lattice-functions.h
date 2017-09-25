@@ -152,7 +152,7 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
 /// we do reorder).
 /// Also see PhoneAlignLattice, in phone-align-lattice.h.
 void ConvertLatticeToPhones(const TransitionModel &trans_model,
-                            Lattice *lat);
+                            Lattice *lat, bool replace_words = true);
 
 /// Prunes a lattice or compact lattice.  Returns true on success, false if
 /// there was some kind of failure.
@@ -376,6 +376,16 @@ void ComposeCompactLatticeDeterministic(
     const CompactLattice& clat,
     fst::DeterministicOnDemandFst<fst::StdArc>* det_fst,
     CompactLattice* composed_clat);
+
+void ComputeAcousticScoresMap(
+    const Lattice &lat,
+    unordered_map<std::pair<int32, int32>, std::pair<BaseFloat, int32>,
+                                        PairHasher<int32> > *acoustic_scores);
+
+void ReplaceAcousticScoresFromMap(
+    const unordered_map<std::pair<int32, int32>, std::pair<BaseFloat, int32>,
+                                        PairHasher<int32> > &acoustic_scores,
+    Lattice *lat);
 
 }  // namespace kaldi
 

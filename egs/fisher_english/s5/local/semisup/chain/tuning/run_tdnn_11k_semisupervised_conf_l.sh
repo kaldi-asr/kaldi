@@ -53,6 +53,7 @@ minibatch_size=128
 
 decode_iter=
 
+do_finetuning=false
 finetune_stage=-2
 finetune_suffix=_finetune
 finetune_iter=final
@@ -384,14 +385,22 @@ if [ $stage -le 15 ]; then
     --dir $dir  || exit 1;
 fi
 
-graph_dir=$dir/graph
-if [ $stage -le 17 ]; then
+graph_dir=$dir/graph_unk
+if [ $stage -le 17 ] && [ ! -f $graph_dir/HCLG.fst ]; then
+  if [ ! -f data/lang_test_unk/L_disambig.fst ]; then
+    utils/prepare_lang.sh --unk-fst exp/unk_lang_model/unk_fst.txt \
+      data/local/dict "$(cat data/lang/oov.txt)" data/local/lm data/lang_test_unk
+
+    cp data/lang_test/G.fst data/lang_test_unk/
+  fi
+
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test $dir $graph_dir
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test_unk $dir $graph_dir
 fi
 
+decode_suffix=_unk
 if [ $stage -le 18 ]; then
   iter_opts=
   if [ ! -z $decode_iter ]; then
@@ -410,9 +419,13 @@ if [ $stage -le 18 ]; then
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj $num_jobs --cmd "$decode_cmd" $iter_opts \
           --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
-          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_iter$decode_iter} || exit 1;
+          $graph_dir data/${decode_set}_hires $dir/decode${decode_suffix}_${decode_set}${decode_iter:+_iter$decode_iter} || exit 1;
       ) &
   done
+fi
+
+if ! $do_finetuning; then
+  wait; exit 0;
 fi
 
 if [ $stage -le 19 ]; then

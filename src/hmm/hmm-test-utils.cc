@@ -23,10 +23,10 @@
 
 namespace kaldi {
 
-TransitionModel *GenRandTransitionModel(ContextDependency **ctx_dep_out) {
+TransitionModel *GenRandTransitionModel(ContextDependency **ctx_dep_out, int32 max_phone) {
   std::vector<int32> phones;
   phones.push_back(1);
-  for (int32 i = 2; i < 20; i++)
+  for (int32 i = 2; i <= max_phone; i++)
     if (rand() % 2 == 0)
       phones.push_back(i);
   int32 N = 2 + rand() % 2, // context-size N is 2 or 3.

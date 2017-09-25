@@ -23,6 +23,8 @@ semi_affix=semi11k_250k  # affix relating train-set splitting proportion
 tdnn_affix=7b  # affix for the supervised chain-model directory
 train_supervised_opts="--stage -10 --train-stage -10"
 
+lm_opts=
+
 # Unsupervised options
 decode_affix=
 egs_affix=  # affix for the egs that are generated from unsupervised data and for the comined egs dir
@@ -176,7 +178,7 @@ fi
 dir=$exp/chain${nnet3_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
 
 if [ $stage -le 10 ]; then
-  steps/nnet3/chain/make_den_fst.sh --weights $lm_weights --cmd "$train_cmd" \
+  steps/nnet3/chain/make_weighted_den_fst.sh --weights $lm_weights --cmd "$train_cmd" --lm-opts "$lm_opts" \
     ${treedir} ${chaindir}/best_path_${unsupervised_set}${decode_affix} \
     $dir
 fi
@@ -207,8 +209,6 @@ if [ $stage -le 11 ]; then
 
   ## adding the layers for chain branch
   relu-batchnorm-layer name=prefinal-chain input=tdnn6 dim=$hidden_dim target-rms=0.5
-  output-layer name=output-0 input=prefinal-chain include-log-softmax=false dim=$num_targets max-change=1.5
-  output-layer name=output-1 input=prefinal-chain include-log-softmax=false dim=$num_targets max-change=1.5
   output-layer name=output input=prefinal-chain include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
@@ -221,17 +221,16 @@ if [ $stage -le 11 ]; then
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
   relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=$hidden_dim target-rms=0.5
-  output-layer name=output-0-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
-  output-layer name=output-1-xent input=prefinal-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  
+  output name=output-0 input=output.affine skip-in-init=true
+  output name=output-1 input=output.affine skip-in-init=true
+
+  output name=output-0-xent input=output-xent.log-softmax skip-in-init=true
+  output name=output-1-xent input=output-xent.log-softmax skip-in-init=true
 EOF
 
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
-  cp $dir/configs/final.config{,.orig}
-
-  cat $dir/configs/final.config.orig | \
-    perl -pe 's/component=output-1.affine/component=output-0.affine/g; 
-              s/component=output-1-xent.affine/component=output-0-xent.affine/g;' > \
-    $dir/configs/final.config
 fi
 
 . $dir/configs/vars

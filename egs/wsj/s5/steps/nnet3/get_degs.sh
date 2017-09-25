@@ -334,7 +334,7 @@ fi
 
 # set the command to determinize lattices, if specified.
 if $determinize_before_split; then
-  lattice_determinize_cmd="lattice-determinize-pruned-non-compact --acoustic-scale=$acwt --max-mem=$max_mem --minimize=true --beam=$lattice_beam ark:- ark:-"
+  lattice_determinize_cmd="lattice-determinize-phone-pruned-non-compact --acoustic-scale=$acwt --max-mem=$max_mem --minimize=true --beam=$lattice_beam $dir/final.mdl ark:- ark:-"
 else
   lattice_determinize_cmd="cat"
 fi

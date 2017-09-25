@@ -1,6 +1,6 @@
-// latbin/lattice-determinize-pruned-non-compact.cc
+// latbin/lattice-determinize-phoned-pruned-non-compact.cc
 
-// Copyright 2013  Daniel Povey (Johns Hopkins University)
+// Copyright 2014  Guoguo Chen
 //           2017  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -18,12 +18,12 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 #include "base/kaldi-common.h"
-#include "util/common-utils.h"
+#include "hmm/transition-model.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/determinize-lattice-pruned.h"
 #include "lat/lattice-functions.h"
 #include "lat/push-lattice.h"
-#include "lat/minimize-lattice.h"
+#include "util/common-utils.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -31,46 +31,45 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Determinize lattices, keeping only the best path (sequence of acoustic states)\n"
-        "for each input-symbol sequence.  This version does pruning as part of the\n"
-        "determinization algorithm, which is more efficient and prevents blowup.\n"
-        "See http://kaldi-asr.org/doc/lattices.html for more information on lattices.\n"
+        "Determinize lattices, keeping only the best path (sequence of\n"
+        "acoustic states) for each input-symbol sequence. This version does\n"
+        "phone inertion when doing a first pass determinization, it then\n"
+        "removes the inserted symbols and does a second pass determinization.\n"
+        "It also does pruning as part of the determinization algorithm, which\n"
+        "is more efficient and prevents blowup.\n"
+        "This version retains the acoustic scores on the arcs and writes the "
+        "output as a regular lattice.\n"
         "\n"
-        "Usage: lattice-determinize-pruned [options] lattice-rspecifier lattice-wspecifier\n"
-        " e.g.: lattice-determinize-pruned --acoustic-scale=0.1 --beam=6.0 ark:in.lats ark:det.lats\n";
+        "Usage: lattice-determinize-phone-pruned-non-compact [options] <model> \\\n"
+        "                  <lattice-rspecifier> <lattice-wspecifier>\n"
+        " e.g.: lattice-determinize-phone-pruned-non-compact --acoustic-scale=0.1 \\\n"
+        "                            final.mdl ark:in.lats ark:det.lats\n";
 
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
     BaseFloat beam = 10.0;
-    bool minimize = false;
-    fst::DeterminizeLatticePrunedOptions opts; // Options used in DeterminizeLatticePruned--
-    // this options class does not have its own Register function as it's viewed as
-    // being more part of "fst world", so we register its elements independently.
-    opts.max_mem = 50000000;
-    opts.max_loop = 0; // was 500000;
+    fst::DeterminizeLatticePhonePrunedOptions opts;
 
-    po.Register("acoustic-scale", &acoustic_scale,
-                "Scaling factor for acoustic likelihoods");
+    po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic"
+                " likelihoods.");
     po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling].");
-    po.Register("minimize", &minimize,
-                "If true, push and minimize after determinization");
     opts.Register(&po);
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string lats_rspecifier = po.GetArg(1),
-        lats_wspecifier = po.GetArg(2);
+    std::string model_rxfilename = po.GetArg(1),
+        lats_rspecifier = po.GetArg(2),
+        lats_wspecifier = po.GetArg(3);
 
+    TransitionModel trans_model;
+    ReadKaldiObject(model_rxfilename, &trans_model);
 
-    // Read as regular lattice-- this is the form the determinization code
-    // accepts.
     SequentialLatticeReader lat_reader(lats_rspecifier);
 
-    // Write as compact lattice.
     LatticeWriter lat_writer(lats_wspecifier);
 
     int32 n_done = 0, n_warn = 0;
@@ -85,9 +84,10 @@ int main(int argc, char *argv[]) {
     for (; !lat_reader.Done(); lat_reader.Next()) {
       std::string key = lat_reader.Key();
       Lattice lat = lat_reader.Value();
+      lat_reader.FreeCurrent();
 
       KALDI_VLOG(2) << "Processing lattice " << key;
-      
+
       fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
       
       // Compute a map from each (t, tid) to (sum_of_acoustic_scores, count)
@@ -95,30 +95,12 @@ int main(int argc, char *argv[]) {
                                           PairHasher<int32> > acoustic_scores;
       ComputeAcousticScoresMap(lat, &acoustic_scores);
 
-      Invert(&lat); // so word labels are on the input side.
-      lat_reader.FreeCurrent();
-      if (!TopSort(&lat)) {
-        KALDI_WARN << "Could not topologically sort lattice: this probably means it"
-            " has bad properties e.g. epsilon cycles.  Your LM or lexicon might "
-            "be broken, e.g. LM with epsilon cycles or lexicon with empty words.";
-      }
-      fst::ArcSort(&lat, fst::ILabelCompare<LatticeArc>());
       CompactLattice det_clat;
-      if (!DeterminizeLatticePruned(lat, beam, &det_clat, opts)) {
+      if (!DeterminizeLatticePhonePrunedWrapper(
+              trans_model, &lat, beam, &det_clat, opts)) {
         KALDI_WARN << "For key " << key << ", determinization did not succeed"
             "(partial output will be pruned tighter than the specified beam.)";
         n_warn++;
-      }
-      fst::Connect(&det_clat);
-      if (det_clat.NumStates() == 0) {
-        KALDI_WARN << "For key " << key << ", determinized and trimmed lattice "
-            "was empty.";
-        n_warn++;
-      }
-      if (minimize) {
-        PushCompactLatticeStrings(&det_clat);
-        PushCompactLatticeWeights(&det_clat);
-        MinimizeCompactLattice(&det_clat);
       }
 
       int32 t;

@@ -77,6 +77,8 @@ void SupervisionOptions::Check() const {
                frame_subsampling_factor > 0 &&
                left_tolerance + right_tolerance >= frame_subsampling_factor);
 
+  KALDI_ASSERT(lm_scale >= 0.0 && lm_scale < 1.0);
+
   if (!silence_phones_str.empty()) {
     KALDI_ASSERT(left_tolerance_silence >= 0 && right_tolerance_silence >= 0 &&
                  left_tolerance_silence + right_tolerance_silence >= frame_subsampling_factor);
@@ -189,7 +191,7 @@ bool PhoneLatticeToProtoSupervisionInternal(const SupervisionOptions &opts,
       int32 phone = lat_arc.ilabel;  // It's an acceptor so ilabel == ollabel.
       if (phone == 0) {
         KALDI_WARN << "CompactLattice has epsilon arc.  Unexpected.";
-        return false;
+        continue;
       }
       proto_supervision->fst.AddArc(state,
         fst::StdArc(phone, phone,
@@ -841,7 +843,6 @@ void GetWeightsForRanges(int32 range_length,
     }
   }
 }
-
 
 }  // namespace chain
 }  // namespace kaldi

@@ -10,6 +10,7 @@ cmd=run.pl
 skip_scoring=false
 stage=1
 scoring_opts=
+write_compact=true
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -53,9 +54,9 @@ cp $indir/num_jobs $outdir
 
 if [ $stage -le 1 ]; then
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
-    lattice-lmrescore --lm-scale=-1.0 \
+    lattice-lmrescore --lm-scale=-1.0 --write-compact=$write_compact \
     "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlmcommand" ark:-  \| \
-    lattice-lmrescore-const-arpa --lm-scale=1.0 \
+    lattice-lmrescore-const-arpa --lm-scale=1.0 --write-compact=$write_compact \
     ark:- "$newlm" "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 fi
 
