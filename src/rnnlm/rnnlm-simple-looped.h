@@ -1,4 +1,4 @@
-// rnnlm/kaldi-rnnlm-decodable-simple-looped.h
+// rnnlm/kaldi-rnnlm-simple-looped.h
 
 // Copyright 2017 Johns Hopkins University (author: Daniel Povey)
 //           2017 Yiming Wang
@@ -19,14 +19,14 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_RNNLM_DECODABLE_SIMPLE_LOOPED_H_
-#define KALDI_RNNLM_DECODABLE_SIMPLE_LOOPED_H_
+#ifndef KALDI_RNNLM_SIMPLE_LOOPED_H_
+#define KALDI_RNNLM_SIMPLE_LOOPED_H_
 
 #include <vector>
 #include "base/kaldi-common.h"
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
-#include "itf/decodable-itf.h"
+//#include "itf/decodable-itf.h"
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-compute.h"
 #include "nnet3/am-nnet-simple.h"
@@ -46,31 +46,29 @@ namespace nnet3 {
 // Note: the 'simple' in the name means it applies to networks for which
 // IsSimpleNnet(nnet) would return true.  'looped' means we use looped
 // computations, with a kGotoLabel statement at the end of it.
-struct DecodableRnnlmSimpleLoopedComputationOptions {
-  int32 extra_left_context_initial;
+struct RnnlmSimpleLoopedComputationOptions {
   int32 frames_per_chunk;
   bool debug_computation;
+  bool force_normalize;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
-  DecodableRnnlmSimpleLoopedComputationOptions():
-      extra_left_context_initial(0),
+  RnnlmSimpleLoopedComputationOptions():
       frames_per_chunk(1),
-      debug_computation(false) { }
+      debug_computation(false),
+      force_normalize(false) { }
 
   void Check() const {
-    KALDI_ASSERT(extra_left_context_initial >= 0 && frames_per_chunk > 0);
+    KALDI_ASSERT(frames_per_chunk > 0);
   }
 
   void Register(OptionsItf *opts) {
-    opts->Register("extra-left-context-initial", &extra_left_context_initial,
-                   "Extra left context to use at the first frame of an utterance (note: "
-                   "this will just consist of repeats of the first frame, and should not "
-                   "usually be necessary.");
     opts->Register("frames-per-chunk", &frames_per_chunk,
                    "Number of frames in each chunk that is separately evaluated "
                    "by the neural net.");
     opts->Register("debug-computation", &debug_computation, "If true, turn on "
                    "debug for the actual computation (very verbose!)");
+    opts->Register("force-normalize", &force_normalize, "If true, force "
+                   " normalize the word posteriors");
 
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
@@ -82,23 +80,18 @@ struct DecodableRnnlmSimpleLoopedComputationOptions {
   }
 };
 
-
-/**
-   When you instantiate class DecodableNnetSimpleLooped, you should give it
-   a const reference to this class, that has been previously initialized.
- */
-class DecodableRnnlmSimpleLoopedInfo  {
+class RnnlmSimpleLoopedInfo  {
  public:
-  DecodableRnnlmSimpleLoopedInfo(
-      const DecodableRnnlmSimpleLoopedComputationOptions &opts,
+  RnnlmSimpleLoopedInfo(
+      const RnnlmSimpleLoopedComputationOptions &opts,
       const kaldi::nnet3::Nnet &rnnlm,
       const CuMatrix<BaseFloat> &word_embedding_mat);
 
-  void Init(const DecodableRnnlmSimpleLoopedComputationOptions &opts,
+  void Init(const RnnlmSimpleLoopedComputationOptions &opts,
             const kaldi::nnet3::Nnet &rnnlm,
             const CuMatrix<BaseFloat> &word_embedding_mat);
 
-  const DecodableRnnlmSimpleLoopedComputationOptions &opts;
+  const RnnlmSimpleLoopedComputationOptions &opts;
 
   const kaldi::nnet3::Nnet &rnnlm;
   const CuMatrix<BaseFloat> &word_embedding_mat;
@@ -129,7 +122,7 @@ class DecodableRnnlmSimpleLoopedInfo  {
   via other wrapper classes.
 
   It accept just input features */
-class DecodableRnnlmSimpleLooped {
+class RnnlmSimpleLooped {
  public:
   /**
      This constructor takes features as input.
@@ -140,10 +133,7 @@ class DecodableRnnlmSimpleLooped {
                         this class needs, and contains a pointer to the neural net.
      @param [in] feats  The input feature matrix.
   */
-  DecodableRnnlmSimpleLooped(const DecodableRnnlmSimpleLoopedInfo &info);
-
-  // returns the number of frames of likelihoods.  The same as feats_.NumRows()
-  inline int32 NumFrames() const { return num_frames_; }
+  RnnlmSimpleLooped(const RnnlmSimpleLoopedInfo &info);
 
   inline int32 NnetOutputDim() const { return info_.nnet_output_dim; }
 
@@ -154,6 +144,7 @@ class DecodableRnnlmSimpleLooped {
   void GetNnetOutputForFrame(int32 frame, VectorBase<BaseFloat> *output);
 
   // Updates feats_ with the new incoming word specified in word_indexes
+  // We usually do this one at a time
   void TakeFeatures(const std::vector<int32> &word_indexes);
 
   // Gets the output for a particular frame and word_index, with
@@ -164,13 +155,11 @@ class DecodableRnnlmSimpleLooped {
   // This function does the computation for the next chunk.
   void AdvanceChunk();
 
-  const DecodableRnnlmSimpleLoopedInfo &info_;
+  const RnnlmSimpleLoopedInfo &info_;
 
   NnetComputer computer_;
 
   SparseMatrix<BaseFloat> feats_;
-  
-  int32 num_frames_;
 
   // The current nnet's output that we got from the last time we
   // ran the computation.
@@ -185,4 +174,4 @@ class DecodableRnnlmSimpleLooped {
 } // namespace nnet3
 } // namespace kaldi
 
-#endif  // KALDI_RNNLM_DECODABLE_SIMPLE_LOOPED_H_
+#endif  // KALDI_RNNLM_SIMPLE_LOOPED_H_

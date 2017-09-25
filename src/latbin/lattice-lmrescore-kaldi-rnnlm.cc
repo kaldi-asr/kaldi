@@ -1,8 +1,8 @@
 // latbin/lattice-lmrescore-kaldi-rnnlm.cc
 
 // Copyright 2017 Johns Hopkins University (author: Daniel Povey)
-//                Hainan Xu
-//                Yiming Wang
+//           2017 Hainan Xu
+//           2017 Yiming Wang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -66,10 +66,10 @@ int main(int argc, char *argv[]) {
     std::string lats_rspecifier, rnn_wordlist, word_embedding_rxfilename,
         word_symbols_rxfilename, rnnlm_rxfilename, lats_wspecifier;
 
-    word_embedding_rxfilename = po.GetArg(1);
-    rnn_wordlist = po.GetArg(2);
-    word_symbols_rxfilename = po.GetArg(3);
-    lats_rspecifier = po.GetArg(4);
+    word_symbols_rxfilename = po.GetArg(1);
+    lats_rspecifier = po.GetArg(2);
+    rnn_wordlist = po.GetArg(3);
+    word_embedding_rxfilename = po.GetArg(4);
     rnnlm_rxfilename = po.GetArg(5);
     lats_wspecifier = po.GetArg(6);
 
@@ -85,8 +85,8 @@ int main(int argc, char *argv[]) {
     CuMatrix<BaseFloat> word_embedding_mat;
     ReadKaldiObject(word_embedding_rxfilename, &word_embedding_mat);
 
-    const nnet3::DecodableRnnlmSimpleLoopedComputationOptions opts;
-    const nnet3::DecodableRnnlmSimpleLoopedInfo info(opts, rnnlm, word_embedding_mat);
+    const nnet3::RnnlmSimpleLoopedComputationOptions opts;
+    const nnet3::RnnlmSimpleLoopedInfo info(opts, rnnlm, word_embedding_mat);
 
     // Reads and writes as compact lattice.
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);

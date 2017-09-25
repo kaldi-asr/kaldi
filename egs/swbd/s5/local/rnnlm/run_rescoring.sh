@@ -20,7 +20,7 @@ for decode_set in eval2000; do
   decode_dir=${dir}/decode_${decode_set}_$LM
 
   # Lattice rescoring
-  steps/lmrescore_rnnlm_lat.sh \
+  rnnlm/lmrescore_rnnlm_lat.sh \
     --cmd "$decode_cmd --mem 16G" \
     --rnnlm-ver kaldirnnlm  --weight 0.5 --max-ngram-order $ngram_order \
     data/lang_$LM $rnndir \

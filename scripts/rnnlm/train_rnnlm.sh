@@ -222,10 +222,7 @@ if [ $stage -le $num_iters ]; then
   echo "$0: best iteration (out of $num_iters) was $best_iter, linking it to final iteration."
   ln -sf $embedding_type.$best_iter.mat $dir/$embedding_type.final.mat
   ln -sf $best_iter.raw $dir/final.raw
-  ln -sf $best_iter.raw $dir/rnnlm  # to make it consistent with other RNNLMs
 fi
-
-touch $dir/unk.probs
 
 # Now get some diagnostics about the evolution of the objective function.
 if [ $stage -le $[num_iters+1] ]; then
