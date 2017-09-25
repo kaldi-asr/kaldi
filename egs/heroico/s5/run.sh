@@ -195,6 +195,26 @@ fi
 if [ $stage -le 2 ]; then
     # prepare a dictionary
     mkdir -p data/local/dict
+    mkdir -p data/local/tmp/dict
+
+    # download the dictionary from openslr
+    if [ ! -f data/local/tmp/dict/santiago.tar.gz ]; then
+	wget \
+	    -O data/local/tmp/dict/santiago.tar.gz \
+	    http://www.openslr.org/resources/34/santiago.tar.gz
+    fi
+
+    if [ -e data/local/tmp/dict/santiago.tar ]; then
+	rm data/local/tmp/dict/santiago.tar
+    fi
+
+    gunzip data/local/tmp/dict/santiago.tar.gz
+
+    cd data/local/tmp/dict
+
+    tar -xvf santiago.tar
+
+    cd ../../../..
 
     local/prepare_dict.sh
 
