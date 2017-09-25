@@ -2,7 +2,7 @@
 # Copyright 2015-2016   David Snyder
 #                2015   Johns Hopkins University (Author: Daniel Garcia-Romero)
 #                2015   Johns Hopkins University (Author: Daniel Povey)
-#                2017	Radboud University (Author: Emre Yilmaz)      
+#                2017   Radboud University (Author: Emre Yilmaz)      
 # Apache 2.0.
 #
 # See README.txt for more info on data required.
@@ -58,12 +58,12 @@ for task in ageing; do
     for sets in eval; do
       for year in _1t3 _4t10 _mt10; do
 
-      echo "Preparing data/fame_${task}_${subtask}_${sets}${year}.."
-      trials_female=data/fame_${task}_${subtask}_${sets}${year}_female/trials
-      trials_male=data/fame_${task}_${subtask}_${sets}${year}_male/trials
-      trials=data/fame_${task}_${subtask}_${sets}${year}/trials
-      local/make_fame_test_year.pl $famecorpus/SV data $task $subtask $sets $year
-      local/make_fame_train_year.pl $famecorpus/SV data $task $subtask $sets $year 
+        echo "Preparing data/fame_${task}_${subtask}_${sets}${year}.."
+        trials_female=data/fame_${task}_${subtask}_${sets}${year}_female/trials
+        trials_male=data/fame_${task}_${subtask}_${sets}${year}_male/trials
+        trials=data/fame_${task}_${subtask}_${sets}${year}/trials
+        local/make_fame_test_year.pl $famecorpus/SV data $task $subtask $sets $year
+        local/make_fame_train_year.pl $famecorpus/SV data $task $subtask $sets $year 
 
       done
     done
@@ -91,9 +91,9 @@ for task in ageing; do
     for sets in eval; do
       for year in _1t3 _4t10 _mt10; do
 
-      echo "Copying data/fame_${task}_${subtask}_${sets}${year}.."
-      cp -r data/fame_${task}_${subtask}_${sets}${year}_enroll data/fame_${task}_${subtask}_${sets}${year}_enroll_dnn
-      cp -r data/fame_${task}_${subtask}_${sets}${year}_test data/fame_${task}_${subtask}_${sets}${year}_test_dnn
+        echo "Copying data/fame_${task}_${subtask}_${sets}${year}.."
+        cp -r data/fame_${task}_${subtask}_${sets}${year}_enroll data/fame_${task}_${subtask}_${sets}${year}_enroll_dnn
+        cp -r data/fame_${task}_${subtask}_${sets}${year}_test data/fame_${task}_${subtask}_${sets}${year}_test_dnn
 
       done
     done
@@ -187,11 +187,11 @@ for task in ageing; do
     for sets in eval; do
       for year in _1t3 _4t10 _mt10; do
 
-      echo "Computing VAD for data/fame_${task}_${subtask}_${sets}${year}.."
-      sid/compute_vad_decision.sh --nj 100 --cmd "$train_cmd" \
-          data/fame_${task}_${subtask}_${sets}${year}_enroll exp/make_vad $vaddir
-      sid/compute_vad_decision.sh --nj 100 --cmd "$train_cmd" \
-          data/fame_${task}_${subtask}_${sets}${year}_test exp/make_vad $vaddir
+        echo "Computing VAD for data/fame_${task}_${subtask}_${sets}${year}.."
+        sid/compute_vad_decision.sh --nj 100 --cmd "$train_cmd" \
+            data/fame_${task}_${subtask}_${sets}${year}_enroll exp/make_vad $vaddir
+        sid/compute_vad_decision.sh --nj 100 --cmd "$train_cmd" \
+            data/fame_${task}_${subtask}_${sets}${year}_test exp/make_vad $vaddir
       
       done
     done
@@ -241,8 +241,8 @@ done
 
 echo "Training DNN-UBM and the i-vector extractor.."
 
-# sid/init_full_ubm_from_dnn.sh --cmd "$train_cmd" \
-#   data/train data/train_dnn $nnet exp/full_ubm
+sid/init_full_ubm_from_dnn.sh --cmd "$train_cmd" \
+  data/train data/train_dnn $nnet exp/full_ubm
 
 sid/train_ivector_extractor_dnn.sh \
   --cmd "$train_cmd" \
@@ -286,19 +286,19 @@ for task in ageing; do
     for sets in eval; do
       for year in _1t3 _4t10 _mt10; do
 
-      echo "Extracting i-vectors for data/fame_${task}_${subtask}_${sets}${year}"
-      sid/extract_ivectors_dnn.sh --cmd "$train_cmd" --nj 10 \
-         exp/extractor_dnn \
-         $nnet \
-         data/fame_${task}_${subtask}_${sets}${year}_enroll \
-         data/fame_${task}_${subtask}_${sets}${year}_enroll_dnn \
-         exp/ivectors_fame_${task}_${subtask}_${sets}${year}_enroll_dnn
-      sid/extract_ivectors_dnn.sh --cmd "$train_cmd" --nj 10 \
-         exp/extractor_dnn \
-         $nnet \
-         data/fame_${task}_${subtask}_${sets}${year}_test \
-         data/fame_${task}_${subtask}_${sets}${year}_test_dnn \
-         exp/ivectors_fame_${task}_${subtask}_${sets}${year}_test_dnn
+        echo "Extracting i-vectors for data/fame_${task}_${subtask}_${sets}${year}"
+        sid/extract_ivectors_dnn.sh --cmd "$train_cmd" --nj 10 \
+           exp/extractor_dnn \
+           $nnet \
+           data/fame_${task}_${subtask}_${sets}${year}_enroll \
+           data/fame_${task}_${subtask}_${sets}${year}_enroll_dnn \
+           exp/ivectors_fame_${task}_${subtask}_${sets}${year}_enroll_dnn
+        sid/extract_ivectors_dnn.sh --cmd "$train_cmd" --nj 10 \
+           exp/extractor_dnn \
+           $nnet \
+           data/fame_${task}_${subtask}_${sets}${year}_test \
+           data/fame_${task}_${subtask}_${sets}${year}_test_dnn \
+           exp/ivectors_fame_${task}_${subtask}_${sets}${year}_test_dnn
 
       done  
     done

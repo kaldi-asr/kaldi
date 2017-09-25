@@ -69,9 +69,7 @@ while(<WAVLIST>) {
   print GNDR "$uttId $gender\n";
   $spk2gender{$spkr} = $gender;
 }
-#foreach $spkr (keys(%spk2gender)) {
-#  print GNDR "$spkr $spk2gender{$spkr}\n";
-#}
+
 close(SPKR) || die;
 close(WAV) || die;
 close(WAVLIST) || die;
