@@ -5,7 +5,11 @@
 # Apache 2.0.
 #
 # See README.txt for more info on data required.
-# Results (EERs) are inline in comments below.
+# Results (mostly EERs) are inline in comments below.
+#
+# This example demonstrates a "bare bones" NIST SRE 2016 recipe using xvectors.
+# In the future, we will add score-normalization and a more effective form of
+# PLDA domain adaptation.
 
 . cmd.sh
 . path.sh
@@ -234,20 +238,30 @@ if [ $stage -le 8 ]; then
     exp/xvectors_sre16_major/mean.vec || exit 1;
 
   # This script uses LDA to decrease the dimensionality prior to PLDA.
-  lda_dim=128
+  lda_dim=150
   $train_cmd exp/xvectors_sre_combined/log/lda.log \
     ivector-compute-lda --total-covariance-factor=0.0 --dim=$lda_dim \
     "ark:ivector-subtract-global-mean scp:exp/xvectors_sre_combined/xvector.scp ark:- |" \
     ark:data/sre_combined/utt2spk exp/xvectors_sre_combined/transform.mat || exit 1;
 
-  #  Train the PLDA model.
+  # Train an out-of-domain PLDA model.
   $train_cmd exp/xvectors_sre_combined/log/plda.log \
     ivector-compute-plda ark:data/sre_combined/spk2utt \
     "ark:ivector-subtract-global-mean scp:exp/xvectors_sre_combined/xvector.scp ark:- | transform-vec exp/xvectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:-  ark:- |" \
     exp/xvectors_sre_combined/plda || exit 1;
+
+  # Here we adapt the out-of-domain PLDA model to SRE16 major, a pile
+  # of unlabeled in-domain data.  In the future, we will include a clustering
+  # based approach for domain adaptation, which tends to work better.
+  $train_cmd exp/xvectors_sre16_major/log/plda_adapt.log \
+    ivector-adapt-plda --within-covar-scale=0.75 --between-covar-scale=0.25 \
+    exp/xvectors_sre_combined/plda \
+    "ark:ivector-subtract-global-mean scp:exp/xvectors_sre16_major/xvector.scp ark:- | transform-vec exp/xvectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    exp/xvectors_sre16_major/plda_adapt || exit 1;
 fi
 
 if [ $stage -le 9 ]; then
+  # Get results using the out-of-domain PLDA model.
   $train_cmd exp/scores/log/sre16_eval_scoring.log \
     ivector-plda-scoring --normalize-length=true \
     --num-utts=ark:exp/xvectors_sre16_eval_enroll/num_utts.ark \
@@ -261,8 +275,46 @@ if [ $stage -le 9 ]; then
   pooled_eer=$(paste $sre16_trials exp/scores/sre16_eval_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   tgl_eer=$(paste $sre16_trials_tgl exp/scores/sre16_eval_tgl_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   yue_eer=$(paste $sre16_trials_yue exp/scores/sre16_eval_yue_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
-  echo "EER: Pooled ${pooled_eer}%, Tagalog ${tgl_eer}%, Cantonese ${yue_eer}%"
-  # EER: Pooled 11.23%, Tagalog 15.54%, Cantonese 7.02%
+  echo "Using Out-of-Domain PLDA, EER: Pooled ${pooled_eer}%, Tagalog ${tgl_eer}%, Cantonese ${yue_eer}%"
+  # EER: Pooled 11.35%, Tagalog 15.72%, Cantonese 7.07%
   # For reference, here's the ivector system from ../v1:
   # EER: Pooled 13.65%, Tagalog 17.73%, Cantonese 9.61%
+fi
+
+if [ $stage -le 10 ]; then
+  # Get results using the adapted PLDA model.
+  $train_cmd exp/scores/log/sre16_eval_scoring_adapt.log \
+    ivector-plda-scoring --normalize-length=true \
+    --num-utts=ark:exp/xvectors_sre16_eval_enroll/num_utts.ark \
+    "ivector-copy-plda --smoothing=0.0 exp/xvectors_sre16_major/plda_adapt - |" \
+    "ark:ivector-mean ark:data/sre16_eval_enroll/spk2utt scp:exp/xvectors_sre16_eval_enroll/xvector.scp ark:- | ivector-subtract-global-mean exp/xvectors_sre16_major/mean.vec ark:- ark:- | transform-vec exp/xvectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-subtract-global-mean exp/xvectors_sre16_major/mean.vec scp:exp/xvectors_sre16_eval_test/xvector.scp ark:- | transform-vec exp/xvectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "cat '$sre16_trials' | cut -d\  --fields=1,2 |" exp/scores/sre16_eval_scores_adapt || exit 1;
+
+  utils/filter_scp.pl $sre16_trials_tgl exp/scores/sre16_eval_scores_adapt > exp/scores/sre16_eval_tgl_scores_adapt
+  utils/filter_scp.pl $sre16_trials_yue exp/scores/sre16_eval_scores_adapt > exp/scores/sre16_eval_yue_scores_adapt
+  pooled_eer=$(paste $sre16_trials exp/scores/sre16_eval_scores_adapt | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
+  tgl_eer=$(paste $sre16_trials_tgl exp/scores/sre16_eval_tgl_scores_adapt | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
+  yue_eer=$(paste $sre16_trials_yue exp/scores/sre16_eval_yue_scores_adapt | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
+  echo "Using Adapted PLDA, EER: Pooled ${pooled_eer}%, Tagalog ${tgl_eer}%, Cantonese ${yue_eer}%"
+  # EER: Pooled 8.76%, Tagalog 12.73%, Cantonese 4.86%
+  # For reference, here's the ivector system from ../v1:
+  # EER: Pooled 12.98%, Tagalog 17.8%, Cantonese 8.35%
+  #
+  # Using the official SRE16 scoring software, we obtain the following equalized results:
+  #
+  # -- Pooled --
+  # EER:          8.97
+  # min_Cprimary: 0.61
+  # act_Cprimary: 0.63
+  #
+  # -- Cantonese --
+  # EER:          4.71
+  # min_Cprimary: 0.42
+  # act_Cprimary: 0.43
+  #
+  # -- Tagalog --
+  # EER:         13.23
+  # min_Cprimary: 0.77
+  # act_Cprimary: 0.82
 fi

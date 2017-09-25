@@ -5,10 +5,11 @@
 # Apache 2.0.
 #
 # See README.txt for more info on data required.
-# Results (EERs) are inline in comments below.
+# Results (mostly EERs) are inline in comments below.
 #
-# This script demonstrates a bare bones NIST SRE 2016 recipe.
-# It's based on the recipe in ../../sre10/v1/run.sh .
+# This example demonstrates a "bare bones" NIST SRE 2016 recipe using ivectors.
+# In the future, we will add score-normalization and a more effective form of
+# PLDA domain adaptation.
 
 . cmd.sh
 . path.sh
@@ -220,9 +221,19 @@ if [ $stage -le 6 ]; then
     ivector-compute-plda ark:data/sre_combined/spk2utt \
     "ark:ivector-subtract-global-mean scp:exp/ivectors_sre_combined/ivector.scp ark:- | transform-vec exp/ivectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:-  ark:- |" \
     exp/ivectors_sre_combined/plda || exit 1;
+
+  # Here we adapt the out-of-domain PLDA model to SRE16 major, a pile
+  # of unlabeled in-domain data.  In the future, we will include a clustering
+  # based approach for domain adaptation.
+  $train_cmd exp/ivectors_sre16_major/log/plda_adapt.log \
+    ivector-adapt-plda --within-covar-scale=0.75 --between-covar-scale=0.25 \
+    exp/ivectors_sre_combined/plda \
+    "ark:ivector-subtract-global-mean scp:exp/ivectors_sre16_major/ivector.scp ark:- | transform-vec exp/ivectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    exp/ivectors_sre16_major/plda_adapt || exit 1;
 fi
 
 if [ $stage -le 7 ]; then
+  # Get results using the out-of-domain PLDA model
   $train_cmd exp/scores/log/sre16_eval_scoring.log \
     ivector-plda-scoring --normalize-length=true \
     --num-utts=ark:exp/ivectors_sre16_eval_enroll/num_utts.ark \
@@ -236,6 +247,43 @@ if [ $stage -le 7 ]; then
   pooled_eer=$(paste $sre16_trials exp/scores/sre16_eval_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   tgl_eer=$(paste $sre16_trials_tgl exp/scores/sre16_eval_tgl_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   yue_eer=$(paste $sre16_trials_yue exp/scores/sre16_eval_yue_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
-  echo "EER: Pooled ${pooled_eer}%, Tagalog ${tgl_eer}%, Cantonese ${yue_eer}%"
+  echo "Using Out-of-Domain PLDA, EER: Pooled ${pooled_eer}%, Tagalog ${tgl_eer}%, Cantonese ${yue_eer}%"
   # EER: Pooled 13.65%, Tagalog 17.73%, Cantonese 9.612%
+fi
+
+if [ $stage -le 8 ]; then
+  # Get results using an adapted PLDA model. In the future we'll replace
+  # this (or add to this) with a clustering based approach to PLDA adaptation.
+  $train_cmd exp/scores/log/sre16_eval_scoring_adapt.log \
+    ivector-plda-scoring --normalize-length=true \
+    --num-utts=ark:exp/ivectors_sre16_eval_enroll/num_utts.ark \
+    "ivector-copy-plda --smoothing=0.0 exp/ivectors_sre16_major/plda_adapt - |" \
+    "ark:ivector-mean ark:data/sre16_eval_enroll/spk2utt scp:exp/ivectors_sre16_eval_enroll/ivector.scp ark:- | ivector-subtract-global-mean exp/ivectors_sre16_major/mean.vec ark:- ark:- | transform-vec exp/ivectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-subtract-global-mean exp/ivectors_sre16_major/mean.vec scp:exp/ivectors_sre16_eval_test/ivector.scp ark:- | transform-vec exp/ivectors_sre_combined/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "cat '$sre16_trials' | cut -d\  --fields=1,2 |" exp/scores/sre16_eval_scores_adapt || exit 1;
+
+  utils/filter_scp.pl $sre16_trials_tgl exp/scores/sre16_eval_scores_adapt > exp/scores/sre16_eval_tgl_scores_adapt
+  utils/filter_scp.pl $sre16_trials_yue exp/scores/sre16_eval_scores_adapt > exp/scores/sre16_eval_yue_scores_adapt
+  pooled_eer=$(paste $sre16_trials exp/scores/sre16_eval_scores_adapt | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
+  tgl_eer=$(paste $sre16_trials_tgl exp/scores/sre16_eval_tgl_scores_adapt | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
+  yue_eer=$(paste $sre16_trials_yue exp/scores/sre16_eval_yue_scores_adapt | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
+  echo "Using Adapted PLDA, EER: Pooled ${pooled_eer}%, Tagalog ${tgl_eer}%, Cantonese ${yue_eer}%"
+  # EER: Pooled 12.98%, Tagalog 17.8%, Cantonese 8.35%
+  #
+  # Using the official SRE16 scoring software, we obtain the following equalized results:
+  #
+  # -- Pooled --
+  # EER:         13.08
+  # min_Cprimary: 0.72
+  # act_Cprimary: 0.73
+
+  # -- Cantonese --
+  # EER:          8.23
+  # min_Cprimary: 0.59
+  # act_Cprimary: 0.59
+
+  # -- Tagalog --
+  # EER:         17.87
+  # min_Cprimary: 0.84
+  # act_Cprimary: 0.87
 fi
