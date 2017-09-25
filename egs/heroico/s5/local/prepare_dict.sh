@@ -7,24 +7,6 @@ set -o errexit
 
 [ -f ./path.sh ] && . ./path.sh
 
-wget http://www.openslr.org/resources/34/santiago.tar.gz
-
-mkdir -p data/local/tmp/dict
-
-mv santiago.tar.gz data/local/tmp/dict/
-
-if [ -e data/local/tmp/dict/santiago.tar ]; then
-    rm data/local/tmp/dict/santiago.tar
-fi
-
-gunzip data/local/tmp/dict/santiago.tar.gz
-
-cd data/local/tmp/dict
-
-tar -xvf santiago.tar
-
-cd ../../../..
-
 if [ ! -d data/local/dict ]; then
     mkdir -p data/local/dict
 fi
