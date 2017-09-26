@@ -209,7 +209,7 @@ sub check_txt_int_csl {
   }
 
   $idx1 = 1;
-  check_allowed_whitespace(\*TXT) || exit = 1;
+  check_allowed_whitespace(\*TXT) or $exit = 1;
   while (<TXT>) {
     chomp;
     my @col = split(" ", $_);
@@ -288,7 +288,7 @@ sub check_txt_int {
   }
 
   $idx1 = 1;
-  check_allowed_whitespace(\*TXT) || exit = 1;
+  check_allowed_whitespace(\*TXT) or $exit = 1;
   while (<TXT>) {
     chomp;
     s/^(shared|not-shared) (split|not-split) //g;
