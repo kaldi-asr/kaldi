@@ -143,12 +143,12 @@ mkdir -p exp/ivector_svm/score
 # using i-vector directly or i-vector with LDA for SVM
 if [ $vectype == "lda-ivector" ]; then
   # using i-vector with LDA
-  ivector-normalize-length ark:$exp/ivectors_train_2048_400/lda_${clda}.ark ark,t:exp/ivector_svm/$curve/train.dat
-  ivector-normalize-length ark:$exp/ivectors_${testdir}_2048_400/lda_${clda}.ark ark,t:exp/ivector_svm/$curve/test.dat
+  ivector-normalize-length ark:$exp/ivectors_train_${cnum}_${civ}/lda_${clda}.ark ark,t:exp/ivector_svm/$curve/train.dat
+  ivector-normalize-length ark:$exp/ivectors_${testdir}_${cnum}_${civ}/lda_${clda}.ark ark,t:exp/ivector_svm/$curve/test.dat
 elif [ $vectype == "i-vector" ]; then
   # using i-vecotr directly
-  ivector-normalize-length scp:$exp/ivectors_train_2048_400/ivector.scp ark,t:exp/ivector_svm/$curve/train.dat
-  ivector-normalize-length scp:$exp/ivectors_${testdir}_2048_400/ivector.scp ark,t:exp/ivector_svm/$curve/test.dat
+  ivector-normalize-length scp:$exp/ivectors_train_${cnum}_${civ}/ivector.scp ark,t:exp/ivector_svm/$curve/train.dat
+  ivector-normalize-length scp:$exp/ivectors_${testdir}_${cnum}_${civ}/ivector.scp ark,t:exp/ivector_svm/$curve/test.dat
 else
   echo "Wrong feats!" && exit 1;
 fi
