@@ -1,4 +1,4 @@
-// xvectorbin/nnet3-xvector-get-egs.cc
+// nnet3bin/nnet3-xvector-get-egs.cc
 
 // Copyright 2016-2017  Johns Hopkins University (author:  Daniel Povey)
 //           2016-2017  Johns Hopkins University (author:  Daniel Garcia-Romero)
@@ -21,7 +21,6 @@
 
 #include <sstream>
 #include "util/common-utils.h"
-#include "util/stl-utils.h"
 #include "nnet3/nnet-example.h"
 
 namespace kaldi {
