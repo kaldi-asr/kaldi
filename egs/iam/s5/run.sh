@@ -5,6 +5,7 @@ nj=20
 color=1
 data_dir=data
 exp_dir=exp
+. ./path.sh
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . utils/parse_options.sh  # e.g. this parses the --stage option if supplied.
