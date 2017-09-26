@@ -50,6 +50,7 @@ fi
 
 if [ ! -s $pron_counts ]; then
   echo "$0: expected file $pron_counts to exist";
+  exit 1;
 fi
 
 mkdir -p $dir || exit 1;
