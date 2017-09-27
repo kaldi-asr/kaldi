@@ -315,6 +315,24 @@ if [ $stage -le 6 ]; then
 	exp/mono_ali \
 	exp/tri1 || exit 1;
 
+    # test cd gmm hmm models
+    # make decoding graph for tri1
+    (
+	utils/mkgraph.sh \
+	    data/lang_test \
+	    exp/tri1 \
+	    exp/tri1/graph || exit 1;
+
+	# decode test data with tri1 models
+	for x in native nonnative test; do
+	    steps/decode.sh \
+		--nj 8  \
+		exp/tri1/graph  \
+		data/$x \
+		exp/tri1/decode_${x} || exit 1;
+	done
+) &
+
     # align with triphones
     steps/align_si.sh \
 	--nj 8 \
@@ -335,6 +353,23 @@ if [ $stage -le 7 ]; then
 	data/lang \
 	exp/tri1_ali \
 	exp/tri2b
+
+    (
+	#  make decoding fst for tri2b models
+	utils/mkgraph.sh \
+	    data/lang_test \
+	    exp/tri2b \
+	    exp/tri2b/graph || exit 1;
+
+	# decode  test with tri2b models
+	for x in native nonnative test; do
+	    steps/decode.sh \
+		--nj 8  \
+		exp/tri2b/graph \
+		data/$x \
+		exp/tri2b/decode_${x} || exit 1;
+	done
+    ) &
 
     # align with lda and mllt adapted triphones
     steps/align_si.sh \
@@ -368,42 +403,6 @@ if [ $stage -le 7 ]; then
 fi
 
 if [ $stage -le 8 ]; then
-    # train and test chain models
-    local/chain/run_tdnn.sh
-fi
-
-if [ $stage -le 9 ]; then
-    # test cd gmm hmm models
-    # make decoding graph for tri1
-    utils/mkgraph.sh \
-	data/lang_test \
-	exp/tri1 \
-	exp/tri1/graph || exit 1;
-
-    # decode test data with tri1 models
-    for x in native nonnative test; do
-	steps/decode.sh \
-	    --nj 8  \
-	    exp/tri1/graph  \
-	    data/$x \
-	    exp/tri1/decode_${x} || exit 1;
-    done
-
-    #  make decoding fst for tri2b models
-    utils/mkgraph.sh \
-	data/lang_test \
-	exp/tri2b \
-	exp/tri2b/graph || exit 1;
-
-    # decode  test with tri2b models
-    for x in native nonnative test; do
-	steps/decode.sh \
-	--nj 8  \
-	exp/tri2b/graph \
-	data/$x \
-	exp/tri2b/decode_${x} || exit 1;
-    done
-
     # make decoding graph for SAT models
     utils/mkgraph.sh \
 	data/lang_test \
@@ -420,3 +419,9 @@ if [ $stage -le 9 ]; then
         exp/tri3b/decode_${x}
     done
 fi
+
+if [ $stage -le 9 ]; then
+    # train and test chain models
+    local/chain/run_tdnn.sh
+fi
+
