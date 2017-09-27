@@ -44,7 +44,7 @@ class KaldiRnnlmDeterministicFst
   KaldiRnnlmDeterministicFst(int32 max_ngram_order,
       const std::string &rnn_wordlist,
       const std::string &word_symbol_table_rxfilename,
-      const RnnlmSimpleLoopedInfo &info);
+      const RnnlmComputeStateInfo &info);
   ~KaldiRnnlmDeterministicFst();
 
   void Clear();
@@ -65,9 +65,15 @@ class KaldiRnnlmDeterministicFst
   std::vector<std::string> fst_label_to_word_;
 
   int32 full_voc_size_;
-  int32 out_OOS_index_;
+
+  string bos_symbol_;
+  string eos_symbol_;
+  string oos_symbol_;
+  string brk_symbol_;
   int32 bos_index_;
   int32 eos_index_;
+  int32 oos_index_;
+  int32 brk_index_;
 
   typedef unordered_map
       <std::vector<Label>, StateId, VectorHasher<Label> > MapType;
@@ -79,10 +85,12 @@ class KaldiRnnlmDeterministicFst
   // mapping from state-id to history sequence
   std::vector<std::vector<Label> > state_to_wseq_;
 
-  // mapping from state-id to RNNLM structure including computer
-  std::vector<RnnlmSimpleLooped*> state_to_decodable_rnnlm_;
+  // mapping from state-id to RNNLM states
+  // the pointers are owned here
+  std::vector<RnnlmComputeState*> state_to_rnnlm_state_;
 
   // mapping from state-id to output word-embedding
+  // the pointers are owned here
   std::vector<CuVector<BaseFloat>*> state_to_nnet3_output_;
 
   void ReadFstWordSymbolTableAndRnnWordlist(const std::string &rnn_in_wordlist,

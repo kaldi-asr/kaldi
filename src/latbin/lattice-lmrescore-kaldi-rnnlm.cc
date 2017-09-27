@@ -85,8 +85,8 @@ int main(int argc, char *argv[]) {
     CuMatrix<BaseFloat> word_embedding_mat;
     ReadKaldiObject(word_embedding_rxfilename, &word_embedding_mat);
 
-    const nnet3::RnnlmSimpleLoopedComputationOptions opts;
-    const nnet3::RnnlmSimpleLoopedInfo info(opts, rnnlm, word_embedding_mat);
+    const nnet3::RnnlmComputeStateComputationOptions opts;
+    const nnet3::RnnlmComputeStateInfo info(opts, rnnlm, word_embedding_mat);
 
     // Reads and writes as compact lattice.
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
