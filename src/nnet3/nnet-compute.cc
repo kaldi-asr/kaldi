@@ -171,7 +171,25 @@ void* NnetComputer::GetMemo(int32 memo_index) {
 }
 
 
-
+NnetComputer::NnetComputer(const NnetComputer &other):
+    options_(other.options_),
+    computation_(other.computation_),
+    nnet_(other.nnet_),
+    program_counter_(other.program_counter_),
+    pending_commands_(other.pending_commands_),
+    nnet_to_update_(other.nnet_to_update_),
+    debug_(other.debug_),
+    command_attributes_(other.command_attributes_),
+    submatrix_strings_(other.submatrix_strings_),
+    command_strings_(other.command_strings_),
+    matrices_(other.matrices_),
+    memos_(other.memos_) {
+  // Note: this is the same as the default copy constructor, except for the check below.
+  if (!memos_.empty()) {
+    KALDI_ERR << "You cannot use the copy constructor of NnetComputer if "
+        "memos are used.";
+  }
+}
 
 void NnetComputer::ExecuteCommand() {
   const NnetComputation::Command &c = computation_.commands[program_counter_];
