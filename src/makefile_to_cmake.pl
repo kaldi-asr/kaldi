@@ -115,6 +115,26 @@ sub extract_variables {
   return %variables;
 }
 
+sub create_imported_libraries {
+  my $ldlibs = shift;
+  my @tokens = split / /, $ldlibs;
+  my @libs;
+
+  for my $lib (@tokens) {
+    if ($lib =~ /^-l.*/) {
+      $lib =~ s/^-l//;
+      push @libs, [$lib, undef];
+    } else {
+      (my $name = $lib) =~ s/.*\///;
+      $name =~ s/^lib//g;
+      $name =~ s/\..*//g;
+      push @libs, [$name, $lib];
+    }
+  }
+  print Dumper(\@libs);
+  return @libs;
+}
+
 sub write_root_cmake {
   my $kaldimk = shift;
   my $directories = shift;
@@ -162,7 +182,6 @@ sub write_root_cmake {
   #print $ldlibs . "\n";
 
 
-
   open(my $f, ">", "$out/CMakeLists.txt");
   print $f "cmake_minimum_required (VERSION 2.8.11)\n";
   print $f "project(kaldi)\n";
@@ -188,10 +207,24 @@ sub write_root_cmake {
   print $f "option (BUILD_USE_SOLUTION_FOLDERS \"Enable grouping of projects in VS\" ON)\n"; 
   print $f "set_property(GLOBAL PROPERTY USE_FOLDERS \${BUILD_USE_SOLUTION_FOLDERS})\n"; 
   print $f "\n";
-  print $f "set(KALDI_CXX_FLAGS \"$cxxflags\")\n";
-  print $f "set(KALDI_LINKER_FLAGS \"$ldflags\")\n";
-  print $f "set(KALDI_LINKER_LIBS \"$ldlibs\")\n";
+
+  my @libs = create_imported_libraries($ldlibs);
+  $ldlibs = "";
+  foreach my $lib (@libs) {
+    if (defined($lib->[1])) {
+      print $f "add_library($lib->[0] UNKNOWN IMPORTED)\n";
+      print $f "set_target_properties($lib->[0] PROPERTIES IMPORTED_LOCATION $lib->[1])\n";
+    }
+    $ldlibs = join(" ", ($ldlibs, $lib->[0]));
+  }
+  $ldlibs =~s/^  *| +$//g;
   print $f "\n";
+
+  print $f "set(KALDI_CXX_FLAGS \"$cxxflags\")\n";
+  print $f "set(KALDI_LINKER_FLAGS \"$ldflags  -Wl,--no-undefined -Wl,--as-needed\")\n";
+  print $f "set(KALDI_LINKER_LIBS $ldlibs)\n";
+  print $f "\n";
+  
   print $f "set(KALDI_CUDA_FLAGS \"$variables{CUDA_FLAGS}\")\n" if defined($variables{CUDA_FLAGS});
   print $f "set(KALDI_CUDA_LDFLAGS \"$variables{CUDA_LDFLAGS}\")\n" if defined($variables{CUDA_LDFLAGS});
   print $f "set(KALDI_CUDA_LDLIBS \"$variables{CUDA_LDLIBS}\")\n" if defined($variables{CUDA_LDLIBS});
@@ -238,8 +271,9 @@ sub write_cmake {
     
     $ccfiles = join(" ", split(" ", $ccfiles));
     print $f "add_library($libname $ccfiles)\n";
-    print $f "target_link_libraries($libname \${KALDI_LINKER_FLAGS} $addlibs)\n" if $addlibs;
-    print $f "set_target_properties($libname PROPERTIES FOLDER $dir_basename)\n";
+    print $f "target_link_libraries($libname $addlibs \${KALDI_LINKER_LIBS})\n" if $addlibs;
+    print $f "set_target_properties($libname PROPERTIES FOLDER $dir_basename
+                                          LINKER_FLAGS \"\${KALDI_LINKER_FLAGS}\" )\n";
     #print $libname . "\n";
     #print $objfiles . "\n";
     #print $testfiles . "\n";
@@ -264,8 +298,9 @@ sub write_cmake {
     my @binaries = split(" ", $binfiles);
     foreach my $bin (@binaries) {
       print $f "add_executable($bin $bin.cc)\n";
-      print $f "target_link_libraries($bin \${KALDI_LINKER_FLAGS} $addlibs)\n" if $addlibs;
-      print $f "set_target_properties($bin PROPERTIES FOLDER $dir_basename)\n";
+      print $f "target_link_libraries($bin \${KALDI_LINKER_LIBS} $addlibs)\n" if $addlibs;
+      print $f "set_target_properties($bin PROPERTIES FOLDER $dir_basename\n
+                                         LINKER_FLAGS \"\${KALDI_LINKER_FLAGS}\")\n";
     }
     #print $binfiles . "\n";
     #print $testfiles . "\n";
@@ -279,23 +314,25 @@ sub write_cmake {
 #my $makefiles = `find . -maxdepth 2 -mindepth 2 -type f -name Makefile -not -ipath "*build*" -not -ipath "*gst*" -not -ipath "kaldi-online" | xargs -n1 dirname | paste -s`;
 #@dirs = split " ", $makefiles;
 
-#my @dirs = ("./base", "./bin", "./chain",
-#          "./chainbin", "./cudamatrix", 
-#          "./decoder", "./feat", "./featbin",
-#          "./fgmmbin", "./fstbin", "./fstext",
-#          "./gmm", "./gmmbin", "./hmm", 
-#          "./ivector", "./ivectorbin", "./kws",
-#          "./kwsbin", "./lat", "./latbin", "./lm",
-#          "./lmbin", "./matrix", "./nnet", 
-#          "./nnet2", "./nnet2bin", "./nnet3",
-#          "./nnet3bin", "./nnetbin", "./online",
-#          "./online2", "./online2bin", "./onlinebin",
-#          "./sgmm2", "./sgmm2bin", "./transform",
-#          "./tree", "./util");
+my @dirs = ("./base", "./bin", "./chain",
+          "./chainbin", "./cudamatrix", 
+          "./decoder", "./feat", "./featbin",
+          "./fgmmbin", "./fstbin", "./fstext",
+          "./gmm", "./gmmbin", "./hmm", 
+          "./ivector", "./ivectorbin", "./kws",
+          "./kwsbin", "./lat", "./latbin", "./lm",
+          "./lmbin", "./matrix", "./nnet", 
+          "./nnet2", "./nnet2bin", "./nnet3",
+          "./nnet3bin", "./nnetbin", "./online",
+          "./online2", "./online2bin", "./onlinebin",
+          "./sgmm2", "./sgmm2bin", "./transform",
+          "./tree", "./util");
           
           
-my @dirs = ("./base", "./matrix", "./util", "./tree", "./gmm");
-             
+#my @dirs = ("./base", "./matrix", "./util", "./tree", "./gmm",
+#           "./transform", "./hmm", "./fstext",
+#           "./lm", "./lat", "./decoder", "./bin" ); 
+
 my $kaldimk = read_whole_file("kaldi.mk");
    
 
