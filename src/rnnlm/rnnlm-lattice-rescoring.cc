@@ -28,9 +28,37 @@
 namespace kaldi {
 namespace nnet3 {
 
+KaldiRnnlmDeterministicFst::~KaldiRnnlmDeterministicFst() {
+  int size = state_to_decodable_rnnlm_.size();
+  KALDI_ASSERT(state_to_nnet3_output_.size() == size);
+  for (int i = 0; i < size; i++) {
+    delete state_to_decodable_rnnlm_[i];
+    delete state_to_nnet3_output_[i];
+  }
+  
+  state_to_decodable_rnnlm_.resize(0);
+  state_to_nnet3_output_.resize(0);
+  state_to_wseq_.resize(0);
+  wseq_to_state_.clear();
+}
+
+void KaldiRnnlmDeterministicFst::Clear() {
+  int size = state_to_decodable_rnnlm_.size();
+  KALDI_ASSERT(state_to_nnet3_output_.size() == size);
+  for (int i = 1; i < size; i++) {
+    delete state_to_decodable_rnnlm_[i];
+    delete state_to_nnet3_output_[i];
+  }
+  
+  state_to_decodable_rnnlm_.resize(1);
+  state_to_nnet3_output_.resize(1);
+  state_to_wseq_.resize(1);
+  wseq_to_state_.clear();
+  wseq_to_state_[state_to_wseq_[0]] = 0;
+}
+
 void KaldiRnnlmDeterministicFst::ReadFstWordSymbolTableAndRnnWordlist(
     const std::string &rnn_wordlist,
-//    const std::string &rnn_out_wordlist,
     const std::string &word_symbol_table_rxfilename) {
   // Reads symbol table.
   fst::SymbolTable *fst_word_symbols = NULL;
@@ -52,8 +80,6 @@ void KaldiRnnlmDeterministicFst::ReadFstWordSymbolTableAndRnnWordlist(
     }
   }
 
-//  fst_label_to_rnn_out_label_.resize(fst_word_symbols->NumSymbols(), -1);
-  KALDI_LOG << "resize to " << fst_word_symbols->NumSymbols();
   fst_label_to_rnn_label_.resize(fst_word_symbols->NumSymbols(), -1);
 
   out_OOS_index_ = 1;
@@ -72,10 +98,6 @@ void KaldiRnnlmDeterministicFst::ReadFstWordSymbolTableAndRnnWordlist(
       i++;
       rnn_label_to_word_.push_back(word);
 
-//      if (word == "<brk>") {
-//        continue;
-//      }
-
       int fst_label = fst_word_symbols->Find(rnn_label_to_word_[id]);
       if (fst::SymbolTable::kNoSymbol != fst_label || id == out_OOS_index_ || id == 0 || word == "<brk>") {}
       else {
@@ -92,6 +114,7 @@ void KaldiRnnlmDeterministicFst::ReadFstWordSymbolTableAndRnnWordlist(
       fst_label_to_rnn_label_[i] = out_OOS_index_;
     }
   }
+  delete fst_word_symbols;
 }
 
 KaldiRnnlmDeterministicFst::KaldiRnnlmDeterministicFst(int32 max_ngram_order,
@@ -105,20 +128,23 @@ KaldiRnnlmDeterministicFst::KaldiRnnlmDeterministicFst(int32 max_ngram_order,
   std::vector<Label> bos_seq;
   bos_seq.push_back(bos_index_);
   state_to_wseq_.push_back(bos_seq);
-  RnnlmSimpleLooped decodable_rnnlm(info);
-  decodable_rnnlm.TakeFeatures(bos_seq);
-  state_to_decodable_rnnlm_.push_back(decodable_rnnlm);
+  RnnlmSimpleLooped *decodable_rnnlm = new RnnlmSimpleLooped(info);
+  decodable_rnnlm->TakeFeatures(bos_seq);
+  CuVector<BaseFloat> *hidden = decodable_rnnlm->GetOutput(0);
   wseq_to_state_[bos_seq] = 0;
   start_state_ = 0;
+
+  state_to_decodable_rnnlm_.push_back(decodable_rnnlm);
+  state_to_nnet3_output_.push_back(hidden);
 }
 
 fst::StdArc::Weight KaldiRnnlmDeterministicFst::Final(StateId s) {
   // At this point, we should have created the state.
   KALDI_ASSERT(static_cast<size_t>(s) < state_to_wseq_.size());
 
-  // log prob of end of sentence
-  BaseFloat logprob = state_to_decodable_rnnlm_[s].GetOutput(0, eos_index_);
-  return Weight(-logprob);
+  const CuVector<BaseFloat> &nnet3_out = *state_to_nnet3_output_[s];
+  RnnlmSimpleLooped* rnn = state_to_decodable_rnnlm_[s];
+  return rnn->LogProbOfWord(eos_index_, nnet3_out);
 }
 
 bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
@@ -127,12 +153,15 @@ bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
   KALDI_ASSERT(static_cast<size_t>(s) < state_to_wseq_.size());
 
   std::vector<Label> wseq = state_to_wseq_[s];
-  RnnlmSimpleLooped decodable_rnnlm = state_to_decodable_rnnlm_[s];
+//  RnnlmSimpleLooped* rnnlm = new RnnlmSimpleLooped(*state_to_decodable_rnnlm_[s]);
+  const RnnlmSimpleLooped* rnnlm = state_to_decodable_rnnlm_[s];
   int32 rnn_word = fst_label_to_rnn_label_[ilabel];
 
-  BaseFloat logprob = decodable_rnnlm.GetOutput(0, rnn_word);
-  if (rnn_word == out_OOS_index_)
-    logprob = logprob - Log(full_voc_size_ - rnn_label_to_word_.size() + 1.0);
+  const CuVector<BaseFloat> &nnet3_out = *state_to_nnet3_output_[s];
+  BaseFloat logprob = rnnlm->LogProbOfWord(rnn_word, nnet3_out);
+
+//  if (rnn_word == out_OOS_index_)
+//    logprob = logprob - Log(full_voc_size_ - rnn_label_to_word_.size() + 1.0);
 
   wseq.push_back(rnn_word);
   if (max_ngram_order_ > 0) {
@@ -150,12 +179,16 @@ bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
   typedef MapType::iterator IterType;
   std::pair<IterType, bool> result = wseq_to_state_.insert(wseq_state_pair);
 
-  // If the pair was just inserted, then also add it to <state_to_wseq_> and
-  // <state_to_decodable_rnnlm_>.
+  // If the pair was just inserted, then also add it to state_to_* structures
   if (result.second == true) {
+    RnnlmSimpleLooped *rnnlm2 = new RnnlmSimpleLooped(*rnnlm);  // make a copy
+
+//  std::vector<int32> fst_label_to_rnn_in_label_;
+//  std::vector<std::string> rnn_in_label_to_word_;
+    rnnlm2->TakeFeatures(std::vector<Label>(1, rnn_word));
     state_to_wseq_.push_back(wseq);
-    decodable_rnnlm.TakeFeatures(std::vector<Label>(1, wseq.back()));
-    state_to_decodable_rnnlm_.push_back(decodable_rnnlm);
+    state_to_nnet3_output_.push_back(rnnlm2->GetOutput(0));
+    state_to_decodable_rnnlm_.push_back(rnnlm2);
   }
 
   // Creates the arc.

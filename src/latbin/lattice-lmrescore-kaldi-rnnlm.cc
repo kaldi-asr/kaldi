@@ -93,6 +93,12 @@ int main(int argc, char *argv[]) {
     CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
 
     int32 n_done = 0, n_fail = 0;
+
+    nnet3::KaldiRnnlmDeterministicFst rnnlm_fst(max_ngram_order,
+                                                rnn_wordlist,
+                                                word_symbols_rxfilename,
+                                                info);
+
     for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
       std::string key = compact_lattice_reader.Key();
       CompactLattice clat = compact_lattice_reader.Value();
@@ -109,10 +115,6 @@ int main(int argc, char *argv[]) {
 
         // Wraps the rnnlm into FST. We re-create it for each lattice to prevent
         // memory usage increasing with time.
-        nnet3::KaldiRnnlmDeterministicFst rnnlm_fst(max_ngram_order,
-                                                    rnn_wordlist,
-                                                    word_symbols_rxfilename,
-                                                    info);
 
         // Composes lattice with language model.
         CompactLattice composed_clat;
@@ -138,6 +140,7 @@ int main(int argc, char *argv[]) {
         n_done++;
         compact_lattice_writer.Write(key, clat);
       }
+      rnnlm_fst.Clear();
     }
 
     KALDI_LOG << "Done " << n_done << " lattices, failed for " << n_fail;

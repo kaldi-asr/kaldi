@@ -135,13 +135,15 @@ class RnnlmSimpleLooped {
   */
   RnnlmSimpleLooped(const RnnlmSimpleLoopedInfo &info);
 
+  RnnlmSimpleLooped(const RnnlmSimpleLooped &other);
+
   inline int32 NnetOutputDim() const { return info_.nnet_output_dim; }
 
   // Gets the nnet's output for a particular frame, with 0 <= frame < NumFrames().
   // 'output' must be correctly sized (with dimension NnetOutputDim()).  Note:
   // you're expected to call this, and GetOutput(), in an order of increasing
   // frames.  If you deviate from this, one of these calls may crash.
-  void GetNnetOutputForFrame(int32 frame, VectorBase<BaseFloat> *output);
+//  void GetNnetOutputForFrame(int32 frame, VectorBase<BaseFloat> *output);
 
   // Updates feats_ with the new incoming word specified in word_indexes
   // We usually do this one at a time
@@ -149,7 +151,12 @@ class RnnlmSimpleLooped {
 
   // Gets the output for a particular frame and word_index, with
   // 0 <= frame < NumFrames().
-  BaseFloat GetOutput(int32 frame, int32 word_index);
+//  BaseFloat GetOutput(int32 frame, int32 word_index);
+  // create a CuVector in heap, pointer owned by the caller
+  CuVector<BaseFloat>* GetOutput(int32 frame);
+
+  BaseFloat LogProbOfWord(int32 word_index,
+                          const CuVectorBase<BaseFloat> &hidden) const;
 
  private:
   // This function does the computation for the next chunk.

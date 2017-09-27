@@ -84,6 +84,12 @@ RnnlmSimpleLooped::RnnlmSimpleLooped(
     current_log_post_offset_(-1)
 {}
 
+RnnlmSimpleLooped::RnnlmSimpleLooped(const RnnlmSimpleLooped &other):
+  info_(other.info_), computer_(other.computer_), feats_(other.feats_),
+  current_nnet_output_(other.current_nnet_output_),
+  current_log_post_offset_(other.current_log_post_offset_)
+{}
+
 void RnnlmSimpleLooped::TakeFeatures(
     const std::vector<int32> &word_indexes) {
   KALDI_ASSERT(word_indexes.size() == feats_.NumRows());
@@ -101,29 +107,18 @@ void RnnlmSimpleLooped::TakeFeatures(
   current_log_post_offset_ = -1;
 }
 
-void RnnlmSimpleLooped::GetNnetOutputForFrame(
-    int32 frame, VectorBase<BaseFloat> *output) {
-  KALDI_ASSERT(frame >= 0 && frame < feats_.NumRows());
-  if (frame >= current_log_post_offset_ + current_nnet_output_.NumRows())
-    AdvanceChunk();
-  output->CopyFromVec(current_nnet_output_.Row(frame -
-                                               current_log_post_offset_));
-}
+//void RnnlmSimpleLooped::GetNnetOutputForFrame(
+//    int32 frame, VectorBase<BaseFloat> *output) {
+//  KALDI_ASSERT(frame >= 0 && frame < feats_.NumRows());
+//  if (frame >= current_log_post_offset_ + current_nnet_output_.NumRows())
+//    AdvanceChunk();
+//  output->CopyFromVec(current_nnet_output_.Row(frame -
+//                                               current_log_post_offset_));
+//}
 
-BaseFloat RnnlmSimpleLooped::GetOutput(int32 frame, int32 word_index) {
-  KALDI_ASSERT(frame >= 0 && frame < feats_.NumRows());
-  if (frame >= current_log_post_offset_ + current_nnet_output_.NumRows())
-    AdvanceChunk();
-
-//  int32 embedding_dim = info_.word_embedding_mat.NumCols();
-//  int32 num_words = info_.word_embedding_mat.NumRows();
-
+BaseFloat RnnlmSimpleLooped::LogProbOfWord(int32 word_index,
+                               const CuVectorBase<BaseFloat> &hidden) const {
   const CuMatrix<BaseFloat> &word_embedding_mat = info_.word_embedding_mat;
-
-  CuMatrix<BaseFloat> current_nnet_output_gpu;
-  current_nnet_output_gpu.Swap(&current_nnet_output_);
-  const CuSubVector<BaseFloat> hidden(current_nnet_output_gpu,
-                                      frame - current_log_post_offset_);
   BaseFloat log_prob;
 
   if (info_.opts.force_normalize) {
@@ -136,11 +131,28 @@ BaseFloat RnnlmSimpleLooped::GetOutput(int32 frame, int32 word_index) {
   } else {
     log_prob = VecVec(hidden, word_embedding_mat.Row(word_index));
   }
-
-  // swap the pointer back so that this function can be called multiple times
-  // with the same returned value before taking next new feats
-  current_nnet_output_.Swap(&current_nnet_output_gpu);
   return log_prob;
+}
+
+CuVector<BaseFloat>* RnnlmSimpleLooped::GetOutput(int32 frame) {
+  KALDI_ASSERT(frame >= 0 && frame < feats_.NumRows());
+  if (frame >= current_log_post_offset_ + current_nnet_output_.NumRows())
+    AdvanceChunk();
+
+//  int32 embedding_dim = info_.word_embedding_mat.NumCols();
+//  int32 num_words = info_.word_embedding_mat.NumRows();
+
+
+  CuMatrix<BaseFloat> current_nnet_output_gpu;
+  current_nnet_output_gpu.Swap(&current_nnet_output_);
+  const CuSubVector<BaseFloat> hidden(current_nnet_output_gpu,
+                                      frame - current_log_post_offset_);
+  return new CuVector<BaseFloat>(hidden);
+//
+//  // swap the pointer back so that this function can be called multiple times
+//  // with the same returned value before taking next new feats
+//  current_nnet_output_.Swap(&current_nnet_output_gpu);
+//  return log_prob;
 }
 
 void RnnlmSimpleLooped::AdvanceChunk() {
