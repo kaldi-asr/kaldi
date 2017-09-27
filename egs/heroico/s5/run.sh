@@ -275,6 +275,26 @@ if [ $stage -le 5 ]; then
 	data/lang \
 	exp/mono || exit 1;
 
+    # evaluation
+    (
+	# make decoding graph for monophones 
+	utils/mkgraph.sh \
+	    data/lang_test \
+	    exp/mono \
+	    exp/mono/graph || exit 1;
+
+	# test monophones
+	for x in native nonnative test; do
+	    steps/decode.sh \
+		--nj 8  \
+		exp/mono/graph  \
+		data/$x \
+		exp/mono/decode_${x} || exit 1;
+	done
+) &
+fi
+
+if [ $stage -le 6 ]; then
     # align with monophones
     steps/align_si.sh \
 	--nj 8 \
@@ -283,9 +303,7 @@ if [ $stage -le 5 ]; then
 	data/lang \
 	exp/mono \
 	exp/mono_ali || exit 1;
-fi
 
-if [ $stage -le 6 ]; then
     echo "Starting  triphone training in exp/tri1"
     steps/train_deltas.sh \
 	--cmd "$train_cmd" \
@@ -355,27 +373,10 @@ if [ $stage -le 8 ]; then
 fi
 
 if [ $stage -le 9 ]; then
-    # evaluation
-    # make decoding graph for monophones 
-    utils/mkgraph.sh \
-	data/lang \
-	exp/mono \
-	exp/mono/graph || exit 1;
-
-
-    # test monophones
-    for x in native nonnative test; do
-	steps/decode.sh \
-	    --nj 8  \
-	    exp/mono/graph  \
-	    data/$x \
-	    exp/mono/decode_${x} || exit 1;
-    done
-
     # test cd gmm hmm models
     # make decoding graph for tri1
     utils/mkgraph.sh \
-	data/lang  \
+	data/lang_test \
 	exp/tri1 \
 	exp/tri1/graph || exit 1;
 
@@ -390,7 +391,7 @@ if [ $stage -le 9 ]; then
 
     #  make decoding fst for tri2b models
     utils/mkgraph.sh \
-	data/lang  \
+	data/lang_test \
 	exp/tri2b \
 	exp/tri2b/graph || exit 1;
 
@@ -405,7 +406,7 @@ if [ $stage -le 9 ]; then
 
     # make decoding graph for SAT models
     utils/mkgraph.sh \
-	data/lang  \
+	data/lang_test \
 	exp/tri3b \
 	exp/tri3b/graph ||  exit 1;
 
