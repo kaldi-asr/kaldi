@@ -12,8 +12,7 @@
 
 export train_cmd=queue.pl
 export decode_cmd="queue.pl --mem 2G"
-if [ "$(hostname -d)" == "fit.vutbr.cz" ]; then
-  queue_conf=$HOME/queue_conf/default.conf # see example /homes/kazi/iveselyk/queue_conf/default.conf,
-  export train_cmd="queue.pl --config $queue_conf --mem 2G --matylda 0.2"
-  export decode_cmd="queue.pl --config $queue_conf --mem 3G --matylda 0.1"
-fi
+
+#  queue_conf=$HOME/queue_conf/default.conf # see example /homes/kazi/iveselyk/queue_conf/default.conf,
+#  export train_cmd="queue.pl --config $queue_conf --mem 2G --matylda 0.2"
+#  export decode_cmd="queue.pl --config $queue_conf --mem 3G --matylda 0.1"
