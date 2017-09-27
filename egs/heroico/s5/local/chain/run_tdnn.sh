@@ -222,7 +222,7 @@ if [ $stage -le 15 ]; then
 	data/lang_test \
 	$tree_dir $tree_dir/graph || exit 1;
 fi
-exit
+
 if [ $stage -le 16 ]; then
     frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
     rm $dir/.error 2>/dev/null || true
@@ -245,10 +245,6 @@ if [ $stage -le 16 ]; then
 		$tree_dir/graph \
 		data/${data}_hires \
 		${dir}/decode_${data} || exit 1
-	    steps/lmrescore_const_arpa.sh \
-		--cmd "$decode_cmd" \
-		data/lang_test_{tgsmall,tglarge} \
-		data/${data}_hires ${dir}/decode_{tgsmall,tglarge}_${data} || exit 1
 	) || touch $dir/.error &
     done
     wait
