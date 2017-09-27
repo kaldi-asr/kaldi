@@ -256,31 +256,34 @@ fi
 # normal decoding.
 
 if $test_online_decoding && [ $stage -le 17 ]; then
-  # note: if the features change (e.g. you add pitch features), you will have to
-  # change the options of the following command line.
-  steps/online/nnet3/prepare_online_decoding.sh \
-    --mfcc-config conf/mfcc_hires.conf \
-    $lang exp/nnet3${nnet3_affix}/extractor ${dir} ${dir}_online
+    # note: if the features change (e.g. you add pitch features), you will have to
+    # change the options of the following command line.
+    steps/online/nnet3/prepare_online_decoding.sh \
+	--mfcc-config conf/mfcc_hires.conf \
+	$lang \
+	exp/nnet3${nnet3_affix}/extractor \
+	${dir} \
+	${dir}_online
 
-  rm $dir/.error 2>/dev/null || true
+    rm $dir/.error 2>/dev/null || true
 
-  for data in $test_sets; do
-    (
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
-      # note: we just give it "data/${data}" as it only uses the wav.scp, the
-      # feature type does not matter.
-      steps/online/nnet3/decode.sh \
-        --acwt 1.0 --post-decode-acwt 10.0 \
-        --nj $nspk --cmd "$decode_cmd" \
-        $tree_dir/graph_tgsmall data/${data} ${dir}_online/decode_tgsmall_${data} || exit 1
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-        data/lang_test_{tgsmall,tglarge} \
-       data/${data}_hires ${dir}_online/decode_{tgsmall,tglarge}_${data} || exit 1
-    ) || touch $dir/.error &
-  done
-  wait
-  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+    for data in $test_sets; do
+	(
+	    nspk=$(wc -l <data/${data}_hires/spk2utt)
+	    # note: we just give it "data/${data}" as it only uses the wav.scp, the
+	    # feature type does not matter.
+	    steps/online/nnet3/decode.sh \
+		--acwt 1.0 \
+		--post-decode-acwt 10.0 \
+		--nj $nspk \
+		--cmd "$decode_cmd" \
+		$tree_dir/graph \
+		data/${data} \
+		${dir}_online/decode_${data} || exit 1
+	) || touch $dir/.error &
+    done
+    wait
+    [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
-
 
 exit 0;
