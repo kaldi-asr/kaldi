@@ -215,37 +215,44 @@ if [ $stage -le 14 ]; then
 fi
 
 if [ $stage -le 15 ]; then
-  # Note: it's not important to give mkgraph.sh the lang directory with the
-  # matched topology (since it gets the topology file from the model).
-  utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_test_tgsmall \
-    $tree_dir $tree_dir/graph_tgsmall || exit 1;
+    # Note: it's not important to give mkgraph.sh the lang directory with the
+    # matched topology (since it gets the topology file from the model).
+    utils/mkgraph.sh \
+	--self-loop-scale 1.0 \
+	data/lang_test \
+	$tree_dir $tree_dir/graph || exit 1;
 fi
-
+exit
 if [ $stage -le 16 ]; then
-  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-  rm $dir/.error 2>/dev/null || true
+    frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
+    rm $dir/.error 2>/dev/null || true
 
-  for data in $test_sets; do
-    (
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
-      steps/nnet3/decode.sh \
-          --acwt 1.0 --post-decode-acwt 10.0 \
-          --extra-left-context $chunk_left_context \
-          --extra-right-context $chunk_right_context \
-          --extra-left-context-initial 0 \
-          --extra-right-context-final 0 \
-          --frames-per-chunk $frames_per_chunk \
-          --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
-          --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
-          $tree_dir/graph_tgsmall data/${data}_hires ${dir}/decode_tgsmall_${data} || exit 1
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-        data/lang_test_{tgsmall,tglarge} \
-       data/${data}_hires ${dir}/decode_{tgsmall,tglarge}_${data} || exit 1
-    ) || touch $dir/.error &
-  done
-  wait
-  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+    for data in $test_sets; do
+	(
+	    nspk=$(wc -l <data/${data}_hires/spk2utt)
+	    steps/nnet3/decode.sh \
+		--acwt 1.0 \
+		--post-decode-acwt 10.0 \
+		--extra-left-context $chunk_left_context \
+		--extra-right-context $chunk_right_context \
+		--extra-left-context-initial 0 \
+		--extra-right-context-final 0 \
+		--frames-per-chunk $frames_per_chunk \
+		--nj $nspk \
+		--cmd "$decode_cmd" \
+		--num-threads 4 \
+		--online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
+		$tree_dir/graph \
+		data/${data}_hires \
+		${dir}/decode_${data} || exit 1
+	    steps/lmrescore_const_arpa.sh \
+		--cmd "$decode_cmd" \
+		data/lang_test_{tgsmall,tglarge} \
+		data/${data}_hires ${dir}/decode_{tgsmall,tglarge}_${data} || exit 1
+	) || touch $dir/.error &
+    done
+    wait
+    [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
 
 # Not testing the 'looped' decoding separately, because for
