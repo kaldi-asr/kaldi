@@ -63,7 +63,7 @@ struct RnnlmComputeStateComputationOptions {
                    "the end-of-sentence symbol, usually </s>");
     opts->Register("oos-symbol", &oos_symbol, "symbol in wordlist representing "
                    "the out-of-vocabulary symbol, usually <oos>");
-    opts->Register("eos-symbol", &brk_symbol, "symbol in wordlist representing "
+    opts->Register("brk-symbol", &brk_symbol, "symbol in wordlist representing "
                    "the break symbol, usually <brk>");
 
     // register the optimization options with the prefix "optimization".
