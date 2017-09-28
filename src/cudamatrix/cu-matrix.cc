@@ -1032,7 +1032,7 @@ void CuMatrixBase<Real>::AddSmatMat(Real alpha, const CuSparseMatrix<Real> &A,
     CuMatrix<Real> CT(*this, kTrans);
 
     cusparseMatDescr_t descr;
-    CU_SAFE_CALL(cusparseCreateMatDescr(&descr));
+    CUSPARSE_SAFE_CALL(cusparseCreateMatDescr(&descr));
     if (transA == kTrans) {
       // Note: only op(A)=A is supported if op(B)=B^T according to cusparse doc
       // http://docs.nvidia.com/cuda/cusparse/index.html#cusparse-lt-t-gt-csrmm2
@@ -1051,7 +1051,7 @@ void CuMatrixBase<Real>::AddSmatMat(Real alpha, const CuSparseMatrix<Real> &A,
                           descr, A.CsrVal(), A.CsrRowPtr(), A.CsrColIdx(),
                           B.Data(), B.Stride(), &beta, CT.Data(), CT.Stride()));
     }
-    CU_SAFE_CALL(cusparseDestroyMatDescr(descr));
+    CUSPARSE_SAFE_CALL(cusparseDestroyMatDescr(descr));
 
     this->CopyFromMat(CT, kTrans);
 
@@ -1082,7 +1082,7 @@ void CuMatrixBase<Real>::AddMatSmat(Real alpha, const CuMatrixBase<Real> &A,
     CuTimer tim;
 
     cusparseMatDescr_t descr;
-    CU_SAFE_CALL(cusparseCreateMatDescr(&descr));
+    CUSPARSE_SAFE_CALL(cusparseCreateMatDescr(&descr));
     CU_SAFE_CALL(
         cusparse_csrmm(
             GetCusparseHandle(),
@@ -1091,7 +1091,7 @@ void CuMatrixBase<Real>::AddMatSmat(Real alpha, const CuMatrixBase<Real> &A,
             B.NumRows(), NumRows(), B.NumCols(), B.NumElements(), &alpha, descr,
             B.CsrVal(), B.CsrRowPtr(), B.CsrColIdx(), A.Data(), A.Stride(),
             &beta, Data(), Stride()));
-    CU_SAFE_CALL(cusparseDestroyMatDescr(descr));
+    CUSPARSE_SAFE_CALL(cusparseDestroyMatDescr(descr));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else

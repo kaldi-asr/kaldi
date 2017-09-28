@@ -223,7 +223,7 @@ void CuDevice::FinalizeActiveGpu() {
     // Initialize the CUBLAS
     CUBLAS_SAFE_CALL(cublasCreate(&handle_));
     // Initialize the cuSPARSE
-    CU_SAFE_CALL(cusparseCreate(&cusparse_handle_));
+    CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
 
     // Notify user which GPU is finally used
     char name[128];
