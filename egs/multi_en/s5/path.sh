@@ -5,4 +5,3 @@ export PATH=$PWD/utils/:$KALDI_ROOT/tools/openfst/bin:$PWD:$PATH:$KALDI_ROOT/too
 . $KALDI_ROOT/tools/config/common_path.sh
 
 export LC_ALL=C
-export LD_LIBRARY_PATH=$KALDI_ROOT/tools/openfst-1.6.2/lib/

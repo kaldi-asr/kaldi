@@ -38,7 +38,7 @@ case $(hostname -d) in
     wsj1=/export/corpora5/LDC/LDC94S13B
     eval2000="/export/corpora/LDC/LDC2002S09/hub5e_00 /export/corpora/LDC/LDC2002T43"
     rt03="/export/corpora/LDC/LDC2007S10"
-    hub4="/export/corpora/LDC/LDC97S44 /export/corpora/LDC/LDC97T22"
+    hub4_en="/export/corpora/LDC/LDC97S44 /export/corpora/LDC/LDC97T22"
     ;;
 esac
 
@@ -72,10 +72,10 @@ if [ $stage -le 1 ]; then
   local/wsj_format_data.sh
   utils/copy_data_dir.sh --spk_prefix wsj_ --utt_prefix wsj_ data/wsj/train_si284 data/wsj/train
   rm -rf data/wsj/train_si284
-  # hub4
+  # hub4_en
   local/hub4_data_prep.py --noise-word="[NOISE]" \
     --spoken-noise-word="[VOCALIZED-NOISE]" \
-    $hub4 data/hub4/train
+    $hub4_en data/hub4_en/train
 fi
 
 # prepare standalone eval data
@@ -135,7 +135,7 @@ fi
 # make training features
 if [ $stage -le 7 ]; then
   mfccdir=mfcc
-  corpora="hub4 fisher librispeech_100 librispeech_360 librispeech_500 swbd tedlium wsj"
+  corpora="hub4_en fisher librispeech_100 librispeech_360 librispeech_500 swbd tedlium wsj"
   for c in $corpora; do
     data=data/$c/train
     steps/make_mfcc.sh --mfcc-config conf/mfcc.conf \
@@ -330,7 +330,7 @@ if [ $stage -le 18 ]; then
   )&
 fi
 
-# train tri5a on fisher + swbd + tedlium + wsj + hub4 (nodup)
+# train tri5a on fisher + swbd + tedlium + wsj + hub4_en (nodup)
 if [ $stage -le 19 ]; then
   local/make_partitions.sh --multi $multi --stage 7 || exit 1;
   steps/align_fmllr.sh --cmd "$train_cmd" --nj 100 \
@@ -376,7 +376,7 @@ if [ $stage -le 20 ]; then
 fi
 
 lang=${lang_root}_${dict_affix}
-# train tri5b on fisher + swbd + tedlium + wsj + hub4 + librispeeh460 (nodup)
+# train tri5b on fisher + swbd + tedlium + wsj + hub4_en + librispeeh460 (nodup)
 if [ $stage -le 21 ]; then
   local/make_partitions.sh --multi $multi --stage 8 || exit 1;
   steps/align_fmllr.sh --cmd "$train_cmd" --nj 100 \
@@ -396,7 +396,7 @@ if [ $stage -le 21 ]; then
   )&
 fi
 
-# train tri6a on fisher + swbd + tedlium + wsj + hub4 + librispeeh960 (nodup)
+# train tri6a on fisher + swbd + tedlium + wsj + hub4_en + librispeeh960 (nodup)
 if [ $stage -le 22 ]; then
   local/make_partitions.sh --multi $multi --stage 9 || exit 1;
   steps/align_fmllr.sh --cmd "$train_cmd" --nj 100 \

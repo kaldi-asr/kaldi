@@ -69,16 +69,16 @@ if [ $stage -eq 6 ]; then
   ln -nfs tri3b_ali $data_dir/tri4
 fi
 
-# whole fisher + swbd + tedlium + wsj + hub4 (nodup)
+# whole fisher + swbd + tedlium + wsj + hub4_en (nodup)
 if [ $stage -eq 7 ]; then
   utils/combine_data.sh data/fisher_swbd_tedlium_wsj_hub4 \
-    data/fisher_swbd_tedlium data/{wsj,hub4}/train \
+    data/fisher_swbd_tedlium data/{wsj,hub4_en}/train \
     || { echo "Failed to combine data"; exit 1; }
   utils/data/remove_dup_utts.sh 300 data/fisher_swbd_tedlium_wsj_hub4 $data_dir/tri4_ali
   ln -nfs tri4_ali $data_dir/tri5a
 fi
 
-# whole fisher + swbd + tedlilum + wsj + hub4 + librispeech460 (nodup)
+# whole fisher + swbd + tedlilum + wsj + hub4_en + librispeech460 (nodup)
 if [ $stage -eq 8 ]; then
   utils/combine_data.sh data/fisher_swbd_tedlium_wsj_hub4_libri460 \
     data/fisher_swbd_tedlium_wsj_hub4 data/{librispeech_100,librispeech_360}/train \
@@ -87,7 +87,7 @@ if [ $stage -eq 8 ]; then
   ln -nfs tri5a_ali $data_dir/tri5b
 fi
 
-# whole fisher + swbd + tedlilum + wsj + hub4 + librispeech460 (nodup)
+# whole fisher + swbd + tedlilum + wsj + hub4_en + librispeech460 (nodup)
 if [ $stage -eq 9 ]; then
   utils/combine_data.sh data/fisher_swbd_tedlium_wsj_hub4_libri960 \
     data/fisher_swbd_tedlium_wsj_hub4_libri460 data/librispeech_500/train \
