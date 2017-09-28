@@ -320,7 +320,7 @@ sub write_cmake {
     
     $ccfiles = join(" ", split(" ", $ccfiles));
     print $f "add_library($libname $ccfiles)\n";
-    print $f "target_link_libraries($libname $addlibs $ldlibs)\n";
+    print $f "target_link_libraries($libname PRIVATE $addlibs $ldlibs)\n";
     print $f "set_target_properties($libname PROPERTIES FOLDER $dir_basename
                                           LINK_FLAGS \"$ldflags\" )\n";
     #print $libname . "\n";
@@ -386,8 +386,9 @@ my @dirs = ("./base", "./bin", "./chain",
           "./kwsbin", "./lat", "./latbin", "./lm",
           "./lmbin", "./matrix", "./nnet", 
           "./nnet2", "./nnet2bin", "./nnet3",
-          "./nnet3bin", "./nnetbin", "./online",
-          "./online2", "./online2bin", "./onlinebin",
+          "./nnet3bin", "./nnetbin", 
+          #"./online", "./onlinebin",
+          "./online2", "./online2bin", 
           "./sgmm2", "./sgmm2bin", "./transform",
           "./tree", "./util");
           
