@@ -75,13 +75,21 @@ sub extract_variables {
   my $kaldimk = shift;
   my @lines = split(/\n/, $kaldimk);
   my %variables;
+  my $parent_variables;
+  if (@_) {
+    $parent_variables = shift;
+    foreach my $key (keys %{$parent_variables}) {
+      $variables{$key} = $parent_variables->{$key};
+    }
+  }
 
   my $line;
   my $inside_cond = 0;
+  my $evaluate_inner = 0;
   for (my $i = 0; $i <= $#lines; $i++) {
     $line = $lines[$i];
     next if $line =~ /^ *$/;
-    next if (($inside_cond > 0) && ($line !~ /^endif/));
+    next if (($inside_cond > 0) && ($evaluate_inner == 0) && ($line !~ /^endif/) );
     $line =~ s/ #.*/ /g;
     $line =~ s/  +/ /g;
     next if $line =~ /^ *$/;
@@ -100,15 +108,26 @@ sub extract_variables {
       $variables{$variable} =~ s/^\s+|\s+$//g;
     } elsif ($line =~ /^#/) {
       next;
+    } elsif ($line =~ /^ifeq *\(\$\(CUDA\), *true\)/) {
+      $inside_cond += 1;
+      $evaluate_inner = 1;
     } elsif ( $line =~ /^ifeq/ || $line =~ /^ifneq/ ) {
       $inside_cond += 1;
     } elsif ($line =~ /^ifdef/ || $line =~ /^ifndef/ ) {
       $inside_cond += 1;
     } elsif ($line =~ /^endif/ ) {
       $inside_cond -= 1;
+      $evaluate_inner = 0;
       die "Error parsing Makefile[$i], probably syntax error\n" if $inside_cond < 0;
     } else {
       print "Cannot parse Makefile[$i]: $line\n";
+    }
+  }
+
+  # remove variables that haven't been updated
+  if ($parent_variables) {
+    foreach my $key (keys %{$parent_variables}) {
+      delete $variables{$key}  if ($variables{$key} eq $parent_variables->{$key});
     }
   }
   print Dumper(\%variables);
@@ -183,11 +202,16 @@ sub write_root_cmake {
 
 
   open(my $f, ">", "$out/CMakeLists.txt");
-  print $f "cmake_minimum_required (VERSION 2.8.11)\n";
-  print $f "project(kaldi)\n";
-  print $f "enable_testing()\n";
-  print $f "\n";
+  print $f "cmake_minimum_required (VERSION 3.8 FATAL_ERROR)\n";
   print $f "set(CMAKE_CXX_STANDARD 11)\n"; 
+  print $f "\n";
+  if (defined($variables{CUDA}) && ($variables{CUDA} eq "true") ) {
+    print $f "set(CMAKE_CUDA_COMPILER \"$variables{CUDATKDIR}/bin/nvcc\")\n" if defined($variables{CUDATKDIR});
+    print $f "project(kaldi LANGUAGES CXX CUDA)\n";
+  } else {
+    print $f "project(kaldi LANGUAGES CXX)\n";
+  }
+  print $f "enable_testing()\n";
   print $f "\n";
   print $f "include_directories(\${CMAKE_SOURCE_DIR})\n";
   foreach my $param (@includes_from_flags) {
@@ -234,73 +258,112 @@ sub write_root_cmake {
       print $f "add_subdirectory ($dir)\n";
   }
   close($f);
+  return %variables;
 }
 
 sub write_cmake {
   my $makefile = shift;
   my $s = read_whole_file($makefile);
   my $out = shift;
+  my $parent_variables = shift;
+  my %variables = extract_variables($s, $parent_variables);
   
   my @path_segments = split(/[\/\\]/, $out);
   my $dir_basename = $path_segments[$#path_segments];
   #print $dir_basename;
   open(my $f, ">", "$out/CMakeLists.txt");
 
-  if ($s =~ /[\n^]LIBNAME = ([^\n]+)\n/) {
-    my $libname = $1;
+  if (defined($variables{LIBNAME})) {
+    my $libname = $variables{LIBNAME};
     my $objfiles = "";
     my $testfiles = "";
     my $addlibs = "";
 
-    if ($s =~ /[\n^]OBJFILES *= *([^\n]+)\n/) {
-      $objfiles = $1;
+    if (defined($variables{OBJFILES})) {
+      $objfiles = $variables{OBJFILES};
     } else {
       die "Error parsing file $makefile (no OBJFILES statement)"
     }
-    if ($s =~ /[\n^]TESTFILES *= *([^\n]+)\n/) {
-      $testfiles = $1;
+    if (defined($variables{TESTFILES})) {
+      $testfiles = $variables{TESTFILES};
     }
-    if ($s =~ /[\n^]ADDLIBS *= *([^\n]+)\n/) {
-      $addlibs = $1
+    if (defined($variables{ADDLIBS})) {
+      $addlibs = $variables{ADDLIBS};
     }
-    
-    (my $ccfiles =  $objfiles) =~ s/\.o/.cc/g;
+
+    my $ldlibs = "\${KALDI_LINKER_LIBS}";
+    if (defined($variables{LDLIBS})) {
+      my @libs = create_imported_libraries($variables{LDLIBS});
+      $ldlibs = "";
+      ## we assume that here we won't link using paths
+      foreach my $lib (@libs) {
+        $ldlibs = join(" ", ($ldlibs, $lib->[0]));
+      }
+      $ldlibs =~s/^  *| +$//g;
+    }
+    my $ldflags = "\${KALDI_LINKER_FLAGS}";
+    if (defined($variables{LDFLAGS})) {
+      $ldflags = "$variables{LDFLAGS}   -Wl,--no-undefined -Wl,--as-needed";
+    }
+   
+    my $ccfiles = "";
+    my @obj_array = split(" ", $objfiles);
+    print Dumper(\@obj_array);
+    foreach my $file (@obj_array) {
+      $file =~ s/\.o//g;
+      $ccfiles .=" $file.cc" if -f "$out/$file.cc";
+      $ccfiles .=" $file.cu" if -f "$out/$file.cu";
+    }
     $addlibs =~ s/\.a//g;
     $addlibs =~ s/[^ ]*\///g;
     $addlibs = join(" ", split(" ", $addlibs));
     
     $ccfiles = join(" ", split(" ", $ccfiles));
     print $f "add_library($libname $ccfiles)\n";
-    print $f "target_link_libraries($libname $addlibs \${KALDI_LINKER_LIBS})\n" if $addlibs;
+    print $f "target_link_libraries($libname $addlibs $ldlibs)\n";
     print $f "set_target_properties($libname PROPERTIES FOLDER $dir_basename
-                                          LINKER_FLAGS \"\${KALDI_LINKER_FLAGS}\" )\n";
+                                          LINK_FLAGS \"$ldflags\" )\n";
     #print $libname . "\n";
     #print $objfiles . "\n";
     #print $testfiles . "\n";
     #print $addlibs . "\n";
   }
 
-  if ($s =~ /[\n^]BINFILES = ([^\n]+)\n/) {
-    my $binfiles = $1;
+  if (defined($variables{BINFILES})) {
+    my $binfiles = $variables{BINFILES};
     my $testfiles = "";
     my $addlibs = "";
 
-    if ($s =~ /[\n^]TESTFILES *= *([^\n]+)\n/) {
-      $testfiles = $1;
+    if (defined($variables{BINFILES})) {
+      $testfiles = $variables{BINFILES};
     }
-    if ($s =~ /[\n^]ADDLIBS *= *([^\n]+)\n/) {
-      $addlibs = $1
+    if (defined($variables{ADDLIBS})) {
+      $addlibs = $variables{ADDLIBS};
     }
     $addlibs =~ s/\.a//g;
     $addlibs =~ s/[^ ]*\///g;
     $addlibs = join(" ", split(" ", $addlibs));
     
+    my $ldlibs = "\${KALDI_LINKER_LIBS}";
+    if (defined($variables{LDLIBS})) {
+      my @libs = create_imported_libraries($variables{LDLIBS});
+      $ldlibs = "";
+      ## we assume that here we won't link using paths
+      foreach my $lib (@libs) {
+        $ldlibs = join(" ", ($ldlibs, $lib->[0]));
+      }
+      $ldlibs =~s/^  *| +$//g;
+    }
+    my $ldflags = "\${KALDI_LINKER_FLAGS}";
+    if (defined($variables{LDFLAGS})) {
+      $ldflags = "$variables{LDFLAGS} -Wl,--no-undefined -Wl,--as-needed";
+    }
     my @binaries = split(" ", $binfiles);
     foreach my $bin (@binaries) {
       print $f "add_executable($bin $bin.cc)\n";
-      print $f "target_link_libraries($bin \${KALDI_LINKER_LIBS} $addlibs)\n" if $addlibs;
-      print $f "set_target_properties($bin PROPERTIES FOLDER $dir_basename\n
-                                         LINKER_FLAGS \"\${KALDI_LINKER_FLAGS}\")\n";
+      print $f "target_link_libraries($bin $addlibs $ldlibs)\n";
+      print $f "set_target_properties($bin PROPERTIES FOLDER $dir_basename
+                                         LINK_FLAGS \"$ldflags\")\n";
     }
     #print $binfiles . "\n";
     #print $testfiles . "\n";
@@ -333,12 +396,14 @@ my @dirs = ("./base", "./bin", "./chain",
 #           "./transform", "./hmm", "./fstext",
 #           "./lm", "./lat", "./decoder", "./bin" ); 
 
+#@dirs = ("cudamatrix");
+
 my $kaldimk = read_whole_file("kaldi.mk");
    
 
-    
-write_root_cmake($kaldimk, \@dirs, "./");
+my %top_root_variables = write_root_cmake($kaldimk, \@dirs, "./");
 foreach my $dir (@dirs) {
   my $makefile = "$dir/Makefile";
-  write_cmake($makefile, $dir);
+  print STDERR $makefile . "\n";
+  write_cmake($makefile, $dir, \%top_root_variables);
 }
