@@ -1,4 +1,4 @@
-// rnnlm/kaldi-rnnlm-simple-looped.h
+// src/rnnlm/rnnlm-compute-state.h
 
 // Copyright 2017 Johns Hopkins University (author: Daniel Povey)
 //           2017 Yiming Wang
@@ -19,8 +19,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_RNNLM_COMPUTE_STATEH_
-#define KALDI_RNNLM_COMPUTE_STATEH_
+#ifndef KALDI_RNNLM_COMPUTE_STATE_H_
+#define KALDI_RNNLM_COMPUTE_STATE_H_
 
 #include <vector>
 #include "base/kaldi-common.h"
@@ -133,4 +133,4 @@ class RnnlmComputeState {
 } // namespace nnet3
 } // namespace kaldi
 
-#endif  // KALDI_RNNLM_COMPUTE_STATE_H
+#endif  // KALDI_RNNLM_COMPUTE_STATE_H_

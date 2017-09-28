@@ -1,4 +1,4 @@
-// rnnlm/kaldi-rnnlm-simple-looped.cc
+// src/rnnlm/rnnlm-compute-state.cc
 
 // Copyright      2017  Johns Hopkins University (author: Daniel Povey)
 //                2017  Yiming Wang
