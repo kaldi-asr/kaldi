@@ -30,28 +30,24 @@ namespace nnet3 {
 
 KaldiRnnlmDeterministicFst::~KaldiRnnlmDeterministicFst() {
   int size = state_to_rnnlm_state_.size();
-  KALDI_ASSERT(state_to_nnet3_output_.size() == size);
   for (int i = 0; i < size; i++) {
     delete state_to_rnnlm_state_[i];
-    delete state_to_nnet3_output_[i];
   }
   
   state_to_rnnlm_state_.resize(0);
-  state_to_nnet3_output_.resize(0);
   state_to_wseq_.resize(0);
   wseq_to_state_.clear();
 }
 
 void KaldiRnnlmDeterministicFst::Clear() {
+  // similar to the destructor but we retain the 0-th entries in each map
+  // which corresponds to the <bos> state
   int size = state_to_rnnlm_state_.size();
-  KALDI_ASSERT(state_to_nnet3_output_.size() == size);
   for (int i = 1; i < size; i++) {
     delete state_to_rnnlm_state_[i];
-    delete state_to_nnet3_output_[i];
   }
   
   state_to_rnnlm_state_.resize(1);
-  state_to_nnet3_output_.resize(1);
   state_to_wseq_.resize(1);
   wseq_to_state_.clear();
   wseq_to_state_[state_to_wseq_[0]] = 0;
@@ -102,22 +98,30 @@ void KaldiRnnlmDeterministicFst::ReadFstWordSymbolTableAndRnnWordlist(
       i++;
       rnn_label_to_word_.push_back(word);
 
-      int fst_label = fst_word_symbols->Find(rnn_label_to_word_[id]);
-      if (fst::SymbolTable::kNoSymbol != fst_label && id != oos_index_
-               && id != bos_index_ && id != brk_index_) {
+      int fst_label = fst_word_symbols->Find(word);
+      if (fst::SymbolTable::kNoSymbol == fst_label && word != oos_symbol_
+               && word != bos_symbol_ && word != brk_symbol_) {
         KALDI_LOG << "warning: word " << word
                   << " in RNNLM wordlist but not in FST wordlist";
       }
-      if (id != oos_index_ && oos_index_ != -2 &&
-                fst_label != fst::SymbolTable::kNoSymbol) {
+      if (word != oos_symbol_ && fst_label != fst::SymbolTable::kNoSymbol) {
         fst_label_to_rnn_label_[fst_label] = id;
       }
     }
   }
 
-  for (int32 i = 0; i < fst_label_to_rnn_label_.size(); i++) {
-    if (fst_label_to_rnn_label_[i] == -1) {
-      fst_label_to_rnn_label_[i] = oos_index_;
+  if (oos_index_ > -1) {
+    for (int32 i = 0; i < fst_label_to_rnn_label_.size(); i++) {
+      if (fst_label_to_rnn_label_[i] == -1) {
+        fst_label_to_rnn_label_[i] = oos_index_;
+      }
+    }
+  } else {
+    for (int32 i = 0; i < fst_label_to_rnn_label_.size(); i++) {
+      if (fst_label_to_rnn_label_[i] == -1) {
+        KALDI_LOG << "warning: word " << fst_word_symbols->Find(i)
+                  << " in FST wordlist but not in RNNLM wordlist";
+      }
     }
   }
   delete fst_word_symbols;
@@ -138,44 +142,39 @@ KaldiRnnlmDeterministicFst::KaldiRnnlmDeterministicFst(int32 max_ngram_order,
   std::vector<Label> bos_seq;
   bos_seq.push_back(bos_index_);
   state_to_wseq_.push_back(bos_seq);
-  RnnlmComputeState *decodable_rnnlm = new RnnlmComputeState(info);
-  decodable_rnnlm->TakeFeatures(bos_index_);
-  CuVector<BaseFloat> *hidden = decodable_rnnlm->GetOutput();
+  RnnlmComputeState *decodable_rnnlm = new RnnlmComputeState(info, bos_index_);
   wseq_to_state_[bos_seq] = 0;
   start_state_ = 0;
 
   state_to_rnnlm_state_.push_back(decodable_rnnlm);
-  state_to_nnet3_output_.push_back(hidden);
 }
 
 fst::StdArc::Weight KaldiRnnlmDeterministicFst::Final(StateId s) {
-  // At this point, we should have created the state.
+  /// At this point, we have created the state.
   KALDI_ASSERT(static_cast<size_t>(s) < state_to_wseq_.size());
 
-  const CuVector<BaseFloat> &nnet3_out = *state_to_nnet3_output_[s];
   RnnlmComputeState* rnn = state_to_rnnlm_state_[s];
-  return rnn->LogProbOfWord(eos_index_, nnet3_out);
+  return Weight(-rnn->LogProbOfWord(eos_index_));
 }
 
 bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
                                         fst::StdArc *oarc) {
-  // At this point, we should have created the state.
+  /// At this point, we have created the state.
   KALDI_ASSERT(static_cast<size_t>(s) < state_to_wseq_.size());
 
   std::vector<Label> wseq = state_to_wseq_[s];
   const RnnlmComputeState* rnnlm = state_to_rnnlm_state_[s];
   int32 rnn_word = fst_label_to_rnn_label_[ilabel];
 
-  const CuVector<BaseFloat> &nnet3_out = *state_to_nnet3_output_[s];
-  BaseFloat logprob = rnnlm->LogProbOfWord(rnn_word, nnet3_out);
+  BaseFloat logprob = rnnlm->LogProbOfWord(rnn_word);
 
-//  if (rnn_word == oos_index_)
-//    logprob = logprob - Log(full_voc_size_ - rnn_label_to_word_.size() + 1.0);
+  if (rnn_word == oos_index_)
+    logprob = logprob - Log(full_voc_size_ - rnn_label_to_word_.size() + 1.0);
 
   wseq.push_back(rnn_word);
   if (max_ngram_order_ > 0) {
     while (wseq.size() >= max_ngram_order_) {
-      // History state has at most <max_ngram_order_> - 1 words in the state.
+      /// History state has at most <max_ngram_order_> - 1 words in the state.
       wseq.erase(wseq.begin(), wseq.begin() + 1);
     }
   }
@@ -183,17 +182,15 @@ bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
   std::pair<const std::vector<Label>, StateId> wseq_state_pair(
       wseq, static_cast<Label>(state_to_wseq_.size()));
 
-  // Attemps to insert the current <lseq_state_pair>. If the pair already exists
+  // Attemps to insert the current <wseq_state_pair>. If the pair already exists
   // then it returns false.
   typedef MapType::iterator IterType;
   std::pair<IterType, bool> result = wseq_to_state_.insert(wseq_state_pair);
 
   // If the pair was just inserted, then also add it to state_to_* structures
   if (result.second == true) {
-    RnnlmComputeState *rnnlm2 = new RnnlmComputeState(*rnnlm);  // make a copy
-    rnnlm2->TakeFeatures(rnn_word);
+    RnnlmComputeState *rnnlm2 = rnnlm->GetSuccessorState(rnn_word);
     state_to_wseq_.push_back(wseq);
-    state_to_nnet3_output_.push_back(rnnlm2->GetOutput());
     state_to_rnnlm_state_.push_back(rnnlm2);
   }
 
@@ -202,7 +199,6 @@ bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
   oarc->olabel = ilabel;
   oarc->nextstate = result.first->second;
   oarc->weight = Weight(-logprob);
-
   return true;
 }
 

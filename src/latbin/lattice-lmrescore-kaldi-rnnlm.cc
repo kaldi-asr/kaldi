@@ -40,13 +40,17 @@ int main(int argc, char *argv[]) {
         "composing with the wrapped LM using a special type of composition\n"
         "algorithm. Determinization will be applied on the composed lattice.\n"
         "\n"
-        "Usage: lattice-lmrescore-kaldi-rnnlm [options] <embedding-file> <rnnlm-wordlist> \\\n"
+        "Usage: lattice-lmrescore-kaldi-rnnlm [options] \\\n"
         "             <word-symbol-table-rxfilename> <lattice-rspecifier> \\\n"
+        "             <rnnlm-wordlist> <embedding-file>  \\\n"
         "             <raw-rnnlm-rxfilename> <lattice-wspecifier>\n"
-        " e.g.: lattice-lmrescore-kaldi-rnnlm --lm-scale=-1.0 word_embedding.mat \\\n"
-        "       rnn_words.txt fst_words.txt ark:in.lats rnnlm ark:out.lats\n";
+        " e.g.: lattice-lmrescore-kaldi-rnnlm --lm-scale=-1.0 fst_words.txt \\\n"
+        "              ark:in.lats rnn_words.txt word_embedding.mat \\\n"
+        "              final.raw ark:out.lats\n";
 
     ParseOptions po(usage);
+    nnet3::RnnlmComputeStateComputationOptions opts;
+
     int32 max_ngram_order = 3;
     BaseFloat lm_scale = 1.0;
 
@@ -55,6 +59,7 @@ int main(int argc, char *argv[]) {
     po.Register("max-ngram-order", &max_ngram_order, "If positive, limit the "
                 "rnnlm context to the given number, -1 means we are not going "
                 "to limit it.");
+    opts.Register(&po);
 
     po.Read(argc, argv);
 
@@ -73,7 +78,6 @@ int main(int argc, char *argv[]) {
     rnnlm_rxfilename = po.GetArg(5);
     lats_wspecifier = po.GetArg(6);
 
-    // Reads the language model.
     kaldi::nnet3::Nnet rnnlm;
     ReadKaldiObject(rnnlm_rxfilename, &rnnlm);
 
@@ -85,7 +89,6 @@ int main(int argc, char *argv[]) {
     CuMatrix<BaseFloat> word_embedding_mat;
     ReadKaldiObject(word_embedding_rxfilename, &word_embedding_mat);
 
-    const nnet3::RnnlmComputeStateComputationOptions opts;
     const nnet3::RnnlmComputeStateInfo info(opts, rnnlm, word_embedding_mat);
 
     // Reads and writes as compact lattice.

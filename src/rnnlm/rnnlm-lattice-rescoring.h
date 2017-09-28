@@ -19,15 +19,15 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_LM_KALDI_RNNLM_RESCORING_H_
-#define KALDI_LM_KALDI_RNNLM_RESCORING_H_
+#ifndef KALDI_RNNLM_RNNLM_LATTICE_RESCORING_H_
+#define KALDI_RNNLM_RNNLM_LATTICE_RESCORING_H_
 
 #include <string>
 #include <vector>
 
 #include "base/kaldi-common.h"
 #include "fstext/deterministic-fst.h"
-#include "rnnlm/rnnlm-simple-looped.h"
+#include "rnnlm/rnnlm-compute-state.h"
 #include "util/common-utils.h"
 
 namespace kaldi {
@@ -89,10 +89,6 @@ class KaldiRnnlmDeterministicFst
   // the pointers are owned here
   std::vector<RnnlmComputeState*> state_to_rnnlm_state_;
 
-  // mapping from state-id to output word-embedding
-  // the pointers are owned here
-  std::vector<CuVector<BaseFloat>*> state_to_nnet3_output_;
-
   void ReadFstWordSymbolTableAndRnnWordlist(const std::string &rnn_in_wordlist,
       const std::string &word_symbol_table_rxfilename);
 
@@ -101,4 +97,4 @@ class KaldiRnnlmDeterministicFst
 }  // namespace nnet3
 }  // namespace kaldi
 
-#endif  // KALDI_LM_KALDI_RNNLM_RESCORING_H_
+#endif  // KALDI_RNNLM_RNNLM_LATTICE_RESCORING_H_

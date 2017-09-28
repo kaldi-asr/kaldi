@@ -19,35 +19,26 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "rnnlm/rnnlm-simple-looped.h"
+#include "rnnlm/rnnlm-compute-state.h"
 #include "nnet3/nnet-utils.h"
 #include "nnet3/nnet-compile-looped.h"
 
 namespace kaldi {
 namespace nnet3 {
 
-
 RnnlmComputeStateInfo::RnnlmComputeStateInfo(
     const RnnlmComputeStateComputationOptions &opts,
     const kaldi::nnet3::Nnet &rnnlm,
     const CuMatrix<BaseFloat> &word_embedding_mat):
     opts(opts), rnnlm(rnnlm), word_embedding_mat(word_embedding_mat) {
-  Init(opts, rnnlm, word_embedding_mat);
-}
-
-void RnnlmComputeStateInfo::Init(
-    const RnnlmComputeStateComputationOptions &opts,
-    const kaldi::nnet3::Nnet &rnnlm,
-    const CuMatrix<BaseFloat> &word_embedding_mat) {
-  opts.Check();
   KALDI_ASSERT(IsSimpleNnet(rnnlm));
   int32 left_context, right_context;
   ComputeSimpleNnetContext(rnnlm, &left_context, &right_context);
   KALDI_ASSERT(0 == left_context);
   KALDI_ASSERT(0 == right_context);
   int32 frame_subsampling_factor = 1;
-  nnet_output_dim = rnnlm.OutputDim("output");
-  KALDI_ASSERT(nnet_output_dim > 0);
+  int32 embedding_dim = rnnlm.OutputDim("output");
+  KALDI_ASSERT(embedding_dim == word_embedding_mat.NumCols());
 
   ComputationRequest request1, request2, request3;
   CreateLoopedComputationRequestSimple(rnnlm,
@@ -68,74 +59,66 @@ void RnnlmComputeStateInfo::Init(
   }
 }
 
-RnnlmComputeState::RnnlmComputeState(
-    const RnnlmComputeStateInfo &info) :
+RnnlmComputeState::RnnlmComputeState(const RnnlmComputeStateInfo &info,
+                                     int32 bos_index) :
     info_(info),
     computer_(info_.opts.compute_config, info_.computation,
               info_.rnnlm, NULL),  // NULL is 'nnet_to_update'
-    feats_(-1),
-    current_log_post_offset_(-1)
-{}
-
-RnnlmComputeState::RnnlmComputeState(const RnnlmComputeState &other):
-  info_(other.info_), computer_(other.computer_), feats_(other.feats_),
-  current_nnet_output_(other.current_nnet_output_),
-  current_log_post_offset_(other.current_log_post_offset_)
-{}
-
-void RnnlmComputeState::TakeFeatures(int32 word_index) {
-  feats_ = word_index;
-  current_log_post_offset_ = -1;
+    previous_word_(-1),
+    normalization_factor_(0.0) {
+  AddWord(bos_index);
 }
 
-BaseFloat RnnlmComputeState::LogProbOfWord(int32 word_index,
-                               const CuVectorBase<BaseFloat> &hidden) const {
+RnnlmComputeState::RnnlmComputeState(const RnnlmComputeState &other):
+  info_(other.info_), computer_(other.computer_),
+  previous_word_(other.previous_word_),
+  normalization_factor_(other.normalization_factor_)
+{}
+
+RnnlmComputeState* RnnlmComputeState::GetSuccessorState(int32 next_word) const {
+  RnnlmComputeState *ans = new RnnlmComputeState(*this);
+  ans->AddWord(next_word);
+  return ans;
+}
+
+void RnnlmComputeState::AddWord(int32 word_index) {
+  previous_word_ = word_index;
+  AdvanceChunk();
+
   const CuMatrix<BaseFloat> &word_embedding_mat = info_.word_embedding_mat;
-  BaseFloat log_prob;
+  if (info_.opts.normalize_probs) {
+    CuVector<BaseFloat> log_probs(info_.word_embedding_mat.NumRows());
 
-  if (info_.opts.force_normalize) {
-    CuVector<BaseFloat> log_probs(word_embedding_mat.NumRows());
+    log_probs.AddMatVec(1.0, word_embedding_mat, kTrans,
+                        predicted_word_embedding_->Row(0), 0.0);
+    log_probs.ApplyExp();
+    normalization_factor_ = log(log_probs.Sum());
+  }
+}
 
-    log_probs.AddMatVec(1.0, word_embedding_mat, kTrans, hidden, 0.0);
-    log_probs.ApplySoftMax();
-    log_probs.ApplyLog();
-    log_prob = log_probs(word_index);
-  } else {
-    log_prob = VecVec(hidden, word_embedding_mat.Row(word_index));
+BaseFloat RnnlmComputeState::LogProbOfWord(int32 word_index) const {
+  const CuMatrix<BaseFloat> &word_embedding_mat = info_.word_embedding_mat;
+
+  BaseFloat log_prob = VecVec(predicted_word_embedding_->Row(0),
+                              word_embedding_mat.Row(word_index));
+  if (info_.opts.normalize_probs) {
+    log_prob -= normalization_factor_;
   }
   return log_prob;
 }
 
-CuVector<BaseFloat>* RnnlmComputeState::GetOutput() {
-  AdvanceChunk();
-  CuMatrix<BaseFloat> current_nnet_output_gpu;
-  current_nnet_output_gpu.Swap(&current_nnet_output_);
-  const CuSubVector<BaseFloat> hidden(current_nnet_output_gpu,
-                                      -current_log_post_offset_);
-  return new CuVector<BaseFloat>(hidden);
-}
-
 void RnnlmComputeState::AdvanceChunk() {
   CuMatrix<BaseFloat> input_embeddings(1, info_.word_embedding_mat.NumCols());
-  int32 word_index = feats_;
-  input_embeddings.RowRange(0, 1).AddMat(1.0, info_.word_embedding_mat.RowRange(word_index, 1), kNoTrans);
+  input_embeddings.RowRange(0, 1).AddMat(1.0, info_.word_embedding_mat.RowRange(previous_word_, 1), kNoTrans);
   computer_.AcceptInput("input", &input_embeddings);
-
   computer_.Run();
-
   {
     // Note: here GetOutput() is used instead of GetOutputDestructive(), since
     // here we have recurrence that goes directly from the output, and the call
     // to GetOutputDestructive() would cause a crash on the next chunk.
-    CuMatrix<BaseFloat> output(computer_.GetOutput("output"));
-
-    current_nnet_output_.Resize(0, 0);
-    current_nnet_output_.Swap(&output);
+    const CuMatrixBase<BaseFloat> &output(computer_.GetOutput("output"));
+    predicted_word_embedding_ = &output;
   }
-  KALDI_ASSERT(current_nnet_output_.NumRows() == 1 &&
-               current_nnet_output_.NumCols() == info_.nnet_output_dim);
-
-  current_log_post_offset_ = 0;
 }
 
 } // namespace nnet3

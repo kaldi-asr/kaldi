@@ -4,8 +4,7 @@
 #           2017  Hainan Xu
 # Apache 2.0
 
-# This script rescores lattices with RNNLM.  See also rnnlmrescore.sh which is
-# an older script using n-best lists.
+# This script rescores lattices with KALDI RNNLM.
 
 # Begin configuration section.
 cmd=run.pl
@@ -15,8 +14,6 @@ N=10
 inv_acwt=12
 weight=1.0  # Interpolation weight for RNNLM.
 # End configuration section.
-rnnlm_ver=
-#layer_string=
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -24,12 +21,12 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# != 5 ]; then
    echo "Does language model rescoring of lattices (remove old LM, add new LM)"
-   echo "with RNNLM."
+   echo "with Kaldi RNNLM."
    echo ""
    echo "Usage: $0 [options] <old-lang-dir> <rnnlm-dir> \\"
    echo "                   <data-dir> <input-decode-dir> <output-decode-dir>"
-   echo " e.g.: $0 ./rnnlm data/lang_tg data/test \\"
-   echo "                   exp/tri3/test_tg exp/tri3/test_rnnlm"
+   echo " e.g.: $0 data/lang_tg exp/rnnlm_lstm/ data/test \\"
+   echo "                   exp/tri3/test_tg exp/tri3/test_rnnlm_4gram"
    echo "options: [--cmd (run.pl|queue.pl [queue opts])]"
    exit 1;
 fi
@@ -42,13 +39,7 @@ data=$3
 indir=$4
 outdir=$5
 
-rescoring_binary=lattice-lmrescore-rnnlm
-
-
-if [ "$rnnlm_ver" == "kaldirnnlm" ]; then
-  rescoring_binary="lattice-lmrescore-kaldi-rnnlm"
-  first_arg="\"rnnlm-get-word-embedding $rnnlm_dir/word_feats.txt $rnnlm_dir/feat_embedding.final.mat -|\" $rnnlm_dir/config/words.txt "
-fi
+rescoring_binary=lattice-lmrescore-kaldi-rnnlm
 
 oldlm=$oldlang/G.fst
 if [ -f $oldlang/G.carpa ]; then
@@ -103,6 +94,7 @@ else
     $oldlang/words.txt ark:- $rnnlm_dir/config/words.txt $word_embedding "$rnnlm_dir/final.raw" \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 fi
+
 if ! $skip_scoring ; then
   err_msg="Not scoring because local/score.sh does not exist or not executable."
   [ ! -x local/score.sh ] && echo $err_msg && exit 1;
@@ -112,4 +104,3 @@ else
 fi
 
 exit 0;
-

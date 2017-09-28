@@ -19,8 +19,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_RNNLM_SIMPLE_LOOPED_H_
-#define KALDI_RNNLM_SIMPLE_LOOPED_H_
+#ifndef KALDI_RNNLM_COMPUTE_STATEH_
+#define KALDI_RNNLM_COMPUTE_STATEH_
 
 #include <vector>
 #include "base/kaldi-common.h"
@@ -34,20 +34,9 @@
 namespace kaldi {
 namespace nnet3 {
 
-// See also nnet-am-decodable-simple.h, which is a decodable object that's based
-// on breaking up the input into fixed chunks.  The decodable object defined here is based on
-// 'looped' computations, which naturally handle infinite left-context (but are
-// only ideal for systems that have only recurrence in the forward direction,
-// i.e. not BLSTMs... because there isn't a natural way to enforce extra right
-// context for each chunk.)
-
-
-// Note: the 'simple' in the name means it applies to networks for which
-// IsSimpleNnet(nnet) would return true.  'looped' means we use looped
-// computations, with a kGotoLabel statement at the end of it.
 struct RnnlmComputeStateComputationOptions {
   bool debug_computation;
-  bool force_normalize;
+  bool normalize_probs;
   string bos_symbol;
   string eos_symbol;
   string oos_symbol;
@@ -56,20 +45,18 @@ struct RnnlmComputeStateComputationOptions {
   NnetComputeOptions compute_config;
   RnnlmComputeStateComputationOptions():
       debug_computation(false),
-      force_normalize(false),
+      normalize_probs(false),
       bos_symbol("<s>"),
       eos_symbol("</s>"),
       oos_symbol("<oos>"),
       brk_symbol("<brk>") { }
 
-  void Check() const {
-  }
-
   void Register(OptionsItf *opts) {
     opts->Register("debug-computation", &debug_computation, "If true, turn on "
                    "debug for the actual computation (very verbose!)");
-    opts->Register("force-normalize", &force_normalize, "If true, force "
-                   " normalize the word posteriors");
+    opts->Register("normalize-probs", &normalize_probs, "If true, word "
+       "probabilities will be correctly normalized (otherwise the sum-to-one "
+       "normalization is approximate)");
     opts->Register("bos-symbol", &bos_symbol, "symbol in wordlist representing "
                    "the begin-of-sentence symbol, usually <s>");
     opts->Register("eos-symbol", &bos_symbol, "symbol in wordlist representing "
@@ -96,17 +83,9 @@ class RnnlmComputeStateInfo  {
       const kaldi::nnet3::Nnet &rnnlm,
       const CuMatrix<BaseFloat> &word_embedding_mat);
 
-  void Init(const RnnlmComputeStateComputationOptions &opts,
-            const kaldi::nnet3::Nnet &rnnlm,
-            const CuMatrix<BaseFloat> &word_embedding_mat);
-
   const RnnlmComputeStateComputationOptions &opts;
-
   const kaldi::nnet3::Nnet &rnnlm;
   const CuMatrix<BaseFloat> &word_embedding_mat;
-
-  // The output dimension of the nnet neural network (not the final output).
-  int32 nnet_output_dim;
 
   // The compiled, 'looped' computation.
   NnetComputation computation;
@@ -116,46 +95,42 @@ class RnnlmComputeStateInfo  {
   This class handles the neural net computation; it's mostly accessed
   via other wrapper classes.
 
-  It accept just input features */
+  It accept just input word as features */
 class RnnlmComputeState {
  public:
-  /**
-     This constructor takes features as input.
-     Note: it stores references to all arguments to the constructor, so don't
-     delete them till this goes out of scope.
-
-     @param [in] info   This helper class contains all the static pre-computed information
-                        this class needs, and contains a pointer to the neural net.
-     @param [in] feats  The input feature word
-  */
-  RnnlmComputeState(const RnnlmComputeStateInfo &info);
+  /// we compile the computation and generate the state after the BOS history
+  RnnlmComputeState(const RnnlmComputeStateInfo &info, int32 bos_index);
+  /// copy constructor
   RnnlmComputeState(const RnnlmComputeState &other);
 
-  // Updates feats_ with the new incoming word specified in word_indexes
-  // We usually do this one at a time
-  void TakeFeatures(int32 word_index);
-  CuVector<BaseFloat>* GetOutput();
-  BaseFloat LogProbOfWord(int32 word_index,
-                          const CuVectorBase<BaseFloat> &hidden) const;
+  /// generate another state by passing the next-word
+  /// pointer owned by the caller
+  RnnlmComputeState* GetSuccessorState(int32 next_word) const;
 
+  /// Return the log-prob that the model predicts for the provided word-index,
+  /// given the previous history determined by the sequence of calls to AddWord()
+  /// (implicitly starting with the BOS symbol).
+  BaseFloat LogProbOfWord(int32 word_index) const;
  private:
-  // This function does the computation for the next chunk.
+  /// Advance the state of the RNNLM by appending this word to the word sequence.
+  void AddWord(int32 word_index);
+  /// This function does the computation for the next chunk.
   void AdvanceChunk();
+
   const RnnlmComputeStateInfo &info_;
   NnetComputer computer_;
-  int32 feats_;
+  int32 previous_word_;
 
-  // The current nnet's output that we got from the last time we
-  // ran the computation.
-  Matrix<BaseFloat> current_nnet_output_;
+  // this is the log of the sum of the exp'ed values in the output
+  BaseFloat normalization_factor_;
 
-  // The time-offset of the current log-posteriors, equals
-  // -1 when initialized, or takes a new word, or 0 once AdvanceChunk() was called
-  int32 current_log_post_offset_;
+  // this points to the matrix returned by GetOutput() on the Nnet object
+  // pointer not owned here
+  const CuMatrixBase<BaseFloat> *predicted_word_embedding_;
 };
 
 
 } // namespace nnet3
 } // namespace kaldi
 
-#endif  // KALDI_RNNLM_SIMPLE_LOOPED_H_
+#endif  // KALDI_RNNLM_COMPUTE_STATE_H
