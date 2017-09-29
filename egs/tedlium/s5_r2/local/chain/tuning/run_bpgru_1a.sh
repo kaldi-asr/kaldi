@@ -1,6 +1,16 @@
 #!/bin/bash
 
 # run_bpgru_1a.sh is a first attempt at an BPGRU system, based on xconfigs
+# ./local/chain/compare_wer_general.sh exp/chain_cleaned/blstm_1a_sp_bi exp/chain_cleaned/bpgru_1a_sp_bi/
+# System                blstm_1a_sp_bi bpgru_1a_sp_bi
+# WER on dev(orig)            8.5       8.3
+# WER on dev(rescored)        7.9       7.7
+# WER on test(orig)           8.8       8.4
+# WER on test(rescored)       8.4       8.1
+# Final train prob        -0.0395   -0.0420
+# Final valid prob        -0.0803   -0.0808
+# Final train prob (xent)   -0.6197   -0.6394
+# Final valid prob (xent)   -0.7945   -0.7979
 
 ## how you run this
 # by default, with cleanup:
@@ -14,7 +24,7 @@ set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
-stage=0
+stage=17
 nj=30
 decode_nj=30
 min_seg_len=1.55
@@ -66,7 +76,7 @@ gmm_dir=exp/$gmm
 ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
 tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
-dir=exp/chain${nnet3_affix}/bpgru${pgru_affix}_sp_bi
+dir=exp/chain${nnet3_affix}/bpgru_${pgru_affix}_sp_bi
 train_data_dir=data/${train_set}_sp_hires_comb
 lores_train_data_dir=data/${train_set}_sp_comb
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb

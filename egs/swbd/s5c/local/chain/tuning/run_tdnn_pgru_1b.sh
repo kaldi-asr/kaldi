@@ -5,7 +5,19 @@
 # Apache 2.0
 
 # This is the same as tdnn_pgru_1a, but using fast-pgru-layer instad of using pgru-layer 
-                                                
+
+# ./local/chain/compare_wer_general.sh tdnn_pgru_1b_ld5_sp
+# System                tdnn_pgru_1b_ld5_sp
+# WER on train_dev(tg)      12.82
+# WER on train_dev(fg)      11.75
+# WER on eval2000(tg)        15.2
+# WER on eval2000(fg)        13.7
+# Final train prob         -0.055
+# Final valid prob         -0.077
+# Final train prob (xent)        -0.781
+# Final valid prob (xent)       -0.9030
+
+              
 set -e
 
 # configs for 'chain'
