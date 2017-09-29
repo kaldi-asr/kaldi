@@ -44,7 +44,7 @@ def read_feature_type_and_key(features_file):
 feat_type_and_key = read_feature_type_and_key(args.features_file)
 
 num_word_feats = 0
-with open(args.word_features_file, 'r') as f:
+with open(args.word_features_file, 'r', encoding="utf-8") as f:
     for line in f:
         fields = line.split()
         assert len(fields) % 2 == 1
