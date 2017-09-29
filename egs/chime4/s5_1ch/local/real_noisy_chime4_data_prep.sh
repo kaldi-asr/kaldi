@@ -73,16 +73,22 @@ for x in $list_set; do
 done
 
 #make a transcription from dot
-cat tr05_real.dot | sed -e 's/(\(.*\))/\1/' | awk '{print $NF ".CH5_REAL"}'> tr05_real_noisy.ids
+cat tr05_real.dot | sed -e 's/(\(.*\))/\1/' | awk '{print $NF ".CH1_REAL"}'> tr05_real_noisy.ids
 cat tr05_real.dot | sed -e 's/(.*)//' > tr05_real_noisy.txt
-paste -d" " tr05_real_noisy.ids tr05_real_noisy.txt | sort -k 1 > tr05_real_noisy.trans1
-cat dt05_real.dot | sed -e 's/(\(.*\))/\1/' | awk '{print $NF ".CH5_REAL"}'> dt05_real_noisy.ids
+paste -d" " tr05_real_noisy.ids tr05_real_noisy.txt | \
+awk '{print}{sub(/CH1/, "CH2",$0);print}{sub(/CH2/, "CH3",$0);print}{sub(/CH3/, "CH4",$0);print}{sub(/CH4/, "CH5",$0);print}{sub(/CH5/, "CH6",$0);print}' | \
+sort -k 1 > tr05_real_noisy.trans1
+cat dt05_real.dot | sed -e 's/(\(.*\))/\1/' | awk '{print $NF ".CH1_REAL"}'> dt05_real_noisy.ids
 cat dt05_real.dot | sed -e 's/(.*)//' > dt05_real_noisy.txt
-paste -d" " dt05_real_noisy.ids dt05_real_noisy.txt | sort -k 1 > dt05_real_noisy.trans1
+paste -d" " dt05_real_noisy.ids dt05_real_noisy.txt | \
+awk '{print}{sub(/CH1/, "CH2",$0);print}{sub(/CH2/, "CH3",$0);print}{sub(/CH3/, "CH4",$0);print}{sub(/CH4/, "CH5",$0);print}{sub(/CH5/, "CH6",$0);print}' | \
+sort -k 1 > dt05_real_noisy.trans1
 if $eval_flag; then
-cat et05_real.dot | sed -e 's/(\(.*\))/\1/' | awk '{print $NF ".CH5_REAL"}'> et05_real_noisy.ids
+cat et05_real.dot | sed -e 's/(\(.*\))/\1/' | awk '{print $NF ".CH1_REAL"}'> et05_real_noisy.ids
 cat et05_real.dot | sed -e 's/(.*)//' > et05_real_noisy.txt
-paste -d" " et05_real_noisy.ids et05_real_noisy.txt | sort -k 1 > et05_real_noisy.trans1
+paste -d" " et05_real_noisy.ids et05_real_noisy.txt | \
+awk '{print}{sub(/CH1/, "CH2",$0);print}{sub(/CH2/, "CH3",$0);print}{sub(/CH3/, "CH4",$0);print}{sub(/CH4/, "CH5",$0);print}{sub(/CH5/, "CH6",$0);print}' | \
+sort -k 1 > et05_real_noisy.trans1
 fi
 
 # Do some basic normalization steps.  At this point we don't remove OOVs--
