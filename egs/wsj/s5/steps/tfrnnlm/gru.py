@@ -1,5 +1,6 @@
 # Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 # Copyright (C) 2017 Intellisist, Inc. (Author: Hainan Xu)
+#               2017 Dongji Gao
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
