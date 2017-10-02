@@ -240,7 +240,7 @@ if [ $stage -le 3 ]; then
 	data/lang \
 	data/local/lm/lm_threegram.arpa.gz \
 	data/local/dict/lexicon.txt \
-	data/lang_test
+	data/lang_test_simple
 
     mkdir -p $tmpdir/lm
     # retrieve a reference language model
