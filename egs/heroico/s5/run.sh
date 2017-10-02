@@ -25,7 +25,7 @@ recordings_transcripts=$datadir/transcripts/heroico-recordings.txt
 usma_transcripts=$datadir/transcripts/usma-prompts.txt
 
 # location of a reference language model
-lm=http://www.csl.uni-bremen.de/GlobalPhone/lm/ES.3gram.lm.gz
+lm=http://www.csl.uni-bremen.de/GlobalPhone/lm/SP.3gram.lm.gz
 
 tmpdir=data/local/tmp
 
