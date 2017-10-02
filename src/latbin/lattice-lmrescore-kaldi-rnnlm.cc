@@ -41,12 +41,12 @@ int main(int argc, char *argv[]) {
         "algorithm. Determinization will be applied on the composed lattice.\n"
         "\n"
         "Usage: lattice-lmrescore-kaldi-rnnlm [options] \\\n"
-        "             <word-symbol-table-rxfilename> <lattice-rspecifier> \\\n"
-        "             <rnnlm-wordlist> <embedding-file>  \\\n"
-        "             <raw-rnnlm-rxfilename> <lattice-wspecifier>\n"
-        " e.g.: lattice-lmrescore-kaldi-rnnlm --lm-scale=-1.0 fst_words.txt \\\n"
-        "              ark:in.lats rnn_words.txt word_embedding.mat \\\n"
-        "              final.raw ark:out.lats\n";
+        "             <embedding-file> <raw-rnnlm-rxfilename> \\\n"
+        "             <lattice-rspecifier> <lattice-wspecifier>\n"
+        " e.g.: lattice-lmrescore-kaldi-rnnlm --lm-scale=-1.0 \\\n"
+        "              word_embedding.mat \\\n"
+        "              --bos-symbol=1 --eos-symbol=2 \\\n"
+        "              final.raw ark:in.lats ark:out.lats\n";
 
     ParseOptions po(usage);
     nnet3::RnnlmComputeStateComputationOptions opts;
@@ -63,20 +63,22 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 6) {
+    if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string lats_rspecifier, rnn_wordlist, word_embedding_rxfilename,
+    if (opts.bos_index == -1 || opts.eos_index == -1) {
+      KALDI_ERR << "must set --bos-symbol and --eos-symbol options";
+    }
+
+    std::string lats_rspecifier, word_embedding_rxfilename,
         word_symbols_rxfilename, rnnlm_rxfilename, lats_wspecifier;
 
-    word_symbols_rxfilename = po.GetArg(1);
-    lats_rspecifier = po.GetArg(2);
-    rnn_wordlist = po.GetArg(3);
-    word_embedding_rxfilename = po.GetArg(4);
-    rnnlm_rxfilename = po.GetArg(5);
-    lats_wspecifier = po.GetArg(6);
+    word_embedding_rxfilename = po.GetArg(1);
+    rnnlm_rxfilename = po.GetArg(2);
+    lats_rspecifier = po.GetArg(3);
+    lats_wspecifier = po.GetArg(4);
 
     kaldi::nnet3::Nnet rnnlm;
     ReadKaldiObject(rnnlm_rxfilename, &rnnlm);
@@ -97,10 +99,7 @@ int main(int argc, char *argv[]) {
 
     int32 n_done = 0, n_fail = 0;
 
-    nnet3::KaldiRnnlmDeterministicFst rnnlm_fst(max_ngram_order,
-                                                rnn_wordlist,
-                                                word_symbols_rxfilename,
-                                                info);
+    nnet3::KaldiRnnlmDeterministicFst rnnlm_fst(max_ngram_order, info);
 
     for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
       std::string key = compact_lattice_reader.Key();

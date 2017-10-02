@@ -92,7 +92,9 @@ void RnnlmComputeState::AddWord(int32 word_index) {
     log_probs.AddMatVec(1.0, word_embedding_mat, kTrans,
                         predicted_word_embedding_->Row(0), 0.0);
     log_probs.ApplyExp();
-    normalization_factor_ = log(log_probs.Sum());
+
+    // excluding the <eps> symbol which is always 0
+    normalization_factor_ = log(log_probs.Range(1, log_probs.Dim() - 1).Sum());
   }
 }
 

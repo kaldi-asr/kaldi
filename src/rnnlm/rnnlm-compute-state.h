@@ -37,19 +37,18 @@ namespace nnet3 {
 struct RnnlmComputeStateComputationOptions {
   bool debug_computation;
   bool normalize_probs;
-  string bos_symbol;
-  string eos_symbol;
-  string oos_symbol;
-  string brk_symbol;
+  // we need this when we initialize the RnnlmComputeState and pass the BOS history
+  int32 bos_index;
+  // we need this to compute the Final() cost of a state
+  int32 eos_index;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
   RnnlmComputeStateComputationOptions():
       debug_computation(false),
       normalize_probs(false),
-      bos_symbol("<s>"),
-      eos_symbol("</s>"),
-      oos_symbol("<oos>"),
-      brk_symbol("<brk>") { }
+      bos_index(-1),
+      eos_index(-1)
+      { }
 
   void Register(OptionsItf *opts) {
     opts->Register("debug-computation", &debug_computation, "If true, turn on "
@@ -57,14 +56,10 @@ struct RnnlmComputeStateComputationOptions {
     opts->Register("normalize-probs", &normalize_probs, "If true, word "
        "probabilities will be correctly normalized (otherwise the sum-to-one "
        "normalization is approximate)");
-    opts->Register("bos-symbol", &bos_symbol, "symbol in wordlist representing "
-                   "the begin-of-sentence symbol, usually <s>");
-    opts->Register("eos-symbol", &bos_symbol, "symbol in wordlist representing "
-                   "the end-of-sentence symbol, usually </s>");
-    opts->Register("oos-symbol", &oos_symbol, "symbol in wordlist representing "
-                   "the out-of-vocabulary symbol, usually <oos>");
-    opts->Register("brk-symbol", &brk_symbol, "symbol in wordlist representing "
-                   "the break symbol, usually <brk>");
+    opts->Register("bos-symbol", &bos_index, "index in wordlist representing "
+                   "the begin-of-sentence symbol");
+    opts->Register("eos-symbol", &eos_index, "index in wordlist representing "
+                   "the end-of-sentence symbol");
 
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
@@ -76,6 +71,11 @@ struct RnnlmComputeStateComputationOptions {
   }
 };
 
+/*
+  this class const references to the word-embedding, nnet3 part of rnnlm and
+the RnnlmComputeStateComputationOptions. It handles the computation of the nnet3
+object
+*/
 class RnnlmComputeStateInfo  {
  public:
   RnnlmComputeStateInfo(

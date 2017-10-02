@@ -53,91 +53,11 @@ void KaldiRnnlmDeterministicFst::Clear() {
   wseq_to_state_[state_to_wseq_[0]] = 0;
 }
 
-void KaldiRnnlmDeterministicFst::ReadFstWordSymbolTableAndRnnWordlist(
-    const std::string &rnn_wordlist,
-    const std::string &word_symbol_table_rxfilename) {
-  // Reads symbol table.
-  fst::SymbolTable *fst_word_symbols = NULL;
-  if (!(fst_word_symbols =
-      fst::SymbolTable::ReadText(word_symbol_table_rxfilename))) {
-    KALDI_ERR << "Could not read symbol table from file "
-              << word_symbol_table_rxfilename;
-  }
-
-  full_voc_size_ = fst_word_symbols->NumSymbols();
-  fst_label_to_word_.resize(full_voc_size_);
-
-  for (int32 i = 0; i < fst_label_to_word_.size(); ++i) {
-    fst_label_to_word_[i] = fst_word_symbols->Find(i);
-    if (fst_label_to_word_[i] == "") {
-      KALDI_ERR << "Could not find word for integer " << i << "in the word "
-                << "symbol table, mismatched symbol table or you have discoutinuous "
-                << "integers in your symbol table?";
-    }
-  }
-
-  fst_label_to_rnn_label_.resize(fst_word_symbols->NumSymbols(), -1);
-
-  oos_index_ = -2;  // use -2 since fst::SymbolTable::kNoSymbol is -1
-  {
-    std::ifstream ifile(rnn_wordlist.c_str());
-    int32 id;
-    string word;
-    int32 i = 0;
-    while (ifile >> word >> id) {
-      if (word == eos_symbol_) {
-        eos_index_ = id;
-      } else if (word == bos_symbol_) {
-        bos_index_ = id;
-      } else if (word == oos_symbol_) {
-        oos_index_ = id;
-      } else if (word == brk_symbol_) {
-        brk_index_ = id;
-      }
-      KALDI_ASSERT(i == id);
-      i++;
-      rnn_label_to_word_.push_back(word);
-
-      int fst_label = fst_word_symbols->Find(word);
-      if (fst::SymbolTable::kNoSymbol == fst_label && word != oos_symbol_
-               && word != bos_symbol_ && word != brk_symbol_) {
-        KALDI_LOG << "warning: word " << word
-                  << " in RNNLM wordlist but not in FST wordlist";
-      }
-      if (word != oos_symbol_ && fst_label != fst::SymbolTable::kNoSymbol) {
-        fst_label_to_rnn_label_[fst_label] = id;
-      }
-    }
-  }
-
-  if (oos_index_ > -1) {
-    for (int32 i = 0; i < fst_label_to_rnn_label_.size(); i++) {
-      if (fst_label_to_rnn_label_[i] == -1) {
-        fst_label_to_rnn_label_[i] = oos_index_;
-      }
-    }
-  } else {
-    for (int32 i = 0; i < fst_label_to_rnn_label_.size(); i++) {
-      if (fst_label_to_rnn_label_[i] == -1) {
-        KALDI_LOG << "warning: word " << fst_word_symbols->Find(i)
-                  << " in FST wordlist but not in RNNLM wordlist";
-      }
-    }
-  }
-  delete fst_word_symbols;
-}
-
 KaldiRnnlmDeterministicFst::KaldiRnnlmDeterministicFst(int32 max_ngram_order,
-    const std::string &rnn_wordlist,
-    const std::string &word_symbol_table_rxfilename,
     const RnnlmComputeStateInfo &info) {
   max_ngram_order_ = max_ngram_order;
-  bos_symbol_ = info.opts.bos_symbol;
-  eos_symbol_ = info.opts.eos_symbol;
-  oos_symbol_ = info.opts.oos_symbol;
-  brk_symbol_ = info.opts.brk_symbol;
-  ReadFstWordSymbolTableAndRnnWordlist(rnn_wordlist,
-                                       word_symbol_table_rxfilename);
+  bos_index_ = info.opts.bos_index;
+  eos_index_ = info.opts.eos_index;
 
   std::vector<Label> bos_seq;
   bos_seq.push_back(bos_index_);
@@ -162,25 +82,21 @@ bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
   /// At this point, we have created the state.
   KALDI_ASSERT(static_cast<size_t>(s) < state_to_wseq_.size());
 
-  std::vector<Label> wseq = state_to_wseq_[s];
+  std::vector<Label> word_seq = state_to_wseq_[s];
   const RnnlmComputeState* rnnlm = state_to_rnnlm_state_[s];
-  int32 rnn_word = fst_label_to_rnn_label_[ilabel];
 
-  BaseFloat logprob = rnnlm->LogProbOfWord(rnn_word);
+  BaseFloat logprob = rnnlm->LogProbOfWord(ilabel);
 
-  if (rnn_word == oos_index_)
-    logprob = logprob - Log(full_voc_size_ - rnn_label_to_word_.size() + 1.0);
-
-  wseq.push_back(rnn_word);
+  word_seq.push_back(ilabel);
   if (max_ngram_order_ > 0) {
-    while (wseq.size() >= max_ngram_order_) {
+    while (word_seq.size() >= max_ngram_order_) {
       /// History state has at most <max_ngram_order_> - 1 words in the state.
-      wseq.erase(wseq.begin(), wseq.begin() + 1);
+      word_seq.erase(word_seq.begin(), word_seq.begin() + 1);
     }
   }
 
   std::pair<const std::vector<Label>, StateId> wseq_state_pair(
-      wseq, static_cast<Label>(state_to_wseq_.size()));
+      word_seq, static_cast<Label>(state_to_wseq_.size()));
 
   // Attemps to insert the current <wseq_state_pair>. If the pair already exists
   // then it returns false.
@@ -189,8 +105,8 @@ bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
 
   // If the pair was just inserted, then also add it to state_to_* structures
   if (result.second == true) {
-    RnnlmComputeState *rnnlm2 = rnnlm->GetSuccessorState(rnn_word);
-    state_to_wseq_.push_back(wseq);
+    RnnlmComputeState *rnnlm2 = rnnlm->GetSuccessorState(ilabel);
+    state_to_wseq_.push_back(word_seq);
     state_to_rnnlm_state_.push_back(rnnlm2);
   }
 

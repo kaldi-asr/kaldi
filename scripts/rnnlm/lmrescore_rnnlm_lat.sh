@@ -39,8 +39,6 @@ data=$3
 indir=$4
 outdir=$5
 
-rescoring_binary=lattice-lmrescore-kaldi-rnnlm
-
 oldlm=$oldlang/G.fst
 if [ -f $oldlang/G.carpa ]; then
   oldlm=$oldlang/G.carpa
@@ -65,6 +63,9 @@ oldlm_command="fstproject --project_output=true $oldlm |"
 
 acwt=`perl -e "print (1.0/$inv_acwt);"`
 
+bos_symbol=`grep "<s>" $rnnlm_dir/config/words.txt | awk '{print $2}'`
+eos_symbol=`grep "</s>" $rnnlm_dir/config/words.txt | awk '{print $2}'`
+
 word_embedding=
 if [ -f $rnnlm_dir/word_embedding.final.mat ]; then
   word_embedding=$rnnlm_dir/word_embedding.final.mat
@@ -81,17 +82,19 @@ if [ "$oldlm" == "$oldlang/G.fst" ]; then
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore --lm-scale=$oldlm_weight \
     "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm_command" ark:-  \| \
-    $rescoring_binary --lm-scale=$weight \
+    lattice-lmrescore-kaldi-rnnlm --lm-scale=$weight \
+    --bos-symbol=$bos_symbol --eos-symbol=$eos_symbol \
     --max-ngram-order=$max_ngram_order \
-    $oldlang/words.txt ark:- $rnnlm_dir/config/words.txt $word_embedding "$rnnlm_dir/final.raw" \
+    $word_embedding "$rnnlm_dir/final.raw" ark:- \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 else
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore-const-arpa --lm-scale=$oldlm_weight \
     "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm" ark:-  \| \
-    $rescoring_binary --lm-scale=$weight \
+    lattice-lmrescore-kaldi-rnnlm --lm-scale=$weight \
+    --bos-symbol=$bos_symbol --eos-symbol=$eos_symbol \
     --max-ngram-order=$max_ngram_order \
-    $oldlang/words.txt ark:- $rnnlm_dir/config/words.txt $word_embedding "$rnnlm_dir/final.raw" \
+    $word_embedding "$rnnlm_dir/final.raw" ark:- \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 fi
 

@@ -37,11 +37,10 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  # the training scripts require that <s>, </s> and <brk> be present in a particular
-  # order.
-  awk '{print $1}' $lexicon | sort | uniq | \
-    awk 'BEGIN{print "<eps> 0";print "<s> 1"; print "</s> 2"; print "<brk> 3";n=4;} {print $1, n++}' \
-        >$dir/config/words.txt
+  cp data/lang/words.txt $dir/config/
+  n=`cat $dir/config/words.txt | wc -l`
+  echo "<brk> $n" >> $dir/config/words.txt
+
   # words that are not present in words.txt but are in the training or dev data, will be
   # mapped to <SPOKEN_NOISE> during training.
   echo "<unk>" >$dir/config/oov.txt
