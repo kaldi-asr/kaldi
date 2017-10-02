@@ -3,11 +3,11 @@
 # chainali_1a uses chain model for lattice instead of gmm-hmm model. It has more cnn layers as compared to 1a
 # (18.34% -> 13.68%)
 
-# steps/info/chain_dir_info.pl exp/chainfsf4/cnn1a_chainali/
+# steps/info/chain_dir_info.pl exp/chain/cnn1a_chainali/
 # exp/chainfsf4/cnn1a_chainali/: num-iters=21 nj=2..4 num-params=3.8M dim=40->380 combine=-0.009->-0.006 xent:train/valid[13,20,final]=(-0.870,-0.593,-0.568/-1.08,-0.889,-0.874) logprob:train/valid[13,20,final]=(-0.035,-0.003,-0.001/-0.077,-0.055,-0.054)
 
 # head exp/chainfsf4/cnn1a_chainali/decode_test/scoring_kaldi/best_wer
-# %WER 13.68 [ 2410 / 17616, 243 ins, 633 del, 1534 sub ] exp/chainfsf4/cnn1a_chainali/decode_test/wer_8_1.0
+# %WER 13.68 [ 2410 / 17616, 243 ins, 633 del, 1534 sub ] exp/chain/cnn1a_chainali/decode_test/wer_8_1.0
 
 set -e -o pipefail
 
@@ -18,7 +18,7 @@ train_set=train
 gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
                 # should have alignments for the specified training data.
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=1a_chainali  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 ali=tri3_ali
 chain_model_dir=exp/chain${nnet3_affix}/cnn${affix}
 common_egs_dir=
@@ -61,7 +61,7 @@ gmm_dir=exp/${gmm}
 ali_dir=exp/${ali}
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats_chain
 gmm_lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats
-dir=exp/chain${nnet3_affix}/cnn${affix}
+dir=exp/chain${nnet3_affix}/cnn_chainali${affix}
 train_data_dir=data/${train_set}
 lores_train_data_dir=$train_data_dir  # for the start, use the same data for gmm and chain
 tree_dir=exp/chain${nnet3_affix}/tree_chain

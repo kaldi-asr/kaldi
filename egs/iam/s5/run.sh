@@ -164,6 +164,6 @@ if [ $stage -le 14 ]; then
    --ali tri3_ali \
    --nnet3_affix $nnet3_affix \
    --affix $affix_chain \
-   --chain_model_dir $exp_dir/chain${nnet3_affix}/cnn${affix} \
+   --chain_model_dir $exp_dir/chain${nnet3_affix}/cnn_chainali${affix} \
    --lang_test lang_unk
 fi
