@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+use warnings; #sed replacement for -w perl parameter
 # Copyright 2017   David Snyder
 # Apache 2.0
 #
@@ -26,9 +27,9 @@ if (system("mkdir -p $out_dir") != 0) {
 }
 
 %seg2sph = ();
-open(TRIALS, "<", "$db_base/keys/coreext-coreext.trialkey.csv") || die "Could not open $db_base/keys/coreext-coreext.trialkey.csv";
-open(TRAIN, "<", "$db_base/train/coreext.trn") || die "Could not open $db_base/train/coreext.trn";
-open(MODELS, "<", "$db_base/keys/coreext.modelkey.csv") || die "Could not open $db_base/keys/coreext.modelkey.csv";
+open(TRIALS, "<$db_base/keys/coreext-coreext.trialkey.csv") || die "Could not open $db_base/keys/coreext-coreext.trialkey.csv";
+open(TRAIN, "<$db_base/train/coreext.trn") || die "Could not open $db_base/train/coreext.trn";
+open(MODELS, "<$db_base/keys/coreext.modelkey.csv") || die "Could not open $db_base/keys/coreext.modelkey.csv";
 open(SPKR, ">$out_dir/utt2spk") || die "Could not open the output file $out_dir/utt2spk";
 open(GNDR, ">$out_dir/spk2gender") || die "Could not open the output file $out_dir/spk2gender";
 open(WAV, ">$out_dir/wav.scp") || die "Could not open the output file $out_dir/wav.scp";
@@ -36,7 +37,7 @@ open(WAV, ">$out_dir/wav.scp") || die "Could not open the output file $out_dir/w
 if (system("find $db_base/data/ -name '*.sph' > $tmp_dir/sph.list") != 0) {
   die "Error getting list of sph files";
 }
-open(SPHLIST, "<", "$tmp_dir/sph.list") or die "cannot open wav list";
+open(SPHLIST, "<$tmp_dir/sph.list") or die "cannot open wav list";
 while(<SPHLIST>) {
   chomp;
   $sph = $_;

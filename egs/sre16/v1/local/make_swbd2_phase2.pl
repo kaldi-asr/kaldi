@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+use warnings; #sed replacement for -w perl parameter
 #
 # Copyright   2013   Daniel Povey
 # Apache 2.0
@@ -31,7 +32,7 @@ if (system("find $db_base -name '*.sph' > $tmp_dir/sph.list") != 0) {
   die "Error getting list of sph files";
 }
 
-open(WAVLIST, "<", "$tmp_dir/sph.list") or die "cannot open wav list";
+open(WAVLIST, "<$tmp_dir/sph.list") or die "cannot open wav list";
 
 while(<WAVLIST>) {
   chomp;

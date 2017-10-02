@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+use warnings; #sed replacement for -w perl parameter
 # Copyright 2017   David Snyder
 # Apache 2.0
 #
@@ -34,8 +35,8 @@ if (system("mkdir -p $out_dir") != 0) {
 }
 
 %seg2sph = ();
-open(TRIALS, "<", "$db_base_test/data/keys/NIST_SRE08_KEYS.v0.1/trial-keys/NIST_SRE08_short2-short3.trial.key") || die "Could not open $db_base_test/data/keys/NIST_SRE08_KEYS.v0.1/trial-keys/NIST_SRE08_short2-short3.trial.key";
-open(MODELS, "<", "$db_base_test/data/keys/NIST_SRE08_KEYS.v0.1/model-keys/NIST_SRE08_short2.model.key") || die "Could not open $db_base_test/data/keys/NIST_SRE08_KEYS.v0.1/model-keys/NIST_SRE08_short2.model.key";
+open(TRIALS, "<$db_base_test/data/keys/NIST_SRE08_KEYS.v0.1/trial-keys/NIST_SRE08_short2-short3.trial.key") || die "Could not open $db_base_test/data/keys/NIST_SRE08_KEYS.v0.1/trial-keys/NIST_SRE08_short2-short3.trial.key";
+open(MODELS, "<$db_base_test/data/keys/NIST_SRE08_KEYS.v0.1/model-keys/NIST_SRE08_short2.model.key") || die "Could not open $db_base_test/data/keys/NIST_SRE08_KEYS.v0.1/model-keys/NIST_SRE08_short2.model.key";
 open(SPKR, ">$out_dir/utt2spk") || die "Could not open the output file $out_dir/utt2spk";
 open(GNDR, ">$out_dir/spk2gender") || die "Could not open the output file $out_dir/spk2gender";
 open(WAV, ">$out_dir/wav.scp") || die "Could not open the output file $out_dir/wav.scp";
@@ -47,7 +48,7 @@ if (system("find $db_base_train/data/ -name '*.sph' >> $tmp_dir/sph.list") != 0)
   die "Error getting list of sph files for $db_base_train";
 }
 
-open(SPHLIST, "<", "$tmp_dir/sph.list") or die "cannot open wav list";
+open(SPHLIST, "<$tmp_dir/sph.list") or die "cannot open wav list";
 while(<SPHLIST>) {
   chomp;
   $sph = $_;

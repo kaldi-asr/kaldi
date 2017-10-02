@@ -19,17 +19,10 @@ out_dir=$2
 # room.  In addition to mic 01, we omit mics 03 and 14 as they are often
 # silent.
 echo "$0: preparing mic speech (excluding 01, 03, and 14)"
-local/make_mx6_mic.pl $in_dir 02 $out_dir
-local/make_mx6_mic.pl $in_dir 04 $out_dir
-local/make_mx6_mic.pl $in_dir 05 $out_dir
-local/make_mx6_mic.pl $in_dir 06 $out_dir
-local/make_mx6_mic.pl $in_dir 07 $out_dir
-local/make_mx6_mic.pl $in_dir 08 $out_dir
-local/make_mx6_mic.pl $in_dir 09 $out_dir
-local/make_mx6_mic.pl $in_dir 10 $out_dir
-local/make_mx6_mic.pl $in_dir 11 $out_dir
-local/make_mx6_mic.pl $in_dir 12 $out_dir
-local/make_mx6_mic.pl $in_dir 13 $out_dir
+
+for mic in 02 04 05 06 07 08 09 10 11 12 13; do
+  local/make_mx6_mic.pl $in_dir $mic $out_dir
+done
 
 utils/combine_data.sh $out_dir/mx6_mic_04_to_13 $out_dir/mx6_mic_{04,05,06,07,08,09,10,11,12,13}
 

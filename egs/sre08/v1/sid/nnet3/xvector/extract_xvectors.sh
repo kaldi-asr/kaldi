@@ -6,7 +6,10 @@
 # Apache 2.0.
 
 # This script extracts embeddings (called "xvectors" here) from a set of
-# utterances, given features and a trained DNN.
+# utterances, given features and a trained DNN.  The purpose of this script
+# is analogous to sid/extract_ivectors.sh: it creates archives of
+# vectors that are used in speaker recognition.  Like ivectors, xvectors can
+# be used in PLDA or a similar backend for scoring.
 
 # Begin configuration section.
 nj=30

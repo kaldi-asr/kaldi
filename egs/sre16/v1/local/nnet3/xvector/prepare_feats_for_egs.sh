@@ -47,6 +47,12 @@ cp $data_in/utt2spk $data_out/utt2spk
 cp $data_in/spk2utt $data_out/spk2utt
 cp $data_in/wav.scp $data_out/wav.scp
 
+for n in $(seq $nj); do
+  # the next command does nothing unless $featdir/storage/ exists, see
+  # utils/create_data_link.pl for more info.
+  utils/create_data_link.pl $featdir/xvector_feats_${name}.$n.ark
+done
+
 sdata_in=$data_in/split$nj;
 utils/split_data.sh $data_in $nj || exit 1;
 

@@ -6,10 +6,11 @@
 # Apache 2.0
 #
 # This script dumps training examples (egs) for multiclass xvector training.
-# These egs consist of a data chunk and a label. Each archive of egs has,
-# in general, a different input chunk-size. We don't mix together different
-# lengths in the same archive, because it would require us to repeatedly run
-# the compilation process within the same training job.
+# These egs consist of a data chunk and a zero-based speaker label.
+# Each archive of egs has, in general, a different input chunk-size.
+# We don't mix together different lengths in the same archive, because it
+# would require us to repeatedly run the compilation process within the same
+# training job.
 #
 # This script, which will generally be called from other neural net training
 # scripts, extracts the training examples used to train the neural net (and
@@ -184,24 +185,26 @@ if [ $stage -le 2 ]; then
       --utt2int-filename=$dir/temp/utt2int.valid --egs-dir=$dir  || exit 1
 fi
 
-# You want to put an exit 1 command here and look at exp/$dir/temp/ranges.*
-# before deciding if you want to continue to the next stage.
+# At this stage we'll have created the ranges files that define how many egs
+# there are and where they come from.  If this is your first time running this
+# script, you might decide to put an exit 1 command here, and inspect the
+# contents of exp/$dir/temp/ranges.* before proceeding to the next stage.
 if [ $stage -le 3 ]; then
   echo "$0: Generating training examples on disk"
   rm $dir/.error 2>/dev/null
   for g in $(seq $nj); do
-    outputs=`awk '{for(i=1;i<=NF;i++)printf("ark:%s ",$i);}' $temp/outputs.$g`
+    outputs=$(awk '{for(i=1;i<=NF;i++)printf("ark:%s ",$i);}' $temp/outputs.$g)
     $cmd $dir/log/train_create_examples.$g.log \
       nnet3-xvector-get-egs --compress=$compress --num-pdfs=$num_pdfs $temp/ranges.$g \
       "`echo $feats | sed s/JOB/$g/g`" $outputs || touch $dir/.error &
   done
-  train_subset_outputs=`awk '{for(i=1;i<=NF;i++)printf("ark:%s ",$i);}' $temp/train_subset_outputs.1`
+  train_subset_outputs=$(awk '{for(i=1;i<=NF;i++)printf("ark:%s ",$i);}' $temp/train_subset_outputs.1)
   echo "$0: Generating training subset examples on disk"
   $cmd $dir/log/train_subset_create_examples.1.log \
     nnet3-xvector-get-egs --compress=$compress --num-pdfs=$num_pdfs $temp/train_subset_ranges.1 \
     "$train_subset_feats" $train_subset_outputs || touch $dir/.error &
   wait
-  valid_outputs=`awk '{for(i=1;i<=NF;i++)printf("ark:%s ",$i);}' $temp/valid_outputs.1`
+  valid_outputs=$(awk '{for(i=1;i<=NF;i++)printf("ark:%s ",$i);}' $temp/valid_outputs.1)
   echo "$0: Generating validation examples on disk"
   $cmd $dir/log/valid_create_examples.1.log \
     nnet3-xvector-get-egs --compress=$compress --num-pdfs=$num_pdfs $temp/valid_ranges.1 \
@@ -216,11 +219,14 @@ fi
 if [ $stage -le 4 ]; then
   echo "$0: Shuffling order of archives on disk"
   $cmd --max-jobs-run $nj JOB=1:$num_train_archives $dir/log/shuffle.JOB.log \
-    nnet3-shuffle-egs --srand=JOB ark:$dir/egs_temp.JOB.ark ark,scp:$dir/egs.JOB.ark,$dir/egs.JOB.scp || exit 1;
+    nnet3-shuffle-egs --srand=JOB ark:$dir/egs_temp.JOB.ark \
+    ark,scp:$dir/egs.JOB.ark,$dir/egs.JOB.scp || exit 1;
   $cmd --max-jobs-run $nj JOB=1:$num_diagnostic_archives $dir/log/train_subset_shuffle.JOB.log \
-    nnet3-shuffle-egs --srand=JOB ark:$dir/train_subset_egs_temp.JOB.ark ark,scp:$dir/train_diagnostic_egs.JOB.ark,$dir/train_diagnostic_egs.JOB.scp || exit 1;
+    nnet3-shuffle-egs --srand=JOB ark:$dir/train_subset_egs_temp.JOB.ark \
+    ark,scp:$dir/train_diagnostic_egs.JOB.ark,$dir/train_diagnostic_egs.JOB.scp || exit 1;
   $cmd --max-jobs-run $nj JOB=1:$num_diagnostic_archives $dir/log/valid_shuffle.JOB.log \
-    nnet3-shuffle-egs --srand=JOB ark:$dir/valid_egs_temp.JOB.ark ark,scp:$dir/valid_egs.JOB.ark,$dir/valid_egs.JOB.scp || exit 1;
+    nnet3-shuffle-egs --srand=JOB ark:$dir/valid_egs_temp.JOB.ark \
+    ark,scp:$dir/valid_egs.JOB.ark,$dir/valid_egs.JOB.scp || exit 1;
 fi
 
 if [ $stage -le 5 ]; then

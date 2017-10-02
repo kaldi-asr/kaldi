@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright      2017 Johns Hopkins University (Author: Daniel Povey)
 #                2017 Johns Hopkins University (Author: Daniel Garcia-Romero)
@@ -32,7 +32,7 @@
 #
 # where each line is interpreted as follows:
 #  <source-utterance> <relative-archive-index> <absolute-archive-index> \
-#    <start-frame-index> <num-frames> <spkr-lable>
+#    <start-frame-index> <num-frames> <spkr-label>
 #
 # Note: <relative-archive-index> is the zero-based offset of the archive-index
 # within the subset of archives that a particular ranges file corresponds to;
@@ -55,7 +55,7 @@
 # of frames in each archive will be about the --frames-per-iter.
 #
 # This program will also output to the temp directory a file called
-# archive_chunk_length which tesll you the frame-length associated with
+# archive_chunk_length which tells you the frame-length associated with
 # each archive, e.g.,
 # 1   60
 # 2   120
@@ -247,9 +247,9 @@ def main():
             length = deterministic_chunk_length(archive_index, args.num_archives, args.min_frames_per_chunk, args.max_frames_per_chunk);
         print("{0} {1}".format(archive_index + 1, length), file=info_f)
         archive_chunk_lengths.append(length)
-        this_num_egs = (args.frames_per_iter / length) + 1
+        this_num_egs = int((args.frames_per_iter / length) + 1)
         this_egs = [ ] # A 2-tuple of the form (utt-id, start-frame)
-        spkrs = args.num_repeats * spk2utt.keys()
+        spkrs = args.num_repeats * list(spk2utt.keys())
         random.shuffle(spkrs)
         for n in range(this_num_egs):
             if len(spkrs) == 0:

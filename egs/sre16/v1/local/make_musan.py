@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2015   David Snyder
 # Apache 2.0.
 #
@@ -22,7 +22,6 @@ def prepare_music(root_dir, use_vocals):
   utt2spk = {}
   utt2wav = {}
   music_dir = os.path.join(root_dir, "music")
-  print str(music_dir)
   for root, dirs, files in os.walk(music_dir):
     for file in files:
       file_path = os.path.join(root, file)

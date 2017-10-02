@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+use warnings; #sed replacement for -w perl parameter
 #
 # Copyright 2015   David Snyder
 # Apache 2.0.
@@ -22,7 +23,7 @@ if (system("mkdir -p $tmp_dir") != 0) {
 if (system("find -L $db_base -name '*.sph' > $tmp_dir/sph.list") != 0) {
   die "Error getting list of sph files";
 }
-open(WAVLIST, "<", "$tmp_dir/sph.list") or die "cannot open wav list";
+open(WAVLIST, "<$tmp_dir/sph.list") or die "cannot open wav list";
 
 while(<WAVLIST>) {
   chomp;
@@ -36,7 +37,7 @@ while(<WAVLIST>) {
 open(GNDR,">", "$out_dir/spk2gender") or die "Could not open the output file $out_dir/spk2gender";
 open(SPKR,">", "$out_dir/utt2spk") or die "Could not open the output file $out_dir/utt2spk";
 open(WAV,">", "$out_dir/wav.scp") or die "Could not open the output file $out_dir/wav.scp";
-open(SRE_REF, "<", $sre_ref_filename) or die "Cannot open SRE reference.";
+open(SRE_REF, "<$sre_ref_filename") or die "Cannot open SRE reference.";
 while (<SRE_REF>) {
   chomp;
   ($speaker, $gender, $other_sre_year, $utt_id, $channel) = split(" ", $_);

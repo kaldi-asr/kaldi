@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+use warnings; #sed replacement for -w perl parameter
 #
 # Copyright   2017   David Snyder
 # Apache 2.0
@@ -21,7 +22,7 @@ open(WAV, ">$out_dir/wav.scp") || die "Could not open the output file $out_dir/w
 
 @badAudio = ("3", "4");
 
-$tmp_dir = "$out_base/tmp";
+$tmp_dir = "$out_dir/tmp";
 if (system("mkdir -p $tmp_dir") != 0) {
   die "Error making directory $tmp_dir";
 }
@@ -30,7 +31,7 @@ if (system("find $db_base -name '*.sph' > $tmp_dir/sph.list") != 0) {
   die "Error getting list of sph files";
 }
 
-open(WAVLIST, "<", "$tmp_dir/sph.list") or die "cannot open wav list";
+open(WAVLIST, "<$tmp_dir/sph.list") or die "cannot open wav list";
 
 %wavs = ();
 while(<WAVLIST>) {

@@ -127,22 +127,6 @@ static void WriteExamples(const MatrixBase<BaseFloat> &feats,
   }
 }
 
-// Delete the dynamically allocated memory.
-static void Cleanup(unordered_map<std::string,
-    std::vector<ChunkInfo *> > *utt_to_chunks,
-    std::vector<NnetExampleWriter *> *writers) {
-  for (unordered_map<std::string, std::vector<ChunkInfo*> >::iterator
-      map_it = utt_to_chunks->begin();
-      map_it != utt_to_chunks->end(); ++map_it)
-    for (std::vector<ChunkInfo*>::iterator
-        vec_it = map_it->second.begin(); vec_it != map_it->second.end();
-        ++vec_it)
-      delete *vec_it;
-  for (std::vector<NnetExampleWriter *>::iterator
-      it = writers->begin(); it != writers->end(); ++it)
-    delete *it;
-}
-
 } // namespace nnet3
 } // namespace kaldi
 
@@ -224,7 +208,14 @@ int main(int argc, char *argv[]) {
         num_done++;
       }
     }
-    Cleanup(&utt_to_chunks, &example_writers);
+
+    // Free memory
+    for (unordered_map<std::string, std::vector<ChunkInfo*> >::iterator
+        map_it = utt_to_chunks.begin();
+        map_it != utt_to_chunks.end(); ++map_it) {
+      DeletePointers(&map_it->second);
+    }
+    DeletePointers(&example_writers);
 
     KALDI_LOG << "Finished generating examples, "
               << "successfully processed " << num_done

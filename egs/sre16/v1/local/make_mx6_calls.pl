@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+use warnings; #sed replacement for -w perl parameter
 # Copyright 2017   David Snyder
 # Apache 2.0
 #
@@ -29,16 +30,16 @@ if (system("mkdir -p $out_dir") != 0) {
 }
 
 %call2sph = ();
-open(SUBJECTS, "<", "$db_base/mx6_speech/docs/mx6_subjs.csv") || die "cannot open $$db_base/mx6_speech/docs/mx6_subjs.csv";
+open(SUBJECTS, "<$db_base/mx6_speech/docs/mx6_subjs.csv") || die "cannot open $$db_base/mx6_speech/docs/mx6_subjs.csv";
 open(SPKR, ">$out_dir/utt2spk") || die "Could not open the output file $out_dir/utt2spk";
 open(GNDR, ">$out_dir/spk2gender") || die "Could not open the output file $out_dir/spk2gender";
 open(WAV, ">$out_dir/wav.scp") || die "Could not open the output file $out_dir/wav.scp";
-open(META, "<", "$db_base/mx6_speech/docs/mx6_calls.csv") || die "cannot open $db_base/mx6_speech/docs/mx6_calls.csv";
+open(META, "<$db_base/mx6_speech/docs/mx6_calls.csv") || die "cannot open $db_base/mx6_speech/docs/mx6_calls.csv";
 
 if (system("find $db_base/mx6_speech/data/ulaw_sphere/ -name '*.sph' > $tmp_dir/sph.list") != 0) {
   die "Error getting list of sph files";
 }
-open(SPHLIST, "<", "$tmp_dir/sph.list") or die "cannot open wav list";
+open(SPHLIST, "<$tmp_dir/sph.list") or die "cannot open wav list";
 
 while(<SPHLIST>) {
   chomp;
@@ -68,7 +69,6 @@ while (<META>) {
   @toks = split(",", $line);
   $call_id = $toks[0];
   ($call_date, $call_time) = split(/_/, $toks[1]);
-  $sph = "$db_base/mx6_speech/data/ulaw_sphere/$utt.sph";
   $sid_A = $toks[4];
   $sid_B = $toks[12];
   if (-f $call2sph[$call_id]) {
@@ -80,7 +80,7 @@ while (<META>) {
     print WAV "${utt_B} sph2pipe -f wav -p -c 2 $call2sph[$call_id] |\n";
     $num_good_files++;
   } else {
-    print STDERR "File $sph doesn't exist\n";
+    print STDERR "Sphere file for $call_id doesn't exist\n";
     $num_bad_files++;
   }
 }

@@ -162,7 +162,7 @@ if [ $stage -le 2 ]; then
 
   # Filter out the clean + augmented portion of the SRE list.  This will be used to
   # train the PLDA model later in the script.
-  cp -r data/swbd_sre_combined data/sre_combined
+  utils/copy_data_dir.sh data/swbd_sre_combined data/sre_combined
   utils/filter_scp.pl data/sre/spk2utt data/swbd_sre_combined/spk2utt | utils/spk2utt_to_utt2spk.pl > data/sre_combined/utt2spk
   utils/fix_data_dir.sh data/sre_combined
 fi

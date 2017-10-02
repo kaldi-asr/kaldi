@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+use warnings; #sed replacement for -w perl parameter
 # Copyright 2017   David Snyder
 # Apache 2.0
 #
@@ -24,7 +25,7 @@ if (system("mkdir -p $tmp_dir_enroll") != 0) {
 
 open(SPKR, ">$out_dir_enroll/utt2spk") || die "Could not open the output file $out_dir_enroll/utt2spk";
 open(WAV, ">$out_dir_enroll/wav.scp") || die "Could not open the output file $out_dir_enroll/wav.scp";
-open(META, "<", "$db_base/docs/sre16_eval_enrollment.tsv") or die "cannot open wav list";
+open(META, "<$db_base/docs/sre16_eval_enrollment.tsv") or die "cannot open wav list";
 %utt2fixedutt = ();
 while (<META>) {
   $line = $_;
@@ -41,7 +42,7 @@ if (system("find $db_base/data/enrollment/ -name '*.sph' > $tmp_dir_enroll/sph.l
   die "Error getting list of sph files";
 }
 
-open(WAVLIST, "<", "$tmp_dir_enroll/sph.list") or die "cannot open wav list";
+open(WAVLIST, "<$tmp_dir_enroll/sph.list") or die "cannot open wav list";
 
 while(<WAVLIST>) {
   chomp;
@@ -75,10 +76,10 @@ if (system("find $db_base/data/test/ -name '*.sph' > $tmp_dir_test/sph.list") !=
   die "Error getting list of sph files";
 }
 
-open(KEY, "<", "$db_base/docs/sre16_eval_trial_key.tsv") || die "Could not open trials file $db_base/docs/sre16_eval_trial_key.tsv.  It might be located somewhere else in your distribution.";
-open(SEG_KEY, "<", "$db_base/docs/sre16_eval_segment_key.tsv") || die "Could not open trials file $db_base/docs/sre16_eval_segment_key.tsv.  It might be located somewhere else in your distribution.";
-open(LANG_KEY, "<", "$db_base/metadata/calls.tsv") || die "Could not open trials file $db_base/metadata/calls.tsv.  It might be located somewhere else in your distribution.";
-open(WAVLIST, "<", "$tmp_dir_test/sph.list") or die "cannot open wav list";
+open(KEY, "<$db_base/docs/sre16_eval_trial_key.tsv") || die "Could not open trials file $db_base/docs/sre16_eval_trial_key.tsv.  It might be located somewhere else in your distribution.";
+open(SEG_KEY, "<$db_base/docs/sre16_eval_segment_key.tsv") || die "Could not open trials file $db_base/docs/sre16_eval_segment_key.tsv.  It might be located somewhere else in your distribution.";
+open(LANG_KEY, "<$db_base/metadata/calls.tsv") || die "Could not open trials file $db_base/metadata/calls.tsv.  It might be located somewhere else in your distribution.";
+open(WAVLIST, "<$tmp_dir_test/sph.list") or die "cannot open wav list";
 
 %utt2call = ();
 while(<SEG_KEY>) {
