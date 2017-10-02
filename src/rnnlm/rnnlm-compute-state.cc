@@ -89,7 +89,7 @@ void RnnlmComputeState::AddWord(int32 word_index) {
   if (info_.opts.normalize_probs) {
     CuVector<BaseFloat> log_probs(info_.word_embedding_mat.NumRows());
 
-    log_probs.AddMatVec(1.0, word_embedding_mat, kTrans,
+    log_probs.AddMatVec(1.0, word_embedding_mat, kNoTrans,
                         predicted_word_embedding_->Row(0), 0.0);
     log_probs.ApplyExp();
 

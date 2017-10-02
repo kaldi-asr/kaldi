@@ -13,6 +13,7 @@ max_ngram_order=4
 N=10
 inv_acwt=12
 weight=1.0  # Interpolation weight for RNNLM.
+normalize=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -73,6 +74,11 @@ else
   word_embedding="\"rnnlm-get-word-embedding $rnnlm_dir/word_feats.txt $rnnlm_dir/feat_embedding.final.mat -|\""
 fi
 
+normalize_opt=
+if $normalize; then
+  normalize_opt="--normalize-probs=true"
+fi
+
 mkdir -p $outdir/log
 nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
@@ -84,7 +90,7 @@ if [ "$oldlm" == "$oldlang/G.fst" ]; then
     "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm_command" ark:-  \| \
     lattice-lmrescore-kaldi-rnnlm --lm-scale=$weight \
     --bos-symbol=$bos_symbol --eos-symbol=$eos_symbol \
-    --max-ngram-order=$max_ngram_order \
+    --max-ngram-order=$max_ngram_order $normalize_opt \
     $word_embedding "$rnnlm_dir/final.raw" ark:- \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 else
@@ -93,7 +99,7 @@ else
     "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm" ark:-  \| \
     lattice-lmrescore-kaldi-rnnlm --lm-scale=$weight \
     --bos-symbol=$bos_symbol --eos-symbol=$eos_symbol \
-    --max-ngram-order=$max_ngram_order \
+    --max-ngram-order=$max_ngram_order $normalize_opt \
     $word_embedding "$rnnlm_dir/final.raw" ark:- \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 fi
