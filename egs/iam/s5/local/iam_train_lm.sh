@@ -21,6 +21,7 @@ echo "$0 $@"  # Print the command line for logging
 dir=data/local/local_lm
 lm_dir=${dir}/data
 
+. ./path.sh
 mkdir -p $dir
 . ./path.sh || exit 1; # for KALDI_ROOT
 export PATH=$KALDI_ROOT/tools/pocolm/scripts:$PATH
@@ -60,7 +61,6 @@ if [ $stage -le 0 ]; then
   # Using LOB and brown corpus.
   cat data/download/lobcorpus/0167/download/LOB_COCOA/output > ${dir}/data/text/text.txt
   cat data/download/browncorpus/brown.txt >> ${dir}/data/text/text.txt
-
   # use a subset of the annotated training data as the dev set .
   # Note: the name 'dev' is treated specially by pocolm, it automatically
   # becomes the dev set.
@@ -80,11 +80,12 @@ if [ $stage -le 0 ]; then
   cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
 
   # get wordlist
-  # cat data/train/dict/lexicon.txt > data/val_1/dict/lexicon_copy.txt
-  # cat data/val_1/dict/lexicon.txt >> data/val_1/dict/lexicon_copy.txt
-  # awk '{print $1}' data/val_1/dict/lexicon_copy.txt | sort | uniq > ${dir}/data/wordlist
   cat ${dir}/data/text/text.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
-  awk '{print $2}' ${dir}/data/word_count > ${dir}/data/wordlist
+  cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
+
+  #cat data/test/text | awk '{ for(i=2;i<=NF;i++) print $i;}' | sort -u >data/local/local_lm/data/test_words.txt
+  #filter_scp.pl --exclude data/local/local_lm/data/word data/local/local_lm/data/test_words.txt >data/local/local_lm/data/diff.txt
+  #cat data/local/local_lm/data/diff.txt  >> ${dir}/data/text/text.txt
 fi
 
 order=3

@@ -14,7 +14,7 @@ args = parser.parse_args()
 char = {}
 lex = {}
 
-text_path = os.path.join(args.database_path,'text')
+text_path = os.path.join(args.database_path,'text.txt')
 with open(text_path) as f:
   for line in f:
     line = line.strip()
@@ -23,10 +23,11 @@ with open(text_path) as f:
       characters = list(line_vect[i])
       entry = " ".join(characters)
       entry = entry.replace("#", "<HASH>")
-      lex[line_vect[i]] = entry
+      if line_vect[i]:
+        lex[line_vect[i]] = entry
 
 if args.test_text > 1:
-  text_path = os.path.join(args.test_text,'text')
+  text_path = os.path.join(args.test_text,'text.txt')
   with open(text_path) as f:
     for line in f:
       line = line.strip()
@@ -35,7 +36,8 @@ if args.test_text > 1:
         characters = list(line_vect[i])
         entry = " ".join(characters)
         entry = entry.replace("#", "<HASH>")
-        lex[line_vect[i]] = entry
+        if line_vect[i]:
+          lex[line_vect[i]] = entry
 
 
 lex_file = os.path.join(args.dir, 'lexicon.txt')
