@@ -19,6 +19,7 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare -I$(TENSORFLOW)/bazel-tensorflow/external/protobuf/src \
                  -I$(TENSORFLOW)/bazel-genfiles -I$(TENSORFLOW) \
                  -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/eigen \
+                 -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/nsync/public \
                  -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/protobuf/src
 
 OBJFILES = tensorflow-rnnlm.o
