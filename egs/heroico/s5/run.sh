@@ -24,6 +24,9 @@ recordings_transcripts=$datadir/transcripts/heroico-recordings.txt
 # usma is all recited
 usma_transcripts=$datadir/transcripts/usma-prompts.txt
 
+# location of a reference language model
+lm=http://www.csl.uni-bremen.de/GlobalPhone/lm/ES.3gram.lm.gz
+
 tmpdir=data/local/tmp
 
 # make acoustic model training  lists
@@ -37,11 +40,14 @@ if [ $stage -le 0 ]; then
 	$datadir
 
     # make separate lists for heroico answers and recordings
+    # the transcripts are converted to UTF8
     export LC_ALL=en_US.UTF-8
     cat \
 	$answers_transcripts \
 	| \
-	iconv -f ISO-8859-1 -t UTF-8 \
+	iconv \
+	    -f ISO-8859-1 \
+	    -t UTF-8 \
 	| \
 	sed -e s/// \
 	| \
@@ -53,7 +59,9 @@ if [ $stage -le 0 ]; then
     cat \
 	$recordings_transcripts \
 	| \
-	iconv -f ISO-8859-1 -t UTF-8 \
+	iconv \
+	    -f ISO-8859-1 \
+	    -t UTF-8 \
 	| \
 	sed -e s/// \
 	    | \
@@ -105,7 +113,6 @@ if [ $stage -le 1 ]; then
 
     for n in native nonnative; do
 	mkdir -p $tmpdir/usma/$n/lists
-
 
 	for x in wav.scp utt2spk text; do
 	    sort \
@@ -178,7 +185,6 @@ if [ $stage -le 1 ]; then
 	done
     done
 
-    # spk2utt
     for n in native nonnative test; do
 	utils/utt2spk_to_spk2utt.pl \
 	    data/$n/utt2spk \
@@ -235,6 +241,18 @@ if [ $stage -le 3 ]; then
 	data/local/lm/lm_threegram.arpa.gz \
 	data/local/dict/lexicon.txt \
 	data/lang_test
+
+    mkdir -p $tmpdir/lm
+    # retrieve a reference language model
+    wget \
+	-O $tmpdir/lm/ES.3gram.lm.gz \
+	$lm
+
+    utils/format_lm.sh \
+	data/lang \
+	data/local/tmp/lm/ES.3gram.lm.gz \
+	data/local/dict/lexicon.txt \
+	data/lang_test_gplm
 fi
 
 if [ $stage -le 4 ]; then
@@ -277,21 +295,23 @@ if [ $stage -le 5 ]; then
 
     # evaluation
     (
-	# make decoding graph for monophones 
-	utils/mkgraph.sh \
-	    data/lang_test \
-	    exp/mono \
-	    exp/mono/graph || exit 1;
+	# make decoding graph for monophones with 2 lm
+	for l in simple gplm; do
+	    utils/mkgraph.sh \
+		data/lang_test_${l} \
+		exp/mono \
+		exp/mono/graph_${l} || exit 1;
 
-	# test monophones
-	for x in native nonnative test; do
-	    steps/decode.sh \
-		--nj 8  \
-		exp/mono/graph  \
-		data/$x \
-		exp/mono/decode_${x} || exit 1;
+	    # test monophones
+	    for x in native nonnative test; do
+		steps/decode.sh \
+		    --nj 8  \
+		    exp/mono/graph_${l} \
+		    data/$x \
+		    exp/mono/decode_${x}_${l} || exit 1;
+	    done
 	done
-) &
+    ) &
 fi
 
 if [ $stage -le 6 ]; then
@@ -316,22 +336,24 @@ if [ $stage -le 6 ]; then
 	exp/tri1 || exit 1;
 
     # test cd gmm hmm models
-    # make decoding graph for tri1
+    # make decoding graphs for tri1
     (
-	utils/mkgraph.sh \
-	    data/lang_test \
-	    exp/tri1 \
-	    exp/tri1/graph || exit 1;
+	for l in simple gplm; do
+	    utils/mkgraph.sh \
+		data/lang_test_${l} \
+		exp/tri1 \
+		exp/tri1/graph_${l} || exit 1;
 
-	# decode test data with tri1 models
-	for x in native nonnative test; do
-	    steps/decode.sh \
-		--nj 8  \
-		exp/tri1/graph  \
-		data/$x \
-		exp/tri1/decode_${x} || exit 1;
+	    # decode test data with tri1 models
+	    for x in native nonnative test; do
+		steps/decode.sh \
+		    --nj 8  \
+		    exp/tri1/graph_${l} \
+		    data/$x \
+		    exp/tri1/decode_${x}_${l} || exit 1;
+	    done
 	done
-) &
+    ) &
 
     # align with triphones
     steps/align_si.sh \
@@ -355,19 +377,21 @@ if [ $stage -le 7 ]; then
 	exp/tri2b
 
     (
-	#  make decoding fst for tri2b models
-	utils/mkgraph.sh \
-	    data/lang_test \
-	    exp/tri2b \
-	    exp/tri2b/graph || exit 1;
+	#  make decoding FSTs for tri2b models
+	for l in simple gplm; do
+	    utils/mkgraph.sh \
+		data/lang_test_${l} \
+		exp/tri2b \
+		exp/tri2b/graph_${l} || exit 1;
 
-	# decode  test with tri2b models
-	for x in native nonnative test; do
-	    steps/decode.sh \
-		--nj 8  \
-		exp/tri2b/graph \
-		data/$x \
-		exp/tri2b/decode_${x} || exit 1;
+	    # decode  test with tri2b models
+	    for x in native nonnative test; do
+		steps/decode.sh \
+		    --nj 8  \
+		    exp/tri2b/graph_${l} \
+		    data/$x \
+		    exp/tri2b/decode_${x}_${l} || exit 1;
+	    done
 	done
     ) &
 
@@ -403,25 +427,28 @@ if [ $stage -le 7 ]; then
 fi
 
 if [ $stage -le 8 ]; then
-    # make decoding graph for SAT models
-    utils/mkgraph.sh \
-	data/lang_test \
-	exp/tri3b \
-	exp/tri3b/graph ||  exit 1;
+    (
+	# make decoding graphs for SAT models
+	for l in simple gplm; do
+	    utils/mkgraph.sh \
+		data/lang_test_${l} \
+		exp/tri3b \
+		exp/tri3b/graph_${l} ||  exit 1;
 
-    # decode test set with tri3b models
-    for x in native nonnative test; do
-	steps/decode_fmllr.sh \
-	--nj 8 \
-	--cmd "$decode_cmd" \
-        exp/tri3b/graph \
-	data/$x \
-        exp/tri3b/decode_${x}
-    done
+	    # decode test sets with tri3b models
+	    for x in native nonnative test; do
+		steps/decode_fmllr.sh \
+		    --nj 8 \
+		    --cmd "$decode_cmd" \
+		    exp/tri3b/graph_${l} \
+		    data/$x \
+		    exp/tri3b/decode_${x}_${l}
+	    done
+	done
+    ) &
 fi
 
 if [ $stage -le 9 ]; then
     # train and test chain models
     local/chain/run_tdnn.sh
 fi
-
