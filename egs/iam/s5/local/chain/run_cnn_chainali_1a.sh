@@ -4,10 +4,10 @@
 # (18.34% -> 13.68%)
 
 # steps/info/chain_dir_info.pl exp/chain/cnn1a_chainali/
-# exp/chainfsf4/cnn1a_chainali/: num-iters=21 nj=2..4 num-params=3.8M dim=40->380 combine=-0.009->-0.006 xent:train/valid[13,20,final]=(-0.870,-0.593,-0.568/-1.08,-0.889,-0.874) logprob:train/valid[13,20,final]=(-0.035,-0.003,-0.001/-0.077,-0.055,-0.054)
+# exp/chain/cnn_chainali_1a/: num-iters=21 nj=2..4 num-params=3.8M dim=40->380 combine=-0.009->-0.006 xent:train/valid[13,20,final]=(-0.870,-0.593,-0.568/-1.08,-0.889,-0.874) logprob:train/valid[13,20,final]=(-0.035,-0.003,-0.001/-0.077,-0.055,-0.054)
 
-# head exp/chainfsf4/cnn1a_chainali/decode_test/scoring_kaldi/best_wer
-# %WER 13.68 [ 2410 / 17616, 243 ins, 633 del, 1534 sub ] exp/chain/cnn1a_chainali/decode_test/wer_8_1.0
+# head exp/chain/cnn_chainali_1a/decode_test/scoring_kaldi/best_wer
+# %WER 13.68 [ 2410 / 17616, 243 ins, 633 del, 1534 sub ] exp/chain/cnn_chainali_1a/decode_test/wer_8_1.0
 
 set -e -o pipefail
 
@@ -18,7 +18,7 @@ train_set=train
 gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
                 # should have alignments for the specified training data.
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=_1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 ali=tri3_ali
 chain_model_dir=exp/chain${nnet3_affix}/cnn${affix}
 common_egs_dir=
