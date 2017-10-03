@@ -12,7 +12,7 @@
 
 include ../kaldi.mk
 
-TENSORFLOW = ../../tools/extras/tensorflow
+TENSORFLOW = ../../tools/tensorflow
 
 all:
 

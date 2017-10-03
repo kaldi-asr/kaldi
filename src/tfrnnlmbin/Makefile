@@ -10,7 +10,7 @@
 # cd ../tfrnnlmbin/
 # make
 
-TENSORFLOW = $(shell pwd)/../../tools/extras/tensorflow
+TENSORFLOW = $(shell pwd)/../../tools/tensorflow
 
 all:
 
