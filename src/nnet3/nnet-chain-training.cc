@@ -79,6 +79,23 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
     sil_indices_.Resize(num_pdfs);
     sil_indices_.CopyFromVec(indices);
   }
+  
+  if (!opts.nnet_config.objective_scales_str.empty()) {
+    std::vector<std::string> objectives_for_outputs;
+    SplitStringToVector(opts.nnet_config.objective_scales_str, ",", false,
+                        &objectives_for_outputs);
+    std::vector<std::string>::const_iterator it = objectives_for_outputs.begin();
+    for (; it != objectives_for_outputs.end(); ++it) {
+      std::vector<std::string> this_output_objective;
+      SplitStringToVector(*it, ":", false,
+                          &this_output_objective);
+
+      BaseFloat scale;
+      ConvertStringToReal(this_output_objective[1], &scale);
+      objective_scales_.insert(
+          std::make_pair(this_output_objective[0], scale));
+    }
+  }
 }
 
 
@@ -220,6 +237,17 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
                                (use_xent ? &xent_deriv : NULL));
     }
 
+    { 
+      unordered_map<std::string, BaseFloat, StringHasher>::iterator it =
+        objective_scales_.find(sup.name);
+
+      if (it != objective_scales_.end()) {
+        tot_objf *= it->second;
+        tot_weight *= it->second;
+        nnet_output_deriv.Scale(it->second);
+      }
+    }
+
     if (use_xent) {
       // this block computes the cross-entropy objective.
       const CuMatrixBase<BaseFloat> &xent_output = computer->GetOutput(
@@ -227,6 +255,15 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
       // at this point, xent_deriv is posteriors derived from the numerator
       // computation.  note, xent_objf has a factor of '.supervision.weight'
       BaseFloat xent_objf = TraceMatMat(xent_output, xent_deriv, kTrans);
+      
+      unordered_map<std::string, BaseFloat, StringHasher>::iterator it =
+        objective_scales_.find(xent_name);
+
+      if (it != objective_scales_.end()) {
+        xent_objf *= it->second;
+        xent_deriv.Scale(it->second);
+      }
+      
       objf_info_[xent_name + suffix].UpdateStats(xent_name + suffix,
                                         opts_.nnet_config.print_interval,
                                         num_minibatches_processed_,

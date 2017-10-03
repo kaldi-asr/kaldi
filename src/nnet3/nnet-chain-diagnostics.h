@@ -106,6 +106,8 @@ class NnetChainComputeProb {
   unordered_map<std::string, ChainObjectiveInfo, StringHasher> objf_info_;
 
   CuArray<int32> sil_indices_;
+  
+  unordered_map<std::string, BaseFloat, StringHasher> objective_scales_;
 };
 
 /// This function zeros the stored component-level stats in the nnet using

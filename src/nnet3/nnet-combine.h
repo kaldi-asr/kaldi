@@ -50,6 +50,7 @@ struct NnetCombineConfig {
   bool enforce_sum_to_one;
   BaseFloat sum_to_one_penalty;
   bool separate_weights_per_component;
+  std::string objective_scales_str;
   NnetCombineConfig(): num_iters(60),
                        initial_impr(0.01),
                        max_effective_inputs(15),
@@ -83,6 +84,10 @@ struct NnetCombineConfig {
     po->Register("separate-weights-per-component", &separate_weights_per_component,
                  "If true, have a separate weight for each updatable component in "
                  "the nnet.");
+    po->Register("objective-scales", &objective_scales_str,
+                 "Objective scales for the outputs specified as "
+                 "a comma-separated list of pairs "
+                 "<output-0>:<scale-0>,<output-1>:<scale-1>...");
   }
 };
 

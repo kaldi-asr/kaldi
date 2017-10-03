@@ -99,6 +99,7 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
                  << (chunk.first_frame + chunk.num_frames)
                  << ", FST was empty after composing with normalization FST. "
                  << "This should be extremely rare (a few per corpus, at most)";
+      return false;
     }
 
     int32 first_frame = 0;  // we shift the time-indexes of all these parts so

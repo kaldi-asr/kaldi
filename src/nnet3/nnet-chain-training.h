@@ -116,6 +116,8 @@ class NnetChainTrainer {
   int32 srand_seed_;
 
   CuArray<int32> sil_indices_;
+
+  unordered_map<std::string, BaseFloat, StringHasher> objective_scales_;
 };
 
 

@@ -29,10 +29,54 @@ namespace chain {
 typedef fst::ArcTpl<LatticeWeight> LatticeArc;
 typedef fst::VectorFst<LatticeArc> Lattice;
 
+void FstToLattice(const fst::StdVectorFst &fst, Lattice *lat) {
+  lat->DeleteStates();
+
+  int32 start_state = fst.Start();
+  for (int32 i = 0; i < fst.NumStates(); i++)
+    lat->AddState();
+
+  lat->SetStart(start_state);
+
+  for (fst::StdArc::StateId s = 0; s < fst.NumStates(); s++) {
+    for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, s);
+          !aiter.Done(); aiter.Next()) {
+      const fst::StdArc &arc = aiter.Value();
+
+      LatticeWeight weight = LatticeWeight::One();
+      weight.SetValue1(arc.weight.Value());
+
+      lat->AddArc(s, 
+                  LatticeArc(arc.ilabel, arc.olabel, weight, arc.nextstate));
+    }
+
+    if (fst.Final(s) != fst::TropicalWeight::Zero()) {
+      LatticeWeight weight = LatticeWeight::One();
+      weight.SetValue1(fst.Final(s).Value());
+      lat->SetFinal(s, weight);
+    }
+  }
+}
+
 SupervisionLatticeSplitter::SupervisionLatticeSplitter(
     const SupervisionLatticeSplitterOptions &opts,
-    const TransitionModel &trans_model, const Lattice &lat):
-  opts_(opts), trans_model_(trans_model), lat_(lat) { 
+    const SupervisionOptions &sup_opts,
+    const TransitionModel &trans_model):
+  sup_opts_(sup_opts), opts_(opts), trans_model_(trans_model), 
+  incomplete_phone_(trans_model.NumPhones() + 1) { 
+
+  if (opts_.add_partial_unk_label_left) {
+    MakeFilterFst();
+  }
+
+  if (opts_.add_tolerance_to_lat) {
+    MakeToleranceEnforcerFst();
+  }
+}
+
+void SupervisionLatticeSplitter::LoadLattice(const Lattice &lat) {
+  lat_ = lat;
+  
   PrepareLattice();
 
   int32 num_states = lat_.NumStates();
@@ -47,21 +91,58 @@ SupervisionLatticeSplitter::SupervisionLatticeSplitter(
   KALDI_ASSERT(lat_scores_.state_times[start_state] == 0);
 }
 
-void SupervisionLatticeSplitter::GetFrameRange(
+bool SupervisionLatticeSplitter::GetFrameRangeSupervision(
     int32 begin_frame, int32 num_frames,
-    Lattice *lat_out) const {
+    Supervision *supervision,
+    Lattice *out_lat) const {
   int32 end_frame = begin_frame + num_frames;
   // Note: end_frame is not included in the range of frames that the
   // output supervision object covers; it's one past the end.
   KALDI_ASSERT(num_frames > 0 && begin_frame >= 0 &&
                begin_frame + num_frames <= lat_scores_.state_times.back());
 
-  CreateRangeLattice(begin_frame, end_frame, lat_out);
+  Lattice lat_out;
+  CreateRangeLattice(begin_frame, end_frame, &lat_out);
   
-  if (opts_.acoustic_scale != 1.0) {
-    fst::ScaleLattice(fst::AcousticLatticeScale(
-          1.0 / opts_.acoustic_scale), lat_out);
+  PostProcessLattice(&lat_out);
+
+  if (out_lat) {
+    *out_lat = lat_out;
   }
+
+  ScaleLattice(fst::LatticeScale(sup_opts_.lm_scale, 0.0), &lat_out);
+
+  supervision->frames_per_sequence = num_frames;
+  return GetSupervision(lat_out, supervision);
+}
+
+bool SupervisionLatticeSplitter::GetFrameRangeProtoSupervision(
+    const ContextDependencyInterface &ctx_dep, 
+    const TransitionModel &trans_model,
+    int32 begin_frame, int32 num_frames,
+    ProtoSupervision *proto_supervision) const {
+  
+  int32 end_frame = begin_frame + num_frames;
+  // Note: end_frame is not included in the range of frames that the
+  // output supervision object covers; it's one past the end.
+  KALDI_ASSERT(num_frames > 0 && begin_frame >= 0 &&
+               begin_frame + num_frames <= lat_scores_.state_times.back());
+
+  Lattice lat_out;
+  CreateRangeLattice(begin_frame, end_frame, &lat_out);
+  
+  PostProcessLattice(&lat_out);
+  
+  if (opts_.debug && GetVerboseLevel() > 2) {
+    WriteLattice(std::cerr, false, lat_out);
+  }
+
+  CompactLattice clat_part;
+  ConvertLattice(lat_out, &clat_part);
+
+    
+  return PhoneLatticeToProtoSupervision(sup_opts_, clat_part, 
+                                        proto_supervision);
 }
 
 void SupervisionLatticeSplitter::LatticeInfo::Check() const {
@@ -72,13 +153,12 @@ void SupervisionLatticeSplitter::LatticeInfo::Check() const {
   // Check that the states are ordered in increasing order of state_times.
   // This must be true since the states are in breadth-first search order.
   KALDI_ASSERT(IsSorted(state_times));
+
+  KALDI_ASSERT(state_times.back() == num_frames);
 }
 
 void SupervisionLatticeSplitter::PrepareLattice() {
-  // Scale the lattice to appropriate acoustic scale. It is important to
-  // ensure this is equal to the acoustic scale used while training. This is
-  // because, on splitting lattices, the initial and final costs are added
-  // into the graph cost.
+  // Scale the lattice to appropriate acoustic scale.  
   KALDI_ASSERT(opts_.acoustic_scale != 0.0);
   if (opts_.acoustic_scale != 1.0)
     fst::ScaleLattice(fst::AcousticLatticeScale(
@@ -123,13 +203,16 @@ void SupervisionLatticeSplitter::CreateRangeLattice(
       end_iter = std::lower_bound(begin_iter,
                                   state_times.end(), end_frame);
 
+  // begin_iter should point to the first state with time == begin_frame
   KALDI_ASSERT(*begin_iter == begin_frame &&
                (begin_iter == state_times.begin() ||
                 begin_iter[-1] < begin_frame));
+
   // even if end_frame == supervision_.num_frames, there should be a state with
   // that frame index.
   KALDI_ASSERT(end_iter[-1] < end_frame &&
                (end_iter < state_times.end() || *end_iter == end_frame));
+  
   StateId begin_state = begin_iter - state_times.begin(),
           end_state = end_iter - state_times.begin();
 
@@ -141,13 +224,18 @@ void SupervisionLatticeSplitter::CreateRangeLattice(
   StateId start_state = out_lat->AddState();
   out_lat->SetStart(start_state);
 
+  KALDI_ASSERT(out_lat->Start() == 0);
+
   for (StateId i = begin_state; i < end_state; i++)
     out_lat->AddState();
 
   // Add the special final-state.
   StateId final_state = out_lat->AddState();
   out_lat->SetFinal(final_state, LatticeWeight::One());
-
+  
+  StateId prefinal_state = final_state + 1;
+  bool need_prefinal_state = false;
+  
   for (StateId state = begin_state; state < end_state; state++) {
     StateId output_state = state - begin_state + 1;
     if (state_times[state] == begin_frame) {
@@ -156,7 +244,8 @@ void SupervisionLatticeSplitter::CreateRangeLattice(
       // from our actual initial state.  The weight on this
       // transition is the forward probability of the said 'initial state'
       LatticeWeight weight = LatticeWeight::One();
-      weight.SetValue1((opts_.normalize ? lat_scores_.beta[0] : 0.0) - lat_scores_.alpha[state]);
+      weight.SetValue1((opts_.normalize ? lat_scores_.beta[0] : 0.0) 
+                        - lat_scores_.alpha[state]);
       // Add negative of the forward log-probability to the graph cost score,
       // since the acoustic scores would be changed later.
       // Assuming that the lattice is scaled with appropriate acoustic
@@ -190,35 +279,200 @@ void SupervisionLatticeSplitter::CreateRangeLattice(
         // Note: We don't normalize here because that is already done with the
         // initial cost.
 
-        out_lat->AddArc(output_state,
-            LatticeArc(arc.ilabel, arc.olabel, weight, final_state));
+        if (!opts_.add_partial_unk_label_left) {
+          out_lat->AddArc(output_state,
+              LatticeArc(arc.ilabel, arc.olabel, weight, final_state));
+        } else {
+          fst::ArcIterator<Lattice> next_aiter(lat_, nextstate);
+          if (!next_aiter.Done() && next_aiter.Value().olabel == 0) {
+            // This is a split in the middle of a phone.
+            // So add an arc to the "prefinal state" from which there 
+            // is an arc to the "final state" with special 
+            // "incomplete phone" symbol on the output-label.
+            
+            if (!need_prefinal_state) {
+              prefinal_state = out_lat->AddState();
+              need_prefinal_state = true;
+            }
+
+            out_lat->AddArc(output_state,
+                LatticeArc(arc.ilabel, arc.olabel, weight, prefinal_state));
+          } else {
+            out_lat->AddArc(output_state,
+                LatticeArc(arc.ilabel, arc.olabel, weight, final_state));
+          }
+        } 
       } else {
         StateId output_nextstate = nextstate - begin_state + 1;
 
-        if (opts_.add_phone_label_for_half_transition) {
+        Label olabel = arc.olabel;
+
+        if (state_times[state] == begin_frame &&
+            (opts_.add_partial_phone_label_right ||
+             opts_.add_partial_unk_label_right)) {
           int32 tid = arc.ilabel;
           int32 phone = trans_model_.TransitionIdToPhone(tid);
 
-          Label olabel = arc.olabel;
+          if (opts_.add_partial_unk_label_right) {
+            KALDI_ASSERT(opts_.unk_phone > 0);
+            phone = opts_.unk_phone;
+          }
 
           if (olabel == 0) {
+            // This is a split in the middle of a phone.
+            // So add a phone label as the output label.
             olabel = phone;
-          } else {
-            KALDI_ASSERT(phone == olabel);
           }
-          out_lat->AddArc(output_state,
-              LatticeArc(arc.ilabel, olabel, arc.weight, output_nextstate));
-        } else {
-          out_lat->AddArc(output_state,
-              LatticeArc(arc.ilabel, arc.olabel, arc.weight, output_nextstate));
+        }
+        out_lat->AddArc(output_state,
+            LatticeArc(arc.ilabel, olabel, arc.weight, output_nextstate));
+      }
+    }
+  }
+  
+  if (need_prefinal_state) {
+    // Add an "incomplete phone" label as the output symbol in the 
+    // last arc
+    out_lat->AddArc(prefinal_state, 
+        LatticeArc(0, incomplete_phone_, LatticeWeight::One(),
+                   final_state));
+  }
+  
+  KALDI_ASSERT(out_lat->Start() == 0);
+
+  if (opts_.debug) {
+    Posterior post;
+
+    Lattice &temp_lat(*out_lat);
+    //fst::RmEpsilon(&temp_lat);
+    fst::TopSort(&temp_lat);
+
+    double like = LatticeForwardBackward(temp_lat, &post);
+
+    KALDI_ASSERT(kaldi::ApproxEqual(
+          like + (opts_.normalize ? lat_scores_.beta[0] : 0.0),
+          lat_scores_.beta[0]));
+
+    const Posterior &full_post = lat_scores_.post;
+
+    for (int32 t = begin_frame; t < end_frame; t++) {
+      KALDI_ASSERT(full_post[t].size() == post[t - begin_frame].size());
+
+      for (int32 j = 0; j < full_post[t].size(); j++) {
+        KALDI_ASSERT(post[t - begin_frame][j].first == full_post[t][j].first);
+        if (post[t-begin_frame][j].second < 0.1)
+          continue;
+        if (!kaldi::ApproxEqual(post[t - begin_frame][j].second, 
+                                        full_post[t][j].second)) {
+          WritePosterior(std::cerr, false, full_post);
+          WritePosterior(std::cerr, false, post);
+
+          std::vector<double> alphas;
+          std::vector<double> betas;
+          ComputeLatticeAlphasAndBetas(temp_lat, false, &alphas, &betas);
+
+          fst::StdVectorFst full_fst;
+          Lattice full_lat(lat_);
+          fst::ScaleLattice(fst::AcousticLatticeScale(0), &full_lat);
+          ConvertLattice(full_lat, &full_fst);
+          WriteFstKaldi(std::cerr, false, full_fst);
+          
+          fst::StdVectorFst split_fst;
+          fst::ScaleLattice(fst::AcousticLatticeScale(0), out_lat);
+          ConvertLattice(*out_lat, &split_fst);
+          WriteFstKaldi(std::cerr, false, split_fst);
+
+          KALDI_ASSERT(false);
         }
       }
     }
   }
 }
 
+void SupervisionLatticeSplitter::PostProcessLattice(Lattice *out_lat) const {
+  if (opts_.add_partial_unk_label_left) {
+    if (opts_.debug && GetVerboseLevel() > 2) {
+      WriteLattice(std::cerr, false, *out_lat);
+    }
+
+    fst::TableComposeOptions compose_opts;
+    compose_opts.table_match_type = fst::MATCH_OUTPUT;
+
+    Lattice filter_lat;
+    FstToLattice(filter_fst_, &filter_lat);
+
+    Lattice temp_lat;
+    TableCompose(*out_lat, filter_lat, &temp_lat);
+
+    std::swap(temp_lat, *out_lat);
+    
+    if (opts_.debug && GetVerboseLevel() > 2) {
+      WriteLattice(std::cerr, false, *out_lat);
+    }
+  }
+  
+  fst::RmEpsilon(out_lat);
+
+  if (opts_.acoustic_scale != 1.0) {
+    fst::ScaleLattice(fst::AcousticLatticeScale(
+          1.0 / opts_.acoustic_scale), out_lat);
+  }
+}
+
+bool SupervisionLatticeSplitter::GetSupervision(
+    const Lattice &lat, Supervision *supervision) const {
+  fst::StdVectorFst transition_id_fst;
+  ConvertLattice(lat, &transition_id_fst);
+  Project(&transition_id_fst, fst::PROJECT_INPUT);  // Keep only the transition-ids.
+  if (transition_id_fst.Properties(fst::kIEpsilons, true) != 0) {
+    // remove epsilons, if there are any.
+    fst::RmEpsilon(&transition_id_fst);
+  }
+
+  KALDI_ASSERT(transition_id_fst.NumStates() > 0);
+
+  if (opts_.add_tolerance_to_lat) {
+    fst::TableComposeOptions compose_opts;
+    compose_opts.table_match_type = fst::MATCH_INPUT;
+
+    TableCompose(transition_id_fst, tolerance_fst_, &(supervision->fst),
+                 compose_opts);
+  } else {
+    std::swap(transition_id_fst, supervision->fst);
+  }
+  
+  fst::Connect(&(supervision->fst));
+
+  // at this point supervision->fst will have pdf-ids plus one as the olabels,
+  // but still transition-ids as the ilabels.  Copy olabels to ilabels.
+  fst::Project(&(supervision->fst), fst::PROJECT_OUTPUT);
+  
+  fst::RmEpsilon(&(supervision->fst));
+  fst::DeterminizeInLog(&(supervision->fst));
+
+  KALDI_ASSERT(supervision->fst.Properties(fst::kIEpsilons, true) == 0);
+  if (supervision->fst.NumStates() == 0) {
+    KALDI_WARN << "Supervision FST is empty (too many phones for too few "
+               << "frames?)";
+    // possibly there were too many phones for too few frames.
+    return false;
+  }
+
+  supervision->weight = 1.0;
+  supervision->num_sequences = 1;
+  supervision->label_dim = trans_model_.NumPdfs();
+  SortBreadthFirstSearch(&(supervision->fst));
+
+  return true;
+}
+
 void SupervisionLatticeSplitter::ComputeLatticeScores() {
-  LatticeStateTimes(lat_, &(lat_scores_.state_times));
+  lat_scores_.Reset();
+  lat_scores_.num_frames = LatticeStateTimes(lat_, &(lat_scores_.state_times));
+
+  if (opts_.debug)
+    LatticeForwardBackward(lat_, &(lat_scores_.post));
+
   ComputeLatticeAlphasAndBetas(lat_, false,
                                &(lat_scores_.alpha), &(lat_scores_.beta));
   lat_scores_.Check();
@@ -417,15 +671,41 @@ void ToleranceEnforcerFstCreator::MakeFst() {
   }
 
   KALDI_ASSERT(fst_->Start() == zero_offset_index_ * (num_forward_transitions_ + 1));
+
+  fst::ArcSort(fst_, fst::ILabelCompare<fst::StdArc>());
 }
 
-void MakeToleranceEnforcerFst(
-    const SupervisionOptions &opts, const TransitionModel &trans_model,
-    fst::StdVectorFst *fst) {
-  ToleranceEnforcerFstCreator creator(opts, trans_model, fst);
+void SupervisionLatticeSplitter::MakeToleranceEnforcerFst() {
+  ToleranceEnforcerFstCreator creator(sup_opts_, trans_model_, &tolerance_fst_);
   creator.MakeFst();
 }
 
+void SupervisionLatticeSplitter::MakeFilterFst() {
+  filter_fst_.DeleteStates();
+  filter_fst_.AddState();
+  filter_fst_.AddState();
+  filter_fst_.AddState();
+
+  filter_fst_.SetStart(0);
+
+  const std::vector<int32> &phones = trans_model_.GetPhones();
+  for (std::vector<int32>::const_iterator it = phones.begin();
+       it != phones.end(); ++it) {
+    filter_fst_.AddArc(0, fst::StdArc(*it, *it,
+                                      fst::TropicalWeight::One(), 0));
+    filter_fst_.AddArc(0, fst::StdArc(*it, opts_.unk_phone,
+                                      fst::TropicalWeight::One(), 1));
+  }
+  filter_fst_.AddArc(1, fst::StdArc(incomplete_phone_, 0, 
+                                    fst::TropicalWeight::One(), 2));
+  
+  filter_fst_.SetFinal(0, fst::TropicalWeight::One());
+  filter_fst_.SetFinal(2, fst::TropicalWeight::One());
+
+  fst::ArcSort(&filter_fst_, fst::ILabelCompare<fst::StdArc>());
+}
+
+/*
 bool PhoneLatticeToSupervision(const fst::StdVectorFst &tolerance_fst,
                                const TransitionModel &trans_model,
                                const Lattice &lat,
@@ -476,6 +756,7 @@ bool PhoneLatticeToSupervision(const fst::StdVectorFst &tolerance_fst,
   SortBreadthFirstSearch(&(supervision->fst));
   return true;
 }
+*/
 
 }  // end namespace chain
 }  // end namespace kaldi

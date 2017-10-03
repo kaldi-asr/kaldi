@@ -322,6 +322,8 @@ if [ ! -z $left_tolerance_silence ] && [ ! -z $right_tolerance_silence ]; then
   chain_supervision_all_opts="$chain_supervision_all_opts --supervision.silence-phones=$(cat $lang/phones/silence_phones.csl)"
 fi
 
+chain_supervision_all_opts="$chain_supervision_all_opts --acoustic-scale=$acwt"
+
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
 echo $left_context_initial > $dir/info/left_context_initial
@@ -473,7 +475,7 @@ if [ $stage -le 5 ]; then
       #concatenate cegs.JOB.scp in single cegs.scp
       rm -rf $dir/cegs.scp
       for j in $(seq $num_archives_intermediate); do
-        for y in $(seq $num_archives_intermediate); do
+        for y in $(seq $archives_multiple); do
           cat $dir/cegs.$j.$y.scp || exit 1;
         done
       done > $dir/cegs.scp || exit 1;

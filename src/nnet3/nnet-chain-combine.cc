@@ -52,6 +52,7 @@ NnetChainCombiner::NnetChainCombiner(const NnetCombineConfig &combine_config,
   ComputeUpdatableComponentDims();
   NnetComputeProbOptions compute_prob_opts;
   compute_prob_opts.compute_deriv = true;
+  compute_prob_opts.objective_scales_str = combine_config.objective_scales_str;
   prob_computer_ = new NnetChainComputeProb(compute_prob_opts, chain_config_, 
                                             den_fst_, nnet_);
 }

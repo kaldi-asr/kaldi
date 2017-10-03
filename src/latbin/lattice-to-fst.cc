@@ -80,6 +80,7 @@ int main(int argc, char *argv[]) {
     BaseFloat lm_scale = 0.0;
     bool rm_eps = true, read_compact = true, convert_to_pdf_labels = false;
     std::string trans_model;
+    bool project_input = false, project_output = true;
 
     const char *usage =
         "Turn lattices into normal FSTs, retaining only the word labels\n"
@@ -97,6 +98,12 @@ int main(int argc, char *argv[]) {
                 "Convert lattice to pdf labels");
     po.Register("trans-model", &trans_model,
                 "Transition model");
+    po.Register("project-input", &project_input,
+                "Project to input labels (transition-ids); applicable only "
+                "when --read-compact=false");
+    po.Register("project-output", &project_output,
+                "Project to output labels (transition-ids); applicable only "
+                "when --read-compact=false");
     
     po.Read(argc, argv);
 
@@ -164,7 +171,10 @@ int main(int argc, char *argv[]) {
         } else {
           ConvertLattice(lat, &fst);
         }
-        Project(&fst, fst::PROJECT_INPUT); 
+        if (project_input) 
+          Project(&fst, fst::PROJECT_INPUT); 
+        else if (project_output)
+          Project(&fst, fst::PROJECT_OUTPUT); 
         if (rm_eps) RemoveEpsLocal(&fst);
         
         fst_writer.Write(key, fst);

@@ -545,14 +545,15 @@ def train(args, run_opts):
 
             xent_regularize = args.xent_regularize
             l2_regularize = args.l2_regularize
-            smbr_opt = ""
+            objective_opts = ("--objective-scales=" + args.objective_scales
+                              if args.objective_scales is not None else "")
             smbr_factor = 0.0
             if args.smbr_factor_schedule is not None:
                 smbr_factor = common_train_lib.get_schedule_value(
                     args.smbr_factor_schedule,
                     float(num_archives_processed) / num_archives_to_process)
 
-                smbr_opt += " --smbr-factor={0}".format(smbr_factor)
+                objective_opts += " --smbr-factor={0}".format(smbr_factor)
 
             if smbr_factor > 0.0:
                 use_smbr=True
@@ -562,16 +563,16 @@ def train(args, run_opts):
                 l2_regularize = (args.smbr_l2_regularize
                                  if args.smbr_l2_regularize is not None
                                  else args.l2_regularize)
-                smbr_opt += " --use-smbr-objective"
+                objective_opts += " --use-smbr-objective"
                 if silence_pdfs is not None:
-                    smbr_opt += " --silence-pdfs=" + silence_pdfs
+                    objective_opts += " --silence-pdfs=" + silence_pdfs
 
             if args.mmi_factor_schedule is not None:
                 mmi_factor = common_train_lib.get_schedule_value(
                     args.mmi_factor_schedule,
                     float(num_archives_processed) / num_archives_to_process)
 
-                smbr_opt += " --mmi-factor={0}".format(mmi_factor)
+                objective_opts += " --mmi-factor={0}".format(mmi_factor)
 
             percent = num_archives_processed * 100.0 / num_archives_to_process
             epoch = (num_archives_processed * args.num_epochs
@@ -616,7 +617,7 @@ def train(args, run_opts):
                 backstitch_training_scale=args.backstitch_training_scale,
                 backstitch_training_interval=args.backstitch_training_interval,
                 use_multitask_egs=use_multitask_egs,
-                smbr_opt=smbr_opt)
+                objective_opts=objective_opts)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
@@ -642,13 +643,14 @@ def train(args, run_opts):
     if args.stage <= num_iters:
         xent_regularize = args.xent_regularize
         l2_regularize = args.l2_regularize
-        smbr_opt = ""
+        objective_opts = ("--objective-scales=" + args.objective_scales
+                          if args.objective_scales is not None else "")
         smbr_factor = 0.0
         if args.smbr_factor_schedule is not None:
             smbr_factor = common_train_lib.get_schedule_value(
                 args.smbr_factor_schedule, 1.0)
 
-            smbr_opt += " --smbr-factor={0}".format(smbr_factor)
+            objective_opts += " --smbr-factor={0}".format(smbr_factor)
 
         if smbr_factor > 0.0:
             use_smbr=True
@@ -658,15 +660,15 @@ def train(args, run_opts):
             l2_regularize = (args.smbr_l2_regularize
                              if args.smbr_l2_regularize is not None
                              else args.l2_regularize)
-            smbr_opt = "--use-smbr-objective"
+            objective_opts = "--use-smbr-objective"
             if silence_pdfs is not None:
-                smbr_opt += " --silence-pdfs=" + silence_pdfs
+                objective_opts += " --silence-pdfs=" + silence_pdfs
 
         if args.mmi_factor_schedule is not None:
             mmi_factor = common_train_lib.get_schedule_value(
                 args.mmi_factor_schedule, 1.0)
 
-            smbr_opt += " --mmi-factor={0}".format(mmi_factor)
+            objective_opts += " --mmi-factor={0}".format(mmi_factor)
 
         if args.do_final_combination:
             logger.info("Doing final combination to produce final.mdl")
@@ -682,7 +684,7 @@ def train(args, run_opts):
                 run_opts=run_opts,
                 sum_to_one_penalty=args.combine_sum_to_one_penalty,
                 use_multitask_egs=use_multitask_egs,
-                smbr_opt=smbr_opt)
+                objective_opts=objective_opts)
         else:
             logger.info("Copying the last-numbered model to final.mdl")
             common_lib.force_symlink("{0}.mdl".format(num_iters),
@@ -693,7 +695,7 @@ def train(args, run_opts):
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
                 run_opts=run_opts,
                 use_multitask_egs=use_multitask_egs,
-                smbr_opt=smbr_opt)
+                objective_opts=objective_opts)
             common_lib.force_symlink("compute_prob_valid.{iter}.log"
                                      "".format(iter=num_iters-1),
                                      "{dir}/log/compute_prob_valid.final.log".format(

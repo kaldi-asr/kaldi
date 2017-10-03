@@ -917,6 +917,11 @@ class CommonParser(object):
                                  action=common_lib.StrToBoolAction,
                                  help="Compute train and validation "
                                  "accuracy per-dim")
+        self.parser.add_argument("--trainer.objective-scales",
+                                 dest='objective_scales',
+                                 type=str,
+                                 action=common_lib.NullstrToNoneAction,
+                                 help="Objective scales for different outputs")
 
         # General options
         self.parser.add_argument("--stage", type=int, default=-4,

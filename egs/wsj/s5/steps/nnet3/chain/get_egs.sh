@@ -77,6 +77,7 @@ acwt=0.1   # For pruning
 phone_insertion_penalty=
 deriv_weights_scp=
 generate_egs_scp=false
+no_chunking=false
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -125,6 +126,8 @@ dir=$4
 [ ! -z "$online_ivector_dir" ] && \
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
 
+$no_chunking && extra_files="$extra_files $data/allowed_lengths.txt"
+
 for f in $data/feats.scp $latdir/lat.1.gz $latdir/final.mdl \
          $chaindir/{0.trans_mdl,tree,normalization.fst} $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
@@ -142,9 +145,16 @@ num_lat_jobs=$(cat $latdir/num_jobs) || exit 1;
 frame_shift=$(utils/data/get_frame_shift.sh $data) || exit 1
 utils/data/get_utt2dur.sh $data
 
-cat $data/utt2dur | \
-  awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
-  utils/shuffle_list.pl | head -$num_utts_subset > $dir/valid_uttlist || exit 1;
+if $no_chunking; then
+  frames_per_eg=$(cat $data/allowed_lengths.txt | tr '\n' , | sed 's/,$//')
+
+  cut -d ' ' -f 1 $data/utt2spk | \
+    utils/shuffle_list.pl | head -$num_utts_subset > $dir/valid_uttlist || exit 1;
+else
+  cat $data/utt2dur | \
+    awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
+    utils/shuffle_list.pl | head -$num_utts_subset > $dir/valid_uttlist || exit 1;
+fi
 
 len_uttlist=`wc -l $dir/valid_uttlist | awk '{print $1}'`
 if [ $len_uttlist -lt $num_utts_subset ]; then
@@ -164,10 +174,17 @@ if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
   rm $dir/uniq2utt $dir/valid_uttlist.tmp
 fi
 
-cat $data/utt2dur | \
-  awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
+if $no_chunking; then
+  cut -d ' ' -f 1 $data/utt2spk | \
    utils/filter_scp.pl --exclude $dir/valid_uttlist | \
    utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
+else
+  cat $data/utt2dur | \
+    awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
+     utils/filter_scp.pl --exclude $dir/valid_uttlist | \
+     utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
+fi
+
 len_uttlist=`wc -l $dir/train_subset_uttlist | awk '{print $1}'`
 if [ $len_uttlist -lt $num_utts_subset ]; then
   echo "Number of utterances which have length at least $frames_per_eg is really low. Please check your data." && exit 1;
@@ -288,6 +305,7 @@ fi
 egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 [ $left_context_initial -ge 0 ] && egs_opts="$egs_opts --left-context-initial=$left_context_initial"
 [ $right_context_final -ge 0 ] && egs_opts="$egs_opts --right-context-final=$right_context_final"
+$no_chunking && egs_opts="$egs_opts --no-chunking"
 
 [ ! -z "$deriv_weights_scp" ] && egs_opts="$egs_opts --deriv-weights-rspecifier=scp:$deriv_weights_scp"
 

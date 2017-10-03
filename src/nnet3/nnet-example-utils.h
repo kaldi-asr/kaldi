@@ -87,6 +87,7 @@ struct ExampleGenerationConfig {
   int32 num_frames_overlap;
   int32 frame_subsampling_factor;
   std::string num_frames_str;
+  bool no_chunking;
 
 
   // The following parameters are derived parameters, computed by
@@ -101,7 +102,7 @@ struct ExampleGenerationConfig {
       left_context(0), right_context(0),
       left_context_initial(-1), right_context_final(-1),
       num_frames_overlap(0), frame_subsampling_factor(1),
-      num_frames_str("1") { }
+      num_frames_str("1"), no_chunking(false) { }
 
   /// This function decodes 'num_frames_str' into 'num_frames', and ensures that
   /// the members of 'num_frames' are multiples of 'frame_subsampling_factor'.
@@ -140,6 +141,9 @@ struct ExampleGenerationConfig {
     po->Register("frame-subsampling-factor", &frame_subsampling_factor, "Used "
                  "if the frame-rate of the output labels in the generated "
                  "examples will be less than the frame-rate at the input");
+    po->Register("no-chunking", &no_chunking, "If set to true, then the "
+                 "whole utterance will be used and there will be no "
+                 "chunking");
   }
 };
 

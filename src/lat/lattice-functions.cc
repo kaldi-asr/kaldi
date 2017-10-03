@@ -388,6 +388,11 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *post,
   if (!ApproxEqual(tot_forward_prob, tot_backward_prob, 1e-8)) {
     KALDI_WARN << "Total forward probability over lattice = " << tot_forward_prob
               << ", while total backward probability = " << tot_backward_prob;
+    
+    if (!ApproxEqual(tot_forward_prob, tot_backward_prob, 1e-2)) {
+      KALDI_ERR << "Total forward probability over lattice = " << tot_forward_prob
+                << ", while total backward probability = " << tot_backward_prob;
+    }
   }
   // Now combine any posteriors with the same transition-id.
   for (int32 t = 0; t < max_time; t++)
@@ -461,8 +466,10 @@ double ComputeLatticeAlphasAndBetas(const LatticeType &lat,
   typedef typename Arc::StateId StateId;
 
   StateId num_states = lat.NumStates();
-  KALDI_ASSERT(lat.Properties(fst::kTopSorted, true) == fst::kTopSorted);
+   KALDI_ASSERT(lat.Properties(fst::kTopSorted, true) == fst::kTopSorted);
   KALDI_ASSERT(lat.Start() == 0);
+  alpha->clear();
+  beta->clear();
   alpha->resize(num_states, kLogZeroDouble);
   beta->resize(num_states, kLogZeroDouble);
 
@@ -499,6 +506,11 @@ double ComputeLatticeAlphasAndBetas(const LatticeType &lat,
   if (!ApproxEqual(tot_forward_prob, tot_backward_prob, 1e-8)) {
     KALDI_WARN << "Total forward probability over lattice = " << tot_forward_prob
                << ", while total backward probability = " << tot_backward_prob;
+
+    if (!ApproxEqual(tot_forward_prob, tot_backward_prob, 1e-2)) {
+      KALDI_ERR << "Total forward probability over lattice = " << tot_forward_prob
+                << ", while total backward probability = " << tot_backward_prob;
+    }
   }
   // Split the difference when returning... they should be the same.
   return 0.5 * (tot_backward_prob + tot_forward_prob);

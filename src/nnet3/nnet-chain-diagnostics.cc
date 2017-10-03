@@ -68,6 +68,23 @@ NnetChainComputeProb::NnetChainComputeProb(
     sil_indices_.Resize(num_pdfs);
     sil_indices_.CopyFromVec(indices);
   }
+  
+  if (!nnet_config.objective_scales_str.empty()) {
+    std::vector<std::string> objectives_for_outputs;
+    SplitStringToVector(nnet_config.objective_scales_str, ",", false,
+                        &objectives_for_outputs);
+    std::vector<std::string>::const_iterator it = objectives_for_outputs.begin();
+    for (; it != objectives_for_outputs.end(); ++it) {
+      std::vector<std::string> this_output_objective;
+      SplitStringToVector(*it, ":", false,
+                          &this_output_objective);
+
+      BaseFloat scale;
+      ConvertStringToReal(this_output_objective[1], &scale);
+      objective_scales_.insert(
+          std::make_pair(this_output_objective[0], scale));
+    }
+  }
 }
 
 
@@ -200,6 +217,18 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
                                &tot_like, &tot_l2_term, &tot_weight,
                                (nnet_config_.compute_deriv ? &nnet_output_deriv :
                                 NULL), (use_xent ? &xent_deriv : NULL));
+    
+    { 
+      unordered_map<std::string, BaseFloat, StringHasher>::iterator it =
+        objective_scales_.find(sup.name);
+
+      if (it != objective_scales_.end()) {
+        tot_like *= it->second;
+        tot_weight *= it->second;
+        if (nnet_config_.compute_deriv) 
+          nnet_output_deriv.Scale(it->second);
+      }
+    }
 
     // note: in this context we don't want to apply 'sup.deriv_weights' because
     // this code is used only in combination, where it's part of an L-BFGS
@@ -231,6 +260,14 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
       // computation.  note, xent_deriv has a factor of '.supervision.weight',
       // but so does tot_weight.
       BaseFloat xent_objf = TraceMatMat(xent_output, xent_deriv, kTrans);
+      unordered_map<std::string, BaseFloat, StringHasher>::iterator it =
+        objective_scales_.find(xent_name);
+
+      if (it != objective_scales_.end()) {
+        xent_objf *= it->second;
+        xent_deriv.Scale(it->second);
+      }
+      
       xent_totals.tot_weight += tot_weight;
       xent_totals.tot_like += xent_objf;
     }

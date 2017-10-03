@@ -72,6 +72,7 @@ for param in $check_params; do
   cat ${args[0]}/$param > $megs_dir/$param || exit 1;
 done
 cat ${args[0]}/cmvn_opts > $megs_dir/cmvn_opts || exit 1; # caution: the top-level nnet training
+cp ${args[0]}/info/frames_per_eg $megs_dir/info/frames_per_eg || exit 1;
 
 for lang in $(seq 0 $[$num_langs-1]);do
   multi_egs_dir[$lang]=${args[$lang]}
@@ -85,11 +86,10 @@ for lang in $(seq 0 $[$num_langs-1]);do
   valid_diagnostic_scp_list="$valid_diagnostic_scp_list ${args[$lang]}/valid_diagnostic.scp"
   combine_scp_list="$combine_scp_list ${args[$lang]}/combine.scp"
   
-  this_frames_per_eg=$(cat ${args[$lang]}/info/frames_per_eg)
+  this_frames_per_eg=$(cat ${args[$lang]}/info/frames_per_eg | cut -d, -f 1)  # use only the primary frames-per-eg
 
   if [ $lang -eq 0 ]; then
     frames_per_eg_list="$this_frames_per_eg"
-    echo $this_frames_per_eg > $megs_dir/info/frames_per_eg
   else
     frames_per_eg_list="$frames_per_eg_list,$this_frames_per_eg"
   fi
