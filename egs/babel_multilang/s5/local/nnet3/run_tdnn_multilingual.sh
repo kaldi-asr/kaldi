@@ -304,11 +304,10 @@ if [ $stage -le 13 ]; then
   for lang_index in `seq 0 $[$num_decode_lang-1]`; do
     if [ ! -f $dir/${decode_lang_list[$lang_index]}/decode_dev10h.pem/.done ]; then
       echo "Decoding lang ${decode_lang_list[$lang_index]} using multilingual hybrid model $dir"
-      run-4-anydecode-langs.sh --use-ivector $use_ivector \
-        --use-pitch-ivector $use_pitch_ivector \
-        --nnet3-dir $dir --iter final_adj \
+      local/nnet3/run_decode_lang.sh --use-ivector $use_ivector \
+        --use-pitch-ivector $use_pitch_ivector --iter final_adj \
         --nnet3-affix "$nnet3_affix" \
-        ${decode_lang_list[$lang_index]} || exit 1;
+        ${decode_lang_list[$lang_index]} $dir || exit 1;
       touch $dir/${decode_lang_list[$lang_index]}/decode_dev10h.pem/.done
     fi
   done
