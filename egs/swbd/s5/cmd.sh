@@ -14,3 +14,5 @@ export train_cmd="queue.pl"
 export decode_cmd="queue.pl --mem 4G"
 export mkgraph_cmd="queue.pl --mem 8G"
 
+export tfrnnlm_cmd="queue.pl -l hostname=b*"  # this is specific to the CLSP grid
+export cuda_cmd="queue.pl --gpu 1"
