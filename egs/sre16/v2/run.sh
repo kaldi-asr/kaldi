@@ -14,8 +14,8 @@
 . cmd.sh
 . path.sh
 set -e
-fbankdir=`pwd`/fbank
-vaddir=`pwd`/fbank
+mfccdir=`pwd`/mfcc
+vaddir=`pwd`/mfcc
 
 # SRE16 trials
 sre16_trials=data/sre16_eval_test/trials
@@ -78,8 +78,8 @@ fi
 if [ $stage -le 1 ]; then
   # Make filterbanks and compute the energy-based VAD for each dataset
   for name in sre swbd sre16_eval_enroll sre16_eval_test sre16_major; do
-    steps/make_fbank.sh --fbank-config conf/fbank.conf --nj 40 --cmd "$train_cmd" \
-      data/${name} exp/make_fbank $fbankdir
+    steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
+      data/${name} exp/make_mfcc $mfccdir
     utils/fix_data_dir.sh data/${name}
     sid/compute_vad_decision.sh --nj 40 --cmd "$train_cmd" \
       data/${name} exp/make_vad $vaddir
@@ -153,8 +153,8 @@ if [ $stage -le 2 ]; then
   # Make filterbanks for the augmented data.  Note that we do not compute a new
   # vad.scp file here.  Instead, we use the vad.scp from the clean version of
   # the list.
-  steps/make_fbank.sh --fbank-config conf/fbank.conf --nj 40 --cmd "$train_cmd" \
-    data/swbd_sre_aug_128k exp/make_fbank $fbankdir
+  steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
+    data/swbd_sre_aug_128k exp/make_mfcc $mfccdir
 
   # Combine the clean and augmented SWBD+SRE list.  This is now roughly
   # double the size of the original clean list.
@@ -276,7 +276,7 @@ if [ $stage -le 9 ]; then
   tgl_eer=$(paste $sre16_trials_tgl exp/scores/sre16_eval_tgl_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   yue_eer=$(paste $sre16_trials_yue exp/scores/sre16_eval_yue_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   echo "Using Out-of-Domain PLDA, EER: Pooled ${pooled_eer}%, Tagalog ${tgl_eer}%, Cantonese ${yue_eer}%"
-  # EER: Pooled 11.35%, Tagalog 15.72%, Cantonese 7.07%
+  # EER: Pooled 11.73%, Tagalog 15.96%, Cantonese 7.52%
   # For reference, here's the ivector system from ../v1:
   # EER: Pooled 13.65%, Tagalog 17.73%, Cantonese 9.61%
 fi
@@ -297,24 +297,24 @@ if [ $stage -le 10 ]; then
   tgl_eer=$(paste $sre16_trials_tgl exp/scores/sre16_eval_tgl_scores_adapt | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   yue_eer=$(paste $sre16_trials_yue exp/scores/sre16_eval_yue_scores_adapt | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
   echo "Using Adapted PLDA, EER: Pooled ${pooled_eer}%, Tagalog ${tgl_eer}%, Cantonese ${yue_eer}%"
-  # EER: Pooled 8.76%, Tagalog 12.73%, Cantonese 4.86%
+  # EER: Pooled 8.57%, Tagalog 12.29%, Cantonese 4.89%
   # For reference, here's the ivector system from ../v1:
   # EER: Pooled 12.98%, Tagalog 17.8%, Cantonese 8.35%
   #
   # Using the official SRE16 scoring software, we obtain the following equalized results:
   #
   # -- Pooled --
-  # EER:          8.97
-  # min_Cprimary: 0.61
-  # act_Cprimary: 0.63
+  #  EER:          8.66
+  #  min_Cprimary: 0.61
+  #  act_Cprimary: 0.62
   #
   # -- Cantonese --
-  # EER:          4.71
-  # min_Cprimary: 0.42
-  # act_Cprimary: 0.43
+  # EER:           4.69
+  # min_Cprimary:  0.42
+  # act_Cprimary:  0.43
   #
   # -- Tagalog --
-  # EER:         13.23
-  # min_Cprimary: 0.77
-  # act_Cprimary: 0.82
+  # EER:          12.63
+  # min_Cprimary:  0.76
+  # act_Cprimary:  0.81
 fi
