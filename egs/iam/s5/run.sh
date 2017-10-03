@@ -40,7 +40,6 @@ if [ $stage -le 2 ]; then
   local/run_unk_model.sh
 fi
 
-exit
 if [ $stage -le 3 ]; then
   for f in train val_1 val_2 test; do
     local/make_feature_vect.py $data_dir/$f --scale-size 40 | \
