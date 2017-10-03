@@ -25,7 +25,7 @@ else
 fi
 
 
-[ ! -f bazel.zip ] && wget https://github.com/bazelbuild/bazel/releases/download/0.5.1/bazel-0.5.1-dist.zip -O bazel.zip
+[ ! -f bazel.zip ] && wget https://github.com/bazelbuild/bazel/releases/download/0.5.4/bazel-0.5.4-dist.zip -O bazel.zip
 mkdir -p bazel
 cd bazel
 unzip ../bazel.zip
