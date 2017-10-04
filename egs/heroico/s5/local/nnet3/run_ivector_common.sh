@@ -72,30 +72,38 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  echo "$0: computing a subset of data to train the diagonal UBM."
-  # We'll use about a quarter of the data.
-  mkdir -p exp/nnet3${nnet3_affix}/diag_ubm
-  temp_data_root=exp/nnet3${nnet3_affix}/diag_ubm
+    echo "$0: computing a subset of data to train the diagonal UBM."
+    # We'll use about a quarter of the data.
+    mkdir -p exp/nnet3${nnet3_affix}/diag_ubm
+    temp_data_root=exp/nnet3${nnet3_affix}/diag_ubm
 
-  num_utts_total=$(wc -l <data/${train_set}_sp_hires/utt2spk)
-  num_utts=$[$num_utts_total/4]
-  utils/data/subset_data_dir.sh data/${train_set}_sp_hires \
-     $num_utts ${temp_data_root}/${train_set}_sp_hires_subset
+    num_utts_total=$(wc -l <data/${train_set}_sp_hires/utt2spk)
+    num_utts=$[$num_utts_total/4]
+    utils/data/subset_data_dir.sh \
+	data/${train_set}_sp_hires \
+	$num_utts \
+	${temp_data_root}/${train_set}_sp_hires_subset
 
-  echo "$0: computing a PCA transform from the hires data."
-  steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
-      --splice-opts "--left-context=3 --right-context=3" \
-      --max-utts 10000 --subsample 2 \
-       ${temp_data_root}/${train_set}_sp_hires_subset \
-       exp/nnet3${nnet3_affix}/pca_transform
+    echo "$0: computing a PCA transform from the hires data."
+    steps/online/nnet2/get_pca_transform.sh \
+	--cmd "$train_cmd" \
+	--splice-opts "--left-context=3 --right-context=3" \
+	--max-utts 10000 \
+	--subsample 2 \
+	${temp_data_root}/${train_set}_sp_hires_subset \
+	exp/nnet3${nnet3_affix}/pca_transform
 
-  echo "$0: training the diagonal UBM."
-  # Use 512 Gaussians in the UBM.
-  steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 \
-    --num-frames 700000 \
-    --num-threads 8 \
-    ${temp_data_root}/${train_set}_sp_hires_subset 512 \
-    exp/nnet3${nnet3_affix}/pca_transform exp/nnet3${nnet3_affix}/diag_ubm
+    echo "$0: training the diagonal UBM."
+    # Use 512 Gaussians in the UBM.
+    steps/online/nnet2/train_diag_ubm.sh \
+	--cmd "$train_cmd" \
+	--nj 20 \
+	--num-frames 700000 \
+	--num-threads 8 \
+	${temp_data_root}/${train_set}_sp_hires_subset \
+	512 \
+	exp/nnet3${nnet3_affix}/pca_transform \
+	exp/nnet3${nnet3_affix}/diag_ubm
 fi
 
 if [ $stage -le 5 ]; then

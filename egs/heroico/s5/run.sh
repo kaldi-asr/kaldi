@@ -27,6 +27,9 @@ usma_transcripts=$datadir/transcripts/usma-prompts.txt
 # location of a reference language model
 lm=http://www.csl.uni-bremen.de/GlobalPhone/lm/SP.3gram.lm.gz
 
+# location of subs text data
+subsdata=http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2016/en-es.txt.zip
+
 tmpdir=data/local/tmp
 
 # make acoustic model training  lists
@@ -210,13 +213,13 @@ if [ $stage -le 2 ]; then
 	    http://www.openslr.org/resources/34/santiago.tar.gz
     fi
 
-    if [ -e data/local/tmp/dict/santiago.tar ]; then
-	rm data/local/tmp/dict/santiago.tar
+    if [ -e $tmpdir/dict/santiago.tar ]; then
+	rm $tmpdir/dict/santiago.tar
     fi
 
-    gunzip data/local/tmp/dict/santiago.tar.gz
+    gunzip $tmpdir/dict/santiago.tar.gz
 
-    cd data/local/tmp/dict
+    cd $tmpdir/dict
 
     tar -xvf santiago.tar
 
@@ -253,9 +256,57 @@ if [ $stage -le 3 ]; then
 	data/local/tmp/lm/ES.3gram.lm.gz \
 	data/local/dict/lexicon.txt \
 	data/lang_test_gplm
+
+    mkdir -p $tmpdir/subs/lm
+
+    # download  subs text data
+    if [ ! -f $tmpdir/subs/es.zip ]; then
+	wget \
+	    -O $tmpdir/subs/es.zip \
+	    $subsdata
+    fi
+
+    cd $tmpdir/subs
+
+    unzip es.zip
+
+
+    rm es.zip OpenSubtitles2016.en-es.en OpenSubtitles2016.en-es.ids
+
+    cd ../../../..
 fi
 
 if [ $stage -le 4 ]; then
+        # get a sample of the subs corpus for lm training
+    local/subs_restrict_length.pl \
+	$tmpdir/subs/OpenSubtitles2016.en-es.es
+
+    rm $tmpdir/subs/OpenSubtitles2016.en-es.es
+
+    local/subs_check_oov.pl \
+	data/lang/words.txt \
+	$tmpdir/subs/lm/es.txt \
+	> \
+	$tmpdir/subs/lm/oovs.txt
+
+    sort \
+	-u \
+	$tmpdir/subs/lm/oovs.txt \
+	> \
+	data/local/tmp/subs/lm/oovs_uniq.txt
+
+    local/subs_remove_oov_segments.pl
+fi
+
+if [ $stage -le 5 ]; then
+    local/subs_prepare_lm.sh
+
+    utils/format_lm.sh \
+	data/lang \
+	data/local/lm/subs_lm_threegram.arpa.gz \
+	data/local/dict/lexicon.txt \
+	data/lang_test_subs
+
     # extract acoustic features
     mkdir -p exp
 
@@ -282,9 +333,7 @@ if [ $stage -le 4 ]; then
 	utils/fix_data_dir.sh \
 	    data/$fld || exit 1;
     done
-fi
 
-if [ $stage -le 5 ]; then
     echo "monophone training"
     steps/train_mono.sh \
 	--nj 4 \
@@ -296,7 +345,7 @@ if [ $stage -le 5 ]; then
     # evaluation
     (
 	# make decoding graph for monophones with 2 lm
-	for l in simple gplm; do
+	for l in simple gplm subs; do
 	    utils/mkgraph.sh \
 		data/lang_test_${l} \
 		exp/mono \
@@ -338,7 +387,7 @@ if [ $stage -le 6 ]; then
     # test cd gmm hmm models
     # make decoding graphs for tri1
     (
-	for l in simple gplm; do
+	for l in simple gplm subs; do
 	    utils/mkgraph.sh \
 		data/lang_test_${l} \
 		exp/tri1 \
@@ -378,7 +427,7 @@ if [ $stage -le 7 ]; then
 
     (
 	#  make decoding FSTs for tri2b models
-	for l in simple gplm; do
+	for l in simple gplm subs; do
 	    utils/mkgraph.sh \
 		data/lang_test_${l} \
 		exp/tri2b \
@@ -429,7 +478,7 @@ fi
 if [ $stage -le 8 ]; then
     (
 	# make decoding graphs for SAT models
-	for l in simple gplm; do
+	for l in simple gplm subs; do
 	    utils/mkgraph.sh \
 		data/lang_test_${l} \
 		exp/tri3b \
