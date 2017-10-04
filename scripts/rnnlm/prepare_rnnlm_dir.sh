@@ -86,7 +86,7 @@ if [ $stage -le 3 ]; then
     else
       unigram_opt=
     fi
-    rnnlm/get_word_features.py $unigram_opt \
+    rnnlm/get_word_features.py $unigram_opt --treat-as-bos='#0' \
       $dir/config/words.txt $dir/config/features.txt >$dir/word_feats.txt
   else
     [ -f $dir/word_feats.txt ] && rm $dir/word_feats.txt
@@ -157,6 +157,8 @@ if [ $stage -le 7 ]; then
     num_splits=$(cat $dir/text/info/num_splits)
     text_files=$(for n in $(seq $num_splits); do echo -n $dir/text/$n.txt ''; done)
     vocab_size=$(tail -n 1 $dir/config/words.txt | awk '{print $NF + 1}')
+    bos_symbol=`grep "<s>" $dir/config/words.txt | awk '{print $2}'`
+    eos_symbol=`grep "</s>" $dir/config/words.txt | awk '{print $2}'`
 
     # this prints some nontrivial log information, so run using '$cmd' to ensure
     # the output gets saved.
@@ -164,6 +166,7 @@ if [ $stage -le 7 ]; then
     # the size of the sampling LM.
     $cmd $dir/log/prepare_sampling_lm.log \
          rnnlm-get-sampling-lm --unigram-factor=$unigram_factor \
+              --bos-symbol=$bos_symbol --eos-symbol=$eos_symbol \
               --vocab-size=$vocab_size  "cat $text_files|" $dir/sampling.lm
     echo "$0: done estimating LM for sampling."
   else

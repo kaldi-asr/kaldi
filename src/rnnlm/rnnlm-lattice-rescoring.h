@@ -42,8 +42,6 @@ class KaldiRnnlmDeterministicFst
 
   // Does not take ownership.
   KaldiRnnlmDeterministicFst(int32 max_ngram_order,
-      const std::string &rnn_wordlist,
-      const std::string &word_symbol_table_rxfilename,
       const RnnlmComputeStateInfo &info);
   ~KaldiRnnlmDeterministicFst();
 
@@ -60,25 +58,12 @@ class KaldiRnnlmDeterministicFst
   virtual bool GetArc(StateId s, Label ilabel, fst::StdArc* oarc);
 
  private:
-  std::vector<int32> fst_label_to_rnn_label_;
-  std::vector<std::string> rnn_label_to_word_;
-  std::vector<std::string> fst_label_to_word_;
-
-  int32 full_voc_size_;
-
-  string bos_symbol_;
-  string eos_symbol_;
-  string oos_symbol_;
-  string brk_symbol_;
-  int32 bos_index_;
-  int32 eos_index_;
-  int32 oos_index_;
-  int32 brk_index_;
-
   typedef unordered_map
       <std::vector<Label>, StateId, VectorHasher<Label> > MapType;
   StateId start_state_;
   int32 max_ngram_order_;
+  int32 bos_index_;
+  int32 eos_index_;
 
   MapType wseq_to_state_;
 
@@ -88,9 +73,6 @@ class KaldiRnnlmDeterministicFst
   // mapping from state-id to RNNLM states
   // the pointers are owned here
   std::vector<RnnlmComputeState*> state_to_rnnlm_state_;
-
-  void ReadFstWordSymbolTableAndRnnWordlist(const std::string &rnn_in_wordlist,
-      const std::string &word_symbol_table_rxfilename);
 
 };
 

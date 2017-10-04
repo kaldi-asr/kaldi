@@ -60,6 +60,9 @@ for f in $dir/config/{words,data_weights,oov}.txt \
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1
 done
 
+bos_symbol=`grep "<s>" $dir/config/words.txt | awk '{print $2}'`
+eos_symbol=`grep "</s>" $dir/config/words.txt | awk '{print $2}'`
+
 # set some variables and check more files.
 num_splits=$(cat $dir/text/info/num_splits)
 num_repeats=$(cat $dir/text/info/num_repeats)
@@ -140,7 +143,8 @@ while [ $x -lt $num_iters ]; do
     else gpu_opt=''; queue_gpu_opt=''; fi
     [ -f $dir/.error ] && rm $dir/.error
     $cmd $queue_gpu_opt $dir/log/compute_prob.$x.log \
-       rnnlm-get-egs $(cat $dir/special_symbol_opts.txt) --vocab-size=$vocab_size $dir/text/dev.txt ark:- \| \
+       rnnlm-get-egs $(cat $dir/special_symbol_opts.txt) \
+                     --vocab-size=$vocab_size $dir/text/dev.txt ark:- \| \
        rnnlm-compute-prob $gpu_opt $dir/$x.raw "$word_embedding" ark:- || touch $dir/.error &
 
     if [ $x -gt 0 ]; then
