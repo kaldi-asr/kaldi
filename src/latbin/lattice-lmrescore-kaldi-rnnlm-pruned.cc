@@ -101,22 +101,23 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 7) {
+    if (po.NumArgs() != 5) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string lm_to_subtract_rxfilename, lats_rspecifier, rnn_wordlist,
-        word_embedding_rxfilename, word_symbols_rxfilename, rnnlm_rxfilename,
-        lats_wspecifier;
+    if (opts.bos_index == -1 || opts.eos_index == -1) {
+      KALDI_ERR << "must set --bos-symbol and --eos-symbol options";
+    }
+
+    std::string lm_to_subtract_rxfilename, lats_rspecifier,
+                word_embedding_rxfilename, rnnlm_rxfilename, lats_wspecifier;
 
     lm_to_subtract_rxfilename = po.GetArg(1),
-    word_symbols_rxfilename = po.GetArg(2);
-    lats_rspecifier = po.GetArg(3);
-    rnn_wordlist = po.GetArg(4);
-    word_embedding_rxfilename = po.GetArg(5);
-    rnnlm_rxfilename = po.GetArg(6);
-    lats_wspecifier = po.GetArg(7);
+    word_embedding_rxfilename = po.GetArg(2);
+    rnnlm_rxfilename = po.GetArg(3);
+    lats_rspecifier = po.GetArg(4);
+    lats_wspecifier = po.GetArg(5);
 
     KALDI_LOG << "Reading old LMs...";
     VectorFst<StdArc> *lm_to_subtract_fst = ReadAndPrepareLmFst(
@@ -146,10 +147,7 @@ int main(int argc, char *argv[]) {
     int32 num_done = 0, num_err = 0;
 
     nnet3::KaldiRnnlmDeterministicFst* lm_to_add_orig = 
-         new nnet3::KaldiRnnlmDeterministicFst(max_ngram_order,
-                                               rnn_wordlist,
-                                               word_symbols_rxfilename,
-                                               info);
+         new nnet3::KaldiRnnlmDeterministicFst(max_ngram_order, info);
 
     for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
       fst::DeterministicOnDemandFst<StdArc> *lm_to_add =
@@ -174,10 +172,8 @@ int main(int argc, char *argv[]) {
 
       // Composes lattice with language model.
       CompactLattice composed_clat;
-      ComposeCompactLatticePruned(compose_opts,
-                                  clat,
-                                  &combined_lms,
-                                  &composed_clat);
+      ComposeCompactLatticePruned(compose_opts, clat,
+                                  &combined_lms, &composed_clat);
 
       lm_to_add_orig->Clear();
 

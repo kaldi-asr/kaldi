@@ -39,8 +39,6 @@ data=$3
 indir=$4
 outdir=$5
 
-rescoring_binary=lattice-lmrescore-kaldi-rnnlm-pruned
-
 oldlm=$oldlang/G.fst
 
 [ ! -f $oldlm ] && echo "$0: Missing file $oldlm" && exit 1;
@@ -57,6 +55,9 @@ awk -v n=$0 -v w=$weight 'BEGIN {if (w < 0 || w > 1) {
 
 acwt=`perl -e "print (1.0/$inv_acwt);"`
 
+bos_symbol=`grep "<s>" $rnnlm_dir/config/words.txt | awk '{print $2}'`
+eos_symbol=`grep "</s>" $rnnlm_dir/config/words.txt | awk '{print $2}'`
+
 word_embedding=
 if [ -f $rnnlm_dir/word_embedding.final.mat ]; then
   word_embedding=$rnnlm_dir/word_embedding.final.mat
@@ -69,15 +70,16 @@ nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
 
 $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
-  $rescoring_binary --lm-scale=$weight \
-  --acoustic-scale=$acwt \
-  --max-ngram-order=$max_ngram_order \
-  $oldlm $oldlang/words.txt "ark:gunzip -c $indir/lat.JOB.gz|" $rnnlm_dir/config/words.txt $word_embedding "$rnnlm_dir/final.raw" \
-  "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
+  lattice-lmrescore-kaldi-rnnlm-pruned --lm-scale=$weight \
+    --bos-symbol=$bos_symbol --eos-symbol=$eos_symbol \
+    --acoustic-scale=$acwt --max-ngram-order=$max_ngram_order \
+    $oldlm $word_embedding "$rnnlm_dir/final.raw" \
+    "ark:gunzip -c $indir/lat.JOB.gz|" "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 
 if ! $skip_scoring ; then
   err_msg="Not scoring because local/score.sh does not exist or not executable."
   [ ! -x local/score.sh ] && echo $err_msg && exit 1;
+  echo local/score.sh --cmd "$cmd" $data $oldlang $outdir
   local/score.sh --cmd "$cmd" $data $oldlang $outdir
 else
   echo "Not scoring because requested so..."
