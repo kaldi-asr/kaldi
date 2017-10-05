@@ -24,9 +24,6 @@ recordings_transcripts=$datadir/transcripts/heroico-recordings.txt
 # usma is all recited
 usma_transcripts=$datadir/transcripts/usma-prompts.txt
 
-# location of a reference language model
-lm=http://www.csl.uni-bremen.de/GlobalPhone/lm/SP.3gram.lm.gz
-
 # location of subs text data
 subsdata=http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2016/en-es.txt.zip
 
@@ -246,17 +243,6 @@ if [ $stage -le 3 ]; then
 	data/lang_test_simple
 
     mkdir -p $tmpdir/lm
-    # retrieve a reference language model
-    wget \
-	-O $tmpdir/lm/ES.3gram.lm.gz \
-	$lm
-
-    utils/format_lm.sh \
-	data/lang \
-	data/local/tmp/lm/ES.3gram.lm.gz \
-	data/local/dict/lexicon.txt \
-	data/lang_test_gplm
-
     mkdir -p $tmpdir/subs/lm
 
     # download  subs text data
@@ -270,7 +256,7 @@ if [ $stage -le 3 ]; then
 
     unzip es.zip
 
-
+    # delete paralell parts of the subs corpus
     rm es.zip OpenSubtitles2016.en-es.en OpenSubtitles2016.en-es.ids
 
     cd ../../../..
@@ -345,7 +331,7 @@ if [ $stage -le 5 ]; then
     # evaluation
     (
 	# make decoding graph for monophones with 2 lm
-	for l in simple gplm subs; do
+	for l in simple subs; do
 	    utils/mkgraph.sh \
 		data/lang_test_${l} \
 		exp/mono \
@@ -387,7 +373,7 @@ if [ $stage -le 6 ]; then
     # test cd gmm hmm models
     # make decoding graphs for tri1
     (
-	for l in simple gplm subs; do
+	for l in simple subs; do
 	    utils/mkgraph.sh \
 		data/lang_test_${l} \
 		exp/tri1 \
@@ -427,7 +413,7 @@ if [ $stage -le 7 ]; then
 
     (
 	#  make decoding FSTs for tri2b models
-	for l in simple gplm subs; do
+	for l in simple subs; do
 	    utils/mkgraph.sh \
 		data/lang_test_${l} \
 		exp/tri2b \
@@ -478,7 +464,7 @@ fi
 if [ $stage -le 8 ]; then
     (
 	# make decoding graphs for SAT models
-	for l in simple gplm subs; do
+	for l in simple subs; do
 	    utils/mkgraph.sh \
 		data/lang_test_${l} \
 		exp/tri3b \
