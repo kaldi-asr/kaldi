@@ -264,24 +264,9 @@ fi
 
 if [ $stage -le 4 ]; then
         # get a sample of the subs corpus for lm training
-    local/subs_restrict_length.pl \
-	$tmpdir/subs/OpenSubtitles2016.en-es.es
+    local/subs_restrict_length.pl
 
     rm $tmpdir/subs/OpenSubtitles2016.en-es.es
-
-    local/subs_check_oov.pl \
-	data/lang/words.txt \
-	$tmpdir/subs/lm/es.txt \
-	> \
-	$tmpdir/subs/lm/oovs.txt
-
-    sort \
-	-u \
-	$tmpdir/subs/lm/oovs.txt \
-	> \
-	data/local/tmp/subs/lm/oovs_uniq.txt
-
-    local/subs_remove_oov_segments.pl
 fi
 
 if [ $stage -le 5 ]; then
