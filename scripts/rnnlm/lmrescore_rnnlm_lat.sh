@@ -64,8 +64,7 @@ oldlm_command="fstproject --project_output=true $oldlm |"
 
 acwt=`perl -e "print (1.0/$inv_acwt);"`
 
-bos_symbol=`grep "<s>" $rnnlm_dir/config/words.txt | awk '{print $2}'`
-eos_symbol=`grep "</s>" $rnnlm_dir/config/words.txt | awk '{print $2}'`
+special_symbol_opts=`cat $dir/special_symbol_opts.txt | sed "s= =\n=g" | egrep "bos|eos" | tr "\n" " "`
 
 word_embedding=
 if [ -f $rnnlm_dir/word_embedding.final.mat ]; then
@@ -88,8 +87,7 @@ if [ "$oldlm" == "$oldlang/G.fst" ]; then
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore --lm-scale=$oldlm_weight \
     "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm_command" ark:-  \| \
-    lattice-lmrescore-kaldi-rnnlm --lm-scale=$weight \
-    --bos-symbol=$bos_symbol --eos-symbol=$eos_symbol \
+    lattice-lmrescore-kaldi-rnnlm --lm-scale=$weight $special_symbol_opts \
     --max-ngram-order=$max_ngram_order $normalize_opt \
     $word_embedding "$rnnlm_dir/final.raw" ark:- \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
