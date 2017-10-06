@@ -1,4 +1,4 @@
-// latbin/lattice-lmrescore-kaldi-rnnlm.cc
+// latbin/lattice-lmrescore-kaldi-rnnlm-pruned.cc
 
 // Copyright 2017 Johns Hopkins University (author: Daniel Povey)
 //           2017 Yiming Wang
@@ -67,17 +67,17 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Rescores lattice with rnnlm. The LM will be wrapped into the\n"
         "DeterministicOnDemandFst interface and the rescoring is done by\n"
-        "composing with the wrapped LM using a special type of composition\n"
+        "composing with the wrapped LM using a pruned composition\n"
         "algorithm. Determinization will be applied on the composed lattice.\n"
         "\n"
         "Usage: lattice-lmrescore-kaldi-rnnlm-pruned [options] \\\n"
-        "             <old-lm-rxfilename> \\\n" // TODO(hxu)
-        "             <word-symbol-table-rxfilename> <lattice-rspecifier> \\\n"
-        "             <rnnlm-wordlist> <embedding-file>  \\\n"
-        "             <raw-rnnlm-rxfilename> <lattice-wspecifier>\n"
-        " e.g.: lattice-lmrescore-kaldi-rnnlm --lm-scale=-1.0 fst_words.txt \\\n"
-        "              ark:in.lats rnn_words.txt word_embedding.mat \\\n"
-        "              final.raw ark:out.lats\n";
+        "             <old-lm-rxfilename> <embedding-file> \\\n"
+        "             <raw-rnnlm-rxfilename> \\\n"
+        "             <lattice-rspecifier> <lattice-wspecifier>\n"
+        " e.g.: lattice-lmrescore-kaldi-rnnlm-pruned --lm-scale=-1.0 fst_words.txt \\\n"
+        "              --bos-symbol=1 --eos-symbol=2 \\\n"
+        "              data/lang_test/G.fst word_embedding.mat \\\n"
+        "              final.raw ark:in.lats ark:out.lats\n";
 
     ParseOptions po(usage);
     nnet3::RnnlmComputeStateComputationOptions opts;
@@ -122,10 +122,10 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Reading old LMs...";
     VectorFst<StdArc> *lm_to_subtract_fst = ReadAndPrepareLmFst(
         lm_to_subtract_rxfilename);
-    fst::BackoffDeterministicOnDemandFst<StdArc> lm_to_subtract_det_backoff(
-        *lm_to_subtract_fst);
-    fst::ScaleDeterministicOnDemandFst lm_to_subtract_det_scale(
-        -lm_scale, &lm_to_subtract_det_backoff);
+    fst::BackoffDeterministicOnDemandFst<StdArc>
+              lm_to_subtract_det_backoff(*lm_to_subtract_fst);
+    fst::ScaleDeterministicOnDemandFst
+              lm_to_subtract_det_scale(-lm_scale, &lm_to_subtract_det_backoff);
 
     kaldi::nnet3::Nnet rnnlm;
     ReadKaldiObject(rnnlm_rxfilename, &rnnlm);

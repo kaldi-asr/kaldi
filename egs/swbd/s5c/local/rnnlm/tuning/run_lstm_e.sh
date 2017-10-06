@@ -2,13 +2,19 @@
 
 # Copyright 2012  Johns Hopkins University (author: Daniel Povey)  Tony Robinson
 #           2015  Guoguo Chen
+#           2017  Hainan Xu
+
+# This script trains LMs on the swbd LM-training data.
+# This script takes no command-line arguments but takes the --cmd option.
 
 # Begin configuration section.
 cmd=run.pl
-dir=exp/rnnlm_lstm_a
-embedding_dim=800
+dir=exp/rnnlm_lstm_e
+embedding_dim=1024
+lstm_rpd=256
+lstm_nrpd=256
 stage=-10
-train_stage=0
+train_stage=-10
 
 . utils/parse_options.sh
 
@@ -20,7 +26,7 @@ set -e
 
 for f in $text $lexicon; do
   [ ! -f $f ] && \
-    echo "$0: expected file $f to exist; search for local/swbd1_data_prep.sh and utils/prepare_lang.sh in run.sh" && exit 1
+    echo "$0: expected file $f to exist; search for local/wsj_extend_dict.sh in run.sh" && exit 1
 done
 
 if [ $stage -le 0 ]; then
@@ -31,17 +37,16 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  # the training scripts require that <s>, </s> and <brk> be present in a particular
-  # order.
-  awk '{print $1}' $lexicon | sort | uniq | \
-    awk 'BEGIN{print "<eps> 0";print "<s> 1"; print "</s> 2"; print "<brk> 3";n=4;} {print $1, n++}' \
-        >$dir/config/words.txt
+  cp data/lang/words.txt $dir/config/
+  n=`cat $dir/config/words.txt | wc -l`
+  echo "<brk> $n" >> $dir/config/words.txt
+
   # words that are not present in words.txt but are in the training or dev data, will be
   # mapped to <SPOKEN_NOISE> during training.
   echo "<unk>" >$dir/config/oov.txt
 
   cat > $dir/config/data_weights.txt <<EOF
-swbd  1   1.0
+swbd   1   1.0
 EOF
 
   rnnlm/get_unigram_probs.py --vocab-file=$dir/config/words.txt \
@@ -57,8 +62,11 @@ EOF
 
   cat >$dir/config/xconfig <<EOF
 input dim=$embedding_dim name=input
-lstm-layer name=lstm1 cell-dim=$embedding_dim 
-lstm-layer name=lstm2 cell-dim=$embedding_dim 
+relu-renorm-layer name=tdnn1 dim=$embedding_dim input=Append(0, IfDefined(-1))
+fast-lstmp-layer name=lstm1 cell-dim=$embedding_dim recurrent-projection-dim=$lstm_rpd non-recurrent-projection-dim=$lstm_nrpd
+relu-renorm-layer name=tdnn2 dim=$embedding_dim input=Append(0, IfDefined(-3))
+fast-lstmp-layer name=lstm2 cell-dim=$embedding_dim recurrent-projection-dim=$lstm_rpd non-recurrent-projection-dim=$lstm_nrpd
+relu-renorm-layer name=tdnn3 dim=$embedding_dim input=Append(0, IfDefined(-3))
 output-layer name=output include-log-softmax=false dim=$embedding_dim
 EOF
   rnnlm/validate_config_dir.sh $text_dir $dir/config
@@ -73,8 +81,8 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  rnnlm/train_rnnlm.sh --initial_effective_lrate 0.05 --stage $train_stage \
-                       --num-epochs 35 --cmd "queue.pl" $dir
+  rnnlm/train_rnnlm.sh --num-jobs-initial 1 --num-jobs-final 3 \
+                  --stage $train_stage --num-epochs 10 --cmd "queue.pl" $dir
 fi
 
 exit 0
