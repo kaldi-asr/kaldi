@@ -96,15 +96,13 @@ else
   echo Done downloading brown corpus
 fi
 
-mkdir -p $dir/{train,val_1,val_2,test}
+mkdir -p $dir/{train,test}
 if [ $stage -le 0 ]; then
   local/process_data.py $dl_dir $dir/train --dataset trainset --model_type word || exit 1
-  local/process_data.py $dl_dir $dir/val_1 --dataset validationset1 --model_type word || exit 1
-  local/process_data.py $dl_dir $dir/val_2 --dataset validationset2 --model_type word || exit 1
+  local/process_data.py $dl_dir $dir/train --dataset validationset1 --model_type word || exit 1
+  local/process_data.py $dl_dir $dir/train --dataset validationset2 --model_type word || exit 1
   local/process_data.py $dl_dir $dir/test --dataset testset --model_type word || exit 1
 
   utils/utt2spk_to_spk2utt.pl $dir/train/utt2spk > $dir/train/spk2utt
-  utils/utt2spk_to_spk2utt.pl $dir/val_1/utt2spk > $dir/val_1/spk2utt
-  utils/utt2spk_to_spk2utt.pl $dir/val_2/utt2spk > $dir/val_2/spk2utt
   utils/utt2spk_to_spk2utt.pl $dir/test/utt2spk > $dir/test/spk2utt
 fi

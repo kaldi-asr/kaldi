@@ -23,13 +23,13 @@ args = parser.parse_args()
 
 ### main ###
 text_file = os.path.join(args.out_dir + '/', 'text.txt')
-text_fh = open(text_file, 'w+')
+text_fh = open(text_file, 'a+')
 
 utt2spk_file = os.path.join(args.out_dir + '/', 'utt2spk')
-utt2spk_fh = open(utt2spk_file, 'w+')
+utt2spk_fh = open(utt2spk_file, 'a+')
 
 image_file = os.path.join(args.out_dir + '/', 'images.scp')
-image_fh = open(image_file, 'w+')
+image_fh = open(image_file, 'a+')
 
 dataset_path = os.path.join(args.database_path,
                             'largeWriterIndependentTextLineRecognitionTask',

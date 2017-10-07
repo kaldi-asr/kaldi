@@ -5,6 +5,7 @@ nj=20
 color=1
 data_dir=data
 exp_dir=exp
+augment=true
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . utils/parse_options.sh  # e.g. this parses the --stage option if supplied.
@@ -13,41 +14,47 @@ if [ $stage -le 0 ]; then
   # data preparation
   local/prepare_data.sh --nj $nj --dir $data_dir
 fi
-mkdir -p $data_dir/{train,val_1,val_2,test}/data
-
-numSilStates=4
-numStates=8
+mkdir -p $data_dir/{train,test}/data
 
 if [ $stage -le 1 ]; then
-  local/prepare_dict.sh $data_dir/train/ $data_dir/test/ $data_dir/train/dict
-  utils/prepare_lang.sh --num-sil-states $numSilStates --num-nonsil-states $numStates \
-    $data_dir/train/dict "<unk>" $data_dir/lang/temp $data_dir/lang
-fi
-
-if [ $stage -le 2 ]; then
-  #cp -R $data_dir/lang -T $data_dir/lang_test
-
-  #cp $data_dir/train/text $data_dir/train/text_copy
-  #cat $data_dir/test/text | awk '{ for(i=2;i<=NF;i++) print $i;}' | sort -u >test_words.txt
-  #cat $data_dir/train/text | awk '{ for(i=2;i<=NF;i++) print $i;}' | sort -u >train_words.txt
-  #filter_scp.pl --exclude train_words.txt test_words.txt >diff.txt
-  #cat diff.txt | awk '{ print "id " $1 }' >> $data_dir/train/text_copy
-  #local/prepare_lm.sh $data_dir/train/text_copy $data_dir/lang_test || exit 1;
-  local/iam_train_lm.sh
-  cp -R $data_dir/lang -T $data_dir/lang_test_corpus
-  gunzip -k -f data/local/local_lm/data/arpa/3gram_big.arpa.gz
-  local/prepare_lm.sh data/local/local_lm/data/arpa/3gram_big.arpa $data_dir/lang_test_corpus || exit 1;
-  local/run_unk_model.sh
-fi
-
-if [ $stage -le 3 ]; then
-  for f in train val_1 val_2 test; do
+  for f in test; do
     local/make_feature_vect.py $data_dir/$f --scale-size 40 | \
       copy-feats --compress=true --compression-method=7 \
       ark:- ark,scp:$data_dir/$f/data/images.ark,$data_dir/$f/feats.scp || exit 1
 
     steps/compute_cmvn_stats.sh $data_dir/$f || exit 1;
   done
+
+  if [ $augment = true ]; then
+    # create a backup directory to store text, utt2spk and image.scp file
+    mkdir -p $data_dir/train/backup
+    mv $data_dir/train/text.txt $data_dir/train/utt2spk $data_dir/train/images.scp $data_dir/train/backup/
+    local/augment_and_make_feature_vect.py $data_dir/train --scale-size 40 --vertical-shift 10 | \
+      copy-feats --compress=true --compression-method=7 \
+      ark:- ark,scp:$data_dir/train/data/images.ark,$data_dir/train/feats.scp || exit 1
+    utils/utt2spk_to_spk2utt.pl $data_dir/train/utt2spk > $data_dir/train/spk2utt
+  else
+    local/make_feature_vect.py $data_dir/train --scale-size 40 | \
+      copy-feats --compress=true --compression-method=7 \
+      ark:- ark,scp:$data_dir/train/data/images.ark,$data_dir/train/feats.scp || exit 1
+  fi
+    steps/compute_cmvn_stats.sh $data_dir/train || exit 1;
+fi
+numSilStates=4
+numStates=8
+
+if [ $stage -le 2 ]; then
+  local/prepare_dict.sh $data_dir/train/ $data_dir/test/ $data_dir/train/dict
+  utils/prepare_lang.sh --num-sil-states $numSilStates --num-nonsil-states $numStates \
+    $data_dir/train/dict "<unk>" $data_dir/lang/temp $data_dir/lang
+fi
+
+if [ $stage -le 3 ]; then
+  local/iam_train_lm.sh
+  cp -R $data_dir/lang -T $data_dir/lang_test_corpus
+  gunzip -k -f data/local/local_lm/data/arpa/3gram_big.arpa.gz
+  local/prepare_lm.sh data/local/local_lm/data/arpa/3gram_big.arpa $data_dir/lang_test_corpus || exit 1;
+  local/run_unk_model.sh
 fi
 
 num_gauss=10000
@@ -150,7 +157,6 @@ if [ $stage -le 13 ]; then
   local/chain/run_cnn_1a.sh --stage 0 \
    --gmm tri3 \
    --ali tri3_ali \
-   --nnet3_affix $nnet3_affix \
    --affix $affix \
    --lang_test lang_unk
 fi
@@ -159,7 +165,6 @@ if [ $stage -le 14 ]; then
   local/chain/run_cnn_chainali_1a.sh --stage 0 \
    --gmm tri3 \
    --ali tri3_ali \
-   --nnet3_affix $nnet3_affix \
    --affix $affix \
    --chain_model_dir $exp_dir/chain${nnet3_affix}/cnn${affix} \
    --lang_test lang_unk
