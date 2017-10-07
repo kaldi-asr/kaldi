@@ -5,7 +5,7 @@ nj=20
 color=1
 data_dir=data
 exp_dir=exp
-augment=true
+augment=false
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . utils/parse_options.sh  # e.g. this parses the --stage option if supplied.
@@ -17,13 +17,10 @@ fi
 mkdir -p $data_dir/{train,test}/data
 
 if [ $stage -le 1 ]; then
-  for f in test; do
-    local/make_feature_vect.py $data_dir/$f --scale-size 40 | \
-      copy-feats --compress=true --compression-method=7 \
-      ark:- ark,scp:$data_dir/$f/data/images.ark,$data_dir/$f/feats.scp || exit 1
-
-    steps/compute_cmvn_stats.sh $data_dir/$f || exit 1;
-  done
+  local/make_feature_vect.py $data_dir/test --scale-size 40 | \
+    copy-feats --compress=true --compression-method=7 \
+    ark:- ark,scp:$data_dir/test/data/images.ark,$data_dir/test/feats.scp || exit 1
+  steps/compute_cmvn_stats.sh $data_dir/test || exit 1;
 
   if [ $augment = true ]; then
     # create a backup directory to store text, utt2spk and image.scp file
@@ -38,8 +35,9 @@ if [ $stage -le 1 ]; then
       copy-feats --compress=true --compression-method=7 \
       ark:- ark,scp:$data_dir/train/data/images.ark,$data_dir/train/feats.scp || exit 1
   fi
-    steps/compute_cmvn_stats.sh $data_dir/train || exit 1;
+  steps/compute_cmvn_stats.sh $data_dir/train || exit 1;
 fi
+
 numSilStates=4
 numStates=8
 

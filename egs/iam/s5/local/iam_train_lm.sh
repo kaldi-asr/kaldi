@@ -59,7 +59,7 @@ if [ $stage -le 0 ]; then
   rm ${dir}/data/text/* 2>/dev/null || true
   
   # Using LOB and brown corpus.
-  head 86858 data/download/lobcorpus/0167/download/LOB_COCOA/lob.txt > ${dir}/data/text/text.txt
+  head -86858 data/download/lobcorpus/0167/download/LOB_COCOA/lob.txt > ${dir}/data/text/text.txt
   cat data/download/browncorpus/brown.txt >> ${dir}/data/text/text.txt
   #cat test_words.txt  >> ${dir}/data/text/text.txt
   # use a subset of the annotated training data as the dev set .
