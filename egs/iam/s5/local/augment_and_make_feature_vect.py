@@ -215,7 +215,7 @@ def image_augment(im, out_fh, image_id):
 
 # main #
 new_scp_list = list()
-text_file = os.path.join(args.dir, 'backup', 'text.txt')
+text_file = os.path.join(args.dir, 'backup', 'text')
 text_dict = dict()  # stores imageID and text
 
 with open(text_file) as text_fh:
@@ -260,7 +260,7 @@ if args.out_ark == '-':
 else:
     out_fh = open(args.out_ark, 'wb')
 
-text_file = os.path.join(args.dir, 'text.txt')
+text_file = os.path.join(args.dir, 'text')
 text_fh = open(text_file, 'w+')
 
 utt2spk_file = os.path.join(args.dir, 'utt2spk')

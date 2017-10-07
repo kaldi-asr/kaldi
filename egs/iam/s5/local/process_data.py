@@ -22,7 +22,7 @@ parser.add_argument('--model_type', type=str,default='word',
 args = parser.parse_args()
 
 ### main ###
-text_file = os.path.join(args.out_dir + '/', 'text.txt')
+text_file = os.path.join(args.out_dir + '/', 'text')
 text_fh = open(text_file, 'a+')
 
 utt2spk_file = os.path.join(args.out_dir + '/', 'utt2spk')

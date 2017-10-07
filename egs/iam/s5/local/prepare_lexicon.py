@@ -14,7 +14,7 @@ args = parser.parse_args()
 char = {}
 lex = {}
 
-text_path = os.path.join(args.database_path,'text.txt')
+text_path = os.path.join(args.database_path,'text')
 with open(text_path) as f:
   for line in f:
     line = line.strip()
@@ -27,7 +27,7 @@ with open(text_path) as f:
         lex[line_vect[i]] = entry
 
 if args.test_text > 1:
-  text_path = os.path.join(args.test_text,'text.txt')
+  text_path = os.path.join(args.test_text,'text')
   with open(text_path) as f:
     for line in f:
       line = line.strip()

@@ -66,10 +66,10 @@ if [ $stage -le 0 ]; then
   # Note: the name 'dev' is treated specially by pocolm, it automatically
   # becomes the dev set.
   
-  head -n $num_dev_sentences < data/train/text.txt | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
+  head -n $num_dev_sentences < data/train/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
   # .. and the rest of the training data as an additional data source.
   # we can later fold the dev data into this.
-  tail -n +$[$num_dev_sentences+1] < data/train/text.txt | cut -d " " -f 2- >  ${dir}/data/text/ted.txt
+  tail -n +$[$num_dev_sentences+1] < data/train/text | cut -d " " -f 2- >  ${dir}/data/text/ted.txt
 
   # for reporting perplexities, we'll use the "real" dev set.
   # (a subset of the training data is used as ${dir}/data/text/ted.txt to work
