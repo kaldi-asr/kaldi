@@ -58,4 +58,5 @@ lex_fh = open(lex_file, 'w+')
 #  char_count = char_count + 1
 
 for key in sorted(lex):
-  lex_fh.write(key + " " + lex[key] + "\n")
+  if lex[key]:
+    lex_fh.write(key + " " + lex[key] + "\n")

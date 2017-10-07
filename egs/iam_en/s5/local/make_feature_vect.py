@@ -6,6 +6,7 @@ import sys
 import scipy.io as sio
 import numpy as np
 from scipy import misc
+from scipy import ndimage
 
 from signal import signal, SIGPIPE, SIG_DFL
 signal(SIGPIPE,SIG_DFL)
@@ -14,6 +15,8 @@ parser = argparse.ArgumentParser(description="""Generates and saves the feature 
 parser.add_argument('dir', type=str, help='directory of images.scp and is also output directory')
 parser.add_argument('--out-ark', type=str, default='-', help='where to write the output feature file')
 parser.add_argument('--scale-size', type=int, default=40, help='size to scale the height of all images')
+parser.add_argument('--color', type=int, default=3, help='number of color channels for image')
+parser.add_argument('--pad', type=bool, default=False, help='pad the left and right of image with zeros')
 
 args = parser.parse_args()
 
@@ -63,17 +66,26 @@ with open(data_list_path) as f:
         line_vect = line.split(' ')
         image_id = line_vect[0]
         image_path = line_vect[1]
-        im = misc.imread(image_path)
+        try:
+            im = misc.imread(image_path)
+        except:
+            im = np.zeros((40,80))
         im_scale = get_scaled_image(im)
         
-        #W = im_scale.shape[1]
-        #H = im_scale.shape[0]
-        #C = 3
-        #im_three = np.dstack((im_scale, im_scale, im_scale))
-        #data = np.reshape(np.transpose(im_three, (1, 0, 2)), (W, H * C))
-        
-        data = np.transpose(im_scale, (1, 0))
-        #data = im_scale
+        if args.pad:
+            pad = np.ones((args.scale_size, 10)) * 255
+            im_data = np.hstack((pad, im_scale, pad))
+        else:
+            im_data = im_scale
+
+        if args.color == 3:
+            W = im_data.shape[1]
+            H = im_data.shape[0]
+            C = 3
+            im_three = np.dstack((im_data, im_data, im_data))
+            data = np.reshape(np.transpose(im_three, (1, 0, 2)), (W, H * C))
+        elif args.color == 1:
+            data = np.transpose(im_data, (1, 0))
 
         data = np.divide(data, 255.0)
         write_kaldi_matrix(out_fh, data, image_id)
