@@ -1,9 +1,0 @@
-./run-1-main-unicode.sh --unicode-lexicon true --morfessor true --tri5-only true
-
-# For tri5
-./run-4-anydecode.sh --fast-path false --tri5-only true --skip-kws true (for tri5 only)
-
-# For lstm
-./run-4-anydecode.sh --fast-path false --tri5-only true --skip-kws true --data-only true
-./local/nnet3/run_lstm.sh
-./run-4-anydecode.sh --nnet3-model nnet3/lstm_sp --is-rnn true --dir dev10h.pem --skip-kws true

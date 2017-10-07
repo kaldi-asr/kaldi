@@ -125,7 +125,7 @@ num_lat_jobs=$(cat $latdir/num_jobs) || exit 1;
 
 # Get list of validation utterances.
 
-frame_shift=$(utils/data/get_frame_shift.sh $data)
+frame_shift=$(utils/data/get_frame_shift.sh $data) || exit 1
 utils/data/get_utt2dur.sh $data
 
 cat $data/utt2dur | \

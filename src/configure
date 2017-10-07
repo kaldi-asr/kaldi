@@ -63,7 +63,8 @@ Configuration options:
   --shared              Build and link against shared libraries [default=no]
   --use-cuda            Build with CUDA [default=yes]
   --cudatk-dir=DIR      CUDA toolkit directory
-  --double-precision    Build with double precision floats [default=no]
+  --double-precision    Build with BaseFloat set to double if yes [default=no],
+                        mostly useful for testing purposes.
   --static-fst          Build with static OpenFst libraries [default=no]
   --fst-root=DIR        OpenFst root directory [default=../tools/openfst/]
   --fst-version=STR     OpenFst version string

@@ -109,6 +109,8 @@ int main(int argc, char *argv[]) {
           prob_computer.Compute(*eg_iter);
         const SimpleObjectiveInfo *objf_info = prob_computer.GetObjective("output");
         double objf_per_frame = objf_info->tot_objective / objf_info->tot_weight;
+
+        prob_computer.PrintTotalStats();
         const Nnet &nnet_gradient = prob_computer.GetDeriv();
         KALDI_LOG << "At position " << middle
                   << ", objf per frame is " << objf_per_frame;

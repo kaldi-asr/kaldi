@@ -9,11 +9,14 @@
 commonly used in many kaldi python scripts.
 """
 
+from __future__ import print_function
 import argparse
 import logging
 import math
 import os
+import re
 import subprocess
+import sys
 import threading
 
 logger = logging.getLogger(__name__)
@@ -64,6 +67,64 @@ class NullstrToNoneAction(argparse.Action):
             setattr(namespace, self.dest, None)
         else:
             setattr(namespace, self.dest, values)
+
+
+class smart_open(object):
+    """
+    This class is designed to be used with the "with" construct in python
+    to open files. It is similar to the python open() function, but
+    treats the input "-" specially to return either sys.stdout or sys.stdin
+    depending on whether the mode is "w" or "r".
+
+    e.g.: with smart_open(filename, 'w') as fh:
+            print ("foo", file=fh)
+    """
+    def __init__(self, filename, mode="r"):
+        self.filename = filename
+        self.mode = mode
+        assert self.mode == "w" or self.mode == "r"
+
+    def __enter__(self):
+        if self.filename == "-" and self.mode == "w":
+            self.file_handle = sys.stdout
+        elif self.filename == "-" and self.mode == "r":
+            self.file_handle = sys.stdin
+        else:
+            self.file_handle = open(self.filename, self.mode)
+        return self.file_handle
+
+    def __exit__(self, *args):
+        if self.filename != "-":
+            self.file_handle.close()
+
+
+class smart_open(object):
+    """
+    This class is designed to be used with the "with" construct in python
+    to open files. It is similar to the python open() function, but
+    treats the input "-" specially to return either sys.stdout or sys.stdin
+    depending on whether the mode is "w" or "r".
+
+    e.g.: with smart_open(filename, 'w') as fh:
+            print ("foo", file=fh)
+    """
+    def __init__(self, filename, mode="r"):
+        self.filename = filename
+        self.mode = mode
+        assert self.mode == "w" or self.mode == "r"
+
+    def __enter__(self):
+        if self.filename == "-" and self.mode == "w":
+            self.file_handle = sys.stdout
+        elif self.filename == "-" and self.mode == "r":
+            self.file_handle = sys.stdin
+        else:
+            self.file_handle = open(self.filename, self.mode)
+        return self.file_handle
+
+    def __exit__(self, *args):
+        if self.filename != "-":
+            self.file_handle.close()
 
 
 def check_if_cuda_compiled():
@@ -202,9 +263,10 @@ def get_number_of_leaves_from_model(dir):
 def get_number_of_jobs(alidir):
     try:
         num_jobs = int(open('{0}/num_jobs'.format(alidir)).readline().strip())
-    except (IOError, ValueError) as e:
-        raise Exception("Exception while reading the "
-                        "number of alignment jobs: {0}".format(e.errstr))
+    except IOError, ValueError:
+        logger.error("Exception while reading the "
+                     "number of alignment jobs: ", exc_info=True)
+        raise SystemExit(1)
     return num_jobs
 
 
@@ -247,6 +309,9 @@ def get_feat_dim_from_scp(feat_scp):
 
 
 def read_kaldi_matrix(matrix_file):
+    """This function reads a kaldi matrix stored in text format from
+    'matrix_file' and stores it as a list of rows, where each row is a list.
+    """
     try:
         lines = map(lambda x: x.split(), open(matrix_file).readlines())
         first_field = lines[0][0]
@@ -266,7 +331,9 @@ def read_kaldi_matrix(matrix_file):
 
 
 def write_kaldi_matrix(output_file, matrix):
-    # matrix is a list of lists
+    """This function writes the matrix stored as a list of lists
+    into 'output_file' in kaldi matrix text format.
+    """
     with open(output_file, 'w') as f:
         f.write("[ ")
         num_rows = len(matrix)
@@ -282,6 +349,125 @@ def write_kaldi_matrix(output_file, matrix):
             if row_index != num_rows - 1:
                 f.write("\n")
         f.write(" ]")
+
+
+def write_matrix_ascii(file_or_fd, mat, key=None):
+    """This function writes the matrix 'mat' stored as a list of lists
+    in kaldi matrix text format.
+    The destination can be a file or an opened file descriptor.
+    If key is provided, then matrix is written to an archive with the 'key'
+    as the index field.
+    """
+    try:
+        fd = open(file_or_fd, 'w')
+    except TypeError:
+        # 'file_or_fd' is opened file descriptor,
+        fd = file_or_fd
+
+    try:
+        if key is not None:
+            print ("{0} [".format(key),
+                   file=fd)  # ark-files have keys (utterance-id)
+        else:
+            print (" [", file=fd)
+
+        num_cols = 0
+        for i, row in enumerate(mat):
+            line = ' '.join(["{0:f}".format(x) for x in row])
+            if i == 0:
+                num_cols = len(row)
+            elif len(row) != num_cols:
+                raise Exception("All the rows of a matrix are expected to "
+                                "have the same length")
+
+            if i == len(mat) - 1:
+                line += " ]"
+            print (line, file=fd)
+    finally:
+        if fd is not file_or_fd : fd.close()
+
+
+def read_matrix_ascii(file_or_fd):
+    """This function reads a matrix in kaldi matrix text format
+    and stores it as a list of lists.
+    The input can be a file or an opened file descriptor.
+    """
+    try:
+        fd = open(file_or_fd, 'r')
+        fname = file_or_fd
+    except TypeError:
+        # 'file_or_fd' is opened file descriptor,
+        fd = file_or_fd
+        fname = file_or_fd.name
+
+    first = fd.read(2)
+    if first != ' [':
+        logger.error(
+            "Kaldi matrix file %s has incorrect format, "
+            "only text format matrix files can be read by this script",
+            fname)
+        raise RuntimeError
+
+    rows = []
+    while True:
+        line = fd.readline()
+        if len(line) == 0:
+            logger.error("Kaldi matrix file %s has incorrect format; "
+                         "got EOF before end of matrix", fname)
+        if len(line.strip()) == 0 : continue # skip empty line
+        arr = line.strip().split()
+        if arr[-1] != ']':
+            rows.append([float(x) for x in arr])  # not last line
+        else:
+            rows.append([float(x) for x in arr[:-1]])  # lastline
+            return rows
+    if fd is not file_or_fd:
+        fd.close()
+
+
+def read_key(fd):
+  """ [str] = read_key(fd)
+   Read the utterance-key from the opened ark/stream descriptor 'fd'.
+  """
+  str_ = ''
+  while True:
+    char = fd.read(1)
+    if char == '':
+        break
+    if char == ' ':
+        break
+    str_ += char
+  str_ = str_.strip()
+  if str_ == '':
+      return None   # end of file,
+  return str_
+
+
+def read_mat_ark(file_or_fd):
+    """This function reads a kaldi matrix archive in text format
+    and yields a dictionary output indexed by the key (utterance-id).
+    The input can be a file or an opened file descriptor.
+
+    Example usage:
+    mat_dict = { key: mat for key, mat in read_mat_ark(file) }
+    """
+    try:
+        fd = open(file_or_fd, 'r')
+        fname = file_or_fd
+    except TypeError:
+        # 'file_or_fd' is opened file descriptor,
+        fd = file_or_fd
+        fname = file_or_fd.name
+
+    try:
+        key = read_key(fd)
+        while key:
+          mat = read_matrix_ascii(fd)
+          yield key, mat
+          key = read_key(fd)
+    finally:
+        if fd is not file_or_fd:
+            fd.close()
 
 
 def force_symlink(file1, file2):

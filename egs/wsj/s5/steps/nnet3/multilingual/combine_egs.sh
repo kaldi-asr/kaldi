@@ -55,13 +55,14 @@ combine_scp_list=
 
 # read paramter from $egs_dir[0]/info and cmvn_opts
 # to write in multilingual egs_dir.
-check_params="info/feat_dim info/ivector_dim info/left_context info/right_context info/frames_per_eg info/final.ie.id cmvn_opts"
+check_params="info/feat_dim info/ivector_dim info/left_context info/right_context info/frames_per_eg cmvn_opts"
+ivec_dim=`cat ${args[0]}/info/ivector_dim`
+if [ $ivec_dim -ne 0 ];then check_params="$check_params info/final.ie.id"; fi
+
 for param in $check_params; do
-  cat ${args[0]}/$param > $megs_dir/$param || exit 1;
+    cat ${args[0]}/$param > $megs_dir/$param || exit 1;
 done
-cat ${args[0]}/cmvn_opts > $megs_dir/cmvn_opts || exit 1; # caution: the top-level nnet training
-                                                          # script should copy this to its
-                                                          # own dir.
+
 for lang in $(seq 0 $[$num_langs-1]);do
   multi_egs_dir[$lang]=${args[$lang]}
   for f in $required; do
