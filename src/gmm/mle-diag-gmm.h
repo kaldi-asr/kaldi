@@ -57,8 +57,6 @@ struct MleDiagGmmOptions {
     min_gaussian_occupancy  = 10.0;
     min_variance            = 0.001;
     remove_low_count_gaussians = true;
-    variance_floor_value = 0;
-    VFV_dim = 0;
   }
   void Register(OptionsItf *opts) {
     std::string module = "MleDiagGmmOptions: ";
@@ -70,14 +68,6 @@ struct MleDiagGmmOptions {
                  module+"Variance floor (absolute variance).");
     opts->Register("remove-low-count-gaussians", &remove_low_count_gaussians,
                  module+"If true, remove Gaussians that fall below the floors.");
-    opts->Register("variance-floor-value", &variance_floor_value,
-                 module+"Value assigned to all elements of variance_floor_vector.");
-    opts->Register("variance-floor-vector-dim", &VFV_dim,
-                 module+"dimension of variance_floor_vector.");
-  }
-  void create_VFV() {
-    variance_floor_vector.Resize(VFV_dim);
-    variance_floor_vector.Set(variance_floor_value);
   }
 };
 
