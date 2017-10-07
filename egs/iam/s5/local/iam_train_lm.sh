@@ -76,7 +76,7 @@ if [ $stage -le 0 ]; then
   # out interpolation weights.
   # note, we can't put it in ${dir}/data/text/, because then pocolm would use
   # it as one of the data sources.
-  cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
+  cut -d " " -f 2-  < data/test/text.txt  > ${dir}/data/real_dev_set.txt
 
   # get wordlist
   cat ${dir}/data/text/text.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
