@@ -561,7 +561,8 @@ bool ParseOptions::SetOption(const std::string &key,
     *(double_map_[key]) = ToDouble(value);
   } else if (string_map_.end() != string_map_.find(key)) {
     if (!has_equal_sign)
-      KALDI_ERR << "Invalid option --" << key;
+      KALDI_ERR << "Invalid option --" << key
+                << " (option format is --x=y).";
     *(string_map_[key]) = value;
   } else {
     return false;

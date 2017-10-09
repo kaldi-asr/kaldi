@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2013-2015  Brno University of Technology (author: Karel Vesely)
+# Copyright 2013-2017  Brno University of Technology (author: Karel Vesely)
 # Apache 2.0.
 
 # Sequence-discriminative MPE/sMBR training of DNN.
@@ -20,11 +20,15 @@ learn_rate=0.00001
 momentum=0.0
 halving_factor=1.0 #ie. disable halving
 do_smbr=true
-exclude_silphones=true # exclude silphones from approximate accuracy computation
-unkphonelist= # exclude unkphones from approximate accuracy computation (overrides exclude_silphones)
-one_silence_class=true # true : reduce insertions in sMBR/MPE FW/BW, more stable training,
-                       # (all silphones are seen as a single class in the sMBR/MPE FW/BW)
-verbose=1
+one_silence_class=true # if true : all the `silphones' are mapped to a single class in the Forward-backward of sMBR/MPE,
+                       # (this prevents the sMBR from WER explosion, which was happenning with some data).
+                       # if false : the silphone-frames are always counted as 'wrong' in the calculation of the approximate accuracies,
+silphonelist=          # this overrides default silphone-list (for selecting a subset of sil-phones)
+
+unkphonelist=          # dummy deprecated option, for backward compatibility,
+exclude_silphones=     # dummy deprecated option, for backward compatibility,
+
+verbose=0 # 0 No GPU time-stats, 1 with GPU time-stats (slower),
 ivector=
 nnet=  # For non-default location of nnet,
 
@@ -78,7 +82,7 @@ cp $lang/phones.txt $dir
 
 cp $alidir/{final.mdl,tree} $dir
 
-silphonelist=`cat $lang/phones/silence.csl`
+[ -z $silphonelist ] && silphonelist=`cat $lang/phones/silence.csl` # Default 'silphonelist',
 
 #Get the files we will need
 [ -z "$nnet" ] && nnet=$srcdir/$(readlink $srcdir/final.nnet || echo final.nnet);
@@ -99,17 +103,12 @@ cp $feature_transform $dir/final.feature_transform
 model=$dir/final.mdl
 [ -z "$model" ] && echo "Error transition model '$model' does not exist!" && exit 1;
 
-# The argument '--silence-phones=csl' together with '--one-silence-class=true'
-# will cause regrouping of the silenece phones into a single class in the FW/BW
-# which calculates the Loss derivative (the 'new' behavior).
-mpe_silphones_arg= #empty
-$exclude_silphones && mpe_silphones_arg="--silence-phones=$silphonelist" # all silphones
-[ ! -z $unkphonelist ] && mpe_silphones_arg="--silence-phones=$unkphonelist" # unk only
-
-
 # Shuffle the feature list to make the GD stochastic!
 # By shuffling features, we have to use lattices with random access (indexed by .scp file).
 cat $data/feats.scp | utils/shuffle_list.pl --srand $seed > $dir/train.scp
+
+[ -n "$unkphonelist" ] && echo "WARNING: The option '--unkphonelist' is now deprecated. Please remove it from your recipe..."
+[ -n "$exclude_silphones" ] && echo "WARNING: The option '--exclude-silphones' is now deprecated. Please remove it from your recipe..."
 
 ###
 ### PREPARE FEATURE EXTRACTION PIPELINE
@@ -192,7 +191,7 @@ while [ $x -le $num_iters ]; do
        --do-smbr=$do_smbr \
        --verbose=$verbose \
        --one-silence-class=$one_silence_class \
-       $mpe_silphones_arg \
+       ${silphonelist:+ --silence-phones=$silphonelist} \
        $cur_mdl $alidir/final.mdl "$feats" "$lats" "$ali" $dir/$x.nnet
   fi
   cur_mdl=$dir/$x.nnet

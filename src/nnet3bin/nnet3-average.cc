@@ -73,10 +73,10 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    string weights_str;
+    std::string weights_str;
     po.Register("weights", &weights_str, "Colon-separated list of weights, one "
                 "for each input model.  These will be normalized to sum to one.");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() < 2) {
@@ -90,23 +90,23 @@ int main(int argc, char *argv[]) {
 
     Nnet nnet;
     ReadKaldiObject(first_nnet_rxfilename, &nnet);
-    
+
     int32 num_inputs = po.NumArgs() - 1;
 
     std::vector<BaseFloat> model_weights;
     GetWeights(weights_str, num_inputs, &model_weights);
-    
+
     ScaleNnet(model_weights[0], &nnet);
-              
+
     for (int32 i = 2; i <= num_inputs; i++) {
       Nnet src_nnet;
       ReadKaldiObject(po.GetArg(i), &src_nnet);
       AddNnet(src_nnet, model_weights[i - 1], &nnet);
     }
-    
+
 
     WriteKaldiObject(nnet, nnet_wxfilename, binary_write);
-    
+
     KALDI_LOG << "Averaged parameters of " << num_inputs
               << " neural nets, and wrote to " << nnet_wxfilename;
     return 0; // it will throw an exception if there are any problems.
@@ -115,4 +115,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

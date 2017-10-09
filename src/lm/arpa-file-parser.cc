@@ -86,7 +86,9 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
   // Processes "\data\" section.
   bool keyword_found = false;
   while (++line_number_, getline(is, current_line_) && !is.eof()) {
-    if (current_line_.empty()) continue;
+    if (current_line_.find_first_not_of(" \t\n\r") == std::string::npos) {
+      continue;
+    }
 
     TrimTrailingWhitespace(&current_line_);
 
@@ -152,7 +154,9 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
 
     int32 ngram_count = 0;
     while (++line_number_, getline(is, current_line_) && !is.eof()) {
-      if (current_line_.empty()) continue;
+      if (current_line_.find_first_not_of(" \n\t\r") == std::string::npos) {
+        continue;
+      }
       if (current_line_[0] == '\\') {
         TrimTrailingWhitespace(&current_line_);
         std::ostringstream next_keyword;

@@ -42,6 +42,71 @@ VectorFst<StdArc> *ReadFstKaldi(std::string rxfilename) {
   return fst;
 }
 
+Fst<StdArc> *ReadFstKaldiGeneric(std::string rxfilename, bool throw_on_err) {
+  if (rxfilename == "") rxfilename = "-"; // interpret "" as stdin,
+  // for compatibility with OpenFst conventions.
+  kaldi::Input ki(rxfilename);
+  fst::FstHeader hdr;
+  // Read FstHeader which contains the type of FST
+  if (!hdr.Read(ki.Stream(), rxfilename)) {
+    if(throw_on_err) {
+      KALDI_ERR << "Reading FST: error reading FST header from "
+                << kaldi::PrintableRxfilename(rxfilename);
+    } else {
+      KALDI_WARN << "We fail to read FST header from "
+                 << kaldi::PrintableRxfilename(rxfilename) 
+                 << ". A NULL pointer is returned.";
+      return NULL;
+    }
+  }
+  // Check the type of Arc
+  if (hdr.ArcType() != fst::StdArc::Type()) {
+    if(throw_on_err) {
+      KALDI_ERR << "FST with arc type " << hdr.ArcType() << " is not supported.";
+    } else {
+      KALDI_WARN << "Fst with arc type" << hdr.ArcType()
+                 << " is not supported. A NULL pointer is returned.";
+      return NULL;
+    }
+  }
+  // Read the FST
+  FstReadOptions ropts("<unspecified>", &hdr);
+  Fst<StdArc> *fst = NULL;
+  if (hdr.FstType() == "const") {
+    fst = ConstFst<StdArc>::Read(ki.Stream(), ropts);
+  } else if (hdr.FstType() == "vector") {
+    fst = VectorFst<StdArc>::Read(ki.Stream(), ropts);
+  }
+  if (!fst) {
+    if(throw_on_err) {
+     KALDI_ERR << "Could not read fst from "
+               << kaldi::PrintableRxfilename(rxfilename);
+    } else {
+      KALDI_WARN << "Could not read fst from "
+                 << kaldi::PrintableRxfilename(rxfilename)
+                 << ". A NULL pointer is returned.";
+      return NULL;
+    }
+  }
+  return fst;
+}
+
+VectorFst<StdArc> *CastOrConvertToVectorFst(Fst<StdArc> *fst) {
+  // This version currently supports ConstFst<StdArc> or VectorFst<StdArc>         
+  std::string real_type = fst->Type();
+  KALDI_ASSERT(real_type == "vector" || real_type == "const");
+  if (real_type == "vector") {
+    return dynamic_cast<VectorFst<StdArc> *>(fst);
+  } else {
+    // As the 'fst' can't cast to VectorFst, I'm creating a new 
+    // VectorFst<StdArc> initialized by 'fst', and deletes 'fst'.
+    VectorFst<StdArc> *new_fst = new VectorFst<StdArc>(*fst);
+    KALDI_WARN << "The 'fst' is deleted.";
+    delete fst;
+    return new_fst;
+  }
+}
+
 void ReadFstKaldi(std::string rxfilename, fst::StdVectorFst *ofst) {
   fst::StdVectorFst *fst = ReadFstKaldi(rxfilename);
   *ofst = *fst;

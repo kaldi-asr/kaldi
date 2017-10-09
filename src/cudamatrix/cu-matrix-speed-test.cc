@@ -1085,8 +1085,9 @@ template<typename Real> void CudaMatrixSpeedTest() {
 
 
 int main() {
-  int32 loop = 0;
+  SetVerboseLevel(1);
 #if HAVE_CUDA == 1
+  int32 loop = 0;
   for (loop = 0; loop < 2; loop++) {
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
@@ -1108,5 +1109,5 @@ int main() {
   } // No for loop if 'HAVE_CUDA != 1',
   CuDevice::Instantiate().PrintProfile();
 #endif
-  std::cout << "Tests succeeded.\n";
+  KALDI_LOG << "Tests succeeded.";
 }

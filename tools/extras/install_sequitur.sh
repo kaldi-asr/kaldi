@@ -11,7 +11,6 @@ fi
 ! [ `basename $PWD` == tools ] && \
   echo "You must call this script from the tools/ directory" && exit 1;
 
-
 # Install python-devel package if not already available
 # first, makes sure distutils.sysconfig usable
 if ! $(python -c "import distutils.sysconfig" &> /dev/null); then
@@ -46,6 +45,7 @@ if [ -d ./g2p ] || [ -d sequitur ] ; then
   echo  >&2 "$0: Warning: old installation of Sequitur found. You should manually"
   echo  >&2 "  delete the directories tools/sequitur and/or tools/g2p and "
   echo  >&2 "  edit the file tools/env.sh and remove manually all references to it"
+  exit 1
 fi
 
 if [ ! -d ./sequitur-g2p ] ; then
@@ -67,31 +67,41 @@ fi
 #in a couple of months.
 ln -sf sequitur-g2p sequitur
 
-
+(
 cd sequitur-g2p
-make CXX=g++ CC=gcc
+
+#we had some reports that the CPPFLAGS is needed under MacOS X but we could not
+#reproduce it, actually, this, however, seems to work just fine for us
+#the primary issue is that real GNU GCC does not accept that switch
+#in addition, Apple fake g++ based on LLVM version 8.1 prints warning about
+#the libstdc++ should no longer be used.
+if (g++ --version 2>/dev/null | grep -s  "LLVM version 8.0" >/dev/null) ; then 
+  #Apple fake-g++
+  make CXX=g++ CC=gcc CPPFLAGS="-stdlib=libstdc++"
+else
+  make CXX=g++ CC=gcc
+fi
+
 python setup.py install --prefix `pwd`
-
-cd ../
-
+)
+site_packages_dir=$(cd sequitur-g2p; find ./lib{,64} -type d -name site-packages | head -n 1)
 (
   set +u
-  [ ! -z ${SEQUITUR} ] && \
+  [ ! -z "${SEQUITUR}" ] && \
     echo >&2 "SEQUITUR variable is aleady defined. Undefining..." && \
     unset SEQUITUR
 
   [ -f ./env.sh ] && . ./env.sh
 
-  [ ! -z ${SEQUITUR} ] && \
+  [ ! -z "${SEQUITUR}" ] && \
     echo >&2 "SEQUITUR config is already in env.sh" && exit
 
   wd=`pwd`
   wd=`readlink -f $wd || pwd`
 
-  echo "export SEQUITUR=$wd/sequitur-g2p"
-  echo "export PATH=\$PATH:\${SEQUITUR}/bin"
-  echo "_site_packages=\`find \${SEQUITUR}/lib -type d -regex '.*python.*/site-packages'\`"
-  echo "export PYTHONPATH=\$PYTHONPATH:\$_site_packages"
+  echo "export SEQUITUR=\"$wd/sequitur-g2p\""
+  echo "export PATH=\"\$PATH:\${SEQUITUR}/bin\""
+  echo "export PYTHONPATH=\"\${PYTHONPATH:-}:\$SEQUITUR/${site_packages_dir}\""
 ) >> env.sh
 
 echo >&2 "Installation of SEQUITUR finished successfully"

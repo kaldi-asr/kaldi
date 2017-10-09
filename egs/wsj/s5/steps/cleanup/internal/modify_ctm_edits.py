@@ -5,49 +5,62 @@
 # Apache 2.0
 
 from __future__ import print_function
-import sys, operator, argparse, os
+import argparse
+import logging
+import sys
 from collections import defaultdict
 
-# This script reads and writes the 'ctm-edits' file that is
-# produced by get_ctm_edits.py.
+"""
+This script reads and writes the 'ctm-edits' file that is
+produced by get_ctm_edits.py.
 
-# It modifies the ctm-edits so that non-scored words
-# are not counted as errors: for instance, if there are things like
-# [COUGH] and [NOISE] in the transcript, deletions, insertions and
-# substitutions involving them are allowed, and we modify the reference
-# to correspond to the hypothesis.
-#
-# If you supply the <lang> directory (the one that corresponds to
-# how you decoded the data) to this script, it assumes that the <lang>
-# directory contains phones/align_lexicon.int, and it uses this to work
-# out a reasonable guess of the non-scored phones, based on which have
-# a single-word pronunciation that maps to a silence phone.
-# It then uses the words.txt to work out the written form of those words.
-#
-# Alternatively, you may specify a file containing the non-scored words one
-# per line, with the --non-scored-words option.
-#
-# Non-scored words that were deleted (i.e. they were in the ref but not the
-# hyp) are simply removed from the ctm.  For non-scored words that
-# were inserted or substituted, we change the reference word to match the
-# hyp word, but instead of marking the operation as 'cor' (correct), we
-# mark it as 'fix' (fixed), so that it will not be positively counted as a correct
-# word for purposes of finding the optimal segment boundaries.
-#
-# e.g.
-# <file-id> <channel> <start-time> <duration> <conf> <hyp-word> <ref-word> <edit-type>
-# [note: the <channel> will always be 1].
+It modifies the ctm-edits so that non-scored words
+are not counted as errors: for instance, if there are things like
+[COUGH] and [NOISE] in the transcript, deletions, insertions and
+substitutions involving them are allowed, and we modify the reference
+to correspond to the hypothesis.
 
-# AJJacobs_2007P-0001605-0003029 1 0 0.09 <eps> 1.0 <eps> sil
-# AJJacobs_2007P-0001605-0003029 1 0.09 0.15 i 1.0 i cor
-# AJJacobs_2007P-0001605-0003029 1 0.24 0.25 thought 1.0 thought cor
-# AJJacobs_2007P-0001605-0003029 1 0.49 0.14 i'd 1.0 i'd cor
-# AJJacobs_2007P-0001605-0003029 1 0.63 0.22 tell 1.0 tell cor
-# AJJacobs_2007P-0001605-0003029 1 0.85 0.11 you 1.0 you cor
-# AJJacobs_2007P-0001605-0003029 1 0.96 0.05 a 1.0 a cor
-# AJJacobs_2007P-0001605-0003029 1 1.01 0.24 little 1.0 little cor
-# AJJacobs_2007P-0001605-0003029 1 1.25 0.5 about 1.0 about cor
-# AJJacobs_2007P-0001605-0003029 1 1.75 0.48 [UH] 1.0 [UH] cor
+If you supply the <lang> directory (the one that corresponds to
+how you decoded the data) to this script, it assumes that the <lang>
+directory contains phones/align_lexicon.int, and it uses this to work
+out a reasonable guess of the non-scored phones, based on which have
+a single-word pronunciation that maps to a silence phone.
+It then uses the words.txt to work out the written form of those words.
+
+Alternatively, you may specify a file containing the non-scored words one
+per line, with the --non-scored-words option.
+
+Non-scored words that were deleted (i.e. they were in the ref but not the
+hyp) are simply removed from the ctm.  For non-scored words that
+were inserted or substituted, we change the reference word to match the
+hyp word, but instead of marking the operation as 'cor' (correct), we
+mark it as 'fix' (fixed), so that it will not be positively counted as a correct
+word for purposes of finding the optimal segment boundaries.
+
+e.g.
+<file-id> <channel> <start-time> <duration> <conf> <hyp-word> <ref-word> <edit-type>
+[note: the <channel> will always be 1].
+
+AJJacobs_2007P-0001605-0003029 1 0 0.09 <eps> 1.0 <eps> sil
+AJJacobs_2007P-0001605-0003029 1 0.09 0.15 i 1.0 i cor
+AJJacobs_2007P-0001605-0003029 1 0.24 0.25 thought 1.0 thought cor
+AJJacobs_2007P-0001605-0003029 1 0.49 0.14 i'd 1.0 i'd cor
+AJJacobs_2007P-0001605-0003029 1 0.63 0.22 tell 1.0 tell cor
+AJJacobs_2007P-0001605-0003029 1 0.85 0.11 you 1.0 you cor
+AJJacobs_2007P-0001605-0003029 1 0.96 0.05 a 1.0 a cor
+AJJacobs_2007P-0001605-0003029 1 1.01 0.24 little 1.0 little cor
+AJJacobs_2007P-0001605-0003029 1 1.25 0.5 about 1.0 about cor
+AJJacobs_2007P-0001605-0003029 1 1.75 0.48 [UH] 1.0 [UH] cor
+"""
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - '
+                              '%(funcName)s - %(levelname)s ] %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 
 parser = argparse.ArgumentParser(
@@ -142,6 +155,7 @@ def ProcessLineForNonScoredWords(a):
                 ref_change_stats[ref_word + ' -> ' + hyp_word] += 1
                 return []
         elif edit_type == 'sub':
+            assert hyp_word != '<eps>'
             if hyp_word in non_scored_words and ref_word in non_scored_words:
                 # we also allow replacing one non-scored word with another.
                 ref_change_stats[ref_word + ' -> ' + hyp_word] += 1
@@ -156,12 +170,10 @@ def ProcessLineForNonScoredWords(a):
         a[7] = edit_type
         return a
 
-    except Exception as e:
-        print("modify_ctm_edits.py: bad line in ctm-edits input: " + ' '.join(a),
-              file = sys.stderr)
-        print("modify_ctm_edits.py: exception was: " + str(e),
-              file = sys.stderr)
-        sys.exit(1)
+    except Exception:
+        logger.error("bad line in ctm-edits input: "
+                     "{0}".format(a))
+        raise RuntimeError
 
 # This function processes the split lines of one utterance (as a
 # list of lists of fields), to allow repetitions of words, so if the

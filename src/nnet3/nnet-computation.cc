@@ -1,7 +1,5 @@
 // nnet3/nnet-computation.cc
 
-// nnet3/nnet-computation.cc
-
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 //                2015  Xiaohui Zhang
 
@@ -77,8 +75,9 @@ int32 ComputationRequest::IndexForOutput(
 }
 
 NnetComputation::~NnetComputation() {
-  for (size_t i = 0; i < component_precomputed_indexes.size(); i++)
-    delete component_precomputed_indexes[i];
+  // note: component_precomputed_indexes[0].data is the NULL pointer.
+  for (size_t i = 1; i < component_precomputed_indexes.size(); i++)
+    delete component_precomputed_indexes[i].data;
 }
 
 void NnetComputation::ComputeCudaIndexes() {
@@ -240,7 +239,19 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
     int32 command_type_int;
     ReadBasicType(is, binary, &command_type_int);
     command_type = static_cast<CommandType>(command_type_int);
+    std::vector<int32> args;
+    ReadIntegerVector(is, binary, &args);
+    args.resize(7, -1);  // extend with -1's.
+    arg1 = args[0];
+    arg2 = args[1];
+    arg3 = args[2];
+    arg4 = args[3];
+    arg5 = args[4];
+    arg6 = args[5];
+    arg7 = args[6];
   } else {
+    // this branch is slow but we don't care much, as we'd normally write in
+    // binary format.
     std::string command_type_str;
     getline(is, command_type_str);
     if (command_type_str == "kAllocMatrixZeroed") {
@@ -255,8 +266,6 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
       command_type = kAllocMatrixFromOtherZeroed;
     } else if (command_type_str == "kPropagate") {
       command_type = kPropagate;
-    } else if (command_type_str == "kStoreStats") {
-      command_type = kStoreStats;
     } else if (command_type_str == "kBackprop") {
       command_type = kBackprop;
     } else if (command_type_str == "kBackpropNoModelUpdate") {
@@ -279,26 +288,32 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
       command_type = kAddToRowsMulti;
     } else if (command_type_str == "kAddRowRanges") {
       command_type = kAddRowRanges;
+    } else if (command_type_str == "kAcceptInput") {
+      command_type = kAcceptInput;
+    } else if (command_type_str == "kProvideOutput") {
+      command_type = kProvideOutput;
     } else if (command_type_str == "kNoOperation") {
       command_type = kNoOperation;
+    } else if (command_type_str == "kNoOperationPermanent") {
+      command_type = kNoOperationPermanent;
     } else if (command_type_str == "kNoOperationMarker") {
       command_type = kNoOperationMarker;
+    } else if (command_type_str == "kNoOperationLabel") {
+      command_type = kNoOperationLabel;
+    } else if (command_type_str == "kGotoLabel") {
+      command_type = kGotoLabel;
     } else {
       KALDI_ERR << "Un-handled command type.";
     }
+    ExpectToken(is, binary, "<Args>");
+    ReadBasicType(is, binary, &arg1);
+    ReadBasicType(is, binary, &arg2);
+    ReadBasicType(is, binary, &arg3);
+    ReadBasicType(is, binary, &arg4);
+    ReadBasicType(is, binary, &arg5);
+    ReadBasicType(is, binary, &arg6);
+    ReadBasicType(is, binary, &arg7);
   }
-  ExpectToken(is, binary, "<Arg1>");
-  ReadBasicType(is, binary, &arg1);
-  ExpectToken(is, binary, "<Arg2>");
-  ReadBasicType(is, binary, &arg2);
-  ExpectToken(is, binary, "<Arg3>");
-  ReadBasicType(is, binary, &arg3);
-  ExpectToken(is, binary, "<Arg4>");
-  ReadBasicType(is, binary, &arg4);
-  ExpectToken(is, binary, "<Arg5>");
-  ReadBasicType(is, binary, &arg5);
-  ExpectToken(is, binary, "<Arg6>");
-  ReadBasicType(is, binary, &arg6);
   ExpectToken(is, binary, "</Command>");
 }
 
@@ -307,6 +322,17 @@ void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<CommandType>");
   if (binary) {
     WriteBasicType(os, binary, static_cast<int32>(command_type));
+    std::vector<int32> args(7);
+    args[0] = arg1;
+    args[1] = arg2;
+    args[2] = arg3;
+    args[3] = arg4;
+    args[4] = arg5;
+    args[5] = arg6;
+    args[6] = arg7;
+    while (!args.empty() && args.back() == -1)
+      args.pop_back();
+    WriteIntegerVector(os, binary, args);
   } else {
     std::string command_type_str;
     switch (command_type) {
@@ -327,9 +353,6 @@ void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
         break;
       case kPropagate:
         os << "kPropagate\n";
-        break;
-      case kStoreStats:
-        os << "kStoreStats\n";
         break;
       case kBackprop:
         os << "kBackprop\n";
@@ -364,28 +387,34 @@ void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
       case kAddRowRanges:
         os << "kAddRowRanges\n";
         break;
+      case kAcceptInput:
+        os << "kAcceptInput\n";
+        break;
+      case kProvideOutput:
+        os << "kProvideOutput\n";
+        break;
       case kNoOperation:
         os << "kNoOperation\n";
+        break;
+      case kNoOperationPermanent:
+        os << "kNoOperationPermanent\n";
         break;
       case kNoOperationMarker:
         os << "kNoOperationMarker\n";
         break;
+      case kNoOperationLabel:
+        os << "kNoOperationLabel\n";
+        break;
+      case kGotoLabel:
+        os << "kGotoLabel\n";
+        break;
       default:
         KALDI_ERR << "Un-handled command type.";
     }
+    os << "<Args> " << arg1 << ' ' << arg2 << ' '
+       << arg3 << ' ' << arg4 << ' ' << arg5 << ' '
+       << arg6 << ' ' << arg7 << ' ';
   }
-  WriteToken(os, binary, "<Arg1>");
-  WriteBasicType(os, binary, arg1);
-  WriteToken(os, binary, "<Arg2>");
-  WriteBasicType(os, binary, arg2);
-  WriteToken(os, binary, "<Arg3>");
-  WriteBasicType(os, binary, arg3);
-  WriteToken(os, binary, "<Arg4>");
-  WriteBasicType(os, binary, arg4);
-  WriteToken(os, binary, "<Arg5>");
-  WriteBasicType(os, binary, arg5);
-  WriteToken(os, binary, "<Arg6>");
-  WriteBasicType(os, binary, arg6);
   WriteToken(os, binary, "</Command>");
 }
 
@@ -494,28 +523,30 @@ static void PrintCommand(std::ostream &os,
   const NnetComputation::Command &c = computation.commands[command_index];
   switch (c.command_type) {
     case kAllocMatrixZeroed:
-      os << "m" << c.arg1 << " = zeros("
-         << computation.matrices[c.arg1].num_rows
-         << ',' << computation.matrices[c.arg1].num_cols << ")\n";
+      os << submatrix_strings[c.arg1] << " = zeros("
+         << computation.submatrices[c.arg1].num_rows
+         << ',' << computation.submatrices[c.arg1].num_cols << ")\n";
       break;
     case kAllocMatrixUndefined:
-      os << "m" << c.arg1 << " = undefined("
-         << computation.matrices[c.arg1].num_rows
-         << ',' << computation.matrices[c.arg1].num_cols << ")\n";
+      os << submatrix_strings[c.arg1] << " = undefined("
+         << computation.submatrices[c.arg1].num_rows
+         << ',' << computation.submatrices[c.arg1].num_cols << ")\n";
       break;
     case kDeallocMatrix:
-      os << "m" << c.arg1 << " = []\n";
+      os << submatrix_strings[c.arg1] << " = []\n";
       break;
     case kAllocMatrixFromOther:
-      os << "m" << c.arg1 << ".swap(m" << c.arg2 << ") [dim = "
-         << computation.matrices[c.arg1].num_rows << " x "
-         << computation.matrices[c.arg1].num_cols << "]\n";
+      os << submatrix_strings[c.arg1] << ".swap("
+         << submatrix_strings[c.arg2] << ") [dim = "
+         << computation.submatrices[c.arg1].num_rows << " x "
+         << computation.submatrices[c.arg1].num_cols << "]\n";
       break;
     case kAllocMatrixFromOtherZeroed:
-      os << "m" << c.arg1 << ".swap(m" << c.arg2 << ") [dim = "
-         << computation.matrices[c.arg1].num_rows << " x "
-         << computation.matrices[c.arg1].num_cols << "]; m"
-         << c.arg1 << ".zero();\n";
+      os << submatrix_strings[c.arg1] << ".swap("
+         << submatrix_strings[c.arg2] << ") [dim = "
+         << computation.submatrices[c.arg1].num_rows << " x "
+         << computation.submatrices[c.arg1].num_cols << "]; "
+         << submatrix_strings[c.arg1] << ".zero();\n";
       break;
     case kPropagate:
       os << nnet.GetComponentName(c.arg1) << ".Propagate(";
@@ -523,10 +554,6 @@ static void PrintCommand(std::ostream &os,
       else os << "precomputed_indexes[" << c.arg2 << "], ";
       os << submatrix_strings[c.arg3] << ", &" << submatrix_strings[c.arg4]
          << ")\n";
-      break;
-    case kStoreStats:
-      os << nnet.GetComponentName(c.arg1) << ".StoreStats("
-         << submatrix_strings[c.arg2] << ")\n";
       break;
     case kBackprop:
     case kBackpropNoModelUpdate: {
@@ -578,17 +605,38 @@ static void PrintCommand(std::ostream &os,
       const std::vector<std::pair<int32, int32> > &pairs =
            computation.indexes_ranges[c.arg3];
       for (size_t i = 0; i < pairs.size(); i++) {
-        os << pairs[i].first << ":" << (pairs[i].second - 1);
+        if (pairs[i].first == -1) {
+          os << "null";
+        } else {
+          os << pairs[i].first << ":" << (pairs[i].second - 1);
+        }
         if (i + 1 < pairs.size()) os << ",";
       }
       os << "])\n";
       break;
     }
+    case kAcceptInput:
+      os << submatrix_strings[c.arg1] << " = user input [for node: '"
+         << nnet.GetNodeName(c.arg2) << "']\n";
+      break;
+    case kProvideOutput:
+      os << "output " << submatrix_strings[c.arg1] << " to user"
+         << " [for node: '" << nnet.GetNodeName(c.arg2) << "']\n";
+      break;
     case kNoOperation:
       os << "[no-op]\n";
       break;
+    case kNoOperationPermanent:
+      os << "[no-op-permanent]\n";
+      break;
     case kNoOperationMarker:
-      os << "# begin backward commands\n";
+      os << "# computation segment separator [e.g., begin backward commands]\n";
+      break;
+    case kNoOperationLabel:
+      os << "[label for goto statement]\n";
+      break;
+    case kGotoLabel:
+      os << "goto c" << c.arg1 << "\n";
       break;
     default:
       KALDI_ERR << "Un-handled command type.";
@@ -613,20 +661,6 @@ static void PrintComputationPreamble(
       os << ", ";
   }
   os << "\n";
-  // show which matrices the inputs and outputs map to.
-  for (unordered_map<int32, std::pair<int32, int32> >::const_iterator iter =
-           c.input_output_info.begin(); iter != c.input_output_info.end();
-       ++iter) {
-    int32 node_index = iter->first,
-        value_matrix_index = iter->second.first,
-        deriv_matrix_index = iter->second.second;
-    os << nnet.GetNodeName(node_index) << ".value -> m"
-       << value_matrix_index << "\n";
-    if (deriv_matrix_index != 0) {
-      os << nnet.GetNodeName(node_index) << ".deriv -> m"
-         << deriv_matrix_index << "\n";
-    }
-  }
   if (!c.matrix_debug_info.empty()) {
     os << "# The following show how matrices correspond to network-nodes and\n"
        << "# cindex-ids.  Format is: matrix = <node-id>.[value|deriv][ <list-of-cindex-ids> ]\n"
@@ -659,9 +693,25 @@ void NnetComputation::Print(std::ostream &os, const Nnet &nnet) const {
 }
 
 void NnetComputation::Read(std::istream &is, bool binary) {
+  int32 version = 3,  // must be in sync with 'version' in Write.
+      version_in = 1;  // defaults to 1 if no version specified.
+
   ExpectToken(is, binary, "<NnetComputation>");
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<Version>") {
+    ReadBasicType(is, binary, &version_in);
+    ExpectToken(is, binary, "<NumMatrices>");
+  } else {
+    KALDI_ASSERT(token == "<NumMatrices>");
+  }
+  if (version_in != version) {
+    KALDI_ERR << "Reading NnetComputation failed because version in "
+              << version_in << " != " << version << "... you can "
+              << "ignore this error if the program continues afterward, "
+              << "it would only affect speed.";
+  }
   size_t num_matrices;
-  ExpectToken(is, binary, "<NumMatrices>");
   ReadBasicType(is, binary, &num_matrices);
   KALDI_ASSERT(num_matrices >= 0);
   matrices.resize(num_matrices);
@@ -691,25 +741,44 @@ void NnetComputation::Read(std::istream &is, bool binary) {
   }
 
 
+  // delete any existing pointers in component_precomputed_indexes.
+  // note: component_precomputed_indexes[0] is the NULL pointer.
+  for (size_t i = 1; i < component_precomputed_indexes.size(); i++)
+    delete component_precomputed_indexes[i].data;
+  component_precomputed_indexes.clear();
+
   size_t num_component_precomputed_indexes;
   ExpectToken(is, binary, "<NumComponentPrecomputedIndexes>");
   ReadBasicType(is, binary, &num_component_precomputed_indexes);
   KALDI_ASSERT(num_component_precomputed_indexes >= 0);
   component_precomputed_indexes.resize(num_component_precomputed_indexes);
-  ExpectToken(is, binary, "<ComponentPrecomputedIndexes>");
-  std::vector<ComponentPrecomputedIndexes*> component_precomputed_indexes_tmp;
-  for (size_t c = 0; c < num_component_precomputed_indexes; c++) {
-    bool is_null; // a boolean indicating whether the pointer should be NULL.
-    ReadBasicType(is, binary, &is_null);
-    if (!is_null) {
+
+  std::string tok;
+  ReadToken(is, binary, &tok);
+  if (tok == "<ComponentPrecomputedIndexes>") {
+    // Older on-disk format, before that code was extended for shortcut
+    // compilation.
+    component_precomputed_indexes.clear();
+    component_precomputed_indexes.resize(num_component_precomputed_indexes);
+    for (size_t c = 0; c < num_component_precomputed_indexes; c++) {
+      bool is_null; // a boolean indicating whether the pointer should be NULL.
+      ReadBasicType(is, binary, &is_null);
+      if (!is_null) {
+        ComponentPrecomputedIndexes* p = ComponentPrecomputedIndexes::ReadNew(is, binary);
+        component_precomputed_indexes[c].data = p;
+      }
+    }
+  } else {
+    KALDI_ASSERT(tok == "<PrecomputedIndexesInfo>");
+    for (size_t c = 1; c < num_component_precomputed_indexes; c++) {
       ComponentPrecomputedIndexes* p = ComponentPrecomputedIndexes::ReadNew(is, binary);
-      component_precomputed_indexes_tmp.push_back(p);
-    } else {
-      component_precomputed_indexes_tmp.push_back(NULL);
+      KALDI_ASSERT(p != NULL);
+      PrecomputedIndexesInfo &info = component_precomputed_indexes[c];
+      info.data = p;
+      ReadIndexVector(is, binary, &(info.input_indexes));
+      ReadIndexVector(is, binary, &(info.output_indexes));
     }
   }
-  component_precomputed_indexes = component_precomputed_indexes_tmp;
-
   size_t num_indexes;
   ExpectToken(is, binary, "<NumIndexes>");
   ReadBasicType(is, binary, &num_indexes);
@@ -740,21 +809,6 @@ void NnetComputation::Read(std::istream &is, bool binary) {
     ReadIntegerPairVector(is, binary, &(indexes_ranges[c]));
   }
 
-  size_t num_input_output_info;
-  ExpectToken(is, binary, "<NumInputOutputInfo>");
-  ReadBasicType(is, binary, &num_input_output_info);
-  KALDI_ASSERT(num_input_output_info >= 0);
-  input_output_info.clear();
-  ExpectToken(is, binary, "<InputOutputInfo>");
-  for (size_t c = 0; c < num_input_output_info; c++) {
-    int32 key;
-    std::pair<int32, int32> val;
-    ReadBasicType(is, binary, &key);
-    ReadBasicType(is, binary, &(val.first));
-    ReadBasicType(is, binary, &(val.second));
-    input_output_info.insert(std::pair<int32, std::pair<int32, int32> >(key, val));
-  }
-
   size_t num_commands;
   ExpectToken(is, binary, "<NumCommands>");
   ReadBasicType(is, binary, &num_commands);
@@ -773,7 +827,10 @@ void NnetComputation::Read(std::istream &is, bool binary) {
 }
 
 void NnetComputation::Write(std::ostream &os, bool binary) const {
+  int32 version = 3;  // Must be in sync with version in Read.
   WriteToken(os, binary, "<NnetComputation>");
+  WriteToken(os, binary, "<Version>");
+  WriteBasicType(os, binary, version);
   WriteToken(os, binary, "<NumMatrices>");
   WriteBasicType(os, binary, matrices.size());
   WriteToken(os, binary, "<Matrices>");
@@ -800,14 +857,12 @@ void NnetComputation::Write(std::ostream &os, bool binary) const {
   if (!binary) os << std::endl;
   WriteToken(os, binary, "<NumComponentPrecomputedIndexes>");
   WriteBasicType(os, binary, component_precomputed_indexes.size());
-  WriteToken(os, binary, "<ComponentPrecomputedIndexes>");
-  for (size_t c = 0; c < component_precomputed_indexes.size(); c++) {
-    if (component_precomputed_indexes[c] != NULL) {
-      WriteBasicType(os, binary, false); // a boolean indicating whether the pointer is NULL.
-      component_precomputed_indexes[c]->Write(os, binary);
-    } else {
-      WriteBasicType(os, binary, true);
-    }
+  WriteToken(os, binary, "<PrecomputedIndexesInfo>");
+  for (size_t c = 1; c < component_precomputed_indexes.size(); c++) {
+    const PrecomputedIndexesInfo &info = component_precomputed_indexes[c];
+    info.data->Write(os, binary);
+    WriteIndexVector(os, binary, info.input_indexes);
+    WriteIndexVector(os, binary, info.output_indexes);
   }
 
   if (!binary) os << std::endl;
@@ -832,18 +887,6 @@ void NnetComputation::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<IndexesRanges>");
   for (size_t c = 0; c < indexes_ranges.size(); c++) {
     WriteIntegerPairVector(os, binary, indexes_ranges[c]);
-  }
-
-  if (!binary) os << std::endl;
-  WriteToken(os, binary, "<NumInputOutputInfo>");
-  WriteBasicType(os, binary, input_output_info.size());
-  WriteToken(os, binary, "<InputOutputInfo>");
-  std::map<int32, std::pair<int32, int32> > input_output_info_cp(input_output_info.begin(), input_output_info.end());
-  for (std::map<int32, std::pair<int32, int32> >::const_iterator iter =
-           input_output_info_cp.begin(); iter != input_output_info_cp.end(); ++iter) {
-    WriteBasicType(os, binary, iter->first);
-    WriteBasicType(os, binary, iter->second.first);
-    WriteBasicType(os, binary, iter->second.second);
   }
 
   if (!binary) os << std::endl;
@@ -1055,42 +1098,68 @@ NnetComputation::NnetComputation(const NnetComputation &other):
     matrices(other.matrices),
     matrix_debug_info(other.matrix_debug_info),
     submatrices(other.submatrices),
+    component_precomputed_indexes(other.component_precomputed_indexes),
     indexes(other.indexes),
     indexes_multi(other.indexes_multi),
     indexes_ranges(other.indexes_ranges),
-    input_output_info(other.input_output_info),
     commands(other.commands),
     need_model_derivative(other.need_model_derivative),
     indexes_cuda(other.indexes_cuda),
     indexes_ranges_cuda(other.indexes_ranges_cuda) {
-  for (size_t i = 0; i < other.component_precomputed_indexes.size(); i++)
-      component_precomputed_indexes.push_back(
-          other.component_precomputed_indexes[i] == NULL ? NULL :
-          other.component_precomputed_indexes[i]->Copy());
+  for (size_t i = 1; i < component_precomputed_indexes.size(); i++)
+    component_precomputed_indexes[i].data =
+        component_precomputed_indexes[i].data->Copy();
+}
+
+NnetComputation& NnetComputation::operator = (const NnetComputation &other) {
+  matrices = other.matrices;
+  matrix_debug_info = other.matrix_debug_info;
+  submatrices = other.submatrices;
+  indexes = other.indexes;
+  indexes_multi = other.indexes_multi;
+  indexes_ranges = other.indexes_ranges;
+  commands = other.commands;
+  need_model_derivative = other.need_model_derivative;
+  indexes_cuda = other.indexes_cuda;
+  indexes_ranges_cuda = other.indexes_ranges_cuda;
+
+  for (size_t i = 1; i < component_precomputed_indexes.size(); i++)
+    delete component_precomputed_indexes[i].data;
+  component_precomputed_indexes = other.component_precomputed_indexes;
+  for (size_t i = 1; i < component_precomputed_indexes.size(); i++)
+    component_precomputed_indexes[i].data =
+        component_precomputed_indexes[i].data->Copy();
+  return *this;
 }
 
 
-NnetComputation& NnetComputation::operator = (const NnetComputation &other) {
-    matrices = other.matrices;
-    matrix_debug_info = other.matrix_debug_info;
-    submatrices = other.submatrices;
-    indexes = other.indexes;
-    indexes_multi = other.indexes_multi;
-    indexes_ranges = other.indexes_ranges;
-    input_output_info = other.input_output_info;
-    commands = other.commands;
-    need_model_derivative = other.need_model_derivative;
-    indexes_cuda = other.indexes_cuda;
-    indexes_ranges_cuda = other.indexes_ranges_cuda;
+void NnetComputation::GetWholeSubmatrices(
+    std::vector<int32> *whole_submatrices) const {
+  int32 num_matrices = matrices.size(),
+      num_submatrices = submatrices.size();
+  whole_submatrices->clear();
+  whole_submatrices->resize(num_matrices, 0);
+  for (int32 s = 1; s < num_submatrices; s++) {
+    if (IsWholeMatrix(s)) {
+      int32 m = submatrices[s].matrix_index;
+      (*whole_submatrices)[m] = s;
+    }
+  }
+  for (int32 m = 1; m < num_matrices; m++) {
+    KALDI_ASSERT((*whole_submatrices)[m] != 0 &&
+                 "Matrix exists with no submatrix that is "
+                 "the whole of it.");
+  }
+}
 
-    for (size_t i = 0; i < component_precomputed_indexes.size(); i++)
-      delete component_precomputed_indexes[i];
-    component_precomputed_indexes.clear();
-    for (size_t i = 0; i < other.component_precomputed_indexes.size(); i++)
-      component_precomputed_indexes.push_back(
-          other.component_precomputed_indexes[i] == NULL ? NULL :
-          other.component_precomputed_indexes[i]->Copy());
-    return *this;
+size_t IoSpecificationHasher::operator () (
+    const IoSpecification &io_spec) const noexcept {
+  StringHasher string_hasher;
+  IndexVectorHasher indexes_hasher;
+  // 4261 was chosen at random from a list of primes.
+  return string_hasher(io_spec.name) +
+      indexes_hasher(io_spec.indexes) +
+      (io_spec.has_deriv ? 4261 : 0);
 }
 
 } // namespace nnet3

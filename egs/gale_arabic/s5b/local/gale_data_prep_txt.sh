@@ -3,7 +3,7 @@
 # Copyright 2014 QCRI (author: Ahmed Ali)
 # Apache 2.0
 
-galeData=$(readlink -f "${@: -1}" );  # last argumnet; the local folder
+galeData=$(utils/make_absolute.sh "${@: -1}" );  # last argumnet; the local folder
 txt_dvds=${@:1:${#}-1} # all the txt cds correspoding to the audio corpus; check text=( in ../run.sh
 
 

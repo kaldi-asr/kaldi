@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
 
       VectorFst<StdArc> fst;
       MakeLinearAcceptor(transcript, &fst);
-      if (costs_reader.HasKey(key)) {
+      if (costs_reader.IsOpen() && costs_reader.HasKey(key)) {
         double cost = costs_reader.Value(key);
         SetLinearAcceptorWeight(cost, &fst);
       }

@@ -89,8 +89,8 @@ void UnitTestAddVec() {
   // note: Real will be float or double when instantiated.
   int32 dim = 1 + Rand() % 10;
   Vector<Real> v(dim); w(dim); // two vectors the same size.
-  InitRand(&v);
-  InitRand(&w);
+  v.SetRandn();
+  w.SetRandn();
   Vector<Real> w2(w); // w2 is a copy of w.
   Real f = RandGauss();
   w.AddVec(f, v); // w <-- w + f v

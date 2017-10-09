@@ -329,6 +329,7 @@ class CuMatrixBase {
   /// softmax output. Does, for each row i,
   /// *this(i) =  diff(i) * diag(value(i)) - diff(i) * (value(i)^T * value(i))
   /// xxxx(i) is row-vector; '*' and '-' are matrix operations.
+  /// Supports in-place operation, this  == &diff.
   void DiffSoftmaxPerRow(const CuMatrixBase<Real> &value,
                          const CuMatrixBase<Real> &diff);
 
@@ -336,6 +337,7 @@ class CuMatrixBase {
   /// Here, "out_value" is the log softmax output. Does, for each row i,
   /// *this(i) =  out_deriv(i) - sum(out_deriv(i)) .* exp(out_value(i))
   /// xxxx(i) is row-vector.
+  /// Supports in-place operation, this == &out_deriv.
   void DiffLogSoftmaxPerRow(const CuMatrixBase<Real> &out_value,
                             const CuMatrixBase<Real> &out_deriv);
 
@@ -378,13 +380,15 @@ class CuMatrixBase {
   void ApplyCeiling(Real ceiling_val);
   void ApplyExp();
   /// Softmax nonlinearity
-  /// Y = Softmax(X) : Yij = e^Xij / sum_k(e^Xik), done to each row
-  /// for each row, the max value is first subtracted for good numerical stability
+  /// Y = Softmax(X) : Yij = e^Xij / sum_k(e^Xik), done to each row,
+  /// with attention to avoiding  overflow or underflow.
+  /// Supports in-place operation (i.e. this == &src).
   void ApplySoftMaxPerRow(const CuMatrixBase<Real> &src);
 
   /// LogSoftmax nonlinearity
-  /// Y = LogSoftmax(X) : Yij = Xij - log(sum_k(e^Xik)), done to each row
-  /// for each row, the max value is first subtracted for good numerical stability
+  /// Y = LogSoftmax(X) : Yij = Xij - log(sum_k(e^Xik)), done to each row,
+  /// with attention to avoiding  overflow or underflow.
+  /// Supports in-place operation (i.e. this == &src).
   void ApplyLogSoftMaxPerRow(const CuMatrixBase<Real> &src);
 
   /// Find the id of the maximal element for each row
@@ -405,6 +409,8 @@ class CuMatrixBase {
   void DivElements(const CuMatrixBase<Real> &A);
   /// Do, elementwise, *this = max(*this, A).
   void Max(const CuMatrixBase<Real> &A);
+  /// Do, elementwise, *this = min(*this, A).
+  void Min(const CuMatrixBase<Real> &A);
   /// scale i'th column by scale[i]
   void MulColsVec(const CuVectorBase<Real> &scale);
   /// scale i'th row by scale[i]
@@ -419,9 +425,25 @@ class CuMatrixBase {
   void AddMat(Real alpha, const CuMatrixBase<Real> &A,
               MatrixTransposeType trans = kNoTrans);
 
-  /// if A.NumRows() is multiple of (*this)->NumRows and A.NumCols() is multiple of (*this)->NumCols
-  /// divide A into blocks of the same size as (*this) and add them to *this (times alpha)
-  void AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType trans = kNoTrans);
+
+  /// This function is like AddMat (it does *this += alpha * src),
+  /// except that it supports cases where *this and src have
+  /// different dimension.  There are two allowed cases:
+  ///
+  ///  (1) *this is larger than src; we do a broadcasting operation.  *this must
+  ///       have NumRows() == a * src.NumRows() and NumCols() == b *
+  ///       src.NumCols() for integer a >= 1, b >= 1.  *this will be treated as
+  ///       a being made up of of blocks with the same size as src, and to each
+  ///       block we'll add alpha * src.  This case does not support trans ==
+  ///       kTrans.
+  ///
+  ///  (2) *this is smaller than src; we sum.  src.NumRows() must == a *
+  ///      this->NumRows(), and src.NumCols() must == b * this->NumCols(), for a
+  ///      >= 1, b >= 1.  In this case, src will be treated as being made up of
+  ///      blocks with the same size as *this, and to *this we will add the
+  ///      summation of all of those blocks.
+  void AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,
+                    MatrixTransposeType trans = kNoTrans);
 
   /// (for each column c of *this), c = alpha * col + beta * c
   void AddVecToCols(Real alpha, const CuVectorBase<Real> &col, Real beta = 1.0);

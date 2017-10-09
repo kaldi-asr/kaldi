@@ -32,6 +32,10 @@ extra_kws=false
 cmd=run.pl
 max_states=150000
 wip=0.5 #Word insertion penalty
+resolve_overlaps=false   # Set this to true, if there are overlapping segments
+                         # as input and the words in the CTM in the 
+                         # overlapping regions must be resolved to one 
+                         # of the segments.
 #End of options
 
 if [ $(basename $0) == score.sh ]; then
@@ -56,7 +60,7 @@ decode_dir=$3;
 if ! $skip_stt ; then
   if  [ ! -f $decode_dir/.score.done ] && [ ! -f $decode_dir/.done.score ]; then
     local/lattice_to_ctm.sh --cmd "$cmd" --word-ins-penalty $wip \
-      --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} \
+      --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} --resolve-overlaps $resolve_overlaps \
       $data_dir $lang_dir $decode_dir
 
     if ! $skip_scoring ; then
@@ -71,14 +75,26 @@ fi
 if ! $skip_kws ; then
   [ ! -f $data_dir/extra_kws_tasks ] && exit 0
 
-  syll_data_dir=$(echo $data_dir | perl -pe 's/\.(pem|seg)$/.syll.$1/g' )
+  idata=$(basename $data_dir)
+  idir=$(dirname $data_dir)
+
+  idataset=${idata%%.*}
+  idatatype=${idata#*.}
+
+  if [ "$idata" == "$idataset" ]; then
+    syll_data_dir=$idir/${idataset}.syll
+    phn_data_dir=$idir/${idataset}.phn
+  else
+    syll_data_dir=$idir/${idataset}.syll.${idatatype}
+    phn_data_dir=$idir/${idataset}.phn.${idatatype}
+  fi
+
   if [ -d ${syll_data_dir} ] && [ ! -f ${decode_dir}/syllabs/.done ] ; then
     local/syllab/lattice_word2syll.sh --cmd "$cmd --mem 8G" \
       $data_dir $lang_dir ${lang_dir}.syll $decode_dir ${decode_dir}/syllabs
     touch ${decode_dir}/syllabs/.done
   fi
 
-  phn_data_dir=$(echo $data_dir | perl -pe 's/\.(pem|seg)$/.phn.$1/g' )
   if [ -d ${phn_data_dir} ] && [ ! -f ${decode_dir}/phones/.done ] ; then
     local/syllab/lattice_word2syll.sh --cmd "$cmd --mem 8G" \
       $data_dir $lang_dir ${lang_dir}.phn $decode_dir ${decode_dir}/phones

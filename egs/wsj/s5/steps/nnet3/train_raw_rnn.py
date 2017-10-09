@@ -3,12 +3,13 @@
 
 # Copyright 2016 Vijayaditya Peddinti.
 #           2016 Vimal Manohar
+#           2017 Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0.
 
 """ This script is similar to steps/nnet3/train_rnn.py but trains a
 raw neural network instead of an acoustic model.
 """
-
+from __future__ import print_function
 import argparse
 import logging
 import pprint
@@ -55,20 +56,16 @@ def get_args():
             3. RNNs can also be trained with state preservation training""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         conflict_handler='resolve',
-        parents=[common_train_lib.CommonParser().parser])
+        parents=[common_train_lib.CommonParser(default_chunk_left_context=40).parser])
 
     # egs extraction options
-    parser.add_argument("--egs.chunk-width", type=int, dest='chunk_width',
-                        default=20,
-                        help="""Number of output labels in the sequence
-                        used to train an LSTM.
-                        Caution: if you double this you should halve
-                        --trainer.samples-per-iter.""")
-    parser.add_argument("--egs.chunk-left-context", type=int,
-                        dest='chunk_left_context', default=40,
-                        help="""Number of left steps used in the estimation of
-                        LSTM state before prediction of the first label.
-                        Overrides the default value in CommonParser""")
+    parser.add_argument("--egs.chunk-width", type=str, dest='chunk_width',
+                        default="20",
+                        help="""Number of frames per chunk in the examples
+                        used to train the RNN.   Caution: if you double this you
+                        should halve --trainer.samples-per-iter.  May be
+                        a comma-separated list of alternatives: first width
+                        is the 'principal' chunk-width, used preferentially""")
 
     # trainer options
     parser.add_argument("--trainer.samples-per-iter", type=int,
@@ -111,20 +108,14 @@ def get_args():
                         steps/nnet3/get_saturation.pl) exceeds this threshold
                         we scale the parameter matrices with the
                         shrink-value.""")
-    parser.add_argument("--trainer.optimization.cv-minibatch-size", type=int,
-                        dest='cv_minibatch_size', default=256,
-                        help="""Size of the minibatch to be used in diagnostic
-                        jobs (use smaller value for BLSTMs to control memory
-                        usage)""")
-
     # RNN specific trainer options
-    parser.add_argument("--trainer.rnn.num-chunk-per-minibatch", type=int,
-                        dest='num_chunk_per_minibatch', default=100,
-                        help="Number of sequences to be processed in "
-                        "parallel every minibatch")
-    parser.add_argument("--trainer.rnn.num-bptt-steps", type=int,
-                        dest='num_bptt_steps', default=None,
-                        help="""Deprecated. Kept for back compatibility.""")
+    parser.add_argument("--trainer.rnn.num-chunk-per-minibatch", type=str,
+                        dest='num_chunk_per_minibatch', default='100',
+                        help="""Number of sequences to be processed in
+                        parallel every minibatch.  May be a more general
+                        rule as accepted by the --minibatch-size option of
+                        nnet3-merge-egs; run that program without args to see
+                        the format.""")
     parser.add_argument("--trainer.deriv-truncate-margin", type=int,
                         dest='deriv_truncate_margin', default=8,
                         help="""Margin (in input frames) around the 'required'
@@ -132,6 +123,11 @@ def get_args():
                         backpropagated to. E.g., 8 is a reasonable setting.
                         Note: the 'required' part of the chunk is defined by
                         the model's {left,right}-context.""")
+    parser.add_argument("--compute-average-posteriors",
+                        type=str, action=common_lib.StrToBoolAction,
+                        choices=["true", "false"], default=False,
+                        help="""If true, then the average output of the
+                        network is computed and dumped as post.final.vec""")
 
     # General options
     parser.add_argument("--nj", type=int, default=4,
@@ -163,25 +159,17 @@ def process_args(args):
     """ Process the options got from get_args()
     """
 
-    if args.chunk_width < 1:
-        raise Exception("--egs.chunk-width should have a minimum value of 1")
+    if not common_train_lib.validate_chunk_width(args.chunk_width):
+        raise Exception("--egs.chunk-width has an invalid value")
+
+    if not common_train_lib.validate_minibatch_size_str(args.num_chunk_per_minibatch):
+        raise Exception("--trainer.rnn.num-chunk-per-minibatch has an invalid value")
 
     if args.chunk_left_context < 0:
         raise Exception("--egs.chunk-left-context should be non-negative")
 
     if args.chunk_right_context < 0:
         raise Exception("--egs.chunk-right-context should be non-negative")
-
-    if args.num_bptt_steps is not None:
-        # -2 is used to compensate for the splicing of the input frame,
-        # assuming that splicing spans from -2 to 2
-        args.deriv_truncate_margin = args.num_bptt_steps - args.chunk_width - 2
-        logger.warning(
-            "--trainer.rnn.num-bptt-steps (deprecated) is set by user, and "
-            "--trainer.deriv-truncate-margin is set to (num-bptt-steps - "
-            "chunk-width - 2) = {0}. We recommend using the option "
-            "--trainer.deriv-truncate-margin.".format(
-                args.deriv_truncate_margin))
 
     if (not os.path.exists(args.dir)
             or not os.path.exists(args.dir+"/configs")):
@@ -224,7 +212,7 @@ def process_args(args):
     return [args, run_opts]
 
 
-def train(args, run_opts, background_process_handler):
+def train(args, run_opts):
     """ The main function for training.
 
     Args:
@@ -239,6 +227,8 @@ def train(args, run_opts, background_process_handler):
     # Set some variables.
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
+    ivector_id = common_lib.get_ivector_extractor_id(args.online_ivector_dir)
+
 
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
@@ -249,27 +239,25 @@ def train(args, run_opts, background_process_handler):
     try:
         model_left_context = variables['model_left_context']
         model_right_context = variables['model_right_context']
-        # this is really the number of times we add layers to the network for
-        # discriminative pretraining
-        num_hidden_layers = variables['num_hidden_layers']
-        add_lda = common_lib.str_to_bool(variables['add_lda'])
-        include_log_softmax = common_lib.str_to_bool(
-            variables['include_log_softmax'])
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in "
                         "{1}".format(str(e), '{0}/configs'.format(args.dir)))
 
     left_context = args.chunk_left_context + model_left_context
     right_context = args.chunk_right_context + model_right_context
+    left_context_initial = (args.chunk_left_context_initial + model_left_context if
+                            args.chunk_left_context_initial >= 0 else -1)
+    right_context_final = (args.chunk_right_context_final + model_right_context if
+                           args.chunk_right_context_final >= 0 else -1)
 
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
 
-    if (args.stage <= -4):
-        logger.info("Initializing a basic network")
-        common_lib.run_job(
+    if (args.stage <= -4) and os.path.exists(args.dir+"/configs/init.config"):
+        logger.info("Initializing the network for computing the LDA stats")
+        common_lib.execute_command(
             """{command} {dir}/log/nnet_init.log \
                     nnet3-init --srand=-2 {dir}/configs/init.config \
                     {dir}/init.raw""".format(command=run_opts.command,
@@ -301,11 +289,12 @@ def train(args, run_opts, background_process_handler):
         train_lib.raw_model.generate_egs_using_targets(
             data=args.feat_dir, targets_scp=args.targets_scp,
             egs_dir=default_egs_dir,
-            left_context=left_context, right_context=right_context,
-            valid_left_context=left_context + args.chunk_width,
-            valid_right_context=right_context + args.chunk_width,
+            left_context=left_context,
+            right_context=right_context,
+            left_context_initial=left_context_initial,
+            right_context_final=right_context_final,
             run_opts=run_opts,
-            frames_per_eg=args.chunk_width,
+            frames_per_eg_str=args.chunk_width,
             srand=args.srand,
             egs_opts=args.egs_opts,
             cmvn_opts=args.cmvn_opts,
@@ -322,12 +311,18 @@ def train(args, run_opts, background_process_handler):
         egs_dir = args.egs_dir
 
     [egs_left_context, egs_right_context,
-     frames_per_eg, num_archives] = (
-        common_train_lib.verify_egs_dir(egs_dir, feat_dim, ivector_dim,
-                                        left_context, right_context))
-    assert(args.chunk_width == frames_per_eg)
+     frames_per_eg_str, num_archives] = (
+         common_train_lib.verify_egs_dir(egs_dir, feat_dim,
+                                         ivector_dim, ivector_id,
+                                         left_context, right_context,
+                                         left_context_initial,
+                                         right_context_final))
+    if args.chunk_width != frames_per_eg_str:
+        raise Exception("mismatch between --egs.chunk-width and the frames_per_eg "
+                        "in the egs dir {0} vs {1}".format(args.chunk_width,
+                                                           frames_per_eg_str))
 
-    if (args.num_jobs_final > num_archives):
+    if args.num_jobs_final > num_archives:
         raise Exception('num_jobs_final cannot exceed the number of archives '
                         'in the egs directory')
 
@@ -335,7 +330,7 @@ def train(args, run_opts, background_process_handler):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (add_lda and args.stage <= -2):
+    if args.stage <= -2 and os.path.exists(args.dir+"/configs/init.config"):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
@@ -343,7 +338,7 @@ def train(args, run_opts, background_process_handler):
             max_lda_jobs=args.max_lda_jobs,
             rand_prune=args.rand_prune)
 
-    if (args.stage <= -1):
+    if args.stage <= -1:
         logger.info("Preparing the initial network.")
         common_train_lib.prepare_initial_network(args.dir, run_opts)
 
@@ -351,31 +346,43 @@ def train(args, run_opts, background_process_handler):
     # $num_epochs times, i.e. $num_iters*$avg_num_jobs) ==
     # $num_epochs*$num_archives, where
     # avg_num_jobs=(num_jobs_initial+num_jobs_final)/2.
-    num_archives_to_process = args.num_epochs * num_archives
+    num_archives_to_process = int(args.num_epochs * num_archives)
     num_archives_processed = 0
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
 
-    models_to_combine = common_train_lib.verify_iterations(
-        num_iters, args.num_epochs,
-        num_hidden_layers, num_archives,
-        args.max_models_combine, args.add_layers_period,
-        args.num_jobs_final)
+    # If do_final_combination is True, compute the set of models_to_combine.
+    # Otherwise, models_to_combine will be none.
+    if args.do_final_combination:
+        models_to_combine = common_train_lib.get_model_combine_iters(
+            num_iters, args.num_epochs,
+            num_archives, args.max_models_combine,
+            args.num_jobs_final)
+    else:
+        models_to_combine = None
 
-    def learning_rate(iter, current_num_jobs, num_archives_processed):
-        return common_train_lib.get_learning_rate(iter, current_num_jobs,
-                                                  num_iters,
-                                                  num_archives_processed,
-                                                  num_archives_to_process,
-                                                  args.initial_effective_lrate,
-                                                  args.final_effective_lrate)
+    if (os.path.exists('{0}/valid_diagnostic.scp'.format(egs_dir))):
+        if (os.path.exists('{0}/valid_diagnostic.egs'.format(egs_dir))):
+            raise Exception('both {0}/valid_diagnostic.egs and '
+                            '{0}/valid_diagnostic.scp exist.'
+                            'This script expects only one of them to exist.'
+                            ''.format(egs_dir))
+        use_multitask_egs = True
+    else:
+        if (not os.path.exists('{0}/valid_diagnostic.egs'
+                               ''.format(egs_dir))):
+            raise Exception('neither {0}/valid_diagnostic.egs nor '
+                            '{0}/valid_diagnostic.scp exist.'
+                            'This script expects one of them.'
+                            ''.format(egs_dir))
+        use_multitask_egs = False
 
     min_deriv_time = None
-    max_deriv_time = None
+    max_deriv_time_relative = None
     if args.deriv_truncate_margin is not None:
         min_deriv_time = -args.deriv_truncate_margin - model_left_context
-        max_deriv_time = (args.chunk_width - 1 + args.deriv_truncate_margin
-                          + model_right_context)
+        max_deriv_time_relative = \
+           args.deriv_truncate_margin + model_right_context
 
     logger.info("Training will run for {0} epochs = "
                 "{1} iterations".format(args.num_epochs, num_iters))
@@ -391,15 +398,26 @@ def train(args, run_opts, background_process_handler):
         if args.stage <= iter:
             model_file = "{dir}/{iter}.raw".format(dir=args.dir, iter=iter)
 
-            shrinkage_value = 1.0
-            if args.shrink_value != 1.0:
+            lrate = common_train_lib.get_learning_rate(iter, current_num_jobs,
+                                                       num_iters,
+                                                       num_archives_processed,
+                                                       num_archives_to_process,
+                                                       args.initial_effective_lrate,
+                                                       args.final_effective_lrate)
+
+            # shrinkage_value is a scale on the parameters.
+            shrinkage_value = 1.0 - (args.proportional_shrink * lrate)
+            if shrinkage_value <= 0.5:
+                raise Exception("proportional-shrink={0} is too large, it gives "
+                                "shrink-value={1}".format(args.proportional_shrink,
+                                                          shrinkage_value))
+            if args.shrink_value < shrinkage_value:
                 shrinkage_value = (args.shrink_value
-                                   if common_train_lib.do_shrinkage(
-                                        iter, model_file,
-                                        args.shrink_saturation_threshold,
-                                        get_raw_nnet_from_am=False)
-                                   else 1
-                                   )
+                                   if common_train_lib.should_do_shrinkage(
+                                           iter, model_file,
+                                           args.shrink_saturation_threshold,
+                                           get_raw_nnet_from_am=False)
+                                   else shrinkage_value)
 
             train_lib.common.train_one_iteration(
                 dir=args.dir,
@@ -409,27 +427,22 @@ def train(args, run_opts, background_process_handler):
                 num_jobs=current_num_jobs,
                 num_archives_processed=num_archives_processed,
                 num_archives=num_archives,
-                learning_rate=learning_rate(iter, current_num_jobs,
-                                            num_archives_processed),
+                learning_rate=lrate,
                 dropout_edit_string=common_train_lib.get_dropout_edit_string(
                     args.dropout_schedule,
                     float(num_archives_processed) / num_archives_to_process,
                     iter),
                 shrinkage_value=shrinkage_value,
-                minibatch_size=args.num_chunk_per_minibatch,
-                num_hidden_layers=num_hidden_layers,
-                add_layers_period=args.add_layers_period,
-                left_context=left_context,
-                right_context=right_context,
+                minibatch_size_str=args.num_chunk_per_minibatch,
                 min_deriv_time=min_deriv_time,
-                max_deriv_time=max_deriv_time,
+                max_deriv_time_relative=max_deriv_time_relative,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
-                cv_minibatch_size=args.cv_minibatch_size,
                 run_opts=run_opts,
                 get_raw_nnet_from_am=False,
-                background_process_handler=background_process_handler)
+                use_multitask_egs=use_multitask_egs,
+                compute_per_dim_accuracy=args.compute_per_dim_accuracy)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
@@ -453,22 +466,26 @@ def train(args, run_opts, background_process_handler):
         num_archives_processed = num_archives_processed + current_num_jobs
 
     if args.stage <= num_iters:
-        logger.info("Doing final combination to produce final.raw")
-        train_lib.common.combine_models(
-            dir=args.dir, num_iters=num_iters,
-            models_to_combine=models_to_combine, egs_dir=egs_dir,
-            left_context=left_context, right_context=right_context,
-            run_opts=run_opts, chunk_width=args.chunk_width,
-            background_process_handler=background_process_handler,
-            get_raw_nnet_from_am=False)
+        if args.do_final_combination:
+            logger.info("Doing final combination to produce final.raw")
+            train_lib.common.combine_models(
+                dir=args.dir, num_iters=num_iters,
+                models_to_combine=models_to_combine, egs_dir=egs_dir,
+                minibatch_size_str=args.num_chunk_per_minibatch,
+                run_opts=run_opts, chunk_width=args.chunk_width,
+                get_raw_nnet_from_am=False,
+                compute_per_dim_accuracy=args.compute_per_dim_accuracy,
+                sum_to_one_penalty=args.combine_sum_to_one_penalty)
+        else:
+            common_lib.force_symlink("{0}.raw".format(num_iters),
+                                     "{0}/final.raw".format(args.dir))
 
-    if include_log_softmax and args.stage <= num_iters + 1:
+    if args.compute_average_posteriors and args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
                     "adjusting the priors.")
         train_lib.common.compute_average_posterior(
             dir=args.dir, iter='final', egs_dir=egs_dir,
             num_archives=num_archives,
-            left_context=left_context, right_context=right_context,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts,
             get_raw_nnet_from_am=False)
 
@@ -496,26 +513,25 @@ def train(args, run_opts, background_process_handler):
     with open("{dir}/accuracy.report".format(dir=args.dir), "w") as f:
         f.write(report)
 
-    common_lib.run_job("steps/info/nnet3_dir_info.pl "
-                       "{0}".format(args.dir))
+    common_lib.execute_command("steps/info/nnet3_dir_info.pl "
+                               "{0}".format(args.dir))
 
 
 def main():
     [args, run_opts] = get_args()
     try:
-        background_process_handler = common_lib.BackgroundProcessHandler(
-            polling_time=args.background_polling_time)
-        train(args, run_opts, background_process_handler)
-        background_process_handler.ensure_processes_are_done()
-    except Exception as e:
+        train(args, run_opts)
+        common_lib.wait_for_background_commands()
+    except BaseException as e:
+        # look for BaseException so we catch KeyboardInterrupt, which is
+        # what we get when a background thread dies.
         if args.email is not None:
             message = ("Training session for experiment {dir} "
                        "died due to an error.".format(dir=args.dir))
             common_lib.send_mail(message, message, args.email)
-        traceback.print_exc()
-        background_process_handler.stop()
-        raise e
-
+        if not isinstance(e, KeyboardInterrupt):
+            traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

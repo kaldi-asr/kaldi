@@ -332,7 +332,7 @@ void NonlinearComponent::UpdateStats(const CuMatrixBase<BaseFloat> &out_value,
   // Check we have the correct dimensions.
   if (value_sum_.Dim() != InputDim() ||
       (deriv != NULL && deriv_sum_.Dim() != InputDim())) {
-    mutex_.Lock();
+    std::lock_guard<std::mutex> lock(mutex_);
     if (value_sum_.Dim() != InputDim()) {
       value_sum_.Resize(InputDim());
       count_ = 0.0;
@@ -342,7 +342,6 @@ void NonlinearComponent::UpdateStats(const CuMatrixBase<BaseFloat> &out_value,
       count_ = 0.0;
       value_sum_.SetZero();
     }
-    mutex_.Unlock();
   }
   count_ += out_value.NumRows();
   CuVector<BaseFloat> temp(InputDim());
@@ -597,29 +596,16 @@ row_out = f row_in.
 
 */
 
-void NormalizeComponent::Backprop(const ChunkInfo &,  // in_info,
-                                  const ChunkInfo &,  // out_info,
-                                  const CuMatrixBase<BaseFloat> &in_value,
-                                  const CuMatrixBase<BaseFloat> &out_value,
-                                  const CuMatrixBase<BaseFloat> &out_deriv,
-                                  Component *to_update,
-                                    // may be identical to "this".
-                                  CuMatrix<BaseFloat> *in_deriv) const  {
+void NormalizeComponent::Backprop(
+    const ChunkInfo &,  // in_info,
+    const ChunkInfo &,  // out_info,
+    const CuMatrixBase<BaseFloat> &in_value,
+    const CuMatrixBase<BaseFloat> &out_value,
+    const CuMatrixBase<BaseFloat> &out_deriv, Component *to_update,
+    // may be identical to "this".
+    CuMatrix<BaseFloat> *in_deriv) const {
   in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols());
-
-  CuVector<BaseFloat> in_norm(in_value.NumRows());
-  in_norm.AddDiagMat2(1.0 / in_value.NumCols(),
-                      in_value, kNoTrans, 0.0);
-  in_norm.ApplyFloor(kNormFloor);
-  in_norm.ApplyPow(-0.5);
-  in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv, kNoTrans, 0.0);
-  in_norm.ReplaceValue(1.0 / sqrt(kNormFloor), 0.0);
-  in_norm.ApplyPow(3.0);
-  CuVector<BaseFloat> dot_products(in_deriv->NumRows());
-  dot_products.AddDiagMatMat(1.0, out_deriv, kNoTrans, in_value, kTrans, 0.0);
-  dot_products.MulElements(in_norm);
-
-  in_deriv->AddDiagVecMat(-1.0 / in_value.NumCols(), dot_products, in_value, kNoTrans, 1.0);
+  cu::DiffNormalizePerRow(in_value, out_deriv, BaseFloat(1), false, in_deriv);
 }
 
 void SigmoidComponent::Propagate(const ChunkInfo &in_info,

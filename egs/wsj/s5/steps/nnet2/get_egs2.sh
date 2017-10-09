@@ -50,7 +50,7 @@ transform_dir=     # If supplied, overrides alidir as the place to find fMLLR tr
 postdir=        # If supplied, we will use posteriors in it as soft training targets.
 
 stage=0
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time.
 random_copy=false
 online_ivector_dir=  # can be used if we are including speaker information as iVectors.
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
@@ -328,7 +328,7 @@ if [ $stage -le 5 ]; then
   for x in `seq $num_archives`; do
     for y in `seq $nj`; do
       file=$dir/egs_orig.$x.$y.ark
-      [ -L $file ] && rm $(readlink -f $file)
+      [ -L $file ] && rm $(utils/make_absolute.sh $file)
       rm $file
     done
   done

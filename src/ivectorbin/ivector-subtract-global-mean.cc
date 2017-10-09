@@ -36,34 +36,34 @@ int main(int argc, char *argv[]) {
         "e.g.: ivector-subtract-global-mean scp:ivectors.scp ark:-\n"
         "or: ivector-subtract-global-mean mean.vec scp:ivectors.scp ark:-\n"
         "See also: ivector-mean\n";
-    
+
     ParseOptions po(usage);
 
     bool subtract_mean = true;
     po.Register("subtract-mean", &subtract_mean,
                 "If true, subtract mean; if false, just copy the input.");
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() < 2 || po.NumArgs() > 3) {
       po.PrintUsage();
       exit(1);
     }
 
     int64 num_done = 0;
-    
+
     if (po.NumArgs() == 2) {
       std::string ivector_rspecifier = po.GetArg(1),
           ivector_wspecifier = po.GetArg(2);
-    
+
       Vector<double> sum;
-    
+
       std::vector<std::pair<std::string, Vector<BaseFloat>*> > ivectors;
-    
+
       SequentialBaseFloatVectorReader ivector_reader(ivector_rspecifier);
       BaseFloatVectorWriter ivector_writer(ivector_wspecifier);
 
-    
+
       for (; !ivector_reader.Done(); ivector_reader.Next()) {
         std::string key = ivector_reader.Key();
         const Vector<BaseFloat> &ivector = ivector_reader.Value();
@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
       }
 
       KALDI_LOG << "Read " << num_done << " iVectors.";
-    
+
       if (num_done != 0) {
         KALDI_LOG << "Norm of iVector mean was " << (sum.Norm(2.0) / num_done);
         for (size_t i = 0; i < ivectors.size(); i++) {
@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
           ivector_wspecifier = po.GetArg(3);
       Vector<BaseFloat> mean;
       ReadKaldiObject(mean_rxfilename, &mean);
-      
+
       SequentialBaseFloatVectorReader ivector_reader(ivector_rspecifier);
       BaseFloatVectorWriter ivector_writer(ivector_wspecifier);
       for (; !ivector_reader.Done(); ivector_reader.Next()) {
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
     }
     KALDI_LOG << "Wrote " << num_done << " mean-subtracted iVectors";
     return (num_done != 0 ? 0 : 1);
-    
+
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

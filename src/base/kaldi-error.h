@@ -195,19 +195,6 @@ typedef void (*LogHandler)(const LogMessageEnvelope &envelope,
 /// stderr.  SetLogHandler is obviously not thread safe.
 LogHandler SetLogHandler(LogHandler);
 
-
-/***** WRITING 'std::vector<T>' TO LOGPRINT *****/
-template<typename T>
-std::ostream& operator<< (std::ostream& os, const std::vector<T>& v) {
-  os << "[ ";
-  typename std::vector<T>::const_iterator it;
-  for (it = v.begin(); it != v.end(); ++it) {
-    os << *it << " ";
-  }
-  os << "]";
-  return os;
-}
-
 /// @} end "addtogroup error_group"
 
 }  // namespace kaldi

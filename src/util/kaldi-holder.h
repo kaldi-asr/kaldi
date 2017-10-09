@@ -27,6 +27,7 @@
 #include "util/kaldi-io.h"
 #include "util/text-utils.h"
 #include "matrix/kaldi-vector.h"
+#include "matrix/sparse-matrix.h"
 
 namespace kaldi {
 
@@ -194,7 +195,7 @@ template<class BasicType> class BasicVectorHolder;
 template<class BasicType> class BasicVectorVectorHolder;
 
 // A holder for vectors of pairsof basic types, e.g.
-// std::vector<std::vector<int32> >, and so on.
+// std::vector<std::pair<int32, int32> >, and so on.
 // Note: a basic type is defined as a type for which ReadBasicType
 // and WriteBasicType are implemented, i.e. integer and floating
 // types, and bool.  Text format is (e.g. for integers),
@@ -242,6 +243,21 @@ template <class Real>
 bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
                         Matrix<Real> *output);
 
+/// The template is specialized types Vector<float> and Vector<double>.
+template <class Real>
+bool ExtractObjectRange(const Vector<Real> &input, const std::string &range,
+                        Vector<Real> *output);
+
+/// GeneralMatrix is always of type BaseFloat
+bool ExtractObjectRange(const GeneralMatrix &input, const std::string &range,
+                        GeneralMatrix *output);
+
+/// CompressedMatrix is always of the type BaseFloat but it is more
+/// efficient to provide template as it uses CompressedMatrix's own
+/// conversion to Matrix<Real>
+template <class Real>
+bool ExtractObjectRange(const CompressedMatrix &input, const std::string &range,
+                        Matrix<Real> *output);
 
 // In SequentialTableReaderScriptImpl and RandomAccessTableReaderScriptImpl, for
 // cases where the scp contained 'range specifiers' (things in square brackets

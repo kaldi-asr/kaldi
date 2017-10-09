@@ -64,7 +64,7 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     const MatrixBase<BaseFloat> *online_ivectors,
     int32 online_ivector_period,
     CachingOptimizingCompiler *compiler):
-    compiler_(am_nnet.GetNnet(), opts.optimize_config),
+    compiler_(am_nnet.GetNnet(), opts.optimize_config, opts.compiler_config),
     decodable_nnet_(opts, am_nnet.GetNnet(), am_nnet.Priors(),
                     feats, compiler != NULL ? compiler : &compiler_,
                     ivector, online_ivectors,
@@ -261,7 +261,7 @@ void DecodableNnetSimple::DoNnetComputation(
     ivector_feats_cu.Row(0).CopyFromVec(ivector);
     computer.AcceptInput("ivector", &ivector_feats_cu);
   }
-  computer.Forward();
+  computer.Run();
   CuMatrix<BaseFloat> cu_output;
   computer.GetOutputDestructive("output", &cu_output);
   // subtract log-prior (divide by prior)
@@ -276,31 +276,36 @@ void DecodableNnetSimple::DoNnetComputation(
 }
 
 void DecodableNnetSimple::CheckAndFixConfigs() {
-  static bool warned_modulus = false,
-      warned_subsampling = false;
+  static bool warned_frames_per_chunk = false;
   int32 nnet_modulus = nnet_.Modulus();
   if (opts_.frame_subsampling_factor < 1 ||
       opts_.frames_per_chunk < 1)
     KALDI_ERR << "--frame-subsampling-factor and --frames-per-chunk must be > 0";
-  if (opts_.frames_per_chunk % opts_.frame_subsampling_factor != 0) {
-    int32 f = opts_.frame_subsampling_factor,
-        frames_per_chunk = f * ((opts_.frames_per_chunk + f - 1) / f);
-    if (!warned_subsampling) {
-      warned_subsampling = true;
-      KALDI_LOG << "Increasing --frames-per-chunk from "
-                << opts_.frames_per_chunk << " to "
-                << frames_per_chunk << " to make it a multiple of "
-                << "--frame-subsampling-factor="
-                << opts_.frame_subsampling_factor;
+  KALDI_ASSERT(nnet_modulus > 0);
+  int32 n = Lcm(opts_.frame_subsampling_factor, nnet_modulus);
+
+  if (opts_.frames_per_chunk % n != 0) {
+    // round up to the nearest multiple of n.
+    int32 frames_per_chunk = n * ((opts_.frames_per_chunk + n - 1) / n);
+    if (!warned_frames_per_chunk) {
+      warned_frames_per_chunk = true;
+      if (nnet_modulus == 1) {
+        // simpler error message.
+        KALDI_LOG << "Increasing --frames-per-chunk from "
+                  << opts_.frames_per_chunk << " to "
+                  << frames_per_chunk << " to make it a multiple of "
+                  << "--frame-subsampling-factor="
+                  << opts_.frame_subsampling_factor;
+      } else {
+        KALDI_LOG << "Increasing --frames-per-chunk from "
+                  << opts_.frames_per_chunk << " to "
+                  << frames_per_chunk << " due to "
+                  << "--frame-subsampling-factor="
+                  << opts_.frame_subsampling_factor << " and "
+                  << "nnet shift-invariance modulus = " << nnet_modulus;
+      }
     }
     opts_.frames_per_chunk = frames_per_chunk;
-  }
-  if (opts_.frames_per_chunk % nnet_modulus != 0 && !warned_modulus) {
-    warned_modulus = true;
-    KALDI_WARN << "It may be more efficient to set the --frames-per-chunk "
-               << "(currently " << opts_.frames_per_chunk << " to a "
-               << "multiple of the network's shift-invariance modulus "
-               << nnet_modulus;
   }
 }
 
@@ -313,7 +318,7 @@ DecodableAmNnetSimpleParallel::DecodableAmNnetSimpleParallel(
     const VectorBase<BaseFloat> *ivector,
     const MatrixBase<BaseFloat> *online_ivectors,
     int32 online_ivector_period):
-    compiler_(am_nnet.GetNnet(), opts.optimize_config),
+    compiler_(am_nnet.GetNnet(), opts.optimize_config, opts.compiler_config),
     trans_model_(trans_model),
     feats_copy_(NULL),
     ivector_copy_(NULL),

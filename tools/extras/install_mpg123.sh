@@ -55,13 +55,13 @@ ln -s mpg123-1.21.0  mpg123
 
 (
   set +u
-  [ ! -z ${MPG123} ] && \
+  [ ! -z "${MPG123}" ] && \
     echo >&2 "MPG123 variable is aleady defined. Undefining..." && \
     unset MPG123
 
   [ -f ./env.sh ] && . ./env.sh
 
-  [ ! -z ${MPG123} ] && \
+  [ ! -z "${MPG123}" ] && \
     echo >&2 "MPG123 config is already in env.sh" && exit
 
   wd=`pwd`

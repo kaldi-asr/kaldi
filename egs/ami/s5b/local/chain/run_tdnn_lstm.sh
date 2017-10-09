@@ -1,1 +1,1 @@
-tuning/run_tdnn_lstm_1i.sh
+tuning/run_tdnn_lstm_1j.sh

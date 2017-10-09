@@ -3,7 +3,6 @@
 
 # by default, with cleanup:
 # local/chain/run_tdnn.sh
-
 # %WER 46.7 | 19252 60586 | 57.4 26.4 16.2 4.0 46.7 31.6 | -0.469 | exp/chain_cleaned/tdnnbab3_sp_bi/decode_dev10h.pem/score_9/penalty_0.0/dev10h.pem.ctm.sys
 
 set -e -o pipefail
@@ -107,7 +106,6 @@ if [ $stage -le 16 ]; then
   fi
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
-      --leftmost-questions-truncate -1 \
       --cmd "$train_cmd" 4000 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
 fi
 
@@ -134,7 +132,7 @@ fi
 if [ $stage -le 18 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/babel-$(date +'%m_%d_%H_%M')/s5d/$RANDOM/$dir/egs/storage $dir/egs/storage
   fi
   [ ! -d $dir/egs ] && mkdir -p $dir/egs/
   touch $dir/egs/.nodelete # keep egs around when that run dies.

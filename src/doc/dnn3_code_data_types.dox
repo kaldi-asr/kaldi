@@ -359,7 +359,10 @@ dim-range-node name=dim-range-node1 input-node=affine1_node dim-offset=0 dim=50
  \subsection dnn3_dt_nnet_descriptor_config Descriptors in config files
 
   A Descriptor is a very limited type of expression that refers to quantities defined
-  in other nodes in the graph.   In this section we describe Descriptors from the perspective
+  in other nodes in the graph.  Descriptors are part of the glue that attaches
+  components together they are responsible for things like appending or summing the
+  outputs of components so that they can be used as the input for later components.
+  In this section we describe Descriptors from the perspective
   of their config file format; below we'll explain how they appear in code.
 
   The simplest type of Descriptor (the base-case) is just a node name,

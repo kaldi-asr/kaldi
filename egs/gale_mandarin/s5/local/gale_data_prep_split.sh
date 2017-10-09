@@ -11,9 +11,9 @@ fi
 set -e -o pipefail
 #data will data/local
 
-galeData=$(readlink -f $1)
+galeData=$(utils/make_absolute.sh $1)
 mkdir -p data/local
-dir=$(readlink -f data/local)
+dir=$(utils/make_absolute.sh data/local)
 
 
 # some problem with the text data; same utt id but different transcription

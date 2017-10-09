@@ -211,13 +211,13 @@ void CuSparseMatrix<Real>::CopyElementsToVec(CuVectorBase<Real> *vec) const {
   KALDI_ASSERT(this->NumElements() == vec->Dim());
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     cublas_copy(GetCublasHandle(),
                 this->NumElements(),
                 &(this->elements_.Data()->weight),
                 static_cast<size_t>(sizeof(MatrixElement<Real>) / sizeof(Real)),
                 vec->Data(), 1);
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -318,7 +318,7 @@ Real TraceMatSmat(const CuMatrixBase<Real> &A,
     // The Sum() method in CuVector handles a bunch of logic, we use that to
     // comptue the trace.
     CuVector<Real> sum_vec(B.NumElements());
-    Timer tim;
+    CuTimer tim;
     dim3 dimBlock(CU1DBLOCK, 1);
     dim3 dimGrid(n_blocks(B.NumElements(), CU1DBLOCK), 1);
     if (trans == kNoTrans) {
@@ -329,7 +329,7 @@ Real TraceMatSmat(const CuMatrixBase<Real> &A,
                                 A.Dim(), B.NumElements(), sum_vec.Data());
     }
     result = sum_vec.Sum();
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -400,7 +400,7 @@ void CuSparseMatrix<Real>::CopyToMat(CuMatrixBase<OtherReal> *M,
   }
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     dim3 dimBlock(CU1DBLOCK, 1);
     dim3 dimGrid(n_blocks(this->NumElements(), CU1DBLOCK), 1);
     if (trans == kNoTrans) {
@@ -410,7 +410,7 @@ void CuSparseMatrix<Real>::CopyToMat(CuMatrixBase<OtherReal> *M,
       cuda_copy_from_smat_trans(dimGrid, dimBlock, M->Data(),
                                 this->Data(), M->Dim(), this->NumElements());
     }
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
