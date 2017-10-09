@@ -10,8 +10,8 @@ stage=0
 
 . ./utils/parse_options.sh
 
-if [ ! -d data/local/tmp/subs/lm ]; then
-    mkdir -p data/local/tmp/subs/lm
+if [ ! -d data/local/lm ]; then
+    mkdir -p data/local/lm
 fi
 
 corpus=data/local/tmp/subs/lm/es.txt
@@ -23,11 +23,11 @@ ngram-count \
     -map-unk "<UNK>" \
     -limit-vocab \
     -text $corpus \
-    -lm data/local/lm/subs_lm_threegram.arpa || exit 1;
+    -lm data/local/lm/threegram.arpa || exit 1;
 
-    if [ -e "data/local/lm/subs_lm_threegram.arpa.gz" ]; then
-	rm data/local/lm/subs_lm_threegram.arpa.gz
+    if [ -e "data/local/lm/threegram.arpa.gz" ]; then
+	rm data/local/lm/threegram.arpa.gz
     fi
 
     gzip \
-	data/local/lm/subs_lm_threegram.arpa
+	data/local/lm/threegram.arpa
