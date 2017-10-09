@@ -310,9 +310,10 @@ def parse_progress_logs_for_param_diff(exp_dir, pattern):
 
 
 def parse_train_logs(exp_dir):
-    train_log_files = "%s/log/train.*.log" % (exp_dir)
+    train_log_files = "%s/log/" % (exp_dir)
+    train_log_names = "train.*.log"
     train_log_lines = common_lib.get_command_stdout(
-        'grep -e Accounting {0}'.format(train_log_files))
+        'find {0} -name {1} | xargs grep -e Accounting'.format(train_log_files,train_log_names))
     parse_regex = re.compile(".*train\.([0-9]+)\.([0-9]+)\.log:# "
                              "Accounting: time=([0-9]+) thread.*")
 
