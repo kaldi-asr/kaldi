@@ -13,23 +13,22 @@ use Encode;
 
 # set lower and upper bounds
 my $lb = 8;
+# only segments with at least  $lb words will be written
 my $ub = 16;
+# only segments with fewer than $ub words will be written
 
 # input and output files
 my $c = "data/local/tmp/subs/OpenSubtitles2016.en-es.es";
 my $symtab = "data/lang/words.txt";
-my $input = "data/local/tmp/subs/lm/es.txt";
-my $o = "data/local/tmp/subs/lm/es.txt";
+my $rl = "data/local/tmp/subs/lm/es.txt";
 my $oo = "data/local/tmp/subs/lm/oovs.txt";
-my $l = "data/local/tmp/subs/lm/es.txt";
-my $v = "data/local/tmp/subs/lm/oovs.txt";
-my $iv = "data/local/lm/subs_es_in_vocabulary.txt";
+my $iv = "data/local/tmp/subs/lm/in_vocabulary.txt";
 
 open my $C, '<', $c or croak "problems with $c $!";
 
 system "mkdir -p data/local/tmp/subs/lm";
 
-open my $O, '+>:utf8', $o or croak "problems with $o $!";
+open my $RL, '+>:utf8', $rl or croak "problems with $rl $!";
 
 LINE: while ( my $line = <$C> ) {
 
@@ -41,17 +40,16 @@ LINE: while ( my $line = <$C> ) {
 
     next LINE if ( ($#tokens < $lb) or ($#tokens > $ub ));
 
-    print $O "$line\n";
+    print $RL "$line\n";
 
 }
 
 close $C;
-close $O;
+close $RL;
 
 # find out of vocabulary words
 
 # $symtab points to a file containing a map of symbols to integers
-# $input points to a file containing  the text processed in this script
 
 # hash for word to integer map
 my %sym2int = ();
@@ -66,7 +64,7 @@ while( my $line = <$F>) {
 }
 close $F;
 
-open my $I, '<', $input or croak "problem with $input $!";
+open my $I, '<', $rl or croak "problem with $rl $!";
 open my $OO, '+>', $oo or croak "problems with $oo $!";
 
 while ( my $line = <$I>) {
@@ -85,14 +83,14 @@ close $I;
 
 # store OOVS in hash
 my %oov = ();
-open my $V, '<', $v or croak "problems with $v $!";
+open my $V, '<', $oo or croak "problems with $oo $!";
 while ( my $line = <$V> ) {
     chomp $line;
     $oov{$line} = 1;
 }
 close $V;
 
-open my $L, '<', $l or croak "problems with $l $!";
+open my $L, '<', $rl or croak "problems with $rl $!";
 open my $IV, '+>', $iv or croak "problems with $iv $!";
 
 SEGMENT: while ( my $segment = <$L> ) {
