@@ -63,8 +63,8 @@ if [ $stage -le 1 ]; then
 	data/lang   || exit 1;
 fi
 
-if [ $stage -le 3 ]; then
-    # get subs data for lm 
+if [ $stage -le 2 ]; then
+    # get subs data for lm training
     mkdir -p $tmpdir/lm
     mkdir -p $tmpdir/subs/lm
 
@@ -85,14 +85,14 @@ if [ $stage -le 3 ]; then
     cd ../../../..
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 3 ]; then
         # get a sample of the subs corpus for lm training
     local/subs_restrict_length.pl
 
     rm $tmpdir/subs/OpenSubtitles2016.en-es.es
 fi
-
-if [ $stage -le 5 ]; then
+exit
+if [ $stage -le 4 ]; then
     # build lm
     local/prepare_lm.sh
 
@@ -101,6 +101,9 @@ if [ $stage -le 5 ]; then
 	data/local/lm/threegram.arpa.gz \
 	data/local/dict/lexicon.txt \
 	data/lang_test
+fi
+
+if [ $stage -le 5 ]; then
 
     # extract acoustic features
     mkdir -p exp
@@ -154,9 +157,7 @@ if [ $stage -le 5 ]; then
 		    exp/mono/decode_${x} || exit 1;
 	done
     ) &
-fi
 
-if [ $stage -le 6 ]; then
     # align with monophones
     steps/align_si.sh \
 	--nj 8 \
