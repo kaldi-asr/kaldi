@@ -309,11 +309,11 @@ def parse_progress_logs_for_param_diff(exp_dir, pattern):
             'max_iter': max_iter}
 
 
-def parse_train_logs(exp_dir):
+def get_train_times(exp_dir):
     train_log_files = "%s/log/" % (exp_dir)
     train_log_names = "train.*.log"
     train_log_lines = common_lib.get_command_stdout(
-        'find {0} -name {1} | xargs grep -e Accounting'.format(train_log_files,train_log_names))
+        'find {0} -name "{1}" | xargs grep -H -e Accounting'.format(train_log_files,train_log_names))
     parse_regex = re.compile(".*train\.([0-9]+)\.([0-9]+)\.log:# "
                              "Accounting: time=([0-9]+) thread.*")
 
@@ -395,7 +395,7 @@ def parse_prob_logs(exp_dir, key='accuracy', output="output"):
 
 def generate_acc_logprob_report(exp_dir, key="accuracy", output="output"):
     try:
-        times = parse_train_logs(exp_dir)
+        times = get_train_times(exp_dir)
     except:
         tb = traceback.format_exc()
         logger.warning("Error getting info from logs, exception was: " + tb)
