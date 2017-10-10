@@ -25,7 +25,9 @@ srcdict=$srcdir/swb_ms98_transcriptions/sw-ms98-dict.text
 # assume swbd_p1_data_prep.sh was done already.
 [ ! -f "$srcdict" ] && echo "$0: No such file $srcdict" && exit 1;
 
+rm -f $dir/lexicon0.txt
 cp $srcdict $dir/lexicon0.txt || exit 1;
+chmod +w $dir/lexicon0.txt
 patch <local/swbd_dict.patch $dir/lexicon0.txt || exit 1;
 
 #(2a) Dictionary preparation:
