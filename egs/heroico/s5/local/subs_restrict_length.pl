@@ -40,7 +40,12 @@ LINE: while ( my $line = <$C> ) {
 
     next LINE if ( ($#tokens < $lb) or ($#tokens > $ub ));
 
-    print $RL "$line\n";
+    my @lc_tokens = ();
+    for my $t (@tokens) {
+	push @lc_tokens, lc $t;
+    }
+
+    print $RL "@lc_tokens\n";
 
 }
 
