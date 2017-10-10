@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 . ./cmd.sh
 
@@ -14,191 +14,20 @@ set u
 # the location of the LDC corpus
 datadir=/mnt/corpora/LDC2006S37/data
 
-# acoustic models are trained on the heroico corpus
-# testing is done on the usma corpus
-# heroico consists of 2 parts: answers and recordings (recited)
-
-answers_transcripts=$datadir/transcripts/heroico-answers.txt
-recordings_transcripts=$datadir/transcripts/heroico-recordings.txt
-
-# usma is all recited
-usma_transcripts=$datadir/transcripts/usma-prompts.txt
-
 # location of subs text data
 subsdata=http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2016/en-es.txt.zip
 
 tmpdir=data/local/tmp
 
-# make acoustic model training  lists
 if [ $stage -le 0 ]; then
-    mkdir \
-	-p \
-	$tmpdir/heroico \
-	$tmpdir/usma
+    # prepare the lists for acoustic model training and testing
+    mkdir -p $tmpdir/heroico
+    mkdir -p $tmpdir/usma
 
-    local/get_wav_list.sh \
-	$datadir
-
-    # make separate lists for heroico answers and recordings
-    # the transcripts are converted to UTF8
-    export LC_ALL=en_US.UTF-8
-    cat \
-	$answers_transcripts \
-	| \
-	iconv \
-	    -f ISO-8859-1 \
-	    -t UTF-8 \
-	| \
-	sed -e s/// \
-	| \
-	local/heroico_answers_make_lists.pl
-
-    utils/fix_data_dir.sh \
-	$tmpdir/heroico/answers
-
-    cat \
-	$recordings_transcripts \
-	| \
-	iconv \
-	    -f ISO-8859-1 \
-	    -t UTF-8 \
-	| \
-	sed -e s/// \
-	    | \
-	local/heroico_recordings_make_lists.pl
-
-    utils/fix_data_dir.sh \
-	$tmpdir/heroico/recordings
-
-    # consolidate heroico lists
-    mkdir -p $tmpdir/heroico/lists
-
-    for x in wav.scp utt2spk text; do
-	cat \
-	    $tmpdir/heroico/answers/$x \
-	    $tmpdir/heroico/recordings/$x \
-	    | \
-	    sed -e s/// \
-		| \
-	    sort \
-		-k1,1 \
-		-u \
-		> \
-		$tmpdir/heroico/lists/$x
-    done
-
-    utils/fix_data_dir.sh \
-	$tmpdir/heroico/lists
+    local/prepare_data.sh $datadir
 fi
 
 if [ $stage -le 1 ]; then
-    #  make separate lists for usma native and nonnative
-    cat \
-	$usma_transcripts \
-	| \
-	iconv -f ISO-8859-1 -t UTF-8 \
-	| \
-	sed -e s/// \
-	    | \
-	    local/usma_native_make_lists.pl
-
-    cat \
-	$usma_transcripts \
-	| \
-	iconv -f ISO-8859-1 -t UTF-8 \
-	| \
-	sed -e s/// \
-	    | \
-	local/usma_nonnative_make_lists.pl
-
-    for n in native nonnative; do
-	mkdir -p $tmpdir/usma/$n/lists
-
-	for x in wav.scp utt2spk text; do
-	    sort \
-		$tmpdir/usma/$n/$x \
-		> \
-		$tmpdir/usma/$n/lists/$x
-	done
-
-	utils/fix_data_dir.sh \
-	    $tmpdir/usma/$n/lists
-    done
-
-    mkdir -p data/train
-    mkdir -p $tmpdir/lists
-
-    # get training lists
-    for x in wav.scp utt2spk text; do
-	cat \
-	    $tmpdir/heroico/answers/${x} \
-	    $tmpdir/heroico/recordings/${x} \
-	    | \
-	    sed -e s/// \
-	    > \
-	    $tmpdir/lists/$x
-
-	sort \
-	    $tmpdir/lists/$x \
-	    > \
-	    data/train/$x
-    done
-
-    utils/utt2spk_to_spk2utt.pl \
-	data/train/utt2spk \
-	| \
-	sort \
-	    > \
-	    data/train/spk2utt
-
-    utils/fix_data_dir.sh \
-	data/train
-
-# make testing  lists
-
-    mkdir \
-	-p \
-	data/test \
-	data/native \
-	data/nonnative \
-	$tmpdir/usma/lists
-
-    for x in wav.scp text utt2spk; do
-	# get testing lists
-	for n in native nonnative; do
-	    cat \
-		$tmpdir/usma/$n/lists/$x \
-		>> \
-		$tmpdir/usma/lists/$x
-	done
-
-	sort \
-	    $tmpdir/usma/lists/$x \
-	    > \
-	    data/test/$x
-
-	for n in native nonnative; do
-	    sort \
-		$tmpdir/usma/$n/$x \
-		> \
-		data/$n/$x
-	done
-    done
-
-    for n in native nonnative test; do
-	utils/utt2spk_to_spk2utt.pl \
-	    data/$n/utt2spk \
-	    | \
-	    sort \
-		> \
-		data/$n/spk2utt
-
-	utils/fix_data_dir.sh \
-	    data/$n
-    done
-fi
-
-if [ $stage -le 2 ]; then
     # prepare a dictionary
     mkdir -p data/local/dict
     mkdir -p data/local/tmp/dict
@@ -232,17 +61,8 @@ if [ $stage -le 2 ]; then
 	data/lang   || exit 1;
 fi
 
-if [ $stage -le 3 ]; then
-    # prepare lm on training transcripts
-    local/prepare_lm.sh
-
-    utils/format_lm.sh \
-	data/lang \
-	data/local/lm/lm_threegram.arpa.gz \
-	data/local/dict/lexicon.txt \
-	data/lang_test_simple
-
-    mkdir -p $tmpdir/lm
+if [ $stage -le 2 ]; then
+    # get subs data for lm training
     mkdir -p $tmpdir/subs/lm
 
     # download  subs text data
@@ -256,43 +76,33 @@ if [ $stage -le 3 ]; then
 
     unzip es.zip
 
-    # delete paralell parts of the subs corpus
+    # delete parallel parts of the subs corpus
     rm es.zip OpenSubtitles2016.en-es.en OpenSubtitles2016.en-es.ids
 
     cd ../../../..
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 3 ]; then
         # get a sample of the subs corpus for lm training
-    local/subs_restrict_length.pl \
-	$tmpdir/subs/OpenSubtitles2016.en-es.es
+    local/subs_prepare_data.pl
 
     rm $tmpdir/subs/OpenSubtitles2016.en-es.es
-
-    local/subs_check_oov.pl \
-	data/lang/words.txt \
-	$tmpdir/subs/lm/es.txt \
-	> \
-	$tmpdir/subs/lm/oovs.txt
-
-    sort \
-	-u \
-	$tmpdir/subs/lm/oovs.txt \
-	> \
-	data/local/tmp/subs/lm/oovs_uniq.txt
-
-    local/subs_remove_oov_segments.pl
 fi
 
-if [ $stage -le 5 ]; then
-    local/subs_prepare_lm.sh
+if [ $stage -le 4 ]; then
+    # build lm
+    local/prepare_lm.sh
 
     utils/format_lm.sh \
 	data/lang \
-	data/local/lm/subs_lm_threegram.arpa.gz \
+	data/local/lm/threegram.arpa.gz \
 	data/local/dict/lexicon.txt \
-	data/lang_test_subs
+	data/lang_test
 
+    rm -Rf data/local/tmp
+fi
+
+if [ $stage -le 5 ]; then
     # extract acoustic features
     mkdir -p exp
 
@@ -330,26 +140,22 @@ if [ $stage -le 5 ]; then
 
     # evaluation
     (
-	# make decoding graph for monophones with 2 lm
-	for l in simple subs; do
-	    utils/mkgraph.sh \
-		data/lang_test_${l} \
-		exp/mono \
-		exp/mono/graph_${l} || exit 1;
+	# make decoding graph for monophones
+	utils/mkgraph.sh \
+	    data/lang_test \
+	    exp/mono \
+	    exp/mono/graph || exit 1;
 
-	    # test monophones
-	    for x in native nonnative test; do
-		steps/decode.sh \
-		    --nj 8  \
-		    exp/mono/graph_${l} \
-		    data/$x \
-		    exp/mono/decode_${x}_${l} || exit 1;
-	    done
+	# test monophones
+	for x in native nonnative test; do
+	    steps/decode.sh \
+		--nj 8  \
+		exp/mono/graph \
+		data/$x \
+		    exp/mono/decode_${x} || exit 1;
 	done
     ) &
-fi
 
-if [ $stage -le 6 ]; then
     # align with monophones
     steps/align_si.sh \
 	--nj 8 \
@@ -373,20 +179,18 @@ if [ $stage -le 6 ]; then
     # test cd gmm hmm models
     # make decoding graphs for tri1
     (
-	for l in simple subs; do
-	    utils/mkgraph.sh \
-		data/lang_test_${l} \
-		exp/tri1 \
-		exp/tri1/graph_${l} || exit 1;
+	utils/mkgraph.sh \
+	    data/lang_test \
+	    exp/tri1 \
+	    exp/tri1/graph || exit 1;
 
-	    # decode test data with tri1 models
-	    for x in native nonnative test; do
-		steps/decode.sh \
-		    --nj 8  \
-		    exp/tri1/graph_${l} \
-		    data/$x \
-		    exp/tri1/decode_${x}_${l} || exit 1;
-	    done
+	# decode test data with tri1 models
+	for x in native nonnative test; do
+	    steps/decode.sh \
+		--nj 8  \
+		exp/tri1/graph \
+		data/$x \
+		exp/tri1/decode_${x} || exit 1;
 	done
     ) &
 
@@ -413,21 +217,19 @@ if [ $stage -le 7 ]; then
 
     (
 	#  make decoding FSTs for tri2b models
-	for l in simple subs; do
-	    utils/mkgraph.sh \
-		data/lang_test_${l} \
-		exp/tri2b \
-		exp/tri2b/graph_${l} || exit 1;
+	utils/mkgraph.sh \
+	    data/lang_test \
+	    exp/tri2b \
+	    exp/tri2b/graph || exit 1;
 
-	    # decode  test with tri2b models
-	    for x in native nonnative test; do
-		steps/decode.sh \
-		    --nj 8  \
-		    exp/tri2b/graph_${l} \
-		    data/$x \
-		    exp/tri2b/decode_${x}_${l} || exit 1;
+	# decode  test with tri2b models
+	for x in native nonnative test; do
+	    steps/decode.sh \
+		--nj 8  \
+		exp/tri2b/graph \
+		data/$x \
+		    exp/tri2b/decode_${x} || exit 1;
 	    done
-	done
     ) &
 
     # align with lda and mllt adapted triphones
@@ -464,21 +266,19 @@ fi
 if [ $stage -le 8 ]; then
     (
 	# make decoding graphs for SAT models
-	for l in simple subs; do
-	    utils/mkgraph.sh \
-		data/lang_test_${l} \
-		exp/tri3b \
-		exp/tri3b/graph_${l} ||  exit 1;
+	utils/mkgraph.sh \
+	    data/lang_test \
+	    exp/tri3b \
+	    exp/tri3b/graph ||  exit 1;
 
-	    # decode test sets with tri3b models
-	    for x in native nonnative test; do
-		steps/decode_fmllr.sh \
-		    --nj 8 \
-		    --cmd "$decode_cmd" \
-		    exp/tri3b/graph_${l} \
-		    data/$x \
-		    exp/tri3b/decode_${x}_${l}
-	    done
+	# decode test sets with tri3b models
+	for x in native nonnative test; do
+	    steps/decode_fmllr.sh \
+		--nj 8 \
+		--cmd "$decode_cmd" \
+		exp/tri3b/graph \
+		data/$x \
+		exp/tri3b/decode_${x}
 	done
     ) &
 fi
