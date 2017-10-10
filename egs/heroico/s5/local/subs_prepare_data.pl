@@ -3,7 +3,7 @@
 # Copyright 2017 John Morgan
 # Apache 2.0.
 
-# subs_restrict_length.pl - restrict length of segments
+# subs_prepare_data.pl - condition subs data for lm training
 
 use strict;
 use warnings;
@@ -31,21 +31,36 @@ system "mkdir -p data/local/tmp/subs/lm";
 open my $RL, '+>:utf8', $rl or croak "problems with $rl $!";
 
 LINE: while ( my $line = <$C> ) {
-
     $line = decode_utf8 $line;
-
     chomp $line;
 
     my @tokens = split /\s+/, $line;
 
     next LINE if ( ($#tokens < $lb) or ($#tokens > $ub ));
 
-    my @lc_tokens = ();
-    for my $t (@tokens) {
-	push @lc_tokens, lc $t;
-    }
+    #remove control characters
+    #$line =~ s/(\p{Other})/ /g;
+    #$line =~ s/(\p{Control})/ /g;
+    #$line =~ s/(\p{Format})/ /g;
+    #$line =~ s/(\p{Private_Use})/ /g;
+    #$line =~ s/(\p{Surrogate})/ /g;
 
-    print $RL "@lc_tokens\n";
+    # punctuation
+    $line =~ s/(\p{Punctuation}+|\p{Dash_Punctuation}+|\p{Close_Punctuation}+|\p{Open_Punctuation}+|\p{Initial_Punctuation}+|\p{Final_Punctuation}+|\p{Connector_Punctuation}+|\p{Other_Punctuation}+|[	 ]+)/ /msxg;
+#convert tabs to white space
+    $line =~ s/\t/ /g;
+    #hard to soft space
+    $line =~ s/ / /g;
+#squeeze white space
+    $line =~ s/\s+/ /g;
+#initial and final white space
+    $line =~ s/^\p{Separator}+//;
+    $line =~ s/\p{Separator}+$//;
+#down case
+    $line = lc $line;
+
+
+    print $RL "$line\n";
 
 }
 
