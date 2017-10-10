@@ -12,7 +12,7 @@ set -o pipefail
 set u
 
 # the location of the LDC corpus
-datadir=../LDC2006S37/data
+datadir=/mnt/corpora/LDC2006S37/data
 
 # location of subs text data
 subsdata=http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2016/en-es.txt.zip
@@ -21,10 +21,8 @@ tmpdir=data/local/tmp
 
 if [ $stage -le 0 ]; then
     # prepare the lists for acoustic model training and testing
-    mkdir \
-	-p \
-	$tmpdir/heroico \
-	$tmpdir/usma
+    mkdir -p $tmpdir/heroico
+    mkdir -p $tmpdir/usma
 
     local/prepare_data.sh $datadir
 fi
@@ -65,7 +63,6 @@ fi
 
 if [ $stage -le 2 ]; then
     # get subs data for lm training
-    mkdir -p $tmpdir/lm
     mkdir -p $tmpdir/subs/lm
 
     # download  subs text data
@@ -87,11 +84,11 @@ fi
 
 if [ $stage -le 3 ]; then
         # get a sample of the subs corpus for lm training
-    local/subs_restrict_length.pl
+    local/subs_prepare_data.pl
 
     rm $tmpdir/subs/OpenSubtitles2016.en-es.es
 fi
-exit
+
 if [ $stage -le 4 ]; then
     # build lm
     local/prepare_lm.sh
@@ -101,10 +98,11 @@ if [ $stage -le 4 ]; then
 	data/local/lm/threegram.arpa.gz \
 	data/local/dict/lexicon.txt \
 	data/lang_test
+
+    rm -Rf data/local/tmp
 fi
 
 if [ $stage -le 5 ]; then
-
     # extract acoustic features
     mkdir -p exp
 
