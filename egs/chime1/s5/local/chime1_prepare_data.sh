@@ -40,8 +40,9 @@ scp="$data/train/wav.scp"
 rm -f "$scp"
 for sid in `seq 34`; do
   sid2=`printf "s%02d" $sid`
+  tab=$'\t'
   ls -1 $wav_train/id$sid/*.wav \
-    | sed $"s/\(.*\)\/\(.*\).wav/${sid2}_\2\t\1\/\2.wav/" \
+    | sed "s/\(.*\)\/\(.*\).wav/${sid2}_\2$tab\1\/\2.wav/" \
     | sort >> $scp
 done
 for x in "devel" "test"; do
