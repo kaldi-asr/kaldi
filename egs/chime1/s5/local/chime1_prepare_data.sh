@@ -40,7 +40,6 @@ scp="$data/train/wav.scp"
 rm -f "$scp"
 for sid in `seq 34`; do
   sid2=`printf "s%02d" $sid`
-  tab=$'\t'
   ls -1 $wav_train/id$sid/*.wav \
     | perl -ape "s/(.*)\/(.*).wav/${sid2}_\2\t\1\/\2.wav/;" \
     | sort >> $scp
@@ -53,7 +52,6 @@ for x in "devel" "test"; do
     wav_dir="${!wav_var}"
     for sid in `seq 34`; do
       sid2=`printf "s%02d" $sid`
-      tab=$'\t'
       ls -1 $wav_dir/*/s${sid}_*.wav \
         | perl -ape "s/(.*)\/(.*)\/s.*_(.*).wav/${sid2}_\3_\2$\t\1\/\2\/s${sid}_\3.wav/;" \
         | sort >> $scp 
