@@ -21,6 +21,8 @@ def prepare_music(root_dir, use_vocals):
   utt2vocals = {}
   utt2spk = {}
   utt2wav = {}
+  num_good_files = 0
+  num_bad_files = 0
   music_dir = os.path.join(root_dir, "music")
   for root, dirs, files in os.walk(music_dir):
     for file in files:
@@ -35,14 +37,22 @@ def prepare_music(root_dir, use_vocals):
   utt2spk_str = ""
   utt2wav_str = ""
   for utt in utt2vocals:
-    if use_vocals or not utt2vocals[utt]:
-      utt2spk_str = utt2spk_str + utt + " " + utt2spk[utt] + "\n"
-      utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r 8k -t wav - |\n"
+    if utt in utt2wav:
+      if use_vocals or not utt2vocals[utt]:
+        utt2spk_str = utt2spk_str + utt + " " + utt2spk[utt] + "\n"
+        utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r 8k -t wav - |\n"
+      num_good_files += 1
+    else:
+      print("Missing file", utt)
+      num_bad_files += 1
+  print("In music directory, processed", num_good_files, "files;", num_bad_files, "had missing wav data")
   return utt2spk_str, utt2wav_str
 
 def prepare_speech(root_dir):
   utt2spk = {}
   utt2wav = {}
+  num_good_files = 0
+  num_bad_files = 0
   speech_dir = os.path.join(root_dir, "speech")
   for root, dirs, files in os.walk(speech_dir):
     for file in files:
@@ -54,15 +64,23 @@ def prepare_speech(root_dir):
   utt2spk_str = ""
   utt2wav_str = ""
   for utt in utt2spk:
-    utt2spk_str = utt2spk_str + utt + " " + utt2spk[utt] + "\n"
-    utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r 8k -t wav - |\n"
+    if utt in utt2wav:
+      utt2spk_str = utt2spk_str + utt + " " + utt2spk[utt] + "\n"
+      utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r 8k -t wav - |\n"
+      num_good_files += 1
+    else:
+      print("Missing file", utt)
+      num_bad_files += 1
+  print("In speech directory, processed", num_good_files, "files;", num_bad_files, "had missing wav data")
   return utt2spk_str, utt2wav_str
 
 def prepare_noise(root_dir):
   utt2spk = {}
   utt2wav = {}
-  speech_dir = os.path.join(root_dir, "noise")
-  for root, dirs, files in os.walk(speech_dir):
+  num_good_files = 0
+  num_bad_files = 0
+  noise_dir = os.path.join(root_dir, "noise")
+  for root, dirs, files in os.walk(noise_dir):
     for file in files:
       file_path = os.path.join(root, file)
       if file.endswith(".wav"):
@@ -72,8 +90,14 @@ def prepare_noise(root_dir):
   utt2spk_str = ""
   utt2wav_str = ""
   for utt in utt2spk:
-    utt2spk_str = utt2spk_str + utt + " " + utt2spk[utt] + "\n"
-    utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r 8k -t wav - |\n"
+    if utt in utt2wav:
+      utt2spk_str = utt2spk_str + utt + " " + utt2spk[utt] + "\n"
+      utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r 8k -t wav - |\n"
+      num_good_files += 1
+    else:
+      print("Missing file", utt)
+      num_bad_files += 1
+  print("In noise directory, processed", num_good_files, "files;", num_bad_files, "had missing wav data")
   return utt2spk_str, utt2wav_str
 
 def main():
