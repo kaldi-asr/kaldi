@@ -22,7 +22,7 @@ open(WAV, ">$out_dir/wav.scp") || die "Could not open the output file $out_dir/w
 
 @badAudio = ("3", "4");
 
-$tmp_dir = "$out_base/tmp";
+$tmp_dir = "$out_dir/tmp";
 if (system("mkdir -p $tmp_dir") != 0) {
   die "Error making directory $tmp_dir";
 }
