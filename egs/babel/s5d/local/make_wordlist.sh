@@ -9,6 +9,6 @@ transcriptions=$1
 wordlist=$2
 
 (
-  find $transcriptions -name "*.txt" | xargs egrep -vx '\[[0-9.]+\]'  |cut -f 2- -d ':' | sed 's/ /\n/g'
+  find $transcriptions -name "*.txt" | xargs egrep -vx '\[[0-9.]+\]'  |cut -f 2- -d ':' | perl -ape 's/ /\n/g;'
 ) | sort -u | grep -v -E '.*\*.*|<.*>|\(\(\)\)|^-.*|.*-$' > $wordlist
 
