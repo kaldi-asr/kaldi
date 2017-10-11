@@ -70,7 +70,8 @@ for x in $set_list; do
 
     # Create utt2spk files 
     # No speaker ID
-    sed $'s/\(.*\)\t.*/\1\t\1/' < "$scp" > "$data/$x/utt2spk"
+    tab=$'\t'
+    sed "s/\(.*\)\t.*/\1${tab}\1/" < "$scp" > "$data/$x/utt2spk"
     # Use speaker ID
     # tab=$'\t'
     # sed "s/\(s..\)\(.*\)\t.*/\1\2${tab}\1/" < "$scp" > "$data/$x/utt2spk"
