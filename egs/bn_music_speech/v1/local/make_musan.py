@@ -40,7 +40,7 @@ def prepare_music(root_dir, use_vocals):
     if utt in utt2wav:
       if use_vocals or not utt2vocals[utt]:
         utt2spk_str = utt2spk_str + utt + " " + utt2spk[utt] + "\n"
-        utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r 8k -t wav - |\n"
+        utt2wav_str = utt2wav_str + utt + " " + utt2wav[utt] + "\n"
       num_good_files += 1
     else:
       print("Missing file", utt)
@@ -66,7 +66,7 @@ def prepare_speech(root_dir):
   for utt in utt2spk:
     if utt in utt2wav:
       utt2spk_str = utt2spk_str + utt + " " + utt2spk[utt] + "\n"
-      utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r 8k -t wav - |\n"
+      utt2wav_str = utt2wav_str + utt + " " + utt2wav[utt] + "\n"
       num_good_files += 1
     else:
       print("Missing file", utt)
@@ -92,7 +92,7 @@ def prepare_noise(root_dir):
   for utt in utt2spk:
     if utt in utt2wav:
       utt2spk_str = utt2spk_str + utt + " " + utt2spk[utt] + "\n"
-      utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r 8k -t wav - |\n"
+      utt2wav_str = utt2wav_str + utt + " " + utt2wav[utt] + "\n"
       num_good_files += 1
     else:
       print("Missing file", utt)
