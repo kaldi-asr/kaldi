@@ -47,28 +47,37 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  # Create high-resolution MFCC features (with 40 cepstra instead of 13).
-  # this shows how you can split across multiple file-systems.
-  echo "$0: creating high-resolution MFCC features"
-  mfccdir=data/${train_set}_sp_hires/data
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
-    utils/create_split_dir.pl /export/b1{5,6,7,8}/$USER/kaldi-data/egs/mini_librispeech-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
-  fi
+    # Create high-resolution MFCC features (with 40 cepstra instead of 13).
+    # this shows how you can split across multiple file-systems.
+    echo "$0: creating high-resolution MFCC features"
+    mfccdir=data/${train_set}_sp_hires/data
+    if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
+	utils/create_split_dir.pl \
+	    /export/a05/$USER/kaldi/egs/heroico/s5/$mfccdir/storage $mfccdir/storage
+    fi
 
-  for datadir in ${train_set}_sp ${test_sets}; do
-    utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
-  done
+    for datadir in ${train_set}_sp ${test_sets}; do
+	utils/copy_data_dir.sh \
+	    data/$datadir \
+	    data/${datadir}_hires
+    done
 
-  # do volume-perturbation on the training data prior to extracting hires
-  # features; this helps make trained nnets more invariant to test data volume.
-  utils/data/perturb_data_dir_volume.sh data/${train_set}_sp_hires || exit 1;
+    # do volume-perturbation on the training data prior to extracting hires
+    # features; this helps make trained nnets more invariant to test data volume.
+    utils/data/perturb_data_dir_volume.sh \
+	data/${train_set}_sp_hires || exit 1;
 
-  for datadir in ${train_set}_sp ${test_sets}; do
-    steps/make_mfcc.sh --nj 10 --mfcc-config conf/mfcc_hires.conf \
-      --cmd "$train_cmd" data/${datadir}_hires || exit 1;
-    steps/compute_cmvn_stats.sh data/${datadir}_hires || exit 1;
-    utils/fix_data_dir.sh data/${datadir}_hires || exit 1;
-  done
+    for datadir in ${train_set}_sp ${test_sets}; do
+	steps/make_mfcc.sh \
+	    --nj 10 \
+	    --mfcc-config conf/mfcc_hires.conf \
+	    --cmd "$train_cmd" \
+	    data/${datadir}_hires || exit 1;
+	steps/compute_cmvn_stats.sh \
+	    data/${datadir}_hires || exit 1;
+	utils/fix_data_dir.sh \
+	    data/${datadir}_hires || exit 1;
+    done
 fi
 
 if [ $stage -le 4 ]; then
@@ -107,13 +116,16 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  # Train the iVector extractor.  Use all of the speed-perturbed data since iVector extractors
-  # can be sensitive to the amount of data.  The script defaults to an iVector dimension of
-  # 100.
-  echo "$0: training the iVector extractor"
-  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
-     data/${train_set}_sp_hires exp/nnet3${nnet3_affix}/diag_ubm \
-     exp/nnet3${nnet3_affix}/extractor || exit 1;
+    # Train the iVector extractor.  Use all of the speed-perturbed data since iVector extractors
+    # can be sensitive to the amount of data.  The script defaults to an iVector dimension of
+    # 100.
+    echo "$0: training the iVector extractor"
+    steps/online/nnet2/train_ivector_extractor.sh \
+	--cmd "$train_cmd" \
+	--nj 10 \
+	data/${train_set}_sp_hires \
+	exp/nnet3${nnet3_affix}/diag_ubm \
+	exp/nnet3${nnet3_affix}/extractor || exit 1;
 fi
 
 
