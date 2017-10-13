@@ -1,27 +1,34 @@
 #!/bin/bash
 
-# run_tdnn_7k.sh is like run_tdnn_7h.sh but batchnorm components instead of renorm
+# 7m is as 7k but adding two non-splicing layers towards the beginning of the
+#   network.
+# The impovement is pretty small but I've seen similar improvements on other
+# setups with this architecture so I tend to believe it.
 
-# local/chain/compare_wer_general.sh tdnn_7h_sp/ tdnn_7k_sp/
-# System                tdnn_7h_sp/ tdnn_7k_sp/
-# WER on train_dev(tg)      13.99     13.98
-# WER on train_dev(fg)      12.82     12.66
-# WER on eval2000(tg)        16.8      16.6
-# WER on eval2000(fg)        15.3      15.0
-# Final train prob         -0.087    -0.087
+
+# local/chain/compare_wer_general.sh tdnn_7k_sp tdnn_7m_sp
+# System                tdnn_7k_sp tdnn_7m_sp
+# WER on train_dev(tg)      13.83     13.65
+# WER on train_dev(fg)      12.74     12.54
+# WER on eval2000(tg)        16.9      16.8
+# WER on eval2000(fg)        15.2      15.1
+# Final train prob         -0.085    -0.084
 # Final valid prob         -0.107    -0.103
-# Final train prob (xent)        -1.252    -1.223
-# Final valid prob (xent)       -1.3105   -1.2945
+# Final train prob (xent)        -1.267    -1.215
+# Final valid prob (xent)       -1.3107   -1.2735
+
+# steps/info/chain_dir_info.pl exp/chain/tdnn_7m_sp
+# exp/chain/tdnn_7m_sp: num-iters=262 nj=3..16 num-params=16.3M dim=40+100->6034 combine=-0.103->-0.103 xent:train/valid[173,261,final]=(-1.28,-1.21,-1.21/-1.32,-1.27,-1.27) logprob:train/valid[173,261,final]=(-0.093,-0.084,-0.084/-0.109,-0.104,-0.103)
 
 set -e
 
 # configs for 'chain'
 affix=
-stage=12
+stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_7k  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_7m  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_nj=50
 
@@ -35,7 +42,7 @@ num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=128
 frames_per_eg=150
-remove_egs=true
+remove_egs=false
 common_egs_dir=
 xent_regularize=0.1
 
@@ -129,14 +136,16 @@ if [ $stage -le 12 ]; then
   # the first splicing is moved before the lda layer, so no splicing here
   relu-batchnorm-layer name=tdnn1 dim=625
   relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=625
-  relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=625
-  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=625
-  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=625
+  relu-batchnorm-layer name=tdnn3 dim=625
+  relu-batchnorm-layer name=tdnn4 input=Append(-1,0,1) dim=625
+  relu-batchnorm-layer name=tdnn5 dim=625
   relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=625
   relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=625
+  relu-batchnorm-layer name=tdnn8 input=Append(-3,0,3) dim=625
+  relu-batchnorm-layer name=tdnn9 input=Append(-3,0,3) dim=625
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain input=tdnn7 dim=625 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-chain input=tdnn9 dim=625 target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
@@ -148,7 +157,7 @@ if [ $stage -le 12 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn7 dim=625 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn9 dim=625 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF
