@@ -24,7 +24,7 @@ esac
 
 # extract full vocabulary
 cat $train_dir/text $dev_dir/text | awk '{for (i = 2; i <= NF; i++) print $i}' |\
-  sed -e 's/ /\n/g' | sort -u | \
+  perl -ape 's/ /\n/g;' | sort -u | \
   grep -v '\[LAUGHTER\]' | \
   grep -v '\[NOISE\]' |\
   grep -v '\[VOCALIZED-NOISE\]' > $dict_dir/vocab-full.txt
@@ -139,8 +139,8 @@ cat $dict_dir/ch-dict.txt |\
   }
   ' > $dict_dir/ch-dict-1.txt
 
-cat $dict_dir/ch-dict-1.txt | awk '{print $1}' | sed -e 's/\(\S\)/\1\n/g' | grep -v '^$' > $dict_dir/ch-char.txt
-cat $dict_dir/ch-dict-1.txt | awk '{for(i=2; i<=NF; i++) print $i}' | sed -e 's/ /\n/g' > $dict_dir/ch-char-pinyin.txt
+cat $dict_dir/ch-dict-1.txt | awk '{print $1}' | perl -ape 's/(\S)/\1\n/g;' | grep -v '^$' > $dict_dir/ch-char.txt
+cat $dict_dir/ch-dict-1.txt | awk '{for(i=2; i<=NF; i++) print $i}' | perl -ape 's/ /\n/g;' > $dict_dir/ch-char-pinyin.txt
 wc -l $dict_dir/ch-char.txt
 wc -l $dict_dir/ch-char-pinyin.txt
 paste $dict_dir/ch-char.txt $dict_dir/ch-char-pinyin.txt | sort -u > $dict_dir/ch-char-dict.txt

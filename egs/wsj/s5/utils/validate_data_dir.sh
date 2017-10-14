@@ -108,6 +108,7 @@ fi
 
 num_utts=`cat $tmpdir/utts | wc -l`
 if [ -f $data/text ]; then
+  utils/validate_text.pl $data/text || exit 1;
   check_sorted_and_uniq $data/text
   text_len=`cat $data/text | wc -l`
   illegal_sym_list="<s> </s> #0"
