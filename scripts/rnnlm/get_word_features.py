@@ -142,12 +142,10 @@ else:
     unigram_probs = None
 feats = read_features(args.features_file)
 
+treat_as_bos_word_set = args.treat_as_bos.split(',')
+
 def treat_as_bos(word):
-  words = args.treat_as_bos.split(',')
-  for w in words:
-    if w == word:
-      return True
-  return False
+  return word in treat_as_bos_word_set
 
 def get_feature_list(word, idx):
     """Return a dict from feat_id to value (as int or float), e.g.

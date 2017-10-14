@@ -31,7 +31,7 @@
 #include "util/common-utils.h"
 
 namespace kaldi {
-namespace nnet3 {
+namespace rnnlm {
 
 class KaldiRnnlmDeterministicFst
     : public fst::DeterministicOnDemandFst<fst::StdArc> {
@@ -67,16 +67,16 @@ class KaldiRnnlmDeterministicFst
 
   MapType wseq_to_state_;
 
-  // mapping from state-id to history sequence
+  // Mapping from state-id to history sequence>
   std::vector<std::vector<Label> > state_to_wseq_;
 
-  // mapping from state-id to RNNLM states
-  // the pointers are owned here
+  // Mapping from state-id to RNNLM states.
+  // The pointers are owned in this class
   std::vector<RnnlmComputeState*> state_to_rnnlm_state_;
 
 };
 
-}  // namespace nnet3
+}  // namespace rnnlm
 }  // namespace kaldi
 
 #endif  // KALDI_RNNLM_RNNLM_LATTICE_RESCORING_H_

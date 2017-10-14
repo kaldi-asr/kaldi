@@ -60,8 +60,6 @@ for f in $dir/config/{words,data_weights,oov}.txt \
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1
 done
 
-special_symbol_opts=`cat $dir/special_symbol_opts.txt | sed "s= =\n=g" | egrep "bos|eos" | tr "\n" " "`
-
 # set some variables and check more files.
 num_splits=$(cat $dir/text/info/num_splits)
 num_repeats=$(cat $dir/text/info/num_repeats)

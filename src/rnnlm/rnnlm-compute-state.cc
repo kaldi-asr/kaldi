@@ -24,7 +24,7 @@
 #include "nnet3/nnet-compile-looped.h"
 
 namespace kaldi {
-namespace nnet3 {
+namespace rnnlm {
 
 RnnlmComputeStateInfo::RnnlmComputeStateInfo(
     const RnnlmComputeStateComputationOptions &opts,
@@ -40,7 +40,7 @@ RnnlmComputeStateInfo::RnnlmComputeStateInfo(
   int32 embedding_dim = rnnlm.OutputDim("output");
   KALDI_ASSERT(embedding_dim == word_embedding_mat.NumCols());
 
-  ComputationRequest request1, request2, request3;
+  nnet3::ComputationRequest request1, request2, request3;
   CreateLoopedComputationRequestSimple(rnnlm,
                                        1, // num_frames
                                        frame_subsampling_factor,
@@ -93,7 +93,7 @@ void RnnlmComputeState::AddWord(int32 word_index) {
                         predicted_word_embedding_->Row(0), 0.0);
     log_probs.ApplyExp();
 
-    // excluding the <eps> symbol which is always 0
+    // We excluding the <eps> symbol which is always 0.
     normalization_factor_ = log(log_probs.Range(1, log_probs.Dim() - 1).Sum());
   }
 }
@@ -103,6 +103,9 @@ BaseFloat RnnlmComputeState::LogProbOfWord(int32 word_index) const {
 
   BaseFloat log_prob = VecVec(predicted_word_embedding_->Row(0),
                               word_embedding_mat.Row(word_index));
+
+  // Even without explicit normalization, the log-probs will be close to
+  // correctly normalized due to the way the model was trained.
   if (info_.opts.normalize_probs) {
     log_prob -= normalization_factor_;
   }
@@ -111,7 +114,8 @@ BaseFloat RnnlmComputeState::LogProbOfWord(int32 word_index) const {
 
 void RnnlmComputeState::AdvanceChunk() {
   CuMatrix<BaseFloat> input_embeddings(1, info_.word_embedding_mat.NumCols());
-  input_embeddings.RowRange(0, 1).AddMat(1.0, info_.word_embedding_mat.RowRange(previous_word_, 1), kNoTrans);
+  input_embeddings.Row(0).AddVec(1.0,
+                                 info_.word_embedding_mat.Row(previous_word_));
   computer_.AcceptInput("input", &input_embeddings);
   computer_.Run();
   {
@@ -123,5 +127,5 @@ void RnnlmComputeState::AdvanceChunk() {
   }
 }
 
-} // namespace nnet3
+} // namespace rnnlm
 } // namespace kaldi

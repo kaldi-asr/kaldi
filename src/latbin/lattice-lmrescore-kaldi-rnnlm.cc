@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
         "              final.raw ark:in.lats ark:out.lats\n";
 
     ParseOptions po(usage);
-    nnet3::RnnlmComputeStateComputationOptions opts;
+    rnnlm::RnnlmComputeStateComputationOptions opts;
 
     int32 max_ngram_order = 3;
     BaseFloat lm_scale = 1.0;
@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (opts.bos_index == -1 || opts.eos_index == -1) {
-      KALDI_ERR << "must set --bos-symbol and --eos-symbol options";
+      KALDI_ERR << "You must set --bos-symbol and --eos-symbol options";
     }
 
     std::string lats_rspecifier, word_embedding_rxfilename,
@@ -83,15 +83,12 @@ int main(int argc, char *argv[]) {
     kaldi::nnet3::Nnet rnnlm;
     ReadKaldiObject(rnnlm_rxfilename, &rnnlm);
 
-    if (!IsSimpleNnet(rnnlm))
-      KALDI_ERR << "Input RNNLM in " << rnnlm_rxfilename
-                << " is not the type of neural net we were looking for; "
-          "failed IsSimpleNnet().";
+    KALDI_ASSERT(IsSimpleNnet(rnnlm));
 
     CuMatrix<BaseFloat> word_embedding_mat;
     ReadKaldiObject(word_embedding_rxfilename, &word_embedding_mat);
 
-    const nnet3::RnnlmComputeStateInfo info(opts, rnnlm, word_embedding_mat);
+    const rnnlm::RnnlmComputeStateInfo info(opts, rnnlm, word_embedding_mat);
 
     // Reads and writes as compact lattice.
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
@@ -99,7 +96,7 @@ int main(int argc, char *argv[]) {
 
     int32 n_done = 0, n_fail = 0;
 
-    nnet3::KaldiRnnlmDeterministicFst rnnlm_fst(max_ngram_order, info);
+    rnnlm::KaldiRnnlmDeterministicFst rnnlm_fst(max_ngram_order, info);
 
     for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
       std::string key = compact_lattice_reader.Key();
