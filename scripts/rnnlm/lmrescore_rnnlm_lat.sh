@@ -64,7 +64,7 @@ oldlm_command="fstproject --project_output=true $oldlm |"
 
 acwt=$(perl -e "print (1.0/$inv_acwt);")
 
-special_symbol_opts=$(cat $dir/special_symbol_opts.txt)
+special_symbol_opts=$(cat $rnnlm_dir/special_symbol_opts.txt)
 
 word_embedding=
 if [ -f $rnnlm_dir/word_embedding.final.mat ]; then
