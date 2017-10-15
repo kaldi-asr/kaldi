@@ -53,7 +53,8 @@ if [ $stage -le 3 ]; then
     mfccdir=data/${train_set}_sp_hires/data
     if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
 	utils/create_split_dir.pl \
-	    /export/a05/$USER/kaldi/egs/heroico/s5/$mfccdir/storage $mfccdir/storage
+	    /export/b1{5,6,7,8}/$USER/kaldi-data/egs/heroico-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage \
+	    $mfccdir/storage
     fi
 
     for datadir in ${train_set}_sp ${test_sets}; do
@@ -145,7 +146,8 @@ if [ $stage -le 6 ]; then
     ivectordir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
     if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $ivectordir/storage ]; then
 	utils/create_split_dir.pl \
-	    /export/a05/$USER/kaldi/egs/heroico/s5/$ivectordir/storage $ivectordir/storage
+	    /export/b0{5,6,7,8}/$USER/kaldi-data/egs/heroico-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage \
+	    $ivectordir/storage
     fi
 
     # having a larger number of speakers is helpful for generalization, and to
