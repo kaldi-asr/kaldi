@@ -13,6 +13,7 @@
 # Config:
 stage=0 # resume training with --stage=N
 flatstart=false
+model=false # If you got trained models, please set it to true
 
 . utils/parse_options.sh || exit 1;
 
@@ -28,11 +29,21 @@ set -o pipefail
 chime4_data=`pwd`/../..
 # Otherwise, please specify it, e.g.,
 chime4_data=/db/laputa1/data/processed/public/CHiME4
+
+case $(hostname -d) in
+  clsp.jhu.edu) chime4_data=/export/corpora4/CHiME4/CHiME3 ;; # JHU,
+esac 
+
 if [ ! -d $chime4_data ]; then
   echo "$chime4_data does not exist. Please specify chime4 data root correctly" && exit 1
 fi
 # Set a model directory for the CHiME4 data.
 modeldir=$chime4_data/tools/ASR_models
+
+if $model; then
+  modeldir=`pwd`
+fi
+
 for d in $modeldir $modeldir/data/{lang,lang_test_tgpr_5k,lang_test_5gkn_5k,lang_test_rnnlm_5k_h300,local} \
   $modeldir/exp/{tri3b_tr05_multi_noisy,tri4a_dnn_tr05_multi_noisy,tri4a_dnn_tr05_multi_noisy_smbr_i1lats}; do
   [ ! -d ] && echo "$0: no such directory $d. specify models correctly or execute './run.sh --flatstart true' first" && exit 1;
