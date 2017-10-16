@@ -437,6 +437,7 @@ bool SupervisionLatticeSplitter::GetSupervision(
 
     TableCompose(transition_id_fst, tolerance_fst_, &(supervision->fst),
                  compose_opts);
+
   } else {
     std::swap(transition_id_fst, supervision->fst);
   }
@@ -449,6 +450,11 @@ bool SupervisionLatticeSplitter::GetSupervision(
   
   fst::RmEpsilon(&(supervision->fst));
   fst::DeterminizeInLog(&(supervision->fst));
+  
+  if (opts_.debug) {
+    std::cerr << "tolerance added fst";
+    fst::WriteFstKaldi(std::cerr, false, supervision->fst);
+  }
 
   KALDI_ASSERT(supervision->fst.Properties(fst::kIEpsilons, true) == 0);
   if (supervision->fst.NumStates() == 0) {
@@ -492,10 +498,22 @@ class ToleranceEnforcerFstCreator {
   typedef fst::StdArc::StateId StateId;
   typedef fst::StdArc::Label Label;
 
-  void AddSelfLoops(int32 offset);
-  void AddArcToTempStates(int32 offset);
-  void InsertSelfLoopTransitions(int32 offset);
-  void DeleteSelfLoopTransitions(int32 offset);
+  enum StateType {
+    kInit,
+    kDeletion,
+    kAccept,
+    kInsertion
+  };
+
+  inline int32 GetStateId(int32 offset, int32 forward_id, int32 type) {
+    return ((offset + zero_offset_index_) * (num_forward_transitions_ * 3 + 1)
+            + (type == kInit ? 0 : 1 + (type - 1) * num_forward_transitions_
+                                   + forward_id) + 1);
+  }
+
+  void AddArcsForOffset(int32 offset);
+  void AddArcsForForwardTransition(int32 offset, int32 forward_id, int32 trans_id);
+  void AddArcsBetweenOffsets(int32 offset, int32 forward_id, int32 trans_id);
 
   const SupervisionOptions &opts_;
   const TransitionModel &trans_model_;
@@ -529,154 +547,127 @@ ToleranceEnforcerFstCreator::ToleranceEnforcerFstCreator(
   fst_->DeleteStates();
 }
 
-void ToleranceEnforcerFstCreator::AddSelfLoops(int32 offset) {
-  StateId state = (offset + zero_offset_index_) * (num_forward_transitions_ + 1);
+void ToleranceEnforcerFstCreator::AddArcsForForwardTransition(
+    int32 offset, int32 forward_id, int32 trans_id) {
+  StateId init_state = GetStateId(offset, forward_id, kInit);
+
+  if (offset == 0 && forward_id == 0)
+    fst_->SetFinal(init_state, fst::TropicalWeight::One());
+
+  // We expect this is to be a forward transition
+  KALDI_ASSERT(!trans_model_.IsSelfLoop(trans_id));
+  int32 forward_pdf = trans_model_.TransitionIdToPdf(trans_id);
+  int32 tstate = trans_model_.TransitionIdToTransitionState(trans_id);
+  int32 self_loop_tid = trans_model_.SelfLoopOf(tstate);
+  int32 self_loop_pdf = trans_model_.TransitionIdToPdf(self_loop_tid);
+
+  for (int32 i = 1; i <= 3; i++) {
+    StateId next_state = GetStateId(offset, forward_id, i);
+
+    // accept a forward transition from initial state
+    fst_->AddArc(init_state, 
+                 fst::StdArc(trans_id, forward_pdf + 1,
+                             fst::TropicalWeight::One(),
+                             next_state));
+    
+    // epsilon-arc to initial state
+    fst_->AddArc(next_state,
+                 fst::StdArc(0, 0,
+                             fst::TropicalWeight::One(),
+                             init_state));
+
+    // self-loop
+    fst_->AddArc(next_state,
+                 fst::StdArc(self_loop_tid, self_loop_pdf + 1,
+                             fst::TropicalWeight::One(),
+                             next_state));
+  }
+}
+
+void ToleranceEnforcerFstCreator::AddArcsBetweenOffsets(
+    int32 offset, int32 forward_id, int32 trans_id) {
+  // We expect this is to be a forward transition
+  KALDI_ASSERT(!trans_model_.IsSelfLoop(trans_id));
+  int32 tstate = trans_model_.TransitionIdToTransitionState(trans_id);
+  int32 self_loop_tid = trans_model_.SelfLoopOf(tstate);
+  int32 self_loop_pdf = trans_model_.TransitionIdToPdf(self_loop_tid);
+
+  if (offset > -opts_.left_tolerance) {
+    StateId state = GetStateId(offset, forward_id, kDeletion);
+    StateId next_state = GetStateId(offset - 1, forward_id, kDeletion);
+
+    fst_->AddArc(state, 
+                 fst::StdArc(self_loop_tid, 0,
+                             fst::TropicalWeight::One(),
+                             next_state));
+  } 
+
+  if (offset < opts_.right_tolerance) {
+    StateId state = GetStateId(offset, forward_id, kInsertion);
+    StateId next_state = GetStateId(offset + 1, forward_id, kInsertion);
+
+    fst_->AddArc(state, 
+                 fst::StdArc(0, self_loop_pdf + 1,
+                             fst::TropicalWeight::One(),
+                             next_state));
+  }
+  
+  if (offset == 0) {
+    if (forward_id == 0) {
+      StateId state = GetStateId(offset, forward_id, kInit);
+      fst_->AddArc(0,
+                   fst::StdArc(0, 0,
+                               fst::TropicalWeight::One(),
+                               state));
+    }
+    
+    for (int32 i = 1; i <= 3; i++) {
+      StateId next_state = GetStateId(offset, forward_id, i);
+      fst_->AddArc(0,
+                   fst::StdArc(self_loop_tid, self_loop_pdf + 1,
+                               fst::TropicalWeight::One(),
+                               next_state));
+    }
+  }
+}
+
+void ToleranceEnforcerFstCreator::AddArcsForOffset(int32 offset) {
+  int32 forward_id = 0;
   for (int32 trans_id = 1; trans_id <= trans_model_.NumTransitionIds(); 
        trans_id++) {
-    int32 pdf_id = trans_model_.TransitionIdToPdf(trans_id);
-    fst_->AddArc(state, 
-        fst::StdArc(trans_id, pdf_id + 1,
-          fst::TropicalWeight::One(), state));
-  }
-}
-
-/* This function adds arcs from each "offset" state to a temporary state
- * emitting a forward-pdf. These temporary states have arcs to states
- * "offset+1" and "offset-1" (other than the boundaries). These arcs will
- * be added later by the function DeleteSelfLoopTransitions and 
- * InsertSelfLoopTransitions.
- */
-void ToleranceEnforcerFstCreator::AddArcToTempStates(int32 offset) {
-  StateId state = (offset + zero_offset_index_) * (num_forward_transitions_ + 1);
-  KALDI_ASSERT(state < fst_->NumStates());
-
-  int32 forward_idx = 1;
-  for (Label trans_id = 1;  
-       trans_id <= trans_model_.NumTransitionIds();
-       trans_id++) {
     if (!trans_model_.IsSelfLoop(trans_id)) {
-      // Add a temporary state for each non-self loop transition
-      KALDI_ASSERT(forward_idx <= num_forward_transitions_);
-      StateId next_state = state + forward_idx;
-      KALDI_ASSERT(next_state < fst_->NumStates());
-      int32 pdf_id = trans_model_.TransitionIdToPdf(trans_id);
-
-      fst_->AddArc(state,
-          fst::StdArc(trans_id, pdf_id + 1,
-            fst::TropicalWeight::One(), next_state));
-      forward_idx++;
+      AddArcsForForwardTransition(offset, forward_id, trans_id);
+      AddArcsBetweenOffsets(offset, forward_id, trans_id);
+      forward_id++;
     }
   }
-}
 
-/* This function adds arcs out of temporary states corresponding to each offset
- * offset that will delete self-loop transition-ids. Doing so will result in
- * moving to the state corresponding to offset one lower.
- */
-void ToleranceEnforcerFstCreator::DeleteSelfLoopTransitions(int32 offset) {
-  KALDI_ASSERT(offset >= -opts_.left_tolerance && offset <= opts_.right_tolerance);
-
-  // If offset is at the left-tolerance, we cannot decrease it further.
-  if (offset == -opts_.left_tolerance) return;  
-  int32 next_offset = offset - 1;
-
-  StateId state = (offset + zero_offset_index_) * (num_forward_transitions_ + 1);
-  StateId next_offset_state = (next_offset + zero_offset_index_)
-                               * (num_forward_transitions_ + 1);
-
-  KALDI_ASSERT(state < fst_->NumStates() && next_offset_state < fst_->NumStates());
-
-  int32 forward_idx = 1;
-  for (Label trans_id = 1;  
-       trans_id <= trans_model_.NumTransitionIds();
-       trans_id++) {
-    if (!trans_model_.IsSelfLoop(trans_id)) {
-      KALDI_ASSERT(forward_idx <= num_forward_transitions_);
-      StateId next_state = state + forward_idx;
-      KALDI_ASSERT(next_state < fst_->NumStates());
-      // We already added an arc to this next_state in the function
-      // AddArcToTempStates. Now we only need to delete a self-loop
-      // transition, which can be done by emitting an epsilon on the output.
-
-      int32 tstate = trans_model_.TransitionIdToTransitionState(trans_id);
-      Label self_loop_tid = trans_model_.SelfLoopOf(tstate);
-
-      fst_->AddArc(next_state, 
-          fst::StdArc(self_loop_tid, 0,
-            fst::TropicalWeight::One(), next_offset_state));
-
-      forward_idx++;
-    }
-  }
-}
-
-/* This function adds arcs out of temporary states corresponding to each offset
- * offset that will insert self-loop transition-ids. Doing so will result in
- * moving to the state corresponding to offset one higher.
- */
-void ToleranceEnforcerFstCreator::InsertSelfLoopTransitions(int32 offset) {
-  KALDI_ASSERT(offset >= -opts_.left_tolerance && offset <= opts_.right_tolerance);
-
-  // If offset is at the right-tolerance, we cannot increase it further.
-  if (offset == opts_.right_tolerance) return;
-  int32 next_offset = offset + 1;
-
-  StateId state = (offset + zero_offset_index_) * (num_forward_transitions_ + 1);
-  StateId next_offset_state = (next_offset + zero_offset_index_)
-                              * (num_forward_transitions_ + 1);
-  
-  KALDI_ASSERT(state < fst_->NumStates() && next_offset_state < fst_->NumStates());
-
-  int32 forward_idx = 1;
-  for (Label trans_id = 1;  
-       trans_id <= trans_model_.NumTransitionIds();
-       trans_id++) {
-    if (!trans_model_.IsSelfLoop(trans_id)) {
-      KALDI_ASSERT(forward_idx <= num_forward_transitions_);
-      StateId next_state = state + forward_idx;
-      KALDI_ASSERT(next_state < fst_->NumStates());
-      // We already added an arc to this next_state in the function
-      // AddArcToTempStates. Now we only need to insert a self-loop
-      // transition, which can be done by emitting an epsilon on the input
-      // side with the self-loop pdf on the output.
-
-      int32 tstate = trans_model_.TransitionIdToTransitionState(trans_id);
-      int32 self_loop_pdf = trans_model_.TransitionStateToSelfLoopPdf(tstate);
-
-      fst_->AddArc(next_state, 
-          fst::StdArc(0, self_loop_pdf + 1,
-            fst::TropicalWeight::One(), next_offset_state));
-
-      forward_idx++;
-    }
-  }
 }
 
 void ToleranceEnforcerFstCreator::MakeFst() {
-  int32 num_states = num_offsets_ * (num_forward_transitions_ + 1);
+  int32 num_states = num_offsets_ * (3 * num_forward_transitions_ + 1) + 1;
   fst_->ReserveStates(num_states);
  
   for (int32 s = 0; s < num_states; s++)
     fst_->AddState();
 
-  StateId start_state = zero_offset_index_ * (num_forward_transitions_ + 1);
-  fst_->SetStart(start_state);
-  fst_->SetFinal(start_state, fst::TropicalWeight::One());
+  fst_->SetStart(0);
 
   for (int32 o = -opts_.left_tolerance; o <= opts_.right_tolerance; o++) {
-    AddSelfLoops(o);
-    AddArcToTempStates(o);
-    DeleteSelfLoopTransitions(o);
-    InsertSelfLoopTransitions(o);
+    AddArcsForOffset(o);
   }
-
-  KALDI_ASSERT(fst_->Start() == zero_offset_index_ * (num_forward_transitions_ + 1));
-
+  
   fst::ArcSort(fst_, fst::ILabelCompare<fst::StdArc>());
 }
 
 void SupervisionLatticeSplitter::MakeToleranceEnforcerFst() {
-  ToleranceEnforcerFstCreator creator(sup_opts_, trans_model_, &tolerance_fst_);
+  GetToleranceEnforcerFst(sup_opts_, trans_model_, &tolerance_fst_);
+}
+
+void GetToleranceEnforcerFst(const SupervisionOptions &sup_opts,
+                              const TransitionModel &trans_model,
+                              fst::StdVectorFst *tolerance_fst) {
+  ToleranceEnforcerFstCreator creator(sup_opts, trans_model, tolerance_fst);
   creator.MakeFst();
 }
 

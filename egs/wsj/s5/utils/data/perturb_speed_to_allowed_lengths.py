@@ -24,6 +24,7 @@ parser.add_argument('--range-factor', type=float, default=0.05,
                     help="""Percentage of durations not covered from each side of
                     duration histogram.""")
 parser.add_argument('--no-speed-perturb',  action='store_true')
+parser.add_argument("--only-speed-perturb", action='store_true')
 
 args = parser.parse_args()
 
@@ -189,55 +190,46 @@ for u in utts:
     prev_d = d
   # i determines the closest allowed durs
 
-  if i > 0:
-    allowed_dur = durs[i - 1]   # this is smaller than u.dur
-    speed = u.dur / allowed_dur
-    if max(speed, 1.0/speed) > factor:
-      #print('rejected: {}    --> dur was {} speed was {}'.format(u.id, u.dur, speed))
-      continue
-    u1 = copy.deepcopy(u)
-    u1.id = 'pv1-' + u.id
-    u1.speaker = 'pv1-' + u.speaker
-    u1.wavefile = '{} sox -t wav - -t wav - speed {} | '.format(u.wavefile, speed)
-    u1.dur = allowed_dur
-    if not args.no_speed_perturb:
-      perturbed_utts += [u1]
+  allowed_dur = durs[i - 1] if i > 0 else durs[i]
+  speed = u.dur / allowed_dur
+  if max(speed, 1.0/speed) > factor:
+    #print('rejected: {}    --> dur was {} speed was {}'.format(u.id, u.dur, speed))
+    continue
+  u1 = copy.deepcopy(u)
+  prefix = 'pv1' if not args.only_speed_perturb else ''
+  u1.id = prefix  + u.id
+  u1.speaker = prefix + u.speaker
+  parts = u.wavefile.split()
+  if len(parts) == 1:
+    u1.wavefile = 'wav-copy {0} - | sox -t wav - -t wav - speed {1} | '.format(
+      u.wavefile, speed)
+  else:
+    assert parts[-1] == "|"
+    u1.wavefile = '{0} sox -t wav - -t wav - speed {1} | '.format(
+      u.wavefile, speed)
+  u1.dur = allowed_dur
+  if not args.no_speed_perturb:
+    perturbed_utts += [u1]
 
+  if args.only_speed_perturb:
+    continue
 
-  if i < len(durs) - 1:
-    allowed_dur2 = durs[i]  # this is bigger than u.dur
-    speed = u.dur / allowed_dur2
-    if max(speed, 1.0/speed) > factor:
-      #print('no v2/v3 for: {}    --> dur was {} speed was {}'.format(u.id, u.dur, speed))
-      continue
+  delta = allowed_dur - u.dur
+  if delta <= 1e-4:
+    continue
+  u3 = copy.deepcopy(u)
+  prefix = 'pv3-' if not args.no_speed_perturb else ''
+  u3.id = prefix + u.id
+  u3.speaker = prefix + u.speaker
 
-    ## Add two versions for the second allowed_length
-    ## one version is by using speed modification using sox
-    ## the other is by extending by silence
-    u2 = copy.deepcopy(u)
-    u2.id = 'pv2-' + u.id
-    u2.speaker = 'pv2-' + u.speaker
-    u2.wavefile = '{} sox -t wav - -t wav - speed {} | '.format(u.wavefile, speed)
-    u2.dur = allowed_dur2
-    if not args.no_speed_perturb:
-      perturbed_utts += [u2]
-
-    delta = allowed_dur2 - u.dur
-    if delta <= 1e-4:
-      continue
-    u3 = copy.deepcopy(u)
-    prefix = 'pv3-' if not args.no_speed_perturb else ''
-    u3.id = prefix + u.id
-    u3.speaker = prefix + u.speaker
-
-    parts = u.wavefile.split()
-    if len(parts) == 1:
-        u3.wavefile = 'extend-wav-with-silence --extra-silence-length={1} {0} - | '.format(u.wavefile, delta)
-    else:
-        assert parts[-1] == "|"
-        u3.wavefile = '{0} extend-wav-with-silence --extra-silence-length={1} - - | '.format(u.wavefile, delta)
-    u3.dur = allowed_dur2
-    perturbed_utts += [u3]
+  parts = u.wavefile.split()
+  if len(parts) == 1:
+      u3.wavefile = 'extend-wav-with-silence --extra-silence-length={1} {0} - | '.format(u.wavefile, delta)
+  else:
+      assert parts[-1] == "|"
+      u3.wavefile = '{0} extend-wav-with-silence --extra-silence-length={1} - - | '.format(u.wavefile, delta)
+  u3.dur = allowed_dur2
+  perturbed_utts += [u3]
 
 # 3. write to our dir
 generate_kaldi_data_files(perturbed_utts, args.dir)

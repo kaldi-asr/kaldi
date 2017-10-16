@@ -172,6 +172,8 @@ class SupervisionLatticeSplitter {
   // This will be computed when PrepareLattice function is called.
   LatticeInfo lat_scores_;
 };
+  
+void GetToleranceEnforcerFst(const SupervisionOptions &opts, const TransitionModel &trans_model, fst::StdVectorFst *tolerance_fst);
 
 bool PhoneLatticeToSupervision(const fst::StdVectorFst &tolerance_fst,
                                const TransitionModel &trans_model,

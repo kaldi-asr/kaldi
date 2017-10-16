@@ -276,14 +276,11 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: copying training lattices"
 
-  [ ! -z $lattice_prune_beam ] && \
-    prune_cmd="ark:- | lattice-prune --write-compact=false --acoustic-scale=$acwt --beam=$lattice_prune_beam ark:-"
   $cmd --max-jobs-run 6 JOB=1:$num_lat_jobs $dir/log/lattice_copy.JOB.log \
-    lattice-copy --write-compact=false "ark:gunzip -c $latdir/lat.JOB.gz|" $prune_cmd ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp || exit 1;
+    lattice-copy --write-compact=false "ark:gunzip -c $latdir/lat.JOB.gz|" ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp || exit 1;
 
   for id in $(seq $num_lat_jobs); do cat $dir/lat.$id.scp; done > $dir/lat.scp
 fi
-
 
 egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 [ $left_context_initial -ge 0 ] && egs_opts="$egs_opts --left-context-initial=$left_context_initial"
@@ -302,7 +299,7 @@ normalization_scale=1.0
 if [ ! -z "$lattice_lm_scale" ]; then
   chain_supervision_all_opts="$chain_supervision_all_opts --supervision.lm-scale=$lattice_lm_scale"
   normalization_scale=$(perl -e "
-  if ($lattice_lm_scale >= 1.0 || $lattice_lm_scale < 0) { 
+  if ($lattice_lm_scale > 1.0 || $lattice_lm_scale < 0) { 
     print STDERR \"Invalid --lattice-lm-scale $lattice_lm_scale\";
     exit(1); 
   } 
@@ -328,6 +325,11 @@ echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
 echo $left_context_initial > $dir/info/left_context_initial
 echo $right_context_final > $dir/info/right_context_final
+  
+lattice_copy_cmd="ark:-"
+
+[ ! -z $lattice_prune_beam ] && \
+  lattice_copy_cmd="ark:- | lattice-prune --write-compact=false --acoustic-scale=$acwt --beam=$lattice_prune_beam ark:- ark:-"
 
 if [ $stage -le 3 ]; then
   echo "$0: Getting validation and training subset examples."
@@ -340,7 +342,7 @@ if [ $stage -le 3 ]; then
 
   $cmd $dir/log/create_valid_subset.log \
     utils/filter_scp.pl $dir/valid_uttlist $dir/lat_special.scp \| \
-    lattice-align-phones --write-compact=false --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
+    lattice-align-phones --write-compact=false --replace-output-symbols=true $latdir/final.mdl scp:- $lattice_copy_cmd \| \
     nnet3-chain-split-and-get-egs $chain_supervision_all_opts $ivector_opts --srand=$srand \
       $egs_opts $chaindir/normalization.fst \
       "$valid_feats" $chaindir/tree $chaindir/0.trans_mdl \

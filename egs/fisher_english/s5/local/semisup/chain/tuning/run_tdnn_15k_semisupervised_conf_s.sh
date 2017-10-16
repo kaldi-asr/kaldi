@@ -24,7 +24,7 @@ tdnn_affix=7b  # affix for the supervised chain-model directory
 train_supervised_opts="--stage -10 --train-stage -10"
 
 # Unsupervised options
-decode_affix=
+decode_affix=_unphdet
 egs_affix=  # affix for the egs that are generated from unsupervised data and for the comined egs dir
 unsup_frames_per_eg=  # if empty will be equal to the supervised model's config -- you will need to change minibatch_size for comb training accordingly
 lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices
@@ -165,6 +165,12 @@ fi
 dir=$exp/chain${nnet3_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
 
 if [ $stage -le 10 ]; then
+  steps/subset_ali_dir.sh --cmd "$train_cmd" \
+    data/${unsupervised_set} data/${unsupervised_set}_sp_hires \
+    $chaindir/best_path_${unsupervised_set}_sp${decode_affix} \
+    $chaindir/best_path_${unsupervised_set}${decode_affix}
+  echo $frame_subsampling_factor > $chaindir/best_path_${unsupervised_set}${decode_affix}/frame_subsampling_factor
+
   steps/nnet3/chain/make_weighted_den_fst.sh --num-repeats $lm_weights --cmd "$train_cmd" \
     ${treedir} ${chaindir}/best_path_${unsupervised_set}${decode_affix} \
     $dir

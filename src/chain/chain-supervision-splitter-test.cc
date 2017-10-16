@@ -65,7 +65,6 @@ void FstToLabels(const fst::StdVectorFst &fst,
 
 void TestSupervisionLatticeSplitting(
     const SupervisionOptions &sup_opts,
-    const fst::StdVectorFst &tolerance_fst,
     const TransitionModel &trans_model,
     Lattice &lat) {
   
@@ -73,7 +72,8 @@ void TestSupervisionLatticeSplitting(
 
   chain::SupervisionLatticeSplitterOptions opts;
   chain::SupervisionLatticeSplitter sup_lat_splitter(
-      opts, trans_model, lat);
+      opts, sup_opts, trans_model);
+  sup_lat_splitter.LoadLattice(lat);
   
   std::vector<int32> state_times;
   int32 num_frames_lat = LatticeStateTimes(lat, &state_times);
@@ -100,17 +100,10 @@ void TestSupervisionLatticeSplitting(
       num_frames = num_frames_lat - start_frame;
     }
 
-    Lattice lat_part;
-    sup_lat_splitter.GetFrameRange(start_frame, num_frames, &lat_part);
-    
-    ScaleLattice(fst::LatticeScale(1.0, 0.0), &lat_part);
-
     chain::Supervision supervision_part;
-
-    chain::PhoneLatticeToSupervision(tolerance_fst,
-                                     trans_model, lat_part,
-                                     &supervision_part);
-
+    sup_lat_splitter.GetFrameRangeSupervision(
+        start_frame, num_frames, &supervision_part);
+    
     std::vector<ConstIntegerSet<int32> > labels;
     FstToLabels(supervision_part.fst, &labels);
 
@@ -162,9 +155,52 @@ void TestSupervisionLatticeSplitting(
   }
 }
 
+TransitionModel* GetSimpleChainTransitionModel(
+    ContextDependency **ctx_dep, int32 num_phones) {
+
+  std::ostringstream oss;
+
+  oss << "<Topology>\n"
+      "<TopologyEntry>\n"
+      "<ForPhones> ";
+  for (int32 i = 1; i <= num_phones; i++) {
+    oss << i << " ";
+  }
+  oss << "</ForPhones>\n"
+      " <State> 0 <ForwardPdfClass> 0 <SelfLoopPdfClass> 1\n"
+      "  <Transition> 0 0.5\n"
+      "  <Transition> 1 0.5\n"
+      " </State> \n"
+      " <State> 1 </State>\n"
+      "</TopologyEntry>\n"
+      "</Topology>\n";
+  
+  std::string chain_input_str = oss.str();
+
+  HmmTopology topo;
+  std::istringstream iss(chain_input_str);
+  topo.Read(iss, false);
+  
+  const std::vector<int32> &phones = topo.GetPhones();
+
+  std::vector<int32> phone2num_pdf_classes (1+phones.back());
+  for (size_t i = 0; i < phones.size(); i++)
+    phone2num_pdf_classes[phones[i]] = topo.NumPdfClasses(phones[i]);
+
+  *ctx_dep = MonophoneContextDependency(phones, phone2num_pdf_classes);
+
+  return new TransitionModel(**ctx_dep, topo);
+}
+
 void ChainSupervisionSplitterTest(int32 index) {
   ContextDependency *ctx_dep;
-  TransitionModel *trans_model = GenRandTransitionModel(&ctx_dep, 2);
+  TransitionModel *trans_model;
+  
+  if (Rand())
+    trans_model = GenRandTransitionModel(&ctx_dep, 2);
+  else
+    trans_model = GetSimpleChainTransitionModel(&ctx_dep, 2);
+
   const std::vector<int32> &phones = trans_model->GetPhones();
   
   int32 subsample_factor = 1;
@@ -204,13 +240,31 @@ void ChainSupervisionSplitterTest(int32 index) {
   sup_opts.lm_scale = 0.5;
 
   fst::StdVectorFst tolerance_fst;
-  MakeToleranceEnforcerFst(sup_opts, *trans_model, &tolerance_fst);
+  GetToleranceEnforcerFst(sup_opts, *trans_model, &tolerance_fst);
   WriteFstKaldi(std::cerr, false, tolerance_fst);
 
+  TestSupervisionLatticeSplitting(sup_opts, *trans_model, lat);
+
+  delete ctx_dep;
+  delete trans_model;
+}
+
+void TestToleranceFst() {
+  ContextDependency *ctx_dep;
+  TransitionModel *trans_model = GetSimpleChainTransitionModel(&ctx_dep, 2);
+
+  chain::SupervisionOptions sup_opts;
+  sup_opts.left_tolerance = 1;
+  sup_opts.right_tolerance = 1;
+  sup_opts.frame_subsampling_factor = 1;
+  sup_opts.lm_scale = 0.5;
+
+  fst::StdVectorFst tolerance_fst;
+  GetToleranceEnforcerFst(sup_opts, *trans_model, &tolerance_fst);
+  WriteFstKaldi(std::cerr, false, tolerance_fst);
+  
   fst::ArcSort(&tolerance_fst, fst::ILabelCompare<fst::StdArc>());
-
-  TestSupervisionLatticeSplitting(sup_opts, tolerance_fst, *trans_model, lat);
-
+  
   delete ctx_dep;
   delete trans_model;
 }
@@ -221,6 +275,10 @@ void ChainSupervisionSplitterTest(int32 index) {
 int main() {
   using namespace kaldi;
   SetVerboseLevel(2);
+
+  kaldi::chain::TestToleranceFst();
+  return 0;
+
   for (int32 i = 0; i < 10; i++) {
     kaldi::chain::ChainSupervisionSplitterTest(i);
   }

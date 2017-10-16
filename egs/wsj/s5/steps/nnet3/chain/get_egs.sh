@@ -78,6 +78,10 @@ phone_insertion_penalty=
 deriv_weights_scp=
 generate_egs_scp=false
 no_chunking=false
+use_mbr_decode=false
+arc_scale=1.0
+keep_only_best_path=false
+lat_copy_src=
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -293,14 +297,22 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: copying training lattices"
 
-  [ ! -z $lattice_prune_beam ] && \
-    prune_cmd="ark:- | lattice-prune --acoustic-scale=$acwt --beam=$lattice_prune_beam ark:-"
-  $cmd --max-jobs-run 6 JOB=1:$num_lat_jobs $dir/log/lattice_copy.JOB.log \
-    lattice-copy "ark:gunzip -c $latdir/lat.JOB.gz|" $prune_cmd ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp || exit 1;
+  if [ -z "$lat_copy_src" ]; then
+    if ! $keep_only_best_path; then
+      $cmd --max-jobs-run 6 JOB=1:$num_lat_jobs $dir/log/lattice_copy.JOB.log \
+        lattice-copy "ark:gunzip -c $latdir/lat.JOB.gz|" ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp || exit 1;
+    else
+      $cmd --max-jobs-run 6 JOB=1:$num_lat_jobs $dir/log/lattice_copy.JOB.log \
+        lattice-interp --alpha=1 "ark:gunzip -c $latdir/lat.JOB.gz|" \
+        "ark:gunzip -c $latdir/lat.JOB.gz | lattice-1best --acoustic-scale=$acwt ark:- ark:- |" \
+        ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp || exit 1;
+    fi
 
-  for id in $(seq $num_lat_jobs); do cat $dir/lat.$id.scp; done > $dir/lat.scp
+    for id in $(seq $num_lat_jobs); do cat $dir/lat.$id.scp; done > $dir/lat.scp
+  else
+    ln -s `readlink -f $lat_copy_src`/lat.*.{ark,scp} $dir/
+  fi
 fi
-
 
 egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 [ $left_context_initial -ge 0 ] && egs_opts="$egs_opts --left-context-initial=$left_context_initial"
@@ -317,14 +329,30 @@ chain_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$ali
   chain_supervision_all_opts="$chain_supervision_all_opts --left-tolerance=$left_tolerance"
 
 normalization_scale=1.0
-if [ ! -z "$lattice_lm_scale" ]; then
-  chain_supervision_all_opts="$chain_supervision_all_opts --lm-scale=$lattice_lm_scale"
-  normalization_scale=$(perl -e "
-  if ($lattice_lm_scale >= 1.0 || $lattice_lm_scale < 0) { 
-    print STDERR \"Invalid --lattice-lm-scale $lattice_lm_scale\";
-    exit(1); 
-  } 
-  print (1.0 - $lattice_lm_scale);")
+
+lattice_copy_cmd="ark:-"
+if [ ! -z $lattice_prune_beam ]; then
+  if [ "$lattice_prune_beam" == "0" ] || [ "$lattice_prune_beam" == "0.0" ]; then
+    lattice_copy_cmd="ark:- | lattice-1best --acoustic-scale=$acwt ark:- ark:-"
+  else
+    lattice_copy_cmd="ark:- | lattice-prune --acoustic-scale=$acwt --beam=$lattice_prune_beam ark:- ark:-"
+  fi
+fi
+
+if ! $use_mbr_decode; then
+  if [ ! -z "$lattice_lm_scale" ]; then
+    chain_supervision_all_opts="$chain_supervision_all_opts --lm-scale=$lattice_lm_scale"
+
+    normalization_scale=$(perl -e "
+    if ($lattice_lm_scale >= 1.0 || $lattice_lm_scale < 0) { 
+      print STDERR \"Invalid --lattice-lm-scale $lattice_lm_scale\";
+      exit(1); 
+    } 
+    print (1.0 - $lattice_lm_scale);")
+  fi
+else
+  chain_supervision_all_opts="$chain_supervision_all_opts --arc-scale=$arc_scale --use-mbr-decode"
+  lattice_copy_cmd="$lattice_copy_cmd | lattice-scale --acoustic-scale=$acwt ark:- ark:-"
 fi
 
 [ ! -z $phone_insertion_penalty ] && \
@@ -356,7 +384,7 @@ if [ $stage -le 3 ]; then
 
   $cmd $dir/log/create_valid_subset.log \
     utils/filter_scp.pl $dir/valid_uttlist $dir/lat_special.scp \| \
-    lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
+    lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- $lattice_copy_cmd \| \
     chain-get-supervision $chain_supervision_all_opts $chaindir/tree $chaindir/0.trans_mdl \
       ark:- ark:- \| \
     nnet3-chain-get-egs $ivector_opts --srand=$srand \
@@ -364,7 +392,7 @@ if [ $stage -le 3 ]; then
       "$valid_feats" ark,s,cs:- "ark:$dir/valid_all.cegs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
     utils/filter_scp.pl $dir/train_subset_uttlist $dir/lat_special.scp \| \
-    lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
+    lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- $lattice_copy_cmd \| \
     chain-get-supervision $chain_supervision_all_opts \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
     nnet3-chain-get-egs $ivector_opts --srand=$srand \
@@ -429,7 +457,7 @@ if [ $stage -le 4 ]; then
   # quite large.
   $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
     utils/filter_scp.pl $sdata/JOB/utt2spk $dir/lat.scp \| \
-    lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
+    lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- $lattice_copy_cmd \| \
     chain-get-supervision $chain_supervision_all_opts \
       --weight=$egs_weight \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \

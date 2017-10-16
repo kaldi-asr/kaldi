@@ -61,8 +61,8 @@ int main(int argc, char *argv[]) {
     fst::StdVectorFst normalization_fst;
     ReadFstKaldi(normalization_fst_rxfilename, &normalization_fst);
 
-    if (scale <= 0.0) {
-      KALDI_ERR << "Invalid scale on normalization FST; must be > 0.0";
+    if (scale < 0.0) {
+      KALDI_ERR << "Invalid scale on normalization FST; must be >= 0.0";
     }
 
     if (scale != 1.0) {

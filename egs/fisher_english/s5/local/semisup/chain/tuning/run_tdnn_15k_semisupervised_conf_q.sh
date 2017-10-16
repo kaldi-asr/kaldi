@@ -48,7 +48,7 @@ extra_right_context=0
 
 xent_regularize=0.1
 hidden_dim=725
-minibatch_size="150=128,64/300=100,64,32/600=50,32,16/1200=16,8"
+minibatch_size="150=128,64/300=64,32/600=32,16,8/1200=16,8,4"
 # to tune:
 # frames_per_eg for unsupervised
 
