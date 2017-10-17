@@ -310,7 +310,8 @@ if [ $stage -le 2 ]; then
 
     for id in $(seq $num_lat_jobs); do cat $dir/lat.$id.scp; done > $dir/lat.scp
   else
-    ln -s `readlink -f $lat_copy_src`/lat.*.{ark,scp} $dir/
+    ln -sf `readlink -f $lat_copy_src`/lat.*.{ark,scp} $dir/
+    ln -sf `readlink -f $lat_copy_src`/lat.scp $dir/
   fi
 fi
 
