@@ -1,7 +1,7 @@
 // nnet3/nnet-computation.cc
 
-// Copyright      2015  Johns Hopkins University (author: Daniel Povey)
-//                2015  Xiaohui Zhang
+// Copyright      2015-2017  Johns Hopkins University (author: Daniel Povey)
+//                2015       Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -24,6 +24,7 @@
 
 namespace kaldi {
 namespace nnet3 {
+
 
 bool ComputationRequest::NeedDerivatives() const {
   bool ans = false;
@@ -233,37 +234,30 @@ void NnetComputation::SubMatrixInfo::Write(std::ostream &os, bool binary) const 
 }
 
 void NnetComputation::Command::Read(std::istream &is, bool binary) {
-  ExpectToken(is, binary, "<Command>");
-  ExpectToken(is, binary, "<CommandType>");
+  ExpectToken(is, binary, "<Cmd>");
   if (binary) {
     int32 command_type_int;
     ReadBasicType(is, binary, &command_type_int);
     command_type = static_cast<CommandType>(command_type_int);
+    ReadBasicType(is, binary, &alpha);
     std::vector<int32> args;
     ReadIntegerVector(is, binary, &args);
     args.resize(7, -1);  // extend with -1's.
-    arg1 = args[0];
-    arg2 = args[1];
-    arg3 = args[2];
-    arg4 = args[3];
-    arg5 = args[4];
-    arg6 = args[5];
-    arg7 = args[6];
+    int32 *dest = &arg1;
+    std::copy(args.begin(), args.end(), dest);
   } else {
     // this branch is slow but we don't care much, as we'd normally write in
     // binary format.
     std::string command_type_str;
     getline(is, command_type_str);
-    if (command_type_str == "kAllocMatrixZeroed") {
-      command_type = kAllocMatrixZeroed;
-    } else if (command_type_str == "kAllocMatrixUndefined") {
-      command_type = kAllocMatrixUndefined;
+    if (command_type_str == "kAllocMatrix") {
+      command_type = kAllocMatrix;
     } else if (command_type_str == "kDeallocMatrix") {
       command_type = kDeallocMatrix;
-    } else if (command_type_str == "kAllocMatrixFromOther") {
-      command_type = kAllocMatrixFromOther;
-    } else if (command_type_str == "kAllocMatrixFromOtherZeroed") {
-      command_type = kAllocMatrixFromOtherZeroed;
+    } else if (command_type_str == "kSwapMatrix") {
+      command_type = kSwapMatrix;
+    } else if (command_type_str == "kSetConst") {
+      command_type = kSetConst;
     } else if (command_type_str == "kPropagate") {
       command_type = kPropagate;
     } else if (command_type_str == "kBackprop") {
@@ -305,6 +299,8 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
     } else {
       KALDI_ERR << "Un-handled command type.";
     }
+    ExpectToken(is, binary, "<Alpha>");
+    ReadBasicType(is, binary, &alpha);
     ExpectToken(is, binary, "<Args>");
     ReadBasicType(is, binary, &arg1);
     ReadBasicType(is, binary, &arg2);
@@ -314,42 +310,34 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &arg6);
     ReadBasicType(is, binary, &arg7);
   }
-  ExpectToken(is, binary, "</Command>");
+  ExpectToken(is, binary, "</Cmd>");
 }
 
 void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<Command>");
-  WriteToken(os, binary, "<CommandType>");
+  WriteToken(os, binary, "<Cmd>");
   if (binary) {
     WriteBasicType(os, binary, static_cast<int32>(command_type));
-    std::vector<int32> args(7);
-    args[0] = arg1;
-    args[1] = arg2;
-    args[2] = arg3;
-    args[3] = arg4;
-    args[4] = arg5;
-    args[5] = arg6;
-    args[6] = arg7;
+    WriteBasicType(os, binary, alpha);
+    std::vector<int32> args;
+    const int32 *src = &arg1;
+    args.insert(args.end(), src, src + 7);  // arg1 through arg7.
     while (!args.empty() && args.back() == -1)
       args.pop_back();
     WriteIntegerVector(os, binary, args);
   } else {
     std::string command_type_str;
     switch (command_type) {
-      case kAllocMatrixZeroed:
-        os << "kAllocMatrixZeroed\n";
-        break;
-      case kAllocMatrixUndefined:
-        os << "kAllocMatrixUndefined\n";
+      case kAllocMatrix:
+        os << "kAllocMatrix\n";
         break;
       case kDeallocMatrix:
         os << "kDeallocMatrix\n";
         break;
-      case kAllocMatrixFromOther:
-        os << "kAllocMatrixFromOther\n";
+      case kSwapMatrix:
+        os << "kSwapMatrix\n";
         break;
-      case kAllocMatrixFromOtherZeroed:
-        os << "kAllocMatrixFromOtherZeroed\n";
+      case kSetConst:
+        os << "kSetConst\n";
         break;
       case kPropagate:
         os << "kPropagate\n";
@@ -411,11 +399,12 @@ void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
       default:
         KALDI_ERR << "Un-handled command type.";
     }
+    os << "<Alpha> " << alpha << " ";
     os << "<Args> " << arg1 << ' ' << arg2 << ' '
        << arg3 << ' ' << arg4 << ' ' << arg5 << ' '
        << arg6 << ' ' << arg7 << ' ';
   }
-  WriteToken(os, binary, "</Command>");
+  WriteToken(os, binary, "</Cmd>");
 }
 
 
@@ -522,12 +511,7 @@ static void PrintCommand(std::ostream &os,
   os << "c" << command_index << ": ";
   const NnetComputation::Command &c = computation.commands[command_index];
   switch (c.command_type) {
-    case kAllocMatrixZeroed:
-      os << submatrix_strings[c.arg1] << " = zeros("
-         << computation.submatrices[c.arg1].num_rows
-         << ',' << computation.submatrices[c.arg1].num_cols << ")\n";
-      break;
-    case kAllocMatrixUndefined:
+    case kAllocMatrix:
       os << submatrix_strings[c.arg1] << " = undefined("
          << computation.submatrices[c.arg1].num_rows
          << ',' << computation.submatrices[c.arg1].num_cols << ")\n";
@@ -535,18 +519,16 @@ static void PrintCommand(std::ostream &os,
     case kDeallocMatrix:
       os << submatrix_strings[c.arg1] << " = []\n";
       break;
-    case kAllocMatrixFromOther:
+    case kSwapMatrix:
       os << submatrix_strings[c.arg1] << ".swap("
          << submatrix_strings[c.arg2] << ") [dim = "
          << computation.submatrices[c.arg1].num_rows << " x "
          << computation.submatrices[c.arg1].num_cols << "]\n";
       break;
-    case kAllocMatrixFromOtherZeroed:
-      os << submatrix_strings[c.arg1] << ".swap("
-         << submatrix_strings[c.arg2] << ") [dim = "
+    case kSetConst:
+      os << submatrix_strings[c.arg1] << ".set(" << c.alpha << ") [dim = "
          << computation.submatrices[c.arg1].num_rows << " x "
-         << computation.submatrices[c.arg1].num_cols << "]; "
-         << submatrix_strings[c.arg1] << ".zero();\n";
+         << computation.submatrices[c.arg1].num_cols << "];\n";
       break;
     case kPropagate:
       os << nnet.GetComponentName(c.arg1) << ".Propagate(";
@@ -572,19 +554,31 @@ static void PrintCommand(std::ostream &os,
       break;
     }
     case kMatrixCopy:
-      os << submatrix_strings[c.arg1] << " = "
-         << submatrix_strings[c.arg2] << "\n";
+      if (c.alpha == 1.0) {
+        os << submatrix_strings[c.arg1] << " = "
+           << submatrix_strings[c.arg2] << "\n";
+      } else {
+        os << submatrix_strings[c.arg1] << " = "
+           << c.alpha << " * "
+           << submatrix_strings[c.arg2] << "\n";
+      }
       break;
     case kMatrixAdd:
-      os << submatrix_strings[c.arg1] << " += "
-         << submatrix_strings[c.arg2] << "\n";
+      if (c.alpha == 1.0) {
+        os << submatrix_strings[c.arg1] << " += "
+           << submatrix_strings[c.arg2] << "\n";
+      } else {
+        os << submatrix_strings[c.arg1] << " += "
+           << c.alpha << " * "
+           << submatrix_strings[c.arg2] << "\n";
+      }
       break;
     case kAddRows:
     case kCopyRows:
       os << submatrix_strings[c.arg1] << "."
          << (c.command_type == kAddRows ? "AddRows" :
-             "CopyRows") << "(" << submatrix_strings[c.arg2]
-         << indexes_strings[c.arg3] << ")\n";
+             "CopyRows") << "(" << c.alpha << ", "
+         << submatrix_strings[c.arg2] << indexes_strings[c.arg3] << ")\n";
       break;
     case kAddRowsMulti:
     case kAddToRowsMulti:
@@ -596,11 +590,13 @@ static void PrintCommand(std::ostream &os,
              (ct == kAddToRowsMulti? "AddToRowsMulti" :
               (ct == kCopyRowsMulti ? "CopyRowsMulti" :
                "CopyToRowsMulti"))) << "("
+         << c.alpha << ", "
          << indexes_multi_strings[c.arg2] << ")\n";
       break;
     }
     case kAddRowRanges: {
       os << submatrix_strings[c.arg1] << ".AddRowRanges("
+         << c.alpha << ", "
          << submatrix_strings[c.arg2] << ", [";
       const std::vector<std::pair<int32, int32> > &pairs =
            computation.indexes_ranges[c.arg3];
@@ -693,7 +689,7 @@ void NnetComputation::Print(std::ostream &os, const Nnet &nnet) const {
 }
 
 void NnetComputation::Read(std::istream &is, bool binary) {
-  int32 version = 3,  // must be in sync with 'version' in Write.
+  int32 version = 4,  // must be in sync with 'version' in Write.
       version_in = 1;  // defaults to 1 if no version specified.
 
   ExpectToken(is, binary, "<NnetComputation>");
@@ -827,7 +823,7 @@ void NnetComputation::Read(std::istream &is, bool binary) {
 }
 
 void NnetComputation::Write(std::ostream &os, bool binary) const {
-  int32 version = 3;  // Must be in sync with version in Read.
+  int32 version = 4;  // Must be in sync with version in Read.
   WriteToken(os, binary, "<NnetComputation>");
   WriteToken(os, binary, "<Version>");
   WriteBasicType(os, binary, version);
