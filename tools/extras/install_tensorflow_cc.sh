@@ -3,7 +3,7 @@
 set -e
 
 #export JAVA_HOME=/LOCATION_ON_YOUR_MACHINE/java/jdk1.8.0_121
-PATH=$PATH:$PWD/bazel/output
+PATH=$PWD/bazel/output:$PATH
 export HOME=$PWD/tensorflow_build/
 mkdir -p $HOME
 
@@ -25,7 +25,7 @@ else
 fi
 
 
-[ ! -f bazel.zip ] && wget https://github.com/bazelbuild/bazel/releases/download/0.5.1/bazel-0.5.1-dist.zip -O bazel.zip
+[ ! -f bazel.zip ] && wget https://github.com/bazelbuild/bazel/releases/download/0.5.4/bazel-0.5.4-dist.zip -O bazel.zip
 mkdir -p bazel
 cd bazel
 unzip ../bazel.zip

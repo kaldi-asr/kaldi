@@ -86,7 +86,7 @@ for x in train dev test; do
     > $tmpdir/${x}_phn.uttids
   while read line; do
     [ -f $line ] || error_exit "Cannot find transcription file '$line'";
-    cut -f3 -d' ' "$line" | tr '\n' ' ' | sed -e 's: *$:\n:'
+    cut -f3 -d' ' "$line" | tr '\n' ' ' | perl -ape 's: *$:\n:;'
   done < $tmpdir/${x}_phn.flist > $tmpdir/${x}_phn.trans
   paste $tmpdir/${x}_phn.uttids $tmpdir/${x}_phn.trans \
     | sort -k1,1 > ${x}.trans
