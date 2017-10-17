@@ -52,24 +52,23 @@ enum ComponentProperties {
                              // input gives you alpha times output.
   kLinearInParameters = 0x008, // true if an updatable component's output is always a
                                // linear function of its parameters, i.e. alpha times
-                               // parameters gives you alpha times output.  This is true
-                               // for all updatable components we envisage.
+                               // parameters gives you alpha times output.
   kPropagateInPlace = 0x010,  // true if we can do the propagate operation in-place
                               // (input and output matrices are the same).
                               // Note: if doing backprop, you'd also need to check
                               // that the kBackpropNeedsInput property is not true.
   kPropagateAdds = 0x020,  // true if the Propagate function adds to, rather
-                           // than setting, its output.  The Component chooses
-                           // whether to add or set, and the calling code has to
-                           // accommodate it.
+                           // than setting, its output, for non-in-place
+                           // propagation.  The Component chooses whether to add
+                           // or set, and the calling code has to accommodate
+                           // it.
   kReordersIndexes = 0x040,  // true if the ReorderIndexes function might reorder
                              // the indexes (otherwise we can skip calling it).
                              // Must not be set for simple components.
   kBackpropAdds = 0x080,   // true if the Backprop function adds to, rather than
-                           // setting, the "in_deriv" output.  The Component
-                           // chooses whether to add or set, and the calling
-                           // code has to accommodate it.  Note: in the case of
-                           // in-place backprop, this flag has no effect.
+                           // setting, the "in_deriv" output for non-in-place
+                           // backprop.  The Component chooses whether to add or
+                           // set, and the calling code has to accommodate it.
   kBackpropNeedsInput = 0x100,  // true if backprop operation needs access to
                                 // forward-pass input.
   kBackpropNeedsOutput = 0x200,  // true if backprop operation needs access to

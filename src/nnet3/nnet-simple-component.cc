@@ -1294,8 +1294,12 @@ void AffineComponent::Read(std::istream &is, bool binary) {
   linear_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
   bias_params_.Read(is, binary);
-  ExpectToken(is, binary, "<IsGradient>");
-  ReadBasicType(is, binary, &is_gradient_);
+  if (PeekToken(is, binary) == 'I') {
+    // for back compatibility; we don't write this here any
+    // more as it's written and read in Write/ReadUpdatableCommon
+    ExpectToken(is, binary, "<IsGradient>");
+    ReadBasicType(is, binary, &is_gradient_);
+  }
   ExpectToken(is, binary, "</AffineComponent>");
 }
 
@@ -1305,8 +1309,6 @@ void AffineComponent::Write(std::ostream &os, bool binary) const {
   linear_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
   bias_params_.Write(os, binary);
-  WriteToken(os, binary, "<IsGradient>");
-  WriteBasicType(os, binary, is_gradient_);
   WriteToken(os, binary, "</AffineComponent>");
 }
 
@@ -1526,8 +1528,12 @@ void RepeatedAffineComponent::Read(std::istream &is, bool binary) {
   linear_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
   bias_params_.Read(is, binary);
-  ExpectToken(is, binary, "<IsGradient>");
-  ReadBasicType(is, binary, &is_gradient_);
+  if (PeekToken(is, binary) == 'I') {
+    // for back compatibility; we don't write this here any
+    // more as it's written and read in Write/ReadUpdatableCommon
+    ExpectToken(is, binary, "<IsGradient>");
+    ReadBasicType(is, binary, &is_gradient_);
+  }
   ExpectToken(is, binary, std::string("</") + Type() + std::string(">"));
   SetNaturalGradientConfigs();
 }
@@ -1541,8 +1547,6 @@ void RepeatedAffineComponent::Write(std::ostream &os, bool binary) const {
   linear_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
   bias_params_.Write(os, binary);
-  WriteToken(os, binary, "<IsGradient>");
-  WriteBasicType(os, binary, is_gradient_);
   // write closing token.
   WriteToken(os, binary, std::string("</") + Type() + std::string(">"));
 }
@@ -1883,8 +1887,12 @@ void BlockAffineComponent::Read(std::istream &is, bool binary) {
   linear_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
   bias_params_.Read(is, binary);
-  ExpectToken(is, binary, "<IsGradient>");
-  ReadBasicType(is, binary, &is_gradient_);
+  if (PeekToken(is, binary) == 'I') {
+    // for back compatibility; we don't write this here any
+    // more as it's written and read in Write/ReadUpdatableCommon
+    ExpectToken(is, binary, "<IsGradient>");
+    ReadBasicType(is, binary, &is_gradient_);
+  }
   ExpectToken(is, binary, "</BlockAffineComponent>");
 }
 
@@ -1896,8 +1904,6 @@ void BlockAffineComponent::Write(std::ostream &os, bool binary) const {
   linear_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
   bias_params_.Write(os, binary);
-  WriteToken(os, binary, "<IsGradient>");
-  WriteBasicType(os, binary, is_gradient_);
   WriteToken(os, binary, "</BlockAffineComponent>");
 }
 
@@ -2055,8 +2061,12 @@ void PerElementScaleComponent::Read(std::istream &is, bool binary) {
   ReadUpdatableCommon(is, binary);  // Read opening tag and learning rate.
   ExpectToken(is, binary, "<Params>");
   scales_.Read(is, binary);
-  ExpectToken(is, binary, "<IsGradient>");
-  ReadBasicType(is, binary, &is_gradient_);
+  if (PeekToken(is, binary) == 'I') {
+    // for back compatibility; we don't write this here any
+    // more as it's written and read in Write/ReadUpdatableCommon
+    ExpectToken(is, binary, "<IsGradient>");
+    ReadBasicType(is, binary, &is_gradient_);
+  }
   ExpectToken(is, binary, "</PerElementScaleComponent>");
 }
 
@@ -2064,8 +2074,6 @@ void PerElementScaleComponent::Write(std::ostream &os, bool binary) const {
   WriteUpdatableCommon(os, binary);  // Write opening tag and learning rate.
   WriteToken(os, binary, "<Params>");
   scales_.Write(os, binary);
-  WriteToken(os, binary, "<IsGradient>");
-  WriteBasicType(os, binary, is_gradient_);
   WriteToken(os, binary, "</PerElementScaleComponent>");
 }
 
@@ -2203,8 +2211,12 @@ void PerElementOffsetComponent::Read(std::istream &is, bool binary) {
   ReadUpdatableCommon(is, binary);  // Read opening tag and learning rate
   ExpectToken(is, binary, "<Offsets>");
   offsets_.Read(is, binary);
-  ExpectToken(is, binary, "<IsGradient>");
-  ReadBasicType(is, binary, &is_gradient_);
+  if (PeekToken(is, binary) == 'I') {
+    // for back compatibility; we don't write this here any
+    // more as it's written and read in Write/ReadUpdatableCommon
+    ExpectToken(is, binary, "<IsGradient>");
+    ReadBasicType(is, binary, &is_gradient_);
+  }
   ExpectToken(is, binary, "</PerElementOffsetComponent>");
 }
 
@@ -2212,8 +2224,6 @@ void PerElementOffsetComponent::Write(std::ostream &os, bool binary) const {
   WriteUpdatableCommon(os, binary);  // Write opening tag and learning rate
   WriteToken(os, binary, "<Offsets>");
   offsets_.Write(os, binary);
-  WriteToken(os, binary, "<IsGradient>");
-  WriteBasicType(os, binary, is_gradient_);
   WriteToken(os, binary, "</PerElementOffsetComponent>");
 }
 
@@ -2229,6 +2239,212 @@ void PerElementOffsetComponent::UnVectorize(
     const VectorBase<BaseFloat> &params) {
   offsets_.CopyFromVec(params);
 }
+
+std::string ScaleAndOffsetComponent::Info() const {
+  std::ostringstream stream;
+  stream << UpdatableComponent::Info()
+         << ", rank=" << scale_preconditioner_.GetRank();
+  if (dim_ != scales_.Dim())
+    stream << ", block-size=" << scales_.Dim();
+  PrintParameterStats(stream, "scales", scales_, true);
+  PrintParameterStats(stream, "offsets", offsets_, true);
+  return stream.str();
+}
+
+void ScaleAndOffsetComponent::InitFromConfig(ConfigLine *cfl) {
+
+  InitLearningRatesFromConfig(cfl);
+  if (!cfl->GetValue("dim", &dim_) || dim_ <= 0) {
+    KALDI_ERR << "Dimension 'dim' must be specified and >0: "
+              << cfl->WholeLine();
+  }
+  use_natural_gradient_ = true;
+  cfl->GetValue("use-natural-gradient", &use_natural_gradient_);
+  int32 block_dim = dim_,
+      rank = 20;
+  cfl->GetValue("block-dim", &block_dim);
+  if (block_dim <= 0 || dim_ % block_dim != 0) {
+    KALDI_ERR << "Invalid block-dim: " << cfl->WholeLine();
+  }
+  cfl->GetValue("rank", &rank);
+  scales_.Resize(block_dim);
+  scales_.Set(1.0);
+  offsets_.Resize(block_dim);
+  // offsets are all zero when initialized.
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Could not process these elements in initializer: "
+              << cfl->UnusedValues();
+  offset_preconditioner_.SetRank(rank);
+  scale_preconditioner_.SetRank(rank);
+  // the update period can't be configured for now; we'll add an option if we
+  // want to.
+  offset_preconditioner_.SetUpdatePeriod(4);
+  scale_preconditioner_.SetUpdatePeriod(4);
+}
+
+void ScaleAndOffsetComponent::Read(std::istream &is, bool binary) {
+  ReadUpdatableCommon(is, binary);  // Read opening tag and learning rate
+  ExpectToken(is, binary, "<Scales>");
+  scales_.Read(is, binary);
+  ExpectToken(is, binary, "<Offsets>");
+  offsets_.Read(is, binary);
+  ExpectToken(is, binary, "<UseNaturalGradient>");
+  ReadBasicType(is, binary, &use_natural_gradient_);
+  int32 rank;
+  ExpectToken(is, binary, "<Rank>");
+  ReadBasicType(is, binary, &rank);
+  scale_preconditioner_.SetRank(rank);
+  offset_preconditioner_.SetRank(rank);
+  ExpectToken(is, binary, "</ScaleAndOffsetComponent>");
+}
+
+void ScaleAndOffsetComponent::Write(std::ostream &os, bool binary) const {
+  WriteUpdatableCommon(os, binary);  // Write opening tag and learning rate
+  WriteToken(os, binary, "<Scales>");
+  scales_.Write(os, binary);
+  WriteToken(os, binary, "<Offsets>");
+  offsets_.Write(os, binary);
+  WriteToken(os, binary, "<UseNaturalGradient>");
+  WriteBasicType(os, binary, use_natural_gradient_);
+  WriteToken(os, binary, "<Rank>");
+  WriteBasicType(os, binary, scale_preconditioner_.GetRank());
+  WriteToken(os, binary, "</ScaleAndOffsetComponent>");
+}
+
+void ScaleAndOffsetComponent::Scale(BaseFloat scale) {
+  if (scale == 0.0) {
+    scales_.SetZero();
+    offsets_.SetZero();
+  } else {
+    scales_.Scale(scale);
+    offsets_.Scale(scale);
+  }
+}
+
+void ScaleAndOffsetComponent::Add(BaseFloat alpha,
+                                  const Component &other_in) {
+  const ScaleAndOffsetComponent *other =
+      dynamic_cast<const ScaleAndOffsetComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  scales_.AddVec(alpha, other->scales_);
+  offsets_.AddVec(alpha, other->offsets_);
+}
+
+ScaleAndOffsetComponent::ScaleAndOffsetComponent(
+    const ScaleAndOffsetComponent &component):
+    UpdatableComponent(component),
+    scales_(component.scales_),
+    offsets_(component.offsets_),
+    use_natural_gradient_(component.use_natural_gradient_),
+    scale_preconditioner_(component.scale_preconditioner_),
+    offset_preconditioner_(component.offset_preconditioner_) { }
+
+void ScaleAndOffsetComponent::PerturbParams(BaseFloat stddev) {
+  CuVector<BaseFloat> temp(scales_.Dim(), kUndefined);
+  temp.SetRandn();
+  scales_.AddVec(stddev, temp);
+  temp.SetRandn();
+  offsets_.AddVec(stddev, temp);
+}
+
+BaseFloat ScaleAndOffsetComponent::DotProduct(
+    const UpdatableComponent &other_in) const {
+  const ScaleAndOffsetComponent *other =
+      dynamic_cast<const ScaleAndOffsetComponent*>(&other_in);
+  return VecVec(other->scales_, scales_) + VecVec(other->offsets_, offsets_);
+}
+
+void ScaleAndOffsetComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  int32 dim = scales_.Dim();
+  params->Range(0, dim).CopyFromVec(scales_);
+  params->Range(dim, dim).CopyFromVec(offsets_);
+}
+
+void ScaleAndOffsetComponent::UnVectorize(
+    const VectorBase<BaseFloat> &params) {
+  int32 dim = scales_.Dim();
+  scales_.CopyFromVec(params.Range(0, dim));
+  offsets_.CopyFromVec(params.Range(dim, dim));
+}
+
+void* ScaleAndOffsetComponent::Propagate(
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  if (dim_ == scales_.Dim()) {
+    PropagateInternal(in, out);
+  } else {
+    int32 multiple = dim_ / scales_.Dim(),
+        num_rows = in.NumRows(), block_dim = scales_.Dim();
+    KALDI_ASSERT(in.NumCols() == in.Stride() &&
+                 SameDimAndStride(in, *out));
+    // Reinterpret the data as matrices with more rows but fewer columns.
+    CuSubMatrix<BaseFloat> in_rearranged(in.Data(), num_rows * multiple,
+                                         block_dim, block_dim),
+        out_rearranged(out->Data(), num_rows * multiple,
+                       block_dim, block_dim);
+    PropagateInternal(in_rearranged, &out_rearranged);
+  }
+  return NULL;
+}
+
+void ScaleAndOffsetComponent::PropagateInternal(
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  if (out->Data() != in.Data())
+    out->CopyFromMat(in);
+  BaseFloat epsilon = 1.0e-04;
+  int32 dim = scales_.Dim();
+  CuVector<BaseFloat> scales_nonzero(dim, kUndefined);
+
+  out->MulColsVec(
+
+}
+void ScaleAndOffsetComponent::Backprop(
+    const std::string &debug_info,
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &, // in_value
+    const CuMatrixBase<BaseFloat> &out_value,
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    void *memo,
+    Component *to_update_in,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  ScaleAndOffsetComponent *to_update =
+      dynamic_cast<ScaleAndOffsetComponent*>(to_update_in);
+
+  KALDI_ASSERT(SameDim(out_value, out_deriv));
+
+  if (dim_ == scales_.Dim()) {
+    BackpropInternal(debug_info, out_value, out_deriv,
+                     to_update, in_deriv);
+  } else {
+    KALDI_ASSERT(out_value.NumCols() == out_value.Stride() &&
+                 SameDimAndStride(out_value, out_deriv) &&
+                 (!in_deriv || SameDimAndStride(out_value, *in_deriv)));
+    int32 multiple = dim_ / scales_.Dim(),
+        num_rows = out_value.NumRows(),
+        block_dim = scales_.Dim();
+    CuSubMatrix<BaseFloat> out_value_rearranged(out_value.Data(),
+                                                num_rows * multiple,
+                                                block_dim, block_dim),
+        out_deriv_rearranged(out_deriv.Data(), num_rows * multiple,
+                             block_dim, block_dim);
+    if (in_deriv) {
+      CuSubMatrix<BaseFloat> in_deriv_rearranged(in_deriv->Data(),
+                                                 num_rows * multiple,
+                                                 block_dim, block_dim);
+      BackpropInternal(debug_info, out_value_rearranged,
+                       out_deriv_rearranged, to_update,
+                       &in_deriv_rearranged);
+    } else {
+      BackpropInternal(debug_info, out_value_rearranged,
+                       out_deriv_rearranged, to_update,
+                       NULL);
+    }
+  }
+}
+
+
 
 std::string ConstantFunctionComponent::Info() const {
   std::ostringstream stream;
@@ -2452,21 +2668,20 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &num_samples_history_);
   ExpectToken(is, binary, "<Alpha>");
   ReadBasicType(is, binary, &alpha_);
-  std::string token;
-  ReadToken(is, binary, &token);
-  if (token == "<MaxChangePerSample>") {
+  if (PeekToken(is, binary) == 'M') {
+    // MaxChangePerSample, long ago removed; back compatibility.
+    ExpectToken(is, binary, "<MaxChangePerSample>");
     BaseFloat temp;
     ReadBasicType(is, binary, &temp);
-    ReadToken(is, binary, &token);
   }
-  if (token != "<IsGradient>") {
-    KALDI_ERR << "Expected token <IsGradient>, got "
-              << token;
+  if (PeekToken(is, binary) == 'I') {
+    // for back compatibility; we don't write this here any
+    // more as it's written and read in Write/ReadUpdatableCommon
+    ExpectToken(is, binary, "<IsGradient>");
+    ReadBasicType(is, binary, &is_gradient_);
   }
-  ReadBasicType(is, binary, &is_gradient_);
-
-  ReadToken(is, binary, &token);
-  if (token == "<UpdateCount>") {
+  if (PeekToken(is, binary) == 'U') {
+    ExpectToken(is, binary, "<UpdateCount>");
     // back-compatibility branch (these configs were added and then removed).
     double temp;
     ReadBasicType(is, binary, &temp);
@@ -2474,8 +2689,9 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &temp);
     ExpectToken(is, binary, "<MaxChangeScaleStats>");
     ReadBasicType(is, binary, &temp);
-    ReadToken(is, binary, &token);
   }
+  std::string token;
+  ReadToken(is, binary, &token);
   if (token != "<NaturalGradientAffineComponent>" &&
       token != "</NaturalGradientAffineComponent>")
     KALDI_ERR << "Expected <NaturalGradientAffineComponent> or "
@@ -2605,8 +2821,6 @@ void NaturalGradientAffineComponent::Write(std::ostream &os,
   WriteBasicType(os, binary, num_samples_history_);
   WriteToken(os, binary, "<Alpha>");
   WriteBasicType(os, binary, alpha_);
-  WriteToken(os, binary, "<IsGradient>");
-  WriteBasicType(os, binary, is_gradient_);
   WriteToken(os, binary, "</NaturalGradientAffineComponent>");
 }
 
@@ -3328,8 +3542,7 @@ ConvolutionComponent::ConvolutionComponent():
     input_x_dim_(0), input_y_dim_(0), input_z_dim_(0),
     filt_x_dim_(0), filt_y_dim_(0),
     filt_x_step_(0), filt_y_step_(0),
-    input_vectorization_(kZyx),
-    is_gradient_(false) {}
+    input_vectorization_(kZyx) { }
 
 ConvolutionComponent::ConvolutionComponent(
     const ConvolutionComponent &component):
@@ -3343,8 +3556,7 @@ ConvolutionComponent::ConvolutionComponent(
     filt_y_step_(component.filt_y_step_),
     input_vectorization_(component.input_vectorization_),
     filter_params_(component.filter_params_),
-    bias_params_(component.bias_params_),
-    is_gradient_(component.is_gradient_) {}
+    bias_params_(component.bias_params_) { }
 
 ConvolutionComponent::ConvolutionComponent(
     const CuMatrixBase<BaseFloat> &filter_params,

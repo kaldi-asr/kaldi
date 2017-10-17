@@ -1606,6 +1606,136 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
       = (const NaturalGradientPerElementScaleComponent &other); // Disallow.
 };
 
+
+
+/*
+  ScaleAndOffsetComponent implements a per-element scale and offset.
+  It may be useful just after BatchNormComponent, as the trainable offset
+  and scale of batch-norm.
+  Note: by default this includes natural gradient for the update.
+
+  Currently accepted values on its config line:
+
+     dim              The feature-dimension that the component takes as
+                      input, and outputs.
+     block-dim        If set, this must be set to a value that divides
+                      'dim'.  In this case, the same offset and scale
+                      will be applied to each block, and the number
+                      of parameters will be 2*block-dim instead of 2*dim.
+
+  There is currently no way to configure what values will be used for
+  the initialization and it is hardcoded to zero offset, unit scale.
+  If in future more configurability is needed, we'll address it then.
+
+  Values inherited from UpdatableComponent (see its declaration in
+  nnet-component-itf for details):
+     learning-rate
+     learning-rate-factor
+     max-change
+
+
+
+   Options to the natural gradient (you won't normally have to set these,
+   the defaults are suitable):
+
+      use-natural-gradient  Defaults to true; false turns off the application
+                            of natural gradient update to this layer.
+      rank                  Rank used in low-rank-plus-unit estimate of Fisher
+                            matrix in the input space.  default=20.
+*/
+class ScaleAndOffsetComponent: public UpdatableComponent {
+ public:
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
+
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  ScaleAndOffsetComponent() { } // use Init to really initialize.
+  virtual std::string Type() const { return "ScaleAndOffsetComponent"; }
+  virtual int32 Properties() const {
+    // Note: the backprop would most naturally consume the input, but we
+    // have arranged things so that the backprop consumes the output value
+    // instead; this allows less memory use, since in typical configurations,
+    // this will be followed by an affine component which needs its input
+    // for the backprop (so requiring it to be present adds no extra
+    // burden).
+    return kSimpleComponent|kUpdatableComponent|
+           kBackpropInPlace|kPropagateInPlace|
+           kBackpropNeedsOutput|
+        (dim_ != scales_.Dim() ?
+         (kInputContiguous|kOutputContiguous) : 0);
+  }
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const { return new ScaleAndOffsetComponent(*this); }
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const { return 2 * scales_.Dim(); }
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+
+  // copy constructor
+  explicit ScaleAndOffsetComponent(const ScaleAndOffsetComponent &other);
+ private:
+  // Internal version of propagate, requires in.NumCols() equal to scales_.Dim()
+  // (if batch-dim was set, this may require the caller to reshape the input and
+  // output.
+  void PropagateInternal(const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  // Internal version of backprop, where the num-cols of the
+  // argument matrices are equal to scales_.Dim().
+  void BackpropInternal(const std::string &debug_info,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        ScaleAndOffsetComponent *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  // called from BackpropInternal if 'to_update' is non-NULL.
+  void Update(
+      const std::string &debug_info,
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv);
+
+
+  const ScaleAndOffsetComponent &operator
+      = (const ScaleAndOffsetComponent &other); // Disallow.
+
+  // Note: dim_ is the dimension that the component takes as input
+  // and output.  It is an integer multiple of scales_.Dim(),
+  // and will be the same as scales_.Dim() unless 'block-dim'
+  // was specified on the config line.
+  // (note: scales_.Dim() and offset_.Dim() will be the same).
+  int32 dim_;
+
+  // note: output is y(i) = scales_(i) * x(i) + offsets_(i).
+  CuVector<BaseFloat> scales_;
+  CuVector<BaseFloat> offsets_;
+  bool use_natural_gradient_;
+  OnlineNaturalGradient scale_preconditioner_;
+  OnlineNaturalGradient offset_preconditioner_;
+};
+
+
+
 /**
  * WARNING, this component is deprecated in favor of
  *  TimeHeightConvolutionComponent, and will be deleted.
@@ -1810,7 +1940,6 @@ class ConvolutionComponent: public UpdatableComponent {
   CuVector<BaseFloat> bias_params_;
   // the filter-specific bias vector (i.e., there is a seperate bias added
   // to the output of each filter).
-  bool is_gradient_;
 
   void InputToInputPatches(const CuMatrixBase<BaseFloat>& in,
                            CuMatrix<BaseFloat> *patches) const;
@@ -2384,7 +2513,7 @@ class CompositeComponent: public UpdatableComponent {
 
   // Functions to iterate over the internal components
 
-  int32 NumComponents() const { return components_.size();}
+  int32 NumComponents() const { return components_.size(); }
   /// Gets the ith component in this component.
   /// The ordering is the same as in the config line. The caller
   /// does not own the received component.
