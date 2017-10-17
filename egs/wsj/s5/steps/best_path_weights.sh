@@ -38,6 +38,7 @@ set -e
 cmd=run.pl
 stage=-10
 acwt=0.1
+write_words=false
 #end configuration section.
 
 help_message="Usage: "$(basename $0)" [options] <data-dir> <graph-dir|lang-dir> <decode-dir1>[:weight] <decode-dir2>[:weight] [<decode-dir3>[:weight] ... ] <out-dir>
@@ -70,12 +71,18 @@ nj=`cat $decode_dir/num_jobs`
 
 mkdir -p $dir
 
+words_wspecifier=ark:/dev/null
+
+if $write_words; then
+  words_wspecifier="ark,t:| utils/int2sym.pl -f 2- $lang/words.txt > words.JOB.txt" 
+fi
+
 if [ $stage -lt -1 ]; then
   mkdir -p $dir/log
   $cmd JOB=1:$nj $dir/log/best_path.JOB.log \
     lattice-best-path --acoustic-scale=$acwt \
       "ark,s,cs:gunzip -c $decode_dir/lat.JOB.gz |" \
-      ark:/dev/null "ark:| gzip -c > $dir/ali.JOB.gz" || exit 1
+      "$words_wspecifier" "ark:| gzip -c > $dir/ali.JOB.gz" || exit 1
 fi
 
 src_dir=`dirname $decode_dir`

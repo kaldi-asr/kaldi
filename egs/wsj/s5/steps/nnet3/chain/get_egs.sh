@@ -80,7 +80,6 @@ generate_egs_scp=false
 no_chunking=false
 use_mbr_decode=false
 arc_scale=1.0
-keep_only_best_path=false
 lat_copy_src=
 
 echo "$0 $@"  # Print the command line for logging
@@ -298,16 +297,9 @@ if [ $stage -le 2 ]; then
   echo "$0: copying training lattices"
 
   if [ -z "$lat_copy_src" ]; then
-    if ! $keep_only_best_path; then
-      $cmd --max-jobs-run 6 JOB=1:$num_lat_jobs $dir/log/lattice_copy.JOB.log \
-        lattice-copy "ark:gunzip -c $latdir/lat.JOB.gz|" ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp || exit 1;
-    else
-      $cmd --max-jobs-run 6 JOB=1:$num_lat_jobs $dir/log/lattice_copy.JOB.log \
-        lattice-interp --alpha=1 "ark:gunzip -c $latdir/lat.JOB.gz|" \
-        "ark:gunzip -c $latdir/lat.JOB.gz | lattice-1best --acoustic-scale=$acwt ark:- ark:- |" \
-        ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp || exit 1;
-    fi
-
+    $cmd --max-jobs-run 6 JOB=1:$num_lat_jobs $dir/log/lattice_copy.JOB.log \
+      lattice-copy "ark:gunzip -c $latdir/lat.JOB.gz|" ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp || exit 1;
+    
     for id in $(seq $num_lat_jobs); do cat $dir/lat.$id.scp; done > $dir/lat.scp
   else
     ln -sf `readlink -f $lat_copy_src`/lat.*.{ark,scp} $dir/
