@@ -101,4 +101,11 @@ if [ $stage -le 4 ]; then
   fi
 fi
 
+# tdnn based ASR experiment
+if [ $stage -le 5 ]; then
+  ali_opt=
+  [ "$mic" != "ihm" ] && ali_opt="--use-ihm-ali true"
+  local/chain/run_tdnn.sh $ali_opt --mic $mic
+fi
+
 echo "Done."
