@@ -13,7 +13,7 @@
 # Config:
 stage=0 # resume training with --stage=N
 flatstart=false
-model=false # If you got trained models, please set it to true
+model=false # If you got trained models after running flatstart, please set it to true
 
 . utils/parse_options.sh || exit 1;
 
