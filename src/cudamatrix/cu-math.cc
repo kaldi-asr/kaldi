@@ -912,6 +912,17 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
   }
 }
 
+template <typename Real>
+void EnsureNonzero(const CuVectorBase<Real> &src,
+                   Real epsilon,
+                   CuVectorBase<Real> *dest) {
+  KALDI_ASSERT(src.Dim() == dest->Dim());
+  int32 dim = src.Dim();
+  // fake it with a 1-row matrix.
+  CuSubMatrix<Real> src_mat(src.Data(), 1,  dim, dim),
+      dest_mat(dest->Data(), 1, dim, dim);
+  EnsureNonzero(src_mat, epsilon, &dest_mat);
+}
 
 // Instantiate the templates we defined above.
 
@@ -923,6 +934,15 @@ template
 void EnsureNonzero(const CuMatrixBase<double> &src,
                    double epsilon,
                    CuMatrixBase<double> *dest);
+
+template
+void EnsureNonzero(const CuVectorBase<float> &src,
+                   float epsilon,
+                   CuVectorBase<float> *dest);
+template
+void EnsureNonzero(const CuVectorBase<double> &src,
+                   double epsilon,
+                   CuVectorBase<double> *dest);
 
 template
 void CpuBackpropLstmNonlinearity(const MatrixBase<float> &input,

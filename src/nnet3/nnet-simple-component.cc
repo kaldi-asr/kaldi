@@ -2333,6 +2333,7 @@ void ScaleAndOffsetComponent::Add(BaseFloat alpha,
 ScaleAndOffsetComponent::ScaleAndOffsetComponent(
     const ScaleAndOffsetComponent &component):
     UpdatableComponent(component),
+    dim_(component.dim_),
     scales_(component.scales_),
     offsets_(component.offsets_),
     use_natural_gradient_(component.use_natural_gradient_),
@@ -2393,13 +2394,14 @@ void ScaleAndOffsetComponent::PropagateInternal(
     CuMatrixBase<BaseFloat> *out) const {
   if (out->Data() != in.Data())
     out->CopyFromMat(in);
-  BaseFloat epsilon = 1.0e-04;
+  BaseFloat epsilon = Epsilon();
   int32 dim = scales_.Dim();
   CuVector<BaseFloat> scales_nonzero(dim, kUndefined);
-
-  out->MulColsVec(
-
+  cu::EnsureNonzero(scales_, epsilon, &scales_nonzero);
+  out->MulColsVec(scales_nonzero);
+  out->AddVecToRows(1.0, offsets_);
 }
+
 void ScaleAndOffsetComponent::Backprop(
     const std::string &debug_info,
     const ComponentPrecomputedIndexes *indexes,
@@ -2444,6 +2446,57 @@ void ScaleAndOffsetComponent::Backprop(
   }
 }
 
+
+  // Internal version of backprop, where the num-cols of the
+  // argument matrices are equal to scales_.Dim().
+void ScaleAndOffsetComponent::BackpropInternal(
+    const std::string &debug_info,
+    const CuMatrixBase<BaseFloat> &out_value,
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    ScaleAndOffsetComponent *to_update,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (to_update) {
+    if (!to_update->use_natural_gradient_ || to_update->is_gradient_) {
+      to_update->offsets_.AddRowSumMat(to_update->learning_rate_,
+                                       out_deriv);
+    } else {
+      BaseFloat scale = 1.0;
+      CuMatrix<BaseFloat> out_deriv_copy(out_deriv);
+      to_update->offset_preconditioner_.PreconditionDirections(
+          &out_deriv_copy, NULL, &scale);
+      to_update->offsets_.AddRowSumMat(scale * to_update->learning_rate_,
+                                       out_deriv_copy);
+    }
+    // The backprop actually needs the input to the component, not the output;
+    // but we make the output available because in the common topologies that
+    // will already be required for backprop-- it's for memory efficiency.
+    CuMatrix<BaseFloat> in_value_reconstructed(out_value);
+    int32 dim = scales_.Dim();
+    CuVector<BaseFloat> scales_nonzero(dim, kUndefined);
+    BaseFloat epsilon = Epsilon();
+    cu::EnsureNonzero(scales_, epsilon, &scales_nonzero);
+    scales_nonzero.InvertElements();
+    in_value_reconstructed.AddVecToRows(-1.0, offsets_);
+    // Actually scales_nonzero are now the inverses of the scales.
+    in_value_reconstructed.MulColsVec(scales_nonzero);
+    // OK, at this point in_value_reconstructed is the input to the component.
+    // Multiply its elements by 'out_deriv' to get the derivatives
+    // (for each frame) w.r.t. the scales.
+    in_value_reconstructed.MulElements(out_deriv);
+    BaseFloat scale = 1.0;
+    if (to_update->use_natural_gradient_ && !to_update->is_gradient_) {
+      to_update->scale_preconditioner_.PreconditionDirections(
+          &in_value_reconstructed, NULL, &scale);
+    }
+    to_update->scales_.AddRowSumMat(scale * to_update->learning_rate_,
+                                    in_value_reconstructed);
+  }
+  if (in_deriv) {
+    if (in_deriv->Data() != out_deriv.Data())
+      in_deriv->CopyFromMat(out_deriv);
+    in_deriv->MulColsVec(scales_);
+  }
+}
 
 
 std::string ConstantFunctionComponent::Info() const {

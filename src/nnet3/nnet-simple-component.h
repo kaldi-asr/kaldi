@@ -1614,7 +1614,8 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
   and scale of batch-norm.
   Note: by default this includes natural gradient for the update.
 
-  Currently accepted values on its config line:
+  Currently accepted values on its config line are as follows.
+  Major configuration values:
 
      dim              The feature-dimension that the component takes as
                       input, and outputs.
@@ -1708,6 +1709,9 @@ class ScaleAndOffsetComponent: public UpdatableComponent {
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         ScaleAndOffsetComponent *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  // We do this instead of defining a constant, which is a hassle in C++.
+  inline BaseFloat Epsilon() const { return 1.0e-04; }
 
   // called from BackpropInternal if 'to_update' is non-NULL.
   void Update(
@@ -2257,6 +2261,10 @@ class MaxpoolingComponent: public Component {
   input it normalizes the data to be zero-mean, unit-variance.  You
   can set the block-dim configuration value to implement spatial
   batch normalization, see the comment for the variable.
+
+  If you want to combine this with the trainable offset and scale that the
+  original BatchNorm paper used, then follow this by the
+  ScaleAndOffsetComponent.
 
   It's a simple component (uses the kSimpleComponent flag), but it is unusual in
   that it will give different results if you call it on half the matrix at a

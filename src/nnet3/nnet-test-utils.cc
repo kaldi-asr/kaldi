@@ -1350,7 +1350,7 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
-  int32 n = RandInt(0, 32);
+  int32 n = RandInt(0, 33);
   BaseFloat learning_rate = 0.001 * RandInt(1, 100);
 
   std::ostringstream os;
@@ -1671,6 +1671,16 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       os << "input-dim=" << input_dim
          << " output-dim=" << output_dim
          << " scale=" << scale;
+      break;
+    }
+    case 33: {
+      *component_type = "ScaleAndOffsetComponent";
+      int32 block_dim = RandInt(10, 20),
+          num_blocks = RandInt(1, 3),
+          dim = block_dim * num_blocks;
+      os << "dim=" << dim << " block-dim=" << block_dim
+         << " use-natural-gradient="
+         << (RandInt(0,1) == 0 ? "true" : "false");
       break;
     }
     default:

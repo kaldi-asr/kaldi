@@ -87,6 +87,12 @@ void EnsureNonzero(const CuMatrixBase<Real> &src,
                    Real epsilon,
                    CuMatrixBase<Real> *dest);
 
+/// Vector version of EnsureNonzero, see matrix version for documentation.
+template <typename Real>
+void EnsureNonzero(const CuVectorBase<Real> &src,
+                   Real epsilon,
+                   CuVectorBase<Real> *dest);
+
 /**
  this is a special-purpose function used by class LstmNonlinearityComponent,
  to do its forward propagation.  It computes the core part of the LSTM nonlinearity.
