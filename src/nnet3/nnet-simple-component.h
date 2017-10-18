@@ -1635,7 +1635,6 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
      max-change
 
 
-
    Options to the natural gradient (you won't normally have to set these,
    the defaults are suitable):
 

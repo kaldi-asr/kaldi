@@ -2284,6 +2284,8 @@ void ScaleAndOffsetComponent::InitFromConfig(ConfigLine *cfl) {
 
 void ScaleAndOffsetComponent::Read(std::istream &is, bool binary) {
   ReadUpdatableCommon(is, binary);  // Read opening tag and learning rate
+  ExpectToken(is, binary, "<Dim>");
+  ReadBasicType(is, binary, &dim_);
   ExpectToken(is, binary, "<Scales>");
   scales_.Read(is, binary);
   ExpectToken(is, binary, "<Offsets>");
@@ -2300,6 +2302,8 @@ void ScaleAndOffsetComponent::Read(std::istream &is, bool binary) {
 
 void ScaleAndOffsetComponent::Write(std::ostream &os, bool binary) const {
   WriteUpdatableCommon(os, binary);  // Write opening tag and learning rate
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
   WriteToken(os, binary, "<Scales>");
   scales_.Write(os, binary);
   WriteToken(os, binary, "<Offsets>");
