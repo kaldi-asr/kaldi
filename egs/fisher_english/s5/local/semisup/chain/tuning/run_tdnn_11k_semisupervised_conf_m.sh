@@ -152,11 +152,9 @@ cmvn_opts=`cat $chaindir/cmvn_opts` || exit 1
 sup_ali_dir=$exp/tri3
 
 treedir=$exp/chain${nnet3_affix}/tree_${tree_affix}
-if [ $stage -le 9 ]; then
-  if [ -f $treedir/final.mdl ]; then
-    echo "$0: $treedir/final.mdl already exists. Remove it and try again."
-    exit 1
-  fi
+if [ ! -f $treedir/final.mdl ]; then
+  echo "$0: $treedir/final.mdl does not exist."
+  exit 1
 fi
 
 dir=$exp/chain${nnet3_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
