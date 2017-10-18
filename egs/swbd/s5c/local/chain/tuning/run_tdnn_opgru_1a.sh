@@ -3,30 +3,23 @@
 # Copyright 2017 University of Chinese Academy of Sciences (UCAS) Gaofeng Cheng
 # Apache 2.0
 
-# This is based on the TDNN_LSTM_1b, but using the PGRU to replace the LSTM,
-# and adding chunk-{left,right}-context-initial=0 
+# Same as run_tdnn_pgru_1a but with OPGRU replacing PGRU.
+# OPGRU is a kind variant of PGRU which is believed to be better than PGRU
                                                 
-# ./local/chain/compare_wer_general.sh --looped tdnn_pgru_1a_ld5_sp
-# System                tdnn_pgru_1a_ld5_sp
-# WER on train_dev(tg)      12.82
-#           [looped:]       12.60
-# WER on train_dev(fg)      11.89
-#           [looped:]       11.64
-# WER on eval2000(tg)        14.9
-#           [looped:]        14.8
-# WER on eval2000(fg)        13.3
-#           [looped:]        13.4
-# Final train prob         -0.077
-# Final valid prob         -0.092
-# Final train prob (xent)        -0.929
-# Final valid prob (xent)       -0.9934
-
-# ./local/chain/compare_wer_general.sh tdnn_pgru_1a_ld5_sp_online
-# System                tdnn_pgru_1a_ld5_sp_online
-# WER on train_dev(tg)      12.68
-# WER on train_dev(fg)      11.68
-# WER on eval2000(tg)        14.8
-# WER on eval2000(fg)        13.4
+# ./local/chain/compare_wer_general.sh --looped tdnn_pgru_1a_ld5_sp tdnn_opgru_1a_ld5_sp
+# System                tdnn_pgru_1a_ld5_sp tdnn_opgru_1a_ld5_sp
+# WER on train_dev(tg)      12.82     12.65
+#           [looped:]       12.60     12.48
+# WER on train_dev(fg)      11.89     11.56
+#           [looped:]       11.64     11.47
+# WER on eval2000(tg)        14.9      14.9
+#           [looped:]        14.8      15.0
+# WER on eval2000(fg)        13.3      13.4
+#           [looped:]        13.4      13.4
+# Final train prob         -0.077    -0.067
+# Final valid prob         -0.092    -0.086
+# Final train prob (xent)        -0.929    -0.879
+# Final valid prob (xent)       -0.9934   -0.9628
 
 
 set -e
@@ -36,7 +29,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_pgru_1a # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_opgru_1a # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_dir_affix=
 
@@ -151,13 +144,13 @@ if [ $stage -le 12 ]; then
   relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
   # check steps/libs/nnet3/xconfig/gru.py for the other options and defaults
-  pgru-layer name=pgru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
+  opgru-layer name=opgru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
   relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  pgru-layer name=pgru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
+  opgru-layer name=opgru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
   relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
-  pgru-layer name=pgru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
+  opgru-layer name=opgru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
 
   ## adding the layers for chain branch
   output-layer name=output input=gru3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5

@@ -140,13 +140,13 @@ if [ $stage -le 12 ]; then
   relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
   # check steps/libs/nnet3/xconfig/gru.py for the other options and defaults
-  fast-pgru-layer name=gru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  fast-pgru-layer name=pgru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
   relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  fast-pgru-layer name=gru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  fast-pgru-layer name=pgru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
   relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
-  fast-pgru-layer name=gru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  fast-pgru-layer name=pgru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
 
   ## adding the layers for chain branch
   output-layer name=output input=gru3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
