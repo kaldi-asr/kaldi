@@ -3,17 +3,18 @@
 # Copyright 2017 University of Chinese Academy of Sciences (UCAS) Gaofeng Cheng
 # Apache 2.0
 
-# This is based on the run_tdnn_lstm_1j.sh, replacing the LSTM with proposed PGRU
-# also, decay-time is deprecated in all PGRU scripts
+# Same as tdnn_pgru_1a, but with OPGRU replacing PGRU
+# OPGRU is a kind variant of PGRU which is believed to be better than PGRU
 
-# ./local/chain/compare_wer_general.sh sdm1 tdnn_lstm1j_sp_bi_ihmali_ld5 tdnn_pgru1a_sp_bi_ihmali_ld5 tdnn_pgru1a_sp_bi_ihmali_ld5_online
-# System                tdnn_lstm1j_sp_bi_ihmali_ld5 tdnn_pgru1a_sp_bi_ihmali_ld5 tdnn_pgru1a_sp_bi_ihmali_ld5_online
-# WER on dev        37.2      35.8      35.9
-# WER on eval        40.4      38.8      38.9
-# Final train prob      -0.110953 -0.121403
-# Final valid prob      -0.257645  -0.25305
-# Final train prob (xent)      -1.38772  -1.40716
-# Final valid prob (xent)      -2.13139  -2.04538
+# ./local/chain/compare_wer_general.sh sdm1 tdnn_pgru1a_sp_bi_ihmali_ld5 tdnn_pgru1a_sp_bi_ihmali_ld5_online tdnn_opgru1a_sp_bi_ihmali_ld5 tdnn_opgru1a_sp_bi_ihmali_ld5_online
+# System          tdnn_pgru1a_sp_bi_ihmali_ld5 tdnn_pgru1a_sp_bi_ihmali_ld5_online tdnn_opgru1a_sp_bi_ihmali_ld5 tdnn_opgru1a_sp_bi_ihmali_ld5_online
+# WER on dev        35.8      35.9      36.0      36.1
+# WER on eval        38.8      38.9      39.7      39.7
+# Final train prob      -0.121403 -0.113322
+# Final valid prob       -0.25305 -0.260614
+# Final train prob (xent)      -1.40716  -1.39456
+# Final valid prob (xent)      -2.04538  -2.10729
+
 
 set -e -o pipefail
 
@@ -87,7 +88,7 @@ if $use_ihm_ali; then
   lores_train_data_dir=data/$mic/${train_set}_ihmdata_sp_comb
   tree_dir=exp/$mic/chain${nnet3_affix}/tree_bi${tree_affix}_ihmdata
   lat_dir=exp/$mic/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats_ihmdata
-  dir=exp/$mic/chain${nnet3_affix}/tdnn_pgru${tgru_affix}_sp_bi_ihmali
+  dir=exp/$mic/chain${nnet3_affix}/tdnn_opgru${tgru_affix}_sp_bi_ihmali
   # note: the distinction between when we use the 'ihmdata' suffix versus
   # 'ihmali' is pretty arbitrary.
 else
@@ -96,7 +97,7 @@ else
   lores_train_data_dir=data/$mic/${train_set}_sp_comb
   tree_dir=exp/$mic/chain${nnet3_affix}/tree_bi${tree_affix}
   lat_dir=exp/$mic/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
-  dir=exp/$mic/chain${nnet3_affix}/tdnn_pgru${tgru_affix}_sp_bi
+  dir=exp/$mic/chain${nnet3_affix}/tdnn_opgru${tgru_affix}_sp_bi
 fi
 
 if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi
@@ -196,15 +197,15 @@ if [ $stage -le 15 ]; then
   relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
   # check steps/libs/nnet3/xconfig/gru.py for the other options and defaults
-  pgru-layer name=pgru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
+  opgru-layer name=opgru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
   relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
-  pgru-layer name=pgru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
+  opgru-layer name=opgru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
   relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn8 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn9 input=Append(-3,0,3) dim=1024
-  pgru-layer name=pgru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
+  opgru-layer name=opgru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
 
   ## adding the layers for chain branch
   output-layer name=output input=gru3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
