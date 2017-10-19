@@ -249,15 +249,9 @@ void ChainSupervisionSplitterTest(int32 index) {
   delete trans_model;
 }
 
-void TestToleranceFst() {
+void TestToleranceFst(chain::SupervisionOptions &sup_opts, int32 num_phones) {
   ContextDependency *ctx_dep;
-  TransitionModel *trans_model = GetSimpleChainTransitionModel(&ctx_dep, 2);
-
-  chain::SupervisionOptions sup_opts;
-  sup_opts.left_tolerance = 1;
-  sup_opts.right_tolerance = 1;
-  sup_opts.frame_subsampling_factor = 1;
-  sup_opts.lm_scale = 0.5;
+  TransitionModel *trans_model = GetSimpleChainTransitionModel(&ctx_dep, num_phones);
 
   fst::StdVectorFst tolerance_fst;
   GetToleranceEnforcerFst(sup_opts, *trans_model, &tolerance_fst);
@@ -272,11 +266,30 @@ void TestToleranceFst() {
 } // namespace chain
 } // namespace kaldi
 
-int main() {
+int main(int argc, char *argv[]) {
   using namespace kaldi;
   SetVerboseLevel(2);
 
-  kaldi::chain::TestToleranceFst();
+  const char *usage = "chain-supervision-test [options]";
+
+  ParseOptions po(usage);
+  
+  int32 num_phones = 1;
+
+  po.Register("num-phones", &num_phones, 
+              "Number of phones");
+
+  chain::SupervisionOptions sup_opts;
+  sup_opts.left_tolerance = 1;
+  sup_opts.right_tolerance = 1;
+  sup_opts.frame_subsampling_factor = 1;
+  sup_opts.lm_scale = 0.5;
+
+  sup_opts.Register(&po);
+
+  po.Read(argc, argv);
+
+  kaldi::chain::TestToleranceFst(sup_opts, num_phones);
   return 0;
 
   for (int32 i = 0; i < 10; i++) {

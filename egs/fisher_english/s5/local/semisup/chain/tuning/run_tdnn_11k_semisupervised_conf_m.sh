@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script is same as _d, but uses a weight of 1.0 for unsupervised set.
+# This script is same as _e, but uses tree trained only on supervised data.
 # unsup_frames_per_eg=150
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0
@@ -118,14 +118,15 @@ for dset in $unsupervised_set; do
   if [ $stage -le 4 ]; then
     echo "$0: getting the decoding lattices for the unsupervised subset using the chain model at: $chaindir"
     steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
-              --acwt 1.0 --post-decode-acwt 10.0 \
+              --acwt 1.0 --post-decode-acwt 10.0 --write-compact false \
               --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${base_train_set}_sp_hires \
               --scoring-opts "--min-lmwt 10 --max-lmwt 10" \
               $graphdir data/${dset}_sp_hires $chaindir/decode_${dset}_sp${decode_affix}
   fi
 
   if [ $stage -le 5 ]; then
-    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang_test${graph_affix} \
+    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" --write-compact false \
+      data/lang_test${graph_affix} \
       data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
       $chaindir/decode_${dset}_sp${decode_affix} \
       $chaindir/decode_${dset}_sp${decode_affix}_fg

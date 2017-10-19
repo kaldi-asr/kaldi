@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# This script is same as _d, but uses a weight of 1.0 for unsupervised set.
-# unsup_frames_per_eg=150
+# This script is same as _t, but uses speed perturbation instead of 
+# silence padding for creating discrete length utterances.
+# unsup_frames_per_eg=
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0
 # Weights for phone LM (supervised, unsupervises): 5,2
