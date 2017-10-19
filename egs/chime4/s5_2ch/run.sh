@@ -7,13 +7,23 @@
 #                Mitsubishi Electric Research Labs (Shinji Watanabe)
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
+# Added advanced baseline
+# Szu-Jui Chen 10/19/2017
+
 . ./path.sh
 . ./cmd.sh
+#####Baseline settings#####
+# Usage: 
+# For using original baseline, set baseline to chime4_official. In this case,
+# you don't need to run flatstart since we already provided the trained model in 
+# tools/ASR_models.
+# For advanced baseline, please run flatstart first to get the models.
+# By default, we assume you already got the models.
 
 # Config:
 stage=0 # resume training with --stage=N
+baseline={"chime4_official","advanced"}
 flatstart=false
-model=false # If you got trained models after running flatstart, please set it to true
 
 . utils/parse_options.sh || exit 1;
 
@@ -38,16 +48,32 @@ if [ ! -d $chime4_data ]; then
   echo "$chime4_data does not exist. Please specify chime4 data root correctly" && exit 1
 fi
 # Set a model directory for the CHiME4 data.
-modeldir=$chime4_data/tools/ASR_models
+case $baseline in
+  chime4_official)
+      if $flatstart; then
+        echo "We don't support this anymore for 'chime4_official' baseline"
+        echo " ... Automatically set it to false"
+      fi
+      modeldir=$chime4_data/tools/ASR_models
+      flatstart=false
+      ;;
+  advanced)
+      modeldir=`pwd`
+      ;;
+  *)
+      echo "Usage: './run.sh --baseline chime4_official' or './run.sh --baseline advanced'"
+      echo " ... If you haven't run flatstart for advanced baseline, please execute"
+      echo " ... './run.sh --baseline advanced --flatstart true' first";
+      exit 1;
+esac
 
-if $model; then
-  modeldir=`pwd`
+if [ "$flatstart" = false ]; then
+  for d in $modeldir $modeldir/data/{lang,lang_test_tgpr_5k,lang_test_5gkn_5k,lang_test_rnnlm_5k_h300,local} \
+    $modeldir/exp/{tri3b_tr05_multi_noisy,tri4a_dnn_tr05_multi_noisy,tri4a_dnn_tr05_multi_noisy_smbr_i1lats}; do
+    [ ! -d $d ] && echo "$0: no such directory $d. specify models correctly" && \
+    echo " or execute './run.sh --baseline advanced --flatstart true' first" && exit 1;
+  done
 fi
-
-for d in $modeldir $modeldir/data/{lang,lang_test_tgpr_5k,lang_test_5gkn_5k,lang_test_rnnlm_5k_h300,local} \
-  $modeldir/exp/{tri3b_tr05_multi_noisy,tri4a_dnn_tr05_multi_noisy,tri4a_dnn_tr05_multi_noisy_smbr_i1lats}; do
-  [ ! -d ] && echo "$0: no such directory $d. specify models correctly or execute './run.sh --flatstart true' first" && exit 1;
-done
 #####check data and model paths finished#######
 
 
