@@ -91,6 +91,13 @@ if [ $stage -le 3 ]; then
   fi
 fi
 
+# tdnn based ASR experiment
+if [ $stage -le 5 ]; then
+  ali_opt=
+  [ "$mic" != "ihm" ] && ali_opt="--use-ihm-ali true"
+  local/chain/run_tdnn.sh $ali_opt --mic $mic
+fi
+
 # LM-rescoring experiment with 5-gram and RNN LMs
 # It takes a few days to train a RNNLM.
 if [ $stage -le 4 ]; then
@@ -99,13 +106,6 @@ if [ $stage -le 4 ]; then
   else
     local/run_lmrescore_recog.sh $enhancement_method $modeldir
   fi
-fi
-
-# tdnn based ASR experiment
-if [ $stage -le 5 ]; then
-  ali_opt=
-  [ "$mic" != "ihm" ] && ali_opt="--use-ihm-ali true"
-  local/chain/run_tdnn.sh $ali_opt --mic $mic
 fi
 
 echo "Done."
