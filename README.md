@@ -1,7 +1,13 @@
-[![Build Status](https://travis-ci.org/kaldi-asr/kaldi.svg?branch=master)](https://travis-ci.org/kaldi-asr/kaldi)
 
-Kaldi Speech Recognition Toolkit
-================================
+cASeR
+=====
+
+ASR cases for speech handbook at CSLT-THU, based on Kaldi toolkit.
+Most cases conducted on THCHS30, in egs/thchs30_cases.
+
+
+Kaldi speech recognition toolkit
+--------------------------------
 
 To build the toolkit: see `./INSTALL`.  These instructions are valid for UNIX
 systems including various flavors of Linux; Darwin; and Cygwin (has not been
@@ -35,7 +41,7 @@ To sign up to any of those mailing lists, go to
 [http://kaldi-asr.org/forums.html](http://kaldi-asr.org/forums.html):
 
 
-Development pattern for contributors
+Kaldi development pattern for contributors
 ------------------------------------
 
 1. [Create a personal fork](https://help.github.com/articles/fork-a-repo/)
@@ -49,7 +55,7 @@ Development pattern for contributors
    You can use the [Google's cpplint.py](https://raw.githubusercontent.com/google/styleguide/gh-pages/cpplint/cpplint.py)
    to verify that your code is free of basic mistakes.
 
-Platform specific notes
+Kaldi platform specific notes
 -----------------------
 
 ### PowerPC 64bits little-endian (ppc64le)
