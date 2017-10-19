@@ -191,7 +191,7 @@ if [ $stage -le 15 ]; then
   relu-batchnorm-layer name=tdnn9 input=Append(-3,0,3) dim=450
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain input=tdnn7 dim=450 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-chain input=tdnn9 dim=450 target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
@@ -203,7 +203,7 @@ if [ $stage -le 15 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn7 dim=450 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn9 dim=450 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF
