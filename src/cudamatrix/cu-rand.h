@@ -66,6 +66,15 @@ class CuRand {
   #endif
   }
 
+  // CAUTION.
+  // For the versions of these functions that output to a CuMatrix (as opposed to
+  // CuMatrixBase), the random numbers depend on the stride, and the stride
+  // is not guaranteed to be consistent for the same dimension of matrix
+  // (it usually will be, but not when memory is nearly exhausted).  So
+  // for applications where consistency is essential, either use the versions
+  // of these function that accept CuMatrixBase, or initialize your matrix
+  // with the kStrideEqualNumCols argument to ensure consistent stride.
+
   /// Fill with uniform [0..1] floats,
   void RandUniform(CuMatrixBase<Real> *tgt);
   void RandUniform(CuMatrix<Real> *tgt);
@@ -89,4 +98,3 @@ class CuRand {
 }  // namsepace
 
 #endif  // KALDI_CUDAMATRIX_CU_RAND_H_
-
