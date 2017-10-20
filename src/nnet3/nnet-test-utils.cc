@@ -1520,8 +1520,10 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       *component_type = "PerElementOffsetComponent";
       std::string param_config = RandInt(0, 1)?
                                  " param-mean=0.0 param-stddev=0.0":
-                                 " param-mean=0.0 param-stddev=1.0";
-      os << "dim=" << RandInt(1, 100)
+                                 " param-mean=1.0 param-stddev=1.0";
+      int32 block_dim = RandInt(10, 20), dim = block_dim * RandInt(1, 2);
+      os << "dim=" << dim << " block-dim=" << block_dim
+         << " use-natural-gradient=" << (RandInt(0, 1) == 0 ? "true" : "false")
          << " learning-rate=" << learning_rate << param_config;
       break;
     }

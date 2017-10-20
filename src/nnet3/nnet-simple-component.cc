@@ -2110,7 +2110,10 @@ void PerElementOffsetComponent::Add(BaseFloat alpha,
 PerElementOffsetComponent::PerElementOffsetComponent(
     const PerElementOffsetComponent &component):
     UpdatableComponent(component),
-    offsets_(component.offsets_) { }
+    offsets_(component.offsets_),
+    dim_(component.dim_),
+    use_natural_gradient_(component.use_natural_gradient_),
+    preconditioner_(component.preconditioner_) { }
 
 void PerElementOffsetComponent::PerturbParams(BaseFloat stddev) {
   CuVector<BaseFloat> temp_offsets(offsets_.Dim(), kUndefined);
@@ -2122,7 +2125,10 @@ std::string PerElementOffsetComponent::Info() const {
   std::ostringstream stream;
   stream << UpdatableComponent::Info()
          << ", offsets-min=" << offsets_.Min()
-         << ", offsets-max=" << offsets_.Max();
+         << ", offsets-max=" << offsets_.Max()
+         << ", block-dim=" << offsets_.Dim()
+         << ", use-natural-gradient="
+         << (use_natural_gradient_ ? "true" : "false");
   PrintParameterStats(stream, "offsets", offsets_, true);
   return stream.str();
 }
@@ -2138,51 +2144,60 @@ BaseFloat PerElementOffsetComponent::DotProduct(
   return VecVec(offsets_, other->offsets_);
 }
 
-void PerElementOffsetComponent::Init(int32 dim,
-                                     BaseFloat param_mean,
-                                     BaseFloat param_stddev) {
-  KALDI_ASSERT(dim > 0 && param_stddev >= 0.0);
-  offsets_.Resize(dim);
-  offsets_.SetRandn();
-  offsets_.Scale(param_stddev);
-  offsets_.Add(param_mean);
-}
-
-void PerElementOffsetComponent::Init(std::string vector_filename) {
-  CuVector<BaseFloat> vec;
-  ReadKaldiObject(vector_filename, &vec); // will abort on failure.
-  offsets_.Resize(vec.Dim());
-  offsets_.CopyFromVec(vec);
-}
 
 void PerElementOffsetComponent::InitFromConfig(ConfigLine *cfl) {
   std::string vector_filename;
-  int32 dim = -1;
   InitLearningRatesFromConfig(cfl);
   if (cfl->GetValue("vector", &vector_filename)) {
-    Init(vector_filename);
-    if (cfl->GetValue("dim", &dim))
-      KALDI_ASSERT(dim == InputDim() &&
-                   "input-dim mismatch vs. vector.");
+    ReadKaldiObject(vector_filename, &offsets_);
+    dim_ = offsets_.Dim();  // if dim is not supplied, it defaults to this.
+    cfl->GetValue("dim", &dim_);
+    if (dim_ <= 0 || offsets_.Dim() % dim_ != 0)
+      KALDI_ERR << "Invalid dimension dim=" << dim_;
   } else {
-    if(!cfl->GetValue("dim", &dim))
+    if(!cfl->GetValue("dim", &dim_))
       KALDI_ERR << "'dim' not provided in the config line.";
+    if (dim_ <= 0)
+      KALDI_ERR << "Invalid dimension dim=" << dim_;
     BaseFloat param_mean = 0.0, param_stddev = 0.0;
     cfl->GetValue("param-mean", &param_mean);
     cfl->GetValue("param-stddev", &param_stddev);
-    Init(dim, param_mean, param_stddev);
+    int32 block_dim = dim_;
+    cfl->GetValue("block-dim", &block_dim);
+    if (block_dim <= 0 || dim_ % block_dim !=  0)
+      KALDI_ERR << "Invalid value block-dim=" << block_dim;
+    offsets_.Resize(block_dim);
+    offsets_.SetRandn();
+    offsets_.Scale(param_stddev);
+    offsets_.Add(param_mean);
   }
+  use_natural_gradient_ = true;
+  cfl->GetValue("use-natural-gradient", &use_natural_gradient_);
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
               << cfl->UnusedValues();
+  // For now you can't modify these defaults of the natural gradient.
+  // This code must be kept in sync with the code in Read().
+  preconditioner_.SetRank(20);
+  preconditioner_.SetUpdatePeriod(4);
 }
 
 void* PerElementOffsetComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes,
     const CuMatrixBase<BaseFloat> &in,
     CuMatrixBase<BaseFloat> *out) const {
-  out->CopyFromMat(in);
-  out->AddVecToRows(1.0, offsets_);
+  if (in.Data() != out->Data())
+    out->CopyFromMat(in);
+  if (dim_ == offsets_.Dim()) {
+    out->AddVecToRows(1.0, offsets_);
+  } else {
+    KALDI_ASSERT(out->Stride() == out->NumCols());
+    int32 block_dim = offsets_.Dim(), multiple = dim_ / block_dim,
+        num_rows = out->NumRows() * multiple;
+    CuSubMatrix<BaseFloat> out_rearranged(out->Data(), num_rows,
+                                          block_dim, block_dim);
+    out_rearranged.AddVecToRows(1.0, offsets_);
+  }
   return NULL;
 }
 
@@ -2198,13 +2213,40 @@ void PerElementOffsetComponent::Backprop(
   PerElementOffsetComponent *to_update =
       dynamic_cast<PerElementOffsetComponent*>(to_update_in);
 
-  if (in_deriv) {
+  if (in_deriv && in_deriv->Data() != out_deriv.Data()) {
     // Propagate the derivative back to the input.
     in_deriv->CopyFromMat(out_deriv);
   }
 
-  if (to_update != NULL)
-    to_update->offsets_.AddRowSumMat(to_update->learning_rate_, out_deriv);
+  if (to_update != NULL) {
+    // we may have to reshape out_deriv, if "block-dim" was set
+    // in the config file when initializing the object, leading
+    // to dim_ being a multiple >1 of offset_.Dim().
+    // To avoid having separate code paths we create a sub-matrix
+    // in any case, but this may just be a copy of out_deriv.
+    int32 block_dim = offsets_.Dim(), multiple = dim_ / block_dim,
+        block_stride = (multiple == 1 ? out_deriv.Stride() : block_dim),
+        num_rows = out_deriv.NumRows() * multiple;
+    KALDI_ASSERT(multiple == 1 || out_deriv.Stride() == out_deriv.NumCols());
+    CuSubMatrix<BaseFloat> out_deriv_reshaped(out_deriv.Data(), num_rows,
+                                              block_dim, block_stride);
+    if (!to_update->use_natural_gradient_ || to_update->is_gradient_) {
+      KALDI_LOG << "Using non-NG update, lr = " << to_update->learning_rate_;
+      to_update->offsets_.AddRowSumMat(to_update->learning_rate_,
+                                       out_deriv_reshaped);
+    } else {
+      KALDI_LOG << "Using NG update, lr = " << to_update->learning_rate_;
+      // make a copy as we don't want to modify the data of 'out_deriv', which
+      // was const (even though CuSubMatrix does not respect const-ness in
+      // this scenario)
+      CuMatrix<BaseFloat> out_deriv_copy(out_deriv_reshaped);
+      BaseFloat scale = 1.0;
+      to_update->preconditioner_.PreconditionDirections(&out_deriv_copy, NULL,
+                                                        &scale);
+      to_update->offsets_.AddRowSumMat(scale * to_update->learning_rate_,
+                                       out_deriv_copy);
+    }
+  }
 }
 
 void PerElementOffsetComponent::Read(std::istream &is, bool binary) {
@@ -2217,6 +2259,19 @@ void PerElementOffsetComponent::Read(std::istream &is, bool binary) {
     ExpectToken(is, binary, "<IsGradient>");
     ReadBasicType(is, binary, &is_gradient_);
   }
+  if (PeekToken(is, binary) != '/') {
+    ExpectToken(is, binary, "<Dim>");
+    ReadBasicType(is, binary, &dim_);
+    ExpectToken(is, binary, "<UseNaturalGradient>");
+    ReadBasicType(is, binary, &use_natural_gradient_);
+  } else {
+    dim_ = offsets_.Dim();
+    use_natural_gradient_ = true;
+  }
+  // For now you can't modify these defaults of the natural gradient.
+  // This code must be kept in sync with the code in InitFromConfig().
+  preconditioner_.SetRank(20);
+  preconditioner_.SetUpdatePeriod(4);
   ExpectToken(is, binary, "</PerElementOffsetComponent>");
 }
 
@@ -2224,11 +2279,15 @@ void PerElementOffsetComponent::Write(std::ostream &os, bool binary) const {
   WriteUpdatableCommon(os, binary);  // Write opening tag and learning rate
   WriteToken(os, binary, "<Offsets>");
   offsets_.Write(os, binary);
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<UseNaturalGradient>");
+  WriteBasicType(os, binary, use_natural_gradient_);
   WriteToken(os, binary, "</PerElementOffsetComponent>");
 }
 
 int32 PerElementOffsetComponent::NumParameters() const {
-  return InputDim();
+  return offsets_.Dim();
 }
 
 void PerElementOffsetComponent::Vectorize(VectorBase<BaseFloat> *params) const {

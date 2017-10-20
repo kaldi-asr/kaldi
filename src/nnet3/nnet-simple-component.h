@@ -1416,22 +1416,33 @@ class PerElementScaleComponent: public UpdatableComponent {
   trainable bias; it's like an affine component with fixed weight matrix which
   is always equal to I.
 
-  Accepted values on its config line, with defaults if applicable.
+  Accepted values on its config line, with defaults if applicable:
 
      vector           If specified, the offsets will be read from this file ('vector'
                       is interpreted as an rxfilename).
 
-     dim              If 'vector' is not specified, you should specify the
-                      dimension 'dim', and will be randomly initialized according
-                      to 'param-mean' and 'param-stddev'.
-     param-mean=0.0   Mean of randomly initialized offset parameters.
-     param-stddev=0.0 Standard deviation of randomly initialized offset parameters.
+     dim              The dimension that this component inputs and outputs.
 
+     block-dim        [Should not be specified if you specify 'vector'].
+                      If specified, must be nonzero and divide 'dim'.  In this
+                      case, blocks of the input of this dimension will get
+                      the same offset.  Useful in CNNs.
+
+     param-mean=0.0   Mean of randomly initialized offset parameters; should only
+                      be supplied if 'vector' is not supplied.
+     param-stddev=0.0 Standard deviation of randomly initialized offset parameters;
+                      should only be supplied if 'vector' is not supplied.
+
+     use-natural-gradient=true  If true, we will use natural gradient in the
+                      update.  Note: this is different from PerElementScaleComponent,
+                      which does not support natural gradient directly-- in that
+                      case you have to use NaturalGradientPerElementScaleComponent
+                      if you want to use natural gradient update.
 */
 class PerElementOffsetComponent: public UpdatableComponent {
  public:
-  virtual int32 InputDim() const { return offsets_.Dim(); }
-  virtual int32 OutputDim() const { return offsets_.Dim(); }
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
 
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl);
@@ -1440,7 +1451,8 @@ class PerElementOffsetComponent: public UpdatableComponent {
   virtual std::string Type() const { return "PerElementOffsetComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kUpdatableComponent|
-           kBackpropInPlace|kPropagateInPlace;
+           kBackpropInPlace|kPropagateInPlace|
+        (dim_ != offsets_.Dim() ? kOutputContiguous : 0);
   }
 
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -1460,7 +1472,6 @@ class PerElementOffsetComponent: public UpdatableComponent {
 
   virtual Component* Copy() const;
 
-
   // Some functions from base-class UpdatableComponent.
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
@@ -1470,17 +1481,18 @@ class PerElementOffsetComponent: public UpdatableComponent {
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
 
-  // Some functions that are specific to this class.
+  // Copy constructor
   explicit PerElementOffsetComponent(const PerElementOffsetComponent &other);
-
-  void Init(int32 dim, BaseFloat param_mean,
-            BaseFloat param_stddev);
-  void Init(std::string vector_filename);
-
  protected:
   const PerElementOffsetComponent &operator
       = (const PerElementOffsetComponent &other); // Disallow.
   CuVector<BaseFloat> offsets_;
+  // dim_ will normally be the same as offsets_ dim, but in general will be an
+  // integer multiple of it (in case the same offset vector is applied to
+  // successive blocks of the input).
+  int32 dim_;
+  bool use_natural_gradient_;
+  OnlineNaturalGradient preconditioner_;
 };
 
 
