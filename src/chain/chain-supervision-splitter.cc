@@ -561,26 +561,42 @@ void ToleranceEnforcerFstCreator::AddArcsForForwardTransition(
   int32 self_loop_tid = trans_model_.SelfLoopOf(tstate);
   int32 self_loop_pdf = trans_model_.TransitionIdToPdf(self_loop_tid);
 
+  // self-loop accepting forward-tid
+  fst_->AddArc(init_state,
+               fst::StdArc(trans_id, forward_pdf + 1,
+                           fst::TropicalWeight::One(),
+                           init_state));
+                          
   for (int32 i = 1; i <= 3; i++) {
     StateId next_state = GetStateId(offset, forward_id, i);
 
-    // accept a forward transition from initial state
-    fst_->AddArc(init_state, 
-                 fst::StdArc(trans_id, forward_pdf + 1,
-                             fst::TropicalWeight::One(),
-                             next_state));
-    
-    // epsilon-arc to initial state
-    fst_->AddArc(next_state,
-                 fst::StdArc(0, 0,
-                             fst::TropicalWeight::One(),
-                             init_state));
+    if (i == kDeletion || i == kInsertion) {
+      // epsilon-arc to initial state
+      fst_->AddArc(next_state,
+                   fst::StdArc(0, 0,
+                               fst::TropicalWeight::One(),
+                               init_state));
+    }
 
-    // self-loop
-    fst_->AddArc(next_state,
-                 fst::StdArc(self_loop_tid, self_loop_pdf + 1,
-                             fst::TropicalWeight::One(),
-                             next_state));
+    if (i == kAccept) {
+      // accept a forward transition from initial state
+      fst_->AddArc(init_state, 
+                   fst::StdArc(trans_id, forward_pdf + 1,
+                               fst::TropicalWeight::One(),
+                               next_state));
+
+      // self-loop accepting self-loop tid
+      fst_->AddArc(next_state,
+                   fst::StdArc(self_loop_tid, self_loop_pdf + 1,
+                               fst::TropicalWeight::One(),
+                               next_state));
+                                
+      // self-loop transition back to initial state
+      fst_->AddArc(next_state,
+                   fst::StdArc(self_loop_tid, self_loop_pdf + 1,
+                               fst::TropicalWeight::One(),
+                               init_state));
+    }
   }
 }
 
@@ -593,20 +609,31 @@ void ToleranceEnforcerFstCreator::AddArcsBetweenOffsets(
   int32 self_loop_pdf = trans_model_.TransitionIdToPdf(self_loop_tid);
 
   if (offset > -opts_.left_tolerance) {
-    StateId state = GetStateId(offset, forward_id, kDeletion);
+    StateId accept_state = GetStateId(offset, forward_id, kAccept);
+    StateId delete_state = GetStateId(offset, forward_id, kDeletion);
     StateId next_state = GetStateId(offset - 1, forward_id, kDeletion);
 
-    fst_->AddArc(state, 
+    fst_->AddArc(accept_state, 
+                 fst::StdArc(self_loop_tid, 0,
+                             fst::TropicalWeight::One(),
+                             next_state));
+    fst_->AddArc(delete_state, 
                  fst::StdArc(self_loop_tid, 0,
                              fst::TropicalWeight::One(),
                              next_state));
   } 
 
   if (offset < opts_.right_tolerance) {
-    StateId state = GetStateId(offset, forward_id, kInsertion);
+    StateId accept_state = GetStateId(offset, forward_id, kAccept);
+    StateId insert_state = GetStateId(offset, forward_id, kInsertion);
     StateId next_state = GetStateId(offset + 1, forward_id, kInsertion);
 
-    fst_->AddArc(state, 
+    fst_->AddArc(accept_state, 
+                 fst::StdArc(0, self_loop_pdf + 1,
+                             fst::TropicalWeight::One(),
+                             next_state));
+    
+    fst_->AddArc(insert_state, 
                  fst::StdArc(0, self_loop_pdf + 1,
                              fst::TropicalWeight::One(),
                              next_state));
@@ -614,20 +641,18 @@ void ToleranceEnforcerFstCreator::AddArcsBetweenOffsets(
   
   if (offset == 0) {
     if (forward_id == 0) {
-      StateId state = GetStateId(offset, forward_id, kInit);
+      StateId init_state = GetStateId(offset, forward_id, kInit);
       fst_->AddArc(0,
                    fst::StdArc(0, 0,
                                fst::TropicalWeight::One(),
-                               state));
+                               init_state));
     }
     
-    for (int32 i = 1; i <= 3; i++) {
-      StateId next_state = GetStateId(offset, forward_id, i);
-      fst_->AddArc(0,
-                   fst::StdArc(self_loop_tid, self_loop_pdf + 1,
-                               fst::TropicalWeight::One(),
-                               next_state));
-    }
+    StateId next_state = GetStateId(offset, forward_id, kAccept);
+    fst_->AddArc(0,
+                 fst::StdArc(0, 0,
+                             fst::TropicalWeight::One(),
+                             next_state));
   }
 }
 
@@ -657,6 +682,7 @@ void ToleranceEnforcerFstCreator::MakeFst() {
     AddArcsForOffset(o);
   }
   
+  fst::Connect(fst_);
   fst::ArcSort(fst_, fst::ILabelCompare<fst::StdArc>());
 }
 
