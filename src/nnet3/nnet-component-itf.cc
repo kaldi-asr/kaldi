@@ -23,6 +23,7 @@
 #include <iomanip>
 #include "nnet3/nnet-component-itf.h"
 #include "nnet3/nnet-simple-component.h"
+#include "nnet3/nnet-special-component.h"
 #include "nnet3/nnet-general-component.h"
 #include "nnet3/nnet-convolutional-component.h"
 #include "nnet3/nnet-attention-component.h"
@@ -167,6 +168,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new RestrictedAttentionComponent();
   } else if (component_type == "SumBlockComponent") {
     ans = new SumBlockComponent();
+  } else if (component_type == "GruNonlinearityComponent") {
+    ans = new GruNonlinearityComponent();
   }
   if (ans != NULL) {
     KALDI_ASSERT(component_type == ans->Type());
