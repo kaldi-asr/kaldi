@@ -1,0 +1,36 @@
+// doc/example_decode_one_file.dox
+
+// Copyright 2009-2011 Microsoft Corporation
+//           2013-2014 Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+
+
+/**
+ \page example_decode_one_file Example of decoding one file with Kaldi for newcomers
+
+  @section overview Overview
+
+  This example was created to demonstrate Kaldi in action.
+  It uses docker image with english acoustic model and
+  simple decoding script to decode just one file.
+  You will need to install docker and run just 1 schell script, to see Kaldi in action.
+  Images contain comments of it all works.  
+
+  Instructions and code located in outside repository:
+  <a href="https://github.com/achernetsov/kaldi-docker-example">example repository</a>
+*/
