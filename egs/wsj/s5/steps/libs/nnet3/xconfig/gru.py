@@ -163,7 +163,7 @@ class XconfigGruLayer(XconfigLayerBase):
 
         configs.append("# z_t")
         configs.append("component-node name={0}.z_t_pre component={0}.W_z.xs_z input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
-        configs.append("component-node name={0}.z_t component={0}.z input={0}.z_t_pre".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.z_t component={0}.z input={0}.z_t_pre".format(name))
 
         configs.append("# r_t")
         configs.append("component-node name={0}.r_t_pre component={0}.W_z.xs_r input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
@@ -385,7 +385,7 @@ class XconfigPgruLayer(XconfigLayerBase):
 
         configs.append("# z_t")
         configs.append("component-node name={0}.z_t_pre component={0}.W_z.xs_z input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
-        configs.append("component-node name={0}.z_t component={0}.z input={0}.z_t_pre".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.z_t component={0}.z input={0}.z_t_pre".format(name))
 
         configs.append("# r_t")
         configs.append("component-node name={0}.r_t_pre component={0}.W_z.xs_r input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
@@ -611,7 +611,7 @@ class XconfigOpgruLayer(XconfigLayerBase):
 
         configs.append("# z_t")
         configs.append("component-node name={0}.z_t_pre component={0}.W_z.xs_z input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
-        configs.append("component-node name={0}.z_t component={0}.z input={0}.z_t_pre".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.z_t component={0}.z input={0}.z_t_pre".format(name))
 
         configs.append("# o_t")
         configs.append("component-node name={0}.o_t_pre component={0}.W_z.xs_o input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
