@@ -85,7 +85,7 @@ fi
 
 if false && [ $stage -le 1 ]; then
   echo "$0: chain training on the supervised subset data/${supervised_set}"
-  local/chain/run_tdnn_11k.sh $train_supervised_opts --remove-egs false \
+  local/chain/run_tdnn_15k.sh $train_supervised_opts --remove-egs false \
                           --train-set $supervised_set --ivector-train-set $base_train_set \
                           --nnet3-affix $nnet3_affix --tdnn-affix $tdnn_affix --exp $exp
 fi
@@ -238,6 +238,8 @@ if [ -z "$sup_egs_dir" ]; then
       utils/create_split_dir.pl \
        /export/b0{5,6,7,8}/$USER/kaldi-data/egs/fisher_english-$(date +'%m_%d_%H_%M')/s5c/$sup_egs_dir/storage $sup_egs_dir/storage
     fi
+
+    mkdir -p $sup_egs_dir
     touch $sup_egs_dir/.nodelete # keep egs around when that run dies.
 
     echo "$0: generating egs from the supervised data"
@@ -270,6 +272,8 @@ if [ -z "$unsup_egs_dir" ]; then
       utils/create_split_dir.pl \
        /export/b0{5,6,7,8}/$USER/kaldi-data/egs/fisher_english-$(date +'%m_%d_%H_%M')/s5c/$unsup_egs_dir/storage $unsup_egs_dir/storage
     fi
+
+    mkdir -p $unsup_egs_dir
     touch $unsup_egs_dir/.nodelete # keep egs around when that run dies.
 
     echo "$0: generating egs from the unsupervised data"
