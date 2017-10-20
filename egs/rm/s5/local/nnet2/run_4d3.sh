@@ -9,7 +9,7 @@ train_stage=-10
 use_gpu=true
 dir=exp/nnet4d3
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . utils/parse_options.sh
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 2014  Gaurav Kumar.   Apache 2.0
 
-. cmd.sh
+. ./cmd.sh
 
 split=test
 data_dir=data/test

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. cmd.sh
+. ./cmd.sh
 featdir=mfcc_vtln
 num_leaves=3200
 num_gauss=30000

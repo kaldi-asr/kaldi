@@ -3,7 +3,7 @@
 # This is to be run after run_nnet2_multisplice.sh.
 # It demonstrates discriminative training for the online-nnet2 models
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=1
@@ -15,7 +15,7 @@ learning_rate=0.0016
 
 drop_frames=false # only relevant for MMI
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

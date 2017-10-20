@@ -11,8 +11,8 @@
 # In the future, we will add score-normalization and a more effective form of
 # PLDA domain adaptation.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc

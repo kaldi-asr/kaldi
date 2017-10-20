@@ -16,7 +16,7 @@
 ## Note: If necessary, rewrite the "cat" command used in the followings
 ## to locate the .wav file path.
 
-. path.sh
+. ./path.sh
 set -e # exit on error
 
 #check existing directories

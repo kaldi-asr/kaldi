@@ -11,7 +11,7 @@
 # Use ./download-model.sh script to download asr model
 # See https://github.com/api-ai/api-ai-english-asr-model for details about a model and how to use it.
 
-. path.sh
+. ./path.sh
 MODEL_DIR="exp/api.ai-model"
 DATA_DIR="data/test-corpus"
 

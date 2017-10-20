@@ -12,7 +12,7 @@ use_sat_alignments=true
 nj=10
 stage=0
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
