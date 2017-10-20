@@ -32,7 +32,7 @@ set -euo pipefail
 # training options
 stage=0
 train_stage=-10
-dataset=cifar10
+dataset=cifar100
 srand=0
 reporting_email=
 affix=1a
@@ -122,7 +122,7 @@ if [ $stage -le 2 ]; then
 
   steps/nnet3/train_raw_dnn.py --stage=$train_stage \
     --cmd="$train_cmd" \
-    --image.augmentation-opts="--horizontal-flip-prob=0.5 --horizontal-shift=0.1 --vertical-shift=0.1 --num-channels=3" \
+    --image.augmentation-opts="--horizontal-flip-prob=0.5 --horizontal-shift=0.1 --vertical-shift=0.1 --rotate-degree=30 --num-channels=3" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=60 \

@@ -24,7 +24,6 @@
 #include "hmm/transition-model.h"
 #include "nnet3/nnet-example.h"
 #include "nnet3/nnet-example-utils.h"
-//#include <math.h>
 
 namespace kaldi {
 namespace nnet3 {
