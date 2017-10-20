@@ -22,7 +22,7 @@ ivector_transform_type=lda
 nnet3_affix=_cleaned     # affix for exp/$mic/nnet3 directory to put iVector stuff in, so it
                          # becomes exp/$mic/nnet3_cleaned or whatever.
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

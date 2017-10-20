@@ -40,7 +40,7 @@ common_egs_dir=  # you can set this to use previously dumped egs.
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

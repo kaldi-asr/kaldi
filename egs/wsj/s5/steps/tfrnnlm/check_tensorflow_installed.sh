@@ -2,7 +2,7 @@
 
 # this script checks if TF is installed to be used with python
 #                    and if TF related binaries in kaldi is ready to use
-. path.sh
+. ./path.sh
 
 if which lattice-lmrescore-tf-rnnlm 2>&1>/dev/null; then
   echo TensorFlow relate binaries found. This is good.

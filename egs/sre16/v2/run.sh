@@ -16,8 +16,8 @@
 # https://david-ryan-snyder.github.io/2017/10/04/model_sre16_v2.html
 # for details.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc

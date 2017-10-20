@@ -11,8 +11,8 @@
 # with a DNN trained for ASR. It also demonstrates the
 # using the DNN to create a supervised-GMM.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc

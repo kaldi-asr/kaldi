@@ -46,7 +46,7 @@ remove_egs=true
 relu_dim=850
 num_epochs=3
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

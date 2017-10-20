@@ -3,8 +3,8 @@
 # Copyright 2016, Brno University of Technology (Author: Karel Vesely)
 # Apache 2.0
 
-. path.sh
-. cmd.sh
+. ./path.sh
+. ./cmd.sh
 
 train=data_ihm-fmllr-tri4/ihm/train
 dev=data_ihm-fmllr-tri4/ihm/dev

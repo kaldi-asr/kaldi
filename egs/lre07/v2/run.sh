@@ -8,8 +8,8 @@
 # This example script shows how to replace the GMM-UBM
 # with a DNN trained for ASR.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 
 mfccdir=`pwd`/mfcc
