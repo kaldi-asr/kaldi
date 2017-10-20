@@ -34,7 +34,7 @@ graph_affix=_ex250k   # can be used to decode the unsup data with another lm/gra
 phone_insertion_penalty=
 
 # Semi-supervised options
-comb_affix=comb1n  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
+comb_affix=comb1t  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
 supervision_weights=1.0,1.0
 lm_weights=5,2
 sup_egs_dir=   

@@ -157,17 +157,21 @@ if [ ! -f $treedir/final.mdl ]; then
   exit 1
 fi
 
-if [ $stage -le 9 ]; then
-  this_nj=$(cat $chaindir/decode_${unsupervised_set}_sp${decode_affix}_fg/num_jobs)
+this_nj=$(cat $chaindir/decode_${unsupervised_set}_sp${decode_affix}_fg/num_jobs)
   
+if [ $stage -le 9 ]; then
   out_dir=$chaindir/best_path_lats_${unsupervised_set}_sp${decode_affix}_fg
   $train_cmd JOB=1:$this_nj $out_dir/log/get_best_path_lats.JOB.log \
     lattice-interp "ark:gunzip -c $chaindir/decode_${unsupervised_set}_sp${decode_affix}/lat.JOB.gz |" \
     "ark:gunzip -c $chaindir/decode_${unsupervised_set}_sp${decode_affix}_fg/lat.JOB.gz | lattice-1best ark:- ark:- |" \
     "ark:| gzip -c > $out_dir/lat.JOB.gz"
 
-  echo $this_nj/$out_dir/num_jobs
+  echo $this_nj > $out_dir/num_jobs
 fi
+  
+ln -sf ../final.mdl $chaindir/best_path_lats_${unsupervised_set}_sp${decode_affix}_fg/final.mdl 
+
+echo $this_nj > $chaindir/best_path_lats_${unsupervised_set}_sp${decode_affix}_fg/num_jobs
 
 decode_affix=${decode_affix}_fg
 
