@@ -13,10 +13,11 @@
 #####Baseline settings#####
 # Usage: 
 # 1. For using original baseline, execute './run.sh --baseline chime4_official'. 
-# We don't provide the function to train original baseline anymore. Instead, we provided the
-# trained model in tools/ASR_models.
+# We don't provide the function to train original baseline models anymore. Instead, we provided the
+# trained original baseline models in tools/ASR_models for directly using.
 #
-# 2. For using advanced baseline, first execute './run.sh --baseline advanced --flatstart true'.
+# 2. For using advanced baseline, first execute './run.sh --baseline advanced --flatstart true' to
+# get the models.
 # Then execute './run.sh --baseline advanced' for your experiments. 
 
 # Config:
