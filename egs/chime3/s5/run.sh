@@ -30,8 +30,8 @@ set -o pipefail
 # Otherwise, please specify it, e.g.,
 chime3_data=/data2/archive/speech-db/original/public/CHiME3
 
-case $(hostname -d) in
-  clsp.jhu.edu) chime4_data=/export/corpora4/CHiME4/CHiME3 ;; # JHU,
+case $(hostname) in *.clsp.jhu.edu)
+  chime3_data=/export/corpora5/CHiME3 ;; # JHU,
 esac 
 
 if [ ! -d $chime3_data ]; then
