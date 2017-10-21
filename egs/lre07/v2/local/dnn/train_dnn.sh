@@ -6,8 +6,8 @@
 
 # It's best to run the commands in this one by one.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 mfccdir=`pwd`/mfcc
 set -e
 

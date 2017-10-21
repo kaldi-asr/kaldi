@@ -6,15 +6,15 @@
 # This script runs the NIST 2007 General Language Recognition Closed-Set
 # evaluation.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 languages=local/general_lr_closed_set_langs.txt
-
 data_root=/export/corpora/LDC
+
 # Training data sources
 local/make_sre_2008_train.pl $data_root/LDC2011S05 data
 local/make_callfriend.pl $data_root/LDC96S60 vietnamese data

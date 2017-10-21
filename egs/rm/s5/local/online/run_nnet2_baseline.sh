@@ -4,7 +4,7 @@
 # this is a baseline for ./run_nnet2.sh, without
 # the iVectors, to see whether they make a difference.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=1
@@ -12,7 +12,7 @@ train_stage=-10
 use_gpu=true
 dir=exp/nnet2_online/nnet_a_baseline
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

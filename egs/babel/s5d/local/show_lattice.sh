@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. path.sh
+. ./path.sh
 
 format=pdf # pdf svg
 output=

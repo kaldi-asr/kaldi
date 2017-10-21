@@ -235,12 +235,6 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
                         void *memo,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
-  // This ReorderIndexes function may insert 'blank' indexes (indexes with
-  // t == kNoTime) as well as reordering the indexes.  This is allowed
-  // behavior of ReorderIndexes functions.
-  virtual void ReorderIndexes(std::vector<Index> *input_indexes,
-                              std::vector<Index> *output_indexes) const;
-
 
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
@@ -250,6 +244,13 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
 
 
   // Some functions that are only to be reimplemented for GeneralComponents.
+
+  // This ReorderIndexes function may insert 'blank' indexes (indexes with
+  // t == kNoTime) as well as reordering the indexes.  This is allowed
+  // behavior of ReorderIndexes functions.
+  virtual void ReorderIndexes(std::vector<Index> *input_indexes,
+                              std::vector<Index> *output_indexes) const;
+
   virtual void GetInputIndexes(const MiscComputationInfo &misc_info,
                                const Index &output_index,
                                std::vector<Index> *desired_indexes) const;
@@ -297,7 +298,7 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
   void ScaleLinearParams(BaseFloat alpha) { linear_params_.Scale(alpha); }
  private:
 
-  void Check();
+  void Check() const;
 
   // computes derived parameters required_time_offsets_ and all_time_offsets_.
   void ComputeDerived();

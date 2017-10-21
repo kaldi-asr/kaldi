@@ -41,8 +41,20 @@ class XconfigLayerBase(object):
         if not xutils.is_valid_line_name(self.name):
             raise RuntimeError("Invalid value: name={0}".format(
                 key_to_value['name']))
+
+        # It is possible to have two layers with a same name in 'all_layer', if
+        # the layer type for one of them is 'existing'.
+        # Layers of type 'existing' are corresponding to the component-node names
+        # in the existing model, which we are adding layers to them.
+        # 'existing' layers are not presented in any config file, and new layer
+        # with the same name can exist in 'all_layers'.
+        # e.g. It is possible to have 'output-node' with name 'output' in the
+        # existing model, which is added to all_layers using layer type 'existing',
+        # and 'output-node' of type 'output-layer' with the same name 'output' in
+        # 'all_layers'.
         for prev_layer in all_layers:
-            if self.name == prev_layer.name:
+            if (self.name == prev_layer.name and
+                prev_layer.layer_type is not 'existing'):
                 raise RuntimeError("Name '{0}' is used for more than one "
                                    "layer.".format(self.name))
 
@@ -1076,6 +1088,60 @@ class XconfigIdctLayer(XconfigLayerBase):
         ans.append(('final', line))
         ans.append(('ref', line))
         return ans
+
+
+class XconfigExistingLayer(XconfigLayerBase):
+    """
+    This class is used to internally convert component-nodes in an existing
+    model into lines like
+    'existing name=tdnn1.affine dim=40'.
+
+    Layers of this type are not presented in any actual xconfig or config
+    files, but are created internally for all component nodes
+    in an existing neural net model to use as input to other layers in xconfig.
+    (i.e. get_model_component_info function, which is called in
+     steps/nnet3/xconfig_to_configs.py, parses the name and
+     dimension of component-nodes used in the existing model
+     using the nnet3-info and returns a list of 'existing' layers.)
+
+    This class is useful in cases like transferring existing model
+    and using {input, output, component}-nodes in this model as
+    input to new layers.
+    """
+
+    def __init__(self, first_token, key_to_value, prev_names=None):
+
+        assert first_token == 'existing'
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+
+    def set_default_configs(self):
+        self.config = { 'dim': -1}
+
+    def check_configs(self):
+        if self.config['dim'] <= 0:
+            raise RuntimeError("Dimension of existing-layer '{0}'"
+                                "should be positive.".format(self.name))
+
+    def get_input_descriptor_names(self):
+        return []  # there is no 'input' field in self.config.
+
+    def output_name(self, auxiliary_outputs=None):
+        # there are no auxiliary outputs as this layer will just pass the input
+        assert auxiliary_outputs is None
+        return self.name
+
+    def output_dim(self, auxiliary_outputs=None):
+        # there are no auxiliary outputs as this layer will just pass the input
+        assert auxiliary_outputs is None
+        return self.config['dim']
+
+    def get_full_config(self):
+        # unlike other layers the existing layers should not to be printed in
+        # any '*.config'
+        ans = []
+        return ans
+
 
 
 def test_layers():

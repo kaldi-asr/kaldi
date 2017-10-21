@@ -55,7 +55,7 @@ fi
 if [ ! -z $icu_transform ] ; then
   paste \
     <(cat $lexicon | awk '{print $1}' | uconv -f $encoding -t $encoding -x "$icu_transform") \
-    <(cat $lexicon | sed 's/^[^ \t][^ \t]*[ \t]//g') \
+    <(cat $lexicon | perl -ape 's/^[^ \t][^ \t]*[ \t]//g;') \
   > $wdir/lexicon_transformed.txt
   lexicon=$wdir/lexicon_transformed.txt
 fi
