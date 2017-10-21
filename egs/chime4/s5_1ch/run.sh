@@ -22,7 +22,7 @@
 
 # Config:
 stage=0 # resume training with --stage=N
-baseline={"chime4_official","advanced"}
+baseline=advanced
 flatstart=false
 
 . utils/parse_options.sh || exit 1;
