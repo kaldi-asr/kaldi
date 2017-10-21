@@ -10,7 +10,6 @@ set -e
 
 # Modified from the script for CHiME2 baseline
 # Shinji Watanabe 02/13/2015
-
 # Modified to use data of six channels
 # Szu-Jui Chen 09/29/2017
 
