@@ -5,20 +5,20 @@
 # Copyright 2016 University of Sheffield (Jon Barker, Ricard Marxer)
 #                Inria (Emmanuel Vincent)
 #                Mitsubishi Electric Research Labs (Shinji Watanabe)
+#           2017 JHU CLSP (Szu-Jui Chen)
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
-
-# Added advanced baseline
-# Szu-Jui Chen 10/19/2017
 
 . ./path.sh
 . ./cmd.sh
 #####Baseline settings#####
 # Usage: 
-# For using original baseline, set baseline to chime4_official. In this case,
-# you don't need to run flatstart since we already provided the trained model in 
-# tools/ASR_models.
-# For advanced baseline, please run flatstart first to get the models.
-# By default, we assume you already got the models.
+# 1. For using original baseline, execute './run.sh --baseline chime4_official'. 
+# We don't provide the function to train original baseline anymore. Instead, we provided the
+# trained model in tools/ASR_models.
+#
+# 2. For using advanced baseline, first execute './run.sh --baseline advanced --flatstart true'.
+# Then execute './run.sh --baseline advanced' for your experiments. 
+
 
 # Config:
 stage=0 # resume training with --stage=N
@@ -62,8 +62,8 @@ case $baseline in
       ;;
   *)
       echo "Usage: './run.sh --baseline chime4_official' or './run.sh --baseline advanced'"
-      echo " ... If you haven't run flatstart for advanced baseline, please execute"
-      echo " ... './run.sh --baseline advanced --flatstart true' first";
+      echo " ... If you haven't run flatstart to train the model of advanced baseline,"
+      echo " ... please execute './run.sh --baseline advanced --flatstart true' first";
       exit 1;
 esac
 
