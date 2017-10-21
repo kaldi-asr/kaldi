@@ -1833,32 +1833,6 @@ template<typename Real> static void UnitTestMulElements() {
   }
 }
 
-
-template<typename Real> static void UnitTestSpLogExp() {
-  for (MatrixIndexT i = 0; i < 5; i++) {
-    MatrixIndexT dimM = 10 + Rand() % 10;
-
-    Matrix<Real> M(dimM, dimM);
-    InitRandNonsingular(&M);
-    SpMatrix<Real> B(dimM);
-    B.AddMat2(1.0, M, kNoTrans, 0.0);  // B = M*M^T -> positive definite (since M nonsingular).
-
-    SpMatrix<Real> B2(B);
-    B2.Log();
-    B2.Exp();
-    AssertEqual(B, B2);
-
-    SpMatrix<Real> B3(B);
-    B3.Log();
-    B3.Scale(0.5);
-    B3.Exp();
-    Matrix<Real> sqrt(B3);
-    SpMatrix<Real> B4(B.NumRows());
-    B4.AddMat2(1.0, sqrt, kNoTrans, 0.0);
-    AssertEqual(B, B4);
-  }
-}
-
 template<typename Real> static void UnitTestDotprod() {
   for (MatrixIndexT iter = 0;iter < 5;iter++) {
     MatrixIndexT dimM = 200 + Rand()%100;
@@ -3803,84 +3777,6 @@ void UnitTestAddVecCross() {
   }
 }
 
-template<typename Real> static void UnitTestMatrixExponential() {
-
-  for (MatrixIndexT p = 0; p < 10; p++) {
-    MatrixIndexT dim = 1 + Rand() % 5;
-    Matrix<Real> M(dim, dim);
-    InitRandNonsingular(&M);
-    {  // work out largest eig.
-      Real largest_eig = 0.0;
-      Vector<Real> real_eigs(dim), imag_eigs(dim);
-      M.Eig(NULL, &real_eigs, &imag_eigs);
-      for (MatrixIndexT i = 0; i < dim; i++) {
-        Real abs_eig =
-            std::sqrt(real_eigs(i)*real_eigs(i) + imag_eigs(i)*imag_eigs(i));
-        largest_eig = std::max(largest_eig, abs_eig);
-      }
-      if (largest_eig > 0.5) {  // limit largest eig to 0.5,
-        // so Taylor expansion will converge.
-        M.Scale(0.5 / largest_eig);
-      }
-    }
-
-    Matrix<Real> expM(dim, dim);
-    Matrix<Real> cur_pow(dim, dim);
-    cur_pow.SetUnit();
-    Real i_factorial = 1.0;
-    for (MatrixIndexT i = 0; i < 52; i++) {  // since max-eig = 0.5 and 2**52 == dbl eps.
-      if (i > 0) i_factorial *= i;
-      expM.AddMat(1.0/i_factorial, cur_pow);
-      Matrix<Real> tmp(dim, dim);
-      tmp.AddMatMat(1.0, cur_pow, kNoTrans, M, kNoTrans, 0.0);
-      cur_pow.CopyFromMat(tmp);
-    }
-    Matrix<Real> expM2(dim, dim);
-    MatrixExponential<Real> mexp;
-    mexp.Compute(M, &expM2);
-    AssertEqual(expM, expM2);
-  }
-}
-
-
-static void UnitTestMatrixExponentialBackprop() {
-  for (MatrixIndexT p = 0; p < 10; p++) {
-    MatrixIndexT dim = 1 + Rand() % 5;
-    // f is tr(N^T exp(M)).  backpropagating derivative
-    // of this function.
-    Matrix<double> M(dim, dim), N(dim, dim), delta(dim, dim);
-    InitRandNonsingular(&M);
-    InitRandNonsingular(&N);
-    InitRandNonsingular(&delta);
-    delta.Scale(0.00001);
-
-
-    Matrix<double> expM(dim, dim);
-    MatrixExponential<double> mexp;
-    mexp.Compute(M, &expM);
-
-    Matrix<double> expM2(dim, dim);
-    {
-      Matrix<double> M2(M);
-      M2.AddMat(1.0, delta, kNoTrans);
-      MatrixExponential<double> mexp2;
-      mexp2.Compute(M2, &expM2);
-    }
-    double f_before = TraceMatMat(expM, N, kTrans);
-    double f_after  = TraceMatMat(expM2, N, kTrans);
-
-    Matrix<double> Mdash(dim, dim);
-    mexp.Backprop(N, &Mdash);
-    // now Mdash should be df/dM
-
-    double f_diff = f_after - f_before;  // computed using method of differnces
-    double f_diff2 = TraceMatMat(Mdash, delta, kTrans);  // computed "analytically"
-    KALDI_LOG << "f_diff = " << f_diff;
-    KALDI_LOG << "f_diff2 = " << f_diff2;
-
-    KALDI_ASSERT(ApproxEqual(f_diff, f_diff2) || fabs(f_diff - f_diff2) < 1.0e-03);
-  }
-}
 template<typename Real>
 static void UnitTestPca(bool full_test) {
   // We'll test that we can exactly reconstruct the vectors, if
@@ -4651,8 +4547,6 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestCompressedMatrix2<Real>();
   UnitTestExtractCompressedMatrix<Real>();
   UnitTestResize<Real>();
-  UnitTestMatrixExponentialBackprop();
-  UnitTestMatrixExponential<Real>();
   UnitTestNonsymmetricPower<Real>();
   UnitTestEigSymmetric<Real>();
   KALDI_LOG << " Point A";
@@ -4715,7 +4609,6 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestLimitCond<Real>();
   UnitTestMat2Vec<Real>();
   UnitTestFloorCeiling<Real>();
-  UnitTestSpLogExp<Real>();
   KALDI_LOG << " Point H";
   UnitTestCopyRowsAndCols<Real>();
   UnitTestSpliceRows<Real>();

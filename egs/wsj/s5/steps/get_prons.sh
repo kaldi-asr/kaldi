@@ -134,7 +134,7 @@ if [ $stage -le 5 ]; then
   # 2. Collect bigram counts for words. To be more specific, we are actually
   #    collecting counts for "v ? w", where "?" represents silence or
   #    non-silence.
-  cat $dir/pron_perutt_nowb.txt | sed 's/<eps>[^\t]*\t//g' | perl -e '
+  cat $dir/pron_perutt_nowb.txt | perl -ape 's/<eps>[^\t]*\t//g;' | perl -e '
     while (<>) {
       chomp; @col = split("\t");
       for($i = 1; $i < scalar(@col) - 1; $i += 1) {

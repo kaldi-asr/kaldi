@@ -409,6 +409,9 @@ struct ConvolutionComputationIo {
   // a reshaping such that we can imagine that the input and output have the
   // same 't' increment; it's useful in subsampling convolutions..
   int32 reorder_t_in;
+
+  void Write(std::ostream &os, bool binary) const;
+  void Read(std::istream &is, bool binary);
 };
 
 /**
@@ -547,6 +550,7 @@ void ConvolveBackwardParams(
    (e.g. as supplied to ReorderIndexes()), and figures out a regular structure
    for them (i.e. the smallest grid that will completely cover all the t,n
    pairs).
+   This function ignores any 't' values that are kNoTime.
 */
 void GetComputationIo(
     const std::vector<Index> &input_indexes,

@@ -18,7 +18,7 @@ fi
 
 echo "$0 $@"  # Print the command line for logging
 
-. path.sh
+. ./path.sh
 
 dir=$1
 enhan=$2

@@ -1,6 +1,6 @@
 #!/bin/bash
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 
 # Global options,
 graph=exp/tri3/graph

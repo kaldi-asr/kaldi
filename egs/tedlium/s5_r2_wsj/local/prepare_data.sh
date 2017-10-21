@@ -7,7 +7,7 @@
 
 # To be run from one directory above this script.
 
-. path.sh
+. ./path.sh
 
 export LC_ALL=C
 
