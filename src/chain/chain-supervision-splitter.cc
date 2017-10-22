@@ -641,18 +641,25 @@ void ToleranceEnforcerFstCreator::AddArcsBetweenOffsets(
   
   if (offset == 0) {
     if (forward_id == 0) {
+      // Add arc from start state to the offset 0 initial state.
+      // This is the normal case when there is no partial phone in the lattice.
       StateId init_state = GetStateId(offset, forward_id, kInit);
-      fst_->AddArc(0,
-                   fst::StdArc(0, 0,
-                               fst::TropicalWeight::One(),
-                               init_state));
+      fst_->AddArc(0, fst::StdArc(0, 0,
+                                  fst::TropicalWeight::One(),
+                                  init_state));
     }
     
-    StateId next_state = GetStateId(offset, forward_id, kAccept);
-    fst_->AddArc(0,
-                 fst::StdArc(0, 0,
-                             fst::TropicalWeight::One(),
-                             next_state));
+    // Add self-loop on start state accepting the self-loop transition 
+    // of a partial phone.
+    fst_->AddArc(0, fst::StdArc(self_loop_tid, self_loop_pdf + 1,
+                                fst::TropicalWeight::One(),
+                                0));
+
+    // Add arc from start state deleting a self-loop transition
+    StateId next_state = GetStateId(offset - 1, forward_id, kDeletion);
+    fst_->AddArc(0, fst::StdArc(self_loop_tid, 0,
+                                fst::TropicalWeight::One(),
+                                next_state));
   }
 }
 
