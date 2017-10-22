@@ -36,6 +36,7 @@ struct NnetTrainerOptions {
   int32 print_interval;
   bool debug_computation;
   BaseFloat momentum;
+  BaseFloat l2_regularize_factor;
   BaseFloat backstitch_training_scale;
   int32 backstitch_training_interval;
   std::string read_cache;
@@ -51,6 +52,7 @@ struct NnetTrainerOptions {
       print_interval(100),
       debug_computation(false),
       momentum(0.0),
+      l2_regularize_factor(1.0),
       backstitch_training_scale(0.0),
       backstitch_training_interval(1),
       binary_write_cache(true),
@@ -74,6 +76,14 @@ struct NnetTrainerOptions {
                    "so that the 'effective' learning rate is the same as "
                    "before (because momentum would normally increase the "
                    "effective learning rate by 1/(1-momentum))");
+    opts->Register("l2-regularize-factor", &l2_regularize_factor, "Factor that "
+                   "affects the strength of l2 regularization on model "
+                   "parameters.  The primary way to specify this type of "
+                   "l2 regularization is via the 'l2-regularize'"
+                   "constant at the config-file level.  --l2-regularize-factor "
+                   "will be multiplied by the component-level factors and can be "
+                   "used to correct for effects related to multiple-model "
+                   "averaging.");
     opts->Register("backstitch-training-scale", &backstitch_training_scale,
                    "backstitch training factor. "
                    "if 0 then in the normal training mode. It is referred as "

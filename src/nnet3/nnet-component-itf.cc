@@ -204,12 +204,26 @@ bool Component::IsComputable(const MiscComputationInfo &misc_info,
 }
 
 
+UpdatableComponent::UpdatableComponent(const UpdatableComponent &other):
+    learning_rate_(other.learning_rate_),
+    learning_rate_factor_(other.learning_rate_factor_),
+    is_gradient_(other.is_gradient_),
+    l2_regularize_(other.l2_regularize_),
+    max_change_(other.max_change_) { }
+
+// If these defaults are changed, the defaults in the constructor that
+// takes no arguments should be changed too.
 void UpdatableComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {
+  learning_rate_ = 0.001;
   cfl->GetValue("learning-rate", &learning_rate_);
+  learning_rate_factor_ = 1.0;
   cfl->GetValue("learning-rate-factor", &learning_rate_factor_);
   max_change_ = 0.0;
   cfl->GetValue("max-change", &max_change_);
-  if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0 || max_change_ < 0.0)
+  l2_regularize_ = 0.0;
+  cfl->GetValue("l2-regularize", &l2_regularize_);
+  if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0 ||
+      max_change_ < 0.0 || l2_regularize_ < 0.0)
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
 
@@ -243,6 +257,12 @@ std::string UpdatableComponent::ReadUpdatableCommon(std::istream &is,
   } else {
     max_change_ = 0.0;
   }
+  if (token == "<L2Regularize>") {
+    ReadBasicType(is, binary, &l2_regularize_);
+    ReadToken(is, binary, &token);
+  } else {
+    l2_regularize_ = 0.0;
+  }
   if (token == "<LearningRate>") {
     ReadBasicType(is, binary, &learning_rate_);
     return "";
@@ -269,6 +289,10 @@ void UpdatableComponent::WriteUpdatableCommon(std::ostream &os,
     WriteToken(os, binary, "<MaxChange>");
     WriteBasicType(os, binary, max_change_);
   }
+  if (l2_regularize_ > 0.0) {
+    WriteToken(os, binary, "<L2Regularize>");
+    WriteBasicType(os, binary, l2_regularize_);
+  }
   WriteToken(os, binary, "<LearningRate>");
   WriteBasicType(os, binary, learning_rate_);
 }
@@ -281,6 +305,8 @@ std::string UpdatableComponent::Info() const {
          << LearningRate();
   if (is_gradient_)
     stream << ", is-gradient=true";
+  if (l2_regularize_ != 0.0)
+    stream << ", l2-regularize=" << l2_regularize_;
   if (learning_rate_factor_ != 1.0)
     stream << ", learning-rate-factor=" << learning_rate_factor_;
   if (max_change_ > 0.0)

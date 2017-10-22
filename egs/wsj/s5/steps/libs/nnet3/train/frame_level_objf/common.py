@@ -132,6 +132,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                     --momentum={momentum} \
                     --max-param-change={max_param_change} \
                     --backstitch-training-scale={backstitch_training_scale} \
+                    --l2-regularize-factor={l2_regularize_factor} \
                     --backstitch-training-interval={backstitch_training_interval} \
                     --srand={srand} \
                     {deriv_time_opts} "{raw_model}" "{egs_rspecifier}" \
@@ -145,6 +146,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                 cache_io_opts=cache_io_opts,
                 verbose_opt=verbose_opt,
                 momentum=momentum, max_param_change=max_param_change,
+                l2_regularize_factor=1.0/num_jobs,
                 backstitch_training_scale=backstitch_training_scale,
                 backstitch_training_interval=backstitch_training_interval,
                 deriv_time_opts=" ".join(deriv_time_opts),
