@@ -24,6 +24,7 @@
 stage=0 # resume training with --stage=N
 baseline=advanced
 flatstart=false
+tdnn=true
 
 . utils/parse_options.sh || exit 1;
 
@@ -110,6 +111,7 @@ fi
 # Since it takes time to evaluate DNN, we make the GMM and DNN scripts separately.
 # You may execute it after you would have promising results using GMM-based ASR experiments
 if [ $stage -le 3 ]; then
+  if 
   if $flatstart; then
     local/run_dnn.sh $enhancement_method
   else
@@ -125,11 +127,6 @@ if [ $stage -le 4 ]; then
   else
     local/run_lmrescore_recog.sh $enhancement_method $modeldir
   fi
-fi
-
-# tdnn based ASR experiment
-if [ $stage -le 5 ]; then
-  local/chain/run_tdnn.sh
 fi
 
 echo "Done."
