@@ -80,10 +80,10 @@ struct NnetTrainerOptions {
                    "affects the strength of l2 regularization on model "
                    "parameters.  The primary way to specify this type of "
                    "l2 regularization is via the 'l2-regularize'"
-                   "constant at the config-file level.  --l2-regularize-factor "
-                   "will be multiplied by the component-level factors and can be "
-                   "used to correct for effects related to multiple-model "
-                   "averaging.");
+                   "configuration value at the config-file level. "
+                   " --l2-regularize-factor will be multiplied by the component-level "
+                   "l2-regularize values and can be used to correct for effects "
+                   "related to parallelization by model averaging.");
     opts->Register("backstitch-training-scale", &backstitch_training_scale,
                    "backstitch training factor. "
                    "if 0 then in the normal training mode. It is referred as "

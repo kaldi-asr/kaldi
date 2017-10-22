@@ -386,15 +386,15 @@ bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
     Fisher matrix, but the l2 gradients are not.  This means that what we're
     optimizing is not exactly the (regular objective plus the L2 term)-- we
     could view it as optimizing (regular objective plus the l2 term times the
-    Fisher matrix-- with the proviso that the Fisher matrix has been scaled in
+    Fisher matrix)-- with the proviso that the Fisher matrix has been scaled in
     such a way that the amount of parameter change is not affected, so this is
     not an issue of affecting the overall strength of l2, just an issue of the
-    direction-wise weighting.  In effect, the l2 term will be larger (relative
-    to the gradient contribution) in directions where the Fisher matrix is
+    direction-wise weighting.  In effect, the l2 term will be larger, relative
+    to the gradient contribution, in directions where the Fisher matrix is
     large.  This is probably not ideal-- but it's hard to judge without
-    experiments, which would be hard to do.  Anyway the l2 effect is small
-    enough, and the Fisher matrix sufficiently smoothed with the identity, that
-    I doubt this makes much of a difference.
+    experiments.  Anyway the l2 effect is small enough, and the Fisher matrix
+    sufficiently smoothed with the identity, that I doubt this makes much of a
+    difference.
 
     @param [in] nnet  The neural net that is being trained; expected
                       to be different from delta_nnet
@@ -436,7 +436,6 @@ void ApplyL2Regularization(const Nnet &nnet,
     @param [in] vec    The vector of NnetIo objects from the training example
                        (NnetExample or NnetChainExample) for which we need the
                        number of 'n' values
-
     @param [in] exhaustive   If true, it will check exhaustively what largest
                         and smallest 'n' values are.  If 'false' it does it in a
                         fast way which will return the same answer as if
