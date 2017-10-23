@@ -442,13 +442,13 @@ class RandomComponent: public Component {
  */
 class UpdatableComponent: public Component {
  public:
-  UpdatableComponent(const UpdatableComponent &other):
-      learning_rate_(other.learning_rate_),
-      learning_rate_factor_(other.learning_rate_factor_),
-      is_gradient_(other.is_gradient_), max_change_(other.max_change_) { }
+  UpdatableComponent(const UpdatableComponent &other);
 
+  // If these defaults are changed, the defaults in
+  // InitLearningRatesFromConfig() should be changed too.
   UpdatableComponent(): learning_rate_(0.001), learning_rate_factor_(1.0),
-                        is_gradient_(false), max_change_(0.0) { }
+                        l2_regularize_(0.0), is_gradient_(false),
+                        max_change_(0.0) { }
 
   virtual ~UpdatableComponent() { }
 
@@ -483,16 +483,24 @@ class UpdatableComponent: public Component {
   /// by components that use Natural Gradient).
   virtual void FreezeNaturalGradient(bool freeze) { }
 
-  /// Gets the learning rate of gradient descent.  Note: if you call
-  /// SetLearningRate(x), and learning_rate_factor_ != 1.0,
-  /// a different value than x will returned.
+  /// Gets the learning rate to be used in gradient descent.
   BaseFloat LearningRate() const { return learning_rate_; }
 
-  /// Gets per-component max-change value. Note: the components themselves do
-  /// not enforce the per-component max-change; it's enforced in class
-  /// NnetTrainer by querying the max-changes for each component.
-  /// See NnetTrainer::UpdateParamsWithMaxChange() in nnet3/nnet-training.cc.
+  /// Returns the per-component max-change value, which is interpreted as the
+  /// maximum change (in l2 norm) in parameters that is allowed per minibatch
+  /// for this component.  The components themselves do not enforce the
+  /// per-component max-change; it's enforced in class NnetTrainer by querying
+  /// the max-changes for each component.  See
+  /// NnetTrainer::UpdateParamsWithMaxChange() in nnet-utils.h.
   BaseFloat MaxChange() const { return max_change_; }
+
+
+  /// Returns the l2 regularization constant, which may be set in any updatable
+  /// component (usually from the config file).  This value is not interrogated
+  /// in the component-level code.  Instead it is read by the function
+  /// ApplyL2Regularization(), declared in nnet-utils.h, which is used as part
+  /// of the training workflow.
+  BaseFloat L2Regularization() const { return l2_regularize_; }
 
   virtual std::string Info() const;
 
@@ -532,6 +540,8 @@ class UpdatableComponent: public Component {
                                    ///< can be set to another < value so that
                                    ///when < you call SetLearningRate(), that
                                    ///value will be scaled by this factor.
+  BaseFloat l2_regularize_;  ///< L2 regularization constant.  See comment for
+                             ///< the L2Regularization() for details.
   bool is_gradient_;  ///< True if this component is to be treated as a gradient rather
                       ///< than as parameters.  Its main effect is that we disable
                       ///< any natural-gradient update and just compute the standard
