@@ -49,7 +49,7 @@ class PnormComponent: public Component {
     Init(input_dim, output_dim);
   }
   virtual int32 Properties() const {
-    return kSimpleComponent|kLinearInInput|kBackpropNeedsInput|kBackpropNeedsOutput;
+    return kSimpleComponent|kBackpropNeedsInput|kBackpropNeedsOutput;
   }
   PnormComponent(): input_dim_(0), output_dim_(0) { }
   virtual std::string Type() const { return "PnormComponent"; }
@@ -102,7 +102,7 @@ class DropoutComponent : public RandomComponent {
   DropoutComponent(const DropoutComponent &other);
 
   virtual int32 Properties() const {
-    return kLinearInInput|kBackpropInPlace|kSimpleComponent|kBackpropNeedsInput|
+    return kBackpropInPlace|kSimpleComponent|kBackpropNeedsInput|
         kBackpropNeedsOutput|kRandomComponent;
   }
   virtual std::string Type() const { return "DropoutComponent"; }
@@ -401,8 +401,7 @@ class RectifiedLinearComponent: public NonlinearComponent {
   virtual std::string Type() const { return "RectifiedLinearComponent"; }
   virtual Component* Copy() const { return new RectifiedLinearComponent(*this); }
   virtual int32 Properties() const {
-    return kSimpleComponent|kLinearInInput|kBackpropNeedsOutput|kPropagateInPlace|
-        kStoresStats;
+    return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace|kStoresStats;
   }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -450,7 +449,7 @@ class AffineComponent: public UpdatableComponent {
   AffineComponent() { } // use Init to really initialize.
   virtual std::string Type() const { return "AffineComponent"; }
   virtual int32 Properties() const {
-    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
+    return kSimpleComponent|kUpdatableComponent|
         kBackpropNeedsInput|kBackpropAdds;
   }
 
@@ -542,7 +541,7 @@ class BlockAffineComponent : public UpdatableComponent {
   BlockAffineComponent() { }
   virtual std::string Type() const { return "BlockAffineComponent"; }
   virtual int32 Properties() const {
-    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
+    return kSimpleComponent|kUpdatableComponent|
       kBackpropNeedsInput|kBackpropAdds;
   }
 
@@ -607,8 +606,8 @@ class RepeatedAffineComponent: public UpdatableComponent {
   RepeatedAffineComponent() { } // use Init to really initialize.
   virtual std::string Type() const { return "RepeatedAffineComponent"; }
   virtual int32 Properties() const {
-    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
-        kBackpropNeedsInput|kBackpropAdds|kInputContiguous|kOutputContiguous;
+    return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput|
+        kBackpropAdds|kInputContiguous|kOutputContiguous;
   }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -954,7 +953,7 @@ public:
   virtual void InitFromConfig(ConfigLine *cfl);
   SumGroupComponent() { }
   virtual std::string Type() const { return "SumGroupComponent"; }
-  virtual int32 Properties() const { return kSimpleComponent|kLinearInInput; }
+  virtual int32 Properties() const { return kSimpleComponent; }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
@@ -991,7 +990,7 @@ class FixedScaleComponent: public Component {
   virtual std::string Type() const { return "FixedScaleComponent"; }
   virtual std::string Info() const;
   virtual int32 Properties() const {
-    return kSimpleComponent|kLinearInInput|kPropagateInPlace|kBackpropInPlace;
+    return kSimpleComponent|kPropagateInPlace|kBackpropInPlace;
   }
 
   void Init(const CuVectorBase<BaseFloat> &scales);
@@ -1076,7 +1075,7 @@ class NoOpComponent: public NonlinearComponent {
   NoOpComponent() { }
   virtual std::string Type() const { return "NoOpComponent"; }
   virtual int32 Properties() const {
-    return kSimpleComponent|kLinearInInput|kPropagateInPlace;
+    return kSimpleComponent|kPropagateInPlace;
   }
   virtual Component* Copy() const { return new NoOpComponent(*this); }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -1114,7 +1113,7 @@ class SumBlockComponent: public Component {
   SumBlockComponent() { }
   virtual std::string Type() const { return "SumBlockComponent"; }
   virtual int32 Properties() const {
-    return kSimpleComponent|kLinearInInput|kPropagateAdds|kBackpropAdds;
+    return kSimpleComponent|kPropagateAdds|kBackpropAdds;
   }
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual int32 InputDim() const { return input_dim_; }
@@ -1185,7 +1184,7 @@ class ClipGradientComponent: public Component {
   virtual std::string Type() const { return "ClipGradientComponent"; }
 
   virtual int32 Properties() const {
-    return kSimpleComponent|kLinearInInput|kPropagateInPlace|kBackpropInPlace|
+    return kSimpleComponent|kPropagateInPlace|kBackpropInPlace|
            kBackpropNeedsInput;
   }
 
@@ -1300,7 +1299,7 @@ class PermuteComponent: public Component {
   virtual std::string Type() const { return "PermuteComponent"; }
 
   virtual int32 Properties() const {
-    return kSimpleComponent|kLinearInInput;
+    return kSimpleComponent;
   }
 
   virtual void ZeroStats() {}
@@ -1354,8 +1353,8 @@ class PerElementScaleComponent: public UpdatableComponent {
   PerElementScaleComponent() { } // use Init to really initialize.
   virtual std::string Type() const { return "PerElementScaleComponent"; }
   virtual int32 Properties() const {
-    return kSimpleComponent|kUpdatableComponent|kLinearInInput|
-        kLinearInParameters|kBackpropNeedsInput|kPropagateInPlace;
+    return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput|
+        kPropagateInPlace;
   }
 
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -1509,7 +1508,7 @@ class ConstantFunctionComponent: public UpdatableComponent {
   virtual std::string Type() const { return "ConstantFunctionComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|
-        (is_updatable_ ? kUpdatableComponent|kLinearInParameters : 0) |
+        (is_updatable_ ? kUpdatableComponent : 0) |
         (InputDim() == OutputDim() ? kPropagateInPlace: 0) |
         kBackpropAdds;
   }
