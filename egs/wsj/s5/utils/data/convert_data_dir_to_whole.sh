@@ -9,7 +9,7 @@
 
 set -o pipefail
 
-. path.sh
+. ./path.sh
 
 cmd=run.pl
 

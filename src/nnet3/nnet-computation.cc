@@ -1158,5 +1158,8 @@ size_t IoSpecificationHasher::operator () (
       (io_spec.has_deriv ? 4261 : 0);
 }
 
+
+
+
 } // namespace nnet3
 } // namespace kaldi

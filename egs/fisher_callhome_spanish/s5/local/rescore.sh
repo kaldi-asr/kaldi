@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 2014  Gaurav Kumar.   Apache 2.0
 
-. cmd.sh
+. ./cmd.sh
 
 for iter in 1 2 3 4; do
       steps/decode_sgmm2_rescore.sh --cmd "$decode_cmd" --iter $iter \

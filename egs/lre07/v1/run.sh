@@ -6,8 +6,8 @@
 # This script runs the NIST 2007 General Language Recognition Closed-Set
 # evaluation.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 
 mfccdir=`pwd`/mfcc

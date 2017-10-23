@@ -22,7 +22,7 @@ scores_dir=$6
 
 mkdir -p $scores_dir/log
 run.pl $scores_dir/log/cosine_scoring.log \
-  cat $trials \| awk '{print $1, $2}' \| \
+  cat $trials \| awk '{print $1" "$2}' \| \
  ivector-compute-dot-products - \
   scp:${enroll_ivec_dir}/spk_ivector.scp \
   'ark:ivector-normalize-length scp:${test_ivec_dir}/ivector.scp ark:- |' \
