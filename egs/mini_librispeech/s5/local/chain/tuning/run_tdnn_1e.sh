@@ -5,16 +5,17 @@
 
 # local/chain/compare_wer.sh exp/chain/tdnn1d_sp exp/chain/tdnn1e_sp
 # System                tdnn1d_sp tdnn1e_sp
-#WER dev_clean_2 (tgsmall)      14.21     13.68
-#WER dev_clean_2 (tglarge)      10.41      9.88
-# Final train prob        -0.0473   -0.0573
-# Final valid prob        -0.0893   -0.0907
-# Final train prob (xent)   -1.0757   -3.1473
-# Final valid prob (xent)   -1.4222   -3.3644
+#WER dev_clean_2 (tgsmall)      14.21     13.43
+#WER dev_clean_2 (tglarge)      10.41      9.76
+# Final train prob        -0.0473   -0.0510
+# Final valid prob        -0.0893   -0.0889
+# Final train prob (xent)   -1.0757   -1.4148
+# Final valid prob (xent)   -1.4222   -1.6640
+
 
 # steps/info/chain_dir_info.pl exp/chain/tdnn1{d,e}_sp
-# exp/chain/tdnn1c_sp: num-iters=17 nj=2..5 num-params=7.0M dim=40+100->2353 combine=-0.061->-0.050 xent:train/valid[10,16,final]=(-1.56,-1.17,-1.06/-1.85,-1.53,-1.46) logprob:train/valid[10,16,final]=(-0.081,-0.053,-0.046/-0.120,-0.096,-0.090)
-# exp/chain/tdnn1d_sp: num-iters=17 nj=2..5 num-params=7.6M dim=40+100->2353 combine=-0.061->-0.052 xent:train/valid[10,16,final]=(-1.69,-1.24,-1.08/-1.94,-1.57,-1.45) logprob:train/valid[10,16,final]=(-0.089,-0.057,-0.048/-0.127,-0.099,-0.088)
+# exp/chain/tdnn1d_sp: num-iters=17 nj=2..5 num-params=7.5M dim=40+100->2309 combine=-0.063->-0.052 xent:train/valid[10,16,final]=(-1.65,-1.23,-1.08/-1.91,-1.55,-1.42) logprob:train/valid[10,16,final]=(-0.084,-0.057,-0.047/-0.125,-0.100,-0.089)
+# exp/chain/tdnn1e_sp: num-iters=17 nj=2..5 num-params=7.5M dim=40+100->2309 combine=-0.061->-0.056 xent:train/valid[10,16,final]=(-1.69,-1.41,-1.41/-1.91,-1.67,-1.66) logprob:train/valid[10,16,final]=(-0.065,-0.055,-0.051/-0.104,-0.095,-0.089)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -149,7 +150,7 @@ if [ $stage -le 13 ]; then
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   opts="l2-regularize=0.05"
-  output_opts="l2-regularize=0.02"
+  output_opts="l2-regularize=0.01"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -185,7 +186,7 @@ if [ $stage -le 13 ]; then
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
   relu-batchnorm-layer name=prefinal-xent input=tdnn8 $opts dim=512 target-rms=0.5
-  output-layer name=output-xent $opts dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  output-layer name=output-xent $output_opts dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
