@@ -61,7 +61,7 @@ def create_denominator_fst(dir, tree_dir, run_opts):
 
 
 def generate_chain_egs(dir, data, lat_dir, egs_dir,
-                       left_context, right_context,
+                       left_context, right_context, cmd,
                        run_opts, stage=0,
                        left_tolerance=None, right_tolerance=None,
                        left_context_initial=-1, right_context_final=-1,
@@ -94,7 +94,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                 --frames-per-eg {frames_per_eg_str} \
                 --srand {srand} \
                 {data} {dir} {lat_dir} {egs_dir}""".format(
-                    command=run_opts.command,
+                    command=cmd,
                     cmvn_opts=cmvn_opts if cmvn_opts is not None else '',
                     transform_dir=(transform_dir
                                    if transform_dir is not None

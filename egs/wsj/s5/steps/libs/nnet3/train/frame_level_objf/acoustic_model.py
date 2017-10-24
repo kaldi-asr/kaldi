@@ -19,7 +19,7 @@ logger.addHandler(logging.NullHandler())
 
 
 def generate_egs(data, alidir, egs_dir,
-                 left_context, right_context,
+                 left_context, right_context, cmd,
                  run_opts, stage=0,
                  left_context_initial=-1, right_context_final=-1,
                  online_ivector_dir=None,
@@ -47,7 +47,7 @@ def generate_egs(data, alidir, egs_dir,
                 --frames-per-eg {frames_per_eg_str} \
                 --srand {srand} \
                 {data} {alidir} {egs_dir}
-        """.format(command=run_opts.command,
+        """.format(command=cmd,
                    cmvn_opts=cmvn_opts if cmvn_opts is not None else '',
                    transform_dir=(transform_dir
                                   if transform_dir is not None else

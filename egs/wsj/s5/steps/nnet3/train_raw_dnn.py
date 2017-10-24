@@ -151,9 +151,6 @@ def process_args(args):
         run_opts.prior_queue_opt = ""
 
     run_opts.command = args.command
-    run_opts.egs_command = (args.egs_command
-                            if args.egs_command is not None else
-                            args.command)
     run_opts.num_jobs_compute_prior = args.num_jobs_compute_prior
 
     return [args, run_opts]
@@ -239,6 +236,7 @@ def train(args, run_opts):
             data=args.feat_dir, targets_scp=args.targets_scp,
             egs_dir=default_egs_dir,
             left_context=left_context, right_context=right_context,
+            cmd=(args.egs_command if args.egs_command is not None else args.command),
             run_opts=run_opts,
             frames_per_eg_str=str(args.frames_per_eg),
             srand=args.srand,

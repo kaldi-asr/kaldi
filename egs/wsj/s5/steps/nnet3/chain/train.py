@@ -251,9 +251,6 @@ def process_args(args):
         run_opts.combine_queue_opt = ""
 
     run_opts.command = args.command
-    run_opts.egs_command = (args.egs_command
-                            if args.egs_command is not None else
-                            args.command)
 
     return [args, run_opts]
 
@@ -366,6 +363,7 @@ def train(args, run_opts):
             right_context=egs_right_context,
             left_context_initial=egs_left_context_initial,
             right_context_final=egs_right_context_final,
+            cmd=(args.egs_command if args.egs_command is not None else args.command),
             run_opts=run_opts,
             left_tolerance=args.left_tolerance,
             right_tolerance=args.right_tolerance,
