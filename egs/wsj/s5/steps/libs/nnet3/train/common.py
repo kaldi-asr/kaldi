@@ -922,8 +922,7 @@ class CommonParser(object):
                                  """, default="queue.pl")
         self.parser.add_argument("--egs.cmd", type=str, dest="egs_command",
                                  action=common_lib.NullstrToNoneAction,
-                                 help="Script to launch egs jobs",
-                                 default="queue.pl")
+                                 help="Script to launch egs jobs")
         self.parser.add_argument("--use-gpu", type=str,
                                  action=common_lib.StrToBoolAction,
                                  choices=["true", "false"],
