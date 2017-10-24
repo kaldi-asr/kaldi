@@ -251,9 +251,6 @@ def process_args(args):
         run_opts.combine_queue_opt = ""
 
     run_opts.command = args.command
-    run_opts.egs_command = (args.egs_command
-                            if args.egs_command is not None else
-                            args.command)
 
     return [args, run_opts]
 
