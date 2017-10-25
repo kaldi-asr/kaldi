@@ -41,6 +41,7 @@ from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 #                            than about 20 frames' worth of history,
 #                            i.e. history since about t = t-20, can be
 #                            accumulated in c_t.]
+#  l2-regularize=0.0         Constant controlling l2 regularization for this layer
 class XconfigLstmLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         assert first_token == "lstm-layer"
@@ -56,6 +57,7 @@ class XconfigLstmLayer(XconfigLayerBase):
                         'self-repair-scale-nonlinearity' : 0.00001,
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,
+                       'l2-regularize': 0.0,
                         'decay-time':  -1.0
                         }
 
@@ -139,39 +141,54 @@ class XconfigLstmLayer(XconfigLayerBase):
         repair_nonlin_str = "self-repair-scale={0:.10f}".format(repair_nonlin) if repair_nonlin is not None else ''
         affine_str = self.config['ng-affine-options']
         # Natural gradient per element scale parameters
-        # TODO: decide if we want to keep exposing these options
         ng_per_element_scale_options = self.config['ng-per-element-scale-options']
         if re.search('param-mean', ng_per_element_scale_options) is None and \
            re.search('param-stddev', ng_per_element_scale_options) is None:
            ng_per_element_scale_options += " param-mean=0.0 param-stddev=1.0 "
         pes_str = ng_per_element_scale_options
-
+        l2_regularize = self.config['l2-regularize']
+        l2_regularize_option = ('l2-regularize={0} '.format(l2_regularize)
+                                if l2_regularize != 0.0 else '')
 
 
         configs = []
 
-        # the equations implemented here are
-        # TODO: write these
-        # naming convention
-        # <layer-name>.W_<outputname>.<input_name> e.g. Lstm1.W_i.xr for matrix providing output to gate i and operating on an appended vector [x,r]
+        # To see the equations implemented here, see
+        # eqs (1)-(6) in https://arxiv.org/abs/1402.1128
+        # naming convention:
+        # <layer-name>.W_<outputname>.<input_name> e.g. Lstm1.W_i.xr for matrix
+        # providing output to gate i and operating on an appended vector [x,r]
+
         configs.append("### Begin LTSM layer '{0}'".format(name))
         configs.append("# Input gate control : W_i* matrices")
-        configs.append("component name={0}.W_i.xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + cell_dim, cell_dim, affine_str))
+        configs.append("component name={0}.W_i.xr type=NaturalGradientAffineComponent input-dim={1} "
+                       "output-dim={2} {3} {4}".format(name, input_dim + cell_dim, cell_dim,
+                                                       affine_str, l2_regularize_option))
         configs.append("# note : the cell outputs pass through a diagonal matrix")
-        configs.append("component name={0}.w_i.c type=NaturalGradientPerElementScaleComponent  dim={1} {2}".format(name, cell_dim, pes_str))
-
+        configs.append("component name={0}.w_i.c type=NaturalGradientPerElementScaleComponent "
+                       "dim={1} {2} {3} ".format(name, cell_dim, pes_str,
+                                                 l2_regularize_option))
         configs.append("# Forget gate control : W_f* matrices")
-        configs.append("component name={0}.W_f.xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + cell_dim, cell_dim, affine_str))
+        configs.append("component name={0}.W_f.xr type=NaturalGradientAffineComponent input-dim={1} "
+                       "output-dim={2} {3} {4}".format(name, input_dim + cell_dim, cell_dim,
+                                                       affine_str, l2_regularize_option))
         configs.append("# note : the cell outputs pass through a diagonal matrix")
-        configs.append("component name={0}.w_f.c type=NaturalGradientPerElementScaleComponent  dim={1} {2}".format(name, cell_dim, pes_str))
+        configs.append("component name={0}.w_f.c type=NaturalGradientPerElementScaleComponent "
+                       "dim={1} {2} {3}".format(name, cell_dim, pes_str, l2_regularize_option))
 
         configs.append("#  Output gate control : W_o* matrices")
-        configs.append("component name={0}.W_o.xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + cell_dim, cell_dim, affine_str))
+        configs.append("component name={0}.W_o.xr type=NaturalGradientAffineComponent input-dim={1} "
+                       "output-dim={2} {3} {4}".format(name, input_dim + cell_dim, cell_dim,
+                                                       affine_str, l2_regularize_option))
         configs.append("# note : the cell outputs pass through a diagonal matrix")
-        configs.append("component name={0}.w_o.c type=NaturalGradientPerElementScaleComponent  dim={1} {2}".format(name, cell_dim, pes_str))
+        configs.append("component name={0}.w_o.c type=NaturalGradientPerElementScaleComponent "
+                       " dim={1} {2} {3}".format(name, cell_dim, pes_str,
+                                                 l2_regularize_option))
 
         configs.append("# Cell input matrices : W_c* matrices")
-        configs.append("component name={0}.W_c.xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + cell_dim, cell_dim, affine_str))
+        configs.append("component name={0}.W_c.xr type=NaturalGradientAffineComponent input-dim={1} "
+                       "output-dim={2} {3} {4}".format(name, input_dim + cell_dim, cell_dim,
+                                                       affine_str, l2_regularize_option))
 
 
         configs.append("# Defining the non-linearities")
@@ -182,27 +199,34 @@ class XconfigLstmLayer(XconfigLayerBase):
         configs.append("component name={0}.h type=TanhComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
 
         configs.append("# Defining the components for other cell computations")
-        configs.append("component name={0}.c1 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
-        configs.append("component name={0}.c2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
-        configs.append("component name={0}.m type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
-        configs.append("component name={0}.c type=BackpropTruncationComponent dim={1} {2}".format(name, cell_dim, bptrunc_str))
+        configs.append("component name={0}.c1 type=ElementwiseProductComponent input-dim={1} output-dim={2}"
+                       "".format(name, 2 * cell_dim, cell_dim))
+        configs.append("component name={0}.c2 type=ElementwiseProductComponent input-dim={1} output-dim={2}"
+                       "".format(name, 2 * cell_dim, cell_dim))
+        configs.append("component name={0}.m type=ElementwiseProductComponent input-dim={1} output-dim={2}"
+                       "".format(name, 2 * cell_dim, cell_dim))
+        configs.append("component name={0}.c type=BackpropTruncationComponent dim={1} {2}"
+                       "".format(name, cell_dim, bptrunc_str))
 
         # c1_t and c2_t defined below
         configs.append("component-node name={0}.c_t component={0}.c input=Sum({0}.c1_t, {0}.c2_t)".format(name))
         delayed_c_t_descriptor = "IfDefined(Offset({0}.c_t, {1}))".format(name, delay)
 
         configs.append("# i_t")
-        configs.append("component-node name={0}.i1_t component={0}.W_i.xr input=Append({1}, IfDefined(Offset({0}.r_t, {2})))".format(name, input_descriptor, delay))
+        configs.append("component-node name={0}.i1_t component={0}.W_i.xr input=Append({1}, IfDefined(Offset({0}.r_t, {2})))"
+                       "".format(name, input_descriptor, delay))
         configs.append("component-node name={0}.i2_t component={0}.w_i.c  input={1}".format(name, delayed_c_t_descriptor))
         configs.append("component-node name={0}.i_t component={0}.i input=Sum({0}.i1_t, {0}.i2_t)".format(name))
 
         configs.append("# f_t")
-        configs.append("component-node name={0}.f1_t component={0}.W_f.xr input=Append({1}, IfDefined(Offset({0}.r_t, {2})))".format(name, input_descriptor, delay))
+        configs.append("component-node name={0}.f1_t component={0}.W_f.xr input=Append({1}, IfDefined(Offset({0}.r_t, {2})))"
+                       "".format(name, input_descriptor, delay))
         configs.append("component-node name={0}.f2_t component={0}.w_f.c  input={1}".format(name, delayed_c_t_descriptor))
         configs.append("component-node name={0}.f_t component={0}.f input=Sum({0}.f1_t, {0}.f2_t)".format(name))
 
         configs.append("# o_t")
-        configs.append("component-node name={0}.o1_t component={0}.W_o.xr input=Append({1}, IfDefined(Offset({0}.r_t, {2})))".format(name, input_descriptor, delay))
+        configs.append("component-node name={0}.o1_t component={0}.W_o.xr input=Append({1}, IfDefined(Offset({0}.r_t, {2})))"
+                       "".format(name, input_descriptor, delay))
         configs.append("component-node name={0}.o2_t component={0}.w_o.c input={0}.c_t".format(name))
         configs.append("component-node name={0}.o_t component={0}.o input=Sum({0}.o1_t, {0}.o2_t)".format(name))
 
@@ -210,18 +234,23 @@ class XconfigLstmLayer(XconfigLayerBase):
         configs.append("component-node name={0}.h_t component={0}.h input={0}.c_t".format(name))
 
         configs.append("# g_t")
-        configs.append("component-node name={0}.g1_t component={0}.W_c.xr input=Append({1}, IfDefined(Offset({0}.r_t, {2})))".format(name, input_descriptor, delay))
+        configs.append("component-node name={0}.g1_t component={0}.W_c.xr input=Append({1}, IfDefined(Offset({0}.r_t, {2})))"
+                       "".format(name, input_descriptor, delay))
         configs.append("component-node name={0}.g_t component={0}.g input={0}.g1_t".format(name))
 
         configs.append("# parts of c_t")
-        configs.append("component-node name={0}.c1_t component={0}.c1  input=Append({0}.f_t, {1})".format(name, delayed_c_t_descriptor))
-        configs.append("component-node name={0}.c2_t component={0}.c2 input=Append({0}.i_t, {0}.g_t)".format(name))
+        configs.append("component-node name={0}.c1_t component={0}.c1  input=Append({0}.f_t, {1})"
+                       "".format(name, delayed_c_t_descriptor))
+        configs.append("component-node name={0}.c2_t component={0}.c2 input=Append({0}.i_t, {0}.g_t)"
+                       "".format(name))
 
         configs.append("# m_t")
-        configs.append("component-node name={0}.m_t component={0}.m input=Append({0}.o_t, {0}.h_t)".format(name))
+        configs.append("component-node name={0}.m_t component={0}.m input=Append({0}.o_t, {0}.h_t)"
+                       "".format(name))
 
         # add the recurrent connections
-        configs.append("component name={0}.r type=BackpropTruncationComponent dim={1} {2}".format(name, cell_dim, bptrunc_str))
+        configs.append("component name={0}.r type=BackpropTruncationComponent dim={1} {2}"
+                       "".format(name, cell_dim, bptrunc_str))
         configs.append("component-node name={0}.r_t component={0}.r input={0}.m_t".format(name))
         configs.append("### End LTSM layer '{0}'".format(name))
         return configs
@@ -260,6 +289,7 @@ class XconfigLstmLayer(XconfigLayerBase):
 #                            than about 20 frames' worth of history,
 #                            i.e. history since about t = t-20, can be
 #                            accumulated in c_t.]
+#  l2-regularize=0.0         Constant controlling l2 regularization for this layer
 class XconfigLstmpLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         assert first_token == "lstmp-layer"
@@ -280,7 +310,8 @@ class XconfigLstmpLayer(XconfigLayerBase):
                         'zeroing-threshold' : 15.0,
                         'dropout-proportion' : -1.0, # If -1.0, no dropout components will be added
                         'dropout-per-frame' : False,  # If false, regular dropout, not per frame.
-                        'decay-time':  -1.0
+                        'decay-time':  -1.0,
+                       'l2-regularize': 0.0,
                        }
 
     def set_derived_configs(self):
@@ -388,33 +419,51 @@ class XconfigLstmpLayer(XconfigLayerBase):
         dropout_per_frame = 'true' if self.config['dropout-per-frame'] else 'false'
 
         # Natural gradient per element scale parameters
-        # TODO: decide if we want to keep exposing these options
         if re.search('param-mean', pes_str) is None and \
            re.search('param-stddev', pes_str) is None:
            pes_str += " param-mean=0.0 param-stddev=1.0 "
+        l2_regularize = self.config['l2-regularize']
+        l2_regularize_option = ('l2-regularize={0} '.format(l2_regularize)
+                                if l2_regularize != 0.0 else '')
 
         configs = []
-        # the equations implemented here are from Sak et. al. "Long Short-Term Memory Recurrent Neural Network Architectures for Large Scale Acoustic Modeling"
-        # http://static.googleusercontent.com/media/research.google.com/en//pubs/archive/43905.pdf
-        # naming convention
-        # <layer-name>.W_<outputname>.<input_name> e.g. Lstm1.W_i.xr for matrix providing output to gate i and operating on an appended vector [x,r]
-        configs.append("# Input gate control : W_i* matrices")
-        configs.append("component name={0}.W_i.xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + rec_proj_dim, cell_dim, affine_str))
-        configs.append("# note : the cell outputs pass through a diagonal matrix")
-        configs.append("component name={0}.w_i.c type=NaturalGradientPerElementScaleComponent  dim={1} {2}".format(name, cell_dim, pes_str))
 
-        configs.append("# Forget gate control : W_f* matrices")
-        configs.append("component name={0}.W_f.xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + rec_proj_dim, cell_dim, affine_str))
+        # the equations implemented here are from Sak et. al. "Long Short-Term
+        # Memory Recurrent Neural Network Architectures for Large Scale Acoustic
+        # Modeling"
+        # https://arxiv.org/pdf/1402.1128.pdf
+        # See equations (7) to (14).
+        # naming convention <layer-name>.W_<outputname>.<input_name>
+        # e.g. Lstm1.W_i.xr for matrix providing output to gate i and operating
+        # on an appended vector [x,r]
+        configs.append("# Input gate control : W_i* matrices")
+        configs.append("component name={0}.W_i.xr type=NaturalGradientAffineComponent input-dim={1} "
+                       "output-dim={2} {3} {4}".format(name, input_dim + rec_proj_dim,
+                                                       cell_dim, affine_str, l2_regularize_option))
         configs.append("# note : the cell outputs pass through a diagonal matrix")
-        configs.append("component name={0}.w_f.c type=NaturalGradientPerElementScaleComponent  dim={1} {2}".format(name, cell_dim, pes_str))
+        configs.append("component name={0}.w_i.c type=NaturalGradientPerElementScaleComponent "
+                       "dim={1} {2} {3}".format(name, cell_dim, pes_str,
+                                                l2_regularize_option))
+        configs.append("# Forget gate control : W_f* matrices")
+        configs.append("component name={0}.W_f.xr type=NaturalGradientAffineComponent input-dim={1} "
+                       "output-dim={2} {3} {4}".format(name, input_dim + rec_proj_dim, cell_dim,
+                                                       affine_str, l2_regularize_option))
+        configs.append("# note : the cell outputs pass through a diagonal matrix")
+        configs.append("component name={0}.w_f.c type=NaturalGradientPerElementScaleComponent  "
+                       "dim={1} {2} {3}".format(name, cell_dim, pes_str, l2_regularize_option))
 
         configs.append("#  Output gate control : W_o* matrices")
-        configs.append("component name={0}.W_o.xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + rec_proj_dim, cell_dim, affine_str))
+        configs.append("component name={0}.W_o.xr type=NaturalGradientAffineComponent input-dim={1} "
+                       "output-dim={2} {3} {4}".format(name, input_dim + rec_proj_dim, cell_dim,
+                                                       affine_str, l2_regularize_option))
         configs.append("# note : the cell outputs pass through a diagonal matrix")
-        configs.append("component name={0}.w_o.c type=NaturalGradientPerElementScaleComponent  dim={1} {2}".format(name, cell_dim, pes_str))
+        configs.append("component name={0}.w_o.c type=NaturalGradientPerElementScaleComponent "
+                       "dim={1} {2} {3}".format(name, cell_dim, pes_str, l2_regularize_option))
 
         configs.append("# Cell input matrices : W_c* matrices")
-        configs.append("component name={0}.W_c.xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + rec_proj_dim, cell_dim, affine_str))
+        configs.append("component name={0}.W_c.xr type=NaturalGradientAffineComponent input-dim={1} "
+                       "output-dim={2} {3} {4}".format(name, input_dim + rec_proj_dim, cell_dim,
+                                                       affine_str, l2_regularize_option))
 
         configs.append("# Defining the non-linearities")
         configs.append("component name={0}.i type=SigmoidComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
@@ -427,10 +476,14 @@ class XconfigLstmpLayer(XconfigLayerBase):
                            "dropout-proportion={2} dropout-per-frame={3}"
                            .format(name, cell_dim, dropout_proportion, dropout_per_frame))
         configs.append("# Defining the components for other cell computations")
-        configs.append("component name={0}.c1 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
-        configs.append("component name={0}.c2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
-        configs.append("component name={0}.m type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
-        configs.append("component name={0}.c type=BackpropTruncationComponent dim={1} {2}".format(name, cell_dim, bptrunc_str))
+        configs.append("component name={0}.c1 type=ElementwiseProductComponent input-dim={1} output-dim={2}"
+                       "".format(name, 2 * cell_dim, cell_dim))
+        configs.append("component name={0}.c2 type=ElementwiseProductComponent input-dim={1} output-dim={2}"
+                       "".format(name, 2 * cell_dim, cell_dim))
+        configs.append("component name={0}.m type=ElementwiseProductComponent input-dim={1} output-dim={2}"
+                       "".format(name, 2 * cell_dim, cell_dim))
+        configs.append("component name={0}.c type=BackpropTruncationComponent dim={1} {2}"
+                       "".format(name, cell_dim, bptrunc_str))
 
         # c1_t and c2_t defined below
         configs.append("component-node name={0}.c_t component={0}.c input=Sum({0}.c1_t, {0}.c2_t)".format(name))
@@ -438,7 +491,8 @@ class XconfigLstmpLayer(XconfigLayerBase):
 
         recurrent_connection = '{0}.r_t'.format(name)
         configs.append("# i_t")
-        configs.append("component-node name={0}.i1_t component={0}.W_i.xr input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.i1_t component={0}.W_i.xr input=Append({1}, IfDefined(Offset({2}, {3})))"
+                       "".format(name, input_descriptor, recurrent_connection, delay))
         configs.append("component-node name={0}.i2_t component={0}.w_i.c  input={1}".format(name, delayed_c_t_descriptor))
         if dropout_proportion != -1.0:
             configs.append("component-node name={0}.i_t_predrop component={0}.i input=Sum({0}.i1_t, {0}.i2_t)".format(name))
@@ -447,7 +501,8 @@ class XconfigLstmpLayer(XconfigLayerBase):
             configs.append("component-node name={0}.i_t component={0}.i input=Sum({0}.i1_t, {0}.i2_t)".format(name))
 
         configs.append("# f_t")
-        configs.append("component-node name={0}.f1_t component={0}.W_f.xr input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.f1_t component={0}.W_f.xr input=Append({1}, IfDefined(Offset({2}, {3})))"
+                       "".format(name, input_descriptor, recurrent_connection, delay))
         configs.append("component-node name={0}.f2_t component={0}.w_f.c  input={1}".format(name, delayed_c_t_descriptor))
         if dropout_proportion != -1.0:
             configs.append("component-node name={0}.f_t_predrop component={0}.f input=Sum({0}.f1_t, {0}.f2_t)".format(name))
@@ -468,7 +523,8 @@ class XconfigLstmpLayer(XconfigLayerBase):
         configs.append("component-node name={0}.h_t component={0}.h input={0}.c_t".format(name))
 
         configs.append("# g_t")
-        configs.append("component-node name={0}.g1_t component={0}.W_c.xr input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
+        configs.append("component-node name={0}.g1_t component={0}.W_c.xr input=Append({1}, IfDefined(Offset({2}, {3})))"
+                       "".format(name, input_descriptor, recurrent_connection, delay))
         configs.append("component-node name={0}.g_t component={0}.g input={0}.g1_t".format(name))
 
         configs.append("# parts of c_t")
@@ -480,12 +536,17 @@ class XconfigLstmpLayer(XconfigLayerBase):
 
         # add the recurrent connections
         configs.append("# projection matrices : Wrm and Wpm")
-        configs.append("component name={0}.W_rp.m type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, cell_dim, rec_proj_dim + nonrec_proj_dim, affine_str))
-        configs.append("component name={0}.r type=BackpropTruncationComponent dim={1} {2}".format(name, rec_proj_dim, bptrunc_str))
+        configs.append("component name={0}.W_rp.m type=NaturalGradientAffineComponent input-dim={1} "
+                       "output-dim={2} {3} {4}".format(name, cell_dim, rec_proj_dim + nonrec_proj_dim,
+                                                       affine_str, l2_regularize_option))
+        configs.append("component name={0}.r type=BackpropTruncationComponent dim={1} {2}"
+                       "".format(name, rec_proj_dim, bptrunc_str))
 
         configs.append("# r_t and p_t : rp_t will be the output")
-        configs.append("component-node name={0}.rp_t component={0}.W_rp.m input={0}.m_t".format(name))
-        configs.append("dim-range-node name={0}.r_t_preclip input-node={0}.rp_t dim-offset=0 dim={1}".format(name, rec_proj_dim))
+        configs.append("component-node name={0}.rp_t component={0}.W_rp.m input={0}.m_t"
+                       "".format(name))
+        configs.append("dim-range-node name={0}.r_t_preclip input-node={0}.rp_t dim-offset=0 "
+                       "dim={1}".format(name, rec_proj_dim))
         configs.append("component-node name={0}.r_t component={0}.r input={0}.r_t_preclip".format(name))
 
         return configs
@@ -522,6 +583,7 @@ class XconfigLstmpLayer(XconfigLayerBase):
 #                            than about 20 frames' worth of history,
 #                            i.e. history since about t = t-20, can be
 #                            accumulated in c_t.]
+#  l2-regularize=0.0         Constant controlling l2 regularization for this layer
 class XconfigFastLstmLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         assert first_token == "fast-lstm-layer"
@@ -542,6 +604,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
                         # the affine layer contains 4 of our old layers -> use a
                         # larger max-change than the normal value of 0.75.
                         'ng-affine-options' : ' max-change=1.5',
+                        'l2-regularize': 0.0,
                         'decay-time':  -1.0
                         }
         self.c_needed = False  # keep track of whether the 'c' output is needed.
@@ -604,6 +667,9 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         cell_dim = self.config['cell-dim']
         delay = self.config['delay']
         affine_str = self.config['ng-affine-options']
+        l2_regularize = self.config['l2-regularize']
+        l2_regularize_option = ('l2-regularize={0} '.format(l2_regularize)
+                                if l2_regularize != 0.0 else '')
         decay_time = self.config['decay-time']
         # we expect decay_time to be either -1, or large, like 10 or 50.
         recurrence_scale = (1.0 if decay_time < 0 else
@@ -624,18 +690,22 @@ class XconfigFastLstmLayer(XconfigLayerBase):
 
         configs = []
 
-        # the equations implemented here are
-        # TODO: write these
+        # the equations implemented here are equations (1) through (6) of
+        # https://arxiv.org/pdf/1402.1128.pdf.
         # naming convention
-        # <layer-name>.W_<outputname>.<input_name> e.g. Lstm1.W_i.xr for matrix providing output to gate i and operating on an appended vector [x,r]
+        # <layer-name>.W_<outputname>.<input_name> e.g. Lstm1.W_i.xr for matrix
+        # providing output to gate i and operating on an appended vector [x,r]
         configs.append("### Begin LTSM layer '{0}'".format(name))
         configs.append("# Gate control: contains W_i, W_f, W_c and W_o matrices as blocks.")
         configs.append("component name={0}.W_all type=NaturalGradientAffineComponent input-dim={1} "
-                       "output-dim={2} {3}".format(name, input_dim + cell_dim, cell_dim * 4, affine_str))
+                       "output-dim={2} {3} {4}".format(name, input_dim + cell_dim, cell_dim * 4,
+                                                       affine_str, l2_regularize_option))
         configs.append("# The core LSTM nonlinearity, implemented as a single component.")
         configs.append("# Input = (i_part, f_part, c_part, o_part, c_{t-1}), output = (c_t, m_t)")
         configs.append("# See cu-math.h:ComputeLstmNonlinearity() for details.")
-        configs.append("component name={0}.lstm_nonlin type=LstmNonlinearityComponent cell-dim={1} {2}".format(name, cell_dim, lstm_str))
+        configs.append("component name={0}.lstm_nonlin type=LstmNonlinearityComponent "
+                       "cell-dim={1} {2} {3}".format(name, cell_dim, lstm_str,
+                                                     l2_regularize_option))
         configs.append("# Component for backprop truncation, to avoid gradient blowup in long training examples.")
         # Note from Dan: I don't remember why we are applying the backprop
         # truncation on both c and m appended together, instead of just on c.
@@ -696,6 +766,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
 #                            than about 20 frames' worth of history,
 #                            i.e. history since about t = t-20, can be
 #                            accumulated in c_t.]
+#  l2-regularize=0.0         Constant controlling l2 regularization for this layer
 class XconfigFastLstmpLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         assert first_token == "fast-lstmp-layer"
@@ -716,6 +787,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
                         # the affine layer contains 4 of our old layers -> use a
                         # larger max-change than the normal value of 0.75.
                         'ng-affine-options' : ' max-change=1.5',
+                        'l2-regularize': 0.0,
                         'decay-time':  -1.0,
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,
@@ -817,23 +889,32 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
 
         lstm_str = self.config['lstm-nonlinearity-options']
         dropout_proportion = self.config['dropout-proportion']
+        l2_regularize = self.config['l2-regularize']
+        l2_regularize_option = ('l2-regularize={0} '.format(l2_regularize)
+                                if l2_regularize != 0.0 else '')
 
         configs = []
 
-        # the equations implemented here are
-        # TODO: write these
+        # the equations implemented here are from Sak et. al. "Long Short-Term
+        # Memory Recurrent Neural Network Architectures for Large Scale Acoustic
+        # Modeling"
+        # https://arxiv.org/pdf/1402.1128.pdf
+        # See equations (7) to (14).
         # naming convention
         # <layer-name>.W_<outputname>.<input_name> e.g. Lstm1.W_i.xr for matrix providing output to gate i and operating on an appended vector [x,r]
         configs.append("##  Begin LTSM layer '{0}'".format(name))
         configs.append("# Gate control: contains W_i, W_f, W_c and W_o matrices as blocks.")
         configs.append("component name={0}.W_all type=NaturalGradientAffineComponent input-dim={1} "
-                       "output-dim={2} {3}".format(name, input_dim + rec_proj_dim, cell_dim * 4, affine_str))
+                       "output-dim={2} {3} {4}".format(name, input_dim + rec_proj_dim, cell_dim * 4,
+                                                       affine_str, l2_regularize_option))
         configs.append("# The core LSTM nonlinearity, implemented as a single component.")
         configs.append("# Input = (i_part, f_part, c_part, o_part, c_{t-1}), output = (c_t, m_t)")
         configs.append("# See cu-math.h:ComputeLstmNonlinearity() for details.")
         configs.append("component name={0}.lstm_nonlin type=LstmNonlinearityComponent cell-dim={1} "
-                       "use-dropout={2} {3}"
-                       .format(name, cell_dim, "true" if dropout_proportion != -1.0 else "false", lstm_str))
+                       "use-dropout={2} {3} {4}"
+                       .format(name, cell_dim,
+                               "true" if dropout_proportion != -1.0 else "false",
+                               lstm_str, l2_regularize_option))
         configs.append("# Component for backprop truncation, to avoid gradient blowup in long training examples.")
         configs.append("component name={0}.cr_trunc type=BackpropTruncationComponent "
                        "dim={1} {2}".format(name, cell_dim + rec_proj_dim, bptrunc_str))
@@ -844,8 +925,9 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         configs.append("# Component specific to 'projected' LSTM (LSTMP), contains both recurrent");
         configs.append("# and non-recurrent projections")
         configs.append("component name={0}.W_rp type=NaturalGradientAffineComponent input-dim={1} "
-                       "output-dim={2} {3}".format(
-                           name, cell_dim, rec_proj_dim + nonrec_proj_dim, affine_str))
+                       "output-dim={2} {3} {4}".format(
+                           name, cell_dim, rec_proj_dim + nonrec_proj_dim,
+                           affine_str, l2_regularize_option))
         configs.append("###  Nodes for the components above.")
         configs.append("component-node name={0}.four_parts component={0}.W_all input=Append({1}, "
                        "IfDefined(Offset({0}.r_trunc, {2})))".format(name, input_descriptor, delay))
