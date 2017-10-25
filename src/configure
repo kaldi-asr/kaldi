@@ -500,7 +500,7 @@ function linux_configure_speex {
 }
 
 function linux_atlas_failure {
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
+  echo ATLASINC = $ATLASINC >> kaldi.mk
   echo ATLASLIBS = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk
   echo >> kaldi.mk
   if [[ "$TARGET_ARCH" == arm* ]]; then
@@ -557,7 +557,7 @@ function linux_configure_debian_ubuntu {
   if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then
     exit 1;
   fi
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
+  echo ATLASINC = $ATLASINC >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   echo >> kaldi.mk
   if [[ "$TARGET_ARCH" == arm* ]]; then
@@ -581,7 +581,7 @@ function linux_configure_debian_ubuntu3 {
   if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then
     exit 1;
   fi
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
+  echo ATLASINC = $ATLASINC >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   echo >> kaldi.mk
   if [[ "$TARGET_ARCH" == arm* ]]; then
@@ -607,7 +607,7 @@ function linux_configure_debian7 {
   fi
   libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
   [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_debian7" && exit 1;
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
+  echo ATLASINC = $ATLASINC >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
   echo >> kaldi.mk
   if [[ "$TARGET_ARCH" == arm* ]]; then
@@ -630,7 +630,7 @@ function linux_configure_redhat {
   done
   libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
   [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_redhat" && exit 1;
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
+  echo ATLASINC = $ATLASINC >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
   echo >> kaldi.mk
   if [[ "$TARGET_ARCH" == arm* ]]; then
@@ -655,7 +655,7 @@ function linux_configure_redhat_fat {
   done
   libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
   [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_redhat_fat" && exit 1;
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
+  echo ATLASINC = $ATLASINC >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
   echo >> kaldi.mk
   if [[ "$TARGET_ARCH" == arm* ]]; then
@@ -712,7 +712,7 @@ function linux_configure_static {
   done
   if $threaded_atlas; then ATLASLIBS="$ATLASLIBS"; fi
 
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
+  echo ATLASINC = $ATLASINC >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   echo >> kaldi.mk
   if [[ "$TARGET_ARCH" == arm* ]]; then
@@ -796,7 +796,7 @@ function linux_configure_dynamic {
     if $threaded_atlas; then ATLASLIBS="$ATLASLIBS"; fi
   fi
 
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
+  echo ATLASINC = $ATLASINC >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   echo >> kaldi.mk
   if [[ "$TARGET_ARCH" == arm* ]]; then
@@ -849,7 +849,7 @@ mkl_threading=sequential
 android=false
 
 MATHLIB='ATLAS'
-ATLASROOT=`rel2abs ../tools/ATLAS/`
+ATLASROOT=
 FSTROOT=`rel2abs ../tools/openfst`
 
 # Save the command line to include in kaldi.mk
@@ -1184,8 +1184,27 @@ elif [ "`uname -o`" == "Cygwin"  ]; then
 elif [ "`uname`" == "Linux" ]; then
   echo "On Linux: Checking for linear algebra header files ..."
   if [ "$MATHLIB" == "ATLAS" ]; then
-    if [ ! -f $ATLASROOT/include/cblas.h ] || [ ! -f $ATLASROOT/include/clapack.h ] ; then
-      failure "Could not find required header files cblas.h or clapack.h in ATLAS dir '$ATLASROOT/include'"
+    if [ ! -z $ATLASROOT ] &&
+       [ -f $ATLASROOT/include/cblas.h ] && [ -f $ATLASROOT/include/clapack.h ] ; then
+      # This if block is typically activated for user-provided ATLAS
+      # installs.
+      ATLASINC=$ATLASROOT/include
+    elif ([ -f /usr/include/atlas/cblas.h ] && [ -f /usr/include/atlas/clapack.h ]) ||
+         ([ -f /usr/include/cblas.h ] && [ -f /usr/include/clapack.h ]); then
+      # This elif block is activated by apt-get installs of ATLAS
+      # (first conjunction) and yum installs (second conjunction) of
+      # ATLAS. It hasn't been verified for SUSE linux or archlinux.
+      # Note that we don't necessarily need to set ATLASINC for yum
+      # installs, since Kaldi depends only upon cblas.h and clapack.h,
+      # which are installed to the system include path already.
+      ATLASINC=/usr/include/atlas/
+    else
+      failure "Could not find required header files cblas.h and clapack.h in " \
+              "ATLAS dir '$ATLASROOT' or common package-installed header " \
+              "directories /usr/include/atlas/ and /usr/include." \
+              "If this is your first time getting this error, it's likely" \
+              "because you need to run 'sudo apt-get install libatlas-dev'. "\
+              "Otherwise, post on the forums."
     fi
     echo "Using ATLAS as the linear algebra library."
 

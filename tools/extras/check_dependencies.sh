@@ -143,6 +143,11 @@ if which apt-get >&/dev/null && ! which zypper >/dev/null; then
     echo " sudo apt-get install libatlas3-base"
     printed=true
   fi
+  if ! dpkg -l | grep -E 'libatlas-dev' >/dev/null; then
+    echo "You should probably do: "
+    echo " sudo apt-get install libatlas-dev"
+    printed=true
+  fi
 elif which yum >&/dev/null; then
   if [ ! -z "$redhat_packages" ]; then
     echo "$0: we recommend that you run (our best guess):"
