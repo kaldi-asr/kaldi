@@ -111,11 +111,18 @@ fi
 # Since it takes time to evaluate DNN, we make the GMM and DNN scripts separately.
 # You may execute it after you would have promising results using GMM-based ASR experiments
 if [ $stage -le 3 ]; then
-  if 
-  if $flatstart; then
-    local/run_dnn.sh $enhancement_method
-  else
-    local/run_dnn_recog.sh $enhancement_method $modeldir
+  if [ "$tdnn" = false ]; then
+    if $flatstart; then
+      local/run_dnn.sh $enhancement_method
+    else
+      local/run_dnn_recog.sh $enhancement_method $modeldir
+    fi
+  fi
+fi
+
+if [ $stage -le 3 ]; then
+  if $tdnn; then
+    local/chain/run_tdnn.sh $ali_opt --mic $mic
   fi
 fi
 

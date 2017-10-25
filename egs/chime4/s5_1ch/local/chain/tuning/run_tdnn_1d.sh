@@ -29,7 +29,7 @@ set -e -o pipefail
 stage=0
 nj=30
 train=noisy
-train_set=train_si284
+train_set=
 test_sets="test_dev93 test_eval92"
 gmm=tri3b_tr05_multi_${train} # this is the source gmm-dir that we'll use for alignments; it
                               # should have alignments for the specified training data.
@@ -75,13 +75,32 @@ where "nvcc" is installed.
 EOF
 fi
 
+# check whether run_init is executed
+if [ ! -d data/lang ]; then
+  echo "error, execute local/run_init.sh, first"
+  exit 1;
+fi
+
+# check whether run_init is executed
+if [ ! -d exp/tri3b_tr05_multi_${train} ]; then
+  echo "error, execute local/run_init.sh, first"
+  exit 1;
+fi
+
+# get alignments
+if [ $stage -le 0 ]; then
+  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
+    data/tr05_multi_${train} data/lang exp/tri3b_tr05_multi_${train} exp/tri3b_tr05_multi_${train}_ali
+  steps/align_fmllr.sh --nj 4 --cmd "$train_cmd" \
+    data/dt05_multi_$enhan data/lang exp/tri3b_tr05_multi_${train} exp/tri3b_tr05_multi_${train}_ali_dt05
+fi
+
 local/nnet3/run_ivector_common.sh \
   --stage $stage --nj $nj \
   --train-set $train_set --gmm $gmm \
   --num-threads-ubm $num_threads_ubm \
   --nnet3-affix "$nnet3_affix"
-
-
+  
 
 gmm_dir=exp/${gmm}
 ali_dir=exp/${gmm}_ali_${train_set}_sp
@@ -143,7 +162,7 @@ if [ $stage -le 14 ]; then
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.  The num-leaves is always somewhat less than the num-leaves from
   # the GMM baseline.
-   if [ -f $tree_dir/final.mdl ]; then
+  if [ -f $tree_dir/final.mdl ]; then
      echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
      exit 1;
   fi
