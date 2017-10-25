@@ -36,7 +36,7 @@ cat $workdir/missing.txt | \
   grep "^[a-z0-9.'_-]*$"  > $workdir/missing_onlywords.txt
 
 echo 'Synthesizing pronunciations for missing words...'
-phonetisaurus_apply --nbest $var_counts --model $model --thresh 5 --accumulate --word_list $workdir/missing_onlywords.txt > $workdir/missing_g2p_${var_counts}.txt 
+phonetisaurus-apply --nbest $var_counts --model $model --thresh 5 --accumulate --word_list $workdir/missing_onlywords.txt > $workdir/missing_g2p_${var_counts}.txt 
 
 echo "Adding new pronunciations to $lexicon"
 cat "$lexicon" $workdir/missing_g2p_${var_counts}.txt | sort | uniq > $outlexicon
