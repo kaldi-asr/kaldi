@@ -1,28 +1,25 @@
 #!/bin/bash
 
-# run_resnet_1a.sh is a quite well-performing resnet.
-#  It includes a form of shrinkage that approximates l2 regularization.
-#  (c.f. --proportional-shrink).
+# 1e is as 1e but with more filters and epochs.
 
-#  Definitely better:
+# local/nnet3/compare.sh exp/resnet1b_cifar10 exp/resnet1c_cifar10
+# System                resnet1b_cifar10 resnet1c_cifar10
+# final test accuracy:       0.9481      0.9514
+# final train accuracy:       0.9996           1
+# final test objf:         -0.163336   -0.157244
+# final train objf:      -0.00788341 -0.00751868
+# num-parameters:           1322730     1322730
 
-# local/nnet3/compare.sh exp/resnet1a_cifar10
-# System                 resnet1a_cifar10
-# final test accuracy:       0.9481
-# final train accuracy:        0.9992
-# final test objf:          -0.171369
-# final train objf:       -0.00980603
-# num-parameters:            1322730
-
-# local/nnet3/compare.sh exp/resnet1a_cifar100
-# System              resnet1a_cifar100
-# final test accuracy:        0.7478
-# final train accuracy:       0.9446
-# final test objf:           -0.899789
-# final train objf:          -0.22468
-# num-parameters:             1345860
-
-
+# local/nnet3/compare.sh exp/resnet1b_cifar100 exp/resnet1w_cifar100
+# System                resnet1b_cifar100 resnet1e_cifar100
+# final test accuracy:       0.7602      0.7914
+# final train accuracy:       0.9598     0.9922
+# final test objf:         -0.888699   -0.786857
+# final train objf:        -0.164213   -0.0514912
+# num-parameters:           1345860     3511364
+# steps/info/nnet3_dir_info.pl exp/resnet1c_cifar10{,0}
+# exp/resnet1c_cifar10: num-iters=133 nj=1..2 num-params=1.3M dim=96->10 combine=-0.02->-0.01 loglike:train/valid[87,132,final]=(-0.115,-0.034,-0.0075/-0.24,-0.21,-0.157) accuracy:train/valid[87,132,final]=(0.960,0.9888,1.0000/0.925,0.938,0.951)
+# exp/resnet1c_cifar100: num-iters=133 nj=1..2 num-params=1.3M dim=96->100 combine=-0.24->-0.20 loglike:train/valid[87,132,final]=(-0.75,-0.27,-0.175/-1.20,-1.00,-0.86) accuracy:train/valid[87,132,final]=(0.78,0.923,0.960/0.67,0.73,0.76)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -35,7 +32,7 @@ train_stage=-10
 dataset=cifar10
 srand=0
 reporting_email=
-affix=1a
+affix=1e
 
 
 # End configuration section.
@@ -92,16 +89,17 @@ if [ $stage -le 1 ]; then
 
   nf1=48
   nf2=96
-  nf3=256
-  nb3=128
+  nf3=512
+  nb3=256
 
-  common="required-time-offsets=0 height-offsets=-1,0,1"
-  res_opts="bypass-source=batchnorm"
+  a="num-minibatches-history=40.0"
+  common="$a required-time-offsets=0 height-offsets=-1,0,1"
+  res_opts="$a bypass-source=batchnorm"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=96 name=input
-  conv-layer name=conv1 height-in=32 height-out=32 time-offsets=-1,0,1 required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=$nf1
+  conv-layer name=conv1 $a height-in=32 height-out=32 time-offsets=-1,0,1 required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=$nf1
   res-block name=res2 num-filters=$nf1 height=32 time-period=1 $res_opts
   res-block name=res3 num-filters=$nf1 height=32 time-period=1 $res_opts
   conv-layer name=conv4 height-in=32 height-out=16 height-subsample-out=2 time-offsets=-1,0,1 $common num-filters-out=$nf2
@@ -122,10 +120,10 @@ if [ $stage -le 2 ]; then
 
   steps/nnet3/train_raw_dnn.py --stage=$train_stage \
     --cmd="$train_cmd" \
-    --image.augmentation-opts="--horizontal-flip-prob=0.5 --horizontal-shift=0.1 --vertical-shift=0.1 --num-channels=3" \
+    --image.augmentation-opts="--horizontal-flip-prob=0.5 --horizontal-shift=0.1 --vertical-shift=0.1 --rotation-degree=30 --rotation-prob=0.5 --num-channels=3" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=60 \
+    --trainer.num-epochs=140 \
     --egs.frames-per-eg=1 \
     --trainer.optimization.num-jobs-initial=1 \
     --trainer.optimization.num-jobs-final=2 \
