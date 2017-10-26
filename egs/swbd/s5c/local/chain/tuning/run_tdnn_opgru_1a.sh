@@ -8,17 +8,17 @@
                                                 
 # ./local/chain/compare_wer_general.sh --looped tdnn_pgru_1a_ld5_sp tdnn_opgru_1a_ld5_sp
 # System                tdnn_pgru_1a_ld5_sp tdnn_opgru_1a_ld5_sp
-# WER on train_dev(tg)      12.82     12.65
-#           [looped:]       12.60     12.48
-# WER on train_dev(fg)      11.89     11.56
-#           [looped:]       11.64     11.47
-# WER on eval2000(tg)        14.9      14.9
-#           [looped:]        14.8      15.0
-# WER on eval2000(fg)        13.3      13.4
+# WER on train_dev(tg)      12.82     12.76
+#           [looped:]       12.60     12.63
+# WER on train_dev(fg)      11.89     11.71
+#           [looped:]       11.64     11.54
+# WER on eval2000(tg)        14.9      14.8
+#           [looped:]        14.8      14.8
+# WER on eval2000(fg)        13.3      13.3
 #           [looped:]        13.4      13.4
-# Final train prob         -0.077    -0.067
+# Final train prob         -0.077    -0.065
 # Final valid prob         -0.092    -0.086
-# Final train prob (xent)        -0.929    -0.879
+# Final train prob (xent)        -0.929    -0.871
 # Final valid prob (xent)       -0.9934   -0.9628
 
 

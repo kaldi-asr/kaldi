@@ -1,12 +1,12 @@
 #!/bin/bash
 # ./local/chain/compare_wer_general.sh tdnn_opgru_1a_sp
 # System                tdnn_opgru_1a_sp
-# WER on eval2000(tg)        12.3
-# WER on eval2000(fg)        12.1
+# WER on eval2000(tg)        12.1
+# WER on eval2000(fg)        12.0
 # Final train prob         -0.097
-# Final valid prob         -0.104
+# Final valid prob         -0.103
 # Final train prob (xent)        -1.080
-# Final valid prob (xent)       -1.1094
+# Final valid prob (xent)       -1.120
 
 
 set -e

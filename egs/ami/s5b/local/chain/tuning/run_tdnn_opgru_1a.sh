@@ -8,12 +8,12 @@
 
 # ./local/chain/compare_wer_general.sh sdm1 tdnn_pgru1a_sp_bi_ihmali_ld5 tdnn_pgru1a_sp_bi_ihmali_ld5_online tdnn_opgru1a_sp_bi_ihmali_ld5 tdnn_opgru1a_sp_bi_ihmali_ld5_online
 # System          tdnn_pgru1a_sp_bi_ihmali_ld5 tdnn_pgru1a_sp_bi_ihmali_ld5_online tdnn_opgru1a_sp_bi_ihmali_ld5 tdnn_opgru1a_sp_bi_ihmali_ld5_online
-# WER on dev        35.8      35.9      36.0      36.1
-# WER on eval        38.8      38.9      39.7      39.7
-# Final train prob      -0.121403 -0.113322
-# Final valid prob       -0.25305 -0.260614
-# Final train prob (xent)      -1.40716  -1.39456
-# Final valid prob (xent)      -2.04538  -2.10729
+# WER on dev        35.8      35.9      36.2      36.2
+# WER on eval        38.8      38.9      39.5      39.6
+# Final train prob      -0.121403 -0.113024
+# Final valid prob       -0.25305 -0.26369
+# Final train prob (xent)      -1.40716  -1.39498
+# Final valid prob (xent)      -2.04538  -2.11686
 
 
 set -e -o pipefail

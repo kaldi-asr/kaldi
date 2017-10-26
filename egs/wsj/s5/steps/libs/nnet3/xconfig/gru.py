@@ -607,7 +607,6 @@ class XconfigOpgruLayer(XconfigLayerBase):
 
         recurrent_connection = '{0}.s_t'.format(name)
         recurrent_connection_y = '{0}.y_t'.format(name)
-        recurrent_connection_y_trunc = '{0}.y_r_t'.format(name)
 
         configs.append("# z_t")
         configs.append("component-node name={0}.z_t_pre component={0}.W_z.xs_z input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
@@ -619,7 +618,7 @@ class XconfigOpgruLayer(XconfigLayerBase):
         
         configs.append("# h_t")
         configs.append("component-node name={0}.h_t_pre component={0}.W_h.UW input={1}".format(name, input_descriptor))
-        configs.append("component-node name={0}.h_t_pre2 component={0}.W_h.UW_elementwise input=IfDefined(Offset({1}, {2}))".format(name, recurrent_connection_y_trunc, delay))
+        configs.append("component-node name={0}.h_t_pre2 component={0}.W_h.UW_elementwise input=IfDefined(Offset({1}, {2}))".format(name, recurrent_connection_y, delay))
         configs.append("component-node name={0}.h_t component={0}.h input=Sum({0}.h_t_pre, {0}.h_t_pre2)".format(name))
         
         #configs.append("# y_t")
@@ -630,9 +629,6 @@ class XconfigOpgruLayer(XconfigLayerBase):
         configs.append("component-node name={0}.y2_t component={0}.y2 input=Append(IfDefined(Offset({1}, {2})), {0}.z_t)".format(name, recurrent_connection_y, delay))
         configs.append("component-node name={0}.y_t component={0}.y input=Sum({0}.y1_t, {0}.y2_t)".format(name))
         configs.append("component-node name={0}.y_o_t component={0}.o1 input=Append({0}.o_t, {0}.y_t)".format(name))
-        
-        configs.append("component name={0}.y_r type=BackpropTruncationComponent dim={1} {2}".format(name, cell_dim, bptrunc_str))
-        configs.append("component-node name={0}.y_r_t component={0}.y_r input={0}.y_t".format(name))
 
         configs.append("# s_t recurrent")
         configs.append("component name={0}.W_s.ys type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, cell_dim, rec_proj_dim + nonrec_proj_dim, affine_str))
