@@ -849,7 +849,7 @@ mkl_threading=sequential
 android=false
 
 MATHLIB='ATLAS'
-ATLASROOT=`rel2abs ../tools/ATLAS/`
+ATLASROOT=`rel2abs ../tools/ATLAS_headers/`
 FSTROOT=`rel2abs ../tools/openfst`
 
 # Save the command line to include in kaldi.mk
