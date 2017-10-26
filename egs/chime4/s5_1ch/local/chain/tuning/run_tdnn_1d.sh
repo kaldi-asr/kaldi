@@ -29,8 +29,9 @@ set -e -o pipefail
 stage=0
 nj=30
 train=noisy
-train_set=
-test_sets="test_dev93 test_eval92"
+enhan=$1
+train_set="tr05_real_${train} tr05_simu_${train}"
+test_sets="dt05_real_$enhan dt05_simu_$enhan et05_real_$enhan et05_simu_$enhan"
 gmm=tri3b_tr05_multi_${train} # this is the source gmm-dir that we'll use for alignments; it
                               # should have alignments for the specified training data.
 num_threads_ubm=32
@@ -87,20 +88,13 @@ if [ ! -d exp/tri3b_tr05_multi_${train} ]; then
   exit 1;
 fi
 
-# get alignments
-if [ $stage -le 0 ]; then
-  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-    data/tr05_multi_${train} data/lang exp/tri3b_tr05_multi_${train} exp/tri3b_tr05_multi_${train}_ali
-  steps/align_fmllr.sh --nj 4 --cmd "$train_cmd" \
-    data/dt05_multi_$enhan data/lang exp/tri3b_tr05_multi_${train} exp/tri3b_tr05_multi_${train}_ali_dt05
-fi
-
 local/nnet3/run_ivector_common.sh \
   --stage $stage --nj $nj \
   --train-set $train_set --gmm $gmm \
+  --test-sets $test_sets \
   --num-threads-ubm $num_threads_ubm \
   --nnet3-affix "$nnet3_affix"
-  
+
 
 gmm_dir=exp/${gmm}
 ali_dir=exp/${gmm}_ali_${train_set}_sp
@@ -125,7 +119,7 @@ for f in $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
-
+stage=100
 if [ $stage -le 12 ]; then
   echo "$0: creating lang directory $lang with chain-type topology"
   # Create a version of the lang/ directory that has one state per phone in the

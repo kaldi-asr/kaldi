@@ -122,7 +122,7 @@ fi
 
 if [ $stage -le 3 ]; then
   if $tdnn; then
-    local/chain/run_tdnn.sh $ali_opt --mic $mic
+    local/chain/run_tdnn.sh $enhancement_method
   fi
 fi
 
