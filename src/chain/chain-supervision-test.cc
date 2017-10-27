@@ -389,9 +389,9 @@ void ChainSmbrTrainingTest(const DenominatorGraph &den_graph,
   opts.use_smbr_objective = true;
   opts.mmi_factor = 0.0;
   opts.smbr_factor = 1.0;
-  BaseFloat objf, l2_term, weight;
+  BaseFloat objf, mmi_objf = 0.0, l2_term, weight;
   ComputeChainSmbrObjfAndDeriv(opts, den_graph, supervision,
-                               nnet_output, &objf, &l2_term, &weight,
+                               nnet_output, &objf, &mmi_objf, &l2_term, &weight,
                                &nnet_output_deriv);
 
   {
@@ -426,11 +426,11 @@ void ChainSmbrTrainingTest(const DenominatorGraph &den_graph,
     CuMatrix<BaseFloat> nnet_output_perturbed(nnet_delta_output);
     nnet_output_perturbed.AddMat(1.0, nnet_output);
 
-    BaseFloat objf_modified, l2_term_modified, weight_modified;
+    BaseFloat objf_modified, mmi_objf_modified, l2_term_modified, weight_modified;
 
     ComputeChainSmbrObjfAndDeriv(opts, den_graph, supervision,
                              nnet_output_perturbed,
-                             &objf_modified, &l2_term_modified,
+                             &objf_modified, &mmi_objf_modified, &l2_term_modified,
                              &weight_modified,
                              NULL);
 

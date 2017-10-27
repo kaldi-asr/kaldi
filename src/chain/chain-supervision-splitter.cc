@@ -110,6 +110,7 @@ bool SupervisionLatticeSplitter::GetFrameRangeSupervision(
     *out_lat = lat_out;
   }
 
+  // Apply lm-scale on the lattice and remove the acoustic costs
   ScaleLattice(fst::LatticeScale(sup_opts_.lm_scale, 0.0), &lat_out);
 
   supervision->frames_per_sequence = num_frames;
@@ -655,11 +656,13 @@ void ToleranceEnforcerFstCreator::AddArcsBetweenOffsets(
                                 fst::TropicalWeight::One(),
                                 0));
 
-    // Add arc from start state deleting a self-loop transition
-    StateId next_state = GetStateId(offset - 1, forward_id, kDeletion);
-    fst_->AddArc(0, fst::StdArc(self_loop_tid, 0,
-                                fst::TropicalWeight::One(),
-                                next_state));
+    if (offset > -opts_.left_tolerance) {
+      // Add arc from start state deleting a self-loop transition
+      StateId next_state = GetStateId(offset - 1, forward_id, kDeletion);
+      fst_->AddArc(0, fst::StdArc(self_loop_tid, 0,
+                                  fst::TropicalWeight::One(),
+                                  next_state));
+    }
   }
 }
 
@@ -673,7 +676,6 @@ void ToleranceEnforcerFstCreator::AddArcsForOffset(int32 offset) {
       forward_id++;
     }
   }
-
 }
 
 void ToleranceEnforcerFstCreator::MakeFst() {
@@ -689,6 +691,8 @@ void ToleranceEnforcerFstCreator::MakeFst() {
     AddArcsForOffset(o);
   }
   
+  if (GetVerboseLevel() > 3) { WriteFstKaldi(std::cerr, false, *fst_); }
+
   fst::Connect(fst_);
   fst::ArcSort(fst_, fst::ILabelCompare<fst::StdArc>());
 }

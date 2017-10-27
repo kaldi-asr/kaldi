@@ -23,9 +23,6 @@ semi_affix=semi50k_250k  # affix relating train-set splitting proportion
 tdnn_affix=7b  # affix for the supervised chain-model directory
 train_supervised_opts="--stage -10 --train-stage -10"
 
-lm_opts=
-do_finetuning=false
-
 # Unsupervised options
 decode_affix=
 egs_affix=  # affix for the egs that are generated from unsupervised data and for the comined egs dir
@@ -35,7 +32,6 @@ lattice_prune_beam=4.0  # If supplied will prune the lattices prior to getting e
 tolerance=1
 graph_affix=_ex250k   # can be used to decode the unsup data with another lm/graph
 phone_insertion_penalty=
-unsup_egs_opts=
 
 # Semi-supervised options
 comb_affix=comb1g  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
@@ -43,7 +39,12 @@ supervision_weights=1.0,1.0
 lm_weights=3,2
 sup_egs_dir=   
 unsup_egs_dir=
+comb_egs_dir=
 tree_affix=
+unsup_egs_opts=
+apply_deriv_weights=true
+
+do_finetuning=false
 
 extra_left_context=0
 extra_right_context=0
@@ -74,6 +75,7 @@ echo "$0 $@"  # Print the command line for logging
 nnet3_affix=_${semi_affix}  # affix for nnet3 and chain dirs
 decode_affix=${decode_affix}${graph_affix}
 egs_affix=${egs_affix}_prun${lattice_prune_beam}_lmwt${lattice_lm_scale}_tol${tolerance}
+tree_affix=
 
 RANDOM=0
 
@@ -156,18 +158,15 @@ cmvn_opts=`cat $chaindir/cmvn_opts` || exit 1
 sup_ali_dir=$exp/tri4a
 
 treedir=$exp/chain${nnet3_affix}/tree_${tree_affix}
-if [ $stage -le 9 ]; then
-  if [ -f $treedir/final.mdl ]; then
-    echo "$0: $treedir/final.mdl already exists. Remove it and try again."
-    exit 1
-  fi
+if [ ! -f $treedir/final.mdl ]; then
+  echo "$0: $treedir/final.mdl does not exist."
+  exit 1
 fi
 
 dir=$exp/chain${nnet3_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
 
 if [ $stage -le 10 ]; then
   steps/nnet3/chain/make_weighted_den_fst.sh --num-repeats $lm_weights --cmd "$train_cmd" \
-    --lm-opts "--num-extra-lm-states=2000" \
     ${treedir} ${chaindir}/best_path_${unsupervised_set}${decode_affix} \
     $dir
 fi
@@ -236,7 +235,7 @@ right_context_final=`perl -e "print int($right_context_final + $frame_subsamplin
 
 supervised_set=${supervised_set}_sp
 sup_lat_dir=$exp/chain${nnet3_affix}/tri4a_${supervised_set}_lats
-if [ -z "$sup_egs_dir" ]; then
+if [ -z "$comb_egs_dir" ] && [ -z "$sup_egs_dir" ]; then
   sup_egs_dir=$dir/egs_${supervised_set}
   frames_per_eg=$(cat $chaindir/egs/info/frames_per_eg)
 
@@ -245,6 +244,7 @@ if [ -z "$sup_egs_dir" ]; then
       utils/create_split_dir.pl \
        /export/b0{5,6,7,8}/$USER/kaldi-data/egs/fisher_english-$(date +'%m_%d_%H_%M')/s5c/$sup_egs_dir/storage $sup_egs_dir/storage
     fi
+    mkdir -p $sup_egs_dir/
     touch $sup_egs_dir/.nodelete # keep egs around when that run dies.
 
     echo "$0: generating egs from the supervised data"
@@ -262,14 +262,16 @@ if [ -z "$sup_egs_dir" ]; then
                $sup_lat_dir $sup_egs_dir
   fi
 else
-  frames_per_eg=$(cat $sup_egs_dir/info/frames_per_eg)
+  if [ -z "$comb_egs_dir" ]; then
+    frames_per_eg=$(cat $sup_egs_dir/info/frames_per_eg)
+  fi
 fi
 
 unsupervised_set=${unsupervised_set}_sp
 unsup_lat_dir=${chaindir}/decode_${unsupervised_set}${decode_affix} 
-[ -z $unsup_frames_per_eg ] && unsup_frames_per_eg=$frames_per_eg
 
-if [ -z "$unsup_egs_dir" ]; then
+if [ -z "$comb_egs_dir" ] && [ -z "$unsup_egs_dir" ]; then
+  [ -z $unsup_frames_per_eg ] && [ ! -z "$frames_per_eg" ] && unsup_frames_per_eg=$frames_per_eg
   unsup_egs_dir=$dir/egs_${unsupervised_set}${decode_affix}${egs_affix}
 
   if [ $stage -le 13 ]; then
@@ -277,10 +279,11 @@ if [ -z "$unsup_egs_dir" ]; then
       utils/create_split_dir.pl \
        /export/b0{5,6,7,8}/$USER/kaldi-data/egs/fisher_english-$(date +'%m_%d_%H_%M')/s5c/$unsup_egs_dir/storage $unsup_egs_dir/storage
     fi
+    mkdir -p $unsup_egs_dir
     touch $unsup_egs_dir/.nodelete # keep egs around when that run dies.
 
     echo "$0: generating egs from the unsupervised data"
-    steps/nnet3/chain/get_egs.sh --cmd "$decode_cmd" --alignment-subsampling-factor 1 \
+    steps/nnet3/chain/get_egs.sh --cmd "$decode_cmd --h-rt 100:00:00" --alignment-subsampling-factor 1 \
                --left-tolerance $tolerance --right-tolerance $tolerance \
                --left-context $left_context --right-context $right_context \
                --left-context-initial $left_context_initial --right-context-final $right_context_final \
@@ -297,16 +300,17 @@ if [ -z "$unsup_egs_dir" ]; then
   fi
 fi
 
-comb_egs_dir=$dir/${comb_affix}_egs${decode_affix}${egs_affix}_multi
+if [ -z "$comb_egs_dir" ]; then
+  comb_egs_dir=$dir/${comb_affix}_egs${decode_affix}${egs_affix}_multi
 
-if [ $stage -le 14 ]; then
-  steps/nnet3/multilingual/combine_egs.sh --cmd "$train_cmd" \
-    --minibatch-size 128 --frames-per-iter 1500000 \
-    --lang2weight $supervision_weights --egs-prefix cegs. 2 \
-    $sup_egs_dir $unsup_egs_dir $comb_egs_dir
-  touch $comb_egs_dir/.nodelete # keep egs around when that run dies.
+  if [ $stage -le 14 ]; then
+    steps/nnet3/multilingual/combine_egs.sh --cmd "$train_cmd" \
+      --minibatch-size 128 --frames-per-iter 1500000 \
+      --lang2weight $supervision_weights --egs-prefix cegs. 2 \
+      $sup_egs_dir $unsup_egs_dir $comb_egs_dir
+    touch $comb_egs_dir/.nodelete # keep egs around when that run dies.
+  fi
 fi
-
 
 if [ $train_stage -le -4 ]; then
   train_stage=-4
@@ -321,7 +325,7 @@ if [ $stage -le 15 ]; then
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
-    --chain.apply-deriv-weights true \
+    --chain.apply-deriv-weights $apply_deriv_weights \
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width 150 \

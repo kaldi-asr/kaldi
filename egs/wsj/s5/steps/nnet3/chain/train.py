@@ -324,7 +324,8 @@ def train(args, run_opts):
 
     # Check files
     chain_lib.check_for_required_files(args.feat_dir, args.tree_dir,
-                                       args.lat_dir)
+                                       args.lat_dir if args.egs_dir is None
+                                       else None)
 
     # Set some variables.
     num_jobs = common_lib.get_number_of_jobs(args.tree_dir)
