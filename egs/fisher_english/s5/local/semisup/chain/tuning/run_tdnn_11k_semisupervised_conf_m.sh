@@ -19,6 +19,7 @@ exp=exp/semisup_15k
 unsupervised_set=train_unsup250k  # set this to your choice of unsupervised data
 supervised_set=train_sup15k
 semi_affix=semi15k_250k  # affix relating train-set splitting proportion
+apply_deriv_weights=true
 
 tdnn_affix=7b  # affix for the supervised chain-model directory
 train_supervised_opts="--stage -10 --train-stage -10"
@@ -318,7 +319,7 @@ if [ $stage -le 15 ]; then
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
-    --chain.apply-deriv-weights true \
+    --chain.apply-deriv-weights $apply_deriv_weights \
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width 150 \

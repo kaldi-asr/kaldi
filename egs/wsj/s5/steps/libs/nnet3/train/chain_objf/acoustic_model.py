@@ -384,9 +384,11 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         os.remove("{0}/cache.{1}".format(dir, iter))
 
 
-def check_for_required_files(feat_dir, tree_dir, lat_dir):
+def check_for_required_files(feat_dir, tree_dir, lat_dir=None):
     files = ['{0}/feats.scp'.format(feat_dir), '{0}/ali.1.gz'.format(tree_dir),
-             '{0}/final.mdl'.format(tree_dir), '{0}/tree'.format(tree_dir),
+             '{0}/final.mdl'.format(tree_dir), '{0}/tree'.format(tree_dir)]
+    if lat_dir is not None:
+        files += [
              '{0}/lat.1.gz'.format(lat_dir), '{0}/final.mdl'.format(lat_dir),
              '{0}/num_jobs'.format(lat_dir)]
     for file in files:
