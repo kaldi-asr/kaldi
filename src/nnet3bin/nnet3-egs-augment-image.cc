@@ -243,7 +243,7 @@ void PerturbImage(const ImageAugmentationConfig &config,
   //   0           0            1 ]
   if (RandUniform() <= config.rotation_prob) {
     BaseFloat theta = (2 * config.rotation_degree * RandUniform() -
-		       config.rotation_degree) / 180.0 * 3.1415926;
+		       config.rotation_degree) / 180.0 * M_PI;
     rotation_mat(0, 0) = cos(theta);
     rotation_mat(0, 1) = -sin(theta);
     rotation_mat(1, 0) = sin(theta);
