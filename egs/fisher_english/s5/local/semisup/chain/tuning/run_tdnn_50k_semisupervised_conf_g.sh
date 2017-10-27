@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script is same as _d, but uses a weight of 1.0 for unsupervised set.
+# This script is same as _e, but uses tree from supervised set.
 # unsup_frames_per_eg=150
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0
