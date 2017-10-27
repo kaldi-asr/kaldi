@@ -1,25 +1,25 @@
 #!/bin/bash
 
-# 1e is as 1e but with more filters and epochs.
+# 1e is as 1d but with more filters and epochs.
 
-# local/nnet3/compare.sh exp/resnet1b_cifar10 exp/resnet1c_cifar10
-# System                resnet1b_cifar10 resnet1c_cifar10
-# final test accuracy:       0.9481      0.9514
-# final train accuracy:       0.9996           1
-# final test objf:         -0.163336   -0.157244
-# final train objf:      -0.00788341 -0.00751868
-# num-parameters:           1322730     1322730
+# local/nnet3/compare.sh exp/resnet1d_cifar10/ exp/resnet1e_cifar10/
+# System                resnet1d_cifar10 resnet1e_cifar10
+# final test accuracy:       0.9537      0.9583
+# final train accuracy:       0.9966      0.9994
+# final test objf:         -0.139607   -0.124945
+# final train objf:       -0.0219607 -0.00603407
+# num-parameters:           1322730     3465194
 
-# local/nnet3/compare.sh exp/resnet1b_cifar100 exp/resnet1w_cifar100
-# System                resnet1b_cifar100 resnet1e_cifar100
-# final test accuracy:       0.7602      0.7914
-# final train accuracy:       0.9598     0.9922
-# final test objf:         -0.888699   -0.786857
-# final train objf:        -0.164213   -0.0514912
+# local/nnet3/compare.sh exp/resnet1d_cifar100 exp/resnet1e_cifar100
+# System                resnet1d_cifar100 resnet1e_cifar100
+# final test accuracy:       0.7687      0.7914
+# final train accuracy:       0.9276     0.9922
+# final test objf:         -0.812203   -0.786857
+# final train objf:        -0.265734   -0.0514912
 # num-parameters:           1345860     3511364
 # steps/info/nnet3_dir_info.pl exp/resnet1c_cifar10{,0}
-# exp/resnet1c_cifar10: num-iters=133 nj=1..2 num-params=1.3M dim=96->10 combine=-0.02->-0.01 loglike:train/valid[87,132,final]=(-0.115,-0.034,-0.0075/-0.24,-0.21,-0.157) accuracy:train/valid[87,132,final]=(0.960,0.9888,1.0000/0.925,0.938,0.951)
-# exp/resnet1c_cifar100: num-iters=133 nj=1..2 num-params=1.3M dim=96->100 combine=-0.24->-0.20 loglike:train/valid[87,132,final]=(-0.75,-0.27,-0.175/-1.20,-1.00,-0.86) accuracy:train/valid[87,132,final]=(0.78,0.923,0.960/0.67,0.73,0.76)
+# exp/resnet1e_cifar10: num-iters=186 nj=1..2 num-params=3.5M dim=96->10 combine=-0.01->-0.01 loglike:train/valid[123,185,final]=(-0.109,-0.026,-0.0060/-0.21,-0.167,-0.125) accuracy:train/valid[123,185,final]=(0.963,0.9936,0.9994/0.930,0.949,0.958)
+# exp/resnet1e_cifar100/: num-iters=186 nj=1..2 num-params=3.5M dim=96->100 combine=-0.09->-0.07 loglike:train/valid[123,185,final]=(-0.53,-0.109,-0.051/-1.06,-0.93,-0.79) accuracy:train/valid[123,185,final]=(0.844,0.9730,0.9922/0.713,0.760,0.791)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
