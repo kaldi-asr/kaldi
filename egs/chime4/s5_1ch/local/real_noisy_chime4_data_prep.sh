@@ -31,7 +31,7 @@ echo "$0 $@"  # Print the command line for logging
 audio_dir=$1/data/audio/16kHz/isolated
 trans_dir=$1/data/transcriptions
 
-echo "extract 5th channel (CH5.wav, the center bottom edge in the front of the tablet) for noisy data"
+echo "extract all channels (CH[1-6].wav) for noisy data"
 
 dir=`pwd`/data/local/data
 lmdir=`pwd`/data/local/nist_lm
