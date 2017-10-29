@@ -1,26 +1,34 @@
 #!/bin/bash
 
-# 1d is as 1c but introducing two non-splicing layers towards the beginning of
-#   the network.
+# 1e is as 1d but increasing num-jobs-final to 8 for greater speed,
+#   adding l2-regularize options and removing proportional-shrink.
+#
+# It's better than 1d according to our experiments.  The absolute
+# numbers differ from those reported in 1d (these are worse), but the
+# experiments used to create 1d were run in a different directory
+# that was created with older baseline (GMM) scripts, and the
+# training sequence for the GMM baseline was different.  We'll look
+# into that separately.
 
-# local/chain/compare_wer.sh exp/chain/tdnn1c_sp exp/chain/tdnn1d_sp
-# System                tdnn1c_sp tdnn1d_sp
-#WER dev93 (tgpr)                7.31      6.95
-#WER dev93 (tg)                  6.98      6.79
-#WER dev93 (big-dict,tgpr)       5.17      5.20
-#WER dev93 (big-dict,fg)         4.70      4.65
-#WER eval92 (tgpr)               4.96      5.09
-#WER eval92 (tg)                 4.82      4.59
-#WER eval92 (big-dict,tgpr)      2.98      2.82
-#WER eval92 (big-dict,fg)        2.66      2.52
-# Final train prob        -0.0559   -0.0554
-# Final valid prob        -0.0669   -0.0648
-# Final train prob (xent)   -0.9369   -0.9134
-# Final valid prob (xent)   -0.9838   -0.9476
+# local/chain/compare_wer.sh exp/chain/tdnn1d_sp exp/chain/tdnn1e_sp
+# System                tdnn1d_sp tdnn1e_sp
+#WER dev93 (tgpr)                7.61      7.30
+#WER dev93 (tg)                  7.10      6.93
+#WER dev93 (big-dict,tgpr)       5.26      5.16
+#WER dev93 (big-dict,fg)         4.87      4.71
+#WER eval92 (tgpr)               5.17      5.16
+#WER eval92 (tg)                 4.84      4.70
+#WER eval92 (big-dict,tgpr)      3.12      2.99
+#WER eval92 (big-dict,fg)        2.64      2.43
+# Final train prob        -0.0629   -0.0548
+# Final valid prob        -0.0731   -0.0638
+# Final train prob (xent)   -1.0179   -0.9713
+# Final valid prob (xent)   -1.0675   -0.9966
 
-# steps/info/chain_dir_info.pl exp/chain/tdnn1d_sp
-# exp/chain/tdnn1d_sp: num-iters=102 nj=2..5 num-params=8.1M dim=40+100->2854 combine=-0.065->-0.062 xent:train/valid[67,101,final]=(-1.02,-0.904,-0.913/-1.02,-0.940,-0.948) logprob:train/valid[67,101,final]=(-0.069,-0.056,-0.055/-0.073,-0.065,-0.065)
 
+# steps/info/chain_dir_info.pl exp/chain/tdnn1{d,e}_sp
+# exp/chain/tdnn1d_sp: num-iters=135 nj=2..6 num-params=7.6M dim=40+100->2889 combine=-0.071->-0.069 xent:train/valid[89,134,final]=(-1.25,-1.04,-1.02/-1.25,-1.09,-1.07) logprob:train/valid[89,134,final]=(-0.085,-0.066,-0.063/-0.087,-0.076,-0.073)
+# exp/chain/tdnn1e_sp: num-iters=72 nj=2..8 num-params=8.1M dim=40+100->2889 combine=-0.066->-0.064 xent:train/valid[47,71,final]=(-1.06,-0.974,-0.971/-1.07,-0.997,-0.997) logprob:train/valid[47,71,final]=(-0.061,-0.056,-0.055/-0.068,-0.064,-0.064)
 
 set -e -o pipefail
 
@@ -36,7 +44,7 @@ num_threads_ubm=32
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
 # Options which are not passed through to run_ivector_common.sh
-affix=1d  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=1e  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 common_egs_dir=
 reporting_email=
 
@@ -160,6 +168,9 @@ if [ $stage -le 15 ]; then
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  opts="l2-regularize=0.01"
+  output_opts="l2-regularize=0.0025"
+
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -172,18 +183,18 @@ if [ $stage -le 15 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 dim=512
-  relu-batchnorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn3 dim=512
-  relu-batchnorm-layer name=tdnn4 dim=512 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn5 dim=512
-  relu-batchnorm-layer name=tdnn6 dim=512 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn7 dim=512 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn8 dim=512 input=Append(-6,-3,0)
+  relu-batchnorm-layer name=tdnn1 $opts dim=512
+  relu-batchnorm-layer name=tdnn2 $opts dim=512 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn3 $opts dim=512
+  relu-batchnorm-layer name=tdnn4 $opts dim=512 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn5 $opts dim=512
+  relu-batchnorm-layer name=tdnn6 $opts dim=512 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn7 $opts dim=512 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn8 $opts dim=512 input=Append(-6,-3,0)
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain dim=512 target-rms=0.5
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+  relu-batchnorm-layer name=prefinal-chain $opts dim=512 target-rms=0.5
+  output-layer name=output $output_opts include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -194,8 +205,8 @@ if [ $stage -le 15 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn8 dim=512 target-rms=0.5
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  relu-batchnorm-layer name=prefinal-xent $opts input=tdnn8 dim=512 target-rms=0.5
+  output-layer name=output-xent $output_opts dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -221,11 +232,10 @@ if [ $stage -le 16 ]; then
     --trainer.num-epochs=4 \
     --trainer.frames-per-iter=3000000 \
     --trainer.optimization.num-jobs-initial=2 \
-    --trainer.optimization.num-jobs-final=5 \
+    --trainer.optimization.num-jobs-final=8 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
-    --trainer.optimization.proportional-shrink=60.0 \
     --trainer.num-chunk-per-minibatch=256,128,64 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
