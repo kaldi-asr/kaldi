@@ -164,4 +164,10 @@ for n in `seq 1 $[num_sys-1]`; do
   rm $dir/weights.$n.*.ark $dir/weights.$n.*.scp
 done
 
+if $write_words; then
+  for n in `seq $nj`; do
+    cat $dir/words.$n.txt
+  done > $dir/words.txt
+fi
+
 exit 0
