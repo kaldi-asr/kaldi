@@ -67,6 +67,8 @@ int main(int argc, char *argv[]) {
                 "would be lost entirely)");
     po.Register("ilabel-sort", &ilabel_sort,
                 "Ilabel-sort the output FST");
+    po.Register("max_warnings", &options.max_warnings,
+                "Maximum warnings to report, <0 unlimited");
 
     po.Read(argc, argv);
 
