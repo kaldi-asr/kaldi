@@ -31,7 +31,7 @@ pass2_decode_opts=
 filter_ctm=true
 weights_file=
 silence_weight=0.00001
-. cmd.sh
+. ./cmd.sh
 
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;

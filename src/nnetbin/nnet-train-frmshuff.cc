@@ -65,6 +65,10 @@ int main(int argc, char *argv[]) {
     po.Register("objective-function", &objective_function,
         "Objective function : xent|mse|multitask");
 
+    int32 max_frames = 360000;
+    po.Register("max-frames", &max_frames,
+        "Maximum number of frames an utterance can have (skipped if longer)");
+
     int32 length_tolerance = 5;
     po.Register("length-tolerance", &length_tolerance,
         "Allowed length mismatch of features/targets/weights "
@@ -211,6 +215,15 @@ int main(int argc, char *argv[]) {
           KALDI_ASSERT(w >= 0.0);
           if (w == 0.0) continue;  // remove sentence from training,
           weights.Scale(w);
+        }
+
+        // skip too long utterances (or we run out of memory),
+        if (mat.NumRows() > max_frames) {
+          KALDI_WARN << "Utterance too long, skipping! " << utt
+            << " (length " << mat.NumRows() << ", max_frames "
+            << max_frames << ")";
+          num_other_error++;
+          continue;
         }
 
         // correct small length mismatch or drop sentence,

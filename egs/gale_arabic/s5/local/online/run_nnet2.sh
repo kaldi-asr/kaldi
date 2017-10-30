@@ -3,7 +3,7 @@
 # Copyright 2014  Vimal Manohar
 # This is our online neural net build for Gale system
 
-. cmd.sh
+. ./cmd.sh
 
 stage=-1
 train_stage=-10
@@ -12,7 +12,7 @@ mfccdir=mfcc
 train_nj=120
 decode_nj=30
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

@@ -33,11 +33,11 @@ $(LIBFILE): $(OBJFILES)
 ifeq ($(KALDI_FLAVOR), dynamic)
   ifeq ($(shell uname), Darwin)
 	$(CXX) -dynamiclib -o $@ -install_name @rpath/$@ $(LDFLAGS) $(OBJFILES) $(LDLIBS)
-	rm -f $(KALDILIBDIR)/$@; ln -s $(shell pwd)/$@ $(KALDILIBDIR)/$@
+	ln -sf $(shell pwd)/$@ $(KALDILIBDIR)/$@
   else ifeq ($(shell uname), Linux)
         # Building shared library from static (static was compiled with -fPIC)
 	$(CXX) -shared -o $@ -Wl,--no-undefined -Wl,--as-needed  -Wl,-soname=$@,--whole-archive $(LIBNAME).a -Wl,--no-whole-archive $(LDFLAGS) $(LDLIBS)
-	rm -f $(KALDILIBDIR)/$@; ln -s $(shell pwd)/$@ $(KALDILIBDIR)/$@
+	ln -sf $(shell pwd)/$@ $(KALDILIBDIR)/$@
   else  # Platform not supported
 	$(error Dynamic libraries not supported on this platform. Run configure with --static flag.)
   endif
@@ -58,8 +58,8 @@ endif
 
 # Rule below would expand to, e.g.:
 # ../base/kaldi-base.a:
-# 	make -c ../base kaldi-base.a
-# -c option to make is same as changing directory.
+# 	make -C ../base kaldi-base.a
+# -C option to make is same as changing directory.
 %.a:
 	$(MAKE) -C ${@D} ${@F}
 

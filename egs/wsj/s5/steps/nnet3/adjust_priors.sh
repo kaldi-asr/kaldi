@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. path.sh
+. ./path.sh
 
 # This script computes the DNN output averaged over a small subset of
 # training egs and stores it in post.$iter.vec.

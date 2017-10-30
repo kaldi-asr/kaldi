@@ -155,7 +155,8 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
 
   // This will crash if the total context (left + right) is greater
   // than window_size.
-  int32 window_size = 150;
+  int32 window_size = 200;
+
   // by going "<= modulus" instead of "< modulus" we do one more computation
   // than we really need; it becomes a sanity check.
   for (int32 input_start = 0; input_start <= modulus; input_start++)
@@ -653,7 +654,33 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
           num_learning_rates_set++;
         }
       }
-      KALDI_LOG << "Set learning rates for " << num_learning_rates_set << " nodes.";
+      KALDI_LOG << "Set learning rates for " << num_learning_rates_set << " components.";
+    } else if (directive == "set-learning-rate-factor") {
+      std::string name_pattern = "*";
+      // name_pattern defaults to '*' if none is given.
+      config_line.GetValue("name", &name_pattern);
+      BaseFloat learning_rate_factor = -1;
+      if (!config_line.GetValue("learning-rate-factor", &learning_rate_factor)) {
+        KALDI_ERR << "In edits-config, expected learning-rate-factor to be set in line: "
+                  << config_line.WholeLine();
+      }
+      // Note: the learning_rate_factor_  defined in the component
+      // sets to the value you provided, so if you call SetUnderlyingLearningRate(),
+      // the actual learning rate (learning_rate_) is set to the value you provided
+      // times learning_rate.
+      UpdatableComponent *component = NULL;
+      int32 num_learning_rate_factors_set = 0;
+      for (int32 c = 0; c < nnet->NumComponents(); c++) {
+        if (NameMatchesPattern(nnet->GetComponentName(c).c_str(),
+            name_pattern.c_str()) &&
+            (component =
+            dynamic_cast<UpdatableComponent*>(nnet->GetComponent(c)))) {
+          component->SetLearningRateFactor(learning_rate_factor);
+          num_learning_rate_factors_set++;
+        }
+      }
+      KALDI_LOG << "Set learning rate factors for " << num_learning_rate_factors_set
+                << " components.";
     } else if (directive == "rename-node") {
       // this is a shallow renaming of a node, and it requires that the name used is
       // not the name of another node.
@@ -1434,6 +1461,77 @@ bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
   AddNnetComponents(delta_nnet, scale_factors, scale, nnet);
   return true;
 }
+
+int32 GetNumNvalues(const std::vector<NnetIo> &io_vec,
+                   bool exhaustive) {
+  int32 num_n_values = -1;
+  for (size_t i = 0; i < io_vec.size(); i++) {
+    const NnetIo &io = io_vec[i];
+    int32 this_num_n_values;
+    const std::vector<Index> &index_vec = io.indexes;
+    KALDI_ASSERT(!index_vec.empty() &&
+                 "Empty input or output in ComputationRequest?");
+    if (exhaustive) {
+      int32 lowest_n_value = std::numeric_limits<int32>::max(),
+          highest_n_value = std::numeric_limits<int32>::min();
+      std::vector<Index>::const_iterator
+          iter = index_vec.begin(), end = index_vec.end();
+      for (; iter != end; ++iter) {
+        int32 n = iter->n;
+        if (n < lowest_n_value) { lowest_n_value = n; }
+        if (n > highest_n_value) { highest_n_value = n; }
+      }
+      this_num_n_values = highest_n_value + 1 - lowest_n_value;
+    } else {
+      // we assume that the 'n' values range from zero to N-1,
+      // where N is the number of distinct 'n' values.
+      this_num_n_values = index_vec.back().n + 1;
+    }
+    if (num_n_values == -1) {
+      num_n_values = this_num_n_values;
+    } else {
+      if (num_n_values != this_num_n_values) {
+        KALDI_ERR << "Different inputs/outputs of ComputationRequest have "
+            "different numbers of n values: " << num_n_values
+                  << " vs. " << this_num_n_values;
+      }
+    }
+  }
+  if (!exhaustive && RandInt(0, 100) == 0) {
+    int32 num_n_values_check = GetNumNvalues(io_vec, true);
+    if (num_n_values != num_n_values_check) {
+      KALDI_ERR << "Exhaustive and quick checks returned different "
+          "answers: " << num_n_values << " vs. "
+                << num_n_values_check;
+    }
+  }
+  return num_n_values;
+}
+
+void ApplyL2Regularization(const Nnet &nnet,
+                           BaseFloat l2_regularize_scale,
+                           Nnet *delta_nnet) {
+  if (l2_regularize_scale == 0.0)
+    return;
+  for (int32 c = 0; c < nnet.NumComponents(); c++) {
+    const Component *src_component_in = nnet.GetComponent(c);
+    if (src_component_in->Properties() & kUpdatableComponent) {
+      const UpdatableComponent *src_component =
+          dynamic_cast<const UpdatableComponent*>(src_component_in);
+      UpdatableComponent *dest_component =
+          dynamic_cast<UpdatableComponent*>(delta_nnet->GetComponent(c));
+      // The following code will segfault if they aren't both updatable, which
+      // would be a bug in the calling code.
+      BaseFloat lrate = dest_component->LearningRate(),
+          l2_regularize = dest_component->L2Regularization();
+      KALDI_ASSERT(lrate >= 0 && l2_regularize >= 0);
+      BaseFloat scale = -2.0 * l2_regularize_scale * lrate * l2_regularize;
+      if (scale != 0.0)
+        dest_component->Add(scale, *src_component);
+    }
+  }
+}
+
 
 } // namespace nnet3
 } // namespace kaldi

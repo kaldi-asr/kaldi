@@ -47,7 +47,7 @@ if [ "$speed_perturb" == "true" ]; then
   if [ $stage -le 2 ] && [ "$generate_alignments" == "true" ]; then
     #obtain the alignment of the perturbed data
     steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
-      data/$multi/tdnn_sp data/lang_nosp exp/$multi/tri5 exp/$multi/tri5_ali_sp || exit 1
+      data/$multi/tdnn_sp data/lang exp/$multi/tri5 exp/$multi/tri5_ali_sp || exit 1
   fi
   train_set=$multi/tdnn_sp
 fi
@@ -104,7 +104,7 @@ if [ $stage -le 5 ]; then
   steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
     --splice-opts "--left-context=3 --right-context=3" \
     5500 90000 data/$multi/tdnn_100k_hires \
-    data/lang_nosp exp/$multi/tri4_ali exp/$multi/nnet3/tri2b
+    data/lang exp/$multi/tri4_ali exp/$multi/nnet3/tri2b
 fi
 
 if [ $stage -le 6 ]; then

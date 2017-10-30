@@ -5,8 +5,8 @@
 #
 # An incomplete run.sh for this example.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 
 mfccdir=`pwd`/mfcc
