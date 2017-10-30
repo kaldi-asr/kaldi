@@ -8,7 +8,7 @@
 # This script takes no command-line arguments but takes the --cmd option.
 
 # Begin configuration section.
-dir=exp/rnnlm_lstm_d
+dir=exp/rnnlm_lstm_1b
 embedding_dim=800
 lstm_rpd=200
 lstm_nrpd=200

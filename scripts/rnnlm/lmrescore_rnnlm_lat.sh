@@ -11,7 +11,6 @@ cmd=run.pl
 skip_scoring=false
 max_ngram_order=4
 N=10
-inv_acwt=10
 weight=1.0  # Interpolation weight for RNNLM.
 normalize=false
 # End configuration section.
@@ -61,8 +60,6 @@ awk -v n=$0 -v w=$weight 'BEGIN {if (w < 0 || w > 1) {
   || exit 1;
 
 oldlm_command="fstproject --project_output=true $oldlm |"
-
-acwt=$(perl -e "print (1.0/$inv_acwt);")
 
 special_symbol_opts=$(cat $rnnlm_dir/special_symbol_opts.txt)
 

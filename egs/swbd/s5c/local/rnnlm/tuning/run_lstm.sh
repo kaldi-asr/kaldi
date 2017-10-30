@@ -1,1 +1,1 @@
-run_lstm_e.sh
+run_lstm_1c.sh

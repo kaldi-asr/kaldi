@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ngram_order=4
-rnndir=exp/rnnlm_lstm_e
+rnndir=exp/rnnlm_lstm_1c
 
 . ./utils/parse_options.sh
 . ./cmd.sh
@@ -11,7 +11,7 @@ set -e
 
 LM=fsh_sw1_tg
 
-./local/rnnlm/tuning/run_lstm_e.sh
+./local/rnnlm/tuning/run_lstm_1c.sh
 
 for decode_set in eval2000; do
   dir=exp/chain/tdnn_lstm_1e_sp
