@@ -113,7 +113,7 @@ if [ $stage -le 5 ]; then
   output-layer name=output include-log-softmax=true dim=${num_targets}
 EOF
 
-  steps/nnet3/xconfig_to_configs.py \
+  python steps/nnet3/xconfig_to_configs.py \
       --xconfig-file $nnet_dir/configs/network.xconfig \
       --config-dir $nnet_dir/configs/
   cp $nnet_dir/configs/final.config $nnet_dir/nnet.config
@@ -127,7 +127,7 @@ fi
 dropout_schedule='0,0@0.20,0.1@0.50,0'
 srand=123
 if [ $stage -le 6 ]; then
-  steps/nnet3/train_raw_dnn.py --stage=$train_stage \
+  python steps/nnet3/train_raw_dnn.py --stage=$train_stage \
     --cmd="$train_cmd" \
     --trainer.optimization.proportional-shrink 10 \
     --trainer.optimization.momentum=0.5 \
