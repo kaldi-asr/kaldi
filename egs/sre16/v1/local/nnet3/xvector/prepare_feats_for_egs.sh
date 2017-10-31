@@ -13,7 +13,6 @@ norm_vars=false
 center=true
 compress=true
 cmn_window=300
-write_utt2num_frames=false  # if true writes utt2num_frames
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -42,7 +41,7 @@ done
 # Set various variables.
 mkdir -p $dir/log
 mkdir -p $data_out
-featdir=`readlink -f $dir`
+featdir=`utils/make_absolute.sh $dir`
 
 if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
   utils/create_split_dir.pl \
@@ -59,11 +58,7 @@ cp $data_in/utt2spk $data_out/utt2spk
 cp $data_in/spk2utt $data_out/spk2utt
 cp $data_in/wav.scp $data_out/wav.scp
 
-if $write_utt2num_frames; then
-  write_num_frames_opt="--write-num-frames=ark,t:$featdir/log/utt2num_frames.JOB"
-else
-  write_num_frames_opt=
-fi
+write_num_frames_opt="--write-num-frames=ark,t:$featdir/log/utt2num_frames.JOB"
 
 sdata_in=$data_in/split$nj;
 utils/split_data.sh $data_in $nj || exit 1;
@@ -79,11 +74,9 @@ for n in $(seq $nj); do
   cat $featdir/xvector_feats_${name}.$n.scp || exit 1;
 done > ${data_out}/feats.scp || exit 1
 
-if $write_utt2num_frames; then
-  for n in $(seq $nj); do
-    cat $featdir/log/utt2num_frames.$n || exit 1;
-  done > $data_out/utt2num_frames || exit 1
-  rm $featdir/log/utt2num_frames.*
-fi
+for n in $(seq $nj); do
+  cat $featdir/log/utt2num_frames.$n || exit 1;
+done > $data_out/utt2num_frames || exit 1
+rm $featdir/log/utt2num_frames.*
 
 echo "$0: Succeeded creating xvector features for $name"
