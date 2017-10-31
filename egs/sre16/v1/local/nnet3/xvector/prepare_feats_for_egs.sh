@@ -41,7 +41,7 @@ done
 # Set various variables.
 mkdir -p $dir/log
 mkdir -p $data_out
-featdir=`utils/make_absolute.sh $dir`
+featdir=$(utils/make_absolute.sh $dir)
 
 if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
   utils/create_split_dir.pl \
