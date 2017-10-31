@@ -113,7 +113,7 @@ if [ $stage -le 5 ]; then
   output-layer name=output include-log-softmax=true dim=${num_targets}
 EOF
 
-  python steps/nnet3/xconfig_to_configs.py \
+  steps/nnet3/xconfig_to_configs.py \
       --xconfig-file $nnet_dir/configs/network.xconfig \
       --config-dir $nnet_dir/configs/
   cp $nnet_dir/configs/final.config $nnet_dir/nnet.config

@@ -50,7 +50,7 @@ if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
 fi
 
 for n in $(seq $nj); do
-  # the next command does nothing unless $mfccdir/storage/ exists, see
+  # the next command does nothing unless $featdir/storage/ exists, see
   # utils/create_data_link.pl for more info.
   utils/create_data_link.pl $featdir/xvector_feats_${name}.${n}.ark
 done

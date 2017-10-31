@@ -28,7 +28,7 @@ sre16_trials_tgl=data/sre16_eval_test/trials_tgl
 sre16_trials_yue=data/sre16_eval_test/trials_yue
 nnet_dir=exp/xvector_nnet_1a
 
-stage=10
+stage=0
 if [ $stage -le 0 ]; then
   # Path to some, but not all of the training corpora
   data_root=/export/corpora/LDC
