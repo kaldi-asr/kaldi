@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# This script is deprecated, please use ../xconfig_to_configs.py
+
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
 import os
@@ -12,8 +14,8 @@ import imp
 import ast
 
 nodes = imp.load_source('', 'steps/nnet3/components.py')
-nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
-chain_lib = imp.load_source('ncl', 'steps/nnet3/chain/nnet3_chain_lib.py')
+sys.path.insert(0, 'steps')
+import libs.common as common_lib
 
 def GetArgs():
     # we add compulsary arguments as named arguments for readability
@@ -65,16 +67,16 @@ def GetArgs():
                         "If CNN layers are used the first set of splice indexes will be used as input "
                         "to the first CNN layer and later splice indexes will be interpreted as indexes "
                         "for the TDNNs.")
-    parser.add_argument("--add-lda", type=str, action=nnet3_train_lib.StrToBoolAction,
+    parser.add_argument("--add-lda", type=str, action=common_lib.StrToBoolAction,
                         help="If \"true\" an LDA matrix computed from the input features "
                         "(spliced according to the first set of splice-indexes) will be used as "
                         "the first Affine layer. This affine layer's parameters are fixed during training. "
                         "If --cnn.layer is specified this option will be forced to \"false\".",
                         default=True, choices = ["false", "true"])
 
-    parser.add_argument("--include-log-softmax", type=str, action=nnet3_train_lib.StrToBoolAction,
+    parser.add_argument("--include-log-softmax", type=str, action=common_lib.StrToBoolAction,
                         help="add the final softmax layer ", default=True, choices = ["false", "true"])
-    parser.add_argument("--add-final-sigmoid", type=str, action=nnet3_train_lib.StrToBoolAction,
+    parser.add_argument("--add-final-sigmoid", type=str, action=common_lib.StrToBoolAction,
                         help="add a final sigmoid layer as alternate to log-softmax-layer. "
                         "Can only be used if include-log-softmax is false. "
                         "This is useful in cases where you want the output to be "
@@ -89,12 +91,18 @@ def GetArgs():
                         help="For chain models, if nonzero, add a separate output for cross-entropy "
                         "regularization (with learning-rate-factor equal to the inverse of this)",
                         default=0.0)
-    parser.add_argument("--xent-separate-forward-affine", type=str, action=nnet3_train_lib.StrToBoolAction,
+    parser.add_argument("--xent-separate-forward-affine", type=str, action=common_lib.StrToBoolAction,
                         help="if using --xent-regularize, gives it separate last-but-one weight matrix",
                         default=False, choices = ["false", "true"])
     parser.add_argument("--final-layer-normalize-target", type=float,
                         help="RMS target for final layer (set to <1 if final layer learns too fast",
                         default=1.0)
+    parser.add_argument("--max-change-per-component", type=float,
+                        help="Enforces per-component max change (except for the final affine layer). "
+                        "if 0 it would not be enforced.", default=0.75)
+    parser.add_argument("--max-change-per-component-final", type=float,
+                        help="Enforces per-component max change for the final affine layer. "
+                        "if 0 it would not be enforced.", default=1.5)
     parser.add_argument("--subset-dim", type=int, default=0,
                         help="dimension of the subset of units to be sent to the central frame")
     parser.add_argument("--pnorm-input-dim", type=int,
@@ -113,7 +121,7 @@ def GetArgs():
                         help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=None)
 
 
-    parser.add_argument("--use-presoftmax-prior-scale", type=str, action=nnet3_train_lib.StrToBoolAction,
+    parser.add_argument("--use-presoftmax-prior-scale", type=str, action=common_lib.StrToBoolAction,
                         help="if true, a presoftmax-prior-scale is added",
                         choices=['true', 'false'], default = True)
     parser.add_argument("config_dir",
@@ -132,15 +140,15 @@ def CheckArgs(args):
 
     ## Check arguments.
     if args.feat_dir is not None:
-        args.feat_dim = nnet3_train_lib.GetFeatDim(args.feat_dir)
+        args.feat_dim = common_lib.get_feat_dim(args.feat_dir)
 
     if args.ali_dir is not None:
-        args.num_targets = nnet3_train_lib.GetNumberOfLeaves(args.ali_dir)
+        args.num_targets = common_lib.get_number_of_leaves_from_tree(args.ali_dir)
     elif args.tree_dir is not None:
-        args.num_targets = chain_lib.GetNumberOfLeaves(args.tree_dir)
+        args.num_targets = common_lib.get_number_of_leaves_from_tree(args.tree_dir)
 
     if args.ivector_dir is not None:
-        args.ivector_dim = nnet3_train_lib.GetIvectorDim(args.ivector_dir)
+        args.ivector_dim = common_lib.get_ivector_dim(args.ivector_dir)
 
     if not args.feat_dim > 0:
         raise Exception("feat-dim has to be postive")
@@ -204,6 +212,9 @@ def CheckArgs(args):
         args.add_lda = False
         warnings.warn("--add-lda is set to false as CNN layers are used.")
 
+    if not args.max_change_per_component >= 0 or not args.max_change_per_component_final >= 0:
+        raise Exception("max-change-per-component and max_change-per-component-final should be non-negative")
+
     return args
 
 def AddConvMaxpLayer(config_lines, name, input, args):
@@ -230,7 +241,7 @@ def AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, c
     cnn_args = ParseCnnString(cnn_layer)
     num_cnn_layers = len(cnn_args)
     # We use an Idct layer here to convert MFCC to FBANK features
-    nnet3_train_lib.WriteIdctMatrix(feat_dim, cepstral_lifter, config_dir.strip() + "/idct.mat")
+    common_lib.write_idct_matrix(feat_dim, cepstral_lifter, config_dir.strip() + "/idct.mat")
     prev_layer_output = {'descriptor':  "input",
                          'dimension': feat_dim}
     prev_layer_output = nodes.AddFixedAffineLayer(config_lines, "Idct", prev_layer_output, config_dir.strip() + '/idct.mat')
@@ -333,6 +344,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 xent_regularize,
                 xent_separate_forward_affine,
                 self_repair_scale,
+                max_change_per_component, max_change_per_component_final,
                 objective_type):
 
     parsed_splice_output = ParseSpliceString(splice_indexes_string.strip())
@@ -426,13 +438,15 @@ def MakeConfigs(config_dir, splice_indexes_string,
             if nonlin_type == "relu" :
                 prev_layer_output_chain = nodes.AddAffRelNormLayer(config_lines, "Tdnn_pre_final_chain",
                                                                    prev_layer_output, nonlin_output_dim,
+                                                                   norm_target_rms = final_layer_normalize_target,
                                                                    self_repair_scale = self_repair_scale,
-                                                                   norm_target_rms = final_layer_normalize_target)
+                                                                   max_change_per_component = max_change_per_component)
 
                 prev_layer_output_xent = nodes.AddAffRelNormLayer(config_lines, "Tdnn_pre_final_xent",
                                                                   prev_layer_output, nonlin_output_dim,
+                                                                  norm_target_rms = final_layer_normalize_target,
                                                                   self_repair_scale = self_repair_scale,
-                                                                  norm_target_rms = final_layer_normalize_target)
+                                                                  max_change_per_component = max_change_per_component)
             elif nonlin_type == "pnorm" :
                 prev_layer_output_chain = nodes.AddAffPnormLayer(config_lines, "Tdnn_pre_final_chain",
                                                                  prev_layer_output, nonlin_input_dim, nonlin_output_dim,
@@ -445,6 +459,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 raise Exception("Unknown nonlinearity type")
 
             nodes.AddFinalLayer(config_lines, prev_layer_output_chain, num_targets,
+                               max_change_per_component = max_change_per_component_final,
                                use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                prior_scale_file = prior_scale_file,
                                include_log_softmax = include_log_softmax)
@@ -452,6 +467,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
             nodes.AddFinalLayer(config_lines, prev_layer_output_xent, num_targets,
                                 ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
                                     0.5 / xent_regularize),
+                                max_change_per_component = max_change_per_component_final,
                                 use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                 prior_scale_file = prior_scale_file,
                                 include_log_softmax = True,
@@ -460,8 +476,9 @@ def MakeConfigs(config_dir, splice_indexes_string,
             if nonlin_type == "relu":
                 prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
                                                             prev_layer_output, nonlin_output_dims[i],
+                                                            norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target,
                                                             self_repair_scale = self_repair_scale,
-                                                            norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+                                                            max_change_per_component = max_change_per_component)
             elif nonlin_type == "pnorm":
                 prev_layer_output = nodes.AddAffPnormLayer(config_lines, "Tdnn_{0}".format(i),
                                                            prev_layer_output, nonlin_input_dim, nonlin_output_dim,
@@ -478,6 +495,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
             # Usually used with an objective-type such as "quadratic".
             # Applications are k-binary classification such Ideal Ratio Mask prediction.
             nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                               max_change_per_component = max_change_per_component_final,
                                use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                prior_scale_file = prior_scale_file,
                                include_log_softmax = include_log_softmax,
@@ -487,6 +505,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
                                     ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
                                           0.5 / xent_regularize),
+                                    max_change_per_component = max_change_per_component_final,
                                     use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                     prior_scale_file = prior_scale_file,
                                     include_log_softmax = True,
@@ -538,6 +557,8 @@ def Main():
                 xent_regularize = args.xent_regularize,
                 xent_separate_forward_affine = args.xent_separate_forward_affine,
                 self_repair_scale = args.self_repair_scale_nonlinearity,
+                max_change_per_component = args.max_change_per_component,
+                max_change_per_component_final = args.max_change_per_component_final,
                 objective_type = args.objective_type)
 
 if __name__ == "__main__":

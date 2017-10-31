@@ -357,7 +357,7 @@ lattice-determinize program, before storing the lattices on disk for an extended
 Let's assume instead that we're outputting
 the determinized lattice (the second option).  The determinized lattice is supposed to have only one
 path through it for every word sequence that is allowed in the original raw
-lattice.  We can acheive this by creating a CompactLattice, removing epsilons and
+lattice.  We can achieve this by creating a CompactLattice, removing epsilons and
 determinizing, but this would be very inefficient.  Instead, we run a special
 determinization algorithm called \ref fst::DeterminizeLattice()
 "DeterminizeLattice()".  This algorithm does epsilon removal and
@@ -387,7 +387,7 @@ is, it preserves equivalence only when viewing it as an operation on a CompactLa
  After this, we could look at the lattice as follows:
 \verbatim
 gunzip -c exp/decode_tri2a_bg_latgen_eval92/7.lats.gz | \
-  scripts/int2sym.pl --field 3 data/words.txt | head
+  utils/int2sym.pl -f 3 data/words.txt | head
 444c0410
 0 1 <s> 5.27832,0,
 1 2 <UNK> 8.08116,1099.84,
@@ -477,7 +477,7 @@ programs.
 Note that there are other ways to do this; see
 the documentation for lattice-compose below.
 What the program \ref lattice-lmrescore.cc "lattice-lmrescore" does is this...
-actually, we will first first escribe the simple version that is not exactly what
+actually, we will first first describe the simple version that is not exactly what
 happens.  Suppose that we are given an LM-scale S and a LM G.fst.
 We first multiply all the costs in G.fst by S.  Then for each lattice,
 we compose it on the right with G, lattice-determinize it (to keep only the
@@ -827,7 +827,7 @@ utt-A-2 7890  420 10244
 ...
 \endverbatim
 Remember that Kaldi always deals with integer id's; you can convert to words
-using the symbol table and scripts/int2sym.pl.  The reverse transformation
+using the symbol table and "utils/int2sym.pl -f 2-".  The reverse transformation
 can be accomplished with linear-to-nbest.
 
  A program that might also be useful is lattice-to-1best, which is not the same

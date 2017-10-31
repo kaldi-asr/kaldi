@@ -3,7 +3,7 @@
 # Creates OpenFST lattices from Kaldi lattices
 # This script needs to be run from one level above this directory
 
-. path.sh
+. ./path.sh
 
 if [ $# -lt 3 ]; then
   echo "Enter the latdir (where the lattices will be put), the decode dir containing lattices and the acoustic scale"

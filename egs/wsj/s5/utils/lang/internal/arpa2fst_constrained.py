@@ -20,7 +20,7 @@ the bigram level.
 This is useful for phone-level language models in order to keep
 graphs small and impose things like linguistic constraints on
 allowable phone sequences.
-This script writes it output to the stdout.  It is a text-form FST,
+This script writes its output to the stdout.  It is a text-form FST,
 suitable for compilation by fstcompile.
 """)
 
@@ -317,8 +317,11 @@ class ArpaModel:
                     print("{0}: very low backoff cost {1} for history {2}, state = {3}".format(
                         sys.argv[0], cost, str(hist), state), file = sys.stderr)
 
+                # For hist-states that completely back off (they have no words coming out of them),
+                # there is no need to disambiguate, we can print an epsilon that will later be removed.
+                this_disambig_symbol = disambig_symbol if len(hist_state.word_to_prob) != 0 else '<eps>'
                 print("%d %d %s <eps> %.3f" %
-                      (state, backoff_state, disambig_symbol, cost))
+                      (state, backoff_state, this_disambig_symbol, cost))
         if args.verbose >= 1:
             for hist_len in range(1, len(self.orders)):
                 num_states = normalization_stats[hist_len][0]

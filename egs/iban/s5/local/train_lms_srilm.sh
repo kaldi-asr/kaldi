@@ -206,9 +206,9 @@ echo "--------------------"
 echo "Computing perplexity"
 echo "--------------------"
 (
-  for f in $tgtdir/2gram* ; do ( echo $f; ngram -order 2 -lm $f -unk -map-unk "$oov_symbol" -ppl $tgtdir/dev.txt ) | paste -s -d ' ' ; done
-  for f in $tgtdir/3gram* ; do ( echo $f; ngram -order 3 -lm $f -unk -map-unk "$oov_symbol" -ppl $tgtdir/dev.txt ) | paste -s -d ' ' ; done
-  for f in $tgtdir/4gram* ; do ( echo $f; ngram -order 4 -lm $f -unk -map-unk "$oov_symbol" -ppl $tgtdir/dev.txt ) | paste -s -d ' ' ; done
+  for f in $tgtdir/2gram* ; do ( echo $f; ngram -order 2 -lm $f -unk -map-unk "$oov_symbol" -ppl $tgtdir/dev.txt ) | paste -s -d ' ' - ; done
+  for f in $tgtdir/3gram* ; do ( echo $f; ngram -order 3 -lm $f -unk -map-unk "$oov_symbol" -ppl $tgtdir/dev.txt ) | paste -s -d ' ' - ; done
+  for f in $tgtdir/4gram* ; do ( echo $f; ngram -order 4 -lm $f -unk -map-unk "$oov_symbol" -ppl $tgtdir/dev.txt ) | paste -s -d ' ' - ; done
 )  | sort  -r -n -k 15,15g | column -t | tee $tgtdir/perplexities.txt
 
 echo "The perlexity scores report is stored in $tgtdir/perplexities.txt "

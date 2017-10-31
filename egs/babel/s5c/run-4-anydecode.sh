@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 set -e
 set -o pipefail
 
@@ -13,7 +13,6 @@ fast_path=true
 skip_kws=false
 skip_stt=false
 skip_scoring=false
-max_states=150000
 extra_kws=true
 vocab_kws=false
 tri5_only=false
@@ -32,7 +31,7 @@ fi
 #set of scripts will exit when sourcing several of them together
 #Otherwise, the CTRL-C just terminates the deepest sourced script ?
 # Let shell functions inherit ERR trap.  Same as `set -E'.
-set -o errtrace 
+set -o errtrace
 trap "echo Exited!; exit;" SIGINT SIGTERM
 
 # Set proxy search parameters for the extended lexicon case.
@@ -82,8 +81,8 @@ if [ -z $my_data_dir ] || [ -z $my_data_list ] ; then
 fi
 
 eval my_stm_file=\$${dataset_type}_stm_file
-eval my_ecf_file=\$${dataset_type}_ecf_file 
-eval my_kwlist_file=\$${dataset_type}_kwlist_file 
+eval my_ecf_file=\$${dataset_type}_ecf_file
+eval my_kwlist_file=\$${dataset_type}_kwlist_file
 eval my_rttm_file=\$${dataset_type}_rttm_file
 eval my_nj=\$${dataset_type}_nj  #for shadow, this will be re-set when appropriate
 
@@ -167,7 +166,7 @@ if [ ! -f data/raw_${dataset_type}_data/.done ]; then
   local/make_corpus_subset.sh $resource_string ./data/raw_${dataset_type}_data
   touch data/raw_${dataset_type}_data/.done
 fi
-my_data_dir=`readlink -f ./data/raw_${dataset_type}_data`
+my_data_dir=`utils/make_absolute.sh ./data/raw_${dataset_type}_data`
 [ -f $my_data_dir/filelist.list ] && my_data_list=$my_data_dir/filelist.list
 nj_max=`cat $my_data_list | wc -l` || nj_max=`ls $my_data_dir/audio | wc -l`
 
@@ -200,12 +199,12 @@ if [ ! -f  $dataset_dir/.done ] ; then
     fi
   elif [ "$dataset_kind" == "unsupervised" ] ; then
     if [ "$dataset_segments" == "seg" ] ; then
-      . ./local/datasets/unsupervised_seg.sh 
+      . ./local/datasets/unsupervised_seg.sh
     elif [ "$dataset_segments" == "uem" ] ; then
       . ./local/datasets/unsupervised_uem.sh
     elif [ "$dataset_segments" == "pem" ] ; then
       ##This combination does not really makes sense,
-      ##Because the PEM is that we get the segmentation 
+      ##Because the PEM is that we get the segmentation
       ##and because of the format of the segment files
       ##the transcript as well
       echo "ERROR: $dataset_segments combined with $dataset_type"
@@ -230,7 +229,7 @@ if [ ! -f  $dataset_dir/.done ] ; then
     make_plp ${dataset_dir} exp/make_plp/${dataset_id} plp
     touch ${dataset_dir}/.plp.done
   fi
-  touch $dataset_dir/.done 
+  touch $dataset_dir/.done
 fi
 #####################################################################
 #
@@ -240,12 +239,15 @@ fi
 echo ---------------------------------------------------------------------
 echo "Preparing kws data files in ${dataset_dir} on" `date`
 echo ---------------------------------------------------------------------
+lang=data/lang
+set -x
 if ! $skip_kws ; then
   . ./local/datasets/basic_kws.sh || exit 1
-  if  $extra_kws ; then 
+  if  $extra_kws ; then
+    L1_lex=data/local/lexiconp.txt
     . ./local/datasets/extra_kws.sh || exit 1
   fi
-  if  $vocab_kws ; then 
+  if  $vocab_kws ; then
     . ./local/datasets/vocab_kws.sh || exit 1
   fi
 fi
@@ -257,7 +259,7 @@ fi
 
 ####################################################################
 ##
-## FMLLR decoding 
+## FMLLR decoding
 ##
 ####################################################################
 decode=exp/tri5/decode_${dataset_id}
@@ -297,7 +299,7 @@ if $tri5_only; then
 fi
 
 ####################################################################
-## SGMM2 decoding 
+## SGMM2 decoding
 ## We Include the SGMM_MMI inside this, as we might only have the DNN systems
 ## trained and not PLP system. The DNN systems build only on the top of tri5 stage
 ####################################################################
@@ -493,5 +495,5 @@ for dnn in tri6_nnet_semi_supervised tri6_nnet_semi_supervised2 \
       ${dataset_dir} data/lang $decode
   fi
 done
-echo "Everything looking good...." 
+echo "Everything looking good...."
 exit 0

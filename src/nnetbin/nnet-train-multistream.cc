@@ -352,7 +352,14 @@ int main(int argc, char *argv[]) {
       nnet.SetSeqLengths(frame_num_utt);
       // Show the 'utt' lengths in the VLOG[2],
       if (GetVerboseLevel() >= 2) {
-        KALDI_LOG << "frame_num_utt[" << frame_num_utt.size() << "]" << frame_num_utt;
+        std::ostringstream os;
+        os << "[ ";
+        for (size_t i = 0; i < frame_num_utt.size(); i++) {
+          os << frame_num_utt[i] << " ";
+        }
+        os << "]";
+
+        KALDI_LOG << "frame_num_utt[" << frame_num_utt.size() << "]" << os.str();
       }
 
       // with new utterance we reset the history,

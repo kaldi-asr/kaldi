@@ -15,8 +15,8 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e  # exit on error
 
 stage=0
@@ -83,7 +83,7 @@ fi
 # train monophone system 
 if [ $stage -le 4 ]; then
     steps/train_mono.sh --nj $nj --cmd "$train_cmd" data/train data/lang exp/mono
-    utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
+    utils/mkgraph.sh data/lang exp/mono exp/mono/graph
     steps/decode.sh --config conf/decode.config --nj $nj --cmd "$decode_cmd" \
         exp/mono/graph data/test exp/mono/decode
 fi

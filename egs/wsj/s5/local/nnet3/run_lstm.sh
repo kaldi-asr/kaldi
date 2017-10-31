@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# This script is deprecated, see run_tdnn_lstm.sh
+
 # this is a basic lstm script
 # LSTM script runs for more epochs than the TDNN script
 # and each epoch takes twice the time
@@ -125,4 +127,3 @@ if [ $stage -le 9 ]; then
 fi
 
 exit 0;
-

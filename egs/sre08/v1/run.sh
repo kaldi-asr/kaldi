@@ -9,8 +9,8 @@
 # This example script is still a bit of a mess, and needs to be
 # cleaned up, but it shows you all the basic ingredients.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
@@ -110,12 +110,12 @@ sid/train_full_ubm.sh --nj 30 --remove-low-count-gaussians false \
 wait
 
 # Train the iVector extractor for male speakers.
-sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=35G,ram_free=35G" \
+sid/train_ivector_extractor.sh --cmd "$train_cmd --mem 35G" \
   --num-iters 5 exp/full_ubm_2048_male/final.ubm data/train_male \
   exp/extractor_2048_male
 
 # The same for female speakers.
-sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=35G,ram_free=35G" \
+sid/train_ivector_extractor.sh --cmd "$train_cmd --mem 35G" \
   --num-iters 5 exp/full_ubm_2048_female/final.ubm data/train_female \
   exp/extractor_2048_female
 
@@ -129,25 +129,25 @@ sid/gender_id.sh --cmd "$train_cmd" --nj 150 exp/full_ubm_2048{,_male,_female} \
 # Gender-id error rate is 3.41%
 
 # Extract the iVectors for the training data.
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 50 \
   exp/extractor_2048_male data/train_male exp/ivectors_train_male
 
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 50 \
   exp/extractor_2048_female data/train_female exp/ivectors_train_female
 
 # .. and for the SRE08 training and test data. (We focus on the main
 # evaluation condition, the only required one in that eval, which is
 # the short2-short3 eval.)
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 50 \
   exp/extractor_2048_female data/sre08_train_short2_female \
   exp/ivectors_sre08_train_short2_female
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 50 \
   exp/extractor_2048_male data/sre08_train_short2_male \
   exp/ivectors_sre08_train_short2_male
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 50 \
   exp/extractor_2048_female data/sre08_test_short3_female \
   exp/ivectors_sre08_test_short3_female
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 50 \
   exp/extractor_2048_male data/sre08_test_short3_male \
   exp/ivectors_sre08_test_short3_male
 

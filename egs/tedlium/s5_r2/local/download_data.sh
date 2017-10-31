@@ -34,18 +34,5 @@ if [ "$num_sph" != 1514 ]; then
   exit 1
 fi
 
-# Language models (Cantab Research):
-if [ ! -e cantab-TEDLIUM ]; then
-  echo "$0: Downloading \"http://www.openslr.org/resources/27/cantab-TEDLIUM-partial.tar.bz2\". "
-  wget --no-verbose --output-document=- http://www.openslr.org/resources/27/cantab-TEDLIUM-partial.tar.bz2 | bzcat | tar --extract --file=- || exit 1
-else
-  echo "$0: directory cantab-TEDLIUM already exists, not re-downloading."
-fi
-
-if [ ! -s cantab-TEDLIUM/cantab-TEDLIUM.dct ]; then
-  echo "$0: expected file db/cantab-TEDLIUM/cantab-TEDLIUM.dct to exist and be nonempty."
-  exit 1
-fi
-
 exit 0
 

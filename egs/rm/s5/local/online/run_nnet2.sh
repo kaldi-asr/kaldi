@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=1
@@ -9,19 +9,19 @@ use_gpu=true
 dir=exp/nnet2_online/nnet_a
 
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="-l gpu=1" 
+  parallel_opts="--gpu 1"
   num_threads=1
   minibatch_size=512
 else
@@ -29,7 +29,7 @@ else
   # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
-  parallel_opts="-pe smp $num_threads" 
+  parallel_opts="--num-threads $num_threads"
 fi
 
 
@@ -119,7 +119,7 @@ exit 0;
 %WER 2.20 [ 276 / 12533, 37 ins, 61 del, 178 sub ] exp/nnet2_online/nnet_a/decode/wer_5
 %WER 10.22 [ 1281 / 12533, 143 ins, 193 del, 945 sub ] exp/nnet2_online/nnet_a/decode_ug/wer_10
 
-# This is the baseline with spliced non-CMVN cepstra and no iVector input. 
+# This is the baseline with spliced non-CMVN cepstra and no iVector input.
 # The difference is pretty small on RM; I expect it to be more clear-cut on larger corpora.
 %WER 2.30 [ 288 / 12533, 35 ins, 57 del, 196 sub ] exp/nnet2_online/nnet_gpu_baseline/decode/wer_5
 %WER 10.98 [ 1376 / 12533, 121 ins, 227 del, 1028 sub ] exp/nnet2_online/nnet_gpu_baseline/decode_ug/wer_10

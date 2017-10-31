@@ -40,7 +40,7 @@ if [ "$speed_perturb" == "true" ]; then
   if [ $stage -le 2 ] && [ "$generate_alignments" == "true" ]; then
     #obtain the alignment of the perturbed data
     steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
-      data/train_nodup_sp data/lang_nosp exp/tri5a exp/tri5a_ali_nodup_sp || exit 1
+      data/train_nodup_sp data/lang exp/tri5a exp/tri5a_ali_nodup_sp || exit 1
   fi
   train_set=train_nodup_sp
 fi
@@ -92,7 +92,7 @@ for line in sys.stdin.readlines():
   # Take the first 30k utterances (about 1/8th of the data) this will be used
   # for the diagubm training
   utils/subset_data_dir.sh --first data/${train_set}_hires 30000 data/${train_set}_30k_hires
-  local/remove_dup_utts.sh 200 data/${train_set}_30k_hires data/${train_set}_30k_nodup_hires  # 33hr
+  utils/data/remove_dup_utts.sh 200 data/${train_set}_30k_hires data/${train_set}_30k_nodup_hires  # 33hr
 fi
 
 # ivector extractor training
@@ -104,7 +104,7 @@ if [ $stage -le 5 ]; then
   steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
     --splice-opts "--left-context=3 --right-context=3" \
     5500 90000 data/train_100k_nodup_hires \
-    data/lang_nosp exp/tri1b_ali exp/nnet3/tri2b
+    data/lang exp/tri1b_ali exp/nnet3/tri2b
 fi
 
 if [ $stage -le 6 ]; then

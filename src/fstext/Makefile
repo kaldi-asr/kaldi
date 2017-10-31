@@ -24,7 +24,7 @@ LIBNAME = kaldi-fstext
 
 # tree and matrix archives needed for test-context-fst
 # matrix archive needed for push-special.
-ADDLIBS = ../tree/kaldi-tree.a ../util/kaldi-util.a ../thread/kaldi-thread.a \
+ADDLIBS = ../tree/kaldi-tree.a ../util/kaldi-util.a \
           ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk

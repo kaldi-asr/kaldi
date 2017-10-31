@@ -50,7 +50,7 @@ set -e
 # %WER 18.1 | 8420 76157 | 84.0 10.7 5.3 2.1 18.1 49.4 | exp/chain/tdnn_7b_sp_smbr/decode_rt03_sw1_fsh_fg_epoch3/score_11_1.0/rt03_hires.ctm.filt.sys
 # %WER 18.2 | 8420 76157 | 83.8 10.5 5.7 2.1 18.2 49.6 | exp/chain/tdnn_7b_sp_smbr/decode_rt03_sw1_fsh_fg_epoch4/score_12_1.0/rt03_hires.ctm.filt.sys
 
-. cmd.sh
+. ./cmd.sh
 
 stage=0
 train_stage=-10 # can be used to start training in the middle.
@@ -59,7 +59,7 @@ use_gpu=true  # for training
 cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large things like denlats,
                # alignments and degs).
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -78,14 +78,13 @@ dir=${srcdir}_${criterion}
 ## Egs options
 frames_per_eg=150
 frames_overlap_per_eg=30
-truncate_deriv_weights=10
 
 ## Nnet training options
 effective_learning_rate=0.000000125
 max_param_change=1
 num_jobs_nnet=4
 num_epochs=4
-regularization_opts="--xent-regularize=0.1 --l2-regularize=0.00005"          # Applicable for providing --xent-regularize and --l2-regularize options 
+regularization_opts="--xent-regularize=0.1 --l2-regularize=0.00005"          # Applicable for providing --xent-regularize and --l2-regularize options
 minibatch_size=64
 
 ## Decode options
@@ -93,8 +92,8 @@ decode_start_epoch=1 # can be used to avoid decoding all epochs, e.g. if we deci
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
@@ -129,7 +128,7 @@ if [ $frame_subsampling_factor -ne 1 ]; then
     rm ${online_ivector_dir}_fs/ivector_online.scp 2>/dev/null || true
 
     data_dirs=
-    for x in `seq -$[frame_subsampling_factor/2] $[frame_subsampling_factor/2]`; do 
+    for x in `seq -$[frame_subsampling_factor/2] $[frame_subsampling_factor/2]`; do
       steps/shift_feats.sh --cmd "$train_cmd --max-jobs-run 40" --nj 350 \
         $x $train_data_dir exp/shift_hires/ mfcc_hires
       utils/fix_data_dir.sh ${train_data_dir}_fs$x
@@ -137,7 +136,7 @@ if [ $frame_subsampling_factor -ne 1 ]; then
       awk -v nfs=$x '{print "fs"nfs"-"$0}' $online_ivector_dir/ivector_online.scp >> ${online_ivector_dir}_fs/ivector_online.scp
     done
     utils/combine_data.sh ${train_data_dir}_fs $data_dirs
-    for x in `seq -$[frame_subsampling_factor/2] $[frame_subsampling_factor/2]`; do 
+    for x in `seq -$[frame_subsampling_factor/2] $[frame_subsampling_factor/2]`; do
       rm -r ${train_data_dir}_fs$x
     done
   fi
@@ -146,9 +145,9 @@ if [ $frame_subsampling_factor -ne 1 ]; then
 
   affix=_fs
 fi
-    
+
 rm ${online_ivector_dir}_fs/ivector_online.scp 2>/dev/null || true
-for x in `seq -$[frame_subsampling_factor/2] $[frame_subsampling_factor/2]`; do 
+for x in `seq -$[frame_subsampling_factor/2] $[frame_subsampling_factor/2]`; do
   awk -v nfs=$x '{print "fs"nfs"-"$0}' $online_ivector_dir/ivector_online.scp >> ${online_ivector_dir}_fs/ivector_online.scp
 done
 online_ivector_dir=${online_ivector_dir}_fs
@@ -167,7 +166,7 @@ fi
 if [ -z "$lats_dir" ]; then
   lats_dir=${srcdir}_denlats${affix}
   if [ $stage -le 2 ]; then
-    nj=50  
+    nj=50
     # this doesn't really affect anything strongly, except the num-jobs for one of
     # the phases of get_egs_discriminative.sh below.
     num_threads_denlats=6
@@ -181,16 +180,13 @@ if [ -z "$lats_dir" ]; then
   fi
 fi
 
-model_left_context=`nnet3-am-info $srcdir/final.mdl | grep "left-context:" | awk '{print $2}'` 
-model_right_context=`nnet3-am-info $srcdir/final.mdl | grep "right-context:" | awk '{print $2}'` 
+model_left_context=`nnet3-am-info $srcdir/final.mdl | grep "left-context:" | awk '{print $2}'`
+model_right_context=`nnet3-am-info $srcdir/final.mdl | grep "right-context:" | awk '{print $2}'`
 
 left_context=$[model_left_context + extra_left_context]
 right_context=$[model_right_context + extra_right_context]
 
-valid_left_context=$[valid_left_context + frames_per_eg]
-valid_right_context=$[valid_right_context + frames_per_eg]
-
-cmvn_opts=`cat $srcdir/cmvn_opts` 
+cmvn_opts=`cat $srcdir/cmvn_opts`
 
 if [ -z "$degs_dir" ]; then
   degs_dir=${srcdir}_degs${affix}
@@ -203,16 +199,13 @@ if [ -z "$degs_dir" ]; then
     # have a higher maximum num-jobs if
     if [ -d ${srcdir}_degs/storage ]; then max_jobs=10; else max_jobs=5; fi
 
-    degs_opts="--determinize true --minimize true --remove-output-symbols true --remove-epsilons true --collapse-transition-ids true"
-
     steps/nnet3/get_egs_discriminative.sh \
       --cmd "$decode_cmd --max-jobs-run $max_jobs --mem 20G" --stage $get_egs_stage --cmvn-opts "$cmvn_opts" \
       --adjust-priors false --acwt 1.0 \
       --online-ivector-dir $online_ivector_dir \
       --left-context $left_context --right-context $right_context \
-      --valid-left-context $valid_left_context --valid-right-context $valid_right_context \
-      --priors-left-context $valid_left_context --priors-right-context $valid_right_context $frame_subsampling_opt \
-      --frames-per-eg $frames_per_eg --frames-overlap-per-eg $frames_overlap_per_eg ${degs_opts} \
+      $frame_subsampling_opt \
+      --frames-per-eg $frames_per_eg --frames-overlap-per-eg $frames_overlap_per_eg \
       $train_data_dir $lang ${srcdir}_ali${affix} $lats_dir $srcdir/final.mdl $degs_dir ;
   fi
 fi
@@ -225,8 +218,6 @@ if [ $stage -le 4 ]; then
     --num-epochs $num_epochs --one-silence-class $one_silence_class --minibatch-size $minibatch_size \
     --num-jobs-nnet $num_jobs_nnet --num-threads $num_threads \
     --regularization-opts "$regularization_opts" --use-frame-shift false \
-    --truncate-deriv-weights $truncate_deriv_weights --adjust-priors false \
-    --modify-learning-rates false \
       ${degs_dir} $dir ;
 fi
 
@@ -236,8 +227,8 @@ if [ $stage -le 5 ]; then
     for decode_set in train_dev eval2000 rt03; do
       (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      iter=epoch$x.adj
-      
+      iter=epoch$x_adj
+
       steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
@@ -262,4 +253,3 @@ fi
 
 
 exit 0;
-

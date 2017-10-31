@@ -1,0 +1,21 @@
+#Created on 2016-02-18T11:46:09-0500
+#
+# STT Task performance (WER) 
+%WER 56.6 | 21530 83682 | 47.1 35.9 16.9 3.8 56.6 33.1 | -0.984 | exp/tri5/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+%WER 49.5 | 21530 83682 | 54.3 31.2 14.5 3.8 49.5 32.1 | -0.672 | exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_10/dev10h.pem.ctm.sys
+%WER 49.2 | 21530 83682 | 54.2 30.8 15.0 3.4 49.2 32.0 | -0.537 | exp/tri6b_nnet/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
+%WER 49.1 | 21530 83682 | 54.3 30.2 15.5 3.4 49.1 31.9 | -0.636 | exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_15/dev10h.pem.ctm.sys
+#
+# STT Task performance (WER), evaluated on 2016-02-18T11:51:42-0500
+%WER 56.6 | 21530 83682 | 47.1 35.9 16.9 3.8 56.6 33.1 | -0.984 | exp/tri5/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+%WER 49.5 | 21530 83682 | 54.3 31.2 14.5 3.8 49.5 32.1 | -0.672 | exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_10/dev10h.pem.ctm.sys
+%WER 49.2 | 21530 83682 | 54.2 30.8 15.0 3.4 49.2 32.0 | -0.537 | exp/tri6b_nnet/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
+%WER 46.2 | 21530 83682 | 56.4 27.0 16.6 2.6 46.2 31.4 | -0.484 | exp/tri6_nnet_mpe/decode_dev10h.pem_epoch4/score_10/dev10h.pem.ctm.sys
+%WER 49.1 | 21530 83682 | 54.3 30.2 15.5 3.4 49.1 31.9 | -0.636 | exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_15/dev10h.pem.ctm.sys
+#
+# STT Task performance (WER), evaluated on 2016-02-19T14:37:00-0500
+%WER 49.5 | 21530 83682 | 54.3 31.2 14.5 3.8 49.5 32.1 | -0.672 | exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_10/dev10h.pem.ctm.sys
+%WER 56.6 | 21530 83682 | 47.1 35.9 16.9 3.8 56.6 33.1 | -0.984 | exp/tri5/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+%WER 49.2 | 21530 83682 | 53.7 30.2 16.1 2.9 49.2 31.9 | -0.465 | exp/tri6b_nnet/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+%WER 46.2 | 21530 83682 | 56.4 27.0 16.6 2.6 46.2 31.4 | -0.484 | exp/tri6_nnet_mpe/decode_dev10h.pem_epoch4/score_10/dev10h.pem.ctm.sys
+%WER 49.1 | 21530 83682 | 54.3 30.2 15.5 3.4 49.1 31.9 | -0.636 | exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_15/dev10h.pem.ctm.sys

@@ -50,9 +50,9 @@ bool DeterminizeLatticeWrapper(const Lattice &lat,
       KALDI_WARN << "Detected empty lattice, skipping " << key;
       return false;
     }
-    
-    // The work gets done in the next line.  
-    if (DeterminizeLattice(lat, clat, lat_opts, NULL)) { 
+
+    // The work gets done in the next line.
+    if (DeterminizeLattice(lat, clat, lat_opts, NULL)) {
       if (prune) PruneLattice(cur_beam, clat);
       return true;
     } else { // failed to determinize..
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: lattice-determinize [options] lattice-rspecifier lattice-wspecifier\n"
         " e.g.: lattice-determinize --acoustic-scale=0.1 --beam=15.0 ark:1.lats ark:det.lats\n";
-      
+
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
     BaseFloat beam = 10.0;
@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
     BaseFloat delta = fst::kDelta;
     bool prune = false;
     bool minimize = false;
-    
+
     po.Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods");
     po.Register("beam", &beam,
@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
                 "decrease beam by beam-ratio if determinization fails.");
     po.Register("minimize", &minimize,
                 "If true, push and minimize after determinization");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -150,11 +150,15 @@ int main(int argc, char *argv[]) {
     // Read as regular lattice-- this is the form we need it in for efficient
     // pruning.
     SequentialLatticeReader lattice_reader(lats_rspecifier);
-    
+
     // Write as compact lattice.
-    CompactLatticeWriter compact_lattice_writer(lats_wspecifier); 
+    CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
 
     int32 n_done = 0, n_error = 0;
+
+    // depth stats (for diagnostics).
+    double sum_depth_in = 0.0,
+          sum_depth_out = 0.0, sum_t = 0.0;
 
     if (acoustic_scale == 0.0)
       KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
@@ -164,7 +168,7 @@ int main(int argc, char *argv[]) {
       std::string key = lattice_reader.Key();
       Lattice lat = lattice_reader.Value();
       Invert(&lat); // make it so word labels are on the input.
-      
+
       lattice_reader.FreeCurrent();
       fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
 
@@ -177,6 +181,14 @@ int main(int argc, char *argv[]) {
           PushCompactLatticeWeights(&clat);
           MinimizeCompactLattice(&clat);
         }
+
+        int32 t;
+        TopSortCompactLatticeIfNeeded(&clat);
+        double depth = CompactLatticeDepth(clat, &t);
+        sum_depth_in += lat.NumStates();
+        sum_depth_out += depth * t;
+        sum_t += t;
+
         fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &clat);
         compact_lattice_writer.Write(key, clat);
         n_done++;
@@ -185,6 +197,12 @@ int main(int argc, char *argv[]) {
       }
     }
 
+    if (sum_t != 0.0) {
+      KALDI_LOG << "Average input-lattice depth (measured at at state level) is "
+                << (sum_depth_in / sum_t) << ", output depth is "
+                << (sum_depth_out / sum_t) << ", over " << sum_t << " frames "
+                << " (average num-frames = " << (sum_t / n_done) << ").";
+    }
     KALDI_LOG << "Done " << n_done << " lattices, errors on " << n_error;
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {

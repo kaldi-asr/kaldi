@@ -10,8 +10,8 @@
 # 'Universal Context' topology as invented by Frantisek Grezl,
 # the network is on top of FBANK+f0 features.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 
 # Config:
 stage=0 # resume training with --stage=N

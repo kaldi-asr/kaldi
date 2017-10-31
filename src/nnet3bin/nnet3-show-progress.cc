@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
       exit(0);
     }
 
-    if (!examples_rspecifier.empty()) {
+    if (!examples_rspecifier.empty() && IsSimpleNnet(nnet1)) {
       std::vector<NnetExample> examples;
       SequentialNnetExampleReader example_reader(examples_rspecifier);
       for (; !example_reader.Done(); example_reader.Next())
@@ -109,6 +109,8 @@ int main(int argc, char *argv[]) {
           prob_computer.Compute(*eg_iter);
         const SimpleObjectiveInfo *objf_info = prob_computer.GetObjective("output");
         double objf_per_frame = objf_info->tot_objective / objf_info->tot_weight;
+
+        prob_computer.PrintTotalStats();
         const Nnet &nnet_gradient = prob_computer.GetDeriv();
         KALDI_LOG << "At position " << middle
                   << ", objf per frame is " << objf_per_frame;
@@ -140,6 +142,10 @@ int main(int argc, char *argv[]) {
       Vector<BaseFloat> baseline_prod(num_updatable);
       ComponentDotProducts(nnet1, nnet1, &baseline_prod);
       baseline_prod.ApplyPow(0.5);
+
+      KALDI_LOG << "Norms of parameter matrices are "
+                << PrintVectorPerUpdatableComponent(nnet1, baseline_prod);
+
       dot_prod.DivElements(baseline_prod);
       KALDI_LOG << "Relative parameter differences per layer are "
                 << PrintVectorPerUpdatableComponent(nnet1, dot_prod);
@@ -153,5 +159,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

@@ -29,7 +29,7 @@ chunk_width=150
 chunk_left_context=40
 chunk_right_context=0
 xent_regularize=0.025
-
+self_repair_scale=0.00001
 # decode options
 extra_left_context=
 extra_right_context=
@@ -42,7 +42,7 @@ affix=
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -108,7 +108,7 @@ if [ $stage -le 11 ]; then
       --leftmost-questions-truncate $leftmost_questions_truncate \
       --cmd "$train_cmd" 9000 data/$train_set $lang $ali_dir $treedir
 fi
-
+repair_opts=${self_repair_scale:+" --self-repair-scale-nonlinearity $self_repair_scale "}
 if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs";
 
@@ -120,6 +120,7 @@ if [ $stage -le 12 ]; then
   [ ! -z "$lstm_delay" ] && config_extra_opts+=(--lstm-delay "$lstm_delay")
 
   steps/nnet3/lstm/make_configs.py  "${config_extra_opts[@]}" \
+    $repair_opts \
     --feat-dir data/${train_set}_hires \
     --ivector-dir exp/nnet3/ivectors_${train_set} \
     --tree-dir $treedir \
@@ -132,7 +133,6 @@ if [ $stage -le 12 ]; then
     --recurrent-projection-dim $recurrent_projection_dim \
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --label-delay $label_delay \
-    --self-repair-scale 0.00001 \
    $dir/configs || exit 1;
 
 fi
@@ -155,7 +155,6 @@ if [ $stage -le 13 ]; then
     --chain.xent-regularize $xent_regularize \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
-    --chain.left-deriv-truncate 0 \
     --trainer.num-chunk-per-minibatch 64 \
     --trainer.max-param-change 2.0 \
     --trainer.num-epochs 4 \
@@ -165,6 +164,7 @@ if [ $stage -le 13 ]; then
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.momentum 0.0 \
+    --trainer.deriv-truncate-margin 8 \
     --egs.stage $get_egs_stage \
     --egs.opts="--frames-overlap-per-eg 0" \
     --egs.chunk-width $chunk_width \

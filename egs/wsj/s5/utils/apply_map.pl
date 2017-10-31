@@ -53,8 +53,8 @@ if(@ARGV != 1) {
   exit(1);
 }
 
-($map) = @ARGV;
-open(M, "<$map") || die "Error opening map file $map: $!";
+($map_file) = @ARGV;
+open(M, "<$map_file") || die "Error opening map file $map_file: $!";
 
 while (<M>) {
   @A = split(" ", $_);
@@ -72,9 +72,9 @@ while(<STDIN>) {
       $a = $A[$x];
       if (!defined $map{$a}) {
         if (!$permissive) {
-          die "apply_map.pl: undefined key $a\n"; 
+          die "apply_map.pl: undefined key $a in $map_file\n"; 
         } else {
-          print STDERR "apply_map.pl: warning! missing key $a\n";
+          print STDERR "apply_map.pl: warning! missing key $a in $map_file\n";
         }
       } else {
         $A[$x] = $map{$a}; 

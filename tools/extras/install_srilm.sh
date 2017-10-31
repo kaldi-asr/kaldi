@@ -4,12 +4,12 @@ current_path=`pwd`
 current_dir=`basename "$current_path"`
 
 if [ "tools" != "$current_dir" ]; then
-    echo "You should run this script in tools/ directery!!"
+    echo "You should run this script in tools/ directory!!"
     exit 1
 fi
 
 if [ ! -d liblbfgs-1.10 ]; then
-    echo Intalling libLBFGS library to support MaxEnt LMs
+    echo Installing libLBFGS library to support MaxEnt LMs
     bash extras/install_liblbfgs.sh || exit 1
 fi
 
@@ -28,6 +28,15 @@ fi
 mkdir -p srilm
 cd srilm
 tar -xvzf ../srilm.tgz
+
+major=`awk -F. '{ print $1 }' RELEASE`
+minor=`awk -F. '{ print $2 }' RELEASE`
+micro=`awk -F. '{ print $3 }' RELEASE`
+
+if [ $major -le 1 ] && [ $minor -le 7 ] && [ $micro -le 1 ]; then
+  echo "Detected version 1.7.1 or earlier. Applying patch."
+  patch -p0 < ../extras/srilm.patch
+fi
 
 # set the SRILM variable in the top-level Makefile to this directory.
 cp Makefile tmpf
@@ -52,13 +61,13 @@ make || exit 1
 
 cd ..
 (
-  [ ! -z ${SRILM} ] && \
+  [ ! -z "${SRILM}" ] && \
     echo >&2 "SRILM variable is aleady defined. Undefining..." && \
     unset SRILM
 
   [ -f ./env.sh ] && . ./env.sh
 
-  [ ! -z ${SRILM} ] && \
+  [ ! -z "${SRILM}" ] && \
     echo >&2 "SRILM config is already in env.sh" && exit
 
   wd=`pwd`
@@ -73,5 +82,5 @@ cd ..
 ) >> env.sh
 
 echo >&2 "Installation of SRILM finished successfully"
-echo >&2 "Please source the tools/extras/env.sh in your path.sh to enable it"
+echo >&2 "Please source the tools/env.sh in your path.sh to enable it"
 

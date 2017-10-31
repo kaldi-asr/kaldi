@@ -88,8 +88,13 @@ int32 NumFrames(int64 num_samples,
 
 
 void Dither(VectorBase<BaseFloat> *waveform, BaseFloat dither_value) {
-  for (int32 i = 0; i < waveform->Dim(); i++)
-    (*waveform)(i) += RandGauss() * dither_value;
+  if (dither_value == 0.0)
+    return;
+  int32 dim = waveform->Dim();
+  BaseFloat *data = waveform->Data();
+  RandomState rstate;
+  for (int32 i = 0; i < dim; i++)
+    data[i] += RandGauss(&rstate) * dither_value;
 }
 
 
@@ -140,7 +145,7 @@ void ProcessWindow(const FrameExtractionOptions &opts,
 
   if (log_energy_pre_window != NULL) {
     BaseFloat energy = std::max(VecVec(*window, *window),
-                                std::numeric_limits<float>::epsilon());
+                                std::numeric_limits<BaseFloat>::epsilon());
     *log_energy_pre_window = Log(energy);
   }
 

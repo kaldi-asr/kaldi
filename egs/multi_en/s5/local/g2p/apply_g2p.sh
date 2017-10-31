@@ -26,9 +26,9 @@ echo 'Gathering missing words...'
 cat data/*/train/text | \
   local/count_oovs.pl $lexicon | \
   awk '{for(i=4; i<NF; i++) printf "%s",$i OFS; if(NF) printf "%s",$NF; printf ORS}' | \
-  sed 's/\s/\n/g' | \
+  perl -ape 's/\s/\n/g;' | \
   grep -v 0 | sort | uniq | \
-  grep '^[a-z]*$' > $workdir/missing.txt
+  sort | uniq > $workdir/missing.txt
 
 echo 'Synthesizing pronunciations for missing words...'
 PYTHONPATH=$sequitur_path:$PYTHONPATH $PYTHON $sequitur \

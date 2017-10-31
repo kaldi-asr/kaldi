@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014  Johns Hopkins University (Author: Daniel Povey). 
+# Copyright 2014  Johns Hopkins University (Author: Daniel Povey).
 # Apache 2.0.
 
 # retrain_fast.sh is a neural net training script that's intended to train
@@ -24,7 +24,7 @@ final_learning_rate=0.004
 
 minibatch_size=128 # by default use a smallish minibatch size for neural net
                    # training; this controls instability which would otherwise
-                   # be a problem with multi-threaded update. 
+                   # be a problem with multi-threaded update.
 samples_per_iter=200000 # each iteration of training, see this many samples
                         # per job.  This option is passed to get_egs.sh
 num_jobs_nnet=16   # Number of neural net jobs to run in parallel.  This option
@@ -42,7 +42,7 @@ shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of
 
 stage=-5
 
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 
 alpha=4.0   # relates to preconditioning.
 update_period=4 # relates to online preconditioning: says how often we update the subspace.
@@ -102,7 +102,7 @@ if [ $# != 4 ]; then
   echo "                                                   # this, you may want to decrease the batch size."
   echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads... "
-  echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
+  echo "  --io-opts <opts|\"--max-jobs-run 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
@@ -115,7 +115,7 @@ if [ $# != 4 ]; then
   echo "  --stage <stage|-9>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
 
-  
+
   exit 1;
 fi
 
@@ -169,7 +169,7 @@ if [ $stage -le -2 ]; then
   echo "$0: initializing neural net";
 
   feat_dim=$(feat-to-dim scp:$data/feats.scp -) || exit 1;
-  
+
   online_preconditioning_opts="alpha=$alpha num-samples-history=$num_samples_history update-period=$update_period rank-in=$precondition_rank_in rank-out=$precondition_rank_out max-change-per-sample=$max_change_per_sample"
 
   cat >$dir/nnet.config <<EOF
@@ -251,7 +251,7 @@ while [ $x -lt $num_iters ]; do
           ark:$egs_dir/train_diagnostic.egs '&&' \
         nnet-am-info $dir/$x.mdl &
     fi
-    
+
     echo "Training neural net (pass $x)"
 
     if [ $x -eq 0 ]; then
@@ -273,7 +273,7 @@ while [ $x -lt $num_iters ]; do
       perturb_suffix="-perturbed"
       perturb_opts="--target-objf-change=$target_objf_change --within-covar=$dir/within_covar.spmat"
     fi
-    
+
     $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
       nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x \
       ark:$egs_dir/egs.JOB.$[$x%$iters_per_epoch].ark ark:- \| \
@@ -297,7 +297,7 @@ while [ $x -lt $num_iters ]; do
       n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
           $fn = sprintf($pat,$n); open(F, "<$fn") || die "Error opening log file $fn";
           undef $logprob; while (<F>) { if (m/log-prob-per-frame=(\S+)/) { $logprob=$1; } }
-          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob; 
+          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob;
           $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
       $cmd $dir/log/select.$x.log \

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2015-2016   David Snyder
+# Copyright 2015-2017   David Snyder
 #                2015   Johns Hopkins University (Author: Daniel Garcia-Romero)
 #                2015   Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0.
@@ -7,8 +7,8 @@
 # See README.txt for more info on data required.
 # Results (EERs) are inline in comments below.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
@@ -71,30 +71,30 @@ utils/subset_data_dir.sh data/train 16000 data/train_16k
 utils/subset_data_dir.sh data/train 32000 data/train_32k
 
 # Train UBM and i-vector extractor.
-sid/train_diag_ubm.sh --cmd "$train_cmd -l mem_free=20G,ram_free=20G" \
+sid/train_diag_ubm.sh --cmd "$train_cmd --mem 20G" \
   --nj 20 --num-threads 8 \
   data/train_16k $num_components \
   exp/diag_ubm_$num_components
 
 sid/train_full_ubm.sh --nj 40 --remove-low-count-gaussians false \
-  --cmd "$train_cmd -l mem_free=25G,ram_free=25G" data/train_32k \
+  --cmd "$train_cmd --mem 25G" data/train_32k \
   exp/diag_ubm_$num_components exp/full_ubm_$num_components
 
-sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=35G,ram_free=35G" \
+sid/train_ivector_extractor.sh --cmd "$train_cmd --mem 35G" \
   --ivector-dim 600 \
   --num-iters 5 exp/full_ubm_$num_components/final.ubm data/train \
   exp/extractor
 
 # Extract i-vectors.
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 40 \
   exp/extractor data/sre10_train \
   exp/ivectors_sre10_train
 
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 40 \
   exp/extractor data/sre10_test \
   exp/ivectors_sre10_test
 
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 40 \
   exp/extractor data/sre \
   exp/ivectors_sre
 
@@ -108,27 +108,28 @@ local/scoring_common.sh data/sre data/sre10_train data/sre10_test \
 # best, so we don't focus on the scores obtained here.
 #
 # local/cosine_scoring.sh data/sre10_train data/sre10_test \
-#  exp/ivectors_sre10_train exp/ivectors_sre10_test $trials local/scores_gmm_2048_ind_pooled
+#  exp/ivectors_sre10_train exp/ivectors_sre10_test $trials exp/scores_gmm_2048_ind_pooled
 # local/lda_scoring.sh data/sre data/sre10_train data/sre10_test \
-#  exp/ivectors_sre exp/ivectors_sre10_train exp/ivectors_sre10_test $trials local/scores_gmm_2048_ind_pooled
+#  exp/ivectors_sre exp/ivectors_sre10_train exp/ivectors_sre10_test $trials exp/scores_gmm_2048_ind_pooled
 
 # Create a gender independent PLDA model and do scoring.
 local/plda_scoring.sh data/sre data/sre10_train data/sre10_test \
-  exp/ivectors_sre exp/ivectors_sre10_train exp/ivectors_sre10_test $trials local/scores_gmm_2048_ind_pooled
+  exp/ivectors_sre exp/ivectors_sre10_train exp/ivectors_sre10_test $trials exp/scores_gmm_2048_ind_pooled
 local/plda_scoring.sh --use-existing-models true data/sre data/sre10_train_female data/sre10_test_female \
-  exp/ivectors_sre exp/ivectors_sre10_train_female exp/ivectors_sre10_test_female $trials_female local/scores_gmm_2048_ind_female
+  exp/ivectors_sre exp/ivectors_sre10_train_female exp/ivectors_sre10_test_female $trials_female exp/scores_gmm_2048_ind_female
 local/plda_scoring.sh --use-existing-models true data/sre data/sre10_train_male data/sre10_test_male \
-  exp/ivectors_sre exp/ivectors_sre10_train_male exp/ivectors_sre10_test_male $trials_male local/scores_gmm_2048_ind_male
+  exp/ivectors_sre exp/ivectors_sre10_train_male exp/ivectors_sre10_test_male $trials_male exp/scores_gmm_2048_ind_male
 
 # Create gender dependent PLDA models and do scoring.
 local/plda_scoring.sh data/sre_female data/sre10_train_female data/sre10_test_female \
-  exp/ivectors_sre exp/ivectors_sre10_train_female exp/ivectors_sre10_test_female $trials_female local/scores_gmm_2048_dep_female
+  exp/ivectors_sre exp/ivectors_sre10_train_female exp/ivectors_sre10_test_female $trials_female exp/scores_gmm_2048_dep_female
 local/plda_scoring.sh data/sre_male data/sre10_train_male data/sre10_test_male \
-  exp/ivectors_sre exp/ivectors_sre10_train_male exp/ivectors_sre10_test_male $trials_male local/scores_gmm_2048_dep_male
+  exp/ivectors_sre exp/ivectors_sre10_train_male exp/ivectors_sre10_test_male $trials_male exp/scores_gmm_2048_dep_male
 
-mkdir -p local/scores_gmm_2048_dep_pooled
-cat local/scores_gmm_2048_dep_male/plda_scores local/scores_gmm_2048_dep_female/plda_scores \
-  > local/scores_gmm_2048_dep_pooled/plda_scores
+# Pool the gender dependent results.
+mkdir -p exp/scores_gmm_2048_dep_pooled
+cat exp/scores_gmm_2048_dep_male/plda_scores exp/scores_gmm_2048_dep_female/plda_scores \
+  > exp/scores_gmm_2048_dep_pooled/plda_scores
 
 # GMM-2048 PLDA EER
 # ind pooled: 2.26
@@ -140,7 +141,7 @@ cat local/scores_gmm_2048_dep_male/plda_scores local/scores_gmm_2048_dep_female/
 echo "GMM-$num_components EER"
 for x in ind dep; do
   for y in female male pooled; do
-    eer=`compute-eer <(python local/prepare_for_eer.py $trials local/scores_gmm_${num_components}_${x}_${y}/plda_scores) 2> /dev/null`
+    eer=`compute-eer <(python local/prepare_for_eer.py $trials exp/scores_gmm_${num_components}_${x}_${y}/plda_scores) 2> /dev/null`
     echo "${x} ${y}: $eer"
   done
 done

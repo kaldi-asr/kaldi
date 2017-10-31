@@ -810,44 +810,32 @@ www.openfst.org and do the FST tutorial so that you understand the basics of fin
 state transducers.  (Note that language models would be represented as finite state
 acceptors, or FSAs, which can be considered as a special case of finite state transducers).
 
-In the WSJ setup (like most setups), we use a statistical language model.  The script <DFN>local/wsj_format_data.sh</DFN>
-deals with converting the ARPA-format language models supplied with the WSJ database, into
-an OpenFst format.  Some of the key commands from that script are:
+The script <DFN>utils/format_lm.sh</DFN> deals with converting the ARPA-format language
+models into an OpenFst format. Here is the usage messages of that script: 
 \verbatim
-  gunzip -c $lmdir/lm_${lm_suffix}.arpa.gz | \
-   utils/find_arpa_oovs.pl $test/words.txt  > $tmpdir/oovs_${lm_suffix}.txt
- ...
-  gunzip -c $lmdir/lm_${lm_suffix}.arpa.gz | \
-    grep -v '<s> <s>' | \
-    grep -v '</s> <s>' | \
-    grep -v '</s> </s>' | \
-    arpa2fst - | fstprint | \
-    utils/remove_oovs.pl $tmpdir/oovs_${lm_suffix}.txt | \
-    utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt \
-      --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-     fstrmepsilon > $test/G.fst
+Usage: utils/format_lm.sh <lang_dir> <arpa-LM> <lexicon> <out_dir>
+E.g.: utils/format_lm.sh data/lang data/local/lm/foo.kn.gz data/local/dict/lexicon.txt data/lang_test
+Convert ARPA-format language models to FSTs.
 \endverbatim
-Here, the variable <DFN>\$test</DFN> would be something like <DFN>data/lang_test_tg</DFN>.
-The most important of these commands is <DFN>arpa2fst</DFN> which is a Kaldi program.
-This program turns the ARPA-format language model into a Weight Finite State Transducer
-(actually, an acceptor).
-The <DFN>grep</DFN> commands remove certain "invalid" n-grams from the language model, which
-should not have been there in the first place.  The program <DFN>remove_oovs.pl</DFN> removes
-N-grams containing words not in our vocabulary (which would cause a crash in <DFN>fstcompile</DFN>); <DFN>eps2disambig.pl</DFN> turns the
-<DFN>\<eps\></DFN> (\f$\epsilon\f$) symbols on backoff arcs into a special symbol <DFN>#0</DFN> which
-we use to make the grammar determinizable; see \ref graph_disambig.  If you don't know
-what a "backoff arc" is, see the literature on backoff N-grams, for instance Goodman's "A bit of progress in
-language modeling", and the paper by Mohri we referenced above.  The command <DFN>s2eps.pl</DFN> turns the
-sentence-begin and sentence-end symbols <DFN>\<s\></DFN> and <DFN>\</s\></DFN> into
-epsilon (<DFN>\<eps\></DFN>), which means "no symbol"; <DFN>fstcompile</DFN> is an OpenFst
-command which turns the
-FST from text form into OpenFst binary form; and <DFN>fstrmepsilon</DFN> is also
-an OpenFst command, which removes the small number of <DFN>\<eps\></DFN> symbols from the
-FST, which were converted from <DFN>\<s\></DFN> and <DFN>\</s\></DFN>.
+Some of the key commands from that script are:
+\verbatim
+gunzip -c $lm \
+  | arpa2fst --disambig-symbol=#0 \
+             --read-symbol-table=$out_dir/words.txt - $out_dir/G.fst
+\endverbatim
+This Kaldi program, <DFN>arpa2fst</DFN>, turns the ARPA-format language model
+into a Weight Finite State Transducer (actually, an acceptor).
 
 A popular toolkit for building language models is SRILM.  Various language
 modeling toolkits are used in the Kaldi example scripts.  SRILM is the best
 documented and most fully featured, and we generally recommend it (its only
-drawback is that it don't have the most free licence).
+drawback is that it don't have the most free licence). Here is the usage
+messages of <DFN>utils/format_lm_sri.sh</DFN>
+
+\verbatim
+Usage: utils/format_lm_sri.sh [options] <lang-dir> <arpa-LM> <out-dir>
+E.g.: utils/format_lm_sri.sh data/lang data/local/lm/foo.kn.gz data/lang_test
+Converts ARPA-format language models to FSTs. Change the LM vocabulary using SRILM.
+\endverbatim
 
 */

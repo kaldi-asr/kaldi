@@ -1,13 +1,13 @@
 #!/bin/bash
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=1
 train_stage=-10
 use_gpu=true
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -21,7 +21,7 @@ If you want to use GPUs (and have them), go to src/, and configure and make on a
 where "nvcc" is installed.
 EOF
 fi
-parallel_opts="-l gpu=1"
+parallel_opts="--gpu 1"
 num_threads=1
 minibatch_size=512
 dir=exp/nnet2_online/nnet_ms_a

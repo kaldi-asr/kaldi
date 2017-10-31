@@ -99,8 +99,9 @@ void CudaMatrixResizeTest() {
 
 
 int main() {
-  for (int32 loop = 0; loop < 2; loop++) {
+  SetVerboseLevel(1);
 #if HAVE_CUDA == 1
+  for (int32 loop = 0; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
@@ -118,9 +119,10 @@ int main() {
 #else
     kaldi::CudaMatrixResizeTest<double>();
 #endif
-  }
+
 #if HAVE_CUDA == 1
+  }
   CuDevice::Instantiate().PrintProfile();
 #endif
-  std::cout << "Tests succeeded.\n";
+  KALDI_LOG << "Tests succeeded.";
 }

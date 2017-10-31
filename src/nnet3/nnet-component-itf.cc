@@ -24,8 +24,12 @@
 #include "nnet3/nnet-component-itf.h"
 #include "nnet3/nnet-simple-component.h"
 #include "nnet3/nnet-general-component.h"
+#include "nnet3/nnet-convolutional-component.h"
+#include "nnet3/nnet-attention-component.h"
 #include "nnet3/nnet-parse.h"
 #include "nnet3/nnet-computation-graph.h"
+
+
 
 // \file This file contains some more-generic component code: things in base classes.
 //       See nnet-component.cc for the code of the actual Components.
@@ -55,6 +59,12 @@ ComponentPrecomputedIndexes* ComponentPrecomputedIndexes::NewComponentPrecompute
     ans = new StatisticsExtractionComponentPrecomputedIndexes();
   } else if (cpi_type == "StatisticsPoolingComponentPrecomputedIndexes") {
     ans = new StatisticsPoolingComponentPrecomputedIndexes();
+  } else if (cpi_type == "BackpropTruncationComponentPrecomputedIndexes") {
+    ans = new BackpropTruncationComponentPrecomputedIndexes();
+  } else if (cpi_type == "TimeHeightConvolutionComponentPrecomputedIndexes") {
+    ans = new TimeHeightConvolutionComponent::PrecomputedIndexes();
+  } else if (cpi_type == "RestrictedAttentionComponentPrecomputedIndexes") {
+    ans = new RestrictedAttentionComponent::PrecomputedIndexes();
   }
   if (ans != NULL) {
     KALDI_ASSERT(cpi_type == ans->Type());
@@ -93,8 +103,6 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new NormalizeComponent();
   } else if (component_type == "PnormComponent") {
     ans = new PnormComponent();
-  } else if (component_type == "SumReduceComponent") {
-    ans = new SumReduceComponent();
   } else if (component_type == "AffineComponent") {
     ans = new AffineComponent();
   } else if (component_type == "NaturalGradientAffineComponent") {
@@ -141,8 +149,24 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new StatisticsPoolingComponent();
   } else if (component_type == "ConstantFunctionComponent") {
     ans = new ConstantFunctionComponent();
+  } else if (component_type == "ConstantComponent") {
+    ans = new ConstantComponent();
   } else if (component_type == "DropoutComponent") {
     ans = new DropoutComponent();
+  } else if (component_type == "DropoutMaskComponent") {
+    ans = new DropoutMaskComponent();
+  } else if (component_type == "BackpropTruncationComponent") {
+    ans = new BackpropTruncationComponent();
+  } else if (component_type == "LstmNonlinearityComponent") {
+    ans = new LstmNonlinearityComponent();
+  } else if (component_type == "BatchNormComponent") {
+    ans = new BatchNormComponent();
+  } else if (component_type == "TimeHeightConvolutionComponent") {
+    ans = new TimeHeightConvolutionComponent();
+  } else if (component_type == "RestrictedAttentionComponent") {
+    ans = new RestrictedAttentionComponent();
+  } else if (component_type == "SumBlockComponent") {
+    ans = new SumBlockComponent();
   }
   if (ans != NULL) {
     KALDI_ASSERT(component_type == ans->Type());
@@ -180,15 +204,32 @@ bool Component::IsComputable(const MiscComputationInfo &misc_info,
 }
 
 
+UpdatableComponent::UpdatableComponent(const UpdatableComponent &other):
+    learning_rate_(other.learning_rate_),
+    learning_rate_factor_(other.learning_rate_factor_),
+    is_gradient_(other.is_gradient_),
+    l2_regularize_(other.l2_regularize_),
+    max_change_(other.max_change_) { }
+
+// If these defaults are changed, the defaults in the constructor that
+// takes no arguments should be changed too.
 void UpdatableComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {
+  learning_rate_ = 0.001;
   cfl->GetValue("learning-rate", &learning_rate_);
+  learning_rate_factor_ = 1.0;
   cfl->GetValue("learning-rate-factor", &learning_rate_factor_);
-  if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0)
+  max_change_ = 0.0;
+  cfl->GetValue("max-change", &max_change_);
+  l2_regularize_ = 0.0;
+  cfl->GetValue("l2-regularize", &l2_regularize_);
+  if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0 ||
+      max_change_ < 0.0 || l2_regularize_ < 0.0)
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
 
 
-void UpdatableComponent::ReadUpdatableCommon(std::istream &is, bool binary) {
+std::string UpdatableComponent::ReadUpdatableCommon(std::istream &is,
+                                                    bool binary) {
   std::ostringstream opening_tag;
   opening_tag << '<' << this->Type() << '>';
   std::string token;
@@ -210,11 +251,23 @@ void UpdatableComponent::ReadUpdatableCommon(std::istream &is, bool binary) {
   } else {
     is_gradient_ = false;
   }
+  if (token == "<MaxChange>") {
+    ReadBasicType(is, binary, &max_change_);
+    ReadToken(is, binary, &token);
+  } else {
+    max_change_ = 0.0;
+  }
+  if (token == "<L2Regularize>") {
+    ReadBasicType(is, binary, &l2_regularize_);
+    ReadToken(is, binary, &token);
+  } else {
+    l2_regularize_ = 0.0;
+  }
   if (token == "<LearningRate>") {
     ReadBasicType(is, binary, &learning_rate_);
+    return "";
   } else {
-    KALDI_ERR << "Expected token <LearningRate>, got "
-              << token;
+    return token;
   }
 }
 
@@ -232,6 +285,14 @@ void UpdatableComponent::WriteUpdatableCommon(std::ostream &os,
     WriteToken(os, binary, "<IsGradient>");
     WriteBasicType(os, binary, is_gradient_);
   }
+  if (max_change_ > 0.0) {
+    WriteToken(os, binary, "<MaxChange>");
+    WriteBasicType(os, binary, max_change_);
+  }
+  if (l2_regularize_ > 0.0) {
+    WriteToken(os, binary, "<L2Regularize>");
+    WriteBasicType(os, binary, l2_regularize_);
+  }
   WriteToken(os, binary, "<LearningRate>");
   WriteBasicType(os, binary, learning_rate_);
 }
@@ -244,8 +305,12 @@ std::string UpdatableComponent::Info() const {
          << LearningRate();
   if (is_gradient_)
     stream << ", is-gradient=true";
+  if (l2_regularize_ != 0.0)
+    stream << ", l2-regularize=" << l2_regularize_;
   if (learning_rate_factor_ != 1.0)
     stream << ", learning-rate-factor=" << learning_rate_factor_;
+  if (max_change_ > 0.0)
+    stream << ", max-change=" << max_change_;
   return stream.str();
 }
 
@@ -256,7 +321,7 @@ void NonlinearComponent::StoreStatsInternal(
   // Check we have the correct dimensions.
   if (value_sum_.Dim() != InputDim() ||
       (deriv != NULL && deriv_sum_.Dim() != InputDim())) {
-    mutex_.Lock();
+    std::lock_guard<std::mutex> lock(mutex_);
     if (value_sum_.Dim() != InputDim()) {
       value_sum_.Resize(InputDim());
       count_ = 0.0;
@@ -266,7 +331,6 @@ void NonlinearComponent::StoreStatsInternal(
       count_ = 0.0;
       value_sum_.SetZero();
     }
-    mutex_.Unlock();
   }
   count_ += out_value.NumRows();
   CuVector<BaseFloat> temp(InputDim());
@@ -282,16 +346,18 @@ void NonlinearComponent::ZeroStats() {
   value_sum_.SetZero();
   deriv_sum_.SetZero();
   count_ = 0.0;
+  num_dims_self_repaired_ = 0.0;
+  num_dims_processed_ = 0.0;
 }
 
 std::string NonlinearComponent::Info() const {
   std::stringstream stream;
-  if (InputDim() == OutputDim())
+  if (InputDim() == OutputDim()) {
     stream << Type() << ", dim=" << InputDim();
-  else
+  } else {
     stream << Type() << ", input-dim=" << InputDim()
-           << ", output-dim=" << OutputDim()
-           << ", add-log-stddev=true";
+           << ", output-dim=" << OutputDim();
+  }
 
   if (self_repair_lower_threshold_ != BaseFloat(kUnsetThreshold))
     stream << ", self-repair-lower-threshold=" << self_repair_lower_threshold_;
@@ -299,17 +365,22 @@ std::string NonlinearComponent::Info() const {
     stream << ", self-repair-upper-threshold=" << self_repair_upper_threshold_;
   if (self_repair_scale_ != 0.0)
     stream << ", self-repair-scale=" << self_repair_scale_;
-  if (count_ > 0 && value_sum_.Dim() == dim_ &&  deriv_sum_.Dim() == dim_) {
+  if (count_ > 0 && value_sum_.Dim() == dim_) {
     stream << ", count=" << std::setprecision(3) << count_
            << std::setprecision(6);
+    stream << ", self-repaired-proportion="
+           << (num_dims_processed_ > 0 ?
+               num_dims_self_repaired_ / num_dims_processed_ : 0);
     Vector<double> value_avg_dbl(value_sum_);
     Vector<BaseFloat> value_avg(value_avg_dbl);
     value_avg.Scale(1.0 / count_);
     stream << ", value-avg=" << SummarizeVector(value_avg);
-    Vector<double> deriv_avg_dbl(deriv_sum_);
-    Vector<BaseFloat> deriv_avg(deriv_avg_dbl);
-    deriv_avg.Scale(1.0 / count_);
-    stream << ", deriv-avg=" << SummarizeVector(deriv_avg);
+    if (deriv_sum_.Dim() == dim_) {
+      Vector<double> deriv_avg_dbl(deriv_sum_);
+      Vector<BaseFloat> deriv_avg(deriv_avg_dbl);
+      deriv_avg.Scale(1.0 / count_);
+      stream << ", deriv-avg=" << SummarizeVector(deriv_avg);
+    }
   }
   return stream.str();
 }
@@ -318,6 +389,8 @@ void NonlinearComponent::Scale(BaseFloat scale) {
   value_sum_.Scale(scale);
   deriv_sum_.Scale(scale);
   count_ *= scale;
+  num_dims_self_repaired_ *= scale;
+  num_dims_processed_ *= scale;
 }
 
 void NonlinearComponent::Add(BaseFloat alpha, const Component &other_in) {
@@ -333,6 +406,8 @@ void NonlinearComponent::Add(BaseFloat alpha, const Component &other_in) {
   if (other->deriv_sum_.Dim() != 0)
     deriv_sum_.AddVec(alpha, other->deriv_sum_);
   count_ += alpha * other->count_;
+  num_dims_self_repaired_ += alpha * other->num_dims_self_repaired_;
+  num_dims_processed_ += alpha * other->num_dims_processed_;
 }
 
 void NonlinearComponent::Read(std::istream &is, bool binary) {
@@ -352,6 +427,14 @@ void NonlinearComponent::Read(std::istream &is, bool binary) {
 
   std::string token;
   ReadToken(is, binary, &token);
+  if (token == "<NumDimsSelfRepaired>") {
+    ReadBasicType(is, binary, &num_dims_self_repaired_);
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<NumDimsProcessed>") {
+    ReadBasicType(is, binary, &num_dims_processed_);
+    ReadToken(is, binary, &token);
+  }
   if (token == "<SelfRepairLowerThreshold>") {
     ReadBasicType(is, binary, &self_repair_lower_threshold_);
     ReadToken(is, binary, &token);
@@ -391,6 +474,10 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
   temp.Write(os, binary);
   WriteToken(os, binary, "<Count>");
   WriteBasicType(os, binary, count_);
+  WriteToken(os, binary, "<NumDimsSelfRepaired>");
+  WriteBasicType(os, binary, num_dims_self_repaired_);
+  WriteToken(os, binary, "<NumDimsProcessed>");
+  WriteBasicType(os, binary, num_dims_processed_);
   if (self_repair_lower_threshold_ != kUnsetThreshold) {
     WriteToken(os, binary, "<SelfRepairLowerThreshold>");
     WriteBasicType(os, binary, self_repair_lower_threshold_);
@@ -408,6 +495,7 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
 
 NonlinearComponent::NonlinearComponent():
     dim_(-1), count_(0.0),
+    num_dims_self_repaired_(0.0), num_dims_processed_(0.0),
     self_repair_lower_threshold_(kUnsetThreshold),
     self_repair_upper_threshold_(kUnsetThreshold),
     self_repair_scale_(0.0) { }
@@ -415,6 +503,8 @@ NonlinearComponent::NonlinearComponent():
 NonlinearComponent::NonlinearComponent(const NonlinearComponent &other):
     dim_(other.dim_), value_sum_(other.value_sum_), deriv_sum_(other.deriv_sum_),
     count_(other.count_),
+    num_dims_self_repaired_(other.num_dims_self_repaired_),
+    num_dims_processed_(other.num_dims_processed_),
     self_repair_lower_threshold_(other.self_repair_lower_threshold_),
     self_repair_upper_threshold_(other.self_repair_upper_threshold_),
     self_repair_scale_(other.self_repair_scale_) { }

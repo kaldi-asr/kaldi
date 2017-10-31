@@ -3,13 +3,14 @@
 # Copyright  2014 Nickolay V. Shmyrev
 #            2014 Brno University of Technology (Author: Karel Vesely)
 #            2016 Daniel Galvez
+#            2016 Vincent Nguyen
 # Apache 2.0
 #
 
 dir=data/local/dict_nosp
 mkdir -p $dir
 
-srcdict=db/cantab-TEDLIUM/cantab-TEDLIUM.dct
+srcdict=db/TEDLIUM_release2/TEDLIUM.152k.dic
 
 [ ! -r $srcdict ] && echo "Missing $srcdict" && exit 1
 

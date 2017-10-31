@@ -41,9 +41,7 @@ sub list_all_log_files {
   my @ans = ();
   my $dh;
   if (!opendir($dh, "$gmm_dir/log")) { return (); }
-  while (readdir $dh) {
-    push @ans, $_;
-  }
+  @ans = readdir $dh;
   closedir $dh;
   return @ans;
 }

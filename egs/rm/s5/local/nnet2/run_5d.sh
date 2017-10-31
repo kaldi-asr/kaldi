@@ -11,7 +11,7 @@ use_gpu=true
 stage=0
 transform_dir=exp/tri3b_ali
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . utils/parse_options.sh
 
@@ -27,14 +27,14 @@ nj_orig=$(cat $transform_dir/num_jobs)
 if $use_gpu; then
   . ./cmd.sh
   . ./path.sh
-  ! cuda-compiled && cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+  ! cuda-compiled && cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
-  align_gpu_opts="-l gpu=1"
+  align_gpu_opts="--gpu 1"
   use_gpu_flag="--use-gpu yes"
-  train_parallel_opts="-l gpu=1"
+  train_parallel_opts="--gpu 1"
   train_num_threads=1
   srcdir=exp/nnet4d_gpu
   dir=exp/nnet5d_mpe_gpu
@@ -42,7 +42,7 @@ EOF
 else
   align_gpu_opts=
   use_gpu_flag="--use-gpu no"
-  train_parallel_opts="-pe smp 6"
+  train_parallel_opts="--num-threads 6"
   train_num_threads=6
   srcdir=exp/nnet4d
   dir=exp/nnet5d_mpe
@@ -64,7 +64,7 @@ fi
 # wasteful since the lattice determinization and graph search use up a fair
 # amount of CPU, and we'd be idling the GPU much of the time.
 
-# We specify 1G each for the mem_free and ram_free which, is per thread... it
+# We specify 1G each for --mem, which is per thread... it
 # will likely be less than the default.  Increase the beam relative to the
 # defaults; this is just for this RM setup, where the default beams will likely
 # generate very thin lattices.
@@ -74,8 +74,8 @@ fi
 
 
 if [ $stage -le 0 ]; then
-  steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
-    --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "-pe smp 6" \
+  steps/nnet2/make_denlats.sh --cmd "$decode_cmd --mem 1G" \
+    --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "--num-threads 6" \
     --beam 20.0 --lattice-beam 10.0 \
     --transform-dir $transform_dir \
     data/train data/lang $srcdir ${srcdir}_denlats

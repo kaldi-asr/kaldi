@@ -1,7 +1,13 @@
 #!/bin/bash
 
 # Copyright 2014  Guoguo Chen, 2015 GoVivace Inc. (Nagendra Goel)
+#           2017  Vimal Manohar
 # Apache 2.0
+
+# Some basic error checking, similar to steps/decode.sh is added.
+
+set -e
+set -o pipefail
 
 # Begin configuration section.
 transform_dir=   # this option won't normally be used, but it can be used if you
@@ -83,9 +89,21 @@ if [ -z "$model" ]; then # if --model <mdl> was not specified on the command lin
   else model=$srcdir/$iter.mdl; fi
 fi
 
+if [ $(basename $model) != final.alimdl ] ; then
+  # Do not use the $srcpath -- look at the path where the model is
+  if [ -f $(dirname $model)/final.alimdl ] && [ -z "$transform_dir" ]; then
+    echo -e '\n\n'
+    echo $0 'WARNING: Running speaker independent system decoding using a SAT model!'
+    echo $0 'WARNING: This is OK if you know what you are doing...'
+    echo -e '\n\n'
+  fi
+fi
+
 for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $model $graphdir/HCLG.fsts.scp; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
+
+utils/lang/check_phones_compatible.sh $graph_dir/phones.txt $srcdir/phones.txt
 
 # Split HCLG.fsts.scp by input utterance
 n1=$(cat $graphdir/HCLG.fsts.scp | wc -l)
@@ -96,15 +114,17 @@ fi
 
 
 mkdir -p $dir/split_fsts
-utils/filter_scps.pl --no-warn -f 1 JOB=1:$nj $sdata/JOB/feats.scp $graphdir/HCLG.fsts.scp $dir/split_fsts/HCLG.fsts.JOB.scp
+sort -k1,1 $graphdir/HCLG.fsts.scp > $dir/HCLG.fsts.sorted.scp
+utils/filter_scps.pl --no-warn -f 1 JOB=1:$nj \
+  $sdata/JOB/feats.scp $dir/HCLG.fsts.sorted.scp $dir/split_fsts/HCLG.fsts.JOB.scp
 HCLG=scp:$dir/split_fsts/HCLG.fsts.JOB.scp
 
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "$0: feature type is $feat_type";
 
-splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
-cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
-delta_opts=`cat $srcdir/delta_opts 2>/dev/null`
+splice_opts=`cat $srcdir/splice_opts 2>/dev/null` || true # frame-splicing options.
+cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null` || true
+delta_opts=`cat $srcdir/delta_opts 2>/dev/null` || true
 
 thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
@@ -145,8 +165,8 @@ fi
 
 if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \
-    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-  steps/score_kaldi.sh --cmd "$cmd" $scoring_opts $data $graphdir $dir ||
+    echo "$0: Not scoring because local/score.sh does not exist or not executable." && exit 1;
+  local/score.sh --cmd "$cmd" $scoring_opts $data $graphdir $dir ||
     { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
 fi
 

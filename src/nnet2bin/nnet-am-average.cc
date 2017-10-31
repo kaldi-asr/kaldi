@@ -29,7 +29,7 @@ namespace kaldi {
 
 void GetWeights(const std::string &weights_str,
                 int32 num_inputs,
-                vector<BaseFloat> *weights) {
+                std::vector<BaseFloat> *weights) {
   KALDI_ASSERT(num_inputs >= 1);
   if (!weights_str.empty()) {
     SplitStringToFloats(weights_str, ":", true, weights);
@@ -169,7 +169,7 @@ int main(int argc, char *argv[]) {
 
     int32 num_inputs = po.NumArgs() - 1;
 
-    vector<BaseFloat> model_weights;
+    std::vector<BaseFloat> model_weights;
     GetWeights(weights_str, num_inputs, &model_weights);
 
     int32 c_begin = 0,
@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
     KALDI_ASSERT(c_end != -1 && "Network has no updatable components.");
 
     int32 last_layer_idx = am_nnet1.GetNnet().NumComponents();
-    vector<bool> skip_layers = GetSkipLayers(skip_layers_str,
+    std::vector<bool> skip_layers = GetSkipLayers(skip_layers_str,
                                              0,
                                              last_layer_idx);
 
@@ -257,4 +257,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

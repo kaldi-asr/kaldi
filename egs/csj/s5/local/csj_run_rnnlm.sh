@@ -3,11 +3,11 @@
 # Copyright  2016 Tokyo Institute of Technology (Authors: Tomohiro Tanaka, Takafumi Moriya and Takahiro Shinozaki)
 #            2016 Mitsubishi Electric Research Laboratories (Author: Shinji Watanabe)
 # Apache 2.0
-# Acknowledgement  This work was supported by JSPS KAKENHI Grant Number 26280055. 
+# Acknowledgement  This work was supported by JSPS KAKENHI Grant Number 26280055.
 
 [ -f ./path.sh ] && . ./path.sh
 . utils/parse_options.sh
-. cmd.sh
+. ./cmd.sh
 
 if [ -e data/train_dev ] ;then
     dev_set=train_dev
@@ -21,7 +21,7 @@ echo h30 Begin
 local/csj_train_rnnlms.sh --dict-suffix "_nosp" data/local/rnnlm.h30
 sleep 20; # wait till tools compiled.
 
-echo h100 Begin 
+echo h100 Begin
 local/csj_train_rnnlms.sh --dict-suffix "_nosp" \
     --hidden 100 --nwords 10000 --class 200 \
     --direct 0 data/local/rnnlm.h100
@@ -44,7 +44,7 @@ local/csj_train_rnnlms.sh --dict-suffix "_nosp" \
 echo h500 Begin
 local/csj_train_rnnlms.sh --dict-suffix "_nosp" \
     --hidden 500 --nwords 10000 --class 200 \
-    --direct 0 data/local/rnnlm.h400
+    --direct 0 data/local/rnnlm.h500
 
 #SKIP
 
@@ -60,9 +60,9 @@ for dict in rnnlm.h30 rnnlm.h100 rnnlm.h200 rnnlm.h300 rnnlm.h400 rnnlm.h500 ;do
 
       echo "rnnlm0.5"
       steps/rnnlmrescore.sh --rnnlm_ver $rnnlm_ver \
-        --N 100 --cmd "queue -l mem_free=1G" --inv-acwt $acwt 0.5 \
+        --N 100 --cmd "$decode_cmd --mem 1G" --inv-acwt $acwt 0.5 \
         data/lang_csj_tg $dir data/$eval_num $sourcedir ${resultsdir}_L0.5
-      
+
       rm -rf ${resultsdir}_L0.25
       rm -rf ${resultsdir}_L0.75
       cp -rp ${resultsdir}_L0.5 ${resultsdir}_L0.25
@@ -70,12 +70,12 @@ for dict in rnnlm.h30 rnnlm.h100 rnnlm.h200 rnnlm.h300 rnnlm.h400 rnnlm.h500 ;do
 
       echo "rnnlm0.25"
       steps/rnnlmrescore.sh --rnnlm_ver $rnnlm_ver \
-        --stage 7 --N 100 --cmd "$decode_cmd -l mem_free=1G" --inv-acwt $acwt 0.25 \
+        --stage 7 --N 100 --cmd "$decode_cmd --mem 1G" --inv-acwt $acwt 0.25 \
         data/lang_csj_tg $dir data/$eval_num $sourcedir ${resultsdir}_L0.25
 
       echo "rnnlm0.75"
       steps/rnnlmrescore.sh --rnnlm_ver $rnnlm_ver \
-        --stage 7 --N 100 --cmd "$decode_cmd -l mem_free=1G" --inv-acwt $acwt 0.75 \
+        --stage 7 --N 100 --cmd "$decode_cmd --mem 1G" --inv-acwt $acwt 0.75 \
         data/lang_csj_tg $dir data/$eval_num $sourcedir ${resultsdir}_L0.75
   done
 done

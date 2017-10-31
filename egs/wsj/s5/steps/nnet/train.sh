@@ -57,6 +57,7 @@ feats_std=1.0
 
 seed=777            # seed value used for data-shuffling, nn-initialization, and training,
 skip_cuda_check=false
+skip_phoneset_check=false
 
 # End configuration.
 
@@ -122,9 +123,11 @@ echo
 
 mkdir -p $dir/{log,nnet}
 
-utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt
-utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir_cv/phones.txt
-cp $lang/phones.txt $dir
+if ! $skip_phoneset_check; then
+  utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt
+  utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir_cv/phones.txt
+  cp $lang/phones.txt $dir
+fi
 
 # skip when already trained,
 if [ -e $dir/final.nnet ]; then

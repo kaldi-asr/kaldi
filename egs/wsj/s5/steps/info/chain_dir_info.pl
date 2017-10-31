@@ -17,8 +17,8 @@ if (@ARGV == 0) {
                "This script extracts some important information from the logs\n" .
                "and displays it on a single (rather long) line.\n" .
                "The --debug option is just to debug the script itself.\n" .
-               "This program exits with status 0 if it seems like the argument\n" .
-               "really was a GMM dir, and 1 otherwise.\n";
+               "This program exits with status 0 if it seems like the arguments\n" .
+               "really were of the expected directory type, and 1 otherwise.\n";
   exit(1);
 }
 
@@ -40,9 +40,7 @@ sub list_all_log_files {
   my @ans = ();
   my $dh;
   if (!opendir($dh, "$nnet_dir/log")) { return (); }
-  while (readdir $dh) {
-    push @ans, $_;
-  }
+  @ans = readdir $dh;
   closedir $dh;
   return @ans;
 }
@@ -138,7 +136,7 @@ sub get_combine_info {
     while (<F>) {
       if (m/Combining nnets, objective function changed from (\S+) to (\S+)/) {
         close(F);
-        return sprintf(" combine=%.2f->%.2f", $1, $2);
+        return sprintf(" combine=%.3f->%.3f", $1, $2);
       }
     }
   }

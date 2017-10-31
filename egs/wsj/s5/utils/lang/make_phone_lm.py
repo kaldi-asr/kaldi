@@ -151,7 +151,7 @@ class NgramCounts:
         try:
             words = [self.bos_symbol] + [ int(x) for x in line.split() ] + [self.eos_symbol]
         except:
-            sys.exit("make_one_biased_lm.py: bad input line {0} (expected a sequence "
+            sys.exit("make_phone_lm.py: bad input line {0} (expected a sequence "
                      "of integers)".format(line))
 
         for n in range(1, len(words)):
@@ -170,7 +170,7 @@ class NgramCounts:
             self.AddRawCountsFromLine(line)
             lines_processed += 1
         if lines_processed == 0 or args.verbose > 0:
-            print("make_one_biased_lm.py: processed {0} lines of input".format(
+            print("make_phone_lm.py: processed {0} lines of input".format(
                     lines_processed), file = sys.stderr)
 
 

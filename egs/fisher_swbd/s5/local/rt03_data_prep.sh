@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# RT-03 data preparation (conversational telephone speech part only) 
+# RT-03 data preparation (conversational telephone speech part only)
 # Adapted from Arnab Ghoshal's script for Hub-5 Eval 2000 by Peng Qi
 
 # To be run from one directory above this script.
@@ -8,7 +8,8 @@
 # Expects the standard directory layout for RT-03
 
 if [ $# -ne 1 ]; then
-  echo "Usage: "`basename $0`" <rt03-dir>"
+  echo "Usage: $0 <rt03-dir>"
+  echo "e.g.: $0 /export/corpora/LDC/LDC2007S10"
   echo "See comments in the script for more details"
   exit 1
 fi
@@ -19,7 +20,7 @@ sdir=$1
 [ ! -d $sdir/data/references/eval03/english/cts ] \
   && echo Expecting directory $tdir/data/references/eval03/english/cts to be present && exit 1;
 
-. path.sh 
+. ./path.sh
 
 dir=data/local/rt03
 mkdir -p $dir
@@ -37,7 +38,7 @@ sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
   && echo "Could not execute the sph2pipe program at $sph2pipe" && exit 1;
 
 awk -v sph2pipe=$sph2pipe '{
-  printf("%s-A %s -f wav -p -c 1 %s |\n", $1, sph2pipe, $2); 
+  printf("%s-A %s -f wav -p -c 1 %s |\n", $1, sph2pipe, $2);
   printf("%s-B %s -f wav -p -c 2 %s |\n", $1, sph2pipe, $2);
 }' < $dir/sph.scp | sort > $dir/wav.scp || exit 1;
 #side A - channel 1, side B - channel 2
@@ -47,7 +48,7 @@ awk -v sph2pipe=$sph2pipe '{
 # sw02001-A_000098-001156 sw02001-A 0.98 11.56
 #pem=$sdir/english/hub5e_00.pem
 #[ ! -f $pem ] && echo "No such file $pem" && exit 1;
-# pem file has lines like: 
+# pem file has lines like:
 # en_4156 A unknown_speaker 301.85 302.48
 
 #grep -v ';;' $pem \
@@ -59,7 +60,7 @@ cat $tdir/*.stm | grep -v ';;' | grep -v inter_segment_gap \
   | sort -u > $dir/segments
 
 # stm file has lines like:
-# en_4156 A en_4156_A 357.64 359.64 <O,en,F,en-F>  HE IS A POLICE OFFICER 
+# en_4156 A en_4156_A 357.64 359.64 <O,en,F,en-F>  HE IS A POLICE OFFICER
 # TODO(arnab): We should really be lowercasing this since the Edinburgh
 # recipe uses lowercase. This is not used in the actual scoring.
 #grep -v ';;' $tdir/reference/hub5e00.english.000405.stm \
@@ -77,7 +78,7 @@ cat $tdir/*.stm | \
   grep -v inter_segment_gap | \
   awk '{
            printf $1; if ($1==";;") printf(" %s",$2); else printf(($2==1)?" A":" B"); for(n=3;n<=NF;n++) printf(" %s", $n); print ""; }'\
-  > $dir/stm  
+  > $dir/stm
 #$tdir/reference/hub5e00.english.000405.stm >  $dir/stm
 cp $rtroot/data/trans_rules/en20030506.glm  $dir/glm
 
@@ -87,10 +88,10 @@ cp $rtroot/data/trans_rules/en20030506.glm  $dir/glm
    echo "Segments from pem file and stm file do not match." && exit 1;
 
 grep -v IGNORE_TIME_SEGMENT_ $dir/text.all > $dir/text
-   
+
 # create an utt2spk file that assumes each conversation side is
 # a separate speaker.
-awk '{print $1,$2;}' $dir/segments > $dir/utt2spk  
+awk '{print $1,$2;}' $dir/segments > $dir/utt2spk
 utils/utt2spk_to_spk2utt.pl $dir/utt2spk > $dir/spk2utt
 
 # cp $dir/segments $dir/segments.tmp
@@ -110,4 +111,3 @@ done
 
 echo Data preparation and formatting completed for RT-03
 echo "(but not MFCC extraction)"
-

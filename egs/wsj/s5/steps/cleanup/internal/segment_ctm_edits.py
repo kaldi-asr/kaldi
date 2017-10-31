@@ -64,6 +64,10 @@ parser.add_argument("--max-junk-proportion", type = float, default = 0.1,
                     help = "Maximum proportion of the time of the segment that may "
                     "consist of potentially bad data, in which we include 'tainted' lines of "
                     "the ctm-edits input and unk-padding.")
+parser.add_argument("--min-split-point-duration", type=float, default=0.1,
+                    help="""Minimum duration of silence or non-scored word
+                    to be considered a viable split point when
+                    truncating based on junk proportion.""")
 parser.add_argument("--max-deleted-words-kept-when-merging", type = str, default = 1,
                     help = "When merging segments that are found to be overlapping or "
                     "adjacent after all other processing, keep in the transcript the "
@@ -536,12 +540,15 @@ class Segment:
             # We'll consider splitting on silence and on non-scored words.
             # (i.e. making the silence or non-scored word the left boundary of
             # the new utterance and discarding the piece to the left of that).
-            if this_edit_type == 'sil' or \
-               (this_edit_type == 'cor' and this_ref_word in non_scored_words):
+            if ((this_edit_type == 'sil'
+                 or (this_edit_type == 'cor'
+                     and this_ref_word in non_scored_words))
+                and (float(this_split_line[3])
+                     > args.min_split_point_duration)):
                 candidate_start_index = i
                 candidate_start_time = float(this_split_line[2])
                 break  # Consider only the first potential truncation.
-        if candidate_start_index == None:
+        if candidate_start_index is None:
             return  # Nothing to do as there is no place to split.
         candidate_removed_piece_duration = candidate_start_time - self.StartTime()
         if begin_junk_duration / candidate_removed_piece_duration < args.max_junk_proportion:
@@ -575,12 +582,15 @@ class Segment:
             # We'll consider splitting on silence and on non-scored words.
             # (i.e. making the silence or non-scored word the right boundary of
             # the new utterance and discarding the piece to the right of that).
-            if this_edit_type == 'sil' or \
-               (this_edit_type == 'cor' and this_ref_word in non_scored_words):
+            if ((this_edit_type == 'sil'
+                 or (this_edit_type == 'cor'
+                     and this_ref_word in non_scored_words))
+                and (float(this_split_line[3])
+                     > args.min_split_point_duration)):
                 candidate_end_index = i + 1  # note: end-indexes are one past the last.
                 candidate_end_time = float(this_split_line[2]) + float(this_split_line[3])
                 break  # Consider only the latest potential truncation.
-        if candidate_end_index == None:
+        if candidate_end_index is None:
             return  # Nothing to do as there is no place to split.
         candidate_removed_piece_duration = self.EndTime() - candidate_end_time
         if end_junk_duration / candidate_removed_piece_duration < args.max_junk_proportion:
@@ -797,10 +807,13 @@ def TimeToString(time, frame_length):
 
 def WriteSegmentsForUtterance(text_output_handle, segments_output_handle,
                               old_utterance_name, segments):
+    num_digits = len(str(len(segments)))
     for n in range(len(segments)):
         segment = segments[n]
         # split utterances will be named foo-bar-1 foo-bar-2, etc.
-        new_utterance_name = old_utterance_name + "-" + str(n + 1)
+        new_utterance_name = "{old}-{index:0{width}}".format(
+                                 old=old_utterance_name, index=n+1,
+                                 width=num_digits)
         # print a line to the text output of the form like
         # <new-utterance-id> <text>
         # like:
@@ -912,23 +925,23 @@ def ProcessData():
     try:
         f_in = open(args.ctm_edits_in)
     except:
-        sys.exit("modify_ctm_edits.py: error opening ctm-edits input "
+        sys.exit("segment_ctm_edits.py: error opening ctm-edits input "
                  "file {0}".format(args.ctm_edits_in))
     try:
         text_output_handle = open(args.text_out, 'w')
     except:
-        sys.exit("modify_ctm_edits.py: error opening text output "
+        sys.exit("segment_ctm_edits.py: error opening text output "
                  "file {0}".format(args.text_out))
     try:
         segments_output_handle = open(args.segments_out, 'w')
     except:
-        sys.exit("modify_ctm_edits.py: error opening segments output "
+        sys.exit("segment_ctm_edits.py: error opening segments output "
                  "file {0}".format(args.text_out))
     if args.ctm_edits_out != None:
         try:
             ctm_edits_output_handle = open(args.ctm_edits_out, 'w')
         except:
-            sys.exit("modify_ctm_edits.py: error opening ctm-edits output "
+            sys.exit("segment_ctm_edits.py: error opening ctm-edits output "
                      "file {0}".format(args.ctm_edits_out))
 
     # Most of what we're doing in the lines below is splitting the input lines
@@ -936,10 +949,10 @@ def ProcessData():
     # and then printing the modified lines.
     first_line = f_in.readline()
     if first_line == '':
-        sys.exit("modify_ctm_edits.py: empty input")
+        sys.exit("segment_ctm_edits.py: empty input")
     split_pending_line = first_line.split()
     if len(split_pending_line) == 0:
-        sys.exit("modify_ctm_edits.py: bad input line " + first_line)
+        sys.exit("segment_ctm_edits.py: bad input line " + first_line)
     cur_utterance = split_pending_line[0]
     split_lines_of_cur_utterance = []
 
@@ -966,14 +979,14 @@ def ProcessData():
         split_pending_line = next_line.split()
         if len(split_pending_line) == 0:
             if next_line != '':
-                sys.exit("modify_ctm_edits.py: got an empty or whitespace input line")
+                sys.exit("segment_ctm_edits.py: got an empty or whitespace input line")
     try:
         text_output_handle.close()
         segments_output_handle.close()
         if args.ctm_edits_out != None:
             ctm_edits_output_handle.close()
     except:
-        sys.exit("modify_ctm_edits.py: error closing one or more outputs "
+        sys.exit("segment_ctm_edits.py: error closing one or more outputs "
                  "(broken pipe or full disk?)")
 
 
@@ -982,12 +995,12 @@ def ReadNonScoredWords(non_scored_words_file):
     try:
         f = open(non_scored_words_file)
     except:
-        sys.exit("modify_ctm_edits.py: error opening file: "
+        sys.exit("segment_ctm_edits.py: error opening file: "
                  "--non-scored-words=" + non_scored_words_file)
     for line in f.readlines():
         a = line.split()
         if not len(line.split()) == 1:
-            sys.exit("modify_ctm_edits.py: bad line in non-scored-words "
+            sys.exit("segment_ctm_edits.py: bad line in non-scored-words "
                      "file {0}: {1}".format(non_scored_words_file, line))
         non_scored_words.add(a[0])
     f.close()

@@ -1,0 +1,1 @@
+tuning/run_tdnn_wsj_rm_1a.sh

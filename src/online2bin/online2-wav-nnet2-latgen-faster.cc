@@ -25,7 +25,7 @@
 #include "online2/online-endpoint.h"
 #include "fstext/fstext-lib.h"
 #include "lat/lattice-functions.h"
-#include "thread/kaldi-thread.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 
@@ -40,10 +40,10 @@ void GetDiagnosticsAndPrintOutput(const std::string &utt,
   }
   CompactLattice best_path_clat;
   CompactLatticeShortestPath(clat, &best_path_clat);
-  
+
   Lattice best_path_lat;
   ConvertLattice(best_path_clat, &best_path_lat);
-  
+
   double likelihood;
   LatticeWeight weight;
   int32 num_frames;
@@ -57,7 +57,7 @@ void GetDiagnosticsAndPrintOutput(const std::string &utt,
   KALDI_VLOG(2) << "Likelihood per frame for utterance " << utt << " is "
                 << (likelihood / num_frames) << " over " << num_frames
                 << " frames.";
-             
+
   if (word_syms != NULL) {
     std::cerr << utt << ' ';
     for (size_t i = 0; i < words.size(); i++) {
@@ -76,10 +76,10 @@ int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace fst;
-    
+
     typedef kaldi::int32 int32;
     typedef kaldi::int64 int64;
-    
+
     const char *usage =
         "Reads in wav file(s) and simulates online decoding with neural nets\n"
         "(nnet2 setup), with optional iVector-based speaker adaptation and\n"
@@ -92,22 +92,22 @@ int main(int argc, char *argv[]) {
         "you want to decode utterance by utterance.\n"
         "See egs/rm/s5/local/run_online_decoding_nnet2.sh for example\n"
         "See also online2-wav-nnet2-latgen-threaded\n";
-    
+
     ParseOptions po(usage);
-    
+
     std::string word_syms_rxfilename;
-    
+
     OnlineEndpointConfig endpoint_config;
 
     // feature_config includes configuration for the iVector adaptation,
     // as well as the basic features.
-    OnlineNnet2FeaturePipelineConfig feature_config;  
+    OnlineNnet2FeaturePipelineConfig feature_config;
     OnlineNnet2DecodingConfig nnet2_decoding_config;
 
     BaseFloat chunk_length_secs = 0.05;
     bool do_endpointing = false;
     bool online = true;
-    
+
     po.Register("chunk-length", &chunk_length_secs,
                 "Length of chunk size in seconds, that we process.  Set to <= 0 "
                 "to use all input in one chunk.");
@@ -126,24 +126,24 @@ int main(int argc, char *argv[]) {
                 "--chunk-length=-1.");
     po.Register("num-threads-startup", &g_num_threads,
                 "Number of threads used when initializing iVector extractor.");
-    
+
     feature_config.Register(&po);
     nnet2_decoding_config.Register(&po);
     endpoint_config.Register(&po);
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 5) {
       po.PrintUsage();
       return 1;
     }
-    
+
     std::string nnet2_rxfilename = po.GetArg(1),
         fst_rxfilename = po.GetArg(2),
         spk2utt_rspecifier = po.GetArg(3),
         wav_rspecifier = po.GetArg(4),
         clat_wspecifier = po.GetArg(5);
-    
+
     OnlineNnet2FeaturePipelineInfo feature_info(feature_config);
 
     if (!online) {
@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
       feature_info.ivector_extractor_info.greedy_ivector_extractor = true;
       chunk_length_secs = -1.0;
     }
-    
+
     TransitionModel trans_model;
     nnet2::AmNnet nnet;
     {
@@ -160,25 +160,25 @@ int main(int argc, char *argv[]) {
       trans_model.Read(ki.Stream(), binary);
       nnet.Read(ki.Stream(), binary);
     }
-    
-    fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldi(fst_rxfilename);
-    
+
+    fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldiGeneric(fst_rxfilename);
+
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_rxfilename != "")
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_rxfilename)))
         KALDI_ERR << "Could not read symbol table from file "
                   << word_syms_rxfilename;
-    
+
     int32 num_done = 0, num_err = 0;
     double tot_like = 0.0;
     int64 num_frames = 0;
-    
+
     SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
     RandomAccessTableReader<WaveHolder> wav_reader(wav_rspecifier);
     CompactLatticeWriter clat_writer(clat_wspecifier);
-    
+
     OnlineTimingStats timing_stats;
-    
+
     for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
       std::string spk = spk2utt_reader.Key();
       const std::vector<std::string> &uttlist = spk2utt_reader.Value();
@@ -202,14 +202,14 @@ int main(int argc, char *argv[]) {
         OnlineSilenceWeighting silence_weighting(
             trans_model,
             feature_info.silence_weighting_config);
-        
+
         SingleUtteranceNnet2Decoder decoder(nnet2_decoding_config,
                                             trans_model,
                                             nnet,
                                             *decode_fst,
                                             &feature_pipeline);
         OnlineTimer decoding_timer(utt);
-        
+
         BaseFloat samp_freq = wave_data.SampFreq();
         int32 chunk_length;
         if (chunk_length_secs > 0) {
@@ -218,15 +218,15 @@ int main(int argc, char *argv[]) {
         } else {
           chunk_length = std::numeric_limits<int32>::max();
         }
-        
+
         int32 samp_offset = 0;
         std::vector<std::pair<int32, BaseFloat> > delta_weights;
-        
+
         while (samp_offset < data.Dim()) {
           int32 samp_remaining = data.Dim() - samp_offset;
           int32 num_samp = chunk_length < samp_remaining ? chunk_length
                                                          : samp_remaining;
-          
+
           SubVector<BaseFloat> wave_part(data, samp_offset, num_samp);
           feature_pipeline.AcceptWaveform(samp_freq, wave_part);
 
@@ -236,16 +236,19 @@ int main(int argc, char *argv[]) {
             // no more input. flush out last frames
             feature_pipeline.InputFinished();
           }
-    
-          if (silence_weighting.Active()) {
+
+          if (silence_weighting.Active() &&
+              feature_pipeline.IvectorFeature() != NULL) {
             silence_weighting.ComputeCurrentTraceback(decoder.Decoder());
-            silence_weighting.GetDeltaWeights(feature_pipeline.NumFramesReady(),
-                                              &delta_weights);
-            feature_pipeline.UpdateFrameWeights(delta_weights);
+            silence_weighting.GetDeltaWeights(
+                feature_pipeline.IvectorFeature()->NumFramesReady(),
+                &delta_weights);
+            feature_pipeline.IvectorFeature()->UpdateFrameWeights(
+                delta_weights);
           }
-          
+
           decoder.AdvanceDecoding();
-          
+
           if (do_endpointing && decoder.EndpointDetected(endpoint_config))
             break;
         }
@@ -254,16 +257,16 @@ int main(int argc, char *argv[]) {
         CompactLattice clat;
         bool end_of_utterance = true;
         decoder.GetLattice(end_of_utterance, &clat);
-        
+
         GetDiagnosticsAndPrintOutput(utt, word_syms, clat,
                                      &num_frames, &tot_like);
-        
+
         decoding_timer.OutputStats(&timing_stats);
-        
+
         // In an application you might avoid updating the adaptation state if
         // you felt the utterance had low confidence.  See lat/confidence.h
         feature_pipeline.GetAdaptationState(&adaptation_state);
-        
+
         // we want to output the lattice with un-scaled acoustics.
         BaseFloat inv_acoustic_scale =
             1.0 / nnet2_decoding_config.decodable_opts.acoustic_scale;
@@ -275,7 +278,7 @@ int main(int argc, char *argv[]) {
       }
     }
     timing_stats.Print(online);
-    
+
     KALDI_LOG << "Decoded " << num_done << " utterances, "
               << num_err << " with errors.";
     KALDI_LOG << "Overall likelihood per frame was " << (tot_like / num_frames)
