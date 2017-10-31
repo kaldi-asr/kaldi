@@ -28,7 +28,7 @@ sre16_trials_tgl=data/sre16_eval_test/trials_tgl
 sre16_trials_yue=data/sre16_eval_test/trials_yue
 nnet_dir=exp/xvector_nnet_1a
 
-stage=0
+stage=10
 if [ $stage -le 0 ]; then
   # Path to some, but not all of the training corpora
   data_root=/export/corpora/LDC
@@ -181,7 +181,7 @@ if [ $stage -le 3 ]; then
   # wasteful, as it roughly doubles the amount of training data on disk.  After
   # creating training examples, this can be removed.
   local/nnet3/xvector/prepare_feats_for_egs.sh --nj 40 --cmd "$train_cmd" \
-    --write_utt2num_frames true \
+    --write-utt2num-frames true \
     data/swbd_sre_combined data/swbd_sre_combined_no_sil exp/swbd_sre_combined_no_sil
   utils/fix_data_dir.sh data/swbd_sre_combined_no_sil
 
