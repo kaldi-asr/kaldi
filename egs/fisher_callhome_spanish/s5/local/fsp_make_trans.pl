@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 # Copyright 2014  Gaurav Kumar.   Apache 2.0
 
+use utf8;
 use File::Basename;
 ($tmpdir)=@ARGV;
 #$tmpdir='../data/local/tmp';
@@ -10,6 +11,7 @@ open(T, "<", "$trans") || die "Can't open transcripts file";
 open(R, "|sort >$reco") || die "Can't open reco2file_and_channel file $!";
 open(O, ">$tmpdir/text.1") || die "Can't open text file for writing";
 open(G, ">$tmpdir/spk2gendertmp") || die "Can't open the speaker to gender map file";
+binmode(O, ":utf8");
 while (<T>) {
 	$file = $_;
 	m:([^/]+)\.tdf: || die "Bad filename $_";
@@ -17,6 +19,7 @@ while (<T>) {
 	print R "$call_id-A $call_id A\n";
 	print R "$call_id-B $call_id B\n";
 	open(I, "<$file") || die "Opening file $_";
+	binmode(I, ":utf8");
 	# Get rid of header sections first
 	foreach ( 0..2 ) {
 		$tmpLine = <I>;
@@ -64,12 +67,13 @@ while (<T>) {
             $words =~ s/N/n/g;
 #			$words =~ s/2//g;
 			$words = lc($words);
-			$words =~ s:ü([eiéí]):w\1:g;
-			$words =~ s:ü:u:g;
-			$words =~ s:ñ:N:g;
+#			$words =~ s:ü([eiéí]):w\1:g;
+#			$words =~ s:ü:u:g;
+#			$words =~ s:ñ:N:g;
 			print O "$utt_id $words\n" || die "Error writing to text file";
 		}
 	}
+        close(I)
 }
 close(T);
 close(R);

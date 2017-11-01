@@ -111,40 +111,8 @@ if [ $stage -le 1 ]; then
 	mv $tmpdir/callhome_reco2file_and_channel $dir/callhome_train_all/
 fi
 
-if [ $stage -le 2 ]; then                                                        
-  sort $tmpdir/callhome.text.1 | grep -v '((' | \
-  awk '{if (NF > 1){ print; }}' | \
-  sed 's:<\s*[/]*\s*\s*for[ei][ei]g[nh]\s*\w*>::g' | \
-  sed 's:<lname>\([^<]*\)<\/lname>:\1:g' | \
-  sed 's:<lname[\/]*>::g' | \
-  sed 's:<laugh>[^<]*<\/laugh>:[laughter]:g' | \
-  sed 's:<\s*cough[\/]*>:[noise]:g' | \
-  sed 's:<sneeze[\/]*>:[noise]:g' | \
-  sed 's:<breath[\/]*>:[noise]:g' | \
-  sed 's:<lipsmack[\/]*>:[noise]:g' | \
-  sed 's:<background>[^<]*<\/background>:[noise]:g' | \
-  sed -r 's:<[/]?background[/]?>:[noise]:g' | \
-  #One more time to take care of nested stuff
-  sed 's:<laugh>[^<]*<\/laugh>:[laughter]:g' | \
-  sed -r 's:<[/]?laugh[/]?>:[laughter]:g' | \
-  #now handle the exceptions, find a cleaner way to do this?
-  sed 's:<foreign langenglish::g' | \
-  sed 's:</foreign::g' | \
-  sed -r 's:<[/]?foreing\s*\w*>::g' | \
-  sed 's:</b::g' | \
-  sed 's:<foreign langengullís>::g' | \
-  sed 's:foreign>::g' | \
-  sed 's:>::g' | \
-  #How do you handle numbers?
-  grep -v '()' | \
-  #Now go after the non-printable characters
-  sed -r 's:¿::g' > $tmpdir/callhome.text.2
-
-  CHARS=$(python -c 'print u"\u00BF\u00A1".encode("utf8")')
-  sed -i 's/['"$CHARS"']//g' $tmpdir/callhome.text.2
-
-  cp $tmpdir/callhome.text.2 $dir/callhome_train_all/callhome.text
-
+if [ $stage -le 2 ]; then
+  sort $tmpdir/callhome.text.1 | sed 's/^\s\s*|\s\s*$//g' | sed 's/\s\s*/ /g' > $dir/callhome_train_all/callhome.text
 
   #Create segments file and utt2spk file
   ! cat $dir/callhome_train_all/callhome.text | perl -ane 'm:([^-]+)-([AB])-(\S+): || die "Bad line $_;"; print "$1-$2-$3 $1-$2\n"; ' > $dir/callhome_train_all/callhome_utt2spk \
@@ -159,7 +127,7 @@ fi
 if [ $stage -le 3 ]; then
   for f in `cat $tmpdir/callhome_train_sph.flist`; do
     # convert to absolute path
-    utils/make_absolute.sh $f 
+    make_absolute.sh $f
   done > $tmpdir/callhome_train_sph_abs.flist
 
   cat $tmpdir/callhome_train_sph_abs.flist | perl -ane 'm:/([^/]+)\.SPH$: || die "bad line $_; ";  print lc($1)," $_"; ' > $tmpdir/callhome_sph.scp
@@ -184,9 +152,12 @@ if [ $stage -le 5 ]; then
     mv callhome_reco2file_and_channel reco2file_and_channel
     mv callhome_spk2gender spk2gender
     mv callhome_utt2spk utt2spk
+    cd $cdir
 fi
+
+fix_data_dir.sh $dir/callhome_train_all || exit 1
+utils/validate_data_dir.sh --no-feats $dir/callhome_train_all || exit 1
 
 echo "CALLHOME spanish Data preparation succeeded."
 
 exit 0;
-

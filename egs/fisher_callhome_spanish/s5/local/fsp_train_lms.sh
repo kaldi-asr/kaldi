@@ -29,7 +29,6 @@ echo "$n conversations left in split $split"
 utils/fix_data_dir.sh $tmp_dir/$split
 # There is no feature file yet, use --no-feats switch
 utils/validate_data_dir.sh --no-feats $tmp_dir/$split
-rm $tmp_dir/$split/*.tmp
 
 # Now use this training text
 
