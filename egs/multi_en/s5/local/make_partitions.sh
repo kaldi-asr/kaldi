@@ -71,28 +71,28 @@ fi
 
 # whole fisher + swbd + tedlium + wsj + hub4_en (nodup)
 if [ $stage -eq 7 ]; then
-  utils/combine_data.sh data/fisher_swbd_tedlium_wsj_hub4 \
-    data/fisher_swbd_tedlium data/{wsj,hub4_en}/train \
+  utils/combine_data.sh $data_dir/fisher_swbd_tedlium_wsj_hub4 \
+    $data_dir/fisher_swbd_tedlium data/{wsj,hub4_en}/train \
     || { echo "Failed to combine data"; exit 1; }
-  utils/data/remove_dup_utts.sh 300 data/fisher_swbd_tedlium_wsj_hub4 $data_dir/tri4_ali
+  utils/data/remove_dup_utts.sh 300 $data_dir/fisher_swbd_tedlium_wsj_hub4 $data_dir/tri4_ali
   ln -nfs tri4_ali $data_dir/tri5a
 fi
 
 # whole fisher + swbd + tedlilum + wsj + hub4_en + librispeech460 (nodup)
 if [ $stage -eq 8 ]; then
-  utils/combine_data.sh data/fisher_swbd_tedlium_wsj_hub4_libri460 \
-    data/fisher_swbd_tedlium_wsj_hub4 data/{librispeech_100,librispeech_360}/train \
+  utils/combine_data.sh $data_dir/fisher_swbd_tedlium_wsj_hub4_libri460 \
+    $data_dir/fisher_swbd_tedlium_wsj_hub4 data/{librispeech_100,librispeech_360}/train \
     || { echo "Failed to combine data"; exit 1; }
-  utils/data/remove_dup_utts.sh 300 data/fisher_swbd_tedlium_wsj_hub4_libri460 $data_dir/tri5a_ali
+  utils/data/remove_dup_utts.sh 300 $data_dir/fisher_swbd_tedlium_wsj_hub4_libri460 $data_dir/tri5a_ali
   ln -nfs tri5a_ali $data_dir/tri5b
 fi
 
 # whole fisher + swbd + tedlilum + wsj + hub4_en + librispeech460 (nodup)
 if [ $stage -eq 9 ]; then
-  utils/combine_data.sh data/fisher_swbd_tedlium_wsj_hub4_libri960 \
-    data/fisher_swbd_tedlium_wsj_hub4_libri460 data/librispeech_500/train \
+  utils/combine_data.sh $data_dir/fisher_swbd_tedlium_wsj_hub4_libri960 \
+    $data_dir/fisher_swbd_tedlium_wsj_hub4_libri460 data/librispeech_500/train \
     || { echo "Failed to combine data"; exit 1; }
-  utils/data/remove_dup_utts.sh 300 data/fisher_swbd_tedlium_wsj_hub4_libri960 $data_dir/tri5b_ali
+  utils/data/remove_dup_utts.sh 300 $data_dir/fisher_swbd_tedlium_wsj_hub4_libri960 $data_dir/tri5b_ali
   ln -nfs tri6a $data_dir/tri5b_ali
   ln -nfs tri6a $data_dir/tri6a_ali
   ln -nfs tri6a $data_dir/tri6b
