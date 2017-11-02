@@ -41,17 +41,24 @@ done
 # Set various variables.
 mkdir -p $dir/log
 mkdir -p $data_out
-featdir=${PWD}/$dir
+featdir=$(utils/make_absolute.sh $dir)
+
+if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
+  utils/create_split_dir.pl \
+    /export/b{14,15,16,17}/$USER/kaldi-data/egs/sre16/v2/xvector-$(date +'%m_%d_%H_%M')/xvector_feats/storage $featdir/storage
+fi
+
+for n in $(seq $nj); do
+  # the next command does nothing unless $featdir/storage/ exists, see
+  # utils/create_data_link.pl for more info.
+  utils/create_data_link.pl $featdir/xvector_feats_${name}.${n}.ark
+done
 
 cp $data_in/utt2spk $data_out/utt2spk
 cp $data_in/spk2utt $data_out/spk2utt
 cp $data_in/wav.scp $data_out/wav.scp
 
-for n in $(seq $nj); do
-  # the next command does nothing unless $featdir/storage/ exists, see
-  # utils/create_data_link.pl for more info.
-  utils/create_data_link.pl $featdir/xvector_feats_${name}.$n.ark
-done
+write_num_frames_opt="--write-num-frames=ark,t:$featdir/log/utt2num_frames.JOB"
 
 sdata_in=$data_in/split$nj;
 utils/split_data.sh $data_in $nj || exit 1;
@@ -60,11 +67,16 @@ $cmd JOB=1:$nj $dir/log/create_xvector_feats_${name}.JOB.log \
   apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=$cmn_window \
   scp:${sdata_in}/JOB/feats.scp ark:- \| \
   select-voiced-frames ark:- scp,s,cs:${sdata_in}/JOB/vad.scp ark:- \| \
-  copy-feats --compress=$compress ark:- \
+  copy-feats --compress=$compress $write_num_frames_opt ark:- \
   ark,scp:$featdir/xvector_feats_${name}.JOB.ark,$featdir/xvector_feats_${name}.JOB.scp || exit 1;
 
 for n in $(seq $nj); do
   cat $featdir/xvector_feats_${name}.$n.scp || exit 1;
 done > ${data_out}/feats.scp || exit 1
+
+for n in $(seq $nj); do
+  cat $featdir/log/utt2num_frames.$n || exit 1;
+done > $data_out/utt2num_frames || exit 1
+rm $featdir/log/utt2num_frames.*
 
 echo "$0: Succeeded creating xvector features for $name"
