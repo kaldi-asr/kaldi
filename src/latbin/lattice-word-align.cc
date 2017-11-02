@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
                 "even if there was an error (e.g. caused by forced-out lattice)");
     po.Register("test", &test, "If true, activate checks designed to test the code.");
     
-    WordBoundaryInfoOpts opts;
+    WordBoundaryInfoNewOpts opts;
     opts.Register(&po);
     
 

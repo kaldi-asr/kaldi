@@ -847,8 +847,10 @@ bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
   fst::StdVectorFst supervision_fst_noeps(supervision->fst);
   fst::RmEpsilon(&supervision_fst_noeps);
   if (!TryDeterminizeMinimize(kSupervisionMaxStates,
-                              &supervision_fst_noeps))
+                              &supervision_fst_noeps)) {
+    KALDI_WARN << "Failed to determinize supervision fst";
     return false;
+  }
 
   // note: by default, 'Compose' will call 'Connect', so if the
   // resulting FST is not connected, it will end up empty.
@@ -861,8 +863,10 @@ bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
   // determinize and minimize to make it as compact as possible.
 
   if (!TryDeterminizeMinimize(kSupervisionMaxStates,
-                              &composed_fst))
+                              &composed_fst)) {
+    KALDI_WARN << "Failed to determinize normalized supervision fst";
     return false;
+  }
   supervision->fst = composed_fst;
 
   // Make sure the states are numbered in increasing order of time.
