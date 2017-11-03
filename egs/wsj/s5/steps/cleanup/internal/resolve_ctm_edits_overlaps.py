@@ -308,7 +308,7 @@ def run(args):
             if len(ctm_edits_for_reco) == 0:
                 logger.warn('CTMs for recording %s is empty.',
                              reco)
-                break   # Go to the next recording
+                continue   # Go to the next recording
 
             # Process CTMs in the recordings
             ctm_edits_for_reco = resolve_overlaps(ctm_edits_for_reco, segments)
