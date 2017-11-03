@@ -8,7 +8,7 @@ set -e -o pipefail
 # script.  See those scripts for examples of usage.
 
 
-stage=0
+stage=1
 nj=30
 train_set=train_si284   # you might set this to e.g. train.
 test_sets="test_dev93 test_eval92"
@@ -23,7 +23,6 @@ nnet3_affix=             # affix for exp/nnet3 directory to put iVector stuff in
 . ./path.sh
 . utils/parse_options.sh
 
-
 gmm_dir=exp/${gmm}
 ali_dir=exp/${gmm}_ali_${train_set}_sp
 
@@ -33,7 +32,6 @@ for f in data/${train_set}/feats.scp ${gmm_dir}/final.mdl; do
     exit 1
   fi
 done
-
 
 
 if [ $stage -le 2 ] && [ -f data/${train_set}_sp_hires/feats.scp ]; then

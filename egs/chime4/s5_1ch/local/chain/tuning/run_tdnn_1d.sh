@@ -26,11 +26,11 @@ set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
-stage=0
+stage=1
 nj=30
 train=noisy
 enhan=$1
-train_set="tr05_real_${train} tr05_simu_${train}"
+train_set=tr05_multi_${train}
 test_sets="dt05_real_$enhan dt05_simu_$enhan et05_real_$enhan et05_simu_$enhan"
 gmm=tri3b_tr05_multi_${train} # this is the source gmm-dir that we'll use for alignments; it
                               # should have alignments for the specified training data.
@@ -90,11 +90,10 @@ fi
 
 local/nnet3/run_ivector_common.sh \
   --stage $stage --nj $nj \
-  --train-set $train_set --gmm $gmm \
-  --test-sets $test_sets \
+  --train-set "$train_set" --gmm $gmm \
+  --test-sets "$test_sets" \
   --num-threads-ubm $num_threads_ubm \
   --nnet3-affix "$nnet3_affix"
-
 
 gmm_dir=exp/${gmm}
 ali_dir=exp/${gmm}_ali_${train_set}_sp
@@ -119,7 +118,6 @@ for f in $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
-stage=100
 if [ $stage -le 12 ]; then
   echo "$0: creating lang directory $lang with chain-type topology"
   # Create a version of the lang/ directory that has one state per phone in the
@@ -186,17 +184,17 @@ if [ $stage -le 15 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 dim=512
-  relu-batchnorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn3 dim=512
-  relu-batchnorm-layer name=tdnn4 dim=512 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn5 dim=512
-  relu-batchnorm-layer name=tdnn6 dim=512 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn7 dim=512 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn8 dim=512 input=Append(-6,-3,0)
+  relu-batchnorm-layer name=tdnn1 dim=600
+  relu-batchnorm-layer name=tdnn2 dim=600 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn3 dim=600
+  relu-batchnorm-layer name=tdnn4 dim=600 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn5 dim=600
+  relu-batchnorm-layer name=tdnn6 dim=600 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn7 dim=600 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn8 dim=600 input=Append(-6,-3,0)
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain dim=512 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-chain dim=600 target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
@@ -208,7 +206,7 @@ if [ $stage -le 15 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn8 dim=512 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn8 dim=600 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -236,8 +234,8 @@ if [ $stage -le 16 ]; then
     --trainer.frames-per-iter=3000000 \
     --trainer.optimization.num-jobs-initial=2 \
     --trainer.optimization.num-jobs-final=5 \
-    --trainer.optimization.initial-effective-lrate=0.001 \
-    --trainer.optimization.final-effective-lrate=0.0001 \
+    --trainer.optimization.initial-effective-lrate=0.0025 \
+    --trainer.optimization.final-effective-lrate=0.00025 \
     --trainer.optimization.shrink-value=1.0 \
     --trainer.optimization.proportional-shrink=60.0 \
     --trainer.num-chunk-per-minibatch=256,128,64 \
@@ -267,16 +265,10 @@ if [ $stage -le 17 ]; then
   # as long as phones.txt was compatible.
 
   utils/lang/check_phones_compatible.sh \
-    data/lang_test_tgpr/phones.txt $lang/phones.txt
+    data/lang_test_tgpr_5k/phones.txt $lang/phones.txt
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_test_tgpr \
-    $tree_dir $tree_dir/graph_tgpr || exit 1;
-
-  utils/lang/check_phones_compatible.sh \
-    data/lang_test_bd_tgpr/phones.txt $lang/phones.txt
-  utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_test_bd_tgpr \
-    $tree_dir $tree_dir/graph_bd_tgpr || exit 1;
+    --self-loop-scale 1.0 data/lang_test_tgpr_5k \
+    $tree_dir $tree_dir/graph_tgpr_5k || exit 1;
 fi
 
 if [ $stage -le 18 ]; then
@@ -287,7 +279,7 @@ if [ $stage -le 18 ]; then
     (
       data_affix=$(echo $data | sed s/test_//)
       nspk=$(wc -l <data/${data}_hires/spk2utt)
-      for lmtype in tgpr bd_tgpr; do
+      for lmtype in tgpr_5k; do
         steps/nnet3/decode.sh \
           --acwt 1.0 --post-decode-acwt 10.0 \
           --extra-left-context 0 --extra-right-context 0 \
@@ -298,13 +290,6 @@ if [ $stage -le 18 ]; then
           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
           $tree_dir/graph_${lmtype} data/${data}_hires ${dir}/decode_${lmtype}_${data_affix} || exit 1
       done
-      steps/lmrescore.sh \
-        --self-loop-scale 1.0 \
-        --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
-        data/${data}_hires ${dir}/decode_{tgpr,tg}_${data_affix} || exit 1
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-        data/lang_test_bd_{tgpr,fgconst} \
-       data/${data}_hires ${dir}/decode_${lmtype}_${data_affix}{,_fg} || exit 1
     ) || touch $dir/.error &
   done
   wait
@@ -347,6 +332,14 @@ if $test_online_decoding && [ $stage -le 19 ]; then
   done
   wait
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+fi
+
+# scoring
+if [ $stage -le 20 ]; then
+  # decoded results of enhanced speech using TDNN AMs trained with enhanced data
+  local/chime4_calc_wers.sh exp/chain/tdnn1d_sp $enhan exp/chain/tree_a_sp/graph_tgpr_5k \
+    > exp/chain/tdnn1d_sp/best_wer_$enhan.result
+  head -n 15 exp/chain/tdnn1d_sp/best_wer_$enhan.result
 fi
 
 

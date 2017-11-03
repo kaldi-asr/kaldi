@@ -130,9 +130,17 @@ fi
 # It takes a few days to train a RNNLM.
 if [ $stage -le 4 ]; then
   if $flatstart; then
-    local/run_lmrescore.sh $chime4_data $enhancement_method
+    if $tdnn; then
+      local/run_lmrescore_tdnn.sh $chime4_data $enhancement_method
+    else
+      local/run_lmrescore.sh $chime4_data $enhancement_method
+    fi
   else
-    local/run_lmrescore_recog.sh $enhancement_method $modeldir
+    if $tdnn; then
+      local/run_lmrescore_tdnn_recog.sh $enhancement_method $modeldir
+    else
+      local/run_lmrescore_recog.sh $enhancement_method $modeldir
+    fi
   fi
 fi
 
