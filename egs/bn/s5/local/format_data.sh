@@ -4,6 +4,10 @@
 # Apache 2.0.
 
 echo "$0 $@"  # Print the command line for logging
+
+noise_word="<NOISE>"
+spoken_noise_word="<SPOKEN_NOISE>"
+
 . utils/parse_options.sh || exit 1;
 
 . ./path.sh || exit 1;
@@ -11,11 +15,33 @@ echo "$0 $@"  # Print the command line for logging
 srcdir=data/local/data
 tmpdir=data/local/
 
+export PATH=$PATH:$KALDI_ROOT/tools/sph2pipe_v2.5
+
 ###############################################################################
 # Format 1996 English Broadcast News Train (HUB4)
 ###############################################################################
 mkdir -p data/train_bn96
-cp $srcdir/train_bn96/{wav.scp,segments,utt2spk} data/train_bn96
+
+local/data_prep/format_1996_bn_data.pl \
+  $srcdir/train_bn96/audio.list $srcdir/train_bn96/transcript.txt \
+  data/train_bn96 || exit 1
+
+mv data/train_bn96/text data/train_bn96/text.unnorm
+local/normalize_transcripts.pl $noise_word $spoken_noise_word \
+  < data/train_bn96/text.unnorm > data/train_bn96/text
+
+###############################################################################
+# Format 1997 English Broadcast News Train (HUB4)
+###############################################################################
+mkdir -p data/train_bn97
+
+local/data_prep/format_1997_bn_data.pl \
+  $srcdir/train_bn97/audio.list $srcdir/train_bn97/transcript.txt \
+  data/train_bn97 || exit 1
+
+mv data/train_bn97/text data/train_bn97/text.unnorm
+local/normalize_transcripts.pl $noise_word $spoken_noise_word \
+  < data/train_bn97/text.unnorm > data/train_bn97/text
 
 ###############################################################################
 # Format 1996 English Broadcast News Dev (HUB4)

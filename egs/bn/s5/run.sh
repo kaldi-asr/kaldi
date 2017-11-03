@@ -15,10 +15,16 @@ nj=40
 
 false && {
 # Prepare 1996 English Broadcast News Train (HUB4)
-local/data_prep/prepare_1996_bn_data.py --noise-word="<NOISE>" \
-  --spoken-noise-word="<SPOKEN_NOISE>" \
-  /export/corpora/LDC/LDC97S44 /export/corpora/LDC/LDC97T22 \
+local/data_prep/prepare_1996_bn_data.sh \
+  /export/corpora/LDC/LDC97T22/hub4_eng_train_trans \
+  /export/corpora/LDC/LDC97S44 \
   data/local/data/train_bn96
+
+# Prepare 1997 English Broadcast News Train (HUB4)
+local/data_prep/prepare_1997_bn_data.sh \
+  /export/corpora/LDC/LDC98T28/hub4e97_trans_980217 \
+  /export/corpora/LDC/LDC98S71/97_eng_bns_hub4 \
+  data/local/data/train_bn97
 
 # Prepare 1995 CSR-IV HUB4 corpus
 local/data_prep/prepare_1995_csr_hub4_corpus.sh \

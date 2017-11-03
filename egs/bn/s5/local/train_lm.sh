@@ -51,12 +51,12 @@ if [ $stage -le 0 ]; then
   # Take unique subset to make sure that the training text is not in the 
   # dev set.
   cat data/train_bn96/text | cut -d ' ' -f 2- | sort | uniq -c | \
-    shuf > ${dir}/train_bn96_text
-  head -n $num_dev_sentences < ${dir}/train_bn96_text | \
-    awk '{str=$2; for (i=3;i<=NF;i++) {str = str" "$i;}; for (i=0; i<$1; i++) {print str;} }' | cut -d ' ' -f 2- > \
+    shuf > ${dir}/train_bn96_text_with_count
+  head -n $num_dev_sentences < ${dir}/train_bn96_text_with_count | \
+    awk '{for (i=0; i<$1; i++) {print $0;} }' | cut -d ' ' -f 2- > \
     ${dir}/data/text/dev.txt 
-  tail -n +$[num_dev_sentences+1] < ${dir}/train_bn96_text | \
-    awk '{str=$2; for (i=3;i<=NF;i++) {str = str" "$i;}; for (i=0; i<$1; i++) {print str;} }' | cut -d ' ' -f 2- > \
+  tail -n +$[num_dev_sentences+1] < ${dir}/train_bn96_text_with_count | \
+    awk '{for (i=0; i<$1; i++) {print $0;} }' | cut -d ' ' -f 2- > \
     ${dir}/data/text/train_bn96.txt
 
   # Get text from NA News corpus 
