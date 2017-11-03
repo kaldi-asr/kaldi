@@ -82,15 +82,19 @@ fi
 
 if [ $stage -le 1 ]; then
   # Make filterbanks and compute the energy-based VAD for each dataset
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
+    utils/create_split_dir.pl \
+      /export/b{14,15,16,17}/$USER/kaldi-data/egs/sre16/v2/xvector-$(date +'%m_%d_%H_%M')/mfccs/storage $mfccdir/storage
+  fi
   for name in sre swbd sre16_eval_enroll sre16_eval_test sre16_major; do
-    steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
+    steps/make_mfcc.sh --write-utt2num-frames true --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
       data/${name} exp/make_mfcc $mfccdir
     utils/fix_data_dir.sh data/${name}
     sid/compute_vad_decision.sh --nj 40 --cmd "$train_cmd" \
       data/${name} exp/make_vad $vaddir
     utils/fix_data_dir.sh data/${name}
   done
-  utils/combine_data.sh data/swbd_sre data/swbd data/sre
+  utils/combine_data.sh --extra-files "utt2num_frames" data/swbd_sre data/swbd data/sre
   utils/fix_data_dir.sh data/swbd_sre
 fi
 
@@ -99,7 +103,6 @@ fi
 # The combined list will be used to train the xvector DNN.  The SRE
 # subset will be used to train the PLDA model.
 if [ $stage -le 2 ]; then
-  utils/data/get_utt2num_frames.sh --nj 40 --cmd "$train_cmd" data/swbd_sre
   frame_shift=0.01
   awk -v frame_shift=$frame_shift '{print $1, $2*frame_shift;}' data/swbd_sre/utt2num_frames > data/swbd_sre/reco2dur
 
@@ -180,8 +183,6 @@ if [ $stage -le 3 ]; then
   local/nnet3/xvector/prepare_feats_for_egs.sh --nj 40 --cmd "$train_cmd" \
     data/swbd_sre_combined data/swbd_sre_combined_no_sil exp/swbd_sre_combined_no_sil
   utils/fix_data_dir.sh data/swbd_sre_combined_no_sil
-  utils/data/get_utt2num_frames.sh --nj 40 --cmd "$train_cmd" data/swbd_sre_combined_no_sil
-  utils/fix_data_dir.sh data/swbd_sre_combined_no_sil
 
   # Now, we need to remove features that are too short after removing silence
   # frames.  We want atleast 5s (500 frames) per utterance.
@@ -203,7 +204,7 @@ if [ $stage -le 3 ]; then
   utils/filter_scp.pl data/swbd_sre_combined_no_sil/utt2spk data/swbd_sre_combined_no_sil/utt2num_frames > data/swbd_sre_combined_no_sil/utt2num_frames.new
   mv data/swbd_sre_combined_no_sil/utt2num_frames.new data/swbd_sre_combined_no_sil/utt2num_frames
 
-  # Now we're reaady to create training examples.
+  # Now we're ready to create training examples.
   utils/fix_data_dir.sh data/swbd_sre_combined_no_sil
 fi
 
