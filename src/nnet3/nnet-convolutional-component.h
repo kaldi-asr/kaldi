@@ -220,9 +220,8 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Type() const { return "TimeHeightConvolutionComponent"; }
   virtual int32 Properties() const {
-    return kUpdatableComponent|kLinearInParameters|
-        kReordersIndexes|kBackpropAdds|kBackpropNeedsInput|
-        kInputContiguous|kOutputContiguous;
+    return kUpdatableComponent|kReordersIndexes|kBackpropAdds|
+        kBackpropNeedsInput|kInputContiguous|kOutputContiguous;
   }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,

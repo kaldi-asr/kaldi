@@ -47,47 +47,41 @@ enum ComponentProperties {
                                 // UpdatableComponent do not have to return this
                                 // flag, e.g.  if this instance is not really
                                 // updatable).
-  kLinearInInput = 0x004,    // true if the component's output is always a
-                             // linear function of its input, i.e. alpha times
-                             // input gives you alpha times output.
-  kLinearInParameters = 0x008, // true if an updatable component's output is always a
-                               // linear function of its parameters, i.e. alpha times
-                               // parameters gives you alpha times output.  This is true
-                               // for all updatable components we envisage.
-  kPropagateInPlace = 0x010,  // true if we can do the propagate operation in-place
+  kPropagateInPlace = 0x004,  // true if we can do the propagate operation in-place
                               // (input and output matrices are the same).
                               // Note: if doing backprop, you'd also need to check
                               // that the kBackpropNeedsInput property is not true.
-  kPropagateAdds = 0x020,  // true if the Propagate function adds to, rather
+  kPropagateAdds = 0x008,  // true if the Propagate function adds to, rather
                            // than setting, its output.  The Component chooses
                            // whether to add or set, and the calling code has to
-                           // accommodate it.
-  kReordersIndexes = 0x040,  // true if the ReorderIndexes function might reorder
+                           // accommodate it.  This flag is incompatible with
+                           // the kPropagateInPlace flag.
+  kReordersIndexes = 0x010,  // true if the ReorderIndexes function might reorder
                              // the indexes (otherwise we can skip calling it).
                              // Must not be set for simple components.
-  kBackpropAdds = 0x080,   // true if the Backprop function adds to, rather than
+  kBackpropAdds = 0x020,   // true if the Backprop function adds to, rather than
                            // setting, the "in_deriv" output.  The Component
                            // chooses whether to add or set, and the calling
                            // code has to accommodate it.  Note: in the case of
-                           // in-place backprop, this flag has no effect.
-  kBackpropNeedsInput = 0x100,  // true if backprop operation needs access to
+                           // in-place backprop, this flag is
+  kBackpropNeedsInput = 0x040,  // true if backprop operation needs access to
                                 // forward-pass input.
-  kBackpropNeedsOutput = 0x200,  // true if backprop operation needs access to
+  kBackpropNeedsOutput = 0x080,  // true if backprop operation needs access to
                                  // forward-pass output (e.g. true for Sigmoid).
-  kBackpropInPlace = 0x400,   // true if we can do the backprop operation in-place
+  kBackpropInPlace = 0x100,   // true if we can do the backprop operation in-place
                              // (input and output matrices may be the same).
-  kStoresStats = 0x800,      // true if the StoreStats operation stores
+  kStoresStats = 0x200,      // true if the StoreStats operation stores
                              // statistics e.g. on average node activations and
                              // derivatives of the nonlinearity, (as it does for
                              // Tanh, Sigmoid, ReLU and Softmax).
-  kInputContiguous = 0x1000,  // true if the component requires its input data (and
+  kInputContiguous = 0x400,  // true if the component requires its input data (and
                               // input derivatives) to have Stride()== NumCols().
-  kOutputContiguous = 0x2000,  // true if the component requires its input data (and
+  kOutputContiguous = 0x800,  // true if the component requires its input data (and
                                // output derivatives) to have Stride()== NumCols().
-  kUsesMemo = 0x4000,  // true if the component returns a void* pointer from its
+  kUsesMemo = 0x1000,  // true if the component returns a void* pointer from its
                        // Propagate() function that needs to be passed into the
                        // corresponding Backprop function.
-  kRandomComponent = 0x8000   // true if the component has some kind of
+  kRandomComponent = 0x2000   // true if the component has some kind of
                               // randomness, like DropoutComponent (these should
                               // inherit from class RandomComponent.
 };
@@ -442,13 +436,13 @@ class RandomComponent: public Component {
  */
 class UpdatableComponent: public Component {
  public:
-  UpdatableComponent(const UpdatableComponent &other):
-      learning_rate_(other.learning_rate_),
-      learning_rate_factor_(other.learning_rate_factor_),
-      is_gradient_(other.is_gradient_), max_change_(other.max_change_) { }
+  UpdatableComponent(const UpdatableComponent &other);
 
+  // If these defaults are changed, the defaults in
+  // InitLearningRatesFromConfig() should be changed too.
   UpdatableComponent(): learning_rate_(0.001), learning_rate_factor_(1.0),
-                        is_gradient_(false), max_change_(0.0) { }
+                        l2_regularize_(0.0), is_gradient_(false),
+                        max_change_(0.0) { }
 
   virtual ~UpdatableComponent() { }
 
@@ -483,16 +477,24 @@ class UpdatableComponent: public Component {
   /// by components that use Natural Gradient).
   virtual void FreezeNaturalGradient(bool freeze) { }
 
-  /// Gets the learning rate of gradient descent.  Note: if you call
-  /// SetLearningRate(x), and learning_rate_factor_ != 1.0,
-  /// a different value than x will returned.
+  /// Gets the learning rate to be used in gradient descent.
   BaseFloat LearningRate() const { return learning_rate_; }
 
-  /// Gets per-component max-change value. Note: the components themselves do
-  /// not enforce the per-component max-change; it's enforced in class
-  /// NnetTrainer by querying the max-changes for each component.
-  /// See NnetTrainer::UpdateParamsWithMaxChange() in nnet3/nnet-training.cc.
+  /// Returns the per-component max-change value, which is interpreted as the
+  /// maximum change (in l2 norm) in parameters that is allowed per minibatch
+  /// for this component.  The components themselves do not enforce the
+  /// per-component max-change; it's enforced in class NnetTrainer by querying
+  /// the max-changes for each component.  See
+  /// NnetTrainer::UpdateParamsWithMaxChange() in nnet-utils.h.
   BaseFloat MaxChange() const { return max_change_; }
+
+
+  /// Returns the l2 regularization constant, which may be set in any updatable
+  /// component (usually from the config file).  This value is not interrogated
+  /// in the component-level code.  Instead it is read by the function
+  /// ApplyL2Regularization(), declared in nnet-utils.h, which is used as part
+  /// of the training workflow.
+  BaseFloat L2Regularization() const { return l2_regularize_; }
 
   virtual std::string Info() const;
 
@@ -532,6 +534,8 @@ class UpdatableComponent: public Component {
                                    ///< can be set to another < value so that
                                    ///when < you call SetLearningRate(), that
                                    ///value will be scaled by this factor.
+  BaseFloat l2_regularize_;  ///< L2 regularization constant.  See comment for
+                             ///< the L2Regularization() for details.
   bool is_gradient_;  ///< True if this component is to be treated as a gradient rather
                       ///< than as parameters.  Its main effect is that we disable
                       ///< any natural-gradient update and just compute the standard

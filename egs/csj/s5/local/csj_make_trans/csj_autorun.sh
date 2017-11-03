@@ -152,7 +152,7 @@ if [ ! -e $outd/.done_make_lexicon ]; then
 	sort -u $lexicon/lexicon.txt > $lexicon/lexicon_htk.txt
 	local/csj_make_trans/vocab2dic.pl -p local/csj_make_trans/kana2phone -e $lexicon/ERROR_v2d -o $lexicon/lexicon.txt $lexicon/lexicon_htk.txt
 	cut -d'+' -f1,3- $lexicon/lexicon.txt >$lexicon/lexicon_htk.txt
-	cut -f1,3- $lexicon/lexicon_htk.txt | sed 's:[\t]: :g' >$lexicon/lexicon.txt
+	cut -f1,3- $lexicon/lexicon_htk.txt | perl -ape 's:\t: :g' >$lexicon/lexicon.txt
 
     if [ -s $lexicon/lexicon.txt ] ;then
 	echo -n >$outd/.done_make_lexicon

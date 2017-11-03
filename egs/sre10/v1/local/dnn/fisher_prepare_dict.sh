@@ -10,7 +10,7 @@
 
 # for example /mnt/matylda2/data/SWITCHBOARD_1R2
 
-. path.sh
+. ./path.sh
 
 # The parts of the output of this that will be needed are
 # [in data/local/dict/ ]

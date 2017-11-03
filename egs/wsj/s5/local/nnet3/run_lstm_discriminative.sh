@@ -12,7 +12,7 @@ set -e
 # since the lattice generation runs in about real-time, so takes of the order of
 # 1000 hours of CPU time.
 #
-. cmd.sh
+. ./cmd.sh
 
 
 stage=0
@@ -30,7 +30,7 @@ extra_right_context=0
 extra_left_context_initial=-1
 extra_right_context_final=-1
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

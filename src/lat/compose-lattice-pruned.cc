@@ -526,7 +526,7 @@ void PrunedCompactLatticeComposer::ComputeDeltaBackwardCosts(
     // At this point expected_cost_offset may be infinite, if arc_delta_cost was
     // infinite (reflecting that we processed all the arcs, and the final-state
     // if applicable, of the lattice state corresponding to this composed state.
-    if (expected_cost_offset <= current_cutoff) {
+    if (expected_cost_offset < current_cutoff) {
       queue_elements.push_back(std::pair<BaseFloat, int32>(
           expected_cost_offset, composed_state_index));
     }

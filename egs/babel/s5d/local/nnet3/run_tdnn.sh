@@ -3,7 +3,7 @@
 # this is the standard "tdnn" system, built in nnet3; it's what we use to
 # call multi-splice.
 
-. cmd.sh
+. ./cmd.sh
 
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
@@ -27,7 +27,7 @@ remove_egs=true
 
 [ -f local.conf ] && . ./local.conf
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

@@ -64,9 +64,12 @@ class XconfigStatsLayer(XconfigLayerBase):
         self._stats_period = int(m.group(4))
         self._right_context = int(m.group(5))
 
-        output_dim = (self.descriptors['input']['dim']
-                      * (2 if self._output_stddev else 1)
-                      + 1 if self._output_log_counts else 0)
+        if self._output_stddev:
+          output_dim = 2 * self.descriptors['input']['dim']
+        else:
+          output_dim = self.descriptors['input']['dim']
+        if self._output_log_counts:
+          output_dim = output_dim + 1
 
         if self.config['dim'] > 0 and self.config['dim'] != output_dim:
             raise RuntimeError(
@@ -76,7 +79,7 @@ class XconfigStatsLayer(XconfigLayerBase):
         self.config['dim'] = output_dim
 
     def check_configs(self):
-        if not (self._left_context > 0 and self._right_context > 0
+        if not (self._left_context >= 0 and self._right_context >= 0
                 and self._input_period > 0 and self._stats_period > 0
                 and self._left_context % self._stats_period == 0
                 and self._right_context % self._stats_period == 0
