@@ -14,8 +14,8 @@
 # Caution: some of the graph creation steps use quite a bit of memory, so you
 # should run this on a machine that has sufficient memory.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e # exit on error
 
 #: << '#SKIP'

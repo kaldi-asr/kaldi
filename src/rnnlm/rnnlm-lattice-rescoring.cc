@@ -26,13 +26,12 @@
 #include "util/text-utils.h"
 
 namespace kaldi {
-namespace nnet3 {
+namespace rnnlm {
 
 KaldiRnnlmDeterministicFst::~KaldiRnnlmDeterministicFst() {
-  int size = state_to_rnnlm_state_.size();
-  for (int i = 0; i < size; i++) {
+  int32 size = state_to_rnnlm_state_.size();
+  for (int32 i = 0; i < size; i++)
     delete state_to_rnnlm_state_[i];
-  }
   
   state_to_rnnlm_state_.resize(0);
   state_to_wseq_.resize(0);
@@ -40,12 +39,11 @@ KaldiRnnlmDeterministicFst::~KaldiRnnlmDeterministicFst() {
 }
 
 void KaldiRnnlmDeterministicFst::Clear() {
-  // similar to the destructor but we retain the 0-th entries in each map
-  // which corresponds to the <bos> state
-  int size = state_to_rnnlm_state_.size();
-  for (int i = 1; i < size; i++) {
+  // This function is similar to the destructor but we retain the 0-th entries
+  // in each map which corresponds to the <bos> state.
+  int32 size = state_to_rnnlm_state_.size();
+  for (int32 i = 1; i < size; i++)
     delete state_to_rnnlm_state_[i];
-  }
   
   state_to_rnnlm_state_.resize(1);
   state_to_wseq_.resize(1);
@@ -103,7 +101,7 @@ bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
   typedef MapType::iterator IterType;
   std::pair<IterType, bool> result = wseq_to_state_.insert(wseq_state_pair);
 
-  // If the pair was just inserted, then also add it to state_to_* structures
+  // If the pair was just inserted, then also add it to state_to_* structures.
   if (result.second == true) {
     RnnlmComputeState *rnnlm2 = rnnlm->GetSuccessorState(ilabel);
     state_to_wseq_.push_back(word_seq);
@@ -118,5 +116,5 @@ bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
   return true;
 }
 
-}  // namespace nnet3
+}  // namespace rnnlm
 }  // namespace kaldi

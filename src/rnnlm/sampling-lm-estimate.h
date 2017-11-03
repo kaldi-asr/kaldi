@@ -40,6 +40,7 @@ struct SamplingLmEstimatorOptions {
 
   int32 bos_symbol;
   int32 eos_symbol;
+  int32 brk_symbol;
 
   SamplingLmEstimatorOptions(): vocab_size(-1),
                                 ngram_order(3),
@@ -49,7 +50,8 @@ struct SamplingLmEstimatorOptions {
                                 bos_factor(5.0),
                                 unigram_power(0.8),
                                 bos_symbol(1),
-                                eos_symbol(2) { }
+                                eos_symbol(2),
+                                brk_symbol(-1) { }
 
   void Register(OptionsItf *po) {
     po->Register("vocab-size", &vocab_size, "If set, must be set to the "
@@ -80,6 +82,9 @@ struct SamplingLmEstimatorOptions {
                  "Integer id for the BOS word (<s>)");
     po->Register("eos-symbol", &eos_symbol,
                  "Integer id for the EOS word (</s>)");
+    po->Register("brk-symbol", &brk_symbol,
+                 "Integer id for the Break word (<brk>). Not needed but "
+                 "included for ease of scripting");
     po->Register("unigram-power", &unigram_power, "Important configuration "
                  "value.  After all other stages of estimating the model, "
                  "the unigram probabilities are taken to this power and then "

@@ -29,30 +29,6 @@
 #include "lat/lattice-functions.h"
 #include "lat/compose-lattice-pruned.h"
 
-namespace kaldi {
-
-fst::VectorFst<fst::StdArc> *ReadAndPrepareLmFst(std::string rxfilename) {
-  // ReadFstKaldi() will die with exception on failure.
-  fst::VectorFst<fst::StdArc> *ans = fst::ReadFstKaldi(rxfilename);
-  if (ans->Properties(fst::kAcceptor, true) == 0) {
-    // If it's not already an acceptor, project on the output, i.e. copy olabels
-    // to ilabels.  Generally the G.fst's on disk will have the disambiguation
-    // symbol #0 on the input symbols of the backoff arc, and projection will
-    // replace them with epsilons which is what is on the output symbols of
-    // those arcs.
-    fst::Project(ans, fst::PROJECT_OUTPUT);
-  }
-  if (ans->Properties(fst::kILabelSorted, true) == 0) {
-    // Make sure LM is sorted on ilabel.
-    fst::ILabelCompare<fst::StdArc> ilabel_comp;
-    fst::ArcSort(ans, ilabel_comp);
-  }
-  return ans;
-}
-
-
-}  // namespace kaldi
-
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -80,7 +56,7 @@ int main(int argc, char *argv[]) {
         "              final.raw ark:in.lats ark:out.lats\n";
 
     ParseOptions po(usage);
-    nnet3::RnnlmComputeStateComputationOptions opts;
+    rnnlm::RnnlmComputeStateComputationOptions opts;
     ComposeLatticePrunedOptions compose_opts;
 
     int32 max_ngram_order = 3;
@@ -120,7 +96,7 @@ int main(int argc, char *argv[]) {
     lats_wspecifier = po.GetArg(5);
 
     KALDI_LOG << "Reading old LMs...";
-    VectorFst<StdArc> *lm_to_subtract_fst = ReadAndPrepareLmFst(
+    VectorFst<StdArc> *lm_to_subtract_fst = fst::ReadAndPrepareLmFst(
         lm_to_subtract_rxfilename);
     fst::BackoffDeterministicOnDemandFst<StdArc>
               lm_to_subtract_det_backoff(*lm_to_subtract_fst);
@@ -138,7 +114,7 @@ int main(int argc, char *argv[]) {
     CuMatrix<BaseFloat> word_embedding_mat;
     ReadKaldiObject(word_embedding_rxfilename, &word_embedding_mat);
 
-    const nnet3::RnnlmComputeStateInfo info(opts, rnnlm, word_embedding_mat);
+    const rnnlm::RnnlmComputeStateInfo info(opts, rnnlm, word_embedding_mat);
 
     // Reads and writes as compact lattice.
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
@@ -146,8 +122,8 @@ int main(int argc, char *argv[]) {
 
     int32 num_done = 0, num_err = 0;
 
-    nnet3::KaldiRnnlmDeterministicFst* lm_to_add_orig = 
-         new nnet3::KaldiRnnlmDeterministicFst(max_ngram_order, info);
+    rnnlm::KaldiRnnlmDeterministicFst* lm_to_add_orig = 
+         new rnnlm::KaldiRnnlmDeterministicFst(max_ngram_order, info);
 
     for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
       fst::DeterministicOnDemandFst<StdArc> *lm_to_add =

@@ -26,7 +26,7 @@ mv $text ${text}.orig
 mv ${text}.clean $text
 utils/fix_data_dir.sh `dirname $text`
 
-cut -f 2- -d ' ' $text | sed 's/ /\n/g' | sort -u > $out/word_list.raw
+cut -f 2- -d ' ' $text | perl -ape 's/ /\n/g;' | sort -u > $out/word_list.raw
 (echo SIL; grep "<" $out/word_list.raw) | awk '{print $0, $0;}' > $out/silence_lexicon.txt
 grep -v "<" $out/word_list.raw > $out/word_list.txt
 

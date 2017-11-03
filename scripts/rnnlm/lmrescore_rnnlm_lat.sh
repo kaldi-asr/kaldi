@@ -11,7 +11,6 @@ cmd=run.pl
 skip_scoring=false
 max_ngram_order=4
 N=10
-inv_acwt=12
 weight=1.0  # Interpolation weight for RNNLM.
 normalize=false
 # End configuration section.
@@ -62,16 +61,13 @@ awk -v n=$0 -v w=$weight 'BEGIN {if (w < 0 || w > 1) {
 
 oldlm_command="fstproject --project_output=true $oldlm |"
 
-acwt=`perl -e "print (1.0/$inv_acwt);"`
-
-bos_symbol=`grep "<s>" $rnnlm_dir/config/words.txt | awk '{print $2}'`
-eos_symbol=`grep "</s>" $rnnlm_dir/config/words.txt | awk '{print $2}'`
+special_symbol_opts=$(cat $rnnlm_dir/special_symbol_opts.txt)
 
 word_embedding=
 if [ -f $rnnlm_dir/word_embedding.final.mat ]; then
   word_embedding=$rnnlm_dir/word_embedding.final.mat
 else
-  word_embedding="\"rnnlm-get-word-embedding $rnnlm_dir/word_feats.txt $rnnlm_dir/feat_embedding.final.mat -|\""
+  word_embedding="'rnnlm-get-word-embedding $rnnlm_dir/word_feats.txt $rnnlm_dir/feat_embedding.final.mat -|'"
 fi
 
 normalize_opt=
@@ -80,16 +76,15 @@ if $normalize; then
 fi
 
 mkdir -p $outdir/log
-nj=`cat $indir/num_jobs` || exit 1;
+nj=$(cat $indir/num_jobs) || exit 1;
 cp $indir/num_jobs $outdir
 
-oldlm_weight=`perl -e "print -1.0 * $weight;"`
+oldlm_weight=$(perl -e "print -1.0 * $weight;")
 if [ "$oldlm" == "$oldlang/G.fst" ]; then
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore --lm-scale=$oldlm_weight \
     "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm_command" ark:-  \| \
-    lattice-lmrescore-kaldi-rnnlm --lm-scale=$weight \
-    --bos-symbol=$bos_symbol --eos-symbol=$eos_symbol \
+    lattice-lmrescore-kaldi-rnnlm --lm-scale=$weight $special_symbol_opts \
     --max-ngram-order=$max_ngram_order $normalize_opt \
     $word_embedding "$rnnlm_dir/final.raw" ark:- \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
@@ -97,8 +92,7 @@ else
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore-const-arpa --lm-scale=$oldlm_weight \
     "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm" ark:-  \| \
-    lattice-lmrescore-kaldi-rnnlm --lm-scale=$weight \
-    --bos-symbol=$bos_symbol --eos-symbol=$eos_symbol \
+    lattice-lmrescore-kaldi-rnnlm --lm-scale=$weight $special_symbol_opts \
     --max-ngram-order=$max_ngram_order $normalize_opt \
     $word_embedding "$rnnlm_dir/final.raw" ark:- \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;

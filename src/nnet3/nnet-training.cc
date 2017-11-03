@@ -96,7 +96,13 @@ void NnetTrainer::TrainInternal(const NnetExample &eg,
   this->ProcessOutputs(false, eg, &computer);
   computer.Run();
 
-  // Updates the parameters of nnet
+  // If relevant, add in the part of the gradient that comes from L2
+  // regularization.
+  ApplyL2Regularization(*nnet_,
+                        GetNumNvalues(eg.io, false) * config_.l2_regularize_factor,
+                        delta_nnet_);
+
+  // Update the parameters of nnet
   bool success = UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
       1.0, 1.0 - config_.momentum, nnet_,
       &num_max_change_per_component_applied_, &num_max_change_global_applied_);
@@ -132,6 +138,15 @@ void NnetTrainer::TrainInternalBackstitch(const NnetExample &eg,
     max_change_scale = 1.0 + config_.backstitch_training_scale;
     scale_adding = 1.0 + config_.backstitch_training_scale;
   }
+
+  // If relevant, add in the part of the gradient that comes from L2
+  // regularization.  It may not be optimally inefficient to do it on both
+  // passes of the backstitch, like we do here, but it probably minimizes
+  // any harmful interactions with the max-change.
+  ApplyL2Regularization(*nnet_,
+                        scale_adding * GetNumNvalues(eg.io, false) *
+                        config_.l2_regularize_factor,
+                        delta_nnet_);
 
   // Updates the parameters of nnet
   UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,

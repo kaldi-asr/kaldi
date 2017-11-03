@@ -122,8 +122,8 @@ void SetNnetAsGradient(Nnet *nnet);
 /// stored stats).
 void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest);
 
-/// Does *dest += alpha * src for updatable components (affect nnet parameters),
-/// and *dest += scale * src for other components (affect stored stats).
+/// Does *dest += alpha * src for updatable components (affects nnet parameters),
+/// and *dest += scale * src for other components (affects stored stats).
 /// Here, alphas is a vector of size equal to the number of updatable components
 void AddNnetComponents(const Nnet &src, const Vector<BaseFloat> &alphas,
                        BaseFloat scale, Nnet *dest);
@@ -346,6 +346,7 @@ void ReadEditConfig(std::istream &config_file, Nnet *nnet);
                global max-change).
    @param [in] scale  This value, which will normally be 1.0, is a scaling
                factor used when adding to 'nnet', applied after any max-changes.
+               It is provided for backstitch-related purposes.
    @param [in,out] nnet  The nnet which we add to.
    @param [out] num_max_change_per_component_applied  We add to the elements of
                    this the count for each per-component max-change.
@@ -359,6 +360,94 @@ bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
                              std::vector<int32> *
                              num_max_change_per_component_applied,
                              int32 *num_max_change_global_applied);
+
+
+/**
+   This function is used as part of the regular training workflow, prior to
+   UpdateNnetWithMaxChange().
+
+   For each updatable component c in the neural net, suppose it has a
+   l2-regularization constant alpha set at the component level (see
+   UpdatableComponent::L2Regularization()), and a learning-rate
+   eta, then this function does (and this is not real code):
+
+        delta_nnet->c -= 2.0 * l2_regularize_scale * alpha * eta * nnet.c
+
+    The factor of -1.0 comes from the fact that we are maximizing, and we'd
+    add the l2 regularization term (of the form ||\theta||_2^2, i.e. squared
+    l2 norm) in the objective function with negative sign; the factor of 2.0
+    comes from the derivative of the squared parameters.  The factor
+    'l2_regularize_scale' is provided to this function, see below for an
+    explanation.
+
+    Note: the way we do it is a little bit approximate, due to the interaction
+    with natural gradient.  The issue is that the regular gradients are
+    multiplied by the inverse of the approximated, smoothed and factored inverse
+    Fisher matrix, but the l2 gradients are not.  This means that what we're
+    optimizing is not exactly the (regular objective plus the L2 term)-- we
+    could view it as optimizing (regular objective plus the l2 term times the
+    Fisher matrix)-- with the proviso that the Fisher matrix has been scaled in
+    such a way that the amount of parameter change is not affected, so this is
+    not an issue of affecting the overall strength of l2, just an issue of the
+    direction-wise weighting.  In effect, the l2 term will be larger, relative
+    to the gradient contribution, in directions where the Fisher matrix is
+    large.  This is probably not ideal-- but it's hard to judge without
+    experiments.  Anyway the l2 effect is small enough, and the Fisher matrix
+    sufficiently smoothed with the identity, that I doubt this makes much of a
+    difference.
+
+    @param [in] nnet  The neural net that is being trained; expected
+                      to be different from delta_nnet
+    @param [in] l2_regularize_scale   A scale on the l2 regularization.
+                      Usually this will be equal to the number of
+                      distinct examples (e.g. the number of chunks of
+                      speech-- more precisely, the number of distinct
+                      'n' values) in the minibatch, but this is
+                      multiplied by a configuration value
+                      --l2-regularize-factor passed in from the command
+                      line.  The reason for making l2 proportional to
+                      the number of elements in the minibatch is that
+                      we add the parameter gradients over the minibatch
+                      (we don't average), so multiplying the l2 factor by the
+                      number of elements in the minibatch is necessary to
+                      make the amount of l2 vs. gradient contribution stay
+                      the same when we vary the minibatch size.
+                      The --l2-regularize-factor option is provided so that the
+                      calling script can correct for the effects of
+                      parallelization via model-averaging (we'd normally set
+                      this to 1/num-parallel-jobs).
+    @param [out] delta_nnet  The neural net containing the parameter
+                      updates; this is a copy of 'nnet' that is used
+                      for purposes of momentum and applying max-change
+                      values.  This is what this code adds to.
+ */
+void ApplyL2Regularization(const Nnet &nnet,
+                           BaseFloat l2_regularize_scale,
+                           Nnet *delta_nnet);
+
+
+/** This utility function can be used to obtain the number of distinct 'n'
+    values in a training example.  This is the number of examples
+    (e.g. sequences) that have been combined into a single example.  (Actually
+    it returns the (largest - smallest + 1) of 'n' values, and assumes they are
+    consecutive).
+
+
+    @param [in] vec    The vector of NnetIo objects from the training example
+                       (NnetExample or NnetChainExample) for which we need the
+                       number of 'n' values
+    @param [in] exhaustive   If true, it will check exhaustively what largest
+                        and smallest 'n' values are.  If 'false' it does it in a
+                        fast way which will return the same answer as if
+                        exhaustive == true for all the types of eg we currently
+                        create (basically: correct if the last row of the input
+                        or supervision matrices has the last-numbered 'n'
+                        value), and will occasionally (randomly) do a test to
+                        check that this is the same as if we called it with
+                        'exhaustive=true'.
+ */
+int32 GetNumNvalues(const std::vector<NnetIo> &io_vec,
+                    bool exhaustive);
 
 
 } // namespace nnet3

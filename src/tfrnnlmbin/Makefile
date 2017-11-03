@@ -21,7 +21,8 @@ EXTRA_CXXFLAGS = -Wno-sign-compare -I$(TENSORFLOW)/bazel-tensorflow/external/pro
                  -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/protobuf/src
 include ../kaldi.mk
 
-BINFILES = lattice-lmrescore-tf-rnnlm lattice-lmrescore-tf-rnnlm-pruned
+BINFILES = lattice-lmrescore-tf-rnnlm lattice-lmrescore-tf-rnnlm-pruned \
+           lattice-lmrescore-const-arpa-tf-rnnlm-pruned
 
 OBJFILES =
 
@@ -33,7 +34,7 @@ ADDLIBS = ../lat/kaldi-lat.a ../lm/kaldi-lm.a ../fstext/kaldi-fstext.a \
           ../base/kaldi-base.a ../tfrnnlm/kaldi-tensorflow-rnnlm.a
 
 LDLIBS +=  -lz -ldl -fPIC -lrt
-LDLIBS += -L$(TENSORFLOW)/bazel-bin/tensorflow -ltensorflow_cc
+LDLIBS += -L$(TENSORFLOW)/bazel-bin/tensorflow -ltensorflow_cc -ltensorflow_framework
 
 LDFLAGS += -Wl,-rpath=$(shell pwd)/../../tools/tensorflow/bazel-bin/tensorflow/
 

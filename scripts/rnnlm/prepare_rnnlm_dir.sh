@@ -157,16 +157,15 @@ if [ $stage -le 7 ]; then
     num_splits=$(cat $dir/text/info/num_splits)
     text_files=$(for n in $(seq $num_splits); do echo -n $dir/text/$n.txt ''; done)
     vocab_size=$(tail -n 1 $dir/config/words.txt | awk '{print $NF + 1}')
-    bos_symbol=`grep "<s>" $dir/config/words.txt | awk '{print $2}'`
-    eos_symbol=`grep "</s>" $dir/config/words.txt | awk '{print $2}'`
+
+    special_symbol_opts=$(cat $dir/special_symbol_opts.txt)
 
     # this prints some nontrivial log information, so run using '$cmd' to ensure
     # the output gets saved.
     # ***NOTE*** we will likely later have to pass in options to this program to control
     # the size of the sampling LM.
     $cmd $dir/log/prepare_sampling_lm.log \
-         rnnlm-get-sampling-lm --unigram-factor=$unigram_factor \
-              --bos-symbol=$bos_symbol --eos-symbol=$eos_symbol \
+         rnnlm-get-sampling-lm --unigram-factor=$unigram_factor $special_symbol_opts \
               --vocab-size=$vocab_size  "cat $text_files|" $dir/sampling.lm
     echo "$0: done estimating LM for sampling."
   else

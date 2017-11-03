@@ -375,8 +375,10 @@ dim-range-node name=dim-range-node1 input-node=affine1_node dim-offset=0 dim=50
 \verbatim
 # caution, this is a simplification that overgenerates descriptors.
 <descriptor>  ::=   <node-name>      ;; node name of kInput or kComponent node.
-<descriptor>  ::=   Append(<descriptor>, [, <descriptor> ... ] )
-<descriptor>  ::=   Sum(<descriptor>, [<descriptor>, ...])
+<descriptor>  ::=   Append(<descriptor>, <descriptor> [, <descriptor> ... ] )
+<descriptor>  ::=   Sum(<descriptor>, <descriptor>)
+<descriptor>  ::=   Const(<value>, <dimension>)    ;; e.g. Const(1.0, 512)
+<descriptor>  ::=   Scale(<scale>, <descriptor>)   ;; e.g. Scale(-1.0, tdnn2)
 ;; Failover or IfDefined might be useful for time t=-1 in a RNN, for instance.
 <descriptor>  ::=   Failover(<descriptor>, <descriptor>)   ;; 1st arg if computable, else 2nd
 <descriptor>  ::=   IfDefined(<descriptor>)     ;; the arg if defined, else zero.
@@ -386,7 +388,7 @@ dim-range-node name=dim-range-node1 input-node=affine1_node dim-offset=0 dim=50
 ;; arguments
 <descriptor>  ::=   Switch(<descriptor>, <descriptor> [, <descriptor> ...])
 ;; For use in clockwork RNNs or similar, Round() rounds the time-index t of the
-;; requested Index to the next-lowest multiple of the integer <t-modulus>
+;; requested Index to the next-lowest multiple of the integer <t-modulus>,
 ;; and evaluates the input argument for the resulting Index.
 <descriptor>  ::=   Round(<descriptor>, <t-modulus>)  ;; <t-modulus> is an integer
 ;; ReplaceIndex replaces some <variable-name> (t or x) in the requested Index
@@ -409,6 +411,7 @@ can be read and converted to the internal representation.
 <sum-descriptor> ::= Sum(<sum-descriptor>, <sum-descriptor>)
 <sum-descriptor> ::= Failover(<sum-descriptor>, <sum-descriptor>)
 <sum-descriptor> ::= IfDefined(<sum-descriptor>)
+<sum-descriptor> ::= Const(<value>, <dimension>)
 <sum-descriptor> ::= <fwd-descriptor>
 ;;; <fwd-descriptor> == class ForwardingDescriptor
 ;; <t-offset> and <x-offset> are integers.
@@ -419,7 +422,8 @@ can be read and converted to the internal representation.
 ;; <variable-name> is t or x; <value> is an integer
 <fwd-descriptor>  ::=   ReplaceIndex(<fwd-descriptor>, <variable-name>, <value>)
 ;; <node-name> is the name of a node of type kInput or kComponent.
-<fwd-descriptor>  ::=  <node-name>
+<fwd-descriptor>  ::=   Scale(<scale>, <node-name>)
+<fwd-descriptor>  ::=   <node-name>
 \endverbatim
 The design of the Descriptors is supposed to be restrictive enough that the
 resulting expressions will be fairly easy to compute (and to produce backprop

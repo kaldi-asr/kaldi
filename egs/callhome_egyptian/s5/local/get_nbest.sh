@@ -3,7 +3,7 @@
 # Creates n-best lists from Kaldi lattices
 # This script needs to be run from one level above this directory
 
-. path.sh
+. ./path.sh
 
 if [ $# -lt 3 ]; then
   echo "Enter the latdir (where the n-best will be put), the decode dir containing lattices and the acoustic scale"

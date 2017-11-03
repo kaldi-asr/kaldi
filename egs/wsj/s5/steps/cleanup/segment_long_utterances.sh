@@ -4,7 +4,7 @@
 #           2016  Vimal Manohar
 # Apache 2.0
 
-. path.sh
+. ./path.sh
 
 set -e 
 set -o pipefail

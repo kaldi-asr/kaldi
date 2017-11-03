@@ -147,12 +147,24 @@ void GenerateConfigSequenceSimple(
     os << "ReplaceIndex(ivector, t, 0), ";
   for (size_t i = 0; i < splice_context.size(); i++) {
     int32 offset = splice_context[i];
-    os << "Offset(input, " << offset << ")";
+    if (RandInt(0, 1) == 0) {
+      os << "Offset(input, " << offset << ")";
+    } else {
+      // testing the Scale() expression.
+      os << "Scale(-1, Offset(input, " << offset << "))";
+    }
     if (i + 1 < splice_context.size())
       os << ", ";
   }
   os << ")\n";
-  os << "component-node name=nonlin1 component=relu1 input=affine1_node\n";
+  if (RandInt(0, 1) == 0) {
+    os << "component-node name=nonlin1 component=relu1 input=affine1_node\n";
+  } else if (RandInt(0, 1) == 0) {
+    os << "component-node name=nonlin1 component=relu1 input=Scale(-1.0, affine1_node)\n";
+  } else {
+    os << "component-node name=nonlin1 component=relu1 input=Sum(Const(1.0, "
+       << hidden_dim << "), Scale(-1.0, affine1_node))\n";
+  }
   if (use_batch_norm) {
     os << "component-node name=batch-norm component=batch-norm input=nonlin1\n";
     os << "component-node name=final_affine component=final_affine input=batch-norm\n";

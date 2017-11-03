@@ -8,8 +8,7 @@
 # This script takes no command-line arguments but takes the --cmd option.
 
 # Begin configuration section.
-cmd=run.pl
-dir=exp/rnnlm_lstm_e
+dir=exp/rnnlm_lstm_1c
 embedding_dim=1024
 lstm_rpd=256
 lstm_nrpd=256
@@ -73,11 +72,7 @@ EOF
 fi
 
 if [ $stage -le 2 ]; then
-  # the --unigram-factor option is set larger than the default (100)
-  # in order to reduce the size of the sampling LM, because rnnlm-get-egs
-  # was taking up too much CPU (as much as 10 cores).
-  rnnlm/prepare_rnnlm_dir.sh --unigram-factor 200.0 \
-                             $text_dir $dir/config $dir
+  rnnlm/prepare_rnnlm_dir.sh $text_dir $dir/config $dir
 fi
 
 if [ $stage -le 3 ]; then

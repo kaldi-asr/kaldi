@@ -28,7 +28,7 @@ TESTFILES =
 
 LIBNAME = kaldi-tensorflow-rnnlm
 
-ADDLIBS = ../lm/kaldi-lm.a ../util/kaldi-util.a ../thread/kaldi-thread.a \
+ADDLIBS = ../lm/kaldi-lm.a ../util/kaldi-util.a \
           ../matrix/kaldi-matrix.a ../base/kaldi-base.a \
 
 LDLIBS +=  -lz -ldl -fPIC -lrt

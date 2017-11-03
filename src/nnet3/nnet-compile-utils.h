@@ -36,12 +36,28 @@ namespace nnet3 {
    splits it up into a list of vectors of pairs.  In order to make the lists all
    the same length it may have to insert "dummy" pairs with value (-1, -1).
    In addition, this function implement certain heuristics to break up the
-   list into pairs in a particular desirable way, as we will describe below.
+   list into pairs in a particular desirable way, which we will describe below.
 
-   submat_lists.dim() may be large e.g. 1024 (it usually represents a minibatch
-   size), but the maximum size of the lists will usually be fairly small e.g. no
-   more than 4 or so, as it represents the number of terms in a hand-coded
-   summation expression.
+   Let the input be `submat_lists`, and let `num_rows = submat_lists.size()`.
+   The value -1 is not expected to appear as either the .first or .second
+   element of pairs in `submat_lists`.
+
+   Heuristics aside, what this function guarantees is as follows.  Each pair p
+   that is in an element of list `submat_lists[i]` (say `p =
+   submat_lists[i][k]`), will be present as `(*split_lists)[j][i] == p`.
+   Because we don't ban submat_lists[i] from containing duplicates, the
+   technical definition is a little more complicated: that the count of any
+   given pair p != (-1, -1) in `submat_lists[i][*]` is equal
+   to the count of that same pair in `(*split_lists)[*][i]`.
+
+   Each pair present in split_lists is either (-1, -1), or will correspond to an
+   element of submat_lists; thus the total number of pairs, excluding (-1, -1),
+   in split_lists will be the same as the total number of pairs in submat_lists.
+
+   Note on expected input: submat_lists.dim() may be large e.g. 1024 (it usually
+   represents a minibatch size), but the maximum size of the lists will usually
+   be fairly small e.g. no more than 4 or so, as it represents the number of
+   terms in a hand-coded summation expression.
 
    The use of this function is in interpreting a command to set each row of
    a matrix to a sum of terms.  Each pair represents an input term, interpreted

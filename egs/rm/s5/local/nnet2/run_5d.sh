@@ -11,7 +11,7 @@ use_gpu=true
 stage=0
 transform_dir=exp/tri3b_ali
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . utils/parse_options.sh
 
