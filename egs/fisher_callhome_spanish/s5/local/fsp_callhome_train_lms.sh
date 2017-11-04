@@ -1,51 +1,25 @@
 #!/bin/bash
-# Copyright 2014  Gaurav Kumar.   Apache 2.0
 
 # To be run from one level above this directory
-# Generate the text for the LM training
+# Generate the text for the combined fsp and callhome LM training
 tmp_dir=data/local/tmp
-train_all=data/local/data/train_all
-
-if [ $# -lt 1 ]; then
-  echo "Specify the location of the split files"
-  exit 1;
-fi
-
-splitFile=$1
+callhome_train_all=data/local/data/callhome_train_all
 split=train
-# Train only
-if [ -d $tmp_dir/$split ]; then
-  rm -r $tmp_dir/$split
-fi
-cp -r $train_all $tmp_dir/$split
+rm -rf $tmp_dir/fsp_callhome_$split
 
-awk 'BEGIN {FS=" "}; FNR==NR { a[$1]; next } ((substr($2,0,length($2)-2) ".sph") in a)' \
-$splitFile/$split $train_all/segments > $tmp_dir/$split/segments
-
-n=`awk 'BEGIN {FS = " "}; {print substr($2,0,length($2)-2)}' $tmp_dir/$split/segments | sort | uniq | wc -l`
-
-echo "$n conversations left in split $split"
-
-utils/fix_data_dir.sh $tmp_dir/$split
-# There is no feature file yet, use --no-feats switch
-utils/validate_data_dir.sh --no-feats $tmp_dir/$split
+utils/data/combine_data.sh $tmp_dir/fsp_callhome_$split $tmp_dir/$split $callhome_train_all
+utils/fix_data_dir.sh $tmp_dir/fsp_callhome_$split
+utils/validate_data_dir.sh --no-feats $tmp_dir/fsp_callhome_$split
 
 # Now use this training text
-
-text=$tmp_dir/train/text
+text=$tmp_dir/fsp_callhome_$split/text
 lexicon=data/local/dict/lexicon.txt
 
 for f in "$text" "$lexicon"; do
   [ ! -f $x ] && echo "$0: No such file $f" && exit 1;
 done
 
-# This script takes no arguments.  It assumes you have already run
-# fisher_data_prep.sh and fisher_prepare_dict.sh
-# It takes as input the files
-#data/train_all/text
-#data/local/dict/lexicon.txt
-
-dir=`pwd`/data/local/lm
+dir=`pwd`/data/local/lm2
 mkdir -p $dir
 export LC_ALL=C # You'll get errors about things being not sorted, if you
 # have a different locale.
@@ -101,8 +75,7 @@ train_lm.sh --arpa --lmtype 3gram-mincount $dir || exit 1;
 # Perplexity over 88307.000000 words (excluding 691.000000 OOVs) is 71.241332
 
 # note: output is
-# data/local/lm/3gram-mincount/lm_unpruned.gz
-
+# data/local/lm2/3gram-mincount/lm_unpruned.gz
 
 exit 0
 
