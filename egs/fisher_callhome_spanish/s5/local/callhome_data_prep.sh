@@ -101,7 +101,7 @@ if [ $stage -le 0 ]; then
     find $transcripts_train -iname '*.txt';
     find $transcripts_dev -iname '*.txt';
     find $transcripts_test -iname '*.txt';
-    )  > $tmpdir/callhome_train_transcripts.flist
+  )  > $tmpdir/callhome_train_transcripts.flist
 
 fi
 
