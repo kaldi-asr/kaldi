@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012-2015  Brno University of Technology (author: Karel Vesely)
+# Copyright 2012-2017  Brno University of Technology (author: Karel Vesely)
 # Apache 2.0
 
 # Begin configuration.
@@ -54,6 +54,9 @@ copy_feats=true     # resave the train/cv features into /tmp (disabled by defaul
 copy_feats_tmproot=/tmp/kaldi.XXXX # sets tmproot for 'copy-feats',
 copy_feats_compress=true # compress feats while resaving
 feats_std=1.0
+
+split_feats=        # split the training data into N portions, one portion will be one 'epoch',
+                    # (empty = no splitting)
 
 seed=777            # seed value used for data-shuffling, nn-initialization, and training,
 skip_cuda_check=false
@@ -193,6 +196,13 @@ utils/shuffle_list.pl --srand ${seed:-777} <$dir/train_sorted.scp >$dir/train.sc
 # create a 10k utt subset for global cmvn estimates,
 head -n 10000 $dir/train.scp > $dir/train.scp.10k
 
+# split the list,
+if [ -n "$split_feats" ]; then
+  scps= # 1..split_feats,
+  for (( ii=1; ii<=$split_feats; ii++ )); do scps="$scps $dir/train.${ii}.scp"; done
+  utils/split_scp.pl $dir/train.scp $scps
+fi
+
 # for debugging, add lists with non-local features,
 utils/shuffle_list.pl --srand ${seed:-777} <$data/feats.scp >$dir/train.scp_non_local
 cp $data_cv/feats.scp $dir/cv.scp_non_local
@@ -249,8 +259,11 @@ if [ ! -z "$pytel_transform" ]; then
   echo "# + 'pytel-transform' from '$pytel_transform'"
 fi
 
+# temoprary pipeline with first 10k,
+feats_tr_10k="${feats_tr/train.scp/train.scp.10k}"
+
 # get feature dim,
-feat_dim=$(feat-to-dim "$feats_tr" -)
+feat_dim=$(feat-to-dim "$feats_tr_10k" -)
 echo "# feature dim : $feat_dim (input of 'feature_transform')"
 
 # Now we start building 'feature_transform' which goes right in front of a NN.
@@ -301,7 +314,7 @@ else
       feature_transform=${feature_transform%.nnet}_transf_splice${splice_after_transf}.nnet
       [ -z $transf ] && transf=$alidir/final.mat
       [ ! -f $transf ] && echo "Missing transf $transf" && exit 1
-      feat_dim=$(feat-to-dim "$feats_tr nnet-forward 'nnet-concat $feature_transform_old \"transf-to-nnet $transf - |\" - |' ark:- ark:- |" -)
+      feat_dim=$(feat-to-dim "$feats_tr_10k nnet-forward 'nnet-concat $feature_transform_old \"transf-to-nnet $transf - |\" - |' ark:- ark:- |" -)
       nnet-concat --binary=false $feature_transform_old \
         "transf-to-nnet $transf - |" \
         "utils/nnet/gen_splice.py --fea-dim=$feat_dim --splice=$splice_after_transf |" \
@@ -321,7 +334,7 @@ else
   feature_transform=${feature_transform%.nnet}_cmvn-g.nnet
   echo "# compute normalization stats from 10k sentences"
   nnet-forward --print-args=true --use-gpu=yes $feature_transform_old \
-    "$(echo $feats_tr | sed 's|train.scp|train.scp.10k|')" ark:- |\
+    "$feats_tr_10k" ark:- |\
     compute-cmvn-stats ark:- $dir/cmvn-g.stats
   echo "# + normalization of NN-input at '$feature_transform'"
   nnet-concat --binary=false $feature_transform_old \
@@ -336,8 +349,8 @@ if [ ! -z $ivector ]; then
   # contains the transform and 2nd network contains <Copy> component.
 
   echo "# getting dims,"
-  dim_raw=$(feat-to-dim "$feats_tr" -)
-  dim_raw_and_ivec=$(feat-to-dim "$feats_tr $ivector_append_tool ark:- '$ivector' ark:- |" -)
+  dim_raw=$(feat-to-dim "$feats_tr_10k" -)
+  dim_raw_and_ivec=$(feat-to-dim "$feats_tr_10k $ivector_append_tool ark:- '$ivector' ark:- |" -)
   dim_ivec=$((dim_raw_and_ivec - dim_raw))
   echo "# dims, feats-raw $dim_raw, ivectors $dim_ivec,"
 
@@ -353,7 +366,7 @@ if [ ! -z $ivector ]; then
     feature_transform_old=$feature_transform
     feature_transform=${feature_transform%.nnet}_ivec_copy.nnet
     echo "# setting up ivector forwarding into '$feature_transform',"
-    dim_transformed=$(feat-to-dim "$feats_tr nnet-forward $feature_transform_old ark:- ark:- |" -)
+    dim_transformed=$(feat-to-dim "$feats_tr_10k nnet-forward $feature_transform_old ark:- ark:- |" -)
     nnet-initialize --print-args=false <(echo "<Copy> <InputDim> $dim_ivec <OutputDim> $dim_ivec <BuildVector> 1:$dim_ivec </BuildVector>") $dir/tr_ivec_copy.nnet
     nnet-initialize --print-args=false <(echo "<ParallelComponent> <InputDim> $((dim_raw+dim_ivec)) <OutputDim> $((dim_transformed+dim_ivec)) \
                                                <NestedNnetFilename> $feature_transform_old $dir/tr_ivec_copy.nnet </NestedNnetFilename>") $feature_transform
@@ -393,7 +406,7 @@ else
   # input-dim,
   get_dim_from=$feature_transform
   [ ! -z "$dbn" ] && get_dim_from="nnet-concat $feature_transform '$dbn' -|"
-  num_fea=$(feat-to-dim "$feats_tr nnet-forward \"$get_dim_from\" ark:- ark:- |" -)
+  num_fea=$(feat-to-dim "$feats_tr_10k nnet-forward \"$get_dim_from\" ark:- ark:- |" -)
 
   # output-dim,
   [ -z $num_tgt ] && \
@@ -464,6 +477,7 @@ steps/nnet/train_scheduler.sh \
   ${train_tool:+ --train-tool "$train_tool"} \
   ${train_tool_opts:+ --train-tool-opts "$train_tool_opts"} \
   ${feature_transform:+ --feature-transform $feature_transform} \
+  ${split_feats:+ --split-feats $split_feats} \
   --learn-rate $learn_rate \
   ${frame_weights:+ --frame-weights "$frame_weights"} \
   ${utt_weights:+ --utt-weights "$utt_weights"} \
