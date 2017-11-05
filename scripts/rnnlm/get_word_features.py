@@ -20,6 +20,16 @@ parser.add_argument("--unigram-probs", type=str, default='',
                     help="Specify the file containing unigram probs.")
 parser.add_argument("vocab_file", help="Path for vocab file")
 parser.add_argument("features_file", help="Path for features file")
+parser.add_argument("--treat-as-bos", type=str, default='',
+                    help="""Comma-separated list of written representations of
+                    words that are to be treated the same as the BOS symbol
+                    <s> for purposes of getting the word features (i.e. they will
+                    have the same features as <s>.  Because <s> will always
+                    learn to be predicted with a close-to-zero probability, this is
+                    a suitable thing to do for words that are in words.txt but
+                    are never expected to be predicted.  (Note: it's not necessary
+                    to do this for symbol zero, <eps>, because we exclude it from
+                    the normalization sum).  Example: --treat-as-bos='#0'""")
 
 args = parser.parse_args()
 
@@ -132,6 +142,12 @@ else:
     unigram_probs = None
 feats = read_features(args.features_file)
 
+def treat_as_bos(word):
+  words = args.treat_as_bos.split(',')
+  for w in words:
+    if w == word:
+      return True
+  return False
 
 def get_feature_list(word, idx):
     """Return a dict from feat_id to value (as int or float), e.g.
@@ -197,7 +213,10 @@ def get_feature_list(word, idx):
     return ans
 
 for word, idx in sorted(vocab.items(), key=lambda x: x[1]):
-    feature_list = get_feature_list(word, idx)
+    if treat_as_bos(word):
+      feature_list = get_feature_list("<s>", idx)
+    else:
+      feature_list = get_feature_list(word, idx)
     print("{0}\t{1}".format(idx,
                             " ".join(["%s %.3g" % (f, v) for f, v in sorted(feature_list.items())])))
 
