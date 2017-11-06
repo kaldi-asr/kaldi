@@ -24,7 +24,7 @@ tdnn_affix=7b  # affix for the supervised chain-model directory
 train_supervised_opts="--stage -10 --train-stage -10"
 
 # Unsupervised options
-decode_affix=
+decode_affix=_undet
 egs_affix=  # affix for the egs that are generated from unsupervised data and for the comined egs dir
 unsup_frames_per_eg=  # if empty will be equal to the supervised model's config -- you will need to change minibatch_size for comb training accordingly
 lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices
@@ -34,7 +34,7 @@ graph_affix=_ex250k   # can be used to decode the unsup data with another lm/gra
 phone_insertion_penalty=
 
 # Semi-supervised options
-comb_affix=comb1f  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
+comb_affix=comb1h  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
 supervision_weights=1.0,1.0
 lm_weights=3,2
 sup_egs_dir=   
@@ -53,7 +53,7 @@ train_extra_opts=
 
 xent_regularize=0.1
 hidden_dim=725
-minibatch_size=128
+minibatch_size="150=128/300=64"
 # to tune:
 # frames_per_eg for unsupervised
 
@@ -114,7 +114,6 @@ fi
 
 unsupervised_set=${unsupervised_set}_240k
 
-decode_affix=_non_compact
 for dset in $unsupervised_set; do
   if [ $stage -le 3 ] && [ ! -f data/${dset}_sp_hires/feats.scp ]; then
     utils/data/perturb_data_dir_speed_3way.sh data/$dset data/${dset}_sp_hires_tmp
@@ -127,23 +126,23 @@ for dset in $unsupervised_set; do
     steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
               --acwt 1.0 --post-decode-acwt 10.0 --write-compact false \
               --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${base_train_set}_sp_hires \
-              --scoring-opts "--min-lmwt 10 --max-lmwt 10" \
+              --scoring-opts "--min-lmwt 10 --max-lmwt 10" --determinize-opts "--word-determinize=false" \
               $graphdir data/${dset}_sp_hires $chaindir/decode_${dset}_sp${decode_affix}
   fi
 
   if [ $stage -le 5 ]; then
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" --write-compact false \
+      --read-determinized false --write-determinized false --acwt 0.1 --beam 8.0 \
       data/lang_test${graph_affix} \
       data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
       $chaindir/decode_${dset}_sp${decode_affix} \
       $chaindir/decode_${dset}_sp${decode_affix}_fg
 
-    ln -s ../final.mdl $chaindir/decode_${dset}_sp${decode_affix}_fg/final.mdl || true
+    ln -sf ../final.mdl $chaindir/decode_${dset}_sp${decode_affix}_fg/ || true
   fi
 done
 
 decode_affix=${decode_affix}_fg
-
 if [ $stage -le 8 ]; then
   steps/best_path_weights.sh --cmd "${train_cmd}" --acwt 0.1 \
     data/${unsupervised_set}_sp_hires data/lang_chain \
@@ -166,6 +165,14 @@ if [ ! -f $treedir/final.mdl ]; then
 fi
 
 dir=$exp/chain${nnet3_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
+
+if [ $stage -le 9 ]; then
+  steps/subset_ali_dir.sh --cmd "$train_cmd" \
+    data/${unsupervised_set} data/${unsupervised_set}_sp_hires \
+    $chaindir/best_path_${unsupervised_set}_sp${decode_affix} \
+    $chaindir/best_path_${unsupervised_set}${decode_affix}
+  echo $frame_subsampling_factor > $chaindir/best_path_${unsupervised_set}${decode_affix}/frame_subsampling_factor
+fi
 
 if [ $stage -le 10 ]; then
   steps/nnet3/chain/make_weighted_den_fst.sh --num-repeats $lm_weights --cmd "$train_cmd" \
@@ -331,7 +338,7 @@ if [ $stage -le 15 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width 150 \
-    --trainer.num-chunk-per-minibatch "150=128/300=64" \
+    --trainer.num-chunk-per-minibatch "$minibatch_size" \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs 4 \
     --trainer.optimization.num-jobs-initial 3 \

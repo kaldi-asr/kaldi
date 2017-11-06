@@ -121,16 +121,16 @@ if [ ! -z "$online_ivector_dir" ]; then
 fi
 
 extra_opts=
-lat_wspecifier="ark:|"
+lats_wspecifier="ark:|"
 if ! $write_compact; then
   extra_opts="--determinize-lattice=false"
-  lat_wspecifier="ark:| lattice-determinize-phone-pruned-non-compact --beam=$lattice_beam --acoustic-scale=$acwt --minimize=$minimize $determinize_opts $model ark:- ark:- |"
+  lats_wspecifier="ark:| lattice-determinize-phone-pruned-non-compact --beam=$lattice_beam --acoustic-scale=$acwt --minimize=$minimize $determinize_opts $model ark:- ark:- |"
 fi
 
 if [ "$post_decode_acwt" == 1.0 ]; then
-  lat_wspecifier="$lat_wspecifier gzip -c >$dir/lat.JOB.gz"
+  lats_wspecifier="$lats_wspecifier gzip -c >$dir/lat.JOB.gz"
 else
-  lat_wspecifier="$lat_wspecifier lattice-scale --acoustic-scale=$post_decode_acwt --write-compact=$write_compact ark:- ark:- | gzip -c >$dir/lat.JOB.gz"
+  lats_wspecifier="$lats_wspecifier lattice-scale --acoustic-scale=$post_decode_acwt --write-compact=$write_compact ark:- ark:- | gzip -c >$dir/lat.JOB.gz"
 fi
 
 frame_subsampling_opt=
@@ -151,7 +151,7 @@ if [ $stage -le 1 ]; then
      --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
      --word-symbol-table=$graphdir/words.txt ${extra_opts} \
      "$model" \
-     $graphdir/HCLG.fst "$feats" "$lat_wspecifier" || exit 1;
+     $graphdir/HCLG.fst "$feats" "$lats_wspecifier" || exit 1;
 fi
 
 

@@ -74,7 +74,7 @@ mkdir -p $dir
 words_wspecifier=ark:/dev/null
 
 if $write_words; then
-  words_wspecifier="ark,t:| utils/int2sym.pl -f 2- $lang/words.txt > words.JOB.txt" 
+  words_wspecifier="ark,t:| utils/int2sym.pl -f 2- $lang/words.txt > $dir/text.JOB"
 fi
 
 if [ $stage -lt -1 ]; then
@@ -166,8 +166,8 @@ done
 
 if $write_words; then
   for n in `seq $nj`; do
-    cat $dir/words.$n.txt
-  done > $dir/words.txt
+    cat $dir/text.$n
+  done > $dir/text
 fi
 
 exit 0

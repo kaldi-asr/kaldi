@@ -48,15 +48,25 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     bool write_compact = true;
     BaseFloat alpha = 0.5; // Scale of 1st in the pair.
+    BaseFloat alpha_acoustic = kLogZeroBaseFloat;
 
     po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");
     po.Register("alpha", &alpha, "Scale of the first lattice in the pair (should be in range [0, 1])");
+    po.Register("alpha-acoustic", &alpha_acoustic,
+                "If specified, then alpha will be used for graph scores and "
+                "alpha_acoustic will be used for acoustic scores (should be in range [0, 1])");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
+
+    if (alpha_acoustic == kLogZeroBaseFloat) {
+      alpha_acoustic = alpha;
+    }
+
+    KALDI_ASSERT(alpha_acoustic <= 1.0 && alpha_acoustic >= 0.0);
 
     std::string lats_rspecifier1 = po.GetArg(1),
         lats_rspecifier2 = po.GetArg(2),
@@ -84,7 +94,7 @@ int main(int argc, char *argv[]) {
                                           PairHasher<int32> > acoustic_scores;
       if (!write_compact)
         ComputeAcousticScoresMap(lat1, &acoustic_scores);
-      ScaleLattice(fst::LatticeScale(alpha, alpha), &lat1);
+      ScaleLattice(fst::LatticeScale(alpha, alpha_acoustic), &lat1);
 
       ArcSort(&lat1, fst::OLabelCompare<LatticeArc>());
 
@@ -97,7 +107,7 @@ int main(int argc, char *argv[]) {
         Lattice lat2;
         ConvertLattice(clat2, &lat2);
         fst::Project(&lat2, fst::PROJECT_OUTPUT); // project on words.
-        ScaleLattice(fst::LatticeScale(1.0-alpha, 1.0-alpha), &lat2);
+        ScaleLattice(fst::LatticeScale(1.0-alpha, 1.0-alpha_acoustic), &lat2);
         ArcSort(&lat2, fst::ILabelCompare<LatticeArc>());
 
         Lattice lat3;
