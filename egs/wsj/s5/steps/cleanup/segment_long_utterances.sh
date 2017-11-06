@@ -91,9 +91,6 @@ else
   dir=$5
 fi
 
-# check if there are no empty transcripts
-awk 'NF==1 {exit 1}'  $text  ||  (echo "error: cannot do segmentation with empty transcripts" && exit 1)
-
 for f in $data/feats.scp $text $extra_files $srcdir/tree \
   $srcdir/final.mdl $srcdir/cmvn_opts; do
   if [ ! -f $f ]; then
