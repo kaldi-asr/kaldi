@@ -20,6 +20,7 @@ num_epochs=100  # maximum number of epochs to train.  later we
                 # may find a stopping criterion.
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
+embedding_l2=0.005
 embedding_lrate_factor=0.1  # the embedding learning rate is the
                             # nnet learning rate times this factor.
 cmd=run.pl  # you might want to set this to queue.pl
@@ -175,14 +176,18 @@ while [ $x -lt $num_iters ]; do
         else dest_number=$[x+1]; fi
         # in the normal case $repeated data will be just one copy.
         repeated_data=$(for n in $(seq $num_repeats); do echo -n $dir/text/$split.txt ''; done)
-
+        
+        rnnlm_l2_factor=$(perl -e "print (1.0/$this_num_jobs);")
+        embedding_l2_regularize=$(perl -e "print ($embedding_l2/$this_num_jobs);")
 
         # Run the training job or jobs.
         $cmd $queue_gpu_opt $dir/log/train.$x.$n.log \
            rnnlm-train \
              --rnnlm.max-param-change=$rnnlm_max_change \
+             --rnnlm.l2_regularize_factor=$rnnlm_l2_factor \
              --embedding.max-param-change=$embedding_max_change \
              --embedding.learning-rate=$embedding_lrate \
+             --embedding.l2_regularize=$embedding_l2_regularize \
              $sparse_opt $gpu_opt \
              --read-rnnlm="$src_rnnlm" --write-rnnlm=$dir/$dest_number.raw \
              --read-embedding=$dir/$embedding_type.$x.mat \
