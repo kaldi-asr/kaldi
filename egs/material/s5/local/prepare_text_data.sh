@@ -13,7 +13,7 @@ if [ $# -ne 1 ] ; then
   echo "  $0 <path-to-material-corpus>"
   echo "e.g."
   echo "  $0 /export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-1A-BUILD_v1.0/"
-  exit 
+  exit
 fi
 data=$1;
 conversational_train=$data/conversational/training/

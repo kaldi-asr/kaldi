@@ -40,7 +40,8 @@ my $spnoise = "<spnoise>";
 my $sil = "<sil>";
 
 my @ignore_events = ("<female-to-male>", "<male-to-female>");
-my @ignore_utt_events = ("<overlap>", "<dtmf>", "<foreign>");
+#as per the BABEL docs, ~ means truncation of the word/utterance
+my @ignore_utt_events = ("<overlap>", "<dtmf>", "<foreign>", "~");
 my @sil_events = ("<no-speech>");
 my @noise_events = ("<sta>", "<ring>", "<int>" );
 my @spnoise_events = ("<breath>", "<cough>", "<hes>", "<laugh>", "<click>", "<lipsmack>");
@@ -55,7 +56,7 @@ UTT: while(<>) {
   my $end = shift @line;
 
   next if (@line == 1) and ($line[0] eq "<no-speech>");
-  next if (@line == 1) and ($line[0] =~ "<.*>"); #skip the utterance if all 
+  next if (@line == 1) and ($line[0] =~ "<.*>"); #skip the utterance if all
                                                  #it contains is a non-speech event
 
   my @out_line;

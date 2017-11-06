@@ -20,21 +20,6 @@ use strict;
 use warnings;
 use utf8;
 
-my $text2id_name = $ARGV[0];
-open(my $text2id_file, "<$text2id_name") or 
-  die "Cannot open $text2id_name: $!";
-
-my %text2id;
-while (<$text2id_file>) {
-  chomp;
-  (my $id, my $name) = split;
-  $name =~ s/\.txt$//;
-  
-  die "Duplicate ID $name\n" if defined($text2id{$name});
-  $text2id{$name} = $id;
-}
-close($text2id_file);
-
 
 my $sox =  `which sox` or die "The sox binary does not exist";
 chomp $sox;
@@ -47,16 +32,23 @@ while(<STDIN>) {
   (my $basename = $full_path) =~ s/.*\///g;
 
   die "The filename $basename does not match the expected naming pattern!" unless $basename =~ /.*\.(wav|sph)$/;
-  (my $ext = $basename) =~ s/.*\.(wav|sph)$/$1/g; 
-  (my $name = $basename) =~ s/(.*)\.(wav|sph)$/$1/g; 
+  (my $ext = $basename) =~ s/.*\.(wav|sph)$/$1/g;
+  (my $name = $basename) =~ s/(.*)\.(wav|sph)$/$1/g;
 
-  die "Transcription for $name does not exist" unless
-    defined($text2id{$name});
+
+  # name looks like this:
+  #   MATERIAL_BASE-1A-BUILD_10002_20131130_011225_inLine.sph
+  # Please note that the naming pattern must match
+  # the pattern in create_datafiles.pl
+  $name =~ s/inLine.*/0/g;
+  $name =~ s/outLine.*/1/g;
+  $name =~ s/_BASE//g;
+  $name =~ s/-BUILD//g;
 
   if ($ext eq "wav") {
-    print "$text2id{$name} $sox $full_path -r 8000 -c 1 -b 16 -t wav - downsample|\n";
+    print "$name $sox $full_path -r 8000 -c 1 -b 16 -t wav - downsample|\n";
   } else {
-    print "$text2id{$name} $sph2pipe -f wav -p -c 1 $full_path|\n";
+    print "$name $sph2pipe -f wav -p -c 1 $full_path|\n";
   }
 }
 
