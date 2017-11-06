@@ -141,11 +141,11 @@ if [ $stage -le 8 ]; then
     data/${unsupervised_set}_sp_hires data/lang_chain \
     $chaindir/decode_${unsupervised_set}_sp${decode_affix}_fg \
     $chaindir/best_path_${unsupervised_set}_sp${decode_affix}_fg
-
-  utils/copy_data_dir.sh data/${unsupervised_set} $chaindir/${unsupervised_set}
-  cp $chaindir/best_path_${unsupervised_set}_sp${decode_affix}_fg/words.txt \
-    $chaindir/${unsupervised_set}/text
 fi
+
+utils/copy_data_dir.sh data/${unsupervised_set}_sp_hires $chaindir/${unsupervised_set}_sp_hires
+cp $chaindir/best_path_${unsupervised_set}_sp${decode_affix}_fg/text \
+  $chaindir/${unsupervised_set}_sp_hires/text
 
 frame_subsampling_factor=1
 if [ -f $chaindir/frame_subsampling_factor ]; then
@@ -167,7 +167,7 @@ if [ $stage -le 9 ]; then
     --scale-opts "--transition-scale=1.0 --self-loop-scale=1.0" \
     --acoustic-scale 1.0 \
     --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${base_train_set}_sp_hires \
-    $chaindir/${unsupervised_set} data/lang_chain \
+    $chaindir/${unsupervised_set}_sp_hires data/lang_chain \
     $chaindir $out_dir
 fi
 
@@ -293,6 +293,7 @@ if [ -z "$unsup_egs_dir" ]; then
       utils/create_split_dir.pl \
        /export/b0{5,6,7,8}/$USER/kaldi-data/egs/fisher_english-$(date +'%m_%d_%H_%M')/s5c/$unsup_egs_dir/storage $unsup_egs_dir/storage
     fi
+    mkdir -p $unsup_egs_dir
     touch $unsup_egs_dir/.nodelete # keep egs around when that run dies.
 
     echo "$0: generating egs from the unsupervised data"

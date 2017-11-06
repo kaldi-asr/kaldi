@@ -44,14 +44,11 @@ int main(int argc, char *argv[]) {
         " e.g.: lattice-lmrescore --lm-scale=-1.0 ark:in.lats 'fstproject --project_output=true data/lang/G.fst|' ark:out.lats\n";
 
     ParseOptions po(usage);
-    bool write_compact = true, determinize = true;
+    bool write_compact = true;
     BaseFloat lm_scale = 1.0;
     int32 num_states_cache = 50000;
 
     po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");
-    po.Register("determinize", &determinize, "If false, then the output will retain "
-                "all the non-deterministic paths in the original lattice, "
-                "but rescored with LM score from the best path in the LM");
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model costs; frequently 1.0 or -1.0");
     po.Register("num-states-cache", &num_states_cache,
                 "Number of states we cache when mapping LM FST to lattice type. "
@@ -136,16 +133,6 @@ int main(int argc, char *argv[]) {
         fst::ScaleLattice(fst::GraphLatticeScale(1.0 / lm_scale), &lat);
         ArcSort(&lat, fst::OLabelCompare<LatticeArc>());
 
-        // A copy of the lattice is needed if determinize=false
-        Lattice lat_copy;
-        if (!determinize) {
-          lat_copy = lat;
-          // Remove graph scores from the lattice so that the composed lattice
-          // will not have any graph scores other than the one from the
-          // new LM. They will be added back later.
-          fst::ScaleLattice(fst::GraphLatticeScale(0.0), &lat);
-        }
-
         Lattice composed_lat;
         // Could just do, more simply: Compose(lat, lm_fst, &composed_lat);
         // and not have lm_compose_cache at all.
@@ -157,61 +144,23 @@ int main(int argc, char *argv[]) {
 
         CompactLattice determinized_clat;
         DeterminizeLattice(composed_lat, &determinized_clat);
+        fst::ScaleLattice(fst::GraphLatticeScale(lm_scale), &determinized_clat);
         if (determinized_clat.Start() == fst::kNoStateId) {
           KALDI_WARN << "Empty lattice for utterance " << key
               << " (incompatible LM?)";
           n_fail++;
         } else {
-          if (!determinize) {
-            RemoveAlignmentsFromCompactLattice(&determinized_clat);
-            Lattice lat2;
-            ConvertLattice(determinized_clat, &lat2);
-            fst::Project(&lat2, fst::PROJECT_OUTPUT); // project on words
-            fst::ArcSort(&lat2, fst::ILabelCompare<LatticeArc>());
-
-            // Avoid double counting of acoustic scores
-            fst::ScaleLattice(fst::AcousticLatticeScale(0.0), &lat2);
-
-            Lattice out_lat;
-
-            // out_lat will have the original acoustic and graph scores
-            // (after scaling by lm_scale below) along with LM scores 
-            // added from lat2
-            Compose(lat_copy, lat2, &out_lat);
-
-            fst::ScaleLattice(fst::GraphLatticeScale(lm_scale), &out_lat);
-
-            if (out_lat.Start() == fst::kNoStateId) { // empty composition.
-              KALDI_WARN << "For utterance " << key << ", composed result is empty.";
-              n_fail++;
-            } else {
-              if (write_compact) {
-                CompactLattice out_clat;
-                ConvertLattice(out_lat, &out_clat);
-                compact_lattice_writer.Write(key, out_clat);
-              } else {
-                // Replace each arc (t, tid) with the averaged acoustic score from
-                // the computed map
-                ReplaceAcousticScoresFromMap(acoustic_scores, &out_lat);
-                lattice_writer.Write(key, out_lat);
-              }
-              n_done++;
-            }
+          if (write_compact) {
+            compact_lattice_writer.Write(key, determinized_clat);
           } else {
-            fst::ScaleLattice(fst::GraphLatticeScale(lm_scale), &determinized_clat);
-            if (write_compact) {
-              compact_lattice_writer.Write(key, determinized_clat);
-            } else {
-              Lattice out_lat;
-              fst::ConvertLattice(determinized_clat, &out_lat);
-
-              // Replace each arc (t, tid) with the averaged acoustic score from
-              // the computed map
-              ReplaceAcousticScoresFromMap(acoustic_scores, &out_lat);
-              lattice_writer.Write(key, out_lat);
-            }
-            n_done++;
+            // Replace each arc (t, tid) with the averaged acoustic score from
+            // the computed map
+            Lattice out_lat;
+            ConvertLattice(determinized_clat, &out_lat);
+            ReplaceAcousticScoresFromMap(acoustic_scores, &out_lat);
+            lattice_writer.Write(key, out_lat);
           }
+          n_done++;
         }
       } else {
         // Zero scale so nothing to do.

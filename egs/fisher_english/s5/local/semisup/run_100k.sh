@@ -14,7 +14,7 @@ train_stage=-10
 set -o pipefail
 exp=exp/semisup_100k
 
-true && {
+false && {
 utils/subset_data_dir.sh --shortest data/train_sup 100000 data/train_sup_100kshort
 utils/subset_data_dir.sh  data/train_sup_100kshort 10000 data/train_sup_10k
 utils/data/remove_dup_utts.sh 100 data/train_sup_10k data/train_sup_10k_nodup
@@ -71,18 +71,29 @@ steps/train_sat.sh --cmd "$train_cmd" \
 utils/copy_data_dir.sh data/train_unsup250k data/train_unsup100k_250k
 utils/combine_data.sh data/semisup100k_250k data/train_sup \
   data/train_unsup250k || exit 1
+}
 
 local/semisup/chain/tuning/run_tdnn_100k.sh \
   --train-set train_sup \
   --stage $stage --train-stage $train_stage \
   --exp $exp \
   --ivector-train-set train_sup || exit 1
-}
+
+local/fisher_train_lms.sh --text data/train_sup/text \
+  --dir data/local/lm_sup100k
+
+local/fisher_create_test_lang.sh \
+  --arpa-lm data/local/lm_sup100k/3gram-mincount/lm_unpruned.gz \
+  --dir data/lang_test_sup100k
+
+utils/build_const_arpa_lm.sh \
+  data/local/lm_sup100k/4gram-mincount/lm_unpruned.gz \
+  data/lang_test_sup100k data/lang_test_sup100k_fg
 
 false && local/semisup/chain/tuning/run_tdnn_oracle.sh \
-  --train-set semisup15k_250k \
-  --nnet3-affix _semi15k_250k \
-  --chain-affix _semi15k_250k_oracle \
+  --train-set train_sup \
+  --nnet3-affix \
+  --chain-affix \
   --stage 9 --train-stage $train_stage \
   --exp $exp \
   --ivector-train-set semisup15k_250k || exit 1

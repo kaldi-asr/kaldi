@@ -42,7 +42,6 @@ tree_affix=
 unsup_egs_opts=
 apply_deriv_weights=true
 
-
 extra_left_context=0
 extra_right_context=0
 
@@ -54,6 +53,8 @@ minibatch_size="150=128/300=64"
 
 decode_iter=
 lang_test_suffix=
+
+do_finetuning=false
 
 finetune_stage=-2
 finetune_suffix=_finetune
@@ -109,6 +110,8 @@ fi
 
 unsupervised_set=${unsupervised_set}_240k
 
+det_decode_affix=${graph_affix}
+
 for dset in $unsupervised_set; do
   if [ $stage -le 3 ] && [ ! -f data/${dset}_sp_hires/feats.scp ]; then
     utils/data/perturb_data_dir_speed_3way.sh data/$dset data/${dset}_sp_hires_tmp
@@ -125,22 +128,37 @@ for dset in $unsupervised_set; do
               $graphdir data/${dset}_sp_hires $chaindir/decode_${dset}_sp${decode_affix}
   fi
 
-  if [ $stage -le 6 ]; then
-    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" --write-compact false \
-      data/lang_test${graph_affix} \
-      data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
-      $chaindir/decode_${dset}_sp${decode_affix} \
-      $chaindir/decode_${dset}_sp${decode_affix}_fg
+  if [ ! -f $chaindir/decode_${dset}_sp${det_decode_affix}/lat.1.gz ]; then
+    out_dir=$chaindir/decode_${dset}_sp${det_decode_affix}
+    mkdir -p $out_dir
 
-    ln -s ../final.mdl $chaindir/decode_${dset}_sp${decode_affix}_fg/final.mdl || true
+    if [ $stage -le 5 ]; then
+      $decode_cmd JOB=1:$decode_nj $out_dir/determinize_lattice.JOB.log \
+        lattice-determinize-phone-pruned-non-compact --beam 8.0 \
+          $chaindir/final.mdl \
+          "ark:gunzip -c $chaindir/decode_${dset}_sp${det_decode_affix}/lat.JOB.gz |" \
+          "ark:| gzip -c > $out_dir/lat.JOB.gz" || exit 1
+    fi
+  fi
+
+  if [ ! -f $chaindir/decode_${dset}_sp${det_decode_affix}_fg/lat.1.gz ]; then
+    if [ $stage -le 6 ]; then
+      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" --write-compact false \
+        data/lang_test${graph_affix} \
+        data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
+        $chaindir/decode_${dset}_sp${det_decode_affix} \
+        $chaindir/decode_${dset}_sp${det_decode_affix}_fg
+    fi
   fi
 done
 
-if [ $stage -le 8 ]; then
-  steps/best_path_weights.sh --cmd "${train_cmd}" --acwt 0.1 \
-    data/${unsupervised_set}_sp_hires data/lang_chain \
-    $chaindir/decode_${unsupervised_set}_sp${decode_affix}_fg \
-    $chaindir/best_path_${unsupervised_set}_sp${decode_affix}_fg
+if [ ! -f $chaindir/best_path_${unsupervised_set}_sp${det_decode_affix}_fg/ali.1.gz ]; then
+  if [ $stage -le 8 ]; then
+    steps/best_path_weights.sh --cmd "${train_cmd}" --acwt 0.1 \
+      data/${unsupervised_set}_sp_hires data/lang_chain \
+      $chaindir/decode_${unsupervised_set}_sp${det_decode_affix}_fg \
+      $chaindir/best_path_${unsupervised_set}_sp${det_decode_affix}_fg
+  fi
 fi
 
 frame_subsampling_factor=1
@@ -157,18 +175,18 @@ if [ ! -f $treedir/final.mdl ]; then
   exit 1
 fi
 
-this_nj=$(cat $chaindir/decode_${unsupervised_set}_sp${decode_affix}_fg/num_jobs)
-  
+this_nj=$(cat $chaindir/decode_${unsupervised_set}_sp${decode_affix}/num_jobs)
+
 if [ $stage -le 9 ]; then
   out_dir=$chaindir/best_path_lats_${unsupervised_set}_sp${decode_affix}_fg
   $train_cmd JOB=1:$this_nj $out_dir/log/get_best_path_lats.JOB.log \
     lattice-interp "ark:gunzip -c $chaindir/decode_${unsupervised_set}_sp${decode_affix}/lat.JOB.gz |" \
-    "ark:gunzip -c $chaindir/decode_${unsupervised_set}_sp${decode_affix}_fg/lat.JOB.gz | lattice-1best ark:- ark:- |" \
+    "ark:gunzip -c $chaindir/decode_${unsupervised_set}_sp${det_decode_affix}_fg/lat.JOB.gz | lattice-1best --acoustic-scale=0.1 ark:- ark:- |" \
     "ark:| gzip -c > $out_dir/lat.JOB.gz"
 
   echo $this_nj > $out_dir/num_jobs
 fi
-  
+
 ln -sf ../final.mdl $chaindir/best_path_lats_${unsupervised_set}_sp${decode_affix}_fg/final.mdl 
 
 echo $this_nj > $chaindir/best_path_lats_${unsupervised_set}_sp${decode_affix}_fg/num_jobs
@@ -295,6 +313,7 @@ if [ -z "$unsup_egs_dir" ]; then
       utils/create_split_dir.pl \
        /export/b0{5,6,7,8}/$USER/kaldi-data/egs/fisher_english-$(date +'%m_%d_%H_%M')/s5c/$unsup_egs_dir/storage $unsup_egs_dir/storage
     fi
+    mkdir -p $unsup_egs_dir
     touch $unsup_egs_dir/.nodelete # keep egs around when that run dies.
 
     echo "$0: generating egs from the unsupervised data"
@@ -306,7 +325,7 @@ if [ -z "$unsup_egs_dir" ]; then
                --frame-subsampling-factor $frame_subsampling_factor \
                --cmvn-opts "$cmvn_opts" \
                --phone-insertion-penalty "$phone_insertion_penalty" \
-               --deriv-weights-scp $chaindir/best_path_${unsupervised_set}${decode_affix}/weights.scp \
+               --deriv-weights-scp $chaindir/best_path_${unsupervised_set}${det_decode_affix}/weights.scp \
                --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${base_train_set}_sp_hires \
                --generate-egs-scp true $unsup_egs_opts \
                data/${unsupervised_set}_hires $dir \
