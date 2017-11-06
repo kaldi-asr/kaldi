@@ -121,13 +121,15 @@ for dset in $unsupervised_set; do
     echo "$0: getting the decoding lattices for the unsupervised subset using the chain model at: $chaindir"
     steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
               --acwt 1.0 --post-decode-acwt 10.0 --write-compact false \
+              --determinize-opts "--word-determinize=false" \
               --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${base_train_set}_sp_hires \
-              --scoring-opts "--min-lmwt 10 --max-lmwt 10" --determinize-opts "--word-determinize=false" \
+              --scoring-opts "--min-lmwt 10 --max-lmwt 10" --skip-scoring true \
               $graphdir data/${dset}_sp_hires $chaindir/decode_${dset}_sp${decode_affix}
   fi
 
-  if [ $stage -le 6 ]; then
+  if [ $stage -le 5 ]; then
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" --write-compact false \
+      --read-determinized false --write-determinized false --skip-scoring true \
       data/lang_test${graph_affix} \
       data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
       $chaindir/decode_${dset}_sp${decode_affix} \
