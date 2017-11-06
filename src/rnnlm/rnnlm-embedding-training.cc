@@ -69,11 +69,11 @@ void RnnlmEmbeddingTrainer::Train(
     CuMatrixBase<BaseFloat> *embedding_deriv) {
 
   // If relevant, do the following:
-  // "embedding_deriv += - 2 * l2_regularize_factor * l2_regularize * embedding_mat_"
+  // "embedding_deriv += - 2 * l2_regularize * embedding_mat_"
   // This is an approximate to the regular l2 regularization (add l2 regularization
   // to the objective function).
   if (config_.l2_regularize > 0.0) {
-    BaseFloat l2_term = -2 * config_.l2_regularize_factor * config_.l2_regularize;
+    BaseFloat l2_term = -2 * config_.l2_regularize;
     if (l2_term != 0.0) {
       embedding_deriv->AddMat(l2_term, *embedding_mat_);
     }
@@ -122,11 +122,11 @@ void RnnlmEmbeddingTrainer::Train(
   KALDI_ASSERT(active_words.Dim() == embedding_deriv->NumRows());
 
   // If relevant, do the following:
-  // "embedding_deriv += - 2 * l2_regularize_factor * l2_regularize * embedding_mat_"
+  // "embedding_deriv += - 2 * l2_regularize * embedding_mat_"
   // This is an approximate to the regular l2 regularization (add l2 regularization
   // to the objective function).
   if (config_.l2_regularize > 0.0) {
-    BaseFloat l2_term = -2 * config_.l2_regularize_factor * config_.l2_regularize;
+    BaseFloat l2_term = -2 * config_.l2_regularize;
     if (l2_term != 0.0) {
       embedding_deriv->AddMat(l2_term, *embedding_mat_);
     }

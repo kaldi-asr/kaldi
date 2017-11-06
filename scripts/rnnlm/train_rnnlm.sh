@@ -108,7 +108,6 @@ num_jobs_initial=$num_jobs_initial
 num_jobs_final=$num_jobs_final
 rnnlm_max_change=$rnnlm_max_change
 embedding_max_change=$embedding_max_change
-embedding_l2_regularize=$embedding_l2
 chunk_length=$chunk_length
 initial_effective_lrate=$initial_effective_lrate
 final_effective_lrate=$final_effective_lrate
@@ -179,7 +178,7 @@ while [ $x -lt $num_iters ]; do
         repeated_data=$(for n in $(seq $num_repeats); do echo -n $dir/text/$split.txt ''; done)
         
         rnnlm_l2_factor=$(perl -e "print (1.0/$this_num_jobs);")
-        embedding_l2_factor=$rnnlm_l2_factor
+        embedding_l2_regularize=$(perl -e "print ($embedding_l2/$this_num_jobs);")
 
         # Run the training job or jobs.
         $cmd $queue_gpu_opt $dir/log/train.$x.$n.log \
@@ -188,8 +187,7 @@ while [ $x -lt $num_iters ]; do
              --rnnlm.l2_regularize_factor=$rnnlm_l2_factor \
              --embedding.max-param-change=$embedding_max_change \
              --embedding.learning-rate=$embedding_lrate \
-             --embedding.l2_regularize=$embedding_l2 \
-             --embedding.l2_regularize_factor=$embedding_l2_factor \
+             --embedding.l2_regularize=$embedding_l2_regularize \
              $sparse_opt $gpu_opt \
              --read-rnnlm="$src_rnnlm" --write-rnnlm=$dir/$dest_number.raw \
              --read-embedding=$dir/$embedding_type.$x.mat \
