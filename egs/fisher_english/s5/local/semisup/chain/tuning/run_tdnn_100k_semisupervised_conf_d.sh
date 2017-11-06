@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script is similar to _a but uses smart splitting.
+# This script is similar to _c, but uses smart splitting.
 # unsup_frames_per_eg=150
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0
@@ -19,7 +19,7 @@ supervised_set=train_sup
 unsupervised_set=train_unsup100k_250k
 semisup_train_set=    # semisup100k_250k
 
-tdnn_affix=7b  # affix for the supervised chain-model directory
+tdnn_affix=7c  # affix for the supervised chain-model directory
 train_supervised_opts="--stage -10 --train-stage -10"
 
 nnet3_affix=    # affix for nnet3 and chain dir -- relates to i-vector used
@@ -35,12 +35,12 @@ graph_affix=_sup100k   # can be used to decode the unsup data with another lm/gr
 phone_insertion_penalty=
 
 # Semi-supervised options
-comb_affix=comb1b  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
+comb_affix=comb1d  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
 supervision_weights=1.0,1.0
 lm_weights=3,2
 sup_egs_dir=
 unsup_egs_dir=
-tree_affix=
+tree_affix=bi_a
 unsup_egs_opts=
 apply_deriv_weights=true
 
@@ -74,7 +74,6 @@ echo "$0 $@"  # Print the command line for logging
 
 decode_affix=${decode_affix}${graph_affix}
 egs_affix=${egs_affix}_prun${lattice_prune_beam}_lmwt${lattice_lm_scale}_tol${tolerance}
-tree_affix=
 
 RANDOM=0
 
