@@ -20,12 +20,16 @@ use strict;
 use warnings;
 use utf8;
 
+binmode STDIN, ":utf8";
+binmode STDOUT, ":utf8";
+binmode STDERR, ":utf8";
+
 my $lexicon_name = $ARGV[0];
-open(my $lexicon_file, "<:utf8", $lexicon_name) or
+open(my $lexicon_file, "<:encoding(UTF-8)", $lexicon_name) or
   die "Cannot open $lexicon_name: $!\n";
 
 my $wordlist_name = $ARGV[1];
-open(my $wordlist_file, "<:utf8", $wordlist_name) or
+open(my $wordlist_file, "<:encoding(UTF-8)", $wordlist_name) or
   die "Cannot open $wordlist_name: $!\n";
 
 
@@ -46,7 +50,7 @@ while (<$wordlist_file>) {
   my @prons = split "\t", $lexicon{$word};
   foreach my $pron (@prons) {
     my @phones = split " ", $pron;
-    my $stress_mark = 0; 
+    my $stress_mark = 0;
     my @out_phones = ();
     foreach my $phone (@phones) {
       if ($phone eq "\"") {
@@ -61,7 +65,7 @@ while (<$wordlist_file>) {
         $phone =~ s/_/+/g;
         #let's just ignore stress for now
         #$phone = "${phone}_\"" if $stress_mark;
-        push @out_phones, $phone; 
+        push @out_phones, $phone;
       }
     }
     my $out_pron = join(" ", @out_phones);

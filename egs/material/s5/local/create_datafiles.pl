@@ -27,7 +27,7 @@ binmode STDERR, "utf8";
 my $output = $ARGV[0];
 open(my $utt2spk, ">:utf8", "$output/utt2spk") or
   die "Cannot open $output/utt2spk: $!\n";
-open(my $text, ">:utf8", "$output/text") or 
+open(my $text, ">:utf8", "$output/text") or
   die "Cannot open $output/text: $!\n";
 open(my $segments, ">:utf8", "$output/segments") or
   die "Cannot open $output/segments: $!\n";
@@ -46,14 +46,16 @@ while(<STDIN>) {
 
   my $begin_text = sprintf("%07d", $begin * 1000);
   my $end_text = sprintf("%07d", $end * 1000);
-  
+
   # name looks like this:
   #   MATERIAL_BASE-1A-BUILD_10002_20131130_011225_inLine.txt
+  # Please note that the naming pattern must match
+  # the pattern in audio2wav_scp.pl
   $name =~ s/inLine.*/0/g;
   $name =~ s/outLine.*/1/g;
   $name =~ s/_BASE//g;
   $name =~ s/-BUILD//g;
-  
+
   my $utt_name = join("_", $name, $begin_text, $end_text);
   print $segments "$utt_name $name $begin $end\n";
   print $utt2spk  "$utt_name $name\n";
