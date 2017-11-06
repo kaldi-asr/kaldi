@@ -13,7 +13,7 @@ if [ $# -ne 1 ] ; then
   echo "  $0 <path-to-material-corpus>"
   echo "e.g."
   echo "  $0 /export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-1A-BUILD_v1.0/"
-  exit 
+  exit
 fi
 data=$1
 
@@ -24,8 +24,8 @@ mkdir -p data/local/dict/
 cat data/train/text | cut -f 2- -d ' ' | \
   sed 's/ /\n/g' | sort -u > data/local/dict/wordlist
 
-local/convert_lexicon.pl <(echo -e "<unk>\t<unk>\n<sil>\t<sil>\n<noise>\t<noise>\n<spnoise>\t<spnoise>" | cat - $lexicon ) <(grep -v -F '~' data/local/dict/wordlist) | sort -u > data/local/dict/lexicon.txt
-
+local/convert_lexicon.pl <(echo -e "<unk>\t<unk>\n<sil>\t<sil>\n<noise>\t<noise>\n<spnoise>\t<spnoise>" | cat - $lexicon ) data/local/dict/wordlist | sort -u > data/local/dict/lexicon.txt
+[ -f  data/local/dict/lexiconp.txt ] && rm data/local/dict/lexiconp.txt
 
 cat data/local/dict/lexicon.txt | sed 's/\t/ /g' | \
   cut -f 2- -d ' ' | sed 's/ /\n/g' | sort -u > data/local/dict/phones.txt

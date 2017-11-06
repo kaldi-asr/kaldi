@@ -26,7 +26,7 @@ binmode STDERR, "utf8";
 
 my $file = $ARGV[0];
 
-open(my $transcript, "<:utf8", $file) or 
+open(my $transcript, "<:utf8", $file) or
   die "Cannot open file $file: $!\n";
 
 (my $basename = $file) =~ s/(.*\/)?([^\/]+)/$2/g;
