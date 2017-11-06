@@ -10,8 +10,8 @@
 set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
-#corpus=/export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-1A-BUILD_v1.0/
-corpus=/export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-1B-BUILD_v1.0/
+corpus=/export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-1A-BUILD_v1.0/
+#corpus=/export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-1B-BUILD_v1.0/
 
 local/prepare_text_data.sh $corpus
 local/prepare_audio_data.sh $corpus
