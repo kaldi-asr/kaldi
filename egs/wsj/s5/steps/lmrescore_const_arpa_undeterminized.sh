@@ -13,7 +13,7 @@ stage=1
 scoring_opts=
 write_compact=true
 acwt=0.1
-beam=8.0
+beam=8.0  # beam used in determinization
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -56,24 +56,16 @@ nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
 
 if [ $stage -le 1 ]; then
-  $cmd JOB=1:$nj $outdir/log/remove_lm_costs.JOB.log \
-    lattice-determinize-pruned --acoustic-scale=$acwt --beam=$beam --write-compact=$write_compact \
+  $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
+    lattice-determinize-pruned --acoustic-scale=$acwt --beam=$beam \
       "ark:gunzip -c $indir/lat.JOB.gz |" ark:- \| \
-    lattice-lmrescore --lm-scale=-1.0 --write-compact=$write_compact \
-      ark:- "$oldlmcommand" ark:- \| \
+    lattice-scale --lm-scale=0.0 ark:- ark:- \| \
+    lattice-lmrescore --lm-scale=-1.0 ark:- "$oldlmcommand" ark:- \| \
+    lattice-lmrescore-const-arpa --lm-scale=1.0 \
+      ark:- "$newlm" ark:- \| \
     lattice-interp --alpha=0.5 --alpha-acoustic=1.0 --write-compact=$write_compact \
       "ark:gunzip -c $indir/lat.JOB.gz |" ark,s,cs:- ark:- \| \
-    lattice-scale --lm-scale=2.0 ark:- \
-      "ark:| gzip -c > $outdir/lat_nolm.JOB.gz" || exit 1
-fi
-
-if [ $stage -le 2 ]; then
-  $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
-    lattice-lmrescore-const-arpa --lm-scale=1.0 --write-compact=$write_compact \
-      "ark:gunzip -c $outdir/lat_nolm.JOB.gz |" "$newlm" ark:- \| \
-    lattice-interp --alpha=0.5 --alpha-acoustic=1.0 --write-compact=$write_compact \
-      "ark:gunzip -c $outdir/lat_nolm.JOB.gz |" ark,s,cs:- ark:- \| \
-    lattice-scale --lm-scale=2.0 ark:- \
+    lattice-scale --lm-scale=2.0 --write-compact=$write_compact ark:- \
       "ark:| gzip -c > $outdir/lat.JOB.gz" || exit 1
 fi
 
