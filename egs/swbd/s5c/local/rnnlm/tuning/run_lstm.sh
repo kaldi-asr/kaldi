@@ -1,1 +1,0 @@
-run_lstm_1c.sh
