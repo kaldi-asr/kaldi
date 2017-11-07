@@ -60,7 +60,7 @@ open my $T, '+>', $t or croak "problem with $t $!";
      my $s = $dirs[-1];
      my $rid = $s . '_' . 'a' . '_' . $r;
      if ( exists $p{$rid} ) {
-	 print $T "$rid\t$p{$rid}\n";
+	 print $T "$rid $p{$rid}\n";
      } elsif ( defined $rid ) {
 	 warn  "problem\t$rid";
 	 next LINE;
