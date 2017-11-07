@@ -16,8 +16,8 @@ BINFILES = ivector-extractor-init ivector-extractor-acc-stats \
            logistic-regression-train logistic-regression-eval \
            logistic-regression-copy create-split-from-vad \
            ivector-extract-online ivector-adapt-plda \
-           ivector-extract-dense ivector-plda-scoring-dense \
-           compute-calibration agglomerative-cluster
+           ivector-plda-scoring-dense compute-calibration \
+           agglomerative-cluster
 
 OBJFILES =
 
