@@ -178,39 +178,6 @@ foreach my $file (@files) {
       $segment_mode = "XXX";
       #print "ET: $line\n";
       ;
-    } elsif ($line =~ /<turn/) { 
-      #print "BT: $line\n";
-      my %tags = parse_sgml_tag $line;
-      $segment_speaker = $tags{'speaker'};
-      $segment_speaker =~ s/"//g;
-      $segment_start = $tags{'starttime'};
-      $segment_end = $tags{'endtime'};
-      $segment_fidelity = $tags{'fidelity'} if $tags{'fidelity'};
-      $segment_mode = $tags{'mode'} if $tags{'mode'};
-      $time = $segment_start;
-      push @tagqueue, ["turn", \%tags];
-      ;
-    } elsif ($line =~ /<\/turn/) {
-      my $p = pop @tagqueue;
-      $line =~ s/<\/(.*)( +.*)?>/$1/g;
-      $line = trim $line;
-      die "Unaligned tags: '" . $p->[0] . "' vs '$line'" if $p->[0] ne $line;
-
-      #print join(" ", @text) . "\n" if @text > 0;
-      my $new_time = $segment_end;
-      if (@text > 0) {
-        print "$sgml_file $filename $segment_speaker $segment_fidelity $segment_mode $time $new_time ";
-        print join(" ", @text) . "\n";
-      }
-      @text = ();
-      $time = 0;
-      $segment_speaker = "XXX";
-      $segment_start = "XXX";
-      $segment_end = "XXX";
-      $segment_fidelity = "XXX";
-      $segment_mode = "XXX";
-      #print "ET: $line\n";
-      ;
     } elsif ($line =~ /<sync/) {
       my %tags = parse_sgml_tag $line;
       my $new_time = $tags{'time'};
@@ -222,19 +189,6 @@ foreach my $file (@files) {
       $time = $new_time;
       ;
     } elsif ($line =~ /<\/sync/) {
-      #print $line;
-      ;
-    } elsif ($line =~ /<time/) {
-      my %tags = parse_sgml_tag $line;
-      my $new_time = $tags{'sec'};
-      if (@text > 0) {
-        print "$sgml_file $filename $segment_speaker $segment_fidelity $segment_mode $time $new_time ";
-        print join(" ", @text) . "\n";
-      }
-      @text = ();
-      $time = $new_time;
-      ;
-    } elsif ($line =~ /<\/time/) {
       #print $line;
       ;
     } elsif ($line =~ /<overlap/) {

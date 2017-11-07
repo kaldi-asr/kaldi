@@ -79,27 +79,6 @@ def parse_cmu_seg_line(line, prepend_reco_to_spk=False):
     return (segment_line, utt2spk_line)
 
 
-def normalize_bn_transcript(text, noise_word, spoken_noise_word):
-    """Normalize broadcast news transcript for audio."""
-    text = text.upper()
-    # Remove unclear speech markings
-    text = re.sub(r"\(\(([^)]*)\)\)", r"\1", text)
-    text = re.sub(r"#", "", text)   # Remove overlapped speech markings
-    # Remove invented word markings
-    text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
-    text = re.sub(r"\[[^]]+\]", noise_word, text)
-    text = re.sub(r"\{[^}]+\}", spoken_noise_word, text)
-    # Remove mispronunciation brackets
-    text = re.sub(r"\+([^+]+)\+", r"\1", text)
-
-    text1 = []
-    for word in text.split():
-        # Remove best guesses for proper nouns
-        word = re.sub(r"^@(\w+)$", r"\1", word)
-        text1.append(word)
-    return " ".join(text1)
-
-
 def normalize_csr_transcript(text, noise_word, spoken_noise_word):
     """Normalize broadcast news transcript for audio."""
     text = text.upper()

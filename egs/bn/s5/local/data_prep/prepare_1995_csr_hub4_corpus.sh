@@ -41,6 +41,16 @@ cat $dir/wav_scp | grep "csr95/h4/evltst" > $dir/eval95_wav_scp
 
 rm $dir/*_{segments,utt2spk,text} || true
 
+ls $SOURCE_DIR/csr95/h4/train/*.txt > $dir/train95_text.list
+ls $SOURCE_DIR/csr95/h4/devtst/*.txt > $dir/dev95_text.list
+ls $SOURCE_DIR/csr95/h4/evltst/*.txt > $dir/eval95_text.list
+
+#local/data_prep/parse_sgm_1995_csr_hub4.pl $dir/train95_text.list > $dir/train95_transcripts.txt 2> $dir/parse_sgml_train95.log || exit 1
+#local/data_prep/parse_sgm_1995_csr_hub4.pl $dir/dev95_text.list > $dir/dev95_transcripts.txt 2> $dir/parse_sgml_dev95.log || exit 1
+#local/data_prep/parse_sgm_1995_csr_hub4.pl $dir/eval95_test.list > $dir/eval95_transcripts.txt 2> $dir/parse_sgml_eval95.log || exit 1
+#
+#exit 0
+
 for x in `ls $SOURCE_DIR/csr95/h4/*/*.txt`; do
   if [[ $x =~ "csr95/h4/train" ]]; then
     local/data_prep/process_1995_bn_annotation.py $x \
