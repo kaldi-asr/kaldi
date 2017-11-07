@@ -122,7 +122,11 @@ fi
 
 if [ $stage -le 3 ]; then
   if $tdnn; then
-    local/chain/run_tdnn.sh $enhancement_method
+    if $flatstart; then
+      local/chain/run_tdnn.sh $enhancement_method
+    else
+      local/chain/run_tdnn_recog.sh $enhancement_method $modeldir
+    fi
   fi
 fi
 
