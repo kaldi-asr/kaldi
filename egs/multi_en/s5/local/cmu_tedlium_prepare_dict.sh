@@ -40,7 +40,7 @@ cat $dir/cmudict/cmudict-0.7b.symbols | sed s/[0-9]//g | \
 # An extra question will be added by including the silence phones in one class.
 cat $dir/silence_phones.txt| awk '{printf("%s ", $1);} END{printf "\n";}' > $dir/extra_questions.txt || exit 1;
 
-grep -v ';;;' $dir/cmudict/cmudict-0.7b |  tr '[A-Z]' '[a-z]' | \
+grep -v ';;;' $dir/cmudict/cmudict-0.7b | uconv -f iso-8859-1  -t utf-8 -x Any-NFC - |  tr '[A-Z]' '[a-z]' | \
  perl -ane 'if(!m:^;;;:){ s:(\S+)\(\d+\) :$1 :; s:  : :; print; }' | \
  perl -ane '@A = split(" ", $_); for ($n = 1; $n<@A;$n++) { $A[$n] =~ s/[0-9]//g; } print join(" ", @A) . "\n";' | \
  sort | uniq > $dir/lexicon1.txt || exit 1;
@@ -54,7 +54,7 @@ patch -o $dir/lexicon2.txt $dir/lexicon1.txt local/dict.patch
 
 # Add in tedlium dict, if available
 if [ $# == 1 ]; then
-  cat $1/TEDLIUM.152k.dic | egrep '\S+\s+.+' | \
+  cat $1/TEDLIUM.152k.dic | uconv -f utf-8  -t utf-8 -x Any-NFC - | egrep '\S+\s+.+' | \
     grep -v -w "<s>" | grep -v -w "</s>" | grep -v -w "<unk>" | grep -v 'ERROR' | \
     sed 's:([0-9])::g' |sed 's:\s\+: :g' | tr A-Z a-z | \
     cat - $dir/lexicon3.txt | sort -u > $dir/lexicon.txt || exit 1;

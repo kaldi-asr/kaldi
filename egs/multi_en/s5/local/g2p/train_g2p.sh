@@ -28,7 +28,7 @@ outdir=$2
 mkdir -p $outdir
 
 
-# For input lexicon, Remove pronunciations containing non-utf-8-encodable characters,
+# For input lexicon, remove pronunciations containing non-utf-8-encodable characters,
 # and optionally remove words that are mapped to a single silence phone from the lexicon.
 if [ $stage -le 0 ]; then
   lexicon=$lexicondir/lexicon.txt
@@ -36,10 +36,10 @@ if [ $stage -le 0 ]; then
     awk 'NR==FNR{a[$1] = 1; next} {s=$2;for(i=3;i<=NF;i++) s=s" "$i; if(!(s in a)) print $1" "s}' \
       $silence_phones $lexicon | \
       awk '{printf("%s\t",$1); for (i=2;i<NF;i++){printf("%s ",$i);} printf("%s\n",$NF);}' | \
-      iconv -c -t utf-8 -  | awk 'NF > 0'> $outdir/lexicon_tab_separated.txt
+      uconv -f utf-8  -t utf-8 -x Any-NFC - | awk 'NF > 0'> $outdir/lexicon_tab_separated.txt
   else
     awk '{printf("%s\t",$1); for (i=2;i<NF;i++){printf("%s ",$i);} printf("%s\n",$NF);}' $lexicon | \
-      iconv -c -t utf-8 -  | awk 'NF > 0'> $outdir/lexicon_tab_separated.txt
+      uconv -f utf-8  -t utf-8 -x Any-NFC - | awk 'NF > 0'> $outdir/lexicon_tab_separated.txt
   fi
 fi
 
