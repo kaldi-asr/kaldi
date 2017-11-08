@@ -24,6 +24,13 @@
 #check existing directories
 [ $# -gt 1 ] && echo "Usage: $0 [<tedlium-src-dir>]" && exit 1;
 
+isuconv=`which uconv` 
+if [ -z $isuconv ]; then
+  echo "uconv was not found. You must install the icu4c package."
+  exit 1;
+fi
+
+
 dir=data/local/dict_cmu_tedlium
 mkdir -p $dir
 echo "Getting CMU dictionary"

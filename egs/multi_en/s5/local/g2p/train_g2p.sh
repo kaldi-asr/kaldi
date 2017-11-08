@@ -25,6 +25,12 @@ outdir=$2
 
 [ ! -f $lexicondir/lexicon.txt ] && echo "Cannot find $lexicondir/lexicon.txt" && exit
 
+isuconv=`which uconv` 
+if [ -z $isuconv ]; then
+  echo "uconv was not found. You must install the icu4c package."
+  exit 1;
+fi
+
 mkdir -p $outdir
 
 
