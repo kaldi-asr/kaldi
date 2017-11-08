@@ -100,8 +100,7 @@ int main(int argc, char *argv[]) {
 
     for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
       std::string key = compact_lattice_reader.Key();
-      CompactLattice clat = compact_lattice_reader.Value();
-      compact_lattice_reader.FreeCurrent();
+      CompactLattice &clat = compact_lattice_reader.Value();
 
       if (lm_scale != 0.0) {
         // Before composing with the LM FST, we scale the lattice weights

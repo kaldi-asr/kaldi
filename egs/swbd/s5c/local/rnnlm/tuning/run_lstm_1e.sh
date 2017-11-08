@@ -1,13 +1,16 @@
 #!/bin/bash
 
-# Copyright 2012  Johns Hopkins University (author: Daniel Povey)  Tony Robinson
+# Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 #           2015  Guoguo Chen
 #           2017  Hainan Xu
 
 # This script trains LMs on the swbd LM-training data.
-# This script takes no command-line arguments but takes the --cmd option.
+
+# Train objf: -1579.00 -4.95 -4.55 -4.40 -4.31 -4.25 -4.21 -4.19 -4.14 -4.12 -4.09 -4.06 -4.04 -4.02 -4.00 -3.99 -3.97 -3.96 -3.94 -3.94 -3.92 -3.91 -3.90 -3.90 -3.88
+# Dev objf:   -10.65 -5.27 -4.71 -4.51 -4.41 -4.34 -4.29 -4.25 -4.23 -4.20 -4.17 -4.15 -4.13 -4.11 -4.10 -4.09 -4.08 -4.06 -4.06 -4.05 -4.05 -4.04 -4.03 -4.02 -4.02
 
 # Begin configuration section.
+
 dir=exp/rnnlm_lstm_1e
 embedding_dim=1024
 lstm_rpd=256
@@ -15,11 +18,21 @@ lstm_nrpd=256
 stage=-10
 train_stage=-10
 
+# variables for lattice rescoring
+run_rescore=false
+ac_model_dir=exp/chain/tdnn_lstm_1e_sp
+decode_dir_suffix=rnnlm
+ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
+              # if it's set, it merges histories in the lattice if they share
+              # the same ngram history and this prevents the lattice from 
+              # exploding exponentially
+
+. cmd.sh
 . utils/parse_options.sh
 
 text=data/train/text
 lexicon=data/local/dict_nosp/lexiconp.txt
-text_dir=data/rnnlm/text_nosp
+text_dir=data/rnnlm/text_nosp_fisher0.1
 mkdir -p $dir/config
 set -e
 
@@ -32,8 +45,8 @@ if [ $stage -le 0 ]; then
   mkdir -p $text_dir
   echo -n >$text_dir/dev.txt
   # hold out one in every 500 lines as dev data.
-  cat $text | grep ^sw | cut -d ' ' -f2- | awk -v text_dir=$text_dir '{if(NR%500 == 0) { print >text_dir"/dev.txt"; } else {print;}}' >$text_dir/swbd.txt
-  cat $text | grep ^fe | cut -d ' ' -f2- | awk -v text_dir=$text_dir '{if(NR%500 == 0) { print >>text_dir"/dev.txt"; } else {print;}}' >$text_dir/fisher.txt
+  cat $text | grep ^sw | cut -d ' ' -f2- | awk -v text_dir=$text_dir '{if(NR%50 == 0) { print >text_dir"/dev.txt"; } else {print;}}' >$text_dir/swbd.txt
+  cat $text | grep ^fe | cut -d ' ' -f2- >$text_dir/fisher.txt
 fi
 
 if [ $stage -le 1 ]; then
@@ -79,7 +92,23 @@ fi
 
 if [ $stage -le 3 ]; then
   rnnlm/train_rnnlm.sh --num-jobs-initial 1 --num-jobs-final 3 \
-                  --stage $train_stage --num-epochs 10 --cmd "queue.pl" $dir
+                  --stage $train_stage --num-epochs 10 --cmd "$train_cmd" $dir
+fi
+
+if [ $stage -le 4 ] && $run_rescore; then
+  echo Perform lattice-rescoring on $ac_model_dir
+  LM=fsh_sw1_tg
+  for decode_set in eval2000; do
+    decode_dir=${ac_model_dir}/decode_${decode_set}_$LM
+
+    # Lattice rescoring
+    rnnlm/lmrescore_rnnlm_lat.sh \
+      --cmd "$decode_cmd --mem 4G" \
+      --weight 0.5 --max-ngram-order $ngram_order \
+      data/lang_$LM $dir \
+      data/${decode_set}_hires ${decode_dir} \
+      ${decode_dir}_${decode_dir_suffix}
+  done
 fi
 
 exit 0

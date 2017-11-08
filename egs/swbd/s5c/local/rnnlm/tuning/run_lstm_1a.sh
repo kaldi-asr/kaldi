@@ -1,11 +1,13 @@
 #!/bin/bash
 
-# Copyright 2012  Johns Hopkins University (author: Daniel Povey)  Tony Robinson
+# Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 #           2015  Guoguo Chen
 #           2017  Hainan Xu
 
 # This script trains LMs on the swbd LM-training data.
-# This script takes no command-line arguments but takes the --cmd option.
+
+# Train objf: -299.20 -4.42 -4.24 -4.16 -4.10 -4.06 -4.03 -4.01 -3.98 -3.95 -3.94 -3.92 -3.90 -3.88 -3.86 -3.85 -3.84 -3.82 -3.81 -3.81 -3.79 -3.78 -3.77 -3.76 -3.74
+# Dev objf:   -10.65 -4.67 -4.37 -4.25 -4.19 -4.14 -4.10 -4.07 -4.03 -4.00 -3.99 -3.98 -3.96 -3.95 -3.93 -3.93 -3.91 -3.91 -3.90 -3.90 -3.88 -3.88 -3.87 -3.87 -3.86
 
 # Begin configuration section.
 
@@ -16,6 +18,16 @@ lstm_nrpd=512
 stage=-10
 train_stage=-10
 
+# variables for lattice rescoring
+run_rescore=false
+ac_model_dir=exp/chain/tdnn_lstm_1e_sp
+decode_dir_suffix=rnnlm
+ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
+              # if it's set, it merges histories in the lattice if they share
+              # the same ngram history and this prevents the lattice from 
+              # exploding exponentially
+
+. cmd.sh
 . utils/parse_options.sh
 
 text=data/train/text
@@ -81,7 +93,23 @@ fi
 
 if [ $stage -le 3 ]; then
   rnnlm/train_rnnlm.sh --num-jobs-initial 1 --num-jobs-final 3 \
-                  --stage $train_stage --num-epochs 10 --cmd "queue.pl" $dir
+                  --stage $train_stage --num-epochs 10 --cmd "$train_cmd" $dir
+fi
+
+if [ $stage -le 4 ] && $run_rescore; then
+  echo Perform lattice-rescoring on $ac_model_dir
+  LM=fsh_sw1_tg
+  for decode_set in eval2000; do
+    decode_dir=${ac_model_dir}/decode_${decode_set}_$LM
+
+    # Lattice rescoring
+    rnnlm/lmrescore_rnnlm_lat.sh \
+      --cmd "$decode_cmd --mem 4G" \
+      --weight 0.5 --max-ngram-order $ngram_order \
+      data/lang_$LM $dir \
+      data/${decode_set}_hires ${decode_dir} \
+      ${decode_dir}_${decode_dir_suffix}
+  done
 fi
 
 exit 0

@@ -34,11 +34,16 @@ RnnlmComputeStateInfo::RnnlmComputeStateInfo(
   KALDI_ASSERT(IsSimpleNnet(rnnlm));
   int32 left_context, right_context;
   ComputeSimpleNnetContext(rnnlm, &left_context, &right_context);
-  KALDI_ASSERT(0 == left_context);
-  KALDI_ASSERT(0 == right_context);
+  if (0 != left_context || 0 != right_context) {
+    KALDI_ERR << "Non-zero left or right context. Please check your script";
+  }
   int32 frame_subsampling_factor = 1;
   int32 embedding_dim = rnnlm.OutputDim("output");
-  KALDI_ASSERT(embedding_dim == word_embedding_mat.NumCols());
+  if (embedding_dim != rnnlm.OutputDim("output")) {
+    KALDI_ERR << "Embedding file and nnet have different number of words. "
+              << "You might be using a different wordlist "
+                 "here from what is used in training";
+  }
 
   nnet3::ComputationRequest request1, request2, request3;
   CreateLoopedComputationRequestSimple(rnnlm,
