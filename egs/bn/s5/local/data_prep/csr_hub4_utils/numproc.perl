@@ -78,7 +78,7 @@ for($i=0,$j=0;$i<=$#ARGV;$i++)
 		{	$exfile=$ARGV[$i];
 			$exfile =~ s/^-x//;
 		}
-		else {&perr2("illegal flag: $ARGV[$i]"); }
+		else {&perr2("illegal flag: $ARGV[$i]");}
 	}
 	else { &perr2("no file args"); }
 }
@@ -1125,7 +1125,6 @@ sub perr
 	$appendflg=0;
 	$commanextflg=0;
 	&pusho($this);
-# $field++;		# graceful error recovery
 }
 
 sub perr2

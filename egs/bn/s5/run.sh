@@ -25,6 +25,24 @@ local/data_prep/prepare_1997_bn_data.sh \
   /export/corpora/LDC/LDC98S71/97_eng_bns_hub4 \
   data/local/data/train_bn97
 
+# Install Beautiful Soup 4 python package
+if [ ! -d tools/beautifulsoup4 ]; then
+  mkdir -p tools
+  pip install -t tools/beautifulsoup4 beautifulsoup4
+fi
+export PYTHONPATH=$PWD/tools/beautifulsoup4:$PYTHONPATH
+
+if [ ! -f /export/corpora/LDC/LDC98T31/1996_csr_hub4_model/utils.tar ]; then
+  echo "Expected CSR-IV utils.tar to be found"
+  exit 1
+fi
+
+mkdir -p tools/csr4_utils
+(
+cd tools/csr4_utils
+tar -xvf /export/corpora/LDC/LDC98T31/1996_csr_hub4_model/utils.tar
+)
+
 # Prepare 1995 CSR-IV HUB4 corpus
 local/data_prep/prepare_1995_csr_hub4_corpus.sh \
   /export/corpora5/LDC/LDC96S31/csr95_hub4/ data/local/data/csr95_hub4
@@ -39,7 +57,7 @@ local/data/prep/prepare_na_news_text_supplement.sh --nj 10 --cmd "$train_cmd" \
 
 # Prepare 1996 CSR HUB4 Language Model
 local/data_prep/prepare_1996_csr_hub4_lm_corpus.sh --nj 10 --cmd "$train_cmd" \
-  /export/corpora/LDC/LDC98T31/1996_csr_hub4_model data/local/data/csr96_hub4
+   data/local/data/csr96_hub4
 
 # Prepare 1996 English Broadcast News Dev and Eval (HUB4)
 local/data_prep/prepare_1996_hub4_bn_eng_dev_and_eval.sh \
