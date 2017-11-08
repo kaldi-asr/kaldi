@@ -656,12 +656,6 @@ class XconfigBasicLayer(XconfigLayerBase):
                                  configs.]
     """
     def __init__(self, first_token, key_to_value, prev_names=None):
-        # Here we just list some likely combinations.. you can just add any
-        # combinations you want to use, to this list.
-        assert first_token in ['relu-layer', 'relu-renorm-layer', 'sigmoid-layer',
-                               'tanh-layer', 'relu-batchnorm-layer',
-                               'relu-batchnorm-so-layer', 'relu-dropout-layer',
-                               'relu-batchnorm-dropout-layer']
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
