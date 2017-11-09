@@ -112,7 +112,7 @@ from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 class XconfigConvLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         for operation in first_token.split('-')[:-1]:
-            assert operation in ['conv', 'renorm', 'batchnorm', 'relu', 'dropout']
+            assert operation in ['conv', 'renorm', 'batchnorm', 'relu', 'noconv', 'dropout']
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -126,6 +126,7 @@ class XconfigConvLayer(XconfigLayerBase):
                        'required-time-offsets':'',
                        'target-rms':1.0,
                        'self-repair-scale': 2.0e-05,
+                       'self-repair-lower-threshold': 0.05,
                        # the following are not really inspected by this level of
                        # code, just passed through (but not if left at '').
                        'param-stddev':'', 'bias-stddev':'',
@@ -184,13 +185,17 @@ class XconfigConvLayer(XconfigLayerBase):
         height_offsets = self.config['height-offsets']
         time_offsets = self.config['time-offsets']
         required_time_offsets = self.config['required-time-offsets']
-        if not self.check_offsets_var(height_offsets):
-            raise RuntimeError("height-offsets={0} is not valid".format(height_offsets))
-        if not self.check_offsets_var(time_offsets):
-            raise RuntimeError("time-offsets={0} is not valid".format(time_offsets))
-        if required_time_offsets != "" and not self.check_offsets_var(required_time_offsets):
-            raise RuntimeError("required-time-offsets={0} is not valid".format(
-                required_time_offsets))
+
+        if not 'noconv' in self.layer_type.split('-'):
+            # only check height-offsets, time-offsets and required-time-offsets if there
+            # is actually a convolution in this layer.
+            if not self.check_offsets_var(height_offsets):
+                raise RuntimeError("height-offsets={0} is not valid".format(height_offsets))
+            if not self.check_offsets_var(time_offsets):
+                raise RuntimeError("time-offsets={0} is not valid".format(time_offsets))
+            if required_time_offsets != "" and not self.check_offsets_var(required_time_offsets):
+                raise RuntimeError("required-time-offsets={0} is not valid".format(
+                    required_time_offsets))
 
         if height_out * height_subsample_out < \
            height_in - len(height_offsets.split(',')):
@@ -209,10 +214,11 @@ class XconfigConvLayer(XconfigLayerBase):
         assert auxiliary_output is None
         # note: the [:-1] is to remove the '-layer'.
         operations = self.layer_type.split('-')[:-1]
+        if operations[-1] == 'noconv':
+            operations = operations[:-1]
         assert len(operations) >= 1
         last_operation = operations[-1]
-        assert last_operation in ['relu', 'conv',
-                                  'renorm', 'batchnorm', 'dropout']
+        assert last_operation in ['relu', 'conv', 'renorm', 'batchnorm', 'dropout']
         # we'll return something like 'layer1.batchnorm'.
         return '{0}.{1}'.format(self.name, last_operation)
 
@@ -244,6 +250,8 @@ class XconfigConvLayer(XconfigLayerBase):
 
         # note: the [:-1] is to remove the '-layer'.
         operations = self.layer_type.split('-')[:-1]
+        if operations[-1] == 'noconv':
+            operations = operations[:-1]
         # e.g.:
         # operations = [ 'conv', 'relu', 'batchnorm' ]
         # or:
@@ -286,9 +294,10 @@ class XconfigConvLayer(XconfigLayerBase):
                                'input={1}'.format(name, cur_descriptor))
             elif operation == 'relu':
                 configs.append('component name={0}.relu type=RectifiedLinearComponent '
-                           'dim={1} self-repair-scale={2}'.format(
+                           'dim={1} self-repair-scale={2} self-repair-lower-threshold={3}'.format(
                                name, cur_num_filters * cur_height,
-                               self.config['self-repair-scale']))
+                               self.config['self-repair-scale'],
+                               self.config['self-repair-lower-threshold']))
                 configs.append('component-node name={0}.relu component={0}.relu '
                                'input={1}'.format(name, cur_descriptor))
             elif operation == 'dropout':
@@ -397,6 +406,9 @@ class XconfigResBlock(XconfigLayerBase):
                        'num-bottleneck-filters':-1,
                        'time-period':1,
                        'self-repair-scale': 2.0e-05,
+                       'self-repair-lower-threshold1': 0.05,
+                       'self-repair-lower-threshold2': 0.05,
+                       'self-repair-lower-threshold3': 0.05,
                        'max-change': 0.75,
                        'allow-zero-padding': True,
                        'bypass-source' : 'noop',
@@ -516,9 +528,10 @@ class XconfigResBlock(XconfigLayerBase):
         for n in [1, 2]:
             # the ReLU
             configs.append('component name={0}.relu{1} type=RectifiedLinearComponent '
-                           'dim={2} self-repair-scale={3}'.format(
+                           'dim={2} self-repair-scale={3} self-repair-lower-threshold={4}'.format(
                                name, n, num_filters * height,
-                               self.config['self-repair-scale']))
+                               self.config['self-repair-scale'],
+                               self.config['self-repair-lower-threshold{0}'.format(n)]))
             configs.append('component-node name={0}.relu{1} component={0}.relu{1} '
                            'input={2}'.format(name, n, cur_descriptor))
 
@@ -609,9 +622,10 @@ class XconfigResBlock(XconfigLayerBase):
         for n in [1, 2, 3]:
             # the ReLU
             configs.append('component name={0}.relu{1} type=RectifiedLinearComponent '
-                           'dim={2} self-repair-scale={3}'.format(
+                           'dim={2} self-repair-scale={3} self-repair-lower-threshold={4}'.format(
                                name, n, cur_num_filters * height,
-                               self.config['self-repair-scale']))
+                               self.config['self-repair-scale'],
+                               self.config['self-repair-lower-threshold{0}'.format(n)]))
             configs.append('component-node name={0}.relu{1} component={0}.relu{1} '
                            'input={2}'.format(name, n, cur_descriptor))
 
