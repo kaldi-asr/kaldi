@@ -44,7 +44,7 @@ done
 if [ $stage -le 0 ]; then
   mkdir -p $text_dir
   echo -n >$text_dir/dev.txt
-  # hold out one in every 500 lines as dev data.
+  # hold out one in every 50 lines as dev data.
   cat $text | grep ^sw | cut -d ' ' -f2- | awk -v text_dir=$text_dir '{if(NR%50 == 0) { print >text_dir"/dev.txt"; } else {print;}}' >$text_dir/swbd.txt
   cat $text | grep ^fe | cut -d ' ' -f2- >$text_dir/fisher.txt
 fi
