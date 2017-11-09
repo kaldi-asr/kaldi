@@ -4,26 +4,26 @@
 # Recipe for Fisher/Callhome-Spanish
 # Made to integrate KALDI with JOSHUA for end-to-end ASR and SMT
 
-. ./cmd.sh
-. ./path.sh
-mfccdir=`pwd`/mfcc
-set -e
-
-stage=1
+stage=0
 
 # call the next line with the directory where the Spanish Fisher data is
-# (the values below are just an example).  This should contain
-# subdirectories named as follows:
-# DISC1 DIC2
-
-sfisher_speech=/export/a16/gkumar/corpora/LDC2010S01
-sfisher_transcripts=/export/a16/gkumar/corpora/LDC2010T04
-spanish_lexicon=/export/a16/gkumar/corpora/LDC96L16
+# (the values below are just an example).
+sfisher_speech=/veu4/jadrian/data/LDC/LDC2010S01
+sfisher_transcripts=/veu4/jadrian/data/LDC/LDC2010T04
+spanish_lexicon=/veu4/jadrian/data/LDC/LDC96L16
 split=local/splits/split_fisher
 
-callhome_speech=/export/a16/gkumar/corpora/LDC96S35
-callhome_transcripts=/export/a16/gkumar/corpora/LDC96T17
+callhome_speech=/veu4/jadrian/data/LDC/LDC96S35
+callhome_transcripts=/veu4/jadrian/data/LDC/LDC96T17
 split_callhome=local/splits/split_callhome
+
+mfccdir=`pwd`/mfcc
+
+. ./cmd.sh
+if [ -f path.sh ]; then . ./path.sh; fi
+. parse_options.sh || exit 1;
+
+set -e
 
 if [ $stage -lt 1 ]; then
   local/fsp_data_prep.sh $sfisher_speech $sfisher_transcripts
@@ -119,10 +119,11 @@ if [ $stage -lt 2 ]; then
 
   utils/subset_data_dir.sh --shortest data/train 90000 data/train_100kshort
   utils/subset_data_dir.sh  data/train_100kshort 10000 data/train_10k
-  local/remove_dup_utts.sh 100 data/train_10k data/train_10k_nodup
+  utils/data/remove_dup_utts.sh 100 data/train_10k data/train_10k_nodup
   utils/subset_data_dir.sh --speakers data/train 30000 data/train_30k
   utils/subset_data_dir.sh --speakers data/train 90000 data/train_100k
 fi
+
 
 steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
   data/train_10k_nodup data/lang exp/mono0a
@@ -164,9 +165,9 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
    exp/tri3a/graph data/dev exp/tri3a/decode_dev || exit 1;
 )&
 
+
 # Next we'll use fMLLR and train with SAT (i.e. on
 # fMLLR features)
-
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_100k data/lang exp/tri3a exp/tri3a_ali || exit 1;
 
@@ -191,20 +192,18 @@ steps/train_sat.sh  --cmd "$train_cmd" \
   utils/mkgraph.sh data/lang_test exp/tri5a exp/tri5a/graph
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    exp/tri5a/graph data/dev exp/tri5a/decode_dev
-)&
+  steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
+   exp/tri5a/graph data/test exp/tri5a/decode_test
 
-steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-exp/tri5a/graph data/test exp/tri5a/decode_test
-
-# Decode CALLHOME
-(
-steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-exp/tri5a/graph data/callhome_test exp/tri5a/decode_callhome_test
-steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-exp/tri5a/graph data/callhome_dev exp/tri5a/decode_callhome_dev
-steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-exp/tri5a/graph data/callhome_train exp/tri5a/decode_callhome_train
+  # Decode CALLHOME
+  steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
+   exp/tri5a/graph data/callhome_test exp/tri5a/decode_callhome_test
+  steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
+   exp/tri5a/graph data/callhome_dev exp/tri5a/decode_callhome_dev
+  steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
+   exp/tri5a/graph data/callhome_train exp/tri5a/decode_callhome_train
 ) &
+
 
 steps/align_fmllr.sh \
   --boost-silence 0.5 --nj 32 --cmd "$train_cmd" \
@@ -221,7 +220,6 @@ steps/train_sgmm2.sh \
 utils/mkgraph.sh data/lang_test exp/sgmm5 exp/sgmm5/graph
 
 (
-
   steps/decode_sgmm2.sh --nj 13 --cmd "$decode_cmd" --num-threads 5 \
     --config conf/decode.config  --scoring-opts "--min-lmwt 8 --max-lmwt 16" --transform-dir exp/tri5a/decode_dev \
    exp/sgmm5/graph data/dev exp/sgmm5/decode_dev
@@ -260,11 +258,10 @@ for iter in 1 2 3 4; do
 done
 ) &
 
-
 dnn_cpu_parallel_opts=(--minibatch-size 128 --max-change 10 --num-jobs-nnet 8 --num-threads 16 \
-                       --parallel-opts "-pe smp 16" --cmd "queue.pl -l arch=*64 --mem 2G")
+                       --parallel-opts "--num-threads 16")
 dnn_gpu_parallel_opts=(--minibatch-size 512 --max-change 40 --num-jobs-nnet 4 --num-threads 1 \
-                       --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 --mem 2G")
+                       --parallel-opts "--gpu 1")
 
 steps/nnet2/train_pnorm_ensemble.sh \
   --mix-up 5000  --initial-learning-rate 0.008 --final-learning-rate 0.0008\
@@ -275,7 +272,7 @@ steps/nnet2/train_pnorm_ensemble.sh \
   data/train data/lang exp/tri5a_ali exp/tri6a_dnn
 
 (
-  steps/nnet2/decode.sh --nj 13 --cmd "$decode_cmd" --num-threads 4 --parallel-opts " -pe smp 4"   \
+  steps/nnet2/decode.sh --nj 13 --cmd "$decode_cmd" --num-threads 4 \
     --scoring-opts "--min-lmwt 8 --max-lmwt 16" --transform-dir exp/tri5a/decode_dev exp/tri5a/graph data/dev exp/tri6a_dnn/decode_dev
 ) &
 wait
