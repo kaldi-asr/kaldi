@@ -223,6 +223,11 @@ if [ $stage -le $num_iters ]; then
   # dev-set probability) as the final model.
   best_iter=$(rnnlm/get_best_model.py $dir)
   echo "$0: best iteration (out of $num_iters) was $best_iter, linking it to final iteration."
+  train_best_log=$dir/log/train.$best_iter.1.log
+  ppl_train=`grep 'Overall objf' $train_best_log | awk '{printf("%.1f",exp(-$10))}'`
+  dev_best_log=$dir/log/compute_prob.$best_iter.log
+  ppl_dev=`grep 'Overall objf' $dev_best_log | awk '{printf("%.1f",exp(-$NF))}'`
+  echo "$0: train/dev perplexity was $ppl_train / $ppl_dev."
   ln -sf $embedding_type.$best_iter.mat $dir/$embedding_type.final.mat
   ln -sf $best_iter.raw $dir/final.raw
 fi

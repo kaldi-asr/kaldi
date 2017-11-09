@@ -4,6 +4,10 @@
 #           2017  Hainan Xu
 #           2017  Ke Li
 
+# rnnlm/train_rnnlm.sh: best iteration (out of 10) was 3, linking it to final iteration.
+# rnnlm/train_rnnlm.sh: train/dev perplexity was 69.4 / 183.1.
+# Train objf: -333.60 -4.98 -4.54 -4.24 -3.98 -3.76 -3.56 -3.39 -3.25 -3.13
+# Dev objf:   -10.07 -5.53 -5.23 -5.21 -5.27 -5.37 -5.47 -5.57 -5.68 -5.77
 
 # Begin configuration section.
 cmd=run.pl
