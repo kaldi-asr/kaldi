@@ -16,8 +16,8 @@ echo "$0 $@"  # Print the command line for logging
 
 
 if [ $# -ne 2 ]; then
-	echo "Usage: $0 <dictdir> <outdir>"
-	exit 1;
+  echo "Usage: $0 <dictdir> <outdir>"
+  exit 1;
 fi
 
 lexicondir=$1
@@ -25,7 +25,7 @@ outdir=$2
 
 [ ! -f $lexicondir/lexicon.txt ] && echo "Cannot find $lexicondir/lexicon.txt" && exit
 
-isuconv=`which uconv` 
+isuconv=`which uconv`
 if [ -z $isuconv ]; then
   echo "uconv was not found. You must install the icu4c package."
   exit 1;
