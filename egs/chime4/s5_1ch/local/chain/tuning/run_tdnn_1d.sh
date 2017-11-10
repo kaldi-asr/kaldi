@@ -184,17 +184,17 @@ if [ $stage -le 15 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 dim=700
-  relu-batchnorm-layer name=tdnn2 dim=700 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn3 dim=700
-  relu-batchnorm-layer name=tdnn4 dim=700 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn5 dim=700
-  relu-batchnorm-layer name=tdnn6 dim=700 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn7 dim=700 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn8 dim=700 input=Append(-6,-3,0)
+  relu-batchnorm-layer name=tdnn1 dim=600
+  relu-batchnorm-layer name=tdnn2 dim=600 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn3 dim=600
+  relu-batchnorm-layer name=tdnn4 dim=600 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn5 dim=600
+  relu-batchnorm-layer name=tdnn6 dim=600 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn7 dim=600 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn8 dim=600 input=Append(-6,-3,0)
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain dim=700 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-chain dim=600 target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
@@ -206,7 +206,7 @@ if [ $stage -le 15 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn8 dim=700 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn8 dim=600 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
