@@ -172,80 +172,80 @@ fi
 
 
 if [ $stage -le 14 ]; then
-    steps/nnet3/chain/train.py \
-	--stage=$train_stage \
-	--cmd="$decode_cmd" \
-	--feat.online-ivector-dir=$train_ivector_dir \
-	--feat.cmvn-opts="--norm-means=false --norm-vars=false" \
-	--chain.xent-regularize $xent_regularize \
-	--chain.leaky-hmm-coefficient=0.1 \
-	--chain.l2-regularize=0.00005 \
-	--chain.apply-deriv-weights=false \
-	--chain.lm-opts="--num-extra-lm-states=2000" \
-	--trainer.srand=$srand \
-	--trainer.max-param-change=2.0 \
-	--trainer.num-epochs=10 \
-	--trainer.frames-per-iter=3000000 \
-	--trainer.optimization.num-jobs-initial=1 \
-	--trainer.optimization.num-jobs-final=1 \
-	--trainer.optimization.initial-effective-lrate=0.001 \
-	--trainer.optimization.final-effective-lrate=0.0001 \
-	--trainer.optimization.shrink-value=1.0 \
-	--trainer.optimization.proportional-shrink=150.0 \
-	--trainer.num-chunk-per-minibatch=256,128,64 \
-	--trainer.optimization.momentum=0.0 \
-	--egs.chunk-width=$chunk_width \
-	--egs.chunk-left-context=$chunk_left_context \
-	--egs.chunk-right-context=$chunk_right_context \
-	--egs.chunk-left-context-initial=0 \
-	--egs.chunk-right-context-final=0 \
-	--egs.dir="$common_egs_dir" \
-	--egs.opts="--frames-overlap-per-eg 0" \
-	--cleanup.remove-egs=$remove_egs \
-	--use-gpu=true \
-	--reporting.email="$reporting_email" \
-	--feat-dir=$train_data_dir \
-	--tree-dir=$tree_dir \
-	--lat-dir=$lat_dir \
-	--dir=$dir  || exit 1;
+  steps/nnet3/chain/train.py \
+    --stage=$train_stage \
+    --cmd="$decode_cmd" \
+    --feat.online-ivector-dir=$train_ivector_dir \
+    --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
+    --chain.xent-regularize $xent_regularize \
+    --chain.leaky-hmm-coefficient=0.1 \
+    --chain.l2-regularize=0.00005 \
+    --chain.apply-deriv-weights=false \
+    --chain.lm-opts="--num-extra-lm-states=2000" \
+    --trainer.srand=$srand \
+    --trainer.max-param-change=2.0 \
+    --trainer.num-epochs=10 \
+    --trainer.frames-per-iter=3000000 \
+    --trainer.optimization.num-jobs-initial=1 \
+    --trainer.optimization.num-jobs-final=1 \
+    --trainer.optimization.initial-effective-lrate=0.001 \
+    --trainer.optimization.final-effective-lrate=0.0001 \
+    --trainer.optimization.shrink-value=1.0 \
+    --trainer.optimization.proportional-shrink=150.0 \
+    --trainer.num-chunk-per-minibatch=256,128,64 \
+    --trainer.optimization.momentum=0.0 \
+    --egs.chunk-width=$chunk_width \
+    --egs.chunk-left-context=$chunk_left_context \
+    --egs.chunk-right-context=$chunk_right_context \
+    --egs.chunk-left-context-initial=0 \
+    --egs.chunk-right-context-final=0 \
+    --egs.dir="$common_egs_dir" \
+    --egs.opts="--frames-overlap-per-eg 0" \
+    --cleanup.remove-egs=$remove_egs \
+    --use-gpu=true \
+    --reporting.email="$reporting_email" \
+    --feat-dir=$train_data_dir \
+    --tree-dir=$tree_dir \
+    --lat-dir=$lat_dir \
+    --dir=$dir  || exit 1;
 fi
 
 if [ $stage -le 15 ]; then
-    # Note: it's not important to give mkgraph.sh the lang directory with the
-    # matched topology (since it gets the topology file from the model).
-    utils/mkgraph.sh \
-	--self-loop-scale 1.0 \
-	data/lang_test \
-	$tree_dir \
-	$tree_dir/graph || exit 1;
+  # Note: it's not important to give mkgraph.sh the lang directory with the
+  # matched topology (since it gets the topology file from the model).
+  utils/mkgraph.sh \
+    --self-loop-scale 1.0 \
+    data/lang_test \
+    $tree_dir \
+    $tree_dir/graph || exit 1;
 fi
 
 if [ $stage -le 16 ]; then
-    frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-    rm $dir/.error 2>/dev/null || true
+  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
+  rm $dir/.error 2>/dev/null || true
 
-    for data in $test_sets; do
-	(
-	    nspk=$(wc -l <data/${data}_hires/spk2utt)
-	    steps/nnet3/decode.sh \
-		--acwt 1.0 \
-		--post-decode-acwt 10.0 \
-		--extra-left-context $chunk_left_context \
-		--extra-right-context $chunk_right_context \
-		--extra-left-context-initial 0 \
-		--extra-right-context-final 0 \
-		--frames-per-chunk $frames_per_chunk \
-		--nj $nspk \
-		--cmd "$decode_cmd" \
-		--num-threads 4 \
-		--online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
-		$tree_dir/graph \
-		data/${data}_hires \
-		${dir}/decode_${data} || exit 1;
-	) || touch $dir/.error &
-    done
-    wait
-    [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+  for data in $test_sets; do
+    (
+    nspk=$(wc -l <data/${data}_hires/spk2utt)
+    steps/nnet3/decode.sh \
+      --acwt 1.0 \
+      --post-decode-acwt 10.0 \
+      --extra-left-context $chunk_left_context \
+      --extra-right-context $chunk_right_context \
+      --extra-left-context-initial 0 \
+      --extra-right-context-final 0 \
+      --frames-per-chunk $frames_per_chunk \
+      --nj $nspk \
+      --cmd "$decode_cmd" \
+      --num-threads 4 \
+      --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
+      $tree_dir/graph \
+      data/${data}_hires \
+      ${dir}/decode_${data} || exit 1;
+    ) || touch $dir/.error &
+  done
+  wait
+  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
 
 # Not testing the 'looped' decoding separately, because for
@@ -253,34 +253,34 @@ fi
 # normal decoding.
 
 if $test_online_decoding && [ $stage -le 17 ]; then
-    # note: if the features change (e.g. you add pitch features), you will have to
-    # change the options of the following command line.
-    steps/online/nnet3/prepare_online_decoding.sh \
-	--mfcc-config conf/mfcc_hires.conf \
-	$lang \
-	exp/nnet3${nnet3_affix}/extractor \
-	${dir} \
-	${dir}_online
+  # note: if the features change (e.g. you add pitch features), you will have to
+  # change the options of the following command line.
+  steps/online/nnet3/prepare_online_decoding.sh \
+    --mfcc-config conf/mfcc_hires.conf \
+    $lang \
+    exp/nnet3${nnet3_affix}/extractor \
+    ${dir} \
+    ${dir}_online
 
-    rm $dir/.error 2>/dev/null || true
+  rm $dir/.error 2>/dev/null || true
 
-    for data in $test_sets; do
-	(
-	    nspk=$(wc -l <data/${data}_hires/spk2utt)
-	    # note: we just give it "data/${data}" as it only uses the wav.scp, the
-	    # feature type does not matter.
-	    steps/online/nnet3/decode.sh \
-		--acwt 1.0 \
-		--post-decode-acwt 10.0 \
-		--nj $nspk \
-		--cmd "$decode_cmd" \
-		$tree_dir/graph \
-		data/${data} \
-		${dir}_online/decode_${data} || exit 1
-	) || touch $dir/.error &
-    done
-    wait
-    [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+  for data in $test_sets; do
+    (
+    nspk=$(wc -l <data/${data}_hires/spk2utt)
+    # note: we just give it "data/${data}" as it only uses the wav.scp, the
+    # feature type does not matter.
+    steps/online/nnet3/decode.sh \
+      --acwt 1.0 \
+      --post-decode-acwt 10.0 \
+      --nj $nspk \
+      --cmd "$decode_cmd" \
+      $tree_dir/graph \
+      data/${data} \
+      ${dir}_online/decode_${data} || exit 1
+    ) || touch $dir/.error &
+  done
+  wait
+  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
 
 exit 0;
