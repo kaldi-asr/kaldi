@@ -5,13 +5,13 @@
 
 echo $0 "$@"
 
-galeData=$(utils/make_absolute.sh "${@: -1}" ); 
+galeData=$(utils/make_absolute.sh "${@: -1}" );
 
 length=$(($#-1))
 args=${@:1:$length}
 
 top_pwd=`pwd`
-txtdir=$galeData/txt 
+txtdir=$galeData/txt
 mkdir -p $txtdir; cd $txtdir
 
 for cdx in ${args[@]}; do
@@ -21,12 +21,12 @@ for cdx in ${args[@]}; do
   elif [  -d "$cdx" ]; then
     ln -s $cdx `basename $cdx`
   else
-    echo "I don't really know what I shall do with $cdx " >&2 
+    echo "I don't really know what I shall do with $cdx " >&2
   fi
 done
 
-find -L . -type f -name *.tdf | while read file; do 
-sed '1,3d' $file 
+find -L . -type f -name *.tdf | while read file; do
+sed '1,3d' $file
 done >  all.tmp$$
 
 perl -e '
@@ -38,13 +38,13 @@ perl -e '
       @arr= split /\t/,$_;
       $start=sprintf ("%0.3f",$arr[2]);$rStart=$start;$start=~s/\.//; $start=~s/^0+$/0/; $start=~s/^0+([^0])/$1/; # remove zeros at the beginning
       $end=sprintf ("%0.3f",$arr[3]);$rEnd=$end;$end=~s/^0+([^0])/$1/;$end=~s/\.//;
-	  if ( ($arr[11] !~ m/report/) && ($arr[11] !~ m/conversational/) ){$arr[11]="UNK";}
-	  $id="$arr[11] $arr[0] $arr[0]_${start}_${end} $rStart $rEnd\n";
-	  next if ($rStart == $rEnd);
-	  $id =~ s/.sph//g;
-	  print ID $id;
+      if ( ($arr[11] !~ m/report/) && ($arr[11] !~ m/conversational/) ){$arr[11]="UNK";}
+      $id="$arr[11] $arr[0] $arr[0]_${start}_${end} $rStart $rEnd\n";
+      next if ($rStart == $rEnd);
+      $id =~ s/.sph//g;
+      print ID $id;
       print TXT "$arr[7]\n";
- }' "all.tmp$$ allid.tmp$$ contentall.tmp$$" 
+ }' "all.tmp$$ allid.tmp$$ contentall.tmp$$"
 
 
 perl ${top_pwd}/local/normalize_transcript_BW.pl contentall.tmp$$ contentall.buck.tmp$$

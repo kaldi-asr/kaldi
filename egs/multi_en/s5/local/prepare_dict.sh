@@ -21,7 +21,7 @@ function filter_common {
 
 # This function filters lines in file2 that are not in file1
 function filter_different {
-    awk 'NR==FNR{arr[$0]++;next} !arr[$0] {print}' $1 $2 
+    awk 'NR==FNR{arr[$0]++;next} !arr[$0] {print}' $1 $2
 }
 
 num_syms=0
@@ -30,10 +30,10 @@ for i in "${replace_swbd_symbols[@]}"; do
   replace_symbol=${replace_cmudict_symbols[${num_syms}]}
   if [ $num_syms -eq 0 ]; then
     # ax appears twice together in "personably p er s ax ax n b l iy"
-    substitute_arg=" sed 's: ${i} : ${replace_symbol} :g' |  sed 's: ${i} : ${replace_symbol} :g' | sed 's:${i}$:${replace_symbol}:g'" 
-  else	
+    substitute_arg=" sed 's: ${i} : ${replace_symbol} :g' |  sed 's: ${i} : ${replace_symbol} :g' | sed 's:${i}$:${replace_symbol}:g'"
+  else
     substitute_arg=$substitute_arg" | sed 's: ${i} : ${replace_symbol} :g' | sed 's:${i}$:${replace_symbol}:g'"
-  fi	
+  fi
   num_syms=$((num_syms+1))
 done
 
@@ -53,7 +53,7 @@ rm -rf $dir && mkdir -p $dir
 
 # Find words that are unique to swbd lexicon (excluding non-scored words)
 utils/filter_scp.pl --exclude ${cmudict_dir}/lexicon.txt \
-	${swbd_dir}/lexicon.txt | grep -v '\[*\]' | grep -v '<unk>'  > ${dir}/lexicon_swbd_unique.txt || exit 1;
+  ${swbd_dir}/lexicon.txt | grep -v '\[*\]' | grep -v '<unk>'  > ${dir}/lexicon_swbd_unique.txt || exit 1;
 
 # Mapping phones from swbd phones to cmu phones for words above.
 echo "cat ${dir}/lexicon_swbd_unique.txt | $substitute_arg" > ${dir}/substitute.sh
@@ -61,7 +61,7 @@ bash ${dir}/substitute.sh > ${dir}/lexicon_swbd_unique_cmuphones.txt || exit 1;
 
 # Find words that exist in both swbd and cmudict lexicons (excluding non-scored words)
 utils/filter_scp.pl --exclude ${dir}/lexicon_swbd_unique.txt \
-	${swbd_dir}/lexicon.txt | grep -v '\[*\]' | grep -v '<unk>' > ${dir}/lexicon_swbd1.txt || exit 1;
+  ${swbd_dir}/lexicon.txt | grep -v '\[*\]' | grep -v '<unk>' > ${dir}/lexicon_swbd1.txt || exit 1;
 
 # Find words that have same pronounciation in both dictionaries - common lines
 filter_common ${cmudict_dir}/lexicon.txt \
@@ -84,7 +84,7 @@ filter_different ${cmudict_dir}/lexicon.txt \
   ${dir}/lexicon_swbd3.txt > ${dir}/lexicon_swbd4.txt || exit 1;
 
 # Extract lines from cmudict that has the above words
-utils/filter_scp.pl ${dir}/lexicon_swbd4.txt ${cmudict_dir}/lexicon.txt > ${dir}/lexicon_cmudict4.txt || exit 1; 
+utils/filter_scp.pl ${dir}/lexicon_swbd4.txt ${cmudict_dir}/lexicon.txt > ${dir}/lexicon_cmudict4.txt || exit 1;
 
 # Writing to lexicon.txt
 cat ${dir}/lexicon_swbd4.txt ${dir}/lexicon_swbd_unique_cmuphones.txt ${cmudict_dir}/lexicon.txt | sort -u > ${dir}/lexicon.txt
