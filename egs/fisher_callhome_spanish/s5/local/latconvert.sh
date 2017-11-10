@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Author : Gaurav Kumar, Johns Hopkins University 
+# Author : Gaurav Kumar, Johns Hopkins University
 # Creates OpenFST lattices from Kaldi lattices
 # This script needs to be run from one level above this directory
 
@@ -34,7 +34,7 @@ then
   mkdir -p $latdir/$preplfLatDir
 
   for l in $decode_dir/lat.*.gz
-  do	
+  do
     (
     # Extract file name and unzip the file first
     bname=${l##*/}
@@ -50,7 +50,7 @@ then
       $KALDI_ROOT/src/latbin/lattice-prune --acoustic-scale=$acoustic_scale --beam=$prunebeam ark:"$bname.raw" ark:"$bname.pruned"
 
       # Convert to an openfst compatible format
-      $KALDI_ROOT/src/latbin/lattice-to-fst --lm-scale=1.0 --acoustic-scale=$acoustic_scale ark:$bname.pruned ark,t:$bname.ark.fst	
+      $KALDI_ROOT/src/latbin/lattice-to-fst --lm-scale=1.0 --acoustic-scale=$acoustic_scale ark:$bname.pruned ark,t:$bname.ark.fst
 
     fi
 
@@ -73,7 +73,7 @@ then
       done < $bname.ark.fst
       echo "Done isolating lattices"
     fi
-    ) &	
+    ) &
   done
   wait
   rm $latdir/*.bin
@@ -115,7 +115,7 @@ then
     done
     wait
     # Let's take a moment to thank the dummy FST for playing its
-    # part in this process. However, it has to go now. 
+    # part in this process. However, it has to go now.
     rm $latdir/$preplfLatDir/dummy.fst
     echo "Done performing fst push (initial state)"
   fi

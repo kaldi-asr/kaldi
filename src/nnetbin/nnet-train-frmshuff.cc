@@ -45,6 +45,8 @@ int main(int argc, char *argv[]) {
     trn_opts.Register(&po);
     NnetDataRandomizerOptions rnd_opts;
     rnd_opts.Register(&po);
+    LossOptions loss_opts;
+    loss_opts.Register(&po);
 
     bool binary = true;
     po.Register("binary", &binary, "Write output in binary mode");
@@ -64,6 +66,10 @@ int main(int argc, char *argv[]) {
     std::string objective_function = "xent";
     po.Register("objective-function", &objective_function,
         "Objective function : xent|mse|multitask");
+
+    int32 max_frames = 360000;
+    po.Register("max-frames", &max_frames,
+        "Maximum number of frames an utterance can have (skipped if longer)");
 
     int32 length_tolerance = 5;
     po.Register("length-tolerance", &length_tolerance,
@@ -138,10 +144,10 @@ int main(int argc, char *argv[]) {
     PosteriorRandomizer targets_randomizer(rnd_opts);
     VectorRandomizer weights_randomizer(rnd_opts);
 
-    Xent xent;
-    Mse mse;
+    Xent xent(loss_opts);
+    Mse mse(loss_opts);
 
-    MultiTaskLoss multitask;
+    MultiTaskLoss multitask(loss_opts);
     if (0 == objective_function.compare(0, 9, "multitask")) {
       // objective_function contains something like :
       // 'multitask,xent,2456,1.0,mse,440,0.001'
@@ -211,6 +217,15 @@ int main(int argc, char *argv[]) {
           KALDI_ASSERT(w >= 0.0);
           if (w == 0.0) continue;  // remove sentence from training,
           weights.Scale(w);
+        }
+
+        // skip too long utterances (or we run out of memory),
+        if (mat.NumRows() > max_frames) {
+          KALDI_WARN << "Utterance too long, skipping! " << utt
+            << " (length " << mat.NumRows() << ", max_frames "
+            << max_frames << ")";
+          num_other_error++;
+          continue;
         }
 
         // correct small length mismatch or drop sentence,

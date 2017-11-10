@@ -22,6 +22,7 @@
 
 # Config:
 stage=0 # resume training with --stage N
+
 baseline=advanced
 flatstart=false
 tdnn=true
@@ -41,8 +42,8 @@ chime4_data=`pwd`/../..
 # Otherwise, please specify it, e.g.,
 chime4_data=/db/laputa1/data/processed/public/CHiME4
 
-case $(hostname -d) in
-  *.jhu.edu) chime4_data=/export/corpora4/CHiME4/CHiME3 ;; # JHU,
+case $(hostname -f) in
+  *.clsp.jhu.edu) chime4_data=/export/corpora4/CHiME4/CHiME3 ;; # JHU,
 esac 
 
 if [ ! -d $chime4_data ]; then

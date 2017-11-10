@@ -1,23 +1,27 @@
 #!/bin/bash
 
 # Copyright 2016  Allen Guo
+#           2017  Xiaohui Zhang
 # Apache License 2.0
 
-# This script applies a trained Sequitur G2P model to
+# This script applies a trained Phonetisarus G2P model to
 # synthesize pronunciations for missing words (i.e., words in
-# transcripts but not the lexicon). Only missing words that are
-# purely alphabetical (no punctuation) are synthesized.
+# transcripts but not the lexicon), and output the expanded lexicon.
+
+var_counts=1
 
 . ./path.sh || exit 1
+. parse_options.sh || exit 1;
 
-if [ $# -ne "3" ]; then
-  echo "Usage: $0 <g2p-model> <g2p-tmp-dir> <current-lexicon>"
+if [ $# -ne "4" ]; then
+  echo "Usage: $0 <g2p-model> <g2p-tmp-dir> <current-lexicon> <output-lexicon>"
   exit 1
 fi
 
 model=$1
 workdir=$2
 lexicon=$3
+outlexicon=$4
 
 mkdir -p $workdir
 
@@ -27,14 +31,12 @@ cat data/*/train/text | \
   local/count_oovs.pl $lexicon | \
   awk '{for(i=4; i<NF; i++) printf "%s",$i OFS; if(NF) printf "%s",$NF; printf ORS}' | \
   perl -ape 's/\s/\n/g;' | \
-  grep -v 0 | sort | uniq | \
   sort | uniq > $workdir/missing.txt
+cat $workdir/missing.txt | \
+  grep "^[a-z0-9.'_-]*$"  > $workdir/missing_onlywords.txt
 
 echo 'Synthesizing pronunciations for missing words...'
-PYTHONPATH=$sequitur_path:$PYTHONPATH $PYTHON $sequitur \
-  --model $model --apply $workdir/missing.txt > $workdir/missing_g2p.txt
+phonetisaurus-apply --nbest $var_counts --model $model --thresh 5 --accumulate --word_list $workdir/missing_onlywords.txt > $workdir/missing_g2p_${var_counts}.txt 
 
 echo "Adding new pronunciations to $lexicon"
-echo "Original lexicon moved to ${lexicon}.bkp"
-mv $lexicon "$lexicon".bkp
-cat "$lexicon".bkp $workdir/missing_g2p.txt | sort | uniq > $lexicon
+cat "$lexicon" $workdir/missing_g2p_${var_counts}.txt | sort | uniq > $outlexicon

@@ -94,7 +94,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                 --frames-per-eg {frames_per_eg_str} \
                 --srand {srand} \
                 {data} {dir} {lat_dir} {egs_dir}""".format(
-                    command=run_opts.command,
+                    command=run_opts.egs_command,
                     cmvn_opts=cmvn_opts if cmvn_opts is not None else '',
                     transform_dir=(transform_dir
                                    if transform_dir is not None
@@ -184,6 +184,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                     --max-param-change={max_param_change} \
                     --backstitch-training-scale={backstitch_training_scale} \
                     --backstitch-training-interval={backstitch_training_interval} \
+                    --l2-regularize-factor={l2_regularize_factor} \
                     --srand={srand} \
                     "{raw_model}" {dir}/den.fst \
                     "ark,bg:nnet3-chain-copy-egs \
@@ -207,6 +208,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         momentum=momentum, max_param_change=max_param_change,
                         backstitch_training_scale=backstitch_training_scale,
                         backstitch_training_interval=backstitch_training_interval,
+                        l2_regularize_factor=1.0/num_jobs,
                         raw_model=raw_model_string,
                         egs_dir=egs_dir, archive_index=archive_index,
                         buf_size=shuffle_buffer_size,

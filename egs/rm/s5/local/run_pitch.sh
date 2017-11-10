@@ -10,7 +10,7 @@ set -e # exit on error
 # call the next line with the directory where the RM data is
 # (the argument below is just an example).  This should contain
 # subdirectories named as follows:
-#    rm1_audio1  rm1_audio2	rm2_audio
+#    rm1_audio1  rm1_audio2    rm2_audio
 
 #local/rm_data_prep.sh /mnt/matylda2/data/RM
 
@@ -41,7 +41,7 @@ done
 utils/combine_data.sh data/test data/test_{mar87,oct87,feb89,oct89,feb91,sep92}
 steps/compute_cmvn_stats.sh data/test exp/make_feat/test $featdir
 
-utils/subset_data_dir.sh data/train 1000 data/train.1k 
+utils/subset_data_dir.sh data/train 1000 data/train.1k
 
 
 steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train.1k data/lang exp/mono
