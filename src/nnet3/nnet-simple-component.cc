@@ -1038,39 +1038,64 @@ void RectifiedLinearComponent::RepairGradients(
     CuMatrixBase<BaseFloat> *in_deriv,
     RectifiedLinearComponent *to_update) const {
   KALDI_ASSERT(to_update != NULL);
+  int32 dim = dim_, block_dim = block_dim_;
   BaseFloat default_lower_threshold = 0.05,
       default_upper_threshold = 0.95;
   // we use this 'repair_probability' (hardcoded for now) to limit
   // this code to running on about half of the minibatches.
   BaseFloat repair_probability = 0.5;
-
-  to_update->num_dims_processed_ += dim_;
-
-  if (self_repair_scale_ == 0.0 || count_ == 0.0 || deriv_sum_.Dim() != dim_ ||
-      RandUniform() > repair_probability)
+  KALDI_ASSERT(in_deriv->NumCols() == dim || in_deriv->NumCols() == block_dim);
+  if (self_repair_scale_ == 0.0 || count_ == 0.0 ||
+      deriv_sum_.Dim() != dim)
     return;
+
+  if (in_deriv->NumCols() != block_dim) {
+    KALDI_ASSERT(in_deriv->NumCols() == in_deriv->Stride());
+    int32 dim_multiple = dim / block_dim;
+    CuSubMatrix<BaseFloat> in_deriv_reshaped(in_deriv->Data(),
+                                             in_deriv->NumRows() * dim_multiple,
+                                             block_dim, block_dim);
+    RepairGradients(&in_deriv_reshaped, to_update);
+    return;
+  }
+
+  // By now we know that in_deriv->NumCols() == block_dim.
+
+  if (RandUniform() > repair_probability)
+    return;
+
+  to_update->num_dims_processed_ += block_dim;
 
   // check that the self-repair scale is in a reasonable range.
   KALDI_ASSERT(self_repair_scale_ > 0.0 && self_repair_scale_ < 0.1);
   BaseFloat unset = kUnsetThreshold; // -1000.0
-  BaseFloat lower_threshold = (self_repair_lower_threshold_ == unset ?
-                               default_lower_threshold :
-                               self_repair_lower_threshold_) *
-      count_,
+  BaseFloat count = count_,
+      lower_threshold = (self_repair_lower_threshold_ == unset ?
+                         default_lower_threshold :
+                         self_repair_lower_threshold_) * count,
       upper_threshold = (self_repair_upper_threshold_ == unset ?
                          default_upper_threshold :
-                         self_repair_upper_threshold_) *
-      count_;
+                         self_repair_upper_threshold_) * count;
 
-  CuMatrix<BaseFloat> storage(2, dim_ + 2, kUndefined);
-  CuSubVector<BaseFloat> thresholds_vec(storage.RowData(0) + dim_, 2);
-  CuSubMatrix<BaseFloat> stats_mat(storage, 0, 2, 0, dim_);
+  CuMatrix<BaseFloat> storage(2, block_dim + 2, kUndefined);
+  CuSubVector<BaseFloat> thresholds_vec(storage.RowData(0) + block_dim, 2);
+  CuSubMatrix<BaseFloat> stats_mat(storage, 0, 2, 0, block_dim);
   thresholds_vec(0) = -lower_threshold;
   thresholds_vec(1) = -upper_threshold;
   CuSubVector<BaseFloat> row0(stats_mat, 0);
   CuSubVector<BaseFloat> row1(stats_mat, 1);
 
-  row0.CopyFromVec(deriv_sum_);
+  if (block_dim == dim) {
+    row0.CopyFromVec(deriv_sum_);
+  } else {
+    CuSubMatrix<double> deriv_sum_mat(deriv_sum_.Data(),
+                                      dim / block_dim,
+                                      block_dim, block_dim);
+    CuVector<double> deriv_sum_dbl(block_dim);
+    // get the average of the deriv-sums over the blocks.
+    deriv_sum_dbl.AddRowSumMat(block_dim * 1.0 / dim, deriv_sum_mat);
+    row0.CopyFromVec(deriv_sum_dbl);
+  }
   row1.CopyFromVec(row0);
   stats_mat.AddVecToCols(1.0, thresholds_vec, 1.0);
   // now row0 equals stats - lower_threshold, and
@@ -5650,7 +5675,10 @@ void BatchNormComponent::ComputeDerived() {
   scale_.Scale(1.0 / count_);
   scale_.AddVecVec(-1.0, offset_, offset_, 1.0);
   // now scale_ is variance.
-  scale_.ApplyFloor(epsilon_);
+  // Mathematically the ApplyFloor statement should be a no-op; this is in case
+  // of numerical roundoff.
+  scale_.ApplyFloor(0.0);
+  scale_.Add(epsilon_);
   scale_.ApplyPow(-0.5);
   // now scale_ = min(variance, epsilon)^{-0.5}.
   // next, multiply by the target RMS (normally 1.0).
@@ -5747,16 +5775,10 @@ void BatchNormComponent::InitFromConfig(ConfigLine *cfl) {
          x2sum = sum_i x(i)^2
           mean = xsum / n
            var = x2sum / n - (mean*mean)
-         scale = sqrt(var + epsilon)^{-0.5} *
+         scale = sqrt(var + epsilon)^{-0.5}
         offset = -mean * scale
 
       y(i) = scale * x(i) + offset
-
-    * note: we'll actually implement the epsilon term by flooring the variance to that
-      value instead of adding; this provides certainty that there will be no NaN's
-      appearing even in the presence of roundoff error.  Our backprop formula is
-      such that it's insensitive to this type of difference and doesn't have to be
-      changed, see below.
 
    Most of the rest of this comment derives how to compute the derivatives.  If
    you just want the formulas, please skip to the string 'BACKWARD PASS' below.
@@ -5776,7 +5798,7 @@ void BatchNormComponent::InitFromConfig(ConfigLine *cfl) {
      x'(i) = y'(i) * scale  +  xsum'  +  x(i) * x2sum'
 
   The above is quite complicated to compute, but we can use some invariances
-  to work out a simpler way to compute the derivatives.d
+  to work out a simpler way to compute the derivatives.
 
   Firstly, note that x'(i) is of the form:
 
@@ -5785,7 +5807,7 @@ void BatchNormComponent::InitFromConfig(ConfigLine *cfl) {
    [it's a 1-d affine function, i.e. offset and scale].
  This has the same functional form as:
 
- x'(i) =  y'(i) * scale + [affine function of y(i)].
+  x'(i) =  y'(i) * scale + [affine function of y(i)].
 
   since y(i) is an affine function of x(i) with nonzero scale.
   Because the output is invariant to shifts in the input, sum_i x'(i)
@@ -5824,8 +5846,8 @@ void BatchNormComponent::InitFromConfig(ConfigLine *cfl) {
  the epsilon term (or variance-flooring) as having been implemented by
  adding a couple extra rows to the matrix with suitable values, and zero
  output-deriv for those rows.  If you think about it carefully you'll see that
- the formula above is valid even if there is flooring of, or an extra term
- in, the variance.  Anyway the correctness of the derivative will get tested
+ the formula above is valid even if there is an extra term
+ in the variance.  Anyway the correctness of the derivative will get tested
  throughly by the component unit-tests.
 
  So to recap, here is the backprop.

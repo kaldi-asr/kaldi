@@ -402,7 +402,8 @@ class RectifiedLinearComponent: public NonlinearComponent {
   virtual Component* Copy() const { return new RectifiedLinearComponent(*this); }
   virtual int32 Properties() const {
     return kSimpleComponent|kLinearInInput|kBackpropNeedsOutput|kPropagateInPlace|
-        kStoresStats;
+        kStoresStats|(block_dim_ != dim_ ? kInputContiguous : 0);
+
   }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -2405,8 +2406,7 @@ class BatchNormComponent: public Component {
   int32 block_dim_;
 
   // Used to avoid exact-zero variances, epsilon has the dimension of a
-  // covariance; in this work it is applied as a floor, not as an additive term
-  // (this is safer in the presence of numerical roundoff).
+  // covariance.
   BaseFloat epsilon_;
 
   // This value will normally be 1.0, which is the default, but you can set it

@@ -125,7 +125,10 @@ void GenerateConfigSequenceSimple(
     int32 block_dim = (hidden_dim % 2 == 0 ? hidden_dim / 2 : hidden_dim);
     os << "component name=batch-norm type=BatchNormComponent dim="
        << hidden_dim << " block-dim=" << block_dim
-       << " epsilon=0.2 target-rms=2.0\n";
+       << " target-rms=2.0";
+    if (RandInt(0, 1) == 0)
+      os << " epsilon=3.0";
+    os << '\n';
   }
   os << "component name=final_affine type=NaturalGradientAffineComponent input-dim="
      << hidden_dim << " output-dim=" << output_dim << std::endl;
@@ -1659,10 +1662,11 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       *component_type = "BatchNormComponent";
       int32 block_dim = RandInt(1, 10), dim = block_dim * RandInt(1, 2);
       bool test_mode = (RandInt(0, 1) == 0);
-      os << "epsilon=" << 0.5 << " dim=" << dim
+      os << " dim=" << dim
          << " block-dim=" << block_dim << " target-rms="
          << RandInt(1, 2) << " test-mode="
-         << (test_mode ? "true" : "false");
+         << (test_mode ? "true" : "false")
+         << " epsilon=" << (RandInt(0, 1) == 0 ? "0.1" : "1.0");
       break;
     }
     case 32: {
