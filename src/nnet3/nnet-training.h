@@ -39,6 +39,7 @@ struct NnetTrainerOptions {
   BaseFloat l2_regularize_factor;
   BaseFloat backstitch_training_scale;
   int32 backstitch_training_interval;
+  BaseFloat batchnorm_stats_scale;
   std::string read_cache;
   std::string write_cache;
   bool binary_write_cache;
@@ -55,6 +56,7 @@ struct NnetTrainerOptions {
       l2_regularize_factor(1.0),
       backstitch_training_scale(0.0),
       backstitch_training_interval(1),
+      batchnorm_stats_scale(0.8),
       binary_write_cache(true),
       max_param_change(2.0) { }
   void Register(OptionsItf *opts) {
@@ -84,6 +86,10 @@ struct NnetTrainerOptions {
                    " --l2-regularize-factor will be multiplied by the component-level "
                    "l2-regularize values and can be used to correct for effects "
                    "related to parallelization by model averaging.");
+    opts->Register("batchnorm-stats-scale", &batchnorm_stats_scale,
+                   "Factor by which we scale down the accumulated stats of batchnorm "
+                   "layers after processing each minibatch.  Ensure that the final "
+                   "model we write out has batchnorm stats that are fairly fresh.");
     opts->Register("backstitch-training-scale", &backstitch_training_scale,
                    "backstitch training factor. "
                    "if 0 then in the normal training mode. It is referred as "

@@ -426,6 +426,15 @@ void ApplyL2Regularization(const Nnet &nnet,
                            Nnet *delta_nnet);
 
 
+/**
+   This function scales the batchorm stats of any batchnorm components
+   (components of type BatchNormComponent) in 'nnet' by the scale
+   'batchnorm_stats_scale'.
+ */
+void ScaleBatchnormStats(BaseFloat batchnorm_stats_scale,
+                         Nnet *nnet);
+
+
 /** This utility function can be used to obtain the number of distinct 'n'
     values in a training example.  This is the number of examples
     (e.g. sequences) that have been combined into a single example.  (Actually

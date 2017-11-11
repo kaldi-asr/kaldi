@@ -499,6 +499,20 @@ bool HasBatchnorm(const Nnet &nnet) {
   return false;
 }
 
+void ScaleBatchnormStats(BaseFloat batchnorm_stats_scale,
+                         Nnet *nnet) {
+  KALDI_ASSERT(batchnorm_stats_scale >= 0.0 && batchnorm_stats_scale <= 1.0);
+  if (batchnorm_stats_scale == 1.0)
+    return;
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    BatchNormComponent *bc = dynamic_cast<BatchNormComponent*>(comp);
+    if (bc != NULL)
+      bc->Scale(batchnorm_stats_scale);
+  }
+}
+
+
 void RecomputeStats(const std::vector<NnetExample> &egs, Nnet *nnet) {
   KALDI_LOG << "Recomputing stats on nnet (affects batch-norm)";
   ZeroComponentStats(nnet);
