@@ -1,4 +1,5 @@
 #!/bin/bash
+# -*- tab-width: 2; indent-tabs-mode: nil; -*-
 
 . ./cmd.sh
 
@@ -12,7 +13,7 @@ set -o pipefail
 set -u
 
 # the location of the LDC corpus
-datadir=/export/a05/jjm/LDC2006S37/data
+datadir=../LDC2006S37/data
 
 # location of subs text data
 subsdata="http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2016/en-es.txt.zip"
@@ -55,35 +56,46 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
+    # use am training text to train lm
+  mkdir -p $tmpdir/heroico/lm
+
+  cut \
+      -d " " \
+      -f 2- \
+      data/train/text \
+      > \
+      $tmpdir/heroico/lm/train.txt
+
   # get subs data for lm training
-  mkdir -p $tmpdir/subs/lm
+  #mkdir -p $tmpdir/subs/lm
 
   # download  subs text data
-  if [ ! -f $tmpdir/subs/es.zip ]; then
-    wget \
-      -O $tmpdir/subs/es.zip \
-      $subsdata
-  fi
+  #if [ ! -f $tmpdir/subs/es.zip ]; then
+  #wget \
+      #-O $tmpdir/subs/es.zip \
+      #$subsdata
+  #fi
 
-  (
-    cd $tmpdir/subs
-    unzip es.zip
+  #(
+    #cd $tmpdir/subs
+    #unzip es.zip
     # delete parallel parts of the subs corpus
-    rm es.zip OpenSubtitles2016.en-es.en OpenSubtitles2016.en-es.ids
-  )
+    #rm es.zip OpenSubtitles2016.en-es.en OpenSubtitles2016.en-es.ids
+  #)
 
+  lm_training_data=$tmpdir/heroico/lm/train.txt
 fi
 
-if [ $stage -le 3 ]; then
+#if [ $stage -le 3 ]; then
   # get a sample of the subs corpus for lm training
-  local/subs_prepare_data.pl
+  #local/subs_prepare_data.pl
 
-  rm $tmpdir/subs/OpenSubtitles2016.en-es.es
-fi
+  #rm $tmpdir/subs/OpenSubtitles2016.en-es.es
+#fi
 
 if [ $stage -le 4 ]; then
   # build lm
-  local/prepare_lm.sh
+  local/prepare_lm.sh $lm_training_data
 
   utils/format_lm.sh \
     data/lang \
