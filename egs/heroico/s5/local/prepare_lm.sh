@@ -14,7 +14,7 @@ if [ ! -d data/local/lm ]; then
     mkdir -p data/local/lm
 fi
 
-corpus=data/local/tmp/subs/lm/in_vocabulary.txt
+corpus=$1
 
 ngram-count \
     -order 3 \
