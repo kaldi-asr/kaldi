@@ -266,7 +266,7 @@ class XconfigConvLayer(XconfigLayerBase):
                         'alpha-in', 'alpha-out', 'num-filters-in', 'num-filters-out',
                         'height-in','height-out', 'height-subsample-out',
                         'height-offsets', 'time-offsets', 'required-time-offsets',
-                        'learning-rate-factor']:
+                        'learning-rate-factor' ]:
                     value = self.config[opt_name]
                     if value != '':
                         a.append('{0}={1}'.format(opt_name, value))
@@ -294,10 +294,11 @@ class XconfigConvLayer(XconfigLayerBase):
                                'input={1}'.format(name, cur_descriptor))
             elif operation == 'relu':
                 configs.append('component name={0}.relu type=RectifiedLinearComponent '
-                           'dim={1} self-repair-scale={2} self-repair-lower-threshold={3}'.format(
-                               name, cur_num_filters * cur_height,
-                               self.config['self-repair-scale'],
-                               self.config['self-repair-lower-threshold']))
+                               'dim={1} block-dim={2} self-repair-scale={3} '
+                               'self-repair-lower-threshold={4}'.format(
+                                   name, cur_num_filters * cur_height, cur_num_filters,
+                                   self.config['self-repair-scale'],
+                                   self.config['self-repair-lower-threshold']))
                 configs.append('component-node name={0}.relu component={0}.relu '
                                'input={1}'.format(name, cur_descriptor))
             elif operation == 'dropout':
@@ -356,6 +357,11 @@ class XconfigConvLayer(XconfigLayerBase):
 #                 after subsampling again we'd have time-period=4.  Because of
 #                 the way nnet3 works, subsampling on the time axis is an
 #                 implicit, not explicit, operation.
+# height-period=1  This will almost always be left at the default (1).  It is
+#                 analogous to time-period, but because the height, unlike the
+#                 time, is explicitly subsampled, in normal topologies this should
+#                 be left at 1.
+#
 # bypass-source=noop
 #                       The output of this component is Sum(convolution, x), and
 #                       this option controls what 'x' is.  There are 3 options
@@ -405,6 +411,7 @@ class XconfigResBlock(XconfigLayerBase):
                        'num-filters':-1,
                        'num-bottleneck-filters':-1,
                        'time-period':1,
+                       'height-period':1,
                        'self-repair-scale': 2.0e-05,
                        'self-repair-lower-threshold1': 0.05,
                        'self-repair-lower-threshold2': 0.05,
@@ -418,7 +425,7 @@ class XconfigResBlock(XconfigLayerBase):
                        'use-natural-gradient':'',
                        'rank-in':'', 'rank-out':'',
                        'num-minibatches-history':'',
-                       'alpha-in':'', 'alpha-out':''}
+                       'alpha-in':'', 'alpha-out':'' }
 
     def set_derived_configs(self):
         # set 'num-filters' or check it..
@@ -521,6 +528,7 @@ class XconfigResBlock(XconfigLayerBase):
         height = self.config['height']
         input_descriptor = self.descriptors['input']['final-string']
         allow_zero_padding = self.config['allow-zero-padding']
+        height_period = self.config['height-period']
         time_period = self.config['time-period']
 
         # input -> relu1 -> batchnorm1 -> conv1 -> relu2 -> batchnorm2 -> conv2
@@ -528,8 +536,9 @@ class XconfigResBlock(XconfigLayerBase):
         for n in [1, 2]:
             # the ReLU
             configs.append('component name={0}.relu{1} type=RectifiedLinearComponent '
-                           'dim={2} self-repair-scale={3} self-repair-lower-threshold={4}'.format(
-                               name, n, num_filters * height,
+                           'dim={2} block-dim={3} self-repair-scale={4} '
+                           'self-repair-lower-threshold={5}'.format(
+                               name, n, num_filters * height, num_filters,
                                self.config['self-repair-scale'],
                                self.config['self-repair-lower-threshold{0}'.format(n)]))
             configs.append('component-node name={0}.relu{1} component={0}.relu{1} '
@@ -556,9 +565,10 @@ class XconfigResBlock(XconfigLayerBase):
                 value = self.config[opt_name]
                 if value != '':
                         a.append('{0}={1}'.format(opt_name, value))
-            conv_opts = ('height-in={h} height-out={h} height-offsets=-1,0,1 time-offsets=-{p},0,{p} '
+            conv_opts = ('height-in={h} height-out={h} height-offsets=-{hp},0,{hp} '
+                         'time-offsets=-{p},0,{p} '
                          'num-filters-in={f} num-filters-out={f} {r} {o}'.format(
-                             h=height, p=time_period, f=num_filters,
+                             h=height, hp=height_period, p=time_period, f=num_filters,
                              r=('required-time-offsets=0' if allow_zero_padding else ''),
                              o=' '.join(a)))
 
@@ -613,6 +623,7 @@ class XconfigResBlock(XconfigLayerBase):
         height = self.config['height']
         input_descriptor = self.descriptors['input']['final-string']
         allow_zero_padding = self.config['allow-zero-padding']
+        height_period = self.config['height-period']
         time_period = self.config['time-period']
 
         # input -> relu1 -> batchnorm1 -> conv1 -> relu2 -> batchnorm2 -> conv2
@@ -622,8 +633,9 @@ class XconfigResBlock(XconfigLayerBase):
         for n in [1, 2, 3]:
             # the ReLU
             configs.append('component name={0}.relu{1} type=RectifiedLinearComponent '
-                           'dim={2} self-repair-scale={3} self-repair-lower-threshold={4}'.format(
-                               name, n, cur_num_filters * height,
+                           'dim={2} block-dim={3} self-repair-scale={4} '
+                           'self-repair-lower-threshold={5}'.format(
+                               name, n, cur_num_filters * height, cur_num_filters,
                                self.config['self-repair-scale'],
                                self.config['self-repair-lower-threshold{0}'.format(n)]))
             configs.append('component-node name={0}.relu{1} component={0}.relu{1} '
@@ -651,7 +663,7 @@ class XconfigResBlock(XconfigLayerBase):
                 if value != '':
                         a.append('{0}={1}'.format(opt_name, value))
 
-            height_offsets = ('-1,0,1' if n == 2 else '0')
+            height_offsets = ('-{hp},0,{hp}'.format(hp=height_period) if n == 2 else '0')
             time_offsets = ('-{t},0,{t}'.format(t=time_period) if n == 2 else '0')
             num_filters_in = cur_num_filters
             num_filters_out = (num_filters if n == 3 else num_bottleneck_filters)
