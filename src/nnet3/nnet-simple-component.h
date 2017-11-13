@@ -2309,7 +2309,21 @@ class MaxpoolingComponent: public Component {
   would be very impractical and might lead to a lot of unnecessary things being
   computed.  You have to be a bit careful where you put this component, and understand
   what you're doing e.g. putting it in the path of a recurrence is a bit problematic
-  if the minibatch size were small.
+  if the minibatch size is small.
+
+    Accepted configuration values:
+           dim          Dimension of the input and output
+           block-dim    Defaults to 'dim', but may be set to a nonzero divisor
+                        of 'dim'.  In this case, each block of dimension 'block-dim'
+                        is treated like a separate row of the input matrix, which
+                        means that the stats from n'th element of each
+                        block are pooled into one class, for each n.a
+           epsilon      Small term added to the variance that is used to prevent
+                        division by zero
+           target-rms   This defaults to 1.0, but if set, for instance, to 2.0,
+                        it will normalize the standard deviation of the output to
+                        2.0. 'target-stddev' might be a more suitable name, but this
+                        was chosen for consistency with NormalizeComponent.
  */
 class BatchNormComponent: public Component {
  public:
