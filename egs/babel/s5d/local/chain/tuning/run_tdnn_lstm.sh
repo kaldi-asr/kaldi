@@ -11,7 +11,6 @@ set -e -o pipefail
 # (some of which are also used in this script directly).
 stage=0
 nj=30
-min_seg_len=1.55
 train_set=train_cleaned
 gmm=tri5_cleaned  # the gmm for the target data
 langdir=data/langp/tri5_ali
@@ -43,7 +42,6 @@ fi
 
 local/chain/run_ivector_common.sh --stage $stage \
                                   --nj $nj \
-                                  --min-seg-len $min_seg_len \
                                   --train-set $train_set \
                                   --gmm $gmm \
                                   --num-threads-ubm $num_threads_ubm \
@@ -122,20 +120,6 @@ if [ $stage -le 17 ]; then
   lstm_opts="decay-time=20"
   label_delay=5
 
-  #steps/nnet3/tdnn/make_configs.py \
-  #  --self-repair-scale 0.00001 \
-  #  --feat-dir data/${train_set}_sp_hires_comb \
-  #  --ivector-dir $train_ivector_dir \
-  #  --tree-dir $tree_dir \
-  #  --relu-dim 450 \
-  #  --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0 0" \
-  #  --use-presoftmax-prior-scale false \
-  #  --xent-regularize 0.1 \
-  #  --xent-separate-forward-affine true \
-  #  --include-log-softmax false \
-  #  --final-layer-normalize-target 1.0 \
-  # $dir/configs || exit 1;
-
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
@@ -191,7 +175,7 @@ if [ $stage -le 18 ]; then
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
-    --chain.xent-regularize 0.1 \
+    --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \

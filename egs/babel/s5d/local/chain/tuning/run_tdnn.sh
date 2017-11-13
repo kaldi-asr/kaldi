@@ -11,7 +11,6 @@ set -e -o pipefail
 # (some of which are also used in this script directly).
 stage=0
 nj=30
-min_seg_len=1.55
 train_set=train_cleaned
 gmm=tri5_cleaned  # the gmm for the target data
 langdir=data/langp/tri5_ali
@@ -43,7 +42,6 @@ fi
 
 local/chain/run_ivector_common.sh --stage $stage \
                                   --nj $nj \
-                                  --min-seg-len $min_seg_len \
                                   --train-set $train_set \
                                   --gmm $gmm \
                                   --num-threads-ubm $num_threads_ubm \
@@ -122,7 +120,7 @@ if [ $stage -le 17 ]; then
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
-  input dim=40 name=input
+  input dim=43 name=input
 
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
@@ -169,7 +167,7 @@ if [ $stage -le 18 ]; then
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
-    --chain.xent-regularize 0.1 \
+    --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
