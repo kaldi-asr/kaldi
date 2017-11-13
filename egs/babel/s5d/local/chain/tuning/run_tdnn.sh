@@ -2,14 +2,14 @@
 
 
 # by default, with cleanup:
-# local/chain/run_blstm.sh
-# %WER 46.8 | 19252 60586 | 57.6 28.5 13.8 4.5 46.8 31.7 | -0.643 | exp/chain_cleaned/blstm_sp_bi/decode_dev10h.pem/score_8/penalty_0.25/dev10h.pem.ctm.sys
+# local/chain/run_tdnn.sh
+# %WER 47.0 | 19252 60586 | 58.0 28.0 14.0 5.0 47.0 31.6 | -0.540 | exp/chain_cleaned/tdnn_sp_bi/decode_dev10h.pem/score_9/penalty_0.0/dev10h.pem.ctm.sys
 
 set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
-stage=17
+stage=0
 nj=30
 min_seg_len=1.55
 train_set=train_cleaned
@@ -22,8 +22,7 @@ nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-blstm_affix=_xconfig  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
-common_egs_dir=exp/chain_cleaned/blstm_sp_bi/egs  # you can set this to use previously dumped egs.
+tdnn_affix=  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 
 # End configuration section.
@@ -55,7 +54,7 @@ gmm_dir=exp/$gmm
 ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
 tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
-dir=exp/chain${nnet3_affix}/blstm${blstm_affix}_sp_bi
+dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_bi
 train_data_dir=data/${train_set}_sp_hires_comb
 lores_train_data_dir=data/${train_set}_sp_comb
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
@@ -107,42 +106,41 @@ if [ $stage -le 16 ]; then
   fi
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
+      --leftmost-questions-truncate -1 \
       --cmd "$train_cmd" 4000 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
 fi
 
 if [ $stage -le 17 ]; then
   mkdir -p $dir
 
-  #echo "$0: creating neural net configs";
-  #steps/nnet3/lstm/make_configs.py  \
-  #  --self-repair-scale-nonlinearity 0.00001 \
-  #  --self-repair-scale-clipgradient 1.0 \
-  # $dir/configs || exit 1;
   echo "$0: creating neural net configs using the xconfig parser";
 
-	label_delay=0
-  xent_regularize=0.1
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
+  xent_regularize=0.1
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
-	
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
   input dim=40 name=input
+
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
-  # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
-  lstmp-layer name=blstm1-forward input=lda cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3
-  lstmp-layer name=blstm1-backward input=lda cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=3
-  lstmp-layer name=blstm2-forward input=Append(blstm1-forward, blstm1-backward) cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3
-  lstmp-layer name=blstm2-backward input=Append(blstm1-forward, blstm1-backward) cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=3
-  lstmp-layer name=blstm3-forward input=Append(blstm2-forward, blstm2-backward) cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3
-  lstmp-layer name=blstm3-backward input=Append(blstm2-forward, blstm2-backward) cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=3
+  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+
+  # the first splicing is moved before the lda layer, so no splicing here
+  relu-renorm-layer name=tdnn1 dim=450
+  relu-renorm-layer name=tdnn2 input=Append(-1,0,1,2) dim=450
+  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=450
+  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=450
+  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=450
+  relu-renorm-layer name=tdnn7 input=Append(-6,-3,0) dim=450
+
   ## adding the layers for chain branch
-  output-layer name=output input=Append(blstm3-forward, blstm3-backward) output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
+  relu-renorm-layer name=prefinal-chain input=tdnn7 dim=450 target-rms=0.5
+  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
   # trained with a cross-entropy objective in the 'chain' models... this
@@ -152,10 +150,11 @@ if [ $stage -le 17 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  output-layer name=output-xent input=Append(blstm3-forward, blstm3-backward) output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  relu-renorm-layer name=prefinal-xent input=tdnn7 dim=450 target-rms=0.5
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
-
 fi
 
 if [ $stage -le 18 ]; then
