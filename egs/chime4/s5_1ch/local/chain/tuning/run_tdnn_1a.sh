@@ -3,6 +3,28 @@
 # This was modified from wsj/local/chain/tunning/run_tdnn_1d.sh to be
 # used in Chime4.
 
+#This is the result using all 6 channels:
+# exp/chain/tdnn1a_sp/best_wer_beamformit_5mics.result
+# -------------------
+# best overall dt05 WER 6.04% (language model weight = 9)
+# -------------------
+# dt05_simu WER: 6.25% (Average), 5.71% (BUS), 6.92% (CAFE), 5.37% (PEDESTRIAN), 7.02% (STREET)
+# -------------------
+# dt05_real WER: 5.83% (Average), 7.48% (BUS), 5.28% (CAFE), 4.43% (PEDESTRIAN), 6.13% (STREET)
+# -------------------
+# et05_simu WER: 10.30% (Average), 7.34% (BUS), 10.37% (CAFE), 10.05% (PEDESTRIAN), 13.43% (STREET)
+# -------------------
+# et05_real WER: 9.67% (Average), 12.71% (BUS), 8.33% (CAFE), 8.20% (PEDESTRIAN), 9.45% (STREET)
+# -------------------
+# Final train prob        -0.080
+# Final valid prob        -0.075
+# Final train prob (xent) -1.38
+# Final valid prob (xent) -1.31
+
+# steps/info/chain_dir_info.pl exp/chain/tdnn1a_sp
+# exp/chain/tdnn1a_sp: num-iters=137 nj=2..5 num-params=10.4M dim=40+100->2781 combine=-0.095->-0.091 xent:train/valid[90,136,final]=(-1.85,-1.42,-1.38/-1.68,-1.32,-1.31) logprob:train/valid[90,136,final]=(-0.135,-0.086,-0.080/-0.115,-0.078,-0.075)
+
+
 set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
