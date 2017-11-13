@@ -26,7 +26,7 @@ set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
-stage=1
+stage=0
 nj=30
 train=noisy
 enhan=$1

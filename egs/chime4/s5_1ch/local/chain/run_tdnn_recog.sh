@@ -1,31 +1,7 @@
 #!/bin/bash
 
-# 1d is as 1c but introducing two non-splicing layers towards the beginning of
-#   the network.
-
-# local/chain/compare_wer.sh exp/chain/tdnn1c_sp exp/chain/tdnn1e3_sp
-# System                tdnn1c_sp tdnn1e3_sp
-#WER dev93 (tgpr)                7.31      6.95
-#WER dev93 (tg)                  6.98      6.79
-#WER dev93 (big-dict,tgpr)       5.17      5.20
-#WER dev93 (big-dict,fg)         4.70      4.65
-#WER eval92 (tgpr)               4.96      5.09
-#WER eval92 (tg)                 4.82      4.59
-#WER eval92 (big-dict,tgpr)      2.98      2.82
-#WER eval92 (big-dict,fg)        2.66      2.52
-# Final train prob        -0.0559   -0.0554
-# Final valid prob        -0.0669   -0.0648
-# Final train prob (xent)   -0.9369   -0.9134
-# Final valid prob (xent)   -0.9838   -0.9476
-
-# steps/info/chain_dir_info.pl exp/chain/tdnn1d_sp
-# exp/chain/tdnn1d_sp: num-iters=102 nj=2..5 num-params=8.1M dim=40+100->2854 combine=-0.065->-0.062 xent:train/valid[67,101,final]=(-1.02,-0.904,-0.913/-1.02,-0.940,-0.948) logprob:train/valid[67,101,final]=(-0.069,-0.056,-0.055/-0.073,-0.065,-0.065)
-
-
 set -e -o pipefail
 
-# First the options that are passed through to run_ivector_common.sh
-# (some of which are also used in this script directly).
 stage=0
 nj=30
 train=noisy
@@ -87,81 +63,66 @@ if [ ! -d exp/tri3b_tr05_multi_${train} ]; then
   exit 1;
 fi
 
-gmm_dir=$mdir/exp/${gmm}
-ali_dir=$mdir/exp/${gmm}_ali_${train_set}_sp
-lat_dir=$mdir/exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
-dir=$mdir/exp/chain${nnet3_affix}/tdnn${affix}_sp
-train_data_dir=$mdir/data/${train_set}_sp_hires
-train_ivector_dir=$mdir/exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
-lores_train_data_dir=$mdir/data/${train_set}_sp
+# check ivector extractor
+if [ ! -d $mdir/exp/nnet3${nnet3_affix}/extractor ]; then
+  echo "error, set $mdir correctly"
+  exit 1;
+elif [ ! -d exp/nnet3${nnet3_affix}/extractor ]; then
+  echo "copy $mdir/exp/nnet3${nnet3_affix}/extractor"
+  mkdir -p exp/nnet3${nnet3_affix}
+  cp -r $mdir/exp/nnet3${nnet3_affix}/extractor exp/nnet3${nnet3_affix}/
+fi
+
+# check tdnn graph
+if [ ! -d $mdir/exp/chain${nnet3_affix}/tree_a_sp/graph_tgpr_5k ]; then
+  echo "error, set $mdir correctly"
+  exit 1;
+elif [ ! -d exp/chain${nnet3_affix}/tree_a_sp/graph_tgpr_5k ]; then
+  echo "copy $mdir/exp/chain${nnet3_affix}/tree_a_sp/graph_tgpr_5k"
+  mkdir -p exp/chain${nnet3_affix}/tree_a_sp
+  cp -r $mdir/exp/chain${nnet3_affix}/tree_a_sp/graph_tgpr_5k exp/chain${nnet3_affix}/tree_a_sp/
+fi
+
+# check dir
+if [ ! -d $mdir/exp/chain${nnet3_affix}/tdnn${affix}_sp ]; then
+  echo "error, set $mdir correctly"
+  exit 1;
+elif [ ! -d exp/chain${nnet3_affix}/tdnn${affix}_sp ]; then
+  echo "copy $mdir/exp/chain${nnet3_affix}/tdnn${affix}_sp"
+  cp -r $mdir/exp/chain${nnet3_affix}/tdnn${affix}_sp exp/chain${nnet3_affix}/
+  rm -rf exp/chain${nnet3_affix}/tdnn${affix}_sp/decode_*
+  rm -rf exp/chain${nnet3_affix}/tdnn${affix}_sp/best_*
+fi
+
+dir=exp/chain${nnet3_affix}/tdnn${affix}_sp
 
 # note: you don't necessarily have to change the treedir name
 # each time you do a new experiment-- only if you change the
 # configuration in a way that affects the tree.
 tree_dir=$mdir/exp/chain${nnet3_affix}/tree_a_sp
-# the 'lang' directory is created by this script.
-# If you create such a directory with a non-standard topology
-# you should probably name it differently.
-lang=$mdir/data/lang_chain
 
-for f in $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
-    $lores_train_data_dir/feats.scp $gmm_dir/final.mdl \
-    $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
-  [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
-done
-
-if [ $stage -le 12 ]; then
-  echo "$0: creating lang directory $lang with chain-type topology"
-  # Create a version of the lang/ directory that has one state per phone in the
-  # topo file. [note, it really has two states.. the first one is only repeated
-  # once, the second one has zero or more repeats.]
-  if [ -d $lang ]; then
-    if [ $lang/L.fst -nt data/lang/L.fst ]; then
-      echo "$0: $lang already exists, not overwriting it; continuing"
-    else
-      echo "$0: $lang already exists and seems to be older than data/lang..."
-      echo " ... not sure what to do.  Exiting."
-      exit 1;
-    fi
-  else
-    cp -r data/lang $lang
-    silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
-    nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
-    # Use our special topology... note that later on may have to tune this
-    # topology.
-    steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
-  fi
-fi
-
-if [ $stage -le 14 ]; then
-  # Build a tree using our new topology.  We know we have alignments for the
-  # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
-  # those.  The num-leaves is always somewhat less than the num-leaves from
-  # the GMM baseline.
-  if [ -f $tree_dir/final.mdl ]; then
-     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
-  else
-    steps/nnet3/chain/build_tree.sh \
-      --frame-subsampling-factor 3 \
-      --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd" 3500 ${lores_train_data_dir} \
-      $lang $ali_dir $tree_dir
-  fi
-fi
-
-if [ $stage -le 17 ]; then
-  # The reason we are using data/lang here, instead of $lang, is just to
-  # emphasize that it's not actually important to give mkgraph.sh the
-  # lang directory with the matched topology (since it gets the
-  # topology file from the model).  So you could give it a different
-  # lang directory, one that contained a wordlist and LM of your choice,
-  # as long as phones.txt was compatible.
-
-  utils/lang/check_phones_compatible.sh \
-    data/lang_test_tgpr_5k/phones.txt $lang/phones.txt
-  utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_test_tgpr_5k \
-    $tree_dir $tree_dir/graph_tgpr_5k || exit 1;
+# make ivector for dev and eval
+if [ $stage -le 2 ]; then
+  for datadir in ${test_sets}; do
+    utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
+  done
+  
+  # extracting hires features
+  for datadir in ${test_sets}; do
+    steps/make_mfcc.sh --nj $nj --mfcc-config conf/mfcc_hires.conf \
+      --cmd "$train_cmd" data/${datadir}_hires
+    steps/compute_cmvn_stats.sh data/${datadir}_hires
+    utils/fix_data_dir.sh data/${datadir}_hires
+  done
+  
+  # extract iVectors for the test data, but in this case we don't need the speed
+  # perturbation (sp).
+  for data in ${test_sets}; do
+    nspk=$(wc -l <data/${data}_hires/spk2utt)
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj "${nspk}" \
+    data/${data}_hires exp/nnet3${nnet3_affix}/extractor \
+    exp/nnet3${nnet3_affix}/ivectors_${data}_hires
+  done
 fi
 
 if [ $stage -le 18 ]; then

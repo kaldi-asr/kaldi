@@ -33,7 +33,6 @@ for f in data/${train_set}/feats.scp ${gmm_dir}/final.mdl; do
   fi
 done
 
-
 if [ $stage -le 2 ] && [ -f data/${train_set}_sp_hires/feats.scp ]; then
   echo "$0: data/${train_set}_sp_hires/feats.scp already exists."
   echo " ... Please either remove it, or rerun this script with stage > 2."

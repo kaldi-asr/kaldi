@@ -126,7 +126,7 @@ if [ $stage -le 3 ]; then
     fi
   fi
 fi
-
+flatstart=false
 # LM-rescoring experiment with 5-gram and RNN LMs
 # It takes a few days to train a RNNLM.
 if [ $stage -le 4 ]; then
