@@ -13,8 +13,28 @@ fi
 
 export LC_ALL=C
 
-sort \
+cut \
+    -f2- \
+    -d "	" \
     data/local/tmp/dict/santiago.txt \
+    | \
+    tr -s '[:space:]' '[\n*]' \
+    | \
+    grep \
+	-v \
+	SPN \
+    | \
+        sort \
+    | \
+    uniq \
+	> \
+	data/local/dict/nonsilence_phones.txt
+
+expand \
+    -t 1 \
+    data/local/tmp/dict/santiago.txt \
+    | \
+    sort \
     | \
     uniq \
     | \
@@ -22,7 +42,7 @@ sort \
 	> \
 	data/local/dict/lexicon.txt
 
-echo "<UNK>	SPN" \
+echo "<UNK> SPN" \
      >> \
 	data/local/dict/lexicon.txt
 
@@ -38,23 +58,6 @@ echo \
     SIL \
     > \
     data/local/dict/optional_silence.txt
-
-cut \
-    -f2- \
-    -d "	" \
-    data/local/dict/lexicon.txt \
-    | \
-    tr -s '[:space:]' '[\n*]' \
-    | \
-    grep \
-	-v \
-	SPN \
-    | \
-        sort \
-    | \
-    uniq \
-	> \
-	data/local/dict/nonsilence_phones.txt
 
 (
     tr '\n' ' ' < data/local/dict/silence_phones.txt;

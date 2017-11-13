@@ -54,7 +54,7 @@ open my $T, '+>', $t or croak "problem with $t $!";
      my $s = $dirs[-1];
      my $rid = $s . '_r' . '_' . $r;
      if ( exists $p{$r} ) {
-	 print $T "$rid\t$p{$r}\n";
+	 print $T "$rid $p{$r}\n";
      } elsif ( defined $rid ) {
 	 warn  "problem\t$rid";
 	 next LINE;
@@ -63,7 +63,7 @@ open my $T, '+>', $t or croak "problem with $t $!";
      }
 
      print $O "$rid sox -r 22050 -e signed -b 16 $line -r 16000 -t wav - |\n";
-	print $U "$rid\t${s}_r\n";
+	print $U "$rid ${s}_r\n";
 }
 close $T;
 close $O;
