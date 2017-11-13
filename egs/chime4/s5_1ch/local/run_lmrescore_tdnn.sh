@@ -34,6 +34,8 @@ if [ $# -ne 2 ]; then
 fi
 
 # set language models
+# You might need to change affix to the affix of your best tdnn model.
+affix=1a
 lm_suffix=${order}gkn_5k
 rnnlm_suffix=rnnlm_5k_h${hidden}
 
@@ -48,7 +50,7 @@ if [ ! -d $chime4_data ]; then
 fi
 
 # check whether run_tdnn is executed
-srcdir=exp/chain/tdnn1d_sp
+srcdir=exp/chain/tdnn${affix}_sp
 if [ ! -d $srcdir ]; then
   echo "error, execute local/run_tdnn.sh, first"
   exit 1;
@@ -65,7 +67,7 @@ if [ $stage -le 2 ]; then
 fi
 
 # preparation
-dir=exp/chain/tdnn1d_sp_smbr_lmrescore
+dir=exp/chain/tdnn${affix}_sp_smbr_lmrescore
 mkdir -p $dir
 # make a symbolic link to graph info
 if [ ! -e $dir/graph_tgpr_5k ]; then

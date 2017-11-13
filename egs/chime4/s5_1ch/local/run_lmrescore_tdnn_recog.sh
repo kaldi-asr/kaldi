@@ -34,6 +34,8 @@ if [ $# -ne 2 ]; then
 fi
 
 # set language models
+# You might need to change affix to the affix of your best tdnn model.
+affix=1a
 lm_suffix=${order}gkn_5k
 rnnlm_suffix=rnnlm_5k_h${hidden}
 
@@ -41,7 +43,7 @@ rnnlm_suffix=rnnlm_5k_h${hidden}
 enhan=$1
 # set model directory
 mdir=$2
-srcdir=exp/chain/tdnn1d_sp
+srcdir=exp/chain/tdnn${affix}_sp
 
 # check language models
 if [ ! -d $mdir/data/lang ]; then
@@ -50,7 +52,7 @@ if [ ! -d $mdir/data/lang ]; then
 fi
 
 # preparation
-dir=exp/chain/tdnn1d_sp_smbr_lmrescore
+dir=exp/chain/tdnn${affix}_sp_smbr_lmrescore
 mkdir -p $dir
 # make a symbolic link to graph info
 if [ ! -e $dir/graph_tgpr_5k ]; then
