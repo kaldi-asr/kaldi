@@ -13,7 +13,7 @@ set -o pipefail
 set -u
 
 # the location of the LDC corpus
-datadir=../LDC2006S37/data
+datadir=/mnt/corpora/LDC2006S37/data
 
 # location of subs text data
 subsdata="http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2016/en-es.txt.zip"
@@ -67,23 +67,23 @@ if [ $stage -le 2 ]; then
       $tmpdir/heroico/lm/train.txt
 
   # get subs data for lm training
-  #mkdir -p $tmpdir/subs/lm
+  mkdir -p $tmpdir/subs/lm
 
   # download  subs text data
-  #if [ ! -f $tmpdir/subs/es.zip ]; then
-  #wget \
-      #-O $tmpdir/subs/es.zip \
-      #$subsdata
-  #fi
+  if [ ! -f $tmpdir/subs/es.zip ]; then
+  wget \
+      -O $tmpdir/subs/es.zip \
+      $subsdata
+  fi
 
-  #(
-    #cd $tmpdir/subs
-    #unzip es.zip
+  (
+    cd $tmpdir/subs
+    unzip es.zip
     # delete parallel parts of the subs corpus
-    #rm es.zip OpenSubtitles2016.en-es.en OpenSubtitles2016.en-es.ids
-  #)
+    rm es.zip OpenSubtitles2016.en-es.en OpenSubtitles2016.en-es.ids
+  )
 
-  lm_training_data=$tmpdir/heroico/lm/train.txt
+  lm_training_data=$tmpdir/subs/OpenSubtitles2016.en-es.es
 fi
 
 #if [ $stage -le 3 ]; then
