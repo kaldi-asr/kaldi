@@ -316,34 +316,25 @@ void ElementwiseProductComponent::Write(std::ostream &os, bool binary) const {
 const BaseFloat NormalizeComponent::kSquaredNormFloor =
     pow(2.0, NormalizeComponent::kExpSquaredNormFloor);
 
-// This component modifies the vector of activations by scaling it
-// so that the root-mean-square equals 1.0.  It's important that its
-// square root be exactly representable in float.
-void NormalizeComponent::Init(int32 input_dim, BaseFloat target_rms,
-                              bool add_log_stddev) {
-  KALDI_ASSERT(input_dim > 0);
-  KALDI_ASSERT(target_rms > 0);
-  input_dim_ = input_dim;
-  target_rms_ = target_rms;
-  add_log_stddev_ = add_log_stddev;
-}
-
 NormalizeComponent::NormalizeComponent(const NormalizeComponent &other):
-    input_dim_(other.input_dim_), target_rms_(other.target_rms_),
+    input_dim_(other.input_dim_), block_dim_(other.block_dim_),
+    target_rms_(other.target_rms_),
     add_log_stddev_(other.add_log_stddev_) { }
 
 void NormalizeComponent::InitFromConfig(ConfigLine *cfl) {
-  int32 input_dim = 0;
-  bool add_log_stddev = false;
-  BaseFloat target_rms = 1.0;
-  bool ok = cfl->GetValue("dim", &input_dim) ||
-      cfl->GetValue("input-dim", &input_dim);
-  cfl->GetValue("target-rms", &target_rms);
-  cfl->GetValue("add-log-stddev", &add_log_stddev);
-  if (!ok || cfl->HasUnusedValues() || input_dim <= 0 || target_rms <= 0.0)
+  input_dim_ = 0;
+  add_log_stddev_ = false;
+  target_rms_ = 1.0;
+  bool ok = cfl->GetValue("dim", &input_dim_) ||
+      cfl->GetValue("input-dim", &input_dim_);
+  block_dim_ = input_dim_;
+  cfl->GetValue("block-dim", &block_dim_);
+  cfl->GetValue("target-rms", &target_rms_);
+  cfl->GetValue("add-log-stddev", &add_log_stddev_);
+  if (!ok || cfl->HasUnusedValues() || input_dim_ <= 0 || target_rms_ <= 0.0 ||
+      block_dim_ <= 0 || input_dim_ % block_dim_ != 0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(input_dim, target_rms, add_log_stddev);
 }
 
 void NormalizeComponent::Read(std::istream &is, bool binary) {
@@ -355,6 +346,12 @@ void NormalizeComponent::Read(std::istream &is, bool binary) {
   KALDI_ASSERT(token == "<Dim>" || token == "<InputDim>");
   ReadBasicType(is, binary, &input_dim_); // Read dimension.
   ReadToken(is, binary, &token);
+  if (token == "<BlockDim>") {
+    ReadBasicType(is, binary, &block_dim_);
+    ReadToken(is, binary, &token);
+  } else {
+    block_dim_ = input_dim_;
+  }
   // read target_rms_ if it is available.
   if (token == "<TargetRms>") {
     ReadBasicType(is, binary, &target_rms_);
@@ -383,6 +380,10 @@ void NormalizeComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<NormalizeComponent>");
   WriteToken(os, binary, "<InputDim>");
   WriteBasicType(os, binary, input_dim_);
+  if (block_dim_ != input_dim_) {
+    WriteToken(os, binary, "<BlockDim>");
+    WriteBasicType(os, binary, block_dim_);
+  }
   WriteToken(os, binary, "<TargetRms>");
   WriteBasicType(os, binary, target_rms_);
   WriteToken(os, binary, "<AddLogStddev>");
@@ -395,6 +396,8 @@ std::string NormalizeComponent::Info() const {
   stream << Type() << ", input-dim=" << InputDim()
          << ", output-dim=" << OutputDim() << ", target-rms=" << target_rms_
          << ", add-log-stddev=" << std::boolalpha << add_log_stddev_;
+  if (block_dim_ != input_dim_)
+    stream << ", block-dim=" << block_dim_;
   return stream.str();
 }
 
@@ -410,8 +413,22 @@ std::string NormalizeComponent::Info() const {
 void* NormalizeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                    const CuMatrixBase<BaseFloat> &in,
                                    CuMatrixBase<BaseFloat> *out) const {
-  KALDI_ASSERT(out->NumCols() == in.NumCols() + (add_log_stddev_ ? 1 : 0));
-  cu::NormalizePerRow(in, target_rms_, add_log_stddev_, out);
+  KALDI_ASSERT(in.NumCols() == InputDim() && out->NumCols() == OutputDim() &&
+               in.NumRows() == out->NumRows());
+  if (block_dim_ != input_dim_) {
+    int32 num_blocks = input_dim_ / block_dim_,
+        new_num_rows = in.NumRows() * num_blocks,
+        output_block_dim = block_dim_ + (add_log_stddev_ ? 1 : 0);
+    KALDI_ASSERT(in.Stride() == in.NumCols() && out->Stride() == out->NumCols());
+    CuSubMatrix<BaseFloat> in_reshaped(in.Data(), new_num_rows,
+                                       block_dim_, block_dim_),
+        out_reshaped(out->Data(), new_num_rows,
+                     output_block_dim, output_block_dim);
+    cu::NormalizePerRow(in_reshaped, target_rms_, add_log_stddev_,
+                        &out_reshaped);
+  } else {
+    cu::NormalizePerRow(in, target_rms_, add_log_stddev_, out);
+  }
   return NULL;
 }
 
@@ -448,8 +465,25 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
                                   CuMatrixBase<BaseFloat> *in_deriv) const {
   if (!in_deriv)
     return;
-  cu::DiffNormalizePerRow(in_value, out_deriv, target_rms_, add_log_stddev_,
-                          in_deriv);
+  if (block_dim_ != input_dim_) {
+    int32 num_blocks = input_dim_ / block_dim_,
+        new_num_rows = in_value.NumRows() * num_blocks,
+        output_block_dim = block_dim_ + (add_log_stddev_ ? 1 : 0);
+    KALDI_ASSERT(in_value.Stride() == in_value.NumCols() &&
+                 out_deriv.Stride() == out_deriv.NumCols() &&
+                 in_deriv->Stride() == in_deriv->NumCols());
+    CuSubMatrix<BaseFloat> in_value_reshaped(in_value.Data(), new_num_rows,
+                                             block_dim_, block_dim_),
+        out_deriv_reshaped(out_deriv.Data(), new_num_rows,
+                           output_block_dim, output_block_dim),
+        in_deriv_reshaped(in_deriv->Data(), new_num_rows,
+                          block_dim_, block_dim_);
+    cu::DiffNormalizePerRow(in_value_reshaped, out_deriv_reshaped, target_rms_,
+                            add_log_stddev_, &in_deriv_reshaped);
+  } else {
+    cu::DiffNormalizePerRow(in_value, out_deriv, target_rms_, add_log_stddev_,
+                            in_deriv);
+  }
 }
 
 void* SigmoidComponent::Propagate(const ComponentPrecomputedIndexes *indexes,

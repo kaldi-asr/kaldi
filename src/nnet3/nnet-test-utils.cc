@@ -1369,9 +1369,12 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       BaseFloat target_rms = (RandInt(1, 200) / 100.0);
       std::string add_log_stddev = (Rand() % 2 == 0 ? "True" : "False");
       *component_type = "NormalizeComponent";
+
+      int32 block_dim = RandInt(2, 50), num_blocks = RandInt(1, 3),
+          dim = block_dim * num_blocks;
       // avoid dim=1 because the derivatives would be zero, which
       // makes them hard to test.
-      os << "dim=" << RandInt(2, 50)
+      os << "dim=" << dim << " block-dim=" << block_dim
          << " target-rms=" << target_rms
          << " add-log-stddev=" << add_log_stddev;
       break;

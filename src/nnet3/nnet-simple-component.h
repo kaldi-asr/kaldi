@@ -186,24 +186,44 @@ class ElementwiseProductComponent: public Component {
   int32 output_dim_;
 };
 
+/*
+   Implements the function:
+
+         y = x * (sqrt(dim(x)) * target-rms) / |x|
+
+    where |x| is the 2-norm of the vector x.  I.e. its output is its input
+    scaled such that the root-mean-square values of its elements equals
+    target-rms.  (As a special case, if the input is zero, it outputs zero).
+
+    Note: if you specify add-log-stddev=true, it adds an extra element to
+     y which equals log(|x| / sqrt(dim(x))).
+
+
+   Configuration values accepted:
+      dim, or input-dim    Input dimension of this component, e.g. 1024.
+                           Will be the same as the output dimension if add-log-stddev=false.
+      block-dim            Defaults to 'dim' you may specify a nonzero divisor
+                           of 'dim'.  In this case the input dimension will
+                           be interpreted as blocks of dimension 'block-dim'
+                           to which the nonlinearity described above is applied
+                           separately.
+      add-log-stddev       You can set this to true to add an extra output
+                           dimension which will equal |x| / sqrt(dim(x)).
+                           If block-dim is specified, this is done per block.
+      target-rms           This defaults to 1.0, but if set it to another
+                           (nonzero) value, the output will be scaled by this
+                           factor.
+ */
 class NormalizeComponent: public Component {
  public:
- void Init(int32 input_dim, BaseFloat target_rms, bool add_log_stddev);
-  explicit NormalizeComponent(int32 input_dim,
-                              BaseFloat target_rms = 1.0,
-                              bool add_log_stddev = false) {
-    Init(input_dim, target_rms, add_log_stddev);
-  }
   explicit NormalizeComponent(const NormalizeComponent &other);
-  // note: there is some special code in NonlinerComponent::Info() that
-  // specifically caters to this class.
+
   virtual int32 Properties() const {
-    return (add_log_stddev_ ?
-            kSimpleComponent|kBackpropNeedsInput|kBackpropAdds :
-            kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|
-            kBackpropAdds|kBackpropInPlace);
+    return kSimpleComponent|kBackpropNeedsInput|kBackpropAdds|
+        (add_log_stddev_ ? 0 : kPropagateInPlace|kBackpropInPlace) |
+        (block_dim_ != input_dim_ ? kInputContiguous|kOutputContiguous : 0);
   }
-  NormalizeComponent(): target_rms_(1.0), add_log_stddev_(false) { }
+  NormalizeComponent() { }
   virtual std::string Type() const { return "NormalizeComponent"; }
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual Component* Copy() const { return new NormalizeComponent(*this); }
@@ -223,18 +243,19 @@ class NormalizeComponent: public Component {
   virtual void Write(std::ostream &os, bool binary) const;
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const {
-    return (input_dim_ + (add_log_stddev_ ? 1 : 0));
+    return (input_dim_ + (add_log_stddev_ ? (input_dim_ / block_dim_) : 0));
   }
   virtual std::string Info() const;
  private:
   NormalizeComponent &operator = (const NormalizeComponent &other); // Disallow.
   enum { kExpSquaredNormFloor = -66 };
-  static const BaseFloat kSquaredNormFloor;
-  int32 input_dim_;
-  BaseFloat target_rms_; // The target rms for outputs.
-  // about 0.7e-20.  We need a value that's exactly representable in
+  // kSquaredNormFloor is about 0.7e-20.  We need a value that's exactly representable in
   // float and whose inverse square root is also exactly representable
   // in float (hence, an even power of two).
+  static const BaseFloat kSquaredNormFloor;
+  int32 input_dim_;
+  int32 block_dim_;
+  BaseFloat target_rms_; // The target rms for outputs, default 1.0.
 
   bool add_log_stddev_; // If true, log(max(epsi, sqrt(row_in^T row_in / D)))
                         // is an extra dimension of the output.
