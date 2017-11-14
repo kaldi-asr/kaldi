@@ -77,7 +77,7 @@ if [ $stage -le 5 ]; then
   # extract acoustic features
   mkdir -p exp
 
-  for fld in native nonnative test train; do
+  for fld in native nonnative test devtest train; do
     if [ -e data/$fld/cmvn.scp ]; then
       rm data/$fld/cmvn.scp
     fi
@@ -106,7 +106,7 @@ if [ $stage -le 5 ]; then
     exp/mono/graph || exit 1;
 
   # test monophones
-  for x in native nonnative test; do
+  for x in native nonnative devtest test; do
     steps/decode.sh --nj 8  \
       exp/mono/graph data/$x exp/mono/decode_${x} || exit 1;
   done
@@ -131,7 +131,7 @@ if [ $stage -le 5 ]; then
     data/lang_test exp/tri1 exp/tri1/graph || exit 1;
 
   # decode test data with tri1 models
-  for x in native nonnative test; do
+  for x in native nonnative devtest test; do
     steps/decode.sh \
       --nj 8  \
       exp/tri1/graph data/$x exp/tri1/decode_${x} || exit 1;
@@ -157,7 +157,7 @@ if [ $stage -le 7 ]; then
     data/lang_test exp/tri2b exp/tri2b/graph || exit 1;
 
   # decode  test with tri2b models
-  for x in native nonnative test; do
+  for x in native nonnative devtest test; do
     steps/decode.sh \
       --nj 8  \
       exp/tri2b/graph data/$x exp/tri2b/decode_${x} || exit 1;
@@ -189,7 +189,7 @@ if [ $stage -le 8 ]; then
     data/lang_test exp/tri3b exp/tri3b/graph ||  exit 1;
 
   # decode test sets with tri3b models
-  for x in native nonnative test; do
+  for x in native nonnative devtest test; do
     steps/decode_fmllr.sh \
       --nj 8 --cmd "$decode_cmd" \
       exp/tri3b/graph data/$x exp/tri3b/decode_${x}

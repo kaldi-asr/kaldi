@@ -40,12 +40,9 @@ if [ $stage -le 0 ]; then
     # make separate lists for heroico answers and recordings
     # the transcripts are converted to UTF8
     export LC_ALL=en_US.UTF-8
-    cat \
-	$answers_transcripts \
+    cat $answers_transcripts \
 	| \
-	iconv \
-	    -f ISO-8859-1 \
-	    -t UTF-8 \
+	iconv -f ISO-8859-1 -t UTF-8 \
 	| \
 	sed -e s/// \
 	| \
@@ -54,27 +51,25 @@ if [ $stage -le 0 ]; then
     utils/fix_data_dir.sh \
 	$tmpdir/heroico/answers
 
-    cat \
-	$recordings_transcripts \
+    cat $recordings_transcripts \
 	| \
-	iconv \
-	    -f ISO-8859-1 \
-	    -t UTF-8 \
+	iconv -f ISO-8859-1 -t UTF-8 \
 	| \
 	sed -e s/// \
 	    | \
 	local/heroico_recordings_make_lists.pl
 
-    utils/fix_data_dir.sh \
-	$tmpdir/heroico/recordings
+    utils/fix_data_dir.sh $tmpdir/heroico/recordings/train
+    utils/fix_data_dir.sh $tmpdir/heroico/recordings/devtest
 
     # consolidate heroico lists
-    mkdir -p $tmpdir/heroico/lists
+    mkdir -p $tmpdir/heroico/lists/train
+    mkdir -p $tmpdir/heroico/lists/devtest
 
     for x in wav.scp utt2spk text; do
 	cat \
 	    $tmpdir/heroico/answers/$x \
-	    $tmpdir/heroico/recordings/$x \
+	    $tmpdir/heroico/recordings/train/$x \
 	    | \
 	    sed -e s/// \
 		| \
@@ -82,11 +77,23 @@ if [ $stage -le 0 ]; then
 		-k1,1 \
 		-u \
 		> \
-		$tmpdir/heroico/lists/$x
+		$tmpdir/heroico/lists/train/$x
     done
 
-    utils/fix_data_dir.sh \
-	$tmpdir/heroico/lists
+    for x in wav.scp utt2spk text; do
+	cat $tmpdir/heroico/recordings/devtest/$x \
+	    | \
+	    sed -e s/// \
+		| \
+	    sort \
+		-k1,1 \
+		-u \
+		> \
+		$tmpdir/heroico/lists/devtest/$x
+    done
+
+    utils/fix_data_dir.sh $tmpdir/heroico/lists/train
+    utils/fix_data_dir.sh $tmpdir/heroico/lists/devtest
 fi
 
 if [ $stage -le 1 ]; then
@@ -124,22 +131,39 @@ if [ $stage -le 1 ]; then
     done
 
     mkdir -p data/train
-    mkdir -p $tmpdir/lists
+    mkdir -p $tmpdir/lists/train
+    mkdir -p data/devtest
+    mkdir -p $tmpdir/lists/devtest
 
     # get training lists
     for x in wav.scp utt2spk text; do
 	cat \
 	    $tmpdir/heroico/answers/${x} \
-	    $tmpdir/heroico/recordings/${x} \
+	    $tmpdir/heroico/recordings/train/${x} \
 	    | \
 	    sed -e s/// \
 	    > \
-	    $tmpdir/lists/$x
+	    $tmpdir/lists/train/$x
 
 	sort \
-	    $tmpdir/lists/$x \
+	    $tmpdir/lists/train/$x \
 	    > \
 	    data/train/$x
+    done
+
+    # get devtest lists
+    for x in wav.scp utt2spk text; do
+	cat \
+	    $tmpdir/heroico/lists/devtest/$x \
+	    | \
+	    sed -e s/// \
+	    > \
+	    $tmpdir/lists/devtest/$x
+
+	sort \
+	    $tmpdir/lists/devtest/$x \
+	    > \
+	    data/devtest/$x
     done
 
     utils/utt2spk_to_spk2utt.pl \
@@ -149,17 +173,20 @@ if [ $stage -le 1 ]; then
 	    > \
 	    data/train/spk2utt
 
-    utils/fix_data_dir.sh \
-	data/train
+        utils/utt2spk_to_spk2utt.pl \
+	data/devtest/utt2spk \
+	| \
+	sort \
+	    > \
+	    data/devtest/spk2utt
+
+	utils/fix_data_dir.sh data/train
+	utils/fix_data_dir.sh data/devtest
 
 # make testing  lists
 
     mkdir \
-	-p \
-	data/test \
-	data/native \
-	data/nonnative \
-	$tmpdir/usma/lists
+	-p data/test data/native data/nonnative $tmpdir/usma/lists
 
     for x in wav.scp text utt2spk; do
 	# get testing lists
@@ -170,7 +197,7 @@ if [ $stage -le 1 ]; then
 		$tmpdir/usma/lists/$x
 	done
 
-	sort \
+	cat \
 	    $tmpdir/usma/lists/$x \
 	    > \
 	    data/test/$x
