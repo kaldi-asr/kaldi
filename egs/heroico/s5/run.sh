@@ -26,7 +26,7 @@ if [ $stage -le 0 ]; then
   mkdir -p $tmpdir/usma
 
   [ ! -d "$datadir" ] && \
-    echo "Data directory (LDC corpus release) does not exist" && \
+    echo "$0 Data directory (LDC corpus release) does not exist" && \
     exit 1
   local/prepare_data.sh $datadir
 fi
@@ -59,6 +59,7 @@ if [ $stage -le 2 ]; then
   # use am training text to train lm
   mkdir -p $tmpdir/heroico/lm
 
+  # get the text from data/train/text
   cut -d " " -f 2- data/train/text > $tmpdir/heroico/lm/train.txt
 
   # build lm
@@ -91,7 +92,7 @@ if [ $stage -le 5 ]; then
     utils/fix_data_dir.sh data/$fld || exit 1;
   done
 
-  echo "monophone training"
+  echo "$0 monophone training"
   steps/train_mono.sh \
     --nj 4 --cmd "$train_cmd" \
     data/train data/lang exp/mono || exit 1;
@@ -116,7 +117,7 @@ if [ $stage -le 5 ]; then
     --nj 8 --cmd "$train_cmd" \
     data/train data/lang exp/mono exp/mono_ali || exit 1;
 
-  echo "Starting  triphone training in exp/tri1"
+  echo "$0 Starting  triphone training in exp/tri1"
   steps/train_deltas.sh \
     --cmd "$train_cmd" \
     --cluster-thresh 100 \
@@ -144,7 +145,7 @@ if [ $stage -le 5 ]; then
 fi
 
 if [ $stage -le 7 ]; then
-  echo "Starting (lda_mllt) triphone training in exp/tri2b"
+  echo "$0 Starting (lda_mllt) triphone training in exp/tri2b"
   steps/train_lda_mllt.sh \
     --splice-opts "--left-context=3 --right-context=3" \
     2000 30000 \
@@ -168,14 +169,14 @@ if [ $stage -le 7 ]; then
     --use-graphs true --nj 8 --cmd "$train_cmd" \
     data/train data/lang exp/tri2b exp/tri2b_ali
 
-  echo "Starting (SAT) triphone training in exp/tri3b"
+  echo "$0 Starting (SAT) triphone training in exp/tri3b"
   steps/train_sat.sh \
     --cmd "$train_cmd" \
     3100 50000 \
     data/train data/lang exp/tri2b_ali exp/tri3b
 
   # align with tri3b models
-  echo "Starting exp/tri3b_ali"
+  echo "$0 Starting exp/tri3b_ali"
   steps/align_fmllr.sh \
     --nj 8 --cmd "$train_cmd" \
     data/train data/lang exp/tri3b exp/tri3b_ali
