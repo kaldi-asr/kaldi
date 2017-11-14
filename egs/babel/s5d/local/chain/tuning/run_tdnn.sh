@@ -1,9 +1,13 @@
 #!/bin/bash
 
 
-# by default, with cleanup:
+# by default, with cleanup
+# please note that the language(s) was not selected for any particular reason
 # local/chain/run_tdnn.sh
-# %WER 47.0 | 19252 60586 | 58.0 28.0 14.0 5.0 47.0 31.6 | -0.540 | exp/chain_cleaned/tdnn_sp/decode_dev10h.pem/score_9/penalty_0.0/dev10h.pem.ctm.sys
+# 304-lithuanian | %WER 42.6 | 20041 61492 | 60.3 29.6 10.1 2.9 42.6 29.2 | -0.226 | exp/chain_cleaned/tdnn_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
+#                num-iters=48 nj=2..12 num-params=6.7M dim=43+100->3273 combine=-0.192->-0.179
+#                xent:train/valid[31,47,final]=(-2.47,-2.34,-2.33/-2.66,-2.57,-2.57)
+#                logprob:train/valid[31,47,final]=(-0.191,-0.163,-0.162/-0.246,-0.242,-0.243)
 
 set -e -o pipefail
 
@@ -115,6 +119,7 @@ if [ $stage -le 17 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
+  [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
   mkdir -p $dir/configs
@@ -153,6 +158,7 @@ if [ $stage -le 17 ]; then
 
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
+
 fi
 
 if [ $stage -le 18 ]; then
