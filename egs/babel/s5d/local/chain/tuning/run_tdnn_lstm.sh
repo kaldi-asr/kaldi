@@ -4,7 +4,7 @@
 # by default, with cleanup
 # please note that the language(s) was not selected for any particular reason
 # local/chain/run_tdnn_lstm.sh
-# 304-lithuanian | %WER 40.8 | 20041 61492 | 61.9 27.9 10.2 2.7 40.8 29.0 | -0.313 | exp/chain_cleaned/tdnn_lstm_sp_bi/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+# 304-lithuanian | %WER 40.8 | 20041 61492 | 61.9 27.9 10.2 2.7 40.8 29.0 | -0.313 | exp/chain_cleaned/tdnn_lstm_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
 #                num-iters=48 nj=2..12 num-params=36.7M dim=43+100->3273 combine=-0.156->-0.136
 #                xent:train/valid[31,47,final]=(-1.91,-1.58,-1.56/-2.23,-2.16,-2.15)
 #                logprob:train/valid[31,47,final]=(-0.160,-0.118,-0.115/-0.231,-0.236,-0.237)
@@ -54,9 +54,9 @@ local/chain/run_ivector_common.sh --stage $stage \
 
 gmm_dir=exp/$gmm
 ali_dir=exp/${gmm}_ali_${train_set}_sp
-tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
+tree_dir=exp/chain${nnet3_affix}/tree${tree_affix}
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
-dir=exp/chain${nnet3_affix}/tdnn_lstm${tdnn_affix}_sp_bi
+dir=exp/chain${nnet3_affix}/tdnn_lstm${tdnn_affix}_sp
 train_data_dir=data/${train_set}_sp_hires
 lores_train_data_dir=data/${train_set}_sp
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
