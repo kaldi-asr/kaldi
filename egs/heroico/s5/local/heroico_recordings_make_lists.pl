@@ -15,19 +15,23 @@ use File::Basename;
 
 my $tmpdir = "data/local/tmp/heroico";
 
-system "mkdir -p $tmpdir/recordings";
+system "mkdir -p $tmpdir/recordings/train";
+system "mkdir -p $tmpdir/recordings/devtest";
 
 # input wav file list
 my $w = "$tmpdir/wav_list.txt";
 
 # output temporary wav.scp files
-my $o = "$tmpdir/recordings/wav.scp";
+my $o_train = "$tmpdir/recordings/train/wav.scp";
+my $o_test = "$tmpdir/recordings/devtest/wav.scp";
 
 # output temporary utt2spk files
-my $u = "$tmpdir/recordings/utt2spk";
+my $u_train = "$tmpdir/recordings/train/utt2spk";
+my $u_test = "$tmpdir/recordings/devtest/utt2spk";
 
 # output temporary text files
-my $t = "$tmpdir/recordings/text";
+my $t_train = "$tmpdir/recordings/train/text";
+my $t_test = "$tmpdir/recordings/devtest/text";
 
 # initialize hash for prompts
 my %p = ();
@@ -40,9 +44,12 @@ LINEA: while ( my $line = <> ) {
 }
 
 open my $W, '<', $w or croak "problem with $w $!";
-open my $O, '+>', $o or croak "problem with $o $!";
-open my $U, '+>', $u or croak "problem with $u $!";
-open my $T, '+>', $t or croak "problem with $t $!";
+open my $OT, '+>', $o_train or croak "problem with $o_train $!";
+open my $OE, '+>', $o_test or croak "problem with $o_test $!";
+open my $UT, '+>', $u_train or croak "problem with $u_train $!";
+open my $UE, '+>', $u_test or croak "problem with $u_test $!";
+open my $TT, '+>', $t_train or croak "problem with $t_train $!";
+open my $TE, '+>', $t_test or croak "problem with $t_test $!";
 
  LINE: while ( my $line = <$W> ) {
      chomp $line;
@@ -53,19 +60,34 @@ open my $T, '+>', $t or croak "problem with $t $!";
      my $r = basename $line, ".wav";
      my $s = $dirs[-1];
      my $rid = $s . '_r' . '_' . $r;
-     if ( exists $p{$r} ) {
-	 print $T "$rid $p{$r}\n";
-     } elsif ( defined $rid ) {
-	 warn  "problem\t$rid";
-	 next LINE;
-     } else {
-	 croak "$line";
+     if ( ( $r >= 355 ) and ( $r < 561 ) ) {
+	 if ( exists $p{$r} ) {
+	     print $TE "$rid $p{$r}\n";
+	 } elsif ( defined $rid ) {
+	     warn  "problem\t$rid";
+	     next LINE;
+	 } else {
+	     croak "$line";
+	 }
+	 print $OE "$rid sox -r 22050 -e signed -b 16 $line -r 16000 -t wav - |\n";
+	 print $UE "$rid ${s}_r\n";
+     } elsif ( ( $r < 355 ) or ( $r > 560 ) ) {
+	 if ( exists $p{$r} ) {
+	     print $TT "$rid $p{$r}\n";
+	 } elsif ( defined $rid ) {
+	     warn  "problem\t$rid";
+	     next LINE;
+	 } else {
+	     croak "$line";
+	 }
+	 print $OT "$rid sox -r 22050 -e signed -b 16 $line -r 16000 -t wav - |\n";
+	 print $UT "$rid ${s}_r\n";
      }
-
-     print $O "$rid sox -r 22050 -e signed -b 16 $line -r 16000 -t wav - |\n";
-	print $U "$rid ${s}_r\n";
 }
-close $T;
-close $O;
-close $U;
+close $TT;
+close $OT;
+close $UT;
+close $TE;
+close $OE;
+close $UE;
 close $W;
