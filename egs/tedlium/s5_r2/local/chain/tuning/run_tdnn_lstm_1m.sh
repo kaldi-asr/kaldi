@@ -232,7 +232,7 @@ if [ $stage -le 18 ]; then
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --trainer.dropout-schedule='0,0@0.20,0.7@0.5,0.1' \
     --trainer.optimization.combine-sum-to-one-penalty=0.001 \
-    --chain.xent-regularize 0.1 \
+    --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
