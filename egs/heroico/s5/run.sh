@@ -26,7 +26,7 @@ if [ $stage -le 0 ]; then
   mkdir -p $tmpdir/usma
 
   [ ! -d "$datadir" ] && \
-    echo "Data directory (LDC corpus release) does not exist" && \
+    echo "$0 Data directory (LDC corpus release) does not exist" && \
     exit 1
   local/prepare_data.sh $datadir
 fi
@@ -56,53 +56,20 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-    # use am training text to train lm
+  # use am training text to train lm
   mkdir -p $tmpdir/heroico/lm
 
-  cut \
-      -d " " \
-      -f 2- \
-      data/train/text \
-      > \
-      $tmpdir/heroico/lm/train.txt
+  # get the text from data/train/text
+  cut -d " " -f 2- data/train/text > $tmpdir/heroico/lm/train.txt
 
-  # get subs data for lm training
-  mkdir -p $tmpdir/subs/lm
-
-  # download  subs text data
-  if [ ! -f $tmpdir/subs/es.zip ]; then
-  wget \
-      -O $tmpdir/subs/es.zip \
-      $subsdata
-  fi
-
-  (
-    cd $tmpdir/subs
-    unzip es.zip
-    # delete parallel parts of the subs corpus
-    rm es.zip OpenSubtitles2016.en-es.en OpenSubtitles2016.en-es.ids
-  )
-
-  lm_training_data=$tmpdir/subs/OpenSubtitles2016.en-es.es
-fi
-
-#if [ $stage -le 3 ]; then
-  # get a sample of the subs corpus for lm training
-  #local/subs_prepare_data.pl
-
-  #rm $tmpdir/subs/OpenSubtitles2016.en-es.es
-#fi
-
-if [ $stage -le 4 ]; then
   # build lm
-  local/prepare_lm.sh $lm_training_data
+  local/prepare_lm.sh $tmpdir/heroico/lm/train.txt
 
   utils/format_lm.sh \
-    data/lang \
-    data/local/lm/threegram.arpa.gz \
-    data/local/dict/lexicon.txt \
+    data/lang data/local/lm/threegram.arpa.gz data/local/dict/lexicon.txt \
     data/lang_test
 
+  # delete temporary work
   rm -Rf data/local/tmp
 fi
 
@@ -115,32 +82,20 @@ if [ $stage -le 5 ]; then
       rm data/$fld/cmvn.scp
     fi
 
-    steps/make_mfcc.sh \
-      --cmd "$train_cmd" \
-      --nj 4 \
-      data/$fld \
-      exp/make_mfcc/$fld \
-      mfcc || exit 1;
+    steps/make_mfcc.sh --cmd "$train_cmd" --nj 4 \
+      data/$fld exp/make_mfcc/$fld mfcc || exit 1;
 
-    utils/fix_data_dir.sh \
-      data/$fld || exit 1;
+    utils/fix_data_dir.sh data/$fld || exit 1;
 
-    steps/compute_cmvn_stats.sh \
-      data/$fld \
-      exp/make_mfcc\
-      mfcc || exit 1;
+    steps/compute_cmvn_stats.sh data/$fld exp/make_mfcc mfcc || exit 1;
 
-    utils/fix_data_dir.sh \
-      data/$fld || exit 1;
+    utils/fix_data_dir.sh data/$fld || exit 1;
   done
 
-  echo "monophone training"
+  echo "$0 monophone training"
   steps/train_mono.sh \
-    --nj 4 \
-    --cmd "$train_cmd" \
-    data/train \
-    data/lang \
-    exp/mono || exit 1;
+    --nj 4 --cmd "$train_cmd" \
+    data/train data/lang exp/mono || exit 1;
 
   # evaluation
   (
@@ -152,137 +107,92 @@ if [ $stage -le 5 ]; then
 
   # test monophones
   for x in native nonnative test; do
-    steps/decode.sh \
-      --nj 8  \
-      exp/mono/graph \
-      data/$x \
-      exp/mono/decode_${x} || exit 1;
+    steps/decode.sh --nj 8  \
+      exp/mono/graph data/$x exp/mono/decode_${x} || exit 1;
   done
   ) &
 
   # align with monophones
   steps/align_si.sh \
-    --nj 8 \
-    --cmd "$train_cmd" \
-    data/train \
-    data/lang \
-    exp/mono \
-    exp/mono_ali || exit 1;
+    --nj 8 --cmd "$train_cmd" \
+    data/train data/lang exp/mono exp/mono_ali || exit 1;
 
-  echo "Starting  triphone training in exp/tri1"
+  echo "$0 Starting  triphone training in exp/tri1"
   steps/train_deltas.sh \
     --cmd "$train_cmd" \
     --cluster-thresh 100 \
-    1500 \
-    25000 \
-    data/train \
-    data/lang \
-    exp/mono_ali \
-    exp/tri1 || exit 1;
+    1500 25000 \
+    data/train data/lang exp/mono_ali exp/tri1 || exit 1;
 
   # test cd gmm hmm models
   # make decoding graphs for tri1
   (
   utils/mkgraph.sh \
-    data/lang_test \
-    exp/tri1 \
-    exp/tri1/graph || exit 1;
+    data/lang_test exp/tri1 exp/tri1/graph || exit 1;
 
   # decode test data with tri1 models
   for x in native nonnative test; do
     steps/decode.sh \
       --nj 8  \
-      exp/tri1/graph \
-      data/$x \
-      exp/tri1/decode_${x} || exit 1;
+      exp/tri1/graph data/$x exp/tri1/decode_${x} || exit 1;
   done
   ) &
 
   # align with triphones
   steps/align_si.sh \
-    --nj 8 \
-    --cmd "$train_cmd" \
-    data/train \
-    data/lang \
-    exp/tri1 \
-    exp/tri1_ali
+    --nj 8 --cmd "$train_cmd" \
+    data/train data/lang exp/tri1 exp/tri1_ali
 fi
 
 if [ $stage -le 7 ]; then
-  echo "Starting (lda_mllt) triphone training in exp/tri2b"
+  echo "$0 Starting (lda_mllt) triphone training in exp/tri2b"
   steps/train_lda_mllt.sh \
     --splice-opts "--left-context=3 --right-context=3" \
-    2000 \
-    30000 \
-    data/train \
-    data/lang \
-    exp/tri1_ali \
-    exp/tri2b
+    2000 30000 \
+    data/train data/lang exp/tri1_ali exp/tri2b
 
   (
   #  make decoding FSTs for tri2b models
   utils/mkgraph.sh \
-    data/lang_test \
-    exp/tri2b \
-    exp/tri2b/graph || exit 1;
+    data/lang_test exp/tri2b exp/tri2b/graph || exit 1;
 
   # decode  test with tri2b models
   for x in native nonnative test; do
     steps/decode.sh \
       --nj 8  \
-      exp/tri2b/graph \
-      data/$x \
-      exp/tri2b/decode_${x} || exit 1;
+      exp/tri2b/graph data/$x exp/tri2b/decode_${x} || exit 1;
   done
   ) &
 
   # align with lda and mllt adapted triphones
   steps/align_si.sh \
-    --use-graphs true \
-    --nj 8 \
-    --cmd "$train_cmd" \
-    data/train \
-    data/lang \
-    exp/tri2b \
-    exp/tri2b_ali
+    --use-graphs true --nj 8 --cmd "$train_cmd" \
+    data/train data/lang exp/tri2b exp/tri2b_ali
 
-  echo "Starting (SAT) triphone training in exp/tri3b"
+  echo "$0 Starting (SAT) triphone training in exp/tri3b"
   steps/train_sat.sh \
     --cmd "$train_cmd" \
-    3100 \
-    50000 \
-    data/train \
-    data/lang \
-    exp/tri2b_ali \
-    exp/tri3b
+    3100 50000 \
+    data/train data/lang exp/tri2b_ali exp/tri3b
 
   # align with tri3b models
-  echo "Starting exp/tri3b_ali"
+  echo "$0 Starting exp/tri3b_ali"
   steps/align_fmllr.sh \
-    --nj 8 \
-    --cmd "$train_cmd" \
-    data/train \
-    data/lang \
-    exp/tri3b \
-    exp/tri3b_ali
+    --nj 8 --cmd "$train_cmd" \
+    data/train data/lang exp/tri3b exp/tri3b_ali
 fi
 
 if [ $stage -le 8 ]; then
   (
   # make decoding graphs for SAT models
   utils/mkgraph.sh \
-    data/lang_test \
-    exp/tri3b \
-    exp/tri3b/graph ||  exit 1;
+    data/lang_test exp/tri3b exp/tri3b/graph ||  exit 1;
 
   # decode test sets with tri3b models
   for x in native nonnative test; do
     steps/decode_fmllr.sh \
-      --nj 8 \
-      --cmd "$decode_cmd" \
-      exp/tri3b/graph \
-      data/$x \
-      exp/tri3b/decode_${x}
+      --nj 8 --cmd "$decode_cmd" \
+      exp/tri3b/graph data/$x exp/tri3b/decode_${x}
   done
   ) &
 fi
