@@ -108,13 +108,13 @@ if [ $stage -le 16 ]; then
       --cmd "$train_cmd" 4000 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
 fi
 
+xent_regularize=0.1
 if [ $stage -le 17 ]; then
   mkdir -p $dir
 
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  xent_regularize=0.1
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
   mkdir -p $dir/configs
@@ -196,7 +196,7 @@ if [ $stage -le 19 ]; then
   # Note: it might appear that this data/lang_chain directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --left-biphone --self-loop-scale 1.0 data/langp_test $dir $dir/graph
+  utils/mkgraph.sh --self-loop-scale 1.0 data/langp_test $dir $dir/graph
 fi
 
 exit 0
