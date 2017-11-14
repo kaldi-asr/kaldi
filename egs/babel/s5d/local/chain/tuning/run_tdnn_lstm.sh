@@ -1,17 +1,20 @@
 #!/bin/bash
 
 
-# by default, with cleanup:
-# local/chain/run_tdnn.sh
-# %WER 46.7 | 19252 60586 | 57.4 26.4 16.2 4.0 46.7 31.6 | -0.469 | exp/chain_cleaned/tdnnbab3_sp_bi/decode_dev10h.pem/score_9/penalty_0.0/dev10h.pem.ctm.sys
+# by default, with cleanup
+# please note that the language(s) was not selected for any particular reason
+# local/chain/run_tdnn_lstm.sh
+# 304-lithuanian | %WER 40.8 | 20041 61492 | 61.9 27.9 10.2 2.7 40.8 29.0 | -0.313 | exp/chain_cleaned/tdnn_lstm_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+#                num-iters=48 nj=2..12 num-params=36.7M dim=43+100->3273 combine=-0.156->-0.136
+#                xent:train/valid[31,47,final]=(-1.91,-1.58,-1.56/-2.23,-2.16,-2.15)
+#                logprob:train/valid[31,47,final]=(-0.160,-0.118,-0.115/-0.231,-0.236,-0.237)
 
 set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
-stage=17
+stage=0
 nj=30
-min_seg_len=1.55
 train_set=train_cleaned
 gmm=tri5_cleaned  # the gmm for the target data
 langdir=data/langp/tri5_ali
@@ -22,8 +25,8 @@ nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=bab3  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
-common_egs_dir=exp/chain_cleaned/tdnn_sp_bi/egs  # you can set this to use previously dumped egs.
+tdnn_affix=  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+common_egs_dir=  # you can set this to use previously dumped egs.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -43,7 +46,6 @@ fi
 
 local/chain/run_ivector_common.sh --stage $stage \
                                   --nj $nj \
-                                  --min-seg-len $min_seg_len \
                                   --train-set $train_set \
                                   --gmm $gmm \
                                   --num-threads-ubm $num_threads_ubm \
@@ -51,13 +53,13 @@ local/chain/run_ivector_common.sh --stage $stage \
 
 
 gmm_dir=exp/$gmm
-ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
-tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
-lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
-dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_bi
-train_data_dir=data/${train_set}_sp_hires_comb
-lores_train_data_dir=data/${train_set}_sp_comb
-train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
+ali_dir=exp/${gmm}_ali_${train_set}_sp
+tree_dir=exp/chain${nnet3_affix}/tree${tree_affix}
+lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
+dir=exp/chain${nnet3_affix}/tdnn_lstm${tdnn_affix}_sp
+train_data_dir=data/${train_set}_sp_hires
+lores_train_data_dir=data/${train_set}_sp
+train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 
 
 for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
@@ -106,27 +108,63 @@ if [ $stage -le 16 ]; then
   fi
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
+      --leftmost-questions-truncate -1 \
       --cmd "$train_cmd" 4000 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
 fi
 
+xent_regularize=0.1
 if [ $stage -le 17 ]; then
   mkdir -p $dir
 
-  echo "$0: creating neural net configs";
+  echo "$0: creating neural net configs using the xconfig parser";
 
-  steps/nnet3/tdnn/make_configs.py \
-    --self-repair-scale 0.00001 \
-    --feat-dir data/${train_set}_sp_hires_comb \
-    --ivector-dir $train_ivector_dir \
-    --tree-dir $tree_dir \
-    --relu-dim 450 \
-    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0 0" \
-    --use-presoftmax-prior-scale false \
-    --xent-regularize 0.1 \
-    --xent-separate-forward-affine true \
-    --include-log-softmax false \
-    --final-layer-normalize-target 1.0 \
-   $dir/configs || exit 1;
+  num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
+  [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
+  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  lstm_opts="decay-time=20"
+  label_delay=5
+
+  mkdir -p $dir/configs
+  cat <<EOF > $dir/configs/network.xconfig
+  input dim=100 name=ivector
+  input dim=43 name=input
+
+  # please note that it is important to have input layer with the name=input
+  # as the layer immediately preceding the fixed-affine-layer to enable
+  # the use of short notation for the descriptor
+  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+
+  # the first splicing is moved before the lda layer, so no splicing here
+  relu-renorm-layer name=tdnn1 dim=1024
+  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
+  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
+
+  # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
+  fast-lstmp-layer name=fastlstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
+  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
+  fast-lstmp-layer name=fastlstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
+  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
+  fast-lstmp-layer name=fastlstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+
+  ## adding the layers for chain branch
+  output-layer name=output input=fastlstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
+
+  # adding the layers for xent branch
+  # This block prints the configs for a separate output that will be
+  # trained with a cross-entropy objective in the 'chain' models... this
+  # has the effect of regularizing the hidden parts of the model.  we use
+  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
+  # 0.5 / args.xent_regularize is suitable as it means the xent
+  # final-layer learns at a rate independent of the regularization
+  # constant; and the 0.5 was tuned so as to make the relative progress
+  # similar in the xent and regular final layers.
+  output-layer name=output-xent input=fastlstm3 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+
+EOF
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
+
 fi
 
 if [ $stage -le 18 ]; then
@@ -141,7 +179,7 @@ if [ $stage -le 18 ]; then
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
-    --chain.xent-regularize 0.25 \
+    --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
@@ -151,9 +189,9 @@ if [ $stage -le 18 ]; then
     --egs.chunk-width 150 \
     --trainer.num-chunk-per-minibatch 128 \
     --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs 2 \
+    --trainer.num-epochs 4 \
     --trainer.optimization.num-jobs-initial 2 \
-    --trainer.optimization.num-jobs-final 6 \
+    --trainer.optimization.num-jobs-final 12 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.max-param-change 2.0 \
@@ -170,7 +208,7 @@ if [ $stage -le 19 ]; then
   # Note: it might appear that this data/lang_chain directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --left-biphone --self-loop-scale 1.0 data/langp_test $dir $dir/graph
+  utils/mkgraph.sh --self-loop-scale 1.0 data/langp_test $dir $dir/graph
 fi
 
 exit 0

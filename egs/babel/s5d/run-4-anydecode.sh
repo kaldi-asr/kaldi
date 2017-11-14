@@ -281,17 +281,23 @@ fi
 if  [ ! -f ${dataset_dir}_hires/.mfcc.done ]; then
   dataset=$(basename $dataset_dir)
   echo ---------------------------------------------------------------------
-  echo "Preparing ${dataset_kind} MFCC features in  ${dataset_dir}_hires and corresponding iVectors in exp/nnet3/ivectors_$dataset on" `date`
+  echo "Preparing ${dataset_kind} MFCC features in  ${dataset_dir}_hires on "`date`
   echo ---------------------------------------------------------------------
   if [ ! -d ${dataset_dir}_hires ]; then
     utils/copy_data_dir.sh data/$dataset data/${dataset}_hires
   fi
 
   mfccdir=mfcc_hires
-  steps/make_mfcc.sh --nj $my_nj --mfcc-config conf/mfcc_hires.conf \
-      --cmd "$train_cmd" ${dataset_dir}_hires exp/make_hires/$dataset $mfccdir;
-  steps/compute_cmvn_stats.sh data/${dataset}_hires exp/make_hires/${dataset} $mfccdir;
+  steps/make_mfcc_pitch_online.sh --nj $my_nj --mfcc-config conf/mfcc_hires.conf \
+      --cmd "$train_cmd" ${dataset_dir}_hires exp/make_mfcc_hires/$dataset $mfccdir;
+  steps/compute_cmvn_stats.sh data/${dataset}_hires exp/make_mfcc_hires/${dataset} $mfccdir;
   utils/fix_data_dir.sh ${dataset_dir}_hires;
+
+  utils/data/limit_feature_dim.sh 0:39 \
+    data/${dataset}_hires data/${dataset}_hires_nopitch || exit 1;
+  steps/compute_cmvn_stats.sh \
+    data/${dataset}_hires_nopitch exp/make_hires/${dataset}_nopitch $mfccdir || exit 1;
+  utils/fix_data_dir.sh data/${dataset}_hires_nopitch
   touch ${dataset_dir}_hires/.mfcc.done
 
   touch ${dataset_dir}_hires/.done
