@@ -33,7 +33,7 @@ mkdir -p $dir
 
 # Audio data directory check
 if [ ! -d $SWBD_DIR ]; then
-  echo "Error: run.sh requires a directory argument"
+  echo "Error: swbd1_data_download.sh requires a valid directory argument"
   exit 1; 
 fi  
 

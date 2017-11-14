@@ -103,7 +103,7 @@ fi
 # across all training transcripts.
 if [ $stage -le 4 ]; then
   # We prepare the dictionary in data/local/dict_combined.
-  local/prepare_dict.sh
+  local/prepare_dict.sh $swbd $tedlium2
   local/g2p/train_g2p.sh --stage 0 --silence-phones "data/local/dict_combined/silence_phones.txt" data/local/dict_combined exp/g2p
   dict_dir=data/local/dict_nosp
   mkdir -p $dict_dir
@@ -148,19 +148,6 @@ fi
 
 # fix and validate training data directories
 if [ $stage -le 8 ]; then
-  # create segments file for wsj
-  awk '{print $1, $1, 0, -1}' data/wsj/train/utt2spk > data/wsj/train/segments
-  for f in `awk '{print $5}' data/wsj/train/wav.scp`; do
-    head -c 1024 $f | grep sample_count | awk '{print $3/16000}'
-  done > wsj_durations
-  paste -d' ' <(cut -d' ' -f1-3 data/wsj/train/segments) wsj_durations > wsj_segments
-  mv data/wsj/train/segments{,.bkp}
-  mv wsj_segments data/wsj/train/segments
-  rm -f wsj_segments wsj_durations
-  # create segments files for librispeech
-  for c in librispeech_100 librispeech_360 librispeech_500; do
-    awk '{print $1, $1, 0, $2}' data/$c/train/utt2dur > data/$c/train/segments;
-  done
   # get rid of spk2gender files because not all corpora have them
   rm -f data/*/train/spk2gender
   # create reco2channel_and_file files for wsj and librispeech
