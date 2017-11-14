@@ -1,1 +1,1 @@
-/export/a09/jtrmal/kaldi-babel/egs/babel/s5d/local/chain/tuning/run_tdnn.sh
+./tuning/run_tdnn.sh

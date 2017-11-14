@@ -1,1 +1,1 @@
-/export/a09/jtrmal/kaldi-babel/egs/babel/s5d/local/chain/run_ivector_common.sh
+../chain/run_ivector_common.sh

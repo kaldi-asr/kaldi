@@ -1,9 +1,13 @@
 #!/bin/bash
 
 
-# by default, with cleanup:
-# local/chain/run_tdnn.sh
-# %WER 47.0 | 19252 60586 | 58.0 28.0 14.0 5.0 47.0 31.6 | -0.540 | exp/chain_cleaned/tdnn_sp_bi/decode_dev10h.pem/score_9/penalty_0.0/dev10h.pem.ctm.sys
+# by default, with cleanup
+# please note that the language(s) was not selected for any particular reason
+# local/chain/run_tdnn_lstm.sh
+# 304-lithuanian | %WER 40.8 | 20041 61492 | 61.9 27.9 10.2 2.7 40.8 29.0 | -0.313 | exp/chain_cleaned/tdnn_lstm_sp_bi/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+#                num-iters=48 nj=2..12 num-params=36.7M dim=43+100->3273 combine=-0.156->-0.136
+#                xent:train/valid[31,47,final]=(-1.91,-1.58,-1.56/-2.23,-2.16,-2.15)
+#                logprob:train/valid[31,47,final]=(-0.160,-0.118,-0.115/-0.231,-0.236,-0.237)
 
 set -e -o pipefail
 

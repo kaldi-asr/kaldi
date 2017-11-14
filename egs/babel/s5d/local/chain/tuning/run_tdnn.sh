@@ -3,7 +3,7 @@
 
 # by default, with cleanup:
 # local/chain/run_tdnn.sh
-# %WER 47.0 | 19252 60586 | 58.0 28.0 14.0 5.0 47.0 31.6 | -0.540 | exp/chain_cleaned/tdnn_sp_bi/decode_dev10h.pem/score_9/penalty_0.0/dev10h.pem.ctm.sys
+# %WER 47.0 | 19252 60586 | 58.0 28.0 14.0 5.0 47.0 31.6 | -0.540 | exp/chain_cleaned/tdnn_sp/decode_dev10h.pem/score_9/penalty_0.0/dev10h.pem.ctm.sys
 
 set -e -o pipefail
 
@@ -49,13 +49,13 @@ local/chain/run_ivector_common.sh --stage $stage \
 
 
 gmm_dir=exp/$gmm
-ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
-tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
-lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
-dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_bi
-train_data_dir=data/${train_set}_sp_hires_comb
-lores_train_data_dir=data/${train_set}_sp_comb
-train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
+ali_dir=exp/${gmm}_ali_${train_set}_sp
+tree_dir=exp/chain${nnet3_affix}/tree${tree_affix}
+lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
+dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp
+train_data_dir=data/${train_set}_sp_hires
+lores_train_data_dir=data/${train_set}_sp
+train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 
 
 for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
