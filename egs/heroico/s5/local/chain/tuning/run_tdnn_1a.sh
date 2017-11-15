@@ -8,13 +8,13 @@ set -euo pipefail
 stage=0
 decode_nj=10
 train_set=train
-test_sets="native nonnative test"
+test_sets="native nonnative devtest test"
 gmm=tri3b
 nnet3_affix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=1c   # affix for the TDNN directory name
+affix=1a   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
