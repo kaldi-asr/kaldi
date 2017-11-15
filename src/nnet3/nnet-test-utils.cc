@@ -1353,7 +1353,7 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
-  int32 n = RandInt(0, 33);
+  int32 n = RandInt(0, 34);
   BaseFloat learning_rate = 0.001 * RandInt(1, 100);
 
   std::ostringstream os;
@@ -1690,6 +1690,16 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       os << "dim=" << dim << " block-dim=" << block_dim
          << " use-natural-gradient="
          << (RandInt(0,1) == 0 ? "true" : "false");
+      break;
+    }
+    case 34: {
+      *component_type = "FullBatchNormComponent";
+      int32 block_dim = RandInt(1, 10), dim = block_dim * RandInt(1, 2);
+      bool test_mode = (RandInt(0, 1) == 0);
+      os << " dim=" << dim
+         << " block-dim=" << block_dim
+         << " test-mode=" << (test_mode ? "true" : "false")
+         << " epsilon=" << (RandInt(0, 1) == 0 ? "0.1" : "1.0");
       break;
     }
     default:

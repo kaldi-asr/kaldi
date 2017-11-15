@@ -493,7 +493,9 @@ bool HasBatchnorm(const Nnet &nnet) {
     const Component *comp = nnet.GetComponent(c);
     const BatchNormComponent *bc =
         dynamic_cast<const BatchNormComponent*>(comp);
-    if (bc != NULL)
+    const FullBatchNormComponent *fbc =
+        dynamic_cast<const FullBatchNormComponent*>(comp);
+    if (bc != NULL || fbc != NULL)
       return true;
   }
   return false;
@@ -509,6 +511,9 @@ void ScaleBatchnormStats(BaseFloat batchnorm_stats_scale,
     BatchNormComponent *bc = dynamic_cast<BatchNormComponent*>(comp);
     if (bc != NULL)
       bc->Scale(batchnorm_stats_scale);
+    FullBatchNormComponent *fbc = dynamic_cast<FullBatchNormComponent*>(comp);
+    if (fbc != NULL)
+      fbc->Scale(batchnorm_stats_scale);
   }
 }
 
@@ -531,8 +536,11 @@ void SetBatchnormTestMode(bool test_mode,  Nnet *nnet) {
   for (int32 c = 0; c < nnet->NumComponents(); c++) {
     Component *comp = nnet->GetComponent(c);
     BatchNormComponent *bc = dynamic_cast<BatchNormComponent*>(comp);
+    FullBatchNormComponent *fbc = dynamic_cast<FullBatchNormComponent*>(comp);
     if (bc != NULL)
       bc->SetTestMode(test_mode);
+    if (fbc != NULL)
+      fbc->SetTestMode(test_mode);
   }
 }
 
