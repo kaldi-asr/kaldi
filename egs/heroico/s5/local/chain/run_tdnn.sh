@@ -8,13 +8,13 @@ set -euo pipefail
 stage=0
 decode_nj=10
 train_set=train
-test_sets="native nonnative devtest test"
+test_sets="native nonnative test"
 gmm=tri3b
 nnet3_affix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=1ce   # affix for the TDNN directory name
+affix=1c   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
@@ -53,10 +53,16 @@ where "nvcc" is installed.
 EOF
 fi
 
-local/nnet3/run_ivector_common.sh \
-  --stage $stage --train-set $train_set --gmm $gmm \
-  --nnet3-affix "$nnet3_affix" || exit 1;
+# The iVector-extraction and feature-dumping parts are the same as the standard
+# nnet3 setup, and you can skip them by setting "--stage 11" if you have already
+# run those things.
+local/nnet3/run_ivector_common.sh --stage $stage \
+                                  --train-set $train_set \
+                                  --gmm $gmm \
+                                  --nnet3-affix "$nnet3_affix" || exit 1;
 
+# Problem: We have removed the "train_" prefix of our training set in
+# the alignment directory names! Bad!
 gmm_dir=exp/$gmm
 ali_dir=exp/${gmm}_ali_${train_set}_sp
 tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
@@ -98,9 +104,8 @@ fi
 if [ $stage -le 11 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-	steps/align_fmllr_lats.sh \
-	    --nj 75 --cmd "$train_cmd" ${lores_train_data_dir} \
-			data/lang $gmm_dir $lat_dir
+  steps/align_fmllr_lats.sh --nj 75 --cmd "$train_cmd" ${lores_train_data_dir} \
+    data/lang $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
 
@@ -109,16 +114,17 @@ if [ $stage -le 12 ]; then
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.  The num-leaves is always somewhat less than the num-leaves from
   # the GMM baseline.
-  if [ -f $tree_dir/final.mdl ]; then
-      echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
+   if [ -f $tree_dir/final.mdl ]; then
+     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
      exit 1;
   fi
   steps/nnet3/chain/build_tree.sh \
     --frame-subsampling-factor 3 \
     --context-opts "--context-width=2 --central-position=1" \
-    --cmd "$train_cmd" 2000 ${lores_train_data_dir} \
+    --cmd "$train_cmd" 3500 ${lores_train_data_dir} \
     $lang $ali_dir $tree_dir
 fi
+
 
 if [ $stage -le 13 ]; then
   mkdir -p $dir
@@ -126,8 +132,6 @@ if [ $stage -le 13 ]; then
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  opts="l2-regularize=0.01"
-  output_opts="l2-regularize=0.0025"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -140,18 +144,16 @@ if [ $stage -le 13 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 $opts dim=400
-  relu-batchnorm-layer name=tdnn2 $opts dim=400 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn3 $opts dim=400
-  relu-batchnorm-layer name=tdnn4 $opts dim=400 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn5 $opts dim=400
-  relu-batchnorm-layer name=tdnn6 $opts dim=400 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn7 $opts dim=400 input=Append(-3,0,3)
-relu-batchnorm-layer name=tdnn8 $opts dim=400 input=Append(-6,-3,0)
+  relu-batchnorm-layer name=tdnn1 dim=512
+  relu-batchnorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn3 dim=512 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn4 dim=512 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn5 dim=512 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn6 dim=512 input=Append(-6,-3,0)
 
-  # adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain $opts dim=400 target-rms=0.5
-  output-layer name=output $output_opts include-log-softmax=false dim=$num_targets max-change=1.5
+  ## adding the layers for chain branch
+  relu-batchnorm-layer name=prefinal-chain dim=512 target-rms=0.5
+  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -162,11 +164,12 @@ relu-batchnorm-layer name=tdnn8 $opts dim=400 input=Append(-6,-3,0)
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent $opts input=tdnn8 dim=400 target-rms=0.5
-  output-layer name=output-xent $output_opts dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=512 target-rms=0.5
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
+
 
 if [ $stage -le 14 ]; then
   steps/nnet3/chain/train.py \
@@ -181,13 +184,14 @@ if [ $stage -le 14 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=3 \
+    --trainer.num-epochs=10 \
     --trainer.frames-per-iter=3000000 \
     --trainer.optimization.num-jobs-initial=1 \
     --trainer.optimization.num-jobs-final=1 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
+    --trainer.optimization.proportional-shrink=150.0 \
     --trainer.num-chunk-per-minibatch=256,128,64 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
@@ -211,7 +215,9 @@ if [ $stage -le 15 ]; then
   # matched topology (since it gets the topology file from the model).
   utils/mkgraph.sh \
     --self-loop-scale 1.0 \
-    data/lang_test $tree_dir $tree_dir/graph || exit 1;
+    data/lang_test \
+    $tree_dir \
+    $tree_dir/graph || exit 1;
 fi
 
 if [ $stage -le 16 ]; then
@@ -278,8 +284,3 @@ if $test_online_decoding && [ $stage -le 17 ]; then
 fi
 
 exit 0;
-
-# Local Variables:
-# tab-width: 2
-# indent-tabs-mode: nil
-# End:
