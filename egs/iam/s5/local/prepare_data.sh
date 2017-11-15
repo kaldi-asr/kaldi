@@ -34,7 +34,7 @@ else
     wget -P $dl_dir --user userjh --password password $lines_url || exit 1;
   fi
   mkdir -p $lines
-  tar -xvzf $dl_dir/lines.tgz -C $lines || exit 1;
+  tar -xzf $dl_dir/lines.tgz -C $lines || exit 1;
   echo Done downloading and extracting lines images
 fi
 
@@ -46,7 +46,7 @@ else
     wget -P $dl_dir --user userjh --password password $xml_url || exit 1;
   fi
   mkdir -p $xml
-  tar -xvzf $dl_dir/xml.tgz -C $xml || exit 1;
+  tar -xzf $dl_dir/xml.tgz -C $xml || exit 1;
   echo Done downloading and extracting transcription
 fi
 
@@ -70,7 +70,7 @@ else
     wget -P $dl_dir --user userjh --password password $ascii_url || exit 1;
   fi
   mkdir -p $ascii
-  tar -xvzf $dl_dir/ascii.tgz -C $ascii || exit 1;
+  tar -xzf $dl_dir/ascii.tgz -C $ascii || exit 1;
   echo Done downloading and extracting ascii folder
 fi
 
