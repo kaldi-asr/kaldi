@@ -1,4 +1,14 @@
 #!/bin/bash
+# ./steps/info/chain_dir_info.pl exp/chain/tdnn1a_sp
+#exp/chain/tdnn1a_sp: num-iters=150 nj=1..1 num-params=6.0M dim=40+100->1394 combine=-0.025->-0.025 xent:train/valid[99,149,final]=(-0.811,-0.564,-0.494/-1.12,-1.04,-0.968) logprob:train/valid[99,149,final]=(-0.034,-0.021,-0.017/-0.090,-0.091,-0.085)
+#%WER 73.85 [ 6805 / 9215, 517 ins, 1653 del, 4635 sub ] exp/chain/tdnn1a_sp/decode_nonnative/wer_7_1.0
+#%WER 69.84 [ 11673 / 16713, 986 ins, 2523 del, 8164 sub ] exp/chain/tdnn1a_sp/decode_test/wer_7_1.0
+#%WER 64.76 [ 4856 / 7498, 461 ins, 862 del, 3533 sub ] exp/chain/tdnn1a_sp/decode_native/wer_7_1.0
+
+#%WER 73.20 [ 6745 / 9215, 518 ins, 1566 del, 4661 sub ] exp/chain/tdnn1a_sp_online/decode_nonnative/wer_7_1.0
+#%WER 69.10 [ 11548 / 16713, 976 ins, 2402 del, 8170 sub ] exp/chain/tdnn1a_sp_online/decode_test/wer_7_1.0
+#%WER 64.03 [ 4801 / 7498, 463 ins, 825 del, 3513 sub ] exp/chain/tdnn1a_sp_online/decode_native/wer_7_1.0
+
 # this script came from the mini librispeech recipe
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
