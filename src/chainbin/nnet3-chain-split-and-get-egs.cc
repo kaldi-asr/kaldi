@@ -92,9 +92,10 @@ static bool ProcessFile(const chain::SupervisionOptions &sup_opts,
 
 
     chain::Supervision supervision_part;
-    sup_lat_splitter.GetFrameRangeSupervision(start_frame_subsampled,
-                                              num_frames_subsampled,
-                                              &supervision_part);
+    if (!sup_lat_splitter.GetFrameRangeSupervision(start_frame_subsampled,
+                                                   num_frames_subsampled,
+                                                   &supervision_part))
+      return false;
 
     if (normalization_fst.NumStates() > 0 &&
         !chain::AddWeightToSupervisionFst(normalization_fst,
@@ -109,7 +110,7 @@ static bool ProcessFile(const chain::SupervisionOptions &sup_opts,
 
     int32 first_frame = 0;  // we shift the time-indexes of all these parts so
                             // that the supervised part starts from frame 0.
-    
+
     NnetChainExample nnet_chain_eg;
     nnet_chain_eg.outputs.resize(1);
 

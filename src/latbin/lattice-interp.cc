@@ -117,14 +117,13 @@ int main(int argc, char *argv[]) {
           n_empty++;
         } else {
           n_success++;
-          // Replace each arc (t, tid) with the averaged acoustic score from
-          // the computed map
-
           if (write_compact) {
             CompactLattice clat3;
             ConvertLattice(lat3, &clat3);
             compact_lattice_writer.Write(key, clat3);
           } else {
+            // Replace each arc (t, tid) with the averaged acoustic score from
+            // the computed map
             ReplaceAcousticScoresFromMap(acoustic_scores, &lat3);
             lattice_writer.Write(key, lat3);
           }

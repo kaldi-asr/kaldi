@@ -1675,7 +1675,7 @@ void ComputeAcousticScoresMap(
   acoustic_scores->clear();
 
   std::vector<int32> state_times;
-  LatticeStateTimes(lat, &state_times);
+  LatticeStateTimes(lat, &state_times);   // Assumes the input is top sorted
 
   KALDI_ASSERT(lat.Start() == 0);
 
@@ -1729,7 +1729,7 @@ void ReplaceAcousticScoresFromMap(
   typedef Arc::Weight LatticeWeight;
   typedef Arc::StateId StateId;
 
-  fst::TopSort(lat);
+  TopSortLatticeIfNeeded(lat);
 
   std::vector<int32> state_times;
   LatticeStateTimes(*lat, &state_times);
