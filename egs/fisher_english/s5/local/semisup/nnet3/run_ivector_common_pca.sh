@@ -2,7 +2,7 @@
 
 . ./cmd.sh
 set -e
-stage=1
+stage=-1
 speed_perturb=true
 train_set=train
 
@@ -26,8 +26,10 @@ if [ -z "$unsup_train_set" ] && [ ! -z "$semisup_train_set" ]; then
 fi
 
 if [ ! -z "$unsup_train_set" ]; then
-  utils/combine_data.sh data/$semisup_train_set \
-    data/$train_set data/$unsup_train_set
+  if [ $stage -le 0 ]; then
+    utils/combine_data.sh data/$semisup_train_set \
+      data/$train_set data/$unsup_train_set
+  fi
 fi
 
 # perturbed data preparation
@@ -50,9 +52,11 @@ if [ "$speed_perturb" == "true" ]; then
   fi
 fi
 
-if [ ! -z "$unsup_train_set" ]; then
-  utils/combine_data.sh data/${semisup_train_set}_sp \
-    data/${train_set}_sp data/${unsup_train_set}_sp
+if [ $stage -le 2 ]; then
+  if [ ! -z "$unsup_train_set" ]; then
+    utils/combine_data.sh data/${semisup_train_set}_sp \
+      data/${train_set}_sp data/${unsup_train_set}_sp
+  fi
 fi
 
 if [ $stage -le 3 ]; then
