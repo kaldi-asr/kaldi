@@ -1,11 +1,13 @@
 #!/bin/bash
 
 # This script is same as _z, but does rescoring correctly.
+# sup_frames_per_eg=150
 # unsup_frames_per_eg=150
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0
 # Weights for phone LM (supervised, unsupervises): 5,2
 # LM for decoding unsupervised data: 4gram
+# Supervision: Smart split lattices
 
 set -u -e -o pipefail
 
@@ -20,13 +22,15 @@ unsupervised_set=train_unsup250k  # set this to your choice of unsupervised data
 supervised_set=train_sup15k
 semi_affix=semi15k_250k  # affix relating train-set splitting proportion
 
-tdnn_affix=7d  # affix for the supervised chain-model directory
+tdnn_affix=7b  # affix for the supervised chain-model directory
 train_supervised_opts="--stage -10 --train-stage -10"
 
 # Unsupervised options
 decode_affix=_unphdet
 egs_affix=  # affix for the egs that are generated from unsupervised data and for the comined egs dir
-unsup_frames_per_eg=  # if empty will be equal to the supervised model's config -- you will need to change minibatch_size for comb training accordingly
+unsup_frames_per_eg=  # if empty will be equal to the supervised model's config unless sup_frames_per_eg
+                      # -- you will need to change minibatch_size for comb training accordingly
+sup_frames_per_eg=
 lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices
 lattice_prune_beam=4.0  # If supplied will prune the lattices prior to getting egs for unsupervised data
 tolerance=1
@@ -244,6 +248,7 @@ sup_lat_dir=$exp/chain${nnet3_affix}/tri3_${supervised_set}_lats
 if [ -z "$sup_egs_dir" ]; then
   sup_egs_dir=$dir/egs_${supervised_set}
   frames_per_eg=$(cat $chaindir/egs/info/frames_per_eg)
+  [ ! -z "$sup_frames_per_eg" ] && frames_per_eg=$sup_frames_per_eg
 
   if [ $stage -le 12 ]; then
     if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $sup_egs_dir/storage ]; then
@@ -384,7 +389,7 @@ fi
 
 if [ $stage -le 19 ]; then
   mkdir -p ${dir}${finetune_suffix}
-  
+
   for f in phone_lm.fst normalization.fst den.fst tree 0.trans_mdl cmvn_opts; do
     cp ${dir}/$f ${dir}${finetune_suffix} || exit 1
   done

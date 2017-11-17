@@ -2,17 +2,17 @@
 set -e
 
 # This is fisher chain recipe for training a model on a subset of around 15 hours.
-# This is similar to _c, but uses a biphone tree with up to 7000 leaves.
+# This is similar to _d, but uses a speed-perturbed data for tree building
 
 # configs for 'chain'
 stage=0
-tdnn_affix=7d
+tdnn_affix=7j
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
 train_set=train_sup15k
 ivector_train_set=semisup15k_250k
-tree_affix=bi_d
+tree_affix=bi_j
 nnet3_affix=_semi15k_250k
 chain_affix=_semi15k_250k
 exp=exp/semisup_15k
@@ -62,7 +62,8 @@ local/nnet3/run_ivector_common_pca.sh --stage $stage --exp $exp \
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj 30 --cmd "$train_cmd" data/${train_set}_sp \
+  steps/align_fmllr_lats.sh --nj 30 --cmd "$train_cmd" \
+    --generate-ali-from-lats true data/${train_set}_sp \
     data/lang $gmm_dir $lat_dir || exit 1;
   rm $lat_dir/fsts.*.gz # save space
 fi
@@ -85,7 +86,7 @@ if [ $stage -le 11 ]; then
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate -1 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd" 7000 data/${train_set} $lang $gmm_dir $treedir || exit 1
+      --cmd "$train_cmd" 7000 data/${train_set}_sp $lang $lat_dir $treedir || exit 1
 fi
 
 if [ $stage -le 12 ]; then
@@ -168,12 +169,12 @@ if [ $stage -le 13 ]; then
     --dir $dir  || exit 1;
 fi
 
-graph_dir=$dir/graph
+graph_dir=$dir/graph_poco
 if [ $stage -le 14 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test $dir $graph_dir
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_poco_test $dir $graph_dir
 fi
 
 decode_suff=

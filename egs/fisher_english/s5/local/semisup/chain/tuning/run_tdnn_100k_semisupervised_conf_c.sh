@@ -7,6 +7,7 @@
 # Unsupervised weight: 1.0
 # Weights for phone LM (supervised, unsupervises): 3,2
 # LM for decoding unsupervised data: 4gram
+# Supervision: Naive split lattices
 
 set -u -e -o pipefail
 
@@ -36,7 +37,7 @@ graph_affix=_sup100k   # can be used to decode the unsup data with another lm/gr
 phone_insertion_penalty=
 
 # Semi-supervised options
-comb_affix=comb1c  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
+comb_affix=comb1c2  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
 supervision_weights=1.0,1.0
 lm_weights=3,2
 sup_egs_dir=
@@ -139,14 +140,13 @@ for dset in $unsupervised_set; do
     steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
               --acwt 1.0 --post-decode-acwt 10.0 --write-compact false --skip-scoring true \
               --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${unsupervised_set}_sp_hires \
-               --scoring-opts "--min-lmwt 10 --max-lmwt 10" --determinize-opts "--word-determinize=false" \
+              --scoring-opts "--min-lmwt 10 --max-lmwt 10" --determinize-opts "--word-determinize=false" \
               $graphdir data/${dset}_sp_hires $chaindir/decode_${dset}_sp${decode_affix}
   fi
 
   if [ $stage -le 6 ]; then
-    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-      --write-compact false --read-determinized false --write-determinized false \
-      --skip-scoring true \
+    steps/lmrescore_const_arpa_undeterminized.sh --cmd "$decode_cmd" \
+      --write-compact false --acwt 0.1 --beam 8.0  --skip-scoring true \
       data/lang_test${graph_affix} \
       data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
       $chaindir/decode_${dset}_sp${decode_affix} \

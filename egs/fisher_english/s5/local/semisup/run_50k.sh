@@ -14,7 +14,6 @@ train_stage=-10
 set -o pipefail
 exp=exp/semisup_50k
 
-false && {
 utils/subset_data_dir.sh --speakers data/train_sup 50000 data/train_sup50k || exit 1
 utils/subset_data_dir.sh --shortest data/train_sup50k 25000 data/train_sup50k_short || exit 1
 utils/subset_data_dir.sh --speakers data/train_sup50k 30000 data/train_sup50k_30k || exit 1;
@@ -42,7 +41,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
  steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    $exp/tri2/graph data/dev $exp/tri2/decode_dev)&
 
- steps/align_si.sh --nj 30 --cmd "$train_cmd" \
+steps/align_si.sh --nj 30 --cmd "$train_cmd" \
   data/train_sup50k data/lang $exp/tri2 $exp/tri2_ali || exit 1;
 
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
@@ -74,7 +73,6 @@ local/semisup/chain/tuning/run_tdnn_50k.sh \
   --stage $stage --train-stage $train_stage \
   --exp $exp \
   --ivector-train-set semisup50k_250k || exit 1
-}
 
 local/semisup/chain/tuning/run_tdnn_oracle.sh \
   --train-set semisup50k_250k \

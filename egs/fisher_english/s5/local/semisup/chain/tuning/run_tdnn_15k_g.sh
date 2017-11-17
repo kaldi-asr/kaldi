@@ -6,13 +6,14 @@ set -e
 
 # configs for 'chain'
 stage=0
-tdnn_affix=7d
+tdnn_affix=7g
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
 train_set=train_sup15k
-ivector_train_set=semisup15k_250k
-tree_affix=bi_d
+unsupervised_set=train_unsup250k_240k
+semisup_set=semisup15k_250k
+tree_affix=bi_g
 nnet3_affix=_semi15k_250k
 chain_affix=_semi15k_250k
 exp=exp/semisup_15k
@@ -25,6 +26,9 @@ num_epochs=10
 remove_egs=false
 common_egs_dir=
 minibatch_size=128
+
+orig_treedir=exp/semisup_15k/chain_semi15k_250k/tree_bi_d
+unsup_alidir=exp/semisup_15k/chain_semi15k_250k/tdnn7d_sp/best_path_train_unsup250k_240k_unphdet_ex250k_fg
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -46,46 +50,23 @@ treedir=$exp/chain${chain_affix}/tree_${tree_affix}
 lat_dir=$exp/chain${chain_affix}/$(basename $gmm_dir)_${train_set}_sp_lats  # training lattices directory
 dir=$exp/chain${chain_affix}/tdnn${tdnn_affix}_sp
 train_data_dir=data/${train_set}_sp_hires
-train_ivector_dir=$exp/nnet3${nnet3_affix}/ivectors_${ivector_train_set}_sp_hires
+train_ivector_dir=$exp/nnet3${nnet3_affix}/ivectors_${semisup_set}_sp_hires
 lang=data/lang_chain
 
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
 
-local/nnet3/run_ivector_common_pca.sh --stage $stage --exp $exp \
-                                  --speed-perturb true \
-                                  --train-set $train_set \
-                                  --ivector-train-set $ivector_train_set \
-                                  --nnet3-affix $nnet3_affix || exit 1
-
-if [ $stage -le 9 ]; then
-  # Get the alignments as lattices (gives the chain training more freedom).
-  # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj 30 --cmd "$train_cmd" data/${train_set}_sp \
-    data/lang $gmm_dir $lat_dir || exit 1;
-  rm $lat_dir/fsts.*.gz # save space
-fi
-
 if [ $stage -le 10 ]; then
-  # Create a version of the lang/ directory that has one state per phone in the
-  # topo file. [note, it really has two states.. the first one is only repeated
-  # once, the second one has zero or more repeats.]
-  rm -rf $lang
-  cp -r data/lang $lang
-  silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
-  nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
-  # Use our special topology... note that later on may have to tune this
-  # topology.
-  steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
-fi
-
-if [ $stage -le 11 ]; then
-  # Build a tree using our new topology.
-  steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate -1 \
-      --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd" 7000 data/${train_set} $lang $gmm_dir $treedir || exit 1
+  steps/nnet3/chain/build_tree_multiple_sources.sh \
+    --frame-subsampling-factor 3 \
+    --use-fmllr false \
+    --cmd "$train_cmd" \
+    --context-opts "--context-width=2 --central-position=1" \
+    7000 data/lang_chain \
+    data/${train_set} $orig_treedir \
+    data/${unsupervised_set} $unsup_alidir \
+    $treedir
 fi
 
 if [ $stage -le 12 ]; then
@@ -194,3 +175,4 @@ if [ $stage -le 15 ]; then
 fi
 wait;
 exit 0;
+

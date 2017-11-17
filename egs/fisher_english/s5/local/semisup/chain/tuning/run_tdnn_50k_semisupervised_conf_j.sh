@@ -1,11 +1,12 @@
 #!/bin/bash
 
-# This script is same as _h, but uses 3-gram LM.
+# This script is same as _i, but uses best path and weights from 4gram.
 # unsup_frames_per_eg=150
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0
 # Weights for phone LM (supervised, unsupervises): 3,2
-# LM for decoding unsupervised data: 4gram
+# LM for decoding unsupervised data: 3gram
+# Supervision: Smart split lattices
 
 set -u -e -o pipefail
 
@@ -132,7 +133,7 @@ for dset in $unsupervised_set; do
 
   if [ $stage -le 5 ]; then
     steps/lmrescore_const_arpa_undeterminized.sh --cmd "$decode_cmd" \
-      --write-compact false --acwt 0.1 --beam 8.0 \
+      --write-compact false --acwt 0.1 --beam 8.0 --skip-scoring true \
       data/lang_test${graph_affix} \
       data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
       $chaindir/decode_${dset}_sp${decode_affix} \

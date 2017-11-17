@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-# This is fisher chain recipe for training a model on a subset of around 10 hours.
+# This is fisher chain recipe for training a model on a subset of around 15 hours.
+# This is based on run_tdnn_11k.sh, but uses a chunk width of 160,140,110,80.
 
 # configs for 'chain'
 stage=0

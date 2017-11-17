@@ -70,7 +70,7 @@ steps/train_sat.sh --cmd "$train_cmd" \
 
 utils/copy_data_dir.sh data/train_unsup250k data/train_unsup100k_250k
 utils/combine_data.sh data/semisup100k_250k data/train_sup \
-  data/train_unsup250k || exit 1
+  data/train_unsup100k_250k || exit 1
 }
 
 local/semisup/chain/tuning/run_tdnn_100k.sh \

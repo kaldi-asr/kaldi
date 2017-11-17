@@ -1,27 +1,26 @@
 #!/bin/bash
 set -e
 
-# This is fisher chain recipe for training a model on a subset of around 15 hours.
-# This is similar to _c, but uses a biphone tree with up to 7000 leaves.
+# This is fisher chain recipe for training a model on a subset of around 50 hours.
 
 # configs for 'chain'
 stage=0
-tdnn_affix=7d
+tdnn_affix=7c
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
-train_set=train_sup15k
-ivector_train_set=semisup15k_250k
-tree_affix=bi_d
-nnet3_affix=_semi15k_250k
-chain_affix=_semi15k_250k
-exp=exp/semisup_15k
-gmm=tri3
+train_set=train_sup50k
+ivector_train_set=semisup50k_250k
+tree_affix=
+nnet3_affix=_semi50k_250k
+chain_affix=_semi50k_250k
+exp=exp/semisup_50k
+gmm=tri4a
 xent_regularize=0.1
 hidden_dim=500
 
 # training options
-num_epochs=10
+num_epochs=8
 remove_egs=false
 common_egs_dir=
 minibatch_size=128
@@ -109,10 +108,11 @@ if [ $stage -le 12 ]; then
   relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1,2) dim=$hidden_dim
   relu-batchnorm-layer name=tdnn3 input=Append(-3,0,3) dim=$hidden_dim
   relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=$hidden_dim
-  relu-batchnorm-layer name=tdnn5 input=Append(-6,-3,0) dim=$hidden_dim
+  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=$hidden_dim
+  relu-batchnorm-layer name=tdnn6 input=Append(-6,-3,0) dim=$hidden_dim
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain input=tdnn5 dim=$hidden_dim target-rms=0.5
+  relu-batchnorm-layer name=prefinal-chain input=tdnn6 dim=$hidden_dim target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
@@ -124,7 +124,7 @@ if [ $stage -le 12 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn5 dim=$hidden_dim target-rms=0.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=$hidden_dim target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF

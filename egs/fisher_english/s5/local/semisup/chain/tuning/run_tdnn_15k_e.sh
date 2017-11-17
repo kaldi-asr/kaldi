@@ -2,6 +2,7 @@
 set -e
 
 # This is fisher chain recipe for training a model on a subset of around 10 hours.
+# This is similar to _d, but uses a biphone tree with up to 2000 leaves.
 
 # configs for 'chain'
 stage=0

@@ -1,11 +1,13 @@
 #!/bin/bash
 
 # This script is same as _z, but uses 7d as seed model and bi_d tree.
-# unsup_frames_per_eg=150
+# sup_frames_per_eg=160,140,110,80
+# unsup_frames_per_eg=160,140,110,80
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0
 # Weights for phone LM (supervised, unsupervises): 5,2
 # LM for decoding unsupervised data: 4gram
+# Supervision: Smart split lattices
 
 set -u -e -o pipefail
 
@@ -26,7 +28,9 @@ train_supervised_opts="--stage -10 --train-stage -10"
 # Unsupervised options
 decode_affix=_unphdet
 egs_affix=  # affix for the egs that are generated from unsupervised data and for the comined egs dir
-unsup_frames_per_eg=  # if empty will be equal to the supervised model's config -- you will need to change minibatch_size for comb training accordingly
+unsup_frames_per_eg=  # if empty will be equal to the supervised model's config unless sup_frames_per_eg
+                         # -- you will need to change minibatch_size for comb training accordingly
+sup_frames_per_eg=
 lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices
 lattice_prune_beam=4.0  # If supplied will prune the lattices prior to getting egs for unsupervised data
 tolerance=1
@@ -128,8 +132,8 @@ for dset in $unsupervised_set; do
   fi
 
   if [ $stage -le 6 ]; then
-    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" --write-compact false \
-      --read-determinized false --write-determinized false --acwt 0.1 --beam 8.0 \
+    steps/lmrescore_const_arpa_undeterminized.sh --cmd "$decode_cmd" \
+      --write-compact false --acwt 0.1 --beam 8.0 \
       data/lang_test${graph_affix} \
       data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
       $chaindir/decode_${dset}_sp${decode_affix} \
@@ -330,7 +334,7 @@ if [ $stage -le 15 ]; then
     --chain.apply-deriv-weights $apply_deriv_weights \
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width 150 \
+    --egs.chunk-width $frames_per_eg \
     --trainer.num-chunk-per-minibatch "$minibatch_size" \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs 4 \

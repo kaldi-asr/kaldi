@@ -50,7 +50,7 @@ extra_right_context=0
 
 xent_regularize=0.1
 hidden_dim=725
-minibatch_size=128
+minibatch_size="150=128/300=64"
 # to tune:
 # frames_per_eg for unsupervised
 
@@ -88,7 +88,7 @@ fi
 
 if false && [ $stage -le 1 ]; then
   echo "$0: chain training on the supervised subset data/${supervised_set}"
-  local/chain/run_tdnn_11k.sh $train_supervised_opts --remove-egs false \
+  local/chain/run_tdnn_15k.sh $train_supervised_opts --remove-egs false \
                           --train-set $supervised_set --ivector-train-set $base_train_set \
                           --nnet3-affix $nnet3_affix --tdnn-affix $tdnn_affix --exp $exp
 fi
@@ -164,6 +164,12 @@ fi
 dir=$exp/chain${nnet3_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
 
 if [ $stage -le 10 ]; then
+  steps/subset_ali_dir.sh --cmd "$train_cmd" \
+    data/${unsupervised_set} data/${unsupervised_set}_sp_hires \
+    $chaindir/best_path_${unsupervised_set}_sp${decode_affix} \
+    $chaindir/best_path_${unsupervised_set}${decode_affix}
+  echo $frame_subsampling_factor > $chaindir/best_path_${unsupervised_set}${decode_affix}/frame_subsampling_factor
+
   steps/nnet3/chain/make_weighted_den_fst.sh --num-repeats $lm_weights --cmd "$train_cmd" \
     ${treedir} ${chaindir}/best_path_${unsupervised_set}${decode_affix} \
     $dir
@@ -323,7 +329,7 @@ if [ $stage -le 15 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width 150 \
-    --trainer.num-chunk-per-minibatch "150=128/300=64" \
+    --trainer.num-chunk-per-minibatch "$minibatch_size" \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs 4 \
     --trainer.optimization.num-jobs-initial 3 \

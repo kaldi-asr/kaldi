@@ -1,11 +1,12 @@
 #!/bin/bash
 
-# This script is same as _g, but split lattice supervision
+# This script is same as _g, but smart splitting.
 # unsup_frames_per_eg=150
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0
 # Weights for phone LM (supervised, unsupervises): 3,2
 # LM for decoding unsupervised data: 4gram
+# Supervision: Smart split lattices
 
 set -u -e -o pipefail
 
@@ -34,7 +35,7 @@ graph_affix=_ex250k   # can be used to decode the unsup data with another lm/gra
 phone_insertion_penalty=
 
 # Semi-supervised options
-comb_affix=comb1h  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
+comb_affix=comb1h2  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
 supervision_weights=1.0,1.0
 lm_weights=3,2
 sup_egs_dir=   
@@ -131,8 +132,8 @@ for dset in $unsupervised_set; do
   fi
 
   if [ $stage -le 5 ]; then
-    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" --write-compact false \
-      --read-determinized false --write-determinized false --acwt 0.1 --beam 8.0 \
+    steps/lmrescore_const_arpa_undeterminized.sh --cmd "$decode_cmd" \
+      --write-compact false --acwt 0.1 --beam 8.0 --skip-scoring true \
       data/lang_test${graph_affix} \
       data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
       $chaindir/decode_${dset}_sp${decode_affix} \

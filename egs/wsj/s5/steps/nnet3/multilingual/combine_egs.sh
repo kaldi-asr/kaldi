@@ -89,6 +89,8 @@ for lang in $(seq 0 $[$num_langs-1]);do
   this_frames_per_eg=$(cat ${args[$lang]}/info/frames_per_eg | \
     awk -F, '{for (i=1; i<=NF; i++) sum += $i;} END{print int(sum / NF)}')  # use average frames-per-eg
 
+  # frames_per_eg_list stores the average frames-per-eg for each language. 
+  # The average does not have to be exact.
   if [ $lang -eq 0 ]; then
     frames_per_eg_list="$this_frames_per_eg"
   else
