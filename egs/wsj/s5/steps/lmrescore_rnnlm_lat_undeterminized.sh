@@ -109,16 +109,16 @@ if [ $stage -le 1 ]; then
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-determinize-pruned --acoustic-scale=$acwt ${beam:+--beam=$beam} \
       "ark:gunzip -c $indir/lat.JOB.gz |" ark:- \| \
-    lattice-scale --lm-scale=0.0 ark:- ark:- \| \
+    lattice-scale --lm-scale=0.0 --acoustic-scale=0.0 ark:- ark:- \| \
     $lmscore_removing_binary --lm-scale=$oldlm_weight \
       ark:- "$oldlm" ark:- $lattice_expand_cmd \| \
     $rescoring_binary $extra_arg --lm-scale=$weight \
       --max-ngram-order=$max_ngram_order \
       $first_arg $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" ark:- \| \
-    lattice-interp --alpha=0.5 --alpha-acoustic=1.0 --write-compact=$write_compact \
-      "ark:gunzip -c $indir/lat.JOB.gz |" ark,s,cs:- ark:- \| \
-    lattice-scale --lm-scale=2.0 --write-compact=$write_compact ark:- \
-      "ark:| gzip -c > $outdir/lat.JOB.gz" || exit 1
+    lattice-project ark:- ark:- \| \
+    lattice-compose --write-compact=$write_compact \
+      "ark:gunzip -c $indir/lat.JOB.gz |" \
+      ark,s,cs:- "ark:| gzip -c > $outdir/lat.JOB.gz" || exit 1
 fi
 
 if ! $skip_scoring ; then
