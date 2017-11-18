@@ -239,8 +239,7 @@ class XconfigLayerBase(object):
         """This is expected to be called after set_configs and before
         check_configs().
         """
-
-        if self.config['dim'] <= 0:
+        if 'dim' in self.config and self.config['dim'] <= 0:
             self.config['dim'] = self.descriptors['input']['dim']
 
     def check_configs(self):
