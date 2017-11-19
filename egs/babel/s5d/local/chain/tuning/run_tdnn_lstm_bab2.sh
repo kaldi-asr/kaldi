@@ -3,25 +3,23 @@
 
 # by default, with cleanup
 # please note that the language(s) was not selected for any particular reason (other to represent the various sizes of babel datasets)
-# 304-lithuanian   | %WER 40.8 | 20041 61492 | 61.9 27.9 10.2 2.7 40.8 29.0 | -0.313 | exp/chain_cleaned/tdnn_lstm_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
-#                  num-iters=48 nj=2..12 num-params=36.7M dim=43+100->3273 combine=-0.156->-0.136
-#                  xent:train/valid[31,47,final]=(-1.91,-1.58,-1.56/-2.23,-2.16,-2.15)
-#                  logprob:train/valid[31,47,final]=(-0.160,-0.118,-0.115/-0.231,-0.236,-0.237)
-# 206-zulu         | %WER 52.7 | 22805 52162 | 51.2 39.1 9.7 3.9 52.7 30.8 | -0.662 | exp/chain_cleaned/tdnn_lstm_sp/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
-#                  num-iters=66 nj=2..12 num-params=36.7M dim=43+100->3274 combine=-0.180->-0.163
-#                  xent:train/valid[43,65,final]=(-1.96,-1.63,-1.62/-2.29,-2.26,-2.25)
-#                  logprob:train/valid[43,65,final]=(-0.191,-0.141,-0.139/-0.271,-0.284,-0.283)
-# 104-pashto       | %WER 41.3 | 21825 101803 | 63.0 26.7 10.3 4.2 41.3 30.2 | -0.506 | exp/chain_cleaned/tdnn_lstm_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
-#                  num-iters=85 nj=2..12 num-params=36.8M dim=43+100->3328 combine=-0.156->-0.146
-#                  xent:train/valid[55,84,final]=(-1.81,-1.52,-1.50/-2.22,-2.18,-2.17)
-#                  logprob:train/valid[55,84,final]=(-0.168,-0.125,-0.124/-0.260,-0.269,-0.268)
-
-
+# 304-lithuanian   | %WER 41.7 | 20041 61492 | 61.4 29.0 9.6 3.1 41.7 29.0 | -0.414 | exp/chain_cleaned/tdnn_lstm_bab2_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
+#                  num-iters=84 nj=2..6 num-params=10.1M dim=43+100->3273 combine=-0.145->-0.136
+#                  xent:train/valid[55,83,final]=(-1.89,-1.61,-1.59/-2.22,-2.19,-2.18)
+#                  logprob:train/valid[55,83,final]=(-0.157,-0.118,-0.115/-0.233,-0.241,-0.239)
+# 206-zulu         | %WER 53.5 | 22805 52162 | 49.8 38.3 11.9 3.2 53.5 31.1 | -0.549 | exp/chain_cleaned/tdnn_lstm_bab2_sp/decode_dev10h.pem/score_13/dev10h.pem.ctm.sys
+#                  num-iters=117 nj=2..6 num-params=10.1M dim=43+100->3274 combine=-0.176->-0.169
+#                  xent:train/valid[77,116,final]=(-1.95,-1.68,-1.66/-2.32,-2.32,-2.31)
+#                  logprob:train/valid[77,116,final]=(-0.190,-0.146,-0.142/-0.280,-0.290,-0.289)
+# 104-pashto       | %WER 41.9 | 21825 101803 | 62.1 26.8 11.0 4.0 41.9 30.3 | -0.429 | exp/chain_cleaned/tdnn_lstm_bab2_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+#                  num-iters=150 nj=2..6 num-params=10.1M dim=43+100->3328 combine=-0.160->-0.156
+#                  xent:train/valid[99,149,final]=(-1.83,-1.61,-1.59/-2.24,-2.22,-2.21)
+#                  logprob:train/valid[99,149,final]=(-0.171,-0.134,-0.131/-0.259,-0.266,-0.263)
 set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
-stage=0
+stage=17
 nj=30
 train_set=train_cleaned
 gmm=tri5_cleaned  # the gmm for the target data
@@ -33,8 +31,8 @@ nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
-common_egs_dir=  # you can set this to use previously dumped egs.
+tdnn_affix=_bab2  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+common_egs_dir=exp/chain_cleaned/tdnn_lstm_sp/egs  # you can set this to use previously dumped egs.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -143,18 +141,18 @@ if [ $stage -le 17 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=1024
-  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
-  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
+  relu-renorm-layer name=tdnn1 dim=512
+  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=512
+  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=512
 
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
-  fast-lstmp-layer name=fastlstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
-  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  fast-lstmp-layer name=fastlstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
-  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
-  fast-lstmp-layer name=fastlstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  fast-lstmp-layer name=fastlstm1 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstm_opts
+  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=512
+  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=512
+  fast-lstmp-layer name=fastlstm2 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstm_opts
+  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=512
+  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=512
+  fast-lstmp-layer name=fastlstm3 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstm_opts
 
   ## adding the layers for chain branch
   output-layer name=output input=fastlstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
@@ -199,7 +197,7 @@ if [ $stage -le 18 ]; then
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs 4 \
     --trainer.optimization.num-jobs-initial 2 \
-    --trainer.optimization.num-jobs-final 12 \
+    --trainer.optimization.num-jobs-final 6 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.max-param-change 2.0 \
