@@ -72,13 +72,10 @@ int main(int argc, char *argv[]) {
       KALDI_ERR << "You must set --bos-symbol and --eos-symbol options";
     }
 
-    std::string lats_rspecifier, word_embedding_rxfilename,
-        word_symbols_rxfilename, rnnlm_rxfilename, lats_wspecifier;
-
-    word_embedding_rxfilename = po.GetArg(1);
-    rnnlm_rxfilename = po.GetArg(2);
-    lats_rspecifier = po.GetArg(3);
-    lats_wspecifier = po.GetArg(4);
+    std::string word_embedding_rxfilename = po.GetArg(1),
+                rnnlm_rxfilename = po.GetArg(2),
+                lats_rspecifier = po.GetArg(3),
+                lats_wspecifier = po.GetArg(4);
 
     kaldi::nnet3::Nnet rnnlm;
     ReadKaldiObject(rnnlm_rxfilename, &rnnlm);

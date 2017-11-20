@@ -9,10 +9,20 @@
 # Begin configuration section.
 cmd=run.pl
 skip_scoring=false
-max_ngram_order=4
-N=10
-weight=1.0  # Interpolation weight for RNNLM.
-normalize=false
+max_ngram_order=4 # Approximate the lattice-rescoring by limiting the max-ngram-order
+                  # if it's set, it merges histories in the lattice if they share
+                  # the same ngram history and this prevents the lattice from 
+                  # exploding exponentially. Details of the n-gram approximation
+                  # method are described in section 2.3 of the paper
+                  # http://www.cs.jhu.edu/~hxu/tf.pdf
+
+weight=0.5  # Interpolation weight for RNNLM.
+normalize=false # If true, we add a normalization step to the output of the RNNLM
+                # so that it adds up to *exactly* 1. Note that this is not necessary
+                # as in our RNNLM setup, a properly trained network would automatically
+                # have its normalization term close to 1. The details of this
+                # could be found at http://www.cs.jhu.edu/~hxu/rnnlm.pdf
+
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging

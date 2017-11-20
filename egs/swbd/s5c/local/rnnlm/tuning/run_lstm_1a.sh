@@ -6,9 +6,6 @@
 
 # This script trains LMs on the swbd LM-training data.
 
-# Train objf: -299.20 -4.42 -4.24 -4.16 -4.10 -4.06 -4.03 -4.01 -3.98 -3.95 -3.94 -3.92 -3.90 -3.88 -3.86 -3.85 -3.84 -3.82 -3.81 -3.81 -3.79 -3.78 -3.77 -3.76 -3.74
-# Dev objf:   -10.65 -4.67 -4.37 -4.25 -4.19 -4.14 -4.10 -4.07 -4.03 -4.00 -3.99 -3.98 -3.96 -3.95 -3.93 -3.93 -3.91 -3.91 -3.90 -3.90 -3.88 -3.88 -3.87 -3.87 -3.86
-
 # Begin configuration section.
 
 dir=exp/rnnlm_lstm_1a
@@ -20,8 +17,8 @@ train_stage=-10
 
 # variables for lattice rescoring
 run_rescore=false
-ac_model_dir=exp/chain/tdnn_lstm_1e_sp
-decode_dir_suffix=rnnlm
+ac_model_dir=exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp
+decode_dir_suffix=rnnlm_1a
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
               # if it's set, it merges histories in the lattice if they share
               # the same ngram history and this prevents the lattice from 
@@ -30,9 +27,11 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
 . cmd.sh
 . utils/parse_options.sh
 
-text=data/train/text
+text=data/train_nodev/text
+fisher_text=data/local/lm//fisher/text1.gz
 lexicon=data/local/dict_nosp/lexiconp.txt
-text_dir=data/rnnlm/text_nosp
+text_dir=data/rnnlm/text_nosp_1a
+
 mkdir -p $dir/config
 set -e
 
@@ -44,8 +43,9 @@ done
 if [ $stage -le 0 ]; then
   mkdir -p $text_dir
   echo -n >$text_dir/dev.txt
-  # hold out one in every 500 lines as dev data.
-  cat $text | cut -d ' ' -f2- | awk -v text_dir=$text_dir '{if(NR%500 == 0) { print >text_dir"/dev.txt"; } else {print;}}' >$text_dir/swbd.txt
+  # hold out one in every 50 lines as dev data.
+  cat $text | cut -d ' ' -f2- | awk -v text_dir=$text_dir '{if(NR%50 == 0) { print >text_dir"/dev.txt"; } else {print;}}' >$text_dir/swbd.txt
+  zcat $fisher_text > $text_dir/fisher.txt
 fi
 
 if [ $stage -le 1 ]; then
@@ -58,7 +58,8 @@ if [ $stage -le 1 ]; then
   echo "<unk>" >$dir/config/oov.txt
 
   cat > $dir/config/data_weights.txt <<EOF
-swbd   1   1.0
+swbd   3   1.0
+fisher 1   1.0
 EOF
 
   rnnlm/get_unigram_probs.py --vocab-file=$dir/config/words.txt \
@@ -85,9 +86,6 @@ EOF
 fi
 
 if [ $stage -le 2 ]; then
-  # the --unigram-factor option is set larger than the default (100)
-  # in order to reduce the size of the sampling LM, because rnnlm-get-egs
-  # was taking up too much CPU (as much as 10 cores).
   rnnlm/prepare_rnnlm_dir.sh $text_dir $dir/config $dir
 fi
 
@@ -97,13 +95,13 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ] && $run_rescore; then
-  echo Perform lattice-rescoring on $ac_model_dir
-  LM=fsh_sw1_tg
+  echo "$0: Perform lattice-rescoring on $ac_model_dir"
+  LM=sw1_fsh_fg
   for decode_set in eval2000; do
-    decode_dir=${ac_model_dir}/decode_${decode_set}_$LM
+    decode_dir=${ac_model_dir}/decode_${decode_set}_${LM}_looped
 
     # Lattice rescoring
-    rnnlm/lmrescore_rnnlm_lat.sh \
+    rnnlm/lmrescore.sh \
       --cmd "$decode_cmd --mem 4G" \
       --weight 0.5 --max-ngram-order $ngram_order \
       data/lang_$LM $dir \
