@@ -2,27 +2,29 @@
 
 
 # by default, with cleanup
+# this is basically the same as the run_tdnn_lstm_bab7.sh
+# with dropout and backstitch (+more iterations as the convergence with dropout and backstitch is slower)
 # please note that the language(s) was not selected for any particular reason (other to represent the various sizes of babel datasets)
-# 304-lithuanian   | %WER 40.8 | 20041 61492 | 61.9 27.9 10.2 2.7 40.8 29.0 | -0.313 | exp/chain_cleaned/tdnn_lstm_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
-#                  num-iters=48 nj=2..12 num-params=36.7M dim=43+100->3273 combine=-0.156->-0.136
-#                  xent:train/valid[31,47,final]=(-1.91,-1.58,-1.56/-2.23,-2.16,-2.15)
-#                  logprob:train/valid[31,47,final]=(-0.160,-0.118,-0.115/-0.231,-0.236,-0.237)
-# 206-zulu         | %WER 52.7 | 22805 52162 | 51.2 39.1 9.7 3.9 52.7 30.8 | -0.662 | exp/chain_cleaned/tdnn_lstm_sp/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
-#                  num-iters=66 nj=2..12 num-params=36.7M dim=43+100->3274 combine=-0.180->-0.163
-#                  xent:train/valid[43,65,final]=(-1.96,-1.63,-1.62/-2.29,-2.26,-2.25)
-#                  logprob:train/valid[43,65,final]=(-0.191,-0.141,-0.139/-0.271,-0.284,-0.283)
-# 104-pashto       | %WER 41.3 | 21825 101803 | 63.0 26.7 10.3 4.2 41.3 30.2 | -0.506 | exp/chain_cleaned/tdnn_lstm_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
-#                  num-iters=85 nj=2..12 num-params=36.8M dim=43+100->3328 combine=-0.156->-0.146
-#                  xent:train/valid[55,84,final]=(-1.81,-1.52,-1.50/-2.22,-2.18,-2.17)
-#                  logprob:train/valid[55,84,final]=(-0.168,-0.125,-0.124/-0.260,-0.269,-0.268)
-
+# 304-lithuanian   | %WER 38.1 | 20041 61492 | 64.5 26.1 9.4 2.6 38.1 28.1 | -0.242 | exp/chain_cleaned/tdnn_lstm_bab7_bs_sp/decode_dev10h.pem/score_9/dev10h.pem.ctm.sys
+#                  num-iters=120 nj=2..12 num-params=36.7M dim=43+100->3273 combine=-0.161->-0.151
+#                  xent:train/valid[79,119,final]=(-2.35,-1.73,-1.71/-2.49,-2.04,-2.03)
+#                  logprob:train/valid[79,119,final]=(-0.191,-0.138,-0.136/-0.225,-0.201,-0.202)
+# 206-zulu         | %WER 50.7 | 22805 52162 | 53.1 36.8 10.0 3.8 50.7 30.5 | -0.553 | exp/chain_cleaned/tdnn_lstm_bab7_bs_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
+#                  num-iters=167 nj=2..12 num-params=36.7M dim=43+100->3274 combine=-0.197->-0.190
+#                  xent:train/valid[110,166,final]=(-2.44,-1.85,-1.83/-2.55,-2.14,-2.13)
+#                  logprob:train/valid[110,166,final]=(-0.230,-0.171,-0.170/-0.269,-0.244,-0.245)
+# 104-pashto       | %WER 38.5 | 21825 101803 | 65.4 24.6 10.0 3.8 38.5 29.7 | -0.418 | exp/chain_cleaned/tdnn_lstm_bab7_bs_sp/decode_dev10h.pem/score_9/dev10h.pem.ctm.sys
+#                  num-iters=214 nj=2..12 num-params=36.8M dim=43+100->3328 combine=-0.173->-0.168
+#                  xent:train/valid[141,213,final]=(-2.37,-1.69,-1.69/-2.54,-2.05,-2.05)
+#                  logprob:train/valid[141,213,final]=(-0.208,-0.151,-0.151/-0.256,-0.224,-0.224)
 
 set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
-stage=0
+stage=17
 nj=30
+dropout_schedule='0,0@0.20,0.3@0.50,0'
 train_set=train_cleaned
 gmm=tri5_cleaned  # the gmm for the target data
 langdir=data/langp/tri5_ali
@@ -33,8 +35,8 @@ nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
-common_egs_dir=  # you can set this to use previously dumped egs.
+tdnn_affix="_bab7_bs"  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+common_egs_dir=exp/chain_cleaned/tdnn_lstm_sp/egs  # you can set this to use previously dumped egs.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -129,7 +131,7 @@ if [ $stage -le 17 ]; then
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  lstm_opts="decay-time=20"
+  lstm_opts="decay-time=20 dropout-proportion=0.0"
   label_delay=5
 
   mkdir -p $dir/configs
@@ -197,9 +199,12 @@ if [ $stage -le 18 ]; then
     --egs.chunk-width 150 \
     --trainer.num-chunk-per-minibatch 128 \
     --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs 4 \
+    --trainer.num-epochs 10 \
     --trainer.optimization.num-jobs-initial 2 \
     --trainer.optimization.num-jobs-final 12 \
+    --trainer.dropout-schedule $dropout_schedule \
+    --trainer.optimization.backstitch-training-scale 1 \
+    --trainer.optimization.backstitch-training-interval 4 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.max-param-change 2.0 \

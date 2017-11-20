@@ -3,25 +3,24 @@
 
 # by default, with cleanup
 # please note that the language(s) was not selected for any particular reason (other to represent the various sizes of babel datasets)
-# 304-lithuanian   | %WER 40.8 | 20041 61492 | 61.9 27.9 10.2 2.7 40.8 29.0 | -0.313 | exp/chain_cleaned/tdnn_lstm_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
-#                  num-iters=48 nj=2..12 num-params=36.7M dim=43+100->3273 combine=-0.156->-0.136
-#                  xent:train/valid[31,47,final]=(-1.91,-1.58,-1.56/-2.23,-2.16,-2.15)
-#                  logprob:train/valid[31,47,final]=(-0.160,-0.118,-0.115/-0.231,-0.236,-0.237)
-# 206-zulu         | %WER 52.7 | 22805 52162 | 51.2 39.1 9.7 3.9 52.7 30.8 | -0.662 | exp/chain_cleaned/tdnn_lstm_sp/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
-#                  num-iters=66 nj=2..12 num-params=36.7M dim=43+100->3274 combine=-0.180->-0.163
-#                  xent:train/valid[43,65,final]=(-1.96,-1.63,-1.62/-2.29,-2.26,-2.25)
-#                  logprob:train/valid[43,65,final]=(-0.191,-0.141,-0.139/-0.271,-0.284,-0.283)
-# 104-pashto       | %WER 41.3 | 21825 101803 | 63.0 26.7 10.3 4.2 41.3 30.2 | -0.506 | exp/chain_cleaned/tdnn_lstm_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+# 304-lithuanian   | %WER 40.5 | 20041 61492 | 62.1 28.1 9.8 2.7 40.5 29.0 | -0.307 | exp/chain_cleaned/tdnn_lstm_bab4_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+#                  num-iters=48 nj=2..12 num-params=36.7M dim=43+100->3273 combine=-0.158->-0.137
+#                  xent:train/valid[31,47,final]=(-1.90,-1.57,-1.55/-2.24,-2.16,-2.16)
+#                  logprob:train/valid[31,47,final]=(-0.162,-0.121,-0.117/-0.232,-0.241,-0.239)
+# 206-zulu         | %WER 52.5 | 22805 52162 | 51.4 38.8 9.8 3.9 52.5 30.8 | -0.660 | exp/chain_cleaned/tdnn_lstm_bab4_sp/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+#                  num-iters=66 nj=2..12 num-params=36.7M dim=43+100->3274 combine=-0.179->-0.163
+#                  xent:train/valid[43,65,final]=(-1.97,-1.63,-1.61/-2.27,-2.22,-2.22)
+#                  logprob:train/valid[43,65,final]=(-0.191,-0.140,-0.138/-0.268,-0.278,-0.276)
+# 104-pashto       | %WER 41.3 | 21825 101803 | 62.9 26.7 10.4 4.2 41.3 30.0 | -0.509 | exp/chain_cleaned/tdnn_lstm_bab4_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
 #                  num-iters=85 nj=2..12 num-params=36.8M dim=43+100->3328 combine=-0.156->-0.146
-#                  xent:train/valid[55,84,final]=(-1.81,-1.52,-1.50/-2.22,-2.18,-2.17)
-#                  logprob:train/valid[55,84,final]=(-0.168,-0.125,-0.124/-0.260,-0.269,-0.268)
-
+#                  xent:train/valid[55,84,final]=(-1.80,-1.52,-1.51/-2.21,-2.16,-2.15)
+#                  logprob:train/valid[55,84,final]=(-0.167,-0.125,-0.124/-0.258,-0.264,-0.264)
 
 set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
-stage=0
+stage=17
 nj=30
 train_set=train_cleaned
 gmm=tri5_cleaned  # the gmm for the target data
@@ -33,8 +32,8 @@ nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
-common_egs_dir=  # you can set this to use previously dumped egs.
+tdnn_affix=_bab4  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+common_egs_dir=exp/chain_cleaned/tdnn_lstm_sp/egs  # you can set this to use previously dumped egs.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -120,7 +119,7 @@ if [ $stage -le 16 ]; then
       --cmd "$train_cmd" 4000 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
 fi
 
-xent_regularize=0.1
+  xent_regularize=0.1
 if [ $stage -le 17 ]; then
   mkdir -p $dir
 
