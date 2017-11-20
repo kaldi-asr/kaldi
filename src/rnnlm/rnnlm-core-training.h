@@ -43,11 +43,13 @@ struct RnnlmCoreTrainerOptions {
   int32 print_interval;
   BaseFloat momentum;
   BaseFloat max_param_change;
+  BaseFloat l2_regularize_factor;
 
   RnnlmCoreTrainerOptions():
       print_interval(100),
       momentum(0.0),
-      max_param_change(2.0) { }
+      max_param_change(2.0),
+      l2_regularize_factor(1.0) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("momentum", &momentum, "Momentum constant to apply during "
@@ -59,6 +61,14 @@ struct RnnlmCoreTrainerOptions {
     opts->Register("max-param-change", &max_param_change, "The maximum change in "
                    "parameters allowed per minibatch, measured in Euclidean norm "
                    "over the entire model (change will be clipped to this value)");
+    opts->Register("l2-regularize-factor", &l2_regularize_factor, "Factor that "
+                   "affects the strength of l2 regularization on model "
+                   "parameters. The primary way to specify this type of "
+                   "l2 regularization is via the 'l2-regularize'"
+                   "configuration value at the config-file level. "
+                   "--l2-regularize-factor will be multiplied by the component-level "
+                   "l2-regularize values and can be used to correct for effects "
+                   "related to parallelization by model averaging.");
   }
 };
 

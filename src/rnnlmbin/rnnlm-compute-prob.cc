@@ -48,10 +48,16 @@ int main(int argc, char *argv[]) {
         "you are using sparse word features.)\n";
 
     std::string use_gpu = "no";
+    bool batchnorm_test_mode = true, dropout_test_mode = true;
 
     ParseOptions po(usage);
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
+    po.Register("batchnorm-test-mode", &batchnorm_test_mode,
+                "If true, set test-mode to true on any BatchNormComponents.");
+    po.Register("dropout-test-mode", &dropout_test_mode,
+                "If true, set test-mode to true on any DropoutComponents and "
+                "DropoutMaskComponents.");
 
     po.Read(argc, argv);
 
@@ -76,6 +82,10 @@ int main(int argc, char *argv[]) {
       KALDI_ERR << "Input RNNLM in " << rnnlm_rxfilename
                 << " is not the type of neural net we were looking for; "
           "failed IsSimpleNnet().";
+    if (batchnorm_test_mode)
+      SetBatchnormTestMode(true, &rnnlm);
+    if (dropout_test_mode)
+      SetDropoutTestMode(true, &rnnlm);
 
     CuMatrix<BaseFloat> word_embedding_mat;
     ReadKaldiObject(word_embedding_rxfilename, &word_embedding_mat);

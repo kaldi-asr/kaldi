@@ -177,7 +177,12 @@ void RnnlmCoreTrainer::Train(
     word_embedding_deriv->AddSmatMat(1.0, derived.input_words_smat, kNoTrans,
                                      input_deriv, 1.0);
   }
-
+  // If relevant, add in the part of the gradient that comes from L2 
+  // regularization.
+  ApplyL2Regularization(*nnet_,
+                        minibatch.num_chunks * config_.l2_regularize_factor,
+                        delta_nnet_);
+  
   bool success = UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
       1.0, 1.0 - config_.momentum, nnet_,
       &num_max_change_per_component_applied_, &num_max_change_global_applied_);

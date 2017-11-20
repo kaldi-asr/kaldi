@@ -42,6 +42,7 @@ struct RnnlmEmbeddingTrainerOptions {
   int32 print_interval;
   BaseFloat momentum;
   BaseFloat max_param_change;
+  BaseFloat l2_regularize;
   BaseFloat learning_rate;  // Note: don't set the learning rate to 0.0 if you
                             // don't want to train this; instead, you can turn
                             // off training of the embedding matrix by
@@ -60,6 +61,7 @@ struct RnnlmEmbeddingTrainerOptions {
       print_interval(100),
       momentum(0.0),
       max_param_change(1.0),
+      l2_regularize(0.0),
       learning_rate(0.01),
       use_natural_gradient(true),
       natural_gradient_alpha(4.0),
@@ -79,6 +81,9 @@ struct RnnlmEmbeddingTrainerOptions {
                    "for the embedding matrix (the matrix of num-features by "
                    "embedding-dim -- or num-words by embedding-dim, if we're not "
                    "using a feature-based representation.");
+    opts->Register("l2-regularize", &l2_regularize, "L2 regularize value that "
+                   "affects the strength of l2 regularization on embedding "
+                   "parameters.");
     opts->Register("learning-rate", &learning_rate, "The learning rate used in "
                    "training the word-embedding matrix.");
     opts->Register("use-natural-gradient", &use_natural_gradient,
