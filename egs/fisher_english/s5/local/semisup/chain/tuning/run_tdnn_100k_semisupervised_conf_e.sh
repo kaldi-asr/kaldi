@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # This script is similar to _d, but uses 3gram LM with best path from 4gram LM.
+
+# Unsupervised set: train_unsup100k_250k
 # unsup_frames_per_eg=150
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0

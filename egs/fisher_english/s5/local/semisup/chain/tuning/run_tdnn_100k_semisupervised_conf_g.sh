@@ -2,6 +2,8 @@
 
 # This is semi-supervised training with 500 hours of unsupervised data.
 # This script is similar to _f, but uses 3gram LM.
+
+# Unsupervised set: train_unsup100k_500k
 # unsup_frames_per_eg=150
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0

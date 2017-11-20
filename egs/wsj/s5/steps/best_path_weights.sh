@@ -41,8 +41,8 @@ acwt=0.1
 write_words=false
 #end configuration section.
 
-help_message="Usage: "$(basename $0)" [options] <data-dir> <graph-dir|lang-dir> <decode-dir1>[:weight] <decode-dir2>[:weight] [<decode-dir3>[:weight] ... ] <out-dir>
-     E.g. "$(basename $0)" data/train_unt.seg data/lang exp/tri1/decode:0.5 exp/tri2/decode:0.25 exp/tri3/decode:0.25 exp/combine
+help_message="Usage: "$0" [options] <data-dir> <graph-dir|lang-dir> <decode-dir1>[:weight] <decode-dir2>[:weight] [<decode-dir3>[:weight] ... ] <out-dir>
+     E.g. "$0" data/train_unt.seg data/lang exp/tri1/decode:0.5 exp/tri2/decode:0.25 exp/tri3/decode:0.25 exp/combine
 Options:
   --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes.
 ";
@@ -85,7 +85,11 @@ if [ $stage -lt -1 ]; then
       "$words_wspecifier" "ark:| gzip -c > $dir/ali.JOB.gz" || exit 1
 fi
 
-src_dir=`dirname $decode_dir`
+if [ -f `dirname $decode_dir`/final.mdl ]; then
+  src_dir=`dirname $decode_dir`
+else
+  src_dir=$decode_dir
+fi
 
 cp $src_dir/cmvn_opts $dir/ || exit 1
 for f in final.mat splice_opts frame_subsampling_factor; do
@@ -116,9 +120,15 @@ fdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print
 for i in `seq 0 $[num_sys-1]`; do
   if [ $stage -lt $i ]; then
     decode_dir=`echo ${decode_dirs[$i]} | cut -d: -f1`
+    if [ -f `dirname $decode_dir`/final.mdl ]; then
+      # model one level up from decode dir
+      this_srcdir=`dirname $decode_dir`
+    else
+      this_srcdir=$decode_dir
+    fi
 
-    model=`dirname $decode_dir`/final.mdl  # model one level up from decode dir
-    tree=`dirname $decode_dir`/tree        # tree one level up from decode dir
+    model=$this_srcdir/final.mdl
+    tree=$this_srcdir/tree
 
     for f in $model $decode_dir/lat.1.gz $tree; do
       [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
@@ -153,7 +163,7 @@ if [ $stage -lt $num_sys ]; then
       vector-sum $file_list ark:- \| \
       vector-scale --scale=$inv_weights_sum ark:- \
       ark,scp:$fdir/weights.JOB.ark,$fdir/weights.JOB.scp || exit 1
-    
+
     for n in `seq $nj`; do
       cat $dir/weights.$n.scp 
     done > $dir/weights.scp

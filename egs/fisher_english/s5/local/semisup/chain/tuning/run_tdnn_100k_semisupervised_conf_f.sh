@@ -2,6 +2,8 @@
 
 # This is semi-supervised training with 500 hours of unsupervised data.
 # This script is similar to _d, but with 500 hours sunsupervised data.
+
+# Unsupervised set: train_unsup100k_500k
 # unsup_frames_per_eg=150
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0
@@ -151,9 +153,9 @@ for dset in $unsupervised_set; do
       data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
       $chaindir/decode_${dset}_sp${decode_affix} \
       $chaindir/decode_${dset}_sp${decode_affix}_fg
-
-    ln -sf ../final.mdl $chaindir/decode_${dset}_sp${decode_affix}_fg/final.mdl
   fi
+
+  ln -sf ../final.mdl $chaindir/decode_${dset}_sp${decode_affix}_fg/final.mdl
 done
 
 decode_affix=${decode_affix}_fg

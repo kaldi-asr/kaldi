@@ -1,13 +1,15 @@
 #!/bin/bash
 
 # This is semi-supervised training with 500 hours of unsupervised data.
-# This script is similar e, but with 500 hours sunsupervised data.
+# This script is similar _g, but Naive split lattices
+
+# Unsupervised set: train_unsup100k_500k
 # unsup_frames_per_eg=150
 # Deriv weights: Lattice posterior of best path pdf
-# Unsupervised weight: 0.3
-# Weights for phone LM (supervised, unsupervises): 10,1
-# LM for decoding unsupervised data: 4gram
-# Supervision: Smart split lattices
+# Unsupervised weight: 1.0
+# Weights for phone LM (supervised, unsupervises): 3,2
+# LM for decoding unsupervised data: 3gram
+# Supervision: Naive split lattices
 
 set -u -e -o pipefail
 
@@ -35,11 +37,12 @@ lattice_prune_beam=4.0  # If supplied will prune the lattices prior to getting e
 tolerance=1
 graph_affix=_sup100k   # can be used to decode the unsup data with another lm/graph
 phone_insertion_penalty=
+rescore_unsup_lattices=false
 
 # Semi-supervised options
 comb_affix=comb1h  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
-supervision_weights=1.0,0.3
-lm_weights=10,1
+supervision_weights=1.0,1.0
+lm_weights=3,2
 sup_egs_dir=
 unsup_egs_dir=
 tree_affix=bi_a
@@ -144,19 +147,24 @@ for dset in $unsupervised_set; do
               $graphdir data/${dset}_sp_hires $chaindir/decode_${dset}_sp${decode_affix}
   fi
 
-  if [ $stage -le 6 ]; then
-    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-      --write-compact false --acwt 0.1 --beam 8.0  --skip-scoring true \
-      data/lang_test${graph_affix} \
-      data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
-      $chaindir/decode_${dset}_sp${decode_affix} \
-      $chaindir/decode_${dset}_sp${decode_affix}_fg
-
+  if $rescore_unsup_lattices; then
+    if [ $stage -le 6 ]; then
+      steps/lmrescore_const_arpa_undeterminized.sh --cmd "$decode_cmd" \
+        --write-compact false --acwt 0.1 --beam 8.0  --skip-scoring true \
+        data/lang_test${graph_affix} \
+        data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
+        $chaindir/decode_${dset}_sp${decode_affix} \
+        $chaindir/decode_${dset}_sp${decode_affix}_fg
+    fi
     ln -sf ../final.mdl $chaindir/decode_${dset}_sp${decode_affix}_fg/final.mdl
+  else
+    ln -sf ../final.mdl $chaindir/decode_${dset}_sp${decode_affix}/final.mdl
   fi
 done
 
-decode_affix=${decode_affix}_fg
+if $rescore_unsup_lattices; then
+  decode_affix=${decode_affix}_fg
+fi
 
 if [ $stage -le 8 ]; then
   steps/best_path_weights.sh --cmd "${train_cmd}" --acwt 0.1 \
@@ -305,7 +313,7 @@ if [ -z "$unsup_egs_dir" ]; then
     touch $unsup_egs_dir/.nodelete # keep egs around when that run dies.
 
     echo "$0: generating egs from the unsupervised data"
-    steps/nnet3/chain/get_egs_split.sh --cmd "$decode_cmd --h-rt 100:00:00" --alignment-subsampling-factor 1 \
+    steps/nnet3/chain/get_egs.sh --cmd "$decode_cmd --h-rt 100:00:00" --alignment-subsampling-factor 1 \
                --left-tolerance $tolerance --right-tolerance $tolerance \
                --left-context $left_context --right-context $right_context \
                --left-context-initial $left_context_initial --right-context-final $right_context_final \
