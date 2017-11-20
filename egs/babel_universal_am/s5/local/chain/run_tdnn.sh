@@ -2,7 +2,6 @@
 
 # by default, with cleanup:
 # local/chain/run_tdnn.sh
-# %WER 47.0 | 19252 60586 | 58.0 28.0 14.0 5.0 47.0 31.6 | -0.540 | exp/chain_cleaned/tdnn_sp_bi/decode_dev10h.pem/score_9/penalty_0.0/dev10h.pem.ctm.sys
 
 set -e -o pipefail
 
@@ -28,7 +27,6 @@ xent_regularize=0.1
 # (some of which are also used in this script directly).
 stage=0
 nj=30
-min_seg_len=1.55
 train_set=train_cleaned
 gmm=tri5_cleaned  # the gmm for the target data
 langdir=data/langp/tri5_ali
@@ -60,7 +58,6 @@ fi
 
 ./local/chain/run_ivector_common.sh --stage $stage \
                                   --nj $nj \
-                                  --min-seg-len $min_seg_len \
                                   --train-set $train_set \
                                   --gmm $gmm \
                                   --num-threads-ubm $num_threads_ubm \
@@ -69,13 +66,13 @@ fi
 
 
 gmm_dir=exp/$gmm
-ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
-tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
-lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
-dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_bi
-train_data_dir=data/${train_set}_sp_hires_comb
-lores_train_data_dir=data/${train_set}_sp_comb
-train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
+ali_dir=exp/${gmm}_ali_${train_set}_sp
+tree_dir=exp/chain${nnet3_affix}/tree${tree_affix}
+lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
+dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp
+train_data_dir=data/${train_set}_sp_hires
+lores_train_data_dir=data/${train_set}_sp
+train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 
 
 for f in $gmm_dir/final.mdl $train_data_dir/feats.scp \
@@ -139,7 +136,7 @@ if [ $stage -le 17 ]; then
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
-  input dim=40 name=input
+  input dim=43 name=input
 
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
@@ -189,7 +186,7 @@ if [ $stage -le 18 ]; then
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
-    --chain.xent-regularize 0.1 \
+    --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
