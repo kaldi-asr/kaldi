@@ -35,7 +35,7 @@ fi
 
 
 
-for f in $egs/egs.*.ark $egs/degs.*.ark $egs/cegs.*.ark; do
+for f in $egs/egs.*.ark $egs/degs.*.ark $egs/cegs{,_orig}.*.ark; do
   if [ -L $f ]; then
     rm $(dirname $f)/$(readlink $f)  # this will print a warning if it fails.
   fi

@@ -186,6 +186,7 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
                              &nnet_output_deriv,
                              (use_xent ? &xent_deriv : NULL));
 
+
     if (use_xent) {
       // this block computes the cross-entropy objective.
       const CuMatrixBase<BaseFloat> &xent_output = computer->GetOutput(
@@ -193,6 +194,7 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
       // at this point, xent_deriv is posteriors derived from the numerator
       // computation.  note, xent_objf has a factor of '.supervision.weight'
       BaseFloat xent_objf = TraceMatMat(xent_output, xent_deriv, kTrans);
+      
       objf_info_[xent_name + suffix].UpdateStats(xent_name + suffix,
                                         opts_.nnet_config.print_interval,
                                         num_minibatches_processed_,

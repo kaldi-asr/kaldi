@@ -22,6 +22,7 @@
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
+#include "lat/lattice-functions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -45,15 +46,27 @@ int main(int argc, char *argv[]) {
         " e.g.: lattice-compose ark:1.lats ark:2.lats ark:composed.lats\n";
 
     ParseOptions po(usage);
+    bool write_compact = true;
     BaseFloat alpha = 0.5; // Scale of 1st in the pair.
+    BaseFloat alpha_acoustic = kLogZeroBaseFloat;
 
+    po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");
     po.Register("alpha", &alpha, "Scale of the first lattice in the pair (should be in range [0, 1])");
+    po.Register("alpha-acoustic", &alpha_acoustic,
+                "If specified, then alpha will be used for graph scores and "
+                "alpha_acoustic will be used for acoustic scores (should be in range [0, 1])");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
+
+    if (alpha_acoustic == kLogZeroBaseFloat) {
+      alpha_acoustic = alpha;
+    }
+
+    KALDI_ASSERT(alpha_acoustic <= 1.0 && alpha_acoustic >= 0.0);
 
     std::string lats_rspecifier1 = po.GetArg(1),
         lats_rspecifier2 = po.GetArg(2),
@@ -62,7 +75,13 @@ int main(int argc, char *argv[]) {
     SequentialLatticeReader lattice_reader1(lats_rspecifier1);
     RandomAccessCompactLatticeReader lattice_reader2(lats_rspecifier2);
 
-    CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
+    CompactLatticeWriter compact_lattice_writer;
+    LatticeWriter lattice_writer;
+
+    if (write_compact)
+      compact_lattice_writer.Open(lats_wspecifier);
+    else
+      lattice_writer.Open(lats_wspecifier);
 
     int32 n_processed = 0, n_empty = 0, n_success = 0, n_no_2ndlat=0;
 
@@ -70,8 +89,15 @@ int main(int argc, char *argv[]) {
       std::string key = lattice_reader1.Key();
       Lattice lat1 = lattice_reader1.Value();
       lattice_reader1.FreeCurrent();
-      ScaleLattice(fst::LatticeScale(alpha, alpha), &lat1);
+      // Compute a map from each (t, tid) to (sum_of_acoustic_scores, count)
+      unordered_map<std::pair<int32,int32>, std::pair<BaseFloat, int32>,
+                                          PairHasher<int32> > acoustic_scores;
+      if (!write_compact)
+        ComputeAcousticScoresMap(lat1, &acoustic_scores);
+      ScaleLattice(fst::LatticeScale(alpha, alpha_acoustic), &lat1);
+
       ArcSort(&lat1, fst::OLabelCompare<LatticeArc>());
+
 
       if (lattice_reader2.HasKey(key)) {
         n_processed++;
@@ -81,7 +107,7 @@ int main(int argc, char *argv[]) {
         Lattice lat2;
         ConvertLattice(clat2, &lat2);
         fst::Project(&lat2, fst::PROJECT_OUTPUT); // project on words.
-        ScaleLattice(fst::LatticeScale(1.0-alpha, 1.0-alpha), &lat2);
+        ScaleLattice(fst::LatticeScale(1.0-alpha, 1.0-alpha_acoustic), &lat2);
         ArcSort(&lat2, fst::ILabelCompare<LatticeArc>());
 
         Lattice lat3;
@@ -91,9 +117,16 @@ int main(int argc, char *argv[]) {
           n_empty++;
         } else {
           n_success++;
-          CompactLattice clat3;
-          ConvertLattice(lat3, &clat3);
-          compact_lattice_writer.Write(key, clat3);
+          if (write_compact) {
+            CompactLattice clat3;
+            ConvertLattice(lat3, &clat3);
+            compact_lattice_writer.Write(key, clat3);
+          } else {
+            // Replace each arc (t, tid) with the averaged acoustic score from
+            // the computed map
+            ReplaceAcousticScoresFromMap(acoustic_scores, &lat3);
+            lattice_writer.Write(key, lat3);
+          }
         }
       } else {
         KALDI_WARN << "No lattice found for utterance " << key << " in "

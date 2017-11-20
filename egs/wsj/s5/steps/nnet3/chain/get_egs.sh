@@ -52,9 +52,9 @@ left_tolerance=
 transform_dir=     # If supplied, overrides latdir as the place to find fMLLR transforms
 
 stage=0
-nj=15         # This should be set to the maximum number of jobs you are
-              # comfortable to run in parallel; you can increase it if your disk
-              # speed is greater and you have more machines.
+max_jobs_run=15         # This should be set to the maximum number of jobs you are
+                        # comfortable to run in parallel; you can increase it if your disk
+                        # speed is greater and you have more machines.
 max_shuffle_jobs_run=50  # the shuffle jobs now include the nnet3-chain-normalize-egs command,
                          # which is fairly CPU intensive, so we can run quite a few at once
                          # without overloading the disks.
@@ -74,6 +74,8 @@ acwt=0.1   # For pruning
 phone_insertion_penalty=
 deriv_weights_scp=
 generate_egs_scp=false
+no_chunking=false
+lat_copy_src=
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -91,7 +93,7 @@ if [ $# != 4 ]; then
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options"
-  echo "  --nj <nj>                                        # The maximum number of jobs you want to run in"
+  echo "  --max-jobs-run <max-jobs-run>                    # The maximum number of jobs you want to run in"
   echo "                                                   # parallel (increase this only if you have good disk and"
   echo "                                                   # network speed).  default=6"
   echo "  --cmd (utils/run.pl;utils/queue.pl <queue opts>) # how to run jobs."
@@ -105,7 +107,7 @@ if [ $# != 4 ]; then
   echo "  --left-context-initial <int;-1>                  # If >= 0, left-context for first chunk of an utterance"
   echo "  --right-context-final <int;-1>                   # If >= 0, right-context for last chunk of an utterance"
   echo "  --num-egs-diagnostic <#frames;4000>              # Number of egs used in computing (train,valid) diagnostics"
-  echo "  --num-valid-egs-combine <#frames;10000>          # Number of egss used in getting combination weights at the"
+  echo "  --num-valid-egs-combine <#frames;10000>          # Number of egs used in getting combination weights at the"
   echo "                                                   # very end."
   echo "  --stage <stage|0>                                # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
@@ -122,26 +124,35 @@ dir=$4
 [ ! -z "$online_ivector_dir" ] && \
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
 
+$no_chunking && extra_files="$extra_files $data/allowed_lengths.txt"
+
 for f in $data/feats.scp $latdir/lat.1.gz $latdir/final.mdl \
          $chaindir/{0.trans_mdl,tree,normalization.fst} $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
+
+nj=$(cat $latdir/num_jobs) || exit 1
 
 sdata=$data/split$nj
 utils/split_data.sh $data $nj
 
 mkdir -p $dir/log $dir/info
 
-num_lat_jobs=$(cat $latdir/num_jobs) || exit 1;
-
 # Get list of validation utterances.
 
 frame_shift=$(utils/data/get_frame_shift.sh $data) || exit 1
 utils/data/get_utt2dur.sh $data
 
-cat $data/utt2dur | \
-  awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
-  utils/shuffle_list.pl | head -$num_utts_subset > $dir/valid_uttlist || exit 1;
+if $no_chunking; then
+  frames_per_eg=$(cat $data/allowed_lengths.txt | tr '\n' , | sed 's/,$//')
+
+  cut -d ' ' -f 1 $data/utt2spk | \
+    utils/shuffle_list.pl | head -$num_utts_subset > $dir/valid_uttlist || exit 1;
+else
+  cat $data/utt2dur | \
+    awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
+    utils/shuffle_list.pl | head -$num_utts_subset > $dir/valid_uttlist || exit 1;
+fi
 
 len_uttlist=`wc -l $dir/valid_uttlist | awk '{print $1}'`
 if [ $len_uttlist -lt $num_utts_subset ]; then
@@ -161,10 +172,17 @@ if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
   rm $dir/uniq2utt $dir/valid_uttlist.tmp
 fi
 
-cat $data/utt2dur | \
-  awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
+if $no_chunking; then
+  cut -d ' ' -f 1 $data/utt2spk | \
    utils/filter_scp.pl --exclude $dir/valid_uttlist | \
    utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
+else
+  cat $data/utt2dur | \
+    awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
+     utils/filter_scp.pl --exclude $dir/valid_uttlist | \
+     utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
+fi
+
 len_uttlist=`wc -l $dir/train_subset_uttlist | awk '{print $1}'`
 if [ $len_uttlist -lt $num_utts_subset ]; then
   echo "Number of utterances which have length at least $frames_per_eg is really low. Please check your data." && exit 1;
@@ -270,21 +288,10 @@ if [ -e $dir/storage ]; then
   done
 fi
 
-if [ $stage -le 2 ]; then
-  echo "$0: copying training lattices"
-
-  [ ! -z $lattice_prune_beam ] && \
-    prune_cmd="ark:- | lattice-prune --acoustic-scale=$acwt --beam=$lattice_prune_beam ark:-"
-  $cmd --max-jobs-run 6 JOB=1:$num_lat_jobs $dir/log/lattice_copy.JOB.log \
-    lattice-copy "ark:gunzip -c $latdir/lat.JOB.gz|" $prune_cmd ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp || exit 1;
-
-  for id in $(seq $num_lat_jobs); do cat $dir/lat.$id.scp; done > $dir/lat.scp
-fi
-
-
 egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 [ $left_context_initial -ge 0 ] && egs_opts="$egs_opts --left-context-initial=$left_context_initial"
 [ $right_context_final -ge 0 ] && egs_opts="$egs_opts --right-context-final=$right_context_final"
+$no_chunking && egs_opts="$egs_opts --no-chunking"
 
 [ ! -z "$deriv_weights_scp" ] && egs_opts="$egs_opts --deriv-weights-rspecifier=scp:$deriv_weights_scp"
 
@@ -296,13 +303,24 @@ chain_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$ali
   chain_supervision_all_opts="$chain_supervision_all_opts --left-tolerance=$left_tolerance"
 
 normalization_scale=1.0
+
+lattice_copy_cmd="ark:-"
+if [ ! -z $lattice_prune_beam ]; then
+  if [ "$lattice_prune_beam" == "0" ] || [ "$lattice_prune_beam" == "0.0" ]; then
+    lattice_copy_cmd="ark:- | lattice-1best --acoustic-scale=$acwt ark:- ark:-"
+  else
+    lattice_copy_cmd="ark:- | lattice-prune --acoustic-scale=$acwt --beam=$lattice_prune_beam ark:- ark:-"
+  fi
+fi
+
 if [ ! -z "$lattice_lm_scale" ]; then
   chain_supervision_all_opts="$chain_supervision_all_opts --lm-scale=$lattice_lm_scale"
+
   normalization_scale=$(perl -e "
-  if ($lattice_lm_scale >= 1.0 || $lattice_lm_scale < 0) { 
+  if ($lattice_lm_scale >= 1.0 || $lattice_lm_scale < 0) {
     print STDERR \"Invalid --lattice-lm-scale $lattice_lm_scale\";
-    exit(1); 
-  } 
+    exit(1);
+  }
   print (1.0 - $lattice_lm_scale);")
 fi
 
@@ -314,33 +332,47 @@ echo $right_context > $dir/info/right_context
 echo $left_context_initial > $dir/info/left_context_initial
 echo $right_context_final > $dir/info/right_context_final
 
-if [ $stage -le 3 ]; then
-  echo "$0: Getting validation and training subset examples."
-  rm $dir/.error 2>/dev/null
-  echo "$0: ... extracting validation and training-subset alignments."
+if [ $stage -le 2 ]; then
+  if [ ! -z "$lat_copy_src" ]; then
+    ln -sf `readlink -f $lat_copy_src`/lat.*.{ark,scp} $dir/
+    cat $lat_copy_src/lat.{?,??}.scp > $dir/lat.scp
+  fi
 
-  # do the filtering just once, as lat.scp may be long.
-  utils/filter_scp.pl <(cat $dir/valid_uttlist $dir/train_subset_uttlist) \
-    <$dir/lat.scp >$dir/lat_special.scp
+  echo "$0: Getting validation and training subset examples in background."
+  rm $dir/.error 2>/dev/null
+
+  (
+  if [ -z "$lat_copy_src" ]; then
+    $cmd --max-jobs-run 6 JOB=1:$nj $dir/log/lattice_copy.JOB.log \
+      lattice-copy --include="cat $dir/valid_uttlist $dir/train_subset_uttlist |" --ignore-missing \
+      "ark:gunzip -c $latdir/lat.JOB.gz|" \
+      ark,scp:$dir/lat_special.JOB.ark,$dir/lat_special.JOB.scp || exit 1
+
+    for id in $(seq $nj); do cat $dir/lat_special.$id.scp; done > $dir/lat_special.scp
+  else
+    # do the filtering just once, as lat.scp may be long.
+    utils/filter_scp.pl <(cat $dir/valid_uttlist $dir/train_subset_uttlist) \
+      <$dir/lat.scp >$dir/lat_special.scp
+  fi
 
   $cmd $dir/log/create_valid_subset.log \
     utils/filter_scp.pl $dir/valid_uttlist $dir/lat_special.scp \| \
-    lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
+    lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- $lattice_copy_cmd \| \
     chain-get-supervision $chain_supervision_all_opts $chaindir/tree $chaindir/0.trans_mdl \
       ark:- ark:- \| \
     nnet3-chain-get-egs $ivector_opts --srand=$srand \
       $egs_opts --normalization-scale=$normalization_scale $chaindir/normalization.fst \
-      "$valid_feats" ark,s,cs:- "ark:$dir/valid_all.cegs" || touch $dir/.error &
+      "$valid_feats" ark,s,cs:- "ark:$dir/valid_all.cegs" || exit 1 &
   $cmd $dir/log/create_train_subset.log \
     utils/filter_scp.pl $dir/train_subset_uttlist $dir/lat_special.scp \| \
-    lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
+    lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- $lattice_copy_cmd \| \
     chain-get-supervision $chain_supervision_all_opts \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
     nnet3-chain-get-egs $ivector_opts --srand=$srand \
       $egs_opts --normalization-scale=$normalization_scale $chaindir/normalization.fst \
-      "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || touch $dir/.error &
-  wait;
-  [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
+      "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || exit 1 &
+  wait
+  sleep 5  # wait for file system to sync.
   echo "... Getting subsets of validation examples for diagnostics and combination."
   if $generate_egs_scp; then
     valid_diagnostic_output="ark,scp:$dir/valid_diagnostic.cegs,$dir/valid_diagnostic.scp"
@@ -351,17 +383,17 @@ if [ $stage -le 3 ]; then
   fi
   $cmd $dir/log/create_valid_subset_combine.log \
     nnet3-chain-subset-egs --n=$num_valid_egs_combine ark:$dir/valid_all.cegs \
-    ark:$dir/valid_combine.cegs || touch $dir/.error &
+    ark:$dir/valid_combine.cegs || exit 1 &
   $cmd $dir/log/create_valid_subset_diagnostic.log \
     nnet3-chain-subset-egs --n=$num_egs_diagnostic ark:$dir/valid_all.cegs \
-    $valid_diagnostic_output || touch $dir/.error &
+    $valid_diagnostic_output || exit 1 &
 
   $cmd $dir/log/create_train_subset_combine.log \
     nnet3-chain-subset-egs --n=$num_train_egs_combine ark:$dir/train_subset_all.cegs \
-    ark:$dir/train_combine.cegs || touch $dir/.error &
+    ark:$dir/train_combine.cegs || exit 1 &
   $cmd $dir/log/create_train_subset_diagnostic.log \
     nnet3-chain-subset-egs --n=$num_egs_diagnostic ark:$dir/train_subset_all.cegs \
-    $train_diagnostic_output || touch $dir/.error &
+    $train_diagnostic_output || exit 1 &
   wait
   sleep 5  # wait for file system to sync.
   if $generate_egs_scp; then
@@ -376,6 +408,7 @@ if [ $stage -le 3 ]; then
     [ ! -s $f ] && echo "No examples in file $f" && exit 1;
   done
   rm $dir/valid_all.cegs $dir/train_subset_all.cegs $dir/{train,valid}_combine.cegs
+  ) || touch $dir/.error &
 fi
 
 if [ $stage -le 4 ]; then
@@ -396,9 +429,15 @@ if [ $stage -le 4 ]; then
   # there can be too many small files to deal with, because the total number of
   # files is the product of 'nj' by 'num_archives_intermediate', which might be
   # quite large.
-  $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
-    utils/filter_scp.pl $sdata/JOB/utt2spk $dir/lat.scp \| \
-    lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
+
+  lattice_rspecifier="ark:gunzip -c $latdir/lat.JOB.gz |"
+  if [ ! -z "$lat_copy_src" ]; then
+    lattice_rspecifier="scp:utils/filter_scp.pl $sdata/JOB/utt2spk $dir/lat.scp |"
+  fi
+
+  $cmd --max-jobs-run $max_jobs_run JOB=1:$nj $dir/log/get_egs.JOB.log \
+    lattice-align-phones --replace-output-symbols=true $latdir/final.mdl \
+      "$lattice_rspecifier" $lattice_copy_cmd \| \
     chain-get-supervision $chain_supervision_all_opts \
       --weight=$egs_weight \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
@@ -428,7 +467,7 @@ if [ $stage -le 5 ]; then
     $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
       nnet3-chain-normalize-egs --normalization-scale=$normalization_scale $chaindir/normalization.fst "ark:cat $egs_list|" ark:- \| \
       nnet3-chain-shuffle-egs --srand=\$[JOB+$srand] ark:- $output_archive || exit 1;
-    
+
     if $generate_egs_scp; then
       #concatenate cegs.JOB.scp in single cegs.scp
       rm -rf $dir/cegs.scp
@@ -459,12 +498,12 @@ if [ $stage -le 5 ]; then
       nnet3-chain-normalize-egs --normalization-scale=$normalization_scale $chaindir/normalization.fst "ark:cat $egs_list|" ark:- \| \
       nnet3-chain-shuffle-egs --srand=\$[JOB+$srand] ark:- ark:- \| \
       nnet3-chain-copy-egs ark:- $output_archives || exit 1;
-    
+
     if $generate_egs_scp; then
       #concatenate cegs.JOB.scp in single cegs.scp
       rm -rf $dir/cegs.scp
       for j in $(seq $num_archives_intermediate); do
-        for y in $(seq $num_archives_intermediate); do
+        for y in $(seq $archives_multiple); do
           cat $dir/cegs.$j.$y.scp || exit 1;
         done
       done > $dir/cegs.scp || exit 1;
@@ -472,6 +511,9 @@ if [ $stage -le 5 ]; then
     fi
   fi
 fi
+
+wait
+[ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
 
 if [ $stage -le 6 ]; then
   echo "$0: removing temporary archives"
@@ -486,8 +528,9 @@ if [ $stage -le 6 ]; then
     # there are some extra soft links that we should delete.
     for f in $dir/cegs.*.*.ark; do rm $f; done
   fi
-  echo "$0: removing temporary lattices"
-  rm $dir/lat.*
+  if [ -z "$lat_copy_src" ]; then
+    rm $dir/lat_special.*.ark
+  fi
   echo "$0: removing temporary alignments and transforms"
   # Ignore errors below because trans.* might not exist.
   rm $dir/{ali,trans}.{ark,scp} 2>/dev/null

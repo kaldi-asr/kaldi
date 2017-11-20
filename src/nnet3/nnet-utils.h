@@ -286,9 +286,6 @@ void CollapseModel(const CollapseModelConfig &config,
     set-learning-rate-factor [name=<name-pattern>] learning-rate-factor=<learning-rate-factor>
        Sets the learning rate factor for any updatable components matching the name pattern.
 
-    set-learning-rate-factor [name=<name-pattern>] learning-rate-factor=<learning-rate-factor>
-       Sets the learning rate factor for any updatable nodes matching the name pattern.
-
     rename-node old-name=<old-name> new-name=<new-name>
        Renames a node; this is a surface renaming that does not affect the structure
        (for structural changes, use the regular config file format, not the

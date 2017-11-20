@@ -10,6 +10,11 @@ cmd=run.pl
 skip_scoring=false
 stage=1
 scoring_opts=
+write_compact=true
+acwt=0.1
+beam=8.0
+read_determinized=true
+write_determinized=true
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -51,12 +56,28 @@ mkdir -p $outdir/log
 nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
 
+lats_rspecifier="ark:gunzip -c $indir/lat.JOB.gz|"
+if ! $read_determinized; then
+  lats_rspecifier="$lats_rspecifier lattice-determinize-pruned --acoustic-scale=$acwt --beam=$beam --write-compact=$write_compact ark:- ark:- |"
+fi
+
+lattice_copy_cmd=
+if ! $write_determinized; then
+  if $read_determinized; then
+    echo "$0: --write-determinized false does not make sense when --read-determinized true is specified"
+    echo "$0: ignoring the option --write-determinized"
+  else
+    lattice_copy_cmd="ark:- | lattice-interp --alpha=0 --alpha-acoustic=1.0 --write-compact=$write_compact \"ark:gunzip -c $indir/lat.JOB.gz |\" ark,s,cs:- "
+  fi
+fi
+
 if [ $stage -le 1 ]; then
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
-    lattice-lmrescore --lm-scale=-1.0 \
-    "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlmcommand" ark:-  \| \
-    lattice-lmrescore-const-arpa --lm-scale=1.0 \
-    ark:- "$newlm" "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
+    lattice-lmrescore --lm-scale=-1.0 --write-compact=$write_compact \
+    "$lats_rspecifier" "$oldlmcommand" ark:-  \| \
+    lattice-lmrescore-const-arpa --lm-scale=1.0 --write-compact=$write_compact \
+    ark:- "$newlm" $lattice_copy_cmd \
+    "ark:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 fi
 
 if ! $skip_scoring && [ $stage -le 2 ]; then

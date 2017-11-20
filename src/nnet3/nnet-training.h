@@ -42,6 +42,7 @@ struct NnetTrainerOptions {
   std::string write_cache;
   bool binary_write_cache;
   BaseFloat max_param_change;
+  std::string objective_scales_str;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
   CachingOptimizingCompilerOptions compiler_config;
@@ -88,6 +89,10 @@ struct NnetTrainerOptions {
                    "write the cached computation to");
     opts->Register("binary-write-cache", &binary_write_cache, "Write "
                    "computation cache in binary mode");
+    opts->Register("objective-scales", &objective_scales_str,
+                   "Objective scales for the outputs specified as "
+                   "a comma-separated list of pairs "
+                   "<output-0>:<scale-0>,<output-1>:<scale-1>...");
 
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);

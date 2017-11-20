@@ -63,7 +63,7 @@ local/semisup/chain/tuning/run_tdnn_11k.sh \
   --exp $exp \
   --ivector-train-set semisup15k_250k || exit 1
 
-local/semisup/chain/tuning/run_tdnn_oracle.sh \
+false && local/semisup/chain/tuning/run_tdnn_oracle.sh \
   --train-set semisup15k_250k \
   --nnet3-affix _semi15k_250k \
   --chain-affix _semi15k_250k_oracle \

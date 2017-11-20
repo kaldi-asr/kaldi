@@ -1,4 +1,4 @@
-// latbin/lattice-lmrescore.cc
+//latbin/lattice-lmrescore.cc
 
 // Copyright 2009-2011  Microsoft Corporation
 //                2014  Johns Hopkins University (author: Daniel Povey)
@@ -24,6 +24,7 @@
 #include "fstext/fstext-lib.h"
 #include "fstext/kaldi-fst-io.h"
 #include "lat/kaldi-lattice.h"
+#include "lat/lattice-functions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -43,9 +44,11 @@ int main(int argc, char *argv[]) {
         " e.g.: lattice-lmrescore --lm-scale=-1.0 ark:in.lats 'fstproject --project_output=true data/lang/G.fst|' ark:out.lats\n";
 
     ParseOptions po(usage);
+    bool write_compact = true;
     BaseFloat lm_scale = 1.0;
     int32 num_states_cache = 50000;
 
+    po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model costs; frequently 1.0 or -1.0");
     po.Register("num-states-cache", &num_states_cache,
                 "Number of states we cache when mapping LM FST to lattice type. "
@@ -99,8 +102,13 @@ int main(int argc, char *argv[]) {
     // composition and determinization.
     SequentialLatticeReader lattice_reader(lats_rspecifier);
 
-    // Write as compact lattice.
-    CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
+    CompactLatticeWriter compact_lattice_writer;
+    LatticeWriter lattice_writer;
+    
+    if (write_compact)
+      compact_lattice_writer.Open(lats_wspecifier);
+    else
+      lattice_writer.Open(lats_wspecifier);
 
     int32 n_done = 0, n_fail = 0;
 
@@ -108,6 +116,13 @@ int main(int argc, char *argv[]) {
       std::string key = lattice_reader.Key();
       Lattice lat = lattice_reader.Value();
       lattice_reader.FreeCurrent();
+
+      // Compute a map from each (t, tid) to (sum_of_acoustic_scores, count)
+      unordered_map<std::pair<int32,int32>, std::pair<BaseFloat, int32>,
+                                          PairHasher<int32> > acoustic_scores;
+      if (!write_compact)
+        ComputeAcousticScoresMap(lat, &acoustic_scores);
+
       if (lm_scale != 0.0) {
         // Only need to modify it if LM scale nonzero.
         // Before composing with the LM FST, we scale the lattice weights
@@ -126,22 +141,38 @@ int main(int argc, char *argv[]) {
         TableCompose(lat, lm_fst, &composed_lat, &lm_compose_cache);
 
         Invert(&composed_lat); // make it so word labels are on the input.
-        CompactLattice determinized_lat;
-        DeterminizeLattice(composed_lat, &determinized_lat);
-        fst::ScaleLattice(fst::GraphLatticeScale(lm_scale), &determinized_lat);
-        if (determinized_lat.Start() == fst::kNoStateId) {
-          KALDI_WARN << "Empty lattice for utterance " << key << " (incompatible LM?)";
+
+        CompactLattice determinized_clat;
+        DeterminizeLattice(composed_lat, &determinized_clat);
+        fst::ScaleLattice(fst::GraphLatticeScale(lm_scale), &determinized_clat);
+        if (determinized_clat.Start() == fst::kNoStateId) {
+          KALDI_WARN << "Empty lattice for utterance " << key
+              << " (incompatible LM?)";
           n_fail++;
         } else {
-          compact_lattice_writer.Write(key, determinized_lat);
+          if (write_compact) {
+            compact_lattice_writer.Write(key, determinized_clat);
+          } else {
+            // Replace each arc (t, tid) with the averaged acoustic score from
+            // the computed map
+            Lattice out_lat;
+            ConvertLattice(determinized_clat, &out_lat);
+            ReplaceAcousticScoresFromMap(acoustic_scores, &out_lat);
+            lattice_writer.Write(key, out_lat);
+          }
           n_done++;
         }
       } else {
-        // zero scale so nothing to do.
+        // Zero scale so nothing to do.
         n_done++;
-        CompactLattice compact_lat;
-        ConvertLattice(lat, &compact_lat);
-        compact_lattice_writer.Write(key, compact_lat);
+
+        if (write_compact) {
+          CompactLattice compact_lat;
+          ConvertLattice(lat, &compact_lat);
+          compact_lattice_writer.Write(key, compact_lat);
+        } else {
+          lattice_writer.Write(key, lat);
+        }
       }
     }
 

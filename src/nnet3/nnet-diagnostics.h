@@ -63,6 +63,7 @@ struct NnetComputeProbOptions {
   bool store_component_stats;
   
   bool compute_per_dim_accuracy;
+  std::string objective_scales_str;
 
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
@@ -84,6 +85,10 @@ struct NnetComputeProbOptions {
                    "accuracy values as well as objective functions");
     opts->Register("compute-per-dim-accuracy", &compute_per_dim_accuracy,
                    "If true, compute accuracy values per-dim");
+    opts->Register("objective-scales", &objective_scales_str,
+                   "Objective scales for the outputs specified as "
+                   "a comma-separated list of pairs "
+                   "<output-0>:<scale-0>,<output-1>:<scale-1>...");
 
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);

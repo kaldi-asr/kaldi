@@ -32,6 +32,8 @@ extra_left_context_initial=-1
 extra_right_context_final=-1
 online_ivector_dir=
 minimize=false
+determinize_opts=
+write_compact=true
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -118,10 +120,17 @@ if [ ! -z "$online_ivector_dir" ]; then
   ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
 fi
 
+extra_opts=
+lats_wspecifier="ark:|"
+if ! $write_compact; then
+  extra_opts="--determinize-lattice=false"
+  lats_wspecifier="ark:| lattice-determinize-phone-pruned-non-compact --beam=$lattice_beam --acoustic-scale=$acwt --minimize=$minimize $determinize_opts $model ark:- ark:- |"
+fi
+
 if [ "$post_decode_acwt" == 1.0 ]; then
-  lat_wspecifier="ark:|gzip -c >$dir/lat.JOB.gz"
+  lats_wspecifier="$lats_wspecifier gzip -c >$dir/lat.JOB.gz"
 else
-  lat_wspecifier="ark:|lattice-scale --acoustic-scale=$post_decode_acwt ark:- ark:- | gzip -c >$dir/lat.JOB.gz"
+  lats_wspecifier="$lats_wspecifier lattice-scale --acoustic-scale=$post_decode_acwt --write-compact=$write_compact ark:- ark:- | gzip -c >$dir/lat.JOB.gz"
 fi
 
 frame_subsampling_opt=
@@ -140,8 +149,9 @@ if [ $stage -le 1 ]; then
      --extra-right-context-final=$extra_right_context_final \
      --minimize=$minimize --max-active=$max_active --min-active=$min_active --beam=$beam \
      --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
-     --word-symbol-table=$graphdir/words.txt "$model" \
-     $graphdir/HCLG.fst "$feats" "$lat_wspecifier" || exit 1;
+     --word-symbol-table=$graphdir/words.txt ${extra_opts} \
+     "$model" \
+     $graphdir/HCLG.fst "$feats" "$lats_wspecifier" || exit 1;
 fi
 
 

@@ -43,8 +43,10 @@ int main(int argc, char *argv[]) {
         " lattice-1best | nbest-to-prons\n";
     
     ParseOptions po(usage);
+    bool write_compact = true;
     bool output_if_error = true;
-    
+
+    po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");
     po.Register("output-error-lats", &output_if_error, "Output lattices that aligned "
                 "with errors (e.g. due to force-out");
     
@@ -66,17 +68,44 @@ int main(int argc, char *argv[]) {
     TransitionModel tmodel;
     ReadKaldiObject(model_rxfilename, &tmodel);
     
-    SequentialCompactLatticeReader clat_reader(lats_rspecifier);
-    CompactLatticeWriter clat_writer(lats_wspecifier); 
+    SequentialCompactLatticeReader clat_reader;
+    CompactLatticeWriter clat_writer;
+    SequentialLatticeReader lat_reader;
+    LatticeWriter lat_writer;
+
+    if (write_compact) {
+      clat_reader.Open(lats_rspecifier);
+      clat_writer.Open(lats_wspecifier);
+    } else {
+      lat_reader.Open(lats_rspecifier);
+      lat_writer.Open(lats_wspecifier);
+    }
 
     int32 num_done = 0, num_err = 0;
     
-    for (; !clat_reader.Done(); clat_reader.Next()) {
-      std::string key = clat_reader.Key();
-      const CompactLattice &clat = clat_reader.Value();
+    for (; write_compact ? !clat_reader.Done() : !lat_reader.Done(); 
+           write_compact ? clat_reader.Next() : lat_reader.Next()) {
+      std::string key = write_compact ? clat_reader.Key() : lat_reader.Key();
+      
+      // Compute a map from each (t, tid) to (sum_of_acoustic_scores, count)
+      unordered_map<std::pair<int32,int32>, std::pair<BaseFloat, int32>,
+                                          PairHasher<int32> > acoustic_scores;
 
       CompactLattice aligned_clat;
-      bool ok = PhoneAlignLattice(clat, tmodel, opts, &aligned_clat);
+      bool ok;
+      if (write_compact) {
+        const CompactLattice &clat = clat_reader.Value();
+
+        ok = PhoneAlignLattice(clat, tmodel, opts, &aligned_clat);
+      } else {
+        const Lattice &lat = lat_reader.Value();
+        ComputeAcousticScoresMap(lat, &acoustic_scores);
+
+        CompactLattice clat;
+        fst::ConvertLattice(lat, &clat);
+
+        ok = PhoneAlignLattice(clat, tmodel, opts, &aligned_clat);
+      }
       
       if (!ok) {
         num_err++;
@@ -86,7 +115,18 @@ int main(int argc, char *argv[]) {
           if (aligned_clat.Start() != fst::kNoStateId) {
             KALDI_LOG << "Outputting partial lattice for " << key;
             TopSortCompactLatticeIfNeeded(&aligned_clat);
-            clat_writer.Write(key, aligned_clat);
+
+            if (write_compact) {
+              clat_writer.Write(key, aligned_clat);
+            } else {
+              Lattice out_lat;
+              fst::ConvertLattice(aligned_clat, &out_lat);
+
+              // Replace each arc (t, tid) with the averaged acoustic score from
+              // the computed map
+              ReplaceAcousticScoresFromMap(acoustic_scores, &out_lat);
+              lat_writer.Write(key, out_lat);
+            }
           }
         }
       } else {
@@ -97,7 +137,18 @@ int main(int argc, char *argv[]) {
           num_done++;
           KALDI_VLOG(2) << "Aligned lattice for " << key;
           TopSortCompactLatticeIfNeeded(&aligned_clat);
-          clat_writer.Write(key, aligned_clat);
+
+          if (write_compact) {
+            clat_writer.Write(key, aligned_clat);
+          } else {
+            Lattice out_lat;
+            fst::ConvertLattice(aligned_clat, &out_lat);
+
+            // Replace each arc (t, tid) with the averaged acoustic score from
+            // the computed map
+            ReplaceAcousticScoresFromMap(acoustic_scores, &out_lat);
+            lat_writer.Write(key, out_lat);
+          }
         }
       }
     }

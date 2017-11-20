@@ -387,7 +387,7 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
 
         # note: self.config['input'] is a descriptor, '[-1]' means output
         # the most recent layer.
-        self.config = {'input': '[-1]', 'dim': -1,
+        self.config = {'input': '[-1]', 'dim': -1, 'skip-in-init': False,
                        'objective-type': 'linear',
                        'output-delay': 0}
 
@@ -436,6 +436,8 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
                 'Offset({0}, {1})'.format(descriptor_final_str, output_delay))
 
         for config_name in ['init', 'ref', 'final']:
+            if config_name == 'init' and self.config['skip-in-init']:
+                continue
             ans.append((config_name,
                         'output-node name={0} input={1} '
                         'objective={2}'.format(
@@ -529,28 +531,38 @@ class XconfigOutputLayer(XconfigLayerBase):
                                " invalid value {0}"
                                "".format(self.config['learning-rate-factor']))
 
-    # you cannot access the output of this layer from other layers... see
-    # comment in output_name for the reason why.
     def auxiliary_outputs(self):
 
-        return []
+        auxiliary_outputs = ['affine']
+        if self.config['include-log-softmax']:
+            auxiliary_outputs.append('log-softmax')
 
-    def output_name(self, auxiliary_outputs=None):
+        return auxiliary_outputs
 
-        # Note: nodes of type output-node in nnet3 may not be accessed in
-        # Descriptors, so calling this with auxiliary_outputs=None doesn't
-        # make sense.  But it might make sense to make the output of the softmax
-        # layer and/or the output of the affine layer available as inputs to
-        # other layers, in some circumstances.
-        # we'll implement that when it's needed.
-        raise RuntimeError("Outputs of output-layer may not be used by other"
-                           " layers")
+    def output_name(self, auxiliary_output=None):
+
+        if auxiliary_output is None:
+            # Note: nodes of type output-node in nnet3 may not be accessed in
+            # Descriptors, so calling this with auxiliary_outputs=None doesn't
+            # make sense.
+            raise RuntimeError("Outputs of output-layer may not be used by other"
+                               " layers")
+
+        if auxiliary_output in self.auxiliary_outputs():
+            return '{0}.{1}'.format(self.name, auxiliary_output)
+        else:
+            raise RuntimeError("Unknown auxiliary output name {0}"
+                               "".format(auxiliary_output))
 
     def output_dim(self, auxiliary_output=None):
 
-        # see comment in output_name().
-        raise RuntimeError("Outputs of output-layer may not be used by other"
-                           " layers")
+        if auxiliary_output is None:
+            # Note: nodes of type output-node in nnet3 may not be accessed in
+            # Descriptors, so calling this with auxiliary_outputs=None doesn't
+            # make sense.
+            raise RuntimeError("Outputs of output-layer may not be used by other"
+                               " layers")
+        return self.config['dim']
 
     def get_full_config(self):
 
