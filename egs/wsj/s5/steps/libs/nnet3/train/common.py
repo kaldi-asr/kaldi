@@ -461,7 +461,6 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
         if egs_right_context_final == -1:
             egs_right_context_final = egs_right_context
 
-
         # the condition on the initial/final context is an equality condition,
         # not an inequality condition, as there is no mechanism to 'correct' the
         # context (by subtracting context) while copying the egs, like there is
@@ -542,8 +541,7 @@ def smooth_presoftmax_prior_scale_vector(pdf_counts,
 
 
 def prepare_initial_network(dir, run_opts, srand=-3):
-    if os.path.exists(dir+"/configs/init.config") or os.path.exists(
-            "{0}/init.raw".format(dir)):
+    if os.path.exists(dir+"/configs/init.config"):
         common_lib.execute_command(
             """{command} {dir}/log/add_first_layer.log \
                     nnet3-init --srand={srand} {dir}/init.raw \

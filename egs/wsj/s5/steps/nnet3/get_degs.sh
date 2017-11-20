@@ -143,7 +143,6 @@ echo "$0: feature type is raw"
 
 cmvn_opts=$(cat $srcdir/cmvn_opts) || exit 1
 
-
 feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
 
 cp $srcdir/{tree,cmvn_opts} $dir || exit 1
@@ -334,7 +333,7 @@ fi
 
 # set the command to determinize lattices, if specified.
 if $determinize_before_split; then
-  lattice_determinize_cmd="lattice-determinize-pruned-non-compact --acoustic-scale=$acwt --max-mem=$max_mem --minimize=true --beam=$lattice_beam ark:- ark:-"
+  lattice_determinize_cmd="lattice-determinize-phone-pruned-non-compact --acoustic-scale=$acwt --max-mem=$max_mem --minimize=true --beam=$lattice_beam $dir/final.mdl ark:- ark:-"
 else
   lattice_determinize_cmd="cat"
 fi

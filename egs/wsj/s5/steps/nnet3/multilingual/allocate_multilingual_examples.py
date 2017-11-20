@@ -95,9 +95,9 @@ def get_args():
         'output-2'.""",
         epilog="Called by steps/nnet3/multilingual/combine_egs.sh")
 
-    parser.add_argument("--samples-per-iter", type=int, default=40000,
+    parser.add_argument("--samples-per-iter", type=int, default=None,
                         help="The target number of egs in each archive of egs, "
-                        "(prior to merging egs). ")
+                        "(prior to merging egs). [DEPRECATED]")
     parser.add_argument("--frames-per-iter", type=int, default=400000,
                         help="The target number of frames in each archive of "
                         "egs")
@@ -143,6 +143,10 @@ def get_args():
 
     print(sys.argv, file=sys.stderr)
     args = parser.parse_args()
+
+    if args.samples_per_iter is not None:
+        args.frames_per_iter = args.samples_per_iter
+        args.frames_per_eg_list = None
 
     return args
 

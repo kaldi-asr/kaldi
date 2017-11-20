@@ -142,11 +142,11 @@ if [ $stage -le 7 ]; then
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${train_set}_hires data/${train_set}_max2_hires
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-    data/${train_set}_max2_hires $extractor `basename $extractor`/ivectors_${train_set}_hires || exit 1;
+    data/${train_set}_max2_hires exp/nnet3${nnet3_affix}/extractor exp/nnet3${nnet3_affix}/ivectors_${train_set}_hires || exit 1;
 
   for dataset in test dev; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-      data/${dataset}_hires $extractor `basename $extractor`/ivectors_${dataset}_hires || exit 1;
+      data/${dataset}_hires exp/nnet3${nnet3_affix}/extractor exp/nnet3${nnet3_affix}/ivectors_${dataset}_hires || exit 1;
   done
 fi
 

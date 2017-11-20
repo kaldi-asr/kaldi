@@ -85,7 +85,7 @@ for lang in $(seq 0 $[$num_langs-1]);do
   valid_diagnostic_scp_list="$valid_diagnostic_scp_list ${args[$lang]}/valid_diagnostic.scp"
   combine_scp_list="$combine_scp_list ${args[$lang]}/combine.scp"
   
-  this_frames_per_eg=$(cat ${args[$lang]}/info/frames_per_eg)
+  this_frames_per_eg=$(cat ${args[$lang]}/info/frames_per_eg | cut -d, -f 1)
 
   if [ $lang -eq 0 ]; then
     frames_per_eg_list="$this_frames_per_eg"
