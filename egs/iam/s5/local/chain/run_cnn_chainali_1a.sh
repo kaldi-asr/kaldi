@@ -1,13 +1,21 @@
 #!/bin/bash
 
-# chainali_1a uses chain model for lattice instead of gmm-hmm model. It has more cnn layers as compared to 1a
-# (18.34% -> 13.68%)
+# chainali_1a is as 1a except it uses chain alignments (using 1a system) instead of gmm alignments
+
+# ./local/chain/compare_wer.sh exp/chain/cnn_chainali_1a/ exp/chain/cnn_1a/
+# System                      cnn_chainali_1a    cnn_1a
+# WER                             15.85     19.10
+# Final train prob              -0.0128   -0.0297
+# Final valid prob              -0.0447   -0.0975
+# Final train prob (xent)       -0.6448   -0.5915
+# Final valid prob (xent)       -0.9924   -1.0022
 
 # steps/info/chain_dir_info.pl exp/chain/cnn1a_chainali/
-# exp/chain/cnn_chainali_1a/: num-iters=21 nj=2..4 num-params=3.8M dim=40->380 combine=-0.009->-0.006 xent:train/valid[13,20,final]=(-0.870,-0.593,-0.568/-1.08,-0.889,-0.874) logprob:train/valid[13,20,final]=(-0.035,-0.003,-0.001/-0.077,-0.055,-0.054)
+# exp/chain/cnn_chainali_1a/: num-iters=21 nj=2..4 num-params=4.4M dim=40->364 combine=-0.002->0.000 xent:train/valid[13,20,final]=(-0.929,-0.711,-0.645/-1.16,-1.04,-0.992) logprob:train/valid[13,20,final]=(-0.029,-0.016,-0.013/-0.051,-0.047,-0.045)
 
 # head exp/chain/cnn_chainali_1a/decode_test/scoring_kaldi/best_wer
-# %WER 13.68 [ 2410 / 17616, 243 ins, 633 del, 1534 sub ] exp/chain/cnn_chainali_1a/decode_test/wer_8_1.0
+# %WER 15.85 [ 2793 / 17616, 235 ins, 557 del, 2001 sub ] exp/chain/cnn_chainali_1a/decode_test/wer_9_0.0
+# %WER 7.76 [ 5114 / 65921, 834 ins, 1355 del, 2925 sub ] exp/chain/cnn_chainali_1a/decode_test/cer_9_0.5
 
 set -e -o pipefail
 
@@ -33,8 +41,8 @@ alignment_subsampling_factor=1
 chunk_width=340,300,200,100
 num_leaves=500
 # we don't need extra left/right context for TDNN systems.
-chunk_left_context=32
-chunk_right_context=32
+chunk_left_context=0
+chunk_right_context=0
 tdnn_dim=450
 # training options
 srand=0
@@ -131,9 +139,9 @@ if [ $stage -le 4 ]; then
 
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  common1="required-time-offsets=0 height-offsets=-2,-1,0,1,2 num-filters-out=36"
-  common2="required-time-offsets=0 height-offsets=-2,-1,0,1,2 num-filters-out=70"
-  common3="required-time-offsets=0 height-offsets=-1,0,1 num-filters-out=70"
+  common1="height-offsets=-2,-1,0,1,2 num-filters-out=36"
+  common2="height-offsets=-2,-1,0,1,2 num-filters-out=70"
+  common3="height-offsets=-1,0,1 num-filters-out=70"
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
@@ -228,8 +236,8 @@ if [ $stage -le 7 ]; then
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --extra-left-context $chunk_left_context \
     --extra-right-context $chunk_right_context \
-    --extra-left-context-initial 32 \
-    --extra-right-context-final 32 \
+    --extra-left-context-initial 0 \
+    --extra-right-context-final 0 \
     --frames-per-chunk $frames_per_chunk \
     --nj $nj --cmd "$decode_cmd" \
     $dir/graph data/test $dir/decode_test || exit 1;
