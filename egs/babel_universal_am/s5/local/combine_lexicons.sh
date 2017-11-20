@@ -1,15 +1,17 @@
 #!/bin/bash
+# Copyright 2016  Johns Hopkins University (Author: Matthew Wiesner)
+# Apache 2.0
 
 list=
 silence_lex=
 
 . ./utils/parse_options.sh
 
-if [ $# -eq 0 ]; then
-  echo "Usage: [--opts] <odict> dict1 dict2 dict3 ..."
-  echo "  --list <path/to/list>"
-  echo "  --silence-lexicon <path/to/silence/lexicon>: If empty, we assume the"
-  echo "                                               BABEL silence lexicon."
+if [ $# -le 1 ]; then
+  echo >&2 "Usage: [--opts] <odict> dict1 dict2 dict3 ..."
+  echo >&2 "  --list <path/to/list>"
+  echo >&2 "  --silence-lexicon <path/to/silence/lexicon>: If empty, we assume the"
+  echo >&2 "                                               BABEL silence lexicon."
   exit 1
 fi
 

@@ -136,14 +136,11 @@ for l in ${langs}; do
   # combined directory will be used for training. This probably has minimal
   # impact on performance as only words repeated across languages will pose
   # problems and even amongst these, the main concern is the <hes> marker.
-  #
-  # It seems utils/copy_data_dir.sh has a speaker prefix option I did not
-  # know about, and it would be better to use this rather than creating a
-  # new script. For now this new script works though.
   #############################################################################
   if [ $stage -le 3 ]; then
     echo "Prepend ${l} to data dir"
-    ./local/prepend_lang_id.sh ${l} data/train data/train_${l}
+    ./utils/copy_data_dir.sh --spk-prefix ${l} --utt-prefix ${l} \
+      data/train data/train_${l}
   fi
   cd $cwd
 done

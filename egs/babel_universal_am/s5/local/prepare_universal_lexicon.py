@@ -1,8 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright 2016 Johns Hopkins University (Author: Matthew Wiesner)
+# Copyright 2017 Johns Hopkins University (Author: Matthew Wiesner)
 # Apache 2.0
+
+###############################################################################
+#
+# This script takes a kaldi formatted lexicon prepared by
+#  
+#  local/prepare_lexicon.pl (i.e. a lexicon that uses the X-SAMPA phoneset)
+# 
+# and makes language specific modifications to further standardize the
+# lexicons across languages. These modifications are based on language speficic
+# diphthong and tone files that contain a mapping from diphthongs to other 
+# X-SAMPA phonemes, and from the Tone markers to a standardized tone marking
+# (see universal_phone_maps/tones/README.txt for more info about tone).
+# 
+# This script returns the resulting standardized lexicon. 
+#
+###############################################################################
 
 from __future__ import print_function
 import sys

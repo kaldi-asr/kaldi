@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright 2016 Johns Hopkins University (Author: Matthew Wiesner)
+# Copyright 2017 Johns Hopkins University (Author: Matthew Wiesner)
 # Apache 2.0
 
 # ======= Prepare dictionary directory (e.g. data/local) from lexicon.txt =====
