@@ -3,14 +3,18 @@
 
 # by default, with cleanup
 # please note that the language(s) was not selected for any particular reason (other to represent the various sizes of babel datasets)
-# 304-lithuanian | %WER 42.6 | 20041 61492 | 60.3 29.6 10.1 2.9 42.6 29.2 | -0.226 | exp/chain_cleaned/tdnn_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
-#                num-iters=48 nj=2..12 num-params=6.7M dim=43+100->3273 combine=-0.192->-0.179
-#                xent:train/valid[31,47,final]=(-2.47,-2.34,-2.33/-2.66,-2.57,-2.57)
-#                logprob:train/valid[31,47,final]=(-0.191,-0.163,-0.162/-0.246,-0.242,-0.243)
-# 104-pashto     | %WER 42.7 | 21825 101803 | 61.1 27.5 11.4 3.8 42.7 30.4 | -0.345 | exp/chain_cleaned/tdnn_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
-#                num-iters=85 nj=2..12 num-params=6.8M dim=43+100->3328 combine=-0.215->-0.211
-#                xent:train/valid[55,84,final]=(-2.44,-2.32,-2.32/-2.63,-2.57,-2.56)
-#                logprob:train/valid[55,84,final]=(-0.214,-0.192,-0.191/-0.281,-0.276,-0.275)
+# 304-lithuanian   | %WER 42.6 | 20041 61492 | 60.3 29.6 10.1 2.9 42.6 29.2 | -0.226 | exp/chain_cleaned/tdnn_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
+#                  num-iters=48 nj=2..12 num-params=6.7M dim=43+100->3273 combine=-0.192->-0.179
+#                  xent:train/valid[31,47,final]=(-2.47,-2.34,-2.33/-2.66,-2.57,-2.57)
+#                  logprob:train/valid[31,47,final]=(-0.191,-0.163,-0.162/-0.246,-0.242,-0.243)
+# 206-zulu         | %WER 54.6 | 22805 52162 | 49.1 39.7 11.2 3.7 54.6 31.1 | -0.567 | exp/chain_cleaned/tdnn_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+#                  num-iters=66 nj=2..12 num-params=6.7M dim=43+100->3274 combine=-0.236->-0.227
+#                  xent:train/valid[43,65,final]=(-2.59,-2.46,-2.46/-2.73,-2.67,-2.66)
+#                  logprob:train/valid[43,65,final]=(-0.236,-0.208,-0.206/-0.289,-0.287,-0.286)
+# 104-pashto       | %WER 42.7 | 21825 101803 | 61.1 27.5 11.4 3.8 42.7 30.4 | -0.345 | exp/chain_cleaned/tdnn_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
+#                  num-iters=85 nj=2..12 num-params=6.8M dim=43+100->3328 combine=-0.215->-0.211
+#                  xent:train/valid[55,84,final]=(-2.44,-2.32,-2.32/-2.63,-2.57,-2.56)
+#                  logprob:train/valid[55,84,final]=(-0.214,-0.192,-0.191/-0.281,-0.276,-0.275)
 
 
 set -e -o pipefail

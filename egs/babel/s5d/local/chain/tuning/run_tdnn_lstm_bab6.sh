@@ -7,6 +7,10 @@
 #                  num-iters=48 nj=2..12 num-params=13.8M dim=43+100->3273 combine=-0.189->-0.174
 #                  xent:train/valid[31,47,final]=(-2.02,-1.74,-1.72/-2.29,-2.17,-2.17)
 #                  logprob:train/valid[31,47,final]=(-0.187,-0.155,-0.152/-0.246,-0.240,-0.240)
+# 206-zulu         | %WER 53.0 | 22805 52162 | 50.5 38.2 11.3 3.5 53.0 31.0 | -0.564 | exp/chain_cleaned/tdnn_lstm_bab6_sp/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+#                  num-iters=66 nj=2..12 num-params=13.8M dim=43+100->3274 combine=-0.220->-0.209
+#                  xent:train/valid[43,65,final]=(-2.06,-1.81,-1.80/-2.33,-2.26,-2.25)
+#                  logprob:train/valid[43,65,final]=(-0.222,-0.186,-0.183/-0.283,-0.285,-0.283)
 # 104-pashto       | %WER 41.4 | 21825 101803 | 62.9 27.0 10.1 4.3 41.4 30.1 | -0.494 | exp/chain_cleaned/tdnn_lstm_bab6_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
 #                  num-iters=85 nj=2..12 num-params=13.8M dim=43+100->3328 combine=-0.192->-0.186
 #                  xent:train/valid[55,84,final]=(-1.93,-1.69,-1.69/-2.25,-2.17,-2.16)
