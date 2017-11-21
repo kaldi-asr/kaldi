@@ -7,21 +7,20 @@
 ###############################################################################
 #
 # This script takes a kaldi formatted lexicon prepared by
-#  
+#
 #  local/prepare_lexicon.pl (i.e. a lexicon that uses the X-SAMPA phoneset)
-# 
+#
 # and makes language specific modifications to further standardize the
 # lexicons across languages. These modifications are based on language speficic
-# diphthong and tone files that contain a mapping from diphthongs to other 
+# diphthong and tone files that contain a mapping from diphthongs to other
 # X-SAMPA phonemes, and from the Tone markers to a standardized tone marking
 # (see universal_phone_maps/tones/README.txt for more info about tone).
-# 
-# This script returns the resulting standardized lexicon. 
+#
+# This script returns the resulting standardized lexicon.
 #
 ###############################################################################
 
 from __future__ import print_function
-import sys
 import argparse
 import codecs
 import os
@@ -40,6 +39,7 @@ def main():
     args = parse_input()
 
     # load diphthong map
+    dp_map = {}
     try:
         with codecs.open(args.diphthongs, "r", encoding="utf-8") as f:
             for l in f:
@@ -48,8 +48,8 @@ def main():
     except IOError:
         dp_map = {}
 
-    
     # load tone map
+    tone_map = {}
     try:
         with codecs.open(args.tones, "r", encoding="utf-8") as f:
             for l in f:
@@ -58,7 +58,6 @@ def main():
     except IOError:
         tone_map = {}
 
-    
     # Process lexicon
     lexicon_out = []
     with codecs.open(args.lexicon, "r", encoding="utf-8") as f:
@@ -82,7 +81,7 @@ def main():
                             new_tags += t
                 except ValueError:
                     new_tags = []
-                
+
                 # Process diphthongs
                 try:
                     new_phones = dp_map[p]
@@ -92,9 +91,9 @@ def main():
                 # Join tags and phones
                 for nph in new_phones:
                     new_pron += "_".join([nph] + new_tags) + " "
-    
+
             lexicon_out.append((word, new_pron))
-    
+
     # Write new lexicon. Check output path and create any necessary
     # intermediate directories
     if (not os.path.exists(os.path.dirname(args.olexicon))):
