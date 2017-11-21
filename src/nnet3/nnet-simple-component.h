@@ -515,15 +515,15 @@ class AffineComponent: public UpdatableComponent {
   AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
                   const CuVectorBase<BaseFloat> &bias_params,
                   BaseFloat learning_rate);
-  void Init(int32 input_dim, int32 output_dim,
-            BaseFloat param_stddev, BaseFloat bias_stddev);
-  void Init(std::string matrix_filename);
-
   // This function resizes the dimensions of the component, setting the
   // parameters to zero, while leaving any other configuration values the same.
   virtual void Resize(int32 input_dim, int32 output_dim);
 
+  void Init(int32 input_dim, int32 output_dim,
+            BaseFloat param_stddev, BaseFloat bias_stddev);
  protected:
+  void Init(std::string matrix_filename);
+
   friend class NaturalGradientAffineComponent;
   // This function Update() is for extensibility; child classes may override
   // this, e.g. for natural gradient update.
@@ -595,10 +595,6 @@ class BlockAffineComponent : public UpdatableComponent {
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
 
-  // BlockAffine-specific functions.
-  void Init(int32 input_dim, int32 output_dim, int32 num_blocks,
-            BaseFloat param_stddev, BaseFloat bias_mean,
-            BaseFloat bias_stddev);
   explicit BlockAffineComponent(const BlockAffineComponent &other);
   explicit BlockAffineComponent(const RepeatedAffineComponent &rac);
  protected:
@@ -614,6 +610,11 @@ class BlockAffineComponent : public UpdatableComponent {
   CuVector<BaseFloat> bias_params_;
   int32 num_blocks_;
  private:
+  // BlockAffine-specific functions.
+  void Init(int32 input_dim, int32 output_dim, int32 num_blocks,
+            BaseFloat param_stddev, BaseFloat bias_mean,
+            BaseFloat bias_stddev);
+
   const BlockAffineComponent &operator = (const BlockAffineComponent &other); // Disallow.
 };
 
@@ -663,11 +664,12 @@ class RepeatedAffineComponent: public UpdatableComponent {
   const CuMatrix<BaseFloat> &LinearParams() const { return linear_params_; }
   explicit RepeatedAffineComponent(const RepeatedAffineComponent &other);
 
+  friend BlockAffineComponent::BlockAffineComponent(const RepeatedAffineComponent &rac);
+ protected:
   void Init(int32 input_dim, int32 output_dim, int32 num_repeats,
             BaseFloat param_stddev, BaseFloat bias_mean,
             BaseFloat bias_stddev);
-  friend BlockAffineComponent::BlockAffineComponent(const RepeatedAffineComponent &rac);
- protected:
+
   // This function Update(), called from backprop, is broken out for
   // extensibility to natural gradient update.
   virtual void Update(
@@ -853,13 +855,6 @@ class NaturalGradientAffineComponent: public AffineComponent {
   virtual std::string Type() const { return "NaturalGradientAffineComponent"; }
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
-  void Init(int32 input_dim, int32 output_dim,
-            BaseFloat param_stddev, BaseFloat bias_stddev, BaseFloat bias_mean,
-            int32 rank_in, int32 rank_out, int32 update_period,
-            BaseFloat num_samples_history, BaseFloat alpha);
-  void Init(int32 rank_in, int32 rank_out, int32 update_period,
-            BaseFloat num_samples_history,
-            BaseFloat alpha, std::string matrix_filename);
   // this constructor does not really initialize, use Init() or Read().
   NaturalGradientAffineComponent();
   void Resize(int32 input_dim, int32 output_dim);
@@ -873,6 +868,14 @@ class NaturalGradientAffineComponent: public AffineComponent {
   explicit NaturalGradientAffineComponent(
       const NaturalGradientAffineComponent &other);
  private:
+  void Init(int32 input_dim, int32 output_dim,
+            BaseFloat param_stddev, BaseFloat bias_stddev, BaseFloat bias_mean,
+            int32 rank_in, int32 rank_out, int32 update_period,
+            BaseFloat num_samples_history, BaseFloat alpha);
+  void Init(int32 rank_in, int32 rank_out, int32 update_period,
+            BaseFloat num_samples_history,
+            BaseFloat alpha, std::string matrix_filename);
+
   // disallow assignment operator.
   NaturalGradientAffineComponent &operator= (
       const NaturalGradientAffineComponent&);
