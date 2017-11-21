@@ -132,6 +132,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                     --momentum={momentum} \
                     --max-param-change={max_param_change} \
                     --backstitch-training-scale={backstitch_training_scale} \
+                    --l2-regularize-factor={l2_regularize_factor} \
                     --backstitch-training-interval={backstitch_training_interval} \
                     --srand={srand} \
                     {deriv_time_opts} "{raw_model}" "{egs_rspecifier}" \
@@ -145,6 +146,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                 cache_io_opts=cache_io_opts,
                 verbose_opt=verbose_opt,
                 momentum=momentum, max_param_change=max_param_change,
+                l2_regularize_factor=1.0/num_jobs,
                 backstitch_training_scale=backstitch_training_scale,
                 backstitch_training_interval=backstitch_training_interval,
                 deriv_time_opts=" ".join(deriv_time_opts),
@@ -220,22 +222,16 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         # Runs in the background
         compute_progress(dir=dir, iter=iter, egs_dir=egs_dir,
                          run_opts=run_opts,
-                         get_raw_nnet_from_am=get_raw_nnet_from_am,
-                         use_multitask_egs=use_multitask_egs)
+                         get_raw_nnet_from_am=get_raw_nnet_from_am)
 
     do_average = (iter > 0)
 
-    if get_raw_nnet_from_am:
-        raw_model_string = ("nnet3-am-copy --raw=true --learning-rate={0} "
-                            "--scale={1} {2}/{3}.mdl - |".format(
-                                learning_rate, shrinkage_value,
-                                dir, iter))
 
-    else:
-        raw_model_string = ("nnet3-copy --learning-rate={lr} --scale={s} "
-                            "{dir}/{iter}.raw - |".format(
-                                lr=learning_rate, s=shrinkage_value,
-                                dir=dir, iter=iter))
+    raw_model_string = ("nnet3-copy --learning-rate={lr} --scale={s} "
+                        "{dir}/{iter}.{suf} - |".format(
+                            lr=learning_rate, s=shrinkage_value,
+                            suf="mdl" if get_raw_nnet_from_am else "raw",
+                            dir=dir, iter=iter))
 
     raw_model_string = raw_model_string + dropout_edit_string
 
@@ -442,42 +438,17 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, run_opts,
 
 def compute_progress(dir, iter, egs_dir,
                      run_opts,
-                     get_raw_nnet_from_am=True,
-                     use_multitask_egs=False):
-    if get_raw_nnet_from_am:
-        prev_model = "nnet3-am-copy --raw=true {0}/{1}.mdl - |".format(
-               dir, iter - 1)
-        model = "nnet3-am-copy --raw=true {0}/{1}.mdl - |".format(dir, iter)
-    else:
-        prev_model = '{0}/{1}.raw'.format(dir, iter - 1)
-        model = '{0}/{1}.raw'.format(dir, iter)
-
-
-    scp_or_ark = "scp" if use_multitask_egs else "ark"
-    egs_suffix = ".scp" if use_multitask_egs else ".egs"
-
-    egs_rspecifier = "{0}:{1}/train_diagnostic{2}".format(
-        scp_or_ark, egs_dir, egs_suffix)
-
-    multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
-                             egs_dir,
-                             egs_prefix="train_diagnostic.",
-                             use_multitask_egs=use_multitask_egs)
+                     get_raw_nnet_from_am=True):
+    suffix = "mdl" if get_raw_nnet_from_am else "raw"
+    prev_model = '{0}/{1}.{2}'.format(dir, iter - 1, suffix)
+    model = '{0}/{1}.{2}'.format(dir, iter, suffix)
 
     common_lib.background_command(
             """{command} {dir}/log/progress.{iter}.log \
-                    nnet3-info "{model}" '&&' \
-                    nnet3-show-progress --use-gpu=no "{prev_model}" "{model}" \
-                    "ark,bg:nnet3-copy-egs {multitask_egs_opts} \
-                        {egs_rspecifier} ark:- | \
-                        nnet3-merge-egs --minibatch-size=1:64 ark:- \
-                        ark:- |" """.format(command=run_opts.command,
-                                            dir=dir,
-                                            iter=iter,
-                                            egs_rspecifier=egs_rspecifier,
-                                            model=model,
-                                            prev_model=prev_model,
-                                            multitask_egs_opts=multitask_egs_opts))
+                    nnet3-info {model} '&&' \
+                    nnet3-show-progress --use-gpu=no {prev_model} {model} """
+        ''.format(command=run_opts.command, dir=dir,
+                  iter=iter, model=model, prev_model=prev_model))
 
 
 def combine_models(dir, num_iters, models_to_combine, egs_dir,
@@ -500,17 +471,11 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
     models_to_combine.add(num_iters)
 
     for iter in sorted(models_to_combine):
-        if get_raw_nnet_from_am:
-            model_file = '{0}/{1}.mdl'.format(dir, iter)
-            if not os.path.exists(model_file):
-                raise Exception('Model file {0} missing'.format(model_file))
-            raw_model_strings.append(
-                '"nnet3-am-copy --raw=true {0} -|"'.format(model_file))
-        else:
-            model_file = '{0}/{1}.raw'.format(dir, iter)
-            if not os.path.exists(model_file):
-                raise Exception('Model file {0} missing'.format(model_file))
-            raw_model_strings.append(model_file)
+        suffix = "mdl" if get_raw_nnet_from_am else "raw"
+        model_file = '{0}/{1}.{2}'.format(dir, iter, suffix)
+        if not os.path.exists(model_file):
+            raise Exception('Model file {0} missing'.format(model_file))
+        raw_model_strings.append(model_file)
 
     if get_raw_nnet_from_am:
         out_model = ("| nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl "
@@ -694,10 +659,8 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
     else:
         egs_part = 'JOB'
 
-    if get_raw_nnet_from_am:
-        model = "nnet3-am-copy --raw=true {0}/{1}.mdl -|".format(dir, iter)
-    else:
-        model = "{dir}/{iter}.raw".format(dir=dir, iter=iter)
+    suffix = "mdl" if get_raw_nnet_from_am else "raw"
+    model = "{0}/{1}.{2}".format(dir, iter, suffix)
 
     common_lib.execute_command(
         """{command} JOB=1:{num_jobs_compute_prior} {prior_queue_opt} \

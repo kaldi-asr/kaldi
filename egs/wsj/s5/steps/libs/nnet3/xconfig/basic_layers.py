@@ -479,6 +479,8 @@ class XconfigOutputLayer(XconfigLayerBase):
         max-change=1.5 :  Can be used to change the max-change parameter in the
             affine component; this affects how much the matrix can change on each
             iteration.
+        l2-regularize=0.0:  Set this to a nonzero value (e.g. 1.0e-05) to
+            add l2 regularization on the parameter norm for the affine component.
         output-delay=0    :  Can be used to shift the frames on the output, equivalent
              to delaying labels by this many frames (positive value increases latency
              in online decoding but may help if you're using unidirectional LSTMs.
@@ -510,6 +512,7 @@ class XconfigOutputLayer(XconfigLayerBase):
                        'max-change': 1.5,
                        'param-stddev': 0.0,
                        'bias-stddev': 0.0,
+                       'l2-regularize': 0.0,
                        'output-delay': 0,
                        'ng-affine-options': ''
                       }
@@ -581,9 +584,14 @@ class XconfigOutputLayer(XconfigLayerBase):
         presoftmax_scale_file = self.config['presoftmax-scale-file']
         param_stddev = self.config['param-stddev']
         bias_stddev = self.config['bias-stddev']
+        l2_regularize = self.config['l2-regularize']
         output_delay = self.config['output-delay']
         max_change = self.config['max-change']
         ng_affine_options = self.config['ng-affine-options']
+        learning_rate_option = ('learning-rate-factor={0} '.format(learning_rate_factor) if
+                                learning_rate_factor != 1.0 else '')
+        l2_regularize_option = ('l2-regularize={0} '.format(l2_regularize)
+                                if l2_regularize != 0.0 else '')
 
         # note: ref.config is used only for getting the left-context and
         # right-context of the network;
@@ -596,11 +604,10 @@ class XconfigOutputLayer(XconfigLayerBase):
                     ' output-dim={2}'
                     ' param-stddev={3}'
                     ' bias-stddev={4}'
-                    ' max-change={5} {6} '
+                    ' max-change={5} {6} {7} {8}'
                     ''.format(self.name, input_dim, output_dim,
-                              param_stddev, bias_stddev, max_change, ng_affine_options) +
-                    ('learning-rate-factor={0} '.format(learning_rate_factor)
-                     if learning_rate_factor != 1.0 else ''))
+                              param_stddev, bias_stddev, max_change, ng_affine_options,
+                              learning_rate_option, l2_regularize_option))
             ans.append((config_name, line))
 
             line = ('component-node name={0}.affine'
@@ -673,6 +680,9 @@ class XconfigBasicLayer(XconfigLayerBase):
       add-log-stddev=False     [If true, the log of the stddev of the output of
                                 renorm layer is appended as an
                                 additional dimension of the layer's output]
+      l2-regularize=0.0       [Set this to a nonzero value (e.g. 1.0e-05) to
+                               add l2 regularization on the parameter norm for
+                                this component.
     """
     def __init__(self, first_token, key_to_value, prev_names=None):
         # Here we just list some likely combinations.. you can just add any
@@ -696,6 +706,7 @@ class XconfigBasicLayer(XconfigLayerBase):
                        'dropout-proportion': 0.5,  # dropout-proportion only
                                                    # affects layers with
                                                    # 'dropout' in the name.
+                       'l2-regularize': 0.0,
                        'add-log-stddev': False}
 
     def check_configs(self):
@@ -765,6 +776,9 @@ class XconfigBasicLayer(XconfigLayerBase):
         learning_rate_factor = self.config['learning-rate-factor']
         learning_rate_option = ('learning-rate-factor={0}'.format(learning_rate_factor)
                                 if learning_rate_factor != 1.0 else '')
+        l2_regularize = self.config['l2-regularize']
+        l2_regularize_option = ('l2-regularize={0}'.format(l2_regularize)
+                                if l2_regularize != 0.0 else '')
 
         # The output of the affine component needs to have one dimension fewer in order to
         # get the required output dim, if the final 'renorm' component has 'add-log-stddev' set
@@ -782,10 +796,10 @@ class XconfigBasicLayer(XconfigLayerBase):
                 ' input-dim={1}'
                 ' output-dim={2}'
                 ' max-change={3}'
-                ' {4} {5} '
+                ' {4} {5} {6}'
                 ''.format(self.name, input_dim, output_dim,
                           max_change, ng_affine_options,
-                          learning_rate_option))
+                          learning_rate_option, l2_regularize_option))
         configs.append(line)
 
         line = ('component-node name={0}.affine'
@@ -960,7 +974,11 @@ class XconfigAffineLayer(XconfigLayerBase):
 
     Parameters of the class, and their defaults:
       input='[-1]'             [Descriptor giving the input of the layer.]
-      dim=None                   [Output dimension of layer; defaults to the same as the input dim.]
+      dim=None                 [Output dimension of layer; defaults to the same as the input dim.]
+
+      l2-regularize=0.0       [Set this to a nonzero value (e.g. 1.0e-05) to
+                               add l2 regularization on the parameter norm
+                               for the affine component.]
     """
 
     def __init__(self, first_token, key_to_value, prev_names=None):
@@ -980,6 +998,7 @@ class XconfigAffineLayer(XconfigLayerBase):
                        'bias-stddev': 1.0,
                        'bias-mean': 0.0,
                        'max-change': 0.75,
+                       'l2-regularize': 0.0,
                        'learning-rate-factor': 1.0,
                        'ng-affine-options': ''}
 
@@ -1018,7 +1037,8 @@ class XconfigAffineLayer(XconfigLayerBase):
         output_dim = self.output_dim()
 
         option_string = ''
-        for key in ['param-stddev', 'bias-stddev', 'bias-mean', 'max-change']:
+        for key in ['param-stddev', 'bias-stddev', 'bias-mean', 'max-change',
+                    'l2-regularize']:
             option_string += ' {0}={1}'.format(key, self.config[key])
         option_string += self.config['ng-affine-options']
 

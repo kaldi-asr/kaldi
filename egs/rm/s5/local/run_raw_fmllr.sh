@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. cmd.sh
+. ./cmd.sh
 
 steps/align_raw_fmllr.sh --nj 8 --cmd "$train_cmd" --use-graphs true \
     data/train data/lang exp/tri2b exp/tri2b_ali_raw

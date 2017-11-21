@@ -3,7 +3,7 @@
 # Author : Gaurav Kumar (Johns Hopkins University)
 # Gets a report on what the best word error rate was and which iteration
 # led to it. This is needed both for reporting purposes and for setting
-# the acoustic scale weight which extracting lattices. 
+# the acoustic scale weight which extracting lattices.
 # This script is specific to my partitions and needs to be made more general
 # or modified
 

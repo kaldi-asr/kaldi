@@ -15,7 +15,7 @@ use_gpu=true
 dir=exp/nnet2_multicondition/nnet_ms_a
 
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

@@ -3,7 +3,7 @@
 # Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski)
 # AMI Corpus dev/eval data preparation
 
-. path.sh
+. ./path.sh
 
 #check existing directories
 if [ $# != 3 ]; then

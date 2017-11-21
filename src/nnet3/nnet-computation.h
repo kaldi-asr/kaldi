@@ -158,7 +158,6 @@ struct ComputationRequest {
 };
 
 
-
 /**
    CommandType is an enum that describes the category of the command used in
    the NnetComputation.  We declare it outside that class because it's so

@@ -191,7 +191,7 @@ wait;
 if [ $stage -le 17 ]; then
   # prepare the build for distribution
   cat <<EOF >${dir}_online/sample_decode.sh
-. cmd.sh
+. ./cmd.sh
 data_dir=\$1  # e.g. data/dev_hires (to be prepared by the user, see egs/tedlium/run.sh for examples)
 model_dir=\$2 # e.g. exp/nnet2_online/nnet_ms_sp_online (provided in the distribution)
 
