@@ -1851,6 +1851,48 @@ template<typename Real> static void UnitTestDotprod() {
   }
 }
 
+
+template<class Real>
+void PlaceNansInGaps(Matrix<Real> *mat) {
+  int32 num_rows = mat->NumRows(), num_cols = mat->NumCols(),
+      stride = mat->Stride();
+  BaseFloat not_a_number = nan(" ");  // nan is from <cmath>
+  for (int32 r = 0; r + 1 < num_rows; r++) {
+    for (int32 j = num_cols; j < stride; j++) {
+      if (RandInt(0, 1) == 0)
+        (mat->RowData(r))[j] = not_a_number;
+      else
+        (mat->RowData(r))[j] = RandGauss() * 1.5e+31;
+    }
+  }
+}
+
+
+/**
+ * Make sure that when Resize() is called with resize_type = kCopyData
+ * and a stride_type different from this's stride_type, the resized
+ * matrix is equivalent to the original matrix (modulo the stride).
+ */
+template<typename Real>
+static void UnitTestResizeCopyDataDifferentStrideType() {
+  for (size_t i = 0; i < 10; i++) {
+    MatrixIndexT num_rows = Rand() % 10, num_cols = Rand() % 10;
+    if (num_rows * num_cols == 0) num_rows = num_cols = 0;
+    MatrixStrideType src_stride_type = (Rand() % 2 == 0) ?
+      kDefaultStride : kStrideEqualNumCols;
+    // Always pick the other stride type.
+    MatrixStrideType resize_stride_type = (src_stride_type == kDefaultStride) ?
+      kStrideEqualNumCols : kDefaultStride;
+    Matrix<Real> src(num_rows, num_cols, kSetZero, src_stride_type);
+    Matrix<Real> clone(src);
+    PlaceNansInGaps(&clone);
+    src.Resize(num_rows, num_cols, kCopyData, resize_stride_type);
+    PlaceNansInGaps(&src);
+    AssertEqual(src, clone);
+  }
+}
+
+
 template<typename Real>
 static void UnitTestResize() {
   for (size_t i = 0; i < 10; i++) {
@@ -4426,22 +4468,6 @@ static void UnitTestRandCategorical() {
 }
 
 
-template<class Real>
-void PlaceNansInGaps(Matrix<Real> *mat) {
-  int32 num_rows = mat->NumRows(), num_cols = mat->NumCols(),
-      stride = mat->Stride();
-  BaseFloat not_a_number = nan(" ");  // nan is from <cmath>
-  for (int32 r = 0; r + 1 < num_rows; r++) {
-    for (int32 j = num_cols; j < stride; j++) {
-      if (RandInt(0, 1) == 0)
-        (mat->RowData(r))[j] = not_a_number;
-      else
-        (mat->RowData(r))[j] = RandGauss() * 1.5e+31;
-    }
-  }
-}
-
-
 template <class Real>
 static void UnitTestAddMatMatNans() {
   for (int32 i = 0; i < 200; i++) {
@@ -4547,6 +4573,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestCompressedMatrix2<Real>();
   UnitTestExtractCompressedMatrix<Real>();
   UnitTestResize<Real>();
+  UnitTestResizeCopyDataDifferentStrideType<Real>();
   UnitTestNonsymmetricPower<Real>();
   UnitTestEigSymmetric<Real>();
   KALDI_LOG << " Point A";
