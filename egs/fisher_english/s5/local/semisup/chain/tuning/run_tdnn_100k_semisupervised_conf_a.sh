@@ -2,11 +2,14 @@
 
 # This script is semi-supervised training with 100 hours supervised data
 # and 250 hours unsupervised data with naive splitting.
+
+# Unsupervised set: train_unsup100k_250k
 # unsup_frames_per_eg=150
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0
 # Weights for phone LM (supervised, unsupervises): 3,2
 # LM for decoding unsupervised data: 4gram
+# Supervision: Naive split lattices
 
 set -u -e -o pipefail
 
@@ -16,12 +19,14 @@ nj=40
 decode_nj=40
 exp=exp/semisup_100k
 
+# Datasets -- Expects data/$supervised_set and data/$unsupervised_set to be 
+# present
 supervised_set=train_sup
 unsupervised_set=train_unsup100k_250k
-semisup_train_set=    # semisup100k_250k
 
-tdnn_affix=7b  # affix for the supervised chain-model directory
-train_supervised_opts="--stage -10 --train-stage -10"
+# Seed model options
+tdnn_affix=7a  # affix for the supervised chain-model directory
+seed_model_training_command="local/chain/tuning/run_tdnn_100k_a.sh --stage -10 --train-stage -10"
 
 nnet3_affix=    # affix for nnet3 and chain dir -- relates to i-vector used
 
@@ -32,8 +37,12 @@ unsup_frames_per_eg=  # if empty will be equal to the supervised model's config 
 lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices
 lattice_prune_beam=4.0  # If supplied will prune the lattices prior to getting egs for unsupervised data
 tolerance=1
-graph_affix=_sup100k   # can be used to decode the unsup data with another lm/graph
 phone_insertion_penalty=
+unsup_decoding_lang_affix=_sup100k   # can be used to decode the unsup data with another lm/graph
+unsup_decoding_lang=
+unsup_rescoring_lang_affix=_fg
+unsup_rescoring_lang=
+rescore_unsup_lattices=true
 
 # Semi-supervised options
 comb_affix=comb1a  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
@@ -41,11 +50,9 @@ supervision_weights=1.0,1.0
 lm_weights=3,2
 sup_egs_dir=
 unsup_egs_dir=
-tree_affix=
+tree_affix=bi_a
 unsup_egs_opts=
 apply_deriv_weights=true
-
-do_finetuning=false
 
 extra_left_context=0
 extra_right_context=0
@@ -59,13 +66,6 @@ minibatch_size="150=128/300=64"
 decode_iter=
 lang_test_suffix=
 
-finetune_stage=-2
-finetune_suffix=_finetune
-finetune_iter=final
-num_epochs_finetune=1
-finetune_xent_regularize=0.1
-finetune_opts="--chain.mmi-factor-schedule=0.05,0.05 --chain.smbr-factor-schedule=0.05,0.05"
-
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -73,9 +73,8 @@ echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./utils/parse_options.sh
 
-decode_affix=${decode_affix}${graph_affix}
+decode_affix=${decode_affix}${unsup_decoding_lang_affix}
 egs_affix=${egs_affix}_prun${lattice_prune_beam}_lmwt${lattice_lm_scale}_tol${tolerance}
-tree_affix=
 
 RANDOM=0
 
@@ -89,16 +88,16 @@ fi
 
 if false && [ $stage -le 1 ]; then
   echo "$0: chain training on the supervised subset data/${supervised_set}"
-  local/semisup/chain/run_tdnn_100k.sh $train_supervised_opts --remove-egs false \
+  $seed_model_training_command --remove-egs false \
                           --train-set $supervised_set --ivector-train-set $supervised_set \
                           --nnet3-affix "$nnet3_affix" --tdnn-affix "$tdnn_affix" --exp $exp
 fi
 
 extractor=$exp/nnet3${nnet3_affix}/extractor  # i-vector extractor
 chaindir=$exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp  # supervised seed model
-graphdir=$chaindir/graph${graph_affix}
+graphdir=$chaindir/graph${unsup_decoding_lang_affix}
 if [ ! -f $graphdir/HCLG.fst ]; then
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test${graph_affix} $chaindir $graphdir
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test${unsup_decoding_lang_affix} $chaindir $graphdir
 fi
 
 if [ $stage -le 2 ]; then
@@ -138,25 +137,30 @@ for dset in $unsupervised_set; do
   if [ $stage -le 5 ]; then
     echo "$0: getting the decoding lattices for the unsupervised subset using the chain model at: $chaindir"
     steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
-              --acwt 1.0 --post-decode-acwt 10.0 --write-compact false --skip-scoring true \
+              --acwt 1.0 --post-decode-acwt 10.0 --skip-scoring true \
               --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${unsupervised_set}_sp_hires \
               --scoring-opts "--min-lmwt 10 --max-lmwt 10" --determinize-opts "--word-determinize=false" \
               $graphdir data/${dset}_sp_hires $chaindir/decode_${dset}_sp${decode_affix}
   fi
 
-  if [ $stage -le 6 ]; then
-    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-      --write-compact false --determinize false --skip-scoring true \
-      data/lang_test${graph_affix} \
-      data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
-      $chaindir/decode_${dset}_sp${decode_affix} \
-      $chaindir/decode_${dset}_sp${decode_affix}_fg
-
+  if $rescore_unsup_lattices; then
+    if [ $stage -le 6 ]; then
+      steps/lmrescore_const_arpa_undeterminized.sh --cmd "$decode_cmd" \
+        --acwt 0.1 --beam 8.0  --skip-scoring true \
+        $unsup_decoding_lang $unsup_rescoring_lang \
+        data/${dset}_sp_hires \
+        $chaindir/decode_${dset}_sp${decode_affix} \
+        $chaindir/decode_${dset}_sp${decode_affix}${unsup_rescoring_affix}
+    fi
     ln -sf ../final.mdl $chaindir/decode_${dset}_sp${decode_affix}_fg/final.mdl
+  else
+    ln -sf ../final.mdl $chaindir/decode_${dset}_sp${decode_affix}/final.mdl
   fi
 done
 
-decode_affix=${decode_affix}_fg
+if $rescore_unsup_lattices; then
+  decode_affix=${decode_affix}_fg
+fi
 
 if [ $stage -le 8 ]; then
   steps/best_path_weights.sh --cmd "${train_cmd}" --acwt 0.1 \
@@ -391,69 +395,6 @@ if [ $stage -le 18 ]; then
           --nj $num_jobs --cmd "$decode_cmd" $iter_opts \
           --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
           $graph_dir data/${decode_set}_hires $dir/decode${lang_test_suffix}_${decode_set}${decode_iter:+_iter$decode_iter} || exit 1;
-      ) &
-  done
-fi
-
-if ! $do_finetuning; then
-  wait
-  exit 0
-fi
-
-if [ $stage -le 19 ]; then
-  mkdir -p ${dir}${finetune_suffix}
-  
-  for f in phone_lm.fst normalization.fst den.fst tree 0.trans_mdl cmvn_opts; do
-    cp ${dir}/$f ${dir}${finetune_suffix} || exit 1
-  done
-  cp -r ${dir}/configs ${dir}${finetune_suffix} || exit 1
-
-  nnet3-copy --edits="remove-output-nodes name=output;remove-output-nodes name=output-xent;rename-node old-name=output-0 new-name=output;rename-node old-name=output-0-xent new-name=output-xent" \
-    $dir/${finetune_iter}.mdl ${dir}${finetune_suffix}/init.raw
-
-  if [ $finetune_stage -le -1 ]; then
-    finetune_stage=-1
-  fi
-
-  steps/nnet3/chain/train.py --stage $finetune_stage \
-    --trainer.input-model ${dir}${finetune_suffix}/init.raw \
-    --egs.dir "$sup_egs_dir" \
-    --cmd "$decode_cmd" \
-    --feat.online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${supervised_set}_hires \
-    --feat.cmvn-opts "--norm-means=false --norm-vars=false" $finetune_opts \
-    --chain.xent-regularize $finetune_xent_regularize \
-    --chain.leaky-hmm-coefficient 0.1 \
-    --chain.l2-regularize 0.00005 \
-    --chain.apply-deriv-weights true \
-    --chain.lm-opts="--num-extra-lm-states=2000" \
-    --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width 150 \
-    --trainer.num-chunk-per-minibatch "150=64/300=32" \
-    --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs $num_epochs_finetune \
-    --trainer.optimization.num-jobs-initial 3 \
-    --trainer.optimization.num-jobs-final 16 \
-    --trainer.optimization.initial-effective-lrate 0.0001 \
-    --trainer.optimization.final-effective-lrate 0.00001 \
-    --trainer.max-param-change 2.0 \
-    --trainer.optimization.do-final-combination false \
-    --cleanup.remove-egs false \
-    --feat-dir data/${supervised_set}_hires \
-    --tree-dir $treedir \
-    --lat-dir $sup_lat_dir \
-    --dir ${dir}${finetune_suffix} || exit 1;
-fi
-
-dir=${dir}${finetune_suffix}
-
-if [ $stage -le 20 ]; then
-  for decode_set in dev test; do
-      (
-      num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-          --nj $num_jobs --cmd "$decode_cmd" \
-          --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
-          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_iter$decode_iter} || exit 1;
       ) &
   done
 fi

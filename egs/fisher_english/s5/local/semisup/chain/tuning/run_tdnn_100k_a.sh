@@ -2,17 +2,16 @@
 set -e
 
 # This is fisher chain recipe for training a model on a subset of around 100 hours.
-# This is similar to _b, but uses an extra layer.
 
 # configs for 'chain'
 stage=0
-tdnn_affix=7b
+tdnn_affix=7a
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
 train_set=train_sup
 ivector_train_set=train_sup
-tree_affix=
+tree_affix=bi_a
 nnet3_affix=
 chain_affix=
 exp=exp/semisup_100k
@@ -84,7 +83,8 @@ if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate -1 \
-      --cmd "$train_cmd" 4000 data/${train_set} $lang $gmm_dir $treedir || exit 1
+      --context-opts "--context-width=2 --central-position=1" \
+      --cmd "$train_cmd" 7000 data/${train_set} $lang $gmm_dir $treedir || exit 1
 fi
 
 if [ $stage -le 12 ]; then

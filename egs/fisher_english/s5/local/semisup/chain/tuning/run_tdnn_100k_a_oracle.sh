@@ -1,12 +1,12 @@
 #!/bin/bash
 set -e
 
-# This is fisher chain recipe for training a model on a subset of around 100 hours.
-# This is similar to _b, but uses an extra layer.
+# This is an oracle experiment using oracle transcription of 250 hours of 
+# unsupervised data, along with 100 hours of supervised data.
 
 # configs for 'chain'
 stage=0
-tdnn_affix=7c_oracle
+tdnn_affix=7a_oracle
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
