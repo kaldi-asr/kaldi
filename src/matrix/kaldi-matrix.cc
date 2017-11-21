@@ -676,13 +676,14 @@ void Matrix<Real>::Resize(const MatrixIndexT rows,
   // resize_type == kCopyData.
   if (resize_type == kCopyData) {
     if (this->data_ == NULL || rows == 0) resize_type = kSetZero;  // nothing to copy.
-    else if (rows == this->num_rows_ && cols == this->num_cols_) { return; } // nothing to do.
+    else if (rows == this->num_rows_ && cols == this->num_cols_ &&
+	     (stride_type == kDefaultStride || this->stride_ == this->num_cols_)) { return; } // nothing to do.
     else {
       // set tmp to a matrix of the desired size; if new matrix
       // is bigger in some dimension, zero it.
       MatrixResizeType new_resize_type =
           (rows > this->num_rows_ || cols > this->num_cols_) ? kSetZero : kUndefined;
-      Matrix<Real> tmp(rows, cols, new_resize_type);
+      Matrix<Real> tmp(rows, cols, new_resize_type, stride_type);
       MatrixIndexT rows_min = std::min(rows, this->num_rows_),
           cols_min = std::min(cols, this->num_cols_);
       tmp.Range(0, rows_min, 0, cols_min).

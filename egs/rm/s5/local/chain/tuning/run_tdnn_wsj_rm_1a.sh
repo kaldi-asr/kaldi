@@ -167,7 +167,7 @@ if [ $stage -le 8 ]; then
     --feat.online-ivector-dir "$ivector_dir" \
     --chain.xent-regularize $xent_regularize \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
-    --chain.xent-regularize 0.1 \
+    --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
