@@ -19,8 +19,6 @@
 
 #include "chain/chain-supervision.h"
 #include "lat/lattice-functions.h"
-#include "lat/push-lattice.h"
-#include "lat/sausages.h"
 #include "util/text-utils.h"
 #include "hmm/hmm-utils.h"
 #include <numeric>
@@ -79,11 +77,6 @@ void SupervisionOptions::Check() const {
                left_tolerance + right_tolerance + 1 >= frame_subsampling_factor);
 
   KALDI_ASSERT(lm_scale >= 0.0 && lm_scale < 1.0);
-
-  if (!silence_phones_str.empty()) {
-    KALDI_ASSERT(left_tolerance_silence >= 0 && right_tolerance_silence >= 0 &&
-                 left_tolerance_silence + right_tolerance_silence + 1 >= frame_subsampling_factor);
-  }
 }
 
 bool AlignmentToProtoSupervision(const SupervisionOptions &opts,
@@ -151,28 +144,11 @@ bool ProtoSupervision::operator == (const ProtoSupervision &other) const {
           fst::Equal(fst, other.fst));
 }
 
-///void PushInLog(fst::VectorFst<StdArc> *fst) {
-///  fst::VectorFst<fst::LogArc> *fst_log = new VectorFst<fst::LogArc>;
-///  fst::Cast(*fst, fst_log);
-///  fst::Push(fst_log);
-///  fst::Cast(*fst_log, fst);
-///}
-
 bool PhoneLatticeToProtoSupervisionInternalSimple(
     const SupervisionOptions &opts,
     const CompactLattice &lat,
     ProtoSupervision *proto_supervision) {
   opts.Check();
-
-  ConstIntegerSet<int32> silence_set;
-  if (!opts.silence_phones_str.empty()) {
-    std::vector<int32> silence_phones;
-    if (!SplitStringToIntegers(opts.silence_phones_str, ":,", false, 
-                               &silence_phones))
-      KALDI_ERR << "Invalid silence-phones string " << opts.silence_phones_str;
-    silence_set.Init(silence_phones);
-  }
-
   if (lat.NumStates() == 0) {
     KALDI_WARN << "Empty lattice provided";
     return false;
@@ -200,7 +176,7 @@ bool PhoneLatticeToProtoSupervisionInternalSimple(
       int32 phone = lat_arc.ilabel;  // It's an acceptor so ilabel == ollabel.
       if (phone == 0) {
         KALDI_WARN << "CompactLattice has epsilon arc.  Unexpected.";
-        continue;
+        return false;
       }
       proto_supervision->fst.AddArc(state,
         fst::StdArc(phone, phone,
@@ -211,18 +187,12 @@ bool PhoneLatticeToProtoSupervisionInternalSimple(
 
       int32 left_tolerance = opts.left_tolerance;
       int32 right_tolerance = opts.right_tolerance;
-      if (!opts.silence_phones_str.empty()) {
-        if (silence_set.count(phone) > 0) {
-          left_tolerance = opts.left_tolerance_silence;
-          right_tolerance = opts.right_tolerance_silence;
-        }
-      }
-
+      
       int32 t_begin = std::max<int32>(0, (state_time - left_tolerance)),
               t_end = std::min<int32>(num_frames,
                                       (next_state_time + right_tolerance)),
- t_begin_subsampled = (t_begin + factor - 1)/ factor,
-   t_end_subsampled = (t_end + factor - 1)/ factor;
+              t_begin_subsampled = (t_begin + factor - 1)/ factor,
+              t_end_subsampled = (t_end + factor - 1)/ factor;
     for (int32 t_subsampled = t_begin_subsampled;
          t_subsampled < t_end_subsampled; t_subsampled++)
       proto_supervision->allowed_phones[t_subsampled].push_back(phone);
@@ -248,153 +218,16 @@ bool PhoneLatticeToProtoSupervisionInternalSimple(
   return true;
 }
 
-bool PhoneLatticeToProtoSupervisionInternalMbr(
-    const SupervisionOptions &opts,
-    const CompactLattice &lat,
-    ProtoSupervision *proto_supervision) {
-  opts.Check();
-
-  ConstIntegerSet<int32> silence_set;
-  if (!opts.silence_phones_str.empty()) {
-    std::vector<int32> silence_phones;
-    if (!SplitStringToIntegers(opts.silence_phones_str, ":,", false, 
-                               &silence_phones))
-      KALDI_ERR << "Invalid silence-phones string " << opts.silence_phones_str;
-    silence_set.Init(silence_phones);
-  }
-
-  if (lat.NumStates() == 0) {
-    KALDI_WARN << "Empty lattice provided";
-    return false;
-  }
-
-  MinimumBayesRisk mbr(lat);
-  const std::vector<std::vector<std::pair<int32, BaseFloat> > > &sausage_stats 
-    = mbr.GetSausageStats();
-
-  int32 num_states = lat.NumStates();
-  proto_supervision->fst.DeleteStates();
-  proto_supervision->fst.ReserveStates(sausage_stats.size() + 1);
-  std::vector<int32> state_times;
-  int32 num_frames = CompactLatticeStateTimes(lat, &state_times),
-      factor = opts.frame_subsampling_factor,
-    num_frames_subsampled = (num_frames + factor - 1) / factor;
-
-  proto_supervision->allowed_phones.clear();
-  proto_supervision->allowed_phones.resize(num_frames_subsampled);
-
-  for (int32 state = 0; state < num_states; state++) {
-    int32 state_time = state_times[state];
-    for (fst::ArcIterator<CompactLattice> aiter(lat, state); !aiter.Done();
-         aiter.Next()) {
-      const CompactLatticeArc &lat_arc = aiter.Value();
-      int32 next_state_time = state_time + lat_arc.weight.String().size();
-      int32 phone = lat_arc.ilabel;  // It's an acceptor so ilabel == ollabel.
-      if (phone == 0) {
-        KALDI_WARN << "CompactLattice has epsilon arc.  Unexpected.";
-        continue;
-      }
-
-      int32 left_tolerance = opts.left_tolerance;
-      int32 right_tolerance = opts.right_tolerance;
-      if (!opts.silence_phones_str.empty()) {
-        if (silence_set.count(phone) > 0) {
-          left_tolerance = opts.left_tolerance_silence;
-          right_tolerance = opts.right_tolerance_silence;
-        }
-      }
-
-      int32 t_begin = std::max<int32>(0, (state_time - left_tolerance)),
-              t_end = std::min<int32>(num_frames,
-                                      (next_state_time + right_tolerance)),
- t_begin_subsampled = (t_begin + factor - 1)/ factor,
-   t_end_subsampled = (t_end + factor - 1)/ factor;
-    for (int32 t_subsampled = t_begin_subsampled;
-         t_subsampled < t_end_subsampled; t_subsampled++)
-      proto_supervision->allowed_phones[t_subsampled].push_back(phone);
-    }
-    if (lat.Final(state) != CompactLatticeWeight::Zero()) {
-      if (state_times[state] != num_frames) {
-        KALDI_WARN << "Time of final state " << state << " in lattice is "
-                   << "not equal to number of frames " << num_frames
-                   << ".  Are you sure the lattice is phone-aligned? "
-                   << "Rejecting it.";
-        return false;
-      }
-    }
-  }
-
-  proto_supervision->fst.AddState();
-  proto_supervision->fst.SetStart(0);
-  for (int32 n = 0; n < sausage_stats.size(); n++) {
-    int32 s = proto_supervision->fst.AddState();
-    KALDI_ASSERT(s == n + 1);
-
-    const std::vector<std::pair<int32, BaseFloat> > &sausage_segment = 
-      sausage_stats[n];
-    std::vector<std::pair<int32, BaseFloat> >::const_iterator it =
-      sausage_segment.begin(), end = sausage_segment.end();
-
-    auto max_it = std::max_element(sausage_segment.begin(), end, 
-        [](const std::pair<int32, BaseFloat> &left, const std::pair<int32, BaseFloat> &right) {
-        return left.second < right.second;
-        });
-    BaseFloat max_prob = max_it->second;
-
-    for (; it != end; ++it) {
-      int32 phone = it->first;
-      BaseFloat prob = it->second;
-      if (prob < opts.min_prob) continue;  // skip low-probability phone
-
-      proto_supervision->fst.AddArc(n,
-        fst::StdArc(phone, phone,
-                    fst::TropicalWeight(
-                      opts.arc_scale * (Log(prob) - Log(max_prob)) 
-                      + opts.phone_ins_penalty),
-                    n + 1));
-    }
-  }
-
-  proto_supervision->fst.SetFinal(sausage_stats.size(), 
-                                  fst::TropicalWeight::One());
-
-  for (int32 t_subsampled = 0; t_subsampled < num_frames_subsampled;
-       t_subsampled++) {
-    KALDI_ASSERT(!proto_supervision->allowed_phones[t_subsampled].empty());
-    SortAndUniq(&(proto_supervision->allowed_phones[t_subsampled]));
-  }
-
-  if (GetVerboseLevel() > 1) {
-    std::cerr << "proto-supervision";
-    fst::WriteFstKaldi(std::cerr, false, proto_supervision->fst);
-  }
-
-  fst::RmEpsilon(&(proto_supervision->fst));
-  if (!TryDeterminizeMinimize(kSupervisionMaxStates, &(proto_supervision->fst))) {
-    KALDI_WARN << "Failed to determinize sausage proto-supervision";
-    return false;
-  }
-
-  return true;
-}
-
 bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
                                     const CompactLattice &lat,
                                     ProtoSupervision *proto_supervision) {
 
-  if (!opts.use_mbr_decode) {
-    if (!PhoneLatticeToProtoSupervisionInternalSimple(opts, lat, proto_supervision))
-      return false;
-    if (opts.lm_scale != 0.0)
-      fst::Push(&(proto_supervision->fst),
-                fst::REWEIGHT_TO_INITIAL, fst::kDelta, true);
-  } else {
-    if (!PhoneLatticeToProtoSupervisionInternalMbr(opts, lat, proto_supervision))
-      return false;
+  if (!PhoneLatticeToProtoSupervisionInternalSimple(opts, lat, proto_supervision))
+    return false;
+  if (opts.lm_scale != 0.0)
     fst::Push(&(proto_supervision->fst),
               fst::REWEIGHT_TO_INITIAL, fst::kDelta, true);
-  }
-    
+  
   return true;
 }
 
@@ -996,6 +829,7 @@ void GetWeightsForRanges(int32 range_length,
     }
   }
 }
+
 
 }  // namespace chain
 }  // namespace kaldi

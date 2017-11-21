@@ -44,11 +44,9 @@ int main(int argc, char *argv[]) {
         "              words.txt ark:in.lats rnnlm ark:out.lats\n";
 
     ParseOptions po(usage);
-    bool write_compact = true;
     int32 max_ngram_order = 3;
     BaseFloat lm_scale = 1.0;
 
-    po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model "
                 "costs");
     po.Register("max-ngram-order", &max_ngram_order,
@@ -86,45 +84,15 @@ int main(int argc, char *argv[]) {
     KaldiTfRnnlmWrapper rnnlm(opts, rnn_word_list, word_symbols_rxfilename,
                                 unk_prob_file, rnnlm_rxfilename);
 
-    SequentialCompactLatticeReader compact_lattice_reader;
-    SequentialLatticeReader lattice_reader;
-
-    CompactLatticeWriter compact_lattice_writer;
-    LatticeWriter lattice_writer; 
-    
-    if (write_compact) {
-      compact_lattice_reader.Open(lats_rspecifier);
-      compact_lattice_writer.Open(lats_wspecifier);
-    } else {
-      lattice_reader.Open(lats_rspecifier);
-      lattice_writer.Open(lats_wspecifier);
-    }
+    // Reads and writes as compact lattice.
+    SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
+    CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
 
     int32 n_done = 0, n_fail = 0;
-    for (; write_compact ? !compact_lattice_reader.Done() : !lattice_reader.Done();        
-           write_compact ? compact_lattice_reader.Next() : lattice_reader.Next()) {
-      std::string key;
-      CompactLattice clat;
-        
-      // Compute a map from each (t, tid) to (sum_of_acoustic_scores, count)
-      unordered_map<std::pair<int32,int32>, std::pair<BaseFloat, int32>,
-                                          PairHasher<int32> > acoustic_scores;
-
-      if (write_compact) {
-        key = compact_lattice_reader.Key();
-        clat = compact_lattice_reader.Value();
-        compact_lattice_reader.FreeCurrent();
-      } else {
-        key = lattice_reader.Key();
-        const Lattice &lat = lattice_reader.Value();
-
-        // Compute a map from each (t, tid) to (sum_of_acoustic_scores, count)
-        ComputeAcousticScoresMap(lat, &acoustic_scores);
-
-        ConvertLattice(lat, &clat);
-
-        lattice_reader.FreeCurrent();
-      }
+    for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
+      std::string key = compact_lattice_reader.Key();
+      CompactLattice clat = compact_lattice_reader.Value();
+      compact_lattice_reader.FreeCurrent();
 
       if (lm_scale != 0.0) {
         // Before composing with the LM FST, we scale the lattice weights
@@ -155,34 +123,13 @@ int main(int argc, char *argv[]) {
               << " (incompatible LM?)";
           n_fail++;
         } else {
-          if (write_compact) {
-            compact_lattice_writer.Write(key, determinized_clat);
-          } else {
-            Lattice out_lat;
-            fst::ConvertLattice(determinized_clat, &out_lat);
-
-            // Replace each arc (t, tid) with the averaged acoustic score from
-            // the computed map
-            ReplaceAcousticScoresFromMap(acoustic_scores, &out_lat);
-            lattice_writer.Write(key, out_lat);
-          }
+          compact_lattice_writer.Write(key, determinized_clat);
           n_done++;
         }
       } else {
         // Zero scale so nothing to do.
         n_done++;
-        
-        if (write_compact) {
-          compact_lattice_writer.Write(key, clat);
-        } else {
-          Lattice out_lat;
-          fst::ConvertLattice(clat, &out_lat);
-
-          // Replace each arc (t, tid) with the averaged acoustic score from
-          // the computed map
-          ReplaceAcousticScoresFromMap(acoustic_scores, &out_lat);
-          lattice_writer.Write(key, out_lat);
-        }
+        compact_lattice_writer.Write(key, clat);
       }
     }
 

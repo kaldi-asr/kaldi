@@ -142,8 +142,8 @@ int main(int argc, char *argv[]) {
                 << " (average num-frames = " << (sum_t / n_done) << ").";
     }
     KALDI_LOG << "Done " << n_done << " lattices, determinization finished "
-              << "earlier than specified by the beam on " << n_warn << " of "
-              << "these.";
+              << "earlier than specified by the beam (or output was empty) on "
+              << n_warn << " of these.";
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

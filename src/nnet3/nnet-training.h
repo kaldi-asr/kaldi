@@ -36,13 +36,13 @@ struct NnetTrainerOptions {
   int32 print_interval;
   bool debug_computation;
   BaseFloat momentum;
+  BaseFloat l2_regularize_factor;
   BaseFloat backstitch_training_scale;
   int32 backstitch_training_interval;
   std::string read_cache;
   std::string write_cache;
   bool binary_write_cache;
   BaseFloat max_param_change;
-  std::string objective_scales_str;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
   CachingOptimizingCompilerOptions compiler_config;
@@ -52,6 +52,7 @@ struct NnetTrainerOptions {
       print_interval(100),
       debug_computation(false),
       momentum(0.0),
+      l2_regularize_factor(1.0),
       backstitch_training_scale(0.0),
       backstitch_training_interval(1),
       binary_write_cache(true),
@@ -75,6 +76,14 @@ struct NnetTrainerOptions {
                    "so that the 'effective' learning rate is the same as "
                    "before (because momentum would normally increase the "
                    "effective learning rate by 1/(1-momentum))");
+    opts->Register("l2-regularize-factor", &l2_regularize_factor, "Factor that "
+                   "affects the strength of l2 regularization on model "
+                   "parameters.  The primary way to specify this type of "
+                   "l2 regularization is via the 'l2-regularize'"
+                   "configuration value at the config-file level. "
+                   " --l2-regularize-factor will be multiplied by the component-level "
+                   "l2-regularize values and can be used to correct for effects "
+                   "related to parallelization by model averaging.");
     opts->Register("backstitch-training-scale", &backstitch_training_scale,
                    "backstitch training factor. "
                    "if 0 then in the normal training mode. It is referred as "
@@ -89,10 +98,6 @@ struct NnetTrainerOptions {
                    "write the cached computation to");
     opts->Register("binary-write-cache", &binary_write_cache, "Write "
                    "computation cache in binary mode");
-    opts->Register("objective-scales", &objective_scales_str,
-                   "Objective scales for the outputs specified as "
-                   "a comma-separated list of pairs "
-                   "<output-0>:<scale-0>,<output-1>:<scale-1>...");
 
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);

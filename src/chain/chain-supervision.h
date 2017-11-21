@@ -53,24 +53,13 @@ struct SupervisionOptions {
   BaseFloat weight;
   BaseFloat lm_scale;
   BaseFloat phone_ins_penalty;
-  int32 left_tolerance_silence;
-  int32 right_tolerance_silence;
-  std::string silence_phones_str;
-  bool use_mbr_decode;
-  BaseFloat min_prob;
-  BaseFloat arc_scale;
 
   SupervisionOptions(): left_tolerance(5),
                         right_tolerance(5),
                         frame_subsampling_factor(1),
                         weight(1.0),
                         lm_scale(0.0),
-                        phone_ins_penalty(0.0),
-                        left_tolerance_silence(0),
-                        right_tolerance_silence(0),
-                        use_mbr_decode(false),
-                        min_prob(0.01),
-                        arc_scale(1.0) { }
+                        phone_ins_penalty(0.0) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("left-tolerance", &left_tolerance, "Left tolerance for "
@@ -89,20 +78,6 @@ struct SupervisionOptions {
                    "supervision fst.");
     opts->Register("phone-ins-penalty", &phone_ins_penalty,
                    "The penalty to penalize longer paths");
-    opts->Register("left-tolerance-silence", &left_tolerance_silence, "Left tolerance for "
-                   "shift in silence phone position relative to the alignment");
-    opts->Register("right-tolerance-silence", &right_tolerance_silence, "Right tolerance for "
-                   "shift in silence phone position relative to the alignment");
-    opts->Register("silence-phones", &silence_phones_str,
-                   "A comma separated list of silence phones");
-    opts->Register("use-mbr-decode", &use_mbr_decode,
-                   "Use MBR decoding to convert phone lattice to "
-                   "proto-supervision");
-    opts->Register("min-prob", &min_prob,
-                   "Minimum probability of sausage arc to keep. "
-                   "Applicable only when --use-mbr-decode is true.");
-    opts->Register("arc-scale", &arc_scale,
-                   "Arc scale for sausage arcs");
   }
   void Check() const;
 };

@@ -816,43 +816,6 @@ void UtteranceSplitter::GetGapSizes(int32 utterance_length,
 void UtteranceSplitter::GetChunksForUtterance(
     int32 utterance_length,
     std::vector<ChunkTimeInfo> *chunk_info) {
-
-  if (config_.no_chunking) {
-    int32 min_diff = 100;
-    int32 len_extend_context = 0;
-
-    for (std::vector<int32>::const_iterator it = config_.num_frames.begin();
-          it != config_.num_frames.end(); ++it) {
-      if (abs(utterance_length - *it) < abs(min_diff))
-        min_diff = utterance_length - *it;
-    }
-
-    if (min_diff != 0) {
-      KALDI_WARN << "No exact match found for the length " << utterance_length
-                 << " closest allowed length is off by " << min_diff
-                 << " frames. Will try to fix it..";
-
-      if (abs(min_diff) < 5)  // we assume possibly up to 5 frames from the end can be safely deleted
-        len_extend_context = -min_diff;  // let the code below do it
-      else  // unexpected
-        KALDI_ERR << "Too much length difference " << min_diff;
-    }
-
-    chunk_info->resize(1);
-    ChunkTimeInfo &info = (*chunk_info)[0];
-
-    info.first_frame = 0;
-    info.num_frames = utterance_length + len_extend_context;
-    info.left_context = (config_.left_context_initial >= 0 ?
-                         config_.left_context_initial : config_.left_context);
-    info.right_context = (config_.right_context_final >= 0 ?
-                          config_.right_context_final : config_.right_context);
-    
-    SetOutputWeights(utterance_length, chunk_info);
-    AccStatsForUtterance(utterance_length, *chunk_info);
-    return;
-  }
-
   std::vector<int32> chunk_sizes;
   GetChunkSizesForUtterance(utterance_length, &chunk_sizes);
   std::vector<int32> gaps(chunk_sizes.size());
@@ -1302,21 +1265,6 @@ void ExampleMerger::Finish() {
   stats_.PrintStats();
 }
 
-void ScaleFst(BaseFloat scale, fst::StdVectorFst *fst) {
-  typedef fst::StdArc Arc;
-  typedef Arc::StateId StateId;
-  typedef Arc::Weight Weight;
-  
-  for (StateId s = 0; s < fst->NumStates(); s++) {
-    for (fst::MutableArcIterator<fst::StdVectorFst> aiter(fst, s);
-         !aiter.Done(); aiter.Next()) {
-      Arc arc = aiter.Value();
-      Weight weight(arc.weight.Value() * scale);
-      arc.weight = weight;
-      aiter.SetValue(arc);
-    }
-  }
-}
 
 } // namespace nnet3
 } // namespace kaldi
