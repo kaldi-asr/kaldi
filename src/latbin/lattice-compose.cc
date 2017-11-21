@@ -22,7 +22,6 @@
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
-#include "lat/lattice-functions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -47,10 +46,8 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
-    bool write_compact = true;
     int32 num_states_cache = 50000;
     int32 phi_label = fst::kNoLabel; // == -1
-    po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");
     po.Register("phi-label", &phi_label, "If >0, the label on backoff arcs of the LM");
     po.Register("num-states-cache", &num_states_cache,
                 "Number of states we cache when mapping LM FST to lattice type. "
@@ -70,14 +67,9 @@ int main(int argc, char *argv[]) {
     int32 n_done = 0, n_fail = 0;
 
     SequentialLatticeReader lattice_reader1(lats_rspecifier1);
-    
-    CompactLatticeWriter compact_lattice_writer;
-    LatticeWriter lattice_writer;
+    // Write as compact lattice.
+    CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
 
-    if (write_compact)
-      compact_lattice_writer.Open(lats_wspecifier);
-    else
-      lattice_writer.Open(lats_wspecifier);
 
     if (ClassifyRspecifier(arg2, NULL, NULL) == kNoRspecifier) {
       std::string fst_rxfilename = arg2;
@@ -102,11 +94,6 @@ int main(int argc, char *argv[]) {
         std::string key = lattice_reader1.Key();
         KALDI_VLOG(1) << "Processing lattice for key " << key;
         Lattice lat1 = lattice_reader1.Value();
-        // Compute a map from each (t, tid) to (sum_of_acoustic_scores, count)
-        unordered_map<std::pair<int32,int32>, std::pair<BaseFloat, int32>,
-                                            PairHasher<int32> > acoustic_scores;
-        if (!write_compact)
-          ComputeAcousticScoresMap(lat1, &acoustic_scores);
         ArcSort(&lat1, fst::OLabelCompare<LatticeArc>());
         Lattice composed_lat;
         if (phi_label > 0) PhiCompose(lat1, mapped_fst2, phi_label, &composed_lat);
@@ -115,16 +102,9 @@ int main(int argc, char *argv[]) {
           KALDI_WARN << "Empty lattice for utterance " << key << " (incompatible LM?)";
           n_fail++;
         } else {
-          if (write_compact) {
-            CompactLattice clat;
-            ConvertLattice(composed_lat, &clat);
-            compact_lattice_writer.Write(key, clat);
-          } else {
-            // Replace each arc (t, tid) with the averaged acoustic score from
-            // the computed map
-            ReplaceAcousticScoresFromMap(acoustic_scores, &composed_lat);
-            lattice_writer.Write(key, composed_lat);
-          }
+          CompactLattice clat;
+          ConvertLattice(composed_lat, &clat);
+          compact_lattice_writer.Write(key, clat);
           n_done++;
         }
       }
@@ -157,11 +137,6 @@ int main(int argc, char *argv[]) {
           fst::ILabelCompare<LatticeArc> ilabel_comp;
           fst::ArcSort(&lat2, ilabel_comp);
         }
-        // Compute a map from each (t, tid) to (sum_of_acoustic_scores, count)
-        unordered_map<std::pair<int32,int32>, std::pair<BaseFloat, int32>,
-                                            PairHasher<int32> > acoustic_scores;
-        if (!write_compact)
-          ComputeAcousticScoresMap(lat1, &acoustic_scores);
 
         Lattice lat_out;
         if (phi_label > 0) {
@@ -174,16 +149,9 @@ int main(int argc, char *argv[]) {
           KALDI_WARN << "Empty lattice for utterance " << key << " (incompatible LM?)";
           n_fail++;
         } else {
-          if (write_compact) {
-            CompactLattice clat_out;
-            ConvertLattice(lat_out, &clat_out);
-            compact_lattice_writer.Write(key, clat_out);
-          } else {
-            // Replace each arc (t, tid) with the averaged acoustic score from
-            // the computed map
-            ReplaceAcousticScoresFromMap(acoustic_scores, &lat_out);
-            lattice_writer.Write(key, lat_out);
-          }
+          CompactLattice clat_out;
+          ConvertLattice(lat_out, &clat_out);
+          compact_lattice_writer.Write(key, clat_out);
           n_done++;
         }
       }

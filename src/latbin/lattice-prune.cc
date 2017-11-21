@@ -40,12 +40,10 @@ int main(int argc, char *argv[]) {
         " e.g.: lattice-prune --acoustic-scale=0.1 --beam=4.0 ark:1.lats ark:pruned.lats\n";
       
     ParseOptions po(usage);
-    bool write_compact = true;
     BaseFloat acoustic_scale = 1.0;
     BaseFloat inv_acoustic_scale = 1.0;
     BaseFloat beam = 10.0;
     
-    po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("inv-acoustic-scale", &inv_acoustic_scale, "An alternative way of setting the "
                 "acoustic scale: you can set its inverse.");
@@ -65,18 +63,10 @@ int main(int argc, char *argv[]) {
     std::string lats_rspecifier = po.GetArg(1),
         lats_wspecifier = po.GetArg(2);
 
-    SequentialCompactLatticeReader compact_lattice_reader;
-    CompactLatticeWriter compact_lattice_writer;
-    SequentialLatticeReader lattice_reader;
-    LatticeWriter lattice_writer;
+
     
-    if (write_compact) {
-      compact_lattice_reader.Open(lats_rspecifier);
-      compact_lattice_writer.Open(lats_wspecifier);
-    } else {
-      lattice_reader.Open(lats_rspecifier);
-      lattice_writer.Open(lats_wspecifier);
-    }
+    SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
+    CompactLatticeWriter compact_lattice_writer(lats_wspecifier); 
 
     int32 n_done = 0, n_err = 0;
     int64 n_arcs_in = 0, n_arcs_out = 0,
@@ -85,25 +75,10 @@ int main(int argc, char *argv[]) {
     if (acoustic_scale == 0.0)
       KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
     
-    for (; write_compact ? !compact_lattice_reader.Done() : !lattice_reader.Done(); 
-           write_compact ? compact_lattice_reader.Next() : lattice_reader.Next()) {
-      std::string key = write_compact ? compact_lattice_reader.Key() : lattice_reader.Key();
-
-      // Compute a map from each (t, tid) to (sum_of_acoustic_scores, count)
-      unordered_map<std::pair<int32,int32>, std::pair<BaseFloat, int32>,
-                                          PairHasher<int32> > acoustic_scores;
-
-      CompactLattice clat;
-      if (write_compact) {
-        clat = compact_lattice_reader.Value();
-        compact_lattice_reader.FreeCurrent();
-      } else {
-        const Lattice &lat = lattice_reader.Value();
-        ComputeAcousticScoresMap(lat, &acoustic_scores);
-
-        fst::ConvertLattice(lat, &clat);
-        lattice_reader.FreeCurrent();
-      }
+    for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
+      std::string key = compact_lattice_reader.Key();
+      CompactLattice clat = compact_lattice_reader.Value();
+      compact_lattice_reader.FreeCurrent();
       fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &clat);
       int64 narcs = NumArcs(clat), nstates = clat.NumStates();
       n_arcs_in += narcs;
@@ -121,18 +96,7 @@ int main(int argc, char *argv[]) {
                 << nstates << " to " << pruned_nstates << " and #arcs from "
                 << narcs << " to " << pruned_narcs;
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &pruned_clat);
-
-      if (write_compact) {
-        compact_lattice_writer.Write(key, pruned_clat);
-      } else {
-        Lattice out_lat;
-        fst::ConvertLattice(pruned_clat, &out_lat);
-
-        // Replace each arc (t, tid) with the averaged acoustic score from
-        // the computed map
-        ReplaceAcousticScoresFromMap(acoustic_scores, &out_lat);
-        lattice_writer.Write(key, out_lat);
-      }
+      compact_lattice_writer.Write(key, pruned_clat);
       n_done++;
     }
 
