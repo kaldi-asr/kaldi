@@ -36,6 +36,7 @@ config_to_layer = {
         'lstmp-layer' : xlayers.XconfigLstmpLayer,
         'fast-lstm-layer' : xlayers.XconfigFastLstmLayer,
         'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer,
+        'fast-lstmb-layer' : xlayers.XconfigFastLstmbLayer,
         'stats-layer': xlayers.XconfigStatsLayer,
         'relu-conv-layer': xlayers.XconfigConvLayer,
         'conv-layer': xlayers.XconfigConvLayer,
