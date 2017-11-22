@@ -119,7 +119,7 @@ class LatticeWeightTpl {
       return LatticeWeightTpl(floor(value1_/delta + 0.5F)*delta, floor(value2_/delta + 0.5F) * delta);
     }
   }
-  static uint64 Properties() {
+  static constexpr uint64 Properties() {
     return kLeftSemiring | kRightSemiring | kCommutative |
         kPath | kIdempotent;
   }
@@ -476,7 +476,7 @@ class CompactLatticeWeightTpl {
     return CompactLatticeWeightTpl(weight_.Quantize(delta), string_);
   }
 
-  static uint64 Properties() {
+  static constexpr uint64 Properties() {
     return kLeftSemiring | kRightSemiring | kPath | kIdempotent;
   }
 
