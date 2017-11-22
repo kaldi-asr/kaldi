@@ -34,7 +34,7 @@ CXXFLAGS = -std=c++11 -I.. -I$(OPENFSTINC) $(EXTRA_CXXFLAGS) \
            -mfpu=neon -mhard-float -D_NDK_MATH_NO_SOFTFP=1 -pthread \
            -g # -O0 -DKALDI_PARANOID
 
-ifeq ($(KALDI_FLAVOR), dynamic)
+ifeq ($(PIC), true)
 CXXFLAGS += -fPIC
 endif
 

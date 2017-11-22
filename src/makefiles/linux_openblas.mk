@@ -24,7 +24,7 @@ CXXFLAGS = -std=c++11 -I.. -I$(OPENFSTINC) $(EXTRA_CXXFLAGS) \
            -msse -msse2 -pthread \
            -g # -O0 -DKALDI_PARANOID
 
-ifeq ($(KALDI_FLAVOR), dynamic)
+ifeq ($(PIC), true)
 CXXFLAGS += -fPIC
 endif
 
