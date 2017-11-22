@@ -32,7 +32,7 @@ fi
 
 if [ $stage -le 3 ]; then
   local/train_lms_srilm.sh --oov-symbol "<unk>" --words-file \
-    data/lang_nosp_tmp/words.txt data data/lm
+    data/lang_nosp/words.txt data data/lm
   utils/format_lm.sh data/lang_nosp data/lm/lm.gz \
     data/local/dict_nosp/lexiconp.txt data/lang_nosp_test
   utils/validate_lang.pl data/lang_nosp_test
@@ -70,7 +70,7 @@ if [ $stage -le 6 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
     data/train data/lang_nosp_test exp/mono exp/mono_ali
 fi
- 
+
 # train a first delta + delta-delta triphone system on all utterances
 if [ $stage -le 7 ]; then
   steps/train_deltas.sh --cmd "$train_cmd" \
@@ -92,7 +92,7 @@ fi
 # train an LDA+MLLT system.
 if [ $stage -le 8 ]; then
   steps/train_lda_mllt.sh --cmd "$train_cmd" \
-    --splice-opts "--left-context=3 --right-context=3" 3000 30000 \
+    --splice-opts "--left-context=3 --right-context=3" 3000 60000 \
     data/train data/lang_nosp_test exp/tri1_ali exp/tri2
 
   # decode using the LDA+MLLT model
@@ -110,7 +110,7 @@ fi
 
 # Train tri3, which is LDA+MLLT+SAT
 if [ $stage -le 9 ]; then
-  steps/train_sat.sh --cmd "$train_cmd" 4000 40000 \
+  steps/train_sat.sh --cmd "$train_cmd" 6000 80000 \
     data/train data/lang_nosp_test exp/tri2_ali exp/tri3
 
   # decode using the tri3 model
