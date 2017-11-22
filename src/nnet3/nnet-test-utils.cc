@@ -1353,7 +1353,7 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
-  int32 n = RandInt(0, 34);
+  int32 n = RandInt(0, 35);
   BaseFloat learning_rate = 0.001 * RandInt(1, 100);
 
   std::ostringstream os;
@@ -1693,6 +1693,13 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       break;
     }
     case 34: {
+      *component_type = "LinearComponent";
+      int32 input_dim = RandInt(1, 50), output_dim = RandInt(1, 50);
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+         << " learning-rate=" << learning_rate;
+      break;
+    }
+    case 35: {
       *component_type = "FullBatchNormComponent";
       int32 block_dim = RandInt(1, 10), dim = block_dim * RandInt(1, 2);
       bool test_mode = (RandInt(0, 1) == 0);

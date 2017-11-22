@@ -460,9 +460,7 @@ class PerElementOffsetComponent;
 // functions as a base-class for more specialized versions of
 // AffineComponent.
 class AffineComponent: public UpdatableComponent {
-  friend class SoftmaxComponent; // Friend declaration relates to mixing up.
  public:
-
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
 
@@ -855,9 +853,8 @@ class NaturalGradientAffineComponent: public AffineComponent {
   virtual std::string Type() const { return "NaturalGradientAffineComponent"; }
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
-  // this constructor does not really initialize, use Init() or Read().
-  NaturalGradientAffineComponent();
-  void Resize(int32 input_dim, int32 output_dim);
+  // this constructor does not really initialize, use InitFromConfig() or Read().
+  NaturalGradientAffineComponent() { }
   void InitFromConfig(ConfigLine *cfl);
   virtual std::string Info() const;
   virtual Component* Copy() const;
@@ -868,14 +865,6 @@ class NaturalGradientAffineComponent: public AffineComponent {
   explicit NaturalGradientAffineComponent(
       const NaturalGradientAffineComponent &other);
  private:
-  void Init(int32 input_dim, int32 output_dim,
-            BaseFloat param_stddev, BaseFloat bias_stddev, BaseFloat bias_mean,
-            int32 rank_in, int32 rank_out, int32 update_period,
-            BaseFloat num_samples_history, BaseFloat alpha);
-  void Init(int32 rank_in, int32 rank_out, int32 update_period,
-            BaseFloat num_samples_history,
-            BaseFloat alpha, std::string matrix_filename);
-
   // disallow assignment operator.
   NaturalGradientAffineComponent &operator= (
       const NaturalGradientAffineComponent&);
@@ -900,6 +889,107 @@ class NaturalGradientAffineComponent: public AffineComponent {
       const std::string &debug_info,
       const CuMatrixBase<BaseFloat> &in_value,
       const CuMatrixBase<BaseFloat> &out_deriv);
+};
+
+/*
+  LinearComponent represents a linear (matrix) transformation of its input, with
+  a matrix as its trainable parameters.  It's the same as
+  NaturalGradientAffineComponent, but without the bias term.
+
+  Configuration values accepted by this component:
+
+  Values inherited from UpdatableComponent (see its declaration in
+  nnet-component-itf for details):
+     learning-rate
+     learning-rate-factor
+     max-change
+
+  Values used in initializing the component's parameters:
+     input-dim             e.g. input-dim=1024.  The input dimension.
+     output-dim            e.g. output-dim=1024.  The output dimension.
+     param-stddev          e.g. param-stddev=0.025.  The standard deviation
+                           used to randomly initialize the linear parameters
+                           (as Gaussian random values * param-stddev).
+                           Defaults to 1/sqrt(input-dim), which is Glorot
+                           initialization.
+     matrix                e.g. matrix=foo/bar/init.mat  May be used as an
+                           alternative to (input-dim, output-dim, param-stddev,
+                           bias-stddev, bias-mean) to initialize the parameters.
+                           Dimension is output-dim by (input-dim + 1), last
+                           column is interpreted as the bias.
+
+   Options to the natural gradient (you won't normally have to set these,
+   the defaults are suitable):
+
+      use-natural-gradient=true   Set this to false to disable the natural-gradient
+                            update entirely (it will do regular SGD).
+      num-samples-history   Number of frames used as the time-constant to
+                            determine how 'up-to-date' the Fisher-matrix
+                            estimates are.  Smaller -> more up-to-date, but more
+                            noisy.  default=2000.
+      alpha                 Constant that determines how much we smooth the
+                            Fisher-matrix estimates with the unit matrix.
+                            Larger means more smoothing. default=4.0
+      rank-in               Rank used in low-rank-plus-unit estimate of Fisher
+                            matrix in the input space.  default=20.
+      rank-out              Rank used in low-rank-plus-unit estimate of Fisher
+                            matrix in the output-derivative space.  default=80.
+      update-period         Determines after with what frequency (in
+                            minibatches) we update the Fisher-matrix estimates;
+                            making this > 1 saves a little time in training.
+                            default=4.
+*/
+class LinearComponent: public UpdatableComponent {
+ public:
+  virtual int32 InputDim() const { return params_.NumCols(); }
+  virtual int32 OutputDim() const { return params_.NumRows(); }
+
+  virtual std::string Type() const { return "LinearComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput|
+        kPropagateAdds|kBackpropAdds;
+  }
+
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  // this constructor does not really initialize, use InitFromConfig() or Read().
+  LinearComponent() { }
+  void InitFromConfig(ConfigLine *cfl);
+  virtual std::string Info() const;
+  virtual Component* Copy() const;
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+  virtual void FreezeNaturalGradient(bool freeze);
+  // copy constructor
+  explicit LinearComponent(const LinearComponent &other);
+ private:
+
+  // disallow assignment operator.
+  LinearComponent &operator= (
+      const LinearComponent&);
+
+
+  CuMatrix<BaseFloat> params_;
+  // If true (and if no this->is_gradient_), use natural gradient updates.
+  bool use_natural_gradient_;
+  OnlineNaturalGradient preconditioner_in_;
+  OnlineNaturalGradient preconditioner_out_;
 };
 
 
