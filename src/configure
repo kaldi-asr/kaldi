@@ -61,6 +61,7 @@ Configuration options:
   --version             Display the version of 'configure' and exit
   --static              Build and link against static libraries [default=no]
   --shared              Build and link against shared libraries [default=no]
+  --fPIC				Compile with position independent code (-fPIC) even if building static libraries [default=no]
   --use-cuda            Build with CUDA [default=yes]
   --cudatk-dir=DIR      CUDA toolkit directory
   --double-precision    Build with BaseFloat set to double if yes [default=no],
@@ -847,6 +848,7 @@ static_math=false
 threaded_atlas=false
 mkl_threading=sequential
 android=false
+PIC=false
 
 MATHLIB='ATLAS'
 ATLASROOT=`rel2abs ../tools/ATLAS_headers/`
@@ -869,8 +871,12 @@ do
     shift ;;
   --shared)
     dynamic_kaldi=true;
+    PIC=true;
     static_math=false;
     static_fst=false;
+    shift ;;
+  --fPIC)
+    PIC=true;
     shift ;;
   --double-precision)
     double_precision=true;
@@ -1071,6 +1077,9 @@ if $dynamic_kaldi ; then
   KALDILIBDIR=`pwd`/lib
   echo "KALDI_FLAVOR := dynamic" >> kaldi.mk
   echo "KALDILIBDIR := $KALDILIBDIR" >> kaldi.mk
+fi
+if $PIC ; then
+  echo "PIC := true" >> kaldi.mk
 fi
 if $double_precision; then
   echo "DOUBLE_PRECISION = 1" >> kaldi.mk
