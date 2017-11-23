@@ -79,7 +79,7 @@ echo ---------------------------------------------------------------------
 if [ ! -f data/train/.plp.done ]; then
   steps/make_plp_pitch.sh --cmd "$train_cmd" --nj $train_nj data/train exp/make_plp_pitch/train plp
   utils/fix_data_dir.sh data/train
-  steps/compute_cmvn_stats.sh data/train exp/make_plp/train plp
+  steps/compute_cmvn_stats.sh data/train exp/make_plp_pitch/train plp
   utils/fix_data_dir.sh data/train
   touch data/train/.plp.done
 fi
