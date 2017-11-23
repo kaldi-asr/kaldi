@@ -13,7 +13,6 @@ decode_iter=
 supervised_set=train_sup
 unsupervised_set=train_unsup100k_250k_n10k
 base_train_set=train_oracle100k_250k_n10k
-ivector_train_set=train_sup
 tree_affix=bi_a
 nnet3_affix=
 chain_affix=
@@ -43,12 +42,6 @@ where "nvcc" is installed.
 EOF
 fi
 
-utils/combine_data.sh data/${base_train_set}_sp_hires \
-  data/${supervised_set}_sp_hires data/${unsupervised_set}_sp_hires
-
-utils/combine_data.sh data/${base_train_set} \
-  data/${supervised_set} data/${unsupervised_set}
-
 gmm_dir=$exp/$gmm   # used to get training lattices (for chain supervision)
 treedir=$exp/chain${chain_affix}/tree_${tree_affix}
 lat_dir=$exp/chain${chain_affix}/$(basename $gmm_dir)_${base_train_set}_sp_lats  # training lattices directory
@@ -57,15 +50,32 @@ train_data_dir=data/${base_train_set}_sp_hires
 train_ivector_dir=$exp/nnet3${nnet3_affix}/ivectors_${supervised_set}_sp_hires
 lang=data/lang_chain
 
-# The iVector-extraction and feature-dumping parts are the same as the standard
-# nnet3 setup, and you can skip them by setting "--stage 8" if you have already
-# run those things.
+for f in data/${supervised_set}_sp_hires/feats.scp \
+  data/${unsupervised_set}_sp_hires/feats.scp \
+  data/${supervised_set}/feats.scp data/${unsupervised_set}/feats.scp \
+  $exp/nnet3${nnet3_affix}/extractor \
+  $gmm_dir/final.mdl $treedir/final.mdl $treedir/tree; do
+  if [ ! -f $f ]; then
+    echo "$0: Could not find $f"
+    exit 1
+  fi
+done
 
-local/nnet3/run_ivector_common_pca.sh --stage $stage --exp $exp \
-                                  --speed-perturb true \
-                                  --train-set $supervised_set \
-                                  --ivector-train-set $supervised_set \
-                                  --nnet3-affix "$nnet3_affix" || exit 1
+if [ $stage -le 7 ]; then
+  utils/combine_data.sh data/${base_train_set}_sp_hires \
+    data/${supervised_set}_sp_hires data/${unsupervised_set}_sp_hires
+
+  utils/combine_data.sh data/${base_train_set}_sp \
+    data/${supervised_set}_sp data/${unsupervised_set}_sp
+fi
+
+if [ $stage -le 8 ]; then
+  utils/data/modify_speaker_info.sh --utts-per-spk-max 2 \
+    data/${base_train_set}_sp_hires data/${base_train_set}_sp_max2_hires
+
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
+    data/${base_train_set}_max2_hires $exp/nnet3${nnet3_affix}/extractor $exp/nnet3${nnet3_affix}/ivectors_${base_train_set}_hires || exit 1;
+fi
 
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
@@ -86,11 +96,6 @@ if [ $stage -le 10 ]; then
   # Use our special topology... note that later on may have to tune this
   # topology.
   steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
-fi
-
-if [ ! -f $treedir/final.mdl ]; then
-  echo "$0: Could not find $treedir/final.mdl"
-  exit 1
 fi
 
 if [ $stage -le 12 ]; then

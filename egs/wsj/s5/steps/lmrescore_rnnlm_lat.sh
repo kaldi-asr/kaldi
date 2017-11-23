@@ -17,7 +17,6 @@ weight=1.0  # Interpolation weight for RNNLM.
 
 expand_ngram=false
 beam=
-write_compact=true
 # End configuration section.
 rnnlm_ver=
 #layer_string=
@@ -93,30 +92,30 @@ mkdir -p $outdir/log
 nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
 
-lat="ark:gunzip -c $indir/lat.JOB.gz |"
-
-if $expand_ngram; then
-  lat="$lat lattice-expand-ngram --write-compact=$write_compact --n=$max_ngram_order ark:- ark:- |"
-fi
+lats_rspecifier="ark:gunzip -c $indir/lat.JOB.gz |"
 
 if [ ! -z "$beam" ]; then
-  lat="$lat lattice-prune --write-compact=$write_compact --inv-acoustic-scale=$inv_acwt --beam=$beam ark:- ark:- |" 
+  lats_rspecifier="$lats_rspecifier lattice-prune --inv-acoustic-scale=$inv_acwt --beam=$beam ark:- ark:- |" 
+fi
+
+if $expand_ngram; then
+  lats_rspecifier="$lats_rspecifier lattice-expand-ngram --n=$max_ngram_order ark:- ark:- |"
 fi
 
 oldlm_weight=`perl -e "print -1.0 * $weight;"`
 if [ "$oldlm" == "$oldlang/G.fst" ]; then
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
-    lattice-lmrescore --lm-scale=$oldlm_weight --write-compact=$write_compact \
-    "$lat" "$oldlm_command" ark:-  \| \
-    $rescoring_binary $extra_arg --lm-scale=$weight --write-compact=$write_compact \
+    lattice-lmrescore --lm-scale=$oldlm_weight \
+    "$lats_rspecifier" "$oldlm_command" ark:-  \| \
+    $rescoring_binary $extra_arg --lm-scale=$weight \
     --max-ngram-order=$max_ngram_order \
     $first_arg $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 else
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
-    lattice-lmrescore-const-arpa --lm-scale=$oldlm_weight --write-compact=$write_compact \
-    "$lat" "$oldlm_command" ark:-  \| \
-    $rescoring_binary $extra_arg --lm-scale=$weight --write-compact=$write_compact \
+    lattice-lmrescore-const-arpa --lm-scale=$oldlm_weight \
+    "$lats_rspecifier" "$oldlm" ark:-  \| \
+    $rescoring_binary $extra_arg --lm-scale=$weight \
     --max-ngram-order=$max_ngram_order \
     $first_arg $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;

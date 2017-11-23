@@ -915,14 +915,6 @@ class CommonParser(object):
                                  action=common_lib.StrToBoolAction,
                                  help="Compute train and validation "
                                  "accuracy per-dim")
-        self.parser.add_argument("--trainer.objective-scales",
-                                 dest='objective_scales',
-                                 type=str,
-                                 action=common_lib.NullstrToNoneAction,
-                                 help="""Objective scales for the outputs
-                                 specified as a comma-separated list of pairs
-                                 <output-0>:<scale-0>,<output-1>:<scale-1>...
-                                 This will be passed to the training binary.""")
 
         # General options
         self.parser.add_argument("--stage", type=int, default=-4,

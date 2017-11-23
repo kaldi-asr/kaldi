@@ -75,7 +75,7 @@ max_mem=20000000 # This will stop the processes getting too large.
 # by something like 5 or 10 to get real bytes (not sure why so large)
 num_threads=1
 
-# affects whether we invoke lattice-determinize-non-compact after decoding
+# affects whether we invoke lattice-determinize-phone-pruned after decoding
 # discriminative-get-supervision.
 determinize_before_split=true
 

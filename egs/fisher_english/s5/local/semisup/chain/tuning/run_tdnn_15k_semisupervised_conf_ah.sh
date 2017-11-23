@@ -124,9 +124,9 @@ for dset in $unsupervised_set; do
   if [ $stage -le 4 ]; then
     echo "$0: getting the decoding lattices for the unsupervised subset using the chain model at: $chaindir"
     steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
-              --acwt 1.0 --post-decode-acwt 10.0 --write-compact false \
+              --acwt 1.0 --post-decode-acwt 10.0 --word-determinize false \
+              --skip-scoring true --scoring-opts "--min-lmwt 10 --max-lmwt 10" \
               --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${base_train_set}_sp_hires \
-              --scoring-opts "--min-lmwt 10 --max-lmwt 10" --determinize-opts "--word-determinize=false" \
               $graphdir data/${dset}_sp_hires $chaindir/decode_${dset}_sp${decode_affix}
   fi
 

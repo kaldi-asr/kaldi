@@ -32,7 +32,7 @@ extra_left_context_initial=-1
 extra_right_context_final=-1
 online_ivector_dir=
 minimize=false
-determinize_opts=
+word_determinize=false
 write_compact=true
 # End configuration section.
 
@@ -124,7 +124,7 @@ extra_opts=
 lats_wspecifier="ark:|"
 if ! $write_compact; then
   extra_opts="--determinize-lattice=false"
-  lats_wspecifier="ark:| lattice-determinize-phone-pruned-non-compact --beam=$lattice_beam --acoustic-scale=$acwt --minimize=$minimize $determinize_opts $model ark:- ark:- |"
+  lats_wspecifier="ark:| lattice-determinize-phone-pruned --beam=$lattice_beam --acoustic-scale=$acwt --minimize=$minimize --word-determinize=$word_determinize --write-compact=false $model ark:- ark:- |"
 fi
 
 if [ "$post_decode_acwt" == 1.0 ]; then
@@ -147,7 +147,8 @@ if [ $stage -le 1 ]; then
      --extra-right-context=$extra_right_context \
      --extra-left-context-initial=$extra_left_context_initial \
      --extra-right-context-final=$extra_right_context_final \
-     --minimize=$minimize --max-active=$max_active --min-active=$min_active --beam=$beam \
+     --minimize=$minimize --word-determinize=$word_determinize \
+     --max-active=$max_active --min-active=$min_active --beam=$beam \
      --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
      --word-symbol-table=$graphdir/words.txt ${extra_opts} \
      "$model" \

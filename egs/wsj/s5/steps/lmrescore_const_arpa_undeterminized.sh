@@ -4,7 +4,10 @@
 #           2017  Vimal Manohar
 # Apache 2.0
 
-# This script rescores lattices with the ConstArpaLm format language model.
+# This script rescores non-compact undeterminized lattices with the 
+# ConstArpaLm format language model.
+# This is similar to steps/lmrescore_const_arpa.sh, but expects 
+# undeterminized non-compact lattices as input.
 
 # Begin configuration section.
 cmd=run.pl
@@ -14,7 +17,6 @@ scoring_opts=
 write_compact=true
 acwt=0.1
 beam=8.0  # beam used in determinization
-remove_nonG_graph_costs=false
 
 # End configuration section.
 
@@ -23,10 +25,15 @@ echo "$0 $@"  # Print the command line for logging
 . ./utils/parse_options.sh
 
 if [ $# != 5 ]; then
-   echo "Does language model rescoring of lattices (remove old LM, add new LM)"
-   echo "Usage: $0 [options] <old-lang-dir> <new-lang-dir> \\"
-   echo "                   <data-dir> <input-decode-dir> <output-decode-dir>"
-   echo "options: [--cmd (run.pl|queue.pl [queue opts])]"
+  cat <<EOF
+   Does language model rescoring of non-compact undeterminized lattices 
+   (remove old LM, add new LM). This script expects the input lattices 
+   to be in non-compact format.
+   Usage: $0 [options] <old-lang-dir> <new-lang-dir> \\
+                      <data-dir> <input-decode-dir> <output-decode-dir>
+   options: [--cmd (run.pl|queue.pl [queue opts])]
+   See also: steps/lmrescore_const_arpa.sh 
+EOF
    exit 1;
 fi
 
@@ -58,11 +65,6 @@ nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
 
 lats_rspecifier="ark:gunzip -c $indir/lat.JOB.gz |"
-lattice_copy_cmd="lattice-lmrescore --lm-scale=-1.0 ark:- \"$oldlmcommand\" ark:- |"
-if $remove_nonG_graph_costs; then
-  lats_rspecifier="$lats_rspecifier lattice-scale --write-compact=$write_compact --lm-scale=0.0 ark:- ark:- |"
-  lattice_copy_cmd=
-fi
   
 lats_wspecifier="ark:| gzip -c > $outdir/lat.JOB.gz" 
 
@@ -71,7 +73,7 @@ if [ $stage -le 1 ]; then
     lattice-determinize-pruned --acoustic-scale=$acwt --beam=$beam \
       "ark:gunzip -c $indir/lat.JOB.gz |" ark:- \| \
     lattice-scale --lm-scale=0.0 --acoustic-scale=0.0 ark:- ark:- \| \
-    $lattice_copy_cmd \
+    lattice-lmrescore --lm-scale=-1.0 ark:- "$oldlmcommand" ark:- \| \
     lattice-lmrescore-const-arpa --lm-scale=1.0 \
       ark:- "$newlm" ark:- \| \
     lattice-project ark:- ark:- \| \
