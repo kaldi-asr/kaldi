@@ -207,7 +207,7 @@ command = "utils/sym2int.pl {unk_opt} {vocab_file} <{input_file} | {awk_command}
                                            # because it has {}'s awhich would
                                            # otherwise be interpreted.
     input_file="{0}/dev.txt".format(args.text_dir),
-        output_file="{0}/dev.txt".format(args.split_dir))
+    output_file="{0}/dev.txt".format(args.split_dir))
 ret = os.system(command)
 if ret != 0:
     sys.exit(sys.argv[0] + ": command '{0}' returned with status {1}".format(

@@ -93,10 +93,10 @@ void ObjectiveTracker::PrintStatsThisInterval() const {
      << interval_end << " is (" << num_objf << " + "
      << den_objf << ") = " << tot_objf << " over "
      << weight << " words (weighted)";
-  if (exact_den_objf != 0.0) {
-    os << "; exact = (" << num_objf << " + " << exact_den_objf
-       << ") = " << exact_tot_objf ;
-  }
+
+  os << "; exact = (" << num_objf << " + " << exact_den_objf
+     << ") = " << exact_tot_objf ;
+
   KALDI_LOG << os.str();
 }
 
@@ -112,10 +112,9 @@ void ObjectiveTracker::PrintStatsOverall() const {
   os << "Overall objf is (" << num_objf << " + " << den_objf
      << ") = " << tot_objf << " over " << weight << " words (weighted) in "
      << num_egs_ << " minibatches";
-  if (exact_den_objf != 0.0) {
-    os << "; exact = (" << num_objf << " + " << exact_den_objf
-       << ") = " << exact_tot_objf ;
-  }
+  os << "; exact = (" << num_objf << " + " << exact_den_objf
+     << ") = " << exact_tot_objf ;
+
   KALDI_LOG << os.str();
 }
 

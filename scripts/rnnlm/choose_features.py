@@ -105,7 +105,7 @@ def read_vocab(vocab_file):
         wordlist[index] = word
 
     if wordlist[0] != '<eps>' and wordlist[0] != '<EPS>':
-        sys.exit(argv[0] + ": expected word numbered zero to be epsilon.")
+        sys.exit(sys.argv[0] + ": expected word numbered zero to be epsilon.")
     return (vocab, wordlist)
 
 
@@ -169,7 +169,7 @@ word_indexes_to_exclude = {0} # a set including only zero.
 if args.special_words != '':
     for word in args.special_words.split(','):
         if not word in vocab:
-            sys.exit(argv[0] + ": error: element {0} of --special-words option "
+            sys.exit(sys.argv[0] + ": error: element {0} of --special-words option "
                      "is not in the vocabulary file {1}".format(word, args.vocab_file))
         word_indexes_to_exclude.add(vocab[word])
         this_word_prob = unigram_probs[vocab[word]]

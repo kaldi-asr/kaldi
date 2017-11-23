@@ -158,7 +158,7 @@ if [ $stage -le 7 ]; then
     text_files=$(for n in $(seq $num_splits); do echo -n $dir/text/$n.txt ''; done)
     vocab_size=$(tail -n 1 $dir/config/words.txt | awk '{print $NF + 1}')
 
-    special_symbol_opts=`cat $dir/special_symbol_opts.txt | sed "s= =\n=g" | egrep "bos|eos" | tr "\n" " "`
+    special_symbol_opts=$(cat $dir/special_symbol_opts.txt)
 
     # this prints some nontrivial log information, so run using '$cmd' to ensure
     # the output gets saved.
