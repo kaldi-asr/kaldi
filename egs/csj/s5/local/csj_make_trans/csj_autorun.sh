@@ -21,7 +21,7 @@ set -e # exit on error
 case "$csjv" in
     "merl" ) SDB=sdb/ ; WAV=WAV/ ; disc=CSJ2004 ;; # Set SDB directory and WAV directory respectively.
     "usb" ) SDB=MORPH/SDB/ ; WAV=WAV/ ; disc="core noncore" ;; # Set SDB directory and WAV directory respectively.
-    "dvd" ) num=dvd        ; SDB=           ; WAV=     ; disc=$num`seq -s " "$num 3 17` ;; # Set preserved format name to $num.    
+    "dvd" ) num=dvd        ; SDB=           ; WAV=     ; disc=$num`seq -s " "$num 3 17` ;; # Set preserved format name to $num.
     *) echo "Input variable is usb or dvd only. $csjv is UNAVAILABLE VERSION." && exit 1;
 esac
 
@@ -49,50 +49,50 @@ if [ ! -e $outd/.done_make_trans ];then
         && echo "This processing is need to prepare \"nkf\" command. Please retry after installing command \"nkf\"." && exit 1;
 
     for vol in $disc ;do
-	mkdir -p $outd/$vol
-	(
-	    if [ $csjv = "merl" ]; then
-		ids=`ls $resource/$vol/$SDB | sed 's:.sdb::g' | sed 's/00README.txt//g'`
-	    else
-		ids=`ls $resource/${SDB}$vol | sed 's:.sdb::g' | sed 's/00README.txt//g'`
-	    fi
+        mkdir -p $outd/$vol
+        (
+            if [ $csjv = "merl" ]; then
+                ids=`ls $resource/$vol/$SDB | sed 's:.sdb::g' | sed 's/00README.txt//g'`
+            else
+                ids=`ls $resource/${SDB}$vol | sed 's:.sdb::g' | sed 's/00README.txt//g'`
+            fi
 
-	    for id in $ids; do
-		mkdir -p $outd/$vol/$id
+            for id in $ids; do
+                mkdir -p $outd/$vol/$id
 
-		case "$csjv" in
-		    "usb" ) TPATH="$resource/${SDB}$vol" ; WPATH="$resource/$WAV" ;;
-		    "dvd" ) TPATH="$resource/$vol/$id"   ; WPATH="$resource/$vol/$id" ;;
-		    "merl" ) TPATH="$resource/$vol/$SDB" ; WPATH="$resource/$vol/$WAV" ;;
-		esac
+                case "$csjv" in
+                    "usb" ) TPATH="$resource/${SDB}$vol" ; WPATH="$resource/$WAV" ;;
+                    "dvd" ) TPATH="$resource/$vol/$id"   ; WPATH="$resource/$vol/$id" ;;
+                    "merl" ) TPATH="$resource/$vol/$SDB" ; WPATH="$resource/$vol/$WAV" ;;
+                esac
 
-		local/csj_make_trans/csj2kaldi4m.pl $TPATH/${id}.sdb  $outd/$vol/$id/${id}.4lex $outd/$vol/$id/${id}.4trn.t || exit 1;
-		local/csj_make_trans/csjconnect.pl 0.5 10 $outd/$vol/$id/${id}.4trn.t $id > $outd/$vol/$id/${id}-trans.text || exit 1;
-		rm $outd/$vol/$id/${id}.4trn.t
+                local/csj_make_trans/csj2kaldi4m.pl $TPATH/${id}.sdb  $outd/$vol/$id/${id}.4lex $outd/$vol/$id/${id}.4trn.t || exit 1;
+                local/csj_make_trans/csjconnect.pl 0.5 10 $outd/$vol/$id/${id}.4trn.t $id > $outd/$vol/$id/${id}-trans.text || exit 1;
+                rm $outd/$vol/$id/${id}.4trn.t
 
-		if [ -e $WPATH/${id}-L.wav ]; then
-		    find $WPATH -iname "${id}-[L,R].wav" >$outd/$vol/$id/${id}-wav.list
-		else
-		    find $WPATH -iname ${id}.wav >$outd/$vol/$id/${id}-wav.list || exit 1;
-		fi
+                if [ -e $WPATH/${id}-L.wav ]; then
+                    find $WPATH -iname "${id}-[L,R].wav" >$outd/$vol/$id/${id}-wav.list
+                else
+                    find $WPATH -iname ${id}.wav >$outd/$vol/$id/${id}-wav.list || exit 1;
+                fi
 
-	    done
+            done
 
-	    if [ -s $outd/$vol/$id/${id}-trans.text ] ;then
-		echo -n >$outd/$vol/.done_$vol
-		echo "Complete processing transcription data in $vol"
-	    else
-		echo "Bad processing of making transcriptions part" && exit;
-	    fi
-	)&
+            if [ -s $outd/$vol/$id/${id}-trans.text ] ;then
+                echo -n >$outd/$vol/.done_$vol
+                echo "Complete processing transcription data in $vol"
+            else
+                echo "Bad processing of making transcriptions part" && exit;
+            fi
+        )&
     done
     wait
 
     if [ -e $outd/$vol/.done_$vol ] ;then
-	echo -n >$outd/.done_make_trans
-	echo "Done!"
+        echo -n >$outd/.done_make_trans
+        echo "Done!"
     else
-	echo "Bad processing of making transcriptions part" && exit;
+        echo "Bad processing of making transcriptions part" && exit;
     fi
 )
 fi
@@ -115,7 +115,7 @@ if [ ! -e $outd/.done_mv_eval_dup ]; then
 
     # Speech data given by test set speakers (e.g. eval2 : A01M0056)
     for list in $A01M0056 ; do
-	find . -type d -name $list | xargs -i mv {} $outd/excluded
+        find . -type d -name $list | xargs -i mv {} $outd/excluded
     done
     wait
 
@@ -133,34 +133,34 @@ if [ ! -e $outd/.done_mv_eval_dup ]; then
     [ 10 -eq `ls $outd/eval/eval2 | wc -l` ] && echo -n >$outd/eval/.done_eval2
     [ 10 -eq `ls $outd/eval/eval3 | wc -l` ] && echo -n >$outd/eval/.done_eval3
     if [ 3 -eq `ls -a $outd/eval | grep done_eval | wc -l` ] ;then
-	echo -n >$outd/.done_mv_eval_dup
-	echo "Done!"
+        echo -n >$outd/.done_mv_eval_dup
+        echo "Done!"
     else
-	echo "Bad processing of making evaluation set part" && exit;
+        echo "Bad processing of making evaluation set part" && exit;
     fi
     )
 fi
 
 ## make lexicon.txt
 if [ ! -e $outd/.done_make_lexicon ]; then
-    echo "Make lexicon file."
-    (
-	lexicon=$outd/lexicon
-	rm -f $outd/lexicon/lexicon.txt
-	mkdir -p $lexicon
-	cat $outd/*/*/*.4lex | grep -v "+ー" | grep -v "++" | grep -v "×" > $lexicon/lexicon.txt
-	sort -u $lexicon/lexicon.txt > $lexicon/lexicon_htk.txt
-	local/csj_make_trans/vocab2dic.pl -p local/csj_make_trans/kana2phone -e $lexicon/ERROR_v2d -o $lexicon/lexicon.txt $lexicon/lexicon_htk.txt
-	cut -d'+' -f1,3- $lexicon/lexicon.txt >$lexicon/lexicon_htk.txt
-	cut -f1,3- $lexicon/lexicon_htk.txt | perl -ape 's:\t: :g' >$lexicon/lexicon.txt
+  echo "Make lexicon file."
+  (
+    lexicon=$outd/lexicon
+    rm -f $outd/lexicon/lexicon.txt
+    mkdir -p $lexicon
+    cat $outd/*/*/*.4lex | grep -v "+ー" | grep -v "++" | grep -v "×" > $lexicon/lexicon.txt
+    sort -u $lexicon/lexicon.txt > $lexicon/lexicon_htk.txt
+    local/csj_make_trans/vocab2dic.pl -p local/csj_make_trans/kana2phone -e $lexicon/ERROR_v2d -o $lexicon/lexicon.txt $lexicon/lexicon_htk.txt
+    cut -d'+' -f1,3- $lexicon/lexicon.txt >$lexicon/lexicon_htk.txt
+    cut -f1,3- $lexicon/lexicon_htk.txt | perl -ape 's:\t: :g' >$lexicon/lexicon.txt
 
     if [ -s $lexicon/lexicon.txt ] ;then
-	echo -n >$outd/.done_make_lexicon
-	echo "Done!"
+      echo -n >$outd/.done_make_lexicon
+      echo "Done!"
     else
-        echo "Bad processing of making lexicon file" && exit;
+      echo "Bad processing of making lexicon file" && exit;
     fi
-    )
+  )
 fi
 
 [ ! 3 -le `ls -a $outd | grep done | wc -l` ] \

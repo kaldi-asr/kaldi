@@ -399,7 +399,7 @@ local/nnet/run_dnn.sh
 # local/nnet3/run_lstm.sh  # lstm recipe
 # bidirectional lstm recipe
 # local/nnet3/run_lstm.sh --affix bidirectional \
-#	                  --lstm-delay " [-1,1] [-2,2] [-3,3] " \
+#                         --lstm-delay " [-1,1] [-2,2] [-3,3] " \
 #                         --label-delay 0 \
 #                         --cell-dim 640 \
 #                         --recurrent-projection-dim 128 \

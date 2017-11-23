@@ -44,16 +44,24 @@ def train_new_models(dir, iter, srand, num_jobs,
     but we use the same script for consistency with FF-DNN code
 
     Selected args:
-        frames_per_eg: The default value -1 implies chunk_level_training, which
-            is particularly applicable to RNN training. If it is > 0, then it
-            implies frame-level training, which is applicable for DNN training.
-            If it is > 0, then each parallel SGE job created, a different frame
-            numbered 0..frames_per_eg-1 is used.
+        frames_per_eg:
+            The frames_per_eg, in the context of (non-chain) nnet3 training,
+            is normally the number of output (supervised) frames in each training
+            example.  However, the frames_per_eg argument to this function should
+            only be set to that number (greater than zero) if you intend to
+            train on a single frame of each example, on each minibatch.  If you
+            provide this argument >0, then for each training job a different
+            frame from the dumped example is selected to train on, based on
+            the option --frame=n to nnet3-copy-egs.
+            If you leave frames_per_eg at its default value (-1), then the
+            entire sequence of frames is used for supervision.  This is suitable
+            for RNN training, where it helps to amortize the cost of computing
+            the activations for the frames of context needed for the recurrence.
         use_multitask_egs : True, if different examples used to train multiple
-                            tasks or outputs, e.g.multilingual training.
-                            multilingual egs can be generated using get_egs.sh and
-                            steps/nnet3/multilingual/allocate_multilingual_examples.py,
-                            those are the top-level scripts.
+            tasks or outputs, e.g.multilingual training.  multilingual egs can
+            be generated using get_egs.sh and
+            steps/nnet3/multilingual/allocate_multilingual_examples.py, those
+            are the top-level scripts.
     """
 
     chunk_level_training = False if frames_per_eg > 0 else True
