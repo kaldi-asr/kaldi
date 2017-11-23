@@ -21,6 +21,7 @@
 #include "rnnlm/sampling-lm.h"
 
 namespace kaldi {
+namespace rnnlm {
 
 class SamplingLmTest {
  public:
@@ -36,8 +37,6 @@ class SamplingLmTest {
       WeightedHistType *histories);
 
   void TestUnigramDistribution();
-
-  void TestHigherOrderProbs();
 
   void TestGetDistribution(const WeightedHistType &histories);
  private:
@@ -123,38 +122,12 @@ void SamplingLmTest::TestGetDistribution(const WeightedHistType &histories) {
   KALDI_ASSERT(ApproxEqual(unigram_weight + non_unigram_probsum, total_weights));
 }
 
-void SamplingLmTest::TestHigherOrderProbs() {
-  int32 size = arpa_->higher_order_probs_.size();
-  KALDI_ASSERT(size == arpa_->Order() - 1);
-
-  // Assert sum of bigram probs of all words given an arbitrary history is 1.0
-  BaseFloat prob_sum = 0.0;
-  std::unordered_map<HistType, SamplingLm::HistoryState,
-                                 VectorHasher<int32> >::const_iterator it1;
-  it1 = arpa_->higher_order_probs_[0].begin();
-  HistType h(it1->first);
-  KALDI_ASSERT(h.size() == 1);
-  for (int32 i = 0; i < arpa_->unigram_probs_.size(); ++i) {
-    int32 word = i;
-    unordered_map<int32, BaseFloat>::const_iterator it =
-      arpa_->higher_order_probs_[0][h].word_to_prob.find(word);
-    if (it != arpa_->higher_order_probs_[0][h].word_to_prob.end()) {
-      prob_sum += it->second;
-      BaseFloat probs = arpa_->higher_order_probs_[0][h].backoff_prob;
-      probs *= arpa_->unigram_probs_[word];
-      prob_sum += probs;
-    } else {
-      BaseFloat probs = arpa_->higher_order_probs_[0][h].backoff_prob;
-      probs *= arpa_->unigram_probs_[word];
-      prob_sum += probs;
-    }
-  }
-  KALDI_ASSERT(ApproxEqual(prob_sum, 1.0));
-}
+}  // namespace rnnlm
 }  // namespace kaldi
 
 int main(int argc, char **argv) {
   using namespace kaldi;
+  using namespace kaldi::rnnlm;
 
   const char *usage = "";
   ParseOptions po(usage);
@@ -184,7 +157,6 @@ int main(int argc, char **argv) {
 
   SamplingLmTest mdl(&arpa);
   mdl.TestUnigramDistribution();
-  mdl.TestHigherOrderProbs();
 
   Input k2(history_file, &binary);
   SamplingLmTest::WeightedHistType histories;
