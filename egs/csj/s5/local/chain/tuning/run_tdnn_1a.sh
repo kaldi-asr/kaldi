@@ -1,30 +1,40 @@
 #!/bin/bash
 
+set -euo pipefail
 
-set -e
+# First the options that are passed through to run_ivector_common.sh
+# (some of which are also used in this script directly).
+stage=0
+decode_nj=10
+train_set=train_nodup
+dev_set=
+test_sets="eval1 eval2 eval3"
+gmm=tri4
+nnet3_affix=
 
-# configs for 'chain'
-affix=
-stage=8
+# The rest are configs specific to this script. Most of the parameters
+# are just hardcoded at this level, in the commands below.
+affix=1a  # affix for the TDNN directory name
+tree_affix=
 train_stage=-10
 get_egs_stage=-10
-speed_perturb=false
-dir=exp/chain/tdnn_csj  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
-decode_nj=50
 
 # training options
+# training chunk-options
+decode_iter=
+decode_nj=50
 num_epochs=4
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
 leftmost_questions_truncate=-1
 max_param_change=2.0
 final_layer_normalize_target=0.5
-num_jobs_initial=1
-num_jobs_final=1
-minibatch_size=128
-frames_per_eg=150
-remove_egs=false
+num_jobs_initial=3
+num_jobs_final=10
+minibatch_size=128,64
+frames_per_eg=150,140,100
+remove_egs=true
 common_egs_dir=
 xent_regularize=0.1
 
@@ -45,28 +55,34 @@ where "nvcc" is installed.
 EOF
 fi
 
-# The iVector-extraction and feature-dumping parts are the same as the standard nnet3 setup, 
-# which is run with: "local/nnet3/run_ivector_common.sh --stage $stage" , within the script local/run_tdnn_chain.sh
+# The iVector-extraction and feature-dumping parts are the same as the standard
+# nnet3 setup, and you can skip them.
+local/nnet3/run_ivector_common.sh --stage $stage \
+                                  --train-set $train_set \
+                                  --gmm $gmm \
+                                  --nnet3-affix "$nnet3_affix" || exit 1;
 
-suffix=
-if [ "$speed_perturb" == "true" ]; then
-  suffix=_sp
-fi
+gmm_dir=exp/$gmm
+ali_dir=exp/${gmm}_ali_${train_set}_sp
+tree_dir=exp/chain${nnet3_affix}/tree${tree_affix:+_$tree_affix}
+lang=data/lang_chain
+lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
+dir=exp/chain${nnet3_affix}/tdnn${affix}
+train_data_dir=data/${train_set}_sp_hires
+lores_train_data_dir=data/${train_set}_sp
+train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 
-dir=${dir}${affix:+_$affix}$suffix
-train_set=train_nodup$suffix
-ali_dir=exp/tri4_ali_nodup$suffix
-treedir=exp/chain/tri5_7d_tree$suffix
-lang=data/lang_chain_2y
-
+for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
+  $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz; do
+  [ ! -f $f ] && echo "$0; expected file $f to exist" && exit 1;
+done
 
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the LF-MMI training more freedom).
   # use the same num-jobs as the alignments
-  nj=$(cat exp/tri4_ali_nodup$suffix/num_jobs) || exit 1;
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/$train_set \
-    data/lang exp/tri4 exp/tri4_lats_nodup$suffix
-  rm exp/tri4_lats_nodup$suffix/fsts.*.gz # save space
+  steps/align_fmllr_lats.sh --nj $75 --cmd "$train_cmd" ${lores_train_data_dir} \
+    data/lang $gmm_dir $lat_dir
+  rm $lat_dir/fsts.*.gz # save space
 fi
 
 
@@ -89,14 +105,14 @@ if [ $stage -le 11 ]; then
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate $leftmost_questions_truncate \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd" 7000 data/$train_set $lang $ali_dir $treedir
+      --cmd "$train_cmd" 7000 ${lores_train_data_dir} $lang $ali_dir $tree_dir
 fi
 
 
 if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
-  num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
+  num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
   mkdir -p $dir/configs
@@ -112,14 +128,16 @@ if [ $stage -le 12 ]; then
   # the first splicing is moved before the lda layer, so no splicing here
   relu-batchnorm-layer name=tdnn1 dim=625
   relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=625
-  relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=625
-  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=625
-  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=625
+  relu-batchnorm-layer name=tdnn3 dim=625
+  relu-batchnorm-layer name=tdnn4 input=Append(-1,0,1) dim=625
+  relu-batchnorm-layer name=tdnn5 dim=625
   relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=625
   relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=625
+  relu-batchnorm-layer name=tdnn8 input=Append(-3,0,3) dim=625
+  relu-batchnorm-layer name=tdnn9 input=Append(-3,0,3) dim=625
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain input=tdnn7 dim=625 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-chain input=tdnn9 dim=625 target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
@@ -131,7 +149,7 @@ if [ $stage -le 12 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn7 dim=625 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn9 dim=625 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF
@@ -141,12 +159,12 @@ fi
 if [ $stage -le 13 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/csj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
-    --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
+    --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
@@ -166,12 +184,32 @@ if [ $stage -le 13 ]; then
     --trainer.optimization.final-effective-lrate $final_effective_lrate \
     --trainer.max-param-change $max_param_change \
     --cleanup.remove-egs $remove_egs \
-    --feat-dir data/${train_set}_hires \
-    --tree-dir $treedir \
-    --lat-dir exp/tri4_lats_nodup$suffix \
+    --feat-dir $train_data_dir \
+    --tree-dir $tree_dir \
+    --lat-dir $lat_dir \
     --dir $dir  || exit 1;
 
 fi
 
-exit 0;
+if [ $stage -le 14 ]; then
+  utils/mkgraph.sh \
+    --self-loop-scale 1.0 data/lang_csj_tg $dir $dir/graph_csj_tg
 
+  for decode_set in $test_sets; do
+    steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 --nj 10 \
+      --cmd "$decode_cmd" \
+      --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
+      $dir/graph_csj_tg data/${decode_set}_hires $dir/decode_${decode_set}
+  done
+
+  steps/online/nnet3/prepare_online_decoding.sh \
+    --mfcc-config conf/mfcc_hires.conf $lang exp/nnet3${nnet3_affix}/extractor \
+    $dir ${dir}_online
+
+  for decode_set in $test_sets; do
+    steps/online/nnet3/decode.sh --nj 10 --cmd "$decode_cmd" \
+      --acwt 1.0 --post-decode-acwt 10.0 \
+      $dir/graph_csj_tg data/${decode_set}_hires ${dir}_online/decode_${decode_set}
+  done
+fi
+exit 0;
