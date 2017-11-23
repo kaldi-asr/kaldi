@@ -20,7 +20,7 @@ set -o nounset                              # Treat unset variables as an error
 corpus=$corpus/$language
 lists=./conf/lists/$language
 
-corpusdir=$(find -L $corpus -maxdepth 1 \( -name "release-current-b" \) \( -type d -o -type l \) ) 
+corpusdir=$(find -L $corpus -maxdepth 1 \( -name "release-current-b" \) \( -type d -o -type l \) )
 [ -z "$corpusdir" ] && corpusdir=$(find -L $corpus -maxdepth 1 \( -name "release-current"  \) \( -type d -o -type l \) )
 [ -z "$corpusdir" ] && corpusdir=$(find -L $corpus -maxdepth 1 -name "*-build" -type d)
 [ -z "$corpusdir" ] && echo >&2 "Corpus directory for $language not found!" && exit 1
@@ -42,8 +42,14 @@ echo -e "\n"
 
 echo "#speech corpora files location"
 echo "train_data_dir=$train_dir"
-[  -f "$lists/sub-train.list" ] && echo "train_data_list=$lists/sub-train.list"
-[ ! -f "$lists/sub-train.list" ] && echo "train_data_list=$lists/train.LimitedLP.list"
+if [  -f "$lists/sub-train.list" ] ; then
+  echo "train_data_list=$lists/sub-train.list"
+elif [ -f "$lists/train.LimitedLP.list" ] ; then
+  echo "train_data_list=$lists/train.LimitedLP.list"
+else
+  echo >&2 "Training list $lists/sub-train.list not found"
+fi
+
 echo "train_nj=16"
 echo -e "\n"
 
@@ -124,7 +130,7 @@ echo "dev10h_nj=32"
 echo -e "\n"
 
 dataset="eval"
-eval_dir=$(find -L $corpus -ipath "*-eval/*/conversational/*" -name "$dataset" -type d) || exit 1
+eval_dir=$(find -L $corpus -ipath "*-eval/*/conversational/*" -name "$dataset" -type d -print -quit) || exit 1
 [ -z "$eval_dir" ] && { eval_dir=$(find -L $corpusdir -ipath "*/conversational/*" -name "eval" -type d) || exit 1; }
 if [ ! -z "$eval_dir" ] ; then
   indus_set=$(find -L $indus/ -maxdepth 1 -name "$indusid*$dataset" -type d)
@@ -260,12 +266,12 @@ else
   echo -e "\n"
 fi
 
-lexicon=$(find -L $corpusdir -ipath "*/conversational/*" -name "lexicon.sub-train.txt" -type f) 
-[ -z "$lexicon" ] && lexicon=$(find -L $corpusdir -ipath "*/conversational/*" -name "lexicon.sub-train1.txt" -type f) 
+lexicon=$(find -L $corpusdir -ipath "*/conversational/*" -name "lexicon.sub-train.txt" -type f)
+[ -z "$lexicon" ] && lexicon=$(find -L $corpusdir -ipath "*/conversational/*" -name "lexicon.sub-train1.txt" -type f)
 if [ -z "$lexicon" ]; then
   echo >&2 "LLP Lexicon not found in $corpusdir -- looking for FLP one"
-  lexicon=$(find -L $corpusdir -ipath "*/conversational/*" -name "lexicon.txt" -type f) 
-   [ -z "$lexicon" ] && echo >&2 "Neither LLP nor FLP lexicon not found in $corpusdir" 
+  lexicon=$(find -L $corpusdir -ipath "*/conversational/*" -name "lexicon.txt" -type f)
+   [ -z "$lexicon" ] && echo >&2 "Neither LLP nor FLP lexicon not found in $corpusdir"
 fi
 echo "lexicon_file=$lexicon"
 
