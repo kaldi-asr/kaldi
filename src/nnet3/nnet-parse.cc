@@ -389,9 +389,9 @@ bool DescriptorTokenize(const std::string &input,
       KALDI_ASSERT(found != start);
       if (found == std::string::npos) {
         std::string str(input, start, input.size() - start);
-        int32 tmp;
-        if (!IsValidName(str) && !ConvertStringToInteger(str, &tmp)) {
-          KALDI_WARN << "Could not parse line " << ErrorContext(std::string(input, start));
+        BaseFloat tmp;
+        if (!IsValidName(str) && !ConvertStringToReal(str, &tmp)) {
+          KALDI_WARN << "Could not tokenize line " << ErrorContext(std::string(input, start));
           return false;
         }
         tokens->push_back(str);
@@ -399,18 +399,18 @@ bool DescriptorTokenize(const std::string &input,
       } else {
         if (input[found] == '(' || input[found] == ')' || input[found] == ',') {
           std::string str(input, start, found - start);
-          int32 tmp;
-          if (!IsValidName(str) && !ConvertStringToInteger(str, &tmp)) {
-            KALDI_WARN << "Could not parse line " << ErrorContext(std::string(input, start));
+          BaseFloat tmp;
+          if (!IsValidName(str) && !ConvertStringToReal(str, &tmp)) {
+            KALDI_WARN << "Could not tokenize line " << ErrorContext(std::string(input, start));
             return false;
           }
           tokens->push_back(str);
           start = found;
         } else {
           std::string str(input, start, found - start);
-          int32 tmp;
-          if (!IsValidName(str) && !ConvertStringToInteger(str, &tmp)) {
-            KALDI_WARN << "Could not parse line " << ErrorContext(std::string(input, start));
+          BaseFloat tmp;
+          if (!IsValidName(str) && !ConvertStringToReal(str, &tmp)) {
+            KALDI_WARN << "Could not tokenize line " << ErrorContext(std::string(input, start));
             return false;
           }
           tokens->push_back(str);

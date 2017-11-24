@@ -308,7 +308,7 @@ static void UnitTestNnetOptimize() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-  // SetVerboseLevel(3);
+  SetVerboseLevel(3);
 
 #if HAVE_CUDA == 1
   CuDevice::Instantiate().SetDebugStrideMode(true);

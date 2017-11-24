@@ -30,13 +30,12 @@ void IdentifySubmatrixArgs(NnetComputation::Command *c,
                            std::vector<int32*> *submatrix_args) {
   submatrix_args->clear();
   switch (c->command_type) {
-    case kAllocMatrixZeroed:
-    case kAllocMatrixUndefined:
+    case kAllocMatrix:
     case kDeallocMatrix:
+    case kSetConst:
       submatrix_args->push_back(&c->arg1);
       break;
-    case kAllocMatrixFromOther:
-    case kAllocMatrixFromOtherZeroed:
+    case kSwapMatrix:
       submatrix_args->push_back(&c->arg1);
       submatrix_args->push_back(&c->arg2);
       break;
@@ -738,7 +737,9 @@ bool VariableMergingOptimizer::MergeVariables() {
     // potentially merge into a single variable.
     const NnetComputation::Command &c = computation_->commands[command_index];
     int32 s1 = -1, s2 = -1;
+    // TODO: add kScale command and remove the check for 1.0
     if (c.command_type == kMatrixCopy &&
+        //        c.alpha == 1.0 &&
         config_.remove_assignments) {
       s2 = c.arg1;  // s2 is the written-to matrix.
       s1 = c.arg2;
@@ -853,8 +854,12 @@ void VariableMergingOptimizer::DoMerge(int32 command_index,
   const std::vector<MatrixAccesses> &matrix_accesses =
       analyzer_.matrix_accesses;
 
-  //  - If it was case (a), replace the assignment command with a no-op.
-  if (c.command_type == kMatrixCopy) {
+  //  - If it was a matrix-copy (assignment) with scale 1.0, replace the
+  //    assignment command with a no-op.
+  //    If it was matrix-copy with a scale, leave the command there;
+  //    it will have the effect of scaling the matrix (it will be
+  //    mapped so that arg1 == arg2, but that is OK).
+  if (c.command_type == kMatrixCopy && c.alpha == 1.0) {
     // remove the command.
     c.command_type = kNoOperation;
     c.arg1 = -1;
@@ -885,7 +890,8 @@ void VariableMergingOptimizer::DoMerge(int32 command_index,
   {
     //   - Both m_to_keep and m_to_discard will have commands that allocate
     //     them, as all matrices do (note, kAcceptInput counts as an allocation
-    //     command).  If one of them is kAcceptInput, then delete the other one.
+    //     command).  If one of them is kAcceptInput, then delete the other one,
+    //     because the position of the kAcceptInput commands is important.
     //     Otherwise delete the "discard" one.  As a simplification of the logic
     //     of the previous sentence: if the "discard" allocate command is
     //     kAcceptInput then delete the "keep" allocate command, else delete
@@ -895,25 +901,41 @@ void VariableMergingOptimizer::DoMerge(int32 command_index,
     //     submatrix that refers to the entire matrix.  The one we keep will
     //     always refer to the entire matrix.  (In the case where one of
     //     them is an input, both submatrices are guaranteed to refer to the
-    //     entire matrix).
+    //     entire matrix, this is guaranteed by the logic we use to decide
+    //     which matrices we can merge).
     int32 alloc_keep = matrix_accesses[m_to_keep].allocate_command,
         alloc_discard = matrix_accesses[m_to_discard].allocate_command;
 
     KALDI_ASSERT(alloc_keep != -1 && alloc_discard != -1);
-    KALDI_ASSERT(analysis.FirstMatrixAccess(m_to_discard) > alloc_keep);
+    KALDI_ASSERT(analysis.FirstNontrivialMatrixAccess(m_to_discard) >
+                 alloc_keep);
 
     NnetComputation::Command
         &keep_alloc_command = computation_->commands[alloc_keep],
         &discard_alloc_command = computation_->commands[alloc_discard];
+    int32 matrix_whose_zeroing_to_discard;
     if (discard_alloc_command.command_type == kAcceptInput) {
       keep_alloc_command.command_type = kNoOperation;
+      matrix_whose_zeroing_to_discard = m_to_keep;
     } else {
       discard_alloc_command.command_type = kNoOperation;
+      matrix_whose_zeroing_to_discard = m_to_discard;
+    }
+    // Now remove the command that zeroed one of the matrices
+    // (the one whose allocation command we just discarded).
+    int32 zeroing_command_to_discard =
+     matrix_accesses[matrix_whose_zeroing_to_discard].accesses[0].command_index;
+    NnetComputation::Command &zeroing_command =
+        computation_->commands[zeroing_command_to_discard];
+    if (zeroing_command.command_type == kSetConst &&
+        zeroing_command.alpha == 0.0) {
+      // if 'zeroing_command' actually *was* a zeroing command, then remove it.
+      zeroing_command.command_type = kNoOperation;
     }
   }
 
   //  If the matrix to discard had stride_type == kStrideEqualNumCols, set the
-  //  matrix to keep's stride_type to kStrideEqualNumCols.
+  //  stride type of the matrix we're keeping to kStrideEqualNumCols.
   if (computation_->matrices[m_to_discard].stride_type == kStrideEqualNumCols) {
     computation_->matrices[m_to_keep].stride_type = kStrideEqualNumCols;
     // ... and perform an additional check.
@@ -978,14 +1000,14 @@ std::pair<bool,bool> VariableMergingOptimizer::MayBeMerged(
                         kMatrixCopy);
   ComputationAnalysis analysis(*computation_, analyzer_);
   if (is_assignment) {
-    if (analysis.FirstAccess(s2) == command_index &&
+    if (analysis.FirstNontrivialAccess(s2) == command_index &&
         analysis.LastWriteAccess(s1) < command_index &&
         analysis.LastAccess(s1) <
         analysis.DataInvalidatedCommand(command_index, s2)) {
       return std::pair<bool,bool>(left, right);  // possible success.
     }
   } else {
-    if (analysis.FirstAccess(s2) == command_index &&
+    if (analysis.FirstNontrivialAccess(s2) == command_index &&
         analysis.LastAccess(s1) == command_index) {
       return std::pair<bool,bool>(left, right);  // possible success.
     }
@@ -1115,11 +1137,13 @@ int32 ModelUpdateConsolidator::ConsolidateSubmatrices(
   // of a new matrix that we are creating.
   int32 new_whole_submatrix = computation_->NewMatrix(num_rows, num_cols,
                                                       stride_type);
-  // Add a command at the very start, to initialize this new matrix.
-  // we can later on optimize this zeroed initialization to an undefined
-  // initialization.
+  // Add commands at the very start, to initialize and then zero this new
+  // matrix.  we can later on remove the zeroing if it is not necessary.
   extra_commands_[0].push_back(
-      NnetComputation::Command(kAllocMatrixZeroed, new_whole_submatrix));
+      NnetComputation::Command(kAllocMatrix, new_whole_submatrix));
+  extra_commands_[0].push_back(
+      NnetComputation::Command(0.0, kSetConst, new_whole_submatrix));
+
   final_deallocate_commands_.push_back(
       NnetComputation::Command(kDeallocMatrix, new_whole_submatrix));
   int32 new_matrix_index =
@@ -1323,14 +1347,10 @@ bool DerivativeTimeLimiter::RowIsKept(
 void DerivativeTimeLimiter::ModifyCommand(NnetComputation::Command *command) {
   CommandType command_type = command->command_type;
   switch (command_type) {
-    case kAllocMatrixUndefined:
-    case kAllocMatrixFromOther:
-    case kAllocMatrixFromOtherZeroed:
-      KALDI_ERR << "No undefined initialization or initialization-from-other "
-                << "is allowed before LimitDerivativeTimes";
-      break;
-    case kAllocMatrixZeroed:
+    case kAllocMatrix:
     case kDeallocMatrix:
+    case kSetConst:
+    case kSwapMatrix:
       break;  // we'll deal with allocation and deallocation later on.
     case kPropagate:
       // Propagate commands are unchanged, except that if the output of the
@@ -1793,8 +1813,10 @@ void DerivativeTimeLimiter::ModifyCommands() {
 bool DerivativeTimeLimiter::CanLimitMatrix(const Analyzer &analyzer,
                                            int32 m) const {
   int32 s_whole = whole_submatrices_[m];  // submatrix consisting of
-                                                     // all of the matrix.
-  int32 s_mapped = submatrix_map_[s_whole];  // the matrix limited in time.
+                                          // all of the matrix m
+  int32 s_mapped = submatrix_map_[s_whole];  // submatrix consisting of the time
+                                             // range of the matrix m that we
+                                             // plan to limit it to.
   KALDI_ASSERT(s_mapped != 0 && s_mapped != s_whole);
   std::vector<int32> whole_variables, mapped_variables;
   analyzer.variables.AppendVariablesForSubmatrix(s_whole,
@@ -1809,9 +1831,9 @@ bool DerivativeTimeLimiter::CanLimitMatrix(const Analyzer &analyzer,
                           mapped_variables.begin(), mapped_variables.end(),
                           excluded_variables.begin());
   KALDI_ASSERT(end_iter == excluded_variables.end());
-  // We want to make sure that none of the excluded variables are
-  // ever accessed.  If they are, we cannot prune the matrix.
-  int32 allocate_command = analyzer.matrix_accesses[m].allocate_command;
+  // We want to make sure that none of the excluded variables are ever accessed,
+  // except possibly for zeroing or setting to other constant value.  If they
+  // are, we cannot prune the matrix.
   for (std::vector<int32>::iterator iter = excluded_variables.begin();
        iter != end_iter; ++iter) {
     int32 variable_index = *iter;
@@ -1822,9 +1844,11 @@ bool DerivativeTimeLimiter::CanLimitMatrix(const Analyzer &analyzer,
     for (; viter != vend; ++viter) {
       // if a variable outside the pruned range of the matrix is ever accessed
       // apart from on allocation, we cannot prune.
-      if (viter->command_index != allocate_command) {
+      int32 command_index = viter->command_index;
+      NnetComputation::Command &command = computation_->commands[command_index];
+      if (command.command_type != kSetConst) {
         // we may one day want to look at this.. it's not really expected.
-        KALDI_VLOG(4) << "Cannot prune matrix " << m;
+        KALDI_VLOG(3) << "Cannot prune matrix " << m;
         return false;
       }
     }
@@ -1915,20 +1939,8 @@ void DerivativeTimeLimiter::PruneMatrices() {
     if (!matrix_prune_info.partly_inside_range) {
       // completely outside time range.  we can prune the matrix if it is not an
       // input or output, and is never accessed apart from allocation.
-      if (accesses.accesses.empty() ||
-          (accesses.accesses.size() == 1 &&
-           accesses.accesses[0].command_index == accesses.allocate_command)) {
-        // we prune the matrix away.  the only thing we need to do here is
-        // to remove the allocation and deallocation commands.
-        // they should exist, because we just checked that it's not an input
-        // or an output.
-        KALDI_ASSERT(accesses.allocate_command >= 0 &&
-                     accesses.deallocate_command >= 0);
-        computation_->commands[accesses.allocate_command].command_type =
-            kNoOperation;
-        computation_->commands[accesses.deallocate_command].command_type =
-            kNoOperation;
-      }
+      if (MatrixIsUnused(analyzer, *computation_, m))
+          RemoveCommandsForUnusedMatrix(analyzer, m, computation_);
     } else {
       // the matrix is partly inside the time range, it's a derivative, and not
       // an input or an output.
@@ -2921,9 +2933,10 @@ void ComputationExpander::ComputeCommands() {
     // However, commands that require, 'indexes', 'indexes_multi' or
     // 'indexes_ranges' do need to be modified.
     switch (c.command_type) {
-      case kAllocMatrixUndefined: case kAllocMatrixZeroed:
-      case kDeallocMatrix: case kAllocMatrixFromOther:
-      case kAllocMatrixFromOtherZeroed:
+      case kAllocMatrix:
+      case kDeallocMatrix:
+      case kSetConst:
+      case kSwapMatrix:
       case kPropagate: case kBackprop:
       case kBackpropNoModelUpdate: case kMatrixCopy: case kMatrixAdd:
         break;
@@ -3424,8 +3437,7 @@ class ComputationLoopedOptimizer {
   // each of the matrices in list 'matrices1' from the corresponding
   // matrix in 'matrices2', using the kAllocMatrixFromOther command.
   // This effectively does, for example, matrices1[i] = matrices2[i],
-  // while initializing matrices1[i] and deallocating matrices2[i];
-  // it's implemented as a shallow swap.
+  // and it's implemented as a shallow swap.
   // It does this in such an order that even if the two lists are
   // not disjoint, the right thing happens.
   static void AddMatrixSwapCommands(
@@ -3720,7 +3732,7 @@ void ComputationLoopedOptimizer::FindActiveMatrices(
     // in 'splice_point_commands'.
     int32 s = whole_submatrices[m],  // submatrix consisting of the whole of
                                      // 'm'.
-        first_access = analysis.FirstAccess(s),
+        first_access = analysis.FirstNontrivialAccess(s),
         last_access = analysis.LastAccess(s);
     for (int32 i = 0; i < num_splice_points; i++) {
       int32 splice_point = splice_point_commands[i];
@@ -3851,8 +3863,7 @@ void ComputationLoopedOptimizer::AddMatrixSwapCommands(
                  static_cast<size_t>(m2) < num_matrices);
     int32 s1 = whole_submatrices[m1], s2 = whole_submatrices[m2];
     computation->commands.push_back(
-        NnetComputation::Command(
-            kAllocMatrixFromOther, s1, s2));
+        NnetComputation::Command(kSwapMatrix, s1, s2));
   }
   computation->commands.push_back(goto_label_command);
 }
@@ -3987,6 +3998,50 @@ void FixGotoLabel(NnetComputation *computation) {
   }
 }
 
+bool MatrixIsUnused(const Analyzer &analyzer,
+                    const NnetComputation &computation,
+                    int32 m) {
+  const MatrixAccesses &accesses = analyzer.matrix_accesses[m];
+  if (accesses.is_input || accesses.is_output)
+    return false;
+  for (size_t i = 0; i < accesses.accesses.size(); i++) {
+    int32 command_index = accesses.accesses[i].command_index;
+    const NnetComputation::Command &command =
+        computation.commands[command_index];
+    if (command.command_type != kNoOperation &&
+        command.command_type != kSetConst) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void RemoveCommandsForUnusedMatrix(const Analyzer &analyzer,
+                                   int32 m,
+                                   NnetComputation *computation) {
+  const MatrixAccesses &accesses = analyzer.matrix_accesses[m];
+  if (accesses.allocate_command >= 0) {
+    NnetComputation::Command &command = computation->commands[
+        accesses.allocate_command];
+    KALDI_ASSERT(command.command_type == kNoOperation ||
+                 command.command_type == kAllocMatrix);
+    command.command_type = kNoOperation;
+  }
+  if (accesses.deallocate_command >= 0) {
+    NnetComputation::Command &command = computation->commands[
+        accesses.deallocate_command];
+    KALDI_ASSERT(command.command_type == kNoOperation ||
+                 command.command_type == kDeallocMatrix);
+    command.command_type = kNoOperation;
+  }
+  for (size_t i = 0; i < accesses.accesses.size(); i++) {
+    int32 command_index = accesses.accesses[i].command_index;
+    NnetComputation::Command &command = computation->commands[command_index];
+    KALDI_ASSERT(command.command_type == kNoOperation ||
+                 command.command_type == kSetConst);
+    command.command_type = kNoOperation;
+  }
+}
 
 } // namespace nnet3
 } // namespace kaldi
