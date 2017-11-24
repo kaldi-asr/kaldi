@@ -788,6 +788,17 @@ void CuVectorBase<Real>::MulElements(const CuVectorBase<Real> &v) {
   }
 }
 
+template<typename Real>
+void CuVectorBase<Real>::DivElements(const CuVectorBase<Real> &v) {
+  // this just creates a matrix and calls the matrix version.
+  KALDI_ASSERT(dim_ == v.dim_);
+  CuSubMatrix<Real> this_mat(this->Data(), 1, dim_, dim_),
+      v_mat(v.Data(), 1, dim_, dim_);
+  this_mat.DivElements(v_mat);
+}
+
+
+
 template<>
 template<>
 void CuVectorBase<double>::CopyFromVec(const CuVectorBase<float> &src) {
