@@ -860,6 +860,69 @@ class SvdApplier {
 };
 
 
+// This code has been broken out of ReadEditConfig as it's quite long.
+// It implements the internals of the edit directive 'reduce-rank'.
+// See also the related direcive 'apply-svd'.
+void ReduceRankOfComponents(const std::string component_name_pattern,
+                            int32 rank,
+                            Nnet *nnet) {
+  int32 num_components_changed = 0;
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *component = nnet->GetComponent(c);
+    std::string component_name = nnet->GetComponentName(c);
+    if (NameMatchesPattern(component_name.c_str(),
+                           component_name_pattern.c_str())) {
+      AffineComponent *affine =  dynamic_cast<AffineComponent*>(component);
+      if (affine == NULL) {
+        KALDI_WARN << "Not reducing rank of component " << component_name
+                   << " as it is not an AffineComponent.";
+        continue;
+      }
+      int32 input_dim = affine->InputDim(),
+          output_dim = affine->OutputDim();
+      if (input_dim <= rank || output_dim <= rank) {
+        KALDI_WARN << "Not reducing rank of component " << component_name
+                   << " with SVD to rank " << rank
+                   << " because its dimension is " << input_dim
+                   << " -> " << output_dim;
+        continue;
+      }
+      Matrix<BaseFloat> linear_params(affine->LinearParams());
+      Vector<BaseFloat> bias_params(affine->BiasParams());
+
+      // note: 'linear_params' is of dimension output_dim by input_dim.
+      int32 middle_dim = std::min<int32>(input_dim, output_dim);
+      Vector<BaseFloat> s(middle_dim);
+      Matrix<BaseFloat> U(output_dim, middle_dim),
+          Vt(middle_dim, input_dim);
+      linear_params.Svd(&s, &U, &Vt);
+      // make sure the singular values are sorted from greatest to least value.
+      SortSvd(&s, &U, &Vt);
+      BaseFloat s_sum_orig = s.Sum();
+      s.Resize(rank, kCopyData);
+      U.Resize(output_dim, rank, kCopyData);
+      Vt.Resize(rank, input_dim, kCopyData);
+      BaseFloat s_sum_reduced = s.Sum();
+      KALDI_LOG << "For component " << component_name
+                << " singular value sum changed by reduce-rank command "
+                << (s_sum_orig - s_sum_reduced)
+                << " (from " << s_sum_orig << " to " << s_sum_reduced << ")";
+      U.MulColsVec(s);
+      Matrix<BaseFloat> linear_params_reduced_rank(output_dim, input_dim);
+      linear_params_reduced_rank.AddMatMat(1.0, U, kNoTrans, Vt, kNoTrans, 0.0);
+      CuMatrix<BaseFloat> linear_params_reduced_rank_cuda;
+      linear_params_reduced_rank_cuda.Swap(&linear_params_reduced_rank);
+      CuVector<BaseFloat> bias_params_cuda;
+      bias_params_cuda.Swap(&bias_params);
+      affine->SetParams(bias_params_cuda, linear_params_reduced_rank_cuda);
+      num_components_changed++;
+    }
+  }
+  KALDI_LOG << "Reduced rank of parameters of " << num_components_changed
+            << " components.";
+}
+
+
 
 
 void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
@@ -1033,6 +1096,16 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
         KALDI_ERR << "Bottleneck-dim must be positive in apply-svd command.";
       SvdApplier applier(name_pattern, bottleneck_dim, nnet);
       applier.ApplySvd();
+    } else if (directive == "reduce-rank") {
+      std::string name_pattern;
+      int32 rank = -1;
+      if (!config_line.GetValue("name", &name_pattern) ||
+          !config_line.GetValue("rank", &rank))
+        KALDI_ERR << "Edit directive reduce-rank requires 'name' and "
+            "'rank' to be specified.";
+      if (rank <= 0)
+        KALDI_ERR << "Rank must be positive in reduce-rank command.";
+      ReduceRankOfComponents(name_pattern, rank, nnet);
     } else {
       KALDI_ERR << "Directive '" << directive << "' is not currently "
           "supported (reading edit-config).";

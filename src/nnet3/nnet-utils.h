@@ -303,11 +303,19 @@ void CollapseModel(const CollapseModelConfig &config,
 
     apply-svd name=<name-pattern> bottleneck-dim=<dim>
        Locates all components with names matching <name-pattern>, which are
+       type AffineComponent or child classes thereof.  If <dim> is
+       less than the minimum of the (input or output) dimension of the component,
+       it does SVD on the components' parameters, retaining only the alrgest
+       <dim> singular values, replacing these components with sequences of two
+       components, of types LinearComponent and NaturalGradientAffineComponent.
+       See also 'reduce-rank'.
+
+    reduce-rank name=<name-pattern> rank=<dim>
+       Locates all components with names matching <name-pattern>, which are
        type AffineComponent or child classes thereof.  Does SVD on the
-       components' parameters, retaining only <dim> eigenvalues, where <dim>
-       must be less than the maximum of the input or output dim of the
-       component, and replaces them with sequences of two components, of
-       types LinearComponent and NaturalGradientAffineComponent.
+       components' parameters, retaining only the largest <dim> singular values,
+       and writes the reconstructed matrix back to the component.  See also
+       'apply-svd', which structurally breaks the component into two pieces.
 
    \endverbatim
 */
