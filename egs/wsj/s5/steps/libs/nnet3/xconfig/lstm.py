@@ -872,13 +872,10 @@ class XconfigFastLstmbLayer(XconfigLayerBase):
 
         configs = []
 
-        # the equations implemented here are equations (1) through (6) of
-        # https://arxiv.org/pdf/1402.1128.pdf.
-        # naming convention
-        # <layer-name>.W_<outputname>.<input_name> e.g. Lstm1.W_i.xr for matrix
-        # providing output to gate i and operating on an appended vector [x,r]
+        # See XconfigFastLstmLayer to understand what's going on here.
+        # This differs from that code by a factorization of the W_all matrix.
         configs.append("### Begin LTSM layer '{0}'".format(name))
-        configs.append("component name={0}.W_all_a type=NaturalGradientAffineComponent input-dim={1} "
+        configs.append("component name={0}.W_all_a type=LinearComponent input-dim={1} "
                        "output-dim={2} {3} {4}".format(name, input_dim + cell_dim, bottleneck_dim,
                                                        affine_str, l2_regularize_option))
         normalize_type = self.config['normalize-type']
