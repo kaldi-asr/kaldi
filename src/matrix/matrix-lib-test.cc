@@ -2779,6 +2779,19 @@ template<typename Real> static void UnitTestMul() {
   }
 }
 
+template<typename Real> static void UnitTestApplyExpSpecial() {
+  int32 rows = RandInt(1, 10), cols = RandInt(1, 10);
+  Matrix<Real> mat(rows, cols);
+  mat.SetRandn();
+  Matrix<Real> A(mat), B(mat);
+  A.ApplyExp();
+  B.Add(1.0);
+  B.ApplyFloor(1.0);
+  A.Min(B); // min of exp(x) and max(1.0, x + 1).
+  mat.ApplyExpSpecial();
+  KALDI_LOG << "A is: " << A;
+  AssertEqual(mat, A);
+}
 
 template<typename Real> static void UnitTestInnerProd() {
 
@@ -4667,6 +4680,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestAddMatSelf<Real>();
   UnitTestMaxMin<Real>();
   UnitTestInnerProd<Real>();
+  UnitTestApplyExpSpecial<Real>();
   UnitTestScaleDiag<Real>();
   UnitTestSetDiag<Real>();
   UnitTestSetRandn<Real>();

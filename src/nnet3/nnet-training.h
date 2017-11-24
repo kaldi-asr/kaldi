@@ -70,7 +70,7 @@ struct NnetTrainerOptions {
     opts->Register("max-param-change", &max_param_change, "The maximum change in "
                    "parameters allowed per minibatch, measured in Euclidean norm "
                    "over the entire model (change will be clipped to this value)");
-    opts->Register("momentum", &momentum, "momentum constant to apply during "
+    opts->Register("momentum", &momentum, "Momentum constant to apply during "
                    "training (help stabilize update).  e.g. 0.9.  Note: we "
                    "automatically multiply the learning rate by (1-momenum) "
                    "so that the 'effective' learning rate is the same as "
@@ -92,10 +92,10 @@ struct NnetTrainerOptions {
                    &backstitch_training_interval,
                    "do backstitch training with the specified interval of "
                    "minibatches. It is referred as 'n' in our publications.");
-    opts->Register("read-cache", &read_cache, "the location where we can read "
-                   "the cached computation from");
-    opts->Register("write-cache", &write_cache, "the location where we want to "
-                   "write the cached computation to");
+    opts->Register("read-cache", &read_cache, "The location from which to read "
+                   "the cached computation.");
+    opts->Register("write-cache", &write_cache, "The location to which to write "
+                   "the cached computation.");
     opts->Register("binary-write-cache", &binary_write_cache, "Write "
                    "computation cache in binary mode");
 
@@ -203,11 +203,9 @@ class NnetTrainer {
 
   const NnetTrainerOptions config_;
   Nnet *nnet_;
-  Nnet *delta_nnet_;  // Only used if momentum != 0.0 or max-param-change !=
-                      // 0.0.  nnet representing accumulated parameter-change
-                      // (we'd call this gradient_nnet_, but due to
-                      // natural-gradient update, it's better to consider it as
-                      // a delta-parameter nnet.
+  Nnet *delta_nnet_;  // nnet representing parameter-change for this minibatch
+                      // (or, when using momentum, the moving weighted average
+                      // of this).
   CachingOptimizingCompiler compiler_;
 
   // This code supports multiple output layers, even though in the

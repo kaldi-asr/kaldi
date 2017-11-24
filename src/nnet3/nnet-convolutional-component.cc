@@ -29,8 +29,7 @@ namespace nnet3 {
 
 
 TimeHeightConvolutionComponent::TimeHeightConvolutionComponent():
-    use_natural_gradient_(true),
-    num_minibatches_history_(4.0) { }
+    use_natural_gradient_(true) { }
 
 TimeHeightConvolutionComponent::TimeHeightConvolutionComponent(
     const TimeHeightConvolutionComponent &other):
@@ -42,7 +41,6 @@ TimeHeightConvolutionComponent::TimeHeightConvolutionComponent(
     bias_params_(other.bias_params_),
     max_memory_mb_(other.max_memory_mb_),
     use_natural_gradient_(other.use_natural_gradient_),
-    num_minibatches_history_(other.num_minibatches_history_),
     preconditioner_in_(other.preconditioner_in_),
     preconditioner_out_(other.preconditioner_out_) {
   Check();
@@ -77,7 +75,8 @@ std::string TimeHeightConvolutionComponent::Info() const {
          << ", max-memory-mb=" << max_memory_mb_
          << ", use-natural-gradient=" << use_natural_gradient_;
   if (use_natural_gradient_) {
-    stream << ", num-minibatches-history=" << num_minibatches_history_
+    stream << ", num-minibatches-history="
+           << preconditioner_in_.GetNumMinibatchesHistory()
            << ", rank-in=" << preconditioner_in_.GetRank()
            << ", rank-out=" << preconditioner_out_.GetRank()
            << ", alpha-in=" << preconditioner_in_.GetAlpha()
@@ -218,15 +217,15 @@ void TimeHeightConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
 
   // 4. Natural-gradient related configs.
   use_natural_gradient_ = true;
-  num_minibatches_history_ = 4.0;
   int32 rank_out = -1, rank_in = -1;
-  BaseFloat alpha_out = 4.0, alpha_in = 4.0;
+  BaseFloat alpha_out = 4.0, alpha_in = 4.0,
+      num_minibatches_history = 4.0;
   cfl->GetValue("use-natural-gradient", &use_natural_gradient_);
   cfl->GetValue("rank-in", &rank_in);
   cfl->GetValue("rank-out", &rank_out);
   cfl->GetValue("alpha-in", &alpha_in);
   cfl->GetValue("alpha-out", &alpha_out);
-  cfl->GetValue("num-minibatches-history", &num_minibatches_history_);
+  cfl->GetValue("num-minibatches-history", &num_minibatches_history);
 
   preconditioner_in_.SetAlpha(alpha_in);
   preconditioner_out_.SetAlpha(alpha_out);
@@ -240,14 +239,8 @@ void TimeHeightConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
     rank_out = std::min<int32>(80, (dim_out + 1) / 2);
     preconditioner_out_.SetRank(rank_out);
   }
-  // the swapping of in and out in the lines below is intentional.  the num-rows
-  // of the matrix that we give to preconditioner_in_ to precondition is
-  // dim-out, and the num-rows of the matrix we give to preconditioner_out_ to
-  // preconditioner is dim-in.  the preconditioner objects treat these rows
-  // as separate samples, e.g. separate frames, even though they actually
-  // correspond to a different dimension in the parameter space.
-  preconditioner_in_.SetNumSamplesHistory(dim_out * num_minibatches_history_);
-  preconditioner_out_.SetNumSamplesHistory(dim_in * num_minibatches_history_);
+  preconditioner_in_.SetNumMinibatchesHistory(num_minibatches_history);
+  preconditioner_out_.SetNumMinibatchesHistory(num_minibatches_history);
 
   preconditioner_in_.SetAlpha(alpha_in);
   preconditioner_out_.SetAlpha(alpha_out);
@@ -411,12 +404,13 @@ void TimeHeightConvolutionComponent::Write(std::ostream &os, bool binary) const 
   WriteBasicType(os, binary, max_memory_mb_);
   WriteToken(os, binary, "<UseNaturalGradient>");
   WriteBasicType(os, binary, use_natural_gradient_);
-  WriteToken(os, binary, "<NumMinibatchesHistory>");
-  WriteBasicType(os, binary, num_minibatches_history_);
   int32 rank_in = preconditioner_in_.GetRank(),
       rank_out = preconditioner_out_.GetRank();
   BaseFloat alpha_in = preconditioner_in_.GetAlpha(),
-      alpha_out = preconditioner_out_.GetAlpha();
+      alpha_out = preconditioner_out_.GetAlpha(),
+      num_minibatches_history = preconditioner_in_.GetNumMinibatchesHistory();
+  WriteToken(os, binary, "<NumMinibatchesHistory>");
+  WriteBasicType(os, binary, num_minibatches_history);
   WriteToken(os, binary, "<AlphaInOut>");
   WriteBasicType(os, binary, alpha_in);
   WriteBasicType(os, binary, alpha_out);
@@ -443,10 +437,11 @@ void TimeHeightConvolutionComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &max_memory_mb_);
   ExpectToken(is, binary, "<UseNaturalGradient>");
   ReadBasicType(is, binary, &use_natural_gradient_);
-  ExpectToken(is, binary, "<NumMinibatchesHistory>");
-  ReadBasicType(is, binary, &num_minibatches_history_);
   int32 rank_in,  rank_out;
-  BaseFloat alpha_in, alpha_out;
+  BaseFloat alpha_in, alpha_out,
+      num_minibatches_history;
+  ExpectToken(is, binary, "<NumMinibatchesHistory>");
+  ReadBasicType(is, binary, &num_minibatches_history);
   ExpectToken(is, binary, "<AlphaInOut>");
   ReadBasicType(is, binary, &alpha_in);
   ReadBasicType(is, binary, &alpha_out);
@@ -457,13 +452,8 @@ void TimeHeightConvolutionComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &rank_out);
   preconditioner_in_.SetRank(rank_in);
   preconditioner_out_.SetRank(rank_out);
-  int32 dim_in = linear_params_.NumCols() + 1,
-      dim_out = linear_params_.NumRows();
-  // the following lines mirror similar lines in InitFromConfig().
-  // the swapping of in and out is intentional; see comment in InitFromConfig(),
-  // by similar lines.
-  preconditioner_in_.SetNumSamplesHistory(dim_out * num_minibatches_history_);
-  preconditioner_out_.SetNumSamplesHistory(dim_in * num_minibatches_history_);
+  preconditioner_in_.SetNumMinibatchesHistory(num_minibatches_history);
+  preconditioner_out_.SetNumMinibatchesHistory(num_minibatches_history);
   ExpectToken(is, binary, "</TimeHeightConvolutionComponent>");
   ComputeDerived();
   Check();

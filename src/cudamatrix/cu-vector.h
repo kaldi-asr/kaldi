@@ -118,6 +118,18 @@ class CuVectorBase {
 
   void InvertElements();
 
+
+  /// Copies selected elements from 'mat' to *this.  Expects this->Dim()
+  /// to equal elements.Dim(). If trans == kNoTrans,
+  /// expects mat.NumRows() to equal this.Dim(), and for each i,
+  /// copies mat(i, elements[i]) to (*this)(i).
+  /// If trans == kTrans,
+  /// expects mat.NumCols() to equal this.Dim(), and for each i,
+  /// copies mat(elements[i], i) to (*this)(i).
+  void CopyElements(const CuMatrixBase<Real> &mat,
+                    const MatrixTransposeType trans,
+                    const CuArrayBase<int32> &elements);
+
   void ApplySoftMax();
   void ApplyExp();
   void ApplyLog();
@@ -275,12 +287,13 @@ class CuVector: public CuVectorBase<Real> {
     return *this;
   }
 
+  void Swap(CuVector<Real> *vec);
+  void Swap(Vector<Real> *vec);
 
   /// I/O
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &is, bool binary) const;
 
-  void Swap(Vector<Real> *vec);
 
  private:
   void Destroy();
@@ -365,6 +378,12 @@ Vector<Real>::Vector(const CuVectorBase<OtherReal> &cu) {
   Init(cu.Dim());
   cu.CopyToVec(this);
 }
+
+/// Returns \f$ v_1^T M v_2  \f$ .
+template<typename Real>
+Real VecMatVec(const CuVectorBase<Real> &v1, const CuMatrixBase<Real> &M,
+               const CuVectorBase<Real> &v2);
+
 
 } // namespace
 

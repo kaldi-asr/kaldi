@@ -47,47 +47,41 @@ enum ComponentProperties {
                                 // UpdatableComponent do not have to return this
                                 // flag, e.g.  if this instance is not really
                                 // updatable).
-  kLinearInInput = 0x004,    // true if the component's output is always a
-                             // linear function of its input, i.e. alpha times
-                             // input gives you alpha times output.
-  kLinearInParameters = 0x008, // true if an updatable component's output is always a
-                               // linear function of its parameters, i.e. alpha times
-                               // parameters gives you alpha times output.  This is true
-                               // for all updatable components we envisage.
-  kPropagateInPlace = 0x010,  // true if we can do the propagate operation in-place
+  kPropagateInPlace = 0x004,  // true if we can do the propagate operation in-place
                               // (input and output matrices are the same).
                               // Note: if doing backprop, you'd also need to check
                               // that the kBackpropNeedsInput property is not true.
-  kPropagateAdds = 0x020,  // true if the Propagate function adds to, rather
+  kPropagateAdds = 0x008,  // true if the Propagate function adds to, rather
                            // than setting, its output.  The Component chooses
                            // whether to add or set, and the calling code has to
-                           // accommodate it.
-  kReordersIndexes = 0x040,  // true if the ReorderIndexes function might reorder
+                           // accommodate it.  This flag is incompatible with
+                           // the kPropagateInPlace flag.
+  kReordersIndexes = 0x010,  // true if the ReorderIndexes function might reorder
                              // the indexes (otherwise we can skip calling it).
                              // Must not be set for simple components.
-  kBackpropAdds = 0x080,   // true if the Backprop function adds to, rather than
+  kBackpropAdds = 0x020,   // true if the Backprop function adds to, rather than
                            // setting, the "in_deriv" output.  The Component
                            // chooses whether to add or set, and the calling
                            // code has to accommodate it.  Note: in the case of
-                           // in-place backprop, this flag has no effect.
-  kBackpropNeedsInput = 0x100,  // true if backprop operation needs access to
+                           // in-place backprop, this flag is
+  kBackpropNeedsInput = 0x040,  // true if backprop operation needs access to
                                 // forward-pass input.
-  kBackpropNeedsOutput = 0x200,  // true if backprop operation needs access to
+  kBackpropNeedsOutput = 0x080,  // true if backprop operation needs access to
                                  // forward-pass output (e.g. true for Sigmoid).
-  kBackpropInPlace = 0x400,   // true if we can do the backprop operation in-place
+  kBackpropInPlace = 0x100,   // true if we can do the backprop operation in-place
                              // (input and output matrices may be the same).
-  kStoresStats = 0x800,      // true if the StoreStats operation stores
+  kStoresStats = 0x200,      // true if the StoreStats operation stores
                              // statistics e.g. on average node activations and
                              // derivatives of the nonlinearity, (as it does for
                              // Tanh, Sigmoid, ReLU and Softmax).
-  kInputContiguous = 0x1000,  // true if the component requires its input data (and
+  kInputContiguous = 0x400,  // true if the component requires its input data (and
                               // input derivatives) to have Stride()== NumCols().
-  kOutputContiguous = 0x2000,  // true if the component requires its input data (and
+  kOutputContiguous = 0x800,  // true if the component requires its input data (and
                                // output derivatives) to have Stride()== NumCols().
-  kUsesMemo = 0x4000,  // true if the component returns a void* pointer from its
+  kUsesMemo = 0x1000,  // true if the component returns a void* pointer from its
                        // Propagate() function that needs to be passed into the
                        // corresponding Backprop function.
-  kRandomComponent = 0x8000   // true if the component has some kind of
+  kRandomComponent = 0x2000   // true if the component has some kind of
                               // randomness, like DropoutComponent (these should
                               // inherit from class RandomComponent.
 };
