@@ -473,10 +473,16 @@ class UpdatableComponent: public Component {
   /// learning_rate_factor_.
   virtual void SetAsGradient() { learning_rate_ = 1.0; is_gradient_ = true; }
 
+  virtual BaseFloat LearningRateFactor() { return learning_rate_factor_; }
+
   // Sets the learning rate factors to lrate_factor.
   virtual void SetLearningRateFactor(BaseFloat lrate_factor) {
     learning_rate_factor_ = lrate_factor;
   }
+
+  // Copies the learning-rate, learning-rate-factor, l2-regularize, is-gradient
+  // and max-change values from 'other'.
+  void SetUpdatableConfigs(const UpdatableComponent &other);
 
   /// freezes/unfreezes NaturalGradient updates, if applicable (to be overriden
   /// by components that use Natural Gradient).
@@ -493,6 +499,7 @@ class UpdatableComponent: public Component {
   /// NnetTrainer::UpdateParamsWithMaxChange() in nnet-utils.h.
   BaseFloat MaxChange() const { return max_change_; }
 
+  void SetMaxChange(BaseFloat max_change) { max_change_ = max_change; }
 
   /// Returns the l2 regularization constant, which may be set in any updatable
   /// component (usually from the config file).  This value is not interrogated
@@ -500,6 +507,8 @@ class UpdatableComponent: public Component {
   /// ApplyL2Regularization(), declared in nnet-utils.h, which is used as part
   /// of the training workflow.
   BaseFloat L2Regularization() const { return l2_regularize_; }
+
+  void SetL2Regularization(BaseFloat a) { l2_regularize_ = a; }
 
   virtual std::string Info() const;
 

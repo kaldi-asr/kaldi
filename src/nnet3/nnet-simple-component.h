@@ -864,6 +864,9 @@ class NaturalGradientAffineComponent: public AffineComponent {
   // copy constructor
   explicit NaturalGradientAffineComponent(
       const NaturalGradientAffineComponent &other);
+  NaturalGradientAffineComponent(
+      const CuMatrixBase<BaseFloat> &linear_params,
+      const CuVectorBase<BaseFloat> &bias_params);
  private:
   // disallow assignment operator.
   NaturalGradientAffineComponent &operator= (
@@ -978,6 +981,8 @@ class LinearComponent: public UpdatableComponent {
   virtual void FreezeNaturalGradient(bool freeze);
   // copy constructor
   explicit LinearComponent(const LinearComponent &other);
+
+  explicit LinearComponent(const CuMatrix<BaseFloat> &params);
  private:
 
   // disallow assignment operator.

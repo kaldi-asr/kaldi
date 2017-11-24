@@ -215,6 +215,16 @@ UpdatableComponent::UpdatableComponent(const UpdatableComponent &other):
     is_gradient_(other.is_gradient_),
     max_change_(other.max_change_) { }
 
+
+void UpdatableComponent::SetUpdatableConfigs(
+    const UpdatableComponent &other) {
+  learning_rate_ = other.learning_rate_;
+  learning_rate_factor_ = other.learning_rate_factor_;
+  l2_regularize_ = other.l2_regularize_;
+  is_gradient_ = other.is_gradient_;
+  max_change_ = other.max_change_;
+}
+
 // If these defaults are changed, the defaults in the constructor that
 // takes no arguments should be changed too.
 void UpdatableComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {

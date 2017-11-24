@@ -2858,6 +2858,21 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
   SetNaturalGradientConfigs();
 }
 
+
+NaturalGradientAffineComponent::NaturalGradientAffineComponent(
+    const CuMatrixBase<BaseFloat> &linear_params,
+    const CuVectorBase<BaseFloat> &bias_params):
+    AffineComponent(linear_params, bias_params, 0.001) {
+  KALDI_ASSERT(bias_params.Dim() == linear_params.NumRows() &&
+               bias_params.Dim() != 0);
+  num_samples_history_ = 2000.0;
+  alpha_ = 4.0;
+  rank_in_ = 20;
+  rank_out_ = 80;
+  update_period_ = 4;
+  SetNaturalGradientConfigs();
+}
+
 void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = true;
   std::string matrix_filename;
@@ -3237,6 +3252,19 @@ LinearComponent::LinearComponent(
     use_natural_gradient_(other.use_natural_gradient_),
     preconditioner_in_(other.preconditioner_in_),
     preconditioner_out_(other.preconditioner_out_) { }
+
+LinearComponent::LinearComponent(const CuMatrix<BaseFloat> &params):
+    params_(params),
+    use_natural_gradient_(true) {
+  // Set defaults for natural gradient.
+  preconditioner_in_.SetRank(40);
+  preconditioner_out_.SetRank(80);
+  preconditioner_in_.SetUpdatePeriod(4);
+  preconditioner_out_.SetUpdatePeriod(4);
+  // the component-level defaults of alpha and num_samples_history, at 4.0 and
+  // 2000.0, are the same as in the NaturalGradientOnline code, so there is no
+  // need to set those here.
+}
 
 void LinearComponent::Scale(BaseFloat scale) {
   if (scale == 0.0) params_.SetZero();

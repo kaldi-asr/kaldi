@@ -300,6 +300,15 @@ void CollapseModel(const CollapseModelConfig &config,
     set-dropout-proportion [name=<name-pattern>] proportion=<dropout-proportion>
        Sets the dropout rates for any components of type DropoutComponent whose
        names match the given <name-pattern> (e.g. lstm*).  <name-pattern> defaults to "*".
+
+    apply-svd name=<name-pattern> bottleneck-dim=<dim>
+       Locates all components with names matching <name-pattern>, which are
+       type AffineComponent or child classes thereof.  Does SVD on the
+       components' parameters, retaining only <dim> eigenvalues, where <dim>
+       must be less than the maximum of the input or output dim of the
+       component, and replaces them with sequences of two components, of
+       types LinearComponent and NaturalGradientAffineComponent.
+
    \endverbatim
 */
 void ReadEditConfig(std::istream &config_file, Nnet *nnet);
