@@ -15,7 +15,7 @@ set -o pipefail
 . ./cmd.sh
 . ./path.sh
 
-segment_stage=8
+segment_stage=-8
 nj=40
 reco_nj=80
 affix=d
@@ -37,7 +37,6 @@ utils/fix_data_dir.sh data/train_long
 ###############################################################################
 ## Train WSJ models.
 ###############################################################################
-false && {
 
 steps/train_mono.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
   data/train_si84_2kshort data/lang_nosp exp/wsj_mono0a || exit 1;
@@ -61,15 +60,12 @@ steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 steps/train_sat.sh --cmd "$train_cmd" \
   4000 42000 \
   data/train_si284 data/lang_nosp exp/wsj_tri2_ali_si284 exp/wsj_tri3
-}
 
 ###############################################################################
 # Segment long recordings using TF-IDF retrieval of reference text 
 # for uniformly segmented audio chunks based on Smith-Waterman alignment.
 # Use a SAT model trained on train_si284 (wsj_tri3)
 ###############################################################################
-
-true && {
 
 steps/cleanup/segment_long_utterances.sh --cmd "$train_cmd" \
   --stage $segment_stage \
@@ -116,14 +112,12 @@ for dset in eval97.pem; do
     data/${dset} exp/tri4_${affix}/decode_nosp_${dset} \
     exp/tri4_${affix}/decode_nosp_${dset}_rescore
 done
-}
 
 ###############################################################################
 # Segment long recordings using TF-IDF retrieval of reference text 
 # for uniformly segmented audio chunks based on Smith-Waterman alignment.
 # Use a SAT model trained on tri4_a
 ###############################################################################
-true && {
 steps/cleanup/segment_long_utterances.sh --cmd "$train_cmd" \
   --stage $segment_stage \
   --config conf/segment_long_utts.conf --align-full-hyp true \
@@ -157,7 +151,6 @@ for dset in eval97.pem; do
     data/${dset} exp/tri4_${new_affix}/decode_nosp_${dset} \
     exp/tri4_${new_affix}/decode_nosp_${dset}_rescore
 done
-}
 
 cleanup_stage=-1
 cleanup_affix=cleaned
@@ -165,8 +158,6 @@ srcdir=exp/tri4_${new_affix}
 cleaned_data=data/train_reseg_${new_affix}_${cleanup_affix}
 dir=${srcdir}_${cleanup_affix}_work
 cleaned_dir=${srcdir}_${cleanup_affix}
-
-true && {
 
 steps/cleanup/clean_and_segment_data.sh --stage $cleanup_stage --nj 80 \
   --cmd "$train_cmd" \
@@ -179,7 +170,6 @@ steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
 steps/train_sat.sh --cmd "$train_cmd" \
   5000 100000 $cleaned_data data/lang_nosp \
   ${srcdir}_ali_${cleanup_affix} exp/tri5_${new_affix}_${cleanup_affix}
-}
 
 utils/mkgraph.sh data/lang_nosp_test \
   exp/tri5_${new_affix}_${cleanup_affix}/{,graph_nosp_test}
@@ -198,7 +188,6 @@ for dset in eval97.pem; do
 done
 
 exit 0
-
 
 ###############################################################################
 # Train new model on segmented data directory starting from the same model

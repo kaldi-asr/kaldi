@@ -23,7 +23,6 @@ new_affix=2e
 
 . utils/parse_options.sh
 
-false && {
 ###############################################################################
 ## Simulate unsegmented data directory.
 ###############################################################################
@@ -69,8 +68,7 @@ steps/train_sat.sh --cmd "$train_cmd" \
 # Use a SAT model trained on train_si284 (wsj_tri3)
 ###############################################################################
 
-true && {
-bash -x steps/cleanup/segment_long_utterances.sh --cmd "$train_cmd" \
+steps/cleanup/segment_long_utterances.sh --cmd "$train_cmd" \
   --stage $segment_stage \
   --config conf/segment_long_utts.conf --align-full-hyp false \
   --max-segment-duration 30 --overlap-duration 5 \
@@ -115,7 +113,6 @@ for dset in eval97.pem; do
     data/${dset} exp/tri4_${affix}/decode_nosp_${dset} \
     exp/tri4_${affix}/decode_nosp_${dset}_rescore
 done
-}
 
 ###############################################################################
 # Segment long recordings using TF-IDF retrieval of reference text 
@@ -123,7 +120,6 @@ done
 # Use a SAT model trained on tri4_a
 ###############################################################################
 
-true && {
 steps/cleanup/segment_long_utterances.sh --cmd "$train_cmd" \
   --stage $segment_stage \
   --config conf/segment_long_utts.conf --align-full-hyp false \
