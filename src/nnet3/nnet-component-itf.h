@@ -52,18 +52,17 @@ enum ComponentProperties {
                               // Note: if doing backprop, you'd also need to check
                               // that the kBackpropNeedsInput property is not true.
   kPropagateAdds = 0x008,  // true if the Propagate function adds to, rather
-                           // than setting, its output.  The Component chooses
-                           // whether to add or set, and the calling code has to
-                           // accommodate it.  This flag is incompatible with
-                           // the kPropagateInPlace flag.
+                           // than setting, its output, for non-in-place
+                           // propagation.  The Component chooses whether to add
+                           // or set, and the calling code has to accommodate
+                           // it.
   kReordersIndexes = 0x010,  // true if the ReorderIndexes function might reorder
                              // the indexes (otherwise we can skip calling it).
                              // Must not be set for simple components.
   kBackpropAdds = 0x020,   // true if the Backprop function adds to, rather than
-                           // setting, the "in_deriv" output.  The Component
-                           // chooses whether to add or set, and the calling
-                           // code has to accommodate it.  Note: in the case of
-                           // in-place backprop, this flag is
+                           // setting, the "in_deriv" output for non-in-place
+                           // backprop.  The Component chooses whether to add or
+                           // set, and the calling code has to accommodate it.
   kBackpropNeedsInput = 0x040,  // true if backprop operation needs access to
                                 // forward-pass input.
   kBackpropNeedsOutput = 0x080,  // true if backprop operation needs access to
@@ -468,10 +467,16 @@ class UpdatableComponent: public Component {
   /// learning_rate_factor_.
   virtual void SetAsGradient() { learning_rate_ = 1.0; is_gradient_ = true; }
 
+  virtual BaseFloat LearningRateFactor() { return learning_rate_factor_; }
+
   // Sets the learning rate factors to lrate_factor.
   virtual void SetLearningRateFactor(BaseFloat lrate_factor) {
     learning_rate_factor_ = lrate_factor;
   }
+
+  // Copies the learning-rate, learning-rate-factor, l2-regularize, is-gradient
+  // and max-change values from 'other'.
+  void SetUpdatableConfigs(const UpdatableComponent &other);
 
   /// freezes/unfreezes NaturalGradient updates, if applicable (to be overriden
   /// by components that use Natural Gradient).
@@ -488,6 +493,7 @@ class UpdatableComponent: public Component {
   /// NnetTrainer::UpdateParamsWithMaxChange() in nnet-utils.h.
   BaseFloat MaxChange() const { return max_change_; }
 
+  void SetMaxChange(BaseFloat max_change) { max_change_ = max_change; }
 
   /// Returns the l2 regularization constant, which may be set in any updatable
   /// component (usually from the config file).  This value is not interrogated
@@ -495,6 +501,8 @@ class UpdatableComponent: public Component {
   /// ApplyL2Regularization(), declared in nnet-utils.h, which is used as part
   /// of the training workflow.
   BaseFloat L2Regularization() const { return l2_regularize_; }
+
+  void SetL2Regularization(BaseFloat a) { l2_regularize_ = a; }
 
   virtual std::string Info() const;
 
@@ -546,10 +554,43 @@ class UpdatableComponent: public Component {
   const UpdatableComponent &operator = (const UpdatableComponent &other); // Disallow.
 };
 
-/// This kind of Component is a base-class for things like sigmoid, softmax and
-/// ReLU: nonlinearities that don't change the dimension.  It takes care of
-/// storing statistics on the average activations and derivatives encountered
-/// during training.
+
+/*   NonlinearComponent is a base-class for things like sigmoid, softmax and
+     ReLU: nonlinearities that don't change the dimension.  This base-class
+     takes care of storing statistics on the average activations and derivatives
+     encountered during training, and model initialization and I/O.
+
+     Supported parameters on the config line:
+
+       dim           Dimension of the input and output of the component.
+                     (Caution: for NormalizeComponent, there is a member
+                     "add-log-stddev" which if true,  will increase the output
+                     dim by one, so it will be "dim" plus one.
+
+       self-repair-scale=0.0   A scale for the self-repair mechanism (which nudges
+                     the activation values towards the 'good' regions when a particular
+                     dimension of the activations seem to be oversaturated or otherwise
+                     unbalanced.  This is typically set from the script level to values
+                     like 1.0e-04 to 1.0e-05.
+
+       self-repair-lower-threshold=-1000  A lower threshold for the self-repair mechanism;
+                     it will be interpreted in a component-specific way, typically a lower
+                     limit on the average derivative or activation below which the
+                     self-repair mechanism is activated.  -1000 is a special value which
+                     will cause a component-specific default to be used.
+
+       self-repair-upper-threshold=-1000  An upper threshold for the self-repair mechanism;
+                     it will be interpreted in a component-specific way, typically an upper
+                     limit on the average derivative or activation above which the
+                     self-repair mechanism is activated.  -1000 is a special value which
+                     will cause a component-specific default to be used.
+
+       block-dim     Defaults to dim, but may be any nonzero divisor of dim.  It affects the
+                     self-repair, which will be done while treating the input/output as
+                     repeating blocks of size 'block-dim' (e.g. blocks of filtes).  It allows
+                     us to do self-repair on the filter level in CNNs.
+                     Currently this only makes a difference for RectifiedLinearComponent.
+*/
 class NonlinearComponent: public Component {
  public:
 
@@ -559,25 +600,9 @@ class NonlinearComponent: public Component {
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
 
-  // We implement InitFromConfig at this level.
-  // supported config parameters and their defaults:
-  //   dim=-1  self-repair-lower-threshold=-1000  self-repair-upper-threshold=-1000
-  //     self-repair-constant=0.0
-  // the 'self-repair' stuff is 'self-repairing' nonlinearities-- they add small
-  // quantities to the derivative to attempt to keep the average value (for
-  // bounded nonlinearities) or average derivative (for ReLU) for each
-  // dimension within a given range.  The default ranges (if you don't
-  // specify self-repair-lower-threshold or self-repair-upper-threshold) are
-  // dependent on the nonlinearity and are set in their Backprop functions.
-  // To activate this code you have to set self-repair-constant to a number >0 like
-  // 0.0001 when initializing the ReLU (this is a scaling factor on the 'fake
-  // derivative').  This code is only activated if derivative and value stats
-  // are present in the model, which will typically only be the case
-  // if the 'store-stats' code is activated
-  // (e.g. --optimization.store-stats=true) because it needs the stats.  To be
-  // activated this code also requires that is_gradient_ is false (i.e. you're
-  // not computing exact gradients).
-
+  // We implement InitFromConfig at this level and this version is sufficient
+  // for most of the child classes.  Note: it's overridden by class
+  // NormalizeComponent.
   virtual void InitFromConfig(ConfigLine *cfl);
 
   /// We implement Read at this level as it just needs the Type().
@@ -617,7 +642,15 @@ class NonlinearComponent: public Component {
 
 
   const NonlinearComponent &operator = (const NonlinearComponent &other); // Disallow.
+
+  // dim_ is the input dimension (and almost always the output dimension) of the
+  // component.
   int32 dim_;
+  // block_dim_ will normally be the same as dim_, but it may be any nonzero
+  // divisor of dim_; if so, each vector is treated as a number of blocks
+  // appended together, and this affects the stats accumulation and self-repair.
+  // Currently this is only supported for RectifiedLinearComponent.
+  int32 block_dim_;
   CuVector<double> value_sum_; // stats at the output.
   CuVector<double> deriv_sum_; // stats of the derivative of the nonlinearity
                                // (only applicable to element-by-element

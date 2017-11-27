@@ -826,6 +826,14 @@ inline void cuda_diff_tanh(dim3 Gr, dim3 Bl, float *eout, const float *e,
                            int y_stride) {
   cudaF_diff_tanh(Gr, Bl, eout, e, y, d, e_stride, y_stride);
 }
+inline void cuda_ensure_nonzero(dim3 Gr, dim3 Bl, const double *x, MatrixDim d,
+                                double epsilon, int y_stride, double *y) {
+  cudaD_ensure_nonzero(Gr, Bl, x, d, epsilon, y_stride, y);
+}
+inline void cuda_ensure_nonzero(dim3 Gr, dim3 Bl, const float *x, MatrixDim d,
+                                float epsilon, int y_stride, float *y) {
+  cudaF_ensure_nonzero(Gr, Bl, x, d, epsilon, y_stride, y);
+}
 inline void cuda_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda *vec_tgt,
                            double *mat_net_out, double *vec_log_post,
                            MatrixDim d) {

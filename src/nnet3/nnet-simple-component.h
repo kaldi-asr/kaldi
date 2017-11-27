@@ -186,24 +186,44 @@ class ElementwiseProductComponent: public Component {
   int32 output_dim_;
 };
 
+/*
+   Implements the function:
+
+         y = x * (sqrt(dim(x)) * target-rms) / |x|
+
+    where |x| is the 2-norm of the vector x.  I.e. its output is its input
+    scaled such that the root-mean-square values of its elements equals
+    target-rms.  (As a special case, if the input is zero, it outputs zero).
+
+    Note: if you specify add-log-stddev=true, it adds an extra element to
+     y which equals log(|x| / sqrt(dim(x))).
+
+
+   Configuration values accepted:
+      dim, or input-dim    Input dimension of this component, e.g. 1024.
+                           Will be the same as the output dimension if add-log-stddev=false.
+      block-dim            Defaults to 'dim' you may specify a nonzero divisor
+                           of 'dim'.  In this case the input dimension will
+                           be interpreted as blocks of dimension 'block-dim'
+                           to which the nonlinearity described above is applied
+                           separately.
+      add-log-stddev       You can set this to true to add an extra output
+                           dimension which will equal |x| / sqrt(dim(x)).
+                           If block-dim is specified, this is done per block.
+      target-rms           This defaults to 1.0, but if set it to another
+                           (nonzero) value, the output will be scaled by this
+                           factor.
+ */
 class NormalizeComponent: public Component {
  public:
- void Init(int32 input_dim, BaseFloat target_rms, bool add_log_stddev);
-  explicit NormalizeComponent(int32 input_dim,
-                              BaseFloat target_rms = 1.0,
-                              bool add_log_stddev = false) {
-    Init(input_dim, target_rms, add_log_stddev);
-  }
   explicit NormalizeComponent(const NormalizeComponent &other);
-  // note: there is some special code in NonlinerComponent::Info() that
-  // specifically caters to this class.
+
   virtual int32 Properties() const {
-    return (add_log_stddev_ ?
-            kSimpleComponent|kBackpropNeedsInput|kBackpropAdds :
-            kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|
-            kBackpropAdds|kBackpropInPlace);
+    return kSimpleComponent|kBackpropNeedsInput|kBackpropAdds|
+        (add_log_stddev_ ? 0 : kPropagateInPlace|kBackpropInPlace) |
+        (block_dim_ != input_dim_ ? kInputContiguous|kOutputContiguous : 0);
   }
-  NormalizeComponent(): target_rms_(1.0), add_log_stddev_(false) { }
+  NormalizeComponent() { }
   virtual std::string Type() const { return "NormalizeComponent"; }
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual Component* Copy() const { return new NormalizeComponent(*this); }
@@ -223,18 +243,19 @@ class NormalizeComponent: public Component {
   virtual void Write(std::ostream &os, bool binary) const;
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const {
-    return (input_dim_ + (add_log_stddev_ ? 1 : 0));
+    return (input_dim_ + (add_log_stddev_ ? (input_dim_ / block_dim_) : 0));
   }
   virtual std::string Info() const;
  private:
   NormalizeComponent &operator = (const NormalizeComponent &other); // Disallow.
   enum { kExpSquaredNormFloor = -66 };
-  static const BaseFloat kSquaredNormFloor;
-  int32 input_dim_;
-  BaseFloat target_rms_; // The target rms for outputs.
-  // about 0.7e-20.  We need a value that's exactly representable in
+  // kSquaredNormFloor is about 0.7e-20.  We need a value that's exactly representable in
   // float and whose inverse square root is also exactly representable
   // in float (hence, an even power of two).
+  static const BaseFloat kSquaredNormFloor;
+  int32 input_dim_;
+  int32 block_dim_;
+  BaseFloat target_rms_; // The target rms for outputs, default 1.0.
 
   bool add_log_stddev_; // If true, log(max(epsi, sqrt(row_in^T row_in / D)))
                         // is an extra dimension of the output.
@@ -401,7 +422,8 @@ class RectifiedLinearComponent: public NonlinearComponent {
   virtual std::string Type() const { return "RectifiedLinearComponent"; }
   virtual Component* Copy() const { return new RectifiedLinearComponent(*this); }
   virtual int32 Properties() const {
-    return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace|kStoresStats;
+    return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace|
+        kStoresStats|(block_dim_ != dim_ ? kInputContiguous : 0);
   }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -437,9 +459,7 @@ class PerElementOffsetComponent;
 // functions as a base-class for more specialized versions of
 // AffineComponent.
 class AffineComponent: public UpdatableComponent {
-  friend class SoftmaxComponent; // Friend declaration relates to mixing up.
  public:
-
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
 
@@ -492,15 +512,15 @@ class AffineComponent: public UpdatableComponent {
   AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
                   const CuVectorBase<BaseFloat> &bias_params,
                   BaseFloat learning_rate);
-  void Init(int32 input_dim, int32 output_dim,
-            BaseFloat param_stddev, BaseFloat bias_stddev);
-  void Init(std::string matrix_filename);
-
   // This function resizes the dimensions of the component, setting the
   // parameters to zero, while leaving any other configuration values the same.
   virtual void Resize(int32 input_dim, int32 output_dim);
 
+  void Init(int32 input_dim, int32 output_dim,
+            BaseFloat param_stddev, BaseFloat bias_stddev);
  protected:
+  void Init(std::string matrix_filename);
+
   friend class NaturalGradientAffineComponent;
   // This function Update() is for extensibility; child classes may override
   // this, e.g. for natural gradient update.
@@ -572,10 +592,6 @@ class BlockAffineComponent : public UpdatableComponent {
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
 
-  // BlockAffine-specific functions.
-  void Init(int32 input_dim, int32 output_dim, int32 num_blocks,
-            BaseFloat param_stddev, BaseFloat bias_mean,
-            BaseFloat bias_stddev);
   explicit BlockAffineComponent(const BlockAffineComponent &other);
   explicit BlockAffineComponent(const RepeatedAffineComponent &rac);
  protected:
@@ -591,6 +607,11 @@ class BlockAffineComponent : public UpdatableComponent {
   CuVector<BaseFloat> bias_params_;
   int32 num_blocks_;
  private:
+  // BlockAffine-specific functions.
+  void Init(int32 input_dim, int32 output_dim, int32 num_blocks,
+            BaseFloat param_stddev, BaseFloat bias_mean,
+            BaseFloat bias_stddev);
+
   const BlockAffineComponent &operator = (const BlockAffineComponent &other); // Disallow.
 };
 
@@ -640,11 +661,12 @@ class RepeatedAffineComponent: public UpdatableComponent {
   const CuMatrix<BaseFloat> &LinearParams() const { return linear_params_; }
   explicit RepeatedAffineComponent(const RepeatedAffineComponent &other);
 
+  friend BlockAffineComponent::BlockAffineComponent(const RepeatedAffineComponent &rac);
+ protected:
   void Init(int32 input_dim, int32 output_dim, int32 num_repeats,
             BaseFloat param_stddev, BaseFloat bias_mean,
             BaseFloat bias_stddev);
-  friend BlockAffineComponent::BlockAffineComponent(const RepeatedAffineComponent &rac);
- protected:
+
   // This function Update(), called from backprop, is broken out for
   // extensibility to natural gradient update.
   virtual void Update(
@@ -830,16 +852,8 @@ class NaturalGradientAffineComponent: public AffineComponent {
   virtual std::string Type() const { return "NaturalGradientAffineComponent"; }
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
-  void Init(int32 input_dim, int32 output_dim,
-            BaseFloat param_stddev, BaseFloat bias_stddev, BaseFloat bias_mean,
-            int32 rank_in, int32 rank_out, int32 update_period,
-            BaseFloat num_samples_history, BaseFloat alpha);
-  void Init(int32 rank_in, int32 rank_out, int32 update_period,
-            BaseFloat num_samples_history,
-            BaseFloat alpha, std::string matrix_filename);
-  // this constructor does not really initialize, use Init() or Read().
-  NaturalGradientAffineComponent();
-  void Resize(int32 input_dim, int32 output_dim);
+  // this constructor does not really initialize, use InitFromConfig() or Read().
+  NaturalGradientAffineComponent() { }
   void InitFromConfig(ConfigLine *cfl);
   virtual std::string Info() const;
   virtual Component* Copy() const;
@@ -849,6 +863,9 @@ class NaturalGradientAffineComponent: public AffineComponent {
   // copy constructor
   explicit NaturalGradientAffineComponent(
       const NaturalGradientAffineComponent &other);
+  NaturalGradientAffineComponent(
+      const CuMatrixBase<BaseFloat> &linear_params,
+      const CuVectorBase<BaseFloat> &bias_params);
  private:
   // disallow assignment operator.
   NaturalGradientAffineComponent &operator= (
@@ -874,6 +891,109 @@ class NaturalGradientAffineComponent: public AffineComponent {
       const std::string &debug_info,
       const CuMatrixBase<BaseFloat> &in_value,
       const CuMatrixBase<BaseFloat> &out_deriv);
+};
+
+/*
+  LinearComponent represents a linear (matrix) transformation of its input, with
+  a matrix as its trainable parameters.  It's the same as
+  NaturalGradientAffineComponent, but without the bias term.
+
+  Configuration values accepted by this component:
+
+  Values inherited from UpdatableComponent (see its declaration in
+  nnet-component-itf for details):
+     learning-rate
+     learning-rate-factor
+     max-change
+
+  Values used in initializing the component's parameters:
+     input-dim             e.g. input-dim=1024.  The input dimension.
+     output-dim            e.g. output-dim=1024.  The output dimension.
+     param-stddev          e.g. param-stddev=0.025.  The standard deviation
+                           used to randomly initialize the linear parameters
+                           (as Gaussian random values * param-stddev).
+                           Defaults to 1/sqrt(input-dim), which is Glorot
+                           initialization.
+     matrix                e.g. matrix=foo/bar/init.mat  May be used as an
+                           alternative to (input-dim, output-dim, param-stddev,
+                           bias-stddev, bias-mean) to initialize the parameters.
+                           Dimension is output-dim by (input-dim + 1), last
+                           column is interpreted as the bias.
+
+   Options to the natural gradient (you won't normally have to set these,
+   the defaults are suitable):
+
+      use-natural-gradient=true   Set this to false to disable the natural-gradient
+                            update entirely (it will do regular SGD).
+      num-samples-history   Number of frames used as the time-constant to
+                            determine how 'up-to-date' the Fisher-matrix
+                            estimates are.  Smaller -> more up-to-date, but more
+                            noisy.  default=2000.
+      alpha                 Constant that determines how much we smooth the
+                            Fisher-matrix estimates with the unit matrix.
+                            Larger means more smoothing. default=4.0
+      rank-in               Rank used in low-rank-plus-unit estimate of Fisher
+                            matrix in the input space.  default=20.
+      rank-out              Rank used in low-rank-plus-unit estimate of Fisher
+                            matrix in the output-derivative space.  default=80.
+      update-period         Determines after with what frequency (in
+                            minibatches) we update the Fisher-matrix estimates;
+                            making this > 1 saves a little time in training.
+                            default=4.
+*/
+class LinearComponent: public UpdatableComponent {
+ public:
+  virtual int32 InputDim() const { return params_.NumCols(); }
+  virtual int32 OutputDim() const { return params_.NumRows(); }
+
+  virtual std::string Type() const { return "LinearComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput|
+        kPropagateAdds|kBackpropAdds;
+  }
+
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  // this constructor does not really initialize, use InitFromConfig() or Read().
+  LinearComponent() { }
+  void InitFromConfig(ConfigLine *cfl);
+  virtual std::string Info() const;
+  virtual Component* Copy() const;
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+  virtual void FreezeNaturalGradient(bool freeze);
+  // copy constructor
+  explicit LinearComponent(const LinearComponent &other);
+
+  explicit LinearComponent(const CuMatrix<BaseFloat> &params);
+ private:
+
+  // disallow assignment operator.
+  LinearComponent &operator= (
+      const LinearComponent&);
+
+
+  CuMatrix<BaseFloat> params_;
+  // If true (and if no this->is_gradient_), use natural gradient updates.
+  bool use_natural_gradient_;
+  OnlineNaturalGradient preconditioner_in_;
+  OnlineNaturalGradient preconditioner_out_;
 };
 
 
@@ -1415,22 +1535,33 @@ class PerElementScaleComponent: public UpdatableComponent {
   trainable bias; it's like an affine component with fixed weight matrix which
   is always equal to I.
 
-  Accepted values on its config line, with defaults if applicable.
+  Accepted values on its config line, with defaults if applicable:
 
      vector           If specified, the offsets will be read from this file ('vector'
                       is interpreted as an rxfilename).
 
-     dim              If 'vector' is not specified, you should specify the
-                      dimension 'dim', and will be randomly initialized according
-                      to 'param-mean' and 'param-stddev'.
-     param-mean=0.0   Mean of randomly initialized offset parameters.
-     param-stddev=0.0 Standard deviation of randomly initialized offset parameters.
+     dim              The dimension that this component inputs and outputs.
 
+     block-dim        [Should not be specified if you specify 'vector'].
+                      If specified, must be nonzero and divide 'dim'.  In this
+                      case, blocks of the input of this dimension will get
+                      the same offset.  Useful in CNNs.
+
+     param-mean=0.0   Mean of randomly initialized offset parameters; should only
+                      be supplied if 'vector' is not supplied.
+     param-stddev=0.0 Standard deviation of randomly initialized offset parameters;
+                      should only be supplied if 'vector' is not supplied.
+
+     use-natural-gradient=true  If true, we will use natural gradient in the
+                      update.  Note: this is different from PerElementScaleComponent,
+                      which does not support natural gradient directly-- in that
+                      case you have to use NaturalGradientPerElementScaleComponent
+                      if you want to use natural gradient update.
 */
 class PerElementOffsetComponent: public UpdatableComponent {
  public:
-  virtual int32 InputDim() const { return offsets_.Dim(); }
-  virtual int32 OutputDim() const { return offsets_.Dim(); }
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
 
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl);
@@ -1439,7 +1570,8 @@ class PerElementOffsetComponent: public UpdatableComponent {
   virtual std::string Type() const { return "PerElementOffsetComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kUpdatableComponent|
-           kBackpropInPlace|kPropagateInPlace;
+           kBackpropInPlace|kPropagateInPlace|
+        (dim_ != offsets_.Dim() ? kOutputContiguous : 0);
   }
 
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -1459,7 +1591,6 @@ class PerElementOffsetComponent: public UpdatableComponent {
 
   virtual Component* Copy() const;
 
-
   // Some functions from base-class UpdatableComponent.
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
@@ -1469,17 +1600,18 @@ class PerElementOffsetComponent: public UpdatableComponent {
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
 
-  // Some functions that are specific to this class.
+  // Copy constructor
   explicit PerElementOffsetComponent(const PerElementOffsetComponent &other);
-
-  void Init(int32 dim, BaseFloat param_mean,
-            BaseFloat param_stddev);
-  void Init(std::string vector_filename);
-
  protected:
   const PerElementOffsetComponent &operator
       = (const PerElementOffsetComponent &other); // Disallow.
   CuVector<BaseFloat> offsets_;
+  // dim_ will normally be the same as offsets_ dim, but in general will be an
+  // integer multiple of it (in case the same offset vector is applied to
+  // successive blocks of the input).
+  int32 dim_;
+  bool use_natural_gradient_;
+  OnlineNaturalGradient preconditioner_;
 };
 
 
@@ -1604,6 +1736,139 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
   const NaturalGradientPerElementScaleComponent &operator
       = (const NaturalGradientPerElementScaleComponent &other); // Disallow.
 };
+
+
+
+/*
+  ScaleAndOffsetComponent implements a per-element scale and offset.
+  It may be useful just after BatchNormComponent, as the trainable offset
+  and scale of batch-norm.
+  Note: by default this includes natural gradient for the update.
+
+  Currently accepted values on its config line are as follows.
+  Major configuration values:
+
+     dim              The feature-dimension that the component takes as
+                      input, and outputs.
+     block-dim        If set, this must be set to a value that divides
+                      'dim'.  In this case, the same offset and scale
+                      will be applied to each block, and the number
+                      of parameters will be 2*block-dim instead of 2*dim.
+
+  There is currently no way to configure what values will be used for
+  the initialization and it is hardcoded to zero offset, unit scale.
+  If in future more configurability is needed, we'll address it then.
+
+  Values inherited from UpdatableComponent (see its declaration in
+  nnet-component-itf for details):
+     learning-rate
+     learning-rate-factor
+     max-change
+
+
+   Options to the natural gradient (you won't normally have to set these,
+   the defaults are suitable):
+
+      use-natural-gradient  Defaults to true; false turns off the application
+                            of natural gradient update to this layer.
+      rank                  Rank used in low-rank-plus-unit estimate of Fisher
+                            matrix in the input space.  default=20.
+*/
+class ScaleAndOffsetComponent: public UpdatableComponent {
+ public:
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
+
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  ScaleAndOffsetComponent() { } // use Init to really initialize.
+  virtual std::string Type() const { return "ScaleAndOffsetComponent"; }
+  virtual int32 Properties() const {
+    // Note: the backprop would most naturally consume the input, but we
+    // have arranged things so that the backprop consumes the output value
+    // instead; this allows less memory use, since in typical configurations,
+    // this will be followed by an affine component which needs its input
+    // for the backprop (so requiring it to be present adds no extra
+    // burden).
+    return kSimpleComponent|kUpdatableComponent|
+           kBackpropInPlace|kPropagateInPlace|
+           kBackpropNeedsOutput|
+        (dim_ != scales_.Dim() ?
+         (kInputContiguous|kOutputContiguous) : 0);
+  }
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const { return new ScaleAndOffsetComponent(*this); }
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const { return 2 * scales_.Dim(); }
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+
+  // copy constructor
+  explicit ScaleAndOffsetComponent(const ScaleAndOffsetComponent &other);
+ private:
+  // Internal version of propagate, requires in.NumCols() equal to scales_.Dim()
+  // (if batch-dim was set, this may require the caller to reshape the input and
+  // output.
+  void PropagateInternal(const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  // Internal version of backprop, where the num-cols of the
+  // argument matrices are equal to scales_.Dim().
+  void BackpropInternal(const std::string &debug_info,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        ScaleAndOffsetComponent *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  // We do this instead of defining a constant, which is a hassle in C++.
+  inline BaseFloat Epsilon() const { return 1.0e-04; }
+
+  // called from BackpropInternal if 'to_update' is non-NULL.
+  void Update(
+      const std::string &debug_info,
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv);
+
+
+  const ScaleAndOffsetComponent &operator
+      = (const ScaleAndOffsetComponent &other); // Disallow.
+
+  // Note: dim_ is the dimension that the component takes as input
+  // and output.  It is an integer multiple of scales_.Dim(),
+  // and will be the same as scales_.Dim() unless 'block-dim'
+  // was specified on the config line.
+  // (note: scales_.Dim() and offset_.Dim() will be the same).
+  int32 dim_;
+
+  // note: output is y(i) = scales_(i) * x(i) + offsets_(i).
+  CuVector<BaseFloat> scales_;
+  CuVector<BaseFloat> offsets_;
+  bool use_natural_gradient_;
+  OnlineNaturalGradient scale_preconditioner_;
+  OnlineNaturalGradient offset_preconditioner_;
+};
+
+
 
 /**
  * WARNING, this component is deprecated in favor of
@@ -1809,7 +2074,6 @@ class ConvolutionComponent: public UpdatableComponent {
   CuVector<BaseFloat> bias_params_;
   // the filter-specific bias vector (i.e., there is a seperate bias added
   // to the output of each filter).
-  bool is_gradient_;
 
   void InputToInputPatches(const CuMatrixBase<BaseFloat>& in,
                            CuMatrix<BaseFloat> *patches) const;
@@ -2128,6 +2392,10 @@ class MaxpoolingComponent: public Component {
   can set the block-dim configuration value to implement spatial
   batch normalization, see the comment for the variable.
 
+  If you want to combine this with the trainable offset and scale that the
+  original BatchNorm paper used, then follow this by the
+  ScaleAndOffsetComponent.
+
   It's a simple component (uses the kSimpleComponent flag), but it is unusual in
   that it will give different results if you call it on half the matrix at a
   time.  Most of the time this would be pretty harmless, so we still return the
@@ -2138,14 +2406,26 @@ class MaxpoolingComponent: public Component {
   would be very impractical and might lead to a lot of unnecessary things being
   computed.  You have to be a bit careful where you put this component, and understand
   what you're doing e.g. putting it in the path of a recurrence is a bit problematic
-  if the minibatch size were small.
+  if the minibatch size is small.
+
+    Accepted configuration values:
+           dim          Dimension of the input and output
+           block-dim    Defaults to 'dim', but may be set to a nonzero divisor
+                        of 'dim'.  In this case, each block of dimension 'block-dim'
+                        is treated like a separate row of the input matrix, which
+                        means that the stats from n'th element of each
+                        block are pooled into one class, for each n.a
+           epsilon      Small term added to the variance that is used to prevent
+                        division by zero
+           target-rms   This defaults to 1.0, but if set, for instance, to 2.0,
+                        it will normalize the standard deviation of the output to
+                        2.0. 'target-stddev' might be a more suitable name, but this
+                        was chosen for consistency with NormalizeComponent.
  */
 class BatchNormComponent: public Component {
  public:
 
-  BatchNormComponent(): dim_(0), block_dim_(0),
-                        epsilon_(1.0e-03), target_rms_(1.0),
-                        test_mode_(false), count_(0) { }
+  BatchNormComponent() { }
 
   // call this with 'true' to set 'test mode' where the batch normalization is
   // done with stored stats.  There won't normally be any need to specially
@@ -2161,14 +2441,6 @@ class BatchNormComponent: public Component {
   virtual int32 OutputDim() const { return dim_; }
 
   virtual std::string Info() const;
-  // supports the config variables dim, block-dim (which defaults to dim),
-  // epsilon (which defaults to 1.0e-3), and target-rms (which defaults to 1.0,
-  // and is a scaling on the output; it's comparable to the target-rms of
-  // NormalizeComponent).  it also accepts a boolean 'test-mode' config which is
-  // only intended for use in testing code, and not in real situations.  (note:
-  // test-mode is a real thing that's used during 'inference' given a previously
-  // computed model, and we do set test mode in real situations; we just don't
-  // do so from the config, we use the function SetTestMode().
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Type() const { return "BatchNormComponent"; }
   virtual int32 Properties() const {
@@ -2251,13 +2523,11 @@ class BatchNormComponent: public Component {
   // 'block_dim_' is treated like a separate frame for the purposes of
   // normalization.  This can be used to implement spatial batch normalization
   // for convolutional setups-- assuming the filter-dim has stride 1, which it
-  // always will in the new code in nnet-convolutional-component.h, when it's
-  // finished.
+  // always will in the new code in nnet-convolutional-component.h.
   int32 block_dim_;
 
   // Used to avoid exact-zero variances, epsilon has the dimension of a
-  // covariance; in this work it is applied as a floor, not as an additive term
-  // (this is safer in the presence of numerical roundoff).
+  // covariance.
   BaseFloat epsilon_;
 
   // This value will normally be 1.0, which is the default, but you can set it
@@ -2266,7 +2536,7 @@ class BatchNormComponent: public Component {
   BaseFloat target_rms_;
 
   // This is true if we want the batch normalization to operate in 'test mode'
-  // meaning the data mean and stddev used for the normalziation are fixed
+  // meaning the data mean and stddev used for the normalization are fixed
   // quantities based on previously accumulated stats.  Note: the stats we use
   // for this are based on the same 'StoreStats' mechanism as we use for
   // components like SigmoidComponent and ReluComponent; we'll be using
@@ -2289,7 +2559,6 @@ class BatchNormComponent: public Component {
   CuVector<BaseFloat> offset_;
   CuVector<BaseFloat> scale_;
 };
-
 
 
 /**
@@ -2383,7 +2652,7 @@ class CompositeComponent: public UpdatableComponent {
 
   // Functions to iterate over the internal components
 
-  int32 NumComponents() const { return components_.size();}
+  int32 NumComponents() const { return components_.size(); }
   /// Gets the ith component in this component.
   /// The ordering is the same as in the config line. The caller
   /// does not own the received component.
