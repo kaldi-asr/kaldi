@@ -13,16 +13,40 @@ set -o pipefail
 mfccdir=`pwd`/mfcc
 nj=40
 
+# 1996 English Broadcast News Train (HUB4)
+HUB4_96_Train_Transcripts=/export/corpora/LDC/LDC97T22/hub4_eng_train_trans
+HUB4_96_Train_Speech=/export/corpora/LDC/LDC97S44
+# 1997 English Broadcast News Train (HUB4)
+HUB4_97_Train_Transcripts=/export/corpora/LDC/LDC98T28/hub4e97_trans_980217
+HUB4_97_Train_Speech=/export/corpora/LDC/LDC98S71/97_eng_bns_hub4
+# 1996 CSR HUB4 Language Model
+CSR_HUB4_LM=/export/corpora/LDC/LDC98T31/1996_csr_hub4_model
+# 1995 CSR-IV HUB4 corpus
+CSR95_HUB4=/export/corpora5/LDC/LDC96S31/csr95_hub4
+# North American News Text Corpus
+NA_Text=/export/corpora/LDC/LDC95T21
+# North American News Text Supplement Corpus
+NA_Text_Supp=/export/corpura/LCD/LDC98T30/northam_news_txt_sup
+# 1996 English Broadcast News Dev and Eval (HUB4)
+HUB4_96_Eval=/export/corpora/LDC/LDC97S66/1996_eng_bcast_dev_eval
+# 1997 HUB4 English Evaluation corpus
+HUB4_97_Eval=/export/corpora/LDC/LDC2002S11/hub4e_97
+# 1998 HUB4 Broadcast News Evaluation English Test Material
+HUB4_98_Eval=/export/corpora/LDC/LDC2000S86
+# 1999 HUB4 Broadcast News Evaluation English Test Material
+HUB4_99_Eval=/export/corpora5/LDC/LDC2000S88/hub4_1999 
+
 # Prepare 1996 English Broadcast News Train (HUB4)
 local/data_prep/prepare_1996_bn_data.sh \
-  /export/corpora/LDC/LDC97T22/hub4_eng_train_trans \
+  $HUB4_96_Train_Transcripts \
+  $HUB4_96_Train_Speech \
   /export/corpora/LDC/LDC97S44 \
   data/local/data/train_bn96
 
 # Prepare 1997 English Broadcast News Train (HUB4)
 local/data_prep/prepare_1997_bn_data.sh \
-  /export/corpora/LDC/LDC98T28/hub4e97_trans_980217 \
-  /export/corpora/LDC/LDC98S71/97_eng_bns_hub4 \
+  $HUB4_97_Train_Transcripts \
+  $HUB4_97_Train_Speech \
   data/local/data/train_bn97
 
 # Install Beautiful Soup 4 python package
@@ -32,7 +56,7 @@ if [ ! -d tools/beautifulsoup4 ]; then
 fi
 export PYTHONPATH=$PWD/tools/beautifulsoup4:$PYTHONPATH
 
-if [ ! -f /export/corpora/LDC/LDC98T31/1996_csr_hub4_model/utils.tar ]; then
+if [ ! -f $CSR_HUB4_LM/utils.tar ]; then
   echo "Expected CSR-IV utils.tar to be found"
   exit 1
 fi
@@ -40,41 +64,44 @@ fi
 mkdir -p tools/csr4_utils
 (
 cd tools/csr4_utils
-tar -xvf /export/corpora/LDC/LDC98T31/1996_csr_hub4_model/utils.tar
+tar -xvf $CSR_HUB4_LM/utils.tar
 )
+
+chmod a+w tools/csr4_utils
+patch -u -d tools/csr4_utils -p3 < local/data_prep/csr4_utils.patch
 
 # Prepare 1995 CSR-IV HUB4 corpus
 local/data_prep/prepare_1995_csr_hub4_corpus.sh \
-  /export/corpora5/LDC/LDC96S31/csr95_hub4/ data/local/data/csr95_hub4
+  $CSR95_HUB4 data/local/data/csr95_hub4
 
 # Prepare North American News Text Corpus
 local/data_prep/prepare_na_news_text_corpus.sh --nj 40 --cmd "$train_cmd" \
-  /export/corpora/LDC/LDC95T21 data/local/data/na_news
+   $NA_Text data/local/data/na_news
 
 # Prepare North American News Text Supplement Corpus
 local/data/prep/prepare_na_news_text_supplement.sh --nj 10 --cmd "$train_cmd" \
-  /export/corpura/LCD/LDC98T30/northam_news_txt_sup data/local/data/na_news_supp
+  $NA_Text_Supp data/local/data/na_news_supp
 
 # Prepare 1996 CSR HUB4 Language Model
 local/data_prep/prepare_1996_csr_hub4_lm_corpus.sh --nj 10 --cmd "$train_cmd" \
-   data/local/data/csr96_hub4
+   $CSR_HUB4_LM data/local/data/csr96_hub4
 
 # Prepare 1996 English Broadcast News Dev and Eval (HUB4)
 local/data_prep/prepare_1996_hub4_bn_eng_dev_and_eval.sh \
-  /export/corpora/LDC/LDC97S66/1996_eng_bcast_dev_eval \
+  $HUB4_96_Eval \
   data/local/data/hub4_96_dev_eval
 
 # Prepare 1997 HUB4 English Evaluation corpus
 local/data_prep/prepare_1997_hub4_bn_eng_eval.sh \
-  /export/corpora/LDC/LDC2002S11/hub4e_97 data/local/data/eval97
+  $HUB4_97_Eval data/local/data/eval97
 
 # Prepare 1998 HUB4 Broadcast News Evaluation English Test Material
 local/data_prep/prepare_1998_hub4_bn_eng_eval.sh \
-  /export/corpora/LDC/LDC2000S86/ data/local/data/eval98
+  $HUB4_98_Eval data/local/data/eval98
 
 # Prepare 1999 HUB4 Broadcast News Evaluation English Test Material
 local/data_prep/prepare_1999_hub4_bn_eng_eval.sh \
-  /export/corpora5/LDC/LDC2000S88/hub4_1999 data/local/data/eval99
+  $HUB4_99_Eval data/local/data/eval99
 
 local/format_data.sh 
 
