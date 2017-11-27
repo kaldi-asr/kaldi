@@ -30,6 +30,8 @@ train_stage=-10
 get_egs_stage=-10
 decode_iter=
 
+num_leaves=3500
+
 # training options
 # training chunk-options
 chunk_width=140,100,160
@@ -45,8 +47,7 @@ remove_egs=true
 reporting_email=
 
 #decode options
-test_online_decoding=true  # if true, it will run the last decoding stage.
-
+test_online_decoding=false  # if true, it will run the last decoding stage.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -129,9 +130,11 @@ if [ $stage -le 12 ]; then
      exit 1;
   fi
   steps/nnet3/chain/build_tree.sh \
+    --cmd "$train_cmd" \
     --frame-subsampling-factor 3 \
     --context-opts "--context-width=2 --central-position=1" \
-    --cmd "$train_cmd" 3500 ${lores_train_data_dir} \
+    $num_leaves \
+    ${lores_train_data_dir} \
     $lang $ali_dir $tree_dir
 fi
 
