@@ -75,7 +75,7 @@ if [ $stage -le 3 ]; then
   echo "$0: creating high-resolution MFCC features"
   mfccdir=data/${train_set}_sp_hires/data
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
-    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/librispeech-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/mfcc/librispeech-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
   fi
 
   for datadir in ${train_set}_sp test_clean test_other dev_clean dev_other; do
@@ -169,7 +169,7 @@ if [ $stage -le 9 ]; then
   echo "$0: extracting iVectors for training data"
   ivectordir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $ivectordir/storage ]; then
-    utils/create_split_dir.pl /export/b{09,10,11,12}/$USER/kaldi-data/egs/librispeech-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
+    utils/create_split_dir.pl /export/b{09,10,11,12}/$USER/kaldi-data/ivectors/librispeech-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
   fi
   # We extract iVectors on the speed-perturbed training data after combining
   # short segments, which will be what we train the system on.  With
@@ -181,7 +181,7 @@ if [ $stage -le 9 ]; then
   # handle per-utterance decoding well (iVector starts at zero).
   utils/data/modify_speaker_info.sh --utts-per-spk-max 2 \
     data/${train_set}_sp_hires_comb ${ivectordir}/${train_set}_sp_hires_comb_max2
-  
+
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 60 \
     ${ivectordir}/${train_set}_sp_hires_comb_max2 exp/nnet3${nnet3_affix}/extractor \
     $ivectordir || exit 1;
