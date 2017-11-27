@@ -20,7 +20,7 @@ set -o nounset                              # Treat unset variables as an error
 corpus=$corpus/$language
 lists=./conf/lists/$language
 
-corpusdir=$(find -L $corpus -maxdepth 1 \( -name "release-current-b" \) \( -type d -o -type l \) ) 
+corpusdir=$(find -L $corpus -maxdepth 1 \( -name "release-current-b" \) \( -type d -o -type l \) )
 [ -z "$corpusdir" ] && corpusdir=$(find -L $corpus -maxdepth 1 \( -name "release-current"  \) \( -type d -o -type l \) )
 [ -z "$corpusdir" ] && corpusdir=$(find -L $corpus -maxdepth 1 -name "*-build" -type d)
 [ -z "$corpusdir" ] && echo >&2 "Corpus directory for $language not found!" && exit 1
@@ -130,7 +130,7 @@ echo "dev10h_nj=32"
 echo -e "\n"
 
 dataset="eval"
-eval_dir=$(find -L $corpus -ipath "*-eval/*/conversational/*" -name "$dataset" -type d) || exit 1
+eval_dir=$(find -L $corpus -ipath "*-eval/*/conversational/*" -name "$dataset" -type d -print -quit) || exit 1
 [ -z "$eval_dir" ] && { eval_dir=$(find -L $corpusdir -ipath "*/conversational/*" -name "eval" -type d) || exit 1; }
 if [ ! -z "$eval_dir" ] ; then
   indus_set=$(find -L $indus/ -maxdepth 1 -name "$indusid*$dataset" -type d)

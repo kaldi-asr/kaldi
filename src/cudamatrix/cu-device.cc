@@ -175,11 +175,18 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
 
   // Check if the machine use compute exclusive mode
   if (IsComputeExclusive()) {
+    KALDI_LOG << "CUDA setup operating under Compute Exclusive Mode.";
     FinalizeActiveGpu();
     return;
   } else {
-    // Or suggest to use compute exclusive mode
-    KALDI_WARN << "Suggestion: use 'nvidia-smi -c 3' to set compute exclusive mode";
+    // Suggest to use compute exclusive mode
+    KALDI_WARN << "Not in compute-exclusive mode.  Suggestion: use "
+        "'nvidia-smi -c 3' to set compute exclusive mode";
+    // We want to choose the device more carefully, so release the CUDA context.
+    e = cudaThreadExit(); // deprecated, but for legacy reason not cudaDeviceReset
+    if (e != cudaSuccess) {
+      KALDI_CUDA_ERR(e, "Failed to release CUDA context on a GPU");
+    }
 
     // And select the GPU according to proportion of free memory
     if (SelectGpuIdAuto()) {
@@ -215,6 +222,8 @@ void CuDevice::FinalizeActiveGpu() {
     active_gpu_id_ = act_gpu_id; // CuDevice::Enabled() is true from now on
     // Initialize the CUBLAS
     CUBLAS_SAFE_CALL(cublasCreate(&handle_));
+    // Initialize the cuSPARSE
+    CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
 
     // Notify user which GPU is finally used
     char name[128];
@@ -255,22 +264,15 @@ bool CuDevice::IsComputeExclusive() {
   // find out whether compute exclusive mode is used
   switch (gpu_prop.computeMode) {
     case cudaComputeModeExclusive :
-      KALDI_LOG << "CUDA setup operating under Compute Exclusive Mode.";
       return true;
       break;
 #if (CUDA_VERSION >= 4000)
     case cudaComputeModeExclusiveProcess :
-      KALDI_LOG << "CUDA setup operating under Compute Exclusive Process Mode.";
       return true;
       break;
 #endif
     default :
-      // The computation mode is not compute-exclusive,
       // in this case we release the GPU context...
-      e = cudaThreadExit(); // deprecated, but for legacy reason not cudaDeviceReset
-      if (e != cudaSuccess) {
-        KALDI_CUDA_ERR(e, "Failed to release CUDA context on a GPU");
-      }
       return false;
   }
 }
@@ -539,45 +541,16 @@ void CuDevice::CheckGpuHealth() {
   AccuProfile(__func__, t);
 }
 
-
-/*
-  void CuDevice::Free(void *ptr) {
-  CU_SAFE_CALL(cudaFree(ptr));
-  }
-
-  void* CuDevice::MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch) {
-  void *ans = NULL;
-  cudaError_t e = cudaMallocPitch(&ans, pitch, row_bytes, num_rows);
-  if (e != cudaSuccess) {
-  PrintMemoryUsage();
-  KALDI_ERR << "CuDevice::MallocPitch: cannot allocate the requested memory ("
-  << row_bytes << " x " << num_rows << " = "
-  << row_bytes * num_rows << " bytes )";
-  }
-  return ans;
-  }
-
-  void* CuDevice::Malloc(size_t size) {
-  void *ans = NULL;
-  cudaError_t e = cudaMalloc(&ans, size);
-  if (e != cudaSuccess) {
-  PrintMemoryUsage();
-  KALDI_ERR << "CuDevice::Malloc: cannot allocate the requested memory"
-  << " (" << size << " bytes )";
-  }
-  return ans;
-  }
-*/
-
 CuDevice::CuDevice() :
     active_gpu_id_(-1), debug_stride_mode_(false),
-    num_debug_stride_allocations_(0), allocator_(CuAllocatorOptions()) {
-}
+    num_debug_stride_allocations_(0), allocator_(CuAllocatorOptions()),
+    multi_threaded_(false) { }
 
 
 CuDevice::~CuDevice() {
   if (Enabled()) {
     cublasDestroy(handle_);
+    cusparseDestroy(cusparse_handle_);
     cudaDeviceReset();
   }
 }

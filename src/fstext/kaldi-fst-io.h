@@ -51,7 +51,7 @@ Fst<StdArc> *ReadFstKaldiGeneric(std::string rxfilename,
                                  bool throw_on_err = true);
 
 // This function attempts to dynamic_cast the pointer 'fst' (which will likely
-// have been returned by ReadFstGeneric()), to the more derived 
+// have been returned by ReadFstGeneric()), to the more derived
 // type VectorFst<StdArc>. If this succeeds, it returns the same pointer;
 // if it fails, it converts the FST type (by creating a new VectorFst<stdArc>
 // initialized by 'fst'), prints a warning, and deletes 'fst'.
@@ -112,7 +112,7 @@ class VectorFstTplHolder {
   // them.
   static bool IsReadInBinary() { return true; }
 
-  const T &Value() {
+  T &Value() {
     // code error if !t_.
     if (!t_) KALDI_ERR << "VectorFstTplHolder::Value() called wrongly.";
     return *t_;

@@ -67,6 +67,12 @@ class NnetComputer {
                const Nnet &nnet,
                Nnet *nnet_to_update);
 
+  /// Copy constructor.  May not be used if memos are involved (memos are only
+  /// possible if backprop will take place, and in these situations you won't
+  /// normally be wanting to use the copy constructor anyway; the copy
+  /// constructor is more useful for things like RNNLM lattice rescoring).
+  NnetComputer(const NnetComputer &other);
+
   /// e.g. AcceptInput ("input", &input_mat), or for derivatives w.r.t. the
   /// output, AcceptInput("output", output_deriv_mat).  Will crash if there is
   /// no input or output node with the given name.  This function is destructive
@@ -201,7 +207,8 @@ class NnetComputer {
   // memos are not reusable.
   inline void *GetMemo(int32 memo_index);
 
-
+ private:
+  NnetComputer &operator = (const NnetComputer &other);  // Disallow.
 };
 
 

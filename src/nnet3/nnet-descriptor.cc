@@ -80,12 +80,17 @@ int32 SimpleForwardingDescriptor::Dim(const Nnet &nnet) const {
   return nnet.GetNode(src_node_).Dim(nnet);
 }
 
+BaseFloat SimpleForwardingDescriptor::GetScaleForNode(int32 node_index) const {
+  if (node_index == src_node_) return scale_;
+  else return std::numeric_limits<BaseFloat>::infinity();
+}
+
 Cindex SimpleForwardingDescriptor::MapToInput(const Index &index) const {
   return Cindex(src_node_, index);
 }
 
 ForwardingDescriptor *SimpleForwardingDescriptor::Copy() const {
-  return new SimpleForwardingDescriptor(src_node_);
+  return new SimpleForwardingDescriptor(src_node_, scale_);
 }
 
 void SimpleForwardingDescriptor::GetNodeDependencies(
@@ -97,13 +102,22 @@ void SimpleForwardingDescriptor::WriteConfig(
     std::ostream &os,
     const std::vector<std::string> &node_names) const {
   KALDI_ASSERT(static_cast<size_t>(src_node_) < node_names.size());
-  os << node_names[src_node_];
+  if (scale_ == 1.0) {
+    os << node_names[src_node_];
+  } else {
+    os << "Scale(" << scale_ << ", " << node_names[src_node_] << ")";
+  }
 }
 
 void OffsetForwardingDescriptor::GetNodeDependencies(
     std::vector<int32> *node_indexes) const {
   src_->GetNodeDependencies(node_indexes);
 }
+
+BaseFloat OffsetForwardingDescriptor::GetScaleForNode(int32 node_index) const {
+  return src_->GetScaleForNode(node_index);
+}
+
 
 Cindex OffsetForwardingDescriptor::MapToInput(const Index &ind) const {
   Index ind_mod(ind);
@@ -170,6 +184,11 @@ void RoundingForwardingDescriptor::GetNodeDependencies(
   src_->GetNodeDependencies(node_indexes);
 }
 
+BaseFloat RoundingForwardingDescriptor::GetScaleForNode(
+    int32 node_index) const {
+  return src_->GetScaleForNode(node_index);
+}
+
 Cindex RoundingForwardingDescriptor::MapToInput(const Index &ind) const {
   KALDI_ASSERT(t_modulus_ >= 1);
   Index ind_mod(ind);
@@ -196,6 +215,11 @@ void RoundingForwardingDescriptor::WriteConfig(
 void ReplaceIndexForwardingDescriptor::GetNodeDependencies(
     std::vector<int32> *node_indexes) const {
   src_->GetNodeDependencies(node_indexes);
+}
+
+BaseFloat ReplaceIndexForwardingDescriptor::GetScaleForNode(
+    int32 node_index) const {
+  return src_->GetScaleForNode(node_index);
 }
 
 Cindex ReplaceIndexForwardingDescriptor::MapToInput(const Index &ind) const {
@@ -248,6 +272,20 @@ int32 OptionalSumDescriptor::Dim(const Nnet &nnet) const {
   return src_->Dim(nnet);
 }
 
+BaseFloat OptionalSumDescriptor::GetScaleForNode(int32 node_index) const {
+  BaseFloat ans = src_->GetScaleForNode(node_index);
+  if (node_index < 0 && ans != 0.0) {
+    // node_index < 0 means that the user is querying about the scale this
+    // expression puts on the constant value.  If there is a nonzero scale
+    // (i.e. a Const() expression) inside an IfDefined() expression, which
+    // is what OptionalSumDescriptor handles, then it is an error: the user
+    // is trying to code something that we do not currently support.
+    KALDI_ERR << "Illegal combination of IfDefined() expression and "
+        "Const() expression encountered.";
+  }
+  return ans;
+}
+
 void OptionalSumDescriptor::GetNodeDependencies(
     std::vector<int32> *node_indexes) const {
   src_->GetNodeDependencies(node_indexes);
@@ -283,9 +321,35 @@ int32 SimpleSumDescriptor::Dim(const Nnet &nnet) const {
   return src_->Dim(nnet);
 }
 
+BaseFloat SimpleSumDescriptor::GetScaleForNode(int32 node_index) const {
+  if (node_index >= 0) return src_->GetScaleForNode(node_index);
+  else return 0.0;  // scale of constant term, which does not appear in
+                    // ForwardingDescriptors, hence 0.0.
+}
+
 void SimpleSumDescriptor::GetNodeDependencies(
     std::vector<int32> *node_indexes) const {
   src_->GetNodeDependencies(node_indexes);
+}
+
+BaseFloat ConstantSumDescriptor::GetScaleForNode(int32 node_index) const {
+  if (node_index < 0) return value_;
+  else return std::numeric_limits<BaseFloat>::infinity();
+}
+
+void ConstantSumDescriptor::WriteConfig(
+    std::ostream &os, const std::vector<std::string> &node_names) const {
+  os << "Const(" << value_ << ", " << dim_ << ')';
+}
+
+SumDescriptor* ConstantSumDescriptor::Copy() const {
+  return new ConstantSumDescriptor(value_, dim_);
+}
+
+ConstantSumDescriptor::ConstantSumDescriptor(BaseFloat value,
+                                             int32 dim):
+    value_(value), dim_(dim) {
+  KALDI_ASSERT(dim > 0 && (value - value == 0.0));
 }
 
 void BinarySumDescriptor::GetDependencies(
@@ -298,14 +362,13 @@ bool BinarySumDescriptor::IsComputable(
     const Index &ind,
     const CindexSet &cindex_set,
     std::vector<Cindex> *used_inputs) const {
-  KALDI_PARANOID_ASSERT(op_ == kSum || op_ == kFailover);
   std::vector<Cindex> src1_inputs, src2_inputs;
   bool r = (used_inputs != NULL);
   bool src1_computable = src1_->IsComputable(ind, cindex_set,
                                              r ? &src1_inputs: NULL),
       src2_computable = src2_->IsComputable(ind, cindex_set,
                                             r ? &src2_inputs : NULL);
-  if (op_ == kSum) {
+  if (op_ == kSumOperation) {
     if (src1_computable && src2_computable) {
       if (r) {
         used_inputs->insert(used_inputs->end(),
@@ -318,7 +381,7 @@ bool BinarySumDescriptor::IsComputable(
       return false;
     }
   } else {
-    KALDI_ASSERT(op_ == kFailover);
+    KALDI_ASSERT(op_ == kFailoverOperation);
     if (src1_computable) {
       if (r)
         used_inputs->insert(used_inputs->end(),
@@ -338,10 +401,40 @@ bool BinarySumDescriptor::IsComputable(
 int32 BinarySumDescriptor::Dim(const Nnet &nnet) const {
   int32 dim1 = src1_->Dim(nnet), dim2 = src2_->Dim(nnet);
   if (dim1 != dim2)
-    KALDI_ERR << "Neural net contains " << (op_ == kSum ? "Sum" : "Failover")
+    KALDI_ERR << "Neural net contains " << (op_ == kSumOperation ? "Sum" :
+                                            "Failover")
               << " expression with inconsistent dimension: " << dim1
               << " vs. " << dim2;
   return dim1;
+}
+
+BaseFloat BinarySumDescriptor::GetScaleForNode(int32 node_index) const {
+  BaseFloat ans1 = src1_->GetScaleForNode(node_index),
+      ans2 = src2_->GetScaleForNode(node_index);
+  bool ans1_valid = (ans1 - ans1 == 0),
+      ans2_valid = (ans2 - ans2 == 0);  // Test for infinity.
+  if (node_index < 0) {  // the query is about the constant offset, not for a
+                         // specific node.
+    KALDI_ASSERT(ans1_valid && ans2_valid);
+    if (op_ == kSumOperation) {
+      // For a sum operation, if there were more than one Const(..) expression,
+      // they would logically add together (even though it would be redundant to
+      // write such a thing).
+      return ans1 + ans2;
+    } else if (ans1 != ans2) {
+      KALDI_ERR << "Illegal combination of Failover operation with Const() "
+          "expression encountered in Descriptor (this is not supported).";
+    }
+  }
+  if (ans1_valid && ans2_valid && ans1 != ans2) {
+    // this would be a code error so don't print a very informative message.
+    KALDI_ERR << "Inconsistent value for sum descriptor: for node "
+              << node_index << ", it can have scales "
+              << ans1 << " vs. " << ans2 << " (you have used unsupported "
+      "combinations of descriptors).";
+  }
+  if (!ans2_valid) return ans1;
+  else return ans2;
 }
 
 void BinarySumDescriptor::GetNodeDependencies(
@@ -361,9 +454,9 @@ SumDescriptor *BinarySumDescriptor::Copy() const {
 void BinarySumDescriptor::WriteConfig(
     std::ostream &os,
     const std::vector<std::string> &node_names) const {
-  KALDI_ASSERT(op_ == kSum || op_ == kFailover);
-  if (op_ == kSum) os << "Sum(";
-  if (op_ == kFailover) os << "Failover(";
+  KALDI_ASSERT(op_ == kSumOperation || op_ == kFailoverOperation);
+  if (op_ == kSumOperation) os << "Sum(";
+  if (op_ == kFailoverOperation) os << "Failover(";
   src1_->WriteConfig(os, node_names);
   os << ", ";
   src2_->WriteConfig(os, node_names);
@@ -372,10 +465,28 @@ void BinarySumDescriptor::WriteConfig(
 
 int32 SwitchingForwardingDescriptor::Modulus() const {
   int32 ans = src_.size();;
-  for (int32 i = 0; i < src_.size(); i++)
+  for (size_t i = 0; i < src_.size(); i++)
     ans = Lcm(ans, src_[i]->Modulus());
   return ans;
 }
+
+BaseFloat SwitchingForwardingDescriptor::GetScaleForNode(
+    int32 node_index) const {
+  BaseFloat inf = std::numeric_limits<BaseFloat>::infinity(),
+      ans = inf;
+  for (size_t i = 0; i < src_.size(); i++) {
+    BaseFloat this_ans = src_[i]->GetScaleForNode(node_index);
+    if (this_ans != inf) {
+      if (ans != inf && ans != this_ans)
+        KALDI_ERR << "Invalid Descriptor encountered: for node-index "
+                  << node_index << ", got two different scales "
+                  << this_ans << " vs. " << ans;
+      ans = this_ans;
+    }
+  }
+  return ans;
+}
+
 
 bool Descriptor::Parse(const std::vector<std::string> &node_names,
                        const std::string **next_token) {
@@ -488,6 +599,10 @@ GeneralDescriptor* GeneralDescriptor::Parse(
     t = kOffset;
   } else if (**next_token == "Switch") {
     t = kSwitch;
+  } else if (**next_token == "Scale") {
+    t = kScale;
+  } else if (**next_token == "Const") {
+    t = kConst;
   } else if (**next_token == "Round") {
     t = kRound;
   } else if (**next_token == "ReplaceIndex") {
@@ -517,6 +632,8 @@ GeneralDescriptor* GeneralDescriptor::Parse(
     case kOffset: ans->ParseOffset(node_names, next_token); break;
     case kRound: ans->ParseRound(node_names, next_token); break;
     case kReplaceIndex: ans->ParseReplaceIndex(node_names, next_token); break;
+    case kScale: ans->ParseScale(node_names, next_token); break;
+    case kConst: ans->ParseConst(node_names, next_token); break;
     default:
       KALDI_ERR << "Code error";
   }
@@ -556,6 +673,39 @@ void GeneralDescriptor::ParseFailover(
   descriptors_.push_back(Parse(node_names, next_token));
   ExpectToken(")", "Failover", next_token);
 }
+
+void GeneralDescriptor::ParseScale(
+    const std::vector<std::string> &node_names,
+    const std::string **next_token) {
+  if (!ConvertStringToReal(**next_token, &alpha_)) {
+    KALDI_ERR << "Parsing Scale() in descriptor: expected floating-point scale"
+        ", got: " << **next_token;
+  }
+  (*next_token)++;  // Consume the float.
+  ExpectToken(",", "Scale", next_token);
+  descriptors_.push_back(Parse(node_names, next_token));
+  ExpectToken(")", "Scale", next_token);
+}
+
+void GeneralDescriptor::ParseConst(
+    const std::vector<std::string> &node_names,
+    const std::string **next_token) {
+  if (!ConvertStringToReal(**next_token, &alpha_)) {
+    KALDI_ERR << "Parsing Const() in descriptor: expected floating-point value"
+        ", got: " << **next_token;
+  }
+  (*next_token)++;  // Consume the float.
+  ExpectToken(",", "Const", next_token);
+  if (!ConvertStringToInteger(**next_token, &value1_) ||
+      value1_ <= 0) {
+    KALDI_ERR << "Parsing Const() in descriptor: expected nonnegative integer, "
+        "got: " << **next_token;
+  }
+  (*next_token)++;  // Consume the int.
+  ExpectToken(")", "Const", next_token);
+}
+
+
 
 void GeneralDescriptor::ParseOffset(
     const std::vector<std::string> &node_names,
@@ -607,6 +757,7 @@ int32 GeneralDescriptor::NumAppendTerms() const {
   int32 ans = 0;
   switch (descriptor_type_) {
     case kNodeName: ans = 1; break;
+    case kConst: ans = 1; break;
     case kAppend: {
       for (size_t i = 0; i < descriptors_.size(); i++)
         ans += descriptors_[i]->NumAppendTerms();
@@ -640,7 +791,8 @@ GeneralDescriptor* GeneralDescriptor::GetAppendTerm(int32 term) const {
     }
     default: {
       GeneralDescriptor *ans = new GeneralDescriptor(descriptor_type_,
-                                                     value1_, value2_);
+                                                     value1_, value2_,
+                                                     alpha_);
       ans->descriptors_.resize(descriptors_.size());
       for (size_t i = 0; i < descriptors_.size(); i++)
         ans->descriptors_[i] = descriptors_[i]->GetAppendTerm(term);
@@ -667,47 +819,47 @@ GeneralDescriptor* GeneralDescriptor::NormalizeAppend() const {
 }
 
 
-//static
-bool GeneralDescriptor::Normalize(GeneralDescriptor *parent) {
+// static
+bool GeneralDescriptor::Normalize(GeneralDescriptor *desc) {
   bool changed = false;
-  switch (parent->descriptor_type_) {
+  switch (desc->descriptor_type_) {
     case kOffset: {  // this block combines Offset(Offset(x, ..), ..).
-      KALDI_ASSERT(parent->descriptors_.size() == 1);
-      GeneralDescriptor *child = parent->descriptors_[0];
+      KALDI_ASSERT(desc->descriptors_.size() == 1);
+      GeneralDescriptor *child = desc->descriptors_[0];
       if (child->descriptor_type_ == kOffset) {
         KALDI_ASSERT(child->descriptors_.size() == 1);
         GeneralDescriptor *grandchild = child->descriptors_[0];
-        parent->value1_ += child->value1_;
-        parent->value2_ += child->value2_;
+        desc->value1_ += child->value1_;
+        desc->value2_ += child->value2_;
         child->descriptors_.clear();  // avoid delete in destructor.
         delete child;
-        parent->descriptors_[0] = grandchild;
+        desc->descriptors_[0] = grandchild;
         changed = true;
-      } else if (parent->value1_ == 0 && parent->value2_ == 0) {
+      } else if (desc->value1_ == 0 && desc->value2_ == 0) {
         // remove redundant Offset expression like Offset(x, 0).
-        parent->descriptors_.swap(child->descriptors_);
-        parent->descriptor_type_ = child->descriptor_type_;
-        parent->value1_ = child->value1_;
-        parent->value2_ = child->value2_;
+        desc->descriptors_.swap(child->descriptors_);
+        desc->descriptor_type_ = child->descriptor_type_;
+        desc->value1_ = child->value1_;
+        desc->value2_ = child->value2_;
         child->descriptors_.clear();  // avoid delete in destructor.
         delete child;
         changed = true;
-        break;  // break from the switch ('parent' is no longer of type
+        break;  // break from the switch ('desc' is no longer of type
         // kOffset)', so we don't want to carry through.
       }
     }
-      // ... and continue through to the next case statement.
+    // ... and continue through to the next case statement.
     case kSwitch: case kRound: case kReplaceIndex: { // ..and kOffset:
-      KALDI_ASSERT(parent->descriptors_.size() >= 1);
-      GeneralDescriptor *child = parent->descriptors_[0];
-      KALDI_ASSERT(child->descriptor_type_ != kAppend);  // would be code error
-      // (already did
-      // NormalizeAppend()).
+      KALDI_ASSERT(desc->descriptors_.size() >= 1);
+      GeneralDescriptor *child = desc->descriptors_[0];
+      // If child->descriptor_type_ == kAppend, it would be code error since we
+      // already did NormalizeAppend().
+      KALDI_ASSERT(child->descriptor_type_ != kAppend);
       if (child->descriptor_type_ == kSum ||
           child->descriptor_type_ == kFailover ||
           child->descriptor_type_ == kIfDefined) {
-        if (parent->descriptors_.size() > 1) {
-          KALDI_ASSERT(parent->descriptor_type_ == kSwitch);
+        if (desc->descriptors_.size() > 1) {
+          KALDI_ASSERT(desc->descriptor_type_ == kSwitch);
           KALDI_ERR << "Sum(), Failover() or IfDefined() expression inside Switch(), "
                     << "we can't currently normalize this.";
         }
@@ -717,18 +869,19 @@ bool GeneralDescriptor::Normalize(GeneralDescriptor *parent) {
         for (size_t i = 0; i < child->descriptors_.size(); i++) {
           GeneralDescriptor *grandchild = child->descriptors_[i];
           GeneralDescriptor *modified_grandchild =
-              new GeneralDescriptor(parent->descriptor_type_,
-                                    parent->value1_,
-                                    parent->value2_);
+              new GeneralDescriptor(desc->descriptor_type_,
+                                    desc->value1_,
+                                    desc->value2_,
+                                    desc->alpha_);
           // modified_grandchild takes ownership of grandchild.
           modified_grandchild->descriptors_.push_back(grandchild);
           child->descriptors_[i] = modified_grandchild;
         }
-        // copy all members from child to parent.
-        parent->descriptor_type_ = child->descriptor_type_;
-        parent->value1_ = child->value1_;
-        parent->value2_ = child->value2_;
-        parent->descriptors_.swap(child->descriptors_);
+        // copy all members from child to desc.
+        desc->descriptor_type_ = child->descriptor_type_;
+        desc->value1_ = child->value1_;
+        desc->value2_ = child->value2_;
+        desc->descriptors_.swap(child->descriptors_);
         child->descriptors_.clear();  // avoid delete in destructor of 'child'
         delete child;
         changed = true;
@@ -736,36 +889,55 @@ bool GeneralDescriptor::Normalize(GeneralDescriptor *parent) {
       break;
     }
     case kSum: {
-      KALDI_ASSERT(!parent->descriptors_.empty());
-      if (parent->descriptors_.size() == 1) {
+      KALDI_ASSERT(!desc->descriptors_.empty());
+      if (desc->descriptors_.size() == 1) {
         // convert Sum(x) to just x.
-        GeneralDescriptor *child = parent->descriptors_[0];
-        parent->descriptor_type_ = child->descriptor_type_;
-        parent->descriptors_.swap(child->descriptors_);
-        parent->value1_ = child->value1_;
-        parent->value2_ = child->value2_;
+        GeneralDescriptor *child = desc->descriptors_[0];
+        desc->descriptor_type_ = child->descriptor_type_;
+        desc->descriptors_.swap(child->descriptors_);
+        desc->value1_ = child->value1_;
+        desc->value2_ = child->value2_;
         child->descriptors_.clear();  // avoid delete in destructor.
         delete child;
         changed = true;
-      } else if (parent->descriptors_.size() > 2) {
+      } else if (desc->descriptors_.size() > 2) {
         // convert Sum(a, b, c, ...) to Sum(a, Sum(b, c, ...)).
         GeneralDescriptor *new_child = new GeneralDescriptor(kSum);
         // assign b, c, .. to the descriptors of new_child.
         new_child->descriptors_.insert(new_child->descriptors_.begin(),
-                                       parent->descriptors_.begin() + 1,
-                                       parent->descriptors_.end());
-        parent->descriptors_.erase(parent->descriptors_.begin() + 1,
-                                   parent->descriptors_.end());
-        parent->descriptors_.push_back(new_child);
+                                       desc->descriptors_.begin() + 1,
+                                       desc->descriptors_.end());
+        desc->descriptors_.erase(desc->descriptors_.begin() + 1,
+                                   desc->descriptors_.end());
+        desc->descriptors_.push_back(new_child);
         changed = true;
       }
       break;
     }
-    default: { } // empty statement.
+    case kScale: {
+      KALDI_ASSERT(desc->descriptors_.size() == 1);
+      GeneralDescriptor *child = desc->descriptors_[0];
+      if (child->descriptor_type_ == kOffset ||
+          child->descriptor_type_ == kReplaceIndex ||
+          child->descriptor_type_ == kRound) {
+        // push the Scale() inside those expressions.
+        std::swap(desc->descriptor_type_, child->descriptor_type_);
+        std::swap(desc->alpha_, child->alpha_);
+        std::swap(desc->value1_, child->value1_);
+        std::swap(desc->value2_, child->value2_);
+        changed = true;
+      } else if (child->descriptor_type_ != kNodeName) {
+        KALDI_ERR << "Unhandled case encountered when normalizing Descriptor; "
+            "you can work around this by pushing Scale() inside "
+            "other expressions.";
+      }
+      break;
+    }
+    default: { } // empty statement
   }
   // ... and recurse.
-  for (size_t i = 0; i < parent->descriptors_.size(); i++)
-    changed = changed || Normalize(parent->descriptors_[i]);
+  for (size_t i = 0; i < desc->descriptors_.size(); i++)
+    changed = changed || Normalize(desc->descriptors_[i]);
   return changed;
 }
 
@@ -784,6 +956,9 @@ void GeneralDescriptor::Print(const std::vector<std::string> &node_names,
     case kFailover: os << "Failover("; break;
     case kIfDefined: os << "IfDefined("; break;
     case kSwitch: os << "Switch("; break;
+    // Scale() ends in a descriptor, so we also break and let the generic code
+    // handle that.
+    case kScale: os << "Scale(" << alpha_ << ", "; break;
       // now handle the exceptions.
     case kOffset: case kRound: {
       os << "Offset(";
@@ -811,6 +986,10 @@ void GeneralDescriptor::Print(const std::vector<std::string> &node_names,
     case kNodeName: {
       KALDI_ASSERT(static_cast<size_t>(value1_) < node_names.size());
       os << node_names[value1_];
+      return;
+    }
+    case kConst: {
+      os << "Const(" << alpha_ << ", " << value1_ << ")";
       return;
     }
   }
@@ -847,7 +1026,8 @@ SumDescriptor *GeneralDescriptor::ConvertToSumDescriptor() const {
       KALDI_ASSERT(descriptors_.size() == 2 && "Bad descriptor");
       return new BinarySumDescriptor(
           descriptor_type_ == kSum ?
-          BinarySumDescriptor::kSum : BinarySumDescriptor::kFailover,
+          BinarySumDescriptor::kSumOperation :
+          BinarySumDescriptor::kFailoverOperation,
           descriptors_[0]->ConvertToSumDescriptor(),
           descriptors_[1]->ConvertToSumDescriptor());
     }
@@ -855,6 +1035,10 @@ SumDescriptor *GeneralDescriptor::ConvertToSumDescriptor() const {
       KALDI_ASSERT(descriptors_.size() == 1 && "Bad descriptor");
       return new OptionalSumDescriptor(
           descriptors_[0]->ConvertToSumDescriptor());
+    }
+    case kConst: {
+      KALDI_ASSERT(descriptors_.empty() && value1_ > 0);
+      return new ConstantSumDescriptor(alpha_, value1_);
     }
     default: {
       return new SimpleSumDescriptor(this->ConvertToForwardingDescriptor());
@@ -894,6 +1078,19 @@ ForwardingDescriptor *GeneralDescriptor::ConvertToForwardingDescriptor() const {
           ReplaceIndexForwardingDescriptor::kT :
           ReplaceIndexForwardingDescriptor::kX,
           value2_);
+    }
+    case kScale: {
+      if (!(descriptors_.size() == 1 &&
+            descriptors_[0]->descriptor_type_ == kNodeName)) {
+        KALDI_ERR << "Invalid combination of Scale() expression and other "
+            "expressions encountered in descriptor.";
+      }
+      return new SimpleForwardingDescriptor(descriptors_[0]->value1_,
+                                            alpha_);
+    }
+    case kConst: {
+      KALDI_ERR << "Error in Descriptor: Const() "
+          "appeared too deep in the expression.";
     }
     default:
       KALDI_ERR << "Invalid descriptor type (failure in normalization?)";

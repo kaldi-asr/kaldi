@@ -24,7 +24,8 @@ namespace nnet3 {
 
 
 OnlineNaturalGradient::OnlineNaturalGradient():
-    rank_(40), update_period_(1), num_samples_history_(2000.0), alpha_(4.0),
+    rank_(40), update_period_(1), num_samples_history_(2000.0),
+    num_minibatches_history_(0.0), alpha_(4.0),
     epsilon_(1.0e-10), delta_(5.0e-04), frozen_(false), t_(-1),
     num_updates_skipped_(0), self_debug_(false) { }
 
@@ -79,7 +80,10 @@ void OnlineNaturalGradient::InitDefault(int32 D) {
     // We'll handle this as a special case, for generality.
     return;
   }
-  KALDI_ASSERT(num_samples_history_ > 0.0 && num_samples_history_ <= 1.0e+6);
+  KALDI_ASSERT(num_samples_history_ > 0.0 && num_samples_history_ <= 1.0e+06);
+  KALDI_ASSERT((num_minibatches_history_ == 0.0 ||
+                num_minibatches_history_ > 1.0) &&
+               num_minibatches_history_ < 1.0e+06);
   KALDI_ASSERT(alpha_ >= 0.0);
   KALDI_ASSERT(rank_ > 0);
   KALDI_ASSERT(epsilon_ > 0.0 && epsilon_ <= 1.0e-05);  // plausible values.
@@ -342,7 +346,7 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
   bool locked = update_mutex_.try_lock();
   if (locked) {
     // We'll release the lock if we don't plan to update the parameters.
-    
+
     // Explanation of the conditions below:
     // if (frozen_) because we don't do the update is the user called Freeze().
     // I forget why the (t_ > t) is here; probably some race condition encountered
@@ -519,12 +523,17 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
 }
 
 BaseFloat OnlineNaturalGradient::Eta(int32 N) const {
-  KALDI_ASSERT(num_samples_history_ > 0.0);
-  BaseFloat ans = 1.0 - exp(-N / num_samples_history_);
-  // Don't let eta approach 1 too closely, as it can lead to NaN's appearing if
-  // the input is all zero.
-  if (ans > 0.9) ans = 0.9;
-  return ans;
+  if (num_minibatches_history_ > 0.0) {
+    KALDI_ASSERT(num_minibatches_history_ > 1.0);
+    return 1.0 / num_minibatches_history_;
+  } else {
+    KALDI_ASSERT(num_samples_history_ > 0.0);
+    BaseFloat ans = 1.0 - exp(-N / num_samples_history_);
+    // Don't let eta approach 1 too closely, as it can lead to NaN's appearing if
+    // the input is all zero.
+    if (ans > 0.9) ans = 0.9;
+    return ans;
+  }
 }
 
 void OnlineNaturalGradient::ComputeWt1(int32 N,
@@ -624,6 +633,7 @@ void OnlineNaturalGradient::ComputeEt(const VectorBase<BaseFloat> &d_t,
 OnlineNaturalGradient::OnlineNaturalGradient(const OnlineNaturalGradient &other):
     rank_(other.rank_), update_period_(other.update_period_),
     num_samples_history_(other.num_samples_history_),
+    num_minibatches_history_(other.num_minibatches_history_),
     alpha_(other.alpha_), epsilon_(other.epsilon_), delta_(other.delta_),
     frozen_(other.frozen_),
     t_(other.t_), num_updates_skipped_(other.num_updates_skipped_),
@@ -661,6 +671,12 @@ void OnlineNaturalGradient::SetNumSamplesHistory(BaseFloat num_samples_history) 
                num_samples_history < 1.0e+6);
   num_samples_history_ = num_samples_history;
 }
+void OnlineNaturalGradient::SetNumMinibatchesHistory(
+    BaseFloat num_minibatches_history) {
+  KALDI_ASSERT(num_minibatches_history > 1.0);
+  num_minibatches_history_ = num_minibatches_history;
+}
+
 void OnlineNaturalGradient::SetAlpha(BaseFloat alpha) {
   KALDI_ASSERT(alpha >= 0.0);
   alpha_ = alpha;
