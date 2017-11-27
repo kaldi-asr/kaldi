@@ -3,6 +3,8 @@
 # This is a basic TDNN experiment.(As the speed_perturbation is done by default,
 # the _sp suffix on the directory name is removed.)
 
+# The experiments use default <number_mode> in run.sh "local/csj_data_prep.sh data/csj-data"
+
 # steps/info/chain_dir_info.pl exp/chain/tdnn1a 
 # exp/chain/tdnn1a: num-iters=321 nj=3..10 num-params=13.6M dim=40+100->3907 combine=-0.064->-0.063 xent:train/valid[213,320,final]=(-0.892,-0.831,-0.829/-0.981,-0.954,-0.954) logprob:train/valid[213,320,final]=(-0.064,-0.053,-0.053/-0.078,-0.078,-0.078)
 
