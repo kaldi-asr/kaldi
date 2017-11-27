@@ -13,7 +13,7 @@ fi
 ### MMI training
 
 # MMI training starting from the LDA+MLLT+SAT systems with the entire train_nodup (233hr)
-steps/make_denlats.sh --nj 10 --cmd "$decode_cmd" --config conf/decode.config \
+steps/make_denlats.sh --nj 50 --cmd "$decode_cmd" --config conf/decode.config \
   --transform-dir exp/tri4_ali_nodup \
   data/train_nodup data/lang exp/tri4 exp/tri4_denlats_nodup
 

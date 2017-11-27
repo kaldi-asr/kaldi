@@ -56,7 +56,7 @@ if [ $stage -le 3 ]; then
   echo "$0: creating high-resolution MFCC features"
   mfccdir=data/${train_set}_sp_hires/data
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
-    utils/create_split_dir.pl /export/b1{5,6,7,8}/$USER/kaldi-data/egs/csj-$(data +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
+    utils/create_split_dir.pl /export/b1{5,6,7,8}/$USER/kaldi-data/egs/csj-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
   fi
 
   for datadir in ${train_set}_sp $dev_set ${test_sets}; do
@@ -71,7 +71,7 @@ if [ $stage -le 3 ]; then
   for datadir in ${train_set}_sp $dev_set ${test_sets}; do
     steps/make_mfcc.sh --nj 50 --mfcc-config conf/mfcc_hires.conf \
       --cmd "$train_cmd" data/${datadir}_hires || exit 1;
-    steps/comute_cmvn_stats.sh data/${datadir}_hires || exit 1;
+    steps/compute_cmvn_stats.sh data/${datadir}_hires || exit 1;
     utils/fix_data_dir.sh data/${datadir}_hires || exit 1;
   done
 fi
@@ -84,12 +84,12 @@ if [ $stage -le 4 ]; then
   temp_data_root=exp/nnet3${nnet3_affix}/diag_ubm
 
   num_utts_total=$(wc -l <data/${train_set}_sp_hires/utt2spk)
-  num_utts=$[$num_utt_total/4]
+  num_utts=$[$num_utts_total/3]
   utils/data/subset_data_dir.sh data/${train_set}_sp_hires \
     $num_utts ${temp_data_root}/${train_set}_sp_hires_subset
 
   echo "$0: computing a PCA transform from the hires data."
-  stesps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
+  steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
     --splice-opts "--left-context=4 --right-context=4" \
     --max-utts 10000 --subsample 2 \
     ${temp_data_root}/${train_set}_sp_hires_subset \
@@ -125,7 +125,7 @@ if [ $stage -le 6 ]; then
   # valid for the non-'max2' data, the utterance list is the same.
   ivectordir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
   if [[ $(hostname -f ) == *.clsp.jhu.edu ]] && [ ! -d $ivectordir/storage ]; then
-    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/csj-$(data +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
+    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/csj-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
   fi
 
   # having a larger number of speakers is helpful for generalization, and to
@@ -141,7 +141,7 @@ if [ $stage -le 6 ]; then
   # Also extract iVectors for the test data, but in this case we don't need the speed
   # perturbation (sp).
   for datadir in $dev_set $test_sets; do
-    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 50 \
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 10 \
       data/${datadir}_hires exp/nnet3${nnet3_affix}/extractor \
       exp/nnet3${nnet3_affix}/ivectors_${datadir}_hires
   done

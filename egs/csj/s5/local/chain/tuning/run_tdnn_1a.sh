@@ -1,5 +1,24 @@
 #!/bin/bash
 
+# This is a basic TDNN experiment.(As the speed_perturbation is done by default,
+# the _sp suffix on the directory name is removed.)
+
+# steps/info/chain_dir_info.pl exp/chain/tdnn1a 
+# exp/chain/tdnn1a: num-iters=321 nj=3..10 num-params=13.6M dim=40+100->3907 combine=-0.064->-0.063 xent:train/valid[213,320,final]=(-0.892,-0.831,-0.829/-0.981,-0.954,-0.954) logprob:train/valid[213,320,final]=(-0.064,-0.053,-0.053/-0.078,-0.078,-0.078)
+
+# local/chain/compare_wer.sh --online exp/chain/tdnn1a
+# System                        tdnn1a
+# WER eval1                      10.30
+#          [online:]             10.30
+# WER eval2                       8.59
+#          [online:]              8.56
+# WER eval3                       9.90
+#          [online:]              9.90
+# Final train prob             -0.0532
+# Final valid prob             -0.0776
+# Final train prob (xent)      -0.8289
+# Final valid prob (xent)      -0.9539
+
 set -euo pipefail
 
 # First the options that are passed through to run_ivector_common.sh
@@ -23,7 +42,6 @@ decode_iter=
 # training options
 # training chunk-options
 decode_iter=
-decode_nj=50
 num_epochs=4
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
@@ -80,7 +98,7 @@ done
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the LF-MMI training more freedom).
   # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj $75 --cmd "$train_cmd" ${lores_train_data_dir} \
+  steps/align_fmllr_lats.sh --nj 75 --cmd "$train_cmd" ${lores_train_data_dir} \
     data/lang $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
