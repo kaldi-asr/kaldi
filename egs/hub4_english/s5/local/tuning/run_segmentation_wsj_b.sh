@@ -10,15 +10,16 @@ set -o pipefail
 # The basic idea is to decode with an existing in-domain acoustic model, and a
 # bigram language model built from the reference, and then work out the
 # segmentation from a ctm like file.
+# This is similar to _a but aligns full hypothesis with reference.
 
-%WER 19.1 | 728 32834 | 83.1 12.2 4.7 2.2 19.1 85.0 | exp/tri5_2a_cleaned/decode_nosp_eval97.pem_rescore/score_13_0.0/eval97.pem.ctm.filt.sys
-%WER 20.2 | 728 32834 | 81.9 13.0 5.1 2.1 20.2 87.1 | exp/tri5_2a_cleaned/decode_nosp_eval97.pem/score_14_0.0/eval97.pem.ctm.filt.sys
+%WER 19.0 | 728 32834 | 83.1 12.5 4.4 2.1 19.0 87.0 | exp/tri5_2b_cleaned/decode_nosp_eval97.pem_rescore/score_14_0.0/eval97.pem.ctm.filt.sys
+%WER 20.2 | 728 32834 | 82.1 13.4 4.5 2.3 20.2 89.0 | exp/tri5_2b_cleaned/decode_nosp_eval97.pem/score_13_0.0/eval97.pem.ctm.filt.sys
 
-%WER 20.4 | 728 32834 | 81.7 13.1 5.2 2.1 20.4 86.1 | exp/tri4_2a/decode_nosp_eval97.pem_rescore/score_14_0.0/eval97.pem.ctm.filt.sys
-%WER 21.3 | 728 32834 | 80.7 13.7 5.6 2.0 21.3 87.1 | exp/tri4_2a/decode_nosp_eval97.pem/score_15_1.0/eval97.pem.ctm.filt.sys
+%WER 19.9 | 728 32834 | 82.3 13.2 4.5 2.3 19.9 88.9 | exp/tri4_2b/decode_nosp_eval97.pem_rescore/score_13_0.0/eval97.pem.ctm.filt.sys
+%WER 21.2 | 728 32834 | 81.3 14.3 4.4 2.5 21.2 89.8 | exp/tri4_2b/decode_nosp_eval97.pem/score_12_0.0/eval97.pem.ctm.filt.sys
 
-%WER 19.8 | 728 32834 | 82.1 12.6 5.3 1.9 19.8 85.9 | exp/tri4_a/decode_nosp_eval97.pem_rescore/score_15_1.0/eval97.pem.ctm.filt.sys
-%WER 20.9 | 728 32834 | 81.2 13.5 5.3 2.1 20.9 86.5 | exp/tri4_a/decode_nosp_eval97.pem/score_14_0.0/eval97.pem.ctm.filt.sys
+%WER 19.8 | 728 32834 | 82.3 12.7 5.1 2.1 19.8 88.0 | exp/tri4_b/decode_nosp_eval97.pem_rescore/score_14_0.5/eval97.pem.ctm.filt.sys
+%WER 20.9 | 728 32834 | 81.2 13.4 5.4 2.1 20.9 88.7 | exp/tri4_b/decode_nosp_eval97.pem/score_14_0.0/eval97.pem.ctm.filt.sys
 
 %WER 29.5 | 728 32834 | 73.1 17.7 9.2 2.6 29.5 92.2 | exp/wsj_tri3/decode_nosp_test_eval97.pem_rescore/score_16_0.0/eval97.pem.ctm.filt.sys
 %WER 30.4 | 728 32834 | 72.3 18.3 9.4 2.7 30.4 92.3 | exp/wsj_tri3/decode_nosp_test_eval97.pem/score_16_0.0/eval97.pem.ctm.filt.sys
@@ -29,8 +30,8 @@ set -o pipefail
 segment_stage=-8
 nj=40
 reco_nj=80
-affix=a
-new_affix=2a
+affix=d
+new_affix=2d
 
 . utils/parse_options.sh
 
@@ -74,13 +75,13 @@ steps/train_sat.sh --cmd "$train_cmd" \
 
 ###############################################################################
 # Segment long recordings using TF-IDF retrieval of reference text 
-# for uniformly segmented audio chunks based on Smith-Waterman alignment.
+# for uniformly segmented audio chunks based on modified Levenshtein alignment.
 # Use a SAT model trained on train_si284 (wsj_tri3)
 ###############################################################################
 
 steps/cleanup/segment_long_utterances.sh --cmd "$train_cmd" \
   --stage $segment_stage \
-  --config conf/segment_long_utts.conf --align-full-hyp false \
+  --config conf/segment_long_utts.conf --align-full-hyp true \
   --max-segment-duration 30 --overlap-duration 5 \
   --num-neighbors-to-search 1 --nj $reco_nj \
   exp/wsj_tri3 data/lang_nosp data/train_long data/train_long/text \
@@ -126,13 +127,13 @@ done
 
 ###############################################################################
 # Segment long recordings using TF-IDF retrieval of reference text 
-# for uniformly segmented audio chunks based on Smith-Waterman alignment.
+# for uniformly segmented audio chunks based on modified Levenshtein alignment.
 # Use a SAT model trained on tri4_a
 ###############################################################################
 
 steps/cleanup/segment_long_utterances.sh --cmd "$train_cmd" \
   --stage $segment_stage \
-  --config conf/segment_long_utts.conf --align-full-hyp false \
+  --config conf/segment_long_utts.conf --align-full-hyp true \
   --max-segment-duration 30 --overlap-duration 5 \
   --num-neighbors-to-search 1 --nj $reco_nj \
   exp/tri4_${affix} data/lang_nosp data/train_long data/train_long/text \
