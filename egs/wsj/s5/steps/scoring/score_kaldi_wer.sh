@@ -62,11 +62,10 @@ fi
 
 mkdir -p $dir/scoring${scoring_affix}
 cat $data/text | $ref_filtering_cmd > $dir/scoring${scoring_affix}/test_filt.txt || exit 1;
-if [ $stage -le 0 ]; then
+for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+  mkdir -p $dir/scoring${scoring_affix}/penalty_$wip/log
 
-  for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
-    mkdir -p $dir/scoring${scoring_affix}/penalty_$wip/log
-
+  if [ $stage -le 0 ]; then
     if $decode_mbr ; then
       $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring${scoring_affix}/penalty_$wip/log/best_path.LMWT.log \
         acwt=\`perl -e \"print 1.0/LMWT\"\`\; \
@@ -86,18 +85,19 @@ if [ $stage -le 0 ]; then
         utils/int2sym.pl -f 2- $symtab \| \
         $hyp_filtering_cmd '>' $dir/scoring${scoring_affix}/penalty_$wip/LMWT.txt || exit 1;
     fi
+  fi
 
+
+  if [ $stage -le 1 ]; then
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring${scoring_affix}/penalty_$wip/log/score.LMWT.log \
       cat $dir/scoring${scoring_affix}/penalty_$wip/LMWT.txt \| \
       compute-wer --text --mode=present \
       ark:$dir/scoring${scoring_affix}/test_filt.txt  ark,p:- ">&" $dir/wer_LMWT_$wip || exit 1;
+  fi
 
-  done
-fi
+done
 
-
-
-if [ $stage -le 1 ]; then
+if [ $stage -le 2 ]; then
 
   for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
     for lmwt in $(seq $min_lmwt $max_lmwt); do
