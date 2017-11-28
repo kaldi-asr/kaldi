@@ -1,18 +1,23 @@
 #!/bin/bash
-set -e
 
-# This is fisher chain recipe for training a model on a subset of around 10 hours.
-# This is similar to _d, but uses a biphone tree with up to 2000 leaves.
+# Copyright 2017  Vimal Manohar
+# Apache 2.0
+
+set -e
+set -o pipefail
+
+# This is fisher chain recipe for training a model on a subset of around 15 hours.
+# This uses a biphone tree with up to 2000 leaves.
 
 # configs for 'chain'
 stage=0
-tdnn_affix=7e
+tdnn_affix=7d
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
 train_set=train_sup15k
 ivector_train_set=semisup15k_250k
-tree_affix=e
+tree_affix=bi_d
 nnet3_affix=_semi15k_250k
 chain_affix=_semi15k_250k
 exp=exp/semisup_15k
@@ -52,7 +57,7 @@ lang=data/lang_chain
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
-
+# TODO: Change this to local/semisup/nnet3/run_ivector_common.sh
 local/nnet3/run_ivector_common.sh --stage $stage --exp $exp \
                                   --speed-perturb true \
                                   --train-set $train_set \

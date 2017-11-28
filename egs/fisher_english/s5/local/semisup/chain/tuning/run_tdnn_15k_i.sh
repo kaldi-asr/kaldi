@@ -1,5 +1,10 @@
 #!/bin/bash
+
+# Copyright 2017  Vimal Manohar
+# Apache 2.0
+
 set -e
+set -o pipefail
 
 # This is fisher chain recipe for training a model on a subset of around 15 hours.
 # This is similar to _d, but uses a phone LM UNK model
@@ -52,7 +57,7 @@ lang=data/lang_chain_unk
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
-
+# TODO: Change this to local/semisup/nnet3/run_ivector_common.sh
 local/nnet3/run_ivector_common.sh --stage $stage --exp $exp \
                                   --speed-perturb true \
                                   --train-set $train_set \
