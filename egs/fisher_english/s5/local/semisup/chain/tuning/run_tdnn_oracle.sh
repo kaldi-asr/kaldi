@@ -56,7 +56,7 @@ local/nnet3/run_ivector_common.sh --stage $stage --exp $exp \
                                   --speed-perturb true \
                                   --train-set $train_set \
                                   --ivector-train-set $ivector_train_set \
-                                  --nnet3-affix $nnet3_affix || exit 1
+                                  --nnet3-affix "$nnet3_affix" || exit 1
 
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
@@ -140,6 +140,7 @@ if [ $stage -le 13 ]; then
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/fisher_english-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
+  mkdir -p $dir/egs
   touch $dir/egs/.nodelete # keep egs around when that run dies.
 
   steps/nnet3/chain/train.py --stage $train_stage \

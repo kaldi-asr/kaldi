@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# This is fisher chain recipe for training a model on a subset of around 10 hours.
+# This is fisher chain recipe for training a model on a subset of around 50 hours.
 
 # configs for 'chain'
 stage=0
