@@ -4,10 +4,10 @@
 # Word Error Rates on folds
 
 # | fold | 1a | 1b |
-| devtest | 54.46 |
-| native |  62.14 |
-| nonnative | 70.58 |
-| test | 66.85 |
+#| devtest | 54.46 |
+#| native |  62.14 |
+#| nonnative | 70.58 |
+#| test | 66.85 |
  
 # this script came from the mini librispeech recipe
 # Set -e here so that we catch if any executable fails immediately
