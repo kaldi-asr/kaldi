@@ -181,14 +181,6 @@ if [ $stage -le 3 ]; then
   # get_data_prob.py: log-prob of data/local/local_lm/data/eval99_2.txt given model data/local/local_lm/data/wordlist_4_default-5_train_bn96-1_csr96_hub4-2.3_csr95_hub4-2.3.pocolm was -5.02574438024 per word [perplexity = 152.283570813] over 16395.0 words.
 
 fi
-  for x in dev96ue dev96pe eval96 eval97 eval98 eval99_1 eval99_2; do
-    $cmd ${unpruned_lm_dir}/log/compute_data_prob_${x}.log \
-      get_data_prob.py ${dir}/data/${x}.txt ${unpruned_lm_dir} 
-
-    cat ${unpruned_lm_dir}/log/compute_data_prob_${x}.log | grep -F '[perplexity'
-  done
-
-  
 
 if [ $stage -le 4 ]; then
   echo "$0: pruning the LM (to larger size)"

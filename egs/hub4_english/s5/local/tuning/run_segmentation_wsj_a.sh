@@ -6,35 +6,44 @@
 set -e
 set -o pipefail
 
-# This script demonstrates how to re-segment long audios into short segments.
-# The basic idea is to decode with an existing out-of-domain WSJ GMM model, 
-# and a 4-gram language model built from the reference, and then work out the
-# segmentation from a ctm like file. This is used to build a stage 1 model
-# that is used to decode and re-segment the long audio again to train a 
-# stage 2 model. This is followed by a clean-up stage to get cleaned 
-# transcripts.
+# This script demonstrates how to use out-of-domain WSJ models to segment long
+# audio recordings of HUB4 with raw unaligned transcripts into short segments
+# with aligned transcripts for training new ASR models. 
 
+# The overall procedure is as follow:
+# 1) Train a GMM on out-of-domain WSJ corpus
+# 2) Decode broadcast news recordings (HUB4) with WSJ GMM and 4-gram biased LM 
+#    trained on the raw unprocessed transcript. 
+# 3) Use the CTM output to segment the recordings keep the best matched
+#    audio and text.
+# 4) Train an in-domain GMM on the above data. 
+# 5) Repeat steps 2, 3 and 4 using the new in-domain GMM.
+# 6) Re-segment the data retaining only the "clean" part of the data.
 
+# See the script steps/cleanup/segment_long_utterances.sh for details about 
+# audio-transcript alignment (Step 2, 3)
+# See the script steps/cleanup/clean_and_segment_data.sh for details about 
+# cleaning up transcripts (Step 6)
 
-# Results using WSJ models
-%WER 29.5 | 728 32834 | 73.1 17.7 9.2 2.6 29.5 92.2 | exp/wsj_tri3/decode_nosp_test_eval97.pem_rescore/score_16_0.0/eval97.pem.ctm.filt.sys
-%WER 30.4 | 728 32834 | 72.3 18.3 9.4 2.7 30.4 92.3 | exp/wsj_tri3/decode_nosp_test_eval97.pem/score_16_0.0/eval97.pem.ctm.filt.sys
+# WSJ models (From step 1)
+# %WER 29.5 | 728 32834 | 73.1 17.7 9.2 2.6 29.5 92.2 | exp/wsj_tri3/decode_nosp_test_eval97.pem_rescore/score_16_0.0/eval97.pem.ctm.filt.sys
+# %WER 30.4 | 728 32834 | 72.3 18.3 9.4 2.7 30.4 92.3 | exp/wsj_tri3/decode_nosp_test_eval97.pem/score_16_0.0/eval97.pem.ctm.filt.sys
 
-# Audio-transcript alignment stage 1
-%WER 19.8 | 728 32834 | 82.1 12.6 5.3 1.9 19.8 85.9 | exp/tri4_a/decode_nosp_eval97.pem_rescore/score_15_1.0/eval97.pem.ctm.filt.sys
-%WER 20.9 | 728 32834 | 81.2 13.5 5.3 2.1 20.9 86.5 | exp/tri4_a/decode_nosp_eval97.pem/score_14_0.0/eval97.pem.ctm.filt.sys
+# In-domain GMM (From step 4)
+# %WER 19.8 | 728 32834 | 82.1 12.6 5.3 1.9 19.8 85.9 | exp/tri4_a/decode_nosp_eval97.pem_rescore/score_15_1.0/eval97.pem.ctm.filt.sys
+# %WER 20.9 | 728 32834 | 81.2 13.5 5.3 2.1 20.9 86.5 | exp/tri4_a/decode_nosp_eval97.pem/score_14_0.0/eval97.pem.ctm.filt.sys
 
-# Audio-transcript alignment stage 2
-%WER 20.4 | 728 32834 | 81.7 13.1 5.2 2.1 20.4 86.1 | exp/tri4_2a/decode_nosp_eval97.pem_rescore/score_14_0.0/eval97.pem.ctm.filt.sys
-%WER 21.3 | 728 32834 | 80.7 13.7 5.6 2.0 21.3 87.1 | exp/tri4_2a/decode_nosp_eval97.pem/score_15_1.0/eval97.pem.ctm.filt.sys
+# In-domain GMM (From step 5)
+# %WER 20.4 | 728 32834 | 81.7 13.1 5.2 2.1 20.4 86.1 | exp/tri4_2a/decode_nosp_eval97.pem_rescore/score_14_0.0/eval97.pem.ctm.filt.sys
+# %WER 21.3 | 728 32834 | 80.7 13.7 5.6 2.0 21.3 87.1 | exp/tri4_2a/decode_nosp_eval97.pem/score_15_1.0/eval97.pem.ctm.filt.sys
 
-# Cleaned transcripts
-%WER 19.1 | 728 32834 | 83.1 12.2 4.7 2.2 19.1 85.0 | exp/tri5_2a_cleaned/decode_nosp_eval97.pem_rescore/score_13_0.0/eval97.pem.ctm.filt.sys
-%WER 20.2 | 728 32834 | 81.9 13.0 5.1 2.1 20.2 87.1 | exp/tri5_2a_cleaned/decode_nosp_eval97.pem/score_14_0.0/eval97.pem.ctm.filt.sys
+# GMM trained on cleaned transcripts (From step 6)
+# %WER 19.1 | 728 32834 | 83.1 12.2 4.7 2.2 19.1 85.0 | exp/tri5_2a_cleaned/decode_nosp_eval97.pem_rescore/score_13_0.0/eval97.pem.ctm.filt.sys
+# %WER 20.2 | 728 32834 | 81.9 13.0 5.1 2.1 20.2 87.1 | exp/tri5_2a_cleaned/decode_nosp_eval97.pem/score_14_0.0/eval97.pem.ctm.filt.sys
 
-# Oracle transcripts
-%WER 18.0 | 728 32834 | 83.9 11.7 4.3 2.0 18.0 85.9 | exp/tri4/decode_nosp_eval97.pem_rescore/score_14_0.0/eval97.pem.ctm.filt.sys
-%WER 19.3 | 728 32834 | 82.9 12.6 4.6 2.2 19.3 86.8 | exp/tri4/decode_nosp_eval97.pem/score_13_0.0/eval97.pem.ctm.filt.sys
+# Oracle HUB4 transcripts
+# %WER 18.0 | 728 32834 | 83.9 11.7 4.3 2.0 18.0 85.9 | exp/tri4/decode_nosp_eval97.pem_rescore/score_14_0.0/eval97.pem.ctm.filt.sys
+# %WER 19.3 | 728 32834 | 82.9 12.6 4.6 2.2 19.3 86.8 | exp/tri4/decode_nosp_eval97.pem/score_13_0.0/eval97.pem.ctm.filt.sys
 
 . ./cmd.sh
 . ./path.sh
@@ -48,7 +57,7 @@ new_affix=2a
 . utils/parse_options.sh
 
 ###############################################################################
-## Simulate unsegmented data directory.
+## Simulate unsegmented HUB4 data directory.
 ###############################################################################
 utils/data/convert_data_dir_to_whole.sh data/train data/train_long
 
@@ -59,7 +68,7 @@ steps/compute_cmvn_stats.sh data/train_long \
 utils/fix_data_dir.sh data/train_long
 
 ###############################################################################
-## Train WSJ models.
+## Train GMM on out-of-domain WSJ corpus 
 ###############################################################################
 
 steps/train_mono.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
@@ -86,9 +95,9 @@ steps/train_sat.sh --cmd "$train_cmd" \
   data/train_si284 data/lang_nosp exp/wsj_tri2_ali_si284 exp/wsj_tri3
 
 ###############################################################################
-# Segment long recordings using TF-IDF retrieval of reference text 
-# for uniformly segmented audio chunks based on Smith-Waterman alignment.
-# Use a SAT model trained on train_si284 (wsj_tri3)
+# Segment long HUB4 recordings and retrieve transcript using 
+# Smith-Waterman alignment.
+# Use a SAT model trained on train_si284 (wsj_tri3) as seed model for decoding.
 ###############################################################################
 
 steps/cleanup/segment_long_utterances.sh --cmd "$train_cmd" \
@@ -106,6 +115,10 @@ utils/data/modify_speaker_info.sh data/train_reseg_${affix} \
 steps/compute_cmvn_stats.sh data/train_reseg_${affix}_spk30sec \
   exp/make_mfcc/train_reseg_${affix}_spk30sec mfcc
 utils/fix_data_dir.sh data/train_reseg_${affix}_spk30sec
+
+###############################################################################
+# Train new in-domain GMM (tri4_a) on retrieved transcripts.
+###############################################################################
 
 steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
   data/train_reseg_${affix}_spk30sec data/lang_nosp \
@@ -136,9 +149,9 @@ for dset in eval97.pem; do
 done
 
 ###############################################################################
-# Segment long recordings using TF-IDF retrieval of reference text 
-# for uniformly segmented audio chunks based on Smith-Waterman alignment.
-# Use a SAT model trained on tri4_a
+# Segment long HUB4 recordings and retrieve transcript using 
+# Smith-Waterman alignment.
+# Use in-domain SAT model (tri4_a) as seed model for decoding.
 ###############################################################################
 
 steps/cleanup/segment_long_utterances.sh --cmd "$train_cmd" \
@@ -150,6 +163,10 @@ steps/cleanup/segment_long_utterances.sh --cmd "$train_cmd" \
 steps/compute_cmvn_stats.sh data/train_reseg_${new_affix} \
   exp/make_mfcc/train_reseg_${new_affix} mfcc
 utils/fix_data_dir.sh data/train_reseg_${new_affix}
+
+###############################################################################
+# Train new in-domain GMM (tri4_2a) on retrieved transcripts.
+###############################################################################
 
 steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
   data/train_reseg_${new_affix} data/lang_nosp \
@@ -173,6 +190,11 @@ for dset in eval97.pem; do
     exp/tri4_${new_affix}/decode_nosp_${dset}_rescore
 done
 
+###############################################################################
+# Cleanup transcripts
+# Use in-domain SAT model (tri4_2a) as seed model for decoding.
+###############################################################################
+
 cleanup_stage=-1
 cleanup_affix=cleaned
 srcdir=exp/tri4_${new_affix}
@@ -184,6 +206,10 @@ steps/cleanup/clean_and_segment_data.sh --stage $cleanup_stage --nj 80 \
   --cmd "$train_cmd" \
   data/train_reseg_${new_affix} data/lang_nosp \
   $srcdir $dir $cleaned_data
+
+###############################################################################
+# Train new in-domain GMM (tri4_2a) on cleaned-up transcripts.
+###############################################################################
 
 steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
   $cleaned_data data/lang_nosp $srcdir ${srcdir}_ali_${cleanup_affix}

@@ -13,40 +13,48 @@ set -o pipefail
 mfccdir=`pwd`/mfcc
 nj=40
 
+# Training corpora
+
 # 1996 English Broadcast News Train (HUB4)
-HUB4_96_Train_Transcripts=/export/corpora/LDC/LDC97T22/hub4_eng_train_trans
-HUB4_96_Train_Speech=/export/corpora/LDC/LDC97S44
+hub4_96_train_transcripts=/export/corpora/LDC/LDC97T22/hub4_eng_train_trans
+hub4_96_train_speech=/export/corpora/LDC/LDC97S44
 # 1997 English Broadcast News Train (HUB4)
-HUB4_97_Train_Transcripts=/export/corpora/LDC/LDC98T28/hub4e97_trans_980217
-HUB4_97_Train_Speech=/export/corpora/LDC/LDC98S71/97_eng_bns_hub4
+hub4_97_train_transcripts=/export/corpora/LDC/LDC98T28/hub4e97_trans_980217
+hub4_97_train_speech=/export/corpora/LDC/LDC98S71/97_eng_bns_hub4
 # 1996 CSR HUB4 Language Model
-CSR_HUB4_LM=/export/corpora/LDC/LDC98T31/1996_csr_hub4_model
+csr_hub4_lm=/export/corpora/LDC/LDC98T31/1996_csr_hub4_model
 # 1995 CSR-IV HUB4 corpus
-CSR95_HUB4=/export/corpora5/LDC/LDC96S31/csr95_hub4
+csr95_hub4=/export/corpora5/LDC/LDC96S31/csr95_hub4
 # North American News Text Corpus
-NA_Text=/export/corpora/LDC/LDC95T21
+NA_text=/export/corpora/LDC/LDC95T21
 # North American News Text Supplement Corpus
-NA_Text_Supp=/export/corpura/LCD/LDC98T30/northam_news_txt_sup
+NA_text_supp=/export/corpura/LCD/LDC98T30/northam_news_txt_sup
+
+# Test corpora
+
 # 1996 English Broadcast News Dev and Eval (HUB4)
-HUB4_96_Eval=/export/corpora/LDC/LDC97S66/1996_eng_bcast_dev_eval
+hub4_96_eval=/export/corpora/LDC/LDC97S66/1996_eng_bcast_dev_eval
 # 1997 HUB4 English Evaluation corpus
-HUB4_97_Eval=/export/corpora/LDC/LDC2002S11/hub4e_97
+hub4_97_eval=/export/corpora/LDC/LDC2002S11/hub4e_97
 # 1998 HUB4 Broadcast News Evaluation English Test Material
-HUB4_98_Eval=/export/corpora/LDC/LDC2000S86
+hub4_98_eval=/export/corpora/LDC/LDC2000S86
 # 1999 HUB4 Broadcast News Evaluation English Test Material
-HUB4_99_Eval=/export/corpora5/LDC/LDC2000S88/hub4_1999 
+hub4_99_eval=/export/corpora5/LDC/LDC2000S88/hub4_1999 
+
+# Test sets used -- Uncomment and keep only test sets needed
+test_sets="eval97.pem"
+# test_sets="dev96ue dev96pe eval96 eval96.pem eval97 eval97.pem eval98 eval98.pem eval99_1 eval99_1.pem eval99_2 eval99_2.pem"
 
 # Prepare 1996 English Broadcast News Train (HUB4)
 local/data_prep/prepare_1996_bn_data.sh \
-  $HUB4_96_Train_Transcripts \
-  $HUB4_96_Train_Speech \
-  /export/corpora/LDC/LDC97S44 \
+  $hub4_96_train_transcripts \
+  $hub4_96_train_speech \
   data/local/data/train_bn96
 
 # Prepare 1997 English Broadcast News Train (HUB4)
 local/data_prep/prepare_1997_bn_data.sh \
-  $HUB4_97_Train_Transcripts \
-  $HUB4_97_Train_Speech \
+  $hub4_97_train_transcripts \
+  $hub4_97_train_speech \
   data/local/data/train_bn97
 
 # Install Beautiful Soup 4 python package
@@ -56,15 +64,15 @@ if [ ! -d tools/beautifulsoup4 ]; then
 fi
 export PYTHONPATH=$PWD/tools/beautifulsoup4:$PYTHONPATH
 
-if [ ! -f $CSR_HUB4_LM/utils.tar ]; then
+if [ ! -f $csr_hub4_lm/utils.tar ]; then
   echo "Expected CSR-IV utils.tar to be found"
   exit 1
 fi
 
 mkdir -p tools/csr4_utils
 (
-cd tools/csr4_utils
-tar -xvf $CSR_HUB4_LM/utils.tar
+  cd tools/csr4_utils
+  tar -xvf $csr_hub4_lm/utils.tar
 )
 
 chmod a+w tools/csr4_utils
@@ -72,37 +80,38 @@ patch -u -d tools/csr4_utils -p3 < local/data_prep/csr4_utils.patch
 
 # Prepare 1995 CSR-IV HUB4 corpus
 local/data_prep/prepare_1995_csr_hub4_corpus.sh \
-  $CSR95_HUB4 data/local/data/csr95_hub4
+  $csr95_hub4 data/local/data/csr95_hub4
 
 # Prepare North American News Text Corpus
 local/data_prep/prepare_na_news_text_corpus.sh --nj 40 --cmd "$train_cmd" \
-   $NA_Text data/local/data/na_news
+   $NA_text data/local/data/na_news
 
 # Prepare North American News Text Supplement Corpus
 local/data/prep/prepare_na_news_text_supplement.sh --nj 10 --cmd "$train_cmd" \
-  $NA_Text_Supp data/local/data/na_news_supp
+  $NA_text_supp data/local/data/na_news_supp
 
 # Prepare 1996 CSR HUB4 Language Model
 local/data_prep/prepare_1996_csr_hub4_lm_corpus.sh --nj 10 --cmd "$train_cmd" \
-   $CSR_HUB4_LM data/local/data/csr96_hub4
+   $csr_hub4_lm data/local/data/csr96_hub4
 
 # Prepare 1996 English Broadcast News Dev and Eval (HUB4)
 local/data_prep/prepare_1996_hub4_bn_eng_dev_and_eval.sh \
-  $HUB4_96_Eval \
+  $hub4_96_eval \
   data/local/data/hub4_96_dev_eval
 
 # Prepare 1997 HUB4 English Evaluation corpus
 local/data_prep/prepare_1997_hub4_bn_eng_eval.sh \
-  $HUB4_97_Eval data/local/data/eval97
+  $hub4_97_eval data/local/data/eval97
 
 # Prepare 1998 HUB4 Broadcast News Evaluation English Test Material
 local/data_prep/prepare_1998_hub4_bn_eng_eval.sh \
-  $HUB4_98_Eval data/local/data/eval98
+  $hub4_98_eval data/local/data/eval98
 
 # Prepare 1999 HUB4 Broadcast News Evaluation English Test Material
 local/data_prep/prepare_1999_hub4_bn_eng_eval.sh \
-  $HUB4_99_Eval data/local/data/eval99
+  $hub4_99_eval data/local/data/eval99
 
+# Format data. 1996 HUB4 is required. Everything else is optional.
 local/format_data.sh 
 
 local/train_lm.sh 
@@ -115,7 +124,7 @@ utils/prepare_lang.sh data/local/dict_nosp \
 
 local/format_lms.sh --local-lm-dir data/local/local_lm
 
-for x in train dev96ue dev96pe eval96 eval96.pem eval97 eval97.pem eval98 eval98.pem eval99_1 eval99_1.pem eval99_2 eval99_2.pem; do 
+for x in train $test_sets; do 
   this_nj=$(cat data/$x/utt2spk | wc -l)
   if [ $this_nj -gt 30 ]; then
     this_nj=30
@@ -158,7 +167,7 @@ steps/train_sat.sh --cmd "$train_cmd" 4200 40000 \
 utils/mkgraph.sh data/lang_nosp_test exp/tri3 exp/tri3/graph_nosp
 
 (
-for dset in eval97.pem; do
+for dset in $test_sets; do
   this_nj=`cat data/$dset/spk2utt | wc -l`
   if [ $this_nj -gt 20 ]; then
     this_nj=20
@@ -180,7 +189,8 @@ steps/train_sat.sh --cmd "$train_cmd" 5000 100000 \
 
 utils/mkgraph.sh data/lang_nosp_test exp/tri4 exp/tri4/graph_nosp
 
-for dset in eval97.pem; do
+(
+for dset in $test_sets; do
   this_nj=`cat data/$dset/spk2utt | wc -l`
   if [ $this_nj -gt 20 ]; then
     this_nj=20
@@ -192,6 +202,21 @@ for dset in eval97.pem; do
     data/${dset} exp/tri4/decode_nosp_${dset} \
     exp/tri4/decode_nosp_${dset}_rescore
 done
+) &
+
+# The following demonstrates how to use out-of-domain WSJ models to segment long
+# audio recordings of HUB4 with raw unaligned transcripts into short segments
+# with aligned transcripts for training new ASR models. 
+
+# First run the data preparation stages in WSJ run.sh
+wsj_base=../../wsj/s5   # Change this to the WSJ base directory
+
+# We copy the prepared data to the current directory
+utils/copy_data_dir.sh $wsj_base/data/train_si84_2kshort data/train_si84_2kshort
+utils/copy_data_dir.sh $wsj_base/data/train_si84 data/train_si84
+utils/copy_data_dir.sh $wsj_base/data/train_si284 data/train_si284
+
+local/run_segmentation_wsj.sh 
 
 wait
 exit 0

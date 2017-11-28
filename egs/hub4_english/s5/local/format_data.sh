@@ -3,6 +3,9 @@
 # Copyright 2016  Vimal Manohar
 # Apache 2.0.
 
+set -e
+set -o pipefail
+
 echo "$0 $@"  # Print the command line for logging
 
 noise_word="<NOISE>"
@@ -11,6 +14,11 @@ spoken_noise_word="<SPOKEN_NOISE>"
 . utils/parse_options.sh || exit 1;
 
 . ./path.sh || exit 1;
+
+if [ $# -ne 0 ]; then
+  echo "Usage: $0"
+  exit 1
+fi
 
 srcdir=data/local/data
 tmpdir=data/local/
@@ -114,9 +122,12 @@ for d in eval99_1 eval99_2; do
   cp $srcdir/eval99/${d}_glm data/${d}.pem/glm
 done
 
-for d in train_bn96 eval96 eval96.pem dev96pe dev96ue eval97 eval97.pem \
+for d in train_bn96 train_bn97 eval96 eval96.pem dev96pe dev96ue eval97 eval97.pem \
          eval98 eval98.pem eval99_1 eval99_1.pem eval99_2 eval99_2.pem; do
   utils/utt2spk_to_spk2utt.pl data/$d/utt2spk > data/$d/spk2utt
-  awk '{print $1" "$1" 1"}' data/${d}/wav.scp > data/${d}/reco2file_and_channel
+  awk '{print $1" "$1" 1"}' data/${d}/wav.scp > \
+    data/${d}/reco2file_and_channel
   utils/fix_data_dir.sh data/${d}
 done
+
+utils/combine_data.sh data/train $train_data_sets

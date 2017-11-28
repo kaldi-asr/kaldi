@@ -29,8 +29,8 @@
 # optional_silence.txt
 # silence_phones.txt
 
-. path.sh
-. cmd.sh
+[ -f ./path.sh ] && . ./path.sh
+. ./cmd.sh
 
 set -e
 set -o pipefail

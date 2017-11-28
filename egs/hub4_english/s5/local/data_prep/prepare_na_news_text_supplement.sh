@@ -6,8 +6,8 @@
 # This script prepares the North American News Text Supplement Corpus
 # https://catalog.ldc.upenn.edu/LDC98T30
 
-. cmd.sh
-. path.sh
+[ -f ./path.sh ] && . ./path.sh
+. ./cmd.sh
 
 set -e
 set -o pipefail

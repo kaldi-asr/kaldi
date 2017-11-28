@@ -3,7 +3,7 @@
 # Copyright  2014 Nickolay V. Shmyrev
 # Apache 2.0
 
-if [ -f path.sh ]; then . path.sh; fi
+[ -f ./path.sh ] && . ./path.sh
 
 set -e -o pipefail -u
 
@@ -19,7 +19,6 @@ big_arpa_lm=$local_lm_dir/data/arpa/4gram_big.arpa.gz
 for f in $small_arpa_lm $big_arpa_lm data/lang_nosp/words.txt; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
-
 
 set -e
 

@@ -14,7 +14,8 @@ nj=4
 cmd=run.pl
 stage=0
 
-. path.sh
+[ -f ./path.sh ] && . ./path.sh
+
 . utils/parse_options.sh
 
 if [ $# -ne 2 ]; then
