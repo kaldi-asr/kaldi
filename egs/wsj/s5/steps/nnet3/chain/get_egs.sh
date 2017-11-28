@@ -492,9 +492,6 @@ if [ $stage -le 6 ]; then
     # there are some extra soft links that we should delete.
     for f in $dir/cegs.*.*.ark; do rm $f; done
   fi
-  if [ -z "$lat_copy_src" ]; then
-    rm $dir/lat_special.*.ark
-  fi
   echo "$0: removing temporary alignments and transforms"
   # Ignore errors below because trans.* might not exist.
   rm $dir/{ali,trans}.{ark,scp} 2>/dev/null

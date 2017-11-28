@@ -1,8 +1,9 @@
 // chainbin/nnet3-chain-copy-egs.cc
 
 // Copyright 2012-2015  Johns Hopkins University (author:  Daniel Povey)
-//                2014  Vimal Manohar
+//           2014-2017  Vimal Manohar
 //                2016  Gaofeng Cheng
+//                2017  Pegah Ghahremani
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,17 +26,18 @@
 
 namespace kaldi {
 namespace nnet3 {
-// rename name of NnetIo with old_name to new_name.
+
+// renames name of NnetIo object from "old_name" to "new_name"
 void RenameIoNames(const std::string &old_name,
                    const std::string &new_name,
                    NnetChainExample *eg_modified) {
-  // list of io-names in eg_modified.
+  // Get list of io-names in eg_modified.
   std::vector<std::string> orig_output_names;
   int32 output_size = eg_modified->outputs.size();
   for (int32 output_ind = 0; output_ind < output_size; output_ind++)
     orig_output_names.push_back(eg_modified->outputs[output_ind].name);
 
-  // find the io in eg with name 'old_name'.
+  // find the io in eg with name "old_name".
   int32 rename_output_ind =
      std::find(orig_output_names.begin(), orig_output_names.end(), old_name) -
       orig_output_names.begin();
@@ -46,17 +48,17 @@ void RenameIoNames(const std::string &old_name,
   eg_modified->outputs[rename_output_ind].name = new_name;
 }
 
-// ranames NnetIo name with name 'output' to new_output_name
-// and scales the supervision for 'output' using weight.
+// renames NnetIo object with name 'output' to "new_output_name"
+// and scales the supervision for 'output' by a factor of "weight"
 void SetWeightAndRenameOutput(BaseFloat weight,
                               const std::string &new_output_name,
                               NnetChainExample *eg) {
-  // scale the supervision weight for egs
+  // Scale the supervision weight for egs.
   for (int32 i = 0; i < eg->outputs.size(); i++)
     if (eg->outputs[i].name == "output")
       if (weight != 0.0 && weight != 1.0)
         eg->outputs[i].supervision.weight *= weight;
-  // rename output io name to 'new_output_name'.
+  // Rename output io name to 'new_output_name'.
   RenameIoNames("output", new_output_name, eg);
 }
 
@@ -274,6 +276,7 @@ void ModifyChainExampleContext(const NnetChainExample &eg,
                 min_output_t, max_output_t,
                 eg_out);
 }  // ModifyChainExampleContext
+
 }  // namespace nnet3
 }  // namespace kaldi
 
