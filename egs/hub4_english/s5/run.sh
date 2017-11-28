@@ -5,13 +5,14 @@
 
 # See README.txt for more info on data required.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 
 set -o pipefail
 
 mfccdir=`pwd`/mfcc
 nj=40
+stage=-1
 
 # Training corpora
 
@@ -45,17 +46,19 @@ hub4_99_eval=/export/corpora5/LDC/LDC2000S88/hub4_1999
 test_sets="eval97.pem"
 # test_sets="dev96ue dev96pe eval96 eval96.pem eval97 eval97.pem eval98 eval98.pem eval99_1 eval99_1.pem eval99_2 eval99_2.pem"
 
-# Prepare 1996 English Broadcast News Train (HUB4)
-local/data_prep/prepare_1996_bn_data.sh \
-  $hub4_96_train_transcripts \
-  $hub4_96_train_speech \
-  data/local/data/train_bn96
+if [ $stage -le 0 ]; then
+  # Prepare 1996 English Broadcast News Train (HUB4)
+  local/data_prep/prepare_1996_bn_data.sh \
+    $hub4_96_train_transcripts \
+    $hub4_96_train_speech \
+    data/local/data/train_bn96
 
-# Prepare 1997 English Broadcast News Train (HUB4)
-local/data_prep/prepare_1997_bn_data.sh \
-  $hub4_97_train_transcripts \
-  $hub4_97_train_speech \
-  data/local/data/train_bn97
+  # Prepare 1997 English Broadcast News Train (HUB4)
+  local/data_prep/prepare_1997_bn_data.sh \
+    $hub4_97_train_transcripts \
+    $hub4_97_train_speech \
+    data/local/data/train_bn97
+fi
 
 # Install Beautiful Soup 4 python package
 if [ ! -d tools/beautifulsoup4 ]; then
@@ -64,145 +67,174 @@ if [ ! -d tools/beautifulsoup4 ]; then
 fi
 export PYTHONPATH=$PWD/tools/beautifulsoup4:$PYTHONPATH
 
-if [ ! -f $csr_hub4_lm/utils.tar ]; then
-  echo "Expected CSR-IV utils.tar to be found"
-  exit 1
+if [ $stage -le 1 ]; then
+  if [ ! -f $csr_hub4_lm/utils.tar ]; then
+    echo "Expected CSR-IV utils.tar to be found"
+    exit 1
+  fi
+
+  mkdir -p tools/csr4_utils
+  (
+    cd tools/csr4_utils
+    tar -xvf $csr_hub4_lm/utils.tar
+  )
+
+  chmod a+w tools/csr4_utils
+  patch -u -d tools/csr4_utils -p3 < local/data_prep/csr4_utils.patch
 fi
 
-mkdir -p tools/csr4_utils
-(
-  cd tools/csr4_utils
-  tar -xvf $csr_hub4_lm/utils.tar
-)
+if [ $stage -le 2 ]; then
+  # Prepare 1995 CSR-IV HUB4 corpus
+  local/data_prep/prepare_1995_csr_hub4_corpus.sh \
+    $csr95_hub4 data/local/data/csr95_hub4
 
-chmod a+w tools/csr4_utils
-patch -u -d tools/csr4_utils -p3 < local/data_prep/csr4_utils.patch
+  # Prepare North American News Text Corpus
+  local/data_prep/prepare_na_news_text_corpus.sh --nj 40 --cmd "$train_cmd" \
+     $NA_text data/local/data/na_news
 
-# Prepare 1995 CSR-IV HUB4 corpus
-local/data_prep/prepare_1995_csr_hub4_corpus.sh \
-  $csr95_hub4 data/local/data/csr95_hub4
+  # Prepare North American News Text Supplement Corpus
+  local/data/prep/prepare_na_news_text_supplement.sh --nj 10 --cmd "$train_cmd" \
+    $NA_text_supp data/local/data/na_news_supp
 
-# Prepare North American News Text Corpus
-local/data_prep/prepare_na_news_text_corpus.sh --nj 40 --cmd "$train_cmd" \
-   $NA_text data/local/data/na_news
+  # Prepare 1996 CSR HUB4 Language Model
+  local/data_prep/prepare_1996_csr_hub4_lm_corpus.sh --nj 10 --cmd "$train_cmd" \
+     $csr_hub4_lm data/local/data/csr96_hub4
+fi
 
-# Prepare North American News Text Supplement Corpus
-local/data/prep/prepare_na_news_text_supplement.sh --nj 10 --cmd "$train_cmd" \
-  $NA_text_supp data/local/data/na_news_supp
+if [ $stage -le 3 ]; then
+  # Prepare 1996 English Broadcast News Dev and Eval (HUB4)
+  local/data_prep/prepare_1996_hub4_bn_eng_dev_and_eval.sh \
+    $hub4_96_eval \
+    data/local/data/hub4_96_dev_eval
 
-# Prepare 1996 CSR HUB4 Language Model
-local/data_prep/prepare_1996_csr_hub4_lm_corpus.sh --nj 10 --cmd "$train_cmd" \
-   $csr_hub4_lm data/local/data/csr96_hub4
+  # Prepare 1997 HUB4 English Evaluation corpus
+  local/data_prep/prepare_1997_hub4_bn_eng_eval.sh \
+    $hub4_97_eval data/local/data/eval97
 
-# Prepare 1996 English Broadcast News Dev and Eval (HUB4)
-local/data_prep/prepare_1996_hub4_bn_eng_dev_and_eval.sh \
-  $hub4_96_eval \
-  data/local/data/hub4_96_dev_eval
+  # Prepare 1998 HUB4 Broadcast News Evaluation English Test Material
+  local/data_prep/prepare_1998_hub4_bn_eng_eval.sh \
+    $hub4_98_eval data/local/data/eval98
 
-# Prepare 1997 HUB4 English Evaluation corpus
-local/data_prep/prepare_1997_hub4_bn_eng_eval.sh \
-  $hub4_97_eval data/local/data/eval97
+  # Prepare 1999 HUB4 Broadcast News Evaluation English Test Material
+  local/data_prep/prepare_1999_hub4_bn_eng_eval.sh \
+    $hub4_99_eval data/local/data/eval99
+fi
 
-# Prepare 1998 HUB4 Broadcast News Evaluation English Test Material
-local/data_prep/prepare_1998_hub4_bn_eng_eval.sh \
-  $hub4_98_eval data/local/data/eval98
+if [ $stage -le 4 ]; then
+  local/format_data.sh 
+fi
 
-# Prepare 1999 HUB4 Broadcast News Evaluation English Test Material
-local/data_prep/prepare_1999_hub4_bn_eng_eval.sh \
-  $hub4_99_eval data/local/data/eval99
+if [ $stage -le 5 ]; then
+  local/train_lm.sh 
+fi
 
-# Format data. 1996 HUB4 is required. Everything else is optional.
-local/format_data.sh 
+if [ $stage -le 6 ]; then
+  local/prepare_dict.sh --dict-suffix "_nosp" \
+    data/local/local_lm/data/work/wordlist
 
-local/train_lm.sh 
+  utils/prepare_lang.sh data/local/dict_nosp \
+    "<unk>" data/local/lang_tmp_nosp data/lang_nosp
+fi
 
-local/prepare_dict.sh --dict-suffix "_nosp" \
-  data/local/local_lm/data/work/wordlist
+if [ $stage -le 7 ]; then
+  local/format_lms.sh --local-lm-dir data/local/local_lm
+fi
 
-utils/prepare_lang.sh data/local/dict_nosp \
-  "<unk>" data/local/lang_tmp_nosp data/lang_nosp
+if [ $stage -le 8 ]; then
+  for x in train $test_sets; do 
+    this_nj=$(cat data/$x/utt2spk | wc -l)
+    if [ $this_nj -gt 30 ]; then
+      this_nj=30
+    fi
 
-local/format_lms.sh --local-lm-dir data/local/local_lm
+    steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj $this_nj \
+      --cmd "$train_cmd" \
+      data/$x exp/make_mfcc $mfccdir
+    steps/compute_cmvn_stats.sh data/$x exp/make_mfcc $mfccdir
+    utils/fix_data_dir.sh data/$x
+  done
+fi
 
-for x in train $test_sets; do 
-  this_nj=$(cat data/$x/utt2spk | wc -l)
-  if [ $this_nj -gt 30 ]; then
-    this_nj=30
-  fi
+if [ $stage -le 9 ]; then
+  utils/subset_data_dir.sh --shortest data/train 1000 data/train_1kshort
+  utils/subset_data_dir.sh data/train 2000 data/train_2k
 
-  steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj $this_nj \
-    --cmd "$train_cmd" \
-    data/$x exp/make_mfcc $mfccdir
-  steps/compute_cmvn_stats.sh data/$x exp/make_mfcc $mfccdir
-  utils/fix_data_dir.sh data/$x
-done
+  # Note: the --boost-silence option should probably be omitted by default
+  # for normal setups.  It doesn't always help. [it's to discourage non-silence
+  # models from modeling silence.]
+  steps/train_mono.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
+    data/train_1kshort data/lang_nosp exp/mono0a
+fi
 
-utils/subset_data_dir.sh --shortest data/train 1000 data/train_1kshort
-utils/subset_data_dir.sh data/train 2000 data/train_2k
+if [ $stage -le 10 ]; then
+  steps/align_si.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
+    data/train_2k data/lang_nosp exp/mono0a exp/mono0a_ali
 
-# Note: the --boost-silence option should probably be omitted by default
-# for normal setups.  It doesn't always help. [it's to discourage non-silence
-# models from modeling silence.]
-steps/train_mono.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
-  data/train_1kshort data/lang_nosp exp/mono0a
+  steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" 2000 10000 \
+    data/train_2k data/lang_nosp exp/mono0a_ali exp/tri1
+fi
 
-steps/align_si.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
-  data/train_2k data/lang_nosp exp/mono0a exp/mono0a_ali
+if [ $stage -le 10 ]; then
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+    data/train data/lang_nosp exp/tri1 exp/tri1_ali
 
-steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" 2000 10000 \
-  data/train_2k data/lang_nosp exp/mono0a_ali exp/tri1
+  steps/train_lda_mllt.sh --cmd "$train_cmd" 2500 15000 \
+    data/train data/lang_nosp exp/tri1_ali exp/tri2
+fi
 
-steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-  data/train data/lang_nosp exp/tri1 exp/tri1_ali
+if [ $stage -le 11 ]; then
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+    data/train data/lang_nosp exp/tri2 exp/tri2_ali
 
-steps/train_lda_mllt.sh --cmd "$train_cmd" 2500 15000 \
-  data/train data/lang_nosp exp/tri1_ali exp/tri2
+  steps/train_sat.sh --cmd "$train_cmd" 4200 40000 \
+    data/train data/lang_nosp exp/tri2_ali exp/tri3
+fi
 
-steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-  data/train data/lang_nosp exp/tri2 exp/tri2_ali
+if [ $stage -le 12 ]; then
+  utils/mkgraph.sh data/lang_nosp_test exp/tri3 exp/tri3/graph_nosp
 
-steps/train_sat.sh --cmd "$train_cmd" 4200 40000 \
-  data/train data/lang_nosp exp/tri2_ali exp/tri3
+  (
+  for dset in $test_sets; do
+    this_nj=`cat data/$dset/spk2utt | wc -l`
+    if [ $this_nj -gt 20 ]; then
+      this_nj=20
+    fi
+    steps/decode_fmllr.sh --nj $this_nj --cmd "$decode_cmd" --num-threads 4 \
+      exp/tri3/graph_nosp data/$dset exp/tri3/decode_nosp_${dset}
+    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+      data/lang_nosp_test data/lang_nosp_test_rescore \
+      data/${dset} exp/tri3/decode_nosp_${dset} \
+      exp/tri3/decode_nosp_${dset}_rescore
+  done
+  ) &
+fi
 
-utils/mkgraph.sh data/lang_nosp_test exp/tri3 exp/tri3/graph_nosp
+if [ $stage -le 13 ]; then
+  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
+    data/train data/lang_nosp exp/tri3 exp/tri3_ali
 
-(
-for dset in $test_sets; do
-  this_nj=`cat data/$dset/spk2utt | wc -l`
-  if [ $this_nj -gt 20 ]; then
-    this_nj=20
-  fi
-  steps/decode_fmllr.sh --nj $this_nj --cmd "$decode_cmd" --num-threads 4 \
-    exp/tri3/graph_nosp data/$dset exp/tri3/decode_nosp_${dset}
-  steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-    data/lang_nosp_test data/lang_nosp_test_rescore \
-    data/${dset} exp/tri3/decode_nosp_${dset} \
-    exp/tri3/decode_nosp_${dset}_rescore
-done
-) &
+  steps/train_sat.sh --cmd "$train_cmd" 5000 100000 \
+    data/train data/lang_nosp exp/tri3_ali exp/tri4
+fi
 
-steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-  data/train data/lang_nosp exp/tri3 exp/tri3_ali
+if [ $stage -le 14 ]; then
+  utils/mkgraph.sh data/lang_nosp_test exp/tri4 exp/tri4/graph_nosp
 
-steps/train_sat.sh --cmd "$train_cmd" 5000 100000 \
-  data/train data/lang_nosp exp/tri3_ali exp/tri4
-
-utils/mkgraph.sh data/lang_nosp_test exp/tri4 exp/tri4/graph_nosp
-
-(
-for dset in $test_sets; do
-  this_nj=`cat data/$dset/spk2utt | wc -l`
-  if [ $this_nj -gt 20 ]; then
-    this_nj=20
-  fi
-  steps/decode_fmllr.sh --nj $this_nj --cmd "$decode_cmd" --num-threads 4 \
-    exp/tri4/graph_nosp data/$dset exp/tri4/decode_nosp_${dset}
-  steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-    data/lang_nosp_test data/lang_nosp_test_rescore \
-    data/${dset} exp/tri4/decode_nosp_${dset} \
-    exp/tri4/decode_nosp_${dset}_rescore
-done
-) &
+  (
+  for dset in $test_sets; do
+    this_nj=`cat data/$dset/spk2utt | wc -l`
+    if [ $this_nj -gt 20 ]; then
+      this_nj=20
+    fi
+    steps/decode_fmllr.sh --nj $this_nj --cmd "$decode_cmd" --num-threads 4 \
+      exp/tri4/graph_nosp data/$dset exp/tri4/decode_nosp_${dset}
+    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+      data/lang_nosp_test data/lang_nosp_test_rescore \
+      data/${dset} exp/tri4/decode_nosp_${dset} \
+      exp/tri4/decode_nosp_${dset}_rescore
+  done
+  ) &
+fi
 
 # %WER 18.0 | 728 32834 | 83.9 11.7 4.3 2.0 18.0 85.9 | exp/tri4/decode_nosp_eval97.pem_rescore/score_14_0.0/eval97.pem.ctm.filt.sys
 # %WER 19.3 | 728 32834 | 82.9 12.6 4.6 2.2 19.3 86.8 | exp/tri4/decode_nosp_eval97.pem/score_13_0.0/eval97.pem.ctm.filt.sys
@@ -214,12 +246,14 @@ done
 # First run the data preparation stages in WSJ run.sh
 wsj_base=../../wsj/s5   # Change this to the WSJ base directory
 
-# We copy the prepared data to the current directory
-utils/copy_data_dir.sh $wsj_base/data/train_si84_2kshort data/train_si84_2kshort
-utils/copy_data_dir.sh $wsj_base/data/train_si84 data/train_si84
-utils/copy_data_dir.sh $wsj_base/data/train_si284 data/train_si284
+if [ $stage -le 15 ]; then
+  # We copy the prepared data to the current directory
+  utils/copy_data_dir.sh $wsj_base/data/train_si84_2kshort data/train_si84_2kshort
+  utils/copy_data_dir.sh $wsj_base/data/train_si84 data/train_si84
+  utils/copy_data_dir.sh $wsj_base/data/train_si284 data/train_si284
 
-local/run_segmentation_wsj.sh 
+  local/run_segmentation_wsj.sh 
+fi
 
 wait
 exit 0
