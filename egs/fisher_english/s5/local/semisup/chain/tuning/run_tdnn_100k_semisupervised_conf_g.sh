@@ -37,6 +37,7 @@ lattice_prune_beam=4.0  # If supplied will prune the lattices prior to getting e
 tolerance=1
 graph_affix=_sup100k   # can be used to decode the unsup data with another lm/graph
 phone_insertion_penalty=
+rescore_unsup_lattices=true
 
 # Semi-supervised options
 comb_affix=comb1g  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
@@ -146,17 +147,24 @@ for dset in $unsupervised_set; do
               $graphdir data/${dset}_sp_hires $chaindir/decode_${dset}_sp${decode_affix}
   fi
 
-  #if [ $stage -le 6 ]; then
-  #  steps/lmrescore_const_arpa_undeterminized.sh --cmd "$decode_cmd" \
-  #    --write-compact false --acwt 0.1 --beam 8.0  --skip-scoring true \
-  #    data/lang_test${graph_affix} \
-  #    data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
-  #    $chaindir/decode_${dset}_sp${decode_affix} \
-  #    $chaindir/decode_${dset}_sp${decode_affix}_fg
-
-  #fi
-  ln -sf ../final.mdl $chaindir/decode_${dset}_sp${decode_affix}/final.mdl
+  if $rescore_unsup_lattices; then
+    if [ $stage -le 6 ]; then
+      steps/lmrescore_const_arpa_undeterminized.sh --cmd "$decode_cmd" \
+        --write-compact false --acwt 0.1 --beam 8.0  --skip-scoring true \
+        data/lang_test${graph_affix} \
+        data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
+        $chaindir/decode_${dset}_sp${decode_affix} \
+        $chaindir/decode_${dset}_sp${decode_affix}_fg
+    fi
+    ln -sf ../final.mdl $chaindir/decode_${dset}_sp${decode_affix}_fg/final.mdl
+  else
+    ln -sf ../final.mdl $chaindir/decode_${dset}_sp${decode_affix}/final.mdl
+  fi
 done
+
+if $rescore_unsup_lattices; then
+  decode_affix=${decode_affix}_fg
+fi
 
 if [ $stage -le 8 ]; then
   steps/best_path_weights.sh --cmd "${train_cmd}" --acwt 0.1 \

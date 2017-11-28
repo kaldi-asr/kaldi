@@ -52,8 +52,8 @@ if [ "$speed_perturb" == "true" ]; then
   fi
 fi
 
-if [ $stage -le 2 ]; then
-  if [ ! -z "$unsup_train_set" ]; then
+if [ ! -z "$unsup_train_set" ]; then
+  if [ $stage -le 2 ]; then
     utils/combine_data.sh data/${semisup_train_set}_sp \
       data/${train_set}_sp data/${unsup_train_set}_sp
   fi
@@ -91,8 +91,10 @@ fi
 
 ivector_train_set=${train_set}_sp
 if [ ! -z "$unsup_train_set" ]; then
-  utils/combine_data.sh data/${semisup_train_set}_sp_hires \
-    data/${train_set}_sp_hires data/${unsup_train_set}_sp_hires
+  if [ $stage -le 3 ]; then
+    utils/combine_data.sh data/${semisup_train_set}_sp_hires \
+      data/${train_set}_sp_hires data/${unsup_train_set}_sp_hires
+  fi
   ivector_train_set=${semisup_train_set}_sp
 fi
 

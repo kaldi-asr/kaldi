@@ -10,7 +10,7 @@ train_stage=-10
 get_egs_stage=-10
 decode_iter=
 train_set=train_sup11k
-ivector_train_set=semisup11k_250k
+unsup_train_set=train_unsup_250k_240k
 tree_affix=
 nnet3_affix=_semi11k_250k
 chain_affix=_semi11k_250k
@@ -45,18 +45,18 @@ treedir=$exp/chain${chain_affix}/tree_${tree_affix}
 lat_dir=$exp/chain${chain_affix}/$(basename $gmm_dir)_${train_set}_sp_lats  # training lattices directory
 dir=$exp/chain${chain_affix}/tdnn${tdnn_affix}_sp
 train_data_dir=data/${train_set}_sp_hires
-train_ivector_dir=$exp/nnet3${nnet3_affix}/ivectors_${ivector_train_set}_sp_hires
+train_ivector_dir=$exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 lang=data/lang_chain
 
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
 
-local/nnet3/run_ivector_common_pca.sh --stage $stage --exp $exp \
+local/semisup/nnet3/run_ivector_common_pca.sh --stage $stage --exp $exp \
                                   --speed-perturb true \
                                   --train-set $train_set \
-                                  --ivector-train-set $ivector_train_set \
-                                  --nnet3-affix $nnet3_affix || exit 1
+                                  --unsup-train-set $unsup_train_set \
+                                  --nnet3-affix "$nnet3_affix" || exit 1
 
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).

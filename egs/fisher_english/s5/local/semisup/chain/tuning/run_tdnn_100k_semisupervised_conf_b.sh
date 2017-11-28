@@ -145,8 +145,7 @@ for dset in $unsupervised_set; do
 
   if [ $stage -le 6 ]; then
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-      --write-compact false --read-determinized false --write-determinized false \
-      --skip-scoring true \
+      --acwt 0.1 --beam 8.0 --write-compact false --skip-scoring true \
       data/lang_test${graph_affix} \
       data/lang_test${graph_affix}_fg data/${dset}_sp_hires \
       $chaindir/decode_${dset}_sp${decode_affix} \
