@@ -204,6 +204,9 @@ for dset in $test_sets; do
 done
 ) &
 
+# %WER 18.0 | 728 32834 | 83.9 11.7 4.3 2.0 18.0 85.9 | exp/tri4/decode_nosp_eval97.pem_rescore/score_14_0.0/eval97.pem.ctm.filt.sys
+# %WER 19.3 | 728 32834 | 82.9 12.6 4.6 2.2 19.3 86.8 | exp/tri4/decode_nosp_eval97.pem/score_13_0.0/eval97.pem.ctm.filt.sys
+
 # The following demonstrates how to use out-of-domain WSJ models to segment long
 # audio recordings of HUB4 with raw unaligned transcripts into short segments
 # with aligned transcripts for training new ASR models. 
