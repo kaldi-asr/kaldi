@@ -17,11 +17,11 @@
 # %WER 54.46 [ 4166 / 7650, 752 ins, 400 del, 3014 sub ] exp/chain/tdnn1a_sp/decode_devtest/wer_7_1.0
 
 # | fold | 1a |
-| devtest | 54.46 |
-| native |  62.14 |
-| nonnative | 70.58 |
-| test | 66.85 |
- 
+#| devtest | 54.46 |
+#| native |  62.14 |
+#| nonnative | 70.58 |
+#| test | 66.85 |
+
 # this script came from the mini librispeech recipe
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
