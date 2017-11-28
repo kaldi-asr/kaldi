@@ -25,7 +25,7 @@
 # with the same basename as the primary directory.
 # This is typically used to get better posteriors for semisupervised training
 # of DNN
-# e.g. local/combine_posteriors.sh exp/tri6_nnet/decode_train_unt.seg 
+# e.g. steps/best_path_weights.sh exp/tri6_nnet/decode_train_unt.seg 
 # exp/sgmm_mmi_b0.1/decode_fmllr_train_unt.seg_it4 exp/combine_dnn_sgmm
 # Here the final.mdl and tree are copied from exp/tri6_nnet to 
 # exp/combine_dnn_sgmm. ali.*.gz obtained from the primary dir and 
@@ -38,14 +38,15 @@ set -e
 cmd=run.pl
 stage=-10
 acwt=0.1
-write_words=false
+write_words=false   # Dump the word-level transcript in addition to the best path alignments
 #end configuration section.
 
-help_message="Usage: "$0" [options] <data-dir> <graph-dir|lang-dir> <decode-dir1>[:weight] <decode-dir2>[:weight] [<decode-dir3>[:weight] ... ] <out-dir>
-     E.g. "$0" data/train_unt.seg data/lang exp/tri1/decode:0.5 exp/tri2/decode:0.25 exp/tri3/decode:0.25 exp/combine
-Options:
-  --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes.
-";
+cat <<EOF
+  Usage: $0 [options] <data-dir> <graph-dir|lang-dir> <decode-dir1>[:weight] <decode-dir2>[:weight] [<decode-dir3>[:weight] ... ] <out-dir>
+    E.g. $0 data/train_unt.seg data/lang exp/tri1/decode:0.5 exp/tri2/decode:0.25 exp/tri3/decode:0.25 exp/combine
+  Options:
+    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes.
+EOF
 
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
@@ -72,7 +73,6 @@ nj=`cat $decode_dir/num_jobs`
 mkdir -p $dir
 
 words_wspecifier=ark:/dev/null
-
 if $write_words; then
   words_wspecifier="ark,t:| utils/int2sym.pl -f 2- $lang/words.txt > $dir/text.JOB"
 fi

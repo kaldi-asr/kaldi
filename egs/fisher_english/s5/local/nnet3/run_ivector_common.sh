@@ -28,7 +28,8 @@ if [ "$speed_perturb" == "true" ]; then
       mfccdir=mfcc_perturbed
       steps/make_mfcc.sh --cmd "$train_cmd" --nj 50 \
         data/${datadir}_sp $exp/make_mfcc/${datadir}_sp $mfccdir || exit 1;
-      steps/compute_cmvn_stats.sh data/${datadir}_sp $exp/make_mfcc/${datadir}_sp $mfccdir || exit 1;
+      steps/compute_cmvn_stats.sh \
+        data/${datadir}_sp $exp/make_mfcc/${datadir}_sp $mfccdir || exit 1;
       utils/fix_data_dir.sh data/${datadir}_sp
     done
   fi
@@ -89,7 +90,8 @@ fi
 
 if [ $stage -le 6 ]; then
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
-    data/${ivector_train_set}_hires $exp/nnet3${nnet3_affix}/diag_ubm $exp/nnet3${nnet3_affix}/extractor || exit 1;
+    data/${ivector_train_set}_hires $exp/nnet3${nnet3_affix}/diag_ubm \
+    $exp/nnet3${nnet3_affix}/extractor || exit 1;
 fi
 
 if [ $stage -le 7 ]; then
@@ -97,16 +99,19 @@ if [ $stage -le 7 ]; then
   # train the system on.
   # having a larger number of speakers is helpful for generalization, and to
   # handle per-utterance decoding well (iVector starts at zero).
-  utils/data/modify_speaker_info.sh --utts-per-spk-max 2 data/${ivector_train_set}_hires data/${ivector_train_set}_max2_hires
+  utils/data/modify_speaker_info.sh --utts-per-spk-max 2 \
+    data/${ivector_train_set}_hires data/${ivector_train_set}_max2_hires
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-    data/${ivector_train_set}_max2_hires $exp/nnet3${nnet3_affix}/extractor $exp/nnet3${nnet3_affix}/ivectors_${ivector_train_set}_hires || exit 1;
+    data/${ivector_train_set}_max2_hires $exp/nnet3${nnet3_affix}/extractor \
+    $exp/nnet3${nnet3_affix}/ivectors_${ivector_train_set}_hires || exit 1;
 fi
 
 if [ $stage -le 8 ]; then
   for dataset in test dev; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-      data/${dataset}_hires $exp/nnet3${nnet3_affix}/extractor $exp/nnet3${nnet3_affix}/ivectors_${dataset}_hires || exit 1;
+      data/${dataset}_hires $exp/nnet3${nnet3_affix}/extractor \
+      $exp/nnet3${nnet3_affix}/ivectors_${dataset}_hires || exit 1;
   done
 fi
 

@@ -4,8 +4,10 @@
 #           2017  Hainan Xu
 # Apache 2.0
 
-# This script rescores lattices with RNNLM.  See also rnnlmrescore.sh which is
-# an older script using n-best lists.
+# This script rescores non-compact undeterminized lattices with RNNLM.  
+# See also rnnlmrescore.sh which is an older script using n-best lists.
+# This is similar to steps/lmrescore_const_arpa.sh, but expects 
+# undeterminized non-compact lattices as input.
 
 # Begin configuration section.
 cmd=run.pl
