@@ -77,7 +77,6 @@ acwt=0.1   # For pruning
 phone_insertion_penalty=
 deriv_weights_scp=
 generate_egs_scp=false
-lat_copy_src=
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -289,12 +288,12 @@ chain_supervision_all_opts="--supervision.frame-subsampling-factor=$alignment_su
 
 normalization_scale=1.0
 
-lattice_copy_cmd="ark:-"
+lats_rspecifier="ark:gunzip -c $latdir/lat.JOB.gz |"
 if [ ! -z $lattice_prune_beam ]; then
   if [ "$lattice_prune_beam" == "0" ] || [ "$lattice_prune_beam" == "0.0" ]; then
-    lattice_copy_cmd="ark:- | lattice-1best --acoustic-scale=$acwt ark:- ark:-"
+    lats_rspecifier="$lats_rspecifier lattice-1best --acoustic-scale=$acwt ark:- ark:- |"
   else
-    lattice_copy_cmd="ark:- | lattice-prune --write-compact=false --acoustic-scale=$acwt --beam=$lattice_prune_beam ark:- ark:-"
+    lats_rspecifier="$lats_rspecifier lattice-prune --write-compact=false --acoustic-scale=$acwt --beam=$lattice_prune_beam ark:- ark:- |"
   fi
 fi
 
@@ -330,39 +329,28 @@ echo $left_context_initial > $dir/info/left_context_initial
 echo $right_context_final > $dir/info/right_context_final
 
 if [ $stage -le 2 ]; then
-  if [ ! -z "$lat_copy_src" ]; then
-    ln -sf `readlink -f $lat_copy_src`/lat.*.{ark,scp} $dir/
-    cat $lat_copy_src/lat.{?,??}.scp > $dir/lat.scp
-  fi
-
   echo "$0: Getting validation and training subset examples in background."
   rm $dir/.error 2>/dev/null
 
   (
-  if [ -z "$lat_copy_src" ]; then
-    $cmd --max-jobs-run 6 JOB=1:$nj $dir/log/lattice_copy.JOB.log \
-      lattice-copy --include="cat $dir/valid_uttlist $dir/train_subset_uttlist |" --ignore-missing \
-      --write-compact=false \
-      "ark:gunzip -c $latdir/lat.JOB.gz|" \
-      ark,scp:$dir/lat_special.JOB.ark,$dir/lat_special.JOB.scp || exit 1
+  $cmd --max-jobs-run 6 JOB=1:$nj $dir/log/lattice_copy.JOB.log \
+    lattice-copy --include="cat $dir/valid_uttlist $dir/train_subset_uttlist |" --ignore-missing \
+    --write-compact=false \
+    "$lats_rspecifier" \
+    ark,scp:$dir/lat_special.JOB.ark,$dir/lat_special.JOB.scp || exit 1
 
-    for id in $(seq $nj); do cat $dir/lat_special.$id.scp; done > $dir/lat_special.scp
-  else
-    # do the filtering just once, as lat.scp may be long.
-    utils/filter_scp.pl <(cat $dir/valid_uttlist $dir/train_subset_uttlist) \
-      <$dir/lat.scp >$dir/lat_special.scp
-  fi
+  for id in $(seq $nj); do cat $dir/lat_special.$id.scp; done > $dir/lat_special.scp
 
   $cmd $dir/log/create_valid_subset.log \
     utils/filter_scp.pl $dir/valid_uttlist $dir/lat_special.scp \| \
-    lattice-align-phones --write-compact=false --replace-output-symbols=true $latdir/final.mdl scp:- $lattice_copy_cmd \| \
+    lattice-align-phones --write-compact=false --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
     nnet3-chain-split-and-get-egs $chain_supervision_all_opts $ivector_opts --srand=$srand \
       $egs_opts $chaindir/normalization.fst \
       "$valid_feats" $chaindir/tree $chaindir/0.trans_mdl \
       ark,s,cs:- "ark:$dir/valid_all.cegs" || exit 1 &
   $cmd $dir/log/create_train_subset.log \
     utils/filter_scp.pl $dir/train_subset_uttlist $dir/lat_special.scp \| \
-    lattice-align-phones --write-compact=false --replace-output-symbols=true $latdir/final.mdl scp:- $lattice_copy_cmd \| \
+    lattice-align-phones --write-compact=false --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
     nnet3-chain-split-and-get-egs $chain_supervision_all_opts $ivector_opts --srand=$srand \
       $egs_opts $chaindir/normalization.fst \
       "$train_subset_feats" $chaindir/tree $chaindir/0.trans_mdl \
@@ -426,15 +414,12 @@ if [ $stage -le 4 ]; then
   # files is the product of 'nj' by 'num_archives_intermediate', which might be
   # quite large.
 
-  lattice_rspecifier="ark:gunzip -c $latdir/lat.JOB.gz |"
-  if [ ! -z "$lat_copy_src" ]; then
-    lattice_rspecifier="scp:utils/filter_scp.pl $sdata/JOB/utt2spk $dir/lat.scp |"
-  fi
-
   $cmd --max-jobs-run $max_jobs_run JOB=1:$nj $dir/log/get_egs.JOB.log \
     lattice-align-phones --write-compact=false --replace-output-symbols=true $latdir/final.mdl \
-      "$lattice_rspecifier" $lattice_copy_cmd \| \
-    nnet3-chain-split-and-get-egs $chain_supervision_all_opts $ivector_opts --srand=\$[JOB+$srand] $egs_opts --supervision.weight=$egs_weight \
+      "$lats_rspecifier" ark:- \| \
+    nnet3-chain-split-and-get-egs $chain_supervision_all_opts \
+      --supervision.weight=$egs_weight \
+      $ivector_opts --srand=\$[JOB+$srand] $egs_opts \
       --num-frames-overlap=$frames_overlap_per_eg \
       "$feats" $chaindir/tree $chaindir/0.trans_mdl \
       ark,s,cs:- ark:- \| \
@@ -495,7 +480,7 @@ if [ $stage -le 5 ]; then
 
     if $generate_egs_scp; then
       #concatenate cegs.JOB.scp in single cegs.scp
-      rm -rf $dir/cegs.scp
+      rm -f $dir/cegs.scp
       for j in $(seq $num_archives_intermediate); do
         for y in $(seq $archives_multiple); do
           cat $dir/cegs.$j.$y.scp || exit 1;

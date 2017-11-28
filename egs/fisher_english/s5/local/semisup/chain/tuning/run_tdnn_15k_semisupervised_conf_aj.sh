@@ -34,7 +34,6 @@ sup_frames_per_eg=150
 lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices
 lattice_prune_beam=4.0  # If supplied will prune the lattices prior to getting egs for unsupervised data
 tolerance=1
-graph_affix=_poco_ex250k   # can be used to decode the unsup data with another lm/graph
 phone_insertion_penalty=
 
 # Semi-supervised options
@@ -46,7 +45,7 @@ unsup_egs_dir=
 tree_affix=bi_i
 unsup_egs_opts=
 apply_deriv_weights=true
-
+use_smart_splitting=true
 do_finetuning=false
 
 extra_left_context=0
@@ -95,6 +94,12 @@ fi
 #                          --nnet3-affix $nnet3_affix --tdnn-affix $tdnn_affix --exp $exp
 #fi
 
+if $use_smart_splitting; then
+  comb_affix=${comb_affix}_smart
+else
+  comb_affix=${comb_affix}_naive
+fi
+
 lang=data/lang_chain_unk
 unsup_decode_lang=data/lang_poco_test_ex250k_unk
 unsup_rescore_lang=${unsup_decode_lang}_big
@@ -133,7 +138,7 @@ for dset in $unsupervised_set; do
   if [ $stage -le 4 ]; then
     echo "$0: getting the decoding lattices for the unsupervised subset using the chain model at: $chaindir"
     steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
-              --acwt 1.0 --post-decode-acwt 10.0 --write-compact false --skip-scoring true \\
+              --acwt 1.0 --post-decode-acwt 10.0 --write-compact false --skip-scoring true \
               --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${base_train_set}_sp_hires \
               --scoring-opts "--min-lmwt 10 --max-lmwt 10" --determinize-opts "--word-determinize=false" \
               $graphdir data/${dset}_sp_hires $chaindir/decode_${dset}_sp${decode_affix}
@@ -299,8 +304,14 @@ if [ -z "$unsup_egs_dir" ]; then
     mkdir -p $unsup_egs_dir
     touch $unsup_egs_dir/.nodelete # keep egs around when that run dies.
 
+    if $use_smart_splitting; then
+      get_egs_script=steps/nnet3/chain/get_egs_split.sh
+    else
+      get_egs_script=steps/nnet3/chain/get_egs.sh
+    fi
+
     echo "$0: generating egs from the unsupervised data"
-    steps/nnet3/chain/get_egs_split.sh --cmd "$decode_cmd --h-rt 100:00:00" --alignment-subsampling-factor 1 \
+    $get_egs_script --cmd "$decode_cmd --h-rt 100:00:00" --alignment-subsampling-factor 1 \
                --left-tolerance $tolerance --right-tolerance $tolerance \
                --left-context $left_context --right-context $right_context \
                --left-context-initial $left_context_initial --right-context-final $right_context_final \

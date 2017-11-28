@@ -2,18 +2,18 @@
 set -e
 
 # This is fisher chain recipe for training a model on a subset of around 50 hours.
-# This is similar to _b, but uses biphone tree with upto 7000 leaves.
+# This is similar to _c, but uses poco LM for decoding.
 
 # configs for 'chain'
 stage=0
-tdnn_affix=7c
+tdnn_affix=7e
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
 train_set=train_sup50k
 unsup_train_set=train_unsup100k_250k
 semisup_train_set=semisup50k_100k_250k
-tree_affix=bi_c
+tree_affix=bi_e
 nnet3_affix=_semi50k_250k
 chain_affix=_semi50k_250k
 exp=exp/semisup_50k
@@ -180,12 +180,12 @@ if [ $stage -le 13 ]; then
     --dir $dir  || exit 1;
 fi
 
-graph_dir=$dir/graph
+graph_dir=$dir/graph_poco
 if [ $stage -le 14 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test $dir $graph_dir
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_poco_test $dir $graph_dir
 fi
 
 decode_suff=
