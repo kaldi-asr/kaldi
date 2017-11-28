@@ -14,9 +14,6 @@ max_ngram_order=4
 N=10
 inv_acwt=12
 weight=1.0  # Interpolation weight for RNNLM.
-
-expand_ngram=false
-beam=
 # End configuration section.
 rnnlm_ver=
 #layer_string=
@@ -92,21 +89,11 @@ mkdir -p $outdir/log
 nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
 
-lats_rspecifier="ark:gunzip -c $indir/lat.JOB.gz |"
-
-if [ ! -z "$beam" ]; then
-  lats_rspecifier="$lats_rspecifier lattice-prune --inv-acoustic-scale=$inv_acwt --beam=$beam ark:- ark:- |" 
-fi
-
-if $expand_ngram; then
-  lats_rspecifier="$lats_rspecifier lattice-expand-ngram --n=$max_ngram_order ark:- ark:- |"
-fi
-
 oldlm_weight=`perl -e "print -1.0 * $weight;"`
 if [ "$oldlm" == "$oldlang/G.fst" ]; then
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore --lm-scale=$oldlm_weight \
-    "$lats_rspecifier" "$oldlm_command" ark:-  \| \
+    "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm_command" ark:-  \| \
     $rescoring_binary $extra_arg --lm-scale=$weight \
     --max-ngram-order=$max_ngram_order \
     $first_arg $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
@@ -114,7 +101,7 @@ if [ "$oldlm" == "$oldlang/G.fst" ]; then
 else
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore-const-arpa --lm-scale=$oldlm_weight \
-    "$lats_rspecifier" "$oldlm" ark:-  \| \
+    "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm" ark:-  \| \
     $rescoring_binary $extra_arg --lm-scale=$weight \
     --max-ngram-order=$max_ngram_order \
     $first_arg $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
