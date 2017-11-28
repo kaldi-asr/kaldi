@@ -1,18 +1,18 @@
 #!/bin/bash
 set -e
 
-# This is fisher chain recipe for training a model on a subset of around 15 hours.
-# This is similar to _c, but uses a biphone tree with up to 7000 leaves.
+# This is fisher chain recipe for training a model on a subset of around 10 hours.
+# This is similar to _d, but uses a biphone tree with up to 2000 leaves.
 
 # configs for 'chain'
 stage=0
-tdnn_affix=7d
+tdnn_affix=7e
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
 train_set=train_sup15k
 ivector_train_set=semisup15k_250k
-tree_affix=bi_d
+tree_affix=e
 nnet3_affix=_semi15k_250k
 chain_affix=_semi15k_250k
 exp=exp/semisup_15k
@@ -85,7 +85,7 @@ if [ $stage -le 11 ]; then
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate -1 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd" 7000 data/${train_set} $lang $gmm_dir $treedir || exit 1
+      --cmd "$train_cmd" 2000 data/${train_set} $lang $gmm_dir $treedir || exit 1
 fi
 
 if [ $stage -le 12 ]; then
