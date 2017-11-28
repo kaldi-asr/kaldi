@@ -1,5 +1,16 @@
 #!/bin/bash
+# 1b
+# lower number of leaves from 3500 to 2000
+# Word Error Rates on folds
 
+# | fold | 1a | 1b |
+| devtest | 54.46 |
+| native |  62.14 |
+| nonnative | 70.58 |
+| test | 66.85 |
+ 
+# this script came from the mini librispeech recipe
+# Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
 
 # First the options that are passed through to run_ivector_common.sh
@@ -13,11 +24,13 @@ nnet3_affix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=1b   # affix for the TDNN directory name
+affix=1a   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
+
+num_leaves=2000
 
 # training options
 # training chunk-options
@@ -34,8 +47,7 @@ remove_egs=true
 reporting_email=
 
 #decode options
-test_online_decoding=true  # if true, it will run the last decoding stage.
-
+test_online_decoding=false  # if true, it will run the last decoding stage.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -55,9 +67,10 @@ fi
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 11" if you have already
 # run those things.
-local/nnet3/run_ivector_common.sh \
-    --stage $stage \
-    --train-set $train_set --gmm $gmm --nnet3-affix "$nnet3_affix" || exit 1;
+local/nnet3/run_ivector_common.sh --stage $stage \
+                                  --train-set $train_set \
+                                  --gmm $gmm \
+                                  --nnet3-affix "$nnet3_affix" || exit 1;
 
 # Problem: We have removed the "train_" prefix of our training set in
 # the alignment directory names! Bad!
@@ -117,11 +130,14 @@ if [ $stage -le 12 ]; then
      exit 1;
   fi
   steps/nnet3/chain/build_tree.sh \
-    --cmd "$train_cmd" --frame-subsampling-factor 3 \
+    --cmd "$train_cmd" \
+    --frame-subsampling-factor 3 \
     --context-opts "--context-width=2 --central-position=1" \
-    2000 \
-    ${lores_train_data_dir} $lang $ali_dir $tree_dir
+    $num_leaves \
+    ${lores_train_data_dir} \
+    $lang $ali_dir $tree_dir
 fi
+
 
 if [ $stage -le 13 ]; then
   mkdir -p $dir
@@ -141,15 +157,15 @@ if [ $stage -le 13 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 dim=400
-  relu-batchnorm-layer name=tdnn2 dim=400 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn3 dim=400 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn4 dim=400 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn5 dim=400 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn6 dim=400 input=Append(-6,-3,0)
+  relu-batchnorm-layer name=tdnn1 dim=512
+  relu-batchnorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn3 dim=512 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn4 dim=512 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn5 dim=512 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn6 dim=512 input=Append(-6,-3,0)
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain dim=400 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-chain dim=512 target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
@@ -161,7 +177,7 @@ if [ $stage -le 13 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=400 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=512 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
