@@ -26,8 +26,6 @@
 #include <vector>
 #include <utility>
 #include <string>
-
-#include "base/kaldi-utils.h"
 #include "util/kaldi-io.h"
 #include "util/text-utils.h"
 #include "matrix/kaldi-matrix.h"
@@ -289,7 +287,7 @@ template<class BasicType> class BasicVectorHolder {
         return true;
       } catch(const std::exception &e) {
         KALDI_WARN << "BasicVectorHolder::Read, could not interpret line: "
-                   << "'" << StringToReadable(line) << "'" << "\n" << e.what();
+                   << "'" << line << "'" << "\n" << e.what();
         return false;
       }
     } else {  // binary mode.
@@ -657,9 +655,9 @@ class TokenHolder {
     char c;
     while (isspace(c = is.peek()) && c!= '\n') is.get();
     if (is.peek() != '\n') {
-      KALDI_WARN << "TokenHolder::Read, expected newline, got char "
-                 << CharToString(is.peek())
-                 << ", at stream pos " << is.tellg();
+      KALDI_ERR << "TokenHolder::Read, expected newline, got char " <<
+          CharToString(is.peek())
+                << ", at stream pos " << is.tellg();
       return false;
     }
     is.get();  // get '\n'
