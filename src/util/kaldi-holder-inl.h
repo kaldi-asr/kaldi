@@ -27,7 +27,6 @@
 #include <utility>
 #include <string>
 
-#include "base/kaldi-utils.h"
 #include "util/kaldi-io.h"
 #include "util/text-utils.h"
 #include "matrix/kaldi-matrix.h"
@@ -289,7 +288,7 @@ template<class BasicType> class BasicVectorHolder {
         return true;
       } catch(const std::exception &e) {
         KALDI_WARN << "BasicVectorHolder::Read, could not interpret line: "
-                   << "'" << StringToReadable(line) << "'" << "\n" << e.what();
+                   << "'" << line << "'" << "\n" << e.what();
         return false;
       }
     } else {  // binary mode.
