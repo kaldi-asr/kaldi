@@ -141,6 +141,8 @@ if [ $stage -le 1 ]; then
   fi
 fi
 
+steps/scoring/score_kaldi_cer.sh --cmd "$cmd" --stage 2 $data $lang_or_graph $dir
+
 # If we got here, the scoring was successful.
 # As a  small aid to prevent confusion, we remove all wer_{?,??} files;
 # these originate from the previous version of the scoring files
