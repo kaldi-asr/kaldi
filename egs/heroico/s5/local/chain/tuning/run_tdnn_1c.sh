@@ -2,14 +2,24 @@
 # 1c
 # lower number of leaves from 3500 to 2500
 # info
+#exp/chain/tdnn1c_sp: num-iters=150
+# nj=1..1
+# num-params=6.0M
+# dim=40+100->1392
+# combine=-0.026->-0.026 xent:train/valid[99,149,final]=(-0.769,-0.582,-0.497/-1.08,-1.05,-0.961)
+# logprob:train/valid[99,149,final]=(-0.033,-0.024,-0.020/-0.085,-0.092,-0.086)
 
 # Word Error Rates on folds
+#%WER 71.68 [ 6605 / 9215, 630 ins, 1186 del, 4789 sub ] exp/chain/tdnn1c_sp/decode_nonnative/wer_7_1.0
+#%WER 67.25 [ 11239 / 16713, 1168 ins, 1880 del, 8191 sub ] exp/chain/tdnn1c_sp/decode_test/wer_7_1.0
+#%WER 61.70 [ 4626 / 7498, 536 ins, 696 del, 3394 sub ] exp/chain/tdnn1c_sp/decode_native/wer_7_1.0
+#%WER 54.16 [ 4143 / 7650, 676 ins, 442 del, 3025 sub ] exp/chain/tdnn1c_sp/decode_devtest/wer_8_1.0
 
 # | fold | 1a | 1b | 1c |
-#| devtest | 54.46 | 54.20 | 
-#| native |  62.14 | 62.32 \
-#| nonnative | 70.58 | 71.20 | 
-#| test | 66.85 | 67.21 |
+#| devtest | 54.46 | 54.20 | 4.16 |
+#| native |  62.14 | 62.32 | 61.70 |
+#| nonnative | 70.58 | 71.20 | 71.68 |
+#| test | 66.85 | 67.21 | 67.25 |
 
 # this script came from the mini librispeech recipe
 # Set -e here so that we catch if any executable fails immediately

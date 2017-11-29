@@ -1,7 +1,18 @@
 #!/bin/bash
+# 1d
 
-# remove proportional shrink
-# ./steps/info/chain_dir_info.pl exp/chain/tdnn1a_sp
+# remove     --trainer.optimization.proportional-shrink=150.0 \
+
+# info
+
+# Word Error Rates on folds
+
+# | fold | 1a | 1b | 1c | 1d |
+#| devtest | 54.46 | 54.20 | 4.16 |
+#| native |  62.14 | 62.32 | 61.70 |
+#| nonnative | 70.58 | 71.20 | 71.68 |
+#| test | 66.85 | 67.21 | 67.25 |
+
 # this script came from the mini librispeech recipe
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -17,11 +28,13 @@ nnet3_affix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=1c   # affix for the TDNN directory name
+affix=1d   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
+
+num_leaves=3500
 
 # training options
 # training chunk-options
@@ -38,8 +51,7 @@ remove_egs=true
 reporting_email=
 
 #decode options
-test_online_decoding=true  # if true, it will run the last decoding stage.
-
+test_online_decoding=false  # if true, it will run the last decoding stage.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -117,16 +129,17 @@ if [ $stage -le 12 ]; then
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.  The num-leaves is always somewhat less than the num-leaves from
   # the GMM baseline.
-    if [ -f $tree_dir/final.mdl ]; then
-        echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
+   if [ -f $tree_dir/final.mdl ]; then
+     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
      exit 1;
   fi
   steps/nnet3/chain/build_tree.sh \
-      --cmd "$train_cmd" \
+    --cmd "$train_cmd" \
     --frame-subsampling-factor 3 \
     --context-opts "--context-width=2 --central-position=1" \
-    2000 \
-    ${lores_train_data_dir} $lang $ali_dir $tree_dir
+    $num_leaves \
+    ${lores_train_data_dir} \
+    $lang $ali_dir $tree_dir
 fi
 
 
