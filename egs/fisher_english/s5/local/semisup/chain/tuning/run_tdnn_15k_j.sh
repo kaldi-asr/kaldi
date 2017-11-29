@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# Copyright 2017  Vimal Manohar
+# Apache 2.0
+
 set -e
 
 # This is fisher chain recipe for training a model on a subset of around 15 hours.
