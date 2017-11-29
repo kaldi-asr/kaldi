@@ -84,7 +84,7 @@ if [ $stage -le 0 ]; then
         lattice-1best ark:- ark:- \| \
         lattice-align-words $lang_or_graph/phones/word_boundary.int $model_path/final.mdl ark:- ark:- \| \
         lattice-arc-post $model_path/final.mdl ark:- - \| \
-        local/unk_ark_post_to_transcription.py $lang_or_graph/phones.txt $lang_or_graph/words.txt \| \
+        local/unk_arc_post_to_transcription.py $lang_or_graph/phones.txt $lang_or_graph/words.txt data/lang_unk/oov.int \| \
         $hyp_filtering_cmd '>' $dir/scoring_kaldi/penalty_$wip/LMWT.txt || exit 1;
     fi
 

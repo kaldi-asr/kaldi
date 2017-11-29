@@ -13,9 +13,11 @@ parser.add_argument('database_path', type=str,
                     help='path to downloaded iam data')
 parser.add_argument('out_dir', type=str,
                     help='where to write output files')
-parser.add_argument('--dataset', type=str, default='trainset',
-                    choices=['trainset', 'testset', 'validationset1', 'validationset2'],
-                    help='choose trainset, testset, validationset1, or validationset2')
+parser.add_argument('dataset_dir', type=str,
+                    help='directory containing dataset')
+parser.add_argument('--dataset', type=str, default='new_trainset',
+                    choices=['new_trainset', 'new_testset','new_valset'],
+                    help='choose new_trainset, testset')
 parser.add_argument('--model_type', type=str,default='word',
                     choices=['word', 'character'],
                     help='word model or character model')
@@ -23,16 +25,15 @@ args = parser.parse_args()
 
 ### main ###
 text_file = os.path.join(args.out_dir + '/', 'text')
-text_fh = open(text_file, 'a+')
+text_fh = open(text_file, 'w')
 
 utt2spk_file = os.path.join(args.out_dir + '/', 'utt2spk')
-utt2spk_fh = open(utt2spk_file, 'a+')
+utt2spk_fh = open(utt2spk_file, 'w')
 
 image_file = os.path.join(args.out_dir + '/', 'images.scp')
-image_fh = open(image_file, 'a+')
+image_fh = open(image_file, 'w')
 
-dataset_path = os.path.join(args.database_path,
-                            'largeWriterIndependentTextLineRecognitionTask',
+dataset_path = os.path.join(args.dataset_dir,
                             args.dataset + '.txt')
 
 text_file_path = os.path.join(args.database_path,

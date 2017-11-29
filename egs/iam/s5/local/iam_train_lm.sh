@@ -36,7 +36,7 @@ export PATH=$KALDI_ROOT/tools/pocolm/scripts:$PATH
  fi
 ) || exit 1;
 
-num_dev_sentences=1800
+num_dev_sentences=6161
 bypass_metaparam_optim_opt=
 # If you want to bypass the metaparameter optimization steps with specific metaparameters
 # un-comment the following line, and change the numbers to some appropriate values.
@@ -66,10 +66,10 @@ if [ $stage -le 0 ]; then
   # Note: the name 'dev' is treated specially by pocolm, it automatically
   # becomes the dev set.
   
-  head -n $num_dev_sentences < data/train/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
+  cat data/val/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
   # .. and the rest of the training data as an additional data source.
   # we can later fold the dev data into this.
-  tail -n +$[$num_dev_sentences+1] < data/train/text | cut -d " " -f 2- >  ${dir}/data/text/ted.txt
+  head -n $[$num_dev_sentences] < data/train/text | cut -d " " -f 2- >  ${dir}/data/text/ted.txt
 
   # for reporting perplexities, we'll use the "real" dev set.
   # (a subset of the training data is used as ${dir}/data/text/ted.txt to work

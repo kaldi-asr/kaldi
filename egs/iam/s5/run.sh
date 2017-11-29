@@ -4,14 +4,13 @@ stage=0
 nj=20
 color=1
 data_dir=data
-exp_dir=exp
 augment=false
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
-. utils/parse_options.sh  # e.g. this parses the --stage option if supplied.
+. ./path.sh
+. ./utils/parse_options.sh  # e.g. this parses the --stage option if supplied.
 
 if [ $stage -le 0 ]; then
-  # data preparation
   local/prepare_data.sh --nj $nj --dir $data_dir
 fi
 mkdir -p $data_dir/{train,test}/data
@@ -22,10 +21,10 @@ if [ $stage -le 1 ]; then
     ark:- ark,scp:$data_dir/test/data/images.ark,$data_dir/test/feats.scp || exit 1
   steps/compute_cmvn_stats.sh $data_dir/test || exit 1;
 
-  if [ $augment = true ]; then
+  if $augment; then
     # create a backup directory to store text, utt2spk and image.scp file
     mkdir -p $data_dir/train/backup
-    mv $data_dir/train/text.txt $data_dir/train/utt2spk $data_dir/train/images.scp $data_dir/train/backup/
+    mv $data_dir/train/text $data_dir/train/utt2spk $data_dir/train/images.scp $data_dir/train/backup/
     local/augment_and_make_feature_vect.py $data_dir/train --scale-size 40 --vertical-shift 10 | \
       copy-feats --compress=true --compression-method=7 \
       ark:- ark,scp:$data_dir/train/data/images.ark,$data_dir/train/feats.scp || exit 1
@@ -49,10 +48,15 @@ fi
 
 if [ $stage -le 3 ]; then
   local/iam_train_lm.sh
-  cp -R $data_dir/lang -T $data_dir/lang_test_corpus
+  cp -R $data_dir/lang -T $data_dir/lang_test
   gunzip -k -f data/local/local_lm/data/arpa/3gram_big.arpa.gz
-  local/prepare_lm.sh data/local/local_lm/data/arpa/3gram_big.arpa $data_dir/lang_test_corpus || exit 1;
-  local/run_unk_model.sh
+  local/prepare_lm.sh data/local/local_lm/data/arpa/3gram_big.arpa $data_dir/lang_test || exit 1;
+
+  # prepare the unk model for open-vocab decoding
+  utils/lang/make_unk_lm.sh --ngram-order 4 --num-extra-ngrams 7500 data/train/dict exp/unk_lang_model
+  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 \
+                        --unk-fst exp/unk_lang_model/unk_fst.txt data/train/dict "<unk>" data/lang/temp data/lang_unk
+  cp data/lang_test/G.fst data/lang_unk/G.fst
 fi
 
 num_gauss=10000
@@ -150,20 +154,13 @@ if [ $stage -le 12 ]; then
     $exp_dir/tri3_ali
 fi
 
-affix=1a
 if [ $stage -le 13 ]; then
   local/chain/run_cnn_1a.sh --stage 0 \
-   --gmm tri3 \
-   --ali tri3_ali \
-   --affix $affix \
    --lang_test lang_unk
 fi
 
 if [ $stage -le 14 ]; then
   local/chain/run_cnn_chainali_1a.sh --stage 0 \
-   --gmm tri3 \
-   --ali tri3_ali \
-   --affix $affix \
    --chain_model_dir $exp_dir/chain${nnet3_affix}/cnn${affix} \
    --lang_test lang_unk
 fi
