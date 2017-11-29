@@ -281,7 +281,7 @@ class StatisticsExtractionComponentPrecomputedIndexes:
   // element is a (start, end) range of inputs, that is summed over.
   CuArray<Int32Pair> forward_indexes;
 
-  // this vector stores the number of inputs for each output.  Normally this will be
+  // This vector stores the number of inputs for each output.  Normally this will be
   // the same as the component's output_period_ / input_period_, but could be less
   // due to edge effects at the utterance boundary.
   CuVector<BaseFloat> counts;
