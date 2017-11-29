@@ -148,10 +148,12 @@ MessageLogger::MessageLogger(LogMessageEnvelope::Severity severity,
 
 
 MessageLogger::~MessageLogger() KALDI_NOEXCEPT(false) {
-  // sanitize string and remove trailing '\n',
-  std::string str = StringToReadable(ss_.str());
+  // remove trailing '\n',
+  std::string str = ss_.str();
   while (!str.empty() && str[str.length() - 1] == '\n')
     str.resize(str.length() - 1);
+  // sanitization comes after - newlines aren't printable
+  str = StringToReadable(str);
 
   // print the mesage (or send to logging handler),
   MessageLogger::HandleMessage(envelope_, str.c_str());
