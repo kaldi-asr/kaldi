@@ -6008,7 +6008,7 @@ void BatchNormComponent::InitFromConfig(ConfigLine *cfl) {
          x2sum = sum_i x(i)^2
           mean = xsum / n
            var = x2sum / n - (mean*mean)
-         scale = sqrt(var + epsilon)^{-0.5}
+         scale = (var + epsilon)^{-0.5}
         offset = -mean * scale
 
       y(i) = scale * x(i) + offset
@@ -6021,7 +6021,7 @@ void BatchNormComponent::InitFromConfig(ConfigLine *cfl) {
   We are given y'(i).  Propagating the derivatives backward:
      offset' = sum_i y'(i)
      scale' = (sum_i y'(i) * x(i)) - offset' * mean
-       var' = scale' * -0.5 * sqrt(var + epsilon)^{-1.5}
+       var' = scale' * -0.5 * (var + epsilon)^{-1.5}
             = -0.5 * scale' * scale^3
       mean' = -offset' * scale - 2 * mean * var'
       xsum' = mean' / n
