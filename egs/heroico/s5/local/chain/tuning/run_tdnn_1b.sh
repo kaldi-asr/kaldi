@@ -1,14 +1,27 @@
 #!/bin/bash
 # 1b
 # lower number of leaves from 3500 to 2000
+# info
+#exp/chain/tdnn1b_sp: num-iters=150
+#nj=1..1
+# num-params=6.0M
+# dim=40+100->1392
+# combine=-0.027->-0.026
+# xent:train/valid[99,149,final]=(-0.771,-0.586,-0.494/-1.10,-1.05,-0.968)
+# logprob:train/valid[99,149,final]=(-0.033,-0.025,-0.020/-0.086,-0.091,-0.086)
+
 # Word Error Rates on folds
+#%WER 71.20 [ 6561 / 9215, 475 ins, 1448 del, 4638 sub ] exp/chain/tdnn1a_sp/decode_nonnative/wer_8_1.0
+#%WER 67.21 [ 11232 / 16713, 1011 ins, 2068 del, 8153 sub ] exp/chain/tdnn1a_sp/decode_test/wer_7_1.0
+#%WER 62.32 [ 4673 / 7498, 447 ins, 761 del, 3465 sub ] exp/chain/tdnn1a_sp/decode_native/wer_7_1.0
+#%WER 54.20 [ 4146 / 7650, 772 ins, 399 del, 2975 sub ] exp/chain/tdnn1a_sp/decode_devtest/wer_7_1.0
 
 # | fold | 1a | 1b |
-#| devtest | 54.46 |
-#| native |  62.14 |
-#| nonnative | 70.58 |
-#| test | 66.85 |
- 
+#| devtest | 54.46 | 54.20 | 
+#| native |  62.14 | 62.32 \
+#| nonnative | 70.58 | 71.20 | 
+#| test | 66.85 | 67.21 |
+
 # this script came from the mini librispeech recipe
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
