@@ -1,14 +1,15 @@
 #!/bin/bash
 # 1c
-# remove option:    --trainer.optimization.proportional-shrink=150.0 \
+# lower number of leaves from 3500 to 2500
+# info
 
 # Word Error Rates on folds
 
 # | fold | 1a | 1b | 1c |
-#| devtest | 54.46 |
-#| native |  62.14 |
-#| nonnative | 70.58 |
-#| test | 66.85 |
+#| devtest | 54.46 | 54.20 | 
+#| native |  62.14 | 62.32 \
+#| nonnative | 70.58 | 71.20 | 
+#| test | 66.85 | 67.21 |
 
 # this script came from the mini librispeech recipe
 # Set -e here so that we catch if any executable fails immediately
@@ -25,13 +26,13 @@ nnet3_affix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=1a   # affix for the TDNN directory name
+affix=1c   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
 
-num_leaves=2000
+num_leaves=2500
 
 # training options
 # training chunk-options
@@ -205,6 +206,7 @@ if [ $stage -le 14 ]; then
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
+    --trainer.optimization.proportional-shrink=150.0 \
     --trainer.num-chunk-per-minibatch=256,128,64 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
