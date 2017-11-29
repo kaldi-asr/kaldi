@@ -24,7 +24,7 @@ nnet3_affix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=1a   # affix for the TDNN directory name
+affix=1b   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
