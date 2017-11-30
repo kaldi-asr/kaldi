@@ -3,16 +3,27 @@
 
 # remove     --trainer.optimization.proportional-shrink=150.0
 # add l2 regularization config options
+# using network 8 layer definition from wsj
 
 # info
+#exp/chain/tdnn1d_sp:
+# num-iters=150
+# nj=1..1
+# num-params=6.6M
+# dim=40+100->1392 combine=-0.032->-0.031 xent:train/valid[99,149,final]=(-1.14,-0.879,-0.752/-1.28,-1.15,-1.03)
+# logprob:train/valid[99,149,final]=(-0.047,-0.030,-0.023/-0.076,-0.076,-0.068)
 
 # Word Error Rates on folds
+%WER 64.35 [ 5930 / 9215, 726 ins, 734 del, 4470 sub ] exp/chain/tdnn1d_sp/decode_nonnative/wer_7_1.0
+%WER 60.28 [ 10074 / 16713, 1324 ins, 1175 del, 7575 sub ] exp/chain/tdnn1d_sp/decode_test/wer_7_1.0
+%WER 55.32 [ 4148 / 7498, 600 ins, 435 del, 3113 sub ] exp/chain/tdnn1d_sp/decode_native/wer_7_1.0
+%WER 52.78 [ 4038 / 7650, 708 ins, 401 del, 2929 sub ] exp/chain/tdnn1d_sp/decode_devtest/wer_8_1.0
 
 # | fold | 1a | 1b | 1c | 1d |
-#| devtest | 54.46 | 54.20 | 4.16 |
-#| native |  62.14 | 62.32 | 61.70 |
-#| nonnative | 70.58 | 71.20 | 71.68 |
-#| test | 66.85 | 67.21 | 67.25 |
+#| devtest | 54.46 | 54.20 | 54.16 | 52.78 |
+#| native |  62.14 | 62.32 | 61.70 | 55.32 |
+#| nonnative | 70.58 | 71.20 | 71.68 | 64.35 |
+#| test | 66.85 | 67.21 | 67.25 | 60.28 |
 
 # this script came from the mini librispeech recipe
 # Set -e here so that we catch if any executable fails immediately
