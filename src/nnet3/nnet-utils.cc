@@ -649,7 +649,7 @@ class SvdApplier {
         }
         int32 input_dim = affine->InputDim(),
             output_dim = affine->OutputDim();
-        if (input_dim <= bottleneck_dim_ || output_dim <= bottleneck_dim_) && (svd_value_threshhold_ == 0.0) {
+        if ((input_dim <= bottleneck_dim_ || output_dim <= bottleneck_dim_) && (svd_value_threshhold_ == 0.0)  {
           KALDI_WARN << "Not decomposing component " << component_name
                      << " with SVD to rank " << bottleneck_dim_
                      << " because its dimension is " << input_dim
@@ -715,18 +715,18 @@ class SvdApplier {
                 << (s_sum_orig - s_sum_reduced)
                 << " (from " << s_sum_orig << " to " << s_sum_reduced << ")";      
     } else if (svd_value_threshhold > 0.0) {
-      MatrixIndexT num_singval = s->Dim();
+      MatrixIndexT num_singval = s.Dim();
       BaseFloat svd_value_tmpt = 0.0;
       int32 svd_dimension = 0;
       for (MatrixIndexT d = 0; d < num_singval; d++) {
         svd_value_tmpt += s(d);
-        if ((value_tmpt / s_sum_orig) > svd_value_threshhold) {
+        if ((svd_value_tmpt / s_sum_orig) > svd_value_threshhold) {
           break;
         } else {
           svd_dimension += 1;
         }
       }
-      KALDI_ASSERT(svd_dimension > 0)
+      KALDI_ASSERT(svd_dimension > 0);
       s.Resize(svd_dimension, kCopyData);
       A.Resize(svd_dimension, input_dim, kCopyData);
       B.Resize(output_dim, svd_dimension, kCopyData);
