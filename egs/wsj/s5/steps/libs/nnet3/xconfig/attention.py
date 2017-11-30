@@ -181,6 +181,7 @@ class XconfigAttentionLayer(XconfigLayerBase):
                         ' output-context={8}'
                         ' time-stride={9}'
                         ' num-heads={10}'
+                        ' key-scale={11}'
                         ''.format(self.name, nonlinearity,
                                   self.config['value-dim'],
                                   self.config['key-dim'],
@@ -190,7 +191,8 @@ class XconfigAttentionLayer(XconfigLayerBase):
                                   self.config['num-right-inputs-required'],
                                   self.config['output-context'],
                                   self.config['time-stride'],
-                                  self.config['num-heads']))
+                                  self.config['num-heads'],
+                                  self.config['key-scale']))
                 dim = self.attention_output_dim()
 
             elif nonlinearity == 'sigmoid':

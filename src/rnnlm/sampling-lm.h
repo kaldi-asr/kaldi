@@ -128,8 +128,6 @@ class SamplingLm : public ArpaFileParser {
   // probability.
   virtual void ReadComplete();
 
- private:
-
   /**
      This function adds backoff states to a weighted set of history-states.
      What this means is: any (history-state, weight) pair in 'histories' is

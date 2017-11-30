@@ -1,7 +1,7 @@
 # Compiled extensionless executable files in /src/*/
 # This stanza must precede wildcard patterns below!
 /src/*/*
-!/src/*/*.*
+!/src/*/?*.*
 !/src/doc/*
 !/src/*/Makefile
 !/src/*/README
@@ -133,4 +133,6 @@ GSYMS
 /tools/sequitur-g2p/
 /tools/phonetisaurus-g2p
 /tools/phonetisaurus-g2p/
+/tools/mmseg-1.3.0.tar.gz
+/tools/mmseg-1.3.0/
 /kaldiwin_vs*

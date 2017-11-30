@@ -410,7 +410,7 @@ void SamplingLmEstimator::PruneStatesForOrder(int32 o, bool will_write_arpa) {
           HistoryState *prev_state = GetHistoryState(prev_history, false);
           Count c;
           c.word = last_word;
-          std::vector<Count>::const_iterator
+          std::vector<Count>::iterator
               iter = std::lower_bound(prev_state->counts.begin(),
                                       prev_state->counts.end(),
                                       c);

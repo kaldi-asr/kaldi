@@ -29,12 +29,11 @@ echo "$n conversations left in split $split"
 utils/fix_data_dir.sh $tmp_dir/$split
 # There is no feature file yet, use --no-feats switch
 utils/validate_data_dir.sh --no-feats $tmp_dir/$split
-rm $tmp_dir/$split/*.tmp
 
 # Now use this training text
 
 text=$tmp_dir/train/text
-lexicon=data/local/dict/lexicon.txt 
+lexicon=data/local/dict/lexicon.txt
 
 for f in "$text" "$lexicon"; do
   [ ! -f $x ] && echo "$0: No such file $f" && exit 1;
@@ -72,7 +71,7 @@ mkdir -p $dir
 
 cleantext=$dir/text.no_oov
 
-cat $text | awk -v lex=$lexicon 'BEGIN{while((getline<lex) >0){ seen[$1]=1; } } 
+cat $text | awk -v lex=$lexicon 'BEGIN{while((getline<lex) >0){ seen[$1]=1; } }
   {for(n=1; n<=NF;n++) {  if (seen[$n]) { printf("%s ", $n); } else {printf("<unk> ");} } printf("\n");}' \
   > $cleantext || exit 1;
 
@@ -102,7 +101,7 @@ train_lm.sh --arpa --lmtype 3gram-mincount $dir || exit 1;
 # Perplexity over 88307.000000 words (excluding 691.000000 OOVs) is 71.241332
 
 # note: output is
-# data/local/lm/3gram-mincount/lm_unpruned.gz 
+# data/local/lm/3gram-mincount/lm_unpruned.gz
 
 
 exit 0
@@ -125,7 +124,7 @@ cat $dir/word_map | awk '{print $1}' | cat - <(echo "<s>"; echo "</s>" ) > $sdir
 
 ngram-count -text $sdir/train -order 3 -limit-vocab -vocab $sdir/wordlist -unk \
   -map-unk "<unk>" -kndiscount -interpolate -lm $sdir/srilm.o3g.kn.gz
-ngram -lm $sdir/srilm.o3g.kn.gz -ppl $sdir/heldout 
+ngram -lm $sdir/srilm.o3g.kn.gz -ppl $sdir/heldout
 
 # data/local/lm/srilm/srilm.o3g.kn.gz: line 71: warning: non-zero probability for <unk> in closed-vocabulary LM
 # file data/local/lm/srilm/heldout: 10000 sentences, 78998 words, 0 OOVs
@@ -134,7 +133,7 @@ ngram -lm $sdir/srilm.o3g.kn.gz -ppl $sdir/heldout
 
 # Note: perplexity SRILM gives to Kaldi-LM model is similar to what kaldi-lm reports above.
 # Difference in WSJ must have been due to different treatment of <unk>.
-ngram -lm $dir/3gram-mincount/lm_unpruned.gz  -ppl $sdir/heldout 
+ngram -lm $dir/3gram-mincount/lm_unpruned.gz  -ppl $sdir/heldout
 
 # data/local/lm/srilm/srilm.o3g.kn.gz: line 71: warning: non-zero probability for <unk> in closed-vocabulary LM
 # file data/local/lm/srilm/heldout: 10000 sentences, 78998 words, 0 OOVs

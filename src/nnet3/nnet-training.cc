@@ -189,11 +189,19 @@ bool NnetTrainer::PrintTotalStats() const {
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher>::const_iterator
       iter = objf_info_.begin(),
       end = objf_info_.end();
+  std::vector<std::pair<std::string, const ObjectiveFunctionInfo*> > all_pairs;
+  for (; iter != end; ++iter)
+    all_pairs.push_back(std::pair<std::string, const ObjectiveFunctionInfo*>(
+        iter->first, &(iter->second)));
+  // ensure deterministic order of these names (this will matter in situations
+  // where a script greps for the objective from the log).
+  std::sort(all_pairs.begin(), all_pairs.end());
   bool ans = false;
-  for (; iter != end; ++iter) {
-    const std::string &name = iter->first;
-    const ObjectiveFunctionInfo &info = iter->second;
-    ans = ans || info.PrintTotalStats(name);
+  for (size_t i = 0; i < all_pairs.size(); i++) {
+    const std::string &name = all_pairs[i].first;
+    const ObjectiveFunctionInfo &info = *(all_pairs[i].second);
+    bool ok = info.PrintTotalStats(name);
+    ans = ans || ok;
   }
   PrintMaxChangeStats();
   return ans;

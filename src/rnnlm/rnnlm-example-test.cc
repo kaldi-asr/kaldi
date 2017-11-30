@@ -246,12 +246,14 @@ void TestRnnlmExample() {
 
   {
     RnnlmExampleWriter writer("ark:tmp.ark");
+    TaskSequencerConfig sequencer_config;
 
     {
       RnnlmExampleCreator *creator = NULL;
       if (RandInt(0, 1) == 0) {
         // use sampling to create the egs.
-        creator = new RnnlmExampleCreator(egs_config, sampler, &writer);
+
+        creator = new RnnlmExampleCreator(egs_config, sequencer_config, sampler, &writer);
       } else {
         creator = new RnnlmExampleCreator(egs_config, &writer);
       }

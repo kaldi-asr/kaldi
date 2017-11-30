@@ -141,6 +141,17 @@ fi
 if [ -f $data/wav.scp ]; then
   check_sorted_and_uniq $data/wav.scp
 
+  if grep -E -q '^\S+\s+~' $data/wav.scp; then
+    # note: it's not a good idea to have any kind of tilde in wav.scp, even if
+    # part of a command, as it would cause compatibility problems if run by
+    # other users, but this used to be not checked for so we let it slide unless
+    # it's something of the form "foo ~/foo.wav" (i.e. a plain file name) which
+    # would definitely cause problems as the fopen system call does not do
+    # tilde expansion.
+    echo "$0: Please do not use tilde (~) in your wav.scp."
+    exit 1;
+  fi
+
   if [ -f $data/segments ]; then
 
     check_sorted_and_uniq $data/segments
