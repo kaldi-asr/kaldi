@@ -1,7 +1,8 @@
 #!/bin/bash
 # 1d
 
-# remove     --trainer.optimization.proportional-shrink=150.0 \
+# remove     --trainer.optimization.proportional-shrink=150.0
+# add l2 regularization config options
 
 # info
 
@@ -149,6 +150,8 @@ if [ $stage -le 13 ]; then
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  opts="l2-regularize=0.01"
+  output_opts="l2-regularize=0.0025"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
