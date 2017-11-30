@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Copyright 2012  Johns Hopkins University (author: Daniel Povey)  Tony Robinson
+# Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 #           2015  Guoguo Chen
 #           2017  Hainan Xu
 
 # This script trains LMs on the swbd LM-training data.
-# This script takes no command-line arguments but takes the --cmd option.
 
 # Begin configuration section.
+
 dir=exp/rnnlm_lstm_1e
 embedding_dim=1024
 lstm_rpd=256
@@ -15,11 +15,22 @@ lstm_nrpd=256
 stage=-10
 train_stage=-10
 
+# variables for lattice rescoring
+run_rescore=false
+ac_model_dir=exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp
+decode_dir_suffix=rnnlm_1e
+ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
+              # if it's set, it merges histories in the lattice if they share
+              # the same ngram history and this prevents the lattice from 
+              # exploding exponentially
+
+. cmd.sh
 . utils/parse_options.sh
 
-text=data/train/text
+text=data/train_nodev/text
+fisher_text=data/local/lm/fisher/text1.gz
 lexicon=data/local/dict_nosp/lexiconp.txt
-text_dir=data/rnnlm/text_nosp
+text_dir=data/rnnlm/text_nosp_1e
 mkdir -p $dir/config
 set -e
 
@@ -31,9 +42,9 @@ done
 if [ $stage -le 0 ]; then
   mkdir -p $text_dir
   echo -n >$text_dir/dev.txt
-  # hold out one in every 500 lines as dev data.
-  cat $text | grep ^sw | cut -d ' ' -f2- | awk -v text_dir=$text_dir '{if(NR%500 == 0) { print >text_dir"/dev.txt"; } else {print;}}' >$text_dir/swbd.txt
-  cat $text | grep ^fe | cut -d ' ' -f2- | awk -v text_dir=$text_dir '{if(NR%500 == 0) { print >>text_dir"/dev.txt"; } else {print;}}' >$text_dir/fisher.txt
+  # hold out one in every 50 lines as dev data.
+  cat $text | cut -d ' ' -f2- | awk -v text_dir=$text_dir '{if(NR%50 == 0) { print >text_dir"/dev.txt"; } else {print;}}' >$text_dir/swbd.txt
+  zcat $fisher_text > $text_dir/fisher.txt
 fi
 
 if [ $stage -le 1 ]; then
@@ -46,8 +57,8 @@ if [ $stage -le 1 ]; then
   echo "<unk>" >$dir/config/oov.txt
 
   cat > $dir/config/data_weights.txt <<EOF
-swbd   1   1.0
-fisher   1   0.1
+swbd   3   1.0
+fisher   1   1.0
 EOF
 
   rnnlm/get_unigram_probs.py --vocab-file=$dir/config/words.txt \
@@ -79,7 +90,23 @@ fi
 
 if [ $stage -le 3 ]; then
   rnnlm/train_rnnlm.sh --num-jobs-initial 1 --num-jobs-final 3 \
-                  --stage $train_stage --num-epochs 10 --cmd "queue.pl" $dir
+                  --stage $train_stage --num-epochs 10 --cmd "$train_cmd" $dir
+fi
+
+if [ $stage -le 4 ] && $run_rescore; then
+  echo "$0: Perform lattice-rescoring on $ac_model_dir"
+  LM=sw1_fsh_fg
+  for decode_set in eval2000; do
+    decode_dir=${ac_model_dir}/decode_${decode_set}_${LM}_looped
+
+    # Lattice rescoring
+    rnnlm/lmrescore.sh \
+      --cmd "$decode_cmd --mem 4G" \
+      --weight 0.5 --max-ngram-order $ngram_order \
+      data/lang_$LM $dir \
+      data/${decode_set}_hires ${decode_dir} \
+      ${decode_dir}_${decode_dir_suffix}
+  done
 fi
 
 exit 0

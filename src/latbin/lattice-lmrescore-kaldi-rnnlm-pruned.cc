@@ -41,10 +41,9 @@ int main(int argc, char *argv[]) {
     using std::unique_ptr;
 
     const char *usage =
-        "Rescores lattice with rnnlm. The LM will be wrapped into the\n"
-        "DeterministicOnDemandFst interface and the rescoring is done by\n"
-        "composing with the wrapped LM using a pruned composition\n"
-        "algorithm. Determinization will be applied on the composed lattice.\n"
+        "Rescores lattice with kaldi-rnnlm. This script is called from \n"
+        "scripts/rnnlm/lmrescore_rnnlm_lat.sh. An example for rescoring \n"
+        "lattices is at egs/swbd/s5/local/rnnlm/run_rescoring.sh \n"
         "\n"
         "Usage: lattice-lmrescore-kaldi-rnnlm-pruned [options] \\\n"
         "             <old-lm-rxfilename> <embedding-file> \\\n"
@@ -106,10 +105,7 @@ int main(int argc, char *argv[]) {
     kaldi::nnet3::Nnet rnnlm;
     ReadKaldiObject(rnnlm_rxfilename, &rnnlm);
 
-    if (!IsSimpleNnet(rnnlm))
-      KALDI_ERR << "Input RNNLM in " << rnnlm_rxfilename
-                << " is not the type of neural net we were looking for; "
-          "failed IsSimpleNnet().";
+    KALDI_ASSERT(IsSimpleNnet(rnnlm));
 
     CuMatrix<BaseFloat> word_embedding_mat;
     ReadKaldiObject(word_embedding_rxfilename, &word_embedding_mat);

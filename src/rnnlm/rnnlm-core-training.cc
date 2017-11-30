@@ -93,10 +93,10 @@ void ObjectiveTracker::PrintStatsThisInterval() const {
      << interval_end << " is (" << num_objf << " + "
      << den_objf << ") = " << tot_objf << " over "
      << weight << " words (weighted)";
-  if (exact_den_objf != 0.0) {
-    os << "; exact = (" << num_objf << " + " << exact_den_objf
-       << ") = " << exact_tot_objf ;
-  }
+
+  os << "; exact = (" << num_objf << " + " << exact_den_objf
+     << ") = " << exact_tot_objf ;
+
   KALDI_LOG << os.str();
 }
 
@@ -112,10 +112,9 @@ void ObjectiveTracker::PrintStatsOverall() const {
   os << "Overall objf is (" << num_objf << " + " << den_objf
      << ") = " << tot_objf << " over " << weight << " words (weighted) in "
      << num_egs_ << " minibatches";
-  if (exact_den_objf != 0.0) {
-    os << "; exact = (" << num_objf << " + " << exact_den_objf
-       << ") = " << exact_tot_objf ;
-  }
+  os << "; exact = (" << num_objf << " + " << exact_den_objf
+     << ") = " << exact_tot_objf ;
+
   KALDI_LOG << os.str();
 }
 
@@ -178,7 +177,12 @@ void RnnlmCoreTrainer::Train(
     word_embedding_deriv->AddSmatMat(1.0, derived.input_words_smat, kNoTrans,
                                      input_deriv, 1.0);
   }
-
+  // If relevant, add in the part of the gradient that comes from L2 
+  // regularization.
+  ApplyL2Regularization(*nnet_,
+                        minibatch.num_chunks * config_.l2_regularize_factor,
+                        delta_nnet_);
+  
   bool success = UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
       1.0, 1.0 - config_.momentum, nnet_,
       &num_max_change_per_component_applied_, &num_max_change_global_applied_);
