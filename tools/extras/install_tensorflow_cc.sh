@@ -3,13 +3,12 @@
 set -e
 
 #export JAVA_HOME=/LOCATION_ON_YOUR_MACHINE/java/jdk1.8.0_121
-export JAVA_HOME=/export/b02/hxu/TensorFlow/java/jdk1.8.0_121
 PATH=$PWD/bazel/output:$PATH
 export HOME=$PWD/tensorflow_build/
 mkdir -p $HOME
 
 java=`which java`
-if [ "$JAVA_HOME" != "" ]; then
+if [ -z "$JAVA_HOME" ]; then
   java=$JAVA_HOME/bin/java
 fi
 
@@ -36,7 +35,7 @@ cd ../
 # now bazel is built
 git clone https://github.com/tensorflow/tensorflow
 cd tensorflow
-git reset --hard 49059695babc08df22f31124480142e7f6aec5eb
+git checkout r1.4
 ./configure
 
 tensorflow/contrib/makefile/download_dependencies.sh 
