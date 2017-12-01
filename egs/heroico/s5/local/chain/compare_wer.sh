@@ -63,8 +63,10 @@ for x in $*; do   printf "% 10s" " $(basename $x)";   done
 echo
 
 strings=(
-  "#WER dev  "
-  "#WER dev  ")
+    "#WER devtest  "
+    "#WER native  "
+    nonnative
+  "#WER test  ")
 
 for n in 0 1; do
    echo -n "${strings[$n]}"
