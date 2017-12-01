@@ -6,6 +6,7 @@
 //                2013  Cisco Systems (author: Neha Agrawal) [code modified
 //                      from original code in ../gmmbin/gmm-rescore-lattice.cc]
 //                2014  Guoguo Chen
+//                2017  Dongji Gao
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -1645,5 +1646,212 @@ void ComposeCompactLatticeDeterministic(
   }
   fst::Connect(composed_clat);
 }
+
+// Parallel version of ComposeCompaceLatticeDeterministic().
+// clat is a fst::VectorFst<CompactLatticeArc> FST created by n-gram model.
+// def_fst is the on-the-fly rnn FST.
+// compose_clat is the output composed FST.
+void ComposeCompactLatticeDeterministicParallel(
+    const CompactLattice& clat,
+    fst::DeterministicOnDemandFst<fst::StdArc>* det_fst,
+    CompactLattice* composed_clat) {
+  // StdFst::Arc and CompactLatticeArc has the same StateId type.
+  typedef fst::StdArc::StateId StateId;
+  typedef fst::StdArc::Weight Weight1;
+  typedef fst::StdArc::Label Label;
+  typedef CompactLatticeArc::Weight Weight2;
+  typedef std::pair<StateId, StateId> StatePair;
+  typedef unordered_map<StatePair, StateId, PairHasher<StateId> > MapType;
+  typedef MapType::iterator IterType;
+ 
+  //typedef vector<StatePair> StatePairVector;
+  //typedef vector<StateId> StateIdVector;
+
+  // Empties the output FST.
+  KALDI_ASSERT(composed_clat != NULL);
+  composed_clat->DeleteStates();
+ 
+  MapType state_map;
+  std::queue<StatePair> state_queue;
+ 
+  // Sets start state in <composed_clat>.
+  StateId start_state = composed_clat->AddState();
+  StatePair start_pair(clat.Start(), det_fst->Start());
+  composed_clat->SetStart(start_state);
+  state_queue.push(start_pair);
+  std::pair<IterType, bool> result = 
+      state_map.insert(std::make_pair(start_pair, start_state));
+  KALDI_ASSERT(result.second == true);
+
+  vector<StatePair> state_pair_vector;
+  vector<StatePair> state_pair_vector_none0;
+  vector<StatePair> state_pair_vector_final;
+  vector<StateId> s2_vector;
+  vector<StateId> s2_final_vector;
+  vector<Label> olabel_vector;
+  vector<CompactLatticeArc> arc1_vector;
+  vector<fst::StdArc> arc2_vector;
+  vector<Weight1> det_fst_final_vector;
+  vector<Weight2> clat_final_vector;
+
+  // Starts composition here.
+  while (!state_queue.empty()) {
+    // Initialization.
+    state_pair_vector.clear();
+    state_pair_vector_none0.clear();
+    state_pair_vector_final.clear();
+    s2_vector.clear();
+    s2_final_vector.clear();
+    olabel_vector.clear();
+    //matched_vector.clear();
+    arc1_vector.clear();
+    arc2_vector.clear();
+    det_fst_final_vector.clear();
+    clat_final_vector.clear();
+
+    // Get all pair from <state_queue>.
+    while(!state_queue.empty()) {
+      StatePair sp = state_queue.front();
+      state_pair_vector.push_back(sp);
+      state_queue.pop();
+    } 
+    // Loop over all state pairs in <state_pair_vector>.
+    for (vector<StatePair>::iterator iter = state_pair_vector.begin();
+         iter != state_pair_vector.end(); ++iter) {
+      StatePair s = *iter;
+      StateId s1 = s.first;
+      StateId s2 = s.second; 
+
+      // Check final state.
+      Weight2 clat_final = clat.Final(s1);
+      // Test for whether the final-prob of state s1 was zero.
+      if (clat_final.Weight().Value1() !=
+          std::numeric_limits<BaseFloat>::infinity()) {
+        // Build <s2_final_vector> for FinalParallel().
+        clat_final_vector.push_back(clat_final);
+        s2_final_vector.push_back(s2);
+        state_pair_vector_final.push_back(s);
+      } 
+      
+      // Loop over pair of edges at s1 and s2.
+      for (fst::ArcIterator<CompactLattice> aiter(clat, s1);
+           !aiter.Done(); aiter.Next()) {
+        const CompactLatticeArc& arc1 = aiter.Value();
+        //fst::StdArc arc2;
+        StateId next_state1 = arc1.nextstate, next_state2;
+        //bool matched = false;
+
+        if (arc1.olabel == 0) {
+          // If the symbol on <arc1> is <epsilon>, we transit to the next state 
+          // for <clat>, but keep <det_fst> at the current state.
+          //matched = true;
+          next_state2 = s2;
+
+          // Add new arcs to <composed_clat>
+          StatePair next_state_pair(next_state1, next_state2);
+          IterType siter = state_map.find(next_state_pair);
+          StateId next_state;
+
+          // Adds composed state to <state_map>.
+          if (siter == state_map.end()) {
+            // If the composed state has not been created yet, create it.
+            next_state = composed_clat->AddState();
+            std::pair<const StatePair, StateId> next_state_map(next_state_pair,
+                                                               next_state);
+            std::pair<IterType, bool> result = state_map.insert(next_state_map);
+            KALDI_ASSERT(result.second);
+            state_queue.push(next_state_pair);
+          } else {
+            // If the composed state is already in <state_map>, we can directly
+            // use that.
+            next_state = siter->second;
+          }
+
+          // Add arc to <composed_clat>
+          composed_clat->AddArc(state_map[s],
+                                CompactLatticeArc(arc1.ilabel, 0,
+                                                  arc1.weight, next_state));
+        } else {
+          // Build vectors for GetArcsParallel()
+          state_pair_vector_none0.push_back(s);
+          s2_vector.push_back(s2);
+          olabel_vector.push_back(arc1.olabel);
+          arc1_vector.push_back(arc1);
+        }
+      }
+    }
+
+    det_fst->FinalParallel(s2_final_vector, &det_fst_final_vector);
+    
+    // Size of vectors should be same.
+    KALDI_ASSERT(s2_final_vector.size() == det_fst_final_vector.size());
+    
+    // Set final state.
+    for (int iter = 0; iter < det_fst_final_vector.size(); ++iter) {
+      Weight1 det_fst_final = det_fst_final_vector[iter];
+      Weight2 clat_final = clat_final_vector[iter];
+      StatePair s = state_pair_vector_final[iter];
+
+      Weight2 final_weight(LatticeWeight(clat_final.Weight().Value1() +
+                                         det_fst_final.Value(),
+                                         clat_final.Weight().Value2()),
+                           clat_final.String());
+      // We can assume final_weight is not Zero(), since neither of 
+      // the source was zero.
+      KALDI_ASSERT(state_map.find(s) != state_map.end());
+      composed_clat->SetFinal(state_map[s], final_weight);
+    }
+
+    det_fst->GetArcsParallel(s2_vector, olabel_vector, &arc2_vector);
+ 
+    // Size of vectors should be same.
+    KALDI_ASSERT(arc2_vector.size() == arc1_vector.size());
+
+    // Loop over pair with no epsilon olabel.
+    for (int iter = 0; iter < arc2_vector.size(); ++iter) {
+      // Cancel <matched> here for <det_fst> is a on-the-fly rnn fst which would
+      // always match.
+      //bool matched = matched_vector[iter];
+      //if (matched) {
+      StatePair s = state_pair_vector_none0[iter];
+      const CompactLatticeArc& arc1 = arc1_vector[iter];
+      fst::StdArc arc2 = arc2_vector[iter];
+
+      StateId next_state1 = arc1.nextstate;
+      StateId next_state2 = arc2.nextstate;
+ 
+      // Add new arcs to <composed_clat>.
+      StatePair next_state_pair(next_state1, next_state2);
+      IterType siter = state_map.find(next_state_pair);
+      StateId next_state;
+
+      // Add composed state to <state_map>.
+      if (siter == state_map.end()) {
+        // If the composed state has not been created yet, create it.
+        next_state = composed_clat->AddState();
+        std::pair<const StatePair, StateId> next_state_map(next_state_pair,
+                                                           next_state);
+        std::pair<IterType, bool> result = state_map.insert(next_state_map);
+        KALDI_ASSERT(result.second);
+        state_queue.push(next_state_pair);
+      } else { 
+        // If the composed state is already in <state_map>, we can directly
+        // use that.
+        next_state = siter->second;
+      }
+
+      // Add arc to <composed_clat>.
+      Weight2 composed_weight(
+          LatticeWeight(arc1.weight.Weight().Value1() +
+                        arc2.weight.Value(),
+                        arc1.weight.Weight().Value2()),
+          arc1.weight.String());
+      composed_clat->AddArc(state_map[s],
+                            CompactLatticeArc(arc1.ilabel, arc2.olabel,
+                                              composed_weight, next_state));
+    }
+  }
+  fst::Connect(composed_clat);
+}  // end of ComposeCompactLatticeDeterministicParallel()
 
 }  // namespace kaldi
