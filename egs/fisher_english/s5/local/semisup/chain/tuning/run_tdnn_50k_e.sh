@@ -54,7 +54,7 @@ lang=data/lang_chain
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
 
-local/semisup/nnet3/run_ivector_common_pca.sh --stage $stage --exp $exp \
+local/semisup/nnet3/run_ivector_common.sh --stage $stage --exp $exp \
                                   --speed-perturb true \
                                   --train-set $train_set \
                                   --unsup-train-set $unsup_train_set \

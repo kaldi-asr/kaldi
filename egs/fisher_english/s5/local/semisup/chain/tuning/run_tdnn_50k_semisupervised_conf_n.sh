@@ -43,9 +43,6 @@ comb_egs_dir=
 tree_affix=bi_e
 unsup_egs_opts=
 apply_deriv_weights=true
-use_smart_splitting=true
-
-do_finetuning=false
 
 extra_left_context=0
 extra_right_context=0
@@ -60,13 +57,6 @@ minibatch_size="150=128/300=64"
 
 decode_iter=
 
-finetune_stage=-2
-finetune_suffix=_finetune
-finetune_iter=final
-num_epochs_finetune=1
-finetune_xent_regularize=0.1
-finetune_opts="--chain.mmi-factor-schedule=0.05,0.05 --chain.smbr-factor-schedule=0.05,0.05"
-
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -76,11 +66,6 @@ echo "$0 $@"  # Print the command line for logging
 
 nnet3_affix=_${semi_affix}  # affix for nnet3 and chain dirs
 egs_affix=${egs_affix}_prun${lattice_prune_beam}_lmwt${lattice_lm_scale}_tol${tolerance}
-if $use_smart_splitting; then
-  comb_affix=${comb_affix:+${comb_affix}_smart}
-else
-  comb_affix=${comb_affix:+${comb_affix}_naive}
-fi
 
 RANDOM=0
 
@@ -306,13 +291,9 @@ if [ -z "$comb_egs_dir" ] && [ -z "$unsup_egs_dir" ]; then
     touch $unsup_egs_dir/.nodelete # keep egs around when that run dies.
 
     echo "$0: generating egs from the unsupervised data"
-    if $use_smart_splitting; then
-      get_egs_script=steps/nnet3/chain/get_egs_split.sh
-    else
-      get_egs_script=steps/nnet3/chain/get_egs.sh
-    fi
 
-    $get_egs_script --cmd "$decode_cmd --h-rt 100:00:00" --alignment-subsampling-factor 1 \
+    steps/nnet3/chain/get_egs.sh \
+               --cmd "$decode_cmd --h-rt 100:00:00" --alignment-subsampling-factor 1 \
                --left-tolerance $tolerance --right-tolerance $tolerance \
                --left-context $left_context --right-context $right_context \
                --left-context-initial $left_context_initial --right-context-final $right_context_final \
@@ -404,69 +385,5 @@ if [ $stage -le 18 ]; then
   done
 fi
 
-if ! $do_finetuning; then
-  wait
-  exit 0
-fi
-
-if [ $stage -le 19 ]; then
-  mkdir -p ${dir}${finetune_suffix}
-  
-  for f in phone_lm.fst normalization.fst den.fst tree 0.trans_mdl cmvn_opts; do
-    cp ${dir}/$f ${dir}${finetune_suffix} || exit 1
-  done
-  cp -r ${dir}/configs ${dir}${finetune_suffix} || exit 1
-
-  nnet3-copy --edits="remove-output-nodes name=output;remove-output-nodes name=output-xent;rename-node old-name=output-0 new-name=output;rename-node old-name=output-0-xent new-name=output-xent" \
-    $dir/${finetune_iter}.mdl ${dir}${finetune_suffix}/init.raw
-
-  if [ $finetune_stage -le -1 ]; then
-    finetune_stage=-1
-  fi
-
-  steps/nnet3/chain/train.py --stage $finetune_stage \
-    --trainer.input-model ${dir}${finetune_suffix}/init.raw \
-    --egs.dir "$sup_egs_dir" \
-    --cmd "$decode_cmd" \
-    --feat.online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${base_train_set}_sp_hires \
-    --feat.cmvn-opts "--norm-means=false --norm-vars=false" $finetune_opts \
-    --chain.xent-regularize $finetune_xent_regularize \
-    --chain.leaky-hmm-coefficient 0.1 \
-    --chain.l2-regularize 0.00005 \
-    --chain.apply-deriv-weights true \
-    --chain.lm-opts="--num-extra-lm-states=2000" \
-    --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width 150 \
-    --trainer.num-chunk-per-minibatch "150=64/300=32" \
-    --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs $num_epochs_finetune \
-    --trainer.optimization.num-jobs-initial 3 \
-    --trainer.optimization.num-jobs-final 16 \
-    --trainer.optimization.initial-effective-lrate 0.0001 \
-    --trainer.optimization.final-effective-lrate 0.00001 \
-    --trainer.max-param-change 2.0 \
-    --trainer.optimization.do-final-combination false \
-    --cleanup.remove-egs false \
-    --feat-dir data/${supervised_set}_hires \
-    --tree-dir $treedir \
-    --lat-dir $sup_lat_dir \
-    --dir ${dir}${finetune_suffix} || exit 1;
-fi
-
-dir=${dir}${finetune_suffix}
-
-if [ $stage -le 20 ]; then
-  for decode_set in dev test; do
-      (
-      num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-          --nj $num_jobs --cmd "$decode_cmd" \
-          --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
-          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_iter$decode_iter} || exit 1;
-      ) &
-  done
-fi
-
 wait;
 exit 0;
-
