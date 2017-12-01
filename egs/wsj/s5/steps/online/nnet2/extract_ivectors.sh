@@ -68,6 +68,7 @@ if [ $# != 4 ] && [ $# != 5 ]; then
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --nj <n|10>                                      # Number of jobs (also see num-threads)"
+  echo "  --num-threads <n|1>                              # Number of threads for each job"
   echo "                                                   # Ignored if <alignment-dir> or <decode-dir> supplied."
   echo "  --stage <stage|0>                                # To control partial reruns"
   echo "  --num-gselect <n|5>                              # Number of Gaussians to select using"

@@ -33,7 +33,7 @@ if [ $# != 3 ]; then
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --nj <n|10>                                      # Number of jobs (also see num-threads)"
-  echo "  --num-threads <n|8>                              # Number of threads for each job"
+  echo "  --num-threads <n|1>                              # Number of threads for each job"
   echo "  --stage <stage|0>                                # To control partial reruns"
   echo "  --num-gselect <n|20>                             # Number of Gaussians to select using"
   echo "                                                   # diagonal model."
