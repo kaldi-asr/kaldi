@@ -68,7 +68,7 @@ strings=(
     nonnative
   "#WER test  ")
 
-for n in 0 1; do
+for n in 0 1 2 3; do
    echo -n "${strings[$n]}"
    for x in $*; do
      set_names $x  # sets $dirname and $epoch_infix
