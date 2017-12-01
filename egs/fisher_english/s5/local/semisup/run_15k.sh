@@ -14,10 +14,12 @@ train_stage=-10
 set -o pipefail
 exp=exp/semisup_15k
 
-if [ ! -f data/train_sup/feats.scp ]; then
-  echo "$0: Could not find data/train_sup/utt2spk"
-  exit 1
-fi
+for f in data/train_sup/utt2spk data/train_unsup250k/utt2spk ]; do
+  if [ ! -f $f ]; then
+    echo "$0: Could not find $f"
+    exit 1
+  fi
+done
 
 utils/subset_data_dir.sh --speakers data/train_sup 15000 data/train_sup15k || exit 1
 utils/subset_data_dir.sh --shortest data/train_sup15k 5000 data/train_sup15k_short || exit 1
@@ -60,6 +62,27 @@ steps/train_sat.sh --cmd "$train_cmd" \
 
 utils/combine_data.sh data/semisup15k_250k data/train_sup15k data/train_unsup250k || exit 1
 
+mkdir -p data/local/pocolm_ex250k
+
+utils/filter_scp.pl --exclude data/train_unsup250k/utt2spk \
+  data/train/text > data/local/pocolm_ex250k/text.tmp
+
+if [ ! -f data/lang_test_poco_ex250k_big/G.carpa ]; then
+  local/fisher_train_lms_pocolm.sh \
+    --text data/local/pocolm_ex250k/text.tmp \
+    --dir data/local/pocolm_ex250k
+
+  local/fisher_create_test_lang.sh \
+    --arpa-lm data/local/pocolm_ex250k/data/arpa/4gram_small.arpa.gz \
+    --dir data/lang_test_poco_ex250k
+
+  utils/build_const_arpa_lm.sh \
+    data/local/pocolm_ex250k/data/arpa/4gram_big.arpa.gz \
+    data/lang_test_poco_ex250k data/lang_test_poco_ex250k_big
+fi
+
+local/run_unk_model.sh --lang-dirs "data/lang_test_poco_ex250k_big data/lang_test_poco_ex250k" || exit 1
+
 local/semisup/chain/tuning/run_tdnn_11k.sh \
   --train-set train_sup15k \
   --nnet3-affix _semi15k_250k \
@@ -68,10 +91,11 @@ local/semisup/chain/tuning/run_tdnn_11k.sh \
   --exp $exp \
   --ivector-train-set semisup15k_250k || exit 1
 
-false && local/semisup/chain/tuning/run_tdnn_oracle.sh \
+local/semisup/chain/tuning/run_tdnn_oracle.sh \
   --train-set semisup15k_250k \
   --nnet3-affix _semi15k_250k \
   --chain-affix _semi15k_250k_oracle \
+  --gmm tri3 \
   --stage 9 --train-stage $train_stage \
   --exp $exp \
   --ivector-train-set semisup15k_250k || exit 1

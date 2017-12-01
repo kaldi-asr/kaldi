@@ -200,7 +200,7 @@ if [ $stage -le 15 ]; then
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj $num_jobs --cmd "$decode_cmd" $iter_opts \
           --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
-          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter}${decode_suff} || exit 1;
+          $graph_dir data/${decode_set}_hires $dir/decode_poco_${decode_set}${decode_iter:+_$decode_iter}${decode_suff} || exit 1;
       ) &
   done
 fi
