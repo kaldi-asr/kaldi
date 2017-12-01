@@ -1,16 +1,30 @@
 #!/bin/bash
 
+# Copyright 2017  Vimal Manohar
+# Apache 2.0
+
+# This script is similar to local/nnet3/run_ivector_common.sh, but 
+# designed specifically for semi-supervised recipes. 
+# This script accepts an optional argument of --unsup-train-set for
+# unsupervised data directory, which will be combined with the supervised
+# data directory to create semi-supervised data directory (whose name 
+# is taken from the argument --semisup-train-set")
+
 . ./cmd.sh
 set -e
 stage=-1
 speed_perturb=true
-train_set=train
+train_set=train  # Supervised training set
 
-unsup_train_set=
+# Unsupervised training set. 
+# If provided, it will be combined with supervised training set to 
+# create "semisup_train_set". This is the set that will be used to
+# train the PCA transform and i-vector extractor.
+unsup_train_set=  
 semisup_train_set=
 
 nnet3_affix=
-exp=exp
+exp=exp   # experiments directory. It could be something like exp/semisup_15k.
 
 . ./path.sh
 . ./utils/parse_options.sh
@@ -25,10 +39,22 @@ if [ -z "$unsup_train_set" ] && [ ! -z "$semisup_train_set" ]; then
   exit 1
 fi
 
+if [ ! -f data/$train_set/utt2spk ]; then
+  echo "$0: data/$train_set/utt2spk does not exist"
+  exit 1
+fi
+
 if [ ! -z "$unsup_train_set" ]; then
+  if [ ! -f data/$unsup_train_set/utt2spk ]; then
+    echo "$0: data/$unsup_train_set/utt2spk does not exist"
+    exit 1
+  fi
+
+  # Combine supervised and unsupervised sets to create the 
+  # semi-supervised training set.
   if [ $stage -le 0 ]; then
     utils/combine_data.sh data/$semisup_train_set \
-      data/$train_set data/$unsup_train_set
+      data/$train_set data/$unsup_train_set || exit 1
   fi
 fi
 
@@ -53,6 +79,11 @@ if [ "$speed_perturb" == "true" ]; then
 fi
 
 if [ ! -z "$unsup_train_set" ]; then
+  if [ -f data/${semisup_train_set}_sp/feats.scp ]; then
+    echo "$0: data/${semisup_train_set}_sp/feats.scp already exists! Remove it and try again."
+    exit 1
+  fi
+
   if [ $stage -le 2 ]; then
     utils/combine_data.sh data/${semisup_train_set}_sp \
       data/${train_set}_sp data/${unsup_train_set}_sp
@@ -91,6 +122,11 @@ fi
 
 ivector_train_set=${train_set}_sp
 if [ ! -z "$unsup_train_set" ]; then
+  if [ -f data/${semisup_train_set}_sp_hires/feats.scp ]; then
+    echo "$0: data/${semisup_train_set}_sp_hires/feats.scp already exists! Remove it and try again."
+    exit 1
+  fi
+
   if [ $stage -le 3 ]; then
     utils/combine_data.sh data/${semisup_train_set}_sp_hires \
       data/${train_set}_sp_hires data/${unsup_train_set}_sp_hires
