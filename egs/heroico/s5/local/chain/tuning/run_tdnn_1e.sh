@@ -12,7 +12,7 @@ nonnative     64.35     61.03
 # Final valid prob        -0.0683   -0.0678
 # Final train prob (xent)   -0.7525   -0.7887
 # Final valid prob (xent)   -1.0296   -1.0419
-john@A-TEAM19054:~/work/kaldi/egs/heroico/s5$ 
+
 # info
 #exp/chain/tdnn1e_sp:
 # num-iters=105
