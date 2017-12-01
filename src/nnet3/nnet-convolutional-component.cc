@@ -119,18 +119,17 @@ void TimeHeightConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
   // 2. convolution-related config values.
   model_.height_subsample_out = 1;  // default.
   max_memory_mb_ = 200.0;
-  std::string height_offsets, time_offsets, required_time_offsets = "undef";
+  std::string height_offsets, time_offsets, required_time_offsets = "undef",
+      offsets;
 
   bool ok = cfl->GetValue("num-filters-in", &model_.num_filters_in) &&
       cfl->GetValue("num-filters-out", &model_.num_filters_out) &&
       cfl->GetValue("height-in", &model_.height_in) &&
-      cfl->GetValue("height-out", &model_.height_out) &&
-      cfl->GetValue("height-offsets", &height_offsets) &&
-      cfl->GetValue("time-offsets", &time_offsets);
+      cfl->GetValue("height-out", &model_.height_out);
   if (!ok) {
     KALDI_ERR << "Bad initializer: expected all the values "
         "num-filters-in, num-filters-out, height-in, height-out, "
-        "height-offsets, time-offsets to be defined: "
+        "to be defined: "
               << cfl->WholeLine();
   }
   // some optional structural configs.
@@ -138,40 +137,77 @@ void TimeHeightConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
   cfl->GetValue("height-subsample-out", &model_.height_subsample_out);
   cfl->GetValue("max-memory-mb", &max_memory_mb_);
   KALDI_ASSERT(max_memory_mb_ > 0.0);
-  {  // This block attempts to parse height_offsets, time_offsets
-     // and required_time_offsets.
-    std::vector<int32> height_offsets_vec,
-        time_offsets_vec, required_time_offsets_vec;
-    if (!SplitStringToIntegers(height_offsets, ",", false,
-                               &height_offsets_vec) ||
-        !SplitStringToIntegers(time_offsets, ",", false,
-                               &time_offsets_vec)) {
-      KALDI_ERR << "Formatting problem in time-offsets or height-offsets: "
-                << cfl->WholeLine();
+
+  { // This block sets up model_.offsets.
+    model_.offsets.clear();
+    if (cfl->GetValue("offsets", &offsets)) {
+      // init from offsets, like "-1,-1;-1,0;-1,1;0,-1;...;1,1"
+      std::vector<std::string> splits;
+      SplitStringToVector(offsets, ";", false, &splits);
+      for (size_t i = 0; i < splits.size(); i++) {
+        std::vector<int32> int_pair;
+        if (!SplitStringToIntegers(splits[i], ",", false, &int_pair) ||
+            int_pair.size() != 2)
+          KALDI_ERR << "Bad config value offsets=" << offsets;
+        time_height_convolution::ConvolutionModel::Offset offset;
+        offset.time_offset = int_pair[0];
+        offset.height_offset = int_pair[1];
+        model_.offsets.push_back(offset);
+      }
+      std::sort(model_.offsets.begin(), model_.offsets.end());
+      if (!IsSortedAndUniq(model_.offsets) || model_.offsets.empty())
+        KALDI_ERR << "Error in offsets: probably repeated offset.  "
+            "offsets=" << offsets;
+    } else if (cfl->GetValue("height-offsets", &height_offsets) &&
+               cfl->GetValue("time-offsets", &time_offsets)) {
+      std::vector<int32> height_offsets_vec,
+          time_offsets_vec;
+      if (!SplitStringToIntegers(height_offsets, ",", false,
+                                 &height_offsets_vec) ||
+          !SplitStringToIntegers(time_offsets, ",", false,
+                                 &time_offsets_vec)) {
+        KALDI_ERR << "Formatting problem in time-offsets or height-offsets: "
+                  << cfl->WholeLine();
+      }
+      if (height_offsets_vec.empty() || !IsSortedAndUniq(height_offsets_vec) ||
+          time_offsets_vec.empty() || !IsSortedAndUniq(time_offsets_vec)) {
+        KALDI_ERR << "time-offsets and height-offsets must be nonempty, "
+            "sorted and unique.";
+      }
+      model_.offsets.clear();
+      for (size_t i = 0; i < time_offsets_vec.size(); i++) {
+        for (size_t j = 0; j < height_offsets_vec.size(); j++) {
+          time_height_convolution::ConvolutionModel::Offset offset;
+          offset.time_offset = time_offsets_vec[i];
+          offset.height_offset = height_offsets_vec[j];
+          model_.offsets.push_back(offset);
+        }
+      }
+    } else {
+      KALDI_ERR << "Expected either 'offsets', or both 'height-offsets' and "
+          "'time-offsets', to be defined: " << cfl->WholeLine();
     }
-    if (height_offsets_vec.empty() || !IsSortedAndUniq(height_offsets_vec) ||
-        time_offsets_vec.empty() || !IsSortedAndUniq(time_offsets_vec)) {
-      KALDI_ERR << "Options time-offsets and height-offsets must be nonempty, "
-          "sorted and unique.";
-    }
+  }
+
+  if (model_.offsets.empty())
+    KALDI_ERR << "Something went wrong setting offsets: " << cfl->WholeLine();
+
+
+  {  // This block sets model_.required_time_offsets.
+    std::vector<int32> required_time_offsets_vec;
     if (required_time_offsets == "undef") {
-      required_time_offsets_vec = time_offsets_vec;
+      // it defaults to all the time offsets that were used.
+      std::set<int32> required_time_offsets;
+      for (size_t i = 0; i < model_.offsets.size(); i++)
+        required_time_offsets_vec.push_back(model_.offsets[i].time_offset);
+      SortAndUniq(&required_time_offsets_vec);
     } else {
       if (!SplitStringToIntegers(required_time_offsets, ",", false,
                                  &required_time_offsets_vec) ||
           required_time_offsets_vec.empty() ||
           !IsSortedAndUniq(required_time_offsets_vec)) {
-      KALDI_ERR << "Formatting problem in required-time-offsets: "
+        KALDI_ERR << "Formatting problem in required-time-offsets: "
                 << cfl->WholeLine();
-      }
-    }
-    model_.offsets.clear();
-    for (size_t i = 0; i < time_offsets_vec.size(); i++) {
-      for (size_t j = 0; j < height_offsets_vec.size(); j++) {
-        time_height_convolution::ConvolutionModel::Offset offset;
-        offset.time_offset = time_offsets_vec[i];
-        offset.height_offset = height_offsets_vec[j];
-        model_.offsets.push_back(offset);
       }
     }
     model_.required_time_offsets.clear();

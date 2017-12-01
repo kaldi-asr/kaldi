@@ -919,8 +919,6 @@ void Nnet::RemoveSomeNodes(const std::vector<int32> &nodes_to_remove) {
       new_nodes[n].u.node_index = new_node_index;
     }
   }
-  KALDI_LOG << "Removed " << (old_num_nodes - new_num_nodes)
-            << " orphan nodes.";
   nodes_ = new_nodes;
   node_names_ = new_node_names;
   bool warn_for_orphans = false;
@@ -938,7 +936,16 @@ void Nnet::RemoveOrphanNodes(bool remove_orphan_inputs) {
     for (int32 i = 0; i < orphan_nodes.size(); i++)
       if (IsInputNode(orphan_nodes[i]))
         orphan_nodes.erase(orphan_nodes.begin() + i);
+  // For each component-node, its component-input node (which is kind of a
+  // "hidden" node) would be included in 'orphan_nodes', but for diagnostic
+  // purposes we want to exclude these from 'num_nodes_removed' to avoid
+  // confusing users.
+  int32 num_nodes_removed = 0;
+  for (int32 i = 0; i < orphan_nodes.size(); i++)
+    if (!IsComponentInputNode(orphan_nodes[i]))
+      num_nodes_removed++;
   RemoveSomeNodes(orphan_nodes);
+  KALDI_LOG << "Removed " << num_nodes_removed << " orphan nodes.";
 }
 
 void Nnet::ResetGenerators() {

@@ -179,6 +179,9 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
       kStrideEqualNumCols : kDefaultStride;
   MatrixStrideType output_stride_type = (c.Properties()&kOutputContiguous) ?
       kStrideEqualNumCols : kDefaultStride;
+  MatrixStrideType both_stride_type =
+      (c.Properties()&(kInputContiguous|kOutputContiguous)) ?
+      kStrideEqualNumCols : kDefaultStride;
 
   int32 input_dim = c.InputDim(),
       output_dim = c.OutputDim(),
@@ -220,7 +223,7 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
   output_deriv.SetRandn();
   CuMatrix<BaseFloat> input_deriv1(num_rows, input_dim, kSetZero, input_stride_type),
       input_deriv2(num_rows, input_dim, kSetZero, input_stride_type);
-  CuMatrix<BaseFloat> input_deriv3(num_rows, output_dim, kSetZero, input_stride_type);
+  CuMatrix<BaseFloat> input_deriv3(num_rows, output_dim, kSetZero, both_stride_type);
   input_deriv3.CopyFromMat(output_deriv);
 
   input_deriv2.Add(1.0);

@@ -1352,7 +1352,7 @@ void CuMatrixBase<Real>::SymAddMat2(
     cublasOperation_t trans = (transA == kTrans ? CUBLAS_OP_N : CUBLAS_OP_T);
     MatrixIndexT A_other_dim = (transA == kNoTrans ? A.num_cols_ : A.num_rows_);
     CUBLAS_SAFE_CALL(cublas_syrk(GetCublasHandle(), CUBLAS_FILL_MODE_UPPER,
-                                 trans, num_rows_, A_other_dim, 
+                                 trans, num_rows_, A_other_dim,
                                  alpha, A.Data(), A.Stride(),
                                  beta, this->data_, this->stride_));
 

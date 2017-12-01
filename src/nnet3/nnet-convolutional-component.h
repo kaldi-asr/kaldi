@@ -96,6 +96,11 @@ namespace nnet3 {
                       in the network you'll see time-offsets like "-2,0,2" or
                       "-4,0,4".  Subsampling on the time axis is not explicitly
                       specified but is implicit based on tracking dependencies.
+     offsets          Setting 'offsets' is an alternative to setting both
+                      height-offsets and time-offsets, that is useful for
+                      configurations with less regularity.  It is a semicolon-
+                      separated list of pairs (time-offset,height-offset) that
+                      might look like: -1,1;-1,0;-1,1;0,1;....;1,1
      required-time-offsets E.g. required-time-offsets=0 (defaults to the same
                       value as time-offsets).  This is a set of time offsets,
                       which if specified must be a nonempty subset of
