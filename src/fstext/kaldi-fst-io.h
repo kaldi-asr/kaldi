@@ -83,7 +83,6 @@ void ReadFstKaldi(std::istream &is, bool binary,
 
 fst::VectorFst<fst::StdArc> *ReadAndPrepareLmFst(std::string rxfilename);
 
-
 // This is a Holder class with T = VectorFst<Arc>, that meets the requirements
 // of a Holder class as described in ../util/kaldi-holder.h. This enables us to
 // read/write collections of FSTs indexed by strings, using the Table comcpet (

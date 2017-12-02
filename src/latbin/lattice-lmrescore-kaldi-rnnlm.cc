@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Rescores lattice with kaldi-rnnlm. This script is called from \n"
-        "scripts/rnnlm/lmrescore_rnnlm_lat.sh. An example for rescoring \n"
+        "scripts/rnnlm/lmrescore.sh. An example for rescoring \n"
         "lattices is at egs/swbd/s5/local/rnnlm/run_rescoring.sh \n"
         "\n"
         "Usage: lattice-lmrescore-kaldi-rnnlm [options] \\\n"

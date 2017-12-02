@@ -10,12 +10,15 @@
 # Begin configuration section.
 cmd=run.pl
 skip_scoring=false
-max_ngram_order=4
-inv_acwt=12
-weight=1.0  # Interpolation weight for RNNLM.
+max_ngram_order=4 # Approximate the lattice-rescoring by limiting the max-ngram-order
+                  # if it's set, it merges histories in the lattice if they share
+                  # the same ngram history and this prevents the lattice from 
+                  # exploding exponentially. Details of the n-gram approximation
+                  # method are described in section 2.3 of the paper
+                  # http://www.cs.jhu.edu/~hxu/tf.pdf
+inv_acwt=10
+weight=0.5  # Interpolation weight for RNNLM.
 # End configuration section.
-rnnlm_ver=
-#layer_string=
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -63,8 +66,7 @@ cp $indir/num_jobs $outdir
 
 $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
   lattice-lmrescore-tf-rnnlm-pruned --lm-scale=$weight \
-  --acoustic-scale=$acwt \
-  --max-ngram-order=$max_ngram_order \
+  --acoustic-scale=$acwt --max-ngram-order=$max_ngram_order \
   $oldlm $oldlang/words.txt \
   $rnnlm_dir/unk.probs $rnnlm_dir/wordlist.rnn.final "$rnnlm_dir/rnnlm" \
   "ark:gunzip -c $indir/lat.JOB.gz|" "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;

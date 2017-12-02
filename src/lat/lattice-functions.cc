@@ -1646,5 +1646,4 @@ void ComposeCompactLatticeDeterministic(
   fst::Connect(composed_clat);
 }
 
-
 }  // namespace kaldi

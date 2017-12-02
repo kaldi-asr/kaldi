@@ -1,7 +1,6 @@
 // latbin/lattice-lmrescore-kaldi-rnnlm-pruned.cc
 
 // Copyright 2017 Johns Hopkins University (author: Daniel Povey)
-//           2017 Yiming Wang
 //           2017 Hainan Xu
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -42,7 +41,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Rescores lattice with kaldi-rnnlm. This script is called from \n"
-        "scripts/rnnlm/lmrescore_rnnlm_lat.sh. An example for rescoring \n"
+        "scripts/rnnlm/lmrescore_pruned.sh. An example for rescoring \n"
         "lattices is at egs/swbd/s5/local/rnnlm/run_rescoring.sh \n"
         "\n"
         "Usage: lattice-lmrescore-kaldi-rnnlm-pruned [options] \\\n"

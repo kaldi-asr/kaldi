@@ -17,14 +17,14 @@ for decode_set in eval2000; do
   decode_dir=${dir}/decode_${decode_set}_$LM
 
   # Lattice rescoring
-  rnnlm/lmrescore_rnnlm_lat_pruned.sh \
+  rnnlm/lmrescore_pruned.sh \
     --cmd "$decode_cmd -l hostname=b*" \
     --weight $weight --max-ngram-order $ngram_order \
     data/lang_$LM $rnndir \
     data/${decode_set}_hires ${decode_dir} \
     ${decode_dir}.kaldirnnlm.lat.${ngram_order}gram.pruned.$weight
 
-  rnnlm/lmrescore_rnnlm_lat \
+  rnnlm/lmrescore.sh \
     --cmd "$decode_cmd -l hostname=b*" \
     --weight $weight --max-ngram-order $ngram_order \
     data/lang_$LM $rnndir \

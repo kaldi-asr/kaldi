@@ -13,7 +13,6 @@ skip_scoring=false
 max_ngram_order=4
 inv_acwt=12
 weight=1.0  # Interpolation weight for RNNLM.
-rnnlm_ver=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -39,20 +38,6 @@ rnnlm_dir=$2
 data=$3
 indir=$4
 outdir=$5
-
-rescoring_binary=lattice-lmrescore-rnnlm
-
-first_arg=ark:$rnnlm_dir/unk.probs # this is for mikolov's rnnlm
-extra_arg=
-
-if [ "$rnnlm_ver" == "cuedrnnlm" ]; then
-  layer_string=`cat $rnnlm_dir/layer_string | sed "s=:= =g"`
-  total_size=`wc -l $rnnlm_dir/unigram.counts | awk '{print $1}'`
-  rescoring_binary="lattice-lmrescore-cuedrnnlm"
-  cat $rnnlm_dir/rnnlm.input.wlist.index | tail -n +2 | awk '{print $1-1,$2}' > $rnnlm_dir/rnn.wlist
-  extra_arg="--full-voc-size=$total_size --layer-sizes=\"$layer_string\""
-  first_arg=$rnnlm_dir/rnn.wlist
-fi
 
 oldlm=$oldlang/G.fst
 if [ -f $oldlang/G.carpa ]; then
@@ -87,17 +72,17 @@ if [ "$oldlm" == "$oldlang/G.fst" ]; then
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore --lm-scale=$oldlm_weight \
     "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm_command" ark:-  \| \
-    $rescoring_binary $extra_arg --lm-scale=$weight \
+    lattice-lmrescore-tf-rnnlm --lm-scale=$weight \
     --max-ngram-order=$max_ngram_order \
-    $first_arg $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
+    $rnnlm_dir/unk.probs $rnnlm_dir/wordlist.rnn.final $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 else
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore-const-arpa --lm-scale=$oldlm_weight \
     "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm" ark:-  \| \
-    $rescoring_binary $extra_arg --lm-scale=$weight \
+    lattice-lmrescore-tf-rnnlm --lm-scale=$weight \
     --max-ngram-order=$max_ngram_order \
-    $first_arg $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
+    $rnnlm_dir/unk.probs $rnnlm_dir/wordlist.rnn.final $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 fi
 if ! $skip_scoring ; then
@@ -109,3 +94,4 @@ else
 fi
 
 exit 0;
+

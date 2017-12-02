@@ -9,10 +9,21 @@
 # Begin configuration section.
 cmd=run.pl
 skip_scoring=false
-max_ngram_order=4
-N=10
-inv_acwt=12
-weight=1.0  # Interpolation weight for RNNLM.
+max_ngram_order=4 # Approximate the lattice-rescoring by limiting the max-ngram-order
+                  # if it's set, it merges histories in the lattice if they share
+                  # the same ngram history and this prevents the lattice from 
+                  # exploding exponentially. Details of the n-gram approximation
+                  # method are described in section 2.3 of the paper
+                  # http://www.cs.jhu.edu/~hxu/tf.pdf
+
+inv_acwt=10
+weight=0.5  # Interpolation weight for RNNLM.
+normalize=false # If true, we add a normalization step to the output of the RNNLM
+                # so that it adds up to *exactly* 1. Note that this is not necessary
+                # as in our RNNLM setup, a properly trained network would automatically
+                # have its normalization term close to 1. The details of this
+                # could be found at http://www.cs.jhu.edu/~hxu/rnnlm.pdf
+
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -55,8 +66,11 @@ awk -v n=$0 -v w=$weight 'BEGIN {if (w < 0 || w > 1) {
 
 acwt=`perl -e "print (1.0/$inv_acwt);"`
 
-bos_symbol=`grep "<s>" $rnnlm_dir/config/words.txt | awk '{print $2}'`
-eos_symbol=`grep "</s>" $rnnlm_dir/config/words.txt | awk '{print $2}'`
+normalize_opt=
+if $normalize; then
+  normalize_opt="--normalize-probs=true"
+fi
+special_symbol_opts=$(cat $rnnlm_dir/special_symbol_opts.txt)
 
 word_embedding=
 if [ -f $rnnlm_dir/word_embedding.final.mat ]; then
@@ -70,9 +84,8 @@ nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
 
 $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
-  lattice-lmrescore-kaldi-rnnlm-pruned --lm-scale=$weight \
-    --bos-symbol=$bos_symbol --eos-symbol=$eos_symbol \
-    --acoustic-scale=$acwt --max-ngram-order=$max_ngram_order \
+  lattice-lmrescore-kaldi-rnnlm-pruned --lm-scale=$weight $special_symbol_opts \
+    --acoustic-scale=$acwt --max-ngram-order=$max_ngram_order $normalize_opt \
     $oldlm $word_embedding "$rnnlm_dir/final.raw" \
     "ark:gunzip -c $indir/lat.JOB.gz|" "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 
