@@ -103,7 +103,7 @@ class XconfigLstmLayer(XconfigLayerBase):
 
     def get_full_config(self):
         ans = []
-        config_lines = self.generate_lstm_config()
+        config_lines = self._generate_lstm_config()
 
         for line in config_lines:
             for config_name in ['ref', 'final']:
@@ -113,7 +113,7 @@ class XconfigLstmLayer(XconfigLayerBase):
         return ans
 
     # convenience function to generate the LSTM config
-    def generate_lstm_config(self):
+    def _generate_lstm_config(self):
 
         # assign some variables to reduce verbosity
         name = self.name
@@ -258,6 +258,8 @@ class XconfigLstmLayer(XconfigLayerBase):
 
 # This class is for lines like
 #   'lstmp-layer name=lstm1 input=[-1] delay=-3'
+# (you can also use the name 'lstmp-batchnorm-layer' if you want it to be followed
+# by batchnorm).
 # It generates an LSTM sub-graph with output projections. It can also generate
 # outputs without projection, but you could use the XconfigLstmLayer for this
 # simple LSTM.
@@ -292,7 +294,9 @@ class XconfigLstmLayer(XconfigLayerBase):
 #  l2-regularize=0.0         Constant controlling l2 regularization for this layer
 class XconfigLstmpLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
-        assert first_token == "lstmp-layer"
+        # lstmp-batchnorm-layer is like lstmp-layer but followed by a batchnorm
+        # component.
+        assert first_token in ["lstmp-layer", "lstmp-batchnorm-layer"]
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -353,7 +357,8 @@ class XconfigLstmpLayer(XconfigLayerBase):
         return ['c_t']
 
     def output_name(self, auxiliary_output = None):
-        node_name = 'rp_t'
+        node_name = ( 'rp_t_batchnorm' if self.layer_type == 'lstmp-batchnorm-layer'
+                      else 'rp_t' )
         if auxiliary_output is not None:
             if auxiliary_output in self.auxiliary_outputs():
                 node_name = auxiliary_output
@@ -375,7 +380,7 @@ class XconfigLstmpLayer(XconfigLayerBase):
 
     def get_full_config(self):
         ans = []
-        config_lines = self.generate_lstm_config()
+        config_lines = self._generate_lstm_config()
 
         for line in config_lines:
             for config_name in ['ref', 'final']:
@@ -385,7 +390,7 @@ class XconfigLstmpLayer(XconfigLayerBase):
         return ans
 
     # convenience function to generate the LSTM config
-    def generate_lstm_config(self):
+    def _generate_lstm_config(self):
 
         # assign some variables to reduce verbosity
         name = self.name
@@ -542,18 +547,27 @@ class XconfigLstmpLayer(XconfigLayerBase):
         configs.append("component name={0}.r type=BackpropTruncationComponent dim={1} {2}"
                        "".format(name, rec_proj_dim, bptrunc_str))
 
-        configs.append("# r_t and p_t : rp_t will be the output")
+        configs.append("# r_t and p_t : rp_t will be the output (if we're not doing batchnorm)")
         configs.append("component-node name={0}.rp_t component={0}.W_rp.m input={0}.m_t"
                        "".format(name))
         configs.append("dim-range-node name={0}.r_t_preclip input-node={0}.rp_t dim-offset=0 "
                        "dim={1}".format(name, rec_proj_dim))
         configs.append("component-node name={0}.r_t component={0}.r input={0}.r_t_preclip".format(name))
 
+        if self.layer_type == "lstmp-batchnorm-layer":
+            # Add the batchnorm component, if requested to include batchnorm.
+            configs.append("component name={0}.rp_t_batchnorm type=BatchNormComponent dim={1} ".format(
+                name, rec_proj_dim + nonrec_proj_dim))
+            configs.append("component-node name={0}.rp_t_batchnorm component={0}.rp_t_batchnorm "
+                           "input={0}.rp_t".format(name))
+
         return configs
 
 
 # This class is for lines like
 #   'fast-lstm-layer name=lstm1 input=[-1] delay=-3'
+# (you can also use the name 'fast-lstm-batchnorm-layer' if you want it to be followed
+# by batchnorm).
 # It generates an LSTM sub-graph without output projections.
 # Unlike 'lstm-layer', the core nonlinearities of the LSTM are done in a special-purpose
 # component (LstmNonlinearityComponent), and most of the affine parts of the LSTM are combined
@@ -586,7 +600,7 @@ class XconfigLstmpLayer(XconfigLayerBase):
 #  l2-regularize=0.0         Constant controlling l2 regularization for this layer
 class XconfigFastLstmLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
-        assert first_token == "fast-lstm-layer"
+        assert first_token in ["fast-lstm-layer", "fast-lstm-batchnorm-layer"]
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -626,7 +640,8 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         return ['c']
 
     def output_name(self, auxiliary_output = None):
-        node_name = 'm'
+        node_name = ('m_batchnorm' if self.layer_type == 'fast-lstm-batchnorm-layer'
+                      else 'm')
         if auxiliary_output is not None:
             if auxiliary_output == 'c':
                 node_name = 'c'
@@ -647,7 +662,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
 
     def get_full_config(self):
         ans = []
-        config_lines = self.generate_lstm_config()
+        config_lines = self._generate_lstm_config()
 
         for line in config_lines:
             for config_name in ['ref', 'final']:
@@ -657,7 +672,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         return ans
 
     # convenience function to generate the LSTM config
-    def generate_lstm_config(self):
+    def _generate_lstm_config(self):
 
         # assign some variables to reduce verbosity
         name = self.name
@@ -723,7 +738,13 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         configs.append("dim-range-node name={0}.m input-node={0}.lstm_nonlin dim-offset={1} dim={1}".format(name, cell_dim))
         configs.append("component-node name={0}.cm_trunc component={0}.cm_trunc input={0}.lstm_nonlin".format(name))
         configs.append("dim-range-node name={0}.c_trunc input-node={0}.cm_trunc dim-offset=0 dim={1}".format(name, cell_dim))
-        # configs.append("dim-range-node name={0}.m_trunc input-node={0}.cm_trunc dim-offset={1} dim={1}".format(name, cell_dim))
+
+        if self.layer_type == "fast-lstm-batchnorm-layer":
+            # Add the batchnorm component, if requested to include batchnorm.
+            configs.append("component name={0}.m_batchnorm type=BatchNormComponent dim={1} ".format(
+                name, cell_dim))
+            configs.append("component-node name={0}.m_batchnorm component={0}.m_batchnorm "
+                           "input={0}.m".format(name))
         configs.append("### End LTSM layer '{0}'".format(name))
         return configs
 
@@ -731,6 +752,8 @@ class XconfigFastLstmLayer(XconfigLayerBase):
 
 # This class is for lines like
 #   'fast-lstmb-layer name=lstm1 input=[-1] delay=-3'
+# (you can also call it 'fast-lstmb-batchnorm-layer' if you want it to end
+# in a batchnorm component).
 # It's like fast-lstm-layer but with a bottleneck (like an SVD) in the main parameter matrix
 # of the LSTM (W_all, which combines all the full-rank projections of the LSTM): we divide
 # it into two matrices, with batch-norm in between to stabilize the training.
@@ -763,7 +786,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
 #  l2-regularize=0.0         Constant controlling l2 regularization for this layer
 class XconfigFastLstmbLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
-        assert first_token == "fast-lstmb-layer"
+        assert first_token in [ 'fast-lstmb-layer', 'fast-lstmb-batchnorm-layer' ]
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -807,7 +830,8 @@ class XconfigFastLstmbLayer(XconfigLayerBase):
         return ['c']
 
     def output_name(self, auxiliary_output = None):
-        node_name = 'm'
+        node_name = ('m_batchnorm' if self.layer_type == 'fast-lstmb-batchnorm-layer'
+                      else 'm')
         if auxiliary_output is not None:
             if auxiliary_output == 'c':
                 node_name = 'c'
@@ -828,7 +852,7 @@ class XconfigFastLstmbLayer(XconfigLayerBase):
 
     def get_full_config(self):
         ans = []
-        config_lines = self.generate_lstm_config()
+        config_lines = self._generate_lstm_config()
 
         for line in config_lines:
             for config_name in ['ref', 'final']:
@@ -838,7 +862,7 @@ class XconfigFastLstmbLayer(XconfigLayerBase):
         return ans
 
     # convenience function to generate the LSTM config
-    def generate_lstm_config(self):
+    def _generate_lstm_config(self):
 
         # assign some variables to reduce verbosity
         name = self.name
@@ -923,6 +947,13 @@ class XconfigFastLstmbLayer(XconfigLayerBase):
         configs.append("component-node name={0}.cm_trunc component={0}.cm_trunc input={0}.lstm_nonlin".format(name))
         configs.append("dim-range-node name={0}.c_trunc input-node={0}.cm_trunc dim-offset=0 dim={1}".format(name, cell_dim))
         # configs.append("dim-range-node name={0}.m_trunc input-node={0}.cm_trunc dim-offset={1} dim={1}".format(name, cell_dim))
+
+        if self.layer_type == "fast-lstmb-batchnorm-layer":
+            # Add the batchnorm component, if requested to include batchnorm.
+            configs.append("component name={0}.m_batchnorm type=BatchNormComponent dim={1} ".format(
+                name, cell_dim))
+            configs.append("component-node name={0}.m_batchnorm component={0}.m_batchnorm "
+                           "input={0}.m".format(name))
         configs.append("### End LTSM layer '{0}'".format(name))
         return configs
 
@@ -933,6 +964,8 @@ class XconfigFastLstmbLayer(XconfigLayerBase):
 #   'fast-lstmp-layer name=lstm1 input=[-1] delay=-3'
 # or:
 #   'fast-lstmp-layer name=lstm1 input=[-1] delay=-3 cell-dim=1024 recurrent-projection-dim=512 non-recurrent-projection-dim=512'
+# (you can also use the name 'fast-lstmp-batchnorm-layer' if you want it to be followed
+# by batchnorm).
 # It generates an LSTM sub-graph with output projections (i.e. a projected LSTM, AKA LSTMP).
 # Unlike 'lstmp-layer', the core nonlinearities of the LSTM are done in a special-purpose
 # component (LstmNonlinearityComponent), and most of the affine parts of the LSTM are combined
@@ -968,7 +1001,7 @@ class XconfigFastLstmbLayer(XconfigLayerBase):
 #  l2-regularize=0.0         Constant controlling l2 regularization for this layer
 class XconfigFastLstmpLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
-        assert first_token == "fast-lstmp-layer"
+        assert first_token in ['fast-lstmp-layer', 'fast-lstmp-batchnorm-layer']
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -1026,7 +1059,8 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         return ['c_t']
 
     def output_name(self, auxiliary_output = None):
-        node_name = 'rp'
+        node_name = ('rp_batchnorm' if self.layer_type == 'fast-lstmp-batchnorm-layer'
+                     else 'rp')
         if auxiliary_output is not None:
             if auxiliary_output in self.auxiliary_outputs():
                 node_name = auxiliary_output
@@ -1048,7 +1082,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
 
     def get_full_config(self):
         ans = []
-        config_lines = self.generate_lstm_config()
+        config_lines = self._generate_lstm_config()
 
         for line in config_lines:
             for config_name in ['ref', 'final']:
@@ -1058,8 +1092,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         return ans
 
     # convenience function to generate the LSTM config
-    def generate_lstm_config(self):
-
+    def _generate_lstm_config(self):
         # assign some variables to reduce verbosity
         name = self.name
         # in the below code we will just call descriptor_strings as descriptors for conciseness
@@ -1145,7 +1178,8 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
                        "dim-offset=0 dim={1}".format(name, cell_dim))
         configs.append("dim-range-node name={0}.m input-node={0}.lstm_nonlin "
                        "dim-offset={1} dim={1}".format(name, cell_dim))
-        configs.append("# {0}.rp is the output node of this layer:".format(name))
+        configs.append("# {0}.rp is the output node of this layer (if we're not "
+                       "including batchnorm)".format(name))
         configs.append("component-node name={0}.rp component={0}.W_rp input={0}.m".format(name))
         configs.append("dim-range-node name={0}.r input-node={0}.rp dim-offset=0 "
                        "dim={1}".format(name, rec_proj_dim))
@@ -1158,6 +1192,12 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
                        "dim-offset=0 dim={1}".format(name, cell_dim))
         configs.append("dim-range-node name={0}.r_trunc input-node={0}.cr_trunc "
                        "dim-offset={1} dim={2}".format(name, cell_dim, rec_proj_dim))
+        if self.layer_type == "fast-lstmp-batchnorm-layer":
+            # Add the batchnorm component, if requested to include batchnorm.
+            configs.append("component name={0}.rp_batchnorm type=BatchNormComponent dim={1} ".format(
+                name, rec_proj_dim + nonrec_proj_dim))
+            configs.append("component-node name={0}.rp_batchnorm component={0}.rp_batchnorm "
+                           "input={0}.rp".format(name))
         configs.append("### End LSTM Layer '{0}'".format(name))
 
         return configs
