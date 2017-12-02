@@ -30,18 +30,26 @@ set -o pipefail
 langs="101 102 103 104 105 106 202 203 204 205 206 207 301 302 303 304 305 306
        401 402 403"
 
+# Just a subset of the training languages for now.
+# Decoding an unseen language takes more work to standardize the dictionary,
+# and to replace missing phonemes.
+decode_langs="105 206 304 403"
+
 # Just for documentation and debugging mostly, but these should probably be
 # organized differently to reflect important parts of the training script
 # or just removed entirely.
 # ------------------------------------------------------------------------
-# stage 0 -- set up language directories
-# stage 1 -- prepare language data
-# stage 2 -- prepare language lexicons
-# stage 3 -- add language prefix to data dir
-# stage 4 -- combine data dirs, lexicons, and create one univeral lang dir
-# stage 5 -- training
-# stage 6 -- cleanup data and segmentation
-# stage 7 -- DNN training
+# stage 0 -- Setup Language Directories
+# stage 1 -- Prepare Data
+# stage 2 -- Combine Data
+# stage 3 -- training
+# stage 4 -- cleanup data and segmentation
+# stage 5 -- Chain TDNN training
+# stage 6 -- Prepare Decode data directory
+# stage 7 -- Prepare Universal Dictionaries, LM
+# stage 8 -- Make Decoding Graph
+# stage 9 -- Prepare Decode acoustic data
+# stage 10 -- Decode Chain
 
 stage=0
 
@@ -84,19 +92,17 @@ for l in ${langs}; do
   #############################################################################
   if [ $stage -le 1 ]; then
     ./local/prepare_data.sh
-  fi
 
-  #############################################################################
-  # Create dictionaries with split diphthongs and standardized tones
-  #############################################################################
-  # In the lexicons provided by babel there are phonemes x_y, for which _y may
-  # or may not best be considered as a tag on phoneme x. In Lithuanian, for
-  # instance, there is a phoneme A_F for which _F or indicates failling tone.
-  # This same linguistic feature is represented in other languages as a "tag"
-  # (i.e. 判 pun3 p u: n _3), which means for the purposes of kaldi, that
-  # those phonemes share a root in the clustering decision tree, and the tag
-  # becomes an extra question. We may want to revisit this issue later.
-  if [ $stage -le 2 ]; then
+    ###########################################################################
+    # Create dictionaries with split diphthongs and standardized tones
+    ###########################################################################
+    # In the lexicons provided by babel there are phonemes x_y, for which _y may
+    # or may not best be considered as a tag on phoneme x. In Lithuanian, for
+    # instance, there is a phoneme A_F for which _F or indicates failling tone.
+    # This same linguistic feature is represented in other languages as a "tag"
+    # (i.e. 判 pun3 p u: n _3), which means for the purposes of kaldi, that
+    # those phonemes share a root in the clustering decision tree, and the tag
+    # becomes an extra question. We may want to revisit this issue later.
     echo "Dictionary ${l}"
     dict=data/dict_universal
     diphthongs=${cwd}/universal_phone_maps/diphthongs/${l}
@@ -128,18 +134,16 @@ for l in ${langs}; do
     # need it may be more intuitive.
     ./local/prepare_dict.py \
       --silence-lexicon ${dict}/silence_lexicon.txt ${dict}/lexicon.txt ${dict}
-  fi
 
-  #############################################################################
-  # Prepend language ID to all utterances to disambiguate between speakers
-  # of different languages sharing the same speaker id.
-  #
-  # The individual lang directories can be used for alignments, while a
-  # combined directory will be used for training. This probably has minimal
-  # impact on performance as only words repeated across languages will pose
-  # problems and even amongst these, the main concern is the <hes> marker.
-  #############################################################################
-  if [ $stage -le 3 ]; then
+    ###########################################################################
+    # Prepend language ID to all utterances to disambiguate between speakers
+    # of different languages sharing the same speaker id.
+    #
+    # The individual lang directories can be used for alignments, while a
+    # combined directory will be used for training. This probably has minimal
+    # impact on performance as only words repeated across languages will pose
+    # problems and even amongst these, the main concern is the <hes> marker.
+    ###########################################################################
     echo "Prepend ${l} to data dir"
     ./utils/copy_data_dir.sh --spk-prefix ${l} --utt-prefix ${l} \
       data/train data/train_${l}
@@ -151,7 +155,7 @@ done
 # Combine all langauge specific training directories and generate a single
 # lang directory by combining all langauge specific dictionaries
 ###############################################################################
-if [ $stage -le 4 ]; then
+if [ $stage -le 2 ]; then
   train_dirs=""
   dict_dirs=""
   for l in ${langs}; do
@@ -196,7 +200,7 @@ fi
 # setup.
 
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 3 ]; then
   if [ ! -f data/train_sub3/.done ]; then
     echo ---------------------------------------------------------------------
     echo "Subsetting monophone training data in data/train_sub[123] on" `date`
@@ -352,7 +356,7 @@ fi
 #      really high. This limits the number of jobs you can run and causes the
 #      cleanup to be really slow. There is probably a better way around this.
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 4 ]; then
   ./local/run_cleanup_segmentation.sh --langdir data/lang_universalp/tri5
 fi
 
@@ -360,20 +364,176 @@ fi
 #                                DNN Training
 ###############################################################################
 
-# Issues:
-#   It seems that my versions of both
-#
-#     local/chain/run_tdnn.sh,
-#     local/chain/run_ivector_common.sh
-#
-#   are out of date. the local/chain/run_tdnn.sh is slightly different from the
-#   babel recipe, but only in the number of nodes at each layer and the maybe
-#   some parameters.
-#
-#   The local/chain/run_ivector_common.sh is identical to an old babel version
-#   of this script which appears to have been updated since, but I do not know
-#   what the difference is yet so I left this script untouched.
-
-if [ $stage -le 7 ]; then
+if [ $stage -le 4 ]; then
   ./local/chain/run_tdnn.sh --langdir data/lang_universalp/tri5_ali
 fi
+
+###############################################################################
+#============================== END OF TRAINING ===============================
+###############################################################################
+
+echo "Universal Acoustic Model Training finished." && \
+echo "To decode, comment out these lines in run.sh (390-391)." && exit 0;
+
+
+
+
+###############################################################################
+#                                  Decoding
+###############################################################################
+
+# Preparing Decoding Data
+# For each decoding language setup the language directories
+for l in ${decode_langs}; do
+  dict=data/dict
+  langdir=data/lang_dict
+
+  if [ $stage -le 5 ]; then
+    mkdir -p data/${l}
+    cd data/${l}
+    ln -sf ${cwd}/local .
+    for f in ${cwd}/{utils,steps,conf}; do
+      link=`make_absolute.sh $f`
+      ln -sf $link .
+    done
+
+    # Use the FLP training lexicons and text to train LM
+    conf_file=`find conf/lang -name "${l}-*fullLP*.conf" -o -name "${l}-*FLP*.conf" | head -1`
+    echo ${conf_file}
+    cp $conf_file lang.conf
+
+    # This line will likely not be when the lang.conf files are corrected.
+    # It currently just fixes some paths on the CLSP grid that no longer exist.
+    sed -i 's/export\/babel\/data\/splits/export\/babel\/data\/OtherLR-data\/splits/g' lang.conf
+    cp ${cwd}/{cmd,path}.sh .
+    ./local/prepare_data.sh --extract-feats false
+  fi
+  
+
+  if [ $stage -le 6 ]; then 
+    echo "------------------------------------------------------------"
+    echo " Standardized Dictionaries and check Lang directories for"
+    echo " compatibility with the Univeral Acoustic Models"
+    echo "------------------------------------------------------------"
+        
+    mkdir -p ${dict}
+    diphthongs=${cwd}/universal_phone_maps/diphthongs/${l}
+    tones=${cwd}/universal_phone_maps/tones/${l}
+
+    echo -e "<silence> SIL\n<unk> <oov>\n<noise> <sss>\n<v-noise> <vns>" \
+      > ${dict}/silence_lexicon.txt
+ 
+    # Create non-silence lexicon
+    grep -vFf ${dict}/silence_lexicon.txt data/local/lexicon.txt \
+      > data/local/nonsilence_lexicon.txt
+
+    # Create split diphthong and standarized tone lexicons for nonsilence words
+    ./local/prepare_universal_lexicon.py ${dict}/nonsilence_lexicon.txt \
+      data/local/nonsilence_lexicon.txt $diphthongs $tones
+
+    cat ${dict}/{,non}silence_lexicon.txt | sort > ${dict}/lexicon.txt
+ 
+    # Create the rest of the dictionary    
+    ./local/prepare_dict.py \
+      --silence-lexicon ${dict}/silence_lexicon.txt ${dict}/lexicon.txt ${dict}
+
+    ./utils/prepare_lang.sh --share-silence-phones true \
+      ${dict} "<unk>" ${dict}/tmp.lang ${langdir}
+ 
+    ./local/phoneset_diff.sh ${langdir}/phones.txt \
+      ${cwd}/data/lang_universalp/tri5_ali/phones.txt \
+      > ${langdir}/missing_phones_map  
+  fi 
+  
+  #############################################################################
+  # MAP MISSING PHONEMES HERE
+  #############################################################################
+  
+  # Resolve incompatibilities between diciontaries 
+  if [ $stage -le 7 ]; then  
+    ./local/convert_dict.sh ${dict}_universal \
+      ${langdir}_universal \
+      ${dict} ${cwd}/data/dict_universal \
+      ${cwd}/data/lang_universalp/tri5_ali \
+      ${langdir}/missing_phones_map
+
+    ###########################################################################
+    # Train the LM For the Decoding Language
+    ###########################################################################
+    
+    ./local/train_lms_srilm.sh --oov-symbol "<unk>" \
+                               --train-text data/train/text \
+                               --words-file ${langdir}_universal/words.txt \
+                               data data/srilm
+
+    ./local/arpa2G.sh data/srilm/lm.gz ${langdir}_universal ${langdir}_universal
+  fi
+ 
+  # Make Decoding Graph 
+  if [ $stage -le 8 ]; then
+    ./utils/mkgraph.sh --self-loop-scale 1.0 ${langdir}_universal \
+      ${cwd}/exp/chain_cleaned/tdnn_sp_bi \
+      ${cwd}/exp/chain_cleaned/tdnn_sp_bi/graph_${l}
+  fi
+
+  # Prepare Acoustic Data
+  if [ $stage -le 9 ]; then
+    . ./lang.conf
+    if [ ! -d data/raw_dev10h_data ]; then
+      echo ---------------------------------------------------------------------
+      echo "Subsetting the DEV10H set"
+      echo ---------------------------------------------------------------------
+      local/make_corpus_subset.sh "$dev10h_data_dir" "$dev10h_data_list" ./data/raw_dev10h_data || exit 1
+    fi
+
+    mkdir -p data/dev10h.pem
+    dev10h_data_dir=`utils/make_absolute.sh ./data/raw_dev10h_data`
+
+    local/prepare_acoustic_training_data.pl --fragmentMarkers \-\*\~  \
+      dev10h_data_dir data/dev10h.pem > data/dev10h.pem/skipped_utts.log || exit 1
+    
+    local/prepare_stm.pl --fragmentMarkers \-\*\~ data/dev10h.pem
+
+    # Make plp + pitch features
+    steps/make_plp_pitch.sh --nj 32 --cmd "$train_cmd" data/dev10h.pem exp/make_mfcc/dev10h.pem mfcc
+    steps/compute_cmvn_stats.sh data/dev10h.pem exp/make_mfcc/dev10h.pem mfcc
+  
+    # Make hires mfcc features (for ivector extraction)
+    utils/copy_data_dir.sh data/dev10h.pem data/dev10h.pem_hires
+    steps/make_mfcc.sh --nj 32 --mfcc-config conf/mfcc_hires.conf \
+      --cmd "$train_cmd" data/dev10h.pem_hires exp/make_hires/dev10h.pem mfcc_hires;
+    steps/compute_cmvn_stats.sh data/dev10h.pem_hires exp/make_hires/dev10h.pem mfcc_hires;
+    utils/fix_data_dir.sh data/dev10h.pem_hires;
+
+    # Make mfcc + pitch features (for nnet decoding)
+    utils/copy_data_dir.sh data/dev10h.pem data/dev10h.pem_pitch_hires
+    steps/make_mfcc_pitch.sh --nj 32 --mfcc-config conf/mfcc_hires.conf \
+      --cmd "$train_cmd" data/dev10h.pem_pitch_hires exp/make_hires/dev10h.pem_pitch mfcc_pitch_hires;
+    steps/compute_cmvn_stats.sh data/dev10h.pem_pitch_hires exp/make_hires/dev10h.pem_pitch mfcc_pitch_hires;
+    utils/fix_data_dir.sh data/dev10h.pem_pitch_hires;
+  
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 32 \
+      data/dev10h.pem_hires ${cwd}/exp/nnet3_cleaned/extractor/ ${cwd}/exp/nnet3_cleaned/ivectors_${l}_dev10h.pem/ || exit 1;
+  
+  fi
+  
+  # Decode
+  if [ $stage -le 10 ]; then
+    # Assign 100 / num_decode_langs nj per lang
+    num_langs=`echo $decode_langs | wc -w`
+    my_decode_nj=$((100 / $num_langs))
+
+    (
+      cd ${cwd};
+      ./steps/nnet3/decode.sh --skip-scoring false \
+          --acwt 1.0 --post-decode-acwt 10.0 \
+          --nj $my_decode_nj --cmd "$decode_cmd" \
+          --online-ivector-dir exp/nnet3_cleaned/ivectors_${l}_dev10h.pem \
+          exp/chain_cleaned/tdnn_sp_bi/graph_${l} \
+          data/${l}/data/dev10h.pem_pitch_hires \
+          exp/chain_cleaned/tdnn_sp_bi/decode_${l}_dev10h.pem
+    ) &
+  
+  fi
+done
+

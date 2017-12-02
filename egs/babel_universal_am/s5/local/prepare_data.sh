@@ -10,6 +10,8 @@
 
 [ -f local.conf ] && . ./local.conf
 
+extract_feats=true
+
 . ./utils/parse_options.sh
 
 set -e           #Exit on non-zero return code from any command
@@ -76,7 +78,7 @@ echo ---------------------------------------------------------------------
 echo "Starting plp feature extraction for data/train in plp on" `date`
 echo ---------------------------------------------------------------------
 
-if [ ! -f data/train/.plp.done ]; then
+if [ $extra_feats ] && [ ! -f data/train/.plp.done ]; then
   steps/make_plp_pitch.sh --cmd "$train_cmd" --nj $train_nj data/train exp/make_plp_pitch/train plp
   utils/fix_data_dir.sh data/train
   steps/compute_cmvn_stats.sh data/train exp/make_plp_pitch/train plp
