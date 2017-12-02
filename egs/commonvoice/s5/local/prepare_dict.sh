@@ -76,8 +76,8 @@ grep -v -w sil $locdict/lexicon.txt | \
   awk '{for(n=2;n<=NF;n++) { p[$n]=1; }} END{for(x in p) {print x}}' |\
   sort > $locdict/nonsilence_phones.txt
 
-echo "--- Adding SIL to the lexicon ..."
-echo -e "!SIL\tSIL" >> $locdict/lexicon.txt
+echo "--- Adding <unk> to the lexicon ..."
+echo -e "<unk>\tSIL" >> $locdict/lexicon.txt
 
 # Some downstream scripts expect this file exists, even if empty
 touch $locdict/extra_questions.txt

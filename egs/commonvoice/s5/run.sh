@@ -5,7 +5,7 @@
 # Copyright 2017   Ewald Enzinger
 # Apache 2.0
 
-data=/home/ubuntu/export/data/cv_corpus_v1
+data=$HOME/cv_corpus_v1
 data_url=https://common-voice-data-download.s3.amazonaws.com/cv_corpus_v1.tar.gz
 
 . ./cmd.sh
@@ -18,7 +18,7 @@ set -euo pipefail
 if [ $stage -le 0 ]; then
   mkdir -p $data
 
-  local/download_and_untar.sh $(/usr/bin/dirname $data) $data_url
+  local/download_and_untar.sh $(dirname $data) $data_url
 fi
 
 if [ $stage -le 1 ]; then
@@ -35,9 +35,9 @@ if [ $stage -le 1 ]; then
 
   # Prepare data/lang and data/local/lang directories
   utils/prepare_lang.sh data/local/dict \
-    '!SIL' data/local/lang data/lang || exit 1
+    '<unk>' data/local/lang data/lang || exit 1
 
-  local/format_data.sh
+  utils/format_lm.sh data/lang data/local/lm.gz data/local/dict/lexicon.txt data/lang_test/
 fi
 
 if [ $stage -le 2 ]; then

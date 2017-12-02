@@ -41,6 +41,6 @@ if [ -z $loc ]; then
 fi
 
 ngram-count -order $order -write-vocab $locdata/vocab-full.txt -wbdiscount \
-  -text $locdata/corpus.txt -lm $locdata/lm.arpa
+  -text $locdata/corpus.txt -lm $locdata/lm.gz
 
 echo "*** Finished building the LM model!"
