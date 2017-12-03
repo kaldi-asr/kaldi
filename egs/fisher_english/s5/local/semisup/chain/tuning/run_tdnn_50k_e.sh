@@ -2,7 +2,7 @@
 set -e
 
 # This is fisher chain recipe for training a model on a subset of around 50 hours.
-# This is similar to _c, but uses poco LM for decoding.
+# This is similar to _d, but without phone LM UNK model.
 
 # configs for 'chain'
 stage=0

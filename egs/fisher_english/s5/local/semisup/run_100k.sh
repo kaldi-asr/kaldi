@@ -92,13 +92,13 @@ fi
 
 local/run_unk_model.sh --lang-dirs "data/lang_test_poco_sup100k_big data/lang_test_poco_sup100k" || exit 1
 
-local/semisup/chain/tuning/run_tdnn_100k.sh \
+local/semisup/chain/tuning/run_tdnn_100k_a.sh \
   --train-set train_sup \
   --stage $stage --train-stage $train_stage \
   --exp $exp \
   --ivector-train-set "" || exit 1
 
-local/semisup/chain/tuning/run_tdnn_oracle.sh \
+local/semisup/chain/tuning/run_tdnn_100k_a_oracle.sh \
   --train-set train_sup \
   --nnet3-affix \
   --chain-affix \

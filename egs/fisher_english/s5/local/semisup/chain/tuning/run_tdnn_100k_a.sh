@@ -1,7 +1,11 @@
 #!/bin/bash
-set -e
+
+# Copyright 2017  Vimal Manohar
+# Apache 2.0
 
 # This is fisher chain recipe for training a model on a subset of around 100 hours.
+
+set -e
 
 # configs for 'chain'
 stage=0
@@ -28,7 +32,7 @@ minibatch_size=128
 echo "$0 $@"  # Print the command line for logging
 
 . ./cmd.sh
-. ./path.sh
+if [ -f ./path.sh ]; then . ./path.sh; fi
 . ./utils/parse_options.sh
 
 if ! cuda-compiled; then
@@ -51,7 +55,7 @@ lang=data/lang_chain
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
 
-local/nnet3/run_ivector_common.sh --stage $stage --exp $exp \
+local/semisup/nnet3/run_ivector_common.sh --stage $stage --exp $exp \
                                   --speed-perturb true \
                                   --train-set $train_set \
                                   --nnet3-affix "$nnet3_affix" || exit 1
@@ -150,7 +154,7 @@ if [ $stage -le 13 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0 --generate-egs-scp true" \
-    --egs.chunk-width 150 \
+    --egs.chunk-width 160,140,110,80 \
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \
@@ -166,12 +170,12 @@ if [ $stage -le 13 ]; then
     --dir $dir  || exit 1;
 fi
 
-graph_dir=$dir/graph
+graph_dir=$dir/graph_poco
 if [ $stage -le 14 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test $dir $graph_dir
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_poco_test $dir $graph_dir
 fi
 
 decode_suff=

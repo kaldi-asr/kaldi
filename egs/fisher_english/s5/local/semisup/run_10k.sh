@@ -14,6 +14,11 @@ train_stage=-10
 set -o pipefail
 exp=exp/semisup_11k
 
+if [ ! -f data/train_sup/feats.scp ]; then
+  echo "$0: Could not find data/train_sup/utt2spk"
+  exit 1
+fi
+
 utils/subset_data_dir.sh --speakers data/train_sup 11000 data/train_sup11k || exit 1
 utils/subset_data_dir.sh --shortest data/train_sup11k 5000 data/train_sup11k_short || exit 1
 utils/subset_data_dir.sh data/train_sup11k 5500 data/train_sup11k_half || exit 1

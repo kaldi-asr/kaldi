@@ -83,13 +83,14 @@ fi
 
 local/run_unk_model.sh --lang-dirs "data/lang_test_poco_ex250k_big data/lang_test_poco_ex250k" || exit 1
 
-local/semisup/chain/tuning/run_tdnn_11k.sh \
+local/semisup/chain/tuning/run_tdnn_15k_a.sh \
   --train-set train_sup15k \
   --nnet3-affix _semi15k_250k \
   --chain-affix _semi15k_250k \
   --stage $stage --train-stage $train_stage \
   --exp $exp \
-  --ivector-train-set semisup15k_250k || exit 1
+  --unsup-train-set train_unsup250k \
+  --semisup-train-set semisup15k_250k || exit 1
 
 local/semisup/chain/tuning/run_tdnn_oracle.sh \
   --train-set semisup15k_250k \
@@ -97,5 +98,4 @@ local/semisup/chain/tuning/run_tdnn_oracle.sh \
   --chain-affix _semi15k_250k_oracle \
   --gmm tri3 \
   --stage 9 --train-stage $train_stage \
-  --exp $exp \
-  --ivector-train-set semisup15k_250k || exit 1
+  --exp $exp || exit 1

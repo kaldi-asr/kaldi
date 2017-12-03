@@ -12,7 +12,7 @@ get_egs_stage=-10
 decode_iter=
 supervised_set=train_sup
 unsupervised_set=train_unsup100k_250k_n10k
-base_train_set=train_oracle100k_250k_n10k
+combined_train_set=train_oracle100k_250k_n10k
 tree_affix=bi_a
 nnet3_affix=
 chain_affix=
@@ -44,9 +44,9 @@ fi
 
 gmm_dir=$exp/$gmm   # used to get training lattices (for chain supervision)
 treedir=$exp/chain${chain_affix}/tree_${tree_affix}
-lat_dir=$exp/chain${chain_affix}/$(basename $gmm_dir)_${base_train_set}_sp_lats  # training lattices directory
+lat_dir=$exp/chain${chain_affix}/$(basename $gmm_dir)_${combined_train_set}_sp_lats  # training lattices directory
 dir=$exp/chain${chain_affix}/tdnn${tdnn_affix}_sp
-train_data_dir=data/${base_train_set}_sp_hires
+train_data_dir=data/${combined_train_set}_sp_hires
 train_ivector_dir=$exp/nnet3${nnet3_affix}/ivectors_${supervised_set}_sp_hires
 lang=data/lang_chain
 
@@ -62,25 +62,25 @@ for f in data/${supervised_set}_sp_hires/feats.scp \
 done
 
 if [ $stage -le 7 ]; then
-  utils/combine_data.sh data/${base_train_set}_sp_hires \
+  utils/combine_data.sh data/${combined_train_set}_sp_hires \
     data/${supervised_set}_sp_hires data/${unsupervised_set}_sp_hires
 
-  utils/combine_data.sh data/${base_train_set}_sp \
+  utils/combine_data.sh data/${combined_train_set}_sp \
     data/${supervised_set}_sp data/${unsupervised_set}_sp
 fi
 
 if [ $stage -le 8 ]; then
   utils/data/modify_speaker_info.sh --utts-per-spk-max 2 \
-    data/${base_train_set}_sp_hires data/${base_train_set}_sp_max2_hires
+    data/${combined_train_set}_sp_hires data/${combined_train_set}_sp_max2_hires
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-    data/${base_train_set}_max2_hires $exp/nnet3${nnet3_affix}/extractor $exp/nnet3${nnet3_affix}/ivectors_${base_train_set}_hires || exit 1;
+    data/${combined_train_set}_max2_hires $exp/nnet3${nnet3_affix}/extractor $exp/nnet3${nnet3_affix}/ivectors_${combined_train_set}_hires || exit 1;
 fi
 
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj 30 --cmd "$train_cmd" data/${base_train_set}_sp \
+  steps/align_fmllr_lats.sh --nj 30 --cmd "$train_cmd" data/${combined_train_set}_sp \
     data/lang $gmm_dir $lat_dir || exit 1;
   rm $lat_dir/fsts.*.gz # save space
 fi
@@ -179,12 +179,12 @@ if [ $stage -le 13 ]; then
     --dir $dir  || exit 1;
 fi
 
-graph_dir=$dir/graph
+graph_dir=$dir/graph_poco
 if [ $stage -le 14 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test $dir $graph_dir
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_poco_test $dir $graph_dir
 fi
 
 decode_suff=

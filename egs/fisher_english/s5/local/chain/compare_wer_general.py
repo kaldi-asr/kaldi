@@ -1,5 +1,8 @@
 #! /usr/bin/env python
 
+# Copyright 2017  Vimal Manohar
+# Apache 2.0
+
 import argparse
 import collections
 import os
@@ -19,6 +22,10 @@ e.g. local/chain/compare_wer_general.py exp/chain_cleaned/tdnn_{c,d}_sp
 For use with discriminatively trained systems you specify the epochs after a colon:
 for instance,
 local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn_c_sp exp/chain_cleaned/tdnn_c_sp_smbr:{1,2,3}
+
+To display the results with a short name instead of the full path, add
+the short name after the epoch separated by a colon.
+local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn_c_sp::chain exp/chain_cleaned/tdnn_c_sp_smbr:{1:smbr_epoch1,2:smbr_epoch2}
 """)
 
     parser.add_argument("--separator", type=str, default=" ",
@@ -29,7 +36,7 @@ local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn_c_sp exp/chain_cleaned
     parser.add_argument("--include-looped", action='store_true',
                         help="Used to include looped results")
     parser.add_argument("--field-size", type=int,
-                        help="Field size for the models")
+                        help="Field size for the names of models")
     parser.add_argument("systems", nargs='+')
 
     args = parser.parse_args()
