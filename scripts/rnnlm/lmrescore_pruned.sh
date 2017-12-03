@@ -1,10 +1,11 @@
 #!/bin/bash
 
-# Copyright 2015  Guoguo Chen
-#           2017  Hainan Xu
+# Copyright 2017   Hainan Xu
 # Apache 2.0
 
-# This script rescores lattices with KALDI RNNLM.
+# This script rescores lattices with KALDI RNNLM using a pruned algorithm.
+# The details of the algorithm could be found at http://www.cs.jhu.edu/~hxu/tf.pdf
+# One example script for this is at egs/swbd/s5c/local/rnnlm/run_lstm.sh
 
 # Begin configuration section.
 cmd=run.pl
@@ -32,7 +33,7 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# != 5 ]; then
    echo "Does language model rescoring of lattices (remove old LM, add new LM)"
-   echo "with Kaldi RNNLM."
+   echo "with Kaldi RNNLM using a pruned algorithm. See comments in file for details"
    echo ""
    echo "Usage: $0 [options] <old-lang-dir> <rnnlm-dir> \\"
    echo "                   <data-dir> <input-decode-dir> <output-decode-dir>"
@@ -51,6 +52,12 @@ indir=$4
 outdir=$5
 
 oldlm=$oldlang/G.fst
+carpa=
+if [ ! -f $oldlm ]; then
+  echo "$0: file $oldlm not found; looking for $oldlang/G.carpa"
+  oldlm=$oldlang/G.carpa
+  carpa=-const-arpa
+fi
 
 [ ! -f $oldlm ] && echo "$0: Missing file $oldlm" && exit 1;
 [ ! -f $rnnlm_dir/final.raw ] && echo "$0: Missing file $rnnlm_dir/final.raw" && exit 1;
@@ -84,7 +91,7 @@ nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
 
 $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
-  lattice-lmrescore-kaldi-rnnlm-pruned --lm-scale=$weight $special_symbol_opts \
+  lattice-lmrescore$carpa-kaldi-rnnlm-pruned --lm-scale=$weight $special_symbol_opts \
     --acoustic-scale=$acwt --max-ngram-order=$max_ngram_order $normalize_opt \
     $oldlm $word_embedding "$rnnlm_dir/final.raw" \
     "ark:gunzip -c $indir/lat.JOB.gz|" "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;

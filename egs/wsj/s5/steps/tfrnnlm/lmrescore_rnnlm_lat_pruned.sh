@@ -4,8 +4,12 @@
 #           2017  Hainan Xu
 # Apache 2.0
 
-# This script rescores lattices with RNNLM.  See also rnnlmrescore.sh which is
-# an older script using n-best lists.
+# This script rescores lattices with RNNLM trained with TensorFlow.
+# It uses a pruend algorithm to speed up the runtime and improve the accuracy.
+# which is an improved version over steps/tfrnnlm/lmrescore_rnnlm_lat.sh,
+# which uses the exact same interface
+# The details of the pruning algorithm is described in
+# http://www.cs.jhu.edu/~hxu/tf.pdf
 
 # Begin configuration section.
 cmd=run.pl
@@ -45,7 +49,13 @@ indir=$4
 outdir=$5
 
 oldlm=$oldlang/G.fst
-
+carpa=
+if [ ! -f $oldlm ]; then
+  echo "$0: file $oldlm not found; looking for $oldlang/G.carpa"
+  oldlm=$oldlang/G.carpa
+  carpa=-const-arpa
+fi
+  
 [ ! -f $oldlm ] && echo "$0: Missing file $oldlm" && exit 1;
 [ ! -f $rnnlm_dir/rnnlm ] && [ ! -d $rnnlm_dir/rnnlm ] && echo "$0: Missing file $rnnlm_dir/rnnlm" && exit 1;
 [ ! -f $rnnlm_dir/unk.probs ] &&\
@@ -65,7 +75,7 @@ nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
 
 $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
-  lattice-lmrescore-tf-rnnlm-pruned --lm-scale=$weight \
+  lattice-lmrescore$carpa-tf-rnnlm-pruned --lm-scale=$weight \
   --acoustic-scale=$acwt --max-ngram-order=$max_ngram_order \
   $oldlm $oldlang/words.txt \
   $rnnlm_dir/unk.probs $rnnlm_dir/wordlist.rnn.final "$rnnlm_dir/rnnlm" \

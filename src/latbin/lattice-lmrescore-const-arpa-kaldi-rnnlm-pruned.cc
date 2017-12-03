@@ -1,6 +1,7 @@
-// tfrnnlmbin/lattice-lmrescore-tf-rnnlm.cc
+// latbin/lattice-lmrescore-kaldi-rnnlm-pruned.cc
 
-// Copyright (C) 2017 Intellisist, Inc. (Author: Hainan Xu)
+// Copyright 2017 Johns Hopkins University (author: Daniel Povey)
+//           2017 Hainan Xu
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -20,8 +21,10 @@
 
 #include "base/kaldi-common.h"
 #include "fstext/fstext-lib.h"
-#include "tfrnnlm/tensorflow-rnnlm.h"
+#include "rnnlm/rnnlm-lattice-rescoring.h"
+#include "lm/const-arpa-lm.h"
 #include "util/common-utils.h"
+#include "nnet3/nnet-utils.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
 #include "lat/compose-lattice-pruned.h"
@@ -29,7 +32,6 @@
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
-    using namespace kaldi::tf_rnnlm;
     typedef kaldi::int32 int32;
     typedef kaldi::int64 int64;
     using fst::SymbolTable;
@@ -39,20 +41,26 @@ int main(int argc, char *argv[]) {
     using std::unique_ptr;
 
     const char *usage =
-        "Rescores lattice with rnnlm that is trained with TensorFlow.\n"
-        "An example script for training and rescoring with the TensorFlow\n"
-        "RNNLM is at egs/ami/s5/local/tfrnnlm/run_lstm_fast.sh\n"
+        "Rescores lattice with rnnlm. The LM will be wrapped into the\n"
+        "DeterministicOnDemandFst interface and the rescoring is done by\n"
+        "composing with the wrapped LM using a pruned composition\n"
+        "algorithm. Determinization will be applied on the composed lattice.\n"
         "\n"
-        "Usage: lattice-lmrescore-tf-rnnlm-pruned [options] [unk-file] \\\n"
-        "             <old-lm> <fst-wordlist> <rnnlm-wordlist> \\\n"
-        "             <rnnlm-rxfilename> <lattice-rspecifier> <lattice-wspecifier>\n"
-        " e.g.: lattice-lmrescore-tf-rnnlm-pruned --lm-scale=0.5 unkcounts.txt \\\n"
-        "              data/test/G.fst data/lang/words.txt rnnwords.txt \\\n"
-        "              rnnlm ark:in.lats ark:out.lats\n";
+        "Usage: lattice-lmrescore-kaldi-rnnlm-pruned [options] \\\n"
+        "             <const-arpa-file> <embedding-file> \\\n"
+        "             <raw-rnnlm-rxfilename> \\\n"
+        "             <lattice-rspecifier> <lattice-wspecifier>\n"
+        " e.g.: lattice-lmrescore-kaldi-rnnlm-pruned --lm-scale=0.5 \\\n"
+        "              --bos-symbol=1 --eos-symbol=2 \\\n"
+        "              data/lang_test/G.fst data/lang/words.txt word_embedding.mat \\\n"
+        "              final.raw ark:in.lats ark:out.lats\n";
 
     ParseOptions po(usage);
+    rnnlm::RnnlmComputeStateComputationOptions opts;
+    ComposeLatticePrunedOptions compose_opts;
+
     int32 max_ngram_order = 3;
-    BaseFloat lm_scale = 1.0;
+    BaseFloat lm_scale = 0.5;
     BaseFloat acoustic_scale = 0.1;
 
     po.Register("lm-scale", &lm_scale, "Scaling factor for <lm-to-add>; its negative "
@@ -60,62 +68,61 @@ int main(int argc, char *argv[]) {
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic "
                 "probabilities (e.g. 0.1 for non-chain systems); important because "
                 "of its effect on pruning.");
-    po.Register("max-ngram-order", &max_ngram_order,
-        "If positive, allow RNNLM histories longer than this to be identified "
-        "with each other for rescoring purposes (an approximation that "
-        "saves time and reduces output lattice size).");
+    po.Register("max-ngram-order", &max_ngram_order, "If positive, limit the "
+                "rnnlm context to the given number, -1 means we are not going "
+                "to limit it.");
 
-    KaldiTfRnnlmWrapperOpts opts;
-    ComposeLatticePrunedOptions compose_opts;
     opts.Register(&po);
     compose_opts.Register(&po);
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 7 && po.NumArgs() != 6) {
+    if (po.NumArgs() != 5) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string lm_to_subtract_rxfilename, lats_rspecifier, rnn_word_list,
-      word_symbols_rxfilename, rnnlm_rxfilename, lats_wspecifier, unk_prob_file;
-    if (po.NumArgs() == 6) {
-      lm_to_subtract_rxfilename = po.GetArg(1),
-      word_symbols_rxfilename = po.GetArg(2);
-      rnn_word_list = po.GetArg(3);
-      rnnlm_rxfilename = po.GetArg(4);
-      lats_rspecifier = po.GetArg(5);
-      lats_wspecifier = po.GetArg(6);
-    } else {
-      lm_to_subtract_rxfilename = po.GetArg(1),
-      word_symbols_rxfilename = po.GetArg(2);
-      unk_prob_file = po.GetArg(3);
-      rnn_word_list = po.GetArg(4);
-      rnnlm_rxfilename = po.GetArg(5);
-      lats_rspecifier = po.GetArg(6);
-      lats_wspecifier = po.GetArg(7);
+    if (opts.bos_index == -1 || opts.eos_index == -1) {
+      KALDI_ERR << "must set --bos-symbol and --eos-symbol options";
     }
 
-    KALDI_LOG << "Reading old LMs...";
-    VectorFst<StdArc> *lm_to_subtract_fst = fst::ReadAndPrepareLmFst(
-        lm_to_subtract_rxfilename);
-    fst::BackoffDeterministicOnDemandFst<StdArc> lm_to_subtract_det_backoff(
-        *lm_to_subtract_fst);
-    fst::ScaleDeterministicOnDemandFst lm_to_subtract_det_scale(
-        -lm_scale, &lm_to_subtract_det_backoff);
+    std::string lm_to_subtract_rxfilename, lats_rspecifier,
+                word_embedding_rxfilename, rnnlm_rxfilename, lats_wspecifier;
 
-    // Reads the TF language model.
-    KaldiTfRnnlmWrapper rnnlm(opts, rnn_word_list, word_symbols_rxfilename,
-                                unk_prob_file, rnnlm_rxfilename);
+    lm_to_subtract_rxfilename = po.GetArg(1),
+    word_embedding_rxfilename = po.GetArg(2);
+    rnnlm_rxfilename = po.GetArg(3);
+    lats_rspecifier = po.GetArg(4);
+    lats_wspecifier = po.GetArg(5);
+
+    ConstArpaLm const_arpa;
+    ReadKaldiObject(lm_to_subtract_rxfilename, &const_arpa);
+
+    KALDI_LOG << "Reading old const arpa LMs...";
+    fst::DeterministicOnDemandFst<StdArc> *lm_to_subtract_fst
+      = new ConstArpaLmDeterministicFst(const_arpa);
+
+    fst::ScaleDeterministicOnDemandFst
+              lm_to_subtract_det_scale(-lm_scale, lm_to_subtract_fst);
+
+    kaldi::nnet3::Nnet rnnlm;
+    ReadKaldiObject(rnnlm_rxfilename, &rnnlm);
+
+    KALDI_ASSERT(IsSimpleNnet(rnnlm));
+
+    CuMatrix<BaseFloat> word_embedding_mat;
+    ReadKaldiObject(word_embedding_rxfilename, &word_embedding_mat);
+
+    const rnnlm::RnnlmComputeStateInfo info(opts, rnnlm, word_embedding_mat);
 
     // Reads and writes as compact lattice.
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
     CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
 
-    int32 n_done = 0, n_fail = 0;
+    int32 num_done = 0, num_err = 0;
 
-    TfRnnlmDeterministicFst* lm_to_add_orig = 
-      new TfRnnlmDeterministicFst(max_ngram_order, &rnnlm);
+    rnnlm::KaldiRnnlmDeterministicFst* lm_to_add_orig = 
+         new rnnlm::KaldiRnnlmDeterministicFst(max_ngram_order, info);
 
     for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
       fst::DeterministicOnDemandFst<StdArc> *lm_to_add =
@@ -142,11 +149,12 @@ int main(int argc, char *argv[]) {
       CompactLattice composed_clat;
       ComposeCompactLatticePruned(compose_opts, clat,
                                   &combined_lms, &composed_clat);
+
       lm_to_add_orig->Clear();
 
       if (composed_clat.NumStates() == 0) {
         // Something went wrong.  A warning will already have been printed.
-        n_fail++;
+        num_err++;
       } else {
         if (acoustic_scale != 1.0) {
           if (acoustic_scale == 0.0)
@@ -155,15 +163,17 @@ int main(int argc, char *argv[]) {
                             &composed_clat);
         }
         compact_lattice_writer.Write(key, composed_clat);
-        n_done++;
+        num_done++;
       }
       delete lm_to_add;
     }
+
     delete lm_to_subtract_fst;
     delete lm_to_add_orig;
 
-    KALDI_LOG << "Done " << n_done << " lattices, failed for " << n_fail;
-    return (n_done != 0 ? 0 : 1);
+    KALDI_LOG << "Overall, succeeded for " << num_done
+              << " lattices, failed for " << num_err;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

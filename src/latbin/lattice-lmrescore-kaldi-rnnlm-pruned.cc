@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
     ComposeLatticePrunedOptions compose_opts;
 
     int32 max_ngram_order = 3;
-    BaseFloat lm_scale = 1.0;
+    BaseFloat lm_scale = 0.5;
     BaseFloat acoustic_scale = 0.1;
 
     po.Register("lm-scale", &lm_scale, "Scaling factor for <lm-to-add>; its negative "

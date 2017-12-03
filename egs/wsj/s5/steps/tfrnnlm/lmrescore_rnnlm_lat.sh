@@ -4,15 +4,21 @@
 #           2017  Hainan Xu
 # Apache 2.0
 
-# This script rescores lattices with RNNLM.  See also rnnlmrescore.sh which is
-# an older script using n-best lists.
+# This script rescores lattices with RNNLM trained with TensorFlow.
+# A faster and more accurate version of the algorithm is at
+# steps/tfrnnlm/lmrescore_rnnlm_lat_pruned.sh which is prefered
 
 # Begin configuration section.
 cmd=run.pl
 skip_scoring=false
-max_ngram_order=4
-inv_acwt=12
-weight=1.0  # Interpolation weight for RNNLM.
+max_ngram_order=4 # Approximate the lattice-rescoring by limiting the max-ngram-order
+                  # if it's set, it merges histories in the lattice if they share
+                  # the same ngram history and this prevents the lattice from 
+                  # exploding exponentially. Details of the n-gram approximation
+                  # method are described in section 2.3 of the paper
+                  # http://www.cs.jhu.edu/~hxu/tf.pdf
+inv_acwt=10
+weight=0.5  # Interpolation weight for RNNLM.
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -21,7 +27,7 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# != 5 ]; then
    echo "Does language model rescoring of lattices (remove old LM, add new LM)"
-   echo "with RNNLM."
+   echo "with TensorFlow RNNLM."
    echo ""
    echo "Usage: $0 [options] <old-lang-dir> <rnnlm-dir> \\"
    echo "                   <data-dir> <input-decode-dir> <output-decode-dir>"

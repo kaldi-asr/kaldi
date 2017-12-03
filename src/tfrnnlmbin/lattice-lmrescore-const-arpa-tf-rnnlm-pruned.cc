@@ -21,6 +21,7 @@
 #include "base/kaldi-common.h"
 #include "fstext/fstext-lib.h"
 #include "tfrnnlm/tensorflow-rnnlm.h"
+#include "lm/const-arpa-lm.h"
 #include "util/common-utils.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
@@ -43,12 +44,12 @@ int main(int argc, char *argv[]) {
         "An example script for training and rescoring with the TensorFlow\n"
         "RNNLM is at egs/ami/s5/local/tfrnnlm/run_lstm_fast.sh\n"
         "\n"
-        "Usage: lattice-lmrescore-tf-rnnlm-pruned [options] [unk-file] \\\n"
-        "             <old-lm> <fst-wordlist> <rnnlm-wordlist> \\\n"
-        "             <rnnlm-rxfilename> <lattice-rspecifier> <lattice-wspecifier>\n"
-        " e.g.: lattice-lmrescore-tf-rnnlm-pruned --lm-scale=0.5 unkcounts.txt \\\n"
-        "              data/test/G.fst data/lang/words.txt rnnwords.txt \\\n"
-        "              rnnlm ark:in.lats ark:out.lats\n";
+        "Usage: lattice-lmrescore-const-arpa-tf-rnnlm [options] [unk-file] <rnnlm-wordlist> \\\n"
+        "             <word-symbol-table-rxfilename> <lattice-rspecifier> \\\n"
+        "             <rnnlm-rxfilename> <lattice-wspecifier>\n"
+        " e.g.: lattice-lmrescore-const-arpa=tf-rnnlm-pruned --lm-scale=0.5 \\\n"
+        "           G.carpa data/lang/words.txt unkcounts.txt rnnwords.txt \\\n"
+        "           tf_rnnlm ark:in.lats ark:out.lats\n";
 
     ParseOptions po(usage);
     int32 max_ngram_order = 3;
@@ -96,13 +97,15 @@ int main(int argc, char *argv[]) {
       lats_wspecifier = po.GetArg(7);
     }
 
+    ConstArpaLm const_arpa;
+    ReadKaldiObject(lm_to_subtract_rxfilename, &const_arpa);
+
     KALDI_LOG << "Reading old LMs...";
-    VectorFst<StdArc> *lm_to_subtract_fst = fst::ReadAndPrepareLmFst(
-        lm_to_subtract_rxfilename);
-    fst::BackoffDeterministicOnDemandFst<StdArc> lm_to_subtract_det_backoff(
-        *lm_to_subtract_fst);
-    fst::ScaleDeterministicOnDemandFst lm_to_subtract_det_scale(
-        -lm_scale, &lm_to_subtract_det_backoff);
+    fst::DeterministicOnDemandFst<StdArc> *lm_to_subtract_fst =
+                         new ConstArpaLmDeterministicFst(const_arpa);
+
+    fst::ScaleDeterministicOnDemandFst
+              lm_to_subtract_det_scale(-lm_scale, lm_to_subtract_fst);
 
     // Reads the TF language model.
     KaldiTfRnnlmWrapper rnnlm(opts, rnn_word_list, word_symbols_rxfilename,

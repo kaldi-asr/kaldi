@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Rescores lattice with rnnlm that is trained with TensorFlow.\n"
         "An example script for training and rescoring with the TensorFlow\n"
-        "RNNLM is at egs/ami/s5/local/tfrnnlm/run_lstm.sh\n"
+        "RNNLM is at egs/ami/s5/local/tfrnnlm/run_lstm_fast.sh\n"
         "\n"
         "Usage: lattice-lmrescore-tf-rnnlm [options] [unk-file] <rnnlm-wordlist> \\\n"
         "             <word-symbol-table-rxfilename> <lattice-rspecifier> \\\n"
