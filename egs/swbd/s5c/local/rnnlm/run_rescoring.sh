@@ -18,16 +18,16 @@ for decode_set in eval2000; do
 
   # Lattice rescoring
   rnnlm/lmrescore_pruned.sh \
-    --cmd "$decode_cmd -l hostname=b*" \
+    --cmd "$decode_cmd" \
     --weight $weight --max-ngram-order $ngram_order \
     data/lang_$LM $rnndir \
     data/${decode_set}_hires ${decode_dir} \
-    ${decode_dir}.kaldirnnlm.lat.${ngram_order}gram.pruned.$weight
+    ${decode_dir}_rnnlm_${ngram_order}gram
 
-  rnnlm/lmrescore.sh \
-    --cmd "$decode_cmd -l hostname=b*" \
-    --weight $weight --max-ngram-order $ngram_order \
-    data/lang_$LM $rnndir \
-    data/${decode_set}_hires ${decode_dir} \
-    ${decode_dir}.kaldirnnlm.lat.${ngram_order}gram.$weight
+#  rnnlm/lmrescore.sh \
+#    --cmd "$decode_cmd" \
+#    --weight $weight --max-ngram-order $ngram_order \
+#    data/lang_$LM $rnndir \
+#    data/${decode_set}_hires ${decode_dir} \
+#    ${decode_dir}_rnnlm_${ngram_order}gram_unpruned
 done
