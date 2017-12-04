@@ -136,7 +136,6 @@ class ScaleDeterministicOnDemandFst:  public DeterministicOnDemandFst<StdArc> {
   ScaleDeterministicOnDemandFst(float scale,
                                 DeterministicOnDemandFst<StdArc> *det_fst):
       scale_(scale), det_fst_(*det_fst) { }
-
   StateId Start() { return det_fst_.Start(); }
 
   Weight Final(StateId s) {

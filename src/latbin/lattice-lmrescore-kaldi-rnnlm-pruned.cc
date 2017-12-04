@@ -98,26 +98,31 @@ int main(int argc, char *argv[]) {
     lats_rspecifier = po.GetArg(4);
     lats_wspecifier = po.GetArg(5);
 
-    fst::ScaleDeterministicOnDemandFst *lm_to_subtract_det_scale;
-    KALDI_LOG << "Reading old LMs...";
+    // for G.fst
+    fst::ScaleDeterministicOnDemandFst *lm_to_subtract_det_scale = NULL;
+    fst::BackoffDeterministicOnDemandFst<StdArc> *lm_to_subtract_det_backoff = NULL;
     VectorFst<StdArc> *lm_to_subtract_fst = NULL;
-    if (use_carpa) {
-      ConstArpaLm const_arpa;
-      ReadKaldiObject(lm_to_subtract_rxfilename, &const_arpa);
-      fst::DeterministicOnDemandFst<StdArc> *carpa_lm_to_subtract_fst
-        = new ConstArpaLmDeterministicFst(const_arpa);
 
+    // for G.carpa
+    ConstArpaLm* const_arpa = NULL;
+    fst::DeterministicOnDemandFst<StdArc> *carpa_lm_to_subtract_fst = NULL;
+
+    KALDI_LOG << "Reading old LMs...";
+    if (use_carpa) {
+      const_arpa = new ConstArpaLm();
+      ReadKaldiObject(lm_to_subtract_rxfilename, const_arpa);
+      carpa_lm_to_subtract_fst = new ConstArpaLmDeterministicFst(*const_arpa);
       lm_to_subtract_det_scale
         = new fst::ScaleDeterministicOnDemandFst(-lm_scale,
                                                  carpa_lm_to_subtract_fst);
     } else {
       lm_to_subtract_fst = fst::ReadAndPrepareLmFst(
           lm_to_subtract_rxfilename);
-      fst::BackoffDeterministicOnDemandFst<StdArc>
-                lm_to_subtract_det_backoff(*lm_to_subtract_fst);
+      lm_to_subtract_det_backoff =
+        new fst::BackoffDeterministicOnDemandFst<StdArc>(*lm_to_subtract_fst);
       lm_to_subtract_det_scale =
-      new fst::ScaleDeterministicOnDemandFst(-lm_scale,
-                                             &lm_to_subtract_det_backoff);
+           new fst::ScaleDeterministicOnDemandFst(-lm_scale,
+                                                  lm_to_subtract_det_backoff);
     }
 
     kaldi::nnet3::Nnet rnnlm;
@@ -185,7 +190,11 @@ int main(int argc, char *argv[]) {
 
     delete lm_to_subtract_fst;
     delete lm_to_add_orig;
+    delete lm_to_subtract_det_backoff;
     delete lm_to_subtract_det_scale;
+
+    delete const_arpa;
+    delete carpa_lm_to_subtract_fst;
 
     KALDI_LOG << "Overall, succeeded for " << num_done
               << " lattices, failed for " << num_err;

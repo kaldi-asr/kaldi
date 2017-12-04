@@ -49,11 +49,11 @@ indir=$4
 outdir=$5
 
 oldlm=$oldlang/G.fst
-carpa=
+carpa_option=
 if [ ! -f $oldlm ]; then
   echo "$0: file $oldlm not found; looking for $oldlang/G.carpa"
   oldlm=$oldlang/G.carpa
-  carpa=-const-arpa
+  carpa_option="--use-const-arpa=true"
 fi
   
 [ ! -f $oldlm ] && echo "$0: Missing file $oldlm" && exit 1;
@@ -75,9 +75,9 @@ nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
 
 $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
-  lattice-lmrescore$carpa-tf-rnnlm-pruned --lm-scale=$weight \
+  lattice-lmrescore-tf-rnnlm-pruned --lm-scale=$weight \
   --acoustic-scale=$acwt --max-ngram-order=$max_ngram_order \
-  $oldlm $oldlang/words.txt \
+  $carpa_option $oldlm $oldlang/words.txt \
   $rnnlm_dir/unk.probs $rnnlm_dir/wordlist.rnn.final "$rnnlm_dir/rnnlm" \
   "ark:gunzip -c $indir/lat.JOB.gz|" "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 

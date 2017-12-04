@@ -96,8 +96,8 @@ fi
 
 if [ $stage -le 4 ] && $run_rescore; then
   echo "$0: Perform lattice-rescoring on $ac_model_dir"
-  LM=sw1_fsh_fg
-  LM=sw1_tg
+  LM=sw1_fsh_fg # using the 4-gram const arpa file as old lm
+#  LM=sw1_tg # if using the original 3-gram G.fst as old lm
   pruned=
   if $pruned_rescoring; then
     pruned=_pruned
