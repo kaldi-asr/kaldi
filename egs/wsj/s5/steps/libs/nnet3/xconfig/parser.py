@@ -54,7 +54,7 @@ config_to_layer = {
         'pgru-layer' : xlayers.XconfigPgruLayer,
         'opgru-layer' : xlayers.XconfigOpgruLayer,
         'norm-pgru-layer' : xlayers.XconfigNormPgruLayer,
-        'norm-opgru-layer' : XconfigNormOpgruLayer
+        'norm-opgru-layer' : xlayers.XconfigNormOpgruLayer
 }
 
 # Turn a config line and a list of previous layers into
