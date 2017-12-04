@@ -74,7 +74,7 @@ data=$1
 lang=$2
 dir=$3
 
-[ -f path.sh ] && . path.sh
+[ -f path.sh ] && . ./path.sh
 
 # Configuration:
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"

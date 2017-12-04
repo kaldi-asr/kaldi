@@ -33,7 +33,7 @@ tdir=$2
 [ ! -d $tdir/reference ] \
   && echo Expecting directory $tdir/reference to be present && exit 1;
 
-. path.sh 
+. ./path.sh
 
 dir=data/local/eval2000
 mkdir -p $dir
