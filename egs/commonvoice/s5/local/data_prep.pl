@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 #
 # Copyright 2017   Ewald Enzinger
+# Apache 2.0
 #
 # Usage: data_prep.pl /export/data/cv_corpus_v1/cv-valid-train valid_train
 
