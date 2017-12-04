@@ -8,7 +8,7 @@ silence_lex=
 . ./utils/parse_options.sh
 
 if [ $# -le 1 ]; then
-  echo >&2 "Usage: [--opts] <odict> dict1 dict2 dict3 ..."
+  echo >&2 "Usage: ./local/combine_lexicons.sh [--opts] <odict> dict1 dict2 dict3 ..."
   echo >&2 "  --list <path/to/list>"
   echo >&2 "  --silence-lexicon <path/to/silence/lexicon>: If empty, we assume the"
   echo >&2 "                                               BABEL silence lexicon."
