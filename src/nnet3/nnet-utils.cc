@@ -606,6 +606,7 @@ void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes) {
 
 
 // this class implements the internals of the edit directive 'apply-svd' or 'apply-threshhold-svd'.
+
 class SvdApplier {
  public:
   SvdApplier(const std::string component_name_pattern,
@@ -699,6 +700,7 @@ class SvdApplier {
     // make sure the singular values are sorted from greatest to least value.
     SortSvd(&s, &B, &A);
     BaseFloat s_sum_orig = s.Sum();
+
     if (svd_value_threshhold == 0.0) {
       s.Resize(bottleneck_dim, kCopyData);
       A.Resize(bottleneck_dim, input_dim, kCopyData);

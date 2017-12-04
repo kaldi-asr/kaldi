@@ -14,7 +14,7 @@
 # down-weight silence in the stats (default is --silence-weight 0.0).
 #
 # This is for when you use the "online-decoding" setup in an offline task, and
-# you want the best possible results.  
+# you want the best possible results.
 
 
 # Begin configuration section.
@@ -49,6 +49,9 @@ compress=true       # If true, compress the iVectors stored on disk (it's lossy
 silence_weight=0.0
 acwt=0.1  # used if input is a decode dir, to get best path from lattices.
 mdl=final  # change this if decode directory did not have ../final.mdl present.
+num_threads=1 # Number of threads used by ivector-extract.  It is usually not
+              # helpful to set this to > 1.  It is only useful if you have
+              # fewer speakers than the number of jobs you want to run.
 
 # End configuration section.
 
@@ -64,7 +67,8 @@ if [ $# != 4 ] && [ $# != 5 ]; then
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --nj <n|10>                                      # Number of jobs (also see num-processes and num-threads)"
+  echo "  --nj <n|10>                                      # Number of jobs (also see num-threads)"
+  echo "  --num-threads <n|1>                              # Number of threads for each job"
   echo "                                                   # Ignored if <alignment-dir> or <decode-dir> supplied."
   echo "  --stage <stage|0>                                # To control partial reruns"
   echo "  --num-gselect <n|5>                              # Number of Gaussians to select using"
@@ -73,7 +77,7 @@ if [ $# != 4 ] && [ $# != 5 ]; then
   echo "  --ivector-period <int;default=10>                # How often to extract an iVector (frames)"
   echo "  --posterior-scale <float;default=0.1>            # Scale on posteriors in iVector extraction; "
   echo "                                                   # affects strength of prior term."
-  
+
   exit 1;
 fi
 
@@ -95,12 +99,12 @@ for f in $data/feats.scp $srcdir/final.ie $srcdir/final.dubm $srcdir/global_cmvn
   [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
 done
 
-mkdir -p $dir/log 
+mkdir -p $dir/log
 silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
 
 if [ ! -z "$ali_or_decode_dir" ]; then
 
-  
+
   if [ -f $ali_or_decode_dir/ali.1.gz ]; then
     if [ ! -f $ali_or_decode_dir/${mdl}.mdl ]; then
       echo "$0: expected $ali_or_decode_dir/${mdl}.mdl to exist."
@@ -210,7 +214,7 @@ for line_index in range(len(lines)):
       numeric_id += 1
       print '{0} {1}'.format(spk_partial, ' '.join(current_utts))
       current_utts = []
-      current_count = 0 
+      current_count = 0
 "> $dir/spk2utt || exit 1;
     mkdir -p $dir/split$nj
     # create split versions of our spk2utt file.
@@ -227,26 +231,26 @@ fi
 
 if [ $stage -le 2 ]; then
   if [ ! -z "$ali_or_decode_dir" ]; then
-    $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
+    $cmd --num-threads $num_threads JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
       gmm-global-get-post --n=$num_gselect --min-post=$min_post $srcdir/final.dubm "$gmm_feats" ark:- \| \
       weight-post ark:- "ark,s,cs:gunzip -c $dir/weights.gz|" ark:- \| \
-      ivector-extract --acoustic-weight=$posterior_scale --compute-objf-change=true \
+      ivector-extract --num-threads=$num_threads --acoustic-weight=$posterior_scale --compute-objf-change=true \
         --max-count=$max_count --spk2utt=ark:$this_sdata/JOB/spk2utt \
       $srcdir/final.ie "$feats" ark,s,cs:- ark,t:$dir/ivectors_spk.JOB.ark || exit 1;
   else
-    $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
+    $cmd --num-threads $num_threads JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
       gmm-global-get-post --n=$num_gselect --min-post=$min_post $srcdir/final.dubm "$gmm_feats" ark:- \| \
-      ivector-extract --acoustic-weight=$posterior_scale --compute-objf-change=true \
+      ivector-extract --num-threads=$num_threads --acoustic-weight=$posterior_scale --compute-objf-change=true \
         --max-count=$max_count --spk2utt=ark:$this_sdata/JOB/spk2utt \
       $srcdir/final.ie "$feats" ark,s,cs:- ark,t:$dir/ivectors_spk.JOB.ark || exit 1;
   fi
 fi
 
-# get an utterance-level set of iVectors (just duplicate the speaker-level ones).  
+# get an utterance-level set of iVectors (just duplicate the speaker-level ones).
 # note: if $this_sdata is set $dir/split$nj, then these won't be real speakers, they'll
 # be "sub-speakers" (speakers split up into multiple utterances).
 if [ $stage -le 3 ]; then
-  for j in $(seq $nj); do 
+  for j in $(seq $nj); do
     utils/apply_map.pl -f 2 $dir/ivectors_spk.$j.ark <$this_sdata/$j/utt2spk >$dir/ivectors_utt.$j.ark || exit 1;
   done
 fi
