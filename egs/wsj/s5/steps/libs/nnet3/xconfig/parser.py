@@ -52,7 +52,9 @@ config_to_layer = {
         'relu-renorm-attention-layer': xlayers.XconfigAttentionLayer,
         'gru-layer' : xlayers.XconfigGruLayer,
         'pgru-layer' : xlayers.XconfigPgruLayer,
-        'opgru-layer' : xlayers.XconfigOpgruLayer
+        'opgru-layer' : xlayers.XconfigOpgruLayer,
+        'norm-pgru-layer' : xlayers.XconfigNormPgruLayer,
+        'norm-opgru-layer' : XconfigNormOpgruLayer
 }
 
 # Turn a config line and a list of previous layers into

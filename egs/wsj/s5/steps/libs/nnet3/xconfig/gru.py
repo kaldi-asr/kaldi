@@ -443,7 +443,7 @@ class XconfigPgruLayer(XconfigLayerBase):
 #   ng-per-element-scale-options=''   [Additional options used for the diagonal matrices in the GRU ]
 #   ng-affine-options=''              [Additional options used for the full matrices in the GRU, can be used to do things like set biases to initialize to 1]
 
-class XconfigPgruLayer(XconfigLayerBase):
+class XconfigNormPgruLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         assert first_token == "norm-pgru-layer"
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
@@ -922,9 +922,9 @@ class XconfigOpgruLayer(XconfigLayerBase):
 #                                       i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent ]
 #   ng-per-element-scale-options=''   [Additional options used for the diagonal matrices in the GRU ]
 #   ng-affine-options=''              [Additional options used for the full matrices in the GRU, can be used to do things like set biases to initialize to 1]
-class XconfigOpgruLayer(XconfigLayerBase):
+class XconfigNormOpgruLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
-        assert first_token == "opgru-layer"
+        assert first_token == "norm-opgru-layer"
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
