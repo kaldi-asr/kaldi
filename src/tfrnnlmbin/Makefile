@@ -16,16 +16,12 @@ all:
 
 EXTRA_CXXFLAGS = -Wno-sign-compare -I$(TENSORFLOW)/bazel-tensorflow/external/protobuf/src \
                  -I$(TENSORFLOW)/bazel-genfiles -I$(TENSORFLOW) \
-<<<<<<< HEAD
-                 -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/eigen/
-=======
                  -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/eigen \
                  -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/nsync/public \
                  -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/protobuf/src
->>>>>>> 93ceca70029c4fe1d572b9c03756b5fc3ae00886
 include ../kaldi.mk
 
-BINFILES = lattice-lmrescore-tf-rnnlm
+BINFILES = lattice-lmrescore-tf-rnnlm lattice-lmrescore-tf-rnnlm-parallel
 
 OBJFILES =
 
