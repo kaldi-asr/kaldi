@@ -1,4 +1,4 @@
-// tfrnnlmbin/lattice-lmrescore-tf-rnnlm.cc
+// tfrnnlmbin/lattice-lmrescore-tf-rnnlm-pruned.cc
 
 // Copyright (C) 2017 Intellisist, Inc. (Author: Hainan Xu)
 
