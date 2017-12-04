@@ -103,6 +103,14 @@ class KaldiTfRnnlmWrapper {
                        Tensor *context_out,
                        Tensor *cell_out);
 
+  void GetLogProbParallel(std::vector<int32> word_vector,
+                          std::vector<int32> fst_word_vector,
+                          const Tensor &state_to_context_tensor,
+                          const Tensor &state_to_cell_tensor,
+                          Tensor *new_context_vector,
+                          Tensor *new_cell_vector,
+                          std::vector<BaseFloat> *logprob_vector);
+
   /// takes in a word-id for FST and return the word-id for RNNLM
   /// return the word-id for <oos> if not found
   int FstLabelToRnnLabel(int i) const;
@@ -158,8 +166,25 @@ class TfRnnlmDeterministicFst:
   // not const.
   virtual Weight Final(StateId s);
 
+  virtual void FinalParallel(std::vector<StateId> s2_vector_final,
+                             std::vector<Weight>* def_fst_final_vector);
+
   virtual bool GetArc(StateId s, Label ilabel, fst::StdArc* oarc);
 
+  virtual void GetArcsParallel(std::vector<StateId> s1_vector,
+                               std::vector<Label> olabel_vector,
+                               std::vector<fst::StdArc>* arc2_vector);
+
+  virtual void StackTensor(const std::vector<tensorflow::Input> &input_tensor_vector,
+                           const tensorflow::Scope &scope,
+                           const tensorflow::ClientSession &session,
+                           Tensor *output_tensor);
+
+  virtual void UnstackTensor(int size,
+                             const Tensor &input_tensor,
+                             const tensorflow::Scope &scope,
+                             const tensorflow::ClientSession &session,
+                             std::vector<Tensor> *output_tensor_vector);
  private:
   typedef unordered_map<std::vector<Label>,
                         StateId, VectorHasher<Label> > MapType;
