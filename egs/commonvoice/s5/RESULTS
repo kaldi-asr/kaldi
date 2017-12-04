@@ -13,8 +13,7 @@
 %WER 18.56 [ 7121 / 38374, 512 ins, 2208 del, 4401 sub ] exp/tri4b/decode_valid_dev.si/wer_15_0.0
 
 # chain tdnn system
-%WER 5.28 [ 2025 / 38374, 115 ins, 700 del, 1210 sub ] exp/chain/tdnn1e_sp/decode_valid_dev/wer_12_0.0
-%WER 4.66 [ 1763 / 37837, 92 ins, 662 del, 1009 sub ] exp/chain/tdnn1e_sp/decode_valid_test/wer_13_0.0
-%WER 5.20 [ 1995 / 38374, 115 ins, 739 del, 1141 sub ] exp/chain/tdnn1e_sp_online/decode_valid_dev/wer_13_0.0
-%WER 4.57 [ 1730 / 37837, 95 ins, 659 del, 976 sub ] exp/chain/tdnn1e_sp_online/decode_valid_test/wer_13_0.0
-
+%WER 4.82 [ 1850 / 38374, 130 ins, 685 del, 1035 sub ] exp/chain/tdnn1a_sp/decode_valid_dev/wer_13_0.0
+%WER 4.44 [ 1679 / 37837, 92 ins, 646 del, 941 sub ] exp/chain/tdnn1a_sp/decode_valid_test/wer_13_0.0
+%WER 4.88 [ 1873 / 38374, 138 ins, 678 del, 1057 sub ] exp/chain/tdnn1a_sp_online/decode_valid_dev/wer_13_0.0
+%WER 4.27 [ 1617 / 37837, 84 ins, 622 del, 911 sub ] exp/chain/tdnn1a_sp_online/decode_valid_test/wer_13_0.0

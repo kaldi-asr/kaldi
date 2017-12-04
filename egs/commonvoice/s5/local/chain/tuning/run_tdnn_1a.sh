@@ -4,12 +4,12 @@
 
 # local/chain/compare_wer.sh exp/chain/tdnn1a_sp exp/chain/tdnn1a_sp_online
 # System                tdnn1a_sp tdnn1a_sp_online
-#WER valid_dev       5.28      5.20
-#WER valid_test       4.66      4.57
-# Final train prob        -0.0620
-# Final valid prob        -0.0738
-# Final train prob (xent)   -1.1771
-# Final valid prob (xent)   -1.1940
+#WER valid_dev       4.82      4.88
+#WER valid_test       4.44      4.27
+# Final train prob        -0.0579
+# Final valid prob        -0.0718
+# Final train prob (xent)   -1.1069
+# Final valid prob (xent)   -1.1325
 
 set -euo pipefail
 
@@ -154,17 +154,17 @@ if [ $stage -le 13 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 dim=512
-  relu-batchnorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn3 dim=512
-  relu-batchnorm-layer name=tdnn4 dim=512 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn5 dim=512
-  relu-batchnorm-layer name=tdnn6 dim=512 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn7 dim=512 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn8 dim=512 input=Append(-6,-3,0)
+  relu-batchnorm-layer name=tdnn1 dim=768
+  relu-batchnorm-layer name=tdnn2 dim=768 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn3 dim=768
+  relu-batchnorm-layer name=tdnn4 dim=768 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn5 dim=768
+  relu-batchnorm-layer name=tdnn6 dim=768 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn7 dim=768 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn8 dim=768 input=Append(-6,-3,0)
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain dim=512 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-chain dim=768 target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
@@ -176,7 +176,7 @@ if [ $stage -le 13 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn8 dim=512 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn8 dim=768 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -203,7 +203,7 @@ if [ $stage -le 14 ]; then
     --trainer.num-epochs=4 \
     --trainer.frames-per-iter=1500000 \
     --trainer.optimization.num-jobs-initial=3 \
-    --trainer.optimization.num-jobs-final=3 \
+    --trainer.optimization.num-jobs-final=12 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
