@@ -215,6 +215,7 @@ struct Supervision {
   // label_dim).  This should equal the NumPdfs() in the TransitionModel object.
   // Included to avoid training on mismatched egs.
   int32 label_dim;
+  bool e2e;  // end to end
 
   // This is an epsilon-free unweighted acceptor that is sorted in increasing
   // order of frame index (this implies it's topologically sorted but it's a
@@ -223,9 +224,10 @@ struct Supervision {
   // 'frames_per_sequence * num_sequences' arcs on it (first 'frames_per_sequence' arcs for the
   // first sequence; then 'frames_per_sequence' arcs for the second sequence, and so on).
   fst::StdVectorFst fst;
+  std::vector<fst::StdVectorFst> e2e_fsts;
 
   Supervision(): weight(1.0), num_sequences(1), frames_per_sequence(-1),
-                 label_dim(-1) { }
+                 label_dim(-1), e2e(false) { }
 
   Supervision(const Supervision &other);
 
@@ -256,6 +258,11 @@ bool ProtoSupervisionToSupervision(
     const ProtoSupervision &proto_supervision,
     Supervision *supervision);
 
+bool TrainingGraphToSupervision(
+    const fst::StdVectorFst& training_graph,
+    const TransitionModel& trans_model,
+    int32 num_frames,
+    Supervision *supervision);
 
 /**
    This function sorts the states of the fst argument in an ordering
