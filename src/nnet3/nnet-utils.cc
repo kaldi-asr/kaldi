@@ -610,17 +610,11 @@ class SvdApplier {
  public:
   SvdApplier(const std::string component_name_pattern,
              int32 bottleneck_dim,
+             BaseFloat svd_value_threshhold,
              Nnet *nnet): nnet_(nnet),
                           bottleneck_dim_(bottleneck_dim),
-                          svd_value_threshhold_(0.0),
+                          svd_value_threshhold_(svd_value_threshhold),
                           component_name_pattern_(component_name_pattern) { }
-
- SvdApplier(const std::string component_name_pattern,
-                      BaseFloat svd_value_threshhold,
-                      Nnet *nnet): nnet_(nnet),
-                                   bottleneck_dim_(0),
-                                   svd_value_threshhold_(svd_value_threshhold),
-                                   component_name_pattern_(component_name_pattern) { }
   void ApplySvd() {
     DecomposeComponents();
     if (!modified_component_info_.empty())
@@ -649,7 +643,7 @@ class SvdApplier {
         }
         int32 input_dim = affine->InputDim(),
             output_dim = affine->OutputDim();
-        if ((input_dim <= bottleneck_dim_ || output_dim <= bottleneck_dim_) && (svd_value_threshhold_ == 0.0)  {
+        if ((input_dim <= bottleneck_dim_ || output_dim <= bottleneck_dim_) && (svd_value_threshhold_ == 0.0))  {
           KALDI_WARN << "Not decomposing component " << component_name
                      << " with SVD to rank " << bottleneck_dim_
                      << " because its dimension is " << input_dim
@@ -717,13 +711,13 @@ class SvdApplier {
     } else if (svd_value_threshhold > 0.0) {
       MatrixIndexT num_singval = s.Dim();
       BaseFloat svd_value_tmpt = 0.0;
-      int32 svd_dimension = 0;
+      int32 svd_dimension = num_singval;
       for (MatrixIndexT d = 0; d < num_singval; d++) {
-        svd_value_tmpt += s(d);
+        svd_value_tmpt += s(num_singval - 1 - d);
         if ((svd_value_tmpt / s_sum_orig) > svd_value_threshhold) {
           break;
         } else {
-          svd_dimension += 1;
+          svd_dimension -= 1;
         }
       }
       KALDI_ASSERT(svd_dimension > 0);
@@ -1130,7 +1124,7 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
             "'bottleneck-dim' to be specified.";
       if (bottleneck_dim <= 0)
         KALDI_ERR << "Bottleneck-dim must be positive in apply-svd command.";
-      SvdApplier applier(name_pattern, bottleneck_dim, nnet);
+      SvdApplier applier(name_pattern, bottleneck_dim, 0.0, nnet);
       applier.ApplySvd();
     } else if (directive == "apply-threshhold-svd") {
       std::string name_pattern;
@@ -1141,7 +1135,7 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
                      "'svd_value_threshhold' to be specified.";
         if (svd_value_threshhold < 0.0)
           KALDI_ERR << "svd_value_threshhold should be positive"; 
-        SvdApplier applier(name_pattern, svd_value_threshhold, nnet);
+        SvdApplier applier(name_pattern, 0, svd_value_threshhold, nnet);
         applier.ApplySvd();
     } else if (directive == "reduce-rank") {
       std::string name_pattern;
