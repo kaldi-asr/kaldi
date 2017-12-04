@@ -1,7 +1,12 @@
 #!/bin/bash
 
 # Copyright 2017  Johns Hopkins University (author: Daniel Povey)
+#           2017  Hang Lyu
 # Apache 2.0
+
+# nkf(Network Kanji Filter) is a kanji code converter. It converts input kanji
+# code to designated kanji code such as ISO-2022-JP, UTF-8, and so on.
+# In kaldi, it will be used in egs/csj. (Corpus of Spontaneous Japanese data)
 
 set -u
 set -e
