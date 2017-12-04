@@ -21,7 +21,7 @@ use lib "$Bin";
 use Data::Dumper;
 use Getopt::Long;
 
-my $vsver="vs2013";
+my $vsver="vs2017";
 
 my %ENABLED = (CUDA => 0,
                OPENBLAS => 0,
@@ -33,17 +33,20 @@ GetOptions ("vsver=s" => \$vsver,
 			"enable-mkl" => sub {$ENABLED{OPENBLAS}=0; $ENABLED{MKL}=1;},
 			);
 
-my %TOOLS=( default=>  "4.0",
-            vs2013 => "12.0",
-            vs2015 => "14.0");
+my %TOOLS=( default=> "14.1",
+            vs2015 => "14.0",
+            vs2017 => "14.1"
+            );
 
-my %FORMAT=( default=> "11.00",
-             vs2013 =>  "12.00",
-             vs2015 =>  "14.00");
+my %FORMAT=( default=> "14.10",
+             vs2015 =>  "14.00",
+             vs2017 =>  "14.10"
+             );
 
-my %TOOLSET=( default=> "v100",
-              vs2013 => "v120",
-              vs2015 => "v140");
+my %TOOLSET=( default=> "v141",
+              vs2015 => "v140",
+              vs2017 => "v141"
+              );
 
 
 unless ((defined $TOOLS{$vsver}) && (defined $FORMAT{$vsver}) && (defined $TOOLSET{$vsver})) {

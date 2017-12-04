@@ -39,13 +39,13 @@ def create_phone_lm(dir, tree_dir, run_opts, lm_opts=None):
 
     common_lib.execute_command(
         """{command} {dir}/log/make_phone_lm.log \
-    gunzip -c {alignments} \| \
-    ali-to-phones {tree_dir}/final.mdl ark:- ark:- \| \
-    chain-est-phone-lm {lm_opts} ark:- {dir}/phone_lm.fst""".format(
-        command=run_opts.command, dir=dir,
-        alignments=alignments,
-        lm_opts=lm_opts if lm_opts is not None else '',
-        tree_dir=tree_dir))
+            gunzip -c {alignments} \| \
+            ali-to-phones {tree_dir}/final.mdl ark:- ark:- \| \
+            chain-est-phone-lm {lm_opts} ark:- {dir}/phone_lm.fst""".format(
+                command=run_opts.command, dir=dir,
+                alignments=alignments,
+                lm_opts=lm_opts if lm_opts is not None else '',
+                tree_dir=tree_dir))
 
 
 def create_denominator_fst(dir, tree_dir, run_opts):
@@ -94,7 +94,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                 --frames-per-eg {frames_per_eg_str} \
                 --srand {srand} \
                 {data} {dir} {lat_dir} {egs_dir}""".format(
-                    command=run_opts.command,
+                    command=run_opts.egs_command,
                     cmvn_opts=cmvn_opts if cmvn_opts is not None else '',
                     transform_dir=(transform_dir
                                    if transform_dir is not None
@@ -184,6 +184,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                     --max-param-change={max_param_change} \
                     --backstitch-training-scale={backstitch_training_scale} \
                     --backstitch-training-interval={backstitch_training_interval} \
+                    --l2-regularize-factor={l2_regularize_factor} \
                     --srand={srand} \
                     "{raw_model}" {dir}/den.fst \
                     "ark,bg:nnet3-chain-copy-egs \
@@ -207,6 +208,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         momentum=momentum, max_param_change=max_param_change,
                         backstitch_training_scale=backstitch_training_scale,
                         backstitch_training_interval=backstitch_training_interval,
+                        l2_regularize_factor=1.0/num_jobs,
                         raw_model=raw_model_string,
                         egs_dir=egs_dir, archive_index=archive_index,
                         buf_size=shuffle_buffer_size,
@@ -240,8 +242,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
 
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
-    logger.info("Training neural net (pass {0})".format(iter))
-
     # check if different iterations use the same random seed
     if os.path.exists('{0}/srand'.format(dir)):
         try:
@@ -290,16 +290,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         cur_max_param_change = float(max_param_change) / math.sqrt(2)
 
     raw_model_string = raw_model_string + dropout_edit_string
-
-    shrink_info_str = ''
-    if shrinkage_value != 1.0:
-        shrink_info_str = ' and shrink value is {0}'.format(shrinkage_value)
-
-    logger.info("On iteration {0}, learning rate is {1}"
-                "{shrink_info}.".format(
-                    iter, learning_rate,
-                    shrink_info=shrink_info_str))
-
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,
                      num_archives_processed=num_archives_processed,
                      num_archives=num_archives,
@@ -426,13 +416,17 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     common_lib.force_symlink("../lda.mat", "{0}/configs/lda.mat".format(dir))
 
 
-def prepare_initial_acoustic_model(dir, run_opts, srand=-1):
-    """ Adds the first layer; this will also add in the lda.mat and
-        presoftmax_prior_scale.vec. It will also prepare the acoustic model
-        with the transition model."""
-
-    common_train_lib.prepare_initial_network(dir, run_opts,
-                                             srand=srand)
+def prepare_initial_acoustic_model(dir, run_opts, srand=-1, input_model=None):
+    """ This function adds the first layer; It will also prepare the acoustic
+        model with the transition model.
+        If 'input_model' is specified, no initial network preparation(adding
+        the first layer) is done and this model is used as initial 'raw' model
+        instead of '0.raw' model to prepare '0.mdl' as acoustic model by adding the
+        transition model.
+    """
+    if input_model is None:
+        common_train_lib.prepare_initial_network(dir, run_opts,
+                                                 srand=srand)
 
     # The model-format for a 'chain' acoustic model is just the transition
     # model and then the raw nnet, so we can use 'cat' to create this, as
@@ -442,8 +436,10 @@ def prepare_initial_acoustic_model(dir, run_opts, srand=-1):
     # before concatenating them.
     common_lib.execute_command(
         """{command} {dir}/log/init_mdl.log \
-                nnet3-am-init {dir}/0.trans_mdl {dir}/0.raw \
-                {dir}/0.mdl""".format(command=run_opts.command, dir=dir))
+                nnet3-am-init {dir}/0.trans_mdl {raw_mdl} \
+                {dir}/0.mdl""".format(command=run_opts.command, dir=dir,
+                                      raw_mdl=(input_model if input_model is not None
+                                      else '{0}/0.raw'.format(dir))))
 
 
 def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,

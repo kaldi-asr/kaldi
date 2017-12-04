@@ -35,8 +35,6 @@ for f in $data/text $lang/words.txt $dir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
 
-name=`basename $data`; # e.g. eval2000
-
 mkdir -p $dir/scoring/log
 
 

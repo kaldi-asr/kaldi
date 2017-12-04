@@ -178,7 +178,7 @@ class WaveHolder {
 
   void Clear() { t_.Clear(); }
 
-  const T &Value() { return t_; }
+  T &Value() { return t_; }
 
   WaveHolder &operator = (const WaveHolder &other) {
     t_.CopyFrom(other.t_);
@@ -220,7 +220,7 @@ class WaveInfoHolder {
 
   void Clear() { info_ = WaveInfo(); }
   void Swap(WaveInfoHolder *other) { std::swap(info_, other->info_); }
-  const T &Value() { return info_; }
+  T &Value() { return info_; }
   static bool IsReadInBinary() { return true; }
 
   bool Read(std::istream &is) {

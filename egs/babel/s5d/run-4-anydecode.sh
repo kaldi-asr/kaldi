@@ -232,13 +232,17 @@ if [ ! -f  $dataset_dir/.done ] ; then
     elif [ "$dataset_segments" == "train" ] ||\
          [ "$dataset_segments" == "pem" ]; then
       . ./local/datasets/supervised_pem.sh || exit 1
+    elif [[ $dataset_segments =~ seg* ]]; then
+      echo "Using ${dataset_dir} directly"
     else
       echo "Unknown type of the dataset: \"$dataset_segments\"!";
       echo "Valid dataset types are: seg, uem, pem";
       exit 1
     fi
   elif [ "$dataset_kind" == "unsupervised" ] ; then
-    if [ "$dataset_segments" == "seg" ] ; then
+    if [ "$dataset_segments" == "seg" ]; then
+      . ./local/datasets/unsupervised_seg.sh
+    elif [[ $dataset_segments =~ *seg* ]]; then
       . ./local/datasets/unsupervised_seg.sh
     elif [ "$dataset_segments" == "uem" ] ; then
       . ./local/datasets/unsupervised_uem.sh
@@ -251,6 +255,8 @@ if [ ! -f  $dataset_dir/.done ] ; then
       echo "does not really make any sense!"
       exit 1
       #. ./local/datasets/unsupervised_pem.sh
+    elif [[ $dataset_segments =~ seg* ]]; then
+      echo "Using ${dataset_dir} directly"
     else
       echo "Unknown type of the dataset: \"$dataset_segments\"!";
       echo "Valid dataset types are: seg, uem, pem";
@@ -275,17 +281,23 @@ fi
 if  [ ! -f ${dataset_dir}_hires/.mfcc.done ]; then
   dataset=$(basename $dataset_dir)
   echo ---------------------------------------------------------------------
-  echo "Preparing ${dataset_kind} MFCC features in  ${dataset_dir}_hires and corresponding iVectors in exp/nnet3/ivectors_$dataset on" `date`
+  echo "Preparing ${dataset_kind} MFCC features in  ${dataset_dir}_hires on "`date`
   echo ---------------------------------------------------------------------
   if [ ! -d ${dataset_dir}_hires ]; then
     utils/copy_data_dir.sh data/$dataset data/${dataset}_hires
   fi
 
   mfccdir=mfcc_hires
-  steps/make_mfcc.sh --nj $my_nj --mfcc-config conf/mfcc_hires.conf \
-      --cmd "$train_cmd" ${dataset_dir}_hires exp/make_hires/$dataset $mfccdir;
-  steps/compute_cmvn_stats.sh data/${dataset}_hires exp/make_hires/${dataset} $mfccdir;
+  steps/make_mfcc_pitch_online.sh --nj $my_nj --mfcc-config conf/mfcc_hires.conf \
+      --cmd "$train_cmd" ${dataset_dir}_hires exp/make_mfcc_hires/$dataset $mfccdir;
+  steps/compute_cmvn_stats.sh data/${dataset}_hires exp/make_mfcc_hires/${dataset} $mfccdir;
   utils/fix_data_dir.sh ${dataset_dir}_hires;
+
+  utils/data/limit_feature_dim.sh 0:39 \
+    data/${dataset}_hires data/${dataset}_hires_nopitch || exit 1;
+  steps/compute_cmvn_stats.sh \
+    data/${dataset}_hires_nopitch exp/make_hires/${dataset}_nopitch $mfccdir || exit 1;
+  utils/fix_data_dir.sh data/${dataset}_hires_nopitch
   touch ${dataset_dir}_hires/.mfcc.done
 
   touch ${dataset_dir}_hires/.done
@@ -536,7 +548,7 @@ if [ -f exp/$chain_model/final.mdl ]; then
 
   if [ ! -f exp/nnet3$parent_dir_suffix/ivectors_${dataset_id}/.done ] ; then
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$decode_cmd" --nj $my_nj \
-      ${dataset_dir}_hires exp/nnet3$parent_dir_suffix/extractor exp/nnet3$parent_dir_suffix/ivectors_${dataset_id}/ || exit 1;
+      ${dataset_dir}_hires_nopitch exp/nnet3$parent_dir_suffix/extractor exp/nnet3$parent_dir_suffix/ivectors_${dataset_id}/ || exit 1;
     touch exp/nnet3$parent_dir_suffix/ivectors_${dataset_id}/.done
   fi
 

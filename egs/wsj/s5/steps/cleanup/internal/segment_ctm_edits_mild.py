@@ -1769,9 +1769,12 @@ def time_to_string(time, frame_length):
 def write_segments_for_utterance(text_output_handle, segments_output_handle,
                                  old_utterance_name, segments, oov_symbol,
                                  eps_symbol="<eps>", frame_length=0.01):
+    num_digits = len(str(len(segments)))
     for n, segment in enumerate(segments):
         # split utterances will be named foo-bar-1 foo-bar-2, etc.
-        new_utterance_name = old_utterance_name + "-" + str(n + 1)
+        new_utterance_name = "{old}-{index:0{width}}".format(
+                                 old=old_utterance_name, index=n+1,
+                                 width=num_digits)
         # print a line to the text output of the form like
         # <new-utterance-id> <text>
         # like:

@@ -617,6 +617,16 @@ void ComputationGraphBuilder::Prune() {
   computable_info_.resize(new_num_cindex_ids, (char)kComputable);
   usable_count_.resize(start_cindex_id);
   usable_count_.resize(new_num_cindex_ids, 1);
+  // depend_on_this_ is a vector of vectors-- keeping track of the reverse of
+  // the dependencies-- and I believe we won't be needing this information any
+  // more past this point.
+  depend_on_this_.resize(start_cindex_id);
+  depend_on_this_.resize(new_num_cindex_ids);
+  // computable_queued_ also shouldn't be queried past this point, but
+  // I believe they should all be false at this point anyway (note that
+  // we assert below that computable_queue_ is empty).
+  computable_queued_.resize(new_num_cindex_ids);
+
   KALDI_ASSERT(computable_queue_.empty());
   graph_->segment_ends.push_back(new_num_cindex_ids);
 }

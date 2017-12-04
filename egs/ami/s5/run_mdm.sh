@@ -41,7 +41,7 @@ fi
 
 # Beamform-it!
 if [ $stage -le 1 ]; then
-  ! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; make beamformit;'" && exit 1
+  ! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; extras/install_beamformit.sh'" && exit 1
   local/ami_beamform.sh --cmd "$train_cmd" --nj 20 $nmics $AMI_DIR $MDM_DIR
 fi
 

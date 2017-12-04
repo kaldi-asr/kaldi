@@ -11,7 +11,7 @@ temp_dir=
 
 
 
-. cmd.sh
+. ./cmd.sh
 . utils/parse_options.sh  # to parse the --stage option, if given
 
 if [ $# != 0 ]; then

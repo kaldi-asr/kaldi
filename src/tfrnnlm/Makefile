@@ -18,7 +18,9 @@ all:
 
 EXTRA_CXXFLAGS = -Wno-sign-compare -I$(TENSORFLOW)/bazel-tensorflow/external/protobuf/src \
                  -I$(TENSORFLOW)/bazel-genfiles -I$(TENSORFLOW) \
-                 -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/eigen/
+                 -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/eigen \
+                 -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/nsync/public \
+                 -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/protobuf/src
 
 OBJFILES = tensorflow-rnnlm.o
 
@@ -26,11 +28,10 @@ TESTFILES =
 
 LIBNAME = kaldi-tensorflow-rnnlm
 
-ADDLIBS = ../lm/kaldi-lm.a ../util/kaldi-util.a ../thread/kaldi-thread.a \
+ADDLIBS = ../lm/kaldi-lm.a ../util/kaldi-util.a \
           ../matrix/kaldi-matrix.a ../base/kaldi-base.a \
-          $(shell pwd)/../../tools/tensorflow/bazel-bin/tensorflow/tensorflow_cc.so
 
 LDLIBS +=  -lz -ldl -fPIC -lrt
-LDLIBS += -L$(TENSORFLOW)/bazel-bin/tensorflow -ltensorflow_cc
+LDLIBS += -L$(TENSORFLOW)/bazel-bin/tensorflow -ltensorflow_cc -ltensorflow_framework
 
 include ../makefiles/default_rules.mk

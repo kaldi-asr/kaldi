@@ -40,7 +40,7 @@
 
 # This should be incremented after any significant change to the configure
 # script, i.e. any change affecting kaldi.mk or the build system as a whole.
-CONFIGURE_VERSION=6
+CONFIGURE_VERSION=7
 
 if ! [ -x "$PWD/configure" ]; then
   echo 'You must run "configure" from the src/ directory.'
@@ -63,7 +63,8 @@ Configuration options:
   --shared              Build and link against shared libraries [default=no]
   --use-cuda            Build with CUDA [default=yes]
   --cudatk-dir=DIR      CUDA toolkit directory
-  --double-precision    Build with double precision floats [default=no]
+  --double-precision    Build with BaseFloat set to double if yes [default=no],
+                        mostly useful for testing purposes.
   --static-fst          Build with static OpenFst libraries [default=no]
   --fst-root=DIR        OpenFst root directory [default=../tools/openfst/]
   --fst-version=STR     OpenFst version string
@@ -380,13 +381,6 @@ function configure_cuda {
       failure "Cannot cross compile with CUDA support"
     fi
 
-    echo "Using CUDA toolkit $CUDATKDIR (nvcc compiler and runtime libraries)"
-    echo >> kaldi.mk
-    echo "# CUDA configuration" >> kaldi.mk
-    echo >> kaldi.mk
-    echo CUDA = true >> kaldi.mk
-    echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
-
     # Determine 'CUDA_ARCH',
     CUDA_VERSION=$($CUDATKDIR/bin/nvcc -V | tr '.,' '_ ' | awk '/release/{sub(/.*release/,""); print $1;}') # MAJOR_MINOR,
     if [ -z "$CUDA_VERSION" ] ; then
@@ -394,13 +388,56 @@ function configure_cuda {
       exit 1
     fi
 
+    COMPILER_VER_INFO=$($CXX --version 2>/dev/null)
+    if [[ $COMPILER_VER_INFO == *"g++"* ]]; then
+      GCC_VER=$($COMPILER -dumpversion)
+      GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
+      case $CUDA_VERSION in
+        5_5)
+          MIN_UNSUPPORTED_GCC_VER="5.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=50000;
+        ;;
+        6_*)
+          MIN_UNSUPPORTED_GCC_VER="5.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=50000;
+        ;;
+        7_*)
+          MIN_UNSUPPORTED_GCC_VER="5.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=50000;
+        ;;
+        8_*)
+          MIN_UNSUPPORTED_GCC_VER="6.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=60000;
+        ;;
+        9_*)
+          MIN_UNSUPPORTED_GCC_VER="7.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=70000;
+        ;;
+        *)
+          echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1;
+        ;;
+      esac
+      if [ $GCC_VER_NUM -ge $MIN_UNSUPPORTED_GCC_VER_NUM ]; then
+        failure "CUDA $CUDA_VERSION does not support $CXX (g++-$GCC_VER).
+                 You need g++ < $MIN_UNSUPPORTED_GCC_VER."
+      fi
+    fi
+
     case $CUDA_VERSION in
       5_5) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35" ;;
       6_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50" ;;
       7_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53" ;;
       8_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62" ;;
+      9_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_70,code=sm_70" ;;
       *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
     esac
+
+    echo "Using CUDA toolkit $CUDATKDIR (nvcc compiler and runtime libraries)"
+    echo >> kaldi.mk
+    echo "# CUDA configuration" >> kaldi.mk
+    echo >> kaldi.mk
+    echo CUDA = true >> kaldi.mk
+    echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
     echo "CUDA_ARCH = $CUDA_ARCH" >> kaldi.mk
     echo >> kaldi.mk
 
@@ -812,7 +849,7 @@ mkl_threading=sequential
 android=false
 
 MATHLIB='ATLAS'
-ATLASROOT=`rel2abs ../tools/ATLAS/`
+ATLASROOT=`rel2abs ../tools/ATLAS_headers/`
 FSTROOT=`rel2abs ../tools/openfst`
 
 # Save the command line to include in kaldi.mk

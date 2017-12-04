@@ -17,6 +17,7 @@ ifeq ($(KALDI_FLAVOR), dynamic)
   else  # Platform not supported
     $(error Dynamic libraries not supported on this platform. Run configure with --static flag.)
   endif
+  XDEPENDS =
 else
   ifdef LIBNAME
     LIBFILE = $(LIBNAME).a
@@ -30,16 +31,16 @@ $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBNAME).a $(OBJFILES)
 	$(RANLIB) $(LIBNAME).a
 ifeq ($(KALDI_FLAVOR), dynamic)
-ifeq ($(shell uname), Darwin)
+  ifeq ($(shell uname), Darwin)
 	$(CXX) -dynamiclib -o $@ -install_name @rpath/$@ $(LDFLAGS) $(OBJFILES) $(LDLIBS)
-	rm -f $(KALDILIBDIR)/$@; ln -s $(shell pwd)/$@ $(KALDILIBDIR)/$@
-else ifeq ($(shell uname), Linux)
-	# Building shared library from static (static was compiled with -fPIC)
+	ln -sf $(shell pwd)/$@ $(KALDILIBDIR)/$@
+  else ifeq ($(shell uname), Linux)
+        # Building shared library from static (static was compiled with -fPIC)
 	$(CXX) -shared -o $@ -Wl,--no-undefined -Wl,--as-needed  -Wl,-soname=$@,--whole-archive $(LIBNAME).a -Wl,--no-whole-archive $(LDFLAGS) $(LDLIBS)
-	rm -f $(KALDILIBDIR)/$@; ln -s $(shell pwd)/$@ $(KALDILIBDIR)/$@
-else  # Platform not supported
+	ln -sf $(shell pwd)/$@ $(KALDILIBDIR)/$@
+  else  # Platform not supported
 	$(error Dynamic libraries not supported on this platform. Run configure with --static flag.)
-endif
+  endif
 endif
 
 # By default (GNU) make uses the C compiler $(CC) for linking object files even
@@ -47,16 +48,18 @@ endif
 # use the C++ compiler $(CXX) instead.
 LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 
-ifeq ($(KALDI_FLAVOR), dynamic)
-$(BINFILES): $(LIBFILE)
-else
 $(BINFILES): $(LIBFILE) $(XDEPENDS)
+
+# When building under CI, CI_NOLINKBINARIES is set to skip linking of binaries.
+ifdef CI_NOLINKBINARIES
+$(BINFILES): %: %.o
+	touch $@
 endif
 
 # Rule below would expand to, e.g.:
 # ../base/kaldi-base.a:
-# 	make -c ../base kaldi-base.a
-# -c option to make is same as changing directory.
+# 	make -C ../base kaldi-base.a
+# -C option to make is same as changing directory.
 %.a:
 	$(MAKE) -C ${@D} ${@F}
 
@@ -69,11 +72,7 @@ clean:
 distclean: clean
 	-rm -f .depend.mk
 
-ifeq ($(KALDI_FLAVOR), dynamic)
-$(TESTFILES): $(LIBFILE)
-else
 $(TESTFILES): $(LIBFILE) $(XDEPENDS)
-endif
 
 test_compile: $(TESTFILES)
 

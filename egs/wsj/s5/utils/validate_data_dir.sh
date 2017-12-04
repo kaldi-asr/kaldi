@@ -4,8 +4,9 @@
 no_feats=false
 no_wav=false
 no_text=false
+no_spk_sort=false
 
-for x in `seq 3`; do
+for x in `seq 4`; do
   if [ "$1" == "--no-feats" ]; then
     no_feats=true
     shift;
@@ -18,12 +19,20 @@ for x in `seq 3`; do
     no_wav=true
     shift;
   fi
+  if [ "$1" == "--no-spk-sort" ]; then
+    no_spk_sort=true
+    shift;
+  fi
 done
 
 if [ $# -ne 1 ]; then
-  echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] <data-dir>"
+  echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] [--no-spk-sort] <data-dir>"
   echo "The --no-xxx options mean that the script does not require "
   echo "xxx.scp to be present, but it will check it if it is present."
+  echo "--no-spk-sort means that the script does not require the utt2spk to be "
+  echo "sorted by the speaker-id in addition to being sorted by utterance-id."
+  echo "By default, utt2spk is expected to be sorted by both, which can be "
+  echo "achieved by making the speaker-id prefixes of the utterance-ids"
   echo "e.g.: $0 data/train"
   exit 1;
 fi
@@ -78,9 +87,11 @@ function partial_diff {
 
 check_sorted_and_uniq $data/utt2spk
 
-! cat $data/utt2spk | sort -k2 | cmp -s - $data/utt2spk && \
-   echo "$0: utt2spk is not in sorted order when sorted first on speaker-id " && \
-   echo "(fix this by making speaker-ids prefixes of utt-ids)" && exit 1;
+if ! $no_spk_sort; then
+  ! cat $data/utt2spk | sort -k2 | cmp -s - $data/utt2spk && \
+     echo "$0: utt2spk is not in sorted order when sorted first on speaker-id " && \
+     echo "(fix this by making speaker-ids prefixes of utt-ids)" && exit 1;
+fi
 
 check_sorted_and_uniq $data/spk2utt
 
@@ -97,6 +108,7 @@ fi
 
 num_utts=`cat $tmpdir/utts | wc -l`
 if [ -f $data/text ]; then
+  utils/validate_text.pl $data/text || exit 1;
   check_sorted_and_uniq $data/text
   text_len=`cat $data/text | wc -l`
   illegal_sym_list="<s> </s> #0"
@@ -128,6 +140,17 @@ fi
 
 if [ -f $data/wav.scp ]; then
   check_sorted_and_uniq $data/wav.scp
+
+  if grep -E -q '^\S+\s+~' $data/wav.scp; then
+    # note: it's not a good idea to have any kind of tilde in wav.scp, even if
+    # part of a command, as it would cause compatibility problems if run by
+    # other users, but this used to be not checked for so we let it slide unless
+    # it's something of the form "foo ~/foo.wav" (i.e. a plain file name) which
+    # would definitely cause problems as the fopen system call does not do
+    # tilde expansion.
+    echo "$0: Please do not use tilde (~) in your wav.scp."
+    exit 1;
+  fi
 
   if [ -f $data/segments ]; then
 
