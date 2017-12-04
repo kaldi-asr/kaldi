@@ -28,6 +28,9 @@
 #include "fstext/deterministic-fst.h"
 #include "util/common-utils.h"
 #include "tensorflow/core/public/session.h"
+#include "tensorflow/cc/framework/scope.h"
+#include "tensorflow/cc/ops/standard_ops.h"
+#include "tensorflow/cc/client/client_session.h"
 
 using tensorflow::Session;
 using tensorflow::Tensor;
