@@ -22,6 +22,7 @@
 #include "fstext/fstext-lib.h"
 #include "tfrnnlm/tensorflow-rnnlm.h"
 #include "util/common-utils.h"
+#include "lm/const-arpa-lm.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
 #include "lat/compose-lattice-pruned.h"
@@ -52,8 +53,9 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     int32 max_ngram_order = 3;
-    BaseFloat lm_scale = 1.0;
+    BaseFloat lm_scale = 0.5;
     BaseFloat acoustic_scale = 0.1;
+    bool use_carpa = false;
 
     po.Register("lm-scale", &lm_scale, "Scaling factor for <lm-to-add>; its negative "
                 "will be applied to <lm-to-subtract>.");
@@ -64,6 +66,8 @@ int main(int argc, char *argv[]) {
         "If positive, allow RNNLM histories longer than this to be identified "
         "with each other for rescoring purposes (an approximation that "
         "saves time and reduces output lattice size).");
+    po.Register("use-const-arpa", &use_carpa, "If true, read the old-LM file "
+                "as a const-arpa file as opposed to an FST file");
 
     KaldiTfRnnlmWrapperOpts opts;
     ComposeLatticePrunedOptions compose_opts;
@@ -96,13 +100,27 @@ int main(int argc, char *argv[]) {
       lats_wspecifier = po.GetArg(7);
     }
 
+    fst::ScaleDeterministicOnDemandFst *lm_to_subtract_det_scale;
     KALDI_LOG << "Reading old LMs...";
-    VectorFst<StdArc> *lm_to_subtract_fst = fst::ReadAndPrepareLmFst(
-        lm_to_subtract_rxfilename);
-    fst::BackoffDeterministicOnDemandFst<StdArc> lm_to_subtract_det_backoff(
-        *lm_to_subtract_fst);
-    fst::ScaleDeterministicOnDemandFst lm_to_subtract_det_scale(
-        -lm_scale, &lm_to_subtract_det_backoff);
+    VectorFst<StdArc> *lm_to_subtract_fst = NULL;
+    if (use_carpa) {
+      ConstArpaLm const_arpa;
+      ReadKaldiObject(lm_to_subtract_rxfilename, &const_arpa);
+      fst::DeterministicOnDemandFst<StdArc> *carpa_lm_to_subtract_fst
+        = new ConstArpaLmDeterministicFst(const_arpa);
+
+      lm_to_subtract_det_scale
+        = new fst::ScaleDeterministicOnDemandFst(-lm_scale,
+                                                 carpa_lm_to_subtract_fst);
+    } else {
+      lm_to_subtract_fst = fst::ReadAndPrepareLmFst(
+          lm_to_subtract_rxfilename);
+      fst::BackoffDeterministicOnDemandFst<StdArc>
+                lm_to_subtract_det_backoff(*lm_to_subtract_fst);
+      lm_to_subtract_det_scale =
+      new fst::ScaleDeterministicOnDemandFst(-lm_scale,
+                                             &lm_to_subtract_det_backoff);
+    }
 
     // Reads the TF language model.
     KaldiTfRnnlmWrapper rnnlm(opts, rnn_word_list, word_symbols_rxfilename,
@@ -136,7 +154,7 @@ int main(int argc, char *argv[]) {
       TopSortCompactLatticeIfNeeded(&clat);
 
       fst::ComposeDeterministicOnDemandFst<StdArc> combined_lms(
-          &lm_to_subtract_det_scale, lm_to_add);
+          lm_to_subtract_det_scale, lm_to_add);
 
       // Composes lattice with language model.
       CompactLattice composed_clat;
@@ -161,6 +179,7 @@ int main(int argc, char *argv[]) {
     }
     delete lm_to_subtract_fst;
     delete lm_to_add_orig;
+    delete lm_to_subtract_det_scale;
 
     KALDI_LOG << "Done " << n_done << " lattices, failed for " << n_fail;
     return (n_done != 0 ? 0 : 1);

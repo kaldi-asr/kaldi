@@ -22,6 +22,7 @@
 #include "base/kaldi-common.h"
 #include "fstext/fstext-lib.h"
 #include "rnnlm/rnnlm-lattice-rescoring.h"
+#include "lm/const-arpa-lm.h"
 #include "util/common-utils.h"
 #include "nnet3/nnet-utils.h"
 #include "lat/kaldi-lattice.h"
@@ -60,15 +61,19 @@ int main(int argc, char *argv[]) {
     int32 max_ngram_order = 3;
     BaseFloat lm_scale = 0.5;
     BaseFloat acoustic_scale = 0.1;
+    bool use_carpa = false;
 
     po.Register("lm-scale", &lm_scale, "Scaling factor for <lm-to-add>; its negative "
                 "will be applied to <lm-to-subtract>.");
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic "
                 "probabilities (e.g. 0.1 for non-chain systems); important because "
                 "of its effect on pruning.");
-    po.Register("max-ngram-order", &max_ngram_order, "If positive, limit the "
-                "rnnlm context to the given number, -1 means we are not going "
-                "to limit it.");
+    po.Register("max-ngram-order", &max_ngram_order,
+        "If positive, allow RNNLM histories longer than this to be identified "
+        "with each other for rescoring purposes (an approximation that "
+        "saves time and reduces output lattice size).");
+    po.Register("use-const-arpa", &use_carpa, "If true, read the old-LM file "
+                "as a const-arpa file as opposed to an FST file");
 
     opts.Register(&po);
     compose_opts.Register(&po);
@@ -93,13 +98,27 @@ int main(int argc, char *argv[]) {
     lats_rspecifier = po.GetArg(4);
     lats_wspecifier = po.GetArg(5);
 
+    fst::ScaleDeterministicOnDemandFst *lm_to_subtract_det_scale;
     KALDI_LOG << "Reading old LMs...";
-    VectorFst<StdArc> *lm_to_subtract_fst = fst::ReadAndPrepareLmFst(
-        lm_to_subtract_rxfilename);
-    fst::BackoffDeterministicOnDemandFst<StdArc>
-              lm_to_subtract_det_backoff(*lm_to_subtract_fst);
-    fst::ScaleDeterministicOnDemandFst
-              lm_to_subtract_det_scale(-lm_scale, &lm_to_subtract_det_backoff);
+    VectorFst<StdArc> *lm_to_subtract_fst = NULL;
+    if (use_carpa) {
+      ConstArpaLm const_arpa;
+      ReadKaldiObject(lm_to_subtract_rxfilename, &const_arpa);
+      fst::DeterministicOnDemandFst<StdArc> *carpa_lm_to_subtract_fst
+        = new ConstArpaLmDeterministicFst(const_arpa);
+
+      lm_to_subtract_det_scale
+        = new fst::ScaleDeterministicOnDemandFst(-lm_scale,
+                                                 carpa_lm_to_subtract_fst);
+    } else {
+      lm_to_subtract_fst = fst::ReadAndPrepareLmFst(
+          lm_to_subtract_rxfilename);
+      fst::BackoffDeterministicOnDemandFst<StdArc>
+                lm_to_subtract_det_backoff(*lm_to_subtract_fst);
+      lm_to_subtract_det_scale =
+      new fst::ScaleDeterministicOnDemandFst(-lm_scale,
+                                             &lm_to_subtract_det_backoff);
+    }
 
     kaldi::nnet3::Nnet rnnlm;
     ReadKaldiObject(rnnlm_rxfilename, &rnnlm);
@@ -139,7 +158,7 @@ int main(int argc, char *argv[]) {
       TopSortCompactLatticeIfNeeded(&clat);
 
       fst::ComposeDeterministicOnDemandFst<StdArc> combined_lms(
-          &lm_to_subtract_det_scale, lm_to_add);
+          lm_to_subtract_det_scale, lm_to_add);
 
       // Composes lattice with language model.
       CompactLattice composed_clat;
@@ -166,6 +185,7 @@ int main(int argc, char *argv[]) {
 
     delete lm_to_subtract_fst;
     delete lm_to_add_orig;
+    delete lm_to_subtract_det_scale;
 
     KALDI_LOG << "Overall, succeeded for " << num_done
               << " lattices, failed for " << num_err;

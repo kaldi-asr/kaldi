@@ -97,6 +97,7 @@ fi
 if [ $stage -le 4 ] && $run_rescore; then
   echo "$0: Perform lattice-rescoring on $ac_model_dir"
   LM=sw1_fsh_fg
+  LM=sw1_tg
   pruned=
   if $pruned_rescoring; then
     pruned=_pruned
