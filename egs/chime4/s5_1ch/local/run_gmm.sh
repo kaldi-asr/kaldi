@@ -98,7 +98,7 @@ if [ $stage -le 4 ]; then
   steps/align_si.sh --boost-silence 1.25 --nj $nj2 --cmd "$train_cmd" \
     data/tr05_multi_${train} data/lang exp/mono0a_tr05_multi_${train} exp/mono0a_ali_tr05_multi_${train}
 
-  # training triphone model with lad mllt features
+  # training triphone model with lda mllt features
   steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
     2000 10000 data/tr05_multi_${train} data/lang exp/mono0a_ali_tr05_multi_${train} exp/tri1_tr05_multi_${train}
   steps/align_si.sh --nj $nj2 --cmd "$train_cmd" \
@@ -141,7 +141,7 @@ if [ $stage -le 6 ]; then
   for x in $tasks; do
     if [ ! -e data/$x/feats.scp ]; then
       steps/make_mfcc.sh --nj 8 --cmd "$train_cmd" \
-	data/$x exp/make_mfcc/$x $mfccdir
+        data/$x exp/make_mfcc/$x $mfccdir
       steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
     fi
   done
@@ -153,7 +153,7 @@ if [ $stage -le 7 ]; then
   if [ ! -d data/dt05_multi_$enhan ]; then
     utils/combine_data.sh data/dt05_multi_$enhan data/dt05_simu_$enhan data/dt05_real_$enhan
     if $eval_flag; then
-    utils/combine_data.sh data/et05_multi_$enhan data/et05_simu_$enhan data/et05_real_$enhan
+      utils/combine_data.sh data/et05_multi_$enhan data/et05_simu_$enhan data/et05_real_$enhan
     fi
   fi
 fi
@@ -165,10 +165,10 @@ if [ $stage -le 8 ]; then
   steps/decode_fmllr.sh --nj 4 --num-threads 3 --cmd "$decode_cmd" \
     exp/tri3b_tr05_multi_${train}/graph_tgpr_5k data/dt05_simu_$enhan exp/tri3b_tr05_multi_${train}/decode_tgpr_5k_dt05_simu_$enhan &
   if $eval_flag; then
-  steps/decode_fmllr.sh --nj 4 --num-threads 3 --cmd "$decode_cmd" \
-    exp/tri3b_tr05_multi_${train}/graph_tgpr_5k data/et05_real_$enhan exp/tri3b_tr05_multi_${train}/decode_tgpr_5k_et05_real_$enhan &
-  steps/decode_fmllr.sh --nj 4 --num-threads 3 --cmd "$decode_cmd" \
-    exp/tri3b_tr05_multi_${train}/graph_tgpr_5k data/et05_simu_$enhan exp/tri3b_tr05_multi_${train}/decode_tgpr_5k_et05_simu_$enhan &
+    steps/decode_fmllr.sh --nj 4 --num-threads 3 --cmd "$decode_cmd" \
+      exp/tri3b_tr05_multi_${train}/graph_tgpr_5k data/et05_real_$enhan exp/tri3b_tr05_multi_${train}/decode_tgpr_5k_et05_real_$enhan &
+    steps/decode_fmllr.sh --nj 4 --num-threads 3 --cmd "$decode_cmd" \
+      exp/tri3b_tr05_multi_${train}/graph_tgpr_5k data/et05_simu_$enhan exp/tri3b_tr05_multi_${train}/decode_tgpr_5k_et05_simu_$enhan &
   fi
   wait;
 fi

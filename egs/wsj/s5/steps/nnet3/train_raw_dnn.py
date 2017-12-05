@@ -303,19 +303,19 @@ def train(args, run_opts):
     else:
         models_to_combine = None
 
-    if os.path.exists('{0}/valid_diagnostic.scp'.format(args.egs_dir)):
-        if os.path.exists('{0}/valid_diagnostic.egs'.format(args.egs_dir)):
+    if os.path.exists('{0}/valid_diagnostic.scp'.format(egs_dir)):
+        if os.path.exists('{0}/valid_diagnostic.egs'.format(egs_dir)):
             raise Exception('both {0}/valid_diagnostic.egs and '
                             '{0}/valid_diagnostic.scp exist.'
                             'This script expects only one of them to exist.'
-                            ''.format(args.egs_dir))
+                            ''.format(egs_dir))
         use_multitask_egs = True
     else:
-        if not os.path.exists('{0}/valid_diagnostic.egs'.format(args.egs_dir)):
+        if not os.path.exists('{0}/valid_diagnostic.egs'.format(egs_dir)):
             raise Exception('neither {0}/valid_diagnostic.egs nor '
                             '{0}/valid_diagnostic.scp exist.'
                             'This script expects one of them.'
-                            ''.format(args.egs_dir))
+                            ''.format(egs_dir))
         use_multitask_egs = False
 
     logger.info("Training will run for {0} epochs = "

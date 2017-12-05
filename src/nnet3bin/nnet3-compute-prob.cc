@@ -39,7 +39,8 @@ int main(int argc, char *argv[]) {
         "e.g.: nnet3-compute-prob 0.raw ark:valid.egs\n";
 
 
-    bool batchnorm_test_mode = true, dropout_test_mode = true;
+    bool batchnorm_test_mode = true, dropout_test_mode = true,
+        collapse_model = true;
 
     // This program doesn't support using a GPU, because these probabilities are
     // used for diagnostics, and you can just compute them with a small enough
@@ -54,6 +55,9 @@ int main(int argc, char *argv[]) {
     po.Register("dropout-test-mode", &dropout_test_mode,
                 "If true, set test-mode to true on any DropoutComponents and "
                 "DropoutMaskComponents.");
+    po.Register("collapse-model", &collapse_model,
+                "If true, collapse model to the extent possible before "
+                "using it (for efficiency).");
 
     opts.Register(&po);
 
@@ -76,7 +80,8 @@ int main(int argc, char *argv[]) {
     if (dropout_test_mode)
       SetDropoutTestMode(true, &nnet);
 
-    CollapseModel(CollapseModelConfig(), &nnet);
+    if (collapse_model)
+      CollapseModel(CollapseModelConfig(), &nnet);
 
     NnetComputeProb prob_computer(opts, nnet);
 

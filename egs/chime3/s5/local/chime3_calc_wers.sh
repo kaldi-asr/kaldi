@@ -13,7 +13,7 @@ fi
 
 echo "$0 $@"  # Print the command line for logging
 
-. path.sh
+. ./path.sh
 
 eval_flag=false # make it true when the evaluation data are released
 

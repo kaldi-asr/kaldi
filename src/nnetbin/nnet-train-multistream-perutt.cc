@@ -50,6 +50,8 @@ int main(int argc, char *argv[]) {
     // training options,
     NnetTrainOptions trn_opts;
     trn_opts.Register(&po);
+    LossOptions loss_opts;
+    loss_opts.Register(&po);
 
     bool binary = true;
     po.Register("binary", &binary, "Write model in binary mode");
@@ -134,7 +136,7 @@ int main(int argc, char *argv[]) {
     }
 
 
-    Xent xent;
+    Xent xent(loss_opts);
 
     CuMatrix<BaseFloat> feats_transf, nnet_out, obj_diff;
 
@@ -329,12 +331,12 @@ int main(int argc, char *argv[]) {
       if (GetVerboseLevel() >= 3) {
         // print every 25k frames,
         if (tmp_frames / F != total_frames / F) {
-          KALDI_VLOG(3) << "### After " << total_frames << " frames,";
-          KALDI_VLOG(3) << nnet.Info();
-          KALDI_VLOG(3) << nnet.InfoPropagate();
+          KALDI_VLOG(2) << "### After " << total_frames << " frames,";
+          KALDI_VLOG(2) << nnet.Info();
+          KALDI_VLOG(2) << nnet.InfoPropagate();
           if (!crossvalidate) {
-            KALDI_VLOG(3) << nnet.InfoBackPropagate();
-            KALDI_VLOG(3) << nnet.InfoGradient();
+            KALDI_VLOG(2) << nnet.InfoBackPropagate();
+            KALDI_VLOG(2) << nnet.InfoGradient();
           }
         }
       }

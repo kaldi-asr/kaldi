@@ -40,8 +40,8 @@ affix=_1a
 stage=-1
 nj=80
 
-. path.sh
-. cmd.sh 
+. ./path.sh
+. ./cmd.sh
 
 set -e -u -o pipefail
 . utils/parse_options.sh 

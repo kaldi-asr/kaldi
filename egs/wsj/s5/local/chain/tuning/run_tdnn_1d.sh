@@ -3,8 +3,8 @@
 # 1d is as 1c but introducing two non-splicing layers towards the beginning of
 #   the network.
 
-# local/chain/compare_wer.sh exp/chain/tdnn1c_sp exp/chain/tdnn1e3_sp
-# System                tdnn1c_sp tdnn1e3_sp
+# local/chain/compare_wer.sh exp/chain/tdnn1c_sp exp/chain/tdnn1d_sp
+# System                tdnn1c_sp tdnn1d_sp
 #WER dev93 (tgpr)                7.31      6.95
 #WER dev93 (tg)                  6.98      6.79
 #WER dev93 (big-dict,tgpr)       5.17      5.20

@@ -26,7 +26,7 @@ odir=$2
 wdir=data/beamforming_2ch_track
 
 if [ -z $BEAMFORMIT ] ; then
-  export BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt
+  export BEAMFORMIT=$KALDI_ROOT/tools/extras/BeamformIt
 fi
 export PATH=${PATH}:$BEAMFORMIT
 ! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; make beamformit;'" && exit 1
