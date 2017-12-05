@@ -46,8 +46,7 @@ class XconfigGruLayer(XconfigLayerBase):
                         'ng-affine-options' : ' max-change=0.75 ',
                         'self-repair-scale-nonlinearity' : 0.00001,
                         'zeroing-interval' : 20,
-                        'zeroing-threshold' : 15.0,
-                        'vars_path': ""
+                        'zeroing-threshold' : 15.0
                         }
 
     def set_derived_configs(self):
@@ -119,21 +118,6 @@ class XconfigGruLayer(XconfigLayerBase):
         # h_t = ( 1 - z_t ) \dot \tilde{h}_t + z_t \dot h_{t-1}
         # y_t = h_t // y_t is the output
 
-        # write bias and minus-scale
-        f = open(self.config['vars_path']+"/minus_one", 'w')
-        f.write(" [ ")
-        for i in range(cell_dim):
-            f.write("-1 ")
-        f.write("]\n")
-        f.close()
-
-        f = open(self.config['vars_path']+"/bias_one", 'w')
-        f.write(" [ ")
-        for i in range(cell_dim):
-            f.write("1 ")
-        f.write("]\n")
-        f.close()
-
         configs = []
         configs.append("# Update gate control : W_z* matrics")
         configs.append("component name={0}.W_z.xs_z type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + cell_dim, cell_dim, affine_str))
@@ -155,10 +139,6 @@ class XconfigGruLayer(XconfigLayerBase):
         configs.append("component name={0}.y2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
         configs.append("component name={0}.y type=NoOpComponent dim={1}".format(name, cell_dim))
 
-        configs.append("# Defining fixed scale/bias component for (1 - z_t)")
-        configs.append("component name={0}.fixed_scale_minus_one type=FixedScaleComponent scales={1}".format(name, self.config['vars_path']+"/minus_one"))
-        configs.append("component name={0}.fixed_bias_one type=FixedBiasComponent bias={1}".format(name, self.config['vars_path']+"/bias_one"))
-
         recurrent_connection = '{0}.s_t'.format(name)
 
         configs.append("# z_t")
@@ -176,10 +156,7 @@ class XconfigGruLayer(XconfigLayerBase):
         
         configs.append("# y_t")
         configs.append("# The following two lines are to implement (1 - z_t)")
-        configs.append("component-node name={0}.minus_z_t component={0}.fixed_scale_minus_one input={0}.z_t".format(name))
-        configs.append("component-node name={0}.one_minus_z_t component={0}.fixed_bias_one input={0}.minus_z_t".format(name))
-        # (1-z) h
-        configs.append("component-node name={0}.y1_t component={0}.y1 input=Append({0}.h_t, {0}.one_minus_z_t)".format(name, recurrent_connection, delay))
+        configs.append("component-node name={0}.y1_t component={0}.y1 input=Append({0}.h_t, Sum(Scale(-1.0,{0}.z_t), Const(1.0, {1})))".format(name, cell_dim))
         configs.append("component-node name={0}.y2_t component={0}.y2 input=Append(IfDefined(Offset({1}, {2})), {0}.z_t)".format(name, recurrent_connection, delay))
         configs.append("component-node name={0}.y_t component={0}.y input=Sum({0}.y1_t, {0}.y2_t)".format(name))
 
@@ -233,8 +210,7 @@ class XconfigPgruLayer(XconfigLayerBase):
                         'ng-affine-options' : ' max-change=0.75 ',
                         'self-repair-scale-nonlinearity' : 0.00001,
                         'zeroing-interval' : 20,
-                        'zeroing-threshold' : 15.0,
-                        'vars_path': ""
+                        'zeroing-threshold' : 15.0
                        }
 
     def set_derived_configs(self):
@@ -332,21 +308,6 @@ class XconfigPgruLayer(XconfigLayerBase):
            re.search('param-stddev', pes_str) is None:
            pes_str += " param-mean=0.0 param-stddev=1.0 "
 
-        # write bias and minus-scale
-        f = open(self.config['vars_path']+"/minus_one", 'w')
-        f.write(" [ ")
-        for i in range(cell_dim):
-            f.write("-1 ")
-        f.write("]\n")
-        f.close()
-
-        f = open(self.config['vars_path']+"/bias_one", 'w')
-        f.write(" [ ")
-        for i in range(cell_dim):
-            f.write("1 ")
-        f.write("]\n")
-        f.close()
-
         # formulation like:
         # z_t = \sigmoid ( x_t * U^z + s_{t-1} * W^z ) // update gate
         # r_t = \sigmoid ( x_t * U^r + s_{t-1} * W^r ) // reset gate
@@ -376,10 +337,6 @@ class XconfigPgruLayer(XconfigLayerBase):
         configs.append("component name={0}.y2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
         configs.append("component name={0}.y type=NoOpComponent dim={1}".format(name, cell_dim))
 
-        configs.append("# Defining fixed scale/bias component for (1 - z_t)")
-        configs.append("component name={0}.fixed_scale_minus_one type=FixedScaleComponent scales={1}".format(name, self.config['vars_path']+"/minus_one"))
-        configs.append("component name={0}.fixed_bias_one type=FixedBiasComponent bias={1}".format(name, self.config['vars_path']+"/bias_one"))
-
         recurrent_connection = '{0}.s_t'.format(name)
         recurrent_connection_y = '{0}.y_t'.format(name)
 
@@ -395,12 +352,8 @@ class XconfigPgruLayer(XconfigLayerBase):
         configs.append("component-node name={0}.h1_t component={0}.h1 input=Append({0}.r_t, IfDefined(Offset({1}, {2})))".format(name, recurrent_connection, delay))
         configs.append("component-node name={0}.h_t_pre component={0}.W_h.UW input=Append({1}, {0}.h1_t)".format(name, input_descriptor))
         configs.append("component-node name={0}.h_t component={0}.h input={0}.h_t_pre".format(name))
-        
-        #configs.append("# y_t")
-        configs.append("# The following two lines are to implement (1 - z_t)")
-        configs.append("component-node name={0}.minus_z_t component={0}.fixed_scale_minus_one input={0}.z_t".format(name))
-        configs.append("component-node name={0}.one_minus_z_t component={0}.fixed_bias_one input={0}.minus_z_t".format(name))
-        configs.append("component-node name={0}.y1_t component={0}.y1 input=Append({0}.h_t, {0}.one_minus_z_t)".format(name))
+
+        configs.append("component-node name={0}.y1_t component={0}.y1 input=Append({0}.h_t, Sum(Scale(-1.0,{0}.z_t), Const(1.0, {1})))".format(name, cell_dim))
         configs.append("component-node name={0}.y2_t component={0}.y2 input=Append(IfDefined(Offset({1}, {2})), {0}.z_t)".format(name, recurrent_connection_y, delay))
         
         configs.append("component-node name={0}.y_t component={0}.y input=Sum({0}.y1_t, {0}.y2_t)".format(name))
@@ -462,8 +415,7 @@ class XconfigNormPgruLayer(XconfigLayerBase):
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,
                         'dropout-proportion' : -1.0, # If -1.0, no dropout components will be added
-                        'dropout-per-frame' : True,  # If False, regular dropout, not per frame.
-                        'vars_path': ""
+                        'dropout-per-frame' : True # If False, regular dropout, not per frame.
                        }
 
     def set_derived_configs(self):
@@ -568,21 +520,6 @@ class XconfigNormPgruLayer(XconfigLayerBase):
            re.search('param-stddev', pes_str) is None:
            pes_str += " param-mean=0.0 param-stddev=1.0 "
 
-        # write bias and minus-scale
-        f = open(self.config['vars_path']+"/minus_one", 'w')
-        f.write(" [ ")
-        for i in range(cell_dim):
-            f.write("-1 ")
-        f.write("]\n")
-        f.close()
-
-        f = open(self.config['vars_path']+"/bias_one", 'w')
-        f.write(" [ ")
-        for i in range(cell_dim):
-            f.write("1 ")
-        f.write("]\n")
-        f.close()
-
         # formulation like:
         # z_t = \sigmoid ( x_t * U^z + s_{t-1} * W^z ) // update gate
         # r_t = \sigmoid ( x_t * U^r + s_{t-1} * W^r ) // reset gate
@@ -618,10 +555,6 @@ class XconfigNormPgruLayer(XconfigLayerBase):
         configs.append("component name={0}.y2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
         configs.append("component name={0}.y type=NoOpComponent dim={1}".format(name, cell_dim))
 
-        configs.append("# Defining fixed scale/bias component for (1 - z_t)")
-        configs.append("component name={0}.fixed_scale_minus_one type=FixedScaleComponent scales={1}".format(name, self.config['vars_path']+"/minus_one"))
-        configs.append("component name={0}.fixed_bias_one type=FixedBiasComponent bias={1}".format(name, self.config['vars_path']+"/bias_one"))
-
         recurrent_connection = '{0}.s_t'.format(name)
         recurrent_connection_y = '{0}.y_t'.format(name)
 
@@ -645,11 +578,8 @@ class XconfigNormPgruLayer(XconfigLayerBase):
         configs.append("component-node name={0}.h1_t component={0}.h1 input=Append({0}.r_t, IfDefined(Offset({1}, {2})))".format(name, recurrent_connection, delay))
         configs.append("component-node name={0}.h_t_pre component={0}.W_h.UW input=Append({1}, {0}.h1_t)".format(name, input_descriptor))
         configs.append("component-node name={0}.h_t component={0}.h input={0}.h_t_pre".format(name))
-        
-        configs.append("# The following two lines are to implement (1 - z_t)")
-        configs.append("component-node name={0}.minus_z_t component={0}.fixed_scale_minus_one input={0}.z_t".format(name))
-        configs.append("component-node name={0}.one_minus_z_t component={0}.fixed_bias_one input={0}.minus_z_t".format(name))
-        configs.append("component-node name={0}.y1_t component={0}.y1 input=Append({0}.h_t, {0}.one_minus_z_t)".format(name))
+
+        configs.append("component-node name={0}.y1_t component={0}.y1 input=Append({0}.h_t, Sum(Scale(-1.0,{0}.z_t), Const(1.0, {1})))".format(name, cell_dim))
         configs.append("component-node name={0}.y2_t component={0}.y2 input=Append(IfDefined(Offset({1}, {2})), {0}.z_t)".format(name, recurrent_connection_y, delay))
         configs.append("component-node name={0}.y_t component={0}.y input=Sum({0}.y1_t, {0}.y2_t)".format(name))
 
@@ -711,8 +641,7 @@ class XconfigOpgruLayer(XconfigLayerBase):
                         'ng-affine-options' : ' max-change=0.75 ',
                         'self-repair-scale-nonlinearity' : 0.00001,
                         'zeroing-interval' : 20,
-                        'zeroing-threshold' : 15.0,
-                        'vars_path': ""
+                        'zeroing-threshold' : 15.0
                        }
 
     def set_derived_configs(self):
@@ -810,21 +739,6 @@ class XconfigOpgruLayer(XconfigLayerBase):
            re.search('param-stddev', pes_str) is None:
            pes_str += " param-mean=0.0 param-stddev=1.0 "
 
-        # write bias and minus-scale
-        f = open(self.config['vars_path']+"/minus_one", 'w')
-        f.write(" [ ")
-        for i in range(cell_dim):
-            f.write("-1 ")
-        f.write("]\n")
-        f.close()
-
-        f = open(self.config['vars_path']+"/bias_one", 'w')
-        f.write(" [ ")
-        for i in range(cell_dim):
-            f.write("1 ")
-        f.write("]\n")
-        f.close()
-
         # formulation for OPGRU like:
         # z_t = \sigmoid ( x_t * U^z + s_{t-1} * W^z ) // update gate
         # o_t = \sigmoid ( x_t * U^o + s_{t-1} * W^o ) // output gate
@@ -832,7 +746,6 @@ class XconfigOpgruLayer(XconfigLayerBase):
         # h_t = ( 1 - z_t ) \dot h_t + z_t \dot y_{t-1}
         # y_t = ( y_t \dot o_t) * W^y
         # s_t = y_t(0:rec_proj_dim-1)
-
         
         configs = []
         configs.append("# Update gate control : W_z* matrics")
@@ -856,10 +769,6 @@ class XconfigOpgruLayer(XconfigLayerBase):
         configs.append("component name={0}.y2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
         configs.append("component name={0}.y type=NoOpComponent dim={1}".format(name, cell_dim))
 
-        configs.append("# Defining fixed scale/bias component for (1 - z_t)")
-        configs.append("component name={0}.fixed_scale_minus_one type=FixedScaleComponent scales={1}".format(name, self.config['vars_path']+"/minus_one"))
-        configs.append("component name={0}.fixed_bias_one type=FixedBiasComponent bias={1}".format(name, self.config['vars_path']+"/bias_one"))
-
         recurrent_connection = '{0}.s_t'.format(name)
         recurrent_connection_y = '{0}.y_t'.format(name)
 
@@ -875,12 +784,8 @@ class XconfigOpgruLayer(XconfigLayerBase):
         configs.append("component-node name={0}.h_t_pre component={0}.W_h.UW input={1}".format(name, input_descriptor))
         configs.append("component-node name={0}.h_t_pre2 component={0}.W_h.UW_elementwise input=IfDefined(Offset({1}, {2}))".format(name, recurrent_connection_y, delay))
         configs.append("component-node name={0}.h_t component={0}.h input=Sum({0}.h_t_pre, {0}.h_t_pre2)".format(name))
-        
-        #configs.append("# y_t")
-        configs.append("# The following two lines are to implement (1 - z_t)")
-        configs.append("component-node name={0}.minus_z_t component={0}.fixed_scale_minus_one input={0}.z_t".format(name))
-        configs.append("component-node name={0}.one_minus_z_t component={0}.fixed_bias_one input={0}.minus_z_t".format(name))
-        configs.append("component-node name={0}.y1_t component={0}.y1 input=Append({0}.h_t, {0}.one_minus_z_t)".format(name))
+
+        configs.append("component-node name={0}.y1_t component={0}.y1 input=Append({0}.h_t, Sum(Scale(-1.0,{0}.z_t), Const(1.0, {1})))".format(name, cell_dim))
         configs.append("component-node name={0}.y2_t component={0}.y2 input=Append(IfDefined(Offset({1}, {2})), {0}.z_t)".format(name, recurrent_connection_y, delay))
         configs.append("component-node name={0}.y_t component={0}.y input=Sum({0}.y1_t, {0}.y2_t)".format(name))
         configs.append("component-node name={0}.y_o_t component={0}.o1 input=Append({0}.o_t, {0}.y_t)".format(name))
@@ -941,8 +846,7 @@ class XconfigNormOpgruLayer(XconfigLayerBase):
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,
                         'dropout-proportion' : -1.0, # If -1.0, no dropout components will be added
-                        'dropout-per-frame' : True,  # If false, regular dropout, not per frame.
-                        'vars_path': ""
+                        'dropout-per-frame' : True  # If false, regular dropout, not per frame.
                        }
 
     def set_derived_configs(self):
@@ -1047,21 +951,6 @@ class XconfigNormOpgruLayer(XconfigLayerBase):
            re.search('param-stddev', pes_str) is None:
            pes_str += " param-mean=0.0 param-stddev=1.0 "
 
-        # write bias and minus-scale
-        f = open(self.config['vars_path']+"/minus_one", 'w')
-        f.write(" [ ")
-        for i in range(cell_dim):
-            f.write("-1 ")
-        f.write("]\n")
-        f.close()
-
-        f = open(self.config['vars_path']+"/bias_one", 'w')
-        f.write(" [ ")
-        for i in range(cell_dim):
-            f.write("1 ")
-        f.write("]\n")
-        f.close()
-
         # formulation for OPGRU like:
         # z_t = \sigmoid ( x_t * U^z + s_{t-1} * W^z ) // update gate
         # o_t = \sigmoid ( x_t * U^o + s_{t-1} * W^o ) // output gate
@@ -1093,10 +982,6 @@ class XconfigNormOpgruLayer(XconfigLayerBase):
         configs.append("component name={0}.y2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
         configs.append("component name={0}.y type=NoOpComponent dim={1}".format(name, cell_dim))
 
-        configs.append("# Defining fixed scale/bias component for (1 - z_t)")
-        configs.append("component name={0}.fixed_scale_minus_one type=FixedScaleComponent scales={1}".format(name, self.config['vars_path']+"/minus_one"))
-        configs.append("component name={0}.fixed_bias_one type=FixedBiasComponent bias={1}".format(name, self.config['vars_path']+"/bias_one"))
-
         if dropout_proportion != -1.0:
             configs.append("component name={0}.dropout type=DropoutComponent dim={1} "
                            "dropout-proportion={2} dropout-per-frame={3}"
@@ -1127,9 +1012,7 @@ class XconfigNormOpgruLayer(XconfigLayerBase):
         configs.append("component-node name={0}.h_t component={0}.h input=Sum({0}.h_t_pre, {0}.h_t_pre2)".format(name))
 
         configs.append("# The following two lines are to implement (1 - z_t)")
-        configs.append("component-node name={0}.minus_z_t component={0}.fixed_scale_minus_one input={0}.z_t".format(name))
-        configs.append("component-node name={0}.one_minus_z_t component={0}.fixed_bias_one input={0}.minus_z_t".format(name))
-        configs.append("component-node name={0}.y1_t component={0}.y1 input=Append({0}.h_t, {0}.one_minus_z_t)".format(name))
+        configs.append("component-node name={0}.y1_t component={0}.y1 input=Append({0}.h_t, Sum(Scale(-1.0,{0}.z_t), Const(1.0, {1})))".format(name, cell_dim))
         configs.append("component-node name={0}.y2_t component={0}.y2 input=Append(IfDefined(Offset({1}, {2})), {0}.z_t)".format(name, recurrent_connection_y, delay))
         configs.append("component-node name={0}.y_t component={0}.y input=Sum({0}.y1_t, {0}.y2_t)".format(name))
         configs.append("component-node name={0}.y_o_t component={0}.o1 input=Append({0}.o_t, {0}.y_t)".format(name))
