@@ -849,6 +849,7 @@ class XconfigNormOpgruLayer(XconfigLayerBase):
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,
                         'dropout-proportion' : -1.0, # If -1.0, no dropout components will be added
+                        'l2-regularize': 0.0,
                         'dropout-per-frame' : True  # If false, regular dropout, not per frame.
                        }
 
@@ -948,6 +949,10 @@ class XconfigNormOpgruLayer(XconfigLayerBase):
         dropout_proportion = self.config['dropout-proportion']
         dropout_per_frame = 'true' if self.config['dropout-per-frame'] else 'false' 
 
+        l2_regularize = self.config['l2-regularize']
+        l2_regularize_option = ('l2-regularize={0} '.format(l2_regularize)
+                                if l2_regularize != 0.0 else '')
+
         # Natural gradient per element scale parameters
         # TODO: decide if we want to keep exposing these options
         if re.search('param-mean', pes_str) is None and \
@@ -965,13 +970,13 @@ class XconfigNormOpgruLayer(XconfigLayerBase):
         
         configs = []
         configs.append("# Update gate control : W_z* matrics")
-        configs.append("component name={0}.W_z.xs_z type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + rec_proj_dim, cell_dim, affine_str))
+        configs.append("component name={0}.W_z.xs_z type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3} {4}".format(name, input_dim + rec_proj_dim, cell_dim, affine_str, l2_regularize_option))
         
         configs.append("# Output gate control : W_r* matrics")
-        configs.append("component name={0}.W_z.xs_o type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + rec_proj_dim, cell_dim, affine_str))
+        configs.append("component name={0}.W_z.xs_o type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3} {4}".format(name, input_dim + rec_proj_dim, cell_dim, affine_str, l2_regularize_option))
 
         configs.append("# h related matrix : W_h* matrics")
-        configs.append("component name={0}.W_h.UW type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim , cell_dim , affine_str))
+        configs.append("component name={0}.W_h.UW type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3} {4}".format(name, input_dim , cell_dim , affine_str, l2_regularize_option))
         configs.append("component name={0}.W_h.UW_elementwise type=NaturalGradientPerElementScaleComponent dim={1} {2}".format(name, cell_dim , pes_str))
         
         configs.append("# Defining the non-linearities")
@@ -1021,7 +1026,7 @@ class XconfigNormOpgruLayer(XconfigLayerBase):
         configs.append("component-node name={0}.y_o_t component={0}.o1 input=Append({0}.o_t, {0}.y_t)".format(name))
 
         configs.append("# s_t recurrent")
-        configs.append("component name={0}.W_s.ys type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, cell_dim, rec_proj_dim + nonrec_proj_dim, affine_str))
+        configs.append("component name={0}.W_s.ys type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3} {4}".format(name, cell_dim, rec_proj_dim + nonrec_proj_dim, affine_str, l2_regularize_option))
         configs.append("component name={0}.s_r type=BackpropTruncationComponent dim={1} {2}".format(name, rec_proj_dim, bptrunc_str))
         configs.append("component name={0}.batchnorm type=BatchNormComponent dim={1} target-rms=1.0".format(name, rec_proj_dim + nonrec_proj_dim))
         configs.append("component name={0}.renorm type=NormalizeComponent dim={1} target-rms=1.0".format(name, rec_proj_dim))

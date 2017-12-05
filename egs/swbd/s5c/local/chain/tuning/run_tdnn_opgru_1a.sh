@@ -1,25 +1,28 @@
 #!/bin/bash
-
 # Copyright 2017 University of Chinese Academy of Sciences (UCAS) Gaofeng Cheng
 # Apache 2.0
 
-# Same as run_tdnn_pgru_1a but with OPGRU replacing PGRU.
-# OPGRU is a kind variant of PGRU which is believed to be better than PGRU
-                                                
-# ./local/chain/compare_wer_general.sh --looped tdnn_pgru_1a_ld5_sp tdnn_opgru_1a_ld5_sp
-# System                tdnn_pgru_1a_ld5_sp tdnn_opgru_1a_ld5_sp
-# WER on train_dev(tg)      12.82     12.76
-#           [looped:]       12.60     12.63
-# WER on train_dev(fg)      11.89     11.71
-#           [looped:]       11.64     11.54
-# WER on eval2000(tg)        14.9      14.8
-#           [looped:]        14.8      14.8
-# WER on eval2000(fg)        13.3      13.3
-#           [looped:]        13.4      13.4
-# Final train prob         -0.077    -0.065
-# Final valid prob         -0.092    -0.086
-# Final train prob (xent)        -0.929    -0.871
-# Final valid prob (xent)       -0.9934   -0.9628
+# This is based on TDNN_LSTM_1b, but using the NormOPGRU to replace the LSTMP,
+# and adding chunk-{left,right}-context-initial=0
+# Different from the vanilla OPGRU, Norm-OPGRU adds batchnorm in its output (forward direction)
+# and renorm in its recurrence. Experiments show that the TDNN-NormOPGRU could achieve similar
+# results than TDNN-LSTMP and BLSTMP in both large or small data sets (80 ~ 2300 Hrs).
+
+# ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1e_sp tdnn_opgru_1a_sp
+# System                tdnn_lstm_1e_sp tdnn_opgru_1a_sp
+# WER on train_dev(tg)      12.81     12.39
+#           [looped:]       12.93     12.32
+# WER on train_dev(fg)      11.92     11.39
+#           [looped:]       12.07     11.35
+# WER on eval2000(tg)        15.6      15.1
+#           [looped:]        16.0      15.1
+# WER on eval2000(fg)        14.1      13.6
+#           [looped:]        14.5      13.5
+# Final train prob         -0.065    -0.066
+# Final valid prob         -0.087    -0.085
+# Final train prob (xent)        -0.918    -0.889
+# Final valid prob (xent)       -1.0309   -0.9837
+
 
 
 set -e
@@ -76,8 +79,6 @@ if [ "$speed_perturb" == "true" ]; then
 fi
 
 dir=$dir${affix:+_$affix}
-if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi
-dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
 treedir=exp/chain/tri5_7d_tree$suffix
@@ -127,6 +128,7 @@ if [ $stage -le 12 ]; then
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  lstm_opts="dropout-per-frame=true dropout-proportion=0.0"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -139,18 +141,18 @@ if [ $stage -le 12 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=1024
-  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
-  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
+  relu-batchnorm-layer name=tdnn1 dim=1024
+  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
+  relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
   # check steps/libs/nnet3/xconfig/gru.py for the other options and defaults
-  opgru-layer name=opgru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
-  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  opgru-layer name=opgru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
-  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
-  opgru-layer name=opgru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
+  norm-opgru-layer name=opgru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
+  norm-opgru-layer name=opgru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
+  norm-opgru-layer name=opgru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
 
   ## adding the layers for chain branch
   output-layer name=output input=opgru3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
@@ -201,6 +203,7 @@ if [ $stage -le 13 ]; then
     --egs.chunk-width $chunk_width \
     --egs.chunk-left-context $chunk_left_context \
     --egs.chunk-right-context $chunk_right_context \
+    --trainer.dropout-schedule $dropout_schedule \
     --egs.chunk-left-context-initial 0 \
     --egs.chunk-right-context-final 0 \
     --egs.dir "$common_egs_dir" \
@@ -259,7 +262,7 @@ if $test_online_decoding && [ $stage -le 16 ]; then
     (
       # note: we just give it "$decode_set" as it only uses the wav.scp, the
       # feature type does not matter.
-      steps/online/nnet3/decode.sh --nj 10 --cmd "$decode_cmd" $iter_opts \
+      steps/online/nnet3/decode.sh --nj 50 --cmd "$decode_cmd" $iter_opts \
           --acwt 1.0 --post-decode-acwt 10.0 \
          $graph_dir data/${decode_set}_hires \
          ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_tg || exit 1;
@@ -283,7 +286,7 @@ if [ $stage -le 17 ]; then
     (
       steps/nnet3/decode_looped.sh \
          --acwt 1.0 --post-decode-acwt 10.0 \
-         --nj 10 --cmd "$decode_cmd" $iter_opts \
+         --nj 50 --cmd "$decode_cmd" $iter_opts \
          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires \
          $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_tg_looped || exit 1;

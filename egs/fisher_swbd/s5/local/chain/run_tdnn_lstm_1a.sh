@@ -1,32 +1,35 @@
 #!/bin/bash
+# same as run_tdnn_opgru_1a.sh, but replacing Norm-OPGRU with LSTMP.
+# ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1b_sp
+# System                tdnn_lstm_1b_sp
+# WER on eval2000(tg)        12.3
+#           [looped:]        12.2
+# WER on eval2000(fg)        12.1
+#           [looped:]        12.1
+# WER on rt03(tg)            11.6
+#           [looped:]        11.6
+# WER on rt03(fg)            11.3
+#           [looped:]        11.3
+# Final train prob         -0.074
+# Final valid prob         -0.084
+# Final train prob (xent)        -0.882
+# Final valid prob (xent)       -0.9393
 
-# Copyright 2017 University of Chinese Academy of Sciences (UCAS) Gaofeng Cheng
-# Apache 2.0
+# ./show_chain_wer.sh tdnn_lstm_1b_sp
+# %WER 16.0 | 2628 21594 | 86.3 9.0 4.7 2.3 16.0 54.4 | exp/chain/tdnn_lstm_1b_sp/decode_eval2000_fsh_sw1_tg/score_7_0.0/eval2000_hires.ctm.callhm.filt.sys
+# %WER 12.3 | 4459 42989 | 89.4 7.1 3.5 1.7 12.3 49.8 | exp/chain/tdnn_lstm_1b_sp/decode_eval2000_fsh_sw1_tg/score_8_0.0/eval2000_hires.ctm.filt.sys
+# %WER 8.4 | 1831 21395 | 92.7 5.1 2.2 1.1 8.4 42.3 | exp/chain/tdnn_lstm_1b_sp/decode_eval2000_fsh_sw1_tg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 15.9 | 2628 21594 | 86.4 8.9 4.7 2.3 15.9 54.3 | exp/chain/tdnn_lstm_1b_sp/decode_eval2000_fsh_sw1_fg/score_7_0.0/eval2000_hires.ctm.callhm.filt.sys
+# %WER 12.1 | 4459 42989 | 89.6 6.9 3.5 1.7 12.1 49.2 | exp/chain/tdnn_lstm_1b_sp/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.filt.sys
+# %WER 8.2 | 1831 21395 | 93.1 5.1 1.8 1.3 8.2 41.7 | exp/chain/tdnn_lstm_1b_sp/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.swbd.filt.sys
 
-# This is based on the TDNN_LSTM_1b, but using the PGRU to replace the LSTM,
-# and adding chunk-{left,right}-context-initial=0 
-                                                
-# ./local/chain/compare_wer_general.sh --looped tdnn_pgru_1a_ld5_sp
-# System                tdnn_pgru_1a_ld5_sp
-# WER on train_dev(tg)      12.82
-#           [looped:]       12.60
-# WER on train_dev(fg)      11.89
-#           [looped:]       11.64
-# WER on eval2000(tg)        14.9
-#           [looped:]        14.8
-# WER on eval2000(fg)        13.3
-#           [looped:]        13.4
-# Final train prob         -0.077
-# Final valid prob         -0.092
-# Final train prob (xent)        -0.929
-# Final valid prob (xent)       -0.9934
-
-# ./local/chain/compare_wer_general.sh tdnn_pgru_1a_ld5_sp_online
-# System                tdnn_pgru_1a_ld5_sp_online
-# WER on train_dev(tg)      12.68
-# WER on train_dev(fg)      11.68
-# WER on eval2000(tg)        14.8
-# WER on eval2000(fg)        13.4
+# ./show_chain_wer_rt03.sh tdnn_lstm_1b_sp
+# %WER 9.6 | 3970 36721 | 91.5 5.5 3.0 1.1 9.6 41.2 | exp/chain/tdnn_lstm_1b_sp/decode_rt03_fsh_sw1_tg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
+# %WER 11.6 | 8420 76157 | 89.7 6.8 3.4 1.4 11.6 43.0 | exp/chain/tdnn_lstm_1b_sp/decode_rt03_fsh_sw1_tg/score_7_0.0/rt03_hires.ctm.filt.sys
+# %WER 13.3 | 4450 39436 | 88.0 7.4 4.6 1.3 13.3 44.5 | exp/chain/tdnn_lstm_1b_sp/decode_rt03_fsh_sw1_tg/score_9_0.0/rt03_hires.ctm.swbd.filt.sys
+# %WER 9.4 | 3970 36721 | 91.8 5.3 2.9 1.1 9.4 40.3 | exp/chain/tdnn_lstm_1b_sp/decode_rt03_fsh_sw1_fg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
+# %WER 11.3 | 8420 76157 | 89.9 6.4 3.7 1.2 11.3 42.4 | exp/chain/tdnn_lstm_1b_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.filt.sys
+# %WER 13.1 | 4450 39436 | 88.3 7.5 4.2 1.4 13.1 44.0 | exp/chain/tdnn_lstm_1b_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.swbd.filt.sys
 
 
 set -e
@@ -36,9 +39,10 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_pgru_1a # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_lstm_1a # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_dir_affix=
+dropout_schedule='0,0@0.20,0.2@0.50,0'
 
 # training options
 leftmost_questions_truncate=-1
@@ -52,7 +56,6 @@ label_delay=5
 extra_left_context=50
 extra_right_context=0
 frames_per_chunk=
-test_online_decoding=
 
 remove_egs=false
 common_egs_dir=
@@ -82,14 +85,12 @@ if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
 
-dir=$dir${affix:+_$affix}
-if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi
 dir=${dir}$suffix
-train_set=train_nodup$suffix
-ali_dir=exp/tri4_ali_nodup$suffix
-treedir=exp/chain/tri5_7d_tree$suffix
-lang=data/lang_chain_2y
-
+build_tree_train_set=train_nodup
+train_set=train_nodup_sp
+build_tree_ali_dir=exp/tri5a_ali
+treedir=exp/chain/tri6_tree
+lang=data/lang_chain
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -97,16 +98,14 @@ local/nnet3/run_ivector_common.sh --stage $stage \
   --speed-perturb $speed_perturb \
   --generate-alignments $speed_perturb || exit 1;
 
-
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
-  nj=$(cat exp/tri4_ali_nodup$suffix/num_jobs) || exit 1;
+  nj=$(cat $build_tree_ali_dir/num_jobs) || exit 1;
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/$train_set \
-    data/lang exp/tri4 exp/tri4_lats_nodup$suffix
-  rm exp/tri4_lats_nodup$suffix/fsts.*.gz # save space
+    data/lang exp/tri5a exp/tri5a_lats_nodup$suffix
+  rm exp/tri5a_lats_nodup$suffix/fsts.*.gz # save space
 fi
-
 
 if [ $stage -le 10 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
@@ -126,7 +125,7 @@ if [ $stage -le 11 ]; then
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate $leftmost_questions_truncate \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd" 7000 data/$train_set $lang $ali_dir $treedir
+      --cmd "$train_cmd" 11000 data/$build_tree_train_set $lang $build_tree_ali_dir $treedir
 fi
 
 if [ $stage -le 12 ]; then
@@ -134,6 +133,7 @@ if [ $stage -le 12 ]; then
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  lstm_opts="decay-time=20"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -143,24 +143,24 @@ if [ $stage -le 12 ]; then
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2, ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
   relu-renorm-layer name=tdnn1 dim=1024
   relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
   relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
-  # check steps/libs/nnet3/xconfig/gru.py for the other options and defaults
-  pgru-layer name=pgru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
+  # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
+  lstmp-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts 
   relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  pgru-layer name=pgru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
+  lstmp-layer name=lstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
   relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
-  pgru-layer name=pgru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
+  lstmp-layer name=lstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
 
   ## adding the layers for chain branch
-  output-layer name=output input=pgru3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
+  output-layer name=output input=lstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -171,7 +171,7 @@ if [ $stage -le 12 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  output-layer name=output-xent input=pgru3 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  output-layer name=output-xent input=lstm3 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -201,6 +201,7 @@ if [ $stage -le 13 ]; then
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
+    --trainer.dropout-schedule $dropout_schedule \
     --trainer.optimization.momentum 0.0 \
     --trainer.deriv-truncate-margin 8 \
     --egs.stage $get_egs_stage \
@@ -214,7 +215,7 @@ if [ $stage -le 13 ]; then
     --cleanup.remove-egs $remove_egs \
     --feat-dir data/${train_set}_hires \
     --tree-dir $treedir \
-    --lat-dir exp/tri4_lats_nodup$suffix \
+    --lat-dir exp/tri5a_lats_nodup$suffix \
     --dir $dir  || exit 1;
 fi
 
@@ -222,38 +223,41 @@ if [ $stage -le 14 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_fsh_sw1_tg $dir $dir/graph_fsh_sw1_tg
 fi
 
-decode_suff=sw1_tg
-graph_dir=$dir/graph_sw1_tg
+decode_suff=fsh_sw1_tg
+graph_dir=$dir/graph_fsh_sw1_tg
 if [ $stage -le 15 ]; then
   [ -z $extra_left_context ] && extra_left_context=$chunk_left_context;
   [ -z $extra_right_context ] && extra_right_context=$chunk_right_context;
   [ -z $frames_per_chunk ] && frames_per_chunk=$chunk_width;
-  iter_opts=
   if [ ! -z $decode_iter ]; then
     iter_opts=" --iter $decode_iter "
   fi
-  for decode_set in train_dev eval2000; do
+  for decode_set in rt03 eval2000; do
       (
-       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+      steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj 50 --cmd "$decode_cmd" $iter_opts \
           --extra-left-context $extra_left_context  \
           --extra-right-context $extra_right_context  \
+          --extra-left-context-initial 0 \
+          --extra-right-context-final 0 \
           --frames-per-chunk "$frames_per_chunk" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires \
          $dir/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_${decode_suff} || exit 1;
       if $has_fisher; then
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-            $dir/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_sw1_{tg,fsh_fg} || exit 1;
+            data/lang_fsh_sw1_{tg,fg} data/${decode_set}_hires \
+            $dir/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_fsh_sw1_{tg,fg} || exit 1;
       fi
       ) &
   done
 fi
 
+test_online_decoding=true
+lang=data/lang_fsh_sw1_tg
 if $test_online_decoding && [ $stage -le 16 ]; then
   # note: if the features change (e.g. you add pitch features), you will have to
   # change the options of the following command line.
@@ -262,18 +266,19 @@ if $test_online_decoding && [ $stage -le 16 ]; then
        $lang exp/nnet3/extractor $dir ${dir}_online
 
   rm $dir/.error 2>/dev/null || true
-  for decode_set in train_dev eval2000; do
+  for decode_set in rt03 eval2000; do
     (
       # note: we just give it "$decode_set" as it only uses the wav.scp, the
       # feature type does not matter.
-      steps/online/nnet3/decode.sh --nj 10 --cmd "$decode_cmd" $iter_opts \
+
+      steps/online/nnet3/decode.sh --nj 50 --cmd "$decode_cmd" $iter_opts \
           --acwt 1.0 --post-decode-acwt 10.0 \
          $graph_dir data/${decode_set}_hires \
-         ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_tg || exit 1;
+         ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_${decode_suff} || exit 1;
       if $has_fisher; then
-          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-            ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_{tg,fsh_fg} || exit 1;
+	      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+		      data/lang_fsh_sw1_{tg,fg} data/${decode_set}_hires \
+		      ${dir}_online/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_fsh_sw1_{tg,fg} || exit 1;
       fi
     ) || touch $dir/.error &
   done
@@ -284,29 +289,4 @@ if $test_online_decoding && [ $stage -le 16 ]; then
   fi
 fi
 
-if [ $stage -le 17 ]; then
-  rm $dir/.error 2>/dev/null || true
-  for decode_set in train_dev eval2000; do
-    (
-      steps/nnet3/decode_looped.sh \
-         --acwt 1.0 --post-decode-acwt 10.0 \
-         --nj 10 --cmd "$decode_cmd" $iter_opts \
-         --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-         $graph_dir data/${decode_set}_hires \
-         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_tg_looped || exit 1;
-      if $has_fisher; then
-          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-            $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_{tg,fsh_fg}_looped || exit 1;
-      fi
-      ) &
-  done
-  wait
-  if [ -f $dir/.error ]; then
-    echo "$0: something went wrong in looped decoding"
-    exit 1
-  fi
-fi
-
-wait;
 exit 0;

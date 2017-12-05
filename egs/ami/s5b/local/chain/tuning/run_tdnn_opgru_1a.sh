@@ -3,18 +3,18 @@
 # Copyright 2017 University of Chinese Academy of Sciences (UCAS) Gaofeng Cheng
 # Apache 2.0
 
-# Same as tdnn_pgru_1a, but with OPGRU replacing PGRU
-# OPGRU is a kind variant of PGRU which is believed to be better than PGRU
+# This is based on the run_tdnn_lstm_1j.sh, replacing the LSTM with the proposed Norm-OPGRU.
+# Different from the vanilla OPGRU, Norm-OPGRU adds batchnorm in its output (forward direction)
+# and renorm in its recurrence. Experiments show that the TDNN-NormOPGRU could achieve similar
+# results than TDNN-LSTMP and BLSTMP in both large or small data sets (80 ~ 2300 Hrs).
 
-# ./local/chain/compare_wer_general.sh sdm1 tdnn_pgru1a_sp_bi_ihmali_ld5 tdnn_pgru1a_sp_bi_ihmali_ld5_online tdnn_opgru1a_sp_bi_ihmali_ld5 tdnn_opgru1a_sp_bi_ihmali_ld5_online
-# System          tdnn_pgru1a_sp_bi_ihmali_ld5 tdnn_pgru1a_sp_bi_ihmali_ld5_online tdnn_opgru1a_sp_bi_ihmali_ld5 tdnn_opgru1a_sp_bi_ihmali_ld5_online
-# WER on dev        35.8      35.9      36.2      36.2
-# WER on eval        38.8      38.9      39.5      39.6
-# Final train prob      -0.121403 -0.113024
-# Final valid prob       -0.25305 -0.26369
-# Final train prob (xent)      -1.40716  -1.39498
-# Final valid prob (xent)      -2.04538  -2.11686
-
+# System            tdnn_lstm1j_sp_bi_ihmali_ld5 tdnn_opgru_sp_ihmali
+# WER on dev        37.2      35.9
+# WER on eval        40.4      39.4
+# Final train prob      -0.110953 -0.130214
+# Final valid prob      -0.257645 -0.242705
+# Final train prob (xent)      -1.38772  -1.55922
+# Final valid prob (xent)      -2.13139  -2.09507
 
 set -e -o pipefail
 
@@ -31,16 +31,18 @@ ihm_gmm=tri3  # the gmm for the IHM system (if --use-ihm-ali true).
 num_threads_ubm=32
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 num_epochs=4
+dropout_schedule='0,0@0.20,0.2@0.50,0'
 
 chunk_width=150
 chunk_left_context=40
 chunk_right_context=0
 label_delay=5
+test_online_decoding=true
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tgru_affix=1a  #affix for TDNN-PGRU directory, e.g. "a" or "b", in case we change the configuration.
+tgru_affix=1a  #affix for TDNN-NormOPGRU directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 
 
@@ -88,7 +90,7 @@ if $use_ihm_ali; then
   lores_train_data_dir=data/$mic/${train_set}_ihmdata_sp_comb
   tree_dir=exp/$mic/chain${nnet3_affix}/tree_bi${tree_affix}_ihmdata
   lat_dir=exp/$mic/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats_ihmdata
-  dir=exp/$mic/chain${nnet3_affix}/tdnn_opgru${tgru_affix}_sp_bi_ihmali
+  dir=exp/$mic/chain${nnet3_affix}/tdnn_opgru${tgru_affix}_sp_ihmali
   # note: the distinction between when we use the 'ihmdata' suffix versus
   # 'ihmali' is pretty arbitrary.
 else
@@ -97,10 +99,8 @@ else
   lores_train_data_dir=data/$mic/${train_set}_sp_comb
   tree_dir=exp/$mic/chain${nnet3_affix}/tree_bi${tree_affix}
   lat_dir=exp/$mic/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
-  dir=exp/$mic/chain${nnet3_affix}/tdnn_opgru${tgru_affix}_sp_bi
+  dir=exp/$mic/chain${nnet3_affix}/tdnn_opgru${tgru_affix}_sp
 fi
-
-if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi
 
 train_data_dir=data/$mic/${train_set}_sp_hires_comb
 train_ivector_dir=exp/$mic/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
@@ -179,7 +179,7 @@ if [ $stage -le 15 ]; then
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-
+  gru_opts="dropout-per-frame=true dropout-proportion=0.0"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -192,20 +192,20 @@ if [ $stage -le 15 ]; then
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=1024
-  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
-  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
+  relu-batchnorm-layer name=tdnn1 dim=1024
+  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
+  relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
   # check steps/libs/nnet3/xconfig/gru.py for the other options and defaults
-  opgru-layer name=opgru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
-  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
-  opgru-layer name=opgru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
-  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn8 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn9 input=Append(-3,0,3) dim=1024
-  opgru-layer name=opgru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 vars_path="$dir/configs"
+  norm-opgru-layer name=opgru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $gru_opts
+  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
+  norm-opgru-layer name=opgru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $gru_opts
+  relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn8 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn9 input=Append(-3,0,3) dim=1024
+  norm-opgru-layer name=opgru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $gru_opts
 
   ## adding the layers for chain branch
   output-layer name=output input=opgru3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
@@ -246,6 +246,7 @@ if [ $stage -le 16 ]; then
     --egs.chunk-width $chunk_width \
     --egs.chunk-left-context $chunk_left_context \
     --egs.chunk-right-context $chunk_right_context \
+    --trainer.dropout-schedule $dropout_schedule \
     --egs.chunk-left-context-initial 0 \
     --egs.chunk-right-context-final 0 \
     --trainer.num-chunk-per-minibatch 64,32 \
@@ -312,7 +313,7 @@ if $test_online_decoding && [ $stage -le 19 ]; then
       # note: we just give it "data/${data}" as it only uses the wav.scp, the
       # feature type does not matter.
       steps/online/nnet3/decode.sh \
-        --nj 10 --cmd "$decode_cmd" \
+        --nj $nj --cmd "$decode_cmd" \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --extra-left-context-initial 0 \
         --scoring-opts "--min-lmwt 5 " \
@@ -321,6 +322,28 @@ if $test_online_decoding && [ $stage -le 19 ]; then
   done
   wait
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+fi
+
+if [ $stage -le 20 ]; then
+  # looped decoding.  Note: this does not make sense for BLSTMs or other
+  # backward-recurrent setups, and for TDNNs and other non-recurrent there is no
+  # point doing it because it would give identical results to regular decoding.
+  rm $dir/.error 2>/dev/null || true
+  for decode_set in dev eval; do
+    (
+      steps/nnet3/decode_looped.sh \
+         --acwt 1.0 --post-decode-acwt 10.0 \
+         --scoring-opts "--min-lmwt 5 " \
+         --nj $nj --cmd "$decode_cmd" $iter_opts \
+         --online-ivector-dir exp/$mic/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
+         $graph_dir data/$mic/${decode_set}_hires $dir/decode_${decode_set}_looped || exit 1;
+      ) &
+  done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in looped decoding"
+    exit 1
+  fi
 fi
 
 exit 0

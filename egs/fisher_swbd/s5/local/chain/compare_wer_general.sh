@@ -47,7 +47,7 @@ set_names() {
 echo -n "# WER on eval2000(tg)  "
 for x in $*; do
   set_names $x
-  wer=$(grep Sum $dirname/decode_eval2000_fsh_sw1_tg$epoch_suffix/score*/*ys | grep -v swbd | utils/best_wer.sh | awk '{print $2}')
+  wer=$(grep Sum $dirname/decode_eval2000_fsh_sw1_tg$epoch_suffix/score*/eval2000_hires.ctm.filt.sys | grep -v swbd | utils/best_wer.sh | awk '{print $2}')
   printf "% 10s" $wer
 done
 echo
@@ -56,7 +56,7 @@ if $include_looped; then
   echo -n "#           [looped:]  "
   for x in $*; do
     set_names $x
-    wer=$(grep Sum $dirname/decode_eval2000_fsh_sw1_tg${epoch_suffix}_looped/score*/*ys | grep -v swbd | utils/best_wer.sh | awk '{print $2}')
+    wer=$(grep Sum $dirname/decode_eval2000_fsh_sw1_tg${epoch_suffix}_looped/score*/eval2000_hires.ctm.filt.sys | grep -v swbd | utils/best_wer.sh | awk '{print $2}')
     printf "% 10s" $wer
   done
   echo
@@ -65,7 +65,7 @@ fi
 echo -n "# WER on eval2000(fg)  "
 for x in $*; do
   set_names $x
-  wer=$(grep Sum $dirname/decode_eval2000_fsh_sw1_fg$epoch_suffix/score*/*ys | grep -v swbd | utils/best_wer.sh | awk '{print $2}')
+  wer=$(grep Sum $dirname/decode_eval2000_fsh_sw1_fg$epoch_suffix/score*/eval2000_hires.ctm.filt.sys | grep -v swbd | utils/best_wer.sh | awk '{print $2}')
   printf "% 10s" $wer
 done
 echo
@@ -74,12 +74,47 @@ if $include_looped; then
   echo -n "#           [looped:]  "
   for x in $*; do
     set_names $x
-    wer=$(grep Sum $dirname/decode_eval2000_fsh_sw1_fg${epoch_suffix}_looped/score*/*ys | grep -v swbd | utils/best_wer.sh | awk '{print $2}')
+    wer=$(grep Sum $dirname/decode_eval2000_fsh_sw1_fg${epoch_suffix}_looped/score*/eval2000_hires.ctm.filt.sys | grep -v swbd | utils/best_wer.sh | awk '{print $2}')
     printf "% 10s" $wer
   done
   echo
 fi
 
+echo -n "# WER on rt03(tg)  "
+for x in $*; do
+  set_names $x
+  wer=$(grep Sum $dirname/decode_rt03_fsh_sw1_tg$epoch_suffix/score*/rt03_hires.ctm.filt.sys| grep -v swbd | utils/best_wer.sh | awk '{print $2}')
+  printf "% 10s" $wer
+done
+echo
+
+if $include_looped; then
+  echo -n "#           [looped:]  "
+  for x in $*; do
+    set_names $x
+    wer=$(grep Sum $dirname/decode_rt03_fsh_sw1_tg${epoch_suffix}_looped/score*/rt03_hires.ctm.filt.sys| grep -v swbd | utils/best_wer.sh | awk '{print $2}')
+    printf "% 10s" $wer
+  done
+  echo
+fi
+
+echo -n "# WER on rt03(fg)  "
+for x in $*; do
+  set_names $x
+  wer=$(grep Sum $dirname/decode_rt03_fsh_sw1_fg$epoch_suffix/score*/rt03_hires.ctm.filt.sys| grep -v swbd | utils/best_wer.sh | awk '{print $2}')
+  printf "% 10s" $wer
+done
+echo
+
+if $include_looped; then
+  echo -n "#           [looped:]  "
+  for x in $*; do
+    set_names $x
+    wer=$(grep Sum $dirname/decode_rt03_fsh_sw1_fg${epoch_suffix}_looped/score*/rt03_hires.ctm.filt.sys | grep -v swbd | utils/best_wer.sh | awk '{print $2}')
+    printf "% 10s" $wer
+  done
+  echo
+fi
 
 if $used_epochs; then
   # we don't print the probs in this case.
