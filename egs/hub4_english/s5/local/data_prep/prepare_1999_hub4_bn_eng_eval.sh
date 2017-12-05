@@ -29,9 +29,9 @@ export PATH=$PATH:$KALDI_ROOT/tools/sph2pipe_v2.5
 sph2pipe=`which sph2pipe` || { echo "sph2pipe not found in PATH."; exit 1; }
 
 for f in bn99en_1 bn99en_2; do 
-  if [ $f == "bn99en_1" ]; then
+  if [ "$f" == "bn99en_1" ]; then
     affix=eval99_1
-  elif [ $z == "bn99en_2" ]; then
+  else
     affix=eval99_2
   fi
 
@@ -60,12 +60,12 @@ with open(sys.argv[1], "w") as s_f, open(sys.argv[2], "w") as u_f:
       segments_line, utt2spk_line = tup
       s_f.write("{0}\n".format(segments_line))
       u_f.write("{0}\n".format(utt2spk_line))' \
-        $dir/${affix}_pem_segments $dir/${affix}_pem_uttspk
+        $dir/${affix}_pem_segments $dir/${affix}_pem_utt2spk
   
-  echo "$f $sph2pipe -f wav $SOURCE_DIR/bnews_99/$f.sph |" > ${affix}_wav_scp
+  echo "$f $sph2pipe -f wav $SOURCE_DIR/bnews_99/$f.sph |" > ${dir}/${affix}_wav_scp
 done 
 
-cp $SOURCE_DIR/bnews_99/en981118.glm $dir/eval98_2_glm
+cp $SOURCE_DIR/bnews_99/en981118.glm $dir/eval99_1_glm
 cp $SOURCE_DIR/bnews_99/bn99en_1.stm $dir/eval99_1_stm
 
 cp $SOURCE_DIR/bnews_99/en991231.glm $dir/eval99_2_glm

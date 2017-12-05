@@ -4,9 +4,9 @@
 # Apache 2.0.
 
 # This script prepares 1998 HUB4 Broadcast News Evaluation English Test Material
-# https://catalog.ldc.upenn.edu/LDC2000S86 
+# https://catalog.ldc.upenn.edu/LDC2000S86
 
-set -e 
+set -e
 set -o pipefail
 
 if [ $# -ne 2 ]; then
@@ -21,7 +21,7 @@ dir=$2
 mkdir -p $dir
 
 if [ ! -d $SOURCE_DIR/h4e_evl/ ]; then
-  echo "$0: Invalid SOURCE-DIR for LDC2000S86 corpus"
+  echo "$0: Invalid SOURCE-DIR $SOURCE_DIR for LDC2000S86 corpus"
   exit 1
 fi
 
@@ -32,20 +32,25 @@ import hub4_utils
 uem = sys.argv[1]
 reco, ext = os.path.splitext(os.path.basename(uem))
 for line in open(uem).readlines():
-  line = line.strip()
-  print (parse_uem_line(line))' $uem
+  line = hub4_utils.parse_uem_line(reco, line)
+  if line is not None:
+    print (line)' $uem
 done > $dir/segments
 awk '{print $1" "$2}' $dir/segments > $dir/utt2spk
 
 cat $SOURCE_DIR/h4e_evl/h4e_98_{1,2}.seg | \
   python -c '
 import sys
+sys.path.insert(0, "local/data_prep")
+import hub4_utils
 with open(sys.argv[1], "w") as s_f, open(sys.argv[2], "w") as u_f:
   for line in sys.stdin.readlines():
-    segments_line, utt2spk_line = parse_cmu_seg_line(reco, line)
-    s_f.write("{0}\n".format(segments_line))
-    u_f.write("{0}\n".format(utt2spk_line))' \
-      $dir/segments.pem $dir/utt2spk.pem
+    tup = hub4_utils.parse_cmu_seg_line(line)
+    if tup is not None:
+      segments_line, utt2spk_line = tup
+      s_f.write("{0}\n".format(segments_line))
+      u_f.write("{0}\n".format(utt2spk_line))' \
+        $dir/segments.pem $dir/utt2spk.pem
  
 export PATH=$PATH:$KALDI_ROOT/tools/sph2pipe_v2.5
 sph2pipe=`which sph2pipe` || { echo "sph2pipe not found in PATH."; exit 1; }

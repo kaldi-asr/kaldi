@@ -27,12 +27,16 @@ fi
 SOURCE_DIR=$1
 dir=$2
 
+dir_list=
+
+rm -f $dir/.error 2>/dev/null
+
 for x in $SOURCE_DIR/*/*/*; do
   year=`basename $x`
   newspaper=`basename $(dirname $x)`
   d=$dir/${newspaper}_${year}
 
-  mkdir -p $d
+  dir_list="$dir_list $d"
 
   list_file=$d/articles.list
   ls $x/*.gz > $list_file
@@ -42,13 +46,18 @@ for x in $SOURCE_DIR/*/*/*; do
   eval utils/split_scp.pl $d/articles.list \
     $d/split$nj/articles.list.{`seq -s, $nj`}
 
-  (
   $cmd JOB=1:$nj $d/log/get_processed_text.JOB.log \
-    local/data_prep/process_na_news_text.py $d/split$nj/articles.list.JOB - \| \
-    gzip -c '>' $d/corpus.JOB.gz  || exit 1
-  gunzip -c $d/corpus.*.gz | gzip -c > $d/corpus.gz || exit 1
-  rm $d/corpus.*.gz
-  ) &
+    local/data_prep/process_na_news_text.py $d/split$nj/articles.list.JOB \
+    $d/corpus.JOB.gz || touch $dir/.error &
 done
 
 wait
+
+if [ -f $dir/.error ]; then
+  echo "$0: Failed to process files."
+fi
+
+for d in $dir_list; do
+  gunzip -c $d/corpus.*.gz | gzip -c > $d/corpus.gz || exit 1
+  rm $d/corpus.*.gz
+done

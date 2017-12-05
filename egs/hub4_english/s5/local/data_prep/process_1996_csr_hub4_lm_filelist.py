@@ -12,8 +12,12 @@ import logging
 import os
 import re
 import subprocess
+import sys
+
 from bs4 import BeautifulSoup
 
+sys.path.insert(0, 'steps')
+import libs.common as common_lib
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -46,12 +50,11 @@ def get_args():
     return args
 
 
-def normalize_text(text):
+def normalize_text(text, remove_punct=False):
     """Normalizes text and returns the normalized version.
     The normalization involves converting text to upper case.
     """
     text1 = text.strip()
-    # text2 = text_normalization.remove_punctuations(text1)
     text2 = text1.upper()
     text2 = re.sub(r" [ ]*", " ", text2)
     return text2
@@ -62,6 +65,9 @@ def process_file_lines(lines, out_file_handle):
     writes normalized plain text to output stream."""
 
     doc = re.sub(r"<s>", "<s></s>", ''.join(lines))
+    if doc == '':
+        return False
+
     soup = BeautifulSoup(doc, 'lxml')
 
     num_written = 0
@@ -95,23 +101,13 @@ def process_file_lines(lines, out_file_handle):
             raise
     if num_written == 0:
         raise RuntimeError("0 sentences written.")
+    return True
 
 
-def run_command(*args, **kwargs):
-    if type(args[0]) is list:
-        command = ' '.join(args[0])
-    else:
-        command = args[0]
-
-    logger.debug("Running command '%s'", command)
-    p = subprocess.Popen(*args, **kwargs)
-    return p, command
-
-
-def run(args):
+def _run(args):
     """The one that does it all."""
 
-    for line in args.file_list.readlines():
+    for line in open(args.file_list).readlines():
         try:
             file_ = line.strip()
             base_name = os.path.basename(file_)
@@ -122,28 +118,32 @@ def run(args):
 
             logger.info("Running LM pipefile for |%s|...", base_name)
 
-            p = run_command(
+            command = (
                 "gunzip -c {0} | "
-                "local/data_prep/csr_hub4_utils/pare-sgml.perl | "
-                "perl local/data_prep/csr_hub4_utils/bugproc.perl | "
-                "perl local/data_prep/csr_hub4_utils/numhack.perl | "
-                "perl local/data_prep/csr_hub4_utils/numproc.perl "
-                "  -xlocal/data_prep/csr_hub4_utils/num_excp | "
-                "perl local/data_prep/csr_hub4_utils/abbrproc.perl "
-                "  local/data_prep/csr_hub4_utils/abbrlist | "
-                "perl local/data_prep/csr_hub4_utils/puncproc.perl -np"
-                "".format(file_),
-                stdout=subprocess.PIPE, shell=True)
+                "tools/csr4_utils/pare-sgml.perl | "
+                "perl tools/csr4_utils/bugproc.perl | "
+                "perl tools/csr4_utils/numhack.perl | "
+                "perl tools/csr4_utils/numproc.perl "
+                "  -xtools/csr4_utils/num_excp | "
+                "perl tools/csr4_utils/abbrproc.perl "
+                "  tools/csr4_utils/abbrlist | "
+                "perl tools/csr4_utils/puncproc.perl -np"
+                "".format(file_))
+            logger.debug("Running command '%s'", command)
 
-            stdout = p[0].communicate()[0]
-            if p[0].returncode is not 0:
+            p = subprocess.Popen(command,
+                                 stdout=subprocess.PIPE, shell=True)
+
+            stdout = p.communicate()[0]
+            if p.returncode is not 0:
                 logger.error(
                     "Command '%s' failed with return status %d",
-                    p[1], p[0].returncode)
+                    command, p.returncode)
                 raise RuntimeError
 
-            process_file_lines(stdout, out_file)
-            out_file.close()
+            if not process_file_lines(stdout, writer):
+                logger.warn("File %s empty or could not be processed.",
+                            file_)
         except Exception:
             logger.error("Failed processing file %s", file_)
             raise
@@ -153,11 +153,11 @@ def main():
     """The main function"""
     try:
         args = get_args()
-        run(args)
+        _run(args)
     except Exception:
-        raise
-    finally:
-        args.file_list.close()
+        logger.error("Failed to process all files", exc_info=True)
+        sys.exit(1)
+    sys.exit(0)
 
 
 if __name__ == '__main__':

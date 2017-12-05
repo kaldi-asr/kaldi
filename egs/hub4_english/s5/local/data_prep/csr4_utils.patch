@@ -731,7 +731,7 @@ diff -Naur tools/csr4_utils/process_filelist.sh local/data_prep/csr_hub4_utils/p
 +filelist=$1
 +dir=$2
 +
-+export PATH=local/data_prep/csr_hub4_utils:$PATH
++export PATH=$PATH:tools/csr4_utils
 +
 +for file in `cat $filelist`; do
 +	BASENM=`basename $file`
@@ -741,8 +741,8 @@ diff -Naur tools/csr4_utils/process_filelist.sh local/data_prep/csr_hub4_utils/p
 +  gunzip -c $file | pare-sgml.perl | \
 +    bugproc.perl | \
 +    numhack.perl | \
-+    numproc.perl -xlocal/data_prep/csr_hub4_utils/num_excp | \
-+    abbrproc.perl local/data_prep/csr_hub4_utils/abbrlist | \
++    numproc.perl -xtools/csr4_utils/num_excp | \
++    abbrproc.perl tools/csr4_utils/abbrlist | \
 +    puncproc.perl -np | gzip -c > $dir/$name.txt.gz
 +	echo "Done with $BASENM."
 +done

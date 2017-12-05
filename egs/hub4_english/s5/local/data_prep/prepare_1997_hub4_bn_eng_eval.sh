@@ -50,7 +50,8 @@ with open(sys.argv[1], "w") as s_f, open(sys.argv[2], "w") as u_f:
     if tup is not None:
       segments_line, utt2spk_line = tup
       s_f.write("{0}\n".format(segments_line))
-      u_f.write("{0}\n".format(utt2spk_line))' $dir/segments.pem $dir/utt2spk.pem
+      u_f.write("{0}\n".format(utt2spk_line))' \
+        $dir/segments.pem $dir/utt2spk.pem
  
 export PATH=$PATH:$KALDI_ROOT/tools/sph2pipe_v2.5
 sph2pipe=`which sph2pipe` || { echo "sph2pipe not found in PATH."; exit 1; }

@@ -9,27 +9,30 @@
 . ./path.sh
 
 set -o pipefail
+set -e
 
 mfccdir=`pwd`/mfcc
 nj=40
 stage=-1
 
+. utils/parse_options.sh
+
 # Training corpora
 
 # 1996 English Broadcast News Train (HUB4)
 hub4_96_train_transcripts=/export/corpora/LDC/LDC97T22/hub4_eng_train_trans
-hub4_96_train_speech=/export/corpora/LDC/LDC97S44
+hub4_96_train_speech=/export/corpora/LDC/LDC97S44/data
 # 1997 English Broadcast News Train (HUB4)
 hub4_97_train_transcripts=/export/corpora/LDC/LDC98T28/hub4e97_trans_980217
 hub4_97_train_speech=/export/corpora/LDC/LDC98S71/97_eng_bns_hub4
 # 1996 CSR HUB4 Language Model
 csr_hub4_lm=/export/corpora/LDC/LDC98T31/1996_csr_hub4_model
 # 1995 CSR-IV HUB4 corpus
-csr95_hub4=/export/corpora5/LDC/LDC96S31/csr95_hub4
+csr95_hub4=/export/corpora/LDC/LDC96S31/csr95_hub4
 # North American News Text Corpus
 NA_text=/export/corpora/LDC/LDC95T21
 # North American News Text Supplement Corpus
-NA_text_supp=/export/corpura/LCD/LDC98T30/northam_news_txt_sup
+NA_text_supp=/export/corpora/LDC/LDC98T30/northam_news_txt_sup
 
 # Test corpora
 
@@ -40,7 +43,7 @@ hub4_97_eval=/export/corpora/LDC/LDC2002S11/hub4e_97
 # 1998 HUB4 Broadcast News Evaluation English Test Material
 hub4_98_eval=/export/corpora/LDC/LDC2000S86
 # 1999 HUB4 Broadcast News Evaluation English Test Material
-hub4_99_eval=/export/corpora5/LDC/LDC2000S88/hub4_1999 
+hub4_99_eval=/export/corpora5/LDC/LDC2000S88/hub4_1999
 
 # Test sets used -- Uncomment and keep only test sets needed
 test_sets="eval97.pem"
@@ -87,21 +90,25 @@ if [ $stage -le 2 ]; then
   # Prepare 1995 CSR-IV HUB4 corpus
   local/data_prep/prepare_1995_csr_hub4_corpus.sh \
     $csr95_hub4 data/local/data/csr95_hub4
+fi
 
+if [ $stage -le 3 ]; then
   # Prepare North American News Text Corpus
   local/data_prep/prepare_na_news_text_corpus.sh --nj 40 --cmd "$train_cmd" \
      $NA_text data/local/data/na_news
 
   # Prepare North American News Text Supplement Corpus
-  local/data/prep/prepare_na_news_text_supplement.sh --nj 10 --cmd "$train_cmd" \
+  local/data_prep/prepare_na_news_text_supplement.sh --nj 10 --cmd "$train_cmd" \
     $NA_text_supp data/local/data/na_news_supp
+fi
 
+if [ $stage -le 4 ]; then
   # Prepare 1996 CSR HUB4 Language Model
   local/data_prep/prepare_1996_csr_hub4_lm_corpus.sh --nj 10 --cmd "$train_cmd" \
      $csr_hub4_lm data/local/data/csr96_hub4
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 5 ]; then
   # Prepare 1996 English Broadcast News Dev and Eval (HUB4)
   local/data_prep/prepare_1996_hub4_bn_eng_dev_and_eval.sh \
     $hub4_96_eval \
@@ -120,15 +127,15 @@ if [ $stage -le 3 ]; then
     $hub4_99_eval data/local/data/eval99
 fi
 
-if [ $stage -le 4 ]; then
-  local/format_data.sh 
-fi
-
-if [ $stage -le 5 ]; then
-  local/train_lm.sh 
-fi
-
 if [ $stage -le 6 ]; then
+  local/format_data.sh
+fi
+
+if [ $stage -le 7 ]; then
+  local/train_lm.sh
+fi
+
+if [ $stage -le 8 ]; then
   local/prepare_dict.sh --dict-suffix "_nosp" \
     data/local/local_lm/data/work/wordlist
 
@@ -136,12 +143,12 @@ if [ $stage -le 6 ]; then
     "<unk>" data/local/lang_tmp_nosp data/lang_nosp
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 9 ]; then
   local/format_lms.sh --local-lm-dir data/local/local_lm
 fi
 
-if [ $stage -le 8 ]; then
-  for x in train $test_sets; do 
+if [ $stage -le 10 ]; then
+  for x in train $test_sets; do
     this_nj=$(cat data/$x/utt2spk | wc -l)
     if [ $this_nj -gt 30 ]; then
       this_nj=30
@@ -155,7 +162,7 @@ if [ $stage -le 8 ]; then
   done
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 15 ]; then
   utils/subset_data_dir.sh --shortest data/train 1000 data/train_1kshort
   utils/subset_data_dir.sh data/train 2000 data/train_2k
 
@@ -166,7 +173,7 @@ if [ $stage -le 9 ]; then
     data/train_1kshort data/lang_nosp exp/mono0a
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 16 ]; then
   steps/align_si.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
     data/train_2k data/lang_nosp exp/mono0a exp/mono0a_ali
 
@@ -174,7 +181,7 @@ if [ $stage -le 10 ]; then
     data/train_2k data/lang_nosp exp/mono0a_ali exp/tri1
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 17 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
     data/train data/lang_nosp exp/tri1 exp/tri1_ali
 
@@ -182,7 +189,7 @@ if [ $stage -le 10 ]; then
     data/train data/lang_nosp exp/tri1_ali exp/tri2
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 18 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
     data/train data/lang_nosp exp/tri2 exp/tri2_ali
 
@@ -190,7 +197,7 @@ if [ $stage -le 11 ]; then
     data/train data/lang_nosp exp/tri2_ali exp/tri3
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 19 ]; then
   utils/mkgraph.sh data/lang_nosp_test exp/tri3 exp/tri3/graph_nosp
 
   (
@@ -209,7 +216,7 @@ if [ $stage -le 12 ]; then
   ) &
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 20 ]; then
   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
     data/train data/lang_nosp exp/tri3 exp/tri3_ali
 
@@ -217,7 +224,7 @@ if [ $stage -le 13 ]; then
     data/train data/lang_nosp exp/tri3_ali exp/tri4
 fi
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 21 ]; then
   utils/mkgraph.sh data/lang_nosp_test exp/tri4 exp/tri4/graph_nosp
 
   (
@@ -241,18 +248,18 @@ fi
 
 # The following demonstrates how to use out-of-domain WSJ models to segment long
 # audio recordings of HUB4 with raw unaligned transcripts into short segments
-# with aligned transcripts for training new ASR models. 
+# with aligned transcripts for training new ASR models.
 
 # First run the data preparation stages in WSJ run.sh
 wsj_base=../../wsj/s5   # Change this to the WSJ base directory
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 25 ]; then
   # We copy the prepared data to the current directory
   utils/copy_data_dir.sh $wsj_base/data/train_si84_2kshort data/train_si84_2kshort
   utils/copy_data_dir.sh $wsj_base/data/train_si84 data/train_si84
   utils/copy_data_dir.sh $wsj_base/data/train_si284 data/train_si284
 
-  local/run_segmentation_wsj.sh 
+  local/run_segmentation_wsj.sh
 fi
 
 wait

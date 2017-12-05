@@ -44,6 +44,9 @@ def parse_cmu_seg_line(line, prepend_reco_to_spk=False):
     The CMU segmentation has the following format:
     <file> <channel> <speaker> <start-time> <end-time> <condition>
 
+    e.g.:
+    h4e_98_1 1 F0-0000     0.00    28.22 F0
+
     We force the channel to be 1 and take the file-id to be the recording-id.
     """
     line = line.strip()

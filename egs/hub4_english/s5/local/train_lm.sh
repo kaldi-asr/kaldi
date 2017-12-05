@@ -76,11 +76,11 @@ if [ $stage -le 0 ]; then
     data/local/data/csr95_hub4/train95_text | cut -d ' ' -f 2- > \
     ${dir}/data/text/csr95_hub4.txt
 
-  # # Get text from NA News supplement corpus 
-  # for x in data/local/data/na_news/*; do
-  #   y=`basename $x`
-  #   [ -f $x/corpus.gz ] && ln -sf `readlink -f $x/corpus.gz` ${dir}/data/text/${y}.txt.gz
-  # done
+  # Get text from NA News supplement corpus 
+  for x in data/local/data/na_news_supp; do
+    y=`basename $x`
+    [ -f $x/corpus.gz ] && ln -sf `readlink -f $x/corpus.gz` ${dir}/data/text/${y}.txt.gz
+  done
 
   # for reporting perplexities, we'll use the "real" dev set.
   # note, we can't put it in ${dir}/data/text/, because then pocolm would use

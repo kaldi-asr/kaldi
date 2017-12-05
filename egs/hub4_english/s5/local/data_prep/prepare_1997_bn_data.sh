@@ -32,8 +32,8 @@ if [ ! -s $out/text.list ] || [ ! -s $out/audio.list ]; then
   exit 1
 fi
 
-local/data_prep/parse_sgm.pl $out/text.list > $out/transcripts.txt 2> \
-  $out/parse_sgml.log || exit 1
+local/data_prep/parse_sgm_1997_hub4_eng.pl $out/text.list > \
+  $out/transcripts.txt 2> $out/parse_sgml.log || exit 1
 
 if [ ! -s $out/transcripts.txt ]; then
   echo "$0: Could not parse SGML files in $out/text.list"

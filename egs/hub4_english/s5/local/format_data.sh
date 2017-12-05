@@ -31,7 +31,7 @@ export PATH=$PATH:$KALDI_ROOT/tools/sph2pipe_v2.5
 mkdir -p data/train_bn96
 
 local/data_prep/format_1996_bn_data.pl \
-  $srcdir/train_bn96/audio.list $srcdir/train_bn96/transcript.txt \
+  $srcdir/train_bn96/audio.list $srcdir/train_bn96/transcripts.txt \
   data/train_bn96 || exit 1
 
 mv data/train_bn96/text data/train_bn96/text.unnorm
@@ -44,7 +44,7 @@ local/normalize_transcripts.pl $noise_word $spoken_noise_word \
 mkdir -p data/train_bn97
 
 local/data_prep/format_1997_bn_data.pl \
-  $srcdir/train_bn97/audio.list $srcdir/train_bn97/transcript.txt \
+  $srcdir/train_bn97/audio.list $srcdir/train_bn97/transcripts.txt \
   data/train_bn97 || exit 1
 
 mv data/train_bn97/text data/train_bn97/text.unnorm
@@ -130,4 +130,4 @@ for d in train_bn96 train_bn97 eval96 eval96.pem dev96pe dev96ue eval97 eval97.p
   utils/fix_data_dir.sh data/${d}
 done
 
-utils/combine_data.sh data/train $train_data_sets
+utils/combine_data.sh data/train data/train_bn96 data/train_bn97
