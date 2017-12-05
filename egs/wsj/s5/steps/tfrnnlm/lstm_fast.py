@@ -26,6 +26,7 @@ from __future__ import division
 from __future__ import print_function
 
 import sys
+sys.path.insert(0,"/home/hxu/.local/lib/python2.7/site-packages/")
 
 import inspect
 import time
@@ -60,7 +61,7 @@ class Config(object):
   num_steps = 20
   hidden_size = 200
   max_epoch = 4
-  max_max_epoch = 13
+  max_max_epoch = 2
   keep_prob = 1.0
   lr_decay = 0.8
   batch_size = 64
@@ -131,15 +132,13 @@ class RnnlmModel(object):
 
     self.initial = tf.reshape(tf.stack(axis=0, values=self._initial_state_single), [config.num_layers, 2, 1, size], name="test_initial_state")
 
-    # first implement the less efficient version
-    test_word_in = tf.placeholder(tf.int32, [1, 1], name="test_word_in")
+    test_word_in = tf.placeholder(tf.int32, [None, 1], name="test_word_in")
+    state_placeholder = tf.placeholder(tf.float32, [config.num_layers, 2, None, size], name="test_state_in")
 
-    state_placeholder = tf.placeholder(tf.float32, [config.num_layers, 2, 1, size], name="test_state_in")
-    # unpacking the input state context 
     l = tf.unstack(state_placeholder, axis=0)
     test_input_state = tuple(
                [tf.contrib.rnn.LSTMStateTuple(l[idx][0],l[idx][1])
-                 for idx in range(config.num_layers)]
+                   for idx in range(config.num_layers)]
     )
 
     with tf.device("/cpu:0"):
@@ -153,8 +152,9 @@ class RnnlmModel(object):
     with tf.variable_scope("RNN"):
       (test_cell_output, test_output_state) = self.cell(test_inputs[:, 0, :], test_input_state)
 
-    test_state_out = tf.reshape(tf.stack(axis=0, values=test_output_state), [config.num_layers, 2, 1, size], name="test_state_out")
-    test_cell_out = tf.reshape(test_cell_output, [1, size], name="test_cell_out")
+    test_state_out = tf.reshape(tf.stack(axis=0, values=test_output_state), [config.num_layers, 2, -1, size], name="test_state_out")
+    test_cell_out = tf.reshape(test_cell_output, [-1, size], name="test_cell_out")
+
     # above is the first part of the graph for test
     # test-word-in
     #               > ---- > test-state-out
@@ -166,18 +166,22 @@ class RnnlmModel(object):
     #               > prob(word | test-word-out)
     # test-cell-in
 
-    test_word_out = tf.placeholder(tf.int32, [1, 1], name="test_word_out")
-    cellout_placeholder = tf.placeholder(tf.float32, [1, size], name="test_cell_in")
+    test_word_out = tf.placeholder(tf.int32, [None], name="test_word_out")
+    cellout_placeholder = tf.placeholder(tf.float32, [None, size], name="test_cell_in")
 
     softmax_w = tf.get_variable(
         "softmax_w", [size, vocab_size], dtype=data_type())
     softmax_b = tf.get_variable("softmax_b", [vocab_size], dtype=data_type())
     softmax_b = softmax_b - 9.0
 
-    test_logits = tf.matmul(cellout_placeholder, tf.transpose(tf.nn.embedding_lookup(tf.transpose(softmax_w), test_word_out[0]))) + softmax_b[test_word_out[0,0]]
+    this_softmax_w = tf.gather(softmax_w, test_word_out);
+    this_softmax_b = tf.gather(softmax_b, test_word_out);
 
-    p_word = test_logits[0, 0]
-    test_out = tf.identity(p_word, name="test_out")
+#    test_logits = tf.matmul(cellout_placeholder, tf.transpose(tf.nn.embedding_lookup(tf.transpose(softmax_w), test_word_out[0]))) + softmax_b[test_word_out[0,0]]
+    test_logits = tf.matmul(cellout_placeholder, this_softmax_w + softmax_b)
+
+#    p_word = test_logits[0, 0]
+    test_out = tf.identity(test_logits, name="test_out")
 
     if is_training and config.keep_prob < 1:
       inputs = tf.nn.dropout(inputs, config.keep_prob)

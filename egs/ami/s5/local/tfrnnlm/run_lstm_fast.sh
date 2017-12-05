@@ -14,10 +14,10 @@ weight=0.5   # when we do lattice-rescoring, instead of replacing the lm-weights
 
 set -e
 
-dir=data/tensorflow_fast_lstm
+dir=data/tensorflow_fast_lstm_parallel
 mkdir -p $dir
 
-steps/tfrnnlm/check_tensorflow_installed.sh
+#steps/tfrnnlm/check_tensorflow_installed.sh
 
 if [ $stage -le 1 ]; then
   local/tfrnnlm/rnnlm_data_prep.sh $dir
@@ -26,16 +26,16 @@ fi
 mkdir -p $dir
 if [ $stage -le 2 ]; then
 # the following script uses TensorFlow. You could use tools/extras/install_tensorflow_py.sh to install it
-  $cuda_cmd $dir/train_rnnlm.log utils/parallel/limit_num_gpus.sh \
-    python steps/tfrnnlm/lstm_fast.py --data-path=$dir --save-path=$dir/rnnlm --vocab-path=$dir/wordlist.rnn.final
+#  $cuda_cmd $dir/train_rnnlm.log utils/parallel/limit_num_gpus.sh \
+    python -u steps/tfrnnlm/lstm_fast.py --data-path=$dir --save-path=$dir/rnnlm --vocab-path=$dir/wordlist.rnn.final
 fi
 
 final_lm=ami_fsh.o3g.kn
 LM=$final_lm.pr1-7
 
 if [ $stage -le 3 ]; then
-#  for decode_set in dev; do
-  for decode_set in dev eval; do
+  for decode_set in dev; do
+#  for decode_set in dev eval; do
     basedir=exp/$mic/nnet3/tdnn_sp/
     decode_dir=${basedir}/decode_${decode_set}
 
@@ -45,7 +45,7 @@ if [ $stage -le 3 ]; then
       --rnnlm-ver tensorflow  --weight $weight --max-ngram-order $ngram_order \
       data/lang_$LM $dir \
       data/$mic/${decode_set}_hires ${decode_dir} \
-      ${decode_dir}.unk.fast.tfrnnlm.lat.${ngram_order}gram.$weight  &
+      ${decode_dir}_parallel  &
 
   done
 fi

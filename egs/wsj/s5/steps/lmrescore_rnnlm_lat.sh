@@ -57,7 +57,7 @@ if [ "$rnnlm_ver" == "cuedrnnlm" ]; then
 fi
 
 if [ "$rnnlm_ver" == "tensorflow" ]; then
-  rescoring_binary="lattice-lmrescore-tf-rnnlm"
+  rescoring_binary="lattice-lmrescore-tf-rnnlm-parallel"
   first_arg="$rnnlm_dir/unk.probs $rnnlm_dir/wordlist.rnn.final"
 fi
 
@@ -107,7 +107,8 @@ else
     $first_arg $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 fi
-if ! $skip_scoring ; then
+if ! $skip_scoring ; tor
+jkjkjken
   err_msg="Not scoring because local/score.sh does not exist or not executable."
   [ ! -x local/score.sh ] && echo $err_msg && exit 1;
   local/score.sh --cmd "$cmd" $data $oldlang $outdir

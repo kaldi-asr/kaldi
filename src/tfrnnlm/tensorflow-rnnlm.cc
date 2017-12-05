@@ -230,17 +230,17 @@ void KaldiTfRnnlmWrapper::GetLogProbParallel(std::vector<int32> word_vector,
 
   if (new_context_tensor != NULL) {
     inputs =  {
-      {"Train/Model/test_word_in_parallel", word_tensor},
-      {"Train/Model/test_word_out_parallel", word_tensor},
-      {"Train/Model/test_state_in_parallel", state_to_context_tensor},
-      {"Train/Model/test_cell_in_parellel", state_to_cell_tensor},
+      {"Train/Model/test_word_in", word_tensor},
+      {"Train/Model/test_word_out", word_tensor},
+      {"Train/Model/test_state_in", state_to_context_tensor},
+      {"Train/Model/test_cell_in", state_to_cell_tensor},
     };
 
     // The session will initialize the outputs
     // Run the sessin, evaluating our "c" operation from the graph.
     Status status = session_->Run(inputs,
-        {"Train/Model/test_out_parellel",
-         "Train/Model/test_state_out_parallel",
+        {"Train/Model/test_out",
+         "Train/Model/test_state_out",
          "Train/Model/test_cell_out"}, {}, &outputs);
     if (!status.ok()) {
       KALDI_ERR << status.ToString();
@@ -250,13 +250,13 @@ void KaldiTfRnnlmWrapper::GetLogProbParallel(std::vector<int32> word_vector,
     *new_cell_tensor = outputs[2];
   } else {
     inputs = {
-      {"Train/Model/test_word_out_parellel", word_tensor},
-      {"Train/Model/test_cell_in_parallel", state_to_cell_tensor},
+      {"Train/Model/test_word_out", word_tensor},
+      {"Train/Model/test_cell_in", state_to_cell_tensor},
     };
 
     // Run the session, evluating our "c" operation form the graph.
     Status status = session_->Run(inputs,
-        {"Train/Model/test_out_parallel"}, {}, &outputs);
+        {"Train/Model/test_out"}, {}, &outputs);
     if (!status.ok()) {
       KALDI_ERR << status.ToString();
     }
