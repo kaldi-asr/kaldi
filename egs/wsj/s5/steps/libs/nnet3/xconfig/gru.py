@@ -540,9 +540,12 @@ class XconfigNormPgruLayer(XconfigLayerBase):
         configs.append("component name={0}.W_h.UW type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + rec_proj_dim, cell_dim , affine_str))
         
         if dropout_proportion != -1.0:
-            configs.append("component name={0}.dropout type=DropoutComponent dim={1} "
+            configs.append("component name={0}.dropout_z type=DropoutComponent dim={1} "
                            "dropout-proportion={2} dropout-per-frame={3}"
-                           .format(name, rec_proj_dim + nonrec_proj_dim, dropout_proportion, dropout_per_frame))
+                           .format(name, cell_dim, dropout_proportion, dropout_per_frame))
+            configs.append("component name={0}.dropout_r type=DropoutComponent dim={1} "
+                           "dropout-proportion={2} dropout-per-frame={3}"
+                           .format(name, rec_proj_dim, dropout_proportion, dropout_per_frame))
         
         configs.append("# Defining the non-linearities")
         configs.append("component name={0}.z type=SigmoidComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
@@ -562,7 +565,7 @@ class XconfigNormPgruLayer(XconfigLayerBase):
         configs.append("component-node name={0}.z_t_pre component={0}.W_z.xs_z input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
         if dropout_proportion != -1.0:
             configs.append("component-node name={0}.z_predrop_t component={0}.z input={0}.z_t_pre".format(name))
-            configs.append("component-node name={0}.z_t component={0}.dropout input={0}.z_predrop_t".format(name))
+            configs.append("component-node name={0}.z_t component={0}.dropout_z input={0}.z_predrop_t".format(name))
         else:
             configs.append("component-node name={0}.z_t component={0}.z input={0}.z_t_pre".format(name, input_descriptor, recurrent_connection, delay))
 
@@ -570,7 +573,7 @@ class XconfigNormPgruLayer(XconfigLayerBase):
         configs.append("component-node name={0}.r_t_pre component={0}.W_z.xs_r input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
         if dropout_proportion != -1.0:
             configs.append("component-node name={0}.r_predrop_t component={0}.r input={0}.r_t_pre".format(name))
-            configs.append("component-node name={0}.r_t component={0}.dropout input={0}.r_predrop_t".format(name))            
+            configs.append("component-node name={0}.r_t component={0}.dropout_r input={0}.r_predrop_t".format(name))            
         else:
             configs.append("component-node name={0}.r_t component={0}.r input={0}.r_t_pre".format(name))
 
