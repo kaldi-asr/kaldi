@@ -42,7 +42,6 @@ speed_perturb=true
 dir=exp/chain/tdnn_lstm_1a # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_dir_affix=
-dropout_schedule='0,0@0.20,0.2@0.50,0'
 
 # training options
 leftmost_questions_truncate=-1
@@ -201,7 +200,6 @@ if [ $stage -le 13 ]; then
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
-    --trainer.dropout-schedule $dropout_schedule \
     --trainer.optimization.momentum 0.0 \
     --trainer.deriv-truncate-margin 8 \
     --egs.stage $get_egs_stage \
