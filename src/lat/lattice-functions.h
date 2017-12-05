@@ -379,7 +379,7 @@ void ComposeCompactLatticeDeterministic(
 
 void ComposeCompactLatticeDeterministicParallel(
     const CompactLattice& clat,
-    fst::DeterministicOnDemandFst<fst::StdArc>* det_fst,
+    fst::DeterministicOnDemandFstParallel<fst::StdArc>* det_fst,
     CompactLattice* composed_clat);
 
 }  // namespace kaldi

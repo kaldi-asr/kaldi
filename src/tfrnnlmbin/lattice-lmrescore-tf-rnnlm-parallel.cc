@@ -22,7 +22,7 @@
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
-#include "tfrnnlm/tensorflow-rnnlm.h"
+#include "tfrnnlm/tensorflow-rnnlm-parallel.h"
 #include "util/common-utils.h"
 
 int main(int argc, char *argv[]) {
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
 
         // Wraps the rnnlm into FST. We re-create it for each lattice to prevent
         // memory usage increasing with time.
-        TfRnnlmDeterministicFst rnnlm_fst(max_ngram_order, &rnnlm);
+        TfRnnlmDeterministicFstParallel rnnlm_fst(max_ngram_order, &rnnlm);
 
         // Composes lattice with language model.
         CompactLattice composed_clat;

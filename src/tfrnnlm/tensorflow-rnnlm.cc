@@ -275,8 +275,9 @@ void KaldiTfRnnlmWrapper::GetLogProbParallel(std::vector<int32> word_vector,
       } else {
         ans = logprob + unk_costs_[fst_word_vector[i]];
       } 
-   } 
+    }
 
+    KALDI_LOG << "ans is " << ans;   
     logprob_vector->push_back(ans);
   }
 

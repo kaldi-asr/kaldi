@@ -1653,7 +1653,7 @@ void ComposeCompactLatticeDeterministic(
 // compose_clat is the output composed FST.
 void ComposeCompactLatticeDeterministicParallel(
     const CompactLattice& clat,
-    fst::DeterministicOnDemandFst<fst::StdArc>* det_fst,
+    fst::DeterministicOnDemandFstParallel<fst::StdArc>* det_fst,
     CompactLattice* composed_clat) {
   // StdFst::Arc and CompactLatticeArc has the same StateId type.
   typedef fst::StdArc::StateId StateId;
