@@ -309,6 +309,15 @@ void CollapseModel(const CollapseModelConfig &config,
        <dim> singular values, replacing these components with sequences of two
        components, of types LinearComponent and NaturalGradientAffineComponent.
        See also 'reduce-rank'.
+    
+    apply-threshhold-svd name=<name-pattern> svd_value_threshhold=<threshhold-value>
+       Locates all components with names matching <name-pattern>, which are
+       type AffineComponent or child classes thereof.  If <dim> is
+       less than the minimum of the (input or output) dimension of the component,
+       it does SVD on the components' parameters, the retaining <dim> will be decided by <threshhold-value>,
+       replacing these components with sequences of two components, of types LinearComponent and 
+       NaturalGradientAffineComponent. I.e. different layer will have different retaining dimension.
+       See also 'reduce-rank'.
 
     reduce-rank name=<name-pattern> rank=<dim>
        Locates all components with names matching <name-pattern>, which are

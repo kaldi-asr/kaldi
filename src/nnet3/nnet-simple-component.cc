@@ -6007,7 +6007,7 @@ void BatchNormComponent::InitFromConfig(ConfigLine *cfl) {
   Define xsum  = sum_i x(i)
          x2sum = sum_i x(i)^2
           mean = xsum / n
-           var = x2sum / n - (mean*mean)
+          var = x2sum / n - (mean*mean)
          scale = (var + epsilon)^{-0.5}
         offset = -mean * scale
 
