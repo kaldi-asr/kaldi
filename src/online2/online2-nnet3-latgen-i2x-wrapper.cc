@@ -1,90 +1,99 @@
 // online2/online2-nnet3-latgen-i2x-wrapper.cc
 
-#include <stdint.h>
+#include <cstdint>
+#include <cstddef>
 
-#include "online2-nnet3-latgen-i2x-wrapper.cc"
+#include "base/kaldi-types.h"
+#include "base/kaldi-utils.h"
+#include "hmm/transition-model.h"
+#include "nnet3/nnet-utils.h"
+#include "online2/online-nnet2-feature-pipeline.h"
+#include "online2/online-nnet3-decoding.h"
+#include "online2/online2-nnet3-latgen-i2x-wrapper.h"
 
 namespace kaldi {
 
 class Decoder {
 
-public:
+ public:
   Decoder(
-    const TransitionModel& trans_model,
-    const fst::Fst<fst::StdArc>& decode_fst,
-    const LatticeFasterDecoderConfig& decoder_opts,
-    const OnlineNnet2FeaturePipelineInfo& feature_info,
-    const nnet3::DecodableNnetSimpleLoopedInfo& decodable_info,
-    const AdaptationState adaptation_state,
-    BaseFloat samp_freq,
-    int32 chunk_length) : 
-        chunk_length_(chunk_length), 
-        float_sample_buffer_(chunk_length), 
-        samp_freq_(samp_freq) {
-   
-    
-    feature_pipeline_ = new OnlineNnet2FeaturePipeline(feature_info); 
-    feature_pipeline->SetAdaptationState(adaptation_state);
-    decoder_ = new SingleUtteranceNnet3Decoder(
-                    decoder_opts, trans_model, decodable_info, decode_fst, feature_pipeline_);
-    buffer_.reserve(2*chunk_length_);
+      const TransitionModel &trans_model,
+      const fst::Fst<fst::StdArc> &decode_fst,
+      const LatticeFasterDecoderConfig &decoder_opts,
+      const OnlineNnet2FeaturePipelineInfo &feature_info,
+      const nnet3::DecodableNnetSimpleLoopedInfo &decodable_info,
+      const OnlineIvectorExtractorAdaptationState adaptation_state,
+      BaseFloat samp_freq,
+      int32 chunk_length) :
+      chunk_length_(chunk_length),
+      float_sample_buffer_(chunk_length),
+      samp_freq_(samp_freq) {
 
-    }
+    feature_pipeline_ = new OnlineNnet2FeaturePipeline(feature_info);
+    feature_pipeline_->SetAdaptationState(adaptation_state);
+    decoder_ = new SingleUtteranceNnet3Decoder(
+        decoder_opts, trans_model, decodable_info, decode_fst, feature_pipeline_);
+    buffer_.reserve(2 * chunk_length_);
+
+  }
   int32_t FeedChunk(uint16_t *data, size_t length);
   ~Decoder() {
-     delete feature_pipeline_;   
-     delete decoder_;
-    }
+    delete feature_pipeline_;
+    delete decoder_;
+  }
 
-private:
+ private:
   SingleUtteranceNnet3Decoder *decoder_ = nullptr;
   OnlineNnet2FeaturePipeline *feature_pipeline_ = nullptr;
+
   int32 chunk_length_;
-  std::vector<uint16_t> buffer_;
-  BaseFloat samp_freq_;
-    
   Vector<BaseFloat> float_sample_buffer_;
+  BaseFloat samp_freq_;
+
+  std::vector<uint16_t> buffer_;
+
   KALDI_DISALLOW_COPY_AND_ASSIGN(Decoder);
 
 };
 
-int32_t Decoder::FeedChunk(uint16_t *data, size_t length, bool last_call){ // TODO implement last_call behavior
-   if (last_call && length > 0) {
-        KALDI_ERR << "last_call should not add new data"; // TODO turn into assert or something
-   }
-   for (size_t i = 0; i < length; i++) { 
-        buffer_.push_back(data[i]);
-   }
-   
-   if (buffer_.size() < chunk_length_) {
-        if (last_call && buffer_.size() > 0) {
-            buffer_.resize(chunk_length_); // TODO find a better way to deal with ending? zero-padding might introduce bias
-        }
-        else {
-            return 0;
-        }
-   }
-   size_t leftover = buffer_.size() % chunk_length_;
-   size_t end = buffer_.size() - leftover;
-   for (size_t i = 0; i < end; i += chunk_length_) {
-        for (size_t j = 0; j < chunk_length; j++) {
-            float_sample_buffer_[j] = buffer_[i + j];
-        }
-        feature_pipeline_.AcceptWaveform(samp_freq_, float_sample_buffer_);
-   }
-   decoder.AdvanceDecoding();
-   for (size_t i = 0; i < leftover; i++) {
-        buffer_[i] = buffer_[end + i];
-   }
-   buffer_.resize(leftover);
+int32_t Decoder::FeedChunk(uint16_t *data, size_t length) { // TODO implement last_call behavior
+
+  for (size_t i = 0; i < length; i++) {
+    buffer_.push_back(data[i]);
+  }
+  bool last_call = (length == 0);
+  int32_t effective_chunk_length = last_call ? buffer_.size() : chunk_length_;
+  if (buffer_.size() < effective_chunk_length) {
+    return 0;
+  }
+  size_t leftover = buffer_.size() % effective_chunk_length;
+  size_t end = buffer_.size() - leftover;
+  if (last_call) {
+    float_sample_buffer_.Resize(effective_chunk_length);
+  }
+  for (size_t i = 0; i < end; i += effective_chunk_length) {
+    for (size_t j = 0; j < effective_chunk_length; j++) {
+      float_sample_buffer_(j) = buffer_[i + j];
+    }
+    feature_pipeline_->AcceptWaveform(samp_freq_, float_sample_buffer_);
+  }
+  if (last_call) {
+    feature_pipeline_->InputFinished();
+  }
+  decoder_->AdvanceDecoding();
+  for (size_t i = 0; i < leftover; i++) {
+    buffer_[i] = buffer_[end + i];
+  }
+  buffer_.resize(leftover);
+  return 0;
 }
 
 class DecoderFactory {
-public:
-  DecoderFactory(const char*);
+ public:
+  DecoderFactory(const char *);
   ~DecoderFactory();
-  Decoder* StartDecodingSession();
-private:
+  Decoder *StartDecodingSession() const;
+ private:
   TransitionModel trans_model_;
   nnet3::AmNnetSimple am_nnet_;
   std::string word_syms_rxfilename_;
@@ -98,7 +107,6 @@ private:
   int32 chunk_length_;
   bool do_endpointing_ = false;
   BaseFloat samp_freq_;
-
 
   OnlineNnet2FeaturePipelineInfo *feature_info_ = nullptr;
   nnet3::DecodableNnetSimpleLoopedInfo *decodable_info_ = nullptr;
@@ -115,100 +123,117 @@ DecoderFactory::~DecoderFactory() {
   delete adaptation_state_;
 }
 
-DecoderFactory::DecoderFactory(const char* resource_dir) {
-    using namespace fst;
+DecoderFactory::DecoderFactory(const char *resource_dir) {
+  using namespace fst;
 
-    typedef kaldi::int32 int32;
-    typedef kaldi::int64 int64;
+  typedef kaldi::int32 int32;
+  typedef kaldi::int64 int64;
 
-    const char *usage =
-    "Reads in wav file(s) and simulates online decoding with neural nets\n"
-    "(nnet3 setup), with optional iVector-based speaker adaptation and\n"
-    "optional endpointing.  Note: some configuration values and inputs are\n"
-    "set via config files whose filenames are passed as options\n"
-    "\n"
-    "Usage: online2-wav-nnet3-latgen-faster [options] <nnet3-in> <fst-in> "
-    "<spk2utt-rspecifier> <wav-rspecifier> <lattice-wspecifier>\n"
-    "The spk2utt-rspecifier can just be <utterance-id> <utterance-id> if\n"
-    "you want to decode utterance by utterance.\n";
+  const char *usage =
+      "Reads in wav file(s) and simulates online decoding with neural nets\n"
+          "(nnet3 setup), with optional iVector-based speaker adaptation and\n"
+          "optional endpointing.  Note: some configuration values and inputs are\n"
+          "set via config files whose filenames are passed as options\n"
+          "\n"
+          "Usage: online2-wav-nnet3-latgen-faster [options] <nnet3-in> <fst-in> "
+          "<spk2utt-rspecifier> <wav-rspecifier> <lattice-wspecifier>\n"
+          "The spk2utt-rspecifier can just be <utterance-id> <utterance-id> if\n"
+          "you want to decode utterance by utterance.\n";
 
-    std::string string word_syms_rxfilename_;
+  const std::string word_syms_rxfilename = std::string(resource_dir) + "/words.txt";
 
-    ParseOptions po(usage);
-    BaseFloat chunk_length_secs;
-    po.Register("chunk-length", &chunk_length_secs,
-                "Length of chunk size in seconds, that we process.  Set to <= 0 "
-                "to use all input in one chunk.");
-    po.Register("word-symbol-table", &word_syms_rxfilename_,
-                "Symbol table for words [for debug output]");
-    po.Register("do-endpointing", &do_endpointing_,
-                "If true, apply endpoint detection");
+  ParseOptions po(usage);
+  BaseFloat chunk_length_secs;
+  po.Register("chunk-length", &chunk_length_secs,
+              "Length of chunk size in seconds, that we process.  Set to <= 0 "
+                  "to use all input in one chunk.");
+  po.Register("do-endpointing", &do_endpointing_,
+              "If true, apply endpoint detection");
 
-    feature_opts_.Register(&po);
-    decodable_opts_.Register(&po);
-    decoder_opts_.Register(&po);
-    endpoint_opts_.Register(&po);
+  feature_opts_.Register(&po);
+  decodable_opts_.Register(&po);
+  decoder_opts_.Register(&po);
+  endpoint_opts_.Register(&po);
 
-    std::string resource_dir_prefix(resource_dir);
+  std::string resource_dir_prefix(resource_dir);
 
-    const char* argv[] = {
-        {"DUMMY"},
-        {(resource_dir_prefix + "/final.mdl").c_str()},
-        {resource_dir_prefix + "/HCLG.fst"},
-        {"--config=" + resource_dir_prefix + "/general.conf"},
-        {"--mfcc-conf=" + resource_dir_prefix + "/mfcc.conf"}
-    };
-    int argc = sizeof(argv);
-    po.Read(argc, argv);
+  std::vector<std::string> strargs = {
+      {"DUMMY"},
+      {(resource_dir_prefix + "/final.mdl")},
+      {(resource_dir_prefix + "/HCLG.fst")},
+      {("--config=" + resource_dir_prefix + "/general.conf")},
+      {("--mfcc-conf=" + resource_dir_prefix + "/mfcc.conf")}
+  };
 
-    if (po.NumArgs() != 2) {
-      po.PrintUsage();
-      return 1;
-    }
+  size_t argc = strargs.size();
+  char** argv = (char**) malloc(argc * sizeof(char*));
+  for (size_t arg = 0; arg < argc; arg++) {
+    std::string cur_arg = strargs[arg];
+    argv[arg] = (char*) malloc(cur_arg.size() * sizeof(char));
+    strcpy(argv[arg], cur_arg.c_str());
+  }
+  const char* argv_c[] = {argv[0], argv[1], argv[2], argv[3], argv[4]};
+  assert(sizeof(argv_c) == argc);
+  po.Read((int)argc, argv_c);
 
+  if (po.NumArgs() != 2) {
+    po.PrintUsage();
+    KALDI_ERR << "Initialization error.";
+  }
 
-    std::string nnet3_rxfilename = po.GetArg(1),
-        fst_rxfilename = po.GetArg(2);
+  std::string nnet3_rxfilename = po.GetArg(1),
+      fst_rxfilename = po.GetArg(2);
 
-    feature_info_ = new OnlineNnet2FeaturePipelineInfo(feature_opts);
-    if (feature_info_->feature_type != "mfcc") {
-        KALDI_ERR << "feature_type should be mfcc";
-    }
-   
-    samp_freq_ = feature_info_->mfcc_opts.frame_opts.samp_freq; 
-    chunk_length_ = samp_freq_ * chunk_length_secs;
-        
+  feature_info_ = new OnlineNnet2FeaturePipelineInfo(feature_opts_);
+  if (feature_info_->feature_type == "mfcc") {
+    samp_freq_ = feature_info_->mfcc_opts.frame_opts.samp_freq;
+  } else if (feature_info_->feature_type == "fbank") {
+    samp_freq_ = feature_info_->fbank_opts.frame_opts.samp_freq;
+  } else if (feature_info_->feature_type == "plp") {
+    samp_freq_ = feature_info_->plp_opts.frame_opts.samp_freq;
+  } else {
+    KALDI_ERR << "feature_type should be mfcc, fbank or plp";
+  }
 
-    {
-      bool binary;
-      Input ki(nnet3_rxfilename, &binary);
-      trans_model_.Read(ki.Stream(), binary);
-      am_nnet_.Read(ki.Stream(), binary);
-      SetBatchnormTestMode(true, &(am_nnet_.GetNnet()));
-      SetDropoutTestMode(true, &(am_nnet_.GetNnet()));
-      nnet3::CollapseModel(nnet3::CollapseModelConfig(), &(am_nnet_.GetNnet()));
-    }
+  chunk_length_ = static_cast<int32> (samp_freq_ * chunk_length_secs);
 
-    // this object contains precomputed stuff that is used by all decodable
-    // objects.  It takes a pointer to am_nnet because if it has iVectors it has
-    // to modify the nnet to accept iVectors at intervals.
-    decodable_info_ = new nnet3::DecodableNnetSimpleLoopedInfo(decodable_opts,
-                                                                &am_nnet_);
-    decode_fst_ = ReadFstKaldiGeneric(fst_rxfilename);
+  {
+    bool binary;
+    Input ki(nnet3_rxfilename, &binary);
+    trans_model_.Read(ki.Stream(), binary);
+    am_nnet_.Read(ki.Stream(), binary);
+    SetBatchnormTestMode(true, &(am_nnet_.GetNnet()));
+    SetDropoutTestMode(true, &(am_nnet_.GetNnet()));
+    nnet3::CollapseModel(nnet3::CollapseModelConfig(), &(am_nnet_.GetNnet()));
+  }
 
-    if (!(word_syms_ = fst::SymbolTable::ReadText(word_syms_rxfilename))) {
-        KALDI_ERR << "Could not read symbol table from file "
-                  << word_syms_rxfilename;
-    }
+  // this object contains precomputed stuff that is used by all decodable
+  // objects.  It takes a pointer to am_nnet because if it has iVectors it has
+  // to modify the nnet to accept iVectors at intervals.
+  decodable_info_ = new nnet3::DecodableNnetSimpleLoopedInfo(decodable_opts_,
+                                                             &am_nnet_);
+  decode_fst_ = ReadFstKaldiGeneric(fst_rxfilename);
 
-    adaption_state_ = new OnlineIvectorExtractorAdaptationState(
-                          feature_info.ivector_extractor_info);
-    
+  if (!(word_syms_ = fst::SymbolTable::ReadText(word_syms_rxfilename))) {
+    KALDI_ERR << "Could not read symbol table from file "
+              << word_syms_rxfilename;
+  }
+
+  adaptation_state_ = new OnlineIvectorExtractorAdaptationState(
+      feature_info_->ivector_extractor_info);
 
 }
 
-Decoder* DecoderFactory::StartDecodingSession() {
-    return new Decoder(trans_model_, *decode_fst_, ...);
+Decoder *DecoderFactory::StartDecodingSession() const {
+  return new Decoder(
+    trans_model_,
+    *decode_fst_,
+    decoder_opts_,
+    *feature_info_,
+    *decodable_info_,
+    *adaptation_state_,
+    samp_freq_,
+    chunk_length_);
 }
 
 } // namespace kaldi
@@ -223,20 +248,20 @@ using kaldi::Decoder;
    which will create light-weighted decoder objects (one per session).
    Returns nullptr on failure.
 */
-DecoderFactory* InitDecoderFactory(const char* resource_dir) {
-    return new DecoderFactory(resource_dir);
+DecoderFactory *InitDecoderFactory(const char *resource_dir) {
+  return new DecoderFactory(resource_dir);
 }
 
 // Creates a decoder object.
 // Returns nullptr on failure.
-Decoder* StartDecodingSession(const DecoderFactory* decoder_factory) {
-    return decoder_factory->StartDecodingSession();
+Decoder *StartDecodingSession(const DecoderFactory *decoder_factory) {
+  return decoder_factory->StartDecodingSession();
 }
 // Feed PCM SI16 data into the decoder.
 // Returns 0 on success, error code otherwise.
-int32_t FeedChunk(Decoder* decoder, uint16_t *data, size_t length){
+int32_t FeedChunk(Decoder *decoder, uint16_t *data, size_t length) {
 
-    return decoder->FeedChunk(data,length);
+  return decoder->FeedChunk(data, length);
 
 }
 /*
@@ -244,8 +269,8 @@ Gets current (ongoing) recognition result,
 probably as a JSON or maybe protobuf
 (with word timings and other stuff).
 */
-std::string GetCurrentResult(const Decoder*);
+std::string GetCurrentResult(const Decoder *);
 // Frees the resources and destroys the recognition session.
 // Returns 0 on success, error code otherwise.
-int32_t Finalize(Decoder*);
+int32_t Finalize(Decoder *);
 
