@@ -1711,6 +1711,16 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " learning-rate=" << learning_rate;
       break;
     }
+      /*    case 35: {
+      *component_type = "MemoryNormComponent";
+      int32 block_dim = RandInt(1, 10), dim = block_dim * RandInt(1, 2);
+      os << " dim=" << dim
+         << " block-dim=" << block_dim << " target-rms="
+         << RandInt(1, 2) << " include-indirect-derivative="
+         << (RandInt(0, 1) == 0 ? "true" : "false")
+         << " epsilon=" << (RandInt(0, 1) == 0 ? "0.1" : "1.0");
+      break;
+      }*/
     default:
       KALDI_ERR << "Error generating random component";
   }

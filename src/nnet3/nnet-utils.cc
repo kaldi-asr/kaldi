@@ -22,6 +22,7 @@
 #include "nnet3/nnet-utils.h"
 #include "nnet3/nnet-graph.h"
 #include "nnet3/nnet-simple-component.h"
+#include "nnet3/nnet-normalize-component.h"
 #include "nnet3/nnet-general-component.h"
 #include "nnet3/nnet-convolutional-component.h"
 #include "nnet3/nnet-parse.h"

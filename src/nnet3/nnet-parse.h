@@ -191,7 +191,9 @@ std::string ErrorContext(const std::string &str);
 
 // Returns a string that summarizes a vector fairly succintly, for
 // printing stats in info lines.
-std::string SummarizeVector(const Vector<BaseFloat> &vec);
+std::string SummarizeVector(const VectorBase<BaseFloat> &vec);
+
+std::string SummarizeVector(const CuVectorBase<BaseFloat> &vec);
 
 /** Print to 'os' some information about the mean and standard deviation of
     some parameters, used in Info() functions in nnet-simple-component.cc.
