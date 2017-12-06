@@ -36,8 +36,8 @@ class Decoder {
     buffer_.reserve(2 * chunk_length_);
 
   }
-  int32_t GetFinalResult(std::string *result);
-  int32_t FeedChunk(uint16_t *data, size_t length);
+  int32 GetFinalResult(std::string *result);
+  int32 FeedChunk(int16 *data, size_t length);
   ~Decoder() {
     delete feature_pipeline_;
     delete decoder_;
@@ -54,13 +54,13 @@ class Decoder {
 
 
   bool finalized_ = false;
-  std::vector<uint16_t> buffer_;
+  std::vector<int16> buffer_;
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(Decoder);
 
 };
 
-int32_t Decoder::GetFinalResult(std::string *result) {
+int32 Decoder::GetFinalResult(std::string *result) {
   if (!IsFinalized()) {
     KALDI_WARN << "Called GetFinalResult() on the un-finalized Decoder.\n"
                << "We will finalize it by force, but the correct way is\n"
@@ -111,7 +111,7 @@ int32_t Decoder::GetFinalResult(std::string *result) {
   return 0;
 }
 
-int32_t Decoder::FeedChunk(uint16_t *data, size_t length) {
+int32 Decoder::FeedChunk(int16_t *data, size_t length) {
   if (finalized_) {
     KALDI_WARN << "Calling FeedChunk with length == 0 for the second time (or more).\n"
                << "The decoder was already finalized!\n"
@@ -129,7 +129,7 @@ int32_t Decoder::FeedChunk(uint16_t *data, size_t length) {
   if (buffer_.size() < effective_chunk_length) {
     return 0;
   }
-  size_t leftover = buffer_.size() % effective_chunk_length;
+  size_t leftover = (effective_chunk_length == 0) ? 0 : buffer_.size() % effective_chunk_length;
   size_t end = buffer_.size() - leftover;
   if (last_call) {
     float_sample_buffer_.Resize(effective_chunk_length);
@@ -144,13 +144,15 @@ int32_t Decoder::FeedChunk(uint16_t *data, size_t length) {
     feature_pipeline_->InputFinished();
   }
   decoder_->AdvanceDecoding();
+  if (last_call) {
+    decoder_->FinalizeDecoding();
+  }
+
+  // now move the leftover samples to the beginning of the queue
   for (size_t i = 0; i < leftover; i++) {
     buffer_[i] = buffer_[end + i];
   }
   buffer_.resize(leftover);
-  if (last_call) {
-    decoder_->FinalizeDecoding();
-  }
   return 0;
 }
 
@@ -319,7 +321,7 @@ Decoder *StartDecodingSession(const DecoderFactory *decoder_factory) {
     return nullptr;
   }
 }
-int32_t FeedChunk(Decoder *decoder, uint16_t *data, size_t length) {
+int32_t FeedChunk(Decoder *decoder, int16_t *data, size_t length) {
   return decoder->FeedChunk(data, length);
 }
 

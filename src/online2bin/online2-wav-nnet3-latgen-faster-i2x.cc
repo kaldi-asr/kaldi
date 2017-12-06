@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
 
   SequentialTableReader<WaveHolder> wav_reader(wav_rspecifier);
   static constexpr int32 chunk_length = 200;
-  uint16 buf[chunk_length];
+  int16 buf[chunk_length];
 
   while (!wav_reader.Done()) {
     Decoder *decoder = StartDecodingSession(decoder_factory);
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
           static_cast<int32>(data.Dim()) - i,
           chunk_length);
       for (size_t t = 0; t < length; t++) {
-        buf[t] = static_cast<uint16>(data(i + t));
+        buf[t] = static_cast<int16>(data(i + t));
       }
       return_code = FeedChunk(decoder, buf, length);
       KALDI_ASSERT(return_code == 0);
@@ -61,5 +61,6 @@ int main(int argc, char *argv[]) {
     return_code = GetResultAndFinalize(decoder, &result);
     KALDI_LOG << utt << ": " << result;
     KALDI_ASSERT(return_code == 0);
+    wav_reader.Next();
   }
 }
