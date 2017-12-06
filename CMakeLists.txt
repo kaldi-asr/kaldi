@@ -3012,4 +3012,4 @@ add_executable(kaldi
         tools/sph2pipe_v2.5/shorten_x.c
         tools/sph2pipe_v2.5/sph2pipe.c
         tools/sph2pipe_v2.5/sph_convert.h
-        tools/sph2pipe_v2.5/ulaw.h)
+        tools/sph2pipe_v2.5/ulaw.h src/online2bin/online2-wav-nnet3-latgen-faster-i2x.cc)

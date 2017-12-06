@@ -304,7 +304,7 @@ Decoder *DecoderFactory::StartDecodingSession() const {
 using kaldi::DecoderFactory;
 using kaldi::Decoder;
 
-DecoderFactory *InitDecoderFactory(const char *resource_dir) {
+DecoderFactory *InitDecoderFactory(const std::string &resource_dir) {
   try {
     return new DecoderFactory(resource_dir);
   } catch (...) {
@@ -326,4 +326,3 @@ int32_t FeedChunk(Decoder *decoder, uint16_t *data, size_t length) {
 int32_t GetResultAndFinalize(Decoder *decoder, std::string *result) {
   return decoder->GetFinalResult(result);
 }
-
