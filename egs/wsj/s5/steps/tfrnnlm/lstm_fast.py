@@ -27,6 +27,7 @@ from __future__ import print_function
 
 import sys
 sys.path.insert(0,"/home/hxu/.local/lib/python2.7/site-packages/")
+#sys.path.insert(0,"/export/b03/hxu/dongji/kaldi/tools/tensorflow_build/.local/lib/python2.7/site-packages/")
 
 import inspect
 import time
@@ -166,19 +167,27 @@ class RnnlmModel(object):
     #               > prob(word | test-word-out)
     # test-cell-in
 
-    test_word_out = tf.placeholder(tf.int32, [None], name="test_word_out")
+    test_word_out = tf.placeholder(tf.int32, [None, 1], name="test_word_out")
     cellout_placeholder = tf.placeholder(tf.float32, [None, size], name="test_cell_in")
+
+    indices = tf.reshape(test_word_out, [-1])
 
     softmax_w = tf.get_variable(
         "softmax_w", [size, vocab_size], dtype=data_type())
     softmax_b = tf.get_variable("softmax_b", [vocab_size], dtype=data_type())
     softmax_b = softmax_b - 9.0
 
-    this_softmax_w = tf.gather(softmax_w, test_word_out);
-    this_softmax_b = tf.gather(softmax_b, test_word_out);
+    w_T = tf.transpose(softmax_w)
+    this_w_T = tf.gather(w_T, indices)
+    this_softmax_w = tf.transpose(this_w_T)
+#    this_softmax_w = tf.gather(softmax_w, indices, axis=1)
+    this_softmax_b = tf.gather(softmax_b, indices)
+  
+#    this_softmax_w = tf.gather(softmax_w, test_word_out, axis=1)
+#    this_softmax_b = tf.gather(softmax_b, test_word_out, axis=0)
 
 #    test_logits = tf.matmul(cellout_placeholder, tf.transpose(tf.nn.embedding_lookup(tf.transpose(softmax_w), test_word_out[0]))) + softmax_b[test_word_out[0,0]]
-    test_logits = tf.matmul(cellout_placeholder, this_softmax_w + softmax_b)
+    test_logits = tf.matmul(cellout_placeholder, this_softmax_w) + this_softmax_b
 
 #    p_word = test_logits[0, 0]
     test_out = tf.identity(test_logits, name="test_out")

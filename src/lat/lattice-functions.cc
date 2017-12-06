@@ -1781,8 +1781,10 @@ void ComposeCompactLatticeDeterministicParallel(
       }
     }
 
-    det_fst->FinalParallel(s2_final_vector, &det_fst_final_vector);
-    
+    if (s2_final_vector.size() != 0) {
+      det_fst->FinalParallel(s2_final_vector, &det_fst_final_vector);
+    }
+
     // Size of vectors should be same.
     KALDI_ASSERT(s2_final_vector.size() == det_fst_final_vector.size());
     

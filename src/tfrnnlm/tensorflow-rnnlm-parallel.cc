@@ -39,6 +39,38 @@ using tf_rnnlm::KaldiTfRnnlmWrapper;
 using tf_rnnlm::TfRnnlmDeterministicFstParallel;
 using tensorflow::Status;
 
+
+void tf_rnnlm::StackTensor(const std::vector<tensorflow::Input> &input_tensor_vector,
+                 const tensorflow::Scope &scope,
+                 const tensorflow::ClientSession &session,
+                 Tensor *output_tensor) {
+  auto axis = tensorflow::ops::Const(scope, {2});
+  tensorflow::InputList inputlist = tensorflow::InputList(input_tensor_vector);
+//  auto stack_op = tensorflow::ops::Concat(scope, inputlist, axis);
+  auto stack_op = tensorflow::ops::Identity(scope, input_tensor_vector[0]);
+
+  std::vector<Tensor> stack_output_vector(1);
+
+  Status status;
+  status = session.Run({stack_op}, &stack_output_vector);
+  if (!status.ok()) {KALDI_ERR << status.ToString();}
+  *output_tensor = stack_output_vector[0];
+}
+
+void tf_rnnlm::UnstackTensor(int size,
+                   const Tensor &input_tensor,
+                   const tensorflow::Scope &scope,
+                   const tensorflow::ClientSession &session,
+                   std::vector<Tensor> *output_tensor_vector) {
+    auto axis = tensorflow::ops::Const(scope, {2});
+    tensorflow::Input input = tensorflow::Input(input_tensor);
+    auto unstack_op = tensorflow::ops::Split(scope,  axis, input_tensor, size).output; 
+    
+    Status status;
+    status = session.Run({unstack_op}, output_tensor_vector);
+    if (!status.ok()) {KALDI_ERR << status.ToString();}
+}
+
 TfRnnlmDeterministicFstParallel::TfRnnlmDeterministicFstParallel(int32 max_ngram_order,
                                              KaldiTfRnnlmWrapper *rnnlm) {
   KALDI_ASSERT(rnnlm != NULL);
@@ -65,36 +97,9 @@ TfRnnlmDeterministicFstParallel::~TfRnnlmDeterministicFstParallel() {
   }
 }
 
-void TfRnnlmDeterministicFstParallel::StackTensor(const std::vector<tensorflow::Input> &input_tensor_vector,
-                                          const tensorflow::Scope &scope,
-                                          const tensorflow::ClientSession &session,
-                                          Tensor *output_tensor) {
-  tensorflow::InputList inputlist = tensorflow::InputList(input_tensor_vector);
-  auto stack_op = tensorflow::ops::Stack(scope, inputlist);
-
-  std::vector<Tensor> stack_output_vector;
-
-  Status status;
-  status = session.Run({stack_op}, &stack_output_vector);
-  if (!status.ok()) {KALDI_ERR << status.ToString();}
-  *output_tensor = stack_output_vector[0];
-}
-
-void TfRnnlmDeterministicFstParallel::UnstackTensor(int size,
-                                            const Tensor &input_tensor,
-                                            const tensorflow::Scope &scope,
-                                            const tensorflow::ClientSession &session,
-                                            std::vector<Tensor> *output_tensor_vector) {
-    tensorflow::Input input = tensorflow::Input(input_tensor);
-    auto unstack_op = tensorflow::ops::Unstack(scope, input_tensor, size).output; 
-    
-    Status status;
-    status = session.Run({unstack_op}, output_tensor_vector);
-    if (!status.ok()) {KALDI_ERR << status.ToString();}
-}
 
 void TfRnnlmDeterministicFstParallel::FinalParallel(std::vector<StateId> s2_vector_final,
-                                            std::vector<Weight>* det_fst_final_vector) {
+                                                    std::vector<Weight>* det_fst_final_vector) {
   int32 eos_ = rnnlm_->GetEos();
   int s2_size = s2_vector_final.size();
   std::vector<int32> rnn_word_vector(s2_size, eos_);
@@ -118,9 +123,9 @@ void TfRnnlmDeterministicFstParallel::FinalParallel(std::vector<StateId> s2_vect
   std::vector<Tensor> state_output_vector, cell_output_vector;
   Tensor state_to_context_tensor, state_to_cell_tensor;
 
-  StackTensor(state_to_context_vector, root_final, session_final,
+  tf_rnnlm::StackTensor(state_to_context_vector, root_final, session_final,
               &state_to_context_tensor);
-  StackTensor(state_to_cell_vector, root_final, session_final,
+  tf_rnnlm::StackTensor(state_to_cell_vector, root_final, session_final,
               &state_to_cell_tensor);
 //  Status status; 
 //  status  = session_final.Run({context_op}, &state_output_vector);
@@ -220,8 +225,8 @@ void TfRnnlmDeterministicFstParallel::GetArcsParallel(std::vector<StateId> s2_ve
 //  status = session.Run({new_cell_op}, &new_cell_vector);
 //  if (!status.ok()) {KALDI_ERR << status.ToString();}
 
-  UnstackTensor(parallel_size, new_context_tensor, root, session, &new_context_vector);
-  UnstackTensor(parallel_size, new_cell_tensor, root, session, &new_cell_vector);
+  tf_rnnlm::UnstackTensor(parallel_size, new_context_tensor, root, session, &new_context_vector);
+  tf_rnnlm::UnstackTensor(parallel_size, new_cell_tensor, root, session, &new_cell_vector);
 
   for (int iter = 0; iter < parallel_size; ++iter) {
     s = s2_vector[iter];

@@ -39,6 +39,17 @@ using tensorflow::Tensor;
 namespace kaldi {
 namespace tf_rnnlm {
 
+void StackTensor(const std::vector<tensorflow::Input> &input_tensor_vector,
+                 const tensorflow::Scope &scope,
+                 const tensorflow::ClientSession &session,
+                 Tensor *output_tensor);
+
+void UnstackTensor(int size,
+                           const Tensor &input_tensor,
+                           const tensorflow::Scope &scope,
+                           const tensorflow::ClientSession &session,
+                           std::vector<Tensor> *output_tensor_vector);
+
 class TfRnnlmDeterministicFstParallel:
          public fst::DeterministicOnDemandFstParallel<fst::StdArc> {
  public:
@@ -61,16 +72,6 @@ class TfRnnlmDeterministicFstParallel:
                                std::vector<Label> olabel_vector,
                                std::vector<fst::StdArc>* arc2_vector);
 
-  virtual void StackTensor(const std::vector<tensorflow::Input> &input_tensor_vector,
-                           const tensorflow::Scope &scope,
-                           const tensorflow::ClientSession &session,
-                           Tensor *output_tensor);
-
-  virtual void UnstackTensor(int size,
-                             const Tensor &input_tensor,
-                             const tensorflow::Scope &scope,
-                             const tensorflow::ClientSession &session,
-                             std::vector<Tensor> *output_tensor_vector);
  private:
   typedef unordered_map<std::vector<Label>,
                         StateId, VectorHasher<Label> > MapType;
