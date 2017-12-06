@@ -17,6 +17,7 @@ int main(int argc, char *argv[]) {
           "Usage: online2-wav-nnet3-latgen-faster-i2x [options] <path-to-resource-dir-in> <wavefile-scp-in>\n";
 
   ParseOptions po(usage);
+  po.Read(argc, argv);
 
   if (po.NumArgs() != 2) {
     po.PrintUsage();

@@ -208,7 +208,7 @@ DecoderFactory::DecoderFactory(const std::string &resource_dir_prefix) {
   const std::string word_syms_rxfilename = resource_dir_prefix + "/words.txt";
 
   ParseOptions po(usage);
-  BaseFloat chunk_length_secs;
+  BaseFloat chunk_length_secs = 0.18;
   po.Register("chunk-length", &chunk_length_secs,
               "Length of chunk size in seconds, that we process.  Set to <= 0 "
                   "to use all input in one chunk.");
@@ -222,26 +222,26 @@ DecoderFactory::DecoderFactory(const std::string &resource_dir_prefix) {
 
   std::vector<std::string> strargs = {
       {"DUMMY"},
-      {(resource_dir_prefix + "/final.mdl")},
-      {(resource_dir_prefix + "/HCLG.fst")},
       {("--config=" + resource_dir_prefix + "/general.conf")},
-      {("--mfcc-conf=" + resource_dir_prefix + "/mfcc.conf")}
+      {("--mfcc-config=" + resource_dir_prefix + "/mfcc_hires.conf")},
+      {(resource_dir_prefix + "/final.mdl")},
+      {(resource_dir_prefix + "/HCLG.fst")}
   };
 
   size_t argc = strargs.size();
   char **argv = (char **) malloc(argc * sizeof(char *));
-  for (size_t arg = 0; arg<argc; arg++) {
+  for (size_t arg = 0; arg < argc; arg++) {
     std::string cur_arg = strargs[arg];
-    argv[arg] = (char *) malloc(cur_arg.size() * sizeof(char));
+    argv[arg] = (char *) malloc((cur_arg.size() + 1) * sizeof(char));
     strcpy(argv[arg], cur_arg.c_str());
   }
   const char *argv_c[] = {argv[0], argv[1], argv[2], argv[3], argv[4]};
-  assert(sizeof(argv_c) == argc);
+  KALDI_ASSERT(sizeof(argv_c) == argc * sizeof(char*));
   po.Read((int) argc, argv_c);
 
   if (po.NumArgs() != 2) {
     po.PrintUsage();
-    KALDI_ERR << "Initialization error.";
+    KALDI_ERR << "Initialization error. " << po.NumArgs() << " != 2";
   }
 
   std::string nnet3_rxfilename = po.GetArg(1),
