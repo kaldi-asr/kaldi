@@ -5,7 +5,7 @@
 
 
 """ This script perturbs speeds of utterances to force their lengths to some allowed
-    lengths spaced by a factor
+    lengths spaced by a factor (like 10%)
 """
 
 import argparse
@@ -14,7 +14,13 @@ import sys
 import copy
 import math
 
-parser = argparse.ArgumentParser(description="""This script ...""")
+parser = argparse.ArgumentParser(description="""This script copies the 'srcdir'
+                                 data directory to output data directory 'dir'
+                                 while modifying the utterances so that there are
+                                 3 copies of each utterance: one with the same
+                                 speed, one with a higher speed (not more than
+                                 factor% faster) and one with a lower speed
+                                 (not more than factor% slower)""")
 parser.add_argument('factor', type=float, default=12,
                     help='spacing (in percentage) between allowed lengths.')
 parser.add_argument('srcdir', type=str,
@@ -23,7 +29,10 @@ parser.add_argument('dir', type=str, help='output dir')
 parser.add_argument('--range-factor', type=float, default=0.05,
                     help="""Percentage of durations not covered from each side of
                     duration histogram.""")
-parser.add_argument('--no-speed-perturb',  action='store_true')
+parser.add_argument('--no-speed-perturb',  action='store_true',
+                    help="""If true, only 1 copy of each utterance will be
+                            saved, which is modified to have an allowed length
+                            by using extend-wav-with-silence""")
 
 args = parser.parse_args()
 
@@ -126,8 +135,11 @@ if not os.path.exists(args.dir):
 utts = read_kaldi_datadir(args.srcdir)
 
 factor = 1.0 + float(args.factor)/100
-# 1a. find start-dur and end-dur
-## echo "Durs = [" >durs.m && cut -d' ' -f2 data/train_nodup_seg/utt2dur | tr '\n' ',' >>durs.m && echo " ];" >>durs.m
+
+# 1a. find start-dur and end-dur to cover (if we try to cover
+#     all durations which occur in the train set, the number of
+#     allowed lengths could become very large)
+
 durs = []
 for u in utts:
   durs += [u.dur]
@@ -145,26 +157,25 @@ for d in reversed(durs):
   if to_ignore_dur * 100.0 / tot_dur > args.range_factor:
     end_dur = d
     break
-print("Durations in the range [{},{}] will be covered. Coverage rate: {}%".format(start_dur, end_dur, 100.0-args.range_factor*2))
-print("There will be {} unique allowed lengths for the utterances.".format(int(math.log(end_dur/start_dur)/math.log(factor))))
-#sys.exit(0)
+print("""Durations in the range [{},{}] will be covered.
+      Coverage rate: {}%""".format(start_dur, end_dur,
+                                   100.0 - args.range_factor * 2))
+print("""There will be {} unique allowed lengths
+      for the utterances.""".format(int(math.log(end_dur / start_dur) /
+                                        math.log(factor))))
+
 
 # 1b. compute and write allowed lengths
-#start_dur = 0.88
-#end_dur = 19.00
+
 durs = []
 d = start_dur
 f = open(os.path.join(args.dir, 'allowed_durs.txt'), 'wb')
 f2 = open(os.path.join(args.dir, 'allowed_lengths.txt'), 'wb')
 while d < end_dur:
-  length = int(d*1000 - 25) / 10 + 1  # for the most common length of frames and overlap
+  length = int(d*1000 - 25) / 10 + 1  # for the most common length of frames and overlap which is 25ms and 10ms
   if length % 3 != 0:
     lo = 3 * (length / 3)
     hi = lo + 3
-    #if length - lo <= hi - length:
-    #  length = lo
-    #else:
-    #  length = hi
     length = lo  # should select lo to make sure the jump is not bigger than 12%
     dnew = (10.0 * (length - 1.0) + 25.0 + 5.0) / 1000.0  # +5 is for safety
     d = dnew
@@ -176,7 +187,7 @@ f.close()
 f2.close()
 
 # 2. perturb to allowed durs
-# sox -t wav seg1.wav -t wav long95.wav speed 0.873684211
+
 perturbed_utts = []
 durs = durs + [1000000]
 for u in utts:
@@ -208,7 +219,6 @@ for u in utts:
     allowed_dur2 = durs[i]  # this is bigger than u.dur
     speed = u.dur / allowed_dur2
     if max(speed, 1.0/speed) > factor:
-      #print('no v2/v3 for: {}    --> dur was {} speed was {}'.format(u.id, u.dur, speed))
       continue
 
     ## Add two versions for the second allowed_length
@@ -232,5 +242,5 @@ for u in utts:
     u3.dur = allowed_dur2
     perturbed_utts += [u3]
 
-# 3. write to our dir
+# 3. write to output dir
 generate_kaldi_data_files(perturbed_utts, args.dir)
