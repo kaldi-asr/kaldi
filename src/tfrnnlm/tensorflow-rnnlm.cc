@@ -265,6 +265,7 @@ void KaldiTfRnnlmWrapper::GetLogProbParallel(std::vector<int32> word_vector,
   int32 word;
   float ans, logprob;
   for (int i = 0; i < word_vector.size(); ++i) {
+    KALDI_LOG << "here " << outputs[0].DebugString();
     logprob = outputs[0].vec<float>()(i);
     word = word_vector[i];
     if (word != oos_) {

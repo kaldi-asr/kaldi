@@ -39,12 +39,12 @@ using tensorflow::Tensor;
 namespace kaldi {
 namespace tf_rnnlm {
 
-void StackTensor(const std::vector<tensorflow::Input> &input_tensor_vector,
+void ConcatTensor(const std::vector<tensorflow::Tensor> &input_tensor_vector,
                  const tensorflow::Scope &scope,
                  const tensorflow::ClientSession &session,
                  Tensor *output_tensor);
 
-void UnstackTensor(int size,
+void SplitTensor(int size,
                            const Tensor &input_tensor,
                            const tensorflow::Scope &scope,
                            const tensorflow::ClientSession &session,

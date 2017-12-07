@@ -62,7 +62,7 @@ class Config(object):
   num_steps = 20
   hidden_size = 200
   max_epoch = 4
-  max_max_epoch = 2
+  max_max_epoch = 1
   keep_prob = 1.0
   lr_decay = 0.8
   batch_size = 64
@@ -190,7 +190,7 @@ class RnnlmModel(object):
     test_logits = tf.matmul(cellout_placeholder, this_softmax_w) + this_softmax_b
 
 #    p_word = test_logits[0, 0]
-    test_out = tf.identity(test_logits, name="test_out")
+    test_out = tf.reshape(test_logits, [-1], name="test_out")
 
     if is_training and config.keep_prob < 1:
       inputs = tf.nn.dropout(inputs, config.keep_prob)
