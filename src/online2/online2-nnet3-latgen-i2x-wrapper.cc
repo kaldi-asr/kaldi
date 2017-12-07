@@ -240,13 +240,14 @@ DecoderFactoryImpl::DecoderFactoryImpl(const std::string &resource_dir_prefix) {
 
   size_t argc = strargs.size();
   char **argv = (char **) malloc(argc * sizeof(char *));
-  for (size_t arg = 0; arg < argc; arg++) {
+  for (size_t arg = 0; arg<argc; arg++) {
     std::string cur_arg = strargs[arg];
     argv[arg] = (char *) malloc((cur_arg.size() + 1) * sizeof(char));
     strcpy(argv[arg], cur_arg.c_str());
   }
+
   const char *argv_c[] = {argv[0], argv[1], argv[2], argv[3], argv[4]};
-  KALDI_ASSERT(sizeof(argv_c) == argc * sizeof(char*));
+  KALDI_ASSERT(sizeof(argv_c) == argc * sizeof(char *));
   po.Read((int) argc, argv_c);
 
   if (po.NumArgs() != 2) {
@@ -295,6 +296,10 @@ DecoderFactoryImpl::DecoderFactoryImpl(const std::string &resource_dir_prefix) {
   adaptation_state_ = new OnlineIvectorExtractorAdaptationState(
       feature_info_->ivector_extractor_info);
 
+  for (size_t arg = 0; arg < argc; arg++) {
+    free(argv[arg]);
+  }
+  free(argv);
 }
 
 DecoderImpl *DecoderFactoryImpl::StartDecodingSession() const {

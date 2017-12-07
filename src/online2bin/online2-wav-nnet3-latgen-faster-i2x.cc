@@ -27,15 +27,14 @@ int main(int argc, char *argv[]) {
   std::string resource_dir = po.GetArg(1),
       wav_rspecifier = po.GetArg(2);
 
-  DecoderFactoryImpl *decoder_factory = InitDecoderFactory(resource_dir);
-  KALDI_ASSERT(decoder_factory != nullptr);
+  DecoderFactory decoder_factory(resource_dir);
 
   SequentialTableReader<WaveHolder> wav_reader(wav_rspecifier);
   static constexpr int32 chunk_length = 200;
   int16 buf[chunk_length];
 
   while (!wav_reader.Done()) {
-    DecoderImpl *decoder = StartDecodingSession(decoder_factory);
+    Decoder *decoder = decoder_factory.StartDecodingSession();
     KALDI_ASSERT(decoder != nullptr);
 
     const std::string &utt = wav_reader.Key();
@@ -51,16 +50,17 @@ int main(int argc, char *argv[]) {
       for (size_t t = 0; t < length; t++) {
         buf[t] = static_cast<int16>(data(i + t));
       }
-      return_code = FeedChunk(decoder, buf, length);
+      return_code = decoder->FeedChunk(buf, length);
       KALDI_ASSERT(return_code == 0);
       i += chunk_length;
     }
-    return_code = FeedChunk(decoder, nullptr, 0);
+    return_code = decoder->FeedChunk(nullptr, 0);
     KALDI_ASSERT(return_code == 0);
-    std::string result;
-    return_code = GetResultAndFinalize(decoder, &result);
-    KALDI_LOG << utt << ": " << result;
+    RecognitionResult result;
+    return_code = decoder->GetResultAndFinalize(&result);
+    KALDI_LOG << utt << ": " << result.transcript;
     KALDI_ASSERT(return_code == 0);
+    delete decoder;
     wav_reader.Next();
   }
 }
