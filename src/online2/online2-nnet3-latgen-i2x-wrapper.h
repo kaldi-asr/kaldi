@@ -4,13 +4,42 @@
 #include <cstdint>
 
 namespace kaldi {
-class DecoderFactory;
-class Decoder; 
+class DecoderFactoryImpl;
+class DecoderImpl;
 } // namespace kaldi
 
-using kaldi::DecoderFactory;
-using kaldi::Decoder;
-/*
+using kaldi::DecoderFactoryImpl;
+using kaldi::DecoderImpl;
+
+struct RecognitionResult {
+  std::string transcript;
+};
+
+class Decoder {
+ public:
+  ~Decoder();
+
+  // Feed PCM SI16 data into the decoder.
+  // Returns 0 on success, error code otherwise.
+  // If called with length == 0, the decoder is finalized and no further calls are allowed.
+  int32_t FeedChunk(int16_t *data, size_t length);
+
+  // Puts the final recognition result in the string passed by pointer.
+  // Frees the resources and destroys the recognition session.
+  // Returns 0 on success, error code otherwise.
+  int32_t GetResultAndFinalize(RecognitionResult *recognition_result);
+ private:
+  DecoderImpl *decoder_impl_ = nullptr;
+  Decoder(DecoderImpl *decoder_impl_);
+  friend class DecoderFactory;
+
+  Decoder& operator=(const Decoder&) = delete;
+  Decoder(const Decoder&) = delete;
+};
+
+class DecoderFactory {
+ public:
+  /*
    Creates a decoder factory.
    Called only once during the lifetime.
    mmaps extremely heavy resources like WFST and AM (up to 20 GB).
@@ -18,21 +47,19 @@ using kaldi::Decoder;
    Returns a handle to a decoder factory,
    which will create light-weighted decoder objects (one per session).
    Returns nullptr on failure.
-*/
-extern DecoderFactory *InitDecoderFactory(const std::string &resource_dir);
+  */
+  explicit DecoderFactory(const std::string &resource_dir);
+  ~DecoderFactory(); // TODO switch to a singleton for DecoderFactory
 
-// Creates a decoder object.
-// Returns nullptr on failure.
-extern Decoder *StartDecodingSession(const DecoderFactory *);
+  // Creates a decoder object.
+  // Returns nullptr on failure.
+  Decoder *StartDecodingSession();
+ private:
+  DecoderFactoryImpl *decoder_factory_impl_ = nullptr;
 
-// Feed PCM SI16 data into the decoder.
-// Returns 0 on success, error code otherwise.
-// If called with length == 0, the decoder is finalized and no further calls are allowed.
-extern int32_t FeedChunk(Decoder *, int16_t *data, size_t length);
+  DecoderFactory& operator=(const DecoderFactory&) = delete;
+  DecoderFactory(const DecoderFactory&) = delete;
+};
 
-// Puts the final recognition result in the string passed by pointer.
-// Frees the resources and destroys the recognition session.
-// Returns 0 on success, error code otherwise.
-extern int32_t GetResultAndFinalize(Decoder *decoder, std::string *result);
 #endif // KALDI_ONLINE2_ONLINE_NNET3_LATGEN_I2X_WRAPPER_H_
 

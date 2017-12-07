@@ -18,11 +18,7 @@ std::string DereferenceStringPtr(std::string* str) {
 
 %include stdint.i
 %include cpointer.i
-%pointer_class(int16_t, intp);
 %include std_string.i
 using std::string;
 %include "online2-nnet3-latgen-i2x-wrapper.h"
 extern int16_t* Cast(int ptr);
-extern std::string* CreateString();
-extern void FreeString(std::string* str);
-extern std::string DereferenceStringPtr(std::string* str);

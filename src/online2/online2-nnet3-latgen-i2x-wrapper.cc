@@ -11,10 +11,10 @@
 
 namespace kaldi {
 
-class Decoder {
+class DecoderImpl {
 
  public:
-  Decoder(
+  DecoderImpl(
       const TransitionModel &trans_model,
       const fst::Fst<fst::StdArc> &decode_fst,
       const LatticeFasterDecoderConfig &decoder_opts,
@@ -36,11 +36,13 @@ class Decoder {
     buffer_.reserve(2 * chunk_length_);
 
   }
-  int32 GetFinalResult(std::string *result);
+  int32 GetFinalResult(RecognitionResult *result);
   int32 FeedChunk(int16 *data, size_t length);
-  ~Decoder() {
+  ~DecoderImpl() {
     delete feature_pipeline_;
     delete decoder_;
+    feature_pipeline_ = nullptr;
+    decoder_ = nullptr;
   }
   bool IsFinalized() const { return finalized_; }
  private:
@@ -56,11 +58,11 @@ class Decoder {
   bool finalized_ = false;
   std::vector<int16> buffer_;
 
-  KALDI_DISALLOW_COPY_AND_ASSIGN(Decoder);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(DecoderImpl);
 
 };
 
-int32 Decoder::GetFinalResult(std::string *result) {
+int32 DecoderImpl::GetFinalResult(RecognitionResult *result) {
   if (!IsFinalized()) {
     KALDI_WARN << "Called GetFinalResult() on the un-finalized Decoder.\n"
                << "We will finalize it by force, but the correct way is\n"
@@ -106,12 +108,12 @@ int32 Decoder::GetFinalResult(std::string *result) {
     if (i + 1 != words.size()) {
       s += " ";
     }
-    *result += s;
+    result->transcript += s;
   }
   return 0;
 }
 
-int32 Decoder::FeedChunk(int16_t *data, size_t length) {
+int32 DecoderImpl::FeedChunk(int16_t *data, size_t length) {
   if (finalized_) {
     KALDI_WARN << "Calling FeedChunk with length == 0 for the second time (or more).\n"
                << "The decoder was already finalized!\n"
@@ -156,11 +158,11 @@ int32 Decoder::FeedChunk(int16_t *data, size_t length) {
   return 0;
 }
 
-class DecoderFactory {
+class DecoderFactoryImpl {
  public:
-  DecoderFactory(const std::string &);
-  ~DecoderFactory();
-  Decoder *StartDecodingSession() const;
+  DecoderFactoryImpl(const std::string &);
+  ~DecoderFactoryImpl();
+  DecoderImpl *StartDecodingSession() const;
  private:
   TransitionModel trans_model_;
   nnet3::AmNnetSimple am_nnet_;
@@ -182,15 +184,21 @@ class DecoderFactory {
   OnlineIvectorExtractorAdaptationState *adaptation_state_ = nullptr;
 };
 
-DecoderFactory::~DecoderFactory() {
+DecoderFactoryImpl::~DecoderFactoryImpl() {
   delete feature_info_;
   delete decodable_info_;
   delete decode_fst_;
   delete word_syms_;
   delete adaptation_state_;
+
+  feature_info_= nullptr;
+  decodable_info_= nullptr;
+  decode_fst_= nullptr;
+  word_syms_= nullptr;
+  adaptation_state_= nullptr;
 }
 
-DecoderFactory::DecoderFactory(const std::string &resource_dir_prefix) {
+DecoderFactoryImpl::DecoderFactoryImpl(const std::string &resource_dir_prefix) {
   using namespace fst;
 
   typedef kaldi::int32 int32;
@@ -289,8 +297,8 @@ DecoderFactory::DecoderFactory(const std::string &resource_dir_prefix) {
 
 }
 
-Decoder *DecoderFactory::StartDecodingSession() const {
-  return new Decoder(
+DecoderImpl *DecoderFactoryImpl::StartDecodingSession() const {
+  return new DecoderImpl(
       trans_model_,
       *decode_fst_,
       decoder_opts_,
@@ -303,28 +311,43 @@ Decoder *DecoderFactory::StartDecodingSession() const {
 }
 
 } // namespace kaldi
-using kaldi::DecoderFactory;
-using kaldi::Decoder;
+using kaldi::DecoderFactoryImpl;
+using kaldi::DecoderImpl;
 
-DecoderFactory *InitDecoderFactory(const std::string &resource_dir) {
+DecoderFactory::DecoderFactory(const std::string &resource_dir) :
+  decoder_factory_impl_(new DecoderFactoryImpl(resource_dir))
+{
+  // Nothing to do.
+}
+
+DecoderFactory::~DecoderFactory() {
+  delete decoder_factory_impl_;
+  decoder_factory_impl_ = nullptr;
+}
+
+Decoder* DecoderFactory::StartDecodingSession() {
   try {
-    return new DecoderFactory(resource_dir);
-  } catch (...) {
+    return new Decoder(decoder_factory_impl_->StartDecodingSession());
+  } catch(...) {
     return nullptr;
   }
 }
 
-Decoder *StartDecodingSession(const DecoderFactory *decoder_factory) {
-  try {
-    return decoder_factory->StartDecodingSession();
-  } catch (...) {
-    return nullptr;
-  }
-}
-int32_t FeedChunk(Decoder *decoder, int16_t *data, size_t length) {
-  return decoder->FeedChunk(data, length);
+Decoder::Decoder(DecoderImpl *decoder_impl) :
+  decoder_impl_(decoder_impl)
+{
+  // Nothing to do.
 }
 
-int32_t GetResultAndFinalize(Decoder *decoder, std::string *result) {
-  return decoder->GetFinalResult(result);
+Decoder::~Decoder() {
+  delete decoder_impl_;
+  decoder_impl_ = nullptr;
+}
+
+int32_t Decoder::FeedChunk(int16_t *data, size_t length) {
+  return decoder_impl_->FeedChunk(data, length);
+}
+
+int32_t Decoder::GetResultAndFinalize(RecognitionResult *result) {
+  return decoder_impl_->GetFinalResult(result);
 }

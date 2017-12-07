@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
   std::string resource_dir = po.GetArg(1),
       wav_rspecifier = po.GetArg(2);
 
-  DecoderFactory *decoder_factory = InitDecoderFactory(resource_dir);
+  DecoderFactoryImpl *decoder_factory = InitDecoderFactory(resource_dir);
   KALDI_ASSERT(decoder_factory != nullptr);
 
   SequentialTableReader<WaveHolder> wav_reader(wav_rspecifier);
@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
   int16 buf[chunk_length];
 
   while (!wav_reader.Done()) {
-    Decoder *decoder = StartDecodingSession(decoder_factory);
+    DecoderImpl *decoder = StartDecodingSession(decoder_factory);
     KALDI_ASSERT(decoder != nullptr);
 
     const std::string &utt = wav_reader.Key();
