@@ -2,37 +2,38 @@
 # 1g
 # set number of epochs to 5 (avoid overfitting)
 
-# ./local/chain/compare_wer.sh exp/chain/tdnn1e_sp exp/chain/tdnn1f_sp
-# System                tdnn1e_sp tdnn1f_sp
-#WER devtest       52.21     52.10
-#WER native       53.43     52.83
-nonnative     61.03     61.82
-#WER test       57.70     57.75
-# Final train prob        -0.0250   -0.0292
-# Final valid prob        -0.0678   -0.0694
-# Final train prob (xent)   -0.7887   -0.8646
-# Final valid prob (xent)   -1.0419   -1.0885
+# compare with 1f
+# ./local/chain/compare_wer.sh exp/chain/tdnn1f_sp exp/chain/tdnn1g_sp
+# System                tdnn1f_sp tdnn1g_sp
+#WER devtest       52.10     52.43
+#WER native       52.83     55.17
+nonnative     61.82     63.39
+# test       57.75     59.65
+# Final train prob        -0.0292   -0.0280
+# Final valid prob        -0.0694   -0.0684
+# Final train prob (xent)   -0.8646   -0.8366
+# Final valid prob (xent)   -1.0885   -1.0664
 
 # info
-# exp/chain/tdnn1f_sp:
-# num-iters=60
+#exp/chain/tdnn1g_sp:
+# num-iters=75
 # nj=1..1
 # num-params=6.6M
 # dim=40+100->1392
-# combine=-0.042->-0.037 xent:train/valid[39,59,final]=(-1.23,-0.984,-0.865/-1.34,-1.19,-1.09)
-# logprob:train/valid[39,59,final]=(-0.052,-0.036,-0.029/-0.081,-0.076,-0.069)
+# combine=-0.039->-0.036 xent:train/valid[49,74,final]=(-1.21,-0.961,-0.837/-1.33,-1.19,-1.07)
+# logprob:train/valid[49,74,final]=(-0.051,-0.035,-0.028/-0.081,-0.075,-0.068)
 
 # Word Error Rates on folds
-%WER 61.82 [ 5697 / 9215, 739 ins, 659 del, 4299 sub ] exp/chain/tdnn1f_sp/decode_nonnative/wer_7_1.0
-%WER 57.75 [ 9651 / 16713, 1272 ins, 1100 del, 7279 sub ] exp/chain/tdnn1f_sp/decode_test/wer_7_1.0
-%WER 52.83 [ 3961 / 7498, 535 ins, 445 del, 2981 sub ] exp/chain/tdnn1f_sp/decode_native/wer_7_1.0
-%WER 52.10 [ 3986 / 7650, 709 ins, 372 del, 2905 sub ] exp/chain/tdnn1f_sp/decode_devtest/wer_7_1.0
+%WER 63.39 [ 5841 / 9215, 728 ins, 771 del, 4342 sub ] exp/chain/tdnn1g_sp/decode_nonnative/wer_7_1.0
+%WER 59.65 [ 9970 / 16713, 1281 ins, 1246 del, 7443 sub ] exp/chain/tdnn1g_sp/decode_test/wer_7_1.0
+%WER 55.17 [ 4137 / 7498, 564 ins, 470 del, 3103 sub ] exp/chain/tdnn1g_sp/decode_native/wer_7_1.0
+%WER 52.43 [ 4011 / 7650, 747 ins, 374 del, 2890 sub ] exp/chain/tdnn1g_sp/decode_devtest/wer_7_1.0
 
-# | fold | 1a | 1b | 1c | 1d | 1e | 1f |
-#| devtest | 54.46 | 54.20 | 54.16 | 52.78 | 52.21 | 52.10 |
-#| native |  62.14 | 62.32 | 61.70 | 55.32 | 53.43 | 52.83 |
-#| nonnative | 70.58 | 71.20 | 71.68 | 64.35 | 61.03 | 61.82 |
-#| test | 66.85 | 67.21 | 67.25 | 60.28 | 57.70 | 57.75 |
+# | fold | 1a | 1b | 1c | 1d | 1e | 1f | 1g |
+#| devtest | 54.46 | 54.20 | 54.16 | 52.78 | 52.21 | 52.10 | 52.43 |
+#| native |  62.14 | 62.32 | 61.70 | 55.32 | 53.43 | 52.83 | 55.17 |
+#| nonnative | 70.58 | 71.20 | 71.68 | 64.35 | 61.03 | 61.82 | 63.39 |
+#| test | 66.85 | 67.21 | 67.25 | 60.28 | 57.70 | 57.75 | 59.65 |
 
 # this script came from the mini librispeech recipe
 # Set -e here so that we catch if any executable fails immediately

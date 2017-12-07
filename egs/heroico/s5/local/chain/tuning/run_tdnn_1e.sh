@@ -2,12 +2,13 @@
 # 1e
 # lower number of epochs to 7 from 10 (avoid overfitting?)
 
+# compare with 1d
 # ./local/chain/compare_wer.sh exp/chain/tdnn1d_sp exp/chain/tdnn1e_sp
 # System                tdnn1d_sp tdnn1e_sp
 #WER devtest       52.78     52.21
 #WER native       55.32     53.43
 nonnative     64.35     61.03
-#WER test       60.28     57.70
+# test       60.28     57.70
 # Final train prob        -0.0229   -0.0250
 # Final valid prob        -0.0683   -0.0678
 # Final train prob (xent)   -0.7525   -0.7887
