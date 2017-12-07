@@ -22,7 +22,7 @@ class Decoder {
   // Feed PCM SI16 data into the decoder.
   // Returns 0 on success, error code otherwise.
   // If called with length == 0, the decoder is finalized and no further calls are allowed.
-  int32_t FeedChunk(int16_t *data, size_t length);
+  int32_t FeedBytestring(const std::string& bytestring);
 
   // Puts the final recognition result in the string passed by pointer.
   // Frees the resources and destroys the recognition session.

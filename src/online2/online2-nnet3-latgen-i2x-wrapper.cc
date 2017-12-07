@@ -33,11 +33,12 @@ class DecoderImpl {
     feature_pipeline_->SetAdaptationState(adaptation_state);
     decoder_ = new SingleUtteranceNnet3Decoder(
         decoder_opts, trans_model, decodable_info, decode_fst, feature_pipeline_);
-    buffer_.reserve(2 * chunk_length_);
+    sample_buffer_.reserve(2 * chunk_length_);
 
   }
   int32 GetFinalResult(RecognitionResult *result);
-  int32 FeedChunk(int16 *data, size_t length);
+  int32 FeedBytestring(const std::string& bytestring);
+
   ~DecoderImpl() {
     delete feature_pipeline_;
     delete decoder_;
@@ -46,6 +47,8 @@ class DecoderImpl {
   }
   bool IsFinalized() const { return finalized_; }
  private:
+  int32 FeedChunk(int16 *data, size_t length);
+
   SingleUtteranceNnet3Decoder *decoder_ = nullptr;
   OnlineNnet2FeaturePipeline *feature_pipeline_ = nullptr;
   const fst::SymbolTable& word_syms_;
@@ -54,13 +57,36 @@ class DecoderImpl {
   Vector<BaseFloat> float_sample_buffer_;
   BaseFloat samp_freq_;
 
-
   bool finalized_ = false;
-  std::vector<int16> buffer_;
+  std::vector<int16> sample_buffer_;
+  std::string byte_buffer_;
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecoderImpl);
 
 };
+
+int32 DecoderImpl::FeedBytestring(const std::string& bytestring) {
+  byte_buffer_ += bytestring;
+  bool leftover = (bytestring.size() % 2 != 0);
+  size_t length = leftover ? bytestring.size() - 1 : bytestring.size();
+  length /= 2;
+  if (length == 0) {
+    return FeedChunk(nullptr, 0);
+  }
+  int16_t *data = new int16_t[length];
+  for (size_t i = 0; i != length; i++) {
+    data[i] = *(reinterpret_cast<const int16_t*>(bytestring.c_str() + (2*i)));
+  }
+  int32_t return_code = FeedChunk(data, length);
+  delete[] data;
+  if (leftover) {
+    char leftover_byte = byte_buffer_[byte_buffer_.size() - 1];
+    byte_buffer_.clear();
+    byte_buffer_.push_back(leftover_byte);
+  }
+  return return_code;
+}
+
 
 int32 DecoderImpl::GetFinalResult(RecognitionResult *result) {
   if (!IsFinalized()) {
@@ -121,24 +147,24 @@ int32 DecoderImpl::FeedChunk(int16_t *data, size_t length) {
     return -1;
   }
   for (size_t i = 0; i < length; i++) {
-    buffer_.push_back(data[i]);
+    sample_buffer_.push_back(data[i]);
   }
   bool last_call = (length == 0);
   if (last_call) {
     finalized_ = true;
   }
-  int32_t effective_chunk_length = last_call ? buffer_.size() : chunk_length_;
-  if (buffer_.size() < effective_chunk_length) {
+  int32_t effective_chunk_length = last_call ? sample_buffer_.size() : chunk_length_;
+  if (sample_buffer_.size() < effective_chunk_length) {
     return 0;
   }
-  size_t leftover = (effective_chunk_length == 0) ? 0 : buffer_.size() % effective_chunk_length;
-  size_t end = buffer_.size() - leftover;
+  size_t leftover = (effective_chunk_length == 0) ? 0 : sample_buffer_.size() % effective_chunk_length;
+  size_t end = sample_buffer_.size() - leftover;
   if (last_call) {
     float_sample_buffer_.Resize(effective_chunk_length);
   }
   for (size_t i = 0; i < end; i += effective_chunk_length) {
     for (size_t j = 0; j < effective_chunk_length; j++) {
-      float_sample_buffer_(j) = buffer_[i + j];
+      float_sample_buffer_(j) = sample_buffer_[i + j];
     }
     feature_pipeline_->AcceptWaveform(samp_freq_, float_sample_buffer_);
   }
@@ -152,9 +178,9 @@ int32 DecoderImpl::FeedChunk(int16_t *data, size_t length) {
 
   // now move the leftover samples to the beginning of the queue
   for (size_t i = 0; i < leftover; i++) {
-    buffer_[i] = buffer_[end + i];
+    sample_buffer_[i] = sample_buffer_[end + i];
   }
-  buffer_.resize(leftover);
+  sample_buffer_.resize(leftover);
   return 0;
 }
 
@@ -349,8 +375,8 @@ Decoder::~Decoder() {
   decoder_impl_ = nullptr;
 }
 
-int32_t Decoder::FeedChunk(int16_t *data, size_t length) {
-  return decoder_impl_->FeedChunk(data, length);
+int32_t Decoder::FeedBytestring(const std::string& bytestring) {
+  return decoder_impl_->FeedBytestring(bytestring);
 }
 
 int32_t Decoder::GetResultAndFinalize(RecognitionResult *result) {
