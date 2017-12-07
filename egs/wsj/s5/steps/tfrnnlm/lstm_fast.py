@@ -62,7 +62,7 @@ class Config(object):
   num_steps = 20
   hidden_size = 200
   max_epoch = 4
-  max_max_epoch = 1
+  max_max_epoch = 10
   keep_prob = 1.0
   lr_decay = 0.8
   batch_size = 64

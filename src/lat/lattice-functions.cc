@@ -1804,7 +1804,9 @@ void ComposeCompactLatticeDeterministicParallel(
       composed_clat->SetFinal(state_map[s], final_weight);
     }
 
-    det_fst->GetArcsParallel(s2_vector, olabel_vector, &arc2_vector);
+    if (s2_vector.size() != 0) {
+      det_fst->GetArcsParallel(s2_vector, olabel_vector, &arc2_vector);
+    }
  
     // Size of vectors should be same.
     KALDI_ASSERT(arc2_vector.size() == arc1_vector.size());
