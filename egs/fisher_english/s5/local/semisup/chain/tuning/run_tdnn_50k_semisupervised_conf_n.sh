@@ -1,9 +1,15 @@
 #!/bin/bash
 
 # This script is semi-supervised recipe with 50 hours of supervised data
-# and 250 hours of unsupervised data.
+# and 250 hours of unsupervised data with naive splitting.
+# We use the combined data for i-vector extractor training.
+# We use 4-gram LM trained on 1250 hours of data excluding the 250 hours
+# unsupervised data to create LM for decoding. Rescoring is done with 
+# a larger 4-gram LM.
+# This script uses the same tree as that for the seed model.
 # This script is same as _m, but does not use UNK LM.
 
+# Unsupervised set: train_unsup100k_250k
 # unsup_frames_per_eg=150
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0
@@ -28,25 +34,25 @@ semisup_train_set=semisup50k_250k
 # Seed model options
 nnet3_affix=_semi50k_250k    # affix for nnet3 and chain dir -- relates to i-vector used
 tdnn_affix=7e  # affix for the supervised chain-model directory
+tree_affix=bi_e  # affix for the tree of the supervised model
 train_supervised_opts="--stage -10 --train-stage -10"
 
 # Unsupervised options
-decode_affix=
+decode_affix=   # affix for decoded lattices
 egs_affix=  # affix for the egs that are generated from unsupervised data and for the comined egs dir
-unsup_frames_per_eg=150  # if empty will be equal to the supervised model's config -- you will need to change minibatch_size for comb training accordingly
-lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices
-lattice_prune_beam=4.0  # If supplied will prune the lattices prior to getting egs for unsupervised data
-tolerance=1
+unsup_frames_per_eg=150  # if empty, will be equal to the supervised model's config
+lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices when creating numerator supervision
+lattice_prune_beam=4.0  # If supplied, will prune the lattices prior to getting egs for unsupervised data
+tolerance=1   # frame-tolerance for chain training
 phone_insertion_penalty=
 
-rescore_unsup_lattices=true
-unsup_rescoring_affix=big
+rescore_unsup_lattices=true  # Const ARPA rescoring with a bigger LM
+unsup_rescoring_affix=big   # Affix for const ARPA lang dir
 
 # Semi-supervised options
 comb_affix=comb1n  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
 supervision_weights=1.0,1.0
-lm_weights=3,2
-tree_affix=bi_e
+lm_weights=3,2  # Weights on phone counts from supervised, unsupervised data for denominator FST creation
 
 sup_egs_dir=   # Supply this to skip supervised egs creation
 unsup_egs_dir=  # Supply this to skip unsupervised egs creation
@@ -56,9 +62,8 @@ unsup_egs_opts=  # Extra options to pass to unsupervised egs creation
 apply_deriv_weights=true
 xent_regularize=0.1
 hidden_dim=725
-minibatch_size="150=128/300=64"
 
-decode_iter=
+decode_iter=  # Iteration to decode with 
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -85,7 +90,8 @@ if [ $stage -le -1 ]; then
                           --train-set $supervised_set \
                           --unsup-train-set $unsupervised_set \
                           --semisup-train-set $semisup_train_set \
-                          --nnet3-affix "$nnet3_affix" --tdnn-affix "$tdnn_affix" --exp $exp || exit 1
+                          --nnet3-affix "$nnet3_affix" --tdnn-affix "$tdnn_affix" \
+                          --tree-affix "$tree_affix" --exp $exp || exit 1
 fi
 
 lang=data/lang_chain
@@ -182,14 +188,6 @@ diff $treedir/tree $chaindir/tree || { echo "$0: $treedir/tree and $chaindir/tre
 
 dir=$exp/chain${nnet3_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
 
-## Get alignment directory for only the non-speed-perturbed data
-#if [ $stage -le 9 ]; then
-#  steps/subset_ali_dir.sh --cmd "$train_cmd" \
-#    data/${unsupervised_set} data/${unsupervised_set}_sp_hires \
-#    $chaindir/best_path_${unsupervised_set}_sp${decode_affix} \
-#    $chaindir/best_path_${unsupervised_set}${decode_affix}
-#  echo $frame_subsampling_factor > $chaindir/best_path_${unsupervised_set}${decode_affix}/frame_subsampling_factor
-#fi
 
 # Train denominator FST using phone alignments from 
 # supervised and unsupervised data
@@ -240,11 +238,14 @@ if [ $stage -le 11 ]; then
   relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=$hidden_dim target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
   
-  output name=output-0 input=output.affine skip-in-init=true
-  output name=output-1 input=output.affine skip-in-init=true
+  # We use separate outputs for supervised and unsupervised data
+  # so we can properly track the train and valid objectives.
 
-  output name=output-0-xent input=output-xent.log-softmax skip-in-init=true
-  output name=output-1-xent input=output-xent.log-softmax skip-in-init=true
+  output name=output-0 input=output.affine
+  output name=output-1 input=output.affine
+
+  output name=output-0-xent input=output-xent.log-softmax
+  output name=output-1-xent input=output-xent.log-softmax
 EOF
 
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -355,7 +356,7 @@ if [ $stage -le 15 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $frames_per_eg \
-    --trainer.num-chunk-per-minibatch "$minibatch_size" \
+    --trainer.num-chunk-per-minibatch 128 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs 4 \
     --trainer.optimization.num-jobs-initial 3 \

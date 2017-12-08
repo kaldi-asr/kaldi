@@ -387,7 +387,7 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
 
         # note: self.config['input'] is a descriptor, '[-1]' means output
         # the most recent layer.
-        self.config = {'input': '[-1]', 'dim': -1, 'skip-in-init': False,
+        self.config = {'input': '[-1]', 'dim': -1,
                        'objective-type': 'linear',
                        'output-delay': 0}
 
@@ -435,9 +435,7 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
             descriptor_final_str = (
                 'Offset({0}, {1})'.format(descriptor_final_str, output_delay))
 
-        for config_name in ['init', 'ref', 'final']:
-            if config_name == 'init' and self.config['skip-in-init']:
-                continue
+        for config_name in ['ref', 'final']:
             ans.append((config_name,
                         'output-node name={0} input={1} '
                         'objective={2}'.format(

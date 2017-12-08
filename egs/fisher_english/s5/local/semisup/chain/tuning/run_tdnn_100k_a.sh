@@ -3,7 +3,8 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
-# This is fisher chain recipe for training a model on a subset of around 100 hours.
+# This is fisher chain recipe for training a model on a subset of around 
+# 100 hours supervised data.
 
 set -e
 
@@ -26,7 +27,6 @@ hidden_dim=725
 num_epochs=4
 remove_egs=false
 common_egs_dir=
-minibatch_size=128
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -155,7 +155,7 @@ if [ $stage -le 13 ]; then
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0 --generate-egs-scp true" \
     --egs.chunk-width 160,140,110,80 \
-    --trainer.num-chunk-per-minibatch $minibatch_size \
+    --trainer.num-chunk-per-minibatch 128 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \
     --trainer.optimization.num-jobs-initial 3 \

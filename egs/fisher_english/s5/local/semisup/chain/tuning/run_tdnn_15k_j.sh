@@ -4,9 +4,10 @@
 # Apache 2.0
 
 set -e
+set -o pipefail
 
 # This is fisher chain recipe for training a model on a subset of around 15 hours.
-# This is similar to _d, but uses a speed-perturbed data for tree building
+# This is similar to _i, but does not use phone LM to model UNK.
 
 # configs for 'chain'
 stage=0
@@ -21,7 +22,7 @@ tree_affix=bi_j
 nnet3_affix=_semi15k_250k
 chain_affix=_semi15k_250k
 exp=exp/semisup_15k
-gmm=tri3
+gmm=tri3  # Expect GMM model in $exp/$gmm for alignment
 xent_regularize=0.1
 hidden_dim=500
 
@@ -29,7 +30,6 @@ hidden_dim=500
 num_epochs=10
 remove_egs=false
 common_egs_dir=
-minibatch_size=128
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -57,7 +57,6 @@ lang=data/lang_chain
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
-
 local/semisup/nnet3/run_ivector_common.sh --stage $stage --exp $exp \
                                   --speed-perturb true \
                                   --train-set $train_set \
@@ -160,7 +159,7 @@ if [ $stage -le 13 ]; then
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0 --generate-egs-scp true" \
     --egs.chunk-width 160,140,110,80 \
-    --trainer.num-chunk-per-minibatch $minibatch_size \
+    --trainer.num-chunk-per-minibatch 128 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \
     --trainer.optimization.num-jobs-initial 3 \

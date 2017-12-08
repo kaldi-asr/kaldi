@@ -3,6 +3,8 @@ set -e
 
 # This is an oracle experiment using oracle transcription of 250 hours of 
 # unsupervised data, along with 100 hours of supervised data.
+# We train the i-vector extractor only on the supervised data, for 
+# fair comparison with unsupervised data experiments.
 
 # configs for 'chain'
 stage=0
@@ -25,7 +27,6 @@ hidden_dim=725
 num_epochs=4
 remove_egs=false
 common_egs_dir=
-minibatch_size=128
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -163,8 +164,8 @@ if [ $stage -le 13 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0 --generate-egs-scp true" \
-    --egs.chunk-width 150 \
-    --trainer.num-chunk-per-minibatch $minibatch_size \
+    --egs.chunk-width 160,140,110,80 \
+    --trainer.num-chunk-per-minibatch 128 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \
     --trainer.optimization.num-jobs-initial 3 \

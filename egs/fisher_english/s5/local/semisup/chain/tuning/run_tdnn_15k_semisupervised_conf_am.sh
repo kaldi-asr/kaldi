@@ -1,7 +1,11 @@
 #!/bin/bash
 
-# This script is semi-supervised training with 100 hours supervised data
-# and 250 hours unsupervised data with naive splitting. 
+# This script is semi-supervised recipe with 15 hours of supervised data
+# and 250 hours unsupervised data with naive splitting 
+# We use the combined data for i-vector extractor training.
+# We use 4-gram LM trained on 1250 hours of data excluding the 250 hours
+# unsupervised data to create LM for decoding. Rescoring is done with 
+# a larger 4-gram LM.
 # This script builds a new tree using stats from both supervised and
 # unsupervised data.
 
@@ -33,21 +37,21 @@ tdnn_affix=7j  # affix for the supervised chain-model directory
 train_supervised_opts="--stage -10 --train-stage -10"
 
 # Unsupervised options
-decode_affix=
+decode_affix=   # affix for decoded lattices
 egs_affix=  # affix for the egs that are generated from unsupervised data and for the comined egs dir
-unsup_frames_per_eg=150  # if empty will be equal to the supervised model's config -- you will need to change minibatch_size for comb training accordingly
-lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices
-lattice_prune_beam=4.0  # If supplied will prune the lattices prior to getting egs for unsupervised data
-tolerance=1
+unsup_frames_per_eg=150  # if empty will be equal to the supervised model's config
+lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices when creating numerator supervision
+lattice_prune_beam=4.0  # If supplied, will prune the lattices prior to getting egs for unsupervised data
+tolerance=1   # frame-tolerance for chain training
 phone_insertion_penalty=
 
-rescore_unsup_lattices=true
-unsup_rescoring_affix=big
+rescore_unsup_lattices=true  # Const ARPA rescoring with a bigger LM
+unsup_rescoring_affix=big   # Affix for const ARPA lang dir
 
 # Semi-supervised options
 comb_affix=comb1am  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
-supervision_weights=1.0,1.0
-lm_weights=5,2
+supervision_weights=1.0,1.0   # Weights for supervised, unsupervised data egs
+lm_weights=5,2   # Weights on phone counts from supervised, unsupervised data for denominator FST creation
 
 sup_egs_dir=   # Supply this to skip supervised egs creation
 unsup_egs_dir=  # Supply this to skip unsupervised egs creation
@@ -57,9 +61,8 @@ unsup_egs_opts=  # Extra options to pass to unsupervised egs creation
 apply_deriv_weights=true
 xent_regularize=0.1
 hidden_dim=725
-minibatch_size="150=128/300=64"
 
-decode_iter=
+decode_iter=  # Iteration to decode with 
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -82,7 +85,7 @@ fi
 
 if [ $stage -le -1 ]; then
   echo "$0: chain training on the supervised subset data/${supervised_set}"
-  local/chain/run_tdnn_15k_j.sh $train_supervised_opts \
+  local/semisup/chain/tuning/run_tdnn_15k_j.sh $train_supervised_opts \
                           --train-set $supervised_set \
                           --unsup-train-set $unsupervised_set \
                           --semisup-train-set $semisup_train_set \
@@ -252,11 +255,14 @@ if [ $stage -le 11 ]; then
   relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=$hidden_dim target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
   
-  output name=output-0 input=output.affine skip-in-init=true
-  output name=output-1 input=output.affine skip-in-init=true
+  # We use separate outputs for supervised and unsupervised data
+  # so we can properly track the train and valid objectives.
+  
+  output name=output-0 input=output.affine
+  output name=output-1 input=output.affine
 
-  output name=output-0-xent input=output-xent.log-softmax skip-in-init=true
-  output name=output-1-xent input=output-xent.log-softmax skip-in-init=true
+  output name=output-0-xent input=output-xent.log-softmax
+  output name=output-1-xent input=output-xent.log-softmax
 EOF
 
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -367,7 +373,7 @@ if [ $stage -le 15 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $frames_per_eg \
-    --trainer.num-chunk-per-minibatch "$minibatch_size" \
+    --trainer.num-chunk-per-minibatch "128" \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs 4 \
     --trainer.optimization.num-jobs-initial 3 \
