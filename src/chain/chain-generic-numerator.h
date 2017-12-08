@@ -1,6 +1,6 @@
 // chain/chain-generic-numerator.h
 
-// Copyright       2015  Hossein Hadian
+// Copyright       2017  Hossein Hadian
 
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -43,7 +43,7 @@ namespace chain {
 
 
 // This class is responsible for the forward-backward of the
-// end-to-end 'supervision' (numerator) FST. This FST can
+// end-to-end 'supervision' (numerator) FST. This kind of FST can
 // have self-loops.
 
 class GenericNumeratorComputation {

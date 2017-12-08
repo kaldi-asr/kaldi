@@ -29,10 +29,6 @@ wsj1=/export/corpora5/LDC/LDC94S13B
 # _char for character-based dictionary and lang directories.
 
 if [ $stage -le 0 ]; then
-  echo =====================================================================
-  echo "                       Data/Lang Preparation                       "
-  echo =====================================================================
-
   [[ -f data/train_si284/text ]] || \
     local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?
   [[ -f data/local/dict_nosp/lexicon.txt ]] || \
@@ -46,15 +42,12 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  echo =====================================================================
-  echo "                 Vocabulary Expansion with OOVs                    "
-  echo =====================================================================
-
   local/wsj_extend_char_dict.sh $wsj1/13-32.1 data/local/dict_char \
                               data/local/dict_char_larger
   utils/prepare_lang.sh data/local/dict_char_larger \
                         "<SPOKEN_NOISE>" data/local/lang_larger_tmp \
                         data/lang_char_bd
+  # Note: this will overwrite data/local/local_lm:
   local/wsj_train_lms.sh --dict-suffix "_char"
   local/wsj_format_local_lms.sh --lang-suffix "_char"
   echo "$0: Done extending the vocabulary."
@@ -77,14 +70,14 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ -f data/${trainset}_spEx_hires/feats.scp ]; then
-  echo "$0: It seems that features for the perturbed train data already exist."
+  echo "$0: It seems that features for the perturbed training data already exist."
   echo "If you want to extract them anyway, remove them first and run this"
   echo "stage again. Skipping this stage..."
 else
   if [ $stage -le 2 ]; then
     echo "$0: perturbing the training data to allowed lengths..."
     mkdir -p exp/chain/e2e_base
-    utils/data/get_utt2dur.sh data/$trainset  # necessary for next command
+    utils/data/get_utt2dur.sh data/$trainset  # necessary for the next command
 
     # 12 in the following command means the allowed lengths are spaced
     # by 12% change in length.
@@ -110,4 +103,9 @@ if [ $stage -le 4 ]; then
     utils/sym2int.pl -f 2- data/lang_char/phones.txt | \
     chain-est-phone-lm --num-extra-lm-states=2000 \
                        ark:- exp/chain/e2e_base/char_lm.fst
+fi
+
+if [ $stage -le 5 ]; then
+  echo "$0: calling the flat-start chain recipe..."
+  loacl/chain/run_tdnn_lstm_flatstart.sh
 fi

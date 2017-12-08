@@ -145,8 +145,9 @@ int main(int argc, char *argv[]) {
     using kaldi::int32;
 
     const char *usage =
-        "Initialize biphone GMM with all the leaves. Intended for e2e experiments.\n"
-        "Usage:  gmm-init-biphone <topology-in> <model-out> <tree-out> \n"
+        "Initialize a biphone context-dependency tree with all the\n"
+        "leaves (i.e. a full tree). Intended for end-to-end tree-free models.\n"
+        "Usage:  gmm-init-biphone <topology-in> <dim> <model-out> <tree-out> \n"
         "e.g.: \n"
         " gmm-init-biphone topo 39 bi.mdl bi.tree\n";
 
@@ -158,17 +159,18 @@ int main(int argc, char *argv[]) {
                 "rxfilename containing, on each line, a list of phones whose pdfs should be shared.");
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 3) {
+    if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }
 
 
     std::string topo_filename = po.GetArg(1);
-    std::string model_filename = po.GetArg(2);
-    std::string tree_filename = po.GetArg(3);
+    int dim = atoi(po.GetArg(2).c_str());
+    KALDI_ASSERT(dim> 0 && dim < 10000);
+    std::string model_filename = po.GetArg(3);
+    std::string tree_filename = po.GetArg(4);
 
-    int32 dim = 10;
     Vector<BaseFloat> glob_inv_var(dim);
     glob_inv_var.Set(1.0);
     Vector<BaseFloat> glob_mean(dim);

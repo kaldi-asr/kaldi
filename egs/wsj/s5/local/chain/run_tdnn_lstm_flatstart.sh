@@ -1,34 +1,36 @@
 #!/bin/bash
+# Copyright    2017  Hossein Hadian
 
-# This script performs chain training in a flat-start manner
-# and without building or using any context-dependency tree.
+# This is a TDNN-LSTM recipe that performs chain training in a flat-start manner
+# Unlike run_tdnn_flatstart.sh which is context-independent, this recipe uses
+# a full trivial biphone context-dependency tree. This is because this recipe is
+# meant for character-based (i.e. lexicon-free) modeling where context helps
+# significantly.
 # It does not use ivecors or other forms of speaker adaptation
 # except simple mean and variance normalization.
-# It is called from run_e2e_phone.sh
+# It is called from run_e2e_char.sh
 
-# Note: this script is configured as phone-based, if you want
-# to run it in character mode, you'll need to change _nosp
-# to _char everywhere and also copy char_lm.fst instead
-# of phone_lm.fst (in stage 1 below)
+# Note: this script is configured to run as character-based, if you want
+# to run it in phoneme mode, you'll need to change _char
+# to _nosp everywhere and also copy phone_lm.fst instead
+# of char_lm.fst (in stage 1 below)
 
-# local/chain/compare_wer.sh exp/chain/e2e_tdnn_1a
-# System                      e2e_tdnn_1a
-# WER dev93 (tgpr)                9.41
-# WER dev93 (tg)                  8.88
-# WER dev93 (big-dict,tgpr)       7.12
-# WER dev93 (big-dict,fg)         6.33
-# WER eval92 (tgpr)               5.71
-# WER eval92 (tg)                 5.32
-# WER eval92 (big-dict,tgpr)      3.65
-# WER eval92 (big-dict,fg)        2.85
-# Final train prob        -0.7611
-# Final valid prob        -0.7813
-# Final train prob (xent)
-# Final valid prob (xent)
-# Num-params                 4827732
 
-# steps/info/chain_dir_info.pl exp/chain/e2e_tdnn_1a
-# exp/chain/e2e_tdnn_1a: num-iters=138 nj=2..5 num-params=4.8M dim=40->84 combine=-0.810->-0.809 logprob:train/valid[91,137,final]=(-0.769,-0.761,-0.761/-0.783,-0.782,-0.781)
+# System                e2e_tdnn_lstm_bichar_1a
+# WER dev93 (tgpr)                9.42
+# WER dev93 (tg)                  8.85
+# WER dev93 (big-dict,tgpr)       7.70
+# WER dev93 (big-dict,fg)         6.79
+# WER eval92 (tgpr)               6.42
+# WER eval92 (tg)                 6.11
+# WER eval92 (big-dict,tgpr)      4.50
+# WER eval92 (big-dict,fg)        4.09
+# Final train prob        -0.7535
+# Final valid prob        -0.7786
+
+# steps/info/chain_dir_info.pl exp/chain/e2e_tdnn_lstm_bichar_1a/
+# exp/chain/e2e_tdnn_lstm_bichar_1a/: num-iters=138 nj=2..5 num-params=9.2M dim=40->3444 combine=-6.480->-6.478 logprob:train/valid[91,137,final]=(-0.766,-0.754,-0.754/-0.784,-0.779,-0.779)
+
 
 set -e
 
@@ -36,36 +38,36 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-affix=1a
+affix=_1a
 decode_iter=
-lat_beam=8.0
 
 # training options
 num_epochs=4.5
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
 max_param_change=2.0
+final_layer_normalize_target=0.5
 num_jobs_initial=2
 num_jobs_final=5
-minibatch_size=150=128,64/300=100,64,32/600=50,32,16/1200=16,8
+minibatch_size=150=128,64/300=64,32/600=32,16/1200=16,8
 common_egs_dir=
-l2_regularize=0.00005
+l2_regularize=0.00001
 dim=512
 frames_per_iter=2500000
 cmvn_opts="--norm-means=true --norm-vars=true"
 leaky_hmm_coeff=0.1
 num_scale_opts="--transition-scale=1.0 --self-loop-scale=1.0"
-shared_phones=true
 train_set=train_si284_spEx_hires
 test_sets="test_dev93 test_eval92"
 first_layer_splice=-1,0,1
 momentum=0
 drop_schedule=
-prefinal_dim=$dim
+cmd=queue.pl   # in case we want to run on high-memory GPUs we can use this
 
-proportional_shrink=0.0
-chunk_left_context=0
+chunk_left_context=40
 chunk_right_context=0
+extra_left_context=50
+extra_right_context=0
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -82,16 +84,16 @@ where "nvcc" is installed.
 EOF
 fi
 
-lang=data/lang_e2e
-treedir=exp/chain/e2e_tree  # it's actually just a trivial tree (no tree building)
-dir=exp/chain/e2e_tdnn_${affix}
+lang=data/lang_e2e_char
+treedir=exp/chain/e2e_bichar_tree
+dir=exp/chain/e2e_tdnn_lstm_bichar${affix}
 
 if [ $stage -le 0 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
   rm -rf $lang
-  cp -r data/lang_nosp $lang
+  cp -r data/lang_char $lang
   silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
   nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
   # Use our special topology... note that later on may have to tune this
@@ -101,16 +103,22 @@ fi
 
 if [ $stage -le 1 ]; then
   steps/nnet3/chain/prepare_e2e.sh --nj 30 --cmd "$train_cmd" \
+                                   --type biphone \
                                    --shared-phones true \
                                    --scale-opts "$num_scale_opts" \
                                    data/$train_set $lang $treedir
-  cp exp/chain/e2e_base/phone_lm.fst $treedir/
+  cp exp/chain/e2e_base/char_lm.fst $treedir/phone_lm.fst
 fi
 
 if [ $stage -le 2 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
+
   num_targets=$(tree-info $treedir/tree | grep num-pdfs | awk '{print $2}')
+
+  pdim=$[dim/4]
+  npdim=$[dim/4]
   opts="l2-regularize=0.01"
+  lstm_opts="l2-regularize=0.0025"
   output_opts="l2-regularize=0.0025"
 
   mkdir -p $dir/configs
@@ -118,20 +126,23 @@ if [ $stage -le 2 ]; then
 
   input dim=40 name=input
 
-  relu-batchnorm-layer name=tdnn1 input=Append($first_layer_splice) dim=$dim
+  relu-batchnorm-layer name=tdnn1 input=Append($first_layer_splice) dim=$dim $opts
   relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=$dim $opts
-  relu-batchnorm-layer name=tdnn3 dim=$dim $opts
-  relu-batchnorm-layer name=tdnn4 input=Append(-1,0,1) dim=$dim $opts
-  relu-batchnorm-layer name=tdnn5 dim=$dim $opts
+  relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=$dim $opts
+
+  # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
+  fast-lstmp-layer name=fastlstm1 cell-dim=$dim recurrent-projection-dim=$pdim non-recurrent-projection-dim=$npdim delay=-3 $lstm_opts
+  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=$dim $opts
+  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=$dim $opts
+  fast-lstmp-layer name=fastlstm2 cell-dim=$dim recurrent-projection-dim=$pdim non-recurrent-projection-dim=$npdim delay=-3 $lstm_opts
   relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=$dim $opts
   relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=$dim $opts
-  relu-batchnorm-layer name=tdnn8 input=Append(-3,0,3) dim=$dim $opts
+  fast-lstmp-layer name=fastlstm3 cell-dim=$dim recurrent-projection-dim=$pdim non-recurrent-projection-dim=$npdim delay=-3 $lstm_opts
 
-  relu-batchnorm-layer name=prefinal-chain dim=$prefinal_dim target-rms=0.5 $opts
-  output-layer name=output include-log-softmax=true dim=$num_targets $output_opts
+  output-layer name=output include-log-softmax=true dim=$num_targets max-change=1.5 $output_opts
 
 EOF
-  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
 if [ $stage -le 3 ]; then
@@ -139,7 +150,7 @@ if [ $stage -le 3 ]; then
   # remove them. Anyway, it takes only 5 minutes to generate them.
 
   steps/nnet3/chain/train_e2e.py --stage $train_stage \
-    --cmd "$decode_cmd" \
+    --cmd "$cmd" \
     --feat.cmvn-opts "$cmvn_opts" \
     --chain.leaky-hmm-coefficient $leaky_hmm_coeff \
     --chain.l2-regularize $l2_regularize \
@@ -147,20 +158,23 @@ if [ $stage -le 3 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.dir "$common_egs_dir" \
     --egs.stage $get_egs_stage \
-    --egs.opts "--normalize-egs true --add-deltas false" \
-    --trainer.dropout-schedule "$drop_schedule" \
+    --egs.opts "--normalize-egs true --num-train-egs-combine 800" \
+    --egs.chunk-left-context $chunk_left_context \
+    --egs.chunk-right-context $chunk_right_context \
+    --egs.chunk-left-context-initial 0 \
+    --egs.chunk-right-context-final 0 \
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.frames-per-iter $frames_per_iter \
     --trainer.num-epochs $num_epochs \
+    --trainer.deriv-truncate-margin 8 \
     --trainer.optimization.momentum $momentum \
     --trainer.optimization.num-jobs-initial $num_jobs_initial \
     --trainer.optimization.num-jobs-final $num_jobs_final \
     --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
     --trainer.optimization.final-effective-lrate $final_effective_lrate \
-    --trainer.optimization.shrink-value 1.0 \
-    --trainer.optimization.proportional-shrink $proportional_shrink \
     --trainer.max-param-change $max_param_change \
     --cleanup.remove-egs true \
+    --cleanup.preserve-model-interval 50 \
     --feat-dir data/${train_set} \
     --tree-dir $treedir \
     --dir $dir  || exit 1;
@@ -175,15 +189,15 @@ if [ $stage -le 4 ]; then
   # as long as phones.txt was compatible.
 
   utils/lang/check_phones_compatible.sh \
-    data/lang_nosp_test_tgpr/phones.txt $lang/phones.txt
+    data/lang_char_test_tgpr/phones.txt $lang/phones.txt
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_nosp_test_tgpr \
+    --self-loop-scale 1.0 data/lang_char_test_tgpr \
     $dir $treedir/graph_tgpr || exit 1;
 
   utils/lang/check_phones_compatible.sh \
-    data/lang_nosp_test_bd_tgpr/phones.txt $lang/phones.txt
+    data/lang_char_test_bd_tgpr/phones.txt $lang/phones.txt
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_nosp_test_bd_tgpr \
+    --self-loop-scale 1.0 data/lang_char_test_bd_tgpr \
     $dir $treedir/graph_bd_tgpr || exit 1;
 fi
 
@@ -197,7 +211,6 @@ if [ $stage -le 5 ]; then
       nspk=$(wc -l <data/${data}_hires/spk2utt)
       for lmtype in tgpr bd_tgpr; do
         steps/nnet3/decode.sh \
-          --lattice-beam $lat_beam \
           --acwt 1.0 --post-decode-acwt 10.0 \
           --extra-left-context $chunk_left_context \
           --extra-right-context $chunk_right_context \
@@ -209,10 +222,10 @@ if [ $stage -le 5 ]; then
       done
       steps/lmrescore.sh \
         --self-loop-scale 1.0 \
-        --cmd "$decode_cmd" data/lang_nosp_test_{tgpr,tg} \
+        --cmd "$decode_cmd" data/lang_char_test_{tgpr,tg} \
         data/${data}_hires ${dir}/decode_{tgpr,tg}_${data_affix} || exit 1
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-        data/lang_nosp_test_bd_{tgpr,fgconst} \
+        data/lang_char_test_bd_{tgpr,fgconst} \
        data/${data}_hires ${dir}/decode_${lmtype}_${data_affix}{,_fg} || exit 1
     ) || touch $dir/.error &
   done

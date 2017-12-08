@@ -86,3 +86,8 @@ if [ $stage -le 4 ]; then
     chain-est-phone-lm --num-extra-lm-states=2000 \
                        ark:- exp/chain/e2e_base/phone_lm.fst
 fi
+
+if [ $stage -le 5 ]; then
+  echo "$0: calling the flat-start chain recipe..."
+  loacl/chain/run_tdnn_flatstart.sh
+fi
