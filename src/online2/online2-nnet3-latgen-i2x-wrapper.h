@@ -46,7 +46,6 @@ class DecoderFactory {
    Calling it more than once is likely to cause OOM!
    Returns a handle to a decoder factory,
    which will create light-weighted decoder objects (one per session).
-   Returns nullptr on failure.
   */
   explicit DecoderFactory(const std::string &resource_dir);
   ~DecoderFactory(); // TODO switch to a singleton for DecoderFactory

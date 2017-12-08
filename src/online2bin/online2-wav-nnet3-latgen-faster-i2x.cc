@@ -3,6 +3,7 @@
 // Copyright 2017 i2x GmbH (author: Christoph Feinauer)
 
 #include <algorithm>
+#include <random>
 #include <feat/wave-reader.h>
 #include "util/common-utils.h"
 #include "online2/online2-nnet3-latgen-i2x-wrapper.h"
@@ -29,38 +30,46 @@ int main(int argc, char *argv[]) {
 
   DecoderFactory decoder_factory(resource_dir);
 
-  SequentialTableReader<WaveHolder> wav_reader(wav_rspecifier);
-  static constexpr int32 chunk_length = 200;
-  int16 buf[chunk_length];
+  const size_t kBlockSize_MAX = 200;
 
-  while (!wav_reader.Done()) {
+  KALDI_ASSERT(wav_rspecifier.size() > 4);
+  wav_rspecifier.erase(0, 4);
+  std::vector<std::pair<std::string, std::string> > file_list;
+  ReadScriptFile(wav_rspecifier, true, &file_list);
+
+  for (auto pair: file_list) {
+
+    const std::string &utt = pair.first;
+
+    std::ifstream is(pair.second, std::ifstream::binary);
+
+    WaveInfo header;
+    header.Read(is);
+
     Decoder *decoder = decoder_factory.StartDecodingSession();
     KALDI_ASSERT(decoder != nullptr);
 
-    const std::string &utt = wav_reader.Key();
-    const WaveData &wave_data = wav_reader.Value();
-    SubVector<BaseFloat> data(wave_data.Data(), 0);
-
-    int32 return_code = 0;
-    int32 i = 0;
-    while (i < data.Dim()) {
-      int32_t length = std::min(
-          static_cast<int32>(data.Dim()) - i,
-          chunk_length);
-      for (size_t t = 0; t < length; t++) {
-        buf[t] = static_cast<int16>(data(i + t));
+    while (is) {
+      const size_t kBlockSize = rand()%(kBlockSize_MAX-1)+1;
+      std::string buffer;
+      buffer.resize(kBlockSize);
+      is.read(&buffer[0], kBlockSize);
+      if (is.gcount() < kBlockSize) {
+        buffer.resize(is.gcount());
       }
-      return_code = decoder->FeedChunk(buf, length);
+      if (buffer.empty()) {
+        break;
+      }
+      int32 return_code = decoder->FeedBytestring(buffer);
       KALDI_ASSERT(return_code == 0);
-      i += chunk_length;
     }
-    return_code = decoder->FeedChunk(nullptr, 0);
+
+    int32_t return_code = decoder->FeedBytestring(std::string(""));
     KALDI_ASSERT(return_code == 0);
     RecognitionResult result;
     return_code = decoder->GetResultAndFinalize(&result);
     KALDI_LOG << utt << ": " << result.transcript;
     KALDI_ASSERT(return_code == 0);
     delete decoder;
-    wav_reader.Next();
   }
 }

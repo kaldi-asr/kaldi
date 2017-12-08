@@ -47,7 +47,7 @@ class DecoderImpl {
   }
   bool IsFinalized() const { return finalized_; }
  private:
-  int32 FeedChunk(int16 *data, size_t length);
+  int32 FeedChunk(const int16 *data, size_t length);
 
   SingleUtteranceNnet3Decoder *decoder_ = nullptr;
   OnlineNnet2FeaturePipeline *feature_pipeline_ = nullptr;
@@ -66,23 +66,23 @@ class DecoderImpl {
 };
 
 int32 DecoderImpl::FeedBytestring(const std::string& bytestring) {
+  if (bytestring.empty()) {
+    return FeedChunk(nullptr, 0); // a special call: finalize the decoder
+  }
   byte_buffer_ += bytestring;
-  bool leftover = (bytestring.size() % 2 != 0);
-  size_t length = leftover ? bytestring.size() - 1 : bytestring.size();
-  length /= 2;
+  bool leftover = (byte_buffer_.size() % 2 != 0);
+  size_t length = leftover ? byte_buffer_.size() - 1 : byte_buffer_.size();
+  length /= 2; // integer division: could become 0 if there was 1 byte in the buffer
   if (length == 0) {
-    return FeedChunk(nullptr, 0);
+    return 0; // never call FeedChunk with zero length if we don't want to finalize
   }
-  int16_t *data = new int16_t[length];
-  for (size_t i = 0; i != length; i++) {
-    data[i] = *(reinterpret_cast<const int16_t*>(bytestring.c_str() + (2*i)));
-  }
-  int32_t return_code = FeedChunk(data, length);
-  delete[] data;
+  int32_t return_code = FeedChunk(reinterpret_cast<const int16_t*>(byte_buffer_.c_str()), length);
   if (leftover) {
     char leftover_byte = byte_buffer_[byte_buffer_.size() - 1];
     byte_buffer_.clear();
     byte_buffer_.push_back(leftover_byte);
+  } else {
+    byte_buffer_.clear();
   }
   return return_code;
 }
@@ -139,7 +139,7 @@ int32 DecoderImpl::GetFinalResult(RecognitionResult *result) {
   return 0;
 }
 
-int32 DecoderImpl::FeedChunk(int16_t *data, size_t length) {
+int32 DecoderImpl::FeedChunk(const int16_t *data, size_t length) {
   if (finalized_) {
     KALDI_WARN << "Calling FeedChunk with length == 0 for the second time (or more).\n"
                << "The decoder was already finalized!\n"
@@ -371,6 +371,7 @@ Decoder::Decoder(DecoderImpl *decoder_impl) :
 }
 
 Decoder::~Decoder() {
+  KALDI_LOG << "HELLO CHRISTOPH";
   delete decoder_impl_;
   decoder_impl_ = nullptr;
 }
