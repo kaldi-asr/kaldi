@@ -3,18 +3,16 @@
 # Copyright 2017 University of Chinese Academy of Sciences (UCAS) Gaofeng Cheng
 # Apache 2.0
 
-# This is based on the run_tdnn_lstm_1j.sh, replacing the LSTM with the proposed Norm-OPGRU.
-# Different from the vanilla OPGRU, Norm-OPGRU adds batchnorm in its output (forward direction)
-# and renorm in its recurrence. Experiments show that the TDNN-NormOPGRU could achieve similar
-# results than TDNN-LSTMP and BLSTMP in both large or small data sets (80 ~ 2300 Hrs).
+# This is based on the run_tdnn_opgru_1b.sh, but using backstitch interval 1 and value 0.3.
 
-# System            tdnn_lstm1j_sp_bi_ihmali_ld5 tdnn_opgru_1a_sp_ihmali
-# WER on dev        37.2      35.9
-# WER on eval        40.4      39.4
-# Final train prob      -0.110953 -0.130214
-# Final valid prob      -0.257645 -0.242705
-# Final train prob (xent)      -1.38772  -1.55922
-# Final valid prob (xent)      -2.13139  -2.09507
+# System            tdnn_opgru_1a_sp_ihmali tdnn_opgru_1b_sp_ihmali tdnn_opgru_1c_sp_ihmali
+# WER on dev        36.1      34.1      33.6
+# WER on eval        39.1      37.8      37.2
+# Final train prob      -0.130943 -0.144104 -0.122388
+# Final valid prob      -0.243206 -0.222104 -0.222471
+# Final train prob (xent)      -1.57159  -1.63347  -1.44947
+# Final valid prob (xent)      -2.09093    -2.041  -1.95579
+
 
 set -e -o pipefail
 
@@ -30,7 +28,7 @@ gmm=tri3_cleaned  # the gmm for the target data
 ihm_gmm=tri3  # the gmm for the IHM system (if --use-ihm-ali true).
 num_threads_ubm=32
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
-num_epochs=4
+num_epochs=9
 dropout_schedule='0,0@0.20,0.2@0.50,0'
 
 chunk_width=150
@@ -42,7 +40,7 @@ test_online_decoding=true
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tgru_affix=1a  #affix for TDNN-NormOPGRU directory, e.g. "a" or "b", in case we change the configuration.
+tgru_affix=1c  #affix for TDNN-NormOPGRU directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 
 
@@ -247,6 +245,8 @@ if [ $stage -le 16 ]; then
     --egs.chunk-left-context $chunk_left_context \
     --egs.chunk-right-context $chunk_right_context \
     --trainer.dropout-schedule $dropout_schedule \
+    --trainer.optimization.backstitch-training-scale 1 \
+    --trainer.optimization.backstitch-training-interval 4 \
     --egs.chunk-left-context-initial 0 \
     --egs.chunk-right-context-final 0 \
     --trainer.num-chunk-per-minibatch 64,32 \
