@@ -1,6 +1,7 @@
 // ivectorbin/agglomerative-cluster.cc
 
 // Copyright 2016  David Snyder
+//           2017  Matthew Maciejewski
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -21,9 +22,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "util/stl-utils.h"
-#include "tree/cluster-utils.h"
-#include "tree/clusterable-classes.h"
-#include "ivector/group-clusterable.h"
+#include "ivector/agglomerative-bottom-up-clustering.h"
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
@@ -31,23 +30,31 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int64 int64;
   try {
     const char *usage =
-      "Cluster matrices of scores per utterance. Used in diarization\n"
-      "TODO better documentation\n"
+      "Cluster utterances by score, used in diarization.\n"
+      "Takes a file of scores of the form <utt1> <utt2> <score>\n"
+      "and a file spk2utt that contains the mapping from recordings\n"
+      "to the utterances within them, and outputs a list of labels\n"
+      "in the form <utt1> <label>. Clustering is done using\n"
+      "Agglomerative Hierarchical Bottom-Up Clustering with a\n"
+      "stopping-threshold score.\n"
       "Usage: agglomerative-cluster [options] <scores-rspecifier> "
       "<spk2utt-rspecifier> <labels-wspecifier>\n"
       "e.g.: \n"
-      " agglomerative-cluster ark:scores.ark ark:spk2utt \n"
+      " agglomerative-cluster ark:scores ark:spk2utt \n"
       "   ark,t:labels.txt\n";
 
     ParseOptions po(usage);
-    std::string utt2num_rspecifier;
+    std::string spk2num_rspecifier;
     BaseFloat threshold = 0.5;
+    BaseFloat max_dist = 1.0;
 
-    po.Register("utt2num-rspecifier", &utt2num_rspecifier,
+    po.Register("spk2num-rspecifier", &spk2num_rspecifier,
       "If supplied, clustering creates exactly this many clusters for each"
-      "utterance and the option --threshold is ignored.");
+      "recording and the option --threshold is ignored.");
     po.Register("threshold", &threshold, "Merging clusters if their distance"
       "is less than this threshold.");
+    po.Register("max-dist", &max_dist, "Values missing from scores file"
+      "are assigned this value.");
 
     po.Read(argc, argv);
 
@@ -60,38 +67,48 @@ int main(int argc, char *argv[]) {
       spk2utt_rspecifier = po.GetArg(2),
       label_wspecifier = po.GetArg(3);
 
-    // TODO  Maybe should make the PLDA scoring binary output segmentation so that this can read it
-    // directly. If not, at least make sure the utt2seg in that binary is NOT sorted. Might sort it in a different
-    // order than here.
-    SequentialBaseFloatMatrixReader scores_reader(scores_rspecifier);
-    RandomAccessTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
-    RandomAccessInt32Reader utt2num_reader(utt2num_rspecifier);
+    Input si(scores_rspecifier);
+    SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
+    RandomAccessInt32Reader spk2num_reader(spk2num_rspecifier);
     Int32Writer label_writer(label_wspecifier);
 
-    for (; !scores_reader.Done(); scores_reader.Next()) {
-      std::string utt = scores_reader.Key();
-      const Matrix<BaseFloat> &scores = scores_reader.Value();
-      std::vector<std::string> seglist = spk2utt_reader.Value(utt);
-      std::sort(seglist.begin(), seglist.end());
+    std::unordered_map<std::string, BaseFloat> score_map;
+    std::string line;
+    while (std::getline(si.Stream(), line)) {
+      std::vector<std::string> split_line;
+      SplitStringToVector(line, " ", true, &split_line);
+      BaseFloat score;
+      if (split_line.size() != 3) {
+        KALDI_ERR << "Invalid input line (must have three fields): "
+                  << line;
+      }
+      if (!ConvertStringToReal(split_line[2], &score)) {
+        KALDI_ERR << "Invalid input line (third field must be float): "
+                  << line;
+      }
+      if (split_line[0] < split_line[1])
+        score_map[split_line[0]+split_line[1]] = score;
+      else
+        score_map[split_line[1]+split_line[0]] = score;
+    }
+    if (score_map.empty())
+      KALDI_WARN << "No scores were read. This is probably bad.";
 
-      std::vector<Clusterable*> clusterables;
+    for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
+      std::string spk = spk2utt_reader.Key();
+      std::vector<std::string> uttlist = spk2utt_reader.Value();
       std::vector<int32> spk_ids;
 
-      for (int32 i = 0; i < scores.NumRows(); i++) {
-        std::set<int32> points;
-        points.insert(i);
-        clusterables.push_back(new GroupClusterable(points, &scores));
-      }
-      if (utt2num_rspecifier.size()) {
-        int32 num_speakers = utt2num_reader.Value(utt);
-        ClusterBottomUp(clusterables, std::numeric_limits<BaseFloat>::max(),
-          num_speakers, NULL, &spk_ids);
+      if (spk2num_rspecifier.size()) {
+        int32 num_speakers = spk2num_reader.Value(spk);
+        AgglomerativeClusterBottomUp(uttlist, score_map, max_dist,
+          std::numeric_limits<BaseFloat>::max(), num_speakers, &spk_ids);
       } else {
-        ClusterBottomUp(clusterables, threshold, 1, NULL, &spk_ids);
+        AgglomerativeClusterBottomUp(uttlist, score_map, max_dist,
+          threshold, 1, &spk_ids);
       }
       for (int32 i = 0; i < spk_ids.size(); i++)
-        label_writer.Write(seglist[i], spk_ids[i]);
-      DeletePointers(&clusterables);
+        label_writer.Write(uttlist[i], spk_ids[i]);
     }
     return 0;
 

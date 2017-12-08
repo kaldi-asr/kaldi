@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright  2016  David Snyder
+#            2017  Matthew Maciejewski
 # Apache 2.0.
 
 # TODO This script computes the stopping threshold used in clustering.
@@ -60,14 +61,15 @@ if [ $stage -le 0 ]; then
   echo "$0: Computing calibration thresholds"
   $cmd JOB=1:$nj $dir/log/compute_calibration.JOB.log \
     ivector-plda-scoring-dense --target-energy=$target_energy $pldadir/plda \
-      ark:$sdata/JOB/spk2utt "$feats" ark:- \
-      \| compute-calibration ark:- $dir/threshold.JOB.txt || exit 1;
+      ark:$sdata/JOB/spk2utt "$feats" - \
+      \| compute-calibration --spk2utt-rspecifier=ark:$sdata/JOB/spk2utt \
+      - ark,t:$dir/threshold.JOB.txt || exit 1;
 fi
 
 if [ $stage -le 1 ]; then
   echo "$0: combining calibration thresholds across jobs"
-  for j in $(seq $nj); do cat $dir/threshold.$j.txt; echo; done >$dir/thresholds.txt || exit 1;
-  awk '{ sum += $1; n++ } END { if (n > 0) print sum / n; }' $dir/thresholds.txt > $dir/threshold.txt
+  for j in $(seq $nj); do cat $dir/threshold.$j.txt; echo; done | sed '/^$/d' >$dir/thresholds.txt || exit 1;
+  awk '{ sum += $NF; n++ } END { if (n > 0) print sum / n; }' $dir/thresholds.txt > $dir/threshold.txt
 fi
 
 if $cleanup ; then

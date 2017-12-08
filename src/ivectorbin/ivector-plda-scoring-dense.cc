@@ -1,6 +1,7 @@
 // ivectorbin/ivector-plda-scoring-dense.cc
 
 // Copyright 2016  David Snyder
+//           2017  Matthew Maciejewski
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -111,17 +112,16 @@ int main(int argc, char *argv[]) {
       "should be of the form <recording-id> <seg1> <seg2> ... <segN> and\n"
       "there should be one iVector for each segment.  PLDA scoring is\n"
       "performed between all pairs of iVectors in a recording and outputs\n"
-      "an archive of score matrices, one for each recording-id.  The rows\n"
-      "and columns of the the matrix correspond the sorted order of the\n"
-      "segments.\n"
+      "list of scores in the form <seg1> <seg2> <score>.\n"
       "Usage: ivector-diarization-plda-scoring [options] <plda> <spk2utt>"
-      " <ivectors-rspecifier> <scores-wspecifier>\n"
+      " <ivectors-rspecifier> <scores-wxfilename>\n"
       "e.g.: \n"
       "  ivector-diarization-plda-scoring plda spk2utt scp:ivectors.scp"
-      " ark:scores.ark ark,t:ivectors.1.ark\n";
+      " scores\n";
 
     ParseOptions po(usage);
     BaseFloat target_energy = 0.5;
+    BaseFloat threshold = 1.0;
 
     PldaConfig plda_config;
     plda_config.Register(&po);
@@ -130,6 +130,9 @@ int main(int argc, char *argv[]) {
       "Reduce dimensionality of i-vectors using PCA such that this fraction"
       " of the total energy remains.");
     KALDI_ASSERT(target_energy <= 1.0);
+    po.Register("threshold", &threshold, "Threshold above which a PLDA score"
+      "is not saved. Used to avoid saving scores for diarization which would"
+      "never be merged. Threshold of 1.0 saves all scores.");
 
     po.Read(argc, argv);
 
@@ -141,25 +144,21 @@ int main(int argc, char *argv[]) {
     std::string plda_rxfilename = po.GetArg(1),
       spk2utt_rspecifier = po.GetArg(2),
       ivector_rspecifier = po.GetArg(3),
-      scores_wspecifier = po.GetArg(4);
+      scores_wxfilename = po.GetArg(4);
 
     Plda plda;
     ReadKaldiObject(plda_rxfilename, &plda);
 
     SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
     RandomAccessBaseFloatVectorReader ivector_reader(ivector_rspecifier);
-    BaseFloatMatrixWriter scores_writer(scores_wspecifier);
+    Output so(scores_wxfilename, false);
     int32 num_spk_err = 0,
           num_spk_done = 0;
     for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
       Plda this_plda(plda);
       std::string spk = spk2utt_reader.Key();
 
-      // The uttlist is sorted here and in binaries that use the scores
-      // this outputs.  This is to ensure that the segment corresponding
-      // to the same rows and columns (of the score matrix) across binaries.
       std::vector<std::string> uttlist = spk2utt_reader.Value();
-      std::sort(uttlist.begin(), uttlist.end());
       std::vector<Vector<BaseFloat> > ivectors;
 
       for (size_t i = 0; i < uttlist.size(); i++) {
@@ -172,16 +171,15 @@ int main(int argc, char *argv[]) {
         Vector<BaseFloat> ivector = ivector_reader.Value(utt);
         ivectors.push_back(ivector);
       }
-      if (ivectors.size() == 0) {
+      if (ivectors.size() != uttlist.size()) {
         KALDI_WARN << "Not producing output for recording " << spk
-                   << " since no segments had iVectors";
+                   << " since some segments had missing iVectors";
         num_spk_err++;
       } else {
         Matrix<BaseFloat> ivector_mat(ivectors.size(), ivectors[0].Dim()),
                           ivector_mat_pca,
                           ivector_mat_plda,
-                          pca_transform,
-                          scores(ivectors.size(), ivectors.size());
+                          pca_transform;
 
         for (size_t i = 0; i < ivectors.size(); i++) {
           ivector_mat.Row(i).CopyFromVec(ivectors[i]);
@@ -203,16 +201,19 @@ int main(int argc, char *argv[]) {
           ivector_mat_pca.CopyFromMat(ivector_mat);
         }
         for (int32 i = 0; i < ivector_mat_plda.NumRows(); i++) {
-          for (int32 j = 0; j < ivector_mat_plda.NumRows(); j++) {
+          for (int32 j = i+1; j < ivector_mat_plda.NumRows(); j++) {
             // Pass the raw PLDA scores through a logistic function
             // so that they are between 0 and 1.
-            scores(i,j) = 1.0
+            BaseFloat score = 1.0
               / (1.0 + exp(this_plda.LogLikelihoodRatio(Vector<double>(
               ivector_mat_plda.Row(i)), 1.0,
               Vector<double>(ivector_mat_plda.Row(j)))));
+            if ( score <= threshold ) {
+              so.Stream() << uttlist[i] << ' ' << uttlist[j] << ' '
+                          << score << std::endl;
+            }
           }
         }
-        scores_writer.Write(spk, scores);
         num_spk_done++;
       }
     }

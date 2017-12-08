@@ -1,6 +1,7 @@
 // ivectorbin/compute-calibration.cc
 
 // Copyright 2016  David Snyder
+//           2017  Matthew Maciejewski
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -29,19 +30,21 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int64 int64;
   try {
     const char *usage =
-      "Computes a calibration threshold from scores (e.g., PLDA scores)."
-      "Generally, the scores are the result of a comparison between two"
-      "iVectors.  This is typically used to find the stopping criteria for"
-      "agglomerative clustering."
-      "Usage: compute-calibration [options] <scores-rspecifier> "
-      "<calibration-wxfilename>\n"
+      "Computes a calibration threshold from scores (e.g., PLDA scores).\n"
+      "Generally, the scores are the result of a comparison between two\n"
+      "iVectors.  This is typically used to find the stopping criteria for\n"
+      "agglomerative clustering. If a rxfilename is supplied, the input is\n"
+      "assumed to be of the form <id1> <id2> <score>.\n"
+      "Usage: compute-calibration [options] <scores-rspecifier|scores-rxfilename>\n"
+      "<calibration-wxfilename|calibration-wspecifier>\n"
       "e.g.: \n"
       " compute-calibration ark:scores.ark threshold.txt\n";
 
     ParseOptions po(usage);
-    bool read_matrices = true;
-    po.Register("read-matrices", &read_matrices, "If true, read scores as"
-      "matrices, probably output from ivector-plda-scoring-dense");
+    std::string spk2utt_rspecifier;
+
+    po.Register("spk2utt-rspecifier", &spk2utt_rspecifier, "If supplied,"
+      "computes a threshold per spk and writes a table accordingly");
 
     po.Read(argc, argv);
 
@@ -50,57 +53,121 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string scores_rspecifier = po.GetArg(1),
-      calibration_wxfilename = po.GetArg(2);
+    std::string scores_fn = po.GetArg(1),
+        calibration_fn = po.GetArg(2);
+    bool in_is_rspecifier =
+        (ClassifyRspecifier(scores_fn, NULL, NULL) != kNoRspecifier);
+    bool out_is_wspecifier =
+        (ClassifyWspecifier(calibration_fn, NULL, NULL, NULL) != kNoWspecifier);
     ClusterKMeansOptions opts;
     BaseFloat mean = 0.0;
-    int32 num_done = 0,
-      num_err = 0;
-    Output output(calibration_wxfilename, false);
-    if (read_matrices) {
-      SequentialBaseFloatMatrixReader scores_reader(scores_rspecifier);
-      for (; !scores_reader.Done(); scores_reader.Next()) {
-        std::string utt = scores_reader.Key();
-        const Matrix<BaseFloat> scores = scores_reader.Value();
-        if (scores.NumRows() <= 2 && scores.NumCols() <= 2) {
-          KALDI_WARN << "Too few scores in " << utt << " to cluster";
-          num_err++;
-          continue;
-        }
-        std::vector<Clusterable*> this_clusterables;
-        std::vector<Clusterable*> this_clusters;
-        for (int32 i = 0; i < scores.NumRows(); i++) {
-          for (int32 j = 0; j < scores.NumCols(); j++) {
-            this_clusterables.push_back(new ScalarClusterable(scores(i,j)));
+    int32 num_done = 0;
+    if (spk2utt_rspecifier.size()) {
+      if (!out_is_wspecifier)
+        KALDI_ERR << "If spk2utt is supplied, output must be a wspecifier";
+      BaseFloatWriter output(calibration_fn);
+      std::vector<std::string> spk_list;
+      std::vector<std::vector<Clusterable*>*> clusterables_list;
+      std::unordered_map<std::string, std::vector<Clusterable*>*> utt2clust;
+      SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
+      for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
+        spk_list.push_back(spk2utt_reader.Key());
+        std::vector<std::string> uttlist = spk2utt_reader.Value();
+        std::vector<Clusterable*>* clusterables = new std::vector<Clusterable*>;
+        clusterables_list.push_back(clusterables);
+        for (std::vector<std::string>::iterator it = uttlist.begin();
+             it != uttlist.end(); ++it)
+          utt2clust[*it] = clusterables;
+      }
+      if (!in_is_rspecifier) {
+        Input ki(scores_fn);
+        std::string line;
+        while (std::getline(ki.Stream(), line)) {
+          std::vector<std::string> split_line;
+          SplitStringToVector(line, " ", true, &split_line);
+          BaseFloat score;
+          if (split_line.size() != 3) {
+            KALDI_ERR << "Invalid input line (must have all three fields): "
+                      << line;
           }
+          if (!ConvertStringToReal(split_line[2], &score)) {
+            KALDI_ERR << "Invalid input line (third field must be float): "
+                      << line;
+          }
+          std::string utt1 = split_line[0], utt2 = split_line[1];
+          std::vector<Clusterable*>* clusterables = utt2clust[utt1];
+          if (clusterables != utt2clust[utt2]) {
+            KALDI_ERR << "Utterances do not belong to the same speaker: "
+                      << line;
+          }
+          clusterables->push_back(new ScalarClusterable(score));
         }
-        ClusterKMeans(this_clusterables, 2, &this_clusters, NULL, opts);
-        DeletePointers(&this_clusterables);
-        BaseFloat this_mean1 = dynamic_cast<ScalarClusterable*>(
-          this_clusters[0])->Mean(),
-          this_mean2 = dynamic_cast<ScalarClusterable*>(
-          this_clusters[1])->Mean();
-        mean += this_mean1 + this_mean2;
-        num_done++;
+      } else {
+        SequentialBaseFloatReader scores_reader(scores_fn);
+        for (; !scores_reader.Done(); scores_reader.Next()) {
+          std::string utt = scores_reader.Key();
+          const BaseFloat score = scores_reader.Value();
+          utt2clust[utt]->push_back(new ScalarClusterable(score));
+        }
       }
-      mean = mean / (2*num_done);
-    } else {
-      std::vector<Clusterable*> clusterables;
       std::vector<Clusterable*> clusters;
-      SequentialBaseFloatReader scores_reader(scores_rspecifier);
-      for (; !scores_reader.Done(); scores_reader.Next()) {
-        std::string utt = scores_reader.Key();
-        const BaseFloat score = scores_reader.Value();
-        clusterables.push_back(new ScalarClusterable(score));
+      for (int32 i = 0; i < spk_list.size(); i++) {
+        ClusterKMeans(*(clusterables_list[i]), 2, &clusters, NULL, opts);
+        BaseFloat mean1 = dynamic_cast<ScalarClusterable*>(clusters[0])->Mean(),
+                  mean2 = dynamic_cast<ScalarClusterable*>(clusters[1])->Mean();
+        mean = (mean1 + mean2) / 2;
+        output.Write(spk_list[i], mean);
+        DeletePointers(clusterables_list[i]);
+        clusters.clear();
         num_done++;
       }
-      ClusterKMeans(clusterables, 2, &clusters, NULL, opts);
-      DeletePointers(&clusterables);
-      BaseFloat mean1 = dynamic_cast<ScalarClusterable*>(clusters[0])->Mean(),
-        mean2 = dynamic_cast<ScalarClusterable*>(clusters[1])->Mean();
-      mean = (mean1 + mean2) / 2;
+      DeletePointers(&clusterables_list);
+    } else {
+      Output output(calibration_fn, false);
+      if (!in_is_rspecifier) {
+        std::vector<Clusterable*> clusterables;
+        std::vector<Clusterable*> clusters;
+        Input ki(scores_fn);
+        std::string line;
+        while (std::getline(ki.Stream(), line)) {
+          std::vector<std::string> split_line;
+          SplitStringToVector(line, " ", true, &split_line);
+          BaseFloat score;
+          if (split_line.size() != 3) {
+            KALDI_ERR << "Invalid input line (must have all three fields): "
+                      << line;
+          }
+          if (!ConvertStringToReal(split_line[2], &score)) {
+            KALDI_ERR << "Invalid input line (third field must be float): "
+                      << line;
+          }
+          clusterables.push_back(new ScalarClusterable(score));
+          num_done++;
+        }
+
+        ClusterKMeans(clusterables, 2, &clusters, NULL, opts);
+        DeletePointers(&clusterables);
+        BaseFloat mean1 = dynamic_cast<ScalarClusterable*>(clusters[0])->Mean(),
+                  mean2 = dynamic_cast<ScalarClusterable*>(clusters[1])->Mean();
+        mean = (mean1 + mean2) / 2;
+      } else {
+        std::vector<Clusterable*> clusterables;
+        std::vector<Clusterable*> clusters;
+        SequentialBaseFloatReader scores_reader(scores_fn);
+        for (; !scores_reader.Done(); scores_reader.Next()) {
+          std::string utt = scores_reader.Key();
+          const BaseFloat score = scores_reader.Value();
+          clusterables.push_back(new ScalarClusterable(score));
+          num_done++;
+        }
+        ClusterKMeans(clusterables, 2, &clusters, NULL, opts);
+        DeletePointers(&clusterables);
+        BaseFloat mean1 = dynamic_cast<ScalarClusterable*>(clusters[0])->Mean(),
+                  mean2 = dynamic_cast<ScalarClusterable*>(clusters[1])->Mean();
+        mean = (mean1 + mean2) / 2;
+      }
+      output.Stream() << mean;
     }
-    output.Stream() << mean;
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

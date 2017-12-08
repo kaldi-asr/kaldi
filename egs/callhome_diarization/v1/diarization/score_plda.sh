@@ -1,15 +1,17 @@
 #!/bin/bash
 
 # Copyright    2016  David Snyder
+#              2017  Matthew Maciejewski
 # Apache 2.0.
 
-# TODO This script computes PLDA scores from pairs of ivectors extracted
+# This script computes PLDA scores from pairs of ivectors extracted
 # from segments of a recording.
 
 # Begin configuration section.
 cmd="run.pl"
 stage=0
 target_energy=0.1
+threshold=1.0
 nj=10
 cleanup=true
 # End configuration section.
@@ -30,6 +32,7 @@ if [ $# != 3 ]; then
   echo "  --stage <stage|0>                                # To control partial reruns"
   echo "  --target-energy <target-energy|0.1>              # Target energy remaining in iVectors after applying"
   echo "                                                   # a conversation dependent PCA."
+  echo "  --threshold <threshold|1.0>                      # Cutoff threshold for saving scores."
   echo "  --cleanup <bool|false>                           # If true, remove temporary files"
   exit 1;
 fi
@@ -50,6 +53,7 @@ cp $ivecdir/segments $dir/tmp/
 cp $ivecdir/spk2utt $dir/
 cp $ivecdir/utt2spk $dir/
 cp $ivecdir/segments $dir/
+echo $nj > $dir/num_jobs
 
 utils/fix_data_dir.sh $dir/tmp > /dev/null
 
@@ -63,13 +67,14 @@ feats="ark:ivector-subtract-global-mean $pldadir/mean.vec scp:$sdata/JOB/feats.s
 if [ $stage -le 0 ]; then
   echo "$0: scoring iVectors"
   $cmd JOB=1:$nj $dir/log/plda_scoring.JOB.log \
-    ivector-plda-scoring-dense --target-energy=$target_energy $pldadir/plda \
-      ark:$sdata/JOB/spk2utt "$feats" ark,scp:$dir/scores.JOB.ark,$dir/scores.JOB.scp || exit 1;
+    ivector-plda-scoring-dense --target-energy=$target_energy \
+      --threshold=$threshold $pldadir/plda \
+      ark:$sdata/JOB/spk2utt "$feats" $dir/scores.JOB || exit 1;
 fi
 
 if [ $stage -le 1 ]; then
   echo "$0: combining calibration thresholds across jobs"
-  for j in $(seq $nj); do cat $dir/scores.$j.scp; done >$dir/scores.scp || exit 1;
+  for j in $(seq $nj); do cat $dir/scores.$j; done >$dir/scores || exit 1;
 fi
 
 if $cleanup ; then
