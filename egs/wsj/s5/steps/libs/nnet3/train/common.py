@@ -398,6 +398,8 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
         try:
             egs_ivector_id = open('{0}/info/final.ie.id'.format(
                                         egs_dir)).readline().strip()
+            if (egs_ivector_id == ""):
+                egs_ivector_id = None;
         except:
             # it could actually happen that the file is not there
             # for example in cases where the egs were dumped by
@@ -433,10 +435,12 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
 
         if (((egs_ivector_id is None) and (ivector_extractor_id is not None)) or
             ((egs_ivector_id is not None) and (ivector_extractor_id is None))):
-            logger.warning("The ivector ids are inconsistently used. It's your "
+            logger.warning("The ivector ids are used inconsistently. It's your "
                           "responsibility to make sure the ivector extractor "
                           "has been used consistently")
-        elif ((egs_ivector_id is None) and (ivector_extractor_id is None)):
+            logger.warning("ivector id for egs: {0} in dir {1}".format(egs_ivector_id, egs_dir))
+            logger.warning("ivector id for extractor: {0}".format(ivector_extractor_id))
+        elif ((egs_ivector_dim > 0) and (egs_ivector_id is None) and (ivector_extractor_id is None)):
             logger.warning("The ivector ids are not used. It's your "
                           "responsibility to make sure the ivector extractor "
                           "has been used consistently")

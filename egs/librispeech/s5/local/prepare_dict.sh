@@ -12,7 +12,7 @@ cmd=run.pl
 
 
 . utils/parse_options.sh || exit 1;
-. path.sh || exit 1
+. ./path.sh || exit 1
 
 
 if [ $# -ne 3 ]; then

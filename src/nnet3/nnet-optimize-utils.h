@@ -48,15 +48,16 @@ struct NnetOptimizeOptions;  // Forward declaration.
    Then the triple (C, s1, s2) is a candidate for merging.  We support two types
    of merging: 'right merging', in which we delete s1 and use s2 instead; and
    'left merging' in which we delete s2 and use s1 instead.  The two types of
-   merging may seem to be the same thing, but remember that in general s1 and s2
-   may be sub-matrices of larger matrices.
+   merging may seem to be essentially equivalent, but they they are not because
+   in general s1 and s2 may be sub-matrices of larger matrices.
 
-   Note: the following
+   Note the following definitions:
      - Define last-access(submatrix) as the
        last command that accesses that submatrix for either read or write.  [note:
        deallocation does not count as a read or write operation].
-     - Define first-access(submatrix) as the first command not of type kAlloc*
-       that accessed that submatrix for either read or write.
+     - Define first-nontrivial-access(submatrix) as the first command
+       other than zeroing (kSetConst with 0.0) that accessed that submatrix for
+       either read or write.
      - Define last-write-access(submatrix) as the last command-index that accessed
        the submatrix in a write operation, or -1 if there is no such command (this
        could happen for inputs).
@@ -87,14 +88,13 @@ struct NnetOptimizeOptions;  // Forward declaration.
        [note: because of condition c4, we can assume that s1 is the entirety of
        m1.]
 
-
    If the command C is case (a), i.e. an assignment operation, then the following
    conditions must apply:
-     - first-access(s2) == C
+     - first-nontrivial-access(s2) == C
      - last-write-access(s1) < C
      - last-access(s1) < data-invalidated-command(C, s2)
    Otherwise (cases (b) and (c), in-place propagate or backprop), we insist that:
-     - first-access(s2) == C
+     - first-nontrivial-access(s2) == C
      - last-access(s1) == C
    Note: in either case, these conditions imply that m2/s2 is not an input and m1/s1 is
    not an output.  [i.e. s1 *may* be an input and s2 *may* be an output].
@@ -453,6 +453,7 @@ bool SnipRowOps(NnetComputation *computation);
 /// computation->commands_; to do that, call RemoveNoOps(computation).
 void RenumberComputation(NnetComputation *computation);
 
+
 /// Removes commands of type kNoOperation in the computation.
 void RemoveNoOps(NnetComputation *computation);
 
@@ -462,6 +463,24 @@ void RemoveNoOps(NnetComputation *computation);
 /// pointers may point to a zero value, for optional submatrix args.
 void IdentifySubmatrixArgs(NnetComputation::Command *command,
                            std::vector<int32*> *submatrix_args);
+
+/// This function returns true if matrix 1 <= m < computation->matrices.size()
+/// is unused, defined as: it is not an input or an output, and is not
+/// accessed other than via commands of type kAllocMatrix, kDeallocMatrix, and
+/// kSetConst.
+bool MatrixIsUnused(const Analyzer &analyzer,
+                    const NnetComputation &computation,
+                    int32 m);
+
+/// This function removes from 'computation' the commands accessing matrix 'm',
+/// which is assumed to be unused according to the MatrixIsUnused() command
+/// above.  Specifically, it changes the types of the relevant commands in
+/// 'computation' to kNoOperation.  (The commands changed in this way will be of
+/// type kAllocMatrix, kDeallocMatrix and kSetConst).  The index for the matrix
+/// may later be removed entirely by RenumberComputation().
+void RemoveCommandsForUnusedMatrix(const Analyzer &analyzer,
+                                   int32 m,
+                                   NnetComputation *computation);
 
 
 /// This function outputs to "submatrix_args" the addresses of the args

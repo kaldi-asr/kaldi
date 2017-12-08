@@ -290,7 +290,7 @@ srcdir=exp/tri7a_dnn
 acwt=0.1
 
 # First we generate lattices and alignments:
-# gawk musb be installed to perform awk -v FS="/" '{ print gensub(".gz","","",$NF)" gunzip -c "$0" |"; }' in 
+# awk -v FS="/" '{ NF_nosuffix=$NF; gsub(".gz","",NF_nosuffix); print NF_nosuffix gunzip -c "$0" |"; }' in 
 # steps/nnet/make_denlats.sh
 steps/nnet/align.sh --nj 10 --cmd "$train_cmd" \
     data-fbank/train_si84_noisy data/lang $srcdir ${srcdir}_ali || exit 1;

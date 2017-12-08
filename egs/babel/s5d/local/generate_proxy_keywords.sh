@@ -172,5 +172,6 @@ proxy_fsts=""
 for j in `seq 1 $nj`; do
   proxy_fsts="$proxy_fsts $kwsdatadir/split/proxy.$j.fsts"
 done
+
 cat $proxy_fsts | fsttablecompose $kwsdatadir/L1.revdup.fst ark:- ark:- | \
-  fsts-project ark:- ark:$kwsdatadir/keywords.fsts
+  fsts-project ark:- ark,scp:$kwsdatadir/keywords.fsts,$kwsdatadir/keywords.scp
