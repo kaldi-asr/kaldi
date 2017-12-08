@@ -51,6 +51,7 @@ class DecoderFactory {
   ~DecoderFactory(); // TODO switch to a singleton for DecoderFactory
 
   // Creates a decoder object.
+  // NOTE: PASSES OWNERSHIP TO THE CALLER.
   // Returns nullptr on failure.
   Decoder *StartDecodingSession();
  private:

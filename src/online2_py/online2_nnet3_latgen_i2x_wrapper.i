@@ -10,5 +10,6 @@
 %include stdint.i
 %include std_string.i
 using std::string;
+%newobject DecoderFactory::StartDecodingSession();
 %include "../online2/online2-nnet3-latgen-i2x-wrapper.h"
 
