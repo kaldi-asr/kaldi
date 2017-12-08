@@ -1,15 +1,35 @@
 #!/bin/bash
 
-# This script performs chain training in a flat-start manner
-# It uses a full trivial biphone context-dependency tree.
+# This is a TDNN-LSTM recipe that performs chain training in a flat-start manner
+# Unlike run_tdnn_end2end.sh which is context-independent, this recipe uses
+# a full trivial biphone context-dependency tree. This is because this recipe is
+# meant for character-based (i.e. lexicon-free) modeling where context helps
+# significantly.
 # It does not use ivecors or other forms of speaker adaptation
 # except simple mean and variance normalization.
 # It is called from run_e2e_char.sh
 
-# Note: this script is configured as character-based, if you want
+# Note: this script is configured to run as character-based, if you want
 # to run it in phoneme mode, you'll need to change _char
 # to _nosp everywhere and also copy phone_lm.fst instead
 # of char_lm.fst (in stage 1 below)
+
+
+# System                e2e_tdnn_lstm_bichar_1a
+# WER dev93 (tgpr)                9.42
+# WER dev93 (tg)                  8.85
+# WER dev93 (big-dict,tgpr)       7.70
+# WER dev93 (big-dict,fg)         6.79
+# WER eval92 (tgpr)               6.42
+# WER eval92 (tg)                 6.11
+# WER eval92 (big-dict,tgpr)      4.50
+# WER eval92 (big-dict,fg)        4.09
+# Final train prob        -0.7535
+# Final valid prob        -0.7786
+
+# steps/info/chain_dir_info.pl exp/chain/e2e_tdnn_lstm_bichar_1a/
+# exp/chain/e2e_tdnn_lstm_bichar_1a/: num-iters=138 nj=2..5 num-params=9.2M dim=40->3444 combine=-6.480->-6.478 logprob:train/valid[91,137,final]=(-0.766,-0.754,-0.754/-0.784,-0.779,-0.779)
+
 
 set -e
 
@@ -31,7 +51,7 @@ num_jobs_initial=2
 num_jobs_final=5
 minibatch_size=150=128,64/300=64,32/600=32,16/1200=16,8
 common_egs_dir=
-l2_regularize=0.00005
+l2_regularize=0.00001
 dim=512
 frames_per_iter=2500000
 cmvn_opts="--norm-means=true --norm-vars=true"
@@ -65,7 +85,7 @@ EOF
 fi
 
 lang=data/lang_e2e_char
-treedir=exp/chain/e2e_char_bitree
+treedir=exp/chain/e2e_bichar_tree
 dir=exp/chain/e2e_tdnn_lstm_bichar${affix}
 
 if [ $stage -le 0 ]; then
@@ -82,10 +102,11 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  steps/nnet3/chain/prepare_e2e_biphone.sh --nj 30 --cmd "$train_cmd" \
-                                           --shared-phones true \
-                                           --scale-opts "$num_scale_opts" \
-                                           data/$train_set $lang $treedir
+  steps/nnet3/chain/prepare_e2e.sh --nj 30 --cmd "$train_cmd" \
+                                   --type biphone \
+                                   --shared-phones true \
+                                   --scale-opts "$num_scale_opts" \
+                                   data/$train_set $lang $treedir
   cp exp/chain/e2e_base/char_lm.fst $treedir/phone_lm.fst
 fi
 

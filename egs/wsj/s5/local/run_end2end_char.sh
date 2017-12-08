@@ -37,11 +37,10 @@ if [ $stage -le 0 ]; then
     local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?
   [[ -f data/local/dict_nosp/lexicon.txt ]] || \
     local/wsj_prepare_phn_dict.sh --dict-suffix "_nosp"
-  local/wsj_prepare_char_dict.sh
 
+  local/wsj_prepare_char_dict.sh
   utils/prepare_lang.sh data/local/dict_char \
                         "<SPOKEN_NOISE>" data/local/lang_tmp_char data/lang_char
-
   local/wsj_format_data.sh --lang-suffix "_char"
   echo "$0: Done preparing data & lang."
 fi

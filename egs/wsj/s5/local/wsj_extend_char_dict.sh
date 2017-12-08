@@ -75,16 +75,12 @@ echo "Most frequent unseen unigrams are: "
 head $dir/oov.counts
 
 # Select the OOVs whose counts > $mincount. Include these OOVs into the lexicon.
-cat $dir/oov.counts | awk -v thresh=$mincount \
-                          '{if ($1 >= thresh) { print $2; }}' > $dir/oovlist
-cat $dir/oovlist | perl -e 'while(<>){ chop; $str="$_"; foreach $p \
-(split("", $_)) {$str="$str $p"}; print "$str\n";}' > $dir/lexicon.oov.txt
+cat $dir/oov.counts | awk -v thresh=$mincount '{if ($1 >= thresh) { print $2; }}' > $dir/oovlist
+cat $dir/oovlist | perl -e 'while(<>){ chop; $str="$_"; foreach $p (split("", $_)) {$str="$str $p"}; print "$str\n";}' > $dir/lexicon.oov.txt
 
 # filter out oov words that have characters not in non-silence characters
 cat $dir/lexicon.oov.txt | awk -v dict=$dir/nonsilence_phones.txt \
- 'BEGIN{while(getline<dict) seen[$1]=1;} \
-{for(i=2;i<=NF;i++) {if(!seen[$i]){break;}}; \
-if (i==(NF+1)){print;}}' > $dir/lexicon.oov.filt.txt
+ 'BEGIN{while(getline<dict) seen[$1]=1;} {for(i=2;i<=NF;i++) {if(!seen[$i]){break;}}; if (i==(NF+1)){print;}}' > $dir/lexicon.oov.filt.txt
 
 # THe final expanded lexicon
 cat $dir/lexicon.ori.txt $dir/lexicon.oov.filt.txt > $dir/lexicon.txt
