@@ -4,11 +4,11 @@
 %}
 
 %{
-#include "online2-nnet3-latgen-i2x-wrapper.h"
+#include "../online2/online2-nnet3-latgen-i2x-wrapper.h"
 %}
 
 %include stdint.i
 %include std_string.i
 using std::string;
-%include "online2-nnet3-latgen-i2x-wrapper.h"
+%include "../online2/online2-nnet3-latgen-i2x-wrapper.h"
 
