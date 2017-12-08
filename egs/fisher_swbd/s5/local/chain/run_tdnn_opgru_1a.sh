@@ -6,8 +6,8 @@
 # and renorm in its recurrence. Experiments show that the TDNN-NormOPGRU could achieve similar
 # results than TDNN-LSTMP and BLSTMP in both large or small data sets (80 ~ 2300 Hrs).
 
-# ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1b_sp tdnn_opgru_1a_sp
-# System                tdnn_lstm_1b_sp tdnn_opgru_1a_sp
+# ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1a_sp tdnn_opgru_1a_sp
+# System                tdnn_lstm_1a_sp tdnn_opgru_1a_sp
 # WER on eval2000(tg)        12.3      11.6
 #           [looped:]        12.2      11.7
 # WER on eval2000(fg)        12.1      11.6

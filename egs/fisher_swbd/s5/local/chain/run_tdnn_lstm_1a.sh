@@ -1,7 +1,7 @@
 #!/bin/bash
 # same as run_tdnn_opgru_1a.sh, but replacing Norm-OPGRU with LSTMP.
-# ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1b_sp
-# System                tdnn_lstm_1b_sp
+# ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1a_sp
+# System                tdnn_lstm_1a_sp
 # WER on eval2000(tg)        12.3
 #           [looped:]        12.2
 # WER on eval2000(fg)        12.1
@@ -16,20 +16,20 @@
 # Final valid prob (xent)       -0.9393
 
 # ./show_chain_wer.sh tdnn_lstm_1b_sp
-# %WER 16.0 | 2628 21594 | 86.3 9.0 4.7 2.3 16.0 54.4 | exp/chain/tdnn_lstm_1b_sp/decode_eval2000_fsh_sw1_tg/score_7_0.0/eval2000_hires.ctm.callhm.filt.sys
-# %WER 12.3 | 4459 42989 | 89.4 7.1 3.5 1.7 12.3 49.8 | exp/chain/tdnn_lstm_1b_sp/decode_eval2000_fsh_sw1_tg/score_8_0.0/eval2000_hires.ctm.filt.sys
-# %WER 8.4 | 1831 21395 | 92.7 5.1 2.2 1.1 8.4 42.3 | exp/chain/tdnn_lstm_1b_sp/decode_eval2000_fsh_sw1_tg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
-# %WER 15.9 | 2628 21594 | 86.4 8.9 4.7 2.3 15.9 54.3 | exp/chain/tdnn_lstm_1b_sp/decode_eval2000_fsh_sw1_fg/score_7_0.0/eval2000_hires.ctm.callhm.filt.sys
-# %WER 12.1 | 4459 42989 | 89.6 6.9 3.5 1.7 12.1 49.2 | exp/chain/tdnn_lstm_1b_sp/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.filt.sys
-# %WER 8.2 | 1831 21395 | 93.1 5.1 1.8 1.3 8.2 41.7 | exp/chain/tdnn_lstm_1b_sp/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 16.0 | 2628 21594 | 86.3 9.0 4.7 2.3 16.0 54.4 | exp/chain/tdnn_lstm_1a_sp/decode_eval2000_fsh_sw1_tg/score_7_0.0/eval2000_hires.ctm.callhm.filt.sys
+# %WER 12.3 | 4459 42989 | 89.4 7.1 3.5 1.7 12.3 49.8 | exp/chain/tdnn_lstm_1a_sp/decode_eval2000_fsh_sw1_tg/score_8_0.0/eval2000_hires.ctm.filt.sys
+# %WER 8.4 | 1831 21395 | 92.7 5.1 2.2 1.1 8.4 42.3 | exp/chain/tdnn_lstm_1a_sp/decode_eval2000_fsh_sw1_tg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 15.9 | 2628 21594 | 86.4 8.9 4.7 2.3 15.9 54.3 | exp/chain/tdnn_lstm_1a_sp/decode_eval2000_fsh_sw1_fg/score_7_0.0/eval2000_hires.ctm.callhm.filt.sys
+# %WER 12.1 | 4459 42989 | 89.6 6.9 3.5 1.7 12.1 49.2 | exp/chain/tdnn_lstm_1a_sp/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.filt.sys
+# %WER 8.2 | 1831 21395 | 93.1 5.1 1.8 1.3 8.2 41.7 | exp/chain/tdnn_lstm_1a_sp/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.swbd.filt.sys
 
 # ./show_chain_wer_rt03.sh tdnn_lstm_1b_sp
-# %WER 9.6 | 3970 36721 | 91.5 5.5 3.0 1.1 9.6 41.2 | exp/chain/tdnn_lstm_1b_sp/decode_rt03_fsh_sw1_tg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
-# %WER 11.6 | 8420 76157 | 89.7 6.8 3.4 1.4 11.6 43.0 | exp/chain/tdnn_lstm_1b_sp/decode_rt03_fsh_sw1_tg/score_7_0.0/rt03_hires.ctm.filt.sys
-# %WER 13.3 | 4450 39436 | 88.0 7.4 4.6 1.3 13.3 44.5 | exp/chain/tdnn_lstm_1b_sp/decode_rt03_fsh_sw1_tg/score_9_0.0/rt03_hires.ctm.swbd.filt.sys
-# %WER 9.4 | 3970 36721 | 91.8 5.3 2.9 1.1 9.4 40.3 | exp/chain/tdnn_lstm_1b_sp/decode_rt03_fsh_sw1_fg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
-# %WER 11.3 | 8420 76157 | 89.9 6.4 3.7 1.2 11.3 42.4 | exp/chain/tdnn_lstm_1b_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.filt.sys
-# %WER 13.1 | 4450 39436 | 88.3 7.5 4.2 1.4 13.1 44.0 | exp/chain/tdnn_lstm_1b_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.swbd.filt.sys
+# %WER 9.6 | 3970 36721 | 91.5 5.5 3.0 1.1 9.6 41.2 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_tg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
+# %WER 11.6 | 8420 76157 | 89.7 6.8 3.4 1.4 11.6 43.0 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_tg/score_7_0.0/rt03_hires.ctm.filt.sys
+# %WER 13.3 | 4450 39436 | 88.0 7.4 4.6 1.3 13.3 44.5 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_tg/score_9_0.0/rt03_hires.ctm.swbd.filt.sys
+# %WER 9.4 | 3970 36721 | 91.8 5.3 2.9 1.1 9.4 40.3 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_fg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
+# %WER 11.3 | 8420 76157 | 89.9 6.4 3.7 1.2 11.3 42.4 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.filt.sys
+# %WER 13.1 | 4450 39436 | 88.3 7.5 4.2 1.4 13.1 44.0 | exp/chain/tdnn_lstm_1a_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.swbd.filt.sys
 
 
 set -e
