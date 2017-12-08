@@ -380,7 +380,8 @@ void ComposeCompactLatticeDeterministic(
 void ComposeCompactLatticeDeterministicParallel(
     const CompactLattice& clat,
     fst::DeterministicOnDemandFstParallel<fst::StdArc>* det_fst,
-    CompactLattice* composed_clat);
+    CompactLattice* composed_clat,
+    int32 max_parallel_size = 999999999);
 
 }  // namespace kaldi
 

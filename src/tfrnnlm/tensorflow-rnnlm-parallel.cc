@@ -40,26 +40,24 @@ using tf_rnnlm::TfRnnlmDeterministicFstParallel;
 using tensorflow::Status;
 
 
-void tf_rnnlm::ConcatTensor(const std::vector<tensorflow::Tensor> &input_tensor_vector,
+void tf_rnnlm::ConcatTensor(const std::vector<tensorflow::Tensor*> &input_tensor_vector,
                  const tensorflow::Scope &scope,
                  const tensorflow::ClientSession &session,
                  Tensor *output_tensor) {
-  KALDI_LOG << "ConcatTensor " << input_tensor_vector.size();
+//  KALDI_LOG << "ConcatTensor " << input_tensor_vector.size();
   if (input_tensor_vector.size() == 1) {
-    *output_tensor = input_tensor_vector[0];
-    KALDI_LOG << input_tensor_vector[0].DebugString();
-    KALDI_LOG << output_tensor->DebugString();
+    *output_tensor = *input_tensor_vector[0];
+//    KALDI_LOG << input_tensor_vector[0].DebugString();
     return;
   }
 
   // convert vector<Tensor> to InputList
   std::vector<tensorflow::Input> v;
   for (int i = 0; i < input_tensor_vector.size(); i++) {
-    v.push_back(tensorflow::Input(input_tensor_vector[i]));
+    v.push_back(tensorflow::Input(*input_tensor_vector[i]));
   }
   tensorflow::InputList inputlist = tensorflow::InputList(v);
-  auto stack_op =
-         tensorflow::ops::Concat(scope, inputlist, -2);
+  auto stack_op = tensorflow::ops::Concat(scope, inputlist, -2);
 //         tensorflow::ops::Concat(scope, inputlist, tensorflow::Input({2}));
 //  auto stack_op = tensorflow::ops::Identity(scope, input_tensor_vector[0]);
 
@@ -70,9 +68,11 @@ void tf_rnnlm::ConcatTensor(const std::vector<tensorflow::Tensor> &input_tensor_
   if (!status.ok()) {
     KALDI_ERR << status.ToString();
   } else  {
-    KALDI_LOG << "Success";
+//    KALDI_LOG << "Success";
+    KALDI_ASSERT(stack_output_vector.size() == 1);
+    *output_tensor = stack_output_vector[0];
+//    KALDI_LOG << status.ToString() << " " << output_tensor->DebugString();
   }
-  *output_tensor = stack_output_vector[0];
 }
 
 void tf_rnnlm::SplitTensor(int size,
@@ -80,7 +80,7 @@ void tf_rnnlm::SplitTensor(int size,
                    const tensorflow::Scope &scope,
                    const tensorflow::ClientSession &session,
                    std::vector<Tensor> *output_tensor_vector) {
-  KALDI_LOG << "SplitTensir" << size;
+//  KALDI_LOG << "SplitTensor" << size;
   if (size == 1) {
     output_tensor_vector->resize(1);
     (*output_tensor_vector)[0] = input_tensor;
@@ -99,7 +99,7 @@ void tf_rnnlm::SplitTensor(int size,
     if (!status.ok()) {
       KALDI_ERR << status.ToString();
     } else {
-      KALDI_LOG << "Success splitting";
+//      KALDI_LOG << "Success splitting" << (*output_tensor_vector)[0].DebugString();
     }
 }
 
@@ -132,20 +132,20 @@ TfRnnlmDeterministicFstParallel::~TfRnnlmDeterministicFstParallel() {
 
 void TfRnnlmDeterministicFstParallel::FinalParallel(std::vector<StateId> s2_vector_final,
                                                     std::vector<Weight>* det_fst_final_vector) {
-  KALDI_LOG << "FinalParallel" << s2_vector_final.size();
+//  KALDI_LOG << "FinalParallel" << s2_vector_final.size();
   int32 eos_ = rnnlm_->GetEos();
   int s2_size = s2_vector_final.size();
   std::vector<int32> rnn_word_vector(s2_size, eos_);
   std::vector<Label> ilabel_vector(s2_size, -1);
-  std::vector<tensorflow::Tensor> state_to_context_vector, state_to_cell_vector;
+  std::vector<tensorflow::Tensor*> state_to_context_vector, state_to_cell_vector;
   std::vector<BaseFloat> logprob_vector;
   tensorflow::Scope root_final = tensorflow::Scope::NewRootScope();
   tensorflow::ClientSession session_final(root_final);
 
   for (int i = 0; i < s2_size; ++i) {
     StateId s = s2_vector_final[i];
-    state_to_context_vector.push_back(*state_to_context_[s]);
-    state_to_cell_vector.push_back(*state_to_cell_[s]);  
+    state_to_context_vector.push_back(state_to_context_[s]);
+    state_to_cell_vector.push_back(state_to_cell_[s]);  
   }
 
 //  tensorflow::InputList context_inputlist = tensorflow::InputList(state_to_context_vector);
@@ -153,7 +153,7 @@ void TfRnnlmDeterministicFstParallel::FinalParallel(std::vector<StateId> s2_vect
 //  auto context_op = tensorflow::ops::Stack(root_final, context_inputlist);
 //  auto cell_op = tensorflow::ops::Stack(root_final, cell_inputlist);
 
-  std::vector<Tensor> state_output_vector, cell_output_vector;
+  std::vector<Tensor*> state_output_vector, cell_output_vector;
   Tensor state_to_context_tensor, state_to_cell_tensor;
 
   tf_rnnlm::ConcatTensor(state_to_context_vector, root_final, session_final,
@@ -187,11 +187,11 @@ void TfRnnlmDeterministicFstParallel::FinalParallel(std::vector<StateId> s2_vect
 void TfRnnlmDeterministicFstParallel::GetArcsParallel(std::vector<StateId> s2_vector, 
                                               std::vector<Label> ilabel_vector,
                                               std::vector<fst::StdArc>* arc2_vector) {
-  KALDI_LOG << "GetArcParallel " << s2_vector.size() ;
+//  KALDI_LOG << "GetArcParallel " << s2_vector.size() ;
   KALDI_ASSERT(s2_vector.size() == ilabel_vector.size());
 
   std::vector<int32> rnn_word_vector;
-  std::vector<tensorflow::Tensor> state_to_context_vector, state_to_cell_vector;
+  std::vector<tensorflow::Tensor*> state_to_context_vector, state_to_cell_vector;
   std::vector<BaseFloat> logprob_vector;
   Label ilabel;
   StateId s;
@@ -206,8 +206,8 @@ void TfRnnlmDeterministicFstParallel::GetArcsParallel(std::vector<StateId> s2_ve
   for (int iter = 0; iter < parallel_size; ++iter) {
     s = s2_vector[iter];
     ilabel = ilabel_vector[iter];
-    state_to_context_vector.push_back(*state_to_context_[s]);
-    state_to_cell_vector.push_back(*state_to_cell_[s]);
+    state_to_context_vector.push_back(state_to_context_[s]);
+    state_to_cell_vector.push_back(state_to_cell_[s]);
     rnn_word = rnnlm_->FstLabelToRnnLabel(ilabel);
     rnn_word_vector.push_back(rnn_word);
   }
@@ -217,7 +217,7 @@ void TfRnnlmDeterministicFstParallel::GetArcsParallel(std::vector<StateId> s2_ve
 //  auto context_op = tensorflow::ops::Stack(root, context_inputlist);
 //  auto cell_op = tensorflow::ops::Stack(root, cell_inputlist);
 
-  std::vector<Tensor> state_output_vector, cell_output_vector;
+  std::vector<Tensor*> state_output_vector, cell_output_vector;
   Tensor state_to_context_tensor, state_to_cell_tensor;
 
   ConcatTensor(state_to_context_vector, root, session, &state_to_context_tensor);
@@ -272,7 +272,12 @@ void TfRnnlmDeterministicFstParallel::GetArcsParallel(std::vector<StateId> s2_ve
     std::vector<Label> wseq = state_to_wseq_[s];
     wseq.push_back(rnn_word);
 
-    // May not need to limit the size of <wseq>.
+    if (max_ngram_order_ > 0) {
+      while (wseq.size() >= max_ngram_order_) {
+        // History state has at most <max_ngram_order_> - 1 words in the state.
+        wseq.erase(wseq.begin(), wseq.begin() + 1);
+      }
+    }
 
     std::pair<const std::vector<Label>, StateId> wseq_state_pair(
         wseq, static_cast<Label>(state_to_wseq_.size()));
@@ -289,6 +294,9 @@ void TfRnnlmDeterministicFstParallel::GetArcsParallel(std::vector<StateId> s2_ve
       state_to_wseq_.push_back(wseq);
       state_to_context_.push_back(new_context);
       state_to_cell_.push_back(new_cell);
+    } else {
+      delete new_context;
+      delete new_cell;
     }
 
     // Create the arc.

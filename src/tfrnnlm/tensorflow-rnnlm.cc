@@ -218,6 +218,7 @@ void KaldiTfRnnlmWrapper::GetLogProbParallel(std::vector<int32> word_vector,
                                              Tensor *new_context_tensor,
                                              Tensor *new_cell_tensor,
                                              std::vector<BaseFloat> *logprob_vector) {
+  KALDI_ASSERT(logprob_vector->size() == 0);
   // Transform <word_vector> to <word_tensor>.
   Tensor word_tensor(tensorflow::DT_INT32, {word_vector.size(), 1});
   auto word_tensor_mapped = word_tensor.tensor<int32, 2>();
@@ -265,7 +266,7 @@ void KaldiTfRnnlmWrapper::GetLogProbParallel(std::vector<int32> word_vector,
   int32 word;
   float ans, logprob;
   for (int i = 0; i < word_vector.size(); ++i) {
-    KALDI_LOG << "here " << outputs[0].DebugString();
+//    KALDI_LOG << "here " << outputs[0].DebugString();
     logprob = outputs[0].vec<float>()(i);
     word = word_vector[i];
     if (word != oos_) {
@@ -278,7 +279,7 @@ void KaldiTfRnnlmWrapper::GetLogProbParallel(std::vector<int32> word_vector,
       } 
     }
 
-    KALDI_LOG << "ans is " << ans;   
+//    KALDI_LOG << word_vector[i] << " ans is " << ans;   
     logprob_vector->push_back(ans);
   }
 
@@ -342,6 +343,7 @@ BaseFloat KaldiTfRnnlmWrapper::GetLogProb(int32 word,
     }
   }
 
+//  KALDI_LOG << word <<  " ans is " << ans;   
   return ans;
 }
 

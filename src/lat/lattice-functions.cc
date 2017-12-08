@@ -1637,6 +1637,9 @@ void ComposeCompactLatticeDeterministic(
                             arc2.weight.Value(),
                             arc1.weight.Weight().Value2()),
               arc1.weight.String());
+      std::cout << arc1.weight.Weight().Value1() + arc2.weight.Value() << " ";
+      std::cout << state_map[s] << " " << arc1.ilabel << " " << arc2.olabel << " " << next_state << std::endl;
+
           composed_clat->AddArc(state_map[s],
                                 CompactLatticeArc(arc1.ilabel, arc2.olabel,
                                                   composed_weight, next_state));
@@ -1654,7 +1657,7 @@ void ComposeCompactLatticeDeterministic(
 void ComposeCompactLatticeDeterministicParallel(
     const CompactLattice& clat,
     fst::DeterministicOnDemandFstParallel<fst::StdArc>* det_fst,
-    CompactLattice* composed_clat) {
+    CompactLattice* composed_clat, int32 max_parallel_size) {
   // StdFst::Arc and CompactLatticeArc has the same StateId type.
   typedef fst::StdArc::StateId StateId;
   typedef fst::StdArc::Weight Weight1;
@@ -1710,7 +1713,7 @@ void ComposeCompactLatticeDeterministicParallel(
     clat_final_vector.clear();
 
     // Get all pair from <state_queue>.
-    while(!state_queue.empty()) {
+    while (!state_queue.empty() && state_pair_vector.size() < max_parallel_size) {
       StatePair sp = state_queue.front();
       state_pair_vector.push_back(sp);
       state_queue.pop();
@@ -1718,7 +1721,7 @@ void ComposeCompactLatticeDeterministicParallel(
     // Loop over all state pairs in <state_pair_vector>.
     for (vector<StatePair>::iterator iter = state_pair_vector.begin();
          iter != state_pair_vector.end(); ++iter) {
-      StatePair s = *iter;
+      StatePair &s = *iter;
       StateId s1 = s.first;
       StateId s2 = s.second; 
 
@@ -1790,9 +1793,9 @@ void ComposeCompactLatticeDeterministicParallel(
     
     // Set final state.
     for (int iter = 0; iter < det_fst_final_vector.size(); ++iter) {
-      Weight1 det_fst_final = det_fst_final_vector[iter];
-      Weight2 clat_final = clat_final_vector[iter];
-      StatePair s = state_pair_vector_final[iter];
+      Weight1 &det_fst_final = det_fst_final_vector[iter];
+      Weight2 &clat_final = clat_final_vector[iter];
+      StatePair &s = state_pair_vector_final[iter];
 
       Weight2 final_weight(LatticeWeight(clat_final.Weight().Value1() +
                                          det_fst_final.Value(),
@@ -1817,9 +1820,9 @@ void ComposeCompactLatticeDeterministicParallel(
       // always match.
       //bool matched = matched_vector[iter];
       //if (matched) {
-      StatePair s = state_pair_vector_none0[iter];
+      StatePair &s = state_pair_vector_none0[iter];
       const CompactLatticeArc& arc1 = arc1_vector[iter];
-      fst::StdArc arc2 = arc2_vector[iter];
+      fst::StdArc &arc2 = arc2_vector[iter];
 
       StateId next_state1 = arc1.nextstate;
       StateId next_state2 = arc2.nextstate;
@@ -1850,6 +1853,10 @@ void ComposeCompactLatticeDeterministicParallel(
                         arc2.weight.Value(),
                         arc1.weight.Weight().Value2()),
           arc1.weight.String());
+
+      std::cout << arc1.weight.Weight().Value1() + arc2.weight.Value() << " ";
+      std::cout << state_map[s] << " " << arc1.ilabel << " " << arc2.olabel << " " << next_state << std::endl;
+
       composed_clat->AddArc(state_map[s],
                             CompactLatticeArc(arc1.ilabel, arc2.olabel,
                                               composed_weight, next_state));

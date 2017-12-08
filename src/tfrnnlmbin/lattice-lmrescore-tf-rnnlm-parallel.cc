@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
     int32 n_done = 0, n_fail = 0;
     for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
       std::string key = compact_lattice_reader.Key();
+      KALDI_LOG << "processing " << key;
       CompactLattice &clat = compact_lattice_reader.Value();
 
       if (lm_scale != 0.0) {

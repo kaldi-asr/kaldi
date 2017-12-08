@@ -39,16 +39,18 @@ using tensorflow::Tensor;
 namespace kaldi {
 namespace tf_rnnlm {
 
-void ConcatTensor(const std::vector<tensorflow::Tensor> &input_tensor_vector,
+// this function does not allocate any memory
+void ConcatTensor(const std::vector<tensorflow::Tensor*> &input_tensor_vector,
                  const tensorflow::Scope &scope,
                  const tensorflow::ClientSession &session,
                  Tensor *output_tensor);
 
+// this function does not allocate any memory
 void SplitTensor(int size,
-                           const Tensor &input_tensor,
-                           const tensorflow::Scope &scope,
-                           const tensorflow::ClientSession &session,
-                           std::vector<Tensor> *output_tensor_vector);
+                 const Tensor &input_tensor,
+                 const tensorflow::Scope &scope,
+                 const tensorflow::ClientSession &session,
+                 std::vector<Tensor> *output_tensor_vector);
 
 class TfRnnlmDeterministicFstParallel:
          public fst::DeterministicOnDemandFstParallel<fst::StdArc> {
