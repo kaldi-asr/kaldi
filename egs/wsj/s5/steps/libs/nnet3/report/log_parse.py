@@ -358,16 +358,16 @@ def parse_prob_logs(exp_dir, key='accuracy', output="output"):
         "nnet.*diagnostics.cc:[0-9]+. Overall ([a-zA-Z\-]+) for "
         "'{output}'.*is ([0-9.\-e]+) .*per frame".format(output=output))
 
-    train_loss = {}
-    valid_loss = {}
+    train_objf = {}
+    valid_objf = {}
 
     for line in train_prob_strings.split('\n'):
         mat_obj = parse_regex.search(line)
         if mat_obj is not None:
             groups = mat_obj.groups()
             if groups[1] == key:
-                train_loss[int(groups[0])] = groups[2]
-    if not train_loss:
+                train_objf[int(groups[0])] = groups[2]
+    if not train_objf:
         raise KaldiLogParseException("Could not find any lines with {k} in "
                 " {l}".format(k=key, l=train_prob_files))
 
@@ -376,20 +376,20 @@ def parse_prob_logs(exp_dir, key='accuracy', output="output"):
         if mat_obj is not None:
             groups = mat_obj.groups()
             if groups[1] == key:
-                valid_loss[int(groups[0])] = groups[2]
+                valid_objf[int(groups[0])] = groups[2]
 
-    if not valid_loss:
+    if not valid_objf:
         raise KaldiLogParseException("Could not find any lines with {k} in "
                 " {l}".format(k=key, l=valid_prob_files))
 
-    iters = list(set(valid_loss.keys()).intersection(train_loss.keys()))
+    iters = list(set(valid_objf.keys()).intersection(train_objf.keys()))
     if not iters:
         raise KaldiLogParseException("Could not any common iterations with"
                 " key {k} in both {tl} and {vl}".format(
                     k=key, tl=train_prob_files, vl=valid_prob_files))
     iters.sort()
-    return map(lambda x: (int(x), float(train_loss[x]),
-                          float(valid_loss[x])), iters)
+    return map(lambda x: (int(x), float(train_objf[x]),
+                          float(valid_objf[x])), iters)
 
 
 
@@ -402,7 +402,7 @@ def generate_acc_logprob_report(exp_dir, key="accuracy", output="output"):
         times = []
 
     report = []
-    report.append("%Iter\tduration\ttrain_loss\tvalid_loss\tdifference")
+    report.append("%Iter\tduration\ttrain_objective\tvalid_objective\tdifference")
     try:
         data = list(parse_prob_logs(exp_dir, key, output))
     except:

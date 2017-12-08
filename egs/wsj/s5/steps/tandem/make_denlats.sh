@@ -90,10 +90,10 @@ if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 
 case $feat_type in
   delta)
-  	echo "$0: feature type is $feat_type"
-  	;;
+    echo "$0: feature type is $feat_type"
+    ;;
   lda)
-  	echo "$0: feature type is $feat_type"
+    echo "$0: feature type is $feat_type"
     cp $srcdir/{lda,final}.mat $dir/
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
