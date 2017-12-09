@@ -22,7 +22,7 @@ def GetArgs():
         "babble, for example.  Foreground noises are added sequentially, according to a specified "
         "interval.  See also steps/data/reverberate_data_dir.py "
         "Usage: augment_data_dir.py [options...] <in-data-dir> <out-data-dir> "
-        "E.g., steps/data/augment_data_dir.py --utt_prefix aug --fg-snrs 20:10:5:0 --bg-snrs 20:15:10 "
+        "E.g., steps/data/augment_data_dir.py --utt-suffix aug --fg-snrs 20:10:5:0 --bg-snrs 20:15:10 "
         "--num-bg-noise 1:2:3 --fg-interval 3 --fg-noise-dir data/musan_noise --bg-noise-dir "
         "data/musan_music data/train data/train_aug", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--fg-snrs', type=str, dest = "fg_snr_str", default = '20:10:0',
@@ -33,7 +33,7 @@ def GetArgs():
                         help='Number of overlapping background noises that we iterate over. For example, if the input is "1:2:3" then the output wavs will have either 1, 2, or 3 randomly chosen background noises overlapping the entire recording')
     parser.add_argument('--fg-interval', type=int, dest = "fg_interval", default = 0,
                         help='Number of seconds between the end of one foreground noise and the beginning of the next.')
-    parser.add_argument('--utt-prefix', type=str, dest = "utt_prefix", default = "aug", help='Prefix added to utterance IDs.')
+    parser.add_argument('--utt-suffix', type=str, dest = "utt_suffix", default = "aug", help='Suffix added to utterance IDs.')
     parser.add_argument('--random-seed', type=int, dest = "random_seed", default = 123, help='Random seed.')
 
     parser.add_argument("--bg-noise-dir", type=str, dest="bg_noise_dir",
@@ -85,7 +85,7 @@ def AugmentWav(utt, wav, dur, fg_snr_opts, bg_snr_opts, fg_noise_utts, \
         for i in range(0, num):
             noise_utt = random.choice(bg_noise_utts)
             noise = "wav-reverberate --duration=" \
-            + dur_str + " " + noise_wavs[noise_utt] + " - |"
+            + dur_str + " \"" + noise_wavs[noise_utt] + "\" - |"
             snr = random.choice(bg_snr_opts)
             snrs.append(snr)
             start_times.append(0)
@@ -108,23 +108,23 @@ def AugmentWav(utt, wav, dur, fg_snr_opts, bg_snr_opts, fg_noise_utts, \
     noises_str = "--additive-signals='" + ",".join(noises).strip() + "'"
 
     # If the wav is just a file
-    if len(wav.split()) == 1:
+    if wav.strip()[-1] != "|":
         new_wav = "wav-reverberate --shift-output=true " + noises_str + " " \
             + start_times_str + " " + snrs_str + " " + wav + " - |"
     # Else if the wav is in a pipe
     else:
-        new_wav = wav + "wav-reverberate --shift-output=true " + noises_str + " " \
+        new_wav = wav + " wav-reverberate --shift-output=true " + noises_str + " " \
             + start_times_str + " " + snrs_str + " - - |"
     return new_wav
 
-def CopyFileIfExists(utt_prefix, filename, input_dir, output_dir):
+def CopyFileIfExists(utt_suffix, filename, input_dir, output_dir):
     if os.path.isfile(input_dir + "/" + filename):
         dict = ParseFileToDict(input_dir + "/" + filename,
             value_processor = lambda x: " ".join(x))
-        if len(utt_prefix) > 0:
+        if len(utt_suffix) > 0:
             new_dict = {}
             for key in dict.keys():
-                new_dict[utt_prefix+"_"+key] = dict[key]
+                new_dict[key + "_" + utt_suffix] = dict[key]
             dict = new_dict
         WriteDictToFile(dict, output_dir + "/" + filename)
 
@@ -176,20 +176,20 @@ def main():
         new_wav = AugmentWav(utt, wav, dur, fg_snrs, bg_snrs, fg_noise_utts,
             bg_noise_utts, noise_wavs, noise_reco2dur, args.fg_interval,
             num_bg_noises)
-        new_utt = args.utt_prefix + "_" + utt
+        new_utt = utt + "_" + args.utt_suffix 
         new_utt2wav[new_utt] = new_wav
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     WriteDictToFile(new_utt2wav, output_dir + "/wav.scp")
-    CopyFileIfExists(args.utt_prefix, "reco2dur", input_dir, output_dir)
-    CopyFileIfExists(args.utt_prefix, "utt2dur", input_dir, output_dir)
-    CopyFileIfExists(args.utt_prefix, "utt2spk", input_dir, output_dir)
-    CopyFileIfExists(args.utt_prefix, "utt2lang", input_dir, output_dir)
-    CopyFileIfExists(args.utt_prefix, "text", input_dir, output_dir)
-    CopyFileIfExists(args.utt_prefix, "utt2spk", input_dir, output_dir)
-    CopyFileIfExists(args.utt_prefix, "vad.scp", input_dir, output_dir)
+    CopyFileIfExists(args.utt_suffix, "reco2dur", input_dir, output_dir)
+    CopyFileIfExists(args.utt_suffix, "utt2dur", input_dir, output_dir)
+    CopyFileIfExists(args.utt_suffix, "utt2spk", input_dir, output_dir)
+    CopyFileIfExists(args.utt_suffix, "utt2lang", input_dir, output_dir)
+    CopyFileIfExists(args.utt_suffix, "text", input_dir, output_dir)
+    CopyFileIfExists(args.utt_suffix, "utt2spk", input_dir, output_dir)
+    CopyFileIfExists(args.utt_suffix, "vad.scp", input_dir, output_dir)
     CopyFileIfExists("", "spk2gender", input_dir, output_dir)
     data_lib.RunKaldiCommand("utils/fix_data_dir.sh {output_dir}".format(output_dir = output_dir))
 
