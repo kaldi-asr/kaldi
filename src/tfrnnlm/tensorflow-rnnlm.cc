@@ -237,6 +237,10 @@ void KaldiTfRnnlmWrapper::GetLogProbParallel(std::vector<int32> word_vector,
       {"Train/Model/test_cell_in", state_to_cell_tensor},
     };
 
+//    KALDI_LOG << word_tensor.DebugString();
+//    KALDI_LOG << state_to_context_tensor.DebugString();
+//    KALDI_LOG << state_to_cell_tensor.DebugString();
+
     // The session will initialize the outputs
     // Run the sessin, evaluating our "c" operation from the graph.
     Status status = session_->Run(inputs,
@@ -265,10 +269,19 @@ void KaldiTfRnnlmWrapper::GetLogProbParallel(std::vector<int32> word_vector,
 
   int32 word;
   float ans, logprob;
+
+//  KALDI_LOG << "here " << outputs[0].DebugString();
+
   for (int i = 0; i < word_vector.size(); ++i) {
-//    KALDI_LOG << "here " << outputs[0].DebugString();
+
     logprob = outputs[0].vec<float>()(i);
     word = word_vector[i];
+
+//    if (word == 75) {
+//      std::cout << state_to_cell_tensor.DebugString() << std::endl;
+//      std::cout << word_tensor.DebugString() << std::endl;
+//    }
+
     if (word != oos_) {
       ans = logprob;
     } else {
@@ -279,9 +292,10 @@ void KaldiTfRnnlmWrapper::GetLogProbParallel(std::vector<int32> word_vector,
       } 
     }
 
-//    KALDI_LOG << word_vector[i] << " ans is " << ans;   
+//    std::cout << word <<  " ans is " << ans << std::endl;   
     logprob_vector->push_back(ans);
   }
+//  std::cout << std::endl;
 
 } // End of GetLogProbParallel
 
@@ -343,7 +357,7 @@ BaseFloat KaldiTfRnnlmWrapper::GetLogProb(int32 word,
     }
   }
 
-//  KALDI_LOG << word <<  " ans is " << ans;   
+//    std::cout << word <<  " ans is " << ans << std::endl;   
   return ans;
 }
 

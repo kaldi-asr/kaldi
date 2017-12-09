@@ -179,7 +179,7 @@ void TfRnnlmDeterministicFstParallel::FinalParallel(std::vector<StateId> s2_vect
 
   
   for (int i = 0; i < s2_vector_final.size(); ++i) {
-    det_fst_final_vector->push_back(Weight(logprob_vector[i]));
+    det_fst_final_vector->push_back(Weight(-logprob_vector[i]));
   }
 }
 
@@ -301,8 +301,8 @@ void TfRnnlmDeterministicFstParallel::GetArcsParallel(std::vector<StateId> s2_ve
 
     // Create the arc.
     fst::StdArc arc2;
-    arc2.ilabel = ilabel;
-    arc2.olabel = ilabel;
+    arc2.ilabel = ilabel_vector[iter];
+    arc2.olabel = ilabel_vector[iter];
     arc2.nextstate = result.first->second;
     arc2.weight = Weight(-logprob_vector[iter]);
     arc2_vector->push_back(arc2);

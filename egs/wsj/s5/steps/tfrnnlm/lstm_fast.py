@@ -187,7 +187,7 @@ class RnnlmModel(object):
 #    this_softmax_b = tf.gather(softmax_b, test_word_out, axis=0)
 
 #    test_logits = tf.matmul(cellout_placeholder, tf.transpose(tf.nn.embedding_lookup(tf.transpose(softmax_w), test_word_out[0]))) + softmax_b[test_word_out[0,0]]
-    test_logits = tf.matmul(cellout_placeholder, this_softmax_w) + this_softmax_b
+    test_logits = tf.diag_part(tf.matmul(cellout_placeholder, this_softmax_w)) + tf.reshape(tf.transpose(this_softmax_b), [-1])
 
 #    p_word = test_logits[0, 0]
     test_out = tf.reshape(test_logits, [-1], name="test_out")
