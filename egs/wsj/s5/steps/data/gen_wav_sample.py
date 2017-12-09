@@ -79,19 +79,19 @@ if __name__ == '__main__':
                     reco = " ".join(items[1:]).strip()
                     if reco[-1] == "|":
                         execute_command("{wav} > {outpath}/{out_name}".format(wav=reco[0:-1],
-                                    outpath=output_dir,out_name=prefix+id))
+                                    outpath=output_dir,out_name=prefix+id+".wav"))
                     else:
                         execute_command("wav-copy '{wav}' {outpath}/{out_name}".format(wav=reco,
-                                    outpath=output_dir,out_name=prefix+id))
+                                    outpath=output_dir,out_name=prefix+id+".wav"))
                     sample_num -=1
             else:                
                 reco = " ".join(items[1:]).strip()
                 if reco[-1] == "|":
                     execute_command("{wav} > {outpath}/{out_name}".format(wav=reco[0:-1],
-                                outpath=output_dir,out_name=prefix+id))
+                                outpath=output_dir,out_name=prefix+id+".wav"))
                 else:
                     execute_command("wav-copy '{wav}' {outpath}/{out_name}".format(wav=reco,
-                                outpath=output_dir,out_name=prefix+id))
+                                outpath=output_dir,out_name=prefix+id+".wav"))
                 sample_num -=1          
     print("Done.")
 
