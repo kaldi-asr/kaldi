@@ -1,6 +1,7 @@
 // chainbin/nnet3-chain-combine.cc
 
 // Copyright 2012-2015  Johns Hopkins University (author:  Daniel Povey)
+//                2017  Yiming Wang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -19,7 +20,56 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "nnet3/nnet-chain-combine.h"
+#include "nnet3/nnet-utils.h"
+#include "nnet3/nnet-compute.h"
+#include "nnet3/nnet-chain-diagnostics.h"
+
+
+namespace kaldi {
+namespace nnet3 {
+
+double ComputeObjf(const std::vector<NnetChainExample> &egs,
+                   NnetChainComputeProb *prob_computer) {
+  prob_computer->Reset();
+  std::vector<NnetChainExample>::const_iterator iter = egs.begin(),
+                                                 end = egs.end();
+  for (; iter != end; ++iter)
+    prob_computer->Compute(*iter);
+  const ChainObjectiveInfo *objf_info =
+      prob_computer->GetObjective("output");
+  if (objf_info == NULL)
+    KALDI_ERR << "Error getting objective info (unsuitable egs?)";
+  KALDI_ASSERT(objf_info->tot_weight > 0.0);
+  // we prefer to deal with normalized objective functions.
+  return (objf_info->tot_like + objf_info->tot_l2_term) / objf_info->tot_weight;
+}
+
+// Note: the object that prob_computer.nnet_ refers to should be
+// *moving_average_nnet.
+double UpdateNnetMovingAverageAndComputeObjf(int32 num_models,
+    const std::vector<NnetChainExample> &egs,
+    const Nnet &nnet, Nnet *moving_average_nnet,
+    NnetChainComputeProb *prob_computer) {
+  int32 num_params = NumParameters(nnet);
+  KALDI_ASSERT(num_params == NumParameters(*moving_average_nnet));
+  Vector<BaseFloat> nnet_params(num_params, kUndefined),
+      moving_average_nnet_params(num_params, kUndefined);
+  VectorizeNnet(nnet, &nnet_params);
+  VectorizeNnet(*moving_average_nnet, &moving_average_nnet_params);
+  moving_average_nnet_params.Scale((num_models - 1.0) / num_models);
+  moving_average_nnet_params.AddVec(1.0 / num_models, nnet_params);
+
+  BaseFloat sum = moving_average_nnet_params.Sum();
+  // inf/nan parameters->return -inf objective.
+  if (!(sum == sum && sum - sum == 0))
+    return -std::numeric_limits<double>::infinity();
+
+  UnVectorizeNnet(moving_average_nnet_params, moving_average_nnet);
+  return ComputeObjf(egs, prob_computer);
+}
+
+}
+}
 
 
 int main(int argc, char *argv[]) {
@@ -30,9 +80,11 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "Using a subset of training or held-out nnet3+chain examples, compute an\n"
-        "optimal combination of  anumber of nnet3 neural nets by maximizing the\n"
-        "'chain' objective function.  See documentation of options for more details.\n"
+        "Using a subset of training or held-out nnet3+chain examples, compute\n"
+        "the average over the first n nnet models where we maximize the\n"
+        "'chain' objective function for n. Note that the order of models has\n"
+        "been reversed before feeding into this binary. So we are actually\n"
+        "combining last n models.\n"
         "Inputs and outputs are nnet3 raw nnets.\n"
         "\n"
         "Usage:  nnet3-chain-combine [options] <den-fst> <raw-nnet-in1> <raw-nnet-in2> ... <raw-nnet-inN> <chain-examples-in> <raw-nnet-out>\n"
@@ -44,7 +96,6 @@ int main(int argc, char *argv[]) {
     bool batchnorm_test_mode = false,
         dropout_test_mode = true;
     std::string use_gpu = "yes";
-    NnetCombineConfig combine_config;
     chain::ChainTrainingOptions chain_config;
 
     ParseOptions po(usage);
@@ -57,7 +108,6 @@ int main(int argc, char *argv[]) {
                 "If true, set test-mode to true on any DropoutComponents and "
                 "DropoutMaskComponents.");
 
-    combine_config.Register(&po);
     chain_config.Register(&po);
 
     po.Read(argc, argv);
@@ -83,6 +133,10 @@ int main(int argc, char *argv[]) {
 
     Nnet nnet;
     ReadKaldiObject(raw_nnet_rxfilename, &nnet);
+    Nnet moving_average_nnet(nnet), best_nnet(nnet);
+    NnetComputeProbOptions compute_prob_opts;
+    NnetChainComputeProb *prob_computer = new NnetChainComputeProb(
+        compute_prob_opts, chain_config, den_fst, moving_average_nnet);
 
     if (batchnorm_test_mode)
       SetBatchnormTestMode(true, &nnet);
@@ -102,28 +156,36 @@ int main(int argc, char *argv[]) {
       KALDI_ASSERT(!egs.empty());
     }
 
+    int32 best_n = 1;
+    double best_objf = ComputeObjf(egs, prob_computer);
+    KALDI_LOG << "objective function using the last model is " << best_objf;
 
     int32 num_nnets = po.NumArgs() - 3;
-    NnetChainCombiner combiner(combine_config, chain_config,
-                               num_nnets, egs, den_fst, nnet);
 
     for (int32 n = 1; n < num_nnets; n++) {
       std::string this_nnet_rxfilename = po.GetArg(n + 2);
       ReadKaldiObject(this_nnet_rxfilename, &nnet);
-      combiner.AcceptNnet(nnet);
+      double objf = UpdateNnetMovingAverageAndComputeObjf(n + 1, egs, nnet,
+          &moving_average_nnet, prob_computer);
+      KALDI_LOG << "Combining last " << n + 1
+                << " models, objective function is " << objf;
+      if (objf > best_objf) {
+        best_objf = objf;
+        best_nnet = moving_average_nnet;
+        best_n = n + 1;
+      }
     }
 
-    combiner.Combine();
-
-    nnet = combiner.GetNnet();
     if (HasBatchnorm(nnet))
-      RecomputeStats(egs, chain_config, den_fst, &nnet);
+      RecomputeStats(egs, chain_config, den_fst, &best_nnet);
 
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();
 #endif
 
-    WriteKaldiObject(nnet, nnet_wxfilename, binary_write);
+    WriteKaldiObject(best_nnet, nnet_wxfilename, binary_write);
+    KALDI_LOG << "Using the model averaged over last " << best_n
+              << " models, objective function is " << best_objf;
 
     KALDI_LOG << "Finished combining neural nets, wrote model to "
               << nnet_wxfilename;
