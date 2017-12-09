@@ -260,7 +260,7 @@ int main(int argc, char *argv[]) {
 
           if (do_endpointing && decoder.EndpointDetected(endpoint_opts)) {
             break;
-	  }
+          }
         }
         decoder.FinalizeDecoding();
 
