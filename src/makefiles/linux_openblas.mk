@@ -22,11 +22,9 @@ CXXFLAGS = -std=c++11 -I.. -I$(OPENFSTINC) $(EXTRA_CXXFLAGS) \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
            -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_OPENBLAS -I$(OPENBLASINC) \
            -msse -msse2 -pthread \
-           -g # -O0 -DKALDI_PARANOID
+           -g -O3 # -O0 -DKALDI_PARANOID
 
-ifeq ($(KALDI_FLAVOR), dynamic)
 CXXFLAGS += -fPIC
-endif
 
 # Compiler specific flags
 COMPILER = $(shell $(CXX) -v 2>&1)
