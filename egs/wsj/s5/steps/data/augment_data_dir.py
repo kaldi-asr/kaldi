@@ -124,7 +124,7 @@ def CopyFileIfExists(utt_suffix, filename, input_dir, output_dir):
         if len(utt_suffix) > 0:
             new_dict = {}
             for key in dict.keys():
-                new_dict[key + "_" + utt_suffix] = dict[key]
+                new_dict[key + "-" + utt_suffix] = dict[key]
             dict = new_dict
         WriteDictToFile(dict, output_dir + "/" + filename)
 
@@ -176,7 +176,7 @@ def main():
         new_wav = AugmentWav(utt, wav, dur, fg_snrs, bg_snrs, fg_noise_utts,
             bg_noise_utts, noise_wavs, noise_reco2dur, args.fg_interval,
             num_bg_noises)
-        new_utt = utt + "_" + args.utt_suffix 
+        new_utt = utt + "-" + args.utt_suffix 
         new_utt2wav[new_utt] = new_wav
 
     if not os.path.exists(output_dir):
