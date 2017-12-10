@@ -1,9 +1,4 @@
 #encoding:utf8
-# Copyright     2017  Ye Bai
-# Apache 2.0
-#
-# This script generates wave samples based on wav.scp.
-
 from __future__ import print_function
 import subprocess
 import argparse
