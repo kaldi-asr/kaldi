@@ -65,12 +65,12 @@ Configuration options:
   --cudatk-dir=DIR      CUDA toolkit directory
   --double-precision    Build with BaseFloat set to double if yes [default=no],
                         mostly useful for testing purposes.
-  --static-fst          Build with static OpenFst libraries [default=yes]
+  --static-fst          Build with static OpenFst libraries [default=no]
   --fst-root=DIR        OpenFst root directory [default=../tools/openfst/]
   --fst-version=STR     OpenFst version string
   --mathlib=LIB         Math library [default=ATLAS]
                         Supported libraries: ATLAS, MKL, CLAPACK, OPENBLAS.
-  --static-math         Build with static math libraries [default=yes]
+  --static-math         Build with static math libraries [default=no]
   --threaded-math       Build with multi-threaded math libraries [default=no]
   --threaded-atlas      Build with multi-threaded ATLAS libraries [default=no]
   --atlas-root=DIR      ATLAS root directory [default=../tools/ATLAS/]
@@ -842,8 +842,8 @@ ENV_LDLIBS=$LDLIBS
 double_precision=false
 dynamic_kaldi=false
 use_cuda=true
-static_fst=true
-static_math=true
+static_fst=false
+static_math=false
 threaded_atlas=false
 mkl_threading=sequential
 android=false
