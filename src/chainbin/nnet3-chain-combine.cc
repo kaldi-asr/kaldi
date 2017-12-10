@@ -175,6 +175,8 @@ int main(int argc, char *argv[]) {
         best_n = n + 1;
       }
     }
+    KALDI_LOG << "Using the model averaged over last " << best_n
+              << " models, objective function is " << best_objf;
 
     if (HasBatchnorm(nnet))
       RecomputeStats(egs, chain_config, den_fst, &best_nnet);
@@ -184,9 +186,6 @@ int main(int argc, char *argv[]) {
 #endif
 
     WriteKaldiObject(best_nnet, nnet_wxfilename, binary_write);
-    KALDI_LOG << "Using the model averaged over last " << best_n
-              << " models, objective function is " << best_objf;
-
     KALDI_LOG << "Finished combining neural nets, wrote model to "
               << nnet_wxfilename;
   } catch(const std::exception &e) {

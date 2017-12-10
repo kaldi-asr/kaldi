@@ -162,6 +162,8 @@ int main(int argc, char *argv[]) {
           best_n = n + 1;
         }
       }
+      KALDI_LOG << "Using the model averaged over last " << best_n
+                << " models, objective function is " << best_objf;
 
 #if HAVE_CUDA==1
       CuDevice::Instantiate().PrintProfile();
@@ -169,8 +171,6 @@ int main(int argc, char *argv[]) {
       if (HasBatchnorm(nnet))
         RecomputeStats(egs, &best_nnet);
       WriteKaldiObject(best_nnet, nnet_wxfilename, binary_write);
-      KALDI_LOG << "Using the model averaged over last " << best_n
-                << " models, objective function is " << best_objf;
     } else {
       KALDI_LOG << "Copying the single input model directly to the output, "
                 << "without any combination.";
