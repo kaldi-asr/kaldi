@@ -1,22 +1,22 @@
 #!/bin/bash
 
-# 1b is as 1a except it uses l2-regularize instead of shrink and batchnorm is
-# used instead of renorm in all layers.
+# 1b is as 1a except all renorms are replaced by batchnorms
 
-# local/chain/compare_wer_general.sh --looped exp/chain_cleaned/tdnn_lstm_attend_bs1a_sp_bi/ exp/chain_cleaned/tdnn_lstm_attend_bs1b_sp_bi/
+# local/chain/compare_wer_general.sh --looped exp/chain_cleaned/tdnn_lstm_attend_bs1a_sp_bi exp/chain_cleaned/tdnn_lstm_attend_bs1b_sp_bi
 # System                tdnn_lstm_attend_bs1a_sp_bi tdnn_lstm_attend_bs1b_sp_bi
-# WER on dev(orig)            8.0       8.2
-#         [looped:]           8.0       8.2
-# WER on dev(rescored)        7.4       7.6
-#         [looped:]           7.4       7.6
+# WER on dev(orig)            8.0       8.0
+#         [looped:]           8.0       8.1
+# WER on dev(rescored)        7.4       7.5
+#         [looped:]           7.4       7.4
 # WER on test(orig)           8.2       8.0
-#         [looped:]           8.2       8.2
-# WER on test(rescored)       7.7       7.6
-#         [looped:]           7.7       7.7
-# Final train prob        -0.0605   -0.0698
-# Final valid prob        -0.0842   -0.0856
-# Final train prob (xent)   -0.7602   -0.8515
-# Final valid prob (xent)   -0.8740   -0.9321
+#         [looped:]           8.2       8.0
+# WER on test(rescored)       7.7       7.5
+#         [looped:]           7.7       7.6
+# Final train prob        -0.0605   -0.0674
+# Final valid prob        -0.0842   -0.0805
+# Final train prob (xent)   -0.7602   -0.8500
+# Final valid prob (xent)   -0.8740   -0.9162
+
 
 set -e -o pipefail
 
@@ -53,7 +53,7 @@ extra_right_context_final=0
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_lstm_affix=_bs1e  #affix for TDNN-LSTM directory. "bs" means backstitch
+tdnn_lstm_affix=_bs1b  #affix for TDNN-LSTM directory. "bs" means backstitch
 common_egs_dir=    # you can set this to use previously dumped egs.
 remove_egs=true
 
@@ -151,8 +151,6 @@ if [ $stage -le 17 ]; then
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  opts="l2-regularize=0.0005"
-  output_opts="l2-regularize=0.0002"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -165,19 +163,19 @@ if [ $stage -le 17 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 $opts dim=1024
-  relu-batchnorm-layer name=tdnn2 $opts dim=1024 input=Append(-1,0,1)
-  fast-lstmp-layer name=lstm1 cell-dim=1024 l2-regularize=0.0002 recurrent-projection-dim=256 non-recurrent-projection-dim=256 decay-time=20 delay=-3
-  relu-batchnorm-layer name=tdnn3 $opts dim=1024 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn4 $opts dim=1024 input=Append(-3,0,3)
-  fast-lstmp-layer name=lstm2 cell-dim=1024 l2-regularize=0.0002 recurrent-projection-dim=256 non-recurrent-projection-dim=256 decay-time=20 delay=-3
-  relu-batchnorm-layer name=tdnn5 $opts dim=1024 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn6 $opts dim=1024 input=Append(-3,0,3)
-  attention-relu-batchnorm-layer name=attention1 $opts time-stride=3 num-heads=12 value-dim=60 key-dim=40 num-left-inputs=5 num-right-inputs=2
+  relu-batchnorm-layer name=tdnn1 dim=1024
+  relu-batchnorm-layer name=tdnn2 dim=1024 input=Append(-1,0,1)
+  fast-lstmp-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 decay-time=20 delay=-3
+  relu-batchnorm-layer name=tdnn3 dim=1024 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn4 dim=1024 input=Append(-3,0,3)
+  fast-lstmp-layer name=lstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 decay-time=20 delay=-3
+  relu-batchnorm-layer name=tdnn5 dim=1024 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn6 dim=1024 input=Append(-3,0,3)
+  attention-relu-batchnorm-layer name=attention1 time-stride=3 num-heads=12 value-dim=60 key-dim=40 num-left-inputs=5 num-right-inputs=2
 
 
   ## adding the layers for chain branch
-  output-layer name=output output-delay=$label_delay include-log-softmax=false $output_opts dim=$num_targets max-change=1.5
+  output-layer name=output output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -188,7 +186,7 @@ if [ $stage -le 17 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  output-layer name=output-xent input=attention1 output-delay=$label_delay $output_opts dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  output-layer name=output-xent input=attention1 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -222,7 +220,7 @@ if [ $stage -le 18 ]; then
     --trainer.max-param-change 2.0 \
     --trainer.num-epochs $num_epochs \
     --trainer.deriv-truncate-margin 10 \
-    --trainer.optimization.shrink-value 1.0 \
+    --trainer.optimization.shrink-value 0.99 \
     --trainer.optimization.num-jobs-initial 2 \
     --trainer.optimization.num-jobs-final 12 \
     --trainer.optimization.initial-effective-lrate 0.001 \
