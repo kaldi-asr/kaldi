@@ -91,14 +91,3 @@ if __name__ == '__main__':
                 sample_num -=1
     print("Done.")
 
-
-
-
-
-
-
-
-
-
-
-
