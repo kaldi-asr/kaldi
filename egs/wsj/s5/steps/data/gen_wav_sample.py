@@ -23,7 +23,7 @@ def get_args():
     parser.add_argument("--prefix", type=str, dest = "prefix", default = "",
                         help="Prefix of generated samples.")
 
-    parser.add_argument("--record_file", type=str, dest = "record_file", default = "",
+    parser.add_argument("--record-file", type=str, dest = "record_file", default = "",
                         help="A list of records to generate samples.\n"
                         "The format is like this:"
                         "rvb_noise_f001_000008.wav \n"
