@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-#encoding:utf8
 from __future__ import print_function
 import subprocess
 import argparse
-import re
 
 def execute_command(command):
     p = subprocess.Popen(command, shell=True)
@@ -15,22 +13,22 @@ def execute_command(command):
 
 def get_args():
     parser = argparse.ArgumentParser(description="Generate wave samples based on wav.scp.\n"
-                                                 "Usage: gen_wav_sample.py [options...] <wav.scp> <out-data-dir>\n"
-                                                 "E.g. python gen_wav_sample.py wav.scp sample",
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        "Usage: gen_wav_sample.py [options...] <wav.scp> <out-data-dir>\n"
+        "E.g. python gen_wav_sample.py wav.scp sample",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("--num", type=int, dest = "sample_num", default = 10,
-                                        help="Number of samples to generate.")
+                        help="Number of samples to generate.")
 
     parser.add_argument("--prefix", type=str, dest = "prefix", default = "",
-                                        help="Prefix of generated samples.")
+                        help="Prefix of generated samples.")
 
     parser.add_argument("--record_file", type=str, dest = "record_file", default = "",
-                                        help="A list of records to generate samples.\n"
-                                            " The format is like this:"
-                                            "rvb_noise_f001_000008.wav \n"
-                                            "rvb_noise_f001_000009.wav \n"
-                                            "...")
+                        help="A list of records to generate samples.\n"
+                        "The format is like this:"
+                        "rvb_noise_f001_000008.wav \n"
+                        "rvb_noise_f001_000009.wav \n"
+                        "...")
 
     parser.add_argument("scp_file",
                         help="Input data")
@@ -51,7 +49,7 @@ if __name__ == '__main__':
     execute_command("mkdir -p {}".format(output_dir))
 
     if prefix:
-        prefix += "_"
+        prefix += "-"
 
     record_dic = {}
 
