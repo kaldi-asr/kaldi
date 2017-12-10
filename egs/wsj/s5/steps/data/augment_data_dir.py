@@ -176,7 +176,7 @@ def main():
         new_wav = AugmentWav(utt, wav, dur, fg_snrs, bg_snrs, fg_noise_utts,
             bg_noise_utts, noise_wavs, noise_reco2dur, args.fg_interval,
             num_bg_noises)
-        new_utt = utt + "-" + args.utt_suffix 
+        new_utt = utt + "-" + args.utt_suffix
         new_utt2wav[new_utt] = new_wav
 
     if not os.path.exists(output_dir):
