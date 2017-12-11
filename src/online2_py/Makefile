@@ -5,7 +5,7 @@ SWIG_PYTHON_BINDING_NAME = online2_nnet3_latgen_i2x_wrapper
 EXTRA_CXXFLAGS += -I/usr/include/python3.5
 
 $(SWIG_PYTHON_BINDING_NAME)_wrap.cc: $(SWIG_PYTHON_BINDING_NAME).i
-	../../tools/swig/build/bin/swig -c++ -python $(SWIG_PYTHON_BINDING_NAME).i
+	../../tools/swig/build/bin/swig -c++ -python -py3 $(SWIG_PYTHON_BINDING_NAME).i
 	mv $(SWIG_PYTHON_BINDING_NAME)_wrap.cxx $(SWIG_PYTHON_BINDING_NAME)_wrap.cc
 
 include ../kaldi.mk
