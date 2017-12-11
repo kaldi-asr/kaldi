@@ -2,8 +2,9 @@
 
 #include <cstdint>
 #include <cstddef>
-#include <lat/lattice-functions.h>
+#include <exception>
 
+#include <lat/lattice-functions.h>
 #include "nnet3/nnet-utils.h"
 #include "online2/online-nnet2-feature-pipeline.h"
 #include "online2/online-nnet3-decoding.h"
@@ -41,6 +42,7 @@ class DecoderImpl {
   int32 Finalize();
 
   ~DecoderImpl() {
+    KALDI_LOG << "DecoderImpl::~DecoderImpl() -- inner destructor called. All internal structures cleared.";
     delete feature_pipeline_;
     delete decoder_;
     feature_pipeline_ = nullptr;
@@ -139,8 +141,7 @@ const RecognitionResult DecoderImpl::GetResult() {
 
 int32 DecoderImpl::FeedChunk(const int16_t *data, size_t length) {
   if (finalized_) {
-    KALDI_WARN << "Calling FeedChunk with length == 0 for the second time (or more).\n"
-               << "The decoder was already finalized!\n"
+    KALDI_WARN << "The decoder was already finalized!\n"
                << "The call is ignored. Create a new Decoder and work with it.";
     return -1;
   }
@@ -345,9 +346,11 @@ using kaldi::DecoderFactoryImpl;
 using kaldi::DecoderImpl;
 
 DecoderFactory::DecoderFactory(const std::string &resource_dir) :
-  decoder_factory_impl_(new DecoderFactoryImpl(resource_dir))
-{
-  // Nothing to do.
+  decoder_factory_impl_(new DecoderFactoryImpl(resource_dir)) {
+  if (decoder_factory_impl_ == nullptr) {
+    KALDI_WARN << "Decoder Factory creation did not succeed. "
+	       << "Most likely caused by an out-of-memory error.";
+  }
 }
 
 DecoderFactory::~DecoderFactory() {
@@ -356,9 +359,15 @@ DecoderFactory::~DecoderFactory() {
 }
 
 Decoder* DecoderFactory::StartDecodingSession() {
+  if (decoder_factory_impl_ == nullptr) {
+    KALDI_WARN << "Failed to spawn a new Decoding Session. Decoder Factory is not valid. "
+	       << "Most likely caused by an OOM when creating the decoder factory.";
+    return nullptr;
+  }
   try {
     return new Decoder(decoder_factory_impl_->StartDecodingSession());
-  } catch(...) {
+  } catch (const std::exception& e) {
+    KALDI_WARN << "Failed to spawn a new Decoding Session. " << e.what();
     return nullptr;
   }
 }
@@ -370,19 +379,41 @@ Decoder::Decoder(DecoderImpl *decoder_impl) :
 }
 
 Decoder::~Decoder() {
-  KALDI_LOG << "HELLO CHRISTOPH";
+  KALDI_LOG << "Decoder::~Decoder() -- outer destructor called.";
   delete decoder_impl_;
   decoder_impl_ = nullptr;
 }
 
 int32_t Decoder::FeedBytestring(const std::string& bytestring) {
+  if (decoder_impl_ == nullptr) {
+    KALDI_WARN << "Decoder::FeedBytestring call failed. "
+	       << "The Decoder was either already invalidated or not created properly";
+    return -1;
+  }
   return decoder_impl_->FeedBytestring(bytestring);
 }
 
 const RecognitionResult Decoder::GetResult() {
+  if (decoder_impl_ == nullptr) {
+    KALDI_WARN << "Decoder::GetResult call failed. "
+	       << "The Decoder was either already invalidated or not created properly";
+    RecognitionResult dummy;
+    dummy.error = true;
+    return dummy;
+  }
   return decoder_impl_->GetResult();
 }
 
 int32_t Decoder::Finalize() {
+  if (decoder_impl_ == nullptr) {
+    KALDI_WARN << "Decoder::Finalize call failed. "
+	       << "The Decoder was either already invalidated or not created properly";
+    return -1;
+  }
   return decoder_impl_->Finalize();
+}
+
+void Decoder::InvalidateAndFree() {
+  delete decoder_impl_;
+  decoder_impl_ = nullptr;
 }

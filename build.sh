@@ -29,6 +29,7 @@ make -j depend
 if [ ! $deploy ]; then
     make -j $JOBS
 fi
+make depend -C online2_py
 make -j $JOBS -C online2_py
 cd -
 

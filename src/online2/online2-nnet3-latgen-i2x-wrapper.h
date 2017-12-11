@@ -31,7 +31,12 @@ class Decoder {
   int32_t Finalize();
 
   // Return recognition result.
+  // Will return partial result if the decoder is not yet finalized.
   const RecognitionResult GetResult();
+
+  // Frees the internal memory structures.
+  // All further calls to this Decoder object will be ignored and return error code.
+  void InvalidateAndFree();
  private:
   DecoderImpl *decoder_impl_ = nullptr;
   Decoder(DecoderImpl *decoder_impl_);

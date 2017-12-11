@@ -8,6 +8,8 @@ $(SWIG_PYTHON_BINDING_NAME)_wrap.cc: $(SWIG_PYTHON_BINDING_NAME).i
 	../../tools/swig/build/bin/swig -c++ -python -py3 $(SWIG_PYTHON_BINDING_NAME).i
 	mv $(SWIG_PYTHON_BINDING_NAME)_wrap.cxx $(SWIG_PYTHON_BINDING_NAME)_wrap.cc
 
+depend: $(SWIG_PYTHON_BINDING_NAME)_wrap.cc
+
 include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
@@ -31,6 +33,7 @@ include ../makefiles/default_rules.mk
 
 all: _$(SWIG_PYTHON_BINDING_NAME).so
 
-_$(SWIG_PYTHON_BINDING_NAME).so: $(OBJFILES) $(ADDLIBS)
+_$(SWIG_PYTHON_BINDING_NAME).so: $(SWIG_PYTHON_BINDING_NAME).py $(OBJFILES) $(ADDLIBS)
 	$(CXX) -shared -o $@ $(OBJFILES) $(LDFLAGS) $(ADDLIBS) $(LDLIBS)
 
+$(SWIG_PYTHON_BINDING_NAME).py: $(OBJFILES) $(ADDLIBS)
