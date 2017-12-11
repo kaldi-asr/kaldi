@@ -862,28 +862,26 @@ void* MemoryNormComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   if (out->Data() != in.Data())
     out->CopyFromMat(in);
 
+  if (test_mode_ && stats_count_ <= 0.0)
+      KALDI_ERR << "Test mode set but no stats available.";
+
   // From this point, we can assume that the num-cols of 'in' and 'out'
   // equals block_dim_.
-  if (test_mode_) {
-    if (stats_count_ <= 0.0)
-      KALDI_ERR << "Test mode set but no stats available.";
+  Memo *ans = NULL;
+  if (!test_mode_)
+    ans = GetMemo(in);
+
+  if (test_mode_ || stats_count_ > 0.0) {
     CuSubVector<BaseFloat> x_mean(data_, 0), scale(data_, 4);
     out->AddVecToRows(-1.0, x_mean);
     out->MulColsVec(scale);
-    return NULL;
   } else {
-    Memo *memo = GetMemo(in);
-    if (stats_count_ <= 0.0) {
-      CuSubVector<BaseFloat> x_sum(memo->data, 0);
-      out->AddVecToRows(-1.0 / memo->num_frames, x_sum);
-    } else { // use the mean stored with this object.
-      CuSubVector<BaseFloat> x_mean(data_, 0);
-      out->AddVecToRows(-1.0, x_mean);
-    }
-    CuSubVector<BaseFloat> scale(memo->data, 2);
+    CuSubVector<BaseFloat> x_sum(memo->data, 0),
+        scale(memo->data, 2);
+    out->AddVecToRows(-1.0 / memo->num_frames, x_sum);
     out->MulColsVec(scale);
-    return memo;
   }
+  return memo;
 }
 
 
