@@ -36,8 +36,9 @@ class DecoderImpl {
     sample_buffer_.reserve(2 * chunk_length_);
 
   }
-  int32 GetFinalResult(RecognitionResult *result);
+  const RecognitionResult GetResult();
   int32 FeedBytestring(const std::string& bytestring);
+  int32 Finalize();
 
   ~DecoderImpl() {
     delete feature_pipeline_;
@@ -60,15 +61,11 @@ class DecoderImpl {
   bool finalized_ = false;
   std::vector<int16> sample_buffer_;
   std::string byte_buffer_;
-
+  
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecoderImpl);
-
 };
 
 int32 DecoderImpl::FeedBytestring(const std::string& bytestring) {
-  if (bytestring.empty()) {
-    return FeedChunk(nullptr, 0); // a special call: finalize the decoder
-  }
   byte_buffer_ += bytestring;
   bool leftover = (byte_buffer_.size() % 2 != 0);
   size_t length = leftover ? byte_buffer_.size() - 1 : byte_buffer_.size();
@@ -87,23 +84,25 @@ int32 DecoderImpl::FeedBytestring(const std::string& bytestring) {
   return return_code;
 }
 
+int32_t DecoderImpl::Finalize() {
+  return FeedChunk(nullptr, 0); // a special call: finalize the decoder
+}
 
-int32 DecoderImpl::GetFinalResult(RecognitionResult *result) {
-  if (!IsFinalized()) {
-    KALDI_WARN << "Called GetFinalResult() on the un-finalized Decoder.\n"
-               << "We will finalize it by force, but the correct way is\n"
-               << "to call FeedChunk() with length == 0.\n"
-               << "It is strongly advised to change your client accordingly.";
-    FeedChunk(nullptr, 0); // force-finalize if the user failed to do so
+const RecognitionResult DecoderImpl::GetResult() {
+  RecognitionResult recognition_result;
+  recognition_result.is_final = finalized_;
+
+  if (decoder_->NumFramesDecoded() == 0) {
+    return recognition_result;
   }
-
+  
   CompactLattice clat;
-  KALDI_ASSERT(finalized_ == true);
   decoder_->GetLattice(finalized_, &clat);
 
   if (clat.NumStates() == 0) {
-    KALDI_WARN << "Empty lattice.";
-    return -1;
+    KALDI_WARN << "Empty lattice";
+    recognition_result.error = true;
+    return recognition_result;
   }
   CompactLattice best_path_clat;
   CompactLatticeShortestPath(clat, &best_path_clat);
@@ -111,14 +110,12 @@ int32 DecoderImpl::GetFinalResult(RecognitionResult *result) {
   Lattice best_path_lat;
   ConvertLattice(best_path_clat, &best_path_lat);
 
-  double likelihood;
-  LatticeWeight weight;
-  int32 num_frames;
   std::vector<int32> alignment;
   std::vector<int32> words;
+  LatticeWeight weight;
   GetLinearSymbolSequence(best_path_lat, &alignment, &words, &weight);
-  num_frames = alignment.size();
-  likelihood = -(weight.Value1() + weight.Value2());
+  int32 num_frames = alignment.size();
+  double likelihood = -(weight.Value1() + weight.Value2());
   KALDI_LOG << "Likelihood per frame for utterance is "
             << (likelihood / num_frames) << " over " << num_frames
             << " frames.";
@@ -129,14 +126,15 @@ int32 DecoderImpl::GetFinalResult(RecognitionResult *result) {
       KALDI_WARN << "Word-id " << words[i] << " not in symbol table."
           << "The ASR resources are inconsistent!"
           << "Check that the output symbols are correct.";
-      return -1;
+      recognition_result.error = true;
+      return recognition_result;
     }
     if (i + 1 != words.size()) {
       s += " ";
     }
-    result->transcript += s;
+    recognition_result.transcript += s;
   }
-  return 0;
+  return recognition_result;
 }
 
 int32 DecoderImpl::FeedChunk(const int16_t *data, size_t length) {
@@ -181,6 +179,7 @@ int32 DecoderImpl::FeedChunk(const int16_t *data, size_t length) {
     sample_buffer_[i] = sample_buffer_[end + i];
   }
   sample_buffer_.resize(leftover);
+
   return 0;
 }
 
@@ -380,6 +379,10 @@ int32_t Decoder::FeedBytestring(const std::string& bytestring) {
   return decoder_impl_->FeedBytestring(bytestring);
 }
 
-int32_t Decoder::GetResultAndFinalize(RecognitionResult *result) {
-  return decoder_impl_->GetFinalResult(result);
+const RecognitionResult Decoder::GetResult() {
+  return decoder_impl_->GetResult();
+}
+
+int32_t Decoder::Finalize() {
+  return decoder_impl_->Finalize();
 }
