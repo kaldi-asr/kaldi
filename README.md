@@ -3,7 +3,7 @@ cASeR
 =====
 
 ASR cases for speech handbook at CSLT-THU, based on Kaldi toolkit.
-Most cases conducted on THCHS30, in egs/thchs30_cases.
+Most cases conducted on THCHS30, in egs/cslt_cases.
 
 
 Kaldi speech recognition toolkit

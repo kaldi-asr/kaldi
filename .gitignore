@@ -6,6 +6,9 @@
 !/src/*/Makefile
 !/src/*/README
 
+# Handbook
+/egs/cslt_cases/speech_book/
+
 # Compiled Object files and python ciles
 *.slo
 *.lo
