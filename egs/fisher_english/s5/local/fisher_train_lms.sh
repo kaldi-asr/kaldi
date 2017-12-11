@@ -6,14 +6,6 @@
 
 text=data/train_all/text
 lexicon=data/local/dict/lexicon.txt 
-dir=data/local/lm
-
-. utils/parse_options.sh
-
-if [ $# -ne 0 ]; then
-  echo "Usage: $0 [options]"
-  exit 1
-fi
 
 for f in "$text" "$lexicon"; do
   [ ! -f $x ] && echo "$0: No such file $f" && exit 1;
@@ -25,6 +17,7 @@ done
 #data/train_all/text
 #data/local/dict/lexicon.txt
 
+dir=data/local/lm
 mkdir -p $dir
 export LC_ALL=C # You'll get errors about things being not sorted, if you
 # have a different locale.
@@ -76,8 +69,6 @@ cat $cleantext | awk -v wmap=$dir/word_map 'BEGIN{while((getline<wmap)>0)map[$1]
    || exit 1;
 
 train_lm.sh --arpa --lmtype 3gram-mincount $dir || exit 1;
-
-train_lm.sh --arpa --lmtype 4gram-mincount $dir || exit 1;
 
 # Perplexity over 88307.000000 words (excluding 691.000000 OOVs) is 71.241332
 

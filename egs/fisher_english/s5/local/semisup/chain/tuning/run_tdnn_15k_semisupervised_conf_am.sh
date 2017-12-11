@@ -39,7 +39,7 @@ train_supervised_opts="--stage -10 --train-stage -10"
 # Unsupervised options
 decode_affix=   # affix for decoded lattices
 egs_affix=  # affix for the egs that are generated from unsupervised data and for the comined egs dir
-unsup_frames_per_eg=150  # if empty will be equal to the supervised model's config
+unsup_frames_per_eg=150  # if empty, will be equal to the supervised model's config
 lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices when creating numerator supervision
 lattice_prune_beam=4.0  # If supplied, will prune the lattices prior to getting egs for unsupervised data
 tolerance=1   # frame-tolerance for chain training
@@ -257,7 +257,7 @@ if [ $stage -le 11 ]; then
   
   # We use separate outputs for supervised and unsupervised data
   # so we can properly track the train and valid objectives.
-  
+
   output name=output-0 input=output.affine
   output name=output-1 input=output.affine
 
@@ -373,7 +373,7 @@ if [ $stage -le 15 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $frames_per_eg \
-    --trainer.num-chunk-per-minibatch "128" \
+    --trainer.num-chunk-per-minibatch 128 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs 4 \
     --trainer.optimization.num-jobs-initial 3 \
