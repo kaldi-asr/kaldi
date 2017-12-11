@@ -11,5 +11,7 @@
 %include std_string.i
 using std::string;
 %newobject DecoderFactory::StartDecodingSession();
+
+%feature("autodoc", "3");
 %include "../online2/online2-nnet3-latgen-i2x-wrapper.h"
 

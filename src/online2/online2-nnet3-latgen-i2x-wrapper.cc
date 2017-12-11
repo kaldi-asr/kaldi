@@ -2,8 +2,9 @@
 
 #include <cstdint>
 #include <cstddef>
-#include <lat/lattice-functions.h>
+#include <exception>
 
+#include <lat/lattice-functions.h>
 #include "nnet3/nnet-utils.h"
 #include "online2/online-nnet2-feature-pipeline.h"
 #include "online2/online-nnet3-decoding.h"
@@ -36,8 +37,9 @@ class DecoderImpl {
     sample_buffer_.reserve(2 * chunk_length_);
 
   }
-  int32 GetFinalResult(RecognitionResult *result);
+  const RecognitionResult GetResult();
   int32 FeedBytestring(const std::string& bytestring);
+  int32 Finalize();
 
   ~DecoderImpl() {
     delete feature_pipeline_;
@@ -60,15 +62,11 @@ class DecoderImpl {
   bool finalized_ = false;
   std::vector<int16> sample_buffer_;
   std::string byte_buffer_;
-
+  
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecoderImpl);
-
 };
 
 int32 DecoderImpl::FeedBytestring(const std::string& bytestring) {
-  if (bytestring.empty()) {
-    return FeedChunk(nullptr, 0); // a special call: finalize the decoder
-  }
   byte_buffer_ += bytestring;
   bool leftover = (byte_buffer_.size() % 2 != 0);
   size_t length = leftover ? byte_buffer_.size() - 1 : byte_buffer_.size();
@@ -87,23 +85,27 @@ int32 DecoderImpl::FeedBytestring(const std::string& bytestring) {
   return return_code;
 }
 
-
-int32 DecoderImpl::GetFinalResult(RecognitionResult *result) {
-  if (!IsFinalized()) {
-    KALDI_WARN << "Called GetFinalResult() on the un-finalized Decoder.\n"
-               << "We will finalize it by force, but the correct way is\n"
-               << "to call FeedChunk() with length == 0.\n"
-               << "It is strongly advised to change your client accordingly.";
-    FeedChunk(nullptr, 0); // force-finalize if the user failed to do so
+int32_t DecoderImpl::Finalize() {
+  if (!finalized_) {
+    return FeedChunk(nullptr, 0); // a special call: length == 0 means finalization
   }
+}
 
+const RecognitionResult DecoderImpl::GetResult() {
+  RecognitionResult recognition_result;
+  recognition_result.is_final = finalized_;
+
+  if (decoder_->NumFramesDecoded() == 0) {
+    return recognition_result;
+  }
+  
   CompactLattice clat;
-  KALDI_ASSERT(finalized_ == true);
   decoder_->GetLattice(finalized_, &clat);
 
   if (clat.NumStates() == 0) {
-    KALDI_WARN << "Empty lattice.";
-    return -1;
+    KALDI_WARN << "Empty lattice";
+    recognition_result.error = true;
+    return recognition_result;
   }
   CompactLattice best_path_clat;
   CompactLatticeShortestPath(clat, &best_path_clat);
@@ -111,17 +113,12 @@ int32 DecoderImpl::GetFinalResult(RecognitionResult *result) {
   Lattice best_path_lat;
   ConvertLattice(best_path_clat, &best_path_lat);
 
-  double likelihood;
-  LatticeWeight weight;
-  int32 num_frames;
   std::vector<int32> alignment;
   std::vector<int32> words;
+  LatticeWeight weight;
   GetLinearSymbolSequence(best_path_lat, &alignment, &words, &weight);
-  num_frames = alignment.size();
-  likelihood = -(weight.Value1() + weight.Value2());
-  KALDI_LOG << "Likelihood per frame for utterance is "
-            << (likelihood / num_frames) << " over " << num_frames
-            << " frames.";
+  recognition_result.num_frames = alignment.size();
+  recognition_result.mean_frame_likelihood = -(weight.Value1() + weight.Value2()) / recognition_result.num_frames;
 
   for (size_t i = 0; i < words.size(); i++) {
     std::string s = word_syms_.Find(words[i]);
@@ -129,20 +126,20 @@ int32 DecoderImpl::GetFinalResult(RecognitionResult *result) {
       KALDI_WARN << "Word-id " << words[i] << " not in symbol table."
           << "The ASR resources are inconsistent!"
           << "Check that the output symbols are correct.";
-      return -1;
+      recognition_result.error = true;
+      return recognition_result;
     }
     if (i + 1 != words.size()) {
       s += " ";
     }
-    result->transcript += s;
+    recognition_result.transcript += s;
   }
-  return 0;
+  return recognition_result;
 }
 
 int32 DecoderImpl::FeedChunk(const int16_t *data, size_t length) {
   if (finalized_) {
-    KALDI_WARN << "Calling FeedChunk with length == 0 for the second time (or more).\n"
-               << "The decoder was already finalized!\n"
+    KALDI_WARN << "The decoder was already finalized!\n"
                << "The call is ignored. Create a new Decoder and work with it.";
     return -1;
   }
@@ -181,6 +178,7 @@ int32 DecoderImpl::FeedChunk(const int16_t *data, size_t length) {
     sample_buffer_[i] = sample_buffer_[end + i];
   }
   sample_buffer_.resize(leftover);
+
   return 0;
 }
 
@@ -257,7 +255,7 @@ DecoderFactoryImpl::DecoderFactoryImpl(const std::string &resource_dir_prefix) {
   endpoint_opts_.Register(&po);
 
   std::vector<std::string> strargs = {
-      {"DUMMY"},
+      {"i2x-ASR"},
       {("--config=" + resource_dir_prefix + "/general.conf")},
       {("--mfcc-config=" + resource_dir_prefix + "/mfcc_hires.conf")},
       {(resource_dir_prefix + "/final.mdl")},
@@ -346,9 +344,11 @@ using kaldi::DecoderFactoryImpl;
 using kaldi::DecoderImpl;
 
 DecoderFactory::DecoderFactory(const std::string &resource_dir) :
-  decoder_factory_impl_(new DecoderFactoryImpl(resource_dir))
-{
-  // Nothing to do.
+  decoder_factory_impl_(new DecoderFactoryImpl(resource_dir)) {
+  if (decoder_factory_impl_ == nullptr) {
+    KALDI_WARN << "Decoder Factory creation did not succeed. "
+	       << "Most likely caused by an out-of-memory error.";
+  }
 }
 
 DecoderFactory::~DecoderFactory() {
@@ -357,9 +357,15 @@ DecoderFactory::~DecoderFactory() {
 }
 
 Decoder* DecoderFactory::StartDecodingSession() {
+  if (decoder_factory_impl_ == nullptr) {
+    KALDI_WARN << "Failed to spawn a new Decoding Session. Decoder Factory is not valid. "
+	       << "Most likely caused by an OOM when creating the decoder factory.";
+    return nullptr;
+  }
   try {
     return new Decoder(decoder_factory_impl_->StartDecodingSession());
-  } catch(...) {
+  } catch (const std::exception& e) {
+    KALDI_WARN << "Failed to spawn a new Decoding Session. " << e.what();
     return nullptr;
   }
 }
@@ -371,15 +377,40 @@ Decoder::Decoder(DecoderImpl *decoder_impl) :
 }
 
 Decoder::~Decoder() {
-  KALDI_LOG << "HELLO CHRISTOPH";
   delete decoder_impl_;
   decoder_impl_ = nullptr;
 }
 
 int32_t Decoder::FeedBytestring(const std::string& bytestring) {
+  if (decoder_impl_ == nullptr) {
+    KALDI_WARN << "Decoder::FeedBytestring call failed. "
+	       << "The Decoder was either already invalidated or not created properly";
+    return -1;
+  }
   return decoder_impl_->FeedBytestring(bytestring);
 }
 
-int32_t Decoder::GetResultAndFinalize(RecognitionResult *result) {
-  return decoder_impl_->GetFinalResult(result);
+const RecognitionResult Decoder::GetResult() {
+  if (decoder_impl_ == nullptr) {
+    KALDI_WARN << "Decoder::GetResult call failed. "
+	       << "The Decoder was either already invalidated or not created properly";
+    RecognitionResult dummy;
+    dummy.error = true;
+    return dummy;
+  }
+  return decoder_impl_->GetResult();
+}
+
+int32_t Decoder::Finalize() {
+  if (decoder_impl_ == nullptr) {
+    KALDI_WARN << "Decoder::Finalize call failed. "
+	       << "The Decoder was either already invalidated or not created properly";
+    return -1;
+  }
+  return decoder_impl_->Finalize();
+}
+
+void Decoder::InvalidateAndFree() {
+  delete decoder_impl_;
+  decoder_impl_ = nullptr;
 }
