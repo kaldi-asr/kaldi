@@ -91,7 +91,15 @@ if [ ! -f data/lang_test_poco_ex250k_big/G.carpa ]; then
     data/lang_test_poco_ex250k data/lang_test_poco_ex250k_big
 fi
 
-local/run_unk_model.sh --lang-dirs "data/lang_test_poco_ex250k_big data/lang_test_poco_ex250k" || exit 1
+local/run_unk_model.sh || exit 1
+
+for lang_dir in "data/lang_test_poco_ex250k_big data/lang_test_poco_ex250k"; do
+  rm -r ${lang_dir}_unk 2>/dev/null || true
+  mkdir -p ${lang_dir}_unk
+  cp -r data/lang_unk ${lang_dir}_unk
+  if [ -f ${lang_dir}/G.fst ]; then cp ${lang_dir}/G.fst ${lang_dir}_unk/G.fst; fi
+  if [ -f ${lang_dir}/G.carpa ]; then cp ${lang_dir}/G.carpa ${lang_dir}_unk/G.carpa; fi
+done
 
 local/semisup/chain/tuning/run_tdnn_50k.sh \
   --train-set train_sup50k \

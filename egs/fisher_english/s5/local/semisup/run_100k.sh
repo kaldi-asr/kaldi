@@ -76,7 +76,7 @@ utils/copy_data_dir.sh data/train_unsup250k data/train_unsup100k_250k
 utils/combine_data.sh data/semisup100k_250k data/train_sup \
   data/train_unsup100k_250k || exit 1
 
-if [ ! -f data/lang_test_poco_sup100k_big/G.carpa ]; then
+if [ ! -f data/lang_test_poco_sup100k/G.fst ]; then
   local/fisher_train_lms_pocolm.sh \
     --text data/train_sup/text \
     --dir data/local/lm_sup100k
@@ -84,13 +84,17 @@ if [ ! -f data/lang_test_poco_sup100k_big/G.carpa ]; then
   local/fisher_create_test_lang.sh \
     --arpa-lm data/local/pocolm_sup100k/data/arpa/4gram_small.arpa.gz \
     --dir data/lang_test_poco_sup100k
-
-  utils/build_const_arpa_lm.sh \
-    data/local/pocolm_sup100k/data/arpa/4gram_big.arpa.gz \
-    data/lang_test_poco_sup100k data/lang_test_poco_sup100k_big
 fi
 
-local/run_unk_model.sh --lang-dirs "data/lang_test_poco_sup100k_big data/lang_test_poco_sup100k" || exit 1
+local/run_unk_model.sh || exit 1
+
+for lang_dir in data/lang_test_poco_sup100k; do
+  rm -r ${lang_dir}_unk 2>/dev/null || true
+  mkdir -p ${lang_dir}_unk
+  cp -r data/lang_unk ${lang_dir}_unk
+  if [ -f ${lang_dir}/G.fst ]; then cp ${lang_dir}/G.fst ${lang_dir}_unk/G.fst; fi
+  if [ -f ${lang_dir}/G.carpa ]; then cp ${lang_dir}/G.carpa ${lang_dir}_unk/G.carpa; fi
+done
 
 local/semisup/chain/tuning/run_tdnn_100k_a.sh \
   --train-set train_sup \
