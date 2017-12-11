@@ -4,7 +4,7 @@ all:
 SWIG_PYTHON_BINDING_NAME = online2_nnet3_latgen_i2x_wrapper
 EXTRA_CXXFLAGS += -I/usr/include/python3.5
 
-$(SWIG_PYTHON_BINDING_NAME)_wrap.cc: $(SWIG_PYTHON_BINDING_NAME).i
+$(SWIG_PYTHON_BINDING_NAME)_wrap.cc: $(SWIG_PYTHON_BINDING_NAME).i ../online2/online2-nnet3-latgen-i2x-wrapper.h
 	../../tools/swig/build/bin/swig -c++ -python -py3 $(SWIG_PYTHON_BINDING_NAME).i
 	mv $(SWIG_PYTHON_BINDING_NAME)_wrap.cxx $(SWIG_PYTHON_BINDING_NAME)_wrap.cc
 
@@ -36,4 +36,4 @@ all: _$(SWIG_PYTHON_BINDING_NAME).so
 _$(SWIG_PYTHON_BINDING_NAME).so: $(SWIG_PYTHON_BINDING_NAME).py $(OBJFILES) $(ADDLIBS)
 	$(CXX) -shared -o $@ $(OBJFILES) $(LDFLAGS) $(ADDLIBS) $(LDLIBS)
 
-$(SWIG_PYTHON_BINDING_NAME).py: $(OBJFILES) $(ADDLIBS)
+$(SWIG_PYTHON_BINDING_NAME).py: $(SWIG_PYTHON_BINDING_NAME)_wrap.cc

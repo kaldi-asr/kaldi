@@ -13,6 +13,8 @@ using kaldi::DecoderImpl;
 
 struct RecognitionResult {
   std::string transcript;
+  uint32_t num_frames = 0;
+  double mean_frame_likelihood = 0.0;
   bool is_final = false;
   bool error = false;
 };

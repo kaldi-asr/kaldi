@@ -42,7 +42,6 @@ class DecoderImpl {
   int32 Finalize();
 
   ~DecoderImpl() {
-    KALDI_LOG << "DecoderImpl::~DecoderImpl() -- inner destructor called. All internal structures cleared.";
     delete feature_pipeline_;
     delete decoder_;
     feature_pipeline_ = nullptr;
@@ -87,7 +86,9 @@ int32 DecoderImpl::FeedBytestring(const std::string& bytestring) {
 }
 
 int32_t DecoderImpl::Finalize() {
-  return FeedChunk(nullptr, 0); // a special call: finalize the decoder
+  if (!finalized_) {
+    return FeedChunk(nullptr, 0); // a special call: length == 0 means finalization
+  }
 }
 
 const RecognitionResult DecoderImpl::GetResult() {
@@ -116,11 +117,8 @@ const RecognitionResult DecoderImpl::GetResult() {
   std::vector<int32> words;
   LatticeWeight weight;
   GetLinearSymbolSequence(best_path_lat, &alignment, &words, &weight);
-  int32 num_frames = alignment.size();
-  double likelihood = -(weight.Value1() + weight.Value2());
-  KALDI_LOG << "Likelihood per frame for utterance is "
-            << (likelihood / num_frames) << " over " << num_frames
-            << " frames.";
+  recognition_result.num_frames = alignment.size();
+  recognition_result.mean_frame_likelihood = -(weight.Value1() + weight.Value2()) / recognition_result.num_frames;
 
   for (size_t i = 0; i < words.size(); i++) {
     std::string s = word_syms_.Find(words[i]);
@@ -257,7 +255,7 @@ DecoderFactoryImpl::DecoderFactoryImpl(const std::string &resource_dir_prefix) {
   endpoint_opts_.Register(&po);
 
   std::vector<std::string> strargs = {
-      {"DUMMY"},
+      {"i2x-ASR"},
       {("--config=" + resource_dir_prefix + "/general.conf")},
       {("--mfcc-config=" + resource_dir_prefix + "/mfcc_hires.conf")},
       {(resource_dir_prefix + "/final.mdl")},
@@ -379,7 +377,6 @@ Decoder::Decoder(DecoderImpl *decoder_impl) :
 }
 
 Decoder::~Decoder() {
-  KALDI_LOG << "Decoder::~Decoder() -- outer destructor called.";
   delete decoder_impl_;
   decoder_impl_ = nullptr;
 }
