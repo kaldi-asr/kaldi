@@ -1113,6 +1113,7 @@ void MemoryNormComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &backward_count_);
   ExpectToken(is, binary, "<Data>");
   data_.Read(is, binary);
+  ExpectToken(is, binary, "</MemoryNormComponent>");
   Check();
 }
 
