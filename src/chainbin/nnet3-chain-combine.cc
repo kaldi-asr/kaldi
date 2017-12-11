@@ -28,44 +28,54 @@
 namespace kaldi {
 namespace nnet3 {
 
-double ComputeObjf(const std::vector<NnetChainExample> &egs,
+// Computes the objective of the moving average of nnet on egs. If either of
+// batchnorm/dropout test modes is true, we make a copy of the moving average,
+// set test modes on that and evaluate its objective. Note: the object that
+// prob_computer->nnet_ refers to should be moving_average_nnet.
+double ComputeObjf(bool batchnorm_test_mode, bool dropout_test_mode,
+                   const std::vector<NnetChainExample> &egs,
+                   const Nnet &moving_average_nnet,
+                   const chain::ChainTrainingOptions &chain_config,
+                   const fst::StdVectorFst &den_fst,
                    NnetChainComputeProb *prob_computer) {
-  prob_computer->Reset();
-  std::vector<NnetChainExample>::const_iterator iter = egs.begin(),
-                                                 end = egs.end();
-  for (; iter != end; ++iter)
-    prob_computer->Compute(*iter);
-  const ChainObjectiveInfo *objf_info =
-      prob_computer->GetObjective("output");
-  if (objf_info == NULL)
-    KALDI_ERR << "Error getting objective info (unsuitable egs?)";
-  KALDI_ASSERT(objf_info->tot_weight > 0.0);
-  // we prefer to deal with normalized objective functions.
-  return (objf_info->tot_like + objf_info->tot_l2_term) / objf_info->tot_weight;
+  if (batchnorm_test_mode || dropout_test_mode) {
+    Nnet moving_average_nnet_copy(moving_average_nnet);
+    if (batchnorm_test_mode)
+      SetBatchnormTestMode(true, &moving_average_nnet_copy);
+    if (dropout_test_mode)
+      SetDropoutTestMode(true, &moving_average_nnet_copy);
+    NnetComputeProbOptions compute_prob_opts;
+    NnetChainComputeProb prob_computer_test(compute_prob_opts, chain_config,
+        den_fst, moving_average_nnet_copy);
+    return ComputeObjf(false, false, egs, moving_average_nnet_copy,
+                       chain_config, den_fst, &prob_computer_test);
+  } else {
+    prob_computer->Reset();
+    std::vector<NnetChainExample>::const_iterator iter = egs.begin(),
+                                                   end = egs.end();
+    for (; iter != end; ++iter)
+      prob_computer->Compute(*iter);
+    const ChainObjectiveInfo *objf_info =
+        prob_computer->GetObjective("output");
+    if (objf_info == NULL)
+      KALDI_ERR << "Error getting objective info (unsuitable egs?)";
+    KALDI_ASSERT(objf_info->tot_weight > 0.0);
+    // inf/nan tot_objf->return -inf objective.
+    double tot_objf = objf_info->tot_like + objf_info->tot_l2_term;
+    if (!(tot_objf == tot_objf && tot_objf - tot_objf == 0))
+      return -std::numeric_limits<double>::infinity();
+    // we prefer to deal with normalized objective functions.
+    return tot_objf / objf_info->tot_weight;
+  }
 }
 
-// Note: the object that prob_computer.nnet_ refers to should be
-// *moving_average_nnet.
-double UpdateNnetMovingAverageAndComputeObjf(int32 num_models,
-    const std::vector<NnetChainExample> &egs,
-    const Nnet &nnet, Nnet *moving_average_nnet,
-    NnetChainComputeProb *prob_computer) {
-  int32 num_params = NumParameters(nnet);
-  KALDI_ASSERT(num_params == NumParameters(*moving_average_nnet));
-  Vector<BaseFloat> nnet_params(num_params, kUndefined),
-      moving_average_nnet_params(num_params, kUndefined);
-  VectorizeNnet(nnet, &nnet_params);
-  VectorizeNnet(*moving_average_nnet, &moving_average_nnet_params);
-  moving_average_nnet_params.Scale((num_models - 1.0) / num_models);
-  moving_average_nnet_params.AddVec(1.0 / num_models, nnet_params);
-
-  BaseFloat sum = moving_average_nnet_params.Sum();
-  // inf/nan parameters->return -inf objective.
-  if (!(sum == sum && sum - sum == 0))
-    return -std::numeric_limits<double>::infinity();
-
-  UnVectorizeNnet(moving_average_nnet_params, moving_average_nnet);
-  return ComputeObjf(egs, prob_computer);
+// Updates moving average over num_models nnets, given the average over
+// previous (num_models - 1) nnets, and the new nnet.
+void UpdateNnetMovingAverage(int32 num_models,
+    const Nnet &nnet, Nnet *moving_average_nnet) {
+  KALDI_ASSERT(NumParameters(nnet) == NumParameters(*moving_average_nnet));
+  ScaleNnet((num_models - 1.0) / num_models, moving_average_nnet);
+  AddNnet(nnet, 1.0 / num_models, moving_average_nnet);
 }
 
 }
@@ -93,6 +103,7 @@ int main(int argc, char *argv[]) {
         " nnet3-combine den.fst 35.raw 36.raw 37.raw 38.raw ark:valid.cegs final.raw\n";
 
     bool binary_write = true;
+    int32 max_objective_evaluations = 30;
     bool batchnorm_test_mode = false,
         dropout_test_mode = true;
     std::string use_gpu = "yes";
@@ -100,13 +111,19 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
+    po.Register("max-objective-evaluations", &max_objective_evaluations, "Max "
+                "number of objective evaluations in order to figure out the "
+                "best number of models to combine. It helps to speedup if "
+                "the number of models provided to this binary is quite large "
+                "(e.g. several hundred)."); 
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Register("batchnorm-test-mode", &batchnorm_test_mode,
-                "If true, set test-mode to true on any BatchNormComponents.");
+                "If true, set test-mode to true on any BatchNormComponents "
+                "while evaluating objectives.");
     po.Register("dropout-test-mode", &dropout_test_mode,
                 "If true, set test-mode to true on any DropoutComponents and "
-                "DropoutMaskComponents.");
+                "DropoutMaskComponents while evaluating objectives.");
 
     chain_config.Register(&po);
 
@@ -135,13 +152,8 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(raw_nnet_rxfilename, &nnet);
     Nnet moving_average_nnet(nnet), best_nnet(nnet);
     NnetComputeProbOptions compute_prob_opts;
-    NnetChainComputeProb *prob_computer = new NnetChainComputeProb(
-        compute_prob_opts, chain_config, den_fst, moving_average_nnet);
-
-    if (batchnorm_test_mode)
-      SetBatchnormTestMode(true, &nnet);
-    if (dropout_test_mode)
-      SetDropoutTestMode(true, &nnet);
+    NnetChainComputeProb prob_computer(compute_prob_opts, chain_config,
+        den_fst, moving_average_nnet);
 
     std::vector<NnetChainExample> egs;
     egs.reserve(10000);  // reserve a lot of space to minimize the chance of
@@ -156,26 +168,35 @@ int main(int argc, char *argv[]) {
       KALDI_ASSERT(!egs.empty());
     }
 
-    int32 best_n = 1;
-    double best_objf = ComputeObjf(egs, prob_computer);
+    // first evaluates the objective using the last model.
+    int32 best_num_to_combine = 1;
+    double best_objf = ComputeObjf(batchnorm_test_mode, dropout_test_mode,
+        egs, moving_average_nnet, chain_config, den_fst, &prob_computer);
     KALDI_LOG << "objective function using the last model is " << best_objf;
 
     int32 num_nnets = po.NumArgs() - 3;
-
+    // then each time before we re-evaluate the objective function, we will add
+    // num_to_add models to the moving average.
+    int32 num_to_add = (num_nnets + max_objective_evaluations - 1) /
+                       max_objective_evaluations;
     for (int32 n = 1; n < num_nnets; n++) {
       std::string this_nnet_rxfilename = po.GetArg(n + 2);
       ReadKaldiObject(this_nnet_rxfilename, &nnet);
-      double objf = UpdateNnetMovingAverageAndComputeObjf(n + 1, egs, nnet,
-          &moving_average_nnet, prob_computer);
-      KALDI_LOG << "Combining last " << n + 1
-                << " models, objective function is " << objf;
-      if (objf > best_objf) {
-        best_objf = objf;
-        best_nnet = moving_average_nnet;
-        best_n = n + 1;
+      // updates the moving average
+      UpdateNnetMovingAverage(n + 1, nnet, &moving_average_nnet);
+      if ((n - 1) % num_to_add == num_to_add - 1 || n == num_nnets - 1) {
+        double objf = ComputeObjf(batchnorm_test_mode, dropout_test_mode,
+            egs, moving_average_nnet, chain_config, den_fst, &prob_computer);
+        KALDI_LOG << "Combining last " << n + 1
+                  << " models, objective function is " << objf;
+        if (objf > best_objf) {
+          best_objf = objf;
+          best_nnet = moving_average_nnet;
+          best_num_to_combine = n + 1;
+        }
       }
     }
-    KALDI_LOG << "Using the model averaged over last " << best_n
+    KALDI_LOG << "Using the model averaged over last " << best_num_to_combine
               << " models, objective function is " << best_objf;
 
     if (HasBatchnorm(nnet))
