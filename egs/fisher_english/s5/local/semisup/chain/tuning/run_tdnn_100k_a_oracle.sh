@@ -8,18 +8,25 @@ set -e
 
 # configs for 'chain'
 stage=0
-tdnn_affix=7a_oracle
 train_stage=-10
 get_egs_stage=-10
-decode_iter=
+tdnn_affix=7a_oracle
+exp=exp/semisup_100k
+
+# Datasets -- Expects data/$supervised_set and data/$unsupervised_set to be 
+# present
 supervised_set=train_sup
 unsupervised_set=train_unsup100k_250k_n10k
 combined_train_set=train_oracle100k_250k_n10k
-tree_affix=bi_a
+
+# Seed model options
+gmm=tri4a
 nnet3_affix=
 chain_affix=
-exp=exp/semisup_100k
-gmm=tri4a
+tree_affix=bi_a
+train_supervised_opts="--stage -10 --train-stage -10"
+
+# Neural network opts
 xent_regularize=0.1
 hidden_dim=725
 
@@ -27,6 +34,8 @@ hidden_dim=725
 num_epochs=4
 remove_egs=false
 common_egs_dir=
+
+decode_iter=
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -50,6 +59,14 @@ dir=$exp/chain${chain_affix}/tdnn${tdnn_affix}_sp
 train_data_dir=data/${combined_train_set}_sp_hires
 train_ivector_dir=$exp/nnet3${nnet3_affix}/ivectors_${supervised_set}_sp_hires
 lang=data/lang_chain
+
+if [ $stage -le -1 ]; then
+  echo "$0: chain training on the supervised subset data/${supervised_set}"
+  local/semisup/chain/tuning/run_tdnn_100k_a.sh $train_supervised_opts \
+                          --train-set $supervised_set \
+                          --nnet3-affix "$nnet3_affix" --tdnn-affix "$tdnn_affix" \
+                          --tree-affix "$tree_affix" --gmm $gmm --exp $exp || exit 1
+fi
 
 for f in data/${supervised_set}_sp_hires/feats.scp \
   data/${unsupervised_set}_sp_hires/feats.scp \

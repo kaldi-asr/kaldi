@@ -30,7 +30,9 @@ unsupervised_set=train_unsup100k_250k  # set this to your choice of unsupervised
 supervised_set=train_sup
 
 # Seed model options
-nnet3_affix=    # affix for nnet3 and chain dir -- relates to i-vector used
+gmm=tri4a
+nnet3_affix=    # affix for nnet3 dir -- relates to i-vector used
+chain_affix=    # affix for chain dir
 tdnn_affix=7a  # affix for the supervised chain-model directory
 tree_affix=bi_a  # affix for the tree of the supervised model
 train_supervised_opts="--stage -10 --train-stage -10"
@@ -87,7 +89,7 @@ if [ $stage -le -1 ]; then
   local/semisup/chain/tuning/run_tdnn_100k_a.sh $train_supervised_opts \
                           --train-set $supervised_set \
                           --nnet3-affix "$nnet3_affix" --tdnn-affix "$tdnn_affix" \
-                          --tree-affix "$tree_affix" --exp $exp || exit 1
+                          --tree-affix "$tree_affix" --gmm $gmm --exp $exp || exit 1
 fi
 
 lang=data/lang_chain
@@ -99,7 +101,7 @@ test_lang=data/lang_poco_test
 test_graph_affix=_poco
 
 extractor=$exp/nnet3${nnet3_affix}/extractor  # i-vector extractor
-chaindir=$exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp  # supervised seed model
+chaindir=$exp/chain${chain_affix}/tdnn${tdnn_affix}_sp  # supervised seed model
 graphdir=$chaindir/graph${unsup_decode_graph_affix}
 
 decode_affix=${decode_affix}${unsup_decode_graph_affix}
@@ -191,7 +193,7 @@ if [ -f $chaindir/frame_subsampling_factor ]; then
 fi
 cmvn_opts=`cat $chaindir/cmvn_opts` || exit 1
 
-treedir=$exp/chain${nnet3_affix}/tree_${tree_affix}
+treedir=$exp/chain${chain_affix}/tree_${tree_affix}
 if [ ! -f $treedir/final.mdl ]; then
   echo "$0: $treedir/final.mdl does not exist."
   exit 1
@@ -199,7 +201,7 @@ fi
 
 diff $treedir/tree $chaindir/tree || { echo "$0: $treedir/tree and $chaindir/tree differ"; exit 1; }
 
-dir=$exp/chain${nnet3_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
+dir=$exp/chain${chain_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
 
 
 # Train denominator FST using phone alignments from 
@@ -277,7 +279,7 @@ left_context_initial=`perl -e "print int($left_context_initial + $frame_subsampl
 right_context_final=`perl -e "print int($right_context_final + $frame_subsampling_factor / 2)"`
 
 supervised_set=${supervised_set}_sp
-sup_lat_dir=$exp/chain${nnet3_affix}/tri4a_${supervised_set}_lats
+sup_lat_dir=$exp/chain${chain_affix}/${gmm}_${supervised_set}_lats
 if [ -z "$sup_egs_dir" ]; then
   sup_egs_dir=$dir/egs_${supervised_set}
   frames_per_eg=$(cat $chaindir/egs/info/frames_per_eg)
