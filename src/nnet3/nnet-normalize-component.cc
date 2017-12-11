@@ -867,15 +867,20 @@ void* MemoryNormComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   if (test_mode_) {
     if (stats_count_ <= 0.0)
       KALDI_ERR << "Test mode set but no stats available.";
-    CuSubVector<BaseFloat> x_mean(data_, 3), scale(data_, 4);
+    CuSubVector<BaseFloat> x_mean(data_, 0), scale(data_, 4);
     out->AddVecToRows(-1.0, x_mean);
     out->MulColsVec(scale);
     return NULL;
   } else {
     Memo *memo = GetMemo(in);
-    CuSubVector<BaseFloat> x_sum(memo->data, 0),
-        scale(memo->data, 2);
-    out->AddVecToRows(-1.0 / memo->num_frames, x_sum);
+    if (stats_count_ <= 0.0) {
+      CuSubVector<BaseFloat> x_sum(memo->data, 0);
+      out->AddVecToRows(-1.0 / memo->num_frames, x_sum);
+    } else { // use the mean stored with this object.
+      CuSubVector<BaseFloat> x_mean(data_, 0);
+      out->AddVecToRows(-1.0, x_mean);
+    }
+    CuSubVector<BaseFloat> scale(memo->data, 2);
     out->MulColsVec(scale);
     return memo;
   }
