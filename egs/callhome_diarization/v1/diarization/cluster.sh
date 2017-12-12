@@ -11,10 +11,10 @@
 # Begin configuration section.
 cmd="run.pl"
 stage=0
+nj=10
 cleanup=true
 threshold=0.5
 spk2num=
-maxdist=1.0
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -29,12 +29,12 @@ if [ $# != 2 ]; then
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+  echo "  --nj <n|10>                                      # Number of jobs (also see num-processes and num-threads)"
   echo "  --stage <stage|0>                                # To control partial reruns"
   echo "  --threshold <threshold|0.5>                      # Cluster stopping criterion."
   echo "  --spk2num <spk2num-file>                         # File containing mapping of recording ID"
   echo "                                                   # to number of speakers. Used instead of threshold"
   echo "                                                   # as stopping criterion if supplied."
-  echo "  --maxdist <maxdist|1.0>                          # Value used for unsupplied scores."
   echo "  --cleanup <bool|false>                           # If true, remove temporary files"
   exit 1;
 fi
@@ -44,11 +44,9 @@ dir=$2
 
 mkdir -p $dir/tmp
 
-for f in $srcdir/num_jobs $srcdir/scores $srcdir/spk2utt $srcdir/utt2spk $srcdir/segments ; do
+for f in $srcdir/scores.scp $srcdir/spk2utt $srcdir/utt2spk $srcdir/segments ; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
-
-nj=`cat $srcdir/num_jobs`
 
 cp $srcdir/spk2utt $dir/tmp/
 cp $srcdir/utt2spk $dir/tmp/
@@ -65,12 +63,12 @@ utils/split_data.sh $dir/tmp $nj || exit 1;
 # Set various variables.
 mkdir -p $dir/log
 
-#feats="utils/filter_scp.pl $sdata/JOB/spk2utt $srcdir/scores.scp |"
+feats="utils/filter_scp.pl $sdata/JOB/spk2utt $srcdir/scores.scp |"
 if [ $stage -le 0 ]; then
   echo "$0: clustering scores"
   $cmd JOB=1:$nj $dir/log/agglomerative_cluster.JOB.log \
-    agglomerative-cluster --threshold=$threshold --max-dist=$maxdist \
-      --spk2num-rspecifier=$spk2num $srcdir/scores.JOB \
+    agglomerative-cluster --threshold=$threshold \
+      --spk2num-rspecifier=$spk2num scp:"$feats" \
       ark,t:$sdata/JOB/spk2utt ark,t:$dir/labels.JOB || exit 1;
 fi
 

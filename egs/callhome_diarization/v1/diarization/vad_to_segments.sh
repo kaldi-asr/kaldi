@@ -45,9 +45,7 @@ for f in $data/feats.scp $data/vad.scp; do
   fi
 done
 
-if [ ! -d $data/split$nj ]; then
-  utils/split_data.sh $data $nj || exit 1;
-fi
+utils/split_data.sh $data $nj || exit 1;
 sdata=$data/split$nj;
 
 if [ $stage -le 0 ]; then

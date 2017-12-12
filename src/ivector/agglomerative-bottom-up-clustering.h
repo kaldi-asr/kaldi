@@ -31,9 +31,7 @@
 namespace kaldi {
 
 void AgglomerativeClusterBottomUp(
-    const std::vector<std::string> &uttlist,
-    const std::unordered_map<std::string, BaseFloat> &score_map,
-    BaseFloat max_dist,
+    const Matrix<BaseFloat> &scores,
     BaseFloat thresh,
     int32 min_clust,
     std::vector<int32> *assignments_out);

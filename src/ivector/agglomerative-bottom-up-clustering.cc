@@ -30,10 +30,10 @@ namespace kaldi {
 typedef uint16 uint_smaller;
 typedef int16 int_smaller; 
 
-struct AHCCluster {
+struct AhcCluster {
   int32 id, parent1, parent2, size;
   std::vector<int32> utt_ids;
-  AHCCluster(int32 id, int32 p1, int32 p2, std::vector<int32> utts)
+  AhcCluster(int32 id, int32 p1, int32 p2, std::vector<int32> utts)
       : id(id), parent1(p1), parent2(p2), utt_ids(utts) {
     size = utts.size();
   }
@@ -42,17 +42,13 @@ struct AHCCluster {
 class AgglomerativeClusterer {
  public:
   AgglomerativeClusterer(
-      const std::vector<std::string> &uttlist,
-      const std::unordered_map<std::string, BaseFloat> &score_map,
-      BaseFloat max_dist,
+      const Matrix<BaseFloat> &scores,
       BaseFloat thresh,
       int32 min_clust,
       std::vector<int32> *assignments_out)
-      : ct_(0), uttlist_(uttlist), score_map_(score_map),
-        max_dist_(max_dist), thresh_(thresh), min_clust_(min_clust),
-        assignments_(assignments_out != NULL ?
-                         assignments_out : &tmp_assignments_) {
-    nclusters_ = npoints_ = uttlist.size();
+      : ct_(0), scores_(scores), thresh_(thresh), min_clust_(min_clust),
+        assignments_(assignments_out) {
+    nclusters_ = npoints_ = scores.NumRows();
   }
 
   void Cluster();
@@ -63,18 +59,14 @@ class AgglomerativeClusterer {
   void MergeClusters(int32 i, int32 j);
 
   int32 ct_;
-  const std::vector<std::string> &uttlist_;
-  const std::unordered_map<std::string, BaseFloat> &score_map_;
-  BaseFloat max_dist_;
+  const Matrix<BaseFloat> &scores_;
   BaseFloat thresh_;
   int32 min_clust_;
   std::vector<int32> *assignments_;
 
-  std::vector<int32> tmp_assignments_;
-
   std::unordered_map<std::pair<int32, int32>, BaseFloat,
                      PairHasher<int32, int32>> cluster_score_map_;
-  std::unordered_map<int32, AHCCluster*> clusters_map_;
+  std::unordered_map<int32, AhcCluster*> clusters_map_;
   std::set<int32> active_clusters_;
   int32 nclusters_;
   int32 npoints_;
@@ -104,7 +96,7 @@ void AgglomerativeClusterer::Cluster() {
   std::set<int32>::iterator it;
   for (it = active_clusters_.begin(); it != active_clusters_.end(); ++it) {
     ++i;
-    AHCCluster* cluster = clusters_map_[*it];
+    AhcCluster* cluster = clusters_map_[*it];
     std::vector<int32>::iterator utt_it;
     for (utt_it = cluster->utt_ids.begin();
          utt_it != cluster->utt_ids.end(); ++utt_it)
@@ -126,24 +118,12 @@ void AgglomerativeClusterer::Initialize() {
   for (int32 i = 0; i < nclusters_; i++) {
     std::vector<int32> ids;
     ids.push_back(i);
-    AHCCluster* c = new AHCCluster(++ct_, -1, -1, ids);
+    AhcCluster* c = new AhcCluster(++ct_, -1, -1, ids);
     clusters_map_[ct_] = c;
     active_clusters_.insert(ct_);
 
     for (int32 j = i+1; j < nclusters_; j++) {
-      std::string utts_key;
-      if (uttlist_[i] < uttlist_[j])
-        utts_key = uttlist_[i]+uttlist_[j];
-      else
-        utts_key = uttlist_[j]+uttlist_[i];
-      BaseFloat score;
-      std::unordered_map<std::string, BaseFloat>::const_iterator it =
-          score_map_.find(utts_key);
-      if (it == score_map_.end())
-        score = max_dist_;
-      else
-        score = it->second;
-
+      BaseFloat score = scores_(i,j);
       cluster_score_map_[std::make_pair(i+1, j+1)] = score;
       if (score <= thresh_)
         queue_.push(std::make_pair(score,
@@ -154,8 +134,8 @@ void AgglomerativeClusterer::Initialize() {
 }
 
 void AgglomerativeClusterer::MergeClusters(int32 i, int32 j) {
-  AHCCluster* clust1 = clusters_map_[i];
-  AHCCluster* clust2 = clusters_map_[j];
+  AhcCluster* clust1 = clusters_map_[i];
+  AhcCluster* clust2 = clusters_map_[j];
   clust1->id = ++ct_;
   clust1->parent1 = i;
   clust1->parent2 = j;
@@ -181,15 +161,12 @@ void AgglomerativeClusterer::MergeClusters(int32 i, int32 j) {
 }
 
 void AgglomerativeClusterBottomUp(
-    const std::vector<std::string> &uttlist,
-    const std::unordered_map<std::string, BaseFloat> &score_map,
-    BaseFloat max_dist,
+    const Matrix<BaseFloat> &scores,
     BaseFloat thresh,
     int32 min_clust,
     std::vector<int32> *assignments_out) {
   KALDI_ASSERT(thresh >= 0.0 && min_clust >= 0);
-  AgglomerativeClusterer ac(uttlist, score_map, max_dist, thresh,
-                            min_clust, assignments_out);
+  AgglomerativeClusterer ac(scores, thresh, min_clust, assignments_out);
   ac.Cluster();
 }
 

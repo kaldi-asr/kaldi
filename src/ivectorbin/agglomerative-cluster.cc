@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
       "Usage: agglomerative-cluster [options] <scores-rspecifier> "
       "<spk2utt-rspecifier> <labels-wspecifier>\n"
       "e.g.: \n"
-      " agglomerative-cluster ark:scores ark:spk2utt \n"
+      " agglomerative-cluster ark:scores.ark ark:spk2utt \n"
       "   ark,t:labels.txt\n";
 
     ParseOptions po(usage);
@@ -67,45 +67,22 @@ int main(int argc, char *argv[]) {
       spk2utt_rspecifier = po.GetArg(2),
       label_wspecifier = po.GetArg(3);
 
-    Input si(scores_rspecifier);
-    SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
+    SequentialBaseFloatMatrixReader scores_reader(scores_rspecifier);
+    RandomAccessTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
     RandomAccessInt32Reader spk2num_reader(spk2num_rspecifier);
     Int32Writer label_writer(label_wspecifier);
 
-    std::unordered_map<std::string, BaseFloat> score_map;
-    std::string line;
-    while (std::getline(si.Stream(), line)) {
-      std::vector<std::string> split_line;
-      SplitStringToVector(line, " ", true, &split_line);
-      BaseFloat score;
-      if (split_line.size() != 3) {
-        KALDI_ERR << "Invalid input line (must have three fields): "
-                  << line;
-      }
-      if (!ConvertStringToReal(split_line[2], &score)) {
-        KALDI_ERR << "Invalid input line (third field must be float): "
-                  << line;
-      }
-      if (split_line[0] < split_line[1])
-        score_map[split_line[0]+split_line[1]] = score;
-      else
-        score_map[split_line[1]+split_line[0]] = score;
-    }
-    if (score_map.empty())
-      KALDI_WARN << "No scores were read. This is probably bad.";
-
-    for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
-      std::string spk = spk2utt_reader.Key();
-      std::vector<std::string> uttlist = spk2utt_reader.Value();
+    for (; !scores_reader.Done(); scores_reader.Next()) {
+      std::string spk = scores_reader.Key();
+      const Matrix<BaseFloat> &scores = scores_reader.Value();
+      std::vector<std::string> uttlist = spk2utt_reader.Value(spk);
       std::vector<int32> spk_ids;
-
       if (spk2num_rspecifier.size()) {
         int32 num_speakers = spk2num_reader.Value(spk);
-        AgglomerativeClusterBottomUp(uttlist, score_map, max_dist,
+        AgglomerativeClusterBottomUp(scores,
           std::numeric_limits<BaseFloat>::max(), num_speakers, &spk_ids);
       } else {
-        AgglomerativeClusterBottomUp(uttlist, score_map, max_dist,
-          threshold, 1, &spk_ids);
+        AgglomerativeClusterBottomUp(scores, threshold, 1, &spk_ids);
       }
       for (int32 i = 0; i < spk_ids.size(); i++)
         label_writer.Write(uttlist[i], spk_ids[i]);

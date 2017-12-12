@@ -147,11 +147,11 @@ diarization/compute_plda_calibration.sh --cmd "$train_cmd --mem 4G" \
 # Cluster the PLDA scores using agglomerative hierarchical clustering,
 # using the thresholds discovered in the previous step.
 diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
-  --threshold `cat exp/ivectors_callhome2/plda_scores/threshold.txt` \
+  --nj 20 --threshold `cat exp/ivectors_callhome2/plda_scores/threshold.txt` \
   exp/ivectors_callhome1/plda_scores exp/ivectors_callhome1/plda_scores
 
 diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
-  --threshold `cat exp/ivectors_callhome1/plda_scores/threshold.txt` \
+  --nj 20 --threshold `cat exp/ivectors_callhome1/plda_scores/threshold.txt` \
   exp/ivectors_callhome2/plda_scores exp/ivectors_callhome2/plda_scores
 
 # Result using using unsupervised calibration

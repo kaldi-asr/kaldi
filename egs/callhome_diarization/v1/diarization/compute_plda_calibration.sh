@@ -4,7 +4,10 @@
 #            2017  Matthew Maciejewski
 # Apache 2.0.
 
-# TODO This script computes the stopping threshold used in clustering.
+# This script computes the stopping threshold used in clustering. This is done
+# by using k-means clustering with a k of 2 on the PLDA scores for each
+# recording. The final threshold is the average of the midpoints between the
+# means of the two clusters.
 
 # Begin configuration section.
 cmd="run.pl"
@@ -61,9 +64,9 @@ if [ $stage -le 0 ]; then
   echo "$0: Computing calibration thresholds"
   $cmd JOB=1:$nj $dir/log/compute_calibration.JOB.log \
     ivector-plda-scoring-dense --target-energy=$target_energy $pldadir/plda \
-      ark:$sdata/JOB/spk2utt "$feats" - \
+      ark:$sdata/JOB/spk2utt "$feats" ark:- \
       \| compute-calibration --spk2utt-rspecifier=ark:$sdata/JOB/spk2utt \
-      - ark,t:$dir/threshold.JOB.txt || exit 1;
+      ark:- ark,t:$dir/threshold.JOB.txt || exit 1;
 fi
 
 if [ $stage -le 1 ]; then
