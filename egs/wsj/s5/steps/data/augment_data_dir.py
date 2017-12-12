@@ -95,8 +95,7 @@ def AugmentWav(utt, wav, dur, fg_snr_opts, bg_snr_opts, fg_noise_utts, \
     if len(fg_noise_utts) > 0:
         while tot_noise_dur < dur:
             noise_utt = random.choice(fg_noise_utts)
-            noise = " \"" + noise_wavs[noise_utt] + "\""
-            noise = noise_wavs[noise_utt] 
+            noise = noise_wavs[noise_utt]
             snr = random.choice(fg_snr_opts)
             snrs.append(snr)
             noise_dur = noise2dur[noise_utt]
