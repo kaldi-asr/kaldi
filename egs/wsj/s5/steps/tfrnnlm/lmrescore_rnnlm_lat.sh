@@ -16,8 +16,7 @@ max_ngram_order=4 # Approximate the lattice-rescoring by limiting the max-ngram-
                   # the same ngram history and this prevents the lattice from 
                   # exploding exponentially. Details of the n-gram approximation
                   # method are described in section 2.3 of the paper
-                  # http://www.cs.jhu.edu/~hxu/tf.pdf
-inv_acwt=10
+                  # http://www.danielpovey.com/files/2018_icassp_lattice_pruning.pdf
 weight=0.5  # Interpolation weight for RNNLM.
 # End configuration section.
 
@@ -31,8 +30,8 @@ if [ $# != 5 ]; then
    echo ""
    echo "Usage: $0 [options] <old-lang-dir> <rnnlm-dir> \\"
    echo "                   <data-dir> <input-decode-dir> <output-decode-dir>"
-   echo " e.g.: $0 ./rnnlm data/lang_tg data/test \\"
-   echo "                   exp/tri3/test_tg exp/tri3/test_rnnlm"
+   echo " e.g.: $0 data/lang_tg data/tensorflow_lstm data/test \\"
+   echo "                   exp/tri3/test_tg exp/tri3/test_tfrnnlm"
    echo "options: [--cmd (run.pl|queue.pl [queue opts])]"
    exit 1;
 fi
@@ -53,21 +52,19 @@ elif [ ! -f $oldlm ]; then
     exit 1;
 fi
 
-[ ! -f $oldlm ] && echo "$0: Missing file $oldlm" && exit 1;
-[ ! -f $rnnlm_dir/rnnlm ] && [ ! -d $rnnlm_dir/rnnlm ] && echo "$0: Missing file $rnnlm_dir/rnnlm" && exit 1;
-[ ! -f $rnnlm_dir/unk.probs ] &&\
-  echo "$0: Missing file $rnnlm_dir/unk.probs" && exit 1;
-[ ! -f $oldlang/words.txt ] &&\
-  echo "$0: Missing file $oldlang/words.txt" && exit 1;
-! ls $indir/lat.*.gz >/dev/null &&\
-  echo "$0: No lattices input directory $indir" && exit 1;
+echo "$0: using $oldlm as old LM"
+
+[ ! -d $rnnlm_dir/rnnlm ] && echo "$0: Missing tf model folder $rnnlm_dir/rnnlm" && exit 1;
+
+for f in $rnnlm_dir/unk.probs $oldlang/words.txt $indir/lat.1.gz; do
+  [ ! -f $f ] && echo "$0: Missing file $f" && exit 1
+done
+
 awk -v n=$0 -v w=$weight 'BEGIN {if (w < 0 || w > 1) {
   print n": Interpolation weight should be in the range of [0, 1]"; exit 1;}}' \
   || exit 1;
 
 oldlm_command="fstproject --project_output=true $oldlm |"
-
-acwt=`perl -e "print (1.0/$inv_acwt);"`
 
 mkdir -p $outdir/log
 nj=`cat $indir/num_jobs` || exit 1;
@@ -92,11 +89,11 @@ else
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 fi
 if ! $skip_scoring ; then
-  err_msg="Not scoring because local/score.sh does not exist or not executable."
+  err_msg="$0: Not scoring because local/score.sh does not exist or not executable."
   [ ! -x local/score.sh ] && echo $err_msg && exit 1;
   local/score.sh --cmd "$cmd" $data $oldlang $outdir
 else
-  echo "Not scoring because requested so..."
+  echo "$0: Not scoring because --skip-scoring was specified."
 fi
 
 exit 0;

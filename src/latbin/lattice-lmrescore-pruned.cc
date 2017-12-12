@@ -36,7 +36,6 @@ int main(int argc, char *argv[]) {
     using fst::VectorFst;
     using fst::StdArc;
     using fst::ReadFstKaldi;
-    using std::unique_ptr;
 
     const char *usage =
         "This program can be used to subtract scores from one language model and\n"

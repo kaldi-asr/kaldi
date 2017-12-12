@@ -81,6 +81,8 @@ template <class Arc>
 void ReadFstKaldi(std::istream &is, bool binary,
                   VectorFst<Arc> *fst);
 
+// Read an FST file for LM (G.fst) and make it an acceptor,
+// and make sure it is sorted on labels
 fst::VectorFst<fst::StdArc> *ReadAndPrepareLmFst(std::string rxfilename);
 
 // This is a Holder class with T = VectorFst<Arc>, that meets the requirements

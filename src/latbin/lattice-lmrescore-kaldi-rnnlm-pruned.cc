@@ -38,7 +38,6 @@ int main(int argc, char *argv[]) {
     using fst::VectorFst;
     using fst::StdArc;
     using fst::ReadFstKaldi;
-    using std::unique_ptr;
 
     const char *usage =
         "Rescores lattice with kaldi-rnnlm. This script is called from \n"
@@ -52,6 +51,10 @@ int main(int argc, char *argv[]) {
         " e.g.: lattice-lmrescore-kaldi-rnnlm-pruned --lm-scale=-1.0 fst_words.txt \\\n"
         "              --bos-symbol=1 --eos-symbol=2 \\\n"
         "              data/lang_test/G.fst word_embedding.mat \\\n"
+        "              final.raw ark:in.lats ark:out.lats\n\n"
+        "       lattice-lmrescore-kaldi-rnnlm-pruned --lm-scale=-1.0 fst_words.txt \\\n"
+        "              --bos-symbol=1 --eos-symbol=2 \\\n"
+        "              data/lang_test_fg/G.carpa word_embedding.mat \\\n"
         "              final.raw ark:in.lats ark:out.lats\n";
 
     ParseOptions po(usage);

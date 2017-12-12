@@ -99,7 +99,7 @@ if [ $stage -le 4 ] && $run_rescore; then
   LM=sw1_fsh_fg # using the 4-gram const arpa file as old lm
 #  LM=sw1_tg # if using the original 3-gram G.fst as old lm
   pruned=
-  if $pruned_rescoring; then
+  if $pruned_rescore; then
     pruned=_pruned
   fi
   for decode_set in eval2000; do

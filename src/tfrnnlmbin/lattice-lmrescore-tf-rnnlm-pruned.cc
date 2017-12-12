@@ -37,7 +37,6 @@ int main(int argc, char *argv[]) {
     using fst::VectorFst;
     using fst::StdArc;
     using fst::ReadFstKaldi;
-    using std::unique_ptr;
 
     const char *usage =
         "Rescores lattice with rnnlm that is trained with TensorFlow.\n"
