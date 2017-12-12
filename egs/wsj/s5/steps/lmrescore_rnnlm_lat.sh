@@ -11,8 +11,8 @@
 cmd=run.pl
 skip_scoring=false
 max_ngram_order=4
-inv_acwt=12
-weight=1.0  # Interpolation weight for RNNLM.
+acwt=0.1
+weight=0.5  # Interpolation weight for RNNLM.
 rnnlm_ver=
 # End configuration section.
 
@@ -76,8 +76,6 @@ awk -v n=$0 -v w=$weight 'BEGIN {if (w < 0 || w > 1) {
 
 oldlm_command="fstproject --project_output=true $oldlm |"
 
-acwt=`perl -e "print (1.0/$inv_acwt);"`
-
 mkdir -p $outdir/log
 nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
@@ -105,7 +103,7 @@ if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && echo $err_msg && exit 1;
   local/score.sh --cmd "$cmd" $data $oldlang $outdir
 else
-  echo "Not scoring because requested so..."
+  echo "$0: Not scoring because --skip-scoring was specified."
 fi
 
 exit 0;

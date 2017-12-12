@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Rescores lattice with kaldi-rnnlm. This script is called from \n"
         "scripts/rnnlm/lmrescore_pruned.sh. An example for rescoring \n"
-        "lattices is at egs/swbd/s5/local/rnnlm/run_rescoring.sh \n"
+        "lattices is at egs/swbd/s5c/local/rnnlm/run_lstm.sh \n"
         "\n"
         "Usage: lattice-lmrescore-kaldi-rnnlm-pruned [options] \\\n"
         "             <old-lm-rxfilename> <embedding-file> \\\n"

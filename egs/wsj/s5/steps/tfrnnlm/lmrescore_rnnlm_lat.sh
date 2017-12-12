@@ -7,6 +7,7 @@
 # This script rescores lattices with RNNLM trained with TensorFlow.
 # A faster and more accurate version of the algorithm is at
 # steps/tfrnnlm/lmrescore_rnnlm_lat_pruned.sh which is prefered
+# One example recipe of this script is at egs/ami/s5/local/tfrnnlm/run_lstm_fast.sh
 
 # Begin configuration section.
 cmd=run.pl

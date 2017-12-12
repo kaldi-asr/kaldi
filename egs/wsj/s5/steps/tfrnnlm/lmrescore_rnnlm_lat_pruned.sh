@@ -10,6 +10,7 @@
 # which uses the exact same interface
 # The details of the pruning algorithm is described in
 # http://www.danielpovey.com/files/2018_icassp_lattice_pruning.pdf
+# One example recipe of this script is at egs/ami/s5/local/tfrnnlm/run_lstm_fast.sh
 
 # Begin configuration section.
 cmd=run.pl

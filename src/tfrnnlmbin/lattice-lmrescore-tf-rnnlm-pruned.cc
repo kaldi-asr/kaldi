@@ -46,10 +46,10 @@ int main(int argc, char *argv[]) {
         "Usage: lattice-lmrescore-tf-rnnlm-pruned [options] [unk-file] \\\n"
         "             <old-lm> <fst-wordlist> <rnnlm-wordlist> \\\n"
         "             <rnnlm-rxfilename> <lattice-rspecifier> <lattice-wspecifier>\n"
-        " e.g.: lattice-lmrescore-tf-rnnlm-pruned --lm-scale=0.5 unkcounts.txt \\\n"
+        " e.g.: lattice-lmrescore-tf-rnnlm-pruned --lm-scale=0.5 data/tensorflow_lstm/unkcounts.txt \\\n"
         "              data/test/G.fst data/lang/words.txt data/tensorflow_lstm/rnnwords.txt \\\n"
         "              data/tensorflow_lstm/rnnlm ark:in.lats ark:out.lats\n\n"
-        " e.g.: lattice-lmrescore-tf-rnnlm-pruned --lm-scale=0.5 unkcounts.txt \\\n"
+        " e.g.: lattice-lmrescore-tf-rnnlm-pruned --lm-scale=0.5 data/tensorflow_lstm/unkcounts.txt \\\n"
         "              data/test_fg/G.carpa data/lang/words.txt data/tensorflow_lstm/rnnwords.txt \\\n"
         "              data/tensorflow_lstm/rnnlm ark:in.lats ark:out.lats\n";
 
