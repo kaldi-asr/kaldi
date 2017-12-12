@@ -96,12 +96,12 @@ $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     "ark:gunzip -c $indir/lat.JOB.gz|" "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 
 if ! $skip_scoring ; then
-  err_msg="Not scoring because local/score.sh does not exist or not executable."
+  err_msg="$0: Not scoring because local/score.sh does not exist or not executable."
   [ ! -x local/score.sh ] && echo $err_msg && exit 1;
   echo local/score.sh --cmd "$cmd" $data $oldlang $outdir
   local/score.sh --cmd "$cmd" $data $oldlang $outdir
 else
-  echo "Not scoring because requested so..."
+  echo "$0: Not scoring because --skip-scoring was specified."
 fi
 
 exit 0;

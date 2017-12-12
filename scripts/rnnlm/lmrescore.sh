@@ -112,11 +112,11 @@ else
 fi
 
 if ! $skip_scoring ; then
-  err_msg="Not scoring because local/score.sh does not exist or not executable."
+  err_msg="$0: Not scoring because local/score.sh does not exist or not executable."
   [ ! -x local/score.sh ] && echo $err_msg && exit 1;
   local/score.sh --cmd "$cmd" $data $oldlang $outdir
 else
-  echo "Not scoring because requested so..."
+  echo "$0: Not scoring because --skip-scoring was specified."
 fi
 
 exit 0;
