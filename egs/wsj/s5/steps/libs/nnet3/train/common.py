@@ -852,6 +852,16 @@ class CommonParser(object):
                                  the final model combination stage.  These
                                  models will themselves be averages of
                                  iteration-number ranges""")
+        self.parser.add_argument("--trainer.optimization.max-objective-evaluations",
+                                 "--trainer.max-objective-evaluations",
+                                 type=int, dest='max_objective_evaluations',
+                                 default=30,
+                                 help="""The maximum number of objective
+                                 evaluations in order to figure out the
+                                 best number of models to combine. It helps to
+                                 speedup if the number of models provided to the
+                                 model combination binary is quite large (e.g.
+                                 several hundred).""")
         self.parser.add_argument("--trainer.optimization.do-final-combination",
                                  dest='do_final_combination', type=str,
                                  action=common_lib.StrToBoolAction,
@@ -863,7 +873,7 @@ class CommonParser(object):
                                  type=float, dest='combine_sum_to_one_penalty', default=0.0,
                                  help="""If > 0, activates 'soft' enforcement of the
                                  sum-to-one penalty in combination (may be helpful
-                                 if using dropout).  E.g. 1.0e-03.""")
+                                 if using dropout).  E.g. 1.0e-03. It is deprecated.""")
         self.parser.add_argument("--trainer.optimization.momentum", type=float,
                                  dest='momentum', default=0.0,
                                  help="""Momentum used in update computation.

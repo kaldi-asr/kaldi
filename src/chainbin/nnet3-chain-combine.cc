@@ -111,11 +111,11 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("max-objective-evaluations", &max_objective_evaluations, "Max "
-                "number of objective evaluations in order to figure out the "
-                "best number of models to combine. It helps to speedup if "
-                "the number of models provided to this binary is quite large "
-                "(e.g. several hundred)."); 
+    po.Register("max-objective-evaluations", &max_objective_evaluations, "The "
+                "maximum number of objective evaluations in order to figure "
+                "out the best number of models to combine. It helps to speedup "
+                "if the number of models provided to this binary is quite "
+                "large (e.g. several hundred)."); 
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Register("batchnorm-test-mode", &batchnorm_test_mode,
@@ -184,6 +184,8 @@ int main(int argc, char *argv[]) {
       ReadKaldiObject(this_nnet_rxfilename, &nnet);
       // updates the moving average
       UpdateNnetMovingAverage(n + 1, nnet, &moving_average_nnet);
+      // evaluates the objective everytime after adding num_to_add model or
+      // all the models to the moving average.
       if ((n - 1) % num_to_add == num_to_add - 1 || n == num_nnets - 1) {
         double objf = ComputeObjf(batchnorm_test_mode, dropout_test_mode,
             egs, moving_average_nnet, chain_config, den_fst, &prob_computer);
