@@ -1,7 +1,7 @@
 // tensorflow-rnnlm.cc
 
 // Copyright (C) 2017 Intellisist, Inc. (Author: Hainan Xu)
-//               2017 Dongji Gao
+//               2017 Dongji Gao, Hainan Xu
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -237,10 +237,6 @@ void KaldiTfRnnlmWrapper::GetLogProbParallel(std::vector<int32> word_vector,
       {"Train/Model/test_cell_in", state_to_cell_tensor},
     };
 
-//    KALDI_LOG << word_tensor.DebugString();
-//    KALDI_LOG << state_to_context_tensor.DebugString();
-//    KALDI_LOG << state_to_cell_tensor.DebugString();
-
     // The session will initialize the outputs
     // Run the sessin, evaluating our "c" operation from the graph.
     Status status = session_->Run(inputs,
@@ -270,17 +266,10 @@ void KaldiTfRnnlmWrapper::GetLogProbParallel(std::vector<int32> word_vector,
   int32 word;
   float ans, logprob;
 
-//  KALDI_LOG << "here " << outputs[0].DebugString();
-
   for (int i = 0; i < word_vector.size(); ++i) {
 
     logprob = outputs[0].vec<float>()(i);
     word = word_vector[i];
-
-//    if (word == 75) {
-//      std::cout << state_to_cell_tensor.DebugString() << std::endl;
-//      std::cout << word_tensor.DebugString() << std::endl;
-//    }
 
     if (word != oos_) {
       ans = logprob;
@@ -292,11 +281,8 @@ void KaldiTfRnnlmWrapper::GetLogProbParallel(std::vector<int32> word_vector,
       } 
     }
 
-//    std::cout << word <<  " ans is " << ans << std::endl;   
     logprob_vector->push_back(ans);
   }
-//  std::cout << std::endl;
-
 } // End of GetLogProbParallel
 
 BaseFloat KaldiTfRnnlmWrapper::GetLogProb(int32 word,
@@ -356,8 +342,6 @@ BaseFloat KaldiTfRnnlmWrapper::GetLogProb(int32 word,
       ans = outputs[0].scalar<float>()() + unk_costs_[fst_word];
     }
   }
-
-//    std::cout << word <<  " ans is " << ans << std::endl;   
   return ans;
 }
 
@@ -399,35 +383,6 @@ TfRnnlmDeterministicFst::~TfRnnlmDeterministicFst() {
     delete state_to_cell_[i];
   }
 }
-
-//void TfRnnlmDeterministicFst::StackTensor(const std::vector<tensorflow::Input> &input_tensor_vector,
-//                                          const tensorflow::Scope &scope,
-//                                          const tensorflow::ClientSession &session,
-//                                          Tensor *output_tensor) {
-//  tensorflow::InputList inputlist = tensorflow::InputList(input_tensor_vector);
-//  auto stack_op = tensorflow::ops::Stack(scope, inputlist);
-//
-//  std::vector<Tensor> stack_output_vector;
-//
-//  Status status;
-//  status = session.Run({stack_op}, &stack_output_vector);
-//  if (!status.ok()) {KALDI_ERR << status.ToString();}
-//  *output_tensor = stack_output_vector[0];
-//
-//}
-//
-//void TfRnnlmDeterministicFst::UnstackTensor(int size,
-//                                            const Tensor &input_tensor,
-//                                            const tensorflow::Scope &scope,
-//                                            const tensorflow::ClientSession &session,
-//                                            std::vector<Tensor> *output_tensor_vector) {
-//    tensorflow::Input input = tensorflow::Input(input_tensor);
-//    auto unstack_op = tensorflow::ops::Unstack(scope, input_tensor, size).output; 
-//    
-//    Status status;
-//    status = session.Run({unstack_op}, output_tensor_vector);
-//    if (!status.ok()) {KALDI_ERR << status.ToString();}
-//}
 
 fst::StdArc::Weight TfRnnlmDeterministicFst::Final(StateId s) {
   // At this point, we should have created the state.
