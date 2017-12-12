@@ -1,16 +1,4 @@
 #!/bin/bash
-
-# Kaldi ASR baseline for the CHiME-4 Challenge (6ch track: 6 channel track)
-#
-# Copyright 2016 University of Sheffield (Jon Barker, Ricard Marxer)
-#                Inria (Emmanuel Vincent)
-#                Mitsubishi Electric Research Labs (Shinji Watanabe)
-#           2017 JHU CLSP (Szu-Jui Chen)
-#  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
-
-. ./path.sh
-. ./cmd.sh
-#####Baseline settings#####
 # Usage: 
 # 1. For using original baseline, execute './run.sh --baseline chime4_official'. 
 # We don't provide the function to train original baseline models anymore. Instead, we provided the
@@ -21,7 +9,7 @@
 # Then execute './run.sh --baseline advanced' for your experiments. 
 
 # Config:
-stage=6 # resume training with --stage=N
+stage=0 # resume training with --stage=N
 baseline=advanced
 flatstart=false
 enhancement=beamformit_5mics #### or your method 
@@ -96,24 +84,22 @@ if [ $stage -le 1 ]; then
         local/run_beamform_6ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data/data/audio/16kHz/isolated_6ch_track $enhancement_data
         ;;
     blstm_gev)
-        local/run_beamform_blstm_gev_6ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data/data/audio/16kHz/isolated_6ch_track $enhancement_data
-        ;;
-    blstm_mask)
-        local/run_beamform_blstm_mask_track.sh --cmd "$train_cmd" --nj 20 $chime4_data/data/audio/16kHz/isolated_6ch_track $enhancement_data
+        local/run_beamform_blstm_gev_6ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data $enhancement_data 
         ;;
     *)
-        echo "Usage: --enhancement blstm_gev, --enhancement blstm_mask, or --enhancement beamformit_5mics" 
+        echo "Usage: --enhancement blstm_gev, or --enhancement beamformit_5mics" 
         exit 1;
    esac
 fi
 
 # Compute PESQ, STOI, eSTOI scores
-if [ $stage -le 6 ]; then
-  wget http://bass-db.gforge.inria.fr/bss_eval/bss_eval_sources.m -O local/bss_eval_sources.m
-  wget https://github.com/JacobD10/SoundZone_Tools/raw/master/stoi.m -O local/stoi.m
-  wget https://github.com/JacobD10/SoundZone_Tools/raw/master/estoi.m -O local/estoi.m
-  local/compute_PESQ.pl $enhancement $enhancement_data $chime4_data
-  local/compute_stoi_estoi_sdr.pl $enhancement $enhancement_data $chime4_data
+if [ $stage -le 2 ]; then
+  if [ !-f local/bss_eval_sources.m ] || [ !-f local/stoi.m ] || [ !-f local/estoi.m ] || [ !-f local/PESQ ]; then
+    local/download_se_eval_tool.sh
+  fi
+  chime4_rir_data=local/nn-gev-master/data/audio/16kHz/isolated_ext
+  local/compute_PESQ.sh $enhancement $enhancement_data $chime4_rir_data
+  local/compute_stoi_estoi_sdr.sh $enhancement $enhancement_data $chime4_rir_data
 fi
 
 # GMM based ASR experiment without "retraining"
