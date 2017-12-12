@@ -1,15 +1,18 @@
 #!/bin/bash
 
-# resnet1c is as resnet1b but adding "num-minibatches-history=40.0" to
-# all layers to increase the history size of natural gradient
-# (improves optimization), and using the "egs2" egs with more,
-# smaller archives.  Also changing the proportional-shrink option
-# to compensate for the change in archive size (it should vary
-# proportionally to the number of egs in the archive).
+# 1d is like 1c except it uses l2-regularize instead of proportional-shrink
 
-# improves 98.31 -> 98.45.
+# local/nnet3/compare.sh exp/resnet1b5 exp/resnet1d
+# local/nnet3/compare.sh exp/resnet1c exp/resnet1d
+# System                  resnet1c resnet1d
+# final test accuracy:     0.983981    0.984557
+# final train accuracy:       0.9938      0.9948
+# final test objf:        -0.0726047  -0.0730117
+# final train objf:       -0.0348053  -0.0351193
+# num-parameters:           1322730     1322730
 
-# exp/resnet1c: num-iters=180 nj=2..4 num-params=1.3M dim=96->10 combine=-0.04->-0.03 loglike:train/valid[119,179,final]=(-0.047,-0.041,-0.034/-0.083,-0.075,-0.071) accuracy:train/valid[119,179,final]=(0.9914,0.9922,0.9944/0.9803,0.9826,0.9845)
+# steps/info/nnet3_dir_info.pl exp/resnet1d
+# exp/resnet1d: num-iters=180 nj=2..4 num-params=1.3M dim=96->10 combine=-0.04->-0.04 loglike:train/valid[119,179,final]=(-0.050,-0.039,-0.035/-0.086,-0.073,-0.073) accuracy:train/valid[119,179,final]=(0.9912,0.9918,0.9948/0.9795,0.9834,0.9846)
 
 
 
@@ -23,7 +26,7 @@ stage=0
 train_stage=-10
 srand=0
 reporting_email=
-affix=1b5
+affix=1b5_l2_v1
 
 
 # End configuration section.
@@ -83,7 +86,7 @@ if [ $stage -le 1 ]; then
   nf3=256
   nb3=128
 
-  a="num-minibatches-history=40.0"
+  a="num-minibatches-history=40.0 l2-regularize=0.001"
   common="$a required-time-offsets=0 height-offsets=-1,0,1"
   res_opts="$a bypass-source=batchnorm"
 
@@ -101,7 +104,7 @@ if [ $stage -le 1 ]; then
   res-block name=res9 num-filters=$nf3 num-bottleneck-filters=$nb3 height=8 time-period=4 $res_opts
   res-block name=res10 num-filters=$nf3 num-bottleneck-filters=$nb3 height=8 time-period=4 $res_opts
   channel-average-layer name=channel-average input=Append(2,6,10,14,18,22,24,28) dim=$nf3
-  output-layer name=output learning-rate-factor=0.1 dim=$num_targets
+  output-layer name=output learning-rate-factor=0.1 dim=$num_targets l2-regularize=0.001
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -121,7 +124,6 @@ if [ $stage -le 2 ]; then
     --trainer.optimization.initial-effective-lrate=0.003 \
     --trainer.optimization.final-effective-lrate=0.0003 \
     --trainer.optimization.minibatch-size=256,128,64 \
-    --trainer.optimization.proportional-shrink=18.0 \
     --trainer.shuffle-buffer-size=2000 \
     --egs.dir="$egs" \
     --use-gpu=true \

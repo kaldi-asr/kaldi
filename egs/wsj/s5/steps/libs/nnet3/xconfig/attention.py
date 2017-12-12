@@ -28,6 +28,7 @@ class XconfigAttentionLayer(XconfigLayerBase):
         # combinations you want to use, to this list.
         assert first_token in ['attention-renorm-layer',
                                'attention-relu-renorm-layer',
+                               'attention-relu-batchnorm-layer',
                                'relu-renorm-attention-layer']
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
@@ -41,6 +42,7 @@ class XconfigAttentionLayer(XconfigLayerBase):
                         'target-rms' : 1.0,
                         'learning-rate-factor' : 1.0,
                         'ng-affine-options' : '',
+                        'l2-regularize': 0.0,
                         'num-left-inputs-required': -1,
                         'num-right-inputs-required': -1,
                         'output-context': True,
@@ -138,9 +140,12 @@ class XconfigAttentionLayer(XconfigLayerBase):
         target_rms = self.config['target-rms']
         max_change = self.config['max-change']
         ng_affine_options = self.config['ng-affine-options']
+        l2_regularize = self.config['l2-regularize']
         learning_rate_factor=self.config['learning-rate-factor']
         learning_rate_option=('learning-rate-factor={0}'.format(learning_rate_factor)
                               if learning_rate_factor != 1.0 else '')
+        l2_regularize_option = ('l2-regularize={0} '.format(l2_regularize)
+                                if l2_regularize != 0.0 else '')
 
         configs = []
         # First the affine node.
@@ -149,10 +154,10 @@ class XconfigAttentionLayer(XconfigLayerBase):
                 ' input-dim={1}'
                 ' output-dim={2}'
                 ' max-change={3}'
-                ' {4} {5} '
+                ' {4} {5} {6} '
                 ''.format(self.name, input_dim, dim,
                           max_change, ng_affine_options,
-                          learning_rate_option))
+                          learning_rate_option, l2_regularize_option))
         configs.append(line)
 
         line = ('component-node name={0}.affine'
