@@ -30,22 +30,37 @@ NnetComputer::NnetComputer(const NnetComputeOptions &options,
                            const Nnet &nnet,
                            Nnet *nnet_to_update):
     options_(options), computation_(computation), nnet_(nnet),
-    program_counter_(0), nnet_to_update_(nnet_to_update) {
-  KALDI_ASSERT(computation.indexes_cuda.size() == computation.indexes.size() &&
- computation.indexes_ranges_cuda.size() == computation.indexes_ranges.size() &&
+    program_counter_(0), nnet_to_store_stats_(nnet_to_update),
+    nnet_to_update_(nnet_to_update) {
+  Init();
+}
+
+NnetComputer::NnetComputer(const NnetComputeOptions &options,
+                           const NnetComputation &computation,
+                           Nnet *nnet,
+                           Nnet *nnet_to_update):
+    options_(options), computation_(computation), nnet_(*nnet),
+    program_counter_(0), nnet_to_store_stats_(nnet),
+    nnet_to_update_(nnet_to_update) {
+  Init();
+}
+
+void NnetComputer::Init() {
+  KALDI_ASSERT(computation_.indexes_cuda.size() == computation_.indexes.size() &&
+ computation_.indexes_ranges_cuda.size() == computation_.indexes_ranges.size() &&
                "You must call NnetComputation::ComputeCudaIndexes() before "
                "executing the computation.");
-  matrices_.resize(computation.matrices.size());
+  matrices_.resize(computation_.matrices.size());
   debug_ = (options_.debug || GetVerboseLevel() >= 5);
   if (debug_) {
     ComputationVariables variables;
-    variables.Init(computation);
-    ComputeCommandAttributes(nnet, computation, variables,
+    variables.Init(computation_);
+    ComputeCommandAttributes(nnet_, computation_, variables,
                              &command_attributes_);
     std::string preamble;
-    computation.GetCommandStrings(nnet, &preamble, &command_strings_);
+    computation_.GetCommandStrings(nnet_, &preamble, &command_strings_);
     KALDI_LOG << preamble;
-    computation.GetSubmatrixStrings(nnet, &submatrix_strings_);
+    computation_.GetSubmatrixStrings(nnet_, &submatrix_strings_);
   }
 }
 
@@ -177,6 +192,7 @@ NnetComputer::NnetComputer(const NnetComputer &other):
     nnet_(other.nnet_),
     program_counter_(other.program_counter_),
     pending_commands_(other.pending_commands_),
+    nnet_to_store_stats_(other.nnet_to_store_stats_),
     nnet_to_update_(other.nnet_to_update_),
     debug_(other.debug_),
     command_attributes_(other.command_attributes_),
@@ -226,14 +242,14 @@ void NnetComputer::ExecuteCommand() {
         CuSubMatrix<BaseFloat> output(GetSubMatrix(c.arg4));
         void *memo = component->Propagate(indexes, input, &output);
         if (c.arg6) {  // need to store stats.
-          KALDI_ASSERT(nnet_to_update_ != NULL);
-          Component *upd_component = nnet_to_update_->GetComponent(c.arg1);
+          KALDI_ASSERT(nnet_to_store_stats_ != NULL);
+          Component *stats_component = nnet_to_store_stats_->GetComponent(c.arg1);
           bool was_in_place = (c.arg3 == c.arg4);
           // if propagate was in-place, provide empty matrix and not 'input', as
           // input is no longer valid.
           const CuSubMatrix<BaseFloat> maybe_input(
               GetSubMatrix(was_in_place ? 0 : c.arg3));
-          upd_component->StoreStats(maybe_input, output, memo);
+          stats_component->StoreStats(maybe_input, output, memo);
         }
         SaveMemo(c.arg5, *component, memo);
         break;

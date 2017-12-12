@@ -545,7 +545,6 @@ void BatchNormComponent::Backprop(
     // this becomes "we know that \sum_i y(i) y(i) = n * target-rms^2".
     in_deriv->AddMatDiagVec(1.0, out_value, kNoTrans, temp, 1.0);
     // At this point, in_deriv contains  x'(i) = x_deriv_base(i) + alpha y(i).
-
   } else {
     KALDI_ASSERT(offset_.Dim() == block_dim_);
     // the next call does no work if they point to the same memory.
@@ -867,18 +866,27 @@ void* MemoryNormComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
 
   // From this point, we can assume that the num-cols of 'in' and 'out'
   // equals block_dim_.
-  Memo *ans = NULL;
-  if (!test_mode_)
-    ans = GetMemo(in);
+  Memo *memo = NULL;
+  if (!test_mode_) {
+    memo = GetMemo(in);
+    if (false) { // temporary.
+      MemoryNormComponent *temp = new MemoryNormComponent(*this);
+      temp->StoreStats(in, *out, memo);
+      Memo *new_memo = temp->GetMemo(in);
+      delete memo;
+      memo = new_memo;
+      delete temp;
+    }
+  }
 
-  if (test_mode_ || stats_count_ > 0.0) {
+  if (test_mode_) {
     CuSubVector<BaseFloat> x_mean(data_, 0), scale(data_, 4);
     out->AddVecToRows(-1.0, x_mean);
     out->MulColsVec(scale);
   } else {
-    CuSubVector<BaseFloat> x_sum(memo->data, 0),
+    CuSubVector<BaseFloat> x_mean(memo->data, 5),
         scale(memo->data, 2);
-    out->AddVecToRows(-1.0 / memo->num_frames, x_sum);
+    out->AddVecToRows(-1.0, x_mean);
     out->MulColsVec(scale);
   }
   return memo;
@@ -891,7 +899,7 @@ MemoryNormComponent::Memo* MemoryNormComponent::GetMemo(
   Memo *memo = new Memo;
   int32 num_frames = in.NumRows();
   memo->num_frames = num_frames;
-  memo->data.Resize(5, block_dim_);
+  memo->data.Resize(6, block_dim_);
   CuSubVector<BaseFloat> x_sum(memo->data, 0),
       x_sumsq(memo->data, 1);
   x_sum.AddRowSumMat(1.0, in, 0.0);
@@ -905,6 +913,8 @@ MemoryNormComponent::Memo* MemoryNormComponent::GetMemo(
       // just copy over the scale.  x_deriv and scale_deriv remain zero.
       memo->data.Row(2).CopyFromVec(data_.Row(4));
     }
+    // get 'x_mean'
+    memo->data.Row(5).CopyFromVec(data_.Row(0));
   } else {
     // We should only reach this point on when processing the first
     // minibatch of each training job.
@@ -926,6 +936,11 @@ MemoryNormComponent::Memo* MemoryNormComponent::GetMemo(
     // At this point 'scale' is the variance plus epsilon.
     scale.ApplyPow(-0.5);
     // OK, now 'scale' is the actual scale: the inverse standard deviation.
+
+    // get 'x_mean'
+    CuSubVector<BaseFloat> x_mean(memo->data, 5);
+    x_mean.CopyFromVec(x_sum);
+    x_mean.Scale(1.0 / num_frames);
   }
   return memo;
 }

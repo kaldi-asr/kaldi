@@ -403,7 +403,7 @@ class MemoryNormComponent: public Component {
     // The number of frames (after any reshaping; so in general it will
     // be the original NumRows() of the matrix, times dim_ / block_dim_).
     int32 num_frames;
-    // 'data' is of dimension 5 by block_dim_.
+    // 'data' is of dimension 6 by block_dim_.
     // Row 0, which we'll call 'x_sum', is the sum of the rows of the
     //  input data.
     // Row 1, which we'll call 'x_sumsq', is the sum of the rows of the
@@ -423,6 +423,7 @@ class MemoryNormComponent: public Component {
     //         instead of the possibly-updated values that might exist when
     //         Backprop() is called.  It's actually not clear whether this is
     //         necessary.
+    //  Row 5 ('x_mean') is a copy of the data mean the data wasnormalized with.
     CuMatrix<BaseFloat> data;
 
     // This is set to true if we have the 'indirect' terms in the derivative,

@@ -4895,6 +4895,12 @@ void CompositeComponent::Init(const std::vector<Component*> &components,
   max_rows_process_ = max_rows_process;
 
   for (size_t i = 0; i < components_.size(); i++) {
+    if (components_[i]->Type() == "MemoryNormComponent") {
+      // This is out of concerns about the fact that the stats accumulation
+      // is done in the backprop, not in the forward propagation.
+      KALDI_ERR << "MemoryNormComponent cannot currently exist inside "
+          "CompositeComponent";
+    }
     // make sure all constituent components are simple.
     KALDI_ASSERT(components_[i]->Properties() & kSimpleComponent);
     if (i > 0) {

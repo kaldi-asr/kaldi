@@ -62,15 +62,29 @@ class NnetComputer {
   /// model update or model-derivative computation.
   /// You must call computation.ComputeCudaIndexes()  before calling
   /// this function.
+  ///
+  /// Caution: there is another constructor that takes a pointer for
+  /// 'nnet', be careful not to mix these up.
   NnetComputer(const NnetComputeOptions &options,
                const NnetComputation &computation,
                const Nnet &nnet,
                Nnet *nnet_to_update);
 
-  /// Copy constructor.  May not be used if memos are involved (memos are only
-  /// possible if backprop will take place, and in these situations you won't
-  /// normally be wanting to use the copy constructor anyway; the copy
-  /// constructor is more useful for things like RNNLM lattice rescoring).
+  /// This version of the constructor accepts a pointer to 'nnet' instead
+  /// of a const reference.  The difference is that this version will,
+  /// for storing statistics (the StoreStats() function of class Component),
+  /// use 'nnet' instead of 'nnet_to_update' (if specified).
+  NnetComputer(const NnetComputeOptions &options,
+               const NnetComputation &computation,
+               Nnet *nnet,
+               Nnet *nnet_to_update);
+
+
+  /// Copy constructor.  May not be used if memos are stored with this object
+  /// (which is only a possibility if backprop will take place, and in these
+  /// situations you won't normally be wanting to use the copy constructor
+  /// anyway; the copy constructor is more useful for things like RNNLM lattice
+  /// rescoring).
   NnetComputer(const NnetComputer &other);
 
   /// e.g. AcceptInput ("input", &input_mat), or for derivatives w.r.t. the
@@ -112,9 +126,12 @@ class NnetComputer {
 
 
  private:
+  void Init(); // called from constructors.
+
   const NnetComputeOptions &options_;
   const NnetComputation &computation_;
   const Nnet &nnet_;
+
   int32 program_counter_;  // command index to execute next.
   // To deal with inputs and outputs that are not provided/taken by the user in
   // the same order as listed in the computation, pending_commands_ contains a
@@ -122,6 +139,13 @@ class NnetComputer {
   // executed.
   std::vector<int32> pending_commands_;
 
+  // A pointer to the copy of the nnet which we'll be using for stats
+  // accumulation (the StoreStats() function).  May be NULL or the same
+  // as nnet_ or nnet_to_update_.
+  Nnet *nnet_to_store_stats_;
+  // A pointer to the copy of the nnet which we'll be updating the parameters
+  // of (nnet_to_update in the backprop function).  May be NULL and usually
+  // will not be the same as nnet_.
   Nnet *nnet_to_update_;
   bool debug_;
   // command_attributes_ is only used if debug_=true.

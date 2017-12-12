@@ -87,8 +87,11 @@ void NnetTrainer::Train(const NnetExample &eg) {
 
 void NnetTrainer::TrainInternal(const NnetExample &eg,
                                 const NnetComputation &computation) {
+  // note: because we give the 1st arg (nnet_) as a pointer to the
+  // constructor of 'computer', it will use that copy of the nnet to
+  // store stats.  This is mainly important for memory-norm.
   NnetComputer computer(config_.compute_config, computation,
-                        *nnet_, delta_nnet_);
+                        nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
   computer.Run();
@@ -121,8 +124,11 @@ void NnetTrainer::TrainInternal(const NnetExample &eg,
 void NnetTrainer::TrainInternalBackstitch(const NnetExample &eg,
                                           const NnetComputation &computation,
                                           bool is_backstitch_step1) {
+  // note: because we give the 1st arg (nnet_) as a pointer to the
+  // constructor of 'computer', it will use that copy of the nnet to
+  // store stats.  This is mainly important for memory-norm.
   NnetComputer computer(config_.compute_config, computation,
-                        *nnet_, delta_nnet_);
+                        nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
   computer.Run();
