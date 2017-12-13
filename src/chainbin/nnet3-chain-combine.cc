@@ -28,9 +28,9 @@
 namespace kaldi {
 namespace nnet3 {
 
-// Computes the objective function for the examples in 'egs' given the model in
-// 'nnet'. If either of batchnorm/dropout test modes is true, we make a copy of
-// 'nnet', set test modes on that and evaluate its objective.
+// Computes and returns the objective function for the examples in 'egs' given
+// the model in 'nnet'. If either of batchnorm/dropout test modes is true, we
+// make a copy of 'nnet', set test modes on that and evaluate its objective.
 // Note: the object that prob_computer->nnet_ refers to should be 'nnet'.
 double ComputeObjf(bool batchnorm_test_mode, bool dropout_test_mode,
                    const std::vector<NnetChainExample> &egs, const Nnet &nnet,
