@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
         "being fed into this binary. So we are actually combining last n models.\n"
         "Inputs and outputs are 'raw' nnets.\n"
         "\n"
-        "Usage:  nnet3-combine [options] <nnet-in1> <nnet-in2> ... <nnet-inN> <valid-example-in> <nnet-out>\n"
+        "Usage:  nnet3-combine [options] <nnet-in1> <nnet-in2> ... <nnet-inN> <valid-examples-in> <nnet-out>\n"
         "\n"
         "e.g.:\n"
         " nnet3-combine 1.1.raw 1.2.raw 1.3.raw ark:valid.egs 2.raw\n";
@@ -154,50 +154,47 @@ int main(int argc, char *argv[]) {
 
     // first evaluates the objective using the last model.
     int32 best_num_to_combine = 1;
-    double best_objf = ComputeObjf(batchnorm_test_mode, dropout_test_mode,
-        egs, moving_average_nnet, &prob_computer);
-    KALDI_LOG << "objective function using the last model is " << best_objf;
+    double
+        init_objf = ComputeObjf(batchnorm_test_mode, dropout_test_mode,
+            egs, moving_average_nnet, &prob_computer),
+        best_objf = init_objf;
+    KALDI_LOG << "objective function using the last model is " << init_objf;
 
     int32 num_nnets = po.NumArgs() - 2;
     // then each time before we re-evaluate the objective function, we will add
     // num_to_add models to the moving average.
     int32 num_to_add = (num_nnets + max_objective_evaluations - 1) /
                        max_objective_evaluations;
-    if (num_nnets > 1) {
-      for (int32 n = 1; n < num_nnets; n++) {
-        ReadKaldiObject(po.GetArg(1 + n), &nnet);
-        // updates the moving average
-        UpdateNnetMovingAverage(n + 1, nnet, &moving_average_nnet);
-        // evaluates the objective everytime after adding num_to_add model or
-        // all the models to the moving average.
-        if ((n - 1) % num_to_add == num_to_add - 1 || n == num_nnets - 1) {
-          double objf = ComputeObjf(batchnorm_test_mode, dropout_test_mode,
-              egs, moving_average_nnet, &prob_computer);
-          KALDI_LOG << "Combining last " << n + 1
-                    << " models, objective function is " << objf;
-          if (objf > best_objf) {
-            best_objf = objf;
-            best_nnet = moving_average_nnet;
-            best_num_to_combine = n + 1;
-          }
+    for (int32 n = 1; n < num_nnets; n++) {
+      ReadKaldiObject(po.GetArg(1 + n), &nnet);
+      // updates the moving average
+      UpdateNnetMovingAverage(n + 1, nnet, &moving_average_nnet);
+      // evaluates the objective everytime after adding num_to_add model or
+      // all the models to the moving average.
+      if ((n - 1) % num_to_add == num_to_add - 1 || n == num_nnets - 1) {
+        double objf = ComputeObjf(batchnorm_test_mode, dropout_test_mode,
+            egs, moving_average_nnet, &prob_computer);
+        KALDI_LOG << "Combining last " << n + 1
+                  << " models, objective function is " << objf;
+        if (objf > best_objf) {
+          best_objf = objf;
+          best_nnet = moving_average_nnet;
+          best_num_to_combine = n + 1;
         }
       }
-      KALDI_LOG << "Using the model averaged over last " << best_num_to_combine
-                << " models, objective function is " << best_objf;
+    }
+    KALDI_LOG << "Combining " << best_num_to_combine
+              << " nnets, objective function changed from " << init_objf
+              << " to " << best_objf;
+
+    if (HasBatchnorm(nnet))
+      RecomputeStats(egs, &best_nnet);
 
 #if HAVE_CUDA==1
       CuDevice::Instantiate().PrintProfile();
 #endif
-      if (HasBatchnorm(nnet))
-        RecomputeStats(egs, &best_nnet);
-      WriteKaldiObject(best_nnet, nnet_wxfilename, binary_write);
-    } else {
-      KALDI_LOG << "Copying the single input model directly to the output, "
-                << "without any combination.";
-      if (HasBatchnorm(nnet))
-        RecomputeStats(egs, &nnet);
-      WriteKaldiObject(nnet, nnet_wxfilename, binary_write);
-    }
+
+    WriteKaldiObject(best_nnet, nnet_wxfilename, binary_write);
     KALDI_LOG << "Finished combining neural nets, wrote model to "
               << nnet_wxfilename;
   } catch(const std::exception &e) {

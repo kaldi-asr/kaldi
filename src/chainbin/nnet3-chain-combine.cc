@@ -170,9 +170,11 @@ int main(int argc, char *argv[]) {
 
     // first evaluates the objective using the last model.
     int32 best_num_to_combine = 1;
-    double best_objf = ComputeObjf(batchnorm_test_mode, dropout_test_mode,
-        egs, moving_average_nnet, chain_config, den_fst, &prob_computer);
-    KALDI_LOG << "objective function using the last model is " << best_objf;
+    double
+        init_objf = ComputeObjf(batchnorm_test_mode, dropout_test_mode,
+            egs, moving_average_nnet, chain_config, den_fst, &prob_computer),
+        best_objf = init_objf;
+    KALDI_LOG << "objective function using the last model is " << init_objf;
 
     int32 num_nnets = po.NumArgs() - 3;
     // then each time before we re-evaluate the objective function, we will add
@@ -198,8 +200,9 @@ int main(int argc, char *argv[]) {
         }
       }
     }
-    KALDI_LOG << "Using the model averaged over last " << best_num_to_combine
-              << " models, objective function is " << best_objf;
+    KALDI_LOG << "Combining " << best_num_to_combine
+              << " nnets, objective function changed from " << init_objf
+              << " to " << best_objf;
 
     if (HasBatchnorm(nnet))
       RecomputeStats(egs, chain_config, den_fst, &best_nnet);
