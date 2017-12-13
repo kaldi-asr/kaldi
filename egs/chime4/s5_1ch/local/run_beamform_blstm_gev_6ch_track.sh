@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright 2017 Johns Hopkins University (Author: Aswin Shanmugam Subramanian)
+# Apache 2.0
 
 . ./cmd.sh
 . ./path.sh

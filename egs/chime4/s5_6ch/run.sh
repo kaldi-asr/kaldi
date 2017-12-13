@@ -1,4 +1,17 @@
 #!/bin/bash
+
+# Kaldi ASR baseline for the CHiME-4 Challenge (6ch track: 6 channel track)
+#
+# Copyright 2016 University of Sheffield (Jon Barker, Ricard Marxer)
+#                Inria (Emmanuel Vincent)
+#                Mitsubishi Electric Research Labs (Shinji Watanabe)
+#           2017 JHU CLSP (Szu-Jui Chen)
+#           2017 JHU CLSP (Aswin Shanmugam Subramanian)
+#  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
+
+. ./path.sh
+. ./cmd.sh
+#####Baseline settings#####
 # Usage: 
 # 1. For using original baseline, execute './run.sh --baseline chime4_official'. 
 # We don't provide the function to train original baseline models anymore. Instead, we provided the

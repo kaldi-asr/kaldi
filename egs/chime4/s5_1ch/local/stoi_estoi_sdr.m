@@ -1,3 +1,7 @@
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++% Copyright 2017 Johns Hopkins University (Author: Aswin Shanmugam Subramanian)
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 function stoi_estoi_sdr(nj,enhancement_method,destination_directory,set)
 original_file_list=strcat(destination_directory,'/original_list');
 enhanced_file_list=strcat(destination_directory,'/enhanced_list');
