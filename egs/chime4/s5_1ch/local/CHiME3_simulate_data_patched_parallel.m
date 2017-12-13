@@ -30,12 +30,12 @@ function CHiME3_simulate_data_patched_parallel(official,nj,chime4_dir)
 
 utils_folder = sprintf('%s/tools/utils', chime4_dir);
 addpath(utils_folder);
-addpath('local/nn-gev-master/tools/simulation');
+addpath('local/nn-gev/tools/simulation');
 upath = sprintf('%s/data/audio/16kHz/isolated/', chime4_dir);
 cpath = sprintf('%s/data/audio/16kHz/embedded/', chime4_dir);
 bpath = sprintf('%s/data/audio/16kHz/backgrounds/', chime4_dir);
 apath = sprintf('%s/data/annotations/', chime4_dir);
-upath_ext = 'local/nn-gev-master/data/audio/16kHz/isolated_ext/';
+upath_ext = 'local/nn-gev/data/audio/16kHz/isolated_ext/';
 nchan=6;
 
 % Define hyper-parameters

@@ -26,16 +26,17 @@ set -e
 set -u
 set -o pipefail
 
-if [ !-d local/nn-gev-master ]; then
+miniconda_dir=$HOME/miniconda3/
+if [ ! -d $miniconda_dir ]; then
+  echo "$miniconda_dir does not exist. Please run '../../../tools/extras/install_miniconda.sh' and '../../../tools/extras/install_chainer.sh';" && exit 1;
+fi
+
+if [ !-d local/nn-gev ]; then
     cd local/
-    git clone https://github.com/fgnt/nn-gev.git
+    git clone https://github.com/sas91/nn-gev.git
     cd ../
 fi
 
 mkdir -p $odir
-$cmd $odir/simulation.log matlab -nodisplay -nosplash -r "addpath('local'); CHiME3_simulate_data_patched_parallel(1,$njobs,'$chime4_dir');exit"
-
-case $(hostname -f) in
-  *.clsp.jhu.edu) gpu_id=`free-gpu` ;; # JHU,
-esac
+$cmd $odir/simulation.log matlab -nodisplay -nosplash -r "addpath('local'); CHiME3_simulate_data_patched_parallel(1,$nj,'$sdir');exit"
 $cuda_cmd $odir/beamform.log local/run_nn-gev.sh $sdir $odir
