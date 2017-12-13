@@ -28,26 +28,25 @@
 namespace kaldi {
 namespace nnet3 {
 
-// Computes the objective of the moving average of nnet on egs. If either of
-// batchnorm/dropout test modes is true, we make a copy of the moving average,
-// set test modes on that and evaluate its objective. Note: the object that
-// prob_computer->nnet_ refers to should be moving_average_nnet.
+// Computes the objective function for the examples in 'egs' given the model in
+// 'nnet'. If either of batchnorm/dropout test modes is true, we make a copy of
+// 'nnet', set test modes on that and evaluate its objective.
+// Note: the object that prob_computer->nnet_ refers to should be 'nnet'.
 double ComputeObjf(bool batchnorm_test_mode, bool dropout_test_mode,
-                   const std::vector<NnetChainExample> &egs,
-                   const Nnet &moving_average_nnet,
+                   const std::vector<NnetChainExample> &egs, const Nnet &nnet,
                    const chain::ChainTrainingOptions &chain_config,
                    const fst::StdVectorFst &den_fst,
                    NnetChainComputeProb *prob_computer) {
   if (batchnorm_test_mode || dropout_test_mode) {
-    Nnet moving_average_nnet_copy(moving_average_nnet);
+    Nnet nnet_copy(nnet);
     if (batchnorm_test_mode)
-      SetBatchnormTestMode(true, &moving_average_nnet_copy);
+      SetBatchnormTestMode(true, &nnet_copy);
     if (dropout_test_mode)
-      SetDropoutTestMode(true, &moving_average_nnet_copy);
+      SetDropoutTestMode(true, &nnet_copy);
     NnetComputeProbOptions compute_prob_opts;
     NnetChainComputeProb prob_computer_test(compute_prob_opts, chain_config,
-        den_fst, moving_average_nnet_copy);
-    return ComputeObjf(false, false, egs, moving_average_nnet_copy,
+        den_fst, nnet_copy);
+    return ComputeObjf(false, false, egs, nnet_copy,
                        chain_config, den_fst, &prob_computer_test);
   } else {
     prob_computer->Reset();
