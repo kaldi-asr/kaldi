@@ -400,36 +400,30 @@ class MemoryNormComponent: public Component {
  private:
 
   struct Memo {
-    // The number of frames (after any reshaping; so in general it will
-    // be the original NumRows() of the matrix, times dim_ / block_dim_).
-    int32 num_frames;
-    // 'data' is of dimension 6 by block_dim_.
-    // Row 0, which we'll call 'x_sum', is the sum of the rows of the
-    //  input data.
-    // Row 1, which we'll call 'x_sumsq', is the sum of the rows of the
-    //   elementwise square of the input data matrix.
-    // Row 2,3,4 are 'scale', 'x_deriv', 'scale_deriv', which
-    //         are just copies of the corresponding values in
-    //         MemoryNormComponent::data_ (from the const nnet, the one we're
-    //         training), and which will have been copied from there when this
-    //         object was created.  However if stats_count_ was <= 0 when this
-    //         object was created (first minibatch), then 'scale'
-    //         will be set to the mean and inverse-stddev implied by the stats
-    //         'sum' and 'sumsq', and 'x_deriv' and 'scale_deriv' will be zero.
-    //         This is so that it does something sensible on the very first
-    //         minibatch we train.  The reason why we copy these quantities here
-    //         is because in the backprop phase we feel it would be better to
-    //         use the same values that were used in the forward propagation,
-    //         instead of the possibly-updated values that might exist when
-    //         Backprop() is called.  It's actually not clear whether this is
-    //         necessary.
-    //  Row 5 ('x_mean') is a copy of the data mean the data wasnormalized with.
-    CuMatrix<BaseFloat> data;
+    // 'stats_count' is the same as stats_count_ in the MemoryNormComponent
+    // from whose Propagate() function this memo was generated, plus
+    // the number of frames we're propagating (this is after any reshaping
+    // if block_dim_ != dim_).
+    BaseFloat stats_count;
 
-    // This is set to true if we have the 'indirect' terms in the derivative,
-    // relating to the 'x_deriv' and 'scale_deriv' terms in 'data'.  If false,
-    // we save some computation.
-    bool has_indirect_terms;
+    // 'stats_count' is the same as stats_count_ in the MemoryNormComponent
+    // from whose Propagate() function this memo was generated.  It's mainly
+    // included because the backprop code wants to see if this was nonzero.
+    BaseFloat backward_count;
+
+    // The structure of 'data' is the same as the data_ member of
+    // MemoryNormComponent; it's a matrix of dimension 7 by block_dim_.
+    // It will differ from the data_ member of the component we generated this
+    // from by the addition of some extra data in the 'x_sum' and 'x_sumsq'
+    // stats, and a corresponding modification of the 'scale', 'x_deriv'
+    // and 'scale_deriv' quantities.
+    //
+    // (note: the reason we update the stats before propagation rather
+    // than after, is for stability: otherwise, with relu units, if we only
+    // update the stats after the propagation we get a particular pathology: if
+    // a unit was previously always zero it will get a big scale; and if then we
+    // start getting some nonzero output, the scale on it will be too large.)
+    CuMatrix<BaseFloat> data;
   };
 
 
@@ -503,7 +497,7 @@ class MemoryNormComponent: public Component {
   // We store data_ as a single matrix because it enables certain operations
   // to be done using fewer kernels, but it contains various different quantities,
   // which we'll describe below as if they were separate variables.
-  // data_ is of dimension 6 by block_dim_.
+  // data_ is of dimension 7 by block_dim_.
   CuMatrix<BaseFloat> data_;
   // data_.Row(0) is 'x_mean', which is the decaying moving-average of
   //             input data x; or zero if stats_count_ is zero.

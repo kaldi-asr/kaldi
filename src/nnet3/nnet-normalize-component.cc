@@ -869,14 +869,6 @@ void* MemoryNormComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   Memo *memo = NULL;
   if (!test_mode_) {
     memo = GetMemo(in);
-    if (false) { // temporary.
-      MemoryNormComponent *temp = new MemoryNormComponent(*this);
-      temp->StoreStats(in, *out, memo);
-      Memo *new_memo = temp->GetMemo(in);
-      delete memo;
-      memo = new_memo;
-      delete temp;
-    }
   }
 
   if (test_mode_) {
@@ -884,8 +876,8 @@ void* MemoryNormComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
     out->AddVecToRows(-1.0, x_mean);
     out->MulColsVec(scale);
   } else {
-    CuSubVector<BaseFloat> x_mean(memo->data, 5),
-        scale(memo->data, 2);
+    CuSubVector<BaseFloat> x_mean(memo->data, 0),
+        scale(memo->data, 4);
     out->AddVecToRows(-1.0, x_mean);
     out->MulColsVec(scale);
   }
@@ -895,52 +887,41 @@ void* MemoryNormComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
 
 MemoryNormComponent::Memo* MemoryNormComponent::GetMemo(
     const CuMatrixBase<BaseFloat> &in) const {
-  KALDI_ASSERT(in.NumCols() == block_dim_ && !test_mode_);
+  KALDI_ASSERT(in.NumCols() == block_dim_ && !test_mode_ &&
+               stats_count_ >= 0.0);
   Memo *memo = new Memo;
-  int32 num_frames = in.NumRows();
-  memo->num_frames = num_frames;
-  memo->data.Resize(6, block_dim_);
-  CuSubVector<BaseFloat> x_sum(memo->data, 0),
-      x_sumsq(memo->data, 1);
-  x_sum.AddRowSumMat(1.0, in, 0.0);
-  x_sumsq.AddDiagMat2(1.0, in, kTrans, 0.0);
-  if (stats_count_ > 0.0) {
-    memo->has_indirect_terms = include_indirect_derivative_;
-    if (include_indirect_derivative_) {
-      // copy over scale, x_deriv and scale_deriv.
-      memo->data.RowRange(2, 3).CopyFromMat(data_.RowRange(4, 3));
-    } else {
-      // just copy over the scale.  x_deriv and scale_deriv remain zero.
-      memo->data.Row(2).CopyFromVec(data_.Row(4));
-    }
-    // get 'x_mean'
-    memo->data.Row(5).CopyFromVec(data_.Row(0));
-  } else {
-    // We should only reach this point on when processing the first
-    // minibatch of each training job.
+  BaseFloat old_stats_count = stats_count_,
+      num_frames = in.NumRows(),
+      new_stats_count = num_frames + old_stats_count,
+      old_weight = old_stats_count / new_stats_count;
 
-    // note: 'x_deriv' and 'scale_deriv' will be zero.  This means we're
-    // ignoring the smaller, indirect term in the derivative for the first
-    // minibatch of each training job.  That indirect term is really not that
-    // important that we should worry much about this.
-    memo->has_indirect_terms = false;
+  // The information in 'memo' will be copied to *this when
+  // StoreStats() is caled (we can't update it in the Propagate()
+  // function for 'const' reasons).
+  memo->stats_count = new_stats_count;
+  memo->backward_count = backward_count_;
+  memo->data = data_;
 
-    CuSubVector<BaseFloat> scale(memo->data, 2);
-    scale.CopyFromVec(x_sumsq);
-    scale.AddVecVec(-1.0 / (num_frames * 1.0 * num_frames),
-                    x_sum, x_sum, 1.0 / num_frames);
-    // At this point 'scale' is the variance.
-    // We apply the floor at 0.0 as a failsafe for problems caused by roundoff.
-    scale.ApplyFloor(0.0);
-    scale.Add(epsilon_);
-    // At this point 'scale' is the variance plus epsilon.
-    scale.ApplyPow(-0.5);
-    // OK, now 'scale' is the actual scale: the inverse standard deviation.
+  CuSubVector<BaseFloat> x_mean(memo->data, 0),
+      x_uvar(memo->data, 1), scale(memo->data, 4);
+  // Each row of 'in' gets a weight of 1.0 / new_stats_count in the stats.
+  x_mean.AddRowSumMat(1.0 / new_stats_count, in, old_weight);
+  x_uvar.AddDiagMat2(1.0 / new_stats_count, in, kTrans, old_weight);
 
-    // get 'x_mean'
-    CuSubVector<BaseFloat> x_mean(memo->data, 5);
-    x_mean.CopyFromVec(x_sum);
-    x_mean.Scale(1.0 / num_frames);
+  scale.CopyFromVec(x_uvar);
+  scale.AddVecVec(-1.0, x_mean, x_mean, 1.0);
+  // at this point, 'scale' is the variance.
+  scale.ApplyFloor(0.0);
+  scale.Add(epsilon_);
+  scale.ApplyPow(-0.5);
+  // OK, now 'scale' is the scale.
+
+  if (backward_count_ != 0.0) {
+    // we have stats 'y_deriv' and 'y_deriv_y' and we need to update the
+    // quantities x_deriv = y_deriv * scale, and scale_deriv = y_deriv_y *
+    // scale.
+    memo->data.RowRange(5, 2).AddMatDiagVec(
+        1.0, memo->data.RowRange(2, 2), kNoTrans, scale, 0.0);
   }
   return memo;
 }
@@ -993,6 +974,7 @@ void MemoryNormComponent::Backprop(
   // have the backprop called if the in_deriv is non-NULL.
 
   if (test_mode_) {
+    // In test mode we treat it as a fixed scale and offset.
     KALDI_ASSERT(memo_in == NULL && stats_count_ != 0.0);
     // the following is a no-op if in_deriv and out_deriv are the same matrix.
     in_deriv->CopyFromMat(out_deriv);
@@ -1041,11 +1023,12 @@ void MemoryNormComponent::Backprop(
   in_deriv->CopyFromMat(out_deriv);
 
   Memo *memo = static_cast<Memo*>(memo_in);
-  CuSubVector<BaseFloat> scale(memo->data, 2);
+  CuSubVector<BaseFloat> scale(memo->data, 4);
   in_deriv->MulColsVec(scale);
-  if (memo->has_indirect_terms) {
-    CuSubVector<BaseFloat> x_deriv(memo->data, 3),
-        scale_deriv(memo->data, 4);
+
+  if (memo->backward_count != 0.0) {
+    CuSubVector<BaseFloat> x_deriv(memo->data, 5),
+        scale_deriv(memo->data, 6);
     in_deriv->AddVecToRows(-1.0, x_deriv);
     in_deriv->AddMatDiagVec(-1.0, out_value, kNoTrans, scale_deriv);
   }
@@ -1090,26 +1073,23 @@ void MemoryNormComponent::StoreStats(
   // required statistics are already stored in 'memo_in'.
   Memo *memo = static_cast<Memo*>(memo_in);
 
-  BaseFloat num_frames = memo->num_frames,
-      old_stats_count = stats_count_,
-      new_stats_count = num_frames + old_stats_count,
-      old_weight = old_stats_count / new_stats_count;
+  // check that the memo's stats count is more than our stats_count_,
+  // which it should be because the memo should have added extra stats,
+  // and StoreStats() should be called directly after the Propagate()
+  // function.
+  // This could possibly fail with memo_in->stats_count == stats_count_
+  // due to roundoff, if you trained with batchnorm-stats-scale set at 1,
+  // but that would be a poor choice of parameters anyway as
+  // roundoff would be a big problem.
+  KALDI_ASSERT(memo->stats_count > stats_count_);
 
-  // x_mean_and_x_uvar is the first 2 rows of data_.
-  CuSubMatrix<BaseFloat> x_mean_and_x_uvar(data_, 0, 2, 0, block_dim_);
-  // x_sum_and_x_sumsq is the first 2 rows of data_.
-  CuSubMatrix<BaseFloat> x_sum_and_x_sumsq(memo->data, 0, 2, 0, block_dim_);
-
-  x_mean_and_x_uvar.Scale(old_weight);
-  // The factor 1.0 / new_stats_count that appears below can be perhaps more
-  // clearly written as follows: first define
-  //       new_weight = num_frames / new_stats_count
-  // and then write 'new_weight / num_frames', which simplifies to
-  // '1.0 / new_stats_count'.  The factor of '1.0 / num_frames'
-  // is necessary to convert from data sums to a per-frame average.
-  x_mean_and_x_uvar.AddMat(1.0 / new_stats_count, x_sum_and_x_sumsq);
-  stats_count_ = new_stats_count;
-  ComputeDerived();
+  stats_count_ = memo->stats_count;
+  // Copying the entire data matrix should be safe because
+  // StoreStats() is always called directly after the corresponding
+  // Propagate(), and on the same object; and there should be
+  // no possibility that other things in this->data changed in
+  // the interim.
+  data_.CopyFromMat(memo->data);
 }
 
 void MemoryNormComponent::Read(std::istream &is, bool binary) {
