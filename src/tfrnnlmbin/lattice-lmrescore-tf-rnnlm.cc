@@ -35,17 +35,18 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Rescores lattice with rnnlm that is trained with TensorFlow.\n"
         "An example script for training and rescoring with the TensorFlow\n"
-        "RNNLM is at egs/ami/s5/local/tfrnnlm/run_lstm.sh\n"
+        "RNNLM is at egs/ami/s5/local/tfrnnlm/run_lstm_fast.sh\n"
         "\n"
         "Usage: lattice-lmrescore-tf-rnnlm [options] [unk-file] <rnnlm-wordlist> \\\n"
         "             <word-symbol-table-rxfilename> <lattice-rspecifier> \\\n"
         "             <rnnlm-rxfilename> <lattice-wspecifier>\n"
-        " e.g.: lattice-lmrescore-tf-rnnlm --lm-scale=-1.0 unkcounts.txt rnnwords.txt \\\n"
-        "              words.txt ark:in.lats rnnlm ark:out.lats\n";
+        " e.g.: lattice-lmrescore-tf-rnnlm --lm-scale=0.5 "
+        "    data/tensorflow_lstm/unkcounts.txt data/tensorflow_lstm/rnnwords.txt \\\n"
+        "    data/lang/words.txt ark:in.lats data/tensorflow_lstm/rnnlm ark:out.lats\n";
 
     ParseOptions po(usage);
     int32 max_ngram_order = 3;
-    BaseFloat lm_scale = 1.0;
+    BaseFloat lm_scale = 0.5;
 
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model "
                 "costs");
