@@ -57,7 +57,7 @@ chunk_right_context=0
 
 # training options
 srand=0
-remove_egs=true
+remove_egs=false
 
 #decode options
 test_online_decoding=false  # if true, it will run the last decoding stage.
@@ -187,17 +187,17 @@ if [ $stage -le 15 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 dim=700
-  relu-batchnorm-layer name=tdnn2 dim=700 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn3 dim=700
-  relu-batchnorm-layer name=tdnn4 dim=700 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn5 dim=700
-  relu-batchnorm-layer name=tdnn6 dim=700 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn7 dim=700 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn8 dim=700 input=Append(-6,-3,0)
+  relu-batchnorm-layer name=tdnn1 dim=750
+  relu-batchnorm-layer name=tdnn2 dim=750 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn3 dim=750
+  relu-batchnorm-layer name=tdnn4 dim=750 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn5 dim=750
+  relu-batchnorm-layer name=tdnn6 dim=750 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn7 dim=750 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn8 dim=750 input=Append(-6,-3,0)
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain dim=700 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-chain dim=750 target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
@@ -209,7 +209,7 @@ if [ $stage -le 15 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn8 dim=700 target-rms=0.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn8 dim=750 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -219,7 +219,7 @@ fi
 if [ $stage -le 16 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/chime4-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/chain/train.py --stage=$train_stage \
@@ -233,15 +233,15 @@ if [ $stage -le 16 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=4 \
+    --trainer.num-epochs=6 \
     --trainer.frames-per-iter=3000000 \
     --trainer.optimization.num-jobs-initial=2 \
     --trainer.optimization.num-jobs-final=5 \
-    --trainer.optimization.initial-effective-lrate=0.0025 \
-    --trainer.optimization.final-effective-lrate=0.00025 \
+    --trainer.optimization.initial-effective-lrate=0.003 \
+    --trainer.optimization.final-effective-lrate=0.0003 \
     --trainer.optimization.shrink-value=1.0 \
     --trainer.optimization.proportional-shrink=60.0 \
-    --trainer.num-chunk-per-minibatch=256,128,64 \
+    --trainer.num-chunk-per-minibatch=128,64 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=0 \
@@ -318,19 +318,12 @@ if $test_online_decoding && [ $stage -le 19 ]; then
       nspk=$(wc -l <data/${data}_hires/spk2utt)
       # note: we just give it "data/${data}" as it only uses the wav.scp, the
       # feature type does not matter.
-      for lmtype in tgpr bd_tgpr; do
+      for lmtype in tgpr_5k; do
         steps/online/nnet3/decode.sh \
           --acwt 1.0 --post-decode-acwt 10.0 \
           --nj $nspk --cmd "$decode_cmd" \
           $tree_dir/graph_${lmtype} data/${data} ${dir}_online/decode_${lmtype}_${data_affix} || exit 1
       done
-      steps/lmrescore.sh \
-        --self-loop-scale 1.0 \
-        --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
-        data/${data}_hires ${dir}_online/decode_{tgpr,tg}_${data_affix} || exit 1
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-        data/lang_test_bd_{tgpr,fgconst} \
-       data/${data}_hires ${dir}_online/decode_${lmtype}_${data_affix}{,_fg} || exit 1
     ) || touch $dir/.error &
   done
   wait
@@ -340,9 +333,9 @@ fi
 # scoring
 if [ $stage -le 20 ]; then
   # decoded results of enhanced speech using TDNN AMs trained with enhanced data
-  local/chime4_calc_wers.sh exp/chain/tdnn1d_sp $enhan exp/chain/tree_a_sp/graph_tgpr_5k \
-    > exp/chain/tdnn1d_sp/best_wer_$enhan.result
-  head -n 15 exp/chain/tdnn1d_sp/best_wer_$enhan.result
+  local/chime4_calc_wers.sh exp/chain/tdnn${affix}_sp $enhan exp/chain/tree_a_sp/graph_tgpr_5k \
+    > exp/chain/tdnn${affix}_sp/best_wer_$enhan.result
+  head -n 15 exp/chain/tdnn${affix}_sp/best_wer_$enhan.result
 fi
 
 

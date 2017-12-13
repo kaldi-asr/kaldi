@@ -191,9 +191,9 @@ fi
 # scoring
 if [ $stage -le 20 ]; then
   # decoded results of enhanced speech using TDNN AMs trained with enhanced data
-  local/chime4_calc_wers.sh exp/chain/tdnn1d_sp $enhan exp/chain/tree_a_sp/graph_tgpr_5k \
-    > exp/chain/tdnn1d_sp/best_wer_$enhan.result
-  head -n 15 exp/chain/tdnn1d_sp/best_wer_$enhan.result
+  local/chime4_calc_wers.sh exp/chain/tdnn${affix}_sp $enhan exp/chain/tree_a_sp/graph_tgpr_5k \
+    > exp/chain/tdnn${affix}_sp/best_wer_$enhan.result
+  head -n 15 exp/chain/tdnn${affix}_sp/best_wer_$enhan.result
 fi
 
 
