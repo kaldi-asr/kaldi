@@ -45,7 +45,7 @@ if [ !-d local/nn-gev ]; then
     git clone https://github.com/fgnt/nn-gev.git
     cd nn-gev/
     git apply ../fix_read_sim_from_different_directory.patch
-    cd ../
+    cd ../../
 fi
 
 mkdir -p $odir
