@@ -245,8 +245,8 @@ if [ $stage -le 16 ]; then
     --egs.chunk-left-context $chunk_left_context \
     --egs.chunk-right-context $chunk_right_context \
     --trainer.dropout-schedule $dropout_schedule \
-    --trainer.optimization.backstitch-training-scale 1 \
-    --trainer.optimization.backstitch-training-interval 4 \
+    --trainer.optimization.backstitch-training-scale 0.3 \
+    --trainer.optimization.backstitch-training-interval 1 \
     --egs.chunk-left-context-initial 0 \
     --egs.chunk-right-context-final 0 \
     --trainer.num-chunk-per-minibatch 64,32 \
