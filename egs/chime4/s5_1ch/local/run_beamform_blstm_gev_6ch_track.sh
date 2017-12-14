@@ -33,9 +33,18 @@ if [ ! -d $miniconda_dir ]; then
   echo "$miniconda_dir does not exist. Please run '../../../tools/extras/install_miniconda.sh' and '../../../tools/extras/install_chainer.sh';" && exit 1;
 fi
 
+# check if chainer is installed
+$HOME/miniconda3/bin/python -c "\
+try:
+    import chainer 
+except ImportError:
+    echo "$miniconda_dir/bin/python does not have chainer installed. Please run '../../../tools/extras/install_chainer.sh';" && exit 1;
+
 if [ !-d local/nn-gev ]; then
     cd local/
-    git clone https://github.com/sas91/nn-gev.git
+    git clone https://github.com/fgnt/nn-gev.git
+    cd nn-gev/
+    git apply ../fix_read_sim_from_different_directory.patch
     cd ../
 fi
 

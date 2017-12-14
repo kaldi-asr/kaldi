@@ -1,0 +1,80 @@
+diff --git a/beamform.py b/beamform.py
+index 02eeed8..51d3625 100644
+--- a/beamform.py
++++ b/beamform.py
+@@ -20,6 +20,8 @@ parser.add_argument('flist',
+                     help='Name of the flist to process (e.g. tr05_simu)')
+ parser.add_argument('chime_dir',
+                     help='Base directory of the CHiME challenge.')
++parser.add_argument('sim_dir',
++                    help='Base directory of the CHiME challenge simulated data.')
+ parser.add_argument('output_dir',
+                     help='The directory where the enhanced wav files will '
+                          'be stored.')
+@@ -50,7 +52,7 @@ scenario = args.flist.split('_')[-1]
+ 
+ # CHiME data handling
+ if scenario == 'simu':
+-    flist = gen_flist_simu(args.chime_dir, stage)
++    flist = gen_flist_simu(args.chime_dir, args.sim_dir, stage)
+ elif scenario == 'real':
+     flist = gen_flist_real(args.chime_dir, stage)
+ else:
+diff --git a/beamform.sh b/beamform.sh
+index 3c7de5a..d46522a 100755
+--- a/beamform.sh
++++ b/beamform.sh
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env bash
+ 
+ for flist in tr05_simu tr05_real dt05_simu dt05_real et05_simu et05_real; do
+-    python beamform.py $flist "$@"
+-done
+\ No newline at end of file
++     $HOME/miniconda3/bin/python python beamform.py $flist "$@"
++done
+diff --git a/chime_data.py b/chime_data.py
+index 0072e1b..74925be 100644
+--- a/chime_data.py
++++ b/chime_data.py
+@@ -11,20 +11,25 @@ from fgnt.signal_processing import stft
+ from fgnt.utils import mkdir_p
+ 
+ 
+-def gen_flist_simu(chime_data_dir, stage, ext=False):
++def gen_flist_simu(chime_data_dir, dest_dir, stage, ext=False):
+     with open(os.path.join(
+             chime_data_dir, 'annotations',
+             '{}05_{}.json'.format(stage, 'simu'))) as fid:
+         annotations = json.load(fid)
+     if ext:
+         isolated_dir = 'isolated_ext'
++        flist = [os.path.join(
++                dest_dir, 'audio', '16kHz', isolated_dir,
++                '{}05_{}_{}'.format(stage, a['environment'].lower(), 'simu'),
++                '{}_{}_{}'.format(a['speaker'], a['wsj_name'], a['environment']))
++                 for a in annotations]
+     else:
+         isolated_dir = 'isolated'
+-    flist = [os.path.join(
+-            chime_data_dir, 'audio', '16kHz', isolated_dir,
+-            '{}05_{}_{}'.format(stage, a['environment'].lower(), 'simu'),
+-            '{}_{}_{}'.format(a['speaker'], a['wsj_name'], a['environment']))
+-             for a in annotations]
++        flist = [os.path.join(
++                chime_data_dir, 'audio', '16kHz', isolated_dir,
++                '{}05_{}_{}'.format(stage, a['environment'].lower(), 'simu'),
++                '{}_{}_{}'.format(a['speaker'], a['wsj_name'], a['environment']))
++                 for a in annotations]
+     return flist
+ 
+ 
+@@ -65,7 +70,7 @@ def get_audio_data_with_context(embedded_template, t_start, t_end,
+ 
+ def prepare_training_data(chime_data_dir, dest_dir):
+     for stage in ['tr', 'dt']:
+-        flist = gen_flist_simu(chime_data_dir, stage, ext=True)
++        flist = gen_flist_simu(chime_data_dir, dest_dir, stage, ext=True)
+         export_flist = list()
+         mkdir_p(os.path.join(dest_dir, stage))
+         for f in tqdm.tqdm(flist, desc='Generating data for {}'.format(stage)):
