@@ -714,7 +714,7 @@ void BatchNormComponent::ZeroStats() {
    We can compute:
       mean = sum / count
       var = epsilon + (sumsq / count) - (mean * mean)
-      scale = var^{-0.5}
+      scale = target_rms * var^{-0.5}
 
       y(i) = (x(i) - mean) * scale.
 
@@ -729,8 +729,11 @@ void BatchNormComponent::ZeroStats() {
        mean' = -scale * \sum_i w(i) y'(i)
       scale' = \sum_i w(i) y'(i) (x(i) - mean)
              = 1/scale \sum_i w(i) y'(i) y(i)
-        var' = -0.5 var^{-1.5} scale'
-             = -0.5 var^{-1} \sum_i w(i) y'(i) y(i)
+        var' = -0.5 target_rms var^{-1.5} scale'
+             = -0.5 target_rms var^{-1.5} (1/scale) \sum_i w(i) y'(i) y(i)
+                 .. and using 1/scale = var^{0.5}/target_rms,
+             = -0.5 var^{-1} \sum_i w(i) y'(i) y(i)                      (*)
+
 
    It will be convenient to write down 'per-frame' versions of all of these
    quantities, which are divided by the total count:
@@ -752,16 +755,23 @@ void BatchNormComponent::ZeroStats() {
 
         x'(i) = y'(i)*scale + mean_norm' + 2 var_norm' (x(i) - mean)
               = y'(i)*scale + mean_norm' + 2 var_norm' y(i) / scale
-              = y'(i)*scale + mean_norm' - y(i) * scale/count * \sum_i w(i) y'(i) y(i)
-
-    I'm afraid I just pulled the above out of thin air... needs some more
-    derivation. The part about (x(i) - mean) can be obtained, I believe,
-    from computation of the derivative of the variance w.r.t. the x(i) values.
-
+               ... and substituting in the equation (*) above for var', using var_norm' = var'/scale,
+               and rearranging slightly:
+              = y'(i)*scale + mean_norm' - y(i) * var^{-1}/scale * 1/count * \sum_i w(i) y'(i) y(i)
+              .. and using scale=target-rms * var^{-0.5}, so var^{-1}/scale = var^{-0.5}/target-rms = scale/target-rms^2:
+              = y'(i)*scale + mean_norm' - y(i) * scale/(count*target-rms^2) * \sum_i w(i) y'(i) y(i)
+            .. and considering that the factor of 'scale' appears (directly or indirectly) in all 3
+              of the terms in the above expression, we can reorganize this as:
+              = scale * (y'(i) - 1/count*\sum_i w(i)*y(i) - 1/(count*target-rms^2) * \sum_i w(i) y'(i) y(i))
 */
 
 
 void MemoryNormComponent::SetTestMode(bool test_mode) {
+  if (test_mode && stats_count_ <= 0) {
+    KALDI_WARN << "Refusing to set test-mode in MemoryNormComponent since no "
+        "stats are present.";
+    return;
+  }
   test_mode_ = test_mode;
 }
 
@@ -795,16 +805,13 @@ std::string MemoryNormComponent::Info() const {
   if (stats_count_ > 0.0) {
     CuSubVector<BaseFloat> x_mean(data_, 0),
         y_deriv(data_, 2), y_deriv_y(data_, 3),
-        scale(data_, 4), x_deriv(data_, 5),
-        scale_deriv(data_, 6);
+        scale(data_, 4);
     if (stats_count_ > 0.0)
       stream << ", x-mean=" << SummarizeVector(x_mean)
              << ", scale=" << SummarizeVector(scale);
     if (backward_count_ > 0.0)
       stream << ", y-deriv=" << SummarizeVector(y_deriv)
-             << ", y-deriv-y=" << SummarizeVector(y_deriv_y)
-             << ", x-deriv=" << SummarizeVector(x_deriv)
-             << ", scale-deriv=" << SummarizeVector(scale_deriv);
+             << ", y-deriv-y=" << SummarizeVector(y_deriv_y);
   }
   return stream.str();
 }
@@ -836,7 +843,7 @@ void MemoryNormComponent::InitFromConfig(ConfigLine *cfl) {
               << cfl->UnusedValues();
   stats_count_ = 0.0;
   backward_count_ = 0.0;
-  data_.Resize(7, block_dim_);
+  data_.Resize(5, block_dim_);
 }
 
 
@@ -862,7 +869,7 @@ void* MemoryNormComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
     out->CopyFromMat(in);
 
   if (test_mode_ && stats_count_ <= 0.0)
-      KALDI_ERR << "Test mode set but no stats available.";
+    KALDI_ERR << "Test mode set but no stats available.";
 
   // From this point, we can assume that the num-cols of 'in' and 'out'
   // equals block_dim_.
@@ -909,20 +916,15 @@ MemoryNormComponent::Memo* MemoryNormComponent::GetMemo(
   x_uvar.AddDiagMat2(1.0 / new_stats_count, in, kTrans, old_weight);
 
   scale.CopyFromVec(x_uvar);
-  scale.AddVecVec(-1.0, x_mean, x_mean, 1.0);
+  // we save a CUDA operation by applying the scale 'target_rms_scale' before doing
+  // ApplyPow(-0.5), and this requires taking it to the power -2.
+  BaseFloat target_rms_scale = 1.0 / (target_rms_ * target_rms_);
+  scale.AddVecVec(-target_rms_scale, x_mean, x_mean, target_rms_scale);
   // at this point, 'scale' is the variance.
   scale.ApplyFloor(0.0);
-  scale.Add(epsilon_);
+  scale.Add(epsilon_ * target_rms_scale);
   scale.ApplyPow(-0.5);
   // OK, now 'scale' is the scale.
-
-  if (backward_count_ != 0.0) {
-    // we have stats 'y_deriv' and 'y_deriv_y' and we need to update the
-    // quantities x_deriv = y_deriv * scale, and scale_deriv = y_deriv_y *
-    // scale.
-    memo->data.RowRange(5, 2).AddMatDiagVec(
-        1.0, memo->data.RowRange(2, 2), kNoTrans, scale, 0.0);
-  }
   return memo;
 }
 
@@ -1013,8 +1015,8 @@ void MemoryNormComponent::Backprop(
     to_update->backward_count_ = new_backward_count;
     // We don't bother calling to_update->ComputeDerived()-- although it would
     // be harmless-- because in the current situations where this code is
-    // reached, to_update will be the delta_nnet_, and the derived parameters of
-    // delta_nnet_ aren't used.
+    // reached, to_update will be the delta_nnet_, and the derived parameter
+    // 'scale') of delta_nnet_ aren't used.
 
     // to_update->ComputeDerived();
   }
@@ -1023,42 +1025,37 @@ void MemoryNormComponent::Backprop(
   in_deriv->CopyFromMat(out_deriv);
 
   Memo *memo = static_cast<Memo*>(memo_in);
+  if (memo->backward_count != 0.0) {
+    CuSubVector<BaseFloat> y_deriv(memo->data, 2),
+        y_deriv_y(memo->data, 3);
+    in_deriv->AddVecToRows(-1.0, y_deriv);
+    in_deriv->AddMatDiagVec(-1.0 / (target_rms_ * target_rms_),
+                            out_value, kNoTrans, y_deriv_y);
+  }
   CuSubVector<BaseFloat> scale(memo->data, 4);
   in_deriv->MulColsVec(scale);
 
-  if (memo->backward_count != 0.0) {
-    CuSubVector<BaseFloat> x_deriv(memo->data, 5),
-        scale_deriv(memo->data, 6);
-    in_deriv->AddVecToRows(-1.0, x_deriv);
-    in_deriv->AddMatDiagVec(-1.0, out_value, kNoTrans, scale_deriv);
-  }
 }
 
 
 void MemoryNormComponent::ComputeDerived() {
-  KALDI_ASSERT(stats_count_ >= 0.0 && data_.NumRows() == 7);
+  KALDI_ASSERT(stats_count_ >= 0.0 && data_.NumRows() == 5);
   if (stats_count_ == 0.0) {
-    // zero 'scale', 'x_deriv' and 'scale_deriv'.
-    data_.RowRange(4, 3).SetZero();
+    // zero 'scale'.
+    data_.Row(4).SetZero();
     return;
   }
   CuSubVector<BaseFloat>  x_mean(data_, 0), x_uvar(data_, 1),
-      y_deriv(data_, 2), y_deriv_y(data_, 3), scale(data_, 4);
+       scale(data_, 4);
   scale.CopyFromVec(x_uvar);
-  scale.AddVecVec(-1.0, x_mean, x_mean, 1.0);
-  // at this point, 'scale' is the variance.
+  // we save a CUDA operation by applying the scale 'target_rms_scale' before doing
+  // ApplyPow(-0.5), and this requires taking it to the power -2.
+  BaseFloat target_rms_scale = 1.0 / (target_rms_ * target_rms_);
+  scale.AddVecVec(-target_rms_scale, x_mean, x_mean, target_rms_scale);
+  // at this point, 'scale' is the variance (divided by target_rms^2).
   scale.ApplyFloor(0.0);
-  scale.Add(epsilon_);
+  scale.Add(epsilon_ * target_rms_scale);
   scale.ApplyPow(-0.5);
-  if (backward_count_ == 0.0) {
-    // The following statement sets x_deriv and scale_deriv to zero.
-    data_.RowRange(5, 2).SetZero();
-  } else {
-    // The following statement sets x_deriv = y_deriv * scale,
-    // and scale_deriv = y_deriv_y * scale.
-    data_.RowRange(5, 2).AddMatDiagVec(1.0,
-        data_.RowRange(2, 2), kNoTrans, scale, 0.0);
-  }
 }
 
 void MemoryNormComponent::StoreStats(

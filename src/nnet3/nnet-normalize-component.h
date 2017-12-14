@@ -164,6 +164,8 @@ class BatchNormComponent: public Component {
   // accumulate these stats; they are stored as a matter of course on each
   // iteration of training, as for NonlinearComponents, and we'll use the stats
   // from the most recent [script-level] iteration.
+  // (Note: it will refuse to actually set test-mode to true if there
+  // are no stats stored.)
   void SetTestMode(bool test_mode);
 
   // constructor using another component
@@ -412,7 +414,7 @@ class MemoryNormComponent: public Component {
     BaseFloat backward_count;
 
     // The structure of 'data' is the same as the data_ member of
-    // MemoryNormComponent; it's a matrix of dimension 7 by block_dim_.
+    // MemoryNormComponent; it's a matrix of dimension 5 by block_dim_.
     // It will differ from the data_ member of the component we generated this
     // from by the addition of some extra data in the 'x_sum' and 'x_sumsq'
     // stats, and a corresponding modification of the 'scale', 'x_deriv'
@@ -497,7 +499,7 @@ class MemoryNormComponent: public Component {
   // We store data_ as a single matrix because it enables certain operations
   // to be done using fewer kernels, but it contains various different quantities,
   // which we'll describe below as if they were separate variables.
-  // data_ is of dimension 7 by block_dim_.
+  // data_ is of dimension 5 by block_dim_.
   CuMatrix<BaseFloat> data_;
   // data_.Row(0) is 'x_mean', which is the decaying moving-average of
   //             input data x; or zero if stats_count_ is zero.
@@ -511,18 +513,11 @@ class MemoryNormComponent: public Component {
   //           objective w.r.t. the output); or zero if backward_count_
   //           is zero.
   //
-  // The quantities below are derived from the stats above.
+  // The quantity below is derived from the stats above.
   //
   // data_.Row(4) is 'scale', which is the inverse square root of the
   //            covariance computed from x_mean and x_uvar (plus epsilon),
   //            or zero if stats_count_ is zero.
-  // data_.Row(5) is 'x_deriv', which is the negative of the average derivative
-  //           (per frame) of the objective function w.r.t the input x (just the
-  //           part that comes via the derivative w.r.t. the x mean).
-  //           'x_deriv' equals 'y_deriv' times 'scale'.
-  // data_.Row(6) is 'scale_deriv', which relates to the part of the
-  //           derivative w.r.t. the input that comes from the objf
-  //           derivative w.r.t. the scale.  It equals scale * y_deriv_y.
 };
 
 
