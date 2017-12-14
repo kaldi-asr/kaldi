@@ -1,0 +1,10 @@
+
+# tri2
+%WER 92.26 [ 60741 / 65835, 3212 ins, 35241 del, 22288 sub ] exp/tri2/decode_dev_beamformit_ref/wer_16_1.0
+%WER 76.47 [ 50342 / 65835, 4356 ins, 19004 del, 26982 sub ] exp/tri2/decode_dev_worn/wer_14_1.0
+
+# tri3
+%WER 92.43 [ 60852 / 65835, 3149 ins, 35536 del, 22167 sub ] exp/tri3/decode_dev_beamformit_ref.si/wer_17_1.0
+%WER 90.80 [ 59779 / 65835, 4742 ins, 27968 del, 27069 sub ] exp/tri3/decode_dev_beamformit_ref/wer_17_1.0
+%WER 76.38 [ 50283 / 65835, 3911 ins, 19081 del, 27291 sub ] exp/tri3/decode_dev_worn.si/wer_17_1.0
+%WER 73.13 [ 48146 / 65835, 4727 ins, 17274 del, 26145 sub ] exp/tri3/decode_dev_worn/wer_16_1.0
