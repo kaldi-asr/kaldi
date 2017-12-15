@@ -903,7 +903,7 @@ MemoryNormComponent::Memo* MemoryNormComponent::GetMemo(
       old_weight = old_stats_count / new_stats_count;
 
   // The information in 'memo' will be copied to *this when
-  // StoreStats() is caled (we can't update it in the Propagate()
+  // StoreStats() is called (we can't update it in the Propagate()
   // function for 'const' reasons).
   memo->stats_count = new_stats_count;
   memo->backward_count = backward_count_;
@@ -1013,28 +1013,25 @@ void MemoryNormComponent::Backprop(
     y_deriv_y.AddDiagMatMat(1.0 / new_backward_count, out_deriv, kTrans,
                             out_value, kNoTrans, old_weight);
     to_update->backward_count_ = new_backward_count;
-    // We don't bother calling to_update->ComputeDerived()-- although it would
-    // be harmless-- because in the current situations where this code is
-    // reached, to_update will be the delta_nnet_, and the derived parameter
-    // 'scale') of delta_nnet_ aren't used.
 
-    // to_update->ComputeDerived();
+    // Now 'to_update' will typically be the same as 'this', so we need
+    // to compute the derived parameters because it affects some code that's
+    // below.
+    to_update->ComputeDerived();
   }
 
   // the following does no work if in_deriv and out_deriv are the same matrix.
   in_deriv->CopyFromMat(out_deriv);
 
-  Memo *memo = static_cast<Memo*>(memo_in);
-  if (memo->backward_count != 0.0) {
-    CuSubVector<BaseFloat> y_deriv(memo->data, 2),
-        y_deriv_y(memo->data, 3);
+  if (this->backward_count_ != 0.0) {
+    CuSubVector<BaseFloat> y_deriv(data_, 2),
+        y_deriv_y(data_, 3);
     in_deriv->AddVecToRows(-1.0, y_deriv);
     in_deriv->AddMatDiagVec(-1.0 / (target_rms_ * target_rms_),
                             out_value, kNoTrans, y_deriv_y);
   }
-  CuSubVector<BaseFloat> scale(memo->data, 4);
+  CuSubVector<BaseFloat> scale(data_, 4);
   in_deriv->MulColsVec(scale);
-
 }
 
 
@@ -1084,7 +1081,7 @@ void MemoryNormComponent::StoreStats(
   // Copying the entire data matrix should be safe because
   // StoreStats() is always called directly after the corresponding
   // Propagate(), and on the same object; and there should be
-  // no possibility that other things in this->data changed in
+  // no possibility that other things in this->data_ changed in
   // the interim.
   data_.CopyFromMat(memo->data);
 }
@@ -1168,6 +1165,10 @@ void MemoryNormComponent::Add(BaseFloat alpha, const Component &other_in) {
     }
     return;
   }
+
+  if (alpha * other->stats_count_ == 0.0 &&
+      alpha * other->backward_count_ == 0.0)
+    return;
 
   BaseFloat
       new_stats_count = stats_count_ + alpha * other->stats_count_,

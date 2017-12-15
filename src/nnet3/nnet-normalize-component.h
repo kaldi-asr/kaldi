@@ -296,11 +296,11 @@ class BatchNormComponent: public Component {
 
 
 /*
-  MemoryNormComponent
-
   MemoryNormComponent is like batch normalization, except the stats
   are accumulated as a weighted sum over past minibatches (if this is
   not the first minibatch), instead of over the current minibatch.
+  Caution: we don't test this component in the standard way because it
+  would fail the derivative tests.
 
   You can use it in the same way you would normally use BatchNormComponent.
 
