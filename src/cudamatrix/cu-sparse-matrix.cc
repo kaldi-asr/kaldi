@@ -388,7 +388,7 @@ void CuSparseMatrix<Real>::CopyFromSmat(const CuSparseMatrix<Real>& smat,
       Resize(smat.NumCols(), smat.NumRows(), smat.NumElements(), kUndefined);
       CuTimer tim;
 
-      CU_SAFE_CALL(
+      CUSPARSE_SAFE_CALL(
           cusparse_csr2csc(GetCusparseHandle(), smat.NumRows(), smat.NumCols(),
                            smat.NumElements(), smat.CsrVal(), smat.CsrRowPtr(),
                            smat.CsrColIdx(), CsrVal(), CsrColIdx(), CsrRowPtr(),

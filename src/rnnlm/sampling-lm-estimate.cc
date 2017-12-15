@@ -18,6 +18,7 @@
 // limitations under the License.
 
 #include <iomanip>
+#include <numeric>
 #include "rnnlm/sampling-lm-estimate.h"
 
 namespace kaldi {
