@@ -805,7 +805,7 @@ class XconfigBasicLayer(XconfigLayerBase):
             elif nonlinearity == 'memnorm':
                 line = ('component name={0}.{1}'
                         ' type=MemoryNormComponent dim={2}'
-                        ' target-rms={3} include-indirect-derivative=false '
+                        ' target-rms={3} '
                         ''.format(self.name, nonlinearity, output_dim,
                                   target_rms))
 
