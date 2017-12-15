@@ -25,6 +25,7 @@ config_to_layer = {
         'relu-batchnorm-dropout-layer' : xlayers.XconfigBasicLayer,
         'relu-dropout-layer': xlayers.XconfigBasicLayer,
         'relu-batchnorm-layer' : xlayers.XconfigBasicLayer,
+        'relu-memnorm-layer' : xlayers.XconfigBasicLayer,
         'relu-batchnorm-so-layer' : xlayers.XconfigBasicLayer,
         'batchnorm-so-relu-layer' : xlayers.XconfigBasicLayer,
         'sigmoid-layer' : xlayers.XconfigBasicLayer,
@@ -64,6 +65,11 @@ config_to_layer = {
         'attention-relu-renorm-layer': xlayers.XconfigAttentionLayer,
         'attention-relu-batchnorm-layer': xlayers.XconfigAttentionLayer,
         'relu-renorm-attention-layer': xlayers.XconfigAttentionLayer,
+        'gru-layer' : xlayers.XconfigGruLayer,
+        'pgru-layer' : xlayers.XconfigPgruLayer,
+        'opgru-layer' : xlayers.XconfigOpgruLayer,
+        'norm-pgru-layer' : xlayers.XconfigNormPgruLayer,
+        'norm-opgru-layer' : xlayers.XconfigNormOpgruLayer,
         'renorm-component': xlayers.XconfigRenormComponent
 }
 

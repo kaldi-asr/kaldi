@@ -481,7 +481,7 @@ static void PrintFloatSuccinctly(std::ostream &os, BaseFloat f) {
 
 // Returns a string that summarizes a vector fairly succintly, for
 // printing stats in info lines.
-std::string SummarizeVector(const Vector<BaseFloat> &vec) {
+std::string SummarizeVector(const VectorBase<BaseFloat> &vec) {
   std::ostringstream os;
   if (vec.Dim() < 10) {
     os << "[ ";
@@ -515,6 +515,11 @@ std::string SummarizeVector(const Vector<BaseFloat> &vec) {
     os << "), mean=" << mean << ", stddev=" << stddev << "]";
   }
   return os.str();
+}
+
+std::string SummarizeVector(const CuVectorBase<BaseFloat> &cu_vec) {
+  Vector<BaseFloat> vec(cu_vec);
+  return SummarizeVector(vec);
 }
 
 void PrintParameterStats(std::ostringstream &os,

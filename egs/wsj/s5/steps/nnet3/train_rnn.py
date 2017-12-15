@@ -451,7 +451,7 @@ def train(args, run_opts):
                 run_opts=run_opts,
                 minibatch_size_str=args.num_chunk_per_minibatch,
                 chunk_width=args.chunk_width,
-                sum_to_one_penalty=args.combine_sum_to_one_penalty,
+                max_objective_evaluations=args.max_objective_evaluations,
                 compute_per_dim_accuracy=args.compute_per_dim_accuracy)
 
     if args.stage <= num_iters + 1:

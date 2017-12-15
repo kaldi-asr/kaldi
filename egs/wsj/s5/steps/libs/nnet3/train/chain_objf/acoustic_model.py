@@ -173,13 +173,19 @@ def train_new_models(dir, iter, srand, num_jobs,
                          (" --write-cache={0}/cache.{1}".format(dir, iter + 1)
                           if job == 1 else ""))
 
+        # For the first epoch (at most the first 15 iters), scale the batchnorm stats
+        # down more aggressively.  This affects memory-norm components.
+        batchnorm_opt=("--batchnorm-stats-scale=0.5"
+                       if num_archives_processed < (num_archives * frame_subsampling_factor) and iter < 15
+                       else "")
+
         thread = common_lib.background_command(
             """{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
                     nnet3-chain-train {parallel_train_opts} {verbose_opt} \
                     --apply-deriv-weights={app_deriv_wts} \
                     --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
                     {cache_io_opts}  --xent-regularize={xent_reg} \
-                    {deriv_time_opts} \
+                    {deriv_time_opts} {batchnorm_opt} \
                     --print-interval=10 --momentum={momentum} \
                     --max-param-change={max_param_change} \
                     --backstitch-training-scale={backstitch_training_scale} \
@@ -199,6 +205,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         dir=dir, iter=iter, srand=iter + srand,
                         next_iter=iter + 1, job=job,
                         deriv_time_opts=" ".join(deriv_time_opts),
+                        batchnorm_opt=batchnorm_opt,
                         app_deriv_wts=apply_deriv_weights,
                         fr_shft=frame_shift, l2=l2_regularize,
                         xent_reg=xent_regularize, leaky=leaky_hmm_coefficient,
@@ -512,7 +519,7 @@ def compute_progress(dir, iter, run_opts):
 def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_str,
                    egs_dir, leaky_hmm_coefficient, l2_regularize,
                    xent_regularize, run_opts,
-                   sum_to_one_penalty=0.0):
+                   max_objective_evaluations=30):
     """ Function to do model combination
 
     In the nnet3 setup, the logic
@@ -524,9 +531,6 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
     logger.info("Combining {0} models.".format(models_to_combine))
 
     models_to_combine.add(num_iters)
-
-    # TODO: if it turns out the sum-to-one-penalty code is not useful,
-    # remove support for it.
 
     for iter in sorted(models_to_combine):
         model_file = '{0}/{1}.mdl'.format(dir, iter)
@@ -548,12 +552,9 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
 
     common_lib.execute_command(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
-                nnet3-chain-combine --num-iters={opt_iters} \
+                nnet3-chain-combine \
+                --max-objective-evaluations={max_objective_evaluations} \
                 --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
-                --separate-weights-per-component={separate_weights} \
-                --enforce-sum-to-one={hard_enforce} \
-                --sum-to-one-penalty={penalty} \
-                --enforce-positive-weights=true \
                 --verbose=3 {dir}/den.fst {raw_models} \
                 "ark,bg:nnet3-chain-copy-egs ark:{egs_dir}/combine.cegs ark:- | \
                     nnet3-chain-merge-egs --minibatch-size={num_chunk_per_mb} \
@@ -562,12 +563,9 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
                 {dir}/final.mdl""".format(
                     command=run_opts.command,
                     combine_queue_opt=run_opts.combine_queue_opt,
-                    opt_iters=(20 if sum_to_one_penalty <= 0 else 80),
-                    separate_weights=(sum_to_one_penalty > 0),
+                    max_objective_evaluations=max_objective_evaluations,
                     l2=l2_regularize, leaky=leaky_hmm_coefficient,
                     dir=dir, raw_models=" ".join(raw_model_strings),
-                    hard_enforce=(sum_to_one_penalty <= 0),
-                    penalty=sum_to_one_penalty,
                     num_chunk_per_mb=num_chunk_per_minibatch_str,
                     num_iters=num_iters,
                     egs_dir=egs_dir))
