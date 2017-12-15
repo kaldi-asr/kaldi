@@ -119,6 +119,10 @@ void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
   // happens when we use the model with batchnorm test-mode set).
   ScaleBatchnormStats(nnet_config.batchnorm_stats_scale, nnet_);
 
+  // The following will only do something if we have a LinearComponent
+  // with is-constrained-orthonormal set to true.
+  ConstrainOrthonormal(nnet_);
+
   // Scale delta_nnet
   if (success)
     ScaleNnet(nnet_config.momentum, delta_nnet_);
@@ -166,6 +170,21 @@ void NnetChainTrainer::TrainInternalBackstitch(const NnetChainExample &eg,
   UpdateNnetWithMaxChange(*delta_nnet_,
       nnet_config.max_param_change, max_change_scale, scale_adding, nnet_,
       &num_max_change_per_component_applied_, &num_max_change_global_applied_);
+
+  if (is_backstitch_step1) {
+    // The following will only do something if we have a LinearComponent
+    // with is-constrained-orthonormal set to true.  We choose to do this
+    // only on the 1st backstitch step, for efficiency.
+    ConstrainOrthonormal(nnet_);
+  }
+
+  if (!is_backstitch_step1) {
+    // Scale down the batchnorm stats (keeps them fresh... this affects what
+    // happens when we use the model with batchnorm test-mode set).  Do this
+    // after backstitch step 2 so that the stats are scaled down before we start
+    // the next minibatch.
+    ScaleBatchnormStats(nnet_config.batchnorm_stats_scale, nnet_);
+  }
 
   ScaleNnet(0.0, delta_nnet_);
 }

@@ -251,7 +251,6 @@ struct CollapseModelConfig {
 void CollapseModel(const CollapseModelConfig &config,
                    Nnet *nnet);
 
-
 /**
    ReadEditConfig() reads a file with a similar-looking format to the config file
    read by Nnet::ReadConfig(), but this consists of a sequence of operations to
@@ -451,6 +450,17 @@ void ApplyL2Regularization(const Nnet &nnet,
 void ScaleBatchnormStats(BaseFloat batchnorm_stats_scale,
                          Nnet *nnet);
 
+
+/**
+   This function, to be called after processing every minibatch, is responsible
+   for enforcing the orthogonality constraint for any components of type
+   LinearComponent that have the "orthonormal-constraint" value set to nonzero.
+
+   In order to make it efficient on GPU, it doesn't make it completely orthonormal,
+   it just makes it closer to being orthonormal (times the 'orthonormal_constraint'
+   value).  Over multiple iterations this rapidly makes it almost exactly orthonormal.
+ */
+void ConstrainOrthonormal(Nnet *nnet);
 
 /** This utility function can be used to obtain the number of distinct 'n'
     values in a training example.  This is the number of examples

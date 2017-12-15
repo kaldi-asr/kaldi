@@ -919,6 +919,16 @@ class NaturalGradientAffineComponent: public AffineComponent {
                            bias-stddev, bias-mean) to initialize the parameters.
                            Dimension is output-dim by (input-dim + 1), last
                            column is interpreted as the bias.
+    orthonormal-constraint=0.0   If you set this to 1.0, then
+                           this matrix will be (approximately) constrained during
+                           training to have orthonormal rows (or columns, whichever
+                           is fewer).  You can choose a positive nonzero value different
+                           than 1.0 to have a scaled orthonormal matrix, i.e. with singular
+                           values at the selected value (e.g. 0.5, or 2.0).
+                           This is not enforced inside the component
+                           itself; you have to call ConstrainOrthonormal()
+                           from the training code to do this.  All this component
+                           does is return the OrthonormalConstraint() value.
 
    Options to the natural gradient (you won't normally have to set these,
    the defaults are suitable):
@@ -982,14 +992,19 @@ class LinearComponent: public UpdatableComponent {
   explicit LinearComponent(const LinearComponent &other);
 
   explicit LinearComponent(const CuMatrix<BaseFloat> &params);
+
+  BaseFloat OrthonormalConstraint() const { return orthonormal_constraint_; }
+  CuMatrixBase<BaseFloat> &Params() { return params_; }
+  const CuMatrixBase<BaseFloat> &Params() const { return params_; }
  private:
 
   // disallow assignment operator.
   LinearComponent &operator= (
       const LinearComponent&);
 
-
   CuMatrix<BaseFloat> params_;
+
+  BaseFloat orthonormal_constraint_;
   // If true (and if no this->is_gradient_), use natural gradient updates.
   bool use_natural_gradient_;
   OnlineNaturalGradient preconditioner_in_;
@@ -1460,8 +1475,12 @@ class PermuteComponent: public Component {
 
 
 
-// PerElementScaleComponent scales each dimension of its input with a separate
-// trainable scale; it's like a linear component with a diagonal matrix.
+/**
+   PerElementScaleComponent scales each dimension of its input with a separate
+   trainable scale; it's like a linear component with a diagonal matrix.  This
+   version (and its child class NaturalGradientPerElementScaleComponent)
+   requires the input for backprop.  See also ScaleAndOffsetComponent.
+*/
 class PerElementScaleComponent: public UpdatableComponent {
  public:
   virtual int32 InputDim() const { return scales_.Dim(); }
@@ -1474,7 +1493,7 @@ class PerElementScaleComponent: public UpdatableComponent {
   virtual std::string Type() const { return "PerElementScaleComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput|
-        kPropagateInPlace;
+        kPropagateInPlace|kBackpropInPlace;
   }
 
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -1686,8 +1705,7 @@ class ConstantFunctionComponent: public UpdatableComponent {
 
 
 // NaturalGradientPerElementScaleComponent is like PerElementScaleComponent but
-// it uses a natural gradient update for the per-element scales, and enforces a
-// maximum amount of change per minibatch, for stability.
+// it uses a natural gradient update for the per-element scales.
 class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
  public:
 

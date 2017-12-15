@@ -1229,7 +1229,11 @@ void AffineComponent::PerturbParams(BaseFloat stddev) {
 std::string AffineComponent::Info() const {
   std::ostringstream stream;
   stream << UpdatableComponent::Info();
-  PrintParameterStats(stream, "linear-params", linear_params_);
+  PrintParameterStats(stream, "linear-params", linear_params_,
+                      false, // include_mean
+                      true, // include_row_norms
+                      true, // include_column_norms
+                      GetVerboseLevel() >= 2); // include_singular_values
   PrintParameterStats(stream, "bias", bias_params_, true);
   return stream.str();
 }
@@ -2100,12 +2104,6 @@ void PerElementScaleComponent::Backprop(
   PerElementScaleComponent *to_update =
       dynamic_cast<PerElementScaleComponent*>(to_update_in);
 
-  if (in_deriv) {
-    // Propagate the derivative back to the input.
-    in_deriv->CopyFromMat(out_deriv);
-    in_deriv->MulColsVec(scales_);
-  }
-
   if (to_update != NULL) {
     // Next update the model (must do this 2nd so the derivatives we propagate
     // are accurate, in case this == to_update_in.)
@@ -2113,6 +2111,13 @@ void PerElementScaleComponent::Backprop(
       to_update->UpdateSimple(in_value, out_deriv);
     else  // the call below is to a virtual function that may be re-implemented
       to_update->Update(debug_info, in_value, out_deriv);  // by child classes.
+  }
+
+  if (in_deriv) {
+    // Propagate the derivative back to the input.
+    if (in_deriv->Data() != out_deriv.Data())
+      in_deriv->CopyFromMat(out_deriv);
+    in_deriv->MulColsVec(scales_);
   }
 }
 
@@ -2968,9 +2973,7 @@ void NaturalGradientAffineComponent::Write(std::ostream &os,
 
 std::string NaturalGradientAffineComponent::Info() const {
   std::ostringstream stream;
-  stream << UpdatableComponent::Info();
-  PrintParameterStats(stream, "linear-params", linear_params_);
-  PrintParameterStats(stream, "bias", bias_params_, true);
+  stream << AffineComponent::Info();
   stream << ", rank-in=" << rank_in_
          << ", rank-out=" << rank_out_
          << ", num-samples-history=" << num_samples_history_
@@ -3072,6 +3075,12 @@ void LinearComponent::Read(std::istream &is, bool binary) {
   KALDI_ASSERT(token == "");
   ExpectToken(is, binary, "<Params>");
   params_.Read(is, binary);
+  if (PeekToken(is, binary) == 'O') {
+    ExpectToken(is, binary, "<OrthonormalConstraint>");
+    ReadBasicType(is, binary, &orthonormal_constraint_);
+  } else {
+    orthonormal_constraint_ = 0.0;
+  }
   ExpectToken(is, binary, "<UseNaturalGradient>");
   ReadBasicType(is, binary, &use_natural_gradient_);
 
@@ -3149,6 +3158,10 @@ void LinearComponent::InitFromConfig(ConfigLine *cfl) {
   preconditioner_in_.SetUpdatePeriod(update_period);
   preconditioner_out_.SetUpdatePeriod(update_period);
 
+
+  orthonormal_constraint_ = 0.0;
+  cfl->GetValue("orthonormal-constraint", &orthonormal_constraint_);
+
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
               << cfl->UnusedValues();
@@ -3160,6 +3173,10 @@ void LinearComponent::Write(std::ostream &os,
   WriteUpdatableCommon(os, binary);  // Write the opening tag and learning rate
   WriteToken(os, binary, "<Params>");
   params_.Write(os, binary);
+  if (orthonormal_constraint_ != 0.0) {
+    WriteToken(os, binary, "<OrthonormalConstraint>");
+    WriteBasicType(os, binary, orthonormal_constraint_);
+  }
   WriteToken(os, binary, "<UseNaturalGradient>");
   WriteBasicType(os, binary, use_natural_gradient_);
 
@@ -3183,7 +3200,13 @@ void LinearComponent::Write(std::ostream &os,
 std::string LinearComponent::Info() const {
   std::ostringstream stream;
   stream << UpdatableComponent::Info();
-  PrintParameterStats(stream, "params", params_);
+  PrintParameterStats(stream, "params", params_,
+                      false, // include_mean
+                      true, // include_row_norms
+                      true, // include_column_norms
+                      GetVerboseLevel() >= 2); // include_singular_values
+  if (orthonormal_constraint_ != 0.0)
+    stream << ", orthonormal-constraint=" << orthonormal_constraint_;
   stream << ", use-natural-gradient="
          << (use_natural_gradient_ ? "true" : "false")
          << ", rank-in=" << preconditioner_in_.GetRank()
@@ -3249,12 +3272,14 @@ LinearComponent::LinearComponent(
     const LinearComponent &other):
     UpdatableComponent(other),
     params_(other.params_),
+    orthonormal_constraint_(other.orthonormal_constraint_),
     use_natural_gradient_(other.use_natural_gradient_),
     preconditioner_in_(other.preconditioner_in_),
     preconditioner_out_(other.preconditioner_out_) { }
 
 LinearComponent::LinearComponent(const CuMatrix<BaseFloat> &params):
     params_(params),
+    orthonormal_constraint_(0.0),
     use_natural_gradient_(true) {
   // Set defaults for natural gradient.
   preconditioner_in_.SetRank(40);
