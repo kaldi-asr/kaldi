@@ -50,7 +50,8 @@ int main(int argc, char *argv[]) {
         "segments are extracted and appended to the end of the utterance.\n"
         "Note this is for use in testing endpointing in decoding.\n"
         "\n"
-        "Usage: extend-wav-with-silence [options] <wav-rspecifier> <wav-wspecifier>\n";
+        "Usage: extend-wav-with-silence [options] <wav-rspecifier> <wav-wspecifier>\n"
+        "       extend-wav-with-silence [options] <wav-rxfilename> <wav-wxfilename>\n";
 
     ParseOptions po(usage);
     BaseFloat sil_len = 5.0,

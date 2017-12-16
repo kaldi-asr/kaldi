@@ -24,6 +24,11 @@
 namespace kaldi {
 namespace chain {
 
+// GenericNumeratorComputation is responsible for the forward-backward of the
+// end-to-end 'supervision' (numerator) FST. It is used in chain-training.cc
+// (similar to NumeratorComputation) to compute the numerator derivatives
+// for end-to-end training 'supervision's.
+
 GenericNumeratorComputation::GenericNumeratorComputation(
     const Supervision &supervision,
     const CuMatrixBase<BaseFloat> &nnet_output):

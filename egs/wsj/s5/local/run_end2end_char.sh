@@ -76,28 +76,28 @@ if [ -f data/${trainset}_spEx_hires/feats.scp ]; then
 else
   if [ $stage -le 2 ]; then
     echo "$0: perturbing the training data to allowed lengths..."
-    mkdir -p exp/chain/e2e_base
     utils/data/get_utt2dur.sh data/$trainset  # necessary for the next command
 
     # 12 in the following command means the allowed lengths are spaced
     # by 12% change in length.
     python utils/data/perturb_speed_to_allowed_lengths.py 12 data/${trainset} \
-           data/${trainset}_spEx_hires
-    cat data/${trainset}_spEx_hires/utt2dur | \
-      awk '{print $1 " " substr($1,5)}' >data/${trainset}_spEx_hires/utt2uniq
-    utils/fix_data_dir.sh data/${trainset}_spEx_hires
+           data/${trainset}_spe2e_hires
+    cat data/${trainset}_spe2e_hires/utt2dur | \
+      awk '{print $1 " " substr($1,5)}' >data/${trainset}_spe2e_hires/utt2uniq
+    utils/fix_data_dir.sh data/${trainset}_spe2e_hires
   fi
 
   if [ $stage -le 3 ]; then
     echo "$0: extracting MFCC features for the training data..."
     steps/make_mfcc.sh --nj 50 --mfcc-config conf/mfcc_hires.conf \
-                       --cmd "$train_cmd" data/${trainset}_spEx_hires
-    steps/compute_cmvn_stats.sh data/${trainset}_spEx_hires
+                       --cmd "$train_cmd" data/${trainset}_spe2e_hires
+    steps/compute_cmvn_stats.sh data/${trainset}_spe2e_hires
   fi
 fi
 
 if [ $stage -le 4 ]; then
   echo "$0: estimating character language model for the denominator graph"
+  mkdir -p exp/chain/e2e_base
   cat data/$trainset/text | \
     utils/text_to_phones.py data/lang_char data/local/dict_char/lexicon.txt | \
     utils/sym2int.pl -f 2- data/lang_char/phones.txt | \
@@ -107,5 +107,5 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0: calling the flat-start chain recipe..."
-  loacl/chain/run_tdnn_lstm_flatstart.sh
+  local/chain/run_tdnn_lstm_flatstart.sh
 fi

@@ -41,10 +41,45 @@
 namespace kaldi {
 namespace chain {
 
+/* This extended comment explains how end-to-end (i.e. flat-start) chain
+   training is done and how it is mainly different from regular chain training.
+
+   The key differnece with regular chain is that the end-to-end supervision FST
+   (i.e. numerator graph) can have loops and more than one final state (we
+   call it 'Generic' numerator in the code). This is because we do not
+   have any alignments so we can't split the utterances and we can't remove
+   the self-loops.
+   Of course, the end-to-end FST still has to be epsilon-free and have pdf_id+1
+   on its input and output labels, just like the regular supervision FST.
+   The end-to-end supervision (which contains the generic numerator FST's) is
+   created using TrainingGraphToSupervision from a training FST (i.e. an FST
+   created using compile-train-graphs). It is stored in the same struct as
+   regular supervision (i.e. chain::Supervision) but this function
+   sets the 'e2e' flag to true. Also the generic  numerator FSTs
+   are stored in 'e2e_fsts' instead of 'fst'.
+
+   The TrainingGraphToSupervision function is called in nnet3-chain-e2e-get-egs
+   binary to create end-to-end chain egs. The only difference between a regular
+   and end-to-end chain example is the supervision as explained above.
+
+   class GenericNumeratorComputation is responsible for doing Forward-Backward
+   on a generic FST (i.e. the kind of FST we use in end-to-end chain
+   training). It is the same as DenominatorComputation with 2 differences:
+   [1] it runs on CPU
+   [2] it does not use leakyHMM
+
+   When the 'e2e' flag of a supervision is set, the ComputeChainObjfAndDeriv
+   function in chain-training.cc uses GenericNumeratorComputation (instead
+   of NumeratorCompuation) to compute the numerator derivatives.
+ */
+
 
 // This class is responsible for the forward-backward of the
 // end-to-end 'supervision' (numerator) FST. This kind of FST can
 // have self-loops.
+// Note: An end-to-end supervision is the same as a regular supervision
+// (class chain::Supervision) except the 'e2e' flag is set to true
+// and the numerator FSTs are stored in 'e2e_fsts' instead of 'fst'
 
 class GenericNumeratorComputation {
 
@@ -65,7 +100,12 @@ class GenericNumeratorComputation {
 
  private:
 
-  enum { kMaxDerivTimeSteps = 4 };
+  // Defining this constant as an enum is easier.  it controls a memory/speed
+  // tradeoff, determining how many frames' worth of the transposed derivative
+  // we store at a time.  It's not very critical; the only disadvantage from
+  // setting it small is that we have to invoke an AddMat kernel more times.
+  enum { kMaxDerivTimeSteps = 8 };
+
   // sets up the alpha for frame t = 0.
   void AlphaFirstFrame();
 
@@ -85,7 +125,6 @@ class GenericNumeratorComputation {
   void BetaGeneralFrameDebug(int32 t);
 
 
-  //  const ChainTrainingOptions &opts_;
   const Supervision &supervision_;
 
   // the transposed neural net output.
@@ -106,16 +145,24 @@ class GenericNumeratorComputation {
   Vector<BaseFloat> offsets_;
 
   // maximum number of states among all the numerator graphs
+  // (it is used as a stride in alpha_ and beta_)
   int32 max_num_hmm_states_;
 
   // the derivs w.r.t. the nnet outputs (transposed)
+  // (the dimensions and functionality is the same as in
+  // DenominatorComputation)
   Matrix<BaseFloat> nnet_output_deriv_transposed_;
 
-  // forward and backward probs matrices
+  // forward and backward probs matrices. These have the
+  // same dimension and functionality as alpha_ and beta_
+  // in DenominatorComputation except here we don't use beta
+  // sums (becasue we don't use leakyHMM). However, we use
+  // alpha sums to help avoid numerical issues.
   Matrix<BFloat> alpha_;
   Matrix<BFloat> beta_;
 
   // vector of total probs (i.e. for all the sequences)
+  // (it's exactly like 'tot_probe_' in DenominatorComputation)
   Vector<BFloat> tot_prob_;
 
   bool ok_;

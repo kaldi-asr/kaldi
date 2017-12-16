@@ -215,7 +215,6 @@ struct Supervision {
   // label_dim).  This should equal the NumPdfs() in the TransitionModel object.
   // Included to avoid training on mismatched egs.
   int32 label_dim;
-  bool e2e;  // end to end
 
   // This is an epsilon-free unweighted acceptor that is sorted in increasing
   // order of frame index (this implies it's topologically sorted but it's a
@@ -224,6 +223,18 @@ struct Supervision {
   // 'frames_per_sequence * num_sequences' arcs on it (first 'frames_per_sequence' arcs for the
   // first sequence; then 'frames_per_sequence' arcs for the second sequence, and so on).
   fst::StdVectorFst fst;
+
+  // if the 'e2e' flag is set to true, it means that this supervision is meant
+  // to be used in end-to-end (i.e. flat-start) chain training. In that case,
+  // the numerator FST's are no longer stored in 'fst' but instead they are
+  // stored in e2e_fsts which is a list (with size() == 'num_sequences').
+  // That's because end-to-end numerator FST's are similar to training FST's
+  // used in gmm monophone flat-start training (i.e. they have self-loops)
+  // and therefore they can't be appended into a single long FST.
+  // The function responsible for creating an end-to-end 'supervision'
+  // is TrainingGraphToSupervision().
+  // To find out more about end-to-end training, see chain-generic-numerator.h
+  bool e2e;  // end to end
   std::vector<fst::StdVectorFst> e2e_fsts;
 
   Supervision(): weight(1.0), num_sequences(1), frames_per_sequence(-1),
@@ -258,6 +269,14 @@ bool ProtoSupervisionToSupervision(
     const ProtoSupervision &proto_supervision,
     Supervision *supervision);
 
+/** This function creates and initializes an end-to-end supervision object
+    from a training FST (e.g. created using compile-train-graphs). It simply
+    sets all the input and output labels to pdf_id+1 (i.e. converts the FST to
+    an FSA) and stores the resulting FST in e2e-fsts[0].
+    It returns true if there were no epsilon transitions, otherwise
+    it would return false.
+    To find out more about end-to-end training, see chain-generic-numerator.h
+ */
 bool TrainingGraphToSupervision(
     const fst::StdVectorFst& training_graph,
     const TransitionModel& trans_model,

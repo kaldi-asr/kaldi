@@ -57,7 +57,7 @@ frames_per_iter=2500000
 cmvn_opts="--norm-means=true --norm-vars=true"
 leaky_hmm_coeff=0.1
 num_scale_opts="--transition-scale=1.0 --self-loop-scale=1.0"
-train_set=train_si284_spEx_hires
+train_set=train_si284_spe2e_hires
 test_sets="test_dev93 test_eval92"
 first_layer_splice=-1,0,1
 momentum=0

@@ -683,8 +683,8 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
 Supervision::Supervision(const Supervision &other):
     weight(other.weight), num_sequences(other.num_sequences),
     frames_per_sequence(other.frames_per_sequence),
-    label_dim(other.label_dim), e2e(other.e2e), fst(other.fst),
-    e2e_fsts(other.e2e_fsts) { }
+    label_dim(other.label_dim), fst(other.fst),
+    e2e(other.e2e), e2e_fsts(other.e2e_fsts) { }
 
 void AppendSupervision(const std::vector<const Supervision*> &input,
                        bool compactify,

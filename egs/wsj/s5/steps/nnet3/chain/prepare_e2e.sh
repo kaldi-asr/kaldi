@@ -76,6 +76,7 @@ if [ $stage -le 0 ]; then
     cp $treedir/tree $dir || exit 1;
   fi
   copy-transition-model $dir/0.mdl $dir/0.trans_mdl
+  ln -s 0.mdl $dir/final.mdl  # for consistency with scripts which require a final.mdl
 fi
 
 lex=$lang/L.fst
