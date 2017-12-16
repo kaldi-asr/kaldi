@@ -737,12 +737,13 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         configs.append("component name={0}.lstm_nonlin type=LstmNonlinearityComponent "
                        "cell-dim={1} {2} {3}".format(name, cell_dim, lstm_str,
                                                      l2_regularize_option))
-        configs.append("# Component for backprop truncation, to avoid gradient blowup in long training examples.")
         # Note from Dan: I don't remember why we are applying the backprop
         # truncation on both c and m appended together, instead of just on c.
         # Possibly there was some memory or speed or WER reason for it which I
         # have forgotten about now.
-        configs.append("component name={0}.cm_trunc type=BackpropTruncationComponent dim={1} {2}".format(name, 2 * cell_dim, bptrunc_str))
+        configs.append("# Component for backprop truncation, to avoid gradient blowup in long training examples.")
+        configs.append("component name={0}.cm_trunc type=BackpropTruncationComponent dim={1} "
+                       "{2}".format(name, 2 * cell_dim, bptrunc_str))
 
         configs.append("###  Nodes for the components above.")
         configs.append("component-node name={0}.W_all component={0}.W_all input=Append({1}, "
@@ -775,12 +776,12 @@ class XconfigFastLstmLayer(XconfigLayerBase):
 
 
 # This class is for lines like
-#   'fast-lstmb-layer name=lstm1 input=[-1] delay=-3'
-# (you can also call it 'fast-lstmb-batchnorm-layer' if you want it to end
-# in a batchnorm component).
+#   'lstmb-layer name=lstm1 input=[-1] delay=-3'
+#
+# TODO: more description
 # It's like fast-lstm-layer but with a bottleneck (like an SVD) in the main parameter matrix
 # of the LSTM (W_all, which combines all the full-rank projections of the LSTM): we divide
-# it into two matrices, with batch-norm in between to stabilize the training.
+# it into two matrices, with an orbatch-norm in between to stabilize the training.
 #
 # The output dimension of the layer may be specified via 'cell-dim=xxx', but if not specified,
 # the dimension defaults to the same as the input.
@@ -808,32 +809,23 @@ class XconfigFastLstmLayer(XconfigLayerBase):
 #                            i.e. history since about t = t-20, can be
 #                            accumulated in c_t.]
 #  l2-regularize=0.0         Constant controlling l2 regularization for this layer
-class XconfigFastLstmbLayer(XconfigLayerBase):
+class XconfigLstmbLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
-        assert first_token in [ 'fast-lstmb-layer', 'fast-lstmb-batchnorm-layer' ]
+        assert first_token == 'lstmb-layer'
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
-        self.config = {'input':'[-1]',
+        self.config = { 'input':'[-1]',
                         'cell-dim' : -1, # this is a required argument
                         'bottleneck-dim': -1, # this is a required argument
                         'clipping-threshold' : 30.0,
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,
-                       'recurrence-scale': 4.0,
                         'delay' : -1,
-                        # if self-stabilize=true, the W_all_b will be a
-                        # LinearComponent followed by a ScaleAndOffsetComponent.
-                         'self-stabilize': False,
-                        # if you want to set 'self-repair-scale' (c.f. the
-                        # self-repair-scale-nonlinearity config value in older LSTM layers), you can
-                        # add 'self-repair-scale=xxx' to
-                        # lstm-nonlinearity-options.
                         'lstm-nonlinearity-options' : ' max-change=0.75',
                         # the affine layer contains 4 of our old layers -> use a
                         # larger max-change than the normal value of 0.75.
                         'ng-affine-options' : ' max-change=1.5',
-                        'normalize-type': 'batchnorm', # can be 'batchnorm', 'renorm', or 'none'
                         'l2-regularize': 0.0,
                         'decay-time':  -1.0
                         }
@@ -852,30 +844,16 @@ class XconfigFastLstmbLayer(XconfigLayerBase):
                 self.config['bottleneck-dim']))
         if self.config['delay'] == 0:
             raise RuntimeError("delay cannot be zero")
-        assert self.config['normalize-type'] in ['batchnorm', 'renorm', 'none']
 
     def auxiliary_outputs(self):
-        return ['c']
+        return []
 
     def output_name(self, auxiliary_output = None):
-        node_name = ('m_batchnorm' if self.layer_type == 'fast-lstmb-batchnorm-layer'
-                      else 'm')
-        if auxiliary_output is not None:
-            if auxiliary_output == 'c':
-                node_name = 'c'
-                self.c_needed = True
-            else:
-                raise RuntimeError("Unknown auxiliary output name {0}".format(auxiliary_output))
-        return '{0}.{1}'.format(self.name, node_name)
+        assert auxiliary_output is None
+        return '{0}.m_batchnorm'.format(self.name)
 
     def output_dim(self, auxiliary_output = None):
-        if auxiliary_output is not None:
-            if auxiliary_output == 'c':
-                self.c_needed = True
-                return self.config['cell-dim']
-                # add code for other auxiliary_outputs here when we decide to expose them
-            else:
-                raise RuntimeError("Unknown auxiliary output name {0}".format(auxiliary_output))
+        assert auxiliary_output is None
         return self.config['cell-dim']
 
     def get_full_config(self):
@@ -924,31 +902,26 @@ class XconfigFastLstmbLayer(XconfigLayerBase):
 
         configs = []
 
-        # See XconfigFastLstmLayer to understand what's going on here.
-        # This differs from that code by a factorization of the W_all matrix.
+        # See XconfigFastLstmLayer to understand what's going on here.  This
+        # differs from that code by a factorization of the W_all matrix into two
+        # pieces with a smaller dimension in between (with the first of the two
+        # pieces constrained to have orthonormal rows).  Note: we don't apply l2
+        # regularization to this layer, since, with the orthonormality
+        # constraint, it's meaningless.
         configs.append("### Begin LTSM layer '{0}'".format(name))
         configs.append("component name={0}.W_all_a type=LinearComponent input-dim={1} "
-                       "orthonormal-constraint=1.0 output-dim={2} {3} {4}".format(
+                       "orthonormal-constraint=1.0 output-dim={2} {3} ".format(
                            name, input_dim + cell_dim, bottleneck_dim,
-                           affine_str, l2_regularize_option))
-        normalize_type = self.config['normalize-type']
-        if normalize_type == 'batchnorm':
-            configs.append("component name={0}.W_batchnorm type=BatchNormComponent dim={1} ".format(
-                name, bottleneck_dim))
-        elif normalize_type == 'renorm':
-            configs.append("component name={0}.W_renorm type=NormalizeComponent dim={1} ".format(
-                name, bottleneck_dim))
+                           affine_str))
 
-        if not self.config['self-stabilize']:
-            configs.append("component name={0}.W_all_b type=NaturalGradientAffineComponent input-dim={1} "
-                           "output-dim={2} {3} {4}".format(name, bottleneck_dim, cell_dim * 4,
-                                                           affine_str, l2_regularize_option))
-        else:
-            configs.append("component name={0}.W_all_b type=LinearComponent input-dim={1} "
-                           "output-dim={2} {3} {4}".format(name, bottleneck_dim, cell_dim * 4,
-                                                           affine_str, l2_regularize_option))
-            configs.append("component name={0}.W_all_b_so type=ScaleAndOffsetComponent dim={1} "
-                           "max-change=0.75".format(name, cell_dim * 4))
+        configs.append("component name={0}.c_trunc_memnorm type=MemoryNormComponent dim={1} ".format(
+                name, cell_dim))
+
+        configs.append("component name={0}.W_all_b type=LinearComponent input-dim={1} "
+                       "output-dim={2} {3} {4}".format(name, bottleneck_dim, cell_dim * 4,
+                                                       affine_str, l2_regularize_option))
+        configs.append("component name={0}.W_all_b_so type=ScaleAndOffsetComponent dim={1} "
+                       "max-change=0.75".format(name, cell_dim * 4))
 
 
         configs.append("# The core LSTM nonlinearity, implemented as a single component.")
@@ -958,49 +931,34 @@ class XconfigFastLstmbLayer(XconfigLayerBase):
                        "cell-dim={1} {2} {3}".format(name, cell_dim, lstm_str,
                                                      l2_regularize_option))
         configs.append("# Component for backprop truncation, to avoid gradient blowup in long training examples.")
-        # Note from Dan: I don't remember why we are applying the backprop
-        # truncation on both c and m appended together, instead of just on c.
-        # Possibly there was some memory or speed or WER reason for it which I
-        # have forgotten about now.
-        configs.append("component name={0}.cm_trunc type=BackpropTruncationComponent dim={1} {2}".format(name, 2 * cell_dim, bptrunc_str))
+
+        configs.append("component name={0}.c_trunc type=BackpropTruncationComponent dim={1} {2}".format(
+            name, cell_dim, bptrunc_str))
+        configs.append("component name={0}.m_batchnorm type=BatchNormComponent dim={1} ".format(
+            name, cell_dim))
+
 
         configs.append("###  Nodes for the components above.")
         configs.append("component-node name={0}.W_all_a component={0}.W_all_a input=Append({1}, "
-#                       "IfDefined(Offset({0}.c_trunc, {2})))".format(name, input_descriptor, delay))
-                       "IfDefined(Offset(Scale({2}, {0}.c_trunc), {3})))".format(
-                           name, input_descriptor, self.config['recurrence-scale'], delay))
-        if normalize_type != 'none':
-            configs.append("component-node name={0}.W_{1} component={0}.W_{1} "
-                           "input={0}.W_all_a".format(name,
-                                                      normalize_type))
-            configs.append("component-node name={0}.W_all_b component={0}.W_all_b "
-                           "input={0}.W_{1}".format(name, normalize_type))
-        else:
-            configs.append("component-node name={0}.W_all_b component={0}.W_all_b "
-                           "input={0}.W_all_a".format(name))
-        if self.config['self-stabilize']:
-            configs.append("component-node name={0}.W_all_b_so component={0}.W_all_b_so "
-                           "input={0}.W_all_b".format(name))
-            W_all_b_name = 'W_all_b_so'
-        else:
-            W_all_b_name = 'W_all_b'
+                       "IfDefined(Offset({0}.c_trunc_memnorm, {2})))".format(
+                           name, input_descriptor, delay))
+        configs.append("component-node name={0}.W_all_b component={0}.W_all_b "
+                       "input={0}.W_all_a".format(name))
+        configs.append("component-node name={0}.W_all_b_so component={0}.W_all_b_so "
+                       "input={0}.W_all_b".format(name))
 
         configs.append("component-node name={0}.lstm_nonlin component={0}.lstm_nonlin "
-                       "input=Append({0}.{1}, IfDefined(Offset({0}.c_trunc, {2})))".format(
-                           name, W_all_b_name, delay))
-        # we can print .c later if needed, but it generates a warning since it's not used.  could use c_trunc instead
-        #configs.append("dim-range-node name={0}.c input-node={0}.lstm_nonlin dim-offset=0 dim={1}".format(name, cell_dim))
-        configs.append("dim-range-node name={0}.m input-node={0}.lstm_nonlin dim-offset={1} dim={1}".format(name, cell_dim))
-        configs.append("component-node name={0}.cm_trunc component={0}.cm_trunc input={0}.lstm_nonlin".format(name))
-        configs.append("dim-range-node name={0}.c_trunc input-node={0}.cm_trunc dim-offset=0 dim={1}".format(name, cell_dim))
-        # configs.append("dim-range-node name={0}.m_trunc input-node={0}.cm_trunc dim-offset={1} dim={1}".format(name, cell_dim))
-
-        if self.layer_type == "fast-lstmb-batchnorm-layer":
-            # Add the batchnorm component, if requested to include batchnorm.
-            configs.append("component name={0}.m_batchnorm type=BatchNormComponent dim={1} ".format(
-                name, cell_dim))
-            configs.append("component-node name={0}.m_batchnorm component={0}.m_batchnorm "
-                           "input={0}.m".format(name))
+                       "input=Append({0}.W_all_b_so, IfDefined(Offset({0}.c_trunc, {1})))".format(
+                           name, delay))
+        configs.append("dim-range-node name={0}.c input-node={0}.lstm_nonlin dim-offset=0 "
+                       "dim={1}".format(name, cell_dim))
+        configs.append("dim-range-node name={0}.m input-node={0}.lstm_nonlin dim-offset={1} "
+                       "dim={1}".format(name, cell_dim))
+        configs.append("component-node name={0}.c_trunc component={0}.c_trunc input={0}.c".format(name))
+        configs.append("component-node name={0}.c_trunc_memnorm component={0}.c_trunc_memnorm "
+                       "input={0}.c_trunc".format(name))
+        configs.append("component-node name={0}.m_batchnorm component={0}.m_batchnorm "
+                       "input={0}.m".format(name))
         configs.append("### End LTSM layer '{0}'".format(name))
         return configs
 
