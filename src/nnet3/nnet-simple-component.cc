@@ -2969,12 +2969,14 @@ void LinearComponent::InitFromConfig(ConfigLine *cfl) {
   int32 rank_in = 20, rank_out = 80, update_period = 4;
   BaseFloat alpha = 4.0,
       num_samples_history = 2000.0;
+  use_natural_gradient_ = true;
 
   cfl->GetValue("num-samples-history", &num_samples_history);
   cfl->GetValue("alpha", &alpha);
   cfl->GetValue("rank-in", &rank_in);
   cfl->GetValue("rank-out", &rank_out);
   cfl->GetValue("update-period", &update_period);
+  cfl->GetValue("use-natural-gradient", &use_natural_gradient_);
 
   preconditioner_in_.SetAlpha(alpha);
   preconditioner_out_.SetAlpha(alpha);
