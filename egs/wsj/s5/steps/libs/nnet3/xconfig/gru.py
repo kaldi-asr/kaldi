@@ -311,7 +311,7 @@ class XconfigPgruLayer(XconfigLayerBase):
         # formulation like:
         # z_t = \sigmoid ( x_t * U^z + s_{t-1} * W^z ) // update gate
         # r_t = \sigmoid ( x_t * U^r + s_{t-1} * W^r ) // reset gate
-        # \tilde{h}_t = \tanh ( x_t * U^h + ( s_{t-1} \dot r ) * W^h )
+        # \tilde{h}_t = \tanh ( x_t * U^h + ( s_{t-1} \dot r_t ) * W^h )
         # h_t = ( 1 - z_t ) \dot \tilde{h}_t + z_t \dot h_{t-1}
         # y_t = h_t * W^y
         # s_t = y_t (0:rec_proj_dim-1)
@@ -523,7 +523,7 @@ class XconfigNormPgruLayer(XconfigLayerBase):
         # formulation like:
         # z_t = \sigmoid ( x_t * U^z + s_{t-1} * W^z ) // update gate
         # r_t = \sigmoid ( x_t * U^r + s_{t-1} * W^r ) // reset gate
-        # \tilde{h}_t = \tanh ( x_t * U^h + ( s_{t-1} \dot r ) * W^h )
+        # \tilde{h}_t = \tanh ( x_t * U^h + ( s_{t-1} \dot r_t ) * W^h )
         # h_t = ( 1 - z_t ) \dot \tilde{h}_t + z_t \dot h_{t-1}
         # y_t_tmp = h_t * W^y
         # s_t = renorm ( y_t_tmp (0:rec_proj_dim-1) )
@@ -745,10 +745,11 @@ class XconfigOpgruLayer(XconfigLayerBase):
         # formulation for OPGRU like:
         # z_t = \sigmoid ( x_t * U^z + s_{t-1} * W^z ) // update gate
         # o_t = \sigmoid ( x_t * U^o + s_{t-1} * W^o ) // output gate
-        # \tilde{h}_t = \tanh ( x_t * U^h + y_{t-1} \dot W^h ) // W^h is learnable vector
-        # h_t = ( 1 - z_t ) \dot h_t + z_t \dot y_{t-1}
-        # y_t = ( y_t \dot o_t) * W^y
-        # s_t = y_t(0:rec_proj_dim-1)
+        # h_t = \tanh ( x_t * U^h + y_{t-1} \dot W^h ) // W^h is learnable vector
+        # y_t = ( 1 - z_t ) \dot h_t + z_t \dot y_{t-1}
+        # y_o_t = y_t \dot o_t
+        # sn_t = y_o_t * W^y
+        # s_t = sn_t(0:rec_proj_dim-1)
         
         configs = []
         configs.append("# Update gate control : W_z* matrics")
@@ -962,8 +963,8 @@ class XconfigNormOpgruLayer(XconfigLayerBase):
         # formulation for OPGRU like:
         # z_t = \sigmoid ( x_t * U^z + s_{t-1} * W^z ) // update gate
         # o_t = \sigmoid ( x_t * U^o + s_{t-1} * W^o ) // output gate
-        # \tilde{h}_t = \tanh ( x_t * U^h + y_{t-1} \dot W^h ) // W^h is learnable vector
-        # h_t = ( 1 - z_t ) \dot h_t + z_t \dot y_{t-1}
+        # h_t = \tanh ( x_t * U^h + y_{t-1} \dot W^h ) // W^h is learnable vector
+        # y_t = ( 1 - z_t ) \dot h_t + z_t \dot y_{t-1}
         # y_t_tmp = ( y_t \dot o_t) * W^y
         # s_t = renorm ( y_t_tmp(0:rec_proj_dim-1) )
         # y_t = batchnorm ( y_t_tmp )
