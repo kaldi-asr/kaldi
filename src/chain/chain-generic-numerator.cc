@@ -32,7 +32,6 @@ namespace chain {
 GenericNumeratorComputation::GenericNumeratorComputation(
     const Supervision &supervision,
     const CuMatrixBase<BaseFloat> &nnet_output):
-    //    opts_(opts),
     supervision_(supervision),
     exp_nnet_output_transposed_(nnet_output, kTrans),
     nnet_output_deriv_transposed_(
@@ -114,12 +113,12 @@ void GenericNumeratorComputation::AlphaFirstFrame() {
   const int32 num_sequences = supervision_.num_sequences,
       num_states = max_num_hmm_states_;
   // set alpha_0(0) for all sequences to 1.0 and leave the rest to be 0.0.
-  BFloat *first_frame_alpha = alpha_.RowData(0);
-  SubVector<BFloat> alpha_hmm_state0(first_frame_alpha, num_sequences);
+  double *first_frame_alpha = alpha_.RowData(0);
+  SubVector<double> alpha_hmm_state0(first_frame_alpha, num_sequences);
   alpha_hmm_state0.Set(1.0);
 
   // Now compute alpha-sums for t==0 which is obviously 1.0 for each sequence
-  SubVector<BFloat> alpha_sum_vec(first_frame_alpha +
+  SubVector<double> alpha_sum_vec(first_frame_alpha +
                                   num_states * num_sequences,
                                   num_sequences);
   alpha_sum_vec.Set(1.0);
@@ -136,22 +135,22 @@ void GenericNumeratorComputation::AlphaGeneralFrame(int32 t) {
       num_states = max_num_hmm_states_;
   KALDI_ASSERT(t > 0 && t <= num_frames);
 
-  SubMatrix<BFloat> this_alpha(alpha_.RowData(t), num_states,
+  SubMatrix<double> this_alpha(alpha_.RowData(t), num_states,
                                num_sequences, num_sequences);
-  const SubMatrix<BFloat> prev_alpha(alpha_.RowData(t - 1), num_states + 1,
+  const SubMatrix<double> prev_alpha(alpha_.RowData(t - 1), num_states + 1,
                                      num_sequences, num_sequences);
   // 'probs' is the matrix of pseudo-likelihoods for frame t - 1.
   SubMatrix<BaseFloat> probs(exp_nnet_output_transposed_, 0, num_pdfs,
                              (t - 1) * num_sequences, num_sequences);
 
   for (int32 seq = 0; seq < num_sequences; seq++) {
-    BFloat inv_arbitrary_scale = prev_alpha(num_states, seq);
+    double inv_arbitrary_scale = prev_alpha(num_states, seq);
     for (int32 h = 0; h < supervision_.e2e_fsts[seq].NumStates(); h++) {
       for (auto tr = in_transitions_[seq][h].begin();
            tr != in_transitions_[seq][h].end(); tr++) {
-        BFloat transition_prob = tr->transition_prob;
+        double transition_prob = tr->transition_prob;
         int32 pdf_id = tr->pdf_id, prev_hmm_state = tr->hmm_state;
-        BFloat prob = probs(pdf_id, seq);
+        double prob = probs(pdf_id, seq);
         this_alpha(h, seq) += prev_alpha(prev_hmm_state, seq) /
             inv_arbitrary_scale * transition_prob * prob;
       }
@@ -161,7 +160,7 @@ void GenericNumeratorComputation::AlphaGeneralFrame(int32 t) {
   if (t == num_frames)  // last alpha
     this_alpha.MulElements(final_probs_);
   // now compute alpha-sums for frame t:
-  SubVector<BFloat> alpha_sum_vec(alpha_.RowData(t) + num_states * num_sequences,
+  SubVector<double> alpha_sum_vec(alpha_.RowData(t) + num_states * num_sequences,
                                   num_sequences);
   alpha_sum_vec.AddRowSumMat(1.0, this_alpha, 0.0);
 }
@@ -181,19 +180,19 @@ BaseFloat GenericNumeratorComputation::ComputeTotLogLike() {
       num_states = max_num_hmm_states_;
 
   // View the last alpha as a matrix of size num-hmm-states by num-sequences.
-  SubMatrix<BFloat> last_alpha(alpha_.RowData(num_frames), num_states,
+  SubMatrix<double> last_alpha(alpha_.RowData(num_frames), num_states,
                                num_sequences, num_sequences);
   tot_prob_.AddRowSumMat(1.0, last_alpha, 0.0);
-  Vector<BFloat> tot_log_probs(tot_prob_);
+  Vector<double> tot_log_probs(tot_prob_);
   tot_log_probs.ApplyLog();
   tot_log_probs.AddVec(-1.0, offsets_);
-  BFloat tot_log_prob = tot_log_probs.Sum();
-  SubMatrix<BFloat> inv_arbitrary_scales(alpha_, 0, num_frames,
+  double tot_log_prob = tot_log_probs.Sum();
+  SubMatrix<double> inv_arbitrary_scales(alpha_, 0, num_frames,
                                          num_sequences * num_states,
                                          num_sequences);
-  Matrix<BFloat> log_inv_arbitrary_scales(inv_arbitrary_scales);
+  Matrix<double> log_inv_arbitrary_scales(inv_arbitrary_scales);
   log_inv_arbitrary_scales.ApplyLog();
-  BFloat log_inv_arbitrary_scales_product =
+  double log_inv_arbitrary_scales_product =
       log_inv_arbitrary_scales.Sum();
   return tot_log_prob + log_inv_arbitrary_scales_product;
 }
@@ -229,8 +228,6 @@ bool GenericNumeratorComputation::Backward(
         transposed_deriv_part.SetZero();
     }
   }
-//  nnet_output_deriv->AddMat(supervision_.weight,
-//                            nnet_output_deriv_transposed_, kTrans);
   return ok_;
 }
 
@@ -239,14 +236,14 @@ void GenericNumeratorComputation::BetaLastFrame() {
   // frames_per_sequence_).  Note that the betas we use here contain a
   // 1/(tot-prob) factor in order to simplify the backprop.
   int32 t = supervision_.frames_per_sequence;
-  BFloat *last_frame_beta = beta_.RowData(t % 2);
+  double *last_frame_beta = beta_.RowData(t % 2);
 
-  SubMatrix<BFloat> beta_mat(last_frame_beta,
+  SubMatrix<double> beta_mat(last_frame_beta,
                              max_num_hmm_states_,
                              supervision_.num_sequences,
                              supervision_.num_sequences);
 
-  Vector<BFloat> inv_tot_prob(tot_prob_);
+  Vector<double> inv_tot_prob(tot_prob_);
   inv_tot_prob.InvertElements();
 
   beta_mat.CopyRowsFromVec(inv_tot_prob);
@@ -266,11 +263,11 @@ void GenericNumeratorComputation::BetaGeneralFrame(int32 t) {
   // matrix, storing only chunks of frames at a time, and we add it to the
   // non-transposed output whenever we finish a chunk.
   int32 t_wrapped = t % static_cast<int32>(kMaxDerivTimeSteps);
-  const SubMatrix<BFloat> this_alpha(alpha_.RowData(t), num_states,
+  const SubMatrix<double> this_alpha(alpha_.RowData(t), num_states,
                                num_sequences, num_sequences);
-  SubMatrix<BFloat> this_beta(beta_.RowData(t % 2), num_states,
+  SubMatrix<double> this_beta(beta_.RowData(t % 2), num_states,
                                num_sequences, num_sequences);
-  const SubMatrix<BFloat> next_beta(beta_.RowData((t + 1) % 2), num_states,
+  const SubMatrix<double> next_beta(beta_.RowData((t + 1) % 2), num_states,
                                num_sequences, num_sequences);
 
   SubMatrix<BaseFloat> probs(exp_nnet_output_transposed_, 0, num_pdfs,
@@ -287,11 +284,11 @@ void GenericNumeratorComputation::BetaGeneralFrame(int32 t) {
         BaseFloat transition_prob = tr->transition_prob;
         int32 pdf_id = tr->pdf_id,
             next_hmm_state = tr->hmm_state;
-        BFloat variable_factor = transition_prob *
+        double variable_factor = transition_prob *
             next_beta(next_hmm_state, seq) *
             probs(pdf_id, seq) / inv_arbitrary_scale;
         tot_variable_factor += variable_factor;
-        BFloat occupation_prob = variable_factor * this_alpha(h, seq);
+        double occupation_prob = variable_factor * this_alpha(h, seq);
         log_prob_deriv(pdf_id, seq) += occupation_prob;
       }
       this_beta(h, seq) = tot_variable_factor;
@@ -301,14 +298,14 @@ void GenericNumeratorComputation::BetaGeneralFrame(int32 t) {
 
 void GenericNumeratorComputation::BetaGeneralFrameDebug(int32 t) {
   int32 alpha_beta_size = max_num_hmm_states_ * supervision_.num_sequences;
-  SubVector<BFloat> this_alpha(alpha_.RowData(t), alpha_beta_size),
+  SubVector<double> this_alpha(alpha_.RowData(t), alpha_beta_size),
       this_beta(beta_.RowData(t % 2), alpha_beta_size);
   int32 t_wrapped = t % static_cast<int32>(kMaxDerivTimeSteps),
         num_pdfs = exp_nnet_output_transposed_.NumRows();
   SubMatrix<BaseFloat> this_log_prob_deriv(
       nnet_output_deriv_transposed_, 0, num_pdfs,
       t_wrapped * supervision_.num_sequences, supervision_.num_sequences);
-  BFloat alpha_beta_product = VecVec(this_alpha,
+  double alpha_beta_product = VecVec(this_alpha,
                                      this_beta),
       this_log_prob_deriv_sum = this_log_prob_deriv.Sum();
   if (!ApproxEqual(alpha_beta_product, supervision_.num_sequences)) {

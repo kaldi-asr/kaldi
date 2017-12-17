@@ -21,7 +21,6 @@
 
 #ifndef KALDI_CHAIN_CHAIN_GENERIC_NUMERATOR_H_
 #define KALDI_CHAIN_CHAIN_GENERIC_NUMERATOR_H_
-#define BFloat double
 
 #include <vector>
 #include <map>
@@ -137,7 +136,7 @@ class GenericNumeratorComputation {
   in_transitions_, out_transitions_;
 
   // final probs for each state of each numerator graph
-  Matrix<BFloat> final_probs_; // indexed by seq, state
+  Matrix<double> final_probs_; // indexed by seq, state
 
   // an offset subtracted from the logprobs of transitions out of the first
   // state of each graph to help reduce numerical problems. Note the
@@ -158,12 +157,12 @@ class GenericNumeratorComputation {
   // in DenominatorComputation except here we don't use beta
   // sums (becasue we don't use leakyHMM). However, we use
   // alpha sums to help avoid numerical issues.
-  Matrix<BFloat> alpha_;
-  Matrix<BFloat> beta_;
+  Matrix<double> alpha_;
+  Matrix<double> beta_;
 
   // vector of total probs (i.e. for all the sequences)
   // (it's exactly like 'tot_probe_' in DenominatorComputation)
-  Vector<BFloat> tot_prob_;
+  Vector<double> tot_prob_;
 
   bool ok_;
 };

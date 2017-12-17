@@ -308,7 +308,7 @@ def train(args, run_opts):
 
     if (args.stage <= -5):
         logger.info("Creating denominator FST")
-        chain_lib.create_denominator_fst(args.dir, args.dir, run_opts)
+        chain_lib.create_denominator_fst(args.dir, args.tree_dir, run_opts)
 
     if (args.stage <= -4):
         logger.info("Initializing a basic network...")
