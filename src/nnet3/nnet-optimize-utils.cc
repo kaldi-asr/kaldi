@@ -997,7 +997,8 @@ std::pair<bool,bool> VariableMergingOptimizer::MayBeMerged(
   if (!left && !right)  // save some time.
     return std::pair<bool,bool>(false,false);
   bool is_assignment = (computation_->commands[command_index].command_type ==
-                        kMatrixCopy);
+                                                kMatrixCopy &&
+                        computation_->commands[command_index].alpha == 1.0);
   ComputationAnalysis analysis(*computation_, analyzer_);
   if (is_assignment) {
     if (analysis.FirstNontrivialAccess(s2) == command_index &&
