@@ -439,7 +439,7 @@ void ConvertAdditionToAssignment(const Nnet &nnet,
             case kMatrixAdd: c.command_type = kMatrixCopy;
               break;
             case kAddRows: c.command_type = kCopyRows;
-              break;
+               break;
             case kAddRowsMulti: c.command_type = kCopyRowsMulti;
               break;
             // note: kCopyToRowsMulti does not currently support alpha != 1.0.
