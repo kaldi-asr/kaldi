@@ -13,7 +13,7 @@
 
 # Begin configuration section.
 cmd=run.pl
-dir=exp/rnnlm_lstm_tdnn_b
+affix=b
 embedding_dim=200
 embedding_l2=0.005 # embedding layer l2 regularize
 comp_l2=0.005 # component-level l2 regularize
@@ -22,12 +22,15 @@ epochs=90
 mic=sdm1
 stage=-10
 train_stage=0
+alpha=0.0
+back_interval=1
 
 . utils/parse_options.sh
 train=data/$mic/train/text
 dev=data/$mic/dev/text
 wordlist=data/lang/words.txt
 text_dir=data/rnnlm/text
+dir=exp/rnnlm_lstm_tdnn_$affix
 mkdir -p $dir/config
 set -e
 
@@ -91,9 +94,10 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
+  backstitch_opt="--backstitch-scale $alpha --backstitch-interval $back_interval"
   rnnlm/train_rnnlm.sh --embedding_l2 $embedding_l2 \
                        --stage $train_stage \
-                       --num-epochs $epochs --cmd "queue.pl" $dir
+                       --num-epochs $epochs --cmd "queue.pl" $backstitch_opt $dir
 fi
 
 exit 0
