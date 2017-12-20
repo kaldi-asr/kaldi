@@ -551,6 +551,15 @@ void PrintParameterStats(std::ostringstream &os,
     os << "rms=" << rms;
   }
   os << std::setprecision(6);  // restore the default precision.
+  if (GetVerboseLevel() >= 2) {
+    // At verbose level >= 2, print stats of the singular values of the matrix.
+    Matrix<BaseFloat> params_cpu(params);
+    Vector<BaseFloat> s(std::min(params.NumRows(), params.NumCols()));
+    params_cpu.Svd(&s);
+    std::string singular_values_str = SummarizeVector(s);
+    os << ", " << name << "-singular-values=" << singular_values_str;
+    std::ostringstream name_os;
+  }
 }
 
 

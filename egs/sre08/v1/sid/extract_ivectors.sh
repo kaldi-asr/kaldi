@@ -9,6 +9,9 @@
 
 # Begin configuration section.
 nj=30
+num_threads=1 # Number of threads used by ivector-extract.  It is usually not
+              # helpful to set this to > 1.  It is only useful if you have
+              # fewer speakers than the number of jobs you want to run.
 cmd="run.pl"
 stage=0
 num_gselect=20 # Gaussian-selection using diagonal model: number of Gaussians to select
@@ -29,9 +32,8 @@ if [ $# != 3 ]; then
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --num-iters <#iters|10>                          # Number of iterations of E-M"
-  echo "  --nj <n|10>                                      # Number of jobs (also see num-processes and num-threads)"
-  echo "  --num-threads <n|8>                              # Number of threads for each process"
+  echo "  --nj <n|10>                                      # Number of jobs (also see num-threads)"
+  echo "  --num-threads <n|1>                              # Number of threads for each job"
   echo "  --stage <stage|0>                                # To control partial reruns"
   echo "  --num-gselect <n|20>                             # Number of Gaussians to select using"
   echo "                                                   # diagonal model."
@@ -62,12 +64,12 @@ if [ $stage -le 0 ]; then
   echo "$0: extracting iVectors"
   dubm="fgmm-global-to-gmm $srcdir/final.ubm -|"
 
-  $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
+  $cmd --num-threads $num_threads JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
     gmm-gselect --n=$num_gselect "$dubm" "$feats" ark:- \| \
     fgmm-global-gselect-to-post --min-post=$min_post $srcdir/final.ubm "$feats" \
-       ark,s,cs:- ark:- \| scale-post ark:- $posterior_scale ark:- \| \
-    ivector-extract --verbose=2 $srcdir/final.ie "$feats" ark,s,cs:- \
-      ark,scp,t:$dir/ivector.JOB.ark,$dir/ivector.JOB.scp || exit 1;
+      ark,s,cs:- ark:- \| scale-post ark:- $posterior_scale ark:- \| \
+    ivector-extract --verbose=2 --num-threads=$num_threads $srcdir/final.ie "$feats" \
+      ark,s,cs:- ark,scp,t:$dir/ivector.JOB.ark,$dir/ivector.JOB.scp || exit 1;
 fi
 
 if [ $stage -le 1 ]; then

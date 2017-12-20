@@ -2362,6 +2362,42 @@ static void _diff_tanh(Real*eout, const Real*e, const Real*y, MatrixDim d,
     eout[dst_index] = (1.0 - y[y_index] * y[y_index]) * e[e_index];
 }
 
+
+
+/*
+  This function copies x to y while bounding the elements
+  away from zero using the scalar function:
+     y =  x if x <= -epsilon or x >= +epsilon
+          +epsilon if 0 <= x < epsilon
+          -epsilon if -epsilon < x < 0.
+  where:
+     x is the source matrix, of dimension and stride given by d
+     epsilon > 0
+     y is the destination matrix, with the num-rows and num-cols
+     given by d, but stride given by y_stride.
+ */
+template<typename Real>
+__global__
+static void _ensure_nonzero(const Real *x, MatrixDim d, Real epsilon,
+                            int y_stride, Real *y) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int x_index = i + j * d.stride,
+      y_index = i + j * y_stride;
+  if (i < d.cols && j < d.rows) {
+    Real src = x[x_index], dst;
+    if (src <= -epsilon || src >= epsilon)
+      dst = src;
+    else if (src >= 0)
+      dst = epsilon;
+    else
+      dst = -epsilon;
+    __syncthreads();  // This allows it to do consolidated write below, which
+                      // should improve speed.
+    y[y_index] = dst;
+  }
+}
+
 template<typename Real>
 __global__
 static void _parametric_relu(Real* y, const Real* x, MatrixDim d, int src_stride,
@@ -4085,6 +4121,12 @@ void cudaF_diff_tanh(dim3 Gr, dim3 Bl, float* eout, const float* e,
   _diff_tanh<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride);
 }
 
+void cudaF_ensure_nonzero(dim3 Gr, dim3 Bl, const float *x, MatrixDim d,
+                          float epsilon, int y_stride, float *y) {
+  _ensure_nonzero<<<Gr,Bl>>>(x, d, epsilon, y_stride, y);
+}
+
+
 void cudaF_parametric_relu(dim3 Gr, dim3 Bl, float* y, const float* x,
                            MatrixDim d, int src_stride,
                            const float* a, const float* b) {
@@ -4759,6 +4801,11 @@ void cudaD_tanh(dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d,
 void cudaD_diff_tanh(dim3 Gr, dim3 Bl, double* eout, const double* e,
                      const double* y, MatrixDim d, int e_stride, int y_stride) {
   _diff_tanh<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride);
+}
+
+void cudaD_ensure_nonzero(dim3 Gr, dim3 Bl, const double *x, MatrixDim d,
+                          double epsilon, int y_stride, double *y) {
+  _ensure_nonzero<<<Gr,Bl>>>(x, d, epsilon, y_stride, y);
 }
 
 void cudaD_parametric_relu(dim3 Gr, dim3 Bl, double* y, const double* x,

@@ -147,7 +147,7 @@ class VectorFstTplHolder {
   T *t_;
 };
 
-// Now make the original VectorFstHolder as the typedef o VectorFstHolder<StdArc>.
+// Now make the original VectorFstHolder as the typedef of VectorFstHolder<StdArc>.
 typedef VectorFstTplHolder<StdArc> VectorFstHolder;
 
 

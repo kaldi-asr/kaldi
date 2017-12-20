@@ -206,7 +206,12 @@ class CuVectorBase {
   // Set each element to y = (x == orig ? changed : x).
   void ReplaceValue(Real orig, Real changed);
 
+  // Multiplies (*this) by v elementwise: (*this)[i] *= v
   void MulElements(const CuVectorBase<Real> &v);
+
+  // Divides (*this) by v elementwise: (*this)[i] /= v
+  void DivElements(const CuVectorBase<Real> &v);
+
   // The following two functions should only be called if we did not compile
   // with CUDA or could not get a CUDA card; in that case the contents are
   // interpreted the same as a regular vector.

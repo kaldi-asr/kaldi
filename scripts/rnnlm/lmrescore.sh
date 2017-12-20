@@ -5,7 +5,7 @@
 # Apache 2.0
 
 # This script rescores lattices with KALDI RNNLM.
-# This script uses a simple n-gram approximation to limit the search space;
+# It uses a simple n-gram approximation to limit the search space;
 # A faster and more accurate way to rescore is at rnnlm/lmrescore_pruned.sh
 # which is more prefered
 

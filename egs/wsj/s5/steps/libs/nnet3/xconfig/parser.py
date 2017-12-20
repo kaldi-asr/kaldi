@@ -25,6 +25,8 @@ config_to_layer = {
         'relu-batchnorm-dropout-layer' : xlayers.XconfigBasicLayer,
         'relu-dropout-layer': xlayers.XconfigBasicLayer,
         'relu-batchnorm-layer' : xlayers.XconfigBasicLayer,
+        'relu-batchnorm-so-layer' : xlayers.XconfigBasicLayer,
+        'batchnorm-so-relu-layer' : xlayers.XconfigBasicLayer,
         'sigmoid-layer' : xlayers.XconfigBasicLayer,
         'tanh-layer' : xlayers.XconfigBasicLayer,
         'fixed-affine-layer' : xlayers.XconfigFixedAffineLayer,
@@ -34,22 +36,36 @@ config_to_layer = {
         'lstmp-layer' : xlayers.XconfigLstmpLayer,
         'fast-lstm-layer' : xlayers.XconfigFastLstmLayer,
         'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer,
+        'fast-lstmb-layer' : xlayers.XconfigFastLstmbLayer,
         'stats-layer': xlayers.XconfigStatsLayer,
         'relu-conv-layer': xlayers.XconfigConvLayer,
         'conv-layer': xlayers.XconfigConvLayer,
         'conv-relu-layer': xlayers.XconfigConvLayer,
+        'conv-renorm-layer': xlayers.XconfigConvLayer,
         'relu-conv-renorm-layer': xlayers.XconfigConvLayer,
+        'batchnorm-conv-layer': xlayers.XconfigConvLayer,
         'conv-relu-renorm-layer': xlayers.XconfigConvLayer,
         'batchnorm-conv-relu-layer': xlayers.XconfigConvLayer,
         'relu-batchnorm-conv-layer': xlayers.XconfigConvLayer,
+        'relu-batchnorm-noconv-layer': xlayers.XconfigConvLayer,
+        'relu-noconv-layer': xlayers.XconfigConvLayer,
         'conv-relu-batchnorm-layer': xlayers.XconfigConvLayer,
+        'conv-relu-batchnorm-so-layer': xlayers.XconfigConvLayer,
         'conv-relu-batchnorm-dropout-layer': xlayers.XconfigConvLayer,
         'conv-relu-dropout-layer': xlayers.XconfigConvLayer,
         'res-block': xlayers.XconfigResBlock,
+        'res2-block': xlayers.XconfigRes2Block,
         'channel-average-layer': xlayers.ChannelAverageLayer,
         'attention-renorm-layer': xlayers.XconfigAttentionLayer,
         'attention-relu-renorm-layer': xlayers.XconfigAttentionLayer,
-        'relu-renorm-attention-layer': xlayers.XconfigAttentionLayer
+        'attention-relu-batchnorm-layer': xlayers.XconfigAttentionLayer,
+        'relu-renorm-attention-layer': xlayers.XconfigAttentionLayer,
+        'gru-layer' : xlayers.XconfigGruLayer,
+        'pgru-layer' : xlayers.XconfigPgruLayer,
+        'opgru-layer' : xlayers.XconfigOpgruLayer,
+        'norm-pgru-layer' : xlayers.XconfigNormPgruLayer,
+        'norm-opgru-layer' : xlayers.XconfigNormOpgruLayer,
+        'renorm-component': xlayers.XconfigRenormComponent
 }
 
 # Turn a config line and a list of previous layers into
@@ -74,7 +90,7 @@ def xconfig_line_to_object(config_line, prev_layers = None):
 
 
 def get_model_component_info(model_filename):
-    """ 
+    """
     This function reads existing model (*.raw or *.mdl) and returns array
     of XconfigExistingLayer one per {input,output}-node or component-node
     with same 'name' used in the raw model and 'dim' equal to 'output-dim'

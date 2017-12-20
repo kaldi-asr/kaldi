@@ -125,7 +125,10 @@ void GenerateConfigSequenceSimple(
     int32 block_dim = (hidden_dim % 2 == 0 ? hidden_dim / 2 : hidden_dim);
     os << "component name=batch-norm type=BatchNormComponent dim="
        << hidden_dim << " block-dim=" << block_dim
-       << " epsilon=0.2 target-rms=2.0\n";
+       << " target-rms=2.0";
+    if (RandInt(0, 1) == 0)
+      os << " epsilon=3.0";
+    os << '\n';
   }
   os << "component name=final_affine type=NaturalGradientAffineComponent input-dim="
      << hidden_dim << " output-dim=" << output_dim << std::endl;
@@ -1362,7 +1365,7 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
-  int32 n = RandInt(0, 32);
+  int32 n = RandInt(0, 34);
   BaseFloat learning_rate = 0.001 * RandInt(1, 100);
 
   std::ostringstream os;
@@ -1378,9 +1381,12 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       BaseFloat target_rms = (RandInt(1, 200) / 100.0);
       std::string add_log_stddev = (Rand() % 2 == 0 ? "True" : "False");
       *component_type = "NormalizeComponent";
+
+      int32 block_dim = RandInt(2, 50), num_blocks = RandInt(1, 3),
+          dim = block_dim * num_blocks;
       // avoid dim=1 because the derivatives would be zero, which
       // makes them hard to test.
-      os << "dim=" << RandInt(2, 50)
+      os << "dim=" << dim << " block-dim=" << block_dim
          << " target-rms=" << target_rms
          << " add-log-stddev=" << add_log_stddev;
       break;
@@ -1532,8 +1538,10 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       *component_type = "PerElementOffsetComponent";
       std::string param_config = RandInt(0, 1)?
                                  " param-mean=0.0 param-stddev=0.0":
-                                 " param-mean=0.0 param-stddev=1.0";
-      os << "dim=" << RandInt(1, 100)
+                                 " param-mean=1.0 param-stddev=1.0";
+      int32 block_dim = RandInt(10, 20), dim = block_dim * RandInt(1, 2);
+      os << "dim=" << dim << " block-dim=" << block_dim
+         << " use-natural-gradient=" << (RandInt(0, 1) == 0 ? "true" : "false")
          << " learning-rate=" << learning_rate << param_config;
       break;
     }
@@ -1669,10 +1677,11 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       *component_type = "BatchNormComponent";
       int32 block_dim = RandInt(1, 10), dim = block_dim * RandInt(1, 2);
       bool test_mode = (RandInt(0, 1) == 0);
-      os << "epsilon=" << 0.5 << " dim=" << dim
+      os << " dim=" << dim
          << " block-dim=" << block_dim << " target-rms="
          << RandInt(1, 2) << " test-mode="
-         << (test_mode ? "true" : "false");
+         << (test_mode ? "true" : "false")
+         << " epsilon=" << (RandInt(0, 1) == 0 ? "0.1" : "1.0");
       break;
     }
     case 32: {
@@ -1683,6 +1692,23 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       os << "input-dim=" << input_dim
          << " output-dim=" << output_dim
          << " scale=" << scale;
+      break;
+    }
+    case 33: {
+      *component_type = "ScaleAndOffsetComponent";
+      int32 block_dim = RandInt(10, 20),
+          num_blocks = RandInt(1, 3),
+          dim = block_dim * num_blocks;
+      os << "dim=" << dim << " block-dim=" << block_dim
+         << " use-natural-gradient="
+         << (RandInt(0,1) == 0 ? "true" : "false");
+      break;
+    }
+    case 34: {
+      *component_type = "LinearComponent";
+      int32 input_dim = RandInt(1, 50), output_dim = RandInt(1, 50);
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+         << " learning-rate=" << learning_rate;
       break;
     }
     default:
