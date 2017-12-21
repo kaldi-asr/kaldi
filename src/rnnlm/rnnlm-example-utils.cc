@@ -415,7 +415,7 @@ static void ProcessRnnlmOutputNoSamplingBatched(
   int32 embedding_dim = word_embedding.NumCols();
   int32 num_words = word_embedding.NumRows();
 
-  int32 batch_size = MAX_MAT_SIZE / num_words;
+  int32 batch_size = objective_config.max_logprob_elements / num_words;
   if (batch_size == 0) {
     batch_size = 1;
   }
@@ -610,7 +610,7 @@ void ProcessRnnlmOutput(
                                objf_den, objf_den_exact);
   } else {
     int64 size = int64(word_embedding.NumRows()) * nnet_output.NumRows();
-    if (size < MAX_MAT_SIZE) {
+    if (size < objective_config.max_logprob_elements) {
       ProcessRnnlmOutputNoSampling(objective_config,
                                    minibatch, derived, word_embedding,
                                    nnet_output, word_embedding_deriv,
