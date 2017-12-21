@@ -32,7 +32,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# != 3 ]; then
   echo "Usage: $0 <extractor-dir> <data> <ivector-dir>"
-  echo " e.g.: $0 exp/extractor_2048_male data/train_male exp/ivectors_male"
+  echo " e.g.: $0 exp/extractor_2048 data/train exp/ivectors"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
@@ -41,9 +41,7 @@ if [ $# != 3 ]; then
   echo "  --min-segment <min|0.5>                          # Minimum segment length in seconds per ivector"
   echo "  --hard-min <bool|false>                          # Removes segments less than min-segment if true."
   echo "                                                   # Useful for extracting training ivectors."
-  echo "  --num-iters <#iters|10>                          # Number of iterations of E-M"
-  echo "  --nj <n|10>                                      # Number of jobs (also see num-processes and num-threads)"
-  echo "  --num-threads <n|8>                              # Number of threads for each process"
+  echo "  --nj <n|10>                                      # Number of jobs"
   echo "  --stage <stage|0>                                # To control partial reruns"
   echo "  --num-gselect <n|20>                             # Number of Gaussians to select using"
   echo "                                                   # diagonal model."

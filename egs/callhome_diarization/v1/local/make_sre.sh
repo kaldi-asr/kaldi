@@ -6,34 +6,35 @@
 
 set -e
 
-data_dir=$1
+data_root=$1
+data_dir=$2
 
 wget -P data/local/ http://www.openslr.org/resources/15/speaker_list.tgz
 tar -C data/local/ -xvf data/local/speaker_list.tgz
 sre_ref=data/local/speaker_list
 
-local/make_sre.pl /export/corpora5/LDC/LDC2006S44/ \
+local/make_sre.pl $data_root/LDC2006S44/ \
    sre2004 $sre_ref $data_dir/sre2004
 
-local/make_sre.pl /export/corpora5/LDC/LDC2011S01 \
+local/make_sre.pl $data_root/LDC2011S01 \
   sre2005 $sre_ref $data_dir/sre2005_train
 
-local/make_sre.pl /export/corpora5/LDC/LDC2011S04 \
+local/make_sre.pl $data_root/LDC2011S04 \
   sre2005 $sre_ref $data_dir/sre2005_test
 
-local/make_sre.pl /export/corpora5/LDC/LDC2011S09 \
+local/make_sre.pl $data_root/LDC2011S09 \
   sre2006 $sre_ref $data_dir/sre2006_train
 
-local/make_sre.pl /export/corpora5/LDC/LDC2011S10 \
+local/make_sre.pl $data_root/LDC2011S10 \
   sre2006 $sre_ref $data_dir/sre2006_test_1
 
-local/make_sre.pl /export/corpora5/LDC/LDC2012S01 \
+local/make_sre.pl $data_root/LDC2012S01 \
   sre2006 $sre_ref $data_dir/sre2006_test_2
 
-local/make_sre.pl /export/corpora5/LDC/LDC2011S05 \
+local/make_sre.pl $data_root/LDC2011S05 \
   sre2008 $sre_ref $data_dir/sre2008_train
 
-local/make_sre.pl /export/corpora5/LDC/LDC2011S08 \
+local/make_sre.pl $data_root/LDC2011S08 \
   sre2008 $sre_ref $data_dir/sre2008_test
 
 utils/combine_data.sh $data_dir/sre \

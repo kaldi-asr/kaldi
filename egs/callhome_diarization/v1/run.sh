@@ -5,21 +5,22 @@
 #
 # This is still a work in progress, but implements something similar to
 # Greg Sell's and Daniel Garcia-Romero's iVector-based diarization system
-# in https://www.dropbox.com/s/bj5bc6brtzt52u4/slt_gks_dgr.pdf?dl=0 .
-# The main difference is that we haven't implemented the VB resegmentation
-# yet.
+# in 'Speaker Diarization With PLDA I-Vector Scoring And Unsupervised
+# Calibration'.  The main difference is that we haven't implemented the
+# VB resegmentation yet.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
+data_root=/export/corpora5/LDC
 num_components=2048
 ivector_dim=128
 
 # Prepare a collection of NIST SRE data. This will be used to train the UBM,
 # iVector extractor and PLDA model.
-local/make_sre.sh data
+local/make_sre.sh $data_root data
 
 # Prepare SWB for UBM and iVector extractor training.
 local/make_swbd2_phase2.pl /export/corpora5/LDC/LDC99S79 \
@@ -156,8 +157,9 @@ diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
 
 # Result using using unsupervised calibration
 # OVERALL SPEAKER DIARIZATION ERROR = 10.32 percent of scored speaker time  `(ALL)
+export PATH=$PATH:$KALDI_ROOT/tools/sctk/bin
 cat exp/ivectors_callhome1/plda_scores/rttm exp/ivectors_callhome2/plda_scores/rttm \
-  | perl local/md-eval.pl -1 -c 0.25 -r local/fullref.rttm -s - 2> /dev/null | tee
+  | local/md-eval.pl -1 -c 0.25 -r local/fullref.rttm -s - 2> /dev/null | tee
 
 # Now try clustering using the oracle number of speakers.
 diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
@@ -172,6 +174,6 @@ diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
 # OVERALL SPEAKER DIARIZATION ERROR = 9.26 percent of scored speaker time  `(ALL)
 cat exp/ivectors_callhome1/plda_scores_num_spk/rttm \
   exp/ivectors_callhome2/plda_scores_num_spk/rttm \
-  | perl local/md-eval.pl -1 -c 0.25 -r local/fullref.rttm -s - 2> /dev/null | tee
+  | local/md-eval.pl -1 -c 0.25 -r local/fullref.rttm -s - 2> /dev/null | tee
 
 # TODO the next step is to do refinement (e.g., VB resegmentation).

@@ -6,12 +6,11 @@
 # Apache 2.0.
 
 # This is a modified version of steps/train_diag_ubm.sh, specialized for
-# diarization, that does not require to start with a trained model, that applies
-# sliding-window CMVN, and that expects voice activity detection (vad.scp) in
-# the data directory.  We initialize the GMM using gmm-global-init-from-feats,
-# which sets the means to random data points and then does some iterations of
-# E-M in memory.  After the in-memory initialization we train for a few
-# iterations in parallel.
+# diarization, that does not require to start with a trained model, and that
+# expects voice activity detection (vad.scp) in the data directory.
+# We initialize the GMM using gmm-global-init-from-feats, which sets the
+# means to random data points and then does some iterations of E-M in memory.
+# After the in-memory initialization we train for a few iterations in parallel.
 
 
 # Begin configuration section.
@@ -133,8 +132,8 @@ for x in `seq 0 $[$num_iters-1]`; do
       opt="--remove-low-count-gaussians=$remove_low_count_gaussians"
     fi
     $cmd $dir/log/update.$x.log \
-      gmm-global-est $opt --min-gaussian-weight=$min_gaussian_weight $dir/$x.dubm "gmm-global-sum-accs - $dir/$x.*.acc|" \
-      $dir/$[$x+1].dubm || exit 1;
+      gmm-global-est $opt --min-gaussian-weight=$min_gaussian_weight $dir/$x.dubm \
+        "gmm-global-sum-accs - $dir/$x.*.acc|" $dir/$[$x+1].dubm || exit 1;
     rm $dir/$x.*.acc $dir/$x.dubm
   fi
 done

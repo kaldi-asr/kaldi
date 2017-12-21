@@ -83,5 +83,5 @@ if [ $stage -le 2 ]; then
 fi
 
 if $cleanup ; then
-  rm -rf $dir/tmp || exit 1;
+  rm -r $dir/tmp || exit 1;
 fi
