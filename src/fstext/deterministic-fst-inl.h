@@ -160,7 +160,8 @@ template<class Arc>
 bool ComposeDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
                                                   Arc *oarc) {
   typedef typename MapType::iterator IterType;
-  KALDI_ASSERT(ilabel != 0);
+  KALDI_ASSERT(ilabel != 0 &&
+         "This program expects epsilon-free compact lattices as input");
   KALDI_ASSERT(s < static_cast<StateId>(state_vec_.size()));
   const std::pair<StateId, StateId> pr (state_vec_[s]);
 
