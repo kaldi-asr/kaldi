@@ -170,7 +170,7 @@ struct RnnlmObjectiveOptions {
     po->Register("max-logprob-elements", &max_logprob_elements,
                  "Maximum number of elements when we allocate a matrix of size "
                  "[minibatch-size, num-words] for computing logprobs of words. "
-                 "If the size is exceed, we will break the matrix along the "
+                 "If the size is exceeded, we will break the matrix along the "
                  "minibatch axis and compute them separately");
   }
 };
