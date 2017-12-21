@@ -33,6 +33,8 @@
 namespace kaldi {
 namespace rnnlm {
 
+const int64 MAX_MAT_SIZE = 1000000000;
+
 /**
    @file rnnlm-example-utils.h
 
