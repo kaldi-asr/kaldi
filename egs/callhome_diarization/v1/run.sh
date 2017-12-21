@@ -158,8 +158,10 @@ diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
 # Result using using unsupervised calibration
 # OVERALL SPEAKER DIARIZATION ERROR = 10.32 percent of scored speaker time  `(ALL)
 export PATH=$PATH:$KALDI_ROOT/tools/sctk/bin
+mkdir -p results
 cat exp/ivectors_callhome1/plda_scores/rttm exp/ivectors_callhome2/plda_scores/rttm \
-  | local/md-eval.pl -1 -c 0.25 -r local/fullref.rttm -s - 2> /dev/null | tee
+  | md-eval.pl -1 -c 0.25 -r local/fullref.rttm -s - 2> results/threshold.log \
+  | tee results/DER_threshold.txt
 
 # Now try clustering using the oracle number of speakers.
 diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
@@ -174,6 +176,7 @@ diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
 # OVERALL SPEAKER DIARIZATION ERROR = 9.26 percent of scored speaker time  `(ALL)
 cat exp/ivectors_callhome1/plda_scores_num_spk/rttm \
   exp/ivectors_callhome2/plda_scores_num_spk/rttm \
-  | local/md-eval.pl -1 -c 0.25 -r local/fullref.rttm -s - 2> /dev/null | tee
+  | md-eval.pl -1 -c 0.25 -r local/fullref.rttm -s - 2> results/num_spk.log \
+  | tee results/DER_num_spk.txt
 
 # TODO the next step is to do refinement (e.g., VB resegmentation).
