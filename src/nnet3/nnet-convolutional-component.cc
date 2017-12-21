@@ -389,14 +389,11 @@ void TimeHeightConvolutionComponent::UpdateNaturalGradient(
   // scalars are different across iterations, the scalars
   // will be pretty similar on different iterations
   BaseFloat scale1, scale2;
-  preconditioner_in_.PreconditionDirections(&params_deriv, NULL,
-                                            &scale1);
+  preconditioner_in_.PreconditionDirections(&params_deriv, &scale1);
 
 
   CuMatrix<BaseFloat> params_deriv_transpose(params_deriv, kTrans);
-  preconditioner_out_.PreconditionDirections(&params_deriv_transpose,
-                                             NULL, &scale2);
-
+  preconditioner_out_.PreconditionDirections(&params_deriv_transpose, &scale2);
 
   linear_params_.AddMat(
       learning_rate_ * scale1 * scale2,

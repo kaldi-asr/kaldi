@@ -1516,7 +1516,7 @@ void NaturalGradientRepeatedAffineComponent::Update(
     try {
       // Only apply the preconditioning/natural-gradient if we're not computing
       // the exact gradient.
-      preconditioner_in_.PreconditionDirections(&deriv, NULL, &scale);
+      preconditioner_in_.PreconditionDirections(&deriv, &scale);
     } catch (...) {
       int32 num_bad_rows = 0;
       for (int32 i = 0; i < out_deriv.NumRows(); i++) {
@@ -2132,7 +2132,7 @@ void PerElementOffsetComponent::Backprop(
       // this scenario)
       CuMatrix<BaseFloat> out_deriv_copy(out_deriv_reshaped);
       BaseFloat scale = 1.0;
-      to_update->preconditioner_.PreconditionDirections(&out_deriv_copy, NULL,
+      to_update->preconditioner_.PreconditionDirections(&out_deriv_copy,
                                                         &scale);
       to_update->offsets_.AddRowSumMat(scale * to_update->learning_rate_,
                                        out_deriv_copy);
@@ -2417,7 +2417,7 @@ void ScaleAndOffsetComponent::BackpropInternal(
       BaseFloat scale = 1.0;
       CuMatrix<BaseFloat> out_deriv_copy(out_deriv);
       to_update->offset_preconditioner_.PreconditionDirections(
-          &out_deriv_copy, NULL, &scale);
+          &out_deriv_copy, &scale);
       to_update->offsets_.AddRowSumMat(scale * to_update->learning_rate_,
                                        out_deriv_copy);
     }
@@ -2440,7 +2440,7 @@ void ScaleAndOffsetComponent::BackpropInternal(
     BaseFloat scale = 1.0;
     if (to_update->use_natural_gradient_ && !to_update->is_gradient_) {
       to_update->scale_preconditioner_.PreconditionDirections(
-          &in_value_reconstructed, NULL, &scale);
+          &in_value_reconstructed, &scale);
     }
     to_update->scales_.AddRowSumMat(scale * to_update->learning_rate_,
                                     in_value_reconstructed);
@@ -2506,7 +2506,7 @@ void ConstantFunctionComponent::Backprop(
         CuMatrix<BaseFloat> out_deriv_copy(out_deriv);
         BaseFloat scale = 1.0;
         to_update->preconditioner_.PreconditionDirections(&out_deriv_copy,
-                                                          NULL, &scale);
+                                                          &scale);
         to_update->output_.AddRowSumMat(scale * to_update->learning_rate_,
                                         out_deriv_copy);
       } else {
@@ -2847,8 +2847,8 @@ void NaturalGradientAffineComponent::Update(
   // than having the matrices scaled inside the preconditioning code).
   BaseFloat in_scale, out_scale;
 
-  preconditioner_in_.PreconditionDirections(&in_value_temp, NULL, &in_scale);
-  preconditioner_out_.PreconditionDirections(&out_deriv_temp, NULL, &out_scale);
+  preconditioner_in_.PreconditionDirections(&in_value_temp, &in_scale);
+  preconditioner_out_.PreconditionDirections(&out_deriv_temp, &out_scale);
 
   // "scale" is a scaling factor coming from the PreconditionDirections calls
   // (it's faster to have them output a scaling factor than to have them scale
@@ -3077,9 +3077,9 @@ void LinearComponent::Backprop(const std::string &debug_info,
       // than having the matrices scaled inside the preconditioning code).
       BaseFloat in_scale, out_scale;
       to_update->preconditioner_in_.PreconditionDirections(&in_value_temp,
-                                                           NULL, &in_scale);
+                                                           &in_scale);
       to_update->preconditioner_out_.PreconditionDirections(&out_deriv_temp,
-                                                            NULL, &out_scale);
+                                                            &out_scale);
       BaseFloat local_lrate = in_scale * out_scale * to_update->learning_rate_;
 
       to_update->params_.AddMatMat(local_lrate, out_deriv_temp, kTrans,
@@ -3753,7 +3753,7 @@ void NaturalGradientPerElementScaleComponent::Update(
   // scales_.AddRowSumMat(learning_rate_, derivs_per_frame).
 
   BaseFloat scale;
-  preconditioner_.PreconditionDirections(&derivs_per_frame, NULL, &scale);
+  preconditioner_.PreconditionDirections(&derivs_per_frame, &scale);
 
   CuVector<BaseFloat> delta_scales(scales_.Dim());
   delta_scales.AddRowSumMat(scale * learning_rate_, derivs_per_frame);
@@ -5632,7 +5632,7 @@ void LstmNonlinearityComponent::Backprop(
     BaseFloat scale = 1.0;
     if (!to_update->is_gradient_) {
       to_update->preconditioner_.PreconditionDirections(
-          &params_deriv, NULL, &scale);
+          &params_deriv, &scale);
     }
     to_update->params_.AddMat(to_update->learning_rate_ * scale,
                               params_deriv);

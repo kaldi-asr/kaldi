@@ -146,7 +146,7 @@ void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &R0) {
   for (int32 i = 0; i < num_init_iters; i++) {
     BaseFloat scale;
     R0_copy.CopyFromMat(R0);
-    this_copy.PreconditionDirections(&R0_copy, NULL, &scale);
+    this_copy.PreconditionDirections(&R0_copy, &scale);
   }
   rank_ = this_copy.rank_;
   W_t_.Swap(&this_copy.W_t_);
@@ -157,21 +157,13 @@ void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &R0) {
 
 void OnlineNaturalGradient::PreconditionDirections(
     CuMatrixBase<BaseFloat> *X_t,
-    CuVectorBase<BaseFloat> *row_prod,
     BaseFloat *scale) {
   if (X_t->NumCols() == 1) {
     // If the dimension of the space equals one then our natural gradient update
     // with rescaling becomes a no-op, but the code wouldn't naturally handle it
     // because rank would be zero.  Support this as a special case.
-    if (row_prod)
-      row_prod->AddDiagMat2(1.0, *X_t, kNoTrans, 0.0);
-    *scale = 1.0;
-    return;
-  }
-
-  if (row_prod == NULL) {
-    CuVector<BaseFloat> row_prod_tmp(X_t->NumRows());
-    PreconditionDirections(X_t, &row_prod_tmp, scale);
+    if (scale)
+      *scale = 1.0;
     return;
   }
 
@@ -191,7 +183,17 @@ void OnlineNaturalGradient::PreconditionDirections(
   BaseFloat rho_t(rho_t_);
   Vector<BaseFloat> d_t(d_t_);
   read_write_mutex_.unlock();
-  PreconditionDirectionsInternal(t, rho_t, d_t, &WJKL_t, X_t, row_prod, scale);
+
+  BaseFloat initial_product = TraceMatMat(*X_t, *X_t, kTrans);
+  PreconditionDirectionsInternal(t, rho_t, initial_product, d_t, &WJKL_t, X_t);
+  if (scale) {
+    if (initial_product <= 0.0) {
+      *scale = 1.0;
+    } else {
+      BaseFloat final_product = TraceMatMat(*X_t, *X_t, kTrans);
+      *scale = sqrt(initial_product / final_product);
+    }
+  }
 }
 
 void OnlineNaturalGradient::ReorthogonalizeXt1(
@@ -320,11 +322,10 @@ void OnlineNaturalGradient::SelfTest() const {
 void OnlineNaturalGradient::PreconditionDirectionsInternal(
     const int32 t,
     const BaseFloat rho_t,
+    const BaseFloat tr_X_Xt,
     const Vector<BaseFloat> &d_t,
     CuMatrixBase<BaseFloat> *WJKL_t,
-    CuMatrixBase<BaseFloat> *X_t,
-    CuVectorBase<BaseFloat> *row_prod,
-    BaseFloat *scale) {
+    CuMatrixBase<BaseFloat> *X_t) {
   int32 N = X_t->NumRows(),  // Minibatch size.
       D = X_t->NumCols(),  // Dimensions of vectors we're preconditioning
       R = rank_;  // Rank of correction to unit matrix.
@@ -383,17 +384,8 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
     if (!frozen_)
       num_updates_skipped_++;
 
-    BaseFloat tr_Xt_XtT = TraceMatMat(*X_t, *X_t, kTrans);
     // X_hat_t = X_t - H_t W_t
     X_t->AddMatMat(-1.0, H_t, kNoTrans, W_t, kNoTrans, 1.0);
-    // each element i of row_prod will be inner product of row i of X_hat_t with
-    // itself.
-    row_prod->AddDiagMat2(1.0, *X_t, kNoTrans, 0.0);
-    BaseFloat tr_Xhat_XhatT = row_prod->Sum();
-    KALDI_ASSERT(tr_Xhat_XhatT == tr_Xhat_XhatT);  // Check for NaN.
-    BaseFloat gamma_t = (tr_Xhat_XhatT == 0.0 ? 1.0 :
-                         sqrt(tr_Xt_XtT / tr_Xhat_XhatT));
-    *scale = gamma_t;
     return;
   }
   J_t.AddMatMat(1.0, H_t, kTrans, *X_t, kNoTrans, 0.0);  // J_t = H_t^T X_t
@@ -456,31 +448,14 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
   if (nf > 0 && self_debug_) {
     KALDI_WARN << "Floored " << nf << " elements of C_t.";
   }
-  BaseFloat tr_Xt_XtT_check;
-  if (self_debug_)
-    tr_Xt_XtT_check = TraceMatMat(*X_t, *X_t, kTrans);
 
   X_t->AddMatMat(-1.0, H_t, kNoTrans, W_t, kNoTrans, 1.0);  // X_hat_t = X_t - H_t W_t
-  // set *row_prod to inner products of each row of X_hat_t with itself.
-  row_prod->AddDiagMat2(1.0, *X_t, kNoTrans, 0.0);
-
-  BaseFloat tr_Xhat_XhatT = row_prod->Sum();
-  //  tr(X_t X_t^T) = tr(X_hat_t X_hat_t^T) - tr(L_t E_t) + 2 tr(L_t)
-  double tr_Xt_XtT = tr_Xhat_XhatT;
-  for (int32 i = 0; i < R; i++)
-    tr_Xt_XtT += L_t_cpu(i, i) * (2.0 - e_t(i));
-  if (self_debug_) {
-    KALDI_ASSERT(ApproxEqual(tr_Xt_XtT, tr_Xt_XtT_check));
-  }
-  BaseFloat gamma_t = (tr_Xhat_XhatT == 0.0 ? 1.0 :
-                       sqrt(tr_Xt_XtT / tr_Xhat_XhatT));
-  *scale = gamma_t;
 
   Vector<BaseFloat> sqrt_c_t(c_t);
   sqrt_c_t.ApplyPow(0.5);
 
   // \rho_{t+1} = 1/(D - R) (\eta/N tr(X_t X_t^T) + (1-\eta)(D \rho_t + tr(D_t)) - tr(C_t^{0.5})).
-  BaseFloat rho_t1 = 1.0 / (D - R) * (eta / N * tr_Xt_XtT
+  BaseFloat rho_t1 = 1.0 / (D - R) * (eta / N * tr_X_Xt
                                       + (1-eta)*(D * rho_t + d_t.Sum())
                                       - sqrt_c_t.Sum());
   // D_{t+1} = C_t^{0.5} - \rho_{t+1} I
