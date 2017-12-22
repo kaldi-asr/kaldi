@@ -1,63 +1,52 @@
 #!/bin/bash
 
-#Copyright      2017  Chun Chieh Chang
-#               2017  Ashish Arora
+# Copyright      2017  Chun Chieh Chang
+#                2017  Ashish Arora
+#                2017  Hossein Hadian
 
 stage=0
 nj=20
-color=1
-augment=false
+
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
-. ./utils/parse_options.sh  # e.g. this parses the above options (stage, nj, color, augment)
+. ./utils/parse_options.sh  # e.g. this parses the above options
                             # if supplied.
 
 if [ $stage -le 0 ]; then
-  local/prepare_data.sh --nj $nj --download_dir /export/corpora5/handwriting_ocr/IAM
+  local/prepare_data.sh --nj $nj --download-dir /export/corpora5/handwriting_ocr/IAM
 fi
 mkdir -p data/{train,test}/data
 
 if [ $stage -le 1 ]; then
-  # process image extract raw pixel features
+  # prepare the test and train feature files
   local/make_features.py data/test --feat-dim 40 | \
     copy-feats --compress=true --compression-method=7 \
-    ark:- ark,scp:data/test/data/images.ark,data/test/feats.scp || exit 1
+               ark:- ark,scp:data/test/data/images.ark,data/test/feats.scp || exit 1
   steps/compute_cmvn_stats.sh data/test || exit 1;
 
-  if $augment; then
-    # create a backup directory to store text, utt2spk and image.scp file
-    mkdir -p data/train/backup
-    mv data/train/text data/train/utt2spk data/train/images.scp data/train/backup/
-    local/augment_and_make_features.py data/train --feat-dim 40 --vertical-shift 10 | \
-      copy-feats --compress=true --compression-method=7 \
-      ark:- ark,scp:data/train/data/images.ark,data/train/feats.scp || exit 1
-    utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
-  else
-    local/make_features.py data/train --feat-dim 40 | \
-      copy-feats --compress=true --compression-method=7 \
-      ark:- ark,scp:data/train/data/images.ark,data/train/feats.scp || exit 1
-  fi
+  local/make_features.py data/train --feat-dim 40 | \
+    copy-feats --compress=true --compression-method=7 \
+               ark:- ark,scp:data/train/data/images.ark,data/train/feats.scp || exit 1
   steps/compute_cmvn_stats.sh data/train || exit 1;
 fi
 
 if [ $stage -le 2 ]; then
-  local/prepare_dict.sh data/train/ data/test/ data/train/dict
+  local/prepare_dict.sh
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
-    data/train/dict "<unk>" data/lang/temp data/lang
+    data/local/dict "<unk>" data/lang/temp data/lang
 fi
 
 if [ $stage -le 3 ]; then
   local/iam_train_lm.sh
-  mkdir -p data/lang_test
-  cp -R data/lang/. data/lang_test/
-  gunzip -k -f data/local/local_lm/data/arpa/3gram_big.arpa.gz
-  local/prepare_lm.sh data/local/local_lm/data/arpa/3gram_big.arpa data/lang_test || exit 1;
+  cp -r data/lang data/lang_test
+  utils/format_lm.sh data/local/local_lm/data/arpa/3gram_big.arpa.gz \
+                     data/local/dict/lexicon.txt data/lang_test || exit 1;
 
   # prepare the unk model for open-vocab decoding
-  utils/lang/make_unk_lm.sh --ngram-order 4 --num-extra-ngrams 7500 data/train/dict exp/unk_lang_model
+  utils/lang/make_unk_lm.sh --ngram-order 4 --num-extra-ngrams 7500 data/local/dict exp/unk_lang_model
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 \
-                        --unk-fst exp/unk_lang_model/unk_fst.txt data/train/dict "<unk>" data/lang/temp data/lang_unk
+                        --unk-fst exp/unk_lang_model/unk_fst.txt data/local/dict "<unk>" data/lang/temp data/lang_unk
   cp data/lang_test/G.fst data/lang_unk/G.fst
 fi
 

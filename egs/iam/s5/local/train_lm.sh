@@ -2,26 +2,25 @@
 
 # Copyright 2016  Vincent Nguyen
 #           2016  Johns Hopkins University (author: Daniel Povey)
+#           2017  Ashish Arora
+#           2017  Hossein Hadian
 # Apache 2.0
 #
-# This script trains a LM on the Cantab-Tedlium text data and tedlium acoustic training data.
+# This script trains an LM on the LOB+Brown text data and IAM acoustic training data.
 # It is based on the example scripts distributed with PocoLM
 
-# It will first check if pocolm is installed and if not will process with installation
-# It will then get the source data from the pre-downloaded Cantab-Tedlium files
-# and the pre-prepared data/train text source.
-
+# It will check if pocolm is installed and if not will proceed with installation
 
 set -e
 stage=0
 
 echo "$0 $@"  # Print the command line for logging
-. utils/parse_options.sh || exit 1;
+. ./utils/parse_options.sh || exit 1;
 
 dir=data/local/local_lm
 lm_dir=${dir}/data
 
-. ./path.sh
+
 mkdir -p $dir
 . ./path.sh || exit 1; # for KALDI_ROOT
 export PATH=$KALDI_ROOT/tools/pocolm/scripts:$PATH
@@ -36,7 +35,6 @@ export PATH=$KALDI_ROOT/tools/pocolm/scripts:$PATH
  fi
 ) || exit 1;
 
-num_dev_sentences=6161
 bypass_metaparam_optim_opt=
 # If you want to bypass the metaparameter optimization steps with specific metaparameters
 # un-comment the following line, and change the numbers to some appropriate values.
@@ -57,29 +55,30 @@ if [ $stage -le 0 ]; then
   echo "$0: Getting the Data sources"
 
   rm ${dir}/data/text/* 2>/dev/null || true
-  
+
   # Using LOB and brown corpus.
-  head -86858 data/local/lobcorpus/0167/download/LOB_COCOA/lob.txt > ${dir}/data/text/text.txt
+  cat data/local/lobcorpus/0167/download/LOB_COCOA/lob.txt > ${dir}/data/text/text.txt
   cat data/local/browncorpus/brown.txt >> ${dir}/data/text/text.txt
-  #cat test_words.txt  >> ${dir}/data/text/text.txt
-  # use a subset of the annotated training data as the dev set .
+
+  # use the validation data as the dev set.
   # Note: the name 'dev' is treated specially by pocolm, it automatically
   # becomes the dev set.
-  
+
   cat data/val/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
-  # .. and the rest of the training data as an additional data source.
+
+  # use the training data as an additional data source.
   # we can later fold the dev data into this.
-  head -n $[$num_dev_sentences] < data/train/text | cut -d " " -f 2- >  ${dir}/data/text/ted.txt
+  cat data/train/text | cut -d " " -f 2- >  ${dir}/data/text/iam.txt
 
   # for reporting perplexities, we'll use the "real" dev set.
-  # (a subset of the training data is used as ${dir}/data/text/ted.txt to work
-  # out interpolation weights.
+  # (the validation data is used as ${dir}/data/text/dev.txt to work
+  # out interpolation weights.)
   # note, we can't put it in ${dir}/data/text/, because then pocolm would use
   # it as one of the data sources.
   cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
 
-  # get wordlist
-  cat ${dir}/data/text/text.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+  # get the wordlist from IAM text
+  cat ${dir}/data/text/iam.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
   cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
 fi
 
@@ -92,7 +91,7 @@ if [ $stage -le 1 ]; then
   # Note: if you have more than one order, use a certain amount of words as the
   # vocab and want to restrict max memory for 'sort',
   echo "$0: training the unpruned LM"
-  min_counts='train=2 ted=1'
+  min_counts='train=2 iam=1'
   wordlist=${dir}/data/wordlist
 
   lm_name="`basename ${wordlist}`_${order}"
@@ -102,7 +101,7 @@ if [ $stage -le 1 ]; then
   unpruned_lm_dir=${lm_dir}/${lm_name}.pocolm
   train_lm.py  --wordlist=${wordlist} --num-splits=10 --warm-start-ratio=20  \
                --limit-unk-history=true \
-               --fold-dev-into=ted ${bypass_metaparam_optim_opt} \
+               --fold-dev-into=iam ${bypass_metaparam_optim_opt} \
                ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'

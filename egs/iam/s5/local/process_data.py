@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-#Copyright      2017  Chun Chieh Chang
-#               2017  Ashish Arora
+# Copyright      2017  Chun Chieh Chang
+#                2017  Ashish Arora
 
-""" This script reads the data from download directory and creates following files:
+""" This script reads the data from the download directory and creates following files:
  text, utt2spk, images.scp. It can create the text file for both word language
- model and character language model. This scripts is written according to iam data
+ model and character language model. This script is written according to IAM data
  format.
   Eg. local/process_data.py data/local data/train data --dataset new_trainset --model_type word
   Eg. text file: 000_a01-000u-00 A MOVE to stop Mr. Gaitskell from
@@ -20,8 +20,8 @@ import numpy as np
 from scipy import misc
 import xml.dom.minidom as minidom
 
-parser = argparse.ArgumentParser(description="""Creates text utt2spk 
-                                                and image file """)
+parser = argparse.ArgumentParser(description="""Creates text, utt2spk
+                                                and images.scp file """)
 parser.add_argument('database_path', type=str,
                     help='path to downloaded iam data')
 parser.add_argument('out_dir', type=str,
@@ -68,7 +68,7 @@ with open(dataset_path) as f:
     line_vect = line.split('-')
     xml_file = line_vect[0] + '-' + line_vect[1]
     xml_path = os.path.join(args.database_path, 'xml', xml_file + '.xml')
-    img_num = line[-3:] 
+    img_num = line[-3:]
     doc = minidom.parse(xml_path)
 
     form_elements = doc.getElementsByTagName('form')[0]

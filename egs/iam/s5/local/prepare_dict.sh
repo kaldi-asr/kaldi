@@ -1,38 +1,29 @@
 #!/usr/bin/env bash
 
-#Copyright      2017  Chun Chieh Chang
-#               2017  Ashish Arora
+# Copyright      2017  Chun Chieh Chang
+#                2017  Ashish Arora
+#                2017  Hossein Hadian
 
-# This module prepares dictionary directory. It creates lexicon.txt,
-#    silence_phones.txt, optional_silence.txt and extra_questions.txt.
-#
-#    Eg. local/prepare_dict.sh data/train/ data/train/dict
+# This script prepares the dictionary based on the training words.
 
-
-train_text=$1
-test_text=$2
-dir=$3
-
+set -e
+dir=data/local/dict
 mkdir -p $dir
 
-# reads the data from text files and write all unique words in lexicon.txt file
-# find all unique words
-cat $train_text/text | awk '{ for(i=2;i<=NF;i++) print $i;}' | sort -u >train_words
-
-# write words in following format: Ben B e n
-awk '{
-  printf("%s", $1);
-    for(j=1;j<=length($1);++j) {
-      printf(" %s", substr($1, j, 1));
+# List all the unique words in data/train/text with their comprising
+# letters as their transcription. Letter # is replaced with <HASH>.
+cat data/train/text |  perl -ne '@A = split; shift @A;
+  foreach(@A) {
+    if(! $seen{$_}){
+      $seen{$_} = 1;
+      $trans = join(" ", split(//));
+      $trans =~ s/#/<HASH>/g;
+      print "$_ $trans\n";
     }
-  printf("\n");
-}' "train_words" | sort -k1 > lexicon_with_hash
+  }' | sort > $dir/lexicon.txt
 
-#replace '#' with '<HASH>'
-sed 's/\#/<HASH>/2' lexicon_with_hash > $dir/lexicon.txt
-rm -rf lexicon_with_hash train_words
 
-cut -d' ' -f2- $dir/lexicon.txt | tr ' ' '\n' | sort -u >$dir/nonsilence_phones.txt || exit 1;
+cut -d' ' -f2- $dir/lexicon.txt | tr ' ' '\n' | sort -u >$dir/nonsilence_phones.txt
 
 ( echo '<sil> SIL'; ) >> $dir/lexicon.txt || exit 1;
 ( echo '<unk> SIL'; ) >> $dir/lexicon.txt || exit 1;
