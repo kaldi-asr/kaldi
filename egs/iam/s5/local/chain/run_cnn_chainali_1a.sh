@@ -71,7 +71,6 @@ lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats_chain
 gmm_lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats
 dir=exp/chain${nnet3_affix}/cnn_chainali${affix}
 train_data_dir=data/${train_set}
-lores_train_data_dir=$train_data_dir  # for the start, use the same data for gmm and chain
 tree_dir=exp/chain${nnet3_affix}/tree_chain
 
 # the 'lang' directory is created by this script.
@@ -79,7 +78,7 @@ tree_dir=exp/chain${nnet3_affix}/tree_chain
 # you should probably name it differently.
 lang=data/lang_chain
 for f in $train_data_dir/feats.scp \
-    $lores_train_data_dir/feats.scp $gmm_dir/final.mdl \
+    $train_data_dir/feats.scp $gmm_dir/final.mdl \
     $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
@@ -111,7 +110,7 @@ fi
 if [ $stage -le 2 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  local/chain/align_nnet3_lats.sh --nj $nj --cmd "$train_cmd" ${lores_train_data_dir} \
+  steps/nnet3/align_lats.sh --nj $nj --cmd "$train_cmd" ${train_data_dir} \
     data/$lang_test $chain_model_dir $lat_dir
   cp $gmm_lat_dir/splice_opts $lat_dir/splice_opts
 fi
@@ -128,7 +127,7 @@ if [ $stage -le 3 ]; then
   steps/nnet3/chain/build_tree.sh \
     --frame-subsampling-factor $frame_subsampling_factor \
     --context-opts "--context-width=2 --central-position=1" \
-    --cmd "$train_cmd" $num_leaves ${lores_train_data_dir} \
+    --cmd "$train_cmd" $num_leaves ${train_data_dir} \
     $lang $ali_dir $tree_dir
 fi
 

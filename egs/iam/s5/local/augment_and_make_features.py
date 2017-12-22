@@ -1,4 +1,16 @@
 #!/usr/bin/env python
+
+#Copyright      2017  Chun Chieh Chang
+#               2017  Ashish Arora
+#               2017  Yiwen Shao
+
+""" This module will be used for line image preprocessing and augmentation. It
+    performs scaling, image deslanting, contrast normalization and augmentation.
+    It will then write the raw pixel features in kaldi format.
+ 
+  Eg. local/aug_make_feature.py data/train --scale-size 40 --vertical-shift 10
+"""
+
 import random
 import argparse
 import os
@@ -12,14 +24,15 @@ from signal import signal, SIGPIPE, SIG_DFL
 signal(SIGPIPE, SIG_DFL)
 
 parser = argparse.ArgumentParser(
-    description="""Generates and saves the feature vectors""")
+    description="""Generates and saves the feature vectors. Can perform 
+                   deslanting and image augmentation (vertical shift)""")
 parser.add_argument(
     'dir', type=str, help='directory of images.scp and is also output directory')
 parser.add_argument('--seg', type=str, default='1',
                     help='JOB number of images.JOB.scp if run in parallel mode')
 parser.add_argument('--out-ark', type=str, default='-',
                     help='where to write the output feature file')
-parser.add_argument('--scale-size', type=int, default=40,
+parser.add_argument('--feat-dim', type=int, default=40,
                     help='size to scale the height of all images')
 parser.add_argument('--padding', type=int, default=5,
                     help='size to scale the height of all images')
@@ -46,7 +59,7 @@ def write_kaldi_matrix(file_handle, matrix, key):
 
 
 def get_scaled_image(im):
-    scale_size = args.scale_size
+    scale_size = args.feat_dim
     sx = im.shape[1]  # width
     sy = im.shape[0]  # height
     scale = (1.0 * scale_size) / sy
