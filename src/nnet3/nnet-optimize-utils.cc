@@ -2731,6 +2731,7 @@ void ComputationExpander::ExpandRowsCommand(
   // in the vector are row-indexes into s2.
   int32 old_arg3 = c_out->arg3;
   c_out->arg3 = expanded_computation_->indexes.size();
+  c_out->alpha = c_in.alpha;
   expanded_computation_->indexes.push_back(std::vector<int32>());
   std::vector<int32> &new_indexes = expanded_computation_->indexes.back();
   const std::vector<int32> &old_indexes = computation_.indexes[old_arg3];
