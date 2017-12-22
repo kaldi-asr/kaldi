@@ -449,7 +449,6 @@ void Compiler::ComputeInputLocationsList(
   const std::vector<Index> &output_indexes = step_info.output_indexes;
   const NetworkNode &node = nnet_.GetNode(step_info.node_index);
   const SumDescriptor &descriptor = node.descriptor.Part(part_index);
-
   int32 num_indexes = output_indexes.size();
   submat_locations_list->clear();
   submat_locations_list->resize(num_indexes);
@@ -664,6 +663,7 @@ void Compiler::CompileForwardSumDescriptor(
   int32 value_submatrix_index = step_info.value_parts[part_index];
   const SumDescriptor &descriptor =
       nnet_.GetNode(step_info.node_index).descriptor.Part(part_index);
+
   BaseFloat offset_term = descriptor.GetScaleForNode(-1);
   if (offset_term != 0.0) {
     computation->commands.push_back(
@@ -763,10 +763,10 @@ void Compiler::CompileForwardFromSubmatLocations(
   std::vector<int32> indexes;
   if (ConvertToIndexes(submat_locations, &input_submatrix_index, &indexes)) {
     CompileForwardFromIndexes(value_submatrix_index,
-                                    input_submatrix_index,
-                                    alpha,
-                                    indexes,
-                                    computation);
+                              input_submatrix_index,
+                              alpha,
+                              indexes,
+                              computation);
     return;
   } else {
     // There are multiple source matrices.
