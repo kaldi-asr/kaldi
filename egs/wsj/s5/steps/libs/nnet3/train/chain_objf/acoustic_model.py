@@ -51,7 +51,7 @@ def create_phone_lm(dir, tree_dir, run_opts, lm_opts=None):
 def create_denominator_fst(dir, tree_dir, run_opts):
     common_lib.execute_command(
         """copy-transition-model {tree_dir}/final.mdl \
-        {dir}/0.trans_mdl""".format(dir=dir, tree_dir=tree_dir))
+                {dir}/0.trans_mdl""".format(dir=dir, tree_dir=tree_dir))
     common_lib.execute_command(
         """{command} {dir}/log/make_den_fst.log \
                    chain-make-den-fst {dir}/tree {dir}/0.trans_mdl \
