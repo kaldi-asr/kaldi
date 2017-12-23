@@ -26,8 +26,9 @@ namespace nnet3 {
 OnlineNaturalGradient::OnlineNaturalGradient():
     rank_(40), update_period_(1), num_samples_history_(2000.0),
     num_minibatches_history_(0.0), alpha_(4.0),
-    epsilon_(1.0e-10), delta_(5.0e-04), frozen_(false), t_(-1),
-    num_updates_skipped_(0), self_debug_(false) { }
+    epsilon_(1.0e-10), delta_(5.0e-04), frozen_(false), t_(0),
+    self_debug_(false),
+    diagonal_power_(0.0), diagonal_epsilon_(1.0e-03)  { }
 
 
 /**
@@ -123,6 +124,7 @@ void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &R0) {
   // for locking reasons it's better to use a different object.
   OnlineNaturalGradient this_copy(*this);
   this_copy.InitDefault(D);
+  this_copy.t_ = 1;  // Prevent recursion to Init() again.
 
   CuMatrix<BaseFloat> R0_copy(R0.NumRows(), R0.NumCols(), kUndefined);
   // 'num_iters' is number of iterations with the same data from a pseudorandom
@@ -146,52 +148,165 @@ void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &R0) {
   for (int32 i = 0; i < num_init_iters; i++) {
     BaseFloat scale;
     R0_copy.CopyFromMat(R0);
-    this_copy.PreconditionDirections(&R0_copy, NULL, &scale);
+    this_copy.PreconditionDirections(&R0_copy, &scale);
   }
   rank_ = this_copy.rank_;
   W_t_.Swap(&this_copy.W_t_);
   d_t_.Swap(&this_copy.d_t_);
   rho_t_ = this_copy.rho_t_;
-  t_ = 0;
 }
 
 void OnlineNaturalGradient::PreconditionDirections(
     CuMatrixBase<BaseFloat> *X_t,
-    CuVectorBase<BaseFloat> *row_prod,
     BaseFloat *scale) {
   if (X_t->NumCols() == 1) {
     // If the dimension of the space equals one then our natural gradient update
     // with rescaling becomes a no-op, but the code wouldn't naturally handle it
     // because rank would be zero.  Support this as a special case.
-    if (row_prod)
-      row_prod->AddDiagMat2(1.0, *X_t, kNoTrans, 0.0);
-    *scale = 1.0;
+    if (scale)
+      *scale = 1.0;
     return;
   }
 
-  if (row_prod == NULL) {
-    CuVector<BaseFloat> row_prod_tmp(X_t->NumRows());
-    PreconditionDirections(X_t, &row_prod_tmp, scale);
-    return;
-  }
-
-  read_write_mutex_.lock();
-  if (t_ == -1) // not initialized
+  if (t_ == 0) // not initialized
     Init(*X_t);
 
-  // Now t_ >= 0.
-  // We create local copies  of the class variables... this is intended for
-  // multi-threaded safety so we can't read them in an inconsistent state,
-  // but we don't really waste anything here (a copy of W_t is needed anyway,
-  // if we're to update it).
-  int32 t = t_, R = W_t_.NumRows(), D = W_t_.NumCols();
+  int32 R = W_t_.NumRows(), D = W_t_.NumCols();
   // space for W_t, J_t, K_t, L_t.
   CuMatrix<BaseFloat> WJKL_t(2 * R, D + R);
   WJKL_t.Range(0, R, 0, D).CopyFromMat(W_t_);
   BaseFloat rho_t(rho_t_);
   Vector<BaseFloat> d_t(d_t_);
-  read_write_mutex_.unlock();
-  PreconditionDirectionsInternal(t, rho_t, d_t, &WJKL_t, X_t, row_prod, scale);
+
+  bool updating = Updating();
+
+  BaseFloat initial_product;
+  if (diagonal_power_ == 0.0 || scale != NULL)
+    initial_product = TraceMatMat(*X_t, *X_t, kTrans);
+
+  if (diagonal_power_ == 0.0)
+    PreconditionDirectionsInternal(rho_t, initial_product,
+                                   updating, d_t, &WJKL_t, X_t);
+  else
+    PreconditionDirectionsDiagonal(rho_t, updating, d_t, &WJKL_t, X_t);
+
+  if (scale) {
+    if (initial_product <= 0.0) {
+      *scale = 1.0;
+    } else {
+      BaseFloat final_product = TraceMatMat(*X_t, *X_t, kTrans);
+      *scale = sqrt(initial_product / final_product);
+    }
+  }
+  t_ += 1;
+}
+
+void OnlineNaturalGradient::PreconditionDirectionsDiagonal(
+    const BaseFloat rho_t,
+    bool updating,
+    const Vector<BaseFloat> &d_t,
+    CuMatrixBase<BaseFloat> *WJKL_t,
+    CuMatrixBase<BaseFloat> *X_t) {
+  KALDI_ASSERT(diagonal_power_ > 0.0 && diagonal_power_ <= 1.0 &&
+               (diagonal_mean_.Dim() != 0 || updating));
+
+  int32 dim = X_t->NumCols();
+
+  if (diagonal_mean_.Dim() == 0) {
+    InitDiagonalParams(*X_t);
+    updating = false;
+  }
+
+  CuVector<BaseFloat> new_diagonal_mean, new_diagonal_uvar;
+
+  if (updating) {
+    new_diagonal_mean.Resize(dim, kUndefined);
+    new_diagonal_uvar.Resize(dim, kUndefined);
+    UpdateDiagonalStats(*X_t, &new_diagonal_mean, &new_diagonal_uvar);
+  }
+
+  X_t->MulColsVec(diagonal_scale_);
+
+  PreconditionDirectionsInternal(rho_t, TraceMatMat(*X_t, *X_t, kTrans), false,
+                                 d_t, WJKL_t, X_t);
+
+  // We apply the scale both before and after the identity-plus-low-rank matrix,
+  // so that the combined matrix is symmetric.
+  X_t->MulColsVec(diagonal_scale_);
+
+
+  // If we're updating the diagonal mean and variance we do so *after*
+  // preconditioning the data.  This is out of a concern about the provability
+  // of convergence (making it independent of the current minibatch).  Most
+  // likely, in practice it would work fine updating it before, it might even be
+  // a little bit more stable.  Anyway, this is how we're doing it, and it's how
+  // we did it for the core part of the natural gradient.
+  if (updating) {
+    diagonal_mean_.Swap(&new_diagonal_mean);
+    diagonal_uvar_.Swap(&new_diagonal_uvar);
+    UpdateDiagonalScale();
+  }
+}
+
+void OnlineNaturalGradient::UpdateDiagonalStats(
+    const CuMatrixBase<BaseFloat> &X,
+    CuVectorBase<BaseFloat> *diagonal_mean_new,
+    CuVectorBase<BaseFloat> *diagonal_uvar_new){
+  int32 dim = X.NumCols(), num_rows = X.NumRows();
+  KALDI_ASSERT(diagonal_mean_new->Dim() == dim && diagonal_uvar_new->Dim() == dim &&
+               diagonal_mean_.Dim() == dim);
+  BaseFloat eta = Eta(X.NumRows());
+  // 'eta' is a value that reflects how fast we update these stats, which is
+  // smaller if we're updating them slower, but strictly less than 1.  It's
+  // basically the scale on the new stats, with 1-eta being the scale on the old
+  // stats.
+  KALDI_ASSERT(eta > 0 && eta < 1.0);
+
+  diagonal_mean_new->CopyFromVec(diagonal_mean_);
+  diagonal_uvar_new->CopyFromVec(diagonal_uvar_);
+
+  diagonal_mean_new->AddRowSumMat(eta / num_rows, X, 1.0 - eta);
+  diagonal_uvar_new->AddDiagMat2(eta / num_rows, X, kTrans, 1.0 - eta);
+}
+
+void OnlineNaturalGradient::InitDiagonalParams(
+    const CuMatrixBase<BaseFloat> &X) {
+  int32 dim = X.NumCols(), num_rows = X.NumRows();
+  diagonal_mean_.Resize(dim);
+  diagonal_uvar_.Resize(dim);
+  diagonal_mean_.AddRowSumMat(1.0 / num_rows, X, 0.0);
+  diagonal_uvar_.AddDiagMat2(1.0 / num_rows, X, kTrans, 0.0);
+  UpdateDiagonalScale();
+}
+
+
+void OnlineNaturalGradient::UpdateDiagonalScale() {
+  KALDI_ASSERT(diagonal_mean_.Dim() != 0);
+  int32 dim = diagonal_mean_.Dim();
+  if (diagonal_scale_.Dim() != dim)
+    diagonal_scale_.Resize(dim);
+  diagonal_scale_.CopyFromVec(diagonal_uvar_);
+  diagonal_scale_.AddVecVec(-1.0, diagonal_mean_, diagonal_mean_, 1.0);
+  // At this point, diagonal_scale_ is the diagonal of the (centered) variance
+  // estimated from the x and x2 statistics, prior to any flooring or
+  // scaling.
+  BaseFloat avg_variance = diagonal_scale_.Sum() / dim;
+  if (avg_variance <= 1.0e-20) {
+    // either the data is all zero or very tiny, or something went wrong.  Just
+    // set diagonal_scale_ to a constant.
+    diagonal_scale_.Set(1.0);
+  } else {
+    BaseFloat floor = diagonal_epsilon_ * avg_variance;
+    diagonal_scale_.ApplyFloor(floor);
+    // The following statement scales diagonal_scale_ so its average is close to
+    // 1, which helps keep things in a reasonable numeric range.  There is no
+    // reason why it has to be exactly one, and the whole thing is mathematically
+    // invariant to this scaling factor-- we output the scaling factor 'scale'
+    // from PreconditionDirections() so that the user can rescale so the vector
+    // 2-norm of the X_t matrix is the same as was before the natural gradent.
+    diagonal_scale_.Scale(1.0 / avg_variance);
+    diagonal_scale_.ApplyPow(-0.5 * diagonal_power_);
+  }
 }
 
 void OnlineNaturalGradient::ReorthogonalizeXt1(
@@ -318,13 +433,12 @@ void OnlineNaturalGradient::SelfTest() const {
 }
 
 void OnlineNaturalGradient::PreconditionDirectionsInternal(
-    const int32 t,
     const BaseFloat rho_t,
+    const BaseFloat tr_X_Xt,
+    bool updating,
     const Vector<BaseFloat> &d_t,
     CuMatrixBase<BaseFloat> *WJKL_t,
-    CuMatrixBase<BaseFloat> *X_t,
-    CuVectorBase<BaseFloat> *row_prod,
-    BaseFloat *scale) {
+    CuMatrixBase<BaseFloat> *X_t) {
   int32 N = X_t->NumRows(),  // Minibatch size.
       D = X_t->NumCols(),  // Dimensions of vectors we're preconditioning
       R = rank_;  // Rank of correction to unit matrix.
@@ -343,57 +457,11 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
 
   H_t.AddMatMat(1.0, *X_t, kNoTrans, W_t, kTrans, 0.0);  // H_t = X_t W_t^T
 
-  bool locked = update_mutex_.try_lock();
-  if (locked) {
-    // We'll release the lock if we don't plan to update the parameters.
-
-    // Explanation of the conditions below:
-    // if (frozen_) because we don't do the update is the user called Freeze().
-    // I forget why the (t_ > t) is here; probably some race condition encountered
-    //   a long time ago.  Not important; nnet3 doesn't use multiple threads anyway.
-    // The condition:
-    // (num_updates_skipped_ < update_period_ - 1 && t_ >= num_initial_updates)
-    // means we can update if either we're in the first 10 updates (e.g. first
-    // 10 minibatches), or if we've skipped 'update_period_ - 1' batches of data
-    // without updating the parameters (this allows us to update only, say,
-    // every 4 times, for speed, after updating the first 10 times).
-
-    // Just hard-code it here that we do 10 initial updates before skipping any.
-    const int num_initial_updates = 10;
-    if (frozen_ || t_ > t || (num_updates_skipped_ < update_period_ - 1 &&
-                              t_ >= num_initial_updates)) {
-      update_mutex_.unlock();
-      // We got the lock but we were already beaten to it by another thread, or
-      // we don't want to update yet due to update_period_ > 1 (this saves
-      // compute), so release the lock.
-      locked = false;
-    }
-  }
-
-  if (!locked) {
-    // We're not updating the parameters, either because another thread is
-    // working on updating them, or because another thread already did so from
-    // the same or later starting point (making our update stale), or because
-    // update_period_ > 1.  We just apply the preconditioning and return.
-
-    // note: we don't bother with any locks before checking frozen_ or incrementing
-    // num_updates_skipped_ below, because the worst that could happen is that,
-    // on very rare occasions, we could skip one or two more updates than we
-    // intended.
-    if (!frozen_)
-      num_updates_skipped_++;
-
-    BaseFloat tr_Xt_XtT = TraceMatMat(*X_t, *X_t, kTrans);
+  if (!updating) {
+    // We're not updating the estimate of the Fisher matrix; we just apply the
+    // preconditioning and return.
     // X_hat_t = X_t - H_t W_t
     X_t->AddMatMat(-1.0, H_t, kNoTrans, W_t, kNoTrans, 1.0);
-    // each element i of row_prod will be inner product of row i of X_hat_t with
-    // itself.
-    row_prod->AddDiagMat2(1.0, *X_t, kNoTrans, 0.0);
-    BaseFloat tr_Xhat_XhatT = row_prod->Sum();
-    KALDI_ASSERT(tr_Xhat_XhatT == tr_Xhat_XhatT);  // Check for NaN.
-    BaseFloat gamma_t = (tr_Xhat_XhatT == 0.0 ? 1.0 :
-                         sqrt(tr_Xt_XtT / tr_Xhat_XhatT));
-    *scale = gamma_t;
     return;
   }
   J_t.AddMatMat(1.0, H_t, kTrans, *X_t, kNoTrans, 0.0);  // J_t = H_t^T X_t
@@ -456,31 +524,14 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
   if (nf > 0 && self_debug_) {
     KALDI_WARN << "Floored " << nf << " elements of C_t.";
   }
-  BaseFloat tr_Xt_XtT_check;
-  if (self_debug_)
-    tr_Xt_XtT_check = TraceMatMat(*X_t, *X_t, kTrans);
 
   X_t->AddMatMat(-1.0, H_t, kNoTrans, W_t, kNoTrans, 1.0);  // X_hat_t = X_t - H_t W_t
-  // set *row_prod to inner products of each row of X_hat_t with itself.
-  row_prod->AddDiagMat2(1.0, *X_t, kNoTrans, 0.0);
-
-  BaseFloat tr_Xhat_XhatT = row_prod->Sum();
-  //  tr(X_t X_t^T) = tr(X_hat_t X_hat_t^T) - tr(L_t E_t) + 2 tr(L_t)
-  double tr_Xt_XtT = tr_Xhat_XhatT;
-  for (int32 i = 0; i < R; i++)
-    tr_Xt_XtT += L_t_cpu(i, i) * (2.0 - e_t(i));
-  if (self_debug_) {
-    KALDI_ASSERT(ApproxEqual(tr_Xt_XtT, tr_Xt_XtT_check));
-  }
-  BaseFloat gamma_t = (tr_Xhat_XhatT == 0.0 ? 1.0 :
-                       sqrt(tr_Xt_XtT / tr_Xhat_XhatT));
-  *scale = gamma_t;
 
   Vector<BaseFloat> sqrt_c_t(c_t);
   sqrt_c_t.ApplyPow(0.5);
 
   // \rho_{t+1} = 1/(D - R) (\eta/N tr(X_t X_t^T) + (1-\eta)(D \rho_t + tr(D_t)) - tr(C_t^{0.5})).
-  BaseFloat rho_t1 = 1.0 / (D - R) * (eta / N * tr_Xt_XtT
+  BaseFloat rho_t1 = 1.0 / (D - R) * (eta / N * tr_X_Xt
                                       + (1-eta)*(D * rho_t + d_t.Sum())
                                       - sqrt_c_t.Sum());
   // D_{t+1} = C_t^{0.5} - \rho_{t+1} I
@@ -506,21 +557,24 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
                        &L_t);
   }
 
-  // Commit the new parameters.
-  read_write_mutex_.lock();
-  KALDI_ASSERT(t_ == t);  // we already ensured this.
-  t_ = t + 1;
-  num_updates_skipped_ = 0;
   W_t_.Swap(&W_t1);
   d_t_.CopyFromVec(d_t1);
   rho_t_ = rho_t1;
 
   if (self_debug_)
     SelfTest();
-
-  read_write_mutex_.unlock();
-  update_mutex_.unlock();
 }
+
+bool OnlineNaturalGradient::Updating() const {
+  // Just hard-code it here that we do 10 initial updates before skipping any.
+  // This must be > 'num_init_iters = 3' from Init().
+  const int num_initial_updates = 10;
+
+  return (!frozen_ &&
+          (t_ <= num_initial_updates ||
+           (t_ - num_initial_updates) % update_period_ == 0));
+}
+
 
 BaseFloat OnlineNaturalGradient::Eta(int32 N) const {
   if (num_minibatches_history_ > 0.0) {
@@ -635,12 +689,15 @@ OnlineNaturalGradient::OnlineNaturalGradient(const OnlineNaturalGradient &other)
     num_samples_history_(other.num_samples_history_),
     num_minibatches_history_(other.num_minibatches_history_),
     alpha_(other.alpha_), epsilon_(other.epsilon_), delta_(other.delta_),
-    frozen_(other.frozen_),
-    t_(other.t_), num_updates_skipped_(other.num_updates_skipped_),
+    frozen_(other.frozen_), t_(other.t_),
     self_debug_(other.self_debug_), W_t_(other.W_t_),
-    rho_t_(other.rho_t_), d_t_(other.d_t_) {
-  // use default constructor for the mutexes.
-}
+    rho_t_(other.rho_t_), d_t_(other.d_t_),
+    diagonal_power_(other.diagonal_power_),
+    diagonal_epsilon_(other.diagonal_epsilon_),
+    diagonal_mean_(other.diagonal_mean_),
+    diagonal_uvar_(other.diagonal_uvar_),
+    diagonal_scale_(other.diagonal_scale_) { }
+
 
 OnlineNaturalGradient& OnlineNaturalGradient::operator = (
     const OnlineNaturalGradient &other) {
