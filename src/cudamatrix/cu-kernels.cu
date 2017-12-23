@@ -7,7 +7,7 @@
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
 //           2016-2017  Shiyin Kang
-//                2017  Hossein Hadian
+//                2017  Hossein Hadian, Daniel Galvez
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1792,6 +1792,16 @@ static void _vec_apply_floor(Real *v, Real floor_val, float *count, int dim) {
 
 template<typename Real>
 __global__
+static void _vec_apply_floor_no_count(Real *v, Real floor_val, int dim) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (i < dim) {
+    v[i] = max(v[i], floor_val);
+  }
+}
+
+template<typename Real>
+__global__
 static void _vec_apply_ceiling(Real *v, Real ceiling_val, float *count,
                                int dim) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1803,6 +1813,16 @@ static void _vec_apply_ceiling(Real *v, Real ceiling_val, float *count,
     } else {
       count[i] = 0;
     }
+  }
+}
+
+template<typename Real>
+__global__
+static void _vec_apply_ceiling_no_count(Real *v, Real ceiling_val, int dim) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (i < dim) {
+    v[i] = min(v[i], ceiling_val);
   }
 }
 
@@ -4017,10 +4037,21 @@ void cudaF_vec_apply_floor(int Gr, int Bl, float* v, float floor_val,
   _vec_apply_floor<<<Gr,Bl>>>(v,floor_val,count,dim);
 }
 
+void cudaF_vec_apply_floor_no_count(int Gr, int Bl, float* v, float floor_val,
+				    int dim) {
+  _vec_apply_floor_no_count<<<Gr,Bl>>>(v,floor_val,dim);
+}
+
 void cudaF_vec_apply_ceiling(int Gr, int Bl, float* v, float ceiling_val,
                              float *count, int dim) {
   _vec_apply_ceiling<<<Gr,Bl>>>(v, ceiling_val,count,dim);
 }
+
+void cudaF_vec_apply_ceiling_no_count(int Gr, int Bl, float* v, float floor_val,
+				      int dim) {
+  _vec_apply_ceiling_no_count<<<Gr,Bl>>>(v,floor_val,dim);
+}
+
 
 void cudaF_vec_apply_exp(int Gr, int Bl, float* v, int dim) {
   _vec_apply_exp<<<Gr,Bl>>>(v,dim);
@@ -4699,10 +4730,21 @@ void cudaD_vec_apply_floor(int Gr, int Bl, double* v, double floor_val,
   _vec_apply_floor<<<Gr,Bl>>>(v,floor_val,count,dim);
 }
 
+void cudaD_vec_apply_floor_no_count(int Gr, int Bl, double* v, double floor_val,
+				    int dim) {
+  _vec_apply_floor_no_count<<<Gr,Bl>>>(v,floor_val,dim);
+}
+
 void cudaD_vec_apply_ceiling(int Gr, int Bl, double* v, double ceiling_val,
                              float *count, int dim) {
   _vec_apply_ceiling<<<Gr,Bl>>>(v,ceiling_val,count,dim);
 }
+
+void cudaD_vec_apply_ceiling_no_count(int Gr, int Bl, double* v, double ceiling_val,
+				      int dim) {
+  _vec_apply_ceiling_no_count<<<Gr,Bl>>>(v,ceiling_val,dim);
+}
+
 
 void cudaD_vec_apply_exp(int Gr, int Bl, double* v, int dim) {
   _vec_apply_exp<<<Gr,Bl>>>(v,dim);

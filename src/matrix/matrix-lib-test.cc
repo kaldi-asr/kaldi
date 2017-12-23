@@ -6,6 +6,7 @@
 //                       Johns Hopkins University (Author: Daniel Povey);
 //                       Haihua Xu; Wei Shi
 //                2015   Guoguo Chen
+//                2017   Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -2297,6 +2298,14 @@ template<typename Real> static void  UnitTestFloorCeiling() {
     AssertEqual(c, c2);
     KALDI_ASSERT(floored == floored2);
     KALDI_ASSERT(ceiled == ceiled2);
+
+    Vector<Real> f3(v);
+    f3.ApplyFloorNoCount(pivot);
+    AssertEqual(f2, f3);
+
+    Vector<Real> c3(v);
+    c3.ApplyCeilingNoCount(pivot);
+    AssertEqual(c2, c3);
   }
 }
 
