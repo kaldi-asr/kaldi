@@ -411,6 +411,43 @@ namespace nnet3 {
    is that this isn't going to be a problem.
  */
 
+/**
+   DIAGONAL_EXTENSION
+
+   This comment explains the diagonal extension to the natural gradient method (this
+   was not described in the original paper).
+
+   Physically this diagonal scaling happens both before and after the main natural
+   gradient code.  I.e. the main natural gradient code (which makes use
+   of a scaled-unit-plus-low-rank factorization), happens inside the
+   space where we've applied the diagonal component of the preconditioning,
+   so the overall natural-gradient matrix is of the form:
+      diag scaled-unit-plus-low-rank diag.
+  The way this is estimated only really makes sense if diagonal_power_
+  is either zero or one, but I expect that for in-between values it will
+  work fine in practice.
+
+  The way the diagonal scaling factor is estimated is that we accumulate mean
+  and variance stats for each dimension (decaying over time like the previous
+  natural gradient stats), and set the scaling factor to some power of the
+  variance estimated this way.  The power of the variance used to get the
+  scaling factor is actually -0.5 times diagonal_power_, the factor of 0.5
+  being required because the scaling is applied twice, both before and after
+  the scaled-unit-plus-low-rank inverse-Fisher matrix, to preserve symmetry.
+
+  It may seem odd that we are taking into account the mean here, while
+  conceptually it's the uncentered covariance of the vectors that we're
+  modeling.  The reason is that any offset in the vectors we're modeling
+  can be taken into account by one of the eigenvectors of the low-rank
+  matrix, so we anticipate that taking the mean out of consideration will
+  tend to give us a better factorization.  This is all a litte bit ad-hoc.
+  It would be cleaner to formulate this whole thing as learning a factored
+  representation of the inverse Fisher matrix, but that would become
+  very complicated, so we just estimate the diagonal in this rather ad-hoc
+  way and then do the low-rank factorization of the Fisher matrix after
+  the diagonal preconditioning.
+ */
+
 
 class OnlineNaturalGradient {
  public:
@@ -433,6 +470,11 @@ class OnlineNaturalGradient {
   BaseFloat GetAlpha() const { return alpha_; }
   int32 GetRank() const { return rank_; }
   int32 GetUpdatePeriod() const { return update_period_; }
+
+  // search above for DIAGONAL_EXTENSION for explanations.  Value should
+  // be between 0 and 1.
+  void SetDiagonalPower(BaseFloat p) { diagonal_power_ = p; }
+  BaseFloat GetDiagonalPower() const { return diagonal_power_; }
 
   // see comment where 'frozen_' is declared.
   inline void Freeze(bool frozen) { frozen_ = frozen; }
@@ -470,15 +512,29 @@ class OnlineNaturalGradient {
  private:
 
 
-  // This is an internal function called from PreconditionDirections(),
-  // which handles some multithreading issues and then calls this function.
+  // This is an internal function called from PreconditionDirections().
   // Note: WJKL_t (dimension 2*R by D + R) is [ W_t L_t; J_t K_t ].
-  void PreconditionDirectionsInternal(const int32 t,
-                                      const BaseFloat rho_t,
+  void PreconditionDirectionsInternal(const BaseFloat rho_t,
                                       const BaseFloat tr_X_Xt,
+                                      bool updating,
                                       const Vector<BaseFloat> &d_t,
                                       CuMatrixBase<BaseFloat> *WJKL_t,
                                       CuMatrixBase<BaseFloat> *X_t);
+
+  // This function is called from PreconditionDirections(), only if
+  // diagonal_power_ != 0.0 (see comment starting DIAGONAL_EXTENSION above).
+  // It takes care of the diagonal factors in the Fisher-matrix estimate
+  // and recurses to PreconditionDirectionsInternal().
+  void PreconditionDirectionsDiagonal(const BaseFloat rho_t,
+                                      bool updating,
+                                      const Vector<BaseFloat> &d_t,
+                                      CuMatrixBase<BaseFloat> *WJKL_t,
+                                      CuMatrixBase<BaseFloat> *X_t);
+
+
+  // Works out from t_ and various class variables whether we will update
+  // the parameters on this iteration (returns true if so).
+  bool Updating() const;
 
   void ComputeEt(const VectorBase<BaseFloat> &d_t,
                  BaseFloat beta_t,
@@ -541,6 +597,29 @@ class OnlineNaturalGradient {
   // properties.
   void SelfTest() const;
 
+
+  // This function, called only if diagonal_power_ != 0.0 (see
+  // DIAGONAL_EXTENSION comment), initializes diagonal_mean_, diagonal_uvar_ and
+  // diagonal_scale_, with stats from this minibatch (X is the vectors before
+  // preconditioning, one vector per row).
+  void InitDiagonalParams(const CuMatrixBase<BaseFloat> &X);
+
+  // This function, called only if diagonal_power_ != 0.0 (see
+  // DIAGONAL_EXTENSION comment), sets diagonal_mean_new and diagonal_uvar_new to
+  // updated versions of the diagonal stats in diagonal_mean_ and diagonal_uvar_:
+  // changed by scaling down the old stats and then adding in stats from 'X'.
+  // 'X' is the vectors (one per row) that are doing to multiplied by our
+  // natural gradient matrix.  The provided pointers will be pointers to
+  // temporaries that will later be copied to class members.
+  void UpdateDiagonalStats(const CuMatrixBase<BaseFloat> &X,
+                           CuVectorBase<BaseFloat> *diagonal_mean_new,
+                           CuVectorBase<BaseFloat> *diagonal_uvar_new);
+
+  // This function updates diagonal_scale_ from the stats in
+  // diagonal_mean_ and diagonal_uvar_.
+  void UpdateDiagonalScale();
+
+
   // Configuration values:
 
   // The rank of the correction to the unit matrix (e.g. 20).
@@ -596,14 +675,9 @@ class OnlineNaturalGradient {
   // the *second* time we see the same data (to avoid biasing the update).
   bool frozen_;
 
-  // t is a counter that measures how many updates we've done.
+  // t is a counter that measures how many times the user has previously called
+  // PreconditionDirections(); it's 0 if that has never been called.
   int32 t_;
-
-  // This keeps track of how many minibatches we've skipped updating the parameters,
-  // since the most recent update; it's used in enforcing "update_period_", which
-  // is a mechanism to avoid spending too much time updating the subspace (which can
-  // be wasteful).
-  int32 num_updates_skipped_;
 
   // If true, activates certain checks.
   bool self_debug_;
@@ -612,12 +686,41 @@ class OnlineNaturalGradient {
   BaseFloat rho_t_;
   Vector<BaseFloat> d_t_;
 
-  // Used to prevent parameters being read or written in an inconsistent state.
-  std::mutex read_write_mutex_;
+  // Things below this point relate to 'diagonal' preconditioning.
+  // Search above for DIAGONAL_EXTENSION for an in-depth explanation.
 
-  // This mutex is used to control which thread gets to update the
-  // parameters, in multi-threaded code.
-  std::mutex update_mutex_;
+  // The diagonal extension is turned off by default (diagonal_power_ == 0.0),
+  // but you can turn it on by setting diagonal_power_ (probably to some
+  // positive value not greater than 1, with 1 corresponding to natural
+  // gradient, and 0.5 corresponding to something more like Adagrad).
+  BaseFloat diagonal_power_;
+
+  // diagonal_epsilon_ (e.g. 0.001) is a floor on the diagonal elements of the
+  // variances; this is expressed relative to the average un-floored variance
+  // over all dimensions (since dynamic ranges differ considerably).
+  BaseFloat diagonal_epsilon_;
+
+  //   dim_ is not a real variable but it is useful for explaining some things
+  //   we're doing below.  It's the dimension of the vectors we're preconditioning:
+  //   D in the math and the paper.  Is is the same as W_t_.NumCols().
+  // int32 dim_;
+
+  // diagonal_mean_, of dimension dim_ (or zero if diagonal_power_ == 0.0), is a
+  // moving-average mean of the vectors we're preconditioning.
+  CuVector<BaseFloat> diagonal_mean_;
+
+  // diagonal_xuvar_, of dimension dim_ (or zero if diagonal_power_ == 0.0), is a
+  // decaying average over minibatches of the (diagonal) uncentered variance of
+  // the input vectors we're preconditioning.
+  CuVector<BaseFloat> diagonal_uvar_;
+
+  // diagonal_scale_, of dimension dim_ (or zero if diagonal_power_ == 0.0), is a
+  // vector of scaling factors which is the diagonal part of the inverse-Fisher
+  // matrix, applied before and after the scaled-unit-plus-low-rank part.
+  // It is the (floored and rescaled) variance estimated from the stats in
+  // diagonal_mean_ and diagonal_uvar_, taken to the power -0.5 * diagonal_power_.
+  CuVector<BaseFloat> diagonal_scale_;
+
 
 };
 
