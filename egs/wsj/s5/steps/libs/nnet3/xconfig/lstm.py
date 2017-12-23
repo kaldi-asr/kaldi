@@ -737,13 +737,17 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         configs.append("component name={0}.lstm_nonlin type=LstmNonlinearityComponent "
                        "cell-dim={1} {2} {3}".format(name, cell_dim, lstm_str,
                                                      l2_regularize_option))
+        # Note from Dan: I don't remember why we are applying the backprop
+        # truncation on both c and m appended together, instead of just on c.
+        # Possibly there was some memory or speed or WER reason for it which I
+        # have forgotten about now.
         configs.append("# Component for backprop truncation, to avoid gradient blowup in long training examples.")
         configs.append("component name={0}.cm_trunc type=BackpropTruncationComponent dim={1} "
                        "{2}".format(name, 2 * cell_dim, bptrunc_str))
 
         configs.append("###  Nodes for the components above.")
         configs.append("component-node name={0}.W_all component={0}.W_all input=Append({1}, "
-                       "IfDefined(Offset(Scale({2}, {0}.m_trunc), {3})))".format(
+                       "IfDefined(Offset(Scale({2}, {0}.c_trunc), {3})))".format(
                           name, input_descriptor, self.config['recurrence-scale'], delay))
         if self.config['self-stabilize']:
             configs.append("component-node name={0}.W_all_so component={0}.W_all_so input={0}.W_all".format(name))
@@ -759,7 +763,6 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         configs.append("dim-range-node name={0}.m input-node={0}.lstm_nonlin dim-offset={1} dim={1}".format(name, cell_dim))
         configs.append("component-node name={0}.cm_trunc component={0}.cm_trunc input={0}.lstm_nonlin".format(name))
         configs.append("dim-range-node name={0}.c_trunc input-node={0}.cm_trunc dim-offset=0 dim={1}".format(name, cell_dim))
-        configs.append("dim-range-node name={0}.m_trunc input-node={0}.cm_trunc dim-offset={1} dim={1}".format(name, cell_dim))
 
         if self.layer_type == "fast-lstm-batchnorm-layer":
             # Add the batchnorm component, if requested to include batchnorm.
@@ -911,7 +914,7 @@ class XconfigLstmbLayer(XconfigLayerBase):
                            name, input_dim + cell_dim, bottleneck_dim,
                            affine_str))
 
-        configs.append("component name={0}.m_trunc_memnorm type=MemoryNormComponent dim={1} ".format(
+        configs.append("component name={0}.c_trunc_memnorm type=MemoryNormComponent dim={1} ".format(
                 name, cell_dim))
 
         configs.append("component name={0}.W_all_b type=LinearComponent input-dim={1} "
@@ -929,15 +932,15 @@ class XconfigLstmbLayer(XconfigLayerBase):
                                                      l2_regularize_option))
         configs.append("# Component for backprop truncation, to avoid gradient blowup in long training examples.")
 
-        configs.append("component name={0}.cm_trunc type=BackpropTruncationComponent dim={1} {2}".format(
-            name, 2 * cell_dim, bptrunc_str))
+        configs.append("component name={0}.c_trunc type=BackpropTruncationComponent dim={1} {2}".format(
+            name, cell_dim, bptrunc_str))
         configs.append("component name={0}.m_batchnorm type=BatchNormComponent dim={1} ".format(
             name, cell_dim))
 
 
         configs.append("###  Nodes for the components above.")
         configs.append("component-node name={0}.W_all_a component={0}.W_all_a input=Append({1}, "
-                       "IfDefined(Offset(Scale(1.0, {0}.m_trunc_memnorm), {2})))".format(
+                       "IfDefined(Offset({0}.c_trunc_memnorm, {2})))".format(
                            name, input_descriptor, delay))
         configs.append("component-node name={0}.W_all_b component={0}.W_all_b "
                        "input={0}.W_all_a".format(name))
@@ -947,15 +950,13 @@ class XconfigLstmbLayer(XconfigLayerBase):
         configs.append("component-node name={0}.lstm_nonlin component={0}.lstm_nonlin "
                        "input=Append({0}.W_all_b_so, IfDefined(Offset({0}.c_trunc, {1})))".format(
                            name, delay))
+        configs.append("dim-range-node name={0}.c input-node={0}.lstm_nonlin dim-offset=0 "
+                       "dim={1}".format(name, cell_dim))
         configs.append("dim-range-node name={0}.m input-node={0}.lstm_nonlin dim-offset={1} "
                        "dim={1}".format(name, cell_dim))
-        configs.append("component-node name={0}.cm_trunc component={0}.cm_trunc input={0}.lstm_nonlin".format(name))
-        configs.append("dim-range-node name={0}.c_trunc input-node={0}.cm_trunc dim-offset=0 "
-                       "dim={1}".format(name, cell_dim))
-        configs.append("dim-range-node name={0}.m_trunc input-node={0}.cm_trunc dim-offset={1} "
-                       "dim={1}".format(name, cell_dim))
-        configs.append("component-node name={0}.m_trunc_memnorm component={0}.m_trunc_memnorm "
-                       "input={0}.m_trunc".format(name))
+        configs.append("component-node name={0}.c_trunc component={0}.c_trunc input={0}.c".format(name))
+        configs.append("component-node name={0}.c_trunc_memnorm component={0}.c_trunc_memnorm "
+                       "input={0}.c_trunc".format(name))
         configs.append("component-node name={0}.m_batchnorm component={0}.m_batchnorm "
                        "input={0}.m".format(name))
         configs.append("### End LTSM layer '{0}'".format(name))
