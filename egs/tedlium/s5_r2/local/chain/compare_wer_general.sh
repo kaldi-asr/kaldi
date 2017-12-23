@@ -102,5 +102,10 @@ for x in $*; do
   prob=$(grep Overall $x/log/compute_prob_valid.final.log | grep -w xent | awk '{printf("%.4f", $8)}')
   printf "% 10s" $prob
 done
+echo
 
+echo -n "# Num-params              "
+for x in $*; do
+  printf "% 10s" $(grep num-parameters $x/log/progress.1.log | awk '{print $2}')
+done
 echo
