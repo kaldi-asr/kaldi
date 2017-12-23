@@ -588,7 +588,7 @@ def train(args, run_opts):
     with open("{dir}/accuracy.report".format(dir=args.dir), "w") as f:
         f.write(report)
 
-    common_lib.execute_command("steps/info/nnet3_dir_info.pl "
+    common_lib.execute_command("steps/info/chain_dir_info.pl "
                                "{0}".format(args.dir))
 
 
