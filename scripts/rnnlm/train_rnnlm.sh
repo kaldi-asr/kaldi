@@ -23,8 +23,8 @@ final_effective_lrate=0.0001
 embedding_l2=0.005
 embedding_lrate_factor=0.1  # the embedding learning rate is the
                             # nnet learning rate times this factor.
-backstitch_scale=0.0        # backstitch training scale
-backstitch_interval=1       # backstitch training interval
+backstitch_training_scale=0.0    # backstitch training scale
+backstitch_training_interval=1   # backstitch training interval
 cmd=run.pl  # you might want to set this to queue.pl
 
 # some options passed into rnnlm-get-egs, relating to sampling.
@@ -119,8 +119,8 @@ final_effective_lrate=$final_effective_lrate
 embedding_lrate_factor=$embedding_lrate_factor
 sample_group_size=$sample_group_size
 num_samples=$num_samples
-backstitch_scale=$backstitch_scale
-backstitch_interval=$backstitch_interval
+backstitch_training_scale=$backstitch_training_scale
+backstitch_training_interval=$backstitch_training_interval
 EOF
 
 
@@ -143,7 +143,10 @@ while [ $x -lt $num_iters ]; do
     fi
     if $use_gpu_for_diagnostics; then queue_gpu_opt="--gpu 1"; gpu_opt="--use-gpu=yes";
     else gpu_opt=''; queue_gpu_opt=''; fi
-    backstitch_opt="--backstitch-training-scale=$backstitch_scale --backstitch-training-interval=$backstitch_interval"
+    backstitch_opt="--rnnlm.backstitch-training-scale=$backstitch_training_scale \
+      --rnnlm.backstitch-training-interval=$backstitch_training_interval \
+      --embedding.backstitch-training-scale=$backstitch_training_scale \
+      --embedding.backstitch-training-interval=$backstitch_training_interval"
     [ -f $dir/.error ] && rm $dir/.error
     $cmd $queue_gpu_opt $dir/log/compute_prob.$x.log \
        rnnlm-get-egs $(cat $dir/special_symbol_opts.txt) \

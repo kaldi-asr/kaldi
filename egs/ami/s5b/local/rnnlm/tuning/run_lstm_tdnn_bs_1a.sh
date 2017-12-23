@@ -23,8 +23,9 @@ epochs=90
 mic=sdm1
 stage=-10
 train_stage=0
-alpha=0.8
-back_interval=1
+# backstitch options
+alpha=0.8 # backstitch training scale
+back_interval=1 # backstitch training interval
 
 . utils/parse_options.sh
 train=data/$mic/train/text
@@ -95,7 +96,8 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  backstitch_opt="--rnnlm.backstitch-scale $alpha --rnnlm.backstitch-interval $back_interval --embedding.backstitch-scale $alpha --embedding.backstitch-interval $back_interval"
+  backstitch_opt="--backstitch-training-scale $alpha \
+    --backstitch-training-interval $back_interval"
   rnnlm/train_rnnlm.sh --embedding_l2 $embedding_l2 \
                        --stage $train_stage \
                        --num-epochs $epochs --cmd "queue.pl" $backstitch_opt $dir
