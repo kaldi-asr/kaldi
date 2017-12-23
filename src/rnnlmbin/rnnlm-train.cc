@@ -42,9 +42,6 @@ int main(int argc, char *argv[]) {
     std::string embedding_rxfilename;
     std::string embedding_wxfilename;
     std::string word_features_rxfilename;
-    // backstitch options
-    BaseFloat backstitch_training_scale = 0.0;
-    int32 backstitch_training_interval = 1;
     // binary mode for writing output.
     bool binary = true;
 
@@ -91,14 +88,6 @@ int main(int argc, char *argv[]) {
                 "letters and other hand-built features; it's not trainable."
                 " If present, the embedding matrix read via --read-embedding "
                 "will be interpreted as a feature-embedding matrix.");
-    po.Register("backstitch-training-scale", &backstitch_training_scale,
-                "backstitch training factor. "
-                "if 0 then in the normal training mode. It is referred as "
-                "'\\alpha' in our publications.");
-    po.Register("backstitch-training-interval",
-                &backstitch_training_interval,
-                "do backstitch training with the specified interval of "
-                "minibatches. It is referred as 'n' in our publications.");
     po.Register("binary", &binary,
                 "If true, write outputs in binary form.");
 
@@ -120,11 +109,6 @@ int main(int argc, char *argv[]) {
 
 
     po.Read(argc, argv);
-
-    core_config.backstitch_training_scale = backstitch_training_scale;
-    core_config.backstitch_training_interval = backstitch_training_interval;
-    embedding_config.backstitch_training_scale = backstitch_training_scale;
-    embedding_config.backstitch_training_interval = backstitch_training_interval;
 
     if (po.NumArgs() != 1) {
       po.PrintUsage();

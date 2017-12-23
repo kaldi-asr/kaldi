@@ -92,12 +92,12 @@ struct RnnlmEmbeddingTrainerOptions {
                    "training the word-embedding matrix.");
     opts->Register("backstitch-training-scale", &backstitch_training_scale,
                    "backstitch training factor. "
-                   "if 0 then in the normal training mode. It is referred as "
+                   "if 0 then in the normal training mode. It is referred to as "
                    "'\\alpha' in our publications.");
     opts->Register("backstitch-training-interval",
                    &backstitch_training_interval,
                    "do backstitch training with the specified interval of "
-                   "minibatches. It is referred as 'n' in our publications.");
+                   "minibatches. It is referred to as 'n' in our publications.");
     opts->Register("use-natural-gradient", &use_natural_gradient,
                    "True if you want to use natural gradient to update the "
                    "embedding matrix");

@@ -230,14 +230,9 @@ void RnnlmTrainer::TrainInternal() {
   GetWordEmbedding(&word_embedding_storage, &word_embedding);
 
   CuMatrix<BaseFloat> word_embedding_deriv;
-  if (train_embedding_) {
-    KALDI_ASSERT(core_config_.backstitch_training_scale ==
-        embedding_config_.backstitch_training_scale &&
-        core_config_.backstitch_training_interval ==
-        embedding_config_.backstitch_training_interval);
+  if (train_embedding_)
     word_embedding_deriv.Resize(word_embedding->NumRows(),
                                 word_embedding->NumCols());
-  }
 
   if (core_config_.backstitch_training_scale > 0.0 &&
       num_minibatches_processed_ % core_config_.backstitch_training_interval ==

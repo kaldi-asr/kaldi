@@ -166,7 +166,8 @@ void RnnlmCoreTrainer::Train(
   ProvideInput(minibatch, derived, word_embedding, &computer);
   computer.Run();  // This is the forward pass.
 
-  ProcessOutput(true, minibatch, derived, word_embedding,
+  bool is_backstitch_step1 = true;
+  ProcessOutput(is_backstitch_step1, minibatch, derived, word_embedding,
                 &computer, word_embedding_deriv);
 
   computer.Run();  // This is the backward pass.

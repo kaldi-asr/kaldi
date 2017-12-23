@@ -3,8 +3,9 @@
 # Copyright 2012  Johns Hopkins University (author: Daniel Povey)  Tony Robinson
 #           2017  Hainan Xu
 #           2017  Ke Li
+#           2017  Yiming Wang
 
-# This script is similar to rnnlm_lstm_tdnn_a.sh except for adding L2 regularization.
+# This script is similar to rnnlm_lstm_tdnn_b.sh except for adding backstitch training
 
 # rnnlm/train_rnnlm.sh: best iteration (out of 18) was 17, linking it to final iteration.
 # rnnlm/train_rnnlm.sh: train/dev perplexity was 45.6 / 68.7.
@@ -12,7 +13,8 @@
 # Dev objf:   -10.76 -4.68 -4.47 -4.38 -4.33 -4.29 -4.28 -4.27 -4.26 -4.26 -4.25 -4.24 -4.24 -4.24 -4.23 -4.23 -4.23 -4.23
 
 # Begin configuration section.
-dir=exp/rnnlm_lstm_tdnn_1b
+cmd=run.pl
+affix=1a
 embedding_dim=200
 embedding_l2=0.005 # embedding layer l2 regularize
 comp_l2=0.005 # component-level l2 regularize
@@ -21,15 +23,15 @@ epochs=90
 mic=sdm1
 stage=-10
 train_stage=0
+alpha=0.8
+back_interval=1
 
-. ./cmd.sh
-. ./utils/parse_options.sh
-[ -z "$cmd" ] && cmd=$train_cmd
-
+. utils/parse_options.sh
 train=data/$mic/train/text
 dev=data/$mic/dev/text
 wordlist=data/lang/words.txt
 text_dir=data/rnnlm/text
+dir=exp/rnnlm_lstm_tdnn_bs_$affix
 mkdir -p $dir/config
 set -e
 
@@ -93,9 +95,10 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
+  backstitch_opt="--rnnlm.backstitch-scale $alpha --rnnlm.backstitch-interval $back_interval --embedding.backstitch-scale $alpha --embedding.backstitch-interval $back_interval"
   rnnlm/train_rnnlm.sh --embedding_l2 $embedding_l2 \
                        --stage $train_stage \
-                       --num-epochs $epochs --cmd "$cmd" $dir
+                       --num-epochs $epochs --cmd "queue.pl" $backstitch_opt $dir
 fi
 
 exit 0
