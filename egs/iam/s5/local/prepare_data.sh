@@ -103,12 +103,12 @@ fi
 if [ -d $lobcorpus ]; then
   echo "$0: Not downloading the LOB text corpus as it is already there."
 else
-  if [ ! -f $download_dir/0167.zip ]; then
+  if [ ! -f $lobcorpus/0167.zip ]; then
     echo "$0: Downloading the LOB text corpus ..."
-    wget -P $download_dir $lob_corpus_url || exit 1;
+    mkdir -p $lobcorpus
+    wget -P $lobcorpus/ $lob_corpus_url || exit 1;
   fi
-  mkdir -p $lobcorpus
-  unzip $download_dir/0167.zip -d $lobcorpus || exit 1;
+  unzip $lobcorpus/0167.zip -d $lobcorpus || exit 1;
   echo "$0: Done downloading and extracting LOB corpus"
 fi
 

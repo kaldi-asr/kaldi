@@ -16,7 +16,7 @@ nj=20
 
 if [ $stage -le 0 ]; then
   echo "$0: Preparing data..."
-  local/prepare_data.sh --download-dir data/download #/export/corpora5/handwriting_ocr/IAM
+  local/prepare_data.sh --download-dir /export/corpora5/handwriting_ocr/IAM
 fi
 mkdir -p data/{train,test}/data
 
