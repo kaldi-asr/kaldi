@@ -1,7 +1,9 @@
 #!/bin/bash
 
-#Copyright      2017  Chun Chieh Chang
-#               2017  Ashish Arora
+# Copyright      2017  Chun Chieh Chang
+#                2017  Ashish Arora
+#                2017  Hossein Hadian
+# Apache 2.0
 
 # This script downloads the IAM handwriting database and prepares the training
 # and test data (i.e text, images.scp, utt2spk and spk2utt) by calling process_data.py.
@@ -16,10 +18,24 @@
 
 stage=0
 download_dir=data/download
+username=
+password=       # username and password for downloading the IAM database
+                # if you have not already downloaded the database, please
+                # register at http://www.fki.inf.unibe.ch/databases/iam-handwriting-database
+                # and provide this script with your username and password.
 
 . ./cmd.sh
-if [ -f path.sh ]; then . ./path.sh; fi
-. parse_options.sh || exit 1;
+. ./path.sh
+. ./utils/parse_options.sh || exit 1;
+
+if [[ ! -f $download_dir/lines.tgz && -z $username ]]; then
+  echo "$0: Warning: Couldn't find lines.tgz in $download_dir. Unless the extracted dataset files"
+  echo "exist in your data/local directory this script will fail because the required files"
+  echo "can't be downloaded automatically (it needs registration)."
+  echo "Please register at http://www.fki.inf.unibe.ch/databases/iam-handwriting-database"
+  echo "... and then call this script again with --username <username> --password <password>"
+  echo ""
+fi
 
 lines=data/local/lines
 xml=data/local/xml
@@ -37,74 +53,74 @@ mkdir -p $download_dir data/local
 
 # download and extact images and transcription
 if [ -d $lines ]; then
-  echo Not downloading lines images as it is already there.
+  echo "$0: Not downloading lines images as it is already there."
 else
   if [ ! -f $download_dir/lines.tgz ]; then
-    echo Downloading lines images...
-    wget -P $download_dir --user userjh --password password $lines_url || exit 1;
+    echo "$0: Trying to download lines images..."
+    wget -P $download_dir --user "$username" --password "$password" $lines_url || exit 1;
   fi
   mkdir -p $lines
   tar -xzf $download_dir/lines.tgz -C $lines || exit 1;
-  echo Done downloading and extracting lines images
+  echo "$0: Done downloading and extracting lines images"
 fi
 
 if [ -d $xml ]; then
-  echo Not downloading transcription as it is already there.
+  echo "$0: Not downloading transcriptions as it is already there."
 else
   if [ ! -f $download_dir/xml.tgz ]; then
-    echo Downloading transcription ...
-    wget -P $download_dir --user userjh --password password $xml_url || exit 1;
+    echo "$0: Trying to download transcriptions..."
+    wget -P $download_dir --user "$username" --password "$password" $xml_url || exit 1;
   fi
   mkdir -p $xml
   tar -xzf $download_dir/xml.tgz -C $xml || exit 1;
-  echo Done downloading and extracting transcription
+  echo "$0: Done downloading and extracting transcriptions."
 fi
 
 if [ -d $data_split_info ]; then
-  echo Not downloading data split, training and testing split, information as it is already there.
+  echo "$0: Not downloading data split information as it is already there."
 else
   if [ ! -f $download_dir/largeWriterIndependentTextLineRecognitionTask.zip ]; then
-    echo Downloading training and testing data Split Information ...
-    wget -P $download_dir --user userjh --password password $data_split_info_url || exit 1;
+    echo "$0: Trying to download training and testing data split information..."
+    wget -P $download_dir --user "$username" --password "$password" $data_split_info_url || exit 1;
   fi
   mkdir -p $data_split_info
   unzip $download_dir/largeWriterIndependentTextLineRecognitionTask.zip -d $data_split_info || exit 1;
-  echo Done downloading and extracting training and testing data Split Information
+  echo "$0: Done downloading and extracting training and testing data split information"
 fi
 
 if [ -d $ascii ]; then
-  echo Not downloading ascii folder as it is already there.
+  echo "$0: Not downloading ascii.tgz as it is already there."
 else
   if [ ! -f $download_dir/ascii.tgz ]; then
-    echo Downloading ascii folder ...
-    wget -P $download_dir --user userjh --password password $ascii_url || exit 1;
+    echo "$0: trying to download ascii.tgz..."
+    wget -P $download_dir --user "$username" --password "$password" $ascii_url || exit 1;
   fi
   mkdir -p $ascii
   tar -xzf $download_dir/ascii.tgz -C $ascii || exit 1;
-  echo Done downloading and extracting ascii folder
+  echo "$0: Done downloading and extracting ascii.tgz"
 fi
 
 if [ -d $lobcorpus ]; then
-  echo Not downloading lob corpus as it is already there.
+  echo "$0: Not downloading the LOB text corpus as it is already there."
 else
   if [ ! -f $download_dir/0167.zip ]; then
-    echo Downloading lob corpus ...
+    echo "$0: Downloading the LOB text corpus ..."
     wget -P $download_dir $lob_corpus_url || exit 1;
   fi
   mkdir -p $lobcorpus
   unzip $download_dir/0167.zip -d $lobcorpus || exit 1;
-  echo Done downloading and extracting lob corpus
+  echo "$0: Done downloading and extracting LOB corpus"
 fi
 
 if [ -d $bcorpus ]; then
-  echo Not downloading brown corpus as it is already there.
+  echo "$0: Not downloading the Brown corpus as it is already there."
 else
   if [ ! -f $bcorpus/brown.txt ]; then
     mkdir -p $bcorpus
-    echo Downloading brown corpus ...
+    echo "$0: Downloading the Brown text corpus..."
     wget -P $bcorpus $brown_corpus_url || exit 1;
   fi
-  echo Done downloading brown corpus
+  echo "$0: Done downloading the Brown text corpus"
 fi
 
 mkdir -p data/{train,test,val}
@@ -115,18 +131,18 @@ test_old="data/local/$file_name/testset.txt"
 val1_old="data/local/$file_name/validationset1.txt"
 val2_old="data/local/$file_name/validationset2.txt"
 
-train_new="data/local/new_trainset.txt"
-test_new="data/local/new_testset.txt"
-val_new="data/local/new_valset.txt"
+train_new="data/local/train.uttlist"
+test_new="data/local/test.uttlist"
+val_new="data/local/validation.uttlist"
 
 cat $train_old > $train_new
 cat $test_old > $test_new
 cat $val1_old $val2_old > $val_new
 
 if [ $stage -le 0 ]; then
-  local/process_data.py data/local data/train --dataset new_trainset || exit 1
-  local/process_data.py data/local data/test --dataset new_testset || exit 1
-  local/process_data.py data/local data/val --dataset new_valset || exit 1
+  local/process_data.py data/local data/train --dataset train || exit 1
+  local/process_data.py data/local data/test --dataset test || exit 1
+  local/process_data.py data/local data/val --dataset validation || exit 1
 
   utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
   utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt

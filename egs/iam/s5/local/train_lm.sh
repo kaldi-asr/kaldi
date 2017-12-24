@@ -6,7 +6,7 @@
 #           2017  Hossein Hadian
 # Apache 2.0
 #
-# This script trains an LM on the LOB+Brown text data and IAM acoustic training data.
+# This script trains an LM on the LOB+Brown text data and IAM training transcriptions.
 # It is based on the example scripts distributed with PocoLM
 
 # It will check if pocolm is installed and if not will proceed with installation
@@ -78,7 +78,7 @@ if [ $stage -le 0 ]; then
   cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
 
   # get the wordlist from IAM text
-  cat ${dir}/data/text/iam.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+  cat ${dir}/data/text/{iam,text}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
   cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
 fi
 
@@ -101,7 +101,7 @@ if [ $stage -le 1 ]; then
   unpruned_lm_dir=${lm_dir}/${lm_name}.pocolm
   train_lm.py  --wordlist=${wordlist} --num-splits=10 --warm-start-ratio=20  \
                --limit-unk-history=true \
-               --fold-dev-into=iam ${bypass_metaparam_optim_opt} \
+               ${bypass_metaparam_optim_opt} \
                ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'

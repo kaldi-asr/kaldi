@@ -1,9 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright      2017  Chun Chieh Chang
 #                2017  Ashish Arora
 
-""" This script converts images to Kaldi-format feature matrices.The input to
+""" This script converts images to Kaldi-format feature matrices. The input to
     this script is the path to a data directory, e.g. "data/train". This script
     reads the images listed in images.scp and writes them to standard output
     (by default) as Kaldi-formatted matrices (in text form). It also scales the
@@ -16,18 +16,17 @@
 import argparse
 import os
 import sys
-import scipy.io as sio
 import numpy as np
 from scipy import misc
 
 parser = argparse.ArgumentParser(description="""Converts images (in 'dir'/images.scp) to features and
                                                 writes them to standard output in text format.""")
 parser.add_argument('dir', type=str,
-                    help='source data directory (containing images.scp)')
+                    help='Source data directory (containing images.scp)')
 parser.add_argument('--out-ark', type=str, default='-',
-                    help='where to write the output feature file')
+                    help='Where to write the output feature file')
 parser.add_argument('--feat-dim', type=int, default=40,
-                    help='size to scale the height of all images')
+                    help='Size to scale the height of all images')
 parser.add_argument('--padding', type=int, default=5,
                     help='Number of white pixels to pad on the left'
                     'and right side of the image.')

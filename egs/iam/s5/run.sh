@@ -4,6 +4,7 @@
 #                2017  Ashish Arora
 #                2017  Hossein Hadian
 
+set -e
 stage=0
 nj=20
 
@@ -14,37 +15,36 @@ nj=20
                             # if supplied.
 
 if [ $stage -le 0 ]; then
-  local/prepare_data.sh --nj $nj --download-dir /export/corpora5/handwriting_ocr/IAM
+  echo "$0: Preparing data..."
+  local/prepare_data.sh --download-dir data/download #/export/corpora5/handwriting_ocr/IAM
 fi
 mkdir -p data/{train,test}/data
 
 if [ $stage -le 1 ]; then
-  # prepare the test and train feature files
-  local/make_features.py data/test --feat-dim 40 | \
-    copy-feats --compress=true --compression-method=7 \
-               ark:- ark,scp:data/test/data/images.ark,data/test/feats.scp || exit 1
-  steps/compute_cmvn_stats.sh data/test || exit 1;
-
-  local/make_features.py data/train --feat-dim 40 | \
-    copy-feats --compress=true --compression-method=7 \
-               ark:- ark,scp:data/train/data/images.ark,data/train/feats.scp || exit 1
-  steps/compute_cmvn_stats.sh data/train || exit 1;
+  echo "$0: Preparing the test and train feature files..."
+  for dataset in train test; do
+    local/make_features.py data/$dataset --feat-dim 40 | \
+      copy-feats --compress=true --compression-method=7 \
+                 ark:- ark,scp:data/$dataset/data/images.ark,data/$dataset/feats.scp || exit 1
+    steps/compute_cmvn_stats.sh data/$dataset || exit 1;
+  done
 fi
 
 if [ $stage -le 2 ]; then
+  echo "$0: Preparing dictionary and lang..."
   local/prepare_dict.sh
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
-    data/local/dict "<unk>" data/lang/temp data/lang
+                        data/local/dict "<unk>" data/lang/temp data/lang
 fi
 
 if [ $stage -le 3 ]; then
-  local/iam_train_lm.sh
-  cp -r data/lang data/lang_test
-  utils/format_lm.sh data/local/local_lm/data/arpa/3gram_big.arpa.gz \
+  echo "$0: Estimating a language model for decoding..."
+  local/train_lm.sh
+  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_big.arpa.gz \
                      data/local/dict/lexicon.txt data/lang_test || exit 1;
 
   # prepare the unk model for open-vocab decoding
-  utils/lang/make_unk_lm.sh --ngram-order 4 --num-extra-ngrams 7500 data/local/dict exp/unk_lang_model
+  utils/lang/make_unk_lm.sh --ngram-order 4 --num-extra-ngrams 10000 data/local/dict exp/unk_lang_model
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 \
                         --unk-fst exp/unk_lang_model/unk_fst.txt data/local/dict "<unk>" data/lang/temp data/lang_unk
   cp data/lang_test/G.fst data/lang_unk/G.fst
@@ -119,5 +119,5 @@ fi
 
 if [ $stage -le 14 ]; then
   local/chain/run_cnn_chainali_1b.sh --chain-model-dir exp/chain/cnn_1a \
-    --lang-test lang_unk
+    --lang-test lang_unk --stage 2
 fi

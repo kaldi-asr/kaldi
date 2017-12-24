@@ -108,8 +108,9 @@ fi
 if [ $stage -le 2 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  steps/nnet3/align_lats.sh --nj $nj --cmd "$train_cmd" ${train_data_dir} \
-    data/$lang_test $chain_model_dir $lat_dir
+  steps/nnet3/align_lats.sh --nj $nj --cmd "$train_cmd" \
+                            --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
+                            ${train_data_dir} data/$lang_test $chain_model_dir $lat_dir
   cp $gmm_lat_dir/splice_opts $lat_dir/splice_opts
 fi
 
@@ -142,7 +143,7 @@ if [ $stage -le 4 ]; then
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
-  
+
   conv-relu-batchnorm-layer name=cnn1 height-in=40 height-out=40 time-offsets=-3,-2,-1,0,1,2,3 $common1
   conv-relu-batchnorm-layer name=cnn2 height-in=40 height-out=20 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
   conv-relu-batchnorm-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
