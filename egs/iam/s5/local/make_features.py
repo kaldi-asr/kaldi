@@ -57,10 +57,12 @@ def get_scaled_image(im):
     nx = int(scale_size)
     ny = int(scale * sx)
     im = misc.imresize(im, (nx, ny))
-    padding_x = max(5,int((args.padding/100)*im.shape[1]))
+    padding_x = args.padding
     padding_y = im.shape[0]
-    im_pad = np.concatenate((255 * np.ones((padding_y,padding_x), dtype=int), im), axis=1)
-    im_pad1 = np.concatenate((im_pad,255 * np.ones((padding_y, padding_x), dtype=int)), axis=1)
+    im_pad = np.concatenate((255 * np.ones((padding_y, padding_x),
+                                           dtype=int), im), axis=1)
+    im_pad1 = np.concatenate((im_pad, 255 * np.ones((padding_y, padding_x),
+                                                    dtype=int)), axis=1)
     return im_pad1
 
 ### main ###

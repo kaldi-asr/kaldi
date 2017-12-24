@@ -56,7 +56,7 @@ def process_text_file_for_word_model():
       text = text.replace("|", " ")
       text_dict[utt_id] = text
 
-print("Processing '{}' data...")
+print("Processing '{}' data...".format(args.dataset))
 process_text_file_for_word_model()
 
 with open(dataset_path) as f:
