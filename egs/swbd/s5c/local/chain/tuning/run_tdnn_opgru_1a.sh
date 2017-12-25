@@ -239,6 +239,8 @@ if [ $stage -le 15 ]; then
           --nj 50 --cmd "$decode_cmd" $iter_opts \
           --extra-left-context $extra_left_context  \
           --extra-right-context $extra_right_context  \
+          --extra-left-context-initial 0 \
+          --extra-right-context-final 0 \
           --frames-per-chunk "$frames_per_chunk" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires \

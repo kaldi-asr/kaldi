@@ -852,6 +852,10 @@ const NnetComputation* CachingOptimizingCompiler::CompileViaShortcut(
                       need_debug_info, num_n_values, ans);
     seconds_taken_expand_ += timer.Elapsed();
   }
+  if (GetVerboseLevel() >= 3) {
+    CheckComputation(nnet_, *ans, false);
+  }
+
   {
     Timer timer;
     ans->ComputeCudaIndexes();
