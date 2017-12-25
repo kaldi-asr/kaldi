@@ -217,12 +217,15 @@ EventMap *BuildTree(Questions &qopts,
     int32 num_leaves_out = 0;
     EventMap *tree_renumbered;
     if (round_num_leaves) {
+      // Round the number of leaves to a multiple of 8 by clustering the leaves
+      // and merging them within each cluster.
+      // The final number of leaves will be 'num_leaves_required'.
       int32 num_leaves_required = ((num_leaves - num_removed) / 8) * 8;
       std::vector<EventMap*> leaf_mapping;
 
       int32 num_actually_removed = ClusterEventMapGetMapping(
-          *tree_clustered, stats, -kLogZeroBaseFloat, &leaf_mapping, 
-          num_leaves_required);
+          *tree_clustered, stats, std::numeric_limits<BaseFloat>::max(),
+          &leaf_mapping, num_leaves_required);
       KALDI_ASSERT(num_leaves - num_removed 
                    - num_actually_removed == num_leaves_required);
   
@@ -251,14 +254,17 @@ EventMap *BuildTree(Questions &qopts,
     return tree_renumbered;
   } else {
     if (round_num_leaves) {
+      // Round the number of leaves to a multiple of 8 by clustering the leaves
+      // and merging them within each cluster.
+      // The final number of leaves will be 'num_leaves_required'.
       BaseFloat objf_before_cluster = ObjfGivenMap(stats, *tree_split);
       
       int32 num_leaves_required = (num_leaves / 8) * 8;
       std::vector<EventMap*> leaf_mapping;
 
       int32 num_actually_removed = ClusterEventMapGetMapping(
-          *tree_split, stats, -kLogZeroBaseFloat, &leaf_mapping, 
-          num_leaves_required);
+          *tree_split, stats, std::numeric_limits<BaseFloat>::max(),
+          &leaf_mapping, num_leaves_required);
 
       KALDI_ASSERT(num_actually_removed < 8);
   
