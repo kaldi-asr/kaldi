@@ -144,7 +144,8 @@ local/score_combine.sh data/test_eval92 \
 # %WER 3.76 [ 212 / 5643, 32 ins, 12 del, 168 sub ] exp/combine_tri4b_fmmi_a_sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it8_3/wer_12
 
 # Checking MBR decode of baseline:
-cp -r -T exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it3{,.mbr}
+rm -r exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it3.mbr 2>/dev/null 
+cp -r exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it3{,.mbr}
 local/score_mbr.sh data/test_eval92 data/lang_test_bd_tgpr exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it3.mbr
 # MBR decoding did not seem to help (baseline was 3.85).  I think this is normal at such low WERs.
 %WER 3.86 [ 218 / 5643, 35 ins, 11 del, 172 sub ] exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it3.mbr/wer_10

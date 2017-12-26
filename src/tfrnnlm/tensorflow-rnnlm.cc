@@ -211,8 +211,8 @@ void KaldiTfRnnlmWrapper::AcquireInitialTensors() {
   }
 }
 
-void KaldiTfRnnlmWrapper::GetLogProbParallel(std::vector<int32> word_vector,
-                                             std::vector<int32> fst_word_vector,
+void KaldiTfRnnlmWrapper::GetLogProbParallel(const std::vector<int32>& word_vector,
+                                             const std::vector<int32>& fst_word_vector,
                                              const Tensor &state_to_context_tensor,
                                              const Tensor &state_to_cell_tensor,
                                              Tensor *new_context_tensor,
@@ -383,6 +383,24 @@ TfRnnlmDeterministicFst::~TfRnnlmDeterministicFst() {
     delete state_to_cell_[i];
   }
 }
+
+void TfRnnlmDeterministicFst::Clear() {
+  // similar to the destructor but we retain the 0-th entries in each map
+  // which corresponds to the <bos> state
+  for (int i = 1; i < state_to_context_.size(); i++) {
+    delete state_to_context_[i];
+  }
+  for (int i = 1; i < state_to_cell_.size(); i++) {
+    delete state_to_cell_[i];
+  }
+  
+  state_to_context_.resize(1);
+  state_to_cell_.resize(1);
+  state_to_wseq_.resize(1);
+  wseq_to_state_.clear();
+  wseq_to_state_[state_to_wseq_[0]] = 0;
+}
+
 
 fst::StdArc::Weight TfRnnlmDeterministicFst::Final(StateId s) {
   // At this point, we should have created the state.

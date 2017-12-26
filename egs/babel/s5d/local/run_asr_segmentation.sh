@@ -46,7 +46,7 @@ nj=80
 . ./lang.conf || exit 1;
 
 . ./path.sh
-. cmd.sh 
+. ./cmd.sh
 
 set -e -u -o pipefail
 . utils/parse_options.sh 

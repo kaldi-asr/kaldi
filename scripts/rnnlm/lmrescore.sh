@@ -5,6 +5,9 @@
 # Apache 2.0
 
 # This script rescores lattices with KALDI RNNLM.
+# It uses a simple n-gram approximation to limit the search space;
+# A faster and more accurate way to rescore is at rnnlm/lmrescore_pruned.sh
+# which is more prefered
 
 # Begin configuration section.
 cmd=run.pl
@@ -14,14 +17,14 @@ max_ngram_order=4 # Approximate the lattice-rescoring by limiting the max-ngram-
                   # the same ngram history and this prevents the lattice from 
                   # exploding exponentially. Details of the n-gram approximation
                   # method are described in section 2.3 of the paper
-                  # http://www.cs.jhu.edu/~hxu/tf.pdf
+                  # http://www.danielpovey.com/files/2018_icassp_lattice_pruning.pdf
 
 weight=0.5  # Interpolation weight for RNNLM.
 normalize=false # If true, we add a normalization step to the output of the RNNLM
                 # so that it adds up to *exactly* 1. Note that this is not necessary
                 # as in our RNNLM setup, a properly trained network would automatically
                 # have its normalization term close to 1. The details of this
-                # could be found at http://www.cs.jhu.edu/~hxu/rnnlm.pdf
+                # could be found at http://www.danielpovey.com/files/2018_icassp_rnnlm.pdf
 
 # End configuration section.
 
@@ -109,11 +112,11 @@ else
 fi
 
 if ! $skip_scoring ; then
-  err_msg="Not scoring because local/score.sh does not exist or not executable."
+  err_msg="$0: Not scoring because local/score.sh does not exist or not executable."
   [ ! -x local/score.sh ] && echo $err_msg && exit 1;
   local/score.sh --cmd "$cmd" $data $oldlang $outdir
 else
-  echo "Not scoring because requested so..."
+  echo "$0: Not scoring because --skip-scoring was specified."
 fi
 
 exit 0;

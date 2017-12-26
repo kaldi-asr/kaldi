@@ -106,8 +106,8 @@ class KaldiTfRnnlmWrapper {
                        Tensor *context_out,
                        Tensor *cell_out);
 
-  void GetLogProbParallel(std::vector<int32> word_vector,
-                          std::vector<int32> fst_word_vector,
+  void GetLogProbParallel(const std::vector<int32>& word_vector,
+                          const std::vector<int32>& fst_word_vector,
                           const Tensor &state_to_context_tensor,
                           const Tensor &state_to_cell_tensor,
                           Tensor *new_context_vector,
@@ -160,6 +160,7 @@ class TfRnnlmDeterministicFst:
   // Does not take ownership.
   TfRnnlmDeterministicFst(int32 max_ngram_order, KaldiTfRnnlmWrapper *rnnlm);
   ~TfRnnlmDeterministicFst();
+  void Clear();
 
   // We cannot use "const" because the pure virtual function in the interface is
   // not const.

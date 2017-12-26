@@ -19,8 +19,9 @@ cat $dir/cmudict/cmudict.0.7a.symbols | sed s/[0-9]//g | \
 cat $dir/silence_phones.txt| awk '{printf("%s ", $1);} END{printf "\n";}' > $dir/extra_questions.txt || exit 1;
 
 grep -v ';;;' $dir/cmudict/cmudict.0.7a | \
- perl -ane 'if(!m:^;;;:){ s:(\S+)\(\d+\) :$1 :; s:  : :; print; }' | \
-   sed s/[0-9]//g | sort | uniq > $dir/lexicon1_raw_nosil.txt || exit 1;
+  perl -ane 'if(!m:^;;;:){ s:(\S+)\(\d+\) :$1 :; s:  : :; print; }' | \
+  perl -ane '@A = split(" ", $_); for ($n = 1; $n<@A;$n++) { $A[$n] =~ s/[0-9]//g; } print join(" ", @A) . "\n";' | \
+  sort | uniq > $dir/lexicon1_raw_nosil.txt || exit 1;
 
 #cat eddie_data/rt09.ami.ihmtrain09.v3.dct | sort > $dir/lexicon1_raw_nosil.txt
 
@@ -46,6 +47,7 @@ done | cat - $dir/lexicon1_raw_nosil_50k.txt > $dir/lexicon2_raw_50k.txt || exit
      | sort -u > $dir/lexicon3_extra_50k.txt
 
 cp $dir/lexicon3_extra_50k.txt $dir/lexicon.txt
+rm $dir/lexiconp.txt 2>/dev/null; # can confuse later script if this exists.
 
 [ ! -f $dir/lexicon.txt ] && exit 1;
 

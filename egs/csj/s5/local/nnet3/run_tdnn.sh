@@ -18,6 +18,11 @@ common_egs_dir=
 reporting_email=
 remove_egs=true
 
+affix=1a # affix for the TDNN directory name
+nnet3_affix=
+train_set=train_nodup
+gmm=tri4
+
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
@@ -30,22 +35,27 @@ where "nvcc" is installed.
 EOF
 fi
 
-dir=exp/nnet3/nnet_tdnn
-train_set=train_nodup
-ali_dir=exp/tri4_ali_nodup
+local/nnet3/run_ivector_common.sh --stage $stage \
+                                  --train-set $train_set \
+                                  --gmm $gmm \
+                                  --nnet3-affix "$nnet3_affix" || exit 1;
+
+gmm_dir=exp/$gmm
+ali_dir=exp/${gmm}_ali_${train_set}_sp
+dir=exp/nnet3${nnet3_affix}/tdnn${affix}
+train_ivector_dir=exp/nnet3${nnet3_affix}ivectors_${train_set}_sp_hires
 if [ -e data/train_dev ] ;then
     dev_set=train_dev
 fi
 
-local/nnet3/run_ivector_common.sh --stage $stage || exit 1;
 
 if [ $stage -le 9 ]; then
   echo "$0: creating neural net configs";
 
   # create the config files for nnet initialization                                                                                                                                  
   python steps/nnet3/tdnn/make_configs.py  \
-    --feat-dir data/${train_set}_hires \
-    --ivector-dir exp/nnet3/ivectors_${train_set} \
+    --feat-dir data/${train_set}_sp_hires \
+    --ivector-dir $train_ivector_dir \
     --ali-dir $ali_dir \
     --relu-dim 1024 \
     --splice-indexes "-2,-1,0,1,2 -1,2 -3,3 -7,2 0"  \
@@ -56,12 +66,12 @@ fi
 if [ $stage -le 10 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/csj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/train_dnn.py --stage=$train_stage \
     --cmd="$decode_cmd" \
-    --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
+    --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --trainer.num-epochs 2 \
     --trainer.optimization.num-jobs-initial 1 \
@@ -72,7 +82,7 @@ if [ $stage -le 10 ]; then
     --cleanup.remove-egs $remove_egs \
     --cleanup.preserve-model-interval 100 \
     --use-gpu true \
-    --feat-dir=data/${train_set}_hires \
+    --feat-dir=data/${train_set}_sp_hires \
     --ali-dir $ali_dir \
     --lang data/lang \
     --reporting.email="$reporting_email" \
@@ -84,7 +94,7 @@ graph_dir=exp/tri4/graph_csj_tg
 if [ $stage -le 11 ]; then
     for eval_num in $dev_set eval1 eval2 eval3 ; do
 	steps/nnet3/decode.sh --nj 10 --cmd "$decode_cmd" \
-            --online-ivector-dir exp/nnet3/ivectors_${eval_num} \
+            --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${eval_num}_hires \
             $graph_dir data/${eval_num}_hires $dir/decode_${eval_num}_csj || exit 1;
     done
 fi

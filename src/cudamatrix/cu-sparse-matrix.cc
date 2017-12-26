@@ -272,7 +272,7 @@ void CuSparseMatrix<Real>::Resize(const MatrixIndexT num_rows,
     } else {
       KALDI_ASSERT(num_rows > 0);
       KALDI_ASSERT(num_cols > 0);
-      KALDI_ASSERT(nnz >= 0 && nnz <= num_rows * num_cols);
+      KALDI_ASSERT(nnz >= 0 && nnz <= num_rows * static_cast<int64>(num_cols));
 
       num_rows_ = num_rows;
       num_cols_ = num_cols;
@@ -388,7 +388,7 @@ void CuSparseMatrix<Real>::CopyFromSmat(const CuSparseMatrix<Real>& smat,
       Resize(smat.NumCols(), smat.NumRows(), smat.NumElements(), kUndefined);
       CuTimer tim;
 
-      CU_SAFE_CALL(
+      CUSPARSE_SAFE_CALL(
           cusparse_csr2csc(GetCusparseHandle(), smat.NumRows(), smat.NumCols(),
                            smat.NumElements(), smat.CsrVal(), smat.CsrRowPtr(),
                            smat.CsrColIdx(), CsrVal(), CsrColIdx(), CsrRowPtr(),

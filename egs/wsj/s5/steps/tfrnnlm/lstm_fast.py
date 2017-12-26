@@ -26,8 +26,6 @@ from __future__ import division
 from __future__ import print_function
 
 import sys
-sys.path.insert(0,"/home/hxu/.local/lib/python2.7/site-packages/")
-#sys.path.insert(0,"/export/b03/hxu/dongji/kaldi/tools/tensorflow_build/.local/lib/python2.7/site-packages/")
 
 import inspect
 import time
@@ -62,7 +60,7 @@ class Config(object):
   num_steps = 20
   hidden_size = 200
   max_epoch = 4
-  max_max_epoch = 10
+  max_max_epoch = 13
   keep_prob = 1.0
   lr_decay = 0.8
   batch_size = 64

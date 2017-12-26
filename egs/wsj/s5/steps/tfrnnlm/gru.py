@@ -15,7 +15,7 @@
 # limitations under the License.
 # ==============================================================================
 
-# this script trains a vanilla RNNLM with TensorFlow. 
+# this script trains a GRU RNNLM with TensorFlow. 
 # to call the script, do
 # python steps/tfrnnlm/gru.py --data-path=$datadir \
 #        --save-path=$savepath --vocab-path=$rnn.wordlist [--hidden-size=$size]

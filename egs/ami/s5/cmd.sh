@@ -12,7 +12,7 @@
 
 export train_cmd="queue.pl --mem 1G"
 export decode_cmd="queue.pl --mem 2G"
-export tfrnnlm_cmd="queue.pl -l hostname=[bc]*"  # this is specific to the CLSP grid
+export tfrnnlm_cmd="queue.pl -l hostname=b*"  # this is specific to the CLSP grid
 # we limit to certain machines because TF binaries compiled from C++ take advantage
 # of machine architectures for optimization
 

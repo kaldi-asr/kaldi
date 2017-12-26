@@ -6,7 +6,7 @@
 //                2013  Cisco Systems (author: Neha Agrawal) [code modified
 //                      from original code in ../gmmbin/gmm-rescore-lattice.cc]
 //                2014  Guoguo Chen
-//                2017  Dongji Gao
+//                2017  Dongji Gao, Hainan Xu
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -1580,7 +1580,6 @@ void ComposeCompactLatticeDeterministic(
         // the sources was zero.
         KALDI_ASSERT(state_map.find(s) != state_map.end());
         composed_clat->SetFinal(state_map[s], final_weight);
-//        std::cout << state_map[s] << " " << final_weight << std::endl;
       }
     }
 
@@ -1638,8 +1637,6 @@ void ComposeCompactLatticeDeterministic(
                             arc2.weight.Value(),
                             arc1.weight.Weight().Value2()),
               arc1.weight.String());
-//      std::cout << composed_weight << " ";
-//      std::cout << state_map[s] << " " << arc1.ilabel << " " << arc2.olabel << " " << next_state << std::endl;
 
           composed_clat->AddArc(state_map[s],
                                 CompactLatticeArc(arc1.ilabel, arc2.olabel,
@@ -1806,7 +1803,6 @@ void ComposeCompactLatticeDeterministicParallel(
       // the source was zero.
       KALDI_ASSERT(state_map.find(s) != state_map.end());
       composed_clat->SetFinal(state_map[s], final_weight);
-//      std::cout << state_map[s] << " " << final_weight << std::endl;
     }
 
     if (s2_vector.size() != 0) {
@@ -1855,9 +1851,6 @@ void ComposeCompactLatticeDeterministicParallel(
                         arc2.weight.Value(),
                         arc1.weight.Weight().Value2()),
           arc1.weight.String());
-
-//      std::cout << composed_weight << " ";
-//      std::cout << state_map[s] << " " << arc1.ilabel << " " << arc2.olabel << " " << next_state << std::endl;
 
       composed_clat->AddArc(state_map[s],
                             CompactLatticeArc(arc1.ilabel, arc2.olabel,

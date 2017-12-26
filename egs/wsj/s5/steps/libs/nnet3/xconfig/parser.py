@@ -58,7 +58,13 @@ config_to_layer = {
         'channel-average-layer': xlayers.ChannelAverageLayer,
         'attention-renorm-layer': xlayers.XconfigAttentionLayer,
         'attention-relu-renorm-layer': xlayers.XconfigAttentionLayer,
+        'attention-relu-batchnorm-layer': xlayers.XconfigAttentionLayer,
         'relu-renorm-attention-layer': xlayers.XconfigAttentionLayer,
+        'gru-layer' : xlayers.XconfigGruLayer,
+        'pgru-layer' : xlayers.XconfigPgruLayer,
+        'opgru-layer' : xlayers.XconfigOpgruLayer,
+        'norm-pgru-layer' : xlayers.XconfigNormPgruLayer,
+        'norm-opgru-layer' : xlayers.XconfigNormOpgruLayer,
         'renorm-component': xlayers.XconfigRenormComponent
 }
 
