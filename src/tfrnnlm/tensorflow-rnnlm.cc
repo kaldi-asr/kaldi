@@ -267,7 +267,6 @@ void KaldiTfRnnlmWrapper::GetLogProbParallel(const std::vector<int32>& word_vect
   float ans, logprob;
 
   for (int i = 0; i < word_vector.size(); ++i) {
-
     logprob = outputs[0].vec<float>()(i);
     word = word_vector[i];
 
@@ -280,7 +279,6 @@ void KaldiTfRnnlmWrapper::GetLogProbParallel(const std::vector<int32>& word_vect
         ans = logprob + unk_costs_[fst_word_vector[i]];
       } 
     }
-
     logprob_vector->push_back(ans);
   }
 } // End of GetLogProbParallel

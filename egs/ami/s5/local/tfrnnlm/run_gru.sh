@@ -1,6 +1,5 @@
 #!/bin/bash
-# run it at s5/, for example:
-# ./local/tfrnnlm/run_gru.sh
+
 mic=ihm
 ngram_order=4 # this option when used, the rescoring binary makes an approximation
     # to merge the states of the FST generated from RNNLM. e.g. if ngram-order = 4

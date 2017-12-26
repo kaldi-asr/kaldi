@@ -1664,9 +1664,6 @@ void ComposeCompactLatticeDeterministicParallel(
   typedef std::pair<StateId, StateId> StatePair;
   typedef unordered_map<StatePair, StateId, PairHasher<StateId> > MapType;
   typedef MapType::iterator IterType;
- 
-  //typedef vector<StatePair> StatePairVector;
-  //typedef vector<StateId> StateIdVector;
 
   // Empties the output FST.
   KALDI_ASSERT(composed_clat != NULL);

@@ -1,7 +1,7 @@
-// tensorflow-rnnlm-lib.h
+// tensorflow-rnnlm-parallel.h
 
 // Copyright (C) 2017 Intellisist, Inc. (Author: Hainan Xu)
-
+//               2017 Dongji Gao
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,12 +39,14 @@ using tensorflow::Tensor;
 namespace kaldi {
 namespace tf_rnnlm {
 
-// this function does not allocate any memory
+// This function concatenates Tensor's in input_tensor_vector into *output_tensor
+// This function does not allocate any memory
 void ConcatTensor(const std::vector<tensorflow::Tensor*> &input_tensor_vector,
                  const tensorflow::Scope &scope,
                  const tensorflow::ClientSession &session,
                  Tensor *output_tensor);
 
+// This function splits input_tensor into *output_tensor_vector
 // this function does not allocate any memory
 void SplitTensor(int size,
                  const Tensor &input_tensor,

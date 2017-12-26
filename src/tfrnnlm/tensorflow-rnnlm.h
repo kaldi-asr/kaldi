@@ -106,6 +106,9 @@ class KaldiTfRnnlmWrapper {
                        Tensor *context_out,
                        Tensor *cell_out);
 
+  // This function is very similar to the function above; the difference is it
+  // implements a batched version to query the TF model in order to speed up
+  // the computation
   void GetLogProbParallel(const std::vector<int32>& word_vector,
                           const std::vector<int32>& fst_word_vector,
                           const Tensor &state_to_context_tensor,
