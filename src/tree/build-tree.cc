@@ -224,7 +224,7 @@ EventMap *BuildTree(Questions &qopts,
       std::vector<EventMap*> leaf_mapping;
 
       int32 num_actually_removed = ClusterEventMapGetMapping(
-          *tree_clustered, stats, std::numeric_limits<BaseFloat>::max(),
+          *tree_clustered, stats, std::numeric_limits<BaseFloat>::infinity(),
           &leaf_mapping, num_leaves_required);
       KALDI_ASSERT(num_leaves - num_removed 
                    - num_actually_removed == num_leaves_required);
@@ -263,7 +263,7 @@ EventMap *BuildTree(Questions &qopts,
       std::vector<EventMap*> leaf_mapping;
 
       int32 num_actually_removed = ClusterEventMapGetMapping(
-          *tree_split, stats, std::numeric_limits<BaseFloat>::max(),
+          *tree_split, stats, std::numeric_limits<BaseFloat>::infinity(),
           &leaf_mapping, num_leaves_required);
 
       KALDI_ASSERT(num_actually_removed < 8);
