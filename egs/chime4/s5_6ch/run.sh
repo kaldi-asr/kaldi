@@ -25,7 +25,7 @@
 stage=0 # resume training with --stage=N
 baseline=advanced
 flatstart=false
-enhancement=beamformit_5mics #### or your method 
+enhancement=blstm_gev #### or your method 
 
 . utils/parse_options.sh || exit 1;
 
@@ -41,9 +41,13 @@ set -o pipefail
 chime4_data=`pwd`/../..
 # Otherwise, please specify it, e.g.,
 chime4_data=/db/laputa1/data/processed/public/CHiME4
+chime3_data=/data2/archive/speech-db/original/public/CHiME3
 
 case $(hostname -f) in
-  *.clsp.jhu.edu) chime4_data=/export/corpora4/CHiME4/CHiME3 ;; # JHU,
+  *.clsp.jhu.edu) 
+      chime4_data=/export/corpora4/CHiME4/CHiME3 # JHU,
+      chime3_data=/export/corpora5/CHiME3 
+      ;;
 esac 
 
 if [ ! -d $chime4_data ]; then
@@ -97,10 +101,13 @@ if [ $stage -le 1 ]; then
         local/run_beamform_6ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data/data/audio/16kHz/isolated_6ch_track $enhancement_data
         ;;
     blstm_gev)
-        local/run_beamform_blstm_gev_6ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data $enhancement_data 
+        local/run_beamform_blstm_gev_6ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data $chime3_data $enhancement_data 0
+        ;;
+    single5_BLSTMmask)
+        local/run_beamform_blstm_gev_6ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data $chime3_data $enhancement_data 5 
         ;;
     *)
-        echo "Usage: --enhancement blstm_gev, or --enhancement beamformit_5mics" 
+        echo "Usage: --enhancement blstm_gev, or --enhancement beamformit_5mics , or --enhancement single5_BLSTMmask" 
         exit 1;
    esac
 fi

@@ -9,3 +9,4 @@ $HOME/miniconda3/bin/python -m pip install --user chainer==1.16.0
 $HOME/miniconda3/bin/python -m pip install --user tqdm
 $HOME/miniconda3/bin/python -m pip install --user scikit-learn
 $HOME/miniconda3/bin/python -m pip install --user librosa
+$HOME/miniconda3/bin/python -m pip install --user h5py

@@ -1,5 +1,5 @@
 diff --git a/beamform.py b/beamform.py
-index 02eeed8..51d3625 100644
+index 02eeed8..579c511 100644
 --- a/beamform.py
 +++ b/beamform.py
 @@ -20,6 +20,8 @@ parser.add_argument('flist',
@@ -11,7 +11,16 @@ index 02eeed8..51d3625 100644
  parser.add_argument('output_dir',
                      help='The directory where the enhanced wav files will '
                           'be stored.')
-@@ -50,7 +52,7 @@ scenario = args.flist.split('_')[-1]
+@@ -29,6 +31,8 @@ parser.add_argument('model_type',
+                     help='Type of model (BLSTM or FW)')
+ parser.add_argument('--gpu', '-g', default=-1, type=int,
+                     help='GPU ID (negative value indicates CPU)')
++parser.add_argument('--single', '-s', default=0, type=int,
++                    help='0 for multi-channel and channel number (1-6) for single channel')
+ args = parser.parse_args()
+ 
+ # Prepare model
+@@ -50,7 +54,7 @@ scenario = args.flist.split('_')[-1]
  
  # CHiME data handling
  if scenario == 'simu':
@@ -20,8 +29,43 @@ index 02eeed8..51d3625 100644
  elif scenario == 'real':
      flist = gen_flist_real(args.chime_dir, stage)
  else:
+@@ -85,9 +89,12 @@ for cur_line in tqdm(flist):
+     t_net += t.msecs
+ 
+     with Timer() as t:
+-        N_mask = np.median(N_masks.data, axis=1)
+-        X_mask = np.median(X_masks.data, axis=1)
+-        Y_hat = gev_wrapper_on_masks(Y, N_mask, X_mask)
++        if args.single == 0:
++            N_mask = np.median(N_masks.data, axis=1)
++            X_mask = np.median(X_masks.data, axis=1)
++            Y_hat = gev_wrapper_on_masks(Y, N_mask, X_mask)
++        elif args.single >= 1:
++            Y_hat = X_masks.data * Y
+     t_beamform += t.msecs
+ 
+     if scenario == 'simu':
+@@ -104,9 +111,15 @@ for cur_line in tqdm(flist):
+             '{}05_{}_{}'.format(stage, env.lower(), scenario),
+             '{}_{}_{}.wav'.format(spk, wsj_name, env.upper())
+     )
+-    with Timer() as t:
+-        audiowrite(istft(Y_hat)[context_samples:], filename, 16000, True, True)
+-    t_io += t.msecs
++    if args.single == 0:
++        with Timer() as t:
++            audiowrite(istft(Y_hat)[context_samples:], filename, 16000, True, True)
++        t_io += t.msecs
++    elif args.single >= 1:
++        ch = args.single
++        with Timer() as t:
++            audiowrite(istft(Y_hat[:,ch-1,:])[int(context_samples):], filename, 16000, True, True)
++        t_io += t.msecs
+ 
+ print('Finished')
+ print('Timings: I/O: {:.2f}s | Net: {:.2f}s | Beamformer: {:.2f}s'.format(
 diff --git a/beamform.sh b/beamform.sh
-index 3c7de5a..d46522a 100755
+index 3c7de5a..aaae10d 100755
 --- a/beamform.sh
 +++ b/beamform.sh
 @@ -1,5 +1,5 @@
@@ -31,13 +75,13 @@ index 3c7de5a..d46522a 100755
 -    python beamform.py $flist "$@"
 -done
 \ No newline at end of file
-+     $HOME/miniconda3/bin/python python beamform.py $flist "$@"
++     $HOME/miniconda3/bin/python local/nn-gev/beamform.py $flist "$@"
 +done
 diff --git a/chime_data.py b/chime_data.py
-index 0072e1b..74925be 100644
+index 0072e1b..9d1ade1 100644
 --- a/chime_data.py
 +++ b/chime_data.py
-@@ -11,20 +11,25 @@ from fgnt.signal_processing import stft
+@@ -11,7 +11,7 @@ from fgnt.signal_processing import stft
  from fgnt.utils import mkdir_p
  
  
@@ -46,30 +90,16 @@ index 0072e1b..74925be 100644
      with open(os.path.join(
              chime_data_dir, 'annotations',
              '{}05_{}.json'.format(stage, 'simu'))) as fid:
-         annotations = json.load(fid)
-     if ext:
-         isolated_dir = 'isolated_ext'
-+        flist = [os.path.join(
-+                dest_dir, 'audio', '16kHz', isolated_dir,
-+                '{}05_{}_{}'.format(stage, a['environment'].lower(), 'simu'),
-+                '{}_{}_{}'.format(a['speaker'], a['wsj_name'], a['environment']))
-+                 for a in annotations]
+@@ -21,7 +21,7 @@ def gen_flist_simu(chime_data_dir, stage, ext=False):
      else:
          isolated_dir = 'isolated'
--    flist = [os.path.join(
+     flist = [os.path.join(
 -            chime_data_dir, 'audio', '16kHz', isolated_dir,
--            '{}05_{}_{}'.format(stage, a['environment'].lower(), 'simu'),
--            '{}_{}_{}'.format(a['speaker'], a['wsj_name'], a['environment']))
--             for a in annotations]
-+        flist = [os.path.join(
-+                chime_data_dir, 'audio', '16kHz', isolated_dir,
-+                '{}05_{}_{}'.format(stage, a['environment'].lower(), 'simu'),
-+                '{}_{}_{}'.format(a['speaker'], a['wsj_name'], a['environment']))
-+                 for a in annotations]
-     return flist
- 
- 
-@@ -65,7 +70,7 @@ def get_audio_data_with_context(embedded_template, t_start, t_end,
++            dest_dir, 'audio', '16kHz', isolated_dir,
+             '{}05_{}_{}'.format(stage, a['environment'].lower(), 'simu'),
+             '{}_{}_{}'.format(a['speaker'], a['wsj_name'], a['environment']))
+              for a in annotations]
+@@ -65,7 +65,7 @@ def get_audio_data_with_context(embedded_template, t_start, t_end,
  
  def prepare_training_data(chime_data_dir, dest_dir):
      for stage in ['tr', 'dt']:

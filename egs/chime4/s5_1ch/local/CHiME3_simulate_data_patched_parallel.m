@@ -1,4 +1,4 @@
-function CHiME3_simulate_data_patched_parallel(official,nj,chime4_dir)
+function CHiME3_simulate_data_patched_parallel(official,nj,chime4_dir,chime3_dir)
 
 % CHIME3_SIMULATE_DATA Creates simulated data for the 3rd CHiME Challenge
 %
@@ -29,13 +29,17 @@ function CHiME3_simulate_data_patched_parallel(official,nj,chime4_dir)
 %end
 
 utils_folder = sprintf('%s/tools/utils', chime4_dir);
-addpath(utils_folder);
-addpath('local/nn-gev/tools/simulation');
+enhancement_folder = sprintf('%s/tools/enhancement/', chime3_dir);
+addpath(utils_folder,'-end');
+addpath(enhancement_folder);
+sim_folder = sprintf('%s/tools/simulation', chime4_dir);
+addpath(sim_folder);
 upath = sprintf('%s/data/audio/16kHz/isolated/', chime4_dir);
 cpath = sprintf('%s/data/audio/16kHz/embedded/', chime4_dir);
 bpath = sprintf('%s/data/audio/16kHz/backgrounds/', chime4_dir);
 apath = sprintf('%s/data/annotations/', chime4_dir);
 upath_ext = 'local/nn-gev/data/audio/16kHz/isolated_ext/';
+upath_simu = 'local/nn-gev/data/audio/16kHz/isolated/';
 nchan=6;
 
 % Define hyper-parameters
@@ -158,7 +162,7 @@ p = parpool('local', nj);
 % Loop over utterances
 parfor utt_ind=1:length(mat),
     if official,
-        udir=[upath 'tr05_' lower(mat{utt_ind}.environment) '_simu/'];
+        udir=[upath_simu 'tr05_' lower(mat{utt_ind}.environment) '_simu/'];
         udir_ext=[upath_ext 'tr05_' lower(mat{utt_ind}.environment) '_simu/'];
     else
         udir=[upath 'tr05_' lower(mat{utt_ind}.environment) '_simu_new/'];
@@ -283,7 +287,7 @@ for set_ind=1:length(sets),
     % Loop over utterances
     parfor utt_ind=1:length(mat),
         if official,
-            udir=[upath set '_' lower(mat{utt_ind}.environment) '_simu/'];
+            udir=[upath_simu set '_' lower(mat{utt_ind}.environment) '_simu/'];
             udir_ext=[upath_ext set '_' lower(mat{utt_ind}.environment) '_simu/'];
         else
             udir=[upath set '_' lower(mat{utt_ind}.environment) '_simu_new/'];

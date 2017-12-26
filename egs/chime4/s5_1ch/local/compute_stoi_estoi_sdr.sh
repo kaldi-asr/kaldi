@@ -2,6 +2,8 @@
 # Copyright 2017 Johns Hopkins University (Author: Aswin Shanmugam Subramanian)
 # Apache 2.0
 
+. ./cmd.sh
+. ./path.sh
 set -e
 set -u
 set -o pipefail
@@ -28,7 +30,7 @@ expdir=exp/compute_stoi_estoi_sdr_${enhancement_method}
 mkdir -p $expdir
 ls $chime_RIR_directory/dt05_*/*CH5.Clean.wav > $expdir/original_list
 ls $enhancement_directory/dt05_*simu/*.wav > $expdir/enhanced_list
-$cmd $expdir/compute_stoi_estoi_sdr.log matlab -nodisplay -nosplash -r "addpath('local'); stoi_estoi_sdr($njobs,'$enhancement_method','$expdir','dt05');exit"
+$cmd $expdir/compute_stoi_estoi_sdr_dt05.log matlab -nodisplay -nosplash -r "addpath('local'); stoi_estoi_sdr($njobs,'$enhancement_method','$expdir','dt05');exit"
 ls $chime_RIR_directory/et05_*/*CH5.Clean.wav > original_list
 ls $enhancement_directory/et05_*simu/*.wav > enhanced_list
-$cmd $expdir/compute_stoi_estoi_sdr.log matlab -nodisplay -nosplash -r "addpath('local'); stoi_estoi_sdr($njobs,'$enhancement_method','$expdir','et05');exit"
+$cmd $expdir/compute_stoi_estoi_sdr_et05.log matlab -nodisplay -nosplash -r "addpath('local'); stoi_estoi_sdr($njobs,'$enhancement_method','$expdir','et05');exit"

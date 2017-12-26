@@ -10,9 +10,9 @@ nj=10
 cmd=run.pl
 . utils/parse_options.sh || exit 1;
 
-if [ $# != 2 ]; then
+if [ $# != 4 ]; then
    echo "Wrong #arguments ($#, expected 2)"
-   echo "Usage: local/run_beamform_blstm_gev_6ch_track.sh [options] <chime-dir> <wav-out-dir>"
+   echo "Usage: local/run_beamform_blstm_gev_6ch_track.sh [options] <chime4-dir> <chime3-dir> <wav-out-dir> <enhancement-type>"
    echo "main options (for others, see top of script file)"
    echo "  --nj <nj>                                # number of parallel jobs"
    echo "  --cmd <cmd>                              # Command to run in parallel with"
@@ -20,7 +20,9 @@ if [ $# != 2 ]; then
 fi
 
 sdir=$1
-odir=$2
+chime3_dir=$2
+odir=$3
+enhancement_type=$4
 
 # Set bash to 'debug' mode, it will exit on :
 # -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
@@ -38,9 +40,9 @@ $HOME/miniconda3/bin/python -c "\
 try:
     import chainer 
 except ImportError:
-    echo "$miniconda_dir/bin/python does not have chainer installed. Please run '../../../tools/extras/install_chainer.sh';" && exit 1;
+    print('\nChainer is not installed. Please run ../../../tools/extras/install_chainer.sh')"
 
-if [ !-d local/nn-gev ]; then
+if [ ! -d local/nn-gev ]; then
     cd local/
     git clone https://github.com/fgnt/nn-gev.git
     cd nn-gev/
@@ -49,5 +51,5 @@ if [ !-d local/nn-gev ]; then
 fi
 
 mkdir -p $odir
-$cmd $odir/simulation.log matlab -nodisplay -nosplash -r "addpath('local'); CHiME3_simulate_data_patched_parallel(1,$nj,'$sdir');exit"
-$cuda_cmd $odir/beamform.log local/run_nn-gev.sh $sdir $odir
+$cmd $odir/simulation.log matlab -nodisplay -nosplash -r "addpath('local'); CHiME3_simulate_data_patched_parallel(1,$nj,'$sdir','$chime3_dir');exit"
+$cuda_cmd $odir/beamform.log local/run_nn-gev.sh $sdir $odir $enhancement_type
