@@ -22,7 +22,6 @@
 #include "util/stl-utils.h"
 #include "tree/build-tree-utils.h"
 #include "tree/clusterable-classes.h"
-#include "tree/build-tree.h"
 
 namespace kaldi {
 
@@ -142,8 +141,7 @@ EventMap *BuildTree(Questions &qopts,
                     BaseFloat thresh,
                     int32 max_leaves,
                     BaseFloat cluster_thresh,  // typically == thresh.  If negative, use smallest split.
-                    int32 P, 
-                    bool round_num_leaves) {
+                    int32 P) {
   KALDI_ASSERT(thresh > 0 || max_leaves > 0);
   KALDI_ASSERT(stats.size() != 0);
   KALDI_ASSERT(!phone_sets.empty()
@@ -214,29 +212,8 @@ EventMap *BuildTree(Questions &qopts,
                                                               &num_removed);
     KALDI_LOG <<  "BuildTree: removed "<< num_removed << " leaves.";
 
-    int32 num_leaves_out = 0;
-    EventMap *tree_renumbered;
-    if (round_num_leaves) {
-      // Round the number of leaves to a multiple of 8 by clustering the leaves
-      // and merging them within each cluster.
-      // The final number of leaves will be 'num_leaves_required'.
-      int32 num_leaves_required = ((num_leaves - num_removed) / 8) * 8;
-      std::vector<EventMap*> leaf_mapping;
-
-      int32 num_actually_removed = ClusterEventMapGetMapping(
-          *tree_clustered, stats, std::numeric_limits<BaseFloat>::infinity(),
-          &leaf_mapping, num_leaves_required);
-      KALDI_ASSERT(num_leaves - num_removed 
-                   - num_actually_removed == num_leaves_required);
-  
-      EventMap* tree_rounded = tree_clustered->Copy(leaf_mapping);
-      DeletePointers(&leaf_mapping);
-      tree_renumbered = RenumberEventMap(*tree_rounded, &num_leaves_out);
-      
-      delete tree_rounded;
-    } else {
-      tree_renumbered = RenumberEventMap(*tree_clustered, &num_leaves_out);
-    }
+    int32 num_leaves = 0;
+    EventMap *tree_renumbered = RenumberEventMap(*tree_clustered, &num_leaves);
 
     BaseFloat objf_after_cluster = ObjfGivenMap(stats, *tree_renumbered);
 
@@ -246,49 +223,13 @@ EventMap *BuildTree(Questions &qopts,
     KALDI_VLOG(1) << "Normalizing over only split phones, this is: "
                   << ((objf_after_cluster-objf_before_cluster) / normalizer_filt)
                   << " per frame.";
-    KALDI_VLOG(1) <<  "Num-leaves is now "<< num_leaves_out;
+    KALDI_VLOG(1) <<  "Num-leaves is now "<< num_leaves;
 
     delete tree_clustered;
     delete tree_split;
     delete tree_stub;
     return tree_renumbered;
   } else {
-    if (round_num_leaves) {
-      // Round the number of leaves to a multiple of 8 by clustering the leaves
-      // and merging them within each cluster.
-      // The final number of leaves will be 'num_leaves_required'.
-      BaseFloat objf_before_cluster = ObjfGivenMap(stats, *tree_split);
-      
-      int32 num_leaves_required = (num_leaves / 8) * 8;
-      std::vector<EventMap*> leaf_mapping;
-
-      int32 num_actually_removed = ClusterEventMapGetMapping(
-          *tree_split, stats, std::numeric_limits<BaseFloat>::infinity(),
-          &leaf_mapping, num_leaves_required);
-
-      KALDI_ASSERT(num_actually_removed < 8);
-  
-      EventMap* tree_rounded = tree_split->Copy(leaf_mapping);
-      DeletePointers(&leaf_mapping);
-
-      int32 num_leaves_out;
-      EventMap* tree_renumbered = RenumberEventMap(*tree_rounded, &num_leaves_out);
-    
-      BaseFloat objf_after_cluster = ObjfGivenMap(stats, *tree_renumbered);
-      
-      KALDI_VLOG(1) << "Objf change due to clustering "
-                    << ((objf_after_cluster-objf_before_cluster) / normalizer)
-                    << " per frame.";
-      KALDI_VLOG(1) << "Normalizing over only split phones, this is: "
-                    << ((objf_after_cluster-objf_before_cluster) / normalizer_filt)
-                    << " per frame.";
-      KALDI_VLOG(1) <<  "Num-leaves is now "<< num_leaves_out;
-
-      delete tree_stub;
-      delete tree_rounded;
-      return tree_renumbered;
-    }
-
     delete tree_stub;
     return tree_split;
   }
