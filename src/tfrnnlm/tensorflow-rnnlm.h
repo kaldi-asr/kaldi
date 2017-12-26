@@ -1,4 +1,4 @@
-// tensorflow-rnnlm-lib.h
+// tfrnnlm/tensorflow-rnnlm-lib.h
 
 // Copyright (C) 2017 Intellisist, Inc. (Author: Hainan Xu)
 

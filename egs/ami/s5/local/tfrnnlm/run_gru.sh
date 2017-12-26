@@ -46,7 +46,7 @@ if [ $stage -le 3 ]; then
       --weight $weight --max-ngram-order $ngram_order \
       data/lang_$LM $dir \
       data/$mic/${decode_set}_hires ${decode_dir} \
-      ${decode_dir}.tfrnnlm.lat.gru.${ngram_order}gram.$weight  &
+      ${decode_dir}_tfrnnlm_lat_gru_${ngram_order}gram &
 
   done
 fi

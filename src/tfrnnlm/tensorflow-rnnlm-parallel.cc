@@ -1,4 +1,4 @@
-// tensorflow-rnnlm-parallel.cc
+// tfrnnlm/tensorflow-rnnlm-parallel.cc
 
 // Copyright (C) 2017 Intellisist, Inc. (Author: Hainan Xu)
 //               2017 Dongji Gao, Hainan Xu
