@@ -599,8 +599,7 @@ EventMap *SplitDecisionTree(const EventMap &input_map,
 int ClusterEventMapGetMapping(const EventMap &e_in,
                               const BuildTreeStatsType &stats,
                               BaseFloat thresh,
-                              std::vector<EventMap*> *mapping,
-                              int32 min_clusters) {
+                              std::vector<EventMap*> *mapping) {
   // First map stats
   KALDI_ASSERT(stats.size() != 0);
   std::vector<BuildTreeStatsType> split_stats;
@@ -628,7 +627,7 @@ int ClusterEventMapGetMapping(const EventMap &e_in,
       change;
   change = ClusterBottomUp(summed_stats_contiguous,
                            thresh,
-                           min_clusters,  // usually 0
+                           0,  // no min-clust: use threshold for now.
                            NULL,  // don't need clusters out.
                            &assignments);  // this algorithm is quadratic, so might be quite slow.
 
