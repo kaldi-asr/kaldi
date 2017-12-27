@@ -72,7 +72,7 @@ numcomps=$1
 dir=$2
 
 LANGUAGES='GE PO SP SW'  # Languages processed
-[ -f path.sh ] && . path.sh
+[ -f path.sh ] && . ./path.sh
 mkdir -p $dir/{data,log}
 for f in feats.scp spk2utt utt2spk text wav.scp; do
   for L in $LANGUAGES; do

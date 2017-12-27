@@ -29,8 +29,7 @@ namespace nnet3 {
 
 
 TimeHeightConvolutionComponent::TimeHeightConvolutionComponent():
-    use_natural_gradient_(true),
-    num_minibatches_history_(4.0) { }
+    use_natural_gradient_(true) { }
 
 TimeHeightConvolutionComponent::TimeHeightConvolutionComponent(
     const TimeHeightConvolutionComponent &other):
@@ -42,7 +41,6 @@ TimeHeightConvolutionComponent::TimeHeightConvolutionComponent(
     bias_params_(other.bias_params_),
     max_memory_mb_(other.max_memory_mb_),
     use_natural_gradient_(other.use_natural_gradient_),
-    num_minibatches_history_(other.num_minibatches_history_),
     preconditioner_in_(other.preconditioner_in_),
     preconditioner_out_(other.preconditioner_out_) {
   Check();
@@ -77,7 +75,8 @@ std::string TimeHeightConvolutionComponent::Info() const {
          << ", max-memory-mb=" << max_memory_mb_
          << ", use-natural-gradient=" << use_natural_gradient_;
   if (use_natural_gradient_) {
-    stream << ", num-minibatches-history=" << num_minibatches_history_
+    stream << ", num-minibatches-history="
+           << preconditioner_in_.GetNumMinibatchesHistory()
            << ", rank-in=" << preconditioner_in_.GetRank()
            << ", rank-out=" << preconditioner_out_.GetRank()
            << ", alpha-in=" << preconditioner_in_.GetAlpha()
@@ -120,18 +119,17 @@ void TimeHeightConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
   // 2. convolution-related config values.
   model_.height_subsample_out = 1;  // default.
   max_memory_mb_ = 200.0;
-  std::string height_offsets, time_offsets, required_time_offsets = "undef";
+  std::string height_offsets, time_offsets, required_time_offsets = "undef",
+      offsets;
 
   bool ok = cfl->GetValue("num-filters-in", &model_.num_filters_in) &&
       cfl->GetValue("num-filters-out", &model_.num_filters_out) &&
       cfl->GetValue("height-in", &model_.height_in) &&
-      cfl->GetValue("height-out", &model_.height_out) &&
-      cfl->GetValue("height-offsets", &height_offsets) &&
-      cfl->GetValue("time-offsets", &time_offsets);
+      cfl->GetValue("height-out", &model_.height_out);
   if (!ok) {
     KALDI_ERR << "Bad initializer: expected all the values "
         "num-filters-in, num-filters-out, height-in, height-out, "
-        "height-offsets, time-offsets to be defined: "
+        "to be defined: "
               << cfl->WholeLine();
   }
   // some optional structural configs.
@@ -139,40 +137,77 @@ void TimeHeightConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
   cfl->GetValue("height-subsample-out", &model_.height_subsample_out);
   cfl->GetValue("max-memory-mb", &max_memory_mb_);
   KALDI_ASSERT(max_memory_mb_ > 0.0);
-  {  // This block attempts to parse height_offsets, time_offsets
-     // and required_time_offsets.
-    std::vector<int32> height_offsets_vec,
-        time_offsets_vec, required_time_offsets_vec;
-    if (!SplitStringToIntegers(height_offsets, ",", false,
-                               &height_offsets_vec) ||
-        !SplitStringToIntegers(time_offsets, ",", false,
-                               &time_offsets_vec)) {
-      KALDI_ERR << "Formatting problem in time-offsets or height-offsets: "
-                << cfl->WholeLine();
+
+  { // This block sets up model_.offsets.
+    model_.offsets.clear();
+    if (cfl->GetValue("offsets", &offsets)) {
+      // init from offsets, like "-1,-1;-1,0;-1,1;0,-1;...;1,1"
+      std::vector<std::string> splits;
+      SplitStringToVector(offsets, ";", false, &splits);
+      for (size_t i = 0; i < splits.size(); i++) {
+        std::vector<int32> int_pair;
+        if (!SplitStringToIntegers(splits[i], ",", false, &int_pair) ||
+            int_pair.size() != 2)
+          KALDI_ERR << "Bad config value offsets=" << offsets;
+        time_height_convolution::ConvolutionModel::Offset offset;
+        offset.time_offset = int_pair[0];
+        offset.height_offset = int_pair[1];
+        model_.offsets.push_back(offset);
+      }
+      std::sort(model_.offsets.begin(), model_.offsets.end());
+      if (!IsSortedAndUniq(model_.offsets) || model_.offsets.empty())
+        KALDI_ERR << "Error in offsets: probably repeated offset.  "
+            "offsets=" << offsets;
+    } else if (cfl->GetValue("height-offsets", &height_offsets) &&
+               cfl->GetValue("time-offsets", &time_offsets)) {
+      std::vector<int32> height_offsets_vec,
+          time_offsets_vec;
+      if (!SplitStringToIntegers(height_offsets, ",", false,
+                                 &height_offsets_vec) ||
+          !SplitStringToIntegers(time_offsets, ",", false,
+                                 &time_offsets_vec)) {
+        KALDI_ERR << "Formatting problem in time-offsets or height-offsets: "
+                  << cfl->WholeLine();
+      }
+      if (height_offsets_vec.empty() || !IsSortedAndUniq(height_offsets_vec) ||
+          time_offsets_vec.empty() || !IsSortedAndUniq(time_offsets_vec)) {
+        KALDI_ERR << "time-offsets and height-offsets must be nonempty, "
+            "sorted and unique.";
+      }
+      model_.offsets.clear();
+      for (size_t i = 0; i < time_offsets_vec.size(); i++) {
+        for (size_t j = 0; j < height_offsets_vec.size(); j++) {
+          time_height_convolution::ConvolutionModel::Offset offset;
+          offset.time_offset = time_offsets_vec[i];
+          offset.height_offset = height_offsets_vec[j];
+          model_.offsets.push_back(offset);
+        }
+      }
+    } else {
+      KALDI_ERR << "Expected either 'offsets', or both 'height-offsets' and "
+          "'time-offsets', to be defined: " << cfl->WholeLine();
     }
-    if (height_offsets_vec.empty() || !IsSortedAndUniq(height_offsets_vec) ||
-        time_offsets_vec.empty() || !IsSortedAndUniq(time_offsets_vec)) {
-      KALDI_ERR << "Options time-offsets and height-offsets must be nonempty, "
-          "sorted and unique.";
-    }
+  }
+
+  if (model_.offsets.empty())
+    KALDI_ERR << "Something went wrong setting offsets: " << cfl->WholeLine();
+
+
+  {  // This block sets model_.required_time_offsets.
+    std::vector<int32> required_time_offsets_vec;
     if (required_time_offsets == "undef") {
-      required_time_offsets_vec = time_offsets_vec;
+      // it defaults to all the time offsets that were used.
+      std::set<int32> required_time_offsets;
+      for (size_t i = 0; i < model_.offsets.size(); i++)
+        required_time_offsets_vec.push_back(model_.offsets[i].time_offset);
+      SortAndUniq(&required_time_offsets_vec);
     } else {
       if (!SplitStringToIntegers(required_time_offsets, ",", false,
                                  &required_time_offsets_vec) ||
           required_time_offsets_vec.empty() ||
           !IsSortedAndUniq(required_time_offsets_vec)) {
-      KALDI_ERR << "Formatting problem in required-time-offsets: "
+        KALDI_ERR << "Formatting problem in required-time-offsets: "
                 << cfl->WholeLine();
-      }
-    }
-    model_.offsets.clear();
-    for (size_t i = 0; i < time_offsets_vec.size(); i++) {
-      for (size_t j = 0; j < height_offsets_vec.size(); j++) {
-        time_height_convolution::ConvolutionModel::Offset offset;
-        offset.time_offset = time_offsets_vec[i];
-        offset.height_offset = height_offsets_vec[j];
-        model_.offsets.push_back(offset);
       }
     }
     model_.required_time_offsets.clear();
@@ -218,15 +253,15 @@ void TimeHeightConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
 
   // 4. Natural-gradient related configs.
   use_natural_gradient_ = true;
-  num_minibatches_history_ = 4.0;
   int32 rank_out = -1, rank_in = -1;
-  BaseFloat alpha_out = 4.0, alpha_in = 4.0;
+  BaseFloat alpha_out = 4.0, alpha_in = 4.0,
+      num_minibatches_history = 4.0;
   cfl->GetValue("use-natural-gradient", &use_natural_gradient_);
   cfl->GetValue("rank-in", &rank_in);
   cfl->GetValue("rank-out", &rank_out);
   cfl->GetValue("alpha-in", &alpha_in);
   cfl->GetValue("alpha-out", &alpha_out);
-  cfl->GetValue("num-minibatches-history", &num_minibatches_history_);
+  cfl->GetValue("num-minibatches-history", &num_minibatches_history);
 
   preconditioner_in_.SetAlpha(alpha_in);
   preconditioner_out_.SetAlpha(alpha_out);
@@ -240,14 +275,8 @@ void TimeHeightConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
     rank_out = std::min<int32>(80, (dim_out + 1) / 2);
     preconditioner_out_.SetRank(rank_out);
   }
-  // the swapping of in and out in the lines below is intentional.  the num-rows
-  // of the matrix that we give to preconditioner_in_ to precondition is
-  // dim-out, and the num-rows of the matrix we give to preconditioner_out_ to
-  // preconditioner is dim-in.  the preconditioner objects treat these rows
-  // as separate samples, e.g. separate frames, even though they actually
-  // correspond to a different dimension in the parameter space.
-  preconditioner_in_.SetNumSamplesHistory(dim_out * num_minibatches_history_);
-  preconditioner_out_.SetNumSamplesHistory(dim_in * num_minibatches_history_);
+  preconditioner_in_.SetNumMinibatchesHistory(num_minibatches_history);
+  preconditioner_out_.SetNumMinibatchesHistory(num_minibatches_history);
 
   preconditioner_in_.SetAlpha(alpha_in);
   preconditioner_out_.SetAlpha(alpha_out);
@@ -411,12 +440,13 @@ void TimeHeightConvolutionComponent::Write(std::ostream &os, bool binary) const 
   WriteBasicType(os, binary, max_memory_mb_);
   WriteToken(os, binary, "<UseNaturalGradient>");
   WriteBasicType(os, binary, use_natural_gradient_);
-  WriteToken(os, binary, "<NumMinibatchesHistory>");
-  WriteBasicType(os, binary, num_minibatches_history_);
   int32 rank_in = preconditioner_in_.GetRank(),
       rank_out = preconditioner_out_.GetRank();
   BaseFloat alpha_in = preconditioner_in_.GetAlpha(),
-      alpha_out = preconditioner_out_.GetAlpha();
+      alpha_out = preconditioner_out_.GetAlpha(),
+      num_minibatches_history = preconditioner_in_.GetNumMinibatchesHistory();
+  WriteToken(os, binary, "<NumMinibatchesHistory>");
+  WriteBasicType(os, binary, num_minibatches_history);
   WriteToken(os, binary, "<AlphaInOut>");
   WriteBasicType(os, binary, alpha_in);
   WriteBasicType(os, binary, alpha_out);
@@ -443,10 +473,11 @@ void TimeHeightConvolutionComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &max_memory_mb_);
   ExpectToken(is, binary, "<UseNaturalGradient>");
   ReadBasicType(is, binary, &use_natural_gradient_);
-  ExpectToken(is, binary, "<NumMinibatchesHistory>");
-  ReadBasicType(is, binary, &num_minibatches_history_);
   int32 rank_in,  rank_out;
-  BaseFloat alpha_in, alpha_out;
+  BaseFloat alpha_in, alpha_out,
+      num_minibatches_history;
+  ExpectToken(is, binary, "<NumMinibatchesHistory>");
+  ReadBasicType(is, binary, &num_minibatches_history);
   ExpectToken(is, binary, "<AlphaInOut>");
   ReadBasicType(is, binary, &alpha_in);
   ReadBasicType(is, binary, &alpha_out);
@@ -457,13 +488,8 @@ void TimeHeightConvolutionComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &rank_out);
   preconditioner_in_.SetRank(rank_in);
   preconditioner_out_.SetRank(rank_out);
-  int32 dim_in = linear_params_.NumCols() + 1,
-      dim_out = linear_params_.NumRows();
-  // the following lines mirror similar lines in InitFromConfig().
-  // the swapping of in and out is intentional; see comment in InitFromConfig(),
-  // by similar lines.
-  preconditioner_in_.SetNumSamplesHistory(dim_out * num_minibatches_history_);
-  preconditioner_out_.SetNumSamplesHistory(dim_in * num_minibatches_history_);
+  preconditioner_in_.SetNumMinibatchesHistory(num_minibatches_history);
+  preconditioner_out_.SetNumMinibatchesHistory(num_minibatches_history);
   ExpectToken(is, binary, "</TimeHeightConvolutionComponent>");
   ComputeDerived();
   Check();

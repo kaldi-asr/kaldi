@@ -14,6 +14,15 @@ replace_cmudict_symbols=( "ah" "ah l" "ah n" )
 . ./cmd.sh
 . ./path.sh
 
+#check existing directories
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "Usage: prepare_dict.sh /path/to/SWBD [/path/to/TEDLIUM_r2]"
+  exit 1; 
+fi 
+
+SWBD_DIR=$1
+TEDLIUM_DIR=$2
+
 # This function filters lines that are common in both files
 function filter_common {
     awk 'NR==FNR{arr[$0]++;next} arr[$0] {print}' $1 $2
@@ -38,12 +47,11 @@ for i in "${replace_swbd_symbols[@]}"; do
 done
 
 # Prepare switchboard lexicon
-local/swbd1_data_download.sh /export/corpora3/LDC/LDC97S62
-
+local/swbd1_data_download.sh $SWBD_DIR
 local/swbd1_prepare_dict.sh
 
 # Prepare cmudict + tedlium lexicon
-local/cmu_tedlium_prepare_dict.sh /export/corpora5/TEDLIUM_release2
+local/cmu_tedlium_prepare_dict.sh $TEDLIUM_DIR
 
 dir=data/local/dict_combined
 swbd_dir=data/local/dict_swbd

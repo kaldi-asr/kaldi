@@ -49,7 +49,7 @@ exit 0;
 
 
 # (# get scaled-by-30 versions of the vecs to be used for nnet training.
-#   . path.sh 
+#   . ./path.sh
 #   mkdir -p exp/sgmm2_4c_x30
 #   cat exp/sgmm2_4c/vecs.* | copy-vector ark:- ark,t:- | \
 #    awk -v scale=30.0 '{printf("%s [ ", $1); for (n=3;n<NF;n++) { printf("%f ", scale*$n); } print "]"; }' > exp/sgmm2_4c_x30/vecs.1

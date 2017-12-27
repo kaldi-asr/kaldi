@@ -251,9 +251,9 @@ void SlidingWindowCmnInternal(const SlidingWindowCmnOptions &opts,
                               const MatrixBase<double> &input,
                               MatrixBase<double> *output) {
   opts.Check();
-  int32 num_frames = input.NumRows(), dim = input.NumCols();
-
-  int32 last_window_start = -1, last_window_end = -1;
+  int32 num_frames = input.NumRows(), dim = input.NumCols(),
+        last_window_start = -1, last_window_end = -1,
+        warning_count = 0;
   Vector<double> cur_sum(dim), cur_sumsq(dim);
 
   for (int32 t = 0; t < num_frames; t++) {
@@ -323,8 +323,20 @@ void SlidingWindowCmnInternal(const SlidingWindowCmnOptions &opts,
         // around their own mean.
         int32 num_floored = variance.ApplyFloor(1.0e-10);
         if (num_floored > 0 && num_frames > 1) {
-          KALDI_WARN << "Flooring variance When normalizing variance, floored " << num_floored
-                     << " elements; num-frames was " << window_frames;
+          if (opts.max_warnings == warning_count) {
+            KALDI_WARN << "Suppressing the remaining variance flooring "
+                       << "warnings. Run program with --max-warnings=-1 to "
+                       << "see all warnings.";
+          }
+          // If opts.max_warnings is a negative number, we won't restrict the
+          // number of times that the warning is printed out.
+          else if (opts.max_warnings < 0
+                   || opts.max_warnings > warning_count) {
+            KALDI_WARN << "Flooring when normalizing variance, floored "
+                       << num_floored << " elements; num-frames was "
+                       << window_frames;
+          }
+          warning_count++;
         }
         variance.ApplyPow(-0.5); // get inverse standard deviation.
         output_frame.MulElements(variance);
@@ -339,7 +351,7 @@ void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
                       MatrixBase<BaseFloat> *output) {
   KALDI_ASSERT(SameDim(input, *output) && input.NumRows() > 0);
   Matrix<double> input_dbl(input), output_dbl(input.NumRows(), input.NumCols());
-  // calll double-precision version
+  // call double-precision version
   SlidingWindowCmnInternal(opts, input_dbl, &output_dbl);
   output->CopyFromMat(output_dbl);
 }
