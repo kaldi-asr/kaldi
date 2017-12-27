@@ -867,9 +867,13 @@ EventMap *ClusterEventMapToNClustersRestrictedByMap(
     const EventMap &e_restrict,
     int32 *num_removed_ptr) {
   std::vector<BuildTreeStatsType> split_stats;
-  int num_removed = 0;
   SplitStatsByMap(stats, e_restrict, &split_stats);
   
+  if (num_clusters < split_stats.size()) {
+    KALDI_WARN << "num-clusters is less than size of map. Not doing anything.";
+    return e_in.Copy();
+  }
+
   std::vector<std::vector<int32> > indexes(split_stats.size());
   std::vector<std::vector<Clusterable*> > summed_stats_contiguous(split_stats.size());
 
@@ -908,8 +912,8 @@ EventMap *ClusterEventMapToNClustersRestrictedByMap(
 
   int32 num_combined = 0;
   for (size_t i = 0; i < split_stats.size(); i++) {
-    KALDI_ASSERT(assignments[i].size() == summed_stats_contiguous[i].size() &&
-                 !assignments[i].empty());
+    KALDI_ASSERT(assignments[i].size() == summed_stats_contiguous[i].size());
+    if (assignments[i].size() == 0) continue;
     size_t num_clust_i = *std::max_element(assignments[i].begin(),
                                            assignments[i].end()) + 1;
     num_combined += summed_stats_contiguous[i].size() - num_clust_i;
