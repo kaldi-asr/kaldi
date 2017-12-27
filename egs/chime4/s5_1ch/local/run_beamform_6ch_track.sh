@@ -31,7 +31,7 @@ if [ -z $BEAMFORMIT ] ; then
   export BEAMFORMIT=$KALDI_ROOT/tools/extras/BeamformIt
 fi
 export PATH=${PATH}:$BEAMFORMIT
-! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; make beamformit;'" && exit 1
+! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; extras/install_beamformit.sh;'" && exit 1
 
 # Set bash to 'debug' mode, it will exit on :
 # -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
@@ -48,13 +48,13 @@ numch=`echo $bmf | tr ' ' '\n' | wc -l`
 echo "the number of channels: $numch"
 
 # wavfiles.list can be used as the name of the output files
-# we only process dev and eval waves
+# we will process train, dev, and eval waves
 output_wavfiles=$wdir/wavfiles.list
 if $eval_flag; then
-  find $sdir/{dt,et}*{simu,real}/ | grep CH1.wav \
+  find $sdir/{tr,dt,et}*{simu,real}/ | grep CH1.wav \
     | awk -F '/' '{print $(NF-1) "/" $NF}' | sed -e "s/\.CH1\.wav//" | sort > $output_wavfiles
 else
-  find $sdir/dt*{simu,real}/ | grep CH1.wav \
+  find $sdir/{tr,dt}*{simu,real}/ | grep CH1.wav \
     | awk -F '/' '{print $(NF-1) "/" $NF}' | sed -e "s/\.CH1\.wav//" | sort > $output_wavfiles
 fi
 
