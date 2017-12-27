@@ -223,14 +223,17 @@ EventMap *BuildTree(Questions &qopts,
       int32 num_leaves_required = ((num_leaves - num_removed) / 8) * 8;
       std::vector<EventMap*> leaf_mapping;
 
-      int32 num_actually_removed = ClusterEventMapGetMapping(
-          *tree_clustered, stats, std::numeric_limits<BaseFloat>::infinity(),
-          &leaf_mapping, num_leaves_required);
+      int32 num_actually_removed;
+      EventMap* tree_rounded = ClusterEventMapToNClustersRestrictedByMap(
+          *tree_clustered, stats, num_leaves_required, *tree_stub, 
+          &num_actually_removed);
+
       KALDI_ASSERT(num_leaves - num_removed 
                    - num_actually_removed == num_leaves_required);
   
-      EventMap* tree_rounded = tree_clustered->Copy(leaf_mapping);
-      DeletePointers(&leaf_mapping);
+      KALDI_LOG <<  "BuildTree: Rounded num leaves to multiple of 8 by"
+                << " removing " << num_actually_removed << " leaves.";
+
       tree_renumbered = RenumberEventMap(*tree_rounded, &num_leaves_out);
       
       delete tree_rounded;
@@ -262,18 +265,19 @@ EventMap *BuildTree(Questions &qopts,
       int32 num_leaves_required = (num_leaves / 8) * 8;
       std::vector<EventMap*> leaf_mapping;
 
-      int32 num_actually_removed = ClusterEventMapGetMapping(
-          *tree_split, stats, std::numeric_limits<BaseFloat>::infinity(),
-          &leaf_mapping, num_leaves_required);
+      int32 num_actually_removed;
+      EventMap *tree_rounded = ClusterEventMapToNClustersRestrictedByMap(
+          *tree_split, stats, num_leaves_required, *tree_stub,
+          &num_actually_removed);
+    
+      KALDI_LOG <<  "BuildTree: Rounded num leaves to multiple of 8 by"
+                << " removing " << num_actually_removed << " leaves.";
 
       KALDI_ASSERT(num_actually_removed < 8);
   
-      EventMap* tree_rounded = tree_split->Copy(leaf_mapping);
-      DeletePointers(&leaf_mapping);
-
       int32 num_leaves_out;
       EventMap* tree_renumbered = RenumberEventMap(*tree_rounded, &num_leaves_out);
-    
+  
       BaseFloat objf_after_cluster = ObjfGivenMap(stats, *tree_renumbered);
       
       KALDI_VLOG(1) << "Objf change due to clustering "

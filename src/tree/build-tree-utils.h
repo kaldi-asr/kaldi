@@ -192,10 +192,8 @@ EventMap *DoTableSplitMultiple(const EventMap &orig,
 // a particular phone, do this by providing a set of "stats" that correspond to just
 // this subset of leaves*.  Leaves with no stats will not be clustered.
 // See build-tree.cc for an example of usage.
-// min_clusters can be used with thresh "inf" to get exactly that many clusters.
 int ClusterEventMapGetMapping(const EventMap &e_in, const BuildTreeStatsType &stats,
-                              BaseFloat thresh, std::vector<EventMap*> *mapping,
-                              int32 min_clusters = 0);
+                              BaseFloat thresh, std::vector<EventMap*> *mapping);
 
 /// This is as ClusterEventMapGetMapping but a more convenient interface
 /// that exposes less of the internals.  It uses a bottom-up clustering to
@@ -224,6 +222,15 @@ EventMap *ClusterEventMapRestrictedByMap(const EventMap &e_in,
                                          const EventMap &e_restrict,
                                          int32 *num_removed);
 
+
+/// This version of ClusterEventMapRestrictedByMap clusters to get a
+/// specific number of clusters as specified by 'num_clusters'
+EventMap *ClusterEventMapToNClustersRestrictedByMap(
+    const EventMap &e_in,
+    const BuildTreeStatsType &stats,
+    int32 num_clusters,
+    const EventMap &e_restrict,
+    int32 *num_removed);
 
 /// RenumberEventMap [intended to be used after calling ClusterEventMap] renumbers
 /// an EventMap so its leaves are consecutive.
