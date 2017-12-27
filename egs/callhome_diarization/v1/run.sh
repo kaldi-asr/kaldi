@@ -132,27 +132,12 @@ diarization/score_plda.sh --cmd "$train_cmd --mem 4G" \
   --nj 20 exp/ivectors_callhome1 exp/ivectors_callhome2 \
   exp/ivectors_callhome2/plda_scores
 
-# This performs unsupervised calibration using K-Means (K=2)
-# clustering on the scores.  The average of the centroids
-# is used as the estimated threshold.  Each partition is used
-# as a held-out dataset to compute the stopping criteria used
-# to cluster the other partition.
-diarization/compute_plda_calibration.sh --cmd "$train_cmd --mem 4G" \
-  --nj 20 exp/ivectors_callhome1 exp/ivectors_callhome2 \
-  exp/ivectors_callhome2/plda_scores
-
-diarization/compute_plda_calibration.sh --cmd "$train_cmd --mem 4G" \
-  --nj 20 exp/ivectors_callhome2 exp/ivectors_callhome1 \
-  exp/ivectors_callhome1/plda_scores
-
 # Cluster the PLDA scores using agglomerative hierarchical clustering,
-# using the thresholds discovered in the previous step.
-diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
-  --nj 20 --threshold `cat exp/ivectors_callhome2/plda_scores/threshold.txt` \
+# using a hand-tuned threshold.
+diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 --threshold 0.522 \
   exp/ivectors_callhome1/plda_scores exp/ivectors_callhome1/plda_scores
 
-diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
-  --nj 20 --threshold `cat exp/ivectors_callhome1/plda_scores/threshold.txt` \
+diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 --threshold 0.488 \
   exp/ivectors_callhome2/plda_scores exp/ivectors_callhome2/plda_scores
 
 # Result using using unsupervised calibration
