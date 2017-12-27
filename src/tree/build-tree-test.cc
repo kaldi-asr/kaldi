@@ -168,7 +168,7 @@ void TestBuildTree() {
       std::vector<bool> share_roots(phone_sets.size(), true),
           do_split(phone_sets.size(), true);
 
-      if (true || p % 2 == 0) {
+      if (p % 5 != 0) {
         bool round_num_leaves = true;
 
         EventMap *tree_not_rounded =
