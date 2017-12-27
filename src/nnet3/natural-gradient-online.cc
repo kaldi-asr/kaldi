@@ -18,6 +18,7 @@
 // limitations under the License.
 
 #include "nnet3/natural-gradient-online.h"
+#include "nnet3/nnet-parse.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -286,7 +287,16 @@ void OnlineNaturalGradient::UpdateDiagonalScale() {
   if (diagonal_scale_.Dim() != dim)
     diagonal_scale_.Resize(dim);
   diagonal_scale_.CopyFromVec(diagonal_uvar_);
-  diagonal_scale_.AddVecVec(-1.0, diagonal_mean_, diagonal_mean_, 1.0);
+  // Because the last element may be the offset, and it doesn't
+  // make sense to subtract its mean for this purpose, only do this for
+  // the all-but-last-elements.
+  if (dim > 1) {
+    CuSubVector<BaseFloat> diagonal_scale_part(diagonal_scale_, 0, dim - 1),
+        diagonal_mean_part(diagonal_mean_, 0, dim - 1);
+    diagonal_scale_part.AddVecVec(-1.0, diagonal_mean_part,
+                                  diagonal_mean_part, 1.0);
+  }
+
   // At this point, diagonal_scale_ is the diagonal of the (centered) variance
   // estimated from the x and x2 statistics, prior to any flooring or
   // scaling.
