@@ -35,7 +35,7 @@ local/data_prep/format_1996_bn_data.pl \
   data/train_bn96 || exit 1
 
 mv data/train_bn96/text data/train_bn96/text.unnorm
-local/normalize_transcripts.pl $noise_word $spoken_noise_word \
+local/data_prep/normalize_bn96_transcripts.pl $noise_word $spoken_noise_word \
   < data/train_bn96/text.unnorm > data/train_bn96/text
 
 ###############################################################################
@@ -48,7 +48,7 @@ local/data_prep/format_1997_bn_data.pl \
   data/train_bn97 || exit 1
 
 mv data/train_bn97/text data/train_bn97/text.unnorm
-local/normalize_transcripts.pl $noise_word $spoken_noise_word \
+local/data_prep/normalize_bn97_transcripts.pl $noise_word $spoken_noise_word \
   < data/train_bn97/text.unnorm > data/train_bn97/text
 
 ###############################################################################
