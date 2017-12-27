@@ -32,7 +32,9 @@ set -o pipefail
 
 miniconda_dir=$HOME/miniconda3/
 if [ ! -d $miniconda_dir ]; then
-  echo "$miniconda_dir does not exist. Please run '../../../tools/extras/install_miniconda.sh' and '../../../tools/extras/install_chainer.sh';" && exit 1;
+    echo "$miniconda_dir does not exist. Please run '../../../tools/extras/install_miniconda.sh' and '../../../tools/extras/install_chainer.sh';"
+    echo "For chainer install, you have to use cudnn <= 5.1."
+    echo "In the CLSP cluster, $HOME/miniconda3/bin/python -m pip uninstall chainer; . /home/asubraman/.bash_profile_cuda_path; $HOME/miniconda3/bin/python -m pip install chainer==1.16.0 -vvvv --no-cache" && exit 1;
 fi
 
 # check if chainer is installed
@@ -40,7 +42,9 @@ $HOME/miniconda3/bin/python -c "\
 try:
     import chainer 
 except ImportError:
-    print('\nChainer is not installed. Please run ../../../tools/extras/install_chainer.sh')"
+    print('\nChainer is not installed. Please run ../../../tools/extras/install_chainer.sh')
+    print('\nFor chainer install, you have to use cudnn <= 5.1.')
+    print('\nIn the CLSP cluster, $HOME/miniconda3/bin/python -m pip uninstall chainer; . /home/asubraman/.bash_profile_cuda_path; $HOME/miniconda3/bin/python -m pip install chainer==1.16.0 -vvvv --no-cache')"
 
 if [ ! -d local/nn-gev ]; then
     cd local/
