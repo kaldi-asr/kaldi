@@ -26,9 +26,9 @@ stage=0 # resume training with --stage N
 
 baseline=advanced
 flatstart=false
-tdnn=false
+tdnn=true
 tdnn_lstm=false
-run_lstm_rescore=true
+run_lstm_rescore=false
 
 . utils/parse_options.sh || exit 1;
 
