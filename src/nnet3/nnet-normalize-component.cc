@@ -234,8 +234,8 @@ void BatchNormComponent::ComputeDerived() {
   // of numerical roundoff.
   scale_.ApplyFloor(0.0);
   scale_.Add(epsilon_);
-  scale_.ApplyPow(-0.5);
-  // now scale_ = min(variance, epsilon)^{-0.5}.
+  scale_.ApplyPow(power_);
+  // now scale_ = min(variance, epsilon)^power_
   // next, multiply by the target RMS (normally 1.0).
   scale_.Scale(target_rms_);
   offset_.MulElements(scale_);
@@ -253,10 +253,10 @@ void BatchNormComponent::Check() const {
 }
 
 BatchNormComponent::BatchNormComponent(const BatchNormComponent &other):
-    dim_(other.dim_), block_dim_(other.block_dim_), epsilon_(other.epsilon_),
-    target_rms_(other.target_rms_), test_mode_(other.test_mode_),
-    count_(other.count_), stats_sum_(other.stats_sum_),
-    stats_sumsq_(other.stats_sumsq_) {
+    dim_(other.dim_), block_dim_(other.block_dim_), power_(other.power_),
+    epsilon_(other.epsilon_), target_rms_(other.target_rms_),
+    test_mode_(other.test_mode_), count_(other.count_),
+    stats_sum_(other.stats_sum_), stats_sumsq_(other.stats_sumsq_) {
   ComputeDerived();
   Check();
 }
@@ -267,6 +267,7 @@ std::string BatchNormComponent::Info() const {
   stream << Type() << ", dim=" << dim_ << ", block-dim=" << block_dim_
          << ", epsilon=" << epsilon_ << ", target-rms=" << target_rms_
          << ", count=" << count_
+         << ", power=" << power_
          << ", test-mode=" << (test_mode_ ? "true" : "false");
   if (count_ > 0) {
     Vector<BaseFloat> mean(stats_sum_), var(stats_sumsq_);
@@ -285,12 +286,14 @@ std::string BatchNormComponent::Info() const {
 void BatchNormComponent::InitFromConfig(ConfigLine *cfl) {
   dim_ = -1;
   block_dim_ = -1;
+  power_ = -0.5;
   epsilon_ = 1.0e-03;
   target_rms_ = 1.0;
   test_mode_ = false;
   bool ok = cfl->GetValue("dim", &dim_);
   cfl->GetValue("block-dim", &block_dim_);
   cfl->GetValue("epsilon", &epsilon_);
+  cfl->GetValue("power", &power_);
   cfl->GetValue("target-rms", &target_rms_);
   cfl->GetValue("test-mode", &test_mode_);
   if (!ok || dim_ <= 0) {
@@ -304,6 +307,8 @@ void BatchNormComponent::InitFromConfig(ConfigLine *cfl) {
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
               << cfl->UnusedValues();
+  if (power_ >= 0 || power_ <= -1.0)
+    KALDI_ERR << "Power has invalid value " << power_;
   count_ = 0;
   stats_sum_.Resize(block_dim_);
   stats_sumsq_.Resize(block_dim_);
@@ -325,95 +330,72 @@ void BatchNormComponent::InitFromConfig(ConfigLine *cfl) {
 
   FORWARD PASS:
 
-  Define xsum  = sum_i x(i)
-         x2sum = sum_i x(i)^2
-          mean = xsum / n
-           var = x2sum / n - (mean*mean)
-         scale = sqrt(var + epsilon)^{-0.5}
-        offset = -mean * scale
+  Let 'power' be a constant, equal to -0.5 for regular batch-norm.
 
-      y(i) = scale * x(i) + offset
+  To simplify the math we (conceptually, not physically) do the normalization in
+  two stages: first mean, then variance, so we have x(i) -> y(i) -> z(i).
 
-   Most of the rest of this comment derives how to compute the derivatives.  If
-   you just want the formulas, please skip to the string 'BACKWARD PASS' below.
+  The name 'rscale' means 'raw scale', meaning the scale before including
+  target-rms.  Later we'll define 'scale = target-rms * rscale', to make some
+  of the actual computations slightly more efficient.
+
+  Define:   mean = 1/I * sum_i x(i)
+            y(i) = x(i) - mean
+
+            var = 1/I \sum_i y(i)^2
+         rscale = sqrt(var + epsilon)^power   <---- For regular batchnorm, power == -0.5.
+           z(i) = target-rms * rscale * y(i)
+
+
+  Most of the rest of this comment derives how to compute the derivatives.  If
+  you just want the formulas, please skip to the string 'BACKWARD PASS' below.
 
   We'll use a notation where an apostrophe on something means (the derivative of
   the objective function w.r.t. that thing), so y'(i) is df/dy(i), and so on.
   We are given y'(i).  Propagating the derivatives backward:
-     offset' = sum_i y'(i)
-     scale' = (sum_i y'(i) * x(i)) - offset' * mean
-       var' = scale' * -0.5 * sqrt(var + epsilon)^{-1.5}
-            = -0.5 * scale' * scale^3
-      mean' = -offset' * scale - 2 * mean * var'
-      xsum' = mean' / n
-     x2sum' = var' / n
 
-  So the derivatives propagated back to the original data are:
-     x'(i) = y'(i) * scale  +  xsum'  +  x(i) * x2sum'
+    rscale' = (sum_i y(i) z'(i)) * target-rms
+            = (sum_i z(i) z'(i)) / rscale
 
-  The above is quite complicated to compute, but we can use some invariances
-  to work out a simpler way to compute the derivatives.
+  [ note: d(rscale)/d(var) = power * (var + epsilon)^{power - 1}
+                           = power * rscale^{(power-1)/power}  ]
 
-  Firstly, note that x'(i) is of the form:
+    var' = rscale' * power * rscale^{(power-1)/power}
+         = power * (\sum_i z'(i) z(i)) * rscale^{(power-1)/power - 1}
+         = power * (\sum_i z'(i) z(i)) * rscale^{-1/power}
 
-   x'(i) =  y'(i) * scale + [affine function of x(i)].
+  [note: the following formula is of the form "direct term" + "indirect term"]
+    y'(i) =  z'(i) * target-rms * rscale   +    2/I y(i) var'
 
-   [it's a 1-d affine function, i.e. offset and scale].
- This has the same functional form as:
+  Now, the above is inconvenient because it contains y(i) which is an intermediate
+  quantity.  We reformulate in terms of z(i), using y(i) = z(i) / (target-rms * rscale), so:
 
-  x'(i) =  y'(i) * scale + [affine function of y(i)].
+  defining
+   var_deriv_mod = 2/I * var' / (target-rms * rscale)
+                 = 2/I * power/target-rms * (\sum_i z'(i) z(i)) * rscale^{-(1+power)/power}
+ we have:
+    y'(i) =  z'(i) * target-rms * rscale   +    z(i) var_deriv_mod
 
-  since y(i) is an affine function of x(i) with nonzero scale.
-  Because the output is invariant to shifts in the input, sum_i x'(i)
-  will be zero.  This is sufficient to determine the bias
-  term in the affine function.  [Note: the scale on y(i) doesn't
-  come into it because the y(i) sum to zero].  The offset
-  will just be (sum_i y'(i) * scale / n); this makes the sum of x'(i) zero.
-  So let's write it as
+ Now,
+    mean' = \sum_i y'(i)
+          = (target-rms * rscale * \sum_i z'(i))  +  (var_deriv_mod \sum_i z(i))
+     [... and the 2nd term above is zero when summed over i, because \sum_i z(i) is zero, ...]
+          = target-rms * rscale * \sum_i z(i)
+ and:
+    x'(i) =  z'(i) * target-rms * rscale   +    z(i) var_deriv_mod   -  1/I mean'
+          =  z'(i) * target-rms * rscale   +    z(i) var_deriv_mod   -  1/I * target-rms * rscale * \sum_i z'(i)
+          =  target-rms * rscale * (z'(i) - 1/I * \sum_i z'(i))  +  z(i) var_deriv_mod
 
-    x'(i) =  (y'(i) - 1/n sum_i y'(i)) * scale + alpha y(i).
+    It will simplify the code if we define:
 
-  and it will be convenient to define:
+      scale = target-rms * rscale.  This way, we can write as follows:
 
-  x_deriv_base(i) = (y'(i) - 1/n sum_i y'(i)) * scale
+  BACKWARD PASS (recap):
 
-  which is just y'(i) with mean subtraction, scaled according to
-  the scale used in the normalization.  So write
+   var_deriv_mod = 2 * power * target-rms^{1/power} * (1/I \sum_i z'(i) z(i)) * scale^{-(1+power)/power}
 
-   x'(i) = x_deriv_base(i) + alpha y(i).
+           x'(i) = scale * (z'(i) - 1/I * \sum_i z'(i))  + z(i) var_deriv_mod
 
- The question is, what is the scale alpha.  We don't actually need to
- do any differentiation to figure this out.  First, assume there is
- no "+ epsilon" in the variance; later we'll explain why this doesn't
- matter.  The key to working out alpha is that the output is invariant
- to scaling of the input.  Assume we scale around the input's mean,
- since that makes the math simpler.  We can express this by the
- constraint that (\sum_i x'(i) * (x(i) - avg-x)) = 0.  This is
- equivalent to the constraint that (\sum_i x'(i) y (i)) = 0, since
- y(i) is x(i) - avg-x times a nonzero scale.  We'll use this contraint
- to determine alpha, Using the above expressionfor x(i), we can write
- this constraint as:
-   \sum_i ( y(i) x_deriv_base(i)  + alpha y(i) y(i)) = 0.
- Now, since we said we'd ignore the epsilon, the output has unit variance,
- so we know that \sum_i y(i) y(i) = n.
- So alpha = - \sum_i y(i) x_deriv_base(i) / n.  We can actually re-imagine
- the epsilon term (or variance-flooring) as having been implemented by
- adding a couple extra rows to the matrix with suitable values, and zero
- output-deriv for those rows.  If you think about it carefully you'll see that
- the formula above is valid even if there is an extra term
- in the variance.  Anyway the correctness of the derivative will get tested
- throughly by the component unit-tests.
-
- So to recap, here is the backprop.
-
- BACKWARD PASS:
-
-  We are given y'(i), scale, and y(i).
-
-  We compute:
-    x_deriv_base(i) = (y'(i) - 1/n sum_i y'(i)) * scale
-              alpha = - \sum_i y(i) x_deriv_base(i) / n
-              x'(i) = x_deriv_base(i) + alpha y(i)
   */
 
 
@@ -446,7 +428,7 @@ void* BatchNormComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
     Memo *memo = new Memo;
     int32 num_frames = in.NumRows(), dim = block_dim_;
     memo->num_frames = num_frames;
-    memo->mean_uvar_scale.Resize(4, dim);
+    memo->mean_uvar_scale.Resize(5, dim);
     CuSubVector<BaseFloat> mean(memo->mean_uvar_scale, 0),
         uvar(memo->mean_uvar_scale, 1),
         scale(memo->mean_uvar_scale, 2);
@@ -454,14 +436,14 @@ void* BatchNormComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
     uvar.AddDiagMat2(1.0 / num_frames, in, kTrans, 0.0);
     scale.CopyFromVec(uvar);
     // by applying this scale at this point, we save a multiply later on.
-    BaseFloat var_scale = 1.0 / (target_rms_ * target_rms_);
+    BaseFloat var_scale = std::pow(target_rms_, -power_);
     scale.AddVecVec(-var_scale, mean, mean, var_scale);
-    // at this point, 'scale' contains just the variance [divided by target-rms^2].
+    // at this point, 'scale' contains just the variance (times target-rms^{-power})
     scale.ApplyFloor(0.0);
     scale.Add(var_scale * epsilon_);
     // Now 'scale' contains the variance floored to zero and then with epsilon
-    // added [both divided by target-rms^2].
-    scale.ApplyPow(-0.5);
+    // added [both times target-rms^{-power}]
+    scale.ApplyPow(power_);
     // now 'scale' is the actual scale we'll use.
 
     // the next command will do no work if out == in, for in-place propagation.
@@ -525,26 +507,47 @@ void BatchNormComponent::Backprop(
     KALDI_ASSERT(memo != NULL && "memo not passed into backprop");
     int32 num_frames = memo->num_frames;
     KALDI_ASSERT(out_value.NumRows() == num_frames);
-    CuSubVector<BaseFloat> temp(memo->mean_uvar_scale, 3),
-        scale(memo->mean_uvar_scale, 2);
+    CuSubVector<BaseFloat>
+        scale(memo->mean_uvar_scale, 2),
+        temp(memo->mean_uvar_scale, 4),
+        var_deriv_mod(memo->mean_uvar_scale, 3),
+        scale_pow(memo->mean_uvar_scale, 4);
+
+    // var_deriv_mod is going to contain:
+    //  2 * power * target-rms^{1/power} * (1/I \sum_i z'(i) z(i)) * scale^{-(1+power)/power}
+    // but for now we don't have the power of 'scale', we'll add that later.
+    BaseFloat coeff = 2.0 * power_ * std::pow(target_rms_, 1.0 / power_) /
+        num_frames;
+    var_deriv_mod.AddDiagMatMat(coeff, out_value, kTrans,
+                                out_deriv, kNoTrans, 0.0);
+
+
     temp.AddRowSumMat(-1.0 / num_frames, out_deriv, 0.0);
-    // the following does no work if in_deriv and out_deriv are the same matrix.
+    // the following statement does no work if in_deriv and out_deriv are the same matrix.
     in_deriv->CopyFromMat(out_deriv);
     in_deriv->AddVecToRows(1.0, temp);
+    // At this point, *in_deriv contains
+    // (z'(i) - 1/I * \sum_i z'(i))
     in_deriv->MulColsVec(scale);
-    // at this point, 'in_deriv' contains:
-    // x_deriv_base(i) = (y'(i) - 1/n sum_i y'(i)) * scale
-    temp.AddDiagMatMat(-1.0 / (num_frames * target_rms_ * target_rms_),
-                       out_value, kTrans, *in_deriv, kNoTrans, 0.0);
-    // now, 'temp' contains the quantity which we described
-    // in the math as:
-    // alpha = - \sum_i y(i) x_deriv_base(i) / n.
-    // The factor 1 / (target_rms_ * target_rms_) comes from following
-    // this additional scaling factor through the math.  In the comment I said
-    // "we know that \sum_i y(i) y(i) = n".  Taking target-rms into account
-    // this becomes "we know that \sum_i y(i) y(i) = n * target-rms^2".
-    in_deriv->AddMatDiagVec(1.0, out_value, kNoTrans, temp, 1.0);
-    // At this point, in_deriv contains  x'(i) = x_deriv_base(i) + alpha y(i).
+    // At this point, *in_deriv contains
+    // scale * (z'(i) - 1/I * \sum_i z'(i))
+
+    // The next few lines complete the calculation of 'var_deriv_mod';
+    // we delayed it because we were using 'temp', and 'scale_pow'
+    // uses the same memory.
+    if (power_ == -0.5) {
+      // we can simplify scale^{-(1+power)/power} to just 'scale'.
+      var_deriv_mod.MulElements(scale);
+    } else {
+      scale_pow.CopyFromVec(scale);
+      scale_pow.ApplyPow(-1.0 * (1.0 + power_) / power_);
+      var_deriv_mod.MulElements(scale_pow);
+    }
+    in_deriv->AddMatDiagVec(1.0, out_value, kNoTrans,
+                            var_deriv_mod, 1.0);
+    // At this point, *in_deriv contains what we described in the comment
+    // starting BATCHNORM_MATH as:
+    // x'(i) = scale * (z'(i) - 1/I * \sum_i z'(i))  + z(i) var_deriv_mod
   } else {
     KALDI_ASSERT(offset_.Dim() == block_dim_);
     // the next call does no work if they point to the same memory.
@@ -598,6 +601,12 @@ void BatchNormComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &dim_);
   ExpectToken(is, binary, "<BlockDim>");
   ReadBasicType(is, binary, &block_dim_);
+  if (PeekToken(is, binary) == 'P') {
+    ExpectToken(is, binary, "<Power>");
+    ReadBasicType(is, binary, &power_);
+  } else {
+    power_ = -0.5;
+  }
   ExpectToken(is, binary, "<Epsilon>");
   ReadBasicType(is, binary, &epsilon_);
   ExpectToken(is, binary, "<TargetRms>");
@@ -625,6 +634,10 @@ void BatchNormComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, dim_);
   WriteToken(os, binary, "<BlockDim>");
   WriteBasicType(os, binary, block_dim_);
+  if (power_ != -0.5) {
+    WriteToken(os, binary, "<Power>");
+    WriteBasicType(os, binary, power_);
+  }
   WriteToken(os, binary, "<Epsilon>");
   WriteBasicType(os, binary, epsilon_);
   WriteToken(os, binary, "<TargetRms>");

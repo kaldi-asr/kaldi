@@ -227,13 +227,11 @@ class BatchNormComponent: public Component {
   struct Memo {
     // number of frames (after any reshaping).
     int32 num_frames;
-    // 'sum_sumsq_scale' is of dimension 4 by block_dim_:
+    // 'sum_sumsq_scale' is of dimension 5 by block_dim_:
     // Row 0 = mean = the mean of the rows of the input
     // Row 1 = uvar = the uncentered variance of the input (= sumsq / num_frames).
     // Row 2 = scale = the scale of the renormalization, which is
-    // Row 3 is used as a temporary in Backprop.
-    //    the inverse stddev of the input (modified by epsilon_,
-    //    see the Propagate function.
+    // Rows 3 and 4 are used as a temporaries in Backprop.
     CuMatrix<BaseFloat> mean_uvar_scale;
   };
 
@@ -259,6 +257,12 @@ class BatchNormComponent: public Component {
   // for convolutional setups-- assuming the filter-dim has stride 1, which it
   // always will in the new code in nnet-convolutional-component.h.
   int32 block_dim_;
+
+
+  // This power determines the scale as a power of the variance... the default
+  // (-0.5) corresponds to regular BatchNorm, but you can set it to other
+  // values, like -0.25 or -0.4, for what we'll call "fractional BatchNorm"
+  BaseFloat power_;
 
   // Used to avoid exact-zero variances, epsilon has the dimension of a
   // covariance.
@@ -311,6 +315,9 @@ class BatchNormComponent: public Component {
                       is treated like a separate row of the input matrix, which
                       means that the stats from n'th element of each
                       block are pooled into one class, for each n.a
+         power        Power that determines the scale we apply, as a function of
+                      the variance.  The default, -0.5, corresponds to regular
+                      BatchNorm.
          epsilon      Small term added to the variance that is used to prevent
                       division by zero
          target-rms   This defaults to 1.0, but if set, for instance, to 2.0,
