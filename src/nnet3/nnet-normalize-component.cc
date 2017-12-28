@@ -320,7 +320,7 @@ void BatchNormComponent::InitFromConfig(ConfigLine *cfl) {
 
 
 /*
-  BATCH_NORM_MATH
+  BATCHNORM_MATH
 
   This comment describes the equations involved in batch normalization, and
   derives the forward and back-propagation.
@@ -436,7 +436,7 @@ void* BatchNormComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
     uvar.AddDiagMat2(1.0 / num_frames, in, kTrans, 0.0);
     scale.CopyFromVec(uvar);
     // by applying this scale at this point, we save a multiply later on.
-    BaseFloat var_scale = std::pow(target_rms_, -power_);
+    BaseFloat var_scale = std::pow(target_rms_, 1.0 / power_);
     scale.AddVecVec(-var_scale, mean, mean, var_scale);
     // at this point, 'scale' contains just the variance (times target-rms^{-power})
     scale.ApplyFloor(0.0);
@@ -523,7 +523,8 @@ void BatchNormComponent::Backprop(
 
 
     temp.AddRowSumMat(-1.0 / num_frames, out_deriv, 0.0);
-    // the following statement does no work if in_deriv and out_deriv are the same matrix.
+    // the following statement does no work if in_deriv and out_deriv are the
+    // same matrix.
     in_deriv->CopyFromMat(out_deriv);
     in_deriv->AddVecToRows(1.0, temp);
     // At this point, *in_deriv contains
