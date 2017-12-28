@@ -566,7 +566,7 @@ def train(args, run_opts):
                 l2_regularize=args.l2_regularize,
                 xent_regularize=args.xent_regularize,
                 run_opts=run_opts,
-                sum_to_one_penalty=args.combine_sum_to_one_penalty,
+                max_objective_evaluations=args.max_objective_evaluations,
                 use_multitask_egs=use_multitask_egs)
         else:
             logger.info("Copying the last-numbered model to final.mdl")

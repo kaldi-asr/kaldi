@@ -23,6 +23,7 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
               # if it's set, it merges histories in the lattice if they share
               # the same ngram history and this prevents the lattice from 
               # exploding exponentially
+pruned_rescore=true
 
 . cmd.sh
 . utils/parse_options.sh
@@ -95,12 +96,17 @@ fi
 
 if [ $stage -le 4 ] && $run_rescore; then
   echo "$0: Perform lattice-rescoring on $ac_model_dir"
-  LM=sw1_fsh_fg
+  LM=sw1_fsh_fg # using the 4-gram const arpa file as old lm
+#  LM=sw1_tg # if using the original 3-gram G.fst as old lm
+  pruned=
+  if $pruned_rescore; then
+    pruned=_pruned
+  fi
   for decode_set in eval2000; do
     decode_dir=${ac_model_dir}/decode_${decode_set}_${LM}_looped
 
     # Lattice rescoring
-    rnnlm/lmrescore.sh \
+    rnnlm/lmrescore$pruned.sh \
       --cmd "$decode_cmd --mem 4G" \
       --weight 0.5 --max-ngram-order $ngram_order \
       data/lang_$LM $dir \

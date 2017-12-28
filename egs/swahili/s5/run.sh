@@ -146,7 +146,8 @@ for iter in 1 2 3 4; do
 done
 
 ## MBR
-cp -r -T exp/system1/sgmm2_5b2_mmi_b0.1/decode_test_it3{,.mbr}
+rm -r exp/system1/sgmm2_5b2_mmi_b0.1/decode_test_it3.mbr 2>/dev/null 
+cp -r exp/system1/sgmm2_5b2_mmi_b0.1/decode_test_it3{,.mbr}
 local/score_mbr.sh data/test data/lang exp/system1/sgmm2_5b2_mmi_b0.1/decode_test_it3.mbr
 
 ## SGMM+MMI+fMMI

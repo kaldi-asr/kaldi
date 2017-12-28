@@ -1099,7 +1099,7 @@ else
     OPENFSTLDFLAGS="-Wl,-rpath=${FSTROOT}/lib"
   else
     failure "Dynamic libraries are not supported on this platform.
-             Run configure with --static --static-fst=no flag."
+             Run configure with --static --static-fst flag."
   fi
 fi
 if [ ! -f "$OPENFSTLIBS" ]; then

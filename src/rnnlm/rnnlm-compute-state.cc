@@ -38,11 +38,9 @@ RnnlmComputeStateInfo::RnnlmComputeStateInfo(
     KALDI_ERR << "Non-zero left or right context. Please check your script";
   }
   int32 frame_subsampling_factor = 1;
-  int32 embedding_dim = rnnlm.OutputDim("output");
+  int32 embedding_dim = word_embedding_mat.NumCols();
   if (embedding_dim != rnnlm.OutputDim("output")) {
-    KALDI_ERR << "Embedding file and nnet have different number of words. "
-              << "You might be using a different wordlist "
-                 "here from what is used in training";
+    KALDI_ERR << "Embedding file and nnet have different embedding sizes. ";
   }
 
   nnet3::ComputationRequest request1, request2, request3;

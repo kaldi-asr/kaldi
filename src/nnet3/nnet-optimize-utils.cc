@@ -997,7 +997,8 @@ std::pair<bool,bool> VariableMergingOptimizer::MayBeMerged(
   if (!left && !right)  // save some time.
     return std::pair<bool,bool>(false,false);
   bool is_assignment = (computation_->commands[command_index].command_type ==
-                        kMatrixCopy);
+                                                kMatrixCopy &&
+                        computation_->commands[command_index].alpha == 1.0);
   ComputationAnalysis analysis(*computation_, analyzer_);
   if (is_assignment) {
     if (analysis.FirstNontrivialAccess(s2) == command_index &&
@@ -2730,6 +2731,7 @@ void ComputationExpander::ExpandRowsCommand(
   // in the vector are row-indexes into s2.
   int32 old_arg3 = c_out->arg3;
   c_out->arg3 = expanded_computation_->indexes.size();
+  c_out->alpha = c_in.alpha;
   expanded_computation_->indexes.push_back(std::vector<int32>());
   std::vector<int32> &new_indexes = expanded_computation_->indexes.back();
   const std::vector<int32> &old_indexes = computation_.indexes[old_arg3];
