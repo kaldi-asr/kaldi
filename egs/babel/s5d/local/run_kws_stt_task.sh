@@ -85,7 +85,7 @@ if ! $skip_kws ; then
       touch $decode_dir/.done.kws.$extraid
     fi
     if [[ ! $extraid =~ .*oov.* ]] &&  [ ! -f $decode_dir/.done.kwset.$extraid ] ; then
-      local/search/search.sh --cmd "$decode_cmd"  --extraid ${extraid} \
+      local/search/search.sh --cmd "$cmd"  --extraid ${extraid} \
         --max-states ${max_states} --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} \
         --indices-dir $decode_dir/kws_indices --skip-scoring $skip_scoring \
         --model $model \

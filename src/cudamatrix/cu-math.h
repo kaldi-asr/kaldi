@@ -73,10 +73,25 @@ void Copy(const CuMatrixBase<Real> &src,
           const CuArray<int32> &copy_from_indices,
           CuMatrixBase<Real> *tgt);
 
+
+/// This function requires that src and dest have the same dimension and epsilon
+/// > 0.  It copies src to dest while ensuring that the values are bounded away
+/// from zero by at least epsilon:
+/// \code
+///  y =  x if fabs(x) >= epsilon;
+///       epsilon if 0 <= x < epsilon;
+///       -epsilon if -epsilon < x < 0.
+/// \endcode
 template <typename Real>
-void Group2norm(const CuMatrixBase<Real> &src,
-                CuMatrixBase<Real> *dest,
-                int32 group_stride);
+void EnsureNonzero(const CuMatrixBase<Real> &src,
+                   Real epsilon,
+                   CuMatrixBase<Real> *dest);
+
+/// Vector version of EnsureNonzero, see matrix version for documentation.
+template <typename Real>
+void EnsureNonzero(const CuVectorBase<Real> &src,
+                   Real epsilon,
+                   CuVectorBase<Real> *dest);
 
 /**
  this is a special-purpose function used by class LstmNonlinearityComponent,

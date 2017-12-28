@@ -47,10 +47,10 @@ utils/combine_data.sh data/train \
   data/swbd_cellular1_train data/swbd_cellular2_train \
   data/swbd2_phase2_train data/swbd2_phase3_train data/sre
 
-cp -r data/train data/train_dnn
-cp -r data/sre data/sre_dnn
-cp -r data/sre10_train data/sre10_train_dnn
-cp -r data/sre10_test data/sre10_test_dnn
+utils/copy_data_dir.sh data/train data/train_dnn
+utils/copy_data_dir.sh data/sre data/sre_dnn
+utils/copy_data_dir.sh data/sre10_train data/sre10_train_dnn
+utils/copy_data_dir.sh data/sre10_test data/sre10_test_dnn
 
 # Extract speaker recogntion features.
 steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \

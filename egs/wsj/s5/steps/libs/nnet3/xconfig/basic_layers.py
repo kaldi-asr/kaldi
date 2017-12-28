@@ -239,8 +239,7 @@ class XconfigLayerBase(object):
         """This is expected to be called after set_configs and before
         check_configs().
         """
-
-        if self.config['dim'] <= 0:
+        if 'dim' in self.config and self.config['dim'] <= 0:
             self.config['dim'] = self.descriptors['input']['dim']
 
     def check_configs(self):
@@ -620,8 +619,7 @@ class XconfigOutputLayer(XconfigLayerBase):
 
 
 class XconfigBasicLayer(XconfigLayerBase):
-    """
-    This class is for parsing lines like
+    """This class is for parsing lines like
      'relu-renorm-layer name=layer1 dim=1024 input=Append(-3,0,3)'
     or:
      'sigmoid-layer name=layer1 dim=1024 input=Append(-3,0,3)'
@@ -651,11 +649,6 @@ class XconfigBasicLayer(XconfigLayerBase):
                                 this component.
     """
     def __init__(self, first_token, key_to_value, prev_names=None):
-        # Here we just list some likely combinations.. you can just add any
-        # combinations you want to use, to this list.
-        assert first_token in ['relu-layer', 'relu-renorm-layer', 'sigmoid-layer',
-                               'tanh-layer', 'relu-batchnorm-layer', 'relu-dropout-layer',
-                               'relu-batchnorm-dropout-layer']
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -664,16 +657,19 @@ class XconfigBasicLayer(XconfigLayerBase):
         # the most recent layer.
         self.config = {'input': '[-1]',
                        'dim': -1,
-                       'max-change': 0.75,
                        'self-repair-scale': 1.0e-05,
                        'target-rms': 1.0,
-                       'learning-rate-factor': 1.0,
                        'ng-affine-options': '',
                        'dropout-proportion': 0.5,  # dropout-proportion only
                                                    # affects layers with
                                                    # 'dropout' in the name.
-                       'l2-regularize': 0.0,
-                       'add-log-stddev': False}
+                       'add-log-stddev': False,
+                       # the following are not really inspected by this level of
+                       # code, just passed through (but not if left at '').
+                       'bias-stddev': '',
+                       'l2-regularize': '',
+                       'learning-rate-factor': '',
+                       'max-change': 0.75 }
 
     def check_configs(self):
         if self.config['dim'] < 0:
@@ -737,14 +733,13 @@ class XconfigBasicLayer(XconfigLayerBase):
         output_dim = self.output_dim()
         self_repair_scale = self.config['self-repair-scale']
         target_rms = self.config['target-rms']
-        max_change = self.config['max-change']
-        ng_affine_options = self.config['ng-affine-options']
-        learning_rate_factor = self.config['learning-rate-factor']
-        learning_rate_option = ('learning-rate-factor={0}'.format(learning_rate_factor)
-                                if learning_rate_factor != 1.0 else '')
-        l2_regularize = self.config['l2-regularize']
-        l2_regularize_option = ('l2-regularize={0}'.format(l2_regularize)
-                                if l2_regularize != 0.0 else '')
+
+        affine_options = self.config['ng-affine-options']
+        for opt_name in [ 'max-change', 'learning-rate-factor',
+                          'bias-stddev', 'l2-regularize' ]:
+            value = self.config[opt_name]
+            if value != '':
+                affine_options += ' {0}={1}'.format(opt_name, value)
 
         # The output of the affine component needs to have one dimension fewer in order to
         # get the required output dim, if the final 'renorm' component has 'add-log-stddev' set
@@ -757,27 +752,19 @@ class XconfigBasicLayer(XconfigLayerBase):
 
         configs = []
         # First the affine node.
-        line = ('component name={0}.affine'
-                ' type=NaturalGradientAffineComponent'
-                ' input-dim={1}'
-                ' output-dim={2}'
-                ' max-change={3}'
-                ' {4} {5} {6}'
-                ''.format(self.name, input_dim, output_dim,
-                          max_change, ng_affine_options,
-                          learning_rate_option, l2_regularize_option))
+        line = ('component name={0}.affine type=NaturalGradientAffineComponent'
+                ' input-dim={1} output-dim={2} {3}'
+                ''.format(self.name, input_dim, output_dim, affine_options))
         configs.append(line)
 
-        line = ('component-node name={0}.affine'
-                ' component={0}.affine input={1}'
+        line = ('component-node name={0}.affine component={0}.affine input={1}'
                 ''.format(self.name, input_desc))
         configs.append(line)
         cur_node = '{0}.affine'.format(self.name)
 
         for i, nonlinearity in enumerate(nonlinearities):
             if nonlinearity == 'relu':
-                line = ('component name={0}.{1}'
-                        ' type=RectifiedLinearComponent dim={2}'
+                line = ('component name={0}.{1} type=RectifiedLinearComponent dim={2}'
                         ' self-repair-scale={3}'
                         ''.format(self.name, nonlinearity, output_dim,
                                   self_repair_scale))
@@ -814,6 +801,11 @@ class XconfigBasicLayer(XconfigLayerBase):
                         ' target-rms={3}'
                         ''.format(self.name, nonlinearity, output_dim,
                                   target_rms))
+
+            elif nonlinearity == 'so':
+                line = ('component name={0}.{1}'
+                        ' type=ScaleAndOffsetComponent dim={2} max-change=0.5 '
+                        ''.format(self.name, nonlinearity, output_dim))
 
             elif nonlinearity == 'dropout':
                 line = ('component name={0}.{1} type=DropoutComponent '

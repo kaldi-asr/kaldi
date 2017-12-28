@@ -75,6 +75,27 @@ Real VecVec(const CuVectorBase<Real> &A, const CuVectorBase<OtherReal> &B) {
 template float VecVec(const CuVectorBase<float> &A, const CuVectorBase<double> &B);
 template double VecVec(const CuVectorBase<double> &A, const CuVectorBase<float> &B);
 
+
+template<typename Real>
+Real VecMatVec(const CuVectorBase<Real> &v1, const CuMatrixBase<Real> &M,
+               const CuVectorBase<Real> &v2) {
+  KALDI_ASSERT(v1.Dim() == M.NumRows() && M.NumCols() == v2.Dim());
+  if (v1.Dim() > v2.Dim()) {  // do v2*M first
+    CuVector<Real> v2M(v1.Dim(), kUndefined);
+    v2M.AddMatVec(1.0, M, kNoTrans, v2, 0.0);
+    return VecVec(v2M, v1);
+  } else {  // do v1*M first
+    CuVector<Real> v1M(v2.Dim(), kUndefined);
+    v1M.AddMatVec(1.0, M, kTrans, v1, 0.0);
+    return VecVec(v1M, v2);
+  }
+}
+// instantiate the template above
+template float VecMatVec(const CuVectorBase<float> &v1, const CuMatrixBase<float> &M,
+               const CuVectorBase<float> &v2);
+template double VecMatVec(const CuVectorBase<double> &v1, const CuMatrixBase<double> &M,
+               const CuVectorBase<double> &v2);
+
 template<typename Real>
 void CuVectorBase<Real>::CopyColFromMat(const CuMatrixBase<Real> &mat, MatrixIndexT col) {
   KALDI_ASSERT(col < mat.NumCols());
@@ -767,6 +788,17 @@ void CuVectorBase<Real>::MulElements(const CuVectorBase<Real> &v) {
   }
 }
 
+template<typename Real>
+void CuVectorBase<Real>::DivElements(const CuVectorBase<Real> &v) {
+  // this just creates a matrix and calls the matrix version.
+  KALDI_ASSERT(dim_ == v.dim_);
+  CuSubMatrix<Real> this_mat(this->Data(), 1, dim_, dim_),
+      v_mat(v.Data(), 1, dim_, dim_);
+  this_mat.DivElements(v_mat);
+}
+
+
+
 template<>
 template<>
 void CuVectorBase<double>::CopyFromVec(const CuVectorBase<float> &src) {
@@ -913,6 +945,13 @@ void CuVector<Real>::Resize(MatrixIndexT dim, MatrixResizeType t) {
     this->Swap(&vec);
   }
 }
+
+template<typename Real>
+void CuVector<Real>::Swap(CuVector<Real> *vec) {
+  std::swap(this->data_, vec->data_);
+  std::swap(this->dim_, vec->dim_);
+}
+
 
 template<typename Real>
 void CuVector<Real>::Swap(Vector<Real> *vec) {
@@ -1212,6 +1251,46 @@ void CuVectorBase<Real>::InvertElements() {
 #endif
   {
     Vec().InvertElements();
+  }
+}
+
+
+template<typename Real>
+void CuVectorBase<Real>::CopyElements(const CuMatrixBase<Real> &mat,
+                                      const MatrixTransposeType trans,
+                                      const CuArrayBase<int32> &elements) {
+  KALDI_ASSERT(elements.Dim() == Dim());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+
+    dim3 dimBlock(CU1DBLOCK);
+    dim3 dimGrid(n_blocks(Dim(), CU1DBLOCK));
+
+    cuda_vector_copy_elements(dimGrid, dimBlock, this->data_, Dim(),
+                                mat.Data(), mat.Stride(), trans == kTrans,
+                                elements.Data());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    VectorBase<Real> &this_vec = this->Vec();
+    const MatrixBase<Real> &src_mat = mat.Mat();
+    const int32* index_map = elements.Data();
+    KALDI_ASSERT((Dim() == mat.NumRows() && trans == kNoTrans)
+                 || (Dim() == mat.NumCols() && trans == kTrans));
+    for (int32 i = 0; i < Dim(); i++) {
+      int32 j = index_map[i];
+      KALDI_ASSERT(j >= 0);
+      if (trans == kNoTrans) {
+        KALDI_ASSERT(j < mat.NumCols());
+        this_vec(i) = src_mat(i, j);
+      } else {
+        KALDI_ASSERT(j < mat.NumRows());
+        this_vec(i) = src_mat(j, i);
+      }
+    }
   }
 }
 

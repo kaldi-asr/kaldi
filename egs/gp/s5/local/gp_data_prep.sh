@@ -63,7 +63,7 @@ pushd $CONFDIR > /dev/null
 [ -f lang_codes.txt ] || error_exit "$PROG: Mapping for language name to 2-letter code not found.";
 
 popd > /dev/null
-[ -f path.sh ] && . path.sh  # Sets the PATH to contain necessary executables
+[ -f path.sh ] && . ./path.sh  # Sets the PATH to contain necessary executables
 
 # (2) get the various file lists (for audio, transcription, etc.) for the
 # specified language.

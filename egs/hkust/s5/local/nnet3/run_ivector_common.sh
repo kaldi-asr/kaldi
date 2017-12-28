@@ -27,7 +27,7 @@ if [ $stage -le 1 ] && [ -z $ivector_extractor ]; then
   # them overwrite each other.
   mfccdir=mfcc_hires
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
-    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/hkust-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
+    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/mfcc/hkust-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
   fi
 
   for datadir in train dev; do
@@ -127,7 +127,7 @@ if [ $stage -le 6 ]; then
   rm -f exp/nnet3/.error 2>/dev/null
   ivectordir=exp/nnet3/ivectors_${train_set}
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $ivectordir/storage ]; then
-    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/hkust-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
+    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/ivectors/hkust-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
   fi
   # We extract iVectors on all the train data, which will be what we train the
   # system on.  With --utts-per-spk-max 2, the script.  pairs the utterances

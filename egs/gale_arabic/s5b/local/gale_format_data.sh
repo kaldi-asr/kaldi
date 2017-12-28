@@ -4,7 +4,7 @@
 # Apache 2.0
 
 if [ -f path.sh ]; then
-  . path.sh; else
+  . ./path.sh; else
    echo "$0: missing path.sh"; exit 1;
 fi
 

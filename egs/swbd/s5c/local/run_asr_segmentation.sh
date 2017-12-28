@@ -41,7 +41,7 @@ stage=-1
 nj=80
 
 . ./path.sh
-. cmd.sh 
+. ./cmd.sh
 
 set -e -u -o pipefail
 . utils/parse_options.sh 

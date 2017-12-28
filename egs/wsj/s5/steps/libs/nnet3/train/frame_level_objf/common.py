@@ -44,16 +44,24 @@ def train_new_models(dir, iter, srand, num_jobs,
     but we use the same script for consistency with FF-DNN code
 
     Selected args:
-        frames_per_eg: The default value -1 implies chunk_level_training, which
-            is particularly applicable to RNN training. If it is > 0, then it
-            implies frame-level training, which is applicable for DNN training.
-            If it is > 0, then each parallel SGE job created, a different frame
-            numbered 0..frames_per_eg-1 is used.
+        frames_per_eg:
+            The frames_per_eg, in the context of (non-chain) nnet3 training,
+            is normally the number of output (supervised) frames in each training
+            example.  However, the frames_per_eg argument to this function should
+            only be set to that number (greater than zero) if you intend to
+            train on a single frame of each example, on each minibatch.  If you
+            provide this argument >0, then for each training job a different
+            frame from the dumped example is selected to train on, based on
+            the option --frame=n to nnet3-copy-egs.
+            If you leave frames_per_eg at its default value (-1), then the
+            entire sequence of frames is used for supervision.  This is suitable
+            for RNN training, where it helps to amortize the cost of computing
+            the activations for the frames of context needed for the recurrence.
         use_multitask_egs : True, if different examples used to train multiple
-                            tasks or outputs, e.g.multilingual training.
-                            multilingual egs can be generated using get_egs.sh and
-                            steps/nnet3/multilingual/allocate_multilingual_examples.py,
-                            those are the top-level scripts.
+            tasks or outputs, e.g.multilingual training.  multilingual egs can
+            be generated using get_egs.sh and
+            steps/nnet3/multilingual/allocate_multilingual_examples.py, those
+            are the top-level scripts.
     """
 
     chunk_level_training = False if frames_per_eg > 0 else True
@@ -444,7 +452,7 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
                    minibatch_size_str,
                    run_opts,
                    chunk_width=None, get_raw_nnet_from_am=True,
-                   sum_to_one_penalty=0.0,
+                   max_objective_evaluations=30,
                    use_multitask_egs=False,
                    compute_per_dim_accuracy=False):
     """ Function to do model combination
@@ -493,10 +501,8 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
                              use_multitask_egs=use_multitask_egs)
     common_lib.execute_command(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
-                nnet3-combine --num-iters=80 \
-                --enforce-sum-to-one={hard_enforce} \
-                --sum-to-one-penalty={penalty} \
-                --enforce-positive-weights=true \
+                nnet3-combine \
+                --max-objective-evaluations={max_objective_evaluations} \
                 --verbose=3 {raw_models} \
                 "ark,bg:nnet3-copy-egs {multitask_egs_opts} \
                     {egs_rspecifier} ark:- | \
@@ -505,9 +511,8 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
         """.format(command=run_opts.command,
                    combine_queue_opt=run_opts.combine_queue_opt,
                    dir=dir, raw_models=" ".join(raw_model_strings),
+                   max_objective_evaluations=max_objective_evaluations,
                    egs_rspecifier=egs_rspecifier,
-                   hard_enforce=(sum_to_one_penalty <= 0),
-                   penalty=sum_to_one_penalty,
                    mbsize=minibatch_size_str,
                    out_model=out_model,
                    multitask_egs_opts=multitask_egs_opts))

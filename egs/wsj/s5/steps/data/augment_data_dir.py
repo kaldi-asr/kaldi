@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2017  David Snyder
+#           2017  Ye Bai
 # Apache 2.0
 #
 # This script generates augmented data.  It is based on
@@ -83,8 +84,8 @@ def AugmentWav(utt, wav, dur, fg_snr_opts, bg_snr_opts, fg_noise_utts, \
         num = random.choice(num_opts)
         for i in range(0, num):
             noise_utt = random.choice(bg_noise_utts)
-            noise = noise_wavs[noise_utt] + " wav-reverberate --duration=" \
-            + dur_str + " - - |"
+            noise = "wav-reverberate --duration=" \
+            + dur_str + " \"" + noise_wavs[noise_utt] + "\" - |"
             snr = random.choice(bg_snr_opts)
             snrs.append(snr)
             start_times.append(0)
@@ -104,15 +105,15 @@ def AugmentWav(utt, wav, dur, fg_snr_opts, bg_snr_opts, fg_noise_utts, \
 
     start_times_str = "--start-times='" + ",".join(map(str,start_times)) + "'"
     snrs_str = "--snrs='" + ",".join(map(str,snrs)) + "'"
-    noises_str = "--additive-signals='" + ",".join(noises) + "'"
+    noises_str = "--additive-signals='" + ",".join(noises).strip() + "'"
 
     # If the wav is just a file
-    if len(wav.split()) == 1:
+    if wav.strip()[-1] != "|":
         new_wav = "wav-reverberate --shift-output=true " + noises_str + " " \
             + start_times_str + " " + snrs_str + " " + wav + " - |"
     # Else if the wav is in a pipe
     else:
-        new_wav = wav + "wav-reverberate --shift-output=true " + noises_str + " " \
+        new_wav = wav + " wav-reverberate --shift-output=true " + noises_str + " " \
             + start_times_str + " " + snrs_str + " - - |"
     return new_wav
 
@@ -182,6 +183,8 @@ def main():
         os.makedirs(output_dir)
 
     WriteDictToFile(new_utt2wav, output_dir + "/wav.scp")
+    CopyFileIfExists(args.utt_suffix, "reco2dur", input_dir, output_dir)
+    CopyFileIfExists(args.utt_suffix, "utt2dur", input_dir, output_dir)
     CopyFileIfExists(args.utt_suffix, "utt2spk", input_dir, output_dir)
     CopyFileIfExists(args.utt_suffix, "utt2lang", input_dir, output_dir)
     CopyFileIfExists(args.utt_suffix, "text", input_dir, output_dir)
