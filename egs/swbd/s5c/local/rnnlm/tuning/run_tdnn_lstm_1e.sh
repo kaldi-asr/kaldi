@@ -57,7 +57,7 @@ mmm um
 mm um
 mhm um-hum 
 EOF
-  zcat $fisher_text | awk 'NR==FNR{a[$1]=$2;next}{for (n=1;n<=NF;n++) if ($n in a) $n=a[$n];print $0}' \
+  gunzip -c $fisher_text | awk 'NR==FNR{a[$1]=$2;next}{for (n=1;n<=NF;n++) if ($n in a) $n=a[$n];print $0}' \
     $dir/config/hesitation_mapping.txt - > $text_dir/fisher.txt
 fi
 
