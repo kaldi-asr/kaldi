@@ -114,7 +114,12 @@ void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
   bool success = UpdateNnetWithMaxChange(*delta_nnet_,
       nnet_config.max_param_change, 1.0, 1.0 - nnet_config.momentum, nnet_,
       &num_max_change_per_component_applied_, &num_max_change_global_applied_);
-  // Scales delta_nnet
+
+  // Scale down the batchnorm stats (keeps them fresh... this affects what
+  // happens when we use the model with batchnorm test-mode set).
+  ScaleBatchnormStats(nnet_config.batchnorm_stats_scale, nnet_);
+
+  // Scale delta_nnet
   if (success)
     ScaleNnet(nnet_config.momentum, delta_nnet_);
   else

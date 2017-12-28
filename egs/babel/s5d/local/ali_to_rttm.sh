@@ -28,7 +28,7 @@ beam=10
 retry_beam=40
 boost_silence=1.0
 
-if [ -f path.sh ]; then . path.sh; fi
+if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then

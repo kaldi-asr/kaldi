@@ -2,12 +2,20 @@
 
 
 # by default, with cleanup
-# please note that the language(s) was not selected for any particular reason
-# local/chain/run_tdnn_lstm.sh
-# 304-lithuanian | %WER 40.8 | 20041 61492 | 61.9 27.9 10.2 2.7 40.8 29.0 | -0.313 | exp/chain_cleaned/tdnn_lstm_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
-#                num-iters=48 nj=2..12 num-params=36.7M dim=43+100->3273 combine=-0.156->-0.136
-#                xent:train/valid[31,47,final]=(-1.91,-1.58,-1.56/-2.23,-2.16,-2.15)
-#                logprob:train/valid[31,47,final]=(-0.160,-0.118,-0.115/-0.231,-0.236,-0.237)
+# please note that the language(s) was not selected for any particular reason (other to represent the various sizes of babel datasets)
+# 304-lithuanian   | %WER 40.8 | 20041 61492 | 61.9 27.9 10.2 2.7 40.8 29.0 | -0.313 | exp/chain_cleaned/tdnn_lstm_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+#                  num-iters=48 nj=2..12 num-params=36.7M dim=43+100->3273 combine=-0.156->-0.136
+#                  xent:train/valid[31,47,final]=(-1.91,-1.58,-1.56/-2.23,-2.16,-2.15)
+#                  logprob:train/valid[31,47,final]=(-0.160,-0.118,-0.115/-0.231,-0.236,-0.237)
+# 206-zulu         | %WER 52.7 | 22805 52162 | 51.2 39.1 9.7 3.9 52.7 30.8 | -0.662 | exp/chain_cleaned/tdnn_lstm_sp/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+#                  num-iters=66 nj=2..12 num-params=36.7M dim=43+100->3274 combine=-0.180->-0.163
+#                  xent:train/valid[43,65,final]=(-1.96,-1.63,-1.62/-2.29,-2.26,-2.25)
+#                  logprob:train/valid[43,65,final]=(-0.191,-0.141,-0.139/-0.271,-0.284,-0.283)
+# 104-pashto       | %WER 41.3 | 21825 101803 | 63.0 26.7 10.3 4.2 41.3 30.2 | -0.506 | exp/chain_cleaned/tdnn_lstm_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+#                  num-iters=85 nj=2..12 num-params=36.8M dim=43+100->3328 combine=-0.156->-0.146
+#                  xent:train/valid[55,84,final]=(-1.81,-1.52,-1.50/-2.22,-2.18,-2.17)
+#                  logprob:train/valid[55,84,final]=(-0.168,-0.125,-0.124/-0.260,-0.269,-0.268)
+
 
 set -e -o pipefail
 

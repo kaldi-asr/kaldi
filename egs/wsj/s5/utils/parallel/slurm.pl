@@ -399,7 +399,7 @@ print Q "fi\n";
 print Q "time1=\`date +\"%s\"\`\n";
 print Q " ( $cmd ) &>>$logfile\n";
 print Q "ret=\$?\n";
-print Q "sync || true";
+print Q "sync || true\n";
 print Q "time2=\`date +\"%s\"\`\n";
 print Q "echo '#' Accounting: begin_time=\$time1 >>$logfile\n";
 print Q "echo '#' Accounting: end_time=\$time2 >>$logfile\n";

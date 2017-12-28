@@ -40,7 +40,7 @@ int32 TypeOneUsage(const ParseOptions &po,
   // Input matrices
   SequentialBaseFloatMatrixReader matrix_reader1(matrix_in_fn1);
   std::vector<RandomAccessBaseFloatMatrixReader*>
-      matrix_readers(num_args-2, 
+      matrix_readers(num_args-2,
                      static_cast<RandomAccessBaseFloatMatrixReader*>(NULL));
   std::vector<std::string> matrix_in_fns(num_args-2);
   for (int32 i = 2; i < num_args; ++i) {
@@ -48,9 +48,9 @@ int32 TypeOneUsage(const ParseOptions &po,
     matrix_in_fns[i-2] = po.GetArg(i);
   }
 
-  int32 n_utts = 0, n_total_matrices = 0, 
+  int32 n_utts = 0, n_total_matrices = 0,
       n_success = 0, n_missing = 0, n_other_errors = 0;
-  
+
   for (; !matrix_reader1.Done(); matrix_reader1.Next()) {
     std::string key = matrix_reader1.Key();
     Matrix<BaseFloat> matrix1 = matrix_reader1.Value();
@@ -59,7 +59,7 @@ int32 TypeOneUsage(const ParseOptions &po,
     n_total_matrices++;
 
     matrix1.Scale(scale1);
-    
+
     Matrix<BaseFloat> matrix_out(matrix1);
 
     for (int32 i = 0; i < num_args-2; ++i) {
@@ -71,7 +71,7 @@ int32 TypeOneUsage(const ParseOptions &po,
           // note: i == 0 corresponds to the 2nd input archive.
           matrix_out.AddMat(scale, matrix2, kNoTrans);
         } else {
-          KALDI_WARN << "Dimension mismatch for utterance " << key 
+          KALDI_WARN << "Dimension mismatch for utterance " << key
                      << " : " << matrix2.NumRows() << " by "
                      << matrix2.NumCols() << " for "
                      << "system " << (i + 2) << ", rspecifier: "
@@ -97,9 +97,9 @@ int32 TypeOneUsage(const ParseOptions &po,
             << " different systems";
   KALDI_LOG << "Produced output for " << n_success << " utterances; "
             << n_missing << " total missing matrices";
-  
+
   DeletePointers(&matrix_readers);
-  
+
   return (n_success != 0 && n_missing < (n_success - n_missing)) ? 0 : 1;
 }
 
@@ -110,13 +110,13 @@ int32 TypeTwoUsage(const ParseOptions &po,
                "matrix-sum: first argument must be an rspecifier");
   // if next assert fails it would be bug in the code as otherwise we shouldn't
   // be called.
-  KALDI_ASSERT(ClassifyWspecifier(po.GetArg(2), NULL, NULL, NULL) == 
+  KALDI_ASSERT(ClassifyWspecifier(po.GetArg(2), NULL, NULL, NULL) ==
                kNoWspecifier);
 
   SequentialBaseFloatMatrixReader mat_reader(po.GetArg(1));
 
   Matrix<double> sum;
-  
+
   int32 num_done = 0, num_err = 0;
 
   for (; !mat_reader.Done(); mat_reader.Next()) {
@@ -151,7 +151,7 @@ int32 TypeTwoUsage(const ParseOptions &po,
 // sum a bunch of single files to produce a single file [including
 // extended filenames, of course]
 int32 TypeThreeUsage(const ParseOptions &po,
-                     bool binary) {
+                     bool binary, bool average) {
   KALDI_ASSERT(po.NumArgs() >= 2);
   for (int32 i = 1; i < po.NumArgs(); i++) {
     if (ClassifyRspecifier(po.GetArg(i), NULL, NULL) != kNoRspecifier) {
@@ -159,7 +159,7 @@ int32 TypeThreeUsage(const ParseOptions &po,
                 << "tables, the intermediate arguments must not be tables.";
     }
   }
-  if (ClassifyWspecifier(po.GetArg(po.NumArgs()), NULL, NULL, NULL) != 
+  if (ClassifyWspecifier(po.GetArg(po.NumArgs()), NULL, NULL, NULL) !=
       kNoWspecifier) {
     KALDI_ERR << "Wrong usage (type 3): if first and last arguments are not "
               << "tables, the intermediate arguments must not be tables.";
@@ -173,6 +173,8 @@ int32 TypeThreeUsage(const ParseOptions &po,
     // this Read function will throw if there is a size mismatch.
     mat.Read(ki.Stream(), binary_in, add);
   }
+  if (average)
+    mat.Scale(1.0 / (po.NumArgs() - 1));
   WriteKaldiObject(mat, po.GetArg(po.NumArgs()), binary);
   KALDI_LOG << "Summed " << (po.NumArgs() - 1) << " matrices; "
             << "wrote sum to " << PrintableWxfilename(po.GetArg(po.NumArgs()));
@@ -200,7 +202,8 @@ int main(int argc, char *argv[]) {
         "Type two usage (sums a single table input to produce a single output):\n"
         " matrix-sum [options] <matrix-in-rspecifier> <matrix-out-wxfilename>\n"
         " e.g.: matrix-sum --binary=false mats.ark sum.mat\n"
-        "Type three usage (sums single-file inputs to produce a single output):\n"
+        "Type three usage (sums or averages single-file inputs to produce\n"
+        "a single output):\n"
         " matrix-sum [options] <matrix-in-rxfilename1> <matrix-in-rxfilename2> ..."
         " <matrix-out-wxfilename>\n"
         " e.g.: matrix-sum --binary=false 1.mat 2.mat 3.mat sum.mat\n"
@@ -208,6 +211,7 @@ int main(int argc, char *argv[]) {
 
 
     BaseFloat scale1 = 1.0, scale2 = 1.0;
+    bool average = false;
     bool binary = true;
 
     ParseOptions po(usage);
@@ -218,13 +222,17 @@ int main(int argc, char *argv[]) {
                 "(only for type one usage)");
     po.Register("binary", &binary, "If true, write output as binary (only "
                 "relevant for usage types two or three");
-    
+    po.Register("average", &average, "If true, compute average instead of "
+                "sum; only currently compatible with type 3 usage.");
+
     po.Read(argc, argv);
-    
+
     int32 N = po.NumArgs(), exit_status;
-    
+
     if (po.NumArgs() >= 2 &&
         ClassifyWspecifier(po.GetArg(N), NULL, NULL, NULL) != kNoWspecifier) {
+      if (average)
+        KALDI_ERR << "--average option not compatible with type one usage.";
       // output to table.
       exit_status = TypeOneUsage(po, scale1, scale2);
     } else if (po.NumArgs() == 2 &&
@@ -232,6 +240,8 @@ int main(int argc, char *argv[]) {
                ClassifyWspecifier(po.GetArg(N), NULL, NULL, NULL) ==
                kNoWspecifier) {
       KALDI_ASSERT(scale1 == 1.0 && scale2 == 1.0);
+      if (average)
+        KALDI_ERR << "--average option not compatible with type two usage.";
       // input from a single table, output not to table.
       exit_status = TypeTwoUsage(po, binary);
     } else if (po.NumArgs() >= 2 &&
@@ -239,8 +249,8 @@ int main(int argc, char *argv[]) {
                ClassifyWspecifier(po.GetArg(N), NULL, NULL, NULL) == kNoWspecifier) {
       KALDI_ASSERT(scale1 == 1.0 && scale2 == 1.0);
       // summing flat files.
-      exit_status = TypeThreeUsage(po, binary);
-    } else {      
+      exit_status = TypeThreeUsage(po, binary, average);
+    } else {
       po.PrintUsage();
       exit(1);
     }
@@ -250,5 +260,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-
