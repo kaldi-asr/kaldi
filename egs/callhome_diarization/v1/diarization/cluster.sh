@@ -79,7 +79,7 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: computing RTTM"
-  python diarization/make_rttm.py $srcdir/segments $dir/labels > $dir/rttm || exit 1;
+  diarization/make_rttm.py $srcdir/segments $dir/labels $dir/rttm || exit 1;
 fi
 
 if $cleanup ; then

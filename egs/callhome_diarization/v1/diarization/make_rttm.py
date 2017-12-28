@@ -1,73 +1,124 @@
-#!/bin/bash
+#!/usr/bin/env python
 
 # Copyright  2016  David Snyder
+#            2017  Matthew Maciejewski
 # Apache 2.0.
-# TODO, script needs some work, error handling, etc
 
+"""This script converts a segments and labels file to a NIST RTTM
+file. It handles overlapping segments (e.g. the output of a sliding-
+window diarization system).
+
+The segments file format is:
+<segment-id> <recording-id> <start-time> <end-time>
+The labels file format is:
+<segment-id> <speaker-id>
+
+The output RTTM format is:
+<type> <file> <chnl> <tbeg> \
+        <tdur> <ortho> <stype> <name> <conf> <slat>
+where:
+<type> = "SPEAKER"
+<file> = <recording-id>
+<chnl> = "0"
+<tbeg> = start time of segment
+<tdur> = duration of segment
+<ortho> = "<NA>"
+<stype> = "<NA>"
+<name> = <speaker-id>
+<conf> = "<NA>"
+<slat> = "<NA>"
+"""
+
+from __future__ import print_function
+import argparse
 import sys
 
-segments_fi = open(sys.argv[1], 'r').readlines()
-label_fi = open(sys.argv[2], 'r').readlines()
+sys.path.insert(0, 'steps')
+import libs.common as common_lib
 
-# File containing speaker labels per utt
-seg2label = {}
-for l in label_fi:
-  seg, label = l.rstrip().split()
-  seg2label[seg] = label
+def get_args():
+  parser = argparse.ArgumentParser(
+    description="""This script converts a segments and labels file
+    to a NIST RTTM file. It handles overlapping segments (e.g. the
+    output of a sliding-window diarization system).""")
 
-# Segments file
-utt2seg = {}
-for l in segments_fi:
-  seg, utt, s, e = l.rstrip().split()
-  if utt in utt2seg:
-    utt2seg[utt] = utt2seg[utt] + " " + s + "," + e + "," + seg2label[seg]
-  else:
-    utt2seg[utt] = utt + " " + s + "," + e + "," + seg2label[seg]
+  parser.add_argument("segments", type=str,
+                      help="Input segments file")
+  parser.add_argument("labels", type=str,
+                      help="Input labels file")
+  parser.add_argument("rttm_file", type=str,
+                      help="Output RTTM file")
 
+  args = parser.parse_args()
+  return args
 
-# TODO Cut up the segments so that they are contiguous
-diarization1 = []
-for utt in utt2seg:
-  l = utt2seg[utt]
-  t = l.rstrip().split()
-  utt = t[0]
-  rhs = ""
-  for i in range(1,len(t)-1):
-    s, e, label = t[i].split(',')
-    s_next, e_next, label_next = t[i+1].split(',')
-    if float(e) > float(s_next):
-      avg = str((float(s_next) + float(e)) / 2.0)
-      t[i+1] = ','.join([avg, e_next, label_next])
-      rhs += " " + s + "," + avg + "," + label
-    else:
-      rhs += " " + s + "," + e + "," + label
-  s, e, label = t[-1].split(',')
-  rhs += " " + s + "," + e + "," + label
-  diarization1.append(utt + rhs)
+def main():
+  args = get_args()
 
-# TODO Merge the contiguous segments that belong to the same speaker
-diarization2 = []
-for l in diarization1:
-  t = l.rstrip().split()
-  utt = t[0]
-  rhs = ""
-  for i in range(1,len(t)-1):
-    s, e, label = t[i].split(',')
-    s_next, e_next, label_next = t[i+1].split(',')
-    if float(e) == float(s_next) and label == label_next:
-      t[i+1] = ','.join([s, e_next, label_next])
-    else:
-      rhs += " " + s + "," + e + "," + label
-  s, e, label = t[-1].split(',')
-  rhs += " " + s + "," + e + "," + label
-  diarization2.append(utt + rhs)
+  # File containing speaker labels per segment
+  seg2label = {}
+  with common_lib.smart_open(args.labels) as labels_file:
+    for line in labels_file:
+      seg, label = line.strip().split()
+      seg2label[seg] = label
 
+  # Segments file
+  reco2segs = {}
+  with common_lib.smart_open(args.segments) as segments_file:
+    for line in segments_file:
+      seg, reco, start, end = line.strip().split()
+      try:
+        if reco in reco2segs:
+          reco2segs[reco] = reco2segs[reco] + " " + start + "," + end + "," + seg2label[seg]
+        else:
+          reco2segs[reco] = reco + " " + start + "," + end + "," + seg2label[seg]
+      except KeyError:
+        raise RuntimeError("Missing label for segment {0}".format(seg))
 
-for l in diarization2:
-  t = l.rstrip().split()
-  utt = t[0]
-  for i in range(1, len(t)):
-    s, e, label = t[i].rstrip().split(',')
-    print "SPEAKER", utt, 0, s, float(e) - float(s), "<NA> <NA>", label, "<NA> <NA>"
+  # Cut up overlapping segments so they are contiguous
+  contiguous_segs = []
+  for reco in reco2segs:
+    segs = reco2segs[reco].strip().split()
+    new_segs = ""
+    for i in range(1, len(segs)-1):
+      start, end, label = segs[i].split(',')
+      next_start, next_end, next_label = segs[i+1].split(',')
+      if float(end) > float(next_start):
+        done = False
+        avg = str((float(next_start) + float(end)) / 2.0)
+        segs[i+1] = ','.join([avg, next_end, next_label])
+        new_segs += " " + start + "," + avg + "," + label
+      else:
+        new_segs += " " + start + "," + end + "," + label
+    start, end, label = segs[-1].split(',')
+    new_segs += " " + start + "," + end + "," + label
+    contiguous_segs.append(reco + new_segs)
 
+  # Merge contiguous segments of the same label
+  merged_segs = []
+  for reco_line in contiguous_segs:
+    segs = reco_line.strip().split()
+    reco = segs[0]
+    new_segs = ""
+    for i in range(1, len(segs)-1):
+      start, end, label = segs[i].split(',')
+      next_start, next_end, next_label = segs[i+1].split(',')
+      if float(end) == float(next_start) and label == next_label:
+        segs[i+1] = ','.join([start, next_end, next_label])
+      else:
+        new_segs += " " + start + "," + end + "," + label
+    start, end, label = segs[-1].split(',')
+    new_segs += " " + start + "," + end + "," + label
+    merged_segs.append(reco + new_segs)
 
+  with common_lib.smart_open(args.rttm_file, 'w') as rttm_writer:
+    for reco_line in merged_segs:
+      segs = reco_line.strip().split()
+      reco = segs[0]
+      for i in range(1, len(segs)):
+        start, end, label = segs[i].strip().split(',')
+        print("SPEAKER {0} 0 {1:7.3f} {2:7.3f} <NA> <NA> {3} <NA> <NA>".format(
+          reco, float(start), float(end)-float(start), label), file=rttm_writer)
+
+if __name__ == '__main__':
+  main()
