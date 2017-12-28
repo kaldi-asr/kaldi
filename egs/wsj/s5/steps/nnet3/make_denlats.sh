@@ -158,7 +158,7 @@ fi
 
 lattice_determinize_cmd=
 if $determinize; then
-  lattice_determinize_cmd="lattice-determinize-phone-pruned --write-compact=false --acoustic-scale=$acwt --max-mem=$max_mem --minimize=$minimize --beam=$lattice_beam ark:- ark:- |"
+  lattice_determinize_cmd="lattice-determinize-non-compact --acoustic-scale=$acwt --max-mem=$max_mem --minimize=$minimize --prune=true --beam=$lattice_beam ark:- ark:- |"
 fi
 
 if [ $sub_split -eq 1 ]; then
