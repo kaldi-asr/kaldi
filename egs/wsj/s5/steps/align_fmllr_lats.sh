@@ -7,7 +7,7 @@
 # alignments of alternative pronunciations in them.  Mainly intended
 # as a precursor to CTC training for now.
 
-# Begin configuration section.  
+# Begin configuration section.
 stage=0
 nj=4
 cmd=run.pl
@@ -23,6 +23,7 @@ final_beam=20  # For the lattice-generation phase there is no retry-beam.  This
                # gmm-latgen-faster defaults to may help.)
 boost_silence=1.0 # factor by which to boost silence during alignment.
 fmllr_update_type=full
+generate_ali_from_lats=false # If true, alingments generated from lattices.
 # End configuration options.
 
 echo "$0 $@"  # Print the command line for logging
@@ -96,7 +97,7 @@ mdl_cmd="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/optional_sil
 ## because the other scripts write them without transition probs.
 if [ $stage -le 0 ]; then
   echo "$0: compiling training graphs"
-  tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";   
+  tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log  \
     compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $scale_opts $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
     "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
@@ -140,7 +141,7 @@ if [ $stage -le 3 ]; then
   # Warning: gmm-latgen-faster doesn't support a retry-beam so you may get more
   # alignment errors (however, it does have a default min-active=200 so this
   # will tend to reduce alignment errors).
-  # --allow_partial=false makes sure we reach the end of the decoding graph.  
+  # --allow_partial=false makes sure we reach the end of the decoding graph.
   # --word-determinize=false makes sure we retain the alternative pronunciations of
   #   words (including alternatives regarding optional silences).
   #  --lattice-beam=$beam keeps all the alternatives that were within the beam,
@@ -154,7 +155,14 @@ if [ $stage -le 3 ]; then
       "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 fi
 
-rm $dir/pre_ali.*.gz
+if [ $stage -le 4 ] && $generate_ali_from_lats; then
+  # If generate_alignments is true, ali.*.gz is generated in lats dir
+  $cmd JOB=1:$nj $dir/log/generate_alignments.JOB.log \
+    lattice-best-path --acoustic-scale=$acoustic_scale "ark:gunzip -c $dir/lat.JOB.gz |" \
+    ark:/dev/null "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
+fi
+
+rm $dir/pre_ali.*.gz 2>/dev/null || true
 
 echo "$0: done generating lattices from training transcripts."
 

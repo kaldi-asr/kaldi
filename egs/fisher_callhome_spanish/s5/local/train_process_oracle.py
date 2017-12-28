@@ -17,7 +17,7 @@ open('/export/a04/gkumar/kaldi-trunk/egs/fishcall_es/j-9/exp/tri5a/decode_test/o
 open('/export/a04/gkumar/kaldi-trunk/egs/fishcall_es/j-10/exp/tri5a/decode_test/oracle/oracle.tra')]
 
 def findTranscription(timeDetail):
-    
+
     for file1 in files:
         file1.seek(0,0)
         for line in file1:
@@ -40,7 +40,7 @@ for line in wordsFile:
 fileList = []
 #conversationList = open('/export/a04/gkumar/corpora/fishcall/joshkal-splits/provisional_dev')
 conversationList = open('/export/a04/gkumar/corpora/fishcall/jack-splits/split-matt/train')
-for line in conversationList: 
+for line in conversationList:
     line = line.strip()
     line = line[:-4]
     fileList.append(line)
@@ -76,4 +76,4 @@ provFile.close()
 
 
 
-   
+

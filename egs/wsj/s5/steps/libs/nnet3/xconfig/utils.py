@@ -14,6 +14,8 @@ import sys
 # Given a list of objects of type XconfigLayerBase ('all_layers'),
 # including at least the layers preceding 'current_layer' (and maybe
 # more layers), return the names of layers preceding 'current_layer'
+# other than layers of type 'existing', which corresponds to component-node
+# names from an existing model that we are adding layers to them.
 # This will be used in parsing expressions like [-1] in descriptors
 # (which is an alias for the previous layer).
 def get_prev_names(all_layers, current_layer):
@@ -21,7 +23,14 @@ def get_prev_names(all_layers, current_layer):
     for layer in all_layers:
         if layer is current_layer:
             break
-        prev_names.append(layer.get_name())
+
+        # The following if-statement is needed to handle the case where the
+        # the layer is an 'existing' layer, derived from an existing trained
+        # neural network supplied via the existing-model option, that we are
+        # adding layers to. In this case, these layers are not considered as
+        # layers preceding 'current_layer'.
+        if layer.layer_type is not 'existing':
+            prev_names.append(layer.get_name())
     prev_names_set = set()
     for name in prev_names:
         if name in prev_names_set:
@@ -33,7 +42,6 @@ def get_prev_names(all_layers, current_layer):
 
 # This is a convenience function to parser the auxiliary output name from the
 # full layer name
-
 def split_layer_name(full_layer_name):
     assert isinstance(full_layer_name, str)
     split_name = full_layer_name.split('.')
@@ -60,9 +68,27 @@ def get_dim_from_layer_name(all_layers, current_layer, full_layer_name):
     for layer in all_layers:
         if layer is current_layer:
             break
+
+        # If 'all_layers' contains some 'existing' layers, i.e. layers which
+        # are not really layers but are actual component names from an existing
+        # neural net that we are adding components to, they may already be
+        # of the form 'xxx.yyy', e.g. 'tdnn1.affine'.  In this case the name of
+        # the layer in 'all_layers' won't be just the 'xxx' part (e.g. 'tdnn1'),
+        # it will be the full thing, like 'tdnn1.affine'.
+        # We will also use the if-statement immediately below this comment for
+        # regular layers, e.g. where full_layer_name is something like 'tdnn2'.
+        # The if-statement below the next one, that uses
+        # auxiliary_output, will only be used in the (rare) case when we are
+        # using auxiliary outputs, e.g. 'lstm1.c'.
+        if layer.get_name() == full_layer_name:
+            return  layer.output_dim()
+
         if layer.get_name() == layer_name:
-            if not auxiliary_output in layer.auxiliary_outputs() and auxiliary_output is not None:
-                raise RuntimeError("Layer '{0}' has no such auxiliary output: '{1}' ({0}.{1})".format(layer_name, auxiliary_output))
+            if (not auxiliary_output in layer.auxiliary_outputs()
+                and auxiliary_output is not None):
+                raise RuntimeError("Layer '{0}' has no such auxiliary output:"
+                                   "'{1}' ({0}.{1})".format(layer_name,
+                                                            auxiliary_output))
             return layer.output_dim(auxiliary_output)
     # No such layer was found.
     if layer_name in [ layer.get_name() for layer in all_layers ]:
@@ -85,9 +111,24 @@ def get_string_from_layer_name(all_layers, current_layer, full_layer_name):
     for layer in all_layers:
         if layer is current_layer:
             break
+
+        # The following if-statement is needed to handle the case where the
+        # layer is an 'existing' layer, derived from an existing trained
+        # neural network supplied via the --existing-model option, that we are
+        # adding layers to.  In this case the name of the layer will actually
+        # be of the form xxx.yyy, e.g. 'tdnn1.affine'.
+        # The code path will also be taken for regular (non-'existing') layer
+        # names where the 'auxiliary_output' field is not used, which is actually
+        # the normal case (e.g. when 'full_layer_name' is 'lstm1',
+        # as opposed to, say, 'lstm1.c'
+        if layer.get_name() == full_layer_name:
+            return layer.output_name()
+
         if layer.get_name() == layer_name:
-            if not auxiliary_output in layer.auxiliary_outputs() and auxiliary_output is not None:
-                raise RuntimeError("Layer '{0}' has no such auxiliary output: '{1}' ({0}.{1})".format(
+            if (not auxiliary_output in layer.auxiliary_outputs() and
+                auxiliary_output is not None):
+                raise RuntimeError("Layer '{0}' has no such auxiliary output: "
+                                   "'{1}' ({0}.{1})".format(
                     layer_name, auxiliary_output))
             return layer.output_name(auxiliary_output)
     # No such layer was found.
@@ -414,7 +455,7 @@ def parse_new_descriptor(tokens, pos, prev_names):
 # If there are no such expressions in the string, it's OK if
 # prev_names == None (this is useful for testing).
 def replace_bracket_expressions_in_descriptor(descriptor_string,
-                                         prev_names = None):
+                                              prev_names = None):
     fields = re.split(r'(\[|\])\s*', descriptor_string)
     out_fields = []
     i = 0
@@ -448,6 +489,12 @@ def replace_bracket_expressions_in_descriptor(descriptor_string,
 # output nodes) is needed to process expressions like [-1] meaning the most
 # recent layer, or [-2] meaning the last layer but one.
 # The default None for prev_names is only supplied for testing purposes.
+# Called with 'Append(-1, 0, 1)' this would return
+# [ 'Append', '(',  '-1', ',', '0', ',', '1' ')' ].
+# for a more complicated example: if you call
+#   tokenize_descriptor('Append(-1, 0, 1, [-2]@0)', prev_names = ['a', 'b', 'c', 'd'])
+# the [-2] would get replaced with prev_names[-2] = 'c', returning:
+#  [ 'Append', '(', '-1', ',', '0', ',', '1', ',', 'c', '@', '0', ')' ]
 def tokenize_descriptor(descriptor_string,
                        prev_names = None):
     # split on '(', ')', ',', '@', and space.  Note: the parenthesis () in the
@@ -456,7 +503,7 @@ def tokenize_descriptor(descriptor_string,
     # tokens.
     fields = re.split(r'(\(|\)|@|,|\s)\s*',
                       replace_bracket_expressions_in_descriptor(descriptor_string,
-                                                            prev_names))
+                                                                prev_names))
     ans = []
     for f in fields:
         # don't include fields that are space, or are empty.
@@ -512,20 +559,26 @@ def parse_config_line(orig_config_line):
     if not len(positions) % 2 == 0:
         raise RuntimeError("Double-quotes should occur in pairs")
 
-    # add the " enclosed strings and corresponding keys to the dict
-    # and remove them from the rest_of_line
+    # Replace all the equals signs inside the "-enclosed strings
+    # with question marks ('?') [this is just an arbitrary character
+    # that won't otherwise be present, search above for 'banned'],
+    # and replace the quotation marks themselves with spaces.
+    # Then later on we'll convert all the question marks to
+    # equals signs in the values in the dicts.
     num_strings = len(positions) / 2
     fields = []
     for i in range(num_strings):
         start = positions[i * 2]
         end = positions[i * 2 + 1]
-        rest_of_line_after = rest_of_line[end + 1:]
-        parts = rest_of_line[:start].split()
-        rest_of_line_before = ' '.join(parts[:-1])
-        assert(parts[-1][-1] == '=')
-        fields.append(parts[-1][:-1])
-        fields.append(rest_of_line[start + 1 : end])
-        rest_of_line = rest_of_line_before + ' ' + rest_of_line_after
+
+        line_before_start = rest_of_line[:start]
+        inside_quotes=rest_of_line[start+1:end].replace('=', '?')
+        line_after_end = rest_of_line[end + 1:]
+        # the reason why we include the spaces here, is to keep the length of
+        # rest_of_line the same, and the positions in 'positions' valid.
+        new_rest_of_line = line_before_start + ' ' + inside_quotes + ' ' + line_after_end
+        assert len(new_rest_of_line) == len(rest_of_line)
+        rest_of_line = new_rest_of_line
 
     # suppose rest_of_line is: 'input=Append(foo, bar) foo=bar'
     # then after the below we'll get
@@ -545,7 +598,12 @@ def parse_config_line(orig_config_line):
         if var_name in ans_dict:
             raise RuntimeError("Config line has multiply defined variable {0}: {1}".format(
                 var_name, orig_config_line))
-        ans_dict[var_name] = var_value
+        # Teplace any '?' characters that we inserted above, with the original
+        # '=' characters.
+        # The 'strip()' is to remove initial and final spaces that we might
+        # have inserted while processing double-quotes above (search above
+        # for the string 'inside_quotes' to see what is meant by this).
+        ans_dict[var_name] = var_value.replace('?', '=').strip()
     return (first_token, ans_dict)
 
 
@@ -584,7 +642,7 @@ def test_library():
 
 
     print(parse_config_line('affine-layer input=Append(foo, bar) foo=bar'))
-    print(parse_config_line('affine-layer input=Append(foo, bar) foo=bar opt2="a=1 b=2"'))
+    print(parse_config_line('affine-layer x="y z" input=Append(foo, bar) foo=bar opt2="a=1 b=2"'))
     print(parse_config_line('affine-layer1 input=Append(foo, bar) foo=bar'))
     print(parse_config_line('affine-layer'))
 

@@ -6,7 +6,7 @@
 
 # To be run from one directory above this script.
 
-. path.sh
+. ./path.sh
 
 #check existing directories
 if [ $# != 1 ]; then

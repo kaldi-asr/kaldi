@@ -190,7 +190,7 @@ while [ $x -lt $num_iters ]; do
                                       # can be sure the queue will support this many.
     $cmd $parallel_opts $dir/log/update.$x.log \
       ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
-	rm $dir/acc.$x.*
+    rm $dir/acc.$x.*
     if $cleanup; then
       rm $dir/acc.$x
     fi

@@ -135,20 +135,20 @@ while [ $x -lt $num_iters ]; do
     done
     wait
     [ -f $dir/.error ] && echo "Error accumulating stats on iteration $x" && exit 1;
-	accs=""
-	for j in $(seq $nj); do
-	  accs+="$dir/acc.$x.$j "
-	done
-	echo "Summing accs (pass $x)"
-	$cmd $sum_accs_opt $dir/log/sum_acc.$x.log \
-	  ivector-extractor-sum-accs $accs $dir/acc.$x || exit 1;
+    accs=""
+    for j in $(seq $nj); do
+      accs+="$dir/acc.$x.$j "
+    done
+    echo "Summing accs (pass $x)"
+    $cmd $sum_accs_opt $dir/log/sum_acc.$x.log \
+      ivector-extractor-sum-accs $accs $dir/acc.$x || exit 1;
     echo "Updating model (pass $x)"
     nt=$[$num_threads*$num_processes] # use the same number of threads that
                                       # each accumulation process uses, since we
                                       # can be sure the queue will support this many.
-	$cmd --num-threads $nt $dir/log/update.$x.log \
-	  ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
-	rm $dir/acc.$x.*
+    $cmd --num-threads $nt $dir/log/update.$x.log \
+      ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
+    rm $dir/acc.$x.*
     if $cleanup; then
       rm $dir/acc.$x
       # rm $dir/$x.ie

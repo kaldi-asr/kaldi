@@ -124,9 +124,17 @@ static bool UnitTestNnetOptimizeWithOptions(int32 srand_seed,
     CuMatrix<BaseFloat> temp2(inputs[i]);
     computer_opt.AcceptInput(request.inputs[i].name, &temp2);
   }
+
+
+
+
   KALDI_LOG << "Running non-optimized forward computation";
+  srand(srand_seed);
+  ResetGenerators(&nnet);
   computer.Run();
   KALDI_LOG << "Running optimized forward computation";
+  srand(srand_seed);
+  ResetGenerators(&nnet_opt);
   computer_opt.Run();
 
   const CuMatrixBase<BaseFloat> &output(computer.GetOutput("output"));
@@ -300,7 +308,7 @@ static void UnitTestNnetOptimize() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-  // SetVerboseLevel(3);
+  SetVerboseLevel(3);
 
 #if HAVE_CUDA == 1
   CuDevice::Instantiate().SetDebugStrideMode(true);

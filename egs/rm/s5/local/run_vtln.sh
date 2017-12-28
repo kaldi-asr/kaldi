@@ -4,7 +4,7 @@
 # VTLN warps is based on delta+delta-deltas.
 # see also run_vtln2.sh where the system uses LDA+MLLT instead.
 
-. cmd.sh
+. ./cmd.sh
 featdir=mfcc
 set -e
 
