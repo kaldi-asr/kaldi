@@ -28,6 +28,7 @@ baseline=advanced
 flatstart=false
 tdnn=false
 tdnn_lstm=false
+run_lstm_rescore=true
 
 . utils/parse_options.sh || exit 1;
 
@@ -155,6 +156,10 @@ if [ $stage -le 4 ]; then
       local/run_lmrescore_recog.sh $enhancement_method $modeldir
     fi
   fi
+fi
+
+if [ $stage -le 5 ] && $run_lstm_rescore; then
+  local/rnnlm/tuning/run_lstm_1a.sh $enhancement_method
 fi
 
 echo "Done."
