@@ -1,6 +1,7 @@
 #!/bin/bash
+
 mic=ihm
-ngram_order=3 # this option when used, the rescoring binary makes an approximation
+ngram_order=4 # this option when used, the rescoring binary makes an approximation
     # to merge the states of the FST generated from RNNLM. e.g. if ngram-order = 4
     # then any history that shares last 3 words would be merged into one state
 stage=1
@@ -14,7 +15,7 @@ weight=0.5   # when we do lattice-rescoring, instead of replacing the lm-weights
 
 set -e
 
-dir=data/tensorflow_fast_lstm
+dir=data/tensorflow_gru
 mkdir -p $dir
 
 steps/tfrnnlm/check_tensorflow_installed.sh
@@ -27,7 +28,8 @@ mkdir -p $dir
 if [ $stage -le 2 ]; then
 # the following script uses TensorFlow. You could use tools/extras/install_tensorflow_py.sh to install it
   $cuda_cmd $dir/train_rnnlm.log utils/parallel/limit_num_gpus.sh \
-    python -u steps/tfrnnlm/lstm_fast.py --data-path=$dir --save-path=$dir/rnnlm --vocab-path=$dir/wordlist.rnn.final
+    python steps/tfrnnlm/gru.py --data-path=$dir --save-path=$dir/rnnlm \
+    --vocab-path=$dir/wordlist.rnn.final
 fi
 
 final_lm=ami_fsh.o3g.kn
@@ -38,21 +40,13 @@ if [ $stage -le 3 ]; then
     basedir=exp/$mic/nnet3/tdnn_sp/
     decode_dir=${basedir}/decode_${decode_set}
 
-# pruned lattice rescoring
+    # Lattice rescoring
     steps/tfrnnlm/lmrescore_rnnlm_lat_pruned.sh \
       --cmd "$tfrnnlm_cmd --mem 4G" \
       --weight $weight --max-ngram-order $ngram_order \
       data/lang_$LM $dir \
       data/$mic/${decode_set}_hires ${decode_dir} \
-      ${decode_dir}_tfrnnlm_lat_${ngram_order}gram  &
-
-# Lattice rescoring, unpruned (slow) version
-#    steps/tfrnnlm/lmrescore_rnnlm_lat.sh \
-#      --cmd "$tfrnnlm_cmd --mem 4G" \
-#      --weight $weight --max-ngram-order $ngram_order \
-#      data/lang_$LM $dir \
-#      data/$mic/${decode_set}_hires ${decode_dir} \
-#      ${decode_dir}_lat_${ngram_order}gram_unpruned  &
+      ${decode_dir}_tfrnnlm_lat_gru_${ngram_order}gram &
 
   done
 fi

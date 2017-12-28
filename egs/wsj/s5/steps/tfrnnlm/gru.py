@@ -1,5 +1,6 @@
 # Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 # Copyright (C) 2017 Intellisist, Inc. (Author: Hainan Xu)
+#               2017 Dongji Gao
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,12 +15,12 @@
 # limitations under the License.
 # ==============================================================================
 
-# this script trains a vanilla RNNLM with TensorFlow. 
+# this script trains a GRU RNNLM with TensorFlow. 
 # to call the script, do
-# python steps/tfrnnlm/lstm_fast.py --data-path=$datadir \
+# python steps/tfrnnlm/gru.py --data-path=$datadir \
 #        --save-path=$savepath --vocab-path=$rnn.wordlist [--hidden-size=$size]
 #
-# One example recipe is at egs/ami/s5/local/tfrnnlm/run_vanilla_rnnlm.sh
+# One example recipe is at egs/ami/s5/local/tfrnnlm/run_gru.sh
 
 from __future__ import absolute_import
 from __future__ import division
@@ -52,9 +53,8 @@ flags.DEFINE_bool("use-fp16", False,
 FLAGS = flags.FLAGS
 
 class Config(object):
-  """Small config."""
   init_scale = 0.1
-  learning_rate = 1
+  learning_rate = 1.0
   max_grad_norm = 5
   num_layers = 2
   num_steps = 20
@@ -62,26 +62,12 @@ class Config(object):
   max_epoch = 4
   max_max_epoch = 13
   keep_prob = 1.0
-  lr_decay = 0.8
+  lr_decay = 0.5
   batch_size = 64
 
 def data_type():
   return tf.float16 if FLAGS.use_fp16 else tf.float32
 
-# this new "softmax" function we show can train a "self-normalized" RNNLM where
-# the sum of the output is automatically (close to) 1.0
-# which saves a lot of computation for lattice-rescoring
-def new_softmax(labels, logits):
-  target = tf.reshape(labels, [-1])
-  f_logits = tf.exp(logits)
-  row_sums = tf.reduce_sum(f_logits, 1) # this is the negative part of the objf
-
-  t2 = tf.expand_dims(target, 1)
-  range = tf.expand_dims(tf.range(tf.shape(target)[0]), 1)
-  ind = tf.concat([range, t2], 1)
-  res = tf.gather_nd(logits, ind)
-
-  return -res + row_sums - 1
 
 class RnnlmInput(object):
   """The input data."""
@@ -105,41 +91,39 @@ class RnnlmModel(object):
     size = config.hidden_size
     vocab_size = config.vocab_size
 
-    def lstm_cell():
+    def gru_cell():
       # With the latest TensorFlow source code (as of Mar 27, 2017),
       # the BasicLSTMCell will need a reuse parameter which is unfortunately not
       # defined in TensorFlow 1.0. To maintain backwards compatibility, we add
       # an argument check here:
       if 'reuse' in inspect.getargspec(
-          tf.contrib.rnn.BasicLSTMCell.__init__).args:
-        return tf.contrib.rnn.BasicLSTMCell(
-            size, forget_bias=0.0, state_is_tuple=True,
-            reuse=tf.get_variable_scope().reuse)
+          tf.contrib.rnn.GRUCell.__init__).args:
+        return tf.contrib.rnn.GRUCell(
+            size, reuse=tf.get_variable_scope().reuse)
       else:
-        return tf.contrib.rnn.BasicLSTMCell(
-            size, forget_bias=0.0, state_is_tuple=True)
-    attn_cell = lstm_cell
+        return tf.contrib.rnn.GRUCell(size)
+
+    attn_cell = gru_cell
     if is_training and config.keep_prob < 1:
       def attn_cell():
         return tf.contrib.rnn.DropoutWrapper(
-            lstm_cell(), output_keep_prob=config.keep_prob)
+            gru_cell(), output_keep_prob=config.keep_prob)
     self.cell = tf.contrib.rnn.MultiRNNCell(
         [attn_cell() for _ in range(config.num_layers)], state_is_tuple=True)
-
+    # initialization
     self._initial_state = self.cell.zero_state(batch_size, data_type())
     self._initial_state_single = self.cell.zero_state(1, data_type())
+    self.initial = tf.reshape(tf.stack(axis=0, values=self._initial_state_single), [config.num_layers, 1, size], name="test_initial_state")
 
-    self.initial = tf.reshape(tf.stack(axis=0, values=self._initial_state_single), [config.num_layers, 2, 1, size], name="test_initial_state")
+    # first implement the less efficient version
+    # one word for test
+    test_word_in = tf.placeholder(tf.int32, [1, 1], name="test_word_in")
+    # set up gru state(tuple of two layers: first get a tensor, then change it to tuple)
+    state_placeholder = tf.placeholder(tf.float32, [config.num_layers, 1, size], name="test_state_in")
+    state_placeholder_tensor = tf.unstack(state_placeholder, axis=0)
+    test_input_state_tuple = tuple([state_placeholder_tensor[idx] for idx in range(config.num_layers)])
 
-    test_word_in = tf.placeholder(tf.int32, [None, 1], name="test_word_in")
-    state_placeholder = tf.placeholder(tf.float32, [config.num_layers, 2, None, size], name="test_state_in")
-
-    l = tf.unstack(state_placeholder, axis=0)
-    test_input_state = tuple(
-               [tf.contrib.rnn.LSTMStateTuple(l[idx][0],l[idx][1])
-                   for idx in range(config.num_layers)]
-    )
-
+    # word embedding
     with tf.device("/cpu:0"):
       self.embedding = tf.get_variable(
           "embedding", [vocab_size, size], dtype=data_type())
@@ -148,12 +132,12 @@ class RnnlmModel(object):
       test_inputs = tf.nn.embedding_lookup(self.embedding, test_word_in)
 
     # test time
+    # get the out put of test word(one is gru out state, one is for computing sorfmax)
     with tf.variable_scope("RNN"):
-      (test_cell_output, test_output_state) = self.cell(test_inputs[:, 0, :], test_input_state)
+      (test_cell_output, test_output_state) = self.cell(test_inputs[:, 0, :], test_input_state_tuple)
 
-    test_state_out = tf.reshape(tf.stack(axis=0, values=test_output_state), [config.num_layers, 2, -1, size], name="test_state_out")
-    test_cell_out = tf.reshape(test_cell_output, [-1, size], name="test_cell_out")
-
+    test_state_out = tf.reshape(tf.stack(axis=0, values=test_output_state), [config.num_layers, 1, size], name="test_state_out")
+    test_cell_out = tf.reshape(test_cell_output, [1, size], name="test_cell_out")
     # above is the first part of the graph for test
     # test-word-in
     #               > ---- > test-state-out
@@ -165,24 +149,19 @@ class RnnlmModel(object):
     #               > prob(word | test-word-out)
     # test-cell-in
 
-    test_word_out = tf.placeholder(tf.int32, [None, 1], name="test_word_out")
-    cellout_placeholder = tf.placeholder(tf.float32, [None, size], name="test_cell_in")
-
-    indices = tf.reshape(test_word_out, [-1])
+    test_word_out = tf.placeholder(tf.int32, [1, 1], name="test_word_out")
+    # what is the difference between test_cell_out and cellout_placeholder?
+    cellout_placeholder = tf.placeholder(tf.float32, [1, size], name="test_cell_in")
 
     softmax_w = tf.get_variable(
         "softmax_w", [size, vocab_size], dtype=data_type())
     softmax_b = tf.get_variable("softmax_b", [vocab_size], dtype=data_type())
-    softmax_b = softmax_b - 9.0
 
-    w_T = tf.transpose(softmax_w)
-    this_w_T = tf.gather(w_T, indices)
-    this_softmax_w = tf.transpose(this_w_T)
-    this_softmax_b = tf.gather(softmax_b, indices)
-  
-    test_logits = tf.diag_part(tf.matmul(cellout_placeholder, this_softmax_w)) + tf.reshape(tf.transpose(this_softmax_b), [-1])
+    test_logits = tf.matmul(cellout_placeholder, softmax_w) + softmax_b
+    test_softmaxed = tf.nn.log_softmax(test_logits)
 
-    test_out = tf.reshape(test_logits, [-1], name="test_out")
+    p_word = test_softmaxed[0, test_word_out[0,0]]
+    test_out = tf.identity(p_word, name="test_out")
 
     if is_training and config.keep_prob < 1:
       inputs = tf.nn.dropout(inputs, config.keep_prob)
@@ -209,8 +188,7 @@ class RnnlmModel(object):
     loss = tf.contrib.legacy_seq2seq.sequence_loss_by_example(
         [logits],
         [tf.reshape(input_.targets, [-1])],
-        [tf.ones([batch_size * num_steps], dtype=data_type())],
-        softmax_loss_function=new_softmax)
+        [tf.ones([batch_size * num_steps], dtype=data_type())])
     self._cost = cost = tf.reduce_sum(loss) / batch_size
     self._final_state = state
 
@@ -273,14 +251,12 @@ def run_epoch(session, model, eval_op=None, verbose=False):
 
   for step in range(model.input.epoch_size):
     feed_dict = {}
-    for i, (c, h) in enumerate(model.initial_state):
-      feed_dict[c] = state[i].c
-      feed_dict[h] = state[i].h
+    for i, h in enumerate(model.initial_state):
+      feed_dict[h] = state[i]
 
     vals = session.run(fetches, feed_dict)
     cost = vals["cost"]
     state = vals["final_state"]
-
 
     costs += cost
     iters += model.input.num_steps

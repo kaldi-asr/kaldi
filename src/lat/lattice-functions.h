@@ -377,6 +377,19 @@ void ComposeCompactLatticeDeterministic(
     fst::DeterministicOnDemandFst<fst::StdArc>* det_fst,
     CompactLattice* composed_clat);
 
+/// This function is very similar to the function above. The difference is that
+/// instead of using the DeterministicOnDemandFst interface, we use a
+/// DeterministicOnDemandFstParallel interface, which instead of querying the TF
+/// model sequentially, it computes them in a ``batched'' mode which takes
+/// significantly less time in computation.
+/// max_parallel_size is a variable which we use to limit the batch-size of
+/// the queries to TF models.
+void ComposeCompactLatticeDeterministicParallel(
+    const CompactLattice& clat,
+    fst::DeterministicOnDemandFstParallel<fst::StdArc>* det_fst,
+    CompactLattice* composed_clat,
+    int32 max_parallel_size = 512);
+
 }  // namespace kaldi
 
 #endif  // KALDI_LAT_LATTICE_FUNCTIONS_H_

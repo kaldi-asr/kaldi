@@ -1,6 +1,7 @@
-// tensorflow-rnnlm.cc
+// tfrnnlm/tensorflow-rnnlm.cc
 
 // Copyright (C) 2017 Intellisist, Inc. (Author: Hainan Xu)
+//               2017 Dongji Gao, Hainan Xu
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -24,6 +25,9 @@
 #include "tensorflow/core/public/session.h"
 #include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/protobuf/meta_graph.pb.h"
+#include "tensorflow/cc/framework/scope.h"
+#include "tensorflow/cc/ops/standard_ops.h"
+#include "tensorflow/cc/client/client_session.h"
 
 #include "tfrnnlm/tensorflow-rnnlm.h"
 #include "util/stl-utils.h"
@@ -207,6 +211,78 @@ void KaldiTfRnnlmWrapper::AcquireInitialTensors() {
   }
 }
 
+void KaldiTfRnnlmWrapper::GetLogProbParallel(const std::vector<int32>& word_vector,
+                                             const std::vector<int32>& fst_word_vector,
+                                             const Tensor &state_to_context_tensor,
+                                             const Tensor &state_to_cell_tensor,
+                                             Tensor *new_context_tensor,
+                                             Tensor *new_cell_tensor,
+                                             std::vector<BaseFloat> *logprob_vector) {
+  KALDI_ASSERT(logprob_vector->size() == 0);
+  // Transform <word_vector> to <word_tensor>.
+  Tensor word_tensor(tensorflow::DT_INT32, {word_vector.size(), 1});
+  auto word_tensor_mapped = word_tensor.tensor<int32, 2>();
+  for (int i = 0; i < word_vector.size(); ++i) {
+    word_tensor_mapped(i, 0) = word_vector[i];
+  }
+
+  std::vector<std::pair<string, Tensor> > inputs;
+  std::vector<Tensor> outputs;
+
+  if (new_context_tensor != NULL) {
+    inputs =  {
+      {"Train/Model/test_word_in", word_tensor},
+      {"Train/Model/test_word_out", word_tensor},
+      {"Train/Model/test_state_in", state_to_context_tensor},
+      {"Train/Model/test_cell_in", state_to_cell_tensor},
+    };
+
+    // The session will initialize the outputs
+    // Run the sessin, evaluating our "c" operation from the graph.
+    Status status = session_->Run(inputs,
+        {"Train/Model/test_out",
+         "Train/Model/test_state_out",
+         "Train/Model/test_cell_out"}, {}, &outputs);
+    if (!status.ok()) {
+      KALDI_ERR << status.ToString();
+    }
+
+    *new_context_tensor = outputs[1];
+    *new_cell_tensor = outputs[2];
+  } else {
+    inputs = {
+      {"Train/Model/test_word_out", word_tensor},
+      {"Train/Model/test_cell_in", state_to_cell_tensor},
+    };
+
+    // Run the session, evluating our "c" operation form the graph.
+    Status status = session_->Run(inputs,
+        {"Train/Model/test_out"}, {}, &outputs);
+    if (!status.ok()) {
+      KALDI_ERR << status.ToString();
+    }
+  }
+
+  int32 word;
+  float ans, logprob;
+
+  for (int i = 0; i < word_vector.size(); ++i) {
+    logprob = outputs[0].vec<float>()(i);
+    word = word_vector[i];
+
+    if (word != oos_) {
+      ans = logprob;
+    } else {
+      if (unk_costs_.size() == 0) {
+        ans = logprob - log(num_total_words - num_rnn_words);
+      } else {
+        ans = logprob + unk_costs_[fst_word_vector[i]];
+      } 
+    }
+    logprob_vector->push_back(ans);
+  }
+} // End of GetLogProbParallel
+
 BaseFloat KaldiTfRnnlmWrapper::GetLogProb(int32 word,
                                           int32 fst_word,
                                           const Tensor &context_in,
@@ -264,7 +340,6 @@ BaseFloat KaldiTfRnnlmWrapper::GetLogProb(int32 word,
       ans = outputs[0].scalar<float>()() + unk_costs_[fst_word];
     }
   }
-
   return ans;
 }
 

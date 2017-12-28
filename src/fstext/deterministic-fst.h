@@ -84,8 +84,27 @@ class DeterministicOnDemandFst {
 
   /// Note: ilabel must not be epsilon.
   virtual bool GetArc(StateId s, Label ilabel, Arc *oarc) = 0;
-
   virtual ~DeterministicOnDemandFst() { }
+};
+
+template<class Arc>
+class DeterministicOnDemandFstParallel {
+ public:
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Weight Weight;
+  typedef typename Arc::Label Label;
+
+  virtual StateId Start() = 0;
+
+  // dgao
+  virtual void FinalParallel(std::vector<StateId> s2_vector_final,
+                     std::vector<Weight>* det_fst_vector) = 0;
+
+  virtual void GetArcsParallel(std::vector<StateId> s1_vector,
+                       std::vector<Label> olabel_vector,
+                       std::vector<fst::StdArc>* arc2_vector) = 0;
+
+  virtual ~DeterministicOnDemandFstParallel() { }
 };
 
 /**

@@ -3,12 +3,12 @@
 set -e
 
 #export JAVA_HOME=/LOCATION_ON_YOUR_MACHINE/java/jdk1.8.0_121
-PATH=$PWD/bazel/output:$PATH
+PATH=$PATH:$PWD/bazel/output
 export HOME=$PWD/tensorflow_build/
 mkdir -p $HOME
 
 java=`which java`
-if [ -z "$JAVA_HOME" ]; then
+if [ -z $JAVA_HOME ]; then
   java=$JAVA_HOME/bin/java
 fi
 

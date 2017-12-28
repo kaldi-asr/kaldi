@@ -1,4 +1,4 @@
-// tensorflow-rnnlm-lib.h
+// tfrnnlm/tensorflow-rnnlm-lib.h
 
 // Copyright (C) 2017 Intellisist, Inc. (Author: Hainan Xu)
 
@@ -28,6 +28,9 @@
 #include "fstext/deterministic-fst.h"
 #include "util/common-utils.h"
 #include "tensorflow/core/public/session.h"
+#include "tensorflow/cc/framework/scope.h"
+#include "tensorflow/cc/ops/standard_ops.h"
+#include "tensorflow/cc/client/client_session.h"
 
 using tensorflow::Session;
 using tensorflow::Tensor;
@@ -102,6 +105,17 @@ class KaldiTfRnnlmWrapper {
                        const Tensor &cell_in,
                        Tensor *context_out,
                        Tensor *cell_out);
+
+  // This function is very similar to the function above; the difference is it
+  // implements a batched version to query the TF model in order to speed up
+  // the computation
+  void GetLogProbParallel(const std::vector<int32>& word_vector,
+                          const std::vector<int32>& fst_word_vector,
+                          const Tensor &state_to_context_tensor,
+                          const Tensor &state_to_cell_tensor,
+                          Tensor *new_context_vector,
+                          Tensor *new_cell_vector,
+                          std::vector<BaseFloat> *logprob_vector);
 
   /// takes in a word-id for FST and return the word-id for RNNLM
   /// return the word-id for <oos> if not found
