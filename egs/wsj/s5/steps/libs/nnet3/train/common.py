@@ -431,7 +431,7 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
         if (feat_dim != 0 and feat_dim != egs_feat_dim) or (ivector_dim != egs_ivector_dim):
             raise Exception("There is mismatch between featdim/ivector_dim of "
                             "the current experiment and the provided "
-                            "egs directory: egs_dim: {0} vs {1} and ivector_dim {2} vs {3}".format(feat_dim, egs_feat_dim, ivector_dim, egs_ivector_dim))
+                            "egs directory")
 
         if (((egs_ivector_id is None) and (ivector_extractor_id is not None)) or
             ((egs_ivector_id is not None) and (ivector_extractor_id is None))):
@@ -455,15 +455,6 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
                             'versus expected ({2},{3})'.format(
                                 egs_left_context, egs_right_context,
                                 left_context, right_context))
-
-        if left_context_initial == -1:
-            left_context_initial = left_context
-        if right_context_final == -1:
-            right_context_final = right_context
-        if egs_left_context_initial == -1:
-            egs_left_context_initial = egs_left_context
-        if egs_right_context_final == -1:
-            egs_right_context_final = egs_right_context
 
         # the condition on the initial/final context is an equality condition,
         # not an inequality condition, as there is no mechanism to 'correct' the
