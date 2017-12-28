@@ -185,12 +185,9 @@ bool PhoneLatticeToProtoSupervisionInternalSimple(
                       * opts.lm_scale + opts.phone_ins_penalty),
                     lat_arc.nextstate));
 
-      int32 left_tolerance = opts.left_tolerance;
-      int32 right_tolerance = opts.right_tolerance;
-      
-      int32 t_begin = std::max<int32>(0, (state_time - left_tolerance)),
+      int32 t_begin = std::max<int32>(0, (state_time - opts.left_tolerance)),
               t_end = std::min<int32>(num_frames,
-                                      (next_state_time + right_tolerance)),
+                                      (next_state_time + opts.right_tolerance)),
               t_begin_subsampled = (t_begin + factor - 1)/ factor,
               t_end_subsampled = (t_end + factor - 1)/ factor;
     for (int32 t_subsampled = t_begin_subsampled;
@@ -214,7 +211,6 @@ bool PhoneLatticeToProtoSupervisionInternalSimple(
     KALDI_ASSERT(!proto_supervision->allowed_phones[t_subsampled].empty());
     SortAndUniq(&(proto_supervision->allowed_phones[t_subsampled]));
   }
-
   return true;
 }
 
