@@ -22,7 +22,7 @@ while(<STDIN>) {
     $trans =~ s:^[+]([^+]+)[+]$:$1:;   # Remove mispronunciation brackets
     foreach $w (split (" ",$trans)) {
         if ($w ne $noise_word && $w ne $spoken_noise_word) {
-          $w =~ s:[?.,!-]+$::;   # Remove punctuations
+          $w =~ s:[?.,!]+$::;   # Remove punctuations
           $w =~ s:^@(.*)$:$1:;  # Remove best guess marking for proper nouns
           $w =~ s:^[\^](.*)$:$1:;  # Remove capitalization marks
           $w =~ s:_([A-Z])'S$:$1.'S :g;  # Normalize abbreviations from _f_b_i to f. b. i.
