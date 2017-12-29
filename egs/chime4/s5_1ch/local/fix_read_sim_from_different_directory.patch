@@ -1,5 +1,5 @@
 diff --git a/beamform.py b/beamform.py
-index 02eeed8..579c511 100644
+index 02eeed8..3ce6c9e 100644
 --- a/beamform.py
 +++ b/beamform.py
 @@ -20,6 +20,8 @@ parser.add_argument('flist',
@@ -54,7 +54,7 @@ index 02eeed8..579c511 100644
 -    t_io += t.msecs
 +    if args.single == 0:
 +        with Timer() as t:
-+            audiowrite(istft(Y_hat)[context_samples:], filename, 16000, True, True)
++            audiowrite(istft(Y_hat)[int(context_samples):], filename, 16000, True, True)
 +        t_io += t.msecs
 +    elif args.single >= 1:
 +        ch = args.single
