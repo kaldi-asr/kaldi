@@ -105,7 +105,7 @@ function submit_sync () {
   local qlog=$qdir/queue.log
 
   printf "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -V -cwd -j y\n" > $batch_file
-  { printf "{ cd $PWD\n  . path.sh\n  echo Running on: \`hostname\`\n";
+  { printf "{ cd $PWD\n  . ./path.sh\n  echo Running on: \`hostname\`\n";
     printf "  echo Started at: \`date\`\n  $command\n  ret=\$\?\n";
     printf "  echo Finished at: \`date\`\n} >& %s\nexit \$ret\n" "$logfile"
     printf "# Submitted with:\n"
@@ -124,7 +124,7 @@ function submit_nosync () {
   local qlog=$qdir/queue.log
 
   printf "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -V -cwd -j y\n" > $batch_file
-  { printf "{ cd $PWD\n  . path.sh\n  echo Running on: \`hostname\`\n";
+  { printf "{ cd $PWD\n  . ./path.sh\n  echo Running on: \`hostname\`\n";
     printf "  echo Started at: \`date\`\n";
     printf "  $command || { echo \$SGE_TASK_ID >> $qdir/error; ret=1; }\n";
     printf "  echo Finished at: \`date\`\n} >& %s\nexit \$ret\n" "$logfile"

@@ -65,7 +65,7 @@ class DistributeComponent: public Component {
   // use the default Info() function.
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Type() const { return "DistributeComponent"; }
-  virtual int32 Properties() const { return kLinearInInput; }
+  virtual int32 Properties() const { return 0; }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
@@ -281,7 +281,7 @@ class StatisticsExtractionComponentPrecomputedIndexes:
   // element is a (start, end) range of inputs, that is summed over.
   CuArray<Int32Pair> forward_indexes;
 
-  // this vector stores the number of inputs for each output.  Normally this will be
+  // This vector stores the number of inputs for each output.  Normally this will be
   // the same as the component's output_period_ / input_period_, but could be less
   // due to edge effects at the utterance boundary.
   CuVector<BaseFloat> counts;
@@ -475,7 +475,7 @@ class BackpropTruncationComponent: public Component {
   virtual std::string Type() const { return "BackpropTruncationComponent"; }
 
   virtual int32 Properties() const {
-    return kLinearInInput|kPropagateInPlace|kBackpropInPlace;
+    return kPropagateInPlace|kBackpropInPlace;
   }
 
   virtual void ZeroStats();
@@ -615,7 +615,7 @@ class ConstantComponent: public UpdatableComponent {
   virtual std::string Type() const { return "ConstantComponent"; }
   virtual int32 Properties() const {
     return
-        (is_updatable_ ? kUpdatableComponent|kLinearInParameters : 0);
+        (is_updatable_ ? kUpdatableComponent : 0);
   }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,

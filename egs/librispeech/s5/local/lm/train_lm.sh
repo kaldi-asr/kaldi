@@ -5,8 +5,8 @@
 
 # This is the top-level LM training script
 
-. path.sh || exit 1
-. cmd.sh || exit 1
+. ./path.sh || exit 1
+. ./cmd.sh || exit 1
 
 # use to skip some of the initial steps
 stage=1

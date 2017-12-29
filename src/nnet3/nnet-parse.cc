@@ -389,9 +389,9 @@ bool DescriptorTokenize(const std::string &input,
       KALDI_ASSERT(found != start);
       if (found == std::string::npos) {
         std::string str(input, start, input.size() - start);
-        int32 tmp;
-        if (!IsValidName(str) && !ConvertStringToInteger(str, &tmp)) {
-          KALDI_WARN << "Could not parse line " << ErrorContext(std::string(input, start));
+        BaseFloat tmp;
+        if (!IsValidName(str) && !ConvertStringToReal(str, &tmp)) {
+          KALDI_WARN << "Could not tokenize line " << ErrorContext(std::string(input, start));
           return false;
         }
         tokens->push_back(str);
@@ -399,18 +399,18 @@ bool DescriptorTokenize(const std::string &input,
       } else {
         if (input[found] == '(' || input[found] == ')' || input[found] == ',') {
           std::string str(input, start, found - start);
-          int32 tmp;
-          if (!IsValidName(str) && !ConvertStringToInteger(str, &tmp)) {
-            KALDI_WARN << "Could not parse line " << ErrorContext(std::string(input, start));
+          BaseFloat tmp;
+          if (!IsValidName(str) && !ConvertStringToReal(str, &tmp)) {
+            KALDI_WARN << "Could not tokenize line " << ErrorContext(std::string(input, start));
             return false;
           }
           tokens->push_back(str);
           start = found;
         } else {
           std::string str(input, start, found - start);
-          int32 tmp;
-          if (!IsValidName(str) && !ConvertStringToInteger(str, &tmp)) {
-            KALDI_WARN << "Could not parse line " << ErrorContext(std::string(input, start));
+          BaseFloat tmp;
+          if (!IsValidName(str) && !ConvertStringToReal(str, &tmp)) {
+            KALDI_WARN << "Could not tokenize line " << ErrorContext(std::string(input, start));
             return false;
           }
           tokens->push_back(str);
@@ -551,6 +551,15 @@ void PrintParameterStats(std::ostringstream &os,
     os << "rms=" << rms;
   }
   os << std::setprecision(6);  // restore the default precision.
+  if (GetVerboseLevel() >= 2) {
+    // At verbose level >= 2, print stats of the singular values of the matrix.
+    Matrix<BaseFloat> params_cpu(params);
+    Vector<BaseFloat> s(std::min(params.NumRows(), params.NumCols()));
+    params_cpu.Svd(&s);
+    std::string singular_values_str = SummarizeVector(s);
+    os << ", " << name << "-singular-values=" << singular_values_str;
+    std::ostringstream name_os;
+  }
 }
 
 

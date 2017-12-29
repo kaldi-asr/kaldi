@@ -81,7 +81,7 @@ if [ $stage -le 2 ]; then
   mfccdir=mfcc_reverb
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     date=$(date +'%m_%d_%H_%M')
-    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/aspire-$date/s5/$mfccdir/storage $mfccdir/storage
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/mfcc/aspire-$date/s5/$mfccdir/storage $mfccdir/storage
   fi
 
   for data_dir in train_rvb dev_rvb test_rvb dev_aspire dev test ; do
@@ -135,7 +135,7 @@ fi
 if [ $stage -le 6 ]; then
   ivectordir=exp/nnet3/ivectors_train
   if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then # this shows how you can split across multiple file-systems.
-    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/aspire/s5/$ivectordir/storage $ivectordir/storage
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/ivectors/aspire/s5/$ivectordir/storage $ivectordir/storage
   fi
 
   # having a larger number of speakers is helpful for generalization, and to

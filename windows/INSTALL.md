@@ -9,21 +9,20 @@ For cygwin installation, see the instructions in `../INSTALL`.
   The Windows port of Kaldi is targeted at experienced developers who want 
   to program their own apps using the kaldi libraries and are able to do 
   the troubleshooting on their own. 
-* These instructions are valid March 2016, 
+* These instructions are valid November 2017, 
   [Intel® MKL](https://software.intel.com/en-us/intel-mkl) and OpenBLAS are supported
 * ATLAS is not supported and I personally have no intention to work on supporting
   it, as it requires whole cygwin environment
-* We now (20150613) support CUDA on Windows as well. The build was
-  tested on CUDA 7.0. It is possible that the compilation fails
-  for significantly older CUDA SDK (less than, say, 5.0)
-  Please note that CUDA support for windows is not really that usefull,
-  because, the speed benefit during decoding is not large. And for training
-  one would have to re-implement the while training pipeline (as the
-  bash script wouldn't most probably work)
+* For now (20171121), we do not support CUDA. We might add the support again
+  in the future, but for now we do not express any commitment to do so.
+  You can still generate solutions with CUDA, but we do not provide any support
+  and we didn't test if the solutions work or not.
 * While the 32bit project files will still be generated, we don't really
   care if they work or not. They will be removed in the near future.
-* The build process was validated using MSVS2013 and MSVS2015
-* We support only openfst-1.3.x for now.
+* The build process was validated using MSVC2017. We do not support earlier 
+  releases (i.e. MSVC2015 and older). The reason is the C++11 support is still
+  very buggy in the MS compiler.
+* We support only openfst-1.6.5 for now.
 * I suggest to have git installed -- not only because we will
   use it to download the source codes (you could download archives
   instead of it), but also because the windows version comes
@@ -34,63 +33,64 @@ For cygwin installation, see the instructions in `../INSTALL`.
 
 ## Steps
 
+## Compiling OpenFST
+For compilation of OpenFST, you will need CMake installed. Simply go to https://cmake.org/download/ and download and install.
+Then, in the command line, run the following commands. Be very careful about writing the commands verbatim!
+
+        $ git clone https://github.com/kkm000/openfst.git
+        $ cd openfst
+        $ mkdir build64
+        $ cd build64
+        $ cmake -G "Visual Studio 15 2017 Win64" ../
+        
+The last command will generate output looking similarly to this. Do not try to read too much into specific versions of the programs.
+
+        -- The C compiler identification is MSVC 19.11.25547.0
+        -- The CXX compiler identification is MSVC 19.11.25547.0
+        -- Check for working C compiler: C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.11.25503/bin/Hostx86/x64/cl.exe
+        -- Check for working C compiler: C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.11.25503/bin/Hostx86/x64/cl.exe -- works
+        -- Detecting C compiler ABI info
+        -- Detecting C compiler ABI info - done
+        -- Check for working CXX compiler: C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.11.25503/bin/Hostx86/x64/cl.exe
+        -- Check for working CXX compiler: C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.11.25503/bin/Hostx86/x64/cl.exe -- works
+        -- Detecting CXX compiler ABI info
+        -- Detecting CXX compiler ABI info - done
+        -- Detecting CXX compile features
+        -- Detecting CXX compile features - done
+        -- The following ICU libraries were not found:
+        --   data (required)
+        --   i18n (required)
+        --   io (required)
+        --   test (required)
+        --   tu (required)
+        --   uc (required)
+        -- Failed to find all ICU components (missing: ICU_INCLUDE_DIR ICU_LIBRARY _ICU_REQUIRED_LIBS_FOUND)
+        -- Could NOT find ZLIB (missing: ZLIB_LIBRARY ZLIB_INCLUDE_DIR)
+        -- Configuring done
+        -- Generating done
+        -- Build files have been written to: C:/Users/jtrmal/Documents/openfst/build64
+
+In the directory `build64`, find the file `openfst.sln` and open it using Visual Studio 17. 
+   **Switch the configuration to `debug|Win64` and build the solution.**
+   **Do the same for configuration `release|Win64`.**
+
+ If either of the two won't build, you should stop here and start figuring what's different!
+
+## Compiling Kaldi   
+   
 1. Checkout Kaldi trunk, using [git](https://git-for-windows.github.io/) from https://github.com/kaldi-asr/kaldi.git
 
    Example:
    
         $ git clone https://github.com/kaldi-asr/kaldi.git kaldi
 
-2. Enter the `(kaldi)/tools` directory in the freshly
-   checked-out kaldi repo. All following actions should
-   be taken in the tools dir.
-
-   Example:
-   
-        $ cd (kaldi)/tools
-        (kaldi)/tools$ pwd
-
-3. Use git to clone the [OpenFST(win)](https://github.com/jtrmal/openfstwin-1.3.4) from
-       
-        https://github.com/jtrmal/openfstwin-1.3.4.git
-
-   Example:
-   
-        (kaldi)/tools$ git clone https://github.com/jtrmal/openfstwin-1.3.4.git openfst
-
-4. Download [pthreads-win32](https://sourceforge.net/projects/pthreads4w/) (or `wget` or `curl`)
-
-   https://sourceforge.net/projects/pthreads4w/
-
-        (kaldi)/tools$ curl -L -O http://downloads.sourceforge.net/project/pthreads4w/pthreads-w32-2-9-1-release.zip
-        (kaldi)/tools$ mkdir pthreads; cd pthreads
-        (kaldi)/tools/pthreads$ unzip ../pthreads-w32-2-9-1-release.zip
-
-5. Use patch (or you can use git patch) to patch the OpenFST(win).
-
-   The patch location is `tools/extras/openfstwin-1.3.4.patch`
-
-   Example:
-   
-        (kaldi)/tools$ cd openfst
-        (kaldi)/tools/openfst$ patch -p1 <../extras/openfstwin-1.3.4.patch
-
-   If you get this error: `Assertion failed: hunk, file ../patch-2.5.9-src/patch.c, line 354`
-   it is because the `patch.c` file should have Windows line endings (CRLF) rather than Unix ones (LF).
-
-6. Use patch to patch the pthreads
-
-   The patch location is `tools/extras/pthread-2.9.1.patch`
-
-        (kaldi)/tools$ cd pthreads
-        (kaldi)/tools/pthreads$ patch -p1 <../extras/pthread-2.9.1.patch
-   
 There are two options to use for BLAS (linear algebra): [Intel® MKL](https://software.intel.com/en-us/intel-mkl) and OpenBLAS. [Intel® MKL](https://software.intel.com/en-us/intel-mkl) is made by Intel and is optimised
 for their processors. It isn't free, but you can get [Community Licensing for Intel® Performance Libraries
 ](https://software.intel.com/sites/campaigns/nest/) or as part of Intel product suite if you [qualify as students, educators, academic researchers, and open source contributors](https://software.intel.com/en-us/qualify-for-free-software). OpenBLAS is free alternative with similar performance.
 
-7. If using [Intel® MKL](https://software.intel.com/en-us/intel-mkl), [install it](https://software.intel.com/en-us/intel-mkl/try-buy).
+2. If using [Intel® MKL](https://software.intel.com/en-us/intel-mkl), [install it](https://software.intel.com/en-us/intel-mkl/try-buy).
 
-8. If using OpenBLAS, download the binary packages.
+3. If using OpenBLAS, download the binary packages.
 
    https://sourceforge.net/projects/openblas
 
@@ -101,7 +101,8 @@ for their processors. It isn't free, but you can get [Community Licensing for In
 
    **Be careful to download "Win64-int32" and not "Win64-int64"!**
 
-9. If you want enabled [CUDA](http://www.nvidia.com/object/cuda_home_new.html) support, download and install [NVIDIA CUDA SDK](https://developer.nvidia.com/cuda-downloads).
+4. **For now, we do not support CUDA, nor provide any kind of assistance in getting it work.**
+   If you want enabled [CUDA](http://www.nvidia.com/object/cuda_home_new.html) support, download and install [NVIDIA CUDA SDK](https://developer.nvidia.com/cuda-downloads).
    Be careful and strive for as standard install as possible. The installer
    set certain environment variables on which the MSVC Build rules rely.
    If you call "set" in the command line, you should see:
@@ -114,25 +115,15 @@ for their processors. It isn't free, but you can get [Community Licensing for In
 
    The first one (`CUDA_PATH`) is particularly important.
 
-10. Open the OpenFST solution in Visual Studio
 
-   * for [Visual Studio 2013](https://www.visualstudio.com/en-us/news/vs2013-community-vs.aspx), the correct solution is in `MSVC12` directory
-   * for [Visual Studio 2015](https://www.visualstudio.com/en-us/products/visual-studio-community-vs.aspx), the correct solution is in `MSVC14` directory
-
-   **Switch the configuration to `debug|x64` and build the solution.**
-
-   **Do the same for configuration `release|x64`.**
-
-   If either of the two won't build, you should stop here and start figuring what's different!
-
-11. Enter the `(kaldi)/windows` directory
+4. Enter the `(kaldi)/windows` directory
 
     Example:
     
-         (kaldi)/tools/openfst$ cd ../../windows
+         (kaldi)/$ cd windows
          (kaldi)/windows $ pwd
 
-12. Copy `variables.props.dev` to `variables.props`.
+5. Copy `variables.props.dev` to `variables.props`.
     Then modify the file `variables.props` to reflect
     the correct paths, using your favorite text editor.
     Don't worry, it's a text file, even though you have to be
@@ -145,30 +136,34 @@ for their processors. It isn't free, but you can get [Community Licensing for In
     No matter what you plan to use, set both the `OPENFST*` and `PTHREADW`
     variables correctly
 
-13. For OpenBLAS support, copy the file `kaldiwin_openblas.props` to `kaldiwin.props`
-14. For MKL support, copy the `kaldiwin_mkl.props` to `kaldiwin.props`
+6. For OpenBLAS support, copy the file `kaldiwin_openblas.props` to `kaldiwin.props`
+7. For MKL support, copy the `kaldiwin_mkl.props` to `kaldiwin.props`
 
-15. Call the script that generates the MSVC solution
+8. Call the script that generates the MSVC solution
 
-         ./generate_solution.pl --vsver <default|vs2013|vs2015> [--enable-cuda] [--enable-openblas] [--enable-mkl]
+         ./generate_solution.pl --vsver <default|vs2017|vs2015> [--enable-cuda] [--enable-openblas] [--enable-mkl]
 
     `--enable-mkl` is the default so you shouldn't need to use it. If `--enable-openblas` is passed it disables MKL support.
-    CUDA is disabled by default. The default Visual Studio version is 11.0 (Visual Studio 2012).
+    CUDA is disabled by default. The default Visual Studio version is 15.0 (Visual Studio 2017). 
+    Please note that while we support generating the project for Visual Studio 2015, the C++11 support for that compiler
+    is rather sub-par, i.e. it won't probably compile. When choosing Visual Studio 2015, you are on your own!
 
-    For example, for a build using OpenBLAS and VS 2015 you would run:
+    For example, for a build using OpenBLAS and VS 2017 you would run:
 
-         (kaldi)/windows$ generate_solution.pl --vsver vs2015 --enable-openblas
+         (kaldi)/windows$ generate_solution.pl --vsver vs2017 --enable-openblas
 
-    Another example, for OpenBLAS, VS 2013 and CUDA support:
+    Another example, for OpenBLAS, VS 2017 and CUDA support:
 
-         (kaldi)/windows$ generate_solution.pl --vsver vs2013 --enable-cuda --enable-openblas
+         (kaldi)/windows$ generate_solution.pl --vsver vs2017 --enable-cuda --enable-openblas
 
-13. Run the script (kaldi)/windows/get_version.pl:
+9. Run the script (kaldi)/windows/get_version.pl:
         
         (kaldi)/windows$ get_version.pl
   
-17. Open the generated solution in the visual studio and switch to **Debug|x64** (or **Release|x64**) and build.
-   Expect 10 projects to fail, majority of them will fail because of missing include `portaudio.h`
+10. Open the generated solution in the visual studio and switch to **Debug|x64** (or **Release|x64**) and build.
+   Expect 10 projects to fail, majority of them will fail because of missing include `portaudio.h`. The tests will
+   fail to compile too -- this is because of deficiency of the script generate_solution.pl. We might fix it
+   later on.
 
 ------
 NOTE: I'm leaving the information about ATLAS here, for reference (also do not forget to consult the `README.ATLAS`)

@@ -41,8 +41,20 @@ class XconfigLayerBase(object):
         if not xutils.is_valid_line_name(self.name):
             raise RuntimeError("Invalid value: name={0}".format(
                 key_to_value['name']))
+
+        # It is possible to have two layers with a same name in 'all_layer', if
+        # the layer type for one of them is 'existing'.
+        # Layers of type 'existing' are corresponding to the component-node names
+        # in the existing model, which we are adding layers to them.
+        # 'existing' layers are not presented in any config file, and new layer
+        # with the same name can exist in 'all_layers'.
+        # e.g. It is possible to have 'output-node' with name 'output' in the
+        # existing model, which is added to all_layers using layer type 'existing',
+        # and 'output-node' of type 'output-layer' with the same name 'output' in
+        # 'all_layers'.
         for prev_layer in all_layers:
-            if self.name == prev_layer.name:
+            if (self.name == prev_layer.name and
+                prev_layer.layer_type is not 'existing'):
                 raise RuntimeError("Name '{0}' is used for more than one "
                                    "layer.".format(self.name))
 
@@ -227,8 +239,7 @@ class XconfigLayerBase(object):
         """This is expected to be called after set_configs and before
         check_configs().
         """
-
-        if self.config['dim'] <= 0:
+        if 'dim' in self.config and self.config['dim'] <= 0:
             self.config['dim'] = self.descriptors['input']['dim']
 
     def check_configs(self):
@@ -443,6 +454,8 @@ class XconfigOutputLayer(XconfigLayerBase):
         max-change=1.5 :  Can be used to change the max-change parameter in the
             affine component; this affects how much the matrix can change on each
             iteration.
+        l2-regularize=0.0:  Set this to a nonzero value (e.g. 1.0e-05) to
+            add l2 regularization on the parameter norm for the affine component.
         output-delay=0    :  Can be used to shift the frames on the output, equivalent
              to delaying labels by this many frames (positive value increases latency
              in online decoding but may help if you're using unidirectional LSTMs.
@@ -474,6 +487,7 @@ class XconfigOutputLayer(XconfigLayerBase):
                        'max-change': 1.5,
                        'param-stddev': 0.0,
                        'bias-stddev': 0.0,
+                       'l2-regularize': 0.0,
                        'output-delay': 0,
                        'ng-affine-options': ''
                       }
@@ -535,9 +549,14 @@ class XconfigOutputLayer(XconfigLayerBase):
         presoftmax_scale_file = self.config['presoftmax-scale-file']
         param_stddev = self.config['param-stddev']
         bias_stddev = self.config['bias-stddev']
+        l2_regularize = self.config['l2-regularize']
         output_delay = self.config['output-delay']
         max_change = self.config['max-change']
         ng_affine_options = self.config['ng-affine-options']
+        learning_rate_option = ('learning-rate-factor={0} '.format(learning_rate_factor) if
+                                learning_rate_factor != 1.0 else '')
+        l2_regularize_option = ('l2-regularize={0} '.format(l2_regularize)
+                                if l2_regularize != 0.0 else '')
 
         # note: ref.config is used only for getting the left-context and
         # right-context of the network;
@@ -550,11 +569,10 @@ class XconfigOutputLayer(XconfigLayerBase):
                     ' output-dim={2}'
                     ' param-stddev={3}'
                     ' bias-stddev={4}'
-                    ' max-change={5} {6} '
+                    ' max-change={5} {6} {7} {8}'
                     ''.format(self.name, input_dim, output_dim,
-                              param_stddev, bias_stddev, max_change, ng_affine_options) +
-                    ('learning-rate-factor={0} '.format(learning_rate_factor)
-                     if learning_rate_factor != 1.0 else ''))
+                              param_stddev, bias_stddev, max_change, ng_affine_options,
+                              learning_rate_option, l2_regularize_option))
             ans.append((config_name, line))
 
             line = ('component-node name={0}.affine'
@@ -601,8 +619,7 @@ class XconfigOutputLayer(XconfigLayerBase):
 
 
 class XconfigBasicLayer(XconfigLayerBase):
-    """
-    This class is for parsing lines like
+    """This class is for parsing lines like
      'relu-renorm-layer name=layer1 dim=1024 input=Append(-3,0,3)'
     or:
      'sigmoid-layer name=layer1 dim=1024 input=Append(-3,0,3)'
@@ -627,13 +644,11 @@ class XconfigBasicLayer(XconfigLayerBase):
       add-log-stddev=False     [If true, the log of the stddev of the output of
                                 renorm layer is appended as an
                                 additional dimension of the layer's output]
+      l2-regularize=0.0       [Set this to a nonzero value (e.g. 1.0e-05) to
+                               add l2 regularization on the parameter norm for
+                                this component.
     """
     def __init__(self, first_token, key_to_value, prev_names=None):
-        # Here we just list some likely combinations.. you can just add any
-        # combinations you want to use, to this list.
-        assert first_token in ['relu-layer', 'relu-renorm-layer', 'sigmoid-layer',
-                               'tanh-layer', 'relu-batchnorm-layer', 'relu-dropout-layer',
-                               'relu-batchnorm-dropout-layer']
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -642,15 +657,19 @@ class XconfigBasicLayer(XconfigLayerBase):
         # the most recent layer.
         self.config = {'input': '[-1]',
                        'dim': -1,
-                       'max-change': 0.75,
                        'self-repair-scale': 1.0e-05,
                        'target-rms': 1.0,
-                       'learning-rate-factor': 1.0,
                        'ng-affine-options': '',
                        'dropout-proportion': 0.5,  # dropout-proportion only
                                                    # affects layers with
                                                    # 'dropout' in the name.
-                       'add-log-stddev': False}
+                       'add-log-stddev': False,
+                       # the following are not really inspected by this level of
+                       # code, just passed through (but not if left at '').
+                       'bias-stddev': '',
+                       'l2-regularize': '',
+                       'learning-rate-factor': '',
+                       'max-change': 0.75 }
 
     def check_configs(self):
         if self.config['dim'] < 0:
@@ -714,11 +733,13 @@ class XconfigBasicLayer(XconfigLayerBase):
         output_dim = self.output_dim()
         self_repair_scale = self.config['self-repair-scale']
         target_rms = self.config['target-rms']
-        max_change = self.config['max-change']
-        ng_affine_options = self.config['ng-affine-options']
-        learning_rate_factor = self.config['learning-rate-factor']
-        learning_rate_option = ('learning-rate-factor={0}'.format(learning_rate_factor)
-                                if learning_rate_factor != 1.0 else '')
+
+        affine_options = self.config['ng-affine-options']
+        for opt_name in [ 'max-change', 'learning-rate-factor',
+                          'bias-stddev', 'l2-regularize' ]:
+            value = self.config[opt_name]
+            if value != '':
+                affine_options += ' {0}={1}'.format(opt_name, value)
 
         # The output of the affine component needs to have one dimension fewer in order to
         # get the required output dim, if the final 'renorm' component has 'add-log-stddev' set
@@ -731,27 +752,19 @@ class XconfigBasicLayer(XconfigLayerBase):
 
         configs = []
         # First the affine node.
-        line = ('component name={0}.affine'
-                ' type=NaturalGradientAffineComponent'
-                ' input-dim={1}'
-                ' output-dim={2}'
-                ' max-change={3}'
-                ' {4} {5} '
-                ''.format(self.name, input_dim, output_dim,
-                          max_change, ng_affine_options,
-                          learning_rate_option))
+        line = ('component name={0}.affine type=NaturalGradientAffineComponent'
+                ' input-dim={1} output-dim={2} {3}'
+                ''.format(self.name, input_dim, output_dim, affine_options))
         configs.append(line)
 
-        line = ('component-node name={0}.affine'
-                ' component={0}.affine input={1}'
+        line = ('component-node name={0}.affine component={0}.affine input={1}'
                 ''.format(self.name, input_desc))
         configs.append(line)
         cur_node = '{0}.affine'.format(self.name)
 
         for i, nonlinearity in enumerate(nonlinearities):
             if nonlinearity == 'relu':
-                line = ('component name={0}.{1}'
-                        ' type=RectifiedLinearComponent dim={2}'
+                line = ('component name={0}.{1} type=RectifiedLinearComponent dim={2}'
                         ' self-repair-scale={3}'
                         ''.format(self.name, nonlinearity, output_dim,
                                   self_repair_scale))
@@ -788,6 +801,11 @@ class XconfigBasicLayer(XconfigLayerBase):
                         ' target-rms={3}'
                         ''.format(self.name, nonlinearity, output_dim,
                                   target_rms))
+
+            elif nonlinearity == 'so':
+                line = ('component name={0}.{1}'
+                        ' type=ScaleAndOffsetComponent dim={2} max-change=0.5 '
+                        ''.format(self.name, nonlinearity, output_dim))
 
             elif nonlinearity == 'dropout':
                 line = ('component name={0}.{1} type=DropoutComponent '
@@ -914,7 +932,11 @@ class XconfigAffineLayer(XconfigLayerBase):
 
     Parameters of the class, and their defaults:
       input='[-1]'             [Descriptor giving the input of the layer.]
-      dim=None                   [Output dimension of layer; defaults to the same as the input dim.]
+      dim=None                 [Output dimension of layer; defaults to the same as the input dim.]
+
+      l2-regularize=0.0       [Set this to a nonzero value (e.g. 1.0e-05) to
+                               add l2 regularization on the parameter norm
+                               for the affine component.]
     """
 
     def __init__(self, first_token, key_to_value, prev_names=None):
@@ -934,6 +956,7 @@ class XconfigAffineLayer(XconfigLayerBase):
                        'bias-stddev': 1.0,
                        'bias-mean': 0.0,
                        'max-change': 0.75,
+                       'l2-regularize': 0.0,
                        'learning-rate-factor': 1.0,
                        'ng-affine-options': ''}
 
@@ -972,7 +995,8 @@ class XconfigAffineLayer(XconfigLayerBase):
         output_dim = self.output_dim()
 
         option_string = ''
-        for key in ['param-stddev', 'bias-stddev', 'bias-mean', 'max-change']:
+        for key in ['param-stddev', 'bias-stddev', 'bias-mean', 'max-change',
+                    'l2-regularize']:
             option_string += ' {0}={1}'.format(key, self.config[key])
         option_string += self.config['ng-affine-options']
 
@@ -1076,6 +1100,60 @@ class XconfigIdctLayer(XconfigLayerBase):
         ans.append(('final', line))
         ans.append(('ref', line))
         return ans
+
+
+class XconfigExistingLayer(XconfigLayerBase):
+    """
+    This class is used to internally convert component-nodes in an existing
+    model into lines like
+    'existing name=tdnn1.affine dim=40'.
+
+    Layers of this type are not presented in any actual xconfig or config
+    files, but are created internally for all component nodes
+    in an existing neural net model to use as input to other layers in xconfig.
+    (i.e. get_model_component_info function, which is called in
+     steps/nnet3/xconfig_to_configs.py, parses the name and
+     dimension of component-nodes used in the existing model
+     using the nnet3-info and returns a list of 'existing' layers.)
+
+    This class is useful in cases like transferring existing model
+    and using {input, output, component}-nodes in this model as
+    input to new layers.
+    """
+
+    def __init__(self, first_token, key_to_value, prev_names=None):
+
+        assert first_token == 'existing'
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+
+    def set_default_configs(self):
+        self.config = { 'dim': -1}
+
+    def check_configs(self):
+        if self.config['dim'] <= 0:
+            raise RuntimeError("Dimension of existing-layer '{0}'"
+                                "should be positive.".format(self.name))
+
+    def get_input_descriptor_names(self):
+        return []  # there is no 'input' field in self.config.
+
+    def output_name(self, auxiliary_outputs=None):
+        # there are no auxiliary outputs as this layer will just pass the input
+        assert auxiliary_outputs is None
+        return self.name
+
+    def output_dim(self, auxiliary_outputs=None):
+        # there are no auxiliary outputs as this layer will just pass the input
+        assert auxiliary_outputs is None
+        return self.config['dim']
+
+    def get_full_config(self):
+        # unlike other layers the existing layers should not to be printed in
+        # any '*.config'
+        ans = []
+        return ans
+
 
 
 def test_layers():

@@ -24,7 +24,9 @@
 #include <vector>
 
 #include "base/kaldi-common.h"
+#include "base/timer.h"
 #include "util/kaldi-holder.h"
+#include "itf/options-itf.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
 #include "cudamatrix/cu-array.h"
@@ -33,10 +35,24 @@
 namespace kaldi {
 namespace nnet1 {
 
+struct LossOptions {
+  int32 loss_report_frames; ///< Report loss value every 'report_interval' frames,
+
+  LossOptions():
+    loss_report_frames(5*3600*100) // 5h,
+  { }
+
+  void Register(OptionsItf *opts) {
+    opts->Register("loss-report-frames", &loss_report_frames,
+        "Report loss per blocks of N frames (0 = no reports)");
+  }
+};
 
 class LossItf {
  public:
-  LossItf() { }
+  LossItf(LossOptions& opts) {
+    opts_ = opts;
+  }
   virtual ~LossItf() { }
 
   /// Evaluate cross entropy using target-matrix (supports soft labels),
@@ -56,15 +72,21 @@ class LossItf {
 
   /// Get loss value (frame average),
   virtual BaseFloat AvgLoss() = 0;
+
+ protected:
+  LossOptions opts_;
+  Timer timer_;
 };
 
 
 class Xent : public LossItf {
  public:
-  Xent():
+  Xent(LossOptions &opts):
+    LossItf(opts),
     frames_progress_(0.0),
     xentropy_progress_(0.0),
-    entropy_progress_(0.0)
+    entropy_progress_(0.0),
+    elapsed_seconds_(0.0)
   { }
 
   ~Xent()
@@ -106,6 +128,7 @@ class Xent : public LossItf {
   double xentropy_progress_;
   double entropy_progress_;
   std::vector<float> loss_vec_;
+  double elapsed_seconds_;
 
   // weigting buffer,
   CuVector<BaseFloat> frame_weights_;
@@ -125,7 +148,8 @@ class Xent : public LossItf {
 
 class Mse : public LossItf {
  public:
-  Mse():
+  Mse(LossOptions &opts):
+    LossItf(opts),
     frames_(0.0),
     loss_(0.0),
     frames_progress_(0.0),
@@ -172,7 +196,8 @@ class Mse : public LossItf {
 
 class MultiTaskLoss : public LossItf {
  public:
-  MultiTaskLoss()
+  MultiTaskLoss(LossOptions &opts):
+    LossItf(opts)
   { }
 
   ~MultiTaskLoss() {

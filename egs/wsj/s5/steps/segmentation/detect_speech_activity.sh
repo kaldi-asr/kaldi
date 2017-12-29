@@ -12,7 +12,7 @@ set -e
 set -o pipefail
 set -u
 
-. path.sh
+. ./path.sh
 
 affix=  # Affix for the segmentation
 nj=32

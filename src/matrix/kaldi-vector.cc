@@ -1122,6 +1122,7 @@ void Vector<Real>::Read(std::istream & is,  bool binary, bool add) {
     std::string token;
     ReadToken(is, binary, &token);
     if (token != my_token) {
+      if (token.length() > 20) token = token.substr(0, 17) + "...";
       specific_error << ": Expected token " << my_token << ", got " << token;
       goto bad;
     }
@@ -1145,7 +1146,11 @@ void Vector<Real>::Read(std::istream & is,  bool binary, bool add) {
     // }
     if (is.fail()) { specific_error << "EOF while trying to read vector."; goto bad; }
     if (s.compare("[]") == 0) { Resize(0); return; } // tolerate this variant.
-    if (s.compare("[")) { specific_error << "Expected \"[\" but got " << s; goto bad; }
+    if (s.compare("[")) {
+      if (s.length() > 20) s = s.substr(0, 17) + "...";
+      specific_error << "Expected \"[\" but got " << s;
+      goto bad;
+    }
     std::vector<Real> data;
     while (1) {
       int i = is.peek();
@@ -1192,6 +1197,7 @@ void Vector<Real>::Read(std::istream & is,  bool binary, bool add) {
           data.push_back(std::numeric_limits<Real>::quiet_NaN());
           KALDI_WARN << "Reading NaN value into vector.";
         } else {
+          if (s.length() > 20) s = s.substr(0, 17) + "...";
           specific_error << "Expecting numeric vector data, got " << s;
           goto  bad;
         }

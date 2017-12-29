@@ -10,7 +10,7 @@
 ## you unpacked this.  We are just doing a "find" command to locate
 ## the .sph files.
 
-. path.sh
+. ./path.sh
 
 #check existing directories
 if [ $# != 1 ]; then

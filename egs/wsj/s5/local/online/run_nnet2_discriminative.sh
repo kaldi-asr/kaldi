@@ -3,7 +3,7 @@
 
 # This is discriminative training, to be run after run_nnet2.sh.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=1
@@ -11,7 +11,7 @@ train_stage=-10
 use_gpu=true
 srcdir=exp/nnet2_online/nnet_ms_a
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

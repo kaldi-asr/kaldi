@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 
-if [ -f path.sh ]; then . path.sh; fi
+if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# -ne 1 ]; then
   echo 'Usage: $0 <arpa-lm>'

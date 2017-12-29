@@ -17,8 +17,8 @@
 # Apache 2.0
 #
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 
 
 set -e -o pipefail -u

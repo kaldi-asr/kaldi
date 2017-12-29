@@ -50,7 +50,7 @@ set -e
 # %WER 18.1 | 8420 76157 | 84.0 10.7 5.3 2.1 18.1 49.4 | exp/chain/tdnn_7b_sp_smbr/decode_rt03_sw1_fsh_fg_epoch3/score_11_1.0/rt03_hires.ctm.filt.sys
 # %WER 18.2 | 8420 76157 | 83.8 10.5 5.7 2.1 18.2 49.6 | exp/chain/tdnn_7b_sp_smbr/decode_rt03_sw1_fsh_fg_epoch4/score_12_1.0/rt03_hires.ctm.filt.sys
 
-. cmd.sh
+. ./cmd.sh
 
 stage=0
 train_stage=-10 # can be used to start training in the middle.
@@ -59,7 +59,7 @@ use_gpu=true  # for training
 cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large things like denlats,
                # alignments and degs).
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

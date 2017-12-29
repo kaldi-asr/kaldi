@@ -115,8 +115,8 @@ void CuSpMatrix<Real>::AddVec2(const Real alpha, const CuVectorBase<Real> &v) {
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(nr, CU2DBLOCK), n_blocks(nr, CU2DBLOCK));
 
-    CU_SAFE_CALL(cublas_spr(GetCublasHandle(), CUBLAS_FILL_MODE_UPPER, this->num_rows_, alpha, v.Data(),
-               1, this->Data()));
+    CUBLAS_SAFE_CALL(cublas_spr(GetCublasHandle(), CUBLAS_FILL_MODE_UPPER, this->num_rows_, alpha, v.Data(),
+                                1, this->Data()));
     
     CuDevice::Instantiate().AccuProfile("CuSpMatrix::AddVec2", tim);
   } else

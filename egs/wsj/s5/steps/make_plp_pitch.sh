@@ -77,9 +77,9 @@ done
 utils/validate_data_dir.sh --no-text --no-feats $data || exit 1;
 
 if [ ! -z "$pitch_postprocess_config" ]; then
-	postprocess_config_opt="--config=$pitch_postprocess_config";
+  postprocess_config_opt="--config=$pitch_postprocess_config";
 else
-	postprocess_config_opt=
+  postprocess_config_opt=
 fi
 
 if [ -f $data/spk2warp ]; then
@@ -158,7 +158,7 @@ if $write_utt2num_frames; then
   for n in $(seq $nj); do
     cat $logdir/utt2num_frames.$n || exit 1;
   done > $data/utt2num_frames || exit 1
-  rm $logdir/uttnum_frames.*
+  rm $logdir/utt2num_frames.*
 fi
 
 rm $logdir/wav_${name}.*.scp  $logdir/segments.* 2>/dev/null

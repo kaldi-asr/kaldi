@@ -45,8 +45,8 @@ nj=80
 [ ! -f ./lang.conf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
 . ./lang.conf || exit 1;
 
-. path.sh
-. cmd.sh 
+. ./path.sh
+. ./cmd.sh
 
 set -e -u -o pipefail
 . utils/parse_options.sh 
