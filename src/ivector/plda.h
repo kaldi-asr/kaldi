@@ -133,8 +133,9 @@ class Plda {
 
   /// Apply a transform to the PLDA model.  This is mostly used for
   /// projecting the parameters of the model into a lower dimensional space,
-  /// typically for speaker diarization.
-  void ApplyTransform(const Matrix<double> &transform);
+  /// i.e. pca_transform.NumRows() <= pac_transform.NumCols(), typically for
+  /// speaker diarization with a PCA transform.
+  void ApplyTransform(const Matrix<double> &pca_transform);
 
   int32 Dim() const { return mean_.Dim(); }
   void Write(std::ostream &os, bool binary) const;
@@ -154,7 +155,8 @@ class Plda {
   Vector<double> offset_;  // derived variable: -1.0 * transform_ * mean_
 
  private:
-  Plda &operator = (const Plda &other);
+  Plda &operator = (const Plda &other);  // disallow assignment
+
   /// This returns a normalization factor, which is a quantity we
   /// must multiply "transformed_ivector" by so that it has the length
   /// that it "should" have.  We assume "transformed_ivector" is an

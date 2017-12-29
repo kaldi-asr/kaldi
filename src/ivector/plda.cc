@@ -41,6 +41,8 @@ void Plda::Read(std::istream &is, bool binary) {
 }
 
 template<class Real>
+/// This function computes a projection matrix that when applied makes the
+/// covariance unit (i.e. all 1).
 static void ComputeNormalizingTransform(const SpMatrix<Real> &covar,
                                         MatrixBase<Real> *proj) {
   int32 dim = covar.NumRows();
@@ -215,16 +217,16 @@ void Plda::SmoothWithinClassCovariance(double smoothing_factor) {
   ComputeDerivedVars();
 }
 
-void Plda::ApplyTransform(const Matrix<double> &transform) {
+void Plda::ApplyTransform(const Matrix<double> &pca_transform) {
   // Apply transform to mean_.
-  Vector<double> mean_new(transform.NumRows());
-  mean_new.AddMatVec(1.0, transform, kNoTrans, mean_, 0.0);
-  mean_.Resize(transform.NumRows());
+  Vector<double> mean_new(pca_transform.NumRows());
+  mean_new.AddMatVec(1.0, pca_transform, kNoTrans, mean_, 0.0);
+  mean_.Resize(pca_transform.NumRows());
   mean_.CopyFromVec(mean_new);
 
-  SpMatrix<double> between_var(transform.NumCols()),
-                   within_var(transform.NumCols()),
-                   psi_mat(transform.NumCols()),
+  SpMatrix<double> between_var(pca_transform.NumCols()),
+                   within_var(pca_transform.NumCols()),
+                   psi_mat(pca_transform.NumCols()),
                    between_var_new(Dim()),
                    within_var_new(Dim());
   Matrix<double> transform_invert(transform_);
@@ -236,8 +238,8 @@ void Plda::ApplyTransform(const Matrix<double> &transform) {
   between_var.AddMat2Sp(1.0, transform_invert, kNoTrans, psi_mat, 0.0);
 
   // Next, transform the variances using the input transformation.
-  between_var_new.AddMat2Sp(1.0, transform, kNoTrans, between_var, 0.0);
-  within_var_new.AddMat2Sp(1.0, transform, kNoTrans, within_var, 0.0);
+  between_var_new.AddMat2Sp(1.0, pca_transform, kNoTrans, between_var, 0.0);
+  within_var_new.AddMat2Sp(1.0, pca_transform, kNoTrans, within_var, 0.0);
 
   // Finally, we need to recompute psi_ and transform_. The remainder of
   // the code in this function  is a lightly modified copy of
