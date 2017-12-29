@@ -674,6 +674,7 @@ class XconfigBasicLayer(XconfigLayerBase):
                        'bottleneck-dim': -1,
                        'self-repair-scale': 1.0e-05,
                        'target-rms': 1.0,
+                       'batchnorm-power': -0.5,
                        'ng-affine-options': '',
                        'ng-linear-options': '',    # only affects bottleneck layers.
                        'dropout-proportion': 0.5,  # dropout-proportion only
@@ -685,6 +686,8 @@ class XconfigBasicLayer(XconfigLayerBase):
                        'bias-stddev': '',
                        'l2-regularize': '',
                        'learning-rate-factor': '',
+                       'diagonal-power-in': '',
+                       'diagonal-power-out': '',
                        'max-change': 0.75 }
 
     def check_configs(self):
@@ -753,10 +756,12 @@ class XconfigBasicLayer(XconfigLayerBase):
         output_dim = self.output_dim()
         self_repair_scale = self.config['self-repair-scale']
         target_rms = self.config['target-rms']
+        batchnorm_power = self.config['batchnorm-power']
 
         affine_options = self.config['ng-affine-options']
         for opt_name in [ 'max-change', 'learning-rate-factor',
-                          'bias-stddev', 'l2-regularize' ]:
+                          'bias-stddev', 'l2-regularize',
+                          'diagonal-power-in', 'diagonal-power-out' ]:
             value = self.config[opt_name]
             if value != '':
                 affine_options += ' {0}={1}'.format(opt_name, value)
@@ -844,9 +849,9 @@ class XconfigBasicLayer(XconfigLayerBase):
             elif nonlinearity == 'batchnorm':
                 line = ('component name={0}.{1}'
                         ' type=BatchNormComponent dim={2}'
-                        ' target-rms={3}'
+                        ' target-rms={3} power={4}'
                         ''.format(self.name, nonlinearity, output_dim,
-                                  target_rms))
+                                  target_rms, batchnorm_power))
 
             elif nonlinearity == 'memnorm':
                 line = ('component name={0}.{1}'
