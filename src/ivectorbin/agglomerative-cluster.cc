@@ -22,7 +22,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "util/stl-utils.h"
-#include "ivector/agglomerative-bottom-up-clustering.h"
+#include "ivector/agglomerative-clustering.h"
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
@@ -31,12 +31,13 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
       "Cluster utterances by score, used in diarization.\n"
-      "Takes a file of scores of the form <utt1> <utt2> <score>\n"
-      "and a file spk2utt that contains the mapping from recordings\n"
-      "to the utterances within them, and outputs a list of labels\n"
-      "in the form <utt1> <label>. Clustering is done using\n"
-      "Agglomerative Hierarchical Bottom-Up Clustering with a\n"
-      "stopping-threshold score.\n"
+      "Takes a table of score matrices indexed by recording,\n"
+      "with the rows/columns corresponding to the utterances\n"
+      "of that recording in sorted order and a spk2utt file that\n"
+      "contains the mapping from recordings to utterances, and \n"
+      "outputs a list of labels in the form <utt1> <label>.\n"
+      "Clustering is done using Agglomerative Hierarchical\n"
+      "Clustering with a score threshold as stop criterion.\n"
       "Usage: agglomerative-cluster [options] <scores-rspecifier> "
       "<spk2utt-rspecifier> <labels-wspecifier>\n"
       "e.g.: \n"
@@ -79,10 +80,10 @@ int main(int argc, char *argv[]) {
       std::vector<int32> spk_ids;
       if (spk2num_rspecifier.size()) {
         int32 num_speakers = spk2num_reader.Value(spk);
-        AgglomerativeClusterBottomUp(scores,
+        AgglomerativeCluster(scores,
           std::numeric_limits<BaseFloat>::max(), num_speakers, &spk_ids);
       } else {
-        AgglomerativeClusterBottomUp(scores, threshold, 1, &spk_ids);
+        AgglomerativeCluster(scores, threshold, 1, &spk_ids);
       }
       for (int32 i = 0; i < spk_ids.size(); i++)
         label_writer.Write(uttlist[i], spk_ids[i]);

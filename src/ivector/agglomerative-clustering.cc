@@ -1,4 +1,4 @@
-// ivector/agglomerative-bottom-up-clustering.cc
+// ivector/agglomerative-clustering.cc
 
 // Copyright 2012   Arnab Ghoshal
 //           2009-2011  Microsoft Corporation;  Saarland University
@@ -23,7 +23,7 @@
 #include <algorithm>
 #include <queue>
 
-#include "ivector/agglomerative-bottom-up-clustering.h"
+#include "ivector/agglomerative-clustering.h"
 
 namespace kaldi {
 
@@ -160,7 +160,7 @@ void AgglomerativeClusterer::MergeClusters(int32 i, int32 j) {
   nclusters_--;
 }
 
-void AgglomerativeClusterBottomUp(
+void AgglomerativeCluster(
     const Matrix<BaseFloat> &scores,
     BaseFloat thresh,
     int32 min_clust,

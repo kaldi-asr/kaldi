@@ -1,4 +1,4 @@
-// ivector/agglomerative-bottom-up-clustering.h
+// ivector/agglomerative-clustering.h
 
 // Copyright 2016  David Snyder
 //           2017  Matthew Maciejewski
@@ -18,8 +18,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_IVECTOR_AGGLOMERATIVE_BOTTOM_UP_CLUSTERING_H_
-#define KALDI_IVECTOR_AGGLOMERATIVE_BOTTOM_UP_CLUSTERING_H_
+#ifndef KALDI_IVECTOR_AGGLOMERATIVE_CLUSTERING_H_
+#define KALDI_IVECTOR_AGGLOMERATIVE_CLUSTERING_H_
 
 #include <vector>
 #include <set>
@@ -30,7 +30,7 @@
 
 namespace kaldi {
 
-void AgglomerativeClusterBottomUp(
+void AgglomerativeCluster(
     const Matrix<BaseFloat> &scores,
     BaseFloat thresh,
     int32 min_clust,
@@ -38,4 +38,4 @@ void AgglomerativeClusterBottomUp(
 
 }  // end namespace kaldi.
 
-#endif  // KALDI_IVECTOR_AGGLOMERATIVE_BOTTOM_UP_CLUSTERING_H_
+#endif  // KALDI_IVECTOR_AGGLOMERATIVE_CLUSTERING_H_

@@ -8,7 +8,7 @@ include ../kaldi.mk
 TESTFILES = ivector-extractor-test plda-test logistic-regression-test
 
 OBJFILES = ivector-extractor.o voice-activity-detection.o plda.o \
-           logistic-regression.o agglomerative-bottom-up-clustering.o
+           logistic-regression.o agglomerative-clustering.o
 
 LIBNAME = kaldi-ivector
 
