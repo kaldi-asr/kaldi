@@ -452,7 +452,7 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
                    minibatch_size_str,
                    run_opts,
                    chunk_width=None, get_raw_nnet_from_am=True,
-                   sum_to_one_penalty=0.0,
+                   max_objective_evaluations=30,
                    use_multitask_egs=False,
                    compute_per_dim_accuracy=False):
     """ Function to do model combination
@@ -501,10 +501,8 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
                              use_multitask_egs=use_multitask_egs)
     common_lib.execute_command(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
-                nnet3-combine --num-iters=80 \
-                --enforce-sum-to-one={hard_enforce} \
-                --sum-to-one-penalty={penalty} \
-                --enforce-positive-weights=true \
+                nnet3-combine \
+                --max-objective-evaluations={max_objective_evaluations} \
                 --verbose=3 {raw_models} \
                 "ark,bg:nnet3-copy-egs {multitask_egs_opts} \
                     {egs_rspecifier} ark:- | \
@@ -513,9 +511,8 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
         """.format(command=run_opts.command,
                    combine_queue_opt=run_opts.combine_queue_opt,
                    dir=dir, raw_models=" ".join(raw_model_strings),
+                   max_objective_evaluations=max_objective_evaluations,
                    egs_rspecifier=egs_rspecifier,
-                   hard_enforce=(sum_to_one_penalty <= 0),
-                   penalty=sum_to_one_penalty,
                    mbsize=minibatch_size_str,
                    out_model=out_model,
                    multitask_egs_opts=multitask_egs_opts))
