@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright  2016  David Snyder
 #            2017  Matthew Maciejewski
@@ -29,7 +29,6 @@ where:
 <slat> = "<NA>"
 """
 
-from __future__ import print_function
 import argparse
 import sys
 
