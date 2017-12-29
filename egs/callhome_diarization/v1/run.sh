@@ -32,11 +32,8 @@ local/make_swbd_cellular1.pl /export/corpora5/LDC/LDC2001S13 \
 local/make_swbd_cellular2.pl /export/corpora5/LDC/LDC2004S07 \
                              data/swbd_cellular2_train
 
-# NOTE: For now, this is not a propery data prep script.  It assumes that the
-# data was already prepared elsewhere (e.g., in
-# /home/dsnyder/a16/a16/dsnyder/SCALE17/callhome), and copies the files to
-# the local directories here.
-local/make_callhome.sh /home/dsnyder/a16/a16/dsnyder/SCALE17/callhome data/
+# Prepare the Callhome portion of NIST SRE 2000.
+local/make_callhome.sh /export/corpora/NIST/LDC2001S97/ data/
 
 utils/combine_data.sh data/train \
   data/swbd_cellular1_train data/swbd_cellular2_train \
@@ -145,7 +142,7 @@ diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 --threshold 0.488 \
 export PATH=$PATH:$KALDI_ROOT/tools/sctk/bin
 mkdir -p results
 cat exp/ivectors_callhome1/plda_scores/rttm exp/ivectors_callhome2/plda_scores/rttm \
-  | md-eval.pl -1 -c 0.25 -r local/fullref.rttm -s - 2> results/threshold.log \
+  | md-eval.pl -1 -c 0.25 -r data/callhome/fullref.rttm -s - 2> results/threshold.log \
   | tee results/DER_threshold.txt
 
 # Now try clustering using the oracle number of speakers.
@@ -161,7 +158,5 @@ diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
 # OVERALL SPEAKER DIARIZATION ERROR = 9.26 percent of scored speaker time  `(ALL)
 cat exp/ivectors_callhome1/plda_scores_num_spk/rttm \
   exp/ivectors_callhome2/plda_scores_num_spk/rttm \
-  | md-eval.pl -1 -c 0.25 -r local/fullref.rttm -s - 2> results/num_spk.log \
+  | md-eval.pl -1 -c 0.25 -r data/callhome/fullref.rttm -s - 2> results/num_spk.log \
   | tee results/DER_num_spk.txt
-
-# TODO the next step is to do refinement (e.g., VB resegmentation).
