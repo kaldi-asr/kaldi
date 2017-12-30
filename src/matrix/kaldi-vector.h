@@ -6,6 +6,7 @@
 //                       Karel Vesely;  Go Vivace Inc.;  Arnab Ghoshal
 //                       Wei Shi;
 //                2015   Guoguo Chen
+//                2017   Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -136,8 +137,14 @@ class VectorBase {
   /// Applies floor to all elements. Returns number of elements floored.
   MatrixIndexT ApplyFloor(Real floor_val);
 
+  /// Applies floor to all elements. Slightly faster than ApplyFloor
+  void ApplyFloorNoCount(Real floor_val);
+
   /// Applies ceiling to all elements. Returns number of elements changed.
   MatrixIndexT ApplyCeiling(Real ceil_val);
+
+  /// Applies ceiling to all elements. Slightly faster than ApplyFloor
+  void ApplyCeilingNoCount(Real ceil_val);
 
   /// Applies floor to all elements. Returns number of elements floored.
   MatrixIndexT ApplyFloor(const VectorBase<Real> &floor_vec);

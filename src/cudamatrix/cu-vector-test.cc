@@ -2,7 +2,7 @@
 
 // Copyright 2013 Lucas Ondel
 //           2013 Johns Hopkins University (author: Daniel Povey)
-//           2017 Hossein Hadian
+//           2017 Hossein Hadian, Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -563,6 +563,34 @@ template<typename Real> void CuVectorUnitTestApplyFloor() {
   }
 }
 
+template<typename Real> void CuVectorUnitTestApplyFloorNoCount() {
+  for (int32 l = 0; l < 10; l++) {
+    int32 dim = 100 + Rand() % 700;
+    CuVector<Real> cu_vector1(dim);
+    cu_vector1.SetRandn();
+    CuVector<Real> cu_vector2(cu_vector1);
+
+    BaseFloat floor = 0.33 * (-5 + Rand() % 10);
+    (void) cu_vector1.ApplyFloor(floor);
+    cu_vector2.ApplyFloorNoCount(floor);
+    AssertEqual(cu_vector1, cu_vector2);
+  }
+}
+
+template<typename Real> void CuVectorUnitTestApplyCeilingNoCount() {
+  for (int32 l = 0; l < 10; l++) {
+    int32 dim = 100 + Rand() % 700;
+    CuVector<Real> cu_vector1(dim);
+    cu_vector1.SetRandn();
+    CuVector<Real> cu_vector2(cu_vector1);
+
+    BaseFloat floor = 0.33 * (-5 + Rand() % 10);
+    (void) cu_vector1.ApplyCeiling(floor);
+    cu_vector2.ApplyCeilingNoCount(floor);
+    AssertEqual(cu_vector1, cu_vector2);
+  }
+}
+
 template<typename Real> void CuVectorUnitTestApplyCeiling() {
   for (int32 l = 0; l < 10; l++) {
     int32 dim = 100 + Rand() % 700;
@@ -770,6 +798,8 @@ template<typename Real> void CuVectorUnitTest() {
   CuVectorUnitTestApplyExp<Real>();
   CuVectorUnitTestApplyLog<Real>();
   CuVectorUnitTestApplyFloor<Real>();
+  CuVectorUnitTestApplyFloorNoCount<Real>();
+  CuVectorUnitTestApplyCeilingNoCount<Real>();
   CuVectorUnitTestApplyCeiling<Real>();
   CuVectorUnitTestApplyPow<Real>();
   CuVectorUnitTestAddMatVec<Real>();

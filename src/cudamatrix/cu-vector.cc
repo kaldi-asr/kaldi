@@ -2,6 +2,7 @@
 
 // Copyright 2012-2013  Karel Vesely
 //           2012-2014  Johns Hopkins University (author: Daniel Povey)
+//                2017  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -367,6 +368,25 @@ MatrixIndexT CuVectorBase<Real>::ApplyFloor(Real floor_val) {
 }
 
 template<typename Real>
+void CuVectorBase<Real>::ApplyFloorNoCount(Real floor_val) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) return;
+    CuTimer tim;
+    int dimBlock(CU1DBLOCK);
+    int dimGrid(n_blocks(dim_,CU1DBLOCK));
+
+    cuda_vec_apply_floor_no_count(dimGrid, dimBlock, data_, floor_val, dim_);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloorNoCount", tim);
+  } else
+#endif
+  {
+    Vec().ApplyFloorNoCount(floor_val);
+  }
+}
+
+template<typename Real>
 MatrixIndexT CuVectorBase<Real>::ApplyCeiling(Real ceiling_val) {
   MatrixIndexT num_ceiled = 0;
 #if HAVE_CUDA == 1
@@ -388,6 +408,25 @@ MatrixIndexT CuVectorBase<Real>::ApplyCeiling(Real ceiling_val) {
     num_ceiled = Vec().ApplyCeiling(ceiling_val);
   }
   return num_ceiled;
+}
+
+template<typename Real>
+void CuVectorBase<Real>::ApplyCeilingNoCount(Real ceiling_val) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) return;
+    CuTimer tim;
+    int dimBlock(CU1DBLOCK);
+    int dimGrid(n_blocks(dim_,CU1DBLOCK));
+
+    cuda_vec_apply_ceiling_no_count(dimGrid, dimBlock, data_, ceiling_val, dim_);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyCeilingNoCount", tim);
+  } else
+#endif
+  {
+    Vec().ApplyCeilingNoCount(ceiling_val);
+  }
 }
 
 template<typename Real>

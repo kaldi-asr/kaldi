@@ -5,6 +5,7 @@
 //                      Petr Schwarz;  Yanmin Qian;  Jan Silovsky;
 //                      Haihua Xu; Wei Shi
 //                2015  Guoguo Chen
+//                2017  Daniel Galvez
 
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -823,6 +824,13 @@ MatrixIndexT VectorBase<Real>::ApplyFloor(Real floor_val) {
 }
 
 template<typename Real>
+void VectorBase<Real>::ApplyFloorNoCount(Real floor_val) {
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    data_[i] = std::max(data_[i], floor_val);
+  }
+}
+
+template<typename Real>
 MatrixIndexT VectorBase<Real>::ApplyCeiling(Real ceil_val) {
   MatrixIndexT num_changed = 0;
   for (MatrixIndexT i = 0; i < dim_; i++) {
@@ -834,6 +842,12 @@ MatrixIndexT VectorBase<Real>::ApplyCeiling(Real ceil_val) {
   return num_changed;
 }
 
+template<typename Real>
+void VectorBase<Real>::ApplyCeilingNoCount(Real ceiling_val) {
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    data_[i] = std::min(data_[i], ceiling_val);
+  }
+}
 
 template<typename Real>
 MatrixIndexT VectorBase<Real>::ApplyFloor(const VectorBase<Real> &floor_vec) {

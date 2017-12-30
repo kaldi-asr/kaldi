@@ -6,6 +6,7 @@
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
 //           2016-2017  Shiyin Kang
+//                2017  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -708,12 +709,20 @@ void cudaD_vec_apply_ceiling(int Gr, int Bl, double* v, double ceiling_val,
                              float* num, int dim);
 void cudaF_vec_apply_ceiling(int Gr, int Bl, float* v, float ceiling_val,
                              float* num, int dim);
+void cudaD_vec_apply_ceiling_no_count(int Gr, int Bl, double* v,
+                                      double ceiling_val, int dim);
+void cudaF_vec_apply_ceiling_no_count(int Gr, int Bl, float* v,
+                                      float ceiling_val, int dim);
 void cudaD_vec_apply_exp(int Gr, int Bl, double* v, int dim);
 void cudaF_vec_apply_exp(int Gr, int Bl, float* v, int dim);
 void cudaD_vec_apply_floor(int Gr, int Bl, double* v, double floor_val,
                            float* num, int dim);
 void cudaF_vec_apply_floor(int Gr, int Bl, float* v, float floor_val,
                            float* num, int dim);
+void cudaD_vec_apply_floor_no_count(int Gr, int Bl, double* v, double floor_val,
+                                    int dim);
+void cudaF_vec_apply_floor_no_count(int Gr, int Bl, float* v, float floor_val,
+                                    int dim);
 void cudaD_vec_apply_log(int Gr, int Bl, double* v, double* flag, int dim);
 void cudaF_vec_apply_log(int Gr, int Bl, float* v, float* flag, int dim);
 void cudaD_vec_copy_diag_from_packed(int Gr, int Bl, double *dst,

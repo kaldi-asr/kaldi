@@ -1,6 +1,7 @@
 // cudamatrix/cu-vector-speed-test.cc
 
 // Copyright 2013  Johns Hopkins University (author: Daniel Povey)
+// Copyright 2017  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -256,6 +257,86 @@ template<typename Real> void TestCuVectorAddColSumMat(int32 dim, MatrixTranspose
 }
 
 
+template<typename Real> void TestCuVectorApplyFloor(int32 dim) {
+  BaseFloat time_in_secs = 0.02;
+  CuVector<Real> v(dim);
+  v.SetRandn();
+  Real threshold = RandInt(-35000, 35000) / Real(100);
+
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    (void) v.ApplyFloor(threshold);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::ApplyFloor" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+
+}
+
+
+template<typename Real> void TestCuVectorApplyFloorNoCount(int32 dim) {
+  BaseFloat time_in_secs = 0.02;
+  CuVector<Real> v(dim);
+  v.SetRandn();
+  Real threshold = RandInt(-35000, 35000) / Real(100);
+
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    v.ApplyFloorNoCount(threshold);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::ApplyFloorNoCount" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+
+}
+
+
+template<typename Real> void TestCuVectorApplyCeiling(int32 dim) {
+  BaseFloat time_in_secs = 0.02;
+  CuVector<Real> v(dim);
+  v.SetRandn();
+  Real threshold = RandInt(-35000, 35000) / Real(100);
+
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    (void) v.ApplyCeiling(threshold);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::ApplyCeiling" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+
+}
+
+
+template<typename Real> void TestCuVectorApplyCeilingNoCount(int32 dim) {
+  BaseFloat time_in_secs = 0.02;
+  CuVector<Real> v(dim);
+  v.SetRandn();
+  Real threshold = RandInt(-35000, 35000) / Real(100);
+
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    v.ApplyCeilingNoCount(threshold);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::ApplyCeilingNoCount" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+
+}
+
+
 template<typename Real> void CudaVectorSpeedTest() {
   std::vector<int32> sizes;
   sizes.push_back(16);
@@ -295,6 +376,14 @@ template<typename Real> void CudaVectorSpeedTest() {
   for (int32 s = 0; s < ns; s++) {
     TestCuVectorAddColSumMat<Real>(sizes[s], kNoTrans);
     TestCuVectorAddColSumMat<Real>(sizes[s], kTrans);
+  }
+  for (int32 s = 0; s < ns; s++) {
+    TestCuVectorApplyFloor<Real>(sizes[s]);
+    TestCuVectorApplyFloorNoCount<Real>(sizes[s]);
+  }
+  for (int32 s = 0; s < ns; s++) {
+    TestCuVectorApplyCeiling<Real>(sizes[s]);
+    TestCuVectorApplyCeilingNoCount<Real>(sizes[s]);
   }
 
 }

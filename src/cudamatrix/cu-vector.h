@@ -5,6 +5,7 @@
 //                      Lucas Ondel
 //           2013       Xiaohui Zhang
 //           2015       Guoguo Chen
+//           2017       Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -134,7 +135,9 @@ class CuVectorBase {
   void ApplyExp();
   void ApplyLog();
   MatrixIndexT ApplyFloor(Real floor_val);
+  void ApplyFloorNoCount(Real floor_val);
   MatrixIndexT ApplyCeiling(Real ceiling_val);
+  void ApplyCeilingNoCount(Real ceiling_val);
   void ApplyPow(Real power);
   Real Sum() const;
 

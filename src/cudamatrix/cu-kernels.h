@@ -7,6 +7,7 @@
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
 //           2016-2017  Shiyin Kang
+//                2017  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -1395,6 +1396,14 @@ inline void cuda_vec_apply_ceiling(int Gr, int Bl, float* v, float floor_val,
                                    float* num, int dim) {
   cudaF_vec_apply_ceiling(Gr, Bl, v, floor_val, num, dim);
 }
+inline void cuda_vec_apply_ceiling_no_count(int Gr, int Bl, double* v,
+                                            double ceiling_val, int dim) {
+  cudaD_vec_apply_ceiling_no_count(Gr, Bl, v, ceiling_val, dim);
+}
+inline void cuda_vec_apply_ceiling_no_count(int Gr, int Bl, float* v,
+                                            float ceiling_val, int dim) {
+  cudaF_vec_apply_ceiling_no_count(Gr, Bl, v, ceiling_val, dim);
+}
 inline void cuda_vec_apply_exp(int Gr, int Bl, double* v, int dim) {
   cudaD_vec_apply_exp(Gr, Bl, v, dim);
 }
@@ -1408,6 +1417,14 @@ inline void cuda_vec_apply_floor(int Gr, int Bl, double* v, double floor_val,
 inline void cuda_vec_apply_floor(int Gr, int Bl, float* v, float floor_val,
                                  float* num, int dim) {
   cudaF_vec_apply_floor(Gr, Bl, v, floor_val, num, dim);
+}
+inline void cuda_vec_apply_floor_no_count(int Gr, int Bl, double* v,
+                                          double floor_val, int dim) {
+  cudaD_vec_apply_floor_no_count(Gr, Bl, v, floor_val, dim);
+}
+inline void cuda_vec_apply_floor_no_count(int Gr, int Bl, float* v,
+                                          float floor_val, int dim) {
+  cudaF_vec_apply_floor_no_count(Gr, Bl, v, floor_val, dim);
 }
 inline void cuda_vec_apply_log(int Gr, int Bl, double* v, double* flag,
                                int dim) {
