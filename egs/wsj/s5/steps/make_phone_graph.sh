@@ -8,6 +8,7 @@
 # is to be used for segmentation, and uses that together with a model to
 # make a decoding graph.
 # Uses SRILM.
+# See also utils/lang/make_phone_bigram_lm.sh.
 
 # Begin configuration section.
 stage=0

@@ -173,13 +173,19 @@ def train_new_models(dir, iter, srand, num_jobs,
                          (" --write-cache={0}/cache.{1}".format(dir, iter + 1)
                           if job == 1 else ""))
 
+        # For the first epoch (at most the first 15 iters), scale the batchnorm stats
+        # down more aggressively.  This affects memory-norm components.
+        batchnorm_opt=("--batchnorm-stats-scale=0.5"
+                       if num_archives_processed < (num_archives * frame_subsampling_factor) and iter < 15
+                       else "")
+
         thread = common_lib.background_command(
             """{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
                     nnet3-chain-train {parallel_train_opts} {verbose_opt} \
                     --apply-deriv-weights={app_deriv_wts} \
                     --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
                     {cache_io_opts}  --xent-regularize={xent_reg} \
-                    {deriv_time_opts} \
+                    {deriv_time_opts} {batchnorm_opt} \
                     --print-interval=10 --momentum={momentum} \
                     --max-param-change={max_param_change} \
                     --backstitch-training-scale={backstitch_training_scale} \
@@ -199,6 +205,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         dir=dir, iter=iter, srand=iter + srand,
                         next_iter=iter + 1, job=job,
                         deriv_time_opts=" ".join(deriv_time_opts),
+                        batchnorm_opt=batchnorm_opt,
                         app_deriv_wts=apply_deriv_weights,
                         fr_shft=frame_shift, l2=l2_regularize,
                         xent_reg=xent_regularize, leaky=leaky_hmm_coefficient,
@@ -480,14 +487,34 @@ def compute_progress(dir, iter, run_opts):
     common_lib.background_command(
         """{command} {dir}/log/progress.{iter}.log \
                 nnet3-am-info {model} '&&' \
-                nnet3-show-progress --use-gpu=no \
-                    "nnet3-am-copy --raw=true {prev_model} - |" \
-                    "nnet3-am-copy --raw=true {model} - |"
+                nnet3-show-progress --use-gpu=no {prev_model} {model}
         """.format(command=run_opts.command,
                    dir=dir,
                    iter=iter,
                    model=model,
                    prev_model=prev_model))
+    if iter % 10 == 0 and iter > 0:
+        # Every 10 iters, print some more detailed information.
+        # full_progress.X.log contains some diagnostics of the difference in
+        # parameters, printed in the same format as from nnet3-info.
+        common_lib.background_command(
+            """{command} {dir}/log/full_progress.{iter}.log \
+            nnet3-show-progress --use-gpu=no --verbose=2 {prev_model} {model}
+        """.format(command=run_opts.command,
+                   dir=dir,
+                   iter=iter,
+                   model=model,
+                   prev_model=prev_model))
+        # full_info.X.log is just the nnet3-info of the model, with the --verbose=2
+        # option which includes stats on the singular values of the parameter matrices.
+        common_lib.background_command(
+            """{command} {dir}/log/full_info.{iter}.log \
+            nnet3-info --verbose=2 {model}
+        """.format(command=run_opts.command,
+                   dir=dir,
+                   iter=iter,
+                   model=model))
+
 
 def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_str,
                    egs_dir, leaky_hmm_coefficient, l2_regularize,

@@ -351,20 +351,23 @@ class Component {
   ///     although most components will have much more info.
   virtual std::string Info() const;
 
-  /// This virtual function when called by
-  //    -- an UpdatableComponent scales the parameters
+  /// This virtual function when called on
+  ///    -- an UpdatableComponent scales the parameters
   ///      by "scale" when called by an UpdatableComponent.
-  //    -- a Nonlinear component (or another component that
-  ///      stores stats, like BatchNormComponent-- it relates
+  ///    -- a Nonlinear component (or another component that
+  ///      stores stats, like BatchNormComponent)-- it relates
   ///      to scaling activation stats, not parameters.
+  /// Otherwise it will normally do nothing.
   virtual void Scale(BaseFloat scale) {};
 
   /// This virtual function when called by
   ///    -- an UpdatableComponent adds the parameters of
   ///      another updatable component, times some constant, to the current
   ///      parameters.
-  ///    -- a NonlinearComponent it relates to adding stats
-  /// Otherwise it should do nothing.
+  ///    -- a NonlinearComponent (or another component that stores
+  ///       stats, like BatchNormComponent)-- it relates to adding
+  ///       stats.
+  /// Otherwise it will normally do nothing.
   virtual void Add(BaseFloat alpha, const Component &other) {};
 
   /// This virtual function only needs to be overwritten by Components that

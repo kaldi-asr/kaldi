@@ -23,6 +23,7 @@
 #include <iomanip>
 #include "nnet3/nnet-component-itf.h"
 #include "nnet3/nnet-simple-component.h"
+#include "nnet3/nnet-normalize-component.h"
 #include "nnet3/nnet-general-component.h"
 #include "nnet3/nnet-convolutional-component.h"
 #include "nnet3/nnet-attention-component.h"
@@ -163,6 +164,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new LstmNonlinearityComponent();
   } else if (component_type == "BatchNormComponent") {
     ans = new BatchNormComponent();
+  } else if (component_type == "MemoryNormComponent") {
+    ans = new MemoryNormComponent();
   } else if (component_type == "TimeHeightConvolutionComponent") {
     ans = new TimeHeightConvolutionComponent();
   } else if (component_type == "RestrictedAttentionComponent") {
