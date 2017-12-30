@@ -168,12 +168,10 @@ std::string NnetInfo(const Nnet &nnet);
 void SetDropoutProportion(BaseFloat dropout_proportion, Nnet *nnet);
 
 
-/// Returns true if nnet has at least one component of type
-/// BatchNormComponent or MemoryNormComponent
+/// Returns true if nnet has at least one component of type BatchNormComponent.
 bool HasBatchnorm(const Nnet &nnet);
 
-/// This function affects only components of type BatchNormComponent or
-/// MemoryNormComponent.
+/// This function affects only components of type BatchNormComponent.
 /// It sets "test mode" on such components (if you call it with test_mode =
 /// true, otherwise it would set normal mode, but this wouldn't be needed
 /// often).  "test mode" means that instead of using statistics from the batch,
@@ -445,8 +443,8 @@ void ApplyL2Regularization(const Nnet &nnet,
 
 /**
    This function scales the batchorm stats of any batchnorm components
-   (components of type BatchNormComponent or MemoryNormComponent) in 'nnet' by
-   the scale 'batchnorm_stats_scale'.
+   (components of type BatchNormComponent) in 'nnet' by the scale
+   'batchnorm_stats_scale'.
  */
 void ScaleBatchnormStats(BaseFloat batchnorm_stats_scale,
                          Nnet *nnet);

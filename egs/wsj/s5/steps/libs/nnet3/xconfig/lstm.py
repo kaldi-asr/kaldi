@@ -914,9 +914,6 @@ class XconfigLstmbLayer(XconfigLayerBase):
                            name, input_dim + cell_dim, bottleneck_dim,
                            affine_str))
 
-        configs.append("component name={0}.c_trunc_memnorm type=MemoryNormComponent dim={1} ".format(
-                name, cell_dim))
-
         configs.append("component name={0}.W_all_b type=LinearComponent input-dim={1} "
                        "output-dim={2} {3} {4}".format(name, bottleneck_dim, cell_dim * 4,
                                                        affine_str, l2_regularize_option))
@@ -940,7 +937,7 @@ class XconfigLstmbLayer(XconfigLayerBase):
 
         configs.append("###  Nodes for the components above.")
         configs.append("component-node name={0}.W_all_a component={0}.W_all_a input=Append({1}, "
-                       "IfDefined(Offset({0}.c_trunc_memnorm, {2})))".format(
+                       "IfDefined(Offset({0}.c_trunc, {2})))".format(
                            name, input_descriptor, delay))
         configs.append("component-node name={0}.W_all_b component={0}.W_all_b "
                        "input={0}.W_all_a".format(name))
@@ -955,8 +952,6 @@ class XconfigLstmbLayer(XconfigLayerBase):
         configs.append("dim-range-node name={0}.m input-node={0}.lstm_nonlin dim-offset={1} "
                        "dim={1}".format(name, cell_dim))
         configs.append("component-node name={0}.c_trunc component={0}.c_trunc input={0}.c".format(name))
-        configs.append("component-node name={0}.c_trunc_memnorm component={0}.c_trunc_memnorm "
-                       "input={0}.c_trunc".format(name))
         configs.append("component-node name={0}.m_batchnorm component={0}.m_batchnorm "
                        "input={0}.m".format(name))
         configs.append("### End LTSM layer '{0}'".format(name))

@@ -853,13 +853,6 @@ class XconfigBasicLayer(XconfigLayerBase):
                         ''.format(self.name, nonlinearity, output_dim,
                                   target_rms, batchnorm_power))
 
-            elif nonlinearity == 'memnorm':
-                line = ('component name={0}.{1}'
-                        ' type=MemoryNormComponent dim={2}'
-                        ' target-rms={3} '
-                        ''.format(self.name, nonlinearity, output_dim,
-                                  target_rms))
-
             elif nonlinearity == 'so':
                 line = ('component name={0}.{1}'
                         ' type=ScaleAndOffsetComponent dim={2} max-change=0.5 '

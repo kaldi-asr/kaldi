@@ -268,9 +268,9 @@ void NnetComputer::ExecuteCommand() {
             nnet_to_update = (computation_.need_model_derivative ?
                               nnet_to_update_ : NULL);
           } else {
-            // Some non-updatable components, such as CompositeComponent and
-            // MemoryNormComponent, store stats in the backprop.  For other
-            // types of component, this arg won't matter.
+            // Some non-updatable components, such as CompositeComponent, store
+            // stats in the backprop.  For other types of non-updatable
+            // component, this arg won't matter.
             nnet_to_update = nnet_to_store_stats_;
           }
           if (nnet_to_update)

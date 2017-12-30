@@ -274,7 +274,7 @@ bool TestSimpleComponentDataDerivative(const Component &c,
 
   int32 input_dim = c.InputDim(),
       output_dim = c.OutputDim(),
-      num_rows = RandInt(1, 100),
+      num_rows = RandInt(1, 20),
       rand_seed = Rand();
   int32 properties = c.Properties();
   CuMatrix<BaseFloat> input_data(num_rows, input_dim, kSetZero, input_stride_type),
@@ -317,7 +317,7 @@ bool TestSimpleComponentDataDerivative(const Component &c,
   }
   KALDI_LOG << "Predicted objf-change = " << predicted_objf_change;
   KALDI_LOG << "Measured objf-change = " << measured_objf_change;
-  BaseFloat threshold = 0.1;
+  BaseFloat threshold = 0.05;
   bool ans = ApproxEqual(predicted_objf_change, measured_objf_change, threshold);
   if (!ans)
     KALDI_WARN << "Data-derivative test failed, component-type="
@@ -442,7 +442,7 @@ bool TestSimpleComponentModelDerivative(const Component &c,
 
 
 void UnitTestNnetComponent() {
-  for (int32 n = 0; n < 200; n++)  {
+  for (int32 n = 0; n < 2000; n++)  {
     Component *c = GenerateRandomSimpleComponent();
     KALDI_LOG << c->Info();
     TestNnetComponentIo(c);

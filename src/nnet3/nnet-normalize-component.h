@@ -37,17 +37,19 @@ namespace nnet3 {
 /// @file  nnet-normalize-component.h
 ///
 ///   This file contains declarations of components that in one way or
-///   another normalize their input: NormalizeComponent, BatchNormComponent,
-///   and MemoryNormComponent.
+///   another normalize their input: NormalizeComponent and BatchNormComponent.
 
 /*
-   Implements the function:
+   NormalizeComponent implements the function:
 
          y = x * (sqrt(dim(x)) * target-rms) / |x|
 
-    where |x| is the 2-norm of the vector x.  I.e. its output is its input
-    scaled such that the root-mean-square values of its elements equals
-    target-rms.  (As a special case, if the input is zero, it outputs zero).
+   where |x| is the 2-norm of the vector x.  I.e. its output is its input
+   scaled such that the root-mean-square values of its elements equals
+   target-rms.  (As a special case, if the input is zero, it outputs zero).
+   This is like Hinton's layer-norm, except not normalizing the mean, only
+   the variance.
+
 
     Note: if you specify add-log-stddev=true, it adds an extra element to
      y which equals log(|x| / sqrt(dim(x))).
@@ -297,237 +299,6 @@ class BatchNormComponent: public Component {
   CuVector<BaseFloat> offset_;
   CuVector<BaseFloat> scale_;
 };
-
-
-/*
-  MemoryNormComponent is like batch normalization, except the stats
-  are accumulated as a weighted sum over past minibatches (if this is
-  not the first minibatch), instead of over the current minibatch.
-  Caution: we don't test this component in the standard way because it
-  would fail the derivative tests.
-
-  You can use it in the same way you would normally use BatchNormComponent.
-
-  Accepted configuration values:
-         dim          Dimension of the input and output
-         block-dim    Defaults to 'dim', but may be set to a nonzero divisor
-                      of 'dim'.  In this case, each block of dimension 'block-dim'
-                      is treated like a separate row of the input matrix, which
-                      means that the stats from n'th element of each
-                      block are pooled into one class, for each n.a
-         power        Power that determines the scale we apply, as a function of
-                      the variance.  The default, -0.5, corresponds to regular
-                      BatchNorm.
-         epsilon      Small term added to the variance that is used to prevent
-                      division by zero
-         target-rms   This defaults to 1.0, but if set, for instance, to 2.0,
-                      it will normalize the standard deviation of the output to
-                      2.0. 'target-stddev' might be a more suitable name, but this
-                      was chosen for consistency with NormalizeComponent.
-         include-indirect-derivative  This defaults to true, which means we
-                      include the (smaller) derivative term that comes via the
-                      mean and variance estimation.  You might want to set this to
-                      false for testing purposes.
- */
-class MemoryNormComponent: public Component {
- public:
-
-  MemoryNormComponent() { }
-
-  // constructor using another component
-  MemoryNormComponent(const MemoryNormComponent &other);
-
-  virtual int32 InputDim() const { return dim_; }
-  virtual int32 OutputDim() const { return dim_; }
-
-  virtual std::string Info() const;
-  virtual void InitFromConfig(ConfigLine *cfl);
-  virtual std::string Type() const { return "MemoryNormComponent"; }
-  virtual int32 Properties() const {
-    // If the block-dim is less than the dim, we need the input and output
-    // matrices to be contiguous (stride==num-cols), as we'll be reshaping
-    // internally.  This is not much of a cost, because this will be used
-    // in convnets where we have to do this anyway.
-    bool iid = include_indirect_derivative_;
-    return kSimpleComponent|kPropagateInPlace|kBackpropInPlace|
-        (test_mode_ ? 0 : kUsesMemo|kStoresStats|(iid?kBackpropNeedsOutput:0))|
-        (block_dim_ < dim_ ? kInputContiguous|kOutputContiguous : 0);
-
-  }
-
-  // Call this function to set 'test mode' to true or false.  In test
-  // mode the stats are frozen and will not be updated.
-  void SetTestMode(bool test_mode);
-
-
-  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const;
-
-  /// The backprop function.  In addition to propagating the input back to
-  /// 'in_deriv', if supplied, this function also updates, in 'to_update',
-  /// backward_count_ and the rows named 'y_deriv' and 'y_deriv_y' of
-  /// data_, and also the derived quantities 'x_deriv' and 'scale_deriv'
-  /// of data_.
-  /// (note: in training, 'to_update' will point to delta_nnet_, and later these
-  /// stats get added to nnet_ via Add())
-  virtual void Backprop(const std::string &debug_info,
-                        const ComponentPrecomputedIndexes *indexes,
-                        const CuMatrixBase<BaseFloat> &, // in_value
-                        const CuMatrixBase<BaseFloat> &out_value,
-                        const CuMatrixBase<BaseFloat> &out_deriv,
-                        void *memo,
-                        Component *to_update,
-                        CuMatrixBase<BaseFloat> *in_deriv) const;
-
-  virtual void Read(std::istream &is, bool binary); // This Read function
-  // requires that the Component has the correct type.
-
-  /// Write component to stream
-  virtual void Write(std::ostream &os, bool binary) const;
-  virtual Component* Copy() const { return new MemoryNormComponent(*this); }
-
-  // Note: if you scale by a negative number it will set stats to zero
-  // rather than allow a negative stats count.
-  virtual void Scale(BaseFloat scale);
-  // Note: if you try to add with negative coefficient (as in backstitch), it
-  // will do nothing.
-  virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void ZeroStats();
-
-  virtual void DeleteMemo(void *memo) const { delete static_cast<Memo*>(memo); }
-
-  /// This function updates stats_count_, the rows named 'x_mean', 'x_uvar'
-  /// of data_, and also the derived quantities stored in the rows named
-  /// 'scale', 'x_deriv' and 'scale_deriv' of data_.
-  /// (note: in training, this is called on the delta_nnet_, and later
-  /// the stats get added to nnet_ via Add())
-  virtual void StoreStats(const CuMatrixBase<BaseFloat> &, // in_value
-                          const CuMatrixBase<BaseFloat> &, // out_value
-                          void *memo);
-
- private:
-
-  struct Memo {
-    // 'stats_count' is the same as stats_count_ in the MemoryNormComponent
-    // from whose Propagate() function this memo was generated, plus
-    // the number of frames we're propagating (this is after any reshaping
-    // if block_dim_ != dim_).
-    BaseFloat stats_count;
-
-    // 'stats_count' is the same as stats_count_ in the MemoryNormComponent
-    // from whose Propagate() function this memo was generated.  It's mainly
-    // included because the backprop code wants to see if this was nonzero.
-    BaseFloat backward_count;
-
-    // The structure of 'data' is the same as the data_ member of
-    // MemoryNormComponent; it's a matrix of dimension 5 by block_dim_.
-    // It will differ from the data_ member of the component we generated this
-    // from by the addition of some extra data in the 'x_sum' and 'x_sumsq'
-    // stats, and a corresponding modification of the 'scale', 'x_deriv'
-    // and 'scale_deriv' quantities.
-    //
-    // (note: the reason we update the stats before propagation rather
-    // than after, is for stability: otherwise, with relu units, if we only
-    // update the stats after the propagation we get a particular pathology: if
-    // a unit was previously always zero it will get a big scale; and if then we
-    // start getting some nonzero output, the scale on it will be too large.)
-    CuMatrix<BaseFloat> data;
-  };
-
-
-  /// This piece of code, which has been broken out from Propagate(), computes
-  /// the memo.  Expects in.NumCols() == block_dim_.  It should only be called
-  /// if test_mode_ is false.
-  Memo *GetMemo(const CuMatrixBase<BaseFloat> &in) const;
-
-  /// This function computes certain members of data_ that are derived:
-  /// specifically, rows 4, 5 and 6, which are called 'scale', 'x_deriv' and
-  /// 'scale_deriv'.
-  void ComputeDerived();
-
-  void Check() const;
-
-  // this function is used in a couple of places; it turns the raw stats into
-  // the offset/scale term of a normalizing transform.
-  static void ComputeOffsetAndScale(BaseFloat count,
-                                    BaseFloat epsilon,
-                                    const Vector<BaseFloat> &stats_sum,
-                                    const Vector<BaseFloat> &stats_sumsq,
-                                    Vector<BaseFloat> *offset,
-                                    Vector<BaseFloat> *scale);
-
-  // Dimension of the input and output.
-  int32 dim_;
-
-  // block_dim_ would normally be the same as dim_, but if it's less (and it
-  // must be > 0 and must divide dim_), then each separate block of the input of
-  // dimension 'block_dim_' is treated like a separate frame for the purposes of
-  // normalization.  This can be used to implement spatial batch normalization
-  // for convolutional setups-- assuming the filter-dim has stride 1, which it
-  // always will in the new code in nnet-convolutional-component.h.
-  int32 block_dim_;
-
-  // Used to avoid exact-zero variances, epsilon has the dimension of a
-  // covariance.
-  BaseFloat epsilon_;
-
-  // This controls the dynamic range of the output.  At 1.0 which is the
-  // default, the output has unit standard deviation, but you can set it to
-  // other values.  The same config exists in NormalizeComponent.
-  BaseFloat target_rms_;
-
-  // If true, we include the smaller indirect part of the derivative, that comes
-  // via the stats estimation.  This is included mostly for testing purposes; we
-  // expect this will normally be true.
-  bool include_indirect_derivative_;
-
-  // If test_mode_ is set, no stats will be accumulated.  It's an error if
-  // test_mode_ is set and the data count is zero, and you try to propagate.
-  bool test_mode_;
-
-  // The total count of stats stored by StoreStats(), and which are represented
-  // in x_mean = data_.Row(0) and x_uvar = data_.Row(1).  We never allow this to
-  // become less than zero, even if people do unexpected things with Add() and
-  // Scale().
-  BaseFloat stats_count_;
-
-  // backward_count_ is the total count of stats accumulated during backprop,
-  // and represents the count correspondsing to the stats in 'y_deriv' and
-  // 'y_deriv_y'.  It is expected to be either zero or the same as stats_count_,
-  // in most circumstances, depending whether you were doing backprop or just
-  // inference-- but we don't enforce this because there may be situations where
-  // this is not the case.
-  //
-  // We never allow this to become less than zero, even if people do unexpected
-  // things with Add() and Scale().
-  BaseFloat backward_count_;
-
-  // We store data_ as a single matrix because it enables certain operations
-  // to be done using fewer kernels, but it contains various different quantities,
-  // which we'll describe below as if they were separate variables.
-  // data_ is of dimension 5 by block_dim_.
-  CuMatrix<BaseFloat> data_;
-  // data_.Row(0) is 'x_mean', which is the decaying moving-average of
-  //             input data x; or zero if stats_count_ is zero.
-  // data_.Row(1) is 'x_uvar', which is the decaying moving-average of
-  //             input data x^2 or zero if stats_count_ is zero.
-  // data_.Row(2) is 'y_deriv', which is the decaying moving-average
-  //           derivative of the objective w.r.t. the output y; or
-  //           zero if backward_count_ is zero.
-  // data_.Row(3) is 'y_deriv_y', which  the decaying moving average
-  //           of the product of the output times (the derivative of the
-  //           objective w.r.t. the output); or zero if backward_count_
-  //           is zero.
-  //
-  // The quantity below is derived from the stats above.
-  //
-  // data_.Row(4) is 'scale', which is the inverse square root of the
-  //            covariance computed from x_mean and x_uvar (plus epsilon),
-  //            or zero if stats_count_ is zero.
-};
-
-
 
 
 

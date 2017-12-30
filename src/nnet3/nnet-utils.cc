@@ -492,8 +492,7 @@ void SetDropoutProportion(BaseFloat dropout_proportion,
 bool HasBatchnorm(const Nnet &nnet) {
   for (int32 c = 0; c < nnet.NumComponents(); c++) {
     const Component *comp = nnet.GetComponent(c);
-    if (dynamic_cast<const BatchNormComponent*>(comp) != NULL ||
-        dynamic_cast<const MemoryNormComponent*>(comp) != NULL)
+    if (dynamic_cast<const BatchNormComponent*>(comp) != NULL)
       return true;
   }
   return false;
@@ -509,9 +508,6 @@ void ScaleBatchnormStats(BaseFloat batchnorm_stats_scale,
     BatchNormComponent *bc = dynamic_cast<BatchNormComponent*>(comp);
     if (bc != NULL)
       bc->Scale(batchnorm_stats_scale);
-    MemoryNormComponent *mc = dynamic_cast<MemoryNormComponent*>(comp);
-    if (mc != NULL)
-      mc->Scale(batchnorm_stats_scale);
   }
 }
 
@@ -536,9 +532,6 @@ void SetBatchnormTestMode(bool test_mode,  Nnet *nnet) {
     BatchNormComponent *bc = dynamic_cast<BatchNormComponent*>(comp);
     if (bc != NULL)
       bc->SetTestMode(test_mode);
-    MemoryNormComponent *mc = dynamic_cast<MemoryNormComponent*>(comp);
-    if (mc != NULL)
-      mc->SetTestMode(test_mode);
   }
 }
 
