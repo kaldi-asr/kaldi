@@ -6,6 +6,7 @@
 //                       Johns Hopkins University (Author: Daniel Povey);
 //                       Haihua Xu; Wei Shi
 //                2015   Guoguo Chen
+//                2017   Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -2286,8 +2287,10 @@ template<typename Real> static void  UnitTestFloorCeiling() {
     v.SetRandn();
     Real pivot = v(5);
     Vector<Real> f(v), f2(v), c(v), c2(v);
-    MatrixIndexT floored2 = f.ApplyFloor(pivot),
-        ceiled2 = c.ApplyCeiling(pivot);
+    MatrixIndexT floored2;
+    f.ApplyFloor(pivot, &floored2);
+    MatrixIndexT ceiled2;
+    c.ApplyCeiling(pivot, &ceiled2);
     MatrixIndexT floored = 0, ceiled = 0;
     for (MatrixIndexT d = 0; d < dimM; d++) {
       if (f2(d) < pivot) { f2(d) = pivot; floored++; }
@@ -2297,6 +2300,16 @@ template<typename Real> static void  UnitTestFloorCeiling() {
     AssertEqual(c, c2);
     KALDI_ASSERT(floored == floored2);
     KALDI_ASSERT(ceiled == ceiled2);
+
+    // Check that the non-counting variants are equivalent to the counting
+    // variants.
+    Vector<Real> f3(v);
+    f3.ApplyFloor(pivot);
+    AssertEqual(f2, f3);
+
+    Vector<Real> c3(v);
+    c3.ApplyCeiling(pivot);
+    AssertEqual(c2, c3);
   }
 }
 
