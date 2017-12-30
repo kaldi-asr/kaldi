@@ -92,13 +92,7 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
 
     int32 first_frame = 0;  // we shift the time-indexes of all these parts so
                             // that the supervised part starts from frame 0.
-
-    SubVector<BaseFloat> output_weights(
-        &(chunk.output_weights[0]),
-        static_cast<int32>(chunk.output_weights.size()));
-
     NnetChainSupervision nnet_supervision("output", supervision_part,
-                                          output_weights,
                                           first_frame,
                                           frame_subsampling_factor);
 

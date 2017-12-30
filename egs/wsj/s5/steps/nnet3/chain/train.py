@@ -85,7 +85,7 @@ def get_args():
                         dest='apply_deriv_weights', default=True,
                         action=common_lib.StrToBoolAction,
                         choices=["true", "false"],
-                        help="")
+                        help="Deprecated. Kept for back compatibility")
     parser.add_argument("--chain.frame-subsampling-factor", type=int,
                         dest='frame_subsampling_factor', default=3,
                         help="ratio of frames-per-second of features we "
@@ -507,7 +507,6 @@ def train(args, run_opts):
                     iter),
                 shrinkage_value=shrinkage_value,
                 num_chunk_per_minibatch_str=args.num_chunk_per_minibatch,
-                apply_deriv_weights=args.apply_deriv_weights,
                 min_deriv_time=min_deriv_time,
                 max_deriv_time_relative=max_deriv_time_relative,
                 l2_regularize=args.l2_regularize,

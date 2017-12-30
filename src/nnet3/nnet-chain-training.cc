@@ -220,13 +220,6 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
                                         tot_weight, xent_objf);
     }
 
-    if (opts_.apply_deriv_weights && sup.deriv_weights.Dim() != 0) {
-      CuVector<BaseFloat> cu_deriv_weights(sup.deriv_weights);
-      nnet_output_deriv.MulRowsVec(cu_deriv_weights);
-      if (use_xent)
-        xent_deriv.MulRowsVec(cu_deriv_weights);
-    }
-
     computer->AcceptInput(sup.name, &nnet_output_deriv);
 
     objf_info_[sup.name + suffix].UpdateStats(sup.name + suffix,
