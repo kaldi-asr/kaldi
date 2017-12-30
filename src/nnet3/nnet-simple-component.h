@@ -773,13 +773,6 @@ class LogSoftmaxComponent: public NonlinearComponent {
                             minibatches) we update the Fisher-matrix estimates;
                             making this > 1 saves a little time in training.
                             default=4.
-      diagonal-power-in, diagonal-power-out
-                            Control a diagonal factor in the natural gradient
-                            factorization, for the input and output spaces
-                            respectively 0.0 = default (old-style natural
-                            gradient), 1.0 = natural gradient with the diagonal
-                            factors; 0.5 is more like a factorized type of
-                            adagrad.
 */
 class NaturalGradientAffineComponent: public AffineComponent {
  public:
@@ -804,17 +797,6 @@ class NaturalGradientAffineComponent: public AffineComponent {
   // disallow assignment operator.
   NaturalGradientAffineComponent &operator= (
       const NaturalGradientAffineComponent&);
-
-  // Configs for preconditioner.  The input side tends to be better conditioned ->
-  // smaller rank needed, so make them separately configurable.
-  int32 rank_in_;
-  int32 rank_out_;
-  int32 update_period_;
-  BaseFloat num_samples_history_;
-  BaseFloat alpha_;
-  // note: the config values diagonal-power-in and diagonal-power-out
-  // are stored in the objects preconditioner_in_ and preconditioner_out_
-  // directly.
 
   OnlineNaturalGradient preconditioner_in_;
 
@@ -883,13 +865,6 @@ class NaturalGradientAffineComponent: public AffineComponent {
                             minibatches) we update the Fisher-matrix estimates;
                             making this > 1 saves a little time in training.
                             default=4.
-      diagonal-power-in, diagonal-power-out
-                            Control a diagonal factor in the natural gradient
-                            factorization, for the input and output spaces
-                            respectively 0.0 = default (old-style natural
-                            gradient), 1.0 = natural gradient with the diagonal
-                            factors; 0.5 is more like a factorized type of
-                            adagrad.
 */
 class LinearComponent: public UpdatableComponent {
  public:

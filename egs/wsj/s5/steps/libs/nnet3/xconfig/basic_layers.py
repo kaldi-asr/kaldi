@@ -686,8 +686,6 @@ class XconfigBasicLayer(XconfigLayerBase):
                        'bias-stddev': '',
                        'l2-regularize': '',
                        'learning-rate-factor': '',
-                       'diagonal-power-in': '',
-                       'diagonal-power-out': '',
                        'max-change': 0.75 }
 
     def check_configs(self):
@@ -760,8 +758,7 @@ class XconfigBasicLayer(XconfigLayerBase):
 
         affine_options = self.config['ng-affine-options']
         for opt_name in [ 'max-change', 'learning-rate-factor',
-                          'bias-stddev', 'l2-regularize',
-                          'diagonal-power-in', 'diagonal-power-out' ]:
+                          'bias-stddev', 'l2-regularize' ]:
             value = self.config[opt_name]
             if value != '':
                 affine_options += ' {0}={1}'.format(opt_name, value)

@@ -2657,14 +2657,6 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &rank_in);
   ExpectToken(is, binary, "<RankOut>");
   ReadBasicType(is, binary, &rank_out);
-  if (PeekToken(is, binary) == 'D') {
-    ExpectToken(is, binary, "<DiagonalPowerInOut>");
-    BaseFloat d_in, d_out;
-    ReadBasicType(is, binary, &d_in);
-    ReadBasicType(is, binary, &d_out);
-    preconditioner_in_.SetDiagonalPower(d_in);
-    preconditioner_out_.SetDiagonalPower(d_out);
-  }
   ExpectToken(is, binary, "<UpdatePeriod>");
   ReadBasicType(is, binary, &update_period);
   ExpectToken(is, binary, "<NumSamplesHistory>");
@@ -2773,9 +2765,7 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
 
   // Set natural-gradient configs.
   BaseFloat num_samples_history = 2000.0,
-      alpha = 4.0,
-      diagonal_power_in = 0.0,
-      diagonal_power_out = 0.0;
+      alpha = 4.0;
   int32 rank_in = 20, rank_out = 80,
       update_period = 4;
   cfl->GetValue("num-samples-history", &num_samples_history);
@@ -2783,8 +2773,6 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   cfl->GetValue("rank-in", &rank_in);
   cfl->GetValue("rank-out", &rank_out);
   cfl->GetValue("update-period", &update_period);
-  cfl->GetValue("diagonal-power-in", &diagonal_power_in);
-  cfl->GetValue("diagonal-power-out", &diagonal_power_out);
 
   preconditioner_in_.SetNumSamplesHistory(num_samples_history);
   preconditioner_out_.SetNumSamplesHistory(num_samples_history);
@@ -2793,8 +2781,6 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   preconditioner_in_.SetRank(rank_in);
   preconditioner_out_.SetRank(rank_out);
   preconditioner_out_.SetUpdatePeriod(update_period);
-  preconditioner_in_.SetDiagonalPower(diagonal_power_in);
-  preconditioner_out_.SetDiagonalPower(diagonal_power_out);
 
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
@@ -2814,13 +2800,6 @@ void NaturalGradientAffineComponent::Write(std::ostream &os,
   WriteBasicType(os, binary, preconditioner_in_.GetRank());
   WriteToken(os, binary, "<RankOut>");
   WriteBasicType(os, binary, preconditioner_out_.GetRank());
-  BaseFloat d_in = preconditioner_in_.GetDiagonalPower(),
-      d_out = preconditioner_out_.GetDiagonalPower();
-  if (d_in != 0.0 || d_out != 0.0) {
-    WriteToken(os, binary, "<DiagonalPowerInOut>");
-    WriteBasicType(os, binary, d_in);
-    WriteBasicType(os, binary, d_out);
-  }
   WriteToken(os, binary, "<UpdatePeriod>");
   WriteBasicType(os, binary, preconditioner_in_.GetUpdatePeriod());
   WriteToken(os, binary, "<NumSamplesHistory>");
@@ -2838,12 +2817,6 @@ std::string NaturalGradientAffineComponent::Info() const {
          << ", num-samples-history=" << preconditioner_in_.GetNumSamplesHistory()
          << ", update-period=" << preconditioner_in_.GetUpdatePeriod()
          << ", alpha=" << preconditioner_in_.GetAlpha();
-  BaseFloat d_in = preconditioner_in_.GetDiagonalPower(),
-      d_out = preconditioner_out_.GetDiagonalPower();
-  if (d_in != 0.0 || d_out != 0.0) {
-    stream << ", diagonal-power-in=" << d_in
-           << ", diagonal-power-out=" << d_out;
-  }
   return stream.str();
 }
 
@@ -2948,14 +2921,6 @@ void LinearComponent::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<RankInOut>");
   ReadBasicType(is, binary, &rank_in);
   ReadBasicType(is, binary, &rank_out);
-  if (PeekToken(is, binary) == 'D') {
-    ExpectToken(is, binary, "<DiagonalPowerInOut>");
-    BaseFloat d_in, d_out;
-    ReadBasicType(is, binary, &d_in);
-    ReadBasicType(is, binary, &d_out);
-    preconditioner_in_.SetDiagonalPower(d_in);
-    preconditioner_out_.SetDiagonalPower(d_out);
-  }
   ExpectToken(is, binary, "<Alpha>");
   ReadBasicType(is, binary, &alpha);
   ExpectToken(is, binary, "<NumSamplesHistory>");
@@ -3007,9 +2972,7 @@ void LinearComponent::InitFromConfig(ConfigLine *cfl) {
   // Read various natural-gradient-related configs.
   int32 rank_in = 20, rank_out = 80, update_period = 4;
   BaseFloat alpha = 4.0,
-      num_samples_history = 2000.0,
-      diagonal_power_in = 0.0,
-      diagonal_power_out = 0.0;
+      num_samples_history = 2000.0;
 
   use_natural_gradient_ = true;
 
@@ -3019,9 +2982,6 @@ void LinearComponent::InitFromConfig(ConfigLine *cfl) {
   cfl->GetValue("rank-out", &rank_out);
   cfl->GetValue("update-period", &update_period);
   cfl->GetValue("use-natural-gradient", &use_natural_gradient_);
-  cfl->GetValue("diagonal-power-in", &diagonal_power_in);
-  cfl->GetValue("diagonal-power-out", &diagonal_power_out);
-
 
   preconditioner_in_.SetAlpha(alpha);
   preconditioner_out_.SetAlpha(alpha);
@@ -3031,8 +2991,6 @@ void LinearComponent::InitFromConfig(ConfigLine *cfl) {
   preconditioner_out_.SetNumSamplesHistory(num_samples_history);
   preconditioner_in_.SetUpdatePeriod(update_period);
   preconditioner_out_.SetUpdatePeriod(update_period);
-  preconditioner_in_.SetDiagonalPower(diagonal_power_in);
-  preconditioner_out_.SetDiagonalPower(diagonal_power_out);
 
   orthonormal_constraint_ = 0.0;
   cfl->GetValue("orthonormal-constraint", &orthonormal_constraint_);
@@ -3059,17 +3017,10 @@ void LinearComponent::Write(std::ostream &os,
       rank_out = preconditioner_out_.GetRank(),
       update_period = preconditioner_in_.GetUpdatePeriod();
   BaseFloat alpha = preconditioner_in_.GetAlpha(),
-      num_samples_history = preconditioner_in_.GetNumSamplesHistory(),
-      d_in = preconditioner_in_.GetDiagonalPower(),
-      d_out = preconditioner_out_.GetDiagonalPower();
+      num_samples_history = preconditioner_in_.GetNumSamplesHistory();
   WriteToken(os, binary, "<RankInOut>");
   WriteBasicType(os, binary, rank_in);
   WriteBasicType(os, binary, rank_out);
-  if (d_in != 0.0 || d_out != 0.0) {
-    WriteToken(os, binary, "<DiagonalPowerInOut>");
-    WriteBasicType(os, binary, d_in);
-    WriteBasicType(os, binary, d_out);
-  }
   WriteToken(os, binary, "<Alpha>");
   WriteBasicType(os, binary, alpha);
   WriteToken(os, binary, "<NumSamplesHistory>");
@@ -3089,12 +3040,6 @@ std::string LinearComponent::Info() const {
                       GetVerboseLevel() >= 2); // include_singular_values
   if (orthonormal_constraint_ != 0.0)
     stream << ", orthonormal-constraint=" << orthonormal_constraint_;
-  BaseFloat d_in = preconditioner_in_.GetDiagonalPower(),
-      d_out = preconditioner_out_.GetDiagonalPower();
-  if (d_in != 0.0 || d_out != 0.0) {
-    stream << ", diagonal-power-in=" << d_in
-           << ", diagonal-power-out=" << d_out;
-  }
   stream << ", use-natural-gradient="
          << (use_natural_gradient_ ? "true" : "false")
          << ", rank-in=" << preconditioner_in_.GetRank()

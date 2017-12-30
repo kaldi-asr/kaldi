@@ -28,8 +28,7 @@ OnlineNaturalGradient::OnlineNaturalGradient():
     rank_(40), update_period_(1), num_samples_history_(2000.0),
     num_minibatches_history_(0.0), alpha_(4.0),
     epsilon_(1.0e-10), delta_(5.0e-04), frozen_(false), t_(0),
-    self_debug_(false),
-    diagonal_power_(0.0), diagonal_epsilon_(1.0e-03)  { }
+    self_debug_(false) { }
 
 
 /**
@@ -182,14 +181,10 @@ void OnlineNaturalGradient::PreconditionDirections(
   bool updating = Updating();
 
   BaseFloat initial_product;
-  if (diagonal_power_ == 0.0 || scale != NULL)
-    initial_product = TraceMatMat(*X_t, *X_t, kTrans);
+  initial_product = TraceMatMat(*X_t, *X_t, kTrans);
 
-  if (diagonal_power_ == 0.0)
-    PreconditionDirectionsInternal(rho_t, initial_product,
-                                   updating, d_t, &WJKL_t, X_t);
-  else
-    PreconditionDirectionsDiagonal(rho_t, updating, d_t, &WJKL_t, X_t);
+  PreconditionDirectionsInternal(rho_t, initial_product,
+                                 updating, d_t, &WJKL_t, X_t);
 
   if (scale) {
     if (initial_product <= 0.0) {
@@ -200,123 +195,6 @@ void OnlineNaturalGradient::PreconditionDirections(
     }
   }
   t_ += 1;
-}
-
-void OnlineNaturalGradient::PreconditionDirectionsDiagonal(
-    const BaseFloat rho_t,
-    bool updating,
-    const Vector<BaseFloat> &d_t,
-    CuMatrixBase<BaseFloat> *WJKL_t,
-    CuMatrixBase<BaseFloat> *X_t) {
-  KALDI_ASSERT(diagonal_power_ > 0.0 && diagonal_power_ <= 1.0 &&
-               (diagonal_mean_.Dim() != 0 || updating));
-
-  int32 dim = X_t->NumCols();
-
-  if (diagonal_mean_.Dim() == 0) {
-    InitDiagonalParams(*X_t);
-    updating = false;
-  }
-
-  CuVector<BaseFloat> new_diagonal_mean, new_diagonal_uvar;
-
-  if (updating) {
-    new_diagonal_mean.Resize(dim, kUndefined);
-    new_diagonal_uvar.Resize(dim, kUndefined);
-    UpdateDiagonalStats(*X_t, &new_diagonal_mean, &new_diagonal_uvar);
-  }
-
-  X_t->MulColsVec(diagonal_scale_);
-
-  PreconditionDirectionsInternal(rho_t, TraceMatMat(*X_t, *X_t, kTrans), false,
-                                 d_t, WJKL_t, X_t);
-
-  // We apply the scale both before and after the identity-plus-low-rank matrix,
-  // so that the combined matrix is symmetric.
-  X_t->MulColsVec(diagonal_scale_);
-
-
-  // If we're updating the diagonal mean and variance we do so *after*
-  // preconditioning the data.  This is out of a concern about the provability
-  // of convergence (making it independent of the current minibatch).  Most
-  // likely, in practice it would work fine updating it before, it might even be
-  // a little bit more stable.  Anyway, this is how we're doing it, and it's how
-  // we did it for the core part of the natural gradient.
-  if (updating) {
-    diagonal_mean_.Swap(&new_diagonal_mean);
-    diagonal_uvar_.Swap(&new_diagonal_uvar);
-    UpdateDiagonalScale();
-  }
-}
-
-void OnlineNaturalGradient::UpdateDiagonalStats(
-    const CuMatrixBase<BaseFloat> &X,
-    CuVectorBase<BaseFloat> *diagonal_mean_new,
-    CuVectorBase<BaseFloat> *diagonal_uvar_new){
-  int32 dim = X.NumCols(), num_rows = X.NumRows();
-  KALDI_ASSERT(diagonal_mean_new->Dim() == dim && diagonal_uvar_new->Dim() == dim &&
-               diagonal_mean_.Dim() == dim);
-  BaseFloat eta = Eta(X.NumRows());
-  // 'eta' is a value that reflects how fast we update these stats, which is
-  // smaller if we're updating them slower, but strictly less than 1.  It's
-  // basically the scale on the new stats, with 1-eta being the scale on the old
-  // stats.
-  KALDI_ASSERT(eta > 0 && eta < 1.0);
-
-  diagonal_mean_new->CopyFromVec(diagonal_mean_);
-  diagonal_uvar_new->CopyFromVec(diagonal_uvar_);
-
-  diagonal_mean_new->AddRowSumMat(eta / num_rows, X, 1.0 - eta);
-  diagonal_uvar_new->AddDiagMat2(eta / num_rows, X, kTrans, 1.0 - eta);
-}
-
-void OnlineNaturalGradient::InitDiagonalParams(
-    const CuMatrixBase<BaseFloat> &X) {
-  int32 dim = X.NumCols(), num_rows = X.NumRows();
-  diagonal_mean_.Resize(dim);
-  diagonal_uvar_.Resize(dim);
-  diagonal_mean_.AddRowSumMat(1.0 / num_rows, X, 0.0);
-  diagonal_uvar_.AddDiagMat2(1.0 / num_rows, X, kTrans, 0.0);
-  UpdateDiagonalScale();
-}
-
-
-void OnlineNaturalGradient::UpdateDiagonalScale() {
-  KALDI_ASSERT(diagonal_mean_.Dim() != 0);
-  int32 dim = diagonal_mean_.Dim();
-  if (diagonal_scale_.Dim() != dim)
-    diagonal_scale_.Resize(dim);
-  diagonal_scale_.CopyFromVec(diagonal_uvar_);
-  // Because the last element may be the offset, and it doesn't
-  // make sense to subtract its mean for this purpose, only do this for
-  // the all-but-last-elements.
-  if (dim > 1) {
-    CuSubVector<BaseFloat> diagonal_scale_part(diagonal_scale_, 0, dim - 1),
-        diagonal_mean_part(diagonal_mean_, 0, dim - 1);
-    diagonal_scale_part.AddVecVec(-1.0, diagonal_mean_part,
-                                  diagonal_mean_part, 1.0);
-  }
-
-  // At this point, diagonal_scale_ is the diagonal of the (centered) variance
-  // estimated from the x and x2 statistics, prior to any flooring or
-  // scaling.
-  BaseFloat avg_variance = diagonal_scale_.Sum() / dim;
-  if (avg_variance <= 1.0e-20) {
-    // either the data is all zero or very tiny, or something went wrong.  Just
-    // set diagonal_scale_ to a constant.
-    diagonal_scale_.Set(1.0);
-  } else {
-    BaseFloat floor = diagonal_epsilon_ * avg_variance;
-    diagonal_scale_.ApplyFloor(floor);
-    // The following statement scales diagonal_scale_ so its average is close to
-    // 1, which helps keep things in a reasonable numeric range.  There is no
-    // reason why it has to be exactly one, and the whole thing is mathematically
-    // invariant to this scaling factor-- we output the scaling factor 'scale'
-    // from PreconditionDirections() so that the user can rescale so the vector
-    // 2-norm of the X_t matrix is the same as was before the natural gradent.
-    diagonal_scale_.Scale(1.0 / avg_variance);
-    diagonal_scale_.ApplyPow(-0.5 * diagonal_power_);
-  }
 }
 
 void OnlineNaturalGradient::ReorthogonalizeXt1(
@@ -701,12 +579,7 @@ OnlineNaturalGradient::OnlineNaturalGradient(const OnlineNaturalGradient &other)
     alpha_(other.alpha_), epsilon_(other.epsilon_), delta_(other.delta_),
     frozen_(other.frozen_), t_(other.t_),
     self_debug_(other.self_debug_), W_t_(other.W_t_),
-    rho_t_(other.rho_t_), d_t_(other.d_t_),
-    diagonal_power_(other.diagonal_power_),
-    diagonal_epsilon_(other.diagonal_epsilon_),
-    diagonal_mean_(other.diagonal_mean_),
-    diagonal_uvar_(other.diagonal_uvar_),
-    diagonal_scale_(other.diagonal_scale_) { }
+    rho_t_(other.rho_t_), d_t_(other.d_t_) { }
 
 
 OnlineNaturalGradient& OnlineNaturalGradient::operator = (
