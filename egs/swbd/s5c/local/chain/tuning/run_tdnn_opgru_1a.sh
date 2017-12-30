@@ -44,6 +44,7 @@ chunk_right_context=0
 xent_regularize=0.025
 self_repair_scale=0.00001
 label_delay=5
+dropout_schedule='0,0@0.20,0.2@0.50,0'
 # decode options
 extra_left_context=50
 extra_right_context=0
@@ -79,6 +80,7 @@ if [ "$speed_perturb" == "true" ]; then
 fi
 
 dir=$dir${affix:+_$affix}
+dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
 treedir=exp/chain/tri5_7d_tree$suffix
@@ -128,7 +130,7 @@ if [ $stage -le 12 ]; then
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  lstm_opts="dropout-per-frame=true dropout-proportion=0.0"
+  gru_opts="dropout-per-frame=true dropout-proportion=0.0"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -146,13 +148,13 @@ if [ $stage -le 12 ]; then
   relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
   # check steps/libs/nnet3/xconfig/gru.py for the other options and defaults
-  norm-opgru-layer name=opgru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  norm-opgru-layer name=opgru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $gru_opts
   relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
   relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  norm-opgru-layer name=opgru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  norm-opgru-layer name=opgru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $gru_opts
   relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
   relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
-  norm-opgru-layer name=opgru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  norm-opgru-layer name=opgru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $gru_opts
 
   ## adding the layers for chain branch
   output-layer name=output input=opgru3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
@@ -237,6 +239,8 @@ if [ $stage -le 15 ]; then
           --nj 50 --cmd "$decode_cmd" $iter_opts \
           --extra-left-context $extra_left_context  \
           --extra-right-context $extra_right_context  \
+          --extra-left-context-initial 0 \
+          --extra-right-context-final 0 \
           --frames-per-chunk "$frames_per_chunk" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires \

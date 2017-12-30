@@ -154,8 +154,10 @@ void GetRnnlmExampleDerived(const RnnlmExample &minibatch,
  */
 struct RnnlmObjectiveOptions {
   BaseFloat den_term_limit;
+  uint32 max_logprob_elements;
 
-  RnnlmObjectiveOptions(): den_term_limit(-10.0) { }
+  RnnlmObjectiveOptions(): den_term_limit(-10.0),
+                           max_logprob_elements(1000000000) { }
 
   void Register(OptionsItf *po) {
     po->Register("den-term-limit", &den_term_limit,
@@ -165,6 +167,11 @@ struct RnnlmObjectiveOptions {
                  "average denominator part of the objective, for this minibatch, "
                  "is more negative than this value.  Set this to 0.0 to use "
                  "unmodified objective function.");
+    po->Register("max-logprob-elements", &max_logprob_elements,
+                 "Maximum number of elements when we allocate a matrix of size "
+                 "[minibatch-size, num-words] for computing logprobs of words. "
+                 "If the size is exceeded, we will break the matrix along the "
+                 "minibatch axis and compute them separately");
   }
 };
 
