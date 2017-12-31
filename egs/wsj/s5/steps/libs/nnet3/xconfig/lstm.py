@@ -778,10 +778,17 @@ class XconfigFastLstmLayer(XconfigLayerBase):
 # This class is for lines like
 #   'lstmb-layer name=lstm1 input=[-1] delay=-3'
 #
-# TODO: more description
-# It's like fast-lstm-layer but with a bottleneck (like an SVD) in the main parameter matrix
-# of the LSTM (W_all, which combines all the full-rank projections of the LSTM): we divide
-# it into two matrices, with an orbatch-norm in between to stabilize the training.
+# LSTMB is not something we've published; it's LSTM with a bottleneck in the
+# middle of the W_all matrix (where W_all is a matrix that combines the 8 full
+# matrices of standard LSTM).  W_all is factored into W_all_a and W_all_b, where
+# W_all_a is constrained to have orthonormal rows (this keeps it training stably).
+#
+# It also contains a couple of other improvements: W_all_b is followed by
+# trainable ScaleAndOffsetComponent (this is a bit like the idea from the
+# publication "Self-stabilized deep neural network" by Ghahramani et al).
+# And the LSTM is followed by a batchnorm component (this is by default; it's not
+# part of the layer name, like lstmb-batchnorm-layer).
+
 #
 # The output dimension of the layer may be specified via 'cell-dim=xxx', but if not specified,
 # the dimension defaults to the same as the input.

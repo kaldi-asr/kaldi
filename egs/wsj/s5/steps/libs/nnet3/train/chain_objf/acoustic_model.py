@@ -173,19 +173,13 @@ def train_new_models(dir, iter, srand, num_jobs,
                          (" --write-cache={0}/cache.{1}".format(dir, iter + 1)
                           if job == 1 else ""))
 
-        # For the first epoch (at most the first 15 iters), scale the batchnorm stats
-        # down more aggressively.  This affects memory-norm components.
-        batchnorm_opt=("--batchnorm-stats-scale=0.5"
-                       if num_archives_processed < (num_archives * frame_subsampling_factor) and iter < 15
-                       else "")
-
         thread = common_lib.background_command(
             """{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
                     nnet3-chain-train {parallel_train_opts} {verbose_opt} \
                     --apply-deriv-weights={app_deriv_wts} \
                     --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
                     {cache_io_opts}  --xent-regularize={xent_reg} \
-                    {deriv_time_opts} {batchnorm_opt} \
+                    {deriv_time_opts} \
                     --print-interval=10 --momentum={momentum} \
                     --max-param-change={max_param_change} \
                     --backstitch-training-scale={backstitch_training_scale} \
@@ -205,7 +199,6 @@ def train_new_models(dir, iter, srand, num_jobs,
                         dir=dir, iter=iter, srand=iter + srand,
                         next_iter=iter + 1, job=job,
                         deriv_time_opts=" ".join(deriv_time_opts),
-                        batchnorm_opt=batchnorm_opt,
                         app_deriv_wts=apply_deriv_weights,
                         fr_shft=frame_shift, l2=l2_regularize,
                         xent_reg=xent_regularize, leaky=leaky_hmm_coefficient,
