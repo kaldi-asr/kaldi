@@ -1127,7 +1127,8 @@ void BackpropTruncationComponent::Backprop(const std::string &debug_info,
                               kNoTrans, 0.0);
   // now clipping_scales contains the squared (norm of each row divided by
   //  clipping_threshold)
-  int32 num_not_scaled = clipping_scales.ApplyFloor(1.0);
+  int32 num_not_scaled;
+  clipping_scales.ApplyFloor(1.0, &num_not_scaled);
   // now clipping_scales contains min(1, squared-(norm/clipping_threshold))
   clipping_scales.ApplyPow(-0.5);
   // now clipping_scales contains max(1, clipping_threshold/vector_norm)

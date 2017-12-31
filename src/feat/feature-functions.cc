@@ -321,7 +321,8 @@ void SlidingWindowCmnInternal(const SlidingWindowCmnOptions &opts,
         variance.AddVec2(-1.0 / (window_frames * window_frames), cur_sum);
         // now "variance" is the variance of the features in the window,
         // around their own mean.
-        int32 num_floored = variance.ApplyFloor(1.0e-10);
+        int32 num_floored;
+	variance.ApplyFloor(1.0e-10, &num_floored);
         if (num_floored > 0 && num_frames > 1) {
           if (opts.max_warnings == warning_count) {
             KALDI_WARN << "Suppressing the remaining variance flooring "
