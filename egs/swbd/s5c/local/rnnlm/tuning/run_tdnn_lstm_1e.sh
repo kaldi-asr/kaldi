@@ -3,8 +3,14 @@
 # Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 #           2015  Guoguo Chen
 #           2017  Hainan Xu
+#           2017  Xiaohui Zhang
 
 # This script trains LMs on the swbd LM-training data.
+
+# rnnlm/train_rnnlm.sh: best iteration (out of 35) was 34, linking it to final iteration.
+# rnnlm/train_rnnlm.sh: train/dev perplexity was 41.9 / 50.0.
+# Train objf: -5.07 -4.43 -4.25 -4.17 -4.12 -4.07 -4.04 -4.01 -3.99 -3.98 -3.96 -3.94 -3.92 -3.90 -3.88 -3.87 -3.86 -3.85 -3.84 -3.83 -3.82 -3.81 -3.80 -3.79 -3.78 -3.78 -3.77 -3.77 -3.76 -3.75 -3.74 -3.73 -3.73 -3.72 -3.71
+# Dev objf:   -10.32 -4.68 -4.43 -4.31 -4.24 -4.19 -4.15 -4.13 -4.10 -4.09 -4.05 -4.03 -4.02 -4.00 -3.99 -3.98 -3.98 -3.97 -3.96 -3.96 -3.95 -3.94 -3.94 -3.94 -3.93 -3.93 -3.93 -3.92 -3.92 -3.92 -3.92 -3.91 -3.91 -3.91 -3.91
 
 # Begin configuration section.
 
@@ -26,8 +32,8 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
               # exploding exponentially
 pruned_rescore=true
 
-. cmd.sh
-. utils/parse_options.sh
+. ./cmd.sh
+. ./utils/parse_options.sh
 
 text=data/train_nodev/text
 fisher_text=data/local/lm/fisher/text1.gz
@@ -46,7 +52,14 @@ if [ $stage -le 0 ]; then
   echo -n >$text_dir/dev.txt
   # hold out one in every 50 lines as dev data.
   cat $text | cut -d ' ' -f2- | awk -v text_dir=$text_dir '{if(NR%50 == 0) { print >text_dir"/dev.txt"; } else {print;}}' >$text_dir/swbd.txt
-  zcat $fisher_text > $text_dir/fisher.txt
+  cat > $dir/config/hesitation_mapping.txt <<EOF
+hmm hum
+mmm um
+mm um
+mhm um-hum 
+EOF
+  gunzip -c $fisher_text | awk 'NR==FNR{a[$1]=$2;next}{for (n=1;n<=NF;n++) if ($n in a) $n=a[$n];print $0}' \
+    $dir/config/hesitation_mapping.txt - > $text_dir/fisher.txt
 fi
 
 if [ $stage -le 1 ]; then
@@ -71,7 +84,7 @@ EOF
   # choose features
   rnnlm/choose_features.py --unigram-probs=$dir/config/unigram_probs.txt \
                            --use-constant-feature=true \
-                           --special-words='<s>,</s>,<brk>,<unk>,[noise],[laughter]' \
+                           --special-words='<s>,</s>,<brk>,<unk>,[noise],[laughter],[vocalized-noise]' \
                            $dir/config/words.txt > $dir/config/features.txt
 
   cat >$dir/config/xconfig <<EOF

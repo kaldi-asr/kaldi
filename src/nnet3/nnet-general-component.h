@@ -587,12 +587,31 @@ class BackpropTruncationComponentPrecomputedIndexes:
 };
 
 
-// ConstantComponent returns a constant value for all requested
-// indexes, and it has no dependencies on any input.
-// It's like a ConstantFunctionComponent, but done the "right"
-// way without requiring an unnecessary input.
-// It is optionally trainable, and optionally you can use natural
-// gradient.
+/*
+   ConstantComponent returns a constant value for all requested
+   indexes, and it has no dependencies on any input.
+   It's like a ConstantFunctionComponent, but done the "right"
+   way without requiring an unnecessary input.
+   It is optionally trainable, and optionally you can use natural
+   gradient.
+
+   Configuration values accepted by this component, with defaults if
+   applicable:
+
+      output-dim              Dimension that this component outputs.
+      is-updatable=true       True if you want this to be updatable.
+      use-natural-gradient=true  True if you want the update to use natural gradient.
+      output-mean=0.0         Mean of the parameters at initialization (the parameters
+                              are what it outputs).
+      output-stddev=0.0       Standard deviation of the parameters at initialization.
+
+
+  Values inherited from UpdatableComponent (see its declaration in
+  nnet-component-itf for details):
+     learning-rate
+     learning-rate-factor
+     max-change
+*/
 class ConstantComponent: public UpdatableComponent {
  public:
   // actually this component requires no inputs; this value
