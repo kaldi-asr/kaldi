@@ -1,4 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
+# Copyright 2017 (Author: Chun Chieh Chang)
 
 import argparse
 import os
