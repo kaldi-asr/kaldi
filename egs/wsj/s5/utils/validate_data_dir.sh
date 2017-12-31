@@ -164,8 +164,8 @@ if [ -f $data/wav.scp ]; then
     if [ -f $data/text ]; then
       ! cmp -s $tmpdir/utts <(awk '{print $1}' <$data/segments) && \
         echo "$0: Utterance list differs between $data/utt2spk and $data/segments " && \
-        echo "$0: Lengths are $segments_len vs $num_utts";
-      exit 1
+        echo "$0: Lengths are $segments_len vs $num_utts" && \
+        exit 1
     fi
 
     cat $data/segments | awk '{print $2}' | sort | uniq > $tmpdir/recordings
