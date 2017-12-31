@@ -66,7 +66,7 @@ elif [ ! -f $oldlm ]; then
     exit 1;
 fi
 
-for f in $rnndir/rnnlm $data/feats.scp $indir/lat.1.gz; do
+for f in $data/feats.scp $indir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: expected file $f to exist." && exit 1;
 done
 
@@ -183,10 +183,17 @@ if [ $stage -le 5 ]; then
   done
 fi
 if [ $stage -le 6 ]; then
-  echo "$0: invoking rnnlm_compute_scores.sh which calls rnnlm, to get RNN LM scores."
-  $cmd JOB=1:$nj $dir/log/rnnlm_compute_scores.JOB.log \
-    utils/rnnlm_compute_scores.sh --rnnlm_ver $rnnlm_ver $rnndir $adir.JOB/temp $adir.JOB/words_text $adir.JOB/lmwt.rnn \
-    || exit 1;
+  if [ "$rnnlm_ver" == "kaldi-rnnlm" ]; then
+    echo "$0: invoking rnnlm/compute_sentence_scores.sh which calls rnnlm to get RNN LM scores."
+    $cmd JOB=1:$nj $dir/log/rnnlm_compute_scores.JOB.log \
+      rnnlm/compute_sentence_scores.sh $rnndir $adir.JOB/temp \
+                                     $adir.JOB/words_text $adir.JOB/lmwt.rnn 
+  else
+    echo "$0: invoking utils/rnnlm_compute_scores.sh which calls rnnlm, to get RNN LM scores."
+    $cmd JOB=1:$nj $dir/log/rnnlm_compute_scores.JOB.log \
+      utils/rnnlm_compute_scores.sh --rnnlm_ver $rnnlm_ver $rnndir $adir.JOB/temp $adir.JOB/words_text $adir.JOB/lmwt.rnn \
+      || exit 1;
+  fi
 fi
 if [ $stage -le 7 ]; then
   echo "$0: reconstructing total LM+graph scores including interpolation of RNNLM and old LM scores."

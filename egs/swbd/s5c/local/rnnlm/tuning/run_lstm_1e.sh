@@ -16,7 +16,8 @@ stage=-10
 train_stage=-10
 
 # variables for lattice rescoring
-run_rescore=false
+run_lat_rescore=false
+run_nbest_rescore=false
 ac_model_dir=exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp
 decode_dir_suffix=rnnlm_1e
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
@@ -94,9 +95,9 @@ if [ $stage -le 3 ]; then
                   --stage $train_stage --num-epochs 10 --cmd "$train_cmd" $dir
 fi
 
+LM=sw1_fsh_fg # using the 4-gram const arpa file as old lm
 if [ $stage -le 4 ] && $run_rescore; then
   echo "$0: Perform lattice-rescoring on $ac_model_dir"
-  LM=sw1_fsh_fg # using the 4-gram const arpa file as old lm
 #  LM=sw1_tg # if using the original 3-gram G.fst as old lm
   pruned=
   if $pruned_rescore; then
@@ -115,4 +116,19 @@ if [ $stage -le 4 ] && $run_rescore; then
   done
 fi
 
+if [ $stage -le 5 ] && $run_nbest_rescore; then
+  echo "$0: Perform nbest-rescoring on $ac_model_dir"
+  for decode_set in eval2000; do
+    decode_dir=${ac_model_dir}/decode_${decode_set}_${LM}_looped
+
+    # Lattice rescoring
+    steps/rnnlmrescore.sh \
+      --cmd "$decode_cmd --mem 4G" --N 50 \
+      --rnnlm-ver kaldi-rnnlm \
+      --stage 7 \
+      0.8 data/lang_$LM $dir \
+      data/${decode_set}_hires ${decode_dir} \
+      ${decode_dir}_${decode_dir_suffix}_nbest
+  done
+fi
 exit 0
