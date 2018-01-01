@@ -33,23 +33,23 @@ int main(int argc, char *argv[]) {
       "Cluster utterances by score, used in diarization.\n"
       "Takes a table of score matrices indexed by recording,\n"
       "with the rows/columns corresponding to the utterances\n"
-      "of that recording in sorted order and a spk2utt file that\n"
+      "of that recording in sorted order and a reco2utt file that\n"
       "contains the mapping from recordings to utterances, and \n"
       "outputs a list of labels in the form <utt1> <label>.\n"
       "Clustering is done using Agglomerative Hierarchical\n"
       "Clustering with a score threshold as stop criterion.\n"
       "Usage: agglomerative-cluster [options] <scores-rspecifier> "
-      "<spk2utt-rspecifier> <labels-wspecifier>\n"
+      "<reco2utt-rspecifier> <labels-wspecifier>\n"
       "e.g.: \n"
-      " agglomerative-cluster ark:scores.ark ark:spk2utt \n"
+      " agglomerative-cluster ark:scores.ark ark:reco2utt \n"
       "   ark,t:labels.txt\n";
 
     ParseOptions po(usage);
-    std::string spk2num_rspecifier;
+    std::string reco2num_rspecifier;
     BaseFloat threshold = 0.5;
     BaseFloat max_dist = 1.0;
 
-    po.Register("spk2num-rspecifier", &spk2num_rspecifier,
+    po.Register("reco2num-rspecifier", &reco2num_rspecifier,
       "If supplied, clustering creates exactly this many clusters for each"
       "recording and the option --threshold is ignored.");
     po.Register("threshold", &threshold, "Merging clusters if their distance"
@@ -65,21 +65,21 @@ int main(int argc, char *argv[]) {
     }
 
     std::string scores_rspecifier = po.GetArg(1),
-      spk2utt_rspecifier = po.GetArg(2),
+      reco2utt_rspecifier = po.GetArg(2),
       label_wspecifier = po.GetArg(3);
 
     SequentialBaseFloatMatrixReader scores_reader(scores_rspecifier);
-    RandomAccessTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
-    RandomAccessInt32Reader spk2num_reader(spk2num_rspecifier);
+    RandomAccessTokenVectorReader reco2utt_reader(reco2utt_rspecifier);
+    RandomAccessInt32Reader reco2num_reader(reco2num_rspecifier);
     Int32Writer label_writer(label_wspecifier);
 
     for (; !scores_reader.Done(); scores_reader.Next()) {
-      std::string spk = scores_reader.Key();
+      std::string reco = scores_reader.Key();
       const Matrix<BaseFloat> &scores = scores_reader.Value();
-      std::vector<std::string> uttlist = spk2utt_reader.Value(spk);
+      std::vector<std::string> uttlist = reco2utt_reader.Value(reco);
       std::vector<int32> spk_ids;
-      if (spk2num_rspecifier.size()) {
-        int32 num_speakers = spk2num_reader.Value(spk);
+      if (reco2num_rspecifier.size()) {
+        int32 num_speakers = reco2num_reader.Value(reco);
         AgglomerativeCluster(scores,
           std::numeric_limits<BaseFloat>::max(), num_speakers, &spk_ids);
       } else {

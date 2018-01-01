@@ -26,13 +26,13 @@ if [ $stage -le 0 ]; then
   local/make_sre.sh $data_root data
 
   # Prepare SWB for UBM and iVector extractor training.
-  local/make_swbd2_phase2.pl /export/corpora5/LDC/LDC99S79 \
+  local/make_swbd2_phase2.pl $data_root/LDC99S79 \
                            data/swbd2_phase2_train
-  local/make_swbd2_phase3.pl /export/corpora5/LDC/LDC2002S06 \
+  local/make_swbd2_phase3.pl $data_root/LDC2002S06 \
                            data/swbd2_phase3_train
-  local/make_swbd_cellular1.pl /export/corpora5/LDC/LDC2001S13 \
+  local/make_swbd_cellular1.pl $data_root/LDC2001S13 \
                              data/swbd_cellular1_train
-  local/make_swbd_cellular2.pl /export/corpora5/LDC/LDC2004S07 \
+  local/make_swbd_cellular2.pl $data_root/LDC2004S07 \
                              data/swbd_cellular2_train
 
   # Prepare the Callhome portion of NIST SRE 2000.
@@ -221,11 +221,11 @@ if [ $stage -le 7 ]; then
   # In this section, we show how to do the clustering if the number of speakers
   # (and therefore, the number of clusters) per recording is known in advance.
   diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
-    --spk2num data/callhome/reco2num \
+    --reco2num data/callhome/reco2num \
     exp/ivectors_callhome1/plda_scores exp/ivectors_callhome1/plda_scores_num_spk
 
   diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
-    --spk2num data/callhome/reco2num \
+    --reco2num data/callhome/reco2num \
     exp/ivectors_callhome2/plda_scores exp/ivectors_callhome2/plda_scores_num_spk
 
   mkdir -p exp/results
