@@ -32,8 +32,9 @@ where:
 import argparse
 import sys
 
-sys.path.insert(0, 'steps')
-import libs.common as common_lib
+sys.path.append('steps/libs')
+import common as common_lib
+
 
 def get_args():
   parser = argparse.ArgumentParser(
