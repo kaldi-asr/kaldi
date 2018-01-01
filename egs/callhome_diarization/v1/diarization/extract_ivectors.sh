@@ -47,7 +47,7 @@ if [ $# != 3 ]; then
   echo "  --num-gselect <n|20>                             # Number of Gaussians to select using"
   echo "                                                   # diagonal model."
   echo "  --min-post <min-post|0.025>                      # Pruning threshold for posteriors"
-  echo " --apply-cmn <true,false|true>                     # if true, apply sliding window cepstral mean"
+  echo "  --apply-cmn <true,false|true>                    # if true, apply sliding window cepstral mean"
   echo "                                                   # normalization to features"
   exit 1;
 fi

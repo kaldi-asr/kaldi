@@ -14,7 +14,7 @@ stage=0
 nj=10
 cleanup=true
 threshold=0.5
-spk2num=
+reco2num=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -34,7 +34,7 @@ if [ $# != 2 ]; then
   echo "  --threshold <threshold|0.5>                      # Cluster stopping criterion. Clusters with scores less"
   echo "                                                   # than this value will be merged until all clusters"
   echo "                                                   # exceed this value. Default scoring ranges from 0 to 1."
-  echo "  --spk2num <spk2num-file>                         # File containing mapping of recording ID"
+  echo "  --reco2num <reco2num-file>                       # File containing mapping of recording ID"
   echo "                                                   # to number of speakers. Used instead of threshold"
   echo "                                                   # as stopping criterion if supplied."
   echo "  --cleanup <bool|false>                           # If true, remove temporary files"
@@ -55,8 +55,8 @@ cp $srcdir/utt2spk $dir/tmp/
 cp $srcdir/segments $dir/tmp/
 utils/fix_data_dir.sh $dir/tmp > /dev/null
 
-if [ ! -z $spk2num ]; then
-  spk2num="ark,t:$spk2num"
+if [ ! -z $reco2num ]; then
+  reco2num="ark,t:$reco2num"
 fi
 
 sdata=$dir/tmp/split$nj;
@@ -70,7 +70,7 @@ if [ $stage -le 0 ]; then
   echo "$0: clustering scores"
   $cmd JOB=1:$nj $dir/log/agglomerative_cluster.JOB.log \
     agglomerative-cluster --threshold=$threshold \
-      --spk2num-rspecifier=$spk2num scp:"$feats" \
+      --reco2num-rspecifier=$reco2num scp:"$feats" \
       ark,t:$sdata/JOB/spk2utt ark,t:$dir/labels.JOB || exit 1;
 fi
 

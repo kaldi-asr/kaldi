@@ -221,11 +221,11 @@ if [ $stage -le 7 ]; then
   # In this section, we show how to do the clustering if the number of speakers
   # (and therefore, the number of clusters) per recording is known in advance.
   diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
-    --spk2num data/callhome/reco2num \
+    --reco2num data/callhome/reco2num \
     exp/ivectors_callhome1/plda_scores exp/ivectors_callhome1/plda_scores_num_spk
 
   diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
-    --spk2num data/callhome/reco2num \
+    --reco2num data/callhome/reco2num \
     exp/ivectors_callhome2/plda_scores exp/ivectors_callhome2/plda_scores_num_spk
 
   mkdir -p exp/results
