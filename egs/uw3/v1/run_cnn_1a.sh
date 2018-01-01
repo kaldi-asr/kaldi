@@ -1,8 +1,13 @@
 #!/bin/bash
 
+#head ./exp/chain/cnn1a/decode_test/scoring_kaldi/best_wer
+#%WER 1.09 [ 389 / 35571, 104 ins, 39 del, 246 sub ] exp/chain/cnn1a/decode_test/wer_7_1.0
+#head ./exp/chain/cnn1a/decode_test/scoring_kaldi/best_cer
+#%WER 0.22 [ 423 / 188135, 112 ins, 152 del, 159 sub ] exp/chain/cnn1a/decode_test/cer_7_0.0
+
 set -e -o pipefail
 
-stage=4
+stage=0
 nj=30
 
 # affix for exp dirs, e.g. it was _cleaned in tedlium.
@@ -28,6 +33,21 @@ chunk_right_context=0
 srand=0
 remove_egs=false
 
+gmm_dir=exp/tri2
+ali_dir=exp/tri2_ali
+lat_dir=exp/chain${nnet3_affix}/tri2_train_lats
+dir=exp/chain${nnet3_affix}/cnn${affix}
+train_data_dir=data/train
+lores_train_data_dir=$train_data_dir  # for the start, use the same data for gmm and chain
+gmm_lang=data/lang
+lang_test=data/lang_unk
+tree_dir=data/chain${nnet3_affix}/tree${affix}
+
+# the 'lang' directory is created by this script.
+# If you create such a directory with a non-standard topology
+# you should probably name it differently.
+lang=data/lang_chain
+
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -44,22 +64,6 @@ where "nvcc" is installed.
 EOF
 fi
 
-gmm_dir=exp/tri2
-ali_dir=exp/tri2_ali
-lat_dir=exp/chain${nnet3_affix}/tri2_train_lats
-dir=exp/chain${nnet3_affix}/cnn${affix}
-train_data_dir=data/train
-lores_train_data_dir=$train_data_dir  # for the start, use the same data for gmm and chain
-gmm_lang=data/lang
-gmm_lang_test=data/lang_test
-tree_dir=data/chain${nnet3_affix}/tree${affix}
-
-# the 'lang' directory is created by this script.
-# If you create such a directory with a non-standard topology
-# you should probably name it differently.
-lang=data/lang_chain
-
-
 for f in $train_data_dir/feats.scp \
     $lores_train_data_dir/feats.scp $gmm_dir/final.mdl \
     $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
@@ -73,7 +77,7 @@ if [ $stage -le 1 ]; then
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
   if [ -d $lang ]; then
-    if [ $lang/L.fst -nt $gmm_lang/L.fst ]; then
+    if [ $lang/L.fst -nt $lang_test/L.fst ]; then
       echo "$0: $lang already exists, not overwriting it; continuing"
     else
       echo "$0: $lang already exists and seems to be older than data/lang..."
@@ -81,7 +85,7 @@ if [ $stage -le 1 ]; then
       exit 1;
     fi
   else
-    cp -r $gmm_lang $lang
+    cp -r $lang_test $lang
     silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
     nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
     # Use our special topology... note that later on may have to tune this
@@ -94,7 +98,7 @@ if [ $stage -le 2 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj $nj --cmd "$cmd" ${lores_train_data_dir} \
-    $gmm_lang $gmm_dir $lat_dir
+    $lang_test $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
 
@@ -206,7 +210,7 @@ if [ $stage -le 6 ]; then
   # as long as phones.txt was compatible.
 
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 $gmm_lang_test \
+    --self-loop-scale 1.0 $lang_test \
     $dir $dir/graph || exit 1;
 fi
 

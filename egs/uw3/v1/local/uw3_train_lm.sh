@@ -36,7 +36,7 @@ export PATH=$KALDI_ROOT/tools/pocolm/scripts:$PATH
  fi
 ) || exit 1;
 
-num_dev_sentences=6161
+num_dev_sentences=4500
 bypass_metaparam_optim_opt=
 # If you want to bypass the metaparameter optimization steps with specific metaparameters
 # un-comment the following line, and change the numbers to some appropriate values.
@@ -59,17 +59,20 @@ if [ $stage -le 0 ]; then
   rm ${dir}/data/text/* 2>/dev/null || true
   
   # Using LOB and brown corpus.
-  head -86858 data/download/lobcorpus/0167/download/LOB_COCOA/lob.txt > ${dir}/data/text/text.txt
-  cat data/download/browncorpus/brown.txt >> ${dir}/data/text/text.txt
+  #head -86858 data/download/lobcorpus/0167/download/LOB_COCOA/lob.txt > ${dir}/data/text/text.txt
+  #cat data/download/browncorpus/brown.txt >> ${dir}/data/text/text.txt
   #cat test_words.txt  >> ${dir}/data/text/text.txt
   # use a subset of the annotated training data as the dev set .
   # Note: the name 'dev' is treated specially by pocolm, it automatically
   # becomes the dev set.
   
-  cat data/val/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
+  #cat data/val/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
   # .. and the rest of the training data as an additional data source.
   # we can later fold the dev data into this.
-  head -n $[$num_dev_sentences] < data/train/text | cut -d " " -f 2- >  ${dir}/data/text/ted.txt
+  #head -n $[$num_dev_sentences] < data/train/text | cut -d " " -f 2- >  ${dir}/data/text/ted.txt
+
+  head -n $num_dev_sentences < data/train/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
+  tail -n +$[$num_dev_sentences+1] < data/train/text | cut -d " " -f 2- >  ${dir}/data/text/ted.txt
 
   # for reporting perplexities, we'll use the "real" dev set.
   # (a subset of the training data is used as ${dir}/data/text/ted.txt to work
@@ -79,7 +82,7 @@ if [ $stage -le 0 ]; then
   cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
 
   # get wordlist
-  cat ${dir}/data/text/text.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+  cat ${dir}/data/text/ted.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
   cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
 fi
 
@@ -107,34 +110,7 @@ if [ $stage -le 1 ]; then
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'
   #log-prob: -5.05603614242 [perplexity = 156.967086371] over 19477.0 words
-fi
-
-if [ $stage -le 2 ]; then
-  echo "$0: pruning the LM (to larger size)"
-  # Using 1 million n-grams for a big LM for rescoring purposes.
-  size=1000000
-  prune_lm_dir.py --target-num-ngrams=$size --initial-threshold=0.02 ${unpruned_lm_dir} ${dir}/data/lm_${order}_prune_big
-
-  get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_big 2>&1 | grep -F '[perplexity'
-  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_3_prune_big was -5.06654404785 per word [perplexity = 158.625177948] over 19477.0 words
-  # current results, after adding --limit-unk-history=true:
-
 
   mkdir -p ${dir}/data/arpa
-  format_arpa_lm.py ${dir}/data/lm_${order}_prune_big | gzip -c > ${dir}/data/arpa/${order}gram_big.arpa.gz
-fi
-
-if [ $stage -le 3 ]; then
-  echo "$0: pruning the LM (to smaller size)"
-  # Using 500,000 n-grams for a smaller LM for graph building.  Prune from the
-  # bigger-pruned LM, it'll be faster.
-  size=500000
-  prune_lm_dir.py --target-num-ngrams=$size ${dir}/data/lm_${order}_prune_big ${dir}/data/lm_${order}_prune_small
-
-  get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_small 2>&1 | grep -F '[perplexity'
-  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_3_prune_small was -5.24719139498 per word [perplexity = 190.031793995] over 19477.0 words
-  # current results, after adding --limit-unk-history=true (needed for modeling OOVs and not blowing up LG.fst):
-
-
-  format_arpa_lm.py ${dir}/data/lm_${order}_prune_small | gzip -c > ${dir}/data/arpa/${order}gram_small.arpa.gz
+  format_arpa_lm.py ${unpruned_lm_dir} | gzip -c > ${dir}/data/arpa/${order}gram_unpruned.arpa.gz
 fi

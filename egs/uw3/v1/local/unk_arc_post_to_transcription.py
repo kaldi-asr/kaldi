@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# Copyright 2017 (Author: Ashish Arora)
+
 import argparse
 import os
 import sys

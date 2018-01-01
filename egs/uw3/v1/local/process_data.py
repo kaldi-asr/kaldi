@@ -1,6 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# (Author: Chun Chieh Chang)
+# Copyright 2017 (Author: Chun Chieh Chang)
+
+# This script goes through the downloaded dataset and creates the text, utt2spk, image.scp
+# text - matches the labels with the image name
+# utt2spk - matches the image names with the speaker/writer names
+# image.scp - matches the image names with the actual image file
 
 import argparse
 import os
@@ -46,6 +51,8 @@ for page in sorted(os.listdir(args.database_path)):
       gt_fh = open(text_path, 'r')
       text = gt_fh.readlines()[0].strip()
       
+      # The UW3 dataset doesn't have established training and testing splits
+      # The dataset is randomly split train 95% and test 5%
       coin = random.randint(0, 20)
       if coin >= 1:
         train_text_fh.write(utt_id + ' ' + text + '\n')

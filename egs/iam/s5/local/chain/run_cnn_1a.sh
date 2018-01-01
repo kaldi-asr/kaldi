@@ -1,10 +1,15 @@
 #!/bin/bash
 
+# Copyright    2017 Hossein Hadian
+#              2017 Chun Chieh Chang
+#              2017 Ashish Arora
+
 # steps/info/chain_dir_info.pl exp/chain/cnn_1a/
 # exp/chain/cnn_1a/: num-iters=21 nj=2..4 num-params=4.4M dim=40->364 combine=-0.021->-0.015 xent:train/valid[13,20,final]=(-1.05,-0.701,-0.591/-1.30,-1.08,-1.00) logprob:train/valid[13,20,final]=(-0.061,-0.034,-0.030/-0.107,-0.101,-0.098)
 
-# head exp/chain/cnn_1a/decode_test/scoring_kaldi/best_wer
-# WER 19.10 [ 3365 / 17616, 225 ins, 891 del, 2249 sub ] exp/chain/cnn_1a/decode_test/wer_10_0.5
+# cat exp/chain/cnn_1a/decode_test/scoring_kaldi/best_*
+# %WER 5.94 [ 3913 / 65921, 645 ins, 1466 del, 1802 sub ] exp/chain/cnn_1a/decode_test//cer_11_0.0
+# %WER 9.13 [ 1692 / 18542, 162 ins, 487 del, 1043 sub ] exp/chain/cnn_1a/decode_test/wer_11_0.0
 
 set -e -o pipefail
 
@@ -58,7 +63,6 @@ ali_dir=exp/${ali}
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats
 dir=exp/chain${nnet3_affix}/cnn${affix}
 train_data_dir=data/${train_set}
-lores_train_data_dir=$train_data_dir  # for the start, use the same data for gmm and chain
 tree_dir=exp/chain${nnet3_affix}/tree
 
 # the 'lang' directory is created by this script.
@@ -67,7 +71,7 @@ tree_dir=exp/chain${nnet3_affix}/tree
 lang=data/lang_chain
 
 for f in $train_data_dir/feats.scp \
-    $lores_train_data_dir/feats.scp $gmm_dir/final.mdl \
+    $train_data_dir/feats.scp $gmm_dir/final.mdl \
     $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
@@ -99,7 +103,7 @@ fi
 if [ $stage -le 2 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" ${lores_train_data_dir} \
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" ${train_data_dir} \
     data/$lang_test $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
@@ -116,7 +120,7 @@ if [ $stage -le 3 ]; then
   steps/nnet3/chain/build_tree.sh \
     --frame-subsampling-factor $frame_subsampling_factor \
     --context-opts "--context-width=2 --central-position=1" \
-    --cmd "$train_cmd" $num_leaves ${lores_train_data_dir} \
+    --cmd "$train_cmd" $num_leaves ${train_data_dir} \
     $lang $ali_dir $tree_dir
 fi
 

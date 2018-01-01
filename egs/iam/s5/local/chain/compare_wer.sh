@@ -3,6 +3,9 @@
 # this script is used for comparing decoding results between systems.
 # e.g. local/chain/compare_wer.sh exp/chain/cnn{1a,1b}
 
+# Copyright      2017  Chun Chieh Chang
+#                2017  Ashish Arora
+
 if [ $# == 0 ]; then
   echo "Usage: $0: <dir1> [<dir2> ... ]"
   echo "e.g.: $0 exp/chain/cnn{1a,1b}"

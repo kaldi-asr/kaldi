@@ -4,18 +4,18 @@
 
 # ./local/chain/compare_wer.sh exp/chain/cnn_chainali_1a/ exp/chain/cnn_1a/
 # System                      cnn_chainali_1a    cnn_1a
-# WER                             15.85     19.10
+# WER                             6.69     9.13
 # Final train prob              -0.0128   -0.0297
 # Final valid prob              -0.0447   -0.0975
 # Final train prob (xent)       -0.6448   -0.5915
 # Final valid prob (xent)       -0.9924   -1.0022
 
-# steps/info/chain_dir_info.pl exp/chain/cnn1a_chainali/
+# steps/info/chain_dir_info.pl exp/chain/cnn_chainali_1a/
 # exp/chain/cnn_chainali_1a/: num-iters=21 nj=2..4 num-params=4.4M dim=40->364 combine=-0.002->0.000 xent:train/valid[13,20,final]=(-0.929,-0.711,-0.645/-1.16,-1.04,-0.992) logprob:train/valid[13,20,final]=(-0.029,-0.016,-0.013/-0.051,-0.047,-0.045)
 
-# head exp/chain/cnn_chainali_1a/decode_test/scoring_kaldi/best_wer
-# %WER 15.85 [ 2793 / 17616, 235 ins, 557 del, 2001 sub ] exp/chain/cnn_chainali_1a/decode_test/wer_9_0.0
-# %WER 7.76 [ 5114 / 65921, 834 ins, 1355 del, 2925 sub ] exp/chain/cnn_chainali_1a/decode_test/cer_9_0.5
+# cat exp/chain/cnn_chainali_1a/decode_test/scoring_kaldi/best_*
+# %WER 3.94 [ 2600 / 65921, 549 ins, 837 del, 1214 sub ] exp/chain/cnn_chainali_1a/decode_test/cer_15_0.0
+# %WER 6.69 [ 1241 / 18542, 135 ins, 358 del, 748 sub ] exp/chain/cnn_chainali_1a/decode_test/wer_15_0.5
 
 set -e -o pipefail
 
@@ -71,7 +71,6 @@ lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats_chain
 gmm_lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats
 dir=exp/chain${nnet3_affix}/cnn_chainali${affix}
 train_data_dir=data/${train_set}
-lores_train_data_dir=$train_data_dir  # for the start, use the same data for gmm and chain
 tree_dir=exp/chain${nnet3_affix}/tree_chain
 
 # the 'lang' directory is created by this script.
@@ -79,7 +78,7 @@ tree_dir=exp/chain${nnet3_affix}/tree_chain
 # you should probably name it differently.
 lang=data/lang_chain
 for f in $train_data_dir/feats.scp \
-    $lores_train_data_dir/feats.scp $gmm_dir/final.mdl \
+    $train_data_dir/feats.scp $gmm_dir/final.mdl \
     $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
@@ -111,8 +110,9 @@ fi
 if [ $stage -le 2 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  local/chain/align_nnet3_lats.sh --nj $nj --cmd "$train_cmd" ${lores_train_data_dir} \
-    data/$lang_test $chain_model_dir $lat_dir
+  steps/nnet3/align_lats.sh --nj $nj --cmd "$train_cmd" \
+                            --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
+                            ${train_data_dir} data/$lang_test $chain_model_dir $lat_dir
   cp $gmm_lat_dir/splice_opts $lat_dir/splice_opts
 fi
 
@@ -128,7 +128,7 @@ if [ $stage -le 3 ]; then
   steps/nnet3/chain/build_tree.sh \
     --frame-subsampling-factor $frame_subsampling_factor \
     --context-opts "--context-width=2 --central-position=1" \
-    --cmd "$train_cmd" $num_leaves ${lores_train_data_dir} \
+    --cmd "$train_cmd" $num_leaves ${train_data_dir} \
     $lang $ali_dir $tree_dir
 fi
 
