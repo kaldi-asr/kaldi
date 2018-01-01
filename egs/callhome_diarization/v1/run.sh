@@ -212,7 +212,7 @@ if [ $stage -le 6 ]; then
     > exp/results/DER_threshold.txt
   der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
     exp/results/DER_threshold.txt)
-  # Using supervised calibration, DER: 12.82%
+  # Using supervised calibration, DER: 10.49%
   echo "Using supervised calibration, DER: $der%"
 fi
 
@@ -236,6 +236,6 @@ if [ $stage -le 7 ]; then
     > exp/results/DER_num_spk.txt
   der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
     exp/results/DER_num_spk.txt)
-  # Using the oracle number of speakers, DER: 11.42%
+  # Using the oracle number of speakers, DER: 8.65%
   echo "Using the oracle number of speakers, DER: $der%"
 fi
