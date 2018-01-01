@@ -4,6 +4,7 @@
 set -e # exit on error
 
 
+false && {
 # call the next line with the directory where the RM data is
 # (the argument below is just an example).  This should contain
 # subdirectories named as follows:
@@ -71,6 +72,7 @@ local/test_decoders.sh # This is a test program that we run only in the
                        # RM setup, it does some comparison tests on decoders
                        # to help validate the code.
 #draw-tree data/lang/phones.txt exp/tri1/tree | dot -Tps -Gsize=8,10.5 | ps2pdf - tree.pdf
+}
 
 # align tri1
 steps/align_si.sh --nj 8 --cmd "$train_cmd" \
@@ -133,6 +135,8 @@ steps/train_sat.sh 1800 9000 data/train data/lang exp/tri2b_ali exp/tri3b
 utils/mkgraph.sh data/lang exp/tri3b exp/tri3b/graph
 steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/tri3b/graph data/test exp/tri3b/decode
+
+exit 0
 
 (
  utils/mkgraph.sh data/lang_ug exp/tri3b exp/tri3b/graph_ug

@@ -223,7 +223,7 @@ EventMap *BuildTree(Questions &qopts,
       int32 num_leaves_required = ((num_leaves - num_removed) / 8) * 8;
       std::vector<EventMap*> leaf_mapping;
 
-      int32 num_actually_removed;
+      int32 num_actually_removed = 0;
       EventMap* tree_rounded = ClusterEventMapToNClustersRestrictedByMap(
           *tree_clustered, stats, num_leaves_required, *tree_stub, 
           &num_actually_removed);
@@ -265,7 +265,7 @@ EventMap *BuildTree(Questions &qopts,
       int32 num_leaves_required = (num_leaves / 8) * 8;
       std::vector<EventMap*> leaf_mapping;
 
-      int32 num_actually_removed;
+      int32 num_actually_removed = 0;
       EventMap *tree_rounded = ClusterEventMapToNClustersRestrictedByMap(
           *tree_split, stats, num_leaves_required, *tree_stub,
           &num_actually_removed);

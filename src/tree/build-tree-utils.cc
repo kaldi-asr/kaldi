@@ -871,6 +871,7 @@ EventMap *ClusterEventMapToNClustersRestrictedByMap(
   
   if (num_clusters < split_stats.size()) {
     KALDI_WARN << "num-clusters is less than size of map. Not doing anything.";
+    if (num_removed_ptr) *num_removed_ptr = 0;
     return e_in.Copy();
   }
 
