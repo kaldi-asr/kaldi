@@ -94,7 +94,7 @@ echo $delta_opts > $dir/delta_opts
 
 # Note: there is no point subsampling all_feats, because gmm-global-init-from-feats
 # effectively does subsampling itself (it keeps a random subset of the features).
-if [ $apply_cmn ]; then
+if $apply_cmn; then
   all_feats="ark,s,cs:add-deltas $delta_opts scp:$data/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$data/vad.scp ark:- |"
   feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- | subsample-feats --n=$subsample ark:- ark:- |"
 else

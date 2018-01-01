@@ -91,7 +91,7 @@ utils/split_data.sh $sub_data $nj || exit 1;
 delta_opts=`cat $srcdir/delta_opts 2>/dev/null`
 
 ## Set up features.
-if [ $apply_cmn ]; then
+if $apply_cmn; then
   feats="ark,s,cs:add-deltas $delta_opts scp:$sub_sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- |"
 else
   feats="ark,s,cs:add-deltas $delta_opts scp:$sub_sdata/JOB/feats.scp ark:- |"
