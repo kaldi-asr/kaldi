@@ -658,6 +658,11 @@ class NonlinearComponent: public Component {
   CuVector<double> deriv_sum_; // stats of the derivative of the nonlinearity
                                // (only applicable to element-by-element
                                // nonlinearities, not Softmax.
+  CuVector<double> oderiv_sumsq_;  // Sum-square of the derivative of the
+                                   // objective function, that we're propagating
+                                   // back.  Accumulated during the backprop;
+                                   // used for diagnostics.
+
   double count_;
 
   // some stats for self-repairing nonlinearities.

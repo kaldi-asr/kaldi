@@ -196,6 +196,8 @@ std::string ErrorContext(const std::string &str);
 */
 std::string SummarizeVector(const VectorBase<BaseFloat> &vec);
 
+std::string SummarizeVector(const VectorBase<double> &vec);
+
 std::string SummarizeVector(const CuVectorBase<BaseFloat> &vec);
 
 /** Print to 'os' some information about the mean and standard deviation of

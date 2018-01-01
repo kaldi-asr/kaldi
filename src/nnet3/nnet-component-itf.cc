@@ -393,10 +393,15 @@ std::string NonlinearComponent::Info() const {
     value_avg.Scale(1.0 / count_);
     stream << ", value-avg=" << SummarizeVector(value_avg);
     if (deriv_sum_.Dim() == dim_) {
-      Vector<double> deriv_avg_dbl(deriv_sum_);
-      Vector<BaseFloat> deriv_avg(deriv_avg_dbl);
+      Vector<double> deriv_avg(deriv_sum_);
       deriv_avg.Scale(1.0 / count_);
       stream << ", deriv-avg=" << SummarizeVector(deriv_avg);
+    }
+    if (oderiv_sumsq_.Dim() == dim_) {
+      Vector<double> oderiv_rms(oderiv_sumsq_);
+      oderiv_rms.Scale(1.0 / count_);
+      oderiv_rms.ApplyPow(0.5);
+      stream << ", oderiv-rms=" << SummarizeVector(oderiv_rms);
     }
   }
   return stream.str();
@@ -405,6 +410,7 @@ std::string NonlinearComponent::Info() const {
 void NonlinearComponent::Scale(BaseFloat scale) {
   value_sum_.Scale(scale);
   deriv_sum_.Scale(scale);
+  oderiv_sumsq_.Scale(scale);
   count_ *= scale;
   num_dims_self_repaired_ *= scale;
   num_dims_processed_ *= scale;
@@ -418,10 +424,14 @@ void NonlinearComponent::Add(BaseFloat alpha, const Component &other_in) {
     value_sum_.Resize(other->value_sum_.Dim());
   if (deriv_sum_.Dim() == 0 && other->deriv_sum_.Dim() != 0)
     deriv_sum_.Resize(other->deriv_sum_.Dim());
+  if (oderiv_sumsq_.Dim() == 0 && other->oderiv_sumsq_.Dim() != 0)
+    oderiv_sumsq_.Resize(other->oderiv_sumsq_.Dim());
   if (other->value_sum_.Dim() != 0)
     value_sum_.AddVec(alpha, other->value_sum_);
   if (other->deriv_sum_.Dim() != 0)
     deriv_sum_.AddVec(alpha, other->deriv_sum_);
+  if (other->oderiv_sumsq_.Dim() != 0)
+    oderiv_sumsq_.AddVec(alpha, other->oderiv_sumsq_);
   count_ += alpha * other->count_;
   num_dims_self_repaired_ += alpha * other->num_dims_self_repaired_;
   num_dims_processed_ += alpha * other->num_dims_processed_;
@@ -443,10 +453,18 @@ void NonlinearComponent::Read(std::istream &is, bool binary) {
   value_sum_.Read(is, binary);
   ExpectToken(is, binary, "<DerivAvg>");
   deriv_sum_.Read(is, binary);
+  if (PeekToken(is, binary) == 'O') {
+    ExpectToken(is, binary, "<OderivRms>");
+    oderiv_sumsq_.Read(is, binary);
+    oderiv_sumsq_.ApplyPow(2.0);
+  } else {
+    oderiv_sumsq_.Resize(deriv_sum_.Dim());
+  }
   ExpectToken(is, binary, "<Count>");
   ReadBasicType(is, binary, &count_);
   value_sum_.Scale(count_);
   deriv_sum_.Scale(count_);
+  oderiv_sumsq_.Scale(count_);
 
   std::string token;
   ReadToken(is, binary, &token);
@@ -493,12 +511,20 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
   Vector<BaseFloat> temp(value_sum_);
   if (count_ != 0.0) temp.Scale(1.0 / count_);
   temp.Write(os, binary);
-  WriteToken(os, binary, "<DerivAvg>");
 
-  temp.Resize(deriv_sum_.Dim(), kUndefined);
+  WriteToken(os, binary, "<DerivAvg>");
+  temp.Resize(deriv_sum_.Dim());
   temp.CopyFromVec(deriv_sum_);
   if (count_ != 0.0) temp.Scale(1.0 / count_);
   temp.Write(os, binary);
+
+  WriteToken(os, binary, "<OderivRms>");
+  temp.Resize(oderiv_sumsq_.Dim());
+  temp.CopyFromVec(oderiv_sumsq_);
+  if (count_ != 0.0) temp.Scale(1.0 / count_);
+  temp.ApplyPow(0.5);
+  temp.Write(os, binary);
+
   WriteToken(os, binary, "<Count>");
   WriteBasicType(os, binary, count_);
   WriteToken(os, binary, "<NumDimsSelfRepaired>");
@@ -530,7 +556,7 @@ NonlinearComponent::NonlinearComponent():
 NonlinearComponent::NonlinearComponent(const NonlinearComponent &other):
     dim_(other.dim_), block_dim_(other.block_dim_),
     value_sum_(other.value_sum_), deriv_sum_(other.deriv_sum_),
-    count_(other.count_),
+    oderiv_sumsq_(other.oderiv_sumsq_), count_(other.count_),
     num_dims_self_repaired_(other.num_dims_self_repaired_),
     num_dims_processed_(other.num_dims_processed_),
     self_repair_lower_threshold_(other.self_repair_lower_threshold_),

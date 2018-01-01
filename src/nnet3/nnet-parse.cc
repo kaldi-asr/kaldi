@@ -517,6 +517,11 @@ std::string SummarizeVector(const VectorBase<BaseFloat> &vec) {
   return os.str();
 }
 
+std::string SummarizeVector(const VectorBase<double> &vec) {
+  Vector<BaseFloat> vec_copy(vec);
+  return SummarizeVector(vec_copy);
+}
+
 std::string SummarizeVector(const CuVectorBase<BaseFloat> &cu_vec) {
   Vector<BaseFloat> vec(cu_vec);
   return SummarizeVector(vec);
