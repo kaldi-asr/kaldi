@@ -29,7 +29,7 @@ set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
-stage=1
+stage=16
 nj=30
 train=noisy
 enhan=$1
@@ -41,7 +41,7 @@ num_threads_ubm=32
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
 # Options which are not passed through to run_ivector_common.sh
-affix=1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=7a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 common_egs_dir=
 reporting_email=
 
