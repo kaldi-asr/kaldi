@@ -17,7 +17,7 @@ vaddir=`pwd`/mfcc
 data_root=/export/corpora5/LDC
 num_components=2048
 ivector_dim=128
-stage=4
+stage=0
 
 # Prepare datasets
 if [ $stage -le 0 ]; then
