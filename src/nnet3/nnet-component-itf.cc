@@ -332,24 +332,23 @@ std::string UpdatableComponent::Info() const {
 void NonlinearComponent::StoreStatsInternal(
     const CuMatrixBase<BaseFloat> &out_value,
     const CuMatrixBase<BaseFloat> *deriv) {
-  KALDI_ASSERT(out_value.NumCols() == InputDim());
+  KALDI_ASSERT(out_value.NumCols() == dim_);
 
   // Check we have the correct dimensions.
-  if (value_sum_.Dim() != InputDim() ||
-      (deriv != NULL && deriv_sum_.Dim() != InputDim())) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (value_sum_.Dim() != InputDim()) {
-      value_sum_.Resize(InputDim());
+  if (value_sum_.Dim() != dim_ ||
+      (deriv != NULL && deriv_sum_.Dim() != dim_)) {
+    if (value_sum_.Dim() != dim_) {
+      value_sum_.Resize(dim_);
       count_ = 0.0;
     }
-    if (deriv != NULL && deriv_sum_.Dim() != InputDim()) {
-      deriv_sum_.Resize(InputDim());
+    if (deriv != NULL && deriv_sum_.Dim() != dim_) {
+      deriv_sum_.Resize(dim_);
       count_ = 0.0;
       value_sum_.SetZero();
     }
   }
   count_ += out_value.NumRows();
-  CuVector<BaseFloat> temp(InputDim());
+  CuVector<BaseFloat> temp(dim_);
   temp.AddRowSumMat(1.0, out_value, 0.0);
   value_sum_.AddVec(1.0, temp);
   if (deriv != NULL) {
@@ -358,22 +357,35 @@ void NonlinearComponent::StoreStatsInternal(
   }
 }
 
+void NonlinearComponent::StoreBackpropStats(
+    const CuMatrixBase<BaseFloat> &out_deriv) {
+  KALDI_ASSERT(out_deriv.NumCols() == dim_);
+
+  // Check we have the correct dimensions.
+  if (oderiv_sumsq_.Dim() != dim_) {
+    oderiv_sumsq_.Resize(dim_);
+    oderiv_count_ = 0.0;
+  }
+  CuVector<BaseFloat> temp(dim_);
+  temp.AddDiagMat2(1.0, out_deriv, kTrans, 0.0);
+  oderiv_sumsq_.AddVec(1.0, temp);
+  oderiv_count_ += out_deriv.NumRows();
+}
+
+
 void NonlinearComponent::ZeroStats() {
   value_sum_.SetZero();
   deriv_sum_.SetZero();
+  oderiv_sumsq_.SetZero();
   count_ = 0.0;
+  oderiv_count_ = 0.0;
   num_dims_self_repaired_ = 0.0;
   num_dims_processed_ = 0.0;
 }
 
 std::string NonlinearComponent::Info() const {
   std::stringstream stream;
-  if (InputDim() == OutputDim()) {
-    stream << Type() << ", dim=" << InputDim();
-  } else {
-    stream << Type() << ", input-dim=" << InputDim()
-           << ", output-dim=" << OutputDim();
-  }
+  stream << Type() << ", dim=" << dim_;
   if (block_dim_ != dim_)
     stream << ", block-dim=" << block_dim_;
   if (self_repair_lower_threshold_ != BaseFloat(kUnsetThreshold))
@@ -397,12 +409,13 @@ std::string NonlinearComponent::Info() const {
       deriv_avg.Scale(1.0 / count_);
       stream << ", deriv-avg=" << SummarizeVector(deriv_avg);
     }
-    if (oderiv_sumsq_.Dim() == dim_) {
-      Vector<double> oderiv_rms(oderiv_sumsq_);
-      oderiv_rms.Scale(1.0 / count_);
-      oderiv_rms.ApplyPow(0.5);
-      stream << ", oderiv-rms=" << SummarizeVector(oderiv_rms);
-    }
+  }
+  if (oderiv_count_ > 0 && oderiv_sumsq_.Dim() == dim_) {
+    Vector<double> oderiv_rms(oderiv_sumsq_);
+    oderiv_rms.Scale(1.0 / oderiv_count_);
+    oderiv_rms.ApplyPow(0.5);
+    stream << ", oderiv-rms=" << SummarizeVector(oderiv_rms)
+           << ", oderiv-count=" << oderiv_count_;
   }
   return stream.str();
 }
@@ -412,6 +425,7 @@ void NonlinearComponent::Scale(BaseFloat scale) {
   deriv_sum_.Scale(scale);
   oderiv_sumsq_.Scale(scale);
   count_ *= scale;
+  oderiv_count_ *= scale;
   num_dims_self_repaired_ *= scale;
   num_dims_processed_ *= scale;
 }
@@ -433,6 +447,7 @@ void NonlinearComponent::Add(BaseFloat alpha, const Component &other_in) {
   if (other->oderiv_sumsq_.Dim() != 0)
     oderiv_sumsq_.AddVec(alpha, other->oderiv_sumsq_);
   count_ += alpha * other->count_;
+  oderiv_count_ += alpha * other->oderiv_count_;
   num_dims_self_repaired_ += alpha * other->num_dims_self_repaired_;
   num_dims_processed_ += alpha * other->num_dims_processed_;
 }
@@ -453,18 +468,21 @@ void NonlinearComponent::Read(std::istream &is, bool binary) {
   value_sum_.Read(is, binary);
   ExpectToken(is, binary, "<DerivAvg>");
   deriv_sum_.Read(is, binary);
+  ExpectToken(is, binary, "<Count>");
+  ReadBasicType(is, binary, &count_);
   if (PeekToken(is, binary) == 'O') {
     ExpectToken(is, binary, "<OderivRms>");
     oderiv_sumsq_.Read(is, binary);
     oderiv_sumsq_.ApplyPow(2.0);
+    ExpectToken(is, binary, "<OderivCount>");
+    ReadBasicType(is, binary, &oderiv_count_);
   } else {
-    oderiv_sumsq_.Resize(deriv_sum_.Dim());
+    oderiv_count_ = 0.0;
+    oderiv_sumsq_.Resize(0);
   }
-  ExpectToken(is, binary, "<Count>");
-  ReadBasicType(is, binary, &count_);
   value_sum_.Scale(count_);
   deriv_sum_.Scale(count_);
-  oderiv_sumsq_.Scale(count_);
+  oderiv_sumsq_.Scale(oderiv_count_);
 
   std::string token;
   ReadToken(is, binary, &token);
@@ -518,15 +536,19 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
   if (count_ != 0.0) temp.Scale(1.0 / count_);
   temp.Write(os, binary);
 
+  WriteToken(os, binary, "<Count>");
+  WriteBasicType(os, binary, count_);
+
   WriteToken(os, binary, "<OderivRms>");
   temp.Resize(oderiv_sumsq_.Dim());
   temp.CopyFromVec(oderiv_sumsq_);
-  if (count_ != 0.0) temp.Scale(1.0 / count_);
+  if (oderiv_count_ != 0.0) temp.Scale(1.0 / oderiv_count_);
   temp.ApplyPow(0.5);
   temp.Write(os, binary);
 
-  WriteToken(os, binary, "<Count>");
-  WriteBasicType(os, binary, count_);
+  WriteToken(os, binary, "<OderivCount>");
+  WriteBasicType(os, binary, oderiv_count_);
+
   WriteToken(os, binary, "<NumDimsSelfRepaired>");
   WriteBasicType(os, binary, num_dims_self_repaired_);
   WriteToken(os, binary, "<NumDimsProcessed>");
@@ -547,7 +569,7 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
 }
 
 NonlinearComponent::NonlinearComponent():
-    dim_(-1), block_dim_(-1), count_(0.0),
+    dim_(-1), block_dim_(-1), count_(0.0), oderiv_count_(0.0),
     num_dims_self_repaired_(0.0), num_dims_processed_(0.0),
     self_repair_lower_threshold_(kUnsetThreshold),
     self_repair_upper_threshold_(kUnsetThreshold),
@@ -556,7 +578,8 @@ NonlinearComponent::NonlinearComponent():
 NonlinearComponent::NonlinearComponent(const NonlinearComponent &other):
     dim_(other.dim_), block_dim_(other.block_dim_),
     value_sum_(other.value_sum_), deriv_sum_(other.deriv_sum_),
-    oderiv_sumsq_(other.oderiv_sumsq_), count_(other.count_),
+    count_(other.count_), oderiv_sumsq_(other.oderiv_sumsq_),
+    oderiv_count_(other.oderiv_count_),
     num_dims_self_repaired_(other.num_dims_self_repaired_),
     num_dims_processed_(other.num_dims_processed_),
     self_repair_lower_threshold_(other.self_repair_lower_threshold_),

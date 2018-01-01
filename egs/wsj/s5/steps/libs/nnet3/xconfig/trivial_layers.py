@@ -68,3 +68,56 @@ class XconfigRenormComponent(XconfigLayerBase):
             self.name, input_desc))
         configs.append(line)
         return configs
+
+
+class XconfigNoOpComponent(XconfigLayerBase):
+    """This class is for parsing lines like
+     'no-op-component name=renorm input=Append(-3,0,3)'
+    which will produce just a single component, of type NoOpComponent.
+
+    Parameters of the class, and their defaults:
+      input='[-1]'             [Descriptor giving the input of the layer.]
+    """
+    def __init__(self, first_token, key_to_value, prev_names=None):
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def set_default_configs(self):
+        self.config = {'input': '[-1]' }
+
+    def check_configs(self):
+        pass
+
+    def output_name(self, auxiliary_output=None):
+        assert auxiliary_output is None
+        return self.name
+
+    def output_dim(self, auxiliary_output=None):
+        assert auxiliary_output is None
+        input_dim = self.descriptors['input']['dim']
+        return input_dim
+
+    def get_full_config(self):
+        ans = []
+        config_lines = self._generate_config()
+
+        for line in config_lines:
+            for config_name in ['ref', 'final']:
+                # we do not support user specified matrices in this layer
+                # so 'ref' and 'final' configs are the same.
+                ans.append((config_name, line))
+        return ans
+
+    def _generate_config(self):
+        # by 'descriptor_final_string' we mean a string that can appear in
+        # config-files, i.e. it contains the 'final' names of nodes.
+        input_desc = self.descriptors['input']['final-string']
+        input_dim = self.descriptors['input']['dim']
+
+        configs = []
+        line = ('component name={0} type=NoOpComponent dim={1}'.format(
+            self.name, input_dim))
+        configs.append(line)
+        line = ('component-node name={0} component={0} input={1}'.format(
+            self.name, input_desc))
+        configs.append(line)
+        return configs

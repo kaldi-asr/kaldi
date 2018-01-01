@@ -590,7 +590,7 @@ class UpdatableComponent: public Component {
 
        block-dim     Defaults to dim, but may be any nonzero divisor of dim.  It affects the
                      self-repair, which will be done while treating the input/output as
-                     repeating blocks of size 'block-dim' (e.g. blocks of filtes).  It allows
+                     repeating blocks of size 'block-dim' (e.g. blocks of filters).  It allows
                      us to do self-repair on the filter level in CNNs.
                      Currently this only makes a difference for RectifiedLinearComponent.
 */
@@ -643,6 +643,10 @@ class NonlinearComponent: public Component {
   void StoreStatsInternal(const CuMatrixBase<BaseFloat> &out_value,
                           const CuMatrixBase<BaseFloat> *deriv = NULL);
 
+  // This function may be called from child class members during backprop.  It
+  // stores the 'oderiv_sumsq_' stats.
+  void StoreBackpropStats(const CuMatrixBase<BaseFloat> &out_deriv);
+
 
   const NonlinearComponent &operator = (const NonlinearComponent &other); // Disallow.
 
@@ -658,12 +662,15 @@ class NonlinearComponent: public Component {
   CuVector<double> deriv_sum_; // stats of the derivative of the nonlinearity
                                // (only applicable to element-by-element
                                // nonlinearities, not Softmax.
+  // Count corresponding to the stats in 'value_sum_' and 'deriv_sum_'
+  double count_;
+
   CuVector<double> oderiv_sumsq_;  // Sum-square of the derivative of the
                                    // objective function, that we're propagating
                                    // back.  Accumulated during the backprop;
                                    // used for diagnostics.
-
-  double count_;
+  // Count corresponding to the stats in 'oderiv_sumsq_'.
+  double oderiv_count_;
 
   // some stats for self-repairing nonlinearities.
   double num_dims_self_repaired_;
@@ -673,9 +680,6 @@ class NonlinearComponent: public Component {
   BaseFloat self_repair_lower_threshold_;
   BaseFloat self_repair_upper_threshold_;
   BaseFloat self_repair_scale_;
-
-  // The mutex is used in UpdateStats, only for resizing vectors.
-  std::mutex mutex_;
 };
 
 } // namespace nnet3

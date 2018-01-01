@@ -522,7 +522,7 @@ def train(args, run_opts):
                 backstitch_training_interval=args.backstitch_training_interval)
 
             if args.cleanup:
-                # do a clean up everythin but the last 2 models, under certain
+                # do a clean up everything but the last 2 models, under certain
                 # conditions
                 common_train_lib.remove_model(
                     args.dir, iter-2, num_iters, models_to_combine,
@@ -573,8 +573,9 @@ def train(args, run_opts):
             # delete it
             remove_egs = False
 
+        # leave the last-two-numbered models, for diagnostic reasons.
         common_train_lib.clean_nnet_dir(
-            args.dir, num_iters, egs_dir,
+            args.dir, num_iters - 1, egs_dir,
             preserve_model_interval=args.preserve_model_interval,
             remove_egs=remove_egs)
 

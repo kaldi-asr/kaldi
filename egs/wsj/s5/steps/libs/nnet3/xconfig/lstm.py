@@ -609,9 +609,10 @@ class XconfigFastLstmLayer(XconfigLayerBase):
                         'clipping-threshold' : 30.0,
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,
-                        # recurrence-scale is a scale we put on the c_t when doing linear projections
-                        # from it... making it larger than 1 (e.g. 4) helps equalize scales.
-                        'recurrence-scale': 1.0,
+                        # self-scale is a scale we put on the m_t when doing
+                        # linear projections from it... making it larger than 1
+                        # (e.g. 4) helps equalize scales.
+                        'self-scale': 1.0,
                         'delay' : -1,
                         # if you want to set 'self-repair-scale' (c.f. the
                         # self-repair-scale-nonlinearity config value in older LSTM layers), you can
@@ -748,7 +749,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         configs.append("###  Nodes for the components above.")
         configs.append("component-node name={0}.W_all component={0}.W_all input=Append({1}, "
                        "IfDefined(Offset(Scale({2}, {0}.c_trunc), {3})))".format(
-                          name, input_descriptor, self.config['recurrence-scale'], delay))
+                          name, input_descriptor, self.config['self-scale'], delay))
         if self.config['self-stabilize']:
             configs.append("component-node name={0}.W_all_so component={0}.W_all_so input={0}.W_all".format(name))
             W_all_name = 'W_all_so'
@@ -825,18 +826,23 @@ class XconfigLstmbLayer(XconfigLayerBase):
         self.config = { 'input':'[-1]',
                         'cell-dim' : -1, # this is a required argument
                         'bottleneck-dim': -1, # this is a required argument
-                        'clipping-threshold' : 30.0,
-                        'zeroing-interval' : 20,
-                        'zeroing-threshold' : 15.0,
+                        'clipping-threshold': 30.0,
+                        'zeroing-interval': 20,
+                        'zeroing-threshold': 15.0,
+                        # batchnorm-power is for what i'm going to call OverNorm, you can set it
+                        # for example to -0.75.
+                        'batchnorm-power': -0.5,
                         'delay' : -1,
                         'lstm-nonlinearity-options' : ' max-change=0.75',
+                        # the recurrence scale is the scale on m_trunc, used in the
+                        # recurrence (to balance its size with the input).
+                        'self-scale' : 1.0,
                         # the affine layer contains 4 of our old layers -> use a
                         # larger max-change than the normal value of 0.75.
                         'ng-affine-options' : ' max-change=1.5',
                         'l2-regularize': 0.0,
                         'decay-time':  -1.0
                         }
-        self.c_needed = False  # keep track of whether the 'c' output is needed.
 
     def set_derived_configs(self):
         if self.config['cell-dim'] <= 0:
@@ -884,6 +890,7 @@ class XconfigLstmbLayer(XconfigLayerBase):
         input_descriptor = self.descriptors['input']['final-string']
         cell_dim = self.config['cell-dim']
         bottleneck_dim = self.config['bottleneck-dim']
+        self_scale = self.config['self-scale']
         delay = self.config['delay']
         affine_str = self.config['ng-affine-options']
         l2_regularize = self.config['l2-regularize']
@@ -917,7 +924,7 @@ class XconfigLstmbLayer(XconfigLayerBase):
         # constraint, it's meaningless.
         configs.append("### Begin LTSM layer '{0}'".format(name))
         configs.append("component name={0}.W_all_a type=LinearComponent input-dim={1} "
-                       "orthonormal-constraint=1.0 output-dim={2} {3} ".format(
+                       "orthonormal-constraint=1.0 output-dim={2} {3}".format(
                            name, input_dim + cell_dim, bottleneck_dim,
                            affine_str))
 
@@ -936,16 +943,15 @@ class XconfigLstmbLayer(XconfigLayerBase):
                                                      l2_regularize_option))
         configs.append("# Component for backprop truncation, to avoid gradient blowup in long training examples.")
 
-        configs.append("component name={0}.c_trunc type=BackpropTruncationComponent dim={1} {2}".format(
-            name, cell_dim, bptrunc_str))
-        configs.append("component name={0}.m_batchnorm type=BatchNormComponent dim={1} ".format(
-            name, cell_dim))
-
+        configs.append("component name={0}.cm_trunc type=BackpropTruncationComponent dim={1} {2}".format(
+            name, 2 * cell_dim, bptrunc_str))
+        configs.append("component name={0}.m_batchnorm type=BatchNormComponent power={1} dim={2} ".format(
+            name, self.config['batchnorm-power'], cell_dim))
 
         configs.append("###  Nodes for the components above.")
         configs.append("component-node name={0}.W_all_a component={0}.W_all_a input=Append({1}, "
-                       "IfDefined(Offset({0}.c_trunc, {2})))".format(
-                           name, input_descriptor, delay))
+                       "IfDefined(Offset(Scale({2}, {0}.m_trunc), {3})))".format(
+                           name, input_descriptor, self_scale, delay))
         configs.append("component-node name={0}.W_all_b component={0}.W_all_b "
                        "input={0}.W_all_a".format(name))
         configs.append("component-node name={0}.W_all_b_so component={0}.W_all_b_so "
@@ -954,11 +960,13 @@ class XconfigLstmbLayer(XconfigLayerBase):
         configs.append("component-node name={0}.lstm_nonlin component={0}.lstm_nonlin "
                        "input=Append({0}.W_all_b_so, IfDefined(Offset({0}.c_trunc, {1})))".format(
                            name, delay))
-        configs.append("dim-range-node name={0}.c input-node={0}.lstm_nonlin dim-offset=0 "
-                       "dim={1}".format(name, cell_dim))
         configs.append("dim-range-node name={0}.m input-node={0}.lstm_nonlin dim-offset={1} "
                        "dim={1}".format(name, cell_dim))
-        configs.append("component-node name={0}.c_trunc component={0}.c_trunc input={0}.c".format(name))
+        configs.append("component-node name={0}.cm_trunc component={0}.cm_trunc input={0}.lstm_nonlin".format(name))
+        configs.append("dim-range-node name={0}.c_trunc input-node={0}.cm_trunc dim-offset=0 "
+                       "dim={1}".format(name, cell_dim))
+        configs.append("dim-range-node name={0}.m_trunc input-node={0}.cm_trunc dim-offset={1} "
+                       "dim={1}".format(name, cell_dim))
         configs.append("component-node name={0}.m_batchnorm component={0}.m_batchnorm "
                        "input={0}.m".format(name))
         configs.append("### End LTSM layer '{0}'".format(name))
@@ -1151,15 +1159,17 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         if self.config['self-stabilize']:
             # have LinearComponent followed by ScaleAndOffsetComponent.
             configs.append("component name={0}.W_all type=LinearComponent input-dim={1} "
-                           "output-dim={2} {3} {4}".format(name, input_dim + rec_proj_dim, cell_dim * 4,
-                                                           affine_str, l2_regularize_option))
+                           "output-dim={2} {3} {4} ".format(
+                               name, input_dim + rec_proj_dim, cell_dim * 4,
+                               affine_str, l2_regularize_option))
             configs.append("component name={0}.W_all_so type=ScaleAndOffsetComponent dim={1} "
                            "max-change=0.75".format(name, cell_dim * 4))
         else:
             # have NaturalGradientAffineComponent
             configs.append("component name={0}.W_all type=NaturalGradientAffineComponent input-dim={1} "
-                           "output-dim={2} {3} {4}".format(name, input_dim + rec_proj_dim, cell_dim * 4,
-                                                           affine_str, l2_regularize_option))
+                           "output-dim={2} {3} {4}".format(
+                               name, input_dim + rec_proj_dim, cell_dim * 4,
+                               affine_str, l2_regularize_option))
         configs.append("# The core LSTM nonlinearity, implemented as a single component.")
         configs.append("# Input = (i_part, f_part, c_part, o_part, c_{t-1}), output = (c_t, m_t)")
         configs.append("# See cu-math.h:ComputeLstmNonlinearity() for details.")

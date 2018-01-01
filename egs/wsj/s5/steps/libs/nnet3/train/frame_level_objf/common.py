@@ -9,6 +9,8 @@ deep neural network acoustic model and raw model (i.e., generic neural
 network without transition model) with frame-level objectives.
 """
 
+from __future__ import print_statement
+from __future__ import division
 import glob
 import logging
 import math
@@ -91,7 +93,7 @@ def train_new_models(dir, iter, srand, num_jobs,
         archive_index = (k % num_archives) + 1
 
         if not chunk_level_training:
-            frame = (k / num_archives + archive_index) % frames_per_eg
+            frame = (k // num_archives + archive_index) % frames_per_eg
 
         cache_io_opts = (("--read-cache={dir}/cache.{iter}".format(dir=dir,
                                                                   iter=iter)
@@ -344,8 +346,8 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
                     rand_prune=rand_prune))
 
     # the above command would have generated dir/{1..num_lda_jobs}.lda_stats
-    lda_stat_files = map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
-                         range(1, num_lda_jobs + 1))
+    lda_stat_files = list(map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
+                              range(1, num_lda_jobs + 1)))
 
     common_lib.execute_command(
         """{command} {dir}/log/sum_transform_stats.log \
@@ -576,7 +578,7 @@ def get_realign_iters(realign_times, num_iters,
                                      + realign_time * math.pow(num_jobs_final,
                                                                2))
             realign_iter = realign_iter - num_jobs_initial
-            realign_iter = realign_iter / (num_jobs_final - num_jobs_initial)
+            realign_iter = realign_iter // (num_jobs_final - num_jobs_initial)
             realign_iter = realign_iter * num_iters
         realign_iters.append(int(realign_iter))
 

@@ -531,7 +531,7 @@ def smooth_presoftmax_prior_scale_vector(pdf_counts,
         scales.append(math.pow(pdf_counts[i] + smooth * average_count,
                                presoftmax_prior_scale_power))
     num_pdfs = len(pdf_counts)
-    scaled_counts = map(lambda x: x * float(num_pdfs) / sum(scales), scales)
+    scaled_counts = list(map(lambda x: x * float(num_pdfs) / sum(scales), scales))
     return scaled_counts
 
 

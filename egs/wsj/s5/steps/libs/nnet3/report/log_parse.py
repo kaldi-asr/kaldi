@@ -388,8 +388,8 @@ def parse_prob_logs(exp_dir, key='accuracy', output="output"):
                 " key {k} in both {tl} and {vl}".format(
                     k=key, tl=train_prob_files, vl=valid_prob_files))
     iters.sort()
-    return map(lambda x: (int(x), float(train_objf[x]),
-                          float(valid_objf[x])), iters)
+    return list(map(lambda x: (int(x), float(train_objf[x]),
+                               float(valid_objf[x])), iters))
 
 
 
