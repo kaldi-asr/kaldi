@@ -22,7 +22,6 @@ stage=-4
 power=0.25 # exponent to determine number of gaussians from occurrence counts
 norm_vars=false # deprecated, prefer --cmvn-opts "--norm-vars=false"
 cmvn_opts=  # can be used to add extra options to cmvn.
-variance_floor_val=0
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -100,7 +99,6 @@ fi
 
 if [ $stage -le 0 ]; then
   gmm-est --min-gaussian-occupancy=3  --mix-up=$numgauss --power=$power \
-    --variance-floor-value=$variance_floor_val \
     $dir/0.mdl "gmm-sum-accs - $dir/0.*.acc|" $dir/1.mdl 2> $dir/log/update.0.log || exit 1;
   rm $dir/0.*.acc
 fi
