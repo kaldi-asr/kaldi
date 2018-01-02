@@ -531,7 +531,7 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
                 --verbose=3 {raw_models} \
                 "ark,bg:nnet3-copy-egs {multitask_egs_opts} \
                     {egs_rspecifier} ark:- | \
-                      nnet3-merge-egs --minibatch-size={mbsize} ark:- ark:- |" \
+                      nnet3-merge-egs --minibatch-size=1:{mbsize} ark:- ark:- |" \
                 "{out_model}"
         """.format(command=run_opts.command,
                    combine_queue_opt=run_opts.combine_queue_opt,
