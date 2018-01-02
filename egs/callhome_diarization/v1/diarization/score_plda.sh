@@ -1,6 +1,6 @@
 #!/bin/bash
-
-# Copyright    2016  David Snyder
+# Copyright  2016-2018  David Snyder
+#            2017-2018  Matthew Maciejewski
 # Apache 2.0.
 
 # This script computes PLDA scores from pairs of ivectors extracted
@@ -68,7 +68,7 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  echo "$0: combining calibration thresholds across jobs"
+  echo "$0: combining PLDA scores across jobs"
   for j in $(seq $nj); do cat $dir/scores.$j.scp; done >$dir/scores.scp || exit 1;
 fi
 

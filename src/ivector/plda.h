@@ -133,9 +133,9 @@ class Plda {
 
   /// Apply a transform to the PLDA model.  This is mostly used for
   /// projecting the parameters of the model into a lower dimensional space,
-  /// i.e. pca_transform.NumRows() <= pac_transform.NumCols(), typically for
+  /// i.e. in_transform.NumRows() <= in_transform.NumCols(), typically for
   /// speaker diarization with a PCA transform.
-  void ApplyTransform(const Matrix<double> &pca_transform);
+  void ApplyTransform(const Matrix<double> &in_transform);
 
   int32 Dim() const { return mean_.Dim(); }
   void Write(std::ostream &os, bool binary) const;

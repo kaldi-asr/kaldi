@@ -217,19 +217,23 @@ void Plda::SmoothWithinClassCovariance(double smoothing_factor) {
   ComputeDerivedVars();
 }
 
-void Plda::ApplyTransform(const Matrix<double> &pca_transform) {
-  // Apply transform to mean_.
-  Vector<double> mean_new(pca_transform.NumRows());
-  mean_new.AddMatVec(1.0, pca_transform, kNoTrans, mean_, 0.0);
-  mean_.Resize(pca_transform.NumRows());
+void Plda::ApplyTransform(const Matrix<double> &in_transform) {
+  KALDI_ASSERT(in_transform.NumRows() <= Dim()
+    && in_transform.NumCols() == Dim());
+
+  // Apply in_transform to mean_.
+  Vector<double> mean_new(in_transform.NumRows());
+  mean_new.AddMatVec(1.0, in_transform, kNoTrans, mean_, 0.0);
+  mean_.Resize(in_transform.NumRows());
   mean_.CopyFromVec(mean_new);
 
-  SpMatrix<double> between_var(pca_transform.NumCols()),
-                   within_var(pca_transform.NumCols()),
-                   psi_mat(pca_transform.NumCols()),
+  SpMatrix<double> between_var(in_transform.NumCols()),
+                   within_var(in_transform.NumCols()),
+                   psi_mat(in_transform.NumCols()),
                    between_var_new(Dim()),
                    within_var_new(Dim());
   Matrix<double> transform_invert(transform_);
+
   // Next, compute the between_var and within_var that existed
   // prior to diagonalization.
   psi_mat.AddDiagVec(1.0, psi_);
@@ -238,15 +242,15 @@ void Plda::ApplyTransform(const Matrix<double> &pca_transform) {
   between_var.AddMat2Sp(1.0, transform_invert, kNoTrans, psi_mat, 0.0);
 
   // Next, transform the variances using the input transformation.
-  between_var_new.AddMat2Sp(1.0, pca_transform, kNoTrans, between_var, 0.0);
-  within_var_new.AddMat2Sp(1.0, pca_transform, kNoTrans, within_var, 0.0);
+  between_var_new.AddMat2Sp(1.0, in_transform, kNoTrans, between_var, 0.0);
+  within_var_new.AddMat2Sp(1.0, in_transform, kNoTrans, within_var, 0.0);
 
   // Finally, we need to recompute psi_ and transform_. The remainder of
   // the code in this function  is a lightly modified copy of
   // PldaEstimator::GetOutput().
   Matrix<double> transform1(Dim(), Dim());
   ComputeNormalizingTransform(within_var_new, &transform1);
-  // now transform is a matrix that if we project with it,
+  // Now transform is a matrix that if we project with it,
   // within_var becomes unit.
   // between_var_proj is between_var after projecting with transform1.
   SpMatrix<double> between_var_proj(Dim());

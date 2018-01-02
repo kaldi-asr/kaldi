@@ -1,7 +1,7 @@
 // ivectorbin/ivector-plda-scoring-dense.cc
 
-// Copyright 2016  David Snyder
-//           2017  Matthew Maciejewski
+// Copyright 2016-2018  David Snyder
+//           2017-2018  Matthew Maciejewski
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -75,37 +75,37 @@ bool EstPca(const Matrix<BaseFloat> &ivector_mat, BaseFloat target_energy,
   return true;
 }
 
+// Transforms i-vectors using the PLDA model.
 void TransformIvectors(const Matrix<BaseFloat> &ivectors_in,
-  const PldaConfig &plda_config, Plda *plda,
+  const PldaConfig &plda_config, const Plda &plda,
   Matrix<BaseFloat> *ivectors_out) {
-  int32 dim = plda->Dim();
+  int32 dim = plda.Dim();
   ivectors_out->Resize(ivectors_in.NumRows(), dim);
   for (int32 i = 0; i < ivectors_in.NumRows(); i++) {
     Vector<BaseFloat> transformed_ivector(dim);
-    plda->TransformIvector(plda_config, ivectors_in.Row(i), 1.0,
+    plda.TransformIvector(plda_config, ivectors_in.Row(i), 1.0,
       &transformed_ivector);
     ivectors_out->Row(i).CopyFromVec(transformed_ivector);
   }
 }
 
-void ApplyPca(const Matrix<BaseFloat> &ivector_mat,
-  const Matrix<BaseFloat> &pca_mat, Matrix<BaseFloat> *ivector_mat_out) {
-
+// Transform the i-vectors using the recording-dependent PCA matrix.
+void ApplyPca(const Matrix<BaseFloat> &ivectors_in,
+  const Matrix<BaseFloat> &pca_mat, Matrix<BaseFloat> *ivectors_out) {
   int32 transform_cols = pca_mat.NumCols(),
         transform_rows = pca_mat.NumRows(),
-        feat_dim = ivector_mat.NumCols();
-  ivector_mat_out->Resize(ivector_mat.NumRows(), transform_rows);
+        feat_dim = ivectors_in.NumCols();
+  ivectors_out->Resize(ivectors_in.NumRows(), transform_rows);
   KALDI_ASSERT(transform_cols == feat_dim);
-  ivector_mat_out->AddMatMat(1.0, ivector_mat, kNoTrans,
+  ivectors_out->AddMatMat(1.0, ivectors_in, kNoTrans,
     pca_mat, kTrans, 0.0);
 }
 
-}
+} // namespace kaldi
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
-  typedef kaldi::int64 int64;
   try {
     const char *usage =
       "Perform PLDA scoring for speaker diarization.  The input reco2utt\n"
@@ -115,21 +115,20 @@ int main(int argc, char *argv[]) {
       "an archive of score matrices, one for each recording-id.  The rows\n"
       "and columns of the the matrix correspond the sorted order of the\n"
       "segments.\n"
-      "Usage: ivector-diarization-plda-scoring [options] <plda> <reco2utt>"
+      "Usage: ivector-plda-scoring-dense [options] <plda> <reco2utt>"
       " <ivectors-rspecifier> <scores-wspecifier>\n"
       "e.g.: \n"
-      "  ivector-diarization-plda-scoring plda reco2utt scp:ivectors.scp"
+      "  ivector-plda-scoring-dense plda reco2utt scp:ivectors.scp"
       " ark:scores.ark ark,t:ivectors.1.ark\n";
 
     ParseOptions po(usage);
     BaseFloat target_energy = 0.5;
-
     PldaConfig plda_config;
     plda_config.Register(&po);
 
     po.Register("target-energy", &target_energy,
-      "Reduce dimensionality of i-vectors using PCA such that this fraction"
-      " of the total energy remains.");
+      "Reduce dimensionality of i-vectors using a recording-dependent"
+      " PCA such that this fraction of the total energy remains.");
     KALDI_ASSERT(target_energy <= 1.0);
 
     po.Read(argc, argv);
@@ -188,14 +187,14 @@ int main(int argc, char *argv[]) {
           ivector_mat.Row(i).CopyFromVec(ivectors[i]);
         }
         if (EstPca(ivector_mat, target_energy, &pca_transform)) {
-          // Apply PCA transform to the raw i-vectors.
+          // Apply the PCA transform to the raw i-vectors.
           ApplyPca(ivector_mat, pca_transform, &ivector_mat_pca);
 
-          // Apply PCA transform to the parameters of the PLDA model.
+          // Apply the PCA transform to the parameters of the PLDA model.
           this_plda.ApplyTransform(Matrix<double>(pca_transform));
 
           // Now transform the i-vectors using the reduced PLDA model.
-          TransformIvectors(ivector_mat_pca, plda_config, &this_plda,
+          TransformIvectors(ivector_mat_pca, plda_config, this_plda,
             &ivector_mat_plda);
         } else {
           KALDI_WARN << "Unable to compute conversation dependent PCA for"
@@ -205,12 +204,9 @@ int main(int argc, char *argv[]) {
         }
         for (int32 i = 0; i < ivector_mat_plda.NumRows(); i++) {
           for (int32 j = 0; j < ivector_mat_plda.NumRows(); j++) {
-            // Pass the raw PLDA scores through a logistic function
-            // so that they are between 0 and 1.
-            scores(i,j) = 1.0
-              / (1.0 + exp(this_plda.LogLikelihoodRatio(Vector<double>(
+            scores(i, j) = this_plda.LogLikelihoodRatio(Vector<double>(
               ivector_mat_plda.Row(i)), 1.0,
-              Vector<double>(ivector_mat_plda.Row(j)))));
+              Vector<double>(ivector_mat_plda.Row(j)));
           }
         }
         scores_writer.Write(reco, scores);

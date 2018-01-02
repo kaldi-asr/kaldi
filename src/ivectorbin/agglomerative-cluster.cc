@@ -1,7 +1,7 @@
 // ivectorbin/agglomerative-cluster.cc
 
-// Copyright 2016  David Snyder
-//           2017  Matthew Maciejewski
+// Copyright 2016-2018  David Snyder
+//           2017-2018  Matthew Maciejewski
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -27,17 +27,17 @@
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
-  typedef kaldi::int64 int64;
   try {
     const char *usage =
-      "Cluster utterances by score, used in diarization.\n"
-      "Takes a table of score matrices indexed by recording,\n"
-      "with the rows/columns corresponding to the utterances\n"
-      "of that recording in sorted order and a reco2utt file that\n"
-      "contains the mapping from recordings to utterances, and \n"
-      "outputs a list of labels in the form <utt1> <label>.\n"
-      "Clustering is done using Agglomerative Hierarchical\n"
-      "Clustering with a score threshold as stop criterion.\n"
+      "Cluster utterances by similarity score, used in diarization.\n"
+      "Takes a table of score matrices indexed by recording, with the\n"
+      "rows/columns corresponding to the utterances of that recording in\n"
+      "sorted order and a reco2utt file that contains the mapping from\n"
+      "recordings to utterances, and outputs a list of labels in the form\n"
+      "<utt> <label>.  Clustering is done using agglomerative hierarchical\n"
+      "clustering with a score threshold as stop criterion.  By default, the\n"
+      "program reads in similarity scores, but with --read-distances=true\n"
+      "the scores are interpreted as distances.\n"
       "Usage: agglomerative-cluster [options] <scores-rspecifier> "
       "<reco2utt-rspecifier> <labels-wspecifier>\n"
       "e.g.: \n"
@@ -46,16 +46,17 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     std::string reco2num_rspecifier;
-    BaseFloat threshold = 0.5;
-    BaseFloat max_dist = 1.0;
+    BaseFloat threshold = 0.0;
+    bool read_distances = false;
 
     po.Register("reco2num-rspecifier", &reco2num_rspecifier,
       "If supplied, clustering creates exactly this many clusters for each"
-      "recording and the option --threshold is ignored.");
-    po.Register("threshold", &threshold, "Merging clusters if their distance"
-      "is less than this threshold.");
-    po.Register("max-dist", &max_dist, "Values missing from scores file"
-      "are assigned this value.");
+      " recording and the option --threshold is ignored.");
+    po.Register("threshold", &threshold, "Merge clusters if their distance"
+      " is less than this threshold.");
+    po.Register("read-distances", &read_distances, "If true, the first"
+      " argument is interpreted as a matrix of distances rather than a"
+       "similarity matrix.");
 
     po.Read(argc, argv);
 
@@ -75,7 +76,12 @@ int main(int argc, char *argv[]) {
 
     for (; !scores_reader.Done(); scores_reader.Next()) {
       std::string reco = scores_reader.Key();
-      const Matrix<BaseFloat> &scores = scores_reader.Value();
+      Matrix<BaseFloat> scores = scores_reader.Value();
+      // By default, the scores give the similarity between pairs of
+      // utterances.  We need to multiply the scores by -1 to reinterpet
+      // them as distances (unless --read-distances=true).
+      if (!read_distances)
+        scores.Scale(-1);
       std::vector<std::string> uttlist = reco2utt_reader.Value(reco);
       std::vector<int32> spk_ids;
       if (reco2num_rspecifier.size()) {

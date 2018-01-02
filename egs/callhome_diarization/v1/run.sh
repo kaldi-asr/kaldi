@@ -170,9 +170,15 @@ if [ $stage -le 6 ]; then
     best_threshold=0
     utils/filter_scp.pl -f 2 data/$dataset/wav.scp \
       data/callhome/fullref.rttm > data/$dataset/ref.rttm
-    for threshold in 0.45 0.46 0.47 0.48 0.49 0.50 0.51 0.52 0.53 0.54 0.55; do
-      diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 --threshold \
-        $threshold exp/ivectors_$dataset/plda_scores \
+
+    # The threshold is in terms of the log likelihood ratio provided by the
+    # PLDA scores.  In a perfectly calibrated system, the threshold is 0.
+    # In the following loop, we evaluate the clustering on a heldout dataset
+    # (callhome1 is heldout for callhome2 and vice-versa) using some reasonable
+    # thresholds for a well-calibrated system.
+    for threshold in -0.3 -0.2 -0.1 -0.05 0 0.05 0.1 0.2 0.3; do
+      diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 \
+        --threshold $threshold exp/ivectors_$dataset/plda_scores \
         exp/ivectors_$dataset/plda_scores_t$threshold
 
       md-eval.pl -1 -c 0.25 -r data/$dataset/ref.rttm \
@@ -212,7 +218,7 @@ if [ $stage -le 6 ]; then
     > exp/results/DER_threshold.txt
   der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
     exp/results/DER_threshold.txt)
-  # Using supervised calibration, DER: 10.49%
+  # Using supervised calibration, DER: 10.36%
   echo "Using supervised calibration, DER: $der%"
 fi
 
@@ -236,6 +242,6 @@ if [ $stage -le 7 ]; then
     > exp/results/DER_num_spk.txt
   der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
     exp/results/DER_num_spk.txt)
-  # Using the oracle number of speakers, DER: 8.65%
+  # Using the oracle number of speakers, DER: 8.69%
   echo "Using the oracle number of speakers, DER: $der%"
 fi
