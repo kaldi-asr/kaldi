@@ -12,6 +12,14 @@
 # Train objf: -5.07 -4.43 -4.25 -4.17 -4.12 -4.07 -4.04 -4.01 -3.99 -3.98 -3.96 -3.94 -3.92 -3.90 -3.88 -3.87 -3.86 -3.85 -3.84 -3.83 -3.82 -3.81 -3.80 -3.79 -3.78 -3.78 -3.77 -3.77 -3.76 -3.75 -3.74 -3.73 -3.73 -3.72 -3.71
 # Dev objf:   -10.32 -4.68 -4.43 -4.31 -4.24 -4.19 -4.15 -4.13 -4.10 -4.09 -4.05 -4.03 -4.02 -4.00 -3.99 -3.98 -3.98 -3.97 -3.96 -3.96 -3.95 -3.94 -3.94 -3.94 -3.93 -3.93 -3.93 -3.92 -3.92 -3.92 -3.92 -3.91 -3.91 -3.91 -3.91
 
+# %WER 11.1 | 1831 21395 | 89.9 6.4 3.7 1.0 11.1 46.3 | exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp/decode_eval2000_sw1_fsh_fg_looped/score_13_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 9.9 | 1831 21395 | 91.0 5.8 3.2 0.9 9.9 43.2 | exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp/decode_eval2000_sw1_fsh_fg_looped_rnnlm_1e/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 9.9 | 1831 21395 | 91.0 5.7 3.3 0.9 9.9 42.8 | exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp/decode_eval2000_sw1_fsh_fg_looped_rnnlm_1e_nbest/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+
+# %WER 15.9 | 4459 42989 | 85.7 9.7 4.6 1.6 15.9 51.6 | exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp/decode_eval2000_sw1_fsh_fg_looped/score_10_0.0/eval2000_hires.ctm.filt.sys
+# %WER 14.4 | 4459 42989 | 87.0 8.7 4.3 1.5 14.4 49.4 | exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp/decode_eval2000_sw1_fsh_fg_looped_rnnlm_1e/score_11_0.0/eval2000_hires.ctm.filt.sys
+# %WER 14.4 | 4459 42989 | 87.1 8.6 4.3 1.5 14.4 48.9 | exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp/decode_eval2000_sw1_fsh_fg_looped_rnnlm_1e_nbest/score_10_0.0/eval2000_hires.ctm.filt.sys
+
 # Begin configuration section.
 
 dir=exp/rnnlm_lstm_1e
@@ -22,8 +30,8 @@ stage=-10
 train_stage=-10
 
 # variables for lattice rescoring
-run_lat_rescore=false
-run_nbest_rescore=false
+run_lat_rescore=true
+run_nbest_rescore=true
 ac_model_dir=exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp
 decode_dir_suffix=rnnlm_1e
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
@@ -109,7 +117,7 @@ if [ $stage -le 3 ]; then
 fi
 
 LM=sw1_fsh_fg # using the 4-gram const arpa file as old lm
-if [ $stage -le 4 ] && $run_rescore; then
+if [ $stage -le 4 ] && $run_lat_rescore; then
   echo "$0: Perform lattice-rescoring on $ac_model_dir"
 #  LM=sw1_tg # if using the original 3-gram G.fst as old lm
   pruned=
@@ -138,10 +146,10 @@ if [ $stage -le 5 ] && $run_nbest_rescore; then
     steps/rnnlmrescore.sh \
       --cmd "$decode_cmd --mem 4G" --N 50 \
       --rnnlm-ver kaldi-rnnlm \
-      --stage 7 \
       0.8 data/lang_$LM $dir \
       data/${decode_set}_hires ${decode_dir} \
       ${decode_dir}_${decode_dir_suffix}_nbest
   done
 fi
+
 exit 0

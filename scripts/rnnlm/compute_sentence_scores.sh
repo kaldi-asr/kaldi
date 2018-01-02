@@ -57,7 +57,7 @@ cat $tempdir/text | sym2int.pl $dir/config/words.txt > $tempdir/text.int
 
 special_symbol_opts=$(cat $dir/special_symbol_opts.txt)
 
-#rnnlm-sentence-probs $special_symbol_opts $dir/final.raw "$word_embedding" $tempdir/text.int > $tempdir/loglikes.rnn
+rnnlm-sentence-probs $special_symbol_opts $dir/final.raw "$word_embedding" $tempdir/text.int > $tempdir/loglikes.rnn
 
 [ $(cat $tempdir/loglikes.rnn | wc -l) -ne $(cat $tempdir/text | wc -l) ] && \
   echo "rnnlm rescoring failed" && exit 1;
