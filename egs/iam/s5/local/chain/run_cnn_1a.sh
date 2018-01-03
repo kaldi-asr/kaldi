@@ -103,7 +103,7 @@ fi
 if [ $stage -le 2 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" ${train_data_dir} \
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$cmd" ${train_data_dir} \
     data/$lang_test $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
@@ -120,7 +120,7 @@ if [ $stage -le 3 ]; then
   steps/nnet3/chain/build_tree.sh \
     --frame-subsampling-factor $frame_subsampling_factor \
     --context-opts "--context-width=2 --central-position=1" \
-    --cmd "$train_cmd" $num_leaves ${train_data_dir} \
+    --cmd "$cmd" $num_leaves ${train_data_dir} \
     $lang $ali_dir $tree_dir
 fi
 
@@ -173,7 +173,7 @@ if [ $stage -le 5 ]; then
   fi
 
   steps/nnet3/chain/train.py --stage=$train_stage \
-    --cmd="$decode_cmd" \
+    --cmd="$cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient=0.1 \
@@ -230,6 +230,6 @@ if [ $stage -le 7 ]; then
     --extra-left-context-initial 0 \
     --extra-right-context-final 0 \
     --frames-per-chunk $frames_per_chunk \
-    --nj $nj --cmd "$decode_cmd" \
+    --nj $nj --cmd "$cmd" \
     $dir/graph data/test $dir/decode_test || exit 1;
 fi
