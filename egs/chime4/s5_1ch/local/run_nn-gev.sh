@@ -20,5 +20,7 @@ case $(hostname -f) in
   *.clsp.jhu.edu) gpu_id=`free-gpu` ;; # JHU,
 esac 
 
+echo "training a BLSTM mask network"
 $HOME/miniconda3/bin/python local/nn-gev/train.py --chime_dir=$sdir/data --gpu $gpu_id local/nn-gev/data BLSTM
+echo "enhancing signals with mask-based GEV beamformer"
 local/nn-gev/beamform.sh $sdir/data local/nn-gev/data $odir local/nn-gev/data/BLSTM_model/best.nnet BLSTM --gpu $gpu_id --single $enhancement_type

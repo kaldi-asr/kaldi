@@ -90,7 +90,7 @@ if [ $stage -le 0 ] && $flatstart; then
   local/run_init.sh $chime4_data
 fi
 
-# Using Beamformit
+# Using Beamformit or mask-based beamformer
 # See Hori et al, "The MERL/SRI system for the 3rd CHiME challenge using beamforming,
 # robust feature extraction, and advanced speech recognition," in Proc. ASRU'15
 # note that beamformed wav files are generated in the following directory

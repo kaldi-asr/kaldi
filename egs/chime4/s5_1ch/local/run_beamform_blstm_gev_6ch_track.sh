@@ -55,5 +55,7 @@ if [ ! -d local/nn-gev ]; then
 fi
 
 mkdir -p $odir
+echo "generating simulation data and saved in local/nn-gev/data"
 $cmd $odir/simulation.log matlab -nodisplay -nosplash -r "addpath('local'); CHiME3_simulate_data_patched_parallel(1,$nj,'$sdir','$chime3_dir');exit"
+echo "training a BLSTM-based mask network and enhancing signals with mask-based GEV beamformer"
 $cuda_cmd $odir/beamform.log local/run_nn-gev.sh $sdir $odir $enhancement_type
