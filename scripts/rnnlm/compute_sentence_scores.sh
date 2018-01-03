@@ -1,15 +1,16 @@
 #!/bin/bash
 
-# Compute scores from Kaldi-RNNLM.
 # This script is very similar to utils/rnnlm_compute_scores.sh, and it computes
 # log-likelihoods from a Kaldi-RNNLM model instead of that of Mikolov's RNNLM.
 # Because Kaldi-RNNLM uses letter-features which does not need an <OOS> symbol,
 # we don't need the "unk.probs" file any more to add as a penalty term in sentence
 # likelihoods.
 
-ensure_normalized_probs=false  # if true then we add the neccesary options to
-                               # normalize the probabilities of RNNLM
-                               # e.g. when using faster-rnnlm in the nce mode
+ensure_normalized_probs=false  # If true then the probabilities computed by the
+                               # RNNLM will be correctly normalized. Note it is
+                               # OK to set it to false because Kaldi-RNNLM is
+                               # trained in a way that ensures the sum of probabilities
+                               # is close to 1.
 
 . ./path.sh || exit 1;
 . utils/parse_options.sh
@@ -51,11 +52,12 @@ rnnlm-sentence-probs --normalize-probs=$ensure_normalized_probs \
        $special_symbol_opts $dir/final.raw "$word_embedding" $tempdir/text.int > $tempdir/loglikes.rnn
 
 [ $(cat $tempdir/loglikes.rnn | wc -l) -ne $(cat $tempdir/text | wc -l) ] && \
-  echo "rnnlm rescoring failed" && exit 1;
+  echo "$0: rnnlm rescoring failed" && exit 1;
 
+# We need the negative log-probabilities
 paste $tempdir/loglikes.rnn | awk '{sum=0;for(i=1;i<=NF;i++)sum-=$i; print sum}' >$tempdir/scores
 
-# scores out, with utterance-ids.
+# Add utterance IDs
 paste $tempdir/ids $tempdir/scores  > $scores_out
 
 
