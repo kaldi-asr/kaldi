@@ -1,7 +1,7 @@
 // ivector/agglomerative-clustering.cc
 
-// Copyrigh  2017-2018  Matthew Maciejewski
-//                2018  David Snyder
+// Copyright  2017-2018  Matthew Maciejewski
+//                 2018  David Snyder
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -28,25 +28,31 @@ void AgglomerativeClusterer::Cluster() {
   Initialize();
 
   KALDI_VLOG(2) << "Clustering...";
-  while (nclusters_ > min_clust_ && !queue_.empty()) {
+  // This is the main algorithm loop. It moves through the queue merging
+  // clusters until a stopping criterion has been reached.
+  while (num_clusters_ > min_clust_ && !queue_.empty()) {
     std::pair<BaseFloat, std::pair<uint16, uint16> > pr = queue_.top();
     int32 i = (int32) pr.second.first, j = (int32) pr.second.second;
     queue_.pop();
+    // check to make sure clusters have not already been merged
     if ((active_clusters_.find(i) != active_clusters_.end()) &&
         (active_clusters_.find(j) != active_clusters_.end()))
       MergeClusters(i, j);
   }
 
-  std::vector<int32> new_assignments(npoints_);
-  int32 i = 0;
+  std::vector<int32> new_assignments(num_points_);
+  int32 label_id = 0;
   std::set<int32>::iterator it;
+  // Iterate through the clusters and assign all utterances within the cluster
+  // an ID label unique to the cluster. This is the final output and frees up
+  // the cluster memory accordingly.
   for (it = active_clusters_.begin(); it != active_clusters_.end(); ++it) {
-    ++i;
+    ++label_id;
     AhcCluster *cluster = clusters_map_[*it];
     std::vector<int32>::iterator utt_it;
     for (utt_it = cluster->utt_ids.begin();
          utt_it != cluster->utt_ids.end(); ++utt_it)
-      new_assignments[*utt_it] = i;
+      new_assignments[*utt_it] = label_id;
     delete cluster;
   }
   assignments_->swap(new_assignments);
@@ -60,15 +66,17 @@ BaseFloat AgglomerativeClusterer::ScoreLookup(int32 i, int32 j) {
 }
 
 void AgglomerativeClusterer::Initialize() {
-  KALDI_ASSERT(nclusters_ != 0);
-  for (int32 i = 0; i < nclusters_; i++) {
+  KALDI_ASSERT(num_clusters_ != 0);
+  for (int32 i = 0; i < num_points_; i++) {
+    // create an initial cluster of size 1 for each point
     std::vector<int32> ids;
     ids.push_back(i);
-    AhcCluster *c = new AhcCluster(++ct_, -1, -1, ids);
-    clusters_map_[ct_] = c;
-    active_clusters_.insert(ct_);
+    AhcCluster *c = new AhcCluster(++count_, -1, -1, ids);
+    clusters_map_[count_] = c;
+    active_clusters_.insert(count_);
 
-    for (int32 j = i+1; j < nclusters_; j++) {
+    // propagate the queue with all pairs from the score matrix
+    for (int32 j = i+1; j < num_clusters_; j++) {
       BaseFloat score = scores_(i,j);
       cluster_score_map_[std::make_pair(i+1, j+1)] = score;
       if (score <= thresh_)
@@ -82,28 +90,33 @@ void AgglomerativeClusterer::Initialize() {
 void AgglomerativeClusterer::MergeClusters(int32 i, int32 j) {
   AhcCluster *clust1 = clusters_map_[i];
   AhcCluster *clust2 = clusters_map_[j];
-  clust1->id = ++ct_;
+  // For memory efficiency, the first cluster is updated to contain the new
+  // merged cluster information, and the second cluster is later deleted.
+  clust1->id = ++count_;
   clust1->parent1 = i;
   clust1->parent2 = j;
   clust1->size += clust2->size;
   clust1->utt_ids.insert(clust1->utt_ids.end(), clust2->utt_ids.begin(),
                          clust2->utt_ids.end());
+  // Remove the merged clusters from the list of active clusters.
   active_clusters_.erase(i);
   active_clusters_.erase(j);
+  // Update the queue with all the new scores involving the new cluster
   std::set<int32>::iterator it;
   for (it = active_clusters_.begin(); it != active_clusters_.end(); ++it) {
+    // The new score is the sum of the score of the new cluster's parents
     BaseFloat new_score = ScoreLookup(*it, i) + ScoreLookup(*it, j);
-    cluster_score_map_[std::make_pair(*it, ct_)] = new_score;
+    cluster_score_map_[std::make_pair(*it, count_)] = new_score;
     BaseFloat norm = clust1->size * (clusters_map_[*it])->size;
     if (new_score / norm <= thresh_)
       queue_.push(std::make_pair(new_score / norm,
           std::make_pair(static_cast<uint16>(*it),
-                         static_cast<uint16>(ct_))));
+                         static_cast<uint16>(count_))));
   }
-  active_clusters_.insert(ct_);
-  clusters_map_[ct_] = clust1;
+  active_clusters_.insert(count_);
+  clusters_map_[count_] = clust1;
   delete clust2;
-  nclusters_--;
+  num_clusters_--;
 }
 
 void AgglomerativeCluster(

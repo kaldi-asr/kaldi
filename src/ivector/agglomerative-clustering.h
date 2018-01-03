@@ -31,6 +31,11 @@
 
 namespace kaldi {
 
+/// AhcCluster is the cluster object for the agglomerative clustering. It
+/// contains three integer IDs: its own ID and the IDs of its "parents", i.e.
+/// the clusters that were merged to form it. It also contains the size (the
+/// number of points in the cluster) and a vector of the IDs of the utterances
+/// contained in the cluster.
 struct AhcCluster {
   int32 id,
     parent1,
@@ -43,6 +48,8 @@ struct AhcCluster {
   }
 };
 
+/// The AgglomerativeClusterer class contains the necessary mechanisms for the
+/// actual clustering algorithm.
 class AgglomerativeClusterer {
  public:
   AgglomerativeClusterer(
@@ -50,37 +57,75 @@ class AgglomerativeClusterer {
       BaseFloat thresh,
       int32 min_clust,
       std::vector<int32> *assignments_out)
-      : ct_(0), scores_(scores), thresh_(thresh), min_clust_(min_clust),
+      : count_(0), scores_(scores), thresh_(thresh), min_clust_(min_clust),
         assignments_(assignments_out) {
-    nclusters_ = scores.NumRows();
-    npoints_ = scores.NumRows();
+    num_clusters_ = scores.NumRows();
+    num_points_ = scores.NumRows();
   }
+
+  // Performs the clustering
   void Cluster();
  private:
+  // Returns the score between clusters with IDs i and j
   BaseFloat ScoreLookup(int32 i, int32 j);
+  // Initializes the clustering queue with singleton clusters
   void Initialize();
+  // Merges clusters with IDs i and j and updates score map and queue
   void MergeClusters(int32 i, int32 j);
 
 
-  int32 ct_;
-  const Matrix<BaseFloat> &scores_;
-  BaseFloat thresh_;
-  int32 min_clust_;
-  std::vector<int32> *assignments_;
+  int32 count_;  // Count of clusters that have been created. Also used to give
+                 // clusters unique IDs.
+  const Matrix<BaseFloat> &scores_;  // score matrix
+  BaseFloat thresh_;  // stopping criterion threshold
+  int32 min_clust_;  // minimum number of clusters
+  std::vector<int32> *assignments_;  // assignments out
+
+  // Priority queue using greater (lowest distances are highest priority).
+  // Elements contain pairs of cluster IDs and their score.
   typedef std::pair<BaseFloat, std::pair<uint16,
     uint16> > QueueElement;
   typedef std::priority_queue<QueueElement, std::vector<QueueElement>,
     std::greater<QueueElement>  > QueueType;
+  QueueType queue_;
+
+  // Map from cluster IDs to distance between them
   std::unordered_map<std::pair<int32, int32>, BaseFloat,
                      PairHasher<int32, int32>> cluster_score_map_;
+  // Map from cluster ID to cluster object address
   std::unordered_map<int32, AhcCluster*> clusters_map_;
-  std::set<int32> active_clusters_;
-  int32 nclusters_;
-  int32 npoints_;
-  // Priority queue using greater (lowest distances are highest priority).
-  QueueType queue_;
+  std::set<int32> active_clusters_;  // IDs of unmerged clusters
+  int32 num_clusters_;  // number of active clusters
+  int32 num_points_;  // total number of points to cluster
 };
 
+/** This is the function that is called to perform the agglomerative
+ *  clustering. It takes the following arguments:
+ *   - A matrix of all pairwise scores, with each row/column corresponding
+ *      to an utterance ID, and the elements of the matrix containing the
+        score between the utterances for its row and column
+ *   - A threshold which is used as the stopping criterion for the clusters
+ *   - A minimum number of clusters that will not be merged past
+ *   - A vector which will be filled with integer IDs corresponding to each
+ *      of the rows/columns of the score matrix.
+ *
+ *  The basic algorithm is as follows:
+ *  \code
+ *      while (num-clusters > min_clust && smallest-merge-cost <= thresh)
+ *          merge the closest two clusters.
+ *  \endcode
+ *
+ *  The score between two clusters is the average distance of all pairwise
+ *  scores between points across the two clusters.
+ *
+ *  The algorithm takes advantage of the fact that the sum of the pairwise
+ *  distances between the points of clusters I and J is equiavlent to the
+ *  sum of the pairwise distances between cluster I and the parents of cluster
+ *  J. In other words, the total distance between I and J is the sum of the
+ *  distances between clusters I and M and clusters I and N, where
+ *  cluster J was formed by merging clusters M and N.
+ *
+ */
 void AgglomerativeCluster(
     const Matrix<BaseFloat> &scores,
     BaseFloat thresh,
