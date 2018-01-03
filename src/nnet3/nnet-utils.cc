@@ -610,8 +610,12 @@ class SvdApplier {
  public:
   SvdApplier(const std::string component_name_pattern,
              int32 bottleneck_dim,
+             BaseFloat energy_threshold,
+             BaseFloat shrinkage_threshold,
              Nnet *nnet): nnet_(nnet),
                           bottleneck_dim_(bottleneck_dim),
+                          energy_threshold_(energy_threshold),
+                          shrinkage_threshold_(shrinkage_threshold),
                           component_name_pattern_(component_name_pattern) { }
   void ApplySvd() {
     DecomposeComponents();
@@ -648,43 +652,57 @@ class SvdApplier {
                      << " -> " << output_dim;
           continue;
         }
-        size_t n = modified_component_info_.size();
-        modification_index_[c] = n;
-        modified_component_info_.resize(n + 1);
-        ModifiedComponentInfo &info = modified_component_info_[n];
-        info.component_index = c;
-        info.component_name = component_name;
         Component *component_a = NULL, *component_b = NULL;
-        info.component_name_a = component_name + "_a";
-        info.component_name_b = component_name + "_b";
-        if (nnet_->GetComponentIndex(info.component_name_a) >= 0)
-          KALDI_ERR << "Neural network already has a component named "
-                    << info.component_name_a;
-        if (nnet_->GetComponentIndex(info.component_name_b) >= 0)
-          KALDI_ERR << "Neural network already has a component named "
-                    << info.component_name_b;
-        DecomposeComponent(component_name, *affine, &component_a, &component_b);
-        info.component_a_index = nnet_->AddComponent(info.component_name_a,
-                                                     component_a);
-        info.component_b_index = nnet_->AddComponent(info.component_name_b,
-                                                     component_b);
+	if(DecomposeComponent(component_name, *affine, &component_a, &component_b)) {
+	  size_t n = modified_component_info_.size();
+	  modification_index_[c] = n;
+	  modified_component_info_.resize(n + 1);
+	  ModifiedComponentInfo &info = modified_component_info_[n];
+	  info.component_index = c;
+	  info.component_name = component_name;
+	  info.component_name_a = component_name + "_a";
+	  info.component_name_b = component_name + "_b";
+	  if (nnet_->GetComponentIndex(info.component_name_a) >= 0)
+	    KALDI_ERR << "Neural network already has a component named "
+		      << info.component_name_a;
+	  if (nnet_->GetComponentIndex(info.component_name_b) >= 0)
+	    KALDI_ERR << "Neural network already has a component named "
+		      << info.component_name_b;
+	  info.component_a_index = nnet_->AddComponent(info.component_name_a,
+						       component_a);
+	  info.component_b_index = nnet_->AddComponent(info.component_name_b,
+						       component_b);
+	}
       }
     }
     KALDI_LOG << "Converted " << modified_component_info_.size()
               << " components to FixedAffineComponent.";
   }
 
-  void DecomposeComponent(const std::string &component_name,
+  int32 BinarySearch(const Vector<BaseFloat> &input_vector,
+		     int32 lower,
+		     int32 upper,
+		     BaseFloat min_val) {
+    int32 mid = (lower + upper) / 2;
+    if (lower < upper - 1) {
+      SubVector<BaseFloat> subset(input_vector, 0, mid);
+      if (subset.Sum() < min_val) {
+	return BinarySearch(input_vector, mid, upper, min_val);
+      } else {
+	return BinarySearch(input_vector, lower, mid, min_val);
+      }
+    }
+    return upper;
+  }
+
+  bool DecomposeComponent(const std::string &component_name,
                           const AffineComponent &affine,
                           Component **component_a_out,
                           Component **component_b_out) {
     int32 input_dim = affine.InputDim(), output_dim = affine.OutputDim();
     Matrix<BaseFloat> linear_params(affine.LinearParams());
     Vector<BaseFloat> bias_params(affine.BiasParams());
-
-    int32 bottleneck_dim = bottleneck_dim_,
-        middle_dim = std::min<int32>(input_dim, output_dim);
-    KALDI_ASSERT(bottleneck_dim < middle_dim);
+    int32 middle_dim = std::min<int32>(input_dim, output_dim);
 
     // note: 'linear_params' is of dimension output_dim by input_dim.
     Vector<BaseFloat> s(middle_dim);
@@ -694,14 +712,38 @@ class SvdApplier {
     // make sure the singular values are sorted from greatest to least value.
     SortSvd(&s, &B, &A);
     BaseFloat s_sum_orig = s.Sum();
-    s.Resize(bottleneck_dim, kCopyData);
-    A.Resize(bottleneck_dim, input_dim, kCopyData);
-    B.Resize(output_dim, bottleneck_dim, kCopyData);
-    BaseFloat s_sum_reduced = s.Sum();
+    Vector<BaseFloat> s2(s.Dim());
+    s2.AddVec2(1.0, s);
+    s_sum_orig = s2.Sum();
+    if (energy_threshold_ > 0) {
+      BaseFloat min_singular_sum = energy_threshold_ * s2.Sum();
+      bottleneck_dim_ = BinarySearch(s2, 0, s2.Dim()-1, min_singular_sum);
+    }
+    SubVector<BaseFloat> this_part(s2, 0, bottleneck_dim_);
+    BaseFloat s_sum_reduced = this_part.Sum();
+    BaseFloat shrinkage_ratio =
+      static_cast<BaseFloat>(bottleneck_dim_ * (input_dim+output_dim))
+      / static_cast<BaseFloat>(input_dim * output_dim);
+    if (shrinkage_ratio > shrinkage_threshold_) {
+      KALDI_LOG << "Shrinkage ratio " << shrinkage_ratio
+		<< " greater than threshold : " << shrinkage_threshold_
+		<< " Skipping SVD for this layer.";
+      return false;
+    }
+
+    s.Resize(bottleneck_dim_, kCopyData);
+    A.Resize(bottleneck_dim_, input_dim, kCopyData);
+    B.Resize(output_dim, bottleneck_dim_, kCopyData);
     KALDI_LOG << "For component " << component_name
               << " singular value sum changed by "
               << (s_sum_orig - s_sum_reduced)
               << " (from " << s_sum_orig << " to " << s_sum_reduced << ")";
+    KALDI_LOG << "For component " << component_name
+	      << " dimension reduced from "
+              << " (" << input_dim << "," << output_dim << ")"
+	      << " to [(" << input_dim << "," << bottleneck_dim_
+	      << "), (" << bottleneck_dim_ << "," << output_dim <<")]";
+    KALDI_LOG << "shrinkage ratio : " << shrinkage_ratio;
 
     // we'll divide the singular values equally between the two
     // parameter matrices.
@@ -720,6 +762,7 @@ class SvdApplier {
     component_b->SetUpdatableConfigs(affine);
     *component_a_out = component_a;
     *component_b_out = component_b;
+    return true;
   }
 
   // This function modifies the topology of the neural network, splitting
@@ -856,6 +899,8 @@ class SvdApplier {
 
   Nnet *nnet_;
   int32 bottleneck_dim_;
+  BaseFloat energy_threshold_;
+  BaseFloat shrinkage_threshold_;
   std::string component_name_pattern_;
 };
 
@@ -1088,13 +1133,18 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
     } else if (directive == "apply-svd") {
       std::string name_pattern;
       int32 bottleneck_dim = -1;
-      if (!config_line.GetValue("name", &name_pattern) ||
-          !config_line.GetValue("bottleneck-dim", &bottleneck_dim))
-        KALDI_ERR << "Edit directive apply-svd requires 'name' and "
-            "'bottleneck-dim' to be specified.";
-      if (bottleneck_dim <= 0)
-        KALDI_ERR << "Bottleneck-dim must be positive in apply-svd command.";
-      SvdApplier applier(name_pattern, bottleneck_dim, nnet);
+      BaseFloat energy_threshold = -1;
+      BaseFloat shrinkage_threshold = 1.0;
+      config_line.GetValue("bottleneck-dim", &bottleneck_dim);
+      config_line.GetValue("energy-threshold", &energy_threshold);
+      config_line.GetValue("shrinkage-threshold", &shrinkage_threshold);
+      if (!config_line.GetValue("name", &name_pattern))
+        KALDI_ERR << "Edit directive apply-svd requires 'name' to be specified.";
+      if (bottleneck_dim <= 0 && energy_threshold <=0)
+        KALDI_ERR << "Either Bottleneck-dim or energy-threshold "
+	  "must be set in apply-svd command. "
+	  "Range of possible values is (0 1]";
+      SvdApplier applier(name_pattern, bottleneck_dim, energy_threshold, shrinkage_threshold, nnet);
       applier.ApplySvd();
     } else if (directive == "reduce-rank") {
       std::string name_pattern;
