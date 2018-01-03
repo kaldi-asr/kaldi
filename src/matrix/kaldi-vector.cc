@@ -5,6 +5,7 @@
 //                      Petr Schwarz;  Yanmin Qian;  Jan Silovsky;
 //                      Haihua Xu; Wei Shi
 //                2015  Guoguo Chen
+//                2017  Daniel Galvez
 
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -811,29 +812,40 @@ void VectorBase<Real>::ApplyAbs() {
 }
 
 template<typename Real>
-MatrixIndexT VectorBase<Real>::ApplyFloor(Real floor_val) {
-  MatrixIndexT num_floored = 0;
-  for (MatrixIndexT i = 0; i < dim_; i++) {
-    if (data_[i] < floor_val) {
-      data_[i] = floor_val;
-      num_floored++;
+void VectorBase<Real>::ApplyFloor(Real floor_val, MatrixIndexT *floored_count) {
+  if (floored_count == nullptr) {
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      data_[i] = std::max(data_[i], floor_val);
     }
+  } else {
+    MatrixIndexT num_floored = 0;
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      if (data_[i] < floor_val) {
+	data_[i] = floor_val;
+	num_floored++;
+      }
+    }
+    *floored_count = num_floored;
   }
-  return num_floored;
 }
 
 template<typename Real>
-MatrixIndexT VectorBase<Real>::ApplyCeiling(Real ceil_val) {
-  MatrixIndexT num_changed = 0;
-  for (MatrixIndexT i = 0; i < dim_; i++) {
-    if (data_[i] > ceil_val) {
-      data_[i] = ceil_val;
-      num_changed++;
+void VectorBase<Real>::ApplyCeiling(Real ceil_val, MatrixIndexT *ceiled_count) {
+  if (ceiled_count == nullptr) {
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      data_[i] = std::min(data_[i], ceil_val);
     }
+  } else {
+    MatrixIndexT num_changed = 0;
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      if (data_[i] > ceil_val) {
+	data_[i] = ceil_val;
+	num_changed++;
+      }
+    }
+    *ceiled_count = num_changed;
   }
-  return num_changed;
 }
-
 
 template<typename Real>
 MatrixIndexT VectorBase<Real>::ApplyFloor(const VectorBase<Real> &floor_vec) {

@@ -7,7 +7,7 @@
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
 //           2016-2017  Shiyin Kang
-//                2017  Hossein Hadian
+//                2017  Hossein Hadian, Daniel Galvez
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1879,8 +1879,7 @@ static void _apply_floor(Real* mat, Real floor_val, MatrixDim d) {
   int index = i + j * d.stride;
 
   if (i < d.cols && j < d.rows) {
-    if (mat[index] < floor_val)
-      mat[index] = floor_val;
+    mat[index] = max(mat[index], floor_val);
   }
 }
 
@@ -2036,8 +2035,7 @@ static void _apply_ceiling(Real* mat, Real ceiling_val, MatrixDim d) {
   int index = i + j * d.stride;
 
   if (i < d.cols && j < d.rows) {
-    if (mat[index] > ceiling_val)
-      mat[index] = ceiling_val;
+    mat[index] = min(mat[index], ceiling_val);
   }
 }
 

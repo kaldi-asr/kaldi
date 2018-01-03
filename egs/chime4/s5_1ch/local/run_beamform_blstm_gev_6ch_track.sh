@@ -52,6 +52,11 @@ if [ ! -d local/nn-gev ]; then
     cd nn-gev/
     git apply ../fix_read_sim_from_different_directory.patch
     cd ../../
+else
+    cd local/nn-gev/
+    git checkout .
+    git apply ../fix_read_sim_from_different_directory.patch
+    cd ../../
 fi
 
 mkdir -p $odir
