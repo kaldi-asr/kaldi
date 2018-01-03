@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright 2017 University of Chinese Academy of Sciences (UCAS) Gaofeng Cheng
+# Apache 2.0
 
 # The model training procedure is similar to run_blstm_6j.sh under egs/swbd/s5c
 
