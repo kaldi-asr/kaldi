@@ -45,8 +45,8 @@ cat $text_in | sym2int.pl -f 2- $dir/config/words.txt > $tempdir/text.int
 
 special_symbol_opts=$(cat $dir/special_symbol_opts.txt)
 
-#rnnlm-sentence-probs --normalize-probs=$ensure_normalized_probs \
-#       $special_symbol_opts $dir/final.raw "$word_embedding" $tempdir/text.int > $tempdir/loglikes.rnn
+rnnlm-sentence-probs --normalize-probs=$ensure_normalized_probs \
+       $special_symbol_opts $dir/final.raw "$word_embedding" $tempdir/text.int > $tempdir/loglikes.rnn
 # Now $tempdir/loglikes.rnn has the following structure
 # utt-id log P(word1 | <s>) log P(word2 | <s> word1) ... log P(</s> | all word histories)
 
