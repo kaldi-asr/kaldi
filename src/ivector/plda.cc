@@ -488,7 +488,8 @@ void PldaEstimator::GetOutput(Plda *plda) {
   between_var_proj.Eig(&s, &U);
 
   KALDI_ASSERT(s.Min() >= 0.0);
-  int32 n = s.ApplyFloor(0.0);
+  int32 n;
+  s.ApplyFloor(0.0, &n);
   if (n > 0) {
     KALDI_WARN << "Floored " << n << " eigenvalues of between-class "
                << "variance to zero.";

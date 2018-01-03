@@ -162,9 +162,10 @@ if [ -f $data/wav.scp ]; then
 
     segments_len=`cat $data/segments | wc -l`
     if [ -f $data/text ]; then
-      ! cmp -s $tmpdir/utts <(awk '{print $1}' <$data/text) && \
-        echo "$0: Utterance list differs between $data/text and $data/segments " && \
-        echo "$0: Lengths are $segments_len vs $num_utts";
+      ! cmp -s $tmpdir/utts <(awk '{print $1}' <$data/segments) && \
+        echo "$0: Utterance list differs between $data/utt2spk and $data/segments " && \
+        echo "$0: Lengths are $segments_len vs $num_utts" && \
+        exit 1
     fi
 
     cat $data/segments | awk '{print $2}' | sort | uniq > $tmpdir/recordings
@@ -298,7 +299,7 @@ fi
 if [ -f $data/utt2warp ]; then
   check_sorted_and_uniq $data/utt2warp
   ! cat $data/utt2warp | awk '{if (!((NF == 2 && ($2 > 0.5 && $2 < 1.5)))){ print; exit 1; }}' && \
-     echo "$0: Mal-formed spk2warp file" && exit 1;
+     echo "$0: Mal-formed utt2warp file" && exit 1;
   cat $data/utt2warp | awk '{print $1}' > $tmpdir/utts.utt2warp
   cat $data/utt2spk | awk '{print $1}' > $tmpdir/utts
   if ! cmp -s $tmpdir/utts{,.utt2warp}; then
