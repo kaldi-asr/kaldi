@@ -1,21 +1,11 @@
 #!/bin/bash
 
-# Compute scores from RNNLM.  This script takes a directory
-# $dir (e.g. dir=local/rnnlm/rnnlm.voc30.hl30 ),
-# where it expects the files:
-#  rnnlm  wordlist.rnn  unk.probs,
-# and also an input file location where it can get the sentences to score, and
-# an output file location to put the scores (negated logprobs) for each
-# sentence.  This script uses the Kaldi-style "archive" format, so the input and
-# output files will have a first field that corresponds to some kind of
-# utterance-id or, in practice, utterance-id-1, utterance-id-2, etc., for the
-# N-best list.
-#
-# Here, "wordlist.rnn" is the set of words, like a vocabulary,
-# that the RNN was trained on (note, it won't include <s> or </s>),
-# plus <RNN_UNK> which is a kind of class where we put low-frequency
-# words; unk.probs gives the probs for words given this class, and it
-# has, on each line, "word prob".
+# Compute scores from Kaldi-RNNLM.
+# This script is very similar to utils/rnnlm_compute_scores.sh, and it computes
+# log-likelihoods from a Kaldi-RNNLM model instead of that of Mikolov's RNNLM.
+# Because Kaldi-RNNLM uses letter-features which does not need an <OOS> symbol,
+# we don't need the "unk.probs" file any more to add as a penalty term in sentence
+# likelihoods.
 
 ensure_normalized_probs=false  # if true then we add the neccesary options to
                                # normalize the probabilities of RNNLM
@@ -57,7 +47,8 @@ cat $tempdir/text | sym2int.pl $dir/config/words.txt > $tempdir/text.int
 
 special_symbol_opts=$(cat $dir/special_symbol_opts.txt)
 
-rnnlm-sentence-probs $special_symbol_opts $dir/final.raw "$word_embedding" $tempdir/text.int > $tempdir/loglikes.rnn
+rnnlm-sentence-probs --normalize-probs=$ensure_normalized_probs \
+       $special_symbol_opts $dir/final.raw "$word_embedding" $tempdir/text.int > $tempdir/loglikes.rnn
 
 [ $(cat $tempdir/loglikes.rnn | wc -l) -ne $(cat $tempdir/text | wc -l) ] && \
   echo "rnnlm rescoring failed" && exit 1;
