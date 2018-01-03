@@ -72,13 +72,6 @@ if [ $rnnlm_ver == "faster-rnnlm" ]; then
   fi
   $rnnlm $extra_options -independent -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \
      awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
-elif [ $rnnlm_ver == "kaldi-rnnlm" ]; then
-  if [ -f $dir/word_embedding.final.mat ]; then
-    word_embedding=$dir/word_embedding.final.mat
-  else
-    word_embedding="'rnnlm-get-word-embedding $dir/word_feats.txt $dir/feat_embedding.final.mat -|'"
-  fi
-  rnnlm-sentence-probs $dir/final.raw $dir/final.word.embedding.mat
 else
   # add the utterance_id as required by Mikolove's rnnlm
   paste $tempdir/ids $tempdir/text.nounk > $tempdir/id_text.nounk
