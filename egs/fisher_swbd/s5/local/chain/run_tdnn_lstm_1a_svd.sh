@@ -6,6 +6,8 @@
 #           [looped:]        12.2
 # WER on eval2000(fg)        12.1
 #           [looped:]        12.1
+# WER on eval2000(fg)
+#  [SVD retrained + looped]  12.1
 # WER on rt03(tg)            11.6
 #           [looped:]        11.6
 # WER on rt03(fg)            11.3
