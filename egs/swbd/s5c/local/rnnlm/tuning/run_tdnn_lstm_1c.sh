@@ -119,9 +119,8 @@ if [ $stage -le 5 ] && $run_nbest_rescore; then
     decode_dir=${ac_model_dir}/decode_${decode_set}_${LM}_looped
 
     # Lattice rescoring
-    steps/rnnlmrescore.sh \
+    rnnlm/lmrescore_nbest.sh \
       --cmd "$decode_cmd --mem 4G" --N 50 \
-      --rnnlm-ver kaldi-rnnlm \
       0.8 data/lang_$LM $dir \
       data/${decode_set}_hires ${decode_dir} \
       ${decode_dir}_${decode_dir_suffix}_nbest

@@ -28,16 +28,6 @@
 #include <fstream>
 #include <sstream>
 
-// break a string of numbers into a vector of int32's
-void GetNumbersFromLine(const std::string &line, std::vector<int32> *v) {
-  KALDI_ASSERT(v->size() == 0);
-  std::stringstream ss(line);
-  int32 i;
-  while (ss >> i) {
-    v->push_back(i);
-  }
-}
-
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -110,11 +100,14 @@ int main(int argc, char *argv[]) {
 
     std::ifstream ifile(text_filename.c_str());
 
-    std::string line;
-    while (getline(ifile, line)) {
-      std::vector<int> v;
-      GetNumbersFromLine(line, &v);
+    std::string key, line;
+    while (ifile >> key) {
+      getline(ifile, line);
+      std::vector<int32> v;
+      KALDI_ASSERT(SplitStringToIntegers(line, " ", true, &v));
       RnnlmComputeState rnnlm_compute_state(info, opts.bos_index);
+
+      std::cout << key << " ";
       for (int32 i = 0; i < v.size(); i++) {
         int32 word_id = v[i];
         std::cout << rnnlm_compute_state.LogProbOfWord(word_id) << " ";

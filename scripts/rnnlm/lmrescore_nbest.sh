@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# please see lmrescore_rnnlm_lat.sh which is a newer script using lattices.
+# This script is very similar to steps/rnnlmrescore.sh, and it performs n-best
+# LM rescoring with Kaldi-RNNLM.
 
 # Begin configuration section.
 N=10
@@ -14,17 +15,14 @@ use_phi=false  # This is kind of an obscure option.  If true, we'll remove the o
   # difference (if any) to WER, it's more so we know we are doing the right thing.
 test=false # Activate a testing option.
 stage=1 # Stage of this script, for partial reruns.
-rnnlm_ver=rnnlm-0.3e
 skip_scoring=false
 keep_ali=true
 # End configuration section.
-
 
 echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh
 . utils/parse_options.sh
-
 
 if [ $# != 6 ]; then
    echo "Do language model rescoring of lattices (partially remove old LM, add new LM)"
@@ -42,8 +40,6 @@ if [ $# != 6 ]; then
    exit 1;
 fi
 
-
-
 rnnweight=$1
 oldlang=$2
 rnndir=$3
@@ -51,11 +47,7 @@ data=$4
 indir=$5
 dir=$6
 
-
-acwt=`perl -e "print (1.0/$inv_acwt);"` # Note: we'll actually produce lattices
- # that will be scored at a range of acoustic weights.  This acwt should be close
- # to the final one we'll pick, though, for best performance (it controls the
- # N-best list generation).
+acwt=`perl -e "print (1.0/$inv_acwt);"`
 
 # Figures out if the old LM is G.fst or G.carpa
 oldlm=$oldlang/G.fst
@@ -66,7 +58,7 @@ elif [ ! -f $oldlm ]; then
     exit 1;
 fi
 
-for f in $rnndir/rnnlm $data/feats.scp $indir/lat.1.gz; do
+for f in $rnndir/final.raw $data/feats.scp $indir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: expected file $f to exist." && exit 1;
 done
 
@@ -87,7 +79,7 @@ mkdir -p $dir/log
 # Note: the lattice-rmali part here is just because we don't
 # need the alignments for what we're doing.
 if [ $stage -le 1 ]; then
-  echo "$0: converting lattices to N-best."
+  echo "$0: converting lattices to N-best lists."
   if $keep_ali; then
     $cmd JOB=1:$nj $dir/log/lat2nbest.JOB.log \
       lattice-to-nbest --acoustic-scale=$acwt --n=$N \
@@ -183,10 +175,10 @@ if [ $stage -le 5 ]; then
   done
 fi
 if [ $stage -le 6 ]; then
-  echo "$0: invoking utils/rnnlm_compute_scores.sh which calls rnnlm, to get RNN LM scores."
+  echo "$0: invoking rnnlm/compute_sentence_scores.sh which calls rnnlm to get RNN LM scores."
   $cmd JOB=1:$nj $dir/log/rnnlm_compute_scores.JOB.log \
-    utils/rnnlm_compute_scores.sh --rnnlm_ver $rnnlm_ver $rnndir $adir.JOB/temp $adir.JOB/words_text $adir.JOB/lmwt.rnn \
-    || exit 1;
+    rnnlm/compute_sentence_scores.sh $rnndir $adir.JOB/temp \
+                                   $adir.JOB/words_text $adir.JOB/lmwt.rnn 
 fi
 if [ $stage -le 7 ]; then
   echo "$0: reconstructing total LM+graph scores including interpolation of RNNLM and old LM scores."

@@ -41,23 +41,19 @@ for x in final.raw config/words.txt; do
 done
 
 mkdir -p $tempdir
-cat $text_in | awk '{for (x=2;x<=NF;x++) {printf("%s ", $x)} printf("\n");}' >$tempdir/text
-cat $text_in | awk '{print $1}' > $tempdir/ids # e.g. utterance ids.
-
-cat $tempdir/text | sym2int.pl $dir/config/words.txt > $tempdir/text.int
+cat $text_in | sym2int.pl -f 2- $dir/config/words.txt > $tempdir/text.int
 
 special_symbol_opts=$(cat $dir/special_symbol_opts.txt)
 
-rnnlm-sentence-probs --normalize-probs=$ensure_normalized_probs \
-       $special_symbol_opts $dir/final.raw "$word_embedding" $tempdir/text.int > $tempdir/loglikes.rnn
+#rnnlm-sentence-probs --normalize-probs=$ensure_normalized_probs \
+#       $special_symbol_opts $dir/final.raw "$word_embedding" $tempdir/text.int > $tempdir/loglikes.rnn
+# Now $tempdir/loglikes.rnn has the following structure
+# utt-id log P(word1 | <s>) log P(word2 | <s> word1) ... log P(</s> | all word histories)
 
-[ $(cat $tempdir/loglikes.rnn | wc -l) -ne $(cat $tempdir/text | wc -l) ] && \
+[ $(cat $tempdir/loglikes.rnn | wc -l) -ne $(cat $tempdir/text.int | wc -l) ] && \
   echo "$0: rnnlm rescoring failed" && exit 1;
 
 # We need the negative log-probabilities
-paste $tempdir/loglikes.rnn | awk '{sum=0;for(i=1;i<=NF;i++)sum-=$i; print sum}' >$tempdir/scores
-
-# Add utterance IDs
-paste $tempdir/ids $tempdir/scores  > $scores_out
+cat $tempdir/loglikes.rnn | awk '{sum=0;for(i=2;i<=NF;i++)sum-=$i; print $1,sum}' >$scores_out
 
 
