@@ -1045,7 +1045,8 @@ void AmSgmm2::ComputeFmllrPreXform(const Vector<BaseFloat> &state_occs,
   tmpB.Eig(diag_mean_scatter, &U);  // Eq. (B.5): B = U D V^T
 
   int32 n;
-  if ((n = diag_mean_scatter->ApplyFloor(1.0e-04)) != 0)
+  diag_mean_scatter->ApplyFloor(1.0e-04, &n);
+  if (n != 0)
     KALDI_WARN << "Floored " << n << " elements of the mean-scatter matrix.";
 
   // Eq. (B.6): A_{pre} = U^T * L^{-1}

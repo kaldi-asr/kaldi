@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright 2017 University of Chinese Academy of Sciences (UCAS) Gaofeng Cheng
+# Apache 2.0
 
 # This is based on TDNN_LSTM_1b (from egs/swbd/s5c), but using the NormOPGRU to replace the LSTMP,
 # and adding chunk-{left,right}-context-initial=0

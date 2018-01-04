@@ -2,6 +2,7 @@
 
 // Copyright 2012-2013  Karel Vesely
 //           2012-2014  Johns Hopkins University (author: Daniel Povey)
+//                2017  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -342,52 +343,68 @@ void CuVectorBase<Real>::ApplySoftMax() {
 }
 
 template<typename Real>
-MatrixIndexT CuVectorBase<Real>::ApplyFloor(Real floor_val) {
-  MatrixIndexT num_floored = 0;
+void CuVectorBase<Real>::ApplyFloor(Real floor_val, MatrixIndexT *floored_count) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    if (dim_ == 0) return 0;
-    CuTimer tim;
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_,CU1DBLOCK));
+    if (floored_count == nullptr) {
+      if (dim_ == 0) return;
+      CuTimer tim;
+      // We are calling a function meant for matrices, by viewing the
+      // vector as a matrix with a single row.
+      ::MatrixDim dim = {1, Dim(), 1};
+      cuda_apply_floor(dimGrid, dimBlock, data_, floor_val, dim);
+      CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloorNoCount", tim);
+    } else {
+      if (dim_ == 0) { *floored_count = 0; return; }
+      CuTimer tim;
 
-    CuVector<float> count_vec(dim_, kUndefined);
+      CuVector<float> count_vec(dim_, kUndefined);
 
-    cuda_vec_apply_floor(dimGrid, dimBlock, data_, floor_val, count_vec.Data(), dim_);
-    CU_SAFE_CALL(cudaGetLastError());
-    num_floored = count_vec.Sum();
-    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloor", tim);
+      cuda_vec_apply_floor(dimGrid, dimBlock, data_, floor_val, count_vec.Data(), dim_);
+      CU_SAFE_CALL(cudaGetLastError());
+      *floored_count = count_vec.Sum();
+      CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloor", tim);
+    }
   } else
 #endif
   {
-    num_floored = Vec().ApplyFloor(floor_val);
+    Vec().ApplyFloor(floor_val, floored_count);
   }
-  return num_floored;
-
 }
 
 template<typename Real>
-MatrixIndexT CuVectorBase<Real>::ApplyCeiling(Real ceiling_val) {
-  MatrixIndexT num_ceiled = 0;
+void CuVectorBase<Real>::ApplyCeiling(Real ceiling_val, MatrixIndexT *ceiled_count) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    if (dim_ == 0) return 0;
-    CuTimer tim;
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_,CU1DBLOCK));
+    if (ceiled_count == nullptr) {
+      if (dim_ == 0) return;
+      CuTimer tim;
+      // We are calling a function meant for matrices, by viewing the
+      // vector as a matrix with a single row.
+      ::MatrixDim dim = {1, Dim(), 1};
+      cuda_apply_ceiling(dimGrid, dimBlock, data_, ceiling_val, dim);
+      
+      CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyCeilingNoCount", tim);
+    } else {
+      if (dim_ == 0) { *ceiled_count = 0; return; }
+      CuTimer tim;
 
-    CuVector<float> count_vec(dim_, kUndefined);
+      CuVector<float> count_vec(dim_, kUndefined);
 
-    cuda_vec_apply_ceiling(dimGrid, dimBlock, data_, ceiling_val, count_vec.Data(), dim_);
-    CU_SAFE_CALL(cudaGetLastError());
-    num_ceiled = count_vec.Sum();
-    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyCeiling", tim);
+      cuda_vec_apply_ceiling(dimGrid, dimBlock, data_, ceiling_val, count_vec.Data(), dim_);
+      CU_SAFE_CALL(cudaGetLastError());
+      *ceiled_count = count_vec.Sum();
+      CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyCeiling", tim);
+    }
   } else
 #endif
   {
-    num_ceiled = Vec().ApplyCeiling(ceiling_val);
+    Vec().ApplyCeiling(ceiling_val, ceiled_count);
   }
-  return num_ceiled;
 }
 
 template<typename Real>

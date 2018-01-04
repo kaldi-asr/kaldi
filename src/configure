@@ -748,7 +748,7 @@ function linux_check_dynamic {
 function linux_configure_dynamic {
   if $threaded_atlas; then pt=t; else pt=s; fi # relevant to "fat" libraries, will change later for separate ones
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
-    for dir in /usr{,/local}/lib{,64}{,/atlas,/atlas-sse2,/atlas-sse3} \
+    for dir in /usr{,/local}/lib{,64}{,/atlas,/atlas-sse2,/atlas-sse3,/x86_64-linux-gnu} \
       `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
       linux_check_dynamic && ATLASLIBDIR=$dir && ATLASLIBNAME=$atlas_libname
     done
