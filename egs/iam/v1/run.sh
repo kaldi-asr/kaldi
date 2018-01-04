@@ -8,6 +8,12 @@ set -e
 stage=0
 nj=20
 
+# iam_database points to the database path on the JHU grid. If you have not
+# already downloaded the database you can set it to a local directory
+# like "data/download" and follow the instructions
+# in "local/prepare_data.sh" to download the database:
+iam_database=/export/corpora5/handwriting_ocr/IAM
+
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
@@ -16,7 +22,7 @@ nj=20
 
 if [ $stage -le 0 ]; then
   echo "$0: Preparing data..."
-  local/prepare_data.sh --download-dir /export/corpora5/handwriting_ocr/IAM
+  local/prepare_data.sh --download-dir "$iam_database"
 fi
 mkdir -p data/{train,test}/data
 
