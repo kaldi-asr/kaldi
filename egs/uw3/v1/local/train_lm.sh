@@ -4,13 +4,11 @@
 #           2016  Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0
 #
-# This script trains a LM on the Cantab-Tedlium text data and tedlium acoustic training data.
+#
+# This script trains an LM on the UW3 training transcriptions.
 # It is based on the example scripts distributed with PocoLM
 
-# It will first check if pocolm is installed and if not will process with installation
-# It will then get the source data from the pre-downloaded Cantab-Tedlium files
-# and the pre-prepared data/train text source.
-
+# It will check if pocolm is installed and if not will proceed with installation
 
 set -e
 stage=0
@@ -57,32 +55,19 @@ if [ $stage -le 0 ]; then
   echo "$0: Getting the Data sources"
 
   rm ${dir}/data/text/* 2>/dev/null || true
-  
-  # Using LOB and brown corpus.
-  #head -86858 data/download/lobcorpus/0167/download/LOB_COCOA/lob.txt > ${dir}/data/text/text.txt
-  #cat data/download/browncorpus/brown.txt >> ${dir}/data/text/text.txt
-  #cat test_words.txt  >> ${dir}/data/text/text.txt
-  # use a subset of the annotated training data as the dev set .
-  # Note: the name 'dev' is treated specially by pocolm, it automatically
-  # becomes the dev set.
-  
-  #cat data/val/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
-  # .. and the rest of the training data as an additional data source.
-  # we can later fold the dev data into this.
-  #head -n $[$num_dev_sentences] < data/train/text | cut -d " " -f 2- >  ${dir}/data/text/ted.txt
 
   head -n $num_dev_sentences < data/train/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
-  tail -n +$[$num_dev_sentences+1] < data/train/text | cut -d " " -f 2- >  ${dir}/data/text/ted.txt
+  tail -n +$[$num_dev_sentences+1] < data/train/text | cut -d " " -f 2- >  ${dir}/data/text/uw3.txt
 
   # for reporting perplexities, we'll use the "real" dev set.
-  # (a subset of the training data is used as ${dir}/data/text/ted.txt to work
+  # (a subset of the training data is used as ${dir}/data/text/uw3.txt to work
   # out interpolation weights.
   # note, we can't put it in ${dir}/data/text/, because then pocolm would use
   # it as one of the data sources.
   cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
 
   # get wordlist
-  cat ${dir}/data/text/ted.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+  cat ${dir}/data/text/uw3.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
   cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
 fi
 
@@ -95,7 +80,7 @@ if [ $stage -le 1 ]; then
   # Note: if you have more than one order, use a certain amount of words as the
   # vocab and want to restrict max memory for 'sort',
   echo "$0: training the unpruned LM"
-  min_counts='train=2 ted=1'
+  min_counts='train=2 uw3=1'
   wordlist=${dir}/data/wordlist
 
   lm_name="`basename ${wordlist}`_${order}"
@@ -105,12 +90,13 @@ if [ $stage -le 1 ]; then
   unpruned_lm_dir=${lm_dir}/${lm_name}.pocolm
   train_lm.py  --wordlist=${wordlist} --num-splits=10 --warm-start-ratio=20  \
                --limit-unk-history=true \
-               --fold-dev-into=ted ${bypass_metaparam_optim_opt} \
+               --fold-dev-into=uw3 ${bypass_metaparam_optim_opt} \
                ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'
-  #log-prob: -5.05603614242 [perplexity = 156.967086371] over 19477.0 words
 
+  # No need for pruning as the training data is quite small (total # of
+  # n-grams is 685k). Write the arpa:
   mkdir -p ${dir}/data/arpa
   format_arpa_lm.py ${unpruned_lm_dir} | gzip -c > ${dir}/data/arpa/${order}gram_unpruned.arpa.gz
 fi

@@ -28,7 +28,7 @@ parser.add_argument('dir', type=str, help='data directory (should contain images
 parser.add_argument('--out-ark', type=str, default='-', help='where to write the output feature file.')
 parser.add_argument('--feat-dim', type=int, default=40,
                     help='size to scale the height of all images (i.e. the dimension of the resulting features)')
-parser.add_argument('--pad', type=bool, default=False, help='pad the left and right of the images with white pixels.')
+parser.add_argument('--pad', type=bool, default=False, help='pad the left and right of the images with 10 white pixels.')
 
 args = parser.parse_args()
 

@@ -33,6 +33,7 @@ fi
 
 mkdir -p data/train
 mkdir -p data/test
+echo "$0: Preparing the test and train subsets..."
 local/process_data.py $data_dir/book data || exit 1
 
 utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt

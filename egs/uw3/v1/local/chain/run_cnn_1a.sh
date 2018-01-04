@@ -1,9 +1,16 @@
 #!/bin/bash
 
-# head ./exp/chain/cnn1a/decode_test/scoring_kaldi/best_wer
-# %WER 1.09 [ 389 / 35571, 104 ins, 39 del, 246 sub ] exp/chain/cnn1a/decode_test/wer_7_1.0
-# head ./exp/chain/cnn1a/decode_test/scoring_kaldi/best_cer
-# %WER 0.22 [ 423 / 188135, 112 ins, 152 del, 159 sub ] exp/chain/cnn1a/decode_test/cer_7_0.0
+# Copyright    2017 Hossein Hadian
+#              2017 Chun Chieh Chang
+#              2017 Ashish Arora
+
+# steps/info/chain_dir_info.pl exp/chain/cnn1a/
+# exp/chain/cnn1a/: num-iters=153 nj=3..10 num-params=3.6M dim=40->268 combine=-0.034->-0.034 xent:train/valid[101,152,final]=(-0.097,-0.186,-0.092/-0.101,-0.212,-0.098) logprob:train/valid[101,152,final]=(-0.035,-0.067,-0.035/-0.036,-0.082,-0.035)
+
+# cat exp/chain/cnn1a/decode_test/scoring_kaldi/best_*
+# %WER 0.19 [ 366 / 188135, 110 ins, 123 del, 133 sub ] exp/chain/cnn1a/decode_test/cer_7_0.5
+# %WER 1.00 [ 357 / 35571, 104 ins, 26 del, 227 sub ] exp/chain/cnn1a/decode_test/wer_5_1.0
+
 
 set -e -o pipefail
 

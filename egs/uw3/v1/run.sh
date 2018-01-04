@@ -1,23 +1,35 @@
 #!/bin/bash
 
+# Copyright      2017  Chun Chieh Chang
+#                2017  Ashish Arora
+#                2017  Hossein Hadian
+
+
 set -e
 stage=0
 nj=30
+
+# This is the database path on the JHU grid. You may set this
+# to data/download, in which case the script will automatically download
+# the database:
+uw3_database=/export/a10/corpora5/handwriting_ocr/UW3/
 
 . ./path.sh
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . utils/parse_options.sh  # e.g. this parses the --stage option if supplied.
 
+
 if [ $stage -le 0 ]; then
   # Data preparation
-  local/prepare_data.sh --download-dir /export/a10/corpora5/handwriting_ocr/UW3/
+  local/prepare_data.sh --download-dir "$uw3_database"
 fi
 
 mkdir -p data/{train,test}/data
 if [ $stage -le 1 ]; then
+  echo "$0: Preparing feature files for the test and training data..."
   for f in train test; do
-    local/make_features.py --scale-size 40 --color 1 --pad true data/$f | \
+    local/make_features.py --feat-dim 40 --pad true data/$f | \
       copy-feats --compress=true --compression-method=7 \
       ark:- ark,scp:data/$f/data/images.ark,data/$f/feats.scp || exit 1
 
@@ -27,7 +39,7 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: Preparing dictionary and lang..."
-  local/prepare_dict.sh data/train/ data/local/dict
+  local/prepare_dict.sh
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 \
     data/local/dict "<unk>" data/lang/temp data/lang
 fi
