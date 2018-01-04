@@ -32,7 +32,7 @@ if [ $# != 5 ]; then
    exit 1;
 fi
 
-if [ -f path.sh ]; then . path.sh; fi
+if [ -f path.sh ]; then . ./path.sh; fi
 
 data=$1
 srcdata=$2

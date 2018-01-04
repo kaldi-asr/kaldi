@@ -91,3 +91,4 @@ if ! cmp -s $temp version.h; then
   cp $temp version.h
   chmod 644 version.h
 fi
+exit 0

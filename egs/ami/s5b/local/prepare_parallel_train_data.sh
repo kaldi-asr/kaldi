@@ -20,7 +20,7 @@ fi
 
 train_set=train
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 
 for f in data/ihm/train/utt2spk data/$mic/train/utt2spk; do

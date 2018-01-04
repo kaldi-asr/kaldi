@@ -28,7 +28,7 @@ num_epochs=4
 set -e
 
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

@@ -11,7 +11,7 @@ gpu_opts="--gpu 1"  # This is suitable for the CLSP network,
                                       # you'll likely have to change it.  we'll
                                       # use it later on, in the training (it's
                                       # not used in denlat creation)
-. cmd.sh
+. ./cmd.sh
 
 # The denominator lattice creation currently doesn't use GPUs.
 

@@ -8,7 +8,7 @@
 corpus=$1
 set -e -o pipefail
 if [ -z "$corpus" ] ; then
-    echo >&2 "The script $0 expects one parameter -- the location of the FAME! speech database"
+    echo >&2 "The script $0 expects one parameter -- the location of the FAME! speech corpus"
     exit 1
 fi
 if [ ! -d "$corpus" ] ; then

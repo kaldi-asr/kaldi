@@ -1,6 +1,6 @@
 // nnet3/nnet-compile-utils.cc
 
-// Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+// Copyright      2015-2017  Johns Hopkins University (author: Daniel Povey)
 //                2015                           (author: Vijayaditya Peddinti)
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -597,6 +597,45 @@ bool HasContiguousProperty(
   }
   return true;
 }
+
+
+// see comment in header.
+void GetNxList(const std::vector<Index> &indexes,
+               std::vector<std::pair<int32, int32> > *pairs) {
+  // set of (n,x) pairs
+  std::unordered_set<std::pair<int32, int32>, PairHasher<int32> > n_x_set;
+
+  for (std::vector<Index>::const_iterator iter = indexes.begin();
+       iter != indexes.end(); ++iter)
+    n_x_set.insert(std::pair<int32, int32>(iter->n, iter->x));
+  pairs->clear();
+  pairs->reserve(n_x_set.size());
+  for (std::unordered_set<std::pair<int32, int32>, PairHasher<int32> >::iterator
+           iter = n_x_set.begin(); iter != n_x_set.end(); ++iter)
+    pairs->push_back(*iter);
+  std::sort(pairs->begin(), pairs->end());
+}
+
+
+// see comment in header.
+void GetTList(const std::vector<Index> &indexes,
+              std::vector<int32> *t_values) {
+  // set of t values
+  std::unordered_set<int32> t_set;
+
+  for (std::vector<Index>::const_iterator iter = indexes.begin();
+       iter != indexes.end(); ++iter)
+    if (iter->t != kNoTime)
+      t_set.insert(iter->t);
+  t_values->clear();
+  t_values->reserve(t_set.size());
+  for (std::unordered_set<int32>::iterator iter = t_set.begin();
+       iter != t_set.end(); ++iter)
+    t_values->push_back(*iter);
+  std::sort(t_values->begin(), t_values->end());
+}
+
+
 
 }  // namespace nnet3
 }  // namespace kaldi

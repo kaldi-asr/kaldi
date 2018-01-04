@@ -475,7 +475,7 @@ def train(args, run_opts):
                 run_opts=run_opts, chunk_width=args.chunk_width,
                 get_raw_nnet_from_am=False,
                 compute_per_dim_accuracy=args.compute_per_dim_accuracy,
-                sum_to_one_penalty=args.combine_sum_to_one_penalty)
+                max_objective_evaluations=args.max_objective_evaluations)
         else:
             common_lib.force_symlink("{0}.raw".format(num_iters),
                                      "{0}/final.raw".format(args.dir))

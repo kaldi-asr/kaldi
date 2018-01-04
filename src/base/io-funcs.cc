@@ -161,7 +161,7 @@ void ReadToken(std::istream &is, bool binary, std::string *str) {
   }
   if (!isspace(is.peek())) {
     KALDI_ERR << "ReadToken, expected space after token, saw instead "
-              << static_cast<char>(is.peek())
+              << CharToString(static_cast<char>(is.peek()))
               << ", at file position " << is.tellg();
   }
   is.get();  // consume the space.

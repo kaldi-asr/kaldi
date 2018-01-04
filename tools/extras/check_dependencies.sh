@@ -87,28 +87,44 @@ if ! which awk >&/dev/null; then
   add_packages gawk gawk gawk
 fi
 
-if which python >&/dev/null ; then
+pythonok=true
+if ! which python2.7 >&/dev/null; then
+  echo "$0: python2.7 is not installed"
+  add_packages python2.7
+  pythonok=false
+fi
+
+if ! which python3 >&/dev/null; then
+  echo "$0: python3 is not installed"
+  add_packages python3
+  pythonok=false
+fi
+
+( 
+#Use a subshell so that sourcing env.sh does not have an influence on the rest of the script
+[ -f ./env.sh ] && . ./env.sh
+if $pythonok && ! which python2 >&/dev/null; then
+  mkdir -p $PWD/python
+  echo "$0: python2.7 is installed, but the python2 binary does not exist. Creating a symlink and adding this to tools/env.sh"
+  ln -s $(which python2.7) $PWD/python/python2
+  echo "export PATH=$PWD/python:\${PATH}" >> env.sh
+fi
+
+if [[ -f $PWD/python/.use_default_python && -f $PWD/python/python ]]; then
+  rm $PWD/python/python 
+fi
+
+if $pythonok && which python >&/dev/null && [[ ! -f $PWD/python/.use_default_python ]]; then
   version=`python 2>&1 --version | awk '{print $2}' `
   if [[ $version != "2.7"* ]] ; then
-    if which python2.7 >&/dev/null  || which python2 >&/dev/null ; then
-      echo "$0: python 2.7 is not the default python. You should either make it"
-      echo "$0: default or create an bash alias for kaldi scripts to run correctly"
-      status=1
-    else
-      echo "$0: python 2.7 is not installed"
-      add_packages python2.7 python python2.7
-    fi
-  fi
-else
-  if which python2.7 >&/dev/null  || which python2 >&/dev/null ; then
-    echo "$0: python 2.7 is not the default python. You should either make it"
-    echo "$0: default or create an bash alias for kaldi scripts to run correctly"
-    status=1
-  else
-    echo "$0: python is not installed (we need python 2.7)"
-    add_packages python2.7 python python2.7
+    echo "$0: WARNING python 2.7 is not the default python. We fixed this by adding a correct symlink more prominently on the path."
+    echo "$0: If you really want to use python $version as default, add an empty file $PWD/python/.use_default_python and run this script again."  
+    mkdir -p $PWD/python
+    ln -s $(which python2.7) $PWD/python/python
+    echo "export PATH=$PWD/python:\${PATH}" >> env.sh
   fi
 fi
+)
 
 printed=false
 

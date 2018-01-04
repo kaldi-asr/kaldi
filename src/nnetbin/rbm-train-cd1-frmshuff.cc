@@ -48,6 +48,8 @@ int main(int argc, char *argv[]) {
 
     RbmTrainOptions trn_opts, trn_opts_rbm;
     trn_opts.Register(&po);
+    LossOptions loss_opts;
+    loss_opts.Register(&po);
 
     bool binary = false;
     po.Register("binary", &binary, "Write output in binary mode");
@@ -133,7 +135,7 @@ int main(int argc, char *argv[]) {
     MatrixRandomizer feature_randomizer(rnd_opts);
 
     CuRand<BaseFloat> cu_rand;  // parallel random number generator,
-    Mse mse;
+    Mse mse(loss_opts);
 
     CuMatrix<BaseFloat> feats_transf,
                         pos_hid, pos_hid_aux,

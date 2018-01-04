@@ -2,13 +2,13 @@ This is a WIP **English LVCSR recipe** that trains on data from multiple corpora
 * Fisher (1761 hours)
 * Switchboard (317 hours)
 * WSJ (81 hours)
-* AMI (78 hours IHM, 77 hours SDM)
+* HUB4 English Broadcast News (76 hours)
 * TED-LIUM (118 hours)
 * Librispeech (960 hours)
 
 It is possible to add or remove datasets as necessary.
 
-This recipe was developed by Allen Guo (ICSI) and Korbinian Riedhammer (Remeeting). The original spec for the recipe is at [#699](https://github.com/kaldi-asr/kaldi/issues/699).
+This recipe was developed by Allen Guo (ICSI), Korbinian Riedhammer (Remeeting) and Xiaohui Zhang (JHU). The original spec for the recipe is at [#699](https://github.com/kaldi-asr/kaldi/issues/699).
 
 ## Recipe features
 

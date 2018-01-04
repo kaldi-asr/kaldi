@@ -4,7 +4,7 @@
 # Apache 2.0
 
 
-if [ -f path.sh ]; then . path.sh; fi
+if [ -f path.sh ]; then . ./path.sh; fi
 
 arpa_lm=db/cantab-TEDLIUM/cantab-TEDLIUM-pruned.lm3.gz
 [ ! -f $arpa_lm ] && echo No such file $arpa_lm && exit 1;

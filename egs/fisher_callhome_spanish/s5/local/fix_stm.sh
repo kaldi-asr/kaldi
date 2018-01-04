@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Fixes the CALLHOME stm files 
+# Fixes the CALLHOME stm files
 # Copyright 2014  Gaurav Kumar.   Apache 2.0
 
 data_dir=$1
