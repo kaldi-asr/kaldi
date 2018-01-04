@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#head ./exp/chain/cnn1a/decode_test/scoring_kaldi/best_wer
-#%WER 1.09 [ 389 / 35571, 104 ins, 39 del, 246 sub ] exp/chain/cnn1a/decode_test/wer_7_1.0
-#head ./exp/chain/cnn1a/decode_test/scoring_kaldi/best_cer
-#%WER 0.22 [ 423 / 188135, 112 ins, 152 del, 159 sub ] exp/chain/cnn1a/decode_test/cer_7_0.0
+# head ./exp/chain/cnn1a/decode_test/scoring_kaldi/best_wer
+# %WER 1.09 [ 389 / 35571, 104 ins, 39 del, 246 sub ] exp/chain/cnn1a/decode_test/wer_7_1.0
+# head ./exp/chain/cnn1a/decode_test/scoring_kaldi/best_cer
+# %WER 0.22 [ 423 / 188135, 112 ins, 152 del, 159 sub ] exp/chain/cnn1a/decode_test/cer_7_0.0
 
 set -e -o pipefail
 
@@ -13,7 +13,7 @@ nj=30
 # affix for exp dirs, e.g. it was _cleaned in tedlium.
 nnet3_affix=
 
-affix=1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=1a
 common_egs_dir=
 reporting_email=
 
@@ -41,7 +41,7 @@ train_data_dir=data/train
 lores_train_data_dir=$train_data_dir  # for the start, use the same data for gmm and chain
 gmm_lang=data/lang
 lang_test=data/lang_unk
-tree_dir=data/chain${nnet3_affix}/tree${affix}
+tree_dir=exp/chain${nnet3_affix}/tree${affix}
 
 # the 'lang' directory is created by this script.
 # If you create such a directory with a non-standard topology

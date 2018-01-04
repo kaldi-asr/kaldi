@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -e
 stage=0
 nj=30
 
@@ -10,7 +11,7 @@ nj=30
 
 if [ $stage -le 0 ]; then
   # Data preparation
-  local/prepare_data.sh --dir data --download-dir data/download
+  local/prepare_data.sh --download-dir /export/a10/corpora5/handwriting_ocr/UW3/
 fi
 
 mkdir -p data/{train,test}/data
@@ -24,25 +25,25 @@ if [ $stage -le 1 ]; then
   done
 fi
 
-beam=50
-
 if [ $stage -le 2 ]; then
-  local/prepare_dict.sh data/train/ data/train/dict
+  echo "$0: Preparing dictionary and lang..."
+  local/prepare_dict.sh data/train/ data/local/dict
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 \
-    data/train/dict "<unk>" data/lang/temp data/lang
+    data/local/dict "<unk>" data/lang/temp data/lang
 fi
 
 if [ $stage -le 3 ]; then
-  local/uw3_train_lm.sh
-  mkdir -p data/lang_test
-  cp -R data/lang/. data/lang_test/
-  gunzip -k -f data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz
-  local/prepare_lm.sh data/local/local_lm/data/arpa/3gram_unpruned.arpa data/lang_test || exit 1;
+  echo "$0: Estimating a language model for decoding..."
+  local/train_lm.sh
+  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
+                     data/local/dict/lexicon.txt data/lang_test
 
-  # prepare the unk model for open-vocab decoding
-  utils/lang/make_unk_lm.sh --ngram-order 4 --num-extra-ngrams 7500 data/train/dict exp/unk_lang_model
+  echo "$0: Preparing the unk model for open-vocab decoding..."
+  utils/lang/make_unk_lm.sh --ngram-order 4 --num-extra-ngrams 7500 \
+                            data/local/dict exp/unk_lang_model
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 \
-    --unk-fst exp/unk_lang_model/unk_fst.txt data/train/dict "<unk>" data/$lang_dir/temp data/lang_unk
+                        --unk-fst exp/unk_lang_model/unk_fst.txt \
+                        data/local/dict "<unk>" data/lang_unk/temp data/lang_unk
   cp data/lang_test/G.fst data/lang_unk/G.fst
 fi
 
@@ -67,19 +68,19 @@ fi
 
 if [ $stage -le 7 ]; then
   utils/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph
-  steps/decode.sh --nj $nj --cmd $cmd --beam $beam \
+  steps/decode.sh --nj $nj --cmd $cmd \
     exp/mono/graph data/test exp/mono/decode_test
 fi
 
 if [ $stage -le 8 ]; then
   utils/mkgraph.sh data/lang_test exp/tri exp/tri/graph
-  steps/decode.sh --nj $nj --cmd $cmd --beam $beam \
+  steps/decode.sh --nj $nj --cmd $cmd \
     exp/tri/graph data/test exp/tri/decode_test
 fi
 
 if [ $stage -le 9 ]; then
   utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph
-  steps/decode.sh --nj $nj --cmd $cmd --beam $beam \
+  steps/decode.sh --nj $nj --cmd $cmd \
     exp/tri2/graph data/test exp/tri2/decode_test
 fi
 
@@ -89,5 +90,5 @@ if [ $stage -le 10 ]; then
 fi
 
 if [ $stage -le 11 ]; then
-  run_cnn_1a.sh
+  local/chain/run_cnn_1a.sh
 fi

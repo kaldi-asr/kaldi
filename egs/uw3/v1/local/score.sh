@@ -2,7 +2,9 @@
 # Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey, Yenda Trmal)
 # Apache 2.0
 
-# See the script steps/scoring/score_kaldi_cer.sh in case you need to evalutate CER
+# This script is like steps/scoring/score_kaldi_wer.sh except it transcribes the <unk>'s
+# using local/unk_arc_post_to_transcription.py and also it calls
+# steps/scoring/score_kaldi_cer.sh at the end.
 
 [ -f ./path.sh ] && . ./path.sh
 
@@ -13,8 +15,8 @@ decode_mbr=false
 stats=true
 beam=6
 word_ins_penalty=0.0,0.5,1.0
-min_lmwt=7
-max_lmwt=17
+min_lmwt=3
+max_lmwt=13
 iter=final
 #end configuration section.
 

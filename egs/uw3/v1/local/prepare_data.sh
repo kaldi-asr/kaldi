@@ -1,10 +1,11 @@
 #!/bin/bash
 
-# Copyright 2017 (Author: Chun Chieh Chang)
+# Copyright 2017 Chun Chieh Chang
 
-# This scripts loads the UW3 dataset
+# This script downloads the UW3 dataset (if not already downloaded)
+# and prepares the "train" and "test" data subsets.
 
-dir=data
+set -e
 download_dir=data/download
 
 . ./cmd.sh
@@ -13,24 +14,26 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 # Download dir
 download_url=http://www.tmbdev.net/ocrdata/uw3-lines-book.tgz
-data_dir=book
+data_dir=data/local/extracted_corpus
 
 mkdir -p $download_dir
+mkdir -p $data_dir
 
-if [ -d $download_dir/$data_dir ]; then
-  echo Not downloading dataset as it is already downloaded.
+if [ -d $data_dir/book ]; then
+  echo "$0: Not downloading dataset as it is already downloaded."
 else
   if [ ! -f $download_dir/uw3-lines-book.tgz ]; then
-    echo Downloading dataset...
+    echo "$0: Downloading dataset..."
     wget -P $download_dir $download_url || exit 1;
   fi
-  tar -xzf $download_dir/uw3-lines-book.tgz -C $download_dir || exit 1;
-  echo Done downloading datset
+  echo "$0: Extracting..."
+  tar -xzf $download_dir/uw3-lines-book.tgz -C $data_dir/ || exit 1;
+  echo "$0: Done downloading/extracting the datset."
 fi
 
-mkdir -p $dir/train
-mkdir -p $dir/test
-local/process_data.py $download_dir/$data_dir $dir || exit 1
+mkdir -p data/train
+mkdir -p data/test
+local/process_data.py $data_dir/book data || exit 1
 
-utils/utt2spk_to_spk2utt.pl $dir/train/utt2spk > $dir/train/spk2utt
-utils/utt2spk_to_spk2utt.pl $dir/test/utt2spk > $dir/test/spk2utt
+utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
+utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
