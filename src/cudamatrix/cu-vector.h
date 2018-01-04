@@ -5,6 +5,7 @@
 //                      Lucas Ondel
 //           2013       Xiaohui Zhang
 //           2015       Guoguo Chen
+//           2017       Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -133,8 +134,8 @@ class CuVectorBase {
   void ApplySoftMax();
   void ApplyExp();
   void ApplyLog();
-  MatrixIndexT ApplyFloor(Real floor_val);
-  MatrixIndexT ApplyCeiling(Real ceiling_val);
+  void ApplyFloor(Real floor_val, MatrixIndexT *floored_count = NULL);
+  void ApplyCeiling(Real ceiling_val, MatrixIndexT *ceiled_count = NULL);
   void ApplyPow(Real power);
   Real Sum() const;
 
