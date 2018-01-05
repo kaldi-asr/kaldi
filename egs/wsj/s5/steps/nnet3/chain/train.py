@@ -216,15 +216,13 @@ def process_args(args):
             "--trainer.deriv-truncate-margin.".format(
                 args.deriv_truncate_margin))
 
-    if (not os.path.exists(args.dir)
-            or (not os.path.exists(args.dir+"/configs") and
-                not os.path.exists(args.input_model))):
-        raise Exception("This script expects {0} to exist. Also either "
-                        "--trainer.input-model option as initial 'raw' model "
-                        "(used as 0.raw in the script) should be supplied or "
-                        "{0}/configs directory which is the output of "
-                        "make_configs.py script should be provided."
-                        "".format(args.dir))
+    if (not os.path.exists(args.dir)):
+        raise Exception("This script expects --dir={0} to exist.")
+    if (not os.path.exists(args.dir+"/configs") and
+        (args.input_model is None or not os.path.exists(args.input_model))):
+        raise Exception("Either --trainer.input-model option should be supplied, "
+                        "and exist; or the {0}/configs directory should exist.")
+
 
     if args.transform_dir is None:
         args.transform_dir = args.lat_dir
