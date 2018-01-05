@@ -223,6 +223,15 @@ EventMap *ClusterEventMapRestrictedByMap(const EventMap &e_in,
                                          int32 *num_removed);
 
 
+/// This version of ClusterEventMapRestrictedByMap clusters to get a
+/// specific number of clusters as specified by 'num_clusters'
+EventMap *ClusterEventMapToNClustersRestrictedByMap(
+    const EventMap &e_in,
+    const BuildTreeStatsType &stats,
+    int32 num_clusters,
+    const EventMap &e_restrict,
+    int32 *num_removed);
+
 /// RenumberEventMap [intended to be used after calling ClusterEventMap] renumbers
 /// an EventMap so its leaves are consecutive.
 /// It puts the number of leaves in *num_leaves.  If later you need the mapping of
