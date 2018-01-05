@@ -359,6 +359,10 @@ void NonlinearComponent::StoreStatsInternal(
 
 void NonlinearComponent::StoreBackpropStats(
     const CuMatrixBase<BaseFloat> &out_deriv) {
+  // only store these stats about every 4 minibatches.
+  if (RandInt(0, 3) == 0)
+    return;
+
   KALDI_ASSERT(out_deriv.NumCols() == dim_);
 
   // Check we have the correct dimensions.
@@ -413,6 +417,9 @@ std::string NonlinearComponent::Info() const {
   if (oderiv_count_ > 0 && oderiv_sumsq_.Dim() == dim_) {
     Vector<double> oderiv_rms(oderiv_sumsq_);
     oderiv_rms.Scale(1.0 / oderiv_count_);
+    // The ApplyMin() is so that the statement after it does not fail even if we
+    // had subtracted models (e.g. in full_progress.*.log).
+    oderiv_rms.ApplyFloor(0.0);
     oderiv_rms.ApplyPow(0.5);
     stream << ", oderiv-rms=" << SummarizeVector(oderiv_rms)
            << ", oderiv-count=" << oderiv_count_;
@@ -543,6 +550,9 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
   temp.Resize(oderiv_sumsq_.Dim());
   temp.CopyFromVec(oderiv_sumsq_);
   if (oderiv_count_ != 0.0) temp.Scale(1.0 / oderiv_count_);
+  // The ApplyMin() is so that the statement after it does not fail even if we
+  // had subtracted models (e.g. in full_progress.*.log).
+  temp.ApplyFloor(0.0);
   temp.ApplyPow(0.5);
   temp.Write(os, binary);
 

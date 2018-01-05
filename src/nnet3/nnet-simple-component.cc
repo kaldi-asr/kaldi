@@ -331,8 +331,10 @@ void SigmoidComponent::Backprop(const std::string &debug_info,
   if (in_deriv != NULL) {
     in_deriv->DiffSigmoid(out_value, out_deriv);
     SigmoidComponent *to_update = dynamic_cast<SigmoidComponent*>(to_update_in);
-    if (to_update != NULL)
+    if (to_update != NULL) {
       RepairGradients(out_value, in_deriv, to_update);
+      to_update->StoreBackpropStats(out_deriv);
+    }
   }
 }
 
@@ -839,8 +841,10 @@ void TanhComponent::Backprop(const std::string &debug_info,
   if (in_deriv != NULL) {
     in_deriv->DiffTanh(out_value, out_deriv);
     TanhComponent *to_update = dynamic_cast<TanhComponent*>(to_update_in);
-    if (to_update != NULL)
+    if (to_update != NULL) {
       RepairGradients(out_value, in_deriv, to_update);
+      to_update->StoreBackpropStats(out_deriv);
+    }
   }
 }
 
@@ -889,8 +893,10 @@ void RectifiedLinearComponent::Backprop(
     in_deriv->MulElements(out_deriv);
     RectifiedLinearComponent *to_update =
         dynamic_cast<RectifiedLinearComponent*>(to_update_in);
-    if (to_update != NULL)
+    if (to_update != NULL) {
       RepairGradients(in_deriv, to_update);
+      to_update->StoreBackpropStats(out_deriv);
+    }
   }
 }
 
@@ -3404,6 +3410,13 @@ void SoftmaxComponent::Backprop(const std::string &debug_info,
                                 void *memo,
                                 Component *to_update_in,
                                 CuMatrixBase<BaseFloat> *in_deriv) const {
+
+  if (to_update_in) {
+    SoftmaxComponent *to_update =
+        dynamic_cast<SoftmaxComponent*>(to_update_in);
+    to_update->StoreBackpropStats(out_deriv);
+  }
+
   if (in_deriv == NULL)
     return;
   /*
@@ -3443,8 +3456,13 @@ void LogSoftmaxComponent::Backprop(const std::string &debug_info,
                                    const CuMatrixBase<BaseFloat> &out_value,
                                    const CuMatrixBase<BaseFloat> &out_deriv,
                                    void *memo,
-                                   Component *, // to_update
+                                   Component *to_update_in,
                                    CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (to_update_in) {
+    LogSoftmaxComponent *to_update =
+        dynamic_cast<LogSoftmaxComponent*>(to_update_in);
+    to_update->StoreBackpropStats(out_deriv);
+  }
   if (in_deriv == NULL)
     return;
   in_deriv->DiffLogSoftmaxPerRow(out_value, out_deriv);
