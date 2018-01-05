@@ -14,11 +14,11 @@
 
 # %WER 11.1 | 1831 21395 | 89.9 6.4 3.7 1.0 11.1 46.3 | exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp/decode_eval2000_sw1_fsh_fg_looped/score_13_0.0/eval2000_hires.ctm.swbd.filt.sys
 # %WER 9.9 | 1831 21395 | 91.0 5.8 3.2 0.9 9.9 43.2 | exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp/decode_eval2000_sw1_fsh_fg_looped_rnnlm_1e/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
-# %WER 9.9 | 1831 21395 | 91.0 5.7 3.3 0.9 9.9 42.8 | exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp/decode_eval2000_sw1_fsh_fg_looped_rnnlm_1e_nbest/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 9.9 | 1831 21395 | 91.0 5.8 3.2 0.9 9.9 42.9 | exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp/decode_eval2000_sw1_fsh_fg_looped_rnnlm_1e_nbest/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
 
 # %WER 15.9 | 4459 42989 | 85.7 9.7 4.6 1.6 15.9 51.6 | exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp/decode_eval2000_sw1_fsh_fg_looped/score_10_0.0/eval2000_hires.ctm.filt.sys
 # %WER 14.4 | 4459 42989 | 87.0 8.7 4.3 1.5 14.4 49.4 | exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp/decode_eval2000_sw1_fsh_fg_looped_rnnlm_1e/score_11_0.0/eval2000_hires.ctm.filt.sys
-# %WER 14.4 | 4459 42989 | 87.1 8.6 4.3 1.5 14.4 48.9 | exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp/decode_eval2000_sw1_fsh_fg_looped_rnnlm_1e_nbest/score_10_0.0/eval2000_hires.ctm.filt.sys
+# %WER 14.4 | 4459 42989 | 87.1 8.7 4.2 1.5 14.4 49.0 | exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp/decode_eval2000_sw1_fsh_fg_looped_rnnlm_1e_nbest/score_10_0.0/eval2000_hires.ctm.filt.sys
 
 # Begin configuration section.
 
@@ -144,8 +144,7 @@ if [ $stage -le 5 ] && $run_nbest_rescore; then
 
     # Lattice rescoring
     rnnlm/lmrescore_nbest.sh \
-      --stage 6 \
-      --cmd "$decode_cmd --mem 4G" --N 50 \
+      --cmd "$decode_cmd --mem 4G" --N 20 \
       0.8 data/lang_$LM $dir \
       data/${decode_set}_hires ${decode_dir} \
       ${decode_dir}_${decode_dir_suffix}_nbest

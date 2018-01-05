@@ -49,6 +49,14 @@ rnnlm-sentence-probs --normalize-probs=$ensure_normalized_probs \
        $special_symbol_opts $dir/final.raw "$word_embedding" $tempdir/text.int > $tempdir/loglikes.rnn
 # Now $tempdir/loglikes.rnn has the following structure
 # utt-id log P(word1 | <s>) log P(word2 | <s> word1) ... log P(</s> | all word histories)
+# for example,
+#
+# en_4156-A_058697-058813-2 -3.57205 -2.70411 -4.29876 -3.63707 -6.00299 -2.11093 -2.03955
+# en_4156-A_058697-058813-3 -6.6074 -1.21244 -3.89991 -3.23747 -5.35102 -1.90448 -1.77809
+# en_4156-A_058697-058813-4 -5.09022 -1.24148 -4.76337 -4.75594 -5.77118 -2.08555 -2.18403
+# en_4156-A_058697-058813-5 -4.54489 -2.97485 -3.93646 -3.28041 -5.18779 -2.83356 -1.72601
+# en_4156-A_058697-058813-6 -2.31464 -3.74738 -4.03309 -3.22942 -5.66818 -2.0396 -1.64734
+# en_4156-A_058697-058813-7 -5.0728 -2.96303 -4.6539 -3.20266 -5.40682 -2.10625 -1.90956
 
 [ $(cat $tempdir/loglikes.rnn | wc -l) -ne $(cat $tempdir/text.int | wc -l) ] && \
   echo "$0: rnnlm rescoring failed" && exit 1;

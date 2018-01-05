@@ -5,7 +5,7 @@
 
 # Begin configuration section.
 N=10
-inv_acwt=12
+inv_acwt=10
 cmd=run.pl
 use_phi=false  # This is kind of an obscure option.  If true, we'll remove the old
   # LM weights (times 1-RNN_scale) using a phi (failure) matcher, which is
