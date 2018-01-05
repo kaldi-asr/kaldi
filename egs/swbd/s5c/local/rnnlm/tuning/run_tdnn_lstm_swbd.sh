@@ -4,24 +4,30 @@
 #           2017  Hainan Xu
 #           2017  Ke Li
 
-# rnnlm/train_rnnlm.sh: best iteration (out of 40) was 39, linking it to final iteration.
-# rnnlm/train_rnnlm.sh: train/dev perplexity was 40.8 / 46.2.
-# Train objf: -313.40 -4.42 -4.24 -4.16 -4.10 -4.06 -4.02 -3.99 -3.96 -3.95 -3.93 -3.91 -3.89 -3.88 -3.87 -3.86 -3.85 -3.84 -3.83 -3.82 -3.82 -3.80 -3.80 -3.79 -3.79 -3.78 -3.77 -3.77 -3.76 -3.76 -3.75 -3.74 -3.74 -3.74 -3.73 -3.73 -3.72 -3.72 -3.71 -3.71
-# Dev objf:   -10.65 -4.66 -4.36 -4.25 -4.17 -4.13 -4.09 -4.05 -4.04 -4.02 -4.00 -3.99 -3.97 -3.96 -3.95 -3.93 -3.93 -3.92 -3.91 -3.91 -3.90 -3.90 -3.89 -3.88 -3.88 -3.87 -3.87 -3.87 -3.86 -3.86 -3.85 -3.85 -3.85 -3.85 -3.85 -3.84 -3.84 -3.84 -3.84 -3.83
+# This script is only for SWBD data (no Fisher).
+
+# rnnlm/train_rnnlm.sh: best iteration (out of 30) was 15, linking it to final iteration.
+# rnnlm/train_rnnlm.sh: train/dev perplexity was 44.1 / 59.7.
+# Train objf: -5.35 -4.67 -4.40 -4.26 -4.18 -4.11 -4.05 -4.01 -3.97 -3.93 -3.90 -3.87 -3.84 -3.81 -3.79 -3.77 -3.74 -3.73 -3.71 -3.68 -3.66 -3.63 -3.61 -3.59 -3.57 -3.55 -3.53 -3.51 -3.49 -3.47
+# Dev objf:   -10.32 -4.96 -4.53 -4.37 -4.30 -4.23 -4.20 -4.16 -4.14 -4.12 -4.15 -4.10 -4.09 -4.09 -4.10 -4.09 -4.10 -4.10 -4.11 -4.12 -4.12 -4.12 -4.13 -4.14 -4.14 -4.17 -4.17 -4.17 -4.18 -4.19
 
 # Begin configuration section.
 cmd=run.pl
-dir=exp/rnnlm_lstm_tdnn_a
+dir=exp/rnnlm_tdnn_lstm_swbd
 embedding_dim=1024
 lstm_rpd=256
 lstm_nrpd=256
-epochs=8
+embedding_l2=0.005 # embedding layer l2 regularize
+comp_l2=0.005 # component-level l2 regularize
+output_l2=0.005 # output-layer l2 regularize
+epochs=30
 stage=-10
 train_stage=0
 
-. utils/parse_options.sh
+. ./cmd.sh
+. ./utils/parse_options.sh
 
-text=data/train/text
+text=data/train_nodev/text
 wordlist=data/lang/words.txt
 text_dir=data/rnnlm/text
 mkdir -p $dir/config
@@ -35,8 +41,8 @@ done
 if [ $stage -le 0 ]; then
   mkdir -p $text_dir
   echo -n >$text_dir/dev.txt
-  # hold out one in every 500 lines as dev data.
-  cat $text | cut -d ' ' -f2- | awk -v text_dir=$text_dir '{if(NR%500 == 0) { print >text_dir"/dev.txt"; } else {print;}}' >$text_dir/swbd.txt
+  # hold out one in every 50 lines as dev data.
+  cat $text | cut -d ' ' -f2- | awk -v text_dir=$text_dir '{if(NR%50 == 0) { print >text_dir"/dev.txt"; } else {print;}}' >$text_dir/swbd.txt
 fi
 
 if [ $stage -le 1 ]; then
@@ -62,17 +68,21 @@ EOF
                            --use-constant-feature=true \
                            --top-word-features 20000 \
                            --min-frequency 1.0e-03 \
-                           --special-words='<s>,</s>,<brk>,<unk>,[noise],[laughter]' \
+                           --special-words='<s>,</s>,<brk>,<unk>,[noise],[laughter],[vocalized-noise]' \
                            $dir/config/words.txt > $dir/config/features.txt
+
+lstm_opts="l2-regularize=$comp_l2"
+tdnn_opts="l2-regularize=$comp_l2"
+output_opts="l2-regularize=$output_l2"
 
   cat >$dir/config/xconfig <<EOF
 input dim=$embedding_dim name=input
-relu-renorm-layer name=tdnn1 dim=$embedding_dim input=Append(0, IfDefined(-1))
-fast-lstmp-layer name=lstm1 cell-dim=$embedding_dim recurrent-projection-dim=$lstm_rpd non-recurrent-projection-dim=$lstm_nrpd
-relu-renorm-layer name=tdnn2 dim=$embedding_dim input=Append(0, IfDefined(-2))
-fast-lstmp-layer name=lstm2 cell-dim=$embedding_dim recurrent-projection-dim=$lstm_rpd non-recurrent-projection-dim=$lstm_nrpd
-relu-renorm-layer name=tdnn3 dim=$embedding_dim input=Append(0, IfDefined(-1))
-output-layer name=output include-log-softmax=false dim=$embedding_dim
+relu-renorm-layer name=tdnn1 dim=$embedding_dim $tdnn_opts input=Append(0, IfDefined(-1))
+fast-lstmp-layer name=lstm1 cell-dim=$embedding_dim recurrent-projection-dim=$lstm_rpd non-recurrent-projection-dim=$lstm_nrpd $lstm_opts
+relu-renorm-layer name=tdnn2 dim=$embedding_dim $tdnn_opts input=Append(0, IfDefined(-2))
+fast-lstmp-layer name=lstm2 cell-dim=$embedding_dim recurrent-projection-dim=$lstm_rpd non-recurrent-projection-dim=$lstm_nrpd $lstm_opts
+relu-renorm-layer name=tdnn3 dim=$embedding_dim $tdnn_opts input=Append(0, IfDefined(-1))
+output-layer name=output $output_opts include-log-softmax=false dim=$embedding_dim
 EOF
   rnnlm/validate_config_dir.sh $text_dir $dir/config
 fi
@@ -86,7 +96,8 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  rnnlm/train_rnnlm.sh --stage $train_stage \
+  rnnlm/train_rnnlm.sh --embedding_l2 $embedding_l2 \
+                       --stage $train_stage \
                        --num-epochs $epochs --cmd "queue.pl" $dir
 fi
 
