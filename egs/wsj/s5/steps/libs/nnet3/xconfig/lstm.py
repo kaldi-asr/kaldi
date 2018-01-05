@@ -829,9 +829,6 @@ class XconfigLstmbLayer(XconfigLayerBase):
                         'clipping-threshold': 30.0,
                         'zeroing-interval': 20,
                         'zeroing-threshold': 15.0,
-                        # batchnorm-power is for what i'm going to call OverNorm, you can set it
-                        # for example to -0.75.
-                        'batchnorm-power': -0.5,
                         'delay' : -1,
                         'lstm-nonlinearity-options' : ' max-change=0.75',
                         # the recurrence scale is the scale on m_trunc, used in the
@@ -945,8 +942,8 @@ class XconfigLstmbLayer(XconfigLayerBase):
 
         configs.append("component name={0}.cm_trunc type=BackpropTruncationComponent dim={1} {2}".format(
             name, 2 * cell_dim, bptrunc_str))
-        configs.append("component name={0}.m_batchnorm type=BatchNormComponent power={1} dim={2} ".format(
-            name, self.config['batchnorm-power'], cell_dim))
+        configs.append("component name={0}.m_batchnorm type=BatchNormComponent dim={1} ".format(
+            name, cell_dim))
 
         configs.append("###  Nodes for the components above.")
         configs.append("component-node name={0}.W_all_a component={0}.W_all_a input=Append({1}, "

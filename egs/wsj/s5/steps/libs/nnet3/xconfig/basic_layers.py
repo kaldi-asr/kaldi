@@ -674,7 +674,6 @@ class XconfigBasicLayer(XconfigLayerBase):
                        'bottleneck-dim': -1,
                        'self-repair-scale': 1.0e-05,
                        'target-rms': 1.0,
-                       'batchnorm-power': -0.5,
                        'ng-affine-options': '',
                        'ng-linear-options': '',    # only affects bottleneck layers.
                        'dropout-proportion': 0.5,  # dropout-proportion only
@@ -754,7 +753,6 @@ class XconfigBasicLayer(XconfigLayerBase):
         output_dim = self.output_dim()
         self_repair_scale = self.config['self-repair-scale']
         target_rms = self.config['target-rms']
-        batchnorm_power = self.config['batchnorm-power']
 
         affine_options = self.config['ng-affine-options']
         for opt_name in [ 'max-change', 'learning-rate-factor',
@@ -845,10 +843,9 @@ class XconfigBasicLayer(XconfigLayerBase):
 
             elif nonlinearity == 'batchnorm':
                 line = ('component name={0}.{1}'
-                        ' type=BatchNormComponent dim={2}'
-                        ' target-rms={3} power={4}'
+                        ' type=BatchNormComponent dim={2} target-rms={3}'
                         ''.format(self.name, nonlinearity, output_dim,
-                                  target_rms, batchnorm_power))
+                                  target_rms))
 
             elif nonlinearity == 'so':
                 line = ('component name={0}.{1}'

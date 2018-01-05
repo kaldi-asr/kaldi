@@ -234,8 +234,9 @@ void BatchNormComponent::ComputeDerived() {
   // of numerical roundoff.
   scale_.ApplyFloor(0.0);
   scale_.Add(epsilon_);
-  scale_.ApplyPow(power_);
-  // now scale_ = min(variance, epsilon)^power_
+  BaseFloat power = -0.5;
+  scale_.ApplyPow(power);
+  // now scale_ = min(variance, epsilon)^power
   // next, multiply by the target RMS (normally 1.0).
   scale_.Scale(target_rms_);
   offset_.MulElements(scale_);
@@ -253,7 +254,7 @@ void BatchNormComponent::Check() const {
 }
 
 BatchNormComponent::BatchNormComponent(const BatchNormComponent &other):
-    dim_(other.dim_), block_dim_(other.block_dim_), power_(other.power_),
+    dim_(other.dim_), block_dim_(other.block_dim_),
     epsilon_(other.epsilon_), target_rms_(other.target_rms_),
     test_mode_(other.test_mode_), count_(other.count_),
     stats_sum_(other.stats_sum_), stats_sumsq_(other.stats_sumsq_) {
@@ -267,7 +268,6 @@ std::string BatchNormComponent::Info() const {
   stream << Type() << ", dim=" << dim_ << ", block-dim=" << block_dim_
          << ", epsilon=" << epsilon_ << ", target-rms=" << target_rms_
          << ", count=" << count_
-         << ", power=" << power_
          << ", test-mode=" << (test_mode_ ? "true" : "false");
   if (count_ > 0) {
     Vector<BaseFloat> mean(stats_sum_), var(stats_sumsq_);
@@ -286,14 +286,12 @@ std::string BatchNormComponent::Info() const {
 void BatchNormComponent::InitFromConfig(ConfigLine *cfl) {
   dim_ = -1;
   block_dim_ = -1;
-  power_ = -0.5;
   epsilon_ = 1.0e-03;
   target_rms_ = 1.0;
   test_mode_ = false;
   bool ok = cfl->GetValue("dim", &dim_);
   cfl->GetValue("block-dim", &block_dim_);
   cfl->GetValue("epsilon", &epsilon_);
-  cfl->GetValue("power", &power_);
   cfl->GetValue("target-rms", &target_rms_);
   cfl->GetValue("test-mode", &test_mode_);
   if (!ok || dim_ <= 0) {
@@ -307,8 +305,6 @@ void BatchNormComponent::InitFromConfig(ConfigLine *cfl) {
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
               << cfl->UnusedValues();
-  if (power_ >= 0 || power_ <= -1.0)
-    KALDI_ERR << "Power has invalid value " << power_;
   count_ = 0;
   stats_sum_.Resize(block_dim_);
   stats_sumsq_.Resize(block_dim_);
@@ -393,13 +389,12 @@ void BatchNormComponent::InitFromConfig(ConfigLine *cfl) {
   BACKWARD PASS (recap):
 
    var_deriv_mod = 2 * power * target-rms^{1/power} * (1/I \sum_i z'(i) z(i)) * scale^{-(1+power)/power}
+                .. which for power = -0.5, simplifies to:
+   var_deriv_mod = -1.0 / (target-rms^2) * (1/I \sum_i z'(i) z(i)) * scale
 
            x'(i) = scale * (z'(i) - 1/I * \sum_i z'(i))  + z(i) var_deriv_mod
 
   */
-
-
-
 void* BatchNormComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                     const CuMatrixBase<BaseFloat> &in,
                                     CuMatrixBase<BaseFloat> *out) const {
@@ -435,15 +430,16 @@ void* BatchNormComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
     mean.AddRowSumMat(1.0 / num_frames, in, 0.0);
     uvar.AddDiagMat2(1.0 / num_frames, in, kTrans, 0.0);
     scale.CopyFromVec(uvar);
+
     // by applying this scale at this point, we save a multiply later on.
-    BaseFloat var_scale = std::pow(target_rms_, 1.0 / power_);
+    BaseFloat var_scale = 1.0 / (target_rms_ * target_rms_);
     scale.AddVecVec(-var_scale, mean, mean, var_scale);
-    // at this point, 'scale' contains just the variance (times target-rms^{-power})
+    // at this point, 'scale' contains just the variance (times target-rms^{-2}).
     scale.ApplyFloor(0.0);
     scale.Add(var_scale * epsilon_);
     // Now 'scale' contains the variance floored to zero and then with epsilon
-    // added [both times target-rms^{-power}]
-    scale.ApplyPow(power_);
+    // added [both times 1/target-rms^2].
+    scale.ApplyPow(-0.5);
     // now 'scale' is the actual scale we'll use.
 
     // the next command will do no work if out == in, for in-place propagation.
@@ -509,18 +505,19 @@ void BatchNormComponent::Backprop(
     KALDI_ASSERT(out_value.NumRows() == num_frames);
     CuSubVector<BaseFloat>
         scale(memo->mean_uvar_scale, 2),
-        temp(memo->mean_uvar_scale, 4),
         var_deriv_mod(memo->mean_uvar_scale, 3),
-        scale_pow(memo->mean_uvar_scale, 4);
+        temp(memo->mean_uvar_scale, 4);
 
     // var_deriv_mod is going to contain:
     //  2 * power * target-rms^{1/power} * (1/I \sum_i z'(i) z(i)) * scale^{-(1+power)/power}
+    // which for power = -0.5 simplifies to:
+    // -1.0 / (target_rms * target_rms).
     // but for now we don't have the power of 'scale', we'll add that later.
-    BaseFloat coeff = 2.0 * power_ * std::pow(target_rms_, 1.0 / power_) /
-        num_frames;
+    BaseFloat coeff = -1.0 / (target_rms_ * target_rms_ * num_frames);
+
     var_deriv_mod.AddDiagMatMat(coeff, out_value, kTrans,
                                 out_deriv, kNoTrans, 0.0);
-
+    var_deriv_mod.MulElements(scale);
 
     temp.AddRowSumMat(-1.0 / num_frames, out_deriv, 0.0);
     // the following statement does no work if in_deriv and out_deriv are the
@@ -533,19 +530,9 @@ void BatchNormComponent::Backprop(
     // At this point, *in_deriv contains
     // scale * (z'(i) - 1/I * \sum_i z'(i))
 
-    // The next few lines complete the calculation of 'var_deriv_mod';
-    // we delayed it because we were using 'temp', and 'scale_pow'
-    // uses the same memory.
-    if (power_ == -0.5) {
-      // we can simplify scale^{-(1+power)/power} to just 'scale'.
-      var_deriv_mod.MulElements(scale);
-    } else {
-      scale_pow.CopyFromVec(scale);
-      scale_pow.ApplyPow(-1.0 * (1.0 + power_) / power_);
-      var_deriv_mod.MulElements(scale_pow);
-    }
     in_deriv->AddMatDiagVec(1.0, out_value, kNoTrans,
                             var_deriv_mod, 1.0);
+
     // At this point, *in_deriv contains what we described in the comment
     // starting BATCHNORM_MATH as:
     // x'(i) = scale * (z'(i) - 1/I * \sum_i z'(i))  + z(i) var_deriv_mod
@@ -602,12 +589,6 @@ void BatchNormComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &dim_);
   ExpectToken(is, binary, "<BlockDim>");
   ReadBasicType(is, binary, &block_dim_);
-  if (PeekToken(is, binary) == 'P') {
-    ExpectToken(is, binary, "<Power>");
-    ReadBasicType(is, binary, &power_);
-  } else {
-    power_ = -0.5;
-  }
   ExpectToken(is, binary, "<Epsilon>");
   ReadBasicType(is, binary, &epsilon_);
   ExpectToken(is, binary, "<TargetRms>");
@@ -635,10 +616,6 @@ void BatchNormComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, dim_);
   WriteToken(os, binary, "<BlockDim>");
   WriteBasicType(os, binary, block_dim_);
-  if (power_ != -0.5) {
-    WriteToken(os, binary, "<Power>");
-    WriteBasicType(os, binary, power_);
-  }
   WriteToken(os, binary, "<Epsilon>");
   WriteBasicType(os, binary, epsilon_);
   WriteToken(os, binary, "<TargetRms>");

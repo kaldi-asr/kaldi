@@ -1681,7 +1681,6 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " block-dim=" << block_dim << " target-rms="
          << RandInt(1, 4) << " test-mode="
          << (test_mode ? "true" : "false")
-         << " power=" << (-0.1 * RandInt(3, 5))
          << " epsilon=" << (RandInt(0, 1) == 0 ? "0.1" : "1.0");
       break;
     }
