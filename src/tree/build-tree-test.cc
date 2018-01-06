@@ -88,7 +88,7 @@ void TestGenRandStats() {
 
 
 void TestBuildTree() {
-  for (int32 p = 0; p < 30; p++) {
+  for (int32 p = 0; p < 3; p++) {
     // First decide phone-ids, hmm lengths, is-ctx-dep...
 
     int32 dim = 1 + Rand() % 40;
@@ -168,7 +168,7 @@ void TestBuildTree() {
       std::vector<bool> share_roots(phone_sets.size(), true),
           do_split(phone_sets.size(), true);
 
-      if (p % 5 != 0) {
+      if (p % 3 != 0) {
         bool round_num_leaves = true;
 
         EventMap *tree_not_rounded =
