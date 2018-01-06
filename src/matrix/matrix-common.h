@@ -24,12 +24,11 @@
 // files in this directory.
 
 #include "base/kaldi-common.h"
-#include "matrix/kaldi-blas.h"
 
 namespace kaldi {
 typedef enum {
-  kTrans    = CblasTrans,
-  kNoTrans = CblasNoTrans
+  kTrans    = 112,
+  kNoTrans  = 111
 } MatrixTransposeType;
 
 typedef enum {
