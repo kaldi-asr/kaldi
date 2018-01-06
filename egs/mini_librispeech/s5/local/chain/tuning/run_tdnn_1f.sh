@@ -1,25 +1,28 @@
 #!/bin/bash
 
+
 # 1f is as 1e but a smaller model with various tuning changes, the most
 #  important of which is the 'bottleneck-dim' option for the last layer;
 #  also dimensions are reduced and we've removed the 'target-rms=0.5' options
 #  on the prefinal layers.
 #
-# local/chain/compare_wer.sh exp/chain/tdnn1e_sp exp/chain/tdnn1f_sp
-# System                tdnn1e_sp tdnn1f_sp
-#WER dev_clean_2 (tgsmall)      13.84     13.92
-#             [online:]         13.82     14.01
-#WER dev_clean_2 (tglarge)      10.17      9.83
-#             [online:]         10.25      9.96
-# Final train prob        -0.0500   -0.0515
-# Final valid prob        -0.0870   -0.0889
-# Final train prob (xent)   -1.4168   -1.3739
-# Final valid prob (xent)   -1.6861   -1.6125
-# Num-params                 7553634   3976418
+# local/chain/compare_wer.sh --online exp/chain/tdnn1{e,f}_sp 2>/dev/null
+# local/chain/compare_wer.sh --online exp/chain/tdnn1e_sp exp/chain/tdnn1f_sp
+# System                tdnn1e_sp tdnn1f7_sp
+#WER dev_clean_2 (tgsmall)      14.11     13.91
+#             [online:]         14.07     13.96
+#WER dev_clean_2 (tglarge)      10.15      9.95
+#             [online:]         10.16     10.13
+# Final train prob        -0.0503   -0.0508
+# Final valid prob        -0.0887   -0.0917
+# Final train prob (xent)   -1.4257   -1.3509
+# Final valid prob (xent)   -1.6799   -1.5883
+# Num-params                 7508490   4205322
 
-# steps/info/chain_dir_info.pl exp/chain/tdnn1{e,f}_sp
-# exp/chain/tdnn1e_sp: num-iters=17 nj=2..5 num-params=7.6M dim=40+100->2353 combine=-0.055->-0.055 (over 1) xent:train/valid[10,16,final]=(-1.73,-1.47,-1.42/-1.95,-1.73,-1.69) logprob:train/valid[10,16,final]=(-0.066,-0.054,-0.050/-0.100,-0.091,-0.087)
-# exp/chain/tdnn1f_sp: num-iters=17 nj=2..5 num-params=4.0M dim=40+100->2353 combine=-0.060->-0.059 (over 2) xent:train/valid[10,16,final]=(-1.64,-1.43,-1.37/-1.85,-1.66,-1.61) logprob:train/valid[10,16,final]=(-0.069,-0.057,-0.052/-0.104,-0.094,-0.089)
+
+# steps/info/chain_dir_info.pl exp/chain/tdnn1{e,f7}_sp
+# exp/chain/tdnn1e_sp: num-iters=17 nj=2..5 num-params=7.5M dim=40+100->2309 combine=-0.057->-0.057 (over 1) xent:train/valid[10,16,final]=(-1.73,-1.46,-1.43/-1.94,-1.72,-1.68) logprob:train/valid[10,16,final]=(-0.067,-0.055,-0.050/-0.105,-0.095,-0.089)
+# exp/chain/tdnn1f_sp: num-iters=17 nj=2..5 num-params=4.2M dim=40+100->2309 combine=-0.060->-0.060 (over 2) xent:train/valid[10,16,final]=(-1.60,-1.39,-1.35/-1.81,-1.64,-1.59) logprob:train/valid[10,16,final]=(-0.068,-0.056,-0.051/-0.104,-0.097,-0.092)
 
 
 # Set -e here so that we catch if any executable fails immediately
@@ -175,7 +178,7 @@ if [ $stage -le 13 ]; then
   relu-batchnorm-layer name=tdnn5 $opts dim=384
   relu-batchnorm-layer name=tdnn6 $opts dim=384 input=Append(-3,0,3)
   relu-batchnorm-layer name=tdnn7 $opts dim=384 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn8 $opts dim=384 input=Append(-6,-3,0)
+  relu-batchnorm-layer name=tdnn8 $opts dim=512 input=Append(-6,-3,0)
 
   ## adding the layers for chain branch
   relu-batchnorm-layer name=prefinal-chain $opts dim=384
