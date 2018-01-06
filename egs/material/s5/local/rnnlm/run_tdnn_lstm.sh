@@ -24,7 +24,7 @@ train_stage=-10
 
 # variables for lattice rescoring
 run_rescore=true
-ac_model_dir=exp/chain/tdnn_lstm1a_tree6000_sp_ld5
+ac_model_dir=exp/chain/tdnn_lstm1a_sp_ld5
 decode_dir_suffix=rnnlm_1a
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
               # if it's set, it merges histories in the lattice if they share
