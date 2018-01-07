@@ -4740,10 +4740,11 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
 
 int main() {
   using namespace kaldi;
+  static_assert(int(kNoTrans) != int(CblasNoTrans) && int(kTrans) == int(CblasTrans), 
+    "kNoTrans and kTrans must be equal to the appropriate CBLAS library constants!");
   bool full_test = false;
   SetVerboseLevel(5);
   kaldi::MatrixUnitTest<float>(full_test);
   kaldi::MatrixUnitTest<double>(full_test);
   KALDI_LOG << "Tests succeeded.";
-
 }

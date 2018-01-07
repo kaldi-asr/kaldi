@@ -336,10 +336,6 @@ inline void cblas_Xsbmv1(
               1, x, 1, beta, y, 1);
 }
 
-inline void cblas_compile_time_assert (){
-	  KALDI_COMPILE_TIME_ASSERT (kNoTrans == CblasNoTrans && kTrans == CblasTrans);
-}
-
 /// This is not really a wrapper for CBLAS as CBLAS does not have this; in future we could
 /// extend this somehow.
 inline void mul_elements(
