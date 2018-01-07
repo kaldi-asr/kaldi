@@ -10,8 +10,7 @@
 # Dev objf:   -11.73 -5.66 -5.18 -4.96 -4.82 -4.73 -4.66 -4.59 -4.54 -4.51 -4.47 -4.44 -4.40 -4.38 -4.36 -4.34 -4.32 -4.30 -4.28 -4.27 -4.26 -4.21 -4.19 -4.18 -4.16 -4.15 -4.14 -4.13 -4.12 -4.12 -4.11 -4.09 -4.09 -4.08 -4.07 -4.07 -4.06 -4.06 -4.05 -4.04 -4.04 -4.04 -4.03 -4.02 -4.02 -4.01 -4.01 -4.00 -4.00 -4.00 -3.99 -3.99 -3.98 -3.98 -3.98 -3.98 -3.97 -3.97 -3.97 -3.97 -3.96 -3.95 -3.95 -3.94 -3.94 -3.94 -3.94 -3.93 -3.93 -3.93 -3.93 -3.93 -3.93 -3.92 -3.92 -3.92 -3.92 -3.92 -3.91 -3.91 
 
 # Begin configuration section.
-cmd=run.pl
-dir=exp/rnnlm_lstm_tdnn_b
+dir=exp/rnnlm_lstm_tdnn_1b
 embedding_dim=800
 lstm_rpd=200
 lstm_nrpd=200
@@ -22,7 +21,9 @@ epochs=20
 stage=-10
 train_stage=-10
 
-. utils/parse_options.sh
+. ./cmd.sh
+. ./utils/parse_options.sh
+[ -z "$cmd" ] && cmd=$train_cmd
 
 
 text=data/local/dict_nosp_larger/cleaned.gz
@@ -98,7 +99,7 @@ fi
 if [ $stage -le 3 ]; then
   rnnlm/train_rnnlm.sh --num-jobs-initial 1 --num-jobs-final 3 \
                        --embedding_l2 $embedding_l2 \
-                       --stage $train_stage --num-epochs $epochs --cmd "queue.pl" $dir
+                       --stage $train_stage --num-epochs $epochs --cmd "$cmd" $dir
 fi
 
 exit 0

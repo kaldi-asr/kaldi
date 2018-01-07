@@ -15,15 +15,17 @@
 # Dev objf:   -10.76 -4.65 -4.45 -4.34 -4.30 -4.29 -4.28 -4.27 -4.27 -4.28 -4.28 -4.29 -4.29 -4.30 -4.31 -4.32 -4.33 -4.34
 
 # Begin configuration section.
-cmd=run.pl
-dir=exp/rnnlm_lstm_tdnn_a
+dir=exp/rnnlm_lstm_tdnn_1a
 embedding_dim=200
 epochs=60
 mic=sdm1
 stage=-10
 train_stage=0
 
-. utils/parse_options.sh
+. ./cmd.sh
+. ./utils/parse_options.sh
+[ -z "$cmd" ] && cmd=$train_cmd
+
 train=data/$mic/train/text
 dev=data/$mic/dev/text
 wordlist=data/lang/words.txt
@@ -88,7 +90,7 @@ fi
 
 if [ $stage -le 3 ]; then
   rnnlm/train_rnnlm.sh --stage $train_stage \
-                       --num-epochs $epochs --cmd "queue.pl" $dir
+                       --num-epochs $epochs --cmd "$cmd" $dir
 fi
 
 exit 0
