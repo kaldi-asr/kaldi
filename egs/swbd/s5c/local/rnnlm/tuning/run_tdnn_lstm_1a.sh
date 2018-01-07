@@ -24,8 +24,8 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
               # the same ngram history and this prevents the lattice from 
               # exploding exponentially
 
-. cmd.sh
-. utils/parse_options.sh
+. ./cmd.sh
+. ./utils/parse_options.sh
 
 text=data/train_nodev/text
 fisher_text=data/local/lm//fisher/text1.gz
