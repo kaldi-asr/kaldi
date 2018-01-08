@@ -7,6 +7,9 @@ set -e
 set -o pipefail
 
 # This is fisher chain recipe for training a model on a subset of around 15 hours.
+# 250 hours of unsupervised data is used for training i-vector extractor.
+# This script expects both supervised and unsupervised data directories 
+# to have been prepared. 
 # This is similar to _i, but does not use phone LM to model UNK.
 
 # configs for 'chain'
@@ -16,11 +19,11 @@ train_stage=-10
 get_egs_stage=-10
 decode_iter=
 train_set=train_sup15k
-unsup_train_set=train_unsup250k
-semisup_train_set=semisup15k_250k
+unsup_train_set=train_unsup100k_250k
+semisup_train_set=semisup15k_100k_250k
 tree_affix=bi_j
-nnet3_affix=_semi15k_250k
-chain_affix=_semi15k_250k
+nnet3_affix=_semi15k_100k_250k
+chain_affix=_semi15k_100k_250k
 exp=exp/semisup_15k
 gmm=tri3  # Expect GMM model in $exp/$gmm for alignment
 xent_regularize=0.1
@@ -35,7 +38,7 @@ common_egs_dir=
 echo "$0 $@"  # Print the command line for logging
 
 . ./cmd.sh
-. ./path.sh
+if [ -f ./path.sh ]; then . ./path.sh; fi
 . ./utils/parse_options.sh
 
 if ! cuda-compiled; then
@@ -51,8 +54,10 @@ treedir=$exp/chain${chain_affix}/tree_${tree_affix}
 lat_dir=$exp/chain${chain_affix}/$(basename $gmm_dir)_${train_set}_sp_lats  # training lattices directory
 dir=$exp/chain${chain_affix}/tdnn${tdnn_affix}_sp
 train_data_dir=data/${train_set}_sp_hires
-train_ivector_dir=$exp/nnet3${nnet3_affix}/ivectors_${ivector_train_set}_sp_hires
+train_ivector_dir=$exp/nnet3${nnet3_affix}/ivectors_${semisup_train_set}_sp_hires
 lang=data/lang_chain
+
+# Train i-vector extractor on combined supervised and unsupervised datasets
 
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
@@ -194,7 +199,7 @@ if [ $stage -le 15 ]; then
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj $num_jobs --cmd "$decode_cmd" $iter_opts \
           --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
-          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter}${decode_suff} || exit 1;
+          $graph_dir data/${decode_set}_hires $dir/decode_poco_${decode_set}${decode_iter:+_$decode_iter}${decode_suff} || exit 1;
       ) &
   done
 fi

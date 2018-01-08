@@ -1,7 +1,10 @@
 #!/bin/bash
 
+# Copyright 2017  Vimal Manohar
+# Apache 2.0
+
 # This script is semi-supervised recipe with 15 hours of supervised data
-# and 250 hours unsupervised data with naive splitting 
+# and 250 hours unsupervised data with naive splitting. 
 # We use the combined data for i-vector extractor training.
 # We use 4-gram LM trained on 1250 hours of data excluding the 250 hours
 # unsupervised data to create LM for decoding. Rescoring is done with 
@@ -29,12 +32,14 @@ exp=exp/semisup_15k
 # present
 unsupervised_set=train_unsup100k_250k  # set this to your choice of unsupervised data
 supervised_set=train_sup15k
-semisup_train_set=semisup15k_250k
+semisup_train_set=semisup15k_100k_250k
 
 # Seed model options
-nnet3_affix=_semi15k_250k    # affix for nnet3 and chain dir -- relates to i-vector used
+nnet3_affix=_semi15k_100k_250k    # affix for nnet3 dir -- relates to i-vector used
+chain_affix=_semi15k_100k_250k    # affix for chain dir
 tdnn_affix=7j  # affix for the supervised chain-model directory
 train_supervised_opts="--stage -10 --train-stage -10"
+gmm=tri3  # GMM model to get supervision for supervised data
 
 # Unsupervised options
 decode_affix=   # affix for decoded lattices
@@ -45,8 +50,8 @@ lattice_prune_beam=4.0  # If supplied, will prune the lattices prior to getting 
 tolerance=1   # frame-tolerance for chain training
 phone_insertion_penalty=
 
-rescore_unsup_lattices=true  # Const ARPA rescoring with a bigger LM
-unsup_rescoring_affix=big   # Affix for const ARPA lang dir
+rescore_unsup_lattices=true  # const ARPA rescoring with a bigger LM
+unsup_rescoring_affix=big   # affix for const ARPA lang dir
 
 # Semi-supervised options
 comb_affix=comb1am  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
@@ -89,7 +94,8 @@ if [ $stage -le -1 ]; then
                           --train-set $supervised_set \
                           --unsup-train-set $unsupervised_set \
                           --semisup-train-set $semisup_train_set \
-                          --nnet3-affix "$nnet3_affix" --tdnn-affix "$tdnn_affix" --exp $exp || exit 1
+                          --nnet3-affix "$nnet3_affix" --tdnn-affix "$tdnn_affix" \
+                          --exp $exp || exit 1
 fi
 
 lang=data/lang_chain
@@ -101,7 +107,7 @@ test_lang=data/lang_poco_test
 test_graph_affix=_poco
 
 extractor=$exp/nnet3${nnet3_affix}/extractor  # i-vector extractor
-chaindir=$exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp  # supervised seed model
+chaindir=$exp/chain${chain_affix}/tdnn${tdnn_affix}_sp  # supervised seed model
 graphdir=$chaindir/graph${unsup_decode_graph_affix}
 
 decode_affix=${decode_affix}${unsup_decode_graph_affix}
@@ -177,8 +183,13 @@ fi
 cmvn_opts=`cat $chaindir/cmvn_opts` || exit 1
 
 tree_affix=bi${decode_affix}
-treedir=$exp/chain${nnet3_affix}/tree_${tree_affix}
-dir=$exp/chain${nnet3_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
+treedir=$exp/chain${chain_affix}/tree_${tree_affix}
+if [ -f $treedir/final.mdl ]; then
+  echo "$0: $treedir/final.mdl exists. Remove it and run again."
+  exit 1
+fi
+
+dir=$exp/chain${chain_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
 
 if [ $stage -le 9 ]; then
   steps/subset_ali_dir.sh --cmd "$train_cmd" \
@@ -187,12 +198,7 @@ if [ $stage -le 9 ]; then
     $chaindir/best_path_${unsupervised_set}${decode_affix}
   echo $frame_subsampling_factor > $chaindir/best_path_${unsupervised_set}${decode_affix}/frame_subsampling_factor
 
-  sup_ali_dir=$exp/tri3
-
-  if [ -f $treedir/final.mdl ]; then
-    echo "$0: $treedir/final.mdl exists. Remove it and run again."
-    exit 1
-  fi
+  sup_ali_dir=$exp/$gmm
 
   # Build a new tree using stats from both supervised and unsupervised data
   steps/nnet3/chain/build_tree_multiple_sources.sh \
@@ -272,16 +278,16 @@ fi
 
 left_context=$model_left_context
 right_context=$model_right_context
-left_context_initial=$model_left_context
-right_context_final=$model_right_context
+left_context_initial=0
+right_context_final=0
 
-left_context=`perl -e "print int($left_context + $frame_subsampling_factor / 2)"`
-right_context=`perl -e "print int($right_context + $frame_subsampling_factor / 2)"`
-left_context_initial=`perl -e "print int($left_context_initial + $frame_subsampling_factor / 2)"`
-right_context_final=`perl -e "print int($right_context_final + $frame_subsampling_factor / 2)"`
+egs_left_context=`perl -e "print int($left_context + $frame_subsampling_factor / 2)"`
+egs_right_context=`perl -e "print int($right_context + $frame_subsampling_factor / 2)"`
+egs_left_context_initial=`perl -e "print int($left_context_initial + $frame_subsampling_factor / 2)"`
+egs_right_context_final=`perl -e "print int($right_context_final + $frame_subsampling_factor / 2)"`
 
 supervised_set=${supervised_set}_sp
-sup_lat_dir=$exp/chain${nnet3_affix}/tri3_${supervised_set}_lats
+sup_lat_dir=$exp/chain${chain_affix}/${gmm}_${supervised_set}_lats
 if [ -z "$sup_egs_dir" ]; then
   sup_egs_dir=$dir/egs_${supervised_set}
   frames_per_eg=$(cat $chaindir/egs/info/frames_per_eg)
@@ -296,8 +302,8 @@ if [ -z "$sup_egs_dir" ]; then
 
     echo "$0: generating egs from the supervised data"
     steps/nnet3/chain/get_egs.sh --cmd "$decode_cmd" \
-               --left-context $left_context --right-context $right_context \
-               --left-context-initial $left_context_initial --right-context-final $right_context_final \
+               --left-context $egs_left_context --right-context $egs_right_context \
+               --left-context-initial $egs_left_context_initial --right-context-final $egs_right_context_final \
                --frame-subsampling-factor $frame_subsampling_factor \
                --alignment-subsampling-factor 3 \
                --frames-per-eg $frames_per_eg \
@@ -331,8 +337,8 @@ if [ -z "$unsup_egs_dir" ]; then
     steps/nnet3/chain/get_egs.sh \
                --cmd "$decode_cmd" --alignment-subsampling-factor 1 \
                --left-tolerance $tolerance --right-tolerance $tolerance \
-               --left-context $left_context --right-context $right_context \
-               --left-context-initial $left_context_initial --right-context-final $right_context_final \
+               --left-context $egs_left_context --right-context $egs_right_context \
+               --left-context-initial $egs_left_context_initial --right-context-final $egs_right_context_final \
                --frames-per-eg $unsup_frames_per_eg --frames-per-iter 1500000 \
                --frame-subsampling-factor $frame_subsampling_factor \
                --cmvn-opts "$cmvn_opts" --lattice-lm-scale $lattice_lm_scale \

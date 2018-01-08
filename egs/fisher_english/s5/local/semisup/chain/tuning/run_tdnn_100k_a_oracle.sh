@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# Copyright 2017  Vimal Manohar
+# Apache 2.0
+
 set -e
 
 # This is an oracle experiment using oracle transcription of 250 hours of 
@@ -20,11 +24,11 @@ unsupervised_set=train_unsup100k_250k_n10k
 combined_train_set=train_oracle100k_250k_n10k
 
 # Seed model options
-gmm=tri4a
 nnet3_affix=
 chain_affix=
 tree_affix=bi_a
 train_supervised_opts="--stage -10 --train-stage -10"
+gmm=tri4a
 
 # Neural network opts
 xent_regularize=0.1
@@ -41,7 +45,7 @@ decode_iter=
 echo "$0 $@"  # Print the command line for logging
 
 . ./cmd.sh
-. ./path.sh
+if [ -f ./path.sh ]; then . ./path.sh; fi
 . ./utils/parse_options.sh
 
 if ! cuda-compiled; then
@@ -54,7 +58,7 @@ fi
 
 gmm_dir=$exp/$gmm   # used to get training lattices (for chain supervision)
 treedir=$exp/chain${chain_affix}/tree_${tree_affix}
-lat_dir=$exp/chain${chain_affix}/$(basename $gmm_dir)_${combined_train_set}_sp_lats  # training lattices directory
+lat_dir=$exp/chain${chain_affix}/${gmm}_${combined_train_set}_sp_lats  # training lattices directory
 dir=$exp/chain${chain_affix}/tdnn${tdnn_affix}_sp
 train_data_dir=data/${combined_train_set}_sp_hires
 train_ivector_dir=$exp/nnet3${nnet3_affix}/ivectors_${supervised_set}_sp_hires
@@ -217,7 +221,7 @@ if [ $stage -le 15 ]; then
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj $num_jobs --cmd "$decode_cmd" $iter_opts \
           --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
-          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter}${decode_suff} || exit 1;
+          $graph_dir data/${decode_set}_hires $dir/decode_poco_${decode_set}${decode_iter:+_$decode_iter}${decode_suff} || exit 1;
       ) &
   done
 fi

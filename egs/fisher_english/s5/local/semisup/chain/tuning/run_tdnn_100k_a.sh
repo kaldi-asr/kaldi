@@ -3,23 +3,22 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
+set -e
+
 # This is fisher chain recipe for training a model on a subset of around 
 # 100 hours supervised data.
-
-set -e
 
 # configs for 'chain'
 stage=0
 tdnn_affix=7a
 train_stage=-10
 get_egs_stage=-10
-decode_iter=
 train_set=train_sup
 tree_affix=bi_a
 nnet3_affix=
 chain_affix=
 exp=exp/semisup_100k
-gmm=tri4a
+gmm=tri4a  # Expect GMM model in $exp/$gmm for alignment
 xent_regularize=0.1
 hidden_dim=725
 
@@ -27,6 +26,8 @@ hidden_dim=725
 num_epochs=4
 remove_egs=false
 common_egs_dir=
+
+decode_iter=
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -45,7 +46,7 @@ fi
 
 gmm_dir=$exp/$gmm   # used to get training lattices (for chain supervision)
 treedir=$exp/chain${chain_affix}/tree_${tree_affix}
-lat_dir=$exp/chain${chain_affix}/$(basename $gmm_dir)_${train_set}_sp_lats  # training lattices directory
+lat_dir=$exp/chain${chain_affix}/${gmm}_${train_set}_sp_lats  # training lattices directory
 dir=$exp/chain${chain_affix}/tdnn${tdnn_affix}_sp
 train_data_dir=data/${train_set}_sp_hires
 train_ivector_dir=$exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
@@ -54,7 +55,6 @@ lang=data/lang_chain
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
-
 local/semisup/nnet3/run_ivector_common.sh --stage $stage --exp $exp \
                                   --speed-perturb true \
                                   --train-set $train_set \
@@ -63,7 +63,8 @@ local/semisup/nnet3/run_ivector_common.sh --stage $stage --exp $exp \
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj 30 --cmd "$train_cmd" data/${train_set}_sp \
+  steps/align_fmllr_lats.sh --nj 30 --cmd "$train_cmd" \
+    --generate-ali-from-lats true data/${train_set}_sp \
     data/lang $gmm_dir $lat_dir || exit 1;
   rm $lat_dir/fsts.*.gz # save space
 fi
@@ -86,7 +87,7 @@ if [ $stage -le 11 ]; then
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate -1 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd" 7000 data/${train_set} $lang $gmm_dir $treedir || exit 1
+      --cmd "$train_cmd" 7000 data/${train_set}_sp $lang $lat_dir $treedir || exit 1
 fi
 
 if [ $stage -le 12 ]; then
@@ -190,10 +191,9 @@ if [ $stage -le 15 ]; then
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj $num_jobs --cmd "$decode_cmd" $iter_opts \
           --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
-          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter}${decode_suff} || exit 1;
+          $graph_dir data/${decode_set}_hires $dir/decode_poco_${decode_set}${decode_iter:+_$decode_iter}${decode_suff} || exit 1;
       ) &
   done
 fi
 wait;
 exit 0;
-

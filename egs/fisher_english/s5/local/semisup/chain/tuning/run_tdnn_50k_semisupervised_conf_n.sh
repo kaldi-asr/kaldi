@@ -1,7 +1,10 @@
 #!/bin/bash
 
+# Copyright 2017  Vimal Manohar
+# Apache 2.0
+
 # This script is semi-supervised recipe with 50 hours of supervised data
-# and 250 hours of unsupervised data with naive splitting.
+# and 250 hours unsupervised data with naive splitting.
 # We use the combined data for i-vector extractor training.
 # We use 4-gram LM trained on 1250 hours of data excluding the 250 hours
 # unsupervised data to create LM for decoding. Rescoring is done with 
@@ -29,13 +32,15 @@ exp=exp/semisup_50k
 # present
 unsupervised_set=train_unsup100k_250k  # set this to your choice of unsupervised data
 supervised_set=train_sup50k
-semisup_train_set=semisup50k_250k
+semisup_train_set=semisup50k_100k_250k
 
 # Seed model options
-nnet3_affix=_semi50k_250k    # affix for nnet3 and chain dir -- relates to i-vector used
+nnet3_affix=_semi50k_100k_250k    # affix for nnet3 dir -- relates to i-vector used
+chain_affix=_semi50k_100k_250k    # affix for chain dir
 tdnn_affix=7e  # affix for the supervised chain-model directory
 tree_affix=bi_e  # affix for the tree of the supervised model
 train_supervised_opts="--stage -10 --train-stage -10"
+gmm=tri4a  # GMM model to get supervision for supervised data
 
 # Unsupervised options
 decode_affix=   # affix for decoded lattices
@@ -46,12 +51,12 @@ lattice_prune_beam=4.0  # If supplied, will prune the lattices prior to getting 
 tolerance=1   # frame-tolerance for chain training
 phone_insertion_penalty=
 
-rescore_unsup_lattices=true  # Const ARPA rescoring with a bigger LM
-unsup_rescoring_affix=big   # Affix for const ARPA lang dir
+rescore_unsup_lattices=true  # const ARPA rescoring with a bigger LM
+unsup_rescoring_affix=big   # affix for const ARPA lang dir
 
 # Semi-supervised options
 comb_affix=comb1n  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
-supervision_weights=1.0,1.0
+supervision_weights=1.0,1.0   # Weights for supervised, unsupervised data egs
 lm_weights=3,2  # Weights on phone counts from supervised, unsupervised data for denominator FST creation
 
 sup_egs_dir=   # Supply this to skip supervised egs creation
@@ -102,8 +107,8 @@ unsup_decode_graph_affix=_poco_ex250k
 test_lang=data/lang_poco_test
 test_graph_affix=_poco
 
-extractor=$exp/nnet3${nnet3_affix}/extractor
-chaindir=$exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp
+extractor=$exp/nnet3${nnet3_affix}/extractor  # i-vector extractor
+chaindir=$exp/chain${chain_affix}/tdnn${tdnn_affix}_sp  # supervised seed model
 graphdir=$chaindir/graph${unsup_decode_graph_affix}
 
 decode_affix=${decode_affix}${unsup_decode_graph_affix}
@@ -178,7 +183,7 @@ if [ -f $chaindir/frame_subsampling_factor ]; then
 fi
 cmvn_opts=`cat $chaindir/cmvn_opts` || exit 1
 
-treedir=$exp/chain${nnet3_affix}/tree_${tree_affix}
+treedir=$exp/chain${chain_affix}/tree_${tree_affix}
 if [ ! -f $treedir/final.mdl ]; then
   echo "$0: $treedir/final.mdl does not exist."
   exit 1
@@ -186,7 +191,7 @@ fi
 
 diff $treedir/tree $chaindir/tree || { echo "$0: $treedir/tree and $chaindir/tree differ"; exit 1; }
 
-dir=$exp/chain${nnet3_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
+dir=$exp/chain${chain_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
 
 
 # Train denominator FST using phone alignments from 
@@ -255,16 +260,16 @@ fi
 
 left_context=$model_left_context
 right_context=$model_right_context
-left_context_initial=$model_left_context
-right_context_final=$model_right_context
+left_context_initial=0
+right_context_final=0
 
-left_context=`perl -e "print int($left_context + $frame_subsampling_factor / 2)"`
-right_context=`perl -e "print int($right_context + $frame_subsampling_factor / 2)"`
-left_context_initial=`perl -e "print int($left_context_initial + $frame_subsampling_factor / 2)"`
-right_context_final=`perl -e "print int($right_context_final + $frame_subsampling_factor / 2)"`
+egs_left_context=`perl -e "print int($left_context + $frame_subsampling_factor / 2)"`
+egs_right_context=`perl -e "print int($right_context + $frame_subsampling_factor / 2)"`
+egs_left_context_initial=`perl -e "print int($left_context_initial + $frame_subsampling_factor / 2)"`
+egs_right_context_final=`perl -e "print int($right_context_final + $frame_subsampling_factor / 2)"`
 
 supervised_set=${supervised_set}_sp
-sup_lat_dir=$exp/chain${nnet3_affix}/tri4a_${supervised_set}_lats
+sup_lat_dir=$exp/chain${chain_affix}/${gmm}_${supervised_set}_lats
 if [ -z "$sup_egs_dir" ]; then
   sup_egs_dir=$dir/egs_${supervised_set}
   frames_per_eg=$(cat $chaindir/egs/info/frames_per_eg)
@@ -279,8 +284,8 @@ if [ -z "$sup_egs_dir" ]; then
 
     echo "$0: generating egs from the supervised data"
     steps/nnet3/chain/get_egs.sh --cmd "$decode_cmd" \
-               --left-context $left_context --right-context $right_context \
-               --left-context-initial $left_context_initial --right-context-final $right_context_final \
+               --left-context $egs_left_context --right-context $egs_right_context \
+               --left-context-initial $egs_left_context_initial --right-context-final $egs_right_context_final \
                --frame-subsampling-factor $frame_subsampling_factor \
                --alignment-subsampling-factor 3 \
                --frames-per-eg $frames_per_eg \
@@ -314,8 +319,8 @@ if [ -z "$unsup_egs_dir" ]; then
     steps/nnet3/chain/get_egs.sh \
                --cmd "$decode_cmd" --alignment-subsampling-factor 1 \
                --left-tolerance $tolerance --right-tolerance $tolerance \
-               --left-context $left_context --right-context $right_context \
-               --left-context-initial $left_context_initial --right-context-final $right_context_final \
+               --left-context $egs_left_context --right-context $egs_right_context \
+               --left-context-initial $egs_left_context_initial --right-context-final $egs_right_context_final \
                --frames-per-eg $unsup_frames_per_eg --frames-per-iter 1500000 \
                --frame-subsampling-factor $frame_subsampling_factor \
                --cmvn-opts "$cmvn_opts" --lattice-lm-scale $lattice_lm_scale \
