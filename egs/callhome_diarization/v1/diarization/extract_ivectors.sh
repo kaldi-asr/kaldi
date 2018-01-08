@@ -1,13 +1,19 @@
 #!/bin/bash
 
-# Copyright     2013  Daniel Povey
-#               2016  David Snyder
-#               2017  Matthew Maciejewski
+# Copyright          2013  Daniel Povey
+#                    2016  David Snyder
+#               2017-2018  Matthew Maciejewski
 # Apache 2.0.
 
 # This script extracts iVectors over a sliding window for a
 # set of utterances, given features and a trained iVector
-# extractor. This is used for speaker diarization.
+# extractor. This is used for speaker diarization. This is done
+# using subsegmentation on the data directory. As a result, the
+# files containing "spk" (e.g. utt2spk) in the data directory
+# within the ivector directory are not referring to true speaker
+# labels, but are referring to recording labels. For example,
+# the spk2utt file contains a table mapping recording IDs to the
+# sliding-window subsegments generated for that recording.
 
 # Begin configuration section.
 nj=30

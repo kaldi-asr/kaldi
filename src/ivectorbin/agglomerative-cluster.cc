@@ -36,8 +36,9 @@ int main(int argc, char *argv[]) {
       "recordings to utterances, and outputs a list of labels in the form\n"
       "<utt> <label>.  Clustering is done using agglomerative hierarchical\n"
       "clustering with a score threshold as stop criterion.  By default, the\n"
-      "program reads in similarity scores, but with --read-distances=true\n"
-      "the scores are interpreted as distances.\n"
+      "program reads in similarity scores, but with --read-costs=true\n"
+      "the scores are interpreted as costs (i.e. a smaller value indicates\n"
+      "utterance similarity).\n"
       "Usage: agglomerative-cluster [options] <scores-rspecifier> "
       "<reco2utt-rspecifier> <labels-wspecifier>\n"
       "e.g.: \n"
@@ -47,15 +48,15 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     std::string reco2num_rspecifier;
     BaseFloat threshold = 0.0;
-    bool read_distances = false;
+    bool read_costs = false;
 
     po.Register("reco2num-rspecifier", &reco2num_rspecifier,
       "If supplied, clustering creates exactly this many clusters for each"
       " recording and the option --threshold is ignored.");
     po.Register("threshold", &threshold, "Merge clusters if their distance"
       " is less than this threshold.");
-    po.Register("read-distances", &read_distances, "If true, the first"
-      " argument is interpreted as a matrix of distances rather than a"
+    po.Register("read-costs", &read_costs, "If true, the first"
+      " argument is interpreted as a matrix of costs rather than a"
        "similarity matrix.");
 
     po.Read(argc, argv);
@@ -76,20 +77,22 @@ int main(int argc, char *argv[]) {
 
     for (; !scores_reader.Done(); scores_reader.Next()) {
       std::string reco = scores_reader.Key();
-      Matrix<BaseFloat> scores = scores_reader.Value();
+      Matrix<BaseFloat> costs = scores_reader.Value();
       // By default, the scores give the similarity between pairs of
       // utterances.  We need to multiply the scores by -1 to reinterpet
-      // them as distances (unless --read-distances=true).
-      if (!read_distances)
-        scores.Scale(-1);
+      // them as costs (unless --read-costs=true) as the agglomerative
+      // clustering code requires.
+      if (!read_costs)
+        costs.Scale(-1);
+        threshold = -threshold;
       std::vector<std::string> uttlist = reco2utt_reader.Value(reco);
       std::vector<int32> spk_ids;
       if (reco2num_rspecifier.size()) {
         int32 num_speakers = reco2num_reader.Value(reco);
-        AgglomerativeCluster(scores,
+        AgglomerativeCluster(costs,
           std::numeric_limits<BaseFloat>::max(), num_speakers, &spk_ids);
       } else {
-        AgglomerativeCluster(scores, threshold, 1, &spk_ids);
+        AgglomerativeCluster(costs, threshold, 1, &spk_ids);
       }
       for (int32 i = 0; i < spk_ids.size(); i++)
         label_writer.Write(uttlist[i], spk_ids[i]);

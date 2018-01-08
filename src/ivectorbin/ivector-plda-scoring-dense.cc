@@ -57,7 +57,6 @@ bool EstPca(const Matrix<BaseFloat> &ivector_mat, BaseFloat target_energy,
 
   Matrix<BaseFloat> transform(P, kTrans); // Transpose of P.  This is what
                                        // appears in the transform.
-  Vector<BaseFloat> offset(full_dim);
 
   // We want the PCA transform to retain target_energy amount of the total
   // energy.
@@ -149,17 +148,13 @@ int main(int argc, char *argv[]) {
     SequentialTokenVectorReader reco2utt_reader(reco2utt_rspecifier);
     RandomAccessBaseFloatVectorReader ivector_reader(ivector_rspecifier);
     BaseFloatMatrixWriter scores_writer(scores_wspecifier);
-    int32 num_spk_err = 0,
-          num_spk_done = 0;
+    int32 num_reco_err = 0,
+          num_reco_done = 0;
     for (; !reco2utt_reader.Done(); reco2utt_reader.Next()) {
       Plda this_plda(plda);
       std::string reco = reco2utt_reader.Key();
 
-      // The uttlist is sorted here and in binaries that use the scores
-      // this outputs.  This is to ensure that the segment corresponding
-      // to the same rows and columns (of the score matrix) across binaries.
       std::vector<std::string> uttlist = reco2utt_reader.Value();
-      std::sort(uttlist.begin(), uttlist.end());
       std::vector<Vector<BaseFloat> > ivectors;
 
       for (size_t i = 0; i < uttlist.size(); i++) {
@@ -175,7 +170,7 @@ int main(int argc, char *argv[]) {
       if (ivectors.size() == 0) {
         KALDI_WARN << "Not producing output for recording " << reco
                    << " since no segments had iVectors";
-        num_spk_err++;
+        num_reco_err++;
       } else {
         Matrix<BaseFloat> ivector_mat(ivectors.size(), ivectors[0].Dim()),
                           ivector_mat_pca,
@@ -210,12 +205,12 @@ int main(int argc, char *argv[]) {
           }
         }
         scores_writer.Write(reco, scores);
-        num_spk_done++;
+        num_reco_done++;
       }
     }
-    KALDI_LOG << "Processed " << num_spk_done << " recordings, "
-              << num_spk_err << " had errors.";
-    return (num_spk_done != 0 ? 0 : 1 );
+    KALDI_LOG << "Processed " << num_reco_done << " recordings, "
+              << num_reco_err << " had errors.";
+    return (num_reco_done != 0 ? 0 : 1 );
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

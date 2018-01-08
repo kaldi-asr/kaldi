@@ -58,11 +58,11 @@ void AgglomerativeClusterer::Cluster() {
   assignments_->swap(new_assignments);
 }
 
-BaseFloat AgglomerativeClusterer::ScoreLookup(int32 i, int32 j) {
+BaseFloat AgglomerativeClusterer::GetCost(int32 i, int32 j) {
   if (i < j)
-    return cluster_score_map_[std::make_pair(i, j)];
+    return cluster_cost_map_[std::make_pair(i, j)];
   else
-    return cluster_score_map_[std::make_pair(j, i)];
+    return cluster_cost_map_[std::make_pair(j, i)];
 }
 
 void AgglomerativeClusterer::Initialize() {
@@ -75,12 +75,12 @@ void AgglomerativeClusterer::Initialize() {
     clusters_map_[count_] = c;
     active_clusters_.insert(count_);
 
-    // propagate the queue with all pairs from the score matrix
+    // propagate the queue with all pairs from the cost matrix
     for (int32 j = i+1; j < num_clusters_; j++) {
-      BaseFloat score = scores_(i,j);
-      cluster_score_map_[std::make_pair(i+1, j+1)] = score;
-      if (score <= thresh_)
-        queue_.push(std::make_pair(score,
+      BaseFloat cost = costs_(i,j);
+      cluster_cost_map_[std::make_pair(i+1, j+1)] = cost;
+      if (cost <= thresh_)
+        queue_.push(std::make_pair(cost,
             std::make_pair(static_cast<uint16>(i+1),
                            static_cast<uint16>(j+1))));
     }
@@ -101,15 +101,15 @@ void AgglomerativeClusterer::MergeClusters(int32 i, int32 j) {
   // Remove the merged clusters from the list of active clusters.
   active_clusters_.erase(i);
   active_clusters_.erase(j);
-  // Update the queue with all the new scores involving the new cluster
+  // Update the queue with all the new costs involving the new cluster
   std::set<int32>::iterator it;
   for (it = active_clusters_.begin(); it != active_clusters_.end(); ++it) {
-    // The new score is the sum of the score of the new cluster's parents
-    BaseFloat new_score = ScoreLookup(*it, i) + ScoreLookup(*it, j);
-    cluster_score_map_[std::make_pair(*it, count_)] = new_score;
+    // The new cost is the sum of the costs of the new cluster's parents
+    BaseFloat new_cost = GetCost(*it, i) + GetCost(*it, j);
+    cluster_cost_map_[std::make_pair(*it, count_)] = new_cost;
     BaseFloat norm = clust1->size * (clusters_map_[*it])->size;
-    if (new_score / norm <= thresh_)
-      queue_.push(std::make_pair(new_score / norm,
+    if (new_cost / norm <= thresh_)
+      queue_.push(std::make_pair(new_cost / norm,
           std::make_pair(static_cast<uint16>(*it),
                          static_cast<uint16>(count_))));
   }
@@ -120,12 +120,12 @@ void AgglomerativeClusterer::MergeClusters(int32 i, int32 j) {
 }
 
 void AgglomerativeCluster(
-    const Matrix<BaseFloat> &scores,
+    const Matrix<BaseFloat> &costs,
     BaseFloat thresh,
     int32 min_clust,
     std::vector<int32> *assignments_out) {
   KALDI_ASSERT(min_clust >= 0);
-  AgglomerativeClusterer ac(scores, thresh, min_clust, assignments_out);
+  AgglomerativeClusterer ac(costs, thresh, min_clust, assignments_out);
   ac.Cluster();
 }
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Copyright  2016  David Snyder
-#            2017  Matthew Maciejewski
+# Copyright       2016  David Snyder
+#            2017-2018  Matthew Maciejewski
 # Apache 2.0.
 
 # This script performs agglomerative clustering using scored
@@ -14,7 +14,8 @@ stage=0
 nj=10
 cleanup=true
 threshold=0.5
-reco2num=
+read_costs=false
+reco2num_spk=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -31,10 +32,14 @@ if [ $# != 2 ]; then
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --nj <n|10>                                      # Number of jobs (also see num-processes and num-threads)"
   echo "  --stage <stage|0>                                # To control partial reruns"
-  echo "  --threshold <threshold|0.5>                      # Cluster stopping criterion. Clusters with scores less"
+  echo "  --threshold <threshold|0>                        # Cluster stopping criterion. Clusters with scores greater"
   echo "                                                   # than this value will be merged until all clusters"
-  echo "                                                   # exceed this value. Default scoring ranges from 0 to 1."
-  echo "  --reco2num <reco2num-file>                       # File containing mapping of recording ID"
+  echo "                                                   # exceed this value."
+  echo "  --read-costs <read-costs|false>                  # If true, interpret input scores as costs, i.e. similarity"
+  echo "                                                   # is indicated by smaller values. If enabled, clusters will"
+  echo "                                                   # be merged until all cluster scores are less than the"
+  echo "                                                   # threshold value."
+  echo "  --reco2num_spk <reco2num_spk-file>               # File containing mapping of recording ID"
   echo "                                                   # to number of speakers. Used instead of threshold"
   echo "                                                   # as stopping criterion if supplied."
   echo "  --cleanup <bool|false>                           # If true, remove temporary files"
@@ -55,8 +60,8 @@ cp $srcdir/utt2spk $dir/tmp/
 cp $srcdir/segments $dir/tmp/
 utils/fix_data_dir.sh $dir/tmp > /dev/null
 
-if [ ! -z $reco2num ]; then
-  reco2num="ark,t:$reco2num"
+if [ ! -z $reco2num_spk ]; then
+  reco2num_spk="ark,t:$reco2num_spk"
 fi
 
 sdata=$dir/tmp/split$nj;
@@ -69,8 +74,8 @@ feats="utils/filter_scp.pl $sdata/JOB/spk2utt $srcdir/scores.scp |"
 if [ $stage -le 0 ]; then
   echo "$0: clustering scores"
   $cmd JOB=1:$nj $dir/log/agglomerative_cluster.JOB.log \
-    agglomerative-cluster --threshold=$threshold \
-      --reco2num-rspecifier=$reco2num scp:"$feats" \
+    agglomerative-cluster --threshold=$threshold --read-costs=$read_costs \
+      --reco2num_spk-rspecifier=$reco2num_spk scp:"$feats" \
       ark,t:$sdata/JOB/spk2utt ark,t:$dir/labels.JOB || exit 1;
 fi
 

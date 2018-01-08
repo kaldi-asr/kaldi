@@ -49,7 +49,7 @@ fi
 cp $tmp_dir/sre2000-key/segments $data_dir/callhome/
 awk '{print $1, $2}' $data_dir/callhome/segments > $data_dir/callhome/utt2spk
 utils/utt2spk_to_spk2utt.pl $data_dir/callhome/utt2spk > $data_dir/callhome/spk2utt
-cp $tmp_dir/sre2000-key/reco2num $data_dir/callhome/
+cp $tmp_dir/sre2000-key/reco2num $data_dir/callhome/reco2num_spk
 cp $tmp_dir/sre2000-key/fullref.rttm $data_dir/callhome/
 
 utils/validate_data_dir.sh --no-text --no-feats $data_dir/callhome
@@ -65,9 +65,9 @@ utils/fix_data_dir.sh $data_dir/callhome1
 utils/filter_scp.pl --exclude $data_dir/callhome1/wav.scp \
   $data_dir/callhome/wav.scp > $data_dir/callhome2/wav.scp
 utils/fix_data_dir.sh $data_dir/callhome2
-utils/filter_scp.pl $data_dir/callhome1/wav.scp $data_dir/callhome/reco2num \
-  > $data_dir/callhome1/reco2num
-utils/filter_scp.pl $data_dir/callhome2/wav.scp $data_dir/callhome/reco2num \
-  > $data_dir/callhome2/reco2num
+utils/filter_scp.pl $data_dir/callhome1/wav.scp $data_dir/callhome/reco2num_spk \
+  > $data_dir/callhome1/reco2num_spk
+utils/filter_scp.pl $data_dir/callhome2/wav.scp $data_dir/callhome/reco2num_spk \
+  > $data_dir/callhome2/reco2num_spk
 
 rm -rf $tmp_dir 2> /dev/null

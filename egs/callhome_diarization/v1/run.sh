@@ -17,7 +17,7 @@ vaddir=`pwd`/mfcc
 data_root=/export/corpora5/LDC
 num_components=2048
 ivector_dim=128
-stage=0
+stage=5
 
 # Prepare datasets
 if [ $stage -le 0 ]; then
@@ -123,7 +123,7 @@ fi
 if [ $stage -le 4 ]; then
   # Train a PLDA model on SRE, using callhome1 to whiten.
   # We will later use this to score iVectors in callhome2.
-  run.pl exp/ivectors_callhome1/log/plda.log \
+  "$train_cmd" exp/ivectors_callhome1/log/plda.log \
     ivector-compute-plda ark:exp/ivectors_sre_segmented_128k/spk2utt \
       "ark:ivector-subtract-global-mean \
       scp:exp/ivectors_sre_segmented_128k/ivector.scp ark:- \
@@ -133,7 +133,7 @@ if [ $stage -le 4 ]; then
 
   # Train a PLDA model on SRE, using callhome2 to whiten.
   # We will later use this to score iVectors in callhome1.
-  run.pl exp/ivectors_callhome2/log/plda.log \
+  "$train_cmd" exp/ivectors_callhome2/log/plda.log \
     ivector-compute-plda ark:exp/ivectors_sre_segmented_128k/spk2utt \
       "ark:ivector-subtract-global-mean \
       scp:exp/ivectors_sre_segmented_128k/ivector.scp ark:- \
@@ -227,11 +227,11 @@ if [ $stage -le 7 ]; then
   # In this section, we show how to do the clustering if the number of speakers
   # (and therefore, the number of clusters) per recording is known in advance.
   diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
-    --reco2num data/callhome/reco2num \
+    --reco2num_spk data/callhome1/reco2num_spk \
     exp/ivectors_callhome1/plda_scores exp/ivectors_callhome1/plda_scores_num_spk
 
   diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
-    --reco2num data/callhome/reco2num \
+    --reco2num_spk data/callhome2/reco2num_spk \
     exp/ivectors_callhome2/plda_scores exp/ivectors_callhome2/plda_scores_num_spk
 
   mkdir -p exp/results
