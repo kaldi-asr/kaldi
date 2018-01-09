@@ -49,7 +49,7 @@ lattice_prune_beam=4.0  # If supplied, will prune the lattices prior to getting 
 tolerance=1   # frame-tolerance for chain training
 phone_insertion_penalty=
 
-rescore_unsup_lattices=false  # const ARPA rescoring with a bigger LM
+rescore_unsup_lattices=false  # const ARPA rescoring with a bigger LM -- false here because we have only LM text from 100 hours of data
 unsup_rescoring_affix=big   # affix for const ARPA lang dir
 
 # Semi-supervised options
@@ -71,8 +71,8 @@ decode_iter=  # Iteration to decode with
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
-. cmd.sh
-. ./path.sh
+. ./cmd.sh
+if [ -f ./path.sh ]; then . ./path.sh; fi
 . ./utils/parse_options.sh
 
 egs_affix=${egs_affix}_prun${lattice_prune_beam}_lmwt${lattice_lm_scale}_tol${tolerance}
@@ -103,11 +103,25 @@ unsup_decode_graph_affix=_poco_ex250k
 test_lang=data/lang_poco_test
 test_graph_affix=_poco
 
+supervised_set=${supervised_set}_sp
+
+sup_lat_dir=$exp/chain${chain_affix}/${gmm}_${supervised_set}_lats   # supervised data alignments and lattices
 extractor=$exp/nnet3${nnet3_affix}/extractor  # i-vector extractor
 chaindir=$exp/chain${chain_affix}/tdnn${tdnn_affix}_sp  # supervised seed model
 graphdir=$chaindir/graph${unsup_decode_graph_affix}
 
 decode_affix=${decode_affix}${unsup_decode_graph_affix}
+
+for f in data/${supervised_set}_hires/feats.scp \
+  data/${unsupervised_set}/feats.scp \
+  $extractor/final.ie $exp/$gmm/final.mdl \
+  $sup_lat_dir/lat.1.gz $sup_lat_dir/ali.1.gz \
+  $unsup_decode_lang/G.fst; do
+  if [ ! -f $f ]; then
+    echo "$0: Could not find file $f"
+    exit 1
+  fi
+done
 
 if [ ! -f $graphdir/HCLG.fst ]; then
   utils/mkgraph.sh --self-loop-scale 1.0 $unsup_decode_lang $chaindir $graphdir
@@ -156,7 +170,7 @@ for dset in $unsupervised_set; do
     echo "$0: getting the decoding lattices for the unsupervised subset using the chain model at: $chaindir"
     steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
               --acwt 1.0 --post-decode-acwt 10.0 --write-compact false --skip-scoring true \
-              --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${unsupervised_set}_sp_hires \
+              --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${dset}_sp_hires \
               --scoring-opts "--min-lmwt 10 --max-lmwt 10" --word-determinize false \
               $graphdir data/${dset}_sp_hires $chaindir/decode_${dset}_sp${decode_affix}
   fi
@@ -182,12 +196,14 @@ if $rescore_unsup_lattices; then
   decode_affix=${decode_affix}_${unsup_rescoring_affix}
 fi
 
+unsupervised_set=${unsupervised_set}_sp
+
 # Get lattice posterior of best path alignment
 if [ $stage -le 8 ]; then
   steps/best_path_weights.sh --cmd "${train_cmd}" --acwt 0.1 \
-    data/${unsupervised_set}_sp_hires $lang \
-    $chaindir/decode_${unsupervised_set}_sp${decode_affix} \
-    $chaindir/best_path_${unsupervised_set}_sp${decode_affix}
+    data/${unsupervised_set}_hires $lang \
+    $chaindir/decode_${unsupervised_set}${decode_affix} \
+    $chaindir/best_path_${unsupervised_set}${decode_affix}
 fi
 
 frame_subsampling_factor=1
@@ -206,13 +222,12 @@ diff $treedir/tree $chaindir/tree || { echo "$0: $treedir/tree and $chaindir/tre
 
 dir=$exp/chain${chain_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
 
-
 # Train denominator FST using phone alignments from 
 # supervised and unsupervised data
 if [ $stage -le 10 ]; then
-  echo $frame_subsampling_factor > $chaindir/best_path_${unsupervised_set}_sp${decode_affix}/frame_subsampling_factor
+  echo $frame_subsampling_factor > $chaindir/best_path_${unsupervised_set}${decode_affix}/frame_subsampling_factor
   steps/nnet3/chain/make_weighted_den_fst.sh --num-repeats $lm_weights --cmd "$train_cmd" \
-    ${treedir} ${chaindir}/best_path_${unsupervised_set}_sp${decode_affix} \
+    ${treedir} ${chaindir}/best_path_${unsupervised_set}${decode_affix} \
     $dir
 fi
 
@@ -281,8 +296,6 @@ egs_right_context=`perl -e "print int($right_context + $frame_subsampling_factor
 egs_left_context_initial=`perl -e "print int($left_context_initial + $frame_subsampling_factor / 2)"`
 egs_right_context_final=`perl -e "print int($right_context_final + $frame_subsampling_factor / 2)"`
 
-supervised_set=${supervised_set}_sp
-sup_lat_dir=$exp/chain${chain_affix}/${gmm}_${supervised_set}_lats
 if [ -z "$sup_egs_dir" ]; then
   sup_egs_dir=$dir/egs_${supervised_set}
   frames_per_eg=$(cat $chaindir/egs/info/frames_per_eg)
@@ -313,9 +326,7 @@ else
   frames_per_eg=$(cat $sup_egs_dir/info/frames_per_eg)
 fi
 
-unsupervised_set=${unsupervised_set}_sp
 unsup_lat_dir=${chaindir}/decode_${unsupervised_set}${decode_affix} 
-
 if [ -z "$unsup_egs_dir" ]; then
   [ -z $unsup_frames_per_eg ] && [ ! -z "$frames_per_eg" ] && unsup_frames_per_eg=$frames_per_eg
   unsup_egs_dir=$dir/egs_${unsupervised_set}${decode_affix}${egs_affix}
