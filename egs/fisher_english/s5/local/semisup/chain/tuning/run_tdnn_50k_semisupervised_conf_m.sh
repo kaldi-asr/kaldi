@@ -10,6 +10,7 @@
 # unsupervised data to create LM for decoding. Rescoring is done with 
 # a larger 4-gram LM.
 # This script uses the same tree as that for the seed model.
+# This script uses phone LM to model UNK.
 
 # Unsupervised set: train_unsup100k_250k
 # unsup_frames_per_eg=150
