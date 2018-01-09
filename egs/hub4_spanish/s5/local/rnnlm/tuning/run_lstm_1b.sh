@@ -10,8 +10,7 @@
 # Dev objf:   -10.07 -5.52 -5.25 -5.19 -5.21 -5.24 -5.29 -5.32 -5.35 -5.39 
 
 # Begin configuration section.
-cmd=run.pl
-dir=exp/rnnlm_lstm_b
+dir=exp/rnnlm_lstm_1b
 embedding_dim=800
 embedding_l2=0.005 # embedding layer l2 regularize
 comp_l2=0.005 # component-level l2 regularize
@@ -20,7 +19,9 @@ epochs=160
 stage=-10
 train_stage=-10
 
-. utils/parse_options.sh
+. ./cmd.sh
+. ./utils/parse_options.sh
+[ -z "$cmd" ] && cmd=$train_cmd
 
 
 text=data/train/text
@@ -90,7 +91,7 @@ fi
 if [ $stage -le 3 ]; then
   rnnlm/train_rnnlm.sh --embedding_l2 $embedding_l2 \
                        --stage $train_stage \
-                       --num-epochs $epochs --cmd "queue.pl" $dir
+                       --num-epochs $epochs --cmd "$cmd" $dir
 fi
 
 exit 0

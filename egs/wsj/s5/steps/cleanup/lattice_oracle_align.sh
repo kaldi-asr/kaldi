@@ -74,7 +74,7 @@ oov=$(cat $lang/oov.int)
 
 utils/split_data.sh --per-utt $data $nj
 
-sdata=$data/split$nj
+sdata=$data/split${nj}utt
 
 if [ $stage -le 1 ]; then
   $cmd JOB=1:$nj $dir/log/get_oracle.JOB.log \
