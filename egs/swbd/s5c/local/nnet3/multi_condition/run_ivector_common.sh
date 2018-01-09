@@ -41,7 +41,7 @@ if [ "$speed_perturb" == "true" ]; then
   if [ $stage -le 2 ]; then
     #obtain the alignment of the perturbed data
     steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
-      data/${input_data_dir}_sp data/lang_nosp exp/tri4 exp/tri4_ali_nodup_sp || exit 1
+      data/${input_data_dir}_sp data/lang exp/tri4 exp/tri4_ali_nodup_sp || exit 1
   fi
 
   clean_data_dir=${input_data_dir}_sp
@@ -103,7 +103,7 @@ if [ $stage -le 5 ]; then
   steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
     --splice-opts "--left-context=3 --right-context=3" \
     5500 90000 data/train_100k_nodup_hires \
-    data/lang_nosp exp/tri2_ali_100k_nodup $ivector_dir/tri3b
+    data/lang exp/tri2_ali_100k_nodup $ivector_dir/tri3b
 fi
 
 train_set=${clean_data_dir}_rvb${num_data_reps}
