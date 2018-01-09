@@ -1,12 +1,15 @@
 #!/bin/bash
 
+# Copyright 2017   Nagendra Kumar Goel
+# Apache 2.0
+
 # This is a script to train a TDNN for speech activity detection (SAD) 
 # using statistics pooling for long-context information.
 
 set -o pipefail
 set -u
 
-. ./cmd.sh
+. cmd.sh
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
@@ -46,7 +49,7 @@ affix=1a2
 data_dir=exp/segmentation_1a/train_whole_hires_bp
 targets_dir=exp/segmentation_1a/train_whole_combined_targets_sub3
 
-. ./cmd.sh
+. cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -132,7 +135,7 @@ if [ $stage -le 6 ]; then
 
   copy-feats scp:$targets_dir/targets.scp ark:- | \
     matrix-sum-rows ark:- ark:- | vector-sum --binary=false ark:- - | \
-    awk '{print " [ "$2" "$3" ]"}' > $dir/post_output.vec
+    awk '{print " [ "$2" "$3" "$4" ]"}' > $dir/post_output.vec
 
   echo 3 > $dir/frame_subsampling_factor
 fi

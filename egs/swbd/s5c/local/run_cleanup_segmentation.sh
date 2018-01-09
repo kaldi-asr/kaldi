@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Copyright 2016  Vimal Manohar
+#           2017  Nagendra Kumar Goel
+#           2016  Vimal Manohar
 #           2016  Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0
 

@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Copyright 2014  Johns Hopkins University (author: Nagendra K Goel)
+# Copyright    2017  Nagendra Kumar Goel
+#              2014  Johns Hopkins University (author: Nagendra K Goel)
 # Apache 2.0
 
 # This script operates on a directory, such as in exp/segmentation_1a/train_whole_combined_targets_rev1,
