@@ -865,9 +865,13 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
   // Larger alpha will update faster but will be more prone to instability.  I
   // believe the scalar value below shouldn't be more than 0.25 or maybe 0.5 or
   // it will always be unstable.  It should be > 0.0.
-  // The factor of 1/scale^4 is, I *believe*, going to give us the right
-  // kind of invariance w.r.t. the scale.
-  BaseFloat alpha = 0.125 / (scale * scale * scale * scale);
+  // The factor of 1/scale^2 is, I *believe*, going to give us the right
+  // kind of invariance w.r.t. the scale.  With regard to this factor, look at
+  // the statement
+  // M_update.AddMatMat(-4.0 * alpha, P, kNoTrans, *M, kNoTrans, 0.0); where P
+  // is proportional to scale^2 and M to 'scale', so the RHS is proportional to
+  // 'scale^3', but we'd like 'M_update' to be proportional to 'scale'.
+  BaseFloat alpha = 0.125 / (scale * scale);
 
   // We're enforcing the rows to be orthonormal.
   // define P = M M^T.  If P is unit then M has orthonormal rows.
