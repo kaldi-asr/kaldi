@@ -75,7 +75,7 @@ if [ $stage -le 0 ]; then
   echo "$0: clustering scores"
   $cmd JOB=1:$nj $dir/log/agglomerative_cluster.JOB.log \
     agglomerative-cluster --threshold=$threshold --read-costs=$read_costs \
-      --reco2num_spk-rspecifier=$reco2num_spk scp:"$feats" \
+      --reco2num-spk-rspecifier=$reco2num_spk scp:"$feats" \
       ark,t:$sdata/JOB/spk2utt ark,t:$dir/labels.JOB || exit 1;
 fi
 

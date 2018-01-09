@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
     BaseFloat threshold = 0.0;
     bool read_costs = false;
 
-    po.Register("reco2num_spk-rspecifier", &reco2num_spk_rspecifier,
+    po.Register("reco2num-spk-rspecifier", &reco2num_spk_rspecifier,
       "If supplied, clustering creates exactly this many clusters for each"
       " recording and the option --threshold is ignored.");
     po.Register("threshold", &threshold, "Merge clusters if their distance"
