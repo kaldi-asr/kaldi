@@ -45,6 +45,7 @@ int main(int argc, char *argv[]) {
     BaseFloat thresh = 300.0;
     BaseFloat cluster_thresh = -1.0;  // negative means use smallest split in splitting phase as thresh.
     int32 max_leaves = 0;
+    bool round_num_leaves = true;
     std::string occs_out_filename;
 
     ParseOptions po(usage);
@@ -61,6 +62,9 @@ int main(int argc, char *argv[]) {
                 "threshold for clustering after tree-building.  0 means "
                 "no clustering; -1 means use as a clustering threshold the "
                 "likelihood change of the final split.");
+    po.Register("round-num-leaves", &round_num_leaves, 
+                "If true, then the number of leaves will be reduced to a "
+                "multiple of 8 by clustering.");
 
     po.Read(argc, argv);
 
@@ -127,7 +131,8 @@ int main(int argc, char *argv[]) {
                        thresh,
                        max_leaves,
                        cluster_thresh,
-                       P);
+                       P,
+                       round_num_leaves);
 
     { // This block is to warn about low counts.
       std::vector<BuildTreeStatsType> split_stats;
