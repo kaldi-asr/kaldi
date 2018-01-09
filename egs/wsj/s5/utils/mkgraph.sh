@@ -19,15 +19,13 @@ tscale=1.0
 loopscale=0.1
 
 remove_oov=false
-unk_prob_scale=1.0
 
-for x in `seq 5`; do
+for x in `seq 4`; do
   [ "$1" == "--mono" -o "$1" == "--left-biphone" -o "$1" == "--quinphone" ] && shift && \
     echo "WARNING: the --mono, --left-biphone and --quinphone options are now deprecated and ignored."
   [ "$1" == "--remove-oov" ] && remove_oov=true && shift;
   [ "$1" == "--transition-scale" ] && tscale=$2 && shift 2;
   [ "$1" == "--self-loop-scale" ] && loopscale=$2 && shift 2;
-  [ "$1" == "--unk-prob-scale" ] && unk_prob_scale=$2 && shift 2;
 done
 
 if [ $# != 3 ]; then
@@ -81,26 +79,12 @@ P=$(tree-info $tree | grep "central-position" | cut -d' ' -f2) || { echo "Error 
   echo "$0: WARNING: chain models need '--self-loop-scale 1.0'";
 
 mkdir -p $lang/tmp
-
-G_fst=$lang/G.fst
-if [ $unk_prob_scale != 1.0 ]; then
-  oov_symbol=`cat $lang/oov.int`
-  fstprint $lang/G.fst | \
-    awk -v oov_symbol=$oov_symbol -v unk_scale=$unk_prob_scale '{
-    if ($4 == oov_symbol) { 
-      $5 = $5 - log(unk_scale); 
-    } 
-    print $0; 
-  }' | fstcompile > $graph_dir/G_tmp.fst
-  G_fst=$graph_dir/G_tmp.fst
-fi
-
 trap "rm -f $lang/tmp/LG.fst.$$" EXIT HUP INT PIPE TERM
 # Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in
 # place of -o
-if [[ ! -s $lang/tmp/LG.fst || $lang/tmp/LG.fst -ot $G_fst || \
+if [[ ! -s $lang/tmp/LG.fst || $lang/tmp/LG.fst -ot $lang/G.fst || \
       $lang/tmp/LG.fst -ot $lang/L_disambig.fst ]]; then
-  fsttablecompose $lang/L_disambig.fst $G_fst | fstdeterminizestar --use-log=true | \
+  fsttablecompose $lang/L_disambig.fst $lang/G.fst | fstdeterminizestar --use-log=true | \
     fstminimizeencoded | fstpushspecial | \
     fstarcsort --sort_type=ilabel > $lang/tmp/LG.fst.$$ || exit 1;
   mv $lang/tmp/LG.fst.$$ $lang/tmp/LG.fst
