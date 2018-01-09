@@ -26,11 +26,12 @@
 #include "base/kaldi-common.h"
 
 namespace kaldi {
-// this enums equal to CblasTrans and SblasNoTrans constants from CBLAS library
-// we are writing them as numbers because we didn't include that library headers here  
+// this enums equal to CblasTrans and CblasNoTrans constants from CBLAS library
+// we are writing them as literals because we don't want to include here matrix/kaldi-blas.h,
+// which puts many symbols into global scope (like "real") via the header f2c.h 
 typedef enum {
-  kTrans    = 112,
-  kNoTrans  = 111
+  kTrans    = 112, // = CblasTrans
+  kNoTrans  = 111  // = CblasNoTrans
 } MatrixTransposeType;
 
 typedef enum {

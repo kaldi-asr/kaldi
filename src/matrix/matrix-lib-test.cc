@@ -27,6 +27,7 @@
 #include "util/stl-utils.h"
 #include <numeric>
 #include <time.h> // This is only needed for UnitTestSvdSpeed, you can
+#include <matrix/cblas-wrappers.h>
 // comment it (and that function) out if it causes problems.
 
 namespace kaldi {
@@ -4740,8 +4741,6 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
 
 int main() {
   using namespace kaldi;
-  static_assert(int(kNoTrans) != int(CblasNoTrans) && int(kTrans) == int(CblasTrans), 
-    "kNoTrans and kTrans must be equal to the appropriate CBLAS library constants!");
   bool full_test = false;
   SetVerboseLevel(5);
   kaldi::MatrixUnitTest<float>(full_test);
