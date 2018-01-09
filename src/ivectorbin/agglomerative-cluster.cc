@@ -46,11 +46,11 @@ int main(int argc, char *argv[]) {
       "   ark,t:labels.txt\n";
 
     ParseOptions po(usage);
-    std::string reco2num_rspecifier;
+    std::string reco2num_spk_rspecifier;
     BaseFloat threshold = 0.0;
     bool read_costs = false;
 
-    po.Register("reco2num-rspecifier", &reco2num_rspecifier,
+    po.Register("reco2num_spk-rspecifier", &reco2num_spk_rspecifier,
       "If supplied, clustering creates exactly this many clusters for each"
       " recording and the option --threshold is ignored.");
     po.Register("threshold", &threshold, "Merge clusters if their distance"
@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
 
     SequentialBaseFloatMatrixReader scores_reader(scores_rspecifier);
     RandomAccessTokenVectorReader reco2utt_reader(reco2utt_rspecifier);
-    RandomAccessInt32Reader reco2num_reader(reco2num_rspecifier);
+    RandomAccessInt32Reader reco2num_spk_reader(reco2num_spk_rspecifier);
     Int32Writer label_writer(label_wspecifier);
 
     for (; !scores_reader.Done(); scores_reader.Next()) {
@@ -87,8 +87,8 @@ int main(int argc, char *argv[]) {
         threshold = -threshold;
       std::vector<std::string> uttlist = reco2utt_reader.Value(reco);
       std::vector<int32> spk_ids;
-      if (reco2num_rspecifier.size()) {
-        int32 num_speakers = reco2num_reader.Value(reco);
+      if (reco2num_spk_rspecifier.size()) {
+        int32 num_speakers = reco2num_spk_reader.Value(reco);
         AgglomerativeCluster(costs,
           std::numeric_limits<BaseFloat>::max(), num_speakers, &spk_ids);
       } else {
