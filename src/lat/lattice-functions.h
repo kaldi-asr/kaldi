@@ -152,7 +152,7 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
 /// we do reorder).
 /// Also see PhoneAlignLattice, in phone-align-lattice.h.
 void ConvertLatticeToPhones(const TransitionModel &trans_model,
-                            Lattice *lat, bool replace_words = true);
+                            Lattice *lat);
 
 /// Prunes a lattice or compact lattice.  Returns true on success, false if
 /// there was some kind of failure.

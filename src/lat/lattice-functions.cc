@@ -426,7 +426,7 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
 }
 
 void ConvertLatticeToPhones(const TransitionModel &trans,
-                            Lattice *lat, bool replace_words) {
+                            Lattice *lat) {
   typedef LatticeArc Arc;
   int32 num_states = lat->NumStates();
   for (int32 state = 0; state < num_states; state++) {
@@ -438,11 +438,7 @@ void ConvertLatticeToPhones(const TransitionModel &trans,
           && (trans.TransitionIdToHmmState(arc.ilabel) == 0)
           && (!trans.IsSelfLoop(arc.ilabel))) {
          // && trans.IsFinal(arc.ilabel)) // there is one of these per phone...
-        if (replace_words)
-          arc.olabel = trans.TransitionIdToPhone(arc.ilabel);
-        else 
-          arc.ilabel = trans.TransitionIdToPhone(arc.ilabel);
-      }
+        arc.olabel = trans.TransitionIdToPhone(arc.ilabel);
       aiter.SetValue(arc);
     }  // end looping over arcs
   }  // end looping over states
@@ -466,7 +462,7 @@ double ComputeLatticeAlphasAndBetas(const LatticeType &lat,
   typedef typename Arc::StateId StateId;
 
   StateId num_states = lat.NumStates();
-   KALDI_ASSERT(lat.Properties(fst::kTopSorted, true) == fst::kTopSorted);
+  KALDI_ASSERT(lat.Properties(fst::kTopSorted, true) == fst::kTopSorted);
   KALDI_ASSERT(lat.Start() == 0);
   alpha->clear();
   beta->clear();

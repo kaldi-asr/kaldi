@@ -12,6 +12,7 @@ BINFILES = chain-est-phone-lm chain-get-supervision chain-make-den-fst \
         nnet3-chain-acc-lda-stats nnet3-chain-train nnet3-chain-compute-prob \
         nnet3-chain-combine nnet3-chain-normalize-egs
 
+
 OBJFILES =
 
 # Add this dependency to force cuda-compiled.o to be rebuilt when we reconfigure.
