@@ -39,7 +39,7 @@ if [ $# != 2 ]; then
   echo "                                                   # is indicated by smaller values. If enabled, clusters will"
   echo "                                                   # be merged until all cluster scores are less than the"
   echo "                                                   # threshold value."
-  echo "  --reco2num_spk <reco2num_spk-file>               # File containing mapping of recording ID"
+  echo "  --reco2num-spk <reco2num-spk-file>               # File containing mapping of recording ID"
   echo "                                                   # to number of speakers. Used instead of threshold"
   echo "                                                   # as stopping criterion if supplied."
   echo "  --cleanup <bool|false>                           # If true, remove temporary files"
